@@ -1,7 +1,8 @@
 
 (printf "Loading compiler in chezscheme..~n")
 
-(load "chez/match.ss")
+;(load "chez/match.ss")
+(include "chez/match.ss")
 (include "generic/helpers.ss")
 
 ; (include "chez/graphics_stub.ss")
@@ -11,13 +12,6 @@
 (include "generic/pass01.ss")
 (include "generic/pass07.ss")
 
+(include "compiler.ss")
 
-;(display '(convert-to-simulator '(lang (program 3))))
-;(newline)
-;(display (convert-to-simulator '(lang (program 3))))
-;(newline)
-
-;(display '(verify-core '(lang (program 3)))) (newline)
-
-;(
 

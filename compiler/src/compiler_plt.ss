@@ -13,9 +13,6 @@
 
 ;  (require "plt/demo_display.ss")
 
-;;======================================  
-(display "Loading main compiler module.  RegionStreams Demo.")
-(newline)
+(load/use-compiled "compiler_common.ss")
 
-(test00)
 

@@ -857,14 +857,19 @@
 ;(module (unique-name reset-name-count! extract-suffix
 ;                     code-name label-name #;method-name)
         ;RRN [01.09.16] -- We need to phase out code-name...
-        (define count 0)
-        (define unique-suffix
-          (lambda ()
-            (set! count (+ count 1))
-            (number->string count)))
-        (define reset-name-count!
-          (lambda ()
-            (set! count 0)))
+        (define unique-name-count 0)
+        (define (unique-suffix)
+            (set! unique-name-count (+ unique-name-count 1))
+            (number->string unique-name-count))
+        (define reset-name-count! 
+	  (lambda opt
+	    (match opt
+		   [() (set! unique-name-count 0)]
+		   [(,n) 
+		    (if (number? n)
+			(set! unique-name-count n)
+			(error 'reset-name-count "bad arg: ~a" n))])))
+
         (define extract-root
           (lambda (sym)
             (list->string

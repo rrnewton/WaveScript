@@ -1,48 +1,65 @@
-;;; Pass 1: verify-schem
+;;; Pass 2: rename-var
 
-;;; Well-formed input to this pass is in the following language:
+;;; This pass renames each variable to insure that each variable has
+;;; a unique name. 
 
+;;; The input language is the same as the input and output languages
+;;; of Pass 1.  The output language differs in that all variable
+;;; bindings are uniquely named, and that the aforementioned
+;;; toplvl-varref and toplvl-varassign! syntaxes are added.
 
+;;; The implementation requires constant?, scheme-primitive?, unique-name,
+;;; get-formals, and cast-formals from helpers.ss.
 
-;;; <Prog> ::= <Exp>
+;;; In addition to the current expression, this pass carries along
+;;; an environment (association list) mapping variable names to
+;;; unique variable names.  The environment is extended for lambda,
+;;; let, and letrec expressions and consulted for variable
+;;; references and assignments.
 
-;;; <Exp>  ::= <constant>
-;;;          | (quote <datum>)
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> <Exp> <Exp>*)
-;;;          | (case-lambda [<Formalexp> <Exp> <Exp>*]*)
-;;;          | (let (<Decl>*) <Exp> <Exp>*)
-;;;          | (<primitive> <Exp>*)
+;;; RRN[2002.06.19] - now this mangles toplvl var names
+;;;                   (as well as quoted symbols)
 
-
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Formalexp> ::= <var>
-;;;               | (<var>*)
-;;;               | (<var>* . <var>)
-
-
-;;;          | (<Exp> <Exp>*)
-
-
-
-
-
-;;; A <constant> is a boolean or integer.  A <datum> is a <constant>,
-;;; list or pair of <datum>, or vector of <datum>.  A <var> is a
-;;; symbol.  A <primitive> is one of the symbols in the set {-, *, +, <,
-;;; <=, =, add1, boolean?, car, cdr, cons, eq?, integer?, make-vector,
-;;; not, null?, pair?, procedure?, set-car!, set-cdr!, sub1, vector?,
-;;; vector-length, vector-ref, vector-set!, void, zero?}.
-
-;;; Output from this pass is in the same language.
-
-;;; The implementation requires constant?, datum?, keyword?,
-;;; scheme-primitive?, set?, formalexp?, get-formals, and the list
-;;; scheme-primitives from helpers.ss.
-
-(define convert-to-simulator
+(define rename-var
   (let ()
+
+    (define process-var
+      (lambda (var bound)
+        (let ([vpair (assq var bound)])
+          (if vpair
+              (cdr (assq var bound))
+              (begin
+                (error 'rename-var/process-var
+                       "variable was not bound, how can this happen?: ~a ~a"
+                       var bound)
+                var)))))
+
+    ;; This recurs over complex constants:
+    (define mangle-datum
+      (lambda (datum)
+        (cond
+          [(symbol? datum) (mangle-name datum)]
+          [(pair? datum)
+           (cons (mangle-datum (car datum))
+                 (mangle-datum (cdr datum)))]
+          [(vector? datum)
+           (let ([v (make-vector (vector-length datum))])
+             (do ([i 0 (add1 i)])
+                 ([= i (vector-length datum)])
+                 (vector-set! v i (mangle-datum (vector-ref datum i))))
+             v)]
+          ;; Other datums (numbers null etc) get left alone:
+          [else datum])))
+
+    (define process-lambda-clause
+      (lambda (formalexp expr expr* env)
+        (let* ([formal* (get-formals formalexp)]
+               [new-formal* (map unique-name formal*)]
+               [env (append (map cons formal* new-formal*) env)])
+          (let ([expr (process-expr expr env)]
+                [expr* (process-expr* expr* env)])
+            `(,(cast-formals new-formal* formalexp)
+               ,expr ,@expr*)))))
 
     (define process-expr*
       (lambda (expr* env)
@@ -53,90 +70,51 @@
         (match expr
           [,const (guard (constant? const)) const]
           [(quote ,datum)
-           (guard (not (memq 'quote env)) (datum? datum))
-           `(quote ,datum)]
+           (guard (not (assq 'quote env)))
+           `(quote ,(mangle-datum datum))]
+                                       
           [,var (guard (symbol? var))
-            var]
-
-#|
+            (process-var var env)]
+          
           [(if ,[test] ,[conseq] ,[altern])
-           (guard (not (memq 'if env)))
+           (guard (not (assq 'if env)))
            `(if ,test ,conseq ,altern)]
-          [(begin ,[first-expr] ,[rest-expr*] ...)
-           (guard (not (memq 'begin env)))
-           `(begin ,first-expr ,rest-expr* ...)]
+
           [(lambda ,formalexp ,expr ,expr* ...)
-           (guard (formalexp? formalexp)
-                  (not (memq 'lambda env)))					
-;	   (check-lambda-clause formalexp expr expr* env)
-           `(lambda ,formalexp ,expr ,expr* ...)]
+           (guard (not (assq 'lambda env)))
+           (cons 'lambda
+                 (process-lambda-clause formalexp expr expr* env))]
 
-          [(case-lambda [,formalexp* ,expr* ,expr** ...] ...)
-           (guard (andmap formalexp? formalexp*)
-                  (not (memq 'case-lambda env)))
-           (for-each (lambda (f e e*)
-                       (check-lambda-clause f e e* env))
-                     formalexp* expr* expr**)
-           `(case-lambda [,formalexp* ,expr* ,expr** ...] ...)]
-          [(let ([,lhs* ,[rhs*]] ...) ,expr ,expr* ...)
-           (guard (not (memq 'let env))
-                  (andmap symbol? lhs*)
-                  (set? lhs*))
-           (check-lambda-clause lhs* expr expr* env)
-           `(let ([,lhs* ,rhs*] ...) ,expr ,expr* ...)]
           [(letrec ([,lhs* ,rhs*] ...) ,expr ,expr* ...)
-           (guard (not (memq 'letrec env))
-                  (andmap symbol? lhs*)
-                  (set? lhs*))
-           (let ([env (append lhs* env)])
-             (let ([rhs* (process-expr* rhs* env)]
-                   [expr (process-expr expr env)]
-                   [expr* (process-expr* expr* env)])
-               `(letrec ([,lhs* ,rhs*] ...) ,expr ,expr* ...)))]
+           (guard (not (assq 'letrec env)))
+           (let ([new-lhs* (map unique-name lhs*)])
+             (let ([env (append (map cons lhs* new-lhs*) env)])
+               (let ([rhs* (process-expr* rhs* env)]
+                     [expr (process-expr expr env)]
+                     [expr* (process-expr* expr* env)])
+                 `(letrec ([,new-lhs* ,rhs*] ...) ,expr ,expr* ...))))]
 
-          [(,keyword ,form* ...)
-           (guard (not (memq keyword env))
-                  (keyword? keyword))
-           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
           
-          ;; Optimize level specifier, n, is optional
-          [(\#primitive ,prim)
-           (guard (scheme-primitive? prim))
-           `(\#primitive ,(snet-optimize-level) ,prim)]
-          [(\#primitive ,n ,prim)
-           (guard (scheme-primitive? prim))
-           `(\#primitive ,n ,prim)]
-          
-          [(\#primitive ,n ... ,prim)
-           (error 'verify-scheme
-                  "(#primitive ...) used, but ~s~a~n"
-                  prim " isn't one of our primitives: " )]
-          
-          [((\#primitive ,n ,prim) ,[rand*] ...)
-           (guard (not (memq prim env))
-                  (scheme-primitive? prim))
-           (check-primitive-numargs prim rand*)
-           `((\#primitive ,n ,prim) ,rand* ...)]
           [(,prim ,[rand*] ...)
-           (guard (>= (snet-optimize-level) 2)
-                  (not (memq prim env))
-                  (scheme-primitive? prim))
-           (check-primitive-numargs prim rand*)
-           `(,prim ,rand* ...)]
-          [(,[rator] ,[rand*] ...)
-           `(,rator ,rand* ...)]
-|#
+           (guard (not (assq prim env)) (regiment-primitive? prim))
+           `(,prim ,rand* ...)]          
 
-          [,unmatched
-            (error 'verify-scheme "invalid syntax ~s" unmatched)])))
+          [,unmatched (error 'rename-var "invalid syntax ~s" unmatched)])))
 
-    (lambda (expr)
-      (display "Running on ") (display expr) (newline)
-      
-      (match expr
-	     ;; Doesn't change the input language... 
-        [(,input-language (quote (program ,body)))
+    (lambda (expr . optional)
+      (let ((run (lambda (expr)
+		   (match expr
+			  [(,input-language (quote (program ,body)))
+			   (let ([body (process-expr body '())])
+			     `(,input-language '(program ,body)))]))))
+	(match optional
+	       [(count ,n) 
+		(reset-name-count! n)
+		(let ((res (run expr)))
+		  (reset-name-count! n)
+		  res)]
+	       [,else (run expr)])))
+    ))
+	
 
-           (let ([body (process-expr body '())])
-             `(,input-language '(program ,body)))]))))  
-  
+
