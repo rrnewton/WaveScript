@@ -2,6 +2,11 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
+;; This is not a very appropriate place for this definition, but it's the most convenient
+;; so that it can be had from.
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
+
+
 ;; This is not strictly R5RS but it should work in both chez and plt,
 ;; as long as plt has "compat.ss" loaded.  
 ;; (For example, it requires flush-output-port)
@@ -211,7 +216,8 @@
 	       (display-constrained `(,num 10) "  " `(,expr 40)
 				    " -> ")
 	       (if (procedure? intended)
-		   (printf "Satisfy oracle? ~s: " intended)
+		   (display-constrained "Satisfy oracle? " 
+					`(,intended 30) ": ")
 		   (display-constrained `(,intended 20) ": "))
 	       
 	       (flush-output-port)
@@ -222,8 +228,8 @@
 			    (intended result))
 		       (teq? intended result)) ;; Otherwise its an expected answer
 		   (begin
-		     (if (procedure? intended)
-			 (printf "~s, " result))
+;		     (if (procedure? intended)
+;			 (printf "~s, " result))
 		     (printf "PASS~n"))
 
 		   (begin (set! success #f)

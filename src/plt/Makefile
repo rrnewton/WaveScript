@@ -15,3 +15,7 @@ native:
 clean:
 	(cd compiled; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
 	(cd compiled/native; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
+
+
+helpers:
+	(cd compiled; $(MAKE) helpers)

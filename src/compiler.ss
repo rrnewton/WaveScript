@@ -2,6 +2,12 @@
 ;;======================================  
 (display "Loading main compiler module.  RegionStreams Demo.")
 (newline)
+
+;; This is a global variable mutated by the node-programs in the
+;; simulator_nought...  Counts total communications received.
+;;(define total-messages 0)
+;; Moved this *again*.  Now the simulator just defines this (via
+;; eval), when it starts running.
      
 (define pass-names
   '(verify-regiment

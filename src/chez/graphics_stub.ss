@@ -1,3 +1,10 @@
+;; chez/graphics_stub.ss
+;; Implements the GRAPHICS_STUB interface, described in "generic/graphic_stub.ss".
+;; Should provide the same functionality as plt/graphics_stub.ss
+
+;; TODO IMPLEMENT GET-STATE
+
+
 
 ;; [2004.05.23]
 
@@ -104,15 +111,20 @@
 (define (draw-edge pos1 pos2)
   (let ([box1 (list 0 0 world-xbound world-ybound)]
 	[box2 (list 0 0 window-width window-height)])
-    (match (list pos1 pos2)
-	   [((,a ,b) (,c ,d))
-	    (mvlet ([(x1 y1) (scale2d (list a b) box1 box2)]
-		    [(x2 y2) (scale2d (list c d) box1 box2)])
-		   (let ((line (create <line> the-win x1 y1 x2 y2)))
-		     	   (set! edge-screen-objs
-				 (cons line edge-screen-objs))
-			   line))]
-	   [,otherwise (error 'draw-edge "bad-input: ~s" edge)])))
+    (DEBUGMODE
+     (if (not (and (list? pos1) (= 2 (length pos1))
+		   (list? pos2) (= 2 (length pos2))))
+	 (error 'chez/graphics_stub.draw-edge
+		"Invalid input positions: ~s ~s" pos1 pos2)))
+
+;    (let ([a (car pos1)] [b (cadr pos1)]
+;	  [c (car pos1)] [d (cadr pos1)])
+    (mvlet ([(x1 y1) (scale2d pos1 box1 box2)]
+	    [(x2 y2) (scale2d pos2 box1 box2)])
+	   (let ((line (create <line> the-win x1 y1 x2 y2)))
+	     (set! edge-screen-objs
+		   (cons line edge-screen-objs))
+	     line))))
 
 ;(define (set-color! obj r g b)
 ;  (set-fill-color! obj (make <rgb> r g b)))
