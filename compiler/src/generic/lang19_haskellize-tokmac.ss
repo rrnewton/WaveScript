@@ -16,11 +16,12 @@
 		  (current-directory) str)
 
 	  (if (not (file-exists? "assembler"))
-	      (error 'run_tm "Missing assembler.")	    
+	      (error 'run_tm "Missing assembler.")
 	      (let ([file (or (and (file-exists? "test_tokmac_comp.tm") "test_tokmac_comp.tm")
 			      (and (file-exists? "../test_tokmac_comp.tm") "../test_tokmac_comp.tm")
 			      (error 'run_tm "Missing test_tokmac_comp.tm") )])	    		
 		(system (string-append "./assembler " file))
-		 )))))))
+		 )))))
+    (run_tm)))
 
 

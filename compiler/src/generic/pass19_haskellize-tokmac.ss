@@ -18,6 +18,10 @@
       (case p
 	[(rmap) "Pamap"]
 	[(rfold) "Pafold"]
+	[(+) "Pplus"]
+	[(-) "Pminus"]
+	[(*) "Pmult"]
+	[(/) "Pdiv"]
 	[else (string-append "P" (symbol->string p))]))
 
     (define hbegin
@@ -50,17 +54,37 @@
 	 (format "(Ecall Nothing ~a ~a)" (htok tok) (hlist args*))]
 	[(timed-call ,time ,tok ,[args*] ...)
 	 (format "(Ecall (Just ~a) ~a ~a)" time (htok tok) (hlist args*))]
+	[(activate ,tok ,[args*] ...)
+	 (format "(Eactivate ~a ~a)" (htok tok) (hlist args*))]
 
 	[(soc-finished) "Esocfinished"]
 	[(soc-return ,[body]) (format "(Esocreturn ~a)" body)]
 
 	[(relay) "(Erelay Nothing)"]
 
+	[(local-sense) "(Esense)"]
+
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
-	 (format "(Primapp ~a ~a" (hprim prim) (hlist rand*))]
+	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
-	[,other "UNMATCHED_SCHEMETOKSTUF"]
+	[(return ,[expr]            ;; Value
+		 (to ,memb)         ;; To
+		 (via ,parent)      ;; Via
+		 (seed ,[seed_val]) ;; With seed
+		 (aggr ,rator_tok)) ;; Aggregator 
+	 (format "(Ereturn ~a ~a ~a ~a ~a)"
+		 expr (htok memb) (htok parent) seed_val (htok rator_tok))	
+	 ]
+
+	[(let* ([,lhs* ,[rhs*]] ...) ,[body])
+	 (format "(Elet ~a ~a)" 
+		 (hlist (map (lambda (lhs rhs)
+			       (format "(~a, ~a)" (hid lhs) rhs))
+			     lhs* rhs*))
+		 body)]
+	 
+;	[,other "UNMATCHED_SCHEMETOKSTUF"]
 	[,other (error 'haskellize-tokmac:process-expr "unmatched expr: ~s" other)]
 	))
 
@@ -74,9 +98,6 @@
 		     (hbegin (map process-expr (cons body body*)))
 		     (process-expr body))
 		 )]))
-
-    (define (process-tokname tokname)
-      (symbol->string tokname))
 		
     (lambda (prog)
       (match prog
@@ -87,7 +108,7 @@
 				(socpgm (bindings ,[process-constbind -> socbinds] ...)
 					,[process-expr -> socstmts] ...)
 				(nodepgm (tokens ,[process-tokbind -> nodetoks] ...)
-					 (startup ,[process-tokname -> starttoks] ...))))
+					 (startup ,[htok -> starttoks] ...))))
 	 `(haskellize-tokmac-language
 	   ,(format 
 	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,  startup=~a~n})" 
