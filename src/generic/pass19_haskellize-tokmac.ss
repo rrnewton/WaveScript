@@ -1,4 +1,3 @@
-
 ;; [2004.08.06]
 ;; This outputs a token machine in Haskell concrete syntax.
 

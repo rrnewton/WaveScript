@@ -72,8 +72,9 @@
     deglobalize
     
     cleanup-token-machine
-;    verify-token-machine
+  ;    verify-token-machine
     haskellize-tokmac 
+
     ))
 
   
