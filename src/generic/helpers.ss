@@ -166,9 +166,9 @@
 (define regiment-distributed-primitives 
   '(
     
-    (rmap           (Function Region) Area)
+    (rmap           (Function Area) Area)
 
-    (rfold          (Function Object Region) Signal)
+    (rfold          (Function Object Area) Signal)
     (smap           (Function Signal) Signal)
 
     (anchor-at      (Location) Anchor)

@@ -88,7 +88,7 @@
 					,[process-expr -> socstmts] ...)
 				(nodepgm (tokens ,[process-tokbind -> nodetoks] ...)
 					 (startup ,[process-tokname -> starttoks] ...))))
-	 `(haskellize-tokmac-lang
+	 `(haskellize-tokmac-language
 	   ,(format 
 	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,  startup=~a~n})" 
 	     (hlist cbinds)

@@ -174,4 +174,13 @@ actual handler for tokens.  Although that can just be *one* function.
 WAIT: stupid question, but TinyOs does make a seperate instantiation
 for each use of each module?  Or are all timers the same timer!?
 
+[2004.10.17]
+I finished my brief return to messing with the front-end.  Looking at
+this NesC code again.  I see the FIFO I set up is working correctly
+now.
+
+
+
+
+
 

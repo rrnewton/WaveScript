@@ -202,7 +202,7 @@ module BasicTMCommM {
     ((TM_Payload*)temp_msg.data)->timestamp = call num_tokens();
     ((TM_Payload*)temp_msg.data)->counter = (uint8_t)call Random.rand();
 
-    call add_msg(&temp_msg);
+    //    call add_msg(&temp_msg);
 
     call print_cache();
 

@@ -4,7 +4,7 @@ COMPONENT = TestMachine
 #COMPONENT = BasicTMComm
 
 haskell: 
-	ghc -fext-core --make assembler 
+	ghc -fext-core --make assembler -o assembler 
 	mv a.out assembler
 
 include Makerules

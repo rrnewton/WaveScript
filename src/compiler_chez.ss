@@ -47,6 +47,10 @@
 
 (include "generic/lang16_deglobalize.ss") ;; deglobalize
 
+(include "generic/lang19_haskellize-tokmac.ss") 
+
+
+
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
 (include "generic/pass02_rename-vars.ss")
@@ -206,6 +210,5 @@
 
 (pretty-maximum-lines 2000)
 
+
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
-
-
