@@ -81,7 +81,8 @@
 ;; ======================================================================
 
 ;; This is our logger for events in the simulator:
-(define (logger . input)
+(define logger
+  (lambda input
   (mvlet ([(level ob args)
 	   (match input
 	     [(,lvl ,str ,args ...)
@@ -93,10 +94,12 @@
 	   (<= level (simulation-logger-level)))
       (if (null? args)
 	  (critical-section
-	   (begin (display ob (simulation-logger))
+	   (begin (fprintf (simulation-logger) "{~a} " level)
+		  (display ob (simulation-logger))
 		  (newline (simulation-logger))))
 	  (critical-section
-	   (display (apply format ob args) (simulation-logger)))))))
+	   (fprintf (simulation-logger) "{~a} " level)
+	   (display (apply format ob args) (simulation-logger))))))))
 ;; This is just another variant:
 ;; This has no critical section for now!!! [2005.02.25]
 (define-syntax with-logger
