@@ -95,18 +95,12 @@
                       (g (lambda (tot) (/ (car tot) (cdr tot)))))
                   (smap g (rfold f (cons 0 0) r))))
               
-              #;	      (let ((R (circle-at 50 '(30 40)))
-                                    (f (lambda (tot next)
-                                         (cons (+ (car tot) (sense next))
-                                               (+ (cdr tot) 1))))
-                                    (g (lambda (tot) (/ (car tot) (cdr tot))))
-                                    (avg (smap g (rfold f (cons 0 0) R))))
-                                (until (pred (lambda (x) (> x 15.3)) avg)
-                                       R
-                                       (circle-at 100 '(0 0))))))))
+              ))))
      `[(verify-regiment ',prog) ',prog])
    
    ))
+
+
 
 (define (test-this)
   (let ((tests (map car these-tests))
@@ -125,6 +119,18 @@
                    (op))))
 
 
+;----------------------------------------
+
+' (let ((R (circle-at 50 '(30 40)))
+	(f (lambda (tot next)
+	     (cons (+ (car tot) (sense next))
+		   (+ (cdr tot) 1))))
+	(g (lambda (tot) (/ (car tot) (cdr tot))))
+	(avg (smap g (rfold f (cons 0 0) R))))
+    (until (pred (lambda (x) (> x 15.3)) avg)
+	   R
+	   (circle-at 100 '(0 0))))
+
 '(verify-regiment
  '(some-lang 
    '(program 
@@ -134,7 +140,6 @@
                   (cons (+ (car tot) (sense next))
                         (+ (cdr tot) 1))))
              (g (lambda (tot) (/ (car tot) (cdr tot)))))
-         (smap g (rfold f (cons 0 0) r)))))))
-     
+         (smap g (rfold f (cons 0 0) r)))))))     
 
-.Simple Prog....
+; Simple Prog....
