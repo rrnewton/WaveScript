@@ -22,10 +22,12 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
 		          [] nodetoks
        return (TMS.Pgm consts socconsts socblock nodetoks2 startup)
 
+
 -- Process TokenHandler
 pth :: TM.TokHandler -> State Int TMS.TokHandler
 pth (t,ids,e) = do (e',_) <- pe e
 		   return (t,ids,e')
+
 
 -- Process Expression - Returns a block and a basic expression for the return value.
 pe :: Expr -> State Int (Block, Maybe Basic)
@@ -76,16 +78,29 @@ pe e = do (b,rv) <- loop e
 					  Just $ Bvar id)
 
 
-{-       (Esense) -> Esense
+       (Esense) -> do newvar <- newid "sens_" 
+		      return (Block [newvar] [Ssense (Just newvar)],
+			      Just $ Bvar newvar)
 
        -- Sloopcial forms:
-       (Esocreturn e) -> Esocreturn $ loop e
-       (Esocfinished) -> Esocfinished
+       (Esocreturn e) -> do (blk, Just ret) <- loop e
+			    return (append_blocks blk (Block [] [Ssocreturn ret]),
+				    Nothing)
+       (Esocfinished) -> return (Block [] [Ssocfinished], Nothing)
        (Ereturn val to via seed aggr) ->
-	   Ereturn (loop val) to via (loop seed) aggr
+	   do (blk1,Just rval)  <- loop val
+	      (blk2,Just rseed) <- loop seed
+	      -- Maybe this should return the local vars used, but it doesn't matter:
+	      return (concat_blocks [blk1, blk2,
+				     Block [] [Sreturn rval to via rseed aggr]],				     
+		      Nothing)
 
-       (Erelay mbtok) -> Erelay mbtok
-       (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
+       (Erelay mbtok) -> (Block [] [Srelay mbtok], Nothing)
+       (Eemit mbtime tok args) -> 
+
+
+
+Eemit mbtime tok (map loop args)
        (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
        (Eactivate tok args)    -> Eactivate    tok (map loop args)
 
