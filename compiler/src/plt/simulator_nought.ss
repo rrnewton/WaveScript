@@ -66,11 +66,9 @@
               )
   )
 
-(require simulator_nought);
+;(require simulator_nought);
 ;(define (g) (eval (cadadr these-tests)))
 ;(go)
 
-(define x (cadr (list-ref testssim 2)))
+;(define x (cadr (list-ref testssim 2)))
 
-  
-  

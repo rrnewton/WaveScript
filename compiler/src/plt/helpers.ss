@@ -117,7 +117,7 @@
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
    randomize-list  insert-between iota disp pp crit-printf
-   graph-map cyclic?  deep-assq deep-member? deep-all-matches
+   graph-map cyclic?  deep-assq deep-member? deep-all-matches deep-filter
    list-get-random unfold-list
    partition partition-equal
    stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
