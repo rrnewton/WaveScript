@@ -35,10 +35,10 @@
                 var)))))
 
     ;; This recurs over complex constants:
-    (define mangle-datum
+#;    (define mangle-datum
       (lambda (datum)
         (cond
-          [(symbol? datum) (mangle-name datum)]
+          [(symbol? datum) datum] ;(mangle-name datum)]
           [(pair? datum)
            (cons (mangle-datum (car datum))
                  (mangle-datum (cdr datum)))]
@@ -53,7 +53,7 @@
 
     (define process-lambda-clause
       (lambda (formalexp expr expr* env)
-        (let* ([formal* (get-formals formalexp)]
+        (let* ([formal* formalexp] ;(get-formals formalexp)]
                [new-formal* (map unique-name formal*)]
                [env (append (map cons formal* new-formal*) env)])
           (let ([expr (process-expr expr env)]
@@ -71,7 +71,8 @@
           [,const (guard (constant? const)) const]
           [(quote ,datum)
            (guard (not (assq 'quote env)))
-           `(quote ,(mangle-datum datum))]
+	   `(quote ,datum)]
+					;           `(quote ,(mangle-datum datum))]
                                        
           [,var (guard (symbol? var))
             (process-var var env)]
@@ -116,5 +117,30 @@
 	       [,else (run expr)])))
     ))
 	
+;==============================================================================
+
+(define these-tests
+  (map
+   (lambda (x)
+     (let ((prog (car x)) (res (cadr x)))	
+       `[(rename-var '(some-lang '(program ,prog)))
+	 (some-lang '(program ,res))])) 
+   '(
+     [3 3]    
+     [(letrec ((x 1)) x) 'unspecified]
+     )
+   )
+  ) 
+
+(define test-this
+  (default-unit-tester 
+    "Testing pass to verify initial regiment language."
+    these-tests))
+  
+
+(define test01 test-this)
+(define tests01 these-tests)
+
+;==============================================================================
 
 
