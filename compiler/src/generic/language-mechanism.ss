@@ -134,9 +134,10 @@
      (define (cluster r) (clump neighbors? r))
 
       ;; Since this is frozen in time events have little meaning:
-      (define (when-any f r)
-	(if (ormap f (map car r))
-	    #t #f))
+     (define (rwhen-any f r)
+       (if (ormap f (map car r))
+	   #t #f))
+     (define (swhen-any f s) (f s))
 
       ;; And until has no meaning at all.
       (define (until e s1 s2) s1)

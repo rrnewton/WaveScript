@@ -16,10 +16,10 @@
 (define edge-table (make-default-hash-table))
 (define proc-table (make-default-hash-table))
 
-(define SHOW_EDGES (make-parameter 
-		    #t
-		    (lambda (x) (if (boolean? x) x 
-				    (error 'SHOW_EDGES "bad: ~a" x)))))
+(define-regiment-parameter SHOW_EDGES 
+  #t
+  (lambda (x) (if (boolean? x) x 
+		  (error 'SHOW_EDGES "bad: ~a" x))))
   
 ;; This assumes a static comm graph for now:
 ;; What's more, this is lame and assumes that the *allocated object-graph*

@@ -105,7 +105,7 @@
    print-level print-length
    
    get-formals
-   unique-name reset-name-count! extract-suffix make-begin
+   unique-name reset-name-count! extract-suffix make-begin strip-illegal
    
    ;; Hmm, not sure what meaning immediate has here..
    immediate? constant? datum? 

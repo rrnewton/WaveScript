@@ -7,15 +7,18 @@
 ;; Uses the pretty-printer.
 ;; Requires case-sensitivity.
 
+
+;; TODO: Add some unit tests.
+
 (define hash-symbol
   (lambda (s)
     (let* ([ls (string->list (symbol->string s))]
 	   [nums (reverse (map char->integer ls))]
 	   [sum (apply +
 		       (map (lambda (x exp)		    
-			      (* x (^ 256 exp)))
+			      (* x (expt 256 exp)))
 			    nums (iota (length nums))))])
-      (remainder sum (^ 2 16)))))
+      (remainder sum (expt 2 16)))))
 
 (define haskellize-tokmac
   (let ()
@@ -64,7 +67,7 @@
 	 (format "(~a, ~a)" id rhs)]))
     
     (define process-expr 
-      (trace-lambda 'processest (expr)
+     (lambda (expr)
       (match expr
 	[(quote ,const)
 	 (cond 
@@ -187,20 +190,51 @@
 	     (hlist nodetoks)
 	     (hlist starttoks)))]))))
   
-#!eof
-	 `(Pgm (ConstBindings ,cbinds)
-	       (SocPgm (ConstBindings ,socbinds)
-		       ,socstmts)
-	       (NodePgm ,nodetoks ,starttoks)
+
+(define these-tests
+  '([(haskellize-tokmac
+      '(cleanup-token-machine-lang
+	'(program
+	(bindings (result_1 '3))
+	(socpgm (bindings) (soc-return result_1) (soc-finished))
+	(nodepgm
+	 (tokens
+	  (spread-global
+           ()
+           (begin (emit global-tree) (timed-call 1000 spread-global)))
+	  (global-tree () (relay)))
+	 (startup)))))
+     (haskellize-tokmac-language
+      "(Pgm {\n  consts = [((Id \"result_1\"), (Econst 3))],\n  socconsts=[],\n  socpgm=[(Esocreturn (Evar (Id \"result_1\"))), Esocfinished],\n  nodetoks=[((Token \"spread-global\"), [], (Eseq [(Eemit Nothing (Token \"global-tree\") []), (Ecall (Just 1000) (Token \"spread-global\") [])])), ((Token \"global-tree\"), [], (Erelay Nothing))],\n  startup=[]\n})\n")]
+    ))
 
 
-	   `(cleanup-token-machine-lang
-	     '(program (bindings ,nodebinds ...)
-		       (socpgm (bindings ,socbinds ...) 
-			       ,socstmts ...)
-		       (nodepgm (tokens ,nodup-binds ...)
-				(startup ,starttoks ...))))
-	   )]
-	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))
+(define test-this (default-unit-tester
+		    "Haskellize-tokmac: to convert token machine to haskell-style external representation."
+		    these-tests))
+
+;(define testhaskellize test-this)
+;(define testshaskellize these-tests)
+(define test19 test-this)
+(define tests19 these-tests)
+
+
+
+
+; #!eof
+; 	 `(Pgm (ConstBindings ,cbinds)
+; 	       (SocPgm (ConstBindings ,socbinds)
+; 		       ,socstmts)
+; 	       (NodePgm ,nodetoks ,starttoks)
+
+
+; 	   `(cleanup-token-machine-lang
+; 	     '(program (bindings ,nodebinds ...)
+; 		       (socpgm (bindings ,socbinds ...) 
+; 			       ,socstmts ...)
+; 		       (nodepgm (tokens ,nodup-binds ...)
+; 				(startup ,starttoks ...))))
+; 	   )]
+; 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))
 
 

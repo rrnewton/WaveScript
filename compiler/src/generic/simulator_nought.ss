@@ -104,15 +104,15 @@
   "simulator_nought.ss: simplest simulator for nodal language")
 
 ;; This makes it use a lame sort of text display instead of the graphics display:
-(define simulator-output-text (make-parameter #f (lambda (x) x)))
-(define sim-debug-logger 
-  (make-parameter (lambda args
-		    (critical-section
-		     (apply printf args)))
-                  (lambda (x)
-                    (unless (procedure? x)
-                      (error 'simulator-debug-logger "~s is not a procedure" x))
-                    x)))
+(define-regiment-parameter simulator-output-text #f (lambda (x) x))
+(define-regiment-parameter sim-debug-logger 
+  (lambda args
+    (critical-section
+     (apply printf args)))
+  (lambda (x)
+    (unless (procedure? x)
+	    (error 'simulator-debug-logger "~s is not a procedure" x))
+    x))
 (define-syntax silently
   (syntax-rules ()
     [(_ expr ...) (parameterize ([sim-debug-logger (lambda args (void))])
@@ -1425,6 +1425,8 @@
 	   (cons soceng nodeengs))
        )))
 
+;; A simulation function of type:
+;;    Simulation, ?timeout -> (Stream of ReturnVals ending in 'All_Threads_Returned | 'Threads_Timed_Out)
 (define run-simulation 
   (generate-simulator 
    ;; Thread runner:

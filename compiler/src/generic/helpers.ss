@@ -45,6 +45,14 @@
 		     )
        (close-output-port p))]))
 
+(define regiment-parameters (make-parameter '()))
+(define-syntax define-regiment-parameter
+  (syntax-rules () 
+    [(_ name args ...)
+     (define name 
+       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
+	      (make-parameter args ...)))]))
+
 
 ;; This version leaves the file open:
 ;; Shouldn't exist at this time:
@@ -80,7 +88,7 @@
   '(rmap rfold smap time-of
 	 circle circle-at anchor anchor-at anchor-where k-neighborhood time
 	 cluster sparsify border planarize treeize filter union intersect
-	 until when when-any when-percentage 
+	 until when swhen-any rwhen-any when-percentage 
 	 sense neighbors ))
 
 

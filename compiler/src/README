@@ -8,3 +8,11 @@ chezscheme).  There's a directory for shared code (generic) and
 directories specific to each.  Sometimes within the shared code I
 might use the "current_interpreter" variable to switch the behavior
 based on which backend we're using.
+
+
+[2005.02.13]
+
+I have tagged all my little shorthand commands for invoking the system with a
+";; shorthand" comment.  By searching for this I should be able to find all the 
+shorthands.
+

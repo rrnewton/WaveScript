@@ -11,11 +11,7 @@
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id mvlet rec))
 
-;(disp "yay" default-unit-tester)
-
-         ;	 "plt/language-mechanism.ss"
-
- (require "plt/iu-match.ss"
+(require "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
           "plt/critical_section.ss"
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
@@ -159,7 +155,7 @@
 			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
 			   [,other (run-compiler other)])))
 		graphical-simulation))
-(define pgr precomp-graphical-repl)
+(define pgr precomp-graphical-repl) ;; shorthand
 
 ;; From lang05.ss
 ;; Doesn't work:
@@ -185,6 +181,6 @@
 
 
 ;(begin (init-graphics) (cleanse-world) (graphical-repl))
-(define (start) (begin (init-graphics) (cleanse-world) (graphical-repl)))
+(define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
 
-'(lambda (x) (rmap sense x))
+

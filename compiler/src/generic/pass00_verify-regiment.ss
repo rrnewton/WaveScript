@@ -48,13 +48,13 @@
 		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
 	 (smap g (rfold f '(0 0) r))))
 
-     (letrec ((r (circle-at 30 40 50))
+     (letrec ((R (circle-at 30 40 50))
 	      (f (lambda (tot next)
 		   (cons (+ (car tot) (sense next))
 			 (cons (+ (car (cdr tot)) 1)
 			       '()))))
 	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))
-       (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) r))))
+       (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) R))))
 	 (until (swhen-any (lambda (x) (> x 15.3)) avg)
 		R
 		(circle-at 0 0 100))))
