@@ -27,6 +27,7 @@
 ;; [2004.06.28]
 ;; Added a special under-the-table "return" message.  It is handled
 ;; seperately from other messages.  This message must have six arguments:
+;; msg-object:  timestamp, origin, parent, count, ARGS
 ;; ARGS: return_val  -- the value being returned
 ;;       to_tok      -- the token to which the value shall be passed when it gets home
 ;;       via_tok     -- the token supplying the back-trail for the return to follow
@@ -72,7 +73,10 @@
 ;; [2004.06.11] Added homepage just for my internal hackery.
 ;; [2004.06.13] Be careful to change "cleanse-world" if you change
 ;; this, we don't want multiple simulation to be thrashing eachother.
-(define-structure (simobject node incoming redraw gobj homepage))
+;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
+;; token-cache in the structure too
+(define-structure (simobject node incoming redraw gobj homepage 
+			     token-cache local-sent-messages local-recv-messages))
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
@@ -84,10 +88,28 @@
 			      count
 			      args))
 
+;; Safer version:
+(define (construct-msg-object token timestamp origin parent count args)
+  (if (eq? token SPECIAL_RETURN_TOKEN)
+      (void) ;; all good for now
+      (begin
+	(unless (token? token) (error 'construct-msg-object "bad token: ~s" token))
+	(unless (or (number? timestamp) (not timestamp))
+	  (error 'construct-msg-object "bad timestamp: ~s" timestamp))
+	(unless (or (simobject? origin) (not origin))
+		(error 'construct-msg-object "bad origin: ~s" origin))
+	(unless (or (simobject? parent) (not parent))
+		(error 'construct-msg-object "bad parent: ~s" origin))
+	(unless (number? count)
+		(error 'construct-msg-object "bad count: ~s" count))
+	(unless (list? args)
+		(error 'construct-msg-object "bad args: ~s" args))))
+  (make-msg-object token timestamp origin parent count args))
+
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
 (define (bare-msg-object rator rands)
-  (make-msg-object rator ;; token
+  (construct-msg-object rator ;; token
 		   #f    ;; timestamp
 		   #f    ;; origin
 		   #f    ;; parent
@@ -168,7 +190,10 @@
 
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
-(define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f '())) g))
+(define (make-object-graph g) 
+  (graph-map (lambda (nd) (make-simobject nd '() #f #f '() 
+					  (make-default-hash-table) 0 0))
+	     g))
 (define (init-world)
   (set! graph   
 	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
@@ -207,7 +232,11 @@
 		  (let ((simob (car entry)))
 		    (set-simobject-redraw! simob #f)
 		    (set-simobject-homepage! simob '())
-		    (set-simobject-incoming! simob '())))
+		    (set-simobject-incoming! simob '())
+		    (set-simobject-token-cache! simob (make-default-hash-table))
+		    (set-simobject-local-sent-messages! simob 0)
+		    (set-simobject-local-recv-messages! simob 0)
+		    ))
 		object-graph)
       (error 'cleanse-world "world must not be allocated object-graph is false.")))
 
@@ -235,6 +264,7 @@
 (define process-statement 
   (letrec ([process-expr 
 	 (lambda (expr)
+;	   (disp "Process expr" expr)
 	   (match expr
 		  ;; This is a little wider than the allowable grammar to allow
 		  ;; me to do test cases:
@@ -246,15 +276,21 @@
 			(error 'simulator_nought:process-statement
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
+		   (process-expr (cons 'internal-call 
+				       (cons `(quote ,rator)
+				       (map (lambda (x) `(quote ,x)) rand*))))]
+
+		  [(internal-call ,rator ,rand* ...)
+		   
 		   ;; Could add the message to incoming instead!
-		   ;`(handler (make-msg-object ',rator #f #f 0 ',rand*))
+		   ;`(handler (construct-msg-object ',rator #f #f 0 ',rand*))
 		   ;; [2004.06.16] For now I'm raising an error... 
 		   ;; don't know what the correct behaviour should be:
 		   ;; NOTE: there is the possibility of variable capture with 'call-result'
 		   `(let ((call-result-9758
-			   (sendmsg (bare-msg-object ',rator ',rand*) this)))
+			   (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
 		      (if (eq? call-result-9758 'multiple-bindings-for-token)
-			  (error 'call "cannot perform a local call when there are token handlers for: ~s"
+			  (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
 				 ,rator)
 			  call-result-9758))
 		   ]
@@ -286,9 +322,15 @@
 		  ;; Right now I'm recurring on the argument, this
 		  ;; shouldn't be required by code generated from my
 		  ;; compiler currently. [2004.06.09]
-		  [(return ,[x] ,totok ,optional ...)
-		   (let ([via (if (assq 'via optional)
-				  (cadr (assq 'via optional))
+		  [(return ,[x] ,optional ...)
+		   (let ([totok (if (assq 'to optional)
+				    `(quote ,(cadr (assq 'to optional)))
+				    '(string->symbol
+				      (string-append 
+				       (symbol->string (msg-object-token this-message))
+				       "_return")))]
+			 [via (if (assq 'via optional)
+				  `(quote ,(cadr (assq 'via optional)))
 				  '(msg-object-token this-message))]
 			 [seed (if (assq 'seed optional)
 				   (cadr (assq 'seed optional))
@@ -296,7 +338,12 @@
 			 [aggr (if (assq 'aggr optional)
 				   (cadr (assq 'aggr optional))
 				   #f)])
-		   `(sim-return ,x ,totok ,via ,seed ,aggr))]
+;		     (DEBUGMODE
+;		      (if (not (and (token? via)
+;				    (token? totok)))
+;			  (error 'process-statement:return
+;				 "One of these is not a token: via: ~s, totok: ~s" via totok)))			       
+		     `(sim-return ,x ,totok ,via ',seed ',aggr))]
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  
@@ -390,7 +437,8 @@
 	`(lambda (themessage) ;(origin parent count tok args)
 ;		    (disp "Handling! msg" (msg-object-token themessage) 
 ;			  " parent? " (if (msg-object-parent themessage) #t #f)
-;			  " Soc? " I-am-SOC)
+;			  " Soc? " I-am-SOC 
+;			  "Args:" (msg-object-args   themessage))
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
 			  [count  (msg-object-count  themessage)]
@@ -401,7 +449,7 @@
 		    ;; Redraw every time we handle a message our state might have changed.
 		    (set-simobject-redraw! this #t)
 		    ;; This refers to the token cache for this processor:
-		    (let ([entry (hashtab-get token-cache tok)]
+		    (let ([entry (hashtab-get (simobject-token-cache this) tok)]
 			  [handle-it (lambda (newentry)
 				       (fluid-let ((this-message newentry))
 					 (case tok
@@ -423,7 +471,7 @@
 				    (if (= 0 local-recv-messages)
 					(sim-light-up 200 0 0))
 				    (set! local-recv-messages (add1 local-recv-messages))
-				    (hashtab-set! token-cache tok newentry)
+				    (hashtab-set! (simobject-token-cache this) tok newentry)
 				    (handle-it newentry))
 				  (begin 
 				    (incr-top-level! 'total-fizzles)
@@ -460,7 +508,8 @@
   `(
     [define local-sent-messages 0] ;; We should stick this in the simobject...
     [define local-recv-messages 0]
-    [define token-cache (make-default-hash-table)]
+;; Getting rid of this: moving it into the simobject data structure..
+;    [define token-cache (make-default-hash-table)]
     
     ;; MAKE SURE NOT TO INCLUDE OURSELVES:
     [define neighbors (lambda (obj)
@@ -475,8 +524,8 @@
 				(cdr entry)))))]
 
     [define sendmsg (lambda (data ob)
-		      (disp "IN sendmsg")(disp "  this = " this)
-		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
+;		      (disp "IN sendmsg")(disp "  this = " this)
+;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
@@ -489,11 +538,11 @@
 		    (incr-top-level! 'total-messages)
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
 
-		    (let ([ourentry   (make-msg-object t (cpu-time) this #f count m)]
-			  [childentry (make-msg-object t (cpu-time) this this (add1 count) m)])
+		    (let ([ourentry   (construct-msg-object t (cpu-time) this #f count m)]
+			  [childentry (construct-msg-object t (cpu-time) this this (add1 count) m)])
 		      ;; Is it fair for emitting to overwrite our cache entry?
 		      ;; I need to do it so that the return-handler can figure things out.
-		      (hashtab-set! token-cache t ourentry)
+		      (hashtab-set! (simobject-token-cache this) t ourentry) ;; OVERWRITE CURRENT ENTRY
 		      (for-each (lambda (nd) (sendmsg childentry nd))
 				(neighbors this))))]
 
@@ -503,7 +552,7 @@
 	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 					;		    (disp (list "FLOODING" t m))
 	     (let ((msg (if (null? m) '() (car m))))
-	       (for-each (lambda (nd) (sendmsg (make-msg-object t (cpu-time) this this 0 m) nd))
+	       (for-each (lambda (nd) (sendmsg (construct-msg-object t (cpu-time) this this 0 m) nd))
 			 all-objs))]
 
 	   ;; This is just a cludge for now.
@@ -527,7 +576,7 @@
 		     ;; at multiple nodes.  Need to make sure there's a
 		     ;; dependency relationship here and that a killing a
 		     ;; false leader kills all its subsequent doings.
-		     (sendmsg (make-msg-object t (cpu-time) #f #f 0 '()) leader)))]
+		     (sendmsg (construct-msg-object t (cpu-time) #f #f 0 '()) leader)))]
 
     [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -560,7 +609,7 @@
 		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
 			      "inside simulator (dist) is broken!")))
-		 (let ((entry (hashtab-get token-cache (car tok))))
+		 (let ((entry (hashtab-get (simobject-token-cache this) (car tok))))
 		   (if (and entry (msg-object-count entry))
 		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
@@ -574,46 +623,59 @@
 	     (sqrt (+ (expt (- (car a) (car b)) 2)
 		      (expt (- (cadr a) (cadr b)) 2)))]
 
-	   ;; <TODO> FINISH!
-	   ;; How much should the return-system use the token system
-	   ;; vs. bypass it?
-	   ;; It needs to set a timer wait that long for child
-	   ;; values, then push on up.
+    ;; <TODO> FINISH!
+    ;; How much should the return-system use the token system
+    ;; vs. bypass it?
+    ;; It needs to set a timer wait that long for child
+    ;; values, then push on up.
+
+    ;; [2004.07.08] OK. Handle-return does all the real work.  This
+    ;; merely needs to launch a message, and the system will handle
+    ;; it.
     [define (sim-return retval totok via seed aggr)
 	     ,(DEBUGMODE '(if (not this-message)
 			      (error 'simulator_nought.sim-return
 				     "broken")))
-
-	     ;; Have we got back to the origin?
-	       (if (eq? (msg-object-origin this-message) this)
-		   ;; Call the return handler:
-		   (let ([thistok (msg-object-token this-message)])
-		       ;; This might be a little sketchy:
-		       ,(process-statement `(call totok retval)))
-		   ;; Send it up to our parent:
-		   
-	       ;; <TODO> Here we need to bring it back to the sender,
-	       ;; aggregating along the way!
-	       (error 'sim-return "need to finish this")
-	       ;; For now we zap this straight back to the sender.
-	       ;; BUT we need a record of who sent what...
-					;		     (let ((loop ((
-	       )]
-
-
-	   ;; [2004.06.28] Return messages are special, they're handled
-	   ;; somewhat "under the table" from the normal token system.
-	   ;; Rather than a single timestamp, they store a list of
-	   ;; time-stamps, marking all handlers.  This takes a batch of
-	   ;; return messages, processes them, and sends them onwards.
+	     ,(DEBUGMODE '(if (not (and (token? totok) (token? via)))
+			      (error 'simulator_nought.sim-return
+				     "bad token or via: ~s ~s" totok via)))
+	     (let ([themessage
+		    (construct-msg-object SPECIAL_RETURN_TOKEN ;; token
+				     (cpu-time)           ;; timestamp
+				     #f      ;; origin -- This is sketchy!
+				     this    ;; parent -- This is sketchy!
+				     0     ;; count
+				     (list (list retval) ;; ret_vals
+					   totok ;; to_tok
+					   via ;; via_tok
+					   seed ;; seed_val
+					   aggr ;; aggr_tok
+					   (list (node-id (simobject-node this))) ;; senders
+					   ))])
+	       ;; We drop that into the local hopper, and the postal system will handle it!
+	       (set-simobject-incoming! 
+		this
+		(cons themessage (simobject-incoming this))))]
+					
+    ;; [2004.06.28] Return messages are special, they're handled
+    ;; somewhat "under the table" from the normal token system.
+    ;; Rather than a single timestamp, they store a list of
+    ;; time-stamps, marking all handlers.  This takes a batch of
+    ;; return messages, processes them, and sends them onwards.
     ;; DEPENDS: Uses sendmsg to change the global object-graph.
     ;; DEPENDS: Also uses "handler", and "this".
     [define handle-returns 
 	    (lambda (returns)
-	      (DEBUGMODE (if (not (list? returns)) 
-			     (error 'handle-returns "must take a list: ~s" returns)))
-	      (disp "handling rets from " (node-id (simobject-node this)) returns (list? returns))
-	      (flush-output-port)
+	      (DEBUGMODE (if (not (pair? returns)) 
+			     (error 'handle-returns "must take a nonempty list: ~s" returns)))
+
+	      (disp "Handle Ret at " (node-id (simobject-node this))
+		    " : totok" 
+		    (map cadr (map msg-object-args returns))
+		    "via"
+		    (map caddr (map msg-object-args returns))
+		    "senders" (map last (map msg-object-args returns)))
+
 	      (let ([channels (partition-equal returns
 			        (lambda (ob1 ob2)
 				  ;; This compares the "to" portions of the arglists:
@@ -627,13 +689,13 @@
 ;						       "invalid return messages: ~n ~s ~n ~s"
 ;						       ob1 ob2)])
 				  ))])
-		(disp "channels" channels)
 		;; That divided them up into related clumps, now process each:
 		(for-each 
 		 (lambda (returns) ;; Each chunk of returns going to the same target.
-		   (disp "Handling block" (length returns) returns)
 		   (let ([returns-args (map msg-object-args returns)]
-			 [timestamps (map msg-object-timestamp returns)]
+			 ;; Some timestamps may be false:
+			 [timestamps (map (lambda (x) (if x x '()))
+					  (map msg-object-timestamp returns))]
 			 [counts (map msg-object-count returns)])
 		     (DEBUGMODE (if (not (andmap (lambda (retargs) (= (length retargs) 6))
 						 returns-args))
@@ -653,10 +715,12 @@
 			(if (not (and (apply myequal? aggrs)
 				      (apply myequal? seeds)
 				      (apply myequal? vias)
-				      (apply myequal? tos)))
+				      (apply myequal? tos)
+				      ;; All those vals are lists..
+				      (andmap list? vals)))
 			    (error 'simulator_nought:handle-returns
-				   "not all these return's args were compatible: ~n~s"
-				   returns-args)))	       
+				   "not all these return's args ok: ~n~s"
+				   returns-args)))
 		       (let ([to  (car tos)]
 			     [via  (car vias)]
 			     [seed (car seeds)]
@@ -664,62 +728,85 @@
 			     [senders (apply append senders*)])
 			 ;; Now we've verified homogeneity among the batch 
 			 ;; and know the parameters for this return.
-
+			 
+			 (let ([collapse (lambda (acc vals timestamps)
+					   (if (null? vals) (list acc)
+					       (collapse (handler (bare-msg-object aggr (list (car vals) acc)))
+							 (cdr vals)
+							 (cdr timestamps))))])
 
 ;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
 ;			 (cons seed vals))
 
 			 ;; <FIXME> DISABLING AGGREGATION FOR THE MOMENT..
-			 (let ([aggregated-value
+			 (DEBUGMODE (if (and (not seed) aggr)
+				    (error 'handle-return
+					   "There is an aggregator ~s but no seed!"
+					   aggr)))
+			 (let ([aggregated-values
 				(if aggr 
-				    #f ;; FIXME
-				    #f)])
+				    (collapse seed (apply append vals) timestamps))
+				    ;; If there is no aggregator, then we just 
+				    ;; accumulate *all* those values together!
+				    (begin (DEBUGASSERT 
+					    (or (andmap list? vals)
+						(error 'assert "hmm vals not lists: ~s" vals)))
+					   (apply append vals))
+				    )])
 			   
-			   (disp "AGGREGATED:"  (node-id (simobject-node this)) this )
+;			   (disp "AGGREGATED:"  (node-id (simobject-node this)) aggregated-values)
 			   ;; Now that the message is aggregated, we check to 
 			   ;; see if this node is the destination..
 			   
 			   ;; Try to look up the via token in the local cache.
 			   (let ([via_parent
-				  (let ([entry (hashtab-get token-cache via)])
+				  (let ([entry (hashtab-get (simobject-token-cache this) via)])
 				    (if entry 
 					;; Target is the parent of the via token
 					(msg-object-parent entry)
 					(error 'simulator_nought:handle-returns
-					       "Should not happen! Could not get entry for via token! (at node ~s): ~s"
-					       (node-id (simobject-node this)) via)))])
+					       "Should not happen! Could not get entry for via token! (at node ~s): ~s in ~n~s"
+					       (node-id (simobject-node this)) via
+					       (simobject-token-cache this)
+					       )
+					))])
 			     ;; If via_parent is #f, that means that *THIS* is the parent.
 			     (if (not via_parent)
 				 ;; So we must fire the *to* token.  We fire it once for each return val actually.
 				 (begin
-				   (disp "RETURN accomplished: #vals: " 
-					 (if aggregated-value 1 (length vals)))
+;				   (disp "RETURN accomplished: #vals: " (length aggregated-values))
+				   ;; FIXME: TEMP: TODO:
+				   ;; This is just for debugging, adding senders to homepage
+				   (DEBUGMODE
+				    (let ((temp (assq 'return-senders-list  (simobject-homepage this))))
+				      (if temp
+					  (set-car! (cdr temp) (cons senders (cadr temp)))
+					  (set-simobject-homepage! 
+					   this (cons (list 'return-senders-list
+							    (list senders))
+						      (simobject-homepage this))))))
+				   
 				   (for-each
 				    (lambda (retval)
-				      ,(process-statement `(call to retval)))
-				    (if aggregated-value
-					(list aggregated-value)
-					vals)))
+				      ,(process-statement `(internal-call to retval)))
+				    ;; Hmm, this should make sure it's one:
+				    (collapse seed ____ timestamps)
+
+				    aggregated-values)
+
+
 				 ;; Otherwise we must pass this return onto the next:
 				 (sendmsg  
-				  (make-msg-object 
+				  (construct-msg-object 
 				   SPECIAL_RETURN_TOKEN ;; Token
 				   (cons (cpu-time) (apply append timestamps)) ;; Timestamp
 				   this ;; Origin
 				   this ;; Parent
-				   (map add1 counts) ;; Count - these are the leaf counts.
+				   (map add1 counts) ;; Count - all the leaf counts
 				   ;; And here we build the arguments for this leg of the return journey:
-				   (list 
-				    (if aggregated-value 
-					(list aggregated-value)
-					;; If there is no aggregator, then we just 
-					;; accumulate *all* those values together!
-					(begin (DEBUGASSERT 
-						(or (andmap list? vals)
-						    (error 'assert "hmm vals not lists: ~s" vals)))
-					       (apply append vals)))
-				    to via seed aggr 
-				    (cons (node-id (simobject-node this)) senders)
+				   (list aggregated-values
+					 to via seed aggr 
+					 (cons (node-id (simobject-node this)) senders)
 				    ) ;; Args 
 				   )
 				  via_parent) ;; Sendmsg end
@@ -728,14 +815,6 @@
 		))] ;; End handle-returns   
     )) ;; END Generic-defs
 
-'(let loop ([acc seed]
-					       [vals vals]
-					       [timestamps timestamps])
-				      ;(disp "LOOPIng: " acc vals timestamps)
-				      (if (null? vals) acc
-					  (loop (handler (bare-msg-object aggr (list (car vals) acc)))
-						(cdr vals)
-						(cdr timestamps))))
 
 ;; Takes: a program in the language of pass10_deglobalize
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
@@ -795,7 +874,8 @@
 		       (display "*") ;(disp "Node stopped by external force!")
 		       'node-stopped]
 		      [(null? incoming)
-		       (handle-returns returns)
+		       (if (not (null? returns))
+			   (handle-returns returns))
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
 		       (main-node-loop (simobject-incoming this) '())]
@@ -849,16 +929,20 @@
   (let ([socprog (car progs)]
 	[nodeprog (cadr progs)]
 	[socnode (car all-objs)])
-    (with-output-to-file "_SIM_socprog.ss" 
-      (lambda ()
-	(pretty-print `(define SIM-socfun ,socprog))) ;; Hope the depth doesn't overflow
-      'replace)
-    (with-output-to-file "_SIM_nodeprog.ss" 
-      (lambda ()
-	(pretty-print `(define SIM-nodefun ,nodeprog))) ;; Hope the depth doesn't overflow
-      'replace)
-    (load "_SIM_socprog.ss") ;; defines socfun
-    (load "_SIM_nodeprog.ss") ;; defines nodefun
+    ;; Gotta turn off the limits on pretty printing first:
+    (parameterize ([print-level #f]
+		   [print-length #f])
+      (with-output-to-file "_SIM_socprog.ss" 
+	(lambda ()
+	  (pretty-print `(define SIM-socfun ,socprog))) ;; Hope the depth doesn't overflow
+	'replace)
+      (with-output-to-file "_SIM_nodeprog.ss" 
+	(lambda ()
+	  (pretty-print `(define SIM-nodefun ,nodeprog))) ;; Hope the depth doesn't overflow
+	'replace)
+      (load "_SIM_socprog.ss") ;; defines socfun
+      (load "_SIM_nodeprog.ss") ;; defines nodefun
+      )
     ;; Now had better capture those global vars quick!
     ;; (Rentry into build-simulation could kill them.)
     ;;   ALSO, we capture the global object-graph and all-obj variables
@@ -993,6 +1077,46 @@
 ;; fluid-lets on them in the test-cases.
 (define handler 'simulator-variable-not-bound-yet)
 
+
+;; A single node called "thenode" (and 'this').
+(define (one-node-scenario testcase)
+  `(begin
+	;; Have to give a pure
+	(eval '(define handler 'initialized-by-test-case))
+	(eval '(define this 'initialized-by-test-case))
+	(for-each eval generic-defs)
+	;; Set up a two-node graph:
+	(let ([thenode (random-node)])
+	  (let ([graph (list (list thenode))])
+	    ;; This will set the object-graph and all-obj vars:
+	    (with-graph graph
+	      (lambda ()
+		;; Bind the corresponding simobjects for nodes 'a' and 'b'
+		(let ([thesimob (car all-objs)] )
+		  (fluid-let ([this thenode])
+		    ,@testcase))))))))
+
+;; One named 'a', one 'b'
+(define (two-node-scenario testcase)
+  `(begin
+	;; Have to give a pure
+	(eval '(define handler 'initialized-by-test-case))
+	(eval '(define this 'initialized-by-test-case))
+	(for-each eval generic-defs)
+	;; Set up a two-node graph:
+	(let ([a (random-node)]
+	      [b (random-node)])
+	  (let ([graph (list (list a b) (list b a))])
+	    ;; This will set the object-graph and all-obj vars:
+	    (with-graph graph
+	      (lambda ()
+		;; Bind the corresponding simobjects for nodes 'a' and 'b'
+		(let ([a_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))]
+		      [b_simob (car (filter (lambda (so) (eq? b (simobject-node so))) all-objs))]
+		      )
+		  ,@testcase)))))))
+
+
 (define these-tests
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
@@ -1002,24 +1126,24 @@
     ;; This test goes to a lot of work to set up a stub world to get
     ;; handle-returns to run...
     [ "test handle-returns"
-      (begin
-	;; Have to give a pure
-	(eval '(define handler 'initialized-by-test-case-for-handle-returns))
-	(eval '(define this 'initialized-by-test-case-for-handle-returns))
-	(for-each eval generic-defs)
-	;; Set up a two-node graph:
-	(let ([a (random-node)]
-	      [b (random-node)])
-	  (let ([plus +]
-		[graph (list (list a b) (list b a))])
-	    ;; This will set the object-graph and all-obj vars:
-	    (with-graph graph
-	      (lambda ()
-		(disp "there's graph" (length graph) (map node-id (map car graph)))
-		(disp "in with: " (length all-objs))
-		;; Bind the corresponding simobjects for nodes 'a' and 'b'
-		(let ([a_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))]
-		      [b_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))])
+      ,(two-node-scenario
+	`(
+		  ;; The b_node has received a message from via.
+		  (hashtab-set! (simobject-token-cache b_simob) 'via 
+				(construct-msg-object 'via    ;; token
+						 #f      ;; timestamp
+						 a_simob ;; origin
+						 a_simob ;; parent
+						 1       ;; count
+						 '()))
+		  ;; The a_node has the original message:
+		  (hashtab-set! (simobject-token-cache a_simob) 'via 
+				(construct-msg-object 'via    ;; token
+						 #f      ;; timestamp
+						 a_simob ;; origin
+						 #f      ;; parent
+						 0       ;; count
+						 '()))
 		  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		  ;; We're trying to handle a return message.
 		  (let ([this-message (bare-msg-object 
@@ -1027,33 +1151,43 @@
 			       '((3) ;; vals, a list..
 				 to  ;; token
 				 via ;; token
-				 (0) ;; counts, a list
+				 0 ;; seed
 				 plus ;; aggr token
 				 ()   ;; senders list
-				 ))])
+				 ))]
+			[plus +] ;; Function for use by handler
+;			[token-cache b_cache]
+			)
 		  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		    (fluid-let ([this b_simob]) ;; We're seeing from the b-nodes perspective
 		      ;; The handler for the 'b'-node thinks it got a token from 'a'
 		      (fluid-let ([handler
-				   (lambda (msg)
-				     (disp "RUNNING TEST HANDLER: " msg " THIS is: " this)
-				     (let ([token-cache (make-default-hash-table) ])
-				       (hashtab-set! token-cache 'via 
-						     (make-msg-object 'via    ;; token
-								      #f      ;; timestamp
-								      a_simob ;; origin
-								      a_simob ;; parent
-								      1       ;; count
-								      '()))
-				       (,(build-handler 
-					  '([plus (x y) (+ x y)]
-					    [via () (error 'tester-via-token 
-							   "this shouldnt be called")]
-					    ))
-					msg)))])
+				   ,(build-handler ;'()
+				     '([plus (x y) 
+					     (disp "ADDING:" x y)
+					     (+ x y)]
+;				       [via () (error 'tester-via-token 
+;						      "this shouldnt be called")]
+						   )
+				       )])
 			(handle-returns (list this-message))
-			)))))))))
-	3]
+;			(pretty-print all-objs)
+;			(printf "==================================================~n")
+;			(for-each pretty-print (map simobject-incoming all-objs))
+			;; This should put one message in a's inbox:
+			(simobject-incoming a_simob)
+			)))))
+	,(lambda (x)
+	   (and (list? x)
+		(eq? (length x) 1)
+		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
+		(eq? (msg-object-parent (car x))
+		     (msg-object-origin (car x)))
+		(equal? '(1) (msg-object-count  (car x)))
+		;; Make sure vals is a list:
+		(list? (car (msg-object-args (car x))))
+		))]
+	   
     
 
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
@@ -1061,15 +1195,25 @@
     
     ;; Making sure that it recurs on arguments to return, even though
     ;; this is not necessary for code generated by my compiler.
-    [ (process-statement '(return (dist) 'ret-token)) 
-      (sim-return (sim-dist) 'ret-token 
-		  unspecified ;; Via token
-		  #f #f)]
+    [ (process-statement '(return (dist)))
+      (sim-return
+       (sim-dist)
+       (string->symbol
+	(string-append
+	 (symbol->string (msg-object-token this-message))
+	 "_return"))
+       (msg-object-token this-message)
+       '#f
+       '#f)]
+
+    [ (process-statement '(return (dist) (to aaa) (via bbb) (seed 0) (aggr fff)))
+      (sim-return (sim-dist) 'aaa 'bbb '0 'fff)]
 
     ;; Just to make sure erros work with my unit-tester:
     [ (process-statement '(return))  error]
 
-    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f '())))
+    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f '() 
+			       (make-default-hash-table) 0 0)))
 	(let ((y (structure-copy x)))
 	  (and (eq? (simobject-node x) 
                     (simobject-node y))
@@ -1102,6 +1246,26 @@
 ;			    .5)
 ;	    (get-output-string s))))	   
 ;	Simulation_Done]
+
+  [ "Run a tree of returns, no aggregation"
+    (run-simulation
+     (build-simulation 
+      (compile-simulate-nought 
+       ',example-nodal-prog4))
+     1.7)
+    ,(lambda (ls)
+       (andmap integer? ls)
+       (and (= (length ls) (sub1 (length all-objs)))))]
+
+  [ "Run a tree of returns, no aggregation"
+    (run-simulation
+     (build-simulation 
+      (compile-simulate-nought 
+       ',example-nodal-prog4b))
+     1.7)
+    ,(lambda (ls)
+       (andmap integer? ls)
+       (and (= (length ls) (sub1 (length all-objs)))))]
 
   ))
 
@@ -1178,11 +1342,4 @@
 ;(dsis g ((eval f) a b c))
 ;(define (g) (run-simulation (tt) .5))
 
-
-(define (ttt)
-  (run-simulation
-   (build-simulation 
-    (compile-simulate-nought 
-     example-nodal-prog4))
-   1.7))
-
+(define problem (cadr (last these-tests)))
