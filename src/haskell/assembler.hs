@@ -9,6 +9,10 @@ This will read
 
 -}
 
+import TM -- Token Machine language definition
+import Expand
+
+
 import System
 import System.IO.Unsafe
 import System.Posix.Files
@@ -17,8 +21,6 @@ import Char
 import GHC.IOBase
 import IO
 import Data.List
-
-import TM -- Token Machine language definition
 
 modname = "TestMachine"
 

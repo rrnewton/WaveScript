@@ -32,8 +32,12 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 		 }
   deriving (Eq, Show, Read)
 
-data Prim = Pamap | Pafold
-	  | Pplus | Pminus | Pmult | Pdiv
+data Prim = Pplus | Pminus | Pmult | Pdiv
+	  | Pless | Pgreater | Pleq | Pgeq
+	  | Plocdiff | Ploc
+--	  | Pflood | Pelectleader
+	  | Pdrawmark | Plightup | Prgb
+	  --Pamap | Pafold
   deriving (Eq, Show, Read)
 
 data Expr = -- Stndard forms:
@@ -60,6 +64,9 @@ data Expr = -- Stndard forms:
 	  | Eemit (Maybe Time) Token [Expr]
 	  | Ecall (Maybe Time) Token [Expr]
 	  | Eactivate Token [Expr]
+	  | Eflood Token
+	  | Eelectleader Token
+
   deriving (Eq, Show, Read)
 
 
@@ -125,7 +132,7 @@ doit = do s <- readFile "test.tm";
     })
 -}
 
-a = (Pgm {
+f = (Pgm {
       consts = [],
       socconsts=[],
       socpgm=[(Ecall Nothing (Token "spread-global") [])],
@@ -158,3 +165,29 @@ a = (Pgm {
 		((Token "global-tree"), [], (Erelay Nothing))],  
       startup=[(Token "leaf-pulsar_tmpworld_7"), (Token "spark-world")]
      })
+
+a = (Pgm {
+  consts = [],
+  socconsts=[],
+  socpgm=[(Ecall Nothing (Token "spread-global") [])],
+  nodetoks=[((Token "f_token_result_1"), [], 
+	     (Eseq (Eprimapp Pflood [(Evar (Id "constok_4"))]) 
+	      (Eseq (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])])
+	       (Econst 25966)))),
+	    ((Token "constok_4"), [], 
+	     (Eif (Eprimapp Pless [(Eprimapp Plocdiff [(Eprimapp Ploc []), (Econst 30)]), 
+				   (Econst 10)]) 
+	      (Eprimapp Pelectleader [(Evar (Id "m_token_result_1"))]) (Econst 0))),
+	    ((Token "m_token_result_1"), [], 
+	     (Eseq (Esocreturn (Econst 49)) 
+	      (Eseq (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]) 
+	       (Econst 25966)))),
+	    ((Token "leaf-pulsar_result_1"), [], 
+	     (Eseq (Ecall Nothing (Token "f_token_result_1") []) 
+	      (Ecall (Just 1000) (Token "leaf-pulsar_result_1") []))),
+	    ((Token "spread-global"), [], 
+	     (Eseq (Eemit Nothing (Token "global-tree") []) 
+	      (Ecall (Just 1000) (Token "spread-global") []))),
+	    ((Token "global-tree"), [], (Erelay Nothing))],
+ startup=[(Token "leaf-pulsar_result_1")]
+})

@@ -257,9 +257,11 @@
 		   [target (car args)]
 		   )
 	       `([,form () (flood ,consider)]
-		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
-				   (elect-leader ,memb)
-				   '#f)]
+		 [,consider () 
+;			    (if (< (locdiff (loc) ,target) 10.0)
+			    (if (< (locdiff (loc) ,target) 10)
+				(elect-leader ,memb)
+				'#f)]
 		 [,form () (draw-mark ,target (rgb 0 100 100))]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
@@ -370,7 +372,7 @@
        `([,tokname ()
 	  ;; At each formation click, we output this node.
 	  ;(soc-return (list 'ANCH this))
-	  (soc-return ANCH-NUM)
+	  (soc-return ,ANCH-NUM)
 		   ])]
 
       [(circle circle-at)     

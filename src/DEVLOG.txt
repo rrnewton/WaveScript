@@ -180,7 +180,8 @@ this NesC code again.  I see the FIFO I set up is working correctly
 now.
 
 
+[2004.10.21]
 
-
+Gonna switch it so no prims take LISTS..
 
 

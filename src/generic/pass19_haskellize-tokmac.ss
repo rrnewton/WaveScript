@@ -5,6 +5,15 @@
 ;; Uses the pretty-printer.
 ;; Requires case-sensitivity.
 
+(define hash-symbol
+  (lambda (s)
+    (let* ([ls (string->list (symbol->string s))]
+	   [nums (reverse (map char->integer ls))]
+	   [sum (apply +
+		       (map (lambda (x exp)		    
+			      (* x (^ 256 exp)))
+			    nums (iota (length nums))))])
+      (remainder sum (^ 2 16)))))
 
 (define haskellize-tokmac
   (let ()
@@ -16,13 +25,18 @@
 
     (define (hprim p)
       (case p
-	[(rmap) "Pamap"]
-	[(rfold) "Pafold"]
-	[(+) "Pplus"]
-	[(-) "Pminus"]
-	[(*) "Pmult"]
-	[(/) "Pdiv"]
-	[else (string-append "P" (symbol->string p))]))
+;	[(rmap) "Pamap"]  [(rfold) "Pafold"]
+
+	[(+) "Pplus"]  [(-) "Pminus"]
+	[(*) "Pmult"]  [(/) "Pdiv"]
+	[(<) "Pless"]  [(>) "Pgreater"]
+	[(<=) "Pleq"]  [(>=) "Pgeq"]
+
+	[else (let ([name (strip-illegal (symbol->string p))])
+		(if (equal? name "")
+		    (error 'haskellize-tokmac
+			   "prim ~a didn't have a coherent haskellized name" p))
+		(string-append "P" name))]))
 
     (define hbegin
       (lambda (expr*)		
@@ -45,12 +59,21 @@
     (define process-expr 
       (lambda (expr)
       (match expr
-	[(quote ,const) (format "(Econst ~a)" const)]
+	[(quote ,const) 
+	 (cond 
+	  [(integer? const) (format "(Econst ~a)" const)]
+	  ;; For now we're lamely expressing
+	  [(symbol? const) (format "(Econst ~a)" (hash-symbol const))]
+	  [(boolean? const) (format "(Econst ~a)" (if const 1 0))]
+	  [else (error 'haskellize-tokmac:process-expr
+		       "cannot handle this type of constant presently: ~s" const)])]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
 
 	[(begin ,[x]) x]
 	[(begin ,[x] ,y ...) 
-	 (format "(Eseq ~a ~a)" x (process-expr `(begin ,y ...)))]
+	 (let ([rest (process-expr `(begin ,y ...))])
+;	   (disp "BUILDING ESEQ" x rest)
+	   (format "(Eseq ~a ~a)" x rest))]
 	
 	[(if ,[test] ,[conseq] ,[altern])
 	 (format "(Eif ~a ~a ~a)" test conseq altern)]
@@ -64,6 +87,9 @@
 	 (format "(Ecall (Just ~a) ~a ~a)" time (htok tok) (hlist args*))]
 	[(activate ,tok ,[args*] ...)
 	 (format "(Eactivate ~a ~a)" (htok tok) (hlist args*))]
+
+	[(flood ,tok) (format "(Eflood ~a)" (htok tok))]
+	[(elect-leader ,tok) (format "(Eelectleader ~a)" (htok tok))]
 
 	[(relay) "(Erelay Nothing)"]
 
@@ -125,7 +151,7 @@
 					 (startup ,[htok -> starttoks] ...))))
 	 `(haskellize-tokmac-language
 	   ,(format 
-	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,  startup=~a~n})" 
+	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,~n  startup=~a~n})" 
 	     (hlist cbinds)
 	     (hlist socbinds)
 	     (hlist socstmts)
