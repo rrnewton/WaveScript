@@ -9,9 +9,6 @@
 ;; Uses slib:
 (require 'hash-table)
 
-(define hashtab-get (hash-inquirer eq?))
-(define hashtab-set! (hash-associator eq?))
-
 (define (sleep-me sec) 
   (thread-sleep (flonum->fixnum (* sec 1000.0))))
 

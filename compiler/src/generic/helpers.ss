@@ -924,6 +924,7 @@
           (if (null? lst)
               cur
               (rac-loop (car lst) (cdr lst)))))))
+(define last rac)
 
 (define rdc
   (lambda (ls)
@@ -933,7 +934,6 @@
           (if (null? (cdr lst))
               '()
               (cons (car lst) (rdc-loop (cdr lst))))))))
-(define last rdc)
 
 (define mapleft
   (lambda (f ls)
@@ -1219,6 +1219,13 @@
           (begin (display (car args))(display " ")
                  (loop (cdr args)))))))
 
+(define (list-remove-last! ls)
+  (if (null? ls)
+      (error 'list-remove-last "cannot remove last of the null list!"))
+  (let loop ((cell ls) (next (cdr ls)))
+    (if (null? (cdr next))
+	(set-cdr! cell '())
+	(loop next (cdr next)))))
 
 ;; Should make this use a hash table.
 (define graph-map
@@ -1282,7 +1289,6 @@
 	(if (null? cycles)
 	    #f
 	    cycles)))))
-
 
 
 (define display-constrained

@@ -29,3 +29,18 @@
                #'((id ...) ...))
        (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
 
+
+(define disp
+  (let ((sub-disp
+	 (lambda (a)
+	   (if (null? a)
+	       (newline)
+	       (begin (display (car a)) (display " ") (sub-disp (cdr a)))))))
+    (lambda args 
+      (critical-section
+       (newline)
+       (sub-disp args)))))
+
+
+  
+

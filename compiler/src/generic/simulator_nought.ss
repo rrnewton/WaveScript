@@ -61,7 +61,7 @@
 	(cons lst (loop (cdr lst))))))
 
 (define structure-copy  vector-copy)
-     
+
 ;;========================================
 ;; After the start of the program this doesn't change:
 (define graph 
@@ -207,18 +207,18 @@
 				    (error 'neighbors "we're in our own neighbors list"))
 				(cdr entry)))))]
 	   [define sendmsg (lambda (data ob)
-		   (disp 'sendmsg data (node-id (simobject-node ob)))
+		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 	   [define emit (lambda (t . m)
-		   (disp 'emit t m)
+		   (disp (list 'emit t m))
 		   (let ((msg (if (null? m) '() (car m))))
 		     (map (lambda (nd) (sendmsg (list t m) nd))
 			  (neighbors this))))]
 	   [define flood (lambda (t . m)
-		    (disp "FLOODING" t m)
+		    (disp (list "FLOODING" t m))
 		    (let ((msg (if (null? m) '() (car m))))
 		      (map (lambda (nd) (sendmsg (list t msg) nd))
 			   all-objs)))])]
@@ -245,14 +245,23 @@
 		    (let loop ([incoming (simobject-incoming this)])
 		      (if (null? incoming)
 			  ;; No good way to wait or stop the engine execution?
-			  (loop (simobject-incoming this))
+			  (begin (yield-thread)
+				 (loop (simobject-incoming this)))
 			  
 			  ;; This might introduce message loss (because of no
 			  ;; semaphores) but I don't care:					
 			  (let ((msg (last incoming)))
+			    ;; Pop that message off:
 			    (if (null? (cdr incoming))
 				(set-simobject-incoming! this '())
 				(list-remove-last! incoming))
+			    
+			    (DEBUGMODE
+			     (if (or (not (list? msg)) (< (length msg) 2))
+				 (error 'node-handler 
+					"invalid message to node, should be a list ~a~s all incoming msgs were ~s"
+					"containing the token-name, and the message data: "
+					msg incoming)))
 			    (handler (car msg) (cadr msg)))
 			  )))
 		 ))))])
@@ -285,7 +294,7 @@
 	    all-objs))      
       )))
 
-;; This is the "language definition" which will use the compiler and
+;; This is the "language definition" which will use the compiler nd
 ;; simulator to evaluate the expression.  It'll be hard to write test
 ;; cases with meaningful results, though.
 (define (simulator-nought-language expr)
@@ -342,20 +351,18 @@
     ;; Generic tests for both this and the graphical sim:
     ,@(include "simulator_nought.tests")
 
-#|
+  [ "Compile Flood lights program..."
+     (build-simulation (compile-simulate-nought ',example-nodal-prog1))
+     unspecified ]
 
-;4
-
-
-;5
-
-;6
-
-
-
+  [ "Run Flood lights program..."
+    (run-simulation
+     (build-simulation (compile-simulate-nought ',example-nodal-prog1))
+     2.0)
+    unspecified ]
 
 #;    [ (let ((s (open-output-string)))
-#;	(parameterize ([current-output-port s])
+	(parameterize ([current-output-port s])
 	   (list 
 	    (run-simulation (vector (make-engine (lambda () 3))
 				    (list (make-engine (lambda () 4))
@@ -365,7 +372,6 @@
 	   
 	Simulation_Done]
 
-|#
 
     ))
 
