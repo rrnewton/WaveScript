@@ -109,11 +109,11 @@
   (if (and (simulation-logger)
 	   (<= level (simulation-logger-level)))
       (if (null? args)
-	  (critical-section
+	  ;(critical-section
 	   (begin (print-header)
 		  (display ob (simulation-logger))
-		  (newline (simulation-logger))))
-	  (critical-section
+		  (newline (simulation-logger)))
+           (begin ;critical-section
 	   (print-header)
 	   (display (apply format ob args) (simulation-logger))))))))
 
@@ -131,7 +131,7 @@
 ;; This is a SEPERATE LOGGER for debug info as opposed to simulation events.
 (define-regiment-parameter sim-debug-logger 
   (lambda args
-    (critical-section
+    (begin ;critical-section
      (apply printf args)))
   (lambda (x)
     (unless (procedure? x)
@@ -511,22 +511,61 @@
 ;; remote, and timed messages.
 
 
+(define (destructure-tokbind tbind)  
+
+  (define (process-stored s)
+    (match s
+      [(,v ,e) `(,v ,e)]
+      [,v `(,v '#f)]))
+
+  (define (process-bods x)
+    (match x
+      [((stored ,s ...) (bindings ,b ...) ,bods ...)
+       (values (map process-stored s)
+	       b
+	       (make-begin `((begin ,bods ...))))]
+
+      [((bindings ,b ...) (stored ,s ...) ,bods ...)
+       (values (map process-stored s)
+	       b
+	       (make-begin `((begin ,bods ...))))]
+      [((stored ,s ...) ,bods ...)
+       (values (map process-stored s)
+	       '()
+	       (make-begin `((begin ,bods ...))))]
+      [((bindings ,b ...) ,bods ...)
+       (values '() b
+	       (make-begin `((begin ,bods ...))))]
+      [,bods 
+       (values '() '()
+	       (make-begin `((begin ,bods ...))))]))
+      
+  (match tbind
+    [(,t (,a ...) ,bds ...)
+     (mvlet ([(stored bindings body) (process-bods bds)])
+	    (values t #f a stored bindings body))]
+    [(,t ,i (,a ...) ,bds ...)
+     (mvlet ([(stored bindings body) (process-bods bds)])
+	    (values t i a stored bindings body))]))
+
+
 ;; Takes token bindings, returns compiled bindings
 ;; along with an association list of stored-vars.
 (define (process-tokbinds tbinds cost-table)
   (let* ([allstored
           (map (lambda (bind)
-                 (match bind 
-		   [(,tok (,args ...) (stored [,vars ,initvals] ...) ,expr)
-		    (disp "STORED: " vars)
-                    (list tok vars)]))
+		 (mvlet ([(tok id args stored bindings body) (destructure-tokbind bind)])
+			(disp "STORED: " (map car stored))
+			(list tok (map car stored))))
                tbinds)]
 			 
          [binds 
           (map
            (lambda (tbind)
-	    (match tbind 
-		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
+;	    (match tbind 
+;		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
+
+		 (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
 			(lambda (current-vtime subtok-index ,@args) ;world)
 ;			  (lambda args			 
@@ -540,19 +579,19 @@
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
-					   (set! tokobj (vector 0 ,@initvals))
+					   (set! tokobj (vector 0 ,@(map cdr stored)))
 					   (hashtab-set! the-store this-tokname tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
-				,@(map (process-statement tok tbinds allstored cost-table) expr*)
+				,((process-statement tok tbinds allstored cost-table) body)
 				;; We must reverse the outgoing order because of how they were added:
 				(set-simobject-outgoing-msg-buf! this 
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
 				(set-simobject-local-msg-buf! this 
                                   (append (reverse (simobject-local-msg-buf this)) old-local))
 				(void))))
-                         ]]))
+                         ]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
     (printf "Allstored was: ~a~n" allstored)
@@ -567,6 +606,7 @@
 (define (compile-simulate-alpha prog)
   ;; Accept either with or without the language wrapper:
   (let ((prog (match prog 
+		     [(tokens ,t ...) `(program (bindings) (nodepgm (tokens ,t ...)))]
 		     [(program ,_ ...) prog]
 		     [(,input-lang '(program ,stuff ...)) `(program ,stuff ...)])))
     (match prog
@@ -576,10 +616,9 @@
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
        (define cost-table 
 	 (map (lambda (tbind)
-		(match tbind 
-		       [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
-			(list tok 
-			      (compute-handler-duration `(begin ,@expr*)))]))
+                (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
+                       (list tok 
+                             (compute-handler-duration body))))
 	      nodetoks))
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks cost-table)])
 

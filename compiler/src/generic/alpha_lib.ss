@@ -5,8 +5,10 @@
 ;; Simulator runtime
   
 (define (alpha-it tm)
-  (eval `(define alph ',(compile-simulate-alpha tm)))
-  (eval (compile-simulate-alpha tm)))
+  (let ([comped (compile-simulate-alpha tm)])
+  ;; Bind the current program to a global variable:
+    (eval `(define alph ',comped))
+    (eval comped)))
 
 ;; This returns:
 ;; 1) meta-token-handler of type (msg-object, vtime -> ())
@@ -350,16 +352,26 @@
      (bindings)
      (nodepgm 
 	 (tokens
-	  [node-start () (stored) (display "N")]
+	  [node-start _ () (stored) (bindings) (display "N")]
 	  ;[node-start () (stored) (void)]
-	  [SOC-start () (stored) (begin (printf "S") (call tok1))]
-	  [tok1 () (stored) (begin (display ".") (bcast tok2 5))]
-	  [tok2 (x) (stored) (timed-call 500 tok3 x)]
-	  [tok3 (y) (stored)
+	  [SOC-start _ () (stored) (bindings) (begin (printf "S") (call tok1))]
+	  [tok1 _ () (stored) (bindings) (begin (display ".") (bcast tok2 5))]
+	  [tok2 _ (x) (stored) (bindings) (timed-call 500 tok3 x)]
+	  [tok3 _ (y) (stored) (bindings)
 		(if (not (= y 0))		    		    
 		    (begin (display y)
 			   (timed-call 1000 tok3 (- y 1))))]
 	  )))))
+
+'(tokens 
+  [soc-start () (display "S")]
+  [node-start () (display "N")])
+
+(define (alpha-repl)
+  (printf "sim> ") (flush-output-port)
+  (alpha-it (read))
+  (run-alpha-sim 'simple 10.0)
+  (alpha-repl))
 
 
 ;     (begin (t) (time (run-alpha-sim 10.0)))
