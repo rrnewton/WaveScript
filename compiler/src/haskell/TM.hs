@@ -1,9 +1,11 @@
+-- Token Machines
+
 -- [2004.08.06]
 -- For the moment these are not flattened; they may have complex operands.
 -- NesC should be fine with that.
 --import Text.PrettyPrint.HughesPJ
 
-module TokenMachine where
+module TM where
 
 type Const = Int
 type Id = String
@@ -77,8 +79,22 @@ y = Pgm [] [] [] [] []
 z = Pgm { consts    = [("woot",3)],
 	  socconsts = [("foot",4)],
 	  socpgm    = [],
-	  nodetoks  = [(Token "tok1", [Id "x"], Ereturn (Evar (Id "x")))],
+	  nodetoks  = [("tok1", ["x"], Ereturn "x")],
 	  startup   = []
 	}
 
 
+a = (Pgm {
+  consts = [(result_2, (Econst 3))],
+  socconsts=[],
+  socpgm=[(Esocreturn (Evar (Id "result_2"))), Esocfinished],
+  nodetoks=[((Token "spread-global"), [], (Ebegin [(Eemit Nothing (Token "global-tree") []), (Ecall (Just 1000) (Token "spread-global") [])])), ((Token "global-tree"), [], (Erelay Nothing))],  startup=[]
+})
+
+s = "(Pgm {"
+
+--  consts = [(result_2, (Econst 3))],
+--  socconsts=[],
+--  socpgm=[(Esocreturn (Evar (Id \"result_2\"))), Esocfinished],
+--  nodetoks=[((Token \"spread-global\"), [], (Ebegin [(Eemit Nothing (Token \"global-tree\") []), (Ecall (Just 1000) (Token \"spread-global\") [])])), ((Token \"global-tree\"), [], (Erelay Nothing))],  startup=[]
+--})"

@@ -71,12 +71,32 @@
     haskellize-tokmac 
     ))
 
+(define (dump-tokenmachine-to-file prog fn)
+  (match prog
+   [(haskellize-tokmac-lang ,str)
+    (with-output-to-file fn
+      (lambda () (display str) (newline))
+      'replace)]
+   [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
-(define (run-compiler p)
+(define (run-compiler p . filename )  
   (let ((funs (map eval pass-names)))
     (let loop ([p p] [funs funs])
-      (if (null? funs) p
+      (if (null? funs) 
+	  (begin (if (not (null? filename))
+		     (dump-tokenmachine-to-file p (car filename)))
+		 p)
 	  (loop ((car funs) p) (cdr funs))))))
+
+;; This one just stops after deglobalize:
+(define compile-to-tokens
+  (let ((passes (list-remove-after 'deglobalize pass-names)))
+    (lambda (p)
+      (fluid-let ([pass-names passes])
+	(run-compiler p)))))
+
+
+
 
 (define test
   (lambda (set)
@@ -143,7 +163,7 @@
     ["Verify that the trivial program produces no token bindings but the defaults"
      (filter (lambda (tokbind)
 	       (not (memq (car tokbind) '(spread-global global-tree))))
-	     (cdr (deep-assq 'tokens (run-compiler '3))))
+	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
     ))
 
