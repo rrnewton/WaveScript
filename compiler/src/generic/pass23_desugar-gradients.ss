@@ -302,7 +302,8 @@
 		      (values newtoks
 			      (if (memq tok tainted)				  
 				  `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,@args)
-					 (let-stored (;[call-count 0]
+					 ;; Don't use let-stored for these, it incurs extra overhead:
+					 (stored ;[call-count 0]
 						      [,STORED_PARENT_ARG   '#f]
 						      [,STORED_ORIGIN_ARG   '#f]
 						      [,STORED_HOPCOUNT_ARG '#f]
@@ -329,7 +330,7 @@
 							 (set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
 						;; Otherwise, fizzle
 						(void)
-						)))
+						))
 				  `(,tok ,id ,args ,newbod))))))))
 
     (define findall-emittoks

@@ -649,12 +649,15 @@
 ;; 
 (define make-begin
   (lambda (expr*)
-    (match (match `(begin ,@expr*)
-             [(begin ,[expr*] ...) (apply append expr*)]
-             [,expr (list expr)])
+    (let ([initlst (match expr*
+			  [(begin ,x* ...) x*]
+			  [,ls ls])])
+      (match (match `(begin ,@initlst)
+		    [(begin ,[expr*] ...) (apply append expr*)]
+		    [,other (list other)])
       [() (void)]
       [(,x) x]
-      [(,x ,x* ...) `(begin ,x ,x* ...)])))
+      [(,x ,x* ...) `(begin ,x ,x* ...)]))))
 
 ;;RRN [01.09.17] :
 (define make-code

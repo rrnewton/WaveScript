@@ -9,7 +9,7 @@
 
 ;;; Input Grammar:
 ;;; This is the standard "Post-Cleanup" grammar for token machines.
-;;; (Except with gradients already desugared.)
+;;; (except with gradients already desugared.)
 
 ;;; NOTE: For now, subtokens are required to call static token
 ;;; destinations such that we know who to modify for CPS!
@@ -53,6 +53,8 @@
 ;;; Subcall's are gone.
 
 
+(define cps-tokmac
+  (let ()
 
     (define INIT 0)
     (define CALL 0)
@@ -133,6 +135,8 @@
 		   [(tok ,tok ,[expr]) (kify `(tok ,tok ,expr))]
 		   [(ext-ref ,tok ,var) (kify `(ext-ref ,tok ,var))]
 		   [(ext-set! ,tok ,var ,[expr]) (kify `(ext-set! ,tok ,var ,expr))]
+		   ;; This case shouldn't be used:
+		   [(begin) '(begin)]
 		   [(begin ,xs ...) 
 		    `(begin ,@(rdc xs) ,(kify (rac xs)))]
 		   [(if ,test ,[conseq] ,[altern])
@@ -155,7 +159,7 @@
 	    (lambda (tokbind)
 	      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tokbind)])
 		     (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
-		     `(,tok ,id (k ,args ...) (stored ,stored ...) 
+		     `(,tok ,id (k ,@args) (stored ,@stored)
 			     ,(amend-tainted body)))))
 	  
 	  (lambda (tokbinds)
@@ -186,27 +190,29 @@
 	(define loop
 	  (lambda (expr  pvk)
 	    (match expr
-	     [,x (guard (begin (disp "PEXP" x) #f)) 3]
+;	     [,x (guard (begin (disp "PEXP" x) #f)) 3]
 		   
 	     [,const (guard (constant? const)) 
 		     (pvk `(quote ,const))]
 	     [(quote ,const) (pvk `(quote ,const))]
 	     [,var (guard (symbol? var)) (pvk var)]
 	     [(tok ,tok) (pvk `(tok ,tok))]
-	     [(tok ,tok ,[expr]) 
+	     [(tok ,tok ,expr) 
 	      (loop expr
 		    (lambda (e) (pvk `(tok ,tok ,e))))]
 	     [(ext-ref ,tok ,var) (pvk `(ext-ref ,tok ,var))]
-	     [(ext-set! ,tok ,var ,[expr]) 
+	     [(ext-set! ,tok ,var ,expr)
 	      (loop expr
 		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
              [(begin) (pvk '(void))]
 	     [(begin ,x ,y ...)
 	      (loop x 
 		    (lambda (e) 
-                      (loop `(begin ,y ...)
+                      (loop `(begin ,@y)
                             (lambda (e2)
-                              (pvk (make-begin `(begin ,e ,e2)))))))]
+                              (pvk ;`(begin ,e ,e2)
+			       (make-begin `(begin ,e ,e2))
+			       )))))]
               [(if ,test ,conseq ,altern)
 	      (loop test 
 		    (lambda (t)
@@ -264,26 +270,26 @@
 				(call ,tok ktok ,@ls))))
 		)]
 
-	     [(call ,tok ,[args*] ...)
+	     [(call ,tok ,args* ...)
 	      (loop-list args* 
 			 (lambda (ls)
 			   (pvk
 			    `(call ,tok ,@ls))))]
-	     [(timed-call ,time ,tok ,[args*] ...)
+	     [(timed-call ,time ,tok ,args* ...)
 	      (loop-list args* 
 			 (lambda (ls)
 			   (pvk
 			    `(timed-call ,time ,tok ,@ls))))]
 	     [(leds ,what ,which) (pvk `(leds ,what ,which))]
 
-	     [(,prim ,[rands] ...)
+	     [(,prim ,rands ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
 	      (loop-list rands 
 			 (lambda (ls)
 			   (pvk
 			    `(,prim ,@ls))))]
-	     [(,[opera*] ...)
+	     [(,opera* ...)
 	      (loop-list opera*  pvk)]
 
 	     [,otherwise
@@ -309,11 +315,8 @@
 			 (loop (cdr tbs)
 			       (append taints tainted)
 			       (cons 
-				`(,tok ,subid ,args (stored ,stored ...) ,newexpr)
+				`(,tok ,subid ,args (stored ,@stored) ,newexpr)
 				(append newtokbinds tbacc)))))))))
-
-(define cps-tokmac
-  (let ()
 
       	 
     (lambda (prog)
