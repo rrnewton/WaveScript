@@ -12,7 +12,7 @@
 (define add-control-flow
   (lambda (expr)
     (match expr
-	   [(annotate-heartbeats-lang (quote (program (props ,proptable ...) ,letexpr)))
+	   [(annotate-heartbeats-language (quote (program (props ,proptable ...) ,letexpr)))
 
 	    (let ([check-prop 
 		   (lambda (p s)
@@ -57,18 +57,19 @@
 
 
     (let ([leaves (map car (filter (lambda (entry) (memq 'leaf entry)) proptable))])
-      `(add-control-flow-lang (quote (program (props ,proptable ...)
-					      (control-flow
-					       ,@(map (lambda (x) `(SOC ,x)) leaves)
-					       ,@(process-let letexpr))
-					      ,letexpr
-					)))))]
+      `(add-control-flow-language
+	(quote (program (props ,proptable ...)
+			(control-flow
+			 ,@(map (lambda (x) `(SOC ,x)) leaves)
+			 ,@(process-let letexpr))
+			,letexpr
+			)))))]
 	   )))
 
 
 
 
-'(add-control-flow '(annotate-heartbeats-lang
+'(add-control-flow '(annotate-heartbeats-language
 		     '(program
 		       (props (result_1 local final))
 		       (lazy-letrec ((result_1 #f '3)) result_1))))

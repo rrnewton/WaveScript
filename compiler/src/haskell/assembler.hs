@@ -41,7 +41,7 @@ process_expr e =
     case e of
     Econst c -> ([],"    return "++show c++"\n")
     Evar id -> ([],"    return "++show id++"\n")
-    Elambda formals e -> ([],"")
+    Elambda formals e -> ([],build_fun formals e)
     Eseq e1 e2 -> 
 	let (a,b) = process_expr e1 
 	    (x,y) = process_expr e2 
@@ -54,6 +54,9 @@ process_expr e =
     Eemit mt t exps -> ([],"    TMComm.emit("++tok_id t++");\n")
     Ecall mt t exps -> ([],"")
 
+
+build_fun formals body = 
+    " foo " 
 
 --(Eseq (Eemit Nothing (Token "global-tree") []) 
 --       (Ecall (Just 1000) (Token "spread-global") []))

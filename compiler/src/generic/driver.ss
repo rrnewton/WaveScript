@@ -214,15 +214,10 @@
 
 (define test-one
   (case-lambda
-    [(expr)
-;     (parameterize ([snet-optimize-level 2])
-       ($test-one expr #t #t #t)]
-    [(expr emit?)
-;     (parameterize ([snet-optimize-level 2])
-       ($test-one expr emit? #t #t)]
-    [(expr emit? verbose?)
-;     (parameterize ([snet-optimize-level 2])
-       ($test-one expr emit? verbose? #t)]))
+    [(expr)                ($test-one expr #t #t #t)]
+    [(expr emit?)          ($test-one expr emit? #t #t)]
+    [(expr emit? verbose?) ($test-one expr emit? verbose? #t)]
+    ))
 
 (define remaining-pass-names (make-parameter '()))
 
@@ -230,7 +225,11 @@
   (lambda (original-input-expr emit? verbose? ordinal)
     (let ([answer 
 	   ;(interpret original-input-expr)])
-	   ((host-eval) original-input-expr)])
+	   ((host-eval) original-input-expr)]
+	  ;; RRN: hacking this in way that makes it highly non-general:
+	  [pre-deglobalize #t]
+	  [stub-eval (lambda ignored 'unspecified)]
+	  )
       (define-syntax on-error
         (syntax-rules ()
           [(_ e0 e1 e2 ...)
@@ -259,7 +258,9 @@
                              (printf "~%Error occurred running output of pass ~s on test ~s"
                                      pass-name ordinal)
                              (printf "~%Error occurred running output of pass ~s" pass-name))
-                         ((game-eval) output-expr));)
+                         ((if pre-deglobalize
+			      (game-eval) 
+			      stub-eval) output-expr));)
                        ])
               (unless (tester-eq? t answer)
                 (if ordinal
@@ -305,6 +306,7 @@
         (lambda (input-expr)
           (unless (null? (remaining-pass-names))
             (let ([pass-name (car (remaining-pass-names))])
+	      (if (eq? pass-name 'deglobalize) (set! pre-deglobalize #f))
               (remaining-pass-names (cdr (remaining-pass-names)))
               (when (memq pass-name (tracer))
                 (printf "~%;=======================================~a~%"
