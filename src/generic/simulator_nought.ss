@@ -21,7 +21,7 @@
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
-  "\"simulator_nought.ss\": simplest simulator for nodal language")
+  "\"simulator_nought.ss\"a: simplest simulator for nodal language")
 
 ;; This uses a lame sort of text display instead of the graphics display:
 (define simulator-output-text (make-parameter #f id))
@@ -57,6 +57,8 @@
   (let loop ((lst lst))
     (if (null? lst) '()
 	(cons lst (loop (cdr lst))))))
+
+(define structure-copy  vector-copy)
 
 ;;========================================
 ;; After the start of the program this doesn't change:

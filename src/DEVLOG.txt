@@ -14,4 +14,7 @@ moment I'm just going to focus on the chez code.
 WEIRD. Chez scheme started up with the normal heap is hanging on
 (define-record a (b c)).  What is wrong with my system right now??
 
-
+[2004.05.26]
+  Right now I'm trying to hack the final Sim_nought together.
+Annoying model/view issues without object system.  It's gonna be work
+to get the plt version working.

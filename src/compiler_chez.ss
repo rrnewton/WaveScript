@@ -3,6 +3,13 @@
 
 (include "chez/match.ss")
 
+
+;; Uncomment this to remove debugging code and possibly make the
+;; system run faster.
+;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
+
+
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 (cd "chez") (include "helpers.ss") (cd "..")
 

@@ -6,8 +6,8 @@
 (define the-win #f)
 (define the-canvas #f)
 
-(define width 800)
-(define height 800)
+(define window-width 800)
+(define window-height 800)
 
 (define-structure (rgb red green blue))
 (define rgb make-rgb)
@@ -23,7 +23,7 @@
 
 ;; Init.
 (define (init-graphics)
-  (printf "Running graphical interface to simple simulator.~n")
+;  (printf "Running graphical interface to simple simulator.~n")
   (if the-win 
       (printf "Graphics already open!!~n")
       (begin
@@ -31,8 +31,8 @@
 			      (title: "Region Streams Demo")))
 	(set! the-canvas (create <canvas> the-win
 				 with
-				 (width: width) ;(in->pixels 5))
-				 (height: height) ;(in->pixels 5))
+				 (width: window-width) ;(in->pixels 5))
+				 (height: window-height) ;(in->pixels 5))
 				 (background-color: (make <rgb> 215 215 255))))
 	(show the-win)
 	(show the-canvas)  
