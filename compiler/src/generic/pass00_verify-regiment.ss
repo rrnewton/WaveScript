@@ -43,7 +43,8 @@
        (letrec ((r (circle 50 a))
 		(f (lambda (tot next)
 		     (cons (+ (car tot) (sense next))
-			   (+ (car (cdr tot)) 1))))
+			   (cons (+ (car (cdr tot)) 1)
+				 '()))))
 		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
 	 (smap g (rfold f '(0 0) r))))
 
@@ -147,6 +148,9 @@
 	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
 	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
 
+	     ;; Floats are the only numbers for now:
+	     [(set-equal? (list infered-type expected-type) '(Float Number)) (void)]
+
 	     [(and (eq? infered-type 'Region)
 		   (eq? expected-type 'Area))]
 
@@ -173,6 +177,9 @@
 	 [(eq? 'Object t2) t1]
 	 ;; Subtyping!! (without polymorphism or anything)
 	 [(set-equal? (list t1 t2) '(Area Region)) 'Region]
+
+	 ;; Floats are the only numbers for now:
+	 [(set-equal? (list t1 t2) '(Float Number)) 'Float]
 	 [else (error 'type-union
 		      "Cannot union types: ~s and ~s" t1 t2)])))
 
@@ -183,7 +190,7 @@
 	(if (and (symbol? var) (not (regiment-primitive? var)))
 	    (let ([entry (assq var type-env)])
 	      (if entry 
-		  (cons (type-union (cadr entry) type)
+		  (cons (list var (type-union (cadr entry) type))
 			(list-remove-first entry type-env))
 		  (cons (list var type)
 			type-env)))
