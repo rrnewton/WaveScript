@@ -10,55 +10,13 @@ This expands out features of token machines which are essentially macros.  It:
 
 module Expand where
 
-
 import TM
+import Utils
 
 import Control.Monad.ST
 import Data.STRef
 import Data.Char
 
-
------------------------------------------------------------------------------
-
-longest [] = error "longest: no elements in list"
-longest (h:t) = loop h (length h) t
-    where loop max len []                      = max
-	  loop max len (h:t) | length h > len  = loop h (length h) t
-	  loop max len (_:t)                   = loop max len t 
-
-filter_just []           = []
-filter_just (Nothing:t)  = filter_just t 
-filter_just (Just x:t)   = x : (filter_just t)
-
-{-loop state acc ls = 
-    if null ls
-    then (if null acc then Nothing else Just $ reverse acc)
-    else if pred $ head ls
-    then (if state 
-	  then loop True (tail ls) (head ls : acc)
-	  else loop True (tail ls) [head ls])Nothing
-    else -}
-
-
-largest_contig pred ls = loop False ls []
-    where 
-    loop _     []    []                 = Nothing
-    loop _     []    acc                = Just $ reverse $ longest acc 
-    loop False (h:t) []       | pred h  = loop True  t [[h]]
-    loop True  (h:t) (a1:acc) | pred h  = loop True  t ((h : a1) : acc)
-    loop False (h:t) (a1:acc) | pred h  = loop True  t ([h] : a1 : acc)
-    loop _     (h:t) acc                = loop False t acc
-
-
-
--- A non-tail-recursive version of the same function.
-lc2 f ls = longest $ loop ls
-    where
-    loop []                    = []
-    loop [a]                   = if f a then [[a]] else []
-    loop (a:b:t) | f a && f b  = (a : head (loop (b:t))) : tail (loop (b:t))
-    loop (a:b:t) | f a         = [a] : loop t
-    loop (a:t)                 = loop t
 
 -----------------------------------------------------------------------------
 
@@ -86,7 +44,7 @@ pe tenv lenv expr =
 		                    rhs <- map snd binds ]
 		 (pe tenv (map fst binds ++ lenv) e)
 
-       (Eseq e1 e2) -> Eseq (loop e1) (loop e2)
+       (Eseq exprs) -> Eseq (map loop exprs)
 
        (Eif a b c) -> Eif (loop a) (loop b) (loop c)
 
@@ -144,8 +102,8 @@ expand_macros tenv lenv expr =
 		      name <- newname "spine"
 		      writeSTRef new_tokhands
 				 (( Token name, [], 
-				    Eseq (Erelay Nothing)
-				    (Ecall Nothing tok [])) 
+				    Eseq [(Erelay Nothing),
+					  (Ecall Nothing tok [])]) 
 				  : tokhands)
 		      return (Eemit Nothing (Token name) [])
 	       (Eelectleader tok) -> return expr
@@ -160,9 +118,8 @@ expand_macros tenv lenv expr =
 		      bod <- loop (lhss ++ lenv) e
 		      return (Elet (zip lhss rhss) bod)
 
-	       (Eseq e1 e2) -> do e1 <- loop lenv e1
-				  e2 <- loop lenv e2
-				  return (Eseq e1 e2)
+	       (Eseq es) -> do new_es <- mapM (loop lenv) es
+			       return (Eseq new_es)
 {-	       (Eif a b c) -> Eif (loopsame a) (loop b) (loop c)
 
 

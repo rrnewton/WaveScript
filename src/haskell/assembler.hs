@@ -11,6 +11,10 @@ This will read
 
 import TM -- Token Machine language definition
 import Expand
+import Flatten
+import Utils
+
+
 
 
 import System
@@ -78,9 +82,11 @@ process_expr indent args e =
 	    stmts1++stmts2,
 	    bodcode)
 
-    Eseq e1 e2 -> 
+
+    Eseq [e1] -> process_expr indent args e1
+    Eseq (e1:es) ->
 	let (funs1,stmts1)       = process_stmt indent args e1
-	    (funs2,stmts2,ecode) = process_expr indent args e2 
+	    (funs2,stmts2,ecode) = process_expr indent args (Eseq es)
 	in (funs1++funs2, stmts1++stmts2, ecode)
 
     Eprimapp prim [a, b]  -> 
