@@ -51,7 +51,7 @@ data Stmt = Svoid
           | Sif Basic [Stmt] [Stmt]
 	  | Sled LedAction LedColor
 	  | Sdbg String [Basic]
-	  | Sdist Token
+	  | Sdist Id Token
           | Ssense (Maybe Id)
 	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
 	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!

@@ -271,9 +271,12 @@ b = (Pgm {
 t = (Pgm {
 	  consts = [],
 	  socconsts=[],
-	  socpgm=[(Eemit Nothing (Token "tok1") [])],
-	  nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), ((Token "tok2"), [], (Eled Toggle Red))],
+	  socpgm=[(Edbg "SOC Running %d\n" [(Eprimapp Pmyid [])]), (Eemit Nothing (Token "tok1") [])],
+	  nodetoks=[((Token "tok1_return"), [(Id "v")], (Edbg "Got return! at %d, value %d" [(Eprimapp Pmyid []), (Evar (Id "v"))])), 
+		    ((Token "tok1"), [], (Eseq [(Erelay Nothing), 
+						(Ereturn (Edist (Token "tok1")) (Token "tok1_return") (Token "tok1") Nothing Nothing)
+					       ]))],
 	  startup=[]
 	 })
 
-
+t2 = Pgm {consts = [], socconsts = [], socpgm = [Edbg "SOC Running %d\n" [Eprimapp Pmyid []],Eemit Nothing (Token "tok1") []], nodetoks = [(Token "tok1_return",[Id "v"],Edbg "Got return! at %d, value %d" [Eprimapp Pmyid [],Evar (Id "v")]),(Token "tok1",[],Eseq [Erelay Nothing,Ereturn {val = Edist (Token "tok1"), to = Token "tok1_return", via = Token "tok1", seed = Nothing, aggr = Nothing}])], startup = []}
