@@ -12,9 +12,10 @@
   (make-parameter 
    20 (lambda (n)
 	(if (integer? n) n
-	    (error 'repl-stream-depth " this parameter can only be set to numbers")))))		  
+	    (error 'repl-stream-depth " this parameter can only be set to numbers")))))
 
 (define (repl-builder startup cleanse compiler run)
+  (define TIMEOUT 10.0)
   (disp "REPL BUILDER")
 
   (lambda()
@@ -35,8 +36,8 @@
 				   (build-simulation (compile-simulate-nought (token-machine->program tokmac)))
 				   tokmac)))
 		(printf "~nSimulating....~n")	   
-		(cleanse-world)
-		(let ([result (run converted 2.0)])
+		(cleanse-world)		
+		(let ([result (run converted TIMEOUT)])
 		  (if (not (live-stream? result))
 		      ;; NON-STREAM RESULT:
 		      result
@@ -64,5 +65,4 @@
 			    (streamloop (add1 i) (stream-cdr stream) (cons head acc)))])))		      
 		      )))
 	      (loop)))))))
-
 

@@ -1,8 +1,9 @@
 
-(module helpers mzscheme        
+(module helpers mzscheme 
   (require "iu-match.ss"
            (lib "include.ss")
            (lib "pretty.ss")
+           (all-except (lib "list.ss") filter)
            (all-except "tsort.ss" test-this these-tests))
   
   ;; This might not be necessary: 
@@ -124,7 +125,8 @@
    list-head list-remove-first list-remove-last! list-remove-after filter list-index snoc rac rdc last
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp crit-printf
-   graph-map graph-get-connected cyclic?  
+   graph-map graph-get-connected cyclic? 
+   graph:simple->vertical graph:vertical->simple
    deep-assq deep-member? deep-all-matches deep-filter
    list-get-random unfold-list
    partition partition-equal

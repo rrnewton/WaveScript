@@ -32,7 +32,7 @@
 ;; simple type system listed in helpers.ss .  (No algebraic/arrow tyeps)
 
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Float, Bool, Object  List
+;;   Function, Number, Integer, Float, Bool, Object  List
 
 
 

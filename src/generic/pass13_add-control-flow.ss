@@ -1,13 +1,21 @@
-;; [2004.08.20]
 
-;; This creates a separate and parallel control flow graph.
 
-;; For now control starts at the SOC, then hits the leaves and pours
-;; through the program. 
+;; Pass: Add Control Flow
+;; ======================================================================
+;; [2004.08.20] 
+
+;; This creates a separate parallel control flow graph.
+
+;; For now, control starts at the SOC, then hits the leaves and pours
+;; through the program.  Basically the whole program is "Push".  In
+;; the future we might have control flow moving to intermediate nodes
+;; and then spreading up towards the leaves ("Pulling" them).
+
 
 ;; This sets us up to try to start figuring out when a control-flow
 ;; redirect means a spatial redirect.  (Next we've got to analyze
 ;; the "places" associated with expressions.)
+
 
 ;; (amap f (circle (anchor-at '(30 40)) 50))
 ;;  -> (soc anchor circle amap)
@@ -35,7 +43,15 @@
 ;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
 ;;; <CFG>  ::= (<var>*)
 
+;; ======================================================================
+
+;; [2004.12.06] Right now the control flow still isn't used by
+;; anything downstream.  It's just a simple dependency graph for the
+;; program.  
+	      
 (define add-control-flow
+  (let () 
+          
   (lambda (expr)
     (match expr
 	   [(add-heartbeats-language (quote (program (props ,proptable ...) ,letexpr)))
@@ -66,17 +82,19 @@
 		(if (check-prop 'local var)
 		    '()
 		    (list var))]
+	  ;; TODO:
           [(lambda ,formalexp ,expr)
 	   '() ;; CHECK UP ON THIS; MAYBE TAKE FREE-VARS??
 	   ]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
 
+	  ;; So should control flow from the test to the consequent?
           [(if ,[test] ,[conseq] ,[altern])
 	   (append test conseq altern)]
 	  
           [,prim (guard (regiment-constant? prim)) '()]
           [(,prim ,[rand*] ...)
-           (guard (regiment-primitive? prim))
+           (guard (regiment-primitive? prim))	  
 	   (apply append rand*)]
           [,unmatched
 	   (error 'addplaces:process-let "invalid syntax ~s" unmatched)])))
@@ -86,18 +104,15 @@
       `(add-control-flow-language
 	(quote (program (props ,proptable ...)
 			(control-flow
-			 ,@(map (lambda (x) `(SOC ,x)) leaves)
-			 ,@(process-let letexpr))
+			 ,@(graph:simple->vertical
+			    (append (map (lambda (x) `(SOC ,x)) leaves)
+				    (process-let letexpr))))
 			,letexpr
 			)))))]
-	   )))
-
-
+	   ))))
 
 
 '(add-control-flow '(add-heartbeats-language
 		     '(program
 		       (props (result_1 local final))
 		       (lazy-letrec ((result_1 #f '3)) result_1))))
-
-

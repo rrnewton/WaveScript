@@ -221,7 +221,15 @@ I have had some seriously bad experience using the tossim simulator.
 It will hang, I don't always think the gui display is saying the right
 thing, etc...
 
+<<<<<<< DEVLOG.txt
 [2004.12.01]
+
+Ok, trying to get back into it for a final run of (pre-masters)
+hacking.
+
+=======
+[2004.12.01]
+>>>>>>> 1.37
 
 Ok, trying to get back into it for a final run of (pre-masters)
 hacking.
@@ -230,3 +238,20 @@ Grr.. trying to run drscheme on jetta still gets the symbol error with
 __libc_stack_end from ld-linux.so.2  (GLIBC 2).  Sigh.  
 
 Could try hacking in my own version and using ldconfig...
+
+[2004.12.05]
+
+Wow, Mondrian had support for dynamic specialization stuff?
+
+[2004.12.06]
+
+Messing around with the simulator and GUI, there's some severe
+timing-dependency problems there.  I can do a simulation at 20 nodes
+and have things basically work, but then not work at 100 nodes.
+
+Man if I actually get anyone else to work on this with me maybe the
+right thing to do for the second version would be to do it in Java or
+something (with a C-like external rep for Token Machines).
+
+
+

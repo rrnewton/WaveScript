@@ -115,6 +115,7 @@
       (fluid-let ([pass-names passes])
 	(run-compiler p)))))
 (define rt run-tokmac)
+(define assemble rt)
 
 (define test
   (lambda (set)

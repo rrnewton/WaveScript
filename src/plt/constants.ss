@@ -9,7 +9,7 @@
          
          unknown-place noplace
          
-	 world-xbound world-ybound radius numprocs SPECIAL_RETURN_TOKEN
+	 world-xbound world-ybound radius numprocs SPECIAL_RETURN_TOKEN BASE_ID
 	 
 	 return-window-size
 	 

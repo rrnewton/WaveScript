@@ -28,7 +28,7 @@
   
 ;  (require "graphics_stub.ss")
 ;  (disp "yeah" draw-proc draw-procs)
-  (include "../generic/simulator_nought_graphics.ss")  
+  (include "../generic/simulator_nought_graphics.ss")
 
   (provide (all-defined)
            (all-from "constants.ss")

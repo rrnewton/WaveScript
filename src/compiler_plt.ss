@@ -16,6 +16,8 @@
          ;	 "plt/language-mechanism.ss"
 
  (require "plt/iu-match.ss"
+          ;; [2004.12.06] I think I had this working:
+          "plt/critical_section.ss"
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          "plt/pass01_eta-primitives.ss"
          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
@@ -154,6 +156,7 @@
 			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
 			   [,other (run-compiler other)])))
 		graphical-simulation))
+(define pgr precomp-graphical-repl)
 
 ;; From lang05.ss
 ;; Doesn't work:

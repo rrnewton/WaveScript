@@ -70,7 +70,7 @@
   '(cons car cdr 
 	 + - * / 
 	 < > <= >= = eq? equal?
-	 null? pair? number?
+	 null? pair? number? 
 	 not
 
 	 locdiff
@@ -88,7 +88,7 @@
 ;; Ok, redoing those with type information:
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Float, Bool, Object
+;;   Function, Number, Integer, Float, Bool, Object
 ;;   List
 
 
@@ -133,10 +133,13 @@
     ;; These are dynamically typed primitives: 
     (pair? (Object) Bool)
     (number? (Object) Bool)
+    (even? (Integer) Bool)
+    (odd? (Integer) Bool)
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
     (sense         (Node) Float)
+    (id            (Node) Integer)
 
     ))
 
@@ -1678,6 +1681,17 @@
 		(vector-ref o2 i)
 		(cons i (cons 'v index))))])))
        
+;; GRAPHS
+;; ======================================================================
+
+;; SIMPLE, VERTICAL, and HORIZONTAL graphs.
+
+;; graph-map and graph-get-connected work for "horizontal" graphs.  That is (a b c)
+;; means two edges linking a to b and to c.  For vertical graphs 
+;; (a b c) instead signifies two edges linknig a to b and b to c.
+;; Simple graphs are just graphs where each edge is listed individualy 
+;; ((a b) (b c)).
+
 
 ;; Should make this use a hash table.
 (define graph-map
@@ -1720,7 +1734,70 @@
 			     children)])
 	(loop (append viable (cdr todo))
 	      (cons (car todo) acc)))])))
-		       
+
+
+;; This takes a graph in "single edge" form (where each edge is a
+;; 2 element list), and produces a strange representation.  In the
+;; output representation an edge (a b c) does not mean { a->b, a->c } 
+;; but instead means { a->b, b->c }.
+;;   I use this representation because we get long "chains" of control flow.
+;;------
+;; Inefficient: I think this can be as bad as n^3
+(define (graph:simple->vertical g)  
+  (let outerloop ([oldgraph #f] [graph g])
+    (define (get-heads x) (filter (lambda (e) (eq? x (car e))) graph))
+    (define (get-tails x) (filter (lambda (e) (eq? x (rac e))) graph))
+    
+    (define (fit e1 e2)
+	  (let ([h1 (car e1)] [t1 (rac e1)]
+		[h2 (car e2)] [t2 (rac e2)])
+;	    (disp "      fitting" h1 t1 " to " h2 t2)
+	    (cond 
+	     [(and (eq? t1 h2)
+		   (= 1 (length (get-heads h2)))
+		   (= 1 (length (get-tails t1))))
+	      (append e1 (cdr e2))]
+	     [(and (eq? t2 h1)
+		   (= 1 (length (get-heads h1)))
+		   (= 1 (length (get-tails t2))))
+	      (append e2 (cdr e1))]
+	     [else #f])))
+;    (disp "outerloop" oldgraph graph)		     
+    (if (equal? oldgraph graph)
+	graph
+	(outerloop graph
+		  (let inner1 ((edges1 graph))
+;		    (disp "  inner1" edges1)
+		    ;; If we get to the end there were no changes to make:
+		    (if (null? edges1) 
+			graph
+			(mvlet ([(new old1 old2)
+				 (let ((first (car edges1)))
+				   (let inner2 ((edges2 (cdr edges1)))
+;				     (disp "    inner2" first ": " edges2)
+				     (if (null? edges2)
+					 (values #f #f #f)
+					 (let ((f (fit first (car edges2))))
+					   (if f 
+					       (values f first (car edges2))
+					       (inner2 (cdr edges2)))))))])
+			       (if new 
+				   ;; This is the new graph for the next round:
+				   (cons new (remq old1 (remq old2 graph)))
+                                   ;; Otherwise keep looking for a change to make:
+				   (inner1 (cdr edges1))))))))))
+
+(define (graph:vertical->simple g)
+  (map (lambda (edge)
+	 (if (= 2 (length edge)) edge	     
+	     (map list (rdc edge) (cdr edge))))
+       g))
+
+;; ======================================================================
+
+
+
+
 
 (define partition
   (lambda (lst f)

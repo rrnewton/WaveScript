@@ -1,8 +1,5 @@
 ;; INCOMPLETE: this doesn't actually use the CFG right now.
 
-
-;(require (lib "trace.ss") (lib "iu-match.ss") "../plt/helpers.ss")
-
 ;;; Pass 16: deglobalize
 ;;; April 2004
 ;===============================================================================
@@ -10,6 +7,12 @@
 ;;; This pass represents the biggest jump in the compiler.  It
 ;;; transforms my simplified global language into a local program to
 ;;; be run in each node in the sensor network.
+
+;;; We introduce a simple imperative language for the token-handlers
+;;; within each node programs.  In this case, it's naturally a subset
+;;; of scheme, but it gets reduced further in the next pass 
+;;; (cleanup-token-machine).
+
 
 
 ;;; Input grammar:
@@ -24,9 +27,8 @@
 ;;; <Formalexp> ::= (<var>*)
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
-;;; Output grammar:
 
-;;; RRN: Should we introduce a simple imperative language here???
+;;; Output grammar:
 
 ;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
 ;;;  <SOCPgm> ::= <Statement*>
@@ -51,6 +53,7 @@
 ;;;  <Token> ::= <Symbol> | ...???
 ;;;  <Exp>  ::= ???
 
+
 ;;========================================
 ;; EXAMPLE:
 
@@ -63,11 +66,11 @@
   (socpgm (bindings ) (soc-return result) (soc-finished))
   (nodepgm (tokens ) (startup )))
 
+
 ;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
 (define RMAP-NUM 39)
 (define ANCH-NUM 49)
 (define CIRC-NUM 59)
-
 
 
 ;===============================================================================

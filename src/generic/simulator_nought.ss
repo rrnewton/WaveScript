@@ -239,11 +239,19 @@
 
 ;;========================================
 
+(define (base-station? x)
+  (cond 
+   [(simobject? x) (= BASE_ID (node-id (simobject-node x)))]
+   [(node? x)      (= BASE_ID (node-id x))]
+   [else (error base-station? "bad input: ~a" x)]))
+
 (define (id x) x)
 
 (define (random-node) 
   (make-node 
-   (random 100)
+   (let loop ((id (random 1000)))
+     (if (eq? id BASE_ID) (loop (random 1000))
+	 id))
    (list (random world-xbound)
 	 (random world-ybound))
    ))
@@ -278,10 +286,10 @@
 (define (init-world)
   (set! graph   
 	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+	  ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+	  (set-node-id! (car seed) BASE_ID)
 	  ;; Connect the graph:
 	  (set! seed
-					;      (let ((ids (map node-id graph)))
-					;	(map 
 		(map (lambda (node)
 		       (cons node 
 			     (filter (lambda (n) 
@@ -296,7 +304,8 @@
 	       (clear-buffer))
 	  seed))
   (set! object-graph (make-object-graph graph))
-  (set! all-objs (map car object-graph)))
+  (set! all-objs (map car object-graph))
+  )
 
 ;; Call it now as we start up:
 (init-world)
@@ -1435,8 +1444,8 @@
 		   (node-id (simobject-node ob))
 		   (map car entries))))
        (sort (lambda (x y)
-	       (< (simobject-node (node-id x))
-		  (simobject-node (node-id y))))
+	       (< (node-id (simobject-node x))
+		  (node-id (simobject-node y))))
 	     all-objs))))
 
 (define print-incoming
@@ -1450,8 +1459,8 @@
 		   (map msg-object-token (simobject-incoming ob))
 		   ))
        (sort (lambda (x y)
-	       (< (simobject-node (node-id x))
-		  (simobject-node (node-id y))))
+	       (< (node-id (simobject-node x))
+		  (node-id (simobject-node y))))
 	     all-objs))))
 
 ;;===============================================================================

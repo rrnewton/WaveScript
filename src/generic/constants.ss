@@ -25,9 +25,12 @@
 (define world-xbound 60)
 (define world-ybound 60)
 (define radius 20) ;; And the comm radius.
-(define numprocs 20) ;; And the total # processors.
+(define numprocs 30) ;; And the total # processors.
 
 (define SPECIAL_RETURN_TOKEN 'RETTT)
+
+;; Id number for the base-station / Source-of-Control (SOC)
+(define BASE_ID 0)
 
 ;; In milliseconds
 (define return-window-size 500)

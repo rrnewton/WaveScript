@@ -16,6 +16,11 @@
 (define edge-table (make-default-hash-table))
 (define proc-table (make-default-hash-table))
 
+(define SHOW_EDGES (make-parameter 
+		    #t
+		    (lambda (x) (if (boolean? x) x 
+				    (error 'SHOW_EDGES "bad: ~a" x)))))
+  
 ;; This assumes a static comm graph for now:
 ;; What's more, this is lame and assumes that the *allocated object-graph*
 ;; will not change, it depends on the physical identity of edges within this 
@@ -43,19 +48,22 @@
 		    (let ([origpos (node-pos (simobject-node proc))])
 		      ;; If the processor has already been drawn, we trigger a screen wipe.
 		      (if (simobject-gobj proc) (force wipe-screen))
+		      ;; If we're the base-station, draw a mark also:
+		      (if (base-station? proc) (draw-mark origpos (rgb 0 255 0)))		      
 		      (let ((gobj (draw-proc origpos)))
 			(hashtab-set! proc-table proc gobj)
 			(set-simobject-gobj! proc gobj))
 		      ;; Not done yet.
 		      ;; This just draws the edges once... need to take responsibility for
 		      ;; changing them:
-		      (for-each 
-		       (lambda (edgeob)
-			 (hashtab-set! edge-table edgeob
-				       (make-edgestate
-					(draw-edge origpos (node-pos (simobject-node (car edgeob))))
-					(structure-copy (car edgeob)))))
-		       edges)
+		      (if (SHOW_EDGES)
+			  (for-each 
+			   (lambda (edgeob)
+			     (hashtab-set! edge-table edgeob
+					   (make-edgestate
+					    (draw-edge origpos (node-pos (simobject-node (car edgeob))))
+					    (structure-copy (car edgeob)))))
+			   edges))
 		      )))
 		object-graph)))
 

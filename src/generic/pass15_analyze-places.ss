@@ -1,3 +1,6 @@
+
+;; Pass: Analyze Places
+;; ======================================================================
 ;; [2004.10.07]
 
 ;; This pass does some *very* simple dataflow analysis and infers
@@ -25,7 +28,6 @@
 
 ;; Input language: output of add-places
 ;; Output language: same.
-
 
 (define analyze-places
   (lambda (expr)
