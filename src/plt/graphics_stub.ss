@@ -4,14 +4,14 @@
 
 (module graphics_stub mzscheme	
   (provide draw-procs draw-proc draw-edge init-graphics change-color!
-	   get-state)
+	   get-state these-tests test-this)
   
   (require "helpers.ss"
 	   "iu-match.ss"
            (prefix plt: (lib "graphics.ss" "graphics"))
            (lib "include.ss")
-           "basic_graphics.ss"
-           "simulator_nought.ss" ;; For world-xbound, ybound
+           (all-except "basic_graphics.ss")
+           (all-except "simulator_nought.ss" test-this these-tests) ;; For world-xbound, ybound
            )
   
   (include "../generic/graphics_stub.ss")
@@ -120,8 +120,19 @@
 			 (error 'plt/graphics_stub.get-state
 				"Couldn't find symbol in property list: ~s ~s" 
 				sym props)))
-	  (cadr entry))))
+          (cadr entry))))
    
+  
+  (define these-tests
+    `([(begin (init-graphics)
+              (let ((x (draw-proc '(10 20))))
+                (close-graphics)))
+       unspecified]
+              
+      ))
+  
+  (define test-this (default-unit-tester "graphics interface for simulator" these-tests))
+  
   );;End module
 
 ;(require graphics_stub)
