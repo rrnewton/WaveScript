@@ -29,9 +29,6 @@ module TokenMachineRuntimeM {
   }
 
   event result_t Timer.fired() {
-    uint16_t nbr;
-    nbr = call Random.rand() % 10; // TODO FIXME
-    
     dbg(DBG_USR1, "TokenMachineRuntimeM: Sending test\n");
     call SendMsg.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);    
     return SUCCESS;
