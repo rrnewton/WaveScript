@@ -580,11 +580,12 @@
 				  [anch distributed anchor]
 				  [circ distributed final region]
 				  )
+			   (control-flow soc anch circ)
 			   (lazy-letrec
-			    ((b #f (cons '2 '()))
-			     (a #f (cons '1 b))
-			     (anch 0.5 (anchor-at a))
-			     (circ 1.0 (circle anch '50)))
+			    ((b #f _ _ (cons '2 '()))
+			     (a #f _ _ (cons '1 b))
+			     (anch 0.5 _ _ (anchor-at a))
+			     (circ 1.0 _ _ (circle anch '50)))
 			    circ))))
      unspecified]
 

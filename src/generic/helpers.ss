@@ -203,7 +203,8 @@
 
     ;; What was this one supposed to do and what was it's type?
 ;    (when           (Event Signal) Signal)
-    (when-any        (Function Area) Event)
+    (rwhen-any        (Function Area) Event)
+    (swhen-any        (Function Signal) Event)
     (when-percentage (Float Function Area) Event)
 
 ;     neighbors 
@@ -411,6 +412,7 @@
 ;; [2004.05.24] Replacing the default tester with a better one.
 ;; [2004.06.03] Adding optional preprocessor function
 ;; [2004.07.21] Added a 'quiet flag.  
+;; [2005.02.06] Made the quiet flag also suppress warnings.
 ;; Forms:
 ;;  (default-unit-tester message these-tests)
 ;;  (default-unit-tester message these-tests equalfun)
@@ -481,10 +483,11 @@
 						)
 					      (lambda () (escape-eval 'error))
 					      (lambda () 
-						(if quiet
+						(if quiet						    
 						    (let ([trash (open-output-string)])
-						      (parameterize ([current-output-port trash])					  
-								    (eval (preprocessor expr))))
+						      (fluid-let ([warning (lambda args (void))])
+						      (parameterize ([current-output-port trash])
+								    (eval (preprocessor expr)))))
 						    (eval (preprocessor expr)))
 						))))])
 ;	       (newline)

@@ -40,7 +40,7 @@
   '( 3
 
      (letrec ((a (anchor-at 30 40)))
-       (letrec ((r (circle 50 a))
+       (letrec ((r (circle a 50))
 		(f (lambda (tot next)
 		     (cons (+ (car tot) (sense next))
 			   (cons (+ (car (cdr tot)) 1)
@@ -48,15 +48,16 @@
 		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
 	 (smap g (rfold f '(0 0) r))))
 
-     (letrec ((r (circle-at 50 30 40))
+     (letrec ((r (circle-at 30 40 50))
 	      (f (lambda (tot next)
 		   (cons (+ (car tot) (sense next))
-			 (+ (cdr tot) 1))))
-	      (g (lambda (tot) (/ (car tot) (cdr tot)))))
-       (letrec ((avg (smap g (rfold f (cons 0 0) r))))
-	 (until (when-any (lambda (x) (> x 15.3)) avg)
+			 (cons (+ (car (cdr tot)) 1)
+			       '()))))
+	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+       (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) r))))
+	 (until (swhen-any (lambda (x) (> x 15.3)) avg)
 		R
-		(circle-at 100 '(0 0)))))
+		(circle-at 0 0 100))))
      ))
 
 ;; This is modified below with a set!
