@@ -153,6 +153,8 @@
     ))
 
 ;; These count as primitives also.
+;; All regiment constants are presumed to be "slow prims" for
+;; now. (see annotate-heartbeats)
 (define regiment-constants
   '(
     (world          Constant         Region)    

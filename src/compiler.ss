@@ -10,7 +10,7 @@
 ;; Moved this *again*.  Now the simulator just defines this (via
 ;; eval), when it starts running.
      
-(define pass-names
+'(define pass-names
   '(verify-regiment
     rename-var
     remove-unquoted-constant                        ;;  5
@@ -73,6 +73,7 @@
 ;    haskellize-tokmac 
     ))
 
+  
 (define (dump-tokenmachine-to-file prog fn)
   (match prog
    [(haskellize-tokmac-lang ,str)
@@ -109,9 +110,7 @@
       (test-all))))
 
 (define (r x)
-  (let ((prog  x #;(match x
-		     [(,lang '(program ,p)) x]
-		     [,p `(NOLANG '(program ,p))])))
+  (let ((prog  x))
     (parameterize ((tracer #t))
 		  (test-one prog))))
 

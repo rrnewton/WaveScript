@@ -5,6 +5,8 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
+(define random #%random)
+
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
@@ -27,13 +29,19 @@
 
 (load "generic/constants.ss")
 
+
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 (cd "chez") (include "helpers.ss") (cd "..")
 
 (include "generic/language-mechanism.ss")
+
 (include "generic/lang00.ss")
 (include "generic/lang05.ss")
-(include "generic/lang10.ss") ;; deglobalize
+(include "generic/lang11_classify-names.ss")
+(include "generic/lang12_annotate-heartbeats.ss")
+(include "generic/lang13_control-flow.ss")
+
+(include "generic/lang15_deglobalize.ss") ;; deglobalize
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")

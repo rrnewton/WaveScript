@@ -84,6 +84,10 @@
 			      [,exp (guard (simple? exp)) #f]
 			      [(lambda ,formalexp ,expr) #f]
 			      [(if ,test ,conseq ,altern) #f]
+			      ;; All regiment constants are presumed to be "slow prims" for now.
+			      [,prim (guard (regiment-constant? prim))
+				     #t]				    
+
 			      [(,prim ,rand* ...)				      
 			       (guard (distributed-primitive? prim))
 			       (or (check-prop 'region name)
@@ -189,6 +193,6 @@
 	   (error 'annotate-heartbeat "invalid syntax ~s" unmatched)])))
 
     ;; Body of match case:    
-    `(annotate-heartbeats-lang
+    `(annotate-heartbeats-language
       (quote (program (props ,proptable ...)
 		      ,(process-let letexpr)))))]))))
