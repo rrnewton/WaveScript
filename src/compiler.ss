@@ -65,10 +65,11 @@
     verify-core
     classify-names
     annotate-heartbeats
-    deglobalize
-    cleanup-token-machine
- ;;cleanup-token-machine
-    haskellize-tokmac 
+    addplaces
+
+;    deglobalize
+;    cleanup-token-machine
+;    haskellize-tokmac 
     ))
 
 (define (dump-tokenmachine-to-file prog fn)
