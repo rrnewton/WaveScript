@@ -124,7 +124,7 @@
     (>  (Number Number) Bool)
     (<=  (Number Number) Bool)
     (>=  (Number Number) Bool)
-    (eq? (Object Object) Bool)
+;    (eq? (Object Object) Bool)
     (equal? (Object Object) Bool)
     (null? (List) Bool)
 

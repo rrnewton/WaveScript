@@ -139,6 +139,7 @@
 (define (rr) (r '(circle 50 (anchor-at '(30 40)))))
 
 (define (doit x)
+  (cleanse-world)
   (run-simulation (build-simulation (compile-simulate-nought x))		  
 		  20.0))
 
