@@ -80,7 +80,7 @@
              `(letrec ([,lhs* ,rhs*] ...) ,body)
              (difference (union (apply union rhs-free*) body-free*) lhs*))]
           [(,prim ,[rand* rand-free*] ...)
-           (guard (extended-scheme-primitive? prim))
+           (guard (regiment-primitive? prim)) ;; Used to be extended-scheme-primitive?
            (values
              `(,prim ,rand* ...)
              (apply union rand-free*))]

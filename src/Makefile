@@ -11,8 +11,18 @@ MAIN_FILE = compiler.ss
 
 
 PLT_SRC = helpers tests demo_display \
-          language-mechanism lang00 \
-          pass00_verify-regiment pass01_rename-var pass07 
+          pass00_verify-regiment           \
+          pass01_rename-var                \
+          pass02_remove-unquoted-constant  \
+          pass03_remove-complex-constant   \
+          pass04_uncover-free              \
+          pass05_lift-letrec               \
+          pass06_lift-letrec-body          \
+          pass07_remove-complex-opera      \
+          pass08_verify-core               
+#          pass09_separate-graph.ss
+#          language-mechanism lang00  \
+
 PLT_MAIN_FILE = compiler_plt.ss
 #PLT_FILES = plt/helpers plt/pass01 plt/demo_display
 
@@ -71,8 +81,8 @@ runplt:
 .PHONY: clean
 
 clean:
-	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
 	(cd compiled; $(MAKE) clean)
+	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
 	$(RM) *.zo
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \

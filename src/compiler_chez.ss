@@ -1,9 +1,8 @@
 
 (printf "Loading compiler in chezscheme..~n")
 
-;(load "chez/match.ss")
 (include "chez/match.ss")
-(include "generic/helpers.ss")
+(include "chez/helpers.ss")
 
 ; (include "chez/graphics_stub.ss")
 ;(include "generic/demo_display.ss")
@@ -19,10 +18,14 @@
 (include "generic/pass04_uncover-free.ss")
 (include "generic/pass05_lift-letrec.ss")
 
-(include "generic/pass07.ss")
+;(include "generic/pass07_remove-complex-opera.ss")
+;(include "generic/pass08_verify-core.ss")
+
+;(include "generic/pass09_separate-graph")
 
 (include "compiler.ss")
 
+;; Driver depends on 'pass-names being defined.
 (include "generic/driver.ss")
 (include "generic/tests_noclosure.ss")
 (include "generic/tests.ss")
