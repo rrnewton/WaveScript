@@ -149,7 +149,16 @@
   (let ((prog  x))
     (parameterize ((tracer #t))
 		  (test-one prog))))
-  
+
+;; Token Run:  
+(define (tr x)  ;; shorthand
+  (let ((prog  x))
+    (parameterize ((tracer #t)
+		   (game-eval (lambda args 'unspecified))
+		   (host-eval (lambda args 'unspecified)))
+      (fluid-let ((pass-names (cdr (list-remove-before 'deglobalize pass-names))))
+	(test-one prog)))))
+
 ;; Temp =============================================================
 
 (newline)
@@ -204,16 +213,6 @@
   (filter (lambda (ls) (not (null? ls)))
           (map simobject-homepage all-objs)))
 
-(define (g) ;; shorthand
-  ;  (define prog (rc '(anchor-at '(30 40))))
-  (init-world)
-  (let ((res (run-simulation 
-              (build-simulation
-               (compile-simulate-nought prog)) 3.0)))
-    (disp "EXEC FINISHED, HERE WAS PROG:")
-    (pretty-print prog)
-    res))
-
 
 (define (sim) (build-simulation  ;; shorthand
 	     (compile-simulate-nought 
@@ -255,15 +254,7 @@
 			      (soc-return (list 'anch this)))])
       (startup))))
 
-(define (t1) ;; shorthand
-  (cleanse-world)
-  (run-simulation 
-   (build-simulation (csn theprog)) 1.0))
 
-(define (t2) ;; shorthand
-  (cleanse-world)
-  (run-simulation-stream
-   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 12.0))
 
 ;; I'm binding all these little random letter combinations!  Bah!
 (define mp;;myprog ;; shorthand

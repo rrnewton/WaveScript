@@ -5,9 +5,9 @@
 ;; It proceeds by adding FOUR additional arguments to every token handler:
 ;;   gradient parent, gradient origin node, hop-count, gradient version, 
 
-;; NOTE: For now token emission, relaying, distance checking, and returning are all 
-;;       restricted to statically specified tokens (but the subtok indices may be 
-;;       dynamically computed).
+;; NOTE: For now token emission, relaying, distance checking, and
+;;       returning are all restricted to statically specified tokens
+;;       (but the subtok indices may be dynamically computed).
 ;; This just makes it easier for me to determine which handlers need
 ;; extra gradient arguments and which don't.  
 
@@ -62,50 +62,8 @@
 ;;; No more GExpr
 
 
-(define (find-emittoks expr)
-  (match expr
-	 [(quote ,_) '()]
-	 [,var (guard (symbol? var)) '()]
-	 [(set! ,var ,[e]) e]
-	 [(ext-ref (tok ,t ,[e]) ,v) e]
-	 [(ext-set (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
-	 ;; If we ever have a first class reference to a token name, it is potentially tainted.
-	 ;; This is a conservative estimate:
-	 [(tok ,t ,n) (guard (number? n)) (list t)]
-	 [(tok ,t ,[e]) (cons t e)]
-	 [(begin ,[exprs] ...) (apply append exprs)]
-	 [(if ,[exprs] ...) (apply append exprs)]
-	 [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
-
-	 ;; "Direct call":  Not allowing dynamic emit's for now:
-	 [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-	 ;; Indirect emit call... could consider restricting these.
-	 ;[(emit ,[e] ,[args*] ...) (apply append e args*)]
-
-	 ;; Also allowing dynamic relays and dists.  
-	 ;; These don't matter as much because I'm basing 
-	 [(relay (tok ,t ,[e])) e]
-	 [(dist (tok ,t ,[e])) e]
-	 ;; The to's and the vias are static! Aggr has no subtok index!
-	 [(return ,[expr] (to (tok ,t)) (via (tok ,v)) (seed ,[seed_val]) (aggr (tok ,a)))
-	  (append expr seed_val)]
-
-	 [(leds ,what ,which) '()]
-	 [(call ,[args*] ...) (apply append args*)]
-	 [(timed-call ,[args*] ...) (apply append args*)]
-;	 [(activate ,_ ,[args*] ...) (apply append args*)]
-	 
-	 [(,[rator] ,[rands] ...) (apply append rator rands)]
-
-	 [,otherwise
-	  (error 'desugar-gradient:process-expr 
-		 "bad expression: ~s" otherwise)]
-	 ))
-
-
 (define desugar-gradients
   (let ()
-
     (define PARENT_ARG 'g_parent)
     (define ORIGIN_ARG 'g_origin)
     (define HOPCOUNT_ARG 'g_hopcount)
@@ -120,11 +78,55 @@
       (match t
 	[(tok ,t ,e) t]))
 
-    (define (statictok loop tk)
-      (match tk
-	     [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
-	     [(tok ,t ,[loop -> etb e])                (values etb `(tok ,t ,e))]
-	     [,other (error 'statictok "this is not a token: ~a" other)]))
+    (define (find-emittoks expr)
+      (match expr
+	     [(quote ,_) '()]
+	     [,num (guard (number? num)) '()]
+	     [,var (guard (symbol? var)) '()]
+	     [(set! ,var ,[e]) e]
+	     [(ext-ref (tok ,t ,[e]) ,v) e]
+	     [(ext-set (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
+	     ;; If we ever have a first class reference to a token name, it is potentially tainted.
+	     ;; This is a conservative estimate:
+	     [(tok ,t ,n) (guard (number? n)) (list t)]
+	     [(tok ,t ,[e]) (cons t e)]
+	     [(begin ,[exprs] ...) (apply append exprs)]
+	     [(if ,[exprs] ...) (apply append exprs)]
+	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
+
+	     ;; "Direct call":  Not allowing dynamic emit's for now:
+	     [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	     ;; Indirect emit call... could consider restricting these.
+					;[(emit ,[e] ,[args*] ...) (apply append e args*)]
+
+	     ;; Also allowing dynamic relays and dists.  
+	     ;; These don't matter as much because I'm basing 
+	     [(relay (tok ,t ,[e])) e]
+	     [(dist (tok ,t ,[e])) e]
+	     ;; The to's and the vias are static! Aggr has no subtok index!
+	     [(return ,[expr] (to (tok ,t)) (via (tok ,v)) (seed ,[seed_val]) (aggr (tok ,a)))
+	      (append expr seed_val)]
+
+	     [(leds ,what ,which) '()]
+	     [(call ,[args*] ...) (apply append args*)]
+	     [(timed-call ,[args*] ...) (apply append args*)]
+					;	 [(activate ,_ ,[args*] ...) (apply append args*)]
+	     
+	     [(,[rator] ,[rands] ...) (apply append rator rands)]
+
+	     [,otherwise
+	      (error 'desugar-gradient:find-emittoks
+		     "bad expression: ~s" otherwise)]
+	     ))
+
+    (define (statictok loop)
+      (lambda (tk)
+	(match tk
+	       [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
+	       [(tok ,t ,[loop -> etb e])                (values etb `(tok ,t ,e))]
+	       [,other (error 'statictok "this is not a token: ~a" other)])))
+
+
 	    
     (define process-expr
       (lambda (env tokens this-token tainted)
@@ -156,7 +158,7 @@
 	      (values (append rtb btb)
 		      `(let ([,lhs ,rhs]) ,body))]
 
-	     [(emit ,[statictok loop -> ttb tok] ,[atb* args*] ...)
+	     [(emit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
 	      `(let-stored ([ver 0])
 		(set! ver (+ 1 ver))
@@ -175,7 +177,7 @@
 	     [(relay (tok ,t ,[etb e]))
 	      (values etb
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) (my-id) ,STORED_ORIGIN_ARG (+ 1 ,STORED_HOPCOUNT_ARG) ,STORED_VERSION_ARG)
+		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       `(bcast (tok ,t ,num)
@@ -184,7 +186,7 @@
 			       (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
 			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))))))]
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(dist ,[statictok loop -> ttb tok])
+	     [(dist ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  HOPCOUNT_ARG ;; In this case we're inside the handler currently.
@@ -215,11 +217,11 @@
 			 (let ([oldacc acc])
 			   (set! acc ,seed)
 			   ;; Now, if we're the destination we need to call the 'to' token.
-			   (if (= (my-id) (ext-ref (tok ,via viaind) ,STORED_G_ORIGIN))
+			   (if (= (my-id) (ext-ref (tok ,via viaind) ,STORED_ORIGIN_ARG)) ;; NOTE!!! FIXME: TODO: Should this always be STORED_ ??
 			       (call (tok ,to toind) (subcall (tok ,aggr 0) val oldacc))
 			       ;; While the subcall is hapenning this return_handler very well may be called again.
 			       ;; But we just reset the acc, so any calls from this moment on will be in the next epoch.
-			       (send_to (ext-ref (tok ,via viaind) ,STORED_G_PARENT)
+			       (send_to (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
 					(tok return-handler_395 retid)
 					(subcall (tok ,aggr 0) val oldacc))))
 			 ;; Otherwise we simply accumulate and wait.
@@ -246,10 +248,10 @@
 	      (values (apply append ttb atb*)
 		      `(call ,tok ,args* ...))]
 	     ;; Same here:
-	     [(timed-call ,[ttb time] ,(tok ,t ,[etb e]) ,[atb* args*] ...) 
+	     [(timed-call ,[ttb time] (tok ,t ,[etb e]) ,[atb* args*] ...)
 	      (guard (memq t tainted))
 	      (values (apply append ttb etb atb*)
-		      `(timed-call ,time ,tok 
+		      `(timed-call ,time (tok ,t ,e)
 				   '#f ;; parent
 				   '#f ;; origin
 				   0   ;; hopcount
@@ -279,10 +281,9 @@
 	  loop)))
 
     (define process-tokbind 
-	(lambda (env tokens)
+	(lambda (env tokens tainted)
 	  (lambda (tokbind)
 	    (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-	      (let ([tainted (find-emittoks body)])
  	       (mvlet ([(newtoks newbod) ((process-expr env tokens tok tainted) body)])
 		      (values newtoks
 			      (if (memq tok tainted)				  
@@ -293,33 +294,50 @@
 						      [,STORED_HOPCOUNT_ARG '#f]
 						      [,STORED_VERSION_ARG  '#f])
 					    ;; Here we decide whether or not to accept the token:
-					    (if (or (not ,STORED_HOPCOUNT_ARG) ;; First time we definitely accept
-						    (> ,VERSION_ARG ,STORED_VERSION_ARG)
-						    (and (= ,VERSION_ARG ,STORED_VERSION_ARG)
+					    (if (or (not ,STORED_HOPCOUNT_ARG)           ;; First time we definitely accept
+						    (= 0 ,HOPCOUNT_ARG)                   ;; Local calls we accept
+						    (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
+						    (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
 							 (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
-						(begin 
+						,(make-begin 
+						  (list
 						  ;; If the msg is accepted we run our code:
-						  ,newbod
+						  ;; It can get to both the current version of 
+						  ;; the gradient parameters and the "stored" version from last time:
+						  newbod
 						  ;; And then store these gradient parameters for next time:
-						  (set! STORED_PARENT_ARG PARENT_ARG)
-						  (set! STORED_ORIGIN_ARG ORIGIN_ARG)
-						  (set! STORED_HOPCOUNT_ARG HOPCOUNT_ARG)
-						  (set! STORED_VERSION_ARG VERSION))
+						  ;; (Unless it was a local call, in which case there's nothing to store.)
+						  `(if (not (= ,HOPCOUNT_ARG 0))
+						       (begin 
+							 (set! ,STORED_PARENT_ARG ,PARENT_ARG)
+							 (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
+							 (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
+							 (set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
 						;; Otherwise, fizzle
+						(void)
 						)))
-				  `(,tok ,id ,args ,newbod)))))))))
+				  `(,tok ,id ,args ,newbod))))))))
+
+    (define findall-emittoks
+      (lambda (tbs)
+	(if (null? tbs) '()
+	    (mvlet ([(_ __ ___ ____ _____ body) (destructure-tokbind (car tbs))])
+		   (append (find-emittoks body)
+			   (findall-emittoks (cdr tbs)))))))
 
     ;; Main body of desugar-gradient
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...) 
-			  (nodepgm ,toks)))	 
-	 (let ([processtb (process-tokbind (map car constbinds) toks)])
+			  (nodepgm ,toks)))
+	 (let ([tainted (findall-emittoks (cdr toks))])
+	   (disp "EMITTOKS:" tainted)
+	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(tokens ,[processtb -> newtoks toks] ...)
 	      `(desugar-gradient-lang
 		'(program (bindings ,constbinds ...)
-			  (nodepgm (tokens ,@(append toks newtoks)))))]))]))
+			  (nodepgm (tokens ,@(apply append toks newtoks)))))])))]))
     ))
 
 
