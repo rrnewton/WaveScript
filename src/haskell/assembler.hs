@@ -170,13 +170,17 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
     --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
     "}\n"
 
+-------------------------------------------------------------------------------
+
+build_header_file (Pgm consts socconsts socpgm nodetoks startup) = 
+    let toks = map (\ (t,_,_) -> t)
 
 -------------------------------------------------------------------------------
 {- HERES THE MAIN PROGRAM. -}
 
-{- This returns the contents of the NesC module file and configuration file. -}
-assemble :: TMPgm  -> (String,String)
-assemble prog = (build_module prog, build_configuration prog)
+{- This returns the contents of the NesC module file, config file, and header file. -}
+assemble :: TMPgm  -> (String,String,String)
+assemble prog = (build_module prog, build_configuration prog, build_header_file prog)
 
 
 --    process_startup startup
