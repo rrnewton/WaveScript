@@ -284,6 +284,9 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our cache.
 	[handler `(lambda (themessage) ;(origin parent count tok args)
+		    (disp "Handling! msg" tok 
+			  " parent? " (if (msg-object-parent themessage) #t #f)
+			  " Soc? " I-am-SOC)
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
 			  [count  (msg-object-count  themessage)]
@@ -486,16 +489,16 @@
 	 `(lambda (SOC-processor this object-graph all-objs)
 ;	    (printf "CALLING SocProg: ~s~n" this)
 	    (let ([I-am-SOC #t]) 
-	      ,@generic-defs
+	      ;; We have to duplicate the tokbinds here...
 	      ,(process-binds 
 		nodebinds
 		(process-binds 
 		 socbinds
-;		 (process-tokbinds ;; These are duplicated in here.. .sigh.
-;		  nodetoks generic-defs
-		  `(begin ,@(map process-statement 
-				 socstmts)
-			  'soc_finished)))))]
+		(process-tokbinds 
+		 nodetoks generic-defs			
+		 `(begin ,@(map process-statement 
+				socstmts)
+			 'soc_finished))))))]
        
        [nodeprog
 	`(lambda (SOC-processor this object-graph all-objs)
@@ -617,6 +620,7 @@
 		;  [soc-finished (lambda () 
 		;	      (disp "CALLING finished" return-vals)
 		;	      (exit-sim return-vals))]
+		  ;; This magically teleports values out of the network.
 		  [soc-return (lambda (x)
 ;				(disp "CALLING SOCRETURN")
 				(set! return-vals (cons x return-vals)))]
