@@ -9,7 +9,8 @@
 ;; but strict with its output grammar.
 
 
-;;; This pass:
+;;; This pass has become a really big lowering pass.
+
 ;;;   (*) Regularizes the syntax of token machines.  Right now what it
 ;;;   does is include implicit begins,
 
@@ -29,7 +30,8 @@
 ;;;   (*) It expands out some primitive applications
 ;;;   that are just shorthands.  (For example, (dist) becomes
 ;;;   (dist <this-token>)    ;;; TODO: not finished...
-;;;   It also expands some syntaxes (and, or).
+;;;   It also expands some syntaxes (and, or), and regularizes certain usages 
+;;;   (return's arguments become ordered properly, defaults supplied).
 
 ;;;   (*) Should be IDEMPOTENT.  
 ;;;   Can run it multiple times or inbetween different passes.
@@ -160,7 +162,8 @@
     (define process-expr 
       ;(trace-lambda cleanuptokmac:procexp 
       (lambda (env tokens this-token this-subtok)
-	(lambda (stmt)
+	  ;; This just loops back with the same context:
+	  (define loop (process-expr env tokens this-token this-subtok))
 
 	  (define-syntax check-tok
 	    (syntax-rules ()
@@ -175,6 +178,7 @@
 				  "~s to unknown token: ~s" call tok))))]))
 	  (define (tokname? t) (memq t tokens))
 
+	  (lambda (stmt)
 	  (match stmt
 ;	     [,x (guard (begin (disp "PEXPmatch" x) #f)) 3]
 		 
@@ -220,21 +224,18 @@
 	     [(and) ''#t]
 	     [(and ,[a]) a]
 	     [(and ,[a] ,b ...)
-	      `(if ,a ,((process-expr env tokens this-token this-subtok)
-			`(and ,b ...))
+	      `(if ,a ,(loop `(and ,b ...))
 		   '#f)]
 	     [(or) ''#f]
 	     [(or ,[a]) a]
 	     [(or ,[a] ,b ...)
 	      `(if ,a '#t
-		   ,((process-expr env tokens this-token this-subtok)
-			`(and ,b ...)))]
+		   ,(loop `(and ,b ...)))]
 
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
 	     [(if ,test ,conseq)
-	      ((process-expr env tokens this-token this-subtok) 
-	       `(if ,test ,conseq (void)))]
+	      (loop `(if ,test ,conseq (void)))]
 
 	     [(let ([,lhs ,[rhs]]) ,bodies ...)
 	      `(let ([,lhs ,rhs])
@@ -250,7 +251,7 @@
 	     ;; TODO: expand away let*
 	     [(let* () ,[bodies] ...)  (make-begin bodies)]
 	     [(let* ( [,l1 ,r1] ,rest ...) ,bodies ...)
-	      ((process-expr env tokens this-token this-subtok)
+	      (loop
 	       `(let ([,l1 ,r1])
 		  (let* ,rest ,bodies ...)))]
 
@@ -299,6 +300,7 @@
 			 (seed ,seed) 
 			 (aggr ,aggr)))]
 
+	     ;; This fills in defaults for missing return parameters:
 	     [(return ,thing ,stuff ...)
 	      (if (or (not (andmap pair? stuff))
 		      (not (set? (map car stuff)))
@@ -306,7 +308,7 @@
 				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
 			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
-	      ((process-expr env tokens this-token this-subtok)
+	      (loop
 	       `(return ,thing 
 			,(assq 'to stuff)
 			,(if (assq 'via stuff)
