@@ -17,7 +17,8 @@ interface TMComm {
     //event TOS_MsgPtr receive(TOS_MsgPtr m);
 
     // Emit: launches a new message
-    command result_t emit(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    //command result_t emit(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    command result_t emit(uint8_t length, TOS_MsgPtr msg);
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
     // Relay: relaunches a message, updating Payload
@@ -28,7 +29,7 @@ interface TMComm {
 
     command uint16_t get_dist();
 
-    command void process_return(TM_ReturnPayload* msg);
+    //command void process_return(TM_ReturnPayload* msg);
 
     command result_t return_home(uint8_t length, TOS_MsgPtr msg);
     // It would be more efficient to put the arguments as arguments to

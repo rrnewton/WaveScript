@@ -200,7 +200,7 @@ process_stmt indent tokargs e =
 	 indent ++"/* Should fill in arg data here... */\n",
 	 
 	 indent ++"call TMComm_"++ tokname t ++
-	 ".emit(TOS_BCAST_ADDR, BASE_TM_PAYLOAD_SIZE + sizeof(uint8_t) * " 
+	 ".emit(BASE_TM_PAYLOAD_SIZE + sizeof(uint8_t) * " 
 	 ++ show (length exps) ++
 	 ", &the_packet);\n"]
 
@@ -303,8 +303,9 @@ process_handler (t, args, blk) =
 	: funs,
 	"      case "++tok_id t++": \n"++
 	--- DEBUG CODE
-        "        dbg(DBG_USR1, \"TM TestMachine: tok fired: addr %d, type %d, group %d \\n\""++
-        ", msg->addr, msg->type, msg->group);\n"++ 
+        "        dbg(DBG_USR1, \"TM TestMachine: tok fired: type %d \\n\""++
+--        ", msg->addr, msg->type, msg->group);\n"++ 
+        ", tok);\n"++ 
 	--- DEBUG CODE
 	"        call token_"++ funname ++"("++ 
 	(concat $ intersperse ", " $ 
@@ -327,11 +328,11 @@ process_handlers hnds =
 	bods = map (snd . process_handler) hnds
     in
     (concat (map (++"\n") funs))++
-    "  command void exec_token(uint16 tok, uint16_t* args) {\n"++
-    "    switch (msg->type) {\n"++
+    "  command void apply_token(uint16_t tok, uint16_t* args) {\n"++
+    "    switch (tok) {\n"++
     (foldl (++) "" bods) ++
     "    default:\n"++
-    "      dbg(DBG_USR1, \"TM TestMachine: exec_token, UNMATCHED TOK: %d\", tok);\n"++
+    "      dbg(DBG_USR1, \"TM TestMachine: apply_token, UNMATCHED TOK: %d\\n\", tok);\n"++
     "    }\n"++
     "  }\n"++
     "\n"++
@@ -341,18 +342,25 @@ process_handlers hnds =
     "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
     "    TM_ReturnPayload* retpayload = (TM_ReturnPayload*)msg->data;\n"++
     "    uint16_t* args = (uint16_t*)(payload->args);\n"++
-{-    "      if ( msg->type == AM_RETURNMSG ) {\n"++
+    "    uint8_t dist;\n"++
+    "      if ( msg->type == AM_RETURNMSG ) {\n"++
     "        // Here we've got a return message...\n"++
-    "        if ( 0 == get_any_dist(retpayload->via_tok) ) {\n"++
+    "        dbg(DBG_USR1, \"TM: return: got a return message to process.\\n\");\n"++
+    "        dist = call any_get_dist(retpayload->via_tok);\n"++
+    "        if ( 0 == dist ) {\n"++
     "          // We've got back to the source, deliver it to its destination.\n"++
--}
-    "          call invoke_token(retpayload->to_tok, args);\n"++
---    "        } else {\n"++
---    "          // Otherwise we keep on sending it... NEED TO ADD AGGREGATION.\n"++
---    "
---    "          \n"++
----     "        call token_"++   ++"(args[1]);"
----     "      break; \n"++
+      "        dbg(DBG_USR1, \"TM: return: all the way back to source.\\n\");\n"++
+    "          call apply_token(retpayload->to_tok, args);\n"++
+    "        } else {\n"++
+    "          // Otherwise we keep on sending it... NEED TO ADD AGGREGATION.\n"++
+    "          // Here we have to use the via_tok to get the right parent pointer..\n"++
+    "          dbg(DBG_USR1, \"TM: return: sending further up, dist %d.\\n\", dist);\n"++
+    "          call any_return_home(retpayload->via_tok, msg->length, msg);\n"++
+    "        }\n"++
+    "      } else { \n"++ 
+    "        // Otherwise we just have a normal message and we apply the token handler.\n"++
+    "        call apply_token(msg->type, args);\n"++
+    "      }\n"++
     "    return msg;\n" ++ 
     "  }\n\n"
 
@@ -369,6 +377,11 @@ build_module_header toks =
        "  provides interface StdControl as Control; \n" ++
        "  provides interface TMModule; \n" ++
        "  provides command void start_socpgm();\n"++
+       "  // Helper functions only: \n"++
+       "  provides command void apply_token(uint16_t tok, uint16_t* args);\n"++    
+       "  // These are just wasting memory, need to find a better way:\n"++
+       "  provides command uint16_t any_get_dist(uint16_t tok);\n"++
+       "  provides command uint16_t any_return_home(uint16_t tok, uint8_t length, TOS_MsgPtr msg);\n"++
 --       "  uses interface Timer;\n" ++ 
        "  uses interface Leds;\n" ++ 
        concat
@@ -386,6 +399,7 @@ build_module_header toks =
 --	       "  uses interface ReceiveMsg as Recv_"++ name ++"; \n"
 	      )
           toknames) ++
+       "  uses interface TMComm as TMComm_return_channel; \n"++
        "}\n\n"
 
 
@@ -469,18 +483,26 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     "}\n"
 
 handwritten_helpers toks = 
-    let mkcase t = 
-	"      case "++tok_id t++": \n"++
-	"        call TMComm_"++ tokname t ++".get_dist();\n"++ 
-	"      default;\n"
-    in "\n"++
-       "command get_any_dist(uint16_t tok) {"++
-       "    switch (tok) {\n"++ 
-       (foldl (++) "" (map mkcase toks) ++
-       "    default:\n"++
-       "      dbg(DBG_USR1, \"TM TestMachine: get_any_dist, UNMATCHED TOK TYPE: %d\n\", tok);\n"++
-       "    }\n"++
-       "  }\n\n"
+    let mkcase s t = "      case "++tok_id t++": \n"++
+		     "        return call TMComm_"++ tokname t ++"."++ s ++";\n"++ 
+		     "      break;\n"
+    in ("\n"++
+	"  command uint16_t any_get_dist(uint16_t tok) {\n"++
+	"    switch (tok) {\n"++ 
+	(foldl (++) "" (map (mkcase "get_dist()") toks)) ++
+	"    default:\n"++
+	"      dbg(DBG_USR1, \"TM TestMachine: any_get_dist, UNMATCHED TOK TYPE: %d\\n\", tok);\n"++
+	"    }\n"++
+	"  }\n\n"
+	++
+	"  command uint16_t any_return_home(uint16_t tok, uint8_t length, TOS_MsgPtr msg) {\n"++
+	"    switch (tok) {\n"++ 
+	(foldl (++) "" (map (mkcase "return_home(length, msg)") toks)) ++
+ 	"    default:\n"++
+	"      dbg(DBG_USR1, \"TM TestMachine: any_return_home, UNMATCHED TOK TYPE: %d\\n\", tok);\n"++
+	"    }\n"++
+	"  }\n\n")
+
 
 
 -------------------------------------------------------------------------------
@@ -513,9 +535,7 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 --	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n"
 	  )
      nodetoks)++
-
-  "TestMachineM.TMComm_return_channel -> BasicTMComm.TMComm[AM_RETURNMSG];\n"++
-
+    "TestMachineM.TMComm_return_channel -> BasicTMComm.TMComm[AM_RETURNMSG];\n"++									       
     --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
     "}\n"
 
@@ -524,6 +544,7 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 build_header_file (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     "\n"++
     "#define BASE_STATION 0"++
+    "#define NUM_TOKS "++ show (length nodetoks) ++
     "\n"++
     "enum {\n"++
     (concat $ 

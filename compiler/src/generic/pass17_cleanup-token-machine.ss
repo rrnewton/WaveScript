@@ -131,7 +131,7 @@
 	     [(if ,test ,conseq)
 	      ((process-expr env tokens this-token) `(if ,test ,conseq (void)))]
 
-	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
+	     [(let* ( (,lhs ,[rhs]) ...) ,[bodies] ...)
 	      `(let*  ([,lhs ,rhs] ...)
 		 ,(make-begin bodies))]
 

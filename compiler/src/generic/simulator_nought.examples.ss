@@ -70,12 +70,12 @@
 		   (dbg "TM: Got return! at %d, value %d" (my-id) v)
 ;		   (soc-return v)
 		   ]
-      [tok1 () (relay)
-	    (return (dist)
-		    (to tok1_return)
-		    (via tok1)
-		    )
-	    ])
+      [tok1 () 
+	    (let* ((d (dist)))
+	      (if (>= d 2)
+		  (return d (to tok1_return) (via tok1))
+		  (relay)))]
+      )
      (startup ) ;; seed tokens
      )))
 
