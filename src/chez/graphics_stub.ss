@@ -1,30 +1,44 @@
 
+;; [2004.05.23]
 
-  (define the-win #f)
-  (define the-canvas #f)
+;; This will depend on the "basic_graphics" abstraction, but will not
+;; respect the abstraction.  It's kinda silly, right now I have two
+;; layers of astraction that I prolly don't need.  Both the
+;; "basic_graphics" for basic drawing primitives, and "graphics_stub"
+;; for high level routines used by my system.  SO, if this continues
+;; to be unneccessary I will prolly move this file to the src/generic/
+;; subdirectory and just use the basic_graphics interface.
 
-  (define width 400)
-  (define height 400)
+(load "basic_graphics.ss")
 
-  ;; Init.
-  (define (init-graphics)
-    (printf "Running graphical interface to simple simulator.\n")
-    (set! the-win (create <toplevel> with (title: "Region Streams Demo")))
-    (set! the-canvas (create <canvas> the-win))
-;	  with
-;	  (background-color: (make <rgb> 215 215 255)))
+(define processor_screen_objs '())
+;(define links '())
 
-    (show (create <label> the-win with (title: "FOOBTRON")))
-    (show the-win)
-    (show the-canvas)
-    )
+;; This function bears an onus to destroy old screen objects and post up new ones.
+;; It might be called whenever the processor set changes.
+(define (draw-procs procs)
+  (for-each destroy procesor_screen_objs)
+  (set! processor_screen_objs
+  (map (lambda (pr)          
+;	      (draw-ellipse (car pr) (cadr pr) 
+;			    (+ (/ width 50) (car pr)) (+ (/ height 50) (cadr pr))
+;			    (rgb 0 0 0) (rgb 200 10 10))
+	      (let ((circ (create <oval> the-canvas 
+				  (car pr) (cadr pr) 
+				  (+ (/ width 50) (car pr)) (+ (/ height 50) (cadr pr))
+				  )))
+		(set-fill-color! circ (make <rgb> 200 10 10))
+		(show circ)
+		circ))
+       procs)
+;  (paint-buffer)
+  ))
 
+;; This being caled involves
+(define (draw-links procs)
+  
 
-'  (define (draw-procs procs)
-    ((draw-viewport the-win) (make-rgb 0 0 0))
-    (for-each (lambda (pr)          
-                ((draw-solid-ellipse the-win) 
-                 (make-posn (car pr) (cadr pr))
-                 5 5 (make-rgb 1 0 0)))
-              procs))
+  
+
+;(init-graphics)
 
