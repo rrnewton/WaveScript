@@ -41,9 +41,8 @@ interface TMComm {
     //    async command result_t add_msg(TOS_MsgPtr token);     
 
     // This returns the cached version of that token:
-    command TOS_MsgPtr get_cached();
+    command TOS_MsgPtr get_cached(uint8_t ind);
     // This sets the cache for that token:
     command result_t set_cached(TOS_MsgPtr newtok);
-
 }
 

@@ -25,7 +25,7 @@ module BasicTMCommM {
     async command TOS_Msg peek_nth_msg(uint16_t indx);
 
     command void print_buffer();
-    async command int16_t num_tokens();
+    async command int16_t num_tokens(); // The number of tokens in the buffer
    }
   uses {
 
@@ -201,13 +201,13 @@ module BasicTMCommM {
   // This accesses the one cached copy of the current token:
   // Might return NULL
   // Modified it to return currently processing if available...
-  command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
-    if ( cached_presence[id-1] == FALSE ) {
+  command TOS_MsgPtr TMComm.get_cached[uint8_t id](uint8_t ind) {
+    if ( cached_presence[ind-1] == FALSE ) {
       if ( is_processing &&
-	   currently_processing.type == id )
+	   currently_processing.type == ind )
 	return &currently_processing;
       else return NULL;
-    } else return cached_tokens + id - 1;
+    } else return cached_tokens + ind - 1;
   }
       
   // I don't think I really want this in the interface:
@@ -227,7 +227,7 @@ module BasicTMCommM {
     // communications system to be able to do:
 
   command uint16_t TMComm.get_dist[uint8_t id]() {
-    TOS_MsgPtr t = call TMComm.get_cached[id]();
+    TOS_MsgPtr t = call TMComm.get_cached[id](id);
 
     if ( t == NULL) 
       return -1;
@@ -433,8 +433,8 @@ module BasicTMCommM {
 	    id, payload->origin, payload->parent, payload->counter, payload->generation);
       } else if (	//	payload->generation > 
 		 payload->counter < payload->counter) {
-	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, cur%d posting tokenhandler o%d/p%d/c%d/g%d.\n", 
-	    id, cached_payload->counter, payload->origin, payload->parent, payload->counter, payload->generation);
+	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, posting tokenhandler o%d/p%d/c%d/g%d.\n", 
+	    id, payload->origin, payload->parent, payload->counter, payload->generation);
       } else {
 	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, BOUNCED (cur c%d) o%d/p%d/c%d/g%d.\n", 
 	    id, cached_payload->counter,
@@ -444,8 +444,11 @@ module BasicTMCommM {
     }
 
     // Post the token handler.
+
+    // TOUNDO:
     call add_msg(msg);
     post tokenhandler();
+
     //return signal TMComm.receive[id](msg);
     return msg;
   }
