@@ -33,7 +33,7 @@
 ;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
 ;;;  <SOCPgm> ::= <Statement*>
 ;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
-;;;  <Entry>  ::= <Token>
+;;;;;;;  <Entry>  ::= <Token>
 ;;;  <Decl> ::= (<var> <Exp>)
 ;;;  <TokBinding> ::= (<Token>  <Code>*)
 ;;; <TODO> DECIDE ON LOCAL BINDINGS:
