@@ -120,6 +120,8 @@ process_stmt indent tokargs e =
 	  indent ++ "the_packet_args[0] = "++ process_basic e ++";\n",
           indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
 		 tok_id to ++", "++
+	         "sizeof(uint16_t), "++
+	         "&the_packet, "++
 		 seed' ++", "++
 		 aggr' ++");\n" ]
 
@@ -147,7 +149,7 @@ process_stmt indent tokargs e =
 	[indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
 	 indent ++"/* Should fill in arg data here... */\n",
 	 indent ++"call TMComm_"++ tokname t ++
-	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);\n"]
+	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t) /* TODO fix this length */, &the_packet);\n"]
 
 {-
     Ecall (Just time) t exps -> 
@@ -181,7 +183,13 @@ process_block :: String -> [String] -> Block -> ([FunctionCode],[StatementCode])
 process_block indent tokargs (Block locals stmts) = 
     let body = concat $ map (process_stmt indent tokargs) stmts
         defs = concat $ map (process_localdef indent) locals
-    in ([], defs ++ body)
+    in ([], 
+	defs ++ 
+	 --- DEBUG CODE
+         ["        dbg(DBG_USR1, \"TM TestMachine: tok fired: addr %d, type %d, group %d \\n\""
+         ++ ", msg->addr, msg->type, msg->group);\n"]++ 
+	 --- DEBUG CODE
+	body)
 
 process_localdef :: String -> Id -> [String]
 process_localdef indent (Id id) = [indent ++"uint16_t "++ id ++";\n"]
@@ -274,13 +282,19 @@ build_module_header toks =
        "}\n\n"
 
 
-build_implementation_header :: [TMS.TokHandler] -> String
-build_implementation_header toks = 
+build_implementation_header :: [TMS.TokHandler] -> [Token] -> String
+build_implementation_header toks startup = 
     "  command result_t Control.init() {\n" ++
     "    return SUCCESS;\n" ++
     "  }\n\n" ++
     "  command result_t Control.start() {\n" ++
 --    "    return call Timer.start(TIMER_REPEAT, 1000);\n" ++
+    "    // This is where we need to start the socpgm if we're SOC.\n"++
+    (foldr 
+     (\ t acc -> "    // Clear the arguments here...\n"++
+      "    // call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
+      ++ acc)
+     "" startup)++
     "    return SUCCESS;\n"++
     "  }\n\n" ++
     "  command result_t Control.stop() {\n" ++
@@ -319,9 +333,10 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     build_module_header nodetoks ++
     "implementation {\n" ++ 
     "  TOS_Msg the_packet;\n"++    
+    "  uint16_t* the_packet_args = (uint16_t*)(((TM_Payload*)(the_packet.data))->args);\n"++ 
     "\n  // The constant bindings:\n"++
     process_consts consts ++ 
-    build_implementation_header nodetoks ++
+    build_implementation_header nodetoks startup ++
     process_consts socconsts ++ 
     "\n  // Token handlers and their helper functions:\n"++
     process_handlers nodetoks ++ 
@@ -417,4 +432,3 @@ main = do args <- System.getArgs
 	  writeFile conffile conf
 	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
-

@@ -74,10 +74,11 @@
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
 
 	[(begin ,[x]) x]
-	[(begin ,[x] ,y ...) 
+        [(begin ,[xs] ...)  (format "(Eseq ~a)" (hlist xs))]
+#|	[(begin ,[x] ,y ...) a
 	 (let ([rest (process-expr `(begin ,y ...))])
 ;	   (disp "BUILDING ESEQ" x rest)
-	   (format "(Eseq ~a ~a)" x rest))]
+	   (format "(Eseq ~a ~a)" x rest))]|#
 	
 	[(if ,[test] ,[conseq] ,[altern])
 	 (format "(Eif ~a ~a ~a)" test conseq altern)]
