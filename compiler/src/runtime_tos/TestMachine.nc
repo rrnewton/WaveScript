@@ -31,6 +31,8 @@ implementation
 
   TestMachineM.TMComm -> BasicTMComm.TMComm[91];
 
+  BasicTMComm.TMModule -> TestMachineM.TMModule;
+
   // TestMachineM.Send_A -> Comm.SendMsg[AM_TOKEN_A];
   // TestMachineM.Send_B -> Comm.SendMsg[AM_TOKEN_B];
 }

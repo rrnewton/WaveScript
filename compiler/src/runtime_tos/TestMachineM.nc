@@ -5,6 +5,8 @@ includes TokenMachineRuntime;
 module TestMachineM 
 {
   provides interface StdControl as Control; 
+
+  provides interface TMModule; 
   
   provides command int8_t fun();
 
@@ -30,7 +32,8 @@ implementation
   //    dbg(DBG_USR1, "TM TestMachine: HANDLER RUNNING.\n");
   //  }
 
-  event TOS_MsgPtr TMComm.receive(TOS_MsgPtr msg) {
+  //  event TOS_MsgPtr TMComm.receive(TOS_MsgPtr msg) {
+  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) {
     dbg(DBG_USR1, "TM TestMachine: Received msg through TMComm, addr %d, type %d, group %d \n", 
 	msg->addr, msg->type, msg->group);
     return msg;

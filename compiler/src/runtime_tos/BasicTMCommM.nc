@@ -1,5 +1,7 @@
 includes TokenMachineRuntime;
 
+#define TOKCACHE_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
+
 module BasicTMCommM {
   provides {
     interface TMComm[uint8_t id];
@@ -8,14 +10,18 @@ module BasicTMCommM {
 
     // I don't actually want to expose these, but I don't know how to
     // make private commands.
-    async command result_t add_msg(TM_Payload payload);     
-    async command TM_Payload pop_msg();
-    async command TM_Payload peek_nth_msg(uint16_t indx);
+    async command result_t add_msg(TOS_MsgPtr token);     
+    async command TOS_Msg pop_msg();
+    async command TOS_Msg peek_nth_msg(uint16_t indx);
 
     command void print_cache();
     async command int16_t num_tokens();
    }
   uses {
+
+    // This is the output module produced by my Regiment compiler.
+    interface TMModule;
+
     interface Timer;
     interface ReceiveMsg[uint8_t id];
     interface SendMsg[uint8_t id];
@@ -23,31 +29,31 @@ module BasicTMCommM {
   }
 } implementation {
 
-  TM_Payload temp_msg;
+  TOS_Msg temp_msg;
+  TOS_Msg temp_msg_ptr;
 
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
-  TM_Payload token_cache[TOKCACHE_LENGTH];
+  TOS_Msg token_cache[TOKCACHE_LENGTH];
   // cache_start is the position of the first element in the fifo.
   int16_t cache_start;
   // cache_end is the position of the last element, or -1 if there are
   // no elements in the fifo.
   int16_t cache_end;
 
-  task void tokenhandler () {    
+  task void tokenhandler () {
     atomic { // Access cache_end/cache_start
       if ( cache_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
-	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: %d messages AVAILABLE.\n", call num_tokens());
-	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: Prepopped: %d/%d.\n", temp_msg.origin, temp_msg.parent);	
 	temp_msg = call pop_msg();
-	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: Popped: %d/%d.\n", temp_msg.origin, temp_msg.parent);	
+	//temp_msg_ptr = &(call pop_msg());
+	call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
       }
     }
   }
 
   // Add a message to the token_cache if there's room available.
-  async command result_t add_msg(TM_Payload payload) {    
+  async command result_t add_msg(TOS_MsgPtr token) {    
     result_t res;
     atomic {    
 //      if ( (cache_start == 0 && cache_end == (TOKCACHE_LENGTH - 1)) || 	 
@@ -58,11 +64,11 @@ module BasicTMCommM {
       } else {
 	if ( cache_end == -1 ) { cache_end = cache_start; }
 	else { cache_end++; }
-	dbg(DBG_USR1, "TM BasicTMComm: Adding token payload at %d, origin:%d \n", 
-	    cache_end, payload.origin);	
+	//	dbg(DBG_USR1, "TM BasicTMComm: Adding token payload at %d, origin:%d \n", 
+	//	    cache_end, payload.origin);	
 	
-	//memcpy(token_cache + cache_end, &payload, sizeof(TM_Payload));	
-	token_cache[cache_end] = payload;	
+	//memcpy(token_cache + cache_end, &payload, sizeof(TOS_Msg));	
+	token_cache[cache_end] = *token;
 	res = SUCCESS; 
       }
     }
@@ -70,13 +76,13 @@ module BasicTMCommM {
   }
 
   // Raisse error if there's no payload in the FIFO: 
-  async command TM_Payload pop_msg() {
-    TM_Payload ret_msg;
+  async command TOS_Msg pop_msg() {
+    TOS_Msg ret_msg;
     atomic { 
       if ( cache_end == -1 ) {
 	// raise error!
       } else {      
-	//memcpy((&ret_msg),token_cache + cache_start, sizeof(TM_Payload));
+	//memcpy((&ret_msg),token_cache + cache_start, sizeof(TOS_Msg));
 	ret_msg = token_cache[cache_start];
 
 	// If we're popping the last one, then it's empty after this:
@@ -95,15 +101,15 @@ module BasicTMCommM {
   // This is for abstracting over the annoying wrap around buffer and
   // accessing the nth element in the FIFO, where 0 is the next item
   // to be popped.
-  async command TM_Payload peek_nth_msg(uint16_t indx) {
-    TM_Payload ret_msg;
+  async command TOS_Msg peek_nth_msg(uint16_t indx) {
+    TOS_Msg ret_msg;
     atomic { 
       if ( indx >= (call num_tokens()) ) {
 	// raise error!
       } else {
 	indx += cache_start;
 	if ( indx >= TOKCACHE_LENGTH ) { indx -= TOKCACHE_LENGTH; }	
-	//memcpy((&ret_msg),token_cache + indx, sizeof(TM_Payload));
+	//memcpy((&ret_msg),token_cache + indx, sizeof(TOS_Msg));
 	ret_msg = token_cache[indx];
       }
     }
@@ -141,10 +147,11 @@ module BasicTMCommM {
 	j = i + cache_start;
 	if (j >= TOKCACHE_LENGTH) { j -= TOKCACHE_LENGTH; }
 	
-	dbg(DBG_USR1, "TM BasicTMComm:   %d/%d: par:%d orig:%d  time:%d count:%d \n", 
+	/*	dbg(DBG_USR1, "TM BasicTMComm:   %d/%d: par:%d orig:%d  time:%d count:%d \n", 
 	    i, j, 
 	    token_cache[j].origin,    token_cache[j].parent, 
 	    token_cache[j].timestamp, token_cache[j].counter);
+	*/
       }
     }
   }
@@ -155,10 +162,10 @@ module BasicTMCommM {
       cache_end = -1;
     }
    
-    temp_msg.origin = 91;
+    /*    temp_msg.origin = 91;
     temp_msg.parent = 92;
     temp_msg.timestamp = 93;
-    temp_msg.counter = 94;
+    temp_msg.counter = 94;*/
 
     dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize: %d\n", TOKCACHE_LENGTH);
 
@@ -190,12 +197,12 @@ module BasicTMCommM {
 
   event result_t Timer.fired() {
 
-    temp_msg.origin = call Random.rand();
-    temp_msg.parent = call Random.rand();
-    temp_msg.timestamp = call num_tokens();
-    temp_msg.counter = (uint8_t)call Random.rand();
+    ((TM_Payload*)temp_msg.data)->origin = call Random.rand();
+    ((TM_Payload*)temp_msg.data)->parent = call Random.rand();
+    ((TM_Payload*)temp_msg.data)->timestamp = call num_tokens();
+    ((TM_Payload*)temp_msg.data)->counter = (uint8_t)call Random.rand();
 
-    call add_msg(temp_msg);
+    call add_msg(&temp_msg);
 
     call print_cache();
 
@@ -210,10 +217,12 @@ module BasicTMCommM {
   
   event TOS_MsgPtr ReceiveMsg.receive[uint8_t id](TOS_MsgPtr msg) {
     // Post the token handler.
+    call add_msg(msg);
     post tokenhandler();
-    return signal TMComm.receive[id](msg);
+    //return signal TMComm.receive[id](msg);
+    return msg;
   }
 
   // This should never fire.  In fact, maybe I should signal an error here.
-  default event TOS_MsgPtr TMComm.receive[uint8_t id](TOS_MsgPtr msg) { return msg; }
+  //default event TOS_MsgPtr TMComm.receive[uint8_t id](TOS_MsgPtr msg) { return msg; }
 }

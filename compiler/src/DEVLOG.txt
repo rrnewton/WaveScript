@@ -163,4 +163,15 @@ bindings and whether or not you sent with the corresponding send method....
 
 But I still can't get a message sent with a BareSendMsg interface...
  
+[2004.09.29]
+
+There's some serious lack of clarity in my head right now as to what
+the abstraction boundary should be between the generated NesC code and
+the static NesC runtime.  As much as possible should be factored over
+to the runtime side.  But the generated code needs to provide the
+actual handler for tokens.  Although that can just be *one* function.
+
+WAIT: stupid question, but TinyOs does make a seperate instantiation
+for each use of each module?  Or are all timers the same timer!?
+
 
