@@ -198,8 +198,16 @@
 		     [else (warning 'cleanup-token-machine
 				    "unbound variable reference: ~s" var)]))
 		   var]
-
-
+	     [(set! ,var [x])
+	      (DEBUGMODE 
+	       (cond 
+		[(memq var env) (void)]
+		[(memq var tokens)		 
+		 (warning 'cleanup-token-machine
+			  "attempt to set! token name: ~s" var)]
+		[else (warning 'cleanup-token-machine
+			       "unbound variable reference in set!: ~s" var)]))
+	      `(set! ,var ,x)]
 
 	     [(begin ,[x]) x]
 	     [(begin ,[xs] ...)
@@ -233,7 +241,7 @@
 	      (let ([newenv (append lhs* env)])
 		(let ([loop (process-expr newenv tokens this-token this-subtok)])
 		  `(let-stored ([,lhs* ,(map loop rhs*)] ...)
-			       @(make-begin (map loop bodies)))))]
+			       ,(make-begin (map loop bodies)))))]
 
 	     ;; TODO: expand away let*
 	     [(let* () ,[bodies] ...)  (make-begin bodies)]
@@ -528,17 +536,7 @@
 	    [tok2 (x) 3])
 	   (startup )
 	   ))))
-     (cleanup-token-machine-lang
-      '(program
-        (bindings)
-        (nodepgm
-         (tokens
-          (soc-start  #f  ()      (stored)
-                      (begin begin (emit tok1) (void) 'multiple-bindings-for-token))
-          (node-start #f () (stored) (void))
-          (tok1  #f    ()  (stored)
-                 (return '3 (to tok2) (via tok1) (seed '#f) (aggr #f)))
-          (tok2 #f (x) (stored) '3)))))
+#f
      ]
     
 ))
