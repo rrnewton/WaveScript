@@ -7,7 +7,7 @@ configuration BasicTMComm {
 
   TMComm = BasicTMCommM.TMComm;
 
-  BasicTMCommM.ReceiveMsg -> ReceiveMsg; //[uint_t id];
+  //  BasicTMCommM.ReceiveMsg -> Comm.ReceiveMsg; //[uint_t id];
 
   Main.StdControl -> BasicTMCommM; 
   Main.StdControl -> TimerC;
