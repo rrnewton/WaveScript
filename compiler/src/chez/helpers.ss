@@ -28,6 +28,11 @@
        (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
 
 
+(define-syntax let/ec
+  (syntax-rules ()
+    [(_ v exp ...)
+     (call/1cc (lambda (v) exp ...))]))
+  
 
 ;; This defines a *simple* and unified interface into hash-tables.
 ;; First we require hash-tables from slib:

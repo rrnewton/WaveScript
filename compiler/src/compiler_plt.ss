@@ -82,9 +82,16 @@
 )
 
 (require
-; (all-except "plt/simulator_nought.ss" these-tests test-this)
- (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
+;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
+; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
  )
+
+(require
+; (all-except "plt/simulator_nought.ss" these-tests test-this)
+; (all-except "plt/simulator_alpha.ss" these-tests test-this)
+ (all-except "plt/alpha_lib.ss" these-tests test-this)
+ )
+
 
 ;(disp "UNION" union (union '(a b c) '(a d c)))
 

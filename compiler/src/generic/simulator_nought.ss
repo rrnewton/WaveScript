@@ -301,7 +301,7 @@
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob)
-  (graph-get-connected simob object-graph))
+  (graph-get-connected-component simob object-graph))
 
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"

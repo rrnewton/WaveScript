@@ -124,13 +124,13 @@
 
 
 ;; Safer version:
-(define (safe-construct-msg-object token timestamp parent count args)
+(define (safe-construct-msg-object token timestamp parent args)
   (unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
   (unless (or (number? timestamp) (not timestamp))
 	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
   (unless (list? args)
 	  (error 'safe-construct-msg-object "bad args: ~s" args))
-  (make-msg-object token timestamp #f parent #f args))
+  (make-msg-object token timestamp #f parent args))
 
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
@@ -259,6 +259,7 @@
                                        seed)))
                        seed))
             seed)]
+;	  [soc (caar graph)]
           [obgraph (make-object-graph graph)]
           [allobs  (map car obgraph)]
 	  [hash
@@ -267,6 +268,13 @@
 			 (hashtab-set! h (node-id (simobject-node ob)) ob))
 		       allobs)
 	     h)])
+
+     ;; Set I-am-SOC
+     (for-each (lambda (ob)
+		 (set-simobject-I-am-SOC! ob		  
+		  (= (node-id (simobject-node ob)) BASE_ID)))
+	       allobs)
+     
      (make-simworld graph obgraph allobs hash)))
 
 
@@ -315,12 +323,12 @@
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
 		   `(set-simobject-local-msg-buf! this
-		    (cons (bare-msg-object ,rator (list ,@rand*))
+		    (cons (bare-msg-object ',rator (list ,@rand*))
 			  (simobject-local-msg-buf this)))]
 
 		  [(bcast ,rator ,[rand*] ...)
-		   `(set-simobject-outgoing-buf! this
-		    (cons (bare-msg-object ,rator (list ,@rand*))
+		   `(set-simobject-outgoing-msg-buf! this
+		    (cons (bare-msg-object ',rator (list ,@rand*))
 			  (simobject-local-msg-buf this)))
 		   ]
 
@@ -442,7 +450,7 @@
 	    (match tbind 
 		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
 		      `[,tok 
-			(lambda (current-vtime subtok-index . args) ;world)
+			(lambda (current-vtime subtok-index ,@args) ;world)
 ;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
 				   [this-tokname (cons ',tok subtok-index)]
@@ -483,8 +491,9 @@
 		     [(program ,_ ...) prog]
 		     [(,input-lang '(program ,stuff ...)) `(program ,stuff ...)])))
     (match prog
-      [(program (bindings ,nodebinds ...)		
-		(nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
+      [(program (bindings ,nodebinds ...)
+		(nodepgm (tokens ,nodetoks ...) ;(startup ,starttoks ...)
+			 ))
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
 
@@ -503,23 +512,26 @@
 		  
 		  (let ([dyndispatch_table (make-default-hash-table)])
 		    (begin ,@(map (lambda (tok)
-				    `(hashtab-set! ',tok ,tok))
+				    `(hashtab-set! dyndispatch_table ',tok ,tok))
 				  (map car tbinds)))
 
-		  ;; Return the meta-handler
-		  (lambda (msgob current-vtime)
-		    (mvlet ([(name subtok)
-                             (let ((tok (msg-object-token msgob)))
-                               (if (pair? tok) 
-                                   (values (car tok) (cdr tok))
-                                   (values tok 0)))])
-			   (let ([handler (hashtab-get dyndispatch_table name)])
-			     ;; Invoke:
-			     (apply handler current-vtime subtok 
-				    (msg-object-args msgob))
-			     ;; That returns nothing but fills up the simobjects buffers.
-			     ))))
-		 )))))]
+		    ;; Return the real meta-handler
+		    (values 
+		     ;(list 0 (bare-msg-object 'SOC-start '()))
+
+		     (lambda (msgob current-vtime)
+		       (mvlet ([(name subtok)
+				(let ((tok (msg-object-token msgob)))
+				  (if (pair? tok) 
+				      (values (car tok) (cdr tok))
+				      (values tok 0)))])
+			      (let ([handler (hashtab-get dyndispatch_table name)])
+				;; Invoke:
+				(apply handler current-vtime subtok 
+				       (msg-object-args msgob))
+				;; That returns nothing but fills up the simobjects buffers.
+				))))
+		 ))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 
@@ -549,12 +561,27 @@
 	(bindings)
 	(nodepgm 
 	 (tokens
-	  [SOC-start () (stored) (call tok1)]
+	  [SOC-start () (stored) (void)]
+	  [node-start () (stored) (call tok1)]
 	  [tok1 () (stored) (bcast tok2 '3)]
 	  [tok2 (x) (stored [x '99])
 		(begin (set! x (+ x '1))
 		       (bcast tok2 x))])
-	 (startup))))
+	 ;(startup)
+	 )))
+     '??]
+
+
+    [(compile-simulate-alpha
+      '(program
+	(bindings)
+	(nodepgm 
+	 (tokens
+	  [SOC-start () (stored) (display "S")]
+	  [node-start () (stored) ];(begin (printf "N~a" (simobject-I-am-SOC this)) (call tok1))]
+	  [tok1 () (stored) (begin (display ".") (bcast tok2 " "))]
+	  [tok2 (x) (stored) (display x)]
+	 ))))
      '??]
 
     ))
@@ -587,15 +614,3 @@
 (define testalpha test-this)
 
 
-(define (t)
-(compile-simulate-alpha
-      '(program
-	(bindings)
-	(nodepgm 
-	 (tokens
-	  [SOC-start () (stored) (call tok1)]
-	  [tok1 () (stored) (bcast tok2 '3)]
-	  [tok2 (x) (stored [x '99])
-		(begin (set! x (+ x '1))
-		       (bcast tok2 x))])
-	 (startup)))))
