@@ -9,14 +9,22 @@
 ;; DEPENDS: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
 
+;; DEPENDS: Also on hash tables from SLIB.
+
+;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
+;; so that it may draw the simulation upon the screen.
+
 
 (define this-unit-description 
   "simplest simulator for nodal language")
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 
+;; Positions are just 2-element lists.
 (define-structure (node id pos))
-(define-structure (simobject node incoming))
+;; Incoming is a list of messages.
+;; Redraw is a boolean indicating whether the object needs be redrawn.
+(define-structure (simobject node incoming redraw))
 
 (define world-xbound 60)
 (define world-ybound 60)
@@ -30,10 +38,18 @@
 	 (random world-ybound))
    ))
 
+(define hashtab-get (hash-inquirer eq?))
+(define hashtab-set! (hash-associator eq?))
+
 (define (dist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
-	
+
+(define (unfold-list lst)
+  (let loop ((lst lst))
+    (if (null? lst) '()
+	(cons lst (loop (cdr lst))))))
+
 ;;========================================
 ;; After the start of the program this doesn't change:
 (define graph 
@@ -51,7 +67,7 @@
 	       seed))
     seed))
 ;; Nor does this:
-(define object-graph (graph-map (lambda (nd) (make-simobject nd '())) graph))
+(define object-graph (graph-map (lambda (nd) (make-simobject nd '() #f)) graph))
 (define all-objs (map car object-graph))
 ;;========================================
 
@@ -109,15 +125,19 @@
 			  `[,tok (lambda ,args ,expr* ...)]]))
 		tbinds)]
 	[handler `(lambda (msg args)
+		    ;; Redraw every time we handle a message, our state might have changed.
+		    (set-simobject-redraw! this #t)
+		    ;; This refers to the token cache for this processor:
+		    (hashtab-set! token-cache tok args)
 		    (case msg
 		      ,(map (lambda (tok)
-			      `[(,tok) (apply ,tok args)])
+			      `[(,tok) 
+				(apply ,tok args)])
 			    (map car tbinds))))])
   `(letrec (,@binds [handler ,handler]) ,expr)))
 
 
-
-(define-syntax remove-last!
+'(define-syntax remove-last!
   (syntax-rules ()
     [(_ id)
      (cond 
@@ -137,7 +157,10 @@
      (let* (
 
        [generic-defs
-	 '([define neighbors (lambda (obj)
+
+	 '(
+	   [define token-cache (make-hash-table 50)]
+	   [define neighbors (lambda (obj)
 ;			(disp 'neighbors obj)
 			(let ((entry (assq obj object-graph)))
 ;			  (disp "ENTRY : " entry)
@@ -148,7 +171,9 @@
 	   [define send (lambda (data ob)
 		   (disp 'send data (node-id (simobject-node ob)))
 		   (set-simobject-incoming! ob
-		    (cons data (simobject-incoming ob))))]
+		    (cons data (simobject-incoming ob)))
+		   ;(set-simobject-redraw! ob #t)
+		   )]
 	   [define emit (lambda (t . m)
 		   (disp 'emit t m)
 		   (let ((msg (if (null? m) '() (car m))))
@@ -187,20 +212,19 @@
 			  ;; This might introduce message loss (because of no
 			  ;; semaphores) but I don't care:					
 			  (let ((msg (last incoming)))
-			    
-			    (let ((id (node-id (simobject-node this))))
-			      (disp "Node " 
-				    id
-				    " processing msg: " msg))
+			    (if (null? (cdr incoming))
+				(set-simobject-incoming! this '())
+				(list-remove-last! incoming))
+			    (handler (car msg) (cadr msg)))
+			  )))
+		 ))))])
 
-			    (remove-last! incoming)
-			    (handler (car msg) (cadr msg))))))
-		 ))))]
-       )
-
-;;; TEMP JUNK:
-;       (disp "Socprog")
-;       (pretty-print socprog)      
+       (disp "Socprog")
+       (pretty-print socprog)
+       (newline)
+       (disp "Nodeprog")
+       (pretty-print nodeprog)
+       (set! f socprog)
        (set! sp socprog)
        (set! np nodeprog)
        (for-each eval generic-defs)
@@ -219,6 +243,11 @@
 		    all-objs))
        
        ))]))
+
+(define (simulator-nought-language expr)
+  (void))
+
+;;===============================================================================
 
 (define (run-simulation engines . rounds)
   (let ([soceng (vector-ref engines 0)]
@@ -253,10 +282,68 @@
 	   (loop (cdr engs) (cons nexteng acc) rounds)))]
       ))))
 
-(define (simulator-nought-language expr)
-  (void))
+;;===============================================================================
 
-;========================================
+(define structure-copy  vector-copy)
+
+;; This assumes a static comm graph for now:
+;; What's more, this is lame and assumes that the *allocated object-graph*
+;; will not change, it depends on the physical identity of edges within this 
+;; graph.  SO, no using graph-map on object-graph or anything!  We're going full
+;; imperative style here...
+(define graphical-simulation 
+  (lambda (engines . rounds)
+    ;; These "edges" are distinct objects for each comm link (directionally):
+    (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
+	  [soceng (vector-ref engines 0)]
+	  [nodeengs (vector-ref engines 1)])
+
+      ;; Contains a graphics object, and the last drawn state.
+      (define-structure (edgestate gobj oldstate))
+    
+      ;; This will associate edges with graphics objects:
+      (define edge-table (make-hash-table 500))
+      (define proc-table (make-hash-table 500))
+
+      ;; Fill up our two hash tables with drawn objects.
+      (for-each (lambda (graph-entry)
+		  (let ([proc (car graph-entry)]
+			[edges (unfold-list (cdr graph-entry))])
+		    (let ([origpos (node-pos (simobject-node proc))])
+		      (hashtab-set! proc-table proc
+				    (draw-proc origpos))
+		      (for-each 
+		       (lambda (edgeob)
+			 (hashtab-set! edge-table edgeob
+			    (make edgestate
+			      (draw-edge origpos (node-pos (simobject-node (car edgeob))))
+			      (structure-copy (car edgeob)))))
+		       edges))))
+		object-graph)
+			            
+      (let loop ([engs (cons soceng nodeengs)]
+	       [acc '()]
+		 [rounds (if (null? rounds) -1 (car rounds))])
+	(cond
+	 [(= rounds 0) 'Simulation_Done]
+
+	 [(null? engs)
+	  (begin 
+	    (loop (reverse acc) '() (- rounds 1)))]
+
+	 [else 
+	  ((car engs) 100
+	 (lambda (remaining ret) 
+					;(error 'run-simulation "engine shouldn't return.  Values were: ~n~s~n" ret))
+	   (printf "Engine returned!: ~s~n" ret)
+	   (loop (cdr engs) acc rounds))
+	 (lambda (nexteng)
+	   (loop (cdr engs) (cons nexteng acc) rounds)))]
+	 )))))
+
+(define gsim graphical-simulation)
+
+;;===============================================================================
 
 (define these-tests
   `(
@@ -264,6 +351,12 @@
 
     [ (process-statement '(emit foo 2 3)) (emit 'foo 2 3)]
     [ (process-statement '(flood foo)) (flood 'foo)]
+
+    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f)))
+	(let ((y (structure-copy x)))
+	  (and (equal? x y)
+	       (not (eq? x y))))) #t]
+
     ))
 
 (define tester
@@ -337,7 +430,7 @@
 
 (define csn  compile-simulate-nought)
 
-(dsis tt (csn p))
+(define tt (csn p))
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
