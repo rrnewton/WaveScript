@@ -34,7 +34,7 @@
 ;;; The only difference in the Output Language is that the program
 ;;; form includes an extra "catalogue" slot
 
-;;; <Pgm>  ::= (program (props <CatEntry>*) (<Decl>*) <var>)
+;;; <Pgm>  ::= (program (props <CatEntry>*) <Let>)
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 
