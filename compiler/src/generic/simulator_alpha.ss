@@ -22,6 +22,9 @@
 (define-structure (simworld graph object-graph all-objs obj-hash))
 ;; obj-hash maps node-ids onto simobjects
 
+;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
+(define-structure (simevt vtime duration msgobj))
+
 ;; This structure contains everything an executing token handler needs
 ;; to know about the local node. 
 ;; "this" is a simobject.
@@ -44,10 +47,10 @@
 			     token-store ;; Changing this to hash table mapping names to 
 
 			     ;; All these buffers get changed when a token handler runs:
-			     incoming-msg-buf 
-			     local-msg-buf
-			     outgoing-msg-buf
-			     timed-token-buf 
+			     incoming-msg-buf ;; Stores simulation events
+			     local-msg-buf    ;; Stores simulation events
+			     outgoing-msg-buf ;; Stores message objects
+			     timed-token-buf  ;; Stores simulation events
 
 			     local-sent-messages local-recv-messages
 			     redraw gobj homepage 
@@ -281,6 +284,42 @@
                          
 ;; ======================================================================
 
+;; This makes up a vtime for the duration of a given handler body.
+;; Right now I use a VERY unrealistic approximation.  I make up random costs for different constructs.
+(define (compute-handler-duration expr)
+  (match expr
+	 [(ext-ref '(,tokname . ,subtok) ,x) 1]
+	 ;; ext-set!
+	 [,x (guard (symbol? x)) 0]
+	 [(quote ,x) 0]
+
+	 [(call ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
+	 [(bcast ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
+;		  [(activate ,rator ,rand* ...)
+	 [(timed-call ,delay ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
+	 ;; is_scheduled
+	 ;; 
+	 ;; is_
+	 ;; evict
+	 [(set! ,v ,[rhs]) (+ 1 rhs)]
+	 [(begin ,[exps] ...) (apply + exps)]
+	 [(if ,[test] ,[conseq] ,[altern]) (+ test (max conseq altern))]
+	 [(my-id) 1]
+	 [(loc) 1]
+	 [(locdiff ,[l1] ,[l2]) (+ 1 l1 l2)]
+	 [(light-up ,r ,g ,b) 1]
+	 [(leds ,which ,what) 1]
+	 [(dbg ,str ,[args] ...) 0]
+	 [(,prim ,[rand*] ...)
+	  (guard (or (token-machine-primitive? prim)
+		     (basic-primitive? prim)))
+	  (+ 1 (apply + rand*))]
+	 [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
+	  (+ (apply + rhs) (apply + bods))]
+	 [(,[rator] ,[rand*] ...) (apply + rator rand*)]
+	 [,otherwise (error 'simulator_alpha:compute-handler-duration
+			    "don't know what to do with this: ~s" otherwise)]))
+
 
 (define (process-statement current-handler-name tokbinds stored)
   (disp "process statement, allstored: " stored)
@@ -337,7 +376,7 @@
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
 
-		  [(timed-call ,delay ,rator ,rand* ...)
+		  [(timed-call ,delay ,rator ,[rand*] ...)
 		   ;; Delay is in milleseconds.
 		  `(set-simobject-timed-token-buf!
 		    this (cons (list (+ ,delay current-vtime)
@@ -380,7 +419,8 @@
 		   `(begin (display (format ,str ,@args)) (newline))]
 
 		  [(,prim ,[rand*] ...)
-		   (guard (token-machine-primitive? prim))
+		   (guard (or (token-machine-primitive? prim)
+			      (basic-primitive? prim)))
 		   `(,prim ,rand* ...)]
 
 		  ;; We're being REAL lenient in what we allow in token machines being simulated:
@@ -444,6 +484,13 @@
 		    (disp "STORED: " vars)
                     (list tok vars)]))
                tbinds)]
+	 [costtable
+	  (map (lambda (tbind)
+		 (match tbind 
+			[(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
+			 (compute-handler-duration `(begin ,@expr*))]))
+	       tbinds)]
+			 
          [binds 
           (map
            (lambda (tbind)
@@ -544,6 +591,7 @@
     [3 3] ;; UNIT TESTER BROKEN ATM...
     
      
+#|
     [(compile-simulate-alpha
       '(program
 	(bindings)
@@ -583,12 +631,9 @@
 	  [tok2 (x) (stored) (display x)]
 	 ))))
      '??]
+|#
 
     ))
-
-
-(define (wrap-def-simulate test)
-  `(begin (define simulate run-simulation) ,test))
 
 
 (define testsalpha (map (lambda (test)
@@ -607,7 +652,8 @@
 		  ;; Make sure that the world is clean before each test.
 		  testsalpha
 		  tester-eq?
-		  wrap-def-simulate)))
+		  id ;wrap-def-simulate
+		  )))
     (lambda args
       (apply tester args))))
 
