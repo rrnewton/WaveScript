@@ -18,9 +18,9 @@
    unique-name reset-name-count! extract-suffix
    code-name label-name #;method-name
    
-   constant? datum? formalexp?
+   constant? datum? formalexp? cast-formals default-unit-tester
    
-   regiment-primitives regiment-primitive?
+   regiment-primitives regiment-primitive? 
   
    set? list->set set-cons union intersection difference
    list-head filter list-index snoc rac rdc 

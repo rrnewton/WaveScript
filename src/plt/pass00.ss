@@ -5,7 +5,7 @@
            "helpers.ss")
   (include (build-path ".." "generic" "pass00.ss"))
   
-  (provide (all-defined))
   ;; Insure provision of verify-regiment:
-  ; (provide verify-regiment (all-defined-except verify-regiment))  
+  (provide verify-regiment 
+	   these-tests test-this test00 tests00)  
   )
