@@ -474,6 +474,7 @@
 				(cdr entry)))))]
 
     [define sendmsg (lambda (data ob)
+		      (disp "IN sendmsg")(disp "  this = " this)
 ;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
@@ -610,7 +611,7 @@
 	    (lambda (returns)
 	      (DEBUGMODE (if (not (list? returns)) 
 			     (error 'handle-returns "must take a list: ~s" returns)))
-	      (disp "handling" returns (list? returns))
+	      (disp "handling rets" returns (list? returns))
 	      (flush-output-port)
 	      (let ([channels (partition-equal returns
 			        (lambda (ob1 ob2)
@@ -675,7 +676,7 @@
 						(cdr timestamps))))
 				    #f)])
 			   
-			   (disp "AGGREGATED:" )
+			   (disp "AGGREGATED:"  this )
 			   
 			   (sendmsg  
 			    (make-msg-object 
@@ -970,6 +971,7 @@
       (begin
 	;; Have to give a pure
 	(eval '(define handler 'initialized-by-test-case-for-handle-returns))
+	(eval '(define this 'initialized-by-test-case-for-handle-returns))
 	(for-each eval generic-defs)
 	;; Set up a two-node graph:
 	(let ([a (random-node)]
@@ -988,13 +990,11 @@
 		;; Bind the corresponding simobjects for nodes 'a' and 'b'
 		(let ([a_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))]
 		      [b_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))])
-		  (let 
-		      ;; We're seeing from the b-nodes perspective
-		      ([this b_simob])	      
+		  (fluid-let ([this b_simob]) ;; We're seeing from the b-nodes perspective
 		  ;; The handler for the 'b'-node thinks it got a token from 'a'
 		  (fluid-let ([handler
 			       (lambda (msg)
-				 (disp "RUNNING TEST HANDLER: " msg)
+				 (disp "RUNNING TEST HANDLER: " msg " THIS is: " this)
 				 (let ([token-cache (make-default-hash-table) ])
 				   (hashtab-set! token-cache 'via 
 						 (make-msg-object 'via    ;; token
@@ -1101,6 +1101,11 @@
 	(lambda ()
 	  (force dump_file)
 	  (load "simulator-generic-defs.ss"))))
+
+;; FIXME: TODO: TEMPORARY -- this dumps the test-case I'm working on to a file:
+(with-output-to-file "rrn-current-test.ss"  
+  (lambda ()  (pretty-print (cadadr these-tests)))
+  'replace)
       
 ;;===============================================================================
 ;; JUNK 
