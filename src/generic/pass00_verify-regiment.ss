@@ -1,6 +1,7 @@
 ;;; Pass 00: verify-regiment
 
 ;;; This pass verifies that the input is in the regiment lanuguage.
+;;; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
 
 ;;; <Pgm>  ::= <Exp>
 ;;; <Decl> ::= (<var> <Exp>)
@@ -14,7 +15,9 @@
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 
-;; Where let behaves like scheme's letrec.
+;;; And in the output
+;;; <Pgm>  ::= (<language> '(program <Exp>))
+
 
 ;; No variable capture is allowed at this point.
 
@@ -76,12 +79,17 @@
     
     (lambda (expr)
       (match expr	    
+	;; The input is already wrapped with the metadata:
         [(,input-language (quote (program ,body)))
          (let ([body (process-expr body '())]) 
            ;; Doesn't change the input language... 		
-           `(,input-language '(program ,body)))]))
-    ))
-
+           `(,input-language '(program ,body)))]
+	;; Nope?  Well wrap that metadata:
+        [,body
+         (let ([body (process-expr body '())])
+           ;; Doesn't change the input language... 		
+           `(base-language '(program ,body)))]
+	))))
 
 ;==============================================================================
 
