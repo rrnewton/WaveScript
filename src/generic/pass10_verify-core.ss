@@ -81,7 +81,7 @@
                     
 	  [,prim (guard (regiment-constant? prim)
 			(not (memq prim env)))
-		 (disp "GOT CONST: " prim)
+		 ;(disp "GOT CONST: " prim)
 	   #t]
 
           [(,prim ,rand* ...)

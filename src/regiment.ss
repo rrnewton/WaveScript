@@ -18,7 +18,7 @@ exec petite --script "$0" ${1+"$@"}
   (printf "  simulate (s)  simulate a token machine file~n")
   (printf "~n")
   (printf "General Options:  ~n")
-  (printf "  -v   verbose compilation/simulation ~n")
+  (printf "  -v   verbose compilation/simulation, includes warnings~n")
   (printf "~n")
   (printf "Compiler Options: ~n")
   (printf "  -l0  stop compilation just before deglobalize ~n")
@@ -42,7 +42,11 @@ exec petite --script "$0" ${1+"$@"}
 		(match args
 		    [() '()]
 
-		    [(-v ,rest ...) (set! opts (cons 'verbose opts)) (loop rest)]
+		    [(-v ,rest ...) 
+					;(set! opts (cons 'verbose opts))
+		     (regiment-verbose #t)
+		     (loop rest)
+		     ]
 		    [(.h ,rest ...) (print-help) (exit 0)]
 
 		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts)) (loop rest)]
@@ -73,6 +77,7 @@ exec petite --script "$0" ${1+"$@"}
 		(apply run-compiler expr "out.tm" opts)))
 	    (for-each (lambda (fn)
 			(let ([out (string-append (remove-file-extension fn) ".tm")])
+			  (printf "~n Writing token machine to: ~s ~n" out)
 			  (apply run-compiler (car (file->slist fn)) out opts)))
 		      filenames)))))))
   

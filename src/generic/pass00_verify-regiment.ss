@@ -162,12 +162,13 @@
 
 	     [(or (eq? 'Object infered-type)
 		  (eq? 'Object expected-type))
-	      (warning 'type-check-arg
-		       "infered type ~s doesn't *quite* match expected type ~s for expression: ~n~s"
-		       infered-type expected-type expr)]	     
+	      (if (regiment-verbose)
+		  (warning 'type-check-arg
+			   "inferred type <~s> doesn't *quite* match expected type <~s> for expression: ~n~s"
+			   infered-type expected-type expr))]
 
 	     [else (error 'type-check-arg
-			    "infered type ~s doesn't match expected type ~s for expression: ~n~s"
+			    "inferred type <~s> doesn't match expected type <~s> for expression: ~n~s"
 			    infered-type expected-type expr)])))))
 
     (define type-union
@@ -186,7 +187,7 @@
 
     (define add-type-constraint
       (lambda (var type type-env)
-	(disp "add-type-constraint: " var type type-env)
+	(if (regiment-verbose) (disp "add-type-constraint: " var type type-env))
 	;; Do nothing if the input is not a varref:
 	(if (and (symbol? var) (not (regiment-primitive? var)))
 	    (let ([entry (assq var type-env)])

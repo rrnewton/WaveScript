@@ -74,12 +74,12 @@
 ;(define tests01 tests01)
 ;(define tests07 tests07)
 
-(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
-(disp "Testing" (eval 'default-unit-tester))
+;(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
+;(disp "Testing" (eval 'default-unit-tester))
 ;(load/use-compiled "compiler.ss")
 (include "compiler.ss")
 
-(disp "BOUT TO LOAD DRIVER" pass-names)
+;(disp "BOUT TO LOAD DRIVER" pass-names)
 
 (load/use-compiled "plt/driver.ss")
 ;; Can't get langs to work.  Just abandon evaluation:
