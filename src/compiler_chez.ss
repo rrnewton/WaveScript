@@ -45,6 +45,8 @@
 (include "generic/pass13_deglobalize.ss")
 (include "generic/pass14_cleanup-token-machine.ss")
 ;(include "generic/pass15_verify-token-machine.ss")
+(include "generic/pass16_haskellize-tokmac.ss")
+
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
