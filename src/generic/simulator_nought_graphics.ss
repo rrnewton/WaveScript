@@ -91,23 +91,25 @@
 
 (define these-tests
   `( 
-    
+    ;; 0
     [ "First test display by bringing it up and then closing it down." 
       (begin (init-graphics) (sleep-me 0.3) (close-graphics))
       unspecified ]
-          
+
+    ;; 1
     [ "Now we test color changing"
       (begin 
 	(init-graphics)	
 	(let ((res 
 	       (graphical-simulation 
+		(lambda (soc-ret soc-fin)
 		  (vector (lambda () 
 			    (for-each (lambda (ob) 
 					(change-color!
 					 (simobject-gobj ob)
 					 (rgb 0 255 0)))
 				      all-objs))
-			  '())
+			  '()))
 		  1.0)))
 	  (sleep-me 0.7)
 	  (close-graphics)
@@ -120,14 +122,15 @@
       (begin 
 	(init-graphics)
 	(graphical-simulation 
-	 (vector (lambda () 3)
-		 (list (lambda () 
-			 (for-each (lambda (ob)
-				     (change-color!
-				      (simobject-gobj ob)
-				      (rgb 0 255 0)))
-				   all-objs))
-		       ))
+	 (lambda (soc-ret soc-fin)
+	   (vector (lambda () 3)
+		   (list (lambda () 
+			   (for-each (lambda (ob)
+				       (change-color!
+					(simobject-gobj ob)
+					(rgb 0 255 0)))
+				     all-objs))
+			 )))
 	 1.0)
 	(sleep-me 0.7)
 	(close-graphics))
@@ -144,12 +147,13 @@
 	(close-graphics))
       unspecified]
       
-  ;; 4: This really should be graphical only.
+  ;; 4: This really should be graphical only.  
   [ "Build Spread-lights-gradually..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
-    ,(lambda (x)
-       (procedure? (vector-ref x 0))
-       (andmap procedure? (vector-ref x 1)))]
+    ,(lambda (sim)
+       (let ((x (sim (lambda (v) (void)) (lambda (v) (void)))))
+	 (procedure? (vector-ref x 0))
+	 (andmap procedure? (vector-ref x 1))))]
 
   ;; 5: 
   [ "Run Spread-lights-gradually..."
@@ -180,30 +184,6 @@
   ;; What do we expect the current directory to be??
   ,@(include "simulator_nought.tests")
   ))
-
-
-(set! these-tests
-  `(           
-    [ "Now we test color changing"
-      (begin 
-	(init-graphics)	
-	(let ((res 
-	       (graphical-simulation 
-		  (vector (lambda () 
-			    (for-each (lambda (ob) 
-					(change-color!
-					 (simobject-gobj ob)
-					 (rgb 0 255 0)))
-				      all-objs))
-			  '())
-		  1.0)))
-	  (sleep-me 0.7)
-	  (close-graphics)
-	  res))
-      All_Threads_Returned]))
-
-
-;(set! these-tests     `())
 
 
 (define (wrap-def-simulate test)

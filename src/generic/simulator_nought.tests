@@ -4,8 +4,7 @@
 ;; These are generic tests which work for both simulator_nought and
 ;; simulator_nought_graphics an for both Chez and PLT.
 
-`(
-  
+`(  
   ;; COMPILE:
   [ "Run the translator on an empty program."
     (compile-simulate-nought
@@ -14,11 +13,11 @@
        (socpgm (bindings) )
        (nodepgm (tokens) (startup) )))
     (unspecified unspecified)]
-  
+
   [ "Run the translator on trivial program."
     (compile-simulate-nought ',example-nodal-prog0)
     ,example-nodal-output0 ]
-  
+
   ;; BUILD
   ;; Changed the build-object..
   [ "Build simulation for flooding lights program..."
@@ -27,7 +26,7 @@
        (let ([vec (x (lambda args (void)) (lambda args (void)))])
 	 (procedure? (vector-ref vec 0))
 	 (andmap procedure? (vector-ref vec 1))))]
-  
+
   ;; SIMULATE
   [ "Simulate with a trivial SOC program"
     (simulate (lambda (sr sf) (vector (lambda () 3) '())))

@@ -362,7 +362,7 @@
       [(anchor-at)
        `([,tokname ()
 	  ;; At each formation click, we output this node.
-	  (soc-return (list 'ANCH this))])]
+		   (soc-return (list 'ANCH this))])]
 
       [(circle circle-at)     
        `([,tokname 
@@ -390,6 +390,10 @@
 
       [(smap)
        `([,tokname (v) (soc-return v)])]
+
+      [(rmap)
+       `([,tokname (v)
+		   (soc-return (list 'RMAP (my-id)))])]
       
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
@@ -514,7 +518,9 @@
 					   `(startup )
 					   ;; Here I should really only prime the world_tok if the
 					   ;; world prim is used in the program:
-					   `(startup ,@leaftoks spark-world)))
+					   `(startup ,@leaftoks ,@(if (assq 'spark-world tokenbinds)
+								      (list 'spark-world)
+								      '()))))
 				       ))))
 	 ]))))
 
