@@ -100,6 +100,7 @@ clean:
 	(cd compiled; $(MAKE) clean)
 	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
 	$(RM) *.zo
+	rm plt/compiled/graphics_stub.zo
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \
 #                       -o -name '#*#' \
