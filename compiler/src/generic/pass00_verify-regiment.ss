@@ -138,12 +138,22 @@
 	    (cond 
 	     [(eq? infered-type expected-type)
 	      (void)] ;; It's all good
+
+	     ;; We're using #f to mean "any type", so it matches anything:
+	     [(or (not infered-type) (not expected-type))
+	      (void)]
+
 	     ;; Locations are just lists for the moment!
 	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
 	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
 
 	     [(and (eq? infered-type 'Region)
 		   (eq? expected-type 'Area))]
+
+	     ;; Areas and Regions are Signals
+	     [(and (or (eq? infered-type 'Area) (eq? infered-type 'Region))
+		   (eq? expected-type 'Signal))]
+
 
 	     [(or (eq? 'Object infered-type)
 		  (eq? 'Object expected-type))

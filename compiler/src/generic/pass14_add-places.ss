@@ -143,13 +143,27 @@
 	   (let ([newp (new-place)])
 	     (values expr newp newp))]
 
+	  ;; TODO
 	  ;; Events are pretty sketchy at this phase.
 	  ;; It should have the formation place of its stream argument.
 	  ;; But then it could have a membership place whereever it's consumed.  
 	  ;; Same as stream-valued prims like rfold you'd think.
 	  [(when-any) 	   
-	   (let ([newp (new-place)])
-	     (values expr newp newp))]
+	   (let ([newp1 (list (new-place))]
+		 [newp2 (list (new-place))])
+	     (values expr newp1 newp2))]
+
+	  ;; TODO Ideally there is a source stream and a source
+	  ;; event-path.  Then there is a *decision loci* at which the
+	  ;; "until" happens.  This then switches, dispatches to the
+	  ;; formation for the second expression, and then discards
+	  ;; the decision loci and wires the second stream directly to
+	  ;; the consumer of the whole expression.
+	  [(until) 	   
+	   (let ([newp1 (list (new-place))]
+		 [newp2 (list (new-place))])
+	     (values expr newp1 newp2))]
+
 		  
 	  [else (if (basic-primitive? prim)
 		    (values expr noplace noplace)
