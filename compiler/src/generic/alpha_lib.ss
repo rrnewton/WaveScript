@@ -61,7 +61,7 @@
                           (hashtab-set! the-store this-tokname tokobj)))
                       (set-simobject-outgoing-msg-buf! this '())
                       (set-simobject-local-msg-buf! this '())
-                      (set-simobject-outgoing-buf!
+                      (set-simobject-outgoing-msg-buf!
                         this
                         (cons
                          (bare-msg-object tok2 (list '3))
@@ -95,7 +95,7 @@
                       (set-simobject-local-msg-buf! this '())
                       (begin
                         (vector-set! tokobj 1 (+ (vector-ref tokobj 1) '1))
-                        (set-simobject-outgoing-buf!
+                        (set-simobject-outgoing-msg-buf!
                           this
                           (cons
                            (bare-msg-object tok2 (list (vector-ref tokobj 1)))
@@ -113,9 +113,9 @@
                       (void))))))
         (let ((dyndispatch_table (make-default-hash-table)))
           (begin
-            (hashtab-set 'soc-start soc-start)
-            (hashtab-set 'tok1 tok1)
-            (hashtab-set 'tok2 tok2))
+            (hashtab-set! 'soc-start soc-start)
+            (hashtab-set! 'tok1 tok1)
+            (hashtab-set! 'tok2 tok2))
           (lambda (msgob current-vtime)
             (mvlet
              (((name subtok)
@@ -183,7 +183,7 @@
 
     ;; MAIN BODY:
     ;; Install the scheduler and handler incase anybody else wants to use them:
-    (set-simobject-scheduler! ob schedule)
+    (set-simobject-scheduler! ob private-scheduler)
     (set-simobject-meta-handler! ob (meta-handler ob))
 
     (lambda (current-vtime)
@@ -198,7 +198,7 @@
 		;; Action thunk that executes message:
 		(lambda () 
 		  ;; For now, the time actually executed is what's scheduled
-		  ((simobject-handler ob) (cadr next) (car next))
+		  ((simobject-meta-handler ob) (cadr next) (car next))
 		  ;; Now that the atomic action is finished, do the radio transimission:
 		  (launch-outgoing current-vtime))))))))
 
@@ -224,12 +224,11 @@
       (let* ([actions (map (lambda (th) (th)) node-sims)]
 	     [nexttime (apply min (map car actions))]
 	     [nextevt (assq nexttime actions)])
-	(disp "Main sim loop" next "out of" actions)
-	
-	  ;; Run this atomic action (token handler), it gets to run at its intended virtual time.
-	  ((cadr next) (car next))
-	  ;; That had the effect of scheduling new actions, now we keep going.
-	  (main-sim-loop (cons (stream-cdr nextstrm) (alist-remove next streams))))))))))
+	(disp "Main sim loop" nexttime "out of" actions)
+	;; Run this atomic action (token handler), it gets to run at its intended virtual time.
+	((cadr nextevt))
+	;; That had the effect of launching new messages to process.
+	(main-sim-loop nexttime)))))))
 
 
 ;; From Swindle:
@@ -277,8 +276,8 @@
           (cdr entry))))]
 
 [define sendmsg (lambda (data ob)
-                  (set-simobject-incoming! ob
-                                           (cons data (simobject-incoming ob)))
+                  (set-simobject-incoming-msg-buf! ob
+                                           (cons data (simobject-incoming-msg-buf ob)))
                   ;(set-simobject-redraw! ob #t)
                   )]
 

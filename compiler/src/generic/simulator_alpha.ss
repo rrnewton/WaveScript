@@ -503,7 +503,7 @@
 		  
 		  (let ([dyndispatch_table (make-default-hash-table)])
 		    (begin ,@(map (lambda (tok)
-				    `(hashtab-set ',tok ,tok))
+				    `(hashtab-set! ',tok ,tok))
 				  (map car tbinds)))
 
 		  ;; Return the meta-handler
