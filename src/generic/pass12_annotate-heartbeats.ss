@@ -47,6 +47,8 @@
 	   ;; set the pulses.
 
 	   (define (derive-freqtable binds ret)	     
+	     (disp "derive freqtable" binds ret)
+
 	     ;; [2004.07.26] This will only be *complete*
 	     ;; for our very simple language.  Gotta face
 	     ;; the possibility of uncompleteness here.
@@ -54,17 +56,19 @@
 	     (let* ([freq-table (map (lambda (entry)
 				       (cons (car entry) #f))
 				     binds)]
+
 		    ;; This is a nested list where the head of each
 		    ;; entry is a freq-table entry (pair with name and
 		    ;; freq).
 		    [dependency-tree
 		     ;; NOTE FIXME TODO: WONT HANDLE CIRCULAR DEPENDENCIES!!
 		     (let loop ([node (assq ret binds)])
-		       (let ([deps (get-deps node)])
+		       (let ([deps (get-deps (cadr node))])
 			 (cons (assq (car node) freq-table)
 			       (map 
 				(lambda (s) (loop (assq s binds)))
 				deps))))]
+
 		    [reconcile
 		     (lambda (newrate entry)
 		       (set-cdr! entry (max newrate (cdr entry))))]
@@ -99,10 +103,10 @@
 		    )
 	       
 ;	       (disp "got freq table")
-;	       (pp freq-table)
-;;	       (disp "got dep graph")
-;	       (parameterize ((print-graph #t))
-;			     (pp dependency-tree)) 
+;;	       (pp freq-table)
+;	       (disp "got dep graph")
+;;	       (parameterize ((print-graph #t))
+;;			     (pp dependency-tree)) 
 	       
 	       ;; Now loop up that tree from the root and set those frequencies.
 	       (for-each (lambda (freq-entry bind-entry)
@@ -141,9 +145,8 @@
 				   (match bind
 					  [(,lhs ,rhs)					   
 					   `[,lhs ,(cdr (assq lhs freq-table)) ,rhs]]))
-				 binds)])	     
+				 binds)])	    
 	     `(lazy-letrec ,newbinds ,fin))])))
-
 
     (define get-deps
       (lambda (expr)
@@ -161,7 +164,6 @@
 	   rand*]
           [,unmatched
 	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
-
 
     (define process-expr
       (lambda (expr)
@@ -183,4 +185,4 @@
     ;; Body of match case:    
     `(annotate-heartbeats-lang
       (quote (program (props ,proptable ...)
-				      ,(process-let letexpr)))))]))))
+		      ,(process-let letexpr)))))]))))
