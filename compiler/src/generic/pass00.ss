@@ -14,6 +14,8 @@
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 
+;; Where let behaves like scheme's letrec.
+
 ;; No variable capture is allowed at this point.
 
 ;;; The implementation requires constant?, datum?, keyword?,
@@ -53,12 +55,14 @@
           ;                  (keyword? keyword))
           ;           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
           
-	  [(let ([,lhs* ,[rhs*]] ...) ,expr)
+	  [(let ([,lhs* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'let env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
-	   `(let ([,lhs* ,rhs*] ...) 
-              ,(process-expr expr (union lhs* env)))]
+	   (let ((newenv (union lhs* env)))
+	     (let ((rands (map (lambda (r) (process-expr r newenv)) rhs*))
+		   (body  (process-expr expr newenv)))
+	       `(let ([,lhs* ,rands] ...) ,body)))]
           
           [(,prim ,[rand*] ...)
            (guard ;(>= (snet-optimize-level) 2)
@@ -78,6 +82,10 @@
            `(,input-language '(program ,body)))]))
     ))
 
+
+;==============================================================================
+
+
 (define test-programs 
   '( 3
      (let ((a (anchor '(30 40))))
@@ -87,6 +95,16 @@
 			(+ (cdr tot) 1))))
 	     (g (lambda (tot) (/ (car tot) (cdr tot)))))
 	 (smap g (rfold f (cons 0 0) r))))
+
+     (let ((r (circle-at 50 '(30 40)))
+	   (f (lambda (tot next)
+		(cons (+ (car tot) (sense next))
+		      (+ (cdr tot) 1))))
+	   (g (lambda (tot) (/ (car tot) (cdr tot)))))
+       (let ((avg (smap g (rfold f (cons 0 0) r))))
+	 (until (when-any (lambda (x) (> x 15.3)) avg)
+		R
+		(circle-at 100 '(0 0)))))
      ))
 
 (define these-tests
@@ -119,28 +137,5 @@
 
 (define test00 test-this)
 
+;==============================================================================
 
-;----------------------------------------
-
-' (let ((R (circle-at 50 '(30 40)))
-	(f (lambda (tot next)
-	     (cons (+ (car tot) (sense next))
-		   (+ (cdr tot) 1))))
-	(g (lambda (tot) (/ (car tot) (cdr tot))))
-	(avg (smap g (rfold f (cons 0 0) R))))
-    (until (pred (lambda (x) (> x 15.3)) avg)
-	   R
-	   (circle-at 100 '(0 0))))
-
-'(verify-regiment
- '(some-lang 
-   '(program 
-     (let ((a (anchor '(30 40))))
-       (let ((r (circle 50 a))
-             (f (lambda (tot next)
-                  (cons (+ (car tot) (sense next))
-                        (+ (cdr tot) 1))))
-             (g (lambda (tot) (/ (car tot) (cdr tot)))))
-         (smap g (rfold f (cons 0 0) r)))))))     
-
-; Simple Prog....
