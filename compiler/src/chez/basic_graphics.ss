@@ -13,6 +13,10 @@
 			;; draw-ellipse ....
 			)
 
+;; CONSTANTS:
+(define Default-Drawing-Color (make <rgb> 0 255 0))
+(define Default-Background-Color (make <rgb> 200 200 200))
+
 ;; This defines window-width and window-height presets:
 ;(include "../generic/basic_graphics.ss")
 ;; Sadly scheme's path system makes no sense, so this loads from the 
@@ -21,9 +25,9 @@
 
 (define the-winframe #f)
 
-(define current-drawing-color (make-rgb 0 255 0))
+(define current-drawing-color Default-Drawing-Color)
 (define current-filling-color #f)
-(define current-background-color (make-rgb 200 200 200))
+(define current-background-color Default-Background-Color)
 
 ;; Here's where we keep objects that are to be drawn:
 (define object-buffer '())

@@ -25,6 +25,11 @@
 				  these-tests test-this )
   (import basic_graphics)
 
+;; CONSTANTS:
+;(define Starting-Node-Color (make <rgb> 200 10 10))
+(define Starting-Node-Color (make <rgb> 130 130 130))
+
+
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 
@@ -60,6 +65,12 @@
 		     (rgb-red c)
 		     (rgb-green c)
 		     (rgb-blue c))))		     
+
+(define (get-state sym ob)
+  (case sym
+    [(color) (get-fill-color ob)]
+    [(loc) (get-coords ob)] ;; WHAT TYPE DOES THIS RETURN??
+    [else (error 'chez/graphics_stub.ss "unknown state property: ~s" sym)]))
 
 ;(define links '())
 
@@ -101,7 +112,7 @@
 ;			     (flonum->fixnum (- y processor-screen-radius))
 ;			     (flonum->fixnum (+ x processor-screen-radius))
 ;			     (flonum->fixnum (+ y processor-screen-radius)))))
-	   (set-fill-color! circ (make <rgb> 200 10 10))
+	   (set-fill-color! circ Starting-Node-Color)
 ;	   (show circ)
 	   (set! processor-screen-objs
 		 (cons circ processor-screen-objs))
@@ -126,10 +137,6 @@
 		   (cons line edge-screen-objs))
 	     line))))
 
-;(define (set-color! obj r g b)
-;  (set-fill-color! obj (make <rgb> r g b)))
-
-;  (send obj set-fill-color! (make <rgb> r g b)))
 
 ;;===============================================================================
 

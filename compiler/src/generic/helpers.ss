@@ -2,6 +2,10 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
+;; DEPENDS: On chez/plt primitive open-output-string.
+;; DEPENDS: (On other chez/plt features which I'm not aware of...)
+
+
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be had from.
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
@@ -1520,4 +1524,111 @@
 		   (display (substring str 0 (- (string-length str) 1))))))))
 	      args)))
 
+;; [2004.06.17] These functions deal with streams that are represented
+;; as a list, thunk, or improper list with a thunk as its final
+;; cdr-pointer.  That is:
+;;  Stream ::= (item*)
+;;           | (item* . thunk)
+;;           | thunk
 
+;; It is *advisable*, but not required that the thunk be a *promise* so that it 
+;; reevaluation happens appropriately.
+
+(define-structure (stream-obj val))
+
+(define (stream-innard? s)
+  (or (procedure? s) 
+      (and (pair? s) (stream? (cdr s)))))
+
+(define (stream? s)
+  (and (stream-obj? s)
+       (stream-innard (stream-obj-val s))))
+
+;; NOTE REEVALUATION ACROSS TWO POINTERS TO THE SAME STREAM IS STILL POSSIBLE.
+(define (stream-car stream)
+  (let ((s (stream-obj-val stream)))
+    (cond
+     [(procedure? s) 
+      (let ((new-s (s)))
+	(set-stream-obj-val! stream new-s)
+	(stream-car stream)
+	)]
+     [(pair? s) (car s)]
+     [else (error 'stream-car
+		"invalid object inside stream structure: ~s" s)])))
+
+(define (stream-cdr stream)
+  (let ((s (stream-obj-val stream)))
+    (cond
+     [(procedure? s) 
+      (let ((new-s (s)))
+	(set-stream-obj-val! stream new-s))]
+     [(pair? s) (make-stream-obj (cdr s))]
+     [else (error 'stream-cdr
+		  "invalid object inside stream structure: ~s" s)])))
+	  
+
+
+;;============================================================
+(define (stream? s)
+  (or (procedure? s) 
+      (and (pair? s) (stream? (cdr s)))))
+
+;; NOTE REEVALUATION ACROSS TWO POINTERS TO THE SAME STREAM IS STILL POSSIBLE.
+(define (stream-car s)
+  (let scloop ((s s))
+    (cond
+     [(procedure? s) 
+      ;; We have no way of mutating the prior cell:
+      (stream-car (s))]
+     [(pair? s) 
+      (if (pair? (cdr s))
+	  (car s)
+	  (begin (set-cdr! s ((cdr s)))
+		 
+      
+     [else (error 'stream-car
+		"invalid object inside stream structure: ~s" s)])))
+
+(define (stream-cdr stream)
+  (let ((s (stream-obj-val stream)))
+    (cond
+     [(procedure? s) 
+      (let ((new-s (s)))
+	(set-stream-obj-val! stream new-s))]
+     [(pair? s) (make-stream-obj (cdr s))]
+     [else (error 'stream-cdr
+		  "invalid object inside stream structure: ~s" s)])))
+	  
+
+
+
+;;======================================================================
+;; And here are the unit tests for this file... Don't have many of these yet.
+
+(define these-tests
+  `(
+
+    [(deep-assq 3 '(9 (4 (1 2 a ) 4)))        #f]
+    [(deep-assq 3 '(9 (4 (1 2 3 9 a ) 4)))    (3 9 a)]
+    [(deep-assq 3 '(9 (4 ((3 9 a ) 4))))      (3 9 a)]
+
+    [(deep-member? 3 '(9 (4 ((3 9 a ) 4))))   #t]
+    [(deep-member? 3 '(9 (4 ((9 a ) 4))))     #f]
+
+    [(let ((s (open-output-string)))
+       (parameterize ((current-output-port s))
+		     (display-constrained "test  " '(abcdefghijklmnop 10) 
+					  " again  " '(abcdefghijklmnop 16) 
+					  '(abcdefghijklmnop 17)))
+       (get-output-string s))
+     "test  abcdefg... again  abcdefghijklm...abcdefghijklmnop"]
+
+    [(unfold-list '(a b c d))
+     ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
+
+
+    ))
+
+(define test-this (default-unit-tester "heplers.ss: my messy utils file." these-tests))
+(define testhelpers test-this)

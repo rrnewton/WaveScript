@@ -354,13 +354,16 @@
 				  (= 0 count)
 				  (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
 			      (let ((newentry themessage))
+				(if (= 0 local-recv-messages)
+				    (sim-light-up 200 0 0))
+				(set! local-recv-messages (add1 local-recv-messages))
 				(hashtab-set! token-cache tok newentry)
 				(handle-it newentry))
 			      (begin 
 				(incr-top-level! 'total-fizzles)
 				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
 				(void))
-			      ) 
+			      )
 			  ;; fizzle
 			  ))))])
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
@@ -399,7 +402,8 @@
 
        [generic-defs
 	
-	`([define local-messages 0] ;; We should stick this in the simobject...
+	`([define local-sent-messages 0] ;; We should stick this in the simobject...
+	  [define local-recv-messages 0]
 	  [define token-cache (make-default-hash-table)]
 
 	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
@@ -423,7 +427,7 @@
 
 	   [define sim-emit (lambda (t m count)
 		    ;; Count messages at this node
-		    (set! local-messages (add1 local-messages))
+		    (set! local-sent-messages (add1 local-sent-messages))
 		    ;; Count total messages sent.
 		    (incr-top-level! 'total-messages)
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
@@ -638,6 +642,7 @@
 ;; simulator and the graphical one.  It serves the role of a parent
 ;; object from which run-simulation and graphical-simulation inherit.
 
+;; [2004.06.17] - Modifying this so that it returns an actual stream...
 (define (generate-simulator fun)
   (lambda (thunks . timeout)
     ;; First, set up a global counter for communication cost:
@@ -656,7 +661,14 @@
   ;;-------------------------------
   (let ([newthunks (apply fun (cons thunks timeout))]
 	[return-vals '()])
-  
+
+      ;;; ADDING ... TEMP    
+    (let ((theeng ;; A computation that puts a bunch of answers in "return-vals".
+	   (make-engine 
+	    (lambda ()
+      ;;; ADDING ... TEMP
+
+
       ;; Kinda lame to use fluid-let here, but we don't have the
       ;; relevent continuation at the time we build the thunks.
       (fluid-let (
@@ -681,7 +693,30 @@
 	  (if (null? return-vals)
 	      result
 	      return-vals)
-	  )))))
+	  ))
+
+      ;;; ADDING ... TEMP
+      ))))
+      ;; Return an unopened stream:
+      (lambda () 
+	(let stream-loop ((eng theeng))
+	  (eng 1000
+	       (lambda (v rem) 
+		 (if (null? return-vals)
+		     v return-vals))
+	       (lambda (eng2)
+		 (if (null? return-vals)
+		     (stream-loop eng2)
+		     (let ((temp return-vals))
+		       (set! return-vals '())  ;; <TODO> : Use semaphore.
+		       ;; Return a stream:
+		       (dotted-append temp (lambda () (stream-loop eng2)))))))))
+      ))))
+
+(define (dotted-append ls ob)
+  (if (null? ls) ob
+      (cons (car ls) (dotted-append (cdr ls) ob))))
+
 
 (define run-simulation 
   (generate-simulator
