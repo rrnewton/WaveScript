@@ -32,7 +32,7 @@
     (let loop ([engs (map make-engine thks)]
 	       [acc '()])
       (cond
-       [(and timeout (> (real-time) timeout)) 
+       [(and timeout (> (real-time) timeout))
 	(fprintf (current-error-port)
 		 "~n  !!! run-flat-threads ended by time-out.~n")
 	'Threads_Timed_Out]
@@ -57,16 +57,21 @@
 ;; [2004.06.17] Now I modify this to return an engine.
 ;; We can't nest engines, but I can make a psuedo-engine that runs a
 ;; round-robin on some child engines.
+
+;; [2004.06.18] Oops!  This needs to use CPU time or *something*, the
+;; timeout system isn't going to work when it's an engine!!  And maybe
+;; it shouldn't have a timeout system.
 (define (run-flat-threads-engine thks . time)
-  (let ((timeout (if (null? time) #f 
-		     (+ (real-time) (* 1000 (car time))))))    
+  (let ([totaltime (if (null? time) #f (* 1000 (car time)))]
+	[perdisp (periodic-display 100)])
     (lambda (ticks succ fail)	       
       (let loop ([ticks ticks] [succ succ] [fail fail]
 		 [engs (map make-engine thks)]
-		 [acc '()])
+		 [acc '()])	
+	(perdisp "  Total time left on clock: ~s~n" totaltime)
 	(cond
 	 ;; Timeout because of real time:
-	 [(and timeout (> (real-time) timeout))
+	 [(<= totaltime 0) ;(and timeout (> (real-time) timeout))
 	  (fprintf (current-error-port)
 		   "~n  !!! run-flat-threads ended by time-out.~n")
 	  (succ ticks 'Threads_Timed_Out)]
@@ -80,58 +85,23 @@
 	 ;; Done with this pass, loop back around:
 	 [(null? engs)  (loop ticks succ fail (reverse acc) '())]
 	 ;; *Otherwise* actually run a child engine...
-	 [else 
-	  ((car engs) flat-threads-granularity
-	   ;; Child engine finished, it's outof the race.
-	   (lambda (remaining ret)
-	     (loop (+ (- ticks flat-threads-granularity) remaining)
-		   succ fail (cdr engs) acc))
-	   ;; Engine still not done, queue it up and go to the next.
-	   (lambda (nexteng)
-	     (loop (- ticks flat-threads-granularity)
-		   succ fail (cdr engs) (cons nexteng acc))))]
+	 [else
+	  ;; We have to charge ourselves for the time we spend in the child engine:
+	  (let ((start-time (real-time)))
+	    ((car engs) flat-threads-granularity
+	     ;; Child engine finished, it's outof the race.
+	     (lambda (remaining ret)
+	       ;; Substract elapsed time from totaltime on our timer:
+	       (set! totaltime (- totaltime (- (real-time) start-time)))
+	       (loop (+ (- ticks flat-threads-granularity) remaining)
+		     succ fail (cdr engs) acc))
+	     ;; Engine still not done, queue it up and go to the next.
+	     (lambda (nexteng)
+	       ;; Substract elapsed time from totaltime on our timer:
+	       (set! totaltime (- totaltime (- (real-time) start-time)))
+	       (loop (- ticks flat-threads-granularity)
+		     succ fail (cdr engs) (cons nexteng acc)))))]
 	 )))))
-
-
-;; This is more complexity to save one line:
-'(define (run-flat-threads-engine thks . time)
-  (let ((timeout (if (null? time) #f 
-		     (+ (real-time) (* 1000 (car time))))))    
-    (letrec ((theeng
-	      (lambda (engs acc)
-		(lambda (ticks succ fail)
-;;		  (let loop ([ticks ticks] [succ succ] [fail fail]
-;			     [engs (map make-engine thks)]
-;			     [acc '()])
-		  (cond
-		   ;; Timeout because of real time:
-		   [(and timeout (> (real-time) timeout))
-		    (fprintf (current-error-port)
-			     "~n  !!! run-flat-threads ended by time-out.~n")
-		    (succ ticks 'Threads_Timed_Out)]
-		   ;; Timeout because out of ticks.
-		   [(<= ticks 0) (fail (theeng engs acc))]
-		   ;; Succeed because all engines returned.
-		   [(and (null? acc) (null? engs)) 
-		    (succ ticks 'All_Threads_Returned)]
-		   ;; Done with this pass, loop back around:
-		   [(null? engs)  ((theeng (reverse acc) '()) ticks succ fail)]
-		   ;; *Otherwise* actually run a child engine...
-		   [else 
-		    ((car engs) flat-threads-granularity
-		     ;; Child engine finished, it's outof the race.
-		     (lambda (remaining ret)
-		       ((theeng (cdr engs) acc)
-			(+ (- ticks flat-threads-granularity) remaining)
-			succ fail))
-		     ;; Engine still not done, queue it up and go to the next.
-		     (lambda (nexteng)
-		       ((theeng (cdr engs) (cons nexteng acc))
-			(- ticks flat-threads-granularity)
-			succ fail)))]
-		   )))))
-      (theeng (map make-engine thks) '())
-      )))
 
 
 ;; Now instead of thunks we use continuation handlers...

@@ -178,3 +178,48 @@
     (disp "EXEC FINISHED, HERE WAS PROG:")
     (pretty-print prog)
     res))
+
+
+
+
+
+(define sim (build-simulation 
+	     (compile-simulate-nought 
+	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
+
+;(define (t1) (init-world) (run-simulation        sim 2.0))
+;(define (t2) (init-world) (run-simulation-stream sim 2.0))
+
+(define theprog
+  '(program
+    (bindings
+     [tmp_23 (cons '40 '())]
+     [tmp_21 (cons '30 tmp_23)])
+    (socpgm (bindings) (call f_token_result_22))
+    (nodepgm
+     (tokens
+      [f_token_result_22 () (begin (disp "  nodeprog: ftok call flood")
+				   (flood token_25))]
+      [token_25 () (begin 
+		     (disp "  nodeprog: tok25 elect leader")
+		     (if (< (locdiff (loc) tmp_21) 10.0)
+			 (elect-leader m_token_result_22)
+			 '#f))]
+      [m_token_result_22 () (begin
+			      (disp "  nodeprog: mtokres lightup")
+			      (light-up 0 255 255))]
+      
+      [m_token_result_22 () (begin 
+			      (disp "  nodeprog: mtokres soc-reeturn")
+			      (soc-return (list 'anch this)))])
+      (startup))))
+
+(define (t1)
+  (cleanse-world)
+  (run-simulation 
+   (build-simulation (csn theprog)) 1.0))
+
+(define (t2)
+  (cleanse-world)
+  (run-simulation-stream
+   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 12.0))

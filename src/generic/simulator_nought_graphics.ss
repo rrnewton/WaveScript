@@ -4,7 +4,7 @@
 ;; but with a graphical interface.  This file might also depend on all
 ;; the resources that simulator_nought.ss depends on.
 
-;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
+;; REQUIRES: This file requires the "graphics_stub.ss" interface be loaded
 ;; so that it may draw the simulation upon the screen.
 
 (define this-unit-description 
@@ -25,8 +25,11 @@
 ;; to take their own graphical objects as input, giving them handles for
 ;; changing their color and so forth.
 
-(define graphical-simulation 
+(define graphical-simulation   
   (generate-simulator
+   ;; Thread runner:
+   run-flat-threads
+   ;; Build engines and display driver:
    (lambda (funcs . timeout)
                  
      ;; These "edges" are distinct objects for each comm link (directionally):
