@@ -36,6 +36,7 @@
 ;;;               | _        (no place)
 ;;;               | SOC      (Source of Control)
 ;;;               | X_<n>    (Some place...)
+;;;               | (X_<n>)  (Some set of places (an area)...)
 
 
 ;;; [2004.08.13] Need to consider conditionals:
@@ -73,7 +74,7 @@
     (define noplace '_)
 	   
     (define (process-let expr)
-      (disp "processing let" expr)
+;      (disp "processing let" expr)
       (match expr
 	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
 
@@ -133,12 +134,13 @@
 
     (define process-expr
       (lambda (expr)
-	(disp "process expr" expr)
+;	(disp "process expr" expr)
         (match expr
           [(quote ,const) (values `(quote ,const) noplace noplace)]
           [,var (guard (symbol? var)) (values var noplace noplace)]
           [(lambda ,formalexp ,expr)
-	   (values (process-let expr) noplace noplace)]
+	   (values `(lambda ,formalexp ,(process-let expr))
+		   noplace noplace)]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
           [(if ,test ,conseq ,altern)
 	   (values `(if ,test ,conseq ,altern) unknown-place unknown-place)]
@@ -149,5 +151,5 @@
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
     
     `(add-places-language (quote (program (props ,proptable ...)
-					  (control-flow ,cfg)
+					  (control-flow ,cfg ...)
 					  ,(process-let letexpr))))])))

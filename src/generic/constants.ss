@@ -6,7 +6,7 @@
 ;; get lifted up here.
 
 
-;; Used primarily by pass12_annotate-heartbeats:
+;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
 ;; The slow-pulse is used for region formation.
 (define slow-pulse 1.0)

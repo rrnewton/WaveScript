@@ -29,7 +29,7 @@
 ;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
 ;;; <Heartbeat> ::= <Float> | #f | +inf.0
 
-(define annotate-heartbeats
+(define add-heartbeats
   (let ()
 
     (define (simple? expr)

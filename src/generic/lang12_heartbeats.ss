@@ -1,10 +1,7 @@
 
 
-
-
-
 (define-language
-  'annotate-heartbeats-language
+  'add-heartbeats-language
 
   (make-begin
     `(,
