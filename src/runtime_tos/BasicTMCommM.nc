@@ -2,7 +2,7 @@ module BasicTMCommM {
   provides {
     interface TMComm;
     interface StdControl;
-    interface ReceiveMsg;
+    //    interface ReceiveMsg;
   }
   uses {
     interface Timer;
