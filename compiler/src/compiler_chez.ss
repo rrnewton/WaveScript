@@ -79,6 +79,12 @@
 (include "generic/pass16_deglobalize.ss")
 (include "generic/pass17_cleanup-token-machine.ss")
 ;;(include "generic/pass18_verify-token-machine.ss")
+
+;(include "generic/pass18_analyze-calls.ss")
+;(include "generic/pass18_inline.ss")
+;(include "generic/pass18_prune-returns.ss")
+(include "generic/pass18_cps-tokmac.ss")
+
 (include "generic/pass19_haskellize-tokmac.ss")
 
 
