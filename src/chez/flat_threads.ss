@@ -76,7 +76,5 @@
 
 (define test-this (default-unit-tester this-unit-description these-tests))
 
-;#!eof;(define these-tests ())(define test-this ()))#!eof
-
 ;) ;; End module
 

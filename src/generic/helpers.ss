@@ -933,6 +933,7 @@
           (if (null? (cdr lst))
               '()
               (cons (car lst) (rdc-loop (cdr lst))))))))
+(define last rdc)
 
 (define mapleft
   (lambda (f ls)

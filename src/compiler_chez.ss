@@ -47,7 +47,8 @@
     (load "chez/swl_flat_threads.ss")
     (load "chez/flat_threads.ss"))
 
-(import flat_threads)
+;; LAME
+(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
 ;; Basic simulator for the nodal language:
 ;(include "chez/simulator_nought.ss")

@@ -7,3 +7,7 @@
 (define window-width 400)
 (define window-height 400)
 
+(define the-win #f)
+
+(define-structure (rgb red green blue))
+(define rgb make-rgb)
