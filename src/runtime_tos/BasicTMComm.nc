@@ -1,13 +1,13 @@
-//includes TMComm
+includes TokenMachineRuntime;
 
 configuration BasicTMComm {  
   provides interface TMComm[uint8_t id];
-  uses interface TMModule;
+////////  uses interface TMModule;
 } implementation {
   components Main, BasicTMCommM, TimerC, RandomLFSR, GenericComm as Comm;
 
   TMComm = BasicTMCommM.TMComm;
-  BasicTMCommM.TMModule = TMModule;
+/////////  BasicTMCommM.TMModule = TMModule;
 
   //  ReceiveMsg = Comm.ReceiveMsg;
 

@@ -1,8 +1,8 @@
 
 #COMPONENT = TokenMachineRuntime
 #COMPONENT = TestMachine
-COMPONENT = Test2
-#COMPONENT = BasicTMComm
+#COMPONENT = Test2
+COMPONENT = BasicTMComm
 
 ## RRN: Added this according to instructions found online to get rid
 ## of the "calls ... are uncombined" warning.

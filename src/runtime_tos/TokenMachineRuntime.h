@@ -3,6 +3,10 @@ enum {
   AM_RETURNMSG = 0,
 };
 
+// RRN: HACK JUST TO GET IT TO COMPILE ATM [2004.11.19]
+#ifndef TOSH_DATA_LENGTH
+#define TOSH_DATA_LENGTH 32
+#endif
 
 #ifndef TOKBUFFER_LENGTH
 #define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.

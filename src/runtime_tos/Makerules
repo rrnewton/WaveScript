@@ -1,429 +1,171 @@
-#-*-Makefile-*-
-# Base Makefile for nesC apps.
-#
-# Created: 6/2002,  Philip Levis <pal@cs.berkeley.edu>
-#
-# Updated: 6/18/2002 Rob von Behren <jrvb@cs.berkeley.edu>
-#          Multi-platform support
-#
-# Updated: 6/20/2002 David Gay <dgay@intel-research.net>
-#          Compile via gcc, make tos.th system-wide, not app-wide
-#          (still need to ponder group selection)
-#
-# Updated: 6/27/2003 Jaein Jeong <jaein@cs.berkeley.edu>
-#          In-network programming support for mica2, mica2dot platforms
-#
-######################################################################
+#-*-Makefile-*- vim:syntax=make
+#$Id: Makerules,v 1.2 2004/12/01 19:39:05 newton Exp $
 
-# this needs to be -dlpt=3 on thinkpads
-# PROGRAMMER_EXTRA_FLAGS :=
-# We don't actually set it here, so you can either set the 
-# PROGRAMMER_EXTRA_FLAGS environment variable (recommended) or
-# define it in ../Makelocal
+# @author Cory Sharp <cssharp@eecs.berkeley.edu>
 
--include $(shell ncc -print-tosdir)/../apps/Makelocal
+### --- This makefile requires GNU Make version 3.80 or newer.
 
-# User configuration:
-# Specify user values in Makelocal to override the defaults here
 
-ifndef DEFAULT_LOCAL_GROUP
-DEFAULT_LOCAL_GROUP := 0x7d
+### ---
+### --- Prepare variables
+### ---
+
+#  Get TOSDIR from ncc if it isn't set already.
+ifndef TOSDIR
+TOSDIR := $(shell ncc -print-tosdir)
 endif
 
-ifndef OPTFLAGS
-OPTFLAGS := -Os
+#  Deduce TINYOS_MAKE_PATH, the path to this file, if it's not defined already.
+ifndef TINYOS_MAKE_PATH
+  ifdef MAKERULES
+    TINYOS_MAKE_PATH := $(dir $(MAKERULES))
+    TINYOS_MAKE_PATH := $(TINYOS_MAKE_PATH:%/=%)
+  else
+    TINYOS_MAKE_PATH := $(TOSDIR)/../tools/make
+  endif
 endif
 
-ifndef NESC_FLAGS
-NESC_FLAGS := -Wnesc-all
-endif
+#  Use a default Makelocal if it's not defined already.
+TINYOS_MAKELOCAL ?= $(TINYOS_MAKE_PATH)/Makelocal
 
-# configure the base for the app dirs.  This is used to generate more
-# useful package names in the documentation.
-ifeq ($(BASEDIR)_x, _x)
-BASEDIR := $(shell pwd | sed 's@\(.*\)/apps.*$$@\1@' )
-endif
+#  Use a default Makedefaults if it's not defined already.
+TINYOS_MAKEDEFAULTS ?= $(TINYOS_MAKE_PATH)/Makedefaults
 
-# The output directory for generated documentation
-ifeq ($(DOCDIR)_x, _x)
-DOCDIR := $(BASEDIR)/doc/nesdoc
-endif
+#  Allow users to specify additional directories to find TOSMake files.
+TOSMAKE_PATH += $(TINYOS_MAKE_PATH)
 
-##################################################
-#
-##################################################
+#  Save makecmdgoals (a read only var) to goals so that we can modify it.
+GOALS += $(MAKECMDGOALS)
 
-ifeq ($(PLATFORMS)_x, _x)
-PLATFORMS = mica mica2 mica2dot pc
-endif
-
-OBJCOPY        = avr-objcopy
-SET_ID         = set-mote-id
-PROGRAMER      = uisp
-
-ifdef MSG_SIZE
-PFLAGS := -DTOSH_DATA_LENGTH=$(MSG_SIZE) $(PFLAGS)
-endif
-
-#ifdef APP_DIR
-#PFLAGS := -I$(APP_DIR) $(PFLAGS)
-#endif
-
-# This is for network reprogramming
-# If XNP is defined, add the network reprogramming related files
-# to the search path and generate a timestamp to make each build unique.
-XNP_DIR := ../../tos/lib/Xnp
-ifdef XNP
-PFLAGS := -I$(XNP_DIR) $(shell $(XNP_DIR)/ident.pl .ident_install_id $(COMPONENT)) $(PFLAGS)
-endif
-
-PFLAGS         := $(PFLAGS) -Wall -Wshadow -DDEF_TOS_AM_GROUP=$(DEFAULT_LOCAL_GROUP) $(NESC_FLAGS)
-
-ifndef TINYSEC
-TINYSEC        := false # default: disable tinysec
-endif
-# The tinysec keyfile to use and the default key name (this re matches the
-# first key. you can explicitly list keys by: make mica KEYNAME=mykeyname
-KEYFILE        := $(HOME)/.tinyos_keyfile
-KEYNAME        := '\w+'
-
-ifeq ($(TINYSEC),true)
-TINYSEC_KEY    := $(shell mote-key -kf $(KEYFILE) -kn $(KEYNAME))
-ifeq ($(TINYSEC_KEY),)
-$(error tinysec key has not been properly set. It is needed for tinysec. \
-	Check to make sure that the script exists)
-endif
-PFLAGS         := $(PFLAGS) -DTINYSEC_KEY="$(TINYSEC_KEY)" -DTINYSEC_KEYSIZE=8
-endif
-
-NCC            = ncc
-LIBS	       = -lm
-
-######################################################################
-# Choose platform options, based on MAKECMDGOALS
-######################################################################
+#  Extract user options from goals of the form opt,arg, transform to opt=arg,
+#  and evaluate.  Then, reduce GOALS to have the args removed.
+OptRE := [,.]
+GoalOpts := $(shell perl -e 'print join " ", map {s{^(.*?)$(OptRE)}{\U$$1=};$$_} grep /$(OptRE)/, split /\s+/, "$(GOALS)";')
+GOALS := $(shell perl -e '$$_="$(GOALS)"; s{$(OptRE)\S*}{}g; print;')
+$(foreach opt,$(GoalOpts),$(eval $(opt)))
 
 
-# be quieter....
-#ifeq ($(VERBOSE_MAKE)_x, _x)
-#MAKEFLAGS += -s
-#endif
-#export VERBOSE_MAKE
+### ---
+### --- Define make functions.
+### --- (Lord, this is ugly. I want a real scripting language so bad.)
+### ---
+### --- The functions a user will generally be interested in are
+### ---   TOSMake_include(file)
+### ---   TOSMake_include_platform(dir)
+### ---
 
-define USAGE
+#  names(words)
+#    Produce option names, like junk from /path/to/junk.target.
+names = $(sort $(basename $(notdir $(1))))
 
+#  TOSMake_find(file_or_dir)
+#    Search for file_or_dir within TOSMAKE_PATH.  For the special case of
+#    initializing TOSMAKE_PATH itself, this function does not search 
+#    TOSMAKE_PATH if file_or_dir begins with +.
+sh_search = for a in $(TOSMAKE_PATH); do [ -e "$$a/$$n" ] && echo "$$a/$$n" && break; done
+TOSMake_find = $(if $(filter +%,$(1)),$(1:+%=%),$(shell n="$(1)"; $(sh_search)))
 
-Usage:   make <platform>
-         make all
-         make clean
-         make install[.n] <platform>
-         make reinstall[.n] <platform> # no rebuild of target
-         make docs <platform>
+#  TOSMake_makelist(dir,extension)
+#    Get a list of files with the given extension from a directory which MUST
+#    be a subdir under TOSMAKE_PATH.
+TOSMake_makelist = $(wildcard $(call TOSMake_find,$(1))/*.$(2))
 
-         Valid platforms are: $(PLATFORMS)
+#  TOSMake_include(file)
+#    Include a makefile which MUST be in a dir or subdir under TOSMAKE_PATH.
+TOSMake_include = $(eval include $(call TOSMake_find,$(1)))
 
+#  TOSMake_extra_targets(name)
+#    Create a default make targets for a TOSMake extra full with its possible
+#    options afterward.
+define TOSMake_extra_targets
+$(subst :,%,$(1)): FORCE
+	@:
+endef
 
+#  TOSMake_include_dir(dir)
+#    Pull in .extras and .targets from a directory which MUST be a subdir
+#    under TOSMAKE_PATH.  Create default extra rules as necessary, etc.
+TOSMake_include_dir = $(eval $(call TOSMake_include_dir_define,$(1)))
+define TOSMake_include_dir_define
+$(eval NEW_EXTRAS := $(call TOSMake_makelist,$(1),extra))
+$(eval NEW_TARGETS := $(call TOSMake_makelist,$(1),target))
+$(eval VALID_EXTRAS += $(NEW_EXTRAS))
+$(eval VALID_TARGETS += $(NEW_TARGETS))
+$(eval EXTRAS = $(filter $(call names,$(VALID_EXTRAS)),$(GOALS)))
+$(eval TARGETS = $(filter $(call names,$(VALID_TARGETS)),$(GOALS)))
+$(eval OTHERS = $(filter-out $(EXTRAS) $(TARGETS),$(GOALS)))
+$(foreach file,$(NEW_EXTRAS) $(NEW_TARGETS),$(if $(filter $(call names,$(file)),$(GOALS)),$(eval include $(file))))
+endef
+
+#  TOSMake_include_platform(dir)
+#    Pull in a directory as a new TOSMake platform, which MUST be a subdir of
+#    TOSMAKE_PATH.  A platform directory must also have a .rules file, which
+#    is automatically evaluated.
+TOSMake_include_platform=$(eval $(call TOSMake_include_platform_define,$(1)))
+define TOSMake_include_platform_define
+$(call TOSMake_include_dir,$(1))
+$(call TOSMake_include,$(1)/$(1).rules)
 endef
 
 
-PLATAUX=$(PLATFORMS) all
-PLATFORM := $(filter $(PLATAUX), $(MAKECMDGOALS))
-PFLAGS := -target=$(PLATFORM) $(PFLAGS)
-MAKECMDGOALS := $(filter-out $(PLATAUX), $(MAKECMDGOALS))
+### ---
+### --- Include Makelocal and Makedefaults
+### ---
+
+#  Makelocal comes first to allow overriding Makedefaults.
+-include $(TINYOS_MAKELOCAL)
+-include $(TINYOS_MAKEDEFAULTS)
+
+#  Mark TOSMAKE_PATH with a + so that they're not searched for by TOSMake_find.
+$(foreach incdir,$(addprefix +,$(TOSMAKE_PATH)),$(call TOSMake_include_dir,$(incdir)))
+
+#  Make default rules for each extra with full argument
+$(foreach goal,$(MAKECMDGOALS),$(if $(filter-out $(TARGETS) help,$(goal)),$(eval $(call TOSMake_extra_targets,$(goal)))))
 
 
-#########################################################################
-# Programming Boards : flags
-#########################################################################
-PROGRAMMER_FLAGS=-dprog=dapa $(PROGRAMMER_PART) $(PROGRAMMER_EXTRA_FLAGS)
-PROGRAMMER := DAPA
+### ---
+### --- Define USAGE, print help if necessary or requested, etc.
+### ---
 
-#########################################################################
-# Programming Boards : command line input
-# Command line input for programmers: 
-#   none	 : default to parallel programming board
-#   MIB510=<dev> : use mib510 serial port programming board at port <dev>
-#   EPRB=<host>	 : use eprb at hostname <host>
-#   AVRISP=<dev> : use AVRISP serial programmer at port <dev>
-#########################################################################
+#  USAGE is printed out when help is requested.  Files other than this should
+#  add text to HELP, not USAGE.
+define USAGE
 
-### If MIB510 then
-MIB5100 := $(subst MIB510=,,$(filter MIB510=%,$(MAKECMDGOALS)))
-ifneq ($(MIB510_),)
-  MIB510 := $(MIB5100)
-endif
-MAKECMDGOALS := $(filter-out MIB510=%,$(MAKECMDGOALS))
 
-### If STK is a set environment variable or if STK=xxx appears on the command
-### line, then take it to be a network address and program assuming an stk500
-### module.
-EPRB0 := $(subst EPRB=,,$(filter EPRB=%,$(MAKECMDGOALS)))
-ifneq ($(EPRB_),)
-  EPRB := $(EPRB0)
-endif
-MAKECMDGOALS := $(filter-out EPRB=%,$(MAKECMDGOALS))
+Usage:  make <target> <extras>
+        make <target> help
 
-ifneq (x$(MIB510),x)
-   PROGRAMMER := STK
-   PROGRAMMER_FLAGS=-dprog=mib510 -dserial=$(MIB510) $(PROGRAMMER_PART) $(PROGRAMMER_EXTRA_FLAGS_MIB)
-endif
-ifneq (x$(EPRB),x)
-  PROGRAMMER := STK
-  PROGRAMMER_FLAGS=-dprog=stk500 -dhost=$(EPRB) $(PROGRAMMER_PART) $(PROGRAMMER_EXTRA_FLAGS_STK)
-endif
-ifdef AVRISP
-  PROGRAMMER := STK
-  PROGRAMMER_FLAGS=-dprog=stk500 -dserial=$(AVRISP) $(PROGRAMMER_PART) $(PROGRAMMER_EXTRA_FLAGS_AVRISP)
+        Valid targets: $(call names,$(VALID_TARGETS))
+        Valid extras: $(call names,$(VALID_EXTRAS))
+$(HELP)
+
+endef
+
+#  If no target or an invalid target is specified, print usage.
+ifeq ($(TARGETS),)
+  ifeq ($(GOALS),)
+    $(error $(USAGE)Please specify a valid target)
+  else
+    $(error $(USAGE)ERROR, "$(GOALS)" does not specify a valid target)
+  endif
 endif
 
-#Sensor Board Defaults
-ifeq ($(SENSORBOARD),)
-	ifeq ($(PLATFORM),mica)
-		SENSORBOARD = micasb
-	endif
-	ifeq ($(PLATFORM),mica2)
-		SENSORBOARD = micasb
-	endif
-	ifeq ($(PLATFORM),mica128)
-		SENSORBOARD = micasb
-	endif
-	ifeq ($(PLATFORM),rene2)
-		SENSORBOARD = basicsb
-	endif
-	ifeq ($(PLATFORM),pc)
-		SENSORBOARD = micasb
-	endif
-	ifeq ($(PLATFORM),mica2dot)
-		SENSORBOARD = basicsb
-	endif
+#  If the user specifically had help on the command line, don't build any
+#  targets, instead display help information and exit with a nice error.
+ifeq ($(filter help,$(GOALS)),help)
+define USAGE
+
+
+Usage:  make $(TARGETS) <extras>
+
+	Valid targets: $(call names,$(VALID_TARGETS))
+        Valid extras: $(call names,$(VALID_EXTRAS))
+$(HELP)
+
+endef
+$(error $(USAGE)Thank you)
 endif
 
-BUILDDIR = build/$(PLATFORM)
-MAIN_EXE = $(BUILDDIR)/main.exe
-MAIN_SREC = $(BUILDDIR)/main.srec
 
-ifeq ($(PLATFORM), pc)
-OPTFLAGS := -g -O0
-PFLAGS := -pthread $(PFLAGS) -fnesc-nido-tosnodes=1000 -fnesc-cfile=$(BUILDDIR)/app.c
-MAIN_TARGET = $(MAIN_EXE)
-else
-PFLAGS := $(PFLAGS) -finline-limit=100000 -fnesc-cfile=$(BUILDDIR)/app.c
-MAIN_TARGET = $(MAIN_SREC)
-endif
+.PHONY: FORCE
 
-PFLAGS := -board=$(SENSORBOARD) $(PFLAGS)
-
-# added options to support network reprogramming. This sets the correct bootloader
-# for mica2 and mica2dot platforms. And this also sets the programmer flag for
-# native ATmega128.
-ifeq ($(PLATFORM), mica) 
-PROGRAMMER_PART=-dpart=ATmega103 --wr_fuse_e=fd
-PROGRAMMER_FLAGS_INP=-dprog=dapa $(PROGRAMMER_EXTRA_FLAGS)
-ifdef AVRISP
-  PROGRAMMER_FLAGS_INP=-dprog=stk500 -dserial=$(AVRISP_DEV) -dpart=ATmega103
-endif
-endif
-ifeq ($(PLATFORM), mica128) 
-PROGRAMMER_PART=-dpart=ATmega128 --wr_fuse_e=ff
-PROGRAMMER_FLAGS_INP=-dprog=dapa $(PROGRAMMER_EXTRA_FLAGS)
-ifdef AVRISP
-  PROGRAMMER_FLAGS_INP=-dprog=stk500 -dserial=$(AVRISP_DEV) -dpart=ATmega128
-endif
-endif
-ifeq ($(PLATFORM), mica2)
-BOOTLOADER=$(XNP_DIR)/inpispm2.srec
-PROGRAMMER_PART=-dpart=ATmega128 --wr_fuse_e=ff
-PROGRAMMER_FLAGS_INP=-dprog=dapa $(PROGRAMMER_EXTRA_FLAGS)
-ifdef AVRISP
-  PROGRAMMER_FLAGS_INP=-dprog=stk500 -dserial=$(AVRISP_DEV) -dpart=ATmega128
-endif
-endif
-ifeq ($(PLATFORM), mica2dot)
-BOOTLOADER =$(XNP_DIR)/inpispm2d.srec
-PROGRAMMER_PART=-dpart=ATmega128 --wr_fuse_e=ff
-PROGRAMMER_FLAGS_INP=-dprog=dapa $(PROGRAMMER_EXTRA_FLAGS)
-ifdef AVRISP
-  PROGRAMMER_FLAGS_INP=-dprog=stk500 -dserial=$(AVRISP_DEV) -dpart=ATmega128
-endif
-endif
-
-######################################################################
-# Rules for documentation generation
-######################################################################
-
-# add documentation flags to ncc, if requested
-DOCS := $(filter docs, $(MAKECMDGOALS))
-MAKECMDGOALS := $(filter-out docs, $(MAKECMDGOALS))
-ifeq ($(DOCS)_x, docs_x)
-build: FORCE
-	@echo "    Making documentation for $(COMPONENT) on $(PLATFORM)"
-	nesdoc $(DOCDIR)/$(PLATFORM) -fnesc-is-app $(PFLAGS) $(CFLAGS) $(COMPONENT).nc
-endif
-
-# dummy rule for 'docs' target - so make won't complain about it
-docs:
-	@true
-
-
-
-######################################################################
-# Rules for debugging
-######################################################################
-
-# add documentation flags to ncc, if requested
-DBG := $(filter debug, $(MAKECMDGOALS))
-MAKECMDGOALS := $(filter-out debug, $(MAKECMDGOALS))
-ifeq ($(DBG)_x, debug_x)
-OPTFLAGS := -O1 -g -fnesc-no-inline
-endif
-
-# dummy rule for 'debug' target - so make won't complain about it
-debug:
-	@true
-
-
-# For those who like debugging optimised code, there's debugopt
-DBGOPT := $(filter debugopt, $(MAKECMDGOALS))
-MAKECMDGOALS := $(filter-out debugopt, $(MAKECMDGOALS))
-ifeq ($(DBGOPT)_x, debugopt_x)
-OPTFLAGS := $(OPTFLAGS) -g
-endif
-
-# dummy rule for 'debug' target - so make won't complain about it
-debugopt:
-	@true
-
-
-
-######################################################################
-# top-level rules.  switch based on MAKECMDGOALS
-######################################################################
-
-#
-# rules for make clean
-#
-ifeq ($(MAKECMDGOALS)_x, clean_x)
-
-PLATFORM=
-
-$(PLATAUX):
-	@echo ""
-
-else
-
-ifeq ($(PLATFORM)_x,_x)
-$(error $(PLATAUX) $(MAKECMDGOALS) $(USAGE))
-endif
-
-MAKECMDGOALS := $(patsubst install.%,install,$(MAKECMDGOALS))
-MAKECMDGOALS := $(patsubst reinstall.%,reinstall,$(MAKECMDGOALS))
-
-#
-# rules for make install <platform>
-#
-ifeq ($(MAKECMDGOALS)_x, install_x)
-
-$(PLATAUX):
-	@true
-
-else
-ifeq ($(MAKECMDGOALS)_x, reinstall_x)
-
-$(PLATAUX):
-	@true
-
-else
-ifeq ($(MAKECMDGOALS)_x, inp_x)
-
-$(PLATAUX):
-	@true
-
-else
-all:
-	for platform in $(PLATFORMS); do \
-		$(MAKE) $$platform $(DOCS) || exit 1; \
-	done
-
-$(PLATFORMS): build
-
-endif
-endif
-endif
-endif
-
-######################################################################
-######################################################################
-##                                                                  ##
-##                      Begin main rules                            ##
-##                                                                  ##
-######################################################################
-######################################################################
-
-ifneq ($(DOCS)_x, docs_x)
-build: $(MAIN_TARGET)
-endif
-
-install: $(MAIN_SREC) FORCE
-	@$(MAKE) $(PLATFORM) re$@ PROGRAMMER="$(PROGRAMMER)" PROGRAMMER_FLAGS="$(PROGRAMMER_FLAGS)"
-
-install.%: $(MAIN_SREC) FORCE
-	$(MAKE) $(PLATFORM) re$@ PROGRAMMER="$(PROGRAMMER)" PROGRAMMER_FLAGS="$(PROGRAMMER_FLAGS)"
-
-ifeq ($(PROGRAMMER),DAPA)  ### program via parallel port
-
-reinstall: FORCE
-	@echo "    installing $(PLATFORM) binary"
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --erase 
-	sleep 1	     
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --upload if=$(MAIN_SREC)
-	sleep 1	     
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --verify if=$(MAIN_SREC)
-
-reinstall.%: FORCE
-	@echo "    installing $(PLATFORM) binary"
-	$(SET_ID) $(MAIN_SREC) $(MAIN_SREC).out `echo $@ |perl -pe 's/^reinstall.//; $$_=hex if /^0x/i;'`
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --erase 
-	sleep 1	     
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --upload if=$(MAIN_SREC).out
-	sleep 1	     
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --verify if=$(MAIN_SREC).out
-
-else  ### Otherwise, program via the stk500 where STK specifies a network address
-
-reinstall: FORCE
-	@echo "    installing $(PLATFORM) binary"
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --erase --upload  if=$(MAIN_SREC)
-
-reinstall.%: FORCE
-	@echo "    installing $(PLATFORM) binary"
-	$(SET_ID) $(MAIN_SREC) $(MAIN_SREC).$*.out `echo $@ |perl -pe 's/^reinstall.//; $$_=hex if /^0x/i;'`
-	$(PROGRAMER) $(PROGRAMMER_FLAGS) --erase --upload  if=$(MAIN_SREC).$*.out
-
-endif  ### Done programming
-
-
-$(MAIN_EXE): $(BUILDDIR) FORCE
-	@echo "    compiling $(COMPONENT) to a $(PLATFORM) binary"
-	$(NCC) -o $(MAIN_EXE) $(OPTFLAGS) $(PFLAGS) $(CFLAGS) $(COMPONENT).nc $(LIBS) $(LDFLAGS)
-	@echo "    compiled $(COMPONENT) to $@"
-	@objdump -h $(MAIN_EXE) | perl -ne '$$b{$$1}=hex $$2 if /^\s*\d+\s*\.(text|data|bss)\s+(\S+)/; END { printf("%16d bytes in ROM\n%16d bytes in RAM\n",$$b{text}+$$b{data},$$b{bss}); }'
-
-$(MAIN_SREC): $(MAIN_EXE)
-	$(OBJCOPY) --output-target=srec $(MAIN_EXE) $(MAIN_SREC)
-
-$(BUILDDIR):
-	mkdir -p $(BUILDDIR)
-
-clean: FORCE
-	rm -rf $(BUILDDIR) 
-	rm -f core.*
-	rm -f *~
-
-# uploading boot loader for network reprogramming. Do this after loading app srec file.
-# using either 'make install' or 'make reinstall'
-inp: FORCE
-	$(PROGRAMER) $(PROGRAMMER_FLAGS_INP) --upload if=$(BOOTLOADER)
-
-FORCE:
-
-.phony: FORCE

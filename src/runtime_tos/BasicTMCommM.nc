@@ -22,7 +22,7 @@ module BasicTMCommM {
   uses {
 
     // This is the output object produced by my Regiment compiler.
-    interface TMModule;
+    //    interface TMModule;
 
     interface Timer;
     interface ReceiveMsg[uint8_t id];
@@ -63,7 +63,7 @@ module BasicTMCommM {
 	if ( call pop_msg(&temp_msg) ) {	  
 	  currently_processing = &temp_msg;
 	  // Execute the handler:
-	  call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
+//////		  call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
 	  // AUTO CACHING FOR NOW!
 	  cached_token = &extra_token;
 	  cached_payload = (TM_Payload*)cached_token->data; 
