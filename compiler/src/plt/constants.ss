@@ -7,7 +7,7 @@
 	(provide 
 
 	 define-regiment-parameter regiment-parameters
-	 regiment-verbose 
+	 regiment-verbose simulation-logger regiment-consec-ids
 	 
          slow-pulse fast-pulse
          

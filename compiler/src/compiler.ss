@@ -1,10 +1,10 @@
 ;; This is the core.  Loaded by both the Chez and PLT versions.
 
 ;;======================================  
-(display "Loading main compiler module.  RegionStreams Demo.")
-(newline)
+;(display "Loading main compiler module.  RegionStreams Demo.")
+;(newline)
 
-(define-regiment-parameter regiment-version 0.5)
+(define-regiment-parameter regiment-version 0.56)
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.

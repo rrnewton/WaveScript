@@ -354,6 +354,13 @@
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
 
+(define (alist-remove x ls)
+  (let loop ((ls ls))
+    (cond
+     [(null? ls) '()]
+     [(eq? (caar ls) x) (loop (cdr ls))]
+     [else (cons (car ls) (loop (cdr ls)))])))
+
 ;; USES equal? !!
 (define list-remove-after
   (lambda (x ls)

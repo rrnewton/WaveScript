@@ -6,7 +6,7 @@
   (require "constants.ss"
            (all-except "helpers.ss" id flush-output-port)
            (all-except "flat_threads.ss" test-this these-tests)
-           (all-except "tsort.ss" test-this these-tests)                   
+           (all-except "tsort.ss" test-this these-tests)            
            "basic_graphics.ss"
            (all-except "graphics_stub.ss" these-tests test-this)
 ;           (prefix textsim: "simulator_nought.ss")
@@ -42,5 +42,5 @@
   )
 
 ;(require simulator_nought_graphics)
-;(test-this)
+;(test-this 'quiet 'verbose)
 

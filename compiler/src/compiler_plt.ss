@@ -11,7 +11,8 @@
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id mvlet rec))
 
-(require "plt/iu-match.ss"
+(require "plt/constants.ss"
+         "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
           "plt/critical_section.ss"
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
@@ -175,7 +176,7 @@
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
 
-(cleanse-world)
+;(cleanse-world)
 (define simulate run-simulation)
 ;(eval (cadr (last testssim)))
 

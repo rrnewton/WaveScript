@@ -48,7 +48,11 @@ all: reg
 mzscheme: compiled/compiler.zo compiled/compiler_plt.zo $(GENERIC_SRC) $(PLT_SRC) $(PLT_MAIN_FILE)
 	(cd plt; $(MAKE) "SRCFILES=$(PLT_SRC)")
 
+chez_native:
+	echo '(compile-file "compiler_chez.ss")' | chez
+
 native: mzscheme_native
+
 
 mzscheme_native: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE) compiled/compiler.zo compiled/compiler_plt.zo
 	(cd plt; $(MAKE) native "SRCFILES=$(PLT_SRC)")

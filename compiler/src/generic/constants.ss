@@ -38,7 +38,6 @@
 ;; In milliseconds
 (define return-window-size 500)
 
-
 ;;======================================================================
 
 (define regiment-parameters (make-parameter '()))
@@ -49,4 +48,10 @@
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
 
+;; This parameter determines whether the compiler should output extra debugging info.
 (define-regiment-parameter regiment-verbose #f)
+
+;; This one optionally provides a target for logging simulation data.
+(define-regiment-parameter simulation-logger #f)
+
+(define-regiment-parameter regiment-consec-ids #t)

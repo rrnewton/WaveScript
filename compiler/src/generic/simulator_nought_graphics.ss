@@ -124,7 +124,7 @@
 	  (sleep-me 0.7)
 	  (close-graphics)
 	  res))
-      All_Threads_Returned]
+      (All_Threads_Returned)]
 ;    Grahpical_Simulation_Done ]
 
     ;; 2 
