@@ -313,3 +313,9 @@
 	    (aggr tmpfunc_12)))
          (m_token_result_7 (v) (soc-return v)))
        (startup f_token_tmpanch_8)))))
+
+
+
+;; Sigh, first class tokens:
+;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
+

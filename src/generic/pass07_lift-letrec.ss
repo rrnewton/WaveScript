@@ -132,11 +132,10 @@
 
 	  [(lambda ,formalexp (free ,free ,[body body-decl]))
 	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now!" free))
-;	   (disp "got lambda" formalexp body body-decl)
-	   (values 
-	    `(lambda ,formalexp
-	       (lazy-letrec ,body-decl ,body))
-	    '())]
+
+	   ;; This is the old version:
+	   (values `(lambda ,formalexp (lazy-letrec ,body-decl ,body)) '())
+	   ]
 	   
 	  [(letrec ([,lhs* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
 ;	   (disp "got letrec" lhs* rhs* rhs-decl* body body-decl)

@@ -77,7 +77,8 @@
   (define (free-vars expr)
     (let loop ((env ()) (expr expr))
       (match expr	 
-	     [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
+	     [,var (guard (symbol? var) (not (regiment-constant? var)))
+		   (if (memq var env) '() (list var))]
 	     [(quote ,x) '()]
 	     [(,prim ,rand* ...) (regiment-primitive? prim)
 	      (let ((frees (map (lambda (x) (loop env x)) rand*)))
@@ -97,7 +98,8 @@
   
   (define (simple-rand? expr)
     (match expr
-	   [,var (guard (symbol? var)) #t]
+	   [,var (guard (symbol? var) (not (regiment-constant? var))) 
+		 #t]
 	   [(quote ,const) (guard (constant? const)) #t]
 	   [,else #f]))
 
@@ -111,7 +113,7 @@
 
 	  ;; Here the name is bound directly to this other name, we
 	  ;; temporarily add an alias, then at the end we replace it.
-          [,var (guard (symbol? var)) 
+          [,var (guard (symbol? var) (not (regiment-constant? var)))
 		;(add-dependency! name (list var))
 		(add-prop! name `(alias-of ,var))
 		]
@@ -134,6 +136,16 @@
 					(free-vars conseq)
 					(free-vars altern)))]
 	  
+	  ;; BETTER HANDLE ALL CONSTANTS HERE
+          [world 
+	   (add-prop! name 'area)
+	   (add-prop! name 'region)
+	   (add-prop! name 'leaf)]
+          [anchor 
+	   (add-prop! name 'area)
+	   (add-prop! name 'leaf)]
+
+
           [(,prim ,rand* ...)
            (guard (regiment-primitive? prim))
 	   (add-dependency! name (apply union (map free-vars rand*)))
@@ -158,7 +170,7 @@
 	   ]
 	   
           [,unmatched
-	   (error 'verify-core "invalid syntax ~s" unmatched)])))
+	   (error 'classify-names "invalid syntax ~s" unmatched)])))
 
   ;;============================================================  
     
@@ -194,7 +206,9 @@
 				  (apply union
 					 (map (lambda (prop)
 					      (match prop
-						     [(alias-of ,x) (cdr (assq x table))]
+						     [(alias-of ,x) 
+						      (disp "PROP IS X" x)
+						      (cdr (assq x table))]
 						     [,prop (list prop)]))
 					      (cdr entry)))))
 			  table))))
