@@ -31,7 +31,9 @@ pth (t,ids,e) = do (e',_) <- pe e
 pe :: Expr -> State Int (Block, Maybe Basic)
 pe e = do (b,rv) <- loop e 
           return (preen_block b, rv)
+	  -- ^^ This is silly in retrospect I should have counted up the free-vars at the end.
     where 
+    loop :: Expr -> State Int (Block, Maybe Basic)
     loop e = 
 	case e of 
        (Econst c) -> return (Block [] [], Just (Bconst c))
@@ -58,22 +60,23 @@ pe e = do (b,rv) <- loop e
        (Eif a b c) -> do newvar <- newid "ifret_" 
 			 (blka,Just ra) <- loop a
 			 (blkb,rb) <- loop b
-			 (blkc,rc) <- loop c			 
+			 (blkc,rc) <- loop c 
+			 let varbinds = (newvar : binds blka ++ binds blkb ++ binds blkc)
 			 let build_assign (Just r) = [Sassign newvar r]
 			     build_assign Nothing  = []
-			 return (Block (newvar : binds blka ++ binds blkb ++ binds blkc)
-				       (stmts blka ++
-					[(Sif ra
-					  (Block [] (stmts blkb ++ build_assign rb)) 
-					  (Block [] (stmts blkc ++ build_assign rc)))]),
-				 Bvar newvar)
-				 
+			 let statements = (stmts blka ++
+					   [(Sif ra
+					     (stmts blkb ++ build_assign rb)
+					     (stmts blkc ++ build_assign rc))])
+			 return (Block varbinds statements, Just $ Bvar newvar)
 
---       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
+       (Eprimapp prim args) -> do args' <- mapM loop args
+				  id <- newid "pres_"
+				  return (gencode id prim args', 
+					  Just $ Bvar id)
 
-{-
-       (Eprimapp prim args) -> Eprimapp prim (map loop args)
-       (Esense) -> Esense
+
+{-       (Esense) -> Esense
 
        -- Sloopcial forms:
        (Esocreturn e) -> Esocreturn $ loop e
@@ -91,6 +94,14 @@ pe e = do (b,rv) <- loop e
 
 -}
 
+-- This really doesn't do much right now.  Theoretically it could do
+-- elaborate primitive-specific things:
+gencode :: Id -> TM.Prim -> [(Block,Maybe Basic)] -> Block
+gencode id p args = 
+    append_blocks (concat_blocks $ map fst args)
+		  (Block [id] [ Sprimapp (Just id) p (map (\ (_, Just b) -> b) args)])
+
+
 bottom = bottom
 test = evalState (flatten_tm a) 
 
@@ -98,9 +109,9 @@ test = evalState (flatten_tm a)
 -- HELLOOPRS:
 
 newid :: String -> State Int Id
-newid = do counter <- get
-	   put (counter + 1)
-	   return (Id (s ++ show counter))
+newid s = do counter <- get
+	     put (counter + 1)
+	     return (Id (s ++ show counter))
 
 append_blocks :: Block -> Block -> Block
 append_blocks (Block binds1 stmts1) (Block binds2 stmts2) =
@@ -112,9 +123,11 @@ concat_blocks blks =
     Block (concat $ map binds blks) 
 	  (concat $ map stmts blks)
 
+-- FIXME #FIXME <TODO> 
+-- #Fixme
 -- This just makes the list of used vars a set. 
 preen_block :: Block -> Block
 --preen_block (Block vars s, rv) = (Block (toSet vars) s, rv)
-preen_block (Block vars s, rv) = (Block vars s, rv)
+preen_block (Block vars s) = (Block vars s)
 
 --toSet = setToList . mkSet

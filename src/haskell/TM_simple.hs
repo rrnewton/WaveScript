@@ -1,6 +1,6 @@
 module TM_simple where
 
-import TM (Const, ConstBind, Time, Id, Token)
+import TM (Const, ConstBind, Time, Id, Token, Prim)
 
 type TokHandler = (Token, [Id], Block)
 
@@ -15,36 +15,38 @@ data Pgm = Pgm { consts    :: [ConstBind],
 	       }
   deriving (Eq, Show, Read)
 
-data Prim = Pplus | Pminus | Pmult | Pdiv
+{-data Prim = Pplus | Pminus | Pmult | Pdiv
 	  | Pless | Pgreater | Pleq | Pgeq
 	  | Plocdiff | Ploc
 --	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
-	  --Pamap | Pafold
-  deriving (Eq, Show, Read)
+  deriving (Eq, Show, Read) -}
 	   
 data Block = Block { binds :: [Id],
 		     stmts :: [Stmt] 
 		   }
   deriving (Eq, Show, Read)
 
+
+-- The (Maybe Id) in primapp and call indicates a possible associated
+-- assignment for the return value of those expressions.
 data Stmt = Svoid
 	  | Sassign Id Basic
           | Sif Basic [Stmt] [Stmt]
-	  | Sprimapp Prim [Basic]
           | Ssense
-            -- Special forms:
-	  | Ssocreturn Basic
-	  | Ssocfinished  
-	  | Sreturn {val :: Basic,
+	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
+	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!
+	  | Semit (Maybe Time) Token [Basic] -- no value
+	  | Sactivate Token [Basic]          -- no value
+	  | Srelay (Maybe Token)             -- no value
+	  | Sreturn {val :: Basic,           -- no value
 		     to  :: Token,
 		     via :: Token,
 		     seed :: Basic,
 		     aggr :: Token}
-	  | Srelay (Maybe Token)
-	  | Semit (Maybe Time) Token [Basic]
-	  | Scall (Maybe Time) Token [Basic]
-	  | Sactivate Token [Basic]
+	  | Ssocreturn Basic                 -- no value
+	  | Ssocfinished                     -- no value
+
   deriving (Eq, Show, Read)
 
 data Basic = -- Stndard forms:
