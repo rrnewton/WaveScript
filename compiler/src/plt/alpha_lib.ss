@@ -4,9 +4,10 @@
    "iu-match.ss"
    (lib "include.ss")
    (lib "pretty.ss")
+   (lib "list.ss")
    (all-except (lib "compat.ss") flush-output-port) ;; gives us define-structure
-   "constants.ss"
-   (all-except "helpers.ss" test-this these-tests)
+   "constants.ss"  
+   (all-except "helpers.ss" test-this these-tests filter)
    (all-except "basic_graphics.ss" test-this these-tests)
    (all-except "graphics_stub.ss" test-this these-tests) 
    "simulator_alpha.ss" ;; Would like to remove this dependency eventually.
@@ -17,3 +18,4 @@
  )
 
 (require alpha_lib)
+(run-alpha-sim)
