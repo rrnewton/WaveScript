@@ -334,16 +334,32 @@
                     (simobject-gobj y))
 	       (not (eq? x y))))) #t]
 
+;4
     [ "First just with a trivial SOC program"
       (run-simulation (vector (lambda () 3) '()))
       All_Threads_Returned ]
 
-    [ "Now we throw in a couple trivial nodeprograms" 
+;5
+    [ "Now we throw in a just one trivial nodeprogram" 
+      (run-simulation (vector (lambda () 3)
+			      (list (lambda () 4))
+			2))
+      All_Threads_Returned ]
+
+    [ "Now a couple trivial nodeprograms" 
+      (run-simulation (vector (lambda () 3)
+			      (list (lambda () 4)
+				    (lambda () 5)))
+			2)
+      All_Threads_Returned ]
+
+;6
+    [ "Just repeat that last one with an open-output-string" 
       (let ((s (open-output-string)))
 	(run-simulation (vector (lambda () 3)
 				(list (lambda () 4)
 				      (lambda () 5)))
-			10))
+			2))
       All_Threads_Returned ]
     
 

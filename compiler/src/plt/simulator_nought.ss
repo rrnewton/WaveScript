@@ -48,8 +48,7 @@
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
               )
- 
- 
+
   )
 
 (require simulator_nought)

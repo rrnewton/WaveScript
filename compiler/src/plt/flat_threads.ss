@@ -9,6 +9,7 @@
   
   (define (run-flat-threads thnks . timeout)
     (let ((threads (map thread thnks)))
+      (printf "Threads: ~s~n" threads)
       (if (null? timeout)
           (begin
             ;; Wait on them all:
@@ -27,3 +28,5 @@
   
   )
   
+
+(require flat_threads) (test-this)
