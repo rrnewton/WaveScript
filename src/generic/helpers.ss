@@ -2112,3 +2112,15 @@
 (define test-this (default-unit-tester "heplers.ss: my messy utils file." these-tests))
 (define testhelpers test-this)
 
+'
+;(call/cc (lambda (out)
+	   (with-error-handlers (lambda args (disp "error disp:" args))
+				(lambda args (disp "error escape:" args) 999)
+				(lambda () (disp "handlers: " 
+						 (error-display-handler)
+						 (error-escape-handler) )
+					(error 'foo "bar")
+					3 ))
+
+
+
