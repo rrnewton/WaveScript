@@ -6,6 +6,6 @@
 
 	(include (build-path ".." "generic" "pass01_eta-primitives.ss"))
 
-	(provide eta-primitives
-		 test-this these-tests test01 tests01)
+	(provide eta-primitives)
+;		 test-this these-tests test01 tests01)
 )
