@@ -29,7 +29,6 @@
 
 (define-language 'nil-language '(begin))
 
-
 ;; Define this once for the simulation so that our answers are deterministic.
 ;; This is a list of <sensereading, xpos, ypos>
 (define the-test-field 

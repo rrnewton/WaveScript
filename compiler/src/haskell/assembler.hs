@@ -9,8 +9,14 @@ This will read
 
 -}
 
+import System
 import System.IO.Unsafe
+import System.Posix.Files
 import Char
+--import Control.Exception
+import GHC.IOBase
+import IO
+--import Data.List
 
 import TM -- Token Machine language definition
 
@@ -36,21 +42,25 @@ map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb)
 -- This returns both a bunch of strings (functions) to be seperately
 -- stuck in the top-level of the module implementation, and a string
 -- that goes within the receive-message handler or wherever.
-process_expr :: Expr -> ([String],String)
-process_expr e = 
+-- The 2nd argument is the "arg environment" for bound variables.
+process_expr :: Expr -> [String] -> ([String],String)
+process_expr e args = 
     case e of
+    -- Constants restricted to 16 bit numbers for now:
     Econst c -> ([],"    return "++show c++"\n")
     Evar id -> ([],"    return "++show id++"\n")
     Elambda formals e -> ([],build_fun formals e)
     Eseq e1 e2 -> 
-	let (a,b) = process_expr e1 
-	    (x,y) = process_expr e2 
+	let (a,b) = process_expr e1 args
+	    (x,y) = process_expr e2 args
 	in (a++x, b++y)	    
+
     Esocreturn e -> ([],"") 
     Esocfinished  -> ([],"") 
     Ereturn e -> ([],"") 
     Erelay (Just t) -> ([],"") 
     Erelay Nothing -> ([],"") 
+
     Eemit mt t exps -> ([],"    TMComm.emit("++tok_id t++");\n")
     Ecall mt t exps -> ([],"")
 
@@ -75,8 +85,18 @@ process_const _ = error "assembler.hs: process_const: can't handle non Econst ex
 process_consts :: [ConstBind] -> String
 process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
-process_handler :: TokHandler -> String
-process_handler (t, args, e) = ""
+-- Returns a string for the handler (goes in the switch statement)
+-- And another string 
+process_handler :: TokHandler -> ([String],String)
+process_handler (t, args, e) = 
+    let (funs,bod) = process_expr e (map (\ (Id x)->x) args) 
+    in (funs,
+	"    case "++tok_id t++": \n"++
+        (concat  
+	 (map2 (\ (Id argname) n -> "      // Argument "++show n++" is '"++show argname++"'\n")
+	 args [0..]))++
+	bod++
+	"    break;\n")
 
 --  "    int i;\n"++
 {-  "    uint8_t length = msg->length;\n"++
@@ -90,10 +110,19 @@ process_handler (t, args, e) = ""
 
 process_handlers :: [TokHandler] -> String
 process_handlers hnds = 
-  "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
-     (foldl (++) "" (map process_handler hnds)) ++
-  "    return msg;\n" ++ 
-  "  }\n\n"
+    let funs = concat $ map (fst . process_handler) hnds
+	bods = map (snd . process_handler) hnds
+    in
+    (concat (map (++"\n") funs))++
+    "\n\n"++
+    "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
+    "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
+    "    int16_t* args = (int16_t*)(payload->args);\n"++
+    "    switch (msg->type) {\n"++			      
+    (foldl (++) "" bods) ++
+    "    }\n"++
+    "    return msg;\n" ++ 
+    "  }\n\n"
 
 process_startup :: [Token] -> String
 process_startup _ = "" 
@@ -137,17 +166,20 @@ build_implementation_header toks =
 --     (map (\ (t,_,_) -> tokname t) toks))
 
 
-build_socfun consts expr = 
+build_socfun consts exprs = 
     "  task void socpgm() {\n"++ 
     process_consts consts ++ 
-    (concat (map (snd . process_expr) expr)) ++ 
+    (concat (map (\x-> snd (process_expr x [])) exprs)) ++ 
     "  }\n\n" ++
     "  command void start_socpgm() {\n"++ 				       
     "    post socpgm();\n"++
     "  }\n\n"
 
 build_module (Pgm consts socconsts socpgm nodetoks startup) = 
-    "includes TestMachine;\n"++
+    -- First spit out just a little header:
+    "// Automatically generated module for "++show (length nodetoks)++" token handlers:\n"++
+    (concat $ map (\ (Token s,_,_) -> "//   "++s++"\n") nodetoks)++
+    "\nincludes TestMachine;\n"++
     "includes TokenMachineRuntime;\n\n"++
     build_module_header nodetoks ++
     "implementation {\n" ++ 
@@ -208,15 +240,36 @@ assemble prog = (build_module prog, build_configuration prog, build_header_file 
 --    process_startup startup
 		    
 
-main = do putStr "Running token machine assembler in Haskell...\n"
---	  str <- readFile "test.tm"
---	  let expr = (read str :: TMPgm)		     
---	  putStr "Tokmac read!\n"
---	  putStr str
-	  putStr "\nNow we dump to file...\n\n"
-	  let (mod,conf,header) = assemble a --expr 
-	  writeFile (modname++"M.nc") mod
-	  writeFile (modname++".nc")  conf
-	  writeFile (modname++".h")   header
+main = do args <- System.getArgs 
+	  let argstr = concatMap (++" ") args
+	  putStr ("System args ("++ show (length args)++") are: " ++ argstr ++ "\n")
+	  let filename = (case args of 
+			  []     -> "test.tm"
+			  [fn] -> fn
+			  _   -> error ("Too many arguments for assembler!: "++argstr))
+--	  exists <- fileExist filename
+{-	  prog <- if exists 
+		  then (do str <- readFile filename
+			   putStr ("Read tokmac from file: "++filename++"\n")
+			   return (read str :: TMPgm))
+		  else (return (a :: TMPgm))-}
+	  prog <- catch (do str <- readFile filename
+			    putStr ("Read tokmac from file: "++filename++"\n")
+			    return (read str :: TMPgm))
+		  (\e -> if IO.isDoesNotExistError e 
+     		         then (do putStr "File not found.  Compiling default tokmac.\n"
+			          return (a :: TMPgm))
+		         else ioError e)
+
+	  putStr "Running token machine assembler in Haskell... \n" 
+	  let (mod,conf,header) = assemble prog
+
+          let (modfile,conffile,headerfile) = 
+		  (modname++"M.nc", modname++".nc", modname++".h")
+	  putStr ("\nNow we dump to files: ("++modfile++", "++conffile++", "++headerfile++")...\n\n")
+
+	  writeFile modfile mod
+	  writeFile conffile conf
+	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
 
