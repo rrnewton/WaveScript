@@ -18,7 +18,7 @@
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
           [(lambda ,formals ,[body])
-	   `(lambda ,formals ,[body])]
+	   `(lambda ,formals ,body)]
           [(letrec ([,lhs* ,[rhs*]] ...) ,[body])
 	   `(letrec ([,lhs* ,rhs*] ...) ,body)]
           [(,prim ,[rand*] ...)

@@ -113,8 +113,9 @@
 (load "generic/repl.ss")
 
 ;; <TODO> Make stream version for this:
-(define text-repl  (repl-builder void void run-simulation))
+(define text-repl  (repl-builder void void run-compiler run-simulation))
 (define graphical-repl
   (repl-builder (lambda () (init-world) (init-graphics))
 		cleanse-world
+		run-compiler
 		graphical-simulation))

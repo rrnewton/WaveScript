@@ -53,7 +53,8 @@
 	   #t]
 	 
           [,var (guard (symbol? var))
-		(if (not (memq var env))
+		(if (and (not (memq var env))
+			 (not (regiment-constant? var)))
 		    (error 'verify-core (format "unbound variable: ~a~n" var)))
 	       		#t]
 

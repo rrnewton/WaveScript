@@ -22,9 +22,11 @@
 	   `(quote ,datum)]                                       
           [,var (guard (symbol? var) (regiment-primitive? var))
 		(let* ([possible-formals '(a b c d e f g h i j)]
-		       [arity (length (cadr (get-primitive-entry var)))]
-		       [formals (list-head possible-formals)])
-		`(lambda ,formals (,var ,@formals)))]          
+		       [args (cadr (get-primitive-entry var))])
+		  (if (regiment-constant? var)
+		      var
+		      (let ([formals (list-head possible-formals (length args))])
+			`(lambda ,formals (,var ,@formals)))))]
           [,var (guard (symbol? var))
 		var]
           [(if ,[test] ,[conseq] ,[altern])
@@ -33,7 +35,7 @@
           [(lambda ,formals ,expr)
            (guard (not (memq 'lambda env)))
 	   `(lambda ,formals
-e	      ,(process-expr expr (append formals env)))]
+	      ,(process-expr expr (append formals env)))]
           [(letrec ([,lhs* ,rhs*] ...) ,expr)
            (guard (not (memq 'letrec env)))
 	   (let ([env (append lhs* env)])

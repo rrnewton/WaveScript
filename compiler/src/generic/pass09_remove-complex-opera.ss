@@ -81,6 +81,9 @@
 (define remove-complex-opera*
   (let ()
 
+    ;; [2004.06.28] HUH!!?? It looks like process-opera* is not
+    ;; CALLED!  Garbage collect this if you get a chance... -=<TODO>=-
+
     ;===========================================================================
     ;process-opera* takes a list of opera*, and returns 2 values as follows:
     ;1) a new list of opera* (with complex opera* replaced by var refs)
@@ -102,13 +105,30 @@
                        ([(ops binds) (process-opera* (cdr operalst))])
                        (values (cons (car operalst) ops) binds))]
                    [,else
-                     (let ((new-var (unique-name'tmp)))
+                     (let ((new-var (unique-name (meaningful-name (car operalst)))))
                        (let-values
                          ([(ops binds) (process-opera* (cdr operalst))])
                          (values
                            (cons new-var ops)
                            (cons `[,new-var ,(car operalst)] binds))))]))))
-
+    
+    ;; This is purely for readability, instead of just tmp_99, I try
+    ;; to give things reasonable names based on what kinds of values
+    ;; they carry.
+    (define (meaningful-name exp)
+      (disp "meaningful" exp)
+      (match exp
+	     [(,prim ,args ...)
+	      (guard (regiment-primitive? prim))
+	      (case prim
+		[(circle circle-at) 'tmp-circ]
+		[(anchor anchor-at) 'tmp-anch]
+		[(smap) 'tmp-sig]
+		[(rfold) 'tmp-fold]
+		[else 'tmp_unknpr])]
+	     [(lambda ,form ,bod) 'tmp-func]
+	     ;; Will this happen??!: [2004.06.28]
+	     [,otherwise 'tmp-nonpr]))
 
     (define (simple? x) 
       (match x
@@ -120,7 +140,7 @@
       (if (simple? x) 
 	  (values x '())
 	  (mvlet ([(res binds) (process-expr x)]
-		  [(name) (unique-name 'tmp)])
+		  [(name) (unique-name (meaningful-name x))])
 		 (values name
 			 (cons (list name res) binds)))))
 
