@@ -35,7 +35,8 @@
 	[(+ - * / car cons cdr
 	    = < <= > >= equal? null? pair? number? even? odd? not)
 	 `(quote ,(eval `(,prim ,@args)))]
-	[else (error 'do-prim "cannot statically compute primitive! ~a" prim)]
+	[else (warning 'do-prim "cannot statically compute primitive! ~a" prim)
+	      `(,prim ,@args)]
 ;	[else `(,prim ,args ...)]
 	))
 

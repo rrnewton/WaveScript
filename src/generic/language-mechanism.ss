@@ -42,6 +42,10 @@
      
 
 
+;; I ended up deciding on a weird format for regions in this
+;; simulator.  They are ((v . node) ...) but then regions of regions
+;; are just lists, and don't repeat the ( . node) portion.
+
 (define-language
   'base-language
   '(begin
@@ -128,7 +132,20 @@
 	   [else (filter f r)])))
      
      (define (cluster r) (clump neighbors? r))
+
+      ;; Since this is frozen in time events have little meaning:
+      (define (when-any f r)
+	(if (ormap f (map car r))
+	    #t #f))
+
+      ;; And until has no meaning at all.
+      (define (until e s1 s2) s1)
+
+
      ))
+
+
+
       
 '(define-language
   'base-language

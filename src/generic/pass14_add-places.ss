@@ -107,6 +107,9 @@
 	  ;; Both of these start in the center and spread to some extent.
 	  [(circle khood) (values expr (new-place) (list (new-place)))]
 
+	  ;; TEMP:
+	  [(circle-at khood) (values expr (new-place) (list (new-place)))]
+
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
 	  ;; Maps are more straightforward, they don't change extent.
@@ -121,8 +124,9 @@
 	  ;; places in the initial region.
 	  ;;   BUT we might use a different tree for the fold.  For
 	  ;; example we might fold up on the global tree, in which
-	  ;; case the final "place" is the SOC.  FOR NOW, we're just
-	  ;; going to assume all folds go to the SOC.
+	  ;; case the final "place" is the SOC.  
+
+	  ;; FOR NOW, we're just going to assume all folds go to the SOC.
 	  [(rfold) (values expr (list (new-place)) 'SOC)]
 	  
 
@@ -136,6 +140,14 @@
 
 	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
 	  [(smap) 	   
+	   (let ([newp (new-place)])
+	     (values expr newp newp))]
+
+	  ;; Events are pretty sketchy at this phase.
+	  ;; It should have the formation place of its stream argument.
+	  ;; But then it could have a membership place whereever it's consumed.  
+	  ;; Same as stream-valued prims like rfold you'd think.
+	  [(when-any) 	   
 	   (let ([newp (new-place)])
 	     (values expr newp newp))]
 		  

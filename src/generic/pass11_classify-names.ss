@@ -154,7 +154,10 @@
        (add-prop! name 'unknown)]
 
       [(Event)
-       (error 'classify-names:reconcile-type "unhandled type: ~s" type)]
+       (add-prop! name 'distributed)
+       (add-prop! name 'event)
+       ;(error 'classify-names:reconcile-type "unhandled type: ~s" type)
+       ]
 
       [else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
 
