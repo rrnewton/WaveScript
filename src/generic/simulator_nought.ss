@@ -62,6 +62,8 @@
 (define radius 20) ;; And the comm radius.
 (define numprocs 20) ;; And the total # processors.
 
+(define SPECIAL_RETURN_TOKEN 'return)
+
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
@@ -74,7 +76,12 @@
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
 ;; NOTE: The lack of a *parent* indicates that the message is a local call:
-(define-structure (msg-object token origin parent count args))
+(define-structure (msg-object token timestamp origin parent count args))
+
+;; [2004.06.28] This is a helper to construct the locally used
+;; messages that don't have a parent, timestamp, etc.
+(define (bare-msg-object rator rands)
+  (make-msg-object rator #f #f #f #f 0 rands))
 
 ;; Here's a helper to check the invariants on a msg-object
 (define (valid-msg-object? mo)
@@ -224,7 +231,7 @@
 		   ;; [2004.06.16] For now I'm raising an error... 
 		   ;; don't know what the correct behaviour should be:
 		   `(let ((call-result 
-			   (sendmsg (make-msg-object ',rator #f #f 0 ',rand*) this)))
+			   (sendmsg (bare-msg-object ',rator ',rand*) this)))
 		      (if (eq? call-result 'multiple-bindings-for-token)
 			  (error 'call "cannot perform a local call when there are token handlers for: ~s"
 				 ,rator)
@@ -349,7 +356,7 @@
 	  (remove-duplicate-tokbinds tbinds))]
 	;; These inputs to handler must be the *child* message-object
 	;; (that is, already updated to have an incremented count, the
-	;; correct parent, etc).  So we can shove it right in our cache.
+	;; correct parent, etc).  So we can shove it right in our 
 	[handler `(lambda (themessage) ;(origin parent count tok args)
 ;		    (disp "Handling! msg" (msg-object-token themessage) 
 ;			  " parent? " (if (msg-object-parent themessage) #t #f)
@@ -374,27 +381,28 @@
 						  (map car tbinds))
 					   [else (error 'node_program "Unknown message: ~s" tok)]
 					   )))])
-
-		      (if (not origin) ;; This is a local call.
-			  (handle-it (make-msg-object tok #f #f #f args))
-			  ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
-			  ;; BUT! No premature optimization.		      
-			  (if (or (not entry) ;; There's no entry for that token name.
-				  (= 0 count)
-				  (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
-			      (let ((newentry themessage))
-				(if (= 0 local-recv-messages)
-				    (sim-light-up 200 0 0))
-				(set! local-recv-messages (add1 local-recv-messages))
-				(hashtab-set! token-cache tok newentry)
-				(handle-it newentry))
-			      (begin 
-				(incr-top-level! 'total-fizzles)
+			  
+			  (if (not origin) ;; This is a local call.
+			      (handle-it (bare-msg-object tok args))
+			      ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
+			      ;; BUT! No premature optimization.		      
+			      (if (or (not entry) ;; There's no entry for that token name.
+				      (= 0 count)
+				      (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
+				  (let ((newentry themessage))
+				    (if (= 0 local-recv-messages)
+					(sim-light-up 200 0 0))
+				    (set! local-recv-messages (add1 local-recv-messages))
+				    (hashtab-set! token-cache tok newentry)
+				    (handle-it newentry))
+				  (begin 
+				    (incr-top-level! 'total-fizzles)
 				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
-				(void))
-			      )
-			  ;; fizzle
-			  ))))])
+				    (void))
+				  )
+			      ;; fizzle
+			      )))
+		    ))])
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
 	  [define handler ,handler] 
 	  [define this-message #f];)
@@ -461,8 +469,8 @@
 		    (incr-top-level! 'total-messages)
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
 
-		    (let ([ourentry   (make-msg-object t this #f count m)]
-			  [childentry (make-msg-object t this this (add1 count) m)])
+		    (let ([ourentry   (make-msg-object t (cpu-time) this #f count m)]
+			  [childentry (make-msg-object t (cpu-time) this this (add1 count) m)])
 		      ;; Is it fair for emitting to overwrite our cache entry?
 		      ;; I need to do it so that the return-handler can figure things out.
 		      (hashtab-set! token-cache t ourentry)
@@ -475,7 +483,7 @@
 	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 					;		    (disp (list "FLOODING" t m))
 	     (let ((msg (if (null? m) '() (car m))))
-	       (for-each (lambda (nd) (sendmsg (make-msg-object t this this 0 m) nd))
+	       (for-each (lambda (nd) (sendmsg (make-msg-object t (cpu-time) this this 0 m) nd))
 			 all-objs))]
 
 	   ;; This is just a cludge for now.
@@ -499,7 +507,7 @@
 		     ;; at multiple nodes.  Need to make sure there's a
 		     ;; dependency relationship here, and that a killing a
 		     ;; false leader kills all its subsequent doings.
-		     (sendmsg (make-msg-object t #f #f 0 '()) leader)))]
+		     (sendmsg (make-msg-object t (cpu-time) #f #f 0 '()) leader)))]
 
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -583,11 +591,61 @@
 		nodebinds
 		(process-binds 
 		 socbinds
-		(process-tokbinds 
+		(process-tokbinds
 		 nodetoks generic-defs			
 		 `(begin ,@(map process-statement 
 				socstmts)
 			 'soc_finished))))))]
+
+       ;; Return messages are special, they're handled somewhat "under
+       ;; the table" from the normal token system.  This takes a batch
+       ;; of return messages, processes them, and sends them onwards.
+       [handle-returns 
+	(lambda (returns)
+	  (let ([channels (partition-equal returns
+			     (lambda (ob1 ob2)
+			       (match (list ob1 ob2)
+				      [((,val1 ,to1 ,via1 ,seed1 ,aggr1)
+					(,val2 ,to2 ,via2 ,seed2 ,aggr2))
+				       (eq? to1 to2)]
+				      [,else (error 'simulator_nought:handle-returns
+						    "invalid return messages: ~n ~s ~n ~s"
+						    ob1 ob2)])))])
+	    (for-each 
+	     (lambda (returns) ;; Each chunk of returns going to the same target.
+	       (let ([returns-args (map msg-object-args returns)]
+		     [timestamps (map msg-object-timestamp returns)])
+	       (let ([vals (map car returns-args)]
+		     [tos (map cadr returns-args)]
+		     [vias (map caddr returns-args)]
+		     [seeds (map cadddr returns-args)]
+		     [aggrs (map (lambda (ls) (list-ref ls 4)) returns-args)])
+		 (DEBUG
+		  ;; These had better have homogenous seeds and aggregators.
+		  ;; (Although theoretically, this restriction could be lifted.)
+		  (if (not (and (apply myequal? aggrs)
+				(apply myequal? seeds)
+				(apply myequal? vias)
+				(apply myequal? tos)))
+		      (error 'simulator_nought:handle-returns
+			     "not all these return's args were compatible: ~n~s"
+			     returns-args)))	       
+		 (let ([to  (car tos)]
+		       [via  (car vias)]
+		       [seed (car seeds)]
+		       [aggr (car aggrs)]  )
+		   (let ([aggregated-value
+			  (let loop ([acc seed]
+				     [vals vals]
+				     [timestamps timestamps])
+			    (if (null? vals) acc
+				(loop (handler (bare-msg-object aggr (list (car vals) acc)))
+				      (cdr vals)
+				      (cdr timestamps))))])
+		     (sim-emit SPECIAL_RETURN_TOKEN 
+			       (list aggregated-value to via seed aggr) count)
+
+	     channels)))]
        
        [nodeprog
 	`(lambda (SOC-processor this object-graph all-objs)
@@ -606,37 +664,48 @@
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
 		   ,@(map list starttoks)
-		   (let main-node-loop ([incoming (simobject-incoming this)])
+		   ;; [2004.06.28] The simulator is asynchronous, yet
+		   ;; communication should be vaguely synchronized by
+		   ;; the fact that this loop handles a batch of
+		   ;; incoming messages at a time before yielding.
+		   ;; Hopefully "return" messages from all the
+		   ;; children will make their way into a single one
+		   ;; of these batches.  We'll see.
+		   (let main-node-loop ([incoming (simobject-incoming this)] 
+					[returns '()])
 		     (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
 		       'node-stopped]
 		      [(null? incoming)
+		       (handle-returns returns)
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
-		       (main-node-loop (simobject-incoming this))]
+		       (main-node-loop (simobject-incoming this) '())]
 		      [else
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
-		       (let ((msg (last incoming)))
-			 
+		       (let ((msg (last incoming)))			 		       
 			 (DEBUGPRINT
 			  ;; Print out the process number when we handle a message:
 			  (printf "~s." (node-id (simobject-node this))))
-
 			 ;; Pop that message off:
 			 (if (null? (cdr incoming))
 			     (set-simobject-incoming! this '())
 			     (list-remove-last! incoming))
-			 
 			 (DEBUGMODE
 			  (if (not (valid-msg-object? msg))
 			      (error 'node-handler 
 				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
 				     msg incoming)))
-			 (handler msg)
-			 (main-node-loop (simobject-incoming this))
-			 )])
+
+			 (if (eq? SPECIAL_RETURN_TOKEN (msg-object-token msg))
+			     (main-node-loop (simobject-incoming this) 
+					     (cons msg returns))
+			     (begin (handler msg)
+				    (main-node-loop (simobject-incoming this)
+						    returns))
+			 ))])
 		     ))))))])
        (DEBUGPRINT
 	(printf "~nGOT TOKEN HANDLERS:~n" )

@@ -303,6 +303,7 @@
 
 (define tester-eq? (eq-deep lenient-compare?))
 (define tester-equal? (eq-deep lenient-compare?))
+
   
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
 ;; file should define "these-tests" and "test-this" for unit testing.
@@ -1496,6 +1497,30 @@
 	(map do-entry graph)))))
 
 (define gmap graph-map)
+
+
+(define partition
+  (lambda (lst f)
+    (letrec ((loop
+               (lambda (lst acc1 acc2)
+                 (cond
+                   [(null? lst) (list acc1 acc2)]
+                   [(f (car lst)) (loop (cdr lst) (cons (car lst) acc1) acc2)]
+                   [else (loop (cdr lst) acc1 (cons (car lst) acc2))]))))
+      (loop lst '() '()))))
+
+(define partition-equal
+  (lambda (lst eq)
+    (let loop ((lst lst))
+      (if (null? lst) '()
+	  (let* ([first (car lst)]
+		 [pr (partition (cdr lst) 
+				(lambda (x) (eq x first)))]
+		 [ingroup (car pr)]
+		 [outgroup (cadr pr)])
+	    (cons (cons first ingroup) 
+		  (loop outgroup)))))))
+
 
 ;; Tells whether or not a graph is cyclic.  
 ;; Requires canonical form where each node has exactly one entry.
