@@ -678,6 +678,10 @@
 				    #f)])
 			   
 			   (disp "AGGREGATED:"  (node-id (simobject-node this)) this )
+
+			   ;; Now that the message is aggregated, we check to 
+			   ;; see if this node is the destination..
+			   (if (this
 			   
 			   (sendmsg  
 			    (make-msg-object 
