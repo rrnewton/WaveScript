@@ -84,10 +84,12 @@
     (define (with-error-handlers display escape th)
       (call/cc (lambda (out)
                  (parameterize ([error-display-handler display]
-                                [error-escape-handler escape])
-                   ;; If the escape procedure is not called, we must destroy the 
-                   (out (th))))))
-
+                                [error-escape-handler 
+                                 (lambda args
+                                   (let ((result (apply escape args)))
+                                   ;; If the escape procedure is not called, we must destroy the 
+                                     (out result)))])
+                   (th)))))
   
   (define (warning sym . args)
     (printf "Warning ~s: ~a " sym (apply format args)))
@@ -152,5 +154,5 @@
  
   )
 
-(require helpers)
+;(require helpers)
 
