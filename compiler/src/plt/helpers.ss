@@ -89,7 +89,6 @@
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin
-   code-name label-name #;method-name
    
    ;; Hmm, not sure what meaning immediate has here..
    immediate? constant? datum? formalexp? cast-formals default-unit-tester tester-eq? 

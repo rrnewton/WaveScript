@@ -2,11 +2,15 @@
 (module simulator_nought mzscheme
   (require "iu-match.ss"
            (lib "include.ss")
-	   (lib "pretty.ss")
+	   (lib "pretty.ss")          
            ;; NO SLIB:
 ;           (lib "load.ss" "slibinit")
-           (lib "compat.ss")
+           (lib "compat.ss") ;; gives us define-structure
+           )
+  (require 
+           "constants.ss"
            (all-except "helpers.ss" id flush-output-port)
+           (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
 ;           (lib "9.ss" "srfi")
  ;          "engine.ss"
            (all-except "flat_threads.ss" test-this these-tests)
@@ -18,6 +22,7 @@
 	   (all-from "flat_threads.ss") 
 	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
 ;	   yield-thread last
+           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
 
   
@@ -55,4 +60,5 @@
               )
   )
 
-;(require simulator_nought)
+(require simulator_nought)
+(define (g) (cadadr these-tests)) 

@@ -830,8 +830,8 @@
     ;; here, *at build time*.
     ;;   THUS, the resulting pack-o-thunks that build-simulation returns
     ;; shouldn't have any awkward dependencies on global vars (hopefully).
-    (let ([socfun SIM-socfun]
-	  [nodefun SIM-nodefun]
+    (let ([socfun (top-level-value 'SIM-socfun)] ;; Must indirect to the toplevel value because of PLT modules.
+	  [nodefun (top-level-value 'SIM-nodefun)]
 	  [our-object-graph object-graph]
 	  [our-all-objs all-objs])
       (vector 
@@ -846,8 +846,8 @@
 ;; simulator to evaluate the expression.  It'll be hard to write test
 ;; cases with meaningful results, though.
 ;; <TODO> FINISh
-(define (simulator-nought-language expr)
-  (void)
+;(define (simulator-nought-language expr)
+;  (void)
 
 ;;===============================================================================
 
@@ -961,13 +961,15 @@
 (define these-tests
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
-
+    
     ;; This is an evil test which mutates the global environment!  (By
     ;; evaluating generic-defs.)  Yech!
     ;; This test goes to a lot of work to set up a stub world to get
     ;; handle-returns to run...
     [ "test handle-returns"
       (begin
+	;; Have to give a pure
+	(eval '(define handler 'initialized-by-test-case-for-handle-returns))
 	(for-each eval generic-defs)
 	;; Set up a two-node graph:
 	(let ([a (random-node)]
@@ -993,13 +995,14 @@
 		  (fluid-let ([handler
 			       (lambda (msg)
 				 (disp "RUNNING TEST HANDLER: " msg)
-				 (let ([token-cache 
-				      (list (make-msg-object 'via    ;; token
-							     #f      ;; timestamp
-							     a_simob ;; origin
-							     a_simob ;; parent
-							     1       ;; count
-							     '()))])
+				 (let ([token-cache (make-default-hash-table) ])
+				   (hashtab-set! token-cache 'via 
+						 (make-msg-object 'via    ;; token
+								  #f      ;; timestamp
+								  a_simob ;; origin
+								  a_simob ;; parent
+								  1       ;; count
+								  '()))
 				   (,(build-handler '([plus (x y) (+ x y)])) msg)))])
 		    (handle-returns (list this-message))
 		    ))))))))
