@@ -6,7 +6,7 @@ BINPATH =`mzscheme -m --eval '(begin (display (build-path "compiled" "native"  (
 
 #all: native bytecode
 
-all: compiled/constants.zo compiled/flat_threads.zo compiled/graphics_stub.zo \
+all: compiled/constants.zo compiled/flat_threads.zo compiled/graphics_stub.zo compiled/helpers.zo \
      compiled/pass00_verify-regiment.zo \
      compiled/pass01_eta-primitives.zo \
      compiled/pass02_rename-vars.zo \
@@ -41,6 +41,7 @@ compiled/pass03_remove-unquoted-constant.zo: pass03_remove-unquoted-constant.ss 
 
 compiled/helpers.zo: helpers.ss ../generic/helpers.ss
 	mzc --auto-dir --zo helpers.ss
+#	mzc -c helpers.ss
 
 
 # 
@@ -110,9 +111,13 @@ compiled/helpers.zo: helpers.ss ../generic/helpers.ss
 native:
 	(cd $(BINPATH); $(MAKE))
 
-clean:
-	(cd compiled; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
-	(cd compiled/native; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
+
+clean: 
+	rm compiled/*.zo
+
+#clean:
+#	(cd compiled; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
+#	(cd compiled/native; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
 
 
 helpers:
