@@ -54,6 +54,28 @@
      (startup ) ;; seed tokens
      )))
 
+;; This takes the maximum distance to a leaf.  It spreads a gradient
+;; and returns values back.  NO AGGREGATION.
+(define example-nodal-prog3
+  '(program
+    (bindings )
+    (socpgm (bindings ) 
+;	    (tokens [tok1_return (v)
+;		       (disp "Got return!" v)])
+	    (emit tok1))
+    (nodepgm	
+     (tokens
+      [tok1_return (v)
+		   (disp "Got return!" v)]
+      [tok1 ()
+	    (call tok2)	    	    
+	    (relay)
+	    (return (dist))]
+      [tok2 () (light-up 0 255 0)])
+     (startup ) ;; seed tokens
+     )))
+
+
 (define example
   '(program
     (bindings (result_2 '3))
