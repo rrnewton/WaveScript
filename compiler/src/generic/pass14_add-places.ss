@@ -38,6 +38,7 @@
 ;;;               | X_<n>    (Some place...)
 ;;;               | (X_<n>)  (Some set of places (an area)...)
 
+;; NOTE: An unknown place is not necessarily known to be a single location or an area!! 
 
 ;;; [2004.08.13] Need to consider conditionals:
 ;;;   (if #t (circle...) (khood...))
