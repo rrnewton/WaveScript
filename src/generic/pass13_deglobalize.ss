@@ -92,7 +92,6 @@
       (lambda args
 	(string->symbol (apply string-append (map symbol->string args)))))
 
-
 (define activate-prim-code
   (lambda (prim memb args parent)
     (case prim
@@ -156,16 +155,21 @@
 	       ;[,memb () ]
 	       )]
 
-	    [(smap)
+	    [(rmap)
 	     (let* ([rator_tok (car args)]
-		   [region_tok (cadr args)]
-		   [parent (get-membership-name region_tok)])
-	       `([,parent (v) (call ,form v)]
-		 [,form (v) 
-			(call ,memb
-			      (call ,rator_tok v))]
-		 ;[,memb (v) ...]  ;; This carries the value actively...
-		 ))]
+		    [region_tok (cadr args)]
+		    [parent (get-membership-name region_tok)]
+		    [push? (not (check-prop 'region region_tok))])
+	       (if push?
+		   `([,parent (v) (call ,form v)]
+		     [,form (v)
+			    (call ,memb
+				  (call ,rator_tok v))])
+		   `([,parent () (activate ,form)]
+		     [,form () 
+			    (call ,memb (call ,rator_tok))
+			    (timed-call ,heartbeat ,form)])
+		   ))]
 
 	    ;; [2004.06.28] This may or may not take an argument, and
 	    ;; that depends on the *type* that it's specialized too,
@@ -177,25 +181,27 @@
 	    ;; For the moment I will try to always pass the argument,
 	    ;; or maybe we'll go for polymorphism on the part of this
 	    ;; formation token....
-	    [(rfold)
+	    [(rfold) ;; CHECK
 	     (let  ([rator_tok (car args)]
 		    [seed_val (cadr args)]
 		    [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
 		    )
-	       (let ([parent (get-membership-name region_tok)])
-	       `([,parent (v) (activate ,form v)]
-		 [,form (v) 
-			(return
-			     v              ;; Value
-;			     ,return_handler ;; To
-			     (to ,memb) ;; To
-			     (via ,parent)           ;; Via
+	       (let ([parent (get-membership-name region_tok)]
+		     [push? (not (check-prop 'region region_tok))])
+		 `([,parent ,(if push? '(v) '()) 
+			    ,(if push? 
+				 `(call ,form v)
+				 `(activate ,form v))]
+		   [,form ,(if push? '(v) '())
+			  (return
+			     ,(if push? 'v 'this)                     ;; Value
+			     (to ,memb)             ;; To
+			     (via ,parent)          ;; Via
 			     (seed ,seed_val)       ;; With seed
 			     (aggr ,rator_tok))     ;; and aggregator
-			;; FIXME FIXME
-			(timed-call ,(/ 1000 heartbeat) ,form)
-			]
+			  ,@(if push? '()
+				`((timed-call ,(/ 1000 heartbeat) ,form)))]
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		 )))]
 
@@ -203,7 +209,8 @@
 	    [(anchor-at)
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
-		   [target (car args)])
+		   [target (car args)]
+		   )
 	       `([,form () (flood ,consider)]
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
 				   (elect-leader ,memb)
@@ -388,7 +395,7 @@
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,expr]) '())]
 
-          [(,prim ,rand* ...) (guard (distributed-primitive? prim))   
+          [(,prim ,rand* ...) (guard (distributed-primitive? prim))
 	   (mvlet ([(form memb) (token-names name)])
 		  (values '() 
 			  (append 
@@ -415,8 +422,10 @@
 	 ;; Make sure the final value is tagged simple:
 ;	 (if (memq 'local (assq fin proctable))
 ;	 (let ((temp (filter (lambda (ls) (memq 'final ls)
+	 (let* ([leaves (map car (filter (lambda (ls) (memq 'leaf (cdr ls))) table))]
+		[leaftoks (map (lambda (ign) (unique-name 'leaf-pulsar)) leaves)])
 
-	 (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin))])
+	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin))])
 		
    ;	       (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
 		;; This pass uses the same language as the prior pass, lift-letrec
@@ -429,25 +438,20 @@
 ;					  `(socpgm (bindings ) (call ,entry))
 					  `(socpgm (bindings ) (void))
 					  )
-			      (nodepgm (tokens ,@tokenbinds)
+			      (nodepgm (tokens ,@tokenbinds
+					       ;; Make a pulsator for each leaf:
+					       ,@(map (lambda (leaf leaftokname) 
+							`[,leaftokname () 
+							    (call ,(get-formation-name leaf))
+							    (timed-call ,slow-pulse ,leaftokname)])
+						      leaves leaftoks))
 				       				       
 				       ;; <TODO> It's the LEAVES that need priming:
 				       ,(if (assq entry constbinds)
 					    `(startup )
-					    ;; How did this make sense:
-					;`(startup ,entry)
-					    (let ([leaves (map car 
-							       (filter (lambda (ls) (memq 'leaf ls)) table))])
-					      `(startup ,@(map get-formation-name leaves)))
-					    )
+					    `(startup ,@leaftoks)))
 				       ))))
 	 ]))))
-
-;;;  <Pgm> ::= (program <SOCPgm> <NodePgm>)
-;;;  <SOCPgm> ::= <Statement*>
-;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
-
-
 
 ;========================================
 
@@ -492,8 +496,8 @@
 		    "Pass10: Pass to convert global to local program."
 		    these-tests))  
 
-(define test12 test-this)
-(define tests12 these-tests)
+(define test13 test-this)
+(define tests13 these-tests)
 
 ;==============================================================================
 

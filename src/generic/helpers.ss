@@ -87,9 +87,10 @@
 	 sense neighbors ))
 
 
+;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;; Ok, redoing those with type information:
 ;; The types I'm using right now are:
-;;   Anchor, Region, Signal, Event, Node, Location, Reading
+;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
 ;;   Function, Number, Float, Object
 
 ;; Since I'm going to go statically typed eventually, Object is just
@@ -157,7 +158,8 @@
 (define regiment-distributed-primitives 
   '(
     
-    (rmap           (Function Region) Region)
+    (rmap           (Function Region) Area)
+
     (rfold          (Function Object Region) Signal)
     (smap           (Function Signal) Signal)
 
@@ -172,23 +174,23 @@
     (khood-at       (Location Integer) Region)
 
     ;; This one returns a region of regions:
-    (cluster        (Region) Region)
-    (sparsify       (Region) Region)
-    (border         (Region) Region)
-;    (planarize      (Region) Region)
-;    (treeize        (Region) Region)
+    (cluster        (Area) Area)
+    (sparsify       (Area) Area)
+    (border         (Area) Area)
+;    (planarize      (Area) Area)
+;    (treeize        (Area) Area)
 
-    (filter         (Function Region) Region)
-    (union          (Region Region) Region)
-    (intersect      (Region Region) Region)
+    (filter         (Function Area) Area)
+    (union          (Area Area) Area)
+    (intersect      (Area Area) Area)
 
     ;; Prolly not the right type:
     (until          (Event Signal Signal) Signal)
 
     ;; What was this one supposed to do and what was it's type?
 ;    (when           (Event Signal) Signal)
-    (when-any        (Function Region) Event)
-    (when-percentage (Float Function Region) Event)
+    (when-any        (Function Area) Event)
+    (when-percentage (Float Function Area) Event)
 
 ;     neighbors 
 ;    time-of
