@@ -129,7 +129,7 @@
 
 (define (random-node) 
   (make-node 
-   (random 100);(expt 2 32))
+   (random 100)
    (list (random world-xbound)
 	 (random world-ybound))
    ))
@@ -250,12 +250,13 @@
 		   ;`(handler (make-msg-object ',rator #f #f 0 ',rand*))
 		   ;; [2004.06.16] For now I'm raising an error... 
 		   ;; don't know what the correct behaviour should be:
-		   `(let ((call-result 
+		   ;; NOTE: there is the possibility of variable capture with 'call-result'
+		   `(let ((call-result-9758
 			   (sendmsg (bare-msg-object ',rator ',rand*) this)))
-		      (if (eq? call-result 'multiple-bindings-for-token)
+		      (if (eq? call-result-9758 'multiple-bindings-for-token)
 			  (error 'call "cannot perform a local call when there are token handlers for: ~s"
 				 ,rator)
-			  call-result))
+			  call-result-9758))
 		   ]
 
 ;		  [(if ,a ,b ,c)
@@ -475,7 +476,7 @@
 
     [define sendmsg (lambda (data ob)
 		      (disp "IN sendmsg")(disp "  this = " this)
-;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
+		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
@@ -611,7 +612,7 @@
 	    (lambda (returns)
 	      (DEBUGMODE (if (not (list? returns)) 
 			     (error 'handle-returns "must take a list: ~s" returns)))
-	      (disp "handling rets" returns (list? returns))
+	      (disp "handling rets from " (node-id (simobject-node this)) returns (list? returns))
 	      (flush-output-port)
 	      (let ([channels (partition-equal returns
 			        (lambda (ob1 ob2)
@@ -647,7 +648,7 @@
 			   [aggrs (map (lambda (ls) (list-ref ls 4)) returns-args)]
 			   [senders* (map (lambda (ls) (list-ref ls 5)) returns-args)])
 		       (DEBUGMODE
-			;; These had better have homogenous seeds and aggregators.
+			;; These had better have homogenous seeds and aggregators!!!
 			;; (Although theoretically, this restriction could be lifted.)
 			(if (not (and (apply myequal? aggrs)
 				      (apply myequal? seeds)
@@ -661,13 +662,73 @@
 			     [seed (car seeds)]
 			     [aggr (car aggrs)]
 			     [senders (apply append senders*)])
+			 ;; Now we've verified homogeneity among the batch 
+			 ;; and know the parameters for this return.
+
+
 ;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
 ;			 (cons seed vals))
 
-			 ;; DISABLING AGGREGATION FOR THE MOMENT..
+			 ;; <FIXME> DISABLING AGGREGATION FOR THE MOMENT..
 			 (let ([aggregated-value
 				(if aggr 
-				    #f #;(let loop ([acc seed]
+				    #f ;; FIXME
+				    #f)])
+			   
+			   (disp "AGGREGATED:"  (node-id (simobject-node this)) this )
+			   ;; Now that the message is aggregated, we check to 
+			   ;; see if this node is the destination..
+			   
+			   ;; Try to look up the via token in the local cache.
+			   (let ([via_parent
+				  (let ([entry (hashtab-get token-cache via)])
+				    (if entry 
+					;; Target is the parent of the via token
+					(msg-object-parent entry)
+					(error 'simulator_nought:handle-returns
+					       "Should not happen! Could not get entry for via token! (at node ~s): ~s"
+					       (node-id (simobject-node this)) via)))])
+			     ;; If via_parent is #f, that means that *THIS* is the parent.
+			     (if (not via_parent)
+				 ;; So we must fire the *to* token.  We fire it once for each return val actually.
+				 (begin
+				   (disp "RETURN accomplished: #vals: " 
+					 (if aggregated-value 1 (length vals)))
+				   (for-each
+				    (lambda (retval)
+				      ,(process-statement `(call to retval)))
+				    (if aggregated-value
+					(list aggregated-value)
+					vals)))
+				 ;; Otherwise we must pass this return onto the next:
+				 (sendmsg  
+				  (make-msg-object 
+				   SPECIAL_RETURN_TOKEN ;; Token
+				   (cons (cpu-time) (apply append timestamps)) ;; Timestamp
+				   this ;; Origin
+				   this ;; Parent
+				   (map add1 counts) ;; Count - these are the leaf counts.
+				   ;; And here we build the arguments for this leg of the return journey:
+				   (list 
+				    (if aggregated-value 
+					(list aggregated-value)
+					;; If there is no aggregator, then we just 
+					;; accumulate *all* those values together!
+					(begin (DEBUGASSERT 
+						(or (andmap list? vals)
+						    (error 'assert "hmm vals not lists: ~s" vals)))
+					       (apply append vals)))
+				    to via seed aggr 
+				    (cons (node-id (simobject-node this)) senders)
+				    ) ;; Args 
+				   )
+				  via_parent) ;; Sendmsg end
+				 )))))))
+		 channels) ;; End for-each
+		))] ;; End handle-returns   
+    )) ;; END Generic-defs
+
+'(let loop ([acc seed]
 					       [vals vals]
 					       [timestamps timestamps])
 				      ;(disp "LOOPIng: " acc vals timestamps)
@@ -675,43 +736,6 @@
 					  (loop (handler (bare-msg-object aggr (list (car vals) acc)))
 						(cdr vals)
 						(cdr timestamps))))
-				    #f)])
-			   
-			   (disp "AGGREGATED:"  (node-id (simobject-node this)) this )
-
-			   ;; Now that the message is aggregated, we check to 
-			   ;; see if this node is the destination..
-			   (if (this
-			   
-			   (sendmsg  
-			    (make-msg-object 
-			     SPECIAL_RETURN_TOKEN ;; Token
-			     (cons (cpu-time) (apply append timestamps)) ;; Timestamp
-			     this ;; Origin
-			     this ;; Parent
-			     (map add1 counts) ;; Count - these are the leaf counts.
-			     (list (if aggregated-value 
-				       aggregated-value 
-				       ;; If there is no aggregator, then we just 
-				       ;; accumulate *all* those values together!
-				       (begin (DEBUGASSERT 
-					       (or (andmap list? vals)
-						   (error 'assert "hmm vals not lists: ~s" vals)))
-					      (apply append vals)))
-				   to via seed aggr 
-				   (cons (node-id (simobject-node this))
-					 senders
-					 ))) ;; Args 
-			    ;; Target is the parent of the via token
-			    (let ([entry (hashtab-get token-cache via)])
-			      (if entry 
-				  (msg-object-parent entry)
-				  (error 'simulator_nought:handle-returns
-					 "Could not get entry for via token! (at node ~s): ~s"
-					 (node-id (simobject-node this)) via))))
-			   )))))
-		 channels)))]	   
-	   )) ;; END Generic-defs
 
 ;; Takes: a program in the language of pass10_deglobalize
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.

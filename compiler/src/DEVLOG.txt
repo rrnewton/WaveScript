@@ -75,6 +75,10 @@ simulator to work.  It'll run for a while and then get an invalid
 application for soc-return.  How does it suddenly come out of that
 fluid-let?  What's with that?
 
+[2004.07.07]
+Ok, need to drive to finish up a demo for tomorrow.  I don't have
+*returns* working right.  That's the priority for right this second.
+Making a big fat complex test in the test-suite for simulator_nought.ss.
 
 
 

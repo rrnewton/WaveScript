@@ -148,3 +148,4 @@
         avg))))
 
 
+(define (g) (eval (cadadr testssim)))
