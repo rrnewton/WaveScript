@@ -10,8 +10,7 @@ GENERIC_SCM_SRC = generic/helpers.ss \
 MAIN_FILE = compiler.ss
 
 
-PLT_SRC = helpers demo_display \
-          tests driver         \
+PLT_SRC = helpers \
           pass00_verify-regiment           \
           pass01_rename-var                \
           pass02_remove-unquoted-constant  \
@@ -21,7 +20,11 @@ PLT_SRC = helpers demo_display \
           pass06_lift-letrec-body          \
           pass07_remove-complex-opera      \
           pass08_verify-core               \
-          pass10_deglobalize
+          pass10_deglobalize               \
+          flat_threads basic_graphics      \
+          demo_display graphics_simple     \
+          simulator_nought simulator_nought_graphics \
+          tests driver 
 #          pass09_separate-graph.ss
 #          language-mechanism lang00  \
 

@@ -1,0 +1,23 @@
+
+(module basic_graphics mzscheme
+  (require (lib "include.ss")
+           (prefix plt: (lib "graphics.ss" "graphics")))
+  (provide open-graphics close-graphics)
+  
+  ;; This defines window-width and window-height presets;.
+  (include "../generic/basic_graphics.ss")
+  
+  (define the-win #f) 
+  (define (open-graphics) 
+    (plt:open-graphics)
+    (set! the-win (plt:open-viewport "Basic graphics for simulator." 
+                                 window-width window-height))
+    )
+  (define (close-graphics) 
+    (if (not the-win) (error 'close-graphics 
+                             "basic_graphics.ss: the graphics system is not open!"))
+    (plt:close-viewport the-win)
+    (set! the-win #f) 
+    (plt:close-graphics))
+  
+  )

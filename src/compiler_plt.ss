@@ -6,7 +6,7 @@
 ;(module compiler_plt mzscheme
 
 (require (lib "include.ss")
-         "plt/helpers.ss"
+         (all-except "plt/helpers.ss" id)
          ;	 "plt/language-mechanism.ss"
          
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
