@@ -1,4 +1,8 @@
 
+;; Doing what Matt said and simplifying.
+;; This took little time and appears to work.  Fantastic.
+
+
 ;; This is written in totally imperative style.
 ;; One buffer and one vtime, no reason to thread them otherwise.
 (define (run-alpha-simple-scheduler sim stopping-time?)

@@ -3,10 +3,16 @@
 ;; cps-tokmac
 ;; This pass does the CPS transformation for the token machine.
 
+;; INIT message = 0
+;; CALL message = 1
+
 (define cps-tokmac
   (let ()
+    (define INIT 0)
+    (define CALL 0)
+
     ;; Process an expression in effect context.
-    (define process-effect
+    '(define process-effect
       (lambda (env tokens this-token)
 	(lambda (stmt)
 	  (match expr
@@ -57,11 +63,17 @@
 	      (error 'cleanup-token-machine:process-expr 
 		     "bad expression: ~s" otherwise)]
 	     ))))	
+
+    (define (subst-freevars e)
+      (let ([fvs (free-vars e)])
+	
+	
+      
     
     ;; Process an expression in value context.
     (define process-value 
       (lambda (env tokens this-token)
-	(lambda (expr)
+	(lambda (expr pvk)
 	  (match expr
 	     [,const (guard (constant? const)) `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
@@ -72,10 +84,26 @@
 	     [(let* ( (,lhs ,[rhs]) ...) ,[bodies] ...)
 	      `(let*  ([,lhs ,rhs] ...)	,(make-begin bodies))]
 
-	     ;; HERE NEED TO DO CPS:
+	     
+	     [(subcall ,tok ,[args*] ...)
+	      (let ((k (new-cont-name)))
+		(values 
+		 ;; Return expression:
+		 `(begin 
+		    (call ,k ,INIT ???)
+		    (call ,tok ,k ,args* ...))
+		 ;; Tainted tokens:
+		 (list tok)
+		 ;; New token handler, 
+		 (list 
+		  `(,k (flag vec) 
+		       ,(subst-freevars (pvk `(void)))))))]
+	     
+
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(emit call activate)))
 	      `(,call-style ,tok ,args* ...)]
+
 	     [(timed-call ,time ,tok ,[args*] ...)
 	      `(timed-call ,time ,tok ,args* ...)]
 
@@ -120,11 +148,10 @@
 		   ))))
 
 
-    ;; Main body of cleanup-token-machine
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
-			  (socpgm (bindings ,socbinds ...) 
+			  (socpgm (bindings ,socbinds ...)
 				  ,socstmts ...)
 			  (nodepgm (tokens ,nodetoks ...)
 				   (startup ,starttoks ...))))

@@ -353,9 +353,12 @@
 	  [node-start () (stored) (display "N")]
 	  ;[node-start () (stored) (void)]
 	  [SOC-start () (stored) (begin (printf "S") (call tok1))]
-	  [tok1 () (stored) (begin (display ".") (bcast tok2 "!"))]
+	  [tok1 () (stored) (begin (display ".") (bcast tok2 5))]
 	  [tok2 (x) (stored) (timed-call 500 tok3 x)]
-	  [tok3 (y) (stored) (display y)]
+	  [tok3 (y) (stored)
+		(if (not (= y 0))		    		    
+		    (begin (display y)
+			   (timed-call 1000 tok3 (- y 1))))]
 	  )))))
 
 
