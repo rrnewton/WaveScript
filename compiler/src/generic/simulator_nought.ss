@@ -489,6 +489,7 @@
 		   ;; This is an original emission, and should get a count of 0.
 		   `(sim-emit (quote ,(car opera)) (list ,@(cdr opera)) 0)]
 
+		  [(my-id) '(node-id (simobject-node this))]		
 		  [(dist) '(sim-dist)]		
   		  ;; <TODO> WHY NOT QUOTED:
 		  [(dist ,tok) `(sim-dist ',tok)]
@@ -531,9 +532,9 @@
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  [(leds ,which ,what) `(sim-leds ',which ',what)]
-		  [(dbg ,str ,args ...) 
+		  [(dbg ,str ,[args] ...)
 		   ;; TODO FIX ME: would be nice to print properly
-		   `(begin (display ,(cons str args)) (newline))]
+		   `(begin (display (format ,str ,@args)) (newline))]
 
 		  [(,prim ,[rand*] ...)
 		   (guard (token-machine-primitive? prim))
@@ -645,13 +646,14 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our 
 	`(lambda (themessage) ;(origin parent count tok args)
-		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a ~a)~n" 
+		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a ~a ~a)~n" 
 			    (node-id (simobject-node this))
 			    (cpu-time) 
 			    (msg-object-token themessage)
 			  " parent? " (if (msg-object-parent themessage)
 					  (node-id (simobject-node (msg-object-parent themessage)))
 					  #f)
+			  (msg-object-count themessage)
 			  " Soc? " I-am-SOC 
 			  "Args:" (msg-object-args   themessage))
 		    (let ([origin (msg-object-origin themessage)]

@@ -89,8 +89,12 @@ exec mred -qr "$0" ${1+"$@"}
 		(cleanse-world)
 	      (let ([csn (compile-simulate-nought expr)])
 		(printf "Simulator engines compiled... ~n")
-		(printf "~nSimulator result: ~s~n~n" 
-			(graphical-simulation (build-simulation csn) 4.0))
+		
+		(let ([res (graphical-simulation (build-simulation csn) 4.0)])
+		  (printf "~nSimulator result: ~n")
+		  (display res)(newline)
+		  ;(pretty-print res))
+		  )
 		;(exit)
                 )))))))
 
