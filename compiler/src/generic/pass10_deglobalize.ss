@@ -114,8 +114,8 @@
 		 ))]
 
 	    [(circle)
-	     (let ([rad (car args)]
-		   [anch (cadr args)])
+	     (let ([rad (cadr args)]
+		   [anch (car args)])
 ;		   (arg (unique-name 'arg)))
 	       `(
 		 [,(get-membership-name anch) () (call ,form)]
