@@ -1,4 +1,4 @@
-;;; Pass 04: uncover-free
+;;; Pass 06: uncover-free
 
 ;;; [2004.04.24] NOTE this pass has been resurrected for my new
 ;;; compiler.  Right now I'm allowing *no* free
@@ -93,9 +93,9 @@
    
     (lambda (prog)
       (match prog
-        [(,input-language (quote (program ,body)))
+        [(base-language (quote (program ,body)))
 	 (mvlet ([(body body-free*) (process-expr body)])
-		`(,input-language ;uncover-free-language
+		`(uncover-free-language ;uncover-free-language
 		  '(program ,body)))]))))
 
 

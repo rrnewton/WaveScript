@@ -37,7 +37,7 @@
 (define add-control-flow
   (lambda (expr)
     (match expr
-	   [(annotate-heartbeats-language (quote (program (props ,proptable ...) ,letexpr)))
+	   [(add-heartbeats-language (quote (program (props ,proptable ...) ,letexpr)))
 
 	    (let ([check-prop 
 		   (lambda (p s)

@@ -3,7 +3,7 @@
   'uncover-free-language
 
   (make-begin
-    `(,(lift-letrec-language 'return)
+    `(,(base-language 'return)
 
       ;; Makes letrec LAZY
       (define-syntax free
