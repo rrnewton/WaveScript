@@ -103,6 +103,7 @@
 ;; Then some types that are used only in the local language are:
 ;;   Token NodeID
 
+;; These are really the *local* primitives:
 (define regiment-basic-primitives 
   '(
   
@@ -133,6 +134,10 @@
     (pair? (Object) Bool)
     (number? (Object) Bool)
 
+    ;; Shouldn't this be local??
+    ;; I'm not sure...
+    (sense         (Node) Float)
+
     ))
 
 (define local-node-primitives 
@@ -151,9 +156,6 @@
 
 (define regiment-distributed-primitives 
   '(
-
-    ;; Shouldn't this be local??
-    (sense         (Node) Float)
     
     (rmap           (Function Region) Region)
     (rfold          (Function Object Region) Signal)
@@ -929,8 +931,10 @@
                      "primitive ~s requires at least ~s operand(s),~a~s~a"
                      prim minlen " the request to type it for "
                      len " is incorrect.")))])]))
+
+;; Gotta remember to update this if I change the format of prim entries..
 (define (get-primitive-return-type prim)
-  (list-ref (get-primitive-entry prim) 4))
+  (last (get-primitive-entry prim)))
 
 
 ;;;============================================================================
