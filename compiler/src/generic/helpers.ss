@@ -282,6 +282,11 @@
     ;(leds ...
      ))
 
+;; Keywords allowed in the restricted token machine language.
+(define token-machine-keyword?
+  (lambda (x)
+    (and (memq x '(quote set! if begin letrec let let* let-stored)) #t)))
+
 
 ;;============================================================
 
@@ -1295,15 +1300,9 @@
   (lambda (x)
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
-;;; CC
-;;; new keywords added for object system
-(define obj-keyword?
-  (lambda (x)
-    (and (memq x '(define-class let-class open-package open-instance
-                    new program)) #t)))
-(define keyword?
-  (lambda (x)
-    (or (base-keyword? x) (obj-keyword? x))))
+
+
+
 
 ;; These are the symbols I use for different types right now:
 ;;   Bool Char Float64 Int32 List Object
