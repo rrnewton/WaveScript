@@ -21,9 +21,6 @@
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 
-;;; And in the output
-;;; <Pgm>  ::= (<language> '(program <Exp>))
-
 ;;; The implementation requires constant?, scheme-primitive?, unique-name,
 ;;; get-formals, and cast-formals from helpers.ss.
 

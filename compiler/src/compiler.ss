@@ -51,6 +51,7 @@
 
 (define pass-names
   '(verify-regiment
+    eta-primitives
     rename-var
     remove-unquoted-constant                        ;;  5
     reduce-primitives
@@ -220,3 +221,8 @@
   (cleanse-world)
   (run-simulation-stream
    (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 12.0))
+
+;; I'm binding all these little random letter combinations!  Bah!
+(define mp;;myprog
+  '(rfold + 0 (smap sense (circle-at '(30 40) 10))))
+

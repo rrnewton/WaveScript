@@ -30,7 +30,7 @@
 
     (define process-primapp
       (lambda (prim args)
-	(disp "PROCESS PRIMAP" prim args)
+;	(disp "PROCESS PRIMAP" prim args)
 	(match (cons prim args)
 	       [(circle-at ,loc ,rad)
 		`(circle (anchor-at ,loc) ,rad)]

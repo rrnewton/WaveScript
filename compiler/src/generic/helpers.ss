@@ -134,12 +134,13 @@
   '(
     (my-id () NodeID)
     (dist (Token) Integer)
+
     ))
   
 (define regiment-distributed-primitives 
   '(
     (rmap           (Function Region) Region)
-    (rfold          (Function Region) Signal)
+    (rfold          (Function Object Region) Signal)
     (smap           (Function Signal) Signal)
 
     (anchor         ()         Anchor)
@@ -172,7 +173,9 @@
     (when-any        (Function Region) Event)
     (when-percentage (Float Function Region) Event)
 
-    (sense         (Node) Reading)
+    ;; Shouldn't this be local??
+    (sense         (Node) Float)
+
 ;     neighbors 
 ;    time-of
 ;    (time (Node) Time)
@@ -184,6 +187,15 @@
 (define regiment-primitives
   (append regiment-basic-primitives
 	  regiment-distributed-primitives))
+
+;; [2004.06.24] This is for the regiment primitives:
+(define get-primitive-entry
+  (lambda (prim)
+    (or (assq prim regiment-basic-primitives)
+        (assq prim regiment-distributed-primitives)
+        (error 'get-primitive-entry
+               "no entry for this primitive: ~a" prim))))
+
 
 (define (regiment-primitive? x) 
   (if (assq x regiment-primitives) #t #f))
@@ -833,13 +845,6 @@
     (and (or (assq x scheme-primitives)
              (assq x internal-scheme-primitives))
          #t)))
-
-(define get-primitive-entry
-  (lambda (prim)
-    (or (assq prim scheme-primitives)
-        (assq prim internal-scheme-primitives)
-        (error 'get-primitive-entry
-               "no entry for this primitive: ~a" prim))))
 
 ;; If the numargs is variable, this function returns a pair
 ;; such as (a . b) indicating the range of possible argument counts
