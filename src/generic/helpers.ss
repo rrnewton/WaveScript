@@ -313,7 +313,7 @@
 (define tester-eq? (eq-deep lenient-compare?))
 (define tester-equal? (eq-deep lenient-compare?))
 
-  
+
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
 ;; file should define "these-tests" and "test-this" for unit testing.
 ;; This is inspired by the drscheme philosophy of every file being an
@@ -322,18 +322,23 @@
 ;; 
 ;; [2004.05.24] Replacing the default tester with a better one.
 ;; [2004.06.03] Adding optional preprocessor function
+;; [2004.07.21] Added a 'quiet flag.  
 ;; Forms:
 ;;  (default-unit-tester message these-tests)
 ;;  (default-unit-tester message these-tests equalfun)
 ;;  (default-unit-tester message these-tests equalfun preprocessor)
 (define default-unit-tester
-  (lambda (message these-tests . args)
-    (let ((teq? (if (null? args) tester-equal?
-		    (eq-deep (car args))))
-	  (preprocessor 
-	   (if (> (length args) 1)
-	       (cadr args)
-	       (lambda (x) x))))
+  (lambda (message these-tests . extras)
+    (let (;; If the second argument is a procedure, use it as the equal.
+	  [teq? (if (or (null? extras) (not (procedure? (car extras))))
+		    tester-equal?		    
+		    (eq-deep (car extras)))]
+	  [preprocessor 
+	   (if (and (> (length extras) 1)
+		    (procedure? (cadr extras)))
+	       (cadr extras)
+	       (lambda (x) x))])
+
     (lambda args 
     (call/cc
      (lambda (return)
@@ -347,14 +352,19 @@
 		  [else (error 'default-unit-tester 
 			       " This is a bad test-case entry!: ~s~n" entry)]))
 	       these-tests)])
-	 (let ([verbose (memq 'verbose args)]
+	 (let (;; Flag to suppress test output.  This had better be passed
+	       ;; *after* any comparison or preprocessor arguments.
+	       [quiet (memq 'quiet args)]
+	       [verbose (memq 'verbose args)]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
 	       [intended (map caddr entries)]
 	       [success #t])
 
 	  (if verbose 
-	      (printf ";; Testing module: ~s~n" message))
+	      (begin (printf ";; Testing module: ~s~n" message)
+		     (if quiet (printf ";; (with test output suppressed)~n"))
+		     ))
 	  (flush-output-port)
 	  (for-each 
 	   (lambda (num expr descr intended)
@@ -368,7 +378,7 @@
 		   (display-constrained `(,intended 20) ": "))
 	       
 	       (flush-output-port)
-	       (let ((result 
+	       (let ([result 
 		      (call/cc 
 		       (lambda (escape-eval)
 			 (with-error-handlers (lambda args 
@@ -378,7 +388,13 @@
 						;(printf "~a~n" (apply format (cdr args)))
 						)
 					      (lambda () (escape-eval 'error))
-					      (lambda () (eval (preprocessor expr))))))))
+					      (lambda () 
+						(if quiet
+						    (let ([trash (open-output-string)])
+						      (parameterize ([current-output-port trash])					  
+								    (eval (preprocessor expr))))
+						    (eval (preprocessor expr)))
+						))))])
 ;	       (newline)
 	       (if (or (and (procedure? intended) ;; This means its an oracle
 			    (intended result))
