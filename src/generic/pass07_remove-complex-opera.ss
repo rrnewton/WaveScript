@@ -13,13 +13,14 @@
 
 ;;; Input Language
 
-;;; <Pgm>  ::= (<language-name> (quote (program (lazy-letrec (<Decl>*) <Exp>))))
+;;; <Pgm>  ::= (<language-name> (quote (program <Let>)))
+;;; <Let>  ::= (lazy-letrec (<Decl>*) <Exp>))
 ;;; <Decl> ::= (<var> <Exp>)
 ;;; <Exp>  ::= 
 ;;;            (quote <imm>)
 ;;;          | <var>
 ;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> (lazy-letrec (<Decl>*) <Exp>))
+;;;          | (lambda <Formalexp> <Let>)
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 

@@ -5,14 +5,14 @@
 
 
 ;;; <Pgm>  ::= <Let>
-;;; <Let>  ::= (let (<Decl>*) <var>)
+;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
 ;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= (quote <constant>)
-;;;          | <var>
-;;;          | (if <var> <var> <var>)
+;;; <Exp>  ::= <Simple>
+;;;          | (if <Simple> <Simple> <Simple>)
 ;;;          | (lambda <Formalexp> <Let>)
-;;;          | (<primitive> <var>*)
+;;;          | (<primitive> <Simple>*)
 ;;; <Formalexp> ::= (<var>*)
+;;; <Simple> ::= (quote <Lit>) | <Var>
 
 ;; Where let really behaves like letrec.
 
@@ -27,11 +27,11 @@
 
     (define (process-let expr env)
       (match expr
-	 [(let ([,lhs* ,rhs*] ...) ,expr)
+	 [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'let env))
                   (andmap symbol? lhs*)
 		  (set? lhs*) ;; No duplicate lhs's ..
-		  )	  
+		  )
 	   (if (ormap (lambda (s) (memq s env)) lhs*)
 	       (error 'verify-core "no variable	capture at this point."))
 	   (let ((newenv (union lhs* env)))
