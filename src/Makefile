@@ -57,6 +57,8 @@ mzscheme:
 #*    Running                                                          */
 #*---------------------------------------------------------------------*/
 
+run: runplt
+
 runchez: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
 	$(CHEZ) $(CHEZ_MAIN_FILE)
 
