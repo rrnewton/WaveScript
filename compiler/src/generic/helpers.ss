@@ -149,6 +149,9 @@
     (circle         (Anchor Dist)   Region)
     (circle-at      (Location Dist) Region)
     (k-neighborhood (Anchor Integer) Region)
+    ;; Shorthand: 
+    (khood          (Anchor Integer) Region)
+    (khood-at       (Location Integer) Region)
 
     ;; This one returns a region of regions:
     (cluster        (Region) Region)

@@ -2,8 +2,9 @@
 ;; Implements the GRAPHICS_STUB interface, described in "generic/graphic_stub.ss".
 ;; Should provide the same functionality as plt/graphics_stub.ss
 
-;; TODO IMPLEMENT GET-STATE
+;; THERE IS NO ABSTRACTION BOUNDARY BETWEEN THIS AND BASIC_GRAPHICS.SS
 
+;; TODO IMPLEMENT GET-STATE
 
 
 ;; [2004.05.23]
@@ -21,7 +22,10 @@
 
 ;(load "basic_graphics.ss")
 
-(module graphics_stub (draw-procs draw-proc draw-edge change-color! ;set-color!
+(module graphics_stub (draw-procs draw-proc draw-edge draw-mark draw-circle
+				  clear-buffer delete-gobj
+				  Starting-Node-Color
+				  change-color! ;set-color!
 				  these-tests test-this )
   (import basic_graphics)
 
@@ -32,6 +36,8 @@
 
 (define processor-screen-objs '())
 (define edge-screen-objs '())
+
+(define other-objs '())
 
 ;; Include definitions common to the chez and plt versions:
 (include "generic/graphics_stub.ss")
@@ -56,7 +62,36 @@
 	       (prep (+ (* (/ (- y b1) (- b2 b1)) (- d2 d1)) d1)))]
 	     [,otherwise (error 'scale2d "bad arguments: ~s ~s ~s"
 				pos box1 box2)]))))
-    
+
+
+;; This makes use of the global constants for world and screen bounds,
+;; and uses them to convert a coordinate.
+(define (coord:sim->screen pr)
+  (scale2d pr (list 0 0 world-xbound world-ybound)
+  	      (list 0 0 window-width window-height)))
+
+;; [2004.06.22]
+;; The values returned by the draw-* procedures in this file are my
+;; "graphics-objects" or gobjs used by the simulator.  They can be
+;; uniformly destroyed with this procedure:
+(define (delete-gobj g)
+  (if (list? g) (map destroy g) (destroy g)))
+
+;; Deletes all the existing SWL widgets on the canvas..
+(define (clear-buffer)
+  (for-each destroy other-objs)
+  (for-each destroy processor-screen-objs)
+  (for-each destroy edge-screen-objs) 
+  (set! other-objs '())
+  (set! processor-screen-objs '())
+  (set! edge-screen-objs '())
+  ;; If the simulation has pointers over here, get rid of em.
+  (and (top-level-bound? 'all-objs)
+       all-objs
+       (for-each (lambda (simob)
+		   (set-simobject-gobj! simob #f))
+		 all-objs)))
+
 ;;===============================================================================
 
 (define (change-color! ob c)
@@ -95,12 +130,10 @@
   (for-each show processor-screen-objs)
   processor-screen-objs)
 
+
 ;; This *does not show* the screen object that it creates.
 (define (draw-proc pr)  
-  (mvlet ([(x y) (scale2d 
-		  pr (list 0 0 world-xbound world-ybound)
-		     (list 0 0 window-width window-height))])
-
+  (mvlet ([(x y) (coord:sim->screen pr)])
 	 (let ((circ (create <oval> the-win
 ;			     50 50 
 ;			     100 100)))
@@ -117,6 +150,28 @@
 	   (set! processor-screen-objs
 		 (cons circ processor-screen-objs))
 	   circ)))
+
+;; This returns nothing.
+(define (draw-mark pr color)
+  (mvlet ([(x y) (coord:sim->screen pr)])
+    (let ((len 10)) ;; shouldn't be constant.
+      (let ([l1 (create <line> the-win (- x len) (- y len) (+ x len) (+ y len))]
+	    [l2 (create <line> the-win (- x len) (+ y len) (+ x len) (- y len))]
+	    [c  (make <rgb> (rgb-red color) (rgb-green color) (rgb-blue color))])
+	(set-fill-color! l1 c)
+	(set-fill-color! l2 c)
+	(set! other-objs (cons l1 (cons l2 other-objs)))
+	(list l1 l2)))))
+
+;; This draws an empty circle:
+(define (draw-circle pr rad)
+  (mvlet ([(x y) (coord:sim->screen pr)]
+	  [(radx rady) (coord:sim->screen (list rad rad))])
+	 (let ([obj (create <oval> the-win
+			    (- x radx) (- y rady)
+			    (+ x radx) (+ y rady))])
+	   (set! other-objs (cons obj other-objs))
+	   obj)))
 
 ;; This being caled involves
 (define (draw-edge pos1 pos2)

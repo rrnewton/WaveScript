@@ -54,3 +54,17 @@
 			   (set! return-buffer '()) ;;<TODO> Use semaphore.
 			   (dotted-append temp (loop nexteng))))))))))
    generic-text-simulator-core ))
+
+
+;; [2004.06.22]  Just a little function to dump the topology to a file.
+(define (save-topology name)
+  (let ((f (open-output-file name 'replace)))
+    (pretty-print graph f)
+    (close-output-port f)))
+
+(define (load-topology name)  
+  (let ((f (open-input-file name)))
+    (set! graph (read f))
+    (set! object-graph (make-object-graph graph))
+    (set! all-objs (map car object-graph))
+    (close-input-port f)))

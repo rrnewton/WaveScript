@@ -109,10 +109,14 @@
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
 				   (elect-leader ,memb)
 				   '#f)]
-		 [,memb () (draw-mark (car ,target) (cadr ,target) (rgb 0 100 100))]
+		 [,memb () (draw-mark ,target (rgb 0 100 100))]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
-		 [,memb () (light-up 0 255 255)]
+		 [,form () 
+			;; Note that we are an anchor.
+;			(set-simobject-homepage! 
+;			 this (cons 'anchor (simobject-homepage this)))
+			(light-up 0 255 255)]
 		 ))]
 
 	    [(circle)
@@ -122,9 +126,40 @@
 	       `(
 		 [,(get-membership-name anch) () (call ,form)]
 		 [,form () (emit ,memb)]
-		 [,memb () (if (< (dist ,form) ,rad) (relay))]
+		 ;; Display stuff:
+		 [,form () (draw-circle (loc) 20)]
+		 [,memb () 
+			;; Note that we are inside a "hood".
+;			(set-simobject-homepage! 
+;			 this (cons 'circle (simobject-homepage this)))
+			(light-up 0 100 100)]
+;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
+;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
+		 [,memb () (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
+
+
+	    [(khood)
+	     (let ([rad (cadr args)]
+		   [anch (car args)])
+;		   (arg (unique-name 'arg)))
+	       `(
+		 [,(get-membership-name anch) () (call ,form)]
+		 [,form () (emit ,memb)]
+		 ;; Display stuff:
+		 [,form () (draw-circle (loc) 20)]
+		 [,memb () 
+			;; Note that we are inside a "hood".
+			(set-simobject-homepage! 
+			 this (cons 'khood (simobject-homepage this)))
+			(light-up 0 100 100)]
+;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
+;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
+		 [,memb () (if (< (dist) ,rad) (relay))]
+		 )
+	       )]
+
 
 #;	    [(circle-at)
 	     (let ([rad (cadr args)]
@@ -188,7 +223,7 @@
 	  ;; At each formation click, we output this node.
 	  (soc-return (list 'ANCH this))])]
 
-      [(circle-at)     
+      [(circle circle-at)     
        `([,tokname 
 	  ()
 	  ;; At each formation click, we output this circle: 
@@ -197,15 +232,11 @@
 	  ;; other hack in.
 	  (soc-return '(CIRC ,tokname))])]
 
-      [(circle)
-       `([,tokname 
-	  ()
-	  ;; At each formation click, we output this circle: 
-	  ;;   For now this just lists the tokname, this should be the
-	  ;; membership tokname for the circle.  Later we'll put some
-	  ;; other hack in.
-	  (soc-return '(CIRC ,tokname))])]
       
+      [(khood khood-at)
+       `([,tokname 
+	  () (soc-return '(KHOOD ,tokname))])]
+
       [(smap)
        `([,tokname (v) (soc-return v)])]
       
