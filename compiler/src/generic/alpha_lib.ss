@@ -182,32 +182,38 @@
 ;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.
 ;; I've written two different engines at different levels of time-modeling complexity.
 (define (run-alpha-sim . args)
-  (define logfile "__temp.log")
+  ;; In some scheme's these internal defines don't evaluate in order!!
+  (let* ([logfile "__temp.log"]
+	 [simple-scheduler #f]
+	 [flags-processed (filter (lambda (arg)
+				    (disp "ARG" arg (eq? arg 'simple))
+				    (if (eq? arg 'simple)
+					(begin (set! simple-scheduler #t) #f)
+					#t))
+				  args)]
+	 ;; With flags out of the way
+	 [stopping-time? 
+	  (if (null? flags-processed)
+	      (lambda (t) #f)	      
+	      (let ([stop-time (car flags-processed)])
+		(if (inexact? stop-time)
+		    ;; It's in seconds:
+		    (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
+		      (printf "Stopping after ~a seconds.~n" stop-time)
+		      (lambda (_) (>= (cpu-time) end-time)))
+		    ;; Otherwise, vtime:
+		    (begin (printf "Stopping after vtime ~a.~n" stop-time)
+			   (lambda (t) (>= t stop-time))))))]
+	 [sim (fresh-simulation)])
 
-  (define simple-scheduler #f)
-  (define stop-time (filter (lambda (arg)
-			 (if (eq? arg 'simple)
-			     (begin (set! simple-scheduler #t) #f)
-			     #t))
-                       args))
-  (define stopping-time? 
-    (if (null? stop-time)
-	(lambda (t) #f)
-	(if (inexact? (car stop-time))
-	    ;; It's in seconds:
-	    (let ([end-time (+ (* 1000 (car stop-time)) (cpu-time))])
-	      (printf "Stopping after ~a seconds.~n" (car stop-time))
-	      (lambda (_) (>= (cpu-time) end-time)))
-	    ;; Otherwise, vtime:
-	    (begin (printf "Stopping after vtime ~a.~n" (car stop-time))
-		   (lambda (t) (>= t (car stop-time)))))))
-  (define sim (fresh-simulation))
-
+  (disp "RUNNING ALPH" args simple-scheduler)
 
   (if (file-exists? logfile) (delete-file logfile))
   (parameterize ([simulation-logger (open-output-file logfile 'replace)]
 		 [simulation-logger-count 0])
-		(printf "Running simulator alpha (logfile ~s)" logfile)
+		(printf "Running simulator alpha (~a version) (logfile ~s)" 
+			(if simple-scheduler 'simple 'full)
+			logfile)
 		(DEBUGMODE (display " with Debug-Mode enabled"))
 		(printf ".~n")
 
@@ -222,7 +228,7 @@
 		   
     ;; Out of main loop:
     (if (simulation-logger) (close-output-port (simulation-logger)))
-    ))
+    )))
 
 
 ;; From Swindle:
