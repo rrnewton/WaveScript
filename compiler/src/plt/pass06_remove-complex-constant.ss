@@ -1,11 +1,11 @@
 
-(module pass05_remove-complex-constant mzscheme
+(module pass06_remove-complex-constant mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
                   "helpers.ss")
 
 	(include (build-path ".." "generic" 
-			     "pass05_remove-complex-constant.ss"))
+			     "pass06_remove-complex-constant.ss"))
 
 	(provide (all-defined))
 ;	(provide rename-var 

@@ -1,10 +1,10 @@
 
-(module pass04_reduce-primitives mzscheme
+(module pass05_reduce-primitives mzscheme
   (require (lib "include.ss")
            "iu-match.ss"
            "helpers.ss")
   
-  (include (build-path ".." "generic" "pass04_reduce-primitives.ss"))
+  (include (build-path ".." "generic" "pass05_reduce-primitives.ss"))
   
   (provide (all-defined))
   ;	(provide rename-var 
