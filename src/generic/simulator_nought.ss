@@ -103,8 +103,27 @@
 (define this-unit-description 
   "simulator_nought.ss: simplest simulator for nodal language")
 
+;; This is our logger for events in the simulator:
+(define (logger ob . args)
+  (if (simulation-logger)
+      (if (null? args)
+	  (critical-section
+	   (begin (display ob (simulation-logger))
+		  (newline (simulation-logger))))
+	  (critical-section
+	   (display (apply format ob args) (simulation-logger))))))
+;; This is just another variant:
+;; This has no critical section for now!!! [2005.02.25]
+(define-syntax with-logger
+  (syntax-rules ()
+      [(_ exp ...)
+      (if (simulation-logger)
+	  (parameterize ([current-output-port (simulation-logger)])
+			exp ...))]))
+
 ;; This makes it use a lame sort of text display instead of the graphics display:
 (define-regiment-parameter simulator-output-text #f (lambda (x) x))
+;; This is a SEPERATE LOGGER for debug info as opposed to simulation events.
 (define-regiment-parameter sim-debug-logger 
   (lambda args
     (critical-section
@@ -286,6 +305,11 @@
 (define (init-world)
   (set! graph   
 	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+	  ;; TEMP: Here I give the nodes distinct, consecutive ids.
+	  (if (regiment-consec-ids)
+	      (for-each set-node-id! 
+			seed (iota (length seed))))
+				  
 	  ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
 	  (set-node-id! (car seed) BASE_ID)
 	  ;; Connect the graph:
@@ -747,9 +771,12 @@
 	(for-each (lambda (nd) (sendmsg childentry nd))
 		  (neighbors this)))
 
-      (critical-section 
-       (printf "----------------------------------------~n")
-       (print-incoming))
+      (with-logger
+       (critical-section 
+	(printf "----------------------------------------~n")
+	(printf "INCOMING: ~n")
+	(print-incoming)
+	(printf "----------------------------------------~n")))
       ]
 
     [define (sim-relay . tok)
@@ -842,8 +869,8 @@
 	     ;; INCOMPLETE:
 ;	     [oldcolors '(0 0 0)]
 	     )
-	((sim-debug-logger) "~n~a: Leds: ~a ~a ~a" 
-	 (node-id (simobject-node this)) which what
+	(let ((string (format "~a: (time ~s) (Leds: ~a ~a ~a)~n" 	
+	 (node-id (simobject-node this)) (cpu-time) which what
 	 (case what
 	   [(on) 
 	    (set! led-toggle-state (list->set (cons which led-toggle-state)))
@@ -864,7 +891,10 @@
 		 (apply sim-light-up colors)
 		 "on")
 	       )]
-	  [else (error 'sim-leds "bad action: ~a" what)]))
+	  [else (error 'sim-leds "bad action: ~a" what)]))))
+	  ;((sim-debug-logger) string)
+	  (logger string)
+	 
 	)]
 	  
     [define (sim-dist . tok)
@@ -931,7 +961,11 @@
     [define handle-returns 
 	    (lambda (returns)
 	      ;(display #\H)(flush-output-port)
-	      (crit-printf " Handled:~s.~s " (node-id (simobject-node this)) (cpu-time))
+	      (with-logger
+	       (crit-printf "~s: (time ~s) (HandlingReturns ~s)" 
+			    (node-id (simobject-node this)) 
+			    (cpu-time)
+			    (returns)))
 
 	      (DEBUGMODE (if (not (pair? returns))
 			     (error 'handle-returns "must take a nonempty list: ~s" returns))
@@ -1179,12 +1213,15 @@
 		      
 		      ;; If the time has come, handle those returns!
 		      [(>= current-time returns-next-handled)
+		       ;; This progress indicator goes to stdout regardless of where the logger goes.
 		       (if (> (length returns) 1)
 			   (display #\!) 
 			   (display #\.))
 		       (flush-output-port)
 		       (if (not (null? returns))
-			   (disp "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
+			   (with-logger
+			    (display (list "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
+			    (newline)))
 
 		       ;; Handle all the returns to date (either
 		       ;; locally generated or from neighbors). 
@@ -1459,9 +1496,14 @@
       (for-each 
        (lambda (ob)
 	 ;; 
-	   (printf "~a:  ~a~n"  
+	   (printf "~a: (time ~s) (Incoming ~a)~n"
+		   (cpu-time)
 		   (node-id (simobject-node ob))		   
-		   (map msg-object-token (simobject-incoming ob))
+		   (map (lambda (o)
+			  (if (msg-object? o)
+			      (msg-object-token o)
+			      (list 'ret (return-obj-to_tok o))))
+			(simobject-incoming ob))
 		   ))
        (sort (lambda (x y)
 	       (< (node-id (simobject-node x))

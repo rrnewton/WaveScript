@@ -2,6 +2,8 @@
 ;; Implements the GRAPHICS_STUB interface, described in "generic/graphic_stub.ss".
 ;; Should provide the same functionality as chez/graphics_stub.ss
 
+;; This uses "proc" to refer to "processor", as in "node", which is a bit confusing.
+
 (module graphics_stub mzscheme	
   (provide draw-procs draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
 	   get-state these-tests test-this 
@@ -67,19 +69,22 @@
   (define edge-table (make-hash-table))
 
   ;; Internal helper:
-  (define (rasterize-proc pr color)
-    (let ((color (plt:make-rgb (/ (rgb-red   color) 255.0)
+  (define rasterize-proc 
+    (let ([halfrad (/ processor-screen-radius 2.0)])
+    (lambda (pr color)
+      (let ((color (plt:make-rgb (/ (rgb-red   color) 255.0)
 			       (/ (rgb-green color) 255.0)
 			       (/ (rgb-blue  color) 255.0))))
       (let-values ([(x y) (scale2d 
 			   pr (list 0 0 world-xbound world-ybound)
 			   (list 0 0 window-width window-height))])
 		  (let ((gobj (gensym)))
-		    ((plt:draw-solid-ellipse the-win) (plt:make-posn x y)
+		    ((plt:draw-solid-ellipse the-win)
+		     (plt:make-posn (- x halfrad) (- y halfrad))
 		     processor-screen-radius
 		     processor-screen-radius
 		     color)
-		    gobj))))
+		    gobj))))))
 
   (define (draw-mark pr color)
     (mvlet ([(x y) (coord:sim->screen pr)])
@@ -133,14 +138,22 @@
       (let ((gobj (rasterize-edge pt1 pt2 default-edge-color)))
 	(hash-table-put! edge-table gobj `([src ,pt1] [dst ,pt2]))
 	gobj))
-    
+
+
+    ;; Gets the location property for the object and draws a new circle there:
     (define (change-color! ob c)
-      (let ((proc (assq 'loc (hash-table-get proc-table ob))))
-	(DEBUGMODE (if (not proc) 
+      (let ((props (hash-table-get proc-table ob)))
+      (let ((loc (assq 'loc props))
+	    (col (assq 'col props)))
+	(DEBUGMODE (if (not loc) 
 		       (error 'graphics_stub.change-color! 
 			      "processor graphics object had no 'loc property.")))
-	(rasterize-proc (cadr proc) c)
-	(void)))
+	;; Set the property for future reference:
+	(if col (set-car! (cdr col) c)
+	    (hash-table-put! proc-table ob
+			     (cons `(color ,c) props)))
+	(rasterize-proc (cadr loc) c)
+	(void))))
     
     (define (get-state sym ob)
       (let ((props (hash-table-get 

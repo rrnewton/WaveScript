@@ -11,3 +11,22 @@
 (define processor-screen-radius (/ window-width 32.))
 
 
+;; TODO: interface description
+
+;; I've moved this over to a "persistent object" kind of drawing interface.
+;; The "simobject" structure holds a "gobj", which is an
+;; implementation independent thingy that supports "get-state" for 
+;; retrieving properties and "change-color!".
+;;  The simobject also has a redraw flag that can be set to refresh
+;;  the processor during the periodic redraw.
+
+
+;; NOTE: Right now the "redraw" flag isn't used yet... [2005.02.25]
+;; Change-color redraws immediately, and it's the only way to state-change...
+
+;; provides:
+;;   draw-procs draw-proc draw-edge draw-mark draw-circle
+;;   change-color! get-state 
+;;   these-tests test-this 
+;;   init-graphics close-graphics clear-buffer
+

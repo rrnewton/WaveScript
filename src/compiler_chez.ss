@@ -25,14 +25,18 @@
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 
 ;; [2004.06.28] Moving this here, hope that works:
-(load "../depends/slib/chez.init")
+;(load "../depends/slib/chez.init")
+(include "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
 
 (include "generic/constants.ss")
 
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
-(cd "chez") (include "helpers.ss") (cd "..")
+;(parameterize ((current-directory "chez"))
+(eval-when (compile eval) (cd "chez"))
+(include "helpers.ss") 
+(eval-when (compile eval) (cd ".."))
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 (define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.

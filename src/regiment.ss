@@ -1,9 +1,11 @@
-
-(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
+(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
 (load "compiler_chez.ss")
 
+;; ======================================================================
+
+
 (define (print-help)
-  (printf "Regiment system, version ~s~n" regiment-version)
+  (printf "Regiment system, version ~s~n" (regiment-version))
   (printf "Usage: regiment command [options] ~n")
   (printf "~n")
   (printf "Commands: ~n")
@@ -31,7 +33,7 @@
 	(begin (print-help) (exit 0)))
 ;    (printf "regimentc: compile regiment programs!~n")
     (let ([opts '()]
-	  [ext ".tm"])      
+	  [extension ".tmh"])
       (letrec ([loop 
 	      (lambda (args)
 		(match args
@@ -81,10 +83,11 @@
 		      filenames)))))))
   
 
+
+
+;; ======================================================================
 (suppress-greeting #t)
 (scheme-start main)
-
-;(scheme-script main)
 (when (top-level-bound? 'command-line-arguments)
       (apply main (command-line-arguments))
       (disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments)))
