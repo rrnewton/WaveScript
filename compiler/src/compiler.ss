@@ -4,6 +4,8 @@
 (display "Loading main compiler module.  RegionStreams Demo.")
 (newline)
 
+(define regiment-version 0.5)
+
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
 ;;(define total-messages 0)
@@ -40,7 +42,27 @@
     haskellize-tokmac 
     ))
 
+;;======================================================================
+
+(define these-tests 
+  `( 
+;; Urg, this is wrong:
+;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+
+    ["Verify that the trivial program produces no token bindings but the defaults"
+     (filter (lambda (tokbind)
+	       (not (memq (car tokbind) '(spread-global global-tree))))
+	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
+     ()]
+    ))
+
+(define test-this (default-unit-tester "Main compiler unit." these-tests))
+
+
   
+;; ==================================================================
+;; Functions for input/output to filesystem and for invoking compiler.
+
 (define (dump-tokenmachine-to-file prog fn)
   (match prog
    [(haskellize-tokmac-lang ,str)
@@ -103,28 +125,10 @@
   (let ((prog  x))
     (parameterize ((tracer #t))
 		  (test-one prog))))
-
-;; These are all the unit-testers accumulated from all the files.
-#;(define all-testers
-  (list test00
-	test01
-	test02
-	test03
-	test04
-	test05
-	test06	
-	testsim
-	testgsim))
-   
-   
-
+  
 ;; Temp =============================================================
 
-'(display (list (test00)
-	       (test01)
-	       (test07)))
 (newline)
-
 (define rc run-compiler) ;; shorthand
 
 (define (rr) (r '(circle 50 (anchor-at '(30 40))))) ;; shorthand
@@ -146,24 +150,7 @@
 	   R
 	   (circle-at 100 '(0 0)))))
 
-
-(define these-tests 
-  `( 
-;; Urg, this is wrong:
-;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
-
-    ["Verify that the trivial program produces no token bindings but the defaults"
-     (filter (lambda (tokbind)
-	       (not (memq (car tokbind) '(spread-global global-tree))))
-	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
-     ()]
-    ))
-
-(define test-this (default-unit-tester "Main compiler unit." these-tests))
-
-(define compilertests these-tests)
-(define compilertest test-this)
- (define prog
+(define prog
   '(program
      (bindings (tmp_3 (cons '40 '())) (tmp_1 (cons '30 tmp_3)))
      (socpgm (bindings) (call f_token_result_2))
@@ -182,15 +169,19 @@
                            (soc-return (list 'anch this))))
        (startup))))
 
+
+(define compilertests these-tests)
+(define compilertest test-this)
+
 ;; These are some temporary diagnostic functions:
-(define (all-incoming)
+(define (all-incoming) ;; shorthand
   (filter (lambda (ls) (not (null? ls)))
           (map simobject-incoming all-objs)))
-(define (all-homepage)
+(define (all-homepage) ;; shorthand
   (filter (lambda (ls) (not (null? ls)))
           (map simobject-homepage all-objs)))
 
-(define (g) 
+(define (g) ;; shorthand
   ;  (define prog (rc '(anchor-at '(30 40))))
   (init-world)
   (let ((res (run-simulation 
@@ -201,7 +192,7 @@
     res))
 
 
-(define (sim) (build-simulation 
+(define (sim) (build-simulation  ;; shorthand
 	     (compile-simulate-nought 
 	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
 
@@ -212,7 +203,6 @@
 ;; (Though the unit tests give me something...)
 
 ;; simulator_nought.examples.ss -- has some example token machines.
-
 
 
 ;(define (t1) (init-world) (run-simulation        sim 2.0))
@@ -242,26 +232,27 @@
 			      (soc-return (list 'anch this)))])
       (startup))))
 
-(define (t1)
+(define (t1) ;; shorthand
   (cleanse-world)
   (run-simulation 
    (build-simulation (csn theprog)) 1.0))
 
-(define (t2)
+(define (t2) ;; shorthand
   (cleanse-world)
   (run-simulation-stream
    (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 12.0))
 
 ;; I'm binding all these little random letter combinations!  Bah!
-(define mp;;myprog
+(define mp;;myprog ;; shorthand
 ;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
   '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
 
 ;; Runs a token machine simulation.
-(define (run-token-machine x)
+(define (run-token-machine x) 
   (run-simulation (build-simulation x) 2.0))
 
 (define rtm run-token-machine) ;; shorthand
+
 
 (define tmprog
   '(deglobalize-lang
@@ -313,7 +304,6 @@
 	    (aggr tmpfunc_12)))
          (m_token_result_7 (v) (soc-return v)))
        (startup f_token_tmpanch_8)))))
-
 
 
 ;; Sigh, first class tokens:
