@@ -168,24 +168,28 @@
 		  [(call ,rator ,rand* ...)	  
 					;(error 'process-statement "call not supported from SOC")] 
 		   `(handler #f #f ',rator ',rand*)]
+
 		  [(flood ,tok) `(flood (quote ,tok))]
+
 		  [(emit ,opera ...) 
 		   ;; This is an original emission, and should get a count of 0.
 		   `(sim-emit (quote ,(car opera)) ,(cdr opera) 0)]
 
-		  [(dist) `(begin 
-			     ,(DEBUGMODE '(if (not this-message)
-					      (error 'simulator_nought.process-statement 
-						     "broken")))
-			     (if (cache-entry-count this-message)
-				 (cache-entry-count this-message)
-				 (error 'simulator_nought.process-statement:dist
-					"inside simulator, (dist) is broken!")))]
-		  [(dist ,tok) `(let ((entry (hashtab-get token-cache ',tok)))
-				  (if (and entry (cache-entry-count entry))
-			    (cache-entry-count this-message)
-			    (error 'simulator_nought.process-statement:dist
-				   "inside simulator (dist ~s) but ~s has not been received!")))]
+		  [(dist) 
+		   `(begin 
+		      ,(DEBUGMODE '(if (not this-message)
+				       (error 'simulator_nought.process-statement 
+					      "broken")))
+		      (if (cache-entry-count this-message)
+			  (cache-entry-count this-message)
+			  (error 'simulator_nought.process-statement:dist
+				 "inside simulator, (dist) is broken!")))]
+		  [(dist ,tok)
+		   `(let ((entry (hashtab-get token-cache ',tok)))
+		      (if (and entry (cache-entry-count entry))
+			  (cache-entry-count this-message)
+			  (error 'simulator_nought.process-statement:dist
+				 "inside simulator (dist ~s) but ~s has not been received!")))]
 	 	  
 		  [(relay)
 		   `(begin 
@@ -200,7 +204,16 @@
 				(cache-entry-count this-message)))]
 		  
 		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
-		  
+
+		  ;; TODO, FINISH:
+		  [(return ,x)
+		   (let ([tok (cache-entry-token this-message)])
+		     (void)
+		     ;; For now we zap this straight back to the sender.
+		     ;; BUT we need a record of who sent what...
+;		     (let ((loop ((
+		     )]
+
 		  [(light-up ,r ,g ,b)
 		   `(begin
 					;	     (disp "trying to light")
@@ -369,7 +382,9 @@
 		   ,@(map list starttoks)
 		   (let main-node-loop ([incoming (simobject-incoming this)])		     
 		     (cond
-		      [stop-nodes 'node-stopped]
+		      [stop-nodes 
+		       (display "*") ;(disp "Node stopped by external force!")
+		       'node-stopped]
 		      [(null? incoming)
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
@@ -431,7 +446,10 @@
 ;;===============================================================================
 
 (define (run-simulation thunks . timeout)
-  (disp "running sims" soc-return finished )
+;  (define return-vals (vector 100)) ;; Here we accumulate returned values from the SOC
+;  (define (add-return-val x) ...)
+;  (define (get-return-vals) ...)
+  (disp "running sims" )
   (eval '(begin 
 	   (define total-messages 0)
 	   ;; This is a global flag which can be toggled to shut down all the
@@ -455,26 +473,30 @@
 	     (yield-thread)
 	     (loop)))])
     (let ([thunks (if (simulator-output-text)
-		       (cons display_engine (cons soceng nodeengs))
-		       (cons soceng nodeengs))]				       
-	  [return-vals '()]) ;; Here we accumulate returned values from the SOC
-
+		      (cons display_engine (cons soceng nodeengs))
+		      (cons soceng nodeengs))]
+	  [return-vals '()])
       ;; Kinda lame to use fluid-let here, but we don't have the
       ;; relevent continuation at the time we build the thunks.
       (fluid-let (
 		  ;[soc-return (lambda (x) 
 		;		(disp "CALLING SOCRETURN")
 		;		(set! return-vals (cons x return-vals)))]
+		;  [finished (lambda () 
+		;	      (disp "CALLING finished" return-vals)
+		;	      (exit-sim return-vals))]
 		  [soc-return (lambda (x)
-				(set! stop-nodes #t))]
+				(disp "CALLING SOCRETURN")
+				(set! return-vals (cons x return-vals)))]
 		  [finished (lambda () 
 			      (disp "CALLING finished" return-vals)
-			      (exit-sim return-vals))])
+			      (set! stop-nodes #t))]
+		  )
 	(disp "in that fluid" soc-return finished return-vals)
 	(let ([result (if (null? timeout)
 			  (run-flat-threads thunks)
 			  (run-flat-threads thunks (car timeout)))])
-	  returned-vals
+	  return-vals
 	  )))))))
 
 ;;===============================================================================

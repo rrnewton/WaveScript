@@ -31,9 +31,17 @@
 ;; changing their color and so forth.
 (define graphical-simulation 
   (lambda (funcs . timeout)
-    ;; First, set up a global counter for communication cost:
-    ;; (This is defined with eval because otherwise the module system gets angrye
-    (eval '(define total-messages 0))
+    (eval '(begin 
+	     ;; First, set up a global counter for communication cost:
+	     ;; (This is defined with eval because otherwise the module system gets angrye
+	     (define total-messages 0)
+	   ;; This is a global flag which can be toggled to shut down all the
+	     ;; running processors.
+	     (define stop-nodes #f)	   
+	     ;; Define global bindings for these so that we can do fluid-let on them.
+	     (define soc-return 'unbound-right-now)
+	     (define finished 'unbound-right-now)))
+        
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
 	  [soceng (vector-ref funcs 0)]
