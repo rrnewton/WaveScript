@@ -78,6 +78,10 @@
     [,num (guard (number? num))        (values () num)]
     [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
     [(tok ,t ,[st e])                  (values st `(tok ,t ,e))]
+    ;; No renaming or anything here:
+    [(ext-ref ,tok ,var) `(ext-ref ,tok ,var)]
+    [(ext-set! ,tok ,var ,[expr]) `(ext-set! ,tok ,var ,expr)]
+
     [,var (guard (symbol? var))        (values () var)]
     [(begin ,[st xs] ...)
      (values (apply append st) (make-begin xs))]

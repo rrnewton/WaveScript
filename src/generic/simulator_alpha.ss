@@ -398,9 +398,12 @@
 
 		  ;; Local tokstore-reference:
 		  [,x (guard (and (symbol? x) (memq x allstored)))
+		      (disp "Local TokStore reference:" x)
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
-                               (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" x))
+                               (error 'simulator_alpha:process-statement 
+				      "bad local stored-ref: ~a actually belongs to ~a" 
+				      x which-tok))
                            ;; 'tokobj' is already bound to our token object
                            `(vector-ref tokobj ,(+ 1 pos)))]
 
@@ -446,7 +449,7 @@
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
 			  (if (not (eq? which-tok current-handler-name))
-			      (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" v))
+			      (error 'simulator_alpha:process-statement "(set!) bad local stored-ref: ~a" v))
                           `(vector-set! tokobj ,(+ 1 pos) ,rhs))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]

@@ -48,8 +48,11 @@
 	     ;; This is for recurring on tokens:
 	     [,num (guard (number? num)) num]
 	     [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
-	     [(tok ,t ,[e]) (guard (number? n)) `(tok ,t ,e)]
+	     [(tok ,t ,[e])  `(tok ,t ,e)]
+	     [(ext-ref ,t ,v) `(ext-ref ,t ,v)]
+	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,t ,v ,x)]
 	     [,var (guard (symbol? var)) var]
+	     [(set! ,v ,[x]) `(set! ,v ,x)]
 	     [(begin ,[xs] ...) `(begin ,xs ...)]
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
@@ -82,6 +85,6 @@
 		       "arbitrary application of rator: ~s" rator)	      
 	      `(,rator ,rands ...)]
 	     [,otherwise
-	      (error 'cleanup-token-machine:process-expr 
+	      (error 'FOOBAR-pass:process-expr 
 		     "bad expression: ~s" otherwise)]
 	     ))))

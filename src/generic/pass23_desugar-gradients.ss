@@ -169,9 +169,10 @@
 
 	     [(emit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
-	      `(let-stored ([ver 0])
-		(set! ver (+ 1 ver))
-		(bcast ,tok (my-id) 1 ver ,@args*)))]
+	      (let ((ver (unique-name 'ver)))
+	      `(let-stored ([,ver 0])
+		(set! ,ver (+ 1 ,ver))
+		(bcast ,tok (my-id) 1 ,ver ,@args*))))]
 
 	     ;; TODO: This doesn't cache or pass any arguments on to the relayed tokhand!!!!
 	     [(relay (tok ,t ,n)) (guard (number? n))

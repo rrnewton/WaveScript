@@ -42,6 +42,7 @@
     cleanup-token-machine   ;; Rerun to expand out some stuff.
 
     desugar-let-stored
+    rename-stored
     
     ;    analyze-tokmac-recursion
     ;    inline-tokmac

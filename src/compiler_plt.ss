@@ -44,6 +44,7 @@
 
 (all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
 (all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
+(all-except "plt/pass25_rename-stored.ss" these-tests test-this)
 
 ;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
 ;(all-except "plt/pass25_inline.ss" these-tests test-this)
