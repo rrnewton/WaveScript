@@ -10,7 +10,7 @@
 ;;;          | <var>
 ;;;          | (if <Exp> <Exp> <Exp>)
 ;;;          | (lambda <Formalexp> <Exp>)
-;;;          | (let (<Decl>*) <Exp>)
+;;;          | (letrec (<Decl>*) <Exp>)
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 
@@ -55,14 +55,14 @@
           ;                  (keyword? keyword))
           ;           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
           
-	  [(let ([,lhs* ,rhs*] ...) ,expr)
-	   (guard (not (memq 'let env))
+	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	   (guard (not (memq 'letrec env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
 	   (let ((newenv (union lhs* env)))
 	     (let ((rands (map (lambda (r) (process-expr r newenv)) rhs*))
 		   (body  (process-expr expr newenv)))
-	       `(let ([,lhs* ,rands] ...) ,body)))]
+	       `(letrec ([,lhs* ,rands] ...) ,body)))]
           
           [(,prim ,[rand*] ...)
            (guard ;(>= (snet-optimize-level) 2)
@@ -88,20 +88,21 @@
 
 (define test-programs 
   '( 3
-     (let ((a (anchor '(30 40))))
-       (let ((r (circle 50 a))
+
+     (letrec ((a (anchor '(30 40))))
+       (letrec ((r (circle 50 a))
 	     (f (lambda (tot next)
 		  (cons (+ (car tot) (sense next))
 			(+ (cdr tot) 1))))
 	     (g (lambda (tot) (/ (car tot) (cdr tot)))))
 	 (smap g (rfold f (cons 0 0) r))))
 
-     (let ((r (circle-at 50 '(30 40)))
-	   (f (lambda (tot next)
-		(cons (+ (car tot) (sense next))
-		      (+ (cdr tot) 1))))
-	   (g (lambda (tot) (/ (car tot) (cdr tot)))))
-       (let ((avg (smap g (rfold f (cons 0 0) r))))
+     (letrec ((r (circle-at 50 '(30 40)))
+	      (f (lambda (tot next)
+		   (cons (+ (car tot) (sense next))
+			 (+ (cdr tot) 1))))
+	      (g (lambda (tot) (/ (car tot) (cdr tot)))))
+       (letrec ((avg (smap g (rfold f (cons 0 0) r))))
 	 (until (when-any (lambda (x) (> x 15.3)) avg)
 		R
 		(circle-at 100 '(0 0)))))

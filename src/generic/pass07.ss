@@ -7,7 +7,7 @@
 ;;; <Pgm>  ::= <Let>
 ;;; <Let>  ::= (let (<Decl>*) <var>)
 ;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= (quote <datum>)
+;;; <Exp>  ::= (quote <constant>)
 ;;;          | <var>
 ;;;          | (if <var> <var> <var>)
 ;;;          | (lambda <Formalexp> <Let>)
@@ -38,14 +38,21 @@
 	     (and (andmap (lambda (r) (process-expr r newenv)) rhs*)
 		  (process-expr expr newenv)))]))
 
+    (define (simple-rand? expr)
+      (match expr
+	     [,var (guard (symbol? var)) #t]
+	     [(quote ,const) (guard (constant? const)) #t]
+	     [,else #f]))
+
     (define process-expr
       (lambda (expr env)
         (match expr
-          [,const (guard (constant? const)) #t]
-          [(quote ,datum)
-           (guard (not (memq 'quote env)) (datum? datum))
+;          [,const (guard (constant? const)) #t]
+          [(quote ,const)
+           (guard (not (memq 'quote env)) (constant? const))
 	   #t]
-#|          [,var (guard (symbol? var))
+	 
+          [,var (guard (symbol? var))
 		(if (not (memq var env))
 		    (error 'verify-core (format "unbound variable: ~a~n" var)))
 	       		#t]
@@ -75,11 +82,11 @@
            (guard ;(>= (snet-optimize-level) 2)
                   (not (memq prim env))
                   (regiment-primitive? prim)
-		  (andmap symbol? rand*)
-		  (andmap (lambda (x) (process-expr x env)) rand*))
+		  (andmap (lambda (x) (process-expr x env)) rand*)
+		  (andmap simple-rand? rand*))
 	   ;          (check-primitive-numargs prim rand*)
 	   #t]
-|#
+
           [,unmatched
 	   (error 'verify-core "invalid syntax ~s" unmatched)])))
 
@@ -97,29 +104,31 @@
   '( 
     (let ((a '3)) a)
 
-    (let ((loc '(30 40))
-	  (a (anchor loc)))
-      (let ((r (circle 50 a))
-	    (f (lambda (tot next)
-		 (let* ((sum (car tot))
-			(cnt (cdr tot))
-			(sns (sense next))
-			(newsum (+ sum sns))
-			(newcnt (+ cnt 1))
-			(res (cons newsum newcnt)))
-		   res)))
-	    (g (lambda (tot) 
-		 (let* ((sum (car tot))
-			(cnt (cdr tot))
-			(res (/ sum cnt)))
-		   res)))	    
-	    (start (cons 0 0)))
-      (let 
-      	   (S (rfold f start r))
-	   (avg (smap g S)))
-     avg))
-
+    (let ((tmp (cons '40 '()))
+	  (loc (cons '30 tmp))
+	  (a (anchor loc))
+	  (r (circle '50 a))
+	  (f (lambda (tot next)
+	       (let ((sum (car tot))
+		     (cnt (cdr tot))
+		     (sns (sense next))
+		     (newsum (+ sum sns))
+		     (newcnt (+ cnt '1))
+		     (res (cons newsum newcnt)))
+		 res)))
+	  (g (lambda (tot) 
+	       (let ((sum (car tot))
+		     (cnt (cdr tot))
+		     (res (/ sum cnt)))
+		 res)))	    
+	  (start (cons '0 '0))
+	  (S (rfold f start r))
+	  (avg (smap g S)))
+      avg)
     ))
+
+
+;========================================
 
 (define these-tests
   (map
