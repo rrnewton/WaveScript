@@ -42,7 +42,7 @@
 ;;;                | (return <Token> <Simple>)
 ;;;                | <Macro> 
 ;;;  <Macro> ::= (flood <Token>)
-;;;            | (leader <Token> <Token>)
+;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
 ;;;  <Simple> ::= (quote <Lit>) | <Var>
 
 ;;;  <Token> ::= <Symbol> | ...???
@@ -57,7 +57,7 @@
 ;; and the socprogram merely returns the single value, then finishes.
 '(program
   (bindings (result '3))
-  (socpgm (bindings ) (soc-return result) (finished))
+  (socpgm (bindings ) (soc-return result) (soc-finished))
   (nodepgm (tokens ) (startup )))
 
 ;===============================================================================
@@ -73,9 +73,14 @@
 
 
 
-;; This is messy, but we use local state to accumulate
-(define dist-names '())
-(define local-names '())
+(define proptable 'not-defined-yet)
+
+(define (check-prop p s)
+  (let ((entry (assq s proptable)))
+    (if entry (memq p (cdr entry))
+	(error 'pass10_deglobalize:check-prop
+	       "This should not happen!  ~nName ~s has no entry in ~s."
+	       s proptable))))
 
     (define (simple? x) 
       (match x
@@ -116,57 +121,26 @@
     (define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
 
 
-'(program ;;result???
-	 (binds [target '(30 40)])
-	 (tokens [form_a () (flood consider)] 
-		 [consider () (if (< (locdiff (loc) (target)) 10.0)
-			       (elect-leader memb_a))]
-		 [memb_a () (call form_r)]
-		 [form_r () (emit memb_r)]
-		 [memb_r () (begin (if (< (dist) 50) 
-				       (relay))
-				   (call fold_it))]
-		 [memb_r:ret (v) (call map_it v)]
-		 [fold_it () (return memb_r (aggregator f) (sense))]
-		 [f (x y) (+ x y)]
-		 
-		 [map_it (v) (call g v)]
-		 [g (v) (begin (...) (output __))]
-		 )
-	 )
-
-'(f_token_result_2
-  ((m_token_tmp_3 () (call f_token_result_2))
-   (f_token_result_2 () (emit m_token_result_2))
-   (m_token_result_2
-    ()
-    (if (< (dist f_token_result_2) '50) (relay)))
-   (f_token_tmp_3 () (flood token_6))
-   (token_6
-    ()
-    (if (< (locdiff (loc) tmp_1) 10.0)
-	(elect-leader m_token_tmp_3)))))
-
-    ;; (Name, DistributedPrim, Args) -> TokenBinds
-    ;; This produces a list of token bindings.
-    (define explode-primitive
-      (lambda (name prim args)
-	(mvlet ([(form memb) (token-names name)])
+;; (Name, DistributedPrim, Args) -> TokenBinds
+;; This produces a list of token bindings.
+(define explode-primitive
+  (lambda (form memb prim args)
 ;	(disp "Explode primitive" name prim args)
 	  (case prim
 	    [(sparsify) (void)]
 
 	    [(anchor-at)
-	     (let ((consider (new-token-name))
-		   (leader (new-token-name))
-		   (target (car args)))
+	     (let ([consider (new-token-name)]
+		   [leader (new-token-name)]
+		   [target (car args)])
 	       `([,form () (flood ,consider)]
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
-				   (elect-leader ,memb))]))]
+				   (elect-leader ,memb)
+				   '#f)]))]
 
 	    [(circle)
-	     (let ((anch (cadr args))
-		   (rad (car args)))
+	     (let ([rad (car args)]
+		   [anch (cadr args)])
 ;		   (arg (unique-name 'arg)))
 	       `(
 		 [,(get-membership-name anch) () (call ,form)]
@@ -175,9 +149,7 @@
 		 )
 	       )]
 		 
-
 	    [(union)
-	     (disp "Got that union!" name args form memb)
 	     `([,form () (begin
 			(iftok (and ,(get-membership-name (car args)) 
 				    ,(get-membership-name (cadr args)))
@@ -188,42 +160,67 @@
     ;	       [,memb ... Don't know what yet... that depends on varrefs ]
 	       )]
 
-	    [else '()]))))
+	    [else '()])))
 
 
     ;; LetrecExpr -> (Entry, Cbinds, TokenBinds)
     ;; This produces a list of constant bindings, token bindings, and
-    ;; a token entry point of zero arguments.
+    ;; a token entry point of zero arguments.  The entrypoint is the
+    ;; root, or finally returned edge of the data flow graph...
     (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)		
+	       [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
 		(if (symbol? body)
 		    (let loop ((lhs* lhs*) 
 			       (rhs* rhs*)
 			       (cacc '())
 			       (tacc '()))
 		      (if (null? lhs*)
-			  (values body cacc tacc)
+			  (values (if (check-prop 'distributed body)
+				      (mvlet (((form memb) (token-names body)))
+					     form)
+				      body)
+				  cacc tacc)
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
-			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car rhs*))])
-				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
+			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car rhs*) )])
+;				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
 				 (loop (cdr lhs*) (cdr rhs*)
 				       (append cbinds cacc) 
 				       (append tbinds tacc)))))
 		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
 	  )))
 
+
+   ;; This produces code for returning the value from a particular
+   ;; primitive application to the SOC.
+(define primitive-return
+  (lambda (prim tokname)
+    (case prim
+      [(anchor-at)
+       `([,tokname ()
+	  ;; At each formation click, we output this node.
+	  (soc-return (this))])]
+      
+
+      [else (error 'primitive-return 
+		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
+		   prim)]
+      )))
+
    ;; (Name, Expr) -> (Cbinds, TokenBinds)
    ;; This processes an expression and returns both its constant
    ;; bindings, and it's token bindings.
     (define process-expr
-      (lambda (name expr)
+      (lambda (name expr)	
+	(let ((finalname (check-prop 'final name)))
         (match expr
-	  [,x (guard (simple? x))	      
+          ;; The possibility that the final value is local is
+	  ;; handled in 'deglobalize' so we don't worry about it here:
+	  [,x (guard (simple? x))      
 	      (values `([,name ,expr]) ;`([,name (begin (return ,x))])
-		      '())]
+		      '())  ]
 	  
           ;; All args are simple:
           [(if ,test ,conseq  ,altern)
@@ -244,39 +241,61 @@
 ;		      tokenbinds))
 	   (values '() 
 		   (cons `[,name ,formalexp (lazy-letrec ,constbinds (call ,entry))]
-			 tokenbinds))] 
+			 tokenbinds))]
 
 	  ;; TODO:
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,expr]) '())]
 
-          [(,prim ,rand* ...) (guard (distributed-primitive? prim))
-	   (values '() (explode-primitive name prim rand*))]
+          [(,prim ,rand* ...) (guard (distributed-primitive? prim))   
+	   (mvlet ([(form memb) (token-names name)])
+		  (values '() 
+			  (append 
+			   (explode-primitive form memb prim rand*)
+			   (if finalname
+			       (primitive-return prim memb)
+			       '()))
+			  ))]
 	  
           [,unmatched
             (error 'deglobalize "invalid expression: ~s"
-                   unmatched)])))
+                   unmatched)]))))
 
 (define deglobalize
   (let ()
 
     (lambda (prog)
+      (pretty-print prog) (newline)
       (match prog
-        [(,input-language (quote (program ,[process-letrec -> entry constbinds tokenbinds])))
-	 (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
-	 ;; This pass uses the same language as the prior pass, lift-letrec
-	 ;`(,input-language '(program ,body))
-	 `(deglobalize-lang '(program 
-			      (bindings ,@constbinds)
-			      ,(if (assq entry constbinds)
-				   ;; Socpgm bindings are null for now:
-				   `(socpgm (bindings ) (return ,entry))
-				   `(socpgm (bindings ) (call ,entry)))
+        [(,input-language (quote (program (props ,table ...) (lazy-letrec ,binds ,fin))))
+	 ;; This is essentially a global constant for the duration of compilation:
+	 (set! proptable table)
+	 	 
+	 ;; Make sure the final value is tagged simple:
+;	 (if (memq 'local (assq fin proctable))
+;	 (let ((temp (filter (lambda (ls) (memq 'final ls)
+
+	 (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin))])
+		
+   ;	       (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
+		;; This pass uses the same language as the prior pass, lift-letrec
+					;`(,input-language '(program ,body))
+		`(deglobalize-lang '(program 
+				     (bindings ,@constbinds)
+				     ,(if (assq entry constbinds)
+					  ;; Socpgm bindings are null for now:
+					  `(socpgm (bindings ) (soc-return ,entry) (soc-finished))
+					  `(socpgm (bindings ) (call ,entry)))
 			      (nodepgm (tokens ,@tokenbinds)
+				       				       
+				       ;; <TODO> It's the LEAVES that need priming:
 				       ,(if (assq entry constbinds)
 					    `(startup )
-					    `(startup ,entry))
-				       )))
+					    ;; How did this make sense:
+					;`(startup ,entry)
+					    `(startup )
+					    )
+				       ))))
 	 ]))))
 
 ;;;  <Pgm> ::= (program <SOCPgm> <NodePgm>)
@@ -308,7 +327,11 @@
      `[(deglobalize '(lang '(program ,(car prog)))) ,(cadr prog)])
    test-programs))
 
-(define test-this
+(define test-this (default-unit-tester
+		    "Pass10: Pass to convert global to local program."
+		    these-tests))
+
+#;(define test-this
   (let ((these-tests these-tests))
     (lambda args 
       (let ((verbose (memq 'verbose args)))	
@@ -331,7 +354,7 @@
 
 ;==============================================================================
 
-;(trace  explode-primitive process-expr process-letrec)
+
 
 
 '(t '(letrec ((a (anchor-at '(30 40)))
@@ -372,3 +395,40 @@
             ()
             (if (< (locdiff (loc) tmp_9) 10.0)
                 (elect-leader m_token_a_5))))))))
+
+
+
+
+
+
+'(program ;;result???
+	 (binds [target '(30 40)])
+	 (tokens [form_a () (flood consider)] 
+		 [consider () (if (< (locdiff (loc) (target)) 10.0)
+			       (elect-leader memb_a)
+			       '#f)]
+		 [memb_a () (call form_r)]
+		 [form_r () (emit memb_r)]
+		 [memb_r () (begin (if (< (dist) 50) 
+				       (relay))
+				   (call fold_it))]
+		 [memb_r:ret (v) (call map_it v)]
+		 [fold_it () (return memb_r (aggregator f) (sense))]
+		 [f (x y) (+ x y)]
+		 
+		 [map_it (v) (call g v)]
+		 [g (v) (begin (...) (output __))]
+		 )
+	 )
+
+'(f_token_result_2
+  ((m_token_tmp_3 () (call f_token_result_2))
+   (f_token_result_2 () (emit m_token_result_2))
+   (m_token_result_2
+    ()
+    (if (< (dist f_token_result_2) '50) (relay)))
+   (f_token_tmp_3 () (flood token_6))
+   (token_6
+    ()
+    (if (< (locdiff (loc) tmp_1) 10.0)
+	(elect-leader m_token_tmp_3)))))

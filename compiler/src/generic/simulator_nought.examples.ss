@@ -76,11 +76,27 @@
      (startup ) ;; seed tokens
      )))
 
+;; This was produced by my compiler.  It's a compilation of the
+;; trivial anchor program.
+(define example-nodal-prog5
+  '(program
+    (bindings (tmp_3 (cons '2 '())) (tmp_1 (cons '1 tmp_3)))
+    (socpgm (bindings) (call f_token_result_2))
+    (nodepgm
+     (tokens
+      (f_token_result_2 () (flood token_5))
+      (token_5
+           ()
+           (if (< (locdiff (loc) tmp_1) 10.0)
+               (elect-leader m_token_result_2)))
+      (m_token_result_2 (soc-return (this))))
+     (startup))))
+
 
 (define example
   '(program
     (bindings (result_2 '3))
-    (socpgm (bindings ) (soc-return result_2) (finished))
+    (socpgm (bindings ) (soc-return result_2) (soc-finished))
     (nodepgm (tokens ) (startup ))))
 
 ;; This program floods the network with a token, then elects a leader

@@ -124,7 +124,11 @@
    test-programs))
      
 
-(define test-this
+(define test-this (default-unit-tester 
+		    "Pass00: Pass to verify initial regiment language."
+		    these-tests))
+
+#;(define test-this
   (let ((these-tests these-tests))
     (lambda args 
       (let ((verbose (memq 'verbose args)))

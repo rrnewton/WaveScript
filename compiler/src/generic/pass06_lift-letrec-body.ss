@@ -21,8 +21,8 @@
 
     (define process-letrec
       (lambda (expr)
-	(disp "processing letrec")
-	(pp expr)
+;	(disp "processing letrec")
+;	(pp expr)
 
         (match expr
           [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,body)

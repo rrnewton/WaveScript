@@ -1,4 +1,4 @@
-;;; Pass X??: verify-core
+;;; Pass 08: verify-core
 
 ;;; This pass verifies that the input is in the simplified core
 ;;; language.  (Uber simplified!)
@@ -28,7 +28,7 @@
     (define (process-let expr env)
       (match expr
 	 [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
-	   (guard (not (memq 'let env))
+	   (guard (not (memq 'lazy-letrec env))
                   (andmap symbol? lhs*)
 		  (set? lhs*) ;; No duplicate lhs's ..
 		  )
@@ -104,11 +104,13 @@
 
 ;==============================================================================
 
+;; These here are examples of core programs:
 (define test-programs   
   '( 
-    (let ((a '3)) a)
+    (lazy-letrec ((a '3)) a)
 
-    (let ((tmp (cons '40 '()))
+;; OLD:
+#;    (letrec ((tmp (cons '40 '()))
 	  (loc (cons '30 tmp))
 	  (a (anchor loc))
 	  (r (circle '50 a))
@@ -137,10 +139,14 @@
 (define these-tests
   (map
    (lambda (prog)
-     `[(verify-core '(some-lang '(program ,prog))) #t])
+     `[(verify-core '(some-lang '(program ,prog)))
+       (some-lang '(program ,prog))])
    test-programs))
 
-(define test-this
+(define test-this (default-unit-tester 
+		    "Pass08: Pass to verify the simplifed core language."
+		    these-tests))
+#;(define test-this
   (let ((these-tests these-tests))
     (lambda args 
       (let ((verbose (memq 'verbose args)))	

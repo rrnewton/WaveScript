@@ -29,7 +29,7 @@
 ;; NOT FINISHED:
 
 ;; [2004.06.09] (soc-return v) Will make v *one of* the return values (a
-;; whole stream of them can be provided). (finished) will terminate
+;; whole stream of them can be provided). (soc-finished) will terminate
 ;; the computation if there has been a returned value, 
 ;; ???? WHAT IF ITS NOT SOC CALLING? ????
 
@@ -48,7 +48,7 @@
 ;; GLOBAL VARIABLES AND TYPES:
 
 ;; NOTE!  The simulator dynamically defines top level variables:
-;;  total-messages, soc-return, finished, stop-nodes
+;;  total-messages, soc-return, soc-finished, stop-nodes
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
@@ -71,7 +71,8 @@
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
-(define-structure (simobject node incoming redraw gobj))
+;; [2004.06.11] Added homepage just for my internal hackery.
+(define-structure (simobject node incoming redraw gobj homepage))
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
@@ -113,7 +114,7 @@
 (define object-graph #f)
 (define all-objs #f)
 
-(define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f)) g))
+(define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f '())) g))
 (define (init-world)
   (set! graph   
 	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
@@ -166,19 +167,30 @@
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 		  [(call ,rator ,rand* ...)	  
-					;(error 'process-statement "call not supported from SOC")] 
+					;(error 'process-statement "call not supported from SOC")] 		   
 		   `(handler (make-msg-object ',rator #f #f 0 ',rand*))]
+
+;		  [(if ,a ,b ,c)
+;		   (disp "IF" a b c)]
+		  
+		  [(if ,[test] ,[conseq] ,[altern])
+		   `(if ,test ,conseq ,altern)]
 
 		  [(flood ,tok) `(sim-flood (quote ,tok))]
 		  [(emit ,opera ...) 
 		   ;; This is an original emission, and should get a count of 0.
 		   `(sim-emit (quote ,(car opera)) (list ,@(cdr opera)) 0)]
 
-		  [(dist) '(sim-dist)]		  		  
+		  [(dist) '(sim-dist)]		
+  		  ;; <TODO> WHY NOT QUOTED:
 		  [(dist ,tok) `(sim-dist ,tok)]
 	 	  
 		  [(relay) `(sim-relay)]		  
 		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
+
+		  [(elect-leader ,tok) `(sim-elect-leader ',tok)]
+
+;		   [(elect-leader ,tok ,tokproc) ]
 
 		  ;; Right now I'm recurring on the argument, this
 		  ;; shouldn't be required by code generated from my
@@ -187,6 +199,8 @@
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		  
+
+		  
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
 		  [(,rator ,[rand*] ...)
@@ -194,8 +208,8 @@
 		   (guard (not (token-machine-primitive? rator)))
 		   `(,(process-expr rator) ,rand* ...)]
 		  
-		  [,else (error 'simulator_nought.process-expr 
-				"don't know what to do with this: ~s" expr)])
+		  [,otherwise (error 'simulator_nought.process-expr 
+				"don't know what to do with this: ~s" otherwise)])
 	   )])
     (lambda (stmt)
       (process-expr stmt))))
@@ -214,7 +228,7 @@
     `(let* ,binds ,expr)))
 
 ;; Takes token bindings and a body expression:
-(define (process-tokbinds tbinds expr)
+(define (process-tokbinds tbinds extradefs expr)
   (let ([binds (map
 		(lambda (tbind)
 		  (match tbind 
@@ -227,11 +241,10 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our cache.
 	[handler `(lambda (themessage) ;(origin parent count tok args)
-;		    (make-msg-object tok origin parent count args)
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
 			  [count  (msg-object-count  themessage)]
-			  [tok    (msg-object-tok    themessage)]
+			  [tok    (msg-object-token  themessage)]
 			  [args   (msg-object-args   themessage)])
 		      
 ;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " tok args)
@@ -261,7 +274,11 @@
 				(handle-it newentry))
 			      (disp "Ignored message " tok " to " (node-id (simobject-node this)))) ;; fizzle
 			  ))))])
-    `(letrec (,@binds [handler ,handler] [this-message #f]) ,expr)))
+    `(let () ,@(map (lambda (x) (cons 'define x)) binds)
+	  [define handler ,handler] 
+	  [define this-message #f];)
+	  ,@extradefs ;; <TODO> THIS IS WEIRD AND LAME <TOFIX>
+    ,expr)))
 
 
 '(define-syntax remove-last!
@@ -323,20 +340,27 @@
 		    (set! total-messages (add1 total-messages))
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
 
-		    (let ([ourentry   (make-msg-object this #f count t m)]
-			  [childentry (make-msg-object this this (add1 count) t m)])
+		    (let ([ourentry   (make-msg-object t this #f count m)]
+			  [childentry (make-msg-object t this this (add1 count) m)])
 		      ;; Is it fair for emitting to overwrite our cache entry?
 		      ;; I need to do it so that the return-handler can figure things out.
-		      (hashtab-set! token-cache tok ourentry)
+		      (hashtab-set! token-cache t ourentry)
 		      (for-each (lambda (nd) (sendmsg childentry nd))
 				(neighbors this))))]
 
+	   ;; These should be macros, but now I'm cheesily hacking
+	   ;; these to work automagically and instantly:
 	   [define (sim-flood t . m)
 	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 					;		    (disp (list "FLOODING" t m))
 	     (let ((msg (if (null? m) '() (car m))))
 	       (for-each (lambda (nd) (sendmsg (make-msg-object this this 0 t m) nd))
 			 all-objs))]
+;	   [define (sim-elect-leader t)
+;	     (let ((msg 
+;	     ]
+
+
 	   
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -416,11 +440,12 @@
 	   ;; running on the SOC has to know that it's physically on
 	   ;; the SOC:
 	    (let ([I-am-SOC (eq? this SOC-processor)])
-	      ,@generic-defs	      
+;	      ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
 		 nodetoks
+		 generic-defs
 		 `(begin 
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
@@ -496,7 +521,7 @@
 	   (define stop-nodes #f)	   
 	   ;; Define global bindings for these so that we can do fluid-let on them.
 	   (define soc-return 'unbound-right-now)
-	   (define finished 'unbound-right-now)))
+	   (define soc-finished 'unbound-right-now)))
 ;;  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]
@@ -521,14 +546,14 @@
 		  ;[soc-return (lambda (x) 
 		;		(disp "CALLING SOCRETURN")
 		;		(set! return-vals (cons x return-vals)))]
-		;  [finished (lambda () 
+		;  [soc-finished (lambda () 
 		;	      (disp "CALLING finished" return-vals)
 		;	      (exit-sim return-vals))]
 		  [soc-return (lambda (x)
-				(disp "CALLING SOCRETURN")
+;				(disp "CALLING SOCRETURN")
 				(set! return-vals (cons x return-vals)))]
-		  [finished (lambda () 
-			      (disp "CALLING finished" return-vals)
+		  [soc-finished (lambda () 
+;			      (disp "CALLING soc-finished" return-vals)
 			      (set! stop-nodes #t))]
 		  )
 ;	(disp "in that fluid" soc-return finished return-vals)
@@ -560,8 +585,7 @@
     ;; Just to make sure erros work with my unit-tester:
     [ (process-statement '(return))  error]
 
-
-    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f)))
+    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f '())))
 	(let ((y (structure-copy x)))
 	  (and (eq? (simobject-node x) 
                     (simobject-node y))
@@ -653,5 +677,5 @@
   (run-simulation
    (build-simulation 
     (compile-simulate-nought 
-     example))
+     example-nodal-prog4))
    1.7))

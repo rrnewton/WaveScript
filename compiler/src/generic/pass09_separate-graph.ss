@@ -36,7 +36,7 @@
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
 
-(define verify-core 
+(define separate-graph
   (let ()
 
 

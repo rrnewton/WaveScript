@@ -2,8 +2,8 @@
 
 ;; This version is for use with the SchemeWidgetLibrary.
 
-(module flat_threads (run-flat-threads yield-thread
-		      these-tests test-this)
+;(module flat_threads (run-flat-threads yield-thread
+;		      these-tests test-this)
 
 (define this-unit-description 
   "swl_flat_threads.ss: simple interface for parallel computations")
@@ -63,4 +63,4 @@
 
 (define test-this (default-unit-tester this-unit-description these-tests))
 
-) ;; End module
+;) ;; End module

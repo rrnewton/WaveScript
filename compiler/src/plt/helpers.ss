@@ -78,8 +78,7 @@
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port error-handler
-   
+   flush-output-port error-handler 
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin
@@ -95,7 +94,7 @@
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
    insert-between iota disp pp
-   graph-map cyclic?  
+   graph-map cyclic?  deep-assq 
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

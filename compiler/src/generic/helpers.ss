@@ -225,9 +225,10 @@
 	       [success #t])
 
 	  (if verbose 
-	      (printf "Testing module: ~a~n" message))
-	    (for-each 
-	     (lambda (num expr descr intended)
+	      (printf ";; Testing module: ~s~n" message))
+	  (flush-output-port)
+	  (for-each 
+	   (lambda (num expr descr intended)
 	       (flush-output-port)
 	       (if (and verbose descr) (printf "   ~s~n" descr))
 	       (display-constrained `(,num 10) "  " `(,expr 40)
@@ -1031,6 +1032,8 @@
 (define union
   (case-lambda
     [(set1 set2)
+     (if (not (list? set1)) (error 'union "not a list: ~s" set1))
+     (if (not (list? set2)) (error 'union "not a list: ~s" set2))
      (let loop ([set1 set1])
        (cond
          [(null? set1) set2]
@@ -1252,6 +1255,65 @@
 	(set-cdr! cell '())
 	(loop next (cdr next)))))
 
+
+;[01.10.23] - I'm surprised this wasn't added a million years ago:
+(define (deep-member? ob struct)
+  (let outer ([struct struct])
+    (or (eqv? ob struct)
+	(and (vector? struct)
+	     (let inner ([i 0])
+	       (cond
+		[(= i (vector-length struct)) #f]
+		[(outer (vector-ref struct i)) #t]
+		[else (inner (add1 i))])))
+	(and (pair? struct)
+	     (or (outer (car struct))
+		 (outer (cdr struct)))))))
+
+;; [2004.06.11] This one doesn't do vectors:
+(define (deep-assq ob struct)
+  (let outer ([struct struct])
+    (if (pair? struct)
+	(if (eq? ob (car struct))
+	    struct
+	    (or (outer (car struct))
+		(outer (cdr struct))))
+	#f)))
+
+;;  [2004.06.11] Man also can't believe that I've never written this
+;;  before.  This is dinky; a real version of this would do an
+;;  alignment of the structures intelligently.  I don't know how
+;;  actually hard of a problem that is.  (Graph matching is a bitch,
+;;  no?)
+(define (diff obj1 obj2)
+  (let loop ([o1 obj1] 
+	     [o2 obj2]
+	     [index '()])
+    (printf "~s: len ~s ~s~n" index 
+	    (if (list? o1) (length o1) #f)
+	    (if (list? o2) (length o2) #f))    
+    (cond
+       [(equal? o1 o2) (void)]
+       [(and (list? o1) (list? o2))
+	(cond 
+	 [(not (= (length o1) (length o2)))
+	  (printf "Lengths differ at list index ~s.  ~s elements vs. ~s elements.~n."
+		  (reverse index) (length o1) (length o2))
+	  (printf "List one:~n")
+	  (pretty-print o1)
+	  (printf "Vs. List two: ~n")
+	  (pretty-print o2)]
+	 [else (for-each (lambda (a b i) (loop a b (cons i index)))
+			 o1 o2 (iota (length o1)))])]
+
+       [(and (vector? o1) (vector? 02))
+	(do ([i 0 (add1 i)])
+	    ((= i (vector-length o1)))
+	  (loop (vector-ref o1 i) 
+		(vector-ref o2 i)
+		(cons i (cons 'v index))))])))
+
+
 ;; Should make this use a hash table.
 (define graph-map
   (lambda (f graph)
@@ -1314,6 +1376,10 @@
 	(if (null? cycles)
 	    #f
 	    cycles)))))
+
+
+;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
+;(define graph-flip...
 
 
 (define display-constrained

@@ -26,7 +26,11 @@
 
 ;===============================================================================
 
-(define tests_regiment '())
+(define tests_regiment 
+  '(
+    (circle-at '(30 40) 50)
+    
+    ))
 
 ;===============================================================================
 
@@ -41,13 +45,6 @@
      ,@tests_quick      ;93
      ,@tests_medium     ;31
      ,@tests_slow       ; 9
-     ))
-
-(define tests
-					;  `( ,@tests_old
-					;     ,@tests_new))
-  `( ,@tests_noclosure
-     ,@tests_regiment
      ))
   
 ;===============================================================================
@@ -104,3 +101,61 @@
                 (write `(define ,sym ,(car tests)) out)
                 (newline out)(newline out)
                 (loop (cdr tests) (cons sym sym-acc)))))))))
+
+;===============================================================================
+
+;; [2004.06.11]  This runs unit tests for the whole system, then runs
+(define (test-everything . args)
+  (let ([test-it (lambda () 
+		   (if (memq 'verbose args)
+		       (test-this 'verbose)
+		       (test-this)))])
+
+    ;; Finlly run all the compiler system tests.
+    (printf "~n;; Testing the whole system on the compiler test cases:~n")
+    (test-all) (newline)  (newline)
+
+    (load "compiler.ss") (test-it) (newline)
+    
+    (dynamic-wind
+	(lambda () (current-directory "generic"))
+	(lambda ()
+	  (load "pass00_verify-regiment.ss") (test-it) (newline)
+					;  (load "pass01_rename-var.ss") (test-it) (newline)
+	  (load "pass08_verify-core.ss") (test-it) (newline)
+	  (load "pass10_deglobalize.ss") (test-it) (newline)
+	  (load "simulator_nought.ss") (test-it) (newline)
+	  )
+	(lambda () (current-directory "..")))
+   
+    (case current_interpreter
+      [(chezscheme)
+       (if (top-level-bound? 'SWL-ACTIVE)
+	   (begin 
+	     (printf "~n SWL DETECTED TESTING GRAPHICAL MODULES:~n")
+	     (load "chez/swl_flat_threads.ss")
+	     (let () #;(import flat_threads) (test-it) (newline))
+
+	     (load "chez/graphics_stub.ss") (test-it) (newline)
+	     (load "generic/simulator_nought_graphics.ss") (test-it) (newline)
+	     )
+	   (begin 
+	     (load "chez/flat_threads.ss") 
+;	     (import flat_threads)
+	     (test-it) (newline)))]
+      [(mzscheme)
+       (error 'test-everything "RYAN FINISH THIS")]
+      )
+
+    ))
+  
+ 
+;===============================================================================
+
+
+(define tests
+					;  `( ,@tests_old
+					;     ,@tests_new))
+  `( ,@tests_noclosure
+     ,@tests_regiment
+     ))
