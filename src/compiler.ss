@@ -39,15 +39,14 @@
     cleanup-token-machine    
     desugar-gradients
 
-  ;    verify-token-machine
-
-
-    ; analyze??
-    ; ?? 
-    ; inline??
-    ; cps-tokmac
+;    analyze-tokmac-recursion
+;    inline-tokmac
+;    cps-tokmac
+;    verify-token-machine
 ;    haskellize-tokmac 
     ))
+
+
 
 ;;======================================================================
 
