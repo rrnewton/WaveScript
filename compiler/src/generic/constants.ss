@@ -5,6 +5,9 @@
 ;; needs to (or might need to) be used in more than one module will
 ;; get lifted up here.
 
+;; [2005.02.24]
+;; Now I'm keeping some parameters (which are actually not constant) in here as well.
+
 
 ;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
@@ -34,3 +37,16 @@
 
 ;; In milliseconds
 (define return-window-size 500)
+
+
+;;======================================================================
+
+(define regiment-parameters (make-parameter '()))
+(define-syntax define-regiment-parameter
+  (syntax-rules () 
+    [(_ name args ...)
+     (define name 
+       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
+	      (make-parameter args ...)))]))
+
+(define-regiment-parameter regiment-verbose #f)
