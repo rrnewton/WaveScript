@@ -1,5 +1,6 @@
 
-COMPONENT = TokenMachineRuntime
+#COMPONENT = TokenMachineRuntime
+COMPONENT = TestMachine
 
 include Makerules
 

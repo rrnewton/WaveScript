@@ -1,11 +1,12 @@
 
-/* Author: Matt Welsh <mdw@eecs.harvard.edu> 
- * Last modified: 3 August 2003
+/* Author: Ryan Newton <newton@mit.edu>
+ * Last modified: [2004.08.21]
  */
 
 module TokenMachineRuntimeM {
   provides {
     interface StdControl;
+    command result_t testfun ();
   }
   uses {
     interface Timer;
@@ -15,14 +16,10 @@ module TokenMachineRuntimeM {
   }
 } implementation {
 
-  TOS_Msg test_packet;
-
   task void tokenhandler () {
   }
 
   command result_t StdControl.init() {
-    dbg(DBG_USR1, "TokenMachineRuntimeM: INITIALIZING\n");
-    *((uint16_t *)test_packet.data) = TOS_LOCAL_ADDRESS; // Our ID number
     return call Random.init();
   }
   command result_t StdControl.start() {
@@ -39,18 +36,33 @@ module TokenMachineRuntimeM {
   }
 
   event result_t SendMsg.sendDone(TOS_MsgPtr msg, bool success) {
-    dbg(DBG_USR1, "TokenMachineRuntimeM: Done sending, success=%d\n", success);
+    dbg(DBG_USR1, "TokenMachineRuntimeM: Done sending msg #%d, success=%d\n", numsent, success);
+    numsent++;
     return SUCCESS;
   }
 
   event TOS_MsgPtr ReceiveMsg.receive(TOS_MsgPtr recv_packet) {
-    uint16_t nodeaddr = *((uint16_t *)recv_packet->data);
+    int i;
+    uint8_t length = recv_packet->length;
+    uint8_t type = recv_packet->type;
+    TM_Payload payload = *((TM_Payload *)recv_packet->data);
 
-    uint16_t nextdata = *(((uint16_t *)recv_packet->data) + 1);
-
-    dbg(DBG_USR1, "TokenMachineRuntimeM: Received message from %d data %d also %d \n", nodeaddr, nextdata, recv_packet->addr);
+    dbg(DBG_USR1, "TokenMachineRuntimeM: Received message from %d of type %d, length %d \n",
+	payload.parent, type, length);
+    dbg(DBG_USR1, "TokenMachineRuntimeM:   Contents: ");
+    for(i=0; i<TOK_DATA_LENGTH; i++) {
+      dbg(DBG_USR1, "%d, ", payload.args[i]);
+    }
+    dbg(DBG_USR1, "\n");
+    
     return recv_packet;
   }
 
+  command result_t testfun () {
+    return SUCCESS;
+  }
+
 }
+
+
 
