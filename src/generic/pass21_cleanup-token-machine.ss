@@ -161,6 +161,7 @@
       ;(trace-lambda cleanuptokmac:procexp 
       (lambda (env tokens this-token this-subtok)
 	(lambda (stmt)
+
 	  (define-syntax check-tok
 	    (syntax-rules ()
 	      [(_ call tok)
@@ -173,7 +174,10 @@
 			 (warning 'cleanup-token-machine
 				  "~s to unknown token: ~s" call tok))))]))
 	  (define (tokname? t) (memq t tokens))
+
 	  (match stmt
+;	     [,x (guard (begin (disp "PEXPmatch" x) #f)) 3]
+		 
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
@@ -198,7 +202,7 @@
 		     [else (warning 'cleanup-token-machine
 				    "unbound variable reference: ~s" var)]))
 		   var]
-	     [(set! ,var [x])
+	     [(set! ,var ,[x])
 	      (DEBUGMODE 
 	       (cond 
 		[(memq var env) (void)]
@@ -345,7 +349,7 @@
       (lambda (env tokens)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-		 (disp "PROCESSING TOKBIND" args tokbind)
+;		 (disp "PROCESSING TOKBIND" args tokbind)
 
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
 			,((process-expr (append args stored bindings env) tokens tok id) body))))))
@@ -358,9 +362,9 @@
 	      [nodetoks '()]
 	      [node-startup '()])
 	  (let loop ((ls stuff))
-	    (disp "Decoding:" (map car bindings) (map car socbindings)
-		  socpgm (map car nodetoks) node-startup)
-	    (disp "Decoding from" ls)
+;	    (disp "Decoding:" (map car bindings) (map car socbindings)
+;		  socpgm (map car nodetoks) node-startup)
+;	    (disp "Decoding from" ls)
 		 
 	    (if (null? ls)
 		(let ((result `(deglobalize-lang
@@ -442,12 +446,12 @@
 			  (nodepgm (tokens ,nodetoks ...)
 				   (startup ,starttoks ...))))
 	 
-	 (disp "Lang" lang
-	       "constbinds" (map car constbinds)
-	       "socbinds" (map car socbinds)
-	       "socstmts" socstmts
-	       "tokens" (map car nodetoks)
-	       "starttoks" starttoks)
+; 	 (disp "Lang" lang
+; 	       "constbinds" (map car constbinds)
+; 	       "socbinds" (map car socbinds)
+; 	       "socstmts" socstmts
+; 	       "tokens" (map car nodetoks)
+; 	       "starttoks" starttoks)
 
 	 (cleanup socbinds constbinds 
                   (if (null? socstmts) #f `(begin ,@socstmts))
