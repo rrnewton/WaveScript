@@ -93,6 +93,54 @@
 	(string->symbol (apply string-append (map symbol->string args)))))
 
 
+(define activate-prim-code
+  (lambda (prim memb args parent)
+    (case prim
+      [(rfold)
+       (match args
+	      [(,rator_tok ,seed_val)	       
+	       `((return this              ;; Value
+			 (to ,memb) ;; To
+			 (via ,parent)           ;; Via
+			 (seed ,seed_val)       ;; With seed
+			 (aggr ,rator_tok))     ;; and aggregator
+		 )])])))
+
+(define push-prim-code
+  (lambda (prim formal memb args parent)
+    (case prim
+      [(rfold)
+       (match args
+	      [(,rator_tok ,seed_val)
+	       `( (return ,formal              ;; Value
+			  (to ,memb) ;; To
+			  (via ,parent)           ;; Via
+			  (seed ,seed_val)       ;; With seed
+			  (aggr ,rator_tok))     ;; and aggregator
+		  )])])))
+
+    
+ 
+;; [2004.07.28] This is a new version I'm making, which takes pre-classified
+(define emit-primitive-handlers
+  (lambda (classified-primapp form memb heartbeat)
+    (match classified-primapp
+	   [(push-comp ,prim ,args ...) 
+	    (let ([parent (get-membership-name region_tok)])
+	      `([,parent (v) (call ,form v)]
+		[,form (v) ,@(push-prim-code prim 'v memb args parent)]))]
+	   [(activate-comp ,prim ,region_tok ,args ...)
+	    (let ([parent (get-membership-name region_tok)])
+	      `([,parent (v) (activate ,form v)]
+		[,form () 
+		       ,@(activate-prim-code prim memb args parent)  
+		       (timed-call ,(/ 1000 heartbeat) ,form)]))]
+	   [,other (error 'emit-primitive-handlers
+			 "unknown primitive classification: ~s" other)])))
+
+;  (push-comp prim args)
+;  (activate-comp prim args)
+
 ;; (Name, DistributedPrim, Args) -> TokenBinds
 ;; This produces a list of token bindings.
 (define explode-primitive
@@ -412,7 +460,7 @@
 
     [(deglobalize '(lang '(program 
 			   (props [result_1 final local])
-			   (lazy-letrec ((result_1 '3)) result_1))))
+			   (lazy-letrec ((result_1 #f '3)) result_1))))
      unspecified]
 
     [(deglobalize '(lang '(program 
@@ -422,12 +470,21 @@
 				  [circ distributed final region]
 				  )
 			   (lazy-letrec
-			    ((b (cons '2 '()))
-			     (a (cons '1 b))
-			     (anch (anchor-at a))
-			     (circ (circle anch '50)))
+			    ((b #f (cons '2 '()))
+			     (a #f (cons '1 b))
+			     (anch 0.5 (anchor-at a))
+			     (circ 1.0 (circle anch '50)))
 			    circ))))
      unspecified]
+
+
+    ;; Rfold should generate two handlers.  One of one arg and one of two.
+    ["test emit-primitive-handlers on rfold"
+     (emit-primitive-handlers '(activate-comp rfold myreg fun_f seed_s) 'form_tok 'memb_tok 2.0)
+     ,(lambda (ls)
+	(and (= 2 (length ls))
+	     (= 1 (+ (length (cadar ls)) (length (cadadr ls))))))]
+
   ))
 
 
