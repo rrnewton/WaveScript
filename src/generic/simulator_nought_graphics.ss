@@ -166,7 +166,7 @@
 	    0.7))
     unspecified]
 
-  ;; 7:
+  ;; 7:  
   [ "Return a value via the gradient..."
     (begin (cleanse-world) ;(init-world)
 	   (simulate
@@ -180,6 +180,27 @@
   ;; What do we expect the current directory to be??
   ,@(include "simulator_nought.tests")
   ))
+
+
+(set! these-tests
+  `(           
+    [ "Now we test color changing"
+      (begin 
+	(init-graphics)	
+	(let ((res 
+	       (graphical-simulation 
+		  (vector (lambda () 
+			    (for-each (lambda (ob) 
+					(change-color!
+					 (simobject-gobj ob)
+					 (rgb 0 255 0)))
+				      all-objs))
+			  '())
+		  1.0)))
+	  (sleep-me 0.7)
+	  (close-graphics)
+	  res))
+      All_Threads_Returned]))
 
 
 ;(set! these-tests     `())

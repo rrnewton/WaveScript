@@ -15,8 +15,8 @@
 ;; Input language is core plus edge annotations, plus heartbeats, plus CFG
 
 ;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
-;;; <CFG>  ::= (<var>*)
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
+;;; <CFG>  ::= (<var>*)
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 ;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
 ;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
@@ -70,8 +70,9 @@
 					     (control-flow ,cfg ...)
 					     ,letexpr)))
 
-    (define unknown-place '?) ;'X?)
-    (define noplace '_)
+    ;; Constants defined in constants.ss
+    ;(define unknown-place '?) ;'X?)
+    ;(define noplace '_)
 	   
     (define (process-let expr)
 ;      (disp "processing let" expr)

@@ -1,60 +1,57 @@
+;; INCOMPLETE
+
 ;; [2004.08.15]
 
 ;; This looks at the place information attached to the bindings.  For
 ;; adjacent primitives which have not been determined to match up in
 ;; location this pass puts in explicit routing constructs.
 
-;; Input language is the same, but it adds an internal primitive
-;; ROUTE.  This just adds a node in the dataflow graph which
-;; explicitely does the routing between locations (when it comes to
-;; token machines.)
+;; Input language is the same, but it adds an internal form ROUTE.
+;; This just adds a node in the dataflow graph which explicitely does
+;; the routing of a value between locations (when it comes to token
+;; machines.)
+;;  This syntax can only occur around the rhs of each let binding.
 
-;;; <Primitive> ::= ROUTE | <old_primitive>
+;; Now in reality there are four different kinds of routing:
+;;   Point -> Point
+;;   Area  -> Point
+;;   Point -> Area
+;;   Area  -> Area
+;; As well as broadcasts to unknown places.  These will need handling...
+
+;; IN THE FUTURE, this pass may do some analysis to try to infer
+;; whether, say, a given place is contained in another set of places
+;; (no routing required).  For now it always adds a routing command as
+;; long as the start/end places are not *identical*.
 
 
-;;; <Pgm>  ::= (program (props <CatEntry>*) <Let>)
+;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
+;;; <CFG>  ::= (<var>*)
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 ;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
 ;;; <Decl> ::= (<var> <Heartbeat> <FormPlace> <MembPlace> <Exp>) 
 ;;; <Heartbeat> ::= <Float> | #f | +inf.0
-;;; <Exp>  ::= <Simple>
-;;;          | (if <Simple> <Simple> <Simple>)
-;;;          | (lambda <Formalexp> <Let>)
-;;;          | (<primitive> <Simple>*)
-;;; <Formalexp> ::= (<var>*)
+;;; <Exp>  ::= (ROUTE <StartPlace> <EndPlace> <BasicExp>)
+;;;          | <BasicExp>
+;;; <BasicExp> ::= <Simple>
+;;;              | (if <Simple> <Simple> <Simple>)
+;;;              | (lambda <Formalexp> <Let>)
+;;;              | (<primitive> <Simple>*)
 ;;; <Simple> ::= (quote <Lit>) | <Var>
-;;; <FormPlace> = 
-;;; <MembPlace> ::= X?       (Unknown place)
-;;;               | _        (no place)
-;;;               | SOC      (Source of Control)
-;;;               | X_<n>    (Some place...)
+;;; <Formalexp> ::= (<var>*)
+;;; <Place> ::= X?       (Unknown place)
+;;;           | _        (no place)
+;;;           | SOC      (Source of Control)
+;;;           | X_<n>    (Some place...)
+
+
+;; USES: constants in constants.ss
 
 (define addrouting
   (lambda (expr)
     (match expr
-	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))
-
-    (define unknown-place '?) ;'X?)
-    (define noplace '_)
-	   
-    (define (process-let expr)
-      (disp "processing let" expr)
-      (match expr
-	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
-
-;	  (lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,expr)
-
-;	  (let ([stuff (map (lambda (rhs) (call-with-values (lambda () (process-expr rhs)) (lambda args args)))
-;			    rhs*)]
-;		[form* (map (lambda (_) 0) rhs*)]
-;		[memb* (map (lambda (_) 0) rhs*)]
-;		)
-;	    (disp "got stuff" stuff)
-;	    (disp "for rhs" rhs*)
-
-	  `(lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
-	 [,other (error 'addplaces:process-let "bad lazy-letrec expression: ~s" other)]))
+	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))	    
     
     (define (new-place) (unique-name 'X))
 
@@ -96,22 +93,29 @@
 ;	       [(anchor-at ,loc) (values expr '_ (new-place))]
 ;	       [(circle ,anch ) (values expr '_ (new-place))]
 
-    (define process-expr
-      (lambda (expr)
-	(disp "process expr" expr)
-        (match expr
-          [(quote ,const) (values `(quote ,const) noplace noplace)]
-          [,var (guard (symbol? var)) (values var noplace noplace)]
-          [(lambda ,formalexp ,expr)
-	   (values (process-let expr) noplace noplace)]
-	  ;; Hmm... if I can tell at compile time I should narrow this!
-          [(if ,test ,conseq ,altern)
-	   (values `(if ,test ,conseq ,altern) unknown-place unknown-place)]
-          [(,prim ,rand* ...)	   
-           (guard (regiment-primitive? prim))
-	   (process-primapp prim rand*)]
-          [,unmatched
-	   (error 'addplaces:process-let "invalid syntax ~s" unmatched)])))
+
+    ;; Takes the 
+    (define (process-varref used provided var)
+
+
+    (define (process-bind binding)
+      (match binding
+	     [(,lhs ,heartbeat ,form ,memb ,rhs)
+	      (guard (equal? form memb))
+	      ,rhs]
+	     [(,lhs ,heartbeat ,form ,memb ,rhs)
+	      (ROUTE ,memb
+	      
+	      
+	      
+	     
+    (define (process-let expr)
+      (disp "processing let" expr)
+      (match expr
+	 [ (lazy-letrec ([process-bind -> binds*] ...) ,retvar)
+	  `(lazy-letrec ,binds* ,retvar)]
+	 [,other (error 'add-routing:process-let "bad lazy-letrec expression: ~s" other)]))
     
-    `(,input-language (quote (program (props ,proptable ...) 
-				      ,(process-let letexpr))))])))
+    `(add-routing-language (quote (program (props ,proptable ...) 
+					   ,(process-let letexpr))))])))
+	   

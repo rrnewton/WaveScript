@@ -134,8 +134,6 @@
      (startup))))
 
 
-
-
 ;; This tests the timed-call facility.
 (define example-nodal-prog6
   '(program
