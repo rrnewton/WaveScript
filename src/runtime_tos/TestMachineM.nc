@@ -14,6 +14,8 @@ module TestMachineM
   uses interface ReceiveMsg as Recv_B; 
   uses interface ReceiveMsg as Recv_89; 
   uses interface Timer;
+
+  uses interface TMComm[uint8_t id];
 }
 implementation 
 {

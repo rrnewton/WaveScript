@@ -101,7 +101,7 @@ build_module_header toks =
 --       "  uses interface Timer;\n" ++ 
        concat
          (map (\ name -> 
-	       "  uses interface BasicTMComm as TMComm_"++ name ++"; \n"
+	       "  uses interface TMComm as TMComm_"++ name ++"; \n"
 --	       "  uses interface SendMsg as Send_"++ name ++"; \n" ++ 
 --	       "  uses interface ReceiveMsg as Recv_"++ name ++"; \n"
 	      )
@@ -121,14 +121,13 @@ build_implementation_header toks =
     "  command result_t Control.stop() {\n" ++
 --    "    return call Timer.stop();\n" ++
     "    return SUCCESS;\n"++
-    "  }\n\n" 
-    {-++
+    "  }\n\n" ++
     (concat $
      map (\ name -> 
-	  "  event result_t Send_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
+	  "  event result_t TMComm_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
 	  "    return SUCCESS;\n" ++
 	  "  }\n\n")
-     (map (\ (t,_,_) -> tokname t) toks))-}
+     (map (\ (t,_,_) -> tokname t) toks))
 
 
 build_socfun consts expr = 
@@ -146,7 +145,7 @@ build_module (Pgm consts socconsts socpgm nodetoks startup) =
     process_consts consts ++ 
     build_implementation_header nodetoks ++
     process_consts socconsts ++ 
-    process_handlers nodetoks ++ 
+--    process_handlers nodetoks ++ 
     build_socfun socconsts socpgm ++
     "}\n"
 
@@ -161,7 +160,7 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
     "}\n"++
     "implementation\n"++
     "{\n"++
-    "  components "++modname++"M, Main, TimerC, GenericComm as Comm;\n"++
+    "  components "++modname++"M, Main, TimerC, BasicTMCommM, GenericComm as Comm;\n"++
     "\n"++
     "  Main.StdControl -> TestMachineM.Control;\n"++
     "  Main.StdControl -> Comm;\n"++
@@ -169,8 +168,10 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
     "\n"++
     (concat $
      map2 (\ name number -> 
-	   "  TestMachineM.Send_"++name++" -> Comm.SendMsg["++show number++"];\n"++
-	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n")
+	   "  TestMachineM.TMComm_"++name++" -> BasicTMCommM.TMComm["++show number++"];\n"
+--	   "  TestMachineM.Send_"++name++" -> Comm.SendMsg["++show number++"];\n"++
+--	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n"
+	  )
      (map (\ (t,_,_) -> tokname t) nodetoks)   [1..]) ++
     --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
     "}\n"

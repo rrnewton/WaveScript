@@ -1,17 +1,19 @@
 
 module BasicTMCommM {
   provides {
-    interface TMComm;
+    interface TMComm[uint8_t id];
     interface StdControl;
     //    interface ReceiveMsg;
   }
   uses {
     interface Timer;
-    //    interface ReceiveMsg;
+    interface ReceiveMsg[uint8_t id];
     interface SendMsg[uint8_t id];
     interface Random;
   }
 } implementation {
+
+  int test_test;
 
   task void tokenhandler () {
   }
@@ -25,17 +27,19 @@ module BasicTMCommM {
   command result_t StdControl.stop() {
     return call Timer.stop();
   }
-  
-  command result_t TMComm.emit(uint16_t address, uint8_t length, TOS_MsgPtr msg) {
-    call SendMsg.send[msg->type](address, length, msg);    
+
+  // Hope this gets statically wired and inlined 
+  command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {    
+    //    call SendMsg.send[msg->type](address, length, msg); 
+    call SendMsg.send[id](address, length, msg); 
     return SUCCESS;
   }
 
-  command result_t TMComm.relay(uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
     return SUCCESS;
   }
 
-  command result_t TMComm.return_home(uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
     return SUCCESS;
   }
 
@@ -48,6 +52,14 @@ module BasicTMCommM {
     dbg(DBG_USR1, "BasicTMCommM: Done sending \n");
     return SUCCESS;
   }
+  
+  event TOS_MsgPtr ReceiveMsg.receive[uint8_t id](TOS_MsgPtr msg) {
+
+    //    dbg(DBG_USR1, "TestMachine: RECEIVED MSG OF TYPE %D: addr %d, type %d, group %d \n", 
+    //	id, msg->addr, msg->type, msg->group);
+    return msg;
+  }
+
 
 }
 
