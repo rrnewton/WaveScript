@@ -87,6 +87,8 @@
 (include "generic/pass21_cleanup-token-machine.ss")
 (include "generic/pass23_desugar-gradients.ss")
 
+(include "generic/pass24_desugar-let-stored.ss")
+
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")

@@ -38,10 +38,11 @@
     
     cleanup-token-machine    
     desugar-gradients
+    desugar-let-stored
 
 ;    analyze-tokmac-recursion
 ;    inline-tokmac
-;    cps-tokmac
+    cps-tokmac
 ;    verify-token-machine
 ;    haskellize-tokmac 
     ))

@@ -24,6 +24,11 @@
 (define unknown-place '?) ;'X?)
 (define noplace '_)
 
+;; Used primarily by pass21_cleanup_tokmac
+;;===================================================
+(define DEFAULT_SUBTOK 0)
+(define DEFAULT_SUBTOK_VAR 'subtok_ind)
+
 ;; Used primarily by Simulator_nought.ss:
 ;;===================================================
 ;; These are the virtual coordinate bounds of the world.

@@ -30,11 +30,13 @@
 ;;;   that are just shorthands.  (For example, (dist) becomes
 ;;;   (dist <this-token>)    ;;; TODO: not finished...
 
-;;;   (*) Should be IDEMPOTENT.
+;;;   (*) Should be IDEMPOTENT.  
+;;;   Can run it multiple times or inbetween different passes.
 
 ;;;   (*) RENAME-VARS SHOULD RUN BEFORE THIS PASS.  It depends on
 ;;;   merging token handlers without collisions between stored vars
 ;;;   and constant bindings.
+
 
 
 
@@ -90,45 +92,12 @@
 ;;; [2004.10.22]  Now this also will expand out flood/elect-leader.
 ;;; This pass is starting to do way too much work...
 
+;; [2005.03.28]  Moving destructure-tokbind to helpers.ss
+
 (define cleanup-token-machine
   (let ()
 
-    (define DEFAULT_SUBTOK 0)
-    (define DEFAULT_SUBTOK_VAR 'subtok_ind)
-
-    (define (destructure-tokbind tbind)  
-      (define (process-stored s)
-	(match s
-	       [(,v ,e) `(,v ,e)]
-	       [,v `(,v '#f)]))
-      (define (process-bods x)
-	(match x
-	       [((stored ,s ...) (bindings ,b ...) ,bods ...)
-		(values (map process-stored s)
-			b
-			(make-begin `((begin ,bods ...))))]
-	       [((bindings ,b ...) (stored ,s ...) ,bods ...)
-		(values (map process-stored s)
-			b
-	       (make-begin `((begin ,bods ...))))]
-	       [((stored ,s ...) ,bods ...)
-		(values (map process-stored s)
-			'()
-			(make-begin `((begin ,bods ...))))]
-	       [((bindings ,b ...) ,bods ...)
-		(values '() b
-			(make-begin `((begin ,bods ...))))]
-	       [,bods 
-		(values '() '()
-			(make-begin `((begin ,bods ...))))]))
-      (match tbind
-	     [(,t (,a ...) ,bds ...)
-	      (mvlet ([(stored bindings body) (process-bods bds)])
-		     (values t DEFAULT_SUBTOK_VAR a stored bindings body))]
-	     [(,t ,i (,a ...) ,bds ...)
-	      (mvlet ([(stored bindings body) (process-bods bds)])
-		     (values t i a stored bindings body))]
-	     [,other (error 'destructure-tokbind "bad tokbind: ~a" other)]))
+    ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
 
     (define (handler->formals tb)
       (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
