@@ -5,6 +5,9 @@
 	(require "helpers.ss")
 
 	(provide 
+
+	 define-regiment-parameter regiment-parameters
+	 regiment-verbose 
 	 
          slow-pulse fast-pulse
          
@@ -14,8 +17,6 @@
 	 
 	 return-window-size
 
-	 define-regiment-parameter regiment-parameters
-	 regiment-verbose 
 	 )
 	
 	(include "../generic/constants.ss"))

@@ -180,7 +180,17 @@
 ;(eval (cadr (last testssim)))
 
 
+(define (load_loader)
+  (current-directory (build-path "plt"))
+  (let ([f (load-extension 
+	    (build-path "compiled" "native"  (system-library-subpath) "_loader.so"))])
+  (printf "Got loader: ~s~n" f)
+  (let-values ([(th r) (f #t)])
+	      (printf "Loaded, ~s  ~s~n" th r)
+	      (th))))
+
+;(begin (display ) (newline) (exit))
+
 ;(begin (init-graphics) (cleanse-world) (graphical-repl))
 (define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
-
 
