@@ -124,7 +124,8 @@
 			      (load s))])
     (case current_interpreter
       [(chezscheme)
-       (loudload "compiler.ss") (test-it) (newline)       
+
+       (loudload "compiler.ss") (test-it) (newline)
        (loudload "generic/pass00_verify-regiment.ss") (test-it) (newline)
        ;  (load "pass01_rename-var.ss") (test-it) (newline)
        (loudload "generic/pass10_verify-core.ss") (test-it) (newline)
