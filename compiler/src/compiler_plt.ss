@@ -8,7 +8,7 @@
 (require (lib "include.ss")
          "plt/helpers.ss"
          "plt/pass00.ss"
-         ;;  (require "plt/pass01.ss")
+         "plt/pass01.ss"
          "plt/pass07.ss")
 
 ;  (require "plt/demo_display.ss")
@@ -18,3 +18,4 @@
 (newline)
 
 (test00)
+
