@@ -31,12 +31,14 @@
     (match expr
 	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))
 
-    (define unknown-place '_)
+    (define unknown-place 'X?)
+    (define noplace '_)
 	   
-
     (define (process-let expr env)
+      (disp "processing let" expr)
       (match expr
 	 [(lazy-letrec ([,lhs* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
+	  (disp "got stuff from process expr back" rhs* form* memb*)
 	  `(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)]))
     
     (define (new-place) (unique-name 'X))
@@ -51,12 +53,11 @@
 ;	       [(anchor-at ,loc) (values expr '_ (new-place))]
 ;	       [(circle ,anch ) (values expr '_ (new-place))]
 
-
     (define process-expr
       (lambda (expr)
         (match expr
-          [(quote ,const) `(quote ,const)]
-          [,var (guard (symbol? var)) var]
+          [(quote ,const) (values `(quote ,const) noplace noplace)]
+          [,var (guard (symbol? var)) (values var noplace noplace)]
           [(lambda ,formalexp ,expr)
 	   (process-let expr (union formalexp env))]
 
