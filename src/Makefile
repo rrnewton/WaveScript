@@ -2,6 +2,7 @@
 #*---------------------------------------------------------------------*/
 #*    flags                                                            */
 #*---------------------------------------------------------------------*/
+MZC = mzc
 MZSCHEME = mzscheme
 #CHEZ = chez
 #CHEZ = petite
@@ -63,6 +64,7 @@ runchez: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
 	$(CHEZ) $(CHEZ_MAIN_FILE)
 
 runplt: mzscheme
+	$(MZC) -z $(PLT_MAIN_FILE)	
 	$(MZSCHEME) -f $(PLT_MAIN_FILE)
 
 #/*--------------------------------------------------------------------*/
@@ -72,6 +74,7 @@ runplt: mzscheme
 
 clean:
 	(cd plt; $(MAKE) clean)
+	$(RM) *.zo
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \
 #                       -o -name '#*#' \
