@@ -1,6 +1,15 @@
 includes TokenMachineRuntime;
 
+
+// [2005.01.12] Adding return_home
+
+// TODO: fix timestamping of messages
+
+
 // TODO: fix memcpy's to only copy the used portion of the message.
+
+
+
 
 #define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
 
@@ -30,29 +39,31 @@ module BasicTMCommM {
     interface Random;
   }
 } implementation {
-  int foo1;
-  int16_t foo2;
-  int32_t foo3;
 
   // This is a lame way of doing an option type: "Maybe Token"
-  TOS_Msg extra_token;
-  TOS_MsgPtr cached_token;
+  TOS_Msg extra_token; // We preallocate this one piece of memory.
+  TOS_MsgPtr cached_token; // But we're going to start the pointer of NULL.
   TM_Payload* cached_payload;
   
-  TOS_MsgPtr currently_processing;
-  TOS_Msg temp_msg;
+  TOS_MsgPtr currently_processing; // The incoming token
+  TOS_Msg extra_token2;            // An allocated buffer for the incoming token
 
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
   TOS_Msg token_in_buffer[TOKBUFFER_LENGTH];
 
-  TOS_Msg token_out_buffer; //[TOKBUFFER_LENGTH];
-  bool send_pending; //[TOKBUFFER_LENGTH];
-
   // in_buffer_start is the position of the first element in the fifo.
   int16_t in_buffer_start;
   // in_buffer_end is the position of the last element, or -1 if there are
-  // no elements in the fifo.
-  int16_t in_buffer_end;
+  int16_t in_buffer_end;     // no elements in the fifo.
+
+
+  // For the time being we only have one slot in the out buffer:
+  TOS_Msg token_out_buffer; //[TOKBUFFER_LENGTH];
+  bool send_pending; //[TOKBUFFER_LENGTH];
+
+
+
+  // ======================================================================
 
   task void tokenhandler () {
     atomic { // Access in_buffer_end/in_buffer_start
@@ -60,10 +71,10 @@ module BasicTMCommM {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: message available, calling process_token.\n"); 
-	if ( call pop_msg(&temp_msg) ) {	  
-	  currently_processing = &temp_msg;
+	if ( call pop_msg(&extra_token2) ) {	  
+	  currently_processing = &extra_token2;
 	  // Execute the handler:
-	  call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
+	  call TMModule.process_token(&extra_token2); // Do nothing with returned pointer.
 	  // AUTO CACHING FOR NOW!
 	  cached_token = &extra_token;
 	  cached_payload = (TM_Payload*)cached_token->data; 
@@ -74,6 +85,10 @@ module BasicTMCommM {
       }
     }
   }
+
+  // ======================================================================
+  // Here's the implementation of the incoming FIFO
+  // I really need to go over the buffer management and make sure it's sane.
 
   // Add a message to the token_in_buffer if there's room available.
   async command result_t add_msg(TOS_MsgPtr token) {    
@@ -178,32 +193,44 @@ module BasicTMCommM {
     }
   }
 
-  command result_t StdControl.init() {
-    atomic {
-      in_buffer_start = 0;
-      in_buffer_end = -1;
-      currently_processing = NULL;
+  // ======================================================================
+  // This accesses the one cached copy of the current token:
+  // Might return NULL
+  command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
+    return cached_token;
+  }
+
+  // I don't think I really want this in the interface:
+  command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
+    // This copies the data over.
+    //cached_token = *newtok;
+    if ( cached_token == NULL ) {
+      cached_token = &extra_token;
+      cached_payload = (TM_Payload*)cached_token->data;
     }
-   
-    /*    temp_msg.origin = 91;
-    temp_msg.parent = 92;
-    temp_msg.timestamp = 93;
-    temp_msg.counter = 94;*/
-
-    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize:%d, tokdatalen:%d  rettoklen:%d\n", 
-	TOKBUFFER_LENGTH, TOK_DATA_LENGTH, RETURNTOK_DATA_LENGTH );
-
-    return call Random.init();
+    memcpy(&cached_token, newtok, sizeof(TOS_Msg));
+    return SUCCESS;
   }
 
-  command result_t StdControl.start() {
-    return call Timer.start(TIMER_REPEAT, 3000);
-  }
-  command result_t StdControl.stop() {
-    return call Timer.stop();
+
+  // ======================================================================
+    // The TMComm interface is what the TMModule expects the
+    // communications system to be able to do:
+
+  command uint16_t TMComm.get_dist[uint8_t id]() {
+    if ( NULL == currently_processing ) {
+      if ( cached_token == NULL ) {
+	return NO_DIST;
+      } else {	
+	return (cached_payload->counter);
+      }
+    } else {
+      return ((TM_Payload*)currently_processing->data)->counter;
+    }
   }
 
   // Hope this gets statically wired and inlined 
+  // ID and address should be the same...
   command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
     TM_Payload* payload;
    
@@ -226,7 +253,7 @@ module BasicTMCommM {
       token_out_buffer.type = id;      
       token_out_buffer.length = length;
 
-      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d/%d\n", 
+      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d address:%d/%d\n", 
 	  length, TOS_LOCAL_ADDRESS, msg->type, id);
       return call SendMsg.send[id](address, length, &token_out_buffer);
     }
@@ -257,38 +284,98 @@ module BasicTMCommM {
     }
   }
 
-  // Here's the tricky part.
-  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, 
-						  TOS_MsgPtr msg, uint16_t seed, uint16_t aggr) {
+  // ============================================================
+  // These don't actually use ID and so are not specific to this token-interface:
+  
+  //  command void process_return(TM_ReturnPayload* msg) {   }
 
+  // This essentially ignores "id" because it sends along the 'via' channel.
+  command result_t TMComm.return_home[uint8_t id](uint8_t length, TOS_MsgPtr msg) {
+    TM_ReturnPayload* ret;
+    if (send_pending) {
+      dbg(DBG_USR1, "TM BasicTMCommM: return_home failed because send in progress.\n");
+      return FAIL;
+    } else {
+      send_pending = TRUE;
 
-    return SUCCESS;
-  }
+      // OPTIMIZE THIS:
+      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
 
-  command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
-    return cached_token;
-  }
+      ret = (TM_ReturnPayload*)token_out_buffer.data;
+      dbg(DBG_USR1, "TM: RETURNING HOME: to%d,  via:%d,  lng:%d,  sd:%d,  aggr:%d  \n", 
+	  ret->to_tok,
+	  ret->via_tok, 
+	  length, 
+	  ret->seed_val, 
+	  ret->aggr_tok);
 
-  // I don't think I really want this in the interface:
-  command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
-    // This copies the data over.
-    //cached_token = *newtok;
-    if ( cached_token == NULL ) {
-      cached_token = &extra_token;
-      cached_payload = (TM_Payload*)cached_token->data;
+      token_out_buffer.type = ret->via_tok;
+      token_out_buffer.length = length;
+
+      return call SendMsg.send[id](ret->via_tok, length, &token_out_buffer);
     }
-    memcpy(&cached_token, newtok, sizeof(TOS_Msg));
-    return SUCCESS;
+  }
+
+  /*typedef struct TM_ReturnPayload
+{
+  uint16_t to_tok; // Where the return is going.
+  uint16_t via_tok; // The spanning tree it's using
+
+  uint16_t aggr_tok; // The aggregation function, 0 for no aggregation.
+  uint16_t seed_val; // The seed value, for aggregation
+
+  uint16_t timestamp; // timestamp that the return fired
+
+  uint16_t generation; // The generation of this emission.
+
+  //  int8_t length; // length of return_val
+
+  // Thus the actual payload is the remaining space after we've
+  // factored out our overhead for the bookkeeping fields you see above.
+  int8_t return_val[RETURNTOK_DATA_LENGTH];    
+
+  // Return messages will be a little different.
+
+} TM_ReturnPayload;
+*/
+
+
+  // ======================================================================
+  // Here we obligatorily fill in the rest of our required interfaces.
+
+  command result_t StdControl.init() {
+    atomic {
+      in_buffer_start = 0;
+      in_buffer_end = -1;
+      currently_processing = NULL;
+    }
+   
+    /*    extra_token2.origin = 91;
+    extra_token2.parent = 92;
+    extra_token2.timestamp = 93;
+    extra_token2.counter = 94;*/
+
+    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize:%d, tokdatalen:%d  rettoklen:%d\n", 
+	TOKBUFFER_LENGTH, TOK_DATA_LENGTH, RETURNTOK_DATA_LENGTH );
+
+    return call Random.init();
+  }
+
+  command result_t StdControl.start() {
+    return call Timer.start(TIMER_REPEAT, 3000);
+  }
+  command result_t StdControl.stop() {
+    return call Timer.stop();
   }
 
   event result_t Timer.fired() {
     /* // Add random messages:
-    ((TM_Payload*)temp_msg.data)->origin = call Random.rand();
-    ((TM_Payload*)temp_msg.data)->parent = call Random.rand();
-    ((TM_Payload*)temp_msg.data)->timestamp = call num_tokens();
-    ((TM_Payload*)temp_msg.data)->counter = (uint8_t)call Random.rand();
+    ((TM_Payload*)extra_token2.data)->origin = call Random.rand();
+    ((TM_Payload*)extra_token2.data)->parent = call Random.rand();
+    ((TM_Payload*)extra_token2.data)->timestamp = call num_tokens();
+    ((TM_Payload*)extra_token2.data)->counter = (uint8_t)call Random.rand();
     */
-    //    call add_msg(&temp_msg);
+    //    call add_msg(&extra_token2);
 
     call print_buffer();
 

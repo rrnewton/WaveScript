@@ -178,10 +178,14 @@
 			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
 	      ((process-expr env tokens this-token)
 	       `(return ,thing 
-			(to ,(assq 'to stuff))
-			(via ,(assq 'via stuff))
-			(seed ,(assq 'seed stuff))
-			(aggr ,(assq 'aggr stuff))))]
+			,(assq 'to stuff)
+			,(assq 'via stuff)
+			,(if (assq 'seed stuff)
+			     (assq 'seed stuff)
+			     '(seed '#f))
+			,(if (assq 'aggr stuff)
+			     (assq 'aggr stuff)
+			     '(aggr #f))))]
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
 
