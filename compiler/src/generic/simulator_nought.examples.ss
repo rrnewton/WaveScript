@@ -62,20 +62,49 @@
     (bindings )
     (socpgm (bindings ) 
 ;	    (tokens [tok1_return (v)
-;		       (disp "Got return!" v)])
+;		       (disp "Got return!" v)]
+	    (disp "SOC Running" (node-id (simobject-node this)))
 	    (emit tok1))
     (nodepgm
      (tokens
       [tok1_return (v)
-		   (disp "Got return!" v)]
+		   (disp "Got return!" v)
+		   (soc-return v)]
       [tok1 ()
-	    (disp "tok1" (node-id this))
+	    (disp "tok1" (node-id (simobject-node this)))
 	    (call tok2)
 	    (relay)
-	    (return (dist))]
+	    (return (dist)
+		    (to tok1_return)
+		    (via tok1)
+		    )]
       [tok2 () 
 	    (disp "tok2" (node-id this))
 	    (light-up 0 255 0)])
+     (startup ) ;; seed tokens
+     )))
+
+;; Now with aggregation
+(define example-nodal-prog4b
+  '(program
+    (bindings )
+    (socpgm (bindings ) 
+	    (disp "SOC Running" (node-id (simobject-node this)))
+	    (emit tok1))
+    (nodepgm
+     (tokens
+      [tok1_return (v) (soc-return v)]
+      [tok1 ()
+	    (call tok2)
+	    (relay)
+	    (return (dist)
+		    (to tok1_return)
+		    (via tok1)
+		    (seed 0)
+		    (aggr plus)
+		    )]
+      [plus (x y) (disp "PLUS: "x y) (+ x y)]
+      [tok2 () (light-up 0 255 0)])
      (startup ) ;; seed tokens
      )))
 

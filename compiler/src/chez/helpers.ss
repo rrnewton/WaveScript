@@ -32,7 +32,8 @@
 ;; This defines a *simple* and unified interface into hash-tables.
 ;; First we require hash-tables from slib:
 (require 'hash-table)
-(define (make-default-hash-table) (make-hash-table 50))
+;(define (make-default-hash-table) (make-hash-table 50))
+(define (make-default-hash-table) (make-hash-table 5))
 (define hashtab-get (hash-inquirer eq?))
 (define hashtab-set! (hash-associator eq?))
 

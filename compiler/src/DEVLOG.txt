@@ -79,6 +79,9 @@ fluid-let?  What's with that?
 Ok, need to drive to finish up a demo for tomorrow.  I don't have
 *returns* working right.  That's the priority for right this second.
 Making a big fat complex test in the test-suite for simulator_nought.ss.
+Got test suite up for simulator_nought with the return-test.  Now for
+a bigger test that actual returns some values!
+
 
 
 
