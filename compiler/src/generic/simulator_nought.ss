@@ -597,29 +597,34 @@
 				socstmts)
 			 'soc_finished))))))]
 
-       ;; Return messages are special, they're handled somewhat "under
-       ;; the table" from the normal token system.  This takes a batch
-       ;; of return messages, processes them, and sends them onwards.
+       ;; [2004.06.28] Return messages are special, they're handled
+       ;; somewhat "under the table" from the normal token system.
+       ;; Rather than a single timestamp, they store a list of
+       ;; time-stamps, marking all handlers.  This takes a batch of
+       ;; return messages, processes them, and sends them onwards.
        [handle-returns 
 	(lambda (returns)
 	  (let ([channels (partition-equal returns
 			     (lambda (ob1 ob2)
 			       (match (list ob1 ob2)
-				      [((,val1 ,to1 ,via1 ,seed1 ,aggr1)
-					(,val2 ,to2 ,via2 ,seed2 ,aggr2))
+				      [((,val1 ,to1 ,via1 ,seed1 ,aggr1 ,senders)
+					(,val2 ,to2 ,via2 ,seed2 ,aggr2 ,senders))
 				       (eq? to1 to2)]
 				      [,else (error 'simulator_nought:handle-returns
 						    "invalid return messages: ~n ~s ~n ~s"
 						    ob1 ob2)])))])
+	    ;; That divided them up into related clumps, now process each:
 	    (for-each 
 	     (lambda (returns) ;; Each chunk of returns going to the same target.
 	       (let ([returns-args (map msg-object-args returns)]
-		     [timestamps (map msg-object-timestamp returns)])
+		     [timestamps (map msg-object-timestamp returns)]
+		     [counts (map msg-object-counts returns)])
 	       (let ([vals (map car returns-args)]
 		     [tos (map cadr returns-args)]
 		     [vias (map caddr returns-args)]
 		     [seeds (map cadddr returns-args)]
-		     [aggrs (map (lambda (ls) (list-ref ls 4)) returns-args)])
+		     [aggrs (map (lambda (ls) (list-ref ls 4)) returns-args)]
+		     [senders* (map (lambda (ls) (list-ref ls 5)) returns-args)])
 		 (DEBUG
 		  ;; These had better have homogenous seeds and aggregators.
 		  ;; (Although theoretically, this restriction could be lifted.)
@@ -633,18 +638,43 @@
 		 (let ([to  (car tos)]
 		       [via  (car vias)]
 		       [seed (car seeds)]
-		       [aggr (car aggrs)]  )
+		       [aggr (car aggrs)]
+		       [senders (apply append senders*)])
+;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
+;			 (cons seed vals))
 		   (let ([aggregated-value
-			  (let loop ([acc seed]
-				     [vals vals]
-				     [timestamps timestamps])
-			    (if (null? vals) acc
-				(loop (handler (bare-msg-object aggr (list (car vals) acc)))
-				      (cdr vals)
-				      (cdr timestamps))))])
-		     (sim-emit SPECIAL_RETURN_TOKEN 
-			       (list aggregated-value to via seed aggr) count)
+			  (if aggr 
+			      (let loop ([acc seed]
+					 [vals vals]
+					 [timestamps timestamps])
+				(if (null? vals) acc
+				    (loop (handler (bare-msg-object aggr (list (car vals) acc)))
+					  (cdr vals)
+					  (cdr timestamps))))
+			      #f)])
 
+		     (sendmsg  
+		      (make-msg-object 
+		       SPECIAL_RETURN_TOKEN ;; Token
+		       (cons (cpu-time) (apply append timestamps)) ;; Timestamp
+		       this ;; Origin
+		       this ;; Parent
+		       (map add1 counts) ;; Count - these are the leaf counts.
+		       (list (if aggregated-value 
+				 aggregated-value 
+				 ;; If there is no aggregator, then we just 
+				 ;; accumulate *all* those values together!
+				 (begin (DEBUGASSERT (andmap list? vals))
+					(apply append vals)))
+			     to via seed aggr 
+			     (cons (node-id (simobject-node this))))) ;; Args 
+		      ;; Target is the parent of the via token
+		      (let ([entry (hashtab-get token-cache via)])
+			(if entry 
+			    (msg-object-parent entry)
+			    (error 'simulator_nought:handle-returns
+				   "Could not get entry for via token!: ~s" via))))
+		     )))))
 	     channels)))]
        
        [nodeprog
