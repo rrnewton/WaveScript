@@ -7,7 +7,8 @@
 ;; the src/chez/ directory.
 
 ;; Uses slib:
-(require 'hash-table)
+;; [2004.06.28] Moved this to chez/helpers.ss:
+;(require 'hash-table)
 
 (define (sleep-me sec) 
   (thread-sleep (flonum->fixnum (* sec 1000.0))))

@@ -11,6 +11,9 @@
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 
+;; [2004.06.28] Moving this here, hope that works:
+(load "../depends/slib/chez.init")
+(require 'tsort) ;; for the simulator: 
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 (cd "chez") (include "helpers.ss") (cd "..")
@@ -36,8 +39,8 @@
 (include "generic/pass12_deglobalize.ss")
 
 
-(load "../depends/slib/chez.init")
-(require 'tsort) ;; for the simulator: 
+;(load "../depends/slib/chez.init")
+;(require 'tsort) ;; for the simulator: 
 
 ;; Basic parallel computation (engines):
 (if (top-level-bound? 'SWL-ACTIVE)
@@ -77,7 +80,19 @@
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "generic/repl.ss")
 
-(define text-repl  (repl-builder void void run-simulation-stream))
+(define text-repl  (repl-builder void void run-compiler run-simulation-stream))
+(define precomp-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse
+		      (lambda (x) x) ;; Compiler
+		      run-simulation-stream)) ;; Runner
+
+(define precomp-graphical-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse
+		      (lambda (x) x) ;; Compiler
+		      run-simulation-stream))
+
 
 (if (top-level-bound? 'SWL-ACTIVE)
     (begin
@@ -85,10 +100,10 @@
       (eval '(import graphics_stub))
       (load "chez/simulator_nought_graphics.ss")
 
-      (define-top-level-value 'graphical-repl
-	(repl-builder (lambda () 
-			(init-world)
-			(init-graphics))
+      (let ([grepl-init (lambda () 
+			  (init-world)
+			  (init-graphics))]
+	    [grepl-cleanse 
 		      ;; Inbetween evaluations, reset colors.
 		      (lambda ()
 			(for-each
@@ -97,8 +112,18 @@
 			       (set-fill-color! (simobject-gobj simob) 
 						Starting-Node-Color)))
 			 all-objs)
-			(cleanse-world))
-		      graphical-simulation))
+			(cleanse-world))])
+	(define-top-level-value 'graphical-repl
+	  (repl-builder grepl-init 
+			grepl-cleanse
+			run-compiler
+			graphical-simulation))
+	(define-top-level-value 'precomp-graphical-repl
+	  (repl-builder grepl-init 
+			grepl-cleanse
+			(lambda (x) x)
+			graphical-simulation)))
+
       (define-top-level-value 'grepl graphical-repl)
       ))
 

@@ -36,14 +36,14 @@
 
     (define process-var
       (lambda (var bound)
-        (let ([vpair (assq var bound)])
-          (if vpair
-              (cdr (assq var bound))
-              (begin
-                (error 'rename-var/process-var
-                       "variable was not bound, how can this happen?: ~a ~a"
-                       var bound)
-                var)))))
+	(cond
+	 [(regiment-constant? var) var]
+	 [(assq var bound) (cdr (assq var bound))]
+	 [else (begin
+		 (error 'rename-var/process-var
+			"variable was not bound, how can this happen?: ~a ~a"
+			var bound)
+		 var)])))
 
     ;; This recurs over complex constants:
 #;    (define mangle-datum

@@ -134,16 +134,26 @@
   '(
     (my-id () NodeID)
     (dist (Token) Integer)
-
+        
     ))
-  
+
+;; These count as primitives also.
+(define regiment-constants
+  '(
+    (world          Constant         Region)    
+    (anchor         Constant         Anchor)
+    ))
+
 (define regiment-distributed-primitives 
   '(
+
+    ;; Shouldn't this be local??
+    (sense         (Node) Float)
+    
     (rmap           (Function Region) Region)
     (rfold          (Function Object Region) Signal)
     (smap           (Function Signal) Signal)
 
-    (anchor         ()         Anchor)
     (anchor-at      (Location) Anchor)
     (anchor-where   (Function) Anchor)
 
@@ -173,9 +183,6 @@
     (when-any        (Function Region) Event)
     (when-percentage (Float Function Region) Event)
 
-    ;; Shouldn't this be local??
-    (sense         (Node) Float)
-
 ;     neighbors 
 ;    time-of
 ;    (time (Node) Time)
@@ -186,19 +193,28 @@
 ;;; OK, replacing with "regiment"
 (define regiment-primitives
   (append regiment-basic-primitives
-	  regiment-distributed-primitives))
+	  regiment-distributed-primitives
+	  regiment-constants))
 
 ;; [2004.06.24] This is for the regiment primitives:
 (define get-primitive-entry
   (lambda (prim)
-    (or (assq prim regiment-basic-primitives)
-        (assq prim regiment-distributed-primitives)
+    (or (assq prim regiment-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
 
+#;(define (get-primitive-arity prim)
+  (let* ([entry (get-primitive-entry prim)]
+	 [args (cadr entry)])
+    (cond
+     [(eq? 'Constant args) #f]
+     [else (length args)])))
 
 (define (regiment-primitive? x) 
   (if (assq x regiment-primitives) #t #f))
+
+(define (regiment-constant? x)
+  (if (assq x regiment-constants) #t #f))
 
 (define (basic-primitive? x) 
   (if (assq x regiment-basic-primitives) #t #f))
@@ -224,8 +240,10 @@
 (define (token? t) (symbol? t))
 ;; Allocate a token name, possibly with a seed name.
 (define new-token-name
-  (lambda ()
-    (unique-name 'token)))
+  (lambda args
+    (if (null? args)
+	(unique-name 'token)
+	(unique-name (car args)))))
 
 (define symbol-append
   (lambda args
@@ -474,9 +492,10 @@
 ;;; 2002.05.22 rrn added get-formals, cast-formals, and cast-args
 
 ;;; the subset of Scheme keywords we support
+;;; [2004.06.28] RRN: Removed 'let'
 (define base-keyword?
   (lambda (x)
-    (and (memq x '(quote set! if begin let letrec lambda)) #t)))
+    (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
 ;;; CC
 ;;; new keywords added for object system
@@ -1219,8 +1238,12 @@
 ;(module (unique-name reset-name-count! extract-suffix
 ;                     code-name label-name #;method-name)
         ;RRN [01.09.16] -- We need to phase out code-name...
+
+;; [2004.06.28] I am replacing this with a version that uses
+;; a hash-table to keep a counter per seed-name.
+(begin
         (define unique-name-count 0)
-        (define (unique-suffix)
+        (define (unique-suffix ignored)
             (set! unique-name-count (+ unique-name-count 1))
             (number->string unique-name-count))
         (define reset-name-count! 
@@ -1262,9 +1285,9 @@
               (filter (lambda (c) (or (char-alphabetic? c)
                                       (char-numeric? c)))
                       (string->list str)))))
-        #;(define illegal-chars
+       '(define illegal-chars
             '(#\! #\@ #\# #\$ #\% #\^ #\& #\* #\. #\-))
-        #;(define strip-illegal
+       '(define strip-illegal
             (lambda (str)
               (let loop ([ls illegal-chars]
                          [chars (string->list str)])
@@ -1273,32 +1296,40 @@
         ;;Ok, this is designed so that it can extract the root from
         ;;either a
         (define unique-name
-          (lambda (sym)
+          (lambda args
+	    (let ((sym (if (null? args) 'gensym (car args))))			   
             (string->symbol
               (string-append
                 (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME
                   (extract-root sym))
-                "_" (unique-suffix)))))
-        (define code-name  ;; RENAME ME to METHOD-NAME
-          (lambda (sym)
-            ;(disp "Code name")
-            (string->symbol
-              (string-append
-                "fun"
-                (let ([suffix (or (extract-suffix sym) (unique-suffix))])
-                  (substring suffix 0 (string-length suffix)))
-                "_"
-                (strip-illegal (extract-root sym))
-                ))))
-        (define label-name
-          (lambda (sym)
-            (string->symbol
-              (string-append
-                (strip-illegal (extract-root sym))
-                "$"
-                (let ([suffix (or (extract-suffix sym) (unique-suffix))])
-                  (substring suffix 0 (string-length suffix)))))))
-;;) ;; Module deactivated
+                "_" (unique-suffix sym))))))
+)
+
+;; [2004.06.28]  NEW VERSION, counter per seed name:
+;; Just overwriting definitions from above:
+'(begin
+        (define unique-name-count (make-default-hash-table))
+
+        (define (unique-suffix sym)
+	  (let ((entry (hashtab-get unique-name-count sym)))
+	    (number->string
+	     (if entry
+		 (begin (hashtab-set! unique-name-count sym (add1 entry))
+			entry)
+		 (begin (hashtab-set! unique-name-count sym 1)
+			0)))))
+
+        (define reset-name-count! 
+	  (lambda opt
+	    (match opt
+		   [() (set! unique-name-count (make-default-hash-table))]
+		   [(,n) 
+		    (error 'reset-name-count!
+			   "this version of reset-name-count! cannot handle argument: ~s"
+			   n)])))
+)
+
+
 
 ;;; create a "flattened" begin from list of expressions
 ;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)

@@ -25,7 +25,7 @@
 ;	(pp expr)
 
         (match expr
-          [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,body)
+          [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,[process-expr -> body])
 ;; NOW we lift it even if it is simple.
 ;	   (if (simple? body)
            (if (symbol? body)

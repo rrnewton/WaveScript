@@ -100,10 +100,57 @@
 ;	(disp "Explode primitive" name prim args)
 	  (case prim
 	    [(sparsify) (void)]
+	    
+	    ;; -=<TODO>=- UNSURE OF THIS
+	    ;; SEEMS PRETTY USELESS!
+	    [(sense)
+	     `([,form () (local-sense)]
+	       ;[,memb () ]
+	       )]
 
+	    [(smap)
+	     (let* ([rator_tok (car args)]
+		   [region_tok (cadr args)]
+		   [parent (get-membership-name region_tok)])
+	       `([,parent (v) (call ,form v)]
+		 [,form (v) 
+			(call ,memb
+			      (call ,rator_tok v))]
+		 ;[,memb (v) ...]  ;; This carries the value actively...
+		 ))]
+
+	    ;; [2004.06.28] This may or may not take an argument, and
+	    ;; that depends on the *type* that it's specialized too,
+	    ;; doesn't it?  My idea being that if it's operating over
+	    ;; a *Region*, the argument to the form token is an
+	    ;; implicit "this".  But, hmm.  We don't *have* a type
+	    ;; checker right now...
+
+	    ;; For the moment I will try to always pass the argument,
+	    ;; or maybe we'll go for polymorphism on the part of this
+	    ;; formation token....
+	    [(rfold)
+	     (let  ([rator_tok (car args)]
+		    [seed_val (cadr args)]
+		    [region_tok (caddr args)]
+;		    [return_handler (new-token-name 'rethand-tok)]
+		    )
+	       (let ([parent (get-membership-name region_tok)])
+	       `([,parent (v) (call ,form v)]
+		 [,form (v) (return
+			     v              ;; Value
+;			     ,return_handler ;; To
+			     (to ,memb) ;; To
+			     (via ,parent)           ;; Via
+			     (seed ,seed_val)       ;; With seed
+			     (aggr ,rator_tok))]    ;; and aggregator
+;		 [,memb (v) ] ;; This occurs at the fold-point
+		 )))]
+
+	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-at)
-	     (let ([consider (new-token-name)]
-		   [leader (new-token-name)]
+	     (let ([consider (new-token-name 'cons-tok)]
+		   [leader (new-token-name 'leader-tok)]
 		   [target (car args)])
 	       `([,form () (flood ,consider)]
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
@@ -123,19 +170,19 @@
 	     (let ([rad (cadr args)]
 		   [anch (car args)])
 ;		   (arg (unique-name 'arg)))
-	       `(
+	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
-		 [,form () (emit ,memb)]
+		 [,form () (emit ,memb this)]
 		 ;; Display stuff:
 		 [,form () (draw-circle (loc) 20)]
-		 [,memb () 
+		 [,memb (v)
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
 ;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
 ;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
-		 [,memb () (if (< (dist) ,rad) (relay))]
+		 [,memb (v) (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
 
@@ -144,19 +191,19 @@
 	     (let ([rad (cadr args)]
 		   [anch (car args)])
 ;		   (arg (unique-name 'arg)))
-	       `(
+	       `(;; Anchors' membership tokens have no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
-		 [,form () (emit ,memb)]
+		 [,form () (emit ,memb this)]
 		 ;; Display stuff:
 		 [,form () (draw-circle (loc) 20)]
-		 [,memb () 
+		 [,memb (v) 
 			;; Note that we are inside a "hood".
 			(set-simobject-homepage! 
 			 this (cons 'khood (simobject-homepage this)))
 			(light-up 0 100 100)]
 ;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
 ;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
-		 [,memb () (if (< (dist) ,rad) (relay))]
+		 [,memb (v) (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
 
@@ -169,16 +216,18 @@
 		 [,memb () (if (< (dist ,form) ,rad) (relay))]
 		 ))]	   
 		 
+            ;; Does this work with flickering?
 	    [(union)
-	     `([,form () (begin
-			(iftok (and ,(get-membership-name (car args)) 
-				    ,(get-membership-name (cadr args)))
-			       (add ,memb)))]
-	       ;; These may be duplicate token entries:
-	       [,(get-membership-name (car args))  () (begin (call ,form))]
-	       [,(get-membership-name (cadr args)) () (begin (call ,form))]		       	     
+	     (let ([mem_a (get-membership-name (car args))]
+		   [mem_b (get-membership-name (cadr args))])	       
+	       `([,form () (iftok (and ,mem_a ,mem_b)
+				  (call ,memb this)
+				  (remtok ,memb))]
+		 ;; These may be duplicate token entries:
+		 [,mem_a (v) (call ,form)]
+		 [,mem_b (v) (call ,form)]
     ;	       [,memb ... Don't know what yet... that depends on varrefs ]
-	       )]
+		 ))]
 
 	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))
 
@@ -213,10 +262,10 @@
 	  )))
 
 
-   ;; This produces code for returning the value from a particular
-   ;; primitive application to the SOC.
+ ;; This produces code for returning a value to the SOC 
+ ;; from a particular primitive application.
 (define primitive-return
-  (lambda (prim tokname)
+  (lambda (prim tokname) ;; The tokname is a membership-name
     (case prim
       [(anchor-at)
        `([,tokname ()
@@ -232,6 +281,11 @@
 	  ;; other hack in.
 	  (soc-return '(CIRC ,tokname))])]
 
+      ;; The membership for a fold means we're at the single point
+      ;; that aggregates data.
+      [(rfold)
+       `([,tokname (v) ;; This value is a sample in the stream
+	  (soc-return v)])]
       
       [(khood khood-at)
        `([,tokname 
