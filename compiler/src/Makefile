@@ -22,7 +22,7 @@ PLT_SRC = helpers \
           pass08_verify-core               \
           pass10_deglobalize               \
           flat_threads basic_graphics      \
-          demo_display graphics_simple     \
+          demo_display graphics_     \
           simulator_nought simulator_nought_graphics \
           tests driver 
 #          pass09_separate-graph.ss
@@ -57,7 +57,7 @@ DEST = a.out
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
 
-mzscheme: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE) compiled/compiler.zo compiled/compiler_plt.zo
+mzscheme: compiled/compiler.zo compiled/compiler_plt.zo $(GENERIC_SCM_SRC) $(PLT_SRC) $(PLT_MAIN_FILE) 
 	(cd plt; $(MAKE) "SRCFILES=$(PLT_SRC)")
 
 native: mzscheme_native

@@ -37,6 +37,10 @@
 (define radius 10) ;; And the comm radius.
 (define numprocs 50) ;; And the total # processors.
 
+;; This counts total messages *received* (not sent).
+;;(define total-messages 0)
+;; Can't do this here because of the plt module system.
+
 ;;========================================
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
@@ -110,22 +114,29 @@
 
 (define (process-statement stmt)
   (match stmt
-	 [(call ,rator ,rand* ...) 	  
-	  (error 'process-statement "call not supported from SOC")] ;opera]
+	 [(call ,rator ,rand* ...)	  
+	  ;(error 'process-statement "call not supported from SOC")] 
+	  `(handler ',rator ',rand*)]
 	 [(flood ,tok) `(flood (quote ,tok))]
 	 [(emit ,opera ...)
 	  `(emit (quote ,(car opera)) ,@(cdr opera))]
-
-	 [(relay) `(emit (quote (car this-message)) (cdr this-message))]
+	 
+	 [(relay)
+	  `(begin 
+	     ,(DEBUGMODE '(if (not this-message) 
+			      (error 'inside-node-prog "this-message was #f")))
+	     (emit (car this-message) (cadr this-message)))]
+	 
 	 [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
 
 	 [(light-up ,r ,g ,b)
 	  `(begin
-	     (disp "trying to light")
+;	     (disp "trying to light")
 	     (if (simobject-gobj this)
 	       (begin 
-		 (disp "SETTING LIGHT" ,r ,g ,b)
-		 (set-color! (simobject-gobj this) ,r ,g ,b))))]
+;		 (disp "SETTING LIGHT" ,r ,g ,b)
+		 (change-color! (simobject-gobj this) 
+				(rgb ,r ,g ,b)))))]
 	 [,else stmt])
   )
 
@@ -146,23 +157,29 @@
 		(lambda (tbind)
 		  (match tbind 
 			 [(,tok (,args ...) ,expr* ...)
-			  `[,tok (lambda ,args ,@(map process-statement expr*))]]))
+			  `[,tok (lambda ,args 
+;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
+				   ,@(map process-statement expr*))]]))
 		tbinds)]
 	[handler `(lambda (msg args)
-		    (disp "HANDLER at" (node-id (simobject-node this)) ": " msg args)
+		    ;; Count total messages received.
+		    (set! total-messages (add1 total-messages))
+
+;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " msg args)
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
 		    ;; This refers to the token cache for this processor:
 		    (hashtab-set! token-cache msg args)
 ;		    ,(if (null? tbinds) '(void)
-		    (case msg
-		       ,@(map (lambda (tok)
-				`[(,tok) 
-				  (apply ,tok args)])
-			      (map car tbinds))
-		       [else (error 'node_program "Unknown message: ~s" msg)]
-		       ))])
-    `(letrec (,@binds [handler ,handler]) ,expr)))
+		    (fluid-let ((this-message (list msg args)))
+		      (case msg
+			,@(map (lambda (tok)
+				 `[(,tok) 
+				   (apply ,tok args)])
+			       (map car tbinds))
+			[else (error 'node_program "Unknown message: ~s" msg)]
+			)))])
+    `(letrec (,@binds [handler ,handler] [this-message #f]) ,expr)))
 
 
 '(define-syntax remove-last!
@@ -207,18 +224,18 @@
 				    (error 'neighbors "we're in our own neighbors list"))
 				(cdr entry)))))]
 	   [define sendmsg (lambda (data ob)
-		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
+;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 	   [define emit (lambda (t . m)
-		   (disp (list 'emit t m))
+;		   (disp "  " (list 'emit t m))
 		   (let ((msg (if (null? m) '() (car m))))
-		     (map (lambda (nd) (sendmsg (list t m) nd))
+		     (map (lambda (nd) (sendmsg (list t msg) nd))
 			  (neighbors this))))]
 	   [define flood (lambda (t . m)
-		    (disp (list "FLOODING" t m))
+;		    (disp (list "FLOODING" t m))
 		    (let ((msg (if (null? m) '() (car m))))
 		      (map (lambda (nd) (sendmsg (list t msg) nd))
 			   all-objs)))])]
@@ -303,6 +320,7 @@
 ;;===============================================================================
 
 (define (run-simulation thunks . timeout)
+  (eval '(define total-messages 0))
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]
 	[display_engine

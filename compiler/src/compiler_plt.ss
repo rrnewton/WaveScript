@@ -6,10 +6,10 @@
 ;(module compiler_plt mzscheme
 
 (require (lib "include.ss")
-         (all-except "plt/helpers.ss" id)
+         (all-except "plt/helpers.ss" id mvlet rec))
          ;	 "plt/language-mechanism.ss"
-         
-         (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+
+(require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)              
          "plt/pass02_remove-unquoted-constant.ss"         
          "plt/pass03_remove-complex-constant.ss"
@@ -19,11 +19,13 @@
          "plt/pass07_remove-complex-opera.ss"
          
          (all-except "plt/pass08_verify-core.ss" these-tests test-this)
-         (all-except "plt/pass10_deglobalize.ss" these-tests test-this)
+         (all-except "plt/pass10_deglobalize.ss" these-tests test-this))
         ;          "plt/pass09_separate-graph.ss"
 
-         "plt/simulator_nought.ss"
-         )
+(require
+;         (all-except "plt/simulator_nought.ss" these-tests test-this)
+         (all-except "plt/simulator_nought_graphics.ss" these-tests test-this
+                                          wrap-def-simulate))
 
 ;(disp "UNION" union (union '(a b c) '(a d c)))
 
@@ -63,6 +65,7 @@
 ;; Can't get langs to work.  Just abandon evaluation:
 (game-eval (lambda args 'unspecified))
 (host-eval (lambda args 'unspecified))
+
 
 ;(require "plt/language-mechanism.ss") ;; This blows up if we try to require it up top!
 ;(load/use-compiled "generic/lang00.ss")

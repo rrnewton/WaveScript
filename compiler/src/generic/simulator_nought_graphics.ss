@@ -31,6 +31,9 @@
 ;; changing their color and so forth.
 (define graphical-simulation 
   (lambda (funcs . timeout)
+    ;; First, set up a global counter for communication cost:
+    ;; (This is defined with eval because otherwise the module system gets angry.
+    (eval '(define total-messages 0))
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
 	  [soceng (vector-ref funcs 0)]
@@ -128,7 +131,7 @@
 	(close-graphics))
       unspecified ]
 
-#;  [ "Flood lights program..."
+    [ "Flood lights program..."
       (begin 
 	(init-graphics)
 	(graphical-simulation
@@ -138,13 +141,19 @@
       unspecified]
       
   ;; This really should be graphical only.
-#;  [ "Spread lights gradually..."
+  [ "Build Spread lights gradually..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
     ,(lambda (x)
        (procedure? (vector-ref x 0))
        (andmap procedure? (vector-ref x 1)))]
+
+  [ "Run Spread lights gradually..."
+    (simulate
+     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
+     5.0)
+    unspecified]
   
-;    ,@(include "simulator_nought.tests")    
+;    ,@(include "simulator_nought.tests")
   ))
 
 
@@ -162,7 +171,6 @@
 		    these-tests
 		    tester-eq?
 		    wrap-def-simulate))
-
 
 (define testgsim test-this)
 (define testsgsim these-tests)

@@ -1,13 +1,14 @@
 
 (module helpers mzscheme        
-  (require (lib "iu-match.ss")
+  (require "iu-match.ss"
            (lib "include.ss")
            (lib "pretty.ss")
            (all-except "tsort.ss" test-this these-tests))
   
   ;; This might not be necessary: 
   ; (require "~/scheme/plt/utils/rutils_generic.ss")
-  (require (all-except (lib "rutils_generic.ss")
+;; Temporarily eliminating:
+#;  (require (all-except (lib "rutils_generic.ss")
                        id list->set union intersection difference set?
                        list-head filter list-index snoc rac rdc last
                        insert-between iota disp))
@@ -42,7 +43,8 @@
   
   
   (provide 
-
+   DEBUGMODE
+   
    ;; Syntax:
    mvlet rec 
    
@@ -61,10 +63,9 @@
    regiment-primitives regiment-primitive? basic-primitive? distributed-primitive?
 
    set? list->set set-cons union intersection difference
-   list-head filter list-index snoc rac rdc last
+   list-head list-remove-last! filter list-index snoc rac rdc last
    insert-between iota disp pp
-   graph-map cyclic?
-   
+   graph-map cyclic?  
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

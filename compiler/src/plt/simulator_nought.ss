@@ -1,6 +1,6 @@
 
 (module simulator_nought mzscheme
-  (require (lib "iu-match.ss")
+  (require "iu-match.ss"
            (lib "include.ss")
            ;; NO SLIB:
 ;           (lib "load.ss" "slibinit")
@@ -19,6 +19,8 @@
            
            ;; I don't want to export all this, but how else will my evals work??
            structure-copy
+;;	   total-messages ;; global counter.
+;; Can't do this here. See compiler.ss
            free-vars
            process-statement
            make-simobject simobject? simobject-node simobject-incoming simobject-redraw simobject-gobj
@@ -51,7 +53,6 @@
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
               )
-
   )
 
 ;(require simulator_nought)
