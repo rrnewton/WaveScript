@@ -165,8 +165,8 @@
 	   
 	    (equal? intended results)))))))  
 
-(define test08 test-this)
-(define tests08 these-tests)
+(define test10 test-this)
+(define tests10 these-tests)
 
 ;==============================================================================
 

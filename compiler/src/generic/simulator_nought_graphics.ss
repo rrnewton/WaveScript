@@ -115,6 +115,7 @@
       All_Threads_Returned]
 ;    Grahpical_Simulation_Done ]
 
+    ;; 2 
     [ "Color changing from nodepgm instead of soc."
       (begin 
 	(init-graphics)
@@ -132,6 +133,7 @@
 	(close-graphics))
       unspecified ]
 
+    ;; 3
     [ "Flood lights program..."
       (begin 
 	(init-graphics)
@@ -142,28 +144,31 @@
 	(close-graphics))
       unspecified]
       
-  ;; This really should be graphical only.
+  ;; 4: This really should be graphical only.
   [ "Build Spread-lights-gradually..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
     ,(lambda (x)
        (procedure? (vector-ref x 0))
        (andmap procedure? (vector-ref x 1)))]
 
+  ;; 5: 
   [ "Run Spread-lights-gradually..."
     (simulate
      (build-simulation (compile-simulate-nought ',example-nodal-prog2))
      0.5)
     unspecified]
 
+  ;; 6: FIXME: Why should init-world vs. cleanse-world make a difference!! 
   [ "Run Spread-lights-gradually with display distance..."
-    (begin (init-world)
+    (begin (cleanse-world); (init-world)
 	   (simulate
 	    (build-simulation (compile-simulate-nought ',example-nodal-prog3))
 	    0.7))
     unspecified]
 
+  ;; 7:
   [ "Return a value via the gradient..."
-    (begin (init-world)
+    (begin (cleanse-world) ;(init-world)
 	   (simulate
 	    (build-simulation 
 	     (compile-simulate-nought ',example-nodal-prog4))

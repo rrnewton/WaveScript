@@ -66,5 +66,5 @@
               )
   )
 
-(require simulator_nought)
-(define (g) (eval (cadadr these-tests)))
+;(require simulator_nought);
+;(define (g) (eval (cadadr these-tests)))

@@ -3,7 +3,7 @@
 ;; Should provide the same functionality as chez/graphics_stub.ss
 
 (module graphics_stub mzscheme	
-  (provide draw-procs draw-proc draw-edge init-graphics change-color!
+  (provide draw-procs draw-proc draw-edge draw-mark init-graphics change-color!
 	   get-state these-tests test-this 
 	   clear-buffer)
   
@@ -38,6 +38,10 @@
             (prep (+ (* (/ (- y b1) (- b2 b1)) (- d2 d1)) d1)))]
           [,otherwise (error 'scale2d "bad arguments: ~s ~s ~s"
                              pos box1 box2)]))))
+
+  (define (coord:sim->screen pr)
+    (scale2d pr (list 0 0 world-xbound world-ybound)
+	     (list 0 0 window-width window-height)))
   
   ;;============================================================
 
@@ -76,6 +80,19 @@
 		     processor-screen-radius
 		     color)
 		    gobj))))
+
+  (define (draw-mark pr color)
+    (mvlet ([(x y) (coord:sim->screen pr)])
+	   (let ((len 10) ;; shouldn't be constant.
+		 (liner (plt:draw-line the-win))
+		 (color (plt:make-rgb (/ (rgb-red   color) 255.0)
+			       (/ (rgb-green color) 255.0)
+			       (/ (rgb-blue  color) 255.0))))
+	     (liner (plt:make-posn (- x len) (- y len)) (plt:make-posn (+ x len) (+ y len)) color)
+	     (liner (plt:make-posn (+ x len) (- y len)) (plt:make-posn (- x len) (+ y len)) color)	     
+	     (let ([l1 (gensym)]
+		   [l2 (gensym)])
+	       (list l1 l2)))))
 
   ;; Internal helper:
   (define (rasterize-edge pos1 pos2 color)
