@@ -3,7 +3,7 @@
 ;; Should provide the same functionality as chez/graphics_stub.ss
 
 (module graphics_stub mzscheme	
-  (provide draw-procs draw-proc draw-edge draw-mark init-graphics change-color!
+  (provide draw-procs draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
 	   get-state these-tests test-this 
 	   clear-buffer)
   
@@ -86,13 +86,23 @@
 	   (let ((len 10) ;; shouldn't be constant.
 		 (liner (plt:draw-line the-win))
 		 (color (plt:make-rgb (/ (rgb-red   color) 255.0)
-			       (/ (rgb-green color) 255.0)
-			       (/ (rgb-blue  color) 255.0))))
+				      (/ (rgb-green color) 255.0)
+				      (/ (rgb-blue  color) 255.0))))
 	     (liner (plt:make-posn (- x len) (- y len)) (plt:make-posn (+ x len) (+ y len)) color)
 	     (liner (plt:make-posn (+ x len) (- y len)) (plt:make-posn (- x len) (+ y len)) color)	     
 	     (let ([l1 (gensym)]
 		   [l2 (gensym)])
 	       (list l1 l2)))))
+
+(define (draw-circle pr rad)
+  (mvlet ([(x y) (coord:sim->screen pr)]
+	  [(radx rady) (coord:sim->screen (list rad rad))])
+	 (let ((gobj (gensym)))
+	   ((plt:draw-solid-ellipse the-win) (plt:make-posn x y)
+	    radx
+	    rady
+	    (plt:make-rgb 0 0 0))
+	   gobj)))
 
   ;; Internal helper:
   (define (rasterize-edge pos1 pos2 color)

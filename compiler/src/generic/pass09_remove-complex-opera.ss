@@ -116,7 +116,7 @@
     ;; to give things reasonable names based on what kinds of values
     ;; they carry.
     (define (meaningful-name exp)
-      (disp "meaningful" exp)
+;      (disp "meaningful" exp)
       (match exp
 	     [(,prim ,args ...)
 	      (guard (regiment-primitive? prim))

@@ -155,12 +155,18 @@
     (match expr
 	   [(,input-language (quote (program (lazy-letrec (,binds ...) ,fin))))
 	    (add-prop! fin 'final)	    
+	    ;; This mutates the global list 'dependencies'.
 	    (process-let #f `(lazy-letrec (,binds ...) ,fin) ())
 	    ;; Now we label the leaves:
 	    (for-each (lambda (node)
-			(if (memq 'region (get-props (car node)))
-			    (if (null? (cdr node))
-				(add-prop! (car node) 'leaf))))
+			(if (memq 'distributed (get-props (car node)))
+			    (let ([these-deps 
+				   (filter (lambda (dep)
+					     (not (memq 'local (get-props dep))))
+					   (cdr node))])			      
+			      (if (null? these-deps) ;; No dependencies
+				  (add-prop! (car node) 'leaf))
+			      )))
 		      dependencies)
 	    
 	    (let ((finaltable 

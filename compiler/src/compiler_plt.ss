@@ -11,7 +11,7 @@
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id mvlet rec))
 
-(disp "yay" default-unit-tester)
+;(disp "yay" default-unit-tester)
 
          ;	 "plt/language-mechanism.ss"
 
@@ -53,7 +53,7 @@
 ;  (require "plt/demo_display.ss")
 
 ;; Get those module bound identifiers out in the open!
-(load "plt/tests.ss") ;(require tests)
+(load/use-compiled "plt/tests.ss") ;(require tests)
 ;(define tests tests)
 
 ;(define test00 test00)
@@ -110,7 +110,7 @@
     res))
 ;(g)
 
-(load "generic/repl.ss")
+(load/use-compiled "generic/repl.ss")
 
 ;; <TODO> Make stream version for this:
 (define text-repl  (repl-builder void void run-compiler run-simulation))
@@ -119,3 +119,21 @@
 		cleanse-world
 		run-compiler
 		graphical-simulation))
+
+;; From lang05.ss
+;; Doesn't work:
+#;(define-syntax lazy-letrec
+  (syntax-rules ()
+    [(_ ([lhs rhs] ...) body)        
+     (letrec ([lhs 
+               (lambda () 
+                 (let-syntax ([lhs (identifier-syntax (lhs))] ...)
+                   rhs))]
+              ...)
+       (let-syntax ([lhs (identifier-syntax (lhs))] ...)
+         body))]))
+
+(define-syntax lazy-letrec
+  (syntax-rules ()
+    [(_ ([lhs rhs] ...) body ...)        
+     (letrec ([lhs rhs] ...) body ...)]))
