@@ -27,8 +27,7 @@ module BasicTMCommM {
   }
   
   command result_t TMComm.emit(uint16_t address, uint8_t length, TOS_MsgPtr msg) {
-    call SendMsg.send[msg->type](address, length, msg);
-    
+    call SendMsg.send[msg->type](address, length, msg);    
     return SUCCESS;
   }
 
