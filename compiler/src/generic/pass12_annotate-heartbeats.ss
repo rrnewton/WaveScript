@@ -1,5 +1,10 @@
 ;; [2004.07.26]  This assigns appropriate heartbeats to nodes in the graph.
 
+;; Right now it doesn't propogate information through the dataflow
+;; graph, or do any fancy constraint solving.  It just assigns default
+;; heartbeats to region formation operations and to folds.
+
+
 ;; Input language is Core plus edge classifications:
 
 ;;; <Pgm>  ::= (program (props <CatEntry>*) <Let>)
@@ -13,6 +18,7 @@
 ;;;          | (<primitive> <Simple>*)
 ;;; <Formalexp> ::= (<var>*)
 ;;; <Simple> ::= (quote <Lit>) | <Var>
+
 
 ;; Output language adds a frequency (heartbeat) value to each let
 ;; binding.  This value is either #f (if the value is local and has no
@@ -47,7 +53,6 @@
 	   ;; set the pulses.
 
 	   (define (derive-freqtable binds ret)	     
-	     (disp "derive freqtable" binds ret)
 
 	     ;; [2004.07.26] This will only be *complete*
 	     ;; for our very simple language.  Gotta face
@@ -148,20 +153,21 @@
 				 binds)])	    
 	     `(lazy-letrec ,newbinds ,fin))])))
 
+    ;; Returns a list of the names of dependencies for an expression.  (Free vars)
     (define get-deps
       (lambda (expr)
         (match expr
-	  [,var (guard (symbol? exp) (not (regiment-constant? exp))) 
+	  [,var (guard (symbol? exp) (not (regiment-constant? exp)))
 		exp]
 	  [,simp (guard (simple? simp)) '()]
-          [(lambda ,formalexp ,bod) '()]
+          [(lambda ,formalexp ,bod) '()] ; lambdas have no free-vars
           [(if ,[test] ,[conseq] ,[altern])
 	   (append test conseq altern)]
 	  ;; Don't need to recur on rands:
-          [,prim (guard (regiment-constant? prim)) prim]
+          [,prim (guard (regiment-constant? prim)) '()]
           [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
-	   rand*]
+	   (apply append rand*)]
           [,unmatched
 	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
 
