@@ -1,10 +1,8 @@
+#! /usr/bin/scheme --script
 
-;  #! /Users/newton/bin/Darwin-Power_Macintosh/petite --script
 
-;(eval-when (eval load compile)
-
- (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
- (load "compiler_chez.ss")
+(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
+(load "compiler_chez.ss")
 
 (define (print-help)
   (printf "Regiment system, version ~s~n" regiment-version)
@@ -30,7 +28,7 @@
 	   
 (define main 
   (lambda args
-    (disp "ARGS: " args)
+    (disp "Main called w ARGS: " args)
     (if (null? args)
 	(begin (print-help) (exit 0)))
 ;    (printf "regimentc: compile regiment programs!~n")
@@ -78,6 +76,8 @@
 (suppress-greeting #t)
 (scheme-start main)
 
-;) 
+;(scheme-script main)
+(if (top-level-bound? 'command-line-arguments)
+    
 
- 
+(disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments))

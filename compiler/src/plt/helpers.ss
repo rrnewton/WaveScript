@@ -110,7 +110,8 @@
    ;; Hmm, not sure what meaning immediate has here..
    immediate? constant? datum? 
    formalexp? cast-formals default-unit-tester tester-eq? 
-   
+
+   define-regiment-parameter
    regiment-primitives regiment-primitive? 
    token-machine-primitives token-machine-primitive? 
    token-machine? token-machine->program
