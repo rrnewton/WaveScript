@@ -8,25 +8,36 @@
            (lib "compat.ss") ;; gives us define-structure
            )
   (require 
-           "constants.ss"
-           (all-except "helpers.ss" id flush-output-port)
-           (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
-;           (lib "9.ss" "srfi")
- ;          "engine.ss"
-           (all-except "flat_threads.ss" test-this these-tests)
-           (all-except "tsort.ss" test-this these-tests)
+   (all-except "constants.ss" test-this these-tests)
+   (all-except "helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
+   (all-except "critical_section.ss" test-this these-tests)
+;;           (lib "9.ss" "srfi")
+ ;;          "engine.ss"
+   (all-except "flat_threads.ss" test-this these-tests)
+   (all-except "tsort.ss" test-this these-tests)
            )
   
-  ;; This exports a whole bunch, because the simulated programs need to access this 
+  ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
   (provide (all-defined)
            (all-from "constants.ss")
 	   (all-from "helpers.ss")
-	   (all-from "flat_threads.ss") 
-	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
+	   (all-from "flat_threads.ss")
+           ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
 ;	   yield-thread last
            (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
+
+  (define (write-sim-to-file sim fn)
+    (with-output-to-file fn
+      (lambda ()
+        ;; TODO: ENSURE NO DEPTH LIMIT:
+        (pretty-print `(module alpha-simulation mzscheme                         
+                         (requires "alpha_lib.ss")
+                         (provides (all-defined))                         
+                         (start-alpha-sim ,sim))))
+      'replace))
   
   (define (vector-copy v)
     (let ((newv (make-vector (vector-length v))))
@@ -67,4 +78,4 @@
               )
  )
 
-(require simulator_alpha)
+;(require simulator_alpha)
