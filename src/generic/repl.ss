@@ -3,7 +3,6 @@
 ;; [2004.06.11] This module represents a simple read-eval-print
 ;; interface into the compiler and simulator.
 
-
 (define (repl-builder startup cleanse run)
   (lambda()
     (printf "Type exit to leave repl.~n")
@@ -23,15 +22,16 @@
 		
 		(printf "~nSimulating....~n")	   
 		(cleanse-world)
-		(let ((result (run (build-simulation converted) 2.0)))
-		  (if (and (list? result) (= 1 (length result)))
-		      (printf "~n~s~n" result)
-		      (printf "~n~s~n" result)))
-		(loop))))))))
+		(let streamloop ([i 0] 
+				 [stream (run (build-simulation converted) 2.0)])
+		  (disp "Round the streamloop: ~s" stream)
+		  (cond
+		   [(null? stream) (prinf "Stream Ended.~n")]
+		   [(procedure? stream) (streamloop i (stream))]
+		   [(pair? stream) (printf "~s:  ~s~n" i (car stream))
+		    (streamloop (add1 i) (cdr stream))]
+		   [else (error 'repl-builder "Bad stream!: ~s" stream)])
+		  )))))
+      (loop))))
 
 (define text-repl  (repl-builder void void run-simulation))
-(define graphics-repl (repl-builder (lambda () (init-world) (init-graphics))
-				    cleanse-world
-				    graphical-simulator))
-
-       

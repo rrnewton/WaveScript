@@ -24,77 +24,6 @@
 ;;   NOTE: This takes *functions* rather than thunks, they are expected 
 ;; to take their own graphical objects as input, giving them handles for
 ;; changing their color and so forth.
-#;(define graphical-simulation 
-  (lambda (funcs . timeout)
-
-    ;; First, set up a global counter for communication cost:
-    ;; This is defined dynamically so as to avoid PLTs module system.
-    (define-top-level-value 'total-messages 0)
-    ;; This one count all the messages that bounce because of
-    ;; backpropogation prevention mechanisms:
-    (define-top-level-value 'total-fizzles 0)
-    ;; This is a global flag which can be toggled to shut down all the
-    ;; running processors.
-    (define-top-level-value 'stop-nodes #f)
-    ;; Define global bindings for these so that we can do fluid-let on them.
-    (define-top-level-value 'soc-return 'unbound-right-now)
-    (define-top-level-value 'soc-finished 'unbound-right-now)
-            
-    ;; These "edges" are distinct objects for each comm link (directionally):
-    (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
-	  [soceng (vector-ref funcs 0)]
-	  [nodeengs (vector-ref funcs 1)])
-
-      ;; Contains a graphics object, and the last drawn state.
-      (define-structure (edgestate gobj oldstate))
-    
-      ;; This will associate edges with graphics objects:
-
-
-      (define positions (map node-pos (map simobject-node all-objs)))
-;      (draw-procs positions)
-
-      ;; Fill up our two hash tables with drawn objects.
-      (for-each (lambda (graph-entry)
-;		  (disp "DOing graph entry" (length graph-entry) graph-entry )
-		  (let ([proc (car graph-entry)]
-			[edges (unfold-list (cdr graph-entry))])
-;		    (disp "EDGES" (length edges)edges)
-
-		    (let ([origpos (node-pos (simobject-node proc))])
-
-		      (let ((gobj (draw-proc origpos)))
-			(hashtab-set! proc-table proc gobj)
-			(set-simobject-gobj! proc gobj))
-		      
-;; Not done yet.
-;; This just draws the edges once... need to take responsibility for
-;; changing them:
-		      (for-each 
-		       (lambda (edgeob)
-;			 (disp "DOING edge" edgeob)
-			 (hashtab-set! edge-table edgeob
-			    (make-edgestate
-			     (draw-edge origpos (node-pos (simobject-node (car edgeob))))
-			     (structure-copy (car edgeob)))))
-		       edges)
-
-		      )))
-		object-graph)
-
-      (fluid-let ([soc-return (lambda (x) (set! return-vals (cons x return-vals)))]
-		  [soc-finished (lambda () 
-				  (set-top-level-value! 'stop-nodes #t))])
-	(let ([result (if (null? timeout)
-			  (run-flat-threads thunks)
-			  (run-flat-threads thunks (car timeout)))])
-	  (if (null? return-vals)
-	      result
-	      return-vals)
-	  ))
-;      'Grahpical_Simulation_Done
-      )))
-
 
 (define graphical-simulation 
   (generate-simulator
@@ -119,7 +48,7 @@
 		     (let ([origpos (node-pos (simobject-node proc))])
 		      (let ((gobj (draw-proc origpos)))
 			(hashtab-set! proc-table proc gobj)
-			(set-simobject-gobj! proc gobj))		      
+			(set-simobject-gobj! proc gobj))	      
 ;; Not done yet.
 ;; This just draws the edges once... need to take responsibility for
 ;; changing them:

@@ -3,6 +3,8 @@
 
 (include "chez/match.ss")
 
+(include "generic/constants.ss")
+
 ;; [2004.06.04] MOVED THIS DEFINIITON to helpers.ss
 ;; Uncomment this to remove debugging code and possibly make the
 ;; system run faster.
@@ -66,11 +68,19 @@
 
 ;(trace  explode-primitive process-expr process-letrec)
 
+;; Load the repl which depends on the whole compiler and simulator.
+(include "generic/repl.ss")
+
 (if (top-level-bound? 'SWL-ACTIVE)
     (begin
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
       (load "chez/simulator_nought_graphics.ss")
+
+      (define-top-level-value 'graphical-repl
+	(repl-builder (lambda () (init-world) (init-graphics))
+		      cleanse-world
+		      graphical-simulation))
       ))
 
 (define simulate)
@@ -78,8 +88,6 @@
     (set! simulate graphical-simulation)
     (set! simulate run-simulation))
 
-;; Load the repl which depends on the whole compiler and simulator.
-(include "generic/repl.ss")
 
 (define (testem)
   (parameterize ((tracer #t))
