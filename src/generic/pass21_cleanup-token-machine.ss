@@ -10,12 +10,17 @@
 
 ;;;   (*) Collapses duplicate tokens with the same name into one token.
 
+;;;   (*) Lift's the "socpgm" into a token handler called "SOC-start"
+;;;   The grammar of the output has no socpgm
+
 ;;;   (*) In the future it might expand out primitive applications
 ;;;   that are just shorthands.  (For example, (dist) could become
 ;;;   (dist <this-token>))
 
 
 
+
+;;; TODO FIX UUP:
 ;;; Input and Output language:
 
 ;;; <Statement*> is fairly unrestricted.
@@ -285,18 +290,21 @@
 	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
 	   `(cleanup-token-machine-lang
 	     '(program (bindings ,constbinds ...)
-		       (socpgm (bindings ,socbinds ...) 
-			       ,socstmts ...)
-		       (nodepgm (tokens ,(map (process-tokbind (map car constbinds)
-							       (map car nodup-binds))
-							       nodup-binds) ...)
+		       (nodepgm (tokens
+				 ,@(if (null? socstmts)
+				       '()
+				       `((SOC-start () 
+					  (let* ,socbinds ,@socstmts))))
+				 ,@(map (process-tokbind (map car constbinds)
+							(map car nodup-binds))
+				       nodup-binds))
 				(startup ,starttoks ...))))
 	   )]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
 	;; without the language annotation:
 	[(program (bindings ,constbinds ...)
-		  (socpgm (bindings ,socbinds ...) 
+		  (socpgm (bindings ,socbinds ...)
 			  ,socstmts ...)
 		  (nodepgm (tokens ,nodetoks ...)
 			   (startup ,starttoks ...)))
@@ -304,6 +312,7 @@
 
 	['(program ,stuff ...) (cleanup-token-machine (decode stuff))]
 	[(program ,stuff ...) (cleanup-token-machine (decode stuff))]
+	
 	[,stuff (cleanup-token-machine (decode (list stuff)))]
 	))))
 
