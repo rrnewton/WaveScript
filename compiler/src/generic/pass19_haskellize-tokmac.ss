@@ -62,7 +62,19 @@
 
 	[(relay) "(Erelay Nothing)"]
 
+	;; Assuming that it's synchronous!!
 	[(local-sense) "(Esense)"]
+
+	[(begin ,[x]) x]
+	[(begin ,[x] ,y ...) 
+	 (format "(Eseq ~a ~a)" x (process-expr `(begin ,y ...)))]
+	
+	[(if ,[test] ,[conseq] ,[altern])
+	 (format "(Eif ~a ~a ~a)" test conseq altern)]
+	
+	[(,prim ,[rand*] ...)
+	 (guard (token-machine-primitive? prim))
+	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))

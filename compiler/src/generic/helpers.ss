@@ -246,9 +246,20 @@
 
 ;; [2004.06.09]  Many of these are actually language forms.  I gotta
 ;; get this sorted out eventually.
+;; TODO: add some kind of type info.
 (define token-machine-primitives
   '( (elect-leader) (flood) ;; These are actually macros, but what the heck
-     (return) (emit) (relay) (dist) (light-up) (sense)
+     (return) 
+     (emit) 
+     (relay) 
+     (dist) 
+     (light-up) 
+     (sense)
+     (loc)
+     (void)
+     ;; For simulator only:
+     (draw-mark)
+     (rgb)
      ))
 
 ;;============================================================

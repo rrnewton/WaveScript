@@ -43,12 +43,21 @@
 ;;;  <Token> ::= <Symbol> | ...???
 ;;;  <Exp>  ::= ???
 
+;; NOTE: introduces (void) primitive.
 
 ;;; DEPENDS: make-begin
 
 
 (define cleanup-token-machine
   (let ()
+
+(define make-begin
+  (lambda (expr*)
+    (match (match `(begin ,@expr*)
+             [(begin ,[expr*] ...) (apply append expr*)]
+             [,expr (list expr)])
+      [(,x) x]
+      [(,x ,x* ...) `(begin ,x ,x* ...)])))
 
 ;; This removes duplicates among the token bindings.
 ;; <TOOPTIMIZE> Would use a hash-table here for speed.
@@ -86,7 +95,7 @@
 (define (process-binding bind)
       (let ([newbind 
 	     (match bind
-		    [(,sym ,[process-expr -> exp])
+		    [(,sym ,[(process-expr '()) -> exp])
 		     `(,sym ,exp)]
 		    [,else (error 'cleanup-token-machine:process-binding 
 				  "invalid constant binding: " bind)])])
@@ -99,9 +108,11 @@
 	      
 
     (define process-expr 
-      (lambda (env)
+      (trace-lambda process-exp (env)
 	(lambda (stmt)
       (match stmt
+	     [,const (guard (constant? const))
+		     `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
 	     [,var (guard (symbol? var))
 		   (DEBUGMODE 
@@ -109,9 +120,21 @@
 			(warning 'cleanup-token-machine
 				 "unbound variable: ~s" var)))
 		   var]
+
+	     [(begin ,[x]) x]
+	     [(begin ,[xs] ...)
+	      (make-begin xs)]	      
+
+	     [(if ,[test] ,[conseq] ,[altern])
+	      `(if ,test ,conseq ,altern)]
+
+	     [(if ,test ,conseq)
+	      ((process-expr env) `(if ,test ,conseq (void)))]
+
 	     [(,prim ,[rands] ...)
 	      (guard (token-machine-primitive? prim))
-	      `(,prim ,rands ...)]
+	      `(,prim ,rands ...)]	     
+
 ;	     [(,kwd ,stuff ...)
 ;	      (guard (base-keyword? kwd))
 ;	      (error 'cleanup-token-machine:process-expr 
@@ -126,15 +149,16 @@
 	      `(,rator ,rands ...)]
 	     [,otherwise
 	      (error 'cleanup-token-machine:process-expr 
-		     "bad expression: ~s" stmt)]
+		     "bad expression: ~s" otherwise)]
 	     ))))
     
     (define process-tokbind 
       (lambda (env)
 	(lambda (tokbind)
+					;	  (disp "process-tokbind" tokbind)
 	  (match tokbind
-	     [(,tok ,args ,[process-expr -> expr*] ...)
-	      `(,tok ,args (make-begin expr*))]
+	     [(,tok ,args ,[(process-expr env) -> expr*] ...)
+	      `(,tok ,args ,(make-begin expr*))]
       ))))
 	    
 
@@ -146,12 +170,12 @@
 					,socstmts ...)
 				(nodepgm (tokens ,nodetoks ...)
 					 (startup ,starttoks ...))))
-	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])	   
+	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
 	   `(cleanup-token-machine-lang
 	     '(program (bindings ,nodebinds ...)
 		       (socpgm (bindings ,socbinds ...) 
 			       ,socstmts ...)
-		       (nodepgm (tokens ,nodup-binds ...)
+		       (nodepgm (tokens ,(map (process-tokbind '())  nodup-binds) ...)
 				(startup ,starttoks ...))))
 	   )]
 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
