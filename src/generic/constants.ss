@@ -14,7 +14,7 @@
 (define radius 20) ;; And the comm radius.
 (define numprocs 20) ;; And the total # processors.
 
-(define SPECIAL_RETURN_TOKEN 'return)
+(define SPECIAL_RETURN_TOKEN 'RETTT)
 
 ;; In milliseconds
 (define return-window-size 500)

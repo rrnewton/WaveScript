@@ -92,20 +92,24 @@
   '(program
     (bindings )
     (socpgm (bindings ) 
-	    (printf "<~s>" (node-id (simobject-node this)))
+	    (crit-printf "[~s]" (node-id (simobject-node this)))
 	    (emit tok1))
     (nodepgm
      (tokens
-      [tokret (v) (soc-return v)]
+      [tokret (v) 
+	      (crit-printf "<~s>" (node-id (simobject-node this)))
+	      (soc-return v)]
       ;; This will return as fast as it goes out in a wave.
       ;; 
-      [tok1 () (call tok2) (relay)
+      [tok1 () 
+	    ;(call tok2) 
+	    (relay)
 	    (return (dist)
 		    (to tokret) (via tok1)
 		    (seed 0)  (aggr plus) )]
       [plus (x y) 
 ;	    (disp "(" x "," y ")")
-	    (critical-section (printf "(~s,~s) " x y))
+	    (crit-printf "(~s,~s) " x y)
 	    (if (not (and (integer? x) (integer? y)))
 		(error 'test "NOT BOTH INTEGERS: ~s ~s~n" x y))
 	    (+ x y)]
@@ -173,3 +177,10 @@
 	(let* () (begin (emit 'tok1) 'soc_finished))))
     unspecified))
 
+
+(define (go)
+  (eval (cadr (last testssim)))
+  (eval '(define z (map simobject-token-cache all-objs)))
+  (eval '(define y (map (lambda (tc) (hashtab-get tc 'tok1)) z)))
+  ;(eval '(define x (map node-id (map simobject-node (map msg-object-origin y)))))
+  )
