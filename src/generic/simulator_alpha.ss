@@ -41,7 +41,7 @@
 ;; token-cache in the structure too
 (define-structure (simobject node 
 			     incoming 
-			     timed-tokens redraw gobj homepage 
+			     timed-token-buf redraw gobj homepage 
 			     token-store ;; Changing this too hash table mapping names to 
 			     local-sent-messages local-recv-messages
 			     local-msg-buf
@@ -214,7 +214,7 @@
 	       (let ([so (apply make-simobject (make-list 13 'simobject-field-uninitialized))])
 		 (set-simobject-node! so nd)  
 		 (set-simobject-incoming! '())
-		 (set-simobject-timed-tokens! '())
+		 (set-simobject-timed-token-buf! '())
 		 (set-simobject-redraw! #f)
 		 (set-simobject-gobj! #f)
 		 (set-simobject-homepage! '())
@@ -257,45 +257,68 @@
 ;; ======================================================================
 
 
-(define (process-statement tokbinds stored)
+(define (process-statement current-handler-name tokbinds stored)
   (disp "process statement, allstored: " stored)
   (let ([allstored (apply append (map cadr stored))])
-  (letrec ([get-arg-index
+  (letrec (
+	   #|[get-arg-index
 	    (lambda (tok argname)
 	      (let ([entry (assq tok tokbinds)])
 		(if (not entry)
 		    (error 'simulator_nought:get-arg-index
 			   "No entry for token! ~a" tok))
-		(list-find-position argname (cadr entry))))]
-
+		(list-find-position argname (cadr entry))))]|#
+    
+           [find-which-stored
+	    (lambda (v)
+	      (let loop ([ls stored])
+		(let ((pos (list-find-position v (cadr (car ls)))))
+		  (if pos (values (caar ls) pos)
+		      (loop (cdr ls))))))]
+    
 	   [process-expr 
 	 (lambda (expr)
 	   ;; This is a little wider than the allowable grammar to allow
 	   ;; me to do test cases:
 	   (match expr
-		  [,x (guard (and (symbol? x) (memq x allstored))) 
-		      (let ([which-tok (find-which-stored x)])
-		      ;`(,(symbol-append 'tokstore- x) the-store)
-		      `(hashtab-get the-store ',which-tok
-		      ]
+
+		  [(ext-ref (,tokname . ,subtok) ,x)
+		   (guard (and (symbol? x) (memq x allstored)))		   
+		   (mvlet ([(which-tok pos) (find-which-stored x)])
+			  (if (not (eq? which-tok tokname))
+			      (error 'simulator_alpha:process-statement 
+				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
+			  `(let ([exttokobj (hashtab-get '(,tokname . ,subtok) the-store)])
+			     (if tokobj
+				 (vector-ref exttokobj ,(+ 1 pos))
+				 #f)))]
+
+		  [,x (guard (and (symbol? x) (memq x allstored)))
+		      (mvlet ([(which-tok pos) (find-which-stored x)])
+			     (if (not (eq? which-tok current-handler-name))
+				 (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" x)))
+			 ;; 'tokobj' is already bound to our token object
+		      `(vector-ref tokobj ,(+ 1 pos))]
+
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
-		   `(set-simobject-outgoing-msg-buf! this
+		   `(set-simobject-local-msg-buf! this
 		    (cons (bare-msg-object ,rator (list ,@rand*))
-			  (simobject-outgoing-msg-buf this)))]
+			  (simobject-local-msg-buf this)))]
 
+;;TODO:
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
 
 		  [(timed-call ,delay ,rator ,rand* ...)
 		   ;; Delay is in milleseconds.
-		  `(set-simobject-timed-tokens!
-		    this (cons (cons (+ ,delay (cpu-time))
+		  `(set-simobject-timed-token-buf!
+		    this (cons (cons (+ ,delay current-vtime)
 				     (bare-msg-object ,rator (list ,@rand*)))
-			       (simobject-timed-tokens this)))]
+			       (simobject-timed-token-buf this)))]
 
 		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
 		   `(begin "Doing let stored."
@@ -377,12 +400,13 @@
 
 ;; Every token handler, once converted for the simulator, has a signature: 
 
-;;   simobject, vtime, subtoken-index -> args -> ()      (mutates tokstore, outgoing-msg-buf, local-msg-buf)
+;;   simobject, vtime, subtoken-index -> args -> ()      
+;;   (mutates tokstore, outgoing-msg-buf, local-msg-buf, timed-tokens)
 
 ;; The result of running a handler is to mutate certain fields of the
 ;; simobject.  The handler *does not* directly interface with the
-;; scheduler.  It merely changes the token store and accumulates local
-;; and remote messages.
+;; scheduler.  It merely changes the token store and accumulates local,
+;; remote, and timed messages.
 
 
 ;; Takes token bindings, returns compiled bindings
@@ -411,12 +435,14 @@
 			      ;; Requires equal? based hash table:
 			      (let ([tokobj (hashtab-get the-store this-tokname)])
 				(if (not tokobj)				   
-				    (begin "If not, then "
+				    (begin "If not, then we allocate that token object..."
+					   " setting the invoke counter to zero."
 					   (set! tokobj (vector 0 ,@initvals))
 					   (hashtab-set! the-store this-tokname tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
-				,@(map (process-statement tbinds allstored) expr*)
+				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
+				,@(map (process-statement tok tbinds allstored) expr*)
 				;; We must reverse the outgoing order because of how they were added:
 				(set-simobject-outgoing-msg-buf! this 
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
