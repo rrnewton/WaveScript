@@ -1,3 +1,85 @@
+
+
+'(let loop ([foo 0] [e heuth])
+  (map-expression e
+   (lambda (expr)
+     (match expr
+	    [,const (guard (constant? const))
+		    (box `(quote ,const))]
+	    [,_ #f]))))
+	   
+(define (map-expression e f)
+  (let loop ((e e))
+    (let ([user (f e)])
+      (if user
+	  (unbox user)	
+    (match e
+	 [,const (guard (constant? const))  `(quote ,const)]
+	 [(quote ,const) `(quote ,const)]
+	 [,var (guard (symbol? var)) var]
+	 [(begin ,exp* ...) `(begin ,@(map loop exp*
+	  ]
+	 [(if ,[(process-value env tokens this-token) -> test]
+	      ,[conseq] ,[altern]) `(if ,test ,conseq ,altern)]
+	 ;; IF VALUES ARE NOT USED THEN DON'T LABEL WORRY ABOUT THEM.
+	 [(let* ( (,lhs ,[rhs]) ...) ,[bodies] ...)
+	  `(let*  ([,lhs ,rhs] ...)	,(make-begin bodies))]
+	 
+	 ;; HERE NEED TO DO CPS:
+	 [(,call-style ,tok ,[args*] ...)
+	  (guard (memq call-style '(emit call activate)))
+	  `(,call-style ,tok ,args* ...)]
+	 [(timed-call ,time ,tok ,[args*] ...)
+	  `(timed-call ,time ,tok ,args* ...)]
+	 
+	 [(relay) '(relay)]
+	 [(relay ,tok) `(relay ,tok)]
+	 [(dist ,tok) `(dist ,tok)]	     
+	 [(return ,[expr]            ;; Value
+		  (to ,memb)         ;; To
+		  (via ,parent)      ;; Via
+		  (seed ,[seed_vals] ...) ;; With seed
+		  (aggr ,rator_toks ...)) ;; Aggregator 	      
+	  `(return ,expr 
+		   (to ,memb) 
+		   (via ,parent) 
+		   (seed ,seed) 
+		   (aggr ,aggr))]
+	 [(leds ,what ,which) `(leds ,what ,which)]
+	 
+	 [(,prim ,[rands] ...)
+	  (guard (or (token-machine-primitive? prim)
+		     (basic-primitive? prim)))
+	  `(,prim ,rands ...)]
+	     ;;; TEMPORARY, We allow arbitrary other applications too!
+	 [(,rator ,[rands] ...)
+	  (warning 'cleanup-token-machine
+		   "arbitrary application of rator: ~s" rator)
+	  `(,rator ,rands ...)]	     
+	 
+	 [,otherwise
+	  (error 'cleanup-token-machine:process-expr 
+		 "bad expression: ~s" otherwise)]
+	 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 ;; Oops, cycles might wreck this???

@@ -245,11 +245,21 @@
 ;     (call)
 ;     (timed-call)
 ;     (activate)
-     (dist) 
-     (light-up) 
+;     (dist) 
+     (light-up)
 ;     (sense)
      (my-id)
      (loc )
+
+     (call (Token . Object) Void)
+     (timed_call (Integer Token . Object) Void)
+     (subcall (Token . Object) Object)
+
+     (is_scheduled (Token) Bool)
+     (deschedule (Token) Void)
+     (is_present (Token) Bool)
+     (evict (Token) Void)
+
      (void () Object)
 
      (this () Object)
@@ -270,7 +280,7 @@
 ;; Keywords allowed in the restricted token machine language.
 (define token-machine-keyword?
   (lambda (x)
-    (and (memq x '(quote set! if begin letrec let let* let-stored)) #t)))
+    (and (memq x '(quote set! if begin letrec let let-stored)) #t)))
 
 
 ;;============================================================
