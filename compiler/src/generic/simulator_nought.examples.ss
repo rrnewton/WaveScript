@@ -1,57 +1,4 @@
 
-;; LEADER ELECTION SHOULD ONLY HAPPEN ONCE.
-;; No they should just have VERY slow heartbeats...
-;; But how do you do this in a non-stateless way???
-
-;; (elect-leader A)
-;; -> (call elect_A)
-
-'(program
-  (bindings )
-  (socpgm (bindings ) 
-	  (emit tok1))
-  (nodepgm
-   (tokens
-    
-    ;; Elect all that fire A: simple version -- each call to A spreads a gradient
-    ;; that either 
-    
-    ;; Well within a certain time window that is:
-
-    [elect_A () 
-	     (call compete (my-id))
-	     (timed-call 1000 confirm)]
-
-    [compete (id)      
-       (if (and (token-cache compete)
-		(< (token-cache compete id) id))
-	   (reject)
-	   (relay))]
-
-    [confirm ()
-       (cond 
-	[(not (token-cache compete))
-	 
-	 
-	 
-       (if (and 
-		(= (token-cache compete id) 
-		   (my-id)))
-	   
-     
-
-    [elect_A_ret ()
-       
-
-    [
-
-    [tok1 () (flood tok2)]
-    [tok2 () (light-up 0 255 0)]
-    
-    )
-   (startup ) ;; seed tokens
-   ))
-
 
 (define example-nodal-prog0
   '(program
@@ -306,3 +253,71 @@
 
 
 
+
+
+
+
+;; LEADER ELECTION SHOULD ONLY HAPPEN ONCE.
+;; No they should just have VERY slow heartbeats...
+;; But how do you do this in a non-stateless way???
+
+;; (elect-leader A)
+;; -> (call elect_A)
+
+(define example-elect-leader
+  '(program
+    (bindings )
+    (socpgm (bindings ) 
+	    (emit tok1))
+    (nodepgm
+     (tokens
+      
+      ;; Elect all that fire A: simple version -- each call to A spreads a gradient
+      ;; that either 
+      
+      ;; Well within a certain time window that is:
+      
+      [elect_A () 
+	       (call compete (my-id))
+	       (timed-call 1000 confirm_A)]
+
+      [compete (id)      
+       (if (and (token-cache compete)
+		(< (token-cache compete id) id))
+	   (begin 
+	   ; If we've got a reigning champ, and its not us, make sure
+           ; that that suppressor is turned off.  This is so that if
+           ; leadership transfers to another node, their suppression
+           ; engine will send out compete messages which will here
+           ; kill our suppression engine:
+	   ; (if (not (= id (my-id))) (kill suppress_others))
+	     (reject))
+	   (relay))
+       ]
+
+      ;; A function which confirms, then calls the elected token and
+      ;; spawns a suppressor.
+      [confirm_call ()
+       (if (call confirm)
+	   (begin 
+	     (call A)
+	     ;; If we do succeed, activate a suppressor:
+	     (activate suppress_others)
+	     ))]
+      
+      ;; A local function which makes sure we're on top of the heap.
+      [confirm ()
+       (if (not (token-cache compete)) 
+	   #f ;; this should not happen though...
+	   (= (token-cache compete id) (my-id)))]
+      
+      [suppress_others ()
+       (if (call confirm)
+	   (begin 
+	     (emit compete (my-id))
+	     (timed-call 10000 suppress_others)))]
+
+      [A () (disp "ELECTED LEADER AT" (my-id))]	    
+    )
+   (startup elect_A) ;; seed tokens
+   )))

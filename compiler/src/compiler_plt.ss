@@ -122,6 +122,18 @@
 
 ;; <TODO> Make stream version for this:
 (define text-repl  (repl-builder void void run-compiler run-simulation))
+'(define precomp-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse
+		      (lambda (x) x) ;; Compiler
+		      run-simulation-stream))
+;(define precomp-graphical-repl
+;  (repl-builder (lambda () (init-world) (init-graphics))
+;		cleanse-world
+;		(lambda (x) x) ;; Compiler ;run-compiler
+;		graphical-simulation))
+
+
 (define graphical-repl
   (repl-builder (lambda () (init-world) (init-graphics))
 		cleanse-world
@@ -132,11 +144,6 @@
 			   [,other (run-compiler other)])))
 		graphical-simulation))
 
-;(define precomp-graphical-repl
-;  (repl-builder (lambda () (init-world) (init-graphics))
-;		cleanse-world
-;		(lambda (x) x) ;; Compiler ;run-compiler
-;		graphical-simulation))
 
 ;; From lang05.ss
 ;; Doesn't work:

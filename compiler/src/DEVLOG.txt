@@ -184,4 +184,13 @@ now.
 
 Gonna switch it so no prims take LISTS..
 
+[2004.10.24]
+
+Sigh, right now I'm hacking on the simulator, trying to get it back up
+to speed...  Doing some cleanup and documentation in the process.
+
+
+
+
+
 

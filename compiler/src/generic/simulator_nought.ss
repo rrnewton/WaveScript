@@ -1,10 +1,7 @@
-;; UCLA mathnet
-;; (s:) 5Dog+8Cat<Ape 
-;; US AIRWAYS:  800 428 4322
-
 
 ;; simulator_nought.ss
 ;;  -Ryan Newton [2004.05]
+;===============================================================================
 
 ;; This is a simulator for the output of pass10_deglobalize.  
 
@@ -24,6 +21,26 @@
 
 ;; REQUIRES: This file requires the "flat_threads.ss" interface, which
 ;; is a simple interface over engines or threads.
+
+;===============================================================================
+
+;; TYPE SIGNATURES:
+
+;; Simulator = Simulation, ?timeout -> ReturnVals
+;; Simulation = soc-return, soc-finish -> (vector socthunk [nodethunks])
+
+
+;; compile-simulate-nought :: tokmachineprog -> [socprog, nodeprog]
+
+;; build-simulation :: [socprog, nodeprog] -> Simulation
+
+;; generate-simulator :: threadrunner, simcore ->
+;;                       thesim, ?timeout -> 
+;;                       returnvals
+;;    threadrunner :: Thunks, ?TimeOut -> (All_Threads_Returned | Threads_Timed_Out)
+;;    simcore :: ThunksVec ->? Timeout -> ThunksList
+
+
 
 
 ;===============================================================================
@@ -84,7 +101,7 @@
 (define this-unit-description 
   "simulator_nought.ss: simplest simulator for nodal language")
 
-;; This uses a lame sort of text display instead of the graphics display:
+;; This makes it use a lame sort of text display instead of the graphics display:
 (define simulator-output-text (make-parameter #f (lambda (x) x)))
 
 
@@ -446,7 +463,16 @@
 		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
-		  
+
+		  [(,prim ,[rand*] ...)
+		   (guard (token-machine-primitive? prim))
+		   `(,prim ,rand* ...)]
+
+
+		  ;; We're being REAL lenient in what we allow in token machines being simulated:
+		  [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
+		   `(let ((,lhs ,rhs)  ...) ,bods ...)]
+
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
 		  [(,rator ,[rand*] ...)
@@ -529,6 +555,12 @@
 	  (remove-duplicate-tokbinds tbinds))]
 	[handler (build-handler tbinds)]
 	)
+
+    (printf "~n;  Converted program for Simulator:~n")
+    (printf "<-------------------------------------------------------------------->~n")
+    (pretty-print binds)
+    
+
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
 	  [define handler ,handler] 
 	  [define this-message #f];)
@@ -577,8 +609,12 @@
 				    (if (= 0 local-recv-messages)
 					(sim-light-up 200 0 0))
 				    (set! local-recv-messages (add1 local-recv-messages))
+
+				    ;; This is where I'm gonna cut in support for "reject".. [2004.10.23]
 				    (hashtab-set! (simobject-token-cache this) tok newentry)
-				    (handle-it newentry))
+				    (handle-it newentry)
+				    
+				    )
 				  (begin 
 				    (incr-top-level! 'total-fizzles)
 				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
@@ -959,7 +995,7 @@
 
 
 ;; Takes: a program in the language of pass10_deglobalize
-;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
+;; Returns: a list (socprog nodeprog) with both programs as SEXPS.
 (define (compile-simulate-nought prog)
   ;; Accept either with or without the language wrapper:
   (let ((prog (match prog 
@@ -1123,8 +1159,9 @@
 ;; from there.  This way PLT scheme should have better debugging
 ;; information.
 
+
 ;; build-simulation ::
-;;  [socprog, nodeprog] ->  
+;; [socprog, nodeprog] ->  
 ;;  (soc-return -> soc-finish -> (vector thunk (thunks)))
 ;; Takes programs in sexp form and returns a simulation object.
 (define (build-simulation progs)
@@ -1188,19 +1225,24 @@
 ;; sense, very weak abstraction.
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
+;;  [- My first attempt didn't work because nested engines are dissallowed.
+
 ;; Takes: 
-;;  threadrunner :: Thunks ->? TimeOut -> All_Threads_Returned | Threads_Timed_Out
-;;  simcore :: Funcs ->? Timeout -> 
+;;  threadrunner :: Thunks, ?TimeOut -> (All_Threads_Returned | Threads_Timed_Out)
+;;  simcore :: ThunksVec ->? Timeout -> ThunksList
 ;;    simcore runs the core of the specialized simulator.
-;; Returns: a function of type:
-;;    Simulator ->? timeout -> ReturnVals
+;; Returns: a simulator function of type:
+;;    Simulation, ?timeout -> ReturnVals
 ;; Where 
-;;   Simulator = soc-return -> soc-finish -> (vector thunk (thunks))
+;;   Simulation = soc-return -> soc-finish -> (vector thunk (thunks))
+
+;; That is, generate-simulator returns all values that were returned to the SOC via soc-return.a
 (define (generate-simulator threadrunner simcore)
   (lambda (the-sim . timeout)
     (let ([return-vals '()])
       (let ([soc-return 
-	     (lambda (x)	 
+	     (lambda (x)
+	       (disp "SOCRETURN ACCUMULATING RETURN VALS:" x )
 	       (set! return-vals (cons x return-vals)))]
 	    [soc-finish 
 	     (lambda () (set-top-level-value! 'stop-nodes #t))])
@@ -1228,28 +1270,12 @@
     (let ([result (if (null? timeout)
 		      (threadrunner newthunks)
 		      (threadrunner newthunks (car timeout)))])
-      (if (null? return-vals)
-	  result
-	  (reverse return-vals))
+      ;; We want to show the threadrunner result, but we only return the soc-ret'd vals.
+      (printf "~nThreadrunner returned result: ~a~n" result)
+      (reverse return-vals)
       )))))))
 
 
-;; This one didn't work because nested engines are not allowed.
-      ;; Return an unopened stream must return an [improper] list to be a valid stream.
-#;      (let stream-loop ((eng theeng))
-	(delay
-	  (eng 1000
-	       (lambda (v rem) 
-		 (if (null? return-vals)
-		     (list v) 
-		     return-vals))
-	       (lambda (eng2)
-		 (if (null? return-vals)
-		     (stream-loop eng2)
-		     (let ((temp return-vals))
-		       (set! return-vals '())  ;; <TODO> : Use semaphore.
-		       ;; Return a stream:
-		       (dotted-append temp (stream-loop eng2))))))))
 
 ;; I'm essentially doing a lot of ad-hoc inheritance here.  There are
 ;; different simulators that all share some parts, excuse the mess.
