@@ -337,11 +337,9 @@
    (startup elect_A) ;; seed tokens
    )))
 
-#!eof
-
 ;; Example: voting on remote detection
 
-(program
+'(program
  (tokens
   [eventDetected () 
 		 (return 1
@@ -359,7 +357,7 @@
 		      (soc-return 'ALARM))]))
 
 
-(program
+'(program
  (tokens
   [eventDetected () (emit-radius 2 addactivation 1)
 		    (call addactivation 1)]
@@ -370,8 +368,7 @@
 		  (expire-after 2000))]))
 
 
-
-(program
+'(program
  (tokens
   [eventDetected () (emit tmp1 1)
 		    (call addactivation 1)]
@@ -391,14 +388,22 @@
 
 ;;; ERK should I have some kind of dynamic return context?
 ;;; It seems like trees get really screwed up using macros.
-(tokens 
- [start () (spread 1 500)]
- [spread (d t) (emit-radius d)
+;(tokens 
+; [start () (spread 1 500)]
+; [spread (d t) (emit-radius d)
+;	 ]
+; [memb () (return 1 ...)
+;	 [A_ret (depth)
 
-	 ]
 
- [memb () (return 1 ...)
-	 
-
-[A_ret (depth)
-
+'(program
+ (tokens
+  [eventDetected () (emit-radius 2 addactivation 1)
+		    (call addactivation 1)]
+  [addactivaton (x)
+		(let ((total (+ x (load:x))))
+		  (if (> total threshold)
+		      (soc-return 'ALARM))
+		  (deschedule expire)
+		  (timed-call 2000 expire))]
+  [expire () (evict addactivaton)]))

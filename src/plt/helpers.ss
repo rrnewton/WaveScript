@@ -129,7 +129,7 @@
    list-get-random unfold-list
    partition partition-equal
    myequal?
-   stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+   stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
    counter-stream random-stream stream-append
    display-constrained
    symbol-append 

@@ -234,10 +234,10 @@
 				 '(program (bindings ,@bindings)
 					   (socpgm (bindings ,@socbindings) ,@socpgm)
 					   (nodepgm (tokens ,@nodetoks)
-						    (startup ,@node-startup))))))		   
+						    (startup ,@node-startup))))))
 		   (printf "cleanup-token-machine: Desugaring to: ~n")
 		   (pp result)
-		   (cleanup-token-machine result))
+		   (cleanup-token-machine result))=
 		 (begin 
 		   (match (car ls)
 		      [(bindings ,x ...) (set! bindings x)]
