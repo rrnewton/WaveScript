@@ -13,6 +13,10 @@
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_rename-var.ss")
+(include "generic/pass02_remove-unquoted-constant.ss")
+(include "generic/pass03_remove-complex-constant.ss")
+(include "generic/pass04_uncover-free.ss")
+
 (include "generic/pass07.ss")
 
 (include "compiler.ss")
