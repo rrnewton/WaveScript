@@ -32,6 +32,8 @@
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 (cd "chez") (include "helpers.ss") (cd "..")
 
+;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
+(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/language-mechanism.ss")
 
 (include "generic/lang00.ss")

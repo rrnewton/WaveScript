@@ -29,7 +29,9 @@
 (define tests_regiment 
   '(
     (circle-at '(30 40) 50)
-    
+
+    (rmap (lambda (r) (rfold + 0 r))
+	  (cluster (rfilter even? (rmap id world))))
     ))
 
 ;===============================================================================
