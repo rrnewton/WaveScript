@@ -6,12 +6,10 @@
 ;; Like other chez files this is loaded from the src/ directory, not
 ;; the src/chez/ directory.
 
-;; Lame directory switching
-(cd "generic")
-(include "simulator_nought.ss")
-(cd "..")
-
-
+;; We are loaded from the root directory, not the chez subdirectory.
+(include "generic/simulator_nought.examples.ss")
+(include "generic/simulator_nought.ss")
+	
 ;; This version chops up the simulation computation into little bits.
 ;; The return value is a promise that keeps doing a little computation
 ;; and returning a new promise.  Eventually it will return:
@@ -73,3 +71,4 @@
     (set! object-graph (make-object-graph graph))
     (set! all-objs (map car object-graph))
     (close-input-port f)))
+

@@ -11,6 +11,8 @@
 ;; NOTE: Unlike some of the files in the chez directory, this expects
 ;; to be loaded from its own parent directory.
 
+;; NOTE: Assumes that "simulator_nought.examples.ss" has been loaded.
+
 ;; <TODO>: Make the simulator not use global state for the graph!!
 
 ;;============================================================
@@ -45,6 +47,11 @@
 
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
+
+;; [2005.03.01] This simulator has become pretty disgusting.  It
+;; should not have the complexity of gradient/flood etc built into it.
+;; Right now it is both complex, and not providing the functionality
+;; it should (good radio model, etc).  I'm working on a much more simple simulator_alpha.
 
 ;; [2004.07.27] Adding return timer.
 
@@ -331,8 +338,8 @@
   (set! all-objs (map car object-graph))
   )
 
-;; Call it now as we start up:
-(init-world)
+;; Let's go ahead and init the world now:
+(define _____ (init-world))
 
 (define (destroy-world)
   (set! graph #f)
@@ -417,7 +424,7 @@
 		       (bare-msg-object ,rator (list ,@rand*)))
 		 (simobject-timed-tokens this)))))
 
-(define (process-statement tokbinds)
+(define (process-statement-nought tokbinds)
   (letrec ([get-arg-index
 	    (lambda (tok argname)
 	      (let ([entry (assq tok tokbinds)])
@@ -438,7 +445,7 @@
 		  [(call ,rator ,[rand*] ...)
 		   (DEBUGMODE
 		    (if (not (token? rator))
-			(error 'simulator_nought:process-statement
+			(error 'simulator_nought:process-statement-nought
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
 		   (build-call `(quote ,rator)
@@ -525,7 +532,7 @@
 ;		     (DEBUGMODE
 ;		      (if (not (and (token? via)
 ;				    (token? totok)))
-;			  (error 'process-statement:return
+;			  (error 'process-statement-nought:return
 ;				 "One of these is not a token: via: ~s, totok: ~s" via totok)))			       
 		     ;; FIXME: does seed need a quote!!!???
 		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
@@ -624,7 +631,7 @@
 			      (disp "Token " ',tok 
 				    "running at" (node-id (simobject-node this)) 
 				    " with message: " ',args))
-			     ,@(map (process-statement tbinds) expr*))]]))
+			     ,@(map (process-statement-nought tbinds) expr*))]]))
 	  (remove-duplicate-tokbinds tbinds))]
 	[handler (build-handler tbinds)]
 	)
@@ -646,7 +653,7 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our 
 	`(lambda (themessage) ;(origin parent count tok args)
-		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a ~a ~a)~n" 
+		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a)~n" 
 			    (node-id (simobject-node this))
 			    (cpu-time) 
 			    (msg-object-token themessage)
@@ -654,7 +661,7 @@
 					  (node-id (simobject-node (msg-object-parent themessage)))
 					  #f)
 			  (msg-object-count themessage)
-			  " Soc? " I-am-SOC 
+;			  " Soc? " I-am-SOC 
 			  "Args:" (msg-object-args   themessage))
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
@@ -708,7 +715,7 @@
 		    )))
 
 
-'(define-syntax remove-last!
+#;(define-syntax remove-last!
   (syntax-rules ()
     [(_ id)
      (cond 
@@ -908,12 +915,12 @@
 		 (begin 
 		   (if (msg-object-count this-message)
 		       (msg-object-count this-message)
-		       (error 'simulator_nought.process-statement:dist
+		       (error 'simulator_nought.process-statement-nought:dist
 			      "inside simulator (dist) is broken!")))
 		 (let ((entry (hashtab-get (simobject-token-cache this) (car tok))))
 		   (if (and entry (msg-object-count entry))
 		       (msg-object-count this-message)
-		       (error 'simulator_nought.process-statement:dist
+		       (error 'simulator_nought.process-statement-nought:dist
 			      "inside simulator (dist ~s) but ~s has not been received!"
 			      (car tok) (car tok))
 		       )))]
@@ -1154,7 +1161,7 @@
 		 socbinds
 		(process-tokbinds
 		 nodetoks generic-defs			
-		 `(begin ,@(map (process-statement nodetoks)
+		 `(begin ,@(map (process-statement-nought nodetoks)
 				socstmts)
 			 'soc_finished))))))]
               
@@ -1445,40 +1452,41 @@
       )))))))
 
 
-
 ;; I'm essentially doing a lot of ad-hoc inheritance here.  There are
 ;; different simulators that all share some parts -- excuse the mess.
 ;; This basically adds on another engine that handles the text display.
 ;;    simcore :: ThunksVec ->? Timeout -> ThunksList
 (define generic-text-simulator-core
-   (lambda (thunks . timeout)
-     (let ([soceng (vector-ref thunks 0)]
-	   [nodeengs (vector-ref thunks 1)]
-	   [display_engine
-	    (lambda ()
-	      (let loop ()
-		(for-each (lambda (simob)
-			    (let ((len (length (simobject-incoming simob))))
-			      (cond 
-			       [(< len 10) (display len)]
-			       [else (display "#")])))
-			  all-objs)
-		(yield-thread)
-		(loop)))])       
-       ;; If we're in text mode use that simple display engine:
-       (if (simulator-output-text)
-	   (cons display_engine (cons soceng nodeengs))
-	   (cons soceng nodeengs))
-       )))
+  (lambda (thunks . timeout)
+    (let ([soceng (vector-ref thunks 0)]
+	  [nodeengs (vector-ref thunks 1)]
+	  [display_engine
+	   (lambda ()
+	     (let loop ()
+	       (for-each (lambda (simob)
+			   (let ((len (length (simobject-incoming simob))))
+			     (cond 
+			      [(< len 10) (display len)]
+			      [else (display "#")])))
+			 all-objs)
+	       (yield-thread)
+	       (loop)))])       
+      ;; If we're in text mode use that simple display engine:
+      (if (simulator-output-text)
+	  (cons display_engine (cons soceng nodeengs))
+	  (cons soceng nodeengs))
+      )))
 
 ;; A simulation function of type:
 ;;    Simulation, ?timeout -> (Stream of ReturnVals ending in 'All_Threads_Returned | 'Threads_Timed_Out)
-(define run-simulation 
-  (generate-simulator 
-   ;; Thread runner:
-   run-flat-threads
-   ;; Build engines and possibly display driver:
-   generic-text-simulator-core))
+  (define run-simulation 
+    (let () 
+      (generate-simulator 
+       ;; Thread runner:
+       run-flat-threads
+       ;; Build engines and possibly display driver:
+       generic-text-simulator-core))
+)
 
 ;;===============================================================================
 ;; Some display and helper functions.
@@ -1521,8 +1529,7 @@
 
 ;;===============================================================================
 
-;; Include some example programs used by the tests.
-(include "simulator_nought.examples.ss")
+;; NOTE: Assumes that "simulator_nought.examples.ss" has been loaded...
 
 ;; [2004.07.01] Here I include stub definitions for some of the
 ;; variables used by our simulated programs.  This way I can do
@@ -1573,17 +1580,17 @@
 (define these-tests
   `(
     ;; First we test some of the smaller procedures before running the simulator:
-    ;; I make the assumption here that the function process-statement
+    ;; I make the assumption here that the function process-statement-nought
     ;; can get by with an inconsistent tokbinds list for these simple
     ;; evaluations:
-    [ ((process-statement '()) '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
+    [ ((process-statement-nought '()) '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
 
-    [ ((process-statement '()) '(flood foo)) (sim-flood 'foo)]    
+    [ ((process-statement-nought '()) '(flood foo)) (sim-flood 'foo)]    
 
     ;; Making sure that it recurs on arguments to return, even though
     ;; this is not necessary for code generated by my compiler.
-    [ " Test process-statement on a return."
-     ((process-statement '()) '(return (dist)))
+    [ " Test process-statement-nought on a return."
+     ((process-statement-nought '()) '(return (dist)))
       (sim-return
        (sim-dist)
        (string->symbol
@@ -1595,11 +1602,11 @@
        '#f)]    
 
     ["Now a return with all the condiments"
-     ((process-statement '()) '(return (dist) (to aaa) (via bbb) (seed 0) (aggr fff)))
+     ((process-statement-nought '()) '(return (dist) (to aaa) (via bbb) (seed 0) (aggr fff)))
       (sim-return (sim-dist) 'aaa 'bbb 0 'fff)]
     ;; Just to make sure erros work with my unit-tester:
 
-    [ ((process-statement '()) '(return))  error]
+    [ ((process-statement-nought '()) '(return))  error]
 
     [ (let ((x (make-simobject (make-node 34 '(1 2)) '() '() #f #f '() 
 			       (make-default-hash-table) 0 0)))
@@ -1614,8 +1621,8 @@
 
     [ (free-vars '(cons (quote 30) x)) (x) ]
 
-    ["process-statement: test nested calls"
-     ((process-statement '()) '(call a (call b 933939)))
+    ["process-statement-nought: test nested calls"
+     ((process-statement-nought '()) '(call a (call b 933939)))
      ;; [2004.07.31] Updating this because I changed how calls work.
      (handler 
       (bare-msg-object 'a
@@ -1736,7 +1743,7 @@
 
     ;; Generic tests for both this and the graphical sim:
 
-    ,@(include "simulator_nought.tests")
+    ,@(include "generic/simulator_nought.tests")
 
   [ "Compile Flood lights program..."
      (build-simulation (compile-simulate-nought ',example-nodal-prog1))
@@ -1904,7 +1911,7 @@
 	  (load "simulator-generic-defs.ss"))))
 
 ;; FIXME: TODO: TEMPORARY -- this dumps the test-case I'm working on to a file:
-(with-output-to-file "rrn-current-test.ss"  
+#;(with-output-to-file "rrn-current-test.ss"  
   (lambda ()  (pretty-print (cadadr these-tests)))
   'replace)
       
