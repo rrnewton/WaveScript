@@ -234,7 +234,7 @@
 ;		 [,form () (emit ,memb this)]
 		 [,form () (emit ,memb)]
 		 ;; Display stuff:
-		 [,form () (draw-circle (loc) 20)]
+;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
@@ -245,24 +245,24 @@
 	       )]
 
 	    [(khood)
-	     (let ([rad (cadr args)]
-		   [anch (car args)])
+	     (let ([anch (car args)]
+		   [rad (cadr args)])
 ;		   (arg (unique-name 'arg)))
-	       `(;; Anchors' membership tokens have no arguments:
+	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
-		 [,form () (emit ,memb this)]
+;		 [,form () (emit ,memb this)]
+		 [,form () (emit ,memb)]
 		 ;; Display stuff:
-		 [,form () (draw-circle (loc) 20)]
-		 [,memb (v) 
+;		 [,form () (draw-circle (loc) 20)]
+		 [,memb ()
 			;; Note that we are inside a "hood".
-			(set-simobject-homepage! 
-			 this (cons 'khood (simobject-homepage this)))
+;			(set-simobject-homepage! 
+;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
-;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
-;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
-		 [,memb (v) (if (< (dist) ,rad) (relay))]
+		 [,memb () (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
+
 
 #;	    [(circle-at)
 	     (let ([rad (cadr args)]

@@ -174,14 +174,9 @@
            (lazy-letrec ((result_5 (local-sense))) result_5))
          (m_token_tmpcirc_9 () (activate f_token_tmpunknpr_11))
          (f_token_tmpunknpr_11
-           ()
-	   (disp "in map formation, node (" (node-id (simobject-node this))
-		 ") about to call function...")
-	   (let ([val (call tmpfunc_10 this)])
-	     (disp "CALLED (" (node-id (simobject-node this))
-		   ") CALLED Function, got:" val)
-	     (call m_token_tmpunknpr_11 val))
-	   (timed-call 10.0 f_token_tmpunknpr_11))
+	  ()
+	  (call m_token_tmpunknpr_11 (call tmpfunc_10 this))
+	  (timed-call 10.0 f_token_tmpunknpr_11))
          (tmpfunc_12
            (a_3 b_2)
            (lazy-letrec ((result_6 (+ a_3 b_2))) result_6))
