@@ -48,6 +48,8 @@
 
 ;; USES: constants in constants.ss
 
+#|
+
 (define addrouting
   (lambda (expr)
     (match expr
@@ -119,3 +121,5 @@
     `(add-routing-language (quote (program (props ,proptable ...) 
 					   ,(process-let letexpr))))])))
 	   
+
+|#

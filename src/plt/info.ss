@@ -17,9 +17,13 @@
 	  "driver.ss"
 	  "engines2.ss"
 
+	  "aggregation_experiments.ss"
+
 	  "rrn-current-test.ss"
 	  "_SIM_nodeprog.ss"
 	  "_SIM_socprog.ss"
+
+
 
 	  "pass15_add-routing.ss"	  
 	  "passXX_separate-graph.ss"))

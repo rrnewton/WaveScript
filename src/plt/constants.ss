@@ -17,6 +17,8 @@
 	 
 	 return-window-size
 
+         RADIO_DELAY PROCESSING_TIME
+         
 	 )
 	
 	(include "../generic/constants.ss"))

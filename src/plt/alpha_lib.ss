@@ -12,10 +12,22 @@
    (all-except "graphics_stub.ss" test-this these-tests) 
    "simulator_alpha.ss" ;; Would like to remove this dependency eventually.
    )
-
+  (provide (all-defined)
+           (all-from "simulator_alpha.ss"))
+  
   (include "../generic/alpha_lib.ss")
-  (provide (all-defined))
+  
+ 
  )
 
-(require alpha_lib)
-;(run-alpha-sim)
+
+;    (require alpha_lib)
+
+;    (begin (require alpha_lib) (time (run-alpha-sim 10.0)))
+
+;    (begin (require alpha_lib) (t) (run-alpha-sim))
+
+
+
+
+;    (begin (require "alpha_lib.ss") (time (run-alpha-sim 15.0)))
