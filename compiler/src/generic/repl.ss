@@ -21,7 +21,7 @@
 
 	      (printf "~nSimulating....~n")	   
 	      (cleanse-world)
-	      #;(let ((result (run-simulation (build-simulation converted) 2.0)))
+	      (let ((result (run-simulation (build-simulation converted) 2.0)))
 		(if (and (list? result) (= 1 (length result)))
 		    (printf "~n~s~n" (car result))
 		    (printf "~n~s~n" (car result))))
