@@ -15,17 +15,20 @@
     (letrec ([loop 
 	      (lambda (args)
 		(match args
+		    [() '()]
+
 		    [(,opt ,rest ...) (guard (equal? opt "-v"))
-		     (print-version)]
-	 
+		     (print-version) (exit 0)]
+
+		    ;; otherwise a file to compile that we add to the list
 		    [(,fn ,rest ...)
 		     ;(regiment-compile-file fn)
 		     (cons fn (loop rest))]
-	    
-		    [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]
-	  
+		    [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]	  
 		    ))])
       (let ([actual-files (loop fns)])
+	(for-each (lambda (fn)
+	(run-compiler 
 	
 
 (suppress-greeting #t)
