@@ -108,11 +108,11 @@
 			       (elect-leader memb_a))]
 		 [memb_a () (call form_r)]
 		 [form_r () (emit memb_r)]
-		 [memb_r () (begin (if (< (dist) 50) (relay))
-			               (call fold_it))]
+		 [memb_r () (begin (if (< (dist) 50) 
+				       (relay))
+				   (call fold_it))]
 		 [memb_r:ret (v) (call map_it v)]
-		 [fold_it () (begin (aggregator f)
-			            (return memb_r (sense)))]
+		 [fold_it () (return memb_r (aggregator f) (sense))]
 		 [f (x y) (+ x y)]
 		 
 		 [map_it (v) (call g v)]
@@ -163,13 +163,13 @@
 
 	    [(union)
 	     (disp "Got that union!" name args form memb)
-	     `([,form (begin
+	     `([,form () (begin
 			(iftok (and ,(get-membership-name (car args)) 
 				    ,(get-membership-name (cadr args)))
 			       (add ,memb)))]
 	       ;; These may be duplicate token entries:
-	       [,(get-membership-name (car args))  (begin (call ,form))]
-	       [,(get-membership-name (cadr args)) (begin (call ,form))]		       	     
+	       [,(get-membership-name (car args))  () (begin (call ,form))]
+	       [,(get-membership-name (cadr args)) () (begin (call ,form))]		       	     
     ;	       [,memb ... Don't know what yet... that depends on varrefs ]
 	       )]
 
@@ -228,11 +228,11 @@
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
 ;		      tokenbinds))
 	   (values '() 
-		   (cons `[,name (lazy-letrec ,constbinds (call ,entry))]
+		   (cons `[,name ,formalexp (lazy-letrec ,constbinds (call ,entry))]
 			 tokenbinds))]	
 
           [(,prim ,rand* ...) (guard (distributed-primitive? prim))
-	   (values '() (explode-primitive name prim rand*))]
+	   (values '() (explode-primitive name prim rand*)]
 
 	  ;; TODO:
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
