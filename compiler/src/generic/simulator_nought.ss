@@ -514,14 +514,15 @@
 ;  (define return-vals (vector 100)) ;; Here we accumulate returned values from the SOC
 ;  (define (add-return-val x) ...)
 ;  (define (get-return-vals) ...)
-  (eval '(begin 
-	   (define total-messages 0)
-	   ;; This is a global flag which can be toggled to shut down all the
-	   ;; running processors.
-	   (define stop-nodes #f)	   
-	   ;; Define global bindings for these so that we can do fluid-let on them.
-	   (define soc-return 'unbound-right-now)
-	   (define soc-finished 'unbound-right-now)))
+ 
+  (define-top-level-value 'total-messages 0)
+  ;; This is a global flag which can be toggled to shut down all the
+  ;; running processors.
+  (define-top-level-value 'stop-nodes #f)
+  ;; Define global bindings for these so that we can do fluid-let on them.
+  (define-top-level-value 'soc-return 'unbound-right-now)
+  (define-top-level-value 'soc-finished 'unbound-right-now)
+
 ;;  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]
@@ -554,7 +555,7 @@
 				(set! return-vals (cons x return-vals)))]
 		  [soc-finished (lambda () 
 ;			      (disp "CALLING soc-finished" return-vals)
-			      (set! stop-nodes #t))]
+			      (set-top-level-value! 'stop-nodes #t))]
 		  )
 ;	(disp "in that fluid" soc-return finished return-vals)
 	(let ([result (if (null? timeout)
