@@ -18,12 +18,15 @@
    (all-except "flat_threads.ss" test-this these-tests)
    (all-except "tsort.ss" test-this these-tests)
            )
-  (require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
+
+  ;(require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
+  (require "copy-struct.ss")
   
   ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
   (provide (all-defined)
-           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
+;           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
+           (all-from "copy-struct.ss")
 ;           (all-from "constants.ss")
 ;	   (all-from "helpers.ss")
            ;; Some Extra stuff needed by our runtime eval of simulated programs.	   

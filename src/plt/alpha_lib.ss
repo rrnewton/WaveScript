@@ -25,9 +25,8 @@
 
 ;    (begin (require alpha_lib) (time (run-alpha-sim 10.0)))
 
+
 ;    (begin (require alpha_lib) (t) (run-alpha-sim))
-
-
 
 
 ;    (begin (require "alpha_lib.ss") (time (run-alpha-sim 15.0)))

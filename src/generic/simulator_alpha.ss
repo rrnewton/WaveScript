@@ -1,4 +1,7 @@
 
+;; TODO: is_scheduled etc...
+
+
 ;; simulator_alpha.ss
 ;;  -Ryan Newton [2005.02.25]
 ;===============================================================================
@@ -49,7 +52,7 @@
 			     ;; All these buffers get changed when a token handler runs:
 			     incoming-msg-buf ;; Stores simulation events
 			     local-msg-buf    ;; Stores simulation events
-			     outgoing-msg-buf ;; Stores message objects
+			     outgoing-msg-buf ;; Stores simulation events
 			     timed-token-buf  ;; Stores simulation events
 
 			     local-sent-messages local-recv-messages
@@ -137,9 +140,9 @@
 
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
-(define (bare-msg-object rator rands)
+(define (bare-msg-object rator rands . time)  
   (safe-construct-msg-object rator ;; token
-		   #f    ;; timestamp
+		   (if (null? time) #f (car time))    ;; timestamp
 		   #f    ;; parent
 		   rands))
 
@@ -292,6 +295,8 @@
 	 ;; ext-set!
 	 [,x (guard (symbol? x)) 0]
 	 [(quote ,x) 0]
+	 ;; Lenient...
+	 [,v (guard (or (number? v) (string? v))) 0]
 
 	 [(call ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
 	 [(bcast ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
@@ -316,12 +321,13 @@
 	  (+ 1 (apply + rand*))]
 	 [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
 	  (+ (apply + rhs) (apply + bods))]
-	 [(,[rator] ,[rand*] ...) (apply + rator rand*)]
+	 ;; Lenient: this lets other prims through:
+	 [(,[rator] ,[rand*] ...) (apply + 1 rator rand*)]
 	 [,otherwise (error 'simulator_alpha:compute-handler-duration
 			    "don't know what to do with this: ~s" otherwise)]))
 
 
-(define (process-statement current-handler-name tokbinds stored)
+(define (process-statement current-handler-name tokbinds stored cost-table)
   (disp "process statement, allstored: " stored)
   (let ([allstored (apply append (map cadr stored))])
     (letrec ([find-which-stored
@@ -362,15 +368,17 @@
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
 		   `(set-simobject-local-msg-buf! this
-		    (cons (bare-msg-object ',rator (list ,@rand*))
+		    (cons (make-simevt #f ;; No scheduled time, ASAP
+				  ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
+				  (bare-msg-object ',rator (list ,@rand*) current-vtime))
 			  (simobject-local-msg-buf this)))]
 
 		  [(bcast ,rator ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
-		    (cons (bare-msg-object ',rator (list ,@rand*))
-			  (simobject-local-msg-buf this)))
-		   ]
-
+  		      (cons (make-simevt #f ;; No scheduled time, ASAP
+				       ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
+				       (bare-msg-object ',rator (list ,@rand*) current-vtime))
+			    (simobject-local-msg-buf this)))]
 
 ;;TODO:
 ;		  [(activate ,rator ,rand* ...)
@@ -379,8 +387,9 @@
 		  [(timed-call ,delay ,rator ,[rand*] ...)
 		   ;; Delay is in milleseconds.
 		  `(set-simobject-timed-token-buf!
-		    this (cons (list (+ ,delay current-vtime)
-				     (bare-msg-object ,rator (list ,@rand*)))
+		    this (cons (make-simevt (+ ,delay current-vtime)
+					    ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
+					    (bare-msg-object ',rator (list ,@rand*) current-vtime))
 			       (simobject-timed-token-buf this)))]
 
 ; 		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
@@ -476,7 +485,7 @@
 
 ;; Takes token bindings, returns compiled bindings
 ;; along with an association list of stored-vars.
-(define (process-tokbinds tbinds)
+(define (process-tokbinds tbinds cost-table)
   (let* ([allstored
           (map (lambda (bind)
                  (match bind 
@@ -484,12 +493,6 @@
 		    (disp "STORED: " vars)
                     (list tok vars)]))
                tbinds)]
-	 [costtable
-	  (map (lambda (tbind)
-		 (match tbind 
-			[(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
-			 (compute-handler-duration `(begin ,@expr*))]))
-	       tbinds)]
 			 
          [binds 
           (map
@@ -514,7 +517,7 @@
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
-				,@(map (process-statement tok tbinds allstored) expr*)
+				,@(map (process-statement tok tbinds allstored cost-table) expr*)
 				;; We must reverse the outgoing order because of how they were added:
 				(set-simobject-outgoing-msg-buf! this 
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
@@ -525,8 +528,9 @@
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
     (printf "Allstored was: ~a~n" allstored)
+    (printf "~n   Cost table: ~a~n" cost-table)
     (printf "<-------------------------------------------------------------------->~n")
-    (pretty-print binds)
+    ;(pretty-print binds)
 
     (values binds allstored)))
 
@@ -542,9 +546,16 @@
 		(nodepgm (tokens ,nodetoks ...) ;(startup ,starttoks ...)
 			 ))
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
-       (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
+       (define cost-table 
+	 (map (lambda (tbind)
+		(match tbind 
+		       [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
+			(list tok 
+			      (compute-handler-duration `(begin ,@expr*)))]))
+	      nodetoks))
+       (mvlet ([(tbinds allstored) (process-tokbinds nodetoks cost-table)])
 
-	`(define (meta-handler this)
+	`(define (node-code this)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
 	   "This is the simulation seed."
 	   "It returns an initial set of scheduled actions for the simulator to execute."	   
@@ -564,8 +575,7 @@
 
 		    ;; Return the real meta-handler
 		    (values 
-		     ;(list 0 (bare-msg-object 'SOC-start '()))
-
+		     ;; First the meta handler:
 		     (lambda (msgob current-vtime)
 		       (mvlet ([(name subtok)
 				(let ((tok (msg-object-token msgob)))
@@ -577,7 +587,10 @@
 				(apply handler current-vtime subtok 
 				       (msg-object-args msgob))
 				;; That returns nothing but fills up the simobjects buffers.
-				))))
+				)))
+		     ;; Then the cost-table.
+		     ',cost-table
+		     )
 		 ))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))

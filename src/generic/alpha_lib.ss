@@ -11,8 +11,10 @@
   (eval `(define alph ',(compile-simulate-alpha tm)))
   (eval (compile-simulate-alpha tm)))
 
-;; This returns a meta-token-handler of type (msg-object, vtime -> ())
-(define (meta-handler this)
+;; This returns:
+;; 1) meta-token-handler of type (msg-object, vtime -> ())
+;; 2) a cost-table mapping toknames to vtime costs
+(define (node-code this)
   (define-structure (tokstore))
   "This is the simulation seed."
   "It returns an initial set of scheduled actions for the simulator to execute."
@@ -62,7 +64,9 @@
                          (printf "N~a" (simobject-i-am-soc this))
                          (set-simobject-local-msg-buf!
                            this
-                           (cons (bare-msg-object 'tok1 (list)) (simobject-local-msg-buf this))))
+                           (cons
+                            (make-simevt #f 3 (bare-msg-object 'tok1 (list) current-vtime))
+                            (simobject-local-msg-buf this))))
                        (set-simobject-outgoing-msg-buf!
                          this
                          (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
@@ -91,7 +95,7 @@
                         (set-simobject-outgoing-msg-buf!
                           this
                           (cons
-                           (bare-msg-object 'tok2 (list " "))
+                           (make-simevt #f 2 (bare-msg-object 'tok2 (list "!") current-vtime))
                            (simobject-local-msg-buf this))))
                       (set-simobject-outgoing-msg-buf!
                         this
@@ -116,7 +120,38 @@
                           (hashtab-set! the-store this-tokname tokobj)))
                       (set-simobject-outgoing-msg-buf! this '())
                       (set-simobject-local-msg-buf! this '())
-                      (display x)
+                      (set-simobject-timed-token-buf!
+                        this
+                        (cons
+                         (make-simevt
+                           (+ 500 current-vtime)
+                           1
+                           (bare-msg-object 'tok3 (list x) current-vtime))
+                         (simobject-timed-token-buf this)))
+                      (set-simobject-outgoing-msg-buf!
+                        this
+                        (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+                      (set-simobject-local-msg-buf!
+                        this
+                        (append (reverse (simobject-local-msg-buf this)) old-local))
+                      (void)))))
+               (tok3
+                (lambda (current-vtime subtok-index y)
+                  (let* ((the-store (simobject-token-store this))
+                         (this-tokname (cons 'tok3 subtok-index))
+                         (old-outgoing (simobject-outgoing-msg-buf this))
+                         (old-local (simobject-local-msg-buf this)))
+                    "Is there already an allocated token object?:"
+                    (let ((tokobj (hashtab-get the-store this-tokname)))
+                      (if (not tokobj)
+                        (begin
+                          "If not, then we allocate that token object..."
+                          " setting the invoke counter to zero."
+                          (set! tokobj (vector 0))
+                          (hashtab-set! the-store this-tokname tokobj)))
+                      (set-simobject-outgoing-msg-buf! this '())
+                      (set-simobject-local-msg-buf! this '())
+                      (display y)
                       (set-simobject-outgoing-msg-buf!
                         this
                         (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
@@ -129,7 +164,8 @@
             (hashtab-set! dyndispatch_table 'soc-start soc-start)
             (hashtab-set! dyndispatch_table 'node-start node-start)
             (hashtab-set! dyndispatch_table 'tok1 tok1)
-            (hashtab-set! dyndispatch_table 'tok2 tok2))
+            (hashtab-set! dyndispatch_table 'tok2 tok2)
+            (hashtab-set! dyndispatch_table 'tok3 tok3))
           (values
             (lambda (msgob current-vtime)
               (mvlet
@@ -137,7 +173,15 @@
                  (let ((tok (msg-object-token msgob)))
                    (if (pair? tok) (values (car tok) (cdr tok)) (values tok 0)))))
                (let ((handler (hashtab-get dyndispatch_table name)))
-                 (apply handler current-vtime subtok (msg-object-args msgob)))))))))))
+                 (apply handler current-vtime subtok (msg-object-args msgob)))))
+            '((soc-start 1) (node-start 4) (tok1 3) (tok2 2) (tok3 1))))))))
+
+
+(define (evntcmpr a b) 
+  (cond 
+    [(not (simevt-vtime a)) #t]
+    [(not (simevt-vtime b)) #f]
+    [else (<= (simevt-vtime a) (simevt-vtime b))]))
 
 ;; This builds a simulation object for a specific node in the network.
 ;; This object drives the simulation for that node.  
@@ -147,27 +191,66 @@
 ;; both in *this* simobject, and in the incoming fields of other simobjects.
 
 ;; It returns this simulation object as a thunk.
+;; The thunk produces simevt's, but with action-thunks in the msgobj field 
 (define build-node-sim
-  (lambda (ob world meta-handler)
+  (lambda (ob world node-code)
     ;; the scheduling queue contains event entries of the format:
     ;;   [<vtime-to-exec>, <duration>, <msg-object>]
     ;; which are also returned from sim-seed in this format.
-    (define (evntcmpr a b) (<= (car a) (car b)))
     
       ;; Schedule either adds an event to the schedule, 
       ;; or returns the current schedule in list form.
     (define private-scheduler
-      (let ([buffer '()])
+      (let ([buffer '()]
+            [private-vtime 0])
 	(lambda args
 	  (match args 
-	    [() buffer]
+	    [(get-buffer) buffer]
+	    [(get-time) private-vtime]
+            [(head) (if (null? buffer) #f
+                        (let ([next (car buffer)])
+                          (make-simevt
+                           (if (simevt-vtime next)
+                               (max (simevt-vtime next) private-vtime)
+                               private-vtime)
+                           (simevt-duration next)
+                           (simevt-msgobj next))))]
 	    [(pop)
 	     (if (null? buffer)
 		 (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
 	     (set! buffer (cdr buffer))]
-	    [(,evnts ...)
-					;(printf "Scheduling! ~a~n" evnts)
-	     (set! buffer (merge evntcmpr evnts buffer))]))))
+            [(set-time ,current-vtime)
+             (private-scheduler 'advance-time (- current-vtime private-vtime))]
+	    [(advance-time ,increment)
+             (when (> increment 0) ;; Fizzle if the increment is not positive
+               (set! private-vtime (+ private-vtime increment))
+               ;; This is where we make sure we have time to run the
+               ;; things we want to run before the next hard timing constraint:
+               (mvlet ([(flexible rest) (split-before simevt-vtime buffer)])
+                      (if (not (null? rest))
+                          (let* ([nexttime (simevt-vtime (car rest))]
+                                 [time-remaining (- nexttime private-vtime)])
+                            (mvlet ([(cando letslide)
+                                     (let loop ([acc '()] [budget time-remaining] [evts flexible])
+                                       (cond 
+                                         [(null? evts) (values flexible '())]
+                                         [(< budget (simevt-duration (car evts)))
+                                          ;; We can't afford it, stop here:
+                                          (values (reverse! acc) evts)]
+                                         [else (loop (cons (car evts) acc) 
+                                                     (- budget (simevt-duration (car evts)))
+                                                     (cdr evts))]))])
+                                   (if (not (null? letslide))
+                                       (set! buffer
+                                             (append cando
+                                                     (list (car rest))
+                                                     letslide ;; Let them slide till after the timed event
+                                                     (cdr rest)))))))))]
+            [(schedule ,current-vtime . ,newevnts)
+	     ;(printf "Scheduling! ~a~n" evnts)		       	     
+	     (set! buffer (merge evntcmpr newevnts buffer))
+             (private-scheduler 'set-time current-vtime)]))))
+
     
     (define (process-incoming current-vtime)      
       (define schedule (simobject-scheduler ob))
@@ -183,9 +266,9 @@
 			      (simobject-incoming-msg-buf ob))))			      
 	  (logger "Processing Node ~a incoming: ~a local,  ~a timed,  ~a remote~n"
 		  (node-id (simobject-node ob))
-		  (map (lambda (x) (msg-object-token x)) (simobject-local-msg-buf ob))
-		  (map (lambda (x) (msg-object-token (cadr x))) (simobject-timed-token-buf ob))
-		  (map (lambda (x) (msg-object-token (cadr x))) (simobject-incoming-msg-buf ob))))
+		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
+		  (map (lambda (x) (msg-object-token (simevt-msgobj (cadr x)))) (simobject-timed-token-buf ob))
+		  (map (lambda (x) (msg-object-token (simevt-msgobj (cadr x)))) (simobject-incoming-msg-buf ob))))
 
 
       (let ([timed (simobject-timed-token-buf ob)]
@@ -195,13 +278,15 @@
 	(set-simobject-timed-token-buf! ob '())
 	(set-simobject-incoming-msg-buf! ob '())
 
+	(if (not (andmap simevt? (append timed local incoming)))
+	    (printf "NOT ALL SIMEVT ~a ~a ~a~n" 
+		    timed local incoming))
+
       ;; Process incoming and local msgs:
       ;; Schedule timed local tokens:
-      (apply schedule timed)
-      (apply schedule  
-	     (map (lambda (msg) (list current-vtime msg)) ;; happen immediately
-		  local))
-      (apply schedule incoming))
+      (apply schedule 'schedule current-vtime timed)
+      (apply schedule 'schedule current-vtime local)
+      (apply schedule 'schedule current-vtime incoming))
       )
   
     (define (launch-outgoing current-vtime)
@@ -209,57 +294,74 @@
       ;; TODO: Here's where we insert the better radio model!!!
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
 	;; They're all broadcasts for now
+	(for-each (lambda (evt)
+		    ;; Timestame the message:
+		    (set-msg-object-sent-time! (simevt-msgobj evt) current-vtime)
+		    ;(let ([newmsg (structure-copy (simevt-msgobj evt))])
+		    )
+		  outgoing)
+	
 	(for-each 
 	 (lambda (nbr)
 	   (set-simobject-incoming-msg-buf! 
-	    nbr (append 
-		 (map (lambda (msg) 
-			(list (+ RADIO_DELAY PROCESSING_TIME current-vtime) msg))
-		      outgoing)
+	    nbr (append  outgoing
 		 (simobject-incoming-msg-buf nbr))))
 	 (graph-neighbors (simworld-object-graph world) ob))
 	;; They're all delivered, so we clear our own outgoing buffer.
 	(set-simobject-outgoing-msg-buf! ob '())))
 
 
+    (define-values (mhandler cost-table) (node-code ob))
+
     ;; MAIN BODY:
     ;; Install the scheduler and handler incase anybody else wants to use them:
     (set-simobject-scheduler! ob private-scheduler)
-    (set-simobject-meta-handler! ob (meta-handler ob))
+    (set-simobject-meta-handler! ob mhandler)
 
     ;; Clear out the buffers from any prior simulations:
     (set-simobject-local-msg-buf! ob '())
     (set-simobject-timed-token-buf! ob '())
     (set-simobject-outgoing-msg-buf! ob '())
-    ;; The incoming buffer starts out with just the start action.
-    (set-simobject-local-msg-buf! ob
-	(list (bare-msg-object 'node-start '())))
+    ;; The incoming buffer starts out with just the start actions SOC-start and node-start.
+    (set-simobject-local-msg-buf! ob				
+	(list (make-simevt 0
+			   (cadr (assq 'node-start cost-table))
+			   (bare-msg-object 'node-start '() 0))))
     (if (simobject-I-am-SOC ob)
 	(set-simobject-local-msg-buf! ob
-	   (cons (bare-msg-object 'SOC-start '())
-		 (simobject-local-msg-buf ob))))       
+	   (cons (make-simevt 0
+			      (cadr (assq 'node-start cost-table))
+			      (bare-msg-object 'SOC-start '() 0))
+		 (simobject-local-msg-buf ob))))
 
     (lambda (current-vtime)
       ;; First schedule any incoming messages we've received
       (process-incoming current-vtime)
       (let ([scheduler (simobject-scheduler ob)])
-      (let ((current-schedule (scheduler)))
-	;; We just fizzle if our schedule is empty.  Return #f.
-	(if (null? current-schedule)
+      (let ([next (scheduler 'head)])
+        ;; We just fizzle if our schedule is empty.  Return #f.
+	(if (not next)
 	    #f
-	    (let ([next (car current-schedule)])
-	      (list (car next)
-		    ;; Action thunk that executes message:
-		    (lambda () 
-					;(printf "Busting thunk, running action: ~a~n" next)
-		      ;; For now, the time actually executed is what's scheduled
-		      (logger "  Executing: ~a~n" (msg-object-token (cadr next)))
-		      
-		      ;; Pop the event off the scheduling queue:
-		      (scheduler 'pop)
-		      ((simobject-meta-handler ob) (cadr next) (car next))
-		      ;; Now that the atomic action is finished, do the radio transimission:
-		      (launch-outgoing current-vtime))))))))))
+            (begin 
+              ;(printf "Got head: ~a ~a~n" (simevt-vtime next) (simevt-duration next))
+            (make-simevt
+               (simevt-vtime next)
+               (simevt-duration next)
+               ;; Action thunk that executes message:
+               (lambda () 
+                 ;(printf "Busting thunk, running action: ~a~n" next)
+                 ;; For now, the time actually executed is what's scheduled
+                 (logger "  Executing: ~a~n" (msg-object-token (simevt-msgobj next)))
+                 
+                 ((simobject-meta-handler ob) (simevt-msgobj next) (simevt-vtime next))                                 
+                 ;; Now that the atomic action is finished, do the radio transimission:
+                 (launch-outgoing current-vtime)
+                 
+                 ;; Finally we must tell our scheduler that we have executed this action:
+                 ;; Advance the clock appropriately, pop the event off the scheduling queue:
+                 (scheduler 'advance-time (simevt-duration next))
+                 (scheduler 'pop)
+                 )))))))))
 
 
 (define run-alpha-sim
@@ -282,7 +384,7 @@
 	       (map (lambda (ob)
 		      (build-node-sim ob
 		       sim ;; the world
-		       meta-handler ;; TODO: read from file
+                       node-code ;; TODO: read from file
 		       ))
 		    (simworld-all-objs sim))])
 
@@ -290,6 +392,10 @@
 
     (let main-sim-loop ([vtime 0])
       (logger "Main sim loop: vtime ~a~n" vtime)
+      (logger "Local vtimes ~a~n" 
+	      (map (lambda (ob) ((simobject-scheduler ob) 'get-time))
+		   (simworld-all-objs sim)))
+      
       (printf "<~a>" vtime)
       (if (stopping-time? vtime)
 	  (printf "Out of time.~n")
@@ -301,7 +407,7 @@
 				  (cond
 				   [(not action) best]
 				   [(not best) action]
-				   [(< (car action) (car best)) action]
+				   [(evntcmpr action best) action]
 				   [else best])))))])
 	(if (not nextevt)
 	    (printf "~n~a: Simulator ran fresh out of actions!~n"
@@ -317,9 +423,11 @@
 	
 	    (begin
 	      ;; Run this atomic action (token handler), it gets to run at its intended virtual time.
-	      ((cadr nextevt))
+              ;; We have lamely stored it in the msgobj field:
+	      ((simevt-msgobj nextevt)) ;; This will execute the action and advance the clock internally.
+              
 	      ;; That had the effect of launching new messages to process.
-	      (main-sim-loop (car nextevt)))))))))))
+	      (main-sim-loop (simevt-vtime nextevt)))))))))))
 
 
 ;; From Swindle:
