@@ -39,7 +39,8 @@
 (define-language
   'base-language
   '(begin
-
+     (define ignored (begin (disp "Loading base language!") (flush-output-port)))
+     
      ;; Node format: (id reading x y)
      (define (node->pos n) (cddr n))
      (define (node->id n) (car n))
@@ -59,8 +60,8 @@
 
       (define rfold foldl)
       (define rmap map)
-      (define sense node->reading)
       (define id node->id)
+      (define sense node->reading)
 
       (define world the-test-field)
  
