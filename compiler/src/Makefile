@@ -37,6 +37,10 @@ CHEZ = chez
 SWL = swl
 DEST = a.out
 
+all: reg
+	(cd plt; $(MAKE) nc)
+	(cd haskell; $(MAKE))
+
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
@@ -55,9 +59,17 @@ compiled/compiler.zo:
 compiled/compiler_plt.zo:
 	$(MZC) -z --auto-dir $(PLT_MAIN_FILE) 
 
+pltnc:	
+	(cd plt; $(MAKE) nc)
+	mzc compiler_plt.ss
+
+pltbc:	
+	(cd plt; $(MAKE) bc)
+	mzc --zo compiler_plt.ss
+
 reg: build/regimentc.1.heap
 
-build/regimentc.1.heap: $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
+build/regimentc.1.heap: regiment.ss $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
 	echo '(load "regiment.ss")' | chez -s1 build/regimentc.1.heap
 
 
@@ -87,10 +99,13 @@ runplt:
 #.PHONY: clean
 
 clean:
-	(cd compiled; $(MAKE) clean)
-	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
+	(cd plt; $(MAKE) clean)
 	$(RM) *.zo _SIM_*
-	find -name "*.zo" | xargs rm # This is excessive...
+
+#	find -name "*.zo" | xargs rm # This is excessive...
+#	(cd compiled; $(MAKE) clean)
+
+
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \
 #                       -o -name '#*#' \

@@ -30,7 +30,8 @@
     (if (null? args)
 	(begin (print-help) (exit 0)))
 ;    (printf "regimentc: compile regiment programs!~n")
-    (let ([opts '()])      
+    (let ([opts '()]
+	  [ext ".tm"])      
       (letrec ([loop 
 	      (lambda (args)
 		(match args
@@ -43,10 +44,14 @@
 		     ]
 		    [(.h ,rest ...) (print-help) (exit 0)]
 
-		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts)) (loop rest)]
-		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) (loop rest)]
-		    [(-l2 ,rest ...) (set! opts (cons 'almost-haskell opts)) (loop rest)]
-		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts)) (loop rest)]
+		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts)) 
+                                     (set! extension ".sexp") (loop rest)]
+		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
+		                     (set! extension ".tm")  (loop rest)]
+		    [(-l2 ,rest ...) (set! opts (cons 'almost-haskell opts)) 
+                                     (set! extension ".tm") (loop rest)]
+		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
+                                     (set! extension ".tmh") (loop rest)]
 
 		    ;; otherwise a file to compile that we add to the list
 		    [(,fn ,rest ...)
@@ -70,8 +75,8 @@
 		(printf "~n Using default output file: out.tm...~n")		
 		(apply run-compiler expr "out.tm" opts)))
 	    (for-each (lambda (fn)
-			(let ([out (string-append (remove-file-extension fn) ".tm")])
-			  (printf "~n Writing token machine to: ~s ~n" out)
+			(let ([out (string-append (remove-file-extension fn) extension)])
+			  (printf "~n  Writing token machine to: ~s ~n" out)			  
 			  (apply run-compiler (car (file->slist fn)) out opts)))
 		      filenames)))))))
   

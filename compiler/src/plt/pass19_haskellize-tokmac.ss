@@ -1,4 +1,9 @@
+
+
 (module pass19_haskellize-tokmac mzscheme
+
+;  (require-for-syntax "constants.ss")
+;  (require constants)
 
   (require (lib "include.ss"))
   (require "constants.ss")

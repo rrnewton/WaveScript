@@ -1,13 +1,25 @@
 
-#COMPONENT = TokenMachineRuntime
-COMPONENT = TestMachine
-#COMPONENT = BasicTMComm
 
 haskell: 
-	ghc -fext-core --make assembler -o assembler 
-	mv a.out assembler
+	ghc -fext-core -fwarn-incomplete-patterns --make assembler -o assembler
+	cp -pr assembler ../build/assemble_tm
 
-include Makerules
+#	ghc -fext-core --make assembler -o assembler 
+#	mv a.out assembler
+
+#tinyos: tos
+#tos:
+#	$(MAKE) -f Makefile.tinyos $*
+
+pc:
+	$(MAKE) -f Makefile.tinyos pc
+
+micaz:
+	$(MAKE) -f Makefile.tinyos micaz
+
+telos:
+	$(MAKE) -f Makefile.tinyos telos
+
 
 clean: 
 	rm -f TestMachine.h TestMachine.nc TestMachineM.nc

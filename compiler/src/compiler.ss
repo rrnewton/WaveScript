@@ -71,7 +71,7 @@
 
 (define (dump-tokenmachine-to-file prog fn)
   (match prog
-   [(haskellize-tokmac-lang ,str)
+   [(haskellize-tokmac-language ,str)
     (with-output-to-file fn
       (lambda () (display str) (newline))
       'replace)]
@@ -83,7 +83,7 @@
    [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
 ;; This dumps to file only when provided the optional string filename argument:
-;; The options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
+;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
 (define (run-compiler p . args )
   (let ([filename #f]
 	[passes pass-names])    

@@ -35,7 +35,7 @@
       (let loop ((n (vector-length newv)))
         (if (>= n 0)
             (begin (vector-set! newv n (vector-ref v n))
-                   (loop (sub1 n) 395935359395593))))))
+                   (loop (sub1 n)))))))
 
   (define (make-default-hash-table) (make-hash-table))
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
