@@ -94,6 +94,7 @@ process_stmt indent tokargs e =
 	   Pleq     -> f $ "("++ e1++" <= "++e2 ++")"
 	   Pgeq     -> f $ "("++ e1++" >= "++e2 ++")"
 	   Peq      -> f $ "("++ e1++" == "++e2 ++")"
+	   Pmyid    -> f $ "TOS_LOCAL_ADDRESS"
 	   Plightup -> err
 	   Ploc     -> err
 	   Plocdiff -> err
@@ -106,6 +107,9 @@ process_stmt indent tokargs e =
 	[ indent ++ "dbg(DBG_USR1, \""++ litstr s ++"\""++
 	  extra_args (map process_basic args)
 	  ++");\n"]
+
+    TMS.Sdist t -> 
+	error
 
     TMS.Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++

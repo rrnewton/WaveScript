@@ -41,6 +41,7 @@ data Prim = Pplus | Pminus | Pmult | Pdiv
 	  | Plocdiff | Ploc
 --	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
+	  | Pmyid 
 	  --Pamap | Pafold
   deriving (Eq, Show, Read)
 
@@ -62,6 +63,7 @@ data Expr = -- Stndard forms:
 
           | Eled  LedAction LedColor
 	  | Edbg String [Expr]
+	  | Edist Token
 
 	  | Eprimapp Prim [Expr]
           | Esense
@@ -126,6 +128,7 @@ expr_collect_ids = f
        (Esocfinished) -> []
        (Eled _ _)     -> []
        (Erelay mbtok) -> []
+       (Edist  tok)   -> []
        (Evar (Id s))  -> [s]
        (Elambda ids e) -> map (\ (Id s) -> s) ids ++ f e
        (Elet binds e)  -> (concat $ map (\ ((Id s),rhs) -> s : f rhs) binds) ++ f e
@@ -269,7 +272,8 @@ t = (Pgm {
 	  consts = [],
 	  socconsts=[],
 	  socpgm=[(Eemit Nothing (Token "tok1") [])],
-	  nodetoks=[((Token "tok1"), [], (Ecall (Just 300) (Token "fact") [(Econst 6)])), ((Token "fact"), [(Id "n")], (Ecall Nothing (Token "loop") [(Evar (Id "n")), (Econst 1)])), ((Token "loop"), [(Id "n"), (Id "acc")], (Eif (Eprimapp Peq [(Econst 0), (Evar (Id "n"))]) (Edbg "TM: FACT DONE: %d\n" [(Evar (Id "acc"))]) (Ecall Nothing (Token "loop") [(Eprimapp Pminus [(Evar (Id "n")), (Econst 1)]), (Eprimapp Pmult [(Evar (Id "n")), (Evar (Id "acc"))])])))],
+	  nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), ((Token "tok2"), [], (Eled Toggle Red))],
 	  startup=[]
 	 })
+
 
