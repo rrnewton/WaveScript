@@ -98,25 +98,29 @@ process_stmt indent tokargs e =
 	  process_basic seed ++", "++
 	  tok_id aggr ++");\n"]
 
-    Srelay (Just t) -> ["/* FAILED relay just*/"]
-    Srelay Nothing -> ["/* FAILED relay nothing*/"]
+    Srelay (Just t) -> [indent ++"/* FAILED relay just*/\n"]
+    Srelay Nothing -> [indent ++"/* FAILED relay nothing*/\n"]
 
     -- FIXME
-    Scall Nothing Nothing t args -> 
-	[ "the_packet.type = " ++ tok_id t ++ ";\n",
-	  -- FILL IN ARG DATA HERE...
-	  "call TMComm_"++ tokname t ++".add_msg(the_packet);\n" ]
---"(call " ++ tokname t ++ "(" ++ (concat $ intersperse ", " argexps) ++ "))"
+    Scall Nothing time t args -> 
+	[ indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+	  (case time of
+	   Just t -> indent ++"/* Cannot handle timed call right now: */\n"
+	   Nothing -> "") ++
+	  -- FIXME FILL IN ARG DATA HERE...
+	  indent ++"/* Should fill in arg data here... */\n",
+	  indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" ]
+
+    Semit (Just time) t exps -> 
+	error "assembler: process_expr.  Can't handle optional time argument to emit."
+
+    Semit Nothing t exps -> 
+	[indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+	 indent ++"/* Should fill in arg data here... */\n",
+	 indent ++"call TMComm_"++ tokname t ++
+	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);\n"]
 
 {-
-    Eemit (Just time) t exps -> 
-	error "assembler: process_expr.  Can't handle optional time argument to emit."
-    Eemit Nothing t exps -> 
-	([],[],
-	 "(call TMComm_"++ tokname t ++
-	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet))")
-
-
     Ecall (Just time) t exps -> 
 	let (f,s,e) = process_expr indent args (Ecall Nothing t exps)
 	in (f,s,
@@ -141,13 +145,17 @@ process_stmt indent tokargs e =
     Ssocfinished -> [ indent ++ "call TMComm.socfinished();\n"]
 
     Sreturn b -> [ indent ++"return "++ process_basic b ++";\n" ]
+    _ -> error ("process_stmt can't handle: " ++ show e)
 
 
 process_block :: String -> [String] -> Block -> ([FunctionCode],[StatementCode])
 process_block indent tokargs (Block locals stmts) = 
     let body = concat $ map (process_stmt indent tokargs) stmts
-        defs = map (\ (Id id) -> indent ++"uint8_t "++ id ++";\n") locals
+        defs = concat $ map (process_localdef indent) locals
     in ([], defs ++ body)
+
+process_localdef :: String -> Id -> [String]
+process_localdef indent (Id id) = [indent ++"uint16_t "++ id ++";\n"]
 
 build_fun formals body = 
     " foo " 
@@ -159,11 +167,11 @@ build_fun formals body =
 -- Structure as tasks, assign active messages...
 -- flatten and generate code for handlers.
 
-process_const :: ConstBind -> String
-process_const (Id str, Econst exp) = "  uint8_t "++str++" = "++show exp++";\n"
+process_const :: TMS.ConstBind -> String
+process_const (Id str, Bconst exp) = "  uint16_t "++str++" = "++show exp++";\n"
 process_const _ = error "assembler.hs: process_const: can't handle non Econst expressions atm!!"
 
-process_consts :: [ConstBind] -> String
+process_consts :: [TMS.ConstBind] -> String
 process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
 -- Returns a string for the handler (goes in the switch statement)
@@ -171,12 +179,15 @@ process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 process_handler :: TMS.TokHandler -> ([FunctionCode],StatementCode)
 process_handler (t, args, blk) = 
     let (funs,stmts) = process_block "        " (map (\ (Id x)->x) args) blk 
-    in (funs,
-	"      case "++tok_id t++": \n"++
+	funname = tokname t
+    in ([
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
 	 args [0..]))++
-	(concat stmts)++
+	(concat stmts)
+	: funs,
+	"      case "++tok_id t++": \n"++
+	"        call "++ funname ++"(args, payload);\n"++
 	"        break;\n")
 
 --  "    int i;\n"++
@@ -209,7 +220,7 @@ process_handlers hnds =
 process_startup :: [Token] -> String
 process_startup _ = "" 
 
-build_module_header :: [TokHandler] -> String
+build_module_header :: [TMS.TokHandler] -> String
 build_module_header toks = 
     let toknames = map (\ (t,_,_) -> tokname t) toks 
     in "\nmodule " ++ modname ++ "M \n {\n" ++ 
@@ -227,7 +238,7 @@ build_module_header toks =
        "}\n\n"
 
 
-build_implementation_header :: [TokHandler] -> String
+build_implementation_header :: [TMS.TokHandler] -> String
 build_implementation_header toks = 
     "  command result_t Control.init() {\n" ++
     "    return SUCCESS;\n" ++
@@ -247,20 +258,23 @@ build_implementation_header toks =
 --	  "  }\n\n")
 --     (map (\ (t,_,_) -> tokname t) toks))
 
-
-build_socfun consts exprs = 
+build_socfun :: [TMS.ConstBind] -> Block -> String
+build_socfun consts (Block locals stmts) =
+    let indent = "    " in
     "  task void socpgm() {\n"++ 
     process_consts consts ++ 
-    -- TODO INCLUDE FUNS HERE!!!
+    -- FIXME TODO INCLUDE FUNS HERE!!!
+    -- Generate code for all the statements in 
+    (concat $ concat $ map (process_localdef indent) locals) ++
     (concat $ concat $ 
-     map (\x-> let (_,stmts) = process_stmt "    " [] x 
-	  in stmts) exprs) ++ 
+     map (\x-> process_stmt indent [] x)
+     stmts) ++ 
     "  }\n\n" ++
     "  command void start_socpgm() {\n"++ 				       
     "    post socpgm();\n"++
     "  }\n\n"
 
-build_module (Pgm consts socconsts socpgm nodetoks startup) = 
+build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     -- First spit out just a little header:
     "// Automatically generated module for "++show (length nodetoks)++" token handlers:\n"++
     (concat $ map (\ (Token s,_,_) -> "//   "++s++"\n") nodetoks)++
@@ -281,7 +295,7 @@ build_module (Pgm consts socconsts socpgm nodetoks startup) =
 -------------------------------------------------------------------------------
 {- HERES THE CONFIGURATION GENERATOR. -}
 
-build_configuration (Pgm consts socconsts socpgm nodetoks startup) = 
+build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     "includes TestMachine;\n"++
     "includes TokenMachineRuntime;\n\n"++
     "configuration "++modname++"\n"++
@@ -309,7 +323,7 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
 
 -------------------------------------------------------------------------------
 
-build_header_file (Pgm consts socconsts socpgm nodetoks startup) = 
+build_header_file (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     "enum {\n"++
     (concat $ 
      map2 (\ (t,_,_) n -> "  "++tok_id t++" = "++show n++",\n")
@@ -321,7 +335,7 @@ build_header_file (Pgm consts socconsts socpgm nodetoks startup) =
 {- HERES THE MAIN PROGRAM. -}
 
 {- This returns the contents of the NesC module file, config file, and header file. -}
-assemble :: TMPgm  -> (String,String,String)
+assemble :: TMS.Pgm  -> (String,String,String)
 assemble prog = (build_module prog, build_configuration prog, build_header_file prog)
 		    
 
@@ -340,10 +354,10 @@ main = do args <- System.getArgs
 		  else (return (a :: TMPgm))-}
 	  prog <- catch (do str <- readFile filename
 			    putStr ("Read tokmac from file: "++filename++"\n")
-			    return (read str :: TMPgm))
+			    return (read str :: TMS.Pgm))
 		  (\e -> if IO.isDoesNotExistError e 
      		         then (do putStr "File not found.  Compiling default tokmac.\n"
-			          return (a :: TMPgm))
+			          return (a :: TMS.Pgm))
 		         else ioError e)
 
 	  putStr "Running token machine assembler in Haskell... \n" 
@@ -358,8 +372,3 @@ main = do args <- System.getArgs
 	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
 
-
-
-
-
-main = do return 3
