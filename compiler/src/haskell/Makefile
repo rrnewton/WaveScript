@@ -12,4 +12,4 @@ include Makerules
 clean: 
 	rm -f TestMachine.h TestMachine.nc TestMachineM.nc
 	rm -rf *.o TM.hi TM.hcr Main.hi a.out assembler assembler.hcr build/pc/*
-
+	rm -rf *.hi *.hcr 
