@@ -45,4 +45,8 @@
      ))
 
 
-(test00)
+(display (list (test00)
+	       (test01 'verbose)
+	       (test07)))
+(newline)
+
