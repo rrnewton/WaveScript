@@ -645,6 +645,7 @@
     (match (match `(begin ,@expr*)
              [(begin ,[expr*] ...) (apply append expr*)]
              [,expr (list expr)])
+      [() (void)]
       [(,x) x]
       [(,x ,x* ...) `(begin ,x ,x* ...)])))
 ;;RRN [01.09.17] :
