@@ -70,6 +70,11 @@ also..
 URGH.  Having problems returning a stream of answers.  Can't nest
 engines dammit!  So run-flat-threads is not a sufficient interface...
 
+Hmmm strange bug right now, trying to get my stream-outputting
+simulator to work.  It'll run for a while and then get an invalid
+application for soc-return.  How does it suddenly come out of that
+fluid-let?  What's with that?
+
 
 
 

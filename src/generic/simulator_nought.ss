@@ -660,8 +660,8 @@
   ;; running processors.
   (define-top-level-value 'stop-nodes #f)
   ;; Define global bindings for these so that we can do fluid-let on them.
-  (define-top-level-value 'soc-return 'unbound-right-now)
-  (define-top-level-value 'soc-finished 'unbound-right-now)
+  (define-top-level-value 'soc-return 'unbound-right-now-soc-return)
+  (define-top-level-value 'soc-finished 'unbound-right-now-soc-finish)
 
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the given function,
@@ -672,6 +672,7 @@
     ;; Kinda lame to use fluid-let here, but we don't have the
     ;; relevent continuation at the time we build the thunks.
     (fluid-let ([soc-return (lambda (x)
+			      (disp "OLD SOC-RETURN DAMMIT.")
 			      ;; Collect return vals in a local variable.
 			      (set! return-vals (cons x return-vals)))]
 		[soc-finished (lambda () 
@@ -731,24 +732,28 @@
 ;; This version returns a stream of answers rather than a list all at once.
 (define run-simulation-stream
   (generate-simulator
-   (lambda (thunks)
+   (lambda args
      (disp "stream version of run sim")
      (let ([return-buffer '()])
        ;; Here we override the 'soc-return binding from generate-simulator.
        ;; We collect the answers in our stream.
-       (fluid-let ([soc-return (lambda (x) (set! return-buffer (cons x return-vals)))])
-	 (disp "in fluid")
-	 (let loop ((eng (run-flat-threads-engine thunks)))
-	   (disp "in loop")
-	   (delay 
-	     (begin (disp "popped promise")
-		    (eng 1000
-			 (lambda (rem val)
-			   val)
-			 (lambda (nexteng)
-			   (let ((temp return-buffer))
-			     (set! return-buffer '()) ;;<TODO> Use semaphore.
-			     (dotted-append temp (loop nexteng)))))))))))
+       (fluid-let ([soc-return (lambda (x) 
+				 (disp "RETURNING VIA SOC")
+				 (set! return-buffer (cons x return-vals)))])
+	 (let loop ((eng (apply run-flat-threads-engine args)))
+	   (disp "in loop" return-buffer)
+	   (delay (eng 1000
+		       (lambda (rem val) 
+			 return-buffer
+;			 (if (or (pair? val) (null? val))  val
+;			     (begin (printf "Warning: value returned by run-flat-threads-engine is: ~s~n" val)
+;				    (list val)))
+			 )
+		       (lambda (nexteng)
+			 (let ((temp return-buffer))
+			   (set! return-buffer '()) ;;<TODO> Use semaphore.
+			   (dotted-append temp (loop nexteng))))))))
+       ))
    generic-text-simulator-core ))
 
 ;;===============================================================================
@@ -881,5 +886,16 @@
 (define sim (build-simulation 
 	     (compile-simulate-nought 
 	      (cadadr (rc '(anchor-at '(30 40)))))))
-(define (ttt)
-  (run-simulation-stream sim))
+
+;(define (t1) (init-world) (run-simulation        sim 2.0))
+;(define (t2) (init-world) (run-simulation-stream sim 2.0))
+
+(define (t1)
+  (cleanse-world)
+  (run-simulation 
+   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 1.0))
+(define (t2)
+  (cleanse-world)
+  (run-simulation-stream
+   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40))))))
+   1.0))
