@@ -105,7 +105,14 @@
 
 ;; This makes it use a lame sort of text display instead of the graphics display:
 (define simulator-output-text (make-parameter #f (lambda (x) x)))
-
+(define sim-debug-logger 
+  (make-parameter (lambda args
+		    (critical-section
+		     (apply printf args)))
+                  (lambda (x)
+                    (unless (procedure? x)
+                      (error 'simulator-debug-logger "~s is not a procedure" x))
+                    x)))
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
@@ -486,6 +493,7 @@
 		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
+		  [(leds ,which ,what) `(sim-leds ,which what)]
 
 		  [(,prim ,[rand*] ...)
 		   (guard (token-machine-primitive? prim))
@@ -798,11 +806,13 @@
     
 
     [define (sim-light-up r g b)
-	     (if (simobject-gobj this)
-		 (change-color! (simobject-gobj this) (rgb r g b))
-		 ;; We're allowing light-up of undrawn objects atm:
-		 ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-		 )]
+      ((sim-debug-logger) "~n~a: light-up ~a ~a ~a~n"
+       (node-id (simobject-node this)) r g b)
+      (if (simobject-gobj this)
+	  (change-color! (simobject-gobj this) (rgb r g b))
+	  ;; We're allowing light-up of undrawn objects atm:
+	   ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
+	  )]
 	  
     [define (sim-dist . tok)
 	     (if (null? tok)
@@ -1356,6 +1366,7 @@
 			  all-objs)
 		(yield-thread)
 		(loop)))])       
+       ;; If we're in text mode use that simple display engine:
        (if (simulator-output-text)
 	   (cons display_engine (cons soceng nodeengs))
 	   (cons soceng nodeengs))

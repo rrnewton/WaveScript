@@ -53,46 +53,46 @@
 (define cleanup-token-machine
   (let ()
 
-(define make-begin
-  (lambda (expr*)
-    (match (match `(begin ,@expr*)
-             [(begin ,[expr*] ...) (apply append expr*)]
-             [,expr (list expr)])
-      [(,x) x]
-      [(,x ,x* ...) `(begin ,x ,x* ...)])))
-
-;; This removes duplicates among the token bindings.
-;; <TOOPTIMIZE> Would use a hash-table here for speed.
-;; :: TokenBindings -> TokenBindings
-(define (remove-duplicate-tokbinds tbinds)
-;  (disp "Removing token dups" tbinds)
-  (let loop ((ls tbinds))
-    (if (null? ls) '()
-	(let* ([tok (caar ls)]
-	       [dups (filter (lambda (entry) (eq? tok (car entry))) (cdr ls))])
-	  (if (null? dups)
-	      (cons (car ls) (loop (cdr ls)))	      	      
-	      (let* ([all-handlers (cons (car ls) dups)]
-		     [formals* (map cadr all-handlers)]
-		     [body* (map caddr all-handlers)]
-		     )
+    (define make-begin
+      (lambda (expr*)
+	(match (match `(begin ,@expr*)
+		      [(begin ,[expr*] ...) (apply append expr*)]
+		      [,expr (list expr)])
+	       [(,x) x]
+	       [(,x ,x* ...) `(begin ,x ,x* ...)])))
+    
+    ;; This removes duplicates among the token bindings.
+    ;; <TOOPTIMIZE> Would use a hash-table here for speed.
+    ;; :: TokenBindings -> TokenBindings
+    (define (remove-duplicate-tokbinds tbinds)
+     ;  (disp "Removing token dups" tbinds)
+      (let loop ((ls tbinds))
+	(if (null? ls) '()
+	    (let* ([tok (caar ls)]
+		   [dups (filter (lambda (entry) (eq? tok (car entry))) (cdr ls))])
+	      (if (null? dups)
+		  (cons (car ls) (loop (cdr ls)))	      	      
+		  (let* ([all-handlers (cons (car ls) dups)]
+			 [formals* (map cadr all-handlers)]
+			 [body* (map caddr all-handlers)]
+			 )
 ;		(disp "GOT DUPS " tok formals*)
-		(DEBUGMODE
-		 (if (not (apply myequal? formals*))
+		    (DEBUGMODE
+		     (if (not (apply myequal? formals*))
 		     (error 'simulator_nought:remove-duplicate-tokbinds
 			    "handlers for token ~s don't all take the same arguments: ~s" 
 			    tok formals*))
-		 )
-		(let ([mergedhandler
-		       `[,tok ,(car formals*)
-			      (begin ,@(randomize-list body*)				      
-				     'multiple-bindings-for-token)
+		     )
+		    (let ([mergedhandler
+			   `[,tok ,(car formals*)
+				  (begin ,@(randomize-list body*)				      
+					 'multiple-bindings-for-token)
 ;		             (begin ,@body* 'multiple-bindings-for-token)
 			     ]])
 ;		  (disp "MERGED:" mergedhandler)
-		(cons mergedhandler
-		      (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
-		  ))))))	      
+		      (cons mergedhandler
+			    (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
+		    ))))))
 
     (define process-expr 
       (lambda (env tokens)
@@ -189,10 +189,46 @@
 	(lambda (tokbind)
 					;	  (disp "process-tokbind" tokbind)
 	  (match tokbind
-	     [(,tok ,args ,[(process-expr (append args env) tokens) -> expr*] ...)
-	      `(,tok ,args ,(make-begin expr*))]
-      ))))
+		 [(,tok ,args ,[(process-expr (append args env) tokens) -> expr*] ...)
+		  `(,tok ,args ,(make-begin expr*))]
+		 ))))
 	    
+    (define decode 
+      (lambda (stuff)
+	(let ([bindings '()]
+	      [socbindings '()]
+	      [socpgm '()]
+	      [nodetoks '()]
+	      [node-startup '()])
+	  (let loop ((ls stuff))
+	    (if (null? ls)
+		(let ((result `(deglobalize-lang
+				'(program (bindings ,@bindings)
+					  (socpgm (bindings ,@socbindings) ,@socpgm)
+					  (nodepgm (tokens ,@nodetoks)
+						   (startup ,@node-startup))))))
+		  (printf "cleanup-token-machine: Desugaring to: ~n")
+		  (pp result)
+		  result)
+		(begin 
+		  (match (car ls)
+			 [(bindings ,x ...) (set! bindings x)]
+			 [(socbinds ,x ...) (set! socbindings x)]
+			 [(socpgm (bindings ,b ...) ,x ...)  
+			  (set! socbindings b)
+			  (set! socpgm x)]
+			 [(socpgm ,x ...)   (set! socpgm x)]			 
+			 [(nodepgm (tokens ,x ...) (startup ,s ...))
+			  (set! nodetoks x)
+			  (set! node-startup s)]
+			 [(nodetoks ,x ...) (set! nodetoks (append x nodetoks))]
+			 [(tokens ,x ...) (set! nodetoks (append x nodetoks))]
+			 [(startup ,x ...) (set! node-startup x)]
+			 [,other (error 
+				  'cleanup-token-machine:decode
+				  "this isn't part of a valid token machine program! ~n ~a"
+				  other)])
+		  (loop (cdr ls))))))))
 
     ;; Main body of cleanup-token-machine
     (lambda (prog)
@@ -222,45 +258,10 @@
 			   (startup ,starttoks ...)))
 	 (cleanup-token-machine `(deglobalize-lang ',prog))]
 
-	[(program stuff ...)
-	 (let ([bindings '()]
-	       [socbindings '()]
-	       [socpgm '()]
-	       [nodetoks '()]
-	       [node-startup '()])
-	   (let loop ((ls stuff))
-	     (if (null? ls)
-		 (let ((result `(deglobalize-lang
-				 '(program (bindings ,@bindings)
-					   (socpgm (bindings ,@socbindings) ,@socpgm)
-					   (nodepgm (tokens ,@nodetoks)
-						    (startup ,@node-startup))))))
-		   (printf "cleanup-token-machine: Desugaring to: ~n")
-		   (pp result)
-		   (cleanup-token-machine result))=
-		 (begin 
-		   (match (car ls)
-		      [(bindings ,x ...) (set! bindings x)]
-		      [(socbinds ,x ...) (set! socbindings x)]
-		      [(socpgm (bindings ,b ...) ,x ...)  
-		       (set! socbindings b)
-		       (set! socpgm x)]
-		      [(socpgm ,x ...)   (set! socpgm x)]
-
-		      [(nodepgm (tokens ,x ...) (startup ,s ...))
-		       (set! nodetoks x)
-		       (set! node-startup s)]
-		      [(nodetoks ,x ...) (set! nodetoks x)]
-		      [(startup ,x ...) (set! node-startup x)]
-			  )
-		   (loop (cdr ls)))
-	   
-
-	 (cleanup-token-machine `(deglobalize-lang ',prog))]
-
-	
-
-	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
+	['(program ,stuff ...) (cleanup-token-machine (decode stuff))]
+	[(program ,stuff ...) (cleanup-token-machine (decode stuff))]
+	[,stuff (cleanup-token-machine (decode (list stuff)))]
+	))))
 
 
 ;	 (let* ([initenv (map car bindings)]
@@ -320,9 +321,9 @@
 
 
 (define test-this (default-unit-tester
-		    "Pass 14 cleanup-token-machine: regularize token machine"
+		    "Pass 17 cleanup-token-machine: regularize token machine"
 		    these-tests))
 
 
-(define test14 test-this)
-(define tests14 these-tests)
+(define test17 test-this)
+(define tests17 these-tests)
