@@ -180,12 +180,14 @@ process_handler :: TMS.TokHandler -> ([FunctionCode],StatementCode)
 process_handler (t, args, blk) = 
     let (funs,stmts) = process_block "        " (map (\ (Id x)->x) args) blk 
 	funname = tokname t
-    in ([
+    in (("  command TOS_MsgPtr TMModule.token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
-	 args [0..]))++
+	  args [0..])) ++
+
 	(concat stmts)
 	: funs,
+
 	"      case "++tok_id t++": \n"++
 	"        call "++ funname ++"(args, payload);\n"++
 	"        break;\n")
