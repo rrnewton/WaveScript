@@ -52,9 +52,8 @@
 ;       NOTE: These expressions will be statically calculable -- constants.
 ;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
 ;;;  <TokName>   ::= <Symbol> 
-;;;  <SubtokId>  ::= <Symbol>
-;;;  <PlainTok>  ::= (tok <TokName>)
-;;;  <Token>     ::= <PlainTok> | (tok <Tokname> <Int>)
+;;;  <SubtokId>  ::= <Integer>
+;;;  <Token>     ::= (tok <Tokname> <Int>)
 ;;;  <DynToken>  ::= <Token>    | (tok <Tokname> <Expr>)
 ;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
 ;;;  <Expr>      ::= (quote <Constant>)
@@ -74,7 +73,7 @@
 ;;;                | <GExpr>
 ;;;                | <Sugar> 
 ;;;  <GExpr>     ::= (emit <DynToken> <Expr> ...)
-;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
 ;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
 ;;;                | (dist <DynToken>)
 ;;;  <Sugar>     ::= (flood <Expr>)
@@ -93,6 +92,9 @@
 
 (define cleanup-token-machine
   (let ()
+
+    (define DEFAULT_SUBTOK 0)
+    (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 
     (define (destructure-tokbind tbind)  
       (define (process-stored s)
@@ -122,20 +124,34 @@
       (match tbind
 	     [(,t (,a ...) ,bds ...)
 	      (mvlet ([(stored bindings body) (process-bods bds)])
-		     (values t #f a stored bindings body))]
+		     (values t DEFAULT_SUBTOK_VAR a stored bindings body))]
 	     [(,t ,i (,a ...) ,bds ...)
 	      (mvlet ([(stored bindings body) (process-bods bds)])
 		     (values t i a stored bindings body))]
 	     [,other (error 'destructure-tokbind "bad tokbind: ~a" other)]))
 
+    (define (handler->formals tb)
+      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+	     args))
 
+    (define (handler->body tb)
+      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+	     body))
+
+    ;; [2005.03.27] Adding a somewhat unsafe hack (assumes all variables
+    ;; renamed) that makes this do the right thing when it's given a begin
+    ;; expression as opposed to a list.
     (define make-begin
       (lambda (expr*)
 	(match (match `(begin ,@expr*)
+		      ;; This means we messed up:
+		      [(begin begin ,[expr*] ...) (apply append expr*)]
 		      [(begin ,[expr*] ...) (apply append expr*)]
 		      [,expr (list expr)])
+	       [() (void)]
 	       [(,x) x]
 	       [(,x ,x* ...) `(begin ,x ,x* ...)])))
+
     
     ;; This removes duplicates among the token bindings.
     ;; <TOOPTIMIZE> Would use a hash-table here for speed.
@@ -149,8 +165,8 @@
 	      (if (null? dups)
 		  (cons (car ls) (loop (cdr ls)))	      	      
 		  (let* ([all-handlers (cons (car ls) dups)]
-			 [formals* (map cadr all-handlers)]
-			 [body* (map caddr all-handlers)]
+			 [formals* (map handler->formals all-handlers)]
+			 [body* (map handler->body all-handlers)]
 			 )
 ;		(disp "GOT DUPS " tok formals*)
 		    (DEBUGMODE
@@ -161,10 +177,10 @@
 		     )
 		    (let ([mergedhandler
 			   `[,tok ,(car formals*)
-				  (begin ,@(randomize-list body*)				      
-					 'multiple-bindings-for-token)
+				  ,(make-begin (snoc ''multiple-bindings-for-token
+						     (randomize-list body*)))]
 ;		             (begin ,@body* 'multiple-bindings-for-token)
-			     ]])
+			     ])
 ;		  (disp "MERGED:" mergedhandler)
 		      (cons mergedhandler
 			    (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
@@ -172,7 +188,7 @@
 
     (define process-expr 
       ;(trace-lambda cleanuptokmac:procexp 
-      (lambda (env tokens this-token)
+      (lambda (env tokens this-token this-subtok)
 	(lambda (stmt)
 	  (define-syntax check-tok
 	    (syntax-rules ()
@@ -185,11 +201,20 @@
 		     (if (regiment-verbose)
 			 (warning 'cleanup-token-machine
 				  "~s to unknown token: ~s" call tok))))]))
-	  (define (tokname? t) (memq t tokens))	  
+	  (define (tokname? t) (memq t tokens))
 	  (match stmt
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
+
+	     [,t (guard (symbol? t) (memq t tokens))
+		 `(tok ,t ,DEFAULT_SUBTOK)]
+	     [(tok ,t) `(tok ,t ,DEFAULT_SUBTOK)]
+	     ;; Static form
+	     [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
+	     ;; Dynamic form
+	     [(tok ,t ,[e]) (guard (number? n)) `(tok ,t ,e)]
+
 	     [,var (guard (symbol? var))
 		   (DEBUGMODE 
 		    (cond 
@@ -203,37 +228,41 @@
 				    "unbound variable reference: ~s" var)]))
 		   var]
 
+
+
 	     [(begin ,[x]) x]
 	     [(begin ,[xs] ...)
-	      (make-begin xs)]	      
+	      (make-begin xs)]
 
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
 	     [(if ,test ,conseq)
-	      ((process-expr env tokens this-token this-subtok) `(if ,test ,conseq (void)))]
+	      ((process-expr env tokens this-token this-subtok) 
+	       `(if ,test ,conseq (void)))]
 
-	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
-	      (let ([newbinds 
-		     (let loop ([env env] [prs (map list lhs rhs)])
-		       (if (null? prs) '()
-			   (let ([lhs (caar prs)] [rhs (cadar prs)])
-			     (let ([newenv (cons lhs env)])
-			       (cons (list lhs ((process-expr newenv tokens this-token this-subtok) rhs))
-				     (loop newenv (cdr prs)))))))]
-		    [newbods (map (process-expr (append lhs env) tokens this-token this-subtok) bodies)])
-	      `(let*  ,newbinds ,(make-begin newbods)))]
+	     [(let ([,lhs ,[rhs]]) ,bodies ...)
+	      `(let ([,lhs ,rhs])
+		 (make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
+
+	     ;; TODO: expand away let*
+	     [(let* () ,[bodies] ...)  (make-begin bodies)]
+	     [(let* ( [,l1 ,r1] ,rest ...) ,bodies ...)
+	      ((process-expr env tokens this-token this-subtok)
+	       `(let ([,l1 ,r1])
+		  (let* ,rest ,bodies ...)))]
 
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(emit call activate)))
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
-				 `(tok ,tok)
+				 `(tok ,tok ,DEFAULT_SUBTOK)
+;				 `(tok ,tok)
 				 tok)
 			    ,args* ...)]
 	     [(timed-call ,time ,tok ,[args*] ...)
 	      (check-tok 'timed-call tok)
 	      `(timed-call ,time ,(if (tokname? tok)
-				      `(tok ,tok)
+				      `(tok ,tok ,DEFAULT_SUBTOK)
 				      tok)
 			   ,args* ...)]
 	     [(relay) `(relay (tok ,this-token ,this-subtok))]
@@ -300,10 +329,9 @@
 ;		     "keyword expression not allowed: ~s" stmt)]
 	     
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
-	     [(,rator ,[rands] ...)
+	     [(,[rator] ,[rands] ...)
 	      (warning 'cleanup-token-machine
-		       "arbitrary application of rator: ~s" rator)
-	      
+		       "arbitrary application of rator: ~s" rator)	      
 	      (DEBUGMODE 
 	       (if (or (not (symbol? rator)) (not (memq rator env)))
 		   (warning 'cleanup-token-machine
@@ -372,7 +400,7 @@
       (if (not (assq 'SOC-start tokens))
 	  (set! tokens (cons `[SOC-start () (void)] tokens)))
       (if socpgm
-	  (set! tokens (cons `[SOC-start () (begin ,@socpgm)] tokens)))
+	  (set! tokens (cons `[SOC-start () ,(make-begin socpgm)] tokens)))
       ;; This is a little weird.  It depends on the duplicate handler
       ;; merging below.  We push the constbinds into *one* SOC-start
       ;; handler, and if there are others, the bindings get to them

@@ -4,7 +4,7 @@
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
-(define-regiment-parameter regiment-version 0.56)
+(define-regiment-parameter regiment-version 0.58)
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
@@ -37,7 +37,7 @@
     deglobalize
     
     cleanup-token-machine    
-;    desugar-gradients
+    desugar-gradients
 
 ;    analyze-tokmac-recursion
 ;    inline-tokmac
