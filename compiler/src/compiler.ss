@@ -63,6 +63,7 @@
     remove-complex-opera*
     verify-core
     classify-names
+    annotate-heartbeats
     deglobalize
     ))
 

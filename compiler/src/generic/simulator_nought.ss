@@ -1563,3 +1563,4 @@
      2)))
 
 (define x (cadr (list-ref these-tests 21)))
+(define y (cadr (list-ref these-tests 22)))

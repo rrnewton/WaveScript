@@ -121,6 +121,7 @@
 	   ;; <TODO> CONSIDER THIS:
 	   ;(process-let name expr (union formalexp env))
 	   (add-prop! name 'function)
+	   (add-prop! name 'local)
 	   (process-let #f expr (union formalexp env))
 	   
 	   ]
@@ -138,9 +139,19 @@
 	   (add-dependency! name (apply union (map free-vars rand*)))
 	   
 	   (cond 
-	    [(distributed-primitive? prim) 
-	     ;(add-prop! name 'region)
-	     (add-prop! name 'distributed)]
+	    [(distributed-primitive? prim)
+	     (add-prop! name 'distributed)
+	     (cond
+	      [(eq? 'Region (get-primitive-return-type prim))
+	       ;(add-prop! name 'area)
+	       (add-prop! name 'region)]
+;; Dunno if I'm gonna have an "area" tag atm.
+;	      [(eq? 'Area (get-primitive-return-type prim))
+;	       (add-prop! name 'area)]
+	      [(eq? 'Signal (get-primitive-return-type prim))
+	       (add-prop! name 'signal)]
+	      [(eq? 'Anchor (get-primitive-return-type prim))
+	       (add-prop! name 'anchor)])]
 	    [(basic-primitive? prim) (add-prop! name 'local)]
 	    [else (error 'classify-names.process-expr 
 			 "This regiment primitive is neither basic nor distributed!:~s"

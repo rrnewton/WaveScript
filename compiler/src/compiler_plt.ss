@@ -18,16 +18,17 @@
 (require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          "plt/pass01_eta-primitives.ss"
          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
-         "plt/pass03_remove-unquoted-constant.ss"         
-         "plt/pass04_reduce-primitives.ss"
-         "plt/pass05_remove-complex-constant.ss"
-         "plt/pass06_uncover-free.ss"
-         "plt/pass07_lift-letrec.ss"
-         "plt/pass08_lift-letrec-body.ss"
-         "plt/pass09_remove-complex-opera.ss"
+         (all-except "plt/pass03_remove-unquoted-constant.ss")
+         (all-except "plt/pass04_reduce-primitives.ss")
+         (all-except "plt/pass05_remove-complex-constant.ss")
+         (all-except "plt/pass06_uncover-free.ss")
+         (all-except "plt/pass07_lift-letrec.ss")
+         (all-except "plt/pass08_lift-letrec-body.ss")
+         (all-except "plt/pass09_remove-complex-opera.ss")
          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
-         (all-except "plt/pass12_deglobalize.ss" these-tests test-this))
+         (all-except "plt/pass12_annotate-heartbeats.ss" )
+         (all-except "plt/pass13_deglobalize.ss" these-tests test-this))
         ;          "plt/pass09_separate-graph.ss"
 
 (require
@@ -138,9 +139,9 @@
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
 
-;(eval (last testssim))
-(cleanse-world)
-(define simulate run-simulation)
-(eval (cadr (last testssim)))
-(init-graphics)
-;(graphical-repl)
+
+;(cleanse-world)
+;(define simulate run-simulation)
+;(eval (cadr (last testssim)))
+;(init-graphics)
+

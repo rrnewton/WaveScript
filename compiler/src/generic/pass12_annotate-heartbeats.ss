@@ -14,96 +14,167 @@
 ;;; <Formalexp> ::= (<var>*)
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
-;; Output language has a heartbeat annotation for some variable
-;; entries (distributed ones only):
-;; Heartbeats are in Hertz.
+;; Output language adds a frequency (heartbeat) value to each let
+;; binding.  This value is either #f (if the value is local and has no
+;; heartbeat), a floating point number expressing frequency in hertz,
+;; or positive infinity (+inf.0) expressing that the value is
+;; available as fast as you might want it.
 
-;;; <Decl> ::= (<var> <Exp>) 
-;;;          | (<var> <Heartbeat> <Exp>) 
-;;; <Heartbeat> ::= <Float>
+;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
+;;; <Heartbeat> ::= <Float> | #f | +inf.0
 
 ;; The slow-pulse is used for region formation.
 (define slow-pulse 1.0)
 ;; The fast-pulse is used for folding.
 (define fast-pulse 10.0)
 
-#!eof
-
 (define annotate-heartbeats
   (let ()
+
+    (define (simple? expr)
+      (match expr
+	     [,var (guard (symbol? var)) #t]
+	     [(quote ,const) (guard (constant? const)) #t]
+	     [,else #f]))
+
     (lambda (expr)
       (match expr
-	     [(,input-language (quote (program (props ,proptable ...)
-					       (lazy-letrec ,binds ,fin))))
-	      (let ()
-		;;; <Prop> ::= region | anchor | local | distributed | final | leaf
-		(define (check-prop p s)
-		  (let ((entry (assq s proptable)))
-		    (if entry (memq p (cdr entry))
-			(error 'pass10_deglobalize:check-prop
-			       "This should not happen!  ~nName ~s has no entry in ~s."
-			       s proptable))))
+	[(,input-language (quote (program (props ,proptable ...) ,letexpr)))
+	 (let ()
+	   (define (check-prop p s)
+	     (let ((entry (assq s proptable)))
+	       (if entry (memq p (cdr entry))
+		   (error 'pass10_deglobalize:check-prop
+			  "This should not happen!  ~nName ~s has no entry in ~s."
+			  s proptable))))
+	   		
+	   ;; This constructs a tree of value-dependencies, and then walks it to
+	   ;; set the pulses.
 
-		
-;; This constructs a tree of value-dependencies, and then walks it to
-;; set the pulses.
+	   (define (derive-freqtable binds ret)
 
-		(define (process-let expr env)
-		  (match expr
-			 ;; [,lhs* ,[process-expr -> rhs*]]
-		       [(lazy-letrec ,binds ,ret)
-			
-			;; [2004.07.26] This will only be *complete*
-			;; for our very simple language.  Gotta face
-			;; the possibility of uncompleteness here.
-			;; Could memoize this for much more speed.
-			(let ([dependency-graph
-				 (let loop ([node (car (assq ret binds))])
-				   (let ([deps (filter symbol? (cdr node))])
-				     (cons (cons (car node) 
-						 #f) ;; Initial heartbeat unlabeled
-					   (map 
-					    (lambda (s) (loop (car (assq s binds))))
-					    deps
-				     
-			
-			
-			(map (lambda (lhs rhs)
-			       (if (and (check-prop 'leaf)
-					(check-prop 'distributed))
+	     (disp "ANNOTATING BINDS: " binds)
+	     
+	     ;; [2004.07.26] This will only be *complete*
+	     ;; for our very simple language.  Gotta face
+	     ;; the possibility of uncompleteness here.
+	     ;; Could memoize this for much more speed.
+	     (let* ([freq-table (map (lambda (entry)
+				       (cons (car entry) #f))
+				     binds)]
+		    ;; This is a nested list where the head of each
+		    ;; entry is a freq-table entry (pair with name and
+		    ;; freq).
+		    [dependency-tree
+		     ;; NOTE FIXME TODO: WONT HANDLE CIRCULAR DEPENDENCIES!!
+		     (let loop ([node (assq ret binds)])
+		       (disp "Got node" node)
 
-;; If we've just got a region on the leaf, like a circle formation,
-;; then we give it the slow pulse, but gotta remember to give its
-;; children faster pulses if necessary.
+		       (let ([deps (filter 
+				    (lambda (rand) 
+				      (and (symbol? rand)
+					   (assq rand binds)))
+				    (cdr node))])
+			 (cons (assq (car node) freq-table)
+			       (map 
+				(lambda (s) (loop (assq s binds)))
+				deps))))]
+		    [reconcile
+		     (lambda (newrate entry)
+		       (set-cdr! entry (max newrate (cdr entry))))]
+		    
+		    [slow-prim?
+		     (lambda (name expr)
+		       (match expr
+			      [,exp (guard (simple? exp)) #f]
+			      [(lambda ,formalexp ,expr) #f]
+			      [(if ,test ,conseq ,altern) #f]
+			      [(,prim ,rand* ...)				      
+			       (guard (distributed-primitive? prim))
+			       (or (check-prop 'region name)
+				   (check-prop 'anchor name)) ]
+			      [(,prim ,rand* ...)				      
+			       (guard (regiment-primitive? prim)) #f]
+			      [,else (error 'slow-prim? "invalid exp: ~s" expr)]))]
 
+		    [fast-prim?
+		     (lambda (name expr)
+		       (match expr
+			      [,exp (guard (simple? exp)) #f]
+			      [(lambda ,formalexp ,expr) #f]
+			      [(if ,test ,conseq ,altern) #f]
+			      [(,prim ,rand* ...)				      
+			       (guard (distributed-primitive? prim))
+			       (memq prim '(rmap rfold smap))
+			       #t]
+			      [(,prim ,rand* ...)				      
+			       (guard (regiment-primitive? prim)) #f]
+			      [,else (error 'fast-prim? "invalid exp: ~s" expr)]))]
+		    )
+	       
+	       (disp "got freq table")
+	       (pp freq-table)
+	       (disp "got dep graph")
+	       (parameterize ((print-graph #t))
+			     (pp dependency-tree))			 
+	       
+	       ;; Now loop up that tree from the root and set those frequencies.
+	       (for-each (lambda (freq-entry bind-entry)
+			   (DEBUGMODE 
+			    (if (not (eq? (car freq-entry)
+					  (car bind-entry)))
+				(error 'annotate-heartbeats:process-let
+				       "Ryan, you did something wrong. bind list doesn't line up with freq-table.")))
+			   (if (slow-prim? (car freq-entry) ;; Edge name
+					   (cadr bind-entry)) ;; Generating Expression
+					;(set-cdr! freq-entry +inf.0)
+			       (set-cdr! freq-entry slow-pulse)
+			       (if (fast-prim? (car freq-entry) (cadr bind-entry))
+				   (set-cdr! freq-entry fast-pulse)))
+			   )
+			 freq-table
+			 binds)
 
-				   (if (check-prop 'region)
-				       `[,lhs ,slow-pulse 
+	       ;; Now the freq-table has some info in it.  But we need to move up and
+	       ;; down the dependency-tree to propogate that information, so that
+	       ;; all distributed names have a frequency.
+	       
+   	;		       (let treeloop ([node dependency-tree])
+	;			 (if (null? (cdr node))
+	;			     (reconcile slow-pulse (car node))				     			
+	       
+	       freq-table))
 
-				       (if (check-prop 'fold)
+    (define process-let
+      (lambda (expr)
+        (match expr
+	  [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,fin)
+	   (let* ([binds (map list lhs* rhs*)]
+		  [freq-table (derive-freqtable binds fin)]
+		  [newbinds (map (lambda (bind)
+				   (match bind
+					  [(,lhs ,rhs)					   
+					   `[,lhs ,(cdr (assq lhs freq-table)) ,rhs]]))
+				 binds)])	     
+	     `(lazy-letrec ,newbinds ,fin))])))
 
-			`(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)]))
-		
-		'    (define (process-primapp prim args)
-		       (cons prim args))
-		     
-     (define process-expr
-       (lambda (expr)
-	 (match expr
-		[(quote ,const) `(quote ,const)]
-		[,var (guard (symbol? var)) var]
-		[(lambda ,formalexp ,expr)
-		 (process-let expr (union formalexp env))]
-		[(if ,test ,conseq ,altern)
+    (define process-expr
+      (lambda (expr)
+        (match expr
+	  [,exp (guard (simple? exp)) exp]
+          [(lambda ,formalexp ,[process-let -> letexp])
+	   `(lambda ,formalexp ,letexp)]
+	  ;; Don't need to recur on exprs:
+          [(if ,test ,conseq ,altern)
 	   `(if ,test ,conseq ,altern)]
-		[(,prim ,rand* ...)
-		 (guard (regiment-primitive? prim))
-	   (process-primapp prim rand*)]
-		[,unmatched
-		 (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
-     
+	  ;; Don't need to recur on rands:
+          [(,prim ,rand* ...)
+           (guard (regiment-primitive? prim))
+	   `(,prim ,rand* ...)]
+          [,unmatched
+	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
 
-	      (set! proptable table)
-	      	      
-	      `(,input-language (quote (program ,body)))])))
-)
+    ;; Body of match case:    
+    `(annotate-heartbeats-lang
+      (quote (program (props ,proptable ...)
+				      ,(process-let letexpr)))))]))))

@@ -239,7 +239,7 @@
     (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
+	       [(lazy-letrec ([,lhs* ,freq* ,rhs*] ...) ,body)
 		(if (symbol? body)
 		    (let loop ((lhs* lhs*) 
 			       (rhs* rhs*)
