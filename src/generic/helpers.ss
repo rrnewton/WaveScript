@@ -7,7 +7,8 @@
 
 (define regiment-basic-primitives 
   '(cons car cdr 
-	 + - * / < > = 
+	 + - * / 
+	 < > = eq? equal?
 	 ))
 
 (define regiment-distributed-primitives 
@@ -26,18 +27,28 @@
 
 (define (regiment-primitive? x) (memq x regiment-primitives))
 
-(define (eq-deep eq obj1 obj2)
-  (let loop ((o1 obj1) (o2 obj2))
-    (cond
-     [(eq? o1 'unspecified) #t] 
-     [(eq? o2 'unspecified) #t]
-     [(eq o1 o2) #t]
-     [(and (list? o1) (list? 02)) 
-      (andmap loop o1 o2)]
-     [(and (vector? o1) (vector? 02))
-      (andmap loop (vector->list o1) (vector->list o2))]
-     [else #f]
-      
+(define (lenient-eq? o1 o2)
+  (or (eq? o1 o2)
+      (eq? o1 'unspecified)
+      (eq? o2 'unspecified)))
+
+(define eq-deep 
+  (lambda (eq)
+    (lambda (obj1 obj2)
+      (let loop ((o1 obj1) (o2 obj2))
+	(cond
+	 [(eq o1 o2) #t]
+	 [(and (list? o1) (list? o2))
+	  (if (= (length o1) (length o2))
+	      (andmap loop o1 o2)
+	      #f)]
+	 [(and (vector? o1) (vector? 02))
+	  (andmap loop (vector->list o1) (vector->list o2))]
+	 [else #f])))))
+
+(define tester-eq (eq-deep lenient-eq?))
+  
+
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
 ;; file should define "these-tests" and "test-this" for unit testing.
 ;; This is inspired by the drscheme philosophy of every file being an
@@ -58,14 +69,10 @@
 		  (write intended) (newline) (newline)
 		  (newline) (display "Here are actual results:") (newline)
 		  (write results) (newline) (newline)))
-	   
-	    (andmap (lambda (prog result)
-		      (or (eq? result 'unspecified)
-			  (equal? prog result)))
-		    intended
-		    results)
+	    (andmap tester-eq intended results)
 	    )))))
 			
+
 #;(define marshal
 (lambda (x)
   (let ((str (format "~s" x)))

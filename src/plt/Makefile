@@ -4,8 +4,6 @@
 
 BINPATH =`mzscheme -m --eval '(begin (display (build-path "compiled" "native"  (system-library-subpath))) (newline) (exit))'`
 
-SRCFILES = helpers demo_display pass00 pass01 pass07
-
 #all: native bytecode
 
 bytecode:

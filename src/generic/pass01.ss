@@ -127,7 +127,7 @@
 	 (some-lang '(program ,res))])) 
    '(
      [3 3]    
-     [(letrec ((x 1)) x) 'unspecified]
+     [(letrec ((x 1)) x) unspecified]
      )
    )
   ) 

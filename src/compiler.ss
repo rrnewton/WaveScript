@@ -45,6 +45,16 @@
      ))
 
 
+(define pass-names
+  '(verify-regiment
+    rename-var
+    ))
+
+(define test
+  (lambda (set)
+    (fluid-let ([tests set])
+      (test-all))))
+
 (display (list (test00)
 	       (test01 'verbose)
 	       (test07)))
