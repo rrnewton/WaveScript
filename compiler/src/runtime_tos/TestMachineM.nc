@@ -21,7 +21,7 @@ module TestMachineM
   uses interface SendMsg as Send_A; 
   uses interface SendMsg as Send_B; 
   uses interface SendMsg as Send_89; 
-  uses interface SendMsg as GeneralSend; 
+  uses interface SendMsg as GeneralSend[uint8_t id];
 
   uses interface Send as PlainSend; 
   uses interface BareSendMsg as BareSend; 
@@ -73,7 +73,7 @@ implementation
     return SUCCESS;
   }
 
-  event result_t GeneralSend.sendDone (TOS_MsgPtr msg, result_t success) {
+  event result_t GeneralSend.sendDone[uint8_t id] (TOS_MsgPtr msg, result_t success) {
     dbg(DBG_USR1, "TestMachine: Done sending msg from GeneralSend\n");
     return SUCCESS;
   }
@@ -153,7 +153,8 @@ implementation
     //call Send_89.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet); 
     //call BareSend.send(&test_packet);    
 
-    call Send_A.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
+    //    call Send_A.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
+    call GeneralSend.send[test_packet.type](TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
 
     return SUCCESS;
 
