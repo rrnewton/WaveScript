@@ -122,7 +122,7 @@
 			   (DEBUGMODE 
 			    (if (not (eq? (car freq-entry)
 					  (car bind-entry)))
-				(error 'annotate-heartbeats:process-let
+				(error 'add-heartbeats:process-let
 				       "Ryan, you did something wrong. bind list doesn't line up with freq-table.")))
 			   (if (slow-prim? (car freq-entry) ;; Edge name
 					   (cadr bind-entry)) ;; Generating Expression
@@ -190,9 +190,9 @@
            (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
-	   (error 'annotate-heartbeat "invalid syntax ~s" unmatched)])))
+	   (error 'add-heartbeat "invalid syntax ~s" unmatched)])))
 
     ;; Body of match case:    
-    `(annotate-heartbeats-language
+    `(add-heartbeats-language
       (quote (program (props ,proptable ...)
 		      ,(process-let letexpr)))))]))))

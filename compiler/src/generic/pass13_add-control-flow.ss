@@ -94,7 +94,7 @@
 
 
 
-'(add-control-flow '(annotate-heartbeats-language
+'(add-control-flow '(add-heartbeats-language
 		     '(program
 		       (props (result_1 local final))
 		       (lazy-letrec ((result_1 #f '3)) result_1))))
