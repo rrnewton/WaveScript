@@ -32,27 +32,37 @@
 ;; Define this once for the simulation so that our answers are deterministic.
 ;; This is a list of <sensereading, xpos, ypos>
 (define the-test-field 
-  (make-n-list 500 (lambda (ign) (list (#%random 1.0) (#%random 100) (#%random 100)))))
+  (make-n-list 500 
+	       (lambda (ign) 
+		 (list (random 10000) (#%random 1.0) (#%random 100) (#%random 100)))))
 
 (define-language
   'base-language
   '(begin
 
+     ;; Node format: (id reading x y)
+     (define (node->pos n) (cddr n))
+     (define (node->id n) (car n))
+     (define (node->reading n) (cadr n))
+
       (define (anchor-at x y)
-	(find-maximizing (lambda (entry) (posdist (cdr entry) (list x y))) the-test-field))
+	(find-maximizing (lambda (entry) (posdist (node->pos entry) (list x y)))
+			 the-test-field))
 
       (define (circle-at x y  rad)
-	(filter (lambda (p) (<= (posdist (cdr p) (list x y)) rad)) the-test-field))
+	(filter (lambda (p) (<= (posdist (node->pos p) (list x y)) rad)) 
+		the-test-field))
 
       (define (circle anch rad)
-	(filter (lambda (p) (<= (posdist (cdr p) (cdr anch)) rad)) the-test-field))
+	(filter (lambda (p) (<= (posdist (node->pos p) (node->pos anch)) rad)) 
+		the-test-field))
 
       (define rfold foldl)
       (define rmap map)
-      (define sense car)
+      (define sense node->reading)
+      (define id node->id)
 
       (define world the-test-field)
-
  
 ;     (define (anchor) '(ANCH world))
 ;     (define (anchor-at l) `(ANCH ,l))

@@ -1,8 +1,8 @@
 
 ;;; NOTE: for the moment I AM ALLOWING USAGE OF ARBITRARY SCHEME FUNCTIONS HERE!
 
-
 ;;; [2004.06.28] Pass: Cleanup Token Machine
+;===============================================================================
 
 ;;; This pass:
 ;;;   (*) Regularizes the syntax of token machines.  Right now what it
@@ -17,6 +17,7 @@
 
 
 ;;; Input and Output language:
+
 ;;; <Statement*> is fairly unrestricted.
 
 ;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
@@ -25,7 +26,7 @@
 ;;;  <Entry>  ::= <Token>
 ;;;  <Decl> ::= (<var> <Exp>)
 ;;;  <TokBinding> ::= (<Token>  <Code>*)
-;;; <TODO> DECIDE ON LOCAL BINDINGS:
+;;;          <TODO> DECIDE ON LOCAL BINDINGS:
 ;;;  <TokBinding> ::= (<Token> (bindings <Decl>*) <Code>*)
 
 ;;;  <Code> ::= <Statement>*
@@ -47,9 +48,10 @@
 
 ;;; DEPENDS: make-begin
 
+;===============================================================================
 
 ;;; [2004.10.22]  Now this also will expand out flood/elect-leader.
-;;; This pass is starting to do way too much work.
+;;; This pass is starting to do way too much work...
 
 (define cleanup-token-machine
   (let ()
