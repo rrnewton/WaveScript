@@ -66,7 +66,7 @@
     classify-names
     annotate-heartbeats
     add-control-flow
-;    addplaces
+    add-places
 
 ;    deglobalize
 ;    cleanup-token-machine
