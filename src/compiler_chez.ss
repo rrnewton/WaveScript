@@ -66,6 +66,8 @@
 (include "generic/pass14_add-places.ss")
 ;(include "generic/pass15_add-routing.ss")
 
+;(include "generic/pass15_analyze-places.ss")
+
 (include "generic/pass16_deglobalize.ss")
 ;;(include "generic/pass17_cleanup-token-machine.ss")
 ;;(include "generic/pass18_verify-token-machine.ss")

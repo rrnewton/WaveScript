@@ -50,17 +50,36 @@
   (define dependencies '())
 
   ;; Note, you can send this #f instead of a symbol to make it fizzle:
-  (define (add-prop! s p)
-    (if s
-	(let ((entry (assq s table)))
-;	  (DEBUGMODE (if (not entry)
-;			 (error 'pass09_classify-names:add-prop!
+  (define add-prop! 
+    (letrec ([all-memq (lambda (obs ls)
+			 (if (null? obs) #t
+			     (if (memq (car obs) ls)
+				 (all-memq (cdr obs) ls)
+				 #f)))]
+	     [check-valid (lambda (name prop proplst)
+			    (cond 
+			     [(all-memq '(distributed local) proplst)
+			      (error 'classify-names:add-prop! 
+				     "var ~s cannot be both a distributed and local value: Cannot add ~s."
+				     name prop)]
+			     ; final and leaf?
+			     ; anchor and region?
+			     ))])
+    (lambda (s p)
+      (if s
+	  (let ((entry (assq s table)))
+					;	  (DEBUGMODE (if (not entry)
+					;			 (error 'pass09_classify-names:add-prop!
 ;				"symbol ~s has no entry in table ~s" s table)))
-	  (if entry 
-	      (if (not (memq p (cdr entry)))
-		  (set-cdr! entry (cons p (cdr entry))))
-	      (set! table (cons (list s p) table))))))
-
+	    (if entry 
+		(if (not (memq p (cdr entry)))
+		    (begin 
+		      (set-cdr! entry (cons p (cdr entry)))
+		      (check-valid s p (cdr entry))
+		      ))
+		(set! table (cons (list s p) table)))	   
+	    )))))
+    
   (define (get-props s)
     (let ((entry (assq s table)))
       (if entry (cdr entry) '())))
@@ -102,7 +121,11 @@
 		 #t]
 	   [(quote ,const) (guard (constant? const)) #t]
 	   [,else #f]))
-  
+
+  ;; This reconciles a variable with the type that it's expected to
+  ;; have based on its usage context.  Basically it just tries to add
+  ;; props and add-prop! raises an error if conflicting properties are
+  ;; attached to a variable.  
   (define (reconcile-type type name)
     (case type
       [(Region)
@@ -114,31 +137,35 @@
        (add-prop! name 'distributed)
        (add-prop! name 'area)]
 
-	      [(eq? 'Signal (get-primitive-return-type prim))
-	       (add-prop! name 'distributed)
-	       (add-prop! name 'signal)]
-	      [(eq? 'Anchor (get-primitive-return-type prim))
-	       (add-prop! name 'distributed)
-	       (add-prop! name 'anchor)])
-]
-	    [(basic-primitive? prim) (add-prop! name 'local)]
-	    [else (error 'classify-names.process-expr 
-			 "This regiment primitive is neither basic nor distributed!:~s"
-			 prim)])
+      [(Signal)
+       (add-prop! name 'distributed)
+       (add-prop! name 'signal)]
+      
+      [(Anchor)
+       (add-prop! name 'distributed)
+       (add-prop! name 'anchor)]
+
+      [(Location Reading Function Number Float Bool)
+       (add-prop! name 'local)]
+
+      [(Event Node Object)
+       (error 'classify-names:reconcile-type "unhandled type: ~s" type)]
+
+      [else (error 'classify-names:reconcile-type "invalid type: ~s" type)]))
 
   ;; This is a cheap (and definitely non-polymorphic) kind of type
   ;; inference for variables used as arguments to primitive functions.
   (define (type-inference-primapp prim args)
     (let ((entry (get-primitive-entry prim)))
       (for-each 
-       (lambda (arg props)
-      
-      
-      (match (vector (cons prim args) 
-		   
-	   [#( (,binop ,left ,right) 
-	       
-
+       (lambda (arg type)
+	 (match arg
+		[(quote ,const) (void)]
+		[,var (guard (symbol? arg))
+		      (reconcile-type var type)]
+		[,other (error 'classify-names:type-inference-primapp
+			       "primitive ~s should take only simple arguments: ~s" prim args)]))
+       args (cdr entry))))
 
   (define process-expr
     (lambda (name expr env)
@@ -188,7 +215,7 @@
 	   (add-dependency! name (apply union (map free-vars rand*)))
 	   
 	   ;; Process varrefs
-	   (type-inference-props prim rand*)
+	   (type-inference-primapp prim rand*)
 
 	   ;; Process var binding:
 	   (reconcile-type 
