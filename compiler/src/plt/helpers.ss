@@ -129,7 +129,8 @@
    myequal?
    stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
    display-constrained
- 
+   symbol-append 
+
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
