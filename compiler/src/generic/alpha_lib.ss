@@ -163,14 +163,15 @@
 
 ;; #f trumps any time, EXCEPT 0, 0 trumps all.
 (define (evntlessthan a b)
-  (let ([at (simevt-vtime a)]
-	[bt (simevt-vtime b)])
+  (vtimelessthan (simevt-vtime a) (simevt-vtime b)))
+
+(define (vtimelessthan at bt)
   (cond
    [(zero? at) #t]
    [(zero? bt) #f]
    [(not at) #t]
    [(not bt) #f]
-   [else (<= at bt)])))
+   [else (<= at bt)]))
 
 ;; This builds a simulation object for a specific node in the network.
 ;; This object drives the simulation for that node.  
@@ -290,10 +291,12 @@
             [(schedule ,current-vtime . ,newevnts)
 	     (DEBUGMODE
 	      (for-each (lambda (ne)
-			  (if (evntlessthan (simevnt-vtime ne) current-vtime)
+			  (if (vtimelessthan (simevt-vtime ne) current-vtime)
 			      (logger 0 "~a: ERROR: Scheduled event has time in past (now ~t): ~a"
 				      (node-id (simobject-node ob))
-				      (
+				      current-vtime
+				      (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
+			newevnts))
 	     
 	     (unless (null? newevnts)
 		(set! buffer (merge evntlessthan newevnts buffer))

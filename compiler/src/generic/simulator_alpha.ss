@@ -91,12 +91,19 @@
 	     [(,str ,args ...)	      
 	      (values 1 str args)])])
 
+  (define (column-width w ob)
+    (let ((s (format "~a" ob)))
+      (if (< (string-length s) w)
+	  (string-append s (make-string (- w (string-length s)) #\space))
+	  s)))
+
   (define (print-header)
-    (fprintf (simulation-logger) "~4a{~a} " 
+    (fprintf (simulation-logger) "~a{~a} " 
+	     (column-width 4
 	     (if (simulation-logger-count)
 		 (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
 			(- (simulation-logger-count) 1))
-		 "foo")
+		 "foo"))
 	     level))
 
   (if (and (simulation-logger)
