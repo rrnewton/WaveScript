@@ -72,3 +72,42 @@
     (set! all-objs (map car object-graph))
     (close-input-port f)))
 
+
+
+;----------------
+;; [2005.03.27] - Just moved this because I'm switching over to simulator_alpha.
+
+(define text-repl  (repl-builder void void run-compiler run-simulation-stream))
+(define precomp-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse		      
+		      (lambda (x) ;; Compiler
+			(fluid-let ([pass-names '(cleanup-token-machine)])
+			  (match x
+				 [(precomp ,exp) `(unknown-lang (quote ,exp))]
+				 [,other (run-compiler other)])))		      
+		      run-simulation-stream)) ;; Runner
+
+(define pretoken-repl 
+  (repl-builder
+   void void
+   compile-almost-to-tokens
+   (lambda (x . timeout)
+     (printf "Running compiled program: ~n")
+     (parameterize ([print-length 3] [print-level 2] [pretty-initial-indent 10])
+		   (pretty-print x))
+     (parameterize ([print-length 10] [print-level 2])
+       (let ([result (eval x)])
+	 (printf "~n Returned: ~s~n~n" result)
+	 (if (list? result)
+	     (printf "Length: ~s~n" (length result)))
+	 result))
+     )))
+
+;; ???????
+(define precomp-graphical-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse
+		      (lambda (x) x) ;; Compiler
+		      run-simulation-stream))
+

@@ -216,6 +216,7 @@
 			logfile)
 		(DEBUGMODE (display " with Debug-Mode enabled"))
 		(printf ".~n")
+		(printf "<-------------------------------------------------------------------->~n")
 
 	;; DEBUG DEBUG DEBUG
 	(DEBUGMODE
@@ -375,9 +376,14 @@
 
 (define (alpha-repl)
   (printf "sim> ") (flush-output-port)
-  (alpha-it (read))
-  (run-alpha-sim 'simple 10.0)
-  (alpha-repl))
+  (let ((input (read)))
+    (unless (eq? 'exit input)
+	    (disp "Got prgoram" input)
+	    (let ((cleaned (cleanup-token-machine input)))
+	      (disp "got cleaned:")(pp cleaned)
+	      (alpha-it cleaned)
+	      (run-alpha-sim 'simple 10.0)
+	      (alpha-repl)))))
 
 
 ;     (begin (t) (time (run-alpha-sim 10.0)))
