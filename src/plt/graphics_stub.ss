@@ -94,7 +94,8 @@
     
     (define (draw-proc pr)  
       (let ((gobj (rasterize-proc pr default-proc-color)))
-	(hash-table-put! proc-table gobj `([loc ,pr]))
+	(hash-table-put! proc-table gobj `([loc ,pr]
+                                           [color ,default-proc-color]))
 	gobj))
     
     (define (draw-edge pt1 pt2) 
@@ -124,11 +125,36 @@
    
   
   (define these-tests
-    `([(begin (init-graphics)
+    `(["You should see a circle"
+       (begin (require "basic_graphics.ss")
+              (init-graphics)
               (let ((x (draw-proc '(10 20))))
-                (close-graphics)))
+;                (display proc-table)(newline)
+;                (printf "~s~n" (get-state 'color x))
+                (sleep 0.3)
+                (close-graphics)
+                (list (get-state 'color x)
+                      (get-state 'loc x))
+                ))
        unspecified]
-              
+
+      ["You should see a line"
+       (begin (require "basic_graphics.ss")
+              (init-graphics)
+              (let ((x (draw-edge '(10 20) '(50 50))))
+                (sleep 0.3)                
+                (close-graphics)
+                x))
+       unspecified]
+
+      ["You should see three \"processors\""
+       (begin (require "basic_graphics.ss")
+              (init-graphics)
+              (let ((x (draw-procs '((10 20) (50 50) (30 10)))))
+                (sleep 0.3)
+                (close-graphics)
+                x))
+       unspecified]
       ))
   
   (define test-this (default-unit-tester "graphics interface for simulator" these-tests))
