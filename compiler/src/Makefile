@@ -133,7 +133,10 @@ clean:
 count: wordcount
 linecount: wordcount
 wordcount:
-	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests
+	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs
+
+sortcount:
+	ls -rS *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | xargs wc
 
 go:
 	(cd plt/compiled; make; cd ~/cur; make;) #cd plt;  mred -Z -f temp.ss)

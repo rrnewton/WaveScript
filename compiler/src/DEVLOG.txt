@@ -193,6 +193,19 @@ Adding "reject".  It has a pretty yucky semantics at the minute.  I
 need to simplify simplify...  It's inclusion presently is yet another
 quick and nasty hack.
 
+[2004.11.04]
+
+The component model is tricky... you need to remember to get
+StdControl to things.  I still have very embarassing
+non-understandings of the way things work.
+
+I need to understand the memory management a lot better.  I don't know
+when it's safe for me to give a pointer to a send or receive, because
+I don't want the memory to be corrupted while something else still
+needs it.  For example what on earth happens if I send a pointer to a
+local variable to SendMsg.send??
+
+
 
 
 

@@ -142,7 +142,7 @@ module BasicTMCommM {
 
     atomic { // The token_in_buffer had better stay still while we print it out.
 
-      dbg(DBG_USR1, "TM BasicTMComm: CONTENTS OF CACHE, #tokens=%d start-end:%d/%d\n", 
+      dbg(DBG_USR1, "TM BasicTMComm: CONTENTS OF BUFFER, #tokens=%d start-end:%d/%d\n", 
 	  call num_tokens(), in_buffer_start, in_buffer_end);
 	  //	  99, in_buffer_start, in_buffer_end);
       
@@ -194,7 +194,7 @@ module BasicTMCommM {
     return SUCCESS;
   }
 
-  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg, uint16_t seed, uint16_t aggr) {
     return SUCCESS;
   }
 
