@@ -96,10 +96,9 @@
     seed))
 
 (define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f)) g))
-(define all-objs (map car object-graph))
 
 ;; Nor does this:
-(define object-graph (make-object-graph 
+(define object-graph (make-object-graph graph))
 (define all-objs (map car object-graph))
 ;;========================================
 
@@ -143,7 +142,7 @@
 		      (cache-entry-count this-message)
 		      (error 'simulator_nought.process-statement:dist
 			     "inside simulator, (dist) is broken!")))]
-	 [(dist tok) `(let ((entry (hashtab-get token-cache ',tok)))
+	 [(dist ,tok) `(let ((entry (hashtab-get token-cache ',tok)))
 			(if (and entry (cache-entry-count entry))
 			    (cache-entry-count this-message)
 			    (error 'simulator_nought.process-statement:dist

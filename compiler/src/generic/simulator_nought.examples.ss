@@ -38,6 +38,24 @@
        () ;; seed tokens
        )))
 
+;; This one spreads lights, and prints the distances as it goes.
+(define example-nodal-prog3
+  '(program
+    (socpgm (bindings) 
+	    (emit tok1))
+    (nodepgm
+;       result_2
+       (bindings)
+       (tokens
+	[tok1 () 
+	      (call tok2)
+	      (printf " ~s " (dist))
+	      (relay)]
+	[tok2 () (light-up 0 255 0)])
+       () ;; seed tokens
+       )))
+
+
 ;; This program floods the network with a token, then elects a leader
 ;; near a point, finally creating a gradient from there.
 ;;
