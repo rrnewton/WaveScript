@@ -23,8 +23,8 @@
 	      (cleanse-world)
 	      (let ((result (run-simulation (build-simulation converted) 2.0)))
 		(if (and (list? result) (= 1 (length result)))
-		    (printf "~n~s~n" (car result))
-		    (printf "~n~s~n" (car result))))
+		    (printf "~n~s~n" result)
+		    (printf "~n~s~n" result)))
 	      (loop)))))))
 
 
