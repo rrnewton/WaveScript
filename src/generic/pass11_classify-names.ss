@@ -65,7 +65,7 @@
 			     ; final and leaf?
 			     ; anchor and region?
 			     ))])
-    (lambda (s p)
+    (trace-lambda add-prop (s p)
       (if s
 	  (let ((entry (assq s table)))
 					;	  (DEBUGMODE (if (not entry)
@@ -126,7 +126,8 @@
   ;; have based on its usage context.  Basically it just tries to add
   ;; props and add-prop! raises an error if conflicting properties are
   ;; attached to a variable.  
-  (define (reconcile-type type name)
+  (define reconcile-type 
+    (lambda (type name)
     (case type
       [(Region)
        (add-prop! name 'distributed)
@@ -151,18 +152,20 @@
       [(Event Node Object)
        (error 'classify-names:reconcile-type "unhandled type: ~s" type)]
 
-      [else (error 'classify-names:reconcile-type "invalid type: ~s" type)]))
+      [else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
 
   ;; This is a cheap (and definitely non-polymorphic) kind of type
   ;; inference for variables used as arguments to primitive functions.
   (define (type-inference-primapp prim args)
     (let ((entry (get-primitive-entry prim)))
       (for-each 
-       (lambda (arg type)
+       (lambda (arg types)
 	 (match arg
 		[(quote ,const) (void)]
 		[,var (guard (symbol? arg))
-		      (reconcile-type var type)]
+		      (for-each (lambda (type)
+				  (reconcile-type type var))
+				types)]
 		[,other (error 'classify-names:type-inference-primapp
 			       "primitive ~s should take only simple arguments: ~s" prim args)]))
        args (cdr entry))))

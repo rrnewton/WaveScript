@@ -159,6 +159,8 @@
 (cleanse-world)
 (define simulate run-simulation)
 ;(eval (cadr (last testssim)))
-(init-graphics)
-(cleanse-world)
-(graphical-repl)
+
+
+;(init-graphics);
+;(cleanse-world)
+;(graphical-repl)
