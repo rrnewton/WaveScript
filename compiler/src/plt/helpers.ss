@@ -111,7 +111,8 @@
    formalexp? cast-formals default-unit-tester tester-eq? 
    
    regiment-primitives regiment-primitive? 
-   token-machine-primitives token-machine-primitive?
+   token-machine-primitives token-machine-primitive? 
+   token-machine? token-machine->program
    basic-primitive? distributed-primitive?
    get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
    get-primitive-return-type

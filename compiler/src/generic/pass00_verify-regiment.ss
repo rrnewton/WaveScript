@@ -103,11 +103,17 @@
 	    (cond 
 	     [(eq? infered-type expected-type)
 	      (void)] ;; It's all good
+	     ;; Locations are just lists for the moment!
+;	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
+;	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
+
+
 	     [(or (eq? 'Object infered-type)
 		  (eq? 'Object expected-type))
 	      (warning 'type-check-arg
 		       "infered type ~s doesn't *quite* match expected type ~s for expression: ~n~s"
-		       infered-type expected-type expr)]
+		       infered-type expected-type expr)]	     
+
 	     [else (error 'type-check-arg
 			    "infered type ~s doesn't match expected type ~s for expression: ~n~s"
 			    infered-type expected-type expr)])))))
