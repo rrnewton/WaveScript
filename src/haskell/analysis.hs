@@ -1,5 +1,10 @@
-import HUnit 
+--import HUnit 
+--import TokenMachine
 
+{- 
+  Wondering about how they do Id's in ghc... seems pretty complicated.
+
+-}
 
 data DensityT = Bottom 
 	      | LocalVal
@@ -14,6 +19,18 @@ data Prim a = Pcluster a
 	  | Psmap 
 	  | Punion 
 	  | Pintersect 
+  deriving (Eq, Show, Read)
+
+data Pgm = Pgm Expr
+data Expr = EConst
+	  | EVar String
+	  | Elambda Formals Expr
+	  | Eprimapp (Prim Expr)
+  deriving (Eq, Show, Read)
+
+type Formals = [String]
+
+
 
 lattice_compare a b | a == b = Just EQ
 
@@ -27,6 +44,19 @@ lattice_compare  _  _         = Nothing
 transfer (Pcluster dens) = ContigArea dens
 
 
-data Expr = Elambda 
-	  | Eprimapp 
+-- <Pgm>  ::= <Exp>
+-- <Decl> ::= (<var> <Exp>)
+-- <Exp>  ::= 
+--            (quote <datum>)
+--          | <constant>
+--          | <var>
+--          | (if <Exp> <Exp> <Exp>)
+--          | (lambda <Formalexp> <Exp>)
+--          | (letrec (<Decl>*) <Exp>)
+--          | (<primitive> <Exp>*)
+-- <Formalexp> ::= (<var>*)
 
+main = do return ();
+
+data Point = Pt {pointx, pointy :: Float}
+  deriving (Eq, Show, Read)
