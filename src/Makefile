@@ -4,12 +4,19 @@
 #*---------------------------------------------------------------------*/
 
 # These are the generic scheme files, ideally should be r5rs + match
-GENERIC_SCM_SRC = generic/helpers.ss generic/pass01.ss 
+GENERIC_SCM_SRC = generic/helpers.ss \
+      generic/pass00_verify-regiment.ss \
+      generic/pass01_rename-var.ss
 MAIN_FILE = compiler.ss
 
-PLT_SRC = helpers tests demo_display pass00 pass01 pass07
+
+PLT_SRC = helpers tests demo_display \
+          language-mechanism lang00 \
+          pass00_verify-regiment pass01_rename-var pass07 
 PLT_MAIN_FILE = compiler_plt.ss
 #PLT_FILES = plt/helpers plt/pass01 plt/demo_display
+
+
 
 CHEZ_FILES = generic/helpers chez/pass01 plt/demo_display
 CHEZ_SRC = $(PLT_FILES:%=%.ss)
@@ -55,9 +62,8 @@ run: runplt
 runchez: 
 	$(CHEZ) $(CHEZ_MAIN_FILE)
 
-runplt: mzscheme
-	$(MZC) -z $(PLT_MAIN_FILE)
-	$(MZSCHEME) -f $(PLT_MAIN_FILE)
+runplt: 
+	$(MZSCHEME) -e "(load/use-compiled \"$(PLT_MAIN_FILE)\")"
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

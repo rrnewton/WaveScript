@@ -9,6 +9,8 @@
   '(cons car cdr 
 	 + - * / 
 	 < > = eq? equal?
+	 pair? number?
+	 not
 	 ))
 
 (define regiment-distributed-primitives 

@@ -125,7 +125,7 @@
                [else (error 'tracer "invalid argument ~s" x)]))])))
 
 (define game-eval
-  (make-parameter interpret
+  (make-parameter eval ;interpret
                   (lambda (x)
                     (unless (procedure? x)
                       (error 'game-eval "~s is not a procedure" x))
@@ -175,8 +175,10 @@
           (when verbose?
             (let ([s (format "~s: " n)])
               (display s)
-              (parameterize ([pretty-initial-indent (string-length s)])
-                (pretty-print (car tests)))))
+;              (parameterize ([pretty-initial-indent (string-length s)])
+                (pretty-print (car tests))
+;		)
+	      ))
           ($test-one (car tests) emit? verbose? n)
           (f (cdr tests) (+ n 1))))))
 
@@ -205,7 +207,9 @@
 
 (define $test-one
   (lambda (original-input-expr emit? verbose? ordinal)
-    (let ([answer (interpret original-input-expr)])
+    (let ([answer 
+	   ;(interpret original-input-expr)])
+	   (eval original-input-expr)])
       (define-syntax on-error
         (syntax-rules ()
           [(_ e0 e1 e2 ...)
