@@ -10,6 +10,10 @@
 ;;; variable pass-names to be a list of the pass names in the order
 ;;; in which they should be applied.
 
+;;; NOTE RRN: ALSO, it expects reset-name-count! to be exposed to 
+;;; it from helpers.ss!!  FURTHER, it depends on the variable "tests".
+
+
 ;;; Entry points of interest are:
 
 ;;;  (test-one '<program>)
@@ -142,9 +146,10 @@
            (begin
              (if (call/cc
                    (lambda (k)
-                     (parameterize ([reset-handler (lambda () (k #f))])
+                     ;; RRN [2004.04.28] Killing this for PLT compat:
+;                     (parameterize ([reset-handler (lambda () (k #f))])
                        ($test-one (car tests) emit? #f n)
-                       #t)))
+                       #t));)
                  (begin
                    (when (= m mod) (newline))
                    (write-char #\.)
@@ -216,9 +221,10 @@
            (parameterize ([error-handler
                             (let ([eh (error-handler)])
                               (lambda args
-                                (parameterize ([current-output-port
-                                                 (console-output-port)])
-                                  e0)
+;; RRN 2004.04.28 - Eliminating for compatibility with PLT:
+;                                (parameterize ([current-output-port
+;                                                 (console-output-port)])
+                                  e0;)
                                 (apply eh args)))])
              e1 e2 ...)]))
       (define check-eval
@@ -229,13 +235,16 @@
               (pretty-print input-expr)
               (printf "========~%~s output:~%" pass-name)
               (pretty-print output-expr))
-            (let ([t (parameterize ([run-cp0 (lambda (cp0 x) x)])
+            (let ([t 
+                   ;; RRN Cancelling this for PLT compatibility
+;                   (parameterize ([run-cp0 (lambda (cp0 x) x)])
                        (on-error
                          (if ordinal
                              (printf "~%Error occurred running output of pass ~s on test ~s"
                                      pass-name ordinal)
                              (printf "~%Error occurred running output of pass ~s" pass-name))
-                         ((game-eval) output-expr)))])
+                         ((game-eval) output-expr));)
+                       ])
               (unless (equal? t answer)
                 (if ordinal
                     (error pass-name

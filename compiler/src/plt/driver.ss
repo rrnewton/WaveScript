@@ -6,20 +6,27 @@
 ;; for this file just treating it as a normal scheme script depending
 ;; on and modifying the toplevel symbol table.
 
-;(module drivers mzscheme  
+(module driver mzscheme  
 (require (lib "include.ss")  
 	 (lib "pretty.ss")
-;           "iu-match.ss"
-;           "helpers.ss"
-;;	   pass-names)
+         ;           "iu-match.ss"
+         "helpers.ss"
+         ;;	   pass-names)
+         
+         pass-names
 	   )
 
+  (define error-handler error-display-handler)
+
+  (define pass-names '())
+  (define tests '())
+  
   (include (build-path ".." "generic" "driver.ss"))
   
-;  (provide test-one test-all
+  (provide test-one test-all
 ;;; These are in the interface, but aren't used yet for this project:
-;;	   tracer game-eval analyze-all test-all-but 
+;	   tracer game-eval analyze-all test-all-but 
 ;;	   print-file remaining-pass-names
-;	   )
-;  )
+	   )
+  )
 

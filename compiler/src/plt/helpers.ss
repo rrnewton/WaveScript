@@ -22,6 +22,12 @@
 	   "This is a chez function which can't ~a"
 	   "be emulated right now in Plt. -RRN"))
 
+  (define flush-output-port flush-output)
+
+  (define-syntax rec
+    (syntax-rules ()
+      ((_ x e) (letrec ((x e)) x))))
+  
   (define-syntax mvlet
     (syntax-rules ()
         [(mvlet stuff ...) (let-values stuff ...)]))
@@ -29,11 +35,13 @@
   (provide 
 
    ;; Syntax:
-   mvlet 
+   mvlet rec
    
    ;; Values:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-     
+   flush-output-port
+   
+   
    get-formals
    unique-name reset-name-count! extract-suffix make-begin
    code-name label-name #;method-name

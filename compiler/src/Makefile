@@ -10,7 +10,8 @@ GENERIC_SCM_SRC = generic/helpers.ss \
 MAIN_FILE = compiler.ss
 
 
-PLT_SRC = helpers tests demo_display \
+PLT_SRC = helpers demo_display \
+          tests driver         \
           pass00_verify-regiment           \
           pass01_rename-var                \
           pass02_remove-unquoted-constant  \
@@ -23,9 +24,9 @@ PLT_SRC = helpers tests demo_display \
 #          pass09_separate-graph.ss
 #          language-mechanism lang00  \
 
+
 PLT_MAIN_FILE = compiler_plt.ss
 #PLT_FILES = plt/helpers plt/pass01 plt/demo_display
-
 
 
 CHEZ_FILES = generic/helpers chez/pass01 plt/demo_display
@@ -40,9 +41,11 @@ ALL_SCM_SRC = $(PLT_SRC) $(CHEZ_SRC) $(GENERIC_SCM_SRC) $(MAIN_FILE)
 #*---------------------------------------------------------------------*/
 MZC = mzc
 MZSCHEME = mzscheme
-#CHEZ = chez
+
+CHEZ = chez
 #CHEZ = petite
-CHEZ = fullpetite
+#CHEZ = fullpetite
+
 SWL = swl
 DEST = a.out
 
@@ -50,10 +53,14 @@ DEST = a.out
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
 
-mzscheme: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
+mzscheme: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE) compiled/compiler.zo compiled/compiler_plt.zo
 	(cd plt; $(MAKE) "SRCFILES=$(PLT_SRC)")
-	$(MZC) -z --auto-dir $(PLT_MAIN_FILE) 
+
+compiled/compiler.zo:
 	$(MZC) -z --auto-dir compiler.ss
+
+compiled/compiler_plt.zo:
+	$(MZC) -z --auto-dir $(PLT_MAIN_FILE) 
 
 #mzc:
 #	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
@@ -78,7 +85,7 @@ runplt:
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */
 #*---------------------------------------------------------------------*/
-.PHONY: clean
+#.PHONY: clean
 
 clean:
 	(cd compiled; $(MAKE) clean)
