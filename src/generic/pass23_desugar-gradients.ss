@@ -5,13 +5,15 @@
 ;; It proceeds by adding FOUR additional arguments to every token handler:
 ;;   gradient parent, gradient origin node, hop-count, gradient version, 
 
+
+;; NOTE: Requires another CLEANUP (cleanup-token-machine) after this pass executes.
+;; (It uses shorthand such as "and" and "or" syntax.
+
 ;; NOTE: For now token emission, relaying, distance checking, and
 ;;       returning are all restricted to statically specified tokens
 ;;       (but the subtok indices may be dynamically computed).
 ;; This just makes it easier for me to determine which handlers need
 ;; extra gradient arguments and which don't.  
-
-;; NOTE: Requires another CLEANUP (cleanup-token-machine) after this pass executes.
 
 ;; NOTE: For now we require that seed expressions be statically computable and deterministic!
 
@@ -54,7 +56,7 @@
 ;;;                | (dist <DynToken>)
 
 ;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed_call
+;;;           | call | subcall | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 ;;; Output Grammar:
@@ -114,6 +116,8 @@
 
 	     [(leds ,what ,which) '()]
 	     [(call ,[args*] ...) (apply append args*)]
+	     [(subcall ,[args*] ...) (apply append args*)]
+	     [(bcast ,[args*] ...) (apply append args*)]
 	     [(timed-call ,[args*] ...) (apply append args*)]
 					;	 [(activate ,_ ,[args*] ...) (apply append args*)]
 	     
@@ -240,7 +244,8 @@
 		    (call (tok ,return-handler ,aggr_ID) ',REMOTE ,expr ,toind ,viaind))))]
 
 	     ;; This is a local call to a gradient-bearing token:
-	     [(call (tok ,t ,[etb e]) ,[atb* args*] ...) (guard (memq t tainted))
+	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
+	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
 	      (values (apply append etb atb*)
 		      `(call (tok ,t e)
 			     '#f ;; parent
@@ -248,10 +253,12 @@
 			     0   ;; hopcount
 			     '#f ;; version
 			     ,args* ...))]
+	     ;; OTHERWISE, let it fall through to the prim case.
 	     ;; Call to non-gradient bearing token:
-	     [(call ,[ttb tok] ,[atb* args*] ...)
-	      (values (apply append ttb atb*)
-		      `(call ,tok ,args* ...))]
+;	     [(,call-style ,[ttb tok] ,[atb* args*] ...) 
+;	      (guard (memq call-style '(call subcall bcast)))
+;	      (values (apply append ttb atb*)
+;		      `(call ,tok ,args* ...))]
 	     ;; Same here:
 	     [(timed-call ,[ttb time] (tok ,t ,[etb e]) ,[atb* args*] ...)
 	      (guard (memq t tainted))
@@ -262,9 +269,11 @@
 				   0   ;; hopcount
 				   '#f ;; version
 				   ,args* ...))]
-	     [(timed-call ,[ttb time] ,[ttb2 tok] ,[atb* args*] ...) 
-	      (values (apply append ttb ttb2 atb*)
-		      `(timed-call ,time ,tok ,args* ...))]
+	     ;; OTHERWISE, let it fall through to the prim case.
+;	     [(timed-call ,[ttb time] ,[ttb2 tok] ,[atb* args*] ...) 
+;	      (values (apply append ttb ttb2 atb*)
+;		      `(timed-call ,time ,tok ,args* ...))]
+
 	     [(leds ,what ,which)                      
 	      (values () `(leds ,what ,which))]
 	     [(,prim ,[rtb* rands] ...)

@@ -1,4 +1,9 @@
 
+;; QUESTION: SHOULD let-stored bound variables be able to be referred
+;; to externally with "ext-refs" or should they be local.  They
+;; probably should be local-only, but I haven't implemented it that
+;; way now.
+
 
 ;; Input Grammar:
 
@@ -29,34 +34,11 @@
 ;;;                | <Sugar> 
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
 ;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed_call
+;;;           | call | subcall | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 ;;;  <Sugar>  ::= (flood <Expr>)
 ;;;           | (elect-leader <Token> [<Token>])
               ;; <TODO> optional second argument.. decider
-
-
-;;;  <GExpr>     ::= (emit <DynToken> <Expr> ...)
-;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
-;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (dist <DynToken>)
-
-
-;;;  <Expr>      ::= (quote <Constant>)
-;;;                | <Var>
-;;;                | <DynToken>
-;;;                | (set! <Var> <Expr>)
-;;;                | (ext-ref <DynToken> <Var>)
-;;;                | (ext-set! <DynToken> <Var> <Expr>)
-;       NOTE: These are static token refs for now.
-;;;                | (begin <Expr> ...)
-;;;                | (let ((<Symbol> <Expr>)) <Expr>)
-;;;                | (if <Expr> <Expr> <Expr>)
-;;;                | (subcall <DynToken> <Expr>...)
-;;;                | (<Prim> <Expr> ...)
-;;;                | (<Expr> ...)
-;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
-;;;                | <GExpr>
 
 
 (define desugar-let-stored
@@ -91,22 +73,25 @@
     [(quote ,const)                    (values () `(quote ,const))]
     [,num (guard (number? num))        (values () num)]
     [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
-    [(tok ,t ,[e])                     (values () `(tok ,t ,e))]
+    [(tok ,t ,[st e])                  (values st `(tok ,t ,e))]
     [,var (guard (symbol? var))        (values () var)]
-    [(begin ,[st xs] ...)                 
+    [(begin ,[st xs] ...)              
      (values (apply append st) (make-begin xs))]
-    [(if ,[test] ,[conseq] ,[altern])
-     (values (append test conseq altern) 
+    [(if ,[tst test] ,[cst conseq] ,[ast altern])
+     (values (append tst cst ast) 
              `(if ,test ,conseq ,altern))]
+    [(set! ,v ,[rst rhs])
+     (values rst `(set! ,v ,rhs))]
     [(let ([,lhs ,[rst rhs]]) ,body)
      (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
 	    (values (append bst rst)
 		    `(let ([,lhs ,rhs]) ,newbod)))]
 
-    [(,call-style ,[st* args*] ...)
-     (guard (memq call-style '(call timed_call)))
-     (values (apply append st*)
-             `(,call-style ,args* ...))]
+;; These are just primitives, they do not need their own form.
+;    [(,call-style ,[st* args*] ...)
+;     (guard (memq call-style '(call timed-call bcast )))
+;     (values (apply append st*)
+;             `(,call-style ,args* ...))]
 
     ;; The semantics of let-stored are that the first time the
     ;; expression is executed (and only the first), the RHS is
@@ -115,14 +100,15 @@
      (process-expr env `(let-stored (,first) (let-stored (,second ,rest ...) ,body)))]
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
      (let ([newvar (unique-name 'stored-liftoption)])
-        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
+       (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
                (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
                        (make-begin 
                         (list `(if (not ,newvar) ;; If first time, initialize
                                    (begin 
                                      (set! ,newvar '#t)
                                      (set! ,lhs ,rhs)))
-                               newbod)))))]
+                               newbod)))))
+     ]
 
     [(leds ,what ,which) (values () `(leds ,what ,which))]
     [(,prim ,[rst* rands] ...)
@@ -131,8 +117,8 @@
      (values (apply append rst*)
              `(,prim ,rands ...))]
     [(,[rst1 rator] ,[rst* rands] ...)
-     (warning 'FOOBAR-pass
-              "arbitrary application of rator: ~s" rator)
+     (warning 'desugare-let-stored
+              "arbitrary application of rator: ~s~n" rator)
      (values (apply append rst1 rst*)
              `(,rator ,rands ...))]
 
