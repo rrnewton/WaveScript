@@ -71,6 +71,7 @@
       'replace)]
    [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
+;; This dumps to file only when provided the optional argument:
 (define (run-compiler p . filename )  
   (let ((funs (map eval pass-names)))
     (let loop ([p p] [funs funs])
