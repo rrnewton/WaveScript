@@ -8,6 +8,8 @@
 ;; [2005.02.24]
 ;; Now I'm keeping some parameters (which are actually not constant) in here as well.
 
+;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest.
+
 
 ;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
@@ -68,4 +70,10 @@
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
+;; Just a counter for the simulation logger messages.  
+;; If it's #f that means it's not set, but it can be 
+;; set to zero at the start of a simulation.
+(define-regiment-parameter simulation-logger-count #f)
+
 (define-regiment-parameter regiment-consec-ids #t)
+

@@ -1,4 +1,4 @@
-;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn't;;
+ ;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn't;;
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
@@ -8,26 +8,31 @@
 
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be had from.
+;; ON
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
+;; OFF
+;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
+
 
 (define-syntax DEBUGASSERT 
   (syntax-rules () 
     [(_ expr ...) (if (and expr ...) #t 
 		      (error 'DEBUGASSERT "failed: ~s" (quote (and expr ...))))]))
 
-(define Regiment-Log-File "~/tmp/Regiment.log.ss")
-;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
-;(define Regiment-Log-File (string-append "Regiment.log.ss"))
+;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
+;;;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
+;;;(define Regiment-Log-File (string-append "Regiment.log.ss"))
 ;; Delete that logfile at load time:
-(if (file-exists? Regiment-Log-File)
-    (delete-file Regiment-Log-File))
+;(if (file-exists? Regiment-Log-File)
+;    (delete-file Regiment-Log-File))
 
+
+;; THESE ARE ONLY USED BY SIMULATOR_NOUGHT PRESENTLY. [2005.03.18]
 ;; This one prints nothing at all:
 (define-syntax DEBUGPRINT 
   (syntax-rules ()
 ;    [(_ expr ...) (begin expr ...)]))
     [(_ expr ...) (void)]))
-
 ;; This is a SECOND print channel for even lamer information:
 (define-syntax DEBUGPRINT2
   (syntax-rules ()
@@ -35,26 +40,6 @@
     [(_ expr ...) (void)]))
 
 
-;; This one prints to the logifle, openning and closing it every time:
-#;(define-syntax DEBUGPRINT 
-  (syntax-rules ()
-    [(_ expr ...)
-     (let ((p (open-output-file Regiment-Log-File 'append)))
-       (parameterize ((current-output-port p))
-		     (begin expr ... (flush-output-port))
-		     )
-       (close-output-port p))]))
-
-
-;; This version leaves the file open:
-;; Shouldn't exist at this time:
-#;(define Regiment-Log-Port (open-output-file Regiment-Log-File))
-#;(define-syntax DEBUGPRINT 
-  (syntax-rules ()
-    [(_ expr ...)
-     (parameterize ((current-output-port Regiment-Log-Port))
-		   (begin expr ... (flush-output-port)))]))
-	   
 ;==============================================================================;
 
 ;; This is not strictly R5RS but it should work in both chez and plt,
