@@ -292,6 +292,7 @@
 ;; This provides a weird sort of interface to a deep equal.  It walks
 ;; down the tree, applying the input comparator at every intermediate
 ;; node, only proceeding downward on negative comparisons.
+;; [2004.07.21] - Fixed it's behaviour against dotted pairs.
 (define eq-deep 
   (lambda (eq)
     (lambda (obj1 obj2)
@@ -302,6 +303,9 @@
 	  (if (= (length o1) (length o2))
 	      (andmap loop o1 o2)
 	      #f)]
+	 [(and (pair? o1) (pair? o2)) ;; Kinda silly to have both these.
+	  (and (loop (car o1) (car o2)) ;; the above should save stack space though..
+	       (loop (cdr o1) (cdr o2)))]
 	 [(and (vector? o1) (vector? 02))
 	  (andmap loop (vector->list o1) (vector->list o2))]
 	 [else #f])))))
@@ -1396,7 +1400,32 @@
 	(set-cdr! cell '())
 	(loop next (cdr next)))))
 
-
+;[2004.07.21] - This one applies a given function (better be lenient)
+; against every interemediate node in the tree.  Returns a list of
+; *every* match.  Returns them in the order it hits them as it does a
+; depth-first traversal.
+;;   This is heavy-weight, expensive function, but darn useful!!
+(define (deep-all-matches f struct)
+  (letrec ([against 
+	    (lambda (struct)
+	      (if (f struct) 
+		  (cons struct (down struct))
+		  (down struct)))]
+	   [down 
+	    (lambda (struct)
+	      (cond
+	       [(vector? struct)
+		(let vloop ([i 0])
+		  (if (= i (vector-length struct)) 
+		      '()
+		      (append (against (vector-ref struct i))
+			      (vloop (add1 i)))))]
+	       [(pair? struct)
+		(append (against (car struct))
+			(against (cdr struct)))]
+	       [else '()]))])
+    (against struct)))
+	   
 ;[01.10.23] - I'm surprised this wasn't added a million years ago:
 (define (deep-member? ob struct)
   (let outer ([struct struct])
@@ -1690,6 +1719,17 @@
 
 (define these-tests
   `(
+
+    [(deep-all-matches null? '(1 (3) (4 . 5)))
+     (() ())]
+    [(deep-all-matches list? '(1 (3) (4 . 5)))
+     ((1 (3) (4 . 5)) ((3) (4 . 5)) (3) () ((4 . 5)) ())]
+    [(deep-all-matches (lambda (x) (and (number? x) (even? x))) '(1 (3) (4 . 5)))
+     (4)]
+    [(deep-all-matches (lambda (x) (and (number? x) (odd? x))) '(1 (3) (4 . 5)))
+     (1 3 5)]
+    [(deep-all-matches (lambda (x) (and (number? x) (odd? x))) '#(1 #(3) (4 . 5)))
+     (1 3 5)]
 
     [(deep-assq 3 '(9 (4 (1 2 a ) 4)))        #f]
     [(deep-assq 3 '(9 (4 (1 2 3 9 a ) 4)))    (3 9 a)]
