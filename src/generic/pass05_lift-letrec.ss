@@ -12,14 +12,13 @@
 ;;;   too.. I'm just being really, umm, lazy right now, is my test
 ;;;   programs don't depend on argument evaluation model... )
 
-;;; <Pgm>  ::= (<language-name> (quote (program <Exp>)))
+;;; <Pgm>  ::= (<language-name> (quote (program (lazy-letrec (<Decl>*) <Exp>))))
 ;;; <Decl> ::= (<var> <Exp>)
 ;;; <Exp>  ::= 
 ;;;            (quote <imm>)
 ;;;          | <var>
 ;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> <Exp>)
-;;;          | (lazy-letrec (<Decl>*) <Exp>)
+;;;          | (lambda <Formalexp> (lazy-letrec (<Decl>*) <Exp>))
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
 
