@@ -17,10 +17,17 @@
 	       seed))
     seed))
 
+;(define (use-line-graph th)
+;  (fluid-let ((graph line-graph)
+;	      (object-graph (make-object-graph line-graph))
+;	      (all-objs (map car object-graph)))
+;    (th))
+;  )
 
-(define (use-line-graph th)
-  (fluid-let ((graph line-graph)
-	      (object-graph (make-object-graph line-graph))
-	      (all-objs (map car object-graph)))
-    (th))
-  )
+
+(define two-processors
+  (let ([a (random-node)]
+	[b (random-node)])
+    `((,a ,b)
+      (,b ,a))))
+

@@ -1241,8 +1241,8 @@
 ;;;
 ;;; extract-suffix returns the numeric portion of the unique suffix
 ;;; of a unique name or code-name, or #f if passed a non unique name.
-;(module (unique-name reset-name-count! extract-suffix
-;                     code-name label-name #;method-name)
+;;(module (unique-name reset-name-count! extract-suffix
+;;                     code-name label-name #;method-name)
         ;RRN [01.09.16] -- We need to phase out code-name...
 
 ;; [2004.06.28] I am replacing this with a version that uses
@@ -1474,7 +1474,7 @@
 	  (loop (vector-ref o1 i) 
 		(vector-ref o2 i)
 		(cons i (cons 'v index))))])))
-
+       
 
 ;; Should make this use a hash table.
 (define graph-map
@@ -1516,6 +1516,8 @@
 
 (define partition-equal
   (lambda (lst eq)
+    (if (not (or (pair? lst) (null? lst)))
+	(error 'partition-equal "input must be a list: ~s" lst))
     (let loop ((lst lst))
       (if (null? lst) '()
 	  (let* ([first (car lst)]
