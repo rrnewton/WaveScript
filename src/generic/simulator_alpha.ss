@@ -54,6 +54,8 @@
 
 			     ;; This is a function that processes incoming messages
 			     scheduler ;; and returns simulation actions.
+			     ;; This function takes msg-obj and vtime and executes a tokhand:
+			     meta-handler
 			     ))
 ;; The token store is a hash table mapping token names, like (Red . 34), to token objects.
 ;; The token objects themselves are just vectors of stored variables.
@@ -126,8 +128,6 @@
   (unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
   (unless (or (number? timestamp) (not timestamp))
 	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
-  (unless (or (simobject? parent) (not parent))
-	  (error 'safe-construct-msg-object "bad parent: ~s" origin))
   (unless (list? args)
 	  (error 'safe-construct-msg-object "bad args: ~s" args))
   (make-msg-object token timestamp #f parent #f args))
@@ -218,7 +218,7 @@
 ;; (There are more topologies in "network_topologies.ss"
 (define (make-object-graph g) 
   (graph-map (lambda (nd) 
-	       (let ([so (apply make-simobject (make-list 13 'simobject-field-uninitialized))])
+	       (let ([so (apply make-simobject (make-list 14 'simobject-field-uninitialized))])
 		 (set-simobject-node! so nd)
 		 (set-simobject-token-store! so (make-default-hash-table))
 
@@ -233,11 +233,12 @@
 		 (set-simobject-redraw! so #f)
 		 (set-simobject-gobj! so #f)
 		 (set-simobject-homepage! so '())
-		 (set-simobject-scheduler! so #f)
 		 (set-simobject-I-am-SOC! so #f)
 
-		 so))
-	     g))
+		 (set-simobject-scheduler! so #f)
+		 (set-simobject-meta-handler! so #f)
+
+		 so)) g))
 
 (define (fresh-simulation)
    (let* ([graph 
@@ -331,7 +332,7 @@
 		  [(timed-call ,delay ,rator ,rand* ...)
 		   ;; Delay is in milleseconds.
 		  `(set-simobject-timed-token-buf!
-		    this (cons (cons (+ ,delay current-vtime)
+		    this (cons (list (+ ,delay current-vtime)
 				     (bare-msg-object ,rator (list ,@rand*)))
 			       (simobject-timed-token-buf this)))]
 
@@ -506,11 +507,12 @@
 				  (map car tbinds)))
 
 		  ;; Return the meta-handler
-		  (lambda (msgob)
+		  (lambda (msgob current-vtime)
 		    (mvlet ([(name subtok)
-			     (match (msg-object-token msgob)
-				    [(,name . ,subtok) (values name subtok)]
-				    [,name (values name 0)])])
+                             (let ((tok (msg-object-token msgob)))
+                               (if (pair? tok) 
+                                   (values (car tok) (cdr tok))
+                                   (values tok 0)))])
 			   (let ([handler (hashtab-get dyndispatch_table name)])
 			     ;; Invoke:
 			     (apply handler current-vtime subtok 
@@ -589,9 +591,11 @@
 (compile-simulate-alpha
       '(program
 	(bindings)
-	(socpgm  (bindings) (call tok1))
 	(nodepgm 
 	 (tokens
-	  [tok1 () (bcast tok2 '3)]
-	  [tok2 (x) (bcast tok2 (+ x x))])
+	  [SOC-start () (stored) (call tok1)]
+	  [tok1 () (stored) (bcast tok2 '3)]
+	  [tok2 (x) (stored [x '99])
+		(begin (set! x (+ x '1))
+		       (bcast tok2 x))])
 	 (startup)))))
