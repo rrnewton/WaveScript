@@ -13,12 +13,51 @@
 	 not
 	 ))
 
-(define regiment-distributed-primitives 
   '(rmap rfold smap time-of
 	 circle circle-at anchor anchor-at anchor-where k-neighborhood time
 	 cluster sparsify border planarize treeize filter union intersect
 	 until when when-any when-percentage 
-	 sense neighbors ))
+	 sense neighbors )
+
+(define regiment-distributed-primitives 
+  '(
+    (rmap           (Function Region) Region)
+    (rfold          (Function Region) Signal)
+    (smap           (Function Signal) Signal)
+
+    (anchor         ()         Anchor)
+    (anchor-at      (Location) Anchor)
+    (anchor-where   (Function) Anchor)
+
+    (circle         (Anchor Dist)   Region)
+    (circle-at      (Location Dist) Region)
+    (k-neighborhood (Anchor Integer) Region)
+
+    ;; This one returns a region of regions:
+    (cluster        (Region) Region)
+    (sparsify       (Region) Region)
+    (border         (Region) Region)
+;    (planarize      (Region) Region)
+;    (treeize        (Region) Region)
+
+    (filter         (Function Region) Region)
+    (union          (Region Region) Region)
+    (intersect      (Region Region) Region)
+
+    ;; Prolly not the right type:
+    (until          (Event Signal Signal) Signal)
+
+    ;; What was this one supposed to do and what was it's type?
+;    (when           (Event Signal) Signal)
+    (when-any        (Function Region) Event)
+    (when-percentage (Float Function Region) Event)
+
+    (sense         (Node) Reading)
+;     neighbors 
+;    time-of
+;    (time (Node) Time)
+     ))
+
   
 ;;; 2004.03.31 - I don't know what the system's going to be called so
 ;;; I'm using the placeholder "blanko" which I will replace later. 
