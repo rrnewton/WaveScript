@@ -55,6 +55,9 @@
 (include "generic/pass02_rename-vars.ss")
 (include "generic/pass03_remove-unquoted-constant.ss")
 (include "generic/pass04_reduce-primitives.ss")
+
+(include "generic/pass04_static-elaborate.ss")
+
 (include "generic/pass05_remove-complex-constant.ss")
 (include "generic/pass06_uncover-free.ss")
 (include "generic/pass07_lift-letrec.ss")

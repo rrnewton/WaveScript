@@ -29,12 +29,14 @@
 
 (define-language 'nil-language '(begin))
 
+(define-structure (baselang-simnode id sensor pos))
+
 ;; Define this once for the simulation so that our answers are deterministic.
 ;; This is a list of <sensereading, xpos, ypos> 
 (define the-test-field 
   (make-n-list 100
 	       (lambda (ign) 
-		 (make-simnode (random 10000) 
+		 (make-baselang-simnode (random 10000) 
                           (random-real) ;(prim_random 1.0) 
                           (list (random 100) (random 100))))))
      
@@ -47,11 +49,11 @@
      (define world (map cons the-test-field the-test-field))
      (define radius 27.0)
 
-     (define-structure (simnode id sensor pos))
+     (define-structure (baselang-simnode id sensor pos))
      
      (define (entry? r)
        (and (pair? r)
-	    (simnode? (cdr r))))
+	    (baselang-simnode? (cdr r))))
 
      (define (region? r)
        (and (list? r)
@@ -74,8 +76,8 @@
 			      (add1 (car ls))))))]))
      
      (define (neighbors? x y)
-       (<= (posdist (simnode-pos (cdr x))
-		    (simnode-pos (cdr y))) radius))
+       (<= (posdist (baselang-simnode-pos (cdr x))
+		    (baselang-simnode-pos (cdr y))) radius))
      (define (neighbors n)
        (filter (lambda (p) (neighbors? n p)) world))
 
@@ -85,19 +87,22 @@
 					;(define (node->reading n) (cadr n))
 
      (define (anchor-at x y)
-       (find-maximizing (lambda (entry) (posdist (simnode-pos (cdr entry)) (list x y)))
+       (find-maximizing (lambda (entry) (posdist (baselang-simnode-pos (cdr entry)) 
+						 (list x y)))
 			world))
 
      (define (circle-at x y  rad)
-       (filter (lambda (p) (<= (posdist (simnode-pos (cdr p)) (list x y)) rad))
+       (filter (lambda (p) (<= (posdist (baselang-simnode-pos (cdr p))
+					(list x y)) rad))
 	       world))
 
      (define (circle anch rad)
-       (filter (lambda (p) (<= (posdist (simnode-pos (cdr p)) (simnode-pos (cdr anch))) rad))
+       (filter (lambda (p) (<= (posdist (baselang-simnode-pos (cdr p)) 
+					(baselang-simnode-pos (cdr anch))) rad))
 	       world))
 
-     (define nodeid simnode-id)
-     (define sense  simnode-sensor)
+     (define nodeid baselang-simnode-id)
+     (define sense  baselang-simnode-sensor)
      (define (rfold f s r) 
        ;(let ((depth (nestedregion? r)))
        (let ((depth (quickdepth r)))
