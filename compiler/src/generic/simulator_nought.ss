@@ -468,8 +468,13 @@
 			     (free-vars (cadr bind))))
 		     binds)]
 	 [flat (reverse (topological-sort graph eq?))]
-	 [binds (map (lambda (sym) (assq sym binds))
-		     flat)])
+	 [binds 
+	  (map (lambda (sym) 
+		 (let ([bind (assq sym binds)])
+		   (if bind bind
+		       (error 'simulator_nought:process-binds
+			      "no entry for sym '~s' in constant binds ~s" sym binds))))
+	       flat)])
     (if (cyclic? graph)
 	(error 'process-binds "for now can't take a cyclic graph: ~s" binds))
     `(let* ,binds ,expr)))
@@ -1506,7 +1511,7 @@
     2.0)
    unspecified]
 
-;; [2004.10.01] This isn't passing right now on my laptop but is at home!!
+;; [2004.10.01] This isn't passing right now on my laptop but is at home!!!! <FIXME>
 #;  [ "Return all distances from root, no aggregation"
     (run-simulation
      (build-simulation 

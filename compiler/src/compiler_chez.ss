@@ -36,12 +36,16 @@
 (include "generic/language-mechanism.ss")
 
 (include "generic/lang00.ss")
-(include "generic/lang05.ss")
-(include "generic/lang11_classify-names.ss")
-(include "generic/lang12_annotate-heartbeats.ss")
-(include "generic/lang13_control-flow.ss")
 
-(include "generic/lang15_deglobalize.ss") ;; deglobalize
+(include "generic/lang06_uncover-free.ss")
+(include "generic/lang07_lift-letrec.ss")
+
+(include "generic/lang11_classify-names.ss")
+(include "generic/lang12_heartbeats.ss")
+(include "generic/lang13_control-flow.ss")
+(include "generic/lang14_places.ss")
+
+(include "generic/lang16_deglobalize.ss") ;; deglobalize
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
@@ -56,12 +60,10 @@
 (include "generic/pass10_verify-core.ss")
 (include "generic/pass11_classify-names.ss")
 ;(include "generic/pass09_separate-graph")
-(include "generic/pass12_annotate-heartbeats.ss")
 
+(include "generic/pass12_add-heartbeats.ss")
 (include "generic/pass13_add-control-flow.ss")
-
 (include "generic/pass14_add-places.ss")
-
 ;(include "generic/pass15_add-routing.ss")
 
 (include "generic/pass16_deglobalize.ss")

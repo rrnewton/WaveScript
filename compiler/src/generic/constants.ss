@@ -13,6 +13,12 @@
 ;; The fast-pulse is used for folding.
 (define fast-pulse 10.0)
 
+;; Used primarily by pass14_add-places:
+;; (and by pass15_add-routing
+;;===================================================
+(define unknown-place '?) ;'X?)
+(define noplace '_)
+
 ;; Used primarily by Simulator_nought.ss:
 ;;===================================================
 ;; These are the virtual coordinate bounds of the world.

@@ -1,3 +1,6 @@
+;; INCOMPLETE: this doesn't actually use the CFG right now.
+
+
 ;(require (lib "trace.ss") (lib "iu-match.ss") "../plt/helpers.ss")
 
 ;;; Pass 10: deglobalize
@@ -400,6 +403,14 @@
       (lambda (name heartbeat expr)	
 	(let ((finalname (check-prop 'final name)))
         (match expr
+
+	  ;; The result of the 'world' primitive just wires the world
+          ;; spark to whatever value-name this is, and wires the
+          ;; formation token straight to the membership.
+          [world (values '() 
+			 `([,(get-formation-name name) () (call ,(get-membership-name name))]
+			   [spark-world () (call ,(get-membership-name name))]))]
+
           ;; The possibility that the final value is local is
 	  ;; handled in 'deglobalize' so we don't worry about it here:
 	  [,x (guard (simple? x))      
@@ -431,6 +442,7 @@
 	  ;; FIXME FIXME... this is lame.
 	  [(sense ,_ ...)
 	   (values `([,name (local-sense)]) '())]
+
 	  ;; TODO:	   
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,expr]) '())]
@@ -455,7 +467,8 @@
     (lambda (prog)
 ;      (pretty-print prog) (newline)
       (match prog
-        [(,input-language (quote (program (props ,table ...) (lazy-letrec ,binds ,fin))))
+        [(add-places-language (quote (program (props ,table ...) (control-flow ,cfg ...)
+					      (lazy-letrec ,binds ,fin))))
 	 ;; This is essentially a global constant for the duration of compilation:
 	 (set! proptable table)
 	 	 
@@ -463,7 +476,7 @@
 ;	 (if (memq 'local (assq fin proctable))
 ;	 (let ((temp (filter (lambda (ls) (memq 'final ls)
 	 (let* ([leaves (map car (filter (lambda (ls) (memq 'leaf (cdr ls))) table))]
-		[leaftoks (map (lambda (ign) (unique-name 'leaf-pulsar)) leaves)])
+		[leaftoks (map (lambda (name) (symbol-append 'leaf-pulsar_ name)) leaves)])
 
 	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin))])
 		
@@ -491,7 +504,10 @@
 							      (emit global-tree)
 							      (timed-call 1000 spread-global)]
 					       [global-tree () (relay)]
-					       [spark-world () (call ,(get-membership-name 'world) this)])
+
+					       ;; THIS IS A YUCKY WAY TO DO IT:
+;					       [spark-world () (call ,(get-membership-name 'world) this)]
+					       )
 				       				       
 				       ;; <TODO> It's the LEAVES that need priming:
 				       ,(if (assq entry constbinds)
