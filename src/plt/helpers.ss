@@ -60,7 +60,7 @@
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
 ;               insert-between iota disp)
-   (all-from (lib "rutils_generic.ss") )
+;   (all-from (lib "rutils_generic.ss") )
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
    )

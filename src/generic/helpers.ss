@@ -1198,3 +1198,20 @@
 	    cycles)))))
 
 
+
+(define display-constrained
+  (lambda args
+    (for-each 
+     (lambda (arg)
+       (if (string? arg)
+	   (display arg)
+	   (let ([arg (car arg)]
+		 [bound (cadr arg)]
+		 [port (open-output-string)])
+	     (pretty-print arg port)
+	     (let ((str (get-output-string port)))
+	       (if (> (string-length str) bound)
+		   (begin (display (substring str 0 (max 0 (- bound 3))))
+			  (display "..."))
+		   (display str))))))	       
+	      args)))

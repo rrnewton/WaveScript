@@ -6,17 +6,17 @@
 ;; It should be loaded inside a module that only exports:
 ;;   (provide simulator-nought-language)
 
+;; DEPENDS: This file requires that the slib 'tsort module be loaded
+;; providing the topological-sort function.
+
 
 (define this-unit-description 
   "simplest simulator for nodal language")
 
-;; This requires slib.
-(slib:require 'tsort)
-
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 
 (define-structure (node id pos))
-(define-structure (sim-object node incoming neighbor-objs))
+(define-structure (simobject node incoming))
 
 (define world-xbound 60)
 (define world-ybound 60)
@@ -25,7 +25,7 @@
 
 (define (random-node) 
   (make-node 
-   (random (expt 2 32))
+   (random 100);(expt 2 32))
    (list (random world-xbound)
 	 (random world-ybound))
    ))
@@ -34,6 +34,8 @@
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
 	
+;;========================================
+;; After the start of the program this doesn't change:
 (define graph 
   (let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
     ;; Connect the graph:
@@ -45,6 +47,11 @@
 				    seed)))
 	       seed))
     seed))
+;; Nor does this:
+(define object-graph (graph-map (lambda (nd) (make-simobject nd '())) graph))
+(define all-objs (map car object-graph))
+;;========================================
+
 
 ;(list-get-radom 
 
@@ -71,7 +78,11 @@
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
 (define (process-statement stmt)
-  stmt  
+  (match stmt
+	 [(call ,opera ...) (error 'process-statement "call not supported from SOC")] ;opera]
+	 [(emit ,opera ...) 
+	  `(emit (quote ,(car opera)) ,@(cdr opera))]
+	 [,else stmt])
   )
 
 (define (process-binds binds expr)
@@ -79,7 +90,7 @@
 		       (cons (car bind)
 			     (free-vars (cadr bind))))
 		     binds)]
-	 [flat (reverse (tsort graph eq?))]
+	 [flat (reverse (topological-sort graph eq?))]
 	 [binds (map (lambda (sym) (assq sym binds))
 		     flat)])
     (if (cyclic? graph)
@@ -87,7 +98,6 @@
     `(let* ,binds ,expr)))
 
 (define (process-tokbinds tbinds expr)
-  (disp "tbinds" tbinds)
   (let ([binds (map
 		(lambda (tbind)
 		  (match tbind 
@@ -97,21 +107,109 @@
 	[handler `(lambda (msg args)
 		    (case msg
 		      ,(map (lambda (tok)
-			      (disp "  GOT TOK" tok)
 			      `[(,tok) (apply ,tok args)])
 			    (map car tbinds))))])
   `(letrec (,@binds [handler ,handler]) ,expr)))
 
 
+(define-syntax remove-last!
+  (syntax-rules ()
+    [(_ id)
+     (cond 
+      [(null? id) (error 'remove-last "can't remove last from null")]
+      [(null? (cdr id)) (set! id '())]
+      [else
+       (let loop ([prior id]
+		  [next (cdr id)])
+	 (if (null? (cdr next))
+	     (set-cdr! prior '())
+	     (loop next (cdr next))))])]))
+
 (define (compile-simulate-nought prog)
   (match prog
-	 [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
-		   (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...)))
-	  `(,(process-binds socbinds
-			    `(begin ,@(map process-statement socstmts)))
-	    ,(process-binds nodebinds 
-			    (process-tokbinds nodetoks
-					      `(tempexpr))))]))
+    [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
+	      (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...) ,starttok))
+     (let ()
+
+       (define generic-defs
+	 '([neighbors (lambda (obj)
+			(let ((entry (assq obj graph)))
+			  (if (null? entry)
+			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
+				     obj graph)
+			      (cdr entry))))]
+	   [send (lambda (data ob)
+		   (set-simobject-incoming!
+		    (cons data (simobject-incoming ob))))]
+	   [emit (lambda (t . m)
+		   (let ((msg (if (null? m) '() (car m))))
+		     (map (lambda (nd) (send (list t m) nd))
+			  (neighbors this))))]
+	   [flood (lambda (t . m)
+		    (let ((msg (if (null? m) '() (car m))))
+		      (map (lambda (nd) (send (list t msg) nd))
+			   all-nodes)))]))
+
+       (define socprog
+	 `(lambda (this graph all-nodes)
+	    (printf "CALLING SocProg: ~s~n" this)
+	    (letrec ,generic-defs
+	      ,(process-binds socbinds
+			      `(begin ,@(map process-statement socstmts))))))
+       
+       (define nodeprog
+	 `(lambda (this graph all-nodes)	    
+	    (printf "CALLING Nodeprog: ~s~n" this)
+	    (letrec ,generic-defs	      
+	      ,(process-binds 
+		nodebinds 
+		(process-tokbinds 
+		 nodetoks
+		 `(begin 
+		    (,starttok)
+		    (let loop ([incoming (simobj-incoming this)])
+		      (if (null? incoming)
+			  ;; No good way to wait or stop the engine execution?
+			  (loop (node-incoming this))
+			  
+			  ;; This might introduce message loss (because of no
+			  ;; semaphores) but I don't care:					
+			  (let ((msg (last incoming)))
+			    (remove-last! incoming)
+			    (handler (car msg) (cadr msg))))))	
+		 )))))
+
+       (disp "Socprog")
+       (pretty-print socprog)       
+
+       (let ([socfun (eval socprog)]
+	     [nodefun (eval nodeprog)])	 
+       (vector (make-engine 
+		(lambda () (socfun (car all-objs) 
+				   object-graph all-objs)))
+	       (map (lambda (nd) 
+		      (make-engine
+		       (lambda () (nodefun nd 
+					   object-graph all-objs))))
+		    all-objs))
+       
+       ))]))
+
+(define (run-simulation engines)
+  (let ([soceng (vector-ref engines 0)]
+	[nodeengs (vector-ref engines 1)])
+    (let loop ([engs (list soceng)]
+					;(cons soceng nodeengs)]
+	       [acc '()])
+      (if (null? engs)
+	  (loop (reverse acc) '())
+	  ((car engs) 100
+	   (lambda (remaining ret) 
+	     (error 'run-simulation "engine shouldn't return"))
+	   (lambda (nexteng)
+	     (loop (cdr engs) (cons nexteng acc)))))
+      )))
+
 
 (define (simulator-nought-language expr)
   (void))
@@ -122,24 +220,6 @@
   `(
     [ (free-vars '(cons (quote 30) x)) '(x) ]
     ))
-
-
-(define display-constrained
-  (lambda args
-    (for-each 
-     (lambda (arg)
-       (if (string? arg)
-	   (display arg)
-	   (let ([arg (car arg)]
-		 [bound (cadr arg)]
-		 [port (open-output-string)])
-	     (pretty-print arg port)
-	     (let ((str (get-output-string port)))
-	       (if (> (string-length str) bound)
-		   (begin (display (substring str 0 (max 0 (- bound 3))))
-			  (display "..."))
-		   (display str))))))	       
-	      args)))
 
 (define test-this
   (let ((these-tests these-tests))
@@ -188,21 +268,23 @@
 
 (define p
   '(program
-     (socpgm (bindings) (call result_2))
-     (nodepgm
+    (socpgm (bindings) (emit result_2))
+    (nodepgm
 ;       result_2
        (bindings (tmp_4 (cons '40 '())) (tmp_1 (cons '30 tmp_4)))
        (tokens
-         ((f_token_tmp_3 () (flood token_6))
-          (token_6
+	[f_token_tmp_3 () (flood token_6)]
+	[token_6
             ()
             (if (< (locdiff (loc) tmp_1) 10.0)
-                (elect-leader m_token_tmp_3)))
-          (m_token_tmp_3 () (call f_token_result_2))
-          (f_token_result_2 () (emit m_token_result_2))
-          (m_token_result_2
+                (elect-leader m_token_tmp_3))]
+	[m_token_tmp_3 () (call f_token_result_2)]
+	[f_token_result_2 () (emit m_token_result_2)]
+	[m_token_result_2
             ()
-            (if (< (dist f_token_result_2) '50) (relay))))))))
+            (if (< (dist f_token_result_2) '50) (relay))])
+       f_token_tmp_3
+       )))
 
 (define csn  compile-simulate-nought)
 

@@ -34,6 +34,7 @@
 (include "generic/tests.ss")
 
 (load "depends/slib/chez.init")
+(require 'tsort) ;; for the simulator: 
 ;(include "generic/simulator_nought.ss")
 
 (game-eval (lambda args 'unspecified))
