@@ -50,7 +50,7 @@
 ;;;                | (return <Token> <Simple>)
 ;;;                | <Macro> 
 ;;;  <Macro> ::= (flood <Token>)
-;;;            | (leader <Token>)
+;;;            | (leader <Token> <Token>)
 ;;;  <Simple> ::= (quote <Lit>) | <Var>
 
 ;;;  <Token> ::= <Symbol> | ...???
@@ -60,7 +60,9 @@
 
 
 
-
+;; This is messy, but we use local state to accumulate
+(define dist-names '())
+(define local-names '())
 
     (define (simple? x) 
       (match x
@@ -231,12 +233,12 @@
 		   (cons `[,name ,formalexp (lazy-letrec ,constbinds (call ,entry))]
 			 tokenbinds))]	
 
-          [(,prim ,rand* ...) (guard (distributed-primitive? prim))
-	   (values '() (explode-primitive name prim rand*)]
-
 	  ;; TODO:
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,expr]) '())]
+
+          [(,prim ,rand* ...) (guard (distributed-primitive? prim))
+	   (values '() (explode-primitive name prim rand*))]
 	  
           [,unmatched
             (error 'deglobalize "invalid expression: ~s"
