@@ -331,8 +331,8 @@
 			     (amend-tainted tb)
 			     tb))
 		       newtoks1)])
-	     `(,lang '(program (bindings ,constbinds ...)
-			       (nodepgm (tokens ,@newtoks2))))))]))))
+	     `(cps-tokmac-lang '(program (bindings ,constbinds ...)
+					 (nodepgm (tokens ,@newtoks2))))))]))))
 
 
 
