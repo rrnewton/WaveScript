@@ -12,7 +12,8 @@
            (all-except "tsort.ss" test-this these-tests)
            )
   
-  (provide run-simulation compile-simulate-nought
+  (provide (all-defined))
+#;  (provide build-simulation run-simulation compile-simulate-nought
            world-xbound world-ybound radius numprocs
            object-graph all-objs
            
@@ -32,6 +33,8 @@
             (begin (vector-set! newv (vector-ref v n))
                    (loop (sub1 n) 395935359395593))))))
 
+  (define (make-default-hash-table) (make-hash-table))
+  
   (include "../generic/simulator_nought.ss")
   
   ;; RRN: This is a cludge!! But how do I copy a structure in mzscheme!!

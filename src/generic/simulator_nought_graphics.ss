@@ -3,6 +3,8 @@
 ;; This depends on simulator_nought.ss and runs a similar simulation
 ;; but with a graphical interface.
 
+;; DEPENDS ON INCLUDE SYNTAX
+
 (define this-unit-description 
   "\"simulator_nought_graphics.ss\"a: simple simulator with graphics.")
 
@@ -71,89 +73,27 @@
       (if (null? timeout)
 	  (run-flat-threads (cons soceng nodeengs))
 	  (run-flat-threads (cons soceng nodeengs) (car timeout)))
-
-      'Grahpical_Simulation_Done
+;      'Grahpical_Simulation_Done
       )))
 
 (define gsim graphical-simulation)
-
-
-;;===============================================================================
-
-;; This simplest of programs just lights up all the nodes.
-;; Really this only makes sense on the graphical simulator.
-;; See simulator_nought_graphics.
-(define example-nodal-prog1
-  '(program
-    (socpgm (bindings) 
-	    (emit tok1))
-    (nodepgm
-;       result_2
-       (bindings)
-       (tokens
-	[tok1 () (flood tok2)]
-	[tok2 () (light-up 255 0 100)])
-       () ;; seed tokens
-       )))
-
-;; This program floods the network with a token, then elects a leader
-;; near a point, finally creating a gradient from there.
-;;
-(define example-nodal-prog99
-  '(program
-    (socpgm (bindings) (emit result_2))
-    (nodepgm
-;       result_2
-       (bindings (tmp_4 (cons '40 '())) (tmp_1 (cons '30 tmp_4)))
-       (tokens
-	[f_token_tmp_3 () (flood token_6)]
-	[token_6
-            ()
-            (if (< (locdiff (loc) tmp_1) 10.0)
-                (elect-leader m_token_tmp_3))]
-	[m_token_tmp_3 () (call f_token_result_2)]
-	[f_token_result_2 () (emit m_token_result_2)]
-	[m_token_result_2
-            ()
-            (if (< (dist f_token_result_2) '50) (relay))])
-       f_token_tmp_3
-       )))
-
 
 ;;===============================================================================
 
 ;; UNIT TESTS:
 
+(printf "trying to load examples!!!! : ~s~n" (cd))
+(flush-output-port)
+;(include "simulator_nought.examples.ss")
+(load "simulator_nought.examples.ss")
+
 (define these-tests
   `( 
-
-    [ "First test display by bringing it up and then closing it down." 
-      (begin (init-graphics) (thread-sleep 300) (close-graphics))
-      unspecified ]
     
-    ;; Here I repeat some of the tests from the non-graphical simulator:
-    [ "Now we start just with a trivial SOC program"
-      (begin 
-	(init-graphics)
-	(graphical-simulation (vector (lambda () 3) '()))
-	(thread-sleep 300)
-	(close-graphics))
-      unspecified]
-
-    [ "Now we throw in a couple trivial nodeprograms" 
-      (begin 
-	(init-graphics)
-	(let ((res 
-	       (graphical-simulation (vector (lambda () 3)
-					     (list (lambda () 4)
-						   (lambda () 5)))
-				     10)))
-	  (thread-sleep 300)
-	  (close-graphics) 
-	  res))
-      Grahpical_Simulation_Done ]
-
-
+    [ "First test display by bringing it up and then closing it down." 
+      (begin (init-graphics) (sleep-me 0.3) (close-graphics))
+      unspecified ]
+          
     [ "Now we test color changing"
       (begin 
 	(init-graphics)	
@@ -167,10 +107,11 @@
 				      all-objs))
 			  '())	  
 		  1.0)))
-	  (thread-sleep 700)
+	  (sleep-me 0.7)
 	  (close-graphics)
 	  res))
-    Grahpical_Simulation_Done ]
+      All_Threads_Returned]
+;    Grahpical_Simulation_Done ]
 
     [ "Color changing from nodepgm instead of soc."
       (begin 
@@ -185,73 +126,48 @@
 				   all-objs))
 		       ))
 	 1.0)
-	(thread-sleep 700)
+	(sleep-me 0.7)
 	(close-graphics))
       unspecified ]
 
-
-;; Move to generic file...
-#;    [ "Run the translator on a spreading lights program..."
-      (compile-simulate-nought ',example-nodal-prog1)
-      ,(lambda (x)
-	 (procedure? (vector-ref x 0))
-	 (andmap procedure? (vector-ref x 1)))]
-    
-    
-    [ "Then use the translator on a trivial program and put it through the Sim."    
-      (begin (init-graphics)
-	     (graphical-simulation 
-	      (compile-simulate-nought 
-	       '(program
-		 (socpgm (bindings) )
-		 (nodepgm (bindings) (tokens) ())))
-	      0.5)
-	     (close-graphics))
-      unspecified]
-    
-    
-    [ "Then simulate the spreading lights program..."
+  [ "Flood lights program..."
       (begin 
 	(init-graphics)
 	(graphical-simulation
-	 (compile-simulate-nought ',example-nodal-prog1)
-	 1.0)
-	(thread-sleep 300)
+	 (build-simulation (compile-simulate-nought ',example-nodal-prog1)))
+	(sleep-me 1.0)
 	(close-graphics))
-      unspecified ]
+      unspecified]
+      
+  ;; This really should be graphical only.
+  [ "Spread lights gradually..."
+    (build-simulation (compile-simulate-nought ',example-nodal-prog2))
+    ,(lambda (x)
+       (procedure? (vector-ref x 0))
+       (andmap procedure? (vector-ref x 1)))]
+
+;    ,@(include "simulator_nought.tests")    
+  ))
 
 
-#;    [ "Next we run a program through the translator"
-      (begin 
-	(init-graphics)
-	(let ((res 
-	       (graphical-simulation 
-		(vector (lambda () 
-			  (for-each (lambda (ob) 
-				      (set-fill-color! 
-				       (simobject-gobj ob)
-				       (make <rgb> 0 255 0)))
-				    all-objs))
-			'())	  
-		1.0)))
-	  (thread-sleep 700)
-	  (close-graphics)
-	  res))
-      Grahpical_Simulation_Done ]
+(define (wrap-def-simulate test)
+  `(begin (define (simulate . args)
+	    (init-graphics)
+	    (let ((res (apply graphical-simulation args)))
+	      (sleep-me 0.3)
+	      (close-graphics)
+	      res))
+	  ,test))
 
-    
-   
-
-    ))
-
-(define test-this (default-unit-tester this-unit-description these-tests))
-
-(define testsim test-this)
-(define testssim these-tests)
+(define test-this (default-unit-tester 
+		    this-unit-description 
+		    these-tests
+		    tester-eq?
+		    wrap-def-simulate))
 
 
-
-
+(define testgsim test-this)
+(define testsgsim these-tests)
 
 ;;===============================================================================
 ;; JUNK 
@@ -301,5 +217,6 @@
 (dsis g
       (begin (init-graphics)
 	     (graphical-simulation
-	      (csn example-nodal-prog1)
+	      (build-simulation 
+	       (csn example-nodal-prog1))
 	      5.0)))

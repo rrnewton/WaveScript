@@ -126,3 +126,7 @@ clean:
 #.scm.o:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
 
+count: wordcount
+linecount: wordcount
+wordcount:
+	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests

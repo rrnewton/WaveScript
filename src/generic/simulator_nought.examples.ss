@@ -1,0 +1,76 @@
+
+(define example-nodal-prog0
+  '(program
+    (socpgm  (bindings) (emit tok1))
+    (nodepgm (bindings) (tokens) ())))
+
+;; This simplest of programs just lights up all the nodes.
+;; Really this only makes sense on the graphical simulator.
+;; See simulator_nought_graphics.
+(define example-nodal-prog1
+  '(program
+    (socpgm (bindings) 
+	    (emit tok1))
+    (nodepgm
+;       result_2
+       (bindings)
+       (tokens
+	[tok1 () (flood tok2)]
+	[tok2 () (light-up 0 255 0)])
+       () ;; seed tokens
+       )))
+;; [2004.06.03] TODO BUG.  Sometimes it doesn't flood the whole
+;; network and only a few turn green!
+
+
+;; This is slightly more complex and actually propogates the light
+;; messages through the network via relays.
+(define example-nodal-prog2
+  '(program
+    (socpgm (bindings) 
+	    (emit tok1))
+    (nodepgm
+;       result_2
+       (bindings)
+       (tokens
+	[tok1 () (call tok2) (relay)]
+	[tok2 () (light-up 0 255 0)])
+       () ;; seed tokens
+       )))
+
+;; This program floods the network with a token, then elects a leader
+;; near a point, finally creating a gradient from there.
+;;
+(define example-nodal-prog99
+  '(program
+    (socpgm (bindings) (emit result_2))
+    (nodepgm
+;       result_2
+       (bindings (tmp_4 (cons '40 '())) (tmp_1 (cons '30 tmp_4)))
+       (tokens
+	[f_token_tmp_3 () (flood token_6)]
+	[token_6
+            ()
+            (if (< (locdiff (loc) tmp_1) 10.0)
+                (elect-leader m_token_tmp_3))]
+	[m_token_tmp_3 () (call f_token_result_2)]
+	[f_token_result_2 () (emit m_token_result_2)]
+	[m_token_result_2
+            ()
+            (if (< (dist f_token_result_2) '50) (relay))])
+       f_token_tmp_3
+       )))
+
+
+;; List with Socprog and Nodeprog
+(define example-nodal-output0
+  '((lambda (this object-graph all-objs)
+      (let ()
+	(define token-cache (make-default-hash-table))
+	(define neighbors unspecified)
+	(define sendmsg unspecified)
+	(define emit unspecified)
+	(define flood unspecified)
+	(let* () (begin (emit 'tok1) 'soc_finished))))
+    unspecified))
+

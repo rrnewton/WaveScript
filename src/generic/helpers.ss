@@ -174,11 +174,15 @@
 ;; little tester code across every file 
 ;; 
 ;; [2004.05.24] Replacing the default tester with a better one.
+;; [2004.06.03] Adding optional preprocessor function
 (define default-unit-tester
-  (lambda (message these-tests . eq-fun)
-    (let ((teq? (if (null? eq-fun)
-		    tester-equal?
-		    (eq-deep (car eq-fun)))))
+  (lambda (message these-tests . args)
+    (let ((teq? (if (null? args) tester-equal?
+		    (eq-deep (car args))))
+	  (preprocessor 
+	   (if (> (length args) 1)
+	       (cadr args)
+	       (lambda (x) x))))
     (lambda args 
     (call/cc
      (lambda (return)
@@ -209,8 +213,9 @@
 	       (if (procedure? intended)
 		   (printf "Satisfy oracle? ~s: " intended)
 		   (display-constrained `(,intended 20) ": "))
-
-	       (let ((result (eval expr)))
+	       
+	       (flush-output-port)
+	       (let ((result (eval (preprocessor expr))))
 	       
 ;	       (newline)
 	       (if (or (and (procedure? intended) ;; This means its an oracle
