@@ -69,7 +69,7 @@
     add-places
 ;    add-routing
     analyze-places
-;    deglobalize
+    deglobalize
     
 ;    cleanup-token-machine
 ;    haskellize-tokmac 

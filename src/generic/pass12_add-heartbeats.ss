@@ -70,7 +70,7 @@
 		     (let loop ([node (assq ret binds)])
 		       (if (not node)
 			   (error 'add-heartbeats:derive-freqtable 
-				  "could not find binding for \'~s in ~s" ret binds)
+				  "could not find binding for '~s in ~s" ret binds)
 		       (let ([deps (get-deps (cadr node))])
 			 (cons (assq (car node) freq-table)
 			       (map 

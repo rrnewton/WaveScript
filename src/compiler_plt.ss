@@ -29,11 +29,10 @@
          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
          (all-except "plt/pass12_add-heartbeats.ss" )
-;         (all-except "plt/pass13_add-control-flow.ss")
-;         (all-except "plt/pass14_add-places.ss" these-tests test-this)
-;         (all-except "plt/pass15_add-control-flow.ss" these-tests test-this)
-;         (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
-;         (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
+         (all-except "plt/pass13_add-control-flow.ss")
+         (all-except "plt/pass14_add-places.ss" these-tests test-this)
+         (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
+         (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
          
 ;         (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
@@ -164,3 +163,5 @@
 ;(init-graphics);
 ;(cleanse-world)
 ;(graphical-repl)
+
+'(lambda (x) (rmap sense x))
