@@ -155,6 +155,7 @@
 	    (equal? intended results)))))))  
 
 (define test07 test-this)
+(define tests07 these-tests)
 
 ;==============================================================================
 
