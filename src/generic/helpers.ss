@@ -1213,5 +1213,8 @@
 	       (if (> (string-length str) bound)
 		   (begin (display (substring str 0 (max 0 (- bound 3))))
 			  (display "..."))
-		   (display str))))))	       
+		   ;; Gotta cut off the newline.
+		   (display (substring str 0 (- (string-length str) 1))))))))
 	      args)))
+
+
