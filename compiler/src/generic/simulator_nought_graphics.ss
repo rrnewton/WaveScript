@@ -1,14 +1,16 @@
 ;; [2004.05.25]
 
 ;; This depends on simulator_nought.ss and runs a similar simulation
-;; but with a graphical interface.
+;; but with a graphical interface.  This file might also depend on all
+;; the resources that simulator_nought.ss depends on.
 
-;; DEPENDS ON INCLUDE SYNTAX
+;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
+;; so that it may draw the simulation upon the screen.
 
 (define this-unit-description 
-  "\"simulator_nought_graphics.ss\"a: simple simulator with graphics.")
+  "simulator_nought_graphics.ss: simple simulator with graphics.")
 
-;;========================================
+;;============================================================
 
 (define (unfold-list lst)
   (let loop ((lst lst))
@@ -171,9 +173,10 @@
 	    1.7))
     unspecified]
   
-;    ,@(include "simulator_nought.tests")
+    ,@(include "simulator_nought.tests")
   ))
 
+;example-nodal-prog4
 
 (define (wrap-def-simulate test)
   `(begin (define (simulate . args)
@@ -184,11 +187,23 @@
 	      res))
 	  ,test))
 
-(define test-this (default-unit-tester 
-		    this-unit-description 
-		    these-tests
-		    tester-eq?
-		    wrap-def-simulate))
+;; This makes sure the world is initialized before doing unit tests:
+(define test-this
+  (let ((tester (default-unit-tester 
+		  this-unit-description 
+		  (map (lambda (test)
+			 (match test
+			   [(,prog ,res) `((begin (cleanse-world) ,prog) ,res)]
+			   [(,name ,prog ,res) 
+			    `(name (begin (cleanse-world) ,prog) ,res)]))
+			 these-tests)
+		  tester-eq?
+		  wrap-def-simulate)))
+    (lambda args
+      ;; First init world
+      (init-world)
+      ;; Then bring in tests:
+      (apply tester args))))
 
 (define testgsim test-this)
 (define testsgsim these-tests)

@@ -131,7 +131,7 @@
       [(chezscheme)
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 
-	     (printf "~n SWL DETECTED TESTING GRAPHICAL MODULES:~n")
+	     (printf "~n SWL DETECTED.  TESTING GRAPHICAL MODULES:~n")
 	     (load "chez/swl_flat_threads.ss")
 	     (let () #;(import flat_threads) (test-it) (newline))
 
