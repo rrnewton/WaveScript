@@ -113,7 +113,7 @@
             (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
 
 
-    (define not-available (gensym "NotAvailable"))
+    (define not-available (unique-name "NotAvailable"))
 
     ;; This does a walk down the program and, instead of doing beta
     ;; reductions, it converts direct apps to let's and then inlines
@@ -246,7 +246,12 @@
 						      world
 						      (rfilter f (loop (- n '1)))))])
 				   (loop '5))))))
-     unspecified]
+     ;unspecified]
+     (foo '(program
+	    (letrec ([f (lambda (x) '#t)])
+	      (rfilter
+	       f
+	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))))]
 
     ))
 

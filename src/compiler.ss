@@ -237,6 +237,10 @@
 ;; ----------------------------------------
 ;; Here I'll give some examples of how to run the system.  
 ;; This is for me -- because I forget how to invoke things over time.
+;; (Though the unit tests give me something...)
+
+;; simulator_nought.examples.ss -- has some example token machines.
+
 
 
 ;(define (t1) (init-world) (run-simulation        sim 2.0))
@@ -281,6 +285,7 @@
 ;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
   '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
 
+;; Runs a token machine simulation.
 (define (run-token-machine x)
   (run-simulation (build-simulation x) 2.0))
 

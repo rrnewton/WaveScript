@@ -34,7 +34,37 @@
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
 ;;   Function, Number, Integer, Float, Bool, Object  List
 
+;;  ----------------------------------------
 
+(define test-programs 
+  '( 3
+
+     (letrec ((a (anchor-at 30 40)))
+       (letrec ((r (circle 50 a))
+		(f (lambda (tot next)
+		     (cons (+ (car tot) (sense next))
+			   (+ (car (cdr tot)) 1))))
+		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+	 (smap g (rfold f '(0 0) r))))
+
+     (letrec ((r (circle-at 50 30 40))
+	      (f (lambda (tot next)
+		   (cons (+ (car tot) (sense next))
+			 (+ (cdr tot) 1))))
+	      (g (lambda (tot) (/ (car tot) (cdr tot)))))
+       (letrec ((avg (smap g (rfold f (cons 0 0) r))))
+	 (until (when-any (lambda (x) (> x 15.3)) avg)
+		R
+		(circle-at 100 '(0 0)))))
+     ))
+
+;; This is modified below with a set!
+(define these-tests
+  (map
+   (lambda (prog)
+     `[(verify-regiment '(some-lang '(program ,prog)))
+       (some-lang '(program ,prog))])
+   test-programs))
 
 (define verify-regiment
   (let ()
@@ -99,6 +129,8 @@
 			 "unmatched expr: ~s" other)]
       ))
 
+
+    ;; This returns nothing, throws error if it hits a problem.
     (define type-check
       (lambda (env type-env)
 	(lambda (expr expected-type)
@@ -235,37 +267,10 @@
 	))))
 
 ;==============================================================================
-
-
-(define test-programs 
-  '( 3
-
-     (letrec ((a (anchor '(30 40))))
-       (letrec ((r (circle 50 a))
-	     (f (lambda (tot next)
-		  (cons (+ (car tot) (sense next))
-			(+ (cdr tot) 1))))
-	     (g (lambda (tot) (/ (car tot) (cdr tot)))))
-	 (smap g (rfold f (cons 0 0) r))))
-
-     (letrec ((r (circle-at 50 '(30 40)))
-	      (f (lambda (tot next)
-		   (cons (+ (car tot) (sense next))
-			 (+ (cdr tot) 1))))
-	      (g (lambda (tot) (/ (car tot) (cdr tot)))))
-       (letrec ((avg (smap g (rfold f (cons 0 0) r))))
-	 (until (when-any (lambda (x) (> x 15.3)) avg)
-		R
-		(circle-at 100 '(0 0)))))
-     ))
-
-(define these-tests
-  (map
-   (lambda (prog)
-     `[(verify-regiment '(some-lang '(program ,prog)))
-       (some-lang '(program ,prog))])
-   test-programs))
      
+
+;; these-tests defined up above and set within a scope such that it
+;; has access to internal functions.
 
 (define test-this (default-unit-tester 
 		    "Pass00: Pass to verify initial regiment language."

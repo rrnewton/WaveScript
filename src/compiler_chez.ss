@@ -5,6 +5,8 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
+;(case-sensitive #t)
+
 (define random #%random)
 
 ;; TEMP

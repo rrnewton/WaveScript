@@ -2,6 +2,8 @@
 
 ;; This outputs a token machine in Haskell concrete syntax.
 
+;; Needs some unit tests though...
+
 ;; Uses the pretty-printer.
 ;; Requires case-sensitivity.
 
