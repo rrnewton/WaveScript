@@ -126,32 +126,67 @@ unique_name counter root =
     do count <- readSTRef counter
        return (root ++ "_" ++ show count)
 
- 
-expand_flood tenv lenv expr = runST (loop expr)
-    where     
-    loop expr = 
-      do new_tokhands <- newSTRef []       
+-- Returns: a new replacement expression and a list of new token-handlers.
+expand_flood :: [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
+expand_flood tenv lenv expr = 
+    runST 
+     (do new_tokhands <- newSTRef []       
 	 name_counter <- newSTRef 0       
 	 init_name_counter name_counter 
            (map (\ (Token s) -> s) tenv ++
 	    map (\ (Id s) -> s) lenv)
 	 let newname = unique_name name_counter
-	 case expr of
-           (Econst c) -> return expr
-	   (Evar id)  -> return expr
+	 let loop lenv expr = case expr of
 
 	   -- For now can only flood tokens with no args!
-           (Eflood tok ) -> 
-	       do tokhands <- readSTRef new_tokhands
-		  name <- newname "spine"
---		  let name = "FOOB"
-		  writeSTRef new_tokhands
-				 (( name, (), 
+               (Eflood tok ) -> 
+		   do tokhands <- readSTRef new_tokhands
+		      name <- newname "spine"
+		      writeSTRef new_tokhands
+				 (( Token name, [], 
 				    Eseq (Erelay Nothing)
 				    (Ecall Nothing tok [])) 
 				  : tokhands)
-		  return (Eemit Nothing (Token name) [])
-	   (Eelectleader tok) -> return expr
+		      return (Eemit Nothing (Token name) [])
+	       (Eelectleader tok) -> return expr
+
+               (Econst c) -> return expr
+	       (Evar id)  -> return expr
+
+--	       (Elambda ids e) -> Elambda ids (pe tenv (ids++lenv) e)
+	       (Elet binds e)  -> 
+		   do let lhss = map fst binds
+		      rhss <- mapM (loop lenv) (map snd binds)
+		      bod <- loop (lhss ++ lenv) e
+		      return (Elet (zip lhss rhss) bod)
+
+	       (Eseq e1 e2) -> do e1 <- loop lenv e1
+				  e2 <- loop lenv e2
+				  return (Eseq e1 e2)
+{-	       (Eif a b c) -> Eif (loopsame a) (loop b) (loop c)
+
+
+--       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
+
+               (Eprimapp prim args) -> Eprimapp prim (map loop args)
+	       (Esense) -> Esense
+
+               -- Special forms:
+	       (Esocreturn e) -> Esocreturn $ loop e
+	       (Esocfinished) -> Esocfinished
+	       (Ereturn val to via seed aggr) ->
+		   Ereturn (loop val) to via (loop seed) aggr
+
+               (Erelay mbtok) -> Erelay mbtok
+	       (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
+	       (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
+	       (Eactivate tok args)    -> Eactivate    tok (map loop args)
+-}
+	 newexpr <- loop expr
+	 newtoks <- readSTRef new_tokhands
+	 return (newexpr,newtoks)
+     )
+		    
 
 {-       (Elambda ids e) -> return $ Elambda ids (pe tenv (ids++lenv) e)
        (Elet binds e)  -> 
