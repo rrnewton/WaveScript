@@ -146,10 +146,10 @@
 		     (apply append (map cadr intermediate))))]
           [,unmatched
 	   (error 'lift-letrec "invalid expression: ~s"
-		  unmatched)])))
-   
+		  unmatched)])))  
     
     ;===========================================================================
+    ;; LetrecExpr -> LetrecExpr
     (define process-letrec
       (lambda (letrec-exp)
         (match letrec-exp

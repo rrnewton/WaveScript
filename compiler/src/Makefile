@@ -20,7 +20,8 @@ PLT_SRC = helpers demo_display \
           pass05_lift-letrec               \
           pass06_lift-letrec-body          \
           pass07_remove-complex-opera      \
-          pass08_verify-core               
+          pass08_verify-core               \
+          pass10_deglobalize
 #          pass09_separate-graph.ss
 #          language-mechanism lang00  \
 

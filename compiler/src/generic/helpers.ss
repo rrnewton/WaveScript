@@ -11,6 +11,8 @@
 	 < > <= >= = eq? equal?
 	 null? pair? number?
 	 not
+
+	 locdiff
 	 ))
 
 '(define regiment-distributed-primitives 
@@ -34,6 +36,9 @@
 ;;   Number Pair Port String Symbol Vector Void
 
 
+;; Then some types that are used only in the local language are:
+;;   Token NodeID
+
 (define regiment-basic-primitives 
   '(
   
@@ -45,6 +50,8 @@
     (- (Number Number) Number) 
     (* (Number Number) Number) 
     (/ (Number Number) Number) 
+
+    (locdiff (Location Location) Float)
 
     (not (Bool) Bool)
 
@@ -64,7 +71,12 @@
 
     ))
 
-
+(define local-node-primitives 
+  '(
+    (my-id () NodeID)
+    (dist (Token) Integer)
+    ))
+  
 (define regiment-distributed-primitives 
   '(
     (rmap           (Function Region) Region)
@@ -115,6 +127,12 @@
 (define (regiment-primitive? x) 
   (if (assq x regiment-primitives) #t #f))
 
+(define (basic-primitive? x) 
+  (if (assq x regiment-basic-primitives) #t #f))
+(define (distributed-primitive? x) 
+  (if (assq x regiment-distributed-primitives) #t #f))
+
+
 (define (lenient-eq? o1 o2)
   (or (eq? o1 o2)
       (eq? o1 'unspecified)
@@ -134,7 +152,7 @@
 	  (andmap loop (vector->list o1) (vector->list o2))]
 	 [else #f])))))
 
-(define tester-eq (eq-deep lenient-eq?))
+(define tester-eq? (eq-deep lenient-eq?))
   
 
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
@@ -157,7 +175,7 @@
 		  (write intended) (newline) (newline)
 		  (newline) (display "Here are actual results:") (newline)
 		  (write results) (newline) (newline)))
-	    (andmap tester-eq intended results)
+	    (andmap tester-eq? intended results)
 	    )))))
 			
 
