@@ -81,3 +81,15 @@
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "generic/repl.ss")
 
+(define (testem)
+  (parameterize ((tracer #t))
+    (test-one
+     '(letrec ((a (anchor-at '(30 40)))
+               (r (circle-at 50 a))
+               (f (lambda (tot next)
+                    (cons (+ (car tot) (sense next))
+                          (+ (cdr tot) 1))))
+               (g (lambda (tot) (/ (car tot) (cdr tot))))
+               (avg (smap g (rfold f (cons 0 0) r))))
+        avg))))
+

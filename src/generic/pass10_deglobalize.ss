@@ -120,6 +120,14 @@
 		 [,memb () (if (< (dist ,form) ,rad) (relay))]
 		 )
 	       )]
+
+#;	    [(circle-at)
+	     (let ([rad (cadr args)]
+		   [loc (car args)])
+	       `(
+		 [,form () (emit ,memb)]
+		 [,memb () (if (< (dist ,form) ,rad) (relay))]
+		 ))]	   
 		 
 	    [(union)
 	     `([,form () (begin
@@ -132,7 +140,7 @@
     ;	       [,memb ... Don't know what yet... that depends on varrefs ]
 	       )]
 
-	    [else '()])))
+	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))
 
 
     ;; LetrecExpr -> (Entry, Cbinds, TokenBinds)
@@ -173,7 +181,7 @@
       [(anchor-at)
        `([,tokname ()
 	  ;; At each formation click, we output this node.
-	  (soc-return '(ANCH this))])]
+	  (soc-return (list 'ANCH this))])]
       [(circle-at)     
        `([,tokname 
 	  ()
