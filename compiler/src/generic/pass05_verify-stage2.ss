@@ -1,3 +1,5 @@
+;; TODO: Haven't finished this yet... 
+
 ;;; Pass 00: verify-regiment
 
 ;;; This pass verifies that the input is in the regiment lanuguage.
@@ -36,7 +38,7 @@
 
 
 
-(define verify-regiment
+(define verify-stage2
   (let ()
     
     ;; Infers cheap and dirty types for some expressions, returns #f otherwise.
@@ -231,25 +233,7 @@
 
 
 (define test-programs 
-  '( 3
-
-     (letrec ((a (anchor '(30 40))))
-       (letrec ((r (circle 50 a))
-	     (f (lambda (tot next)
-		  (cons (+ (car tot) (sense next))
-			(+ (cdr tot) 1))))
-	     (g (lambda (tot) (/ (car tot) (cdr tot)))))
-	 (smap g (rfold f (cons 0 0) r))))
-
-     (letrec ((r (circle-at 50 '(30 40)))
-	      (f (lambda (tot next)
-		   (cons (+ (car tot) (sense next))
-			 (+ (cdr tot) 1))))
-	      (g (lambda (tot) (/ (car tot) (cdr tot)))))
-       (letrec ((avg (smap g (rfold f (cons 0 0) r))))
-	 (until (when-any (lambda (x) (> x 15.3)) avg)
-		R
-		(circle-at 100 '(0 0)))))
+  '( 
      ))
 
 (define these-tests
@@ -261,7 +245,7 @@
      
 
 (define test-this (default-unit-tester 
-		    "Pass00: Pass to verify initial regiment language."
+		    "Pass05: Verify valid stage2 program (unfinished)"
 		    these-tests))
 
 #;(define test-this
