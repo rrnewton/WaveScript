@@ -148,12 +148,14 @@
 
 (define test-this
   (default-unit-tester 
-    "Pass01: Pass to rename vars."
+    "Pass to rename variabless."
     these-tests))
   
 
 (define test01 test-this)
 (define tests01 these-tests)
+(define test-rename-vars test-this)
+(define tests-rename-vars these-tests)
 
 ;==============================================================================
 

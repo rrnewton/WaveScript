@@ -116,32 +116,69 @@
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
 ;; runs all the unit tests.
+;; [2005.02.26] Changing it so that it assumes the files under test
+;; are already loaded, and just calls their unit testers by name.
+
 (define (test-units . args)
   (printf "~n;; Performing all unit tests:~n")    
   ;; Pass flags ('quiet 'verbose) onward to the unit tester:
-  (let ([test-it (lambda () (apply test-this (filter symbol? args)))]
+  (let ([test-it (case-lambda
+		  [() (apply test-this (filter symbol? args)) (newline)]
+		  [(tester) (apply tester (filter symbol? args)) (newline)])]
 	[loudload (lambda (s) (printf "~n;; Loading ~a for unit testing... ~n" s) 
 			      (load s))])
     (case current_interpreter
       [(chezscheme)
 
-       (loudload "compiler.ss") (test-it) (newline)
-;       (loudload "generic/analysis.ss") (test-it) (newline)
-       (loudload "generic/pass00_verify-regiment.ss") (test-it) (newline)
-       (loudload "generic/pass02_rename-vars.ss") (test-it) (newline)
-       (loudload "generic/pass04_static-elaborate.ss") (test-it) (newline)
-       (loudload "generic/pass05_verify-stage2.ss") (test-it) (newline)
-       (loudload "generic/pass09_remove-complex-opera.ss") (test-it) (newline)
-       ;  (load "pass01_rename-var.ss") (test-it) (newline)
-       (loudload "generic/pass10_verify-core.ss") (test-it) (newline)
-       (loudload "generic/pass11_classify-names.ss") (test-it) (newline)
-       (loudload "generic/pass15_analyze-places.ss") (test-it) (newline)
-       (loudload "generic/pass16_deglobalize.ss") (test-it) (newline)
-       (loudload "generic/pass17_cleanup-token-machine.ss") (test-it) (newline)
-;       (loudload "generic/pass18_cps-tokmac.ss") (test-it) (newline)
-       (loudload "generic/pass19_haskellize-tokmac.ss") (test-it) (newline)
+       (test-it compilertest)
+       (test-it test-verify-regiment)
+	;; Missing eta prims!
+       (test-it test-rename-vars)
+        ;; Missing remove unquoted constant
+       (test-it test-static-elaborate)
+        ;; Missing reduce primitives.
+        ;; Missing remove complex constant
+;       (test-it test-verify-stage2)  ;; Empty presently!
+        ;; Missing uncover free.
+        ;; Missing lift-letrec
+        ;; Missing lift-letrec-body
+       (test-it test-remove-complex-opera)
+       (test-it test-verify-core)
+       (test-it test-classify-names)
+        ;; Missing add heartbeats
+        ;; Missing add control flow
+        ;; Missing add places
+        ;; Missing 
+       (test-it test-analyze-places)
+        ;; Missing add routing
+       (test-it test-deglobalize)
+       (test-it test-cleanup-token-machine)
 
-       (loudload "chez/simulator_nought.ss") (test-it) (newline)       
+       (test-it test-desugar-gradients)
+
+       (test-it test-cps-tokmac)
+        ;; Missing verify token machine
+       (test-it test-haskellize-tokmac)
+
+
+;       (loudload "compiler.ss") (test-it) (newline)
+;;;       (loudload "generic/analysis.ss") (test-it) (newline)
+;       (loudload "generic/pass00_verify-regiment.ss") (test-it) (newline)
+;       (loudload "generic/pass02_rename-vars.ss") (test-it) (newline)
+;       (loudload "generic/pass04_static-elaborate.ss") (test-it) (newline)
+;       (loudload "generic/pass05_verify-stage2.ss") (test-it) (newline)
+;       (loudload "generic/pass09_remove-complex-opera.ss") (test-it) (newline)
+       ;  (load "pass01_rename-var.ss") (test-it) (newline)
+ ;      (loudload "generic/pass10_verify-core.ss") (test-it) (newline)
+;       (loudload "generic/pass11_classify-names.ss") (test-it) (newline)
+ ;      (loudload "generic/pass15_analyze-places.ss") (test-it) (newline)
+  ;     (loudload "generic/pass16_deglobalize.ss") (test-it) (newline)
+  ;     (loudload "generic/pass17_cleanup-token-machine.ss") (test-it) (newline)
+;       (loudload "generic/pass18_cps-tokmac.ss") (test-it) (newline)
+;       (loudload "generic/pass19_haskellize-tokmac.ss") (test-it) (newline)
+
+       (loudload "chez/simulator_nought.ss") (test-it) (newline)
+
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 
 	     (printf "~n SWL DETECTED.  TESTING GRAPHICAL MODULES:~n")

@@ -315,5 +315,7 @@
 		    "Classify-names: to annotate simple variable properties"
 		    these-tests))
 
-(define test11 test-this)
-(define tests11 these-tests)
+(define test13 test-this)
+(define tests13 these-tests)
+(define test-classify-names test-this)
+(define tests-classify-names these-tests)

@@ -364,9 +364,11 @@
 
 
 (define test-this (default-unit-tester
-		    "Pass 17 cleanup-token-machine: regularize token machine"
+		    "Pass cleanup-token-machine: regularize token machine"
 		    these-tests))
 
 
-(define test17 test-this)
-(define tests17 these-tests)
+(define test21 test-this)
+(define tests21 these-tests)
+(define test-cleanup-token-machine test-this)
+(define tests-cleanup-token-machine these-tests)

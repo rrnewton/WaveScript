@@ -46,7 +46,7 @@
     ; ?? 
     ; inline??
     ; cps-tokmac
-    haskellize-tokmac 
+;    haskellize-tokmac 
     ))
 
 ;;======================================================================

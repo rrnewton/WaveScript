@@ -1,4 +1,4 @@
-(module pass16_deglobalize mzscheme
+(module pass20_deglobalize mzscheme
 
   (require (lib "include.ss"))
   (require "constants.ss")
@@ -7,11 +7,11 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass16_deglobalize.ss"))
+  (include (build-path ".." "generic" "pass20_deglobalize.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)
   (provide (all-defined))
   )
 
-;(require pass16_deglobalize)
+;(require pass20_deglobalize)

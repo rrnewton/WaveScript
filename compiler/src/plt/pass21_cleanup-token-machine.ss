@@ -1,4 +1,4 @@
-(module pass17_cleanup-token-machine mzscheme
+(module pass21_cleanup-token-machine mzscheme
 
   (require (lib "include.ss"))
   (require "constants.ss")
@@ -7,7 +7,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass17_cleanup-token-machine.ss"))
+  (include (build-path ".." "generic" "pass21_cleanup-token-machine.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

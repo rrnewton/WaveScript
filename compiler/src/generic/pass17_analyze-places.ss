@@ -129,5 +129,7 @@
 		    "Analyze-places: to infer place relationships"
 		    these-tests))
 
-(define test15 test-this)
-(define tests15 these-tests)
+(define test17 test-this)
+(define tests17 these-tests)
+(define test-analyze-places test-this)
+(define tests-analyze-places these-tests)

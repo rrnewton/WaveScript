@@ -159,9 +159,11 @@
 
 
 (define test-this (default-unit-tester
-		    "Pass 18d cps-tokmac: use CPS on blocking calls."
+		    "Pass cps-tokmac: use CPS on blocking calls."
 		    these-tests))
 
 
-(define test18d test-this)
-(define tests18d these-tests)
+(define test27 test-this)
+(define tests27 these-tests)
+(define test-cps-tokmac test-this)
+(define tests-cps-tokmac these-tests)

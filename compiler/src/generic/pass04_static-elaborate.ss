@@ -262,3 +262,5 @@
 
 (define test04 test-this)
 (define tests04 these-tests)
+(define test-static-elaborate test-this)
+(define tests-static-elaborate these-tests)

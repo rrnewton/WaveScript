@@ -224,8 +224,10 @@
 
 ;(define testhaskellize test-this)
 ;(define testshaskellize these-tests)
-(define test19 test-this)
-(define tests19 these-tests)
+(define test30 test-this)
+(define tests30 these-tests)
+(define test-haskellize-tokmac test-this)
+(define tests-haskellize-tokmac these-tests)
 
 
 
