@@ -85,74 +85,72 @@
 	    "bad expression: ~s" otherwise)]))
 
 
-(define process-expr 
-  (lambda (env )
-    (lambda (expr)
-      (match expr
-	[(quote ,const)                    (values () `(quote ,const))]
-	[,num (guard (number? num))        (values () num)]
-	[(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
-	[(tok ,t ,[e])                     (values () `(tok ,t ,e))]
-	[,var (guard (symbol? var))        (values () var)]
-	[(begin ,[st xs] ...)                 
-	 (values (apply append st) `(begin ,xs ...))]
-	[(if ,[test] ,[conseq] ,[altern])  
-	 (values (append test conseq altern) 
-		 `(if ,test ,conseq ,altern))]
-	[(let ([,lhs ,[rst rhs]]) ,body)
-	 (mvlet ([(bst newbod) ((process-expr (cons lhs env) ) body)])
+(define (process-expr env expr)
+  
+  (match expr
+    [(quote ,const)                    (values () `(quote ,const))]
+    [,num (guard (number? num))        (values () num)]
+    [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
+    [(tok ,t ,[e])                     (values () `(tok ,t ,e))]
+    [,var (guard (symbol? var))        (values () var)]
+    [(begin ,[st xs] ...)                 
+     (values (apply append st) (make-begin xs))]
+    [(if ,[test] ,[conseq] ,[altern])
+     (values (append test conseq altern) 
+             `(if ,test ,conseq ,altern))]
+    [(let ([,lhs ,[rst rhs]]) ,body)
+     (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
 	    (values (append bst rst)
 		    `(let ([,lhs ,rhs]) ,newbod)))]
-	[(,call-style ,[st* args*] ...)
-	 (guard (memq call-style '(call timed_call)))
-	 (values (apply append st*)
-		 `(,call-style ,args* ...))]
 
-	;; The semantics of let-stored are that the first time the
-	;; expression is executed (and only the first), the RHS is
-	;; evaluated and stored.
-	[(let-stored ([,lhs ,[rst rhs]]) ,body)
-         (let ([newvar (unique-name 'stored-liftoption)])
-           (mvlet ([(bst newbod) ((process-expr (cons lhs env)) body)])         
-                  (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
-                          `(let ([lhs (void)])
-                             (if ____
-                               (set! lhs ,rhs))
-                           ,((process-expr (cons lhs env)) body))]
-	
-	[(leds ,what ,which) (values () `(leds ,what ,which))]
-	[(,prim ,[rst* rands] ...)
-	 (guard (or (token-machine-primitive? prim)
-		    (basic-primitive? prim)))
-	  (values (apply append rst*)
-		  `(,prim ,rands ...))]
-	[(,[rst1 rator] ,[rst* rands] ...)
-	 (warning 'FOOBAR-pass
-		  "arbitrary application of rator: ~s" rator)
-         (values (apply append rst1 rst*)
-                 `(,rator ,rands ...))]
+    [(,call-style ,[st* args*] ...)
+     (guard (memq call-style '(call timed_call)))
+     (values (apply append st*)
+             `(,call-style ,args* ...))]
 
-	[,otherwise
+    ;; The semantics of let-stored are that the first time the
+    ;; expression is executed (and only the first), the RHS is
+    ;; evaluated and stored.
+    [(let-stored (,first ,second ,rest ...) ,body)
+     (process-expr env `(let-stored (,first) (let-stored (,second ,rest ...) ,body)))]
+    [(let-stored ([,lhs ,[rst rhs]]) ,body)
+     (let ([newvar (unique-name 'stored-liftoption)])
+        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
+               (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
+                       (make-begin 
+                        (list `(if (not ,newvar) ;; If first time, initialize
+                                   (begin 
+                                     (set! ,newvar '#t)
+                                     (set! ,lhs ,rhs)))
+                               newbod)))))]
+
+    [(leds ,what ,which) (values () `(leds ,what ,which))]
+    [(,prim ,[rst* rands] ...)
+     (guard (or (token-machine-primitive? prim)
+                (basic-primitive? prim)))
+     (values (apply append rst*)
+             `(,prim ,rands ...))]
+    [(,[rst1 rator] ,[rst* rands] ...)
+     (warning 'FOOBAR-pass
+              "arbitrary application of rator: ~s" rator)
+     (values (apply append rst1 rst*)
+             `(,rator ,rands ...))]
+
+    [,otherwise
 	 (error 'cleanup-token-machine:process-expr 
 		"bad expression: ~s" otherwise)]
-	))))
+	))
+      
 
 (define (process-tokbind tb)
   (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
-    (mvlet ([(newstored newbod) ((process-expr (map car constbinds)) body)])
-       `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
+         (mvlet ([(newstored newbod) (process-expr (map car constbinds) body)])
+                `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
 (lambda (prog)
-  (disp "Desugaring...")
   (match prog
     [(,lang '(program (bindings ,constbinds ...)
 		      (nodepgm (tokens ,[process-tokbind -> toks] ...))))
      `(,lang '(program (bindings ,constbinds ...)
 		       (nodepgm (tokens ,toks ...))))]))
 ))
-     
-
-     
-     
-     
-
