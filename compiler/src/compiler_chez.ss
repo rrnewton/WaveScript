@@ -42,17 +42,16 @@
 (load "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
 
-
-
 ;; Basic parallel computation (engines):
 (if (top-level-bound? 'SWL-ACTIVE)
     (load "chez/swl_flat_threads.ss")
     (load "chez/flat_threads.ss"))
 
-;(import flat_threads)
+(import flat_threads)
 
 ;; Basic simulator for the nodal language:
-(include"generic/simulator_nought.ss")
+;(include "chez/simulator_nought.ss")
+(load "chez/simulator_nought.ss")
 
 ;; If we're in SWL then load the graphics portion:
 (if (top-level-bound? 'SWL-ACTIVE)
@@ -60,7 +59,7 @@
       (load "chez/basic_graphics.ss")
       (load "chez/graphics_stub.ss")
       (load "chez/demo_display.ss")
-      (load "generic/simulator_nought_graphics.ss")))
+      (load "chez/simulator_nought_graphics.ss")))
 
 ; (include "chez/graphics_stub.ss")
 ;(include "generic/demo_display.ss")
@@ -73,4 +72,5 @@
     (begin
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
-      (load "generic/simulator_nought_graphics.ss")))
+      (load "chez/simulator_nought_graphics.ss")
+      ))

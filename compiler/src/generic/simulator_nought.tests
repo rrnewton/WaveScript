@@ -3,67 +3,75 @@
 ;; These are generic tests which work for both simulator_nought and
 ;; simulator_nought_graphics an for both Chez and PLT.
 
+`(
+  
+  ;; COMPILE:
+  [ "Run the translator on an empty program."
+    (compile-simulate-nought
+     '(program
+       (socpgm (bindings) )
+       (nodepgm (bindings) (tokens) () )))
+    (unspecified unspecified)]
+  
+  [ "Run the translator on trivial program."
+    (compile-simulate-nought ',example-nodal-prog0)
+    ,example-nodal-output0 ]
+  
+  ;; BUILD
+  [ "Build simulation for flooding lights program..."
+    (build-simulation (compile-simulate-nought ',example-nodal-prog1))
+    ,(lambda (x)
+       (procedure? (vector-ref x 0))
+       (andmap procedure? (vector-ref x 1)))]
+  
+  ;; SIMULATE
+  [ "Simulate with a trivial SOC program"
+    (simulate (vector (lambda () 3) '()))
+    All_Threads_Returned ]
 
-
-    [ "Run the translator on a spreading lights program..."
-      (compile-simulate-nought ',example-nodal-prog1)
-      ,(lambda (x)
-	 (procedure? (vector-ref x 0))
-	 (andmap procedure? (vector-ref x 1)))]
-
-
-    [ "First just with a trivial SOC program"
-      (simulate (vector (lambda () 3) '()))
-      All_Threads_Returned ]
-
-    [ "Now we throw in a just one trivial nodeprogram" 
-      (run-simulation (vector (lambda () 3)
-			      (list (lambda () 4))
-			2))
-      All_Threads_Returned ]
-
-    [ "Now a couple trivial nodeprograms" 
-      (run-simulation (vector (lambda () 3)
-			      (list (lambda () 4)
-				    (lambda () 5)))
-			2)
-      All_Threads_Returned ]
-
-    [ "Just repeat that last one with an open-output-string" 
-      (let ((s (open-output-string)))
-	(run-simulation (vector (lambda () 3)
-				(list (lambda () 4)
-				      (lambda () 5)))
-			2))
-      All_Threads_Returned ]
-    
-    [ "Run two threads each with a display" 
-      (let ((s (open-output-string)))
-	(parameterize ([current-output-port s])
-		      (run-simulation (vector (lambda () (display 3))
-					      (list (lambda () (display 4))))
-				      10)
+  [ "Now we throw in a just one trivial nodeprogram" 
+    (simulate (vector (lambda () 3)
+		      (list (lambda () 4))
+		      2))
+    All_Threads_Returned ]
+  
+  [ "Now a couple trivial nodeprograms" 
+    (simulate (vector (lambda () 3)
+		      (list (lambda () 4)
+			    (lambda () 5)))
+	      2)
+    All_Threads_Returned ]
+  
+  [ "Just repeat that last one with an open-output-string" 
+    (let ((s (open-output-string)))
+      (simulate (vector (lambda () 3)
+			(list (lambda () 4)
+			      (lambda () 5)))
+		2))
+    All_Threads_Returned ]
+  
+  
+  [ "Run two threads each with a display" 
+    (let ((s (open-output-string)))
+      (parameterize ([current-output-port s])
+		      (simulate (vector (lambda () (display 3))
+					(list (lambda () (display 4))))
+				10)
 		      (get-output-string s)))
-      ;; Oracle to tell if the answers good:
-      ,(lambda (res) (member res (list "34" "43"))) ]
+    ;; Oracle to tell if the answers good:
+    ,(lambda (res) (member res (list "34" "43"))) ]
 
-;9 : this bombs right now
-
-    [ "Run the translator."
+  
+  [ "Now compile, build, AND simulate..."
+    (simulate
+     (build-simulation
       (compile-simulate-nought
        '(program
 	 (socpgm (bindings) );(emit tok1))
-	 (nodepgm (bindings) (tokens) () )))
-       10)
-      unspecified ]
+	 (nodepgm (bindings) (tokens) () ))))
+     0.3)
+    Threads_Timed_Out ]
 
-   [ "Now run the translator AND simulate it..."
-      (run-simulation
-       (compile-simulate-nought
-	'(program
-	  (socpgm (bindings) );(emit tok1))
-	  (nodepgm (bindings) (tokens) () )))
-       10)
-      unspecified ]
+  )
 
 

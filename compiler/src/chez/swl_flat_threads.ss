@@ -38,7 +38,7 @@
 ;		   (disp "timer starting")(flush-output-port)
 		   (thread-sleep (inexact->exact (round timeout)))
 ;a		   (disp "timer went off")(flush-output-port)
-		   (thread-send-msg channel 'Timed_Out))		      
+		   (thread-send-msg channel 'Threads_Timed_Out))		      
 		 flat-threads-granularity)
 		#f)])
       
@@ -52,10 +52,10 @@
 		   'All_Threads_Returned)
 	    (case (thread-receive-msg channel)
 	      [(Thread_Done) (loop (sub1 counter))]
-	      [(Timed_Out)
+	      [(Threads_Timed_Out)
 	       ;; Some might be already dead and this might error:
 	       (for-each thread-kill thread-ids)
-	       'Timed_Out]))))))
+	       'Threads_Timed_Out]))))))
 	
 ;;======================================================================
 

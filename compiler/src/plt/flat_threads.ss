@@ -45,7 +45,7 @@
                 [(Timed_Out)
                  ;; Some might be already dead and this might error:
                  (for-each kill-thread threads)
-                 'Timed_Out]))))))
+                 'Threads_Timed_Out]))))))
   
   
   '(define (run-flat-threads thnks . timeout)

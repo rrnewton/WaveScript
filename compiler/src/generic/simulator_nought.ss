@@ -6,6 +6,9 @@
 ;; It should be loaded inside a module that only exports:
 ;;   (provide simulator-nought-language)
 
+;; NOTE: Unlike some of the files in the chez/ directory, this expects
+;; to be loaded from its own parent directory.
+
 ;;============================================================
 ;; DEPENDS: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
@@ -31,8 +34,8 @@
 ;; These are the virtual coordinate bounds of the world.
 (define world-xbound 60)
 (define world-ybound 60)
-(define radius 30) ;; And the comm radius.
-(define numprocs 10) ;; And the total # processors.
+(define radius 10) ;; And the comm radius.
+(define numprocs 50) ;; And the total # processors.
 
 ;;========================================
 ;; Positions are just 2-element lists.
@@ -47,9 +50,6 @@
    (list (random world-xbound)
 	 (random world-ybound))
    ))
-
-;(define hashtab-get (hash-inquirer eq?))
-;(define hashtab-set! (hash-associator eq?))
 
 (define (dist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
@@ -193,7 +193,8 @@
        [generic-defs
 
 	 '(
-	   [define token-cache (make-hash-table 50)]
+	   [define token-cache (make-default-hash-table)]
+	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
 	   [define neighbors (lambda (obj)
 ;			(disp 'neighbors obj)
 			(let ((entry (assq obj object-graph)))
@@ -201,7 +202,10 @@
 			  (if (null? entry)
 			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
 				     obj object-graph)
-			      (cdr entry))))]
+			      (begin 
+				(if (memq obj (cdr entry))
+				    (error 'neighbors "we're in our own neighbors list"))
+				(cdr entry)))))]
 	   [define sendmsg (lambda (data ob)
 		   (disp 'sendmsg data (node-id (simobject-node ob)))
 		   (set-simobject-incoming! ob
@@ -229,8 +233,8 @@
 				      'soc_finished))))]
 
        [nodeprog
-	`(lambda (this object-graph all-objs)
-	    (printf "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f))
+	`(lambda (this object-graph all-objs)	   
+;	    (printf (format "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f)))
 	    (let () ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
@@ -262,21 +266,24 @@
        (set! sp socprog)
        (set! np nodeprog)
 ;       (for-each eval generic-defs)
-
-
-       (let ([socfun (eval socprog)]
-	     [nodefun (eval nodeprog)])
-       (vector ;(make-engine 
-		(lambda () (socfun (car all-objs)
-				   object-graph all-objs))
-	       (map (lambda (nd) 
-		      ;(make-engine
-		       (lambda () 
-;			 (disp "run node engine for node" nd)
-			 (nodefun nd object-graph all-objs)))
-		    all-objs))
        
-       ))]))
+       (list socprog nodeprog))]))
+
+;; Makes thunks for the simulation:
+;; Returns a vector with the socthunk and a list of nodethunks.
+(define (build-simulation progs)
+  (let ([socprog (car progs)]
+	[nodeprog (cadr progs)])
+    (let ([socfun (eval socprog)]
+	  [nodefun (eval nodeprog)])
+      (vector 
+       (lambda () (socfun (car all-objs)
+			  object-graph all-objs))
+       (map (lambda (nd) 
+	      (lambda () 
+		(nodefun nd object-graph all-objs)))
+	    all-objs))      
+      )))
 
 ;; This is the "language definition" which will use the compiler and
 ;; simulator to evaluate the expression.  It'll be hard to write test
@@ -312,10 +319,8 @@
 
 ;;===============================================================================
 
-(define example-nodal-prog0
-  '(program
-    (socpgm  (bindings) (emit tok1))
-    (nodepgm (bindings) (tokens) ())))
+;; Include some example programs used by the tests.
+(include "simulator_nought.examples.ss")
 
 (define these-tests
   `(
@@ -334,53 +339,19 @@
                     (simobject-gobj y))
 	       (not (eq? x y))))) #t]
 
+    ;; Generic tests for both this and the graphical sim:
+    ,@(include "simulator_nought.tests")
+
+#|
+
 ;4
-    [ "First just with a trivial SOC program"
-      (run-simulation (vector (lambda () 3) '()))
-      All_Threads_Returned ]
+
 
 ;5
-    [ "Now we throw in a just one trivial nodeprogram" 
-      (run-simulation (vector (lambda () 3)
-			      (list (lambda () 4))
-			2))
-      All_Threads_Returned ]
-
-    [ "Now a couple trivial nodeprograms" 
-      (run-simulation (vector (lambda () 3)
-			      (list (lambda () 4)
-				    (lambda () 5)))
-			2)
-      All_Threads_Returned ]
 
 ;6
-    [ "Just repeat that last one with an open-output-string" 
-      (let ((s (open-output-string)))
-	(run-simulation (vector (lambda () 3)
-				(list (lambda () 4)
-				      (lambda () 5)))
-			2))
-      All_Threads_Returned ]
-    
 
-    [ "Run two threads each with a display" 
-      (let ((s (open-output-string)))
-	(parameterize ([current-output-port s])
-		      (run-simulation (vector (lambda () (display 3))
-					      (list (lambda () (display 4))))
-				      10)
-		      (get-output-string s)))
-      ;; Oracle to tell if the answers good:
-      ,(lambda (res) (member res (list "34" "43"))) ]
 
-    [ "Now actually run the translator ..."
-      (run-simulation
-       (compile-simulate-nought
-	'(program
-	  (socpgm (bindings) );(emit tok1))
-	  (nodepgm (bindings) (tokens) () )))
-       10)
-      unspecified ]
 
 
 #;    [ (let ((s (open-output-string)))
@@ -394,11 +365,19 @@
 	   
 	Simulation_Done]
 
+|#
 
     ))
 
+(define (wrap-def-simulate test)
+  `(begin (define simulate run-simulation) ,test))
+
 ;; Use the default unit tester from helpers.ss:
-(define test-this (default-unit-tester this-unit-description these-tests))
+(define test-this (default-unit-tester 
+		    this-unit-description 
+		    these-tests
+		    tester-eq?
+		    wrap-def-simulate))
 
 (define testsim test-this)
 (define testssim these-tests)
