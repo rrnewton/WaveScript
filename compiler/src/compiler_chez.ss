@@ -151,6 +151,8 @@
 ;(import simulator_alpha)
 
 (include "generic/alpha_lib.ss")
+(include "generic/alpha_lib_scheduler.ss")
+(include "generic/alpha_lib_scheduler_simple.ss")
 
 #!eof
 
