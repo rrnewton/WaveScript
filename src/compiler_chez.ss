@@ -53,11 +53,14 @@
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
 ;; Load this before the simulator.
-(when (top-level-bound? 'SWL-ACTIVE)
+(if (top-level-bound? 'SWL-ACTIVE)
+    (begin
       (load "chez/basic_graphics.ss")
       (load "chez/graphics_stub.ss")
       (eval '(import basic_graphics))
       (eval '(import graphics_stub)))
+    (eval '(begin (define draw-mark (lambda args (void)))
+		  (define rgb (lambda args (void))))))
 
 ;; Basic simulator for the nodal language:
 ;(include "chez/simulator_nought.ss")

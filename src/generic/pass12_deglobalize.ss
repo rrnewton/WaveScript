@@ -274,7 +274,8 @@
 
       [(circle circle-at)     
        `([,tokname 
-	  ()
+	  ; FIXME FIXME FIXME: This matches by coincidence only with the other names..
+	  (v)
 	  ;; At each formation click, we output this circle: 
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
@@ -375,7 +376,9 @@
 				     ,(if (assq entry constbinds)
 					  ;; Socpgm bindings are null for now:
 					  `(socpgm (bindings ) (soc-return ,entry) (soc-finished))
-					  `(socpgm (bindings ) (call ,entry)))
+;					  `(socpgm (bindings ) (call ,entry))
+					  `(socpgm (bindings ) (void))
+					  )
 			      (nodepgm (tokens ,@tokenbinds)
 				       				       
 				       ;; <TODO> It's the LEAVES that need priming:
@@ -383,7 +386,9 @@
 					    `(startup )
 					    ;; How did this make sense:
 					;`(startup ,entry)
-					    `(startup )
+					    (let ([leaves (map car 
+							       (filter (lambda (ls) (memq 'leaf ls)) table))])
+					      `(startup ,@(map get-formation-name leaves)))
 					    )
 				       ))))
 	 ]))))

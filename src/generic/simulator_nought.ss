@@ -1012,8 +1012,6 @@
   (define-top-level-value 'soc-finished ;'unbound-right-now-soc-finish)
     (lambda () (set-top-level-value! 'stop-nodes #t)))
 
-  (disp "DYNAMIC DEFS IN PLACE")
-  
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the given function,
   ;; this gives us back new thunks:
