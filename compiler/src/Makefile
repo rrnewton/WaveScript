@@ -5,7 +5,8 @@
 MZC = mzc
 MZSCHEME = mzscheme
 MRED = mred
-CHEZ = chez
+#CHEZ = chez
+CHEZ = petite
 SWL = swl
 DEST = a.out
 
@@ -37,7 +38,12 @@ SRC		= $(SCM_SRC)
 #*---------------------------------------------------------------------*/
 #*    the goals.                                                       */
 #*---------------------------------------------------------------------*/
-$(DEST): $(SCM_SRC) # $(SCM_OBJ)
+
+petite: $(SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
+	$(CHEZ) $(CHEZ_MAIN_FILE)
+
+
+$(DEST): $(SCM_SRC) $(PLT_SRC) # $(SCM_OBJ)
 	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
 
 
@@ -49,7 +55,6 @@ mred:
 
 swl:
 	$(SWL) $(CHEZ_MAIN_FILE)
-
 
 
 #$(DEST): $(OBJ) 
