@@ -60,3 +60,4 @@ main = do return ();
 
 data Point = Pt {pointx, pointy :: Float}
   deriving (Eq, Show, Read)
+
