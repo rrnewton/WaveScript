@@ -1,4 +1,7 @@
 
+(module critical_section mzscheme
+  (provide critical-section)
+
 (define *global-semaphore* (make-semaphore 1))
 
 (define-syntax critical-section
@@ -8,7 +11,6 @@
             (let ((result (begin expr ...)))
               (semaphore-post *global-semaphore*)
               result))]))
-
 
 (define (test)
   (thread (lambda ()
@@ -26,3 +28,4 @@
                           (display "b")
                           (display "B"))
                          (loop (+ 1 i))))))))
+)

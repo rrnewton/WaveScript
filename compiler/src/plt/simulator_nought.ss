@@ -1,6 +1,7 @@
 
 (module simulator_nought mzscheme
   (require "iu-match.ss"
+           "critical_section.ss"
            (lib "include.ss")
 	   (lib "pretty.ss")          
            ;; NO SLIB:

@@ -122,14 +122,15 @@
 
    set? set-equal? list->set set-cons union intersection difference
    list-head list-remove-first list-remove-last! list-remove-after filter list-index snoc rac rdc last
-   list-find-position
+   list-find-position list-remove-before
    randomize-list  insert-between iota disp pp crit-printf
    graph-map graph-get-connected cyclic?  
    deep-assq deep-member? deep-all-matches deep-filter
    list-get-random unfold-list
    partition partition-equal
    myequal?
-   stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
+   stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+   counter-stream random-stream stream-append
    display-constrained
    symbol-append 
 
