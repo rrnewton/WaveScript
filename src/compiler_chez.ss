@@ -32,7 +32,7 @@
 (include "generic/tests_noclosure.ss")
 (include "generic/tests.ss")
 
-(load "depends/slib/chez.init")
+(load "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
 ;; Basic parallel computation (engines):
 (include "chez/flat_threads.ss")
