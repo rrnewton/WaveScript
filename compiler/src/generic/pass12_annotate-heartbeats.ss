@@ -28,7 +28,7 @@
 
     (define (simple? expr)
       (match expr
-	     [,var (guard (symbol? var)) #t]
+	     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
 	     [(quote ,const) (guard (constant? const)) #t]
 	     [,else #f]))
 
@@ -60,11 +60,7 @@
 		    [dependency-tree
 		     ;; NOTE FIXME TODO: WONT HANDLE CIRCULAR DEPENDENCIES!!
 		     (let loop ([node (assq ret binds)])
-		       (let ([deps (filter 
-				    (lambda (rand) 
-				      (and (symbol? rand)
-					   (assq rand binds)))
-				    (cdr node))])
+		       (let ([deps (get-deps node)])
 			 (cons (assq (car node) freq-table)
 			       (map 
 				(lambda (s) (loop (assq s binds)))
@@ -148,6 +144,25 @@
 				 binds)])	     
 	     `(lazy-letrec ,newbinds ,fin))])))
 
+
+    (define get-deps
+      (lambda (expr)
+        (match expr
+	  [,var (guard (symbol? exp) (not (regiment-constant? exp))) 
+		exp]
+	  [,simp (guard (simple? simp)) '()]
+          [(lambda ,formalexp ,bod) '()]
+          [(if ,[test] ,[conseq] ,[altern])
+	   (append test conseq altern)]
+	  ;; Don't need to recur on rands:
+          [,prim (guard (regiment-constant? prim)) prim]
+          [(,prim ,[rand*] ...)
+           (guard (regiment-primitive? prim))
+	   rand*]
+          [,unmatched
+	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
+
+
     (define process-expr
       (lambda (expr)
         (match expr
@@ -157,12 +172,13 @@
 	  ;; Don't need to recur on exprs:
           [(if ,test ,conseq ,altern)
 	   `(if ,test ,conseq ,altern)]
+          [,prim (guard (regiment-constant? prim)) prim]
 	  ;; Don't need to recur on rands:
           [(,prim ,rand* ...)
            (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
-	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
+	   (error 'annotate-heartbeat "invalid syntax ~s" unmatched)])))
 
     ;; Body of match case:    
     `(annotate-heartbeats-lang

@@ -61,7 +61,8 @@
       (lambda (expr)
         (match expr
           [(quote ,imm) (values `(quote ,imm) '())]
-          [,var (guard (symbol? var)) (values var (list var))]
+          [,var (guard (symbol? var) (not (regiment-constant? var)))
+		(values var (list var))]
 
 	  [(lambda ,formalexp ,body) 
            (mvlet ([(clause free*) (process-lambdaclause formalexp body)])
@@ -79,6 +80,8 @@
            (values
              `(letrec ([,lhs* ,rhs*] ...) ,body)
              (difference (union (apply union rhs-free*) body-free*) lhs*))]
+
+	  [,prim (guard (regiment-constant? prim)) (values prim '())]
           [(,prim ,[rand* rand-free*] ...)
            (guard (regiment-primitive? prim)) ;; Used to be extended-scheme-primitive?
            (values

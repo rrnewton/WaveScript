@@ -52,7 +52,7 @@
            (guard (not (memq 'quote env)) (constant? const))
 	   #t]
 	 
-          [,var (guard (symbol? var))
+          [,var (guard (symbol? var) (not (regiment-constant? var)))
 		(if (and (not (memq var env))
 			 (not (regiment-constant? var)))
 		    (error 'verify-core (format "unbound variable: ~a~n" var)))
@@ -79,6 +79,11 @@
 ;                  (keyword? keyword))
 ;           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
                     
+	  [,prim (guard (regiment-constant? prim)
+			(not (memq prim env)))
+		 (disp "GOT CONST: " prim)
+	   #t]
+
           [(,prim ,rand* ...)
            (guard ;(>= (snet-optimize-level) 2)
                   (not (memq prim env))

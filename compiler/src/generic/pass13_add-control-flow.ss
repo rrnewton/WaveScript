@@ -14,6 +14,14 @@
     (match expr
 	   [(annotate-heartbeats-lang (quote (program (props ,proptable ...) ,letexpr)))
 
+	    (let ([check-prop 
+		   (lambda (p s)
+		     (let ((entry (assq s proptable)))
+		       (if entry (memq p (cdr entry))
+			   (error 'pass10_deglobalize:check-prop
+				  "This should not happen!  ~nName ~s has no entry in ~s."
+				  s proptable))))])
+
     ;; Returns control flow graph
     (define (process-let expr)
       (match expr
@@ -28,14 +36,19 @@
       (lambda (expr)
         (match expr
           [(quote ,const) '()]
-          [,var (guard (symbol? var)) (list var)]
+          [,var (guard (symbol? var) (not(regiment-constant? var)))
+		(if (check-prop 'local var)
+		    '()
+		    (list var))]
           [(lambda ,formalexp ,expr)
 	   '() ;; CHECK UP ON THIS; MAYBE TAKE FREE-VARS??
 	   ]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
 
           [(if ,[test] ,[conseq] ,[altern])
-	   (append test coseq altern)]
+	   (append test conseq altern)]
+	  
+          [,prim (guard (regiment-constant? prim)) '()]
           [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
 	   (apply append rand*)]
@@ -44,13 +57,12 @@
 
 
     (let ([leaves (map car (filter (lambda (entry) (memq 'leaf entry)) proptable))])
-      (disp "LEAVES" leaves)
       `(add-control-flow-lang (quote (program (props ,proptable ...)
-					      ,(append 
-						(map (lambda (x) `(SOC ,x)) leaves)
-						(process-let letexpr))
+					      (control-flow
+					       ,@(map (lambda (x) `(SOC ,x)) leaves)
+					       ,@(process-let letexpr))
 					      ,letexpr
-					))))]
+					)))))]
 	   )))
 
 
