@@ -17,15 +17,6 @@ implementation
   Main.StdControl -> Comm;
   Main.StdControl -> TimerC;
 
-  //FramerM.ByteControl -> UART;
-  //FramerM.ByteComm -> UART;
-
-  //  TestMachineM.BareSend -> FramerM;
-  TestMachineM.BareSend -> UARTNoCRCPacket.Send;
-
-  TestMachineM.Send_A -> Comm.SendMsg[AM_TOKEN_A];
-  TestMachineM.Send_B -> Comm.SendMsg[AM_TOKEN_B];
-  TestMachineM.Send_89 -> Comm.SendMsg[89];
 
   TestMachineM.GeneralSend -> Comm.SendMsg;
 

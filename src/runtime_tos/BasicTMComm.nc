@@ -2,12 +2,14 @@
 
 configuration BasicTMComm {  
   provides interface TMComm;
+  provides interface ReceiveMsg[uint8_t id];
 } implementation {
   components Main, BasicTMCommM, TimerC, RandomLFSR, GenericComm as Comm;
 
   TMComm = BasicTMCommM.TMComm;
+  ReceiveMsg = Comm.ReceiveMsg;
 
-  //  BasicTMCommM.ReceiveMsg -> Comm.ReceiveMsg; //[uint_t id];
+  //  BasicTMCommM.ReceiveMsg -> ReceiveMsg; //[uint_t id];
 
   Main.StdControl -> BasicTMCommM; 
   Main.StdControl -> TimerC;

@@ -8,28 +8,10 @@ module TestMachineM
   
   provides command int8_t fun();
 
-    //    interface SendMsg as Send_A; 
-    //    interface SendMsg as Send_B; 
-
-    //command int8_t Send_A();
-    //    command result_t send(uint16_t address, uint8_t length, TOS_MsgPtr msg);
-    //    event result_t sendDone(TOS_MsgPtr msg, result_t success);
-
-  //  uses interface SendMsg[AM_TOKEN_A] as Send_A; 
-  //  uses interface SendMsg[AM_TOKEN_B] as Send_B;
-
-  uses interface SendMsg as Send_A; 
-  uses interface SendMsg as Send_B; 
-  uses interface SendMsg as Send_89; 
   uses interface SendMsg as GeneralSend[uint8_t id];
-
-  uses interface Send as PlainSend; 
-  uses interface BareSendMsg as BareSend; 
- //  uses interface FramerM as BareSend; 
 
   uses interface ReceiveMsg as Recv_A;
   uses interface ReceiveMsg as Recv_B; 
-
   uses interface ReceiveMsg as Recv_89; 
   uses interface Timer;
 }
@@ -39,6 +21,12 @@ implementation
   TOS_Msg test_packet;
   TOS_Msg test_packet2;
   TM_Payload test_token;
+
+  TM_Payload incoming_tokens[100];
+
+  task void tokenhandler() {
+    dbg(DBG_USR1, "TestMachine: HANDLER RUNNING.\n");
+  }
 
   event TOS_MsgPtr Recv_A.receive(TOS_MsgPtr msg) {
     dbg(DBG_USR1, "TestMachine: RECEIVED MSG ON CHANNEL A, addr %d, type %d, group %d \n", 
@@ -63,35 +51,8 @@ implementation
     return msg;
   }
 
-  event result_t Send_A.sendDone (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: Done sending msg from A\n");
-    return SUCCESS;
-  }
-
-  event result_t Send_B.sendDone (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: Done sending msg from B\n");
-    return SUCCESS;
-  }
-
   event result_t GeneralSend.sendDone[uint8_t id] (TOS_MsgPtr msg, result_t success) {
     dbg(DBG_USR1, "TestMachine: Done sending msg from GeneralSend\n");
-    return SUCCESS;
-  }
-
-  // WHOA!!! THis fires
-  event result_t Send_89.sendDone (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: Done sending msg on channel 89\n");
-    return SUCCESS;
-  }
-
-  event result_t PlainSend.sendDone (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: DONE PLAIN SEND.\n");
-    return SUCCESS;
-  }
-
-  event result_t BareSend.sendDone (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: DONE BARE SEND. %d %d %d\n",
-	msg->addr, msg->type, msg->group);
     return SUCCESS;
   }
 
@@ -127,6 +88,8 @@ implementation
     //    memcpy(&test_packet, &test_packet2, sizeof(TOS_Msg));
     memcpy(&test_packet2, &test_packet, sizeof(TOS_Msg));
 
+
+    post tokenhandler();
     return SUCCESS;
   }
 
@@ -156,10 +119,6 @@ implementation
     //    call Send_A.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
     call GeneralSend.send[test_packet.type](TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
 
-    return SUCCESS;
-
-    dbg(DBG_USR1, "TestMachineM: Sending B_msg..\n");
-    call Send_B.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);    
     return SUCCESS;
   }
 
