@@ -63,8 +63,8 @@
     ;; And the root name of continuation tokens.
     (define KNAME 'K)
 
-    (define (freevars e)
-	(match expr
+    (define (free-vars e)
+	(match e
 	  [,const (guard (constant? const)) '()]
 	  [(quote ,const) '()]	  
 	  [,var (guard (symbol? var)) (list var)]
@@ -161,7 +161,7 @@
 	  
     ;; Best way to represent a thing with a hole in it is a continuation:
     (define process-expr
-      (lambda (expr tokens this-token)
+      (lambda (expr)
 	;; These simply accumulate.  There is no reason to complicate
 	;; the continuation passing algorithm below by adding extra
 	;; arguments to the continuation.
@@ -232,7 +232,7 @@
 		(set! tainted-toks (cons tok tainted-toks))
 		(set! new-handlers
 		      (cons
-		       `(,k-name id (flag ,@args)
+		       `(,KNAME id (flag ,@args)
 				 (stored ,@fvns)
 					;(map list fvns args))
 					;(make-vector ,(length fvs)))
@@ -255,7 +255,7 @@
 			     ;; Get a fresh subtokname for our continuation:
 			     `(let ([ktok (make-tokname ',KNAME 
 							(ext-ref ',KCOUNTER counter))])
-				(call ,ktok ,INIT ,@fvs)
+				(call ktok ,INIT ,@fvs)
 				(call ,tok ktok ,@ls))))
 		)]
 
@@ -288,8 +288,8 @@
 	
 	;; process-expr returns an expression, tainted-tokens, and new handlers
 	(let ((newexpr (loop expr (lambda (x) x))))
-	  (return newexpr 
-		  tainted-tokens
+	  (values newexpr 
+		  tainted-toks
 		  new-handlers))))
 
     ;; Returns a set of tainted token-names and a list of new tokbinds.
@@ -301,12 +301,13 @@
 		(match (car tbs)
 		    [(,tok ,subid ,args (bindings ,b ...) (stored ,s ...) ,expr)
 		     (mvlet ([(newexpr taints newtokbinds)			     
-			      (process-expr expr (lambda (x) x))])
+                              (process-expr expr)])
 			    (loop (cdr tbs)
 				  (append taints tainted)
 				  (cons 
 				   `(,tok ,subid ,args (bindings ,b ...) (stored ,s ...) ,newexpr)
-				   tbacc)))]
+                                   (append newtokbinds
+                                           tbacc))))]
 		    )))))
 
 (define cps-tokmac
@@ -325,7 +326,7 @@
 			     tb))
 		       newtoks1)])
 	     `(,lang '(program (bindings ,constbinds ...)
-			       (nodepgm (tokens ,nodetoks2))))))]))))
+			       (nodepgm (tokens ,@newtoks2))))))]))))
 
 
 

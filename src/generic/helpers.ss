@@ -251,6 +251,8 @@
      (my-id)
      (loc )
 
+     (printf)
+
      (call (Token . Object) Void)
      (timed_call (Integer Token . Object) Void)
      (subcall (Token . Object) Object)
@@ -1336,9 +1338,8 @@
         (null? x) ;; This means you can type () without a quote.
         (boolean? x)
         (char? x)
-        (string? x)  ;; This is semantically straying;
-        ;;              these ARE not necessarily constant;
-        ;;              they can be modified by string-set!
+        (string? x) 
+
         )))
 
 #;(define constant->type

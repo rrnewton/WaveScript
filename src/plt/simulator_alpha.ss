@@ -1,23 +1,16 @@
 
 (module simulator_alpha mzscheme
-  (require "iu-match.ss"
-           (lib "include.ss")
-	   (lib "pretty.ss")
-           (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
-           ;; NO SLIB:
-;           (lib "load.ss" "slibinit")
-           (all-except (lib "compat.ss") define-structure) ;; gives us define-structure           
-           )
   (require 
    (all-except "constants.ss" test-this these-tests)
-   (all-except "helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "helpers.ss" id flush-output-port test-this these-tests)  
+   "iu-match.ss"           
+   (all-except (lib "compat.ss") define-structure) ;; gives us define-structure           
+   (lib "include.ss")
+   (lib "pretty.ss")
+   (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
-   (all-except "critical_section.ss" test-this these-tests)
-;;           (lib "9.ss" "srfi")
- ;;          "engine.ss"
-   (all-except "flat_threads.ss" test-this these-tests)
    (all-except "tsort.ss" test-this these-tests)
-           )
+   )
 
   ;(require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
   (require "copy-struct.ss")
@@ -76,4 +69,4 @@
         )
   )
 
-;(require simulator_alpha)
+;     (require simulator_alpha)
