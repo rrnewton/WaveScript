@@ -116,9 +116,10 @@ process_stmt indent tokargs e =
 		    Nothing -> "0"
 		    Just a  -> tok_id a
         in
-	[ indent ++ "the_packet.type = "++ tok_id to ++";\n", 
-	  indent ++ "the_packet_args[0] = "++ process_basic e ++";\n",
-          indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
+	[ 
+	 indent ++ "the_packet.type = "++ tok_id to ++";\n", 
+	 indent ++ "the_packet_args[0] = "++ process_basic e ++";\n",
+         indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
 		 tok_id to ++", "++
 	         "sizeof(uint16_t), "++
 	         "&the_packet, "++
@@ -129,8 +130,9 @@ process_stmt indent tokargs e =
     Srelay Nothing -> [indent ++"/* FAILED relay nothing*/\n"]
 
     -- FIXME
-    Scall Nothing time t args -> 
-	[ indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+    Scall dest time t args -> 
+	[ 
+--	  indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
 	  (case time of
 	   Just t -> indent ++"/* Cannot handle timed call right now: */\n"
 	   Nothing -> "") ++
@@ -138,14 +140,21 @@ process_stmt indent tokargs e =
 	  indent ++"/* Should fill in arg data here... */\n",
 	  -- Not going through the FIFO right now...
 	  --indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
-	  indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
-	  indent ++"call token_"++ tokname t ++"(&the_packet);\n"
+
+	  --indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
+	  (case dest of Nothing -> indent; Just (Id s) -> indent ++ s ++ " = ") ++
+--	  "call token_"++ tokname t ++"(&the_packet);\n"
+	  "call token_"++ tokname t ++"(" ++
+			   (concat $ intersperse ", " $ map process_basic args)
+			   ++ ");\n"	 
 	]
 
     Semit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
 
     Semit Nothing t exps -> 
+	-- UNLIKE Sendmsg.send my emit function is going to have a message copying semantics.
+        -- The buffer must get copied somewhere, so it might as well be there.
 	[indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
 	 indent ++"/* Should fill in arg data here... */\n",
 	 indent ++"call TMComm_"++ tokname t ++
@@ -217,7 +226,11 @@ process_handler :: TMS.TokHandler -> ([FunctionCode],StatementCode)
 process_handler (t, args, blk) = 
     let (funs,stmts) = process_block "        " (map (\ (Id x)->x) args) blk 
 	funname = tokname t
-    in (("  command uint16_t token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++ 
+    in (
+	--("  command uint16_t token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++ 
+	   ("  command uint16_t token_"++ tokname t  ++"("++ 
+	    (concat $ intersperse ", " $ map (\ (Id id) -> id) args)
+	    ++") { \n" ++ 
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
 	  args [0..])) ++ 
@@ -228,8 +241,11 @@ process_handler (t, args, blk) =
 	 "  }\n")
 	: funs,
 	"      case "++tok_id t++": \n"++
-	"        call token_"++ funname ++"(msg);\n"++
-	"        break;\n")
+	"        call token_"++ funname ++"("++ 
+	(concat $ intersperse ", " $ 
+	 map (\ n -> "arg["++ show n ++"]") 
+	 [1..length args])
+	 ++");\n        break;\n")
 
 --  "    int i;\n"++
 --  "    uint8_t length = msg->length;\n"++

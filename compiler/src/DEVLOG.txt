@@ -205,8 +205,15 @@ I don't want the memory to be corrupted while something else still
 needs it.  For example what on earth happens if I send a pointer to a
 local variable to SendMsg.send??
 
+[2004.11.05]
 
+Ok, making a relatively big change here.  I've got the tokenhandlers
+just working right off the message (token), figuring that the token is already
+allocated, and they can use that.  This is a bad assumption, because
+sometimes it isn't... and allocating an extra whole TOS_Msg is horrible.
 
+Right now I have really broken buffer management, I need to get some
+locks on things and try to make sense of stuff. 
 
 
 

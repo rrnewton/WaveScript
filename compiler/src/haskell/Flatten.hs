@@ -21,6 +21,10 @@ test = f 4
  
 -----------------------------------------------------------------------------
 
+-- [2004.11.05]
+-- Just changed things so that all calls create a new local variable
+-- to hold their return values.
+
 -----------------------------------------------------------------------------
 
 flatten_tm :: TMPgm -> State Int TMS.Pgm
@@ -130,9 +134,18 @@ pe e = do (b,rv) <- loop e
 
        (Erelay mbtok) -> return (Block [] [Srelay mbtok], Nothing)
 
-       (Ecall mbtime tok args) -> call_helper args (Scall Nothing mbtime tok)
        (Eemit mbtime tok args) -> call_helper args (Semit         mbtime tok)
        (Eactivate    tok args) -> call_helper args (Sactivate            tok)
+       (Ecall mbtime tok args) -> 
+	   do args' <- mapM loop (args::[Expr])
+	      id <- newid "call_"
+	      let rets = map (\ (_, Just r) -> r) args'
+	      return (concat_blocks (Block [id] [Scall (Just id) mbtime tok rets]
+				  : map fst args'),
+		      Just (Bvar id))
+--	   do id <- newid "call_"
+--	      call_helper args (\ args -> [Scall id  mbtime tok args])
+
 
 {-
        (Ecall mbtime tok args) ->
