@@ -17,6 +17,7 @@
 
 (require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)              
+         "plt/pass02_reduce-primitives.ss"
          "plt/pass02_remove-unquoted-constant.ss"         
          "plt/pass03_remove-complex-constant.ss"
          "plt/pass04_uncover-free.ss"

@@ -53,6 +53,7 @@
   '(verify-regiment
     rename-var
     remove-unquoted-constant                        ;;  5
+    reduce-primitives
     remove-complex-constant                         ;;  7
     uncover-free                                    ;; 14
 ;    convert-closure                                 ;; 15
@@ -136,7 +137,7 @@
     ["Verify that the trivial program produces no token bindings"
      (deep-assq 'tokens (run-compiler '3))   (tokens)]
     ))
-      
+
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
 
 (define compilertests these-tests)
@@ -160,7 +161,6 @@
                            (soc-return (list 'anch this))))
        (startup))))
 
-
 ;; These are some temporary diagnostic functions:
 (define (all-incoming)
   (filter (lambda (ls) (not (null? ls)))
@@ -180,10 +180,7 @@
     res))
 
 
-
-
-
-(define sim (build-simulation 
+(define (sim) (build-simulation 
 	     (compile-simulate-nought 
 	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
 
