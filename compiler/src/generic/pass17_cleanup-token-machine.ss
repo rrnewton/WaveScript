@@ -98,7 +98,8 @@
 		    ))))))
 
     (define process-expr 
-      (trace-lambda cleanuptokmac:procexp (env tokens this-token)
+      ;(trace-lambda cleanuptokmac:procexp 
+      (lambda (env tokens this-token)
 	(lambda (stmt)
 	  (define-syntax check-tok
 	    (syntax-rules ()

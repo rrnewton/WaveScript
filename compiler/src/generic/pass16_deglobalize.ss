@@ -337,6 +337,14 @@
     ;	       [,memb ... Don't know what yet... that depends on varrefs ]
 		 ))]
 
+	    [(when-any)
+	     (let* ([rator_tok (car args)]
+		    [region_tok (cadr args)]
+		    [mem_reg (get-membership-name region_tok)])
+	       ;; If we pass, fire that event!
+	       `([,mem_reg (v) (if (call ,rator_tok v)
+				   (call ,memb v))]))]
+
 	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))
 
 
@@ -412,6 +420,11 @@
       [(rmap)
        `([,tokname (v)
 		   (soc-return ,RMAP-NUM)])] ;(list 'RMAP (my-id)))])]
+
+      ;; When the membership token has fired, the event has fired!
+      [(when-any)
+       `([,tokname (v) ;; Event value
+	    (soc-return v)])]
       
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
@@ -467,7 +480,10 @@
 
 	  ;; TODO:	   
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
-	   (values `([,name ,expr]) '())]
+	   (values `([,name ,(case prim
+			       [(nodeid) `(my-id)]
+			       [else expr])])
+		   '())]
 
           [(,prim ,rand* ...) (guard (distributed-primitive? prim))
 	   (mvlet ([(form memb) (token-names name)])

@@ -121,7 +121,7 @@
    ;; Token names:
    token? new-token-name token-names get-names get-formation-name get-membership-name
 
-   set? set-equal? list->set set-cons union intersection difference
+   set? subset? set-equal? list->set set-cons union intersection difference
    list-head list-remove-first list-remove-last! list-remove-after filter list-index snoc rac rdc last
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp crit-printf
