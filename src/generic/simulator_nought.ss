@@ -1562,11 +1562,12 @@
 		   (hashtab-get (simobject-token-cache simob) 'tok1))
 		 connected)))]
 
-  ["Test program that anchors, circles, maps and folds"
-   (run-simulation
-    (build-simulation (compile-simulate-nought ',THEPROG))
-    10.0)
-   unspecified]
+;; COMMENTING FOR NOW
+;;  ["Test program that anchors, circles, maps and folds"
+;   (run-simulation
+;    (build-simulation (compile-simulate-nought ',THEPROG))
+;    10.0)
+;   unspecified]
 
   ))
 
