@@ -127,8 +127,8 @@ unique_name counter root =
        return (root ++ "_" ++ show count)
 
 -- Returns: a new replacement expression and a list of new token-handlers.
-expand_flood :: [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
-expand_flood tenv lenv expr = 
+expand_macros :: [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
+expand_macros tenv lenv expr = 
     runST 
      (do new_tokhands <- newSTRef []       
 	 name_counter <- newSTRef 0       
@@ -182,7 +182,7 @@ expand_flood tenv lenv expr =
 	       (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
 	       (Eactivate tok args)    -> Eactivate    tok (map loop args)
 -}
-	 newexpr <- loop expr
+	 newexpr <- loop lenv expr
 	 newtoks <- readSTRef new_tokhands
 	 return (newexpr,newtoks)
      )
