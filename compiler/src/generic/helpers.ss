@@ -153,6 +153,7 @@
 	 [else #f])))))
 
 (define tester-eq? (eq-deep lenient-eq?))
+(define tester-equal? (eq-deep lenient-eq?))
   
 
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
@@ -1132,3 +1133,68 @@
           (begin (newline) (newline))
           (begin (display (car args))(display " ")
                  (loop (cdr args)))))))
+
+
+;; Should make this use a hash table.
+(define graph-map
+  (lambda (f graph)
+    (let ([node-table (let ((nodes (map car graph)))
+			(map list nodes (map f nodes)))]
+	  [collect '()])
+      (letrec ([add-obj 
+		(lambda (node)
+		  (let ((entry (assq node node-table)))
+		    (if entry (cadr entry)
+			(begin 
+;			  (printf "Erk! Link to nonexistent node: ~s\n" node)
+			  ;(for-each add-obj (node-neighbors node))
+			  (let ((newobj (f node)))
+			    (set! node-table 
+				  (cons (list node newobj) node-table))
+			    newobj)
+			  ))))]
+	       [do-entry
+		(lambda (entry) 
+		  (map add-obj entry))]
+	       )
+	(map do-entry graph)))))
+
+(define gmap graph-map)
+
+;; Tells whether or not a graph is cyclic.  
+;; Requires canonical form where each node has exactly one entry.
+;; If the graph is acyclic, return #f.
+;; Otherwise, return the list of nodes participating in cycles.
+;; 
+;; DEPENDS: 
+(define (cyclic? g . compare)
+  ;; Umm is this really bad form to perform this INSIDE the cyclic? function??
+  ;; How efficient is require??  A linear search through a list of things loaded?
+  ;; I'm considering defining "let-run-once"
+  (require 'tsort)
+  (let ((eq (if (null? compare) eq?
+		(if (> (length compare) 1)
+		    (error 'cyclic? "too many optional arguments: %s" compare)
+		    (if (procedure? (car compare))
+			(car compare)
+			(error 'cyclic? 
+			       "optional argument must contain a comparison procedure, received : %s"
+			       (car compare)))))))
+    (let ((flat (topological-sort g eq?)))
+      (let ((cycles
+	     (filter 
+	      (lambda (x) x)
+	      (map 
+	       (lambda (entry)
+		 (let ((lst (memq (car entry) flat)))
+		   (if (not lst) (error 'cyclic? "uhh, definition broken")
+		       (if (andmap (lambda (edge) (memq edge lst))
+				   (cdr entry))
+			   #f
+			   (car entry)))))
+	       g))))
+	(if (null? cycles)
+	    #f
+	    cycles)))))
+
+

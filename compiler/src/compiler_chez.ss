@@ -33,6 +33,9 @@
 (include "generic/tests_noclosure.ss")
 (include "generic/tests.ss")
 
+(load "depends/slib/chez.init")
+;(include "generic/simulator_nought.ss")
+
 (game-eval (lambda args 'unspecified))
 (host-eval (lambda args 'unspecified))
 

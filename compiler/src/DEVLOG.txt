@@ -7,3 +7,11 @@ file; so here we are. -2004.04.29
 under PLT.  Until I can write a "lazy-letrec" macro for PLT I'm not
 going to be able to have testing in drscheme.  Sigh.  Ok, for the
 moment I'm just going to focus on the chez code.
+
+
+[2004.05.21]
+
+WEIRD. Chez scheme started up with the normal heap is hanging on
+(define-record a (b c)).  What is wrong with my system right now??
+
+
