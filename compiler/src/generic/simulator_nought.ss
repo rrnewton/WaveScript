@@ -29,6 +29,15 @@
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
 
+;; [2004.07.27] Adding return timer.
+
+;; Ok, I was going to add a time-window for the return values, but
+;; right now I'm deciding between that and an explicit generation
+;; counter.  But how would I know whether I've gotten everything in
+;; the generation?  Could use a safely large time-window and seperate
+;; out the different generations within it?
+;;   Well, either way, I'm adding a timer now.
+
 ;; [2004.07.11] Fixing soc-return and soc-finish.
 ;; Doing a refactoring to depend less on my mutation of the global
 ;; environment.  I've been really sloppy in this because I thought it
@@ -710,6 +719,7 @@
 ;		    (map caddr (map msg-object-args returns))
 ;		    "senders" (map last (map msg-object-args returns)))
 
+	      ;; Divide the returns into related sets based on which token they belong to.
 	      (let ([channels (partition-equal returns
 			        (lambda (ob1 ob2)
 				  ;; This compares the "to" portions of the arglists:
@@ -726,7 +736,12 @@
 				  ))])
 		;; That divided them up into related clumps, now process each:
 		(for-each 
-		 (lambda (returns) ;; Each chunk of returns going to the same target.
+		 (lambda (returns) ;; Each chunk of returns going to the same target.		   		   
+
+		   ;; TEMP		   
+		   (if (> (length returns) 1)
+		       (disp "   GOT WIDER RETURN-CHANNEL BATCH:" (length returns)))
+
 		   (let ([returns-args (map msg-object-args returns)]
 			 ;; Some timestamps may be false:
 			 [timestamps (map (lambda (x) (if x x '()))
@@ -895,6 +910,7 @@
 		  [local-sense (lambda ()
 				 ((current-sense-function)
 				  (node-pos (simobject-node this))))])
+
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
@@ -910,19 +926,40 @@
 		   ;; Hopefully "return" messages from all the
 		   ;; children will make their way into a single one
 		   ;; of these batches.  We'll see.
-		   (let main-node-loop ([incoming (simobject-incoming this)] 
+		   (let main-node-loop ([incoming (simobject-incoming this)]
+					[returns-next-handled (+ (cpu-time) return-window-size)]
 					[returns '()])
 		     (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
 		       'node-stopped]
-		      [(null? incoming)
+
+		      ;; If the time has come, handle those returns!
+		      [(>= (cpu-time) returns-next-handled)
+		       (display #\.)(flush-output-port)
+
+		       (if (not (null? returns))
+			   (disp "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
+		       ;; Handle all the returns to date (either
+		       ;; locally generated or from neighbors). 
 		       (if (not (null? returns))
 			   (handle-returns returns))
+		       ;(yield-thread)
+		       ;; Should I give us a time bonus for the time
+		       ;; we spent *handling* the returns?  Or try to
+		       ;; hold us to a fixed frequency?
+		       (main-node-loop incoming
+				       (+ returns-next-handled return-window-size)
+				       '())]
+
+		      [(null? incoming)
+;		       (if (not (null? returns))
+;			   (handle-returns returns))
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
-		       (main-node-loop (simobject-incoming this) '())]
+		       (main-node-loop (simobject-incoming this) returns-next-handled '())]
 		      [else
+		       (display #\H)(flush-output-port)
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
 		       (let ((msg (last incoming)))			 		       
@@ -941,9 +978,11 @@
 
 			 (if (eq? SPECIAL_RETURN_TOKEN (msg-object-token msg))
 			     (main-node-loop (simobject-incoming this) 
+					     returns-next-handled
 					     (cons msg returns))
 			     (begin (handler msg)
 				    (main-node-loop (simobject-incoming this)
+						    returns-next-handled 
 						    returns))
 			 ))])
 		     ))))))])
@@ -1063,7 +1102,7 @@
 		      (threadrunner newthunks (car timeout)))])
       (if (null? return-vals)
 	  result
-	  return-vals)
+	  (reverse return-vals))
       )))))))
 
 
@@ -1145,9 +1184,10 @@
 ;; One named 'a', one 'b'
 (define (two-node-scenario testcase)
   `(begin
-	;; Have to give a pure
+     ;; defining stubs:
 	(eval '(define handler 'initialized-by-test-case))
 	(eval '(define this 'initialized-by-test-case))
+	(eval '(define this-message 'initialized-by-test-case))
 	(for-each eval generic-defs)
 	;; Set up a two-node graph:
 	(let ([a (random-node)]
@@ -1169,7 +1209,7 @@
 
     ["process-statement: test nested calls"
      (process-statement '(call a (call b 933939)))
-     ,(lambda (exp)
+     ,(lambda (exp)	
 	(= 2 (length 
 	      (deep-all-matches 
 	       (lambda (x) (match x 
@@ -1192,7 +1232,7 @@
 						 a_simob ;; parent
 						 1       ;; count
 						 '()))
-		  ;; The a_node has the original message:
+		  ;; The a_node sent the original message through 'via:
 		  (hashtab-set! (simobject-token-cache a_simob) 'via 
 				(construct-msg-object 'via    ;; token
 						 #f      ;; timestamp
@@ -1256,33 +1296,36 @@
 		  (hashtab-set! (simobject-token-cache a_simob) 'via 
 				(construct-msg-object 'via #f a_simob #f 1 '()))
 
-		  (let ([this-message (bare-msg-object 
+		  (let ([message1 (bare-msg-object 
 				       'return 
 				       ;; vals totoken viatoken seed aggregator senders
 				       '((3) to via 0  plus ()))]
+			[message2 (bare-msg-object 'return '((4) to via 0  plus ()))]
 			[plus +])
 		    (fluid-let ([this b_simob]) 
 		      (fluid-let ([handler
 				   ,(build-handler ;'()
 				     '([plus (x y) 
 					     (disp "ADDING:" x y)
-					     (+ x y)]
-;				       [via () (error 'tester-via-token 
-;						      "this shouldnt be called")]
-						   )
-				       )])
-			(handle-returns (list this-message))
+					     (+ x y)]) )])
+			(handle-returns (list message1 message2))
 			(simobject-incoming a_simob)
 			)))))
 	,(lambda (x) 
+;	   (disp "Checking aggregation, here's incoming, length " (length x))
+;	   (disp "Here's return value:" (car (msg-object-args (car x))))
+;	   (parameterize ([print-level 3])
+	;		 (pretty-print x))
+			 
 	   (and (list? x)
 		(eq? (length x) 1)
 		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
 		(eq? (msg-object-parent (car x))
 		     (msg-object-origin (car x)))
-		(equal? '(1) (msg-object-count  (car x)))
+		(equal? '(7) (car (msg-object-args  (car x))))
+		(equal? '(1 1) (msg-object-count  (car x)))
 		(list? (car (msg-object-args (car x)))) ;; Make sure vals is a list.
-		))]	  
+		))]
     
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
     [ (process-statement '(flood foo)) (sim-flood 'foo)]
@@ -1341,19 +1384,32 @@
 ;	    (get-output-string s))))	   
 ;	Simulation_Done]
 
-  [ "Run a tree of returns, no aggregation"
+  [ "Return all distances from root, no aggregation"
     (run-simulation
      (build-simulation 
       (compile-simulate-nought 
        ',example-nodal-prog4))
      1.7)
     ,(lambda (ls)
+       ;; THis is a list of distances.
        (or (andmap integer? ls) (error 'test "not all ints!"))
-       (or #t ;; DISABLING FOR NOW
-	   (and (= (length ls) (sub1 (length all-objs))))
-	   (error 'test "Not right length!!")))]
 
-  [ "Run a tree of returns, no aggregation"
+       (or #t ;; TEMPORARILY DISABLING... DON'T UNDERSTAND... FIXME
+	   (= (length ls) (sub1 (length all-objs)))
+	   (error 'test "Not right length!!"))
+       ;; Make sure the first half sums to larger than the second
+       ;; half... this is a rough way of checking that it's
+       ;; increasing.
+       (or
+	(let ([half (quotient (length ls) 2)])
+	  (let ([front (list-head ls half)]
+		[back  (list-tail ls half)])
+	    (< (apply + front)
+	       (apply + back))))
+	(error 'test "not increasing return dists!"))
+       )]
+
+  [ "Return all distances from root, WITH aggregation"
     (run-simulation
      (build-simulation 
       (compile-simulate-nought 

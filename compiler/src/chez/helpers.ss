@@ -67,3 +67,8 @@
        (sub-disp args)))))
 
 
+;(define (critsec-printf . args)
+;  (critical-section (apply printf args)))
+
+
+

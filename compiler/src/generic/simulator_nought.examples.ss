@@ -55,8 +55,8 @@
      (startup ) ;; seed tokens
      )))
 
-;; This takes the maximum distance to a leaf.  It spreads a gradient
-;; and returns values back.  NO AGGREGATION.
+;; This returns the distances between each node and the root.  It
+;; spreads a gradient and returns values back.  NO AGGREGATION.
 (define example-nodal-prog4
   '(program
     (bindings )
@@ -97,11 +97,18 @@
     (nodepgm
      (tokens
       [tokret (v) (soc-return v)]
+      ;; This will return as fast as it goes out in a wave.
+      ;; 
       [tok1 () (call tok2) (relay)
 	    (return (dist)
 		    (to tokret) (via tok1)
 		    (seed 0)  (aggr plus) )]
-      [plus (x y) (printf "(~s,~s)" x y) (+ x y)]
+      [plus (x y) 
+;	    (disp "(" x "," y ")")
+	    (critical-section (printf "(~s,~s) " x y))
+	    (if (not (and (integer? x) (integer? y)))
+		(error 'test "NOT BOTH INTEGERS: ~s ~s~n" x y))
+	    (+ x y)]
       [tok2 () (light-up 0 255 0)])
      (startup ) ;; seed tokens
      )))
