@@ -10,11 +10,8 @@
          ;	 "plt/language-mechanism.ss"
          
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-         (all-except "plt/pass01_rename-var.ss" these-tests test-this)
-       
-         
-         "plt/pass02_remove-unquoted-constant.ss"
-         
+         (all-except "plt/pass01_rename-var.ss" these-tests test-this)              
+         "plt/pass02_remove-unquoted-constant.ss"         
          "plt/pass03_remove-complex-constant.ss"
          "plt/pass04_uncover-free.ss"
          "plt/pass05_lift-letrec.ss"
@@ -24,10 +21,11 @@
          (all-except "plt/pass08_verify-core.ss" these-tests test-this)
          (all-except "plt/pass10_deglobalize.ss" these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
-         
+
+         "plt/simulator_nought.ss"
          )
 
-(disp "UNION" union (union '(a b c) '(a d c)))
+;(disp "UNION" union (union '(a b c) '(a d c)))
 
 '(define program 
    (lambda args (car (reverse args))))
@@ -56,7 +54,7 @@
 ;(define tests01 tests01)
 ;(define tests07 tests07)
 
-(disp "BOUT TO LOAD COMPLIRE" )
+;(disp "BOUT TO LOAD COMPLIRE" )
 (load/use-compiled "compiler.ss")
 
 (disp "BOUT TO LOAD DRIVER" pass-names)

@@ -189,27 +189,26 @@
 	(close-graphics))
       unspecified ]
 
-    
-    [ "Next actually run the translator ..."
-      (begin 
-	(init-graphics)
-	(graphical-simulation
-	 (compile-simulate-nought
-	  '(program
-	    (socpgm (bindings) );(emit tok1))
-	    (nodepgm (bindings) (tokens) () )))
-	 1.0)
-	(thread-sleep 300)
-	(close-graphics))
-      unspecified]
 
     [ "Run the translator on a spreading lights program..."
       (compile-simulate-nought ',example-nodal-prog1)
-      unspecified
-#;      (lambda (x)
-	(procedure? (vector-ref x 0))
-	(andmap procedure? (vector-ref x 1)))]
-
+      ,(lambda (x)
+	 (procedure? (vector-ref x 0))
+	 (andmap procedure? (vector-ref x 1)))]
+    
+    
+    [ "Then use the translator on a trivial program and put it through the Sim."    
+      (begin (init-graphics)
+	     (graphical-simulation 
+	      (compile-simulate-nought 
+	       '(program
+		 (socpgm (bindings) )
+		 (nodepgm (bindings) (tokens) ())))
+	      0.5)
+	     (close-graphics))
+      unspecified]
+    
+    
     [ "Then simulate the spreading lights program..."
       (begin 
 	(init-graphics)
@@ -219,6 +218,7 @@
 	(thread-sleep 300)
 	(close-graphics))
       unspecified ]
+
 
 #;    [ "Next we run a program through the translator"
       (begin 
@@ -276,17 +276,7 @@
 (define b object-graph)
 (define c all-objs)
 ;(dsis g ((eval f) a b c))
-(dsis g
-      (begin (init-graphics)
-	     (graphical-simulation 
-	      (csn '(program
-		     (socpgm (bindings) );(emit tok1))
-		     (nodepgm
-		      (bindings)
-		      (tokens)
-		      () ;; seed tokens
-		      )))
-	      10)))
+;a (dsis g )
 
 (define temp_temp
   '(program
@@ -310,5 +300,5 @@
 (dsis g
       (begin (init-graphics)
 	     (graphical-simulation
-	      (csn temp_temp)
+	      (csn example-nodal-prog1)
 	      5.0)))
