@@ -104,34 +104,42 @@
 
 ;===============================================================================
 
-;; [2004.06.11] This runs compiler tests for the whole system, then
-;; runs all the unit tests.
+
+;; This runs all the system tests AND unit tests.
 (define (test-everything . args)
-  ;; Pass flags ('quiet 'verbose) onward to the unit tester:
-  (let ([test-it (lambda () (apply test-this (filter symbol? args)))])
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
     (test-all) (newline)  (newline)
-   
+    (apply test-units args))
+
+;; [2004.06.11] This runs compiler tests for the whole system, then
+;; runs all the unit tests.
+(define (test-units . args)
+  (printf "~n;; Performing all unit tests:~n")    
+  ;; Pass flags ('quiet 'verbose) onward to the unit tester:
+  (let ([test-it (lambda () (apply test-this (filter symbol? args)))]
+	[loudload (lambda (s) (printf "~n;; Loading ~a for unit testing... ~n" s) 
+			      (load s))])
     (case current_interpreter
       [(chezscheme)
-       (load "compiler.ss") (test-it) (newline)       
-       (load "generic/pass00_verify-regiment.ss") (test-it) (newline)
+       (loudload "compiler.ss") (test-it) (newline)       
+       (loudload "generic/pass00_verify-regiment.ss") (test-it) (newline)
        ;  (load "pass01_rename-var.ss") (test-it) (newline)
-       (load "generic/pass10_verify-core.ss") (test-it) (newline)
-       (load "generic/pass16_deglobalize.ss") (test-it) (newline)
-       (load "chez/simulator_nought.ss") (test-it) (newline)       
+       (loudload "generic/pass10_verify-core.ss") (test-it) (newline)
+       (loudload "generic/pass16_deglobalize.ss") (test-it) (newline)
+       (loudload "chez/simulator_nought.ss") (test-it) (newline)       
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 
 	     (printf "~n SWL DETECTED.  TESTING GRAPHICAL MODULES:~n")
-	     (load "chez/swl_flat_threads.ss")
-	     (let () #;(import flat_threads) (test-it) (newline))
+	     (loudload "chez/swl_flat_threads.ss")
+	     (let () ;(import flat_threads)
+	       (test-it) (newline))
 
-	     (load "chez/graphics_stub.ss") (test-it) (newline)
-	     (load "chez/simulator_nought_graphics.ss") (test-it) (newline)
+	     (loudload "chez/graphics_stub.ss") (test-it) (newline)
+	     (loudload "chez/simulator_nought_graphics.ss") (test-it) (newline)
 	     )
 	   (begin 
-	     (load "chez/flat_threads.ss") 
+	     (loudload "chez/flat_threads.ss") 
 ;	     (import flat_threads)
 	     (test-it) (newline)))]
       [(mzscheme)
@@ -147,7 +155,6 @@
 
        (error 'test-everything "RYAN FINISH THIS")]
       )
-
     ))
   
  
