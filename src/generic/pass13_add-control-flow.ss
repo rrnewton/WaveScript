@@ -16,6 +16,24 @@
 ;;  -> (soc r2 amap)
 
 
+;; Input language is Core plus edge classifications, plus heartbeats:
+
+;;; <Pgm>  ::= (program (props <CatEntry>*) <Let>)
+;;; <CatEntry>* ::= [<Name> <Prop>*]
+;;; <Prop> ::= region | anchor | local | distributed | final | leaf
+;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
+;;; <Decl> ::= (<var> <Exp>)
+;;; <Exp>  ::= <Simple>
+;;;          | (if <Simple> <Simple> <Simple>)
+;;;          | (lambda <Formalexp> <Let>)
+;;;          | (<primitive> <Simple>*)
+;;; <Formalexp> ::= (<var>*)
+;;; <Simple> ::= (quote <Lit>) | <Var>
+
+;;; Output language adds a control-flow graph also.
+;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
+;;; <CFG>  ::= (<var>*)
+
 (define add-control-flow
   (lambda (expr)
     (match expr

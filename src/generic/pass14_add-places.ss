@@ -2,9 +2,20 @@
 ;; Adding this to try to clean things up, and to try to start to
 ;; reason about events.
 
-;; Input language is core plus edge annotations plus heartbeats.
+;; Every named value in the program (all the let-bindings) get an
+;; associated formation and membership place.  Basically, these places
+;; are associated with the execution of the primitive that produces
+;; that value.
 
-;;; <Pgm>  ::= (program (props <CatEntry>*) <Let>)
+;; (One thing I was considering was having *blocks* of data-flow
+;; assigned form/memb locations... but I didn't get this fully worked
+;; out.)
+
+
+;; Input language is core plus edge annotations, plus heartbeats, plus CFG
+
+;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
+;;; <CFG>  ::= (<var>*)
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 ;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
@@ -19,11 +30,15 @@
 
 ;; Output language expands the <Decl> even more with formation and membership places
 ;;; <Decl> ::= (<var> <Heartbeat> <FormPlace> <MembPlace> <Exp>) 
-;;; <FormPlace> = 
-;;; <MembPlace> ::= X?       (Unknown place)
+;;; <FormPlace> ::= <Place>
+;;; <MembPlace> ::= <Place>
+;;; <Place>     ::= X?       (Unknown place)
 ;;;               | _        (no place)
 ;;;               | SOC      (Source of Control)
 ;;;               | X_<n>    (Some place...)
+
+
+
 
 ;;; [2004.08.13] Need to consider conditionals:
 ;;;   (if #t (circle...) (khood...))
@@ -32,18 +47,24 @@
 ;;; what should my analysis do?  Well if it's not known till runtime
 ;;; what will come out, this is really a place where it has to say
 ;;; *unknown*!
+;;;   There *are* however circumstances where the two branches might
+;;; memb in the same locations, say, if they're both maps over the
+;;; same region.
 
 ;;; This is just a helper function that shows the places for an annotated program:
 (define (getplaces p)
   (match p
-	 [(,input-language (quote (program (props ,proptable ...) (lazy-letrec ,binds ,expr))))
+	 [(,input-language (quote (program (props ,proptable ...) 
+					   (control-flow ,cfg ...)
+					   (lazy-letrec ,binds ,expr))))
 	  (map (lambda (x) (list-head x 4)) binds)]))
-
 
 (define add-places
   (lambda (expr)
     (match expr
-	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))
+	   [(,input-language (quote (program (props ,proptable ...) 
+					     (control-flow ,cfg ...)
+					     ,letexpr)))
 
     (define unknown-place '?) ;'X?)
     (define noplace '_)
@@ -68,6 +89,7 @@
     
     (define (new-place) (unique-name 'X))
 
+    ;; Returns expression, form-place, memb-place
     (define (process-primapp prim args)
       (let ([expr (cons prim args)])
 	(case prim
@@ -123,5 +145,6 @@
           [,unmatched
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
     
-    `(,input-language (quote (program (props ,proptable ...) 
+    `(,input-language (quote (program (props ,proptable ...)
+				      (control-flow ,cfg)
 				      ,(process-let letexpr))))])))
