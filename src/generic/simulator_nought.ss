@@ -664,19 +664,20 @@
 ;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
 ;			 (cons seed vals))
 
+			 ;; DISABLING AGGREGATION FOR THE MOMENT..
 			 (let ([aggregated-value
 				(if aggr 
-				    (let loop ([acc seed]
+				    #f #;(let loop ([acc seed]
 					       [vals vals]
 					       [timestamps timestamps])
-				      (disp "LOOPIng: " acc vals timestamps)
+				      ;(disp "LOOPIng: " acc vals timestamps)
 				      (if (null? vals) acc
 					  (loop (handler (bare-msg-object aggr (list (car vals) acc)))
 						(cdr vals)
 						(cdr timestamps))))
 				    #f)])
 			   
-			   (disp "AGGREGATED:"  this )
+			   (disp "AGGREGATED:"  (node-id (simobject-node this)) this )
 			   
 			   (sendmsg  
 			    (make-msg-object 
@@ -689,16 +690,21 @@
 				       aggregated-value 
 				       ;; If there is no aggregator, then we just 
 				       ;; accumulate *all* those values together!
-				       (begin (DEBUGASSERT (andmap list? vals))
+				       (begin (DEBUGASSERT 
+					       (or (andmap list? vals)
+						   (error 'assert "hmm vals not lists: ~s" vals)))
 					      (apply append vals)))
 				   to via seed aggr 
-				   (cons (node-id (simobject-node this))))) ;; Args 
+				   (cons (node-id (simobject-node this))
+					 senders
+					 ))) ;; Args 
 			    ;; Target is the parent of the via token
 			    (let ([entry (hashtab-get token-cache via)])
 			      (if entry 
 				  (msg-object-parent entry)
 				  (error 'simulator_nought:handle-returns
-					 "Could not get entry for via token!: ~s" via))))
+					 "Could not get entry for via token! (at node ~s): ~s"
+					 (node-id (simobject-node this)) via))))
 			   )))))
 		 channels)))]	   
 	   )) ;; END Generic-defs
@@ -977,36 +983,49 @@
 	(let ([a (random-node)]
 	      [b (random-node)])
 	  (let ([plus +]
-		;; We're trying to handle a return message.
-		[this-message (bare-msg-object 
-			       'return 
-			       (list 3 'to 'via 0 'plus '()))]
 		[graph (list (list a b) (list b a))])
 	    ;; This will set the object-graph and all-obj vars:
 	    (with-graph graph
 	      (lambda ()
-		(disp "there's graph" (length graph))
+		(disp "there's graph" (length graph) (map node-id (map car graph)))
 		(disp "in with: " (length all-objs))
 		;; Bind the corresponding simobjects for nodes 'a' and 'b'
 		(let ([a_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))]
 		      [b_simob (car (filter (lambda (so) (eq? a (simobject-node so))) all-objs))])
-		  (fluid-let ([this b_simob]) ;; We're seeing from the b-nodes perspective
-		  ;; The handler for the 'b'-node thinks it got a token from 'a'
-		  (fluid-let ([handler
-			       (lambda (msg)
-				 (disp "RUNNING TEST HANDLER: " msg " THIS is: " this)
-				 (let ([token-cache (make-default-hash-table) ])
-				   (hashtab-set! token-cache 'via 
-						 (make-msg-object 'via    ;; token
-								  #f      ;; timestamp
-								  a_simob ;; origin
-								  a_simob ;; parent
-								  1       ;; count
-								  '()))
-				   (,(build-handler '([plus (x y) (+ x y)])) msg)))])
-		    (handle-returns (list this-message))
-		    ))))))))
-      3]
+		  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		  ;; We're trying to handle a return message.
+		  (let ([this-message (bare-msg-object 
+			       'return 
+			       '((3) ;; vals, a list..
+				 to  ;; token
+				 via ;; token
+				 (0) ;; counts, a list
+				 plus ;; aggr token
+				 ()   ;; senders list
+				 ))])
+		  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		    (fluid-let ([this b_simob]) ;; We're seeing from the b-nodes perspective
+		      ;; The handler for the 'b'-node thinks it got a token from 'a'
+		      (fluid-let ([handler
+				   (lambda (msg)
+				     (disp "RUNNING TEST HANDLER: " msg " THIS is: " this)
+				     (let ([token-cache (make-default-hash-table) ])
+				       (hashtab-set! token-cache 'via 
+						     (make-msg-object 'via    ;; token
+								      #f      ;; timestamp
+								      a_simob ;; origin
+								      a_simob ;; parent
+								      1       ;; count
+								      '()))
+				       (,(build-handler 
+					  '([plus (x y) (+ x y)]
+					    [via () (error 'tester-via-token 
+							   "this shouldnt be called")]
+					    ))
+					msg)))])
+			(handle-returns (list this-message))
+			)))))))))
+	3]
     
 
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
