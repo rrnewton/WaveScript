@@ -32,9 +32,9 @@
          (all-except "plt/pass14_add-places.ss" these-tests test-this)
          (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
          (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
-         (all-except "plt/pass17_cleanup-token-machine.ss" test)
+         (all-except "plt/pass17_cleanup-token-machine.ss" these-tests test-this)
          
-         (all-except "plt/pass19_haskellize_tokmac.ss" test)
+         (all-except "plt/pass19_haskellize-tokmac.ss" test-this these-tests)
          
 ;    (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
