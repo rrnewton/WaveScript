@@ -6,6 +6,7 @@
   'regiment-stub-evaluator
   (make-begin
     `(,(base-language 'return)
+
        (define make-bignum
          (let* ([pow32 (expt 2 32)]
                 [convert-to-unsigned
@@ -17,5 +18,9 @@
                 (if (= i (vector-length v))
                     0
                     (+ (* (convert-to-unsigned (vector-ref v i)) p2)
-                       (loop (add1 i) (* p2 pow32))))))))))))
+                       (loop (add1 i) (* p2 pow32)))))))))
+
+)))
+
+
 
