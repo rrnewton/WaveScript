@@ -101,7 +101,8 @@ native:
 
 
 clean: 
-	rm compiled/*.zo
+	rm -f compiled/*.zo
+	rm -rf compiled/native/*
 
 #clean:
 #	(cd compiled; $(MAKE) "SRCFILES=$(SRCFILES)" clean)
