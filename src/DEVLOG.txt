@@ -151,7 +151,8 @@ that in it!
   TOSH_DATA_LENGTH
   TOS_LOCAL_ADDRESS = our local address
 
-
+[2004.08.20]
+  So that TOS_Msg struct definition is in AM.h
 
 
 
