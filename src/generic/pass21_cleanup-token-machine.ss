@@ -26,9 +26,9 @@
 ;; Whatever, let them all be global.
 
 
-;;;   (*) In the future it might expand out primitive applications
-;;;   that are just shorthands.  (For example, (dist) could become
-;;;   (dist <this-token>))
+;;;   (*) It expands out some primitive applications
+;;;   that are just shorthands.  (For example, (dist) becomes
+;;;   (dist <this-token>)    ;;; TODO: not finished...
 
 ;;;   (*) Should be IDEMPOTENT.
 
@@ -39,41 +39,52 @@
 
 
 
+;;; INPUT GRAMMAR:
 
+;; Extremely messy, ad-hoc and lenient.
 
+;;; OUTPUT GRAMMAR:
 
-;;; TODO FIX UUP:
-;;; Input and Output language:
-
-;;; <Statement*> is fairly unrestricted.
-
-;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
-;;;  <SOCPgm> ::= <Statement*>
-;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
-;;;  <Entry>  ::= <Token>
-;;;  <Decl> ::= (<var> <Exp>)
-;;;  <TokBinding> ::= (<Token>  <Code>*)
-;;;          <TODO> DECIDE ON LOCAL BINDINGS:
-;;;  <TokBinding> ::= (<Token> (bindings <Decl>*) <Code>*)
-
-;;;  <Code> ::= <Statement>*
-;;;  <Statement>  ::= <BasicStuff?>
-;;;                | (emit <Token> <Simple>*)
-;;;                | (relay <Token>)
-;;;                | (dist <Token>)
-;;;                | (return <Token> <Simple>)
+;;;  <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
+;;;  <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
+;       NOTE: tokens will inclide a binding for SOC-start and node-start
+;;;  <Cbind> ::= (<var> <Exp>)
+;       NOTE: These expressions will be statically calculable -- constants.
+;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
+;;;  <TokName>   ::= <Symbol> 
+;;;  <SubtokId>  ::= <Symbol>
+;;;  <PlainTok>  ::= (tok <TokName>)
+;;;  <Token>     ::= <PlainTok> | (tok <Tokname> <Int>)
+;;;  <DynToken>  ::= <Token>    | (tok <Tokname> <Expr>)
+;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
+;;;  <Expr>      ::= (quote <Constant>)
+;;;                | <Var>
+;;;                | <DynToken>
+;;;                | (set! <Var> <Expr>)
+;;;                | (ext-ref <DynToken> <Var>)
+;;;                | (ext-set! <DynToken> <Var> <Expr>)
+;       NOTE: These are static token refs for now.
+;;;                | (begin <Expr> ...)
+;;;                | (let ((<Symbol> <Expr>)) <Expr>)
+;;;                | (if <Expr> <Expr> <Expr>)
+;;;                | (subcall <DynToken> <Expr>...)
+;;;                | (<Prim> <Expr> ...)
+;;;                | (<Expr> ...)
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
-;;;                | <Macro> 
-;;;  <Macro> ::= (flood <Token>)
-;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
-;;;  <Simple> ::= (quote <Lit>) | <Var>
+;;;                | <GExpr>
+;;;                | <Sugar> 
+;;;  <GExpr>     ::= (emit <DynToken> <Expr> ...)
+;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;;;                | (dist <DynToken>)
+;;;  <Sugar>     ::= (flood <Expr>)
+;;;                | (elect-leader <Token> [<Token>])
+                     ;; <TODO> optional second argument.. decider
+;;;  <Prim> ::= <BasicPrim> 
+;;;           | call | subcall | timed_call
+;;;           | is_scheduled | deschedule | is_present | evict
 
-;;;  <Token> ::= <Symbol> | ...???
-;;;  <Exp>  ::= ???
 
-;; NOTE: introduces (void) primitive.
-
-;;; DEPENDS: make-begin
 
 ;===============================================================================
 
@@ -82,7 +93,6 @@
 
 (define cleanup-token-machine
   (let ()
-
 
     (define (destructure-tokbind tbind)  
       (define (process-stored s)
@@ -166,13 +176,17 @@
 	(lambda (stmt)
 	  (define-syntax check-tok
 	    (syntax-rules ()
-	      [(_ call tok) 
-	       (if (not (memq tok tokens))
-		   (if (regiment-verbose)
-		       (warning 'cleanup-token-machine
-				"~s to unknown token: ~s" call tok))
-		   )]))
-      (match stmt
+	      [(_ call tok)
+	       (let ((name (match tok
+				  [,s (guard (symbol? tok)) s]
+				  [(tok ,tok) tok]
+				  [(tok ,tok ,_.) tok])))
+		 (if (not (memq name tokens))
+		     (if (regiment-verbose)
+			 (warning 'cleanup-token-machine
+				  "~s to unknown token: ~s" call tok))))]))
+	  (define (tokname? t) (memq t tokens))	  
+	  (match stmt
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
@@ -196,7 +210,7 @@
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
 	     [(if ,test ,conseq)
-	      ((process-expr env tokens this-token) `(if ,test ,conseq (void)))]
+	      ((process-expr env tokens this-token this-subtok) `(if ,test ,conseq (void)))]
 
 	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
 	      (let ([newbinds 
@@ -204,23 +218,33 @@
 		       (if (null? prs) '()
 			   (let ([lhs (caar prs)] [rhs (cadar prs)])
 			     (let ([newenv (cons lhs env)])
-			       (cons (list lhs ((process-expr newenv tokens this-token) rhs))
+			       (cons (list lhs ((process-expr newenv tokens this-token this-subtok) rhs))
 				     (loop newenv (cdr prs)))))))]
-		    [newbods (map (process-expr (append lhs env) tokens this-token) bodies)])
+		    [newbods (map (process-expr (append lhs env) tokens this-token this-subtok) bodies)])
 	      `(let*  ,newbinds ,(make-begin newbods)))]
 
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(emit call activate)))
-	      (check-tok call-style tok)
-	      `(,call-style ,tok ,args* ...)]
+	      (check-tok call-style tok)	     
+	      `(,call-style ,(if (tokname? tok)
+				 `(tok ,tok)
+				 tok)
+			    ,args* ...)]
 	     [(timed-call ,time ,tok ,[args*] ...)
 	      (check-tok 'timed-call tok)
-	      `(timed-call ,time ,tok ,args* ...)]
-	     [(relay) '(relay)]
-	     [(relay ,tok) 
+	      `(timed-call ,time ,(if (tokname? tok)
+				      `(tok ,tok)
+				      tok)
+			   ,args* ...)]
+	     [(relay) `(relay (tok ,this-token ,this-subtok))]
+	     [(relay ,tok) (guard (tokname? tok))
 	      (check-tok 'relay tok)
-	      `(relay ,tok)]
-
+	      ;; There is some question here as to whether we should
+	      ;; default to this-subtok or to Zero subtoken index.
+	      `(relay (tok ,tok ,this-subtok))]
+	     [(relay (tok ,t ,[e])) (check-tok 'relay t)
+	      `(relay (tok ,t ,e))]
+	     
 	     ;; Expand this out to refer to the precise token...
 	     [(dist) `(dist ,this-token)]
 	     
@@ -250,7 +274,7 @@
 				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
 			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
-	      ((process-expr env tokens this-token)
+	      ((process-expr env tokens this-token this-subtok)
 	       `(return ,thing 
 			,(assq 'to stuff)
 			,(if (assq 'via stuff)
@@ -295,7 +319,7 @@
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (append args env) tokens tok) body))))))
+			,((process-expr (append args env) tokens tok id) body))))))
 	    
     (define decode 
       (lambda (stuff)
@@ -311,8 +335,8 @@
 					  (socpgm (bindings ,@socbindings) ,@socpgm)
 					  (nodepgm (tokens ,@nodetoks)
 						   (startup ,@node-startup))))))
-		  (printf "cleanup-token-machine: Desugaring to: ~n")
-		  (pp result)
+;		  (printf "cleanup-token-machine: Desugaring to: ~n")
+;		  (pp result)
 		  result)
 		(begin 
 		  (match (car ls)
@@ -328,6 +352,10 @@
 			 [(nodetoks ,x ...) (set! nodetoks (append x nodetoks))]
 			 [(tokens ,x ...) (set! nodetoks (append x nodetoks))]
 			 [(startup ,x ...) (set! node-startup x)]
+			 ;; TEMP: for my own convenience, I allow other expressions to 
+			 ;; transform into node-startup code:
+			 [,expr (set! nodetoks
+				      (cons `[node-start () ,expr] nodetoks))]
 			 [,other (error 
 				  'cleanup-token-machine:decode
 				  "this isn't part of a valid token machine program! ~n ~a"

@@ -37,7 +37,7 @@
     deglobalize
     
     cleanup-token-machine    
-    desugar-gradients
+;    desugar-gradients
 
 ;    analyze-tokmac-recursion
 ;    inline-tokmac

@@ -154,10 +154,8 @@
 (include "generic/alpha_lib_scheduler.ss")
 (include "generic/alpha_lib_scheduler_simple.ss")
 
-#!eof
-
 ;; If we're in SWL then load the GRAPHICS portion:
-(when (top-level-bound? 'SWL-ACTIVE)
+'(when (top-level-bound? 'SWL-ACTIVE)
       (load "chez/demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
@@ -176,42 +174,7 @@
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "generic/repl.ss")
 
-(define text-repl  (repl-builder void void run-compiler run-simulation-stream))
-(define precomp-repl (repl-builder 
-		      void  ;; Startup
-		      void  ;; Cleanse		      
-		      (lambda (x) ;; Compiler
-			(fluid-let ([pass-names '(cleanup-token-machine)])
-			  (match x
-				 [(precomp ,exp) `(unknown-lang (quote ,exp))]
-				 [,other (run-compiler other)])))		      
-		      run-simulation-stream)) ;; Runner
-
-(define pretoken-repl 
-  (repl-builder
-   void void
-   compile-almost-to-tokens
-   (lambda (x . timeout)
-     (printf "Running compiled program: ~n")
-     (parameterize ([print-length 3] [print-level 2] [pretty-initial-indent 10])
-		   (pretty-print x))
-     (parameterize ([print-length 10] [print-level 2])
-       (let ([result (eval x)])
-	 (printf "~n Returned: ~s~n~n" result)
-	 (if (list? result)
-	     (printf "Length: ~s~n" (length result)))
-	 result))
-     )))
-
-;; ???????
-(define precomp-graphical-repl (repl-builder 
-		      void  ;; Startup
-		      void  ;; Cleanse
-		      (lambda (x) x) ;; Compiler
-		      run-simulation-stream))
-
-
-(if (top-level-bound? 'SWL-ACTIVE)
+'(if (top-level-bound? 'SWL-ACTIVE)
     (begin
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
@@ -244,52 +207,7 @@
       (define-top-level-value 'grepl graphical-repl)
       ))
 
-(define simulate)
-(if (top-level-bound? 'SWL-ACTIVE)
-    (set! simulate graphical-simulation)
-    (set! simulate run-simulation))
-
-
-(define (testem)
-  (parameterize ((tracer #t))
-    (test-one
-     '(letrec ((a (anchor-at '(30 40)))
-               (r (circle-at 50 a))
-               (f (lambda (tot next)
-                    (cons (+ (car tot) (sense next))
-                          (+ (cdr tot) 1))))
-               (g (lambda (tot) (/ (car tot) (cdr tot))))
-               (avg (smap g (rfold f (cons 0 0) r))))
-        avg))))
-
-
-(define (doits x)
-  (cleanse-world)
-  (let ([stream
-	 (run-simulation-stream
-	  (build-simulation (compile-simulate-nought x))		  
-	  2.5)])
-    
-    (let streamloop ([i 0] [stream stream] [acc '()])
-      (cond			 
-       [(> i 7) (printf "~n That's enough.~n")]
-       [(eq? stream 'threads_timed_out)
-	(printf "~n Threads timed out.~n")]
-       [(stream-empty? stream) 
-	(printf "Stream Ended.~n")
-	(printf "All returned values were: ~n" )
-	(pretty-print (reverse acc))]
-       [else 	
-	(let ([head (stream-car stream)])
-	  (display-constrained (list i 20) ": " 
-			       (list head 60))
-	  (newline)
-	  (streamloop (add1 i) (stream-cdr stream) (cons head acc)))]))
-    ))
-
-
 (define (g) (eval (cadadr testssim)))
-(define pr precomp-repl)
 (pretty-maximum-lines 2000)
 
 

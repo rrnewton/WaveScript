@@ -5,37 +5,97 @@
 ;; It proceeds by adding three arguments to every token handler:
 ;;   gradient origin node, hop-count, gradient version, 
 
-    (define (find-emittoks expr)
-       (match expr
- 	     [(quote ,_) '()]
- 	     [,var (guard (symbol? var)) '()]
- 	     [(begin ,[exprs] ...) (apply append exprs)]
- 	     [(if ,[exprs] ...) (apply append exprs)]
- 	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
- 	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
+;; NOTE: For now token emission, relaying, distance checking, and returning are all 
+;;       restricted to statically specified tokens (but the subtok indices may be 
+;;       dynamically computed).
 
- 	     [(relay ,_ ...) '()]
- 	     [(dist ,_ ...) '()]
- 	     [(leds ,what ,which) '()]
+;; This just makes it easier for me to determine which handlers need
+;; extra gradient arguments and which don't.  
 
- 	     [(return ,[expr] (to ,t) (via ,v) (seed ,[seed_val]) (aggr ,a))
- 	      (append expr seed_val)]
-	     	   
-	     [(call ,_ ,[args*] ...) (apply append args*)]
- 	     [(activate ,_ ,[args*] ...) (apply append args*)]
+;; Input grammar:
 
- 	     [(timed-call ,_ ,__ ,[args*] ...) (apply append args*)]
- 	     [(,[rator] ,[rands] ...) (apply append rator rands)]
+;;;  <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
+;;;  <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
+;       NOTE: tokens will inclide a binding for SOC-start and node-start
+;;;  <Cbind> ::= (<var> <Exp>)
+;       NOTE: This expressions will be statically calculable -- constants.
+;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
+;;;  <TokName>   ::= <Symbol> 
+;;;  <SubtokId>  ::= <Symbol>
+;;;  <PlainTok>  ::= (tok <TokName>)
+;;;  <Token>     ::= <PlainTok> | (tok <Tokname> <Int>)
+;;;  <DynToken>  ::= <Token>    | (tok <Tokname> <Expr>)
+;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
+;;;  <Expr>      ::= (quote <Constant>)
+;;;                | <Var>
+;;;                | <DynToken>
+;;;                | (set! <Var> <Expr>)
+;;;                | (ext-ref <Token> <Var>)
+;;;                | (ext-set! <Token> <Var> <Expr>)
+;       NOTE: These are static token refs for now.
+;;;                | (begin <Expr> ...)
+;;;                | (let ((<Symbol> <Expr>)) <Expr>)
+;;;                | (if <Expr> <Expr> <Expr>)
+;;;                | (subcall <DynToken> <Expr>...)
+;;;                | (<Prim> <Expr> ...)
+;;;                | (<Expr> ...)
+;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
+;;;                | <GExpr>
+;;; <GExpr>      ::= (emit <DynToken> <Expr> ...)
+;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;;;                | (dist <DynToken>)
 
- 	     [,otherwise
- 	      (error 'desugar-gradient:process-expr 
- 		     "bad expression: ~s" otherwise)]
-	     ))
+;;;  <Prim> ::= <BasicPrim> 
+;;;           | call | subcall | timed_call
+;;;           | is_scheduled | deschedule | is_present | evict
+
+;;; Output Grammar:
+
+;;; No more GExpr
+
+
+(define (find-emittoks expr)
+  (match expr
+	 [(quote ,_) '()]
+	 [,var (guard (symbol? var)) '()]
+	 [(ext-ref (tok ,t ,[e]) ,v) e]
+	 [(ext-set (tok ,t ,[e]) ,v ,e2) (append e e2)]
+	 ;; If we ever have a first class reference to a token name, it is potentially tainted.
+	 ;; This is a conservative estimate:
+	 [(tok ,t ,e) (cons t e)]
+	 [(begin ,[exprs] ...) (apply append exprs)]
+	 [(if ,[exprs] ...) (apply append exprs)]
+	 [(let ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
+
+	 ;; "Direct call":  Not allowing dynamic emit's for now:
+	 [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	 ;; Indirect emit call... could consider restricting these.
+	 ;[(emit ,[e] ,[args*] ...) (apply append e args*)]
+
+	 ;; Also allowing dynamic relays and dists.  
+	 ;; These don't matter as much because I'm basing 
+	 [(relay (tok ,t ,[e])) e]
+	 [(dist (tok ,t ,[e])) e]
+	 ;; The to's and the vias are static! Aggr has no subtok index!
+	 [(return ,[expr] (to (tok ,t)) (via (tok ,v)) (seed ,[seed_val]) (aggr (tok ,a)))
+	  (append expr seed_val)]
+
+	 [(leds ,what ,which) '()]
+	 [(call ,[args*] ...) (apply append args*)]
+	 [(timed-call ,[args*] ...) (apply append args*)]
+;	 [(activate ,_ ,[args*] ...) (apply append args*)]
+	 
+	 [(,[rator] ,[rands] ...) (apply append rator rands)]
+
+	 [,otherwise
+	  (error 'desugar-gradient:process-expr 
+		 "bad expression: ~s" otherwise)]
+	 ))
+
 
 (define desugar-gradients
   (let ()
-
-
 	    
     ;; Process an expression in value context.
     (define process-expr

@@ -159,7 +159,9 @@
     (for-each process-incoming (simworld-all-objs sim))
     (cond
      [(stopping-time? vtime) (printf "Out of time.~n")]
-     [(null? buffer) (printf "~nSimulator ran fresh out of actions!~n")]
+     [(null? buffer)
+      (printf "~n<-------------------------------------------------------------------->~n")
+      (printf "Simulator ran fresh out of actions!~n")]
      [else 
       (let ([ob (cdar buffer)]
 	    [evt (caar buffer)])	
