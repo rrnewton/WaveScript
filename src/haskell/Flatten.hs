@@ -78,7 +78,7 @@ pe e = do (b,rv) <- loop e
 			                      (stmts++[Sassign v r])
 			        return (b:bs))
 		      [] binds
-	      return (concat_blocks (blk1 : reverse blks),
+	      return (concat_blocks (reverse blks ++ [blk1]),
 		      ret)
 
        (Eseq exprs) -> do (blks, ret) <- foldM (\ (bs,_) e ->

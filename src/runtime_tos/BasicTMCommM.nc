@@ -196,8 +196,11 @@ module BasicTMCommM {
   // ======================================================================
   // This accesses the one cached copy of the current token:
   // Might return NULL
+  // Modified it to return currently processing if available...
   command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
-    return cached_token;
+    if ( cached_token == NULL ) 
+      return currently_processing;
+    else return cached_token;
   }
 
   // I don't think I really want this in the interface:
@@ -212,6 +215,8 @@ module BasicTMCommM {
     return SUCCESS;
   }
 
+  //  command uint16_t get_parent
+  //  if ( cached_token != NULL  
 
   // ======================================================================
     // The TMComm interface is what the TMModule expects the
@@ -229,9 +234,11 @@ module BasicTMCommM {
     }
   }
 
+  // The three functions below are rather uninspired.
+
   // Hope this gets statically wired and inlined 
-  // ID and address should be the same...
-  command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  // ID and type should be the same...
+  command result_t TMComm.emit[uint8_t id](uint8_t length, TOS_MsgPtr msg) {
     TM_Payload* payload;
    
     if (send_pending) {
@@ -253,9 +260,9 @@ module BasicTMCommM {
       token_out_buffer.type = id;      
       token_out_buffer.length = length;
 
-      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d address:%d/%d\n", 
+      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d id:%d/%d\n", 
 	  length, TOS_LOCAL_ADDRESS, msg->type, id);
-      return call SendMsg.send[id](address, length, &token_out_buffer);
+      return call SendMsg.send[id](TOS_BCAST_ADDR, length, &token_out_buffer);
     }
   }
 
@@ -290,8 +297,13 @@ module BasicTMCommM {
   //  command void process_return(TM_ReturnPayload* msg) {   }
 
   // This essentially ignores "id" because it sends along the 'via' channel.
+  // But id and via need to be the same so that we use the right parent pointer!!
   command result_t TMComm.return_home[uint8_t id](uint8_t length, TOS_MsgPtr msg) {
     TM_ReturnPayload* ret;
+    uint16_t parent;
+
+    dbg(DBG_USR1, "TM BasicTMCommM: Starting return home.\n");
+
     if (send_pending) {
       dbg(DBG_USR1, "TM BasicTMCommM: return_home failed because send in progress.\n");
       return FAIL;
@@ -309,10 +321,21 @@ module BasicTMCommM {
 	  ret->seed_val, 
 	  ret->aggr_tok);
 
-      token_out_buffer.type = ret->via_tok;
+      token_out_buffer.type = AM_RETURNMSG;
       token_out_buffer.length = length;
 
-      return call SendMsg.send[id](ret->via_tok, length, &token_out_buffer);
+      if ( NULL == cached_payload && 
+	   currently_processing
+	   ) {
+	dbg(DBG_USR1, "TM: ERROR: returning home... but no parent pointer!!\n");
+	return FAIL;
+      } else {
+	parent = cached_payload->parent;
+
+	// Send to the parent pointer:
+	// IS this send on the right channel though.
+	return call SendMsg.send[AM_RETURNMSG](parent, length, &token_out_buffer);
+      }
     }
   }
 
@@ -332,7 +355,7 @@ module BasicTMCommM {
 
   // Thus the actual payload is the remaining space after we've
   // factored out our overhead for the bookkeeping fields you see above.
-  int8_t return_val[RETURNTOK_DATA_LENGTH];    
+  int8_t return_val[RETURNTOK_DATA_LENGTH];
 
   // Return messages will be a little different.
 
@@ -384,7 +407,7 @@ module BasicTMCommM {
   }
 
   event result_t SendMsg.sendDone[uint8_t sent_id](TOS_MsgPtr msg, bool success) {
-    // dbg(DBG_USR1, "TM BasicTMCommM: Done sending type: %d\n", msg->type);
+    dbg(DBG_USR1, "TM BasicTMCommM: Done sending type: %d\n", msg->type);
     send_pending = FALSE;
     
     return SUCCESS;
@@ -393,19 +416,22 @@ module BasicTMCommM {
   event TOS_MsgPtr ReceiveMsg.receive[uint8_t id](TOS_MsgPtr msg) {
     TM_Payload* payload = (TM_Payload*)(msg->data);
 
-    // Bounce it if it's not a good path.
-    if (cached_token == NULL) {
-      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, curNULL posting tokenhandler o%d/p%d/c%d/g%d.\n", 
-	  id, payload->origin, payload->parent, payload->counter, payload->generation);
-    } else if (	//	payload->generation > 
-	       payload->counter < cached_payload->counter) {
-      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, cur%d posting tokenhandler o%d/p%d/c%d/g%d.\n", 
-	  id, cached_payload->counter, payload->origin, payload->parent, payload->counter, payload->generation);
-    } else {
-      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, BOUNCED (cur c%d) o%d/p%d/c%d/g%d.\n", 
-	  id, cached_payload->counter,
-	  payload->origin, payload->parent, payload->counter, payload->generation);
-      return msg;
+    // If it's a return message we accept automatically.
+    if ( AM_RETURNMSG != msg->addr ) {
+      // otherwise... Bounce it if it's not a good path.
+      if (cached_token == NULL) {
+	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, curNULL posting tokenhandler o%d/p%d/c%d/g%d.\n", 
+	    id, payload->origin, payload->parent, payload->counter, payload->generation);
+      } else if (	//	payload->generation > 
+		 payload->counter < cached_payload->counter) {
+	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, cur%d posting tokenhandler o%d/p%d/c%d/g%d.\n", 
+	    id, cached_payload->counter, payload->origin, payload->parent, payload->counter, payload->generation);
+      } else {
+	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, BOUNCED (cur c%d) o%d/p%d/c%d/g%d.\n", 
+	    id, cached_payload->counter,
+	    payload->origin, payload->parent, payload->counter, payload->generation);
+	return msg;
+      }
     }
 
     // Post the token handler.

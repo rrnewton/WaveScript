@@ -145,6 +145,7 @@
 	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
 	[(let* ([,lhs* ,[rhs*]] ...) ,[body])
+         (disp "let" lhs* rhs*)
 	 (format "(Elet ~a ~a)" 
 		 (hlist (map (lambda (lhs rhs)
 			       (format "(~a, ~a)" (hid lhs) rhs))
