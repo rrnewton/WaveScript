@@ -154,7 +154,13 @@ that in it!
 [2004.08.20]
   So that TOS_Msg struct definition is in AM.h
 
+[2004.09.07]
+WHOA! If I have a BareSendMsg interface (wired to UARTNoCRC...), when
+I send the message it *also* fires the sendDone event from this
+*other* SendMsg component I have!??!  I guess it's just determined by
+the message type, and doesn't give a damn about the static component
+bindings and whether or not you sent with the corresponding send method....
 
-
+But I still can't get a message sent with a BareSendMsg interface...
  
 

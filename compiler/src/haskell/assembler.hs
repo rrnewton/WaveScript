@@ -96,6 +96,7 @@ build_module_header toks =
     let toknames = map (\ (t,_,_) -> tokname t) toks 
     in "\nmodule " ++ modname ++ "M \n {\n" ++ 
        "  provides interface StdControl as Control; \n" ++
+       "  provides command result_t socpgm();\n"++
 --       "  uses interface Timer;\n" ++ 
        concat
          (map (\ name -> 
@@ -173,7 +174,12 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
 -------------------------------------------------------------------------------
 
 build_header_file (Pgm consts socconsts socpgm nodetoks startup) = 
-    let toks = map (\ (t,_,_) -> t)
+    "enum {\n"++
+    (concat $ 
+     map2 (\ (t,_,_) n -> "  "++tok_id t++" = "++show n++",\n")
+     nodetoks [1..])++
+    "};\n"
+
 
 -------------------------------------------------------------------------------
 {- HERES THE MAIN PROGRAM. -}
@@ -192,8 +198,9 @@ main = do putStr "Running token machine assembler in Haskell...\n"
 --	  putStr "Tokmac read!\n"
 --	  putStr str
 	  putStr "\nNow we dump to file...\n\n"
-	  let (mod,conf) = assemble a --expr 
+	  let (mod,conf,header) = assemble a --expr 
 	  writeFile (modname++"M.nc") mod
 	  writeFile (modname++".nc")  conf
+	  writeFile (modname++".h")   header
 	  putStr "\n.. dumped.\n\n"
 
