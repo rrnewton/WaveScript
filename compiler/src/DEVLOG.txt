@@ -221,15 +221,7 @@ I have had some seriously bad experience using the tossim simulator.
 It will hang, I don't always think the gui display is saying the right
 thing, etc...
 
-<<<<<<< DEVLOG.txt
 [2004.12.01]
-
-Ok, trying to get back into it for a final run of (pre-masters)
-hacking.
-
-=======
-[2004.12.01]
->>>>>>> 1.37
 
 Ok, trying to get back into it for a final run of (pre-masters)
 hacking.

@@ -63,6 +63,12 @@
 		      ;; otherwise we have no type information on this variable and must return "Object".
 		      'Object))]
 
+	  [,prim (guard (regiment-constant? prim))
+		 (caddr (get-primitive-entry prim))]
+	  ;; Handle first class refs to other prims: 
+	  ;; All those other prims are functions!
+	  [,prim (guard (regiment-primitive? prim)) 'Function]
+
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
 	   (let ((ret-type (caddr (get-primitive-entry prim))))
@@ -86,14 +92,6 @@
 	   (guard (not (memq 'letrec env)))	   
 	   (let ([new-type-env (append (map list lhs* rhs*) type-env)])
 	     (infer-type body env new-type-env))]
-
-	  [,prim (guard (regiment-constant? prim))
-		 (caddr (get-primitive-entry prim))]
-	  ;; Handle first class refs to other prims: 
-	  ;; All those other prims are functions!
-	  [,prim (guard (regiment-primitive? prim)) 'Function]	  
-
-	  [(,[rator] ,[rand*] ...) #f]
 
 	  [,other (error 'infer-type
 			 "unmatched expr: ~s" other)]
@@ -212,11 +210,6 @@
 
 	   `(,prim ,rand* ...)]
           
-	  ;; Adding normal applications because the static elaborator will get rid of them.
-	  [(,[rator] ,[rand*] ...)
-	   ;; Don't do any type inference for now.
-	   `(,rator ,rand* ...)]
-
           [,unmatched
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
     

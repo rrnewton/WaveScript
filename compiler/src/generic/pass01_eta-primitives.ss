@@ -45,6 +45,9 @@
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
            `(,prim ,rand* ...)]
+
+	  ;; Adding normal applications because the static elaborator will get rid of them.
+	  [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
           [,unmatched (error 'eta-primitives "invalid syntax ~s" unmatched)])))
     (lambda (expr)
       (match expr

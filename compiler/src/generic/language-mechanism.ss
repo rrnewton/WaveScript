@@ -49,7 +49,7 @@
      (define world (map cons the-test-field the-test-field))
      (define radius 27.0)
 
-     (define-structure (baselang-simnode id sensor pos))
+;     (define-structure (baselang-simnode id sensor pos))
      
      (define (entry? r)
        (and (pair? r)

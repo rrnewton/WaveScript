@@ -55,7 +55,10 @@
     eta-primitives
     rename-var
     remove-unquoted-constant                        ;;  5
-    reduce-primitives
+
+    static-elaborate
+
+    reduce-primitives    
     remove-complex-constant                         ;;  7
     uncover-free                                    ;; 14
 ;    convert-closure                                 ;; 15
@@ -229,6 +232,12 @@
 (define (sim) (build-simulation 
 	     (compile-simulate-nought 
 	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
+
+;; HOW TO RUN:
+;; ----------------------------------------
+;; Here I'll give some examples of how to run the system.  
+;; This is for me -- because I forget how to invoke things over time.
+
 
 ;(define (t1) (init-world) (run-simulation        sim 2.0))
 ;(define (t2) (init-world) (run-simulation-stream sim 2.0))
