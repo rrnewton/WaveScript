@@ -126,7 +126,7 @@
 	  (match expr
 	     [(quote ,const) (values () `(quote ,const))]
              ;; Only for recurring on tokens:
-	     [,num (guard (number? ,num)) (values () num)]
+	     [,num (guard (number? num)) (values () num)]
 	     [,var (guard (symbol? var))  (values () var)]
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
 	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
@@ -175,7 +175,7 @@
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  HOPCOUNT_ARG ;; In this case we're inside the handler currently.
-			  (ext-ref ,tok STORED_HOPCOUNT_ARG)))]
+			  `(ext-ref ,tok STORED_HOPCOUNT_ARG)))]
 	     
 	     ;; TODO: THIS WILL NEED TO GET MUCH MORE COMPLEX:
 	     ;; I'm assuming this chunk of code will get hit with regular frequency.
