@@ -189,6 +189,10 @@ Gonna switch it so no prims take LISTS..
 Sigh, right now I'm hacking on the simulator, trying to get it back up
 to speed...  Doing some cleanup and documentation in the process.
 
+Adding "reject".  It has a pretty yucky semantics at the minute.  I
+need to simplify simplify...  It's inclusion presently is yet another
+quick and nasty hack.
+
 
 
 
