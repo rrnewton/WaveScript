@@ -12,11 +12,11 @@
 
 
 ;; This file must be used from a context where this makes senes:
-(init-graphics)  ;; This should open windows, etc.
+;(init-graphics)  ;; This should open windows, etc.
 
 
 ;; Uhh sholud just depend on the one in helpers...
-(define iota
+#;(define iota
     (lambda (n . fun*)
       (let ([f (if (null? fun*)
                    (lambda (i) i)
@@ -46,12 +46,13 @@
      ))
 
 
-
 ;; Ok, here we go 
-
-(draw-procs processors_temp)
-
-(define (test)
+(define (test-this . args)
+  (init-graphics)
+  (draw-procs processors_temp)
+  (close-graphics))
+  
+#;(define (test)
   (let loop ((acc 0))
     (if (= acc 1000) (void)
 	(begin 

@@ -176,7 +176,7 @@
 ;; [2004.05.24] Replacing the default tester with a better one.
 (define default-unit-tester
   (lambda (message these-tests . eq-fun)
-    (let ((teq? (if (null? eq-fun) 
+    (let ((teq? (if (null? eq-fun)
 		    tester-equal?
 		    (eq-deep (car eq-fun)))))
     (lambda args 
@@ -196,27 +196,38 @@
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
 	       [intended (map caddr entries)]
-	       [success #t])       
+	       [success #t])
 
-;	  (if verbose 
-	      (printf "Testing module: ~a~n" message);)
+	  (if verbose 
+	      (printf "Testing module: ~a~n" message))
 	    (for-each 
 	     (lambda (num expr descr intended)
 	       (flush-output-port)
-	       (if descr (printf "   ~s~n" descr))
+	       (if (and verbose descr) (printf "   ~s~n" descr))
 	       (display-constrained `(,num 10) "  " `(,expr 40)
-				    " -> " `(,intended 20)
-				    ": ")
+				    " -> ")
+	       (if (procedure? intended)
+		   (printf "Satisfy oracle? ~s: " intended)
+		   (display-constrained `(,intended 20) ": "))
 
 	       (let ((result (eval expr)))
 	       
 ;	       (newline)
-	       (if (teq? intended result)
-		   (printf "PASS~n")
+	       (if (or (and (procedure? intended) ;; This means its an oracle
+			    (intended result))
+		       (teq? intended result)) ;; Otherwise its an expected answer
+		   (begin
+		     (if (procedure? intended)
+			 (printf "~s, " result))
+		     (printf "PASS~n"))
+
 		   (begin (set! success #f)
 			  (newline)
-			  (printf "FAIL: Expected: ~n")
-			  (pretty-print intended)
+			  (if (procedure? intended)
+			      (printf "FAIL: Expected result to satisfy procedure: ~s~n" intended)
+			      (begin 
+				(printf "FAIL: Expected: ~n")			  
+				(pretty-print intended)))
 			  (printf "~n      Received: ~n")
 			  (write result)
 ;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  

@@ -6,9 +6,6 @@
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 (cd "chez") (include "helpers.ss") (cd "..")
 
-; (include "chez/graphics_stub.ss")
-;(include "generic/demo_display.ss")
-
 (include "generic/language-mechanism.ss")
 (include "generic/lang00.ss")
 (include "generic/lang05.ss")
@@ -38,10 +35,19 @@
 (load "depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
 ;; Basic parallel computation (engines):
-(load "chez/flat_threads.ss")
+(include "chez/flat_threads.ss")
 ;; Basic simulator for the nodal language:
-(load "generic/simulator_nought.ss")
+(include"generic/simulator_nought.ss")
 
+;; If we're in SWL then load the graphics portion:
+(if (top-level-bound? 'SWL-ACTIVE)
+    (begin (load "chez/basic_graphics.ss")
+	   (load "chez/graphics_stub.ss")
+	   (load "generic/demo_display.ss")
+	   (load "generic/simulator_nought_graphics.ss")))
+
+; (include "chez/graphics_stub.ss")
+;(include "generic/demo_display.ss")
 
 ;(trace  explode-primitive process-expr process-letrec)
 

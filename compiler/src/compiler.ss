@@ -70,6 +70,20 @@
 		(test-one x)))
 
 
+;; These are all the unit-testers accumulated from all the files.
+#;(define all-testers
+  (list test00
+	test01
+	test02
+	test03
+	test04
+	test05
+	test06	
+	testsim
+	testgsim))
+   
+   
+
 ;; Temp =============================================================
 
 '(display (list (test00)

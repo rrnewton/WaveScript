@@ -21,7 +21,7 @@
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
-  "simplest simulator for nodal language")
+  "\"simulator_nought.ss\": simplest simulator for nodal language")
 
 ;; This uses a lame sort of text display instead of the graphics display:
 (define simulator-output-text (make-parameter #f id))
@@ -262,9 +262,9 @@ e;		    (disp 'flood t m)
 
 ;;===============================================================================
 
-(define (run-simulation engines . timeout)
-  (let ([soceng (vector-ref engines 0)]
-	[nodeengs (vector-ref engines 1)]
+(define (run-simulation thunks . timeout)
+  (let ([soceng (vector-ref thunks 0)]
+	[nodeengs (vector-ref thunks 1)]
 	[display_engine
 	 (lambda ()
 	   (let loop ()
@@ -288,67 +288,6 @@ e;		    (disp 'flood t m)
 
 ;;===============================================================================
 
-(define structure-copy  vector-copy)
-
-;; This assumes a static comm graph for now:
-;; What's more, this is lame and assumes that the *allocated object-graph*
-;; will not change, it depends on the physical identity of edges within this 
-;; graph.  SO, no using graph-map on object-graph or anything!  We're going full
-;; imperative style here...
-(define graphical-simulation 
-  (lambda (engines . rounds)
-    ;; These "edges" are distinct objects for each comm link (directionally):
-    (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
-	  [soceng (vector-ref engines 0)]
-	  [nodeengs (vector-ref engines 1)])
-
-      ;; Contains a graphics object, and the last drawn state.
-      (define-structure (edgestate gobj oldstate))
-    
-      ;; This will associate edges with graphics objects:
-      (define edge-table (make-hash-table 500))
-      (define proc-table (make-hash-table 500))
-
-      ;; Fill up our two hash tables with drawn objects.
-      (for-each (lambda (graph-entry)
-		  (let ([proc (car graph-entry)]
-			[edges (unfold-list (cdr graph-entry))])
-		    (let ([origpos (node-pos (simobject-node proc))])
-		      (hashtab-set! proc-table proc
-				    (draw-proc origpos))
-		      (for-each 
-		       (lambda (edgeob)
-			 (hashtab-set! edge-table edgeob
-			    (make edgestate
-			      (draw-edge origpos (node-pos (simobject-node (car edgeob))))
-			      (structure-copy (car edgeob)))))
-		       edges))))
-		object-graph)
-			            
-      (let loop ([engs (cons soceng nodeengs)]
-	       [acc '()]
-		 [rounds (if (null? rounds) -1 (car rounds))])
-	(cond
-	 [(= rounds 0) 'Simulation_Done]
-
-	 [(null? engs)
-	  (begin 
-	    (loop (reverse acc) '() (- rounds 1)))]
-
-	 [else 
-	  ((car engs) 100
-	 (lambda (remaining ret) 
-					;(error 'run-simulation "engine shouldn't return.  Values were: ~n~s~n" ret))
-	   (printf "Engine returned!: ~s~n" ret)
-	   (loop (cdr engs) acc rounds))
-	 (lambda (nexteng)
-	   (loop (cdr engs) (cons nexteng acc) rounds)))]
-	 )))))
-
-(define gsim graphical-simulation)
-
-;;===============================================================================
-
 (define these-tests
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
@@ -361,19 +300,30 @@ e;		    (disp 'flood t m)
 	  (and (equal? x y)
 	       (not (eq? x y))))) #t]
 
-    [ (run-simulation (vector (lambda () 3) '()))
+    [ "First just with a trivial SOC program"
+      (run-simulation (vector (lambda () 3) '()))
       All_Threads_Returned ]
 
-#;    [ (let ((s (open-output-string)))
+    [ "Now we throw in a couple trivial nodeprograms" 
+      (let ((s (open-output-string)))
+	(run-simulation (vector (lambda () 3)
+				(list (lambda () 4)
+				      (lambda () 5)))
+			10))
+      All_Threads_Returned ]
+    
+
+    [ "Run two threads each with a display" 
+      (let ((s (open-output-string)))
 	(parameterize ([current-output-port s])
-	    (run-simulation (vector (lambda () 3)
-				    (list (lambda () 4)
-					  (lambda () 5)))
-			    10)
-	   (get-output-string s)
-	   3
-	   ))
-      3 ]
+		      (run-simulation (vector (lambda () (display 3))
+					      (list (lambda () (display 4))))
+				      10)
+		      (get-output-string s)))
+      ;; Oracle to tell if the answers good:
+      ,(lambda (res) (member res (list "34" "43"))) ]
+      
+
 
 #;    [ (let ((s (open-output-string)))
 #;	(parameterize ([current-output-port s])
@@ -395,9 +345,10 @@ e;		    (disp 'flood t m)
 (define testsim test-this)
 (define testssim these-tests)
 
-
 ;;===============================================================================
+;; JUNK 
 
+(define csn  compile-simulate-nought)
 
 (define t1
   '((shirt tie belt)
@@ -413,29 +364,7 @@ e;		    (disp 'flood t m)
     (d e) (e f)))
 
 
-(define p
-  '(program
-    (socpgm (bindings) (emit result_2))
-    (nodepgm
-;       result_2
-       (bindings (tmp_4 (cons '40 '())) (tmp_1 (cons '30 tmp_4)))
-       (tokens
-	[f_token_tmp_3 () (flood token_6)]
-	[token_6
-            ()
-            (if (< (locdiff (loc) tmp_1) 10.0)
-                (elect-leader m_token_tmp_3))]
-	[m_token_tmp_3 () (call f_token_result_2)]
-	[f_token_result_2 () (emit m_token_result_2)]
-	[m_token_result_2
-            ()
-            (if (< (dist f_token_result_2) '50) (relay))])
-       f_token_tmp_3
-       )))
-
-(define csn  compile-simulate-nought)
-
-(dsis tt (csn p))
+(dsis tt (csn example-nodal-prog))
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
