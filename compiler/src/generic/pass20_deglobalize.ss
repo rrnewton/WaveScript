@@ -61,7 +61,7 @@
 ;; single constant, it has no startup tokens (startups must be
 ;; *tokens* not other bindings.)  It has no socpgm-exclusive bindings,
 ;; and the socprogram merely returns the single value, then finishes.
-'(program
+#;(program
   (bindings (result '3))
   (socpgm (bindings ) (soc-return result) (soc-finished))
   (nodepgm (tokens ) (startup )))
@@ -133,7 +133,7 @@
 
 
 ;; [2004.07.28] This is a new version I'm making, which takes pre-classified
-'(define emit-primitive-handlers
+#;(define emit-primitive-handlers
   (lambda (classified-primapp form memb heartbeat)
     (match classified-primapp
 	   [(push-comp ,prim ,args ...) 

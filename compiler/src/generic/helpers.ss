@@ -249,6 +249,7 @@
      (light-up)
 ;     (sense)
      (my-id)
+     (my-clock)
      (loc )
 
      (printf)
@@ -642,6 +643,7 @@
 
 ;;; create a "flattened" begin from list of expressions
 ;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
+;; 
 (define make-begin
   (lambda (expr*)
     (match (match `(begin ,@expr*)
@@ -650,6 +652,7 @@
       [() (void)]
       [(,x) x]
       [(,x ,x* ...) `(begin ,x ,x* ...)])))
+
 ;;RRN [01.09.17] :
 (define make-code
   (lambda (expr*)

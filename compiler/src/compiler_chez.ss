@@ -83,9 +83,8 @@
 (include "generic/pass17_analyze-places.ss")
 ;(include "generic/pass18_add-routing.ss")
 
-(include "generic/pass20_deglobalize.ss")
+(include "chez/pass20_deglobalize.ss") (import deglobalize)
 (include "generic/pass21_cleanup-token-machine.ss")
-
 (include "generic/pass23_desugar-gradients.ss")
 
 ;(include "generic/pass24_analyze-calls.ss")
