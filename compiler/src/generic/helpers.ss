@@ -466,6 +466,59 @@
            (begin exp ...
                   (loop (sub1 n)))))]))
 
+
+(define file->string
+  (lambda (filename)
+    (let ([p (open-input-file filename)])
+      (let loop ([c (read-char p)]
+                 [acc '()])
+        (if (eof-object? c)
+            (begin (close-input-port p)
+                   (list->string (reverse acc)))
+            (loop (read-char p) (cons c acc)))))))
+
+(define string->file
+  (lambda (str fn)
+    (let ([p (open-output-file fn 'replace)])
+      (fprintf p str)
+      (close-output-port p))))
+
+;(define partition-string
+
+(define extract-file-extension
+  (lambda (filename)
+    (let loop ([ls (reverse (string->list filename))]
+               [acc '()])
+      (cond
+        [(null? ls) ""]
+        [(eq? (car ls) #\.) (list->string acc)]
+        [else (loop (cdr ls) (cons (car ls) acc))]))))
+
+
+(define remove-file-extension
+  (lambda (filename)
+    (let loop ([ls (reverse (string->list filename))])
+      (cond
+        [(null? ls) filename] ;no extension to remove
+        [(eq? (car ls) #\.)
+         (list->string (reverse (cdr ls)))]
+        [else (loop (cdr ls))]))))
+
+;; TODO: These need to by system independent, but aren't yet.
+
+
+
+;[2001.07.15]
+(define file->slist
+  (lambda (filename)
+    (let ([p (open-input-file filename)])
+      (let loop ([exp (read p)])
+        (if (eof-object? exp)
+            (begin (close-input-port p)
+                   '())
+            (cons exp (loop (read p))))))))
+
+
 (define insert-between
   (lambda (x lst)
     (let loop ([lst lst])

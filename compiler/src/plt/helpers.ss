@@ -133,6 +133,7 @@
    filter list-index snoc rac rdc last
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp crit-printf
+   extract-file-extension remove-file-extension file->string string->file file->slist
    graph-map graph-get-connected cyclic? 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-member? deep-all-matches deep-filter

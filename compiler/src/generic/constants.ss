@@ -35,7 +35,8 @@
 ;; Id number for the base-station / Source-of-Control (SOC)
 (define BASE_ID 0)
 
-;; In milliseconds
+;; In milliseconds, this is effectively the epoch size.  
+;; Nodes aggregate and resend at this frequency.
 (define return-window-size 500)
 
 ;;======================================================================

@@ -645,10 +645,15 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our 
 	`(lambda (themessage) ;(origin parent count tok args)
-;		    (disp "Handling! msg" (msg-object-token themessage) 
-;			  " parent? " (if (msg-object-parent themessage) #t #f)
-;			  " Soc? " I-am-SOC 
-;			  "Args:" (msg-object-args   themessage))
+		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a ~a)~n" 
+			    (node-id (simobject-node this))
+			    (cpu-time) 
+			    (msg-object-token themessage)
+			  " parent? " (if (msg-object-parent themessage)
+					  (node-id (simobject-node (msg-object-parent themessage)))
+					  #f)
+			  " Soc? " I-am-SOC 
+			  "Args:" (msg-object-args   themessage))
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
 			  [count  (msg-object-count  themessage)]
@@ -894,8 +899,7 @@
 	  [else (error 'sim-leds "bad action: ~a" what)]))))
 	  ;((sim-debug-logger) string)
 	  (logger string)
-	 
-	)]
+	))]
 	  
     [define (sim-dist . tok)
 	     (if (null? tok)
@@ -961,11 +965,13 @@
     [define handle-returns 
 	    (lambda (returns)
 	      ;(display #\H)(flush-output-port)
+	      (define (split-ret r) (list (node-id (simobject-node (return-obj-parent r)))
+					  (return-obj-timestamps r)))
 	      (with-logger
-	       (crit-printf "~s: (time ~s) (HandlingReturns ~s)" 
-			    (node-id (simobject-node this)) 
+	       (crit-printf "~s: (time ~s) (HandlingReturns ~s)~n" 
+			    (node-id (simobject-node this))
 			    (cpu-time)
-			    (returns)))
+			    (map split-ret returns)))
 
 	      (DEBUGMODE (if (not (pair? returns))
 			     (error 'handle-returns "must take a nonempty list: ~s" returns))
@@ -1218,10 +1224,11 @@
 			   (display #\!) 
 			   (display #\.))
 		       (flush-output-port)
-		       (if (not (null? returns))
-			   (with-logger
-			    (display (list "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
-			    (newline)))
+; 		       (if (not (null? returns))
+; 			   (with-logger
+; 			    (display (list "Handling rets from" (node-id (simobject-node this)) 
+; 					   "got " (length returns)))
+; 			    (newline)))
 
 		       ;; Handle all the returns to date (either
 		       ;; locally generated or from neighbors). 
