@@ -107,6 +107,7 @@
    insert-between iota disp pp
    graph-map cyclic?  deep-assq deep-member? 
    list-get-random unfold-list
+   partition partition-equal
  
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
