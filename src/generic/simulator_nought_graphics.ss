@@ -40,7 +40,7 @@
 	     (define stop-nodes #f)	   
 	     ;; Define global bindings for these so that we can do fluid-let on them.
 	     (define soc-return 'unbound-right-now)
-	     (define finished 'unbound-right-now)))
+	     (define soc-finished 'unbound-right-now)))
         
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]

@@ -41,3 +41,12 @@ make test-cases by hand.
 gradients when the same token name, and they start hitting eachother!
 Sonuds like a big problem, how did that not occur to me before.
 
+
+Hourly Goals:
+
+8:  Cheapo repl.
+9:  FUCK WASTED TIME ON TESTS
+10: FUCK WASTED MOST OF THE TIME ON TESTS
+11: Compile circle.
+
+12:

@@ -60,6 +60,7 @@
     lift-letrec-body                                ;; 22
     remove-complex-opera*
     verify-core
+    classify-names
     deglobalize
     ))
 
@@ -112,3 +113,32 @@
 
 (define (doit x)
   (run-simulation (build-simulation (rc x)) 2.0))
+
+
+;; This is my big target program!!
+(define theprog
+  '(let* ((R (circle-at 50 '(30 40)))
+	 (f (lambda (tot next)
+	      (cons (+ (car tot) (sense next))
+		    (+ (cdr tot) 1))))
+	 (g (lambda (tot) (/ (car tot) (cdr tot))))
+	 (avg (smap g (rfold f (cons 0 0) R))))
+    (until (pred (lambda (x) (> x 15.3)) avg)
+	   R
+	   (circle-at 100 '(0 0)))))
+
+
+(define these-tests 
+  `( 
+;; Urg, this is wrong:
+;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+
+    ["Verify that the trivial program produces no token bindings"
+     (deep-assq 'tokens (run-compiler '3))   (tokens)]
+    ))
+      
+(define test-this (default-unit-tester "Main compiler unit." these-tests))
+
+(define compilertests these-tests)
+(define compilertest test-this)
+ 

@@ -17,7 +17,7 @@
 ;(module flat_threads_foob (run-flat-threads yield-thread
 ;		      these-tests test-this)
 
-(define this-unit-description "simple interface for parallel computations")
+(define this-unit-description "flat_threads.ss: Simple interface for parallel computations.")
 
 (define yield-thread engine-block)
 

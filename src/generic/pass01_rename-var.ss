@@ -141,14 +141,14 @@
 	 (some-lang '(program ,res))])) 
    '(
      [3 3]    
-     [(letrec ((x 1)) x) unspecified]
+     [(letrec ((x 1)) x) unspecified]     
      )
    )
-  ) 
+  )
 
 (define test-this
   (default-unit-tester 
-    "Testing pass to verify initial regiment language."
+    "Pass01: Pass to rename vars."
     these-tests))
   
 

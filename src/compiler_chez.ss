@@ -27,6 +27,7 @@
 (include "generic/pass06_lift-letrec-body.ss")
 (include "generic/pass07_remove-complex-opera.ss")
 (include "generic/pass08_verify-core.ss")
+(include "generic/pass09_classify-names.ss")
 
 ;(include "generic/pass09_separate-graph")
 (include "generic/pass10_deglobalize.ss")
@@ -48,14 +49,14 @@
     (load "chez/swl_flat_threads.ss")
     (load "chez/flat_threads.ss"))
 
-;; LAME
-(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
+;; LAME:
+;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
 ;; Basic simulator for the nodal language:
 ;(include "chez/simulator_nought.ss")
 (load "chez/simulator_nought.ss")
 
-;; If we're in SWL then load the graphics portion:
+;; If we're in SWL then load the GRAPHICS portion:
 (if (top-level-bound? 'SWL-ACTIVE)
     (let ()
       (load "chez/basic_graphics.ss")
@@ -63,16 +64,20 @@
       (load "chez/demo_display.ss")
       (load "chez/simulator_nought_graphics.ss")))
 
-; (include "chez/graphics_stub.ss")
-;(include "generic/demo_display.ss")
-
 ;(trace  explode-primitive process-expr process-letrec)
 
-;;;TEMP 
-
-(if (top-level-bound? 'SWL-ACTIVE)
+#;(if (top-level-bound? 'SWL-ACTIVE)
     (begin
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
       (load "chez/simulator_nought_graphics.ss")
       ))
+
+(define simulate)
+(if (top-level-bound? 'SWL-ACTIVE)
+    (set! simulate graphical-simulation)
+    (set! simulate run-simulation))
+
+;; Load the repl which depends on the whole compiler and simulator.
+(include "generic/repl.ss")
+
