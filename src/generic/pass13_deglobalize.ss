@@ -225,7 +225,7 @@
 			      ;; Here we remove ourselves if we've overflowed?
 					;(remove-tok ,spread-cluster)
 			      )]
-		   [(call 
+;		   [(call 2
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		   )))]
 
@@ -514,19 +514,21 @@
      unspecified]
 
 
+;[2004.08.03] Eliminating for now... might bring it back later...
+
     ;; Rfold should generate two handlers.  One of one arg and one of two.
-    ["test emit-primitive-handlers on rfold"
-     (emit-primitive-handlers '(activate-comp rfold myreg fun_f seed_s) 'form_tok 'memb_tok 2.0)
-     ,(lambda (ls)
-	(and (= 2 (length ls))
-	     (= 1 (+ (length (cadar ls)) (length (cadadr ls))))))]
+;    ["test emit-primitive-handlers on rfold"
+;     (emit-primitive-handlers '(activate-comp rfold myreg fun_f seed_s) 'form_tok 'memb_tok 2.0)
+;     ,(lambda (ls)
+;	(and (= 2 (length ls))
+;	     (= 1 (+ (length (cadar ls)) (length (cadadr ls))))))]
 
   ))
 
 
 (define test-this (default-unit-tester
-		    "Pass10: Pass to convert global to local program."
-		    these-tests))  
+		    "Pass13 Deglobalize: to convert global to local program."
+		    these-tests))
 
 (define test13 test-this)
 (define tests13 these-tests)
