@@ -77,10 +77,9 @@
          (th)))
 
   
-  (provide 
-   DEBUGMODE
-   
+  (provide    
    ;; Syntax:
+   DEBUGMODE DEBUGPRINT
    mvlet rec 
    
    ;; Values:

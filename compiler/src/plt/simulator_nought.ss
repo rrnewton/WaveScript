@@ -2,6 +2,7 @@
 (module simulator_nought mzscheme
   (require "iu-match.ss"
            (lib "include.ss")
+	   (lib "pretty.ss")
            ;; NO SLIB:
 ;           (lib "load.ss" "slibinit")
            (lib "compat.ss")
