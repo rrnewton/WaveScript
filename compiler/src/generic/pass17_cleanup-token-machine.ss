@@ -105,8 +105,10 @@
 	    (syntax-rules ()
 	      [(_ call tok) 
 	       (if (not (memq tok tokens))
-		   (warning 'cleanup-token-machine
-			    "~s to unknown token: ~s" call tok))]))
+		   (if (regiment-verbose)
+		       (warning 'cleanup-token-machine
+				"~s to unknown token: ~s" call tok))
+		   )]))
       (match stmt
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
@@ -115,7 +117,8 @@
 		   (DEBUGMODE 
 		    (cond 
 		     [(memq var env) var]
-		     [(memq var tokens) 			
+		     [(memq var tokens)
+		      
 			(warning 'cleanup-token-machine
 				 "reference to token name: ~s" var)]
 		     [(token-machine-primitive? var) var]
@@ -132,9 +135,16 @@
 	     [(if ,test ,conseq)
 	      ((process-expr env tokens this-token) `(if ,test ,conseq (void)))]
 
-	     [(let* ( (,lhs ,[rhs]) ...) ,[bodies] ...)
-	      `(let*  ([,lhs ,rhs] ...)
-		 ,(make-begin bodies))]
+	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
+	      (let ([newbinds 
+		     (let loop ([env env] [prs (map list lhs rhs)])
+		       (if (null? prs) '()
+			   (let ([lhs (caar prs)] [rhs (cadar prs)])
+			     (let ([newenv (cons lhs env)])
+			       (cons (list lhs ((process-expr newenv tokens this-token) rhs))
+				     (loop newenv (cdr prs)))))))]
+		    [newbods (map (process-expr (append lhs env) tokens this-token) bodies)])
+	      `(let*  ,newbinds ,(make-begin newbods)))]
 
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(emit call activate)))
