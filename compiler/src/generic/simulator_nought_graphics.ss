@@ -7,8 +7,8 @@
 ;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
 ;; so that it may draw the simulation upon the screen.
 
-;(define this-unit-description 
-;  "simulator_nought_graphics.ss: simple simulator with graphics.")
+(define this-unit-description 
+  "simulator_nought_graphics.ss: simple simulator with graphics.")
 
 ;;===============================================================================
 
@@ -26,17 +26,20 @@
 ;; changing their color and so forth.
 (define graphical-simulation 
   (lambda (funcs . timeout)
-    (eval '(begin 
-	     ;; First, set up a global counter for communication cost:
-	     ;; (This is defined with eval because otherwise the module system gets angrye
-	     (define total-messages 0)
-	   ;; This is a global flag which can be toggled to shut down all the
-	     ;; running processors.
-	     (define stop-nodes #f)	   
-	     ;; Define global bindings for these so that we can do fluid-let on them.
-	     (define soc-return 'unbound-right-now)
-	     (define soc-finished 'unbound-right-now)))
-        
+
+    ;; First, set up a global counter for communication cost:
+    ;; This is defined dynamically so as to avoid PLTs module system.
+    (define-top-level-value 'total-messages 0)
+    ;; This one count all the messages that bounce because of
+    ;; backpropogation prevention mechanisms:
+    (define-top-level-value 'total-fizzles 0)
+    ;; This is a global flag which can be toggled to shut down all the
+    ;; running processors.
+    (define-top-level-value 'stop-nodes #f)
+    ;; Define global bindings for these so that we can do fluid-let on them.
+    (define-top-level-value 'soc-return 'unbound-right-now)
+    (define-top-level-value 'soc-finished 'unbound-right-now)
+            
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
 	  [soceng (vector-ref funcs 0)]
@@ -94,7 +97,7 @@
 ;(load "simulator_nought.examples.ss")
 ;(include "simulator_nought.examples.ss")
 
-#;(define these-tests
+(define these-tests
   `( 
     
     [ "First test display by bringing it up and then closing it down." 
@@ -141,46 +144,50 @@
       (begin 
 	(init-graphics)
 	(graphical-simulation
-	 (build-simulation (compile-simulate-nought ',example-nodal-prog1)))
-	(sleep-me 1.0)
+	 (build-simulation (compile-simulate-nought ',example-nodal-prog1))
+	 0.5)
+;	(sleep-me 1.0)
 	(close-graphics))
       unspecified]
       
   ;; This really should be graphical only.
-  [ "Build Spread lights gradually..."
+  [ "Build Spread-lights-gradually..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
     ,(lambda (x)
        (procedure? (vector-ref x 0))
        (andmap procedure? (vector-ref x 1)))]
 
-  [ "Run Spread lights gradually..."
+  [ "Run Spread-lights-gradually..."
     (simulate
      (build-simulation (compile-simulate-nought ',example-nodal-prog2))
      0.5)
     unspecified]
 
-  [ "Run Spread lights gradually with display distance..."
+  [ "Run Spread-lights-gradually with display distance..."
     (begin (init-world)
 	   (simulate
 	    (build-simulation (compile-simulate-nought ',example-nodal-prog3))
 	    0.7))
     unspecified]
-  
-    ,@(include "simulator_nought.tests")
-  ))
 
-
-(set! these-tests
-      `([ "Return a value via the gradient..."
+  [ "Return a value via the gradient..."
     (begin (init-world)
 	   (simulate
 	    (build-simulation 
 	     (compile-simulate-nought ',example-nodal-prog4))
 	    1.7))
-    unspecified]))
+    ,(lambda (ret)
+       (disp "GOT RETURN VALS: " ret)
+       (not (null? ret)))]
+  
+    ,@(include "simulator_nought.tests")
+  ))
 
 
-#;(define (wrap-def-simulate test)
+;(set! these-tests     `())
+
+
+(define (wrap-def-simulate test)
   `(begin (define (simulate . args)
 	    (init-graphics)
 	    (let ((res (apply graphical-simulation args)))
@@ -190,7 +197,7 @@
 	  ,test))
 
 ;; This makes sure the world is initialized before doing unit tests:
-#;(define test-this
+(define test-this
   (let ((tester (default-unit-tester 
 		  this-unit-description 
 		  (map (lambda (test)

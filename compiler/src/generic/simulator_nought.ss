@@ -62,10 +62,6 @@
 (define radius 20) ;; And the comm radius.
 (define numprocs 20) ;; And the total # processors.
 
-;; This counts total messages sent.
-;;(define total-messages 0)
-;; Can't do this here because of the plt module system.
-
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
@@ -111,6 +107,10 @@
    (list (random world-xbound)
 	 (random world-ybound))
    ))
+
+;; Increment a top-level binding.  Totally dynamic.
+(define (incr-top-level! v)
+  (set-top-level-value! v (add1 (top-level-value v))))
 
 ;; Helper to determine the distance between two 2d positions.
 (define (posdist a b)
@@ -313,7 +313,12 @@
 			      (let ((newentry themessage))
 				(hashtab-set! token-cache tok newentry)
 				(handle-it newentry))
-			      (disp "Ignored message " tok " to " (node-id (simobject-node this)))) ;; fizzle
+			      (begin 
+				(incr-top-level! 'total-fizzles)
+				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
+				(void))
+			      ) 
+			  ;; fizzle
 			  ))))])
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
 	  [define handler ,handler] 
@@ -350,8 +355,8 @@
      (let* (
 
        [generic-defs
-
-	`([define local-messages 0]
+	
+	`([define local-messages 0] ;; We should stick this in the simobject...
 	  [define token-cache (make-default-hash-table)]
 
 	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
@@ -377,7 +382,7 @@
 		    ;; Count messages at this node
 		    (set! local-messages (add1 local-messages))
 		    ;; Count total messages sent.
-		    (set! total-messages (add1 total-messages))
+		    (incr-top-level! 'total-messages)
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
 
 		    (let ([ourentry   (make-msg-object t this #f count m)]
@@ -547,9 +552,9 @@
 			 (main-node-loop (simobject-incoming this))
 			 )])
 		     ))))))])
-
-       (printf "~nGOT TOKEN HANDLERS:~n" )
-       (pretty-print nodetoks)(newline)
+       (DEBUGPRINT
+	(printf "~nGOT TOKEN HANDLERS:~n" )
+	(pretty-print nodetoks)(newline))
 
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
@@ -587,20 +592,20 @@
 ;;===============================================================================
 
 (define (run-simulation thunks . timeout)
-;  (define return-vals (vector 100)) ;; Here we accumulate returned values from the SOC
-;  (define (add-return-val x) ...)
-;  (define (get-return-vals) ...)
- 
+
+    ;; First, set up a global counter for communication cost:
+  ;; This is defined dynamically so as to avoid PLTs module system. 
   (define-top-level-value 'total-messages 0)
+  ;; This one count all the messages that bounce because of
+  ;; backpropogation prevention mechanisms:
+  (define-top-level-value 'total-fizzles 0)
   ;; This is a global flag which can be toggled to shut down all the
   ;; running processors.
   (define-top-level-value 'stop-nodes #f)
   ;; Define global bindings for these so that we can do fluid-let on them.
   (define-top-level-value 'soc-return 'unbound-right-now)
   (define-top-level-value 'soc-finished 'unbound-right-now)
-
-;  (disp "DAMN" soc-return soc-finished)
-
+  
 ;;  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]

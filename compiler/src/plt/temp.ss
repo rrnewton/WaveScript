@@ -8,5 +8,6 @@
 ;(define (g) (load "temp.ss"))
 (printf "temp loaded~n")
 
-  
+  (fluid-let ((foob 'newb))
+    (disp 'yay))  
 )
