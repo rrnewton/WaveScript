@@ -160,8 +160,6 @@
 ;(eval (cadr (last testssim)))
 
 
-;(init-graphics);
-;(cleanse-world)
-;(graphical-repl)
+;(begin (init-graphics) (cleanse-world) (graphical-repl))
 
 '(lambda (x) (rmap sense x))
