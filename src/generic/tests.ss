@@ -177,6 +177,7 @@
 ;       (loudload "generic/pass18_cps-tokmac.ss") (test-it) (newline)
 ;       (loudload "generic/pass19_haskellize-tokmac.ss") (test-it) (newline)
 
+       ;; Must be loaded to see inside the module.
        (loudload "chez/simulator_nought.ss") (test-it) (newline)
 
        (if (top-level-bound? 'SWL-ACTIVE)

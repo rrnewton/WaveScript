@@ -373,7 +373,16 @@
 	    [tok2 (x) 3])
 	   (startup )
 	   ))))
-     ,(lambda (p) #f)]
+     (cleanup-token-machine-lang
+      '(program
+	(bindings)
+	(socpgm (bindings) (emit tok1))
+	(nodepgm
+	 (tokens
+	  (tok1 ()
+               (return '3 (to tok2) (via tok1) (seed '#f) (aggr #f)))
+	  (tok2 (x) '3))
+	 (startup))))]
 
 ))
 

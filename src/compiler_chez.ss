@@ -7,13 +7,17 @@
 
 ;(case-sensitive #t)
 
+;; This makes our modules work properly in newer versions of Chez:
+(eval-when (compile load eval)
+	   (if (top-level-bound? 'internal-defines-as-letrec*)
+	       (internal-defines-as-letrec* #t)))
+
 (define random #%random)
 
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
 (printf "Loading compiler in chezscheme..~n")
-
 (include "chez/match.ss")
 
 ;(include "generic/constants.ss")
@@ -114,8 +118,23 @@
 		  (define rgb (lambda args (void))))))
 
 ;; Basic simulator for the nodal language:
-;(include "chez/simulator_nought.ss")
-(load "chez/simulator_nought.ss")
+;(load "chez/simulator_nought.ss")
+(module simulator_nought
+	(
+	 run-simulation
+	 run-simulation-stream
+	 compile-simulate-nought 
+	 build-simulation
+	 ;process-statement-nought
+	 init-world
+	 cleanse-world
+	 testsim
+	 testssim
+	 )
+	(include "chez/simulator_nought.ss")
+)
+(import simulator_nought)
+;(load "chez/simulator_alpha.ss")
 
 ;; If we're in SWL then load the GRAPHICS portion:
 (when (top-level-bound? 'SWL-ACTIVE)
