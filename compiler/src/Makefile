@@ -130,3 +130,7 @@ count: wordcount
 linecount: wordcount
 wordcount:
 	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests
+
+go:
+	(cd plt/compiled; make; cd ~/cur; make; cd plt; mred -Z 1-f temp.ss)
+#	(cd plt/compiled; make; cd ~/cur; make; cd plt; mred -z -f temp.ss)
