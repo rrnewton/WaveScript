@@ -13,19 +13,39 @@
 
 (define lift-letrec-body
   (let ()
-    (define Letrec
+    (define (simple? x) 
+      (match x
+          [(quote ,imm) #t]
+          [,var (guard (symbol? var)) #t]
+	  [,otherwise #f]))
+    (define process-letrec
       (lambda (expr)
         (match expr
-          [(letrec ([,lhs* ,rhs*] ...) ,body)
-           (let ([main (code-name 'main)])
-             `(letrec ([,lhs* ,rhs*] ...
-                       [,main
-                         (class-def () (lambda () ,body))])
-                (entry-point ,main)))])))
+          [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
+	   (disp "YEAH THATS IT" body (simple? body))
+	   (if (simple? body)
+	       `(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
+	       (let ([main (unique-name 'result)])
+					;(code-name 'main)]) ;; Old version used code-name for labels...
+		 `(lazy-letrec ([,lhs* ,rhs*] ...
+				[,main ,body])  ;(lambda () ,body))])
+			       ,main)))])))
+    (define process-expr
+      (lambda (expr)
+        (match expr
+	  [,x (guard (simple? x)) x]
+          [(if ,[test] ,[conseq] ,[altern])
+	   `(if ,test ,conseq ,altern)]
+	  [(lambda ,formalexp ,[process-letrec -> body])
+	   `(lambda ,formalexp ,body)]
+          [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+	   `(,prim ,rand* ...)]
+          [,unmatched
+            (error 'lift-letrec "invalid expression: ~s"
+                   unmatched)])))
+
     (lambda (prog)
       (match prog
-        [(,input-language
-           (quote (program ,sym* ,pkg* ,class-defns* ... ,body)))
-         (let ([body (Letrec body)])
-           `(lift-letrec-body-language
-              '(program ,sym* ,pkg* ,class-defns* ... ,body)))]))))
+        [(,input-language (quote (program ,[process-letrec -> body])))
+	 ;; This pass uses the same language as the prior pass, lift-letrec
+	 `(,input-language '(program ,body))]))))

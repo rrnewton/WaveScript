@@ -6,21 +6,29 @@
 ;;; those letrec bindings up to the top of the local lambda *but no
 ;;; further*.
 
+;;; ALSO:
 ;;;   The pass outputs *lazy-letrec* instead of letrec, because now
 ;;;   things have been scrambled and the lazy semantics of my language
 ;;;   can no longer be ignored.  (Other passes should have this
 ;;;   too.. I'm just being really, umm, lazy right now, is my test
 ;;;   programs don't depend on argument evaluation model... )
 
-;;; <Pgm>  ::= (<language-name> (quote (program (lazy-letrec (<Decl>*) <Exp>))))
+
+;; Output Language
+
+;;; <Pgm>  ::= (<language-name> (quote (program <Let>)))
+;;; <Let>  ::= (lazy-letrec (<Decl>*) <Exp>)
 ;;; <Decl> ::= (<var> <Exp>)
 ;;; <Exp>  ::= 
 ;;;            (quote <imm>)
 ;;;          | <var>
 ;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> (lazy-letrec (<Decl>*) <Exp>))
+;;;          | (lambda <Formalexp> <Let>)
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)
+
+
+
 
 ;;--------------------------------------------------------------------
 ;;; OLD COMMENTS
@@ -99,6 +107,9 @@
 ;;;               | (<var*> . <var>)
 
 ;;; The implementation requires extended-scheme-primitive? from helpers.ss.
+;;--------------------------------------------------------------------
+
+
 
 (define lift-letrec
   (let ()
