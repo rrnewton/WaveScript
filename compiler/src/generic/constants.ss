@@ -39,6 +39,12 @@
 ;; Nodes aggregate and resend at this frequency.
 (define return-window-size 500)
 
+;; Used primarily by Simulator_alpha.ss:
+;;===================================================
+
+(define token-store-size 1000) ;; Store up to 1000 token-objs per node.
+
+
 ;;======================================================================
 
 (define regiment-parameters (make-parameter '()))

@@ -16,6 +16,8 @@
 (define this-unit-description 
   "simulator_alpha.ss: event-queue simulator for nodal language")
 
+;===============================================================================
+
 ;; This structure contains all the global data needed a simulation.
 (define-structure (simworld graph object-graph all-objs))
 
@@ -23,7 +25,8 @@
 ;; to know about the local node. 
 ;; "this" is a simobject.
 ;; tokstore is a struct containing all the stored values.
-(define-structure (localinfo this I-am-SOC tokstore))
+;; [2005.03.05] Putting everything in simobject, "this" provides everything.
+;(define-structure (localinfo this I-am-SOC tokstore))
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
@@ -36,12 +39,21 @@
 ;; this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
 ;; token-cache in the structure too
-(define-structure (simobject node incoming timed-tokens redraw gobj homepage 
-			     token-cache local-sent-messages local-recv-messages
-
-
-			     outgoing
+(define-structure (simobject node 
+			     incoming 
+			     timed-tokens redraw gobj homepage 
+			     token-store ;; Changing this too hash table mapping names to 
+			     local-sent-messages local-recv-messages
+			     local-msg-buf
+			     outgoing-msg-buf
+			     ;; This is a function that processes incoming messages
+			     scheduler ;; and returns simulation actions.
+			     I-am-SOC
 			     ))
+;; The token store is a hash table mapping token names, like (Red 34), to token objects.
+;; The token objects themselves are just vectors of stored variables.
+
+
 
 ;; This structure represents a message transmitted across a channel.
 (define-structure (msg-object token 
@@ -197,12 +209,23 @@
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
 (define (make-object-graph g) 
-  (graph-map (lambda (nd) (make-simobject 
-			   nd '() '() #f #f '() 
-			   (make-default-hash-table) 0 0
+  (graph-map (lambda (nd) 
+	       (let ([so (apply make-simobject (make-list 13 'simobject-field-uninitialized))])
+		 (set-simobject-node! so nd)  
+		 (set-simobject-incoming! '())
+		 (set-simobject-timed-tokens! '())
+		 (set-simobject-redraw! #f)
+		 (set-simobject-gobj! #f)
+		 (set-simobject-homepage! '())
+		 (set-simobject-token-store! (make-default-hash-table))
+		 (set-simobject-local-sent-messages! 0)
+		 (set-simobject-local-recv-messages! 0)
+		 (set-simobject-scheduler! #f)
+		 (set-simobject-local-msg-buf! '())
+		 (set-simobject-outgoing-msg-buf! '())
+		 (set-simobject-I-am-SOC! #f)
 
-			   '() ;; outgoing
-			   ))
+		 so))
 	     g))
 
 (define (fresh-simulation)
@@ -233,8 +256,9 @@
 ;; ======================================================================
 
 
-(define (process-statement tokbinds allstored)
-  (disp "process statement, allstored: " allstored)
+(define (process-statement tokbinds stored)
+  (disp "process statement, allstored: " stored)
+  (let ([allstored (apply append (map cadr stored))])
   (letrec ([get-arg-index
 	    (lambda (tok argname)
 	      (let ([entry (assq tok tokbinds)])
@@ -249,15 +273,18 @@
 	   ;; me to do test cases:
 	   (match expr
 		  [,x (guard (and (symbol? x) (memq x allstored))) 
-		      `(,(symbol-append 'tokstore- x) the-store)]
+		      (let ([which-tok (find-which-stored x)])
+		      ;`(,(symbol-append 'tokstore- x) the-store)
+		      `(hashtab-get the-store ',which-tok
+		      ]
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
-		   `(set-simobject-outgoing! this
+		   `(set-simobject-outgoing-msg-buf! this
 		    (cons (bare-msg-object ,rator (list ,@rand*))
-			  (simobject-outgoing this)))]
+			  (simobject-outgoing-msg-buf this)))]
 
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
@@ -376,9 +403,15 @@
 	     ))
 
 
+
 ;; Every token handler, once converted for the simulator, has a signature: 
 
-;; tokstore, vtime, tokargs -> newmsgs, newtokobjs
+;;   simobject, vtime, tokargs -> ()    (mutates tokstore, outgoing-msg-buf, local-msg-buf)
+
+;; The result of running a handler is to mutate certain fields of the
+;; simobject.  The handler *does not* directly interface with the
+;; scheduler.  It merely changes the token store and accumulates local
+;; and remote messages.
 
 
 ;; Takes token bindings, returns compiled bindings
@@ -396,9 +429,9 @@
            (lambda (tbind)
 	    (match tbind 
 		   [(,tok (,args ...) ,expr* ...)
-		    (let ([stored (cadr (assq tok allstored))])
+;		    (let ([stored (cadr (assq tok allstored))])
 		      `[,tok 
-                         (lambda (localinfo world)
+                         (lambda (this current-vtime world)
 			   (lambda ,args
                            #|
 			   (DEBUGPRINT2 
@@ -407,18 +440,19 @@
                                   " with message: " ',args))|#
 			 
 			 ;this I-am-SOC token-store 			 
-			 (let ([the-store (localinfo-tokstore localinfo)]
-			       [this (localinfo-this localinfo)])
-;			 (let ([mystore (cadr (assq ',tok (localinfo-token-store localinfo)))])
-                           (set-simobject-outgoing! this '())
-                           ,@(map (process-statement tbinds stored) expr*)
-                           (let ([result
-                                  (values (simobject-outgoing (this))
-                                          )])
-                             (set-simobject-outgoing! this '())
-                             result)
-                           )))
-                         ])]))
+			 (let ([the-store (simobject-token-store this)])
+			   (let ([old-outgoing (simobject-outgoing-msg-buf this)]
+				 [old-local    (simobject-local-msg-buf this)])
+                           (set-simobject-outgoing-msg-buf! this '())
+                           (set-simobject-local-msg-buf! this '())
+                           ,@(map (process-statement tbinds allstored) expr*)
+			   ;; We must reverse the outgoing order because of how they were added:
+                           (set-simobject-outgoing-msg-buf! this 
+				(append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+                           (set-simobject-local-msg-buf! this 
+                                (append (reverse (simobject-local-msg-buf this)) old-local))
+			   (void)))))
+                         ]]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
     (printf "Allstored was: ~a~n" allstored)
@@ -439,9 +473,6 @@
 		(nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
-					;    `(let ,(map (lambda (v) `(,v '()))
-					;		(apply append (map cadr allstored)))      
-					;       "Let-Stored!"
 
 	`(define (sim-seed world)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
@@ -456,10 +487,9 @@
 		 ;; Within this body, toks are bound, we return a list of start actions
 		 (values
 		  (list ,@(map (lambda (t) (list 0 t)) starttoks)) ;; Vtime Zero
-		  ;; And we also return a thunk for producing fresh stores.
-		  (lambda ()
-		    (make-tokstore ,@(make-list (length (apply append (map cadr allstored))) ''()))))
-		 )))))]
+		 
+		 
+		  ))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 

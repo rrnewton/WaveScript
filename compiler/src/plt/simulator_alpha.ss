@@ -82,7 +82,7 @@
                              (simobject-redraw s) 
                              (simobject-gobj s)
                              (simobject-homepage s)
-			     (simobject-token-cache s)
+			     (simobject-token-store s)
 			     (simobject-local-sent-messages s)
 			     (simobject-local-recv-messages s))]
             [else (error 'structure-copy
