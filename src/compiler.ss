@@ -100,6 +100,13 @@
       (fluid-let ([pass-names passes])
 	(run-compiler p)))))
 
+(define compile-almost-to-tokens
+  (let ((passes (list-remove-first 'deglobalize
+				   (list-remove-after 'deglobalize pass-names))))
+    (lambda (p)
+      (fluid-let ([pass-names passes])
+	(run-compiler p)))))
+
 
 
 
