@@ -39,63 +39,132 @@ map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb)
 -------------------------------------------------------------------------------
 {- HERES THE EXPRESSION GENERATOR. -}
 
--- This returns both a bunch of strings (functions) to be seperately
--- stuck in the top-level of the module implementation, and a string
--- that goes within the receive-message handler or wherever.
+type FunctionCode = String
+type ExpressionCode = String
+type StatementCode = String
+
+-- This returns both:
+--   *) bunch of strings (functions) to be seperately
+--     stuck in the top-level of the module implementation, 
+--   *) a bunch of strings (statements) which must be placed in the 
+--      current basic block above the current expression (local bindings).
+--   *) a string (expression) that represents the appropriate value
+
 -- The 2nd argument is the "arg environment" for bound variables.
-process_expr :: String -> Expr -> [String] -> ([String],String)
-process_expr indent e args = 
+process_expr :: String -> [String] -> Expr -> ([FunctionCode],[StatementCode],ExpressionCode)
+process_expr indent args e = 
     case e of
     -- Constants restricted to 16 bit numbers for now:
-    Econst c -> ([],indent++show c++"\n")
+    Econst c -> ([],[],show c)
     Evar (Id var) -> 
 	case elemIndex var args of
 	-- This just means it's a *let bound* variable.
-	Nothing  -> ([],indent++show var++"\n")
-	Just ind -> ([],indent++"args["++show var++"];\n")
+	Nothing  -> ([],[],show var)
+	Just ind -> ([],[],"args["++show ind++"]")
 
-    Elambda formals e -> ([],build_fun formals e)
+    Elambda formals e -> ([build_fun formals e],[],"VOIDNOR")
+
     Elet binds body ->
-	let (funs1,bodcode)  = process_expr indent body args
-	    (funs2,bindcode) = 
-		foldl (\ (funacc,codeacc) (lhs,rhs) -> 
-		       let (rhsfun,code) = process_expr indent rhs args
-		       in (funacc++rhsfun, 
-			   codeacc++"int16_t lhs = "++code++"\n"))
+	let (funs1,stmts1,bodcode)  = process_expr indent args body
+	    (funs2,stmts2) = 
+		foldl (\ (funacc,stmtacc) (lhs,rhs) -> 
+		       let (rhsfun,rhsstmt,code) = process_expr indent args rhs
+		       in (funacc ++ rhsfun,
+			   stmtacc ++ rhsstmt ++ [indent ++ "int16_t lhs = "++code++"\n"]))
 		([],[]) binds
 	in (funs1++funs2,
-	    bindcode++bodcode)
+	    stmts1++stmts2,
+	    bodcode)
 
     Eseq e1 e2 -> 
-	let (a,b) = process_expr indent e1 args
-	    (x,y) = process_expr indent e2 args
-	in (a++x, b++y)	    
+	let (funs1,stmts1)       = process_stmt indent args e1
+	    (funs2,stmts2,ecode) = process_expr indent args e2 
+	in (funs1++funs2, stmts1++stmts2, ecode)
 
-    Esense -> ([],"call read_sensor();")
+    Eprimapp prim [a, b]  -> 
+	let (f1,s1,e1) = process_expr indent args a
+	    (f2,s2,e2) = process_expr indent args b
+        in
+	(f1++f2, s1++s2,
+	 case prim of
+	 Pplus  -> e1++" + "++e2
+	 Pminus -> e1++" - "++e2
+	 Pmult  -> e1++" * "++e2
+	 Pdiv   -> e1++" / "++e2
+	 )
+    
+  
+    Esense -> ([],[],"(call ADC.getData())")
 
-    Esocreturn e -> ([],"") 
-    Esocfinished  -> ([],"") 
-    Ereturn e to via seed aggr -> ([],"") 
-    Erelay (Just t) -> ([],"") 
-    Erelay Nothing -> ([],"") 
+--    Esocreturn e -> ([],[],"/* FAILED socreturn */") 
+--    Esocfinished  -> ([],[],"/* FAILED socfinished*/") 
+--    Ereturn e to via seed aggr -> ([],[],"/* FAILED return */") 
+--    Erelay (Just t) -> ([],[],"/* FAILED relay just*/") 
+--    Erelay Nothing -> ([],[],"/* FAILED relay nothing*/")
+
+    Esocreturn e -> let (f,s,bod) = process_expr indent args e
+		    in ([],[],"(call TMComm.socreturn("++ bod ++"))") 
+    Esocfinished  -> ([],[],"(call TMComm.socfinished())")
+    Ereturn e to via seed aggr -> 
+	let (f,s,bod) = process_expr indent args e
+        in ([],[],"(call TMComm.returnhome("++ bod ++"))")
+    Erelay (Just t) -> ([],[],"(call TMComm.socrelay())")		       
+    Erelay Nothing -> ([],[],"(call TMComm.socrelay())")
 
     Eemit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
     Eemit Nothing t exps -> 
-	([], indent++"call TMComm_"++ tokname t ++
-	     ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);")
+	([],[],
+	 "(call TMComm_"++ tokname t ++
+	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet))")
 
+    -- FIXME
+    Ecall Nothing t exps -> 
+	let (funs,stmts,argexps) = 
+		foldl (\ (f,s,es) expr -> 
+		       let (f2,s2,e) = process_expr indent args expr
+		       in (f++f2, s++s2, e:es))
+	        ([],[],[]) exps
+	in (funs, 
+	    stmts,  
+	    "the_packet.type = " ++ tok_id t ++ ";\n" ++
+            indent ++ "call TMComm.add_msg(the_packet)")
+--	    stmts ++ [ indent++"the_packet.type = " ++ tok_id t ++ ";\n"],
+--	    "(call TMComm.add_msg(the_packet))")
+--	    "(call " ++ tokname t ++ "(" ++ (concat $ intersperse ", " argexps) ++ "))")
+
+    Ecall (Just time) t exps -> 
+	let (f,s,e) = process_expr indent args (Ecall Nothing t exps)
+	in (f,s,
+	    --"/* Timed call unhandled !! */  " ++ 
+	    e)
+
+    -- Same as call for the moment!
     Eactivate t exps -> 
-	([], indent++"call TMComm_"++ tokname t ++
-	     ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);")
-    Ecall mt t exps -> ([],"")
+	let (funs,stmts,argexps) = 
+		foldl (\ (f,s,es) expr -> 
+		       let (f2,s2,e) = process_expr indent args expr
+		       in (f++f2, s++s2, e:es))
+		([],[],[]) exps
+	in (funs, 
+	    stmts ++ [ indent++"the_packet.type = " ++ tok_id t ++ ";\n"],
+	    "(call TMComm.add_msg(the_packet))")
+
     _ -> error ("process_expr: unhandled expression!: "++show e)
+
+
+-- <TODO>: FIXME FIX CONDITIONALS
 
 -- This is just like process_expr but takes a tail-context argument
 -- and makes sure that the "return" statement falls where it should.
-process_tail :: String -> Expr -> [String] -> ([String],String)
-process_tail indent e args = 
-    let (funs,bod) = process_expr indent e args 
+-- It does not produce any expression-code because it's not used in value context.
+-- It will produce a basic block with at least one "return" expression.
+process_tail :: String -> [String] -> Expr-> ([FunctionCode],[StatementCode])
+process_tail indent args e = 
+    let (funs,stmts,bod) = process_expr indent args e 
+    in (funs,stmts ++ [indent ++ "return " ++ bod ++ ";\n"])
+
+{-    let (funs,bod) = process_expr indent args e 
 	ret = "return "++ bod 
     in	
      (funs,
@@ -104,17 +173,28 @@ process_tail indent e args =
         Evar _      -> ret
         Ecall _ _ _ -> ret
 
-        Elambda _ _ -> error "process_tail: can't handle lambda!"
+        Elambda _ _ -> error "process_tail: can't handle lambda"
 
 	Eseq e1 e2 -> 
-	    let (_,b) = process_expr indent e1 args
-		(_,y) = process_tail indent e2 args
+	    let (funs1,stmts1)       = process_stmt indent args e1
+		(funs2,stmts2,ecode) = process_expr indent args e2 
+	    in (funs1++funs2, stmts1++stmts2, code)
+
+	    let (_,b) = process_expr indent args e1 
+		(_,y) = process_tail indent args e2 
 	    in b++y
 
         -- These should have no return value:
 	Eemit time t exps -> "return void;\n"
 	Erelay time       -> "return void;\n"
-      )
+      )-}
+
+
+process_stmt :: String -> [String] -> Expr-> ([FunctionCode],[StatementCode])
+process_stmt indent args e = 
+    let (funs,stmts,ecode) = process_expr indent args e 
+    in (funs, stmts ++ [(indent ++ ecode ++ ";\n")])
+
 {-
     Esocreturn e -> ([],"") 
     Esocfinished  -> ([],"") 
@@ -152,15 +232,15 @@ process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
 -- Returns a string for the handler (goes in the switch statement)
 -- And another string 
-process_handler :: TokHandler -> ([String],String)
+process_handler :: TokHandler -> ([FunctionCode],StatementCode)
 process_handler (t, args, e) = 
-    let (funs,bod) = process_expr "        " e (map (\ (Id x)->x) args) 
+    let (funs,stmts) = process_stmt "        " (map (\ (Id x)->x) args) e 
     in (funs,
 	"      case "++tok_id t++": \n"++
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
 	 args [0..]))++
-	bod++
+	(concat stmts)++
 	"        break;\n")
 
 --  "    int i;\n"++
@@ -234,7 +314,10 @@ build_implementation_header toks =
 build_socfun consts exprs = 
     "  task void socpgm() {\n"++ 
     process_consts consts ++ 
-    (concat (map (\x-> snd (process_expr "    " x [])) exprs)) ++ 
+    -- TODO INCLUDE FUNS HERE!!!
+    (concat $ concat $ 
+     map (\x-> let (_,stmts) = process_stmt "    " [] x 
+	  in stmts) exprs) ++ 
     "  }\n\n" ++
     "  command void start_socpgm() {\n"++ 				       
     "    post socpgm();\n"++
@@ -303,9 +386,6 @@ build_header_file (Pgm consts socconsts socpgm nodetoks startup) =
 {- This returns the contents of the NesC module file, config file, and header file. -}
 assemble :: TMPgm  -> (String,String,String)
 assemble prog = (build_module prog, build_configuration prog, build_header_file prog)
-
-
---    process_startup startup
 		    
 
 main = do args <- System.getArgs 

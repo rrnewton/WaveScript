@@ -120,8 +120,8 @@ doit = do s <- readFile "test.tm";
      ((Token "global-tree"), [], 
       (Erelay Nothing))],  
   startup=[]
-    })-}
-
+    })
+-}
 
 a = (Pgm {
       consts = [],
