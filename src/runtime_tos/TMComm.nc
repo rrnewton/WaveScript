@@ -26,10 +26,15 @@ interface TMComm {
 
     //    event result_t relayDone(TOS_MsgPtr msg, result_t success);
 
-    // Return: sends a message 
-    // NEEDS MORE ARGS:
-    //command result_t return_home(TOS_MsgPtr msg, uint8_t length);
-    command result_t return_home(uint16_t address, uint8_t length, TOS_MsgPtr msg, uint16_t seed, uint16_t aggr);
+    command uint16_t get_dist();
+
+    command void process_return(TM_ReturnPayload* msg);
+
+    command result_t return_home(uint8_t length, TOS_MsgPtr msg);
+    // It would be more efficient to put the arguments as arguments to
+    // this command rather than hiding them inside the message
+    // payload.  But that's an optimization.
+
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
     //    async command result_t add_msg(TOS_MsgPtr token);     
@@ -38,5 +43,6 @@ interface TMComm {
     command TOS_MsgPtr get_cached();
     // This sets the cache for that token:
     command result_t set_cached(TOS_MsgPtr newtok);
+
 }
 

@@ -44,9 +44,13 @@
 (define tm1
   '(program
     (bindings )
-    (socpgm (bindings) (emit tok1))
+    (socpgm (bindings) (call source))
     (nodepgm
      (tokens
+      [source () 
+	      (emit tok1)
+	      ;(timed-call 1500 source)
+	      ]
       [tok1 () (relay)
 	    (dbg "Woo: %d %d\\n" (my-id) (dist))
 	    ])
@@ -63,14 +67,14 @@
     (nodepgm
      (tokens
       [tok1_return (v)
-		   (dbg "Got return! at %d, value %d" (my-id) v)
+		   (dbg "TM: Got return! at %d, value %d" (my-id) v)
 ;		   (soc-return v)
 		   ]
       [tok1 () (relay)
-;	    (return (dist)
-;		    (to tok1_return)
-;		    (via tok1)
-;		    )
+	    (return (dist)
+		    (to tok1_return)
+		    (via tok1)
+		    )
 	    ])
      (startup ) ;; seed tokens
      )))

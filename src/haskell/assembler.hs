@@ -327,38 +327,35 @@ process_handlers hnds =
 	bods = map (snd . process_handler) hnds
     in
     (concat (map (++"\n") funs))++
-
-    "    switch (msg->type) {\n"++			      
-
+    "  command void exec_token(uint16 tok, uint16_t* args) {\n"++
+    "    switch (msg->type) {\n"++
     (foldl (++) "" bods) ++
     "    default:\n"++
-    "      dbg(DBG_USR1, \"TM TestMachine: process_token, UNMATCHED TOK: addr %d, type %d, group %d \", msg->addr, msg->type, msg->group);\n"++
+    "      dbg(DBG_USR1, \"TM TestMachine: exec_token, UNMATCHED TOK: %d\", tok);\n"++
     "    }\n"++
-
-
+    "  }\n"++
+    "\n"++
     "\n  // This is the main token-processing function:\n"++
     "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
     "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
     "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
     "    TM_ReturnPayload* retpayload = (TM_ReturnPayload*)msg->data;\n"++
     "    uint16_t* args = (uint16_t*)(payload->args);\n"++
-
-
-    "      if ( msg->type == AM_RETURNMSG ) {\n"++
+{-    "      if ( msg->type == AM_RETURNMSG ) {\n"++
     "        // Here we've got a return message...\n"++
     "        if ( 0 == get_any_dist(retpayload->via_tok) ) {\n"++
     "          // We've got back to the source, deliver it to its destination.\n"++
-    "          call invoke_token(retpayload->to_tok, args);\n"
-
-
-
-
-    "        call token_"++   ++"(args[1]);"
-    "      break; \n"++
-
-
+-}
+    "          call invoke_token(retpayload->to_tok, args);\n"++
+--    "        } else {\n"++
+--    "          // Otherwise we keep on sending it... NEED TO ADD AGGREGATION.\n"++
+--    "
+--    "          \n"++
+---     "        call token_"++   ++"(args[1]);"
+---     "      break; \n"++
     "    return msg;\n" ++ 
     "  }\n\n"
+
 
 
 process_startup :: [Token] -> String
@@ -471,7 +468,6 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     build_implementation_footer nodetoks startup ++
     "}\n"
 
-
 handwritten_helpers toks = 
     let mkcase t = 
 	"      case "++tok_id t++": \n"++
@@ -517,6 +513,9 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 --	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n"
 	  )
      nodetoks)++
+
+  "TestMachineM.TMComm_return_channel -> BasicTMComm.TMComm[AM_RETURNMSG];\n"++
+
     --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
     "}\n"
 

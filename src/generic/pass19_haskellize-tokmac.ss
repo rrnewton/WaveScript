@@ -108,9 +108,11 @@
 		 (via ,parent)      ;; Via
 		 (seed ,[seed_val]) ;; With seed
 		 (aggr ,rator_tok)) ;; Aggregator 
-	 (format "(Ereturn ~a ~a ~a ~a ~a)"
-		 expr (htok memb) (htok parent) seed_val (htok rator_tok))  
-	 ]
+         (if rator_tok
+           (format "(Ereturn {val = ~a, to = ~a, via = ~a, seed = Just ~a, aggr = Just ~a})"
+		   expr (htok memb) (htok parent) seed_val (htok rator_tok))
+  	   (format "(Ereturn {val = ~a, to = ~a, via = ~a, seed = Nothing, aggr = Nothing})"
+		   expr (htok memb) (htok parent)))]
 
         ;; This is a primitive, but handled special.
         ;; User better use double slashes.
