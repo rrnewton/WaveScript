@@ -1,3 +1,4 @@
+
 module BasicTMCommM {
   provides {
     interface TMComm;
@@ -26,6 +27,8 @@ module BasicTMCommM {
   }
   
   command result_t TMComm.emit(uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+    call SendMsg.send[msg->type](address, length, msg);
+    
     return SUCCESS;
   }
 
@@ -40,7 +43,6 @@ module BasicTMCommM {
   event result_t Timer.fired() {
     dbg(DBG_USR1, "BasicTMCommM: Timer Fired\n");
     return SUCCESS;
-
   }
 
   event result_t SendMsg.sendDone[uint8_t sent_id](TOS_MsgPtr msg, bool success) {
