@@ -142,6 +142,7 @@
 
 ;; (Name, DistributedPrim, Args) -> TokenBinds
 ;; This produces a list of token bindings.
+;; Below, "parent" won't be available if we don't have the full stream-graph...
 (define explode-primitive
   (lambda (form memb prim args heartbeat)
 ;	(disp "Explode primitive" name prim args)
@@ -205,6 +206,30 @@
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		 )))]
 
+	    [(cluster)
+	     (let  ([region_tok (caddr args)])
+	       (let ([parent (get-membership-name region_tok)]
+		     [spread-tok (new-token-name 'cluster-spread-tok)]
+		     [leader-tok (new-token-name 'cluster-leader-tok)]
+		     ;[push? (not (check-prop 'region region_tok))]
+		     )
+		 
+		 ;; <TODO> <FIXME> ALLOW VARIABLE ARGUMENTS FOR TOKENS!!!
+		 `(
+		   ;[,parent (v) (emit ,form (my-id))] ;,spread-cluster)]
+		   ;[,parent (v) (elect-leader ,memb (my-id))]
+		   ;[elect-leader
+		   [,form (id)
+			  (if (check-tok ,parent)
+			      (begin (relay) (call ,leader))
+			      ;; Here we remove ourselves if we've overflowed?
+					;(remove-tok ,spread-cluster)
+			      )]
+		   [(call 
+;		 [,memb (v) ] ;; This occurs at the fold-point
+		   )))]
+
+			 
 	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]

@@ -86,6 +86,10 @@
          (th)))
 
   
+  (define (warning sym . args)
+    (printf "Warning ~s: ~a " sym (apply format args)))
+  
+
   (provide    
    ;; Syntax:
    DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT
@@ -94,7 +98,7 @@
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port with-error-handlers cpu-time ;; error-handler 
+   flush-output-port with-error-handlers warning cpu-time ;; error-handler 
    
    ;; Meet in the middle with chez:
    print-level print-length
@@ -118,9 +122,10 @@
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
    randomize-list  insert-between iota disp pp crit-printf
-   graph-map cyclic?  deep-assq deep-member? deep-all-matches deep-filter
+   graph-map graph-get-connected cyclic?  deep-assq deep-member? deep-all-matches deep-filter
    list-get-random unfold-list
    partition partition-equal
+   myequal?
    stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
    display-constrained
  

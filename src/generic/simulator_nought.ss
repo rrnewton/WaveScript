@@ -218,17 +218,6 @@
    (list (random world-xbound)
 	 (random world-ybound))
    ))
-
-;; I thought the primitive equal? did this by default?  This is just a
-;; version that accepts any number of arguments.
-(define (myequal? . args)
-  (if (null? args) #t
-      (let ((first (car args)))
-	(let myeqloop ((args (cdr args)))
-	  (cond
-	   [(null? args)  #t]
-	   [(equal? first (car args)) (myeqloop (cdr args))]
-	   [else #f])))))
   
 (define (dotted-append ls ob)
   (let loop ((ls ls))
@@ -1656,5 +1645,5 @@
      (vector (lambda () 3) (list (lambda () 4) (lambda () 5))))
      2)))
 
-(define x (cadr (list-ref these-tests 25)))
+;(define x (cadr (list-ref these-tests 25)))
 
