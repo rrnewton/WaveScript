@@ -299,7 +299,9 @@
 (define (immediate? x)
   (or (number? x)
       (symbol? x)
-      (char? x)))
+      (char? x)
+      (null? x) ;; RRN added. [2004.04.28]
+      ))
 
 #;(define immediate?
   (lambda (x)

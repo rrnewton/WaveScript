@@ -2,7 +2,9 @@
 (printf "Loading compiler in chezscheme..~n")
 
 (include "chez/match.ss")
-(include "chez/helpers.ss")
+
+;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
+(cd "chez") (include "helpers.ss") (cd "..")
 
 ; (include "chez/graphics_stub.ss")
 ;(include "generic/demo_display.ss")
@@ -17,6 +19,7 @@
 (include "generic/pass03_remove-complex-constant.ss")
 (include "generic/pass04_uncover-free.ss")
 (include "generic/pass05_lift-letrec.ss")
+(include "generic/pass06_lift-letrec-body.ss")
 
 ;(include "generic/pass07_remove-complex-opera.ss")
 ;(include "generic/pass08_verify-core.ss")
