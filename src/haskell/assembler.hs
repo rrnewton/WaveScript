@@ -151,6 +151,11 @@ process_stmt indent tokargs e =
 			   ++ ");\n" 
 	]
 
+    Sactivate t args -> 
+	(indent++"// Cannot time activate..\n")
+	: (process_stmt indent tokargs (Scall Nothing Nothing t args))
+
+
     Semit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
 

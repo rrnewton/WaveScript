@@ -212,12 +212,54 @@
 							       nodup-binds) ...)
 				(startup ,starttoks ...))))
 	   )]
+	;; Cleanup-token-machine is a real lenient pass.  
+	;; It will take the token machines in other forms, such as
+	;; without the language annotation:
 	[(program (bindings ,constbinds ...)
 		  (socpgm (bindings ,socbinds ...) 
 			  ,socstmts ...)
 		  (nodepgm (tokens ,nodetoks ...)
 			   (startup ,starttoks ...)))
-	 (cleanup-token-machine `(deglobalize-lang ',prog))]	
+	 (cleanup-token-machine `(deglobalize-lang ',prog))]
+
+	[(program stuff ...)
+	 (let ([bindings '()]
+	       [socbindings '()]
+	       [socpgm '()]
+	       [nodetoks '()]
+	       [node-startup '()])
+	   (let loop ((ls stuff))
+	     (if (null? ls)
+		 (let ((result `(deglobalize-lang
+				 '(program (bindings ,@bindings)
+					   (socpgm (bindings ,@socbindings) ,@socpgm)
+					   (nodepgm (tokens ,@nodetoks)
+						    (startup ,@node-startup))))))		   
+		   (printf "cleanup-token-machine: Desugaring to: ~n")
+		   (pp result)
+		   (cleanup-token-machine result))
+		 (begin 
+		   (match (car ls)
+		      [(bindings ,x ...) (set! bindings x)]
+		      [(socbinds ,x ...) (set! socbindings x)]
+		      [(socpgm (bindings ,b ...) ,x ...)  
+		       (set! socbindings b)
+		       (set! socpgm x)]
+		      [(socpgm ,x ...)   (set! socpgm x)]
+
+		      [(nodepgm (tokens ,x ...) (startup ,s ...))
+		       (set! nodetoks x)
+		       (set! node-startup s)]
+		      [(nodetoks ,x ...) (set! nodetoks x)]
+		      [(startup ,x ...) (set! node-startup x)]
+			  )
+		   (loop (cdr ls)))
+	   
+
+	 (cleanup-token-machine `(deglobalize-lang ',prog))]
+
+	
+
 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
 
 

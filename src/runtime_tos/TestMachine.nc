@@ -11,7 +11,10 @@ configuration TestMachine
 }
 implementation
 {
-  components TestMachineM, BasicTMComm, TimerC, Main, UARTNoCRCPacket, GenericComm as Comm;
+  components BasicTMComm, TimerC, Main, UARTNoCRCPacket, GenericComm as Comm;
+  //  components TestMachineM;
+  components TestMachine2M as TestMachineM;
+
   // TokenMachineRuntime, FramerM, UART,
 
   Main.StdControl -> TestMachineM.Control;

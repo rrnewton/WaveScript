@@ -144,6 +144,15 @@
 			   [,other (run-compiler other)])))
 		graphical-simulation))
 
+(define precomp-graphical-repl
+  (repl-builder (lambda () (init-world) (init-graphics))
+		cleanse-world
+		(lambda (x)
+		  (fluid-let ([pass-names '(cleanup-token-machine)])
+		    (match x
+			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
+			   [,other (run-compiler other)])))
+		graphical-simulation))
 
 ;; From lang05.ss
 ;; Doesn't work:

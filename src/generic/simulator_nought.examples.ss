@@ -1,4 +1,12 @@
 
+(define tm0
+  '(program
+    (bindings)
+    (socpgm  (bindings) (emit tok1))
+    (nodepgm 
+     (tokens
+      [tok1 () (light-up 0 255 0) (relay)]
+     (startup)))))
 
 (define example-nodal-prog0
   '(program
@@ -55,6 +63,8 @@
      (tokens
       [tok1 () 
 	    (call tok2)
+	    (let ((x (sense_light)))
+	      ...)
 	    (printf " ~s " (dist))
 	    (relay)]
       [tok2 () (light-up 0 255 0)])
@@ -326,3 +336,69 @@
     )
    (startup elect_A) ;; seed tokens
    )))
+
+#!eof
+
+;; Example: voting on remote detection
+
+(program
+ (tokens
+  [eventDetected () 
+		 (return 1
+			 (to vote-collector)
+			 (via global-tree)
+			 (seed '0)
+			 (aggr vote-adder))]
+  [vote-adder (x y)
+	      (let ((sum (+ x y)))
+		(if (> sum threshold)
+		    (soc-return 'ALARM))
+		sum)]
+  [vote-collector (v)
+		  (if (> sum threshold)
+		      (soc-return 'ALARM))]))
+
+
+(program
+ (tokens
+  [eventDetected () (emit-radius 2 addactivation 1)
+		    (call addactivation 1)]
+  [addactivaton (x)
+		(let ((total (+ x (load:x))))
+		  (if (> total threshold)
+		      (soc-return 'ALARM))
+		  (expire-after 2000))]))
+
+
+
+(program
+ (tokens
+  [eventDetected () (emit tmp1 1)
+		    (call addactivation 1)]
+  [tmp1 () (call addactivation 1)
+	   (if (< (dist) 2) (relay))]
+  [addactivaton (x)
+		(let ((total (+ x (load:x))))
+		  (if (> total threshold)
+		      (return 'ALARM
+			      (to soc-receiver)
+			      (via global-tree)))
+		  (timed-call 2000 tmp2))]
+  [tmp2 () (evict addactivaton)]))
+
+
+;;; Slowly expanding group:
+
+;;; ERK should I have some kind of dynamic return context?
+;;; It seems like trees get really screwed up using macros.
+(tokens 
+ [start () (spread 1 500)]
+ [spread (d t) (emit-radius d)
+
+	 ]
+
+ [memb () (return 1 ...)
+	 
+
+[A_ret (depth)
+
