@@ -3,6 +3,11 @@ enum {
   AM_RETURNMSG = 0,
 };
 
+
+#ifndef TOKCACHE_LENGTH
+#define TOKCACHE_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
+#endif
+
 #ifndef TOK_DATA_LENGTH
 #define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 1 ))
 #endif
