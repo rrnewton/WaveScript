@@ -297,7 +297,9 @@
                          (lambda () (g ThreadId ... (cdr ls)))
                        (lambda (ThreadId ... ts ...)
                          (call-with-values
-                             (lambda () (fun ThreadId ... (car ls)))
+                             (lambda () 
+			       (fun ThreadId ... 
+				    (car ls)))
                            (lambda (ThreadId ... t ...)
                              (values ThreadId ... (cons t ts) ...))))))))))))))
 

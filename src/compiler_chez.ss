@@ -1,7 +1,7 @@
 
-(printf "Loading compiler in chezscheme..\n")
+(printf "Loading compiler in chezscheme..~n")
 
-(include "chez/match.ss")
+(load "chez/match.ss")
 (include "generic/helpers.ss")
 
 ; (include "chez/graphics_stub.ss")

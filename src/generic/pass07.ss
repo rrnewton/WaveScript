@@ -14,6 +14,8 @@
 ;;;          | (<primitive> <var>*)
 ;;; <Formalexp> ::= (<var>*)
 
+;; Where let really behaves like letrec.
+
 ;; No variable capture is allowed at this point.
 
 ;;; The implementation requires constant?, datum?, keyword?,
@@ -25,13 +27,16 @@
 
     (define (process-let expr env)
       (match expr
-	 [(let ([,lhs* ,[process-expr -> rhs*]] ...) ,expr)	   
+	 [(let ([,lhs* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'let env))
                   (andmap symbol? lhs*)
-                  (set? lhs*))
+		  (set? lhs*) ;; No duplicate lhs's ..
+		  )	  
 	   (if (ormap (lambda (s) (memq s env)) lhs*)
 	       (error 'verify-core "no variable	capture at this point."))
-	   #t]))
+	   (let ((newenv (union lhs* env)))
+	     (and (andmap (lambda (r) (process-expr r newenv)) rhs*)
+		  (process-expr expr newenv)))]))
 
     (define process-expr
       (lambda (expr env)
@@ -40,17 +45,17 @@
           [(quote ,datum)
            (guard (not (memq 'quote env)) (datum? datum))
 	   #t]
-          [,var (guard (symbol? var))
+#|          [,var (guard (symbol? var))
 		(if (not (memq var env))
 		    (error 'verify-core (format "unbound variable: ~a~n" var)))
 	       		#t]
 
-          [(lambda ,formalexp ,[process-let -> expr])
-           (guard (list? formalexp) 
+          [(lambda ,formalexp ,expr)
+           (guard (list? formalexp)
 		  (andmap symbol? formalexp)
              	;(formalexp? formalexp)
                   (not (memq 'lambda env)))
-	   #t]
+	   (process-let expr (union formalexp env))]
 
           [(if ,test ,conseq ,altern)
            (guard (not (memq 'if env)))	   	  	
@@ -74,36 +79,73 @@
 		  (andmap (lambda (x) (process-expr x env)) rand*))
 	   ;          (check-primitive-numargs prim rand*)
 	   #t]
-
+|#
           [,unmatched
 	   (error 'verify-core "invalid syntax ~s" unmatched)])))
 
     (lambda (expr)
-      (display "Running on ") (display expr) (newline)
-      
+					;      (display "Running on ") (display expr) (newline)      
       (match expr
 	     ;; Doesn't change the input language... 
         [(,input-language (quote (program ,body)))
-	 (process-expr body '())])
+	 (process-let body '())])
       )))
 
+;==============================================================================
 
-(define these-tests
+(define test-programs   
   '( 
-    [(verify-core '(some-lang '(program 3))) #t]
-    [(verify-core '(some-lang '(program 3))) #t]
+    (let ((a '3)) a)
+
+    (let ((loc '(30 40))
+	  (a (anchor loc)))
+      (let ((r (circle 50 a))
+	    (f (lambda (tot next)
+		 (let* ((sum (car tot))
+			(cnt (cdr tot))
+			(sns (sense next))
+			(newsum (+ sum sns))
+			(newcnt (+ cnt 1))
+			(res (cons newsum newcnt)))
+		   res)))
+	    (g (lambda (tot) 
+		 (let* ((sum (car tot))
+			(cnt (cdr tot))
+			(res (/ sum cnt)))
+		   res)))	    
+	    (start (cons 0 0)))
+      (let 
+      	   (S (rfold f start r))
+	   (avg (smap g S)))
+     avg))
+
     ))
 
-(define (test-this)
-  (let ((tests (map car these-tests))
-	(intended (map cadr these-tests)))
-    (let ((results (map eval tests)))
-      (display "Testing pass to verify simplified regiment core language.")
-      (newline)
-      (newline) (display "Here are intended results:") (newline)
-      (write intended) (newline) (newline)
-      (newline) (display "Here are actual results:") (newline)
-      (write results) (newline) (newline)
-      (equal? intended results))))
+(define these-tests
+  (map
+   (lambda (prog)
+     `[(verify-core '(some-lang '(program ,prog))) #t])
+   test-programs))
 
+(define test-this
+  (let ((these-tests these-tests))
+    (lambda args 
+      (let ((verbose (memq 'verbose args)))	
+	(let ((tests (map car these-tests))
+	      (intended (map cadr these-tests)))
+	  (let ((results (map eval tests)))
+	    (if verbose 
+		(begin
+		  (display "Testing pass to verify the simplifed core language.")
+		  (newline)
+		  (newline) (display "Here are intended results:") (newline)
+		  (write intended) (newline) (newline)
+		  (newline) (display "Here are actual results:") (newline)
+		  (write results) (newline) (newline)))
+	   
+	    (equal? intended results)))))))  
+
+(define test07 test-this)
+
+;==============================================================================
 
