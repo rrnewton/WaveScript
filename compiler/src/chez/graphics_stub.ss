@@ -14,18 +14,17 @@
 
 ;(load "basic_graphics.ss")
 
-(module graphics_stub (draw-procs draw-proc draw-edge
-		       these-tests test-this)
-	(import basic_graphics)
+(module graphics_stub (draw-procs draw-proc draw-edge set-color!
+				  these-tests test-this )
+  (import basic_graphics)
 
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 
 ;; Include definitions common to the chez and plt versions:
 (include "generic/graphics_stub.ss")
-;; This is imported from the above.  Make sure that it is a flonum,
-;; just so we don't end up with rationals:
-(set! processor-screen-radius (exact->inexact processor-screen-radius))
+;; Down in the INITIALIZATION section of this file I mutate some of
+;; the state from here...
 
 ;;===============================================================================
 ;; Utils:
@@ -76,12 +75,6 @@
   (mvlet ([(x y) (scale2d 
 		  pr (list 0 0 world-xbound world-ybound)
 		     (list 0 0 window-width window-height))])
-	 
-#;	 (disp "DRAWING AT:"
-	       (- x processor-screen-radius)
-	       (- y processor-screen-radius)
-	       (+ x processor-screen-radius)
-	       (+ y processor-screen-radius))
 
 	 (let ((circ (create <oval> the-win
 ;			     50 50 
@@ -114,9 +107,10 @@
 			   line))]
 	   [,otherwise (error 'draw-edge "bad-input: ~s" edge)])))
 
-;(define (draw-edge ....
- 
-;(init-graphics)
+(define (set-color! obj r g b)
+  (set-fill-color! obj (make <rgb> r g b)))
+
+;  (send obj set-fill-color! (make <rgb> r g b)))
 
 ;;===============================================================================
 
@@ -124,5 +118,12 @@
 (include "generic/graphics_stub.tests")
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+
+;;===============================================================================
+;; INITIALIZATION:
+
+;; This is imported from the above.  Make sure that it is a flonum,
+;; just so we don't end up with rationals:
+(set! processor-screen-radius (exact->inexact processor-screen-radius))
 
 ) ;; End module.

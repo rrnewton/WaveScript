@@ -4,6 +4,6 @@
 ;; and PLT versions of this module.
 
 
-(define window-width 800)
-(define window-height 800)
+(define window-width 400)
+(define window-height 400)
 

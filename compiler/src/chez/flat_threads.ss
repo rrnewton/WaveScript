@@ -8,12 +8,14 @@
 ;; have elapsed
 
 
+(module flat_threads (run-flat-threads these-tests test-this)
+
 (define this-unit-description "simple interface for parallel computations")
 
 ;; Using hefty granularity right now.
 ;; This defines the number of engine-ticks given each 
 ;; thread in each time-slice.
-(define flat-threads-granularity 1000)
+(define flat-threads-granularity 10)
 
 (define (run-flat-threads thks . time)
   (let ((timeout (if (null? time) #f 
@@ -21,7 +23,10 @@
     (let loop ([engs (map make-engine thks)]
 	       [acc '()])
       (cond
-       [(and timeout (> (real-time) timeout)) 'Threads_Timed_Out]
+       [(and timeout (> (real-time) timeout)) 
+	(fprintf (current-error-port)
+		 "~n  !!! run-flat-threads ended by time-out.~n")
+	'Threads_Timed_Out]
        [(and (null? acc) (null? engs)) 'All_Threads_Returned]
        [(null? engs)  (loop (reverse acc) '())]
        [else 
@@ -36,6 +41,31 @@
 	   (loop (cdr engs) (cons nexteng acc))))]
       ))))
 
-(include "generic/flat_threads.tests")
+(define these-tests 
+  (append (include "generic/flat_threads.tests")
+
+    ;; This one depends on particular ordering/timing, only valid for
+    ;; this implementation:
+    '([ "Ten threads complete at different times."
+     (let ((s (open-output-string)))
+	(parameterize ([current-output-port s])
+;	(printf "running test~n")
+;	(flush-output-port)
+  	  (run-flat-threads	   
+	   (let loop ((n 0) (acc '()))
+	     (if (= n 10)
+		 (reverse acc)
+		 (loop (add1 n)
+		       (cons (lambda () 
+			       (let loop ((acc (* 1000 n)))
+				 (if (zero? acc) 
+				     (display n)
+				     (loop (sub1 acc)))))
+			     acc)))))
+	  (get-output-string s)))
+	"0123456789"])))
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+
+) ;; End module
+
