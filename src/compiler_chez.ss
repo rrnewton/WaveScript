@@ -21,20 +21,20 @@
 (include "generic/lang10.ss") ;; deglobalize
 
 (include "generic/pass00_verify-regiment.ss")
-(include "generic/pass01_rename-var.ss")
 (include "generic/pass01_eta-primitives.ss")
-(include "generic/pass02_remove-unquoted-constant.ss")
-(include "generic/pass02_reduce-primitives.ss")
-(include "generic/pass03_remove-complex-constant.ss")
-(include "generic/pass04_uncover-free.ss")
-(include "generic/pass05_lift-letrec.ss")
-(include "generic/pass06_lift-letrec-body.ss")
-(include "generic/pass07_remove-complex-opera.ss")
-(include "generic/pass08_verify-core.ss")
-(include "generic/pass09_classify-names.ss")
-
+(include "generic/pass02_rename-var.ss")
+(include "generic/pass03_remove-unquoted-constant.ss")
+(include "generic/pass04_reduce-primitives.ss")
+(include "generic/pass05_remove-complex-constant.ss")
+(include "generic/pass06_uncover-free.ss")
+(include "generic/pass07_lift-letrec.ss")
+(include "generic/pass08_lift-letrec-body.ss")
+(include "generic/pass09_remove-complex-opera.ss")
+(include "generic/pass10_verify-core.ss")
+(include "generic/pass11_classify-names.ss")
 ;(include "generic/pass09_separate-graph")
-(include "generic/pass10_deglobalize.ss")
+(include "generic/pass12_deglobalize.ss")
+
 
 (load "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
