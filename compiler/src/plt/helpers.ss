@@ -11,7 +11,7 @@
 #;  (require (all-except (lib "rutils_generic.ss")
                        id list->set union intersection difference set?
                        list-head filter list-index snoc rac rdc last
-                       insert-between iota disp))
+                       insert-between iota disp ))
 
   ;; Here we include the SLIB initialization directly.  This is the only 
   ;; way I can make slib play nice with the PLT module system at all.
@@ -35,8 +35,12 @@
   (define cpu-time current-process-milliseconds)
   (define print-level pretty-print-depth)
   ;(define print-length pretty-print-length)
-;; Can't adjust the length from PLT:
-(define print-length (lambda _ #f))
+  ;; Can't adjust the length from PLT:
+  (define print-length (lambda _ #f))
+
+;; Temporary! < FIXME>:
+  (define crit-printf printf)
+  
 
     (define-syntax rec
       (syntax-rules ()
@@ -112,8 +116,8 @@
 
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
-   randomize-list  insert-between iota disp pp
-   graph-map cyclic?  deep-assq deep-member? 
+   randomize-list  insert-between iota disp pp crit-printf
+   graph-map cyclic?  deep-assq deep-member? deep-all-matches
    list-get-random unfold-list
    partition partition-equal
    stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
