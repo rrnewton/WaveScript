@@ -9,10 +9,9 @@
                        list->set union intersection difference set?
                        list-head filter list-index snoc rac rdc 
                        insert-between iota disp))
-    
+
   (include (build-path ".." "generic" "helpers.ss"))
   
-
   (define (define-top-level-value sym obj)
     (eval `(define ,sym ,obj)))
   (define (set-top-level-value! sym obj)
@@ -23,11 +22,15 @@
 	   "This is a chez function which can't ~a"
 	   "be emulated right now in Plt. -RRN"))
 
+  (define-syntax mvlet
+    (syntax-rules ()
+        [(mvlet stuff ...) (let-values stuff ...)]))
+  
   (provide 
 
    ;; Syntax:
    mvlet 
-
+   
    ;; Values:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
      
@@ -35,7 +38,8 @@
    unique-name reset-name-count! extract-suffix make-begin
    code-name label-name #;method-name
    
-   constant? datum? formalexp? cast-formals default-unit-tester
+   ;; Hmm, not sure what meaning immediate has here..
+   immediate? constant? datum? formalexp? cast-formals default-unit-tester
    
    regiment-primitives regiment-primitive? 
 

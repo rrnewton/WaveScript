@@ -5,7 +5,7 @@
 ;(define region-primitives)
 ;(define anchor-primitives)
 
-(define regiment-basic-primitives 
+'(define regiment-basic-primitives 
   '(cons car cdr 
 	 + - * / 
 	 < > <= >= = eq? equal?
@@ -13,11 +13,57 @@
 	 not
 	 ))
 
+'(define regiment-distributed-primitives 
   '(rmap rfold smap time-of
 	 circle circle-at anchor anchor-at anchor-where k-neighborhood time
 	 cluster sparsify border planarize treeize filter union intersect
 	 until when when-any when-percentage 
-	 sense neighbors )
+	 sense neighbors ))
+
+
+;; Ok, redoing those with type information:
+;; The types I'm using right now are:
+;;   Anchor, Region, Signal, Event, Node, Location, Reading
+;;   Function, Number, Float, Object
+
+;; Since I'm going to go statically typed eventually, Object is just
+;; my way of signifying "for all alpha" right now.
+
+;; And the old types from the Snet compiler were:
+;;   Bool Char Float64 Int32 List Object
+;;   Number Pair Port String Symbol Vector Void
+
+
+(define regiment-basic-primitives 
+  '(
+  
+    ; value primitives
+    (cons (Object List) List) 
+    (car (List) List)
+    (cdr (List) List)
+    (+ (Number Number) Number) 
+    (- (Number Number) Number) 
+    (* (Number Number) Number) 
+    (/ (Number Number) Number) 
+
+    (not (Bool) Bool)
+
+    ; predicates
+    (=  (Number Number) Bool)
+    (<  (Number Number) Bool)
+    (>  (Number Number) Bool)
+    (<=  (Number Number) Bool)
+    (>=  (Number Number) Bool)
+    (eq? (Object Object) Bool)
+    (equal? (Object Object) Bool)
+    (null? (List) Bool)
+
+    ;; These are dynamically typed primitives: 
+    (pair? (Object) Bool)
+    (number? (Object) Bool)
+
+    ))
+
 
 (define regiment-distributed-primitives 
   '(
@@ -66,7 +112,8 @@
   (append regiment-basic-primitives
 	  regiment-distributed-primitives))
 
-(define (regiment-primitive? x) (memq x regiment-primitives))
+(define (regiment-primitive? x) 
+  (if (assq x regiment-primitives) #t #f))
 
 (define (lenient-eq? o1 o2)
   (or (eq? o1 o2)
@@ -248,6 +295,7 @@
 
 ;; Things that need boxing (sigh):
 ;; TODO: Fix this up when my language actually becomes a bit more concrete:
+;; I'm not even sure what meaning this has.  These are simple constants...
 (define (immediate? x)
   (or (number? x)
       (symbol? x)
@@ -828,27 +876,7 @@
         [else (cons (car lst)
                     (cons x (loop (cdr lst))))]))))
 
-;;; multiple-value let
-(define-syntax mvlet
-  (lambda (x)
-    (define domvlet
-      (lambda (bindings ids tmps body)
-        (if (null? bindings)
-            `((,#'lambda ,ids ,@body) ,@tmps)
-            (syntax-case (car bindings) ()
-              [(*ids expr)
-               (with-syntax ([*tmps (generate-temporaries #'*ids)])
-                 (with-syntax ([body (domvlet (cdr bindings)
-                                              (append #'*ids ids)
-                                              (append #'*tmps tmps)
-                                              body)])
-                   #'(call-with-values
-                       (lambda () expr)
-                       (lambda *tmps body))))]))))
-    (syntax-case x ()
-      [(_ (((id ...) expr) ...) form ...)
-       (andmap (lambda (ls) (andmap identifier? ls)) #'((id ...) ...))
-       (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
+;; Removed mvlet! [2004.04.28]
 
 ;;; procedures for manipulating sets
 (define set?

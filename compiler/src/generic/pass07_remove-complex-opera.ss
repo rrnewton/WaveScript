@@ -101,7 +101,7 @@
                        ([(ops binds) (process-opera* (cdr operalst))])
                        (values (cons (car operalst) ops) binds))]
                    [,else
-                     (let ((new-var (gen-symbol 'tmp)))
+                     (let ((new-var (unique-name'tmp)))
                        (let-values
                          ([(ops binds) (process-opera* (cdr operalst))])
                          (values

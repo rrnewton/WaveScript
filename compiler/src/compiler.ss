@@ -69,7 +69,9 @@
 		(test-one x)))
 
 
-(display (list (test00)
+;; Temp =============================================================
+
+'(display (list (test00)
 	       (test01)
 	       (test07)))
 (newline)

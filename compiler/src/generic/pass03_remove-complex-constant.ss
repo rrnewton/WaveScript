@@ -153,7 +153,7 @@
 ;                 (append rand-b* (apply append datum-b**))))]
 
           [(,prim ,[rand* rand-b**] ...)
-           (guard (scheme-primitive? prim))
+           (guard (regiment-primitive? prim))
            (values `(,prim ,rand* ...) (apply append rand-b**))]
           
           [,unmatched

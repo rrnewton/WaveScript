@@ -12,12 +12,24 @@
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)
 
-         "generic/pass02_remove-unquoted-constant.ss"
-         "generic/pass03_remove-complex-constant.ss"
-         "generic/pass04_uncover-free.ss"
-         "generic/pass05_lift-letrec.ss"
+         "plt/pass02_remove-unquoted-constant.ss"
+         "plt/pass03_remove-complex-constant.ss"
+         "plt/pass04_uncover-free.ss"
+         "plt/pass05_lift-letrec.ss"
+;         "plt/pass06_lift-letrec-body.ss"
+;         "plt/pass07_remove-complex-opera.ss"
+;         
+
+         ;(all-except "plt/pass08_verify-core.ss" these-tests test-this)
+;         "plt/pass09_separate-graph.ss"
          
-         (all-except "plt/pass07.ss" these-tests test-this)
+         
+;         "generic/pass02_remove-unquoted-constant.ss"
+;         "generic/pass03_remove-complex-constant.ss"
+;         "generic/pass04_uncover-free.ss"
+;         "generic/pass05_lift-letrec.ss"
+         
+         
 	 "plt/tests.ss"
 )
 
@@ -37,11 +49,11 @@
 
 (define test00 test00)
 (define test01 test01)
-(define test07 test07)
+;(define test07 test07)
 
 (define tests00 tests00)
 (define tests01 tests01)
-(define tests07 tests07)
+;(define tests07 tests07)
 
 (disp "BOUT TO LOAD COMPLIRE" )
 (load/use-compiled "compiler.ss")
