@@ -102,6 +102,43 @@
 		 #t]
 	   [(quote ,const) (guard (constant? const)) #t]
 	   [,else #f]))
+  
+  (define (reconcile-type type name)
+    (case type
+      [(Region)
+       (add-prop! name 'distributed)
+       (add-prop! name 'area)
+       (add-prop! name 'region)]
+      
+      [(Area)
+       (add-prop! name 'distributed)
+       (add-prop! name 'area)]
+
+	      [(eq? 'Signal (get-primitive-return-type prim))
+	       (add-prop! name 'distributed)
+	       (add-prop! name 'signal)]
+	      [(eq? 'Anchor (get-primitive-return-type prim))
+	       (add-prop! name 'distributed)
+	       (add-prop! name 'anchor)])
+]
+	    [(basic-primitive? prim) (add-prop! name 'local)]
+	    [else (error 'classify-names.process-expr 
+			 "This regiment primitive is neither basic nor distributed!:~s"
+			 prim)])
+
+  ;; This is a cheap (and definitely non-polymorphic) kind of type
+  ;; inference for variables used as arguments to primitive functions.
+  (define (type-inference-primapp prim args)
+    (let ((entry (get-primitive-entry prim)))
+      (for-each 
+       (lambda (arg props)
+      
+      
+      (match (vector (cons prim args) 
+		   
+	   [#( (,binop ,left ,right) 
+	       
+
 
   (define process-expr
     (lambda (name expr env)
@@ -150,7 +187,15 @@
            (guard (regiment-primitive? prim))
 	   (add-dependency! name (apply union (map free-vars rand*)))
 	   
-	   (cond 
+	   ;; Process varrefs
+	   (type-inference-props prim rand*)
+
+	   ;; Process var binding:
+	   (reconcile-type 
+	    (get-primitive-return-type prim)
+	    name)
+
+	   '(cond 
 	    [(distributed-primitive? prim)
 	     (add-prop! name 'distributed)
 	     (cond

@@ -3,7 +3,7 @@
 
 ;(require (lib "trace.ss") (lib "iu-match.ss") "../plt/helpers.ss")
 
-;;; Pass 10: deglobalize
+;;; Pass 16: deglobalize
 ;;; April 2004
 ;===============================================================================
 
@@ -81,7 +81,7 @@
 (define (check-prop p s)
   (let ((entry (assq s proptable)))
     (if entry (memq p (cdr entry))
-	(error 'pass10_deglobalize:check-prop
+	(error 'deglobalize:check-prop
 	       "This should not happen!  ~nName ~s has no entry in ~s."
 	       s proptable))))
 
@@ -566,7 +566,7 @@
 
 
 (define test-this (default-unit-tester
-		    "Pass13 Deglobalize: to convert global to local program."
+		    "Deglobalize: to convert global to local program."
 		    these-tests))
 
 (define test13 test-this)
