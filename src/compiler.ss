@@ -104,6 +104,8 @@
       (fluid-let ([pass-names passes])
 	(run-compiler p)))))
 
+(define ct compile-to-tokens)
+
 (define compile-almost-to-tokens
   (let ((passes (list-remove-first 'deglobalize
 				   (list-remove-after 'deglobalize pass-names))))
@@ -111,11 +113,20 @@
       (fluid-let ([pass-names passes])
 	(run-compiler p)))))
 
-(define run-tokmac
-  (let ((passes (cdr (list-remove-before 'deglobalize pass-names))))
-    (lambda (p)
+(define (run-tokmac tm)    
+  (let ([starting-place 
+	 (match tm 
+		[(,lang ,prog)
+		 (case lang
+		   [(deglobalize-lang) 'deglobalize]
+		   [(cleanup-token-machine-lang) 'cleanup-token-machine]
+		   ;[(haskellize-tokmac-lang) (error...
+		   [else 'deglobalize])])])
+  (let ((passes (cdr (list-remove-before starting-place pass-names))))
+;    (lambda (tm)
       (fluid-let ([pass-names passes])
-	(run-compiler p)))))
+	(run-compiler tm)))))
+
 (define rt run-tokmac)
 (define assemble rt)
 
