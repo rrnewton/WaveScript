@@ -1,10 +1,10 @@
 ;; simulator_nought.ss
 ;;  -Ryan Newton [2004.05]
+
 ;; This is a simulator for the output of pass10_deglobalize.  
-;; A simple simulator.
-;; This file uses and abuses top-level bindings (like mad).
-;; It should be loaded inside a module that only exports:
-;;   (provide simulator-nought-language)
+
+;; This file uses and abuses top-level bindings (like mad), because it
+;; uses eval, so it's not very well encapsulated right now.
 
 ;; NOTE: Unlike some of the files in the chez/ directory, this expects
 ;; to be loaded from its own parent directory.
@@ -52,7 +52,7 @@
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
-  "\"simulator_nought.ss\"a: simplest simulator for nodal language")
+  "simulator_nought.ss: simplest simulator for nodal language")
 
 ;; This uses a lame sort of text display instead of the graphics display:
 (define simulator-output-text (make-parameter #f (lambda (x) x)))
@@ -72,6 +72,8 @@
 ;; Incoming is a list of messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
+;; [2004.06.13] Be careful to change "cleanse-world" if you change
+;; this, we don't want multiple simulation to be thrashing eachother.
 (define-structure (simobject node incoming redraw gobj homepage))
 
 ;; This record holds the info that the token cache needs to maintain
@@ -125,9 +127,9 @@
 ;; (There are more topologies in "network_topologies.ss"
 ;;========================================
 ;; These start off uninitialized and are initialized with "init-world".
-(define graph #f)
-(define object-graph #f)
-(define all-objs #f)
+(define graph #f) ;; Graph of 'node'
+(define object-graph #f) ;; Graph of 'simobject'
+(define all-objs #f) ;; List of 'simobject' 
 
 (define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f '())) g))
 (define (init-world)
@@ -150,6 +152,23 @@
 
 ;; Call it now as we start up:
 (init-world)
+
+(define (destroy-world)
+  (set! graph #f)
+  (set! object-graph #f)
+  (set! all-objs #f))
+
+;; init-world allocates the world, but we also want a procedure to cleanse it.
+(define (cleanse-world)
+  (if object-graph
+      (for-each (lambda (entry)
+		  (let ((simob (car entry)))
+		    (set-simobject-redraw! simob #f)
+		    (set-simobject-homepage! simob '())
+		    (set-simobject-incoming! simob '())))
+		object-graph)
+      (error 'cleanse-world "world must not be allocated object-graph is false.")))
+
 ;;========================================
 
 #;(define (draw)
@@ -649,11 +668,23 @@
   `(begin (define simulate run-simulation) ,test))
 
 ;; Use the default unit tester from helpers.ss:
-(define test-this (default-unit-tester 
-		    this-unit-description 
-		    these-tests
-		    tester-eq?
-		    wrap-def-simulate))
+;; But this also makes sure the world is initialized before doing unit tests:
+(define test-this
+  (let ((tester (default-unit-tester 
+		  this-unit-description 
+		  ;; Make sure that the world is clean before each test.
+		  (map (lambda (test)
+			 (match test
+			   [(,prog ,res) `((begin (cleanse-world) ,prog) ,res)]
+			   [(,name ,prog ,res) 
+			    `(name (begin (cleanse-world) ,prog) ,res)]))
+			 these-tests)
+		  tester-eq?
+		  wrap-def-simulate)))
+    (lambda args
+      ;; First init world:
+      (init-world)
+      (apply tester args))))
 
 (define testsim test-this)
 (define testssim these-tests)
