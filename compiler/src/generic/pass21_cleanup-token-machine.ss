@@ -190,7 +190,9 @@
 	      ((process-expr env tokens this-token)
 	       `(return ,thing 
 			,(assq 'to stuff)
-			,(assq 'via stuff)
+			,(if (assq 'via stuff)
+			     (assq 'via stuff)
+			     `(via ,this-token))
 			,(if (assq 'seed stuff)
 			     (assq 'seed stuff)
 			     '(seed '#f))
@@ -228,7 +230,6 @@
     (define process-tokbind 
       (lambda (env tokens)
 	(lambda (tokbind)
-					;	  (disp "process-tokbind" tokbind)
 	  (match tokbind
 		 [(,tok ,args ,expr* ...)
 		  (let ([expr* (map (process-expr (append args env) tokens tok)
@@ -359,8 +360,23 @@
 		      (socpgm (bindings ) (emit tok1))
 		      (nodepgm (tokens [tok1 () (begin ,bodies ...)]) (startup ))))
 	   (and (member '(fun1) bodies)
-		(member '(fun2) bodies))]))
-    ]))
+		(member '(fun2) bodies))]))]
+
+    ["Test of return normalization #1"
+     (cleanup-token-machine 
+      '(deglobalize-lang 
+	'(program
+	  (bindings ) (socpgm (bindings ) (emit tok1))
+	  (nodepgm
+	   (tokens
+	    [tok1 () (return 3 (to tok2) )]
+	    [tok2 (x) 3])
+	   (startup )
+	   ))))
+     ,(lambda (p) #f)]
+
+))
+
 
 
 (define test-this (default-unit-tester
