@@ -16,6 +16,12 @@
 
 ;  (require "plt/demo_display.ss")
 
+(load/use-compiled "plt/driver.ss")
+;(module pass-names mzscheme  (provide pass-names)
+
 (load/use-compiled "compiler_common.ss")
+
+
+
 
 
