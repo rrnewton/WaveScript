@@ -1,14 +1,16 @@
 ;;; Lang 00: trivial regiment stubs
 ;===============================================================================
 
+;; Define this once for the simulation so that our answers are deterministic.
+;; This is a list of <sensereading, xpos, ypos>
+(define the-test-field 
+  (make-n-list 500 (lambda (_) (list (random 1.0) (random 100) (random 100)))))
+
 ;; make-bignum assumes 2's complement numbers:
 (define-language
   'regiment-stub-evaluator
   (make-begin
     `(,(base-language 'return)
-
-      (define field 
-	(make-n-list 5000 (lambda (_) (list (random 100) (random 100)))))
       
       (define make-bignum
 	(let* ([pow32 (expt 2 32)]
@@ -23,8 +25,20 @@
                     (+ (* (convert-to-unsigned (vector-ref v i)) p2)
                        (loop (add1 i) (* p2 pow32)))))))))
 
-       (define (circle-at pos rad)
-	 )
+      (define (anchor-at pos)
+	(find-maximizing (lambda (entry) (posdist (cdr entry) pos)) the-test-field))
+
+      (define (circle-at pos rad)
+	(filter (lambda (p) (<= (posdist (cdr p) pos) rad)) the-test-field))
+      (define (circle-at anch rad)
+	(filter (lambda (p) (<= (posdist (cdr p) (cdr anch)) rad)) the-test-field))
+
+      (define rfold foldl)
+      (define rmap map)
+      (define sense car)
+
+      (define world the-test-field)
+      
 
 )))
 

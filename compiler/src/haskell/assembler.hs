@@ -1,3 +1,4 @@
+
 {- [2004.08.05]
 
 Ok, going to write the assembler in Haskell, anticipating that the
@@ -50,7 +51,7 @@ process_expr e =
     Ereturn e -> ([],"") 
     Erelay (Just t) -> ([],"") 
     Erelay Nothing -> ([],"") 
-    Eemit mt t exps -> ([],"    call emit_"++tokname t++"();\n")
+    Eemit mt t exps -> ([],"    TMComm.emit("++tok_id t++");\n")
     Ecall mt t exps -> ([],"")
 
 

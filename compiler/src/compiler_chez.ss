@@ -1,3 +1,10 @@
+
+(if (not (top-level-bound? 'default-break-handler))
+    (define-top-level-value 'default-break-handler (break-handler)))
+(break-handler (lambda args 
+		 (apply default-break-handler args) 
+		 (if (null? args) (void) (car args))))
+
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
