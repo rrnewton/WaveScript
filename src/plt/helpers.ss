@@ -1,15 +1,21 @@
 
 (module helpers mzscheme        
-  (require (lib "iu-match.ss"))
-  (require (lib "include.ss"))
+  (require (lib "iu-match.ss")
+           (lib "include.ss")
+           (lib "pretty.ss"))
   
   ;; This might not be necessary: 
   ; (require "~/scheme/plt/utils/rutils_generic.ss")
   (require (all-except (lib "rutils_generic.ss")
-                       list->set union intersection difference set?
+                       id list->set union intersection difference set?
                        list-head filter list-index snoc rac rdc 
                        insert-between iota disp))
 
+  ;; Here we include the SLIB initialization directly.  This is the only 
+  ;; way I can make slib play nice with the PLT module system at all.
+;  (load (build-path (collection-path "slibinit") "init.ss"))
+  (include "/usr/local/plt/collects/slibinit/init.ss")
+  
   (include (build-path ".." "generic" "helpers.ss"))
   
   (define (define-top-level-value sym obj)
@@ -31,6 +37,8 @@
   (define-syntax mvlet
     (syntax-rules ()
         [(mvlet stuff ...) (let-values stuff ...)]))
+  
+  
   
   (provide 
 

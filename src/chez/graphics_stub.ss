@@ -21,7 +21,11 @@
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 
-(define processor-screen-radius 25.)
+;; Include definitions common to the chez and plt versions:
+(include "generic/graphics_stub.ss")
+;; This is imported from the above.  Make sure that it is a flonum,
+;; just so we don't end up with rationals:
+(set! processor-screen-radius (exact->inexact processor-screen-radius))
 
 ;;===============================================================================
 ;; Utils:

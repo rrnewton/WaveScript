@@ -4,7 +4,7 @@
            (lib "include.ss")
            (lib "load.ss" "slibinit")
            (lib "compat.ss")
-           "helpers.ss"
+           (all-except "helpers.ss" id)
 ;           (lib "9.ss" "srfi")
  ;          "engine.ss"
            )
