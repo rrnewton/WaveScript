@@ -4,6 +4,7 @@
   (require (lib "pretty.ss"))
   (require "iu-match.ss")
   (require "helpers.ss")
+  (require "constants.ss")
 
 
   (require (lib "trace.ss"))

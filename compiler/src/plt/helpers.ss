@@ -4,7 +4,9 @@
            (lib "include.ss")
            (lib "pretty.ss")
            (all-except (lib "list.ss") filter)
-           (all-except "tsort.ss" test-this these-tests))
+           (all-except "tsort.ss" test-this these-tests)
+           
+           "constants.ss")
   
   ;; This might not be necessary: 
   ; (require "~/scheme/plt/utils/rutils_generic.ss")
@@ -100,7 +102,6 @@
   
   (provide    
    ;; Syntax:
-   DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT
    mvlet rec 
    
    ;; Values:

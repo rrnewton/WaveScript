@@ -73,6 +73,11 @@
     (define STORED_ORIGIN_ARG 'stored_g_origin)
     (define STORED_HOPCOUNT_ARG 'stored_g_hopcount)
     (define STORED_VERSION_ARG 'stored_g_version)
+    
+    ;; Call flags:
+    (define INIT 11)
+    (define LOCAL 22)
+    (define REMOTE 33)
 
     (define (token->tokname t)
       (match t
@@ -209,13 +214,13 @@
 	       ;; When called locally, this sends the aggregate to the parent, and resets the acc.
 	       ;; When called remotely, this builds up the aggregation accumulator.
 	       (cons `[,return-handler retid (flag val toind viaind)
-		        (let-stored ([acc ,seed_val])
+		        (let-stored ([acc ,seed_exp])
  		     ;; Must be initialized with the seed value before aggregation begins.
 ;		     (if (= flag ,INIT)
 ;			 (set! acc val)
 		     (if (= flag ,LOCAL) ;; This is the sign to send to upward:
 			 (let ([oldacc acc])
-			   (set! acc ,seed)
+			   (set! acc ,seed_exp)
 			   ;; Now, if we're the destination we need to call the 'to' token.
 			   (if (= (my-id) (ext-ref (tok ,via viaind) ,STORED_ORIGIN_ARG)) ;; NOTE!!! FIXME: TODO: Should this always be STORED_ ??
 			       (call (tok ,to toind) (subcall (tok ,aggr 0) val oldacc))
@@ -232,7 +237,7 @@
 	       ;; Each aggregation is unique based on its to, via, and aggr arguments.
 		 `(let ([,aggr_ID (+ (* ,MAX_SUBTOK ,toind) ,viaind)])
 		    ;; Just call off to the appropriate local aggregator:
-		    (call (tok ,return-handler ,aggr_ID) expr))))]
+		    (call (tok ,return-handler ,aggr_ID) ',REMOTE ,expr ,toind ,viaind))))]
 
 	     ;; This is a local call to a gradient-bearing token:
 	     [(call (tok ,t ,[etb e]) ,[atb* args*] ...) (guard (memq t tainted))

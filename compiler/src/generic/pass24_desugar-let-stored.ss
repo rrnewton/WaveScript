@@ -92,7 +92,7 @@
 	[(quote ,const)                    (values () `(quote ,const))]
 	[,num (guard (number? num))        (values () num)]
 	[(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
-	[(tok ,t ,[e]) (guard (number? n)) (values () `(tok ,t ,e))]
+	[(tok ,t ,[e])                     (values () `(tok ,t ,e))]
 	[,var (guard (symbol? var))        (values () var)]
 	[(begin ,[st xs] ...)                 
 	 (values (apply append st) `(begin ,xs ...))]
