@@ -56,6 +56,11 @@ DEST = a.out
 mzscheme: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE) compiled/compiler.zo compiled/compiler_plt.zo
 	(cd plt; $(MAKE) "SRCFILES=$(PLT_SRC)")
 
+native: mzscheme_native
+
+mzscheme_native: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE) compiled/compiler.zo compiled/compiler_plt.zo
+	(cd plt; $(MAKE) native "SRCFILES=$(PLT_SRC)")
+
 compiled/compiler.zo:
 	$(MZC) -z --auto-dir compiler.ss
 

@@ -33,9 +33,14 @@
 ;	 "plt/tests.ss"
 )
 
+(define program 
+  (lambda args (car (reverse args))))
+
 (define base-language 
-  (lambda args
-    (for-each eval args)))
+  (lambda args (eval (car (reverse args)))))
+;(define base-language 
+;  (lambda args
+;    (for-each eval args)))
 
 ;(disp "FOOB DONE REQS")
 ;(require "plt/language-mechanism.ss")
@@ -61,11 +66,11 @@
 (define pass-names pass-names)
 (disp "BOUT TO LOAD DRIVER" pass-names)
 
-;(load/use-compiled "plt/driver.ss")
-(module pass-names mzscheme
-  (define pass-names '())
-  (provide pass-names))
-(require "plt/driver.ss")
+(load/use-compiled "plt/driver.ss")
+;(module pass-names mzscheme
+;  (define pass-names '())
+;  (provide pass-names))
+;(require "plt/driver.ss")
 
 ;(module pass-names mzscheme  (provide pass-names)
 
