@@ -116,28 +116,8 @@
 
 ;;===============================================================================
 
-(define these-tests
-  `( 
-
-    [ "First test display by bringing it up and then closing it down." 
-      (begin (init-graphics) (thread-sleep 500) (close-graphics))
-      unspecified ]
-    
-    ;; This depends on window-width and window-height from basic-graphics.ss
-    [ "Then we bring up the display and draw some procs."      
-      (begin (init-graphics) 
-	     (draw-procs '([,(* window-width .25) ,(* window-height .25)]
-			   [,(* window-width .75) ,(* window-height .75)]))
-	     (thread-sleep 1000) (close-graphics))
-      unspecified ]
-
-    [ "Then we draw more processors"
-      (begin (init-graphics) 	     
-	     (draw-procs '((51 18) (36 56) (8 25) (31 2) (59 40) 
-			   (39 23) (54 1) (45 41) (59 59) (47 13)))
-	     (thread-sleep 1000) (close-graphics))
-      unspecified ]
-    ))
+;; Get the tests for this unit:
+(include "generic/graphics_stub.tests")
 
 (define test-this (default-unit-tester this-unit-description these-tests))
 

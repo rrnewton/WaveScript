@@ -13,7 +13,10 @@
 			)
 
 ;; This defines window-width and window-height presets:
-(include "../generic/basic_graphics.ss")
+;(include "../generic/basic_graphics.ss")
+;; Sadly scheme's path system makes no sense, so this loads from the 
+;; "Regionstreams/compiler/src" directory where compiler_chez.ss is:
+(include "generic/basic_graphics.ss")
 
 (define the-win #f)
 (define the-canvas #f)
