@@ -106,10 +106,9 @@
 
 ;; [2004.06.11]  This runs unit tests for the whole system, then runs
 (define (test-everything . args)
-  (let ([test-it (lambda () 
-		   (if (memq 'verbose args)
-		       (test-this 'verbose)
-		       (test-this)))])
+  (let ([test-it (if (memq 'verbose args)
+		     (lambda () (test-this 'verbose))
+		     (lambda () (test-this)))])
 
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")

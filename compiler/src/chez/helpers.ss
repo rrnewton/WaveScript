@@ -42,5 +42,12 @@
        (sub-disp args)))))
 
 
-  
+ ;; [2004.06.13] Matches the function defined in plt, provides
+ ;; functionality used by the generic code.
+ ;; The escape handler had *better* escape.
+ (define (with-error-handlers display escape th)
+   (parameterize ([error-handler (lambda args 
+				   (apply display args)
+				   (escape))])
+		 (th)))
 
