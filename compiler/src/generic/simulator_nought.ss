@@ -94,6 +94,13 @@
 	      (integer? count)
 	      (list? args)))))
 
+
+;; These global vars start off uninitialized and are initialized with
+;; "init-world", below.
+(define graph #f) ;; Graph of 'node'
+(define object-graph #f) ;; Graph of 'simobject'
+(define all-objs #f) ;; List of 'simobject' 
+
 ;;========================================
 
 (define (id x) x)
@@ -122,15 +129,8 @@
 (define (all-connected simob)
   '())
 
-
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
-;;========================================
-;; These start off uninitialized and are initialized with "init-world".
-(define graph #f) ;; Graph of 'node'
-(define object-graph #f) ;; Graph of 'simobject'
-(define all-objs #f) ;; List of 'simobject' 
-
 (define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f '())) g))
 (define (init-world)
   (set! graph   
@@ -485,7 +485,7 @@
 	       )]
 	   
 	   )]
-
+       
        [socprog
 	 `(lambda (SOC-processor this object-graph all-objs)
 ;	    (printf "CALLING SocProg: ~s~n" this)
@@ -518,7 +518,7 @@
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
 		   ,@(map list starttoks)
-		   (let main-node-loop ([incoming (simobject-incoming this)])		     
+		   (let main-node-loop ([incoming (simobject-incoming this)])
 		     (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
@@ -531,6 +531,10 @@
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
 		       (let ((msg (last incoming)))
+
+			 ;; Print out the process number when we handle a message:
+			 (printf "~s." (node-id (simobject-node this)))
+
 			 ;; Pop that message off:
 			 (if (null? (cdr incoming))
 			     (set-simobject-incoming! this '())
@@ -541,8 +545,13 @@
 			      (error 'node-handler 
 				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
 				     msg incoming)))
-			 (handler msg))])
+			 (handler msg)
+			 (main-node-loop (simobject-incoming this))
+			 )])
 		     ))))))])
+
+       (printf "~nGOT TOKEN HANDLERS:~n" )
+       (pretty-print nodetoks)(newline)
 
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
@@ -756,7 +765,7 @@
 (define b object-graph)
 (define c all-objs)
 ;(dsis g ((eval f) a b c))
-(define (g) (run-simulation (tt) .5))
+;(define (g) (run-simulation (tt) .5))
 
 
 (define (ttt)
