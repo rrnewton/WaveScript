@@ -3,67 +3,67 @@
 
 ;; ======================================================================
 ;; Simulator runtime
-
 (define (sim-seed world)
   (define-structure (tokstore x))
   "This is the simulation seed."
   "It returns an initial set of scheduled actions for the simulator to execute."
-  (let ([local-sense    (lambda () 3.0)])
+  (let ((local-sense
+          (lambda ()
+            ((current-sense-function) (node-pos (simobject-node this))))))
     (let* ()
-      (letrec ([soc-start
-                (lambda (localinfo world)
+      (letrec ((soc-start
+                 (lambda (this world)
+                   (lambda ()
+                     (let ((the-store (simobject-token-store this)))
+                       (set-simobject-outgoing! this '())
+                       (set-simobject-outgoing!
+                         this
+                         (cons
+                          (bare-msg-object tok1 (list))
+                          (simobject-outgoing this)))
+                       (let ((result (values (simobject-outgoing (this)))))
+                         (set-simobject-outgoing! this '())
+                         result)))))
+               (tok1
+                (lambda (this world)
                   (lambda ()
-                    (let ([the-store (localinfo-tokstore localinfo)]
-                          [this (localinfo-this localinfo)])
-                      (set-simobject-outgoing! this '())
-                      (set-simobject-outgoing!
-                        this
-                        (cons (bare-msg-object tok1 (list))
-                              (simobject-outgoing this)))
-                      (let ([result (values (simobject-outgoing (this)))])
-                        (set-simobject-outgoing! this '())
-                        result))))]
-               [tok1
-                (lambda (localinfo world)
-                  (lambda ()
-                    (let ([the-store (localinfo-tokstore localinfo)]
-                          [this (localinfo-this localinfo)])
+                    (let ((the-store (simobject-token-store this)))
                       (set-simobject-outgoing! this '())
                       ;(bcast tok2 '3)
-                      (let ([result (values (simobject-outgoing (this)))])
+                      (let ((result (values (simobject-outgoing (this)))))
                         (set-simobject-outgoing! this '())
-                        result))))]
-               [tok2
-                (lambda (localinfo world)
+                        result)))))
+               (tok2
+                (lambda (this world)
                   (lambda (x)
-                    (let ([the-store (localinfo-tokstore localinfo)]
-                          [this (localinfo-this localinfo)])
+                    (let ((the-store (simobject-token-store this)))
                       (set-simobject-outgoing! this '())
-                      (begin "Doing let stored."
-                             (if (eq? x '()) (set-car! x '99))
-                             (begin (set-tokstore-x!
-                                      the-store
-                                      (+ (tokstore-x the-store) '1))
-                                    ;(bcast tok2 (tokstore-x the-store))
-				    ))
-                      (let ([result (values (simobject-outgoing (this)))])
+                      (begin
+                        "Doing let stored."
+                        (if (eq? x '()) (set-car! x '99))
+                        (begin
+                          (set-tokstore-x!
+                            the-store
+                            (+ (tokstore-x the-store) '1))
+                          ;(bcast tok2 (tokstore-x the-store))
+                          ))
+                      (let ((result (values (simobject-outgoing (this)))))
                         (set-simobject-outgoing! this '())
-                        result))))])
+                        result))))))
         (values (list) (lambda () (make-tokstore '())))))))
 
-
-
-
-
+;; This builds a simulation for a specific node in the network.
 ;; Returns a stream of scheduled events, ordered by virtual time.
+;; It is important that they be consumed only one at a time, because
+;; the execution of earlier events affects which events come later.
 (define build-node
-  (lambda (localinfo world sim-seed)
-      (mvlet ([(evnts store-factory) (sim-seed world)])
-       (let ([evnts (sort (lambda (a b) (<= (car a) (car b))) evnts)]
-	     [store (store-factory)]
-	     [evntcmpr (lambda (a b) (<= (car a) (car b)))])
-	 ;; Set up the store for this node only:
-	 (set-localinfo-tokstore! localinfo store)
+  (lambda (ob world sim-seed)
+    ;; The scheduling queue contains event entries of the format:
+    ;;   [<vtime-to-exec>, <host-simob>, <execution-func>]
+    ;; which are also returned from sim-seed in this format.
+    (let* ([evnts (sim-seed world)]
+	   [evntcmpr (lambda (a b) (<= (car a) (car b)))]
+	   [evnts (sort eventcmpr evnts)])
 	 ;; Schedule either adds an event to the schedule, 
 	 ;; or returns the current schedule in list form.
 	 (letrec ([schedule 
@@ -74,12 +74,12 @@
 		  ;; Wire the token-handler executer into our scheduler.
   	          [wrap (lambda (evnt)
 			  (match evnt
-				 [(,vtime ,fun) 
+				 [(,vtime ,simob ,fun) 
 				  (list vtime 
 					(lambda (vtimeexeced) ;args				 
 					  (for-each schedule 
 					       (map wrap 
-						    ((fun localinfo world) vtimeexeced ;args
+						    ((fun simob world) vtimeexeced ;args
 							   )))))]))])
 	   ;; Put all the starting events into the schedule, while
 	   ;; also wiring their return values to modify the scheduler
@@ -93,7 +93,7 @@
 	     (if (null? ls) '()     
 		 (cons (car ls) ;; We expose only the very next action.
 		       (lambda () ;; When this is called we get the new schedule, which might have changed.
-			 (loop (schedule)))))))))))
+			 (loop (schedule))))))))))
 
 
 
@@ -110,13 +110,9 @@
 	     [streams 
 	      (list->vector
 	       (map (lambda (ob)
-		      (build-node 
-		       (make-localinfo ob ;; 
-				       (eq? ob soc)
-				       #f) ;; Store is set by build-node
+		      (build-node ob
 		       sim ;; the world
-		       sim-seed ;; TODO: READ THIS FROM FILE.
-		       
+		       sim-seed ;; TODO: READ THIS FROM FILE.		       
 		       )) 
 		    (simworld-all-objs sim)))])
 
