@@ -66,6 +66,9 @@ towards NesC.  Sigh.
 1:33pm: *THere* all the damn graphical simulator tests work in PLT
 also..
 
+[2004.06.17]
+URGH.  Having problems returning a stream of answers.  Can't nest
+engines dammit!  So run-flat-threads is not a sufficient interface...
 
 
 

@@ -3,7 +3,7 @@
 
 (include "chez/match.ss")
 
-(include "generic/constants.ss")
+;(include "generic/constants.ss")
 
 ;; [2004.06.04] MOVED THIS DEFINIITON to helpers.ss
 ;; Uncomment this to remove debugging code and possibly make the

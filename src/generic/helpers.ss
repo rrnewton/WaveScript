@@ -1524,6 +1524,7 @@
 		   (display (substring str 0 (- (string-length str) 1))))))))
 	      args)))
 
+;;======================================================================
 ;; [2004.06.17] These functions deal with streams that are represented
 ;; as a list, thunk, or improper list with a thunk as its final
 ;; cdr-pointer.  That is:
@@ -1534,18 +1535,18 @@
 ;; It is *advisable*, but not required that the thunk be a *promise* so that it 
 ;; reevaluation happens appropriately.
 
-(define-structure (stream-obj val))
+'(define-structure (stream-obj val))
 
-(define (stream-innard? s)
+'(define (stream-innard? s)
   (or (procedure? s) 
       (and (pair? s) (stream? (cdr s)))))
 
-(define (stream? s)
+'(define (stream? s)
   (and (stream-obj? s)
        (stream-innard (stream-obj-val s))))
 
 ;; NOTE REEVALUATION ACROSS TWO POINTERS TO THE SAME STREAM IS STILL POSSIBLE.
-(define (stream-car stream)
+'(define (stream-car stream)
   (let ((s (stream-obj-val stream)))
     (cond
      [(procedure? s) 
@@ -1557,7 +1558,7 @@
      [else (error 'stream-car
 		"invalid object inside stream structure: ~s" s)])))
 
-(define (stream-cdr stream)
+'(define (stream-cdr stream)
   (let ((s (stream-obj-val stream)))
     (cond
      [(procedure? s) 
@@ -1568,40 +1569,60 @@
 		  "invalid object inside stream structure: ~s" s)])))
 	  
 
-
 ;;============================================================
+;; Here's a different version which insists on using promises.  It
+;; also has a look-ahead of one, so the stream had better not infinite
+;; loop at any point!
+
 (define (stream? s)
-  (or (procedure? s) 
+  (or (promise? s)
       (and (pair? s) (stream? (cdr s)))))
 
-;; NOTE REEVALUATION ACROSS TWO POINTERS TO THE SAME STREAM IS STILL POSSIBLE.
 (define (stream-car s)
   (let scloop ((s s))
     (cond
-     [(procedure? s) 
-      ;; We have no way of mutating the prior cell:
-      (stream-car (s))]
-     [(pair? s) 
-      (if (pair? (cdr s))
-	  (car s)
-	  (begin (set-cdr! s ((cdr s)))
-		 
-      
+     [(promise? s)
+      ;; We have no way of mutating the prior cell, so just return this:
+      (stream-car (force s))]
+     [(pair? s) (car s)]
      [else (error 'stream-car
 		"invalid object inside stream structure: ~s" s)])))
 
-(define (stream-cdr stream)
-  (let ((s (stream-obj-val stream)))
-    (cond
-     [(procedure? s) 
-      (let ((new-s (s)))
-	(set-stream-obj-val! stream new-s))]
-     [(pair? s) (make-stream-obj (cdr s))]
-     [else (error 'stream-cdr
-		  "invalid object inside stream structure: ~s" s)])))
+(define (stream-cdr s)
+  (cond
+   [(promise? s)      
+    ;; Again, this one isn't structured as a pair, so we can't mutate and extend.
+    (stream-cdr (force s))]
+   [(pair? s)
+      (if (not(pair? (cdr s)))
+	  (set-cdr! s (force (cdr s))))
+      (cdr s)]		       
+   [else (error 'stream-cdr
+		"invalid object inside stream structure: ~s" s)]))
+
+;; Take N elements from a stream
+(define (stream-take n s)
+  (let loop ((n n) (s s))
+    (if (zero? n) '()
+	(cons (stream-car s) 
+	      (loop (sub1 n) (stream-cdr s))))))
+
+;; Layer on those closures!
+(define (stream-map f s)
+  (let loop ((s s))
+    (delay (cons (f (stream-car s))
+		 (loop (stream-cdr s))))))
+    
 	  
+;; A stream of non-negative integers:
+(define counter-stream
+  (let loop ((i 0))
+    (delay (cons i (loop (add1 i))))))
 
-
+;; A silly little stream of random number
+(define (random-stream inp)
+  (let loop ()
+    (delay (cons (random inp) (loop)))))
 
 ;;======================================================================
 ;; And here are the unit tests for this file... Don't have many of these yet.

@@ -50,5 +50,7 @@
 		 (th)))
 
 
+;; This is too lenient, but there's no other option.
+(define promise? procedure?)
 
 (include "../generic/helpers.ss")
