@@ -1,4 +1,0 @@
-#! /bin/bash
-
-#scheme -h regimentc.1.heap $*
-chez -h regimentc.1.heap $*

@@ -1,5 +1,9 @@
-#! /usr/bin/scheme --script
+#! /bin/sh
+#|
+exec petite --script "$0" ${1+"$@"}
+|#
 
+; /usr/bin/scheme --script
 
 (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
 (load "compiler_chez.ss")
@@ -77,7 +81,6 @@
 (scheme-start main)
 
 ;(scheme-script main)
-(if (top-level-bound? 'command-line-arguments)
-    
-
-(disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments))
+(when (top-level-bound? 'command-line-arguments)
+      (apply main (command-line-arguments))
+      (disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments)))

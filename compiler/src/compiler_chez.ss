@@ -28,7 +28,7 @@
 (load "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
 
-(load "generic/constants.ss")
+(include "generic/constants.ss")
 
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
