@@ -37,6 +37,7 @@
     deglobalize
     
     cleanup-token-machine    
+    desugar-gradients
 
   ;    verify-token-machine
 

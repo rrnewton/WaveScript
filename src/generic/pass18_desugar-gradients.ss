@@ -27,22 +27,24 @@
 		(set! ver (+ 1 ver))
 		(bcast ,tok (my-id) 1 ver))]
 
-	     [(relay) ((process-expr env tokens this-token) `(relay ,this-token))]
+	     [(relay) ;((process-expr env tokens this-token) `(relay ,this-token))]	      
+	      (bcast ,this-token stored_g_origin (+ 1 stored_g_hopcount) stored_g_version)]
 	     [(relay ,tok)
-	      
-	      `(relay ,tok)
-	      ]
+	      ;`(relay ,tok)
+	      (if (eq? tok this-token)
+		  ((process-expr env tokens this-token) `(relay))
+		  (error 'desugar-gradients:process-expr
+			 "Can't handle relaying *other* tokens yet: ~a" `(relay ,tok)))]
 
-	      
+	     ;; Should this be the stored version, or the current version if its available??
+	     ;; Should all args be lifted?  Then we can tell if we even have a newer version.
+	     [(dist) (stored g_hopcount)]
+	     [(dist ,tok) 
+	      (if (eq? tok this-token)
+		  ((process-expr env tokens this-token) `(dist))
+		  (error 'desugar-gradients:process-expr
+			 "Can't handle dist from *other* tokens yet: ~a" `(dist)))]
 
-	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(emit call activate)))
-	      `(,call-style ,tok ,args* ...)]
-
-	     [(timed-call ,time ,tok ,[args*] ...)
-	      `(timed-call ,time ,tok ,args* ...)]
-
-	     [(dist ,tok) `(dist ,tok)]	     
 	     [(return ,[expr]            ;; Value
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
@@ -53,6 +55,15 @@
 		       (via ,parent) 
 		       (seed ,seed) 
 		       (aggr ,aggr))]
+
+	     	   
+	     [(,call-style ,tok ,[args*] ...)
+	      (guard (memq call-style '(emit call activate)))
+	      `(,call-style ,tok ,args* ...)]
+
+	     [(timed-call ,time ,tok ,[args*] ...)
+	      `(timed-call ,time ,tok ,args* ...)]
+
 	     [(leds ,what ,which) `(leds ,what ,which)]
 
 	     [(,prim ,[rands] ...)
@@ -70,13 +81,16 @@
 		     "bad expression: ~s" otherwise)]
 	     ))))
 
-      (define process-tokbind 
+    (define process-tokbind 
 	(lambda (env tokens)
 	  (lambda (tokbind)
 	    (match tokbind
 		   [(,tok ,args ,expr)
-;		    `(,tok ,args ,((process-value env tokens tok) expr))
-		    `(,tok ,args ,expr)
+		    `(,tok (g_origin g_hopcount g_version ,args ...)
+			   (let-stored ([g_origin #f]
+					[g_hopcount #f]
+					[g_version #f])
+				       ,((process-expr env tokens tok) expr)))
 		    ]
 		   ))))
 
