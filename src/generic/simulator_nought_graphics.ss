@@ -249,8 +249,9 @@
   (run-simulation
    (build-simulation 
     (compile-simulate-nought 
-     example))
+     example-nodal-prog4))
    1.7))
+
 (set! these-tests
   `([ "Simple test"
     (begin (init-world)

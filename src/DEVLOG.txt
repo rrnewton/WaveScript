@@ -31,3 +31,8 @@ graphical simulator.  Right now I'm trying to figure out how
 *returning values* should work.  Especially since almost all the
 return values will be streams.
 
+ 8:05pm:  I'm all screwed up now wrt the status of local bindings for
+token handlers.  I'm trying to make my token-language a little wider
+than it needs to be for my compiler, that makes it easier for me to
+make test-cases by hand. 
+

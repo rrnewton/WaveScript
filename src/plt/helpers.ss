@@ -41,6 +41,33 @@
     (syntax-rules ()
         [(mvlet stuff ...) (let-values stuff ...)]))
   
+  ;; This is a cludge and not a true implementation of chez's "error-handler"
+  ;; Erk, this version doesn't make any sense, we could have all sorts of 
+  ;; repeated and parallel calls on different threads: 
+  #;(define (error-handler . arg)
+    (let ([display-set #f]
+          [escape-set #f]
+          [s #f] [e #f])
+    (if (null? arg) 'umm
+        (error-display-handler
+         (lambda (str exn) (if escape-set 
+                               ((car arg) str exn)
+                               (begin 
+                                 (set! display-set)
+                                 (set! s str) 
+                                 (set! e exn)))))
+        (error-escape-handler
+         (lambda () 
+           (if display-set
+               ((car arg) s e)
+               (set! escape-set #t)))))))
+  (define (error-handler . arg)
+    (if (null? arg)
+        (error-display-handler)
+        (begin ;; This is lame and dangerous: <WARNING>
+          ;; Ack, this in particular breaks everything:
+;          (error-escape-handler (lambda () (void)))
+          (error-display-handler (car arg)))))
   
   (provide 
    DEBUGMODE
@@ -49,8 +76,9 @@
    mvlet rec 
    
    ;; Values:
+   ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port
+   flush-output-port error-handler
    
    
    get-formals

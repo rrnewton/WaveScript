@@ -8,9 +8,10 @@
   ;; COMPILE:
   [ "Run the translator on an empty program."
     (compile-simulate-nought
-     '(program
+     '(program	
+       (bindings)
        (socpgm (bindings) )
-       (nodepgm (bindings) (tokens) () )))
+       (nodepgm (tokens) (startup) )))
     (unspecified unspecified)]
   
   [ "Run the translator on trivial program."
@@ -67,8 +68,9 @@
      (build-simulation
       (compile-simulate-nought
        '(program
+	 (bindings)
 	 (socpgm (bindings) );(emit tok1))
-	 (nodepgm (bindings) (tokens) () ))))
+	 (nodepgm  (tokens) (startup) ))))
      0.3)
     Threads_Timed_Out ]
 
