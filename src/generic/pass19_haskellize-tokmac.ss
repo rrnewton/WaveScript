@@ -33,6 +33,7 @@
 	[(*) "Pmult"]  [(/) "Pdiv"]
 	[(<) "Pless"]  [(>) "Pgreater"]
 	[(<=) "Pleq"]  [(>=) "Pgeq"]
+	[(=) "Peq"]
 
 	[else (let ([name (strip-illegal (symbol->string p))])
 		(if (equal? name "")
@@ -63,14 +64,15 @@
 	 (format "(~a, ~a)" id rhs)]))
     
     (define process-expr 
-      (lambda (expr)
+      (trace-lambda 'processest (expr)
       (match expr
-	[(quote ,const) 
+	[(quote ,const)
 	 (cond 
 	  [(integer? const) (format "(Econst ~a)" const)]
 	  ;; For now we're lamely expressing
 	  [(symbol? const) (format "(Econst ~a)" (hash-symbol const))]
 	  [(boolean? const) (format "(Econst ~a)" (if const 1 0))]
+	  ;[(string? const) (format "(Econst ~a)" (if const 1 0))
 	  [else (error 'haskellize-tokmac:process-expr
 		       "cannot handle this type of constant presently: ~s" const)])]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
@@ -107,8 +109,16 @@
 		 (seed ,[seed_val]) ;; With seed
 		 (aggr ,rator_tok)) ;; Aggregator 
 	 (format "(Ereturn ~a ~a ~a ~a ~a)"
-		 expr (htok memb) (htok parent) seed_val (htok rator_tok))	
+		 expr (htok memb) (htok parent) seed_val (htok rator_tok))  
 	 ]
+
+        ;; This is a primitive, but handled special.
+        ;; User better use double slashes.
+        [(dbg ,s ,[args] ...) 
+         (let ((str (match s
+		      [(quote ,st) st]
+		      [,st st]))) 
+           (format "(Edbg \"~a\" ~a)" str (hlist args)))]
 
         [(leds ,what ,which)
          (format "(Eled ~a ~a)"

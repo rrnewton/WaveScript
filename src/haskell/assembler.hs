@@ -20,13 +20,13 @@ import Char
 --import Control.Exception
 import Control.Monad.State
 import Data.List
+import Data.Char
 import Debug.Trace
 import GHC.IOBase
 import IO
 import System
 import System.IO.Unsafe
 import System.Posix.Files
-
 
 
 modname = "TestMachine"
@@ -72,6 +72,10 @@ process_stmt indent tokargs e =
     TMS.Svoid -> []
     TMS.Sassign (Id s) basic -> 
 	[indent ++ s ++ " = " ++ process_basic basic ++ ";\n"]
+
+
+--    TMS.Sprimapp _ Pdbg [s] ->
+--	[ indent ++ "dbg(DBG_USR1, \""++ s ++"\");\n" ]
     TMS.Sprimapp mbid prim args  -> 
  	let f text = case mbid of 
 		     Just (Id id) -> [indent ++ id ++ " = " ++ text ++ ";\n"]
@@ -81,14 +85,15 @@ process_stmt indent tokargs e =
 	    e3 = process_basic $ args!!2 -- Lazy evaluation to the rescue!
 	    err = [indent ++ "// "++ show prim ++" not available!\n"]
 	in case prim of
-	   Pplus    -> f $ e1++" + "++e2
-	   Pminus   -> f $ e1++" - "++e2
-	   Pmult    -> f $ e1++" * "++e2
-	   Pdiv     -> f $ e1++" / "++e2
-	   Pless    -> f $ e1++" < "++e2
-	   Pgreater -> f $ e1++" > "++e2
-	   Pleq     -> f $ e1++" <= "++e2
-	   Pgeq     -> f $ e1++" >= "++e2
+	   Pplus    -> f $ "("++ e1++" + "++e2 ++")"
+	   Pminus   -> f $ "("++ e1++" - "++e2 ++")"
+	   Pmult    -> f $ "("++ e1++" * "++e2 ++")"
+	   Pdiv     -> f $ "("++ e1++" / "++e2 ++")"
+	   Pless    -> f $ "("++ e1++" < "++e2 ++")"
+	   Pgreater -> f $ "("++ e1++" > "++e2 ++")"
+	   Pleq     -> f $ "("++ e1++" <= "++e2 ++")"
+	   Pgeq     -> f $ "("++ e1++" >= "++e2 ++")"
+	   Peq      -> f $ "("++ e1++" == "++e2 ++")"
 	   Plightup -> err
 	   Ploc     -> err
 	   Plocdiff -> err
@@ -96,6 +101,11 @@ process_stmt indent tokargs e =
            Pdrawmark -> err
 --	   _ -> err
 --	   _ -> error ("assembler: process_stmt: primitive not handled currently: " ++ show prim)
+
+    TMS.Sdbg s args -> 
+	[ indent ++ "dbg(DBG_USR1, \""++ litstr s ++"\""++
+	  extra_args (map process_basic args)
+	  ++");\n"]
 
     TMS.Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
@@ -106,7 +116,6 @@ process_stmt indent tokargs e =
 
 --    Slambda formals e -> ([build_fun formals e],[],"VOIDNOR")
 
-    
     TMS.Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
     TMS.Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
 
@@ -141,7 +150,9 @@ process_stmt indent tokargs e =
 	  Just t -> indent ++"/* Cannot handle timed call right now: */\n"
 	  Nothing -> "") 
          ++ "        dbg(DBG_USR1, \"TM TestMachine: local call to: "++ t
-	 ++" with "++ show (length args) ++" args\\n\");\n"++
+	 ++" with "++ show (length args) ++" args: "++
+	 (concat $ map (\_ -> " %d") args)++ "\\n\""++
+	 (concat $ map ((", "++) . process_basic) args)++ ");\n"++
 
 	  -- FIXME FILL IN ARG DATA HERE...
           --indent ++"/* Should fill in arg data here... */\n",
@@ -215,6 +226,8 @@ process_stmt indent tokargs e =
 	  map toLower (show col) ++
 	  show act ++ "();\n" ]
 
+
+
 {-    TMS.Sled Toggle Green  -> [ indent ++"call Leds.greenToggle();\n"]
     TMS.Sled Toggle Red    -> [ indent ++"call Leds.redToggle();\n"]
     TMS.Sled Toggle Yellow -> [ indent ++"call Leds.yellowToggle();\n"]
@@ -241,6 +254,11 @@ process_localdef indent (Id id) = [indent ++"uint16_t "++ id ++";\n"]
 
 build_fun formals body = 
     " foo " 
+
+litstr s = concat $ map (\c -> Data.Char.showLitChar c "") s
+
+extra_args ls = concat $ map (", "++) ls
+
 
 -------------------------------------------------------------------------------
 {- HERES THE MODULE IMPLEMENTATION GENERATOR. -}
@@ -383,7 +401,7 @@ build_implementation_footer toks startup =
 build_socfun :: [TMS.ConstBind] -> TMS.Block -> String
 build_socfun consts (TMS.Block locals stmts) =
     let indent = "    " in
-    "  task void socpgm() {\n"++ 
+    "  task void socpgm() {\n"++
     "    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\\n\");\n"++
     process_consts consts ++ 
     -- FIXME TODO INCLUDE FUNS HERE!!!
@@ -423,6 +441,7 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 {- HERES THE CONFIGURATION GENERATOR. -}
 
 build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
+    "// Automatically generated configuration file\n"++
     "includes TestMachine;\n"++
     "includes TokenMachineRuntime;\n\n"++
     "configuration "++modname++"\n"++

@@ -507,6 +507,9 @@
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  [(leds ,which ,what) `(sim-leds ',which ',what)]
+		  [(dbg ,str ,args ...) 
+		   ;; TODO FIX ME: would be nice to print properly
+		   `(begin (display ,(cons str args)) (newline))]
 
 		  [(,prim ,[rand*] ...)
 		   (guard (token-machine-primitive? prim))

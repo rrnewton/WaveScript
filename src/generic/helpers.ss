@@ -274,6 +274,11 @@
      ;; For simulator only:
      (draw-mark)
      (rgb)
+
+     (dbg (String) Void)
+
+    ;; This is a syntax:
+    ;(leds ...
      ))
 
 ;;============================================================
@@ -1330,6 +1335,12 @@
     (or (null? ls)
         (and (not (memq (car ls) (cdr ls)))
              (set? (cdr ls))))))
+
+;; Inefficient for ordered types:
+(define (subset? l1 l2)
+  (and (andmap (lambda (a) (member a l2))
+	       l1)
+       #t))
 
 (define set-equal?
   (lambda (lst1 lst2)

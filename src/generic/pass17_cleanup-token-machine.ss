@@ -150,17 +150,35 @@
 	     [(return ,[expr]            ;; Value
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
-		      (seed ,[seed_val]) ;; With seed
-		      (aggr ,rator_tok)) ;; Aggregator 	      
+		      (seed ,[seed_vals] ...) ;; With seed
+		      (aggr ,rator_toks ...)) ;; Aggregator 	      
 	      (check-tok 'return-to memb)
 	      (check-tok 'return-via parent)
-	      (check-tok 'return-aggr rator_tok)
-	      `(return ,expr (to ,memb) (via ,parent) 
-		       (seed ,seed_val) (aggr ,rator_tok))]
 
-	     [(return ,stuff ...)
-	      (error 'cleanup-token-machine
-		     "process-expr: bad syntax for return: ~s" `(return ,stuff ...))]
+	      (let ((seed (if (null? seed_vals) #f
+			      (car seed_vals)))
+		    (aggr (if (null? rator_toks) #f
+			      (car rator_tok))))
+		(if aggr (check-tok 'return-aggr rator_tok))
+		`(return ,expr 
+			 (to ,memb) 
+			 (via ,parent) 
+			 (seed ,seed_val) 
+			 (aggr ,rator_tok)))]
+
+	     [(return ,thing ,stuff ...)
+	      (if (or (not (andmap pair? stuff))
+		      (not (set? (map car stuff)))
+		      (not (subset? (map car stuff)
+				    '(to via seed aggr)))
+		  (error 'cleanup-token-machine
+			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
+	      ((process-expr env tokens)
+	       `(return ,thing 
+			(to ,(assq 'to stuff))
+			(via ,(assq 'via stuff))
+			(seed ,(assq 'seed stuff))
+			(aggr ,(assq 'aggr stuff))))]
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
 
