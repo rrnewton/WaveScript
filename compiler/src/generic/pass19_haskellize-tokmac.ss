@@ -1,4 +1,5 @@
 ;; [2004.08.06]
+
 ;; This outputs a token machine in Haskell concrete syntax.
 
 ;; Uses the pretty-printer.
@@ -41,11 +42,19 @@
 	[(,[hid -> id] ,[process-expr -> rhs])
 	 (format "(~a, ~a)" id rhs)]))
     
-    (define (process-expr expr)
+    (define process-expr 
+      (lambda PE (expr)
       (match expr
 	[(quote ,const) (format "(Econst ~a)" const)]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
-	    
+
+	[(begin ,[x]) x]
+	[(begin ,[x] ,y ...) 
+	 (format "(Eseq ~a ~a)" x (process-expr `(begin ,y ...)))]
+	
+	[(if ,[test] ,[conseq] ,[altern])
+	 (format "(Eif ~a ~a ~a)" test conseq altern)]
+
 	;; Both of these take timing arguments in the Haskell AST:
 	[(emit ,tok ,[args*] ...)
 	 (format "(Eemit Nothing ~a ~a)" (htok tok) (hlist args*))]
@@ -56,28 +65,7 @@
 	[(activate ,tok ,[args*] ...)
 	 (format "(Eactivate ~a ~a)" (htok tok) (hlist args*))]
 
-	[(soc-finished) "Esocfinished"]
-	[(soc-return ,[body]) (format "(Esocreturn ~a)" body)]
-
 	[(relay) "(Erelay Nothing)"]
-
-	;; Assuming that it's synchronous!!
-	[(local-sense) "(Esense)"]
-
-	[(begin ,[x]) x]
-	[(begin ,[x] ,y ...) 
-	 (format "(Eseq ~a ~a)" x (process-expr `(begin ,y ...)))]
-	
-	[(if ,[test] ,[conseq] ,[altern])
-	 (format "(Eif ~a ~a ~a)" test conseq altern)]
-	
-	[(,prim ,[rand*] ...)
-	 (guard (token-machine-primitive? prim))
-	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
-
-	[(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
-	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
 	[(return ,[expr]            ;; Value
 		 (to ,memb)         ;; To
@@ -88,6 +76,20 @@
 		 expr (htok memb) (htok parent) seed_val (htok rator_tok))	
 	 ]
 
+	[(soc-finished) "Esocfinished"]
+	[(soc-return ,[body]) (format "(Esocreturn ~a)" body)]
+
+	;; Assuming that it's synchronous!!
+	[(local-sense) "(Esense)"]
+	
+	[(,prim ,[rand*] ...)
+	 (guard (token-machine-primitive? prim))
+	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
+
+	[(,prim ,[rand*] ...)
+	 (guard (regiment-primitive? prim))
+	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
+
 	[(let* ([,lhs* ,[rhs*]] ...) ,[body])
 	 (format "(Elet ~a ~a)" 
 		 (hlist (map (lambda (lhs rhs)
@@ -97,9 +99,10 @@
 	 
 ;	[,other "UNMATCHED_SCHEMETOKSTUF"]
 	[,other (error 'haskellize-tokmac:process-expr "unmatched expr: ~s" other)]
-	))
+	)))
 
-    (define (process-tokbind tokbind)
+    (define process-tokbind 
+      (trace-lambda PTB (tokbind)
       (match tokbind
 	[(,tok ,args ,body ,body* ...)
 	 (format "(~a, ~a, ~a)" 
@@ -108,7 +111,7 @@
 		 (if (not (null? body*))
 		     (hbegin (map process-expr (cons body body*)))
 		     (process-expr body))
-		 )]))
+		 )])))
 		
     (lambda (prog)
       (match prog

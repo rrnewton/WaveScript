@@ -5,7 +5,3 @@ Export useful things from helpers.ss to my generic utility files, including:
   default-unit-tester
   display-constrained
 
-FOOB
-NEWb
-borb
-
