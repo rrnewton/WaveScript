@@ -27,6 +27,8 @@
 ;; The fast-pulse is used for folding.
 (define fast-pulse 10.0)
 
+#!eof
+
 (define annotate-heartbeats
   (let ()
     (lambda (expr)

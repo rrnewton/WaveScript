@@ -16,3 +16,5 @@
 
 (define SPECIAL_RETURN_TOKEN 'return)
 
+;; In milliseconds
+(define return-window-size 500)

@@ -420,6 +420,8 @@
 			  (printf "~n~nFor Test: ~n")
 			  (pretty-print expr)
 			  (newline)
+			  (eval `(define failed-unit-test ',expr))
+			  (printf "Violating test bound to global-variable \"failed-unit-test\"~n")
 ;; I decided to make this crash after all:
 ;			  (return (void))
 			  (error 'default-unit-tester "failed test")

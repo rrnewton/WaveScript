@@ -93,6 +93,10 @@ Ok, gonna do a refactoring to lift out a "build-call" within simulator_nought.
 TODO: Fix unit-tester so that it won't give the special 'error value
 to the oracle!!!
 
-
-
+[2004.07.27] Trying to finish return values
+  Ok, I was going to add a time-window for the return values, but
+right now I'm deciding between that and an explicit generation
+counter.  But how would I know whether I've gotten everything in
+the generation?  Could use a safely large time-window and seperate
+out the different generations within it?
 

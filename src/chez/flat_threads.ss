@@ -68,10 +68,11 @@
       (let loop ([ticks ticks] [succ succ] [fail fail]
 		 [engs (map make-engine thks)]
 		 [acc '()])	
-	(perdisp "  Total time left on clock: ~s~n" totaltime)
+	(if totaltime
+	    (perdisp "  Total time left on clock: ~s~n" totaltime))
 	(cond
 	 ;; Timeout because of real time:
-	 [(<= totaltime 0) ;(and timeout (> (real-time) timeout))
+	 [(and totaltime (<= totaltime 0)) ;(and timeout (> (real-time) timeout))
 	  (fprintf (current-error-port)
 		   "~n  !!! run-flat-threads ended by time-out.~n")
 	  (succ ticks 'Threads_Timed_Out)]
@@ -92,13 +93,15 @@
 	     ;; Child engine finished, it's outof the race.
 	     (lambda (remaining ret)
 	       ;; Substract elapsed time from totaltime on our timer:
-	       (set! totaltime (- totaltime (- (real-time) start-time)))
+	       (if totaltime 
+		   (set! totaltime (- totaltime (- (real-time) start-time))))
 	       (loop (+ (- ticks flat-threads-granularity) remaining)
 		     succ fail (cdr engs) acc))
 	     ;; Engine still not done, queue it up and go to the next.
 	     (lambda (nexteng)
 	       ;; Substract elapsed time from totaltime on our timer:
-	       (set! totaltime (- totaltime (- (real-time) start-time)))
+	       (if totaltime 
+		   (set! totaltime (- totaltime (- (real-time) start-time))))
 	       (loop (- ticks flat-threads-granularity)
 		     succ fail (cdr engs) (cons nexteng acc)))))]
 	 )))))
