@@ -39,7 +39,8 @@
 	 [(,input-language (quote (program (props ,proptable ...) (lazy-letrec ,binds ,expr))))
 	  (map (lambda (x) (list-head x 4)) binds)]))
 
-(define addplaces
+
+(define add-places
   (lambda (expr)
     (match expr
 	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))
@@ -63,7 +64,7 @@
 ;	    (disp "for rhs" rhs*)
 
 	  `(lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
-	 [,other (error 'addplaces:process-let "bad lazy-letrec expression: ~s" other)]))
+	 [,other (error 'add-places:process-let "bad lazy-letrec expression: ~s" other)]))
     
     (define (new-place) (unique-name 'X))
 
@@ -99,7 +100,7 @@
 		  
 	  [else (if (basic-primitive? prim)
 		    (values expr noplace noplace)
-		    (error 'addplaces:process-primapp "unhandled prim: ~s" prim))]
+		    (error 'add-places:process-primapp "unhandled prim: ~s" prim))]
 	  )))
 	  
 ;	       [(anchor-at ,loc) (values expr '_ (new-place))]
@@ -120,7 +121,7 @@
            (guard (regiment-primitive? prim))
 	   (process-primapp prim rand*)]
           [,unmatched
-	   (error 'addplaces:process-let "invalid syntax ~s" unmatched)])))
+	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
     
     `(,input-language (quote (program (props ,proptable ...) 
 				      ,(process-let letexpr))))])))

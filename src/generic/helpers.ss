@@ -1081,6 +1081,19 @@
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
 
+;; [2004.10.04]  Finds the element in a list maximizing a metric:
+(define (find-maximizing f ls)
+  (if (null? ls) (error 'find-maximizing "cannot take null list.")
+      
+      (let loop ([ls (cdr ls)] 
+		 [maxelem (car ls)]
+		 [maxval (f (car ls))])
+	(if (null? ls) maxelem
+	    (let ([thisval (f (car ls))])
+	      (if (> thisval maxval)
+		  (loop (cdr ls) (car ls) thisval)
+		  (loop (cdr ls) maxelem maxval)))))))	    
+
 (define list-head
   (lambda (lst n)
     (cond

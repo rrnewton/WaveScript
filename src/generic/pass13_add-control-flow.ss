@@ -1,6 +1,13 @@
 ;; [2004.08.20]
 ;; This creates a separate and parallel control flow graph.
 
+;; For now control starts at the SOC, then hits the leaves and pours
+;; through the program. 
+
+;; This sets us up to try to start figuring out when a control-flow
+;; redirect means a spatial redirect.  (Next we've got to analyze
+;; the "places" associated with expressions.)
+
 ;; (amap f (circle (anchor-at '(30 40)) 50))
 ;;  -> (soc anchor circle amap)
 
