@@ -159,14 +159,14 @@
     (for-each process-incoming (simworld-all-objs sim))
     (cond
      [(stopping-time? vtime) (printf "Out of time.~n")]
-     [(null? buffer) (printf "Simulator ran fresh out of actions!~n")]
+     [(null? buffer) (printf "~nSimulator ran fresh out of actions!~n")]
      [else 
       (let ([ob (cdar buffer)]
 	    [evt (caar buffer)])	
 	;; Set the clock to the time of this next action:
 	(set! vtime (simevt-vtime (caar buffer)))  
 	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) buffer len ~a ~n" vtime (length buffer))
-	(printf "<~a>" vtime)
+	;(printf "<~a>" vtime)
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled

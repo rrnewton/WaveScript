@@ -736,7 +736,7 @@
      [else struct])))
 	   
 ;[01.10.23] - I'm surprised this wasn't added a million years ago:
-(define (deep-member? ob struct)
+(define (deep-memq? ob struct)
   (let outer ([struct struct])
     (or (eqv? ob struct)
 	(and (vector? struct)
@@ -748,6 +748,22 @@
 	(and (pair? struct)
 	     (or (outer (car struct))
 		 (outer (cdr struct)))))))
+
+;; This could be done with a much more effcient (and complex) structure matching.
+(define (deep-member? ob struct)
+  (let outer ([struct struct])
+    (or (equal? ob struct)
+;    (or (eqv? ob struct)
+	(and (vector? struct)
+	     (let inner ([i 0])
+	       (cond
+		[(= i (vector-length struct)) #f]
+		[(outer (vector-ref struct i)) #t]
+		[else (inner (add1 i))])))
+	(and (pair? struct)
+	     (or (outer (car struct))
+		 (outer (cdr struct)))))))
+
 
 ;; [2004.06.11] This one doesn't do vectors:
 (define (deep-assq ob struct)
