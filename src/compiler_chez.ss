@@ -16,6 +16,7 @@
 (include "generic/language-mechanism.ss")
 (include "generic/lang00.ss")
 (include "generic/lang05.ss")
+(include "generic/lang10.ss") ;; deglobalize
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_rename-var.ss")

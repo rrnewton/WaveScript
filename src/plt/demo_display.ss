@@ -11,7 +11,7 @@
 
   (require (lib "include.ss"))      
   (require "basic_graphics.ss"
-           "graphics_stub.ss"
+           (all-except "graphics_stub.ss" test-this these-tests)
            "helpers.ss")
 
   (include (build-path ".." "generic" "demo_display.ss"))

@@ -63,6 +63,13 @@
     deglobalize
     ))
 
+
+(define (run-compiler p)
+  (let ((funs (map eval pass-names)))
+    (let loop ([p p] [funs funs])
+      (if (null? funs) p
+	  (loop ((car funs) p) (cdr funs))))))
+
 (define test
   (lambda (set)
     (fluid-let ([tests 
@@ -71,10 +78,12 @@
 		      set)])
       (test-all))))
 
-(define (t x)
-  (parameterize ((tracer #t))
-		(test-one x)))
-
+(define (r x)
+  (let ((prog  x #;(match x
+		     [(,lang '(program ,p)) x]
+		     [,p `(NOLANG '(program ,p))])))
+    (parameterize ((tracer #t))
+		  (test-one prog))))
 
 ;; These are all the unit-testers accumulated from all the files.
 #;(define all-testers
@@ -97,5 +106,9 @@
 	       (test07)))
 (newline)
 
-(define (g) (t '(circle 50 (anchor-at '(30 40)))))
+(define rc run-compiler)
 
+(define (rr) (r '(circle 50 (anchor-at '(30 40)))))
+
+(define (doit x)
+  (run-simulation (build-simulation (rc x)) 2.0))
