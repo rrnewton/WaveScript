@@ -7,6 +7,24 @@
 ;; -> (call elect_A)
 
 
+;; You include some number of expressions to be executed on each
+;; potential leader, they
+[tok () ...
+     (elect A Compr
+	    get.x
+	    (+ get.y 9))]
+;; No, that doesn't make sense, they can just be values to be executed
+;; immediately.
+
+     
+[Compr (a b)
+       (> (+ a b)
+	  (+ get.x get.y 9))]
+
+
+	   
+
+
 
 
 (define example-elect-leader

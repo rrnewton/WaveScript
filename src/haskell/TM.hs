@@ -58,7 +58,7 @@ data Expr = -- Stndard forms:
 
           | Eif Expr Expr Expr
 
-          | ELed LedColor LedAction
+          | Eled  LedAction LedColor
 
 	  | Eprimapp Prim [Expr]
           | Esense
@@ -130,6 +130,8 @@ expr_collect_ids = f
        (Esocfinished) -> []
        (Ereturn val _ _ (Just seed) _) -> f val ++ f seed
        (Ereturn val _ _  Nothing    _) -> f val 
+       (Eassign (Id v) e) -> v : f e
+       (Eled _ _) -> []
        (Erelay mbtok) -> []
        (Eemit mbtime (Token s) args) -> s : (concat $ map f args)
        (Ecall mbtime (Token s) args) -> s : (concat $ map f args)

@@ -113,6 +113,10 @@
                     (unless (procedure? x)
                       (error 'simulator-debug-logger "~s is not a procedure" x))
                     x)))
+(define-syntax silently
+  (syntax-rules ()
+    [(_ expr ...) (parameterize ([sim-debug-logger (lambda args (void))])
+				expr ...)]))
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
@@ -493,7 +497,7 @@
 		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
-		  [(leds ,which ,what) `(sim-leds ,which what)]
+		  [(leds ,which ,what) `(sim-leds ',which ',what)]
 
 		  [(,prim ,[rand*] ...)
 		   (guard (token-machine-primitive? prim))
@@ -599,7 +603,7 @@
 	  ,@extradefs ;; <TODO> THIS IS WEIRD AND LAME <TOFIX>
     ,expr)))
 
-
+;; This builds the function that handles incoming tokens.
 (define (build-handler tbinds)
 	;; These inputs to handler must be the *child* message-object
 	;; (that is, already updated to have an incremented count, the
@@ -642,7 +646,7 @@
 
 				  (begin
 				    (if (= 0 local-recv-messages)
-					(sim-light-up 200 0 0))
+					(silently (sim-light-up 200 0 0)))
 				    (set! local-recv-messages (add1 local-recv-messages))
 				    
 				    ;; This is where I'm gonna cut in support for "reject".. [2004.10.23]
@@ -657,8 +661,7 @@
 				    (incr-top-level! 'total-fizzles)
 				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
 				    (void))
-				  )
-			      ))
+				  )))
 		    )))
 
 
@@ -685,6 +688,8 @@
 ;; make liberal use of our three primary global variables (object-graph, all-objs).
 (define generic-defs	
   `(
+    ;; Is set to a list of all the leds that are toggled on.    
+    [define led-toggle-state '()]
     [define local-sent-messages 0] ;; We should stick this in the simobject...
     [define local-recv-messages 0]
 ;; Getting rid of this: moving it into the simobject data structure..
@@ -806,13 +811,49 @@
     
 
     [define (sim-light-up r g b)
-      ((sim-debug-logger) "~n~a: light-up ~a ~a ~a~n"
+      ((sim-debug-logger) "~n~a: light-up ~a ~a ~a"
        (node-id (simobject-node this)) r g b)
       (if (simobject-gobj this)
 	  (change-color! (simobject-gobj this) (rgb r g b))
 	  ;; We're allowing light-up of undrawn objects atm:
 	   ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
 	  )]
+
+    ;; INCOMPLETE (we don't yet draw the leds directly.)
+    [define (sim-leds what which)
+      (let* ([colors 
+	      (case which
+		[(red)   '(255 0 0)]
+		[(green) '(0 255 0)]
+		[(blue)  '(0 0 255)]
+		[else (error 'sim-leds "bad color: ~a" which)])]
+	     ;; INCOMPLETE:
+;	     [oldcolors '(0 0 0)]
+	     )
+	((sim-debug-logger) "~n~a: Leds: ~a ~a ~a" 
+	 (node-id (simobject-node this)) which what
+	 (case what
+	   [(on) 
+	    (set! led-toggle-state (list->set (cons which led-toggle-state)))
+	    (apply sim-light-up colors)
+	    "" ]
+	  [(off)
+	   (set! led-toggle-state (remq which led-toggle-state))
+	   (sim-light-up '(0 0 0))
+	   "" ]
+	  [(toggle)
+	   (if (memq which led-toggle-state)
+	       (begin 
+		 (set! led-toggle-state (remq which led-toggle-state))
+		 (sim-light-up 0 0 0)
+		 "off")
+	       (begin 
+		 (set! led-toggle-state (list->set (cons which led-toggle-state)))
+		 (apply sim-light-up colors)
+		 "on")
+	       )]
+	  [else (error 'sim-leds "bad action: ~a" what)]))
+	)]
 	  
     [define (sim-dist . tok)
 	     (if (null? tok)
@@ -1715,6 +1756,30 @@
 	 (andmap (lambda (simob)		  
 		   (hashtab-get (simobject-token-cache simob) 'tok1))
 		 connected)))]
+ ["Test the logger."
+  ;; Make a log message from every node.  
+  ;; Make sure we get the right number.
+  (let ([count 0])
+    (parameterize ([sim-debug-logger (lambda args 
+				       (critical-section
+					(printf "~nLogger called")
+					(set! count (+ 1 count))))])
+      (run-simulation
+       (build-simulation 
+	(compile-simulate-nought 
+	 '(program
+	   (bindings )
+	   (socpgm (bindings ))
+	   (nodepgm (tokens [tok1 () ((sim-debug-logger) "foo")])
+		    (startup tok1)))))
+       1.7))
+    count)
+  ,(lambda (result)
+    (if (= result (length all-objs))
+	#t
+	(begin (printf "Got ~a messages, but there are ~a nodes!"
+		       count (length all-objs))
+	       #f)))]
 
 ;; COMMENTING FOR NOW
 ;;  ["Test program that anchors, circles, maps and folds"

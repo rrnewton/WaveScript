@@ -8,12 +8,20 @@ enum {
 #define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
 #endif
 
+#ifndef BASE_TM_PAYLOAD_SIZE 
+#define BASE_TM_PAYLOAD_SIZE (2 + 2 + 2 + 1 + 2)
+#endif
+
+#ifndef BASE_TM_RETPAYLOAD_SIZE 
+#define BASE_TM_RETPAYLOAD_SIZE (2 + 2 + 2 + 2 + 2 + 2)
+#endif
+
 #ifndef TOK_DATA_LENGTH
-#define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 1 + 2))
+#define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - BASE_TM_PAYLOAD_SIZE)
 #endif
 
 #ifndef RETURNTOK_DATA_LENGTH
-#define RETURNTOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 2 + 2 + 2))
+#define RETURNTOK_DATA_LENGTH (TOSH_DATA_LENGTH - BASE_TM_RETPAYLOAD_SIZE)
 #endif
 
 // This TM_Payload fits inside the data field of TOS_Msg.

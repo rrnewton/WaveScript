@@ -10,7 +10,7 @@ This will read
 -}
 
 import TM -- Token Machine language definition
-import TM_simple as TMS
+import qualified TM_simple as TMS
 import Expand
 import Flatten
 import Utils
@@ -53,10 +53,10 @@ type ExpressionCode = String
 type StatementCode = String
 
 -- Returns the text corresponding to an expression evaluating same
--- value as the given Basic expression.
-process_basic :: Basic -> String
-process_basic (Bvar (Id str)) = str 
-process_basic (Bconst c)      = show c
+-- value as the givoen Basic expression.
+process_basic :: TMS.Basic -> String
+process_basic (TMS.Bvar (Id str)) = str 
+process_basic (TMS.Bconst c)      = show c
 
 -- This returns both:
 --   *) bunch of strings (functions) to be seperately
@@ -66,13 +66,13 @@ process_basic (Bconst c)      = show c
 --   *) a string (expression) that represents the appropriate value
 
 -- The 2nd argument is the "arg environment" for bound variables.
-process_stmt :: String -> [String] -> Stmt -> [StatementCode]
+process_stmt :: String -> [String] -> TMS.Stmt -> [StatementCode]
 process_stmt indent tokargs e = 
     case e of
-    Svoid -> []
-    Sassign (Id s) basic -> 
+    TMS.Svoid -> []
+    TMS.Sassign (Id s) basic -> 
 	[indent ++ s ++ " = " ++ process_basic basic ++ ";\n"]
-    Sprimapp mbid prim args  -> 
+    TMS.Sprimapp mbid prim args  -> 
  	let f text = case mbid of 
 		     Just (Id id) -> [indent ++ id ++ " = " ++ text ++ ";\n"]
 		     Nothing      -> [indent ++ text ++ ";\n"]
@@ -92,10 +92,12 @@ process_stmt indent tokargs e =
 	   Plightup -> err
 	   Ploc     -> err
 	   Plocdiff -> err
-	   _ -> err
+	   Prgb     -> err
+           Pdrawmark -> err
+--	   _ -> err
 --	   _ -> error ("assembler: process_stmt: primitive not handled currently: " ++ show prim)
 
-    Sif b s1 s2 ->
+    TMS.Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
 	(concat $ map (process_stmt (indent++"  ") tokargs) s1) ++
 	[ indent ++ "} else {\n" ] ++
@@ -105,10 +107,10 @@ process_stmt indent tokargs e =
 --    Slambda formals e -> ([build_fun formals e],[],"VOIDNOR")
 
     
-    Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
-    Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
+    TMS.Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
+    TMS.Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
 
-    Sgradreturn e to via seed aggr -> 
+    TMS.Sgradreturn e to via seed aggr -> 
 	let seed' = case seed of 
 		    Nothing -> "0"
 		    Just s  -> process_basic s 
@@ -118,7 +120,7 @@ process_stmt indent tokargs e =
         in
 	[ 
 	 indent ++ "the_packet.type = "++ tok_id to ++";\n", 
-	 indent ++ "the_packet_args[0] = "++ process_basic e ++";\n",
+	 indent ++ "the_payload_args[0] = "++ process_basic e ++";\n",
          indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
 		 tok_id to ++", "++
 	         "sizeof(uint16_t), "++
@@ -126,18 +128,21 @@ process_stmt indent tokargs e =
 		 seed' ++", "++
 		 aggr' ++");\n" ]
 
-    Srelay (Just t) -> 
+    TMS.Srelay (Just t) -> 
         [indent ++ "call TMComm_"++ tokname t ++".relay();\n"]
-    Srelay Nothing -> 
+    TMS.Srelay Nothing -> 
 	[indent ++"// FAILED relay nothing\n"]
 
     -- FIXME
-    Scall dest time t args -> 
+    TMS.Scall dest time (Token t) args -> 
 	[ 
---	  indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
-	  (case time of
-	   Just t -> indent ++"/* Cannot handle timed call right now: */\n"
-	   Nothing -> "") ++
+	 --	  indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+	 (case time of
+	  Just t -> indent ++"/* Cannot handle timed call right now: */\n"
+	  Nothing -> "") 
+         ++ "        dbg(DBG_USR1, \"TM TestMachine: local call to: "++ t
+	 ++" with "++ show (length args) ++" args\\n\");\n"++
+
 	  -- FIXME FILL IN ARG DATA HERE...
           --indent ++"/* Should fill in arg data here... */\n",
 	  -- Not going through the FIFO right now...
@@ -145,27 +150,39 @@ process_stmt indent tokargs e =
 	  --indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
 	  (case dest of Nothing -> indent; Just (Id s) -> indent ++ s ++ " = ") ++
 --	  "call token_"++ tokname t ++"(&the_packet);\n"
-	  "call token_"++ tokname t ++"(" ++
+	  "call token_"++ tokname (Token t) ++"(" ++
 			   (concat $ intersperse ", " $ 
 			    map process_basic args)
 			   ++ ");\n" 
 	]
 
-    Sactivate t args -> 
+    TMS.Sactivate t args -> 
 	(indent++"// Cannot time activate..\n")
-	: (process_stmt indent tokargs (Scall Nothing Nothing t args))
+	: (process_stmt indent tokargs (TMS.Scall Nothing Nothing t args))
 
 
-    Semit (Just time) t exps -> 
+    TMS.Semit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
 
-    Semit Nothing t exps -> 
+    TMS.Semit Nothing t exps -> 
 	-- UNLIKE Sendmsg.send my emit function is going to have a message copying semantics.
         -- The buffer must get copied somewhere, so it might as well be there.
-	[indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+	[
+
+         indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
+	 {-indent ++"the_payload->origin = TOS_LOCAL_ADDRESS;\n",
+	 indent ++"the_payload->parent = TOS_LOCAL_ADDRESS;\n",
+	 indent ++"the_payload->counter = 1;\n",
+	 indent ++"the_payload->generation = 0; // TODO: generations don't increment yet.\n",
+	 indent ++"// the_payload->timestamp = ...; // Fill this in! \n",
+	 -}
+
 	 indent ++"/* Should fill in arg data here... */\n",
+	 
 	 indent ++"call TMComm_"++ tokname t ++
-	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t) /* TODO fix this length */, &the_packet);\n"]
+	 ".emit(TOS_BCAST_ADDR, BASE_TM_PAYLOAD_SIZE + sizeof(uint16_t) * " 
+	 ++ show (length exps) ++
+	 ", &the_packet);\n"]
 
 {-
     Ecall (Just time) t exps -> 
@@ -191,12 +208,29 @@ process_stmt indent tokargs e =
 --    Ssocreturn b -> []--[ indent ++ "call TMComm.socreturn("++ process_basic b ++");\n" ]
 --    Ssocfinished -> []--[ indent ++ "call TMComm.socfinished();\n"]
 
-    Sreturn b -> [ indent ++"return "++ process_basic b ++";\n" ]
-    _ -> error ("process_stmt can't handle: " ++ show e)
+    TMS.Sreturn b -> [ indent ++"return "++ process_basic b ++";\n" ]
+
+    TMS.Sled act col -> 
+	[ indent ++"call Leds." ++
+	  map toLower (show col) ++
+	  show act ++ "();\n" ]
+
+{-    TMS.Sled Toggle Green  -> [ indent ++"call Leds.greenToggle();\n"]
+    TMS.Sled Toggle Red    -> [ indent ++"call Leds.redToggle();\n"]
+    TMS.Sled Toggle Yellow -> [ indent ++"call Leds.yellowToggle();\n"]
+    TMS.Sled On Green      -> [ indent ++"call Leds.greenOn();\n"]
+    TMS.Sled On Red        -> [ indent ++"call Leds.redOn();\n"]
+    TMS.Sled On Yellow     -> [ indent ++"call Leds.yellowOn();\n"]
+    TMS.Sled Off Green     -> [ indent ++"call Leds.greenOff();\n"]
+    TMS.Sled Off Red       -> [ indent ++"call Leds.redOff();\n"]
+    TMS.Sled Off Yellow    -> [ indent ++"call Leds.yellowOff();\n"]
+-}
+
+--    _ -> error ("process_stmt can't handle: " ++ show e)
 
 
-process_block :: String -> [String] -> Block -> ([FunctionCode],[StatementCode])
-process_block indent tokargs (Block locals stmts) = 
+process_block :: String -> [String] -> TMS.Block -> ([FunctionCode],[StatementCode])
+process_block indent tokargs (TMS.Block locals stmts) = 
     let body = concat $ map (process_stmt indent tokargs) stmts
         defs = concat $ map (process_localdef indent) locals
     in ([], 
@@ -216,7 +250,7 @@ build_fun formals body =
 -- flatten and generate code for handlers.
 
 process_const :: TMS.ConstBind -> String
-process_const (Id str, Bconst exp) = "  uint16_t "++str++" = "++show exp++";\n"
+process_const (Id str, TMS.Bconst exp) = "  uint16_t "++str++" = "++show exp++";\n"
 process_const _ = error "assembler.hs: process_const: can't handle non Econst expressions atm!!"
 
 process_consts :: [TMS.ConstBind] -> String
@@ -273,6 +307,8 @@ process_handlers hnds =
     "    uint16_t* args = (uint16_t*)(payload->args);\n"++
     "    switch (msg->type) {\n"++			      
     (foldl (++) "" bods) ++
+    "    default:\n"++
+    "      dbg(DBG_USR1, \"TM TestMachine: process_token, UNMATCHED TOK: addr %d, type %d, group %d \", msg->addr, msg->type, msg->group);\n"++
     "    }\n"++
     "    return msg;\n" ++ 
     "  }\n\n"
@@ -290,6 +326,7 @@ build_module_header toks =
        "  provides interface TMModule; \n" ++
        "  provides command void start_socpgm();\n"++
 --       "  uses interface Timer;\n" ++ 
+       "  uses interface Leds;\n" ++ 
        concat
        (map2 (\ name argls ->
 	       "  provides command uint16_t token_"++ name ++"("++ 
@@ -315,6 +352,7 @@ build_implementation_header toks startup =
 build_implementation_footer :: [TMS.TokHandler] -> [Token] -> String
 build_implementation_footer toks startup = 
     "  command result_t Control.init() {\n" ++
+    "    the_payload_args = (uint16_t*)(the_payload->args);\n"++ 
     "    return SUCCESS;\n" ++
     "  }\n\n" ++
     "  command result_t Control.start() {\n" ++
@@ -342,11 +380,11 @@ build_implementation_footer toks startup =
 --	  "  }\n\n")
 --     (map (\ (t,_,_) -> tokname t) toks))
 
-build_socfun :: [TMS.ConstBind] -> Block -> String
-build_socfun consts (Block locals stmts) =
+build_socfun :: [TMS.ConstBind] -> TMS.Block -> String
+build_socfun consts (TMS.Block locals stmts) =
     let indent = "    " in
     "  task void socpgm() {\n"++ 
-    "    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\");\n"++
+    "    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\\n\");\n"++
     process_consts consts ++ 
     -- FIXME TODO INCLUDE FUNS HERE!!!
     -- Generate code for all the statements in 
@@ -368,7 +406,8 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     build_module_header nodetoks ++
     "implementation {\n" ++ 
     "  TOS_Msg the_packet;\n"++    
-    "  uint16_t* the_packet_args = (uint16_t*)(((TM_Payload*)(the_packet.data))->args);\n"++ 
+    "  TM_Payload* the_payload = (TM_Payload*)(the_packet.data);\n"++
+    "  uint16_t* the_payload_args;\n"++
     "\n  // The constant bindings:\n"++
     process_consts consts ++ 
     build_implementation_header nodetoks startup ++
@@ -391,21 +430,24 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     "}\n"++
     "implementation\n"++
     "{\n"++
-    "  components "++modname++"M, Main, TimerC, BasicTMComm, GenericComm as Comm;\n"++
+    "  components "++modname++"M, Main, TimerC, LedsC, BasicTMComm, GenericComm as Comm;\n"++
     "\n"++
     "  Main.StdControl -> TestMachineM.Control;\n"++
     "  Main.StdControl -> Comm;\n"++
     "  Main.StdControl -> TimerC;\n"++
     "\n"++
     "  BasicTMComm.TMModule -> TestMachineM.TMModule;\n"++
+--    "  TimerC -> TestMachineM.Timer;\n"++
+    "  TestMachineM.Leds -> LedsC;\n"++
     "\n"++
     (concat $
-     map2 (\ name number -> 
-	   "  TestMachineM.TMComm_"++name++" -> BasicTMComm.TMComm["++show number++"];\n"
+     map (\ (t,_,_) -> 
+	   "  TestMachineM.TMComm_"++tokname t++
+	   " -> BasicTMComm.TMComm["++tok_id t++"];\n"
 --	   "  TestMachineM.Send_"++name++" -> Comm.SendMsg["++show number++"];\n"++
 --	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n"
 	  )
-     (map (\ (t,_,_) -> tokname t) nodetoks)   [1..]) ++
+     nodetoks)++
     --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
     "}\n"
 
@@ -472,3 +514,20 @@ main = do args <- System.getArgs
 	  writeFile conffile conf
 	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
+
+test = (Pgm { consts = [],  
+	      socconsts=[],  
+	      socpgm=[(Eemit Nothing (Token "tok1") [])],  
+	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
+			((Token "tok2"), [], (Eled Toggle Red))],
+	      startup=[]})
+
+
+test2 = (Pgm {
+	      consts = [],
+	      socconsts=[],
+	      socpgm=[(Eemit Nothing (Token "tok1") [])],
+	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
+			((Token "tok2"), [], (Eled Toggle Red))],
+	      startup=[]
+	     })

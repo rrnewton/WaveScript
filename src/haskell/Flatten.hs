@@ -13,11 +13,6 @@ import Debug.Trace
 import Control.Monad.State
 import Control.Exception
 
-
-test = f 4
-    where f 3 = g
-	  f 4 = 99
-	  g = 9
  
 -----------------------------------------------------------------------------
 
@@ -49,7 +44,8 @@ pth (t,ids,e) = do (blk, r) <- pe e
 			   (Block []        
 			    (case r of 
 			     Nothing -> 
-			       trace ("Flatten.hs: process token handler: didn't get return value for: "
+			       trace ("warning, Flatten.hs: process token "++
+				      "handler: didn't get return value for: "
 				      ++ show e)
 			       [Sreturn (Bconst 0)]
 			     Just r -> [Sreturn r])))
@@ -91,7 +87,7 @@ pe e = do (b,rv) <- loop e
 					 ([],Nothing) exprs
 			  return (concat_blocks (reverse blks), ret)
 
-       (ELed col act) -> return (Block [] [SLed col act], Nothing)
+       (Eled act col) -> return (Block [] [Sled act col], Nothing)
 
        (Eif a b c) -> do newvar <- newid "ifret_" 
 			 (blka,Just ra) <- loop a
@@ -105,6 +101,10 @@ pe e = do (b,rv) <- loop e
 					     (stmts blkb ++ build_assign rb)
 					     (stmts blkc ++ build_assign rc))])
 			 return (Block varbinds statements, Just $ Bvar newvar)
+
+       (Eassign v e) -> do (blk,Just r) <- loop e
+			   return (Block (binds blk) (stmts blk ++ [Sassign v r]),
+				   Nothing)
 
        (Eprimapp prim args) -> do args' <- mapM loop args
 				  id <- newid "pres_"

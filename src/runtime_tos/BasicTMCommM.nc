@@ -16,7 +16,7 @@ module BasicTMCommM {
     async command result_t pop_msg(TOS_MsgPtr dest);
     async command TOS_Msg peek_nth_msg(uint16_t indx);
 
-    command void print_cache();
+    command void print_buffer();
     async command int16_t num_tokens();
    }
   uses {
@@ -30,8 +30,14 @@ module BasicTMCommM {
     interface Random;
   }
 } implementation {
+  int foo1;
+  int16_t foo2;
+  int32_t foo3;
 
-  TOS_Msg cached_token;
+  // This is a lame way of doing an option type: "Maybe Token"
+  TOS_Msg extra_token;
+  TOS_MsgPtr cached_token;
+  TM_Payload* cached_payload;
   
   TOS_MsgPtr currently_processing;
   TOS_Msg temp_msg;
@@ -53,9 +59,17 @@ module BasicTMCommM {
       if ( in_buffer_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
-	if ( call pop_msg(&temp_msg) ) {
+	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: message available, calling process_token.\n"); 
+	if ( call pop_msg(&temp_msg) ) {	  
 	  currently_processing = &temp_msg;
+	  // Execute the handler:
 	  call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
+	  // AUTO CACHING FOR NOW!
+	  cached_token = &extra_token;
+	  cached_payload = (TM_Payload*)cached_token->data; 
+	  memcpy(cached_token, currently_processing, sizeof(TOS_Msg));
+	  
+	  currently_processing = NULL;
 	}
       }
     }
@@ -142,7 +156,7 @@ module BasicTMCommM {
   }
   
   // This is a debugging function.
-  command void print_cache() {
+  command void print_buffer() {
     int16_t i,j;
 
     atomic { // The token_in_buffer had better stay still while we print it out.
@@ -197,8 +211,7 @@ module BasicTMCommM {
       return FAIL;
     } else {
       send_pending = TRUE;
-      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d/%d\n", 
-	  msg->length, TOS_LOCAL_ADDRESS, msg->type, id);
+      // OPTIMIZE THIS:
       memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
 
       payload = (TM_Payload*)token_out_buffer.data;
@@ -207,8 +220,14 @@ module BasicTMCommM {
       payload->origin = TOS_LOCAL_ADDRESS;
       payload->parent = TOS_LOCAL_ADDRESS;
       payload->timestamp = 999; // TODO FIXME
+      payload->generation = 1001; // TODO FIXME
       payload->counter = 1; // The nodes to receive this are hopcount 1.
+
       token_out_buffer.type = id;      
+      token_out_buffer.length = length;
+
+      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d/%d\n", 
+	  length, TOS_LOCAL_ADDRESS, msg->type, id);
       return call SendMsg.send[id](address, length, &token_out_buffer);
     }
   }
@@ -234,7 +253,7 @@ module BasicTMCommM {
       //payload->timestamp = 999; // TODO FIXME
       payload->counter++; // Increment the hopcount!
       token_out_buffer.type = id;      
-      return call SendMsg.send[id](TOS_BCAST_ADDR, token_out_buffer.length, &token_out_buffer);
+      return call SendMsg.send[id](TOS_BCAST_ADDR, sizeof(uint16_t) * token_out_buffer.length, &token_out_buffer);
     }
   }
 
@@ -247,13 +266,18 @@ module BasicTMCommM {
   }
 
   command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
-    return &cached_token;
+    return cached_token;
   }
 
   // I don't think I really want this in the interface:
   command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
     // This copies the data over.
-    cached_token = *newtok;
+    //cached_token = *newtok;
+    if ( cached_token == NULL ) {
+      cached_token = &extra_token;
+      cached_payload = (TM_Payload*)cached_token->data;
+    }
+    memcpy(&cached_token, newtok, sizeof(TOS_Msg));
     return SUCCESS;
   }
 
@@ -266,7 +290,7 @@ module BasicTMCommM {
     */
     //    call add_msg(&temp_msg);
 
-    call print_cache();
+    call print_buffer();
 
     // dbg(DBG_USR1, "TM BasicTMCommM: Timer Fired\n");
     return SUCCESS;
@@ -280,6 +304,23 @@ module BasicTMCommM {
   }
   
   event TOS_MsgPtr ReceiveMsg.receive[uint8_t id](TOS_MsgPtr msg) {
+    TM_Payload* payload = (TM_Payload*)(msg->data);
+
+    // Bounce it if it's not a good path.
+    if (cached_token == NULL) {
+      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, curNULL posting tokenhandler o%d/p%d/c%d/g%d.\n", 
+	  id, payload->origin, payload->parent, payload->counter, payload->generation);
+    } else if (	//	payload->generation > 
+	       payload->counter < cached_payload->counter) {
+      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, cur%d posting tokenhandler o%d/p%d/c%d/g%d.\n", 
+	  id, cached_payload->counter, payload->origin, payload->parent, payload->counter, payload->generation);
+    } else {
+      dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, BOUNCED (cur c%d) o%d/p%d/c%d/g%d.\n", 
+	  id, cached_payload->counter,
+	  payload->origin, payload->parent, payload->counter, payload->generation);
+      return msg;
+    }
+
     // Post the token handler.
     call add_msg(msg);
     post tokenhandler();
