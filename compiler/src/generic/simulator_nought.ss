@@ -556,9 +556,9 @@
 	[handler (build-handler tbinds)]
 	)
 
-    (printf "~n;  Converted program for Simulator:~n")
-    (printf "<-------------------------------------------------------------------->~n")
-    (pretty-print binds)
+;    (printf "~n;  Converted program for Simulator:~n")
+;    (printf "<-------------------------------------------------------------------->~n")
+;    (pretty-print binds)
     
 
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
@@ -1225,14 +1225,14 @@
 ;; sense, very weak abstraction.
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
-;;  [- My first attempt didn't work because nested engines are dissallowed.
+;;  [- My first attempt didn't work because nested engines are dissallowed. -]
 
 ;; Takes: 
 ;;  threadrunner :: Thunks, ?TimeOut -> (All_Threads_Returned | Threads_Timed_Out)
 ;;  simcore :: ThunksVec ->? Timeout -> ThunksList
 ;;    simcore runs the core of the specialized simulator.
 ;; Returns: a simulator function of type:
-;;    Simulation, ?timeout -> ReturnVals
+;;    Simulation, ?timeout -> (Stream of ReturnVals ending in 'All_Threads_Returned | 'Threads_Timed_Out)
 ;; Where 
 ;;   Simulation = soc-return -> soc-finish -> (vector thunk (thunks))
 
@@ -1242,8 +1242,10 @@
     (let ([return-vals '()])
       (let ([soc-return 
 	     (lambda (x)
-	       (disp "SOCRETURN ACCUMULATING RETURN VALS:" x )
-	       (set! return-vals (cons x return-vals)))]
+;	       (disp "SOCRETURN ACCUMULATING RETURN VALS:" x )
+	       ;; Should get a LOCK here...
+	       (critical-section
+		(set! return-vals (cons x return-vals))))]
 	    [soc-finish 
 	     (lambda () (set-top-level-value! 'stop-nodes #t))])
 	(let ([thunks (the-sim soc-return soc-finish)])
@@ -1264,21 +1266,43 @@
   (define-top-level-value 'stop-nodes #f)
   
   ;;-------------------------------
-  ;; We've done our job by initializing.  Apply the given function,
-  ;; this gives us back new thunks:
+  ;; We've done our job by initializing.  Apply the core function;
+  ;; this sets up the simulation and gives us back new thunks:
   (let ([newthunks (apply simcore (cons thunks timeout))])
+    ;; Next the threadrunner processes all these thunks and returns either an engine
     (let ([result (if (null? timeout)
 		      (threadrunner newthunks)
 		      (threadrunner newthunks (car timeout)))])
-      ;; We want to show the threadrunner result, but we only return the soc-ret'd vals.
-      (printf "~nThreadrunner returned result: ~a~n" result)
-      (reverse return-vals)
+      
+      ;; Now if the threads are done running, we just return the
+      ;; existing values.  Otherwise we return a stream.
+      (let promiseloop ([result result])
+	(cond 
+	 [(memq result '(All_Threads_Returned Threads_Timed_Out)) 
+	  (printf "~nFinished: ~a~n" result)
+	  (reverse (cons result return-vals))]
+	 
+	 [(promise? result) ;; It's an engine.
+	  ;; Do next chunk of computation:
+	  (let ([next (force result)]
+		[so-far #f])
+	    ;; This needs to be threadsafe.
+	    (critical-section 	  
+	     (set! so-far (reverse return-vals)) ;; Gather the results of computation thusfar.
+	     (set! return-vals '()))             ;; CLEAR buffer.
+	    ;; Now return the appropriate stream.
+	    (stream-append so-far (delay (promiseloop next))))]
+	 
+	 [else (error 'generate-simulator "invalid return value from threadrunner: ~a" result)]))
+
       )))))))
 
 
 
 ;; I'm essentially doing a lot of ad-hoc inheritance here.  There are
-;; different simulators that all share some parts, excuse the mess.
+;; different simulators that all share some parts -- excuse the mess.
+;; This basically adds on another engine that handles the text display.
+;;    simcore :: ThunksVec ->? Timeout -> ThunksList
 (define generic-text-simulator-core
    (lambda (thunks . timeout)
      (let ([soceng (vector-ref thunks 0)]

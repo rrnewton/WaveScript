@@ -11,11 +11,12 @@
 (include "simulator_nought.ss")
 (cd "..")
 
-;; <TODO> This buffer stuff should really use a safe fifo..
-;; This version returns a stream of answers rather than a list all at once.
-;; This is a valid Simulator, and the type signature for a Simulator is: 
-;; 
-(define run-simulation-stream
+
+;; This version chops up the simulation computation into little bits.
+;; The return value is a promise that keeps doing a little computation
+;; and returning a new promise.  Eventually it will return:
+;;   'All_Threads_Returned  OR  'Threads_Timed_Out
+(define run-simulation-stream 
   (generate-simulator
 
    ;; THREADRUNNER:
@@ -53,7 +54,6 @@
 			 ;(let ((temp return-buffer))
 			 ;(set! return-buffer '()) ;;<TODO> Use semaphore.
 			 ;(dotted-append temp (loop nexteng))
-			 (disp "Round robbining to the next engine..")
 			 (loop nexteng)
 			 ;)
 			 )))))))

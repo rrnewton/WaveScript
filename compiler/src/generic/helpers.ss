@@ -1812,7 +1812,15 @@
 ;; This version has a look-ahead of one, so the stream had better not
 ;; contain bottom!
 
+
 (define (stream? s)
+  ;; Is it a proper list?
+  (or (list? s)
+      ;; Or an improper list that's still being computed?
+      (live-stream? s)))
+
+;; A live stream is one not all of whom's values have been computed yet.
+(define (live-stream? s)
   (or (promise? s)
       (and (pair? s) (stream? (cdr s)))))
 
@@ -1822,6 +1830,9 @@
      [(null? s) #t]
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
+
+(define stream-cons cons)
+(define stream-append append)
 
 (define stream-car
   (lambda (s)
