@@ -964,6 +964,17 @@
 (define (token-name? t) 
   (or (symbol? t)
       (and (pair? t) (symbol? (car t)) (integer? (cdr t)))))
+
+(define (token->name t)
+  (match t
+	 [(,name . ,_) name]
+	 [,name name]))
+(define (token->subtok t)
+  (match t
+	 [(,_ . ,subtok) subtok]
+	 [,_ 0]))
+
+
 ;; Allocate a token name, possibly with a seed name.
 (define new-token-name
   (lambda args
@@ -1947,7 +1958,13 @@
 
 
 
-
+(define (split-before f origls)
+  (let loop ([acc '()] [ls origls])
+   (cond
+    [(null? ls) (values origls '())]
+    [(f (car ls)) (values (reverse! acc) ls)]
+    [else (loop (cons (car ls) acc) (cdr ls))])))
+     
 
 (define partition
   (lambda (lst f)
