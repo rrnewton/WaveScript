@@ -21,7 +21,8 @@ interface TMComm {
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
     // Relay: relaunches a message, updating Payload
-    command result_t relay(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    //    command result_t relay(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    command result_t relay();
 
     //    event result_t relayDone(TOS_MsgPtr msg, result_t success);
 

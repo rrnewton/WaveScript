@@ -23,7 +23,7 @@
 		;; First use the assembler:
 		(system (string-append "./assembler " file))
 		;; Then use the NesC compiler:
-		;(system "make pc")
+		(system "make pc")
 		 )))))
     (run_tm)))
 

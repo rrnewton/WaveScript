@@ -215,6 +215,10 @@ sometimes it isn't... and allocating an extra whole TOS_Msg is horrible.
 Right now I have really broken buffer management, I need to get some
 locks on things and try to make sense of stuff. 
 
+[2004.11.08]
 
+I have had some seriously bad experience using the tossim simulator.
+It will hang, I don't always think the gui display is saying the right
+thing, etc...
 
 

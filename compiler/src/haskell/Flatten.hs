@@ -91,6 +91,8 @@ pe e = do (b,rv) <- loop e
 					 ([],Nothing) exprs
 			  return (concat_blocks (reverse blks), ret)
 
+       (ELed col act) -> return (Block [] [SLed col act], Nothing)
+
        (Eif a b c) -> do newvar <- newid "ifret_" 
 			 (blka,Just ra) <- loop a
 			 (blkb,rb) <- loop b

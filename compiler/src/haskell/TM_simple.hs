@@ -1,6 +1,6 @@
 module TM_simple where
 
-import TM (Const, Time, Id(Id), Token(Token), Prim)
+import TM (Const, Time, Id(Id), Token(Token), Prim, LedColor, LedAction)
 --import qualified TM 
 
 type ConstBind = (Id, Basic)
@@ -49,6 +49,7 @@ data Block = Block { binds :: [Id],
 data Stmt = Svoid
 	  | Sassign Id Basic
           | Sif Basic [Stmt] [Stmt]
+	  | SLed LedColor LedAction
           | Ssense (Maybe Id)
 	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
 	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!

@@ -212,6 +212,12 @@
 							       nodup-binds) ...)
 				(startup ,starttoks ...))))
 	   )]
+	[(program (bindings ,constbinds ...)
+		  (socpgm (bindings ,socbinds ...) 
+			  ,socstmts ...)
+		  (nodepgm (tokens ,nodetoks ...)
+			   (startup ,starttoks ...)))
+	 (cleanup-token-machine `(deglobalize-lang ',prog))]	
 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
 
 

@@ -1183,7 +1183,15 @@
       (cond
        [(null? ls) (reverse acc)]
        [(equal? x (car ls)) (reverse (cons (car ls) acc))]
-       [else (loop (cdr ls) (cons (car ls) acc))]))))	
+       [else (loop (cdr ls) (cons (car ls) acc))]))))
+
+(define list-remove-before
+  (lambda (x ls)
+    (let loop ([ls ls])
+      (cond
+       [(null? ls) '()]
+       [(equal? x (car ls)) ls]
+       [else (loop (cdr ls))]))))
 
 (define list-remove-first
   (lambda (x lst)
