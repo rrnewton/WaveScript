@@ -131,8 +131,7 @@
 			  (aggr ,rator_tok))     ;; and aggregator
 		  )])])))
 
-    
- 
+
 ;; [2004.07.28] This is a new version I'm making, which takes pre-classified
 '(define emit-primitive-handlers
   (lambda (classified-primapp form memb heartbeat)
@@ -155,6 +154,9 @@
 
 ;; (Name, DistributedPrim, Args) -> TokenBinds
 ;; This produces a list of token bindings.
+;; It generates code for one node in the dataflow graph.  It uses
+;; get_membership_name to figure out from where control flow will come
+;; on incoming edges.  
 ;; Below, "parent" won't be available if we don't have the full stream-graph...
 (define explode-primitive
   (lambda (form memb prim args heartbeat)
@@ -487,8 +489,9 @@
     (lambda (prog)
 ;      (pretty-print prog) (newline)
       (match prog
-        [(add-places-language (quote (program (props ,table ...) (control-flow ,cfg ...)
-					      (lazy-letrec ,binds ,fin))))
+        [(,lang ;add-places-language 
+	  (quote (program (props ,table ...) (control-flow ,cfg ...)
+			  (lazy-letrec ,binds ,fin))))
 	 ;; This is essentially a global constant for the duration of compilation:
 	 (set! proptable table)
 	 	 
@@ -551,7 +554,8 @@
 
     [(deglobalize '(lang '(program 
 			   (props [result_1 final local])
-			   (lazy-letrec ((result_1 #f '3)) result_1))))
+			   (control-flow )
+			   (lazy-letrec ((result_1 #f _ _ '3)) result_1))))
      unspecified]
 
     [(deglobalize '(lang '(program 
@@ -585,8 +589,8 @@
 		    "Deglobalize: to convert global to local program."
 		    these-tests))
 
-(define test13 test-this)
-(define tests13 these-tests)
+(define test16 test-this)
+(define tests16 these-tests)
 
 ;==============================================================================
 
