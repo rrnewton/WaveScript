@@ -8,15 +8,17 @@ module TokenMachine where
 type Const = Int
 type Id = String
 type ConstBind = (Id, Const)
-type Token = Id 
-type Formal = Id
-type TokHandler = (Id, [Formal], Expr)
+--type Formal = Id
+type TokHandler = (Token, [Id], Expr)
 
-type Time = Int -- milleseconds
+data Id = Id String
+  deriving (Eq, Show, Read)
+
+data Token = Token String
+  deriving (Eq, Show, Read)
 
 --data Statement = PrimStat
 --  deriving (Eq, Show, Read)
-
 
 data Expr = Ereturn Id 
 	  | Etoken Id
@@ -37,6 +39,30 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 	    }
   deriving (Eq, Show, Read)
 
+data Expr = -- Stndard forms:
+            Econst
+	  | Evar Id
+	  | Elambda [Id] Expr
+	  | Eprimapp (Prim Expr)
+            -- Special forms:
+	  | Esocreturn Expr
+	  | Esocfinished	  
+	  | Ereturn Expr
+	  | Erelay (Maybe Token)
+	  | Eemit
+	  | Ecall
+  deriving (Eq, Show, Read)
+
+
+data Prim a = Pcluster a 
+	  | Pamap 
+	  | Pafold 
+	  | Psmap 
+	  | Punion 
+	  | Pintersect 
+  deriving (Eq, Show, Read)
+
+
 
 x = Pgm { consts    = [],
 	  socconsts = [],
@@ -51,7 +77,7 @@ y = Pgm [] [] [] [] []
 z = Pgm { consts    = [("woot",3)],
 	  socconsts = [("foot",4)],
 	  socpgm    = [],
-	  nodetoks  = [("tok1", ["x"], Ereturn "x")],
+	  nodetoks  = [(Token "tok1", [Id "x"], Ereturn (Evar (Id "x")))],
 	  startup   = []
 	}
 
