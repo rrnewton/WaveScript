@@ -102,7 +102,7 @@ runplt:
 clean:
 	(cd compiled; $(MAKE) clean)
 	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
-	$(RM) *.zo	
+	$(RM) *.zo _SIM_*
 	find -name "*.zo" | xargs rm # This is excessive...
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \
