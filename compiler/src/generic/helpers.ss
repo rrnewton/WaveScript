@@ -44,6 +44,13 @@
 		   (begin expr ... (flush-output-port)))]))
 	   
 
+;; This is a SECOND print channel for even lamer information:
+(define-syntax DEBUGPRINT2
+  (syntax-rules ()
+    [(_ expr ...) (void)]))
+
+;==============================================================================;
+
 ;; This is not strictly R5RS but it should work in both chez and plt,
 ;; as long as plt has "compat.ss" loaded.  
 ;; (For example, it requires flush-output-port)
@@ -318,7 +325,9 @@
 		      (call/cc 
 		       (lambda (escape-eval)
 			 (with-error-handlers (lambda args 
-						(disp "default-unit-tester, got ERROR: " args))
+						(printf "default-unit-tester, got ERROR: ~n")
+						(if (car args) (printf "~s: " (car args)))
+						(printf "~a~n" (apply format (cdr args))))
 					      (lambda () (escape-eval 'error))
 					      (lambda () (eval (preprocessor expr))))))))
 ;	       (newline)
@@ -1367,6 +1376,20 @@
     (if (null? ls)
         (error 'list-get-random "cannot get random element from null list.")
         (list-ref ls (random (length ls))))))
+;; This too:
+(define randomize-list
+  (lambda (ls)
+    (let* ([vec (list->vector ls)]
+	   [len (vector-length vec)])
+      (let ([swap (lambda (i j)
+		    (let ([temp (vector-ref vec i)])
+		      (vector-set! vec i (vector-ref vec j))
+		      (vector-set! vec j temp)))])
+	(do ([i 0 (add1 i)]) ((= i len))
+	  ;; Swap with a later position:
+	  (swap i (+ i (random (- len i)))))
+	(vector->list vec)))))
+
 
 ;;  [2004.06.11] Man also can't believe that I've never written this
 ;;  before.  This is dinky; a real version of this would do an
