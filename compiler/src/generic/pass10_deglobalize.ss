@@ -109,10 +109,10 @@
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
 				   (elect-leader ,memb)
 				   '#f)]
-		 [,memb () (draw-mark ,target (rgb 0 100 100))]
+		 [,form () (draw-mark ,target (rgb 0 100 100))]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
-		 [,form () 
+		 [,memb () 
 			;; Note that we are an anchor.
 ;			(set-simobject-homepage! 
 ;			 this (cons 'anchor (simobject-homepage this)))
@@ -364,7 +364,7 @@
 			    ((b (cons '2 '()))
 			     (a (cons '1 b))
 			     (anch (anchor-at a))
-			     (circ (circle '50 anch)))
+			     (circ (circle anch '50)))
 			    circ))))
      unspecified]
   ))
@@ -372,25 +372,7 @@
 
 (define test-this (default-unit-tester
 		    "Pass10: Pass to convert global to local program."
-		    these-tests))
-
-#;(define test-this
-  (let ((these-tests these-tests))
-    (lambda args 
-      (let ((verbose (memq 'verbose args)))	
-	(let ((tests (map car these-tests))
-	      (intended (map cadr these-tests)))
-	  (let ((results (map eval tests)))
-	    (if verbose 
-		(begin
-		  (display "Testing pass to convert global to local program.")
-		  (newline)
-		  (newline) (display "Here are intended results:") (newline)
-		  (write intended) (newline) (newline)
-		  (newline) (display "Here are actual results:") (newline)
-		  (write results) (newline) (newline)))
-	   
-	    (equal? intended results)))))))  
+		    these-tests))  
 
 (define test10 test-this)
 (define tests10 these-tests)

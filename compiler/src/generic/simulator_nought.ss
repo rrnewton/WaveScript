@@ -103,7 +103,6 @@
   (let ([x (car loc)] [y (cadr loc)])
     (sqrt (+ (expt x 2) (expt y 2)))))
 
-
 ;;========================================
 
 (define (id x) x)
@@ -118,7 +117,6 @@
 ;; I thought the primitive equal? did this by default?  This is just a
 ;; version that accepts any number of arguments.
 (define (myequal? . args)
-  (disp "myeq" args)
   (if (null? args) #t
       (let ((first (car args)))
 	(let myeqloop ((args (cdr args)))
@@ -476,14 +474,14 @@
 	     (set-simobject-homepage! this (cons (list 'inside t) (simobject-homepage this)))
 	     (let ((possible
 		    (filter (lambda (simob)
-			      (member `(inside ,t) (simobject-homepage simob)))
+			      (member (list 'inside t) (simobject-homepage simob)))
 			    all-objs)))
 	       (DEBUGPRINT
 		(disp "election: electing from" (node-id (simobject-node this))
 		      " number candidaties " (length possible)))
 	       ;; This is horribly yucky.
 	       ;; Proceed if there are any candidates...a
-	       (if (not (null? possible))
+;	       (if (not (null? possible))
 		   (let ([leader (list-get-random possible)])
 		     (DEBUGPRINT
 		      (disp "election: got leader" (node-id (simobject-node leader))))
@@ -491,7 +489,7 @@
 		     ;; at multiple nodes.  Need to make sure there's a
 		     ;; dependency relationship here, and that a killing a
 		     ;; false leader kills all its subsequent doings.
-		     (sendmsg (make-msg-object t #f #f 0 '()) leader))))]
+		     (sendmsg (make-msg-object t #f #f 0 '()) leader)))]
 
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -685,7 +683,7 @@
   ;; Define global bindings for these so that we can do fluid-let on them.
   (define-top-level-value 'soc-return ;'unbound-right-now-soc-return)
     (lambda (x)
-      (disp "OLD SOC-RETURN DAMMIT.")
+;      (disp "OLD SOC-RETURN DAMMIT.")
       ;; Collect return vals in a local variable.
       (set! return-vals (cons x return-vals))))
   (define-top-level-value 'soc-finished ;'unbound-right-now-soc-finish)
