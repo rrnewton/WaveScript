@@ -108,6 +108,11 @@
 	 (random world-ybound))
    ))
 
+(define (dotted-append ls ob)
+  (let loop ((ls ls))
+    (if (null? ls) ob
+	(cons (car ls) (loop (cdr ls))))))
+
 ;; Increment a top-level binding.  Totally dynamic.
 (define (incr-top-level! v)
   (set-top-level-value! v (add1 (top-level-value v))))
@@ -643,7 +648,7 @@
 ;; object from which run-simulation and graphical-simulation inherit.
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
-(define (generate-simulator fun)
+(define (generate-simulator threadrunner fun)
   (lambda (thunks . timeout)
     ;; First, set up a global counter for communication cost:
   ;; This is defined dynamically so as to avoid PLTs module system. 
@@ -659,69 +664,48 @@
   (define-top-level-value 'soc-finished 'unbound-right-now)
 
   ;;-------------------------------
+  ;; We've done our job by initializing.  Apply the given function,
+  ;; this gives us back new thunks:
   (let ([newthunks (apply fun (cons thunks timeout))]
 	[return-vals '()])
 
-      ;;; ADDING ... TEMP    
-    (let ((theeng ;; A computation that puts a bunch of answers in "return-vals".
-	   (make-engine 
-	    (lambda ()
-      ;;; ADDING ... TEMP
+    ;; Kinda lame to use fluid-let here, but we don't have the
+    ;; relevent continuation at the time we build the thunks.
+    (fluid-let ([soc-return (lambda (x)
+			      ;; Collect return vals in a local variable.
+			      (set! return-vals (cons x return-vals)))]
+		[soc-finished (lambda () 
+				(set-top-level-value! 'stop-nodes #t))])
+      (let ([result (if (null? timeout)
+			(threadrunner newthunks)
+			(threadrunner newthunks (car timeout)))])
+	(if (null? return-vals)
+	    result
+	    return-vals)
+	  )))))
 
 
-      ;; Kinda lame to use fluid-let here, but we don't have the
-      ;; relevent continuation at the time we build the thunks.
-      (fluid-let (
-		  ;[soc-return (lambda (x) 
-		;		(disp "CALLING SOCRETURN")
-		;		(set! return-vals (cons x return-vals)))]
-		;  [soc-finished (lambda () 
-		;	      (disp "CALLING finished" return-vals)
-		;	      (exit-sim return-vals))]
-		  ;; This magically teleports values out of the network.
-		  [soc-return (lambda (x)
-;				(disp "CALLING SOCRETURN")
-				(set! return-vals (cons x return-vals)))]
-		  [soc-finished (lambda () 
-;			      (disp "CALLING soc-finished" return-vals)
-			      (set-top-level-value! 'stop-nodes #t))]
-		  )
-;	(disp "in that fluid" soc-return finished return-vals)
-	(let ([result (if (null? timeout)
-			  (run-flat-threads newthunks)
-			  (run-flat-threads newthunks (car timeout)))])
-	  (if (null? return-vals)
-	      result
-	      return-vals)
-	  ))
-
-      ;;; ADDING ... TEMP
-      ))))
-      ;; Return an unopened stream:
-      (lambda () 
-	(let stream-loop ((eng theeng))
+;; This one didn't work because nested engines are not allowed.
+      ;; Return an unopened stream must return an [improper] list to be a valid stream.
+#;      (let stream-loop ((eng theeng))
+	(delay
 	  (eng 1000
 	       (lambda (v rem) 
 		 (if (null? return-vals)
-		     v return-vals))
+		     (list v) 
+		     return-vals))
 	       (lambda (eng2)
 		 (if (null? return-vals)
 		     (stream-loop eng2)
 		     (let ((temp return-vals))
 		       (set! return-vals '())  ;; <TODO> : Use semaphore.
 		       ;; Return a stream:
-		       (dotted-append temp (lambda () (stream-loop eng2)))))))))
-      ))))
+		       (dotted-append temp (stream-loop eng2))))))))
 
-(define (dotted-append ls ob)
-  (if (null? ls) ob
-      (cons (car ls) (dotted-append (cdr ls) ob))))
-
-
-(define run-simulation 
-  (generate-simulator
+;; I'm essentially doing a lot of ad-hoc inheritance here.  There are
+;; different simulators that all share some parts, excuse the mess.
+(define generic-text-simulator-core
    (lambda (thunks . timeout)
-     ;;  (call/cc (lambda (exit-sim)
      (let ([soceng (vector-ref thunks 0)]
 	   [nodeengs (vector-ref thunks 1)]
 	   [display_engine
@@ -738,8 +722,34 @@
        (if (simulator-output-text)
 	   (cons display_engine (cons soceng nodeengs))
 	   (cons soceng nodeengs))
-       ))))
+       )))
 
+(define run-simulation 
+  (generate-simulator run-flat-threads generic-text-simulator-core))
+
+;; <TODO> This buffer stuff should really use a safe fifo..
+;; This version returns a stream of answers rather than a list all at once.
+(define run-simulation-stream
+  (generate-simulator
+   (lambda (thunks)
+     (disp "stream version of run sim")
+     (let ([return-buffer '()])
+       ;; Here we override the 'soc-return binding from generate-simulator.
+       ;; We collect the answers in our stream.
+       (fluid-let ([soc-return (lambda (x) (set! return-buffer (cons x return-vals)))])
+	 (disp "in fluid")
+	 (let loop ((eng (run-flat-threads-engine thunks)))
+	   (disp "in loop")
+	   (delay 
+	     (begin (disp "popped promise")
+		    (eng 1000
+			 (lambda (rem val)
+			   val)
+			 (lambda (nexteng)
+			   (let ((temp return-buffer))
+			     (set! return-buffer '()) ;;<TODO> Use semaphore.
+			     (dotted-append temp (loop nexteng)))))))))))
+   generic-text-simulator-core ))
 
 ;;===============================================================================
 
@@ -867,3 +877,9 @@
     (compile-simulate-nought 
      example-nodal-prog4))
    1.7))
+
+(define sim (build-simulation 
+	     (compile-simulate-nought 
+	      (cadadr (rc '(anchor-at '(30 40)))))))
+(define (ttt)
+  (run-simulation-stream sim))

@@ -24,7 +24,7 @@
 		(cleanse-world)
 		(let streamloop ([i 0] 
 				 [stream (run (build-simulation converted) 2.0)])
-		  (disp "Round the streamloop: ~s" stream)
+		  (disp "Round the streamloop: " stream)
 		  (cond
 		   [(null? stream) (prinf "Stream Ended.~n")]
 		   [(procedure? stream) (streamloop i (stream))]
