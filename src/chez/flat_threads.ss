@@ -36,53 +36,6 @@
 	   (loop (cdr engs) (cons nexteng acc))))]
       ))))
 
-
-(define these-tests
-  `(
-    [ '1 1 ] 
-    [ "Ten threads complete at different times."
-     (let ((s (open-output-string)))
-	(parameterize ([current-output-port s])
-;	(printf "running test~n")
-;	(flush-output-port)
-  	  (run-flat-threads
-	   (map (lambda (n)
-					;		(printf "making thread: ~a~n" n)
-		  (lambda () 
-					;		  (printf "running thunk: ~a~n" n)
-		    (let loop ((acc (* 1000 n)))
-		      (if (zero? acc) 
-			  (display n)
-			  (loop (sub1 acc))))))
-		(iota 10)))
-	  (get-output-string s)))
-	"0123456789"]
-
-    [ "An infinite loop on a thread times out."
-      (let ((s (open-output-string)))
-	(parameterize ([current-output-port s])
-	  (run-flat-threads 
-	   (list (lambda () (let loop () (loop))))
-	   .5) 99)) 99]
-
-    [ "One thread waits for another." 
-     (let ((v #f)
-	    (s (open-output-string)))
-	(parameterize ([current-output-port s])
-	   (run-flat-threads
-	    (list (lambda ()
-		    (let loop () 
-		      (if v (display "DONE")
-			  (loop))))
-		  (lambda ()
-		    (let loop ((acc 10000))
-		      (if (> acc 0)
-			  (loop (sub1 acc))
-			  (set! v #t)))))))
-	(get-output-string s))
-      "DONE" ]
-))
-
-
+(include "generic/flat_threads.tests")
 
 (define test-this (default-unit-tester this-unit-description these-tests))

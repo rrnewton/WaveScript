@@ -79,7 +79,7 @@
 	       (+ x processor-screen-radius)
 	       (+ y processor-screen-radius))
 
-	 (let ((circ (create <oval> the-canvas 
+	 (let ((circ (create <oval> the-win
 ;			     50 50 
 ;			     100 100)))
 	       (- x processor-screen-radius)
@@ -104,7 +104,7 @@
 	   [((,a ,b) (,c ,d))
 	    (mvlet ([(x1 y1) (scale2d (list a b) box1 box2)]
 		    [(x2 y2) (scale2d (list c d) box1 box2)])
-		   (let ((line (create <line> the-canvas x1 y1 x2 y2)))
+		   (let ((line (create <line> the-win x1 y1 x2 y2)))
 		     	   (set! edge-screen-objs
 				 (cons line edge-screen-objs))
 			   line))]
