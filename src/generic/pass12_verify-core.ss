@@ -1,4 +1,4 @@
-;;; Pass 08: verify-core
+;;; Pass: verify-core
 
 ;;; This pass verifies that the input is in the simplified core
 ;;; language.  (Uber simplified!)
@@ -150,7 +150,7 @@
    test-programs))
 
 (define test-this (default-unit-tester 
-		    "Pass08: Pass to verify the simplifed core language."
+		    "Pass to verify the simplifed core language."
 		    these-tests))
 #;(define test-this
   (let ((these-tests these-tests))
@@ -170,8 +170,11 @@
 	   
 	    (equal? intended results)))))))  
 
-(define test10 test-this)
-(define tests10 these-tests)
+(define test12 test-this)
+(define tests12 these-tests)
+(define test-verify-core test-this)
+(define tests-verify-core these-tests)
+
 
 ;==============================================================================
 

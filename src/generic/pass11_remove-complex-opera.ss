@@ -245,8 +245,10 @@
     these-tests))
   
 
-(define test07 test-this)
-(define tests07 these-tests)
+(define test11 test-this)
+(define tests11 these-tests)
+(define test-remove-complex-opera test-this)
+(define tests-remove-complex-opera these-tests)
 
 ;==============================================================================
 

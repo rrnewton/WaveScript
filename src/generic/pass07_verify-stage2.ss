@@ -268,8 +268,10 @@
 	    (equal? intended results)))))))
   
 
-(define test00 test-this)
-(define tests00 these-tests)
+(define test07 test-this)
+(define tests07 these-tests)
+(define test-verify-stage2 test-this)
+(define tests-verify-stage2 these-tests)
 
 ;==============================================================================
 

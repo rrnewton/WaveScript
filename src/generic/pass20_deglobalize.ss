@@ -606,8 +606,10 @@
 		    "Deglobalize: to convert global to local program."
 		    these-tests))
 
-(define test16 test-this)
-(define tests16 these-tests)
+(define test20 test-this)
+(define tests20 these-tests)
+(define test-deglobalize test-this)
+(define tests-deglobalize these-tests)
 
 ;==============================================================================
 

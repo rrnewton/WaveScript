@@ -60,39 +60,37 @@
 (include "generic/pass01_eta-primitives.ss")
 (include "generic/pass02_rename-vars.ss")
 (include "generic/pass03_remove-unquoted-constant.ss")
-(include "generic/pass04_reduce-primitives.ss")
-
 (include "generic/pass04_static-elaborate.ss")
+(include "generic/pass05_reduce-primitives.ss")
 
-(include "generic/pass05_remove-complex-constant.ss")
-(include "generic/pass06_uncover-free.ss")
-(include "generic/pass07_lift-letrec.ss")
-(include "generic/pass08_lift-letrec-body.ss")
-(include "generic/pass09_remove-complex-opera.ss")
-(include "generic/pass10_verify-core.ss")
-(include "generic/pass11_classify-names.ss")
+(include "generic/pass06_remove-complex-constant.ss")
+; pass07_verify-stage2.ss
+(include "generic/pass08_uncover-free.ss")
+(include "generic/pass09_lift-letrec.ss")
+(include "generic/pass10_lift-letrec-body.ss")
+(include "generic/pass11_remove-complex-opera.ss")
+(include "generic/pass12_verify-core.ss")
+(include "generic/pass13_classify-names.ss")
 ;(include "generic/pass09_separate-graph")
 
-(include "generic/pass12_add-heartbeats.ss")
-(include "generic/pass13_add-control-flow.ss")
-(include "generic/pass14_add-places.ss")
-;(include "generic/pass15_add-routing.ss")
+(include "generic/pass14_add-heartbeats.ss")
+(include "generic/pass15_add-control-flow.ss")
+(include "generic/pass16_add-places.ss")
+(include "generic/pass17_analyze-places.ss")
+;(include "generic/pass18_add-routing.ss")
 
-(include "generic/pass15_analyze-places.ss")
+(include "generic/pass20_deglobalize.ss")
+(include "generic/pass21_cleanup-token-machine.ss")
 
-(include "generic/pass16_deglobalize.ss")
-(include "generic/pass17_cleanup-token-machine.ss")
-;;(include "generic/pass18_verify-token-machine.ss")
+(include "generic/pass23_desugar-gradients.ss")
 
-(include "generic/pass18_desugar-gradients.ss")
+;(include "generic/pass24_analyze-calls.ss")
+;(include "generic/pass25_inline.ss")
+;(include "generic/pass26_prune-returns.ss")
+(include "generic/pass27_cps-tokmac.ss")
 
-;(include "generic/pass18_analyze-calls.ss")
-;(include "generic/pass18_inline.ss")
-;(include "generic/pass18_prune-returns.ss")
-(include "generic/pass18_cps-tokmac.ss")
-
-(include "generic/pass19_haskellize-tokmac.ss")
-
+;;(include "generic/pass29_verify-token-machine.ss")
+(include "generic/pass30_haskellize-tokmac.ss")
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

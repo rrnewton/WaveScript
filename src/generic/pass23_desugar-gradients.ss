@@ -28,7 +28,7 @@
 		(bcast ,tok (my-id) 1 ver))]
 
 	     [(relay) ;((process-expr env tokens this-token) `(relay ,this-token))]	      
-	      (bcast ,this-token stored_g_origin (+ 1 stored_g_hopcount) stored_g_version)]
+	      `(bcast ,this-token stored_g_origin (+ 1 stored_g_hopcount) stored_g_version)]
 	     [(relay ,tok)
 	      ;`(relay ,tok)
 	      (if (eq? tok this-token)
@@ -103,15 +103,22 @@
 				  ,socstmts ...)
 			  (nodepgm (tokens ,nodetoks ...)
 				   (startup ,starttoks ...))))
-	 (let ([newtoks ;newstmts)
-		(let ([processs (process-effect (map car socbinds) (map car nodetoks) #f)])
-		  (foldl (lambda (stmt)
-;			   (mvlet ([(newstmt newtok) (process stmt)])
-			   0000
-			   )))])
-	   000 ;; TODO TODO TODO
-	)]))))
+	 
 
+	 (let* ([toks (map car nodetoks)]
+		[newsocstmts
+		 (map (process-expr (append (map car constbinds) (map car socbinds)) toks #f)
+		      socstmts)]
+		[newtoks
+		 (map (process-tokbind (map car constbinds) toks)
+		      nodetoks)])
+	   
+	   `(desugar-gradients-lang
+	     '(program (bindings ,constbinds ...)
+		       (socpgm (bindings ,socbinds ...) 
+			       ,newsocstmts ...)
+		       (nodepgm (tokens ,newtoks ...)
+				(startup ,starttoks ...)))))]))))
 
 
 (define these-tests
@@ -138,5 +145,7 @@
 		    these-tests))
 
 
-(define test18d test-this)
-(define tests18d these-tests)
+(define test23 test-this)
+(define tests23 these-tests)
+(define test-desugar-gradients test-this)
+(define tests-desugar-gradients these-tests)
