@@ -24,6 +24,10 @@
 
 ;    (require alpha_lib)
 
+;    (alpha-repl)
+    
+;    (run-alpha-sim 'simple)
+    
 ;    (begin (require alpha_lib) (time (run-alpha-sim 'simple 10.0)))
 
 

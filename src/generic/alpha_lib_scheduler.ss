@@ -237,6 +237,10 @@
     ;; does, which will run the handler, update the scheduler, and
     ;; modify the simobject.
     (lambda (global-mintime)
+      (define _
+	(if (not (number? global-mintime))
+	  (error 'alpha-lib_scheduler
+		 "simulation object called with invalid global time: ~a" global-mintime)))
 
       (define scheduler (simobject-scheduler ob))
       (define ourtime_starting (scheduler 'get-time))
