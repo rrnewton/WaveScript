@@ -4,8 +4,8 @@
 ;; ======================================================================
 ;; Simulator runtime
 
-;(simulation-logger (open-output-file "__temp.log" 'replace))
-(simulation-logger #f)
+(simulation-logger (open-output-file "__temp.log" 'replace))
+;(simulation-logger #f)
   
 (define (alpha-it tm)
   (eval `(define alph ',(compile-simulate-alpha tm)))
@@ -177,7 +177,7 @@
 	      (length (simobject-local-msg-buf ob))
 	      (length (simobject-timed-token-buf ob))
 	      (length (simobject-incoming-msg-buf ob)))
-
+      
       (if (not (null? (append (simobject-local-msg-buf ob)
 			      (simobject-timed-token-buf ob)
 			      (simobject-incoming-msg-buf ob))))			      
@@ -452,6 +452,10 @@
 	  [SOC-start () (stored) (display "S")]
 	  ;[node-start () (stored) (void)]
 	  [node-start () (stored) (begin (printf "N~a" (simobject-I-am-SOC this)) (call tok1))]
-	  [tok1 () (stored) (begin (display ".") (bcast tok2 " "))]
-	  [tok2 (x) (stored) (display x)]
+	  [tok1 () (stored) (begin (display ".") (bcast tok2 "!"))]
+	  [tok2 (x) (stored) (timed-call 500 tok3 x)]
+	  [tok3 (y) (stored) (display y)]
 	  )))))
+
+
+;     (begin (t) (time (run-alpha-sim 10.0)))
