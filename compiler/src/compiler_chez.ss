@@ -1,3 +1,6 @@
+;; TEMP
+(define current_interpreter 'chezscheme)
+
 
 (printf "Loading compiler in chezscheme..~n")
 

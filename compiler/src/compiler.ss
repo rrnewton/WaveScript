@@ -139,8 +139,11 @@
 ;; Urg, this is wrong:
 ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
 
-    ["Verify that the trivial program produces no token bindings"
-     (deep-assq 'tokens (run-compiler '3))   (tokens)]
+    ["Verify that the trivial program produces no token bindings but the defaults"
+     (filter (lambda (tokbind)
+	       (not (memq (car tokbind) '(spread-global global-tree))))
+	     (cdr (deep-assq 'tokens (run-compiler '3))))
+     ()]
     ))
 
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
