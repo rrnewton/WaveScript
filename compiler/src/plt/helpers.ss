@@ -30,8 +30,11 @@
 	   "This is a chez function which can't ~a"
 	     "be emulated right now in Plt. -RRN"))
 
-    (define flush-output-port flush-output)
-    (define pp pretty-print)                   
+  (define flush-output-port flush-output)
+  (define pp pretty-print)                   
+  (define cpu-time current-process-milliseconds)
+  (define print-level pretty-print-depth)
+  ;(define print-length pretty-print-length)
 
     (define-syntax rec
       (syntax-rules ()
@@ -85,7 +88,7 @@
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port with-error-handlers ;; error-handler 
+   flush-output-port with-error-handlers cpu-time ;; error-handler 
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin

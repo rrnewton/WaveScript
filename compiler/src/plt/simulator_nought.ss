@@ -17,7 +17,10 @@
            (all-except "tsort.ss" test-this these-tests)
            )
   
+  ;; This exports a whole bunch, because the simulated programs need to access this 
+  ;; stuff once they are "eval"ed.
   (provide (all-defined)
+           (all-from "constants.ss")
 	   (all-from "helpers.ss")
 	   (all-from "flat_threads.ss") 
 	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
@@ -61,4 +64,4 @@
   )
 
 (require simulator_nought)
-(define (g) (cadadr these-tests)) 
+(define (g) (eval (cadadr these-tests)))
