@@ -9,7 +9,7 @@
 
 ;;; OUTPUT LANG:
 
-;;; <Pgm>  ::= <Exp>
+;;; <Pgm>  ::= (<language-name> (quote (program <Exp>)))
 ;;; <Decl> ::= (<var> <Exp>)
 ;;; <Exp>  ::= 
 ;;;            (quote <datum>)
