@@ -10,6 +10,7 @@ This will read
 -}
 
 import TM -- Token Machine language definition
+import TM_simple as TMS
 import Expand
 import Flatten
 import Utils
@@ -47,6 +48,9 @@ type FunctionCode = String
 type ExpressionCode = String
 type StatementCode = String
 
+process_basic :: Basic -> String
+process_basic (Bvar (Id str)) = str
+
 -- This returns both:
 --   *) bunch of strings (functions) to be seperately
 --     stuck in the top-level of the module implementation, 
@@ -55,68 +59,56 @@ type StatementCode = String
 --   *) a string (expression) that represents the appropriate value
 
 -- The 2nd argument is the "arg environment" for bound variables.
-process_expr :: String -> [String] -> Expr -> ([FunctionCode],[StatementCode],ExpressionCode)
-process_expr indent args e = 
+process_stmt :: String -> [String] -> Stmt -> [StatementCode]
+process_stmt indent tokargs e = 
     case e of
-    -- Constants restricted to 16 bit numbers for now:
-    Econst c -> ([],[],show c)
-    Evar (Id var) -> 
-	case elemIndex var args of
-	-- This just means it's a *let bound* variable.
-	Nothing  -> ([],[],show var)
-	Just ind -> ([],[],"args["++show ind++"]")
+    Svoid -> []
+    Sassign (Id s) basic -> 
+	[indent ++ s ++ " = " ++ process_basic basic ++ ";\n"]
+    Sprimapp mbid prim [a, b]  -> 
+ 	let e1 = process_basic a
+	    e2 = process_basic b
+	    text = (case prim of
+		    Pplus  -> e1++" + "++e2
+		    Pminus -> e1++" - "++e2
+		    Pmult  -> e1++" * "++e2
+		    Pdiv   -> e1++" / "++e2
+ 		   )
+	in case mbid of 
+	   Just (Id id) -> [indent ++ id ++ " = " ++ text ++ ";\n"]
+	   Nothing      -> [indent ++ text ++ ";\n"]
 
-    Elambda formals e -> ([build_fun formals e],[],"VOIDNOR")
+    Sif b s1 s2 ->
+	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
+	(concat $ map (process_stmt (indent++"  ") tokargs) s1) ++
+	[ indent ++ "} else {\n" ] ++
+	(concat $ map (process_stmt (indent++"  ") tokargs) s2) ++
+	[ indent ++ "}\n" ]
 
-    Elet binds body ->
-	let (funs1,stmts1,bodcode)  = process_expr indent args body
-	    (funs2,stmts2) = 
-		foldl (\ (funacc,stmtacc) (lhs,rhs) -> 
-		       let (rhsfun,rhsstmt,code) = process_expr indent args rhs
-		       in (funacc ++ rhsfun,
-			   stmtacc ++ rhsstmt ++ [indent ++ "int16_t lhs = "++code++"\n"]))
-		([],[]) binds
-	in (funs1++funs2,
-	    stmts1++stmts2,
-	    bodcode)
+--    Slambda formals e -> ([build_fun formals e],[],"VOIDNOR")
 
-
-    Eseq [e1] -> process_expr indent args e1
-    Eseq (e1:es) ->
-	let (funs1,stmts1)       = process_stmt indent args e1
-	    (funs2,stmts2,ecode) = process_expr indent args (Eseq es)
-	in (funs1++funs2, stmts1++stmts2, ecode)
-
-    Eprimapp prim [a, b]  -> 
-	let (f1,s1,e1) = process_expr indent args a
-	    (f2,s2,e2) = process_expr indent args b
-        in
-	(f1++f2, s1++s2,
-	 case prim of
-	 Pplus  -> e1++" + "++e2
-	 Pminus -> e1++" - "++e2
-	 Pmult  -> e1++" * "++e2
-	 Pdiv   -> e1++" / "++e2
-	 )
     
-  
-    Esense -> ([],[],"(call ADC.getData())")
+    Ssense (Just (Id id)) -> [ indent ++ id ++ " = (call ADC.getData());\n" ]
+    Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
 
---    Esocreturn e -> ([],[],"/* FAILED socreturn */") 
---    Esocfinished  -> ([],[],"/* FAILED socfinished*/") 
---    Ereturn e to via seed aggr -> ([],[],"/* FAILED return */") 
---    Erelay (Just t) -> ([],[],"/* FAILED relay just*/") 
---    Erelay Nothing -> ([],[],"/* FAILED relay nothing*/")
+    Sgradreturn e to via seed aggr -> 
+	[ indent ++ "(call TMComm_"++ tokname via ++".returnhome("++ 
+	  tok_id to ++", "++ 
+	  process_basic e ++", "++ 
+	  process_basic seed ++", "++
+	  tok_id aggr ++");\n"]
 
-    Esocreturn e -> let (f,s,bod) = process_expr indent args e
-		    in ([],[],"(call TMComm.socreturn("++ bod ++"))") 
-    Esocfinished  -> ([],[],"(call TMComm.socfinished())")
-    Ereturn e to via seed aggr -> 
-	let (f,s,bod) = process_expr indent args e
-        in ([],[],"(call TMComm.returnhome("++ bod ++"))")
-    Erelay (Just t) -> ([],[],"(call TMComm.socrelay())")		       
-    Erelay Nothing -> ([],[],"(call TMComm.socrelay())")
+    Srelay (Just t) -> ["/* FAILED relay just*/"]
+    Srelay Nothing -> ["/* FAILED relay nothing*/"]
 
+    -- FIXME
+    Scall Nothing Nothing t args -> 
+	[ "the_packet.type = " ++ tok_id t ++ ";\n",
+	  -- FILL IN ARG DATA HERE...
+	  "call TMComm_"++ tokname t ++".add_msg(the_packet);\n" ]
+--"(call " ++ tokname t ++ "(" ++ (concat $ intersperse ", " argexps) ++ "))"
+
+{-
     Eemit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
     Eemit Nothing t exps -> 
@@ -124,20 +116,6 @@ process_expr indent args e =
 	 "(call TMComm_"++ tokname t ++
 	 ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet))")
 
-    -- FIXME
-    Ecall Nothing t exps -> 
-	let (funs,stmts,argexps) = 
-		foldl (\ (f,s,es) expr -> 
-		       let (f2,s2,e) = process_expr indent args expr
-		       in (f++f2, s++s2, e:es))
-	        ([],[],[]) exps
-	in (funs, 
-	    stmts,  
-	    "the_packet.type = " ++ tok_id t ++ ";\n" ++
-            indent ++ "call TMComm.add_msg(the_packet)")
---	    stmts ++ [ indent++"the_packet.type = " ++ tok_id t ++ ";\n"],
---	    "(call TMComm.add_msg(the_packet))")
---	    "(call " ++ tokname t ++ "(" ++ (concat $ intersperse ", " argexps) ++ "))")
 
     Ecall (Just time) t exps -> 
 	let (f,s,e) = process_expr indent args (Ecall Nothing t exps)
@@ -157,70 +135,22 @@ process_expr indent args e =
 	    "(call TMComm.add_msg(the_packet))")
 
     _ -> error ("process_expr: unhandled expression!: "++show e)
-
-
--- <TODO>: FIXME FIX CONDITIONALS
-
--- This is just like process_expr but takes a tail-context argument
--- and makes sure that the "return" statement falls where it should.
--- It does not produce any expression-code because it's not used in value context.
--- It will produce a basic block with at least one "return" expression.
-process_tail :: String -> [String] -> Expr-> ([FunctionCode],[StatementCode])
-process_tail indent args e = 
-    let (funs,stmts,bod) = process_expr indent args e 
-    in (funs,stmts ++ [indent ++ "return " ++ bod ++ ";\n"])
-
-{-    let (funs,bod) = process_expr indent args e 
-	ret = "return "++ bod 
-    in	
-     (funs,
-      case e of
-        Econst _    -> ret
-        Evar _      -> ret
-        Ecall _ _ _ -> ret
-
-        Elambda _ _ -> error "process_tail: can't handle lambda"
-
-	Eseq e1 e2 -> 
-	    let (funs1,stmts1)       = process_stmt indent args e1
-		(funs2,stmts2,ecode) = process_expr indent args e2 
-	    in (funs1++funs2, stmts1++stmts2, code)
-
-	    let (_,b) = process_expr indent args e1 
-		(_,y) = process_tail indent args e2 
-	    in b++y
-
-        -- These should have no return value:
-	Eemit time t exps -> "return void;\n"
-	Erelay time       -> "return void;\n"
-      )-}
-
-
-process_stmt :: String -> [String] -> Expr-> ([FunctionCode],[StatementCode])
-process_stmt indent args e = 
-    let (funs,stmts,ecode) = process_expr indent args e 
-    in (funs, stmts ++ [(indent ++ ecode ++ ";\n")])
-
-{-
-    Esocreturn e -> ([],"") 
-    Esocfinished  -> ([],"") 
-    Ereturn e -> ([],"") 
 -}
 
+    Ssocreturn b -> [ indent ++ "call TMComm.socreturn("++ process_basic b ++");\n" ]
+    Ssocfinished -> [ indent ++ "call TMComm.socfinished();\n"]
 
-{-foob x = case x of
-	 3 -> 99
-	 4 -> 100
+    Sreturn b -> [ indent ++"return "++ process_basic b ++";\n" ]
 
-newb = case 3 of
-	 3  4 -> 100
--}
+
+process_block :: String -> [String] -> Block -> ([FunctionCode],[StatementCode])
+process_block indent tokargs (Block locals stmts) = 
+    let body = concat $ map (process_stmt indent tokargs) stmts
+        defs = map (\ (Id id) -> indent ++"uint8_t "++ id ++";\n") locals
+    in ([], defs ++ body)
 
 build_fun formals body = 
     " foo " 
-
---(Eseq (Eemit Nothing (Token "global-tree") []) 
---       (Ecall (Just 1000) (Token "spread-global") []))
 
 -------------------------------------------------------------------------------
 {- HERES THE MODULE IMPLEMENTATION GENERATOR. -}
@@ -238,9 +168,9 @@ process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
 -- Returns a string for the handler (goes in the switch statement)
 -- And another string 
-process_handler :: TokHandler -> ([FunctionCode],StatementCode)
-process_handler (t, args, e) = 
-    let (funs,stmts) = process_stmt "        " (map (\ (Id x)->x) args) e 
+process_handler :: TMS.TokHandler -> ([FunctionCode],StatementCode)
+process_handler (t, args, blk) = 
+    let (funs,stmts) = process_block "        " (map (\ (Id x)->x) args) blk 
     in (funs,
 	"      case "++tok_id t++": \n"++
         (concat  
@@ -250,16 +180,15 @@ process_handler (t, args, e) =
 	"        break;\n")
 
 --  "    int i;\n"++
-{-  "    uint8_t length = msg->length;\n"++
-  "    uint8_t type = msg->type;\n"++
-  "    TM_Payload payload = *((TM_Payload *)msg->data);\n"++
-     (snd $ process_expr e) ++ -}
+--  "    uint8_t length = msg->length;\n"++
+--  "    uint8_t type = msg->type;\n"++
+--  "    TM_Payload payload = *((TM_Payload *)msg->data);\n"++
+--     (snd $ process_expr e) ++ 
 
 --    in bod
 --	  | Eprimapp (Prim Expr)
 
-
-process_handlers :: [TokHandler] -> String
+process_handlers :: [TMS.TokHandler] -> String
 process_handlers hnds = 
     let funs = concat $ map (fst . process_handler) hnds
 	bods = map (snd . process_handler) hnds
@@ -274,6 +203,8 @@ process_handlers hnds =
     "    }\n"++
     "    return msg;\n" ++ 
     "  }\n\n"
+
+
 
 process_startup :: [Token] -> String
 process_startup _ = "" 
@@ -427,3 +358,8 @@ main = do args <- System.getArgs
 	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
 
+
+
+
+
+main = do return 3

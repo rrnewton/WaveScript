@@ -39,13 +39,14 @@ data Stmt = Svoid
 	  | Semit (Maybe Time) Token [Basic] -- no value
 	  | Sactivate Token [Basic]          -- no value
 	  | Srelay (Maybe Token)             -- no value
-	  | Sreturn {val :: Basic,           -- no value
-		     to  :: Token,
-		     via :: Token,
-		     seed :: Basic,
-		     aggr :: Token}
+	  | Sgradreturn {val :: Basic,           -- no value
+			 to  :: Token,
+			 via :: Token,
+			 seed :: Basic,
+			 aggr :: Token}
 	  | Ssocreturn Basic                 -- no value
 	  | Ssocfinished                     -- no value
+	  | Sreturn Basic -- This becomes the return value for a token handler.
 
   deriving (Eq, Show, Read)
 
