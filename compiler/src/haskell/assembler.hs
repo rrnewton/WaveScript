@@ -16,6 +16,7 @@ modname = "TestMachineM"
 acceptable_chars = ['_']++['a'..'z']++['0'..'9']
 
 {- NOTE!! This should filter out illegal characters!!-}
+tokname :: Token -> String
 tokname (Token name) = filter (\c -> elem c acceptable_chars) name
 
 -- Well, what do we need to do here?  
@@ -27,9 +28,9 @@ process_consts _ = ""
 
 process_handler :: TokHandler -> String
 process_handler (t, args, e) = 
-  "event TOS_MsgPtr Recv_"++ tokname t ++".receive(TOS_MsgPtr msg) { \n" ++
+  "  event TOS_MsgPtr Recv_"++ tokname t ++".receive(TOS_MsgPtr msg) { \n" ++
      bod ++ 
-  "}\n\n"
+  "  }\n\n"
     where bod = 
 	    case e of
 	     Econst c -> show c 
@@ -69,16 +70,24 @@ build_module_header toks =
 
 build_implementation_header :: [TokHandler] -> String
 build_implementation_header toks = 
-    let toknames = map (\ (t,_,_) -> tokname t) toks 
-    in  "event result_t Send_A.sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
-	"  return SUCCESS;\n"
+    (concat $
+     map (\ name -> 
+	  "  event result_t Send_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
+	  "    return SUCCESS;\n" ++
+	  "  }\n\n")
+     (map (\ (t,_,_) -> tokname t) toks))
 
 assemble (Pgm consts socconsts socpgm nodetoks startup) = 
-    build_header nodetoks ++
+    build_module_header nodetoks ++
+    "implementation {\n" ++ 
+    build_implementation_header nodetoks ++
     process_consts consts ++ 
     process_consts socconsts ++ 
     process_handlers nodetoks ++ 
-    process_startup startup
+    "}\n"
+
+--    process_startup startup
+		    
 
 
 
