@@ -277,14 +277,14 @@
 		  (match tbind 
 			 [(,tok (,args ...) ,expr* ...)
 			  `[,tok (lambda ,args 
-;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
+					;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
 				   ,@(map process-statement expr*))]]))
 		tbinds)]
 	;; These inputs to handler must be the *child* message-object
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our cache.
 	[handler `(lambda (themessage) ;(origin parent count tok args)
-		    (disp "Handling! msg" tok 
+		    (disp "Handling! msg" (msg-object-token themessage) 
 			  " parent? " (if (msg-object-parent themessage) #t #f)
 			  " Soc? " I-am-SOC)
 		    (let ([origin (msg-object-origin themessage)]
@@ -404,10 +404,10 @@
 
 	   ;; This is just a cludge for now.
 	   [define (sim-elect-leader t)
-	     (set-simobject-homepage! this (cons `(inside ,t) (simobject-homepage this)))
+	     (set-simobject-homepage! this (cons (list 'inside t) (simobject-homepage this)))
 	     (let ((possible
 		    (filter (lambda (simob)
-			      (member `(inside ,t) (simobject-homepage simob)))
+			      (member (list 'inside t) (simobject-homepage simob)))
 			    all-objs)))
 	       (disp "election: electing from" (node-id (simobject-node this)) 
 		     " number candidaties " (length possible))
