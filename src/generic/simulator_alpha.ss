@@ -213,7 +213,7 @@
 (define (base-station? x)
   (cond 
    [(simobject? x) (= BASE_ID (node-id (simobject-node x)))]
-   [(node? x)      (= BASE_ID (node-id x))]
+l   [(node? x)      (= BASE_ID (node-id x))]
    [else (error base-station? "bad input: ~a" x)]))
 
 (define (id x) x)
