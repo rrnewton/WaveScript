@@ -39,6 +39,12 @@
     cleanup-token-machine    
 
   ;    verify-token-machine
+
+
+    ; analyze??
+    ; ?? 
+    ; inline??
+    ; cps-tokmac
     haskellize-tokmac 
     ))
 
@@ -69,50 +75,67 @@
     (with-output-to-file fn
       (lambda () (display str) (newline))
       'replace)]
+   ;; If it's an earlier file, pretty print it:
+   [(,lang ,prog)
+    (with-output-to-file fn
+      (lambda () (pretty-print `(,lang ,prog)))
+      'replace)]
    [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
-;; This dumps to file only when provided the optional argument:
-(define (run-compiler p . filename )  
-  (let ((funs (map eval pass-names)))
+;; This dumps to file only when provided the optional string filename argument:
+;; The options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
+(define (run-compiler p . args )
+  (let ([filename #f]
+	[passes pass-names])    
+    (for-each (lambda (arg)
+		(cond
+		 [(string? arg) ;; It's an output filename.
+		  (set! filename arg)]
+		 [(eq? arg 'barely-tokens)
+		  (set! passes (list-remove-after 'deglobalize pass-names))]
+		 [(eq? arg 'almost-tokens)
+		  (set! passes (list-remove-first 'deglobalize
+				   (list-remove-after 'deglobalize pass-names)))]
+		 [(eq? arg 'almost-haskell)
+		  (set! passes (remq 'haskellize-tokmac pass-names))]
+		 [(eq? arg 'haskell-tokens) (void)]))
+	      args)
+  (let ((funs (map eval passes)))
     (let loop ([p p] [funs funs])
       (if (null? funs) 
-	  (begin (if (not (null? filename))
-		     (dump-tokenmachine-to-file p (car filename)))
-		 p)
-	  (loop ((car funs) p) (cdr funs))))))
+	  (begin (if filename (dump-tokenmachine-to-file p filename)
+		     p))
+	  (loop ((car funs) p) (cdr funs)))))))
 
 ;; This one just stops after deglobalize:
-(define compile-to-tokens
-  (let ((passes (list-remove-after 'deglobalize pass-names)))
-    (lambda (p)
-      (fluid-let ([pass-names passes])
-	(run-compiler p)))))
+(define (compile-to-tokens p . args)
+  (apply run-compiler p 'barely-tokens args))
+(define (compile-almost-to-tokens p . args)
+  (apply run-compiler p 'almost-tokens args))
 
+(define rc run-compiler) ;; shorthand
 (define ct compile-to-tokens) ;; shorthand
 
-(define compile-almost-to-tokens
-  (let ((passes (list-remove-first 'deglobalize
-				   (list-remove-after 'deglobalize pass-names))))
-    (lambda (p)
-      (fluid-let ([pass-names passes])
-	(run-compiler p)))))
-
-(define (run-tokmac tm)    
+;; This finishes off the compilation of scheme-format token machine.
+(define (assemble-tokmac tm . args)
   (let ([starting-place 
 	 (match tm 
 		[(,lang ,prog)
 		 (case lang
 		   [(deglobalize-lang) 'deglobalize]
 		   [(cleanup-token-machine-lang) 'cleanup-token-machine]
+		   [(cps-tokmac-lang) 'cps-tokmac]
+
 		   ;[(haskellize-tokmac-lang) (error...
-		   [else 'deglobalize])])])
+		   [else 'deglobalize])])
+	 ])
   (let ((passes (cdr (list-remove-before starting-place pass-names))))
 ;    (lambda (tm)
       (fluid-let ([pass-names passes])
-	(run-compiler tm)))))
+	(apply run-compiler tm args)))))
 
-(define rt run-tokmac) ;; shorthand
-(define assemble rt) ;; shorthand
+(define at assemble-tokmac) ;; shorthand
+(define assemble at) ;; shorthand
 
 (define test
   (lambda (set)
@@ -130,7 +153,6 @@
 ;; Temp =============================================================
 
 (newline)
-(define rc run-compiler) ;; shorthand
 
 (define (rr) (r '(circle 50 (anchor-at '(30 40))))) ;; shorthand
 

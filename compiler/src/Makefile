@@ -74,8 +74,10 @@ compiled/compiler.zo:
 compiled/compiler_plt.zo:
 	$(MZC) -z --auto-dir $(PLT_MAIN_FILE) 
 
-regimentc:
-	echo '(load "regimentc.ss")' | chez -s1 regimentc.1.heap
+regiment:
+	echo '(load "regimentc.ss")' | scheme -s1 regimentc.1.heap
+
+#	echo '(load "regimentc.ss")' | chez -s1 regimentc.1.heap
 
 
 #mzc:
