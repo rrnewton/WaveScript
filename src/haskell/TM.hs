@@ -13,7 +13,6 @@ type ConstBind = (Id, Expr)
 type TokHandler = (Token, [Id], Expr)
 type Time = Int
 
-
 data Id = Id String
   deriving (Eq, Show, Read)
 
@@ -52,8 +51,6 @@ data BINOP = TMPplus | TMPmult
 --data TRIOP = 
 
 
-
-
 x = Pgm { consts    = [],
 	  socconsts = [],
 	  socpgm    = [],
@@ -81,7 +78,6 @@ doit = do s <- readFile "test.tm";
 	  putStr "Read file:\n";
 	  putStr s;
 	  let stuff = ((read s) :: TMPgm)
---	  let stuff = 3593
 	  putStr (show stuff);
 	  putStr "\n That's that...\n"
 	  return stuff
