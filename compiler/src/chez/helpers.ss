@@ -32,6 +32,13 @@
   (syntax-rules ()
     [(_ v exp ...)
      (call/1cc (lambda (v) exp ...))]))
+
+;(define-syntax define-values
+;  (syntax-rules ()
+;    [(_ (v ...) exp)
+;     (begin 
+;       (call-with-values
+		
   
 
 ;; This defines a *simple* and unified interface into hash-tables.

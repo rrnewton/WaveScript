@@ -3,9 +3,6 @@
 
 ;; ======================================================================
 ;; Simulator runtime
-
-(simulation-logger (open-output-file "__temp.log" 'replace))
-;(simulation-logger #f)
   
 (define (alpha-it tm)
   (eval `(define alph ',(compile-simulate-alpha tm)))
@@ -18,163 +15,223 @@
   (define-structure (tokstore))
   "This is the simulation seed."
   "It returns an initial set of scheduled actions for the simulator to execute."
-  (let ((local-sense (lambda () ((current-sense-function) (node-pos (simobject-node this))))))
+  (let ([local-sense
+         (lambda ()
+           ((current-sense-function)
+            (node-pos (simobject-node this))))])
     (let* ()
-      (letrec ((soc-start
-                 (lambda (current-vtime subtok-index)
-                   (let* ((the-store (simobject-token-store this))
-                          (this-tokname (cons 'soc-start subtok-index))
-                          (old-outgoing (simobject-outgoing-msg-buf this))
-                          (old-local (simobject-local-msg-buf this)))
-                     "Is there already an allocated token object?:"
-                     (let ((tokobj (hashtab-get the-store this-tokname)))
-                       (if (not tokobj)
-                         (begin
-                           "If not, then we allocate that token object..."
-                           " setting the invoke counter to zero."
-                           (set! tokobj (vector 0))
-                           (hashtab-set! the-store this-tokname tokobj)))
-                       (set-simobject-outgoing-msg-buf! this '())
-                       (set-simobject-local-msg-buf! this '())
-                       (display "S")
-                       (set-simobject-outgoing-msg-buf!
-                         this
-                         (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
-                       (set-simobject-local-msg-buf!
-                         this
-                         (append (reverse (simobject-local-msg-buf this)) old-local))
-                       (void)))))
-               (node-start
-                 (lambda (current-vtime subtok-index)
-                   (let* ((the-store (simobject-token-store this))
-                          (this-tokname (cons 'node-start subtok-index))
-                          (old-outgoing (simobject-outgoing-msg-buf this))
-                          (old-local (simobject-local-msg-buf this)))
-                     "Is there already an allocated token object?:"
-                     (let ((tokobj (hashtab-get the-store this-tokname)))
-                       (if (not tokobj)
-                         (begin
-                           "If not, then we allocate that token object..."
-                           " setting the invoke counter to zero."
-                           (set! tokobj (vector 0))
-                           (hashtab-set! the-store this-tokname tokobj)))
-                       (set-simobject-outgoing-msg-buf! this '())
-                       (set-simobject-local-msg-buf! this '())
-                       (begin
-                         (printf "N~a" (simobject-i-am-soc this))
-                         (set-simobject-local-msg-buf!
-                           this
-                           (cons
-                            (make-simevt #f 3 (bare-msg-object 'tok1 (list) current-vtime))
-                            (simobject-local-msg-buf this))))
-                       (set-simobject-outgoing-msg-buf!
-                         this
-                         (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
-                       (set-simobject-local-msg-buf!
-                         this
-                         (append (reverse (simobject-local-msg-buf this)) old-local))
-                       (void)))))
-               (tok1
+      (letrec ([node-start
                 (lambda (current-vtime subtok-index)
-                  (let* ((the-store (simobject-token-store this))
-                         (this-tokname (cons 'tok1 subtok-index))
-                         (old-outgoing (simobject-outgoing-msg-buf this))
-                         (old-local (simobject-local-msg-buf this)))
+                  (let* ([the-store (simobject-token-store this)]
+                         [this-tokname (cons 'node-start subtok-index)]
+                         [old-outgoing (simobject-outgoing-msg-buf this)]
+                         [old-local (simobject-local-msg-buf this)])
+		    (logger "node-starte...~n")
                     "Is there already an allocated token object?:"
-                    (let ((tokobj (hashtab-get the-store this-tokname)))
+                    (let ([tokobj (hashtab-get the-store this-tokname)])
                       (if (not tokobj)
-                        (begin
-                          "If not, then we allocate that token object..."
-                          " setting the invoke counter to zero."
-                          (set! tokobj (vector 0))
-                          (hashtab-set! the-store this-tokname tokobj)))
+                          (begin "If not, then we allocate that token object..."
+                                 " setting the invoke counter to zero."
+                                 (set! tokobj (vector 0))
+                                 (hashtab-set!
+                                   the-store
+                                   this-tokname
+                                   tokobj)))
                       (set-simobject-outgoing-msg-buf! this '())
                       (set-simobject-local-msg-buf! this '())
-                      (begin
-                        (display ".")
-                        (set-simobject-outgoing-msg-buf!
-                          this
-                          (cons
-                           (make-simevt #f 2 (bare-msg-object 'tok2 (list "!") current-vtime))
-                           (simobject-local-msg-buf this))))
+                      (display "N")
                       (set-simobject-outgoing-msg-buf!
                         this
-                        (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+                        (append
+                          (reverse (simobject-outgoing-msg-buf this))
+                          old-outgoing))
                       (set-simobject-local-msg-buf!
                         this
-                        (append (reverse (simobject-local-msg-buf this)) old-local))
-                      (void)))))
-               (tok2
-                (lambda (current-vtime subtok-index x)
-                  (let* ((the-store (simobject-token-store this))
-                         (this-tokname (cons 'tok2 subtok-index))
-                         (old-outgoing (simobject-outgoing-msg-buf this))
-                         (old-local (simobject-local-msg-buf this)))
+                        (append
+                          (reverse (simobject-local-msg-buf this))
+                          old-local))
+                      (void))))]
+               [soc-start
+                (lambda (current-vtime subtok-index)
+                  (let* ([the-store (simobject-token-store this)]
+                         [this-tokname (cons 'soc-start subtok-index)]
+                         [old-outgoing (simobject-outgoing-msg-buf this)]
+                         [old-local (simobject-local-msg-buf this)])
                     "Is there already an allocated token object?:"
-                    (let ((tokobj (hashtab-get the-store this-tokname)))
+                    (let ([tokobj (hashtab-get the-store this-tokname)])
                       (if (not tokobj)
-                        (begin
-                          "If not, then we allocate that token object..."
-                          " setting the invoke counter to zero."
-                          (set! tokobj (vector 0))
-                          (hashtab-set! the-store this-tokname tokobj)))
+                          (begin "If not, then we allocate that token object..."
+                                 " setting the invoke counter to zero."
+                                 (set! tokobj (vector 0))
+                                 (hashtab-set!
+                                   the-store
+                                   this-tokname
+                                   tokobj)))
+                      (set-simobject-outgoing-msg-buf! this '())
+                      (set-simobject-local-msg-buf! this '())
+                      (begin (printf "S")
+                             (set-simobject-local-msg-buf!
+                               this
+                               (cons (make-simevt
+                                       #f
+                                       3
+                                       (bare-msg-object
+                                         'tok1
+                                         (list)
+                                         current-vtime))
+                                     (simobject-local-msg-buf this))))
+
+		      (logger "SOC-start locals ~a...~n"
+			      (simobject-local-msg-buf this))
+
+                      (set-simobject-outgoing-msg-buf!
+                        this
+                        (append
+                          (reverse (simobject-outgoing-msg-buf this))
+                          old-outgoing))
+                      (set-simobject-local-msg-buf!
+                        this
+                        (append
+                          (reverse (simobject-local-msg-buf this))
+                          old-local))
+                      (void))))]
+               [tok1
+                (lambda (current-vtime subtok-index)
+                  (let* ([the-store (simobject-token-store this)]
+                         [this-tokname (cons 'tok1 subtok-index)]
+                         [old-outgoing (simobject-outgoing-msg-buf this)]
+                         [old-local (simobject-local-msg-buf this)])
+                    "Is there already an allocated token object?:"
+                    (let ([tokobj (hashtab-get the-store this-tokname)])
+                      (if (not tokobj)
+                          (begin "If not, then we allocate that token object..."
+                                 " setting the invoke counter to zero."
+                                 (set! tokobj (vector 0))
+                                 (hashtab-set!
+                                   the-store
+                                   this-tokname
+                                   tokobj)))
+                      (set-simobject-outgoing-msg-buf! this '())
+                      (set-simobject-local-msg-buf! this '())
+                      (begin (display ".")
+                             (set-simobject-outgoing-msg-buf!
+                               this
+                               (cons (make-simevt
+                                       #f
+                                       2
+                                       (bare-msg-object
+                                         'tok2
+                                         (list "!")
+                                         current-vtime))
+                                     (simobject-local-msg-buf this))))
+                      (set-simobject-outgoing-msg-buf!
+                        this
+                        (append
+                          (reverse (simobject-outgoing-msg-buf this))
+                          old-outgoing))
+                      (set-simobject-local-msg-buf!
+                        this
+                        (append
+                          (reverse (simobject-local-msg-buf this))
+                          old-local))
+                      (void))))]
+               [tok2
+                (lambda (current-vtime subtok-index x)
+                  (let* ([the-store (simobject-token-store this)]
+                         [this-tokname (cons 'tok2 subtok-index)]
+                         [old-outgoing (simobject-outgoing-msg-buf this)]
+                         [old-local (simobject-local-msg-buf this)])
+                    "Is there already an allocated token object?:"
+                    (let ([tokobj (hashtab-get the-store this-tokname)])
+                      (if (not tokobj)
+                          (begin "If not, then we allocate that token object..."
+                                 " setting the invoke counter to zero."
+                                 (set! tokobj (vector 0))
+                                 (hashtab-set!
+                                   the-store
+                                   this-tokname
+                                   tokobj)))
                       (set-simobject-outgoing-msg-buf! this '())
                       (set-simobject-local-msg-buf! this '())
                       (set-simobject-timed-token-buf!
                         this
-                        (cons
-                         (make-simevt
-                           (+ 500 current-vtime)
-                           1
-                           (bare-msg-object 'tok3 (list x) current-vtime))
-                         (simobject-timed-token-buf this)))
+                        (cons (make-simevt
+                                (+ 500 current-vtime)
+                                1
+                                (bare-msg-object
+                                  'tok3
+                                  (list x)
+                                  current-vtime))
+                              (simobject-timed-token-buf this)))
                       (set-simobject-outgoing-msg-buf!
                         this
-                        (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+                        (append
+                          (reverse (simobject-outgoing-msg-buf this))
+                          old-outgoing))
                       (set-simobject-local-msg-buf!
                         this
-                        (append (reverse (simobject-local-msg-buf this)) old-local))
-                      (void)))))
-               (tok3
+                        (append
+                          (reverse (simobject-local-msg-buf this))
+                          old-local))
+                      (void))))]
+               [tok3
                 (lambda (current-vtime subtok-index y)
-                  (let* ((the-store (simobject-token-store this))
-                         (this-tokname (cons 'tok3 subtok-index))
-                         (old-outgoing (simobject-outgoing-msg-buf this))
-                         (old-local (simobject-local-msg-buf this)))
+                  (let* ([the-store (simobject-token-store this)]
+                         [this-tokname (cons 'tok3 subtok-index)]
+                         [old-outgoing (simobject-outgoing-msg-buf this)]
+                         [old-local (simobject-local-msg-buf this)])
                     "Is there already an allocated token object?:"
-                    (let ((tokobj (hashtab-get the-store this-tokname)))
+                    (let ([tokobj (hashtab-get the-store this-tokname)])
                       (if (not tokobj)
-                        (begin
-                          "If not, then we allocate that token object..."
-                          " setting the invoke counter to zero."
-                          (set! tokobj (vector 0))
-                          (hashtab-set! the-store this-tokname tokobj)))
+                          (begin "If not, then we allocate that token object..."
+                                 " setting the invoke counter to zero."
+                                 (set! tokobj (vector 0))
+                                 (hashtab-set!
+                                   the-store
+                                   this-tokname
+                                   tokobj)))
                       (set-simobject-outgoing-msg-buf! this '())
                       (set-simobject-local-msg-buf! this '())
                       (display y)
                       (set-simobject-outgoing-msg-buf!
                         this
-                        (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+                        (append
+                          (reverse (simobject-outgoing-msg-buf this))
+                          old-outgoing))
                       (set-simobject-local-msg-buf!
                         this
-                        (append (reverse (simobject-local-msg-buf this)) old-local))
-                      (void))))))
-        (let ((dyndispatch_table (make-default-hash-table)))
-          (begin
-            (hashtab-set! dyndispatch_table 'soc-start soc-start)
-            (hashtab-set! dyndispatch_table 'node-start node-start)
-            (hashtab-set! dyndispatch_table 'tok1 tok1)
-            (hashtab-set! dyndispatch_table 'tok2 tok2)
-            (hashtab-set! dyndispatch_table 'tok3 tok3))
+                        (append
+                          (reverse (simobject-local-msg-buf this))
+                          old-local))
+                      (void))))])
+        (let ([dyndispatch_table (make-default-hash-table)])
+          (begin (hashtab-set!
+                   dyndispatch_table
+                   'node-start
+                   node-start)
+                 (hashtab-set! dyndispatch_table 'soc-start soc-start)
+                 (hashtab-set! dyndispatch_table 'tok1 tok1)
+                 (hashtab-set! dyndispatch_table 'tok2 tok2)
+                 (hashtab-set! dyndispatch_table 'tok3 tok3))
           (values
             (lambda (msgob current-vtime)
               (mvlet
-               (((name subtok)
-                 (let ((tok (msg-object-token msgob)))
-                   (if (pair? tok) (values (car tok) (cdr tok)) (values tok 0)))))
-               (let ((handler (hashtab-get dyndispatch_table name)))
-                 (apply handler current-vtime subtok (msg-object-args msgob)))))
-            '((soc-start 1) (node-start 4) (tok1 3) (tok2 2) (tok3 1))))))))
+                (((name subtok)
+                  (let ([tok (msg-object-token msgob)])
+                    (if (pair? tok)
+                        (values (car tok) (cdr tok))
+                        (values tok 0)))))
+                (let ([handler (hashtab-get dyndispatch_table name)])
+                  (apply
+                    handler
+                    current-vtime
+                    subtok
+                    (msg-object-args msgob)))))
+            '((node-start 1)
+              (soc-start 3)
+              (tok1 3)
+              (tok2 2)
+              (tok3 1))))))))
 
 
 (define (evntcmpr a b) 
@@ -201,7 +258,7 @@
       ;; Schedule either adds an event to the schedule, 
       ;; or returns the current schedule in list form.
     (define private-scheduler
-      (let ([buffer '()]
+      (let ([buffer '()] ;; Contains simevts
             [private-vtime 0])
 	(lambda args
 	  (match args 
@@ -218,11 +275,21 @@
 	    [(pop)
 	     (if (null? buffer)
 		 (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
+	     (logger 3 "~a: Popped off action: ~a at vtime ~a ~n" 
+		     (node-id (simobject-node ob))
+		     (simevt-vtime (car buffer))
+		     (msg-object-token (simevt-msgobj (car buffer))))
 	     (set! buffer (cdr buffer))]
             [(set-time ,current-vtime)
+	     (logger 3 "~a: Set time: ~a "
+		     (node-id (simobject-node ob))
+		     current-vtime)
              (private-scheduler 'advance-time (- current-vtime private-vtime))]
 	    [(advance-time ,increment)
              (when (> increment 0) ;; Fizzle if the increment is not positive
+	       (logger 3 "~a: Incrementing time by ~a, from ~a "		       
+		       (node-id (simobject-node ob))
+		       increment private-vtime)
                (set! private-vtime (+ private-vtime increment))
                ;; This is where we make sure we have time to run the
                ;; things we want to run before the next hard timing constraint:
@@ -267,8 +334,8 @@
 	  (logger "Processing Node ~a incoming: ~a local,  ~a timed,  ~a remote~n"
 		  (node-id (simobject-node ob))
 		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
-		  (map (lambda (x) (msg-object-token (simevt-msgobj (cadr x)))) (simobject-timed-token-buf ob))
-		  (map (lambda (x) (msg-object-token (simevt-msgobj (cadr x)))) (simobject-incoming-msg-buf ob))))
+		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))
+		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))))
 
 
       (let ([timed (simobject-timed-token-buf ob)]
@@ -293,6 +360,8 @@
       ;; This does the radio transmission, and puts msgs in their respective incoming buffers.
       ;; TODO: Here's where we insert the better radio model!!!
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
+	
+	(unless (null? outgoing)
 	;; They're all broadcasts for now
 	(for-each (lambda (evt)
 		    ;; Timestame the message:
@@ -300,20 +369,22 @@
 		    ;(let ([newmsg (structure-copy (simevt-msgobj evt))])
 		    )
 		  outgoing)
-	
-	(for-each 
-	 (lambda (nbr)
-	   (set-simobject-incoming-msg-buf! 
-	    nbr (append  outgoing
-		 (simobject-incoming-msg-buf nbr))))
-	 (graph-neighbors (simworld-object-graph world) ob))
+
+	(let ((neighbors (graph-neighbors (simworld-object-graph world) ob)))
+	  (logger "~a: bcast at time ~a to -> ~a~n" (node-id (simobject-node ob)) current-vtime
+		  (map (lambda (x) (node-id (simobject-node x))) neighbors))
+	  
+	  (for-each 
+	   (lambda (nbr)
+	     (set-simobject-incoming-msg-buf! 
+	      nbr (append  outgoing
+			   (simobject-incoming-msg-buf nbr))))
+	   neighbors)
 	;; They're all delivered, so we clear our own outgoing buffer.
-	(set-simobject-outgoing-msg-buf! ob '())))
-
-
-    (define-values (mhandler cost-table) (node-code ob))
+	  (set-simobject-outgoing-msg-buf! ob '())))))
 
     ;; MAIN BODY:
+    (mvlet ([(mhandler cost-table) (node-code ob)])
     ;; Install the scheduler and handler incase anybody else wants to use them:
     (set-simobject-scheduler! ob private-scheduler)
     (set-simobject-meta-handler! ob mhandler)
@@ -334,7 +405,22 @@
 			      (bare-msg-object 'SOC-start '() 0))
 		 (simobject-local-msg-buf ob))))
 
+    ;; This is the simulation object, each time its executed it
+    ;; processes incoming messages for the nodes, decides what action
+    ;; is next and returns that action (as a simevt).  If there's no
+    ;; next action, returns #f.  
+
+    ;; If the simulation driver wishes to execute that action, it
+    ;; does, which will run the handler, update the scheduler, and
+    ;; modify the simobject.
     (lambda (current-vtime)
+
+      ;; DEBUG: check invariant:
+      '(if (not (null? (simobject-outgoing-msg-buf ob)))
+	  (error 'build-node-sim 
+		 "Before processing incoming at time ~a, there's already an outgoing(s) msg: ~a~n"
+		 current-vtime (simobject-outgoing-msg-buf ob)))
+
       ;; First schedule any incoming messages we've received
       (process-incoming current-vtime)
       (let ([scheduler (simobject-scheduler ob)])
@@ -343,15 +429,30 @@
 	(if (not next)
 	    #f
             (begin 
-              ;(printf "Got head: ~a ~a~n" (simevt-vtime next) (simevt-duration next))
+	      (logger "~a: Updated schedule, got head: ~a ~a ~a, buffer ~a~n" 
+		      (node-id (simobject-node ob))
+		      (simevt-vtime next) (simevt-duration next)
+		      (msg-object-token (simevt-msgobj next)) 
+		      (map (lambda (evt) (list (simevt-vtime evt)
+					       (msg-object-token (simevt-msgobj evt))))
+			   (scheduler 'get-buffer)))
             (make-simevt
                (simevt-vtime next)
                (simevt-duration next)
                ;; Action thunk that executes message:
-               (lambda () 
+               (lambda ()
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
-                 (logger "  Executing: ~a~n" (msg-object-token (simevt-msgobj next)))
+                 (logger "~a: Executing: ~a at ~a~n" 
+			 (node-id (simobject-node ob))
+			 (msg-object-token (simevt-msgobj next)) current-vtime)
+
+		 ;; DEBUG: check invariant:
+		 '(if (not (null? (simobject-outgoing-msg-buf ob)))
+		     (error 'build-node-sim 
+			    "Trying to execute action at time ~a, but there's already an outgoing(s) msg: ~a~n"
+			    current-vtime (simobject-outgoing-msg-buf ob)))
+
                  
                  ((simobject-meta-handler ob) (simevt-msgobj next) (simevt-vtime next))                                 
                  ;; Now that the atomic action is finished, do the radio transimission:
@@ -361,12 +462,14 @@
                  ;; Advance the clock appropriately, pop the event off the scheduling queue:
                  (scheduler 'advance-time (simevt-duration next))
                  (scheduler 'pop)
-                 )))))))))
+                 ))))))))))
 
+(define global-graph #f)
 
-(define run-alpha-sim
-;  (lambda (starting-evnts store-factory . stop-time)
-  (lambda stop-time
+(define (run-alpha-sim . stop-time)
+    (simulation-logger (open-output-file "__temp.log" 'replace))
+    ;(simulation-logger #f)
+    
     (let ([stopping-time? (if (null? stop-time)
 			      (lambda (t) #f)
 			      (if (inexact? (car stop-time))
@@ -388,38 +491,44 @@
 		       ))
 		    (simworld-all-objs sim))])
 
+	(set! global-graph (simworld-graph sim))
+
 	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
 
+	;; As this loop runs, the global (main-sim-loop) time is just the start time of the last executed action.
+    (let/ec exit-loop
     (let main-sim-loop ([vtime 0])
-      (logger "Main sim loop: vtime ~a~n" vtime)
-      (logger "Local vtimes ~a~n" 
+      (logger "  Main sim loop: vtime ~a~n" vtime)
+      (logger "  Local vtimes ~a~n" 
 	      (map (lambda (ob) ((simobject-scheduler ob) 'get-time))
 		   (simworld-all-objs sim)))
       
       (printf "<~a>" vtime)
       (if (stopping-time? vtime)
 	  (printf "Out of time.~n")
-      (let ([nextevt
-	     (let actionsloop ([sims node-sims] [best #f])
-	       (if (null? sims) best
-		   (let ([action ((car sims) vtime)])
-		     (actionsloop (cdr sims)
-				  (cond
-				   [(not action) best]
-				   [(not best) action]
-				   [(evntcmpr action best) action]
-				   [else best])))))])
-	(if (not nextevt)
-	    (printf "~n~a: Simulator ran fresh out of actions!~n"
-		    'alpha-lib:run-alpha-sim)	
-;; Less efficient but more functional way:
-;;	      (let ([nextevt
-;;		     (let ([actions (filter id (map (lambda (f) (f vtime)) node-sims))])
-;;		       (if (null? actions) 
-;;			   (printf "~n~a: Simulator ran fresh out of actions!~n"
-;;				   'alpha-lib:run-alpha-sim)
-;;			   (let* ([nexttime (apply min (map car actions))])
-;;			     (assq nexttime actions))))])
+;      (let ([nextevt
+; 	     (let actionsloop ([sims node-sims] [best #f])
+; 	       (if (null? sims) best
+; 		   (let ([action ((car sims) vtime)])
+; 		     (actionsloop (cdr sims)
+; 				  (cond
+; 				   [(not action) best]
+; 				   [(not best) action]
+; 				   [(evntcmpr action best) action]
+; 				   [else best])))))])
+; 	(if (not nextevt)
+; 	    (printf "~n~a: Simulator ran fresh out of actions!~n"
+; 		    'alpha-lib:run-alpha-sim)
+
+	     ;; Less efficient but more functional way:
+	      (let ([nextevt
+		     (let ([actions (filter id (map (lambda (f) (f vtime)) node-sims))])
+		       (if (null? actions)
+			   (exit-loop 
+			    (printf "~n~a: Simulator ran fresh out of actions!~n"
+				    'alpha-lib:run-alpha-sim))
+			   (let* ([nexttime (apply min (map simevt-vtime actions))])
+			     (car (filter (lambda (se) (eq? nexttime (simevt-vtime se))) actions)))))])
 	
 	    (begin
 	      ;; Run this atomic action (token handler), it gets to run at its intended virtual time.
@@ -427,7 +536,12 @@
 	      ((simevt-msgobj nextevt)) ;; This will execute the action and advance the clock internally.
               
 	      ;; That had the effect of launching new messages to process.
-	      (main-sim-loop (simevt-vtime nextevt)))))))))))
+	      (main-sim-loop (simevt-vtime nextevt)))))))
+    
+    ;; Out of main loop:
+    (if (simulation-logger)
+	(close-output-port (simulation-logger)))
+    )))
 
 
 ;; From Swindle:
@@ -557,9 +671,9 @@
      (bindings)
      (nodepgm 
 	 (tokens
-	  [SOC-start () (stored) (display "S")]
+	  [node-start () (stored) (display "N")]
 	  ;[node-start () (stored) (void)]
-	  [node-start () (stored) (begin (printf "N~a" (simobject-I-am-SOC this)) (call tok1))]
+	  [SOC-start () (stored) (begin (printf "S") (call tok1))]
 	  [tok1 () (stored) (begin (display ".") (bcast tok2 "!"))]
 	  [tok2 (x) (stored) (timed-call 500 tok3 x)]
 	  [tok3 (y) (stored) (display y)]
