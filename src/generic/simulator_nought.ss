@@ -284,9 +284,9 @@
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our cache.
 	[handler `(lambda (themessage) ;(origin parent count tok args)
-		    (disp "Handling! msg" (msg-object-token themessage) 
-			  " parent? " (if (msg-object-parent themessage) #t #f)
-			  " Soc? " I-am-SOC)
+;		    (disp "Handling! msg" (msg-object-token themessage) 
+;			  " parent? " (if (msg-object-parent themessage) #t #f)
+;			  " Soc? " I-am-SOC)
 		    (let ([origin (msg-object-origin themessage)]
 			  ;[parent (msg-object-parent themessage)]
 			  [count  (msg-object-count  themessage)]
@@ -404,6 +404,7 @@
 
 	   ;; This is just a cludge for now.
 	   [define (sim-elect-leader t)
+	     (disp "sim-elect-leader!!" t)
 	     (set-simobject-homepage! this (cons (list 'inside t) (simobject-homepage this)))
 	     (let ((possible
 		    (filter (lambda (simob)
@@ -419,7 +420,7 @@
 		 ;; dependency relationship here, and that a killing a
 		 ;; false leader kills all its subsequent doings.
 		 (sendmsg (make-msg-object t #f #f 0 '()) leader)))]
-	   
+
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
 		 (change-color! (simobject-gobj this) (rgb r g b))

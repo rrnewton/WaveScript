@@ -60,8 +60,10 @@
 ;(define tests01 tests01)
 ;(define tests07 tests07)
 
-;(disp "BOUT TO LOAD COMPLIRE" )
-(load/use-compiled "compiler.ss")
+(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
+(disp "Testing" (eval 'default-unit-tester))
+;(load/use-compiled "compiler.ss")
+(include "compiler.ss")
 
 (disp "BOUT TO LOAD DRIVER" pass-names)
 
@@ -90,5 +92,16 @@
                (avg (smap g (rfold f (cons 0 0) r))))
         avg))))
 
-(define (g) (test-this))
-(define (b) (t '(circle 1 2)))
+(require "plt/simulator_nought.ss")
+
+
+(define (g) 
+  ;  (define prog (rc '(anchor-at '(30 40))))
+  (init-world)
+  (let ((res (run-simulation 
+              (build-simulation
+               (compile-simulate-nought prog)) 10.0)))
+    (disp "EXEC FINISHED, HERE WAS PROG:")
+    (pretty-print prog)
+    res))
+(g)

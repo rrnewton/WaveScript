@@ -132,7 +132,7 @@ wordcount:
 	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests
 
 go:
-	(cd plt/compiled; make; cd ~/cur; make; cd plt;  mred -Z -f temp.ss)
+	(cd plt/compiled; make; cd ~/cur; make;) #cd plt;  mred -Z -f temp.ss)
 #	(cd plt/compiled; make; cd ~/cur; make; cd plt; mred -z -f temp.ss)
 
 exec:
