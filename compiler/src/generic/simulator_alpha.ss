@@ -44,6 +44,19 @@
 
 ;; ======================================================================
 
+(define (free-vars expr)
+  (let loop ((env ()) (expr expr))
+    (match expr	 
+	   [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
+	   [(quote ,x) '()]
+	   [(,prim ,rand* ...) (regiment-primitive? prim)
+	    (let ((frees (map (lambda (x) (loop env x)) rand*)))
+	      (apply append frees))]
+	   [(lambda (,formals) ,expr)
+	    (loop (append formals env) expr)]
+	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
+
+
 ;; Safer version:
 #;(define (construct-msg-object token timestamp origin parent count args)
   (if (eq? token SPECIAL_RETURN_TOKEN)
@@ -77,7 +90,7 @@
 		   rands))
 
 ;; Here's a helper to check the invariants on a msg-object
-#;(define (valid-msg-object? mo)
+#|(define (valid-msg-object? mo)
   (and (msg-object? mo)
        (let ([token  (msg-object-token  mo)]
 	     [timestamp (msg-object-timestamp mo)]
@@ -99,7 +112,7 @@
 		  (or (not origin) (simobject? origin))
 		  (integer? count)
 		  (list? args)))))
-
+|#
 
 ;; These global vars start off uninitialized and are initialized with
 ;; "init-world", below.
@@ -108,6 +121,93 @@
 (define all-objs #f) ;; List of 'simobject' (this is just computed
 		     ;; from object-graph; its existence is merely an
 		     ;; optimization
+
+
+;; This globally defined functions decides the sensor values.
+;; Here's a version that makes the sensor reading the distance from the origin:
+(define (sense-dist-from-origin loc)
+  (let ([x (car loc)] [y (cadr loc)])
+    (sqrt (+ (expt x 2) (expt y 2)))))
+
+;(define-parameter 
+(define (current-sense-function) sense-dist-from-origin)
+
+;;========================================
+
+(define (base-station? x)
+  (cond 
+   [(simobject? x) (= BASE_ID (node-id (simobject-node x)))]
+   [(node? x)      (= BASE_ID (node-id x))]
+   [else (error base-station? "bad input: ~a" x)]))
+
+(define (id x) x)
+
+(define (random-node) 
+  (make-node 
+   (let loop ((id (random 1000)))
+     (if (eq? id BASE_ID) (loop (random 1000))
+	 id))
+   (list (random world-xbound)
+	 (random world-ybound))
+   ))
+  
+(define (dotted-append ls ob)
+  (let loop ((ls ls))
+    (if (null? ls) ob
+	(cons (car ls) (loop (cdr ls))))))
+
+;; Increment a top-level binding.  Totally dynamic.
+(define (incr-top-level! v)
+  (set-top-level-value! v (add1 (top-level-value v))))
+
+;; Helper to determine the distance between two 2d positions.
+(define (posdist a b)
+  (sqrt (+ (expt (- (car a) (car b)) 2)
+	   (expt (- (cadr a) (cadr b)) 2))))
+
+(define structure-copy  vector-copy)
+
+;; TODO, returns all the nodes in the graph that are connected to the
+;; given simobject.  Gonna use this for unit testing oracles.
+(define (all-connected simob)
+  (graph-get-connected simob object-graph))
+
+;; This generates the default, random topology: 
+;; (There are more topologies in "network_topologies.ss"
+(define (make-object-graph g) 
+  (graph-map (lambda (nd) (make-simobject nd '() '() #f #f '() 
+					  (make-default-hash-table) 0 0))
+	     g))
+(define (init-world)
+  (set! graph   
+	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+	  ;; TEMP: Here I give the nodes distinct, consecutive ids.
+	  (if (regiment-consec-ids)
+	      (for-each set-node-id! 
+			seed (iota (length seed))))
+				  
+	  ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+	  (set-node-id! (car seed) BASE_ID)
+	  ;; Connect the graph:
+	  (set! seed
+		(map (lambda (node)
+		       (cons node 
+			     (filter (lambda (n) 
+				       (and (not (eq? node n))
+					    (< (posdist (node-pos node) (node-pos n)) radius)))
+				     seed)))
+		     seed))
+	  ;; If there's a prexisting (and graphical) world, clean the screen.
+	  (and all-objs 
+	       (not (null? all-objs))
+	       (simobject-gobj (car all-objs))
+	       (clear-buffer))
+	  seed))
+  (set! object-graph (make-object-graph graph))
+  (set! all-objs (map car object-graph))
+  )
+
+
 
 
 ;; ======================================================================
@@ -210,7 +310,9 @@
 
     ))
 
+
 ;; ======================================================================
+
 
 
 (define (process-statement tokbinds)
@@ -223,110 +325,53 @@
 		(list-find-position argname (cadr entry))))]
 
 	   [process-expr 
-	 (lambda (expr)
-;	   (disp "Process expr" expr)
+	 (lambda (expr stored-env)
+	   ;; This is a little wider than the allowable grammar to allow
+	   ;; me to do test cases:
 	   (match expr
-		  ;; This is a little wider than the allowable grammar to allow
-		  ;; me to do test cases:
+		  [,x (guard (and (symbol? x) (memq x stored-env))) `(car ,x)]
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
+
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
-		   (DEBUGMODE
-		    (if (not (token? rator))
-			(error 'simulator_nought:process-statement
-			       "call form expects rator to be a token name: ~s"
-			       rator)))
-		   (build-call `(quote ,rator)
-			       rand*)]
-		  [(activate ,rator ,rand* ...)
-		   (build-activate-call `(quote ,rator) rand*)]
+		   `(set-simobject-outgoing! this
+		    (cons (bare-msg-object ,rator (list ,@rand*))
+			  (simobject-outgoing this)))]
+
+;		  [(activate ,rator ,rand* ...)
+;		   (build-activate-call `(quote ,rator) rand*)]
+
 		  [(timed-call ,delay ,rator ,rand* ...)
 		   ;; Delay is in milleseconds.
-		   (build-timed-call delay `(quote ,rator) rand*)]		  
+		  `(set-simobject-timed-tokens!
+		    this (cons (cons (+ ,delay (cpu-time))
+				     (bare-msg-object ,rator (list ,@rand*)))
+			       (simobject-timed-tokens this)))]
 
-		  [(reject)
-		   '(set! reject-incoming-token #t)]
-
-		  [(cache ,tok)
-		   `(hashtab-get (simobject-token-cache this) ',tok)]
-
-		  [(cache ,tok ,field)
-		   `(let ([entry (hashtab-get (simobject-token-cache this) ',tok)])
-		      (if entry			  
-			  (list-ref (msg-object-args entry)
-				    ,(get-arg-index tok field))))]
-
-
-		  ;; It's like call but doesn't add quotes.
-		  [(internal-call ,rator ,rand* ...)
-;;		   (disp "processing internal-call" rator rand*)
-		   ;; Could add the message to incoming instead!
-		   ;`(handler (construct-msg-object ',rator #f #f 0 ',rand*))
-		   ;; [2004.06.16] For now I'm raising an error... 
-		   ;; don't know what the correct behaviour should be:
-		   ;; NOTE: there is the possibility of variable capture with 'call-result'
-		   `(let ((call-result-9758
-			   (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
-		      (if (eq? call-result-9758 'multiple-bindings-for-token)
-			  (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
-				 ,rator)
-			  call-result-9758))
-		   ]
-
-;		  [(if ,a ,b ,c)
-;		   (disp "IF" a b c)]
+		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
+		   `(begin "Doing let stored."
+			   ,@(map (lambda (lhs rhs)
+				    `(if (eq? lhs '()) (set-car! lhs rhs)))
+				  lhs* rhs*)
+			   ,bodies ...)]
 		  
+		  ;; is_scheduled
+		  ;; 
+		  ;; is
+		  ;; evict
+
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
 
-		  [(flood ,tok) `(sim-flood (quote ,tok))]
-		  [(emit ,opera ...)
-		   ;; This is an original emission, and should get a count of 0.
-		   `(sim-emit (quote ,(car opera)) (list ,@(cdr opera)) 0)]
-
-		  [(my-id) '(node-id (simobject-node this))]		
-		  [(dist) '(sim-dist)]		
+		  [(my-id) '(node-id (simobject-node this))]
+		  [(dist) '(sim-dist)]
   		  ;; <TODO> WHY NOT QUOTED:
 		  [(dist ,tok) `(sim-dist ',tok)]
-		  [(loc) '(sim-loc)]		
+		  [(loc) '(sim-loc)]
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
-	 	  
-		  [(relay) `(sim-relay)]		  
-		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
 
-		  [(elect-leader ,tok) `(sim-elect-leader ',tok)]
-
-;		   [(elect-leader ,tok ,tokproc) ]
-
-		  ;; Right now I'm recurring on the argument, this
-		  ;; shouldn't be required by code generated from my
-		  ;; compiler currently. [2004.06.09]
-		  [(return ,[x] ,optional ...)
-		   (let ([totok (if (assq 'to optional)
-				    `(quote ,(cadr (assq 'to optional)))
-				    '(string->symbol
-				      (string-append 
-				       (symbol->string (msg-object-token this-message))
-				       "_return")))]
-			 [via (if (assq 'via optional)
-				  `(quote ,(cadr (assq 'via optional)))
-				  '(msg-object-token this-message))]
-			 [seed (if (assq 'seed optional)
-				   (cadr (assq 'seed optional))
-				   #f)]
-			 [aggr (if (assq 'aggr optional)
-				   (cadr (assq 'aggr optional))
-				   #f)])
-;		     (DEBUGMODE
-;		      (if (not (and (token? via)
-;				    (token? totok)))
-;			  (error 'process-statement:return
-;				 "One of these is not a token: via: ~s, totok: ~s" via totok)))			       
-		     ;; FIXME: does seed need a quote!!!???
-		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
-
-		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
+		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		  [(leds ,which ,what) `(sim-leds ',which ',what)]
 		  [(dbg ,str ,[args] ...)
 		   ;; TODO FIX ME: would be nice to print properly
@@ -335,7 +380,6 @@
 		  [(,prim ,[rand*] ...)
 		   (guard (token-machine-primitive? prim))
 		   `(,prim ,rand* ...)]
-
 
 		  ;; We're being REAL lenient in what we allow in token machines being simulated:
 		  [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
@@ -348,13 +392,13 @@
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit call timed-call activate relay return))))
 ;;		   (disp "processing app:" rator rand*)
-		   `(,(process-expr rator) ,rand* ...)]
+		   `(,(process-expr rator stored-env) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
 				"don't know what to do with this: ~s" otherwise)])
 	   )])
-    (lambda (stmt)
-      (process-expr stmt))))
+    (lambda (stmt stored-env)
+      (process-expr stmt stored-env))))
 
 (define (process-binds binds expr)
 ;  (disp "processbinds" binds expr)
@@ -373,41 +417,39 @@
     (if (cyclic? graph)
 	(error 'process-binds "for now can't take a cyclic graph: ~s" binds))
     `(let* ,binds ,expr)))
-
-;; This removes duplicates among the token bindings.
-;; <TOOPTIMIZE> Would use a hash-table here for speed.
-(define (remove-duplicate-tokbinds tbinds)
-;  (disp "Removing token dups" tbinds)
-  (let loop ((ls tbinds))
-    (if (null? ls) '()
-	(let* ([tok (caar ls)]
-	       [dups (filter (lambda (entry) (eq? tok (car entry))) (cdr ls))])
-	  (if (null? dups)
-	      (cons (car ls) (loop (cdr ls)))	      	      
-	      (let* ([all-handlers (cons (car ls) dups)]
-		     [formals* (map cadr all-handlers)]
-		     [body* (map caddr all-handlers)]
-		     [thunks (map (lambda (bod) `(lambda () ,bod)) body*)])
-;		(disp "GOT DUPS " tok formals*)
-		(DEBUGMODE
-		 (if (not (apply myequal? formals*))
-		     (error 'simulator_nought:remove-duplicate-tokbinds
-			    "handlers for token ~s don't all take the same arguments: ~s" 
-			    tok formals*))
-		 )
-		(let ([mergedhandler
-		       `[,tok ,(car formals*)
-			      (begin (for-each 
-				      (lambda (th) (th))
-				      (randomize-list ,(cons 'list thunks)))
-				     'multiple-bindings-for-token)
-;		             (begin ,@body* 'multiple-bindings-for-token)
-			     ]])
-;		  (disp "MERGED:" mergedhandler)
-		(cons mergedhandler
-		      (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
-		  ))))))
 	 
+;; This assumes that all the stored vars (and all vars in general)
+;; have unique names at this point.
+(define (find-stored expr)
+       (match expr
+ 	     [(quote ,_) '()]
+ 	     [,var (guard (symbol? var)) '()]
+ 	     [(begin ,[exprs] ...) (apply append exprs)]
+ 	     [(if ,[exprs] ...) (apply append exprs)]
+ 	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
+	     [(let-stored ( (,lhs* ,[rhs*]) ...) ,[body])	
+	      (apply append lhs* rhs*)]
+; 	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
+; 	     [(relay ,_ ...) '()]
+; 	     [(return ,[expr] (to ,t) (via ,v) (seed ,[seed_val]) (aggr ,a))
+; 	      (append expr seed_val)]	     	   
+ 	     [(dist ,_ ...) '()]
+ 	     [(leds ,what ,which) '()]
+	     [(call ,_ ,[args*] ...) (apply append args*)]
+; 	     [(activate ,_ ,[args*] ...) (apply append args*)]
+ 	     [(timed-call ,_ ,__ ,[args*] ...) (apply append args*)]
+ 	     [(,[rator] ,[rands] ...) (apply append rator rands)]
+ 	     [,otherwise
+ 	      (error 'desugar-gradient:process-expr 
+ 		     "bad expression: ~s" otherwise)]
+	     ))
+
+
+;; Every token handler, once converted for the simulator, has a signature: 
+
+;; tokstore, vtime, tokargs -> newmsgs, newtokobjs
+
+
 ;; Takes token bindings and a body expression:
 (define (process-tokbinds tbinds extradefs expr)
   (let ([binds 
@@ -415,93 +457,34 @@
 	  (lambda (tbind)
 	    (match tbind 
 		   [(,tok (,args ...) ,expr* ...)
-		    `[,tok (lambda ,args 
-			     (DEBUGPRINT2 
-			      (disp "Token " ',tok 
-				    "running at" (node-id (simobject-node this)) 
-				    " with message: " ',args))
-			     ,@(map (process-statement tbinds) expr*))]]))
-	  (remove-duplicate-tokbinds tbinds))]
-	[handler (build-handler tbinds)]
+		    (let ([stored (apply append (map find-stored expr*))])
+		      `[,tok (lambda ,args 
+			       (DEBUGPRINT2 
+				(disp "Token " ',tok 
+				      "running at" (node-id (simobject-node this)) 
+				      " with message: " ',args))
+			       (set-simobject-outgoing! this '())
+					;(set-simobject-timed-tokens! this '())
+			       
+			       ,@(map (process-statement tbinds stored) expr*)
+			       (let ([result
+				      (list (simobject-outgoing this)
+					    )])
+				 (set-simobject-outgoing! this '())
+				 result)
+			       
+			       )])]))
+	  tbinds)]
 	)
 
     (printf "~n;  Converted program for Simulator:~n")
     (printf "<-------------------------------------------------------------------->~n")
     (pretty-print binds)
-    
 
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
-	  [define handler ,handler] 
-	  [define this-message #f];)
+	  [define this-message #f]
 	  ,@extradefs ;; <TODO> THIS IS WEIRD AND LAME <TOFIX>
     ,expr)))
-
-;; This builds the function that handles incoming tokens.
-(define (build-handler tbinds)
-	;; These inputs to handler must be the *child* message-object
-	;; (that is, already updated to have an incremented count, the
-	;; correct parent, etc).  So we can shove it right in our 
-	`(lambda (themessage) ;(origin parent count tok args)
-		    (logger "~a: (time ~s) (ProcessMsg ~a ~a ~a ~a ~a ~a ~a ~a)~n" 
-			    (node-id (simobject-node this))
-			    (cpu-time) 
-			    (msg-object-token themessage)
-			  " parent? " (if (msg-object-parent themessage)
-					  (node-id (simobject-node (msg-object-parent themessage)))
-					  #f)
-			  (msg-object-count themessage)
-			  " Soc? " I-am-SOC 
-			  "Args:" (msg-object-args   themessage))
-		    (let ([origin (msg-object-origin themessage)]
-			  ;[parent (msg-object-parent themessage)]
-			  [count  (msg-object-count  themessage)]
-			  [tok    (msg-object-token  themessage)]
-			  [args   (msg-object-args   themessage)])
-		      
-;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " tok args)
-		    ;; Redraw every time we handle a message our state might have changed.
-		    (set-simobject-redraw! this #t)
-		    ;; This refers to the token cache for this processor:
-		    (let ([entry (hashtab-get (simobject-token-cache this) tok)]
-			  [handle-it (lambda (newentry)
-				       (fluid-let ((this-message newentry))
-					 (case tok
-					   ,@(map (lambda (tok)
-						    `[(,tok) 
-						      (apply ,tok args)])
-						  (map car tbinds))
-					   [else (error 'node_program "Unknown message: ~s" tok)]
-					   )))])
-			  
-			  (if (not origin) 
-			      ;; This is a local call, don't touch the cache:
-			      (handle-it (bare-msg-object tok args))
-
-			      ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
-			      ;; BUT! No premature optimization.		      
-			      (if (or (not entry) ;; There's no entry for that token name.
-				      (= 0 count)
-				      (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
-
-				  (begin
-				    (if (= 0 local-recv-messages)
-					(silently (sim-light-up 200 0 0)))
-				    (set! local-recv-messages (add1 local-recv-messages))
-				    
-				    ;; This is where I'm gonna cut in support for "reject".. [2004.10.23]
-				    (fluid-let ([reject-incoming-token #f])
-				      (handle-it themessage)
-				      ;; Only add it to the cache if it hasn't been rejected:
-				      (if (not reject-incoming-token)
-					  (hashtab-set! (simobject-token-cache this) tok themessage)))
-				    )
-
-				  (begin 
-				    (incr-top-level! 'total-fizzles)
-				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
-				    (void))
-				  )))
-		    )))
 
 ;; ======================================================================
 
@@ -664,8 +647,63 @@
 ;       (newline)
 ;       (disp "Nodeprog")
 ;       (pretty-print nodeprog)
-       (set! f socprog)
-       (set! sp socprog)
-       (set! np nodeprog)
+;;       (set! f socprog)
+;;       (set! sp socprog)
+;;       (set! np nodeprog)
        ;; DANGEROUS:
-       (list socprog nodeprog))])))
+;       (list socprog nodeprog)
+nodeprog
+       )])))
+
+
+(define these-tests
+  `(
+    [(find-stored '(if '3 '4 (let-stored ([a '3]) '4)))
+     (a)]
+
+    [(compile-simulate-alpha
+      '(program
+	(bindings)
+	(socpgm  (bindings) (call tok1))
+	(nodepgm 
+	 (tokens
+	  [tok1 () (bcast tok2 3)]
+	  [tok2 (x) (bcast tok2 (+ x x))])
+	 (startup))))
+     '??]
+    ))
+
+
+
+(define (wrap-def-simulate test)
+  `(begin (define simulate run-simulation) ,test))
+
+;; Use the default unit tester from helpers.ss:
+;; But this also makes sure the world is initialized before doing unit tests:
+(define test-this
+  (let ((tester (default-unit-tester 
+		  this-unit-description 
+		  ;; Make sure that the world is clean before each test.
+		  (map (lambda (test)
+			 (match test
+			   [(,prog ,res) `((begin (cleanse-world) ,prog) ,res)]
+			   [(,name ,prog ,res) 
+			    `(,name (begin (cleanse-world) ,prog) ,res)]))
+			 these-tests)
+		  tester-eq?
+		  wrap-def-simulate)))
+    (lambda args
+      ;; First init world:
+      ;(init-world)
+      (apply tester args))))
+
+(define (t)
+(compile-simulate-alpha
+      '(program
+	(bindings)
+	(socpgm  (bindings) (call tok1))
+	(nodepgm 
+	 (tokens
+	  [tok1 () (bcast tok2 '3)]
+	  [tok2 (x) (bcast tok2 (+ x x))])
+	 (startup)))))

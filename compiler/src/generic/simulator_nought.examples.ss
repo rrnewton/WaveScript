@@ -331,7 +331,7 @@
     unspecified))
 
 
-(define (go)
+#;(define (go)
   (eval (cadr (last testssim)))
   (eval '(define z (map simobject-token-cache all-objs)))
   (eval '(define y (map (lambda (tc) (hashtab-get tc 'tok1)) z)))
