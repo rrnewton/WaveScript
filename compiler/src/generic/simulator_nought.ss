@@ -43,7 +43,10 @@
 					;      (let ((ids (map node-id graph)))
 					;	(map 
 	  (map (lambda (node)
-		 (cons node (filter (lambda (n) (< (dist (node-pos node) (node-pos n)) radius))
+		 (cons node 
+		       (filter (lambda (n) 
+				 (and (not (eq? node n))
+				      (< (dist (node-pos node) (node-pos n)) radius)))
 				    seed)))
 	       seed))
     seed))
@@ -112,6 +115,7 @@
   `(letrec (,@binds [handler ,handler]) ,expr)))
 
 
+
 (define-syntax remove-last!
   (syntax-rules ()
     [(_ id)
@@ -129,38 +133,45 @@
   (match prog
     [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
 	      (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...) ,starttok))
-     (let ()
+     (let* (
 
-       (define generic-defs
-	 '([neighbors (lambda (obj)
-			(let ((entry (assq obj graph)))
+       [generic-defs
+	 '([define neighbors (lambda (obj)
+			(disp 'neighbors obj)
+			(let ((entry (assq obj object-graph)))
+			  (disp "ENTRY : " entry)
 			  (if (null? entry)
 			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
-				     obj graph)
+				     obj object-graph)
 			      (cdr entry))))]
-	   [send (lambda (data ob)
-		   (set-simobject-incoming!
+	   [define send (lambda (data ob)
+		   (disp 'send data ob)
+		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob))))]
-	   [emit (lambda (t . m)
+	   [define emit (lambda (t . m)
+		   (disp 'emit t m)
 		   (let ((msg (if (null? m) '() (car m))))
 		     (map (lambda (nd) (send (list t m) nd))
 			  (neighbors this))))]
-	   [flood (lambda (t . m)
+	   [define flood (lambda (t . m)
+		    (disp 'flood t m)
 		    (let ((msg (if (null? m) '() (car m))))
 		      (map (lambda (nd) (send (list t msg) nd))
-			   all-nodes)))]))
+			   all-objs)))])]
 
-       (define socprog
-	 `(lambda (this graph all-nodes)
+       [socprog
+	 `(lambda (this object-graph all-objs)
 	    (printf "CALLING SocProg: ~s~n" this)
-	    (letrec ,generic-defs
+	    (let () ,@generic-defs
 	      ,(process-binds socbinds
-			      `(begin ,@(map process-statement socstmts))))))
-       
-       (define nodeprog
-	 `(lambda (this graph all-nodes)	    
+			      `(begin ,@(map process-statement 
+					     socstmts)
+				      'soc_finished))))]
+
+       [nodeprog
+	`(lambda (this object-graph all-objs)	    
 	    (printf "CALLING Nodeprog: ~s~n" this)
-	    (letrec ,generic-defs	      
+	    (let () ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
@@ -177,10 +188,13 @@
 			  (let ((msg (last incoming)))
 			    (remove-last! incoming)
 			    (handler (car msg) (cadr msg))))))	
-		 )))))
+		 ))))])
 
        (disp "Socprog")
-       (pretty-print socprog)       
+       (pretty-print socprog)      8 
+       (set! f socprog)
+       (for-each eval generic-defs)
+
 
        (let ([socfun (eval socprog)]
 	     [nodefun (eval nodeprog)])	 
@@ -189,26 +203,35 @@
 				   object-graph all-objs)))
 	       (map (lambda (nd) 
 		      (make-engine
-		       (lambda () (nodefun nd 
-					   object-graph all-objs))))
+		       (lambda () 
+			 (disp "run node engine for node" nd)
+			 (nodefun nd object-graph all-objs))))
 		    all-objs))
        
        ))]))
 
-(define (run-simulation engines)
+(define (run-simulation engines . rounds)
   (let ([soceng (vector-ref engines 0)]
 	[nodeengs (vector-ref engines 1)])
-    (let loop ([engs (list soceng)]
-					;(cons soceng nodeengs)]
-	       [acc '()])
-      (if (null? engs)
-	  (loop (reverse acc) '())
-	  ((car engs) 100
-	   (lambda (remaining ret) 
-	     (error 'run-simulation "engine shouldn't return"))
-	   (lambda (nexteng)
-	     (loop (cdr engs) (cons nexteng acc)))))
-      )))
+    (let loop ([engs (cons soceng nodeengs)]
+	       [acc '()]
+	       [rounds (if (null? rounds) -1 (car rounds))])
+;      (disp "looping " engs acc rounds)
+      (cond
+       [(= rounds 0) 'Simulation_Done]
+       [(null? engs)
+	(begin 
+	; (printf "Beginning loop around ~s engines.~n" (length acc))
+	  (loop (reverse acc) '() (- rounds 1)))]
+       [else 
+	((car engs) 100
+	 (lambda (remaining ret) 
+	   ;(error 'run-simulation "engine shouldn't return.  Values were: ~n~s~n" ret))
+	   (printf "Engine returned!: ~s~n" ret)
+	   (loop (cdr engs) acc rounds))
+	 (lambda (nexteng)
+	   (loop (cdr engs) (cons nexteng acc) rounds)))]
+      ))))
 
 
 (define (simulator-nought-language expr)
@@ -289,3 +312,8 @@
 (define csn  compile-simulate-nought)
 
 (dsis tt (csn p))
+(define a (car all-objs))
+(define b object-graph)
+(define c all-objs)
+(dsis g ((eval f) a b c))
+
