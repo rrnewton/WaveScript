@@ -11,6 +11,8 @@ import Utils
 
 -- For now our only constants are 16 bit integers.
 
+--type Const = IntConst Int
+--	   | StringConst String
 type Const = Int
 type ConstBind = (Id, Expr)
 --type Formal = Id
@@ -35,7 +37,7 @@ data TMPgm = Pgm { consts    :: [ConstBind],
   deriving (Eq, Show, Read)
 
 data Prim = Pplus | Pminus | Pmult | Pdiv
-	  | Pless | Pgreater | Pleq | Pgeq
+	  | Pless | Pgreater | Pleq | Pgeq | Peq
 	  | Plocdiff | Ploc
 --	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
@@ -59,6 +61,7 @@ data Expr = -- Stndard forms:
           | Eif Expr Expr Expr
 
           | Eled  LedAction LedColor
+	  | Edbg String [Expr]
 
 	  | Eprimapp Prim [Expr]
           | Esense
@@ -118,21 +121,22 @@ expr_collect_ids :: Expr -> [String]
 expr_collect_ids = f 
     where 
     f x = case x of 
-       (Econst c) -> [];
+       (Econst c)     -> []
+       (Esense)       -> []       
+       (Esocfinished) -> []
+       (Eled _ _)     -> []
+       (Erelay mbtok) -> []
        (Evar (Id s))  -> [s]
        (Elambda ids e) -> map (\ (Id s) -> s) ids ++ f e
        (Elet binds e)  -> (concat $ map (\ ((Id s),rhs) -> s : f rhs) binds) ++ f e
        (Eseq exprs) -> concat $ map f exprs
        (Eif a b c) -> f a ++ f b ++ f c
-       (Eprimapp prim args) -> concat $ map f args
-       (Esense) -> []
+       (Eprimapp _ args) -> concat $ map f args
+       (Edbg _ args)     -> concat $ map f args
        (Esocreturn e) -> f e
-       (Esocfinished) -> []
        (Ereturn val _ _ (Just seed) _) -> f val ++ f seed
        (Ereturn val _ _  Nothing    _) -> f val 
        (Eassign (Id v) e) -> v : f e
-       (Eled _ _) -> []
-       (Erelay mbtok) -> []
        (Eemit mbtime (Token s) args) -> s : (concat $ map f args)
        (Ecall mbtime (Token s) args) -> s : (concat $ map f args)
        (Eactivate    (Token s) args) -> s : (concat $ map f args)
@@ -259,4 +263,13 @@ b = (Pgm {
 	    ((Token "global-tree"), [], (Erelay Nothing))],
  startup=[(Token "leaf-pulsar_result_1")]
 })
+
+
+t = (Pgm {
+	  consts = [],
+	  socconsts=[],
+	  socpgm=[(Eemit Nothing (Token "tok1") [])],
+	  nodetoks=[((Token "tok1"), [], (Ecall (Just 300) (Token "fact") [(Econst 6)])), ((Token "fact"), [(Id "n")], (Ecall Nothing (Token "loop") [(Evar (Id "n")), (Econst 1)])), ((Token "loop"), [(Id "n"), (Id "acc")], (Eif (Eprimapp Peq [(Econst 0), (Evar (Id "n"))]) (Edbg "TM: FACT DONE: %d\n" [(Evar (Id "acc"))]) (Ecall Nothing (Token "loop") [(Eprimapp Pminus [(Evar (Id "n")), (Econst 1)]), (Eprimapp Pmult [(Evar (Id "n")), (Evar (Id "acc"))])])))],
+	  startup=[]
+	 })
 

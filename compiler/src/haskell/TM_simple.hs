@@ -50,6 +50,7 @@ data Stmt = Svoid
 	  | Sassign Id Basic
           | Sif Basic [Stmt] [Stmt]
 	  | Sled LedAction LedColor
+	  | Sdbg String [Basic]
           | Ssense (Maybe Id)
 	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
 	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!

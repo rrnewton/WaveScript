@@ -137,6 +137,9 @@ expand_macros thistok tenv lenv expr =
 
                (Eprimapp prim args) -> do args <- mapM (loop lenv) args
 					  return $ Eprimapp prim args
+	       (Edbg s args) -> do args <- mapM (loop lenv) args 
+				   return $ Edbg s args
+
 	       (Esense) -> return Esense
 
                -- Special forms:

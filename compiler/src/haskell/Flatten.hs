@@ -111,6 +111,12 @@ pe e = do (b,rv) <- loop e
 				  return (gencode id prim args', 
 					  Just $ Bvar id)
 
+       -- kinda lame that this wasn't just done as a normal primitive
+       (Edbg s args)       -> do args' <- mapM loop args
+				 return (append_blocks (concat_blocks $ map fst args')
+					 (Block [] [ Sdbg s
+						       (map (\ (_, Just b) -> b) args')]),
+					 Nothing)
 
        (Esense) -> do newvar <- newid "sens_" 
 		      return (Block [newvar] [Ssense (Just newvar)],
@@ -142,8 +148,8 @@ pe e = do (b,rv) <- loop e
 	   do args' <- mapM loop (args::[Expr])
 	      id <- newid "call_"
 	      let rets = map (\ (_, Just r) -> r) args'
-	      return (concat_blocks (Block [id] [Scall (Just id) mbtime tok rets]
-				  : map fst args'),
+	      return (concat_blocks ( map fst args' ++ 
+				      [ Block [id] [Scall (Just id) mbtime tok rets] ]),
 		      Just (Bvar id))
 --	   do id <- newid "call_"
 --	      call_helper args (\ args -> [Scall id  mbtime tok args])
