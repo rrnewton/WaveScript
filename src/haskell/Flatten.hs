@@ -8,18 +8,13 @@ import Utils
 import TM
 import TM_simple as TMS 
 
+import Data.Set
 import Control.Monad.State
-
-{-newname :: String -> State Int String
-newname s = do counter <- get
-	       set (counter + 1)
-	       return (s ++ show counter)
--}
 
 flatten_tm :: TMPgm -> State Int TMS.Pgm
 flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =     
 --    let toknames = map (\ ((Token x), _,_) -> x) nodetoks in
-    do socblock <- foldM (\ blk e -> do newblk <- pe e
+    do socblock <- foldM (\ blk e -> do (newblk,_) <- pe e
 			                return (append_blocks blk newblk))
 		         (Block [] []) socpgm				       
        nodetoks2 <- foldM (\ acc th -> do newtokh <- pth th
@@ -29,42 +24,67 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
 
 -- Process TokenHandler
 pth :: TM.TokHandler -> State Int TMS.TokHandler
-pth (t,ids,e) = do e' <- pe e
+pth (t,ids,e) = do (e',_) <- pe e
 		   return (t,ids,e')
 
--- Process Expression
-pe :: Expr -> State Int Block
-pe e = 
-    case e of 
-       (Econst c) -> return (Block [] [])
-       (Evar id)  -> return (Block [] [])
+-- Process Expression - Returns a block and a basic expression for the return value.
+pe :: Expr -> State Int (Block, Maybe Basic)
+pe e = do (b,rv) <- loop e 
+          return (preen_block b, rv)
+    where 
+    loop e = 
+	case e of 
+       (Econst c) -> return (Block [] [], Just (Bconst c))
+       (Evar id)  -> return (Block [] [], Just (Bvar id))
 --       (Elambda ids e) -> error "Flatten.pe: should not have Elambda at this point"
 
-{-       (Elet binds e)  -> 
-	   Elet [ (lhs, pe rhs) | lhs <- map fst binds,
-		                    rhs <- map snd binds ]
-		 (pe (map fst  e)
--}
+       (Elet binds e)  -> 
+	   do (blk1, ret) <- loop e
+	      blks <- foldM (\ bs (v,bod) ->
+			     do (Block vars stmts, Just r) <- loop bod
+			        let b = Block ([v]++vars)
+			                      (stmts++[Sassign v r])
+			        return (b:bs))
+		      [] binds
+	      return (concat_blocks (blk1 : reverse blks),
+		      ret)
 
---       (Eseq exprs) -> Eseq (map pe exprs)
+       (Eseq exprs) -> do (blks, ret) <- foldM (\ (bs,_) e ->
+						do (b,r) <- loop e;
+						   return (b:bs, r))
+					 ([],Nothing) exprs
+			  return (concat_blocks (reverse blks), ret)
 
-{-       (Eif a b c) -> Eif (pe a) (pe b) (pe c)
+       (Eif a b c) -> do newvar <- newid "ifret_" 
+			 (blka,Just ra) <- loop a
+			 (blkb,rb) <- loop b
+			 (blkc,rc) <- loop c			 
+			 let build_assign (Just r) = [Sassign newvar r]
+			     build_assign Nothing  = []
+			 return (Block (newvar : binds blka ++ binds blkb ++ binds blkc)
+				       (stmts blka ++
+					[(Sif ra
+					  (Block [] (stmts blkb ++ build_assign rb)) 
+					  (Block [] (stmts blkc ++ build_assign rc)))]),
+				 Bvar newvar)
+				 
 
---       (Eprimapp Pflood tok) -> Eprimapp prim (map pe args)
+--       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
 
-       (Eprimapp prim args) -> Eprimapp prim (map pe args)
+{-
+       (Eprimapp prim args) -> Eprimapp prim (map loop args)
        (Esense) -> Esense
 
-       -- Special forms:
-       (Esocreturn e) -> Esocreturn $ pe e
+       -- Sloopcial forms:
+       (Esocreturn e) -> Esocreturn $ loop e
        (Esocfinished) -> Esocfinished
        (Ereturn val to via seed aggr) ->
-	   Ereturn (pe val) to via (pe seed) aggr
+	   Ereturn (loop val) to via (loop seed) aggr
 
        (Erelay mbtok) -> Erelay mbtok
-       (Eemit mbtime tok args) -> Eemit mbtime tok (map pe args)
-       (Ecall mbtime tok args) -> Ecall mbtime tok (map pe args)
-       (Eactivate tok args)    -> Eactivate    tok (map pe args)
+       (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
+       (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
+       (Eactivate tok args)    -> Eactivate    tok (map loop args)
 
        (Eflood tok)       -> e	   
        (Eelectleader tok) -> e
@@ -72,10 +92,29 @@ pe e =
 -}
 
 bottom = bottom
+test = evalState (flatten_tm a) 
 
 ----------------------------------------------------------------------
--- HELPERS:
+-- HELLOOPRS:
+
+newid :: String -> State Int Id
+newid = do counter <- get
+	   put (counter + 1)
+	   return (Id (s ++ show counter))
 
 append_blocks :: Block -> Block -> Block
 append_blocks (Block binds1 stmts1) (Block binds2 stmts2) =
     Block (binds1 ++ binds2) (stmts1 ++ stmts2)
+
+
+concat_blocks :: [Block] -> Block
+concat_blocks blks =
+    Block (concat $ map binds blks) 
+	  (concat $ map stmts blks)
+
+-- This just makes the list of used vars a set. 
+preen_block :: Block -> Block
+--preen_block (Block vars s, rv) = (Block (toSet vars) s, rv)
+preen_block (Block vars s, rv) = (Block vars s, rv)
+
+--toSet = setToList . mkSet
