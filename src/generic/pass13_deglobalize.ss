@@ -121,7 +121,7 @@
     
  
 ;; [2004.07.28] This is a new version I'm making, which takes pre-classified
-(define emit-primitive-handlers
+'(define emit-primitive-handlers
   (lambda (classified-primapp form memb heartbeat)
     (match classified-primapp
 	   [(push-comp ,prim ,args ...) 
@@ -150,12 +150,12 @@
 	    
 	    ;; -=<TODO>=- UNSURE OF THIS
 	    ;; SEEMS PRETTY USELESS!
-	    [(sense)
-	     `([,form () (local-sense)]
-	       ;[,memb () ]
-	       )]
+	    ;[(sense)
+	    ;`([,form () (local-sense)]
+					;;[,memb () ]
+	    ;)]
 
-	    [(rmap)
+	    [(rmap) ;; CHECK
 	     (let* ([rator_tok (car args)]
 		    [region_tok (cadr args)]
 		    [parent (get-membership-name region_tok)]
@@ -167,7 +167,7 @@
 				  (call ,rator_tok v))])
 		   `([,parent () (activate ,form)]
 		     [,form () 
-			    (call ,memb (call ,rator_tok))
+			    (call ,memb (call ,rator_tok this))
 			    (timed-call ,heartbeat ,form)])
 		   ))]
 
@@ -206,7 +206,7 @@
 		 )))]
 
 	    ;; This is not a region; it carries no value on its membership token!
-	    [(anchor-at)
+	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
 		   [target (car args)]
@@ -226,25 +226,23 @@
 		 ))]
 
 	    [(circle)
-	     (let ([rad (cadr args)]
-		   [anch (car args)])
+	     (let ([anch (car args)]
+		   [rad (cadr args)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
-		 [,form () (emit ,memb this)]
+;		 [,form () (emit ,memb this)]
+		 [,form () (emit ,memb)]
 		 ;; Display stuff:
 		 [,form () (draw-circle (loc) 20)]
-		 [,memb (v)
+		 [,memb ()
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
-;		 [,memb () (if (< (dist ,form) ,rad) (relay))]
-;		 [,memb () (if (< (dist ,memb) ,rad) (relay))]
-		 [,memb (v) (if (< (dist) ,rad) (relay))]
+		 [,memb () (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
-
 
 	    [(khood)
 	     (let ([rad (cadr args)]
@@ -265,7 +263,6 @@
 		 [,memb (v) (if (< (dist) ,rad) (relay))]
 		 )
 	       )]
-
 
 #;	    [(circle-at)
 	     (let ([rad (cadr args)]
@@ -332,7 +329,7 @@
       [(circle circle-at)     
        `([,tokname 
 	  ; FIXME FIXME FIXME: This matches by coincidence only with the other names..
-	  (v)
+	  ()
 	  ;; At each formation click, we output this circle: 
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
@@ -386,12 +383,16 @@
 ;	   (if (not (null? tokenbinds))
 ;	       (error 'deglobalize 
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
-;		      tokenbinds))
+;		      tokenbinds))	   
 	   (values '() 
-		   (cons `[,name ,formalexp (lazy-letrec ,constbinds (call ,entry))]
+		   (cons `[,name ,formalexp (lazy-letrec ,constbinds ,entry)];(call ,entry))]
 			 tokenbinds))]
 
-	  ;; TODO:
+
+	  ;; FIXME FIXME... this is lame.
+	  [(sense ,_ ...)
+	   (values `([,name (local-sense)]) '())]
+	  ;; TODO:	   
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,expr]) '())]
 

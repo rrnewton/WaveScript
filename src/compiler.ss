@@ -119,7 +119,7 @@
 		  20.0))
 
 ;; This is my big target program!!
-(define theprog
+'(define theprog
   '(let* ((R (circle-at 50 '(30 40)))
 	 (f (lambda (tot next)
 	      (cons (+ (car tot) (sense next))
@@ -189,7 +189,7 @@
 ;(define (t1) (init-world) (run-simulation        sim 2.0))
 ;(define (t2) (init-world) (run-simulation-stream sim 2.0))
 
-(define theprog
+'(define theprog
   '(program
     (bindings
      [tmp_23 (cons '40 '())]

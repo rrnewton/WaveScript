@@ -1,7 +1,7 @@
 (module pass12_annotate-heartbeats mzscheme
 
   (require (lib "include.ss"))
-  
+  (require "constants.ss")  
   (require "iu-match.ss")
   (require "helpers.ss")
 

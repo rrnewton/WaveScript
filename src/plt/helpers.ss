@@ -110,7 +110,8 @@
    token-machine-primitives token-machine-primitive?
    basic-primitive? distributed-primitive?
    get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-
+   get-primitive-return-type
+   
    ;; Token names:
    token? new-token-name token-names get-names get-formation-name get-membership-name
 

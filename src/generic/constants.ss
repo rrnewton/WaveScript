@@ -6,6 +6,13 @@
 ;; get lifted up here.
 
 
+;; Used primarily by pass12_annotate-heartbeats:
+;;===================================================
+;; The slow-pulse is used for region formation.
+(define slow-pulse 1.0)
+;; The fast-pulse is used for folding.
+(define fast-pulse 10.0)
+
 ;; Used primarily by Simulator_nought.ss:
 ;;===================================================
 ;; These are the virtual coordinate bounds of the world.

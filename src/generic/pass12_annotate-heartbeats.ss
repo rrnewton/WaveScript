@@ -23,11 +23,6 @@
 ;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
 ;;; <Heartbeat> ::= <Float> | #f | +inf.0
 
-;; The slow-pulse is used for region formation.
-(define slow-pulse 1.0)
-;; The fast-pulse is used for folding.
-(define fast-pulse 10.0)
-
 (define annotate-heartbeats
   (let ()
 
@@ -51,10 +46,7 @@
 	   ;; This constructs a tree of value-dependencies, and then walks it to
 	   ;; set the pulses.
 
-	   (define (derive-freqtable binds ret)
-
-	     (disp "ANNOTATING BINDS: " binds)
-	     
+	   (define (derive-freqtable binds ret)	     
 	     ;; [2004.07.26] This will only be *complete*
 	     ;; for our very simple language.  Gotta face
 	     ;; the possibility of uncompleteness here.
@@ -68,8 +60,6 @@
 		    [dependency-tree
 		     ;; NOTE FIXME TODO: WONT HANDLE CIRCULAR DEPENDENCIES!!
 		     (let loop ([node (assq ret binds)])
-		       (disp "Got node" node)
-
 		       (let ([deps (filter 
 				    (lambda (rand) 
 				      (and (symbol? rand)
@@ -112,11 +102,11 @@
 			      [,else (error 'fast-prim? "invalid exp: ~s" expr)]))]
 		    )
 	       
-	       (disp "got freq table")
-	       (pp freq-table)
-	       (disp "got dep graph")
-	       (parameterize ((print-graph #t))
-			     (pp dependency-tree))			 
+;	       (disp "got freq table")
+;	       (pp freq-table)
+;;	       (disp "got dep graph")
+;	       (parameterize ((print-graph #t))
+;			     (pp dependency-tree)) 
 	       
 	       ;; Now loop up that tree from the root and set those frequencies.
 	       (for-each (lambda (freq-entry bind-entry)

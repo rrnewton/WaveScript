@@ -29,6 +29,8 @@
 		  (cond
 		   
 		   [(> i 10) (printf "~n That's enough.~n")]
+		   [(eq? stream 'threads_timed_out)
+		    (printf "~n Threads timed out.~n")]
 		   [(stream-empty? stream) (newline)] ;(printf "Stream Ended.~n")]
 		   [else 
 		    (display-constrained (list i 20) ": " (list (stream-car stream) 60))

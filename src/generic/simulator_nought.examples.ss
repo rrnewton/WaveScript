@@ -25,7 +25,7 @@
 
 
 ;; This is slightly more complex and actually propogates the light
-;; messages through the network via relays.
+;; messages through the network via relays.]
 (define example-nodal-prog2
   '(program
     (bindings)
@@ -134,6 +134,74 @@
      (startup))))
 
 
+
+
+;; This tests the timed-call facility.
+(define example-nodal-prog6
+  '(program
+    (bindings )
+    (socpgm (bindings) (call f 0))
+    (nodepgm
+     (tokens
+      ;(start () (call f 0))
+      (f (v) (soc-return v)
+	     (timed-call 500 f (add1 v))))
+     (startup))))
+
+(define THEPROG
+  '(program
+     (bindings
+       (tmpunknpr_13 (cons '40 '()))
+       (tmp_4 (cons '30 tmpunknpr_13)))
+     (socpgm (bindings) (void))
+     (nodepgm
+       (tokens
+         (f_token_tmpanch_8 () (flood constok_16))
+         (constok_16
+           ()
+           (if (< (locdiff (loc) tmp_4) 10.0)
+               (elect-leader m_token_tmpanch_8)
+               '#f))
+;         (f_token_tmpanch_8 () (draw-mark tmp_4 (rgb 0 100 100)))
+;         (m_token_tmpanch_8 () (light-up 0 255 255))
+         (m_token_tmpanch_8 () (call f_token_tmpcirc_9))
+         (f_token_tmpcirc_9 () (emit m_token_tmpcirc_9))
+;         (f_token_tmpcirc_9 () (draw-circle (loc) 20))
+;         (m_token_tmpcirc_9 () (light-up 0 100 100))
+         (m_token_tmpcirc_9 () (if (< (dist) '10) (relay)))
+         (tmpfunc_10
+           (a_1)
+           (lazy-letrec ((result_5 (local-sense))) result_5))
+         (m_token_tmpcirc_9 () (activate f_token_tmpunknpr_11))
+         (f_token_tmpunknpr_11
+           ()
+	   (disp "in map formation, node (" (node-id (simobject-node this))
+		 ") about to call function...")
+	   (let ([val (call tmpfunc_10 this)])
+	     (disp "CALLED (" (node-id (simobject-node this))
+		   ") CALLED Function, got:" val)
+	     (call m_token_tmpunknpr_11 val))
+	   (timed-call 10.0 f_token_tmpunknpr_11))
+         (tmpfunc_12
+           (a_3 b_2)
+           (lazy-letrec ((result_6 (+ a_3 b_2))) result_6))
+         (m_token_tmpunknpr_11 (v) (call f_token_result_7 v))
+         (f_token_result_7
+           (v)
+           (return
+             v
+             (to m_token_result_7)
+;             (via m_token_tmpunknpr_11)
+             (via m_token_tmpcirc_9)
+             (seed '0)
+             (aggr tmpfunc_12)))
+         (m_token_result_7 (v) (soc-return v))
+         (leafpulsar_14
+           ()
+           (call f_token_tmpanch_8)
+           (timed-call 1.0 leafpulsar_14)))
+       (startup leafpulsar_14))))
+
 (define example
   '(program
     (bindings (result_2 '3))
@@ -184,3 +252,7 @@
   (eval '(define y (map (lambda (tc) (hashtab-get tc 'tok1)) z)))
   ;(eval '(define x (map node-id (map simobject-node (map msg-object-origin y)))))
   )
+
+
+
+

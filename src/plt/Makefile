@@ -21,7 +21,7 @@ all: compiled/constants.zo compiled/flat_threads.zo compiled/graphics_stub.zo co
      compiled/pass09_remove-complex-opera.zo \
      compiled/pass10_verify-core.zo \
      compiled/pass11_classify-names.zo \
-     compiled/pass12_deglobalize.zo 
+     compiled/pass13_deglobalize.zo 
 
 
 compiled/constants.zo: constants.ss ../generic/constants.ss
@@ -84,9 +84,10 @@ compiled/pass10_verify-core.zo: pass10_verify-core.ss ../generic/pass10_verify-c
 compiled/pass11_classify-names.zo: pass11_classify-names.ss ../generic/pass11_classify-names.ss
 	mzc --auto-dir --zo pass11_classify-names.ss
 #	mzc --auto-dir  pass11_classify-names.ss
-compiled/pass12_deglobalize.zo: pass12_deglobalize.ss ../generic/pass12_deglobalize.ss
-	mzc --auto-dir --zo pass12_deglobalize.ss
-#	mzc --auto-dir  pass12_deglobalize.ss
+
+compiled/pass13_deglobalize.zo: pass13_deglobalize.ss ../generic/pass13_deglobalize.ss
+	mzc --auto-dir --zo pass13_deglobalize.ss
+#	mzc --auto-dir  pass13_deglobalize.ss
 
 
 #	mzc -c helpers.ss

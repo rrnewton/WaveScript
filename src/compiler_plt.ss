@@ -15,7 +15,8 @@
 
          ;	 "plt/language-mechanism.ss"
 
-(require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+(require "plt/iu-match.ss"
+         (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          "plt/pass01_eta-primitives.ss"
          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
          (all-except "plt/pass03_remove-unquoted-constant.ss")
@@ -118,8 +119,17 @@
 (define graphical-repl
   (repl-builder (lambda () (init-world) (init-graphics))
 		cleanse-world
-		run-compiler
+		(lambda (x)
+                  (match x
+                    [(precomp ,exp) `(unknown-lang (quote ,exp))]
+                    [,other (run-compiler other)]))
 		graphical-simulation))
+
+;(define precomp-graphical-repl
+;  (repl-builder (lambda () (init-world) (init-graphics))
+;		cleanse-world
+;		(lambda (x) x) ;; Compiler ;run-compiler
+;		graphical-simulation))
 
 ;; From lang05.ss
 ;; Doesn't work:
@@ -139,9 +149,9 @@
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
 
-
-;(cleanse-world)
-;(define simulate run-simulation)
+(cleanse-world)
+(define simulate run-simulation)
 ;(eval (cadr (last testssim)))
 ;(init-graphics)
-
+;(cleanse-world)
+;(graphical-repl)
