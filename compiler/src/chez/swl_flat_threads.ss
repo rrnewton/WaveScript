@@ -62,5 +62,6 @@
 (define these-tests (include "generic/flat_threads.tests"))
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+(define testswlflatthreads test-this)
 
 ;) ;; End module
