@@ -1585,28 +1585,34 @@
       ;; We have no way of mutating the prior cell, so just return this:
       (stream-car (force s))]
      [(pair? s) (car s)]
-     [else (error 'stream-car
-		"invalid object inside stream structure: ~s" s)])))
+     [(null? s) (error 'stream-car "Stream is null!")]
+     [else (error 'stream-car "invalid stream: ~s" s)])))
 
 (define (stream-cdr s)
   (cond
    [(promise? s)      
     ;; Again, this one isn't structured as a pair, so we can't mutate and extend.
     (stream-cdr (force s))]
+   [(null? s) (error 'stream-car "Stream is null!")]
    [(pair? s)
-      (if (not(pair? (cdr s)))
-	  (set-cdr! s (force (cdr s))))
-      (cdr s)]		       
-   [else (error 'stream-cdr
-		"invalid object inside stream structure: ~s" s)]))
+      (if (promise? (cdr s))
+	  (begin (set-cdr! s (force (cdr s)))
+		 ;; Might need to keep going, a promise may return a promise:
+		 (stream-cdr s))
+	  (cdr s))]
+   [else (error 'stream-cdr "invalid stream: ~s" s)]))
 
 ;; Take N elements from a stream
 (define (stream-take n s)
-  (let loop ((n n) (s s))
-    (if (zero? n) '()
-	(cons (stream-car s) 
-	      (loop (sub1 n) (stream-cdr s))))))
-
+  (let loop ((n n) (s s))    
+    (cond
+     [(zero? n) '()]
+     [(null? s)
+      (error 'stream-take "Stream ran out of elements before the end!")]
+     [else 
+      (cons (stream-car s) 
+	    (loop (sub1 n) (stream-cdr s)))])))
+  
 ;; Layer on those closures!
 (define (stream-map f s)
   (let loop ((s s))
@@ -1645,9 +1651,20 @@
        (get-output-string s))
      "test  abcdefg... again  abcdefghijklm...abcdefghijklmnop"]
 
+    [(stream-take 5 counter-stream)
+     (0 1 2 3 4)]
+    [(stream-take 3 `(1 2 . ,(delay '(3))))
+     (1 2 3)]
+    [(stream-take 5 `(1 2 . ,(delay '(3))))
+     error]
+
+    [(stream-cdr '()) error]
+    [(stream-cdr (delay 1)) error]
+    [(stream-cdr (delay '(1))) ()]
+    [(stream-car (delay '(1))) 1]
+
     [(unfold-list '(a b c d))
      ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
-
 
     ))
 

@@ -37,7 +37,10 @@
 		 "~n  !!! run-flat-threads ended by time-out.~n")
 	'Threads_Timed_Out]
        [(and (null? acc) (null? engs)) 'All_Threads_Returned]
-       [(null? engs)  (loop (reverse acc) '())]
+       [(null? engs)  
+	;; Print progress indicator..
+	;(display #\.)
+	(loop (reverse acc) '())]
        [else 
 	((car engs) flat-threads-granularity
 	 (lambda (remaining ret) 

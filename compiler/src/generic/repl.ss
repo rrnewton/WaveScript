@@ -26,7 +26,7 @@
 				 [stream (run (build-simulation converted) 2.0)])
 		  (disp "Round the streamloop: " stream)
 		  (cond
-		   [(null? stream) (prinf "Stream Ended.~n")]
+		   [(null? stream) (printf "Stream Ended.~n")]
 		   [(procedure? stream) (streamloop i (stream))]
 		   [(pair? stream) (printf "~s:  ~s~n" i (car stream))
 		    (streamloop (add1 i) (cdr stream))]
