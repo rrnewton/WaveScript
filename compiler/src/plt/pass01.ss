@@ -6,5 +6,6 @@
 
 	(include (build-path ".." "generic" "pass01.ss"))
 
-	(provide convert-to-simulator)
+	(provide rename-var 
+		 test-this these-tests test01 tests01)
 )
