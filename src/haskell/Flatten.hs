@@ -20,7 +20,9 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
        nodetoks2 <- foldM (\ acc th -> do newtokh <- pth th
 			                  return [newtokh] )--(newtokh : acc))
 		          [] nodetoks
-       return (TMS.Pgm consts socconsts socblock nodetoks2 startup)
+       let convertc = map (\ (id, Econst n) -> (id, Bconst n))
+		      
+       return (TMS.Pgm (convertc consts) (convertc socconsts) socblock nodetoks2 startup)
 
 
 -- Process TokenHandler
@@ -129,7 +131,7 @@ gencode id p args =
 
 
 bottom = bottom
-test = evalState (flatten_tm a) 
+--test = evalState (flatten_tm a) 
 
 ----------------------------------------------------------------------
 -- HELLOOPRS:

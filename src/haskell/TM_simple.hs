@@ -1,11 +1,27 @@
 module TM_simple where
 
-import TM (Const, ConstBind, Time, Id, Token, Prim)
+import TM (Const, Time, Id(Id), Token(Token), Prim)
+--import qualified TM 
 
+type ConstBind = (Id, Basic)
 type TokHandler = (Token, [Id], Block)
 
 --data Statement = PrimStat
 --  deriving (Eq, Show, Read)
+
+a = (Pgm {
+  consts = [((TM.Id "result_1"), (Bconst 3))],
+  socconsts=[],
+  socpgm= Block [] [Ssocreturn (Bvar (Id "result_1")), Ssocfinished],
+  nodetoks=
+    [((Token "spread-global"), [], 
+      Block [] [(Semit Nothing (Token "global-tree") []),
+		(Scall Nothing (Just 1000) (Token "spread-global") [])]), 
+     ((Token "global-tree"), [], 
+      Block [] [Srelay Nothing])],  
+  startup=[]
+    })
+
 
 data Pgm = Pgm { consts    :: [ConstBind],
 		 socconsts :: [ConstBind],
@@ -54,3 +70,4 @@ data Basic = -- Stndard forms:
             Bconst Const
 	  | Bvar Id
   deriving (Eq, Show, Read)
+

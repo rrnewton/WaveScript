@@ -120,7 +120,7 @@ doit = do s <- readFile "test.tm";
 --})"
 
 
-a = (Pgm {
+{-a = (Pgm {
   consts = [((Id "result_1"), (Econst 3))],
   socconsts=[],
   socpgm=[(Esocreturn (Evar (Id "result_1"))), Esocfinished],
@@ -133,7 +133,7 @@ a = (Pgm {
       (Erelay Nothing))],  
   startup=[]
     })
-
+-}
 
 {-v = (Pgm {
       consts = [],
@@ -197,3 +197,4 @@ b = (Pgm {
 	    ((Token "global-tree"), [], (Erelay Nothing))],
  startup=[(Token "leaf-pulsar_result_1")]
 })
+
