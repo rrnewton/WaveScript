@@ -37,7 +37,7 @@
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
-(define-structure (simobject node incoming redraw))
+(define-structure (simobject node incoming redraw gobj))
 
 (define (random-node) 
   (make-node 
@@ -77,7 +77,7 @@
 	       seed))
     seed))
 ;; Nor does this:
-(define object-graph (graph-map (lambda (nd) (make-simobject nd '() #f)) graph))
+(define object-graph (graph-map (lambda (nd) (make-simobject nd '() #f #f)) graph))
 (define all-objs (map car object-graph))
 ;;========================================
 
@@ -108,10 +108,19 @@
 
 (define (process-statement stmt)
   (match stmt
-	 [(call ,opera ...) (error 'process-statement "call not supported from SOC")] ;opera]
+	 [(call ,opera ...) 
+	  
+	  (error 'process-statement "call not supported from SOC")] ;opera]
 	 [(flood ,tok) `(flood (quote ,tok))]
 	 [(emit ,opera ...)
 	  `(emit (quote ,(car opera)) ,@(cdr opera))]
+	 [(light-up ,r ,g ,b)
+	  `(begin
+	     (disp "trying to light")
+	     (if (simobject-gobj this)
+	       (begin 
+		 (disp "SETTING LIGHT" ,r ,g ,b)
+		 (set-color! (simobject-gobj this) ,r ,g ,b))))]
 	 [,else stmt])
   )
 
@@ -132,19 +141,23 @@
 		(lambda (tbind)
 		  (match tbind 
 			 [(,tok (,args ...) ,expr* ...)
-			  `[,tok (lambda ,args ,expr* ...)]]))
+			  `[,tok (lambda ,args ,@(map process-statement expr*))]]))
 		tbinds)]
 	[handler `(lambda (msg args)
+		    (disp "HANDLER at" (node-id (simobject-node this)) ": " msg args)
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
 		    ;; This refers to the token cache for this processor:
 		    (hashtab-set! token-cache msg args)
+;		    ,(if (null? tbinds) '(void)
 		    (case msg
-		      ,(map (lambda (tok)
-			      `[(,tok) 
-				(apply ,tok args)])
-			    (map car tbinds))))])
-  `(letrec (,@binds [handler ,handler]) ,expr)))
+		       ,@(map (lambda (tok)
+				`[(,tok) 
+				  (apply ,tok args)])
+			      (map car tbinds))
+		       [else (error 'node_program "Unknown message: ~s" msg)]
+		       ))])
+    `(letrec (,@binds [handler ,handler]) ,expr)))
 
 
 '(define-syntax remove-last!
@@ -165,7 +178,7 @@
 (define (compile-simulate-nought prog)
   (match prog
     [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
-	      (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...) ,starttok))
+	      (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...) ,starttoks))
      (let* (
 
        [generic-defs
@@ -180,21 +193,21 @@
 			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
 				     obj object-graph)
 			      (cdr entry))))]
-	   [define send (lambda (data ob)
-;		   (disp 'send data (node-id (simobject-node ob)))
+	   [define sendmsg (lambda (data ob)
+		   (disp 'sendmsg data (node-id (simobject-node ob)))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 	   [define emit (lambda (t . m)
-;		   (disp 'emit t m)
+		   (disp 'emit t m)
 		   (let ((msg (if (null? m) '() (car m))))
-		     (map (lambda (nd) (send (list t m) nd))
+		     (map (lambda (nd) (sendmsg (list t m) nd))
 			  (neighbors this))))]
 	   [define flood (lambda (t . m)
-e;		    (disp 'flood t m)
+		    (disp "FLOODING" t m)
 		    (let ((msg (if (null? m) '() (car m))))
-		      (map (lambda (nd) (send (list t msg) nd))
+		      (map (lambda (nd) (sendmsg (list t msg) nd))
 			   all-objs)))])]
 
        [socprog
@@ -208,18 +221,18 @@ e;		    (disp 'flood t m)
 
        [nodeprog
 	`(lambda (this object-graph all-objs)
-;	    (printf "CALLING Nodeprog: ~s~n" this)
+	    (printf "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f))
 	    (let () ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
 		 nodetoks
 		 `(begin 
-		    (,starttok)
+		   ,@(map list starttoks)
 		    (let loop ([incoming (simobject-incoming this)])
 		      (if (null? incoming)
 			  ;; No good way to wait or stop the engine execution?
-			  (loop (node-incoming this))
+			  (loop (simobject-incoming this))
 			  
 			  ;; This might introduce message loss (because of no
 			  ;; semaphores) but I don't care:					
@@ -231,21 +244,21 @@ e;		    (disp 'flood t m)
 			  )))
 		 ))))])
 
-       (disp "Socprog")
-       (pretty-print socprog)
-       (newline)
-       (disp "Nodeprog")
-       (pretty-print nodeprog)
+;       (disp "Socprog")
+;       (pretty-print socprog)
+;       (newline)
+;       (disp "Nodeprog")
+;       (pretty-print nodeprog)
        (set! f socprog)
        (set! sp socprog)
        (set! np nodeprog)
-       (for-each eval generic-defs)
+;       (for-each eval generic-defs)
 
 
        (let ([socfun (eval socprog)]
 	     [nodefun (eval nodeprog)])
        (vector ;(make-engine 
-		(lambda () (socfun (car all-objs) 
+		(lambda () (socfun (car all-objs)
 				   object-graph all-objs))
 	       (map (lambda (nd) 
 		      ;(make-engine
@@ -290,6 +303,11 @@ e;		    (disp 'flood t m)
 
 ;;===============================================================================
 
+(define example-nodal-prog0
+  '(program
+    (socpgm  (bindings) (emit tok1))
+    (nodepgm (bindings) (tokens) ())))
+
 (define these-tests
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
@@ -297,7 +315,7 @@ e;		    (disp 'flood t m)
     [ (process-statement '(emit foo 2 3)) (emit 'foo 2 3)]
     [ (process-statement '(flood foo)) (flood 'foo)]
 
-    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f)))
+    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f)))
 	(let ((y (structure-copy x)))
 	  (and (equal? x y)
 	       (not (eq? x y))))) #t]
@@ -324,7 +342,15 @@ e;		    (disp 'flood t m)
 		      (get-output-string s)))
       ;; Oracle to tell if the answers good:
       ,(lambda (res) (member res (list "34" "43"))) ]
-      
+
+    [ "Now actually run the translator ..."
+      (run-simulation
+       (compile-simulate-nought
+	'(program
+	  (socpgm (bindings) );(emit tok1))
+	  (nodepgm (bindings) (tokens) () )))
+       10)
+      unspecified ]
 
 
 #;    [ (let ((s (open-output-string)))
@@ -333,7 +359,7 @@ e;		    (disp 'flood t m)
 	    (run-simulation (vector (make-engine (lambda () 3))
 				    (list (make-engine (lambda () 4))
 					  (make-engine (lambda () 5))))
-			    10)
+			    .5)
 	    (get-output-string s))))
 	   
 	Simulation_Done]
@@ -365,11 +391,22 @@ e;		    (disp 'flood t m)
   '((a b) (b c) (c a)
     (d e) (e f)))
 
+(define temprog
+  '(program
+    (socpgm (bindings) (emit tok1))
+    (nodepgm
+;       result_2
+       (bindings)
+       (tokens
+	[tok1 () (flood tok2)]
+	[tok2 () (light-up 255 0 100)])
+       ()
+       )))
 
-(dsis tt (csn example-nodal-prog))
+(dsis tt (csn temprog))
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
 ;(dsis g ((eval f) a b c))
-(dsis g (run-simulation tt 10))
+(dsis g (run-simulation tt .5))
 

@@ -23,12 +23,16 @@
 ;; will not change, it depends on the physical identity of edges within this 
 ;; graph.  SO, no using graph-map on object-graph or anything!  We're going full
 ;; imperative style here...
+
+;;   NOTE: This takes *functions* rather than thunks, they are expected 
+;; to take their own graphical objects as input, giving them handles for
+;; changing their color and so forth.
 (define graphical-simulation 
-  (lambda (thunks . timeout)
+  (lambda (funcs . timeout)
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
-	  [soceng (vector-ref thunks 0)]
-	  [nodeengs (vector-ref thunks 1)])
+	  [soceng (vector-ref funcs 0)]
+	  [nodeengs (vector-ref funcs 1)])
 
       ;; Contains a graphics object, and the last drawn state.
       (define-structure (edgestate gobj oldstate))
@@ -48,7 +52,10 @@
 
 		    (let ([origpos (node-pos (simobject-node proc))])
 
-		      (hashtab-set! proc-table proc (draw-proc origpos))
+		      (let ((gobj (draw-proc origpos)))
+			(hashtab-set! proc-table proc gobj)
+			(set-simobject-gobj! proc gobj))
+		      
 ;; Not done yet.
 		      (for-each 
 		       (lambda (edgeob)
@@ -61,13 +68,11 @@
 		      )))
 		object-graph)
 		       
-;      (if (null? timeout)
-;	  (run-flat-threads (cons soceng nodeengs))
-;	  (run-flat-threads (cons soceng nodeengs) (car timeout)))
+      (if (null? timeout)
+	  (run-flat-threads (cons soceng nodeengs))
+	  (run-flat-threads (cons soceng nodeengs) (car timeout)))
 
-	  (run-flat-threads (list (lambda () 3)))
-  
-'All_Threads_Returned
+      'Grahpical_Simulation_Done
       )))
 
 (define gsim graphical-simulation)
@@ -78,15 +83,17 @@
 ;; This simplest of programs just lights up all the nodes.
 ;; Really this only makes sense on the graphical simulator.
 ;; See simulator_nought_graphics.
-(define example-nodal-prog0
+(define example-nodal-prog1
   '(program
-    (socpgm (bindings) (emit tok1))
+    (socpgm (bindings) 
+	    (emit tok1))
     (nodepgm
 ;       result_2
        (bindings)
        (tokens
 	[tok1 () (flood tok2)]
 	[tok2 () (light-up 255 0 100)])
+       () ;; seed tokens
        )))
 
 ;; This program floods the network with a token, then elects a leader
@@ -136,31 +143,104 @@
     [ "Now we throw in a couple trivial nodeprograms" 
       (begin 
 	(init-graphics)
-	(let ((s (open-output-string)))
-	  (let ((res 
-		 (graphical-simulation (vector (lambda () 3)
-					(list (lambda () 4)
-					      (lambda () 5)))
-				10)))
-	    (thread-sleep 700)
-	    (close-graphics) 
-	    res)))
-      All_Threads_Returned ]
+	(let ((res 
+	       (graphical-simulation (vector (lambda () 3)
+					     (list (lambda () 4)
+						   (lambda () 5)))
+				     10)))
+	  (thread-sleep 300)
+	  (close-graphics) 
+	  res))
+      Grahpical_Simulation_Done ]
 
-#;    [ "Run two threads each with a display" 
+
+    [ "Now we test color changing"
+      (begin 
+	(init-graphics)	
+	(let ((res 
+	       (graphical-simulation 
+		  (vector (lambda () 
+			    (for-each (lambda (ob) 
+					(set-fill-color! 
+					 (simobject-gobj ob)
+					 (make <rgb> 0 255 0)))
+				      all-objs))
+			  '())	  
+		  1.0)))
+	  (thread-sleep 700)
+	  (close-graphics)
+	  res))
+    Grahpical_Simulation_Done ]
+
+    [ "Color changing from nodepgm instead of soc."
       (begin 
 	(init-graphics)
-	(let ((s (open-output-string)))
-	  (parameterize ([current-output-port s])
-			(graphical-simulation (vector (lambda () (display 3))
-						      (list (lambda () (display 4))))
-					      10)
-			(thread-sleep 700)
-			(close-graphics)
-			(get-output-string s))))
+	(graphical-simulation 
+	 (vector (lambda () 3)
+		 (list (lambda () 
+			 (for-each (lambda (ob)
+				     (set-fill-color! 
+				      (simobject-gobj ob)
+				      (make <rgb> 0 255 0)))
+				   all-objs))
+		       ))
+	 1.0)
+	(thread-sleep 700)
+	(close-graphics))
+      unspecified ]
 
-      ;; Oracle to tell if the answers good:
-      ,(lambda (res) (member res (list "34" "43"))) ]
+    
+    [ "Next actually run the translator ..."
+      (begin 
+	(init-graphics)
+	(graphical-simulation
+	 (compile-simulate-nought
+	  '(program
+	    (socpgm (bindings) );(emit tok1))
+	    (nodepgm (bindings) (tokens) () )))
+	 1.0)
+	(thread-sleep 300)
+	(close-graphics))
+      unspecified]
+
+    [ "Run the translator on a spreading lights program..."
+      (compile-simulate-nought ',example-nodal-prog1)
+      unspecified
+#;      (lambda (x)
+	(procedure? (vector-ref x 0))
+	(andmap procedure? (vector-ref x 1)))]
+
+    [ "Then simulate the spreading lights program..."
+      (begin 
+	(init-graphics)
+	(graphical-simulation
+	 (compile-simulate-nought ',example-nodal-prog1)
+	 1.0)
+	(thread-sleep 300)
+	(close-graphics))
+      unspecified ]
+
+#;    [ "Next we run a program through the translator"
+      (begin 
+	(init-graphics)
+	(let ((res 
+	       (graphical-simulation 
+		(vector (lambda () 
+			  (for-each (lambda (ob) 
+				      (set-fill-color! 
+				       (simobject-gobj ob)
+				       (make <rgb> 0 255 0)))
+				    all-objs))
+			'())	  
+		1.0)))
+	  (thread-sleep 700)
+	  (close-graphics)
+	  res))
+      Grahpical_Simulation_Done ]
+
+    
+   
+
     ))
 
 (define test-this (default-unit-tester this-unit-description these-tests))
@@ -171,4 +251,64 @@
 
 
 
-  
+
+;;===============================================================================
+;; JUNK 
+
+(define csn  compile-simulate-nought)
+
+(define t1
+  '((shirt tie belt)
+    (tie jacket)
+    (belt jacket)
+    (watch)
+    (pants shoes belt)
+    (undershorts pants shoes)
+    (socks shoes)))
+
+(define t2
+  '((a b) (b c) (c a)
+    (d e) (e f)))
+
+
+(dsis tt (csn example-nodal-prog1))
+(define a (car all-objs))
+(define b object-graph)
+(define c all-objs)
+;(dsis g ((eval f) a b c))
+(dsis g
+      (begin (init-graphics)
+	     (graphical-simulation 
+	      (csn '(program
+		     (socpgm (bindings) );(emit tok1))
+		     (nodepgm
+		      (bindings)
+		      (tokens)
+		      () ;; seed tokens
+		      )))
+	      10)))
+
+(define temp_temp
+  '(program
+    (socpgm (bindings) 
+	    (disp "SOCPROG" )
+	    (light-up 0 255 255)
+	    (emit tok1))
+    (nodepgm
+;       result_2
+       (bindings)
+       (tokens
+	[tok1 () 
+	      (disp "Firing Tok1")
+	      (flood tok2)]
+	[tok2 () 
+	      (disp "Firing Tok2 and lighting up")
+	      (light-up 255 255 0)])
+       () ;; seed tokens
+       )))
+
+(dsis g
+      (begin (init-graphics)
+	     (graphical-simulation
+	      (csn temp_temp)
+	      5.0)))

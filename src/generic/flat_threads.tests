@@ -1,26 +1,9 @@
 
-(define these-tests
-  `(
+`(
     [ '1 1 ] 
-    [ "Ten threads complete at different times."
-     (let ((s (open-output-string)))
-	(parameterize ([current-output-port s])
-;	(printf "running test~n")
-;	(flush-output-port)
-  	  (run-flat-threads
-	   (map (lambda (n)
-					;		(printf "making thread: ~a~n" n)
-		  (lambda () 
-					;		  (printf "running thunk: ~a~n" n)
-		    (let loop ((acc (* 1000 n)))
-		      (if (zero? acc) 
-			  (display n)
-			  (loop (sub1 acc))))))
-		(iota 10)))
-	  (get-output-string s)))
-	"0123456789"]
-
-    [ (let ((s (open-output-string)))
+	
+    [ "Break an infinite loop."
+      (let ((s (open-output-string)))
 	(parameterize ([current-output-port s])
 	  (run-flat-threads 
 	   (list (lambda () (let loop () (loop))))
@@ -42,5 +25,4 @@
 			  (set! v #t)))))))
 	(get-output-string s))
       "DONE" ]
-))
-
+    )

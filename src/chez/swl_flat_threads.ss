@@ -2,42 +2,62 @@
 
 ;; This version is for use with the SchemeWidgetLibrary.
 
+(module flat_threads (run-flat-threads these-tests test-this)
+
 (define this-unit-description 
   "swl_flat_threads.ss: simple interface for parallel computations")
 
 ;; Using hefty granularity right now.
 ;; This defines the number of engine-ticks given each 
 ;; thread in each time-slice.
-(define flat-threads-granularity 1000)
+(define flat-threads-granularity 10)
 
 (define (run-flat-threads thks . time)   
   (let ((timeout (if (null? time) #f (* 1000 (car time)))))
-    (call/cc
-     (lambda (return)       
-       (let* ([channel (thread-make-msg-queue)]
-	      [threads 
-	       (map (lambda (thk) 
-		      (thread-fork 
-		       (lambda () (thk) (thread-send-msg channel 'Thread_Done))
-		       flat-threads-granularity))
-		    thks)]
-	      [thread-ids (map thread-number threads)]
-	      [return-thnk	
-	       (lambda ()
-		 (let loop ((counter (length threads)))
-		   (if (zero? counter)
-		       (return 'All_Threads_Returned)
-		       (begin (thread-receive-msg channel)
-			      (loop (sub1 counter))))))])	
-	 (if timeout
-	     (begin 
-	       (thread-fork return-thnk flat-threads-granularity)
-	       (thread-sleep timeout)
-	       (return 'Threads_Timed_Out))
-	     (return-thnk)))))))
+;    (disp "starting flatthreads")(flush-output-port)
+
+    (let* ([channel (thread-make-msg-queue 'flat-threads-wait-queue)]
+	   [return-thread #f]
+	   [threads 
+	    (map (lambda (thk) 
+		   (thread-fork 
+		    (lambda () 
+;		      (disp "running thread")(flush-output-port)
+		      (thk) 
+		      (thread-send-msg channel 'Thread_Done))
+		    flat-threads-granularity))
+		 thks)]
+	   [thread-ids (map thread-number threads)]
+	   [timeout-thread 
+	    (if timeout
+		(thread-fork 
+		 (lambda ()
+;		   (disp "timer starting")(flush-output-port)
+		   (thread-sleep (inexact->exact (round timeout)))
+;a		   (disp "timer went off")(flush-output-port)
+		   (thread-send-msg channel 'Timed_Out))		      
+		 flat-threads-granularity)
+		#f)])
+      
+ ;     (disp "SETTING UP THREADS") (flush-output-port)
+      
+      (let loop ((counter (length threads)))
+;	(disp "loop " counter) (flush-output-port)
+	(if (zero? counter)
+	    (begin (if timeout-thread
+		       (thread-kill timeout-thread))
+		   'All_Threads_Returned)
+	    (case (thread-receive-msg channel)
+	      [(Thread_Done) (loop (sub1 counter))]
+	      [(Timed_Out)
+	       ;; Some might be already dead and this might error:
+	       (for-each thread-kill thread-ids)
+	       'Timed_Out]))))))
 	
 ;;======================================================================
 
-(include "generic/flat_threads.tests")
+(define these-tests (include "generic/flat_threads.tests"))
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+
+) ;; End module

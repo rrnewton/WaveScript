@@ -47,6 +47,8 @@
     (load "chez/swl_flat_threads.ss")
     (load "chez/flat_threads.ss"))
 
+(import flat_threads)
+
 ;; Basic simulator for the nodal language:
 (include"generic/simulator_nought.ss")
 
@@ -63,3 +65,10 @@
 
 ;(trace  explode-primitive process-expr process-letrec)
 
+;;;TEMP 
+
+(if (top-level-bound? 'SWL-ACTIVE)
+    (begin
+      (eval '(import basic_graphics))
+      (eval '(import graphics_stub))
+      (load "generic/simulator_nought_graphics.ss")))
