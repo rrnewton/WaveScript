@@ -1446,6 +1446,15 @@
 			(against (cdr struct)))]
 	       [else '()]))])
     (against struct)))
+
+;; [2004.07.28] Occassionally useful.
+(define (deep-filter pred struct)
+  (let loop ([struct struct])
+    (cond
+     [(list? struct) (map loop (filter pred struct))]
+     [(vector? struct)
+      (list->vector (map loop (filter pred (vector->list struct))))]
+     [else struct])))
 	   
 ;[01.10.23] - I'm surprised this wasn't added a million years ago:
 (define (deep-member? ob struct)

@@ -183,7 +183,7 @@
 		  (list? args)		  
 		  )
 	     (and (token? token)
-		  (integer? timestamp)
+		  (or (not timestamp) (integer? timestamp))
 		  (or (not parent) (simobject? parent))
 		  (or (not origin) (simobject? origin))
 		  (integer? count)
@@ -815,18 +815,13 @@
 		     (DEBUGMODE 
 		      (if (not (andmap integer? timestamps))
 			  (error 'handle-returns "these are invalid timestamps: ~s" timestamps))
+			  )
 
-		      (if (not (andmap (lambda (retargs) (= (length retargs) 6))
-				       returns-args))
-			  (error 'return-handler
-				 "All return messages must have 6 arguments: ~s"
-				 returns-args)))
-
-		     (let ([vals* (map return-obj-return-vals returns)]
+		     (let ([vals* (map return-obj-return_vals returns)]
 			   [tos (map return-obj-to_tok returns)]
 			   [vias (map return-obj-via_tok returns)]
-			   [seeds (map return-obj-seeds returns)]
-			   [aggrs (map return-obj-aggr returns)]
+			   [seeds (map return-obj-seed_val returns)]
+			   [aggrs (map return-obj-aggr_tok returns)]
 			   [senders* (map return-obj-senders returns)])
 		       (DEBUGMODE
 			;; These had better have homogenous seeds and aggregators!!!
@@ -921,9 +916,9 @@
 				     (display #\^)(flush-output-port)
 				     (sendmsg  
 				      (make-return-obj
-				       (cons (cpu-time) (apply append timestamps)) ;; Timestamps
+				       (cons (cpu-time) timestamps) ;; Timestamps
 				       this ;; Parent
-				       (map add1 (apply append counts)) ;; Count - all the leaf counts
+				       (map add1 counts) ;; Count - all the leaf counts
 				       ;; And here we build the arguments for this leg of the return journey:
 				        aggregated-values
 					the_totok via seed aggr 
@@ -1013,7 +1008,6 @@
 		       (if (not (null? returns))
 			   (disp "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
 
-		       (disp "bout to call handle::" (map return-obj? returns))
 		       ;; Handle all the returns to date (either
 		       ;; locally generated or from neighbors). 
 		       (if (not (null? returns))
@@ -1053,8 +1047,8 @@
 				    (begin
 				      (define-top-level-value 'x msg)
 				      (error 'node-handler 
-				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
-				     msg incoming))))
+				     "invalid message to node, should be a valid msg-object: ~s "
+				     (pop-msg-object msg )))))
 			       (handler msg)
 			       (main-node-loop (simobject-incoming this)
 					       returns-next-handled 
@@ -1322,11 +1316,11 @@
 				       #f ;; parent
 				       (list 0) ;; counts
 				       '(3) ;; vals, a list..
-				       to  ;; token
-				       via ;; token
+				       'to  ;; token
+				       'via ;; token
 				       0 ;; seed
-				       plus ;; aggr token
-				       ()   ;; senders list
+				       'plus ;; aggr token
+				       '()   ;; senders list
 				       )]
 			[plus +] ;; Function for use by handler
 ;			[token-cache b_cache]
@@ -1342,7 +1336,7 @@
 ;				       [via () (error 'tester-via-token 
 ;						      "this shouldnt be called")]
 						   )
-				       )])
+				       )])		       
 			(handle-returns (list this-message))
 ;			(pretty-print all-objs)
 ;			(printf "==================================================~n")
@@ -1370,11 +1364,10 @@
 		  (hashtab-set! (simobject-token-cache a_simob) 'via 
 				(construct-msg-object 'via #f a_simob #f 1 '()))
 
-		  (let ([message1 (bare-msg-object 
-				       'return 
-				       ;; vals totoken viatoken seed aggregator senders
-				       '((3) to via 0  plus ()))]
-			[message2 (bare-msg-object 'return '((4) to via 0  plus ()))]
+		  (let ([message1 (make-return-obj (list (cpu-time)) #f (list 0) 
+				       '(3) 'to 'via 0 'plus '())]
+			[message2 (make-return-obj (list (cpu-time)) #f (list 0) 
+				       '(4) 'to 'via 0 'plus '())]
 			[plus +])
 		    (fluid-let ([this b_simob]) 
 		      (fluid-let ([handler
@@ -1559,15 +1552,6 @@
        ()
        )))
 
-(define (tt) (csn temprog))
-(define a (car all-objs))
-(define b object-graph)
-(define c all-objs)
-;(dsis g ((eval f) a b c))
-;(define (g) (run-simulation (tt) .5))
-
-(define problem1 (cadr (list-ref these-tests 18)))
-(define problem (cadr (list-ref these-tests 20)))
 
 
 (define stuff
@@ -1578,3 +1562,4 @@
      (vector (lambda () 3) (list (lambda () 4) (lambda () 5))))
      2)))
 
+(define x (cadr (list-ref these-tests 21)))
