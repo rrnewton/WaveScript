@@ -1,5 +1,7 @@
 includes TokenMachineRuntime;
 
+// TODO: fix memcpy's to only copy the used portion of the message.
+
 #define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
 
 module BasicTMCommM {
@@ -11,7 +13,7 @@ module BasicTMCommM {
     // I don't actually want to expose these, but I don't know how to
     // make private commands.
     async command result_t add_msg(TOS_MsgPtr token);     
-    async command TOS_Msg pop_msg();
+    async command result_t pop_msg(TOS_MsgPtr dest);
     async command TOS_Msg peek_nth_msg(uint16_t indx);
 
     command void print_cache();
@@ -19,7 +21,7 @@ module BasicTMCommM {
    }
   uses {
 
-    // This is the output module produced by my Regiment compiler.
+    // This is the output object produced by my Regiment compiler.
     interface TMModule;
 
     interface Timer;
@@ -30,9 +32,9 @@ module BasicTMCommM {
 } implementation {
 
   TOS_Msg cached_token;
-
+  
+  TOS_MsgPtr currently_processing;
   TOS_Msg temp_msg;
-  TOS_Msg temp_msg_ptr;
 
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
   TOS_Msg token_in_buffer[TOKBUFFER_LENGTH];
@@ -51,9 +53,10 @@ module BasicTMCommM {
       if ( in_buffer_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
-	temp_msg = call pop_msg();
-	//temp_msg_ptr = &(call pop_msg());
-	call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
+	if ( call pop_msg(&temp_msg) ) {
+	  currently_processing = &temp_msg;
+	  call TMModule.process_token(&temp_msg); // Do nothing with returned pointer.
+	}
       }
     }
   }
@@ -82,14 +85,13 @@ module BasicTMCommM {
   }
 
   // Raisse error if there's no payload in the FIFO: 
-  async command TOS_Msg pop_msg() {
-    TOS_Msg ret_msg;
-    atomic { 
+  async command result_t pop_msg(TOS_MsgPtr dest) {
+    atomic {
       if ( in_buffer_end == -1 ) {
 	// raise error!
       } else {      
-	//memcpy((&ret_msg),token_in_buffer + in_buffer_start, sizeof(TOS_Msg));
-	ret_msg = token_in_buffer[in_buffer_start];
+	memcpy(dest,token_in_buffer + in_buffer_start, sizeof(TOS_Msg));
+	//dest = token_in_buffer[in_buffer_start];
 
 	// If we're popping the last one, then it's empty after this:
 	if (in_buffer_start == in_buffer_end) { 
@@ -101,7 +103,7 @@ module BasicTMCommM {
 	}
       }
     }
-    return ret_msg;
+    return SUCCESS;
   }
   
   // This is for abstracting over the annoying wrap around buffer and
@@ -166,6 +168,7 @@ module BasicTMCommM {
     atomic {
       in_buffer_start = 0;
       in_buffer_end = -1;
+      currently_processing = NULL;
     }
    
     /*    temp_msg.origin = 91;
@@ -173,7 +176,8 @@ module BasicTMCommM {
     temp_msg.timestamp = 93;
     temp_msg.counter = 94;*/
 
-    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize: %d\n", TOKBUFFER_LENGTH );
+    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize:%d, tokdatalen:%d  rettoklen:%d\n", 
+	TOKBUFFER_LENGTH, TOK_DATA_LENGTH, RETURNTOK_DATA_LENGTH );
 
     return call Random.init();
   }
@@ -186,25 +190,59 @@ module BasicTMCommM {
   }
 
   // Hope this gets statically wired and inlined 
-  command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {    
+  command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+    TM_Payload* payload;
+   
+    if (send_pending) {
+      return FAIL;
+    } else {
+      send_pending = TRUE;
+      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d/%d\n", 
+	  msg->length, TOS_LOCAL_ADDRESS, msg->type, id);
+      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
+
+      payload = (TM_Payload*)token_out_buffer.data;
+
+      // Since this is an emisson, set the origin to *US*.
+      payload->origin = TOS_LOCAL_ADDRESS;
+      payload->parent = TOS_LOCAL_ADDRESS;
+      payload->timestamp = 999; // TODO FIXME
+      payload->counter = 1; // The nodes to receive this are hopcount 1.
+      token_out_buffer.type = id;      
+      return call SendMsg.send[id](address, length, &token_out_buffer);
+    }
+  }
+
+  //  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  command result_t TMComm.relay[uint8_t id]() {
+    TM_Payload* payload;
+
+    if ( NULL == currently_processing ) 
+      return FAIL;
 
     if (send_pending) {
       return FAIL;
     } else {
       send_pending = TRUE;
-      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
-      call SendMsg.send[id](address, length, msg); 
-      return SUCCESS;      
-    }   
+      memcpy(&token_out_buffer, currently_processing, sizeof(TOS_Msg));
+      payload = (TM_Payload*)token_out_buffer.data;
+
+      dbg(DBG_USR1, "TM BasicTMCommM: Relaying message of length:%d, orig:%d, par:%d, type:%d/%d\n", 
+	currently_processing->length, payload->origin, payload->parent, currently_processing->type, id);
+
+      payload->parent = TOS_LOCAL_ADDRESS;
+      //payload->timestamp = 999; // TODO FIXME
+      payload->counter++; // Increment the hopcount!
+      token_out_buffer.type = id;      
+      return call SendMsg.send[id](TOS_BCAST_ADDR, token_out_buffer.length, &token_out_buffer);
+    }
   }
 
-  //  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
-  command result_t TMComm.relay[uint8_t id]() {
-    // This relays the already buffered message.
-    return SUCCESS;
-  }
+  // Here's the tricky part.
+  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, 
+						  TOS_MsgPtr msg, uint16_t seed, uint16_t aggr) {
 
-  command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg, uint16_t seed, uint16_t aggr) {
+
     return SUCCESS;
   }
 
@@ -220,12 +258,12 @@ module BasicTMCommM {
   }
 
   event result_t Timer.fired() {
-
+    /* // Add random messages:
     ((TM_Payload*)temp_msg.data)->origin = call Random.rand();
     ((TM_Payload*)temp_msg.data)->parent = call Random.rand();
     ((TM_Payload*)temp_msg.data)->timestamp = call num_tokens();
     ((TM_Payload*)temp_msg.data)->counter = (uint8_t)call Random.rand();
-
+    */
     //    call add_msg(&temp_msg);
 
     call print_cache();

@@ -12,8 +12,7 @@ configuration TestMachine
 implementation
 {
   components BasicTMComm, TimerC, Main, UARTNoCRCPacket, GenericComm as Comm;
-  //  components TestMachineM;
-  components TestMachine2M as TestMachineM;
+  components TestMachineM;
 
   // TokenMachineRuntime, FramerM, UART,
 
@@ -26,7 +25,7 @@ implementation
   TestMachineM.Recv_A -> Comm.ReceiveMsg[AM_TOKEN_A];
   TestMachineM.Recv_B -> Comm.ReceiveMsg[AM_TOKEN_B];
   TestMachineM.Recv_89 -> Comm.ReceiveMsg[89];
-  
+
   //  Comm.ReceiveMsg[AM_TOKEN_A] -> TestMachineM.Recv_A;
   //  Comm.ReceiveMsg[AM_TOKEN_B] -> TestMachineM.Recv_B;
 
