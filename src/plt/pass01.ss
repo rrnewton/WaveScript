@@ -1,10 +1,8 @@
 
 (module pass01 mzscheme
-
-	(require (lib "include.ss"))
-
-	(require "iu-match.ss")
-	(require "helpers.ss")
+	(require (lib "include.ss")
+                  "iu-match.ss"
+                  "helpers.ss")
 
 	(include (build-path ".." "generic" "pass01.ss"))
 

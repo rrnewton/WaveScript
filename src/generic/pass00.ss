@@ -26,7 +26,7 @@
     
     (define process-expr
       (lambda (expr env)
-        (disp "processing expr" expr env)
+					;        (disp "processing expr" expr env)
         (match expr
           [,const (guard (constant? const)) const]
           [(quote ,datum)
@@ -57,7 +57,6 @@
 	   (guard (not (memq 'let env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
-           (disp "doing let")
 	   `(let ([,lhs* ,rhs*] ...) 
               ,(process-expr expr (union lhs* env)))]
           
@@ -79,44 +78,46 @@
            `(,input-language '(program ,body)))]))
     ))
 
+(define test-programs 
+  '( 3
+     (let ((a (anchor '(30 40))))
+       (let ((r (circle 50 a))
+	     (f (lambda (tot next)
+		  (cons (+ (car tot) (sense next))
+			(+ (cdr tot) 1))))
+	     (g (lambda (tot) (/ (car tot) (cdr tot)))))
+	 (smap g (rfold f (cons 0 0) r))))
+     ))
+
 (define these-tests
-  (list 
-   '[(verify-regiment '(some-lang '(program 3)))    
-     '(some-lang '(program 3))]
-   
-   (let ((prog 
-	  '(some-lang 
-	    '(program 
-              (let ((a (anchor '(30 40))))
-                (let ((r (circle 50 a))
-                      (f (lambda (tot next)
-                           (cons (+ (car tot) (sense next))
-                                 (+ (cdr tot) 1))))
-                      (g (lambda (tot) (/ (car tot) (cdr tot)))))
-                  (smap g (rfold f (cons 0 0) r))))
-              
-              ))))
-     `[(verify-regiment ',prog) ',prog])
-   
-   ))
+  (map
+   (lambda (prog)
+     `[(verify-regiment '(some-lang '(program ,prog)))
+       (some-lang '(program ,prog))])
+   test-programs))
+     
 
+(define test-this
+  (let ((these-tests these-tests))
+    (lambda args 
+      (let ((verbose (memq 'verbose args)))
+	
+	(let ((tests (map car these-tests))
+	      (intended (map cadr these-tests)))
+	  (let ((results (map eval tests)))
+	    (if verbose 
+		(begin
+		  (display "Testing pass to verify initial regiment language.")
+		  (newline)
+		  (newline) (display "Here are intended results:") (newline)
+		  (write intended) (newline) (newline)
+		  (newline) (display "Here are actual results:") (newline)
+		  (write results) (newline) (newline)))
+	   
+	    (equal? intended results)))))))
+  
 
-
-(define (test-this)
-  (let ((tests (map car these-tests))
-	(intended (map cadr these-tests)))
-    (let ((results (map eval tests)))
-      (display "Testing pass to verify initial regiment language.")
-      (newline)
-      (newline) (display "Here are intended results:") (newline)
-      (write intended) (newline) (newline)
-      (newline) (display "Here are actual results:") (newline)
-      (write results) (newline) (newline)
-      (equal? intended results))))
-
-(define test00 (let ((op test-this) (rand these-tests))
-		 (lambda () (set! these-tests rand)
-                   (op))))
+(define test00 test-this)
 
 
 ;----------------------------------------
