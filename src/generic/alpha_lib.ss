@@ -89,9 +89,11 @@
 	   ;; This is a weird stream though, because it gives different results
 	   ;;  based on whether you *use* the earlier values in the stream.
 	   (let loop ([ls (schedule)])
-	     (cons (car ls) ;; We expose only the very next action.
-		   (lambda () ;; When this is called we get the new schedule, which might have changed.
-		     (loop (schedule))))))))))
+	     (disp "CURRENT SCHEDULE: " ls)
+	     (if (null? ls) '()     
+		 (cons (car ls) ;; We expose only the very next action.
+		       (lambda () ;; When this is called we get the new schedule, which might have changed.
+			 (loop (schedule)))))))))))
 
 
 
