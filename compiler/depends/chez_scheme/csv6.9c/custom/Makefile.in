@@ -1,0 +1,88 @@
+# custom/Makefile
+# Copyright (C) 1997 Cadence Research Systems
+
+m=none
+
+# define location of relocatable and boot files
+Include=../boot/$m
+Kernel=../boot/$m/kernel.o
+Custom=../boot/$m/custom.o
+PetiteBoot=../boot/$m/petite.boot
+SchemeBoot=../boot/$m/scheme.boot
+Archive=../boot/$m/libz.a
+
+# force local rebuild of executable if desired
+ForceRelink=no
+
+# define target locations (must be in current directory!)
+Scheme=./scheme
+Petite=./petite
+SchemeHeap=./scheme.heap
+PetiteHeap=./petite.heap
+
+# Add additional C object files here.
+cobj=
+
+# Add additional C libraries here.
+clib=
+
+# Add additional Scheme source or object files here.
+# ${Scheme} must be defined above to generate Scheme object files
+# from source files.  These will be used only if building a heap.
+sobj=
+
+.SUFFIXES:
+.SUFFIXES: .ss .so
+.ss.so: ; echo '(compile-file "$*.ss")' | ${Scheme} setup.ss
+
+build: buildpetite maybebuildscheme
+
+# must come before build target in case it defines noheap
+
+include Mf-$m
+
+buildpetite:
+	if [ ${ForceRelink} = no ]; then if [ ! -f ${Scheme} ]; then /bin/rm -f ${Scheme}; ln -s ../bin/$m/scheme ${Scheme}; fi; fi
+	if [ ! -f ${Petite} ]; then /bin/rm -f ${Petite}; ln -s ${Scheme} ${Petite}; fi
+	@if [ "${noheap}" = "1" ]; then\
+           ${MAKE} m=$m ${Scheme};\
+         else\
+           ${MAKE} m=$m ${PetiteHeap};\
+         fi
+
+buildscheme:
+	if [ ${ForceRelink} = no ]; then if [ ! -f ${Scheme} ]; then /bin/rm -f ${Scheme}; ln -s ../bin/$m/scheme ${Scheme}; fi; fi
+	@if [ "${noheap}" = "1" ]; then\
+           ${MAKE} m=$m ${Scheme};\
+         else\
+           ${MAKE} m=$m ${SchemeHeap};\
+         fi
+
+maybebuildscheme:
+	if [ ${ForceRelink} = no ]; then if [ ! -f ${Scheme} ]; then /bin/rm -f ${Scheme}; ln -s ../bin/$m/scheme ${Scheme}; fi; fi
+	@if [ "${noheap}" = "1" ]; then\
+           ${MAKE} m=$m ${Scheme};\
+         else\
+           if [ -f ${SchemeBoot} ]; then ${MAKE} m=$m ${SchemeHeap}; fi;\
+         fi
+
+${PetiteHeap}: ${Scheme} ${PetiteBoot} ${sobj}
+	/bin/rm -f ${PetiteHeap}
+	echo | ./${Scheme} -b ${PetiteBoot} -s ${PetiteHeap} ${sobj}
+	chmod 444 ${PetiteHeap}
+
+${SchemeHeap}: ${Scheme} ${PetiteHeap} ${SchemeBoot} ${sobj}
+	/bin/rm -f ${SchemeHeap}
+	echo | ./${Scheme} -h ${PetiteHeap} -b ${SchemeBoot} -s+ ${SchemeHeap} ${sobj}
+	chmod 444 ${SchemeHeap}
+
+clean:
+	/bin/rm -f ${sobj} ${cobj} ${Scheme} ${mdclean}\
+                   ${Petite} ${PetiteHeap}\
+                   ${Scheme} ${SchemeHeap}\
+                   scheme.1 petite.1\
+                   datestamp.c
+
+distclean: clean
+	/bin/rm -f .schemelicense
+	/bin/rm -f Makefile Makefile.bak Mf-install Mf-install.bak

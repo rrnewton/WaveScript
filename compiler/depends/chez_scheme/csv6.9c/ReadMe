@@ -1,0 +1,152 @@
+Chez Scheme(tm) Version 6.9c
+Petite Chez Scheme(tm) Version 6.9c
+
+Copyright (c) 1985-2003 Cadence Research Systems
+All Rights Reserved.
+
+This file describes the files and subdirectories found in this directory,
+lists the machine types supported by this release, and contains
+instructions for building, installing, and customizing the system.
+ 
+FILES AND SUBDIRECTORIES:
+
+  Notice          copyright notice
+  ReadMe          this file
+  scheme.lic      standard license for Chez Scheme
+  petite.lic      standard license for Petite Chez Scheme
+  scheme.1        manual page (for Unix-based systems)
+  bin             directory containing executable files
+  boot            directory containing boot images
+  custom          directory containing customization files
+  examples        directory containing example Scheme programs
+
+
+MACHINE TYPES SUPPORTED BY THIS RELEASE:
+
+  alpha           Alpha AXP OSF/1 3.X, 4.X
+  i3le            Intel 80x86 Linux 2.0.X
+  i3nt            Intel 80x86 Windows NT 4/Windows 95
+  pax             HP PA-RISC 700 series HPUX 10.X
+  sps2            Sun-4/Sparc Solaris 2.X
+  xgi             Silicon Graphics IRIX 6.X
+  n32sgi          Silicon Graphics IRIX 6.X with N32 support
+
+BUILDING INSTRUCTIONS (Unix):
+
+  Building and installation require no more than  a few minutes once
+  the contents of the distribution tape have been unloaded onto disk.
+
+  Base executables, heap files, and executable shell scripts are
+  included with the distribution.  We suggest, however, that you
+  rebuild these files with your local libraries as this sometimes
+  eliminates minor incompatibilities between operating system
+  versions.  Please be careful, however, to retain backups of the
+  original files shipped with the distribution.
+
+  Executable and heap files may be built in the "custom" subdirectory.
+  To build the executable for a particular machine type, type "make
+  m=<machine-type>".  For example, for Sparc Solaris 2.X type
+
+    % cd custom
+    % make m=sps2
+
+  The resulting base executable, heap files, and executable shell scripts
+  are placed in the custom subdirectory.  You may wish to copy them to
+  the bin subdirectory.
+
+  Test Chez Scheme by typing "./scheme" and Petite Chez Scheme by typing
+  "./petite" in the custom directory.  A greeting and copyright notice
+  and a single right angle-bracket (">") prompt should appear.
+
+
+AUTOMATIC INSTALLATION (Unix):
+
+  The make files in the custom directory may be used to rebuild and
+  install Chez Scheme and Petite Chez Scheme, the example programs,
+  and the manual page.  Brief instructions for doing so are given here.
+  Instructions for manual installation are given later in this file.
+
+  First edit custom/Mf-install if necessary to reflect the proper
+  location of the various files on your system.
+
+  Next edit scheme.1 if necessary to reflect the location of the
+  executable shell scripts and library directory.
+
+  To perform the installation (you may need to be logged on as root to
+  do this step), type "make m=<machine-type> install" in the custom
+  subdirectory.  If you have not rebuilt the executable and heap files
+  (see BUILDING INSTRUCTIONS above) they are built now.  For example,
+  to (build and) install the system on a Sparc running Solaris 2.X,
+  type:
+
+    % cd custom
+    % make m=sps2 install
+
+  This will install both Petite Chez Scheme and (if present) Chez
+  Scheme.
+
+  Before installing Chez Scheme and/or Petite Chez Scheme, first read
+  through scheme.lic and/or petite.lic.  The automatic installation
+  process gives you an opportunity to do so and to abort the installation
+  if you do not agree to the terms of the agreement.
+
+  Check to make sure that proper installation has taken place and that
+  the executable and man pages work as expected.
+
+
+MANUAL INSTALLATION (Unix):
+
+  Before installing Chez Scheme and/or Petite Chez Scheme, first read
+  through scheme.lic and/or petite.lic.
+
+  Install the base executable scheme.exe and the heap files
+  petite.heap and scheme.heap in their proper location (typically
+  /usr/local/lib/csvX.Y/M, where X.Y is this version of Chez Scheme and
+  M is the machine type).  The base executable should be given group and
+  other execute but not read or write access, and the heap file should
+  be given group and other read but not write or execute access.
+
+  Edit the executable scripts petite and scheme to reflect the
+  pathnames of the base executable and heap files.  Install the
+  executable scripts in their proper location (typically
+  /usr/local/bin).  The executable scripts should be given group
+  and other execute and read but not write access.
+
+  Install the files from the examples directory (examples) and the file
+  include/scheme.h in their proper location on your system (typically
+  /usr/local/lib/csvX.Y, where X.Y is this version of Chez Scheme).
+  These files should be given group and other read but not write or
+  execute access.
+
+  Edit scheme.1 if necessary to reflect the location of the executable
+  file and library directory.  Install scheme.1 as the manual page
+  (typically /usr/local/man/man1/scheme.1) and symbolically link it
+  to petite.1.
+
+
+CUSTOMIZATION (Unix):
+
+  It is possible to include custom Scheme code and Scheme-callable C
+  code in the executable image.  Please refer to the "ReadMe" file in
+  the "custom" subdirectory for instructions.
+
+
+INSTALLATION UNDER WINDOWS NT
+
+  Install the base executable exec.<machine-type> and heap file
+  heap.<machine-type> in an appropriate location (typically
+  C:\scheme).  The base executable should be given execute but not read
+  or write access, and the heap file should be given read but not write
+  or execute access.
+
+  Edit the batch file scheme.bat to reflect the pathnames of the base
+  executable and heap files.  Install the batch file in an appropriate
+  location (possibly in the same location as the base executable and
+  heap files).  If the directory containing the batch file is not in
+  the default path, add this directory to the default path via the
+  system item in the Windows NT control panel.
+
+  Install the files in the examples directory (examples) in an
+  appropriate location on your system (typically C:\scheme).  These
+  files should be given group and other read but not write or execute
+  access.
