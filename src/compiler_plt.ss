@@ -15,7 +15,7 @@
 
          ;	 "plt/language-mechanism.ss"
 
-(require "plt/iu-match.ss"
+ (require "plt/iu-match.ss"
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          "plt/pass01_eta-primitives.ss"
          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
@@ -25,11 +25,11 @@
          (all-except "plt/pass06_uncover-free.ss")
          (all-except "plt/pass07_lift-letrec.ss")
          (all-except "plt/pass08_lift-letrec-body.ss")
-         (all-except "plt/pass09_remove-complex-opera.ss")
+         (all-except "plt/pass09_remove-complex-opera.ss" these-tests test-this)
          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
          (all-except "plt/pass12_annotate-heartbeats.ss" )
-         (all-except "plt/pass13_addplaces.ss" these-tests test-this)
+         (all-except "plt/pass13_addplaces.ss" these-tests test-this test13 tests13)
          (all-except "plt/pass13_deglobalize.ss" these-tests test-this)
          (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
@@ -154,7 +154,7 @@
 
 (cleanse-world)
 (define simulate run-simulation)
-;(eval (cadr (last testssim)))
-;(init-graphics)
-;(cleanse-world)
-;(graphical-repl)
+(eval (cadr (last testssim)))
+(init-graphics)
+(cleanse-world)
+(graphical-repl)

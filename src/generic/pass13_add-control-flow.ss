@@ -12,80 +12,53 @@
 (define add-control-flow
   (lambda (expr)
     (match expr
-	   [(,input-language (quote (program (props ,proptable ...) ,letexpr)))
+	   [(annotate-heartbeats-lang (quote (program (props ,proptable ...) ,letexpr)))
 
     ;; Returns control flow graph
     (define (process-let expr)
-      (disp "processing let" expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[expr-dependencies -> deps*] ...) ,expr)
-	   (map (lambda (lhs deps)
-		  (map (lambda (x) `(,x ,lhs)) deps))
-		
-	     
-	     `(lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
-
+	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[expr-dependencies -> deps*]] ...) ,expr)
+	   (apply append
+		  (map (lambda (lhs deps)
+			 (map (lambda (x) `(,x ,lhs)) deps))
+		       lhs* deps*)) ]
 	 [,other (error 'add-control-flow:process-let "bad lazy-letrec expression: ~s" other)]))
 
-
-    (define (process-primapp prim args)
-      (let ([expr (cons prim args)])
-	(case prim
-	  [(anchor-at) (values expr unknown-place (new-place))]
-	  ;; Both of these start in the center and spread to some extent.
-	  [(circle khood) (values expr (new-place) (list (new-place)))]
-
-	  ;; Can we say something about cluster?  Disregarding the
-	  ;; *type* cluster does not change the physical extent...
-	  ;; Maps are more straightforward, they don't change extent.
-	  [(cluster rmap) 
-	   (let ([newp (list (new-place))])
-	     (values expr newp newp))]
-
-	  ;; This is a real challenge.  The simplest rfold uses a tree
-	  ;; that brings all the data to a leader node within the
-	  ;; region.  If that's the case we need some way to express
-	  ;; the constraint that the resulting place is one of the
-	  ;; places in the initial region.
-	  ;;   BUT we might use a different tree for the fold.  For
-	  ;; example we might fold up on the global tree, in which
-	  ;; case the final "place" is the SOC.  FOR NOW, we're just
-	  ;; going to assume all folds go to the SOC.
-	  [(rfold) (values expr (list (new-place)) 'SOC)]
-	  
-	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
-	  [(smap) 	   
-	   (let ([newp (new-place)])
-	     (values expr newp newp))]
-		  
-	  [else (if (basic-primitive? prim)
-		    (values expr noplace noplace)
-		    (error 'addplaces:process-primapp "unhandled prim: ~s" prim))]
-	  )))
-
-
-    (define process-expr
+    (define expr-dependencies
       (lambda (expr)
-	(disp "process expr" expr)
         (match expr
-          [(quote ,const) (values `(quote ,const) noplace noplace)]
-          [,var (guard (symbol? var)) (values var noplace noplace)]
+          [(quote ,const) '()]
+          [,var (guard (symbol? var)) (list var)]
           [(lambda ,formalexp ,expr)
-	   (values (process-let expr) noplace noplace)]
+	   '() ;; CHECK UP ON THIS; MAYBE TAKE FREE-VARS??
+	   ]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
-          [(if ,test ,conseq ,altern)
-	   (values `(if ,test ,conseq ,altern) unknown-place unknown-place)]
-          [(,prim ,rand* ...)	   
+
+          [(if ,[test] ,[conseq] ,[altern])
+	   (append test coseq altern)]
+          [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
-	   (process-primapp prim rand*)]
+	   (apply append rand*)]
           [,unmatched
 	   (error 'addplaces:process-let "invalid syntax ~s" unmatched)])))
 
 
-    (let ([leaves (filter (lambda (entry) (memq 'leaf entry)) proptable)])
-      `(,input-language (quote (program (props ,proptable ...)
-					`(,@(map (lambda (x) `(SOC ,x)) leaves)
-					  ,@(process-let letexpr))
-					'letexpr
+    (let ([leaves (map car (filter (lambda (entry) (memq 'leaf entry)) proptable))])
+      (disp "LEAVES" leaves)
+      `(add-control-flow-lang (quote (program (props ,proptable ...)
+					      ,(append 
+						(map (lambda (x) `(SOC ,x)) leaves)
+						(process-let letexpr))
+					      ,letexpr
 					))))]
 	   )))
+
+
+
+
+'(add-control-flow '(annotate-heartbeats-lang
+		     '(program
+		       (props (result_1 local final))
+		       (lazy-letrec ((result_1 #f '3)) result_1))))
+
+

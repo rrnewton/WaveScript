@@ -88,9 +88,9 @@
           [,var (guard (symbol? var)) #t]
 	  [,otherwise #f]))
 
-    (define symbol-append
-      (lambda args
-	(string->symbol (apply string-append (map symbol->string args)))))
+;    (define symbol-append
+;      (lambda args
+;	(string->symbol (apply string-append (map symbol->string args)))))
 
 (define activate-prim-code
   (lambda (prim memb args parent)
@@ -223,7 +223,7 @@
 		   ;[elect-leader
 		   [,form (id)
 			  (if (check-tok ,parent)
-			      (begin (relay) (call ,leader))
+			      (begin (relay) (call ,leader-tok))
 			      ;; Here we remove ourselves if we've overflowed?
 					;(remove-tok ,spread-cluster)
 			      )]
@@ -330,7 +330,7 @@
     (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,body)
+	       [(lazy-letrec ([,lhs* ,heartbeat* ,formplace ,membplace ,rhs*] ...) ,body)
 		(if (symbol? body)
 		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))

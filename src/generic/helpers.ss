@@ -226,7 +226,7 @@
      [(eq? 'Constant args) #f]
      [else (length args)])))
 
-(define (regiment-primitive? x) 
+(define (regiment-primitive? x)
   (if (assq x regiment-primitives) #t #f))
 
 (define (regiment-constant? x)

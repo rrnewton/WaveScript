@@ -65,7 +65,8 @@
     verify-core
     classify-names
     annotate-heartbeats
-    addplaces
+    add-control-flow
+;    addplaces
 
 ;    deglobalize
 ;    cleanup-token-machine

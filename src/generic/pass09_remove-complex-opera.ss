@@ -118,6 +118,9 @@
     (define (meaningful-name exp)
 ;      (disp "meaningful" exp)
       (match exp
+	     [,prim
+	      (guard (regiment-primitive? prim))
+	      (symbol-append 'tmp_ prim)]
 	     [(,prim ,args ...)
 	      (guard (regiment-primitive? prim))
 	       (if (basic-primitive? prim)
@@ -134,12 +137,12 @@
 		   ]
 	     [(lambda ,form ,bod) 'tmp-func]
 	     ;; Will this happen??!: [2004.06.28]
-	     [,otherwise 'tmp-nonpr]))
+	     [,otherwise 'tmp-nonprim]))
 
     (define (simple? x) 
       (match x
           [(quote ,imm) #t]
-          [,var (guard (symbol? var)) #t]
+          [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
 	  [,otherwise #f]))
 
     (define (make-simple x)
@@ -162,6 +165,14 @@
 		     (append test-decls conseq-decls altern-decls)))]
 	  [(lambda ,formalexp ,[process-letrec -> body])
 	   (values `(lambda ,formalexp ,body) '())]
+
+	  ;;; Constants:
+	  [,prim (guard (regiment-primitive? prim))
+		 (values prim '())
+;		 (let ((intermediate (unique-name (meaningful-name prim))))
+;		   (values intermediate
+;			   `([,intermediate ,prim])))
+		 ]
           [(,prim ,rand* ...) (guard (regiment-primitive? prim))	   
 	   (let ((intermediate
 		  (map (lambda (rand) 
