@@ -29,8 +29,10 @@
          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
          (all-except "plt/pass12_annotate-heartbeats.ss" )
-         (all-except "plt/pass13_deglobalize.ss" these-tests test-this))
+         (all-except "plt/pass13_deglobalize.ss" these-tests test-this)
+         (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
+)
 
 (require
 ; (all-except "plt/simulator_nought.ss" these-tests test-this)

@@ -88,7 +88,7 @@
 ;; Ok, redoing those with type information:
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Float, Object
+;;   Function, Number, Float, Bool, Object
 
 ;; Since I'm going to go statically typed eventually, Object is just
 ;; my way of signifying "for all alpha" right now.
@@ -144,6 +144,10 @@
   '(
     (my-id () NodeID)
     (dist (Token) Integer)
+    
+    (check-tok (Token) Bool)
+    ;; Gotta have a way to remove tokens also!
+    ;; Not to mention expiration dates!!
 
     (rfoldwith (Token Function Object Region) Signal)
     ))
@@ -283,6 +287,17 @@
 (define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
 ;;============================================================
 
+
+;; I thought the primitive equal? did this by default?  This is just a
+;; version that accepts any number of arguments.  Just a throw-away helper function.
+(define (myequal? . args)
+  (if (null? args) #t
+      (let ((first (car args)))
+	(let myeqloop ((args (cdr args)))
+	  (cond
+	   [(null? args)  #t]
+	   [(equal? first (car args)) (myeqloop (cdr args))]
+	   [else #f])))))
 
 ;;[2004.06.13] Making this not allow an error to match against unspecified!
 (define (lenient-compare? o1 o2)

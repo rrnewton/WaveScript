@@ -43,12 +43,13 @@
 
 ;;; DEPENDS: make-begin
 
+
 (define cleanup-token-machine
   (let () 
 
-
 ;; This removes duplicates among the token bindings.
 ;; <TOOPTIMIZE> Would use a hash-table here for speed.
+;; :: TokenBindings -> TokenBindings
 (define (remove-duplicate-tokbinds tbinds)
 ;  (disp "Removing token dups" tbinds)
   (let loop ((ls tbinds))
@@ -60,7 +61,7 @@
 	      (let* ([all-handlers (cons (car ls) dups)]
 		     [formals* (map cadr all-handlers)]
 		     [body* (map caddr all-handlers)]
-		     [thunks (map (lambda (bod) `(lambda () ,bod)) body*)])
+		     )
 ;		(disp "GOT DUPS " tok formals*)
 		(DEBUGMODE
 		 (if (not (apply myequal? formals*))
@@ -70,9 +71,7 @@
 		 )
 		(let ([mergedhandler
 		       `[,tok ,(car formals*)
-			      (begin (for-each 
-				      (lambda (th) (th))
-				      (randomize-list ,(cons 'list thunks)))
+			      (begin ,@(randomize-list body*)				      
 				     'multiple-bindings-for-token)
 ;		             (begin ,@body* 'multiple-bindings-for-token)
 			     ]])
@@ -80,16 +79,15 @@
 		(cons mergedhandler
 		      (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
 		  ))))))
-	 
 
-    (define (process-binding bind)
+(define (process-binding bind)
       (let ([newbind 
 	     (match bind
 		    [(,sym ,[process-expr -> exp])
 		     `(,sym ,exp)]
 		    [,else (error 'cleanup-token-machine:process-binding 
 				  "invalid constant binding: " bind)])])
-	(DEBUG ;; Constant binds are simple and should not change!
+	(DEBUGMODE ;; Constant binds are simple and should not change!
 	 (if (not (equal? bind newbind))
 	     (error 'cleanup-token-machine:process-binding 
 		    "constant binding should not have changed!~n ~s to ~s."
@@ -103,7 +101,7 @@
       (match stmt
 	     [(quote ,const) `(quote ,const)]
 	     [,var (guard (symbol? var))
-		   (DEBUG 
+		   (DEBUGMODE 
 		    (if (not (memq var env))
 			(warning 'cleanup-token-machine
 				 "unbound variable: ~s" var)))
@@ -111,17 +109,17 @@
 	     [(,prim ,[rands] ...)
 	      (guard (token-machine-primitive? prim))
 	      `(,prim ,rands ...)]
-	     [(,kwd ,stuff ...)
-	      (guard (base-keyword? kwd))
-	      (error 'cleanup-token-machine:process-expr 
-		     "keyword expression not allowed: ~s" stmt)]
+;	     [(,kwd ,stuff ...)
+;	      (guard (base-keyword? kwd))
+;	      (error 'cleanup-token-machine:process-expr 
+;		     "keyword expression not allowed: ~s" stmt)]
 	     
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
 	     [(,rator ,[rands] ...)
-	      (DEBUG 
+	      (DEBUGMODE 
 	       (if (or (not (symbol? rator)) (not (memq rator env)))
 		   (warning 'cleanup-token-machine
-			    "unbound rator: ~s" var)))
+			    "unbound rator: ~s" rator)))
 	      `(,rator ,rands ...)]
 	     [,otherwise
 	      (error 'cleanup-token-machine:process-expr 
@@ -137,32 +135,36 @@
       ))))
 	    
 
+    ;; Main body of cleanup-token-machine
     (lambda (prog)
       (match prog
-        [(,input-lang '(program (bindings ,nodebinds ...)
+        [(deglobalize-lang '(program (bindings ,nodebinds ...)
 				(socpgm (bindings ,socbinds ...) 
 					,socstmts ...)
-				(nodepgm (tokens ,nodetoks ...) 
+				(nodepgm (tokens ,nodetoks ...)
 					 (startup ,starttoks ...))))
-	 (let* ([initenv (map car bindings)]
-		[socenv (append (map car socbinds) initenv)]
-		[tokenv (map car nodetoks)]
-		[nodebinds (map (process-bind initenv) nodebinds)]
-		[socbinds  (map (process-bind socenv) socbinds)]
-		[socstmts (map (process-expr socenv)
-
-
-       	 `(,input-lang
-	   '(program (bindings ,nodebinds ...)
-		     (socpgm (bindings ,socbinds ...) ,(make-begin socstmts))
-		     (nodepgm (tokens ,nodetoks ...) 
-			      (startup ,starttoks ...))))]))))
+	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
 	   
+	   `(deglobalize-lang '(program (bindings ,nodebinds ...)
+				       (socpgm (bindings ,socbinds ...) 
+					       ,socstmts ...)
+				       (nodepgm (tokens ,nodup-binds ...)
+						(startup ,starttoks ...))))
+	   )]
+	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
 
 
+;	 (let* ([initenv (map car bindings)]
+;		[socenv (append (map car socbinds) initenv)]
+;		[tokenv (map car nodetoks)]
+;		[nodebinds (map (process-bind initenv) nodebinds)]
+;		[socbinds  (map (process-bind socenv) socbinds)]
+;		[socstmts (map (process-expr socenv)
 
-'	 (,input-lang '(program (bindings ,[process-binding -> nodebinds] ...)
-				(socpgm (bindings ,[process-binding -> socbinds] ...) 
-					,[process-expr -> socstmts] ...)
-				(nodepgm (tokens ,[process-tokbind -> nodetoks] ...) 
-					 (startup ,starttoks ...))))
+
+;       	 `(,input-lang
+;	   '(program (bindings ,nodebinds ...)
+;		     (socpgm (bindings ,socbinds ...) ,(make-begin socstmts))
+;		     (nodepgm (tokens ,nodetoks ...) 
+;			      (startup ,starttoks ...))))
+	   

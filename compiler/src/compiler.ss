@@ -1,3 +1,4 @@
+;; This is the core.  Loaded by both the Chez and PLT versions.
 
 ;;======================================  
 (display "Loading main compiler module.  RegionStreams Demo.")
@@ -65,6 +66,8 @@
     classify-names
     annotate-heartbeats
     deglobalize
+    cleanup-token-machine
+ ;;cleanup-token-machine
     ))
 
 
