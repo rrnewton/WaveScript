@@ -102,7 +102,7 @@ native:
 
 
 clean: 
-	rm -f compiled/*.zo
+	rm -f compiled/*.zo _SIM_*
 	rm -rf compiled/native/*
 
 #clean:

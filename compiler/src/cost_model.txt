@@ -15,5 +15,5 @@ either:
 Well let's first think about reasoning over all connection topologies.
 
 
-
+ 
 
