@@ -439,7 +439,7 @@
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
 ;		      tokenbinds))	   
 	   (values '() 
-		   (cons `[,name ,formalexp (lazy-letrec ,constbinds ,entry)];(call ,entry))]
+		   (cons `[,name ,formalexp (let* ,constbinds ,entry)];(call ,entry))]
 			 tokenbinds))]
 
 

@@ -13,7 +13,7 @@ type Const = Int
 type ConstBind = (Id, Expr)
 --type Formal = Id
 type TokHandler = (Token, [Id], Expr)
-type Time = Int
+type Time = Float
 
 data Id = Id String
   deriving (Eq, Show, Read)
@@ -32,19 +32,32 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 		 }
   deriving (Eq, Show, Read)
 
+data Prim = Pamap | Pafold
+	  | Pplus | Pminus | Pmult | Pdiv
+  deriving (Eq, Show, Read)
+
 data Expr = -- Stndard forms:
             Econst Const
 	  | Evar Id
 	  | Elambda [Id] Expr
+	  | Elet [(Id,Expr)] Expr
 	  | Eseq Expr Expr
---	  | Eprimapp (Prim Expr)
+
+	  | Eprimapp Prim [Expr]
+          | Esense
+
             -- Special forms:
 	  | Esocreturn Expr
 	  | Esocfinished	  
-	  | Ereturn Expr
+	  | Ereturn {val :: Expr,
+		     to  :: Token,
+		     via :: Token,
+		     seed :: Expr,
+		     aggr :: Token}
 	  | Erelay (Maybe Token)
 	  | Eemit (Maybe Time) Token [Expr]
 	  | Ecall (Maybe Time) Token [Expr]
+	  | Eactivate Token [Expr]
   deriving (Eq, Show, Read)
 
 
@@ -66,12 +79,12 @@ x = Pgm { consts    = [],
 y = Pgm [] [] [] [] []
 
 
-z = Pgm { consts    = [(Id "woot",Econst 3)],
+{-z = Pgm { consts    = [(Id "woot",Econst 3)],
 	  socconsts = [(Id "foot",Econst 4)],
 	  socpgm    = [],
 	  nodetoks  = [(Token "tok1", [Id "x"], Ereturn (Evar (Id "x")))],
 	  startup   = []
-	}
+	}-}
 
 s = "(Pgm {} " ++ 
     ")"
@@ -95,7 +108,7 @@ doit = do s <- readFile "test.tm";
 --})"
 
 
-a = (Pgm {
+{-a = (Pgm {
   consts = [((Id "result_1"), (Econst 3))],
   socconsts=[],
   socpgm=[(Esocreturn (Evar (Id "result_1"))), Esocfinished],
@@ -107,4 +120,39 @@ a = (Pgm {
      ((Token "global-tree"), [], 
       (Erelay Nothing))],  
   startup=[]
-    })
+    })-}
+
+
+a = (Pgm {
+      consts = [],
+      socconsts=[],
+      socpgm=[(Ecall Nothing (Token "spread-global") [])],
+      nodetoks=[((Token "f_token_tmpworld_7"), [], (Ecall Nothing (Token "m_token_tmpworld_7") [])),
+		((Token "spark-world"), [], (Ecall Nothing (Token "m_token_tmpworld_7") [])),
+		((Token "tmpfunc_8"), [(Id "a_1")], (Elet [((Id "result_4"), (Esense))] (Evar (Id "result_4")))),
+		((Token "m_token_tmpworld_7"), [], (Eactivate (Token "f_token_tmprmap_9") [])),
+		((Token "f_token_tmprmap_9"), [], 
+		 (Eseq (Ecall Nothing (Token "m_token_tmprmap_9") 
+			[(Ecall Nothing (Token "tmpfunc_8") [(Evar (Id "this"))])]) 
+		  (Ecall (Just 10.0) (Token "f_token_tmprmap_9") []))),
+		((Token "tmpfunc_10"), [(Id "a_3"), (Id "b_2")], 
+		 (Elet [((Id "result_5"), 
+			 (Eprimapp Pplus [(Evar (Id "a_3")), (Evar (Id "b_2"))]))]
+		  (Evar (Id "result_5")))),
+		((Token "m_token_tmprmap_9"), [(Id "v")], 
+		 (Ecall Nothing (Token "f_token_result_6") [(Evar (Id "v"))])),
+		((Token "f_token_result_6"), [(Id "v")], 
+		 (Ereturn (Evar (Id "v")) 
+		          (Token "m_token_result_6") 
+		          (Token "global-tree") 
+		          (Econst 0) 
+		          (Token "tmpfunc_10"))),
+		((Token "m_token_result_6"), [(Id "v")], (Esocreturn (Evar (Id "v")))),
+		((Token "leaf-pulsar_tmpworld_7"), [], 
+		 (Eseq (Ecall Nothing (Token "f_token_tmpworld_7") []) 
+		  (Ecall (Just 1.0) (Token "leaf-pulsar_tmpworld_7") []))),
+		((Token "spread-global"), [], 
+		 (Eseq (Eemit Nothing (Token "global-tree") []) (Ecall (Just 1000) (Token "spread-global") []))),
+		((Token "global-tree"), [], (Erelay Nothing))],  
+      startup=[(Token "leaf-pulsar_tmpworld_7"), (Token "spark-world")]
+     })

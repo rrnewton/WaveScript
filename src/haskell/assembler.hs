@@ -16,7 +16,7 @@ import Char
 --import Control.Exception
 import GHC.IOBase
 import IO
---import Data.List
+import Data.List
 
 import TM -- Token Machine language definition
 
@@ -34,7 +34,7 @@ tok_id t = "AM_" ++ (map toUpper (tokname t))
 
 map2 f [] _ = []
 map2 f _ [] = []
-map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb) 
+map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb)
 
 -------------------------------------------------------------------------------
 {- HERES THE EXPRESSION GENERATOR. -}
@@ -43,27 +43,92 @@ map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb)
 -- stuck in the top-level of the module implementation, and a string
 -- that goes within the receive-message handler or wherever.
 -- The 2nd argument is the "arg environment" for bound variables.
-process_expr :: Expr -> [String] -> ([String],String)
-process_expr e args = 
+process_expr :: String -> Expr -> [String] -> ([String],String)
+process_expr indent e args = 
     case e of
     -- Constants restricted to 16 bit numbers for now:
-    Econst c -> ([],"    return "++show c++"\n")
-    Evar id -> ([],"    return "++show id++"\n")
+    Econst c -> ([],indent++show c++"\n")
+    Evar (Id var) -> 
+	case elemIndex var args of
+	-- This just means it's a *let bound* variable.
+	Nothing  -> ([],indent++show var++"\n")
+	Just ind -> ([],indent++"args["++show var++"];\n")
+
     Elambda formals e -> ([],build_fun formals e)
+    Elet binds body ->
+	let (funs1,bodcode)  = process_expr indent body args
+	    (funs2,bindcode) = 
+		foldl (\ (funacc,codeacc) (lhs,rhs) -> 
+		       let (rhsfun,code) = process_expr indent rhs args
+		       in (funacc++rhsfun, 
+			   codeacc++"int16_t lhs = "++code++"\n"))
+		([],[]) binds
+	in (funs1++funs2,
+	    bindcode++bodcode)
+
     Eseq e1 e2 -> 
-	let (a,b) = process_expr e1 args
-	    (x,y) = process_expr e2 args
+	let (a,b) = process_expr indent e1 args
+	    (x,y) = process_expr indent e2 args
 	in (a++x, b++y)	    
+
+    Esense -> ([],"call read_sensor();")
 
     Esocreturn e -> ([],"") 
     Esocfinished  -> ([],"") 
-    Ereturn e -> ([],"") 
+    Ereturn e to via seed aggr -> ([],"") 
     Erelay (Just t) -> ([],"") 
     Erelay Nothing -> ([],"") 
 
-    Eemit mt t exps -> ([],"    TMComm.emit("++tok_id t++");\n")
-    Ecall mt t exps -> ([],"")
+    Eemit (Just time) t exps -> 
+	error "assembler: process_expr.  Can't handle optional time argument to emit."
+    Eemit Nothing t exps -> 
+	([], indent++"call TMComm_"++ tokname t ++
+	     ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);")
 
+    Eactivate t exps -> 
+	([], indent++"call TMComm_"++ tokname t ++
+	     ".emit(TOS_BCAST_ADDR, sizeof(uint16_t), &the_packet);")
+    Ecall mt t exps -> ([],"")
+    _ -> error ("process_expr: unhandled expression!: "++show e)
+
+-- This is just like process_expr but takes a tail-context argument
+-- and makes sure that the "return" statement falls where it should.
+process_tail :: String -> Expr -> [String] -> ([String],String)
+process_tail indent e args = 
+    let (funs,bod) = process_expr indent e args 
+	ret = "return "++ bod 
+    in	
+     (funs,
+      case e of
+        Econst _    -> ret
+        Evar _      -> ret
+        Ecall _ _ _ -> ret
+
+        Elambda _ _ -> error "process_tail: can't handle lambda!"
+
+	Eseq e1 e2 -> 
+	    let (_,b) = process_expr indent e1 args
+		(_,y) = process_tail indent e2 args
+	    in b++y
+
+        -- These should have no return value:
+	Eemit time t exps -> "return void;\n"
+	Erelay time       -> "return void;\n"
+      )
+{-
+    Esocreturn e -> ([],"") 
+    Esocfinished  -> ([],"") 
+    Ereturn e -> ([],"") 
+-}
+
+
+{-foob x = case x of
+	 3 -> 99
+	 4 -> 100
+
+newb = case 3 of
+	 3  4 -> 100
+-}
 
 build_fun formals body = 
     " foo " 
@@ -89,14 +154,14 @@ process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 -- And another string 
 process_handler :: TokHandler -> ([String],String)
 process_handler (t, args, e) = 
-    let (funs,bod) = process_expr e (map (\ (Id x)->x) args) 
+    let (funs,bod) = process_expr "        " e (map (\ (Id x)->x) args) 
     in (funs,
-	"    case "++tok_id t++": \n"++
+	"      case "++tok_id t++": \n"++
         (concat  
-	 (map2 (\ (Id argname) n -> "      // Argument "++show n++" is '"++show argname++"'\n")
+	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
 	 args [0..]))++
 	bod++
-	"    break;\n")
+	"        break;\n")
 
 --  "    int i;\n"++
 {-  "    uint8_t length = msg->length;\n"++
@@ -114,7 +179,7 @@ process_handlers hnds =
 	bods = map (snd . process_handler) hnds
     in
     (concat (map (++"\n") funs))++
-    "\n\n"++
+    "\n  // This is the main token-processing function:\n"++
     "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
     "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
     "    int16_t* args = (int16_t*)(payload->args);\n"++
@@ -169,7 +234,7 @@ build_implementation_header toks =
 build_socfun consts exprs = 
     "  task void socpgm() {\n"++ 
     process_consts consts ++ 
-    (concat (map (\x-> snd (process_expr x [])) exprs)) ++ 
+    (concat (map (\x-> snd (process_expr "    " x [])) exprs)) ++ 
     "  }\n\n" ++
     "  command void start_socpgm() {\n"++ 				       
     "    post socpgm();\n"++
@@ -183,9 +248,12 @@ build_module (Pgm consts socconsts socpgm nodetoks startup) =
     "includes TokenMachineRuntime;\n\n"++
     build_module_header nodetoks ++
     "implementation {\n" ++ 
+    "  TOS_Msg the_packet;\n"++    
+    "\n  // The constant bindings:\n"++
     process_consts consts ++ 
     build_implementation_header nodetoks ++
     process_consts socconsts ++ 
+    "\n  // Token handlers and their helper functions:\n"++
     process_handlers nodetoks ++ 
     build_socfun socconsts socpgm ++
     "}\n"
