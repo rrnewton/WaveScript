@@ -11,6 +11,12 @@
 
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)
+
+         "generic/pass02_remove-unquoted-constant.ss"
+         "generic/pass03_remove-complex-constant.ss"
+         "generic/pass04_uncover-free.ss"
+         "generic/pass05_lift-letrec.ss"
+         
          (all-except "plt/pass07.ss" these-tests test-this)
 	 "plt/tests.ss"
 )

@@ -50,7 +50,7 @@
     remove-complex-constant                         ;;  7
     uncover-free                                    ;; 14
 ;    convert-closure                                 ;; 15
-;    lift-letrec                                     ;; 16
+    lift-letrec                                     ;; 16
 ;    lift-letrec-body                                ;; 22
     ;; VERIFY-CORE
     ))
