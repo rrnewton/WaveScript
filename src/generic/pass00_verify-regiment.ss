@@ -104,8 +104,8 @@
 	     [(eq? infered-type expected-type)
 	      (void)] ;; It's all good
 	     ;; Locations are just lists for the moment!
-;	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
-;	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
+	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
+	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
 
 	     [(and (eq? infered-type 'Region)
 		   (eq? expected-type 'Area))]

@@ -126,9 +126,10 @@
   (repl-builder (lambda () (init-world) (init-graphics))
 		cleanse-world
 		(lambda (x)
-                  (match x
-                    [(precomp ,exp) `(unknown-lang (quote ,exp))]
-                    [,other (run-compiler other)]))
+		  (fluid-let ([pass-names (list-remove-after 'deglobalize pass-names)])
+		    (match x
+			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
+			   [,other (run-compiler other)])))
 		graphical-simulation))
 
 ;(define precomp-graphical-repl

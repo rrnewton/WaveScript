@@ -29,5 +29,8 @@ interface TMComm {
     // NEEDS MORE ARGS:
     command result_t return_home(uint16_t address, uint8_t length, TOS_MsgPtr msg);
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
+
+    
+    //    async command result_t add_msg(TOS_MsgPtr token);     
 }
 
