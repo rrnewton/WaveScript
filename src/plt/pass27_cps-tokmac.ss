@@ -19,11 +19,11 @@
   )
 
 
-    (require pass27_cps-tokmac)
+;(require pass27_cps-tokmac)
 
-(cps-tokmac '(cps-tokmac-lang '(program (bindings) (nodepgm (tokens)))))
+#;(cps-tokmac '(cps-tokmac-lang '(program (bindings) (nodepgm (tokens)))))
 
-(cps-tokmac
+#;(cps-tokmac
  '(cps-tokmac-lang
    '(program
      (bindings )
@@ -34,7 +34,7 @@
 
 
 
-(cps-tokmac
+#;(cps-tokmac
  '(cps-tokmac-lang
    '(program
      (bindings )

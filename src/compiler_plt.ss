@@ -43,12 +43,13 @@
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
 
 (all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
+(all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
 
 ;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
 ;(all-except "plt/pass25_inline.ss" these-tests test-this)
 ;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
 
-;;;(all-except "plt/pass27_cps-tokmac.ss" these-tests test-this)
+(all-except "plt/pass27_cps-tokmac.ss" these-tests test-this)
 
 ;;(all-except "plt/pass29_verify-token-machine.ss" these-tests test-this)
 (all-except "plt/pass30_haskellize-tokmac.ss" these-tests test-this)
@@ -91,23 +92,6 @@
 ; (all-except "plt/simulator_alpha.ss" these-tests test-this)
  (all-except "plt/alpha_lib.ss" these-tests test-this)
  )
-
-
-;(disp "UNION" union (union '(a b c) '(a d c)))
-
-'(define program 
-   (lambda args (car (reverse args))))
-
-'(define base-language 
-   (lambda args (eval (car (reverse args)))))
-;(define base-language 
-;  (lambda args
-;    (for-each eval args)))
-
-;(disp "FOOB DONE REQS")
-;(require "plt/language-mechanism.ss")
-;(disp "DOEN LANG")
-
 ;  (require "plt/demo_display.ss")
 
 ;; Get those module bound identifiers out in the open!
@@ -170,40 +154,7 @@
 
 (load/use-compiled "generic/repl.ss")
 
-;; <TODO> Make stream version for this:
-(define text-repl  (repl-builder void void run-compiler run-simulation))
-'(define precomp-repl (repl-builder 
-		      void  ;; Startup
-		      void  ;; Cleanse
-		      (lambda (x) x) ;; Compiler
-		      run-simulation-stream))
-;(define precomp-graphical-repl
-;  (repl-builder (lambda () (init-world) (init-graphics))
-;		cleanse-world
-;		(lambda (x) x) ;; Compiler ;run-compiler
-;		graphical-simulation))
 
-
-(define graphical-repl
-  (repl-builder (lambda () (init-world) (init-graphics))
-		cleanse-world
-		(lambda (x)
-		  (fluid-let ([pass-names (list-remove-after 'deglobalize pass-names)])
-		    (match x
-			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
-			   [,other (run-compiler other)])))
-		graphical-simulation))
-
-(define precomp-graphical-repl
-  (repl-builder (lambda () (init-world) (init-graphics))
-		cleanse-world
-		(lambda (x)
-		  (fluid-let ([pass-names '(cleanup-token-machine)])
-		    (match x
-			   [(precomp ,exp) `(unknown-lang (quote ,exp))]
-			   [,other (run-compiler other)])))
-		graphical-simulation))
-(define pgr precomp-graphical-repl) ;; shorthand
 
 ;; From lang05.ss
 ;; Doesn't work:
@@ -223,9 +174,6 @@
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
 
-;(cleanse-world)
-(define simulate run-simulation)
-;(eval (cadr (last testssim)))
 
 
 (define (load_loader)

@@ -15,16 +15,16 @@
   (provide (all-defined))
   )
 
-   (require pass21_cleanup-token-machine)
+ ;(require pass21_cleanup-token-machine)
    
 ;   (cleanup-token-machine '(tokens))
    
 ;(test21)  
 
 
-(require "helpers.ss" "iu-match.ss")
+;(.require "helpers.ss" "iu-match.ss")
 
-(define p (cleanup-token-machine 
+#;(define p (cleanup-token-machine 
       '(deglobalize-lang 
 	'(program
 	  (bindings )
@@ -36,7 +36,7 @@
 	   (startup )
 	   )))))
 
-   (define f (lambda (p)
+ #;  (define f (lambda (p)
 	(match p 
 	  [(cleanup-token-machine-lang
 	    '(program (bindings )
@@ -46,6 +46,6 @@
 	   (list tok1 body (deep-member? '(fun1) body)
 		(deep-member? '(fun2) body)))])))
 
-   (f p)
+;   (f p)
    
-   (deep-member? '(foo) '(bar (foo) zoo))
+;   (deep-member? '(foo) '(bar (foo) zoo))

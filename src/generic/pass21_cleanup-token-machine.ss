@@ -182,7 +182,7 @@
 	     ;; Static form
 	     [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
 	     ;; Dynamic form
-	     [(tok ,t ,[e]) (guard (number? n)) `(tok ,t ,e)]
+	     [(tok ,t ,[e]) `(tok ,t ,e)]
 
 	     [,var (guard (symbol? var))
 		   (DEBUGMODE 

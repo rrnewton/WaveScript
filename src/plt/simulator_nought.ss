@@ -5,18 +5,18 @@
            (lib "include.ss")
 	   (lib "pretty.ss")          
            ;; NO SLIB:
-;           (lib "load.ss" "slibinit")
+           ;           (lib "load.ss" "slibinit")
            (lib "compat.ss") ;; gives us define-structure
            )
   (require 
-           "constants.ss"
-           (all-except "helpers.ss" id flush-output-port)
-           (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
-;           (lib "9.ss" "srfi")
- ;          "engine.ss"
-           (all-except "flat_threads.ss" test-this these-tests)
-           (all-except "tsort.ss" test-this these-tests)
-           )
+   "constants.ss"
+   (all-except "helpers.ss" id flush-output-port)
+   (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
+   ;           (lib "9.ss" "srfi")
+   ;          "engine.ss"
+   (all-except "flat_threads.ss" test-this these-tests)
+   (all-except "tsort.ss" test-this these-tests)
+   )
   
   ;; This exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
@@ -25,10 +25,10 @@
 	   (all-from "helpers.ss")
 	   (all-from "flat_threads.ss") 
 	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
-;	   yield-thread last
+           ;	   yield-thread last
            (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
-
+  
   
   (define (vector-copy v)
     (let ((newv (make-vector (vector-length v))))
@@ -36,11 +36,11 @@
         (if (>= n 0)
             (begin (vector-set! newv n (vector-ref v n))
                    (loop (sub1 n)))))))
-
+  
   (define (make-default-hash-table) (make-hash-table))
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
   (define hashtab-set! hash-table-put!)
-
+  
   ;; These need to be defined for the module system to be happy.
   (define soc-return 'not-bound-yet-in-plt)
   (define soc-finished 'not-bound-yet-in-plt)
@@ -66,7 +66,41 @@
 			     (simobject-local-recv-messages s))]
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
-              )
+        )
+  
+  
+;; <TODO> Make stream version for this:
+;(define text-repl  (repl-builder void void run-compiler run-simulation))
+'(define precomp-repl (repl-builder 
+		      void  ;; Startup
+		      void  ;; Cleanse
+		      (lambda (x) x) ;; Compiler
+		      run-simulation-stream))
+;(define precomp-graphical-repl
+;  (repl-builder (lambda () (init-world) (init-graphics))
+;		cleanse-world
+;		(lambda (x) x) ;; Compiler ;run-compiler
+;		graphical-simulation))
+  
+  (define graphical-repl
+    (repl-builder (lambda () (init-world) (init-graphics))
+                  cleanse-world
+                  (lambda (x)
+                    (fluid-let ([pass-names (list-remove-after 'deglobalize pass-names)])
+                      (match x
+                        [(precomp ,exp) `(unknown-lang (quote ,exp))]
+                        [,other (run-compiler other)])))
+                  graphical-simulation))  
+  (define precomp-graphical-repl
+    (repl-builder (lambda () (init-world) (init-graphics))
+                  cleanse-world
+                  (lambda (x)
+                    (fluid-let ([pass-names '(cleanup-token-machine)])
+                      (match x
+                        [(precomp ,exp) `(unknown-lang (quote ,exp))]
+                        [,other (run-compiler other)])))
+                  graphical-simulation))
+  (define pgr precomp-graphical-repl) ;; shorthand
   )
 
 ;(require simulator_nought);
