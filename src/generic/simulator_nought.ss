@@ -34,10 +34,10 @@
 ;; These are the virtual coordinate bounds of the world.
 (define world-xbound 60)
 (define world-ybound 60)
-(define radius 10) ;; And the comm radius.
-(define numprocs 50) ;; And the total # processors.
+(define radius 30) ;; And the comm radius.
+(define numprocs 10) ;; And the total # processors.
 
-;; This counts total messages *received* (not sent).
+;; This counts total messages sent.
 ;;(define total-messages 0)
 ;; Can't do this here because of the plt module system.
 
@@ -47,6 +47,10 @@
 ;; Incoming is a list of messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 (define-structure (simobject node incoming redraw gobj))
+
+;; This record holds the info that the token cache needs to maintain
+;; per each token name.
+(define-structure (cache-entry token parent count args))
 
 (define (random-node) 
   (make-node 
@@ -66,6 +70,14 @@
 
 (define structure-copy  vector-copy)
 
+;; TODO, returns all the nodes in the graph that are connected to the
+;; given simobject.  Gonna use this for unit testing oracles.
+(define (all-connected simob)
+  '())
+
+
+;; This generates the default, random topology: 
+;; (There are more topologies in "network_topologies.ss"
 ;;========================================
 ;; After the start of the program this doesn't change:
 (define graph 
@@ -82,13 +94,14 @@
 				    seed)))
 	       seed))
     seed))
+
+(define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f)) g))
+(define all-objs (map car object-graph))
+
 ;; Nor does this:
-(define object-graph (graph-map (lambda (nd) (make-simobject nd '() #f #f)) graph))
+(define object-graph (make-object-graph 
 (define all-objs (map car object-graph))
 ;;========================================
-
-
-;(list-get-radom 
 
 
 #;(define (draw)
@@ -116,16 +129,37 @@
   (match stmt
 	 [(call ,rator ,rand* ...)	  
 	  ;(error 'process-statement "call not supported from SOC")] 
-	  `(handler ',rator ',rand*)]
+	  `(handler #f #f ',rator ',rand*)]
 	 [(flood ,tok) `(flood (quote ,tok))]
-	 [(emit ,opera ...)
-	  `(emit (quote ,(car opera)) ,@(cdr opera))]
-	 
+	 [(emit ,opera ...) 
+	  ;; This is an original emission, and should get a count of 0.
+	  `(sim-emit (quote ,(car opera)) ,(cdr opera) 0)]
+
+	 [(dist) `(begin 
+		    ,(DEBUGMODE '(if (not this-message)
+				     (error 'simulator_nought.process-statement 
+					    "broken"))a)
+		    (if (cache-entry-count this-message)
+		      (cache-entry-count this-message)
+		      (error 'simulator_nought.process-statement:dist
+			     "inside simulator, (dist) is broken!")))]
+	 [(dist tok) `(let ((entry (hashtab-get token-cache ',tok)))
+			(if (and entry (cache-entry-count entry))
+			    (cache-entry-count this-message)
+			    (error 'simulator_nought.process-statement:dist
+				   "inside simulator (dist ~s) but ~s has not been received!")))]
+	 	  
 	 [(relay)
 	  `(begin 
 	     ,(DEBUGMODE '(if (not this-message) 
 			      (error 'inside-node-prog "this-message was #f")))
-	     (emit (car this-message) (cadr this-message)))]
+	     (if (not (cache-entry-parent this-message))
+		 (error 'simulator_nought.relay 
+			"inside simulator, can't relay a message that was~a"
+			" sent by a local 'call' rather than an 'emit'"))
+	     ;; This is a replicated emission, and should copy the existing count:
+	     (sim-emit (cache-entry-token this-message) (cache-entry-args this-message) 
+		       (cache-entry-count this-message)))]
 	 
 	 [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
 
@@ -161,24 +195,34 @@
 ;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
 				   ,@(map process-statement expr*))]]))
 		tbinds)]
-	[handler `(lambda (msg args)
-		    ;; Count total messages received.
-		    (set! total-messages (add1 total-messages))
-
-;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " msg args)
+	[handler `(lambda (parent count tok args)
+;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " tok args)
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
 		    ;; This refers to the token cache for this processor:
-		    (hashtab-set! token-cache msg args)
-;		    ,(if (null? tbinds) '(void)
-		    (fluid-let ((this-message (list msg args)))
-		      (case msg
-			,@(map (lambda (tok)
-				 `[(,tok) 
-				   (apply ,tok args)])
-			       (map car tbinds))
-			[else (error 'node_program "Unknown message: ~s" msg)]
-			)))])
+		    (let ([entry (hashtab-get token-cache tok)]
+			  [handle-it (lambda (newentry)
+				       (fluid-let ((this-message newentry))
+					 (case tok
+					   ,@(map (lambda (tok)
+						    `[(,tok) 
+						      (apply ,tok args)])
+						  (map car tbinds))
+					   [else (error 'node_program "Unknown message: ~s" tok)]
+					   )))])
+
+		      (if (not parent) ;; This is a local call.
+			  (handle-it (make-cache-entry tok #f #f args))
+			  ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
+			  ;; BUT! No premature optimization.		      
+			  (if (or (not entry) ;; There's no entry for that token name.
+				  (= 0 count)
+				  (< count (cache-entry-count entry))) ;; This could be <=, think about it. TODO
+			      (let ((newentry (make-cache-entry tok parent (add1 count) args)))
+				(hashtab-set! token-cache tok newentry)
+				(handle-it newentry))
+			      (disp "Ignored message " tok " to " (node-id (simobject-node this)))) ;; fizzle
+			  )))])
     `(letrec (,@binds [handler ,handler] [this-message #f]) ,expr)))
 
 
@@ -229,15 +273,17 @@
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
-	   [define emit (lambda (t . m)
-;		   (disp "  " (list 'emit t m))
-		   (let ((msg (if (null? m) '() (car m))))
-		     (map (lambda (nd) (sendmsg (list t msg) nd))
-			  (neighbors this))))]
+	   [define sim-emit (lambda (t m count)
+		    ;; Count total messages sent.
+		    (set! total-messages (add1 total-messages))
+		    (newline)(disp "  " (list 'sim-emit t m count))
+		   (map (lambda (nd) (sendmsg (make-cache-entry this count t m) nd))
+			(neighbors this)))]
 	   [define flood (lambda (t . m)
+		    ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 ;		    (disp (list "FLOODING" t m))
 		    (let ((msg (if (null? m) '() (car m))))
-		      (map (lambda (nd) (sendmsg (list t msg) nd))
+		      (map (lambda (nd) (sendmsg (make-cache-entry this 0 t m) nd))
 			   all-objs)))])]
 
        [socprog
@@ -274,14 +320,14 @@
 				(list-remove-last! incoming))
 			    
 			    (DEBUGMODE
-			     (if (or (not (list? msg)) (< (length msg) 2))
+			     (if (not (cache-entry? msg))
 				 (error 'node-handler 
-					"invalid message to node, should be a list ~a~s all incoming msgs were ~s"
-					"containing the token-name, and the message data: "
+					"invalid message to node, should be a cache-entry: ~s ~nall messages: ~s"
 					msg incoming)))
-			    (handler (car msg) (cadr msg)))
-			  )))
-		 ))))])
+			    (handler (cache-entry-token msg)
+				     (cache-entry-parent msg)
+				     (cache-entry-count msg)
+				     (cache-entry-args msg))))))))))])
 
 ;       (disp "Socprog")
 ;       (pretty-print socprog)

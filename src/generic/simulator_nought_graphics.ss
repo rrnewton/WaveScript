@@ -17,8 +17,8 @@
 
 ;;===============================================================================
 
-      (define edge-table (make-default-hash-table))
-      (define proc-table (make-default-hash-table))
+(define edge-table (make-default-hash-table))
+(define proc-table (make-default-hash-table))
 
 ;; This assumes a static comm graph for now:
 ;; What's more, this is lame and assumes that the *allocated object-graph*
@@ -32,7 +32,7 @@
 (define graphical-simulation 
   (lambda (funcs . timeout)
     ;; First, set up a global counter for communication cost:
-    ;; (This is defined with eval because otherwise the module system gets angry.
+    ;; (This is defined with eval because otherwise the module system gets angrye
     (eval '(define total-messages 0))
     ;; These "edges" are distinct objects for each comm link (directionally):
     (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
@@ -156,6 +156,12 @@
 ;    ,@(include "simulator_nought.tests")
   ))
 
+(set! these-tests
+  `([ "Run Spread lights gradually..."
+      (simulate
+       (build-simulation (compile-simulate-nought ',example-nodal-prog2))
+       5.0)
+      unspecified]))
 
 (define (wrap-def-simulate test)
   `(begin (define (simulate . args)
