@@ -65,10 +65,10 @@
     verify-core
     classify-names
     add-heartbeats
-;    add-control-flow
-;    add-places
+    add-control-flow
+    add-places
 ;    add-routing
-;    analyze-places
+    analyze-places
 ;    deglobalize
     
 ;    cleanup-token-machine

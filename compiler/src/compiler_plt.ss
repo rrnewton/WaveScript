@@ -28,7 +28,7 @@
          (all-except "plt/pass09_remove-complex-opera.ss" these-tests test-this)
          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
-;         (all-except "plt/pass12_add-heartbeats.ss" )
+         (all-except "plt/pass12_add-heartbeats.ss" )
 ;         (all-except "plt/pass13_add-control-flow.ss")
 ;         (all-except "plt/pass14_add-places.ss" these-tests test-this)
 ;         (all-except "plt/pass15_add-control-flow.ss" these-tests test-this)

@@ -29,10 +29,8 @@
 		(printf "~nSimulating....~n")	   
 		(cleanse-world)
 		(let ([result (run converted 2.0)])
-		  (if (not (stream? result))
-		      
-		      (begin (disp "result not a stream:" result)
-			     result)
+		  (if (not (stream? result))		     
+		      result
 		      (let streamloop ([i 0] [stream result])
 			(cond			 
 			 [(> i 10) (printf "~n That's enough.~n")]

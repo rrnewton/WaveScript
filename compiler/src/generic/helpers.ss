@@ -1162,6 +1162,13 @@
        [(equal? x (car ls)) (reverse (cons (car ls) acc))]
        [else (loop (cdr ls) (cons (car ls) acc))]))))	
 
+(define list-remove-first
+  (lambda (x lst)
+    (cond
+      [(null? lst) '()]
+      [(equal? x (car lst)) (cdr lst)]
+      [else (cons (car lst) (list-remove-first x (cdr lst)))])))
+
 #;(define timeeval
   (lambda (x)
     (let ([start (real-time)])

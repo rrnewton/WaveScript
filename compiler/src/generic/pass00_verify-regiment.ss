@@ -29,6 +29,45 @@
 (define verify-regiment
   (let ()
     
+    ;; Infers cheap and dirty types for some expressions, returns #f otherwise.
+    (define (infer-type expr env type-env)
+          [,const (guard (constant? const)) 
+]		      		  
+          [(quote ,datum)
+	   (guard (not (memq 'quote env)) (datum? datum))
+	   (cond
+	    [(number? const) 'Number]
+	    [(list? const) 'List])
+	   `(quote ,datum)]
+          [,var (guard (symbol? var))
+            (if (and (not (memq var env))
+		     (not (regiment-primitive? var)))
+                (error 'verify-regiment (format "unbound variable: ~a~n" var))
+                var)]
+      
+          [(,prim ,[rand*] ...)
+           (guard (not (memq prim env))
+            (regiment-primitive? prim))
+	   ;      (check-primitive-numargs prim rand*)
+
+	   (for-each type-check-arg 
+		     (cdr (get-primitive-entry prim))
+		     rand*)
+	   `(,prim ,rand* ...)]
+
+      )
+
+    (define type-check-arg 
+      (traced-lambda type-check-arg (type arg)
+	 (match type
+		[List (guard (list? arg)
+
+		;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
+;;   Function, Number, Float, Bool, Object
+;;   List
+		     
+      
+    
     (define process-expr
       (lambda (expr env)
 					;        (disp "processing expr" expr env)
@@ -73,6 +112,10 @@
             (not (memq prim env))
             (regiment-primitive? prim))
 	   ;      (check-primitive-numargs prim rand*)
+
+	   (for-each type-check-arg 
+		     (cdr (get-primitive-entry prim))
+		     rand*)
 	   `(,prim ,rand* ...)]
           
           [,unmatched

@@ -134,11 +134,13 @@
      (printf "Running compiled program: ~n")
      (parameterize ([print-length 3] [print-level 2] [pretty-initial-indent 10])
 		   (pretty-print x))
-     (fluid-let ([print-length 10])
+     (parameterize ([print-length 10] [print-level 2])
        (let ([result (eval x)])
 	 (printf "~n Returned: ~s~n~n" result)
 	 (if (list? result)
-	     (printf "Length: ~s~n" (length result))))))))
+	     (printf "Length: ~s~n" (length result)))
+	 result))
+     )))
 
 ;; ???????
 (define precomp-graphical-repl (repl-builder 
