@@ -201,9 +201,16 @@
       [(anchor-at)
        `([,tokname ()
 	  ;; At each formation click, we output this node.
-	  (soc-return (this))])]
+	  (soc-return '(ANCH ,(this)))])]
+      [(circle-at)     
+       `([,tokname 
+	  ()
+	  ;; At each formation click, we output this circle: 
+	  ;;   For now this just lists the tokname, this should be the
+	  ;; membership tokname for the circle.  Later we'll put some
+	  ;; other hack in.
+	  (soc-return '(CIRC ,tokname))])]
       
-
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
 		   prim)]
@@ -265,7 +272,7 @@
   (let ()
 
     (lambda (prog)
-      (pretty-print prog) (newline)
+;      (pretty-print prog) (newline)
       (match prog
         [(,input-language (quote (program (props ,table ...) (lazy-letrec ,binds ,fin))))
 	 ;; This is essentially a global constant for the duration of compilation:
