@@ -166,16 +166,6 @@
 ;    ,@(include "simulator_nought.tests")
   ))
 
-(set! these-tests
-  `([ "Simple test"
-    (begin (init-world)
-	   (simulate
-	    (build-simulation 
-	     (compile-simulate-nought 
-	      ',example))
-	    1.7))
-    unspecified])
-  )
 
 (define (wrap-def-simulate test)
   `(begin (define (simulate . args)
@@ -246,3 +236,17 @@
 	      (build-simulation 
 	       (csn example-nodal-prog1))
 	      5.0)))
+
+(define (ttt)
+  (run-simulation
+   (build-simulation 
+    (compile-simulate-nought 
+     example))
+   1.7))
+(set! these-tests
+  `([ "Simple test"
+    (begin (init-world)
+;	   (simulate
+	   (ttt))
+    unspecified])
+  )

@@ -36,5 +36,5 @@
 
   )
 
-(require simulator_nought_graphics)
+;(require simulator_nought_graphics)
 ;(test-this)

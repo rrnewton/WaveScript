@@ -20,9 +20,35 @@
 
 ;; DEPENDS: This file requires the "flat_threads.ss" interface, which
 ;; is a simple interface over engines or threads.
-;;============================================================
 
-(define (id x) x)
+
+;===============================================================================
+;; Some CHANGES (not keeping a complete log):
+
+
+;; NOT FINISHED:
+
+;; [2004.06.09] (soc-return v) Will make v *one of* the return values (a
+;; whole stream of them can be provided). (finished) will terminate
+;; the computation if there has been a returned value, 
+;; ???? WHAT IF ITS NOT SOC CALLING? ????
+
+;;otherwise it
+;; will just terminate the thread for the processor
+
+
+
+;;[2004.06.09] RRN: Adding implicit 'I-am-SOC' boolean variable for
+;; use by node programs.. This is only used by generated code, or my
+;; handwritten test cases.  Along with it is a SOC-processor binding
+;; which is bound to the simobject for the SOC.
+
+
+;===============================================================================
+;; GLOBAL VARIABLES AND TYPES:
+
+;; NOTE!  The simulator dynamically defines top level variables:
+;;  total-messages, soc-return, finished, stop-nodes
 
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
@@ -34,14 +60,13 @@
 ;; These are the virtual coordinate bounds of the world.
 (define world-xbound 60)
 (define world-ybound 60)
-(define radius 10) ;; And the comm radius.
-(define numprocs 200) ;; And the total # processors.
+(define radius 20) ;; And the comm radius.
+(define numprocs 20) ;; And the total # processors.
 
 ;; This counts total messages sent.
 ;;(define total-messages 0)
 ;; Can't do this here because of the plt module system.
 
-;;========================================
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
@@ -51,6 +76,10 @@
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
 (define-structure (cache-entry token parent count args))
+
+;;========================================
+
+(define (id x) x)
 
 (define (random-node) 
   (make-node 
@@ -193,6 +222,7 @@
       (process-expr stmt))))
 
 (define (process-binds binds expr)
+  (disp "processbinds" binds expr)
   (let* ([graph (map (lambda (bind)
 		       (cons (car bind)
 			     (free-vars (cadr bind))))
@@ -261,6 +291,7 @@
 (define np 0)
 (define sp 0)
 
+
 ;; Takes: a program in the language of pass10_deglobalize
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
 (define (compile-simulate-nought prog)
@@ -309,49 +340,60 @@
 			   all-objs)))])]
 
        [socprog
-	 `(lambda (this object-graph all-objs)
+	 `(lambda (SOC-processor this object-graph all-objs)
 ;	    (printf "CALLING SocProg: ~s~n" this)
-	    (let () ,@generic-defs
-		 ,(process-binds nodebinds
-		   (process-binds socbinds
-		     `(begin ,@(map process-statement 
-				    socstmts)
-			     'soc_finished)))))]
-
+	    (let ([I-am-SOC #t]) 
+	      ,@generic-defs
+	      ,(process-binds nodebinds
+			      (process-binds socbinds
+					     `(begin ,@(map process-statement 
+							    socstmts)
+						     'soc_finished)))))]
+       
        [nodeprog
-	`(lambda (this object-graph all-objs)	   
+	`(lambda (SOC-processor this object-graph all-objs)
 ;	    (printf (format "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f)))
-	    (let () ,@generic-defs	      
+
+	   ;; This is a little weird, but even the node program
+	   ;; running on the SOC has to know that it's physically on
+	   ;; the SOC:
+	    (let ([I-am-SOC (eq? this SOC-processor)])
+	      ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
 		 nodetoks
 		 `(begin 
+		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
+		    ;; Call all the starting tokens with no arguments:
 		   ,@(map list starttoks)
-		    (let loop ([incoming (simobject-incoming this)])
-		      (if (null? incoming)
-			  ;; No good way to wait or stop the engine execution?
-			  (begin (yield-thread)
-				 (loop (simobject-incoming this)))
-			  
-			  ;; This might introduce message loss (because of no
-			  ;; semaphores) but I don't care:					
-			  (let ((msg (last incoming)))
-			    ;; Pop that message off:
-			    (if (null? (cdr incoming))
-				(set-simobject-incoming! this '())
-				(list-remove-last! incoming))
-			    
-			    (DEBUGMODE
-			     (if (not (cache-entry? msg))
-				 (error 'node-handler 
-					"invalid message to node, should be a cache-entry: ~s ~nall messages: ~s"
-					msg incoming)))
-			    (handler (cache-entry-token msg)
-				     (cache-entry-parent msg)
-				     (cache-entry-count msg)
-				     (cache-entry-args msg))))))))))])
-
+		   (let main-node-loop ([incoming (simobject-incoming this)])		     
+		     (cond
+		      [stop-nodes 'node-stopped]
+		      [(null? incoming)
+		       ;; No good way to wait or stop the engine execution?
+		       (yield-thread)
+		       (main-node-loop (simobject-incoming this))]
+		      [else
+		       ;; This might introduce message loss (because of no
+		       ;; semaphores) but I don't care:					
+		       (let ((msg (last incoming)))
+			 ;; Pop that message off:
+			 (if (null? (cdr incoming))
+			     (set-simobject-incoming! this '())
+			     (list-remove-last! incoming))
+			 
+			 (DEBUGMODE
+			  (if (not (cache-entry? msg))
+			      (error 'node-handler 
+				     "invalid message to node, should be a cache-entry: ~s ~nall messages: ~s"
+				     msg incoming)))
+			 (handler (cache-entry-token msg)
+				  (cache-entry-parent msg)
+				  (cache-entry-count msg)
+				  (cache-entry-args msg)))])
+		     ))))))])
+       
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
 ;       (newline)
@@ -370,14 +412,14 @@
   (let ([socprog (car progs)]
 	[nodeprog (cadr progs)])
     (let ([socfun (eval socprog)]
-	  [nodefun (eval nodeprog)])
+	  [nodefun (eval nodeprog)]
+	  [socnode (car all-objs)])
       (vector 
-       (lambda () (socfun (car all-objs)
-			  object-graph all-objs))
+       (lambda () (socfun socnode socnode object-graph all-objs))
        (map (lambda (nd) 
 	      (lambda () 
-		(nodefun nd object-graph all-objs)))
-	    all-objs))      
+		(nodefun socnode nd object-graph all-objs)))
+	    all-objs))
       )))
 
 ;; This is the "language definition" which will use the compiler nd
@@ -389,7 +431,16 @@
 ;;===============================================================================
 
 (define (run-simulation thunks . timeout)
-  (eval '(define total-messages 0))
+  (disp "running sims" soc-return finished )
+  (eval '(begin 
+	   (define total-messages 0)
+	   ;; This is a global flag which can be toggled to shut down all the
+	   ;; running processors.
+	   (define stop-nodes #f)	   
+	   ;; Define global bindings for these so that we can do fluid-let on them.
+	   (define soc-return 'unbound-right-now)
+	   (define finished 'unbound-right-now)))
+  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]
 	[display_engine
@@ -405,13 +456,26 @@
 	     (loop)))])
     (let ([thunks (if (simulator-output-text)
 		       (cons display_engine (cons soceng nodeengs))
-		       (cons soceng nodeengs))])      
+		       (cons soceng nodeengs))]				       
+	  [return-vals '()]) ;; Here we accumulate returned values from the SOC
 
-      (if (null? timeout)
-	  (run-flat-threads thunks)
-	  (run-flat-threads thunks (car timeout))
-	  ))))
-
+      ;; Kinda lame to use fluid-let here, but we don't have the
+      ;; relevent continuation at the time we build the thunks.
+      (fluid-let (
+		  ;[soc-return (lambda (x) 
+		;		(disp "CALLING SOCRETURN")
+		;		(set! return-vals (cons x return-vals)))]
+		  [soc-return (lambda (x)
+				(set! stop-nodes #t))]
+		  [finished (lambda () 
+			      (disp "CALLING finished" return-vals)
+			      (exit-sim return-vals))])
+	(disp "in that fluid" soc-return finished return-vals)
+	(let ([result (if (null? timeout)
+			  (run-flat-threads thunks)
+			  (run-flat-threads thunks (car timeout)))])
+	  returned-vals
+	  )))))))
 
 ;;===============================================================================
 
@@ -512,3 +576,10 @@
 ;(dsis g ((eval f) a b c))
 (define (g) (run-simulation (tt) .5))
 
+
+(define (ttt)
+  (run-simulation
+   (build-simulation 
+    (compile-simulate-nought 
+     example))
+   1.7))

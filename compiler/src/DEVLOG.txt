@@ -25,3 +25,9 @@ get an actual meaningful display of it up.
   17:30: Yay! Ok, for the first time runnning a little token-machine
 with graphics!
 
+[2004.06.09] {How to return values?}
+ 9:47am:   Ok, I'm trying to tie together the compiler and the
+graphical simulator.  Right now I'm trying to figure out how
+*returning values* should work.  Especially since almost all the
+return values will be streams.
+

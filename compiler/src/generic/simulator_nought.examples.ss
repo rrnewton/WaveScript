@@ -56,9 +56,9 @@
 
 (define example
   '(program
-    (bindings ((result_2 '3)))
-    (socpgm (bindings ()) result_2)
-    (nodepgm (tokens ()) (startup (result_2)))))
+    (bindings (result_2 '3))
+    (socpgm (bindings ) (soc-return result_2) (finished))
+    (nodepgm (tokens ) (startup ))))
 
 ;; This program floods the network with a token, then elects a leader
 ;; near a point, finally creating a gradient from there.
