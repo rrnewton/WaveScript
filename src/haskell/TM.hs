@@ -43,6 +43,8 @@ data Expr = -- Stndard forms:
 	  | Elet [(Id,Expr)] Expr
 	  | Eseq Expr Expr
 
+          | Eif Expr Expr Expr
+
 	  | Eprimapp Prim [Expr]
           | Esense
 
