@@ -521,42 +521,7 @@
 ;; remote, and timed messages.
 
 
-(define (destructure-tokbind tbind)  
-
-  (define (process-stored s)
-    (match s
-      [(,v ,e) `(,v ,e)]
-      [,v `(,v '#f)]))
-
-  (define (process-bods x)
-    (match x
-      [((stored ,s ...) (bindings ,b ...) ,bods ...)
-       (values (map process-stored s)
-	       b
-	       (make-begin `((begin ,bods ...))))]
-
-      [((bindings ,b ...) (stored ,s ...) ,bods ...)
-       (values (map process-stored s)
-	       b
-	       (make-begin `((begin ,bods ...))))]
-      [((stored ,s ...) ,bods ...)
-       (values (map process-stored s)
-	       '()
-	       (make-begin `((begin ,bods ...))))]
-      [((bindings ,b ...) ,bods ...)
-       (values '() b
-	       (make-begin `((begin ,bods ...))))]
-      [,bods 
-       (values '() '()
-	       (make-begin `((begin ,bods ...))))]))
-      
-  (match tbind
-    [(,t (,a ...) ,bds ...)
-     (mvlet ([(stored bindings body) (process-bods bds)])
-	    (values t #f a stored bindings body))]
-    [(,t ,i (,a ...) ,bds ...)
-     (mvlet ([(stored bindings body) (process-bods bds)])
-	    (values t i a stored bindings body))]))
+;; [2005.03.28]  Moved destructure-tokbind to helpers.ss
 
 
 ;; Takes token bindings, returns compiled bindings

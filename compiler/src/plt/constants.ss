@@ -18,6 +18,8 @@
 	 
 	 return-window-size
 
+	 DEFAULT_SUBTOK DEFAULT_SUBTOK_VAR
+
          RADIO_DELAY PROCESSING_TIME
          
 	 )

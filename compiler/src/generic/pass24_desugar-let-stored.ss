@@ -59,50 +59,98 @@
 ;;;                | <GExpr>
 
 
+(define desugar-let-stored
+  (let ()
+
+(define (free-vars e)
+  (match e
+    [,const (guard (constant? const)) '()]
+    [(quote ,const) '()]
+    [,var (guard (symbol? var)) (list var)]
+    [(tok ,tok ,[expr]) expr]
+    [(ext-ref ,tok ,var) '()]
+    [(ext-set! ,tok ,var ,[expr]) expr]
+    [(begin ,[xs] ...) (apply append xs)]
+    [(if ,[test] ,[conseq] ,[altern]) (append test conseq altern)]
+    [(let ( (,lhs ,[rhs])) ,[body])
+     (append rhs (remq lhs body))]
+    [(leds ,what ,which) '()]
+    [(,prim ,[rands] ...) 
+	 (guard (or (token-machine-primitive? prim)
+		    (basic-primitive? prim)))     
+	 rands]
+    [(,[rator] ,[rands] ...) `(apply append rator rands)]
+    [,otherwise
+     (error 'cps-tokmac:freevars 
+	    "bad expression: ~s" otherwise)]))
 
 
+(define process-expr 
+  (lambda (env )
+    (lambda (expr)
+      (match expr
+	[(quote ,const)                    (values () `(quote ,const))]
+	[,num (guard (number? num))        (values () num)]
+	[(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
+	[(tok ,t ,[e]) (guard (number? n)) (values () `(tok ,t ,e))]
+	[,var (guard (symbol? var))        (values () var)]
+	[(begin ,[st xs] ...)                 
+	 (values (apply append st) `(begin ,xs ...))]
+	[(if ,[test] ,[conseq] ,[altern])  
+	 (values (append test conseq altern) 
+		 `(if ,test ,conseq ,altern))]
+	[(let ([,lhs ,[rst rhs]]) ,body)
+	 (mvlet ([(bst newbod) ((process-expr (cons lhs env) ) body)])
+	    (values (append bst rst)
+		    `(let ([,lhs ,rhs]) ,newbod)))]
+	[(,call-style ,[st* args*] ...)
+	 (guard (memq call-style '(call timed_call)))
+	 (values (apply append st*)
+		 `(,call-style ,args* ...))]
+
+	;; The semantics of let-stored are that the first time the
+	;; expression is executed (and only the first), the RHS is
+	;; evaluated and stored.
+	[(let-stored ([,lhs ,[rst rhs]]) ,body)
+	 `(let ([lhs (void)])
+	    (if ____
+		(set! lhs ,rhs))
+	    ,((process-expr (cons lhs env)) body))]
+	
+	[(leds ,what ,which) (values () `(leds ,what ,which))]
+	[(,prim ,[rst* rands] ...)
+	 (guard (or (token-machine-primitive? prim)
+		    (basic-primitive? prim)))
+	  (values (apply append rst*)
+		  `(,prim ,rands ...))]
+;;;;;; FINISH:
+
+	[(,[rst1 rator] ,[rst* rands] ...)
+	 (warning 'FOOBAR-pass
+		  "arbitrary application of rator: ~s" rator)	      
+	 `(,rator ,rands ...)]
+
+	[,otherwise
+	 (error 'cleanup-token-machine:process-expr 
+		"bad expression: ~s" otherwise)]
+	))))
+
+(define (process-tokbind tb)
+  (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
+    (mvlet ([(newstored newbod) ((process-expr (map car constbinds)) body)])
+       `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
 
-    (define process-expr 
-      (lambda (env tokens this-token this-subtok)
-	(lambda (expr)
-	  ;(define (tokname? t) (memq t tokens))
-	  (match expr
-	     [(quote ,const) (values () `(quote ,const))]
-	     [,num (guard (number? num)) (values () num)]
+(lambda (prog)
+  (match prog
+    [(,lang '(program (bindings ,constbinds ...)
+		      (nodepgm (tokens ,[process-tokbind -> toks] ...))))
+     `(,lang '(program (bindings ,constbinds ...)
+		       (nodepgm (tokens ,toks ...))))]))
+))
+     
 
-	     [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
-	     [(tok ,t ,[e]) (guard (number? n)) `(tok ,t ,e)]
-	     [,var (guard (symbol? var)) var]
-	     [(begin ,[xs] ...) `(begin ,xs ...)]
-	     [(if ,[test] ,[conseq] ,[altern])
-	      `(if ,test ,conseq ,altern)]
-	     [(let ([,lhs ,[rhs]]) ,body)
-	      `(let ([,lhs ,rhs])		 
-		 ,((process-expr (cons lhs env) tokens this-token this-subtok) body))]
-	     [(,call-style ,[args*] ...)
-	      (guard (memq call-style '(call timed_call)))
-	      `(,call-style ,args* ...)]
-
-	     [(let-stored ([,lhs ,[rhs]]) ,body)
-	      `(let ([lhs (void)])
-		 (if ____
-		     (set! lhs ,rhs))
-		 ,((process-expr (cons lhs env) tokens this-token this-subtok) body))]
-		 
-	     [(leds ,what ,which) `(leds ,what ,which)]
-	     [(,prim ,[rands] ...)
-	      (guard (or (token-machine-primitive? prim)
-			 (basic-primitive? prim)))
-	      `(,prim ,rands ...)]
-	     ;;; TEMPORARY, We allow arbitrary other applications too!
-	     [(,[rator] ,[rands] ...)
-	      (warning 'FOOBAR-pass
-		       "arbitrary application of rator: ~s" rator)	      
-	      `(,rator ,rands ...)]
-	     [,otherwise
-	      (error 'cleanup-token-machine:process-expr 
-		     "bad expression: ~s" otherwise)]
-	     ))))
-
+     
+     
+     
 

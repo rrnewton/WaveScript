@@ -128,6 +128,7 @@
    ;; Token names:
    token-name? new-token-name token-names get-names get-formation-name get-membership-name
    token->name token->subtok
+   destructure-tokbind
 
    set? subset? set-equal? list->set set-cons union intersection difference
    alist-remove list-head list-remove-first list-remove-last! list-remove-after 

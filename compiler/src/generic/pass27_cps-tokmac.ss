@@ -75,10 +75,13 @@
 	  [(begin ,[xs] ...) (apply append xs)]
 	  [(if ,[test] ,[conseq] ,[altern]) 
 	   (append test conseq altern)]
-	  [(let ( (,lhs ,[rhs]) ...) ,[body])
+	  [(let ( (,lhs ,[rhs])) ,[body])
 	   (append rhs (remq lhs body))]
 	  [(leds ,what ,which) '()]
-	  [(,prim ,[rands] ...) rands]
+	  [(,prim ,[rands] ...) 
+	   (guard (or (token-machine-primitive? prim)
+		      (basic-primitive? prim)))
+	   rands]
 	  [(,[rator] ,[rands] ...) `(apply append rator rands)]
 	  [,otherwise
 	   (error 'cps-tokmac:freevars 
