@@ -5,3 +5,5 @@ COMPONENT = TestMachine
 
 include Makerules
 
+clean: 
+	rm -f TestMachine.h TestMachine.nc TestMachineM.nc

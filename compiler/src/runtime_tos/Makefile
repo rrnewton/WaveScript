@@ -1,7 +1,7 @@
 
 #COMPONENT = TokenMachineRuntime
-COMPONENT = TestMachine
-#COMPONENT = BasicTMComm
+#COMPONENT = TestMachine
+COMPONENT = BasicTMComm
 
 include Makerules
 
