@@ -85,7 +85,8 @@ a bigger test that actual returns some values!
 *) Rudimentary heartbeat
 *) Time and widen the aggregation-window...
 
-
+[2004.07.13]
+Ok, gonna do a refactoring to lift out a "build-call" within simulator_nought.
 
 
 

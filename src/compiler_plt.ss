@@ -137,3 +137,10 @@
   (syntax-rules ()
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
+
+;(eval (last testssim))
+(cleanse-world)
+(define simulate run-simulation)
+(eval (cadr (last testssim)))
+(init-graphics)
+;(graphical-repl)

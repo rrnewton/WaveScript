@@ -1,3 +1,6 @@
+;; UCLA mathnet
+;; (s:) 5Dog+8Cat<Ape 
+
 ;; simulator_nought.ss
 ;;  -Ryan Newton [2004.05]
 
@@ -6,7 +9,7 @@
 ;; This file uses and abuses top-level bindings (like mad), because it
 ;; uses eval, so it's not very well encapsulated right now.
 
-;; NOTE: Unlike some of the files in the chez/ directory, this expects
+;; NOTE: Unlike some of the files in the chez directory, this expects
 ;; to be loaded from its own parent directory.
 
 ;; <TODO>: Make the simulator not use global state for the graph!!
@@ -23,6 +26,14 @@
 
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
+
+;; [2004.07.11] Fixing soc-return and soc-finish.
+;; Doing a refactoring to depend less on my mutation of the global
+;; environment.  I've been really sloppy in this because I thought it
+;; would be such a "quick and easy" little simulator.  Now the
+;; simulation object returned by build-simulation takes and passes on
+;; soc-return and soc-finish functions.  The node-prog and soc-progs
+;; have been modified accordingly.
 
 ;; [2004.06.28]
 ;; Added a special under-the-table "return" message.  It is handled
@@ -280,8 +291,9 @@
 				       (cons `(quote ,rator)
 				       (map (lambda (x) `(quote ,x)) rand*))))]
 
+		  ;; It's like call but doesn't add quotes.
 		  [(internal-call ,rator ,rand* ...)
-		   
+		   (disp "processing internal-call" rator rand*)
 		   ;; Could add the message to incoming instead!
 		   ;`(handler (construct-msg-object ',rator #f #f 0 ',rand*))
 		   ;; [2004.06.16] For now I'm raising an error... 
@@ -525,7 +537,7 @@
 
     [define sendmsg (lambda (data ob)
 ;		      (disp "IN sendmsg")(disp "  this = " this)
-;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
+;	   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
@@ -838,7 +850,7 @@
        (let* (
        
        [socprog
-	 `(lambda (SOC-processor this object-graph all-objs)
+	 `(lambda (soc-return soc-finished SOC-processor this object-graph all-objs)
 ;	    (printf "CALLING SocProg: ~s~n" this)
 	    (let ([I-am-SOC #t]) 
 	      ;; We have to duplicate the tokbinds here...
@@ -853,7 +865,7 @@
 			 'soc_finished))))))]
               
        [nodeprog
-	`(lambda (SOC-processor this object-graph all-objs)
+	`(lambda (soc-return soc-finished SOC-processor this object-graph all-objs)
 ;	    (printf (format "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f)))
 
 	   ;; This is a little weird, but even the node program
@@ -939,7 +951,8 @@
 	[socnode (car all-objs)])
     ;; Gotta turn off the limits on pretty printing first:
     (parameterize ([print-level #f]
-		   [print-length #f])
+		   [print-length #f]
+		   )
       (with-output-to-file "_SIM_socprog.ss" 
 	(lambda ()
 	  (pretty-print `(define SIM-socfun ,socprog))) ;; Hope the depth doesn't overflow
@@ -950,6 +963,8 @@
 	'replace)
       ;; NOTE.  We will have the problem that when we load this stuff,
       ;; dynamically defined stuff like soc-return isn't bound yet.
+      (define-top-level-value 'soc-return 'love-yeah)
+
       (load "_SIM_socprog.ss") ;; defines socfun
       (load "_SIM_nodeprog.ss") ;; defines nodefun
       )
@@ -963,15 +978,16 @@
 	  [nodefun (top-level-value 'SIM-nodefun)]
 	  [our-object-graph object-graph]
 	  [our-all-objs all-objs])
-      (vector 
-       (lambda () 
-	 ;; GOTTA HAVE soc-return before doing this!
-	 (socfun socnode socnode our-object-graph our-all-objs))
-       (map (lambda (nd)
-	      (lambda ()
-		;; GOTTA HAVE soc-return before doing this!
-		(nodefun socnode nd our-object-graph our-all-objs)))
-	    our-all-objs))
+      (lambda (soc-return soc-finish)
+	(vector 
+	 (lambda () 
+	   ;; GOTTA HAVE soc-return before doing this!
+	   (socfun soc-return soc-finish socnode socnode our-object-graph our-all-objs))
+	 (map (lambda (nd)
+		(lambda ()
+		  ;; GOTTA HAVE soc-return before doing this!
+		  (nodefun soc-return soc-finish socnode nd our-object-graph our-all-objs)))
+	      our-all-objs)))
       )))
 
 ;; This is the "language definition" which will use the compiler nd
@@ -991,9 +1007,20 @@
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
 (define (generate-simulator threadrunner fun)
-  (lambda (thunks . timeout)
+  (lambda (the-sim . timeout)
     (let ([return-vals '()])
+      (let ([soc-return 
+	     (lambda (x)	 
+	       (set! return-vals (cons x return-vals)))]
+	    [soc-finish 
+	     (lambda () (set-top-level-value! 'stop-nodes #t))])
+	(let ([thunks (the-sim soc-return soc-finish)])
 
+  (DEBUGMODE (if (not (and (vector? thunks) (= 2 (vector-length thunks))))
+		 (error 'generate-simulator 
+			"not a valid return value from simulation object, should be 2-elem vector: ~s"
+			thunks)))
+	    
     ;; First, set up a global counter for communication cost:
   ;; This is defined dynamically so as to avoid PLTs module system. 
   (define-top-level-value 'total-messages 0)
@@ -1003,35 +1030,18 @@
   ;; This is a global flag which can be toggled to shut down all the
   ;; running processors.
   (define-top-level-value 'stop-nodes #f)
-  ;; Define global bindings for these so that we can do fluid-let on them.
-  (define-top-level-value 'soc-return ;'unbound-right-now-soc-return)
-    (lambda (x)
-;      (disp "OLD SOC-RETURN DAMMIT.")
-      ;; Collect return vals in a local variable.
-      (set! return-vals (cons x return-vals))))
-  (define-top-level-value 'soc-finished ;'unbound-right-now-soc-finish)
-    (lambda () (set-top-level-value! 'stop-nodes #t)))
-
+  
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the given function,
   ;; this gives us back new thunks:
   (let ([newthunks (apply fun (cons thunks timeout))])
-   
-    ;; Kinda lame to use fluid-let here, but we don't have the
-    ;; relevent continuation at the time we build the thunks.
-    (fluid-let (
-		#;[soc-return (lambda (x)
-			      (disp "OLD SOC-RETURN DAMMIT.")
-			      ;; Collect return vals in a local variable.
-			      (set! return-vals (cons x return-vals)))]
-    )
-      (let ([result (if (null? timeout)
-			(threadrunner newthunks)
-			(threadrunner newthunks (car timeout)))])
-	(if (null? return-vals)
-	    result
-	    return-vals)
-	  ))))))
+    (let ([result (if (null? timeout)
+		      (threadrunner newthunks)
+		      (threadrunner newthunks (car timeout)))])
+      (if (null? return-vals)
+	  result
+	  return-vals)
+      )))))))
 
 
 ;; This one didn't work because nested engines are not allowed.
@@ -1200,9 +1210,10 @@
 		;; Make sure vals is a list:
 		(list? (car (msg-object-args (car x))))
 		))]
-	   
-    
+	
 
+   
+    
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
     [ (process-statement '(flood foo)) (sim-flood 'foo)]
     
@@ -1360,4 +1371,13 @@
 
 (define problem1 (cadr (list-ref these-tests 18)))
 (define problem (cadr (list-ref these-tests 20)))
+
+
+(define stuff
+'(begin  
+  (cleanse-world)
+  (run-simulation
+   (lambda (sr sf)
+     (vector (lambda () 3) (list (lambda () 4) (lambda () 5))))
+     2)))
 
