@@ -128,7 +128,7 @@
    graph-map graph-get-connected cyclic? 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-member? deep-all-matches deep-filter
-   list-get-random unfold-list
+   list-get-random unfold-list average clump
    partition partition-equal
    myequal?
    stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 

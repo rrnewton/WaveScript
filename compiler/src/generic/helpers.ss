@@ -139,7 +139,7 @@
     ;; Shouldn't this be local??
     ;; I'm not sure...
     (sense         (Node) Float)
-    (id            (Node) Integer)
+    (nodeid        (Node) Integer)
 
     ))
 
@@ -191,9 +191,9 @@
 ;    (planarize      (Area) Area)
 ;    (treeize        (Area) Area)
 
-    (filter         (Function Area) Area)
-    (union          (Area Area) Area)
-    (intersect      (Area Area) Area)
+    (rfilter         (Function Area) Area)
+    (runion           (Area Area) Area)
+    (rintersect       (Area Area) Area)
 
     ;; Prolly not the right type:
     (until          (Event Signal Signal) Signal)
@@ -1168,6 +1168,31 @@
       [(null? lst) '()]
       [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
       [else (filter pred (cdr lst))])))
+
+;; This is mainly used by the system in language-mechanism.  
+;;   Clumps a list into sublists (clumps) all of whose members satisfy
+;; the predicate function with some other member of that clump.
+;; Basically it gives you "connected" components.  Assumes the
+;; predicate function is commutative.
+(define (clump f ls)
+  (let outer ([clumps '()] [ls ls])
+    (if (null? ls)
+	clumps
+	(let ([x (car ls)])
+	  (outer 
+	   (let inner ([clumps clumps])
+	     (cond 
+	      [(null? clumps) `((,x))]
+	      [(null? (filter (lambda (y) (f x y)) (car clumps)))
+	       (cons (car clumps) (inner (cdr clumps)))]
+	      [else ;; We've actually matched this clump.		   		    
+	       (cons (cons x (car clumps)) (cdr clumps))]))
+	   (cdr ls))))))
+
+(define (average ls)
+  (let loop ((sum 0) (count 0) (ls ls))
+    (if (null? ls) (/ sum count)
+	(loop (+ (car ls) sum) (+ 1 count) (cdr ls)))))
 
 (define list-index
   (lambda (pred ls)
