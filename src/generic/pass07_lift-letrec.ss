@@ -118,12 +118,7 @@
       (lambda (expr)
         (match expr
           [(quote ,imm) (values `(quote ,imm) '())]
-;          [(label ,lab) (values `(label ,lab) '())]
           [,var (guard (symbol? var)) (values var '())]
-          ;;; <Input> ::= (<language-name> <Program>)
-          ;;; <Program> ::= (program (<var>*) (<pkg>*) <class-def>* <Exp>)
-          ;;;          | (toplvl-varref <var>)
-          ;;;          | (toplvl-varassign! <var> <Exp>)
 
           [(if ,[test test-decl*] ,[conseq conseq-decl*] ,[altern altern-decl*])
            (values
@@ -133,12 +128,13 @@
 	  [(lambda ,formalexp (free ,free ,[body body-decl]))
 	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now!" free))
 
-	   ;; This is the old version:
-	   (values `(lambda ,formalexp (lazy-letrec ,body-decl ,body)) '())
+	   ;; This version lifts to the top of each lambda:
+	   ;(values `(lambda ,formalexp (lazy-letrec ,body-decl ,body)) '())
+	   ;; This version lifts all the way to the top.
+	   (values `(lambda ,formalexp (lazy-letrec () ,body)) body-decl)
 	   ]
 	   
 	  [(letrec ([,lhs* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
-;	   (disp "got letrec" lhs* rhs* rhs-decl* body body-decl)
 	   (values body
 		   (append (apply append rhs-decl*)
 			   body-decl
@@ -146,7 +142,6 @@
 
           [(,prim ,[rand* rand-decl*] ...)
            (guard (regiment-primitive? prim))
-;	   (disp "got prim" prim rand* rand-decl*)
            (values
              `(,prim ,rand* ...)
              (apply append rand-decl*))]

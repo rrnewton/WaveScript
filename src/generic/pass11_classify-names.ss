@@ -38,7 +38,6 @@
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 
-
 (define (classify-names expr)
   
   ;; This table accumulates all the properties which become attached
@@ -65,7 +64,7 @@
 			     ; final and leaf?
 			     ; anchor and region?
 			     ))])
-    (trace-lambda add-prop (s p)
+    (lambda (s p)
       (if s
 	  (let ((entry (assq s table)))
 					;	  (DEBUGMODE (if (not entry)
@@ -146,10 +145,15 @@
        (add-prop! name 'distributed)
        (add-prop! name 'anchor)]
 
-      [(Location Reading Function Number Float Bool)
+      ;; Does Node belong here?
+      [(Location Reading Function Number Float Bool List Node)
        (add-prop! name 'local)]
 
-      [(Event Node Object)
+      ;; There's really not anything that we know about objects...
+      [(Object)
+       (add-prop! name 'unknown)]
+
+      [(Event)
        (error 'classify-names:reconcile-type "unhandled type: ~s" type)]
 
       [else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
@@ -159,16 +163,14 @@
   (define (type-inference-primapp prim args)
     (let ((entry (get-primitive-entry prim)))
       (for-each 
-       (lambda (arg types)
+       (lambda (arg type)
 	 (match arg
 		[(quote ,const) (void)]
-		[,var (guard (symbol? arg))
-		      (for-each (lambda (type)
-				  (reconcile-type type var))
-				types)]
+		[,var (guard (symbol? arg))		      
+		      (reconcile-type type var)]
 		[,other (error 'classify-names:type-inference-primapp
 			       "primitive ~s should take only simple arguments: ~s" prim args)]))
-       args (cdr entry))))
+       args (cadr entry))))
 
   (define process-expr
     (lambda (name expr env)
@@ -293,9 +295,6 @@
 	      '(program ,finaltable (lazy-letrec (,binds ...) ,fin)))
 	    )]
 	   ))
-
-
-
 
 
 (define these-tests 

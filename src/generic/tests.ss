@@ -119,7 +119,7 @@
        (load "generic/pass00_verify-regiment.ss") (test-it) (newline)
        ;  (load "pass01_rename-var.ss") (test-it) (newline)
        (load "generic/pass10_verify-core.ss") (test-it) (newline)
-       (load "generic/pass13_deglobalize.ss") (test-it) (newline)
+       (load "generic/pass16_deglobalize.ss") (test-it) (newline)
        (load "chez/simulator_nought.ss") (test-it) (newline)       
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 

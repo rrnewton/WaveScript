@@ -89,6 +89,8 @@
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
 ;;   Function, Number, Float, Bool, Object
+;;   List
+
 
 ;; Since I'm going to go statically typed eventually, Object is just
 ;; my way of signifying "for all alpha" right now.
