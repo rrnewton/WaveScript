@@ -100,7 +100,7 @@ counter.  But how would I know whether I've gotten everything in
 the generation?  Could use a safely large time-window and seperate
 out the different generations within it?
 
-[2004.07.30]
+[2004.07.30] {Tokens first class and skeleton pushing}
 Ok, going to make token-names *first class values*.  Reason is, that
 map is going to dynamically pass along the name of the token that
 provides the skeleton for the map.  I could do this with a static
@@ -109,5 +109,16 @@ language features.
   ACTUALLY, I take it back, I may do that in the future, but right now
 I'm just going to introduce a simple propogate-skeletons pass which
 annotates folds appropriately.
+
+I still need to make tokens first class at somepoint... right now I'm
+being inconsistent with them.  I should also right down a type-system
+and some semantics for the token machines.  (Also need to think about
+Matt's modifications...)
+
+Sigh, right now I'm throwing a bunch of hackery into deglobalize that
+should probably properly belong in other passes.  This is bad form.
+But some of these things are so experimental and temporary, that
+setting up extra passes for them seems not worth it...
+
 
 

@@ -138,11 +138,14 @@
 
     ))
 
+;; These are pretty much compiler-internal primitives which can
+;; operate on the local node.
 (define local-node-primitives 
   '(
     (my-id () NodeID)
     (dist (Token) Integer)
-        
+
+    (foldwith (Token )
     ))
 
 ;; These count as primitives also.

@@ -435,9 +435,10 @@
 				     (bindings ,@constbinds)
 				     ,(if (assq entry constbinds)
 					  ;; Socpgm bindings are null for now:
-					  `(socpgm (bindings ) (soc-return ,entry) (soc-finished))
-;					  `(socpgm (bindings ) (call ,entry))
-					  `(socpgm (bindings ) (void))
+					  `(socpgm (bindings ) 
+						   (soc-return ,entry) 
+						   (soc-finished))
+					  `(socpgm (bindings) (call spread-global))
 					  )
 			      (nodepgm (tokens ,@tokenbinds
 					       ;; Make a pulsator for each leaf:
@@ -445,12 +446,17 @@
 							`[,leaftokname () 
 							    (call ,(get-formation-name leaf))
 							    (timed-call ,slow-pulse ,leaftokname)])
-						      leaves leaftoks))
+						      leaves leaftoks)
+					       ;; Pulse the global gradient at one hertz:
+					       [spread-global ()
+							      (emit global-tree)
+							      (timed-call 1000 spread-global)]
+					       [global-tree () (relay)])
 				       				       
 				       ;; <TODO> It's the LEAVES that need priming:
 				       ,(if (assq entry constbinds)
 					    `(startup )
-					    `(startup ,@leaftoks)))
+					    `(startup ,@leaftoks )))
 				       ))))
 	 ]))))
 
