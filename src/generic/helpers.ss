@@ -154,7 +154,7 @@
   (if (assq x regiment-distributed-primitives) #t #f))
 
 (define (token-machine-primitive? x)
-  (if (assq x token-machine-primitive) #t #f))
+  (if (assq x token-machine-primitives) #t #f))
 
 
 (define (lenient-compare? o1 o2)
