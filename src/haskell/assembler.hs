@@ -11,7 +11,7 @@ This will read
 import System.IO.Unsafe
 import TM
 
-modname = "TestMachineM"
+modname = "TestMachine"
 
 acceptable_chars = ['_']++['a'..'z']++['0'..'9']
 
@@ -19,31 +19,63 @@ acceptable_chars = ['_']++['a'..'z']++['0'..'9']
 tokname :: Token -> String
 tokname (Token name) = filter (\c -> elem c acceptable_chars) name
 
+map2 f [] _ = []
+map2 f _ [] = []
+map2 f (a:ta) (b:tb) = (f a b) : (map2 f ta tb) 
+
+-------------------------------------------------------------------------------
+{- HERES THE EXPRESSION GENERATOR. -}
+
+-- This returns both a bunch of strings (functions) to be seperately
+-- stuck in the top-level of the module implementation, and a string
+-- that goes within the receive-message handler or wherever.
+process_expr :: Expr -> ([String],String)
+process_expr e = 
+    case e of
+    Econst c -> ([],"    return "++show c++"\n")
+    Evar id -> ([],"    return "++show id++"\n")
+    Elambda formals e -> ([],"")
+    Eseq e1 e2 -> 
+	let (a,b) = process_expr e1 
+	    (x,y) = process_expr e2 
+	in (a++x, b++y)	    
+    Esocreturn e -> ([],"") 
+    Esocfinished  -> ([],"") 
+    Ereturn e -> ([],"") 
+    Erelay (Just t) -> ([],"") 
+    Erelay Nothing -> ([],"") 
+    Eemit mt t exps -> ([],"    emit_"++tokname t++"();\n")
+    Ecall mt t exps -> ([],"")
+
+
+--(Eseq (Eemit Nothing (Token "global-tree") []) 
+--       (Ecall (Just 1000) (Token "spread-global") []))
+
+-------------------------------------------------------------------------------
+{- HERES THE MODULE IMPLEMENTATION GENERATOR. -}
+
 -- Well, what do we need to do here?  
 -- Structure as tasks, assign active messages...
 -- flatten and generate code for handlers.
 
+process_const :: ConstBind -> String
+process_const (Id str, Econst exp) = "  uint8_t "++str++" = "++show exp++";\n"
+process_const _ = error "assembler.hs: process_const: can't handle non Econst expressions atm!!"
+
 process_consts :: [ConstBind] -> String
-process_consts _ = ""
+process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
 process_handler :: TokHandler -> String
 process_handler (t, args, e) = 
   "  event TOS_MsgPtr Recv_"++ tokname t ++".receive(TOS_MsgPtr msg) { \n" ++
-     bod ++ 
+--  "    int i;\n"++
+  "    uint8_t length = msg->length;\n"++
+  "    uint8_t type = msg->type;\n"++
+  "    TM_Payload payload = *((TM_Payload *)msg->data);\n"++
+     (snd $ process_expr e) ++ 
+  "    return msg;\n" ++ 
   "  }\n\n"
-    where bod = 
-	    case e of
-	     Econst c -> show c 
-	     Evar id -> ""
-	     Elambda formals e -> ""
-	     Eseq e1 e2 -> ""
-	     Esocreturn e -> "" 
-	     Esocfinished  -> "" 
-	     Ereturn e -> "" 
-	     Erelay (Just t) -> ""
-	     Erelay Nothing -> ""
-	     Eemit mt t exps -> ""  
-	     Ecall mt t exps -> ""
+
 --    in bod
 --	  | Eprimapp (Prim Expr)
 
@@ -57,9 +89,9 @@ process_startup _ = ""
 build_module_header :: [TokHandler] -> String
 build_module_header toks = 
     let toknames = map (\ (t,_,_) -> tokname t) toks 
-    in "\nmodule " ++ modname ++ " \n {\n" ++ 
+    in "\nmodule " ++ modname ++ "M \n {\n" ++ 
        "  provides interface StdControl as Control; \n" ++
-       "  uses interface Timer;\n" ++ 
+--       "  uses interface Timer;\n" ++ 
        concat
          (map (\ name -> 
 	       "  uses interface SendMsg as Send_"++ name ++"; \n" ++ 
@@ -70,6 +102,17 @@ build_module_header toks =
 
 build_implementation_header :: [TokHandler] -> String
 build_implementation_header toks = 
+    "  command result_t Control.init() {\n" ++
+    "    return SUCCESS;\n" ++
+    "  }\n\n" ++
+    "  command result_t Control.start() {\n" ++
+--    "    return call Timer.start(TIMER_REPEAT, 1000);\n" ++
+    "    return SUCCESS;\n"++
+    "  }\n\n" ++
+    "  command result_t Control.stop() {\n" ++
+--    "    return call Timer.stop();\n" ++
+    "    return SUCCESS;\n"++
+    "  }\n\n" ++
     (concat $
      map (\ name -> 
 	  "  event result_t Send_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
@@ -77,24 +120,71 @@ build_implementation_header toks =
 	  "  }\n\n")
      (map (\ (t,_,_) -> tokname t) toks))
 
-assemble (Pgm consts socconsts socpgm nodetoks startup) = 
+
+build_socfun consts expr = 
+    "  command result_t socpgm() {\n"++ 
+    process_consts consts ++ 
+    (concat (map (snd . process_expr) expr)) ++ 
+    "    return SUCCESS;\n"++
+    "  }\n\n"
+
+build_module (Pgm consts socconsts socpgm nodetoks startup) = 
+    "includes TestMachine;\n"++
+    "includes TokenMachineRuntime;\n\n"++
     build_module_header nodetoks ++
     "implementation {\n" ++ 
-    build_implementation_header nodetoks ++
     process_consts consts ++ 
+    build_implementation_header nodetoks ++
     process_consts socconsts ++ 
     process_handlers nodetoks ++ 
+    build_socfun socconsts socpgm ++
     "}\n"
+
+-------------------------------------------------------------------------------
+{- HERES THE CONFIGURATION GENERATOR. -}
+
+build_configuration (Pgm consts socconsts socpgm nodetoks startup) = 
+    "includes TestMachine;\n"++
+    "includes TokenMachineRuntime;\n\n"++
+    "configuration "++modname++"\n"++
+    "{\n"++
+    "}\n"++
+    "implementation\n"++
+    "{\n"++
+    "  components "++modname++"M, Main, TimerC, GenericComm as Comm;\n"++
+    "\n"++
+    "  Main.StdControl -> TestMachineM.Control;\n"++
+    "  Main.StdControl -> Comm;\n"++
+    "  Main.StdControl -> TimerC;\n"++
+    "\n"++
+    (concat $
+     map2 (\ name number -> 
+	   "  TestMachineM.Send_"++name++" -> Comm.SendMsg["++show number++"];\n"++
+	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n")
+     (map (\ (t,_,_) -> tokname t) nodetoks)   [1..]) ++
+    --  TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
+    "}\n"
+
+
+-------------------------------------------------------------------------------
+{- HERES THE MAIN PROGRAM. -}
+
+{- This returns the contents of the NesC module file and configuration file. -}
+assemble :: TMPgm  -> (String,String)
+assemble prog = (build_module prog, build_configuration prog)
+
 
 --    process_startup startup
 		    
 
-
-
 main = do putStr "Running token machine assembler in Haskell...\n"
-	  str <- readFile "test.tm"
-	  let expr = (read str :: TMPgm)		     
-	  putStr "Tokmac read!\n"
-	  putStr str
-
+--	  str <- readFile "test.tm"
+--	  let expr = (read str :: TMPgm)		     
+--	  putStr "Tokmac read!\n"
+--	  putStr str
+	  putStr "\nNow we dump to file...\n\n"
+	  let (mod,conf) = assemble a --expr 
+	  writeFile (modname++"M.nc") mod
+	  writeFile (modname++".nc")  conf
+	  putStr "\n.. dumped.\n\n"
 
