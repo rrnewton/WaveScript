@@ -1,12 +1,12 @@
 
 (module alpha_lib mzscheme
   (require 
-;   "iu-match.ss"
+   "iu-match.ss"
    (lib "include.ss")
    (lib "pretty.ss")
-;           (lib "load.ss" "slibinit")
-;           (lib "compat.ss") ;; gives us define-structure
+   (all-except (lib "compat.ss") flush-output-port) ;; gives us define-structure
    "constants.ss"
+   (all-except "helpers.ss" test-this these-tests)
    (all-except "basic_graphics.ss" test-this these-tests)
    (all-except "graphics_stub.ss" test-this these-tests) 
    "simulator_alpha.ss" ;; Would like to remove this dependency eventually.

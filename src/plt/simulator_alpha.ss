@@ -3,9 +3,10 @@
   (require "iu-match.ss"
            (lib "include.ss")
 	   (lib "pretty.ss")
+           (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
            ;; NO SLIB:
 ;           (lib "load.ss" "slibinit")
-           (lib "compat.ss") ;; gives us define-structure
+           (lib "compat.ss") ;; gives us define-structure           
            )
   (require 
    (all-except "constants.ss" test-this these-tests)
@@ -17,18 +18,20 @@
    (all-except "flat_threads.ss" test-this these-tests)
    (all-except "tsort.ss" test-this these-tests)
            )
+  (require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
   
   ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
   (provide (all-defined)
-           (all-from "constants.ss")
-	   (all-from "helpers.ss")
-	   (all-from "flat_threads.ss")
+;           (all-from "constants.ss")
+;	   (all-from "helpers.ss")
            ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
 ;	   yield-thread last
-           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
+;           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
 
+  (define make-list srfi1.make-list)
+  
   (define (write-sim-to-file sim fn)
     (with-output-to-file fn
       (lambda ()
@@ -56,6 +59,15 @@
   
   (include "../generic/simulator_nought.examples.ss")
   (include "../generic/simulator_alpha.ss")
+   
+ '(set! structure-copy
+        (lambda (s)
+          (cond
+            [(node? s) (copy-struct node s)]
+            [(simobject? s) (copy-struct simobject s)]
+            [else (error 'structure-copy
+                         "sorry this is lame, but can't handle structure: ~s" s)]))
+            )
   
   ;; RRN: This is a cludge!! But how do I copy a structure in mzscheme!!
   (set! structure-copy 

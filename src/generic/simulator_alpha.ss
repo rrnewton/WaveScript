@@ -17,13 +17,13 @@
   "simulator_alpha.ss: event-queue simulator for nodal language")
 
 ;; This structure contains all the global data needed a simulation.
-(define-structure (simulation graph object-graph all-objs))
+(define-structure (simworld graph object-graph all-objs))
 
 ;; This structure contains everything an executing token handler needs
 ;; to know about the local node. 
 ;; "this" is a simobject.
 ;; tokstore is a struct containing all the stored values.
-(define-structure (local-info this I-am-SOC tokstore))
+(define-structure (localinfo this I-am-SOC tokstore))
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
@@ -38,6 +38,9 @@
 ;; token-cache in the structure too
 (define-structure (simobject node incoming timed-tokens redraw gobj homepage 
 			     token-cache local-sent-messages local-recv-messages
+
+
+			     outgoing
 			     ))
 
 ;; This structure represents a message transmitted across a channel.
@@ -45,8 +48,6 @@
 			      timestamp ;; when it was sent 
 			      parent ;; :: simobject - who I got it from
 			      args))
-
-
 
 
 ;; ======================================================================
@@ -101,35 +102,22 @@
 
 
 ;; Safer version:
-#;(define (construct-msg-object token timestamp origin parent count args)
-  (if (eq? token SPECIAL_RETURN_TOKEN)
-      (error 'construct-msg-object "cannot manually make a return message")
-      (begin
-	(unless (token? token) (error 'construct-msg-object "bad token: ~s" token))
-	(unless (or (number? timestamp) (not timestamp))
-	  (error 'construct-msg-object "bad timestamp: ~s" timestamp))
-	(unless (or (simobject? origin) (not origin))
-		(error 'construct-msg-object "bad origin: ~s" origin))
-	(unless (or (simobject? parent) (not parent))
-		(error 'construct-msg-object "bad parent: ~s" origin))
-	(unless (number? count)
-		(error 'construct-msg-object "bad count: ~s" count))
-	(unless (list? args)
-		(error 'construct-msg-object "bad args: ~s" args))))
-  (make-msg-object token timestamp origin parent count args))
-
-
+(define (safe-construct-msg-object token timestamp origin parent count args)
+  (unless (token? token) (error 'safe-construct-msg-object "bad token: ~s" token))
+  (unless (or (number? timestamp) (not timestamp))
+	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
+  (unless (or (simobject? parent) (not parent))
+	  (error 'safe-construct-msg-object "bad parent: ~s" origin))
+  (unless (list? args)
+	  (error 'safe-construct-msg-object "bad args: ~s" args))
+  (make-msg-object token timestamp parent args))
 
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
-#;(define (bare-msg-object rator rands)
-  (if (eq? rator SPECIAL_RETURN_TOKEN)
-      (error 'bare-msg-object "Can't build a return msg!!"))
-  (construct-msg-object rator ;; token
+(define (bare-msg-object rator rands)
+  (safe-construct-msg-object rator ;; token
 		   #f    ;; timestamp
-		   #f    ;; origin
 		   #f    ;; parent
-		   0     ;; count
 		   rands))
 
 ;; Here's a helper to check the invariants on a msg-object
@@ -204,18 +192,22 @@
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob sim)
-  (graph-get-connected simob (simulation-object-graph sim)))
+  (graph-get-connected simob (simworld-object-graph sim)))
 
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
 (define (make-object-graph g) 
-  (graph-map (lambda (nd) (make-simobject nd '() '() #f #f '() 
-					  (make-default-hash-table) 0 0))
+  (graph-map (lambda (nd) (make-simobject 
+			   nd '() '() #f #f '() 
+			   (make-default-hash-table) 0 0
+
+			   '() ;; outgoing
+			   ))
 	     g))
 
 (define (fresh-simulation)
    (let* ([graph 
-          (let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+          (let ((seed (map (lambda (_) (random-node)) (iota numsimnodes))))
             ;; TEMP: Here I give the nodes distinct, consecutive ids.
             (if (regiment-consec-ids)
                 (for-each set-node-id! 
@@ -234,12 +226,10 @@
             seed)]
           [obgraph (make-object-graph graph)]
           [allobs  (map car obgraph)])
-     (make-simulation graph obgraph allobs)))
+     (make-simworld graph obgraph allobs)))
 
 
                          
-   
-
 ;; ======================================================================
 
 
@@ -259,7 +249,7 @@
 	   ;; me to do test cases:
 	   (match expr
 		  [,x (guard (and (symbol? x) (memq x allstored))) 
-		      `(,(symbol-append 'tokstore- x) (localinfo-token-store localinfo))]
+		      `(,(symbol-append 'tokstore- x) the-store)]
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
@@ -290,6 +280,11 @@
 		  ;; 
 		  ;; is
 		  ;; evict
+
+		  [(set! ,v ,[rhs])
+		   (if (memq v allstored)
+		       `(,(symbol-append 'set-tokstore- v '!) the-store ,rhs)
+		       `(set! ,v ,rhs))]
 
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
@@ -403,15 +398,17 @@
 		   [(,tok (,args ...) ,expr* ...)
 		    (let ([stored (cadr (assq tok allstored))])
 		      `[,tok 
-                         (lambda (localinfo
-				  ,@args)
-                           #;(DEBUGPRINT2 
+                         (lambda (localinfo world)
+			   (lambda ,args
+                           #|
+			   (DEBUGPRINT2 
                             (disp "Token " ',tok 
                                   "running at" (node-id (simobject-node this))
-                                  " with message: " ',args))
+                                  " with message: " ',args))|#
 			 
 			 ;this I-am-SOC token-store 			 
-			 (let ((the-store (localinfo-tokstore localinfo)))
+			 (let ([the-store (localinfo-tokstore localinfo)]
+			       [this (localinfo-this localinfo)])
 ;			 (let ([mystore (cadr (assq ',tok (localinfo-token-store localinfo)))])
                            (set-simobject-outgoing! this '())
                            ,@(map (process-statement tbinds stored) expr*)
@@ -420,7 +417,7 @@
                                           )])
                              (set-simobject-outgoing! this '())
                              result)
-                           ))
+                           )))
                          ])]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -429,10 +426,6 @@
     (pretty-print binds)
 
     (values binds allstored)))
-
-;; This produces the compiled "main" program. 
-(define (build-body tbinds expr)
-)
 
 ;; ======================================================================
 
@@ -445,33 +438,34 @@
       [(program (bindings ,nodebinds ...)		
 		(nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
-	`(define (sim-seed)
-	   "This is the simulation seed."
-	   "It returns an initial set of scheduled actions for the simulator to execute."
-	   
-	   (define-structure (store ,@allstored))
+       (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
+					;    `(let ,(map (lambda (v) `(,v '()))
+					;		(apply append (map cadr allstored)))      
+					;       "Let-Stored!"
 
+	`(define (sim-seed world)
+	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
+	   "This is the simulation seed."
+	   "It returns an initial set of scheduled actions for the simulator to execute."	   
 	   ;; Need to update the sensing machinery...
 	   (let ([local-sense (lambda ()
 				((current-sense-function)
 				 (node-pos (simobject-node this))))])
-	      
 	      (let* ,(process-binds nodebinds)
-		,(let-values ([(binds allstored) (process-tokbinds nodetoks)])
-					;    `(let ,(map (lambda (v) `(,v '()))
-					;		(apply append (map cadr allstored)))      
-					;       "Let-Stored!"
-	      `(letrec ,binds 		 
+		(letrec ,tbinds
 		 ;; Within this body, toks are bound, we return a list of start actions
 		 (values
 		  (list ,@(map (lambda (t) (list 0 t)) starttoks)) ;; Vtime Zero
 		  ;; And we also return a thunk for producing fresh stores.
 		  (lambda ()
-		    (make-store ,@(make-list (length allstored) '()))))
+		    (make-tokstore ,@(make-list (length (apply append (map cadr allstored))) ''()))))
 		 )))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 
+
+
+;; ======================================================================
 
 (define these-tests
   `(
@@ -536,8 +530,6 @@
 		  tester-eq?
 		  wrap-def-simulate)))
     (lambda args
-      ;; First init world:
-      ;(init-world)
       (apply tester args))))
 
 (define testalpha test-this)

@@ -311,7 +311,7 @@
 	     g))
 (define (init-world)
   (set! graph   
-	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+	(let ((seed (map (lambda (_) (random-node)) (iota numsimnodes))))
 	  ;; TEMP: Here I give the nodes distinct, consecutive ids.
 	  (if (regiment-consec-ids)
 	      (for-each set-node-id! 
