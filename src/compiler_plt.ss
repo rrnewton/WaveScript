@@ -15,27 +15,67 @@
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
           "plt/critical_section.ss"
-         (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-         "plt/pass01_eta-primitives.ss"
-         (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
-         (all-except "plt/pass03_remove-unquoted-constant.ss")
-         (all-except "plt/pass04_reduce-primitives.ss" these-tests test-this)
-         (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
-         (all-except "plt/pass05_remove-complex-constant.ss")
-         (all-except "plt/pass06_uncover-free.ss")
-         (all-except "plt/pass07_lift-letrec.ss")
-         (all-except "plt/pass08_lift-letrec-body.ss")
-         (all-except "plt/pass09_remove-complex-opera.ss" these-tests test-this)
-         (all-except "plt/pass10_verify-core.ss" these-tests test-this)
-         (all-except "plt/pass11_classify-names.ss" these-tests test-this)
-         (all-except "plt/pass12_add-heartbeats.ss" )
-         (all-except "plt/pass13_add-control-flow.ss")
-         (all-except "plt/pass14_add-places.ss" these-tests test-this)
-         (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
-         (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
-         (all-except "plt/pass17_cleanup-token-machine.ss" these-tests test-this)
+
+(all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+(all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
+(all-except "plt/pass02_rename-vars.ss" these-tests test-this)
+(all-except "plt/pass03_remove-unquoted-constant.ss" these-tests test-this)
+(all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
+(all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)
+
+(all-except "plt/pass06_remove-complex-constant.ss" these-tests test-this)
+; pass07_verify-stage2.ss
+(all-except "plt/pass08_uncover-free.ss" these-tests test-this)
+(all-except "plt/pass09_lift-letrec.ss" these-tests test-this)
+(all-except "plt/pass10_lift-letrec-body.ss" these-tests test-this)
+(all-except "plt/pass11_remove-complex-opera.ss" these-tests test-this)
+(all-except "plt/pass12_verify-core.ss" these-tests test-this)
+(all-except "plt/pass13_classify-names.ss" these-tests test-this)
+;(all-except "plt/pass09_separate-graph" these-tests test-this)
+
+(all-except "plt/pass14_add-heartbeats.ss" these-tests test-this)
+(all-except "plt/pass15_add-control-flow.ss" these-tests test-this)
+(all-except "plt/pass16_add-places.ss" these-tests test-this)
+(all-except "plt/pass17_analyze-places.ss" these-tests test-this)
+;(all-except "plt/pass18_add-routing.ss" these-tests test-this)
+
+(all-except "plt/pass20_deglobalize.ss" these-tests test-this)
+(all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
+
+(all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
+
+;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
+;(all-except "plt/pass25_inline.ss" these-tests test-this)
+;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
+
+;;;(all-except "plt/pass27_cps-tokmac.ss" these-tests test-this)
+
+;;(all-except "plt/pass29_verify-token-machine.ss" these-tests test-this)
+(all-except "plt/pass30_haskellize-tokmac.ss" these-tests test-this)
+
+
+;          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+;          "plt/pass01_eta-primitives.ss"
+;          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
+;          (all-except "plt/pass03_remove-unquoted-constant.ss")
+;          (all-except "plt/pass04_reduce-primitives.ss" these-tests test-this)
+;          (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
+;          (all-except "plt/pass05_remove-complex-constant.ss")
+;          (all-except "plt/pass06_uncover-free.ss")
+;          (all-except "plt/pass07_lift-letrec.ss")
+;          (all-except "plt/pass08_lift-letrec-body.ss")
+;          (all-except "plt/pass09_remove-complex-opera.ss" these-tests test-this)
+;          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
+;          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
+;          (all-except "plt/pass12_add-heartbeats.ss" )
+;          (all-except "plt/pass13_add-control-flow.ss")
+;          (all-except "plt/pass14_add-places.ss" these-tests test-this)
+;          (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
+;          (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
+;          (all-except "plt/pass17_cleanup-token-machine.ss" these-tests test-this)
          
-         (all-except "plt/pass19_haskellize-tokmac.ss" test-this these-tests)
+;          (all-except "plt/pass19_haskellize-tokmac.ss" test-this these-tests)
+
          
 ;    (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"

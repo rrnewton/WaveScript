@@ -205,7 +205,7 @@
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob sim)
-  (graph-get-connected simob (simworld-object-graph sim)))
+  (graph-get-connected-component simob (simworld-object-graph sim)))
 
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
@@ -213,18 +213,18 @@
   (graph-map (lambda (nd) 
 	       (let ([so (apply make-simobject (make-list 13 'simobject-field-uninitialized))])
 		 (set-simobject-node! so nd)  
-		 (set-simobject-incoming! '())
-		 (set-simobject-timed-token-buf! '())
-		 (set-simobject-redraw! #f)
-		 (set-simobject-gobj! #f)
-		 (set-simobject-homepage! '())
-		 (set-simobject-token-store! (make-default-hash-table))
-		 (set-simobject-local-sent-messages! 0)
-		 (set-simobject-local-recv-messages! 0)
-		 (set-simobject-scheduler! #f)
-		 (set-simobject-local-msg-buf! '())
-		 (set-simobject-outgoing-msg-buf! '())
-		 (set-simobject-I-am-SOC! #f)
+		 (set-simobject-incoming! so '())
+		 (set-simobject-timed-token-buf! so '())
+		 (set-simobject-redraw! so #f)
+		 (set-simobject-gobj! so #f)
+		 (set-simobject-homepage! so '())
+		 (set-simobject-token-store! so (make-default-hash-table))
+		 (set-simobject-local-sent-messages! so 0)
+		 (set-simobject-local-recv-messages! so 0)
+		 (set-simobject-scheduler! so #f)
+		 (set-simobject-local-msg-buf! so '())
+		 (set-simobject-outgoing-msg-buf! so '())
+		 (set-simobject-I-am-SOC! so #f)
 
 		 so))
 	     g))
@@ -272,7 +272,7 @@
 		;; This is a little wider than the allowable grammar to allow
 		;; me to do test cases:
 		(match expr
-		  [(ext-ref (,tokname . ,subtok) ,x)
+		  [(ext-ref '(,tokname . ,subtok) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (if (not (eq? which-tok tokname))
@@ -283,12 +283,14 @@
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
 
+		  ;; ext-set!
+
 		  [,x (guard (and (symbol? x) (memq x allstored)))
-		      (mvlet ([(which-tok pos) (find-which-stored x)])
-			     (if (not (eq? which-tok current-handler-name))
-				 (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" x)))
-			 ;; 'tokobj' is already bound to our token object
-		      `(vector-ref tokobj ,(+ 1 pos))]
+                    (mvlet ([(which-tok pos) (find-which-stored x)])
+                           (if (not (eq? which-tok current-handler-name))
+                               (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" x))
+                           ;; 'tokobj' is already bound to our token object
+                           `(vector-ref tokobj ,(+ 1 pos)))]
 
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
@@ -310,30 +312,32 @@
 				     (bare-msg-object ,rator (list ,@rand*)))
 			       (simobject-timed-token-buf this)))]
 
-		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
-		   `(begin "Doing let stored."
-			   ,@(map (lambda (lhs rhs)
-				    `(if (eq? ,lhs '()) (set-car! ,lhs ,rhs)))
-				  lhs* rhs*)
-			   ,bodies ...)]
+; 		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
+; 		   `(begin "Doing let stored."
+; 			   ,@(map (lambda (lhs rhs)
+; 				    `(if (eq? ,lhs '()) (set-car! ,lhs ,rhs)))
+; 				  lhs* rhs*)
+; 			   ,bodies ...)]
+
 		  
 		  ;; is_scheduled
 		  ;; 
-		  ;; is
+		  ;; is_
 		  ;; evict
 
-		  [(set! ,v ,[rhs])
-		   (if (memq v allstored)
-		       `(,(symbol-append 'set-tokstore- v '!) the-store ,rhs)
-		       `(set! ,v ,rhs))]
+		  [(set! ,v ,[rhs]) (guard (memq v allstored))
+		   (mvlet ([(which-tok pos) (find-which-stored v)])
+			  (if (not (eq? which-tok current-handler-name))
+			      (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" v))
+                          `(vector-set tokobj ,(+ 1 pos) ,rhs))]
+
+		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
 
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
 
 		  [(my-id) '(node-id (simobject-node this))]
-		  [(dist) '(sim-dist)]
-  		  ;; <TODO> WHY NOT QUOTED:
-		  [(dist ,tok) `(sim-dist ',tok)]
+
 		  [(loc) '(sim-loc)]
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
 
@@ -357,7 +361,6 @@
 		   ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit call timed-call activate relay return))))
-;;		   (disp "processing app:" rator rand*)
 		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
@@ -506,11 +509,11 @@
 	(bindings)
 	(nodepgm 
 	 (tokens
-	  [SOC-start () (call tok1)]
-	  [tok1 () (bcast tok2 '3)]
-	  [tok2 (x) (let-stored ([x '99])
-				(begin (set! x (+ x '1))
-				       (bcast tok2 x)))])
+	  [SOC-start () (stored) (call tok1)]
+	  [tok1 () (stored) (bcast tok2 '3)]
+	  [tok2 (x) (stored [x '99])
+		(begin (set! x (+ x '1))
+		       (bcast tok2 x))])
 	 (startup))))
      '??]
 

@@ -6,7 +6,7 @@
            (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
            ;; NO SLIB:
 ;           (lib "load.ss" "slibinit")
-           (lib "compat.ss") ;; gives us define-structure           
+           (all-except (lib "compat.ss") define-structure) ;; gives us define-structure           
            )
   (require 
    (all-except "constants.ss" test-this these-tests)
@@ -23,6 +23,7 @@
   ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
   (provide (all-defined)
+           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
 ;           (all-from "constants.ss")
 ;	   (all-from "helpers.ss")
            ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
@@ -30,6 +31,13 @@
 ;           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
 
+  
+    (define-syntax define-structure
+      (syntax-rules ()
+	[(_ (sname field ...))
+         (define-struct sname (field ...) (make-inspector))]))
+  
+  
   (define make-list srfi1.make-list)
   
   (define (write-sim-to-file sim fn)
@@ -78,7 +86,7 @@
             [(simobject? s)
              (make-simobject (simobject-node s) 
                              (simobject-incoming s)
-                             (simobject-timed-tokens s)
+                             (simobject-timed-token-buf s)
                              (simobject-redraw s) 
                              (simobject-gobj s)
                              (simobject-homepage s)
@@ -88,6 +96,7 @@
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
               )
- )
+  
+  )
 
-;(require simulator_alpha)
+(require simulator_alpha)
