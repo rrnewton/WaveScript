@@ -145,6 +145,6 @@
           [,unmatched
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
     
-    `(,input-language (quote (program (props ,proptable ...)
-				      (control-flow ,cfg)
-				      ,(process-let letexpr))))])))
+    `(add-places-language (quote (program (props ,proptable ...)
+					  (control-flow ,cfg)
+					  ,(process-let letexpr))))])))
