@@ -119,10 +119,17 @@
     (define (token->tokname t)
       (match t
 	[(tok ,t ,e) t]))
+
+    (define (statictok loop tk)
+      (match tk
+	     [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
+	     [(tok ,t ,[loop -> etb e])                (values etb `(tok ,t ,e))]
+	     [,other (error 'statictok "this is not a token: ~a" other)]))
 	    
     (define process-expr
-      (lambda (env tokens this-token)
-	(lambda (expr)
+      (lambda (env tokens this-token tainted)
+	(letrec ([loop 
+	  (lambda (expr)
 	  (match expr
 	     [(quote ,const) (values () `(quote ,const))]
              ;; Only for recurring on tokens:
@@ -131,10 +138,16 @@
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
 	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
 	     [(ext-set ,[ttb t] ,v ,[e2]) (values ttb `(ext-set ,t ,v ,e2))]
-	     ;; If we ever have a first class reference to a token name, it is potentially tainted.
-	     ;; This is a conservative estimate:
-	     [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
-	     [(tok ,t ,[etb e])                (values etb `(tok ,t ,e))]
+	     ;; This is "dynamic" context so no tainted names are allowed!
+	     ;; Basically gradient bearing token handlers are second class!
+	     [(tok ,t ,n) (guard (number? n))  
+	      (if (memq t tainted) 
+		  (error 'desugar_gradients:process-expr "dynamic token ref to tainted token!: ~a" t)
+		  (values () `(tok ,t ,n)))]
+	     [(tok ,t ,[etb e])                
+	      (if (memq t tainted) 
+		  (error 'desugar_gradients:process-expr "dynamic token ref to tainted token!: ~a" t)
+		  (values etb `(tok ,t ,e)))]
 	     [(begin ,[tb* expr*] ...)         (values (apply append tb*) `(begin ,expr* ...))]
 	     [(if ,[ttb test] ,[ctb conseq] ,[atb altern]) 
 	      (values (append ttb ctb atb) 
@@ -143,7 +156,7 @@
 	      (values (append rtb btb)
 		      `(let ([,lhs ,rhs]) ,body))]
 
-	     [(emit ,[ttb tok] ,[atb* args*] ...)
+	     [(emit ,[statictok loop -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
 	      `(let-stored ([ver 0])
 		(set! ver (+ 1 ver))
@@ -153,7 +166,7 @@
 	     [(relay (tok ,t ,n)) (guard (number? n))
 	      (values ()
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) (my-id) ,STORED_ORIGIN_ARG (+ 1 ,STORED_HOPCOUNT_ARG) ,STORED_VERSION_ARG)
+		  `(bcast (tok ,t ,n) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
 		  `(bcast (tok ,t ,n)
 			  (my-id)
 			  (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
@@ -171,7 +184,7 @@
 			       (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
 			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))))))]
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(dist ,[ttb tok]) 
+	     [(dist ,[statictok loop -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  HOPCOUNT_ARG ;; In this case we're inside the handler currently.
@@ -219,10 +232,29 @@
 		    ;; Just call off to the appropriate local aggregator:
 		    (call (tok ,return-handler ,aggr_ID) expr))))]
 
-	     	   
-	     [(call ,[ttb tok] ,[atb* args*] ...)                    
+	     ;; This is a local call to a gradient-bearing token:
+	     [(call (tok ,t ,[etb e]) ,[atb* args*] ...) (guard (memq t tainted))
+	      (values (apply append etb atb*)
+		      `(call (tok ,t e)
+			     '#f ;; parent
+			     '#f ;; origin
+			     0   ;; hopcount
+			     '#f ;; version
+			     ,args* ...))]
+	     ;; Call to non-gradient bearing token:
+	     [(call ,[ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
 		      `(call ,tok ,args* ...))]
+	     ;; Same here:
+	     [(timed-call ,[ttb time] ,(tok ,t ,[etb e]) ,[atb* args*] ...) 
+	      (guard (memq t tainted))
+	      (values (apply append ttb etb atb*)
+		      `(timed-call ,time ,tok 
+				   '#f ;; parent
+				   '#f ;; origin
+				   0   ;; hopcount
+				   '#f ;; version
+				   ,args* ...))]
 	     [(timed-call ,[ttb time] ,[ttb2 tok] ,[atb* args*] ...) 
 	      (values (apply append ttb ttb2 atb*)
 		      `(timed-call ,time ,tok ,args* ...))]
@@ -242,20 +274,40 @@
 	     [,otherwise
 	      (error 'desugar-gradient:process-expr 
 		     "bad expression: ~s" otherwise)]
-	     ))))
+	     ))])
+
+	  loop)))
 
     (define process-tokbind 
 	(lambda (env tokens)
 	  (lambda (tokbind)
 	    (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-	      (mvlet ([(newtoks newbod) ((process-expr env tokens tok) body)])
-		     (values newtoks
-		     `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,args ...)
-			    (let-stored ([STORED_PARENT_ARG '#f]
-					 [STORED_ORIGIN_ARG '#f]
-					 [STORED_HOPCOUNT_ARG '#f]
-					 [STORED_VERSION_ARG '#f])
-			      newbod))))))))
+	      (let ([tainted (find-emittoks body)])
+ 	       (mvlet ([(newtoks newbod) ((process-expr env tokens tok tainted) body)])
+		      (values newtoks
+			      (if (memq tok tainted)				  
+				  `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,@args)
+					 (let-stored (;[call-count 0]
+						      [,STORED_PARENT_ARG   '#f]
+						      [,STORED_ORIGIN_ARG   '#f]
+						      [,STORED_HOPCOUNT_ARG '#f]
+						      [,STORED_VERSION_ARG  '#f])
+					    ;; Here we decide whether or not to accept the token:
+					    (if (or (not ,STORED_HOPCOUNT_ARG) ;; First time we definitely accept
+						    (> ,VERSION_ARG ,STORED_VERSION_ARG)
+						    (and (= ,VERSION_ARG ,STORED_VERSION_ARG)
+							 (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
+						(begin 
+						  ;; If the msg is accepted we run our code:
+						  ,newbod
+						  ;; And then store these gradient parameters for next time:
+						  (set! STORED_PARENT_ARG PARENT_ARG)
+						  (set! STORED_ORIGIN_ARG ORIGIN_ARG)
+						  (set! STORED_HOPCOUNT_ARG HOPCOUNT_ARG)
+						  (set! STORED_VERSION_ARG VERSION))
+						;; Otherwise, fizzle
+						)))
+				  `(,tok ,id ,args ,newbod)))))))))
 
     ;; Main body of desugar-gradient
     (lambda (prog)
