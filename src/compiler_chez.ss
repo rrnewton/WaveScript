@@ -30,15 +30,18 @@
 
 ;; Driver depends on 'pass-names being defined.
 (include "generic/driver.ss")
+  (game-eval (lambda args 'unspecified))
+  (host-eval (lambda args 'unspecified))
 (include "generic/tests_noclosure.ss")
 (include "generic/tests.ss")
 
 (load "depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
-;(include "generic/simulator_nought.ss")
+;; Basic parallel computation (engines):
+(load "chez/flat_threads.ss")
+;; Basic simulator for the nodal language:
+(load "generic/simulator_nought.ss")
 
-(game-eval (lambda args 'unspecified))
-(host-eval (lambda args 'unspecified))
 
-(trace  explode-primitive process-expr process-letrec)
+;(trace  explode-primitive process-expr process-letrec)
 
