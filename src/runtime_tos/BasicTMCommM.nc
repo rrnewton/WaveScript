@@ -1,5 +1,5 @@
 includes TokenMachineRuntime;
-
+includes TestMachine;
 
 // [2005.01.12] Adding return_home
 
@@ -7,7 +7,6 @@ includes TokenMachineRuntime;
 
 
 // TODO: fix memcpy's to only copy the used portion of the message.
-
 
 
 
@@ -66,14 +65,14 @@ module BasicTMCommM {
   // ======================================================================
 
   task void tokenhandler () {
-    uint8_t index;
+    uint8_t ind;
     atomic { // Access in_buffer_end/in_buffer_start
       if ( in_buffer_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: message available, calling process_token.\n"); 
 
-	index = currently_processing.type - 1;
+	ind = currently_processing.type - 1;
 
 	is_processing = TRUE;
 	if ( call pop_msg( &currently_processing ) ) {
@@ -81,8 +80,8 @@ module BasicTMCommM {
 	  call TMModule.process_token(&currently_processing); // Do nothing with returned pointer.
 
 	  // AUTO CACHING FOR NOW!
-	  cached_presence[index] = TRUE;
-	  memcpy(cached_tokens + index, currently_processing, sizeof(TOS_Msg));
+	  cached_presence[ind] = TRUE;
+	  memcpy(cached_tokens + ind, &currently_processing, sizeof(TOS_Msg));
 	  //	  cached_payload = (TM_Payload*)cached_token->data; 
 	  
 	  is_processing = FALSE;
@@ -215,35 +214,25 @@ module BasicTMCommM {
   command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
     // This copies the data over.
     //cached_token = *newtok;
-    if ( cached_presence[id-1] == NULL ) {
-      cached_presense[id-1] = TRUE;
+    if ( cached_presence[id-1] ) {
+      cached_presence[id-1] = TRUE;
       //cached_payload = (TM_Payload*)cached_token->data;
     }
     memcpy(cached_tokens + id - 1, newtok, sizeof(TOS_Msg));
     return SUCCESS;
   }
 
-  //  command uint16_t get_parent
-  //  if ( cached_token != NULL  
-
   // ======================================================================
     // The TMComm interface is what the TMModule expects the
     // communications system to be able to do:
 
   command uint16_t TMComm.get_dist[uint8_t id]() {
-    TOS_MsgPtr t = call TMComm.get_cached[id];
+    TOS_MsgPtr t = call TMComm.get_cached[id]();
 
-    
-
-    if ( NULL == currently_processing ) {
-      if ( cached_token == NULL ) {
-	return NO_DIST;
-      } else {	
-	return (cached_payload->counter);
-      }
-    } else {
-      return ((TM_Payload*)currently_processing->data)->counter;
-    }
+    if ( t == NULL) 
+      return -1;
+    else 
+      return ((TM_Payload*)(cached_tokens[id-1].data))->counter;
   }
 
   // The three functions below are rather uninspired.
@@ -282,18 +271,18 @@ module BasicTMCommM {
   command result_t TMComm.relay[uint8_t id]() {
     TM_Payload* payload;
 
-    if ( NULL == currently_processing ) 
+    if ( !is_processing ) 
       return FAIL;
 
     if (send_pending) {
       return FAIL;
     } else {
       send_pending = TRUE;
-      memcpy(&token_out_buffer, currently_processing, sizeof(TOS_Msg));
+      memcpy(&token_out_buffer, &currently_processing, sizeof(TOS_Msg));
       payload = (TM_Payload*)token_out_buffer.data;
 
       dbg(DBG_USR1, "TM BasicTMCommM: Relaying message of length:%d, orig:%d, par:%d, type:%d/%d\n", 
-	currently_processing->length, payload->origin, payload->parent, currently_processing->type, id);
+	currently_processing.length, payload->origin, payload->parent, currently_processing.type, id);
 
       payload->parent = TOS_LOCAL_ADDRESS;
       //payload->timestamp = 999; // TODO FIXME
@@ -336,13 +325,15 @@ module BasicTMCommM {
       token_out_buffer.type = AM_RETURNMSG;
       token_out_buffer.length = length;
 
-      if ( NULL == cached_payload && 
-	   currently_processing
-	   ) {
+      if ( !(cached_presence[id-1] || is_processing) ) {
 	dbg(DBG_USR1, "TM: ERROR: returning home... but no parent pointer!!\n");
 	return FAIL;
       } else {
-	parent = cached_payload->parent;
+	
+	if (cached_presence[id-1])
+	  parent = ((TM_Payload*)(& cached_tokens[id-1].data))->parent;
+	else 
+	  parent = ((TM_Payload*)(& currently_processing.data))->parent;
 
 	// Send to the parent pointer:
 	// IS this send on the right channel though.
@@ -379,11 +370,12 @@ module BasicTMCommM {
   // Here we obligatorily fill in the rest of our required interfaces.
 
   command result_t StdControl.init() {
+    int i;
     atomic {
       in_buffer_start = 0;
       in_buffer_end = -1;
       is_processing = FALSE;
-      for (int i=0; i<NUM_TOKS; i++) {
+      for (i=0; i<NUM_TOKS; i++) {
 	cached_presence[i] = FALSE;
       }
     }
@@ -430,15 +422,17 @@ module BasicTMCommM {
   
   event TOS_MsgPtr ReceiveMsg.receive[uint8_t id](TOS_MsgPtr msg) {
     TM_Payload* payload = (TM_Payload*)(msg->data);
+    TM_Payload* cached_payload;
 
     // If it's a return message we accept automatically.
     if ( AM_RETURNMSG != msg->addr ) {
       // otherwise... Bounce it if it's not a good path.
-      if (cached_token == NULL) {
+      if ( cached_presence[id-1] ) {
+	cached_payload = (TM_Payload*)(cached_tokens[id-1].data);
 	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, curNULL posting tokenhandler o%d/p%d/c%d/g%d.\n", 
 	    id, payload->origin, payload->parent, payload->counter, payload->generation);
       } else if (	//	payload->generation > 
-		 payload->counter < cached_payload->counter) {
+		 payload->counter < payload->counter) {
 	dbg(DBG_USR1, "TM BasicTMComm: receiving message to %d, cur%d posting tokenhandler o%d/p%d/c%d/g%d.\n", 
 	    id, cached_payload->counter, payload->origin, payload->parent, payload->counter, payload->generation);
       } else {
