@@ -8,14 +8,14 @@ module TestMachineM
   
   provides command int8_t fun();
 
-  uses interface SendMsg as GeneralSend[uint8_t id];
+  //  uses interface SendMsg as GeneralSend[uint8_t id];
 
   uses interface ReceiveMsg as Recv_A;
   uses interface ReceiveMsg as Recv_B; 
   uses interface ReceiveMsg as Recv_89; 
   uses interface Timer;
 
-  uses interface TMComm[uint8_t id];
+  uses interface TMComm;
 }
 implementation 
 {
@@ -26,43 +26,49 @@ implementation
 
   TM_Payload incoming_tokens[100];
 
-  task void tokenhandler() {
-    dbg(DBG_USR1, "TestMachine: HANDLER RUNNING.\n");
+  //  task void tokenhandler() {
+  //    dbg(DBG_USR1, "TM TestMachine: HANDLER RUNNING.\n");
+  //  }
+
+  event TOS_MsgPtr TMComm.receive(TOS_MsgPtr msg) {
+    dbg(DBG_USR1, "TM TestMachine: Received msg through TMComm, addr %d, type %d, group %d \n", 
+	msg->addr, msg->type, msg->group);
+    return msg;
   }
 
   event TOS_MsgPtr Recv_A.receive(TOS_MsgPtr msg) {
-    dbg(DBG_USR1, "TestMachine: RECEIVED MSG ON CHANNEL A, addr %d, type %d, group %d \n", 
+    dbg(DBG_USR1, "TM TestMachine: RECEIVED MSG ON CHANNEL A, addr %d, type %d, group %d \n", 
 	msg->addr, msg->type, msg->group);
-    dbg(DBG_USR1, "TestMachine: But the orig packet..., addr %d, type %d, group %d \n", 
+    dbg(DBG_USR1, "TM TestMachine: But the orig packet..., addr %d, type %d, group %d \n", 
 	test_packet.addr, test_packet.type, test_packet.group);
 
-    dbg(DBG_USR1, "TestMachine: And the backup packet..., addr %d, type %d, group %d \n", 
+    dbg(DBG_USR1, "TM TestMachine: And the backup packet..., addr %d, type %d, group %d \n", 
 	test_packet2.addr, test_packet2.type, test_packet2.group);
     return msg;
   }
 
   event TOS_MsgPtr Recv_B.receive(TOS_MsgPtr msg) {
-    dbg(DBG_USR1, "TestMachine: RECEIVED MSG ON CHANNEL B, addr %d, type %d, group %d \n", 
+    dbg(DBG_USR1, "TM TestMachine: RECEIVED MSG ON CHANNEL B, addr %d, type %d, group %d \n", 
 	msg->addr, msg->type, msg->group);
     return msg;
   }
 
   event TOS_MsgPtr Recv_89.receive(TOS_MsgPtr msg) {
-    dbg(DBG_USR1, "TestMachine: RECEIVED MSG ON channell 89, addr %d, type %d, group %d \n", 
+    dbg(DBG_USR1, "TM TestMachine: RECEIVED MSG ON channell 89, addr %d, type %d, group %d \n", 
 	msg->addr, msg->type, msg->group);
     return msg;
   }
 
-  event result_t GeneralSend.sendDone[uint8_t id] (TOS_MsgPtr msg, result_t success) {
-    dbg(DBG_USR1, "TestMachine: Done sending msg from GeneralSend\n");
+  /*  event result_t GeneralSend.sendDone[uint8_t id] (TOS_MsgPtr msg, result_t success) {
+    dbg(DBG_USR1, "TM TestMachine: Done sending msg from GeneralSend\n");
     return SUCCESS;
-  }
+    }*/
 
 
   command result_t Control.init() {
     int i;
 
-    dbg(DBG_USR1, "TestMachineM: INITIALIZING, data length %d\n", TOK_DATA_LENGTH);
+    dbg(DBG_USR1, "TM TestMachineM: INITIALIZING, data length %d\n", TOK_DATA_LENGTH);
 
     test_token.parent = TOS_LOCAL_ADDRESS; // Our ID number
     test_token.origin = TOS_LOCAL_ADDRESS; // Our ID number    
@@ -91,7 +97,7 @@ implementation
     memcpy(&test_packet2, &test_packet, sizeof(TOS_Msg));
 
 
-    post tokenhandler();
+    //    post tokenhandler();
     return SUCCESS;
   }
 
@@ -108,8 +114,10 @@ implementation
   }
 
   event result_t Timer.fired() {
-    dbg(DBG_USR1, "TestMachineM: Sending that message.....%d %d %d\n",
+    dbg(DBG_USR1, "TM TestMachineM: Sending that message.....%d %d %d\n",
 	test_packet.addr, test_packet.type, test_packet.group);
+
+    call TMComm.emit(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);    
 
     //    call Send_A.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);    
 
@@ -119,11 +127,10 @@ implementation
     //call BareSend.send(&test_packet);    
 
     //    call Send_A.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
-    call GeneralSend.send[test_packet.type](TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
+
+    //    call GeneralSend.send[test_packet.type](TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);
 
     return SUCCESS;
   }
-
-
 }
 

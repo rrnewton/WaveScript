@@ -1,3 +1,4 @@
+
 includes TestMachine; 
 includes TokenMachineRuntime;
 
@@ -10,15 +11,14 @@ configuration TestMachine
 }
 implementation
 {
-  components TestMachineM, TimerC, Main, UARTNoCRCPacket, GenericComm as Comm;
+  components TestMachineM, BasicTMComm, TimerC, Main, UARTNoCRCPacket, GenericComm as Comm;
   // TokenMachineRuntime, FramerM, UART,
 
   Main.StdControl -> TestMachineM.Control;
   Main.StdControl -> Comm;
   Main.StdControl -> TimerC;
 
-
-  TestMachineM.GeneralSend -> Comm.SendMsg;
+  //  TestMachineM.GeneralSend -> Comm.SendMsg;
 
   TestMachineM.Recv_A -> Comm.ReceiveMsg[AM_TOKEN_A];
   TestMachineM.Recv_B -> Comm.ReceiveMsg[AM_TOKEN_B];
@@ -29,7 +29,8 @@ implementation
 
   TestMachineM.Timer -> TimerC.Timer[unique("Timer")];
 
+  TestMachineM.TMComm -> BasicTMComm.TMComm[91];
+
   // TestMachineM.Send_A -> Comm.SendMsg[AM_TOKEN_A];
   // TestMachineM.Send_B -> Comm.SendMsg[AM_TOKEN_B];
 }
-
