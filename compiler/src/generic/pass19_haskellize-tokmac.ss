@@ -43,7 +43,7 @@
 	 (format "(~a, ~a)" id rhs)]))
     
     (define process-expr 
-      (lambda PE (expr)
+      (lambda (expr)
       (match expr
 	[(quote ,const) (format "(Econst ~a)" const)]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
@@ -102,7 +102,7 @@
 	)))
 
     (define process-tokbind 
-      (trace-lambda PTB (tokbind)
+      (lambda  (tokbind)
       (match tokbind
 	[(,tok ,args ,body ,body* ...)
 	 (format "(~a, ~a, ~a)" 

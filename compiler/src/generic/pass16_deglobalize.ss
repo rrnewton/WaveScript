@@ -63,6 +63,13 @@
   (socpgm (bindings ) (soc-return result) (soc-finished))
   (nodepgm (tokens ) (startup )))
 
+;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
+(define RMAP-NUM 39)
+(define ANCH-NUM 49)
+(define CIRC-NUM 59)
+
+
+
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
 
@@ -362,7 +369,9 @@
       [(anchor-at)
        `([,tokname ()
 	  ;; At each formation click, we output this node.
-		   (soc-return (list 'ANCH this))])]
+	  ;(soc-return (list 'ANCH this))
+	  (soc-return ANCH-NUM)
+		   ])]
 
       [(circle circle-at)     
        `([,tokname 
@@ -372,7 +381,9 @@
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
 	  ;; other hack in.
-	  (soc-return '(CIRC ,tokname this))])]
+	  ;(soc-return '(CIRC ,tokname this))
+	  (soc-return CIRC-NUM)
+	  ])]
 
       [(filter)     
        `([,tokname (v)
@@ -393,7 +404,7 @@
 
       [(rmap)
        `([,tokname (v)
-		   (soc-return (list 'RMAP (my-id)))])]
+		   (soc-return ,RMAP-NUM)])] ;(list 'RMAP (my-id)))])]
       
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
