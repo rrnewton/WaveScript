@@ -122,7 +122,8 @@
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
    randomize-list  insert-between iota disp pp crit-printf
-   graph-map graph-get-connected cyclic?  deep-assq deep-member? deep-all-matches deep-filter
+   graph-map graph-get-connected cyclic?  
+   deep-assq deep-member? deep-all-matches deep-filter
    list-get-random unfold-list
    partition partition-equal
    myequal?

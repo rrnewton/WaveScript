@@ -122,6 +122,7 @@
 	      (guard (regiment-primitive? prim))
 	      (case prim
 		[(circle circle-at) 'tmp-circ]
+		[(khood khood-at) 'tmp-khood]
 		[(anchor anchor-at) 'tmp-anch]
 		[(smap) 'tmp-sig]
 		[(rfold) 'tmp-fold]
