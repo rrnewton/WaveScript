@@ -16,14 +16,15 @@
            (all-from "simulator_alpha.ss"))
   
   (include "../generic/alpha_lib.ss")
+  (include "../generic/alpha_lib_scheduler.ss")
+  (include "../generic/alpha_lib_scheduler_simple.ss")
   
- 
  )
 
 
 ;    (require alpha_lib)
 
-;    (begin (require alpha_lib) (time (run-alpha-sim 10.0)))
+;    (begin (require alpha_lib) (time (run-alpha-sim 'simple 10.0)))
 
 
 ;    (begin (require alpha_lib) (t) (run-alpha-sim))

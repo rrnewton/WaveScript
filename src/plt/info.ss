@@ -23,7 +23,9 @@
 	  "_SIM_nodeprog.ss"
 	  "_SIM_socprog.ss"
 
-
+	  ;; TEMPORARILY:
+	  "simulator_nought.ss"
+	  "simulator_nought_graphics.ss"
 
 	  "pass15_add-routing.ss"	  
 	  "passXX_separate-graph.ss"))
