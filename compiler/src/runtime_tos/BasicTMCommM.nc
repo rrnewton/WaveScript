@@ -36,11 +36,12 @@ module BasicTMCommM {
   task void tokenhandler () {    
     atomic { // Access cache_end/cache_start
       if ( cache_end == -1 ) {
-	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 
-	
+	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: %d messages AVAILABLE.\n", call num_tokens());
-	
+	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: Prepopped: %d/%d.\n", temp_msg.origin, temp_msg.parent);	
+	temp_msg = call pop_msg();
+	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: Popped: %d/%d.\n", temp_msg.origin, temp_msg.parent);	
       }
     }
   }
@@ -59,8 +60,9 @@ module BasicTMCommM {
 	else { cache_end++; }
 	dbg(DBG_USR1, "TM BasicTMComm: Adding token payload at %d, origin:%d \n", 
 	    cache_end, payload.origin);	
-	memcpy(token_cache + cache_end, &payload, sizeof(TM_Payload));	
 	
+	//memcpy(token_cache + cache_end, &payload, sizeof(TM_Payload));	
+	token_cache[cache_end] = payload;	
 	res = SUCCESS; 
       }
     }
@@ -74,11 +76,17 @@ module BasicTMCommM {
       if ( cache_end == -1 ) {
 	// raise error!
       } else {      
-	memcpy((&ret_msg),token_cache + cache_start, sizeof(TM_Payload));
-	cache_start++;
-	if (cache_start == TOKCACHE_LENGTH) { cache_start = 0; }
-	
-	if (cache_start > cache_end)  	    { cache_end = -1; }	
+	//memcpy((&ret_msg),token_cache + cache_start, sizeof(TM_Payload));
+	ret_msg = token_cache[cache_start];
+
+	// If we're popping the last one, then it's empty after this:
+	if (cache_start == cache_end) { 
+	  cache_end = -1; 
+	  cache_start = 0;
+	} else {
+	  cache_start++;
+	  if (cache_start == TOKCACHE_LENGTH) { cache_start = 0; }
+	}
       }
     }
     return ret_msg;
@@ -95,7 +103,8 @@ module BasicTMCommM {
       } else {
 	indx += cache_start;
 	if ( indx >= TOKCACHE_LENGTH ) { indx -= TOKCACHE_LENGTH; }	
-	memcpy((&ret_msg),token_cache + indx, sizeof(TM_Payload));
+	//memcpy((&ret_msg),token_cache + indx, sizeof(TM_Payload));
+	ret_msg = token_cache[indx];
       }
     }
     return ret_msg;
@@ -182,6 +191,7 @@ module BasicTMCommM {
   event result_t Timer.fired() {
 
     temp_msg.origin = call Random.rand();
+    temp_msg.parent = call Random.rand();
     temp_msg.timestamp = call num_tokens();
     temp_msg.counter = (uint8_t)call Random.rand();
 
