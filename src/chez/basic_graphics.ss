@@ -93,6 +93,16 @@
    [(x1 y1 x2 y2 c1 c2) (drawit x1 y1 x2 y2 c1 c2)])))
 
 
+;; This returns nothing.
+(define (draw-mark x y color)
+  (let ((len 10)) ;; shouldn't be constant.
+    (let ([l1 (create <line> the-win (- x len) (- y len) (+ x len) (+ y len))]
+	  [l2 (create <line> the-win (- x len) (+ y len) (+ x len) (- y len))]
+	  [c  (make <rgb> (rgb-red color) (rgb-green color) (rgb-blue color))])
+      (set-outline-color l1 c)
+      (set-outline-color l2 c)
+      (void))))
+
 '(let* ([top (create <toplevel> with (title: "Canvas Example"))]
 	[start-text "Click button 1 in canvas below"]
 	[label (create <label> top with (title: start-text))])
