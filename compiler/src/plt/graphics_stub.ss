@@ -23,7 +23,7 @@
                 ((draw-solid-ellipse the-win) 
                  (make-posn (car pr) (cadr pr))
                  5 5 (make-rgb 1 0 0)))
-              procs))  
+              procs))
     
 )
 

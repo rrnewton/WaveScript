@@ -357,33 +357,53 @@
 	  (and (equal? x y)
 	       (not (eq? x y))))) #t]
 
+    [ (let ((s (open-output-string)))
+	(parameterize ([current-output-port s])
+	   (list 
+	    (run-simulation (vector (make-engine (lambda () 3))
+				    (list (make-engine (lambda () 4))
+					  (make-engine (lambda () 5))))
+			    10)
+	    (get-output-string s))))
+	   
+	Simulation_Done]
+
     ))
 
 (define tester
   (lambda (these-tests)
     (lambda args 
+    (call/cc
+     (lambda (return)
       (let ([verbose (memq 'verbose args)]
 	    [tests (map car these-tests)]
 	    [intended (map cadr these-tests)]
 	    [success #t])
 ;	  (if verbose 
-	      (printf "Testing ~a\n" this-unit-description);)
+	      (printf "Testing ~a~n" this-unit-description);)
 	  (let ((results (map eval tests)))
 	    (for-each 
 	     (lambda (num expr intended result)
 	       (display-constrained `(,num 10) "  " `(,expr 40)
 				    " -> " `(,intended 20)
 				    ": ")
-	       (newline)
+;	       (newline)
 	       (if (tester-equal? intended result)
-		   (if verbose (display "#t\n"))
+		   (printf "PASS~n")
 		   (begin (set! success #f)
 			  (newline)
-			  (display "FAIL: ")
-			  (display-constrained `(,intended 40) " got instead " `(,result 40))
-			  (newline) (newline))))
+			  (printf "FAIL: Expected: ~n")
+			  (pretty-print intended)
+			  (printf "~n      Received: ~n")
+			  (write result)
+;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
+			  (printf "~n~nFor Test: ~n")
+			  (pretty-print expr)
+			  (newline) 
+			  (return (void))
+			  )))
 	     (iota (length tests))
-	     tests intended results))))))
+	     tests intended results))))))))
 
 (define test-this (tester these-tests))
 
