@@ -331,14 +331,15 @@
     (let* ([sym (string->symbol
 		 (string-append "call-result-" 
 				(number->string (random 1000))))])
-    `(let ((,sym
-	    ;(sendmsg (bare-msg-object ,rator (list ,@rand*)) this)
-	    (handler (bare-msg-object ,rator (list ,@rand*)))
-	    ))
-       (if (eq? ,sym 'multiple-bindings-for-token)
-	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
-		  ,rator)
-	   ,sym))    
+      `(handler (bare-msg-object ,rator (list ,@rand*)))
+;    `(let ((,sym
+;;	    ;(sendmsg (bare-msg-object ,rator (list ,@rand*)) this)
+;	    (handler (bare-msg-object ,rator (list ,@rand*)))
+;	    ))
+;       (if (eq? ,sym 'multiple-bindings-for-token)
+;	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
+;		  ,rator)
+;	   ,sym))    
     )))
 
 ;; Doesn't have a return value...  Used to start up an independent loop.

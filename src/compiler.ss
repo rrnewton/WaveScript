@@ -225,7 +225,8 @@
 
 ;; I'm binding all these little random letter combinations!  Bah!
 (define mp;;myprog
-  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
+;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
+  '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
 
 (define (run-token-machine x)
   (run-simulation (build-simulation x) 2.0))
