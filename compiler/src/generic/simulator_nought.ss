@@ -75,7 +75,7 @@
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
-(define-structure (cache-entry token parent count args))
+(define-structure (cache-entry token origin parent count args))
 
 ;;========================================
 
@@ -158,7 +158,7 @@
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
 (define process-statement 
-  (let ([process-expr 
+  (letrec ([process-expr 
 	 (lambda (expr)
 	   (match expr
 		  ;; This is a little wider than the allowable grammar to allow
@@ -169,64 +169,30 @@
 					;(error 'process-statement "call not supported from SOC")] 
 		   `(handler #f #f ',rator ',rand*)]
 
-		  [(flood ,tok) `(flood (quote ,tok))]
-
+		  [(flood ,tok) `(sim-flood (quote ,tok))]
 		  [(emit ,opera ...) 
 		   ;; This is an original emission, and should get a count of 0.
-		   `(sim-emit (quote ,(car opera)) ,(cdr opera) 0)]
+		   `(sim-emit (quote ,(car opera)) (list ,@(cdr opera)) 0)]
 
-		  [(dist) 
-		   `(begin 
-		      ,(DEBUGMODE '(if (not this-message)
-				       (error 'simulator_nought.process-statement 
-					      "broken")))
-		      (if (cache-entry-count this-message)
-			  (cache-entry-count this-message)
-			  (error 'simulator_nought.process-statement:dist
-				 "inside simulator, (dist) is broken!")))]
-		  [(dist ,tok)
-		   `(let ((entry (hashtab-get token-cache ',tok)))
-		      (if (and entry (cache-entry-count entry))
-			  (cache-entry-count this-message)
-			  (error 'simulator_nought.process-statement:dist
-				 "inside simulator (dist ~s) but ~s has not been received!")))]
+		  [(dist) '(sim-dist)]		  		  
+		  [(dist ,tok) `(sim-dist ,tok)]
 	 	  
-		  [(relay)
-		   `(begin 
-		      ,(DEBUGMODE '(if (not this-message) 
-				       (error 'inside-node-prog "this-message was #f")))
-		      (if (not (cache-entry-parent this-message))
-			  (error 'simulator_nought.relay 
-				 "inside simulator, can't relay a message that was~a"
-				 " sent by a local 'call' rather than an 'emit'"))
-		      ;; This is a replicated emission, and should copy the existing count:
-		      (sim-emit (cache-entry-token this-message) (cache-entry-args this-message) 
-				(cache-entry-count this-message)))]
-		  
+		  [(relay) `(sim-relay)]		  
 		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
 
-		  ;; TODO, FINISH:
-		  [(return ,x)
-		   (let ([tok (cache-entry-token this-message)])
-		     (void)
-		     ;; For now we zap this straight back to the sender.
-		     ;; BUT we need a record of who sent what...
-;		     (let ((loop ((
-		     )]
+		  ;; Right now I'm recurring on the argument, this
+		  ;; shouldn't be required by code generated from my
+		  ;; compiler currently. [2004.06.09]
+		  [(return ,[x]) `(sim-return ,x)]
 
-		  [(light-up ,r ,g ,b)
-		   `(begin
-					;	     (disp "trying to light")
-		      (if (simobject-gobj this)
-			  (begin 
-					;		 (disp "SETTING LIGHT" ,r ,g ,b)
-			    (change-color! (simobject-gobj this) 
-					   (rgb ,r ,g ,b)))))]
+		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		  
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
-		  [(,[rator] ,[rand*] ...)
-		   `(,rator ,rand* ...)]	  
+		  [(,rator ,[rand*] ...)
+		   ;; Don't want to be too lenient tho:
+		   (guard (not (token-machine-primitive? rator)))
+		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,else (error 'simulator_nought.process-expr 
 				"don't know what to do with this: ~s" expr)])
@@ -235,7 +201,7 @@
       (process-expr stmt))))
 
 (define (process-binds binds expr)
-  (disp "processbinds" binds expr)
+;  (disp "processbinds" binds expr)
   (let* ([graph (map (lambda (bind)
 		       (cons (car bind)
 			     (free-vars (cadr bind))))
@@ -256,7 +222,7 @@
 ;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
 				   ,@(map process-statement expr*))]]))
 		tbinds)]
-	[handler `(lambda (parent count tok args)
+	[handler `(lambda (origin parent count tok args)
 ;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " tok args)
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
@@ -273,13 +239,13 @@
 					   )))])
 
 		      (if (not parent) ;; This is a local call.
-			  (handle-it (make-cache-entry tok #f #f args))
+			  (handle-it (make-cache-entry tok #f #f #f args))
 			  ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
 			  ;; BUT! No premature optimization.		      
 			  (if (or (not entry) ;; There's no entry for that token name.
 				  (= 0 count)
 				  (< count (cache-entry-count entry))) ;; This could be <=, think about it. TODO
-			      (let ((newentry (make-cache-entry tok parent (add1 count) args)))
+			      (let ((newentry (make-cache-entry tok origin parent (add1 count) args)))
 				(hashtab-set! token-cache tok newentry)
 				(handle-it newentry))
 			      (disp "Ignored message " tok " to " (node-id (simobject-node this)))) ;; fizzle
@@ -316,7 +282,7 @@
 
        [generic-defs
 
-	 '([define local-messages 0]
+	 `([define local-messages 0]
 	   [define token-cache (make-default-hash-table)]
 
 	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
@@ -331,26 +297,85 @@
 				(if (memq obj (cdr entry))
 				    (error 'neighbors "we're in our own neighbors list"))
 				(cdr entry)))))]
+
 	   [define sendmsg (lambda (data ob)
 ;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
+
 	   [define sim-emit (lambda (t m count)
 		    ;; Count messages at this node
 		    (set! local-messages (add1 local-messages))
 		    ;; Count total messages sent.
 		    (set! total-messages (add1 total-messages))
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
-		   (map (lambda (nd) (sendmsg (make-cache-entry this count t m) nd))
+		   (map (lambda (nd) (sendmsg (make-cache-entry this this count t m) nd))
 			(neighbors this)))]
-	   [define flood (lambda (t . m)
-		    ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
-;		    (disp (list "FLOODING" t m))
-		    (let ((msg (if (null? m) '() (car m))))
-		      (map (lambda (nd) (sendmsg (make-cache-entry this 0 t m) nd))
-			   all-objs)))])]
+
+	   [define (sim-flood t . m)
+	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
+					;		    (disp (list "FLOODING" t m))
+	     (let ((msg (if (null? m) '() (car m))))
+	       (map (lambda (nd) (sendmsg (make-cache-entry this this 0 t m) nd))
+		    all-objs))]
+
+	   [define (sim-light-up r g b)
+	     (if (simobject-gobj this)
+		 (change-color! (simobject-gobj this) (rgb r g b))
+		 ;; We're allowing light-up of undrawn objects atm:
+		 ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
+		 )]
+
+	   [define (sim-relay . tok)
+	     (if (not (null? tok))
+		 (error 'relay "Can't handle optional argument yet"))
+	     ,(DEBUGMODE '(if (not this-message) 
+			      (error 'inside-node-prog "this-message was #f")))
+	     (if (not (cache-entry-parent this-message))
+		 (error 'simulator_nought.relay 
+			"inside simulator. can't relay a message that was~a"
+			" sent by a local 'call' rather than an 'emit'"))
+	     ;; This is a replicated emission and should copy the existing count:
+	     (sim-emit (cache-entry-token this-message) 
+		       (cache-entry-args this-message) 
+		       (cache-entry-count this-message))]
+	   
+	   [define (sim-dist . tok)
+	     (if (null? tok)
+		 (begin 
+		   ,(DEBUGMODE '(if (not this-message)
+				    (error 'simulator_nought.process-statement 
+					   "broken")))
+		   (if (cache-entry-count this-message)
+		       (cache-entry-count this-message)
+		       (error 'simulator_nought.process-statement:dist
+			      "inside simulator (dist) is broken!")))		 
+		 (let ((entry (hashtab-get token-cache (car tok))))
+		   (if (and entry (cache-entry-count entry))
+		       (cache-entry-count this-message)
+		       (error 'simulator_nought.process-statement:dist
+			      "inside simulator (dist ~s) but ~s has not been received!")
+		       )))]
+	   
+	   [define (sim-return x)
+	     ,(DEBUGMODE '(if (not this-message)
+			      (error 'simulator_nought.sim-return
+				     "broken")))
+	       (if (eq? (cache-entry-origin this-message) this)
+		   (let ([tok (cache-entry-token this-message)])
+		     (let ([return_tok (symbol-append 'tok 
+		     ;; This might be a little sketchy:
+		     ,(process-statement `(call tok 
+	       
+	       (void)
+	       ;; For now we zap this straight back to the sender.
+	       ;; BUT we need a record of who sent what...
+					;		     (let ((loop ((
+	       )]	     
+	   
+	   )]
 
        [socprog
 	 `(lambda (SOC-processor this object-graph all-objs)
@@ -404,6 +429,7 @@
 				     "invalid message to node, should be a cache-entry: ~s ~nall messages: ~s"
 				     msg incoming)))
 			 (handler (cache-entry-token msg)
+				  (cache-entry-origin msg)
 				  (cache-entry-parent msg)
 				  (cache-entry-count msg)
 				  (cache-entry-args msg)))])
@@ -449,7 +475,6 @@
 ;  (define return-vals (vector 100)) ;; Here we accumulate returned values from the SOC
 ;  (define (add-return-val x) ...)
 ;  (define (get-return-vals) ...)
-  (disp "running sims" )
   (eval '(begin 
 	   (define total-messages 0)
 	   ;; This is a global flag which can be toggled to shut down all the
@@ -458,7 +483,7 @@
 	   ;; Define global bindings for these so that we can do fluid-let on them.
 	   (define soc-return 'unbound-right-now)
 	   (define finished 'unbound-right-now)))
-  (call/cc (lambda (exit-sim)
+;;  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
 	[nodeengs (vector-ref thunks 1)]
 	[display_engine
@@ -492,12 +517,15 @@
 			      (disp "CALLING finished" return-vals)
 			      (set! stop-nodes #t))]
 		  )
-	(disp "in that fluid" soc-return finished return-vals)
+;	(disp "in that fluid" soc-return finished return-vals)
 	(let ([result (if (null? timeout)
 			  (run-flat-threads thunks)
 			  (run-flat-threads thunks (car timeout)))])
-	  return-vals
-	  )))))))
+	  (if (null? return-vals)
+	      result
+	      return-vals)
+	  )))));))
+
 
 ;;===============================================================================
 
@@ -508,8 +536,16 @@
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
 
-    [ (process-statement '(emit foo 2 3)) (emit 'foo 2 3)]
-    [ (process-statement '(flood foo)) (flood 'foo)]
+    [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
+    [ (process-statement '(flood foo)) (sim-flood 'foo)]
+    
+    ;; Making sure that it recurs on arguments to return, even though
+    ;; this is not necessary for code generated by my compiler.
+    [ (process-statement '(return (dist))) (sim-return (sim-dist))]
+
+    ;; Just to make sure erros work with my unit-tester:
+    [ (process-statement '(return))  error]
+
 
     [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f)))
 	(let ((y (structure-copy x)))

@@ -1,8 +1,9 @@
 
 (define example-nodal-prog0
   '(program
+    (bindings)
     (socpgm  (bindings) (emit tok1))
-    (nodepgm (bindings) (tokens) ())))
+    (nodepgm (tokens) (startup))))
 
 ;; This simplest of programs just lights up all the nodes.
 ;; Really this only makes sense on the graphical simulator.
@@ -56,14 +57,14 @@
 
 ;; This takes the maximum distance to a leaf.  It spreads a gradient
 ;; and returns values back.  NO AGGREGATION.
-(define example-nodal-prog3
+(define example-nodal-prog4
   '(program
     (bindings )
     (socpgm (bindings ) 
 ;	    (tokens [tok1_return (v)
 ;		       (disp "Got return!" v)])
 	    (emit tok1))
-    (nodepgm	
+    (nodepgm
      (tokens
       [tok1_return (v)
 		   (disp "Got return!" v)]
@@ -107,8 +108,9 @@
 
 
 ;; List with Socprog and Nodeprog
-(define example-nodal-output0
-  '((lambda (this object-graph all-objs)
+;; [2004.06.09] -- this got to be too much trouble to maintain...
+(define example-nodal-output0 'unspecified
+#;  '((lambda (this object-graph all-objs)
       (let ()
 	(define token-cache (make-default-hash-table))
 	(define neighbors unspecified)

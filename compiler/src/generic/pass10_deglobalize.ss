@@ -30,7 +30,10 @@
 ;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
 ;;;  <Entry>  ::= <Token>
 ;;;  <Decl> ::= (<var> <Exp>)
-;;;  <TokBinding> ::= (<Token> <Code>*)
+;;;  <TokBinding> ::= (<Token>  <Code>*)
+;;; <TODO> DECIDE ON LOCAL BINDINGS:
+;;;  <TokBinding> ::= (<Token> (bindings <Decl>*) <Code>*)
+
 ;;;  <Code> ::= <Statement>*
 ;;;  <Statement>  ::= <BasicStuff?>
 ;;;                | (emit <Token> <Simple>*)

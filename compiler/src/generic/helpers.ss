@@ -127,6 +127,16 @@
 ;    (time (Node) Time)
      ))
 
+;; [2004.06.09]  Many of these are actually language forms.  I gotta
+;; get this sorted out eventually.
+(define token-machine-primitives
+  '( (elect-leader) (flood) ;; These are actually macros, but what the heck
+     (return) (emit) (relay) (dist) (light-up) (sense)
+     ))
+
+
+
+;; Now for basic token machine
   
 ;;; 2004.03.31 - I don't know what the system's going to be called so
 ;;; I'm using the placeholder "blanko" which I will replace later. 
@@ -142,6 +152,9 @@
   (if (assq x regiment-basic-primitives) #t #f))
 (define (distributed-primitive? x) 
   (if (assq x regiment-distributed-primitives) #t #f))
+
+(define (token-machine-primitive? x)
+  (if (assq x token-machine-primitive) #t #f))
 
 
 (define (lenient-compare? o1 o2)
@@ -180,6 +193,10 @@
 ;; 
 ;; [2004.05.24] Replacing the default tester with a better one.
 ;; [2004.06.03] Adding optional preprocessor function
+;; Forms:
+;;  (default-unit-tester message these-tests)
+;;  (default-unit-tester message these-tests equalfun)
+;;  (default-unit-tester message these-tests equalfun preprocessor)
 (define default-unit-tester
   (lambda (message these-tests . args)
     (let ((teq? (if (null? args) tester-equal?
@@ -221,8 +238,10 @@
 		   (display-constrained `(,intended 20) ": "))
 	       
 	       (flush-output-port)
-	       (let ((result (eval (preprocessor expr))))
-	       
+	       (let ((result 
+		      (call/cc (lambda (escape-eval)
+				 (parameterize ([error-handler (lambda args (escape-eval 'error))])
+					       (eval (preprocessor expr)))))))
 ;	       (newline)
 	       (if (or (and (procedure? intended) ;; This means its an oracle
 			    (intended result))
