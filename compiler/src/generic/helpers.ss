@@ -2036,6 +2036,7 @@
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
 
+;; TODO! This should memoize the second argument if it's a procedure...
 (define stream-cons cons)
 (define stream-append append)
 

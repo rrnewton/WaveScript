@@ -4,29 +4,135 @@
 ;; ======================================================================
 ;; Simulator runtime
 
+(define (sim-seed world)
+  (define-structure (tokstore x))
+  "This is the simulation seed."
+  "It returns an initial set of scheduled actions for the simulator to execute."
+  (let ([local-sense    (lambda () 3.0)])
+    (let* ()
+      (letrec ([soc-start
+                (lambda (localinfo world)
+                  (lambda ()
+                    (let ([the-store (localinfo-tokstore localinfo)]
+                          [this (localinfo-this localinfo)])
+                      (set-simobject-outgoing! this '())
+                      (set-simobject-outgoing!
+                        this
+                        (cons (bare-msg-object tok1 (list))
+                              (simobject-outgoing this)))
+                      (let ([result (values (simobject-outgoing (this)))])
+                        (set-simobject-outgoing! this '())
+                        result))))]
+               [tok1
+                (lambda (localinfo world)
+                  (lambda ()
+                    (let ([the-store (localinfo-tokstore localinfo)]
+                          [this (localinfo-this localinfo)])
+                      (set-simobject-outgoing! this '())
+                      ;(bcast tok2 '3)
+                      (let ([result (values (simobject-outgoing (this)))])
+                        (set-simobject-outgoing! this '())
+                        result))))]
+               [tok2
+                (lambda (localinfo world)
+                  (lambda (x)
+                    (let ([the-store (localinfo-tokstore localinfo)]
+                          [this (localinfo-this localinfo)])
+                      (set-simobject-outgoing! this '())
+                      (begin "Doing let stored."
+                             (if (eq? x '()) (set-car! x '99))
+                             (begin (set-tokstore-x!
+                                      the-store
+                                      (+ (tokstore-x the-store) '1))
+                                    ;(bcast tok2 (tokstore-x the-store))
+				    ))
+                      (let ([result (values (simobject-outgoing (this)))])
+                        (set-simobject-outgoing! this '())
+                        result))))])
+        (values (list) (lambda () (make-tokstore '())))))))
+
+
+
+
+
+;; Returns a stream of scheduled events, ordered by virtual time.
+(define build-node
+  (lambda (localinfo world sim-seed)
+      (mvlet ([(evnts store-factory) (sim-seed world)])
+       (let ([evnts (sort (lambda (a b) (<= (car a) (car b))) evnts)]
+	     [store (store-factory)]
+	     [evntcmpr (lambda (a b) (<= (car a) (car b)))])
+	 ;; Set up the store for this node only:
+	 (set-localinfo-tokstore! localinfo store)
+	 ;; Schedule either adds an event to the schedule, 
+	 ;; or returns the current schedule in list form.
+	 (letrec ([schedule 
+		   (let ([buffer '()])
+		     (case-lambda 
+		      [() buffer]
+		      [(evnt) (set! buffer (merge evntcmpr (list evnt) buffer))]))]
+		  ;; Wire the token-handler executer into our scheduler.
+  	          [wrap (lambda (evnt)
+			  (match evnt
+				 [(,vtime ,fun) 
+				  (list vtime 
+					(lambda (vtimeexeced) ;args				 
+					  (for-each schedule 
+					       (map wrap 
+						    ((fun localinfo world) vtimeexeced ;args
+							   )))))]))])
+	   ;; Put all the starting events into the schedule, while
+	   ;; also wiring their return values to modify the scheduler
+	   ;; further.
+	   (for-each schedule (map wrap evnts))
+	   ;; Now we build a stream from the scheduler:
+	   ;; This is a weird stream though, because it gives different results
+	   ;;  based on whether you *use* the earlier values in the stream.
+	   (let loop ([ls (schedule)])
+	     (cons (car ls) ;; We expose only the very next action.
+		   (lambda () ;; When this is called we get the new schedule, which might have changed.
+		     (loop (schedule))))))))))
+
+
+
 (define run-alpha-sim
-  (lambda (starting-evnts . stop-time)
+;  (lambda (starting-evnts store-factory . stop-time)
+  (lambda stop-time
     (let ([stopping-time? (if (null? stop-time)
 			      (lambda (t) #f)
 			      (lambda (t) (>= t (car stop-time))))])
+;      (let ([stores (make-n-list numsimnodes (lambda (_) (store-factory)))])
+      (let* ([sim (fresh-simulation)]
+	     [soc (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
+			       (simworld-all-objs sim)))]
+	     [streams 
+	      (list->vector
+	       (map (lambda (ob)
+		      (build-node 
+		       (make-localinfo ob ;; 
+				       (eq? ob soc)
+				       #f) ;; Store is set by build-node
+		       sim ;; the world
+		       sim-seed ;; TODO: READ THIS FROM FILE.
+		       
+		       )) 
+		    (simworld-all-objs sim)))])
 
-    (letrec 
-	([main-sim-loop 
-	  (lambda (evnt-queue)
-	    ;; Evnt-Queue is already sorted, 
-	    ;; we run the next event in virtual time
-	    (match evnt-queue
-	       [() 'out-of-events]
-	       [((,vtime ,hndlr) ,rest ...)
-		(if (stopping-time? vtime)
-		    'sim-time-exhausted
-		    ;; Execute the handler, producing a list of new events
-		    (let ([newevnts (hndlr vtime)])
-		      ;; Insert them back in the queue and resort
-		      (main-sim-loop (merge (lambda (a b) (<= (car a) (car b)))
-					    newevnts rest))))]))])
-      (main-sim-loop starting-evnts)
-    ))))
+    (let main-sim-loop ([streams streams])      
+      (disp "mainsimloop" streams)
+      (let* ([streams (map (lambda (s) (if procedure? s) (s) s) streams)]
+	     [heads (map stream-car streams)]
+	     [nexttime (apply min heads)])
+	
+	(let* ([next (assq nexttime heads)]
+	       [nextstrm (assq next streams)])
+	  (if (not (procedure? nextstrm))
+	      (error 'run-alpha-sim "nextstrm should be a procedure!: ~a" nextstrm))	  
+	  ;; Run this atomic action (token handler), it gets to run at its intended virtual time.
+	  ((cadr next) (car next))
+	  ;; That had the effect of scheduling new actions, now we keep going.
+	  (main-sim-loop (cons (stream-cdr nextstrm) (alist-remove next streams))))))))))
+
 
 ;; From Swindle:
 ;;>> (merge less? a b)
@@ -34,7 +140,7 @@
 ;;>   (sorted? b less?) are true, and returns a new list in which the
 ;;>   elements of `a' and `b' have been stably interleaved so that (sorted?
 ;;>   (merge less? a b) less?) is true.  Note: this does not accept vectors.
-(define* (merge less? a b)
+(define (merge less? a b)
   (cond [(null? a) b]
         [(null? b) a]
         [else (let loop ([x (car a)] [a (cdr a)] [y (car b)] [b (cdr b)])
@@ -63,10 +169,10 @@
 
 ;; MAKE SURE NOT TO INCLUDE OURSELVES:
 [define (neighbors obj sim)
-  (let ((entry (assq obj (simulation-object-graph sim))))
+  (let ((entry (assq obj (simworld-object-graph sim))))
     (if (null? entry)
         (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
-               obj (simulation-object-graph sim))
+               obj (simworld-object-graph sim))
         (begin 
           (if (memq obj (cdr entry))
               (error 'neighbors "we're in our own neighbors list"))
@@ -126,7 +232,7 @@
       (logger string)
       ))]
 
-[define (sim-dist . tok)
+'[define (sim-dist . tok)
   (if (null? tok)
       (begin 
         (if (msg-object-count this-message)

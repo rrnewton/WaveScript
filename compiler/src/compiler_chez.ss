@@ -150,6 +150,8 @@
 (include "chez/simulator_alpha.ss")
 ;(import simulator_alpha)
 
+(include "generic/alpha_lib.ss")
+
 #!eof
 
 ;; If we're in SWL then load the GRAPHICS portion:
