@@ -9,7 +9,7 @@
            "basic_graphics.ss"
            (all-except "graphics_stub.ss" these-tests test-this)
 ;           (prefix textsim: "simulator_nought.ss")
-           #;           (all-except "simulator_nought.ss" this-unit-description 
+           (all-except "simulator_nought.ss" this-unit-description 
                        unfold-list test-this these-tests wrap-def-simulate
                        csn t1 
 ;                       example-nodal-prog0 example-nodal-prog1 example-nodal-prog2
@@ -30,14 +30,14 @@
   (include "../generic/simulator_nought_graphics.ss")  
 
   (provide (all-defined)
-;           (all-from "flat_threads.ss")
-;           (all-from "helpers.ss")
+           (all-from "flat_threads.ss")
+           (all-from "helpers.ss")
            (all-from "basic_graphics.ss")
            (all-from "graphics_stub.ss")
-;           (all-from "simulator_nought.ss")
+           (all-from "simulator_nought.ss")
    )
 
   )
 
-;(require simulator_nought_graphics)
-;(test-this)
+(require simulator_nought_graphics)
+(test-this)

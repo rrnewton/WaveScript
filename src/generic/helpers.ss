@@ -14,12 +14,12 @@
     (delete-file Regiment-Log-File))
 
 ;; This one prints straight to the screen.
-(define-syntax DEBUGPRINT 
+#;(define-syntax DEBUGPRINT 
   (syntax-rules ()
     [(_ expr ...) (begin expr ...)]))
 
 ;; This one prints to the logifle, openning and closing it every time:
-#;(define-syntax DEBUGPRINT 
+(define-syntax DEBUGPRINT 
   (syntax-rules ()
     [(_ expr ...)
      (let ((p (open-output-file Regiment-Log-File 'append)))
@@ -312,7 +312,8 @@
 	       (let ((result 
 		      (call/cc 
 		       (lambda (escape-eval)
-			 (with-error-handlers (lambda _ (void))
+			 (with-error-handlers (lambda args 
+						(disp "default-unit-tester, got ERROR: " args))
 					      (lambda () (escape-eval 'error))
 					      (lambda () (eval (preprocessor expr))))))))
 ;	       (newline)

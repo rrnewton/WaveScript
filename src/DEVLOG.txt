@@ -52,6 +52,22 @@ tho, it's not that unreasonably an idea.
   Dammit I got burned again by a recompilation failure on
 graphics_stub.zo.  PLTs system for time-stamp checks on compiled files
 is totally broken...  Or maybe my clock skew is all to blame.
+  Overall my ratio of messing with my environment vs. making progress
+has been horrible, and this isn't entirely my fault.  My environment
+has big problems.  Sigh, I should have used a safer language, I don't
+think I'm really getting enough benifits from scheme... but it's too
+late to back out now.  Eventually it will be a haskell compiler, so
+theoretically I can dump this compiler as soon as I'm done with my
+masters.
+  Although, even given my decisions thusfar, it was a bad idea to make
+a simulator at all.. I *totally* should have just hacked onward
+towards NesC.  Sigh.
+
+1:33pm: *THere* all the damn graphical simulator tests work in PLT
+also..
+
+
+
 
 
 
