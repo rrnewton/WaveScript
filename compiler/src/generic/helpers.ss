@@ -1322,6 +1322,13 @@
 		(outer (cdr struct))))
 	#f)))
 
+;; [2004.06.15] Copying this from generic utils file.
+(define list-get-random
+  (lambda (ls)
+    (if (null? ls)
+        (error 'list-get-random "cannot get random element from null list.")
+        (list-ref ls (random (length ls))))))
+
 ;;  [2004.06.11] Man also can't believe that I've never written this
 ;;  before.  This is dinky; a real version of this would do an
 ;;  alignment of the structures intelligently.  I don't know how

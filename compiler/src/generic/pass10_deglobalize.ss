@@ -182,6 +182,7 @@
        `([,tokname ()
 	  ;; At each formation click, we output this node.
 	  (soc-return (list 'ANCH this))])]
+
       [(circle-at)     
        `([,tokname 
 	  ()

@@ -112,7 +112,7 @@
 (define (rr) (r '(circle 50 (anchor-at '(30 40)))))
 
 (define (doit x)
-  (run-simulation (build-simulation (rc x)) 2.0))
+  (run-simulation (build-simulation (compile-simulate-nought x)) 2.0))
 
 
 ;; This is my big target program!!
@@ -141,4 +141,35 @@
 
 (define compilertests these-tests)
 (define compilertest test-this)
- 
+ (define prog
+  '(program
+     (bindings (tmp_3 (cons '40 '())) (tmp_1 (cons '30 tmp_3)))
+     (socpgm (bindings) (call f_token_result_2))
+     (nodepgm
+       (tokens
+         (f_token_result_2 () (flood token_4))
+         (token_4
+           ()           
+           (if (< (locdiff (loc) tmp_1) 10.0)
+               (begin
+                 (disp "blah blah calling elect leader")
+                 (elect-leader m_token_result_2))
+               '#f))
+         (m_token_result_2 ()
+                           (disp "Bang, election finished, got result..")
+                           (soc-return (list 'anch this))))
+       (startup))))
+
+(define (all-incoming)
+  (filter (lambda (ls) (not (null? ls)))
+          (map simobject-incoming all-objs)))
+
+(define (g) 
+  ;  (define prog (rc '(anchor-at '(30 40))))
+  (init-world)
+  (let ((res (run-simulation 
+              (build-simulation
+               (compile-simulate-nought prog)) 10.0)))
+    (disp "EXEC FINISHED, HERE WAS PROG:")
+    (pretty-print prog)
+    res))
