@@ -1,58 +1,38 @@
 
-(module simulator_nought mzscheme
+(module simulator_nought_graphics mzscheme
   (require (lib "iu-match.ss")
            (lib "include.ss")
-           ;; NO SLIB:
-;           (lib "load.ss" "slibinit")
-           (lib "compat.ss")           
+           (lib "compat.ss")                      
            (all-except "helpers.ss" id flush-output-port)
-;           (lib "9.ss" "srfi")
- ;          "engine.ss"
            (all-except "flat_threads.ss" test-this these-tests)
            (all-except "tsort.ss" test-this these-tests)
-           "graphics_stub.ss"
+           (all-except "simulator_nought.ss" this-unit-description 
+                       unfold-list test-this these-tests wrap-def-simulate
+                       csn t1 
+;                       example-nodal-prog0 example-nodal-prog1 example-nodal-prog2
+;                       example-nodal-prog99 example-nodal-output0
+                       )
+           "basic_graphics.ss"
+           "graphics_stub.ss"           
            )
   
-  (provide (all-defined))
-#;  (provide build-simulation run-simulation compile-simulate-nought
-           world-xbound world-ybound radius numprocs
-           object-graph all-objs
-           
-           ;; I don't want to export all this, but how else will my evals work??
-           structure-copy
-           free-vars
-           process-statement
-           make-simobject simobject? simobject-node simobject-incoming simobject-redraw simobject-gobj
-           make-node node? node-id node-pos
-           
-           test-this these-tests)
-  
-  (define (vector-copy v)
-    (let ((newv (make-vector (vector-length v))))
-      (let loop ((n (vector-length newv)))
-        (if (>= n 0)
-            (begin (vector-set! newv (vector-ref v n))
-                   (loop (sub1 n) 395935359395593))))))
+  (provide (all-defined) 
+           ;object-graph all-objs
+;           init-graphics close-graphics
+           ;change-color!
+           (all-from "helpers.ss")
+           (all-from "basic_graphics.ss")
+           (all-from "graphics_stub.ss")
+           (all-from "simulator_nought.ss"))
+;  (define (make-default-hash-table) (make-hash-table))
+    
+  (define hashtab-get hash-table-get)
+  (define hashtab-set! hash-table-put!)
 
-  (define (make-default-hash-table) (make-hash-table))
+  (define sleep-me sleep)
   
-  (include "../generic/simulator_nought.ss")
-  
-  ;; RRN: This is a cludge!! But how do I copy a structure in mzscheme!!
-  (set! structure-copy 
-        (lambda (s)
-          (cond
-            [(node? s)
-             (make-node (node-id s) (node-pos s))]
-            [(simobject? s)
-             (make-simobject (simobject-node s) 
-                             (simobject-incoming s) 
-                             (simobject-redraw s) 
-                             (simobject-gobj s))]
-            [else (error 'structure-copy
-                         "sorry this is lame, but can't handle structure: ~s" s)]))
-              )
-
+  (include "../generic/simulator_nought_graphics.ss")
   )
 
-(require simulator_nought)
+(require simulator_nought_graphics)
+(test-this)

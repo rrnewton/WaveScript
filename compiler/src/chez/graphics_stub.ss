@@ -14,7 +14,7 @@
 
 ;(load "basic_graphics.ss")
 
-(module graphics_stub (draw-procs draw-proc draw-edge set-color!
+(module graphics_stub (draw-procs draw-proc draw-edge change-color! ;set-color!
 				  these-tests test-this )
   (import basic_graphics)
 
@@ -46,6 +46,13 @@
 				pos box1 box2)]))))
     
 ;;===============================================================================
+
+(define (change-color! ob c)
+  (set-fill-color! ob
+		   (make <rgb>
+		     (rgb-red c)
+		     (rgb-green c)
+		     (rgb-blue c))))		     
 
 ;(define links '())
 
@@ -107,8 +114,8 @@
 			   line))]
 	   [,otherwise (error 'draw-edge "bad-input: ~s" edge)])))
 
-(define (set-color! obj r g b)
-  (set-fill-color! obj (make <rgb> r g b)))
+;(define (set-color! obj r g b)
+;  (set-fill-color! obj (make <rgb> r g b)))
 
 ;  (send obj set-fill-color! (make <rgb> r g b)))
 

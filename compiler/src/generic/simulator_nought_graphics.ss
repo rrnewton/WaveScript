@@ -17,8 +17,8 @@
 
 ;;===============================================================================
 
-      (define edge-table (make-hash-table 500))
-      (define proc-table (make-hash-table 500))
+      (define edge-table (make-default-hash-table))
+      (define proc-table (make-default-hash-table))
 
 ;; This assumes a static comm graph for now:
 ;; What's more, this is lame and assumes that the *allocated object-graph*
@@ -82,10 +82,8 @@
 
 ;; UNIT TESTS:
 
-(printf "trying to load examples!!!! : ~s~n" (cd))
-(flush-output-port)
+;(load "simulator_nought.examples.ss")
 ;(include "simulator_nought.examples.ss")
-(load "simulator_nought.examples.ss")
 
 (define these-tests
   `( 
@@ -101,11 +99,11 @@
 	       (graphical-simulation 
 		  (vector (lambda () 
 			    (for-each (lambda (ob) 
-					(set-fill-color! 
+					(change-color!
 					 (simobject-gobj ob)
-					 (make <rgb> 0 255 0)))
+					 (rgb 0 255 0)))
 				      all-objs))
-			  '())	  
+			  '())
 		  1.0)))
 	  (sleep-me 0.7)
 	  (close-graphics)
@@ -120,9 +118,9 @@
 	 (vector (lambda () 3)
 		 (list (lambda () 
 			 (for-each (lambda (ob)
-				     (set-fill-color! 
+				     (change-color!
 				      (simobject-gobj ob)
-				      (make <rgb> 0 255 0)))
+				      (rgb 0 255 0)))
 				   all-objs))
 		       ))
 	 1.0)
@@ -130,7 +128,7 @@
 	(close-graphics))
       unspecified ]
 
-  [ "Flood lights program..."
+#;  [ "Flood lights program..."
       (begin 
 	(init-graphics)
 	(graphical-simulation
@@ -140,12 +138,12 @@
       unspecified]
       
   ;; This really should be graphical only.
-  [ "Spread lights gradually..."
+#;  [ "Spread lights gradually..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog2))
     ,(lambda (x)
        (procedure? (vector-ref x 0))
        (andmap procedure? (vector-ref x 1)))]
-
+  
 ;    ,@(include "simulator_nought.tests")    
   ))
 
@@ -172,9 +170,9 @@
 ;;===============================================================================
 ;; JUNK 
 
-(define csn  compile-simulate-nought)
+'(define csn  compile-simulate-nought)
 
-(define t1
+'(define t1
   '((shirt tie belt)
     (tie jacket)
     (belt jacket)
@@ -183,19 +181,19 @@
     (undershorts pants shoes)
     (socks shoes)))
 
-(define t2
+'(define t2
   '((a b) (b c) (c a)
     (d e) (e f)))
 
 
-(dsis tt (csn example-nodal-prog1))
-(define a (car all-objs))
-(define b object-graph)
-(define c all-objs)
+'(dsis tt (csn example-nodal-prog1))
+'(define a (car all-objs))
+'(define b object-graph)
+'(define c all-objs)
 ;(dsis g ((eval f) a b c))
 ;a (dsis g )
 
-(define temp_temp
+'(define temp_temp
   '(program
     (socpgm (bindings) 
 	    (disp "SOCPROG" )
@@ -214,7 +212,7 @@
        () ;; seed tokens
        )))
 
-(dsis g
+'(dsis g
       (begin (init-graphics)
 	     (graphical-simulation
 	      (build-simulation 

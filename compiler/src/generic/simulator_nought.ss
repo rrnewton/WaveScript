@@ -61,7 +61,7 @@
 	(cons lst (loop (cdr lst))))))
 
 (define structure-copy  vector-copy)
-
+     
 ;;========================================
 ;; After the start of the program this doesn't change:
 (define graph 

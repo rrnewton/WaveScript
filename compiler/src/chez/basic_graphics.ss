@@ -19,11 +19,7 @@
 ;; "Regionstreams/compiler/src" directory where compiler_chez.ss is:
 (include "generic/basic_graphics.ss")
 
-(define the-win #f)
 (define the-winframe #f)
-
-(define-structure (rgb red green blue))
-(define rgb make-rgb)
 
 (define current-drawing-color (make-rgb 0 255 0))
 (define current-filling-color #f)
