@@ -228,6 +228,13 @@
 	      `(let ([,lhs ,rhs])
 		 (make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
 
+	     ;; Here we have letrec style binding.  Probably shouldn't.
+	     [(let-stored ([,lhs* ,rhs*] ...) ,bodies ...)
+	      (let ([newenv (append lhs* env)])
+		(let ([loop (process-expr newenv tokens this-token this-subtok)])
+		  `(let-stored ([,lhs* ,(map loop rhs*)] ...)
+			       @(make-begin (map loop bodies)))))]
+
 	     ;; TODO: expand away let*
 	     [(let* () ,[bodies] ...)  (make-begin bodies)]
 	     [(let* ( [,l1 ,r1] ,rest ...) ,bodies ...)
@@ -330,8 +337,10 @@
       (lambda (env tokens)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
+		 (disp "PROCESSING TOKBIND" args tokbind)
+
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (append args env) tokens tok id) body))))))
+			,((process-expr (append args stored bindings env) tokens tok id) body))))))
 	    
     (define decode 
       (lambda (stuff)
@@ -341,6 +350,10 @@
 	      [nodetoks '()]
 	      [node-startup '()])
 	  (let loop ((ls stuff))
+	    (disp "Decoding:" (map car bindings) (map car socbindings)
+		  socpgm (map car nodetoks) node-startup)
+	    (disp "Decoding from" ls)
+		 
 	    (if (null? ls)
 		(let ((result `(deglobalize-lang
 				'(program (bindings ,@bindings)
@@ -357,7 +370,9 @@
 			 [(socpgm (bindings ,b ...) ,x ...)  
 			  (set! socbindings b)
 			  (set! socpgm x)]
-			 [(socpgm ,x ...)   (set! socpgm x)]			 
+			 [(socpgm ,x ...)   (set! socpgm x)]
+			 [(nodepgm (tokens ,x ...))
+			  (set! nodetoks x)]
 			 [(nodepgm (tokens ,x ...) (startup ,s ...))
 			  (set! nodetoks x)
 			  (set! node-startup s)]
@@ -414,13 +429,22 @@
     (lambda (prog)
       (match prog
         [(,lang '(program (bindings ,constbinds ...)
-				(socpgm (bindings ,socbinds ...) 
-					,socstmts ...)
-				(nodepgm (tokens ,nodetoks ...)
-					 (startup ,starttoks ...))))
+			  (socpgm (bindings ,socbinds ...) 
+				  ,socstmts ...)
+			  (nodepgm (tokens ,nodetoks ...)
+				   (startup ,starttoks ...))))
+	 
+	 (disp "Lang" lang
+	       "constbinds" (map car constbinds)
+	       "socbinds" (map car socbinds)
+	       "socstmts" socstmts
+	       "tokens" (map car nodetoks)
+	       "starttoks" starttoks)
+
 	 (cleanup socbinds constbinds 
                   (if (null? socstmts) #f `(begin ,@socstmts))
                   nodetoks starttoks)]
+	[(,lang '(program ,stuff ...)) (cleanup-token-machine (decode stuff))]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
 	;; without the language annotation:

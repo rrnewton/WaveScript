@@ -96,7 +96,13 @@
     ;; The semantics of let-stored are that the first time the
     ;; expression is executed (and only the first), the RHS is
     ;; evaluated and stored.
-    [(let-stored (,first ,second ,rest ...) ,body)
+    [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
+;     (let ([all-lhs (cons lhs1 (cons lhs2 lhs*))]
+;	   [all-free (apply append (map free-vars (cons rhs1 (cons rhs2 rhs*))))])
+;       (if (not (null? (intersection all-lhs all-free)))
+;	   (error 'desugar-let-stored:process-expr
+;		  "let-stored cannot have any recursive bindings"
+;		  `(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
      (process-expr env `(let-stored (,first) (let-stored (,second ,rest ...) ,body)))]
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
      (let ([newvar (unique-name 'stored-liftoption)])

@@ -86,7 +86,7 @@
 (include "chez/pass20_deglobalize.ss") (import deglobalize)
 (include "generic/pass21_cleanup-token-machine.ss")
 (include "generic/pass23_desugar-gradients.ss")
-;(include "generic/pass24_desugar-let-stored.ss")
+(include "generic/pass24_desugar-let-stored.ss")
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
