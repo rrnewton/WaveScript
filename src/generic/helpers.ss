@@ -45,14 +45,6 @@
 		     )
        (close-output-port p))]))
 
-(define regiment-parameters (make-parameter '()))
-(define-syntax define-regiment-parameter
-  (syntax-rules () 
-    [(_ name args ...)
-     (define name 
-       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
-	      (make-parameter args ...)))]))
-
 
 ;; This version leaves the file open:
 ;; Shouldn't exist at this time:
@@ -290,6 +282,613 @@
     ;(leds ...
      ))
 
+
+;;============================================================
+
+
+;; [2004.10.04]  Finds the element in a list maximizing a metric:
+(define (find-maximizing f ls)
+  (if (null? ls) (error 'find-maximizing "cannot take null list.")
+      
+      (let loop ([ls (cdr ls)] 
+		 [maxelem (car ls)]
+		 [maxval (f (car ls))])
+	(if (null? ls) maxelem
+	    (let ([thisval (f (car ls))])
+	      (if (> thisval maxval)
+		  (loop (cdr ls) (car ls) thisval)
+		  (loop (cdr ls) maxelem maxval)))))))	    
+
+(define list-head
+  (lambda (lst n)
+    (cond
+      [(zero? n) '()]
+      [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
+                          lst n)]
+      [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
+
+
+(define filter
+  (lambda (pred lst)
+    (cond
+      [(null? lst) '()]
+      [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
+      [else (filter pred (cdr lst))])))
+
+;; This is mainly used by the system in language-mechanism.  
+;;   Clumps a list into sublists (clumps) all of whose members satisfy
+;; the predicate function with some other member of that clump.
+;; Basically it gives you "connected" components.  Assumes the
+;; predicate function is commutative.
+(define (clump f ls)
+  (let outer ([clumps '()] [ls ls])
+    (if (null? ls)
+	clumps
+	(let ([x (car ls)])
+	  (outer 
+	   (let inner ([clumps clumps])
+	     (cond 
+	      [(null? clumps) `((,x))]
+	      [(null? (filter (lambda (y) (f x y)) (car clumps)))
+	       (cons (car clumps) (inner (cdr clumps)))]
+	      [else ;; We've actually matched this clump.		   		    
+	       (cons (cons x (car clumps)) (cdr clumps))]))
+	   (cdr ls))))))
+
+(define (average ls)
+  (let loop ((sum 0) (count 0) (ls ls))
+    (if (null? ls) (/ sum count)
+	(loop (+ (car ls) sum) (+ 1 count) (cdr ls)))))
+
+(define list-index
+  (lambda (pred ls)
+    (cond
+      ((null? ls) #f)
+      ((pred (car ls)) 0)
+      (else (let ((list-index-r (list-index pred (cdr ls))))
+              (if (number? list-index-r)
+                  (+ list-index-r 1)
+                  #f))))))
+
+(define list-find-position
+  (lambda (sym los)
+    (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
+
+;; USES equal? !!
+(define list-remove-after
+  (lambda (x ls)
+    (let loop ([ls ls] [acc '()])
+      (cond
+       [(null? ls) (reverse acc)]
+       [(equal? x (car ls)) (reverse (cons (car ls) acc))]
+       [else (loop (cdr ls) (cons (car ls) acc))]))))
+
+(define list-remove-before
+  (lambda (x ls)
+    (let loop ([ls ls])
+      (cond
+       [(null? ls) '()]
+       [(equal? x (car ls)) ls]
+       [else (loop (cdr ls))]))))
+
+(define list-remove-first
+  (lambda (x lst)
+    (cond
+      [(null? lst) '()]
+      [(equal? x (car lst)) (cdr lst)]
+      [else (cons (car lst) (list-remove-first x (cdr lst)))])))
+
+
+(define list-remove-all
+  (lambda (x lst)
+    (cond
+      [(null? lst) '()]
+      [(equal? x (car lst)) (list-remove-all x (cdr lst))]
+      [else (cons (car lst) (list-remove-all x (cdr lst)))])))
+
+#;(define timeeval
+  (lambda (x)
+    (let ([start (real-time)])
+      (eval x)
+      (- (real-time) start))))
+
+#;(define cpueval
+  (lambda (x)
+    (let ([start (cpu-time)])
+      (eval x)
+      (- (cpu-time) start))))
+
+(define snoc
+  (lambda (a ls)
+    (append ls (list a)) ))
+
+(define rac
+  (lambda (ls)
+    (if (null? ls)
+        (error 'rac "cannot take the rac of the empty-list")
+        (let rac-loop ([cur (car ls)] [lst (cdr ls)])
+          (if (null? lst)
+              cur
+              (rac-loop (car lst) (cdr lst)))))))
+(define last rac)
+
+(define rdc
+  (lambda (ls)
+    (if (null? ls)
+        (error 'rdc "cannot take the rdc of the empty-list")
+        (let rdc-loop ([lst ls])
+          (if (null? (cdr lst))
+              '()
+              (cons (car lst) (rdc-loop (cdr lst))))))))
+
+(define mapleft
+  (lambda (f ls)
+    (if (null? ls)
+        '()
+        (let ([rst (mapleft f (cdr ls))])
+          (cons (f (car ls)) rst)))))
+
+(define mapright
+  (lambda (f ls)
+    (if (null? ls)
+        '()
+        (cons (f (car ls))
+              (mapright f (cdr ls))))))
+
+(define list-set
+  (lambda (origls origpos v)
+    (let list-set-loop ([ls origls] [pos origpos])
+      (cond
+        [(null? ls)
+         (error 'list-set
+                "list ~a is not long enough to reference pos ~a"
+                origls origpos)]
+        [(zero? pos) (cons v (cdr ls))]
+        [else (cons (car ls)
+                    (list-set-loop (cdr ls) (sub1 pos)))]))))
+
+;===============================================================================
+
+;; Repeatedly execute an expression some number of times:
+(define-syntax rep
+  (syntax-rules ()
+    [(_ reps exp ...)
+     (let loop ([n reps])
+       (if (< n 1)
+           (void)
+           (begin exp ...
+                  (loop (sub1 n)))))]))
+
+(define insert-between
+  (lambda (x lst)
+    (let loop ([lst lst])
+      (cond
+        [(null? lst) '()]
+        [(null? (cdr lst)) lst]
+        [else (cons (car lst)
+                    (cons x (loop (cdr lst))))]))))
+
+;; Removed mvlet! [2004.04.28]
+
+;;; procedures for manipulating sets
+(define set?
+  (lambda (ls)
+    (or (null? ls)
+        (and (not (memq (car ls) (cdr ls)))
+             (set? (cdr ls))))))
+
+;; Inefficient for ordered types:
+(define (subset? l1 l2)
+  (and (andmap (lambda (a) (member a l2))
+	       l1)
+       #t))
+
+(define set-equal?
+  (lambda (lst1 lst2)
+    (letrec ((loop (lambda (lst1 lst2)
+                     (cond
+                       [(and (null? lst1) (null? lst2)) #t]
+                       [(or (null? lst1) (null? lst2)) #f]
+                       [(member (car lst1) lst2) (loop (cdr lst1) (list-remove-all (car lst1) lst2))]
+                       [else #f]))))
+      (if (and (set? lst1) (set? lst2))
+          (loop lst1 lst2)
+          (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
+
+(define list->set
+  (lambda (ls)
+    (if (null? ls) '()
+        (set-cons (car ls) (list->set (cdr ls))))))
+
+(define set-cons
+  (lambda (x set)
+    (cond
+      [(null? set) (list x)]
+      [(eq? x (car set)) set]
+      [else (cons (car set) (set-cons x (cdr set)))])))
+
+(define union
+  (case-lambda
+    [(set1 set2)
+     (if (not (list? set1)) (error 'union "not a list: ~s" set1))
+     (if (not (list? set2)) (error 'union "not a list: ~s" set2))
+     (let loop ([set1 set1])
+       (cond
+         [(null? set1) set2]
+         [(memq (car set1) set2) (loop (cdr set1))]
+         [else (cons (car set1) (loop (cdr set1)))]))]
+    [() '()]
+    [(set1 . sets)
+     (let loop ([set1 set1] [sets sets])
+       (if (null? sets)
+           set1
+           (loop (union set1 (car sets)) (cdr sets))))]))
+
+(define intersection
+  (case-lambda
+    [(set1 set2)
+     (let loop ([set1 set1])
+       (cond
+         [(null? set1) '()]
+         [(memq (car set1) set2) (cons (car set1) (loop (cdr set1)))]
+         [else (loop (cdr set1))]))]
+    [(set1 . sets)
+     (let loop ([set1 set1] [sets sets])
+       (if (null? sets)
+           set1
+           (loop (intersection set1 (car sets)) (cdr sets))))]))
+
+(define difference
+  (lambda (set1 set2)
+    (cond
+      ((null? set1) '())
+      ((memq (car set1) set2) (difference (cdr set1) set2))
+      (else (cons (car set1) (difference (cdr set1) set2))))))
+
+(define generalized-member?
+  (lambda (pred?)
+    (lambda (x ls)
+      (let f ([ls ls])
+        (and (not (null? ls))
+             (or (pred? (car ls) x)
+                 (f (cdr ls))))))))
+
+(define generalized-union
+  (lambda (pred?)
+    (let ([member? (generalized-member? pred?)])
+      (lambda args
+        (let f ([args args])
+          (if (null? args)
+              '()
+              (let ([set1 (car args)] [set2 (f (cdr args))])
+                (let loop ([set1 set1])
+                  (cond
+                    [(null? set1) set2]
+                    [(member? (car set1) set2) (loop (cdr set1))]
+                    [else (cons (car set1) (loop (cdr set1)))])))))))))
+
+;;; (iota n) => (0 1 ... n-1)
+;;; (iota i n) => (i i+1 ... i+n-1)
+(define iota
+  (case-lambda
+    [(n) (iota 0 n)]
+    [(i n)
+     (if (= n 0)
+         '()
+         (cons i (iota (+ i 1) (- n 1))))]))
+
+
+;;; create a "flattened" begin from list of expressions
+;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
+(define make-begin
+  (lambda (expr*)
+    (match (match `(begin ,@expr*)
+             [(begin ,[expr*] ...) (apply append expr*)]
+             [,expr (list expr)])
+      [(,x) x]
+      [(,x ,x* ...) `(begin ,x ,x* ...)])))
+;;RRN [01.09.17] :
+(define make-code
+  (lambda (expr*)
+    (match (match `(code ,@expr*)
+             [(code ,[expr*] ...) (apply append expr*)]
+             [,expr (list expr)])
+      [(,x) x]
+      [(,x ,x* ...) `(code ,x ,x* ...)])))
+
+(define with-output-to-string
+  (lambda (th)
+    (parameterize ([current-output-port (open-output-string)])
+      (th)
+      (get-output-string (current-output-port)))))
+
+
+;;; we can only handle exact integers in the fixnum range
+(define fx-integer?
+  (let ()
+    ;;RRN: Unfortunately MSIL can't handle boxed immediates, so fixnums
+    ;; are the full size of a word:
+    (define fixnum-minimum (- (expt 2 31)))
+    (define fixnum-maximum (- (expt 2 31) 1))
+    (lambda (x)
+      (and (integer? x)
+           (exact? x)
+           (<= fixnum-minimum x fixnum-maximum)))))
+
+(define bg-integer?
+  (lambda (x)
+    (and (integer? x)
+         (exact? x)
+         (not (fx-integer? x)))))
+
+(define disp
+  (lambda args
+    (let loop ((args args))
+      (if (null? args)
+          (begin (newline) (newline))
+          (begin (display (car args))(display " ")
+                 (loop (cdr args)))))))
+
+(define (list-remove-last! ls)
+  (if (null? ls)
+      (error 'list-remove-last "cannot remove last of the null list!"))
+  (let loop ((cell ls) (next (cdr ls)))
+    (if (null? (cdr next))
+	(set-cdr! cell '())
+	(loop next (cdr next)))))
+
+;[2004.07.21] - This one applies a given function (better be lenient)
+; against every interemediate node in the tree.  Returns a list of
+; *every* match.  Returns them in the order it hits them as it does a
+; depth-first traversal.
+;;   This is heavy-weight, expensive function, but darn useful!!
+(define (deep-all-matches f struct)
+  (letrec ([against 
+	    (lambda (struct)
+	      (if (f struct) 
+		  (cons struct (down struct))
+		  (down struct)))]
+	   [down 
+	    (lambda (struct)
+	      (cond
+	       [(vector? struct)
+		(let vloop ([i 0])
+		  (if (= i (vector-length struct)) 
+		      '()
+		      (append (against (vector-ref struct i))
+			      (vloop (add1 i)))))]
+	       [(pair? struct)
+		(append (against (car struct))
+			(against (cdr struct)))]
+	       [else '()]))])
+    (against struct)))
+
+;; [2004.07.28] Occassionally useful.
+(define (deep-filter pred struct)
+  (let loop ([struct struct])
+    (cond
+     [(list? struct) (map loop (filter pred struct))]
+     [(vector? struct)
+      (list->vector (map loop (filter pred (vector->list struct))))]
+     [else struct])))
+	   
+;[01.10.23] - I'm surprised this wasn't added a million years ago:
+(define (deep-member? ob struct)
+  (let outer ([struct struct])
+    (or (eqv? ob struct)
+	(and (vector? struct)
+	     (let inner ([i 0])
+	       (cond
+		[(= i (vector-length struct)) #f]
+		[(outer (vector-ref struct i)) #t]
+		[else (inner (add1 i))])))
+	(and (pair? struct)
+	     (or (outer (car struct))
+		 (outer (cdr struct)))))))
+
+;; [2004.06.11] This one doesn't do vectors:
+(define (deep-assq ob struct)
+  (let outer ([struct struct])
+    (if (pair? struct)
+	(if (eq? ob (car struct))
+	    struct
+	    (or (outer (car struct))
+		(outer (cdr struct))))
+	#f)))
+
+;; [2004.06.15] Copying this from generic utils file.
+(define list-get-random
+  (lambda (ls)
+    (if (null? ls)
+        (error 'list-get-random "cannot get random element from null list.")
+        (list-ref ls (random (length ls))))))
+;; This too:
+(define randomize-list
+  (lambda (ls)
+    (let* ([vec (list->vector ls)]
+	   [len (vector-length vec)])
+      (let ([swap (lambda (i j)
+		    (let ([temp (vector-ref vec i)])
+		      (vector-set! vec i (vector-ref vec j))
+		      (vector-set! vec j temp)))])
+	(do ([i 0 (add1 i)]) ((= i len))
+	  ;; Swap with a later position:
+	  (swap i (+ i (random (- len i)))))
+	(vector->list vec)))))
+
+
+;;  [2004.06.11] Man also can't believe that I've never written this
+;;  before.  This is dinky; a real version of this would do an
+;;  alignment of the structures intelligently.  I don't know how
+;;  actually hard of a problem that is.  (Graph matching is a bitch,
+;;  no?)
+(define (diff obj1 obj2)
+  (let loop ([o1 obj1] 
+	     [o2 obj2]
+	     [index '()])
+    (printf "~s: len ~s ~s~n" index 
+	    (if (list? o1) (length o1) #f)
+	    (if (list? o2) (length o2) #f))    
+    (cond
+       [(equal? o1 o2) (void)]
+       [(and (list? o1) (list? o2))
+	(cond 
+	 [(not (= (length o1) (length o2)))
+	  (printf "Lengths differ at list index ~s.  ~s elements vs. ~s elements.~n."
+		  (reverse index) (length o1) (length o2))
+	  (printf "List one:~n")
+	  (pretty-print o1)
+	  (printf "Vs. List two: ~n")
+	  (pretty-print o2)]
+	 [else (for-each (lambda (a b i) (loop a b (cons i index)))
+			 o1 o2 (iota (length o1)))])]
+
+       [(and (vector? o1) (vector? 02))
+	(do ([i 0 (add1 i)])
+	    ((= i (vector-length o1)))
+	  (loop (vector-ref o1 i) 
+		(vector-ref o2 i)
+		(cons i (cons 'v index))))])))
+
+
+
+;; This strings out a list of all the cons cells in a given list (not
+;; traversing car's).
+(define (unfold-list lst)
+  (let loop ((lst lst))
+    (if (null? lst) '()
+	(cons lst (loop (cdr lst))))))
+
+(define display-constrained
+  (lambda args
+    (for-each 
+     (lambda (arg)
+       (if (string? arg)
+	   (display arg)
+	   (let ([arg (car arg)]
+		 [bound (cadr arg)]
+		 [port (open-output-string)])
+;	     (pretty-print arg port)
+	     (write arg port)   (newline port)
+	     (let ((str (get-output-string port)))
+	       (if (> (string-length str) bound)
+		   (begin (display (substring str 0 (max 0 (- bound 3))))
+			  (display "..."))
+		   ;; Gotta cut off the newline.
+		   (display (substring str 0 (- (string-length str) 1))))))))
+	      args)))
+
+
+;; ======================================================================
+
+;;; unique-name produces a unique name derived the input name by
+;;; adding a unique suffix of the form .<digit>+.  creating a unique
+;;; name from a unique name has the effect of replacing the old
+;;; unique suffix with a new one.
+;;;
+;;; reset-name-count! resets the internal counter used to produce
+;;; the unique suffix.
+;;;
+;;; code-name takes a unique name and replaces its suffix ".nnn"
+;;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
+;;;
+;;; extract-suffix returns the numeric portion of the unique suffix
+;;; of a unique name or code-name, or #f if passed a non unique name.
+;;(module (unique-name reset-name-count! extract-suffix
+;;                     code-name label-name #;method-name)
+        ;RRN [01.09.16] -- We need to phase out code-name...
+
+;; [2004.06.28] I am replacing this with a version that uses
+;; a hash-table to keep a counter per seed-name.
+(begin
+        (define unique-name-count 0)
+        (define (unique-suffix ignored)
+            (set! unique-name-count (+ unique-name-count 1))
+            (number->string unique-name-count))
+        (define reset-name-count! 
+	  (lambda opt
+	    (match opt
+		   [() (set! unique-name-count 0)]
+		   [(,n) 
+		    (if (number? n)
+			(set! unique-name-count n)
+			(error 'reset-name-count "bad arg: ~a" n))])))
+
+        (define extract-root
+          (lambda (sym)
+            (list->string
+              (let ([chars (string->list (symbol->string sym))])
+                (define (s0 ls)
+                  (cond
+                    [(null? ls) chars]
+                    [(char-numeric? (car ls)) (s1 (cdr ls))]
+                    [else chars]))
+                (define (s1 ls)
+                  (cond
+                    [(null? ls) chars]
+                    [(char-numeric? (car ls)) (s1 (cdr ls))]
+                    [(memv (car ls) '(#\. #\$ #\_ ))
+                     (reverse (cdr ls))]
+                    [else chars]))
+                (s0 (reverse chars))))))
+        (define extract-suffix
+          (lambda (sym)
+            (let ([str (symbol->string sym)])
+              (let ([n (string-length str)]
+                    [m (string-length (extract-root sym))])
+                (and (not (= n m))
+                     (substring str (+ m 1) n))))))
+        (define strip-illegal
+          (lambda (str)
+            (list->string
+              (filter (lambda (c) (or (char-alphabetic? c)
+                                      (char-numeric? c)))
+                      (string->list str)))))
+       '(define illegal-chars
+            '(#\! #\@ #\# #\$ #\% #\^ #\& #\* #\. #\-))
+       '(define strip-illegal
+            (lambda (str)
+              (let loop ([ls illegal-chars]
+                         [chars (string->list str)])
+                (if (null? ls) (list->string chars)
+                    (loop (cdr ls) (remq (car ls) chars))))))
+        ;;Ok, this is designed so that it can extract the root from
+        ;;either a
+        (define unique-name
+          (lambda args
+	    (let ((sym (if (null? args) 'gensym (car args))))
+	      (let ((sym (if (string? sym) (string->symbol sym) sym)))
+            (string->symbol
+              (string-append
+                (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME
+                  (extract-root sym))
+                "_" (unique-suffix sym)))))))
+)
+
+;; [2004.06.28]  NEW VERSION, counter per seed name:
+;; Just overwriting definitions from above:
+'(begin
+        (define unique-name-count (make-default-hash-table))
+
+        (define (unique-suffix sym)
+	  (let ((entry (hashtab-get unique-name-count sym)))
+	    (number->string
+	     (if entry
+		 (begin (hashtab-set! unique-name-count sym (add1 entry))
+			entry)
+		 (begin (hashtab-set! unique-name-count sym 1)
+			0)))))
+
+        (define reset-name-count! 
+	  (lambda opt
+	    (match opt
+		   [() (set! unique-name-count (make-default-hash-table))]
+		   [(,n) 
+		    (error 'reset-name-count!
+			   "this version of reset-name-count! cannot handle argument: ~s"
+			   n)])))
+)
+
 ;;============================================================
 ;; DEALING WITH TOKEN NAMES.  
 ;; Sloppy interface right now.  
@@ -319,6 +918,7 @@
 		(symbol-append 'm_token_ sym))
 	(error 'deglobalize.token-names 
 	       "takes a symbol argument not this: ~s" sym))]))
+
 
     ;; Get's the token name that corresponds with the edge of a
     ;; dataflow graph that corresponds with a variable name.
@@ -365,7 +965,6 @@
              [,x x])
       (error 'token-machine->program "bad token machine: ~n ~s~n" x)))
      
-
 ;; I thought the primitive equal? did this by default?  This is just a
 ;; version that accepts any number of arguments.  Just a throw-away helper function.
 (define (myequal? . args)
@@ -425,8 +1024,13 @@
 ;;  (default-unit-tester message these-tests)
 ;;  (default-unit-tester message these-tests equalfun)
 ;;  (default-unit-tester message these-tests equalfun preprocessor)
+
+;; [2005.02.24] Working around weird PLT bug:
+(define voidproc (lambda args (void)))
+
 (define default-unit-tester
   (lambda (message these-tests . extras)
+
     (let (;; If the second argument is a procedure, use it as the equal.
 	  [teq? (if (or (null? extras) (not (procedure? (car extras))))
 		    tester-equal?		    
@@ -493,13 +1097,13 @@
 					      (lambda () 
 						(if quiet						    
 						    (let ([trash (open-output-string)])
-						      (fluid-let ([warning (lambda args (void))])
+						      (fluid-let ([warning voidproc])
 						      (parameterize ([current-output-port trash])
 								    (eval (preprocessor expr)))))
 						    (eval (preprocessor expr)))
 						))))])
 ;	       (newline)
-	       (if (or (and (procedure? intended) ;; This means its an oracle
+		(if (or (and (procedure? intended) ;; This means its an oracle
 			    (intended result))
 		       (teq? intended result)) ;; Otherwise its an expected answer
 		   (begin
@@ -529,6 +1133,8 @@
 	     (iota (length tests))
 	     tests descriptions intended)
 	    ))))))))
+
+
 ;;; OLD VER:
 '(define (default-unit-tester MESSAGE TESTS)
     (lambda args 
@@ -1156,578 +1762,6 @@
                  (list (cons 'list (list-tail argexps len)))))]
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
-
-;; [2004.10.04]  Finds the element in a list maximizing a metric:
-(define (find-maximizing f ls)
-  (if (null? ls) (error 'find-maximizing "cannot take null list.")
-      
-      (let loop ([ls (cdr ls)] 
-		 [maxelem (car ls)]
-		 [maxval (f (car ls))])
-	(if (null? ls) maxelem
-	    (let ([thisval (f (car ls))])
-	      (if (> thisval maxval)
-		  (loop (cdr ls) (car ls) thisval)
-		  (loop (cdr ls) maxelem maxval)))))))	    
-
-(define list-head
-  (lambda (lst n)
-    (cond
-      [(zero? n) '()]
-      [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
-                          lst n)]
-      [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
-
-(define filter
-  (lambda (pred lst)
-    (cond
-      [(null? lst) '()]
-      [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
-      [else (filter pred (cdr lst))])))
-
-;; This is mainly used by the system in language-mechanism.  
-;;   Clumps a list into sublists (clumps) all of whose members satisfy
-;; the predicate function with some other member of that clump.
-;; Basically it gives you "connected" components.  Assumes the
-;; predicate function is commutative.
-(define (clump f ls)
-  (let outer ([clumps '()] [ls ls])
-    (if (null? ls)
-	clumps
-	(let ([x (car ls)])
-	  (outer 
-	   (let inner ([clumps clumps])
-	     (cond 
-	      [(null? clumps) `((,x))]
-	      [(null? (filter (lambda (y) (f x y)) (car clumps)))
-	       (cons (car clumps) (inner (cdr clumps)))]
-	      [else ;; We've actually matched this clump.		   		    
-	       (cons (cons x (car clumps)) (cdr clumps))]))
-	   (cdr ls))))))
-
-(define (average ls)
-  (let loop ((sum 0) (count 0) (ls ls))
-    (if (null? ls) (/ sum count)
-	(loop (+ (car ls) sum) (+ 1 count) (cdr ls)))))
-
-(define list-index
-  (lambda (pred ls)
-    (cond
-      ((null? ls) #f)
-      ((pred (car ls)) 0)
-      (else (let ((list-index-r (list-index pred (cdr ls))))
-              (if (number? list-index-r)
-                  (+ list-index-r 1)
-                  #f))))))
-
-(define list-find-position
-  (lambda (sym los)
-    (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
-
-;; USES equal? !!
-(define list-remove-after
-  (lambda (x ls)
-    (let loop ([ls ls] [acc '()])
-      (cond
-       [(null? ls) (reverse acc)]
-       [(equal? x (car ls)) (reverse (cons (car ls) acc))]
-       [else (loop (cdr ls) (cons (car ls) acc))]))))
-
-(define list-remove-before
-  (lambda (x ls)
-    (let loop ([ls ls])
-      (cond
-       [(null? ls) '()]
-       [(equal? x (car ls)) ls]
-       [else (loop (cdr ls))]))))
-
-(define list-remove-first
-  (lambda (x lst)
-    (cond
-      [(null? lst) '()]
-      [(equal? x (car lst)) (cdr lst)]
-      [else (cons (car lst) (list-remove-first x (cdr lst)))])))
-
-
-(define list-remove-all
-  (lambda (x lst)
-    (cond
-      [(null? lst) '()]
-      [(equal? x (car lst)) (list-remove-all x (cdr lst))]
-      [else (cons (car lst) (list-remove-all x (cdr lst)))])))
-
-#;(define timeeval
-  (lambda (x)
-    (let ([start (real-time)])
-      (eval x)
-      (- (real-time) start))))
-
-#;(define cpueval
-  (lambda (x)
-    (let ([start (cpu-time)])
-      (eval x)
-      (- (cpu-time) start))))
-
-(define snoc
-  (lambda (a ls)
-    (append ls (list a)) ))
-
-(define rac
-  (lambda (ls)
-    (if (null? ls)
-        (error 'rac "cannot take the rac of the empty-list")
-        (let rac-loop ([cur (car ls)] [lst (cdr ls)])
-          (if (null? lst)
-              cur
-              (rac-loop (car lst) (cdr lst)))))))
-(define last rac)
-
-(define rdc
-  (lambda (ls)
-    (if (null? ls)
-        (error 'rdc "cannot take the rdc of the empty-list")
-        (let rdc-loop ([lst ls])
-          (if (null? (cdr lst))
-              '()
-              (cons (car lst) (rdc-loop (cdr lst))))))))
-
-(define mapleft
-  (lambda (f ls)
-    (if (null? ls)
-        '()
-        (let ([rst (mapleft f (cdr ls))])
-          (cons (f (car ls)) rst)))))
-
-(define mapright
-  (lambda (f ls)
-    (if (null? ls)
-        '()
-        (cons (f (car ls))
-              (mapright f (cdr ls))))))
-
-(define list-set
-  (lambda (origls origpos v)
-    (let list-set-loop ([ls origls] [pos origpos])
-      (cond
-        [(null? ls)
-         (error 'list-set
-                "list ~a is not long enough to reference pos ~a"
-                origls origpos)]
-        [(zero? pos) (cons v (cdr ls))]
-        [else (cons (car ls)
-                    (list-set-loop (cdr ls) (sub1 pos)))]))))
-
-;===============================================================================
-
-;; Repeatedly execute an expression some number of times:
-(define-syntax rep
-  (syntax-rules ()
-    [(_ reps exp ...)
-     (let loop ([n reps])
-       (if (< n 1)
-           (void)
-           (begin exp ...
-                  (loop (sub1 n)))))]))
-
-(define insert-between
-  (lambda (x lst)
-    (let loop ([lst lst])
-      (cond
-        [(null? lst) '()]
-        [(null? (cdr lst)) lst]
-        [else (cons (car lst)
-                    (cons x (loop (cdr lst))))]))))
-
-;; Removed mvlet! [2004.04.28]
-
-;;; procedures for manipulating sets
-(define set?
-  (lambda (ls)
-    (or (null? ls)
-        (and (not (memq (car ls) (cdr ls)))
-             (set? (cdr ls))))))
-
-;; Inefficient for ordered types:
-(define (subset? l1 l2)
-  (and (andmap (lambda (a) (member a l2))
-	       l1)
-       #t))
-
-(define set-equal?
-  (lambda (lst1 lst2)
-    (letrec ((loop (lambda (lst1 lst2)
-                     (cond
-                       [(and (null? lst1) (null? lst2)) #t]
-                       [(or (null? lst1) (null? lst2)) #f]
-                       [(member (car lst1) lst2) (loop (cdr lst1) (list-remove-all (car lst1) lst2))]
-                       [else #f]))))
-      (if (and (set? lst1) (set? lst2))
-          (loop lst1 lst2)
-          (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
-
-(define list->set
-  (lambda (ls)
-    (if (null? ls) '()
-        (set-cons (car ls) (list->set (cdr ls))))))
-
-(define set-cons
-  (lambda (x set)
-    (cond
-      [(null? set) (list x)]
-      [(eq? x (car set)) set]
-      [else (cons (car set) (set-cons x (cdr set)))])))
-
-(define union
-  (case-lambda
-    [(set1 set2)
-     (if (not (list? set1)) (error 'union "not a list: ~s" set1))
-     (if (not (list? set2)) (error 'union "not a list: ~s" set2))
-     (let loop ([set1 set1])
-       (cond
-         [(null? set1) set2]
-         [(memq (car set1) set2) (loop (cdr set1))]
-         [else (cons (car set1) (loop (cdr set1)))]))]
-    [() '()]
-    [(set1 . sets)
-     (let loop ([set1 set1] [sets sets])
-       (if (null? sets)
-           set1
-           (loop (union set1 (car sets)) (cdr sets))))]))
-
-(define intersection
-  (case-lambda
-    [(set1 set2)
-     (let loop ([set1 set1])
-       (cond
-         [(null? set1) '()]
-         [(memq (car set1) set2) (cons (car set1) (loop (cdr set1)))]
-         [else (loop (cdr set1))]))]
-    [(set1 . sets)
-     (let loop ([set1 set1] [sets sets])
-       (if (null? sets)
-           set1
-           (loop (intersection set1 (car sets)) (cdr sets))))]))
-
-(define difference
-  (lambda (set1 set2)
-    (cond
-      ((null? set1) '())
-      ((memq (car set1) set2) (difference (cdr set1) set2))
-      (else (cons (car set1) (difference (cdr set1) set2))))))
-
-(define generalized-member?
-  (lambda (pred?)
-    (lambda (x ls)
-      (let f ([ls ls])
-        (and (not (null? ls))
-             (or (pred? (car ls) x)
-                 (f (cdr ls))))))))
-
-(define generalized-union
-  (lambda (pred?)
-    (let ([member? (generalized-member? pred?)])
-      (lambda args
-        (let f ([args args])
-          (if (null? args)
-              '()
-              (let ([set1 (car args)] [set2 (f (cdr args))])
-                (let loop ([set1 set1])
-                  (cond
-                    [(null? set1) set2]
-                    [(member? (car set1) set2) (loop (cdr set1))]
-                    [else (cons (car set1) (loop (cdr set1)))])))))))))
-
-;;; (iota n) => (0 1 ... n-1)
-;;; (iota i n) => (i i+1 ... i+n-1)
-(define iota
-  (case-lambda
-    [(n) (iota 0 n)]
-    [(i n)
-     (if (= n 0)
-         '()
-         (cons i (iota (+ i 1) (- n 1))))]))
-
-;;; unique-name produces a unique name derived the input name by
-;;; adding a unique suffix of the form .<digit>+.  creating a unique
-;;; name from a unique name has the effect of replacing the old
-;;; unique suffix with a new one.
-;;;
-;;; reset-name-count! resets the internal counter used to produce
-;;; the unique suffix.
-;;;
-;;; code-name takes a unique name and replaces its suffix ".nnn"
-;;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
-;;;
-;;; extract-suffix returns the numeric portion of the unique suffix
-;;; of a unique name or code-name, or #f if passed a non unique name.
-;;(module (unique-name reset-name-count! extract-suffix
-;;                     code-name label-name #;method-name)
-        ;RRN [01.09.16] -- We need to phase out code-name...
-
-;; [2004.06.28] I am replacing this with a version that uses
-;; a hash-table to keep a counter per seed-name.
-(begin
-        (define unique-name-count 0)
-        (define (unique-suffix ignored)
-            (set! unique-name-count (+ unique-name-count 1))
-            (number->string unique-name-count))
-        (define reset-name-count! 
-	  (lambda opt
-	    (match opt
-		   [() (set! unique-name-count 0)]
-		   [(,n) 
-		    (if (number? n)
-			(set! unique-name-count n)
-			(error 'reset-name-count "bad arg: ~a" n))])))
-
-        (define extract-root
-          (lambda (sym)
-            (list->string
-              (let ([chars (string->list (symbol->string sym))])
-                (define (s0 ls)
-                  (cond
-                    [(null? ls) chars]
-                    [(char-numeric? (car ls)) (s1 (cdr ls))]
-                    [else chars]))
-                (define (s1 ls)
-                  (cond
-                    [(null? ls) chars]
-                    [(char-numeric? (car ls)) (s1 (cdr ls))]
-                    [(memv (car ls) '(#\. #\$ #\_ ))
-                     (reverse (cdr ls))]
-                    [else chars]))
-                (s0 (reverse chars))))))
-        (define extract-suffix
-          (lambda (sym)
-            (let ([str (symbol->string sym)])
-              (let ([n (string-length str)]
-                    [m (string-length (extract-root sym))])
-                (and (not (= n m))
-                     (substring str (+ m 1) n))))))
-        (define strip-illegal
-          (lambda (str)
-            (list->string
-              (filter (lambda (c) (or (char-alphabetic? c)
-                                      (char-numeric? c)))
-                      (string->list str)))))
-       '(define illegal-chars
-            '(#\! #\@ #\# #\$ #\% #\^ #\& #\* #\. #\-))
-       '(define strip-illegal
-            (lambda (str)
-              (let loop ([ls illegal-chars]
-                         [chars (string->list str)])
-                (if (null? ls) (list->string chars)
-                    (loop (cdr ls) (remq (car ls) chars))))))
-        ;;Ok, this is designed so that it can extract the root from
-        ;;either a
-        (define unique-name
-          (lambda args
-	    (let ((sym (if (null? args) 'gensym (car args))))
-	      (let ((sym (if (string? sym) (string->symbol sym) sym)))
-            (string->symbol
-              (string-append
-                (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME
-                  (extract-root sym))
-                "_" (unique-suffix sym)))))))
-)
-
-;; [2004.06.28]  NEW VERSION, counter per seed name:
-;; Just overwriting definitions from above:
-'(begin
-        (define unique-name-count (make-default-hash-table))
-
-        (define (unique-suffix sym)
-	  (let ((entry (hashtab-get unique-name-count sym)))
-	    (number->string
-	     (if entry
-		 (begin (hashtab-set! unique-name-count sym (add1 entry))
-			entry)
-		 (begin (hashtab-set! unique-name-count sym 1)
-			0)))))
-
-        (define reset-name-count! 
-	  (lambda opt
-	    (match opt
-		   [() (set! unique-name-count (make-default-hash-table))]
-		   [(,n) 
-		    (error 'reset-name-count!
-			   "this version of reset-name-count! cannot handle argument: ~s"
-			   n)])))
-)
-
-
-
-;;; create a "flattened" begin from list of expressions
-;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
-(define make-begin
-  (lambda (expr*)
-    (match (match `(begin ,@expr*)
-             [(begin ,[expr*] ...) (apply append expr*)]
-             [,expr (list expr)])
-      [(,x) x]
-      [(,x ,x* ...) `(begin ,x ,x* ...)])))
-;;RRN [01.09.17] :
-(define make-code
-  (lambda (expr*)
-    (match (match `(code ,@expr*)
-             [(code ,[expr*] ...) (apply append expr*)]
-             [,expr (list expr)])
-      [(,x) x]
-      [(,x ,x* ...) `(code ,x ,x* ...)])))
-
-(define with-output-to-string
-  (lambda (th)
-    (parameterize ([current-output-port (open-output-string)])
-      (th)
-      (get-output-string (current-output-port)))))
-
-
-;;; we can only handle exact integers in the fixnum range
-(define fx-integer?
-  (let ()
-    ;;RRN: Unfortunately MSIL can't handle boxed immediates, so fixnums
-    ;; are the full size of a word:
-    (define fixnum-minimum (- (expt 2 31)))
-    (define fixnum-maximum (- (expt 2 31) 1))
-    (lambda (x)
-      (and (integer? x)
-           (exact? x)
-           (<= fixnum-minimum x fixnum-maximum)))))
-
-(define bg-integer?
-  (lambda (x)
-    (and (integer? x)
-         (exact? x)
-         (not (fx-integer? x)))))
-
-(define disp
-  (lambda args
-    (let loop ((args args))
-      (if (null? args)
-          (begin (newline) (newline))
-          (begin (display (car args))(display " ")
-                 (loop (cdr args)))))))
-
-(define (list-remove-last! ls)
-  (if (null? ls)
-      (error 'list-remove-last "cannot remove last of the null list!"))
-  (let loop ((cell ls) (next (cdr ls)))
-    (if (null? (cdr next))
-	(set-cdr! cell '())
-	(loop next (cdr next)))))
-
-;[2004.07.21] - This one applies a given function (better be lenient)
-; against every interemediate node in the tree.  Returns a list of
-; *every* match.  Returns them in the order it hits them as it does a
-; depth-first traversal.
-;;   This is heavy-weight, expensive function, but darn useful!!
-(define (deep-all-matches f struct)
-  (letrec ([against 
-	    (lambda (struct)
-	      (if (f struct) 
-		  (cons struct (down struct))
-		  (down struct)))]
-	   [down 
-	    (lambda (struct)
-	      (cond
-	       [(vector? struct)
-		(let vloop ([i 0])
-		  (if (= i (vector-length struct)) 
-		      '()
-		      (append (against (vector-ref struct i))
-			      (vloop (add1 i)))))]
-	       [(pair? struct)
-		(append (against (car struct))
-			(against (cdr struct)))]
-	       [else '()]))])
-    (against struct)))
-
-;; [2004.07.28] Occassionally useful.
-(define (deep-filter pred struct)
-  (let loop ([struct struct])
-    (cond
-     [(list? struct) (map loop (filter pred struct))]
-     [(vector? struct)
-      (list->vector (map loop (filter pred (vector->list struct))))]
-     [else struct])))
-	   
-;[01.10.23] - I'm surprised this wasn't added a million years ago:
-(define (deep-member? ob struct)
-  (let outer ([struct struct])
-    (or (eqv? ob struct)
-	(and (vector? struct)
-	     (let inner ([i 0])
-	       (cond
-		[(= i (vector-length struct)) #f]
-		[(outer (vector-ref struct i)) #t]
-		[else (inner (add1 i))])))
-	(and (pair? struct)
-	     (or (outer (car struct))
-		 (outer (cdr struct)))))))
-
-;; [2004.06.11] This one doesn't do vectors:
-(define (deep-assq ob struct)
-  (let outer ([struct struct])
-    (if (pair? struct)
-	(if (eq? ob (car struct))
-	    struct
-	    (or (outer (car struct))
-		(outer (cdr struct))))
-	#f)))
-
-;; [2004.06.15] Copying this from generic utils file.
-(define list-get-random
-  (lambda (ls)
-    (if (null? ls)
-        (error 'list-get-random "cannot get random element from null list.")
-        (list-ref ls (random (length ls))))))
-;; This too:
-(define randomize-list
-  (lambda (ls)
-    (let* ([vec (list->vector ls)]
-	   [len (vector-length vec)])
-      (let ([swap (lambda (i j)
-		    (let ([temp (vector-ref vec i)])
-		      (vector-set! vec i (vector-ref vec j))
-		      (vector-set! vec j temp)))])
-	(do ([i 0 (add1 i)]) ((= i len))
-	  ;; Swap with a later position:
-	  (swap i (+ i (random (- len i)))))
-	(vector->list vec)))))
-
-
-;;  [2004.06.11] Man also can't believe that I've never written this
-;;  before.  This is dinky; a real version of this would do an
-;;  alignment of the structures intelligently.  I don't know how
-;;  actually hard of a problem that is.  (Graph matching is a bitch,
-;;  no?)
-(define (diff obj1 obj2)
-  (let loop ([o1 obj1] 
-	     [o2 obj2]
-	     [index '()])
-    (printf "~s: len ~s ~s~n" index 
-	    (if (list? o1) (length o1) #f)
-	    (if (list? o2) (length o2) #f))    
-    (cond
-       [(equal? o1 o2) (void)]
-       [(and (list? o1) (list? o2))
-	(cond 
-	 [(not (= (length o1) (length o2)))
-	  (printf "Lengths differ at list index ~s.  ~s elements vs. ~s elements.~n."
-		  (reverse index) (length o1) (length o2))
-	  (printf "List one:~n")
-	  (pretty-print o1)
-	  (printf "Vs. List two: ~n")
-	  (pretty-print o2)]
-	 [else (for-each (lambda (a b i) (loop a b (cons i index)))
-			 o1 o2 (iota (length o1)))])]
-
-       [(and (vector? o1) (vector? 02))
-	(do ([i 0 (add1 i)])
-	    ((= i (vector-length o1)))
-	  (loop (vector-ref o1 i) 
-		(vector-ref o2 i)
-		(cons i (cons 'v index))))])))
        
 ;; GRAPHS
 ;; ======================================================================
@@ -1912,32 +1946,6 @@
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
-;; This strings out a list of all the cons cells in a given list (not
-;; traversing car's).
-(define (unfold-list lst)
-  (let loop ((lst lst))
-    (if (null? lst) '()
-	(cons lst (loop (cdr lst))))))
-
-(define display-constrained
-  (lambda args
-    (for-each 
-     (lambda (arg)
-       (if (string? arg)
-	   (display arg)
-	   (let ([arg (car arg)]
-		 [bound (cadr arg)]
-		 [port (open-output-string)])
-;	     (pretty-print arg port)
-	     (write arg port)   (newline port)
-	     (let ((str (get-output-string port)))
-	       (if (> (string-length str) bound)
-		   (begin (display (substring str 0 (max 0 (- bound 3))))
-			  (display "..."))
-		   ;; Gotta cut off the newline.
-		   (display (substring str 0 (- (string-length str) 1))))))))
-	      args)))
-
 ;;======================================================================
 ;; [2004.06.17] These functions deal with streams that are represented
 ;; as a list, promise, or improper list with a promise as its final
@@ -2121,6 +2129,7 @@
 						 (error-escape-handler) )
 					(error 'foo "bar")
 					3 ))
+
 
 
 

@@ -5,7 +5,13 @@ bc:
 nc:
 	(cd ../; export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension ./plt)
 
-clean:
-	rm -f compiled/*.zo _SIM_*
+clean: clean_byte clean_native
+	rm -f _SIM_*
+
+clean_byte:
+	rm -f compiled/*.zo 
+
+clean_native:
+	(cd compiled/native; $(MAKE) clean)
 
 #	rm -rf compiled/native/*

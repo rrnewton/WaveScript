@@ -18,9 +18,15 @@
   ;; way I can make slib play nice with the PLT module system at all.
 ;  (load (build-path (collection-path "slibinit") "init.ss"))
 ;  (include "/usr/local/plt/collects/slibinit/init.ss")  
-  
-  (include (build-path ".." "generic" "helpers.ss"))
-  
+
+    (define-syntax rec
+      (syntax-rules ()
+	((_ x e) (letrec ((x e)) x))))
+
+    (define-syntax mvlet
+      (syntax-rules ()
+	  [(mvlet stuff ...) (let-values stuff ...)]))
+
   (define (define-top-level-value sym obj)
     (eval `(define ,sym ',obj)))
   (define (set-top-level-value! sym obj)
@@ -41,16 +47,28 @@
 
 ;; Temporary! < FIXME>:
   (define crit-printf printf)
+
+  ;; This isn't working right now.
+  (define (with-error-handlers display escape th)
+      (call/cc (lambda (out)
+                 (parameterize ([error-display-handler display]
+                                [error-escape-handler 
+                                 (lambda args
+                                   (let ((result (apply escape args)))
+                                   ;; If the escape procedure is not called, we must destroy the 
+                                     (out result)))])
+                   (th)))))
   
+  (define (warning sym . args)
+    (printf "Warning ~s: ~a " sym (apply format args)))
 
-    (define-syntax rec
-      (syntax-rules ()
-	((_ x e) (letrec ((x e)) x))))
 
-    (define-syntax mvlet
-      (syntax-rules ()
-	  [(mvlet stuff ...) (let-values stuff ...)]))
+;; ======================================================================  
 
+  (include (build-path ".." "generic" "helpers.ss"))
+
+;; ======================================================================
+   
     ;; This is a cludge and not a true implementation of chez's "error-handler"
     ;; Erk, this version doesn't make any sense, we could have all sorts of 
     ;; repeated and parallel calls on different threads: 
@@ -79,22 +97,7 @@
 	    ;; Ack, this in particular breaks everything:
   ;          (error-escape-handler (lambda () (void)))
 	    (error-display-handler (car arg)))))
-
-    ;; This isn't working right now.
-    (define (with-error-handlers display escape th)
-      (call/cc (lambda (out)
-                 (parameterize ([error-display-handler display]
-                                [error-escape-handler 
-                                 (lambda args
-                                   (let ((result (apply escape args)))
-                                   ;; If the escape procedure is not called, we must destroy the 
-                                     (out result)))])
-                   (th)))))
   
-  (define (warning sym . args)
-    (printf "Warning ~s: ~a " sym (apply format args)))
-  
-
   (provide    
    ;; Syntax:
    DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT
@@ -115,7 +118,6 @@
    immediate? constant? datum? 
    formalexp? cast-formals default-unit-tester tester-eq? 
 
-   define-regiment-parameter
    regiment-primitives regiment-primitive? 
    token-machine-primitives token-machine-primitive? 
    token-machine? token-machine->program
@@ -151,7 +153,7 @@
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
    )
- 
+
   )
 
 ;(require helpers)

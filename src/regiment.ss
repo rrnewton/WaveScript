@@ -1,9 +1,3 @@
-#! /bin/sh
-#|
-exec petite --script "$0" ${1+"$@"}
-|#
-
-; /usr/bin/scheme --script
 
 (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
 (load "compiler_chez.ss")

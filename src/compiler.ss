@@ -5,7 +5,6 @@
 (newline)
 
 (define-regiment-parameter regiment-version 0.5)
-(define-regiment-parameter regiment-verbose #f)
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
