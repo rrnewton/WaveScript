@@ -40,13 +40,13 @@ module BasicTMCommM {
   }
 } implementation {
 
-  // This is a lame way of doing an option type: "Maybe Token"
-  TOS_Msg extra_token; // We preallocate this one piece of memory.
-  TOS_MsgPtr cached_token; // But we're going to start the pointer of NULL.
-  TM_Payload* cached_payload;
-  
-  TOS_MsgPtr currently_processing; // The incoming token
-  TOS_Msg extra_token2;            // An allocated buffer for the incoming token
+  bool cached_presence[NUM_TOKS];
+  TOS_Msg cached_tokens[NUM_TOKS];
+  //  TM_Payload* cached_payload;
+
+  bool    is_processing;         
+  TOS_Msg currently_processing; // The incoming token, there should only be one of these
+
 
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
   TOS_Msg token_in_buffer[TOKBUFFER_LENGTH];
@@ -66,21 +66,26 @@ module BasicTMCommM {
   // ======================================================================
 
   task void tokenhandler () {
+    uint8_t index;
     atomic { // Access in_buffer_end/in_buffer_start
       if ( in_buffer_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: message available, calling process_token.\n"); 
-	if ( call pop_msg(&extra_token2) ) {	  
-	  currently_processing = &extra_token2;
+
+	index = currently_processing.type - 1;
+
+	is_processing = TRUE;
+	if ( call pop_msg( &currently_processing ) ) {
 	  // Execute the handler:
-	  call TMModule.process_token(&extra_token2); // Do nothing with returned pointer.
+	  call TMModule.process_token(&currently_processing); // Do nothing with returned pointer.
+
 	  // AUTO CACHING FOR NOW!
-	  cached_token = &extra_token;
-	  cached_payload = (TM_Payload*)cached_token->data; 
-	  memcpy(cached_token, currently_processing, sizeof(TOS_Msg));
+	  cached_presence[index] = TRUE;
+	  memcpy(cached_tokens + index, currently_processing, sizeof(TOS_Msg));
+	  //	  cached_payload = (TM_Payload*)cached_token->data; 
 	  
-	  currently_processing = NULL;
+	  is_processing = FALSE;
 	}
       }
     }
@@ -198,20 +203,23 @@ module BasicTMCommM {
   // Might return NULL
   // Modified it to return currently processing if available...
   command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
-    if ( cached_token == NULL ) 
-      return currently_processing;
-    else return cached_token;
+    if ( cached_presence[id-1] == FALSE ) {
+      if ( is_processing &&
+	   currently_processing.type == id )
+	return &currently_processing;
+      else return NULL;
+    } else return cached_tokens + id - 1;
   }
-
+      
   // I don't think I really want this in the interface:
   command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
     // This copies the data over.
     //cached_token = *newtok;
-    if ( cached_token == NULL ) {
-      cached_token = &extra_token;
-      cached_payload = (TM_Payload*)cached_token->data;
+    if ( cached_presence[id-1] == NULL ) {
+      cached_presense[id-1] = TRUE;
+      //cached_payload = (TM_Payload*)cached_token->data;
     }
-    memcpy(&cached_token, newtok, sizeof(TOS_Msg));
+    memcpy(cached_tokens + id - 1, newtok, sizeof(TOS_Msg));
     return SUCCESS;
   }
 
@@ -223,6 +231,10 @@ module BasicTMCommM {
     // communications system to be able to do:
 
   command uint16_t TMComm.get_dist[uint8_t id]() {
+    TOS_MsgPtr t = call TMComm.get_cached[id];
+
+    
+
     if ( NULL == currently_processing ) {
       if ( cached_token == NULL ) {
 	return NO_DIST;
@@ -370,7 +382,10 @@ module BasicTMCommM {
     atomic {
       in_buffer_start = 0;
       in_buffer_end = -1;
-      currently_processing = NULL;
+      is_processing = FALSE;
+      for (int i=0; i<NUM_TOKS; i++) {
+	cached_presence[i] = FALSE;
+      }
     }
    
     /*    extra_token2.origin = 91;

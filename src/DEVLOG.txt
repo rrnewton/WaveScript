@@ -246,4 +246,8 @@ right thing to do for the second version would be to do it in Java or
 something (with a C-like external rep for Token Machines).
 
 
+[2005.01.13]
+
+Thusfar the NesC component system has just got in my way and annoyed me.
+
 
