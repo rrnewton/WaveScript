@@ -4,14 +4,16 @@
 
 (module graphics_stub mzscheme	
   (provide draw-procs draw-proc draw-edge init-graphics change-color!
-	   get-state these-tests test-this)
+	   get-state these-tests test-this 
+	   clear-buffer)
   
   (require "helpers.ss"
 	   "iu-match.ss"
            (prefix plt: (lib "graphics.ss" "graphics"))
            (lib "include.ss")
            (all-except "basic_graphics.ss")
-           (all-except "simulator_nought.ss" test-this these-tests) ;; For world-xbound, ybound
+;           (all-except "simulator_nought.ss" test-this these-tests) ;; For world-xbound, ybound
+           "constants.ss" ;; For world-xbound, ybound
            )
   
   (include "../generic/graphics_stub.ss")
@@ -38,6 +40,8 @@
                              pos box1 box2)]))))
   
   ;;============================================================
+
+  (define (clear-buffer) ((plt:clear-viewport the-win)))
 
   (define (draw-procs procs)
     (map draw-proc procs))

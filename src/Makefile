@@ -12,15 +12,18 @@ MAIN_FILE = compiler.ss
 
 PLT_SRC = helpers \
           pass00_verify-regiment           \
-          pass01_rename-var                \
-          pass02_remove-unquoted-constant  \
-          pass03_remove-complex-constant   \
-          pass04_uncover-free              \
-          pass05_lift-letrec               \
-          pass06_lift-letrec-body          \
-          pass07_remove-complex-opera      \
-          pass08_verify-core               \
-          pass10_deglobalize               \
+          pass01_eta-primitives            \
+          pass02_rename-var                \
+          pass03_remove-unquoted-constant  \
+          pass04_reduce-primitives         \
+          pass05_remove-complex-constant   \
+          pass06_uncover-free              \
+          pass07_lift-letrec               \
+          pass08_lift-letrec-body          \
+          pass09_remove-complex-opera      \
+          pass10_verify-core               \
+          pass11_classify-names               \
+          pass12_deglobalize               \
           flat_threads basic_graphics      \
           demo_display graphics_     \
           simulator_nought simulator_nought_graphics \
