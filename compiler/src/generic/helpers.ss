@@ -2,8 +2,14 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
+;; This is not strictly R5RS but it should work in both chez and plt,
+;; as long as plt has "compat.ss" loaded.  
+;; (For example, it requires flush-output-port)
+
 ;(define region-primitives)
 ;(define anchor-primitives)
+
+(define id (lambda (x) x))
 
 '(define regiment-basic-primitives 
   '(cons car cdr 
@@ -133,11 +139,17 @@
   (if (assq x regiment-distributed-primitives) #t #f))
 
 
-(define (lenient-eq? o1 o2)
+(define (lenient-compare? o1 o2)
   (or (eq? o1 o2)
+      ;; Strings are not deep structures according to eq-deep,
+      ;; So we compare them with equal?
+      (and (string? o1) (equal? o1 o2))
       (eq? o1 'unspecified)
       (eq? o2 'unspecified)))
 
+;; This provides a weird sort of interface to a deep equal.  It walks
+;; down the tree, applying the input comparator at every intermediate
+;; node, only proceeding downward on negative comparisons.
 (define eq-deep 
   (lambda (eq)
     (lambda (obj1 obj2)
@@ -152,16 +164,72 @@
 	  (andmap loop (vector->list o1) (vector->list o2))]
 	 [else #f])))))
 
-(define tester-eq? (eq-deep lenient-eq?))
-(define tester-equal? (eq-deep lenient-eq?))
+(define tester-eq? (eq-deep lenient-compare?))
+(define tester-equal? (eq-deep lenient-compare?))
   
-
 ;; [2004.04.21] I've started using the (ad-hoc) convention that every
 ;; file should define "these-tests" and "test-this" for unit testing.
 ;; This is inspired by the drscheme philosophy of every file being an
 ;; executable unit...  But it *was* unbearable to duplicate this
 ;; little tester code across every file 
-(define (default-unit-tester MESSAGE TESTS)
+;; 
+;; [2004.05.24] Replacing the default tester with a better one.
+(define default-unit-tester
+  (lambda (message these-tests . eq-fun)
+    (let ((teq? (if (null? eq-fun) 
+		    tester-equal?
+		    (eq-deep (car eq-fun)))))
+    (lambda args 
+    (call/cc
+     (lambda (return)
+       (let ([entries 	
+	      (map 
+	       (lambda (entry)
+		 (cond
+		  [(= 3 (length entry))  entry]
+		  [(= 2 (length entry))
+		   (list #f (car entry) (cadr entry))]
+		  [else (error 'default-unit-tester 
+			       " This is a bad test-case entry!: ~s~n" entry)]))
+	       these-tests)])
+	 (let ([verbose (memq 'verbose args)]
+	       [descriptions (map car entries)]
+	       [tests (map cadr entries)]
+	       [intended (map caddr entries)]
+	       [success #t])       
+
+;	  (if verbose 
+	      (printf "Testing module: ~a~n" message);)
+	    (for-each 
+	     (lambda (num expr descr intended)
+	       (flush-output-port)
+	       (if descr (printf "   ~s~n" descr))
+	       (display-constrained `(,num 10) "  " `(,expr 40)
+				    " -> " `(,intended 20)
+				    ": ")
+
+	       (let ((result (eval expr)))
+	       
+;	       (newline)
+	       (if (teq? intended result)
+		   (printf "PASS~n")
+		   (begin (set! success #f)
+			  (newline)
+			  (printf "FAIL: Expected: ~n")
+			  (pretty-print intended)
+			  (printf "~n      Received: ~n")
+			  (write result)
+;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
+			  (printf "~n~nFor Test: ~n")
+			  (pretty-print expr)
+			  (newline) 
+			  (return (void))
+			  ))))
+	     (iota (length tests))
+	     tests descriptions intended)
+	    ))))))))
+;;; OLD VER:
+'(define (default-unit-tester MESSAGE TESTS)
     (lambda args 
       (let ((verbose (memq 'verbose args)))
 	
@@ -1208,7 +1276,8 @@
 	   (let ([arg (car arg)]
 		 [bound (cadr arg)]
 		 [port (open-output-string)])
-	     (pretty-print arg port)
+;	     (pretty-print arg port)
+	     (write arg port)   (newline port)
 	     (let ((str (get-output-string port)))
 	       (if (> (string-length str) bound)
 		   (begin (display (substring str 0 (max 0 (- bound 3))))

@@ -42,3 +42,39 @@
 
 ;(init-graphics)
 
+
+(define (test)
+(let* ([top (create <toplevel> with (title: "Canvas Example"))]
+       [start-text "Click button 1 in canvas below"]
+       [label (create <label> top with (title: start-text))])
+  (define-class (<example-canvas> parent) (<canvas> parent)
+    (ivars (x1 #f) (y1 #f) (rect #f))
+    (inherited)
+    (inheritable)
+    (private)
+    (protected)
+    (public
+      [mouse-press (x y mods)
+       (event-case ((modifier= mods))
+         (([left-button])
+          (set! x1 x)
+          (set! y1 y)
+          (set-title! label "Hold down button 1 and drag")
+          (set! rect (create <rectangle> self x1 y1 x1 y1)))
+         (else (send-base self mouse-press x y mods)))]
+      [mouse-motion (x y mods)
+       (event-case ((modifier= mods))
+         (([left-button])
+          (when rect (set-coords! rect (min x x1) (min y y1) (max x x1) (max y y1))))
+         (else (send-base self mouse-motion x y mods)))]
+      [mouse-release (x y mods)
+       (event-case ((modifier= mods))
+         (([left-button]) (set! rect #f) (set-title! label start-text))
+         (else (send-base self mouse-release x y mods)))]))
+  (let ([canvas
+         (create <example-canvas> top
+           with
+           (background-color: (make <rgb> 215 215 255)))])
+    (show label)
+    (show canvas)))
+)

@@ -6,6 +6,7 @@
 ;; It should be loaded inside a module that only exports:
 ;;   (provide simulator-nought-language)
 
+;;============================================================
 ;; DEPENDS: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
 
@@ -14,22 +15,29 @@
 ;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
 ;; so that it may draw the simulation upon the screen.
 
+;; DEPENDS: This file requires the "flat_threads.ss" interface, which
+;; is a simple interface over engines or threads.
+;;============================================================
 
+;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
   "simplest simulator for nodal language")
 
-;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
+;; This uses a lame sort of text display instead of the graphics display:
+(define simulator-output-text (make-parameter #f id))
 
+;; These are the virtual coordinate bounds of the world.
+(define world-xbound 60)
+(define world-ybound 60)
+(define radius 30) ;; And the comm radius.
+(define numprocs 10) ;; And the total # processors.
+
+;;========================================
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 ;; Incoming is a list of messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 (define-structure (simobject node incoming redraw))
-
-(define world-xbound 60)
-(define world-ybound 60)
-(define radius 30)
-(define numprocs 10)
 
 (define (random-node) 
   (make-node 
@@ -128,7 +136,7 @@
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
 		    ;; This refers to the token cache for this processor:
-		    (hashtab-set! token-cache tok args)
+		    (hashtab-set! token-cache msg args)
 		    (case msg
 		      ,(map (lambda (tok)
 			      `[(,tok) 
@@ -150,6 +158,8 @@
 	     (set-cdr! prior '())
 	     (loop next (cdr next))))])]))
 
+;; Takes: a program in the language of pass10_deglobalize
+;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
 (define (compile-simulate-nought prog)
   (match prog
     [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
@@ -169,18 +179,18 @@
 				     obj object-graph)
 			      (cdr entry))))]
 	   [define send (lambda (data ob)
-		   (disp 'send data (node-id (simobject-node ob)))
+;		   (disp 'send data (node-id (simobject-node ob)))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 	   [define emit (lambda (t . m)
-		   (disp 'emit t m)
+;		   (disp 'emit t m)
 		   (let ((msg (if (null? m) '() (car m))))
 		     (map (lambda (nd) (send (list t m) nd))
 			  (neighbors this))))]
 	   [define flood (lambda (t . m)
-		    (disp 'flood t m)
+e;		    (disp 'flood t m)
 		    (let ((msg (if (null? m) '() (car m))))
 		      (map (lambda (nd) (send (list t msg) nd))
 			   all-objs)))])]
@@ -231,56 +241,50 @@
 
 
        (let ([socfun (eval socprog)]
-	     [nodefun (eval nodeprog)])	 
-       (vector (make-engine 
+	     [nodefun (eval nodeprog)])
+       (vector ;(make-engine 
 		(lambda () (socfun (car all-objs) 
-				   object-graph all-objs)))
+				   object-graph all-objs))
 	       (map (lambda (nd) 
-		      (make-engine
+		      ;(make-engine
 		       (lambda () 
 ;			 (disp "run node engine for node" nd)
-			 (nodefun nd object-graph all-objs))))
+			 (nodefun nd object-graph all-objs)))
 		    all-objs))
        
        ))]))
 
+;; This is the "language definition" which will use the compiler and
+;; simulator to evaluate the expression.  It'll be hard to write test
+;; cases with meaningful results, though.
 (define (simulator-nought-language expr)
   (void))
 
 ;;===============================================================================
 
-(define (run-simulation engines . rounds)
+(define (run-simulation engines . timeout)
   (let ([soceng (vector-ref engines 0)]
-	[nodeengs (vector-ref engines 1)])
-    (let loop ([engs (cons soceng nodeengs)]
-	       [acc '()]
-	       [rounds (if (null? rounds) -1 (car rounds))])
-;      (disp "looping " engs acc rounds)
-      (cond
-       [(= rounds 0) 'Simulation_Done]
-       [(null? engs)
-	(begin 
-	; (printf "Beginning loop around ~s engines.~n" (length acc))
-	  (for-each (lambda (simob)
-		      (let ((len (length (simobject-incoming simob))))
-			(cond 
-			 [(< len 10) (display len)]
-			 [else (display "#")])))
-		    all-objs)
-	  (newline)
+	[nodeengs (vector-ref engines 1)]
+	[display_engine
+	 (lambda ()
+	   (let loop ()
+	     (for-each (lambda (simob)
+			 (let ((len (length (simobject-incoming simob))))
+			   (cond 
+			  [(< len 10) (display len)]
+			  [else (display "#")])))
+		       all-objs)
+	     (engine-block)
+	     (loop)))])
+    (let ([thunks (if (simulator-output-text)
+		       (cons display_engine (cons soceng nodeengs))
+		       (cons soceng nodeengs))])      
 
-	  (loop (reverse acc) '() (- rounds 1)))]
-       [else 
-	((car engs) 1000
-	 (lambda (remaining ret) 
-	   ;(error 'run-simulation "engine shouldn't return.  Values were: ~n~s~n" ret))
-	   (printf "Engine #~s returned!: ~s~n" 
-		   (length acc)
-		   ret)
-	   (loop (cdr engs) acc rounds))
-	 (lambda (nexteng)
-	   (loop (cdr engs) (cons nexteng acc) rounds)))]
-      ))))
+      (if (null? timeout)
+	  (run-flat-threads thunks)
+	  (run-flat-threads thunks (car timeout))
+	  ))))
+
 
 ;;===============================================================================
 
@@ -357,8 +361,22 @@
 	  (and (equal? x y)
 	       (not (eq? x y))))) #t]
 
-    [ (let ((s (open-output-string)))
+    [ (run-simulation (vector (lambda () 3) '()))
+      All_Threads_Returned ]
+
+#;    [ (let ((s (open-output-string)))
 	(parameterize ([current-output-port s])
+	    (run-simulation (vector (lambda () 3)
+				    (list (lambda () 4)
+					  (lambda () 5)))
+			    10)
+	   (get-output-string s)
+	   3
+	   ))
+      3 ]
+
+#;    [ (let ((s (open-output-string)))
+#;	(parameterize ([current-output-port s])
 	   (list 
 	    (run-simulation (vector (make-engine (lambda () 3))
 				    (list (make-engine (lambda () 4))
@@ -368,44 +386,11 @@
 	   
 	Simulation_Done]
 
+
     ))
 
-(define tester
-  (lambda (these-tests)
-    (lambda args 
-    (call/cc
-     (lambda (return)
-      (let ([verbose (memq 'verbose args)]
-	    [tests (map car these-tests)]
-	    [intended (map cadr these-tests)]
-	    [success #t])
-;	  (if verbose 
-	      (printf "Testing ~a~n" this-unit-description);)
-	  (let ((results (map eval tests)))
-	    (for-each 
-	     (lambda (num expr intended result)
-	       (display-constrained `(,num 10) "  " `(,expr 40)
-				    " -> " `(,intended 20)
-				    ": ")
-;	       (newline)
-	       (if (tester-equal? intended result)
-		   (printf "PASS~n")
-		   (begin (set! success #f)
-			  (newline)
-			  (printf "FAIL: Expected: ~n")
-			  (pretty-print intended)
-			  (printf "~n      Received: ~n")
-			  (write result)
-;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
-			  (printf "~n~nFor Test: ~n")
-			  (pretty-print expr)
-			  (newline) 
-			  (return (void))
-			  )))
-	     (iota (length tests))
-	     tests intended results))))))))
-
-(define test-this (tester these-tests))
+;; Use the default unit tester from helpers.ss:
+(define test-this (default-unit-tester this-unit-description these-tests))
 
 (define testsim test-this)
 (define testssim these-tests)
@@ -450,7 +435,7 @@
 
 (define csn  compile-simulate-nought)
 
-(define tt (csn p))
+(dsis tt (csn p))
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
