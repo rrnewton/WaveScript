@@ -139,10 +139,19 @@ We can always just pass null, or the node id as the value carried for
 region membership...
 
 [2004.08.15]
-
 Ok I'm working on places and routing now.  Maybe next I need pull/push
 and/or known/unknown annotations.  I really like doing more of the
 work before deglobalize.
+
+[2004.08.16]
+Ok, I'm digging into TinyOS a bit more now.  I've used it
+embarassingly little.  Notes...
+  Data segment of a message is fixed to 29 bytes.  Don't put more than
+that in it!  
+  TOSH_DATA_LENGTH
+  TOS_LOCAL_ADDRESS = our local address
+
+
 
 
 

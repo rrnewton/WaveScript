@@ -17,7 +17,11 @@ module TokenMachineRuntimeM {
 
   TOS_Msg test_packet;
 
+  task void tokenhandler () {
+  }
+
   command result_t StdControl.init() {
+    dbg(DBG_USR1, "TokenMachineRuntimeM: INITIALIZING\n");
     *((uint16_t *)test_packet.data) = TOS_LOCAL_ADDRESS; // Our ID number
     return call Random.init();
   }
@@ -41,7 +45,10 @@ module TokenMachineRuntimeM {
 
   event TOS_MsgPtr ReceiveMsg.receive(TOS_MsgPtr recv_packet) {
     uint16_t nodeaddr = *((uint16_t *)recv_packet->data);
-    dbg(DBG_USR1, "TokenMachineRuntimeM: Received message from %d\n", nodeaddr);
+
+    uint16_t nextdata = *(((uint16_t *)recv_packet->data) + 1);
+
+    dbg(DBG_USR1, "TokenMachineRuntimeM: Received message from %d data %d also %d \n", nodeaddr, nextdata, recv_packet->addr);
     return recv_packet;
   }
 
