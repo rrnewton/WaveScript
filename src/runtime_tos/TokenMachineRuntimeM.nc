@@ -33,6 +33,7 @@ module TokenMachineRuntimeM {
     dbg(DBG_USR1, "TokenMachineRuntimeM: Sending test\n");
     call SendMsg.send(TOS_BCAST_ADDR, sizeof(uint16_t), &test_packet);    
     return SUCCESS;
+
   }
 
   event result_t SendMsg.sendDone(TOS_MsgPtr msg, bool success) {
