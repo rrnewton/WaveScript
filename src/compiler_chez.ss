@@ -46,17 +46,21 @@
 ;; LAME:
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
+;; Load this before the simulator.
+(when (top-level-bound? 'SWL-ACTIVE)
+      (load "chez/basic_graphics.ss")
+      (load "chez/graphics_stub.ss")
+      (eval '(import basic_graphics))
+      (eval '(import graphics_stub)))
+
 ;; Basic simulator for the nodal language:
 ;(include "chez/simulator_nought.ss")
 (load "chez/simulator_nought.ss")
 
 ;; If we're in SWL then load the GRAPHICS portion:
-(if (top-level-bound? 'SWL-ACTIVE)
-    (let ()
-      (load "chez/basic_graphics.ss")
-      (load "chez/graphics_stub.ss")
+(when (top-level-bound? 'SWL-ACTIVE)
       (load "chez/demo_display.ss")
-      (load "chez/simulator_nought_graphics.ss")))
+      (load "chez/simulator_nought_graphics.ss"))
 
 ;(trace  explode-primitive process-expr process-letrec)
 
@@ -81,9 +85,20 @@
       (load "chez/simulator_nought_graphics.ss")
 
       (define-top-level-value 'graphical-repl
-	(repl-builder (lambda () (init-world) (init-graphics))
-		      cleanse-world
+	(repl-builder (lambda () 
+			(init-world)
+			(init-graphics))
+		      ;; Inbetween evaluations, reset colors.
+		      (lambda ()
+			(for-each
+			 (lambda (simob)
+			   (if (simobject-gobj simob)
+			       (set-fill-color! (simobject-gobj simob) 
+						Starting-Node-Color)))
+			 all-objs)
+			(cleanse-world))
 		      graphical-simulation))
+      (define-top-level-value 'grepl graphical-repl)
       ))
 
 (define simulate)

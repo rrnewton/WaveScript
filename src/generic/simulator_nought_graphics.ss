@@ -12,6 +12,7 @@
 
 ;;===============================================================================
 
+;; <<TODO>> THESE ARE REDUNDANT!! DO AWAY WITH:
 (define edge-table (make-default-hash-table))
 (define proc-table (make-default-hash-table))
 
@@ -25,6 +26,39 @@
 ;; to take their own graphical objects as input, giving them handles for
 ;; changing their color and so forth.
 
+;; This just uses the global variables storing the simulator state to
+;; draw it up on the screen.
+(define (draw-sim)
+  ;; This is a promise so as to be called only once.
+  (define wipe-screen (delay clear-buffer))
+
+  ;; Contains a graphics object, and the last drawn state.
+  (define-structure (edgestate gobj oldstate))
+
+  (if object-graph
+  ;; Fill up our two hash tables with drawn objects.
+      (for-each (lambda (graph-entry)		   
+		  (let ([proc (car graph-entry)]
+			[edges (unfold-list (cdr graph-entry))])
+		    (let ([origpos (node-pos (simobject-node proc))])
+		      ;; If the processor has already been drawn, we trigger a screen wipe.
+		      (if (simobject-gobj proc) (force wipe-screen))
+		      (let ((gobj (draw-proc origpos)))
+			(hashtab-set! proc-table proc gobj)
+			(set-simobject-gobj! proc gobj))
+		      ;; Not done yet.
+		      ;; This just draws the edges once... need to take responsibility for
+		      ;; changing them:
+		      (for-each 
+		       (lambda (edgeob)
+			 (hashtab-set! edge-table edgeob
+				       (make-edgestate
+					(draw-edge origpos (node-pos (simobject-node (car edgeob))))
+					(structure-copy (car edgeob)))))
+		       edges)
+		      )))
+		object-graph)))
+
 (define graphical-simulation   
   (generate-simulator
    ;; Thread runner:
@@ -35,36 +69,14 @@
      ;; These "edges" are distinct objects for each comm link (directionally):
      (let ([edges (apply append (map unfold-list (map cdr object-graph)))]
 	   [soceng (vector-ref funcs 0)]
-	   [nodeengs (vector-ref funcs 1)])
-       
-       ;; Contains a graphics object, and the last drawn state.
-       (define-structure (edgestate gobj oldstate))
+	   [nodeengs (vector-ref funcs 1)])      
     
        ;; This will associate edges with graphics objects:
        (define positions (map node-pos (map simobject-node all-objs)))
 ;      (draw-procs positions)
+      
+       (draw-sim)
 
-      ;; Fill up our two hash tables with drawn objects.
-       (for-each (lambda (graph-entry)		   
-		   (let ([proc (car graph-entry)]
-			 [edges (unfold-list (cdr graph-entry))])
-		     (let ([origpos (node-pos (simobject-node proc))])
-		      (let ((gobj (draw-proc origpos)))
-			(hashtab-set! proc-table proc gobj)
-			(set-simobject-gobj! proc gobj))	      
-;; Not done yet.
-;; This just draws the edges once... need to take responsibility for
-;; changing them:
-		      (for-each 
-		       (lambda (edgeob)
-			 (hashtab-set! edge-table edgeob
-				       (make-edgestate
-					(draw-edge origpos (node-pos (simobject-node (car edgeob))))
-					(structure-copy (car edgeob)))))
-		       edges)
-		      )))
-		 object-graph)
-       
        ;; Return the thunks:
        (cons soceng nodeengs)))))
 

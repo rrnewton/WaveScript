@@ -97,6 +97,13 @@
 (define object-graph #f) ;; Graph of 'simobject'
 (define all-objs #f) ;; List of 'simobject' 
 
+;; This globally defined functions decides the sensor values.
+;; Here's a version that makes the sensor reading the distance from the origin:
+(define (sense loc)
+  (let ([x (car loc)] [y (cadr loc)])
+    (sqrt (+ (expt x 2) (expt y 2)))))
+
+
 ;;========================================
 
 (define (id x) x)
@@ -108,11 +115,17 @@
 	 (random world-ybound))
    ))
 
+;; I thought the primitive equal? did this by default?  This is just a
+;; version that accepts any number of arguments.
 (define (myequal? . args)
-  (let myeqloop ((args args))   
-     [() #t]
-     [(a) #t]
-     [args (apply equal? args)]))
+  (disp "myeq" args)
+  (if (null? args) #t
+      (let ((first (car args)))
+	(let myeqloop ((args (cdr args)))
+	  (cond
+	   [(null? args)  #t]
+	   [(equal? first (car args)) (myeqloop (cdr args))]
+	   [else #f])))))
   
 (define (dotted-append ls ob)
   (let loop ((ls ls))
@@ -152,6 +165,11 @@
 					    (< (posdist (node-pos node) (node-pos n)) radius)))
 				     seed)))
 		     seed))
+	  ;; If there's a prexisting world, clean the screen.
+	  (and all-objs 
+	       (not (null? all-objs))
+	       (simobject-gobj (car all-objs))
+	       (clear-buffer))
 	  seed))
   (set! object-graph (make-object-graph graph))
   (set! all-objs (map car object-graph)))
@@ -175,16 +193,7 @@
 		object-graph)
       (error 'cleanse-world "world must not be allocated object-graph is false.")))
 
-;;========================================
-
-#;(define (draw)
-  (init-graphics)
-  (for-each draw-point (map node-pos graph))
-  (for-each draw-line (map (lambda (node) 
-			     (map (lambda (neighb) 
-				    (list (node-pos node) (node-pos neighb)))))
-			   graph)))
-  
+;;========================================  
 
 (define (free-vars expr)
   (let loop ((env ()) (expr expr))
@@ -237,7 +246,7 @@
 
 		  [(dist) '(sim-dist)]		
   		  ;; <TODO> WHY NOT QUOTED:
-		  [(dist ,tok) `(sim-dist ,tok)]
+		  [(dist ,tok) `(sim-dist ',tok)]
 		  [(loc) '(sim-loc)]		
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
 	 	  
@@ -297,12 +306,10 @@
 		     [thunks (map (lambda (bod) `(lambda () ,bod)) body*)])
 ;		(disp "GOT DUPS " tok formals*)
 		(DEBUGMODE
-		 (disp "IN DEBUG") (flush-output-port)
 		 (if (not (apply myequal? formals*))
 		     (error 'simulator_nought:remove-duplicate-tokbinds
 			    "handlers for token ~s don't all take the same arguments: ~s" 
 			    tok formals*))
-		 (disp "DOEN DEBUG") (flush-output-port)
 		 )
 		(let ([mergedhandler
 		       `[,tok ,(car formals*)
@@ -469,20 +476,22 @@
 	     (set-simobject-homepage! this (cons (list 'inside t) (simobject-homepage this)))
 	     (let ((possible
 		    (filter (lambda (simob)
-			      (member (list 'inside t) (simobject-homepage simob)))
+			      (member `(inside ,t) (simobject-homepage simob)))
 			    all-objs)))
 	       (DEBUGPRINT
 		(disp "election: electing from" (node-id (simobject-node this))
 		      " number candidaties " (length possible)))
 	       ;; This is horribly yucky.
-	       (let ([leader (list-get-random possible)])
-		 (DEBUGPRINT
-		  (disp "election: got leader" (node-id (simobject-node leader))))
-		 ;; Tell the message it's leader.  This might happen
-		 ;; at multiple nodes.  Need to make sure there's a
-		 ;; dependency relationship here, and that a killing a
-		 ;; false leader kills all its subsequent doings.
-		 (sendmsg (make-msg-object t #f #f 0 '()) leader)))]
+	       ;; Proceed if there are any candidates...a
+	       (if (not (null? possible))
+		   (let ([leader (list-get-random possible)])
+		     (DEBUGPRINT
+		      (disp "election: got leader" (node-id (simobject-node leader))))
+		     ;; Tell the message it's leader.  This might happen
+		     ;; at multiple nodes.  Need to make sure there's a
+		     ;; dependency relationship here, and that a killing a
+		     ;; false leader kills all its subsequent doings.
+		     (sendmsg (make-msg-object t #f #f 0 '()) leader))))]
 
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -514,12 +523,13 @@
 		   (if (msg-object-count this-message)
 		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
-			      "inside simulator (dist) is broken!")))		 
+			      "inside simulator (dist) is broken!")))
 		 (let ((entry (hashtab-get token-cache (car tok))))
 		   (if (and entry (msg-object-count entry))
 		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
-			      "inside simulator (dist ~s) but ~s has not been received!")
+			      "inside simulator (dist ~s) but ~s has not been received!"
+			      (car tok) (car tok))
 		       )))]
 	   
 	   [define (sim-loc) ;; Return this nodes location.
