@@ -194,14 +194,14 @@
 (define test-one
   (case-lambda
     [(expr)
-     (parameterize ([snet-optimize-level 2])
-       ($test-one expr #t #t #t))]
+;     (parameterize ([snet-optimize-level 2])
+       ($test-one expr #t #t #t)]
     [(expr emit?)
-     (parameterize ([snet-optimize-level 2])
-       ($test-one expr emit? #t #t))]
+;     (parameterize ([snet-optimize-level 2])
+       ($test-one expr emit? #t #t)]
     [(expr emit? verbose?)
-     (parameterize ([snet-optimize-level 2])
-       ($test-one expr emit? verbose? #t))]))
+;     (parameterize ([snet-optimize-level 2])
+       ($test-one expr emit? verbose? #t)]))
 
 (define remaining-pass-names (make-parameter '()))
 

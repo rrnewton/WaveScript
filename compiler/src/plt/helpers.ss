@@ -24,26 +24,31 @@
 	   "be emulated right now in Plt. -RRN"))
 
   (provide 
-  
+
+   ;; Syntax:
+   mvlet 
+
+   ;; Values:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
      
+   get-formals
    unique-name reset-name-count! extract-suffix make-begin
    code-name label-name #;method-name
    
    constant? datum? formalexp? cast-formals default-unit-tester
    
    regiment-primitives regiment-primitive? 
-  
+
    set? list->set set-cons union intersection difference
    list-head filter list-index snoc rac rdc 
    insert-between iota disp
    
    
-   (all-except (lib "rutils_generic.ss")
-               list->set union intersection difference set?
-               list-head filter list-index snoc rac rdc 
-               insert-between iota disp)
-;   (all-from (lib "rutils_generic.ss") )
+;   (all-except (lib "rutils_generic.ss")
+;               list->set union intersection difference set?
+;               list-head filter list-index snoc rac rdc 
+;               insert-between iota disp)
+   (all-from (lib "rutils_generic.ss") )
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
    )

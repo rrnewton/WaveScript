@@ -46,9 +46,9 @@
 (define pass-names
   '(verify-regiment
     rename-var
-;    remove-unquoted-constant                        ;;  5
-;    remove-complex-constant                         ;;  7
-;    uncover-free                                    ;; 14
+    remove-unquoted-constant                        ;;  5
+    remove-complex-constant                         ;;  7
+    uncover-free                                    ;; 14
 ;    convert-closure                                 ;; 15
 ;    lift-letrec                                     ;; 16
 ;    lift-letrec-body                                ;; 22
@@ -62,6 +62,11 @@
 			`(base-language '(program ,p)))
 		      set)])
       (test-all))))
+
+(define (t x)
+  (parameterize ((tracer #t))
+		(test-one x)))
+
 
 (display (list (test00)
 	       (test01)

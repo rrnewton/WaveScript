@@ -66,12 +66,14 @@
      (letrec ([z 0])
        (letrec ([x z])
          x))     
+
      (letrec ((x 3000))
        (if (number? x)
            (letrec ((y (cons x '())))
              (if (if (pair? y) (null? (cdr y)) #f)
                  (+ x 5000)
-                 (- x 3000)))))
+                 (- x 3000)))
+	   0))
      
      ; nested test examples
      (+ (letrec ((x 7) (y 2)) (if (if (= x 7) (< y 0) (<= 0 y)) 77 88)) 99)
@@ -92,7 +94,7 @@
                (eq? (- a 1) b)
                (= a (+ b 2)))))
      
-     (let ([x (cons #f #t)] [y 17])
+     (letrec ([x (cons #f #t)] [y 17])
        (if (if (car x) #t (< y 20))
            (* y (* y 2))
            0))

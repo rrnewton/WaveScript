@@ -5,8 +5,24 @@
 
 ;;; The input language is the same as the input and output languages
 ;;; of Pass 1.  The output language differs in that all variable
-;;; bindings are uniquely named, and that the aforementioned
-;;; toplvl-varref and toplvl-varassign! syntaxes are added.
+;;; bindings are uniquely named.
+
+;;; OUTPUT LANG:
+
+;;; <Pgm>  ::= <Exp>
+;;; <Decl> ::= (<var> <Exp>)
+;;; <Exp>  ::= 
+;;;            (quote <datum>)
+;;;          | <constant>
+;;;          | <var>
+;;;          | (if <Exp> <Exp> <Exp>)
+;;;          | (lambda <Formalexp> <Exp>)
+;;;          | (letrec (<Decl>*) <Exp>)
+;;;          | (<primitive> <Exp>*)
+;;; <Formalexp> ::= (<var>*)
+
+;;; And in the output
+;;; <Pgm>  ::= (<language> '(program <Exp>))
 
 ;;; The implementation requires constant?, scheme-primitive?, unique-name,
 ;;; get-formals, and cast-formals from helpers.ss.
@@ -17,8 +33,6 @@
 ;;; let, and letrec expressions and consulted for variable
 ;;; references and assignments.
 
-;;; RRN[2002.06.19] - now this mangles toplvl var names
-;;;                   (as well as quoted symbols)
 
 (define rename-var
   (let ()

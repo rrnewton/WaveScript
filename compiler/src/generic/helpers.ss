@@ -8,8 +8,8 @@
 (define regiment-basic-primitives 
   '(cons car cdr 
 	 + - * / 
-	 < > = eq? equal?
-	 pair? number?
+	 < > <= >= = eq? equal?
+	 null? pair? number?
 	 not
 	 ))
 
@@ -208,6 +208,12 @@
                    "unknown constant: ~s" imm)])))
 
 ;; Things that need boxing (sigh):
+;; TODO: Fix this up when my language actually becomes a bit more concrete:
+(define (immediate? x)
+  (or (number? x)
+      (symbol? x)
+      (char? x)))
+
 #;(define immediate?
   (lambda (x)
     (or ;(null? x)
@@ -624,6 +630,9 @@
       [(,v* ... . ,extra) (set? (cons extra v*))]
       [,else #f])))
 
+
+;; [2004.04.24] We're not using most of these forms, but this is still
+;; a valid procedure:
 (define get-formals
   (lambda (formalexp)
     (match formalexp

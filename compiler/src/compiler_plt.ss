@@ -15,9 +15,13 @@
 	 "plt/tests.ss"
 )
 
-(disp "FOOB DONE REQS")
+(define base-language 
+  (lambda args
+    (for-each eval args)))
+
+;(disp "FOOB DONE REQS")
 ;(require "plt/language-mechanism.ss")
-(disp "DOEN LANG")
+;(disp "DOEN LANG")
 
 ;  (require "plt/demo_display.ss")
 
