@@ -383,6 +383,7 @@
 		  [(,rator ,[rand*] ...)
 		   ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator)))
+		   (disp "processing app:" rator rand*)
 		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
@@ -1165,6 +1166,15 @@
 (define these-tests
   `(
     [ (free-vars '(cons (quote 30) x)) (x) ]
+
+    ["process-statement: test nested calls"
+     (process-statement '(call a (call b 933939)))
+     ,(lambda (exp)
+	(= 2 (length 
+	      (deep-all-matches 
+	       (lambda (exp) (match exp 
+				    [(let (,bind ...) ,bods ...) #t] 
+				    [,else #f])) x))))]
     
     ;; This is an evil test which mutates the global environment!  (By
     ;; evaluating generic-defs.)  Yech!
@@ -1232,9 +1242,7 @@
 		;; Make sure vals is a list:
 		(list? (car (msg-object-args (car x))))
 		))]
-	
-
-   
+	  
     
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
     [ (process-statement '(flood foo)) (sim-flood 'foo)]
