@@ -6,7 +6,7 @@
 ;; (run-flat-threads <thunklist> <time-out>)
 ;;   Runs a bunch of thunks in parallel until some number of seconds
 ;; have elapsed
-
+;; Returns either the symbol 'All_Threads_Returned or 'Threads_Timed_Out.
 
 ;; [2004.06.02] WEIRD.  I'm having a problem where this file will load
 ;; if I strip the module wrapper, but when I put it back the file
@@ -26,6 +26,7 @@
 ;; thread in each time-slice.
 (define flat-threads-granularity 10)
 
+;; run-flat-threads :: Thunks ->? TimeOut -> All_Threads_Returned | Threads_Timed_Out
 (define (run-flat-threads thks . time)
   (let ((timeout (if (null? time) #f 
 		     (+ (real-time) (* 1000 (car time))))))
@@ -54,9 +55,9 @@
       ))))
 
 
-;; [2004.06.17] Now I modify this to return an engine.
-;; We can't nest engines, but I can make a psuedo-engine that runs a
-;; round-robin on some child engines.
+;; [2004.06.17] Now I modify this to return an engine.  We can't nest
+;; engines, but I can make a psuedo-engine that runs a round-robin on
+;; some child engines.
 
 ;; [2004.06.18] Oops!  This needs to use CPU time or *something*, the
 ;; timeout system isn't going to work when it's an engine!!  And maybe

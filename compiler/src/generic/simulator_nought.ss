@@ -1119,11 +1119,14 @@
        ;; DANGEROUS:
        (list socprog nodeprog))]))) ;; End compile-simulate-nought
 
-;; Makes thunks for the simulation:
-;; Returns a vector with the socthunk and a list of nodethunks.
 ;; [2004.07.02] Modifying this to write the progs to files and load
 ;; from there.  This way PLT scheme should have better debugging
 ;; information.
+
+;; build-simulation ::
+;;  [socprog, nodeprog] ->  
+;;  (soc-return -> soc-finish -> (vector thunk (thunks)))
+;; Takes programs in sexp form and returns a simulation object.
 (define (build-simulation progs)
   (let ([socprog (car progs)]
 	[nodeprog (cadr progs)]
@@ -1185,7 +1188,15 @@
 ;; sense, very weak abstraction.
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
-(define (generate-simulator threadrunner fun)
+;; Takes: 
+;;  threadrunner :: Thunks ->? TimeOut -> All_Threads_Returned | Threads_Timed_Out
+;;  simcore :: Funcs ->? Timeout -> 
+;;    simcore runs the core of the specialized simulator.
+;; Returns: a function of type:
+;;    Simulator ->? timeout -> ReturnVals
+;; Where 
+;;   Simulator = soc-return -> soc-finish -> (vector thunk (thunks))
+(define (generate-simulator threadrunner simcore)
   (lambda (the-sim . timeout)
     (let ([return-vals '()])
       (let ([soc-return 
@@ -1213,7 +1224,7 @@
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the given function,
   ;; this gives us back new thunks:
-  (let ([newthunks (apply fun (cons thunks timeout))])
+  (let ([newthunks (apply simcore (cons thunks timeout))])
     (let ([result (if (null? timeout)
 		      (threadrunner newthunks)
 		      (threadrunner newthunks (car timeout)))])
