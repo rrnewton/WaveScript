@@ -1233,9 +1233,9 @@
 			;; This should put one message in a's inbox:
 			(simobject-incoming a_simob)
 			)))))
-	,(lambda (x)
+	,(lambda (x) 
 	   (and (list? x)
-		(eq? (length x) 1)
+		(eq? (length x) 1);; the a_simob should have received a return message
 		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
 		(eq? (msg-object-parent (car x))
 		     (msg-object-origin (car x)))
@@ -1243,7 +1243,46 @@
 		;; Make sure vals is a list:
 		(list? (car (msg-object-args (car x))))
 		))]
-	  
+
+    ;; <TODO> TOFINISH NOT DONE!
+    ;; This should do a single aggregation.  I've removed comments
+    ;; that are redundant with the above.
+    [ "test handle-returns with aggregation"
+      ,(two-node-scenario
+	`(
+		  (hashtab-set! (simobject-token-cache b_simob) 'via 
+				;; token timestamp origin parent count args
+				(construct-msg-object 'via #f a_simob a_simob 1 '()))
+		  (hashtab-set! (simobject-token-cache a_simob) 'via 
+				(construct-msg-object 'via #f a_simob #f 1 '()))
+
+		  (let ([this-message (bare-msg-object 
+				       'return 
+				       ;; vals totoken viatoken seed aggregator senders
+				       '((3) to via 0  plus ()))]
+			[plus +])
+		    (fluid-let ([this b_simob]) 
+		      (fluid-let ([handler
+				   ,(build-handler ;'()
+				     '([plus (x y) 
+					     (disp "ADDING:" x y)
+					     (+ x y)]
+;				       [via () (error 'tester-via-token 
+;						      "this shouldnt be called")]
+						   )
+				       )])
+			(handle-returns (list this-message))
+			(simobject-incoming a_simob)
+			)))))
+	,(lambda (x) 
+	   (and (list? x)
+		(eq? (length x) 1)
+		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
+		(eq? (msg-object-parent (car x))
+		     (msg-object-origin (car x)))
+		(equal? '(1) (msg-object-count  (car x)))
+		(list? (car (msg-object-args (car x)))) ;; Make sure vals is a list.
+		))]	  
     
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
     [ (process-statement '(flood foo)) (sim-flood 'foo)]
@@ -1340,7 +1379,7 @@
 			 (match test
 			   [(,prog ,res) `((begin (cleanse-world) ,prog) ,res)]
 			   [(,name ,prog ,res) 
-			    `(name (begin (cleanse-world) ,prog) ,res)]))
+			    `(,name (begin (cleanse-world) ,prog) ,res)]))
 			 these-tests)
 		  tester-eq?
 		  wrap-def-simulate)))

@@ -38,8 +38,10 @@
 (include "generic/pass10_verify-core.ss")
 (include "generic/pass11_classify-names.ss")
 ;(include "generic/pass09_separate-graph")
-(include "generic/pass12_deglobalize.ss")
-
+(include "generic/pass12_annotate-heartbeats.ss")
+(include "generic/pass13_deglobalize.ss")
+;(include "generic/pass14_cleanup-token-machine.ss")
+;(include "generic/pass15_verify-token-machine.ss")
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

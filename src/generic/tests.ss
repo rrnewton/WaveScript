@@ -104,12 +104,11 @@
 
 ;===============================================================================
 
-;; [2004.06.11]  This runs unit tests for the whole system, then runs all the unit tests.
+;; [2004.06.11] This runs compiler tests for the whole system, then
+;; runs all the unit tests.
 (define (test-everything . args)
-  (let ([test-it (if (memq 'verbose args)
-		     (lambda () (test-this 'verbose))
-		     (lambda () (test-this)))])
-
+  ;; Pass flags ('quiet 'verbose) onward to the unit tester:
+  (let ([test-it (lambda () (apply test-this (filter symbol? args)))])
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
     (test-all) (newline)  (newline)

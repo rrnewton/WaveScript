@@ -342,13 +342,15 @@
     (lambda args 
     (call/cc
      (lambda (return)
-       (let ([entries 	
+       (let ([entries
+	      ;; This canonicalizes them so that they're all three-long:
 	      (map 
 	       (lambda (entry)
 		 (cond
 		  [(= 3 (length entry))  entry]
 		  [(= 2 (length entry))
-		   (list #f (car entry) (cadr entry))]
+		   ;; Pads out with #f for entry name:
+		   (cons #f entry)]
 		  [else (error 'default-unit-tester 
 			       " This is a bad test-case entry!: ~s~n" entry)]))
 	       these-tests)])
@@ -369,6 +371,7 @@
 	  (for-each 
 	   (lambda (num expr descr intended)
 	       (flush-output-port)
+	       ;; This prints a name, or description for the test:
 	       (if (and verbose descr) (printf "   ~s~n" descr))
 	       (display-constrained `(,num 10) "  " `(,expr 40)
 				    " -> ")
@@ -1718,8 +1721,12 @@
 ;; reasonable readout for rapidly changing values.  Works only for
 ;; numeric values.
 (define (periodic-display delta) ;obj accessor delta)
+  (if (not (number? delta)) 
+      (error 'periodic-display "must be called with a numeric delta: ~s" delta))
   (let ([last #f] [changes 0])
     (lambda (str newval)
+      (if (not (number? newval))
+	  (error 'periodic-display "each new value must be a number: ~s" newval))
       (if (not last) 
 	  (begin (set! last newval) (printf str newval)))
       ;; Add the changes into the abs.

@@ -148,3 +148,22 @@
 (define testflatthreads test-this)
 ;) ;; End module
 
+
+(define p '(let ([s (open-output-string)])
+  (parameterize ([current-output-port s])
+    (let loop ([eng
+                (run-flat-threads-engine
+                  (let loop ([n 0] [acc '()])
+		    (disp "outer" n acc)(flush-output-port)
+                    (if (= n 10)
+                        (reverse acc)
+                        (loop (add1 n)
+                              (cons (lambda ()
+                                      (let loop ([acc (* 1000 n)])
+					(disp "inner" n)(flush-output-port)
+                                        (if (zero? acc)
+                                            (display n)
+                                            (loop (sub1 acc)))))
+                                    acc)))))])
+      (eng 100 (lambda (remaining val) val) loop))
+    (get-output-string s))))
