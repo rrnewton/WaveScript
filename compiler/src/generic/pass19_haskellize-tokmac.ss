@@ -38,15 +38,19 @@
 			   "prim ~a didn't have a coherent haskellized name" p))
 		(string-append "P" name))]))
 
+    ;; [2004.10.28] - changing this to a list rather than just two.
     (define hbegin
-      (lambda (expr*)		
-	(let loop ([expr (match `(begin ,@expr*)
+      (lambda (expr*)
+	(format "(Eseq ~a)" (hlist expr*))))
+
+#|	(let loop ([expr (match `(begin ,@expr*)
 				[(begin ,[expr*] ...) (apply append expr*)]
 				[,expr (list expr)])])	  
 	  (match expr
 	     [(,x) x]
 	     [(,x ,x* ...)
 	      (format "(Eseq ~a ~a)" x (loop x*))]))))
+|#
     
     (define (htok t) (format "(Token \"~a\")" t))
     (define (hid id) (format "(Id \"~a\")" id))

@@ -7,6 +7,7 @@
 
 module TM where
 
+
 -- For now our only constants are 16 bit integers.
 
 type Const = Int
@@ -45,7 +46,8 @@ data Expr = -- Stndard forms:
 	  | Evar Id
 	  | Elambda [Id] Expr
 	  | Elet [(Id,Expr)] Expr
-	  | Eseq Expr Expr
+	  | Eassign Id Expr
+	  | Eseq [Expr]
 
           | Eif Expr Expr Expr
 
@@ -118,22 +120,22 @@ doit = do s <- readFile "test.tm";
 --})"
 
 
-{-a = (Pgm {
+a = (Pgm {
   consts = [((Id "result_1"), (Econst 3))],
   socconsts=[],
   socpgm=[(Esocreturn (Evar (Id "result_1"))), Esocfinished],
   nodetoks=
     [((Token "spread-global"), 
       [], 
-      (Eseq (Eemit Nothing (Token "global-tree") []) 
-       (Ecall (Just 1000) (Token "spread-global") []))), 
+      (Eseq [(Eemit Nothing (Token "global-tree") []),
+	     (Ecall (Just 1000) (Token "spread-global") [])])), 
      ((Token "global-tree"), [], 
       (Erelay Nothing))],  
   startup=[]
     })
--}
 
-f = (Pgm {
+
+{-v = (Pgm {
       consts = [],
       socconsts=[],
       socpgm=[(Ecall Nothing (Token "spread-global") [])],
@@ -142,9 +144,9 @@ f = (Pgm {
 		((Token "tmpfunc_8"), [(Id "a_1")], (Elet [((Id "result_4"), (Esense))] (Evar (Id "result_4")))),
 		((Token "m_token_tmpworld_7"), [], (Eactivate (Token "f_token_tmprmap_9") [])),
 		((Token "f_token_tmprmap_9"), [], 
-		 (Eseq (Ecall Nothing (Token "m_token_tmprmap_9") 
-			[(Ecall Nothing (Token "tmpfunc_8") [(Evar (Id "this"))])]) 
-		  (Ecall (Just 10.0) (Token "f_token_tmprmap_9") []))),
+		 (Eseq [(Ecall Nothing (Token "m_token_tmprmap_9") 
+			 [(Ecall Nothing (Token "tmpfunc_8") [(Evar (Id "this"))])])
+			(Ecall (Just 10.0) (Token "f_token_tmprmap_9") [])])),
 		((Token "tmpfunc_10"), [(Id "a_3"), (Id "b_2")], 
 		 (Elet [((Id "result_5"), 
 			 (Eprimapp Pplus [(Evar (Id "a_3")), (Evar (Id "b_2"))]))]
@@ -159,36 +161,39 @@ f = (Pgm {
 		          (Token "tmpfunc_10"))),
 		((Token "m_token_result_6"), [(Id "v")], (Esocreturn (Evar (Id "v")))),
 		((Token "leaf-pulsar_tmpworld_7"), [], 
-		 (Eseq (Ecall Nothing (Token "f_token_tmpworld_7") []) 
-		  (Ecall (Just 1.0) (Token "leaf-pulsar_tmpworld_7") []))),
+		 (Eseq [(Ecall Nothing (Token "f_token_tmpworld_7") []), 
+			(Ecall (Just 1.0) (Token "leaf-pulsar_tmpworld_7") [])])),
 		((Token "spread-global"), [], 
-		 (Eseq (Eemit Nothing (Token "global-tree") []) (Ecall (Just 1000) (Token "spread-global") []))),
+		 (Eseq [(Eemit Nothing (Token "global-tree") []),
+			(Ecall (Just 1000) (Token "spread-global") [])])),
 		((Token "global-tree"), [], (Erelay Nothing))],  
       startup=[(Token "leaf-pulsar_tmpworld_7"), (Token "spark-world")]
      })
+-}
 
-a = (Pgm {
+
+b = (Pgm {
   consts = [],
   socconsts=[],
   socpgm=[(Ecall Nothing (Token "spread-global") [])],
   nodetoks=[((Token "f_token_result_1"), [], 
-	     (Eseq (Eprimapp Pflood [(Evar (Id "constok_4"))]) 
-	      (Eseq (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])])
-	       (Econst 25966)))),
+	     (Eseq [(Eprimapp Pflood [(Evar (Id "constok_4"))]), 
+		    (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])]),
+		    (Econst 25966)])),
 	    ((Token "constok_4"), [], 
 	     (Eif (Eprimapp Pless [(Eprimapp Plocdiff [(Eprimapp Ploc []), (Econst 30)]), 
 				   (Econst 10)]) 
 	      (Eprimapp Pelectleader [(Evar (Id "m_token_result_1"))]) (Econst 0))),
 	    ((Token "m_token_result_1"), [], 
-	     (Eseq (Esocreturn (Econst 49)) 
-	      (Eseq (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]) 
-	       (Econst 25966)))),
+	     (Eseq [(Esocreturn (Econst 49)),
+		    (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]),
+		    (Econst 25966)])),
 	    ((Token "leaf-pulsar_result_1"), [], 
-	     (Eseq (Ecall Nothing (Token "f_token_result_1") []) 
-	      (Ecall (Just 1000) (Token "leaf-pulsar_result_1") []))),
+	     (Eseq [(Ecall Nothing (Token "f_token_result_1") []),
+		    (Ecall (Just 1000) (Token "leaf-pulsar_result_1") [])])),
 	    ((Token "spread-global"), [], 
-	     (Eseq (Eemit Nothing (Token "global-tree") []) 
-	      (Ecall (Just 1000) (Token "spread-global") []))),
+	     (Eseq [(Eemit Nothing (Token "global-tree") []),
+		    (Ecall (Just 1000) (Token "spread-global") [])])),
 	    ((Token "global-tree"), [], (Erelay Nothing))],
  startup=[(Token "leaf-pulsar_result_1")]
 })
