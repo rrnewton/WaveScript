@@ -22,7 +22,7 @@
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
-(include "generic/pass02_rename-var.ss")
+(include "generic/pass02_rename-vars.ss")
 (include "generic/pass03_remove-unquoted-constant.ss")
 (include "generic/pass04_reduce-primitives.ss")
 (include "generic/pass05_remove-complex-constant.ss")
