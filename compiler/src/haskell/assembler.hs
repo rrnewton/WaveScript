@@ -116,11 +116,12 @@ process_stmt indent tokargs e =
 		    Nothing -> "0"
 		    Just a  -> tok_id a
         in
-	[ indent ++ "call TMComm_"++ tokname via ++".returnhome("++ 
-	  tok_id to ++", "++ 
-	  process_basic e ++", "++ 	  
-	  seed' ++", "++
-	  aggr' ++");\n"]
+	[ indent ++ "the_packet.type = "++ tok_id to ++";\n", 
+	  indent ++ "the_packet_args[0] = "++ process_basic e ++";\n",
+          indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
+		 tok_id to ++", "++
+		 seed' ++", "++
+		 aggr' ++");\n" ]
 
     Srelay (Just t) -> [indent ++"/* FAILED relay just*/\n"]
     Srelay Nothing -> [indent ++"/* FAILED relay nothing*/\n"]
@@ -361,8 +362,10 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 build_header_file (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     "enum {\n"++
     (concat $ 
-     map2 (\ (t,_,_) n -> "  "++tok_id t++" = "++show n++",\n")
-     nodetoks [1..])++
+     map2 (\ t n -> "  "++tok_id t++" = "++show n++",\n")
+     (socret_target : socfinished_target : --global_tree : 
+      (map (\ (t,_,_) -> t) nodetoks))
+     [1..]) ++
     "};\n"
 
 
