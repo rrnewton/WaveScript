@@ -1,13 +1,15 @@
 
 
 (module graphics_stub mzscheme	
-  (provide draw-procs draw-proc draw-edge)
+  (provide draw-procs draw-proc draw-edge init-graphics)
   
   (require (lib "iu-match.ss")
            (prefix plt: (lib "graphics.ss" "graphics"))
            (lib "include.ss")
            "basic_graphics.ss")
 
+  (include "../generic/graphics_stub.ss")
+  
 ;;============================================================
 
 ;; Returns a fixnum or flonum
@@ -43,8 +45,8 @@
   (define (draw-proc proc)
     (let ((gobj (gensym)))
       ((plt:draw-solid-ellipse the-win)
-       (plt:make-posn (- (car pr) processor-screen-radius) 
-                      (- (cadr pr) processor-screen-radius))
+       (plt:make-posn (- (car proc) processor-screen-radius) 
+                      (- (cadr proc) processor-screen-radius))
        processor-screen-radius
        processor-screen-radius
        (plt:make-rgb 1 0 0))
@@ -55,3 +57,4 @@
   
   )
 
+;(require graphics_stub)
