@@ -12,12 +12,12 @@
 ;; <TODO>: Make the simulator not use global state for the graph!!
 
 ;;============================================================
-;; DEPENDS: This file requires that the slib 'tsort module be loaded
+;; REQUIRES: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
 
-;; DEPENDS: Also on hash tables from SLIB.
+;; REQUIRES: Also on hash tables from SLIB.
 
-;; DEPENDS: This file requires the "flat_threads.ss" interface, which
+;; REQUIRES: This file requires the "flat_threads.ss" interface, which
 ;; is a simple interface over engines or threads.
 
 
@@ -646,10 +646,14 @@
 ;; [2004.06.16] This is the shared structure of both the text
 ;; simulator and the graphical one.  It serves the role of a parent
 ;; object from which run-simulation and graphical-simulation inherit.
+;; ITS A MESS.  The two arguments to this function don't make any
+;; sense, very weak abstraction.
 
 ;; [2004.06.17] - Modifying this so that it returns an actual stream...
 (define (generate-simulator threadrunner fun)
   (lambda (thunks . timeout)
+    (let ([return-vals '()])
+
     ;; First, set up a global counter for communication cost:
   ;; This is defined dynamically so as to avoid PLTs module system. 
   (define-top-level-value 'total-messages 0)
@@ -660,30 +664,34 @@
   ;; running processors.
   (define-top-level-value 'stop-nodes #f)
   ;; Define global bindings for these so that we can do fluid-let on them.
-  (define-top-level-value 'soc-return 'unbound-right-now-soc-return)
-  (define-top-level-value 'soc-finished 'unbound-right-now-soc-finish)
+  (define-top-level-value 'soc-return ;'unbound-right-now-soc-return)
+    (lambda (x)
+      (disp "OLD SOC-RETURN DAMMIT.")
+      ;; Collect return vals in a local variable.
+      (set! return-vals (cons x return-vals))))
+  (define-top-level-value 'soc-finished ;'unbound-right-now-soc-finish)
+    (lambda () (set-top-level-value! 'stop-nodes #t)))
 
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the given function,
   ;; this gives us back new thunks:
-  (let ([newthunks (apply fun (cons thunks timeout))]
-	[return-vals '()])
-
+  (let ([newthunks (apply fun (cons thunks timeout))])
+   
     ;; Kinda lame to use fluid-let here, but we don't have the
     ;; relevent continuation at the time we build the thunks.
-    (fluid-let ([soc-return (lambda (x)
+    (fluid-let (
+		#;[soc-return (lambda (x)
 			      (disp "OLD SOC-RETURN DAMMIT.")
 			      ;; Collect return vals in a local variable.
 			      (set! return-vals (cons x return-vals)))]
-		[soc-finished (lambda () 
-				(set-top-level-value! 'stop-nodes #t))])
+    )
       (let ([result (if (null? timeout)
 			(threadrunner newthunks)
 			(threadrunner newthunks (car timeout)))])
 	(if (null? return-vals)
 	    result
 	    return-vals)
-	  )))))
+	  ))))))
 
 
 ;; This one didn't work because nested engines are not allowed.
@@ -726,35 +734,11 @@
        )))
 
 (define run-simulation 
-  (generate-simulator run-flat-threads generic-text-simulator-core))
-
-;; <TODO> This buffer stuff should really use a safe fifo..
-;; This version returns a stream of answers rather than a list all at once.
-(define run-simulation-stream
-  (generate-simulator
-   (lambda args
-     (disp "stream version of run sim")
-     (let ([return-buffer '()])
-       ;; Here we override the 'soc-return binding from generate-simulator.
-       ;; We collect the answers in our stream.
-       (fluid-let ([soc-return (lambda (x) 
-				 (disp "RETURNING VIA SOC")
-				 (set! return-buffer (cons x return-vals)))])
-	 (let loop ((eng (apply run-flat-threads-engine args)))
-	   (disp "in loop" return-buffer)
-	   (delay (eng 1000
-		       (lambda (rem val) 
-			 return-buffer
-;			 (if (or (pair? val) (null? val))  val
-;			     (begin (printf "Warning: value returned by run-flat-threads-engine is: ~s~n" val)
-;				    (list val)))
-			 )
-		       (lambda (nexteng)
-			 (let ((temp return-buffer))
-			   (set! return-buffer '()) ;;<TODO> Use semaphore.
-			   (dotted-append temp (loop nexteng))))))))
-       ))
-   generic-text-simulator-core ))
+  (generate-simulator 
+   ;; Thread runner:
+   run-flat-threads
+   ;; Build engines and possibly display driver:
+   generic-text-simulator-core))
 
 ;;===============================================================================
 
@@ -843,19 +827,6 @@
 
 (define csn  compile-simulate-nought)
 
-(define t1
-  '((shirt tie belt)
-    (tie jacket)
-    (belt jacket)
-    (watch)
-    (pants shoes belt)
-    (undershorts pants shoes)
-    (socks shoes)))
-
-(define t2
-  '((a b) (b c) (c a)
-    (d e) (e f)))
-
 (define temprog
   '(program
     (socpgm (bindings) (emit tok1))
@@ -883,19 +854,3 @@
      example-nodal-prog4))
    1.7))
 
-(define sim (build-simulation 
-	     (compile-simulate-nought 
-	      (cadadr (rc '(anchor-at '(30 40)))))))
-
-;(define (t1) (init-world) (run-simulation        sim 2.0))
-;(define (t2) (init-world) (run-simulation-stream sim 2.0))
-
-(define (t1)
-  (cleanse-world)
-  (run-simulation 
-   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40)))))) 1.0))
-(define (t2)
-  (cleanse-world)
-  (run-simulation-stream
-   (build-simulation (csn (cadadr (rc '(anchor-at '(30 40))))))
-   1.0))

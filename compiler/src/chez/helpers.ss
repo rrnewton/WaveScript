@@ -28,16 +28,7 @@
        (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
 
 
-(define disp
-  (let ((sub-disp
-	 (lambda (a)
-	   (if (null? a)
-	       (newline)
-	       (begin (display (car a)) (display " ") (sub-disp (cdr a)))))))
-    (lambda args 
-      (critical-section
-       (newline)
-       (sub-disp args)))))
+
 
 
  ;; [2004.06.13] Matches the function defined in plt, provides
@@ -54,3 +45,15 @@
 (define promise? procedure?)
 
 (include "../generic/helpers.ss")
+
+
+(define disp
+  (let ((sub-disp
+	 (lambda (a)
+	   (if (null? a)
+	       (newline)
+	       (begin (display (car a)) (display " ") (sub-disp (cdr a)))))))
+    (lambda args 
+      (critical-section
+       (newline)
+       (sub-disp args)))))

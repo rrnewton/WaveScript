@@ -2,8 +2,8 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
-;; DEPENDS: On chez/plt primitive open-output-string.
-;; DEPENDS: (On other chez/plt features which I'm not aware of...)
+;; REQUIRES: On chez/plt primitive open-output-string.
+;; REQUIRES: (On other chez/plt features which I'm not aware of...)
 
 
 ;; This is not a very appropriate place for this definition, but it's the most convenient
@@ -1463,7 +1463,7 @@
 ;; If the graph is acyclic, return #f.
 ;; Otherwise, return the list of nodes participating in cycles.
 ;; 
-;; DEPENDS: 
+;; REQUIRES: 
 (define (cyclic? g . compare)
   ;; Umm is this really bad form to perform this INSIDE the cyclic? function??
   ;; How efficient is require??  A linear search through a list of things loaded?
@@ -1526,57 +1526,20 @@
 
 ;;======================================================================
 ;; [2004.06.17] These functions deal with streams that are represented
-;; as a list, thunk, or improper list with a thunk as its final
+;; as a list, promise, or improper list with a promise as its final
 ;; cdr-pointer.  That is:
 ;;  Stream ::= (item*)
-;;           | (item* . thunk)
-;;           | thunk
+;;           | (item* . promise)
+;;           | promise
 
-;; It is *advisable*, but not required that the thunk be a *promise* so that it 
-;; reevaluation happens appropriately.
-
-'(define-structure (stream-obj val))
-
-'(define (stream-innard? s)
-  (or (procedure? s) 
-      (and (pair? s) (stream? (cdr s)))))
-
-'(define (stream? s)
-  (and (stream-obj? s)
-       (stream-innard (stream-obj-val s))))
-
-;; NOTE REEVALUATION ACROSS TWO POINTERS TO THE SAME STREAM IS STILL POSSIBLE.
-'(define (stream-car stream)
-  (let ((s (stream-obj-val stream)))
-    (cond
-     [(procedure? s) 
-      (let ((new-s (s)))
-	(set-stream-obj-val! stream new-s)
-	(stream-car stream)
-	)]
-     [(pair? s) (car s)]
-     [else (error 'stream-car
-		"invalid object inside stream structure: ~s" s)])))
-
-'(define (stream-cdr stream)
-  (let ((s (stream-obj-val stream)))
-    (cond
-     [(procedure? s) 
-      (let ((new-s (s)))
-	(set-stream-obj-val! stream new-s))]
-     [(pair? s) (make-stream-obj (cdr s))]
-     [else (error 'stream-cdr
-		  "invalid object inside stream structure: ~s" s)])))
-	  
-
-;;============================================================
-;; Here's a different version which insists on using promises.  It
-;; also has a look-ahead of one, so the stream had better not infinite
-;; loop at any point!
+;; This version has a look-ahead of one, so the stream had better not
+;; contain bottom!
 
 (define (stream? s)
   (or (promise? s)
       (and (pair? s) (stream? (cdr s)))))
+
+(define stream-empty? null?)
 
 (define (stream-car s)
   (let scloop ((s s))
@@ -1630,6 +1593,27 @@
   (let loop ()
     (delay (cons (random inp) (loop)))))
 
+;;==============================
+
+;; [2004.06.18] This displays the changes in a piece of state only
+;; when the changes accumulate to greater than a certain delta.
+;; Basically it integrates the signal and pops off as display command
+;; everytime it surpasses a certain threshold.  This is used to make a
+;; reasonable readout for rapidly changing values.  Works only for
+;; numeric values.
+(define (periodic-display delta) ;obj accessor delta)
+  (let ([last #f] [changes 0])
+    (lambda (str newval)
+      (if (not last) 
+	  (begin (set! last newval) (printf str newval)))
+      ;; Add the changes into the abs.
+      (set! changes (+ changes (abs (- newval last))))
+      (if (>= changes delta)
+	  (begin (set! changes 0)
+		 (printf str newval)))
+      (set! last newval))))
+
+ 
 ;;======================================================================
 ;; And here are the unit tests for this file... Don't have many of these yet.
 
@@ -1670,3 +1654,4 @@
 
 (define test-this (default-unit-tester "heplers.ss: my messy utils file." these-tests))
 (define testhelpers test-this)
+

@@ -16,7 +16,7 @@
 ;; to be unneccessary I will prolly move this file to the src/generic/
 ;; subdirectory and just use the basic_graphics interface.
 
-;; DEPENDS: on world-xbound and world-ybound from simulator_nought.ss, 
+;; REQUIRES: on world-xbound and world-ybound from simulator_nought.ss, 
 ;; it uses these to scale the world coordinates to the display.
 
 ;(load "basic_graphics.ss")

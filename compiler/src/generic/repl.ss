@@ -24,14 +24,13 @@
 		(cleanse-world)
 		(let streamloop ([i 0] 
 				 [stream (run (build-simulation converted) 2.0)])
-		  (disp "Round the streamloop: " stream)
 		  (cond
-		   [(null? stream) (printf "Stream Ended.~n")]
-		   [(procedure? stream) (streamloop i (stream))]
-		   [(pair? stream) (printf "~s:  ~s~n" i (car stream))
-		    (streamloop (add1 i) (cdr stream))]
-		   [else (error 'repl-builder "Bad stream!: ~s" stream)])
-		  )))))
-      (loop))))
+		   
+		   [(> i 10) (printf "~n That's enough.~n")]
+		   [(stream-empty? stream) (newline)] ;(printf "Stream Ended.~n")]
+		   [else (printf "~s:  ~s~n" i (stream-car stream))
+			 (streamloop (add1 i) (stream-cdr stream))])
+		  ))
+	      (loop)))))))
 
-(define text-repl  (repl-builder void void run-simulation))
+
