@@ -306,6 +306,7 @@
         (lambda (input-expr)
           (unless (null? (remaining-pass-names))
             (let ([pass-name (car (remaining-pass-names))])
+	      ;; This is such a lame hack.
 	      (if (eq? pass-name 'deglobalize) (set! pre-deglobalize #f))
               (remaining-pass-names (cdr (remaining-pass-names)))
               (when (memq pass-name (tracer))

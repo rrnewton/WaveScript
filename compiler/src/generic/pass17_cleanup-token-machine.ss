@@ -1,6 +1,8 @@
 
 ;;; NOTE: for the moment I AM ALLOWING USAGE OF ARBITRARY SCHEME FUNCTIONS HERE!
 
+
+
 ;;; [2004.06.28] Pass: Cleanup Token Machine
 
 ;;; This pass:
@@ -12,6 +14,7 @@
 ;;;   (*) In the future it might expand out primitive applications
 ;;;   that are just shorthands.  (For example, (dist) could become
 ;;;   (dist <this-token>))
+
 
 
 ;;; Input and Output language:
@@ -45,7 +48,7 @@
 
 
 (define cleanup-token-machine
-  (let () 
+  (let ()
 
 ;; This removes duplicates among the token bindings.
 ;; <TOOPTIMIZE> Would use a hash-table here for speed.
