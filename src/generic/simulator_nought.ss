@@ -729,7 +729,7 @@
 			 ;; Now we've verified homogeneity among the batch 
 			 ;; and know the parameters for this return.
 			 
-			 (let ([collapse (lambda (acc vals timestamps)
+			 (letrec ([collapse (lambda (acc vals timestamps)
 					   (if (null? vals) (list acc)
 					       (collapse (handler (bare-msg-object aggr (list (car vals) acc)))
 							 (cdr vals)
@@ -737,63 +737,61 @@
 
 ;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
 ;			 (cons seed vals))
-
-			 ;; <FIXME> DISABLING AGGREGATION FOR THE MOMENT..
-			 (DEBUGMODE (if (and (not seed) aggr)
-				    (error 'handle-return
-					   "There is an aggregator ~s but no seed!"
-					   aggr)))
-			 (let ([aggregated-values
-				(if aggr 
-				    (collapse seed (apply append vals) timestamps))
-				    ;; If there is no aggregator, then we just 
-				    ;; accumulate *all* those values together!
-				    (begin (DEBUGASSERT 
-					    (or (andmap list? vals)
-						(error 'assert "hmm vals not lists: ~s" vals)))
-					   (apply append vals))
-				    )])
+			   
+			   ;; <FIXME> DISABLING AGGREGATION FOR THE MOMENT..
+			   (DEBUGMODE (if (and (not seed) aggr)
+					  (error 'handle-return
+						 "There is an aggregator ~s but no seed!"
+						 aggr)))
+			   (let ([aggregated-values
+				  (if aggr 
+				      (collapse seed (apply append vals) timestamps)
+				      ;; If there is no aggregator, then we just 
+				      ;; accumulate *all* those values together!
+				      (begin (DEBUGASSERT 
+					      (or (andmap list? vals)
+						  (error 'assert "hmm vals not lists: ~s" vals)))
+					     (apply append vals))
+				      )])
 			   
 ;			   (disp "AGGREGATED:"  (node-id (simobject-node this)) aggregated-values)
-			   ;; Now that the message is aggregated, we check to 
-			   ;; see if this node is the destination..
-			   
-			   ;; Try to look up the via token in the local cache.
-			   (let ([via_parent
-				  (let ([entry (hashtab-get (simobject-token-cache this) via)])
-				    (if entry 
-					;; Target is the parent of the via token
-					(msg-object-parent entry)
-					(error 'simulator_nought:handle-returns
-					       "Should not happen! Could not get entry for via token! (at node ~s): ~s in ~n~s"
-					       (node-id (simobject-node this)) via
-					       (simobject-token-cache this)
-					       )
-					))])
-			     ;; If via_parent is #f, that means that *THIS* is the parent.
-			     (if (not via_parent)
-				 ;; So we must fire the *to* token.  We fire it once for each return val actually.
-				 (begin
+			     ;; Now that the message is aggregated, we check to 
+			     ;; see if this node is the destination..
+			     
+			     ;; Try to look up the via token in the local cache.
+			     (let ([via_parent
+				    (let ([entry (hashtab-get (simobject-token-cache this) via)])
+				      (if entry 
+					  ;; Target is the parent of the via token
+					  (msg-object-parent entry)
+					  (error 'simulator_nought:handle-returns
+						 "Should not happen! Could not get entry for via token! (at node ~s): ~s in ~n~s"
+						 (node-id (simobject-node this)) via
+						 (simobject-token-cache this)
+						 )
+					  ))])
+			       ;; If via_parent is #f, that means that *THIS* is the parent.
+			       (if (not via_parent)
+				   ;; So we must fire the *to* token.  We fire it once for each return val actually.
+				   (begin
 ;				   (disp "RETURN accomplished: #vals: " (length aggregated-values))
 				   ;; FIXME: TEMP: TODO:
-				   ;; This is just for debugging, adding senders to homepage
-				   (DEBUGMODE
-				    (let ((temp (assq 'return-senders-list  (simobject-homepage this))))
-				      (if temp
-					  (set-car! (cdr temp) (cons senders (cadr temp)))
-					  (set-simobject-homepage! 
-					   this (cons (list 'return-senders-list
-							    (list senders))
-						      (simobject-homepage this))))))
+				     ;; This is just for debugging, adding senders to homepage
+				     (DEBUGMODE
+				      (let ((temp (assq 'return-senders-list  (simobject-homepage this))))
+					(if temp
+					    (set-car! (cdr temp) (cons senders (cadr temp)))
+					    (set-simobject-homepage! 
+					     this (cons (list 'return-senders-list
+							      (list senders))
+							(simobject-homepage this))))))
 				   
-				   (for-each
-				    (lambda (retval)
-				      ,(process-statement `(internal-call to retval)))
-				    ;; Hmm, this should make sure it's one:
-				    (collapse seed ____ timestamps)
-
-				    aggregated-values)
-
+				     (for-each
+				      (lambda (retval)
+					,(process-statement `(internal-call to retval)))
+				      ;; Hmm, this should make sure it's one:
+				      (collapse seed aggregated-values timestamps))
+				     ) ;; End destination block
 
 				 ;; Otherwise we must pass this return onto the next:
 				 (sendmsg  
@@ -810,7 +808,7 @@
 				    ) ;; Args 
 				   )
 				  via_parent) ;; Sendmsg end
-				 )))))))
+				 ))))))))
 		 channels) ;; End for-each
 		))] ;; End handle-returns   
     )) ;; END Generic-defs
@@ -1342,4 +1340,6 @@
 ;(dsis g ((eval f) a b c))
 ;(define (g) (run-simulation (tt) .5))
 
-(define problem (cadr (last these-tests)))
+(define problem1 (cadr (list-ref these-tests 18)))
+(define problem (cadr (list-ref these-tests 19)))
+
