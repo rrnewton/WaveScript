@@ -9,13 +9,25 @@
                        list->set union intersection difference set?
                        list-head filter list-index snoc rac rdc 
                        insert-between iota disp))
-  
-  
+    
   (include (build-path ".." "generic" "helpers.ss"))
   
+
+  (define (define-top-level-value sym obj)
+    (eval `(define ,sym ,obj)))
+  (define (set-top-level-value! sym obj)
+    (eval `(set! ,sym ,obj)))
+  (define (top-level-value sym) (eval sym))
+  (define (top-level-bound? sym)
+    (error 'top-level-bound?
+	   "This is a chez function which can't ~a"
+	   "be emulated right now in Plt. -RRN"))
+
   (provide 
+  
+   define-top-level-value set-top-level-value! top-level-bound? top-level-value
      
-   unique-name reset-name-count! extract-suffix
+   unique-name reset-name-count! extract-suffix make-begin
    code-name label-name #;method-name
    
    constant? datum? formalexp? cast-formals default-unit-tester
@@ -25,11 +37,17 @@
    set? list->set set-cons union intersection difference
    list-head filter list-index snoc rac rdc 
    insert-between iota disp
-      
-   (all-from (lib "rutils_generic.ss") )
+   
+   
+   (all-except (lib "rutils_generic.ss")
+               list->set union intersection difference set?
+               list-head filter list-index snoc rac rdc 
+               insert-between iota disp)
+;   (all-from (lib "rutils_generic.ss") )
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
    )
+  
   )
 
 
