@@ -1778,7 +1778,7 @@
     (if (= result (length all-objs))
 	#t
 	(begin (printf "Got ~a messages, but there are ~a nodes!"
-		       count (length all-objs))
+		       result (length all-objs))
 	       #f)))]
 
 ;; COMMENTING FOR NOW
