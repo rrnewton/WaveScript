@@ -105,6 +105,7 @@
 	 (random world-ybound))
    ))
 
+;; Helper to determine the distance between two 2d positions.
 (define (posdist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
@@ -205,7 +206,10 @@
 			(error 'simulator_nought:process-statement
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
-		   `(handler (make-msg-object ',rator #f #f 0 ',rand*))]
+		   ;; Could add the message to incoming instead!
+		   ;`(handler (make-msg-object ',rator #f #f 0 ',rand*))
+		   `(sendmsg (make-msg-object ',rator #f #f 0 ',rand*) this)
+		   ]
 
 ;		  [(if ,a ,b ,c)
 ;		   (disp "IF" a b c)]
@@ -221,6 +225,8 @@
 		  [(dist) '(sim-dist)]		
   		  ;; <TODO> WHY NOT QUOTED:
 		  [(dist ,tok) `(sim-dist ,tok)]
+		  [(loc) '(sim-loc)]		
+		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
 	 	  
 		  [(relay) `(sim-relay)]		  
 		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
@@ -347,12 +353,11 @@
 
        [generic-defs
 
-	 `([define local-messages 0]
-	   [define token-cache (make-default-hash-table)]
+	`([define local-messages 0]
+	  [define token-cache (make-default-hash-table)]
 
 	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
-	   [define neighbors (lambda (obj)
-;			(disp 'neighbors obj)
+	  [define neighbors (lambda (obj)
 			(let ((entry (assq obj object-graph)))
 ;			  (disp "ENTRY : " entry)
 			  (if (null? entry)
@@ -363,7 +368,7 @@
 				    (error 'neighbors "we're in our own neighbors list"))
 				(cdr entry)))))]
 
-	   [define sendmsg (lambda (data ob)
+	  [define sendmsg (lambda (data ob)
 ;		   (disp (list 'sendmsg data (node-id (simobject-node ob))))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob)))
@@ -393,11 +398,24 @@
 	     (let ((msg (if (null? m) '() (car m))))
 	       (for-each (lambda (nd) (sendmsg (make-msg-object t this this 0 m) nd))
 			 all-objs))]
-;	   [define (sim-elect-leader t)
-;	     (let ((msg 
-;	     ]
 
-
+	   ;; This is just a cludge for now.
+	   [define (sim-elect-leader t)
+	     (set-simobject-homepage! this (cons `(inside ,t) (simobject-homepage this)))
+	     (let ((possible
+		    (filter (lambda (simob)
+			      (member `(inside ,t) (simobject-homepage simob)))
+			    all-objs)))
+	       (disp "election: electing from" (node-id (simobject-node this)) 
+		     " number candidaties " (length possible))
+	       ;; This is horribly yucky.
+	       (let ([leader (list-get-random possible)])
+		 (disp "election: got leader" (node-id (simobject-node leader)))
+		 ;; Tell the message it's leader.  This might happen
+		 ;; at multiple nodes.  Need to make sure there's a
+		 ;; dependency relationship here, and that a killing a
+		 ;; false leader kills all its subsequent doings.
+		 (sendmsg (make-msg-object t #f #f 0 '()) leader)))]
 	   
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
@@ -437,6 +455,12 @@
 			      "inside simulator (dist ~s) but ~s has not been received!")
 		       )))]
 	   
+	   [define (sim-loc) ;; Return this nodes location.
+	     (node-pos (simobject-node this))]
+	   [define (sim-locdiff a b)
+	     (sqrt (+ (expt (- (car a) (car b)) 2)
+		      (expt (- (cadr a) (cadr b)) 2)))]
+	   
 	   [define (sim-return retval)
 	     ,(DEBUGMODE '(if (not this-message)
 			      (error 'simulator_nought.sim-return
@@ -463,11 +487,15 @@
 ;	    (printf "CALLING SocProg: ~s~n" this)
 	    (let ([I-am-SOC #t]) 
 	      ,@generic-defs
-	      ,(process-binds nodebinds
-			      (process-binds socbinds
-					     `(begin ,@(map process-statement 
-							    socstmts)
-						     'soc_finished)))))]
+	      ,(process-binds 
+		nodebinds
+		(process-binds 
+		 socbinds
+;		 (process-tokbinds ;; These are duplicated in here.. .sigh.
+;		  nodetoks generic-defs
+		  `(begin ,@(map process-statement 
+				 socstmts)
+			  'soc_finished)))))]
        
        [nodeprog
 	`(lambda (SOC-processor this object-graph all-objs)
@@ -481,8 +509,7 @@
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
-		 nodetoks
-		 generic-defs
+		 nodetoks generic-defs
 		 `(begin 
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
@@ -512,6 +539,7 @@
 				     msg incoming)))
 			 (handler msg))])
 		     ))))))])
+
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
 ;       (newline)
