@@ -108,3 +108,5 @@
     (pretty-print prog)
     res))
 ;(g)
+
+(load "generic/repl.ss")

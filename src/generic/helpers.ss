@@ -325,9 +325,11 @@
 		      (call/cc 
 		       (lambda (escape-eval)
 			 (with-error-handlers (lambda args 
-						(printf "default-unit-tester, got ERROR: ~n")
-						(if (car args) (printf "~s: " (car args)))
-						(printf "~a~n" (apply format (cdr args))))
+						(printf "default-unit-tester, got ERROR: ~n  ~s~n"
+							args)
+						;(if (car args) (printf "~s: " (car args)))
+						;(printf "~a~n" (apply format (cdr args)))
+						)
 					      (lambda () (escape-eval 'error))
 					      (lambda () (eval (preprocessor expr))))))))
 ;	       (newline)
