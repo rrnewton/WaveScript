@@ -171,15 +171,15 @@
     (rfold          (Function Object Area) Signal)
     (smap           (Function Signal) Signal)
 
-    (anchor-at      (Location) Anchor)
+    (anchor-at      (Number Number) Anchor)
     (anchor-where   (Function) Anchor)
 
     (circle         (Anchor Dist)   Region)
-    (circle-at      (Location Dist) Region)
+    (circle-at      (Number Number Dist) Region)
     (k-neighborhood (Anchor Number) Region)
     ;; Shorthand: 
     (khood          (Anchor Number) Region)
-    (khood-at       (Location Number) Region)
+    (khood-at       (Number Number Number) Region)
 
     ;; This one returns a region of regions:
     (cluster        (Area) Area)
@@ -247,8 +247,9 @@
 ;; [2004.06.09]  Many of these are actually language forms.  I gotta
 ;; get this sorted out eventually.
 ;; TODO: add some kind of type info.
+;; [2004.10.22]  For now everything that handles tokens is a syntax not a prim.
 (define token-machine-primitives
-  '( (elect-leader) (flood) ;; These are actually macros, but what the heck
+  '( ;(elect-leader) (flood) ;; These are actually macros, but what the heck
 ;     (return)
 ;     (emit)
 ;     (relay)
@@ -259,13 +260,13 @@
      (light-up) 
 ;     (sense)
      (my-id)
-     (loc)
-     (void)
+     (loc )
+     (void () Object)
 
-     (this)
-     (local-sense)
-     (soc-return)
-     (soc-finished)
+     (this () Object)
+     (local-sense () Number)
+     (soc-return (Number) Object)
+     (soc-finished () Object)
      
      ;; For simulator only:
      (draw-mark)

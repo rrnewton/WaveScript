@@ -72,6 +72,7 @@
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
 	   (let ((ret-type (caddr (get-primitive-entry prim))))
+;	     (disp "RETURN TYPE" ret-type)
 	     ret-type)]
 
           [(lambda ,formalexp ,expr) 'Function]

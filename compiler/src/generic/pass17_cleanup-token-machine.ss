@@ -47,6 +47,9 @@
 ;;; DEPENDS: make-begin
 
 
+;;; [2004.10.22]  Now this also will expand out flood/elect-leader.
+;;; This pass is starting to do way too much work.
+
 (define cleanup-token-machine
   (let ()
 

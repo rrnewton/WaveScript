@@ -38,11 +38,12 @@
   'base-language
   '(begin
 
-      (define (anchor-at pos)
-	(find-maximizing (lambda (entry) (posdist (cdr entry) pos)) the-test-field))
+      (define (anchor-at x y)
+	(find-maximizing (lambda (entry) (posdist (cdr entry) (list x y))) the-test-field))
 
-      (define (circle-at pos rad)
-	(filter (lambda (p) (<= (posdist (cdr p) pos) rad)) the-test-field))
+      (define (circle-at x y  rad)
+	(filter (lambda (p) (<= (posdist (cdr p) (list x y)) rad)) the-test-field))
+
       (define (circle anch rad)
 	(filter (lambda (p) (<= (posdist (cdr p) (cdr anch)) rad)) the-test-field))
 
