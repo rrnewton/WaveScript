@@ -7,6 +7,9 @@
  
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id mvlet rec))
+
+(disp "yay" default-unit-tester)
+
          ;	 "plt/language-mechanism.ss"
 
 (require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
@@ -19,6 +22,7 @@
          "plt/pass07_remove-complex-opera.ss"
          
          (all-except "plt/pass08_verify-core.ss" these-tests test-this)
+         (all-except "plt/pass09_classify-names.ss" these-tests test-this)
          (all-except "plt/pass10_deglobalize.ss" these-tests test-this))
         ;          "plt/pass09_separate-graph.ss"
 

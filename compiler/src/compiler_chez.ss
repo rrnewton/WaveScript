@@ -71,7 +71,6 @@
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
       (load "chez/simulator_nought_graphics.ss")
-;      (load "chez/simulator_nought.ss")
       ))
 
 (define simulate)

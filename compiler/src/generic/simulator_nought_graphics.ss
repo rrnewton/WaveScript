@@ -163,20 +163,29 @@
   [ "Run Spread lights gradually..."
     (simulate
      (build-simulation (compile-simulate-nought ',example-nodal-prog2))
-     5.0)
+     0.5)
     unspecified]
 
   [ "Run Spread lights gradually with display distance..."
     (begin (init-world)
 	   (simulate
 	    (build-simulation (compile-simulate-nought ',example-nodal-prog3))
-	    1.7))
+	    0.7))
     unspecified]
   
     ,@(include "simulator_nought.tests")
   ))
 
-;example-nodal-prog4
+
+(set! these-tests
+      `([ "Return a value via the gradient..."
+    (begin (init-world)
+	   (simulate
+	    (build-simulation 
+	     (compile-simulate-nought ',example-nodal-prog4))
+	    1.7))
+    unspecified]))
+
 
 (define (wrap-def-simulate test)
   `(begin (define (simulate . args)
@@ -267,7 +276,7 @@
      example-nodal-prog4))
    1.7))
 
-(set! these-tests
+#;(set! these-tests
   `([ "Simple test"
     (begin (init-world)
 ;	   (simulate

@@ -173,7 +173,7 @@
       [(anchor-at)
        `([,tokname ()
 	  ;; At each formation click, we output this node.
-	  (soc-return '(ANCH ,(this)))])]
+	  (soc-return '(ANCH this))])]
       [(circle-at)     
        `([,tokname 
 	  ()
@@ -191,6 +191,9 @@
 	  ;; membership tokname for the circle.  Later we'll put some
 	  ;; other hack in.
 	  (soc-return '(CIRC ,tokname))])]
+      
+      [(smap)
+       `([,tokname (v) (soc-return v)])]
       
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
