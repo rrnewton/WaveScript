@@ -5,11 +5,36 @@
 BINPATH =`mzscheme -m --eval '(begin (display (build-path "compiled" "native"  (system-library-subpath))) (newline) (exit))'`
 
 
-all: 
+SRCFILES = helpers demo_display pass00 pass01 pass07
+
+all: native bytecode
+
+native:
 	(cd $(BINPATH); $(MAKE))
 
+bytecode:
+	(cd compiled; $(MAKE))
+
 clean:
+	(cd compiled; $(MAKE) clean)
 	(cd compiled/native; $(MAKE) clean)
+
+
+
+#MZC = mzc
+#MZSCHEME = mzscheme
+
+#SRCFILES = helpers demo_display pass00 pass01 pass07
+#SRC = $(SRCFILES:%=../../../%.ss)
+#SRC = $(SRCFILES:%=%.ss)
+#BCOBJ = $(SRCFILES:%=compiled/%.zo)
+#NCOBJ = $(SRCFILES:%=%.so)
+
+#bytecode: $(BCOBJ)
+
+#compiled/%.zo: %.ss
+#	$(MZC) --auto-dir --zo $<
+
 
 
 
