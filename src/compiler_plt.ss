@@ -7,37 +7,28 @@
 
 (require (lib "include.ss")
          "plt/helpers.ss"
-;	 "plt/language-mechanism.ss"
-
+         ;	 "plt/language-mechanism.ss"
+         
          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)
-
+         
          "plt/pass02_remove-unquoted-constant.ss"
          "plt/pass03_remove-complex-constant.ss"
          "plt/pass04_uncover-free.ss"
          "plt/pass05_lift-letrec.ss"
-;         "plt/pass06_lift-letrec-body.ss"
-;         "plt/pass07_remove-complex-opera.ss"
-;         
-
+         ;         "plt/pass06_lift-letrec-body.ss"
+         ;         "plt/pass07_remove-complex-opera.ss"
+         ;         
          ;(all-except "plt/pass08_verify-core.ss" these-tests test-this)
-;         "plt/pass09_separate-graph.ss"
+         ;         "plt/pass09_separate-graph.ss"
          
-         
-;         "generic/pass02_remove-unquoted-constant.ss"
-;         "generic/pass03_remove-complex-constant.ss"
-;         "generic/pass04_uncover-free.ss"
-;         "generic/pass05_lift-letrec.ss"
-         
-         
-;	 "plt/tests.ss"
-)
+         )
 
-(define program 
-  (lambda args (car (reverse args))))
+'(define program 
+   (lambda args (car (reverse args))))
 
-(define base-language 
-  (lambda args (eval (car (reverse args)))))
+'(define base-language 
+   (lambda args (eval (car (reverse args)))))
 ;(define base-language 
 ;  (lambda args
 ;    (for-each eval args)))
@@ -63,18 +54,12 @@
 (disp "BOUT TO LOAD COMPLIRE" )
 (load/use-compiled "compiler.ss")
 
-(define pass-names pass-names)
 (disp "BOUT TO LOAD DRIVER" pass-names)
 
 (load/use-compiled "plt/driver.ss")
-;(module pass-names mzscheme
-;  (define pass-names '())
-;  (provide pass-names))
-;(require "plt/driver.ss")
-
-;(module pass-names mzscheme  (provide pass-names)
-
-
+(require "plt/language-mechanism.ss") ;; This blows up if we try to require it up top!
+(load/use-compiled "generic/lang00.ss")
+(load/use-compiled "generic/lang05.ss")
 
 
 

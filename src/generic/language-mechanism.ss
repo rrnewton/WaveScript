@@ -32,7 +32,15 @@
 (define-language
   'base-language
   '(begin
+ 
+     (define (anchor) '(ANCH world))
+     (define (anchor-at l) `(ANCH ,l))
+     (define (anchor-where f) `(ANCH fun))
+
+     (define (circle a d) `(CIRC ,a ,d))
+     (define (circle-at l d) `(CIRC ,l ,d))
      
+    
 ;     (define (anchor-at 
 
 ;     (define (circle rad anch)

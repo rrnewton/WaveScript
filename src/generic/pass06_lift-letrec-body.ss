@@ -22,7 +22,6 @@
       (lambda (expr)
         (match expr
           [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
-	   (disp "YEAH THATS IT" body (simple? body))
 	   (if (simple? body)
 	       `(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
 	       (let ([main (unique-name 'result)])

@@ -95,7 +95,11 @@
       (match expr
 	     ;; Doesn't change the input language... 
         [(,input-language (quote (program ,body)))
-	 (process-let body '())])
+	 (if (process-let body '())
+	     expr
+	     (error 'verify-core 
+		    "input didn't pass (and shouldn't get here): ~s"
+		    expr))])
       )))
 
 ;==============================================================================
@@ -154,8 +158,8 @@
 	   
 	    (equal? intended results)))))))  
 
-(define test07 test-this)
-(define tests07 these-tests)
+(define test08 test-this)
+(define tests08 these-tests)
 
 ;==============================================================================
 

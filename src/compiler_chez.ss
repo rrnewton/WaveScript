@@ -20,9 +20,8 @@
 (include "generic/pass04_uncover-free.ss")
 (include "generic/pass05_lift-letrec.ss")
 (include "generic/pass06_lift-letrec-body.ss")
-
-;(include "generic/pass07_remove-complex-opera.ss")
-;(include "generic/pass08_verify-core.ss")
+(include "generic/pass07_remove-complex-opera.ss")
+(include "generic/pass08_verify-core.ss")
 
 ;(include "generic/pass09_separate-graph")
 
