@@ -8,11 +8,10 @@
 
 ;; "run" had better take a stream.
 
-(define repl-stream-depth
-  (make-parameter 
+(define-regiment-parameter repl-stream-depth
    20 (lambda (n)
 	(if (integer? n) n
-	    (error 'repl-stream-depth " this parameter can only be set to numbers")))))
+	    (error 'repl-stream-depth " this parameter can only be set to numbers"))))
 
 (define (repl-builder startup cleanse compiler run)
   (define TIMEOUT 10.0)

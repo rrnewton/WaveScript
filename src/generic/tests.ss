@@ -127,9 +127,19 @@
 
        (loudload "compiler.ss") (test-it) (newline)
        (loudload "generic/pass00_verify-regiment.ss") (test-it) (newline)
+       (loudload "generic/pass02_rename-vars.ss") (test-it) (newline)
+       (loudload "generic/pass04_static-elaborate.ss") (test-it) (newline)
+       (loudload "generic/pass05_verify-stage2.ss") (test-it) (newline)
+       (loudload "generic/pass09_remove-complex-opera.ss") (test-it) (newline)
        ;  (load "pass01_rename-var.ss") (test-it) (newline)
        (loudload "generic/pass10_verify-core.ss") (test-it) (newline)
+       (loudload "generic/pass11_clasify-names.ss") (test-it) (newline)
+       (loudload "generic/pass15_analyze-places.ss") (test-it) (newline)
        (loudload "generic/pass16_deglobalize.ss") (test-it) (newline)
+       (loudload "generic/pass17_cleanup-token-machine.ss") (test-it) (newline)
+;       (loudload "generic/pass18_cps-tokmac.ss") (test-it) (newline)
+       (loudload "generic/pass19_haskellize-tokmac.ss") (test-it) (newline)
+
        (loudload "chez/simulator_nought.ss") (test-it) (newline)       
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 

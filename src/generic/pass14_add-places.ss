@@ -148,10 +148,13 @@
 	  ;; It should have the formation place of its stream argument.
 	  ;; But then it could have a membership place whereever it's consumed.  
 	  ;; Same as stream-valued prims like rfold you'd think.
-	  [(when-any) 	   
+	  [(rwhen-any) 	   
 	   (let ([newp1 (list (new-place))]
 		 [newp2 (list (new-place))])
 	     (values expr newp1 newp2))]
+	  [(swhen-any) 	   
+	   (let ([newp (new-place)])
+	     (values expr newp newp))]
 
 	  ;; TODO Ideally there is a source stream and a source
 	  ;; event-path.  Then there is a *decision loci* at which the
