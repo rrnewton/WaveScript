@@ -75,7 +75,7 @@
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
-(define-structure (cache-entry token origin parent count args))
+(define-structure (msg-object token origin parent count args))
 
 ;;========================================
 
@@ -167,7 +167,7 @@
 		  [(quote ,x) `(quote ,x)]
 		  [(call ,rator ,rand* ...)	  
 					;(error 'process-statement "call not supported from SOC")] 
-		   `(handler #f #f ',rator ',rand*)]
+		   `(handler (make-msg-object ',rator #f #f 0 ',rand*))]
 
 		  [(flood ,tok) `(sim-flood (quote ,tok))]
 		  [(emit ,opera ...) 
@@ -213,6 +213,7 @@
 	(error 'process-binds "for now can't take a cyclic graph: ~s" binds))
     `(let* ,binds ,expr)))
 
+;; Takes token bindings and a body expression:
 (define (process-tokbinds tbinds expr)
   (let ([binds (map
 		(lambda (tbind)
@@ -222,7 +223,17 @@
 ;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
 				   ,@(map process-statement expr*))]]))
 		tbinds)]
-	[handler `(lambda (origin parent count tok args)
+	;; These inputs to handler must be the *child* message-object
+	;; (that is, already updated to have an incremented count, the
+	;; correct parent, etc).  So we can shove it right in our cache.
+	[handler `(lambda (themessage) ;(origin parent count tok args)
+;		    (make-msg-object tok origin parent count args)
+		    (let ([origin (msg-object-origin themessage)]
+			  ;[parent (msg-object-parent themessage)]
+			  [count  (msg-object-count  themessage)]
+			  [tok    (msg-object-tok    themessage)]
+			  [args   (msg-object-args   themessage)])
+		      
 ;		    (disp "HANDLER at" (node-id (simobject-node this)) ": " tok args)
 		    ;; Redraw every time we handle a message, our state might have changed.
 		    (set-simobject-redraw! this #t)
@@ -238,18 +249,18 @@
 					   [else (error 'node_program "Unknown message: ~s" tok)]
 					   )))])
 
-		      (if (not parent) ;; This is a local call.
-			  (handle-it (make-cache-entry tok #f #f #f args))
+		      (if (not origin) ;; This is a local call.
+			  (handle-it (make-msg-object tok #f #f #f args))
 			  ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
 			  ;; BUT! No premature optimization.		      
 			  (if (or (not entry) ;; There's no entry for that token name.
 				  (= 0 count)
-				  (< count (cache-entry-count entry))) ;; This could be <=, think about it. TODO
-			      (let ((newentry (make-cache-entry tok origin parent (add1 count) args)))
+				  (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
+			      (let ((newentry themessage))
 				(hashtab-set! token-cache tok newentry)
 				(handle-it newentry))
 			      (disp "Ignored message " tok " to " (node-id (simobject-node this)))) ;; fizzle
-			  )))])
+			  ))))])
     `(letrec (,@binds [handler ,handler] [this-message #f]) ,expr)))
 
 
@@ -311,16 +322,22 @@
 		    ;; Count total messages sent.
 		    (set! total-messages (add1 total-messages))
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
-		   (map (lambda (nd) (sendmsg (make-cache-entry this this count t m) nd))
-			(neighbors this)))]
+
+		    (let ([ourentry   (make-msg-object this #f count t m)]
+			  [childentry (make-msg-object this this (add1 count) t m)])
+		      ;; Is it fair for emitting to overwrite our cache entry?
+		      ;; I need to do it so that the return-handler can figure things out.
+		      (hashtab-set! token-cache tok ourentry)
+		      (for-each (lambda (nd) (sendmsg childentry nd))
+				(neighbors this))))]
 
 	   [define (sim-flood t . m)
 	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 					;		    (disp (list "FLOODING" t m))
 	     (let ((msg (if (null? m) '() (car m))))
-	       (map (lambda (nd) (sendmsg (make-cache-entry this this 0 t m) nd))
-		    all-objs))]
-
+	       (for-each (lambda (nd) (sendmsg (make-msg-object this this 0 t m) nd))
+			 all-objs))]
+	   
 	   [define (sim-light-up r g b)
 	     (if (simobject-gobj this)
 		 (change-color! (simobject-gobj this) (rgb r g b))
@@ -333,14 +350,14 @@
 		 (error 'relay "Can't handle optional argument yet"))
 	     ,(DEBUGMODE '(if (not this-message) 
 			      (error 'inside-node-prog "this-message was #f")))
-	     (if (not (cache-entry-parent this-message))
+	     (if (not (msg-object-parent this-message))
 		 (error 'simulator_nought.relay 
 			"inside simulator. can't relay a message that was~a"
 			" sent by a local 'call' rather than an 'emit'"))
 	     ;; This is a replicated emission and should copy the existing count:
-	     (sim-emit (cache-entry-token this-message) 
-		       (cache-entry-args this-message) 
-		       (cache-entry-count this-message))]
+	     (sim-emit (msg-object-token this-message) 
+		       (msg-object-args this-message) 
+		       (msg-object-count this-message))]
 	   
 	   [define (sim-dist . tok)
 	     (if (null? tok)
@@ -348,32 +365,35 @@
 		   ,(DEBUGMODE '(if (not this-message)
 				    (error 'simulator_nought.process-statement 
 					   "broken")))
-		   (if (cache-entry-count this-message)
-		       (cache-entry-count this-message)
+		   (if (msg-object-count this-message)
+		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
 			      "inside simulator (dist) is broken!")))		 
 		 (let ((entry (hashtab-get token-cache (car tok))))
-		   (if (and entry (cache-entry-count entry))
-		       (cache-entry-count this-message)
+		   (if (and entry (msg-object-count entry))
+		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
 			      "inside simulator (dist ~s) but ~s has not been received!")
 		       )))]
 	   
-	   [define (sim-return x)
+	   [define (sim-return retval)
 	     ,(DEBUGMODE '(if (not this-message)
 			      (error 'simulator_nought.sim-return
 				     "broken")))
-	       (if (eq? (cache-entry-origin this-message) this)
-		   (let ([tok (cache-entry-token this-message)])
-		     (let ([return_tok (symbol-append 'tok 
-		     ;; This might be a little sketchy:
-		     ,(process-statement `(call tok 
+	       (if (eq? (msg-object-origin this-message) this)
+		   ;; Call the return handler:
+		   (let ([tok (msg-object-token this-message)])
+		     (let ([return_tok (symbol-append tok '_return)])
+		       ;; This might be a little sketchy:
+		       ,(process-statement `(call return_tok retval))))
+		   ;; Send it up to our parent:
+		   
 	       
 	       (void)
 	       ;; For now we zap this straight back to the sender.
 	       ;; BUT we need a record of who sent what...
 					;		     (let ((loop ((
-	       )]	     
+	       )]
 	   
 	   )]
 
@@ -424,17 +444,12 @@
 			     (list-remove-last! incoming))
 			 
 			 (DEBUGMODE
-			  (if (not (cache-entry? msg))
+			  (if (not (msg-object? msg))
 			      (error 'node-handler 
-				     "invalid message to node, should be a cache-entry: ~s ~nall messages: ~s"
+				     "invalid message to node, should be a msg-object: ~s ~nall messages: ~s"
 				     msg incoming)))
-			 (handler (cache-entry-token msg)
-				  (cache-entry-origin msg)
-				  (cache-entry-parent msg)
-				  (cache-entry-count msg)
-				  (cache-entry-args msg)))])
-		     ))))))])
-       
+			 (handler msg))])
+		     ))))))])       
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
 ;       (newline)
@@ -443,8 +458,7 @@
        (set! f socprog)
        (set! sp socprog)
        (set! np nodeprog)
-;       (for-each eval generic-defs)
-       
+;       (for-each eval generic-defs)       
        (list socprog nodeprog))]))
 
 ;; Makes thunks for the simulation:
