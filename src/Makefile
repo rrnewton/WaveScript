@@ -65,7 +65,8 @@ runplt: mzscheme
 .PHONY: clean
 
 clean:
-	(cd plt; $(MAKE) clean)
+	(cd plt; $(MAKE) clean "SRCFILES=$(PLT_SRC)")
+	(cd compiled; $(MAKE) clean)
 	$(RM) *.zo
 #	find . \( -name '*[~%]' \
 #                       -o -name '.??*[~%]' \
