@@ -41,8 +41,12 @@
 
 (load "../depends/slib/chez.init")
 (require 'tsort) ;; for the simulator: 
+
 ;; Basic parallel computation (engines):
-(include "chez/flat_threads.ss")
+(if (top-level-bound? 'SWL-ACTIVE)
+    (load "chez/swl_flat_threads.ss")
+    (load "chez/flat_threads.ss"))
+
 ;; Basic simulator for the nodal language:
 (include"generic/simulator_nought.ss")
 

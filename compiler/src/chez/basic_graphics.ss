@@ -6,6 +6,7 @@
 (module basic_graphics (window-height window-width
 			init-graphics close-graphics 			
 			rgb? rgb rgb-red rgb-green rgb-blue
+			the-win
 			;; current-drawing-color 
 			;; current-filling-color
 			;; current-background-color
@@ -19,7 +20,7 @@
 (include "generic/basic_graphics.ss")
 
 (define the-win #f)
-(define the-canvas #f)
+(define the-winframe #f)
 
 (define-structure (rgb red green blue))
 (define rgb make-rgb)
@@ -39,22 +40,22 @@
   (if the-win 
       (printf "Graphics already open!!~n")
       (begin
-	(set! the-win (create <toplevel> with 
+	(set! the-winframe (create <toplevel> with 
 			      (title: "Region Streams Demo")))
-	(set! the-canvas (create <canvas> the-win
+	(set! the-win (create <canvas> the-winframe
 				 with
 				 (width: window-width) ;(in->pixels 5))
 				 (height: window-height) ;(in->pixels 5))
 				 (background-color: (make <rgb> 215 215 255))))
-	(show the-win)
-	(show the-canvas)  
+	(show the-winframe)
+	(show the-win)  
 	)))
 
 (define (close-graphics)
-  (destroy the-canvas)
   (destroy the-win)
-  (set! the-canvas #f)
-  (set! the-win #f))
+  (destroy the-winframe)
+  (set! the-win #f)
+  (set! the-winframe #f))
 
 (define (clear-buffer)
   (for-each destroy object-buffer)
@@ -72,7 +73,7 @@
 
 (define draw-ellipse
   (let ((drawit (lambda (x1 y1 x2 y2 draw fill)		  
-		  (let ((circ (create <oval> the-canvas x1 y1 x2 y2)))
+		  (let ((circ (create <oval> the-win x1 y1 x2 y2)))
 		    (set-outline-color! circ 
                       (make <rgb> 
 			(rgb-red draw) (rgb-green draw) (rgb-blue draw)))
