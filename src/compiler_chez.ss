@@ -130,12 +130,15 @@
   (repl-builder
    void void
    compile-almost-to-tokens
-   (lambda (x)
+   (lambda (x . timeout)
+     (printf "Running compiled program: ~n")
+     (parameterize ([print-length 3] [print-level 2] [pretty-initial-indent 10])
+		   (pretty-print x))
      (fluid-let ([print-length 10])
        (let ([result (eval x)])
-	 (printf "Returned: ~s~n~n" result))
-       (if (list? result)
-	   (printf "Length: ~s~n" (length result)))))))  
+	 (printf "~n Returned: ~s~n~n" result)
+	 (if (list? result)
+	     (printf "Length: ~s~n" (length result))))))))
 
 ;; ???????
 (define precomp-graphical-repl (repl-builder 

@@ -293,7 +293,39 @@
 (define (get-formation-name v) (mvlet ([(f m) (token-names v)]) f))
 (define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
 ;;============================================================
+;; Dealing with token-machines in sexp form
 
+(define (token-machine? x)
+  (match x
+    [(,input-lang '(program (bindings ,nodebinds ...)
+			    (socpgm (bindings ,socbinds ...) 
+				    ,socstmts ...)
+			    (nodepgm (tokens ,nodetoks ...)
+				     (startup ,starttoks ...))))
+     #t]
+    [(quote (program (bindings ,nodebinds ...)
+		     (socpgm (bindings ,socbinds ...) 
+			     ,socstmts ...)
+		     (nodepgm (tokens ,nodetoks ...)
+			      (startup ,starttoks ...))))
+     #t]
+    [(program (bindings ,nodebinds ...)
+		     (socpgm (bindings ,socbinds ...) 
+			     ,socstmts ...)
+		     (nodepgm (tokens ,nodetoks ...)
+			      (startup ,starttoks ...)))
+     #t]
+    [,else #f]))
+
+
+(define (token-machine->program x)
+  (if (token-machine? x)
+      (match x
+	     [(,input-lang ',x) x]
+	     [(quote ,x) x]
+             [,x x])
+      (error 'token-machine->program "bad token machine: ~n ~s~n" x)))
+     
 
 ;; I thought the primitive equal? did this by default?  This is just a
 ;; version that accepts any number of arguments.  Just a throw-away helper function.
