@@ -25,9 +25,10 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
 
 -- Process TokenHandler
 pth :: TM.TokHandler -> State Int TMS.TokHandler
-pth (t,ids,e) = do (e',_) <- pe e
-		   return (t,ids,e')
-
+pth (t,ids,e) = do (blk, Just r) <- pe e			      
+		   return (t,ids,
+			   append_blocks blk 
+			   (Block [] [Sreturn r]))
 
 -- Process Expression - Returns a block and a basic expression for the return value.
 pe :: Expr -> State Int (Block, Maybe Basic)
@@ -92,22 +93,32 @@ pe e = do (b,rv) <- loop e
 	      (blk2,Just rseed) <- loop seed
 	      -- Maybe this should return the local vars used, but it doesn't matter:
 	      return (concat_blocks [blk1, blk2,
-				     Block [] [Sreturn rval to via rseed aggr]],				     
+				     Block [] [Sgradreturn rval to via rseed aggr]],				     
 		      Nothing)
 
-       (Erelay mbtok) -> (Block [] [Srelay mbtok], Nothing)
+       (Erelay mbtok) -> return (Block [] [Srelay mbtok], Nothing)
+
        (Eemit mbtime tok args) -> 
-
-
-
-Eemit mbtime tok (map loop args)
-       (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
-       (Eactivate tok args)    -> Eactivate    tok (map loop args)
-
-       (Eflood tok)       -> e	   
-       (Eelectleader tok) -> e
-
+	   do args' <- mapM loop (args::[Expr])
+	      let rets = map (\ (_, Just r) -> r) args'
+	      return (concat_blocks (Block [] [Semit mbtime tok rets]
+				     : map fst args'),
+		      Nothing)
+{-
+       (Ecall mbtime tok args) ->
+	   do args' <- mapM loop args
+	      return (concat_blocks (Block [] [Scall mbtime tok (map snd args)]
+				     : map fst args),
+		      Nothing)
+       (Eactivate tok args)    -> 
+	   do args' <- mapM loop args
+	      return (concat_blocks (Block [] [Sactivate tok (map snd args)]
+				     : map fst args),
+		      Nothing)
 -}
+       (Eflood tok)       -> error "Flatten.hs cannot handle flood expressions!"
+       (Eelectleader tok) -> error "Flatten.hs cannot handle election expressions!"
+
 
 -- This really doesn't do much right now.  Theoretically it could do
 -- elaborate primitive-specific things:
