@@ -10,6 +10,7 @@ This will read
 
 import System.IO.Unsafe
 import TM
+import Char
 
 modname = "TestMachine"
 
@@ -18,6 +19,10 @@ acceptable_chars = ['_']++['a'..'z']++['0'..'9']
 {- NOTE!! This should filter out illegal characters!!-}
 tokname :: Token -> String
 tokname (Token name) = filter (\c -> elem c acceptable_chars) name
+
+-- This takes a token to a string identifying its ActiveMessage number:
+tok_id :: Token -> String
+tok_id t = "AM_" ++ (map toUpper (tokname t))
 
 map2 f [] _ = []
 map2 f _ [] = []
