@@ -4,6 +4,11 @@
 ;;; [2004.06.28] Pass: Cleanup Token Machine
 ;===============================================================================
 
+;; [2005.03.25] I'm making this pass pretty permissive so that I can
+;; use it from multiple places.  It's permissive on its input grammar,
+;; but strict with its output grammar.
+
+
 ;;; This pass:
 ;;;   (*) Regularizes the syntax of token machines.  Right now what it
 ;;;   does is include implicit begins,
@@ -11,11 +16,28 @@
 ;;;   (*) Collapses duplicate tokens with the same name into one token.
 
 ;;;   (*) Lift's the "socpgm" into a token handler called "SOC-start"
-;;;   The grammar of the output has no socpgm
+;;;   The grammar of the output has no socpgm.  We also insure that
+;;;   the output has some SOC-start and node-start handler, even if
+;;;   they are empty.
+
+;;    (*) Throws away the "SOC bindings".  These become just the
+;;    handler-local bindings for "SOC-start".
+;; NOTE: [2005.03.25] Getting rid of node-local constant binds.
+;; Whatever, let them all be global.
+
 
 ;;;   (*) In the future it might expand out primitive applications
 ;;;   that are just shorthands.  (For example, (dist) could become
 ;;;   (dist <this-token>))
+
+;;;   (*) Should be IDEMPOTENT.
+
+;;;   (*) RENAME-VARS SHOULD RUN BEFORE THIS PASS.  It depends on
+;;;   merging token handlers without collisions between stored vars
+;;;   and constant bindings.
+
+
+
 
 
 
@@ -60,6 +82,42 @@
 
 (define cleanup-token-machine
   (let ()
+
+
+    (define (destructure-tokbind tbind)  
+      (define (process-stored s)
+	(match s
+	       [(,v ,e) `(,v ,e)]
+	       [,v `(,v '#f)]))
+      (define (process-bods x)
+	(match x
+	       [((stored ,s ...) (bindings ,b ...) ,bods ...)
+		(values (map process-stored s)
+			b
+			(make-begin `((begin ,bods ...))))]
+	       [((bindings ,b ...) (stored ,s ...) ,bods ...)
+		(values (map process-stored s)
+			b
+	       (make-begin `((begin ,bods ...))))]
+	       [((stored ,s ...) ,bods ...)
+		(values (map process-stored s)
+			'()
+			(make-begin `((begin ,bods ...))))]
+	       [((bindings ,b ...) ,bods ...)
+		(values '() b
+			(make-begin `((begin ,bods ...))))]
+	       [,bods 
+		(values '() '()
+			(make-begin `((begin ,bods ...))))]))
+      (match tbind
+	     [(,t (,a ...) ,bds ...)
+	      (mvlet ([(stored bindings body) (process-bods bds)])
+		     (values t #f a stored bindings body))]
+	     [(,t ,i (,a ...) ,bds ...)
+	      (mvlet ([(stored bindings body) (process-bods bds)])
+		     (values t i a stored bindings body))]
+	     [,other (error 'destructure-tokbind "bad tokbind: ~a" other)]))
+
 
     (define make-begin
       (lambda (expr*)
@@ -235,12 +293,9 @@
     (define process-tokbind 
       (lambda (env tokens)
 	(lambda (tokbind)
-	  (match tokbind
-		 [(,tok ,args ,expr* ...)
-		  (let ([expr* (map (process-expr (append args env) tokens tok)
-				    expr*)])				   
-		    `(,tok ,args ,(make-begin expr*)))]
-		 ))))
+	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
+		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
+			,((process-expr (append args env) tokens tok) body))))))
 	    
     (define decode 
       (lambda (stuff)
@@ -279,27 +334,53 @@
 				  other)])
 		  (loop (cdr ls))))))))
 
+    (define (cleanup socconsts nodeconsts socpgm tokens nodestartups)
+      (if (not (null? nodestartups))
+	  (set! tokens
+		(cons `[node-start () ,@(map (lambda (t) `(call ,t)) nodestartups)]
+		      tokens)))
+      (if (not (assq 'node-start tokens))
+	  (set! tokens (cons `[node-start () (void)] tokens)))
+      (if (not (assq 'SOC-start tokens))
+	  (set! tokens (cons `[SOC-start () (void)] tokens)))
+      (if socpgm
+	  (set! tokens (cons `[SOC-start () (begin ,@socpgm)] tokens)))
+      ;; This is a little weird.  It depends on the duplicate handler
+      ;; merging below.  We push the constbinds into *one* SOC-start
+      ;; handler, and if there are others, the bindings get to them
+      ;; too during the merge.
+; NEVERMIND, no more local const binds:
+;      (if (not (null? socconsts))
+;	  (set! tokens (cons `[SOC-start () (bindings ,@socconsts (void))] tokens)))
+      ;; Instead, we merge together all binds:
+
+      (let ([allconsts (append socconsts nodeconsts
+			       (foldl (lambda (th acc)
+					(mvlet ([(tok id args stored bindings body) 
+						 (destructure-tokbind th)])
+					       (append bindings acc)))
+				      '() tokens))]
+	    ;; Duplicate elimination happens before other processing of token handlers:
+	    [nodup-toks (remove-duplicate-tokbinds tokens)])
+	`(cleanup-token-machine-lang
+	     '(program (bindings ,@nodeconsts)
+		       (nodepgm (tokens
+				 ,@(map (process-tokbind (map car allconsts)
+							 (map car nodup-toks))
+					nodup-toks)))))
+	))
+
     ;; Main body of cleanup-token-machine
     (lambda (prog)
       (match prog
-        [(deglobalize-lang '(program (bindings ,constbinds ...)
+        [(,lang '(program (bindings ,constbinds ...)
 				(socpgm (bindings ,socbinds ...) 
 					,socstmts ...)
 				(nodepgm (tokens ,nodetoks ...)
 					 (startup ,starttoks ...))))
-	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
-	   `(cleanup-token-machine-lang
-	     '(program (bindings ,constbinds ...)
-		       (nodepgm (tokens
-				 ,@(if (null? socstmts)
-				       '()
-				       `((SOC-start () 
-					  (let* ,socbinds ,@socstmts))))
-				 ,@(map (process-tokbind (map car constbinds)
-							(map car nodup-binds))
-				       nodup-binds))
-				(startup ,starttoks ...))))
-	   )]
+	 (cleanup socbinds constbinds 
+                  (if (null? socstmts) #f `(begin ,@socstmts))
+                  nodetoks starttoks)]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
 	;; without the language annotation:
@@ -308,7 +389,7 @@
 			  ,socstmts ...)
 		  (nodepgm (tokens ,nodetoks ...)
 			   (startup ,starttoks ...)))
-	 (cleanup-token-machine `(deglobalize-lang ',prog))]
+	 (cleanup-token-machine `(UNKNOWNLANG ',prog))]
 
 	['(program ,stuff ...) (cleanup-token-machine (decode stuff))]
 	[(program ,stuff ...) (cleanup-token-machine (decode stuff))]
@@ -341,13 +422,14 @@
 	'(program
 	  (bindings )
 	  (socpgm (bindings ) )
-	  (nodepgm (tokens) (startup ) ))))
+	  (nodepgm (tokens) (startup ) ))))    
      (cleanup-token-machine-lang
       '(program
-	(bindings )
-	(socpgm (bindings ) )
-	(nodepgm (tokens) (startup ) ))) ]
-
+        (bindings)
+        (nodepgm
+         (tokens
+          (soc-start #f () (stored) (void))
+          (node-start #f () (stored) (void))))))]
 
     ["Now collapse two tokens of the same name"
      (cleanup-token-machine 
@@ -361,16 +443,16 @@
 	    [tok1 () (fun2)])
 	   (startup )
 	   ))))
-
      ,(lambda (p)
 	(match p 
 	  [(cleanup-token-machine-lang
 	    '(program (bindings )
-		      (socpgm (bindings ) (emit tok1))
-		      (nodepgm (tokens [tok1 () (begin ,bodies ...)]) (startup ))))
-	   (and (member '(fun1) bodies)
-		(member '(fun2) bodies))]))]
-
+		      (nodepgm (tokens ,toks ...))))
+           (let* ([tok1 (assq 'tok1 toks)]
+                  [body (rac tok1)])
+	   (and (deep-member? '(fun1) body)
+		(deep-member? '(fun2) body)))]))]
+    
     ["Test of return normalization #1"
      (cleanup-token-machine 
       '(deglobalize-lang 
@@ -384,15 +466,17 @@
 	   ))))
      (cleanup-token-machine-lang
       '(program
-	(bindings)
-	(socpgm (bindings) (emit tok1))
-	(nodepgm
-	 (tokens
-	  (tok1 ()
-               (return '3 (to tok2) (via tok1) (seed '#f) (aggr #f)))
-	  (tok2 (x) '3))
-	 (startup))))]
-
+        (bindings)
+        (nodepgm
+         (tokens
+          (soc-start  #f  ()      (stored)
+                      (begin begin (emit tok1) (void) 'multiple-bindings-for-token))
+          (node-start #f () (stored) (void))
+          (tok1  #f    ()  (stored)
+                 (return '3 (to tok2) (via tok1) (seed '#f) (aggr #f)))
+          (tok2 #f (x) (stored) '3)))))
+     ]
+    
 ))
 
 

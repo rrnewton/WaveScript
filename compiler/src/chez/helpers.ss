@@ -91,3 +91,28 @@
       (loop n '()))))
 
 
+;; From PLT's list.ss
+  (define foldl
+     (letrec ((fold-one
+               (lambda (f init l)
+                 (letrec ((helper
+                           (lambda (init l)
+                             (cond
+			       [(null? l) init]
+			       [else (helper (f (car l) init) (cdr l))]))))
+                   (helper init l))))
+              (fold-n
+               (lambda (f init  l)
+                 (cond
+		   [(ormap null? l)
+		    (if (andmap null? l) 
+			init
+			(error 'foldl "received non-equal length input lists"))]
+		   [else (fold-n
+			  f
+			  (apply f (mapadd car l init))
+			  (map cdr l))]))))
+       (case-lambda
+        [(f init l) (fold-one f init l)]
+        [(f init l . ls) (fold-n f init (cons l ls))])))
+
