@@ -197,7 +197,7 @@
   (if (eq? token SPECIAL_RETURN_TOKEN)
       (error 'construct-msg-object "cannot manually make a return message")
       (begin
-	(unless (token? token) (error 'construct-msg-object "bad token: ~s" token))
+	(unless (token-name? token) (error 'construct-msg-object "bad token: ~s" token))
 	(unless (or (number? timestamp) (not timestamp))
 	  (error 'construct-msg-object "bad timestamp: ~s" timestamp))
 	(unless (or (simobject? origin) (not origin))
@@ -239,7 +239,7 @@
 		  (or (not origin) (simobject? origin))
 		  (list? args)		  
 		  )
-	     (and (token? token)
+	     (and (token-name? token)
 		  (or (not timestamp) (integer? timestamp))
 		  (or (not parent) (simobject? parent))
 		  (or (not origin) (simobject? origin))
@@ -444,7 +444,7 @@
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
 		   (DEBUGMODE
-		    (if (not (token? rator))
+		    (if (not (token-name? rator))
 			(error 'simulator_nought:process-statement-nought
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
@@ -530,8 +530,8 @@
 				   (cadr (assq 'aggr optional))
 				   #f)])
 ;		     (DEBUGMODE
-;		      (if (not (and (token? via)
-;				    (token? totok)))
+;		      (if (not (and (token-name? via)
+;				    (token-name? totok)))
 ;			  (error 'process-statement-nought:return
 ;				 "One of these is not a token: via: ~s, totok: ~s" via totok)))			       
 		     ;; FIXME: does seed need a quote!!!???
@@ -944,7 +944,7 @@
 	     ,(DEBUGMODE '(if (not this-message)
 			      (error 'simulator_nought.sim-return
 				     "broken")))
-	     ,(DEBUGMODE '(if (not (and (token? totok) (token? via)))
+	     ,(DEBUGMODE '(if (not (and (token-name? totok) (token-name? via)))
 			      (error 'simulator_nought.sim-return
 				     "bad token or via: ~s ~s" totok via)))
 	     (let ([themessage

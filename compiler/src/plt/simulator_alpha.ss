@@ -32,11 +32,12 @@
 	   )
 
   
-    (define-syntax define-structure
-      (syntax-rules ()
-	[(_ (sname field ...))
-         (define-struct sname (field ...) (make-inspector))]))
-  
+  (define-syntax define-structure
+    (syntax-rules ()
+      [(_ (sname field ...))
+       (define-struct sname (field ...) (make-inspector))]))  
+
+  (define vector-copy (void))
   
   (define make-list srfi1.make-list)
   
@@ -50,13 +51,6 @@
                          (start-alpha-sim ,sim))))
       'replace))
   
-  (define (vector-copy v)
-    (let ((newv (make-vector (vector-length v))))
-      (let loop ((n (vector-length newv)))
-        (if (>= n 0)
-            (begin (vector-set! newv n (vector-ref v n))
-                   (loop (sub1 n)))))))
-
   (define (make-default-hash-table) (make-hash-table 'equal))
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
   (define hashtab-set! hash-table-put!)
@@ -67,36 +61,16 @@
   
   (include "../generic/simulator_nought.examples.ss")
   (include "../generic/simulator_alpha.ss")
-   
- '(set! structure-copy
+        
+  (set! structure-copy
         (lambda (s)
           (cond
             [(node? s) (copy-struct node s)]
             [(simobject? s) (copy-struct simobject s)]
+            [(simworld? s) (copy-struct simworld s)]
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
-            )
-  
-  ;; RRN: This is a cludge!! But how do I copy a structure in mzscheme!!
-  (set! structure-copy 
-        (lambda (s)
-          (cond
-            [(node? s)
-             (make-node (node-id s) (node-pos s))]
-            [(simobject? s)
-             (make-simobject (simobject-node s) 
-                             (simobject-incoming s)
-                             (simobject-timed-token-buf s)
-                             (simobject-redraw s) 
-                             (simobject-gobj s)
-                             (simobject-homepage s)
-			     (simobject-token-store s)
-			     (simobject-local-sent-messages s)
-			     (simobject-local-recv-messages s))]
-            [else (error 'structure-copy
-                         "sorry this is lame, but can't handle structure: ~s" s)]))
-              )
-  
+        )
   )
 
-(require simulator_alpha)
+;(require simulator_alpha)

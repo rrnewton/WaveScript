@@ -5,7 +5,7 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (lib "list.ss")
-   (all-except (lib "compat.ss") flush-output-port) ;; gives us define-structure
+   (all-except (lib "compat.ss") define-structure flush-output-port) 
    "constants.ss"  
    (all-except "helpers.ss" test-this these-tests filter)
    (all-except "basic_graphics.ss" test-this these-tests)
@@ -18,4 +18,4 @@
  )
 
 (require alpha_lib)
-(run-alpha-sim)
+;(run-alpha-sim)
