@@ -13,13 +13,15 @@ import TM
 -- Well, what do we need to do here?  
 -- Structure as tasks, assign active messages...
 -- flatten and generate code for handlers.
+
 assemble (Pgm consts socconsts socpgm nodetoks startup) = 
     0
 
 
+
 main = do putStr "Running token machine assembler in Haskell...\n"
 	  str <- readFile "test.tm"
-	  let expr = (read str :: TMPgm)
+	  let expr = (read str :: TMPgm)		     
 	  putStr "Tokmac read!\n"
 	  putStr str
 
