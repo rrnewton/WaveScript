@@ -35,12 +35,13 @@
      
 ;     (define (anchor-at 
 
-     (define (circle rad anch)
-       (match anch
-	      [(anchor ,id ,x ,y)
-	       `(circle ,(gensym)
-TODODOTODOTO
+;     (define (circle rad anch)
+;       (match anch
+;	      [(anchor ,id ,x ,y)
+;	       `(circle ,(gensym)
+;TODODOTODOTO
      ))
+
 
 
 
