@@ -35,7 +35,7 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 data Prim = Pplus | Pminus | Pmult | Pdiv
 	  | Pless | Pgreater | Pleq | Pgeq
 	  | Plocdiff | Ploc
---	  | Pflood | Pelectleader
+	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
 	  --Pamap | Pafold
   deriving (Eq, Show, Read)
@@ -64,7 +64,8 @@ data Expr = -- Stndard forms:
 	  | Eemit (Maybe Time) Token [Expr]
 	  | Ecall (Maybe Time) Token [Expr]
 	  | Eactivate Token [Expr]
-	  | Eflood Token
+--	  | Eflood Token [Expr]
+	  | Eflood Token 
 	  | Eelectleader Token
 
   deriving (Eq, Show, Read)
