@@ -18,8 +18,13 @@
   (syntax-rules ()
     [(_ expr ...) (begin expr ...)]))
 
-;; This one prints to the logifle, openning and closing it every time:
+;; This one prints nothing at all:
 (define-syntax DEBUGPRINT 
+  (syntax-rules ()
+    [(_ expr ...) (void)]))
+
+;; This one prints to the logifle, openning and closing it every time:
+#;(define-syntax DEBUGPRINT 
   (syntax-rules ()
     [(_ expr ...)
      (let ((p (open-output-file Regiment-Log-File 'append)))

@@ -104,7 +104,7 @@
 
 ;===============================================================================
 
-;; [2004.06.11]  This runs unit tests for the whole system, then runs
+;; [2004.06.11]  This runs unit tests for the whole system, then runs all the unit tests.
 (define (test-everything . args)
   (let ([test-it (if (memq 'verbose args)
 		     (lambda () (test-this 'verbose))
@@ -113,22 +113,15 @@
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
     (test-all) (newline)  (newline)
-
-    (load "compiler.ss") (test-it) (newline)
-    
-    (dynamic-wind
-	(lambda () (current-directory "generic"))
-	(lambda ()
-	  (load "pass00_verify-regiment.ss") (test-it) (newline)
-					;  (load "pass01_rename-var.ss") (test-it) (newline)
-	  (load "pass08_verify-core.ss") (test-it) (newline)
-	  (load "pass10_deglobalize.ss") (test-it) (newline)
-	  (load "simulator_nought.ss") (test-it) (newline)
-	  )
-	(lambda () (current-directory "..")))
    
     (case current_interpreter
       [(chezscheme)
+       (load "compiler.ss") (test-it) (newline)       
+       (load "generic/pass00_verify-regiment.ss") (test-it) (newline)
+       ;  (load "pass01_rename-var.ss") (test-it) (newline)
+       (load "generic/pass08_verify-core.ss") (test-it) (newline)
+       (load "generic/pass10_deglobalize.ss") (test-it) (newline)
+       (load "chez/simulator_nought.ss") (test-it) (newline)       
        (if (top-level-bound? 'SWL-ACTIVE)
 	   (begin 
 	     (printf "~n SWL DETECTED.  TESTING GRAPHICAL MODULES:~n")
@@ -136,13 +129,23 @@
 	     (let () #;(import flat_threads) (test-it) (newline))
 
 	     (load "chez/graphics_stub.ss") (test-it) (newline)
-	     (load "generic/simulator_nought_graphics.ss") (test-it) (newline)
+	     (load "chez/simulator_nought_graphics.ss") (test-it) (newline)
 	     )
 	   (begin 
 	     (load "chez/flat_threads.ss") 
 ;	     (import flat_threads)
 	     (test-it) (newline)))]
       [(mzscheme)
+
+       (load/use-compiled "compiler_plt.ss") (test-it) (newline)
+       
+       (test00) (newline)
+       ;  (load "pass01_rename-var.ss") (test-it) (newline)
+       (test08) (newline)
+       (test10) (newline)
+       (testsim) (newline)
+       (testgsim) (newline)
+
        (error 'test-everything "RYAN FINISH THIS")]
       )
 

@@ -180,7 +180,8 @@
        (disp "GOT RETURN VALS: " ret)
        (not (null? ret)))]
   
-    ,@(include "simulator_nought.tests")
+  ;; What do we expect the current directory to be??
+  ,@(include "simulator_nought.tests")
   ))
 
 

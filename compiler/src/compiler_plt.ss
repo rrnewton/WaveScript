@@ -3,6 +3,9 @@
 ;; Here is the main file for my compiler.
 ;;======================================================================
 
+;; [2004.06.16] This should have been done already, but just for good measure...
+(define current_interpreter 'mzscheme)
+
 ;(module compiler_plt mzscheme
  
 (require (lib "include.ss")
@@ -80,7 +83,7 @@
 (require (lib "trace.ss"))
 (trace  explode-primitive process-expr process-letrec)
 
-(define (test-this)
+#;(define (test-this)
   (parameterize ((tracer #t))
     (test-one
      '(letrec ((a (anchor-at '(30 40)))
@@ -92,7 +95,7 @@
                (avg (smap g (rfold f (cons 0 0) r))))
         avg))))
 
-(require "plt/simulator_nought.ss")
+;(require "plt/simulator_nought.ss")
 
 
 (define (g) 
