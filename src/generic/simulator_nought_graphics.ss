@@ -61,8 +61,10 @@
 
 (define graphical-simulation   
   (generate-simulator
-   ;; Thread runner:
+   ;; THREADRUNNER:
    run-flat-threads
+
+   ;; SIMCORE:
    ;; Build engines and display driver:
    (lambda (funcs . timeout)
                  

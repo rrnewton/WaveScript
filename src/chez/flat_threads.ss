@@ -74,7 +74,7 @@
 		 [engs (map make-engine thks)]
 		 [acc '()])	
 	(if totaltime
-	    (perdisp "  Total time left on clock: ~s~n" totaltime))
+	    (perdisp "~n  Total time left on clock: ~s" totaltime))
 	(cond
 	 ;; Timeout because of real time:
 	 [(and totaltime (<= totaltime 0)) ;(and timeout (> (real-time) timeout))
