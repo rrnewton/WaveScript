@@ -28,11 +28,12 @@
 
     (define (process-constbind cbind)
       (match cbind
-	[(,id (quote ,const))
-	 (format "(\"~a\", ~a)" id const)]))
+	[(,id ,[process-expr -> rhs])
+	 (format "(~a, ~a)" id rhs)]))
     
     (define (process-expr expr)
       (match expr
+	[(quote ,const) (format "(Econst ~a)" const)]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
 	    
 	;; Both of these take timing arguments in the Haskell AST:
@@ -80,15 +81,15 @@
 					,[process-expr -> socstmts] ...)
 				(nodepgm (tokens ,[process-tokbind -> nodetoks] ...)
 					 (startup ,[process-tokname -> starttoks] ...))))
-	 (disp "cbinds" cbinds)
-
-	 (format "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,  startup=~a~n})" 
-		 (hlist cbinds)
-		 (hlist socbinds)
-		 (hlist socstmts)
-		 (hlist nodetoks)
-		 (hlist starttoks))]))))
-
+	 `(haskellize-tokmac-lang
+	   ,(format 
+	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,  startup=~a~n})" 
+	     (hlist cbinds)
+	     (hlist socbinds)
+	     (hlist socstmts)
+	     (hlist nodetoks)
+	     (hlist starttoks)))]))))
+  
 #!eof
 	 `(Pgm (ConstBindings ,cbinds)
 	       (SocPgm (ConstBindings ,socbinds)

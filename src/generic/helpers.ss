@@ -1101,6 +1101,15 @@
                   (+ list-index-r 1)
                   #f))))))
 
+;; USES equal? !!
+(define list-remove-after
+  (lambda (x ls)
+    (let loop ([ls ls] [acc '()])
+      (cond
+       [(null? ls) (reverse acc)]
+       [(equal? x (car ls)) (reverse (cons (car ls) acc))]
+       [else (loop (cdr ls) (cons (car ls) acc))]))))	
+
 #;(define timeeval
   (lambda (x)
     (let ([start (real-time)])
