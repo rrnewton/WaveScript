@@ -23,11 +23,11 @@ data Token = Token String
 --  deriving (Eq, Show, Read)
 
 data TMPgm = Pgm { consts    :: [ConstBind],
-	      socconsts :: [ConstBind],
-	      socpgm    :: [Expr],
-	      nodetoks  :: [TokHandler],
-	      startup   :: [Token]
-	    }
+		   socconsts :: [ConstBind],
+		   socpgm    :: [Expr],
+		   nodetoks  :: [TokHandler],
+		   startup   :: [Token]
+		 }
   deriving (Eq, Show, Read)
 
 data Expr = -- Stndard forms:
@@ -50,6 +50,9 @@ data Expr = -- Stndard forms:
 data BINOP = TMPplus | TMPmult
 --data TRIOP = 
 
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 x = Pgm { consts    = [],
 	  socconsts = [],
