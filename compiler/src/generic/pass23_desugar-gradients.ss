@@ -5,48 +5,37 @@
 ;; It proceeds by adding three arguments to every token handler:
 ;;   gradient origin node, hop-count, gradient version, 
 
+    (define (find-emittoks expr)
+       (match expr
+ 	     [(quote ,_) '()]
+ 	     [,var (guard (symbol? var)) '()]
+ 	     [(begin ,[exprs] ...) (apply append exprs)]
+ 	     [(if ,[exprs] ...) (apply append exprs)]
+ 	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
+ 	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
+
+ 	     [(relay ,_ ...) '()]
+ 	     [(dist ,_ ...) '()]
+ 	     [(leds ,what ,which) '()]
+
+ 	     [(return ,[expr] (to ,t) (via ,v) (seed ,[seed_val]) (aggr ,a))
+ 	      (append expr seed_val)]
+	     	   
+	     [(call ,_ ,[args*] ...) (apply append args*)]
+ 	     [(activate ,_ ,[args*] ...) (apply append args*)]
+
+ 	     [(timed-call ,_ ,__ ,[args*] ...) (apply append args*)]
+ 	     [(,[rator] ,[rands] ...) (apply append rator rands)]
+
+ 	     [,otherwise
+ 	      (error 'desugar-gradient:process-expr 
+ 		     "bad expression: ~s" otherwise)]
+	     ))
 
 (define desugar-gradients
   (let ()
 
-    (define find-emittoks
-	(lambda (expr)
-	  (match expr
-	     [(quote ,_) '()]
-	     [,var (guard (symbol? var)) '()]
-	     [(begin ,[exprs] ...) (apply append exprs)]
-	     [(if ,[exprs] ...) (apply append exprs)]
-	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
 
-	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
-
-	     [(relay ,_ ...) '()]
-	     [(dist ,_ ...) '()]
-
-	     [(return ,[expr] (to ,_) (via ,_) (seed ,[seed_val]) (aggr ,_))
-	      (append expr seed_val)]
-	     	   
-	     [(call ,_ ,[args*] ...) (apply append args*)]
-	     [(activate ,_ ,[args*] ...) (apply append args*)]
-
-	     [(timed-call ,_ ,_ ,[args*] ...) (apply append args*)]
-
-	     [(leds ,what ,which) '()]
-
-	     [(,prim ,[rands] ...)
-	      (guard (or (token-machine-primitive? prim)
-			 (basic-primitive? prim)))
-	      `(,prim ,rands ...)]
-	     ;;; TEMPORARY, We allow arbitrary other applications too!
-	     [(,rator ,[rands] ...)
-	      (warning 'desugar-gradient
-		       "arbitrary application of rator: ~s" rator)
-	      `(,rator ,rands ...)]
-
-	     [,otherwise
-	      (error 'desugar-gradient:process-expr 
-		     "bad expression: ~s" otherwise)]
-	     ))))
 	    
     ;; Process an expression in value context.
     (define process-expr
