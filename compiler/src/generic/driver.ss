@@ -3,6 +3,8 @@
 ;;; Kent Dybvig
 ;;; Modified by Ryan Newton (RRN) 2001-2002 + 2003-2005
 
+;;; TODO: make emit? make sense and prune old the obsolete junk.
+
 ;;; This file contains driver code for running p423 compilers through
 ;;; their paces.
 
