@@ -15,6 +15,7 @@
 (init-graphics)  ;; This should open windows, etc.
 
 
+;; Uhh sholud just depend on the one in helpers...
 (define iota
     (lambda (n . fun*)
       (let ([f (if (null? fun*)
@@ -34,7 +35,7 @@
               (loop (sub1 n) '())))))) 
 
  
-(define processors 
+(define processors_temp
   (map (lambda (_) (list (random width) (random height))) 
        (iota 100)))
 
@@ -48,4 +49,15 @@
 
 ;; Ok, here we go 
 
+(draw-procs processors_temp)
+
+(define (test)
+  (let loop ((acc 0))
+    (if (= acc 1000) (void)
+	(begin 
+	  (draw-procs processors_temp)
+	  (paint-buffer)
+	  (thread-sleep 100)
+	  (loop (add1 acc))))))
+	  
 
