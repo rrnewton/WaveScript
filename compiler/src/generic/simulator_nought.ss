@@ -1172,9 +1172,10 @@
      ,(lambda (exp)
 	(= 2 (length 
 	      (deep-all-matches 
-	       (lambda (exp) (match exp 
-				    [(let (,bind ...) ,bods ...) #t] 
-				    [,else #f])) x))))]
+	       (lambda (x) (match x 
+				  [(let (,bind ...) ,bods ...) #t] 
+				  [,else #f])) 
+	       exp))))]
     
     ;; This is an evil test which mutates the global environment!  (By
     ;; evaluating generic-defs.)  Yech!
