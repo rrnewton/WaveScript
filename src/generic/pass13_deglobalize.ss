@@ -207,6 +207,7 @@
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		 )))]
 
+	    ;; <TODO>: FIXME
 	    [(cluster)
 	     (let  ([region_tok (caddr args)])
 	       (let ([parent (get-membership-name region_tok)]
@@ -230,6 +231,14 @@
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		   )))]
 
+	    
+	    [(filter)
+	     (match args
+	       [(,pred_tok ,region_tok)
+		(let ([parent (get-membership-name region_tok)])
+		  `( [,parent (v) (call ,form v)] ;; member of that area
+		     [,form (v) (if (call ,pred_tok v)
+				    (call ,memb v))] ))])]
 			 
 	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-at) ;; 
@@ -360,7 +369,11 @@
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
 	  ;; other hack in.
-	  (soc-return '(CIRC ,tokname))])]
+	  (soc-return '(CIRC ,tokname this))])]
+
+      [(filter)     
+       `([,tokname (v)
+	  (soc-return (list 'FILTRATION ',tokname (my-id) this))])]
 
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
@@ -477,12 +490,15 @@
 					       [spread-global ()
 							      (emit global-tree)
 							      (timed-call 1000 spread-global)]
-					       [global-tree () (relay)])
+					       [global-tree () (relay)]
+					       [spark-world () (call ,(get-membership-name 'world) this)])
 				       				       
 				       ;; <TODO> It's the LEAVES that need priming:
 				       ,(if (assq entry constbinds)
-					    `(startup )
-					    `(startup ,@leaftoks )))
+					   `(startup )
+					   ;; Here I should really only prime the world_tok if the
+					   ;; world prim is used in the program:
+					   `(startup ,@leaftoks spark-world)))
 				       ))))
 	 ]))))
 

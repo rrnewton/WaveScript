@@ -126,4 +126,17 @@ components. Like hooking Main.StdControl to multiple targets.  But
 what are the semantics for which of these calls comes first?  In the
 order you list the edges??
 
+[2004.08.11]
+I need to sort things out... I'd like all areas to take a single
+argument carrying their value.. but regions must be otherwise.  "this"
+isn't going to be first class in the token-machine abstraction, so
+it's not viable for Regions to pass "this" as the token argument.
+  Problem is when you're generating code for "filter" you don't know
+off the bat whether it's running against a Region, or some other Area.
+
+
+We can always just pass null, or the node id as the value carried for
+region membership...
+
+
 
