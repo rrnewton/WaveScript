@@ -34,6 +34,7 @@
 ;;;                | (relay <Token>)
 ;;;                | (dist <Token>)
 ;;;                | (return <Token> <Simple>)
+;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
 ;;;                | <Macro> 
 ;;;  <Macro> ::= (flood <Token>)
 ;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
@@ -158,6 +159,8 @@
 	     [(return ,stuff ...)
 	      (error 'cleanup-token-machine
 		     "process-expr: bad syntax for return: ~s" `(return ,stuff ...))]
+
+	     [(leds ,what ,which) `(leds ,what ,which)]
 
 	     [(,prim ,[rands] ...)
 	      (guard (or (token-machine-primitive? prim)

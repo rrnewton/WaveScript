@@ -78,7 +78,8 @@
 #|	[(begin ,[x] ,y ...) a
 	 (let ([rest (process-expr `(begin ,y ...))])
 ;	   (disp "BUILDING ESEQ" x rest)
-	   (format "(Eseq ~a ~a)" x rest))]|#
+	   (format "(Eseq ~a ~a)" x rest))]
+|#
 	
 	[(if ,[test] ,[conseq] ,[altern])
 	 (format "(Eif ~a ~a ~a)" test conseq altern)]
@@ -106,6 +107,12 @@
 	 (format "(Ereturn ~a ~a ~a ~a ~a)"
 		 expr (htok memb) (htok parent) seed_val (htok rator_tok))	
 	 ]
+
+        [(leds ,what ,which)
+         (format "(Eled ~a ~a)"
+            (case what [(on) "On"] [(off) "Off"] [(toggle) "Toggle"] [else "ERR"])
+            (case which [(red) "Red"] [(green) "Green"] [(yellow) "Yellow"] [else "ERR"])
+         )]
 
 	[(soc-finished) "Esocfinished"]
 	[(soc-return ,[body]) (format "(Esocreturn ~a)" body)]
@@ -156,7 +163,7 @@
 					 (startup ,[htok -> starttoks] ...))))
 	 `(haskellize-tokmac-language
 	   ,(format 
-	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,~n  startup=~a~n})" 
+	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,~n  startup=~a~n})~n"
 	     (hlist cbinds)
 	     (hlist socbinds)
 	     (hlist socstmts)

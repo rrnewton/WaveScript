@@ -26,6 +26,7 @@
 				  clear-buffer delete-gobj
 				  Starting-Node-Color
 				  change-color! ;set-color!
+				  ;get-state ;; [2004.11.13] including
 				  these-tests test-this )
   (import basic_graphics)
 

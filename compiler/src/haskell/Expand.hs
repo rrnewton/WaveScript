@@ -112,7 +112,7 @@ expand_macros thistok tenv lenv expr =
                (Econst c) -> return expr
 	       (Evar id)  -> return expr
 
---	       (Elambda ids e) -> Elambda ids (pe tenv (ids++lenv) e)
+	       (Elambda ids e) -> error "expand doesn't handle lambda yet"
 	       (Elet binds e)  -> 
 		   do let lhss = map fst binds
 		      rhss <- mapM (loop lenv) (map snd binds)
@@ -126,6 +126,12 @@ expand_macros thistok tenv lenv expr =
 				 b <- loop lenv b
 				 c <- loop lenv c
 				 return $ Eif a b c
+
+               (Eassign v e) -> do e <- loop lenv e
+				   return $ Eassign v e 
+
+
+--               (Elambda ...) -> 
 
 --       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
 
@@ -144,7 +150,7 @@ expand_macros thistok tenv lenv expr =
 		        Just s  -> do s <- loop lenv s
 			  	      return $ Ereturn val to via (Just s) aggr
 
-
+               (Eled act col) -> return $ Eled act col
 
                (Erelay (Just t)) -> return $ Erelay (Just t)
 	       (Erelay Nothing) ->
