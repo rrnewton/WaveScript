@@ -235,6 +235,7 @@
 
 
 (define (process-statement tokbinds allstored)
+  (disp "process statement, allstored: " allstored)
   (letrec ([get-arg-index
 	    (lambda (tok argname)
 	      (let ([entry (assq tok tokbinds)])
@@ -271,7 +272,7 @@
 		  [(let-stored ([,lhs* ,[rhs*]] ...) ,[bodies] ...)
 		   `(begin "Doing let stored."
 			   ,@(map (lambda (lhs rhs)
-				    `(if (eq? lhs '()) (set-car! lhs rhs)))
+				    `(if (eq? ,lhs '()) (set-car! ,lhs ,rhs)))
 				  lhs* rhs*)
 			   ,bodies ...)]
 		  
@@ -340,14 +341,20 @@
 ;; This assumes that all the stored vars (and all vars in general)
 ;; have unique names at this point.
 (define (find-stored expr)
+  (disp "find-stored" expr)
        (match expr
+	     [(let-stored ( (,lhs* ,[rhs*]) ...) ,[bodies] ...)
+	      (apply append lhs* (apply append rhs*) bodies)]
  	     [(quote ,_) '()]
+ 	     [,var (guard (symbol? var)
+			  (token-machine-keyword? var))
+		   (error 'simulator_alpha:find-stored
+			  "invalid varref to with keyword name: ~s" var)]
  	     [,var (guard (symbol? var)) '()]
  	     [(begin ,[exprs] ...) (apply append exprs)]
  	     [(if ,[exprs] ...) (apply append exprs)]
+ 	     [(set! ,var ,[rhs]) rhs]
  	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
-	     [(let-stored ( (,lhs* ,[rhs*]) ...) ,[body])	
-	      (apply append lhs* rhs*)]
 ; 	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
 ; 	     [(relay ,_ ...) '()]
 ; 	     [(return ,[expr] (to ,t) (via ,v) (seed ,[seed_val]) (aggr ,a))
@@ -373,9 +380,10 @@
 ;; along with an association list of stored-vars.
 (define (process-tokbinds tbinds)
   (let* ([allstored
-          (map (lambda (bind) 
+          (map (lambda (bind)
                  (match bind 
 		   [(,tok (,args ...) ,expr)
+		    (disp "STORED: " (find-stored expr))
                     (list tok (find-stored expr))]))
                tbinds)]
          [binds 
@@ -383,7 +391,7 @@
            (lambda (tbind)
 	    (match tbind 
 		   [(,tok (,args ...) ,expr* ...)
-		    (let ([stored (assq tok allstored)])
+		    (let ([stored (cadr (assq tok allstored))])
 		      `[,tok 
                          (lambda ,args 
                            #;(DEBUGPRINT2 
@@ -401,6 +409,7 @@
                          ])]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
+    (printf "Allstored was: ~a~n" allstored)
     (printf "<-------------------------------------------------------------------->~n")
     (pretty-print binds)
 
@@ -409,7 +418,9 @@
 ;; This produces the compiled "main" program. 
 (define (build-body tbinds expr)
   (let-values ([(binds allstored) (process-tokbinds tbinds)])
-    `(let ([,(apply append (map cadr allstored)) '()] ...)
+    `(let ,(map (lambda (v) `(,v '()))
+		(apply append (map cadr allstored)))
+       "Let-Stored!"
        (letrec ([this-message #f]
                 ,@binds)
          ,expr))))
@@ -445,6 +456,8 @@
         ;;        simobj for this,
         ;;        simulation
 	`(lambda (soc-return soc-finished SOC-processor this sim)
+	   "This is the simulator program."
+	   "The above arguments allow it to plug into the harness that runs the simulator."
 	    (let ([I-am-SOC (eq? this SOC-processor)]
 		  [local-sense (lambda ()
 				 ((current-sense-function)
@@ -457,65 +470,10 @@
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
                      ,@(map list starttoks)
-                     
-                     (let main-node-loop ([incoming (simobject-incoming this)])
-                       (let ([current-time (cpu-time)]
-                             [triggers (simobject-timed-tokens this)])
-                         (let ([fired-triggers 
-                                (filter (lambda (trigger) (>= current-time (car trigger)))
-                                        triggers)])
-                           ;; Timed calls get priority over other incoming:
-                           (if (not (null? fired-triggers))
-                               (begin 
-                                 (set-simobject-incoming! this
-                                                          (append (map cdr fired-triggers)
-					 (simobject-incoming this)))
-                                 (set-simobject-timed-tokens! this
-					 (difference triggers fired-triggers))
-                                 (main-node-loop (simobject-incoming this)))
-                               (cond
-		      [stop-nodes 
-		       (display "*") ;(disp "Node stopped by external force!")
-		       'node-stopped]		     
 
-		      [(null? incoming)
-		       ;; No good way to wait or stop the engine execution?
-		       (yield-thread)
-		       (main-node-loop (simobject-incoming this) returns-next-handled returns)]
+		     
 
-		      [else
-		       ;; This might introduce message loss (because of no
-		       ;; semaphores) but I don't care:					
-		       (let ((msg 'NOT-SET-YET))
-			       
-			 (DEBUGPRINT
-			  ;; Print out the process number when we handle a message:
-			  (printf "~s." (node-id (simobject-node this))))
-			 ;; Pop that message off:
-			 (critical-section
-			  (set! msg (last incoming))
-			  (if (null? (cdr incoming))
-			      (set-simobject-incoming! this '())
-			      (list-remove-last! incoming)))
-
-			 (if (return-obj? msg)
-			     (main-node-loop (simobject-incoming this) 
-					     returns-next-handled
-					     (cons msg returns))
-			     (begin 
-			       (DEBUGMODE
-				(if (not (valid-msg-object? msg))
-				    (begin
-				      (define-top-level-value 'x msg)
-				      (error 'node-handler 
-				     "invalid message to node, should be a valid msg-object: ~s "
-				     (pop-msg-object msg )))))
-			       (handler msg)
-			       (main-node-loop (simobject-incoming this)
-					       returns-next-handled 
-					       returns))
-			 ))]))
-		     ))))))))])
+)))))])
 
        (DEBUGPRINT
 	(printf "~nGOT TOKEN HANDLERS:~n" )
@@ -537,8 +495,16 @@ nodeprog
 
 (define these-tests
   `(
+    [3 3] ;; UNIT TESTER BROKEN ATM...
+    
     [(find-stored '(if '3 '4 (let-stored ([a '3]) '4)))
      (a)]
+
+    [(find-stored '(let-stored ([x '99])
+			      (set! x (let-stored () (+ x '1)))
+			      (bcast tok2 (let-stored ((a '1))
+						      (+ a x)))))
+     (x a)]
 
     [(compile-simulate-alpha
       '(program
@@ -550,11 +516,35 @@ nodeprog
 	  [tok2 (x) (bcast tok2 (+ x x))])
 	 (startup))))
      '??]
+
+
+    [(compile-simulate-alpha
+      '(program
+	(bindings)
+	(socpgm  (bindings) (call tok1))
+	(nodepgm 
+	 (tokens
+	  [tok1 () (bcast tok2 '3)]
+	  [tok2 (x) (let-stored ([x '99])
+		      (set! x (+ x '1))
+		      (bcast tok2 x))])
+	 (startup))))
+     '??]
+
     ))
 
 
 (define (wrap-def-simulate test)
   `(begin (define simulate run-simulation) ,test))
+
+
+(define testsalpha (map (lambda (test)
+			  (match test
+				 [(,prog ,res) `(,prog ,res)] ;`((begin (cleanse-world) ,prog) ,res)]
+				 [(,name ,prog ,res) 
+				  `(,name ,prog ;(begin (cleanse-world) ,prog)
+					  ,res)]))
+			these-tests))
 
 ;; Use the default unit tester from helpers.ss:
 ;; But this also makes sure the world is initialized before doing unit tests:
@@ -562,18 +552,16 @@ nodeprog
   (let ((tester (default-unit-tester 
 		  this-unit-description 
 		  ;; Make sure that the world is clean before each test.
-		  (map (lambda (test)
-			 (match test
-			   [(,prog ,res) `((begin (cleanse-world) ,prog) ,res)]
-			   [(,name ,prog ,res) 
-			    `(,name (begin (cleanse-world) ,prog) ,res)]))
-			 these-tests)
+		  testsalpha
 		  tester-eq?
 		  wrap-def-simulate)))
     (lambda args
       ;; First init world:
       ;(init-world)
       (apply tester args))))
+
+(define testalpha test-this)
+
 
 (define (t)
 (compile-simulate-alpha
