@@ -150,13 +150,13 @@
 		   [,otherwise
 		    (error 'cps-tokmac:number-freevars 
 			   "bad expression: ~s" otherwise)]))
+
 	  (define do-amend
 	    (lambda (tokbind)
-	      (match tokbind
-		     [(,tok ,subid (,args ...) (bindings ,b ...) (stored ,s ...) ,e)
-		      `(,tok ,subid (k ,args ...) (bindings ,b ...) (stored ,s ...) 
-			     ,(amend-tainted e))]
-		     )))
+	      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tokbind)])
+		     (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
+		     `(,tok ,id (k ,args ...) (stored ,stored ...) 
+			     ,(amend-tainted body)))))
 	  
 	  (lambda (tokbinds)
 	    (map do-amend tokbinds))))
@@ -186,6 +186,8 @@
 	(define loop
 	  (lambda (expr  pvk)
 	    (match expr
+	     [,x (guard (begin (disp "PEXP" x) #f)) 3]
+		   
 	     [,const (guard (constant? const)) 
 		     (pvk `(quote ,const))]
 	     [(quote ,const) (pvk `(quote ,const))]
@@ -198,14 +200,14 @@
 	     [(ext-set! ,tok ,var ,[expr]) 
 	      (loop expr
 		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
+             [(begin) (pvk '(void))]
 	     [(begin ,x ,y ...)
 	      (loop x 
 		    (lambda (e) 
-		      (pvk 
-		       (make-begin 
-			'(begin ,e			 
-				,(loop `(begin ,y ...)))))))]
-	     [(if ,test ,conseq ,altern)
+                      (loop `(begin ,y ...)
+                            (lambda (e2)
+                              (pvk (make-begin `(begin ,e ,e2)))))))]
+              [(if ,test ,conseq ,altern)
 	      (loop test 
 		    (lambda (t)
 		      (loop conseq
@@ -301,17 +303,14 @@
 	  (let loop ([tbs tokenbinds] [tainted '()] [tbacc '()])
 	    (if (null? tbs)
 		(values (list->set tainted) tbacc)
-		(match (car tbs)
-		    [(,tok ,subid ,args (bindings ,b ...) (stored ,s ...) ,expr)
-		     (mvlet ([(newexpr taints newtokbinds)			     
-                              (process-expr expr)])
-			    (loop (cdr tbs)
-				  (append taints tainted)
-				  (cons 
-				   `(,tok ,subid ,args (bindings ,b ...) (stored ,s ...) ,newexpr)
-                                   (append newtokbinds
-                                           tbacc))))]
-		    )))))
+		(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tbs))])
+		  (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
+		  (mvlet ([(newexpr taints newtokbinds) (process-expr body)])
+			 (loop (cdr tbs)
+			       (append taints tainted)
+			       (cons 
+				`(,tok ,subid ,args (stored ,stored ...) ,newexpr)
+				(append newtokbinds tbacc)))))))))
 
 (define cps-tokmac
   (let ()
@@ -321,6 +320,7 @@
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,nodetoks ...))))
+	 (disp "Got prog... bout to do binds")
 	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
 	   (let ([newtoks2
 		  (map (lambda (tb)

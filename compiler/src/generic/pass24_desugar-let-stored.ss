@@ -67,15 +67,19 @@
 	    "bad expression: ~s" otherwise)]))
 
 
-(define (process-expr env expr)
+(define process-expr 
+;  (trace-lambda pexpr (env expr)
+  (lambda (env expr)
   
   (match expr
+;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
+
     [(quote ,const)                    (values () `(quote ,const))]
     [,num (guard (number? num))        (values () num)]
     [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
     [(tok ,t ,[st e])                  (values st `(tok ,t ,e))]
     [,var (guard (symbol? var))        (values () var)]
-    [(begin ,[st xs] ...)              
+    [(begin ,[st xs] ...)
      (values (apply append st) (make-begin xs))]
     [(if ,[tst test] ,[cst conseq] ,[ast altern])
      (values (append tst cst ast) 
@@ -96,6 +100,7 @@
     ;; The semantics of let-stored are that the first time the
     ;; expression is executed (and only the first), the RHS is
     ;; evaluated and stored.
+    [(let-stored () ,[st body]) (values st body)]
     [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
 ;     (let ([all-lhs (cons lhs1 (cons lhs2 lhs*))]
 ;	   [all-free (apply append (map free-vars (cons rhs1 (cons rhs2 rhs*))))])
@@ -103,7 +108,10 @@
 ;	   (error 'desugar-let-stored:process-expr
 ;		  "let-stored cannot have any recursive bindings"
 ;		  `(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
-     (process-expr env `(let-stored (,first) (let-stored (,second ,rest ...) ,body)))]
+     (process-expr env `(let-stored ([,lhs1 ,rhs1]) 
+			  (let-stored ([,lhs2 ,rhs2])
+			     (let-stored ([,lhs* ,rhs*] ...) ,body))))]
+
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
      (let ([newvar (unique-name 'stored-liftoption)])
        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
@@ -113,8 +121,7 @@
                                    (begin 
                                      (set! ,newvar '#t)
                                      (set! ,lhs ,rhs)))
-                               newbod)))))
-     ]
+                               newbod)))))]
 
     [(leds ,what ,which) (values () `(leds ,what ,which))]
     [(,prim ,[rst* rands] ...)
@@ -129,9 +136,9 @@
              `(,rator ,rands ...))]
 
     [,otherwise
-	 (error 'cleanup-token-machine:process-expr 
+	 (error 'desugar-let-stored:process-expr 
 		"bad expression: ~s" otherwise)]
-	))
+	)))
       
 
 (define (process-tokbind tb)
@@ -144,6 +151,7 @@
   (match prog
     [(,lang '(program (bindings ,constbinds ...)
 		      (nodepgm (tokens ,[process-tokbind -> toks] ...))))
-     `(,lang '(program (bindings ,constbinds ...)
-		       (nodepgm (tokens ,toks ...))))]))
+     `(desugar-let-stored-lang
+       '(program (bindings ,constbinds ...)
+		 (nodepgm (tokens ,toks ...))))]))
 ))
