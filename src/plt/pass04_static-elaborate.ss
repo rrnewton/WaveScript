@@ -9,6 +9,14 @@
     (if (zero? n) '()
         (cons x (make-list (sub1 n) x))))
   
+  (define (remq x ls)
+    (cond 
+      [(null? ls) ls]
+      [(eq? x (car ls)) (remq x (cdr ls))]
+      [else (cons (car ls) (remq x (cdr ls)))]))
+  
+  (define (id x) x)
+  
   (include (build-path ".." "generic" "pass04_static-elaborate.ss"))
   
   (provide (all-defined))
@@ -16,4 +24,4 @@
   ;		 test-this these-tests test01 tests01)
   )
 
- (require pass04_static-elaborate)
+; (require pass04_static-elaborate)

@@ -22,7 +22,8 @@
          "plt/pass01_eta-primitives.ss"
          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
          (all-except "plt/pass03_remove-unquoted-constant.ss")
-         (all-except "plt/pass04_reduce-primitives.ss")
+         (all-except "plt/pass04_reduce-primitives.ss" these-tests test-this)
+         (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
          (all-except "plt/pass05_remove-complex-constant.ss")
          (all-except "plt/pass06_uncover-free.ss")
          (all-except "plt/pass07_lift-letrec.ss")
@@ -36,6 +37,8 @@
          (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
          (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
          (all-except "plt/pass17_cleanup-token-machine.ss" test)
+         
+         (all-except "plt/pass19_haskellize_tokmac.ss" test)
          
 ;    (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
