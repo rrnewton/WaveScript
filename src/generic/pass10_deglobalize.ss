@@ -22,21 +22,10 @@
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
 ;;; Output grammar:
-;;; We introduce a simple imperative language here.
-;;;
 
-;;;  <Pgm> ::= (program <SOCPgm> <NodePgm>)
-;;;  <SOCPgm> ::= <Statement*>
-;;;  <NodePgm> ::= (<SymBinding>*)
-;;;  <SymBinding> ::= (<SymPattern> <Code>)
-;;;  <Code> ::= <Statement>*
-;;;  <Statement> ::= <Stuff> | (broadcast <Sym> <SymPattern>)
+;;; RRN: Should we introduce a simple imperative language here???
 
-
-
-;;; TRYING AGAIN!
-
-;;;  <Pgm> ::= (program <SOCPgm> <NodePgm>)
+;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
 ;;;  <SOCPgm> ::= <Statement*>
 ;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
 ;;;  <Entry>  ::= <Token>
@@ -56,6 +45,28 @@
 ;;;  <Token> ::= <Symbol> | ...???
 ;;;  <Exp>  ::= ???
 
+;;========================================
+;; EXAMPLE:
+
+;; This program just returns 3.  It has a generic binding defining a
+;; single constant, it has no startup tokens (startups must be
+;; *tokens* not other bindings.)  It has no socpgm-exclusive bindings,
+;; and the socprogram merely returns the single value, then finishes.
+'(program
+  (bindings (result '3))
+  (socpgm (bindings ) (soc-return result) (finished))
+  (nodepgm (tokens ) (startup )))
+
+;===============================================================================
+;; Some CHANGES (not keeping a complete log):
+
+;;[2004.06.09] RRN: Adding a 'soc-return' form.  Anything
+
+;;[2004.06.09] RRN: Adding implicit 'I-am-SOC' boolean variable for
+;; use by node programs.. This is only for generated code, or my
+;; handwritten test cases.
+
+;===============================================================================
 
 
 
@@ -256,7 +267,7 @@
 			      (bindings ,@constbinds)
 			      ,(if (assq entry constbinds)
 				   ;; Socpgm bindings are null for now:
-				   `(socpgm (bindings ) ,entry)
+				   `(socpgm (bindings ) (return ,entry))
 				   `(socpgm (bindings ) (call ,entry)))
 			      (nodepgm (tokens ,@tokenbinds)
 				       ,(if (assq entry constbinds)

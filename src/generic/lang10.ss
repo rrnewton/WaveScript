@@ -4,8 +4,8 @@
 ;; DEPENDS: on simulator_nought.ss and maybe simulator_nought_grpahics.ss
 
 (define (deglobalize-lang prog)
-  (run-simulation
-   (build-simulation
+;  (run-simulation
+;   (build-simulation
     (compile-simulate-nought prog))
-   2.0))
+;   2.0))
 
