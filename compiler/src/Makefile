@@ -2,9 +2,7 @@
 #*---------------------------------------------------------------------*/
 #*    flags                                                            */
 #*---------------------------------------------------------------------*/
-MZC = mzc
 MZSCHEME = mzscheme
-MRED = mred
 #CHEZ = chez
 #CHEZ = petite
 CHEZ = fullpetite
@@ -21,9 +19,9 @@ DEST = a.out
 GENERIC_SCM_SRC = generic/helpers.ss generic/pass01.ss
 MAIN_FILE = compiler.ss
 
-PLT_FILES = plt/helpers plt/pass01 plt/demo_display
-PLT_OBJ		= $(PLT_FILES:%=%.so)
-PLT_SRC		= $(PLT_OBJ:%.so=%.ss)
+#PLT_FILES = plt/helpers plt/pass01 plt/demo_display
+#PLT_OBJ		= $(PLT_FILES:%=%.so)
+#PLT_SRC		= $(PLT_OBJ:%.so=%.ss)
 PLT_MAIN_FILE = compiler_plt.ss
 
 CHEZ_FILES = generic/helpers chez/pass01 plt/demo_display
@@ -46,10 +44,13 @@ SRC		= $(SCM_SRC)
 petite: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
 	$(CHEZ) $(CHEZ_MAIN_FILE)
 
+mzscheme:
+	(cd plt; $(MAKE))
+	$(MZSCHEME) -f $(PLT_MAIN_FILE)
 
-$(DEST): $(GENERIC_SCM_SRC) $(PLT_SRC) # $(SCM_OBJ)
-	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
 
+#$(DEST): $(GENERIC_SCM_SRC) $(PLT_SRC) # $(SCM_OBJ)
+#	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
 
 mzc:
 	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
@@ -74,14 +75,12 @@ swl:
 .PHONY: clean
 
 clean:
-	@ find . \( -name '*[~%]' \
-                       -o -name '.??*[~%]' \
-                       -o -name '#*#' \
-                       -o -name '?*#' \
-                       -o -name \*core \) \
-                     -type f -exec $(RM) {} \;   
-	@- $(RM) -f $(OBJ);
-	@- $(RM) -f $(DEST) 
+	(cd plt; $(MAKE) clean)
+#	find . \( -name '*[~%]' \
+#                       -o -name '.??*[~%]' \
+#                       -o -name '#*#' \
+#                       -o -name '?*#' \
+#                     -type f -exec $(RM) {} \;   
 
 #*---------------------------------------------------------------------*/
 #*    Suffixes                                                         */
