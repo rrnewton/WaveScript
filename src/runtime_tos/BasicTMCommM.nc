@@ -1,6 +1,6 @@
 includes TokenMachineRuntime;
 
-#define TOKCACHE_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
+#define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
 
 module BasicTMCommM {
   provides {
@@ -29,20 +29,23 @@ module BasicTMCommM {
   }
 } implementation {
 
+  TOS_Msg cached_token;
+
   TOS_Msg temp_msg;
   TOS_Msg temp_msg_ptr;
 
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
-  TOS_Msg token_cache[TOKCACHE_LENGTH];
-  // cache_start is the position of the first element in the fifo.
-  int16_t cache_start;
-  // cache_end is the position of the last element, or -1 if there are
+  TOS_Msg token_in_buffer[TOKBUFFER_LENGTH];
+
+  // in_buffer_start is the position of the first element in the fifo.
+  int16_t in_buffer_start;
+  // in_buffer_end is the position of the last element, or -1 if there are
   // no elements in the fifo.
-  int16_t cache_end;
+  int16_t in_buffer_end;
 
   task void tokenhandler () {
-    atomic { // Access cache_end/cache_start
-      if ( cache_end == -1 ) {
+    atomic { // Access in_buffer_end/in_buffer_start
+      if ( in_buffer_end == -1 ) {
 	dbg(DBG_USR1, "TM BasicTMComm: tokenhandler: NO messages available.\n"); 	
       } else {
 	temp_msg = call pop_msg();
@@ -52,23 +55,23 @@ module BasicTMCommM {
     }
   }
 
-  // Add a message to the token_cache if there's room available.
+  // Add a message to the token_in_buffer if there's room available.
   async command result_t add_msg(TOS_MsgPtr token) {    
     result_t res;
     atomic {    
-//      if ( (cache_start == 0 && cache_end == (TOKCACHE_LENGTH - 1)) || 	 
-//	   (cache_start != 0 && cache_end == (cache_start - 1)) ) {
-      if ( call num_tokens() == TOKCACHE_LENGTH ) {
-	dbg(DBG_USR1, "TM BasicTMComm: cache full; cannot add token %d->%d\n", cache_start, cache_end);
+//      if ( (in_buffer_start == 0 && in_buffer_end == (TOKBUFFER_LENGTH - 1)) || 	 
+//	   (in_buffer_start != 0 && in_buffer_end == (in_buffer_start - 1)) ) {
+      if ( call num_tokens() == TOKBUFFER_LENGTH ) {
+	dbg(DBG_USR1, "TM BasicTMComm: cache full; cannot add token %d->%d\n", in_buffer_start, in_buffer_end);
 	res = FAIL;
       } else {
-	if ( cache_end == -1 ) { cache_end = cache_start; }
-	else { cache_end++; }
+	if ( in_buffer_end == -1 ) { in_buffer_end = in_buffer_start; }
+	else { in_buffer_end++; }
 	//	dbg(DBG_USR1, "TM BasicTMComm: Adding token payload at %d, origin:%d \n", 
-	//	    cache_end, payload.origin);	
+	//	    in_buffer_end, payload.origin);	
 	
-	//memcpy(token_cache + cache_end, &payload, sizeof(TOS_Msg));	
-	token_cache[cache_end] = *token;
+	//memcpy(token_in_buffer + in_buffer_end, &payload, sizeof(TOS_Msg));	
+	token_in_buffer[in_buffer_end] = *token;
 	res = SUCCESS; 
       }
     }
@@ -79,19 +82,19 @@ module BasicTMCommM {
   async command TOS_Msg pop_msg() {
     TOS_Msg ret_msg;
     atomic { 
-      if ( cache_end == -1 ) {
+      if ( in_buffer_end == -1 ) {
 	// raise error!
       } else {      
-	//memcpy((&ret_msg),token_cache + cache_start, sizeof(TOS_Msg));
-	ret_msg = token_cache[cache_start];
+	//memcpy((&ret_msg),token_in_buffer + in_buffer_start, sizeof(TOS_Msg));
+	ret_msg = token_in_buffer[in_buffer_start];
 
 	// If we're popping the last one, then it's empty after this:
-	if (cache_start == cache_end) { 
-	  cache_end = -1; 
-	  cache_start = 0;
+	if (in_buffer_start == in_buffer_end) { 
+	  in_buffer_end = -1; 
+	  in_buffer_start = 0;
 	} else {
-	  cache_start++;
-	  if (cache_start == TOKCACHE_LENGTH) { cache_start = 0; }
+	  in_buffer_start++;
+	  if (in_buffer_start == TOKBUFFER_LENGTH) { in_buffer_start = 0; }
 	}
       }
     }
@@ -107,10 +110,10 @@ module BasicTMCommM {
       if ( indx >= (call num_tokens()) ) {
 	// raise error!
       } else {
-	indx += cache_start;
-	if ( indx >= TOKCACHE_LENGTH ) { indx -= TOKCACHE_LENGTH; }	
-	//memcpy((&ret_msg),token_cache + indx, sizeof(TOS_Msg));
-	ret_msg = token_cache[indx];
+	indx += in_buffer_start;
+	if ( indx >= TOKBUFFER_LENGTH ) { indx -= TOKBUFFER_LENGTH; }	
+	//memcpy((&ret_msg),token_in_buffer + indx, sizeof(TOS_Msg));
+	ret_msg = token_in_buffer[indx];
       }
     }
     return ret_msg;
@@ -121,13 +124,13 @@ module BasicTMCommM {
   // start/end indices.
   async command int16_t num_tokens(){ 
     int16_t res;
-    atomic { // Access cache_end/cache_start
-      if (cache_end == -1) { 
+    atomic { // Access in_buffer_end/in_buffer_start
+      if (in_buffer_end == -1) { 
 	res = 0;
-      } else if (cache_end >= cache_start) {
-	res = (1 + cache_end - cache_start);
+      } else if (in_buffer_end >= in_buffer_start) {
+	res = (1 + in_buffer_end - in_buffer_start);
       } else {
-	res = (TOKCACHE_LENGTH + 1 + cache_end - cache_start); // TEST THIS
+	res = (TOKBUFFER_LENGTH + 1 + in_buffer_end - in_buffer_start); // TEST THIS
       }
     }
     return res;
@@ -137,20 +140,20 @@ module BasicTMCommM {
   command void print_cache() {
     int16_t i,j;
 
-    atomic { // The token_cache had better stay still while we print it out.
+    atomic { // The token_in_buffer had better stay still while we print it out.
 
       dbg(DBG_USR1, "TM BasicTMComm: CONTENTS OF CACHE, #tokens=%d start-end:%d/%d\n", 
-	  call num_tokens(), cache_start, cache_end);
-	  //	  99, cache_start, cache_end);
+	  call num_tokens(), in_buffer_start, in_buffer_end);
+	  //	  99, in_buffer_start, in_buffer_end);
       
       for (i=0; i < call num_tokens(); i++) {
-	j = i + cache_start;
-	if (j >= TOKCACHE_LENGTH) { j -= TOKCACHE_LENGTH; }
+	j = i + in_buffer_start;
+	if (j >= TOKBUFFER_LENGTH) { j -= TOKBUFFER_LENGTH; }
 	
 	/*	dbg(DBG_USR1, "TM BasicTMComm:   %d/%d: par:%d orig:%d  time:%d count:%d \n", 
 	    i, j, 
-	    token_cache[j].origin,    token_cache[j].parent, 
-	    token_cache[j].timestamp, token_cache[j].counter);
+	    token_in_buffer[j].origin,    token_in_buffer[j].parent, 
+	    token_in_buffer[j].timestamp, token_in_buffer[j].counter);
 	*/
       }
     }
@@ -158,8 +161,8 @@ module BasicTMCommM {
 
   command result_t StdControl.init() {
     atomic {
-      cache_start = 0;
-      cache_end = -1;
+      in_buffer_start = 0;
+      in_buffer_end = -1;
     }
    
     /*    temp_msg.origin = 91;
@@ -167,7 +170,7 @@ module BasicTMCommM {
     temp_msg.timestamp = 93;
     temp_msg.counter = 94;*/
 
-    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize: %d\n", TOKCACHE_LENGTH);
+    dbg(DBG_USR1, "TM BasicTMCommM: Initializing, buffersize: %d\n", TOKBUFFER_LENGTH );
 
     return call Random.init();
   }
@@ -192,6 +195,17 @@ module BasicTMCommM {
   }
 
   command result_t TMComm.return_home[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+    return SUCCESS;
+  }
+
+  command TOS_MsgPtr TMComm.get_cached[uint8_t id]() {
+    return &cached_token;
+  }
+
+  // I don't think I really want this in the interface:
+  command result_t TMComm.set_cached[uint8_t id](TOS_MsgPtr newtok) {
+    // This copies the data over.
+    cached_token = *newtok;
     return SUCCESS;
   }
 

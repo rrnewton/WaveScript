@@ -16,14 +16,18 @@ import Flatten
 import Utils
 
 
+import Char
+--import Control.Exception
+import Control.Monad.State
+import Data.List
+import Debug.Trace
+import GHC.IOBase
+import IO
 import System
 import System.IO.Unsafe
 import System.Posix.Files
-import Char
---import Control.Exception
-import GHC.IOBase
-import IO
-import Data.List
+
+
 
 modname = "TestMachine"
 
@@ -48,8 +52,11 @@ type FunctionCode = String
 type ExpressionCode = String
 type StatementCode = String
 
+-- Returns the text corresponding to an expression evaluating same
+-- value as the given Basic expression.
 process_basic :: Basic -> String
 process_basic (Bvar (Id str)) = str
+process_basic (Bconst c)      = show c
 
 -- This returns both:
 --   *) bunch of strings (functions) to be seperately
@@ -65,18 +72,28 @@ process_stmt indent tokargs e =
     Svoid -> []
     Sassign (Id s) basic -> 
 	[indent ++ s ++ " = " ++ process_basic basic ++ ";\n"]
-    Sprimapp mbid prim [a, b]  -> 
- 	let e1 = process_basic a
-	    e2 = process_basic b
-	    text = (case prim of
-		    Pplus  -> e1++" + "++e2
-		    Pminus -> e1++" - "++e2
-		    Pmult  -> e1++" * "++e2
-		    Pdiv   -> e1++" / "++e2
- 		   )
-	in case mbid of 
-	   Just (Id id) -> [indent ++ id ++ " = " ++ text ++ ";\n"]
-	   Nothing      -> [indent ++ text ++ ";\n"]
+    Sprimapp mbid prim args  -> 
+ 	let f text = case mbid of 
+		     Just (Id id) -> [indent ++ id ++ " = " ++ text ++ ";\n"]
+		     Nothing      -> [indent ++ text ++ ";\n"]
+	    e1 = process_basic $ args!!0
+	    e2 = process_basic $ args!!1
+	    e3 = process_basic $ args!!2 -- Lazy evaluation to the rescue!
+	    err = [indent ++ "// "++ show prim ++" not available!\n"]
+	in case prim of
+	   Pplus    -> f $ e1++" + "++e2
+	   Pminus   -> f $ e1++" - "++e2
+	   Pmult    -> f $ e1++" * "++e2
+	   Pdiv     -> f $ e1++" / "++e2
+	   Pless    -> f $ e1++" < "++e2
+	   Pgreater -> f $ e1++" > "++e2
+	   Pleq     -> f $ e1++" <= "++e2
+	   Pgeq     -> f $ e1++" >= "++e2
+	   Plightup -> err
+	   Ploc     -> err
+	   Plocdiff -> err
+	   _ -> err
+--	   _ -> error ("assembler: process_stmt: primitive not handled currently: " ++ show prim)
 
     Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
@@ -88,15 +105,22 @@ process_stmt indent tokargs e =
 --    Slambda formals e -> ([build_fun formals e],[],"VOIDNOR")
 
     
-    Ssense (Just (Id id)) -> [ indent ++ id ++ " = (call ADC.getData());\n" ]
+    Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
     Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
 
     Sgradreturn e to via seed aggr -> 
-	[ indent ++ "(call TMComm_"++ tokname via ++".returnhome("++ 
+	let seed' = case seed of 
+		    Nothing -> "0"
+		    Just s  -> process_basic s 
+	    aggr' = case aggr of 
+		    Nothing -> "0"
+		    Just a  -> tok_id a
+        in
+	[ indent ++ "call TMComm_"++ tokname via ++".returnhome("++ 
 	  tok_id to ++", "++ 
-	  process_basic e ++", "++ 
-	  process_basic seed ++", "++
-	  tok_id aggr ++");\n"]
+	  process_basic e ++", "++ 	  
+	  seed' ++", "++
+	  aggr' ++");\n"]
 
     Srelay (Just t) -> [indent ++"/* FAILED relay just*/\n"]
     Srelay Nothing -> [indent ++"/* FAILED relay nothing*/\n"]
@@ -109,7 +133,11 @@ process_stmt indent tokargs e =
 	   Nothing -> "") ++
 	  -- FIXME FILL IN ARG DATA HERE...
 	  indent ++"/* Should fill in arg data here... */\n",
-	  indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" ]
+	  -- Not going through the FIFO right now...
+	  --indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
+	  indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
+	  indent ++"call token_"++ tokname t ++"(&the_packet);\n"
+	]
 
     Semit (Just time) t exps -> 
 	error "assembler: process_expr.  Can't handle optional time argument to emit."
@@ -141,8 +169,8 @@ process_stmt indent tokargs e =
     _ -> error ("process_expr: unhandled expression!: "++show e)
 -}
 
-    Ssocreturn b -> [ indent ++ "call TMComm.socreturn("++ process_basic b ++");\n" ]
-    Ssocfinished -> [ indent ++ "call TMComm.socfinished();\n"]
+--    Ssocreturn b -> []--[ indent ++ "call TMComm.socreturn("++ process_basic b ++");\n" ]
+--    Ssocfinished -> []--[ indent ++ "call TMComm.socfinished();\n"]
 
     Sreturn b -> [ indent ++"return "++ process_basic b ++";\n" ]
     _ -> error ("process_stmt can't handle: " ++ show e)
@@ -180,16 +208,18 @@ process_handler :: TMS.TokHandler -> ([FunctionCode],StatementCode)
 process_handler (t, args, blk) = 
     let (funs,stmts) = process_block "        " (map (\ (Id x)->x) args) blk 
 	funname = tokname t
-    in (("  command TOS_MsgPtr TMModule.token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++
+    in (("  command uint16_t token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++ 
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
-	  args [0..])) ++
-
-	(concat stmts)
+	  args [0..])) ++ 
+	 "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
+	 "    int16_t* args = (int16_t*)(payload->args);\n"++
+	(concat stmts)++ 
+	 "    return 0; // This is a kind of lame default return value.\n"++
+	 "  }\n")
 	: funs,
-
 	"      case "++tok_id t++": \n"++
-	"        call "++ funname ++"(args, payload);\n"++
+	"        call token_"++ funname ++"(msg);\n"++
 	"        break;\n")
 
 --  "    int i;\n"++
@@ -208,15 +238,13 @@ process_handlers hnds =
     in
     (concat (map (++"\n") funs))++
     "\n  // This is the main token-processing function:\n"++
+    "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
     "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
-    "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
-    "    int16_t* args = (int16_t*)(payload->args);\n"++
     "    switch (msg->type) {\n"++			      
     (foldl (++) "" bods) ++
     "    }\n"++
     "    return msg;\n" ++ 
     "  }\n\n"
-
 
 
 process_startup :: [Token] -> String
@@ -230,6 +258,11 @@ build_module_header toks =
        "  provides interface TMModule; \n" ++
        "  provides command void start_socpgm();\n"++
 --       "  uses interface Timer;\n" ++ 
+       concat
+         (map (\ name ->
+	       "  provides command uint16_t token_"++ name ++"(TOS_MsgPtr msg);\n")
+	  toknames)++
+       "\n"++
        concat
          (map (\ name -> 
 	       "  uses interface TMComm as TMComm_"++ name ++"; \n"
@@ -356,14 +389,22 @@ main = do args <- System.getArgs
 		  else (return (a :: TMPgm))-}
 	  prog <- catch (do str <- readFile filename
 			    putStr ("Read tokmac from file: "++filename++"\n")
-			    return (read str :: TMS.Pgm))
+			    return (read str :: TMPgm))
 		  (\e -> if IO.isDoesNotExistError e 
      		         then (do putStr "File not found.  Compiling default tokmac.\n"
-			          return (a :: TMS.Pgm))
+			          return (b :: TMPgm))
 		         else ioError e)
 
+	  putStr "Expanding token machine... \n" 
+	  let prog2 = expand_tm prog
+	  putStr "Flattening token machine... \n" 
+	  -- This uses the state monad to keep track of 
+	  --let prog3 = flatten_tm prog2
+	  let (prog3,idcounter) = 
+		  runState (flatten_tm prog2) (TM.pgm_largest_id_number prog2)
+
 	  putStr "Running token machine assembler in Haskell... \n" 
-	  let (mod,conf,header) = assemble prog
+	  let (mod,conf,header) = assemble prog3
 
           let (modfile,conffile,headerfile) = 
 		  (modname++"M.nc", modname++".nc", modname++".h")

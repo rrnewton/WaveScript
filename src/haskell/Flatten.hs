@@ -9,7 +9,19 @@ import TM
 import TM_simple as TMS 
 
 import Data.Set
+import Debug.Trace
 import Control.Monad.State
+import Control.Exception
+
+
+test = f 4
+    where f 3 = g
+	  f 4 = 99
+	  g = 9
+ 
+-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
 
 flatten_tm :: TMPgm -> State Int TMS.Pgm
 flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =     
@@ -18,7 +30,7 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
 			                return (append_blocks blk newblk))
 		         (Block [] []) socpgm				       
        nodetoks2 <- foldM (\ acc th -> do newtokh <- pth th
-			                  return [newtokh] )--(newtokh : acc))
+			                  return (newtokh : acc))
 		          [] nodetoks
        let convertc = map (\ (id, Econst n) -> (id, Bconst n))
 		      
@@ -27,10 +39,16 @@ flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =
 
 -- Process TokenHandler
 pth :: TM.TokHandler -> State Int TMS.TokHandler
-pth (t,ids,e) = do (blk, Just r) <- pe e			      
-		   return (t,ids,
+pth (t,ids,e) = do (blk, r) <- pe e			      
+		   return (t,ids, 
 			   append_blocks blk 
-			   (Block [] [Sreturn r]))
+			   (Block []        
+			    (case r of 
+			     Nothing -> 
+			       trace ("Flatten.hs: process token handler: didn't get return value for: "
+				      ++ show e)
+			       [Sreturn (Bconst 0)]
+			     Just r -> [Sreturn r])))
 
 -- Process Expression - Returns a block and a basic expression for the return value.
 pe :: Expr -> State Int (Block, Maybe Basic)
@@ -38,6 +56,13 @@ pe e = do (b,rv) <- loop e
           return (preen_block b, rv)
 	  -- ^^ This is silly in retrospect I should have counted up the free-vars at the end.
     where 
+    -- This is a tricky helper function that abstracts out the shared rhs for call/emit/activate
+    call_helper args stmtfun =
+	do args' <- mapM loop (args::[Expr])
+	   let rets = map (\ (_, Just r) -> r) args'
+	   return (concat_blocks (Block [] [stmtfun rets]
+				  : map fst args'),
+		   Nothing)
     loop :: Expr -> State Int (Block, Maybe Basic)
     loop e = 
 	case e of 
@@ -85,27 +110,30 @@ pe e = do (b,rv) <- loop e
 		      return (Block [newvar] [Ssense (Just newvar)],
 			      Just $ Bvar newvar)
 
-       -- Sloopcial forms:
+       -- Special forms: socreturn and socfinished expand out to Sreturn's here:
        (Esocreturn e) -> do (blk, Just ret) <- loop e
-			    return (append_blocks blk (Block [] [Ssocreturn ret]),
+			    return (append_blocks blk 
+				    (Block [] 
+				     [Sgradreturn ret socret_target global_tree Nothing Nothing]),
 				    Nothing)
-       (Esocfinished) -> return (Block [] [Ssocfinished], Nothing)
-       (Ereturn val to via seed aggr) ->
+       (Esocfinished) -> return (Block []
+				 [Sgradreturn (Bconst 0) socfinished_target global_tree Nothing Nothing], 
+				 Nothing)
+
+       (Ereturn val to via (Just seed) (Just aggr)) ->
 	   do (blk1,Just rval)  <- loop val
-	      (blk2,Just rseed) <- loop seed
+	      (blk2,Just rseed) <- loop seed -- do s <- seed; return (loop s)
 	      -- Maybe this should return the local vars used, but it doesn't matter:
 	      return (concat_blocks [blk1, blk2,
-				     Block [] [Sgradreturn rval to via rseed aggr]],				     
+				     Block [] [Sgradreturn rval to via (Just rseed) (Just aggr)]],
 		      Nothing)
 
        (Erelay mbtok) -> return (Block [] [Srelay mbtok], Nothing)
 
-       (Eemit mbtime tok args) -> 
-	   do args' <- mapM loop (args::[Expr])
-	      let rets = map (\ (_, Just r) -> r) args'
-	      return (concat_blocks (Block [] [Semit mbtime tok rets]
-				     : map fst args'),
-		      Nothing)
+       (Ecall mbtime tok args) -> call_helper args (Scall Nothing mbtime tok)
+       (Eemit mbtime tok args) -> call_helper args (Semit         mbtime tok)
+       (Eactivate    tok args) -> call_helper args (Sactivate            tok)
+
 {-
        (Ecall mbtime tok args) ->
 	   do args' <- mapM loop args
@@ -120,7 +148,7 @@ pe e = do (b,rv) <- loop e
 -}
        (Eflood tok)       -> error "Flatten.hs cannot handle flood expressions!"
        (Eelectleader tok) -> error "Flatten.hs cannot handle election expressions!"
-
+--       _ -> error ("Flatten.hs: unmatched expression: " ++ show e)
 
 -- This really doesn't do much right now.  Theoretically it could do
 -- elaborate primitive-specific things:

@@ -7,6 +7,7 @@
 
 module TM where
 
+import Utils
 
 -- For now our only constants are 16 bit integers.
 
@@ -36,7 +37,7 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 data Prim = Pplus | Pminus | Pmult | Pdiv
 	  | Pless | Pgreater | Pleq | Pgeq
 	  | Plocdiff | Ploc
-	  | Pflood | Pelectleader
+--	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
 	  --Pamap | Pafold
   deriving (Eq, Show, Read)
@@ -60,8 +61,8 @@ data Expr = -- Stndard forms:
 	  | Ereturn {val :: Expr,
 		     to  :: Token,
 		     via :: Token,
-		     seed :: Expr,
-		     aggr :: Token}
+		     seed :: Maybe Expr,
+		     aggr :: Maybe Token}
 	  | Erelay (Maybe Token)
 	  | Eemit (Maybe Time) Token [Expr]
 	  | Ecall (Maybe Time) Token [Expr]
@@ -78,7 +79,57 @@ data BINOP = TMPplus | TMPmult
 --data TRIOP = 
 
 
+
+-- Some CONSTANTS:
+
+-- This flagrantly assumes that "socret_target" is an unused name.
+socret_target = Token "socret_target"
+-- Same flagrancy:
+socfinished_target = Token "socfinished_target"
+
+-- This had better match what the frontend spits out:
+global_tree = Token "globaltree"
+
+
 --------------------------------------------------------------------------------
+
+pgm_largest_id_number :: TMPgm -> Int
+pgm_largest_id_number p = largest_number $ collect_ids p
+
+collect_ids :: TMPgm -> [String]
+collect_ids (Pgm consts socconsts socpgm nodetoks startup) = 
+    (map (\ (Id id, _) -> id) consts) ++
+    (map (\ (Id id, _) -> id) socconsts) ++
+    (concat $ map expr_collect_ids socpgm) ++
+    (concat $ map (\ (Token t,args,e) -> 
+		   t : map (\ (Id id) -> id) args 
+		   ++ expr_collect_ids e)
+              nodetoks)
+
+expr_collect_ids :: Expr -> [String]
+expr_collect_ids = f 
+    where 
+    f x = case x of 
+       (Econst c) -> [];
+       (Evar (Id s))  -> [s]
+       (Elambda ids e) -> map (\ (Id s) -> s) ids ++ f e
+       (Elet binds e)  -> (concat $ map (\ ((Id s),rhs) -> s : f rhs) binds) ++ f e
+       (Eseq exprs) -> concat $ map f exprs
+       (Eif a b c) -> f a ++ f b ++ f c
+       (Eprimapp prim args) -> concat $ map f args
+       (Esense) -> []
+       (Esocreturn e) -> f e
+       (Esocfinished) -> []
+       (Ereturn val _ _ (Just seed) _) -> f val ++ f seed
+       (Ereturn val _ _  Nothing    _) -> f val 
+       (Erelay mbtok) -> []
+       (Eemit mbtime (Token s) args) -> s : (concat $ map f args)
+       (Ecall mbtime (Token s) args) -> s : (concat $ map f args)
+       (Eactivate    (Token s) args) -> s : (concat $ map f args)
+       (Eelectleader (Token s)) -> [s]
+       (Eflood (Token s))       -> [s]
+
+
 --------------------------------------------------------------------------------
 
 x = Pgm { consts    = [],
@@ -177,13 +228,14 @@ b = (Pgm {
   socconsts=[],
   socpgm=[(Ecall Nothing (Token "spread-global") [])],
   nodetoks=[((Token "f_token_result_1"), [], 
-	     (Eseq [(Eprimapp Pflood [(Evar (Id "constok_4"))]), 
+	     (Eseq [(Eflood (Token "constok_4")), 
 		    (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])]),
 		    (Econst 25966)])),
 	    ((Token "constok_4"), [], 
 	     (Eif (Eprimapp Pless [(Eprimapp Plocdiff [(Eprimapp Ploc []), (Econst 30)]), 
 				   (Econst 10)]) 
-	      (Eprimapp Pelectleader [(Evar (Id "m_token_result_1"))]) (Econst 0))),
+	      (Eelectleader (Token "m_token_result_1")) 
+	      (Econst 0))),
 	    ((Token "m_token_result_1"), [], 
 	     (Eseq [(Esocreturn (Econst 49)),
 		    (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]),

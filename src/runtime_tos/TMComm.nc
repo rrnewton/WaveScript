@@ -30,7 +30,11 @@ interface TMComm {
     command result_t return_home(uint16_t address, uint8_t length, TOS_MsgPtr msg);
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
-    
     //    async command result_t add_msg(TOS_MsgPtr token);     
+
+    // This returns the cached version of that token:
+    command TOS_MsgPtr get_cached();
+    // This sets the cache for that token:
+    command result_t set_cached(TOS_MsgPtr newtok);
 }
 

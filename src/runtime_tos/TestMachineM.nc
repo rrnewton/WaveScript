@@ -21,6 +21,10 @@ module TestMachineM
 }
 implementation 
 {
+  //  int8_t foobar;  
+  //  int8_t num_tokens = 8;
+  //  TOS_Msg token_cache[10];
+
   int numsent = 0;
   TOS_Msg test_packet;
   TOS_Msg test_packet2;
