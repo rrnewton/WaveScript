@@ -155,17 +155,27 @@
      (build-simulation (compile-simulate-nought ',example-nodal-prog2))
      5.0)
     unspecified]
+
+  [ "Run Spread lights gradually with display distance..."
+    (begin (init-world)
+	   (simulate
+	    (build-simulation (compile-simulate-nought ',example-nodal-prog3))
+	    1.7))
+    unspecified]
   
 ;    ,@(include "simulator_nought.tests")
   ))
 
 (set! these-tests
-  `([ "Run Spread lights gradually with display distance..."
-      (begin (init-world)
-	     (simulate
-	      (build-simulation (compile-simulate-nought ',example-nodal-prog3))
-	      5.0))
-      unspecified]))
+  `([ "Simple test"
+    (begin (init-world)
+	   (simulate
+	    (build-simulation 
+	     (compile-simulate-nought 
+	      ',example))
+	    1.7))
+    unspecified])
+  )
 
 (define (wrap-def-simulate test)
   `(begin (define (simulate . args)

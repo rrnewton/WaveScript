@@ -34,8 +34,8 @@
 ;; These are the virtual coordinate bounds of the world.
 (define world-xbound 60)
 (define world-ybound 60)
-(define radius 30) ;; And the comm radius.
-(define numprocs 20) ;; And the total # processors.
+(define radius 10) ;; And the comm radius.
+(define numprocs 200) ;; And the total # processors.
 
 ;; This counts total messages sent.
 ;;(define total-messages 0)
@@ -128,68 +128,69 @@
 	    (loop (append formals env) expr)]
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
-(define (process-statement stmt)
-  (process-expr stmt))
+(define process-statement 
+  (let ([process-expr 
+	 (lambda (expr)
+	   (match expr
+		  ;; This is a little wider than the allowable grammar to allow
+		  ;; me to do test cases:
+		  [,x (guard (or (symbol? x) (constant? x))) x]
+		  [(quote ,x) `(quote ,x)]
+		  [(call ,rator ,rand* ...)	  
+					;(error 'process-statement "call not supported from SOC")] 
+		   `(handler #f #f ',rator ',rand*)]
+		  [(flood ,tok) `(flood (quote ,tok))]
+		  [(emit ,opera ...) 
+		   ;; This is an original emission, and should get a count of 0.
+		   `(sim-emit (quote ,(car opera)) ,(cdr opera) 0)]
 
-(define (process-expr expr)
-  (match expr
-	 ;; This is a little wider than the allowable grammar to allow
-	 ;; me to do test cases:
-	 [,x (guard (or (symbol? x) (constant? x))) x]
-	 [(quote ,x) `(quote ,x)]
-	 [(call ,rator ,rand* ...)	  
-	  ;(error 'process-statement "call not supported from SOC")] 
-	  `(handler #f #f ',rator ',rand*)]
-	 [(flood ,tok) `(flood (quote ,tok))]
-	 [(emit ,opera ...) 
-	  ;; This is an original emission, and should get a count of 0.
-	  `(sim-emit (quote ,(car opera)) ,(cdr opera) 0)]
-
-	 [(dist) `(begin 
-		    ,(DEBUGMODE '(if (not this-message)
-				     (error 'simulator_nought.process-statement 
-					    "broken")))
-		    (if (cache-entry-count this-message)
-		      (cache-entry-count this-message)
-		      (error 'simulator_nought.process-statement:dist
-			     "inside simulator, (dist) is broken!")))]
-	 [(dist ,tok) `(let ((entry (hashtab-get token-cache ',tok)))
-			(if (and entry (cache-entry-count entry))
+		  [(dist) `(begin 
+			     ,(DEBUGMODE '(if (not this-message)
+					      (error 'simulator_nought.process-statement 
+						     "broken")))
+			     (if (cache-entry-count this-message)
+				 (cache-entry-count this-message)
+				 (error 'simulator_nought.process-statement:dist
+					"inside simulator, (dist) is broken!")))]
+		  [(dist ,tok) `(let ((entry (hashtab-get token-cache ',tok)))
+				  (if (and entry (cache-entry-count entry))
 			    (cache-entry-count this-message)
 			    (error 'simulator_nought.process-statement:dist
 				   "inside simulator (dist ~s) but ~s has not been received!")))]
 	 	  
-	 [(relay)
-	  `(begin 
-	     ,(DEBUGMODE '(if (not this-message) 
-			      (error 'inside-node-prog "this-message was #f")))
-	     (if (not (cache-entry-parent this-message))
-		 (error 'simulator_nought.relay 
-			"inside simulator, can't relay a message that was~a"
-			" sent by a local 'call' rather than an 'emit'"))
-	     ;; This is a replicated emission, and should copy the existing count:
-	     (sim-emit (cache-entry-token this-message) (cache-entry-args this-message) 
-		       (cache-entry-count this-message)))]
-	 
-	 [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
-
-	 [(light-up ,r ,g ,b)
-	  `(begin
-;	     (disp "trying to light")
-	     (if (simobject-gobj this)
-	       (begin 
-;		 (disp "SETTING LIGHT" ,r ,g ,b)
-		 (change-color! (simobject-gobj this) 
-				(rgb ,r ,g ,b)))))]
-	 
-	 ;; We're letting them get away with other primitives because
-	 ;; we're being lenient, as mentioned above.
-	 [(,[rator] ,[rand*] ...)
-	  `(,rator ,rand* ...)]	  
-	 
-	 [,else (error 'simulator_nought.process-expr 
-		       "don't know what to do with this: ~s" expr)])
-  )
+		  [(relay)
+		   `(begin 
+		      ,(DEBUGMODE '(if (not this-message) 
+				       (error 'inside-node-prog "this-message was #f")))
+		      (if (not (cache-entry-parent this-message))
+			  (error 'simulator_nought.relay 
+				 "inside simulator, can't relay a message that was~a"
+				 " sent by a local 'call' rather than an 'emit'"))
+		      ;; This is a replicated emission, and should copy the existing count:
+		      (sim-emit (cache-entry-token this-message) (cache-entry-args this-message) 
+				(cache-entry-count this-message)))]
+		  
+		  [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
+		  
+		  [(light-up ,r ,g ,b)
+		   `(begin
+					;	     (disp "trying to light")
+		      (if (simobject-gobj this)
+			  (begin 
+					;		 (disp "SETTING LIGHT" ,r ,g ,b)
+			    (change-color! (simobject-gobj this) 
+					   (rgb ,r ,g ,b)))))]
+		  
+		  ;; We're letting them get away with other primitives because
+		  ;; we're being lenient, as mentioned above.
+		  [(,[rator] ,[rand*] ...)
+		   `(,rator ,rand* ...)]	  
+		  
+		  [,else (error 'simulator_nought.process-expr 
+				"don't know what to do with this: ~s" expr)])
+	   )])
+    (lambda (stmt)
+      (process-expr stmt))))
 
 (define (process-binds binds expr)
   (let* ([graph (map (lambda (bind)
@@ -264,14 +265,16 @@
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
 (define (compile-simulate-nought prog)
   (match prog
-    [(program (socpgm (bindings ,socbinds ...) ,socstmts ...)
-	      (nodepgm (bindings ,nodebinds ...) (tokens ,nodetoks ...) ,starttoks))
+    [(program (bindings ,nodebinds ...)
+	      (socpgm (bindings ,socbinds ...) ,socstmts ...)
+	      (nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
      (let* (
 
        [generic-defs
 
-	 '(
+	 '([define local-messages 0]
 	   [define token-cache (make-default-hash-table)]
+
 	   ;; MAKE SURE NOT TO INCLUDE OURSELVES:
 	   [define neighbors (lambda (obj)
 ;			(disp 'neighbors obj)
@@ -291,6 +294,8 @@
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 	   [define sim-emit (lambda (t m count)
+		    ;; Count messages at this node
+		    (set! local-messages (add1 local-messages))
 		    ;; Count total messages sent.
 		    (set! total-messages (add1 total-messages))
 ;		    (newline)(disp "  " (list 'sim-emit t m count))
@@ -307,10 +312,11 @@
 	 `(lambda (this object-graph all-objs)
 ;	    (printf "CALLING SocProg: ~s~n" this)
 	    (let () ,@generic-defs
-	      ,(process-binds socbinds
-			      `(begin ,@(map process-statement 
-					     socstmts)
-				      'soc_finished))))]
+		 ,(process-binds nodebinds
+		   (process-binds socbinds
+		     `(begin ,@(map process-statement 
+				    socstmts)
+			     'soc_finished)))))]
 
        [nodeprog
 	`(lambda (this object-graph all-objs)	   

@@ -13,26 +13,28 @@
 ;                       example-nodal-prog99 example-nodal-output0
                        )
            "basic_graphics.ss"
-           (all-except "graphics_stub.ss" these-tests test-this)
-           )
+;           (all-except "graphics_stub.ss" these-tests test-this)           
+          )
+  #|
+  
 ;  (define (make-default-hash-table) (make-hash-table))   
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
   (define hashtab-set! hash-table-put!)
   
   (define sleep-me sleep)
   
-  (include "../generic/simulator_nought_graphics.ss")
-  
-  (provide (all-defined) 
+;  (include "../generic/simulator_nought_graphics.ss")
+  |#  
+
+  (provide (all-defined)
            (all-from "flat_threads.ss")
            (all-from "helpers.ss")
            (all-from "basic_graphics.ss")
-           (all-from "graphics_stub.ss")
+;           (all-from "graphics_stub.ss")
            (all-from "simulator_nought.ss")
    )
-  
-  )
 
+  )
 
 (require simulator_nought_graphics)
 ;(test-this)

@@ -9,15 +9,15 @@
 ;; See simulator_nought_graphics.
 (define example-nodal-prog1
   '(program
-    (socpgm (bindings) 
+    (bindings )
+    (socpgm (bindings ) 
 	    (emit tok1))
     (nodepgm
 ;       result_2
-       (bindings)
        (tokens
 	[tok1 () (flood tok2)]
 	[tok2 () (light-up 0 255 0)])
-       () ;; seed tokens
+       (startup ) ;; seed tokens
        )))
 ;; [2004.06.03] TODO BUG.  Sometimes it doesn't flood the whole
 ;; network and only a few turn green!
@@ -27,34 +27,38 @@
 ;; messages through the network via relays.
 (define example-nodal-prog2
   '(program
+    (bindings)
     (socpgm (bindings) 
 	    (emit tok1))
     (nodepgm
 ;       result_2
-       (bindings)
        (tokens
 	[tok1 () (call tok2) (relay)]
 	[tok2 () (light-up 0 255 0)])
-       () ;; seed tokens
+       (startup ) ;; seed tokens
        )))
 
 ;; This one spreads lights, and prints the distances as it goes.
 (define example-nodal-prog3
   '(program
-    (socpgm (bindings) 
+    (bindings )
+    (socpgm (bindings ) 
 	    (emit tok1))
-    (nodepgm
-;       result_2
-       (bindings)
-       (tokens
-	[tok1 () 
-	      (call tok2)
-	      (printf " ~s " (dist))
-	      (relay)]
-	[tok2 () (light-up 0 255 0)])
-       () ;; seed tokens
-       )))
+    (nodepgm	
+     (tokens
+      [tok1 () 
+	    (call tok2)
+	    (printf " ~s " (dist))
+	    (relay)]
+      [tok2 () (light-up 0 255 0)])
+     (startup ) ;; seed tokens
+     )))
 
+(define example
+  '(program
+    (bindings ((result_2 '3)))
+    (socpgm (bindings ()) result_2)
+    (nodepgm (tokens ()) (startup (result_2)))))
 
 ;; This program floods the network with a token, then elects a leader
 ;; near a point, finally creating a gradient from there.

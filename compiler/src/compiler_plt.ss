@@ -9,7 +9,12 @@
          (all-except "plt/helpers.ss" id mvlet rec))
          ;	 "plt/language-mechanism.ss"
 
-(require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+;(require "plt/lang10.ss")
+
+#|
+(require  
+         "plt/lang10.ss"
+         (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
          (all-except "plt/pass01_rename-var.ss" these-tests test-this)              
          "plt/pass02_remove-unquoted-constant.ss"         
          "plt/pass03_remove-complex-constant.ss"
@@ -21,11 +26,13 @@
          (all-except "plt/pass08_verify-core.ss" these-tests test-this)
          (all-except "plt/pass10_deglobalize.ss" these-tests test-this))
         ;          "plt/pass09_separate-graph.ss"
-
+|#
+#|
 (require
 ;         (all-except "plt/simulator_nought.ss" these-tests test-this)
-         (all-except "plt/simulator_nought_graphics.ss" these-tests test-this
-                                          wrap-def-simulate))
+;         (all-except "plt/simulator_nought_graphics.ss" these-tests test-this
+;                                          wrap-def-simulate)
+ )
 
 ;(disp "UNION" union (union '(a b c) '(a d c)))
 
@@ -57,7 +64,9 @@
 ;(define tests07 tests07)
 
 ;(disp "BOUT TO LOAD COMPLIRE" )
+;(require "plt/iu-match.ss")
 (load/use-compiled "compiler.ss")
+;(include "compiler.ss")
 
 (disp "BOUT TO LOAD DRIVER" pass-names)
 
@@ -86,5 +95,4 @@
                (avg (smap g (rfold f (cons 0 0) r))))
         avg))))
 
-(define (g) (test-this))
-(define (b) (t '(circle 1 2)))
+|#

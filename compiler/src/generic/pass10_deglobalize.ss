@@ -59,7 +59,6 @@
 
 
 
-
 ;; This is messy, but we use local state to accumulate
 (define dist-names '())
 (define local-names '())
@@ -250,13 +249,20 @@
     (lambda (prog)
       (match prog
         [(,input-language (quote (program ,[process-letrec -> entry constbinds tokenbinds])))
-	 (disp "Got stuff " entry constbinds tokenbinds)
+	 (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
 	 ;; This pass uses the same language as the prior pass, lift-letrec
 	 ;`(,input-language '(program ,body))
-	 `(deglobalize-lang '(program (socpgm (call ,entry)) 
-				      (nodepgm ,entry 
-					       (bindings ,constbinds)
-					       (tokens ,tokenbinds))))
+	 `(deglobalize-lang '(program 
+			      (bindings ,@constbinds)
+			      ,(if (assq entry constbinds)
+				   ;; Socpgm bindings are null for now:
+				   `(socpgm (bindings ) ,entry)
+				   `(socpgm (bindings ) (call ,entry)))
+			      (nodepgm (tokens ,@tokenbinds)
+				       ,(if (assq entry constbinds)
+					    `(startup )
+					    `(startup ,entry))
+				       )))
 	 ]))))
 
 ;;;  <Pgm> ::= (program <SOCPgm> <NodePgm>)
