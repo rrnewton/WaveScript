@@ -7,6 +7,8 @@
 
 module TM where
 
+-- For now our only constants are 16 bit integers.
+
 type Const = Int
 type ConstBind = (Id, Expr)
 --type Formal = Id
