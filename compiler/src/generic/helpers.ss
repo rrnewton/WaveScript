@@ -7,15 +7,15 @@
 
 (define regiment-basic-primitives 
   '(cons car cdr 
-	 + - * /
+	 + - * / < > = 
 	 ))
 
 (define regiment-distributed-primitives 
-  '(rmap, rfold smap time-of
-	  circle circle-at anchor anchor-at anchor-where k-neighborhood time
-	  cluster sparsify border planarize treeize filter union intersect
-	  until when when-any when-percentage
-	  sense neighbors ))
+  '(rmap rfold smap time-of
+	 circle circle-at anchor anchor-at anchor-where k-neighborhood time
+	 cluster sparsify border planarize treeize filter union intersect
+	 until when when-any when-percentage
+	 sense neighbors ))
   
 ;;; 2004.03.31 - I don't know what the system's going to be called so
 ;;; I'm using the placeholder "blanko" which I will replace later. 
