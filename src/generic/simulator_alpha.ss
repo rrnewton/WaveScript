@@ -50,9 +50,10 @@
 			     scheduler ;; and returns simulation actions.
 			     I-am-SOC
 			     ))
-;; The token store is a hash table mapping token names, like (Red 34), to token objects.
+;; The token store is a hash table mapping token names, like (Red . 34), to token objects.
 ;; The token objects themselves are just vectors of stored variables.
-
+;; By convention, the first slot of the token object is a counter for how many times the 
+;; handler has been invoked.
 
 
 ;; This structure represents a message transmitted across a channel.
@@ -370,43 +371,13 @@
 	(error 'process-binds "for now can't take a cyclic graph: ~s" newbinds))
     newbinds))
 	 
-;; This assumes that all the stored vars (and all vars in general)
-;; have unique names at this point.
-(define (find-stored expr)
-  (disp "find-stored" expr)
-       (match expr
-	     [(let-stored ( (,lhs* ,[rhs*]) ...) ,[bodies] ...)
-	      (apply append lhs* (apply append rhs*) bodies)]
- 	     [(quote ,_) '()]
- 	     [,var (guard (symbol? var)
-			  (token-machine-keyword? var))
-		   (error 'simulator_alpha:find-stored
-			  "invalid varref to with keyword name: ~s" var)]
- 	     [,var (guard (symbol? var)) '()]
- 	     [(begin ,[exprs] ...) (apply append exprs)]
- 	     [(if ,[exprs] ...) (apply append exprs)]
- 	     [(set! ,var ,[rhs]) rhs]
- 	     [(let* ( (,_ ,[rhs]) ...) ,[body])	(apply append body rhs)]
-; 	     [(emit ,tok ,[args*] ...)	(cons tok (apply append args*))]
-; 	     [(relay ,_ ...) '()]
-; 	     [(return ,[expr] (to ,t) (via ,v) (seed ,[seed_val]) (aggr ,a))
-; 	      (append expr seed_val)]	     	   
- 	     [(dist ,_ ...) '()]
- 	     [(leds ,what ,which) '()]
-	     [(call ,_ ,[args*] ...) (apply append args*)]
-; 	     [(activate ,_ ,[args*] ...) (apply append args*)]
- 	     [(timed-call ,_ ,__ ,[args*] ...) (apply append args*)]
- 	     [(,[rator] ,[rands] ...) (apply append rator rands)]
- 	     [,otherwise
- 	      (error 'desugar-gradient:process-expr 
- 		     "bad expression: ~s" otherwise)]
-	     ))
+
 
 
 
 ;; Every token handler, once converted for the simulator, has a signature: 
 
-;;   simobject, vtime, tokargs -> ()    (mutates tokstore, outgoing-msg-buf, local-msg-buf)
+;;   simobject, vtime, subtoken-index -> args -> ()      (mutates tokstore, outgoing-msg-buf, local-msg-buf)
 
 ;; The result of running a handler is to mutate certain fields of the
 ;; simobject.  The handler *does not* directly interface with the
@@ -420,38 +391,38 @@
   (let* ([allstored
           (map (lambda (bind)
                  (match bind 
-		   [(,tok (,args ...) ,expr)
-		    (disp "STORED: " (find-stored expr))
-                    (list tok (find-stored expr))]))
+		   [(,tok (,args ...) (stored [,vars ,initvals] ...) ,expr)
+		    (disp "STORED: " vars)
+                    (list tok vars)]))
                tbinds)]
          [binds 
           (map
            (lambda (tbind)
 	    (match tbind 
-		   [(,tok (,args ...) ,expr* ...)
-;		    (let ([stored (cadr (assq tok allstored))])
+		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
 		      `[,tok 
-                         (lambda (this current-vtime world)
-			   (lambda ,args
-                           #|
-			   (DEBUGPRINT2 
-                            (disp "Token " ',tok 
-                                  "running at" (node-id (simobject-node this))
-                                  " with message: " ',args))|#
-			 
-			 ;this I-am-SOC token-store 			 
-			 (let ([the-store (simobject-token-store this)])
-			   (let ([old-outgoing (simobject-outgoing-msg-buf this)]
-				 [old-local    (simobject-local-msg-buf this)])
-                           (set-simobject-outgoing-msg-buf! this '())
-                           (set-simobject-local-msg-buf! this '())
-                           ,@(map (process-statement tbinds allstored) expr*)
-			   ;; We must reverse the outgoing order because of how they were added:
-                           (set-simobject-outgoing-msg-buf! this 
-				(append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
-                           (set-simobject-local-msg-buf! this 
-                                (append (reverse (simobject-local-msg-buf this)) old-local))
-			   (void)))))
+			(lambda (this current-vtime subtok-index) ;world)
+			  (lambda args			 
+			    (let* ([the-store (simobject-token-store this)]
+				   [this-tokname (cons ',tok subtok-index)]
+				   [old-outgoing (simobject-outgoing-msg-buf this)]
+				   [old-local    (simobject-local-msg-buf this)])
+			      "Is there already an allocated token object?:"
+			      ;; Requires equal? based hash table:
+			      (let ([tokobj (hashtab-get the-store this-tokname)])
+				(if (not tokobj)				   
+				    (begin "If not, then "
+					   (set! tokobj (vector 0 ,@initvals))
+					   (hashtab-set! the-store this-tokname tokobj)))
+				(set-simobject-outgoing-msg-buf! this '())
+				(set-simobject-local-msg-buf! this '())
+				,@(map (process-statement tbinds allstored) expr*)
+				;; We must reverse the outgoing order because of how they were added:
+				(set-simobject-outgoing-msg-buf! this 
+	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+				(set-simobject-local-msg-buf! this 
+                                  (append (reverse (simobject-local-msg-buf this)) old-local))
+				(void)))))
                          ]]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -501,14 +472,6 @@
   `(
     [3 3] ;; UNIT TESTER BROKEN ATM...
     
-    [(find-stored '(if '3 '4 (let-stored ([a '3]) '4)))
-     (a)]
-
-    [(find-stored '(let-stored ([x '99])
-			       (begin (set! x (let-stored () (+ x '1)))
-				      (bcast tok2 (let-stored ((a '1))
-							      (+ a x))))))
-     (x a)]
      
     [(compile-simulate-alpha
       '(program
