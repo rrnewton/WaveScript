@@ -2,7 +2,6 @@
 ;;; NOTE: for the moment I AM ALLOWING USAGE OF ARBITRARY SCHEME FUNCTIONS HERE!
 
 
-
 ;;; [2004.06.28] Pass: Cleanup Token Machine
 
 ;;; This pass:
@@ -90,35 +89,31 @@
 ;		  (disp "MERGED:" mergedhandler)
 		(cons mergedhandler
 		      (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
-		  ))))))
-
-(define (process-binding bind)
-      (let ([newbind 
-	     (match bind
-		    [(,sym ,[(process-expr '()) -> exp])
-		     `(,sym ,exp)]
-		    [,else (error 'cleanup-token-machine:process-binding 
-				  "invalid constant binding: " bind)])])
-	(DEBUGMODE ;; Constant binds are simple and should not change!
-	 (if (not (equal? bind newbind))
-	     (error 'cleanup-token-machine:process-binding 
-		    "constant binding should not have changed!~n ~s to ~s."
-		    bind newbind)))
-	newbind))
-	      
+		  ))))))	      
 
     (define process-expr 
-      (trace-lambda process-exp (env)
+      (lambda (env tokens)
 	(lambda (stmt)
+	  (define-syntax check-tok
+	    (syntax-rules ()
+	      [(_ call tok) 
+	       (if (not (memq tok tokens))
+		   (warning 'cleanup-token-machine
+			    "~s to unknown token: ~s" call tok))]))
       (match stmt
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
 	     [(quote ,const) `(quote ,const)]
 	     [,var (guard (symbol? var))
 		   (DEBUGMODE 
-		    (if (not (memq var env))
+		    (cond 
+		     [(memq var env) var]
+		     [(memq var tokens) 			
 			(warning 'cleanup-token-machine
-				 "unbound variable: ~s" var)))
+				 "reference to token name: ~s" var)]
+		     [(token-machine-primitive? var) var]
+		     [else (warning 'cleanup-token-machine
+				    "unbound variable reference: ~s" var)]))
 		   var]
 
 	     [(begin ,[x]) x]
@@ -127,13 +122,44 @@
 
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
-
 	     [(if ,test ,conseq)
-	      ((process-expr env) `(if ,test ,conseq (void)))]
+	      ((process-expr env tokens) `(if ,test ,conseq (void)))]
+
+	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
+	      `(let*  ([,lhs ,rhs] ...)
+		 ,(make-begin bodies))]
+
+	     [(,call-style ,tok ,[args*] ...)
+	      (guard (memq call-style '(emit call activate)))
+	      (check-tok call-style tok)
+	      `(,call-style ,tok ,args* ...)]
+	     [(timed-call ,time ,tok ,[args*] ...)
+	      (check-tok 'timed-call tok)
+	      `(timed-call ,time ,tok ,args* ...)]
+	     [(relay) '(relay)]
+	     [(relay ,tok) 
+	      (check-tok 'relay tok)
+	      `(relay ,tok)]
+
+	     [(return ,[expr]            ;; Value
+		      (to ,memb)         ;; To
+		      (via ,parent)      ;; Via
+		      (seed ,[seed_val]) ;; With seed
+		      (aggr ,rator_tok)) ;; Aggregator 	      
+	      (check-tok 'return-to memb)
+	      (check-tok 'return-via parent)
+	      (check-tok 'return-aggr rator_tok)
+	      `(return ,expr (to ,memb) (via ,parent) 
+		       (seed ,seed_val) (aggr ,rator_tok))]
+
+	     [(return ,stuff ...)
+	      (error 'cleanup-token-machine
+		     "process-expr: bad syntax for return: ~s" `(return ,stuff ...))]
 
 	     [(,prim ,[rands] ...)
-	      (guard (token-machine-primitive? prim))
-	      `(,prim ,rands ...)]	     
+	      (guard (or (token-machine-primitive? prim)
+			 (basic-primitive? prim)))
+	      `(,prim ,rands ...)]
 
 ;	     [(,kwd ,stuff ...)
 ;	      (guard (base-keyword? kwd))
@@ -142,6 +168,9 @@
 	     
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
 	     [(,rator ,[rands] ...)
+	      (warning 'cleanup-token-machine
+		       "arbitrary application of rator: ~s" rator)
+	      
 	      (DEBUGMODE 
 	       (if (or (not (symbol? rator)) (not (memq rator env)))
 		   (warning 'cleanup-token-machine
@@ -153,11 +182,11 @@
 	     ))))
     
     (define process-tokbind 
-      (lambda (env)
+      (lambda (env tokens)
 	(lambda (tokbind)
 					;	  (disp "process-tokbind" tokbind)
 	  (match tokbind
-	     [(,tok ,args ,[(process-expr env) -> expr*] ...)
+	     [(,tok ,args ,[(process-expr (append args env) tokens) -> expr*] ...)
 	      `(,tok ,args ,(make-begin expr*))]
       ))))
 	    
@@ -165,17 +194,19 @@
     ;; Main body of cleanup-token-machine
     (lambda (prog)
       (match prog
-        [(deglobalize-lang '(program (bindings ,nodebinds ...)
+        [(deglobalize-lang '(program (bindings ,constbinds ...)
 				(socpgm (bindings ,socbinds ...) 
 					,socstmts ...)
 				(nodepgm (tokens ,nodetoks ...)
 					 (startup ,starttoks ...))))
 	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
 	   `(cleanup-token-machine-lang
-	     '(program (bindings ,nodebinds ...)
+	     '(program (bindings ,constbinds ...)
 		       (socpgm (bindings ,socbinds ...) 
 			       ,socstmts ...)
-		       (nodepgm (tokens ,(map (process-tokbind '())  nodup-binds) ...)
+		       (nodepgm (tokens ,(map (process-tokbind (map car constbinds)
+							       (map car nodup-binds))
+							       nodup-binds) ...)
 				(startup ,starttoks ...))))
 	   )]
 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))

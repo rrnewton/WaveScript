@@ -249,14 +249,24 @@
 ;; TODO: add some kind of type info.
 (define token-machine-primitives
   '( (elect-leader) (flood) ;; These are actually macros, but what the heck
-     (return) 
-     (emit) 
-     (relay) 
+;     (return)
+;     (emit)
+;     (relay)
+;     (call)
+;     (timed-call)
+;     (activate)
      (dist) 
      (light-up) 
-     (sense)
+;     (sense)
+     (my-id)
      (loc)
      (void)
+
+     (this)
+     (local-sense)
+     (soc-return)
+     (soc-finished)
+     
      ;; For simulator only:
      (draw-mark)
      (rgb)
