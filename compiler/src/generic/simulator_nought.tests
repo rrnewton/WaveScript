@@ -30,14 +30,14 @@
   ;; SIMULATE
   [ "Simulate with a trivial SOC program"
     (simulate (lambda (sr sf) (vector (lambda () 3) '())))
-    All_Threads_Returned ]
+    (All_Threads_Returned) ]
 
   [ "Now we throw in a just one trivial nodeprogram" 
     (simulate (lambda (sr sf)
 		(vector (lambda () 3)
 			(list (lambda () 4))))
 			2)
-    All_Threads_Returned ]
+    (All_Threads_Returned) ]
   
   [ "Now a couple trivial nodeprograms" 
     (simulate (lambda (sr sf)
@@ -45,7 +45,7 @@
 			(list (lambda () 4)
 			      (lambda () 5))))
 		2)
-    All_Threads_Returned ]
+    (All_Threads_Returned) ]
   
   [ "Just repeat that last one with an open-output-string" 
     (let ((s (open-output-string)))
@@ -55,10 +55,10 @@
 		 (list (lambda () 4)
 		       (lambda () 5))))
 	 2))
-    All_Threads_Returned ]
+    (All_Threads_Returned) ]
   
   
-  [ "Run two threads each with a display" 
+  [ "Run two threads each with a print statement" 
     (let ((s (open-output-string)))
       (parameterize ([current-output-port s])
 		      (simulate (lambda (sr sf)
@@ -69,7 +69,7 @@
     ;; Oracle to tell if the answers good:
     ,(lambda (res) (member res (list "34" "43"))) ]
 
-  
+ 
   [ "Now compile, build, AND simulate..."
     (simulate
      (build-simulation
@@ -79,7 +79,7 @@
 	 (socpgm (bindings) );(emit tok1))
 	 (nodepgm  (tokens) (startup) ))))
      0.3)
-    Threads_Timed_Out ]
+    (Threads_Timed_Out) ]
 
   )
 
