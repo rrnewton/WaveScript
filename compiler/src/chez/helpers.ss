@@ -71,4 +71,12 @@
   (critical-section (apply printf args)))
 
 
+(define make-n-list
+  (lambda (n func)
+    (letrec ((loop (lambda (n acc)
+                     (if (zero? n)
+                         acc
+                         (loop (sub1 n) (cons (func n) acc))))))
+      (loop n '()))))
+
 
