@@ -8,7 +8,7 @@
 	     (lambda () 4)
 	     (lambda () 5))
        2)
-      All_Threads_Return]
+      All_Threads_Returned]
     
 
     [ "Break an infinite loop."

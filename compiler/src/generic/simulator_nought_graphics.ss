@@ -190,7 +190,8 @@
       unspecified ]
 
 
-    [ "Run the translator on a spreading lights program..."
+;; Move to generic file...
+#;    [ "Run the translator on a spreading lights program..."
       (compile-simulate-nought ',example-nodal-prog1)
       ,(lambda (x)
 	 (procedure? (vector-ref x 0))
