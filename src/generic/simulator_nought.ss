@@ -402,12 +402,12 @@
 				  )
 			      ;; fizzle
 			      )))
-		    ))])
+		    )])
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
 	  [define handler ,handler] 
 	  [define this-message #f];)
 	  ,@extradefs ;; <TODO> THIS IS WEIRD AND LAME <TOFIX>
-    ,expr)))
+	  ,expr)))
 
 
 '(define-syntax remove-last!
@@ -431,12 +431,15 @@
 ;; Takes: a program in the language of pass10_deglobalize
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
 (define (compile-simulate-nought prog)
-  (match prog
-    [(program (bindings ,nodebinds ...)
-	      (socpgm (bindings ,socbinds ...) ,socstmts ...)
-	      (nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
-     (let* (
-
+  ;; Accept either with or without the language wrapper:
+  (let ((prog (match prog 
+		     [(program ,_ ...) prog]
+		     [(,input-lang '(program ,stuff ...)) `(program ,stuff ...)])))
+    (match prog
+      [(program (bindings ,nodebinds ...)
+		(socpgm (bindings ,socbinds ...) ,socstmts ...)
+		(nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
+       (let* (
        [generic-defs
 	
 	`([define local-sent-messages 0] ;; We should stick this in the simobject...
@@ -462,7 +465,7 @@
 		   ;(set-simobject-redraw! ob #t)
 		   )]
 
-	   [define sim-emit (lambda (t m count)
+	  [define sim-emit (lambda (t m count)
 		    ;; Count messages at this node
 		    (set! local-sent-messages (add1 local-sent-messages))
 		    ;; Count total messages sent.
@@ -580,7 +583,7 @@
 					;		     (let ((loop ((
 	       )]
 	   
-	   )]
+	   )] ;; End generic-defs
        
        [socprog
 	 `(lambda (SOC-processor this object-graph all-objs)
@@ -607,8 +610,8 @@
 	  (let ([channels (partition-equal returns
 			     (lambda (ob1 ob2)
 			       (match (list ob1 ob2)
-				      [((,val1 ,to1 ,via1 ,seed1 ,aggr1 ,senders)
-					(,val2 ,to2 ,via2 ,seed2 ,aggr2 ,senders))
+				      [((,val1 ,to1 ,via1 ,seed1 ,aggr1 ,senders1)
+					(,val2 ,to2 ,via2 ,seed2 ,aggr2 ,senders2))
 				       (eq? to1 to2)]
 				      [,else (error 'simulator_nought:handle-returns
 						    "invalid return messages: ~n ~s ~n ~s"
@@ -737,6 +740,7 @@
 						    returns))
 			 ))])
 		     ))))))])
+
        (DEBUGPRINT
 	(printf "~nGOT TOKEN HANDLERS:~n" )
 	(pretty-print nodetoks)(newline))
@@ -750,7 +754,7 @@
        (set! sp socprog)
        (set! np nodeprog)
 ;       (for-each eval generic-defs)       
-       (list socprog nodeprog))]))
+       (list socprog nodeprog))]))) ;; End compile-simulate-nought
 
 ;; Makes thunks for the simulation:
 ;; Returns a vector with the socthunk and a list of nodethunks.
@@ -771,6 +775,7 @@
 ;; This is the "language definition" which will use the compiler nd
 ;; simulator to evaluate the expression.  It'll be hard to write test
 ;; cases with meaningful results, though.
+;; <TODO> FINISh
 (define (simulator-nought-language expr)
   (void))
 
