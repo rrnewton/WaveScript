@@ -15,7 +15,7 @@
 
 (define (repl-builder startup cleanse compiler run)
   (define TIMEOUT 10.0)
-  (disp "REPL BUILDER")
+;  (disp "REPL BUILDER")
 
   (lambda()
     (printf "Type exit to leave repl.~n")
