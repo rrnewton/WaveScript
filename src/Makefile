@@ -74,6 +74,10 @@ compiled/compiler.zo:
 compiled/compiler_plt.zo:
 	$(MZC) -z --auto-dir $(PLT_MAIN_FILE) 
 
+regimentc:
+	echo '(load "regimentc.ss")' | chez -s1 regimentc.1.heap
+
+
 #mzc:
 #	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
 #mred:
