@@ -94,6 +94,8 @@
 ;===============================================================================
 ;; GLOBAL VARIABLES AND TYPES:
 
+;; The main global variables are graph, object-graph, and all-objs
+
 ;; NOTE!  The simulator dynamically defines top level variables:
 ;;  total-messages, soc-return, soc-finished, stop-nodes
 
@@ -207,7 +209,6 @@
 		  (integer? count)
 		  (list? args))))))
 
-
 ;; These global vars start off uninitialized and are initialized with
 ;; "init-world", below.
 (define graph #f) ;; Graph of 'node'
@@ -296,6 +297,7 @@
 
 ;; init-world allocates the world, but we also want a procedure to cleanse it.
 (define (cleanse-world)
+  (printf "Cleansing world.~n")
   (if object-graph
       (for-each (lambda (entry)
 		  (let ((simob (car entry)))
@@ -371,8 +373,16 @@
 		       (bare-msg-object ,rator (list ,@rand*)))
 		 (simobject-timed-tokens this)))))
 
-(define process-statement 
-  (letrec ([process-expr 
+(define (process-statement tokbinds)
+  (letrec ([get-arg-index
+	    (lambda (tok argname)
+	      (let ([entry (assq tok tokbinds)])
+		(if (not entry)
+		    (error 'simulator_nought:get-arg-index
+			   "No entry for token! ~a" tok))
+		(list-find-position argname (cadr entry))))]
+
+	   [process-expr 
 	 (lambda (expr)
 ;	   (disp "Process expr" expr)
 	   (match expr
@@ -394,6 +404,19 @@
 		  [(timed-call ,delay ,rator ,rand* ...)
 		   ;; Delay is in milleseconds.
 		   (build-timed-call delay `(quote ,rator) rand*)]		  
+
+		  [(reject)
+		   '(set! reject-incoming-token #t)]
+
+		  [(cache ,tok)
+		   `(hashtab-get (simobject-token-cache this) ',tok)]
+
+		  [(cache ,tok ,field)
+		   `(let ([entry (hashtab-get (simobject-token-cache this) ',tok)])
+		      (if entry			  
+			  (list-ref (msg-object-args entry)
+				    ,(get-arg-index tok field))))]
+
 
 		  ;; It's like call but doesn't add quotes.
 		  [(internal-call ,rator ,rand* ...)
@@ -552,14 +575,14 @@
 			      (disp "Token " ',tok 
 				    "running at" (node-id (simobject-node this)) 
 				    " with message: " ',args))
-			     ,@(map process-statement expr*))]]))
+			     ,@(map (process-statement tbinds) expr*))]]))
 	  (remove-duplicate-tokbinds tbinds))]
 	[handler (build-handler tbinds)]
 	)
 
-;    (printf "~n;  Converted program for Simulator:~n")
-;    (printf "<-------------------------------------------------------------------->~n")
-;    (pretty-print binds)
+    (printf "~n;  Converted program for Simulator:~n")
+    (printf "<-------------------------------------------------------------------->~n")
+    (pretty-print binds)
     
 
     `(let () ,@(map (lambda (x) (cons 'define x)) binds)
@@ -599,29 +622,34 @@
 					   [else (error 'node_program "Unknown message: ~s" tok)]
 					   )))])
 			  
-			  (if (not origin) ;; This is a local call.
+			  (if (not origin) 
+			      ;; This is a local call, don't touch the cache:
 			      (handle-it (bare-msg-object tok args))
+
 			      ;; TODO: Could optimize a *wee* bit by mutating instead of recreating here.
 			      ;; BUT! No premature optimization.		      
 			      (if (or (not entry) ;; There's no entry for that token name.
 				      (= 0 count)
 				      (< count (msg-object-count entry))) ;; This could be <=, think about it. TODO
-				  (let ((newentry themessage))
+
+				  (begin
 				    (if (= 0 local-recv-messages)
 					(sim-light-up 200 0 0))
 				    (set! local-recv-messages (add1 local-recv-messages))
-
-				    ;; This is where I'm gonna cut in support for "reject".. [2004.10.23]
-				    (hashtab-set! (simobject-token-cache this) tok newentry)
-				    (handle-it newentry)
 				    
+				    ;; This is where I'm gonna cut in support for "reject".. [2004.10.23]
+				    (fluid-let ([reject-incoming-token #f])
+				      (handle-it themessage)
+				      ;; Only add it to the cache if it hasn't been rejected:
+				      (if (not reject-incoming-token)
+					  (hashtab-set! (simobject-token-cache this) tok themessage)))
 				    )
+
 				  (begin 
 				    (incr-top-level! 'total-fizzles)
 				;(disp "Message fizzle(no backflow) " tok " to " (node-id (simobject-node this)))
 				    (void))
 				  )
-			      ;; fizzle
 			      ))
 		    )))
 
@@ -675,6 +703,7 @@
 		   )]
 
     [define (sim-emit t m count)
+           
       (DEBUGMODE 
        (if (eq? t SPECIAL_RETURN_TOKEN)
 	   (error 'sim-emit "should never be emitting a return token!: ~n~s ~n~s ~n~s~n" t m count)))
@@ -691,7 +720,12 @@
 	;; I need to do it so that the return-handler can figure things out.
 	(hashtab-set! (simobject-token-cache this) t ourentry) ;; OVERWRITE CURRENT ENTRY
 	(for-each (lambda (nd) (sendmsg childentry nd))
-		  (neighbors this)))]
+		  (neighbors this)))
+
+      (critical-section 
+       (printf "----------------------------------------~n")
+       (print-incoming))
+      ]
 
     [define (sim-relay . tok)
       (DEBUGMODE 
@@ -773,10 +807,6 @@
     [define (sim-dist . tok)
 	     (if (null? tok)
 		 (begin 
-		   ; Hmm this was weird:
-;		   ,(DEBUGMODE '(if (not this-message)
-;				    (error 'simulator_nought.process-statement 
-;					   "broken")))
 		   (if (msg-object-count this-message)
 		       (msg-object-count this-message)
 		       (error 'simulator_nought.process-statement:dist
@@ -1019,7 +1049,7 @@
 		 socbinds
 		(process-tokbinds
 		 nodetoks generic-defs			
-		 `(begin ,@(map process-statement 
+		 `(begin ,@(map (process-statement nodetoks)
 				socstmts)
 			 'soc_finished))))))]
               
@@ -1070,9 +1100,10 @@
 			 ;; tokens:
 			 (if (not (null? fired-triggers))
 			     (begin 
-			       (set-simobject-incoming! this
+			       (critical-section
+				(set-simobject-incoming! this
 			         (append (map cdr fired-triggers)
-					 (simobject-incoming this)))
+					 (simobject-incoming this))))
 			       (set-simobject-timed-tokens! this
 					 (difference triggers fired-triggers))
 			       (main-node-loop (simobject-incoming this)
@@ -1112,15 +1143,17 @@
 		      [else
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
-		       (let ((msg (last incoming)))			 		
+		       (let ((msg 'NOT-SET-YET))
 			       
 			 (DEBUGPRINT
 			  ;; Print out the process number when we handle a message:
 			  (printf "~s." (node-id (simobject-node this))))
 			 ;; Pop that message off:
-			 (if (null? (cdr incoming))
-			     (set-simobject-incoming! this '())
-			     (list-remove-last! incoming))
+			 (critical-section
+			  (set! msg (last incoming))
+			  (if (null? (cdr incoming))
+			      (set-simobject-incoming! this '())
+			      (list-remove-last! incoming)))
 
 			 (if (return-obj? msg)
 			     (main-node-loop (simobject-incoming this) 
@@ -1265,6 +1298,11 @@
   ;; This is a global flag which can be toggled to shut down all the
   ;; running processors.
   (define-top-level-value 'stop-nodes #f)
+
+  ;; This is a flag which is treated with various fluid-let's to
+  ;; reveal whether a given token handler wishes to reject the
+  ;; incoming token.  
+  (define-top-level-value 'reject-incoming-token #f)
   
   ;;-------------------------------
   ;; We've done our job by initializing.  Apply the core function;
@@ -1331,6 +1369,40 @@
    generic-text-simulator-core))
 
 ;;===============================================================================
+;; Some display and helper functions.
+
+(define print-caches
+  (lambda ()
+    ;; NOTE - this breaks the abstraction for the hashtables:
+      (for-each 
+       (lambda (ob)
+	 ;; 
+	 (let* ([cache (simobject-token-cache ob)]
+		[entries (apply append (vector->list cache))])
+	   (printf "~a:  ~a~n"  
+		   (node-id (simobject-node ob))
+		   (map car entries))))
+       (sort (lambda (x y)
+	       (< (simobject-node (node-id x))
+		  (simobject-node (node-id y))))
+	     all-objs))))
+
+(define print-incoming
+  (lambda ()
+    ;; NOTE - this breaks the abstraction for the hashtables:
+      (for-each 
+       (lambda (ob)
+	 ;; 
+	   (printf "~a:  ~a~n"  
+		   (node-id (simobject-node ob))		   
+		   (map msg-object-token (simobject-incoming ob))
+		   ))
+       (sort (lambda (x y)
+	       (< (simobject-node (node-id x))
+		  (simobject-node (node-id y))))
+	     all-objs))))
+
+;;===============================================================================
 
 ;; Include some example programs used by the tests.
 (include "simulator_nought.examples.ss")
@@ -1384,12 +1456,15 @@
 (define these-tests
   `(
     ;; First we test some of the smaller procedures before running the simulator:
-    [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
-    [ (process-statement '(flood foo)) (sim-flood 'foo)]    
+    ;; I make the assumption here that the function process-statement
+    ;; can get by with an inconsistent tokbinds list for these simple
+    ;; evaluations:
+    [ ((process-statement '()) '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
+    [ ((process-statement '()) '(flood foo)) (sim-flood 'foo)]    
     ;; Making sure that it recurs on arguments to return, even though
     ;; this is not necessary for code generated by my compiler.
     [ " Test process-statement on a return."
-     (process-statement '(return (dist)))
+     ((process-statement '()) '(return (dist)))
       (sim-return
        (sim-dist)
        (string->symbol
@@ -1400,10 +1475,10 @@
        #f
        '#f)]    
     ["Now a return with all the condiments"
-     (process-statement '(return (dist) (to aaa) (via bbb) (seed 0) (aggr fff)))
+     ((process-statement '()) '(return (dist) (to aaa) (via bbb) (seed 0) (aggr fff)))
       (sim-return (sim-dist) 'aaa 'bbb 0 'fff)]
     ;; Just to make sure erros work with my unit-tester:
-    [ (process-statement '(return))  error]
+    [ ((process-statement '()) '(return))  error]
 
     [ (let ((x (make-simobject (make-node 34 '(1 2)) '() '() #f #f '() 
 			       (make-default-hash-table) 0 0)))
@@ -1419,7 +1494,7 @@
     [ (free-vars '(cons (quote 30) x)) (x) ]
 
     ["process-statement: test nested calls"
-     (process-statement '(call a (call b 933939)))
+     ((process-statement '()) '(call a (call b 933939)))
      ;; [2004.07.31] Updating this because I changed how calls work.
      (handler 
       (bare-msg-object 'a

@@ -68,13 +68,13 @@
 ;; ... which returns: 'All_Threads_Returned | 'Threads_Timed_Out
 (define (run-flat-threads-engine thks . time)
   (let ([totaltime (if (null? time) #f (* 1000 (car time)))]
-	[perdisp (periodic-display 100)])
+	[perdisp (periodic-display 1000)])
     (lambda (ticks succ fail)	       
       (let loop ([ticks ticks] [succ succ] [fail fail]
 		 [engs (map make-engine thks)]
 		 [acc '()])	
 	(if totaltime
-	    (perdisp "~n  Total time left on clock: ~s" totaltime))
+	    (perdisp "~n  Total time left on clock: ~s~n" totaltime))
 	(cond
 	 ;; Timeout because of real time:
 	 [(and totaltime (<= totaltime 0)) ;(and timeout (> (real-time) timeout))

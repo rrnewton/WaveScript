@@ -206,9 +206,35 @@
         avg))))
 
 
+(define (doits x)
+  (cleanse-world)
+  (let ([stream
+	 (run-simulation-stream
+	  (build-simulation (compile-simulate-nought x))		  
+	  2.5)])
+    
+    (let streamloop ([i 0] [stream stream] [acc '()])
+      (cond			 
+       [(> i 7) (printf "~n That's enough.~n")]
+       [(eq? stream 'threads_timed_out)
+	(printf "~n Threads timed out.~n")]
+       [(stream-empty? stream) 
+	(printf "Stream Ended.~n")
+	(printf "All returned values were: ~n" )
+	(pretty-print (reverse acc))]
+       [else 	
+	(let ([head (stream-car stream)])
+	  (display-constrained (list i 20) ": " 
+			       (list head 60))
+	  (newline)
+	  (streamloop (add1 i) (stream-cdr stream) (cons head acc)))]))
+    ))
+
+
 (define (g) (eval (cadadr testssim)))
 
 (pretty-maximum-lines 2000)
+
 
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
