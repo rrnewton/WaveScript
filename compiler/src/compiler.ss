@@ -64,12 +64,12 @@
     remove-complex-opera*
     verify-core
     classify-names
-;    add-heartbeats
-;    add-control-flow
-;    add-places
+    add-heartbeats
+    add-control-flow
+    add-places
 ;    add-routing
 ;    analyze-places
-;    deglobalize
+    deglobalize
     
 ;    cleanup-token-machine
 ;    haskellize-tokmac 

@@ -83,15 +83,15 @@
      
      (letrec ((a 5) (b 4))
        (if (< b 3)
-           (eq? a (+ b 1))
+           (equal? a (+ b 1))
            (if (<= b 3)
-               (eq? (- a 1) b)
+               (equal? (- a 1) b)
                (= a (+ b 2)))))
      (letrec ((a 5) (b 4))
        (if #f
-           (eq? a (+ b 1))
+           (equal? a (+ b 1))
            (if #f
-               (eq? (- a 1) b)
+               (equal? (- a 1) b)
                (= a (+ b 2)))))
      
      (letrec ([x (cons #f #t)] [y 17])
