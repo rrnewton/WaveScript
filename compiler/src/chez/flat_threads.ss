@@ -8,9 +8,18 @@
 ;; have elapsed
 
 
-(module flat_threads (run-flat-threads these-tests test-this)
+;; [2004.06.02] WEIRD.  I'm having a problem where this file will load
+;; if I strip the module wrapper, but when I put it back the file
+;; hangs on load.
+;;   The module system is just defunct now... I think I was having
+;; similar problems earlier.
+
+;(module flat_threads_foob (run-flat-threads yield-thread
+;		      these-tests test-this)
 
 (define this-unit-description "simple interface for parallel computations")
+
+(define yield-thread engine-block)
 
 ;; Using hefty granularity right now.
 ;; This defines the number of engine-ticks given each 
@@ -67,5 +76,7 @@
 
 (define test-this (default-unit-tester this-unit-description these-tests))
 
-) ;; End module
+;#!eof;(define these-tests ())(define test-this ()))#!eof
+
+;) ;; End module
 

@@ -19,6 +19,8 @@
 ;; is a simple interface over engines or threads.
 ;;============================================================
 
+(define (id x) x)
+
 ;; This is the simplest simulator ever.  Takes the output of pass "deglobalize".
 (define this-unit-description 
   "\"simulator_nought.ss\"a: simplest simulator for nodal language")
@@ -46,8 +48,8 @@
 	 (random world-ybound))
    ))
 
-(define hashtab-get (hash-inquirer eq?))
-(define hashtab-set! (hash-associator eq?))
+;(define hashtab-get (hash-inquirer eq?))
+;(define hashtab-set! (hash-associator eq?))
 
 (define (dist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
@@ -85,7 +87,7 @@
 ;(list-get-radom 
 
 
-(define (draw)
+#;(define (draw)
   (init-graphics)
   (for-each draw-point (map node-pos graph))
   (for-each draw-line (map (lambda (node) 
@@ -108,12 +110,15 @@
 
 (define (process-statement stmt)
   (match stmt
-	 [(call ,opera ...) 
-	  
+	 [(call ,rator ,rand* ...) 	  
 	  (error 'process-statement "call not supported from SOC")] ;opera]
 	 [(flood ,tok) `(flood (quote ,tok))]
 	 [(emit ,opera ...)
 	  `(emit (quote ,(car opera)) ,@(cdr opera))]
+
+	 [(relay) `(emit (quote (car this-message)) (cdr this-message))]
+	 [(relay ,rator ,rand* ...) '(VOID-FOR-NOW) ]
+
 	 [(light-up ,r ,g ,b)
 	  `(begin
 	     (disp "trying to light")
@@ -172,6 +177,10 @@
 	 (if (null? (cdr next))
 	     (set-cdr! prior '())
 	     (loop next (cdr next))))])]))
+
+(define f 0)
+(define np 0)
+(define sp 0)
 
 ;; Takes: a program in the language of pass10_deglobalize
 ;; Returns: a vector #(thunk (thunk ...)) with SOC and node programs respectively.
@@ -289,7 +298,7 @@
 			  [(< len 10) (display len)]
 			  [else (display "#")])))
 		       all-objs)
-	     (engine-block)
+	     (yield-thread)
 	     (loop)))])
     (let ([thunks (if (simulator-output-text)
 		       (cons display_engine (cons soceng nodeengs))
@@ -317,7 +326,12 @@
 
     [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f)))
 	(let ((y (structure-copy x)))
-	  (and (equal? x y)
+	  (and (eq? (simobject-node x) 
+                    (simobject-node y))
+               (eq? (simobject-incoming x) 
+                    (simobject-incoming y))
+               (eq? (simobject-gobj x) 
+                    (simobject-gobj y))
 	       (not (eq? x y))))) #t]
 
     [ "First just with a trivial SOC program"
@@ -403,10 +417,10 @@
        ()
        )))
 
-(dsis tt (csn temprog))
+(define (tt) (csn temprog))
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
 ;(dsis g ((eval f) a b c))
-(dsis g (run-simulation tt .5))
+(define (g) (run-simulation (tt) .5))
 

@@ -2,7 +2,8 @@
 (module helpers mzscheme        
   (require (lib "iu-match.ss")
            (lib "include.ss")
-           (lib "pretty.ss"))
+           (lib "pretty.ss")
+           (all-except "tsort.ss" test-this these-tests))
   
   ;; This might not be necessary: 
   ; (require "~/scheme/plt/utils/rutils_generic.ss")
@@ -14,7 +15,7 @@
   ;; Here we include the SLIB initialization directly.  This is the only 
   ;; way I can make slib play nice with the PLT module system at all.
 ;  (load (build-path (collection-path "slibinit") "init.ss"))
-  (include "/usr/local/plt/collects/slibinit/init.ss")
+;  (include "/usr/local/plt/collects/slibinit/init.ss")  
   
   (include (build-path ".." "generic" "helpers.ss"))
   
@@ -29,7 +30,8 @@
 	   "be emulated right now in Plt. -RRN"))
 
   (define flush-output-port flush-output)
-
+  (define pp pretty-print)                   
+  
   (define-syntax rec
     (syntax-rules ()
       ((_ x e) (letrec ((x e)) x))))
@@ -39,11 +41,10 @@
         [(mvlet stuff ...) (let-values stuff ...)]))
   
   
-  
   (provide 
 
    ;; Syntax:
-   mvlet rec
+   mvlet rec 
    
    ;; Values:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
@@ -61,7 +62,8 @@
 
    set? list->set set-cons union intersection difference
    list-head filter list-index snoc rac rdc 
-   insert-between iota disp
+   insert-between iota disp pp
+   graph-map cyclic?
    
    
 ;   (all-except (lib "rutils_generic.ss")

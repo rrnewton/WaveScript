@@ -2,10 +2,13 @@
 
 ;; This version is for use with the SchemeWidgetLibrary.
 
-(module flat_threads (run-flat-threads these-tests test-this)
+(module flat_threads (run-flat-threads yield-thread
+		      these-tests test-this)
 
 (define this-unit-description 
   "swl_flat_threads.ss: simple interface for parallel computations")
+
+(define yield-thread thread-yield)
 
 ;; Using hefty granularity right now.
 ;; This defines the number of engine-ticks given each 

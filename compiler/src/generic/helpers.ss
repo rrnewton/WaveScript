@@ -1229,7 +1229,8 @@
 			  ;(for-each add-obj (node-neighbors node))
 			  (let ((newobj (f node)))
 			    (set! node-table 
-				  (cons (list node newobj) node-table))
+				  (cons (list node newobj)
+					node-table))
 			    newobj)
 			  ))))]
 	       [do-entry
@@ -1250,7 +1251,7 @@
   ;; Umm is this really bad form to perform this INSIDE the cyclic? function??
   ;; How efficient is require??  A linear search through a list of things loaded?
   ;; I'm considering defining "let-run-once"
-  (slib:require 'tsort)
+  ;;(slib:require 'tsort)
   (let ((eq (if (null? compare) eq?
 		(if (> (length compare) 1)
 		    (error 'cyclic? "too many optional arguments: %s" compare)
