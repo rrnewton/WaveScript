@@ -90,7 +90,7 @@
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
-;; Incoming is a list of messages.
+;; Incoming is a list of messages (or return-objs).
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
 ;; [2004.06.13] Be careful to change "cleanse-world" if you change
@@ -110,6 +110,21 @@
 			      count
 			      args))
 
+;; [2004.07.27]
+;; Doing a refactoring to add this, seperating msg-object's from return-objs
+(define-structure 
+  (return-obj
+   ;; has some analogous fields to msg-object:
+   timestamps parent counts
+   ;; And other fields for the purpose of propogating return values.
+   return_vals ;; -- the value being returned
+   to_tok   ;;   -- the token to which the value shall be passed when it gets home
+   via_tok  ;;   -- the token supplying the back-trail for the return to follow
+   seed_val ;;   -- the base-value for the binary-op 
+   aggr_tok ;;   -- the token (binary function) for aggregating this return
+   senders  ;;   -- this is temporary, it keeps a list of all nodes contributing 
+   ))
+
 ;; Temporary:
 (define (pop-msg-object mo)
   (list 
@@ -123,7 +138,7 @@
 ;; Safer version:
 (define (construct-msg-object token timestamp origin parent count args)
   (if (eq? token SPECIAL_RETURN_TOKEN)
-      (void) ;; everything is allowed for now..
+      (error 'construct-msg-object "cannot manually make a return message")
       (begin
 	(unless (token? token) (error 'construct-msg-object "bad token: ~s" token))
 	(unless (or (number? timestamp) (not timestamp))
@@ -158,8 +173,9 @@
 	     [origin (msg-object-origin mo)]
 	     [parent (msg-object-parent mo)]
 	     [count  (msg-object-count  mo)]
-	     [args   (msg-object-args   mo)])	 
-	 (or (and (return-msg? mo) ;; Things are different for return-messages.
+	     [args   (msg-object-args   mo)])	
+	 (or 
+	  #;(and (return-msg? mo) ;; Things are different for return-messages.
 		  (list? count) (andmap integer? count)
 		  (list? timestamp) (andmap integer? timestamp)
 		  (or (not parent) (simobject? parent))
@@ -291,9 +307,6 @@
       (th))))
 
 ;;========================================  
-
-(define (return-msg? m)
-  (eq? SPECIAL_RETURN_TOKEN (msg-object-token m)))
 
 (define (free-vars expr)
   (let loop ((env ()) (expr expr))
@@ -734,18 +747,17 @@
 			      (error 'simulator_nought.sim-return
 				     "bad token or via: ~s ~s" totok via)))
 	     (let ([themessage
-		    (construct-msg-object SPECIAL_RETURN_TOKEN ;; token
-				     (cpu-time)           ;; timestamp
-				     #f      ;; origin -- This is sketchy!
-				     this    ;; parent -- This is sketchy!
-				     0     ;; count
-				     (list (list retval) ;; ret_vals
-					   totok ;; to_tok
-					   via ;; via_tok
-					   seed ;; seed_val
-					   aggr ;; aggr_tok
-					   (list (node-id (simobject-node this))) ;; senders
-					   ))])
+		    (make-return-obj
+		     (list (cpu-time)) ;; timestamps
+		     this     ;; parent -- This is sketchy!
+		     (list 0) ;; counts
+		     (list retval) ;; ret_vals
+		     totok ;; to_tok
+		     via ;; via_tok
+		     seed ;; seed_val
+		     aggr ;; aggr_tok
+		     (list (node-id (simobject-node this))) ;; senders
+		     )])
 	       ;; We drop that into the local hopper, and the postal system will handle it!
 	       (set-simobject-incoming! 
 		this
@@ -765,12 +777,8 @@
 
 	      (DEBUGMODE (if (not (pair? returns))
 			     (error 'handle-returns "must take a nonempty list: ~s" returns))
-			 (if (not (andmap msg-object? returns))
-			     (error 'handle-returns "must take msg-objects only: ~s" returns))
-			 (if (not (andmap return-msg? returns))
-			     (error 'handle-returns "must take return-msgs only: ~s" returns))
-			 (if (not (andmap valid-msg-object? returns))
-			     (error 'handle-returns "must take VALID return-msgs only: ~s" returns))
+			 (if (not (andmap return-obj? returns))
+			     (error 'handle-returns "must take return-objs only: ~s" returns))
 			 )
 
 ;	      (disp "Handle Ret at " (node-id (simobject-node this))
@@ -786,33 +794,26 @@
 				  ;; This compares the "to" portions of the arglists:
 				  ;; It's going to be hard to remember to update this!
 				  ;; So this piece of code could be a source of errors:
-				  (eq? (cadr (msg-object-args ob1))
-				       (cadr (msg-object-args ob2)))
-;				  (match (list ob1 ob2)
-;					 [((,val1 ,to1 ,via1 ,seed1 ,aggr1 ,senders1)
-;					   (,val2 ,to2 ,via2 ,seed2 ,aggr2 ,senders2))
-;					  (eq? to1 to2)]
-;					 [,else (error 'simulator_nought:handle-returns
-;						       "invalid return messages: ~n ~s ~n ~s"
-;						       ob1 ob2)])
-				  ))])
+				  (eq? (return-obj-to_tok ob1)
+				       (return-obj-to_tok ob2)) ))])
 		;; That divided them up into related clumps, now process each:
 		(for-each 
 		 (lambda (returns) ;; Each chunk of returns going to the same target.		   		   
 
 		   ;; TEMP		   
-		   (if (> (length returns) 1)
-		       (disp "   GOT WIDER RETURN-CHANNEL BATCH:" (length returns)))
+;		   (if (> (length returns) 1)
+;		       (disp "   GOT WIDER RETURN-CHANNEL BATCH:" (length returns)))
 
-		   (let ([returns-args (map msg-object-args returns)]
+		   (let (
 			 ;; Some timestamps may be false:
 			 ;; This had better be a list of lists of ints.
-			 [timestamps (map (lambda (x) (if x x '()))
-					  (map msg-object-timestamp returns))]
-			 [counts (map msg-object-count returns)])
+			 [timestamps (apply append (map (lambda (x) (if x x '()))
+					  (map return-obj-timestamps returns)))]
+			 [counts (apply append (map return-obj-counts returns))]
+			 )
 		    
 		     (DEBUGMODE 
-		      (if (not (andmap list? timestamps))
+		      (if (not (andmap integer? timestamps))
 			  (error 'handle-returns "these are invalid timestamps: ~s" timestamps))
 
 		      (if (not (andmap (lambda (retargs) (= (length retargs) 6))
@@ -821,12 +822,12 @@
 				 "All return messages must have 6 arguments: ~s"
 				 returns-args)))
 
-		     (let ([vals (map car returns-args)]
-			   [tos (map cadr returns-args)]
-			   [vias (map caddr returns-args)]
-			   [seeds (map cadddr returns-args)]
-			   [aggrs (map (lambda (ls) (list-ref ls 4)) returns-args)]
-			   [senders* (map (lambda (ls) (list-ref ls 5)) returns-args)])
+		     (let ([vals* (map return-obj-return-vals returns)]
+			   [tos (map return-obj-to_tok returns)]
+			   [vias (map return-obj-via_tok returns)]
+			   [seeds (map return-obj-seeds returns)]
+			   [aggrs (map return-obj-aggr returns)]
+			   [senders* (map return-obj-senders returns)])
 		       (DEBUGMODE
 			;; These had better have homogenous seeds and aggregators!!!
 			;; (Although theoretically, this restriction could be lifted.)
@@ -835,11 +836,12 @@
 				      (apply myequal? vias)
 				      (apply myequal? tos)
 				      ;; All those vals are lists..
-				      (andmap list? vals)))
+				      (andmap list? vals*)))
 			    (error 'simulator_nought:handle-returns
 				   "not all these return's args ok: ~n~s"
 				   returns-args)))
-		       (let ([to  (car tos)]
+		       ;; Once those are all verified to be the same, we select one of each:
+		       (let ([the_totok  (car tos)]
 			     [via  (car vias)]
 			     [seed (car seeds)]
 			     [aggr (car aggrs)]
@@ -857,30 +859,26 @@
 						    (loop (handler (bare-msg-object aggr (list (car vals) acc)))
 							  (cdr vals)
 							  (cdr timestamps)))))])
-
-;		   (fold (lambda (x y) (handler (bare-msg-object aggr (list x y))))
-;			 (cons seed vals))
-			   
-			   ;; <FIXME> DISABLING AGGREGATION FOR THE MOMENT..
 			   (DEBUGMODE (if (and (not seed) aggr)
 					  (error 'handle-return
 						 "There is an aggregator ~s but no seed!"
 						 aggr)))
-			   (let ([aggregated-values
-				  (if aggr 
-				      (list (collapse (apply append vals) timestamps))
-				      ;; If there is no aggregator, then we just 
-				      ;; accumulate *all* those values together!
-				      (begin (DEBUGASSERT 
-					      (or (andmap list? vals)
-						  (error 'assert "hmm vals not lists: ~s" vals)))
-					     (apply append vals))
-				      )])
-			   
-;			   (disp "AGGREGATED:"  (node-id (simobject-node this)) aggregated-values)
-			     ;; Now that the message is aggregated, we check to 
-			     ;; see if this node is the destination..
+
+			   (let* ([vals (begin (DEBUGASSERT 
+						(or (andmap list? vals*)
+						    (error 'assert "hmm vals not lists: ~s" vals)))
+					     (apply append vals*))]
+				  [aggregated-values			  
+				   (if aggr 
+				       (list (collapse vals timestamps))
+				       ;; If there is no aggregator, then we just 
+				       ;; accumulate *all* those values together!
+				       vals)])
 			     
+;			   (disp "AGGREGATED:"  (node-id (simobject-node this)) aggregated-values)
+
+			     ;; Now that the message is aggregated, we check to 
+			     ;; see if this node is the destination..			    
 			     ;; Try to look up the via token in the local cache.
 			     (let ([via_parent
 				    (let ([entry (hashtab-get (simobject-token-cache this) via)])
@@ -899,7 +897,7 @@
 				   (begin
 				     (disp "RETURN accomplished at " (node-id (simobject-node this)) 
 					   "#vals: "  (length aggregated-values)
-					   "to " to "via " via)
+					   "to " the_totok "via " via)
 				   ;; FIXME: TEMP: TODO:
 				     ;; This is just for debugging, adding senders to homepage
 				     (DEBUGMODE
@@ -910,34 +908,27 @@
 					     this (cons (list 'return-senders-list
 							      (list senders))
 							(simobject-homepage this))))))
-				   
+				     
 				     (for-each
 				      (lambda (retval)
-					,(build-call 'to '(retval)))
+					,(build-call 'the_totok '(retval)))
 				      ;; Hmm, this should make sure it's one:
-				      (if aggr 
-					  (list (collapse aggregated-values timestamps))
-					  aggregated-values))
+				      aggregated-values)
 				     ) ;; End base-case (reached destination) block
 				   
 				 ;; Otherwise we must pass this return onto the next:
 				   (begin 
 				     (display #\^)(flush-output-port)
 				     (sendmsg  
-				      (construct-msg-object 
-				       SPECIAL_RETURN_TOKEN ;; Token
-				       (cons (cpu-time) (apply append timestamps)) ;; Timestamp
-				       this ;; Origin
+				      (make-return-obj
+				       (cons (cpu-time) (apply append timestamps)) ;; Timestamps
 				       this ;; Parent
-				       (map add1 
-					    counts) ;; Count - all the leaf counts
-				   ;; And here we build the arguments for this leg of the return journey:
-				       (list aggregated-values
-					     to via seed aggr 
-					     (cons (node-id (simobject-node this)) senders)
-					     ) ;; Args 
-				       )
-				      via_parent)) ;; Sendmsg end
+				       (map add1 (apply append counts)) ;; Count - all the leaf counts
+				       ;; And here we build the arguments for this leg of the return journey:
+				        aggregated-values
+					the_totok via seed aggr 
+					(cons (node-id (simobject-node this)) senders))
+				      via_parent)) ;; End sendmsg 
 				 ))))))))
 		 channels) ;; End for-each
 		))] ;; End handle-returns   
@@ -1002,6 +993,10 @@
 		   (let main-node-loop ([incoming (simobject-incoming this)]
 					[returns-next-handled (+ (cpu-time) return-window-size)]
 					[returns '()])
+		     (if (not (andmap return-obj? returns))
+			 (error 'main-node-loop "Hmm, got a non return-obj: ~s" returns))
+			 
+
 ;		     (if (> (length returns) 0)
 ;			 (disp "loop" (cpu-time) returns-next-handled (length returns)))
 		     (cond
@@ -1015,10 +1010,10 @@
 			   (display #\!) 
 			   (display #\.))
 		       (flush-output-port)
-					;(disp "   GOT WIDER RETURN-CHANNEL BATCH:" (length returns))
+		       (if (not (null? returns))
+			   (disp "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
 
-;		       (if (not (null? returns))
-;			   (disp "Handling rets from" (node-id (simobject-node this)) "got " (length returns)))
+		       (disp "bout to call handle::" (map return-obj? returns))
 		       ;; Handle all the returns to date (either
 		       ;; locally generated or from neighbors). 
 		       (if (not (null? returns))
@@ -1032,8 +1027,6 @@
 				       '())]
 
 		      [(null? incoming)
-;		       (if (not (null? returns))
-;			   (handle-returns returns))
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
 		       (main-node-loop (simobject-incoming this) returns-next-handled returns)]
@@ -1049,22 +1042,23 @@
 			 (if (null? (cdr incoming))
 			     (set-simobject-incoming! this '())
 			     (list-remove-last! incoming))
-			 (DEBUGMODE
-			  (if (not (valid-msg-object? msg))
-			      (begin
-				(define-top-level-value 'x msg)
-			      (error 'node-handler 
-				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
-				     msg incoming))))
 
-			 (if (return-msg? msg)
+			 (if (return-obj? msg)
 			     (main-node-loop (simobject-incoming this) 
 					     returns-next-handled
 					     (cons msg returns))
-			     (begin (handler msg)
-				    (main-node-loop (simobject-incoming this)
-						    returns-next-handled 
-						    returns))
+			     (begin 
+			       (DEBUGMODE
+				(if (not (valid-msg-object? msg))
+				    (begin
+				      (define-top-level-value 'x msg)
+				      (error 'node-handler 
+				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
+				     msg incoming))))
+			       (handler msg)
+			       (main-node-loop (simobject-incoming this)
+					       returns-next-handled 
+					       returns))
 			 ))])
 		     ))))))])
 
@@ -1323,15 +1317,17 @@
 						 '()))
 		  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		  ;; We're trying to handle a return message.
-		  (let ([this-message (bare-msg-object 
-			       'return 
-			       '((3) ;; vals, a list..
-				 to  ;; token
-				 via ;; token
-				 0 ;; seed
-				 plus ;; aggr token
-				 ()   ;; senders list
-				 ))]
+		  (let ([this-message (make-return-obj
+				       (list (cpu-time))
+				       #f ;; parent
+				       (list 0) ;; counts
+				       '(3) ;; vals, a list..
+				       to  ;; token
+				       via ;; token
+				       0 ;; seed
+				       plus ;; aggr token
+				       ()   ;; senders list
+				       )]
 			[plus +] ;; Function for use by handler
 ;			[token-cache b_cache]
 			)
@@ -1357,12 +1353,9 @@
 	,(lambda (x) 
 	   (and (list? x)
 		(eq? (length x) 1);; the a_simob should have received a return message
-		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
-		(eq? (msg-object-parent (car x))
-		     (msg-object-origin (car x)))
-		(equal? '(1) (msg-object-count  (car x)))
-		;; Make sure vals is a list:
-		(list? (car (msg-object-args (car x))))
+		(return-obj? (car x))
+		(equal? '(1) (return-obj-counts  (car x)))
+		;; TODO: Could add some more criterion here.
 		))]
 
     ;; <TODO> TOFINISH NOT DONE!
@@ -1400,12 +1393,9 @@
 			 
 	   (and (list? x)
 		(eq? (length x) 1)
-		(eq? SPECIAL_RETURN_TOKEN (msg-object-token (car x)))
-		(eq? (msg-object-parent (car x))
-		     (msg-object-origin (car x)))
-		(equal? '(7) (car (msg-object-args  (car x))))
-		(equal? '(1 1) (msg-object-count  (car x)))
-		(list? (car (msg-object-args (car x)))) ;; Make sure vals is a list.
+		(return-obj? (car x))
+		(equal? '(7) (return-obj-return_vals (car x)))
+		(equal? '(1 1) (return-obj-counts  (car x)))
 		))]
     
     [ (process-statement '(emit foo 2 3)) (sim-emit 'foo (list 2 3) 0)]
