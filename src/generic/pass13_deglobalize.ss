@@ -96,7 +96,7 @@
 ;; (Name, DistributedPrim, Args) -> TokenBinds
 ;; This produces a list of token bindings.
 (define explode-primitive
-  (lambda (form memb prim args)
+  (lambda (form memb prim args heartbeat)
 ;	(disp "Explode primitive" name prim args)
 	  (case prim
 	    [(sparsify) (void)]
@@ -136,14 +136,18 @@
 ;		    [return_handler (new-token-name 'rethand-tok)]
 		    )
 	       (let ([parent (get-membership-name region_tok)])
-	       `([,parent (v) (call ,form v)]
-		 [,form (v) (return
+	       `([,parent (v) (activate ,form v)]
+		 [,form (v) 
+			(return
 			     v              ;; Value
 ;			     ,return_handler ;; To
 			     (to ,memb) ;; To
 			     (via ,parent)           ;; Via
 			     (seed ,seed_val)       ;; With seed
-			     (aggr ,rator_tok))]    ;; and aggregator
+			     (aggr ,rator_tok))     ;; and aggregator
+			;; FIXME FIXME
+			(timed-call ,(/ 1000 heartbeat) ,form)
+			]
 ;		 [,memb (v) ] ;; This occurs at the fold-point
 		 )))]
 
@@ -239,12 +243,10 @@
     (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,freq* ,rhs*] ...) ,body)
+	       [(lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,body)
 		(if (symbol? body)
-		    (let loop ((lhs* lhs*) 
-			       (rhs* rhs*)
-			       (cacc '())
-			       (tacc '()))
+		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
+			       (cacc '()) (tacc '()))
 		      (if (null? lhs*)
 			  (values (if (check-prop 'distributed body)
 				      (mvlet (((form memb) (token-names body)))
@@ -253,9 +255,9 @@
 				  cacc tacc)
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
-			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car rhs*) )])
+			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car heartbeat*) (car rhs*))])
 ;				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
-				 (loop (cdr lhs*) (cdr rhs*)
+				 (loop (cdr lhs*) (cdr heartbeat*) (cdr rhs*)
 				       (append cbinds cacc) 
 				       (append tbinds tacc)))))
 		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
@@ -304,7 +306,7 @@
    ;; This processes an expression and returns both its constant
    ;; bindings, and it's token bindings.
     (define process-expr
-      (lambda (name expr)	
+      (lambda (name heartbeat expr)	
 	(let ((finalname (check-prop 'final name)))
         (match expr
           ;; The possibility that the final value is local is
@@ -342,7 +344,7 @@
 	   (mvlet ([(form memb) (token-names name)])
 		  (values '() 
 			  (append 
-			   (explode-primitive form memb prim rand*)
+			   (explode-primitive form memb prim rand* heartbeat)
 			   (if finalname
 			       (primitive-return prim memb)
 			       '()))
