@@ -247,6 +247,9 @@
 ;; The execution of that atomic action (token handler) produces new messages
 ;; both in *this* simobject, and in the incoming fields of other simobjects.
 
+;; Matt's right, this is more complexity than was necessary.
+;; The local-time/global-time distinction is confusing.
+
 ;; It returns this simulation object as a thunk.
 ;; The thunk produces simevt's, but with action-thunks in the msgobj field 
 (define build-node-sim
@@ -264,10 +267,23 @@
 	  (match args 
 	    [(get-buffer) buffer]
 	    [(get-time) private-vtime]
+	    
+	    ;; The head action on the buffer (next to execute) must be
+	    ;; scheduled for a time g/equal the current local clock
+	    ;; time.
             [(head) (if (null? buffer) #f
                         (let ([next (car buffer)])
+			  (DEBUGMODE 
+			   (if (and (simevt-vtime next)
+				    (< (simevt-vtime next) private-vtime))
+			       (logger 0 
+				 "~a: WARNING: token event ~a has time in the past (~a) relative to current local clock (~a)~n"
+				 (node-id (simobject-node ob)) (simevt-vtime next) private-vtime)))
+
                           (make-simevt
                            (if (simevt-vtime next)
+			       ;; If for some reason it was scheduled earlier than the current clock time,
+			       ;; bring it up to that time!
                                (max (simevt-vtime next) private-vtime)
                                private-vtime)
                            (simevt-duration next)
@@ -331,22 +347,17 @@
     
     (define (process-incoming current-vtime)      
       (define schedule (simobject-scheduler ob))
-
-      '(logger 1.5 "Processing Node ~a incoming: ~a local,  ~a timed,  ~a remote~n"
-	      (node-id (simobject-node ob))
-	      (length (simobject-local-msg-buf ob))
-	      (length (simobject-timed-token-buf ob))
-	      (length (simobject-incoming-msg-buf ob)))
       
       (if (not (null? (append (simobject-local-msg-buf ob)
 			      (simobject-timed-token-buf ob)
 			      (simobject-incoming-msg-buf ob))))			      
-	  (logger 1.5 "Processing Node ~a incoming: ~a local,  ~a timed,  ~a remote~n"
+	  (logger 1.5 "~a: Receiving: ~a local, ~a timed, ~a remote. Buffer: ~a~n"
 		  (node-id (simobject-node ob))
 		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
 		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))
-		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))))
-
+		  (map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))
+		  (map msg-object-token (map simevt-msgobj (schedule 'get-buffer)))
+		  ))
 
       (let ([timed (simobject-timed-token-buf ob)]
 	    [local (simobject-local-msg-buf ob)]
@@ -381,7 +392,10 @@
 		  outgoing)
 
 	(let ((neighbors (graph-neighbors (simworld-object-graph world) ob)))
-	  (logger "~a: bcast at time ~a to -> ~a~n" (node-id (simobject-node ob)) current-vtime
+	  (logger "~a: bcast ~a at time ~a to -> ~a~n" 
+		  (node-id (simobject-node ob)) 
+		  (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)
+		  current-vtime
 		  (map (lambda (x) (node-id (simobject-node x))) neighbors))
 	  
 	  (for-each 
@@ -432,10 +446,11 @@
       ;; If our local clock has fallen behind the real one, advance it.
       ;; Ourtime represents the actual start time at which this potential action will run.
       (define ourtime
-	(if (< ourtime_starting global-mintime)
+	(if (>= ourtime_starting global-mintime)
 	    ourtime_starting 
-	    (begin (logger "~a: Fell behind global timer.  Advancing.~n"
-			   (node-id (simobject-node ob)))
+	    (begin (logger "~a: Fell behind global timer (our ~a trailing global ~a).  Advancing.~n"
+			   (node-id (simobject-node ob))
+			   ourtime_starting global-mintime)
 		   (scheduler 'set-time global-mintime)
 		   global-mintime)))
 
@@ -458,27 +473,28 @@
                (simevt-duration next)
                ;; Action thunk that executes message:
                (lambda ()
-		 ;; DEBUG:
-		 (if (not (= ourtime (scheduler 'get-time)))
-		     (error 'build-node-sim
-			    "Local time changed between getting the new head and executing it!~n Node ~a, orig time ~a, current-time ~a"
+		 (DEBUGMODE
+		  (if (not (= ourtime (scheduler 'get-time)))
+		     (logger 0 ; 'build-node-sim
+			    "~a: ERROR: Local time changed between getting the new head and executing it!  orig time ~a, current-time ~a~n"
 			    (node-id (simobject-node ob))
 			    ourtime
-			    (scheduler 'get-time)))
+			    (scheduler 'get-time))))
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
-                 (logger "~a: Executing: ~a at mintime ~a localtime [was] ~a~n" 
+                 (logger "~a: Executing: ~a at scheduled time ~a, global/mintime ~a,  localclock ~a~n" 
 			 (node-id (simobject-node ob))
-			 (msg-object-token (simevt-msgobj next)) 
+			 (msg-object-token (simevt-msgobj next))
+			 (simevt-vtime next)
 			 global-mintime
 			 (scheduler 'get-time))
 
-		 ;; DEBUG: check invariant:
-		 '(if (not (null? (simobject-outgoing-msg-buf ob)))
+		 '(DEBUGMODE ;; check invariant:
+		   (if (not (null? (simobject-outgoing-msg-buf ob)))
 		     (error 'build-node-sim 
 			    "Trying to execute action at time ~a, but there's already an outgoing(s) msg: ~a~n"
-			    global-mintime (simobject-outgoing-msg-buf ob)))
+			    global-mintime (simobject-outgoing-msg-buf ob))))
 
 		 ;; Do the actual computation:
                  ((simobject-meta-handler ob) (simevt-msgobj next) (simevt-vtime next))
@@ -496,9 +512,13 @@
 (define global-graph #f)
 
 (define (run-alpha-sim . stop-time)
-    (if (file-exists? "__temp.log") (delete-file "__temp.log"))
-    (simulation-logger (open-output-file "__temp.log" 'replace))
-    ;(simulation-logger #f)
+  (define logfile "__temp.log")
+    (if (file-exists? logfile) (delete-file logfile))
+    (parameterize ([simulation-logger (open-output-file logfile 'replace)]
+		   [simulation-logger-count 0])
+    (printf "Running simulator alpha (logfile ~s)" logfile)
+    (DEBUGMODE (display " with Debug-Mode enabled"))
+    (printf ".~n")
     
     (let ([stopping-time? (if (null? stop-time)
 			      (lambda (t) #f)
@@ -521,6 +541,7 @@
 		       ))
 		    (simworld-all-objs sim))])
 
+	;; DEBUG DEBUG DEBUG
 	(set! global-graph (simworld-graph sim))
 
 	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
@@ -569,9 +590,8 @@
 	      (main-sim-loop (simevt-vtime nextevt)))))))
     
     ;; Out of main loop:
-    (if (simulation-logger)
-	(close-output-port (simulation-logger)))
-    )))
+    (if (simulation-logger) (close-output-port (simulation-logger)))
+    ))))
 
 
 ;; From Swindle:

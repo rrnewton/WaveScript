@@ -90,16 +90,26 @@
 	      (values lvl str args)]
 	     [(,str ,args ...)	      
 	      (values 1 str args)])])
+
+  (define (print-header)
+    (fprintf (simulation-logger) "~4a{~a} " 
+	     (if (simulation-logger-count)
+		 (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
+			(- (simulation-logger-count) 1))
+		 "foo")
+	     level))
+
   (if (and (simulation-logger)
 	   (<= level (simulation-logger-level)))
       (if (null? args)
 	  (critical-section
-	   (begin (fprintf (simulation-logger) "{~a} " level)
+	   (begin (print-header)
 		  (display ob (simulation-logger))
 		  (newline (simulation-logger))))
 	  (critical-section
-	   (fprintf (simulation-logger) "{~a} " level)
+	   (print-header)
 	   (display (apply format ob args) (simulation-logger))))))))
+
 ;; This is just another variant:
 ;; This has no critical section for now!!! [2005.02.25]
 (define-syntax with-logger
