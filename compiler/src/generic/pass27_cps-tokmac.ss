@@ -21,7 +21,7 @@
 ;       NOTE: This expressions will be statically calculable -- constants.
 ;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
 ;;;  <TokName>   ::= <Symbol> 
-;;;  <SubtokId>  ::= <Symbol>
+;;;  <SubtokId>  ::= <Number>
 ;;;  <Token>     ::= (tok <TokName>) | (tok <Tokname> <Int>)
 ;;;  <DynToken>  ::= (tok <Tokname> <Expr>) | <Token>
 ;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
