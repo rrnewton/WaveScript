@@ -1864,7 +1864,7 @@
 
 ;; [2004.07.31] This returns the connected component containing the given object:
 ;; This needs to be tested!!
-(define (graph-get-connected obj graph)
+(define (graph-get-connected-component obj graph)
   (let loop ([todo (list obj)] [acc '()])
     (cond
      [(null? todo) acc]
@@ -1877,6 +1877,12 @@
 	(loop (append viable (cdr todo))
 	      (cons (car todo) acc)))])))
 
+
+;; Takes a horizontal or simple graph.
+(define (graph-neighbors g node)
+  (apply append
+	 (map cdr
+	      (filter (lambda (nd) (eq? (car nd) node)) g))))
 
 ;; This takes a graph in "single edge" form (where each edge is a
 ;; 2 element list), and produces a strange representation.  In the
@@ -2169,11 +2175,11 @@
     [(unfold-list '(a b c d))
      ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
 
-    [(graph-get-connected 'e '((a b c) (b c) (c) (d e f) (e g h)))   (h g e)]
-    [(graph-get-connected 'h '((a b c) (b c) (c) (d e f) (e g h)))   (h)]
-    [(graph-get-connected 'a '((a b c) (b c) (c) (d e f) (e g h)))   (c b a)]
-    [(graph-get-connected 'a '((a b) (b a)))                         (b a)]
-    [(graph-get-connected 'a '((a b) (b a c)))                       (c b a)]
+    [(graph-get-connected-component 'e '((a b c) (b c) (c) (d e f) (e g h)))   (h g e)]
+    [(graph-get-connected-component 'h '((a b c) (b c) (c) (d e f) (e g h)))   (h)]
+    [(graph-get-connected-component 'a '((a b c) (b c) (c) (d e f) (e g h)))   (c b a)]
+    [(graph-get-connected-component 'a '((a b) (b a)))                         (b a)]
+    [(graph-get-connected-component 'a '((a b) (b a c)))                       (c b a)]
 
 
     ))
