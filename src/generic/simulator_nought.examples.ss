@@ -4,7 +4,12 @@
   '(program
     (bindings)
     (socpgm  (bindings) (emit tok1))
-    (nodepgm (tokens) (startup))))
+    (nodepgm 
+     (tokens
+      [tok1 () (call tok2 3)
+   	       (relay)]
+      [tok2 (x) (+ x x)])
+     (startup))))
 
 ;; This simplest of programs just lights up all the nodes.
 ;; Really this only makes sense on the graphical simulator.

@@ -42,6 +42,12 @@ data Prim = Pplus | Pminus | Pmult | Pdiv
 	  --Pamap | Pafold
   deriving (Eq, Show, Read)
 
+data LedColor = Red | Green | Yellow
+  deriving (Eq, Show, Read)
+
+data LedAction = Toggle | On | Off
+  deriving (Eq, Show, Read)
+
 data Expr = -- Stndard forms:
             Econst Const
 	  | Evar Id
@@ -51,6 +57,8 @@ data Expr = -- Stndard forms:
 	  | Eseq [Expr]
 
           | Eif Expr Expr Expr
+
+          | ELed LedColor LedAction
 
 	  | Eprimapp Prim [Expr]
           | Esense

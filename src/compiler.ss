@@ -109,8 +109,12 @@
       (fluid-let ([pass-names passes])
 	(run-compiler p)))))
 
-
-
+(define run-tokmac
+  (let ((passes (cdr (list-remove-before 'deglobalize pass-names))))
+    (lambda (p)
+      (fluid-let ([pass-names passes])
+	(run-compiler p)))))
+(define rt run-tokmac)
 
 (define test
   (lambda (set)

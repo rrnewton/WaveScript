@@ -55,7 +55,7 @@ type StatementCode = String
 -- Returns the text corresponding to an expression evaluating same
 -- value as the given Basic expression.
 process_basic :: Basic -> String
-process_basic (Bvar (Id str)) = str
+process_basic (Bvar (Id str)) = str 
 process_basic (Bconst c)      = show c
 
 -- This returns both:
@@ -126,8 +126,10 @@ process_stmt indent tokargs e =
 		 seed' ++", "++
 		 aggr' ++");\n" ]
 
-    Srelay (Just t) -> [indent ++"/* FAILED relay just*/\n"]
-    Srelay Nothing -> [indent ++"/* FAILED relay nothing*/\n"]
+    Srelay (Just t) -> 
+        [indent ++ "call TMComm_"++ tokname t ++".relay();\n"]
+    Srelay Nothing -> 
+	[indent ++"// FAILED relay nothing\n"]
 
     -- FIXME
     Scall dest time t args -> 
@@ -137,16 +139,16 @@ process_stmt indent tokargs e =
 	   Just t -> indent ++"/* Cannot handle timed call right now: */\n"
 	   Nothing -> "") ++
 	  -- FIXME FILL IN ARG DATA HERE...
-	  indent ++"/* Should fill in arg data here... */\n",
+          --indent ++"/* Should fill in arg data here... */\n",
 	  -- Not going through the FIFO right now...
 	  --indent++"call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
-
 	  --indent ++"/* It's sketchy that I use the_packet for this without copying it... */\n",
 	  (case dest of Nothing -> indent; Just (Id s) -> indent ++ s ++ " = ") ++
 --	  "call token_"++ tokname t ++"(&the_packet);\n"
 	  "call token_"++ tokname t ++"(" ++
-			   (concat $ intersperse ", " $ map process_basic args)
-			   ++ ");\n"	 
+			   (concat $ intersperse ", " $ 
+			    map process_basic args)
+			   ++ ");\n" 
 	]
 
     Semit (Just time) t exps -> 
@@ -193,12 +195,7 @@ process_block indent tokargs (Block locals stmts) =
     let body = concat $ map (process_stmt indent tokargs) stmts
         defs = concat $ map (process_localdef indent) locals
     in ([], 
-	defs ++ 
-	 --- DEBUG CODE
-         ["        dbg(DBG_USR1, \"TM TestMachine: tok fired: addr %d, type %d, group %d \\n\""
-         ++ ", msg->addr, msg->type, msg->group);\n"]++ 
-	 --- DEBUG CODE
-	body)
+	defs ++ body)
 
 process_localdef :: String -> Id -> [String]
 process_localdef indent (Id id) = [indent ++"uint16_t "++ id ++";\n"]
@@ -229,21 +226,23 @@ process_handler (t, args, blk) =
     in (
 	--("  command uint16_t token_"++ tokname t  ++"(TOS_MsgPtr msg) { \n" ++ 
 	   ("  command uint16_t token_"++ tokname t  ++"("++ 
-	    (concat $ intersperse ", " $ map (\ (Id id) -> id) args)
+	    (concat $ intersperse ", " $ map (\ (Id id) -> "uint16_t "++id) args)
 	    ++") { \n" ++ 
         (concat  
 	 (map2 (\ (Id argname) n -> "        // Argument "++show n++" is '"++show argname++"'\n")
 	  args [0..])) ++ 
-	 "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
-	 "    int16_t* args = (int16_t*)(payload->args);\n"++
 	(concat stmts)++ 
 	 "    return 0; // This is a kind of lame default return value.\n"++
 	 "  }\n")
 	: funs,
 	"      case "++tok_id t++": \n"++
+	--- DEBUG CODE
+        "        dbg(DBG_USR1, \"TM TestMachine: tok fired: addr %d, type %d, group %d \\n\""++
+        ", msg->addr, msg->type, msg->group);\n"++ 
+	--- DEBUG CODE
 	"        call token_"++ funname ++"("++ 
 	(concat $ intersperse ", " $ 
-	 map (\ n -> "arg["++ show n ++"]") 
+	 map (\ n -> "args["++ show n ++"]") 
 	 [1..length args])
 	 ++");\n        break;\n")
 
@@ -265,6 +264,8 @@ process_handlers hnds =
     "\n  // This is the main token-processing function:\n"++
     "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
     "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
+    "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
+    "    uint16_t* args = (uint16_t*)(payload->args);\n"++
     "    switch (msg->type) {\n"++			      
     (foldl (++) "" bods) ++
     "    }\n"++
@@ -278,15 +279,19 @@ process_startup _ = ""
 build_module_header :: [TMS.TokHandler] -> String
 build_module_header toks = 
     let toknames = map (\ (t,_,_) -> tokname t) toks 
+	arglsts = map (\ (_,ls,_) -> map (\ (Id id) -> id) ls) toks
     in "\nmodule " ++ modname ++ "M \n {\n" ++ 
        "  provides interface StdControl as Control; \n" ++
        "  provides interface TMModule; \n" ++
        "  provides command void start_socpgm();\n"++
 --       "  uses interface Timer;\n" ++ 
        concat
-         (map (\ name ->
-	       "  provides command uint16_t token_"++ name ++"(TOS_MsgPtr msg);\n")
-	  toknames)++
+       (map2 (\ name argls ->
+	       "  provides command uint16_t token_"++ name ++"("++ 
+	       (concat $ intersperse ", " $
+		map ("uint16_t "++) argls) ++
+	       ");\n")
+	  toknames arglsts) ++
        "\n"++
        concat
          (map (\ name -> 
@@ -300,12 +305,20 @@ build_module_header toks =
 
 build_implementation_header :: [TMS.TokHandler] -> [Token] -> String
 build_implementation_header toks startup = 
+    "\n"
+
+build_implementation_footer :: [TMS.TokHandler] -> [Token] -> String
+build_implementation_footer toks startup = 
     "  command result_t Control.init() {\n" ++
     "    return SUCCESS;\n" ++
     "  }\n\n" ++
     "  command result_t Control.start() {\n" ++
 --    "    return call Timer.start(TIMER_REPEAT, 1000);\n" ++
     "    // This is where we need to start the socpgm if we're SOC.\n"++
+    "    if ( TOS_LOCAL_ADDRESS == BASE_STATION ) {\n"++
+--    "      post socpgm();\n"++
+    "      call start_socpgm();\n"++
+    "    }\n"++
     (foldr 
      (\ t acc -> "    // Clear the arguments here...\n"++
       "    // call TMComm_"++ tokname t ++".add_msg(the_packet);\n" 
@@ -328,6 +341,7 @@ build_socfun :: [TMS.ConstBind] -> Block -> String
 build_socfun consts (Block locals stmts) =
     let indent = "    " in
     "  task void socpgm() {\n"++ 
+    "    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\");\n"++
     process_consts consts ++ 
     -- FIXME TODO INCLUDE FUNS HERE!!!
     -- Generate code for all the statements in 
@@ -357,6 +371,8 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     "\n  // Token handlers and their helper functions:\n"++
     process_handlers nodetoks ++ 
     build_socfun socconsts socpgm ++
+    -- Put the StdControl stuff in the footer:
+    build_implementation_footer nodetoks startup ++
     "}\n"
 
 -------------------------------------------------------------------------------
@@ -391,6 +407,9 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 -------------------------------------------------------------------------------
 
 build_header_file (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
+    "\n"++
+    "#define BASE_STATION 0"++
+    "\n"++
     "enum {\n"++
     (concat $ 
      map2 (\ t n -> "  "++tok_id t++" = "++show n++",\n")

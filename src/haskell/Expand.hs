@@ -23,7 +23,7 @@ import Data.Char
 expand_tm :: TMPgm -> TMPgm
 expand_tm (Pgm consts socconsts socpgm nodetoks startup) = 
     let toknames = map (\ (x,_,_) -> x) nodetoks 
-	temp = map (expand_macros toknames []) socpgm
+	temp = map (expand_macros Nothing toknames []) socpgm
 	newsoc = map fst temp
 	newths = concat $ map snd temp
     in
@@ -37,10 +37,10 @@ expand_tm (Pgm consts socconsts socpgm nodetoks startup) =
 pths :: [Token] -> [TokHandler] -> [TokHandler]
 pths tenv ths = 
     foldl (\ acc (t, ids, bod) -> 
-	   let (e, newths) = expand_macros tenv [] bod
+	   let (e, newths) = expand_macros (Just t) tenv [] bod
 	   in (t, ids, e) : (newths ++ acc))
     [] ths
-
+{-
 -- Process Expression:
 pe tenv lenv expr =
     let loop = pe tenv lenv 
@@ -56,6 +56,7 @@ pe tenv lenv expr =
        (Eseq exprs) -> Eseq (map loop exprs)
 
        (Eif a b c) -> Eif (loop a) (loop b) (loop c)
+       (ELed c a) -> ELed c a 
 
 --       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
 
@@ -70,7 +71,8 @@ pe tenv lenv expr =
 	   let seed' = do s <- seed; return (loop s)
 	   in Ereturn (loop val) to via seed' aggr
 
-       (Erelay mbtok) -> Erelay mbtok
+       -- ERELAY
+
        (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
        (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
        (Eactivate tok args)    -> Eactivate    tok (map loop args)
@@ -79,11 +81,13 @@ pe tenv lenv expr =
        (Eelectleader tok) -> expr
 
 --       _ -> Econst 999
+-}
 
--- Takes: token env, local env, and expression
+
+-- Takes: current handler token, token env, local env, and expression
 -- Returns: a new replacement expression and a list of new token-handlers.
-expand_macros :: [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
-expand_macros tenv lenv expr = 
+expand_macros :: Maybe Token -> [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
+expand_macros thistok tenv lenv expr = 
     runST 
      (do new_tokhands <- newSTRef []       
 	 name_counter <- newSTRef 0       
@@ -140,7 +144,15 @@ expand_macros tenv lenv expr =
 		        Just s  -> do s <- loop lenv s
 			  	      return $ Ereturn val to via (Just s) aggr
 
-               (Erelay mbtok) -> return $ Erelay mbtok
+
+
+               (Erelay (Just t)) -> return $ Erelay (Just t)
+	       (Erelay Nothing) ->
+		   return 
+		   (case thistok of
+		    Nothing -> Erelay Nothing -- FIXME TODO: SHOULD BE ERROR
+		    Just t  -> Erelay (Just t))
+
 	       (Eemit mbtime tok args) -> 
 		   do args <- mapM (loop lenv) args
 		      return $ Eemit mbtime tok args

@@ -37,6 +37,9 @@ module BasicTMCommM {
   // This is a FIFO for storing incoming messages, implemented as a wrap-around buffer.
   TOS_Msg token_in_buffer[TOKBUFFER_LENGTH];
 
+  TOS_Msg token_out_buffer; //[TOKBUFFER_LENGTH];
+  bool send_pending; //[TOKBUFFER_LENGTH];
+
   // in_buffer_start is the position of the first element in the fifo.
   int16_t in_buffer_start;
   // in_buffer_end is the position of the last element, or -1 if there are
@@ -185,12 +188,19 @@ module BasicTMCommM {
   // Hope this gets statically wired and inlined 
   command result_t TMComm.emit[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {    
 
-    //    call SendMsg.send[msg->type](address, length, msg); 
-    call SendMsg.send[id](address, length, msg); 
-    return SUCCESS;
+    if (send_pending) {
+      return FAIL;
+    } else {
+      send_pending = TRUE;
+      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
+      call SendMsg.send[id](address, length, msg); 
+      return SUCCESS;      
+    }   
   }
 
-  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  //  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
+  command result_t TMComm.relay[uint8_t id]() {
+    // This relays the already buffered message.
     return SUCCESS;
   }
 
@@ -226,6 +236,8 @@ module BasicTMCommM {
 
   event result_t SendMsg.sendDone[uint8_t sent_id](TOS_MsgPtr msg, bool success) {
     // dbg(DBG_USR1, "TM BasicTMCommM: Done sending type: %d\n", msg->type);
+    send_pending = FALSE;
+    
     return SUCCESS;
   }
   
