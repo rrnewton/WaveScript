@@ -114,8 +114,8 @@
 (define (rr) (r '(circle 50 (anchor-at '(30 40)))))
 
 (define (doit x)
-  (run-simulation (build-simulation (compile-simulate-nought x)) 2.0))
-
+  (run-simulation (build-simulation (compile-simulate-nought x))		  
+		  20.0))
 
 ;; This is my big target program!!
 (define theprog
@@ -226,3 +226,58 @@
 (define mp;;myprog
   '(rfold + 0 (smap sense (circle-at '(30 40) 10))))
 
+(define (run-token-machine x)
+  (run-simulation (build-simulation x) 2.0))
+
+(define rtm run-token-machine)
+
+(define tmprog
+  '(deglobalize-lang
+    '(program
+      (bindings
+       (tmpunknpr_13 (cons '40 '()))
+       (tmp_4 (cons '30 tmpunknpr_13)))
+      (socpgm (bindings) (void))
+      (nodepgm
+       (tokens
+	(f_token_tmpanch_8 () (flood constok_15))
+	(constok_15
+	 ()
+           (if (< (locdiff (loc) tmp_4) 10.0)
+               (elect-leader m_token_tmpanch_8)
+               '#f))
+	(f_token_tmpanch_8 () (draw-mark tmp_4 (rgb 0 100 100)))
+	(m_token_tmpanch_8 () (light-up 0 255 255))
+	(m_token_tmpanch_8 () (call f_token_tmpcirc_9))
+	(f_token_tmpcirc_9 () 
+			   (begin (disp "about to emit to mtmpcirc" this)
+			   (emit m_token_tmpcirc_9 this)))
+	(f_token_tmpcirc_9 () (draw-circle (loc) 20))
+	(m_token_tmpcirc_9 (v) (light-up 0 100 100))
+	(m_token_tmpcirc_9 (v) (if (< (dist) '10) (relay)))
+	(tmpfunc_10 (a_1) (lazy-letrec () (call f_token_result_5)))
+	(f_token_result_5 () (local-sense))
+	(m_token_tmpcirc_9 (v) 
+			   (begin (disp "bout to call tmpsig " v)
+				  (call f_token_tmpsig_11 v)))
+	(f_token_tmpsig_11
+           (v)
+;	   (disp "OK, about to call this damn plus fun")
+	   (begin 
+	   (disp "bout to call plus We got this arg." v)
+           (call m_token_tmpsig_11 		 
+		 (call tmpfunc_10 v))))
+         (tmpfunc_12
+	  (a_3 b_2)
+	  (lazy-letrec ((result_6 (+ a_3 b_2))) (call result_6)))
+         (m_token_tmpsig_11 (v) (call f_token_result_7 v))
+         (f_token_result_7
+	  (v)
+           (return
+	    v
+	    (to m_token_result_7)
+	    (via m_token_tmpsig_11)
+	    (seed '0)
+	    (aggr tmpfunc_12)))
+         (m_token_result_7 (v) (soc-return v)))
+       (startup f_token_tmpanch_8)))))

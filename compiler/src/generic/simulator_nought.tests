@@ -1,4 +1,5 @@
-
+;; [2004.07.12] - Changing the representation for a "simulation
+;; object", changing these test cases accordingly.
 
 ;; These are generic tests which work for both simulator_nought and
 ;; simulator_nought_graphics an for both Chez and PLT.
@@ -19,45 +20,52 @@
     ,example-nodal-output0 ]
   
   ;; BUILD
+  ;; Changed the build-object..
   [ "Build simulation for flooding lights program..."
     (build-simulation (compile-simulate-nought ',example-nodal-prog1))
     ,(lambda (x)
-       (procedure? (vector-ref x 0))
-       (andmap procedure? (vector-ref x 1)))]
+       (let ([vec (x (lambda args (void)) (lambda args (void)))])
+	 (procedure? (vector-ref vec 0))
+	 (andmap procedure? (vector-ref vec 1))))]
   
   ;; SIMULATE
   [ "Simulate with a trivial SOC program"
-    (simulate (vector (lambda () 3) '()))
+    (simulate (lambda (sr sf) (vector (lambda () 3) '())))
     All_Threads_Returned ]
 
   [ "Now we throw in a just one trivial nodeprogram" 
-    (simulate (vector (lambda () 3)
-		      (list (lambda () 4))
-		      2))
+    (simulate (lambda (sr sf)
+		(vector (lambda () 3)
+			(list (lambda () 4))))
+			2)
     All_Threads_Returned ]
   
   [ "Now a couple trivial nodeprograms" 
-    (simulate (vector (lambda () 3)
-		      (list (lambda () 4)
-			    (lambda () 5)))
-	      2)
+    (simulate (lambda (sr sf)
+		(vector (lambda () 3)
+			(list (lambda () 4)
+			      (lambda () 5))))
+		2)
     All_Threads_Returned ]
   
   [ "Just repeat that last one with an open-output-string" 
     (let ((s (open-output-string)))
-      (simulate (vector (lambda () 3)
-			(list (lambda () 4)
-			      (lambda () 5)))
-		2))
+      (simulate 
+       (lambda (sr sf)
+	 (vector (lambda () 3)
+		 (list (lambda () 4)
+		       (lambda () 5))))
+	 2))
     All_Threads_Returned ]
   
   
   [ "Run two threads each with a display" 
     (let ((s (open-output-string)))
       (parameterize ([current-output-port s])
-		      (simulate (vector (lambda () (display 3))
-					(list (lambda () (display 4))))
-				10)
+		      (simulate (lambda (sr sf)
+				  (vector (lambda () (display 3))
+					  (list (lambda () (display 4)))))
+				  10)
 		      (get-output-string s)))
     ;; Oracle to tell if the answers good:
     ,(lambda (res) (member res (list "34" "43"))) ]

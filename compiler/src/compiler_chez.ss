@@ -152,3 +152,5 @@
 
 
 (define (g) (eval (cadadr testssim)))
+
+(pretty-maximum-lines 2000)
