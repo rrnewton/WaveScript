@@ -126,6 +126,17 @@
 		      (lambda (x) x) ;; Compiler
 		      run-simulation-stream)) ;; Runner
 
+(define pretoken-repl 
+  (repl-builder
+   void void
+   compile-almost-to-tokens
+   (lambda (x)
+     (fluid-let ([print-length 10])
+       (let ([result (eval x)])
+	 (printf "Returned: ~s~n~n" result))
+       (if (list? result)
+	   (printf "Length: ~s~n" (length result)))))))  
+
 ;; ???????
 (define precomp-graphical-repl (repl-builder 
 		      void  ;; Startup
