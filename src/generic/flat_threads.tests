@@ -1,7 +1,16 @@
 
 `(
     [ '1 1 ] 
-	
+
+    [ "A bunch of threads complete immediately"
+      (run-flat-threads 
+       (list (lambda () 3)
+	     (lambda () 4)
+	     (lambda () 5))
+       2)
+      All_Threads_Return]
+    
+
     [ "Break an infinite loop."
       (let ((s (open-output-string)))
 	(parameterize ([current-output-port s])
