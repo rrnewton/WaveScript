@@ -5,10 +5,10 @@
 ;; Simulator runtime
 
 (define run-alpha-sim
-  (lambda (starting-evnts)
-    (let ([stopping-time? (if #t 
+  (lambda (starting-evnts . stop-time)
+    (let ([stopping-time? (if (null? stop-time)
 			      (lambda (t) #f)
-			      (lambda (t) (>= t stopping)))])
+			      (lambda (t) (>= t (car stop-time))))])
 
     (letrec 
 	([main-sim-loop 

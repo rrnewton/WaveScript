@@ -19,6 +19,12 @@
 ;; This structure contains all the global data needed a simulation.
 (define-structure (simulation graph object-graph all-objs))
 
+;; This structure contains everything an executing token handler needs
+;; to know about the local node. 
+;; "this" is a simobject.
+;; tokstore is a struct containing all the stored values.
+(define-structure (local-info this I-am-SOC tokstore))
+
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 
@@ -39,6 +45,9 @@
 			      timestamp ;; when it was sent 
 			      parent ;; :: simobject - who I got it from
 			      args))
+
+
+
 
 ;; ======================================================================
 
@@ -249,7 +258,8 @@
 	   ;; This is a little wider than the allowable grammar to allow
 	   ;; me to do test cases:
 	   (match expr
-		  [,x (guard (and (symbol? x) (memq x allstored))) `(car ,x)]
+		  [,x (guard (and (symbol? x) (memq x allstored))) 
+		      `(,(symbol-append 'tokstore- x) (localinfo-token-store localinfo))]
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
@@ -393,19 +403,24 @@
 		   [(,tok (,args ...) ,expr* ...)
 		    (let ([stored (cadr (assq tok allstored))])
 		      `[,tok 
-                         (lambda ,args 
+                         (lambda (localinfo
+				  ,@args)
                            #;(DEBUGPRINT2 
                             (disp "Token " ',tok 
-                                  "running at" (node-id (simobject-node this)) 
+                                  "running at" (node-id (simobject-node this))
                                   " with message: " ',args))
+			 
+			 ;this I-am-SOC token-store 			 
+			 (let ((the-store (localinfo-tokstore localinfo)))
+;			 (let ([mystore (cadr (assq ',tok (localinfo-token-store localinfo)))])
                            (set-simobject-outgoing! this '())
                            ,@(map (process-statement tbinds stored) expr*)
                            (let ([result
-                                  (values (simobject-outgoing this)                                          
+                                  (values (simobject-outgoing (this))
                                           )])
                              (set-simobject-outgoing! this '())
                              result)
-                           )
+                           ))
                          ])]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -417,13 +432,7 @@
 
 ;; This produces the compiled "main" program. 
 (define (build-body tbinds expr)
-  (let-values ([(binds allstored) (process-tokbinds tbinds)])
-    `(let ,(map (lambda (v) `(,v '()))
-		(apply append (map cadr allstored)))
-       "Let-Stored!"
-       (letrec ([this-message #f]
-                ,@binds)
-         ,expr))))
+)
 
 ;; ======================================================================
 
@@ -433,64 +442,35 @@
 		     [(program ,_ ...) prog]
 		     [(,input-lang '(program ,stuff ...)) `(program ,stuff ...)])))
     (match prog
-      [(program (bindings ,nodebinds ...)
-		(socpgm (bindings ,socbinds ...) ,socstmts ...)
+      [(program (bindings ,nodebinds ...)		
 		(nodepgm (tokens ,nodetoks ...) (startup ,starttoks ...)))
-       (let* (
-       
-#;       [socprog
-	 `(lambda (soc-return soc-finished SOC-processor this object-graph all-objs)
-	    (let ([I-am-SOC #t]) 
-	      ;; We have to duplicate the tokbinds here...
-              `(let* (,@(process-binds nodebinds)
-                      ,@(process-binds socbinds))
-                 ,(build-body
-                   nodetoks generic-defs			
-                   `(begin ,@(map (process-statement nodetoks)
-                                  socstmts)
-                           'soc_finished)))))]
-              
-       [nodeprog
-        ;; Takes: the two soc procedures, 
-        ;;        simobj for the soc, 
-        ;;        simobj for this,
-        ;;        simulation
-	`(lambda (soc-return soc-finished SOC-processor this sim)
-	   "This is the simulator program."
-	   "The above arguments allow it to plug into the harness that runs the simulator."
-	    (let ([I-am-SOC (eq? this SOC-processor)]
-		  [local-sense (lambda ()
-				 ((current-sense-function)
-				  (node-pos (simobject-node this))))])
+;	`(lambda (soc-return soc-finished SOC-processor this sim)
+	`(define (sim-seed)
+	   "This is the simulation seed."
+	   "It returns an initial set of scheduled actions for the simulator to execute."
+	   
+	   (define-structure (store ,@allstored))
 
+	   ;; Need to update the sensing machinery...
+	   (let ([local-sense (lambda ()
+				((current-sense-function)
+				 (node-pos (simobject-node this))))])
+	      
 	      (let* ,(process-binds nodebinds)
-		,(build-body
-                  nodetoks
-                  `(begin 
-		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
-		    ;; Call all the starting tokens with no arguments:
-                     ,@(map list starttoks)
-
-		     
-
-)))))])
-
-       (DEBUGPRINT
-	(printf "~nGOT TOKEN HANDLERS:~n" )
-	(pretty-print nodetoks)(newline))
-
-;       (disp "Socprog")
-;       (pretty-print socprog)
-;       (newline)
-;       (disp "Nodeprog")
-;       (pretty-print nodeprog)
-;;       (set! f socprog)
-;;       (set! sp socprog)
-;;       (set! np nodeprog)
-       ;; DANGEROUS:
-;       (list socprog nodeprog)
-nodeprog
-       )])))
+		,(let-values ([(binds allstored) (process-tokbinds nodetoks)])
+					;    `(let ,(map (lambda (v) `(,v '()))
+					;		(apply append (map cadr allstored)))      
+					;       "Let-Stored!"
+	      `(letrec ,binds 		 
+		 ;; Within this body, toks are bound, we return a list of start actions
+		 (values
+		  (list ,@(map (lambda (t) (list 0 t)) starttoks)) ;; Vtime Zero
+		  ;; And we also return a thunk for producing fresh stores.
+		  (lambda ()
+		    (make-store ,@(make-list (length allstored) '()))))
+		 )))))]
+      [,otherwise (error 'compile-simulate-alpha
+			 "unmatched input program: ~a" prog)])))
 
 
 (define these-tests
@@ -501,11 +481,11 @@ nodeprog
      (a)]
 
     [(find-stored '(let-stored ([x '99])
-			      (set! x (let-stored () (+ x '1)))
-			      (bcast tok2 (let-stored ((a '1))
-						      (+ a x)))))
+			       (begin (set! x (let-stored () (+ x '1)))
+				      (bcast tok2 (let-stored ((a '1))
+							      (+ a x))))))
      (x a)]
-
+     
     [(compile-simulate-alpha
       '(program
 	(bindings)
@@ -521,13 +501,13 @@ nodeprog
     [(compile-simulate-alpha
       '(program
 	(bindings)
-	(socpgm  (bindings) (call tok1))
 	(nodepgm 
 	 (tokens
+	  [SOC-start () (call tok1)]
 	  [tok1 () (bcast tok2 '3)]
 	  [tok2 (x) (let-stored ([x '99])
-		      (set! x (+ x '1))
-		      (bcast tok2 x))])
+				(begin (set! x (+ x '1))
+				       (bcast tok2 x)))])
 	 (startup))))
      '??]
 
