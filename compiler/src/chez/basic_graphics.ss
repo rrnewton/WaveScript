@@ -3,11 +3,20 @@
 ;; document somewhere as soon as it's done.  Erg, you'd think this
 ;; would be part of slib?
 
+(module basic_graphics (window-height window-width
+			init-graphics close-graphics 			
+			rgb? rgb rgb-red rgb-green rgb-blue
+			;; current-drawing-color 
+			;; current-filling-color
+			;; current-background-color
+			;; draw-ellipse ....
+			)
+
+;; This defines window-width and window-height presets:
+(include "../generic/basic_graphics.ss")
+
 (define the-win #f)
 (define the-canvas #f)
-
-(define window-width 800)
-(define window-height 800)
 
 (define-structure (rgb red green blue))
 (define rgb make-rgb)
@@ -112,3 +121,4 @@
     (show canvas)))
 
 
+);; End module

@@ -21,7 +21,7 @@
     (let loop ([engs (map make-engine thks)]
 	       [acc '()])
       (cond
-       [(and timeout (> (real-time) timeout)) 'Simulation_Done]
+       [(and timeout (> (real-time) timeout)) 'Threads_Timed_Out]
        [(and (null? acc) (null? engs)) 'All_Threads_Returned]
        [(null? engs)  (loop (reverse acc) '())]
        [else 
@@ -58,7 +58,8 @@
 	  (get-output-string s)))
 	"0123456789"]
 
-    [ (let ((s (open-output-string)))
+    [ "An infinite loop on a thread times out."
+      (let ((s (open-output-string)))
 	(parameterize ([current-output-port s])
 	  (run-flat-threads 
 	   (list (lambda () (let loop () (loop))))

@@ -14,6 +14,10 @@
 
 ;(load "basic_graphics.ss")
 
+(module graphics_stub (draw-procs draw-proc draw-edge
+		       these-tests test-this)
+	(import basic_graphics)
+
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 
@@ -136,3 +140,5 @@
     ))
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+
+) ;; End module.
