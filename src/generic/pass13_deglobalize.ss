@@ -188,7 +188,7 @@
 		    [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
 		    )
-	       (let ([parent (get-membership-name region_tok)]
+	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent ,(if push? '(v) '()) 
 			    ,(if push? 
@@ -198,7 +198,8 @@
 			  (return
 			     ,(if push? 'v 'this)                     ;; Value
 			     (to ,memb)             ;; To
-			     (via ,parent)          ;; Via
+;			     (via ,parent)          ;; Via
+			     (via global-tree)          ;; Via
 			     (seed ,seed_val)       ;; With seed
 			     (aggr ,rator_tok))     ;; and aggregator
 			  ,@(if push? '()
