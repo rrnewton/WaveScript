@@ -8,10 +8,11 @@
 module TM where
 
 type Const = Int
-type Id = String
-type ConstBind = (Id, Const)
+type ConstBind = (Id, Expr)
 --type Formal = Id
 type TokHandler = (Token, [Id], Expr)
+type Time = Int
+
 
 data Id = Id String
   deriving (Eq, Show, Read)
@@ -22,17 +23,6 @@ data Token = Token String
 --data Statement = PrimStat
 --  deriving (Eq, Show, Read)
 
-data Expr = Ereturn Id 
-	  | Etoken Id
-	  | Eprimapp
-	  | Eassign
-	  | Ecall Id [Expr]
-	  | Etimedcall Id Time [Expr]
-	  | Eemit
-  deriving (Eq, Show, Read)
-
---  deriving (Eq, Show, Read, Doc)
-
 data TMPgm = Pgm { consts    :: [ConstBind],
 	      socconsts :: [ConstBind],
 	      socpgm    :: [Expr],
@@ -42,27 +32,25 @@ data TMPgm = Pgm { consts    :: [ConstBind],
   deriving (Eq, Show, Read)
 
 data Expr = -- Stndard forms:
-            Econst
+            Econst Const
 	  | Evar Id
 	  | Elambda [Id] Expr
-	  | Eprimapp (Prim Expr)
+	  | Eseq Expr Expr
+--	  | Eprimapp (Prim Expr)
             -- Special forms:
 	  | Esocreturn Expr
 	  | Esocfinished	  
 	  | Ereturn Expr
 	  | Erelay (Maybe Token)
-	  | Eemit
-	  | Ecall
+	  | Eemit (Maybe Time) Token [Expr]
+	  | Ecall (Maybe Time) Token [Expr]
   deriving (Eq, Show, Read)
 
 
-data Prim a = Pcluster a 
-	  | Pamap 
-	  | Pafold 
-	  | Psmap 
-	  | Punion 
-	  | Pintersect 
-  deriving (Eq, Show, Read)
+--data UNOP = 
+data BINOP = TMPplus | TMPmult
+--data TRIOP = 
+
 
 
 
@@ -76,22 +64,27 @@ x = Pgm { consts    = [],
 y = Pgm [] [] [] [] []
 
 
-z = Pgm { consts    = [("woot",3)],
-	  socconsts = [("foot",4)],
+z = Pgm { consts    = [(Id "woot",Econst 3)],
+	  socconsts = [(Id "foot",Econst 4)],
 	  socpgm    = [],
-	  nodetoks  = [("tok1", ["x"], Ereturn "x")],
+	  nodetoks  = [(Token "tok1", [Id "x"], Ereturn (Evar (Id "x")))],
 	  startup   = []
 	}
 
+s = "(Pgm {} " ++ 
+    ")"
 
-a = (Pgm {
-  consts = [(result_2, (Econst 3))],
-  socconsts=[],
-  socpgm=[(Esocreturn (Evar (Id "result_2"))), Esocfinished],
-  nodetoks=[((Token "spread-global"), [], (Ebegin [(Eemit Nothing (Token "global-tree") []), (Ecall (Just 1000) (Token "spread-global") [])])), ((Token "global-tree"), [], (Erelay Nothing))],  startup=[]
-})
+r = Econst
+    3
 
-s = "(Pgm {"
+doit = do s <- readFile "test.tm";
+	  putStr "Read file:\n";
+	  putStr s;
+	  let stuff = ((read s) :: TMPgm)
+--	  let stuff = 3593
+	  putStr (show stuff);
+	  putStr "\n That's that...\n"
+	  return stuff
 
 
 --  consts = [(result_2, (Econst 3))],
@@ -99,3 +92,18 @@ s = "(Pgm {"
 --  socpgm=[(Esocreturn (Evar (Id \"result_2\"))), Esocfinished],
 --  nodetoks=[((Token \"spread-global\"), [], (Ebegin [(Eemit Nothing (Token \"global-tree\") []), (Ecall (Just 1000) (Token \"spread-global\") [])])), ((Token \"global-tree\"), [], (Erelay Nothing))],  startup=[]
 --})"
+
+
+a = (Pgm {
+  consts = [((Id "result_1"), (Econst 3))],
+  socconsts=[],
+  socpgm=[(Esocreturn (Evar (Id "result_1"))), Esocfinished],
+  nodetoks=
+    [((Token "spread-global"), 
+      [], 
+      (Eseq (Eemit Nothing (Token "global-tree") []) 
+       (Ecall (Just 1000) (Token "spread-global") []))), 
+     ((Token "global-tree"), [], 
+      (Erelay Nothing))],  
+  startup=[]
+    })

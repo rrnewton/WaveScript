@@ -16,11 +16,26 @@ test = 3
 --type Expr = Int
 
 
+data Prim a = Pcluster a 
+	  | Pamap 
+	  | Pafold 
+	  | Psmap 
+	  | Punion 
+	  | Pintersect 
+  deriving (Eq, Show, Read)
+
+
+
+
+
+
+
 type Var = String
 
-type Prim = Rmap | Smap 
-	  | Circle | CircleAt
-	  | Cons | Plus | Minus | Times | Divide
+
+--type Prim = Rmap | Smap 
+--	  | Circle | CircleAt
+--	  | Cons | Plus | Minus | Times | Divide
 	    
 --type Expr = imm Int
 --	  | var var

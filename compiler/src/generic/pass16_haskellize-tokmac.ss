@@ -20,15 +20,22 @@
 	[(rfold) "Pafold"]
 	[else (string-append "P" (symbol->string p))]))
 
-    (define (hbegin ls)
-      (format "(Ebegin ~a)" (hlist ls)))
+    (define hbegin
+      (lambda (expr*)		
+	(let loop ([expr (match `(begin ,@expr*)
+				[(begin ,[expr*] ...) (apply append expr*)]
+				[,expr (list expr)])])	  
+	  (match expr
+	     [(,x) x]
+	     [(,x ,x* ...)
+	      (format "(Eseq ~a ~a)" x (loop x*))]))))
     
     (define (htok t) (format "(Token \"~a\")" t))
     (define (hid id) (format "(Id \"~a\")" id))
 
     (define (process-constbind cbind)
       (match cbind
-	[(,id ,[process-expr -> rhs])
+	[(,[hid -> id] ,[process-expr -> rhs])
 	 (format "(~a, ~a)" id rhs)]))
     
     (define (process-expr expr)

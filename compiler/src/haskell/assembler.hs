@@ -8,10 +8,13 @@ This will read
 
 -}
 
-
-
-
+import TM
 
 main = do putStr "Running token machine assembler in Haskell...\n"
-	  ln <- 
+	  str <- readFile "test.tm"
+	  let expr = (read str :: TMPgm)
+	  putStr "Tokmac read!\n"
+	  putStr str
+
+
 
