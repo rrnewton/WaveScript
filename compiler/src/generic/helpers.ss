@@ -1176,6 +1176,10 @@
                   (+ list-index-r 1)
                   #f))))))
 
+(define list-find-position
+  (lambda (sym los)
+    (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
+
 ;; USES equal? !!
 (define list-remove-after
   (lambda (x ls)
@@ -1869,8 +1873,8 @@
 
 ;; Take N elements from a stream
 (define stream-take 
-  (trace-lambda streamtake (n s)
-    (trace-let stloop ((n n) (s s))    
+  (lambda (n s)
+    (let stloop ((n n) (s s))    
       (cond
        [(zero? n) '()]
        [(null? s)
@@ -1881,7 +1885,7 @@
   
 ;; Layer on those closures!
 (define stream-map 
-  (trace-lambda stream-map (f s)
+  (lambda (f s)
     (let loop ((s s))
       (delay (cons (f (stream-car s))
 		   (loop (stream-cdr s)))))))

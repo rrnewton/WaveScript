@@ -122,6 +122,7 @@
 
    set? set-equal? list->set set-cons union intersection difference
    list-head list-remove-first list-remove-last! list-remove-after filter list-index snoc rac rdc last
+   list-find-position
    randomize-list  insert-between iota disp pp crit-printf
    graph-map graph-get-connected cyclic?  
    deep-assq deep-member? deep-all-matches deep-filter
