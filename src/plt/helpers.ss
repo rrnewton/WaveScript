@@ -14,7 +14,7 @@
 	 
 	 constant? datum? formalexp?
 	 
-	 blanko-primitives blanko-primitive?
+	 regiment-primitives regiment-primitive?
 	 )
 	
 	)

@@ -2,6 +2,31 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
+;(define region-primitives)
+;(define anchor-primitives)
+
+(define regiment-basic-primitives 
+  '(cons car cdr 
+	 + - * /
+	 ))
+
+(define regiment-distributed-primitives 
+  '(rmap, rfold smap time-of
+	  circle circle-at anchor anchor-at anchor-where k-neighborhood time
+	  cluster sparsify border planarize treeize filter union intersect
+	  until when when-any when-percentage
+	  sense neighbors ))
+  
+;;; 2004.03.31 - I don't know what the system's going to be called so
+;;; I'm using the placeholder "blanko" which I will replace later. 
+;;; OK, replacing with "regiment"
+(define regiment-primitives
+  (append regiment-basic-primitives
+	  regiment-distributed-primitives))
+
+(define (regiment-primitive? x) (memq x regiment-primitives))
+
+
 #;(define marshal
 (lambda (x)
   (let ((str (format "~s" x)))
@@ -419,22 +444,6 @@
      ;(closure-set! 3 effect)
      (closure-set! 3 effect (Tag Tag Object Object) Void)
      ))
-
-
-
-;;; 2004.03.31 - I don't know what the system's going to be called so
-;;; I'm using the placeholder "blanko" which I will replace later. 
-(define blanko-primitives
-  '(rmap, rfold smap time-of
-	  circle circle-at anchor anchor-at anchor-where k-neighborhood time
-	  cluster sparsify border planarize treeize filter union intersect
-	  until when when-any when-percentage
-	  sense neighbors 
-	  cons car cdr 
-	  + - * /
-	  ))
-
-(define (blanko-primitive? x) (memq x blanko-primitives))
     
 (define scheme-primitive?
   (lambda (x)
