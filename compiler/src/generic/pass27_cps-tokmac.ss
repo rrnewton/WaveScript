@@ -128,14 +128,21 @@
 				  ,socstmts ...)
 			  (nodepgm (tokens ,nodetoks ...)
 				   (startup ,starttoks ...))))
-	 (let ([newtoks ;newstmts)
+
+'	 (let ([newtoks ;newstmts)
 		(let ([processs (process-effect (map car socbinds) (map car nodetoks) #f)])
 		  (foldl (lambda (stmt)
 ;			   (mvlet ([(newstmt newtok) (process stmt)])
 			   0000
 			   )))])
 	   000 ;; TODO TODO TODO
-	)]))))
+	)
+
+
+	 prog
+
+
+]))))
 
 
 
