@@ -10,3 +10,6 @@
 ;	(provide rename-var 
 ;		 test-this these-tests test01 tests01)
 )
+
+
+(require  pass07_remove-complex-opera)
