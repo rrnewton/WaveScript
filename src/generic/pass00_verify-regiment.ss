@@ -38,7 +38,8 @@
 	   (guard (not (memq 'quote env)) (datum? datum))
 	   `(quote ,datum)]
           [,var (guard (symbol? var))
-            (if (not (memq var env))
+            (if (and (not (memq var env))
+		     (not (regiment-primitive? var)))
                 (error 'verify-regiment (format "unbound variable: ~a~n" var))
                 var)]
           
