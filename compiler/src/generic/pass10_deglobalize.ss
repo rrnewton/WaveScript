@@ -109,6 +109,8 @@
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
 				   (elect-leader ,memb)
 				   '#f)]
+		 [,memb () (draw-mark (car ,target) (cadr ,target) (rgb 0 100 100))]
+		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
 		 [,memb () (light-up 0 255 255)]
 		 ))]

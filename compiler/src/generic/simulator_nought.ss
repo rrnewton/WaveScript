@@ -108,6 +108,12 @@
 	 (random world-ybound))
    ))
 
+(define (myequal? . args)
+  (let myeqloop ((args args))   
+     [() #t]
+     [(a) #t]
+     [args (apply equal? args)]))
+  
 (define (dotted-append ls ob)
   (let loop ((ls ls))
     (if (null? ls) ob
@@ -291,10 +297,13 @@
 		     [thunks (map (lambda (bod) `(lambda () ,bod)) body*)])
 ;		(disp "GOT DUPS " tok formals*)
 		(DEBUGMODE
-		 (if (not (apply equal? formals*))
+		 (disp "IN DEBUG") (flush-output-port)
+		 (if (not (apply myequal? formals*))
 		     (error 'simulator_nought:remove-duplicate-tokbinds
 			    "handlers for token ~s don't all take the same arguments: ~s" 
-			    tok formals*)))
+			    tok formals*))
+		 (disp "DOEN DEBUG") (flush-output-port)
+		 )
 		(let ([mergedhandler
 		       `[,tok ,(car formals*)
 			      (begin (for-each 
