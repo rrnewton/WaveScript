@@ -33,7 +33,7 @@ data Block = Block { binds :: [Id],
 data Stmt = Svoid
 	  | Sassign Id Basic
           | Sif Basic [Stmt] [Stmt]
-          | Ssense
+          | Ssense (Maybe Id)
 	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
 	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!
 	  | Semit (Maybe Time) Token [Basic] -- no value
