@@ -34,8 +34,8 @@
 (require 'hash-table)
 ;(define (make-default-hash-table) (make-hash-table 50))
 (define (make-default-hash-table) (make-hash-table 5))
-(define hashtab-get (hash-inquirer eq?))
-(define hashtab-set! (hash-associator eq?))
+(define hashtab-get (hash-inquirer equal?))
+(define hashtab-set! (hash-associator equal?))
 
 
 

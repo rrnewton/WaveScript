@@ -49,7 +49,7 @@
             (begin (vector-set! newv n (vector-ref v n))
                    (loop (sub1 n)))))))
 
-  (define (make-default-hash-table) (make-hash-table))
+  (define (make-default-hash-table) (make-hash-table 'equal))
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
   (define hashtab-set! hash-table-put!)
 
