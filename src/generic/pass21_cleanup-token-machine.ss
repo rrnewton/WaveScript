@@ -162,8 +162,8 @@
     (define process-expr 
       ;(trace-lambda cleanuptokmac:procexp 
       (lambda (env tokens this-token this-subtok)
-	  ;; This just loops back with the same context:
-	  (define loop (process-expr env tokens this-token this-subtok))
+	;; This just loops back with the same context:
+	(define (loop x) ((process-expr env tokens this-token this-subtok) x))
 
 	  (define-syntax check-tok
 	    (syntax-rules ()
@@ -351,7 +351,7 @@
       (lambda (env tokens)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-;		 (disp "PROCESSING TOKBIND" args tokbind)
+;		 (disp "PROCESSING TOKBIND" args stored tokbind)
 
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
 			,((process-expr (append args stored bindings env) tokens tok id) body))))))
