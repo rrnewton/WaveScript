@@ -205,3 +205,7 @@
 (define (g) (eval (cadadr testssim)))
 
 (pretty-maximum-lines 2000)
+
+;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
+
+

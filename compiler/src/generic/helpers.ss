@@ -159,7 +159,7 @@
 ;; now. (see add-heartbeats)
 (define regiment-constants
   '(
-    (world          Constant         Region)    
+    (world          Constant         Region)
     (anchor         Constant         Anchor)
     ))
 
@@ -1169,6 +1169,14 @@
       [(equal? x (car lst)) (cdr lst)]
       [else (cons (car lst) (list-remove-first x (cdr lst)))])))
 
+
+(define list-remove-all
+  (lambda (x lst)
+    (cond
+      [(null? lst) '()]
+      [(equal? x (car lst)) (list-remove-all x (cdr lst))]
+      [else (cons (car lst) (list-remove-all x (cdr lst)))])))
+
 #;(define timeeval
   (lambda (x)
     (let ([start (real-time)])
@@ -1259,6 +1267,18 @@
     (or (null? ls)
         (and (not (memq (car ls) (cdr ls)))
              (set? (cdr ls))))))
+
+(define set-equal?
+  (lambda (lst1 lst2)
+    (letrec ((loop (lambda (lst1 lst2)
+                     (cond
+                       [(and (null? lst1) (null? lst2)) #t]
+                       [(or (null? lst1) (null? lst2)) #f]
+                       [(member (car lst1) lst2) (loop (cdr lst1) (list-remove-all (car lst1) lst2))]
+                       [else #f]))))
+      (if (and (set? lst1) (set? lst2))
+          (loop lst1 lst2)
+          (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
 
 (define list->set
   (lambda (ls)
