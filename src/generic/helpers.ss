@@ -961,7 +961,9 @@
 ;; Used by the deglobalize pass.
 
 ;; [2004.06.13] Tokens will be more complex later.
-(define (token? t) (symbol? t))
+(define (token-name? t) 
+  (or (symbol? t)
+      (and (pair? t) (symbol? (car t)) (integer? (cdr t)))))
 ;; Allocate a token name, possibly with a seed name.
 (define new-token-name
   (lambda args

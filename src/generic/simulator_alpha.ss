@@ -19,7 +19,8 @@
 ;===============================================================================
 
 ;; This structure contains all the global data needed a simulation.
-(define-structure (simworld graph object-graph all-objs))
+(define-structure (simworld graph object-graph all-objs obj-hash))
+;; obj-hash maps node-ids onto simobjects
 
 ;; This structure contains everything an executing token handler needs
 ;; to know about the local node. 
@@ -32,23 +33,27 @@
 (define-structure (node id pos))
 
 ;; This structure represents a simulated node:
-;; Incoming is a list of messages (or return-objs).
+;; Incoming is a list of token messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
 ;; [2004.06.13] Be careful to change "cleanse-world" if you change
 ;; this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
 ;; token-cache in the structure too
-(define-structure (simobject node 
-			     incoming 
-			     timed-token-buf redraw gobj homepage 
-			     token-store ;; Changing this too hash table mapping names to 
-			     local-sent-messages local-recv-messages
+(define-structure (simobject node I-am-SOC
+			     token-store ;; Changing this to hash table mapping names to 
+
+			     ;; All these buffers get changed when a token handler runs:
+			     incoming-msg-buf 
 			     local-msg-buf
 			     outgoing-msg-buf
+			     timed-token-buf 
+
+			     local-sent-messages local-recv-messages
+			     redraw gobj homepage 
+
 			     ;; This is a function that processes incoming messages
 			     scheduler ;; and returns simulation actions.
-			     I-am-SOC
 			     ))
 ;; The token store is a hash table mapping token names, like (Red . 34), to token objects.
 ;; The token objects themselves are just vectors of stored variables.
@@ -57,9 +62,11 @@
 
 
 ;; This structure represents a message transmitted across a channel.
+;; None of these should be mutated:
 (define-structure (msg-object token 
-			      timestamp ;; when it was sent 
+			      sent-time ;; when it was sent 
 			      parent ;; :: simobject - who I got it from
+			      to   ;; :: nodeid - who its going to, #f for broadcast
 			      args))
 
 
@@ -115,15 +122,15 @@
 
 
 ;; Safer version:
-(define (safe-construct-msg-object token timestamp origin parent count args)
-  (unless (token? token) (error 'safe-construct-msg-object "bad token: ~s" token))
+(define (safe-construct-msg-object token timestamp parent count args)
+  (unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
   (unless (or (number? timestamp) (not timestamp))
 	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
   (unless (or (simobject? parent) (not parent))
 	  (error 'safe-construct-msg-object "bad parent: ~s" origin))
   (unless (list? args)
 	  (error 'safe-construct-msg-object "bad args: ~s" args))
-  (make-msg-object token timestamp parent args))
+  (make-msg-object token timestamp #f parent #f args))
 
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
@@ -139,7 +146,7 @@
        (let ([token  (msg-object-token  mo)]
 	     [timestamp (msg-object-timestamp mo)]
 	     [origin (msg-object-origin mo)]
-	     [parent (msg-object-parent mo)]
+	     [parent (msg-object-from mo)]
 	     [count  (msg-object-count  mo)]
 	     [args   (msg-object-args   mo)])	
 	 (or 
@@ -150,7 +157,7 @@
 		  (or (not origin) (simobject? origin))
 		  (list? args)		  
 		  )
-	     (and (token? token)
+	     (and (token-name? token)
 		  (or (not timestamp) (integer? timestamp))
 		  (or (not parent) (simobject? parent))
 		  (or (not origin) (simobject? origin))
@@ -212,18 +219,21 @@
 (define (make-object-graph g) 
   (graph-map (lambda (nd) 
 	       (let ([so (apply make-simobject (make-list 13 'simobject-field-uninitialized))])
-		 (set-simobject-node! so nd)  
-		 (set-simobject-incoming! so '())
+		 (set-simobject-node! so nd)
+		 (set-simobject-token-store! so (make-default-hash-table))
+
+		 (set-simobject-incoming-msg-buf! so '())
+		 (set-simobject-outgoing-msg-buf! so '())
+		 (set-simobject-local-msg-buf! so '())
 		 (set-simobject-timed-token-buf! so '())
+
+		 (set-simobject-local-sent-messages! so 0)
+		 (set-simobject-local-recv-messages! so 0)
+
 		 (set-simobject-redraw! so #f)
 		 (set-simobject-gobj! so #f)
 		 (set-simobject-homepage! so '())
-		 (set-simobject-token-store! so (make-default-hash-table))
-		 (set-simobject-local-sent-messages! so 0)
-		 (set-simobject-local-recv-messages! so 0)
 		 (set-simobject-scheduler! so #f)
-		 (set-simobject-local-msg-buf! so '())
-		 (set-simobject-outgoing-msg-buf! so '())
 		 (set-simobject-I-am-SOC! so #f)
 
 		 so))
@@ -249,8 +259,14 @@
                        seed))
             seed)]
           [obgraph (make-object-graph graph)]
-          [allobs  (map car obgraph)])
-     (make-simworld graph obgraph allobs)))
+          [allobs  (map car obgraph)]
+	  [hash
+	   (let ([h (make-default-hash-table)])
+	     (for-each (lambda (ob)
+			 (hashtab-set! h (node-id (simobject-node ob)) ob))
+		       allobs)
+	     h)])
+     (make-simworld graph obgraph allobs hash)))
 
 
                          
@@ -301,6 +317,13 @@
 		    (cons (bare-msg-object ,rator (list ,@rand*))
 			  (simobject-local-msg-buf this)))]
 
+		  [(bcast ,rator ,[rand*] ...)
+		   `(set-simobject-outgoing-buf! this
+		    (cons (bare-msg-object ,rator (list ,@rand*))
+			  (simobject-local-msg-buf this)))
+		   ]
+
+
 ;;TODO:
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
@@ -329,7 +352,7 @@
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
 			  (if (not (eq? which-tok current-handler-name))
 			      (error 'simulator_alpha:process-statement "bad local stored-ref: ~a" v))
-                          `(vector-set tokobj ,(+ 1 pos) ,rhs))]
+                          `(vector-set! tokobj ,(+ 1 pos) ,rhs))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
 
@@ -418,8 +441,8 @@
 	    (match tbind 
 		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
 		      `[,tok 
-			(lambda (this current-vtime subtok-index) ;world)
-			  (lambda args			 
+			(lambda (current-vtime subtok-index . args) ;world)
+;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
 				   [this-tokname (cons ',tok subtok-index)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
@@ -441,7 +464,7 @@
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
 				(set-simobject-local-msg-buf! this 
                                   (append (reverse (simobject-local-msg-buf this)) old-local))
-				(void)))))
+				(void))))
                          ]]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -464,7 +487,7 @@
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
 
-	`(define (sim-seed world)
+	`(define (meta-handler this)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
 	   "This is the simulation seed."
 	   "It returns an initial set of scheduled actions for the simulator to execute."	   
@@ -475,11 +498,26 @@
 	      (let* ,(process-binds nodebinds)
 		(letrec ,tbinds
 		 ;; Within this body, toks are bound, we return a list of start actions
-		 (values
-		  (list ,@(map (lambda (t) (list 0 t)) starttoks)) ;; Vtime Zero
-		 
-		 
-		  ))))))]
+		  ;"Initialize our simobject message buffers"
+		  
+		  (let ([dyndispatch_table (make-default-hash-table)])
+		    (begin ,@(map (lambda (tok)
+				    `(hashtab-set ',tok ,tok))
+				  (map car tbinds)))
+
+		  ;; Return the meta-handler
+		  (lambda (msgob)
+		    (mvlet ([(name subtok)
+			     (match (msg-object-token msgob)
+				    [(,name . ,subtok) (values name subtok)]
+				    [,name (values name 0)])])
+			   (let ([handler (hashtab-get dyndispatch_table name)])
+			     ;; Invoke:
+			     (apply handler current-vtime subtok 
+				    (msg-object-args msgob))
+			     ;; That returns nothing but fills up the simobjects buffers.
+			     ))))
+		 )))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 

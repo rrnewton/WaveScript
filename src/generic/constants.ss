@@ -44,6 +44,11 @@
 
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
+;; Vtimes:
+(define RADIO_DELAY 0)
+(define PROCESSING_TIME 0)
+
+
 
 ;;======================================================================
 
