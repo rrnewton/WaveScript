@@ -83,7 +83,8 @@
 (define (process-statement stmt)
   (match stmt
 	 [(call ,opera ...) (error 'process-statement "call not supported from SOC")] ;opera]
-	 [(emit ,opera ...) 
+	 [(flood ,tok) `(flood (quote ,tok))]
+	 [(emit ,opera ...)
 	  `(emit (quote ,(car opera)) ,@(cdr opera))]
 	 [,else stmt])
   )
@@ -137,15 +138,15 @@
 
        [generic-defs
 	 '([define neighbors (lambda (obj)
-			(disp 'neighbors obj)
+;			(disp 'neighbors obj)
 			(let ((entry (assq obj object-graph)))
-			  (disp "ENTRY : " entry)
+;			  (disp "ENTRY : " entry)
 			  (if (null? entry)
 			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
 				     obj object-graph)
 			      (cdr entry))))]
 	   [define send (lambda (data ob)
-		   (disp 'send data ob)
+		   (disp 'send data (node-id (simobject-node ob)))
 		   (set-simobject-incoming! ob
 		    (cons data (simobject-incoming ob))))]
 	   [define emit (lambda (t . m)
@@ -161,7 +162,7 @@
 
        [socprog
 	 `(lambda (this object-graph all-objs)
-	    (printf "CALLING SocProg: ~s~n" this)
+;	    (printf "CALLING SocProg: ~s~n" this)
 	    (let () ,@generic-defs
 	      ,(process-binds socbinds
 			      `(begin ,@(map process-statement 
@@ -169,8 +170,8 @@
 				      'soc_finished))))]
 
        [nodeprog
-	`(lambda (this object-graph all-objs)	    
-	    (printf "CALLING Nodeprog: ~s~n" this)
+	`(lambda (this object-graph all-objs)
+;	    (printf "CALLING Nodeprog: ~s~n" this)
 	    (let () ,@generic-defs	      
 	      ,(process-binds 
 		nodebinds 
@@ -178,7 +179,7 @@
 		 nodetoks
 		 `(begin 
 		    (,starttok)
-		    (let loop ([incoming (simobj-incoming this)])
+		    (let loop ([incoming (simobject-incoming this)])
 		      (if (null? incoming)
 			  ;; No good way to wait or stop the engine execution?
 			  (loop (node-incoming this))
@@ -186,13 +187,22 @@
 			  ;; This might introduce message loss (because of no
 			  ;; semaphores) but I don't care:					
 			  (let ((msg (last incoming)))
-			    (remove-last! incoming)
-			    (handler (car msg) (cadr msg))))))	
-		 ))))])
+			    
+			    (let ((id (node-id (simobject-node this))))
+			      (disp "Node " 
+				    id
+				    " processing msg: " msg))
 
-       (disp "Socprog")
-       (pretty-print socprog)      8 
-       (set! f socprog)
+			    (remove-last! incoming)
+			    (handler (car msg) (cadr msg))))))
+		 ))))]
+       )
+
+;;; TEMP JUNK:
+;       (disp "Socprog")
+;       (pretty-print socprog)      
+       (set! sp socprog)
+       (set! np nodeprog)
        (for-each eval generic-defs)
 
 
@@ -204,7 +214,7 @@
 	       (map (lambda (nd) 
 		      (make-engine
 		       (lambda () 
-			 (disp "run node engine for node" nd)
+;			 (disp "run node engine for node" nd)
 			 (nodefun nd object-graph all-objs))))
 		    all-objs))
        
@@ -222,17 +232,26 @@
        [(null? engs)
 	(begin 
 	; (printf "Beginning loop around ~s engines.~n" (length acc))
+	  (for-each (lambda (simob)
+		      (let ((len (length (simobject-incoming simob))))
+			(cond 
+			 [(< len 10) (display len)]
+			 [else (display "#")])))
+		    all-objs)
+	  (newline)
+
 	  (loop (reverse acc) '() (- rounds 1)))]
        [else 
-	((car engs) 100
+	((car engs) 1000
 	 (lambda (remaining ret) 
 	   ;(error 'run-simulation "engine shouldn't return.  Values were: ~n~s~n" ret))
-	   (printf "Engine returned!: ~s~n" ret)
+	   (printf "Engine #~s returned!: ~s~n" 
+		   (length acc)
+		   ret)
 	   (loop (cdr engs) acc rounds))
 	 (lambda (nexteng)
 	   (loop (cdr engs) (cons nexteng acc) rounds)))]
       ))))
-
 
 (define (simulator-nought-language expr)
   (void))
@@ -241,32 +260,39 @@
 
 (define these-tests
   `(
-    [ (free-vars '(cons (quote 30) x)) '(x) ]
+    [ (free-vars '(cons (quote 30) x)) (x) ]
+
+    [ (process-statement '(emit foo 2 3)) (emit 'foo 2 3)]
+    [ (process-statement '(flood foo)) (flood 'foo)]
     ))
 
-(define test-this
-  (let ((these-tests these-tests))
+(define tester
+  (lambda (these-tests)
     (lambda args 
       (let ([verbose (memq 'verbose args)]
 	    [tests (map car these-tests)]
 	    [intended (map cadr these-tests)]
 	    [success #t])
-	  (if verbose 
-	      (printf "Testing ~s\n" this-unit-description))
+;	  (if verbose 
+	      (printf "Testing ~a\n" this-unit-description);)
 	  (let ((results (map eval tests)))
 	    (for-each 
-	     (lambda (expr intended result) 
-	       (display-constrained "  " `(,expr 40) 
+	     (lambda (num expr intended result)
+	       (display-constrained `(,num 10) "  " `(,expr 40)
 				    " -> " `(,intended 20)
 				    ": ")
+	       (newline)
 	       (if (tester-equal? intended result)
 		   (if verbose (display "#t\n"))
 		   (begin (set! success #f)
 			  (newline)
 			  (display "FAIL: ")
-			  (display-constrained `(,intended 40))
+			  (display-constrained `(,intended 40) " got instead " `(,result 40))
 			  (newline) (newline))))
+	     (iota (length tests))
 	     tests intended results))))))
+
+(define test-this (tester these-tests))
 
 (define testsim test-this)
 (define testssim these-tests)
@@ -315,5 +341,6 @@
 (define a (car all-objs))
 (define b object-graph)
 (define c all-objs)
-(dsis g ((eval f) a b c))
+;(dsis g ((eval f) a b c))
+(dsis g (run-simulation tt 10))
 
