@@ -114,7 +114,9 @@
 	  (lambda (tokbind)
 	    (match tokbind
 		   [(,tok ,args ,expr)
-		    `(,tok ,args ,((process-value env tokens tok) expr))]
+;		    `(,tok ,args ,((process-value env tokens tok) expr))
+		    `(,tok ,args ,expr)
+		    ]
 		   ))))
 
 
@@ -126,19 +128,14 @@
 				  ,socstmts ...)
 			  (nodepgm (tokens ,nodetoks ...)
 				   (startup ,starttoks ...))))
-	 (mvlet ([(newtoks newstmts) 
-		  (apply append nodetoks
-			 (map (process-effect (map car socbinds) (map car nodetoks) #f) 
-			      socstmts))])
-	   (let ([newtoks2 (map (process-tokbind (map car constbinds) (map car nodetoks))
-				nodetoks)])
-	     `(,lang
-	       '(program (bindings ,constbinds ...)
-			 (socpgm (bindings ,socbinds ...) 
-				 ,newstmts ...)
-			 (nodepgm (tokens ,newtoks2 ...)
-				  (startup ,starttoks ...))))))]
-	))))
+	 (let ([newtoks ;newstmts)
+		(let ([processs (process-effect (map car socbinds) (map car nodetoks) #f)])
+		  (foldl (lambda (stmt)
+;			   (mvlet ([(newstmt newtok) (process stmt)])
+			   0000
+			   )))])
+	   000 ;; TODO TODO TODO
+	)]))))
 
 
 
