@@ -82,9 +82,11 @@
 
     ;; This isn't working right now.
     (define (with-error-handlers display escape th)
-      (parameterize ([error-display-handler display]
-		     [error-escape-handler escape])
-         (th)))
+      (call/cc (lambda (out)
+                 (parameterize ([error-display-handler display]
+                                [error-escape-handler escape])
+                   ;; If the escape procedure is not called, we must destroy the 
+                   (out (th))))))
 
   
   (define (warning sym . args)
@@ -137,6 +139,8 @@
    display-constrained
    symbol-append 
 
+   testhelpers
+   
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
@@ -145,7 +149,8 @@
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
    )
-  
+ 
   )
 
+(require helpers)
 
