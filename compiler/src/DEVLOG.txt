@@ -120,3 +120,10 @@ should probably properly belong in other passes.  This is bad form.
 But some of these things are so experimental and temporary, that
 setting up extra passes for them seems not worth it...
 
+[2004.08.06]
+  Reading about TinyOS.  I like how you can wire outwires to multiple
+components. Like hooking Main.StdControl to multiple targets.  But
+what are the semantics for which of these calls comes first?  In the
+order you list the edges??
+
+

@@ -143,13 +143,13 @@
 					,socstmts ...)
 				(nodepgm (tokens ,nodetoks ...)
 					 (startup ,starttoks ...))))
-	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])
-	   
-	   `(deglobalize-lang '(program (bindings ,nodebinds ...)
-				       (socpgm (bindings ,socbinds ...) 
-					       ,socstmts ...)
-				       (nodepgm (tokens ,nodup-binds ...)
-						(startup ,starttoks ...))))
+	 (let ([nodup-binds (remove-duplicate-tokbinds nodetoks)])	   
+	   `(cleanup-token-machine-lang
+	     '(program (bindings ,nodebinds ...)
+		       (socpgm (bindings ,socbinds ...) 
+			       ,socstmts ...)
+		       (nodepgm (tokens ,nodup-binds ...)
+				(startup ,starttoks ...))))
 	   )]
 	[,other (error 'cleanup-token-machine "bad input: ~s" prog)]))))
 
@@ -168,3 +168,52 @@
 ;		     (nodepgm (tokens ,nodetoks ...) 
 ;			      (startup ,starttoks ...))))
 	   
+
+(define these-tests
+  `(
+    
+    ["Put an empty test through." 
+     (cleanup-token-machine 
+      '(deglobalize-lang 
+	'(program
+	  (bindings )
+	  (socpgm (bindings ) )
+	  (nodepgm (tokens) (startup ) ))))
+     (cleanup-token-machine-lang
+      '(program
+	(bindings )
+	(socpgm (bindings ) )
+	(nodepgm (tokens) (startup ) ))) ]
+
+
+    ["Now collapse two tokens of the same name"
+     (cleanup-token-machine 
+      '(deglobalize-lang 
+	'(program
+	  (bindings )
+	  (socpgm (bindings ) (emit tok1))
+	  (nodepgm
+	   (tokens
+	    [tok1 () (fun1)]
+	    [tok1 () (fun2)])
+	   (startup )
+	   ))))
+
+     ,(lambda (p)
+	(match p 
+	  [(cleanup-token-machine-lang
+	    '(program (bindings )
+		      (socpgm (bindings ) (emit tok1))
+		      (nodepgm (tokens [tok1 () (begin ,bodies ...)]) (startup ))))
+	   (and (member '(fun1) bodies)
+		(member '(fun2) bodies))]))
+    ]))
+
+
+(define test-this (default-unit-tester
+		    "Pass 14 cleanup-token-machine: regularize token machine"
+		    these-tests))
+
+
+(define test14 test-this)
+(define tests14 these-tests)
