@@ -1,12 +1,6 @@
-;;[2004.05.24]
-;; This file represents a simple interface that I use from 
+;;[2004.05.26]
 
-;; Interface:
-;; (run-flat-threads <thunklist>)
-;; (run-flat-threads <thunklist> <time-out>)
-;;   Runs a bunch of thunks in parallel until some number of seconds
-;; have elapsed
-
+;; This version is for use with the SchemeWidgetLibrary.
 
 (define this-unit-description "simple interface for parallel computations")
 
@@ -36,6 +30,7 @@
 	   (loop (cdr engs) (cons nexteng acc))))]
       ))))
 
+;;======================================================================
 
 (define these-tests
   `(

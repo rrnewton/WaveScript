@@ -36,7 +36,7 @@
 
  
 (define processors_temp
-  (map (lambda (_) (list (random width) (random height))) 
+  (map (lambda (_) (list (random window-width) (random window-height))) 
        (iota 100)))
 
 

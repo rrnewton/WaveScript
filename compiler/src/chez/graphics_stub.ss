@@ -9,36 +9,130 @@
 ;; to be unneccessary I will prolly move this file to the src/generic/
 ;; subdirectory and just use the basic_graphics interface.
 
+;; DEPENDS: on world-xbound and world-ybound from simulator_nought.ss, 
+;; it uses these to scale the world coordinates to the display.
+
 ;(load "basic_graphics.ss")
 
-(define processor_screen_objs '())
+(define processor-screen-objs '())
+(define edge-screen-objs '())
+
+(define processor-screen-radius 25.)
+
+;;===============================================================================
+;; Utils:
+
+;; Returns a fixnum or flonum
+(define scale2d 
+  (let ((prep (lambda (x)
+		(if (not (integer? x))
+		    (exact->inexact x)
+		    x))))
+    (lambda (pos box1 box2)
+					;  (disp "SCALING" (list pos box1 box2))
+      (match (list pos box1 box2)
+	     [((,x ,y) (,a1 ,b1 ,a2 ,b2) (,c1 ,d1 ,c2 ,d2))
+	      (values 
+	       (prep (+ (* (/ (- x a1) (- a2 a1)) (- c2 c1)) c1))
+	       (prep (+ (* (/ (- y b1) (- b2 b1)) (- d2 d1)) d1)))]
+	     [,otherwise (error 'scale2d "bad arguments: ~s ~s ~s"
+				pos box1 box2)]))))
+    
+;;===============================================================================
+
 ;(define links '())
 
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
+;; This one DOES SHOW the processors.
 (define (draw-procs procs)
-  (for-each destroy processor_screen_objs)
-  (set! processor_screen_objs
-  (map (lambda (pr)          
-;	      (draw-ellipse (car pr) (cadr pr) 
-;			    (+ (/ width 50) (car pr)) (+ (/ height 50) (cadr pr))
-;			    (rgb 0 0 0) (rgb 200 10 10))
-	      (let ((circ (create <oval> the-canvas 
-				  (car pr) (cadr pr) 
-				  (+ (/ width 50) (car pr)) (+ (/ height 50) (cadr pr))
-				  )))
-		(set-fill-color! circ (make <rgb> 200 10 10))
-		(show circ)
-		circ))
-       procs)
-;  (paint-buffer)
-  ))
+  (DEBUGMODE
+   (if (not the-win) (error 'draw-procs "graphics window is not initialized"))
+   (for-each (lambda (proc)
+	       (if (not (and (list? proc)
+			     (= (length proc) 2)
+			     (number? (car proc))
+			     (number? (cadr proc))))
+		          (error 'draw-procs
+				 "Invalid processor coordinates: ~s among processors ~n~s~n" 
+				 proc procs)))
+	     procs))
+  (for-each destroy processor-screen-objs)
+  (set! processor-screen-objs '())
+  (for-each draw-proc procs)
+  (for-each show processor-screen-objs)
+  processor-screen-objs)
+
+;; This *does not show* the screen object that it creates.
+(define (draw-proc pr)  
+  (mvlet ([(x y) (scale2d 
+		  pr (list 0 0 world-xbound world-ybound)
+		     (list 0 0 window-width window-height))])
+	 
+#;	 (disp "DRAWING AT:"
+	       (- x processor-screen-radius)
+	       (- y processor-screen-radius)
+	       (+ x processor-screen-radius)
+	       (+ y processor-screen-radius))
+
+	 (let ((circ (create <oval> the-canvas 
+;			     50 50 
+;			     100 100)))
+	       (- x processor-screen-radius)
+	       (- y processor-screen-radius)
+	       (+ x processor-screen-radius)
+	       (+ y processor-screen-radius))))
+;			     (flonum->fixnum (- x processor-screen-radius))
+;			     (flonum->fixnum (- y processor-screen-radius))
+;			     (flonum->fixnum (+ x processor-screen-radius))
+;			     (flonum->fixnum (+ y processor-screen-radius)))))
+	   (set-fill-color! circ (make <rgb> 200 10 10))
+;	   (show circ)
+	   (set! processor-screen-objs
+		 (cons circ processor-screen-objs))
+	   circ)))
 
 ;; This being caled involves
-(define (draw-links procs)
-  'TODO
-  )
+(define (draw-edge pos1 pos2)
+  (let ([box1 (list 0 0 world-xbound world-ybound)]
+	[box2 (list 0 0 window-width window-height)])
+    (match (list pos1 pos2)
+	   [((,a ,b) (,c ,d))
+	    (mvlet ([(x1 y1) (scale2d (list a b) box1 box2)]
+		    [(x2 y2) (scale2d (list c d) box1 box2)])
+		   (let ((line (create <line> the-canvas x1 y1 x2 y2)))
+		     	   (set! edge-screen-objs
+				 (cons line edge-screen-objs))
+			   line))]
+	   [,otherwise (error 'draw-edge "bad-input: ~s" edge)])))
 
 ;(define (draw-edge ....
  
 ;(init-graphics)
+
+;;===============================================================================
+
+(define these-tests
+  `( 
+
+    [ "First test display by bringing it up and then closing it down." 
+      (begin (init-graphics) (thread-sleep 500) (close-graphics))
+      unspecified ]
+    
+    ;; This depends on window-width and window-height from basic-graphics.ss
+    [ "Then we bring up the display and draw some procs."      
+      (begin (init-graphics) 
+	     (draw-procs '([,(* window-width .25) ,(* window-height .25)]
+			   [,(* window-width .75) ,(* window-height .75)]))
+	     (thread-sleep 1000) (close-graphics))
+      unspecified ]
+
+    [ "Then we draw more processors"
+      (begin (init-graphics) 	     
+	     (draw-procs '((51 18) (36 56) (8 25) (31 2) (59 40) 
+			   (39 23) (54 1) (45 41) (59 59) (47 13)))
+	     (thread-sleep 1000) (close-graphics))
+      unspecified ]
+    ))
+
+(define test-this (default-unit-tester this-unit-description these-tests))
