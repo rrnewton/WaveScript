@@ -7,8 +7,8 @@ enum {
 #define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 1 ))
 #endif
 
-#ifndef TOK_DATA_LENGTH
-#define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 2 + 2 ))
+#ifndef RETURNTOK_DATA_LENGTH
+#define RETURNTOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 2 + 2 ))
 #endif
 
 // This TM_Payload fits inside the data field of TOS_Msg.
