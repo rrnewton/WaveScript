@@ -1,5 +1,7 @@
 ;; UCLA mathnet
 ;; (s:) 5Dog+8Cat<Ape 
+;; US AIRWAYS:  800 428 4322
+
 
 ;; simulator_nought.ss
 ;;  -Ryan Newton [2004.05]
@@ -272,6 +274,21 @@
 	    (loop (append formals env) expr)]
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
+;; This 
+(define build-call
+  (lambda (rator rand*)
+    (disp "build call" rator rand*)
+    (let* ([sym (string->symbol
+		 (string-append "call-result-" 
+				(number->string (random 1000))))])
+    `(let ((,sym
+	    (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
+       (if (eq? ,sym 'multiple-bindings-for-token)
+	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
+		  ,rator)
+	   ,sym))    
+    )))
+
 (define process-statement 
   (letrec ([process-expr 
 	 (lambda (expr)
@@ -281,15 +298,17 @@
 		  ;; me to do test cases:
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
-		  [(call ,rator ,rand* ...)
+		  ;; NOTE! These rands ARE NOT simple.
+		  [(call ,rator ,[rand*] ...)
 		   (DEBUGMODE
 		    (if (not (token? rator))
 			(error 'simulator_nought:process-statement
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
-		   (process-expr (cons 'internal-call 
-				       (cons `(quote ,rator)
-				       (map (lambda (x) `(quote ,x)) rand*))))]
+		   (disp "normal call yo" rator rand*)
+		   (build-call `(quote ,rator)
+			       ;(map (lambda (x) `(quote ,x)) rand*))
+			       rand*)]
 
 		  ;; It's like call but doesn't add quotes.
 		  [(internal-call ,rator ,rand* ...)
@@ -808,7 +827,7 @@
 				   
 				     (for-each
 				      (lambda (retval)
-					,(process-statement `(internal-call to retval)))
+					,(build-call 'to '(retval)))
 				      ;; Hmm, this should make sure it's one:
 				      (if aggr 
 					  (list (collapse aggregated-values timestamps))
@@ -871,7 +890,10 @@
 	   ;; This is a little weird, but even the node program
 	   ;; running on the SOC has to know that it's physically on
 	   ;; the SOC:
-	    (let ([I-am-SOC (eq? this SOC-processor)])
+	    (let ([I-am-SOC (eq? this SOC-processor)]
+		  [local-sense (lambda ()
+				 ((current-sense-function)
+				  (node-pos (simobject-node this))))])
 	      ,(process-binds 
 		nodebinds 
 		(process-tokbinds 
