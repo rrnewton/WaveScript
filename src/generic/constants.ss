@@ -9,9 +9,9 @@
 ;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
 ;; The slow-pulse is used for region formation.
-(define slow-pulse 1.0)
+(define slow-pulse 1000) ;; MILLISECONDS
 ;; The fast-pulse is used for folding.
-(define fast-pulse 10.0)
+(define fast-pulse 100)  ;; MILLISECONDS
 
 ;; Used primarily by pass14_add-places:
 ;; (and by pass15_add-routing
