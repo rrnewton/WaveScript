@@ -1,0 +1,10 @@
+
+
+[2004.11.13]
+
+I need to explain the multi-backend structure of this project.  For
+now suffice it to say that it supports two backends (drscheme and
+chezscheme).  There's a directory for shared code (generic) and
+directories specific to each.  Sometimes within the shared code I
+might use the "current_interpreter" variable to switch the behavior
+based on which backend we're using.

@@ -5,8 +5,8 @@
     (socpgm  (bindings) (emit tok1))
     (nodepgm 
      (tokens
-      [tok1 () (light-up 0 255 0) (relay)]
-     (startup)))))
+      [tok1 () (light-up 0 255 0) (relay)])
+     (startup))))
 
 (define example-nodal-prog0
   '(program

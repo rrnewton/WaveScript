@@ -10,7 +10,6 @@
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
-
 (printf "Loading compiler in chezscheme..~n")
 
 (include "chez/match.ss")
@@ -48,8 +47,6 @@
 (include "generic/lang16_deglobalize.ss") ;; deglobalize
 
 (include "generic/lang19_haskellize-tokmac.ss") 
-
-
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
@@ -126,10 +123,13 @@
 (define text-repl  (repl-builder void void run-compiler run-simulation-stream))
 (define precomp-repl (repl-builder 
 		      void  ;; Startup
-		      void  ;; Cleanse
-		      (lambda (x) x) ;; Compiler
+		      void  ;; Cleanse		      
+		      (lambda (x) ;; Compiler
+			(fluid-let ([pass-names '(cleanup-token-machine)])
+			  (match x
+				 [(precomp ,exp) `(unknown-lang (quote ,exp))]
+				 [,other (run-compiler other)])))		      
 		      run-simulation-stream)) ;; Runner
-
 
 (define pretoken-repl 
   (repl-builder
@@ -233,9 +233,8 @@
 
 
 (define (g) (eval (cadadr testssim)))
-
+(define pr precomp-repl)
 (pretty-maximum-lines 2000)
-
 
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
