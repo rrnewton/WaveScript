@@ -52,6 +52,7 @@
 ;    convert-closure                                 ;; 15
     lift-letrec                                     ;; 16
     lift-letrec-body                                ;; 22
+;    remove-complex-opera*
     ;; VERIFY-CORE
     ))
 
