@@ -9,8 +9,9 @@ This will read
 -}
 
 import System.IO.Unsafe
-import TM
 import Char
+
+import TM -- Token Machine language definition
 
 modname = "TestMachine"
 
@@ -49,7 +50,7 @@ process_expr e =
     Ereturn e -> ([],"") 
     Erelay (Just t) -> ([],"") 
     Erelay Nothing -> ([],"") 
-    Eemit mt t exps -> ([],"    emit_"++tokname t++"();\n")
+    Eemit mt t exps -> ([],"    call emit_"++tokname t++"();\n")
     Ecall mt t exps -> ([],"")
 
 
@@ -100,8 +101,10 @@ build_module_header toks =
 --       "  uses interface Timer;\n" ++ 
        concat
          (map (\ name -> 
-	       "  uses interface SendMsg as Send_"++ name ++"; \n" ++ 
-	       "  uses interface ReceiveMsg as Recv_"++ name ++"; \n")
+	       "  uses interface BasicTMComm as TMComm_"++ name ++"; \n"
+--	       "  uses interface SendMsg as Send_"++ name ++"; \n" ++ 
+--	       "  uses interface ReceiveMsg as Recv_"++ name ++"; \n"
+	      )
           toknames) ++
        "}\n\n"
 
@@ -118,13 +121,14 @@ build_implementation_header toks =
     "  command result_t Control.stop() {\n" ++
 --    "    return call Timer.stop();\n" ++
     "    return SUCCESS;\n"++
-    "  }\n\n" ++
+    "  }\n\n" 
+    {-++
     (concat $
      map (\ name -> 
 	  "  event result_t Send_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
 	  "    return SUCCESS;\n" ++
 	  "  }\n\n")
-     (map (\ (t,_,_) -> tokname t) toks))
+     (map (\ (t,_,_) -> tokname t) toks))-}
 
 
 build_socfun consts expr = 
