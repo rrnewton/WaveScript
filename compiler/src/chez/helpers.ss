@@ -36,8 +36,7 @@
 (define (make-default-hash-table) (make-hash-table 5))
 (define hashtab-get (hash-inquirer equal?))
 (define hashtab-set! (hash-associator equal?))
-
-
+(define hashtab-for-each hash-for-each)
 
  ;; [2004.06.13] Matches the function defined in plt, provides
  ;; functionality used by the generic code.

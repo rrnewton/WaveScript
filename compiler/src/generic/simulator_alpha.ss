@@ -260,28 +260,18 @@
 (define (process-statement current-handler-name tokbinds stored)
   (disp "process statement, allstored: " stored)
   (let ([allstored (apply append (map cadr stored))])
-  (letrec (
-	   #|[get-arg-index
-	    (lambda (tok argname)
-	      (let ([entry (assq tok tokbinds)])
-		(if (not entry)
-		    (error 'simulator_nought:get-arg-index
-			   "No entry for token! ~a" tok))
-		(list-find-position argname (cadr entry))))]|#
+    (letrec ([find-which-stored
+	      (lambda (v)
+		(let loop ([ls stored])
+		  (let ((pos (list-find-position v (cadr (car ls)))))
+		    (if pos (values (caar ls) pos)
+			(loop (cdr ls))))))]
     
-           [find-which-stored
-	    (lambda (v)
-	      (let loop ([ls stored])
-		(let ((pos (list-find-position v (cadr (car ls)))))
-		  (if pos (values (caar ls) pos)
-		      (loop (cdr ls))))))]
-    
-	   [process-expr 
-	 (lambda (expr)
-	   ;; This is a little wider than the allowable grammar to allow
-	   ;; me to do test cases:
-	   (match expr
-
+	     [process-expr 
+	      (lambda (expr)
+		;; This is a little wider than the allowable grammar to allow
+		;; me to do test cases:
+		(match expr
 		  [(ext-ref (,tokname . ,subtok) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
@@ -373,7 +363,7 @@
 		  [,otherwise (error 'simulator_nought.process-expr 
 				"don't know what to do with this: ~s" otherwise)])
 	   )])
-    (lambda (stmt) (process-expr stmt))))
+    (lambda (stmt) (process-expr stmt)))))
 
 
 (define (process-binds binds)
