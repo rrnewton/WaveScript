@@ -88,6 +88,9 @@ pe e = do (b,rv) <- loop e
 			  return (concat_blocks (reverse blks), ret)
 
        (Eled act col) -> return (Block [] [Sled act col], Nothing)
+       (Edist t)      -> do id <- newid "dist_"
+			    return (Block [id] [Sdist id t],
+				    Just (Bvar id))
 
        (Eif a b c) -> do newvar <- newid "ifret_" 
 			 (blka,Just ra) <- loop a
@@ -139,6 +142,15 @@ pe e = do (b,rv) <- loop e
 	      return (concat_blocks [blk1, blk2,
 				     Block [] [Sgradreturn rval to via (Just rseed) (Just aggr)]],
 		      Nothing)
+
+       (Ereturn val to via Nothing Nothing) ->
+	   do (blk1,Just rval)  <- loop val
+	      -- Maybe this should return the local vars used, but it doesn't matter:
+	      return (concat_blocks [blk1,
+				     Block [] [Sgradreturn rval to via Nothing Nothing]],
+		      Nothing)
+
+       (Ereturn _ _ _ _ _) -> error "Bad form of Ereturn"
 
        (Erelay mbtok) -> return (Block [] [Srelay mbtok], Nothing)
 

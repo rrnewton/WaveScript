@@ -108,8 +108,8 @@ process_stmt indent tokargs e =
 	  extra_args (map process_basic args)
 	  ++");\n"]
 
-    TMS.Sdist t -> 
-	error
+    TMS.Sdist (Id id) t -> 
+	[indent ++ id ++ " = call TMComm_"++ tokname t ++".get_dist();\n"]
 
     TMS.Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
@@ -127,19 +127,24 @@ process_stmt indent tokargs e =
 	let seed' = case seed of 
 		    Nothing -> "0"
 		    Just s  -> process_basic s 
+	    -- This should not cause a conflict because no token is allowed to have the number 0:
 	    aggr' = case aggr of 
 		    Nothing -> "0"
 		    Just a  -> tok_id a
         in
 	[ 
-	 indent ++ "the_packet.type = "++ tok_id to ++";\n", 
-	 indent ++ "the_payload_args[0] = "++ process_basic e ++";\n",
+	 indent ++ "the_packet.type = "++ tok_id via ++";\n", 
+	 
+	 indent ++ "the_retpayload->to_tok = "++ tok_id to ++";\n", 
+	 indent ++ "the_retpayload->via_tok = "++ tok_id via ++";\n", 
+	 indent ++ "the_retpayload->seed_val = "++ seed' ++";\n", 
+	 indent ++ "the_retpayload->aggr_tok = "++ aggr' ++";\n", 
+	 indent ++ "the_retpayload_args[0] = "++ process_basic e ++";\n",
          indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
-		 tok_id to ++", "++
-	         "sizeof(uint16_t), "++
-	         "&the_packet, "++
-		 seed' ++", "++
-		 aggr' ++");\n" ]
+	         "BASE_TM_RETPAYLOAD_SIZE + sizeof(uint16_t) * 1, " -- Only one return value, 16 bits
+	         ++ "&the_packet);\n " ]
+--		 seed' ++", "++
+--		 aggr' ++");\n" ]
 
     TMS.Srelay (Just t) -> 
         [indent ++ "call TMComm_"++ tokname t ++".relay();\n"]
@@ -195,7 +200,7 @@ process_stmt indent tokargs e =
 	 indent ++"/* Should fill in arg data here... */\n",
 	 
 	 indent ++"call TMComm_"++ tokname t ++
-	 ".emit(TOS_BCAST_ADDR, BASE_TM_PAYLOAD_SIZE + sizeof(uint16_t) * " 
+	 ".emit(TOS_BCAST_ADDR, BASE_TM_PAYLOAD_SIZE + sizeof(uint8_t) * " 
 	 ++ show (length exps) ++
 	 ", &the_packet);\n"]
 
@@ -322,16 +327,36 @@ process_handlers hnds =
 	bods = map (snd . process_handler) hnds
     in
     (concat (map (++"\n") funs))++
-    "\n  // This is the main token-processing function:\n"++
-    "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
-    "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
-    "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
-    "    uint16_t* args = (uint16_t*)(payload->args);\n"++
+
     "    switch (msg->type) {\n"++			      
+
     (foldl (++) "" bods) ++
     "    default:\n"++
     "      dbg(DBG_USR1, \"TM TestMachine: process_token, UNMATCHED TOK: addr %d, type %d, group %d \", msg->addr, msg->type, msg->group);\n"++
     "    }\n"++
+
+
+    "\n  // This is the main token-processing function:\n"++
+    "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
+    "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
+    "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
+    "    TM_ReturnPayload* retpayload = (TM_ReturnPayload*)msg->data;\n"++
+    "    uint16_t* args = (uint16_t*)(payload->args);\n"++
+
+
+    "      if ( msg->type == AM_RETURNMSG ) {\n"++
+    "        // Here we've got a return message...\n"++
+    "        if ( 0 == get_any_dist(retpayload->via_tok) ) {\n"++
+    "          // We've got back to the source, deliver it to its destination.\n"++
+    "          call invoke_token(retpayload->to_tok, args);\n"
+
+
+
+
+    "        call token_"++   ++"(args[1]);"
+    "      break; \n"++
+
+
     "    return msg;\n" ++ 
     "  }\n\n"
 
@@ -375,6 +400,7 @@ build_implementation_footer :: [TMS.TokHandler] -> [Token] -> String
 build_implementation_footer toks startup = 
     "  command result_t Control.init() {\n" ++
     "    the_payload_args = (uint16_t*)(the_payload->args);\n"++ 
+    "    the_retpayload_args = (uint16_t*)(the_retpayload->return_vals);\n"++ 
     "    return SUCCESS;\n" ++
     "  }\n\n" ++
     "  command result_t Control.start() {\n" ++
@@ -406,7 +432,7 @@ build_socfun :: [TMS.ConstBind] -> TMS.Block -> String
 build_socfun consts (TMS.Block locals stmts) =
     let indent = "    " in
     "  task void socpgm() {\n"++
-    "    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\\n\");\n"++
+    --"    dbg(DBG_USR1, \"TM TestMachine: starting soc program...\\n\");\n"++
     process_consts consts ++ 
     -- FIXME TODO INCLUDE FUNS HERE!!!
     -- Generate code for all the statements in 
@@ -428,8 +454,11 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     build_module_header nodetoks ++
     "implementation {\n" ++ 
     "  TOS_Msg the_packet;\n"++    
+    "  // Both of these are pointers into the structure of 'the_packet' \n"++
     "  TM_Payload* the_payload = (TM_Payload*)(the_packet.data);\n"++
     "  uint16_t* the_payload_args;\n"++
+    "  TM_ReturnPayload* the_retpayload = (TM_ReturnPayload*)(the_packet.data);\n"++
+    "  uint16_t* the_retpayload_args;\n"++
     "\n  // The constant bindings:\n"++
     process_consts consts ++ 
     build_implementation_header nodetoks startup ++
@@ -438,8 +467,25 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     process_handlers nodetoks ++ 
     build_socfun socconsts socpgm ++
     -- Put the StdControl stuff in the footer:
+    handwritten_helpers (map (\ (t,_,_) -> t) nodetoks)  ++		 
     build_implementation_footer nodetoks startup ++
     "}\n"
+
+
+handwritten_helpers toks = 
+    let mkcase t = 
+	"      case "++tok_id t++": \n"++
+	"        call TMComm_"++ tokname t ++".get_dist();\n"++ 
+	"      default;\n"
+    in "\n"++
+       "command get_any_dist(uint16_t tok) {"++
+       "    switch (tok) {\n"++ 
+       (foldl (++) "" (map mkcase toks) ++
+       "    default:\n"++
+       "      dbg(DBG_USR1, \"TM TestMachine: get_any_dist, UNMATCHED TOK TYPE: %d\n\", tok);\n"++
+       "    }\n"++
+       "  }\n\n"
+
 
 -------------------------------------------------------------------------------
 {- HERES THE CONFIGURATION GENERATOR. -}
@@ -554,3 +600,5 @@ test2 = (Pgm {
 			((Token "tok2"), [], (Eled Toggle Red))],
 	      startup=[]
 	     })
+
+
