@@ -65,5 +65,7 @@
 
 ;; This one optionally provides a target for logging simulation data.
 (define-regiment-parameter simulation-logger #f)
+;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
+(define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
 (define-regiment-parameter regiment-consec-ids #t)
