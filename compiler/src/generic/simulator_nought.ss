@@ -97,8 +97,9 @@
 ;; this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
 ;; token-cache in the structure too
-(define-structure (simobject node incoming redraw gobj homepage 
-			     token-cache local-sent-messages local-recv-messages))
+(define-structure (simobject node incoming timed-tokens redraw gobj homepage 
+			     token-cache local-sent-messages local-recv-messages
+			     ))
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
@@ -250,7 +251,7 @@
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
 (define (make-object-graph g) 
-  (graph-map (lambda (nd) (make-simobject nd '() #f #f '() 
+  (graph-map (lambda (nd) (make-simobject nd '() '() #f #f '() 
 					  (make-default-hash-table) 0 0))
 	     g))
 (define (init-world)
@@ -320,7 +321,6 @@
 	    (loop (append formals env) expr)]
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
-;; This 
 (define build-call
   (lambda (rator rand*)
     (disp "build call" rator rand*)
@@ -334,6 +334,29 @@
 		  ,rator)
 	   ,sym))    
     )))
+
+;; Doesn't have a return value...  Used to start up an independent loop.
+(define build-activate-call
+  (lambda (rator rand*)
+    (disp "build activate call" rator rand*)
+    (let* ([sym (string->symbol
+		 (string-append "call-result-" 
+				(number->string (random 1000))))])
+    `(let ((,sym
+	    (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
+       (if (eq? ,sym 'multiple-bindings-for-token)
+	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
+		  ,rator)
+	   ,sym))    
+    )))
+
+;; Doesn't have a return value... used for delayed scheduling.
+(define build-timed-call
+  (lambda (rator delay rand*)
+    (set-simobject-timed-tokens! 
+     this (cons (cons (+ delay (cpu-time))
+		      (bare-msg-object ,rator (list ,@rand*)))
+		(simobject-timed-tokens this)))))
 
 (define process-statement 
   (letrec ([process-expr 
@@ -355,6 +378,11 @@
 		   (build-call `(quote ,rator)
 			       ;(map (lambda (x) `(quote ,x)) rand*))
 			       rand*)]
+		  [(activate ,rator [,rand*] ...)
+		   (build-activate-call `(quote ,rator) rand*)]
+		  [(timed-call ,rator [,rand*] ...)
+		   (build-timed-call `(quote ,rator) rand*)]
+		  
 
 		  ;; It's like call but doesn't add quotes.
 		  [(internal-call ,rator ,rand* ...)
@@ -994,13 +1022,26 @@
 
 ;		     (if (> (length returns) 0)
 ;			 (disp "loop" (cpu-time) returns-next-handled (length returns)))
+
+		     (let ([current-time (cpu-time)]
+			   [triggers (simobject-timed-tokens this)])
+		       (let ([fired-triggers 
+			      (filter (lambda (trigger) (>= current-time (car trigger)))
+				      triggers)])
+			 ;; This is a little weird because it gives
+			 ;; timed calls priority over other incoming
+			 ;; tokens:
+			 (if (not (null? fired-triggers))
+			     
+
+
 		     (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
 		       'node-stopped]
-
+		      
 		      ;; If the time has come, handle those returns!
-		      [(>= (cpu-time) returns-next-handled)
+		      [(>= current-time returns-next-handled)
 		       (if (> (length returns) 1)
 			   (display #\!) 
 			   (display #\.))
@@ -1024,6 +1065,7 @@
 		       ;; No good way to wait or stop the engine execution?
 		       (yield-thread)
 		       (main-node-loop (simobject-incoming this) returns-next-handled returns)]
+
 		      [else
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
@@ -1413,7 +1455,7 @@
     ;; Just to make sure erros work with my unit-tester:
     [ (process-statement '(return))  error]
 
-    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() #f #f '() 
+    [ (let ((x (make-simobject (make-node 34 '(1 2)) '() '() #f #f '() 
 			       (make-default-hash-table) 0 0)))
 	(let ((y (structure-copy x)))
 	  (and (eq? (simobject-node x) 

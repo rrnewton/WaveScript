@@ -143,11 +143,10 @@
 	     (add-prop! name 'distributed)
 	     (cond
 	      [(eq? 'Region (get-primitive-return-type prim))
-	       ;(add-prop! name 'area)
+	       (add-prop! name 'area)
 	       (add-prop! name 'region)]
-;; Dunno if I'm gonna have an "area" tag atm.
-;	      [(eq? 'Area (get-primitive-return-type prim))
-;	       (add-prop! name 'area)]
+	      [(eq? 'Area (get-primitive-return-type prim))
+	       (add-prop! name 'area)]
 	      [(eq? 'Signal (get-primitive-return-type prim))
 	       (add-prop! name 'signal)]
 	      [(eq? 'Anchor (get-primitive-return-type prim))
