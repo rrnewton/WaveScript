@@ -145,7 +145,7 @@
     (my-id () NodeID)
     (dist (Token) Integer)
 
-    (foldwith (Token )
+    (rfoldwith (Token Function Object Region) Signal)
     ))
 
 ;; These count as primitives also.
@@ -1568,6 +1568,21 @@
 
 (define gmap graph-map)
 
+;; [2004.07.31] This returns the connected component containing the given object:
+;; This needs to be tested!!
+(define (graph-get-connected obj graph)
+  (let loop ([todo (list obj)] [acc '()])
+    (cond
+     [(null? todo) acc]
+     [(memq (car todo) acc) (loop (cdr todo) acc)]
+     [else 
+      (let* ([entry (assq (car todo) graph)]
+	     [children (if entry (cdr entry) '())]
+	     [viable (filter (lambda (obj) (not (memq obj acc))) 
+			     children)])
+	(loop (append viable (cdr todo))
+	      (cons (car todo) acc)))])))
+		       
 
 (define partition
   (lambda (lst f)
@@ -1760,6 +1775,8 @@
 (define these-tests
   `(
 
+
+
     [(deep-all-matches null? '(1 (3) (4 . 5)))
      (() ())]
     [(deep-all-matches list? '(1 (3) (4 . 5)))
@@ -1800,6 +1817,13 @@
 
     [(unfold-list '(a b c d))
      ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
+
+    [(graph-get-connected 'e '((a b c) (b c) (c) (d e f) (e g h)))   (h g e)]
+    [(graph-get-connected 'h '((a b c) (b c) (c) (d e f) (e g h)))   (h)]
+    [(graph-get-connected 'a '((a b c) (b c) (c) (d e f) (e g h)))   (c b a)]
+    [(graph-get-connected 'a '((a b) (b a)))                         (b a)]
+    [(graph-get-connected 'a '((a b) (b a c)))                       (c b a)]
+
 
     ))
 
