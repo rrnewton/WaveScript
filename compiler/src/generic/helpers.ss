@@ -190,6 +190,9 @@
 
     ;; Prolly not the right type:
     (until          (Event Signal Signal) Signal)
+    (areaWhen       (Event Area) Area)
+    ;; The float is a time in seconds.
+    (constEvent     (Object Float) Event)
 
     ;; What was this one supposed to do and what was it's type?
 ;    (when           (Event Signal) Signal)

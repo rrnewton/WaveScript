@@ -120,13 +120,18 @@
       (match exp
 	     [(,prim ,args ...)
 	      (guard (regiment-primitive? prim))
-	      (case prim
-		[(circle circle-at) 'tmp-circ]
-		[(khood khood-at) 'tmp-khood]
-		[(anchor anchor-at) 'tmp-anch]
-		[(smap) 'tmp-sig]
-		[(rfold) 'tmp-fold]
-		[else 'tmp_unknpr])]
+	       (if (basic-primitive? prim)
+		   'tmp_basic
+		   (symbol-append 'tmp_ prim))
+		   #;(case prim
+		     [(circle circle-at) 'tmp-circ]
+		     [(khood khood-at) 'tmp-khood]
+		     [(anchor anchor-at) 'tmp-anch]
+		     [(rmap) 'tmp-rmap]
+		     [(smap) 'tmp-smap]
+		     [(rfold) 'tmp-rfold]
+		     [else 'tmp_unknpr])
+		   ]
 	     [(lambda ,form ,bod) 'tmp-func]
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp-nonpr]))
