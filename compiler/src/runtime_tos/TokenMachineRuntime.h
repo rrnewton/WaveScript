@@ -4,8 +4,8 @@ enum {
 };
 
 
-#ifndef TOKCACHE_LENGTH
-#define TOKCACHE_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
+#ifndef TOKBUFFER_LENGTH
+#define TOKBUFFER_LENGTH 10 // Buffer 10 incoming messages. Should be around 320 bytes.
 #endif
 
 #ifndef TOK_DATA_LENGTH

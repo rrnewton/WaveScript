@@ -20,17 +20,26 @@ import Data.Char
 
 -----------------------------------------------------------------------------
 
-
+expand_tm :: TMPgm -> TMPgm
 expand_tm (Pgm consts socconsts socpgm nodetoks startup) = 
-    let toknames = map (\ (x,_,_) -> x) nodetoks in	
+    let toknames = map (\ (x,_,_) -> x) nodetoks 
+	temp = map (expand_macros toknames []) socpgm
+	newsoc = map fst temp
+	newths = concat $ map snd temp
+    in
 	(Pgm consts socconsts 
-	 (map (pe toknames []) socpgm)
-	 (map (pth toknames) nodetoks)
+	 newsoc
+	 (pths toknames nodetoks ++ newths)
 	 startup)
 
 
--- Process Token Handler
-pth tenv (t, ids, bod) = (t, ids, pe tenv [] bod)
+-- Process Token Handlers
+pths :: [Token] -> [TokHandler] -> [TokHandler]
+pths tenv ths = 
+    foldl (\ acc (t, ids, bod) -> 
+	   let (e, newths) = expand_macros tenv [] bod
+	   in (t, ids, e) : (newths ++ acc))
+    [] ths
 
 -- Process Expression:
 pe tenv lenv expr =
@@ -54,10 +63,12 @@ pe tenv lenv expr =
        (Esense) -> Esense
 
        -- Special forms:
-       (Esocreturn e) -> Esocreturn $ loop e
+       (Esocreturn e) -> Esocreturn (loop e)
        (Esocfinished) -> Esocfinished
        (Ereturn val to via seed aggr) ->
-	   Ereturn (loop val) to via (loop seed) aggr
+	   -- If there is a seed, recur upon it:
+	   let seed' = do s <- seed; return (loop s)
+	   in Ereturn (loop val) to via seed' aggr
 
        (Erelay mbtok) -> Erelay mbtok
        (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
@@ -69,21 +80,7 @@ pe tenv lenv expr =
 
 --       _ -> Econst 999
 
---init_name_counter :: [String] -> Int
-init_name_counter counter many_names = 
-    do writeSTRef counter
-	 (maximum $
-	  map read $
-	  filter_just $
-	  map (largest_contig isDigit) 
-              many_names)
-    
-
---unique_name :: STRef s a -> [Char] -> ST s [Char]
-unique_name counter root = 
-    do count <- readSTRef counter
-       return (root ++ "_" ++ show count)
-
+-- Takes: token env, local env, and expression
 -- Returns: a new replacement expression and a list of new token-handlers.
 expand_macros :: [Token] -> [Id] -> Expr -> (Expr, [TokHandler])
 expand_macros tenv lenv expr = 
@@ -106,7 +103,7 @@ expand_macros tenv lenv expr =
 					  (Ecall Nothing tok [])]) 
 				  : tokhands)
 		      return (Eemit Nothing (Token name) [])
-	       (Eelectleader tok) -> return expr
+	       (Eelectleader tok) -> return Esocfinished -- TODO FIXME 
 
                (Econst c) -> return expr
 	       (Evar id)  -> return expr
@@ -120,25 +117,60 @@ expand_macros tenv lenv expr =
 
 	       (Eseq es) -> do new_es <- mapM (loop lenv) es
 			       return (Eseq new_es)
-{-	       (Eif a b c) -> Eif (loopsame a) (loop b) (loop c)
 
+	       (Eif a b c) -> do a <- loop lenv a 
+				 b <- loop lenv b
+				 c <- loop lenv c
+				 return $ Eif a b c
 
 --       (Eprimapp Pflood tok) -> Eprimapp prim (map loop args)
 
-               (Eprimapp prim args) -> Eprimapp prim (map loop args)
-	       (Esense) -> Esense
+               (Eprimapp prim args) -> do args <- mapM (loop lenv) args
+					  return $ Eprimapp prim args
+	       (Esense) -> return Esense
 
                -- Special forms:
-	       (Esocreturn e) -> Esocreturn $ loop e
-	       (Esocfinished) -> Esocfinished
+	       (Esocreturn e) -> do e <- loop lenv e
+				    return $ Esocreturn e 
+	       (Esocfinished) -> return Esocfinished
 	       (Ereturn val to via seed aggr) ->
-		   Ereturn (loop val) to via (loop seed) aggr
+		   do val <- loop lenv val
+		      case seed of
+		        Nothing -> return $ Ereturn val to via Nothing aggr
+		        Just s  -> do s <- loop lenv s
+			  	      return $ Ereturn val to via (Just s) aggr
 
-               (Erelay mbtok) -> Erelay mbtok
-	       (Eemit mbtime tok args) -> Eemit mbtime tok (map loop args)
-	       (Ecall mbtime tok args) -> Ecall mbtime tok (map loop args)
-	       (Eactivate tok args)    -> Eactivate    tok (map loop args)
+               (Erelay mbtok) -> return $ Erelay mbtok
+	       (Eemit mbtime tok args) -> 
+		   do args <- mapM (loop lenv) args
+		      return $ Eemit mbtime tok args
+	       (Ecall mbtime tok args) -> 
+		   do args <- mapM (loop lenv) args
+		      return $ Ecall mbtime tok args
+	       (Eactivate tok args)    -> 
+		   do args <- mapM (loop lenv) args
+		      return $ Eactivate tok args
+
+-- TODO FINISH:
+{-
+               (Eif a b c) -> return (Eif ((loop lenv) a) ((loop lenv) b) ((loop lenv) c))
+	       (Eprimapp prim args) -> return (Eprimapp prim (map (loop lenv) args))
+	       (Esense) -> return Esense
+	       (Esocreturn e) -> return (Esocreturn ((loop lenv) e))
+	       (Esocfinished) -> return (Esocfinished)
+	       (Ereturn val to via seed aggr) ->
+	       -- If there is a seed, recur upon it:
+		   let seed' = do s <- seed; return ((loop lenv) s)
+		   in return (Ereturn ((loop lenv) val) to via seed' aggr)
+	       (Erelay mbtok) -> return $ Erelay mbtok
+	       (Eemit mbtime tok args) -> Eemit mbtime tok (map (loop lenv) args)
+	       (Ecall mbtime tok args) -> Ecall mbtime tok (map (loop lenv) args)
+	       (Eactivate tok args)    -> Eactivate    tok (map (loop lenv) args)
+	       (Eflood tok)       -> expr	   
+	       (Eelectleader tok) -> expr
 -}
+
+
 	 newexpr <- loop lenv expr
 	 newtoks <- readSTRef new_tokhands
 	 return (newexpr,newtoks)

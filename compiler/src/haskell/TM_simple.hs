@@ -12,7 +12,7 @@ type TokHandler = (Token, [Id], Block)
 a = (Pgm {
   consts = [((TM.Id "result_1"), (Bconst 3))],
   socconsts=[],
-  socpgm= Block [] [Ssocreturn (Bvar (Id "result_1")), Ssocfinished],
+  socpgm= Block [] [],
   nodetoks=
     [((Token "spread-global"), [], 
       Block [] [(Semit Nothing (Token "global-tree") []),
@@ -58,10 +58,10 @@ data Stmt = Svoid
 	  | Sgradreturn {val :: Basic,           -- no value
 			 to  :: Token,
 			 via :: Token,
-			 seed :: Basic,
-			 aggr :: Token}
-	  | Ssocreturn Basic                 -- no value
-	  | Ssocfinished                     -- no value
+			 seed :: Maybe Basic,
+			 aggr :: Maybe Token}
+--	  | Ssocreturn Basic                 -- no value
+--	  | Ssocfinished                     -- no value
 	  | Sreturn Basic -- This becomes the return value for a token handler.
 
   deriving (Eq, Show, Read)
