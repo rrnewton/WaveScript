@@ -38,13 +38,13 @@ module BasicTMCommM {
   }
 
   event result_t Timer.fired() {
-    dbg(DBG_USR1, "TokenMachineRuntimeM: Sending test\n");
+    dbg(DBG_USR1, "BasicTMCommM: Timer Fired\n");
     return SUCCESS;
 
   }
 
   event result_t SendMsg.sendDone[uint8_t sent_id](TOS_MsgPtr msg, bool success) {
-    dbg(DBG_USR1, "TokenMachineRuntimeM: Done sending \n");
+    dbg(DBG_USR1, "BasicTMCommM: Done sending \n");
     return SUCCESS;
   }
 
