@@ -38,8 +38,6 @@
 ;;;               | X_<n>    (Some place...)
 
 
-
-
 ;;; [2004.08.13] Need to consider conditionals:
 ;;;   (if #t (circle...) (khood...))
 ;;; While they have the same "type", there will obviously be different
@@ -50,6 +48,11 @@
 ;;;   There *are* however circumstances where the two branches might
 ;;; memb in the same locations, say, if they're both maps over the
 ;;; same region.
+
+;;; [2004.10.06] What does No Place mean?  Does it mean that it
+;;; happens at the SOC, that it doesn't matter where it happens?  I
+;;; don't know if this is a meaningful symbol...
+
 
 ;;; This is just a helper function that shows the places for an annotated program:
 (define (getplaces p)
