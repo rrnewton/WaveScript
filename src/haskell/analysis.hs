@@ -1,5 +1,5 @@
 --import HUnit 
---import TokenMachine
+import TokenMachine
 
 {- 
   Wondering about how they do Id's in ghc... seems pretty complicated.
@@ -13,23 +13,12 @@ data DensityT = Bottom
 	      | Top
   deriving (Eq, Show, Read)
 
-data Prim a = Pcluster a 
-	  | Pamap 
-	  | Pafold 
-	  | Psmap 
-	  | Punion 
-	  | Pintersect 
-  deriving (Eq, Show, Read)
-
-data Pgm = Pgm Expr
-data Expr = EConst
-	  | EVar String
-	  | Elambda Formals Expr
-	  | Eprimapp (Prim Expr)
-  deriving (Eq, Show, Read)
-
-type Formals = [String]
-
+--type Id = String
+--data Token = Token Id 
+--type Tokbind = (Token, [Id], Expr)
+--data Pgm = Pgm Tokbind
+--data Tokbind = Tokbind Token [Id]
+--type Formals = [String]
 
 
 lattice_compare a b | a == b = Just EQ
@@ -42,6 +31,8 @@ lattice_compare  _  _         = Nothing
 
 
 transfer (Pcluster dens) = ContigArea dens
+
+
 
 
 -- <Pgm>  ::= <Exp>
@@ -57,6 +48,8 @@ transfer (Pcluster dens) = ContigArea dens
 -- <Formalexp> ::= (<var>*)
 
 main = do return ();
+
+
 
 data Point = Pt {pointx, pointy :: Float}
   deriving (Eq, Show, Read)
