@@ -125,6 +125,15 @@
 	  ;; going to assume all folds go to the SOC.
 	  [(rfold) (values expr (list (new-place)) 'SOC)]
 	  
+
+	  ;; Rfilter outputs a region which is a subset of the original.
+	  ;; Can't express this right now, so just make a new set of places.
+	  ;; TODO: DONT DESTROY SO MUCH INFORMATION HERE.
+	  [(rfilter) 
+	   (let ([newp1 (list (new-place))]
+		 [newp2 (list (new-place))])
+	     (values expr newp1 newp2))]
+
 	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
 	  [(smap) 	   
 	   (let ([newp (new-place)])

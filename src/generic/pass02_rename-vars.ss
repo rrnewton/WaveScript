@@ -111,6 +111,9 @@
            (guard (not (assq prim env)) (regiment-primitive? prim))
            `(,prim ,rand* ...)]          
 
+	  ;; Adding normal applications because the static elaborator will get rid of them.
+	  [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
+
           [,unmatched (error 'rename-var "invalid syntax ~s" unmatched)])))
 
     (lambda (expr . optional)
