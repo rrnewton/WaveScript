@@ -41,18 +41,7 @@
     (define (process-let expr)
 ;      (disp "processing let" expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)
-
-;	  (lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,expr)
-
-;	  (let ([stuff (map (lambda (rhs) (call-with-values (lambda () (process-expr rhs)) (lambda args args)))
-;			    rhs*)]
-;		[form* (map (lambda (_) 0) rhs*)]
-;		[memb* (map (lambda (_) 0) rhs*)]
-;		)
-;	    (disp "got stuff" stuff)
-;	    (disp "for rhs" rhs*)
-
+	 [ (lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)
 	  `(lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
 	 [,other (error 'add-places:process-let "bad lazy-letrec expression: ~s" other)]))
     
@@ -118,3 +107,25 @@
     `(add-places-language (quote (program (props ,proptable ...)
 					  (control-flow ,cfg ...)
 					  ,(process-let letexpr))))])))
+
+
+
+
+
+(define these-tests 
+  `(
+
+    [(analyze-places '(add-places-language
+		       '(program (props) (control-flow)
+			       (lazy-letrec ([result 10 X? X? 3])
+					    result))))
+     unspecified]
+
+  ))
+
+(define test-this (default-unit-tester
+		    "Analyze-places: to infer place relationships"a
+		    these-tests))
+
+(define test15 test-this)
+(define tests15 these-tests)

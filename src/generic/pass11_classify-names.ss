@@ -290,3 +290,25 @@
 	      '(program ,finaltable (lazy-letrec (,binds ...) ,fin)))
 	    )]
 	   ))
+
+
+
+
+
+(define these-tests 
+  `(
+
+    [(analyze-places '(add-places-language
+		       '(program (props) (control-flow)
+			       (lazy-letrec ([result 10 X? X? 3])
+					    result))))
+     unspecified]
+
+  ))
+
+(define test-this (default-unit-tester
+		    "Classify-names: to annotate simple variable properties"
+		    these-tests))
+
+(define test11 test-this)
+(define tests11 these-tests)
