@@ -37,7 +37,10 @@
     deglobalize
     
     cleanup-token-machine    
+
     desugar-gradients
+    cleanup-token-machine   ;; Rerun to expand out some stuff.
+
     desugar-let-stored
     
     ;    analyze-tokmac-recursion

@@ -29,6 +29,7 @@
 ;;;   (*) It expands out some primitive applications
 ;;;   that are just shorthands.  (For example, (dist) becomes
 ;;;   (dist <this-token>)    ;;; TODO: not finished...
+;;;   It also expands some syntaxes (and, or).
 
 ;;;   (*) Should be IDEMPOTENT.  
 ;;;   Can run it multiple times or inbetween different passes.
@@ -44,6 +45,7 @@
 ;;; INPUT GRAMMAR:
 
 ;; Extremely messy, ad-hoc and lenient.
+
 
 ;;; OUTPUT GRAMMAR:
 
@@ -82,7 +84,7 @@
 ;;;                | (elect-leader <Token> [<Token>])
                      ;; <TODO> optional second argument.. decider
 ;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed_call
+;;;           | call | subcall | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 
@@ -203,6 +205,19 @@
 	     [(begin ,[xs] ...)
 	      (make-begin xs)]
 
+	     [(and) ''#t]
+	     [(and ,[a]) a]
+	     [(and ,[a] ,b ...)
+	      `(if ,a ,((process-expr env tokens this-token this-subtok)
+			`(and ,b ...))
+		   '#f)]
+	     [(or) ''#f]
+	     [(or ,[a]) a]
+	     [(or ,[a] ,b ...)
+	      `(if ,a '#t
+		   ,((process-expr env tokens this-token this-subtok)
+			`(and ,b ...)))]
+
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
 	     [(if ,test ,conseq)
@@ -221,7 +236,7 @@
 		  (let* ,rest ,bodies ...)))]
 
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(emit call activate)))
+	      (guard (memq call-style '(emit call activate bcast))) ;; Activate should be desugared at some point!
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
