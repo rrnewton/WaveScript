@@ -35,7 +35,7 @@
 (define world-xbound 60)
 (define world-ybound 60)
 (define radius 30) ;; And the comm radius.
-(define numprocs 10) ;; And the total # processors.
+(define numprocs 20) ;; And the total # processors.
 
 ;; This counts total messages sent.
 ;;(define total-messages 0)
@@ -59,7 +59,7 @@
 	 (random world-ybound))
    ))
 
-(define (dist a b)
+(define (posdist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
 
@@ -79,29 +79,33 @@
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
 ;;========================================
-;; After the start of the program this doesn't change:
-(define graph 
-  (let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
-    ;; Connect the graph:
-    (set! seed
-					;      (let ((ids (map node-id graph)))
-					;	(map 
-	  (map (lambda (node)
-		 (cons node 
-		       (filter (lambda (n) 
-				 (and (not (eq? node n))
-				      (< (dist (node-pos node) (node-pos n)) radius)))
-				    seed)))
-	       seed))
-    seed))
+;; These start off uninitialized and are initialized with "init-world".
+(define graph #f)
+(define object-graph #f)
+(define all-objs #f)
 
 (define (make-object-graph g) (graph-map (lambda (nd) (make-simobject nd '() #f #f)) g))
+(define (init-world)
+  (set! graph   
+	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+	  ;; Connect the graph:
+	  (set! seed
+					;      (let ((ids (map node-id graph)))
+					;	(map 
+		(map (lambda (node)
+		       (cons node 
+			     (filter (lambda (n) 
+				       (and (not (eq? node n))
+					    (< (posdist (node-pos node) (node-pos n)) radius)))
+				     seed)))
+		     seed))
+	  seed))
+  (set! object-graph (make-object-graph graph))
+  (set! all-objs (map car object-graph)))
 
-;; Nor does this:
-(define object-graph (make-object-graph graph))
-(define all-objs (map car object-graph))
+;; Call it now as we start up:
+(init-world)
 ;;========================================
-
 
 #;(define (draw)
   (init-graphics)
@@ -125,7 +129,14 @@
 	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
 (define (process-statement stmt)
-  (match stmt
+  (process-expr stmt))
+
+(define (process-expr expr)
+  (match expr
+	 ;; This is a little wider than the allowable grammar to allow
+	 ;; me to do test cases:
+	 [,x (guard (or (symbol? x) (constant? x))) x]
+	 [(quote ,x) `(quote ,x)]
 	 [(call ,rator ,rand* ...)	  
 	  ;(error 'process-statement "call not supported from SOC")] 
 	  `(handler #f #f ',rator ',rand*)]
@@ -137,7 +148,7 @@
 	 [(dist) `(begin 
 		    ,(DEBUGMODE '(if (not this-message)
 				     (error 'simulator_nought.process-statement 
-					    "broken"))a)
+					    "broken")))
 		    (if (cache-entry-count this-message)
 		      (cache-entry-count this-message)
 		      (error 'simulator_nought.process-statement:dist
@@ -170,7 +181,14 @@
 ;		 (disp "SETTING LIGHT" ,r ,g ,b)
 		 (change-color! (simobject-gobj this) 
 				(rgb ,r ,g ,b)))))]
-	 [,else stmt])
+	 
+	 ;; We're letting them get away with other primitives because
+	 ;; we're being lenient, as mentioned above.
+	 [(,[rator] ,[rand*] ...)
+	  `(,rator ,rand* ...)]	  
+	 
+	 [,else (error 'simulator_nought.process-expr 
+		       "don't know what to do with this: ~s" expr)])
   )
 
 (define (process-binds binds expr)
@@ -275,7 +293,7 @@
 	   [define sim-emit (lambda (t m count)
 		    ;; Count total messages sent.
 		    (set! total-messages (add1 total-messages))
-		    (newline)(disp "  " (list 'sim-emit t m count))
+;		    (newline)(disp "  " (list 'sim-emit t m count))
 		   (map (lambda (nd) (sendmsg (make-cache-entry this count t m) nd))
 			(neighbors this)))]
 	   [define flood (lambda (t . m)

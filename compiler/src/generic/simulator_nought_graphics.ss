@@ -62,6 +62,8 @@
 			(set-simobject-gobj! proc gobj))
 		      
 ;; Not done yet.
+;; This just draws the edges once... need to take responsibility for
+;; changing them:
 		      (for-each 
 		       (lambda (edgeob)
 ;			 (disp "DOING edge" edgeob)
@@ -70,6 +72,7 @@
 			     (draw-edge origpos (node-pos (simobject-node (car edgeob))))
 			     (structure-copy (car edgeob)))))
 		       edges)
+
 		      )))
 		object-graph)
 		       
@@ -157,10 +160,11 @@
   ))
 
 (set! these-tests
-  `([ "Run Spread lights gradually..."
-      (simulate
-       (build-simulation (compile-simulate-nought ',example-nodal-prog2))
-       5.0)
+  `([ "Run Spread lights gradually with display distance..."
+      (begin (init-world)
+	     (simulate
+	      (build-simulation (compile-simulate-nought ',example-nodal-prog3))
+	      5.0))
       unspecified]))
 
 (define (wrap-def-simulate test)
