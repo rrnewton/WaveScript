@@ -9,11 +9,11 @@ enum {
 #endif
 
 #ifndef TOK_DATA_LENGTH
-#define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 1 ))
+#define TOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 1 + 2))
 #endif
 
 #ifndef RETURNTOK_DATA_LENGTH
-#define RETURNTOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 2 + 2 ))
+#define RETURNTOK_DATA_LENGTH (TOSH_DATA_LENGTH - (2 + 2 + 2 + 2 + 2 + 2))
 #endif
 
 // This TM_Payload fits inside the data field of TOS_Msg.
@@ -24,6 +24,8 @@ typedef struct TM_Payload
 
   uint16_t timestamp;
   uint8_t counter;
+
+  uint16_t generation; // The generation of this emission.
 
   //  int8_t numargs; // length of args
 
@@ -44,6 +46,8 @@ typedef struct TM_ReturnPayload
   uint16_t seed_val; // The seed value, for aggregation
 
   uint16_t timestamp; // timestamp that the return fired
+
+  uint16_t generation; // The generation of this emission.
 
   //  int8_t length; // length of return_val
 

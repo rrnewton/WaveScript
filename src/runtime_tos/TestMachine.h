@@ -1,3 +1,4 @@
+#define BASE_STATION 0
 
 enum {
   AM_TOKEN_A  = 1, 
