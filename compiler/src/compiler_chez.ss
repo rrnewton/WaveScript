@@ -118,23 +118,23 @@
 		  (define rgb (lambda args (void))))))
 
 ;; Basic simulator for the nodal language:
+;(load "chez/simulator_nought.ss")
 (module simulator_nought
-	(run-simulation
-	 run-simulation-stream
-	 compile-simulate-nought 
-	 build-simulation
-	 ;process-statement-nought
-	 init-world
-	 cleanse-world
-	 testsim
-	 testssim
+	(;run-simulation
+	 ;run-simulation-stream
+	 ;compile-simulate-nought 
+	 ;build-simulation
+	 ;;;process-statement-nought
+	 ;init-world
+	 ;cleanse-world
+	 ;testsim
+	 ;testssim
 	 )
-	(include "chez/simulator_nought.ss")
+;	(include "chez/simulator_nought.ss")
 )
-(import simulator_nought)
+;(import simulator_nought)
 
-
-(module simulator_alpha
+'(module simulator_alpha
 	(;run-simulation
 	 ;run-simulation-stream
 	 ;compile-simulate-nought 
@@ -150,7 +150,7 @@
 (include "chez/simulator_alpha.ss")
 ;(import simulator_alpha)
 
-
+#!eof
 
 ;; If we're in SWL then load the GRAPHICS portion:
 (when (top-level-bound? 'SWL-ACTIVE)

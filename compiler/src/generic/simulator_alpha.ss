@@ -16,10 +16,13 @@
 (define this-unit-description 
   "simulator_alpha.ss: event-queue simulator for nodal language")
 
+;; This structure contains all the global data needed a simulation.
+(define-structure (simulation graph object-graph all-objs))
 
 ;; Positions are just 2-element lists.
 (define-structure (node id pos))
 
+;; This structure represents a simulated node:
 ;; Incoming is a list of messages (or return-objs).
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
@@ -31,16 +34,47 @@
 			     token-cache local-sent-messages local-recv-messages
 			     ))
 
-;; This record holds the info that the token cache needs to maintain
-;; per each token name.
-;; NOTE: The lack of a *parent* indicates that the message is a local call:
+;; This structure represents a message transmitted across a channel.
 (define-structure (msg-object token 
 			      timestamp ;; when it was sent 
-			      origin ;; :: simobject - original source of message
 			      parent ;; :: simobject - who I got it from
-			      count
 			      args))
 
+;; ======================================================================
+
+;; This is our logger for events in the simulator:
+(define (logger ob . args)
+  (if (simulation-logger)
+      (if (null? args)
+	  (critical-section
+	   (begin (display ob (simulation-logger))
+		  (newline (simulation-logger))))
+	  (critical-section
+	   (display (apply format ob args) (simulation-logger))))))
+;; This is just another variant:
+;; This has no critical section for now!!! [2005.02.25]
+(define-syntax with-logger
+  (syntax-rules ()
+      [(_ exp ...)
+      (if (simulation-logger)
+	  (parameterize ([current-output-port (simulation-logger)])
+			exp ...))]))
+
+;; This makes it use a lame sort of text display instead of the graphics display:
+(define-regiment-parameter simulator-output-text #f (lambda (x) x))
+;; This is a SEPERATE LOGGER for debug info as opposed to simulation events.
+(define-regiment-parameter sim-debug-logger 
+  (lambda args
+    (critical-section
+     (apply printf args)))
+  (lambda (x)
+    (unless (procedure? x)
+	    (error 'simulator-debug-logger "~s is not a procedure" x))
+    x))
+(define-syntax silently
+  (syntax-rules ()
+    [(_ expr ...) (parameterize ([sim-debug-logger (lambda args (void))])
+				expr ...)]))
 
 ;; ======================================================================
 
@@ -114,15 +148,6 @@
 		  (list? args)))))
 |#
 
-;; These global vars start off uninitialized and are initialized with
-;; "init-world", below.
-(define graph #f) ;; Graph of 'node'
-(define object-graph #f) ;; Graph of 'simobject'
-(define all-objs #f) ;; List of 'simobject' (this is just computed
-		     ;; from object-graph; its existence is merely an
-		     ;; optimization
-
-
 ;; This globally defined functions decides the sensor values.
 ;; Here's a version that makes the sensor reading the distance from the origin:
 (define (sense-dist-from-origin loc)
@@ -169,8 +194,8 @@
 
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
-(define (all-connected simob)
-  (graph-get-connected simob object-graph))
+(define (all-connected simob sim)
+  (graph-get-connected simob (simulation-object-graph sim)))
 
 ;; This generates the default, random topology: 
 ;; (There are more topologies in "network_topologies.ss"
@@ -178,144 +203,38 @@
   (graph-map (lambda (nd) (make-simobject nd '() '() #f #f '() 
 					  (make-default-hash-table) 0 0))
 	     g))
-(define (init-world)
-  (set! graph   
-	(let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
-	  ;; TEMP: Here I give the nodes distinct, consecutive ids.
-	  (if (regiment-consec-ids)
-	      (for-each set-node-id! 
-			seed (iota (length seed))))
-				  
-	  ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
-	  (set-node-id! (car seed) BASE_ID)
-	  ;; Connect the graph:
-	  (set! seed
-		(map (lambda (node)
-		       (cons node 
-			     (filter (lambda (n) 
-				       (and (not (eq? node n))
-					    (< (posdist (node-pos node) (node-pos n)) radius)))
-				     seed)))
-		     seed))
-	  ;; If there's a prexisting (and graphical) world, clean the screen.
-	  (and all-objs 
-	       (not (null? all-objs))
-	       (simobject-gobj (car all-objs))
-	       (clear-buffer))
-	  seed))
-  (set! object-graph (make-object-graph graph))
-  (set! all-objs (map car object-graph))
-  )
+
+(define (fresh-simulation)
+   (let* ([graph 
+          (let ((seed (map (lambda (_) (random-node)) (iota numprocs))))
+            ;; TEMP: Here I give the nodes distinct, consecutive ids.
+            (if (regiment-consec-ids)
+                (for-each set-node-id! 
+                          seed (iota (length seed))))
+            ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+            (set-node-id! (car seed) BASE_ID)
+            ;; Connect the graph:
+            (set! seed
+                  (map (lambda (node)
+                         (cons node 
+                               (filter (lambda (n) 
+                                         (and (not (eq? node n))
+                                              (< (posdist (node-pos node) (node-pos n)) radius)))
+                                       seed)))
+                       seed))
+            seed)]
+          [obgraph (make-object-graph graph)]
+          [allobs  (map car obgraph)])
+     (make-simulation graph obgraph allobs)))
 
 
-
-
-;; ======================================================================
-
-;; These are used by compile-simulate-nought.  They are the helper
-;; functions used by the generated code.  Right now I'm actually just
-;; defining these functions globally so that I may test them.  They
-;; make liberal use of our three primary global variables (object-graph, all-objs).
-(define generic-defs	
-  `(
-    ;; Is set to a list of all the leds that are toggled on.    
-    [define led-toggle-state '()]
-
-    ;; MAKE SURE NOT TO INCLUDE OURSELVES:
-    [define neighbors (lambda (obj)
-			(let ((entry (assq obj object-graph)))
-;			  (disp "ENTRY : " entry)
-			  (if (null? entry)
-			      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
-				     obj object-graph)
-			      (begin 
-				(if (memq obj (cdr entry))
-				    (error 'neighbors "we're in our own neighbors list"))
-				(cdr entry)))))]
-
-    [define sendmsg (lambda (data ob)
-		   (set-simobject-incoming! ob
-		    (cons data (simobject-incoming ob)))
-		   ;(set-simobject-redraw! ob #t)
-		   )]
-    
-
-    [define (sim-light-up r g b)
-      ((sim-debug-logger) "~n~a: light-up ~a ~a ~a"
-       (node-id (simobject-node this)) r g b)
-      (if (simobject-gobj this)
-	  (change-color! (simobject-gobj this) (rgb r g b))
-	  ;; We're allowing light-up of undrawn objects atm:
-	   ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-	  )]
-
-    ;; INCOMPLETE (we don't yet draw the leds directly.)
-    [define (sim-leds what which)
-      (let* ([colors 
-	      (case which
-		[(red)   '(255 0 0)]
-		[(green) '(0 255 0)]
-		[(blue)  '(0 0 255)]
-		[else (error 'sim-leds "bad color: ~a" which)])]
-	     ;; INCOMPLETE:
-;	     [oldcolors '(0 0 0)]
-	     )
-	(let ((string (format "~a: (time ~s) (Leds: ~a ~a ~a)~n" 	
-	 (node-id (simobject-node this)) (cpu-time) which what
-	 (case what
-	   [(on) 
-	    (set! led-toggle-state (list->set (cons which led-toggle-state)))
-	    (apply sim-light-up colors)
-	    "" ]
-	  [(off)
-	   (set! led-toggle-state (remq which led-toggle-state))
-	   (sim-light-up '(0 0 0))
-	   "" ]
-	  [(toggle)
-	   (if (memq which led-toggle-state)
-	       (begin 
-		 (set! led-toggle-state (remq which led-toggle-state))
-		 (sim-light-up 0 0 0)
-		 "off")
-	       (begin 
-		 (set! led-toggle-state (list->set (cons which led-toggle-state)))
-		 (apply sim-light-up colors)
-		 "on")
-	       )]
-	  [else (error 'sim-leds "bad action: ~a" what)]))))
-	  ;((sim-debug-logger) string)
-	  (logger string)
-	))]
-	  
-    [define (sim-dist . tok)
-	     (if (null? tok)
-		 (begin 
-		   (if (msg-object-count this-message)
-		       (msg-object-count this-message)
-		       (error 'simulator_nought.process-statement:dist
-			      "inside simulator (dist) is broken!")))
-		 (let ((entry (hashtab-get (simobject-token-cache this) (car tok))))
-		   (if (and entry (msg-object-count entry))
-		       (msg-object-count this-message)
-		       (error 'simulator_nought.process-statement:dist
-			      "inside simulator (dist ~s) but ~s has not been received!"
-			      (car tok) (car tok))
-		       )))]
-	   
-    [define (sim-loc) ;; Return this nodes location.
-	     (node-pos (simobject-node this))]
-    [define (sim-locdiff a b)
-	     (sqrt (+ (expt (- (car a) (car b)) 2)
-		      (expt (- (cadr a) (cadr b)) 2)))]
-
-    ))
-
+                         
+   
 
 ;; ======================================================================
 
 
-
-(define (process-statement tokbinds)
+(define (process-statement tokbinds allstored)
   (letrec ([get-arg-index
 	    (lambda (tok argname)
 	      (let ([entry (assq tok tokbinds)])
@@ -325,11 +244,11 @@
 		(list-find-position argname (cadr entry))))]
 
 	   [process-expr 
-	 (lambda (expr stored-env)
+	 (lambda (expr)
 	   ;; This is a little wider than the allowable grammar to allow
 	   ;; me to do test cases:
 	   (match expr
-		  [,x (guard (and (symbol? x) (memq x stored-env))) `(car ,x)]
+		  [,x (guard (and (symbol? x) (memq x allstored))) `(car ,x)]
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
@@ -392,22 +311,22 @@
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit call timed-call activate relay return))))
 ;;		   (disp "processing app:" rator rand*)
-		   `(,(process-expr rator stored-env) ,rand* ...)]
+		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
 				"don't know what to do with this: ~s" otherwise)])
 	   )])
-    (lambda (stmt stored-env)
-      (process-expr stmt stored-env))))
+    (lambda (stmt) (process-expr stmt))))
 
-(define (process-binds binds expr)
+
+(define (process-binds binds)
 ;  (disp "processbinds" binds expr)
   (let* ([graph (map (lambda (bind)
 		       (cons (car bind)
 			     (free-vars (cadr bind))))
 		     binds)]
 	 [flat (reverse (topological-sort graph eq?))]
-	 [binds 
+	 [newbinds 
 	  (map (lambda (sym) 
 		 (let ([bind (assq sym binds)])
 		   (if bind bind
@@ -415,8 +334,8 @@
 			      "no entry for sym '~s' in constant binds ~s" sym binds))))
 	       flat)])
     (if (cyclic? graph)
-	(error 'process-binds "for now can't take a cyclic graph: ~s" binds))
-    `(let* ,binds ,expr)))
+	(error 'process-binds "for now can't take a cyclic graph: ~s" newbinds))
+    newbinds))
 	 
 ;; This assumes that all the stored vars (and all vars in general)
 ;; have unique names at this point.
@@ -450,41 +369,50 @@
 ;; tokstore, vtime, tokargs -> newmsgs, newtokobjs
 
 
-;; Takes token bindings and a body expression:
-(define (process-tokbinds tbinds extradefs expr)
-  (let ([binds 
-	 (map
-	  (lambda (tbind)
+;; Takes token bindings, returns compiled bindings
+;; along with an association list of stored-vars.
+(define (process-tokbinds tbinds)
+  (let* ([allstored
+          (map (lambda (bind) 
+                 (match bind 
+		   [(,tok (,args ...) ,expr)
+                    (list tok (find-stored expr))]))
+               tbinds)]
+         [binds 
+          (map
+           (lambda (tbind)
 	    (match tbind 
 		   [(,tok (,args ...) ,expr* ...)
-		    (let ([stored (apply append (map find-stored expr*))])
-		      `[,tok (lambda ,args 
-			       (DEBUGPRINT2 
-				(disp "Token " ',tok 
-				      "running at" (node-id (simobject-node this)) 
-				      " with message: " ',args))
-			       (set-simobject-outgoing! this '())
-					;(set-simobject-timed-tokens! this '())
-			       
-			       ,@(map (process-statement tbinds stored) expr*)
-			       (let ([result
-				      (list (simobject-outgoing this)
-					    )])
-				 (set-simobject-outgoing! this '())
-				 result)
-			       
-			       )])]))
-	  tbinds)]
-	)
-
+		    (let ([stored (assq tok allstored)])
+		      `[,tok 
+                         (lambda ,args 
+                           #;(DEBUGPRINT2 
+                            (disp "Token " ',tok 
+                                  "running at" (node-id (simobject-node this)) 
+                                  " with message: " ',args))
+                           (set-simobject-outgoing! this '())
+                           ,@(map (process-statement tbinds stored) expr*)
+                           (let ([result
+                                  (values (simobject-outgoing this)                                          
+                                          )])
+                             (set-simobject-outgoing! this '())
+                             result)
+                           )
+                         ])]))
+	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
     (printf "<-------------------------------------------------------------------->~n")
     (pretty-print binds)
 
-    `(let () ,@(map (lambda (x) (cons 'define x)) binds)
-	  [define this-message #f]
-	  ,@extradefs ;; <TODO> THIS IS WEIRD AND LAME <TOFIX>
-    ,expr)))
+    (values binds allstored)))
+
+;; This produces the compiled "main" program. 
+(define (build-body tbinds expr)
+  (let-values ([(binds allstored) (process-tokbinds tbinds)])
+    `(let ([,(apply append (map cadr allstored)) '()] ...)
+       (letrec ([this-message #f]
+                ,@binds)
+         ,expr))))
 
 ;; ======================================================================
 
@@ -503,101 +431,52 @@
 	 `(lambda (soc-return soc-finished SOC-processor this object-graph all-objs)
 	    (let ([I-am-SOC #t]) 
 	      ;; We have to duplicate the tokbinds here...
-	      ,(process-binds 
-		nodebinds
-		(process-binds 
-		 socbinds
-		(process-tokbinds
-		 nodetoks generic-defs			
-		 `(begin ,@(map (process-statement nodetoks)
-				socstmts)
-			 'soc_finished))))))]
+              `(let* (,@(process-binds nodebinds)
+                      ,@(process-binds socbinds))
+                 ,(build-body
+                   nodetoks generic-defs			
+                   `(begin ,@(map (process-statement nodetoks)
+                                  socstmts)
+                           'soc_finished)))))]
               
        [nodeprog
-	`(lambda (soc-return soc-finished SOC-processor this object-graph all-objs)
-;	    (printf (format "CALLING Nodeprog: ~s~n" (if (simobject-gobj this) #t #f)))
-
-	   ;; This is a little weird, but even the node program
-	   ;; running on the SOC has to know that it's physically on
-	   ;; the SOC:
+        ;; Takes: the two soc procedures, 
+        ;;        simobj for the soc, 
+        ;;        simobj for this,
+        ;;        simulation
+	`(lambda (soc-return soc-finished SOC-processor this sim)
 	    (let ([I-am-SOC (eq? this SOC-processor)]
 		  [local-sense (lambda ()
 				 ((current-sense-function)
 				  (node-pos (simobject-node this))))])
 
-	      ,(process-binds 
-		nodebinds 
-		(process-tokbinds 
-		 nodetoks generic-defs
-		 `(begin 
+	      (let* ,(process-binds nodebinds)
+		,(build-body
+                  nodetoks
+                  `(begin 
 		    ;; <TODO>: FIX THIS UP, MAKE SURE NO ARGS IS OK!?:
 		    ;; Call all the starting tokens with no arguments:
-		   ,@(map list starttoks)
-		   ;; [2004.06.28] The simulator is asynchronous, yet
-		   ;; communication should be vaguely synchronized by
-		   ;; the fact that this loop handles a batch of
-		   ;; incoming messages at a time before yielding.
-		   ;; Hopefully "return" messages from all the
-		   ;; children will make their way into a single one
-		   ;; of these batches.  We'll see.
-		   (let main-node-loop ([incoming (simobject-incoming this)]
-					[returns-next-handled (+ (cpu-time) return-window-size)]
-					[returns '()])
-		     (if (not (andmap return-obj? returns))
-			 (error 'main-node-loop "Hmm, got a non return-obj: ~s" returns))
-			 
-
-;		     (if (> (length returns) 0)
-;			 (disp "loop" (cpu-time) returns-next-handled (length returns)))
-
-		     (let ([current-time (cpu-time)]
-			   [triggers (simobject-timed-tokens this)])
-		       (let ([fired-triggers 
-			      (filter (lambda (trigger) (>= current-time (car trigger)))
-				      triggers)])
-			 ;; This is a little weird because it gives
-			 ;; timed calls priority over other incoming
-			 ;; tokens:
-			 (if (not (null? fired-triggers))
-			     (begin 
-			       (critical-section
-				(set-simobject-incoming! this
-			         (append (map cdr fired-triggers)
-					 (simobject-incoming this))))
-			       (set-simobject-timed-tokens! this
+                     ,@(map list starttoks)
+                     
+                     (let main-node-loop ([incoming (simobject-incoming this)])
+                       (let ([current-time (cpu-time)]
+                             [triggers (simobject-timed-tokens this)])
+                         (let ([fired-triggers 
+                                (filter (lambda (trigger) (>= current-time (car trigger)))
+                                        triggers)])
+                           ;; Timed calls get priority over other incoming:
+                           (if (not (null? fired-triggers))
+                               (begin 
+                                 (set-simobject-incoming! this
+                                                          (append (map cdr fired-triggers)
+					 (simobject-incoming this)))
+                                 (set-simobject-timed-tokens! this
 					 (difference triggers fired-triggers))
-			       (main-node-loop (simobject-incoming this)
-					       returns-next-handled
-					       returns))
-		     (cond
+                                 (main-node-loop (simobject-incoming this)))
+                               (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
-		       'node-stopped]
-		      
-		      ;; If the time has come, handle those returns!
-		      [(>= current-time returns-next-handled)
-		       ;; This progress indicator goes to stdout regardless of where the logger goes.
-		       (if (> (length returns) 1)
-			   (display #\!) 
-			   (display #\.))
-		       (flush-output-port)
-; 		       (if (not (null? returns))
-; 			   (with-logger
-; 			    (display (list "Handling rets from" (node-id (simobject-node this)) 
-; 					   "got " (length returns)))
-; 			    (newline)))
-
-		       ;; Handle all the returns to date (either
-		       ;; locally generated or from neighbors). 
-		       (if (not (null? returns))
-			   (handle-returns returns))
-		       ;(yield-thread)
-		       ;; Should I give us a time bonus for the time
-		       ;; we spent *handling* the returns?  Or try to
-		       ;; hold us to a fixed frequency?
-		       (main-node-loop incoming
-				       (+ returns-next-handled return-window-size)
-				       '())]
+		       'node-stopped]		     
 
 		      [(null? incoming)
 		       ;; No good way to wait or stop the engine execution?
@@ -667,12 +546,11 @@ nodeprog
 	(socpgm  (bindings) (call tok1))
 	(nodepgm 
 	 (tokens
-	  [tok1 () (bcast tok2 3)]
+	  [tok1 () (bcast tok2 '3)]
 	  [tok2 (x) (bcast tok2 (+ x x))])
 	 (startup))))
      '??]
     ))
-
 
 
 (define (wrap-def-simulate test)
