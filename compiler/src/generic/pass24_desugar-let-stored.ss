@@ -112,10 +112,13 @@
 	;; expression is executed (and only the first), the RHS is
 	;; evaluated and stored.
 	[(let-stored ([,lhs ,[rst rhs]]) ,body)
-	 `(let ([lhs (void)])
-	    (if ____
-		(set! lhs ,rhs))
-	    ,((process-expr (cons lhs env)) body))]
+         (let ([newvar (unique-name 'stored-liftoption)])
+           (mvlet ([(bst newbod) ((process-expr (cons lhs env)) body)])         
+                  (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
+                          `(let ([lhs (void)])
+                             (if ____
+                               (set! lhs ,rhs))
+                           ,((process-expr (cons lhs env)) body))]
 	
 	[(leds ,what ,which) (values () `(leds ,what ,which))]
 	[(,prim ,[rst* rands] ...)
@@ -123,12 +126,11 @@
 		    (basic-primitive? prim)))
 	  (values (apply append rst*)
 		  `(,prim ,rands ...))]
-;;;;;; FINISH:
-
 	[(,[rst1 rator] ,[rst* rands] ...)
 	 (warning 'FOOBAR-pass
-		  "arbitrary application of rator: ~s" rator)	      
-	 `(,rator ,rands ...)]
+		  "arbitrary application of rator: ~s" rator)
+         (values (apply append rst1 rst*)
+                 `(,rator ,rands ...))]
 
 	[,otherwise
 	 (error 'cleanup-token-machine:process-expr 
@@ -140,8 +142,8 @@
     (mvlet ([(newstored newbod) ((process-expr (map car constbinds)) body)])
        `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
-
 (lambda (prog)
+  (disp "Desugaring...")
   (match prog
     [(,lang '(program (bindings ,constbinds ...)
 		      (nodepgm (tokens ,[process-tokbind -> toks] ...))))
