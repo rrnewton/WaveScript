@@ -62,6 +62,10 @@
 ;; [2004.06.18] Oops!  This needs to use CPU time or *something*, the
 ;; timeout system isn't going to work when it's an engine!!  And maybe
 ;; it shouldn't have a timeout system.
+
+;; Takes:  Thunks, ?Timeout 
+;; Returns: Engine
+;; ... which returns: 'All_Threads_Returned | 'Threads_Timed_Out
 (define (run-flat-threads-engine thks . time)
   (let ([totaltime (if (null? time) #f (* 1000 (car time)))]
 	[perdisp (periodic-display 100)])
@@ -140,12 +144,18 @@
 	"0123456789"]
 
       [ "Ten threads complete at different times <Engine Version>"
-	,(ten-threads-test (lambda (ls) 
+	,(ten-threads-test (lambda (ls)
 			     `(let loop ((eng (run-flat-threads-engine ,ls)))
 				(eng 100
-				     (lambda (remaining val) val)
+				     (lambda (remaining val) 
+				       (if (memq val '(All_Threads_Returned Threads_Timed_Out))
+					   (void)
+					   (error 'ten-threads-engine-test
+						  "run-flat-threads-engine had better return ~a"
+						  "either All_Threads_Returned or Threads_Timed_Out!!")))
 				     loop))))
 	"0123456789"]
+
       )))
 
 (define test-this (default-unit-tester this-unit-description these-tests))

@@ -437,6 +437,7 @@
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (memq 'quiet args)]
+	       ;; Flag to print test descriptions as well as code/output.
 	       [verbose (memq 'verbose args)]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
@@ -1815,24 +1816,30 @@
   (or (promise? s)
       (and (pair? s) (stream? (cdr s)))))
 
-(define stream-empty? null?)
+(define stream-empty? 
+  (lambda (s)
+    (cond 
+     [(null? s) #t]
+     [(promise? s) (stream-empty? (force s))]
+     [else #f])))
 
-(define (stream-car s)
-  (let scloop ((s s))
-    (cond
-     [(promise? s)
-      ;; We have no way of mutating the prior cell, so just return this:
-      (stream-car (force s))]
-     [(pair? s) (car s)]
-     [(null? s) (error 'stream-car "Stream is null!")]
-     [else (error 'stream-car "invalid stream: ~s" s)])))
+(define stream-car
+  (lambda (s)
+    (let scloop ((s s))
+      (cond
+       [(promise? s)
+	;; We have no way of mutating the prior cell, so just return this:
+	(stream-car (force s))]
+       [(pair? s) (car s)]
+       [(null? s) (error 'stream-car "Stream is null!")]
+       [else (error 'stream-car "invalid stream: ~s" s)]))))
 
 (define (stream-cdr s)
   (cond
    [(promise? s)      
     ;; Again, this one isn't structured as a pair, so we can't mutate and extend.
     (stream-cdr (force s))]
-   [(null? s) (error 'stream-car "Stream is null!")]
+   [(null? s) (error 'stream-cdr "Stream is null!")]
    [(pair? s)
       (if (promise? (cdr s))
 	  (begin (set-cdr! s (force (cdr s)))
@@ -1842,21 +1849,23 @@
    [else (error 'stream-cdr "invalid stream: ~s" s)]))
 
 ;; Take N elements from a stream
-(define (stream-take n s)
-  (let loop ((n n) (s s))    
-    (cond
-     [(zero? n) '()]
-     [(null? s)
-      (error 'stream-take "Stream ran out of elements before the end!")]
-     [else 
-      (cons (stream-car s) 
-	    (loop (sub1 n) (stream-cdr s)))])))
+(define stream-take 
+  (trace-lambda streamtake (n s)
+    (trace-let stloop ((n n) (s s))    
+      (cond
+       [(zero? n) '()]
+       [(null? s)
+	(error 'stream-take "Stream ran out of elements before the end!")]
+       [else 
+	(cons (stream-car s)
+	      (stloop (sub1 n) (stream-cdr s)))]))))
   
 ;; Layer on those closures!
-(define (stream-map f s)
-  (let loop ((s s))
-    (delay (cons (f (stream-car s))
-		 (loop (stream-cdr s))))))
+(define stream-map 
+  (trace-lambda stream-map (f s)
+    (let loop ((s s))
+      (delay (cons (f (stream-car s))
+		   (loop (stream-cdr s)))))))
     
 	  
 ;; A stream of non-negative integers:

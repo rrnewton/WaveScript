@@ -9,6 +9,8 @@
 ;; "run" had better take a stream.
 
 (define (repl-builder startup cleanse compiler run)
+  (disp "REPL BUILDER")
+
   (lambda()
     (printf "Type exit to leave repl.~n")
     (startup)
@@ -31,18 +33,31 @@
 		(let ([result (run converted 2.0)])
 		  (if (not (stream? result))		     
 		      result
-		      (let streamloop ([i 0] [stream result])
+		      
+		      (begin 
+			(printf "Simulation result is a stream, reading...~n")
+		      (trace-let streamloop ([i 0] [stream result] [acc '()])
 			(cond			 
 			 [(> i 10) (printf "~n That's enough.~n")]
 			 [(eq? stream 'threads_timed_out)
 			  (printf "~n Threads timed out.~n")]
-			 [(stream-empty? stream) (newline)] ;(printf "Stream Ended.~n")]
+			 [(stream-empty? stream) 
+			  (printf "Stream Ended.~n")
+			  (printf "All returned values were: ~n" )
+			  (pretty-print (reverse acc))]
 			 [else 
-			  (display-constrained (list i 20) ": " (list (stream-car stream) 60))
+			  (disp "ADVANCING STREAM" stream)
+			  
+;			  (let ([head 3939]) 
+			  (let ([head (stream-car stream)])
+			    (disp "GOT HEAD" head)
+			    (display-constrained (list i 20) ": " 
+						 (list head 60)))
 			  (newline)
 					;(printf "~s:  ~s~n" i (stream-car stream))
-			  (streamloop (add1 i) (stream-cdr stream))])
-			))))
+			  (streamloop (add1 i) (stream-cdr stream) (cons head acc))])))
+		      
+		      )))
 	      (loop)))))))
 
 
