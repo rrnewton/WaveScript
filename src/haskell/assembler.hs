@@ -72,22 +72,24 @@ process_consts :: [ConstBind] -> String
 process_consts cbs = (foldl (++) "" (map process_const cbs)) ++ "\n"
 
 process_handler :: TokHandler -> String
-process_handler (t, args, e) = 
-  "  event TOS_MsgPtr Recv_"++ tokname t ++".receive(TOS_MsgPtr msg) { \n" ++
+process_handler (t, args, e) = ""
+
 --  "    int i;\n"++
-  "    uint8_t length = msg->length;\n"++
+{-  "    uint8_t length = msg->length;\n"++
   "    uint8_t type = msg->type;\n"++
   "    TM_Payload payload = *((TM_Payload *)msg->data);\n"++
-     (snd $ process_expr e) ++ 
-  "    return msg;\n" ++ 
-  "  }\n\n"
+     (snd $ process_expr e) ++ -}
 
 --    in bod
 --	  | Eprimapp (Prim Expr)
 
 
 process_handlers :: [TokHandler] -> String
-process_handlers hnds = foldl (++) "" (map process_handler hnds)
+process_handlers hnds = 
+  "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
+     (foldl (++) "" (map process_handler hnds)) ++
+  "    return msg;\n" ++ 
+  "  }\n\n"
 
 process_startup :: [Token] -> String
 process_startup _ = "" 
@@ -97,7 +99,8 @@ build_module_header toks =
     let toknames = map (\ (t,_,_) -> tokname t) toks 
     in "\nmodule " ++ modname ++ "M \n {\n" ++ 
        "  provides interface StdControl as Control; \n" ++
-       "  provides command result_t socpgm();\n"++
+       "  provides interface TMModule; \n" ++
+       "  provides command void start_socpgm();\n"++
 --       "  uses interface Timer;\n" ++ 
        concat
          (map (\ name -> 
@@ -121,20 +124,22 @@ build_implementation_header toks =
     "  command result_t Control.stop() {\n" ++
 --    "    return call Timer.stop();\n" ++
     "    return SUCCESS;\n"++
-    "  }\n\n" ++
-    (concat $
-     map (\ name -> 
-	  "  event result_t TMComm_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
-	  "    return SUCCESS;\n" ++
-	  "  }\n\n")
-     (map (\ (t,_,_) -> tokname t) toks))
+    "  }\n\n" 
+-- ++   (concat $
+--     map (\ name -> 
+--	  "  event result_t TMComm_"++name++".sendDone (TOS_MsgPtr msg, result_t success) {\n" ++
+--	  "    return SUCCESS;\n" ++
+--	  "  }\n\n")
+--     (map (\ (t,_,_) -> tokname t) toks))
 
 
 build_socfun consts expr = 
-    "  command result_t socpgm() {\n"++ 
+    "  task void socpgm() {\n"++ 
     process_consts consts ++ 
     (concat (map (snd . process_expr) expr)) ++ 
-    "    return SUCCESS;\n"++
+    "  }\n\n" ++
+    "  command void start_socpgm() {\n"++ 				       
+    "    post socpgm();\n"++
     "  }\n\n"
 
 build_module (Pgm consts socconsts socpgm nodetoks startup) = 
@@ -145,7 +150,7 @@ build_module (Pgm consts socconsts socpgm nodetoks startup) =
     process_consts consts ++ 
     build_implementation_header nodetoks ++
     process_consts socconsts ++ 
---    process_handlers nodetoks ++ 
+    process_handlers nodetoks ++ 
     build_socfun socconsts socpgm ++
     "}\n"
 
@@ -160,15 +165,17 @@ build_configuration (Pgm consts socconsts socpgm nodetoks startup) =
     "}\n"++
     "implementation\n"++
     "{\n"++
-    "  components "++modname++"M, Main, TimerC, BasicTMCommM, GenericComm as Comm;\n"++
+    "  components "++modname++"M, Main, TimerC, BasicTMComm, GenericComm as Comm;\n"++
     "\n"++
     "  Main.StdControl -> TestMachineM.Control;\n"++
     "  Main.StdControl -> Comm;\n"++
     "  Main.StdControl -> TimerC;\n"++
     "\n"++
+    "  BasicTMComm.TMModule -> TestMachineM.TMModule;\n"++
+    "\n"++
     (concat $
      map2 (\ name number -> 
-	   "  TestMachineM.TMComm_"++name++" -> BasicTMCommM.TMComm["++show number++"];\n"
+	   "  TestMachineM.TMComm_"++name++" -> BasicTMComm.TMComm["++show number++"];\n"
 --	   "  TestMachineM.Send_"++name++" -> Comm.SendMsg["++show number++"];\n"++
 --	   "  TestMachineM.Recv_"++name++" -> Comm.ReceiveMsg["++show number++"];\n\n"
 	  )
