@@ -55,7 +55,7 @@
   "\"simulator_nought.ss\"a: simplest simulator for nodal language")
 
 ;; This uses a lame sort of text display instead of the graphics display:
-(define simulator-output-text (make-parameter #f id))
+(define simulator-output-text (make-parameter #f (lambda (x) x)))
 
 ;; These are the virtual coordinate bounds of the world.
 (define world-xbound 60)
@@ -76,7 +76,22 @@
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
+;; NOTE: The lack of a *parent* indicates that the message is a local call:
 (define-structure (msg-object token origin parent count args))
+
+;; Here's a helper to check the invariants on a msg-object
+(define (valid-msg-object? mo)
+  (and (msg-object? mo)
+       (let ([token  (msg-object-token  mo)]
+	     [origin (msg-object-origin mo)]
+	     [parent (msg-object-parent mo)]
+	     [count  (msg-object-count  mo)]
+	     [args   (msg-object-args   mo)])
+	 (and (token? token)
+	      (or (not parent) (simobject? parent))
+	      (or (not origin) (simobject? origin))
+	      (integer? count)
+	      (list? args)))))
 
 ;;========================================
 
@@ -167,7 +182,11 @@
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 		  [(call ,rator ,rand* ...)	  
-					;(error 'process-statement "call not supported from SOC")] 		   
+		   (DEBUGMODE
+		    (if (not (token? rator))
+			(error 'simulator_nought:process-statement
+			       "call form expects rator to be a token name: ~s"
+			       rator)))
 		   `(handler (make-msg-object ',rator #f #f 0 ',rand*))]
 
 ;		  [(if ,a ,b ,c)
@@ -354,7 +373,7 @@
 	     ;; FOR NOW THIS TELEPORTS THE MESSAGE EVERYWHERE IN THE NETWORK.
 					;		    (disp (list "FLOODING" t m))
 	     (let ((msg (if (null? m) '() (car m))))
-	       (for-each (lambda (nd) (sendmsg (make-msg-object this this 0 t m) nd))
+	       (for-each (lambda (nd) (sendmsg (make-msg-object t this this 0 m) nd))
 			 all-objs))]
 ;	   [define (sim-elect-leader t)
 ;	     (let ((msg 
@@ -469,12 +488,12 @@
 			     (list-remove-last! incoming))
 			 
 			 (DEBUGMODE
-			  (if (not (msg-object? msg))
+			  (if (not (valid-msg-object? msg))
 			      (error 'node-handler 
-				     "invalid message to node, should be a msg-object: ~s ~nall messages: ~s"
+				     "invalid message to node, should be a valid msg-object: ~s ~nall messages: ~s"
 				     msg incoming)))
 			 (handler msg))])
-		     ))))))])       
+		     ))))))])
 ;       (disp "Socprog")
 ;       (pretty-print socprog)
 ;       (newline)
@@ -522,6 +541,8 @@
   ;; Define global bindings for these so that we can do fluid-let on them.
   (define-top-level-value 'soc-return 'unbound-right-now)
   (define-top-level-value 'soc-finished 'unbound-right-now)
+
+;  (disp "DAMN" soc-return soc-finished)
 
 ;;  (call/cc (lambda (exit-sim)
   (let ([soceng (vector-ref thunks 0)]
@@ -597,6 +618,7 @@
 	       (not (eq? x y))))) #t]
 
     ;; Generic tests for both this and the graphical sim:
+
     ,@(include "simulator_nought.tests")
 
   [ "Compile Flood lights program..."

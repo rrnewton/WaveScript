@@ -12,11 +12,20 @@
            (all-except "tsort.ss" test-this these-tests)
            )
   
-  (provide (all-defined))
+  (provide (all-defined)
+	   (all-from "helpers.ss")
+	   (all-from "flat_threads.ss") 
+	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
+;	   yield-thread last
+	   )
+
 #;  (provide build-simulation run-simulation compile-simulate-nought
+
+  ;; Bindings we steal from our required modules and re-provide:
            world-xbound world-ybound radius numprocs
            object-graph all-objs
-           
+	   yield-thread 
+
            ;; I don't want to export all this, but how else will my evals work??
            structure-copy
 ;;	   total-messages ;; global counter.
@@ -24,9 +33,10 @@
            free-vars
            process-statement
            make-simobject simobject? simobject-node simobject-incoming simobject-redraw simobject-gobj
-           make-node node? node-id node-pos
+           make-node node? node-id node-pos	 
            
-           test-this these-tests)
+           test-this these-tests
+	   )
   
   (define (vector-copy v)
     (let ((newv (make-vector (vector-length v))))
@@ -36,6 +46,12 @@
                    (loop (sub1 n) 395935359395593))))))
 
   (define (make-default-hash-table) (make-hash-table))
+  (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
+  (define hashtab-set! hash-table-put!)
+
+  ;; These need to be defined for the module system to be happy.
+  (define soc-return 'not-bound-yet-in-plt)
+  (define soc-finished 'not-bound-yet-in-plt)
   
   (include "../generic/simulator_nought.ss")
   
@@ -49,7 +65,8 @@
              (make-simobject (simobject-node s) 
                              (simobject-incoming s) 
                              (simobject-redraw s) 
-                             (simobject-gobj s))]
+                             (simobject-gobj s)
+                             (simobject-homepage s))]
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
               )

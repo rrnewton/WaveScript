@@ -69,9 +69,9 @@
 ;; use by node programs.. This is only for generated code, or my
 ;; handwritten test cases.
 
+;; [2004.06.13] RRN: Moved functions for dealing with token names into helpers.ss
+
 ;===============================================================================
-
-
 
 (define proptable 'not-defined-yet)
 
@@ -91,34 +91,6 @@
     (define symbol-append
       (lambda args
 	(string->symbol (apply string-append (map symbol->string args)))))
-
-    ;; Allocate a token name, possibly with a seed name.
-    (define new-token-name
-      (lambda ()
-	(unique-name 'token)))
-    (define token-names
-      (case-lambda 
-       [() (let ((n (unique-name 'token)))
-	     (values (symbol-append 'f_ n)
-		     (symbol-append 'm_ n)))]
-       [(sym) 
-	  (if (symbol? sym)
-	      (values (symbol-append 'f_token_ sym)
-		      (symbol-append 'm_token_ sym))
-	      (error 'deglobalize.token-names 
-		     "takes a symbol argument not this: ~s" sym))]))
-   
-    ;; Get's the token name that corresponds with the edge of a
-    ;; dataflow graph that corresponds with a variable name.
-    ;; For the moment token-names is deterministic!!  So we just do this:
-    (define get-names
-      (lambda (v) (token-names v)))
-;	(mvlet ([(f m) (token-names v)]) f)))
-;    (define get-membership-name
-;      (lambda (v)
-;	(mvlet ([(f m) (token-names v)]) m)))
-    (define (get-formation-name v) (mvlet ([(f m) (token-names v)]) f))
-    (define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
 
 
 ;; (Name, DistributedPrim, Args) -> TokenBinds
@@ -203,6 +175,15 @@
 	  ;; At each formation click, we output this node.
 	  (soc-return '(ANCH ,(this)))])]
       [(circle-at)     
+       `([,tokname 
+	  ()
+	  ;; At each formation click, we output this circle: 
+	  ;;   For now this just lists the tokname, this should be the
+	  ;; membership tokname for the circle.  Later we'll put some
+	  ;; other hack in.
+	  (soc-return '(CIRC ,tokname))])]
+
+      [(circle)
        `([,tokname 
 	  ()
 	  ;; At each formation click, we output this circle: 
@@ -313,26 +294,33 @@
 
 ;========================================
 
-(define test-programs 
-  '(
+(define these-tests 
+  `(
 ;    [(lazy-letrec () '3) unspecified]
 
-    [(lazy-letrec ((result_1 '3)) result_1) unspecified]
+    [(mvlet ([(a b) (get-names 'x)]) (list a b))
+     (f_token_x m_token_x)]
 
-    [(lazy-letrec
-      ((b (cons '2 '()))
-       (a (cons '1 b))
-       (anch (anchor-at a))
-       (circ (circle '50 anch)))
-      circ)
+    [(deglobalize '(lang '(program 
+			   (props [result_1 final local])
+			   (lazy-letrec ((result_1 '3)) result_1))))
+     unspecified]
+
+    [(deglobalize '(lang '(program 
+			   (props [b local]
+				  [a local]
+				  [anch distributed anchor]
+				  [circ distributed final region]
+				  )
+			   (lazy-letrec
+			    ((b (cons '2 '()))
+			     (a (cons '1 b))
+			     (anch (anchor-at a))
+			     (circ (circle '50 anch)))
+			    circ))))
      unspecified]
   ))
 
-(define these-tests
-  (map
-   (lambda (prog)
-     `[(deglobalize '(lang '(program ,(car prog)))) ,(cadr prog)])
-   test-programs))
 
 (define test-this (default-unit-tester
 		    "Pass10: Pass to convert global to local program."

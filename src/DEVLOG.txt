@@ -42,11 +42,11 @@ gradients when the same token name, and they start hitting eachother!
 Sonuds like a big problem, how did that not occur to me before.
 
 
-Hourly Goals:
+[2004.06.13]
+  It's annoying to add more complexity like this.  But I'm adding an
+(ONLYPLT <expr>*) and possibly ONLYCHEZ syntax to my code in the
+generic/ branch.  SCRATCH THAT.  Not doing it yet.  Might do it soon
+tho, it's not that unreasonably an idea.
 
-8:  Cheapo repl.
-9:  FUCK WASTED TIME ON TESTS
-10: FUCK WASTED MOST OF THE TIME ON TESTS
-11: Compile circle.
 
-12:
+

@@ -126,17 +126,6 @@
 ;    time-of
 ;    (time (Node) Time)
      ))
-
-;; [2004.06.09]  Many of these are actually language forms.  I gotta
-;; get this sorted out eventually.
-(define token-machine-primitives
-  '( (elect-leader) (flood) ;; These are actually macros, but what the heck
-     (return) (emit) (relay) (dist) (light-up) (sense)
-     ))
-
-
-
-;; Now for basic token machine
   
 ;;; 2004.03.31 - I don't know what the system's going to be called so
 ;;; I'm using the placeholder "blanko" which I will replace later. 
@@ -156,14 +145,63 @@
 (define (token-machine-primitive? x)
   (if (assq x token-machine-primitives) #t #f))
 
+;; [2004.06.09]  Many of these are actually language forms.  I gotta
+;; get this sorted out eventually.
+(define token-machine-primitives
+  '( (elect-leader) (flood) ;; These are actually macros, but what the heck
+     (return) (emit) (relay) (dist) (light-up) (sense)
+     ))
 
+;;============================================================
+;; DEALING WITH TOKEN NAMES.  
+;; Sloppy interface right now.  
+;; Used by the deglobalize pass.
+
+;; [2004.06.13] Tokens will be more complex later.
+(define (token? t) (symbol? t))
+;; Allocate a token name, possibly with a seed name.
+(define new-token-name
+  (lambda ()
+    (unique-name 'token)))
+
+(define symbol-append
+  (lambda args
+    (string->symbol (apply string-append (map symbol->string args)))))
+
+(define token-names
+  (case-lambda 
+   [() (let ((n (unique-name 'token)))
+	     (values (symbol-append 'f_ n)
+		     (symbol-append 'm_ n)))]
+   [(sym) 
+    (if (symbol? sym)
+	(values (symbol-append 'f_token_ sym)
+		(symbol-append 'm_token_ sym))
+	(error 'deglobalize.token-names 
+	       "takes a symbol argument not this: ~s" sym))]))
+
+    ;; Get's the token name that corresponds with the edge of a
+    ;; dataflow graph that corresponds with a variable name.
+    ;; For the moment token-names is deterministic!!  So we just do this:
+(define get-names
+  (lambda (v) (token-names v)))
+;	(mvlet ([(f m) (token-names v)]) f)))
+;    (define get-membership-name
+;      (lambda (v)
+;	(mvlet ([(f m) (token-names v)]) m)))
+(define (get-formation-name v) (mvlet ([(f m) (token-names v)]) f))
+(define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
+;;============================================================
+
+
+;;[2004.06.13] Making this not allow an error to match against unspecified!
 (define (lenient-compare? o1 o2)
   (or (eq? o1 o2)
       ;; Strings are not deep structures according to eq-deep,
       ;; So we compare them with equal?
       (and (string? o1) (equal? o1 o2))
-      (eq? o1 'unspecified)
-      (eq? o2 'unspecified)))
+      (and (eq? o1 'unspecified) (not (eq? o2 'error)))
+      (and (eq? o2 'unspecified) (not (eq? o1 'error)))))
 
 ;; This provides a weird sort of interface to a deep equal.  It walks
 ;; down the tree, applying the input comparator at every intermediate
@@ -240,9 +278,11 @@
 	       
 	       (flush-output-port)
 	       (let ((result 
-		      (call/cc (lambda (escape-eval)
-				 (parameterize ([error-handler (lambda args (escape-eval 'error))])
-					       (eval (preprocessor expr)))))))
+		      (call/cc 
+		       (lambda (escape-eval)
+			 (with-error-handlers (lambda _ (void))
+					      (lambda () (escape-eval 'error))
+					      (lambda () (eval (preprocessor expr))))))))
 ;	       (newline)
 	       (if (or (and (procedure? intended) ;; This means its an oracle
 			    (intended result))
@@ -264,8 +304,10 @@
 ;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
 			  (printf "~n~nFor Test: ~n")
 			  (pretty-print expr)
-			  (newline) 
-			  (return (void))
+			  (newline)
+;; I decided to make this crash after all:
+;			  (return (void))
+			  (error 'default-unit-tester "failed test")
 			  ))))
 	     (iota (length tests))
 	     tests descriptions intended)

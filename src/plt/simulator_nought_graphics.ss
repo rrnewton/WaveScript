@@ -18,8 +18,6 @@
   #|
   
 ;  (define (make-default-hash-table) (make-hash-table))   
-  (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
-  (define hashtab-set! hash-table-put!)
   
   (define sleep-me sleep)
   
@@ -27,8 +25,8 @@
   |#  
 
   (provide (all-defined)
-           (all-from "flat_threads.ss")
-           (all-from "helpers.ss")
+;           (all-from "flat_threads.ss")
+;           (all-from "helpers.ss")
            (all-from "basic_graphics.ss")
 ;           (all-from "graphics_stub.ss")
            (all-from "simulator_nought.ss")
