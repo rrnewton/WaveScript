@@ -17,13 +17,13 @@
     eta-primitives
     rename-var
     remove-unquoted-constant                        ;;  5
-
+    
     static-elaborate
-
+    
     reduce-primitives    
     remove-complex-constant                         ;;  7
     uncover-free                                    ;; 14
-;    convert-closure                                 ;; 15
+    ;    convert-closure                                 ;; 15
     lift-letrec                                     ;; 16
     lift-letrec-body                                ;; 22
     remove-complex-opera*
@@ -32,19 +32,19 @@
     add-heartbeats
     add-control-flow
     add-places
-;    add-routing
+    ;    add-routing
     analyze-places
     deglobalize
     
     cleanup-token-machine    
     desugar-gradients
     desugar-let-stored
-
-;    analyze-tokmac-recursion
-;    inline-tokmac
+    
+    ;    analyze-tokmac-recursion
+    ;    inline-tokmac
     cps-tokmac
-;    verify-token-machine
-;    haskellize-tokmac 
+    ;    verify-token-machine
+    ;    haskellize-tokmac 
     ))
 
 
@@ -53,9 +53,9 @@
 
 (define these-tests 
   `( 
-;; Urg, this is wrong:
-;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
-
+    ;; Urg, this is wrong:
+    ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+    
     ["Verify that the trivial program produces no token bindings but the defaults"
      (filter (lambda (tokbind)
 	       (not (memq (car tokbind) '(spread-global global-tree))))
@@ -66,22 +66,22 @@
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
 
 
-  
+
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
 
 (define (dump-tokenmachine-to-file prog fn)
   (match prog
-   [(haskellize-tokmac-language ,str)
-    (with-output-to-file fn
-      (lambda () (display str) (newline))
-      'replace)]
-   ;; If it's an earlier file, pretty print it:
-   [(,lang ,prog)
-    (with-output-to-file fn
-      (lambda () (pretty-print `(,lang ,prog)))
-      'replace)]
-   [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
+    [(haskellize-tokmac-language ,str)
+     (with-output-to-file fn
+       (lambda () (display str) (newline))
+       'replace)]
+    ;; If it's an earlier file, pretty print it:
+    [(,lang ,prog)
+     (with-output-to-file fn
+       (lambda () (pretty-print `(,lang ,prog)))
+       'replace)]
+    [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
@@ -90,23 +90,23 @@
 	[passes pass-names])    
     (for-each (lambda (arg)
 		(cond
-		 [(string? arg) ;; It's an output filename.
-		  (set! filename arg)]
-		 [(eq? arg 'barely-tokens)
-		  (set! passes (list-remove-after 'deglobalize pass-names))]
-		 [(eq? arg 'almost-tokens)
-		  (set! passes (list-remove-first 'deglobalize
-				   (list-remove-after 'deglobalize pass-names)))]
-		 [(eq? arg 'almost-haskell)
-		  (set! passes (remq 'haskellize-tokmac pass-names))]
-		 [(eq? arg 'haskell-tokens) (void)]))
+                  [(string? arg) ;; It's an output filename.
+                   (set! filename arg)]
+                  [(eq? arg 'barely-tokens)
+                   (set! passes (list-remove-after 'deglobalize pass-names))]
+                  [(eq? arg 'almost-tokens)
+                   (set! passes (list-remove-first 'deglobalize
+                                                   (list-remove-after 'deglobalize pass-names)))]
+                  [(eq? arg 'almost-haskell)
+                   (set! passes (remq 'haskellize-tokmac pass-names))]
+                  [(eq? arg 'haskell-tokens) (void)]))
 	      args)
-  (let ((funs (map eval passes)))
-    (let loop ([p p] [funs funs])
-      (if (null? funs) 
-	  (begin (if filename (dump-tokenmachine-to-file p filename)
-		     p))
-	  (loop ((car funs) p) (cdr funs)))))))
+    (let ((funs (map eval passes)))
+      (let loop ([p p] [funs funs])
+        (if (null? funs) 
+            (begin (if filename (dump-tokenmachine-to-file p filename)
+                       p))
+(loop ((car funs) p) (cdr funs)))))))
 
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)
@@ -320,6 +320,76 @@
          (m_token_result_7 (v) (soc-return v)))
        (startup f_token_tmpanch_8)))))
 
+(define (t)
+  (desugar-let-stored
+   '(desugar-gradient-lang
+     '(program
+       (bindings (result_1 '3))
+       (nodepgm
+        (tokens
+         (soc-start
+          subtok_ind
+           ()
+           (begin
+             (soc-return result_1)
+             (soc-finished)
+             (void)
+             'multiple-bindings-for-token))
+         (node-start subtok_ind () (void))
+         (spread-global
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (let-stored
+             ((stored_g_parent '#f)
+              (stored_g_origin '#f)
+              (stored_g_hopcount '#f)
+              (stored_g_version '#f))
+             (if (or (not stored_g_hopcount)
+                     (= 0 g_hopcount)
+                     (> g_version stored_g_version)
+                     (and (= g_version stored_g_version)
+                          (< g_hopcount stored_g_hopcount)))
+               (begin
+                 (let-stored
+                   ((ver 0))
+                   (set! ver (+ 1 ver))
+                   (bcast (tok global-tree 0) (my-id) 1 ver))
+                 (timed-call 1000 (tok spread-global 0) '#f '#f 0 '#f)
+                 (if (not (= g_hopcount 0))
+                   (begin
+                     (set! stored_g_parent g_parent)
+                     (set! stored_g_origin g_origin)
+                     (set! stored_g_hopcount g_hopcount)
+                     (set! stored_g_version g_version))))
+               (void))))
+         (global-tree
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (let-stored
+             ((stored_g_parent '#f)
+              (stored_g_origin '#f)
+              (stored_g_hopcount '#f)
+              (stored_g_version '#f))
+             (if (or (not stored_g_hopcount)
+                     (= 0 g_hopcount)
+                     (> g_version stored_g_version)
+                     (and (= g_version stored_g_version)
+                          (< g_hopcount stored_g_hopcount)))
+               (begin
+                 (bcast
+                  (tok global-tree subtok_ind)
+                  (my-id)
+                  g_origin
+                  (+ 1 g_hopcount)
+                  g_version)
+                 (if (not (= g_hopcount 0))
+                   (begin
+                     (set! stored_g_parent g_parent)
+                     (set! stored_g_origin g_origin)
+                     (set! stored_g_hopcount g_hopcount)
+                     (set! stored_g_version g_version))))
+               (void))))))))
+))
 
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
