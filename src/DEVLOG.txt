@@ -36,3 +36,8 @@ token handlers.  I'm trying to make my token-language a little wider
 than it needs to be for my compiler, that makes it easier for me to
 make test-cases by hand. 
 
+[2004.06.10]
+  Need to think about what happens when two processes are using
+gradients when the same token name, and they start hitting eachother!
+Sonuds like a big problem, how did that not occur to me before.
+
