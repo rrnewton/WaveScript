@@ -49,10 +49,9 @@
 ;; If we're in SWL then load the graphics portion:
 (if (top-level-bound? 'SWL-ACTIVE)
     (let ()
-      (include "chez/basic_graphics.ss")
-      (import basic_graphics)
+      (load "chez/basic_graphics.ss")
       (load "chez/graphics_stub.ss")
-      (load "generic/demo_display.ss")
+      (load "chez/demo_display.ss")
       (load "generic/simulator_nought_graphics.ss")))
 
 ; (include "chez/graphics_stub.ss")

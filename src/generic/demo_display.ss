@@ -14,7 +14,6 @@
 ;; This file must be used from a context where this makes senes:
 ;(init-graphics)  ;; This should open windows, etc.
 
-
 ;; Uhh sholud just depend on the one in helpers...
 #;(define iota
     (lambda (n . fun*)
