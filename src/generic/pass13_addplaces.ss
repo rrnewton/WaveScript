@@ -22,6 +22,7 @@
 ;;; <FormPlace> = 
 ;;; <MembPlace> ::= X?       (Unknown place)
 ;;;               | _        (no place)
+;;;               | SOC      (Source of Control)
 ;;;               | X_<n>    (Some place...)
 
 ;;; [2004.08.13] Need to consider conditionals:
@@ -31,6 +32,12 @@
 ;;; what should my analysis do?  Well if it's not known till runtime
 ;;; what will come out, this is really a place where it has to say
 ;;; *unknown*!
+
+;;; This is just a helper function that shows the places for an annotated program:
+(define (getplaces p)
+  (match p
+	 [(,input-language (quote (program (props ,proptable ...) (lazy-letrec ,binds ,expr))))
+	  (map (lambda (x) (list-head x 4)) binds)]))
 
 (define addplaces
   (lambda (expr)
@@ -66,13 +73,33 @@
 	  [(anchor-at) (values expr unknown-place (new-place))]
 	  ;; Both of these start in the center and spread to some extent.
 	  [(circle khood) (values expr (new-place) (list (new-place)))]
+
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
-	  [(cluster) (let ([newp (list (new-place))])
-		       (values expr newp newp))]
+	  ;; Maps are more straightforward, they don't change extent.
+	  [(cluster rmap) 
+	   (let ([newp (list (new-place))])
+	     (values expr newp newp))]
+
+	  ;; This is a real challenge.  The simplest rfold uses a tree
+	  ;; that brings all the data to a leader node within the
+	  ;; region.  If that's the case we need some way to express
+	  ;; the constraint that the resulting place is one of the
+	  ;; places in the initial region.
+	  ;;   BUT we might use a different tree for the fold.  For
+	  ;; example we might fold up on the global tree, in which
+	  ;; case the final "place" is the SOC.  FOR NOW, we're just
+	  ;; going to assume all folds go to the SOC.
+	  [(rfold) (values expr (list (new-place)) 'SOC)]
+	  
+	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
+	  [(smap) 	   
+	   (let ([newp (new-place)])
+	     (values expr newp newp))]
 		  
-	  [(cons) (values expr noplace noplace)]
-	  [else (error 'addplaces:process-primapp "unhandled prim: ~s" prim)]
+	  [else (if (basic-primitive? prim)
+		    (values expr noplace noplace)
+		    (error 'addplaces:process-primapp "unhandled prim: ~s" prim))]
 	  )))
 	  
 ;	       [(anchor-at ,loc) (values expr '_ (new-place))]
