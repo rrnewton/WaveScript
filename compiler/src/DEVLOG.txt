@@ -221,4 +221,12 @@ I have had some seriously bad experience using the tossim simulator.
 It will hang, I don't always think the gui display is saying the right
 thing, etc...
 
+[2004.12.01]
 
+Ok, trying to get back into it for a final run of (pre-masters)
+hacking.
+
+Grr.. trying to run drscheme on jetta still gets the symbol error with
+__libc_stack_end from ld-linux.so.2  (GLIBC 2).  Sigh.  
+
+Could try hacking in my own version and using ldconfig...
