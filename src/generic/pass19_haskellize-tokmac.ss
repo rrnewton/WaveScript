@@ -120,6 +120,8 @@
 		      [,st st]))) 
            (format "(Edbg \"~a\" ~a)" str (hlist args)))]
 
+        [(dist ,t) (format "(Edist ~a)" (htok t))]
+
         [(leds ,what ,which)
          (format "(Eled ~a ~a)"
             (case what [(on) "On"] [(off) "Off"] [(toggle) "Toggle"] [else "ERR"])

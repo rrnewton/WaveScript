@@ -98,7 +98,7 @@
 		    ))))))
 
     (define process-expr 
-      (lambda (env tokens)
+      (trace-lambda cleanuptokmac:procexp (env tokens this-token)
 	(lambda (stmt)
 	  (define-syntax check-tok
 	    (syntax-rules ()
@@ -129,7 +129,7 @@
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
 	     [(if ,test ,conseq)
-	      ((process-expr env tokens) `(if ,test ,conseq (void)))]
+	      ((process-expr env tokens this-token) `(if ,test ,conseq (void)))]
 
 	     [(let* ( (,lhs ,[rhs]) ...) ,bodies ...)
 	      `(let*  ([,lhs ,rhs] ...)
@@ -147,6 +147,9 @@
 	      (check-tok 'relay tok)
 	      `(relay ,tok)]
 
+	     ;; Expand this out to refer to the precise token...
+	     [(dist) `(dist ,this-token)]
+	     
 	     [(return ,[expr]            ;; Value
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
@@ -158,22 +161,22 @@
 	      (let ((seed (if (null? seed_vals) #f
 			      (car seed_vals)))
 		    (aggr (if (null? rator_toks) #f
-			      (car rator_tok))))
-		(if aggr (check-tok 'return-aggr rator_tok))
+			      (car rator_toks))))
+		(if aggr (check-tok 'return-aggr aggr))
 		`(return ,expr 
 			 (to ,memb) 
 			 (via ,parent) 
-			 (seed ,seed_val) 
-			 (aggr ,rator_tok)))]
+			 (seed ,seed) 
+			 (aggr ,aggr)))]
 
 	     [(return ,thing ,stuff ...)
 	      (if (or (not (andmap pair? stuff))
 		      (not (set? (map car stuff)))
 		      (not (subset? (map car stuff)
-				    '(to via seed aggr)))
+				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
 			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
-	      ((process-expr env tokens)
+	      ((process-expr env tokens this-token)
 	       `(return ,thing 
 			(to ,(assq 'to stuff))
 			(via ,(assq 'via stuff))
@@ -212,8 +215,10 @@
 	(lambda (tokbind)
 					;	  (disp "process-tokbind" tokbind)
 	  (match tokbind
-		 [(,tok ,args ,[(process-expr (append args env) tokens) -> expr*] ...)
-		  `(,tok ,args ,(make-begin expr*))]
+		 [(,tok ,args ,expr* ...)
+		  (let ([expr* (map (process-expr (append args env) tokens tok)
+				    expr*)])				   
+		    `(,tok ,args ,(make-begin expr*)))]
 		 ))))
 	    
     (define decode 
