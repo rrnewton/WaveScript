@@ -109,7 +109,7 @@
   
     ; value primitives
     (cons (Object List) List) 
-    (car (List) List)
+    (car (List) Object)
     (cdr (List) List)
     (+ (Number Number) Number) 
     (- (Number Number) Number) 
@@ -1500,12 +1500,13 @@
         ;;either a
         (define unique-name
           (lambda args
-	    (let ((sym (if (null? args) 'gensym (car args))))			   
+	    (let ((sym (if (null? args) 'gensym (car args))))
+	      (let ((sym (if (string? sym) (string->symbol sym) sym)))
             (string->symbol
               (string-append
                 (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME
                   (extract-root sym))
-                "_" (unique-suffix sym))))))
+                "_" (unique-suffix sym)))))))
 )
 
 ;; [2004.06.28]  NEW VERSION, counter per seed name:

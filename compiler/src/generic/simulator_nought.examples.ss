@@ -1,4 +1,6 @@
 
+;; Here are some example token machines.
+
 (define tm0
   '(program
     (bindings)
@@ -6,7 +8,7 @@
     (nodepgm 
      (tokens
       [tok1 () (leds toggle red) (relay) (timed-call 500 tok2)]
-      [tok2 () (leds toggle red)]
+      [tok2 () (leds toggle green)]
       )
      (startup))))
 
