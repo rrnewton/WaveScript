@@ -48,10 +48,13 @@
 	)))
 
 (define (close-graphics)
-  (destroy the-win)
-  (destroy the-winframe)
-  (set! the-win #f)
-  (set! the-winframe #f))
+  (if the-win
+      (begin
+	(destroy the-win)
+	(destroy the-winframe)
+	(set! the-win #f)
+	(set! the-winframe #f))
+      (printf "Graphics already closed!~n")))
 
 (define (clear-buffer)
   (for-each destroy object-buffer)

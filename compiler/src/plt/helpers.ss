@@ -79,7 +79,7 @@
   
   (provide    
    ;; Syntax:
-   DEBUGMODE DEBUGPRINT
+   DEBUGMODE DEBUGPRINT DEBUGPRINT2
    mvlet rec 
    
    ;; Values:
