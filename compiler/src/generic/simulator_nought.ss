@@ -1547,6 +1547,21 @@
       ; (and (= (length ls) (sub1 (length all-objs))))
        )]
 
+  ["Spread a global tree to all nodes, and make sure that it reaches all nodes that are connected to the SOC." 
+    (run-simulation
+     (build-simulation 
+      (compile-simulate-nought 
+       '(program
+	 (bindings )
+	 (socpgm (bindings ) (emit tok1))
+	 (nodepgm (tokens
+		   [tok1 () (relay)]))
+	 (startup ))))
+     1.7)
+    ,(lambda (ignored)
+       ;; Look at the global state
+
+
   ["Test program that anchors, circles, maps and folds"
    (run-simulation
     (build-simulation (compile-simulate-nought ',THEPROG))
