@@ -23,6 +23,7 @@ MAIN_FILE = compiler.ss
 #PLT_OBJ		= $(PLT_FILES:%=%.so)
 #PLT_SRC		= $(PLT_OBJ:%.so=%.ss)
 PLT_MAIN_FILE = compiler_plt.ss
+#SRCFILES = helpers demo_display pass00 pass01 pass07
 
 CHEZ_FILES = generic/helpers chez/pass01 plt/demo_display
 CHEZ_SRC = $(PLT_FILES:%=%.ss)
@@ -38,36 +39,29 @@ OBJ		= $(SCM)
 SRC		= $(SCM_SRC)
 
 #*---------------------------------------------------------------------*/
-#*    the goals.                                                       */
+#*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
-
-petite: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
-	$(CHEZ) $(CHEZ_MAIN_FILE)
 
 mzscheme:
 	(cd plt; $(MAKE))
-	$(MZSCHEME) -f $(PLT_MAIN_FILE)
 
-
-#$(DEST): $(GENERIC_SCM_SRC) $(PLT_SRC) # $(SCM_OBJ)
+#mzc:
 #	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
-
-mzc:
-	$(MZC) --gui-exe $(DEST) $(PLT_MAIN_FILE)
-
-mred:
-	$(MRED) -f $(PLT_MAIN_FILE) -e "(require compiler)"
-
-swl:
-	$(SWL) $(CHEZ_MAIN_FILE)
+#mred:
+#	$(MRED) -f $(PLT_MAIN_FILE) -e "(require compiler)"
+#swl:
+#	$(SWL) $(CHEZ_MAIN_FILE)
 
 
-#$(DEST): $(OBJ) 
-#	$(MZC) --exe $(DEST) $(SCM_OBJ)
+#/*--------------------------------------------------------------------*/
+#*    Running                                                          */
+#*---------------------------------------------------------------------*/
 
-#test: $(DEST)
-#	./$(DEST)
+runchez: $(GENERIC_SCM_SRC) $(CHEZ_SRC) $(CHEZ_MAIN_FILE)
+	$(CHEZ) $(CHEZ_MAIN_FILE)
 
+runplt: mzscheme
+	$(MZSCHEME) -f $(PLT_MAIN_FILE)
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

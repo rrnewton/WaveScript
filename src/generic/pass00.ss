@@ -123,3 +123,18 @@
 (define test00 (let ((op test-this) (rand these-tests))
 		 (lambda () (set! these-tests rand)
                    (op))))
+
+
+'(verify-regiment
+ '(some-lang 
+   '(program 
+     (let ((a (anchor '(30 40))))
+       (let ((r (circle 50 a))
+             (f (lambda (tot next)
+                  (cons (+ (car tot) (sense next))
+                        (+ (cdr tot) 1))))
+             (g (lambda (tot) (/ (car tot) (cdr tot)))))
+         (smap g (rfold f (cons 0 0) r)))))))
+     
+
+.Simple Prog....
