@@ -7,13 +7,12 @@ BINPATH =`mzscheme -m --eval '(begin (display (build-path "compiled" "native"  (
 #all: native bytecode
 
 all: compiled/constants.zo compiled/flat_threads.zo compiled/graphics_stub.zo compiled/helpers.zo \
+     compiled/simulator_nought.zo \
+     compiled/simulator_nought_graphics.zo \
      compiled/pass00_verify-regiment.zo \
      compiled/pass01_eta-primitives.zo \
      compiled/pass02_rename-vars.zo \
-     compiled/pass03_remove-unquoted-constant.zo
-
-#     compiled/simulator_nought_graphics.zo \
-#     compiled/simulator_nought.zo \
+     compiled/pass03_remove-unquoted-constant.zo 
 
 compiled/constants.zo: constants.ss ../generic/constants.ss
 	mzc --auto-dir --zo constants.ss

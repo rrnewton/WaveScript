@@ -16,18 +16,18 @@
          ;	 "plt/language-mechanism.ss"
 
 (require (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-         (all-except "plt/pass01_rename-var.ss" these-tests test-this)              
-         "plt/pass02_reduce-primitives.ss"
-         "plt/pass02_remove-unquoted-constant.ss"         
-         "plt/pass03_remove-complex-constant.ss"
-         "plt/pass04_uncover-free.ss"
-         "plt/pass05_lift-letrec.ss"
-         "plt/pass06_lift-letrec-body.ss"
-         "plt/pass07_remove-complex-opera.ss"
-         
-         (all-except "plt/pass08_verify-core.ss" these-tests test-this)
-         (all-except "plt/pass09_classify-names.ss" these-tests test-this)
-         (all-except "plt/pass10_deglobalize.ss" these-tests test-this))
+         "plt/pass01_eta-primitives.ss"
+         (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
+         "plt/pass03_remove-unquoted-constant.ss"         
+         "plt/pass04_reduce-primitives.ss"
+         "plt/pass05_remove-complex-constant.ss"
+         "plt/pass06_uncover-free.ss"
+         "plt/pass07_lift-letrec.ss"
+         "plt/pass08_lift-letrec-body.ss"
+         "plt/pass09_remove-complex-opera.ss"
+         (all-except "plt/pass10_verify-core.ss" these-tests test-this)
+         (all-except "plt/pass11_classify-names.ss" these-tests test-this)
+         (all-except "plt/pass12_deglobalize.ss" these-tests test-this))
         ;          "plt/pass09_separate-graph.ss"
 
 (require

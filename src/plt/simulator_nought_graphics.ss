@@ -3,7 +3,8 @@
   (require "iu-match.ss"
            (lib "include.ss") (lib "compat.ss") (lib "pretty.ss"))
   
-  (require (all-except "helpers.ss" id flush-output-port)
+  (require "constants.ss"
+           (all-except "helpers.ss" id flush-output-port)
            (all-except "flat_threads.ss" test-this these-tests)
            (all-except "tsort.ss" test-this these-tests)                   
            "basic_graphics.ss"
@@ -18,7 +19,7 @@
           )
   
   (require (prefix textsim: "simulator_nought.ss"))
-  (disp "WOO" world-xbound draw-procs)
+;  (disp "WOO" world-xbound draw-procs)
    
 ;  (define object-graph textsim:object-graph)
 ;  (define (make-default-hash-table) (make-hash-table))   
@@ -30,6 +31,7 @@
   (include "../generic/simulator_nought_graphics.ss")  
 
   (provide (all-defined)
+           (all-from "constants.ss")
            (all-from "flat_threads.ss")
            (all-from "helpers.ss")
            (all-from "basic_graphics.ss")
@@ -41,3 +43,4 @@
 
 ;(require simulator_nought_graphics)
 ;(test-this)
+

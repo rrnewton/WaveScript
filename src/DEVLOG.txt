@@ -82,6 +82,15 @@ Making a big fat complex test in the test-suite for simulator_nought.ss.
 Got test suite up for simulator_nought with the return-test.  Now for
 a bigger test that actual returns some values!
 
+*) Rudimentary heartbeat
+*) Time and widen the aggregation-window...
+
+
+
+
+
+TODO: Fix unit-tester so that it won't give the special 'error value
+to the oracle!!!
 
 
 

@@ -428,8 +428,8 @@
 		    "Pass10: Pass to convert global to local program."
 		    these-tests))  
 
-(define test10 test-this)
-(define tests10 these-tests)
+(define test12 test-this)
+(define tests12 these-tests)
 
 ;==============================================================================
 

@@ -99,7 +99,8 @@
    unique-name reset-name-count! extract-suffix make-begin
    
    ;; Hmm, not sure what meaning immediate has here..
-   immediate? constant? datum? formalexp? cast-formals default-unit-tester tester-eq? 
+   immediate? constant? datum? 
+   formalexp? cast-formals default-unit-tester tester-eq? 
    
    regiment-primitives regiment-primitive? 
    token-machine-primitives token-machine-primitive?
@@ -111,10 +112,12 @@
 
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
-   insert-between iota disp pp
+   randomize-list  insert-between iota disp pp
    graph-map cyclic?  deep-assq deep-member? 
    list-get-random unfold-list
    partition partition-equal
+   stream? stream-empty? stream-car stream-cdr stream-map stream-take counter-stream random-stream
+   display-constrained
  
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
