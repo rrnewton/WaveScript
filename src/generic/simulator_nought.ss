@@ -195,7 +195,7 @@
 		  ;; me to do test cases:
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
-		  [(call ,rator ,rand* ...)	  
+		  [(call ,rator ,rand* ...)
 		   (DEBUGMODE
 		    (if (not (token? rator))
 			(error 'simulator_nought:process-statement
@@ -203,7 +203,14 @@
 			       rator)))
 		   ;; Could add the message to incoming instead!
 		   ;`(handler (make-msg-object ',rator #f #f 0 ',rand*))
-		   `(sendmsg (make-msg-object ',rator #f #f 0 ',rand*) this)
+		   ;; [2004.06.16] For now I'm raising an error... 
+		   ;; don't know what the correct behaviour should be:
+		   `(let ((call-result 
+			   (sendmsg (make-msg-object ',rator #f #f 0 ',rand*) this)))
+		      (if (eq? call-result 'multiple-bindings-for-token)
+			  (error 'call "cannot perform a local call when there are token handlers for: ~s"
+				 ,rator)
+			  call-result))
 		   ]
 
 ;		  [(if ,a ,b ,c)
@@ -235,9 +242,7 @@
 		  ;; compiler currently. [2004.06.09]
 		  [(return ,[x]) `(sim-return ,x)]
 
-		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
-		  
-
+		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
@@ -265,16 +270,54 @@
 	(error 'process-binds "for now can't take a cyclic graph: ~s" binds))
     `(let* ,binds ,expr)))
 
+;; This removes duplicates among the token bindings.
+;; <TOOPTIMIZE> Would use a hash-table here for speed.
+(define (remove-duplicate-tokbinds tbinds)
+;  (disp "Removing token dups" tbinds)
+  (let loop ((ls tbinds))
+    (if (null? ls) '()
+	(let* ([tok (caar ls)]
+	       [dups (filter (lambda (entry) (eq? tok (car entry))) (cdr ls))])
+	  (if (null? dups)
+	      (cons (car ls) (loop (cdr ls)))	      	      
+	      (let* ([all-handlers (cons (car ls) dups)]
+		     [formals* (map cadr all-handlers)]
+		     [body* (map caddr all-handlers)]
+		     [thunks (map (lambda (bod) `(lambda () ,bod)) body*)])
+;		(disp "GOT DUPS " tok formals*)
+		(DEBUGMODE
+		 (if (not (apply equal? formals*))
+		     (error 'simulator_nought:remove-duplicate-tokbinds
+			    "handlers for token ~s don't all take the same arguments: ~s" 
+			    tok formals*)))
+		(let ([mergedhandler
+		       `[,tok ,(car formals*)
+			      (begin (for-each 
+				      (lambda (th) (th))
+				      (randomize-list ,(cons 'list thunks)))
+				     'multiple-bindings-for-token)
+;		             (begin ,@body* 'multiple-bindings-for-token)
+			     ]])
+;		  (disp "MERGED:" mergedhandler)
+		(cons mergedhandler
+		      (loop (filter (lambda (entry) (not (eq? tok (car entry)))) (cdr ls)))))
+		  ))))))
+	 
+
 ;; Takes token bindings and a body expression:
 (define (process-tokbinds tbinds extradefs expr)
-  (let ([binds (map
-		(lambda (tbind)
-		  (match tbind 
-			 [(,tok (,args ...) ,expr* ...)
-			  `[,tok (lambda ,args 
-					;				   (disp "Token " ',tok "running at" (node-id (simobject-node this)) " with message: " ',args)
-				   ,@(map process-statement expr*))]]))
-		tbinds)]
+  (let ([binds 
+	 (map
+	  (lambda (tbind)
+	    (match tbind 
+		   [(,tok (,args ...) ,expr* ...)
+		    `[,tok (lambda ,args 
+			     (DEBUGPRINT2 
+			      (disp "Token " ',tok 
+				    "running at" (node-id (simobject-node this)) 
+				    " with message: " ',args))
+			     ,@(map process-statement expr*))]]))
+	  (remove-duplicate-tokbinds tbinds))]
 	;; These inputs to handler must be the *child* message-object
 	;; (that is, already updated to have an incremented count, the
 	;; correct parent, etc).  So we can shove it right in our cache.
@@ -591,8 +634,12 @@
 
 ;;===============================================================================
 
-(define (run-simulation thunks . timeout)
+;; [2004.06.16] This is the shared structure of both the text
+;; simulator and the graphical one.  It serves the role of a parent
+;; object from which run-simulation and graphical-simulation inherit.
 
+(define (generate-simulator fun)
+  (lambda (thunks . timeout)
     ;; First, set up a global counter for communication cost:
   ;; This is defined dynamically so as to avoid PLTs module system. 
   (define-top-level-value 'total-messages 0)
@@ -605,25 +652,11 @@
   ;; Define global bindings for these so that we can do fluid-let on them.
   (define-top-level-value 'soc-return 'unbound-right-now)
   (define-top-level-value 'soc-finished 'unbound-right-now)
+
+  ;;-------------------------------
+  (let ([newthunks (apply fun (cons thunks timeout))]
+	[return-vals '()])
   
-;;  (call/cc (lambda (exit-sim)
-  (let ([soceng (vector-ref thunks 0)]
-	[nodeengs (vector-ref thunks 1)]
-	[display_engine
-	 (lambda ()
-	   (let loop ()
-	     (for-each (lambda (simob)
-			 (let ((len (length (simobject-incoming simob))))
-			   (cond 
-			  [(< len 10) (display len)]
-			  [else (display "#")])))
-		       all-objs)
-	     (yield-thread)
-	     (loop)))])
-    (let ([thunks (if (simulator-output-text)
-		      (cons display_engine (cons soceng nodeengs))
-		      (cons soceng nodeengs))]
-	  [return-vals '()])
       ;; Kinda lame to use fluid-let here, but we don't have the
       ;; relevent continuation at the time we build the thunks.
       (fluid-let (
@@ -643,12 +676,34 @@
 		  )
 ;	(disp "in that fluid" soc-return finished return-vals)
 	(let ([result (if (null? timeout)
-			  (run-flat-threads thunks)
-			  (run-flat-threads thunks (car timeout)))])
+			  (run-flat-threads newthunks)
+			  (run-flat-threads newthunks (car timeout)))])
 	  (if (null? return-vals)
 	      result
 	      return-vals)
-	  )))));))
+	  )))))
+
+(define run-simulation 
+  (generate-simulator
+   (lambda (thunks . timeout)
+     ;;  (call/cc (lambda (exit-sim)
+     (let ([soceng (vector-ref thunks 0)]
+	   [nodeengs (vector-ref thunks 1)]
+	   [display_engine
+	    (lambda ()
+	      (let loop ()
+		(for-each (lambda (simob)
+			    (let ((len (length (simobject-incoming simob))))
+			      (cond 
+			       [(< len 10) (display len)]
+			       [else (display "#")])))
+			  all-objs)
+		(yield-thread)
+		(loop)))])       
+       (if (simulator-output-text)
+	   (cons display_engine (cons soceng nodeengs))
+	   (cons soceng nodeengs))
+       ))))
 
 
 ;;===============================================================================

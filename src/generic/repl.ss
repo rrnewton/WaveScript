@@ -4,12 +4,13 @@
 ;; interface into the compiler and simulator.
 
 
-
-(define (repl)
+(define (repl-builder startup cleanse run)
   (printf "Type exit to leave repl.~n")
+  (startup)
   (let loop ()
     (printf "~n>> ")
     (let ((prog (read)))
+      (cleanse)
       (if (not (eq? prog 'exit))
 	  (let ((tokmac (run-compiler prog)))
 	    (printf "~nCompiled:~n")
@@ -21,12 +22,13 @@
 
 	      (printf "~nSimulating....~n")	   
 	      (cleanse-world)
-	      (let ((result (run-simulation (build-simulation converted) 2.0)))
+	      (let ((result (run (build-simulation converted) 2.0)))
 		(if (and (list? result) (= 1 (length result)))
 		    (printf "~n~s~n" result)
 		    (printf "~n~s~n" result)))
 	      (loop)))))))
 
+(define text-repl  (repl-builder void void run-simulation))
+(define graphics-repl (repl-builder
 
-	
-
+       
