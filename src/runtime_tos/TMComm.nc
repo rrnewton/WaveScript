@@ -1,57 +1,34 @@
-//includes TMComm;
 
-//  provides interface TMRuntime;
+includes AM;
 
 // These are all the communication services used per-token-handler.
 // Provides send, receive, emit, and return
+// [2004.09.07] Note! I'm not going to be able to make emitDone and
+// relayDone work... it's all just gonna have to use sendDone.
+
 
 interface TMComm {
-    command result_t send(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+  
+    // Generic send/receive for any token/AM type:
+    // command result_t send(uint16_t address, uint8_t length, TOS_MsgPtr msg);
     event result_t sendDone(TOS_MsgPtr msg, result_t success);
-    event TOS_MsgPtr receive(TOS_MsgPtr m);
 
-    command result_t emit(uint16_t address, uint8_t length, TOS_MsgPtr msg);
-    event result_t emitDone(TOS_MsgPtr msg, result_t success);
-    
-    command result_t emit(uint16_t address, uint8_t length, TOS_MsgPtr msg);
-    event result_t emitDone(TOS_MsgPtr msg, result_t success);
+    // Receive messages.  This is only triggered when the messages are
+    // not return messages which are automatically handled under the hood.
+    //    event TOS_MsgPtr receive(TOS_MsgPtr m);
 
-    command result_t return(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    // Emit: launches a new message
+    command result_t emit(uint16_t address, uint8_t length, TOS_MsgPtr msg);
     //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
+    // Relay: relaunches a message, updating Payload
+    command result_t relay(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+
+    //    event result_t relayDone(TOS_MsgPtr msg, result_t success);
+
+    // Return: sends a message 
+    // NEEDS MORE ARGS:
+    command result_t return_home(uint16_t address, uint8_t length, TOS_MsgPtr msg);
+    //    event result_t emitDone(TOS_MsgPtr msg, result_t success);
 
 }
-
-configuration TMComm {
-  provide {
-
-  }
-
-} implementation {
-  
-  components Main, TokenMachineRuntimeM, TimerC, RandomLFSR, GenericComm as Comm;
-
-  Main.StdControl -> Comm;
-  Main.StdControl -> TimerC;
-  Main.StdControl -> TokenMachineRuntimeM;
-
-  TokenMachineRuntimeM.Random -> RandomLFSR;
-  TokenMachineRuntimeM.Timer -> TimerC.Timer[unique("Timer")];
-  TokenMachineRuntimeM.SendMsg -> Comm.SendMsg[AM_TOKSEND];
-  TokenMachineRuntimeM.ReceiveMsg -> Comm.ReceiveMsg[AM_TOKSEND];
-}
-
-
-
-module TokenMachineRuntimeM {
-  provides {
-    interface StdControl;
-    command result_t testfun ();
-  }
-  uses {
-    interface Timer;
-    interface ReceiveMsg;
-    interface SendMsg;
-    interface Random;
-  }
-} implementation {
