@@ -57,7 +57,10 @@
                              (simobject-incoming s) 
                              (simobject-redraw s) 
                              (simobject-gobj s)
-                             (simobject-homepage s))]
+                             (simobject-homepage s)
+			     (simobject-token-cache s)
+			     (simobject-local-sent-messages s)
+			     (simobject-local-recv-messages s))]
             [else (error 'structure-copy
                          "sorry this is lame, but can't handle structure: ~s" s)]))
               )

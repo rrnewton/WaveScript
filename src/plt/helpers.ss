@@ -35,6 +35,8 @@
   (define cpu-time current-process-milliseconds)
   (define print-level pretty-print-depth)
   ;(define print-length pretty-print-length)
+;; Can't adjust the length from PLT:
+(define print-length (lambda _ #f))
 
     (define-syntax rec
       (syntax-rules ()
@@ -89,6 +91,9 @@
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
    flush-output-port with-error-handlers cpu-time ;; error-handler 
+   
+   ;; Meet in the middle with chez:
+   print-level print-length
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin
