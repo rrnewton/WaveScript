@@ -54,6 +54,7 @@
     lift-letrec-body                                ;; 22
     remove-complex-opera*
     verify-core
+    deglobalize
     ))
 
 (define test
@@ -75,4 +76,6 @@
 	       (test01)
 	       (test07)))
 (newline)
+
+(define (g) (t '(circle 50 (anchor-at '(30 40)))))
 

@@ -23,7 +23,8 @@
 ;;;    answer by evaluting it with Chez Scheme's interpreter.  It then
 ;;;    passes the program to the first pass, evalutes the resulting
 ;;;    program, and compares the value with the correct answer.  If it
-;;;    compares equal?, it goes on to the next pass, passing it the
+;;;    compares equal? (RRN: replaced this with tester-eq?) 
+;;;    , it goes on to the next pass, passing it the
 ;;;    program returned by the first.  It repeats this process until
 ;;;    all passes have been run, then exits.
 ;;;
@@ -100,6 +101,13 @@
 ;;;    turnaround for small test cases.  Set it to compile to get better
 ;;;    error messages and inspector information.
 ;;;
+;;;  (host-eval)
+;;;  (host-eval <proc>)
+;;;   RRN added [2004.05.04]: this parameter determines the evaluator
+;;;   used to evaluate the original expression in the host scheme
+;;;   system.
+
+;;;
 ;;;  (print-file '<pathname>)
 ;;;    Prints the contents of the file specified by <pathname> to the
 ;;;    current output port.
@@ -133,6 +141,14 @@
                   (lambda (x)
                     (unless (procedure? x)
                       (error 'game-eval "~s is not a procedure" x))
+                    x)))
+
+;; Used to control the host evaluator (the host scheme system that is).
+(define host-eval
+  (make-parameter eval ;interpret
+                  (lambda (x)
+                    (unless (procedure? x)
+                      (error 'host-eval "~s is not a procedure" x))
                     x)))
 
 (define analyze-all
@@ -214,7 +230,7 @@
   (lambda (original-input-expr emit? verbose? ordinal)
     (let ([answer 
 	   ;(interpret original-input-expr)])
-	   (eval original-input-expr)])
+	   ((host-eval) original-input-expr)])
       (define-syntax on-error
         (syntax-rules ()
           [(_ e0 e1 e2 ...)
@@ -245,7 +261,7 @@
                              (printf "~%Error occurred running output of pass ~s" pass-name))
                          ((game-eval) output-expr));)
                        ])
-              (unless (equal? t answer)
+              (unless (tester-eq? t answer)
                 (if ordinal
                     (error pass-name
                            "test ~s answer is ~s, should have been ~s"
@@ -282,7 +298,7 @@
                 (printf "========~%"))
               (print-file err-file))
             (let ([t (build-and-run src-file err-file out-file exe-file)])
-              (unless (equal? t answer)
+              (unless (tester-eq? t answer)
                 (error pass-name "answer is ~s, should have been ~s"
                        t answer))))))
       (define run

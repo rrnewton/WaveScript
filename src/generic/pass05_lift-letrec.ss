@@ -130,11 +130,16 @@
              `(if ,test ,conseq ,altern)
              (append test-decl* conseq-decl* altern-decl*))]
 
-	  [(lambda ,formalexp ,[body body-decl])
-	   `(lambda ,formalexp
-	      (lazy-letrec ,body-decl ,body))]
-
+	  [(lambda ,formalexp (free ,free ,[body body-decl]))
+	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now!" free))
+;	   (disp "got lambda" formalexp body body-decl)
+	   (values 
+	    `(lambda ,formalexp
+	       (lazy-letrec ,body-decl ,body))
+	    '())]
+	   
 	  [(letrec ([,lhs* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
+;	   (disp "got letrec" lhs* rhs* rhs-decl* body body-decl)
 	   (values body
 		   (append (apply append rhs-decl*)
 			   body-decl
@@ -142,6 +147,7 @@
 
           [(,prim ,[rand* rand-decl*] ...)
            (guard (regiment-primitive? prim))
+;	   (disp "got prim" prim rand* rand-decl*)
            (values
              `(,prim ,rand* ...)
              (apply append rand-decl*))]

@@ -47,9 +47,9 @@
    code-name label-name #;method-name
    
    ;; Hmm, not sure what meaning immediate has here..
-   immediate? constant? datum? formalexp? cast-formals default-unit-tester
+   immediate? constant? datum? formalexp? cast-formals default-unit-tester tester-eq? 
    
-   regiment-primitives regiment-primitive? 
+   regiment-primitives regiment-primitive? basic-primitive? distributed-primitive?
 
    set? list->set set-cons union intersection difference
    list-head filter list-index snoc rac rdc 

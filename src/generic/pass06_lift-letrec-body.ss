@@ -18,17 +18,24 @@
           [(quote ,imm) #t]
           [,var (guard (symbol? var)) #t]
 	  [,otherwise #f]))
+
     (define process-letrec
       (lambda (expr)
+	(disp "processing letrec")
+	(pp expr)
+
         (match expr
-          [(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
-	   (if (simple? body)
+          [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,body)
+;; NOW we lift it even if it is simple.
+;	   (if (simple? body)
+           (if (symbol? body)
 	       `(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
 	       (let ([main (unique-name 'result)])
 					;(code-name 'main)]) ;; Old version used code-name for labels...
 		 `(lazy-letrec ([,lhs* ,rhs*] ...
 				[,main ,body])  ;(lambda () ,body))])
 			       ,main)))])))
+
     (define process-expr
       (lambda (expr)
         (match expr

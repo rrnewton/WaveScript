@@ -24,6 +24,7 @@
 (include "generic/pass08_verify-core.ss")
 
 ;(include "generic/pass09_separate-graph")
+(include "generic/pass10_deglobalize.ss")
 
 (include "compiler.ss")
 
@@ -31,4 +32,9 @@
 (include "generic/driver.ss")
 (include "generic/tests_noclosure.ss")
 (include "generic/tests.ss")
+
+(game-eval (lambda args 'unspecified))
+(host-eval (lambda args 'unspecified))
+
+(trace  explode-primitive process-expr process-letrec)
 

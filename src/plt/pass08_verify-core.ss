@@ -10,5 +10,5 @@
   
 ;  (provide verify-core)
   (provide verify-core 
-	   test-this these-tests test08 tests0)
+	   test-this these-tests test08 tests08)
 )
