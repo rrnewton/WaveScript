@@ -201,9 +201,12 @@
 
 ;; This globally defined functions decides the sensor values.
 ;; Here's a version that makes the sensor reading the distance from the origin:
-(define (sense loc)
+(define (sense-dist-from-origin loc)
   (let ([x (car loc)] [y (cadr loc)])
     (sqrt (+ (expt x 2) (expt y 2)))))
+
+;(define-parameter 
+(define (current-sense-function) sense-dist-from-origin)
 
 ;;========================================
 
@@ -293,6 +296,7 @@
 		    (set-simobject-redraw! simob #f)
 		    (set-simobject-homepage! simob '())
 		    (set-simobject-incoming! simob '())
+		    (set-simobject-timed-tokens! simob '())
 		    (set-simobject-token-cache! simob (make-default-hash-table))
 		    (set-simobject-local-sent-messages! simob 0)
 		    (set-simobject-local-recv-messages! simob 0)
@@ -323,12 +327,14 @@
 
 (define build-call
   (lambda (rator rand*)
-    (disp "build call" rator rand*)
+;    (disp "build call" rator rand*)
     (let* ([sym (string->symbol
 		 (string-append "call-result-" 
 				(number->string (random 1000))))])
     `(let ((,sym
-	    (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
+	    ;(sendmsg (bare-msg-object ,rator (list ,@rand*)) this)
+	    (handler (bare-msg-object ,rator (list ,@rand*)))
+	    ))
        (if (eq? ,sym 'multiple-bindings-for-token)
 	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
 		  ,rator)
@@ -336,27 +342,27 @@
     )))
 
 ;; Doesn't have a return value...  Used to start up an independent loop.
+;; This version doesn't mess with an existing pulsating loop.
 (define build-activate-call
-  (lambda (rator rand*)
-    (disp "build activate call" rator rand*)
-    (let* ([sym (string->symbol
-		 (string-append "call-result-" 
-				(number->string (random 1000))))])
-    `(let ((,sym
-	    (sendmsg (bare-msg-object ,rator (list ,@rand*)) this)))
-       (if (eq? ,sym 'multiple-bindings-for-token)
-	   (error 'call "cannot perform a local call when there are multiple token handlers for: ~s"
-		  ,rator)
-	   ,sym))    
-    )))
+  (lambda (rator rand*)   
+    ;; Is the token cached in the timed buffer?
+    `(if (null? (filter (lambda (entry) (eq? ',rator (cdr entry)))
+			     (simobject-timed-tokens this)))
+	 ;; If not, it's safe to call it, we schedule it for asap:
+	 (set-simobject-timed-tokens! this
+	  (cons (cons (cpu-time) (bare-msg-object ,rator (list ,@rand*)))
+		(simobject-timed-tokens this))))))
+
+;; FIXME Need some quotes here no!!
 
 ;; Doesn't have a return value... used for delayed scheduling.
 (define build-timed-call
-  (lambda (rator delay rand*)
-    (set-simobject-timed-tokens! 
-     this (cons (cons (+ delay (cpu-time))
-		      (bare-msg-object ,rator (list ,@rand*)))
-		(simobject-timed-tokens this)))))
+  (lambda ( delay rator rand*)
+    ;; Set the time the appropriate amount in the future and drop in the token!
+    `(set-simobject-timed-tokens!
+      this (cons (cons (+ ,delay (cpu-time))
+		       (bare-msg-object ,rator (list ,@rand*)))
+		 (simobject-timed-tokens this)))))
 
 (define process-statement 
   (letrec ([process-expr 
@@ -374,19 +380,17 @@
 			(error 'simulator_nought:process-statement
 			       "call form expects rator to be a token name: ~s"
 			       rator)))
-		   (disp "normal call yo" rator rand*)
 		   (build-call `(quote ,rator)
-			       ;(map (lambda (x) `(quote ,x)) rand*))
 			       rand*)]
-		  [(activate ,rator [,rand*] ...)
+		  [(activate ,rator ,rand* ...)
 		   (build-activate-call `(quote ,rator) rand*)]
-		  [(timed-call ,rator [,rand*] ...)
-		   (build-timed-call `(quote ,rator) rand*)]
-		  
+		  [(timed-call ,delay ,rator ,rand* ...)
+		   ;; Delay is in milleseconds.
+		   (build-timed-call delay `(quote ,rator) rand*)]		  
 
 		  ;; It's like call but doesn't add quotes.
 		  [(internal-call ,rator ,rand* ...)
-		   (disp "processing internal-call" rator rand*)
+;;		   (disp "processing internal-call" rator rand*)
 		   ;; Could add the message to incoming instead!
 		   ;`(handler (construct-msg-object ',rator #f #f 0 ',rand*))
 		   ;; [2004.06.16] For now I'm raising an error... 
@@ -407,7 +411,7 @@
 		   `(if ,test ,conseq ,altern)]
 
 		  [(flood ,tok) `(sim-flood (quote ,tok))]
-		  [(emit ,opera ...) 
+		  [(emit ,opera ...)
 		   ;; This is an original emission, and should get a count of 0.
 		   `(sim-emit (quote ,(car opera)) (list ,@(cdr opera)) 0)]
 
@@ -448,7 +452,8 @@
 ;				    (token? totok)))
 ;			  (error 'process-statement:return
 ;				 "One of these is not a token: via: ~s, totok: ~s" via totok)))			       
-		     `(sim-return ,x ,totok ,via ',seed ',aggr))]
+		     ;; FIXME: does seed need a quote!!!???
+		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  
@@ -457,7 +462,7 @@
 		  [(,rator ,[rand*] ...)
 		   ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator)))
-		   (disp "processing app:" rator rand*)
+;;		   (disp "processing app:" rator rand*)
 		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
@@ -918,7 +923,7 @@
 			       (if (not via_parent)
 				   ;; So we must fire the *to* token.  We fire it once for each return val actually.
 				   (begin
-				     (disp "RETURN accomplished at " (node-id (simobject-node this)) 
+'				     (disp "RETURN accomplished at " (node-id (simobject-node this)) 
 					   "#vals: "  (length aggregated-values)
 					   "to " the_totok "via " via)
 				   ;; FIXME: TEMP: TODO:
@@ -1032,9 +1037,15 @@
 			 ;; timed calls priority over other incoming
 			 ;; tokens:
 			 (if (not (null? fired-triggers))
-			     
-
-
+			     (begin 
+			       (set-simobject-incoming! this
+			         (append (map cdr fired-triggers)
+					 (simobject-incoming this)))
+			       (set-simobject-timed-tokens! this
+					 (difference triggers fired-triggers))
+			       (main-node-loop (simobject-incoming this)
+					       returns-next-handled
+					       returns))
 		     (cond
 		      [stop-nodes 
 		       (display "*") ;(disp "Node stopped by external force!")
@@ -1095,8 +1106,8 @@
 			       (main-node-loop (simobject-incoming this)
 					       returns-next-handled 
 					       returns))
-			 ))])
-		     ))))))])
+			 ))]))
+		     ))))))))])
 
        (DEBUGPRINT
 	(printf "~nGOT TOKEN HANDLERS:~n" )
@@ -1327,6 +1338,7 @@
 				  [(let (,bind ...) ,bods ...) #t] 
 				  [,else #f])) 
 	       exp))))]
+
     
     ;; This is an evil test which mutates the global environment!  (By
     ;; evaluating generic-defs.)  Yech!
@@ -1490,6 +1502,14 @@
 ;	    (get-output-string s))))	   
 ;	Simulation_Done]
 
+
+    ;; [2004.07.29]
+  ["Test timed-call"
+   (run-simulation
+    (build-simulation (compile-simulate-nought ',example-nodal-prog6))
+    2.0)
+   unspecified]
+
   [ "Return all distances from root, no aggregation"
     (run-simulation
      (build-simulation 
@@ -1525,6 +1545,12 @@
        (andmap integer? ls)
       ; (and (= (length ls) (sub1 (length all-objs))))
        )]
+
+  ["Test program that anchors, circles, maps and folds"
+   (run-simulation
+    (build-simulation (compile-simulate-nought ',THEPROG))
+    10.0)
+   unspecified]
 
   ))
 
@@ -1595,7 +1621,6 @@
        )))
 
 
-
 (define stuff
 '(begin  
   (cleanse-world)
@@ -1604,5 +1629,5 @@
      (vector (lambda () 3) (list (lambda () 4) (lambda () 5))))
      2)))
 
-(define x (cadr (list-ref these-tests 21)))
-(define y (cadr (list-ref these-tests 22)))
+(define x (cadr (list-ref these-tests 24)))
+

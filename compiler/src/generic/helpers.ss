@@ -22,15 +22,18 @@
 (if (file-exists? Regiment-Log-File)
     (delete-file Regiment-Log-File))
 
-;; This one prints straight to the screen.
-#;(define-syntax DEBUGPRINT 
-  (syntax-rules ()
-    [(_ expr ...) (begin expr ...)]))
-
 ;; This one prints nothing at all:
 (define-syntax DEBUGPRINT 
   (syntax-rules ()
+;    [(_ expr ...) (begin expr ...)]))
     [(_ expr ...) (void)]))
+
+;; This is a SECOND print channel for even lamer information:
+(define-syntax DEBUGPRINT2
+  (syntax-rules ()
+;    [(_ expr ...) (begin expr ...)]))
+    [(_ expr ...) (void)]))
+
 
 ;; This one prints to the logifle, openning and closing it every time:
 #;(define-syntax DEBUGPRINT 
@@ -52,12 +55,6 @@
      (parameterize ((current-output-port Regiment-Log-Port))
 		   (begin expr ... (flush-output-port)))]))
 	   
-
-;; This is a SECOND print channel for even lamer information:
-(define-syntax DEBUGPRINT2
-  (syntax-rules ()
-    [(_ expr ...) (void)]))
-
 ;==============================================================================;
 
 ;; This is not strictly R5RS but it should work in both chez and plt,

@@ -54,7 +54,8 @@
              (make-node (node-id s) (node-pos s))]
             [(simobject? s)
              (make-simobject (simobject-node s) 
-                             (simobject-incoming s) 
+                             (simobject-incoming s)
+                             (simobject-timed-tokens s)
                              (simobject-redraw s) 
                              (simobject-gobj s)
                              (simobject-homepage s)

@@ -1,7 +1,7 @@
 (module pass13_deglobalize mzscheme
 
   (require (lib "include.ss"))
-  
+  (require "constants.ss")
   (require "iu-match.ss")
   (require "helpers.ss")
 
