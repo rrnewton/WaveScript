@@ -7,15 +7,8 @@
 ;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
 ;; so that it may draw the simulation upon the screen.
 
-(define this-unit-description 
-  "simulator_nought_graphics.ss: simple simulator with graphics.")
-
-;;============================================================
-
-(define (unfold-list lst)
-  (let loop ((lst lst))
-    (if (null? lst) '()
-	(cons lst (loop (cdr lst))))))
+;(define this-unit-description 
+;  "simulator_nought_graphics.ss: simple simulator with graphics.")
 
 ;;===============================================================================
 
@@ -101,7 +94,7 @@
 ;(load "simulator_nought.examples.ss")
 ;(include "simulator_nought.examples.ss")
 
-(define these-tests
+#;(define these-tests
   `( 
     
     [ "First test display by bringing it up and then closing it down." 
@@ -187,7 +180,7 @@
     unspecified]))
 
 
-(define (wrap-def-simulate test)
+#;(define (wrap-def-simulate test)
   `(begin (define (simulate . args)
 	    (init-graphics)
 	    (let ((res (apply graphical-simulation args)))
@@ -197,7 +190,7 @@
 	  ,test))
 
 ;; This makes sure the world is initialized before doing unit tests:
-(define test-this
+#;(define test-this
   (let ((tester (default-unit-tester 
 		  this-unit-description 
 		  (map (lambda (test)
@@ -262,14 +255,14 @@
        () ;; seed tokens
        )))
 
-'(dsis g
+#;(dsis g
       (begin (init-graphics)
 	     (graphical-simulation
 	      (build-simulation 
 	       (csn example-nodal-prog1))
 	      5.0)))
 
-(define (ttt)
+#;(define (ttt)
   (run-simulation
    (build-simulation 
     (compile-simulate-nought 

@@ -10,15 +10,16 @@
 ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
 ;(define Regiment-Log-File (string-append "Regiment.log.ss"))
 ;; Delete that logfile at load time:
-(delete-file Regiment-Log-File)
+(if (file-exists? Regiment-Log-File)
+    (delete-file Regiment-Log-File))
 
 ;; This one prints straight to the screen.
-#;(define-syntax DEBUGPRINT 
+(define-syntax DEBUGPRINT 
   (syntax-rules ()
     [(_ expr ...) (begin expr ...)]))
 
 ;; This one prints to the logifle, openning and closing it every time:
-(define-syntax DEBUGPRINT 
+#;(define-syntax DEBUGPRINT 
   (syntax-rules ()
     [(_ expr ...)
      (let ((p (open-output-file Regiment-Log-File 'append)))
@@ -1462,6 +1463,12 @@
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
+;; This strings out a list of all the cons cells in a given list (not
+;; traversing car's).
+(define (unfold-list lst)
+  (let loop ((lst lst))
+    (if (null? lst) '()
+	(cons lst (loop (cdr lst))))))
 
 (define display-constrained
   (lambda args

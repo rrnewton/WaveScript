@@ -108,7 +108,10 @@
 	       `([,form () (flood ,consider)]
 		 [,consider () (if (< (locdiff (loc) ,target) 10.0)
 				   (elect-leader ,memb)
-				   '#f)]))]
+				   '#f)]
+		 ;; This just lights up the node when it becomes anchor, for visualization:
+		 [,memb () (light-up 0 255 255)]
+		 ))]
 
 	    [(circle)
 	     (let ([rad (car args)]

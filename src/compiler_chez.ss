@@ -93,3 +93,4 @@
                (avg (smap g (rfold f (cons 0 0) r))))
         avg))))
 
+

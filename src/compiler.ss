@@ -152,24 +152,29 @@
            ()           
            (if (< (locdiff (loc) tmp_1) 10.0)
                (begin
-                 (disp "blah blah calling elect leader")
+                 (disp "PROG: blah blah calling elect leader")
                  (elect-leader m_token_result_2))
                '#f))
          (m_token_result_2 ()
-                           (disp "Bang, election finished, got result..")
+                           (disp "PROG: Bang, election finished, got result..")
                            (soc-return (list 'anch this))))
        (startup))))
 
+
+;; These are some temporary diagnostic functions:
 (define (all-incoming)
   (filter (lambda (ls) (not (null? ls)))
           (map simobject-incoming all-objs)))
+(define (all-homepage)
+  (filter (lambda (ls) (not (null? ls)))
+          (map simobject-homepage all-objs)))
 
 (define (g) 
   ;  (define prog (rc '(anchor-at '(30 40))))
   (init-world)
   (let ((res (run-simulation 
               (build-simulation
-               (compile-simulate-nought prog)) 10.0)))
+               (compile-simulate-nought prog)) 3.0)))
     (disp "EXEC FINISHED, HERE WAS PROG:")
     (pretty-print prog)
     res))

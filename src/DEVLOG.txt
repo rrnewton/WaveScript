@@ -48,5 +48,10 @@ Sonuds like a big problem, how did that not occur to me before.
 generic/ branch.  SCRATCH THAT.  Not doing it yet.  Might do it soon
 tho, it's not that unreasonably an idea.
 
+[2004.06.16]
+  Dammit I got burned again by a recompilation failure on
+graphics_stub.zo.  PLTs system for time-stamp checks on compiled files
+is totally broken...  Or maybe my clock skew is all to blame.
+
 
 

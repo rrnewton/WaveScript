@@ -117,11 +117,6 @@
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
 
-(define (unfold-list lst)
-  (let loop ((lst lst))
-    (if (null? lst) '()
-	(cons lst (loop (cdr lst))))))
-
 (define structure-copy  vector-copy)
 
 ;; TODO, returns all the nodes in the graph that are connected to the
@@ -404,17 +399,19 @@
 
 	   ;; This is just a cludge for now.
 	   [define (sim-elect-leader t)
-	     (disp "sim-elect-leader!!" t)
+	     (DEBUGPRINT (disp "sim-elect-leader!!" t))
 	     (set-simobject-homepage! this (cons (list 'inside t) (simobject-homepage this)))
 	     (let ((possible
 		    (filter (lambda (simob)
 			      (member (list 'inside t) (simobject-homepage simob)))
 			    all-objs)))
-	       (disp "election: electing from" (node-id (simobject-node this)) 
-		     " number candidaties " (length possible))
+	       (DEBUGPRINT
+		(disp "election: electing from" (node-id (simobject-node this))
+		      " number candidaties " (length possible)))
 	       ;; This is horribly yucky.
 	       (let ([leader (list-get-random possible)])
-		 (disp "election: got leader" (node-id (simobject-node leader)))
+		 (DEBUGPRINT
+		  (disp "election: got leader" (node-id (simobject-node leader))))
 		 ;; Tell the message it's leader.  This might happen
 		 ;; at multiple nodes.  Need to make sure there's a
 		 ;; dependency relationship here, and that a killing a
@@ -531,9 +528,10 @@
 		       ;; This might introduce message loss (because of no
 		       ;; semaphores) but I don't care:					
 		       (let ((msg (last incoming)))
-
-			 ;; Print out the process number when we handle a message:
-			 (printf "~s." (node-id (simobject-node this)))
+			 
+			 (DEBUGPRINT
+			  ;; Print out the process number when we handle a message:
+			  (printf "~s." (node-id (simobject-node this))))
 
 			 ;; Pop that message off:
 			 (if (null? (cdr incoming))

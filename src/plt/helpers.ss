@@ -104,8 +104,8 @@
    set? list->set set-cons union intersection difference
    list-head list-remove-last! filter list-index snoc rac rdc last
    insert-between iota disp pp
-   graph-map cyclic?  deep-assq deep-member?
-   list-get-random
+   graph-map cyclic?  deep-assq deep-member? 
+   list-get-random unfold-list
  
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

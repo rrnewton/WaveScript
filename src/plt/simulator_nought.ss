@@ -20,24 +20,6 @@
 ;	   yield-thread last
 	   )
 
-#;  (provide build-simulation run-simulation compile-simulate-nought
-
-  ;; Bindings we steal from our required modules and re-provide:
-           world-xbound world-ybound radius numprocs
-           object-graph all-objs
-	   yield-thread 
-
-           ;; I don't want to export all this, but how else will my evals work??
-           structure-copy
-;;	   total-messages ;; global counter.
-;; Can't do this here. See compiler.ss
-           free-vars
-           process-statement
-           make-simobject simobject? simobject-node simobject-incoming simobject-redraw simobject-gobj
-           make-node node? node-id node-pos	 
-           
-           test-this these-tests
-	   )
   
   (define (vector-copy v)
     (let ((newv (make-vector (vector-length v))))
