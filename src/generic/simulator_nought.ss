@@ -9,14 +9,13 @@
 ;; NOTE: Unlike some of the files in the chez/ directory, this expects
 ;; to be loaded from its own parent directory.
 
+;; <TODO>: Make the simulator not use global state for the graph!!
+
 ;;============================================================
 ;; DEPENDS: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
 
 ;; DEPENDS: Also on hash tables from SLIB.
-
-;; DEPENDS: This file requires the "graphics_stub.ss" interface be loaded
-;; so that it may draw the simulation upon the screen.
 
 ;; DEPENDS: This file requires the "flat_threads.ss" interface, which
 ;; is a simple interface over engines or threads.

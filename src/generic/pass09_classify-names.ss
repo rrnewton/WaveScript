@@ -13,6 +13,10 @@
 ;;;   'anchor
 ;;;   'final
 ;;;   'leaf
+;; [2004.06.13] Added these too, might use them later:
+;;;   'conditional
+;;;   'function
+;;;   '(alias-of <var>)
 
 ;;; Final implies that a value is the return value of the entire
 ;;; program.  Leaf implies that it's a value which must be jump
@@ -114,6 +118,7 @@
 	   ;; NOTE: No additional dependency for name... this is a closure.
 	   ;; <TODO> CONSIDER THIS:
 	   ;(process-let name expr (union formalexp env))
+	   (add-prop! name 'function)
 	   (process-let #f expr (union formalexp env))
 	   
 	   ]
