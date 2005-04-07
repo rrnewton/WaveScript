@@ -9,7 +9,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass13_classify-names.ss"))
+  (include (build-path  "generic" "pass13_classify-names.ss"))
   
   (provide (all-defined))
   )

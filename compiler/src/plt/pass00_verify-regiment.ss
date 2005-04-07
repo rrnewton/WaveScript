@@ -4,7 +4,7 @@
            "iu-match.ss"
            "helpers.ss"
 	   "constants.ss")
-  (include (build-path ".." "generic" "pass00_verify-regiment.ss"))
+  (include (build-path "generic" "pass00_verify-regiment.ss"))
   
   ;; Insure provision of verify-regiment:
   (provide verify-regiment 

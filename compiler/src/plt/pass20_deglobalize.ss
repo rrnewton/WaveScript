@@ -7,7 +7,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass20_deglobalize.ss"))
+  (include (build-path  "generic" "pass20_deglobalize.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

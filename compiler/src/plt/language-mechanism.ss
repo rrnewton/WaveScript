@@ -16,7 +16,7 @@
                            (loop (sub1 n) (cons (func n) acc))))))
         (loop n '()))))
   
-  (include (build-path ".." "generic" "language-mechanism.ss"))
+  (include (build-path "generic" "language-mechanism.ss"))
 
   ;; This is lame, but I'm doing it for PLTs module system.
   ;(define base-language (eval 'base-language))

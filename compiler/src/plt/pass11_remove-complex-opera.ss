@@ -4,7 +4,7 @@
                   "iu-match.ss"
                   "helpers.ss")
 
-	(include (build-path ".." "generic" "pass11_remove-complex-opera.ss"))
+	(include (build-path "generic" "pass11_remove-complex-opera.ss"))
 
        	(provide (all-defined))
 ;	(provide rename-var 

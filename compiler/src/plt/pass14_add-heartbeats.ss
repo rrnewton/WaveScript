@@ -7,7 +7,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass14_add-heartbeats.ss"))
+  (include (build-path "generic" "pass14_add-heartbeats.ss"))
   ; "pass14_add-heartbeats.ss"))
   
 ;  (provide deglobalize

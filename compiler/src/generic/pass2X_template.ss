@@ -60,7 +60,7 @@
 	      `(let ([,lhs ,rhs])		 
 		 ,((process-expr (cons lhs env) tokens this-token this-subtok) body))]
 	     [(,call-style ,[args*] ...)
-	      (guard (memq call-style '(emit call timed_call)))
+	      (guard (memq call-style '(emit call timed-call)))
 	      `(,call-style ,args* ...)]
 	     [(relay (tok ,t ,[e])) `(relay (tok ,t ,e))]	    
 	     [(dist (tok ,t ,[e]))  `(dist (tok ,t ,e))]

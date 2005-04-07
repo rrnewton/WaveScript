@@ -14,7 +14,7 @@
            (all-except "graphics_stub.ss" test-this these-tests)
            "helpers.ss")
 
-  (include (build-path ".." "generic" "demo_display.ss"))
+  (include (build-path "generic" "demo_display.ss"))
  
   ) ;; End module 
 

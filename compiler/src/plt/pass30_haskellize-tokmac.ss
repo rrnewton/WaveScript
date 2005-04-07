@@ -12,7 +12,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass30_haskellize-tokmac.ss"))
+  (include (build-path  "generic" "pass30_haskellize-tokmac.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

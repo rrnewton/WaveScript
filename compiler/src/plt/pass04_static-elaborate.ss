@@ -17,7 +17,7 @@
   
   (define (id x) x)
   
-  (include (build-path ".." "generic" "pass04_static-elaborate.ss"))
+  (include (build-path "generic" "pass04_static-elaborate.ss"))
   
   (provide (all-defined))
   ;	(provide rename-var 

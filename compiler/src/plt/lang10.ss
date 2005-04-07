@@ -6,5 +6,5 @@
 
 	(provide deglobalize-lang)
 	
-	(include "../generic/lang10.ss")
+	(include (build-path "generic" "lang10.ss"))
 )

@@ -18,7 +18,7 @@
            "constants.ss" ;; For world-xbound, ybound
            )
   
-  (include "../generic/graphics_stub.ss")
+  (include (build-path "generic" "graphics_stub.ss"))
 
   (define default-proc-color (rgb 200 20 20))
   (define default-edge-color (rgb 0 0 0))

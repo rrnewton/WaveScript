@@ -9,7 +9,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass18_add-routing.ss"))
+  (include (build-path  "generic" "pass18_add-routing.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

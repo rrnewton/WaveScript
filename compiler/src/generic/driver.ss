@@ -126,7 +126,7 @@
         
 (define test-ordinal #f)
 
-(define tracer
+#;(define tracer
   (let ([trace-list '()])
     (case-lambda
       [() trace-list]
@@ -137,6 +137,16 @@
                [(and (symbol? x) (memq x pass-names)) (list x)]
                [(and (list? x) (andmap (lambda (x) (memq x pass-names)) x)) x]
                [else (error 'tracer "invalid argument ~s" x)]))])))
+
+(define tracer
+  (make-parameter '()
+     (lambda (ls)
+       (cond
+	[(eq? ls #t) pass-names]
+	[(eq? ls #f) '()]
+	[(and (symbol? ls) (memq x pass-names)) (list x)]
+	[(and (list? ls) (andmap (lambda (x) (memq x pass-names)) ls)) ls]
+	[else (error 'tracer "invalid parameter value ~s" ls)]))))
 
 (define game-eval
   (make-parameter eval ;interpret

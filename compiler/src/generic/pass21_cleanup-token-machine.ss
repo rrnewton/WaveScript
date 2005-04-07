@@ -214,7 +214,8 @@
 		 (warning 'cleanup-token-machine
 			  "attempt to set! token name: ~s" var)]
 		[else (warning 'cleanup-token-machine
-			       "unbound variable reference in set!: ~s" var)]))
+			       "unbound variable reference in set!: ~s ~n  env ~s" 
+			       var env)]))
 	      `(set! ,var ,x)]
 
 	     [(begin ,[x]) x]
@@ -354,7 +355,7 @@
 ;		 (disp "PROCESSING TOKBIND" args stored tokbind)
 
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (append args stored bindings env) tokens tok id) body))))))
+			,((process-expr (append args (map car stored) bindings env) tokens tok id) body))))))
 	    
     (define decode 
       (lambda (stuff)

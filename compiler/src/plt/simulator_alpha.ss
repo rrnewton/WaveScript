@@ -55,8 +55,8 @@
   (define soc-return 'not-bound-yet-in-plt)
   (define soc-finished 'not-bound-yet-in-plt)
   
-  (include "../generic/simulator_nought.examples.ss")
-  (include "../generic/simulator_alpha.ss")
+  (include (build-path "generic" "simulator_nought.examples.ss"))
+  (include (build-path "generic" "simulator_alpha.ss"))
         
   (set! structure-copy
         (lambda (s)

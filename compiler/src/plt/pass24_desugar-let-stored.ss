@@ -13,7 +13,7 @@
   
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass24_desugar-let-stored.ss"))
+  (include (build-path  "generic" "pass24_desugar-let-stored.ss"))
   
   (provide (all-defined))
   )

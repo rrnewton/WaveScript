@@ -152,7 +152,7 @@
 
 (define (r x)  ;; shorthand
   (let ((prog  x))
-    (parameterize ((tracer #t))
+    (parameterize ((tracer '()))
 		  (test-one prog))))
 
 ;; Token Run:  
@@ -325,7 +325,7 @@
        (startup f_token_tmpanch_8)))))
 
 (define (t)
-(cps-tokmac 
+(rename-stored 
 '(desugar-let-stored-lang
   '(program
      (bindings (result_1 '3))
@@ -344,102 +344,70 @@
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (stored_g_parent (void))
-             (storedliftoption_6 '#f)
-             (stored_g_origin (void))
-             (storedliftoption_7 '#f)
-             (stored_g_hopcount (void))
-             (storedliftoption_8 '#f)
-             (stored_g_version (void))
-             (storedliftoption_9 '#f)
-             (ver (void))
-             (storedliftoption_10 '#f))
-           (begin (if (not storedliftoption_6)
-                      (begin (set! storedliftoption_6 '#t)
-                             (set! stored_g_parent '#f)))
-                  (if (not storedliftoption_7)
-                      (begin (set! storedliftoption_7 '#t)
-                             (set! stored_g_origin '#f)))
-                  (if (not storedliftoption_8)
-                      (begin (set! storedliftoption_8 '#t)
-                             (set! stored_g_hopcount '#f)))
-                  (if (not storedliftoption_9)
-                      (begin (set! storedliftoption_9 '#t)
-                             (set! stored_g_version '#f)))
-                  (if (if (not stored_g_hopcount)
-                          '#t
-                          (if (= '0 g_hopcount)
-                              (if (> g_version stored_g_version)
-                                  (if (= g_version stored_g_version)
-                                      (< g_hopcount stored_g_hopcount)
-                                      '#f)
-                                  '#f)
-                              '#f))
-                      (begin (if (not storedliftoption_10)
-                                 (begin (set! storedliftoption_10 '#t)
-                                        (set! ver '0)))
-                             (set! ver (+ '1 ver))
-                             (bcast (tok global-tree 0) (my-id) '1 ver)
-                             (timed-call
-                               1000
-                               (tok spread-global 0)
-                               '#f
-                               '#f
-                               '0
+             (stored_g_parent #0='#f)
+             (stored_g_origin #1='#f)
+             (stored_g_hopcount #2='#f)
+             (stored_g_version #3='#f)
+             (ver_2 (void))
+             (storedliftoption_3 '#f))
+           (if (if (not stored_g_hopcount)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version stored_g_version)
+                           (if (= g_version stored_g_version)
+                               (< g_hopcount stored_g_hopcount)
                                '#f)
-                             (if (not (= g_hopcount '0))
-                                 (begin (set! stored_g_parent g_parent)
-                                        (set! stored_g_origin g_origin)
-                                        (set! stored_g_hopcount g_hopcount)
-                                        (set! stored_g_version g_version))
-                                 (void)))
-                      (void))))
+                           '#f)
+                       '#f))
+               (begin (if (not storedliftoption_3)
+                          (begin (set! storedliftoption_3 '#t)
+                                 (set! ver_2 '0)))
+                      (set! ver_2 (+ '1 ver_2))
+                      (bcast (tok global-tree 0) (my-id) '1 ver_2)
+                      (timed-call
+                        1000
+                        (tok spread-global 0)
+                        '#f
+                        '#f
+                        '0
+                        '#f)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! stored_g_parent g_parent)
+                                 (set! stored_g_origin g_origin)
+                                 (set! stored_g_hopcount g_hopcount)
+                                 (set! stored_g_version g_version))
+                          (void)))
+               (void)))
          (global-tree
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (stored_g_parent (void))
-             (storedliftoption_2 '#f)
-             (stored_g_origin (void))
-             (storedliftoption_3 '#f)
-             (stored_g_hopcount (void))
-             (storedliftoption_4 '#f)
-             (stored_g_version (void))
-             (storedliftoption_5 '#f))
-           (begin (if (not storedliftoption_2)
-                      (begin (set! storedliftoption_2 '#t)
-                             (set! stored_g_parent '#f)))
-                  (if (not storedliftoption_3)
-                      (begin (set! storedliftoption_3 '#t)
-                             (set! stored_g_origin '#f)))
-                  (if (not storedliftoption_4)
-                      (begin (set! storedliftoption_4 '#t)
-                             (set! stored_g_hopcount '#f)))
-                  (if (not storedliftoption_5)
-                      (begin (set! storedliftoption_5 '#t)
-                             (set! stored_g_version '#f)))
-                  (if (if (not stored_g_hopcount)
-                          '#t
-                          (if (= '0 g_hopcount)
-                              (if (> g_version stored_g_version)
-                                  (if (= g_version stored_g_version)
-                                      (< g_hopcount stored_g_hopcount)
-                                      '#f)
-                                  '#f)
-                              '#f))
-                      (begin (bcast
-                               (tok global-tree subtok_ind)
-                               (my-id)
-                               g_origin
-                               (+ '1 g_hopcount)
-                               g_version)
-                             (if (not (= g_hopcount '0))
-                                 (begin (set! stored_g_parent g_parent)
-                                        (set! stored_g_origin g_origin)
-                                        (set! stored_g_hopcount g_hopcount)
-                                        (set! stored_g_version g_version))
-                                 (void)))
-                      (void))))))))))
+             (stored_g_parent #0#)
+             (stored_g_origin #1#)
+             (stored_g_hopcount #2#)
+             (stored_g_version #3#))
+           (if (if (not stored_g_hopcount)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version stored_g_version)
+                           (if (= g_version stored_g_version)
+                               (< g_hopcount stored_g_hopcount)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (bcast
+                        (tok global-tree subtok_ind)
+                        (my-id)
+                        g_origin
+                        (+ '1 g_hopcount)
+                        g_version)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! stored_g_parent g_parent)
+                                 (set! stored_g_origin g_origin)
+                                 (set! stored_g_hopcount g_hopcount)
+                                 (set! stored_g_version g_version))
+                          (void)))
+               (void)))))))))
 
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
