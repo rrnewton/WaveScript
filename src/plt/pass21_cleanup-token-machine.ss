@@ -8,7 +8,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass21_cleanup-token-machine.ss"))
+  (include (build-path  "generic" "pass21_cleanup-token-machine.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

@@ -40,12 +40,12 @@
 ;;;                | (<Expr> ...)
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
 ;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed_call
+;;;           | call | subcall | timed-call
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 ;;; The call forms are all just plain prims.  This reflects the fact
 ;;; that they are permitted to have dynamically computed token
-;;; arguments, and also dynamically computed times for timed_call.
+;;; arguments, and also dynamically computed times for timed-call.
 
 
 ;;; Output Grammar:

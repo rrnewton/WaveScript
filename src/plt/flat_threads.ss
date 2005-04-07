@@ -70,7 +70,7 @@
              'Threads_Timed_Out)
            )))
   
-  (define these-tests  (include "../generic/flat_threads.tests"))
+  (define these-tests  (include (build-path "generic" "flat_threads.tests")))
   
   (define test-this (rn:default-unit-tester 
                      "flat_threads.ss: simple parallel computation system for PLT"

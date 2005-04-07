@@ -67,7 +67,7 @@
 
 ;; ======================================================================  
 
-  (include (build-path ".." "generic" "helpers.ss"))
+  (include (build-path "generic" "helpers.ss"))
 
 ;; ======================================================================
    
@@ -115,7 +115,7 @@
    get-formals
    unique-name reset-name-count! extract-suffix make-begin strip-illegal
    
-   ;; Hmm, not sure what meaning immediate has here..
+   ;; Hmm, not sure what meaning immediate has here...
    immediate? constant? datum? 
    formalexp? cast-formals default-unit-tester tester-eq? 
 

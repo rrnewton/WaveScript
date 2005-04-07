@@ -4,7 +4,7 @@
                   "iu-match.ss"
                   "helpers.ss")
 
-	(include (build-path ".." "generic" 
+	(include (build-path "generic" 
 			     "pass06_remove-complex-constant.ss"))
 
 	(provide (all-defined))

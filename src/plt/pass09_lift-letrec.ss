@@ -4,7 +4,7 @@
                   "iu-match.ss"
                   "helpers.ss")
 
-	(include (build-path ".." "generic" "pass09_lift-letrec.ss"))
+	(include (build-path "generic" "pass09_lift-letrec.ss"))
 
 	(provide (all-defined))
 ;	(provide rename-var 

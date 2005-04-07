@@ -7,7 +7,7 @@
 	   "language-mechanism.ss"
 	   )
 
-  (include (build-path ".." "generic" "lang00.ss"))
+  (include (build-path "generic" "lang00.ss"))
   
   (provide (all-defined))
   )

@@ -12,7 +12,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass23_desugar-gradients.ss"))
+  (include (build-path  "generic" "pass23_desugar-gradients.ss"))
   
   (provide (all-defined))
   )

@@ -7,7 +7,7 @@
   (provide (all-defined))
   
   ;; This defines window-width and window-height presets;.
-  (include "../generic/basic_graphics.ss")
+  (include (build-path "generic" "basic_graphics.ss"))
   
 ;  (define the-win #f) 
   (define (init-graphics) 

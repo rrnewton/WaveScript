@@ -4,7 +4,7 @@
                   "iu-match.ss"
                   "helpers.ss")
 
-	(include (build-path ".." "generic" "pass09_separate-graph"))
+	(include (build-path  "generic" "pass09_separate-graph"))
 
        	(provide (all-defined))
 ;	(provide rename-var 

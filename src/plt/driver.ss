@@ -18,7 +18,7 @@
 
   (define error-handler error-display-handler)
 
-  (include (build-path ".." "generic" "driver.ss"))
+  (include (build-path "generic" "driver.ss"))
     
 ;  (provide test-one test-all
 ;;; These are in the interface, but aren't used yet for this project:

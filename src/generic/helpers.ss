@@ -222,7 +222,7 @@
 
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
-     (timed_call (Integer Token . Object) Void)
+     (timed-call (Integer Token . Object) Void)
      (subcall (Token . Object) Object)
      (is_scheduled (Token) Bool)
      (deschedule (Token) Void)

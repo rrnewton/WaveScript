@@ -13,11 +13,10 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass27_cps-tokmac.ss"))
+  (include (build-path  "generic" "pass27_cps-tokmac.ss"))
   
   (provide (all-defined))
   )
-
 
 ;(require pass27_cps-tokmac)
 

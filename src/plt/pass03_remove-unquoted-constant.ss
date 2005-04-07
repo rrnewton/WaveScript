@@ -4,7 +4,7 @@
            "iu-match.ss"
            "helpers.ss")
   
-  (include (build-path ".." "generic" "pass03_remove-unquoted-constant.ss"))
+  (include (build-path "generic" "pass03_remove-unquoted-constant.ss"))
   
   (provide (all-defined))
   ;	(provide rename-var 

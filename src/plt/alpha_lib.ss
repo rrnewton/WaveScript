@@ -16,10 +16,9 @@
   (provide (all-defined)
            (all-from "simulator_alpha.ss"))
   
-  (include "../generic/alpha_lib.ss")
-  (include "../generic/alpha_lib_scheduler.ss")
-  (include "../generic/alpha_lib_scheduler_simple.ss")
-  
+  (include (build-path "generic" "alpha_lib.ss"))
+  (include (build-path "generic" "alpha_lib_scheduler.ss"))
+  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
  )
 
 

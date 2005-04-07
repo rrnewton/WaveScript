@@ -45,8 +45,8 @@
   (define soc-return 'not-bound-yet-in-plt)
   (define soc-finished 'not-bound-yet-in-plt)
   
-  (include "../generic/simulator_nought.examples.ss")
-  (include "../generic/simulator_nought.ss")
+  (include (build-path "generic" "simulator_nought.examples.ss"))
+  (include (build-path "generic" "simulator_nought.ss"))
   
   ;; RRN: This is a cludge!! But how do I copy a structure in mzscheme!!
   (set! structure-copy 

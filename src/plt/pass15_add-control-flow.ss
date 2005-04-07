@@ -7,7 +7,7 @@
 
   (require (lib "trace.ss"))
 
-  (include (build-path ".." "generic" "pass15_add-control-flow.ss"))
+  (include (build-path "generic" "pass15_add-control-flow.ss"))
   
 ;  (provide deglobalize
 ;;	   test-this these-tests test12 tests12)

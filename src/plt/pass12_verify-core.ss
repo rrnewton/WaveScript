@@ -6,7 +6,7 @@
   (require "iu-match.ss")
   (require "helpers.ss")
 
-  (include (build-path ".." "generic" "pass12_verify-core.ss"))
+  (include (build-path "generic" "pass12_verify-core.ss"))
   
 ;  (provide verify-core)
   (provide verify-core 

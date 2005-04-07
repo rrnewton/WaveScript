@@ -4,7 +4,7 @@
            "iu-match.ss"
            "helpers.ss")
   
-  (include (build-path ".." "generic" "pass05_reduce-primitives.ss"))
+  (include (build-path "generic" "pass05_reduce-primitives.ss"))
   
   (provide (all-defined))
   ;	(provide rename-var 

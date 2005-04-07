@@ -4,7 +4,7 @@
                   "iu-match.ss"
                   "helpers.ss")
 
-	(include (build-path ".." "generic" "pass08_uncover-free.ss"))
+	(include (build-path "generic" "pass08_uncover-free.ss"))
 
 	(provide (all-defined))
 ;	(provide rename-var 
