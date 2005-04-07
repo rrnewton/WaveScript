@@ -355,7 +355,8 @@
 ;		 (disp "PROCESSING TOKBIND" args stored tokbind)
 
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (append args (map car stored) bindings env) tokens tok id) body))))))
+			,((process-expr (append args (map car stored) bindings env) tokens tok id)
+			  body))))))
 	    
     (define decode 
       (lambda (stuff)
