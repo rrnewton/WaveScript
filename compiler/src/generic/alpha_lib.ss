@@ -4,12 +4,6 @@
 ;; ======================================================================
 ;; Simulator runtime
   
-(define (alpha-it tm)
-  (let ([comped (compile-simulate-alpha tm)])
-  ;; Bind the current program to a global variable:
-    (eval `(define alph ',comped))
-    (eval comped)))
-
 ;; This returns:
 ;; 1) meta-token-handler of type (msg-object, vtime -> ())
 ;; 2) a cost-table mapping toknames to vtime costs
@@ -387,6 +381,17 @@
 	      (alpha-it cleaned)
 	      (run-alpha-sim 'simple 10.0)
 	      (alpha-repl)))))
+
+(define (alpha-it tm)
+  (let ([comped (compile-simulate-alpha tm)])
+  ;; Bind the current program to a global variable:
+    (eval `(define alph ',comped))
+    (eval comped)))
+
+(define (ra tm) ;; shorthand
+  (let ((cleaned (cleanup-token-machine tm)))
+    (alpha-it tm)
+    (run-alpha-sim 'simple 10.0)))
 
 
 ;     (begin (t) (time (run-alpha-sim 10.0)))
