@@ -191,4 +191,4 @@
 ;(begin (init-graphics) (cleanse-world) (graphical-repl))
 (define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
 
-(t)
+;(t)

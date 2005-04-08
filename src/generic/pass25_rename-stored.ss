@@ -73,7 +73,7 @@
 	 `[,tok ,id ,args 
 		(stored ,@(map list 
 			       (map cadr (cadr (assq tok subst)))
-			       (map cdr stored)))			    
+			       (map cadr stored)))			    
 		,(process-expr subst tok body)]))
 
 (lambda (prog)

@@ -152,7 +152,7 @@
 
 (define (r x)  ;; shorthand
   (let ((prog  x))
-    (parameterize ((tracer '()))
+    (parameterize ((tracer #t)) ;'()))
 		  (test-one prog))))
 
 ;; Token Run:  
