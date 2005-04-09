@@ -473,6 +473,30 @@
                   (loop (sub1 n)))))]))
 
 
+;[2001.07.15]
+(define file->slist
+  (lambda (filename)
+    (let ([p (open-input-file filename)])
+      (let loop ([exp (read p)])
+        (if (eof-object? exp)
+            (begin (close-input-port p)
+                   '())
+            (cons exp (loop (read p))))))))
+;; prints each expression to file.
+(define slist->file
+  (case-lambda 
+   [(slist fn) (slist->file slist fn 'write)]
+   [(slist fn method)
+    (let ([p (open-output-file fn 'replace)])
+      (for-each (lambda (x) 
+		  (case method
+		    [(write plain) (write x p)(newline p)]
+		    [(pretty pretty-print) (pretty-print x p)])
+		  (newline p))
+		slist)
+      (close-output-port p))]))
+
+
 (define file->string
   (lambda (filename)
     (let ([p (open-input-file filename)])
@@ -513,16 +537,6 @@
 ;; TODO: These need to by system independent, but aren't yet.
 
 
-
-;[2001.07.15]
-(define file->slist
-  (lambda (filename)
-    (let ([p (open-input-file filename)])
-      (let loop ([exp (read p)])
-        (if (eof-object? exp)
-            (begin (close-input-port p)
-                   '())
-            (cons exp (loop (read p))))))))
 
 
 (define insert-between
@@ -984,16 +998,25 @@
 
 ;; [2004.06.13] Tokens will be more complex later.
 (define (token-name? t) 
-  (or (symbol? t)
-      (and (pair? t) (symbol? (car t)) (integer? (cdr t)))))
+  ;(or (symbol? t)
+  ;(and (pair? t) (symbol? (car t)) (integer? (cdr t))))
+  (match t
+    [(tok ,name) #t]
+    [(tok ,name ,num) #t]
+    [,s (guard (symbol? s)) #t]
+    [else #f]))
 
 (define (token->name t)
   (match t
-	 [(,name . ,_) name]
+	 [(tok ,name) name]
+	 [(tok ,name ,num) name]
+	   ;[(,name . ,_) name]
 	 [,name name]))
 (define (token->subtok t)
   (match t
-	 [(,_ . ,subtok) subtok]
+	 [(tok ,name) 0]
+	 [(tok ,name ,num) num]
+	 ;[(,_ . ,subtok) subtok]
 	 [,_ 0]))
 
 
