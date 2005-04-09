@@ -474,6 +474,9 @@
 (define-syntax letcc
   (syntax-rules ()
     ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
+(define-syntax let/cc
+  (syntax-rules ()
+    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
 
 (define classify-list
   (lambda (ls)

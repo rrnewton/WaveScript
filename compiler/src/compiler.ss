@@ -324,74 +324,31 @@
          (m_token_result_7 (v) (soc-return v)))
        (startup f_token_tmpanch_8)))))
 
+
+
+
+
 (define (t)
-(rename-stored 
-'(desugar-let-stored-lang
+  (compile-simulate-alpha
+   '(cps-tokmac-lang
   '(program
-     (bindings (result_1 '3))
+     (bindings (result_2 '3))
      (nodepgm
        (tokens
-         (soc-start
-           subtok_ind
-           ()
-           (stored)
-           (begin (void)
-                  (soc-return result_1)
-                  (soc-finished)
-                  'multiple-bindings-for-token))
-         (node-start subtok_ind () (stored) (void))
-         (spread-global
-           subtok_ind
-           (g_parent g_origin g_hopcount g_version)
-           (stored
-             (stored_g_parent #0='#f)
-             (stored_g_origin #1='#f)
-             (stored_g_hopcount #2='#f)
-             (stored_g_version #3='#f)
-             (ver_2 (void))
-             (storedliftoption_3 '#f))
-           (if (if (not stored_g_hopcount)
-                   '#t
-                   (if (= '0 g_hopcount)
-                       (if (> g_version stored_g_version)
-                           (if (= g_version stored_g_version)
-                               (< g_hopcount stored_g_hopcount)
-                               '#f)
-                           '#f)
-                       '#f))
-               (begin (if (not storedliftoption_3)
-                          (begin (set! storedliftoption_3 '#t)
-                                 (set! ver_2 '0)))
-                      (set! ver_2 (+ '1 ver_2))
-                      (bcast (tok global-tree 0) (my-id) '1 ver_2)
-                      (timed-call
-                        1000
-                        (tok spread-global 0)
-                        '#f
-                        '#f
-                        '0
-                        '#f)
-                      (if (not (= g_hopcount '0))
-                          (begin (set! stored_g_parent g_parent)
-                                 (set! stored_g_origin g_origin)
-                                 (set! stored_g_hopcount g_hopcount)
-                                 (set! stored_g_version g_version))
-                          (void)))
-               (void)))
          (global-tree
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (stored_g_parent #0#)
-             (stored_g_origin #1#)
-             (stored_g_hopcount #2#)
-             (stored_g_version #3#))
-           (if (if (not stored_g_hopcount)
+             (storedgparent_8 #0='#f)
+             (storedgorigin_7 #1='#f)
+             (storedghopcount_6 #2='#f)
+             (storedgversion_5 #3='#f))
+           (if (if (not storedghopcount_6)
                    '#t
                    (if (= '0 g_hopcount)
-                       (if (> g_version stored_g_version)
-                           (if (= g_version stored_g_version)
-                               (< g_hopcount stored_g_hopcount)
+                       (if (> g_version storedgversion_5)
+                           (if (= g_version storedgversion_5)
+                               (< g_hopcount storedghopcount_6)
                                '#f)
                            '#f)
                        '#f))
@@ -402,12 +359,76 @@
                         (+ '1 g_hopcount)
                         g_version)
                       (if (not (= g_hopcount '0))
-                          (begin (set! stored_g_parent g_parent)
-                                 (set! stored_g_origin g_origin)
-                                 (set! stored_g_hopcount g_hopcount)
-                                 (set! stored_g_version g_version))
-                          (void)))
-               (void)))))))))
+                          (begin (set! storedgparent_8 g_parent)
+                                 (set! storedgorigin_7 g_origin)
+                                 (set! storedghopcount_6 g_hopcount)
+                                 (set! storedgversion_5 g_version)
+                                 #4=(void))
+                          (void))
+                      #4#)
+               (void)))
+         (spread-global
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_14 #0#)
+             (storedgorigin_13 #1#)
+             (storedghopcount_12 #2#)
+             (storedgversion_11 #3#)
+             (ver_10 (void))
+             (storedliftoption_9 '#f))
+           (if (if (not storedghopcount_12)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_11)
+                           (if (= g_version storedgversion_11)
+                               (< g_hopcount storedghopcount_12)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (if (not storedliftoption_9)
+                          (begin (set! storedliftoption_9 '#t)
+                                 (set! ver_10 '0)
+                                 #4#))
+                      (set! ver_10 (+ '1 ver_10))
+                      (bcast (tok global-tree '0) (my-id) '1 ver_10)
+                      (timed-call
+                        1000
+                        (tok spread-global 0)
+                        '#f
+                        '#f
+                        '0
+                        '#f)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_14 g_parent)
+                                 (set! storedgorigin_13 g_origin)
+                                 (set! storedghopcount_12 g_hopcount)
+                                 (set! storedgversion_11 g_version)
+                                 #4#)
+                          (void))
+                      #4#)
+               (void)))
+         (node-start subtok_ind () (stored) (void))
+         (soc-start
+           subtok_ind
+           ()
+           (stored)
+           (begin (void)
+                  (soc-return result_2)
+                  (soc-finished)
+                  'multiple-bindings-for-token
+                  #4#))))))))
+
 
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
+
+(define (ra tm) ;; shorthand
+  (let ((cleaned (cleanup-token-machine tm)))
+  (let ([comped (compile-simulate-alpha tm)])
+    (slist->file (list comped) "_genned_node_code.ss" 'pretty)
+;    (load "_genned_node_code.ss")
+    (if (not node-code)  (error "node-code not defined!"))
+    (disp "NODE CODE:" node-code)
+    (start-alpha-sim node-code 10.0 'simple)
+    )))

@@ -7,6 +7,7 @@
 ;; This returns:
 ;; 1) meta-token-handler of type (msg-object, vtime -> ())
 ;; 2) a cost-table mapping toknames to vtime costs
+;(define node-code #f)
 (define (node-code this)
   (define-structure (tokstore))
   "This is the simulation seed."
@@ -16,127 +17,9 @@
            ((current-sense-function)
             (node-pos (simobject-node this))))])
     (let* ()
-      (letrec ([node-start
-                (lambda (current-vtime subtok-index)
-                  (let* (#0=(the-store (simobject-token-store this))
-                         [this-tokname
-                          (cons 'node-start . #1=(subtok-index))]
-                         .
-                         #2=((old-outgoing
-                               (simobject-outgoing-msg-buf this))
-                             (old-local (simobject-local-msg-buf this))))
-                    #3="Is there already an allocated token object?:"
-                    (let #4=((tokobj (hashtab-get the-store this-tokname)))
-                      (if #5=(not tokobj)
-                          (begin #6="If not, then we allocate that token object..."
-                                 #7=" setting the invoke counter to zero."
-                                 (set! tokobj (vector 0))
-                                 .
-                                 #8=((hashtab-set!
-                                       the-store
-                                       this-tokname
-                                       tokobj))))
-                      #9=(set-simobject-outgoing-msg-buf! this '())
-                      #10=(set-simobject-local-msg-buf! this '())
-                      (display "N")
-                      .
-                      #11=((set-simobject-outgoing-msg-buf!
-                             this
-                             (append
-                               (reverse (simobject-outgoing-msg-buf this))
-                               old-outgoing))
-                           (set-simobject-local-msg-buf!
-                             this
-                             (append
-                               (reverse (simobject-local-msg-buf this))
-                               old-local))
-                           (void)))))]
-               [soc-start
-                (lambda (current-vtime subtok-index)
-                  (let* (#0# [this-tokname (cons 'soc-start . #1#)] . #2#)
-                    #3#
-                    (let #4#
-                      (if #5#
-                          (begin #6# #7# (set! tokobj (vector 0)) . #8#))
-                      #9#
-                      #10#
-                      (begin (printf "S")
-                             (set-simobject-local-msg-buf!
-                               this
-                               (cons (make-simevt
-                                       #f
-                                       3
-                                       (bare-msg-object
-                                         'tok1
-                                         (list)
-                                         current-vtime))
-                                     (simobject-local-msg-buf this))))
-                      .
-                      #11#)))]
-               [tok1
-                (lambda (current-vtime subtok-index)
-                  (let* (#0# [this-tokname (cons 'tok1 . #1#)] . #2#)
-                    #3#
-                    (let #4#
-                      (if #5#
-                          (begin #6# #7# (set! tokobj (vector 0)) . #8#))
-                      #9#
-                      #10#
-                      (begin (display ".")
-                             (set-simobject-outgoing-msg-buf!
-                               this
-                               (cons (make-simevt
-                                       #f
-                                       2
-                                       (bare-msg-object
-                                         'tok2
-                                         (list "!")
-                                         current-vtime))
-                                     (simobject-local-msg-buf this))))
-                      .
-                      #11#)))]
-               [tok2
-                (lambda (current-vtime subtok-index x)
-                  (let* (#0# [this-tokname (cons 'tok2 . #1#)] . #2#)
-                    #3#
-                    (let #4#
-                      (if #5#
-                          (begin #6# #7# (set! tokobj (vector 0)) . #8#))
-                      #9#
-                      #10#
-                      (set-simobject-timed-token-buf!
-                        this
-                        (cons (make-simevt
-                                (+ 500 current-vtime)
-                                1
-                                (bare-msg-object
-                                  'tok3
-                                  (list x)
-                                  current-vtime))
-                              (simobject-timed-token-buf this)))
-                      .
-                      #11#)))]
-               [tok3
-                (lambda (current-vtime subtok-index y)
-                  (let* (#0# [this-tokname (cons 'tok3 . #1#)] . #2#)
-                    #3#
-                    (let #4#
-                      (if #5#
-                          (begin #6# #7# (set! tokobj (vector 0)) . #8#))
-                      #9#
-                      #10#
-                      (display y)
-                      .
-                      #11#)))])
+      (letrec ()
         (let ([dyndispatch_table (make-default-hash-table)])
-          (begin (hashtab-set!
-                   dyndispatch_table
-                   'node-start
-                   node-start)
-                 (hashtab-set! dyndispatch_table 'soc-start soc-start)
-                 (hashtab-set! dyndispatch_table 'tok1 tok1)
-                 (hashtab-set! dyndispatch_table 'tok2 tok2)
-                 (hashtab-set! dyndispatch_table 'tok3 tok3))
+          (begin)
           (values
             (lambda (msgob current-vtime)
               (mvlet
@@ -151,11 +34,8 @@
                     current-vtime
                     subtok
                     (msg-object-args msgob)))))
-            '((node-start 1)
-              (soc-start 3)
-              (tok1 3)
-              (tok2 2)
-              (tok3 1))))))))
+            '()))))))
+
 
 ;; #f trumps any time, EXCEPT 0, 0 trumps all.
 (define (evntlessthan a b)
@@ -173,9 +53,20 @@
 (define global-graph #f)
 
 
+;; Global parameter contains continuation for exiting the alpha-sim.  Invoked by soc-finished.
+(define escape-alpha-sim
+  (make-parameter (lambda (x) (error 'escape-alpha-sim "parameter holds no continuation"))
+		  (lambda (k) (if (procedure? k) k
+				  (error 'escape-alpha-sim "bad continuation: ~a" k)))))
+;; Global parameter to hold globally returned values:
+(define soc-return-buffer
+  (make-parameter '()
+		  (lambda (ls) ls)))
+
 ;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.
 ;; I've written two different engines at different levels of time-modeling complexity.
-(define (run-alpha-sim . args)
+(define (start-alpha-sim node-code-fun . args)
+  (disp "Start-alpha-sim" node-code-fun args)
   ;; In some scheme's these internal defines don't evaluate in order!!
   (let* ([logfile "__temp.log"]
 	 [simple-scheduler #f]
@@ -203,8 +94,12 @@
   (disp "RUNNING ALPH" args simple-scheduler)
 
   (if (file-exists? logfile) (delete-file logfile))
+ 
+  (let/cc exitk
   (parameterize ([simulation-logger (open-output-file logfile 'replace)]
-		 [simulation-logger-count 0])
+		 [simulation-logger-count 0]
+		 [escape-alpha-sim exitk]
+		 [soc-return-buffer '()])
 		(printf "Running simulator alpha (~a version) (logfile ~s)" 
 			(if simple-scheduler 'simple 'full)
 			logfile)
@@ -218,12 +113,14 @@
 
 	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
 	(if simple-scheduler
-	    (run-alpha-simple-scheduler sim stopping-time?)
-	    (run-alpha-full-scheduler sim stopping-time?))
+	    (run-alpha-simple-scheduler sim node-code-fun stopping-time?)
+	    (run-alpha-full-scheduler sim node-code-fun stopping-time?))
 		   
     ;; Out of main loop:
-    (if (simulation-logger) (close-output-port (simulation-logger)))
-    )))
+    (if (simulation-logger) (close-output-port (simulation-logger)))))
+  ;; Out of let/cc:
+    (printf "~nTotal globally returned values:~n ~a~n" (reverse (soc-return-buffer)))
+    ))
 
 
 ;; From Swindle:
@@ -346,9 +243,13 @@
   (sqrt (+ (expt (- (car a) (car b)) 2)
            (expt (- (cadr a) (cadr b)) 2)))]
 
+[define (soc-return x)
+  (printf "~n  SOCRETURN: ~a ~n" x)
+  (soc-return-buffer (cons x (soc-return-buffer)))]
 
-
-
+[define (soc-finished)
+  (printf "~nSOC-FINISHED!~n")(flush-output-port)
+  ((escape-alpha-sim))]
 
 (define (t)
   (alpha-it
@@ -371,6 +272,7 @@
   [soc-start () (display "S")]
   [node-start () (display "N")])
 
+;; Uses global "node-code" binding.
 (define (alpha-repl)
   (printf "sim> ") (flush-output-port)
   (let ((input (read)))
@@ -379,7 +281,7 @@
 	    (let ((cleaned (cleanup-token-machine input)))
 	      (disp "got cleaned:")(pp cleaned)
 	      (alpha-it cleaned)
-	      (run-alpha-sim 'simple 10.0)
+	      (start-alpha-sim node-code 10.0 'simple)
 	      (alpha-repl)))))
 
 (define (alpha-it tm)
@@ -388,10 +290,7 @@
     (eval `(define alph ',comped))
     (eval comped)))
 
-(define (ra tm) ;; shorthand
-  (let ((cleaned (cleanup-token-machine tm)))
-    (alpha-it tm)
-    (run-alpha-sim 'simple 10.0)))
 
 
-;     (begin (t) (time (run-alpha-sim 10.0)))
+
+;     (begin (t) (time (start-alpha-sim 10.0)))

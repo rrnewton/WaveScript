@@ -37,10 +37,11 @@
 
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
-;(parameterize ((current-directory "chez"))
-(eval-when (compile eval) (cd "chez"))
-(include "helpers.ss") 
-(eval-when (compile eval) (cd ".."))
+;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
+;; therefore we don't need to change directories.
+;(eval-when (compile eval) (cd "chez"))
+(include "chez/helpers.ss")
+;(eval-when (compile eval) (cd ".."))
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 (define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
@@ -213,3 +214,4 @@
 
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
+

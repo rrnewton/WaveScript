@@ -13,7 +13,7 @@
 ;; It returns this simulation object as a thunk.
 ;; The thunk produces simevt's, but with action-thunks in the msgobj field 
 (define build-node-sim
-  (lambda (ob world node-code)
+  (lambda (ob world node-code-fun)
     ;; the scheduling queue contains event entries of the format:
     ;;   [<vtime-to-exec>, <duration>, <msg-object>]
     ;; which are also returned from sim-seed in this format.
@@ -207,7 +207,7 @@
 
     ;;========================================    
     ;; MAIN BODY:
-    (mvlet ([(mhandler cost-table) (node-code ob)])
+    (mvlet ([(mhandler cost-table) (node-code-fun ob)])
     ;; Install the scheduler and handler incase anybody else wants to use them:
     (set-simobject-scheduler! ob private-scheduler)
     (set-simobject-meta-handler! ob mhandler)
@@ -315,14 +315,14 @@
 
 
 
-(define (run-alpha-full-scheduler sim stopping-time?)
+(define (run-alpha-full-scheduler sim node-code-fun stopping-time?)
   (let* ([soc (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 			       (simworld-all-objs sim)))]
 	 [node-sims
 	  (map (lambda (ob)
 		 (build-node-sim ob
 				 sim ;; the world
-				 node-code ;; TODO: read from file
+				 node-code-fun ;; TODO: read from file
 				 ))
 	       (simworld-all-objs sim))])
 	;; As this loop runs, the global (main-sim-loop) time is just the start time of the last executed action.

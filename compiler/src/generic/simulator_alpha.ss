@@ -419,6 +419,7 @@
 			  (simobject-local-msg-buf this)))]
 
 		  [(bcast ,rator ,[rand*] ...)
+                   (disp "bout to look up: Tok name:" (token->name rator) " from " rator)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
 				       ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
@@ -602,8 +603,6 @@
 
 	`(define (node-code this)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
-	   "This is the simulation seed."
-	   "It returns an initial set of scheduled actions for the simulator to execute."	   
 	   ;; Need to update the sensing machinery...
 	   (let ([local-sense (lambda ()
 				((current-sense-function)
@@ -624,9 +623,8 @@
 		     (lambda (msgob current-vtime)
 		       (mvlet ([(name subtok)
 				(let ((tok (msg-object-token msgob)))
-				  (if (pair? tok) 
-				      (values (car tok) (cdr tok))
-				      (values tok 0)))])
+				  (values (token->name tok)
+					  (token->subtok tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
 				;; Invoke:
 				(apply handler current-vtime subtok 

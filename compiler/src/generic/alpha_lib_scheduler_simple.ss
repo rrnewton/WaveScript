@@ -5,7 +5,7 @@
 
 ;; This is written in totally imperative style.
 ;; One buffer and one vtime, no reason to thread them otherwise.
-(define (run-alpha-simple-scheduler sim stopping-time?)
+(define (run-alpha-simple-scheduler sim node-code-fun stopping-time?)
   
 ;  (define SOC (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 ;			   (simworld-all-objs sim))))
@@ -64,7 +64,7 @@
 
   ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
-    (mvlet ([(mhandler _) (node-code ob)])
+	(mvlet ([(mhandler _) (node-code-fun ob)])
 
     ;; Install null scheduler and the handler:
     (set-simobject-scheduler! ob #f)

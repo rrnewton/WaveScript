@@ -1,4 +1,4 @@
-
+ 
 (module simulator_alpha mzscheme
   (require 
    (all-except "constants.ss" test-this these-tests)
@@ -50,10 +50,6 @@
   (define (make-default-hash-table) (make-hash-table 'equal))
   (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
   (define hashtab-set! hash-table-put!)
-
-  ;; These need to be defined for the module system to be happy.
-  (define soc-return 'not-bound-yet-in-plt)
-  (define soc-finished 'not-bound-yet-in-plt)
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
   (include (build-path "generic" "simulator_alpha.ss"))
@@ -70,3 +66,5 @@
   )
 
 ;     (require simulator_alpha)
+
+
