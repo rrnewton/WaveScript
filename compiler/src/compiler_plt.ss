@@ -9,7 +9,7 @@
 ;(module compiler_plt mzscheme
  
 (require (lib "include.ss")
-         (all-except "plt/helpers.ss" id mvlet rec))
+         (all-except "plt/helpers.ss" id rec))
 
 (require "plt/constants.ss"
          "plt/iu-match.ss"
@@ -90,7 +90,7 @@
 
 (require
 ; (all-except "plt/simulator_nought.ss" these-tests test-this)
-; (all-except "plt/simulator_alpha.ss" these-tests test-this)
+ (all-except "plt/simulator_alpha.ss" these-tests test-this)
  (all-except "plt/alpha_lib.ss" these-tests test-this)
  )
 ;  (require "plt/demo_display.ss")
@@ -155,26 +155,10 @@
 
 (load/use-compiled "generic/repl.ss")
 
-
-
-;; From lang05.ss
-;; Doesn't work:
-#;(define-syntax lazy-letrec
-  (syntax-rules ()
-    [(_ ([lhs rhs] ...) body)        
-     (letrec ([lhs 
-               (lambda () 
-                 (let-syntax ([lhs (identifier-syntax (lhs))] ...)
-                   rhs))]
-              ...)
-       (let-syntax ([lhs (identifier-syntax (lhs))] ...)
-         body))]))
-
 (define-syntax lazy-letrec
   (syntax-rules ()
     [(_ ([lhs rhs] ...) body ...)        
      (letrec ([lhs rhs] ...) body ...)]))
-
 
 
 (define (load_loader)
@@ -189,6 +173,10 @@
 ;(begin (display ) (newline) (exit))
 
 ;(begin (init-graphics) (cleanse-world) (graphical-repl))
-(define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
+;(define (start) (begin (init-graphics) (cleanse-world) (graphical-repl))) ;; shorthand
 
 ;(t)
+
+;(ra '(tokens (node-start () (soc-return 3))))
+
+

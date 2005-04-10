@@ -240,7 +240,7 @@
 
 	     [(let ([,lhs ,[rhs]]) ,bodies ...)
 	      `(let ([,lhs ,rhs])
-		 (make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
+		 ,(make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
 
 	     ;; Here we have letrec style binding.  Probably shouldn't.
 	     [(let-stored ([,lhs* ,rhs*] ...) ,bodies ...)
@@ -294,12 +294,19 @@
 			      (car seed_vals)))
 		    (aggr (if (null? rator_toks) #f
 			      (car rator_toks))))
+
+		(define (fix-token t)
+		  (match t
+			 [,s (guard (symbol? s)) `(tok ,s 0)]
+			 [(tok ,t) `(tok ,t 0)]
+			 [(tok ,t ,n) `(tok ,t ,n)]))
+
 		(if aggr (check-tok 'return-aggr aggr))
 		`(return ,expr 
-			 (to ,memb) 
-			 (via ,parent) 
+			 (to ,(fix-token memb)) 
+			 (via ,(fix-token parent))
 			 (seed ,seed) 
-			 (aggr ,aggr)))]
+			 (aggr ,(if aggr (fix-token aggr) aggr))))]
 
 	     ;; This fills in defaults for missing return parameters:
 	     [(return ,thing ,stuff ...)
@@ -321,6 +328,11 @@
 			,(if (assq 'aggr stuff)
 			     (assq 'aggr stuff)
 			     '(aggr #f))))]
+
+
+	     ;; For now this is just syntactic sugar for routing on the global tree:
+	     [(soc-return ,x)
+	      (loop `(return ,x (to SOC-return-handler) (via global-tree)))]
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
 

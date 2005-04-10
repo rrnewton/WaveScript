@@ -12,23 +12,23 @@
   (match expr
 ;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
 
-	 [(quote ,const) `(quote ,const)]
-	 ;; This is for recurring on tokens:
-	 [,num (guard (number? num)) num]
-	 [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
-	 [(tok ,t ,[e]) `(tok ,t ,e)]
-
-	 ;; Local stored var references and mutations.
-	 [,var (guard (symbol? var) (assq var this-subst))
-	       (cadr (assq var this-subst))]
-	 [(set! ,var ,[x])
-	  (guard (symbol? var) (assq var this-subst))
-	  `(set! ,(cadr (assq var this-subst)) ,x)]
-	 ;; External stored references:
-	 [(ext-ref ,t ,v)
-	  `(ext-ref ,t ,(cadr (assq v (cadr (assq t subst)))))]
-	 [(ext-set ,t ,v ,[x])
-	  `(ext-set! ,t ,(cadr (assq v (cadr (assq t subst)))) ,x)]
+    [(quote ,const) `(quote ,const)]
+    ;; This is for recurring on tokens:
+    [,num (guard (number? num)) num]
+    [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
+    [(tok ,t ,[e]) `(tok ,t ,e)]
+    
+    ;; Local stored var references and mutations.
+    [,var (guard (symbol? var) (assq var this-subst))
+      (cadr (assq var this-subst))]
+    [(set! ,var ,[x])
+     (guard (symbol? var) (assq var this-subst))
+     `(set! ,(cadr (assq var this-subst)) ,x)]
+    ;; External stored references:
+    [(ext-ref ,t ,v)
+     `(ext-ref ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))))]
+    [(ext-set ,t ,v ,[x])
+	  `(ext-set! ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))) ,x)]
 	 
 	 [,var (guard (symbol? var)) var]
 	 [(set! ,v ,[x]) 

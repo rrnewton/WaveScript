@@ -422,13 +422,15 @@
 
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
-
+  
 (define (ra tm) ;; shorthand
   (let ((cleaned (cleanup-token-machine tm)))
-  (let ([comped (compile-simulate-alpha tm)])
+  (let ([comped (compile-simulate-alpha cleaned)])
     (slist->file (list comped) "_genned_node_code.ss" 'pretty)
-;    (load "_genned_node_code.ss")
-    (if (not node-code)  (error "node-code not defined!"))
-    (disp "NODE CODE:" node-code)
+    (load "_genned_node_code.ss")
+    (disp "NODE CODE:" node-code "global: " (eval 'node-code) " eq: " (eq? node-code (eval 'node-code)))
+    (if (not node-code)  (error 'ra "node-code not defined!"))
     (start-alpha-sim node-code 10.0 'simple)
     )))
+
+;(ra '(tokens))

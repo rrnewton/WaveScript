@@ -14,8 +14,11 @@
    ;; Would like to remove this dependency eventually:
    (all-except "simulator_alpha.ss" ) 
    )
-  (provide (all-defined)
-           (all-from "simulator_alpha.ss"))
+
+  (provide (all-defined))
+;           (all-from "simulator_alpha.ss"))
+  ;; ONLY provide this:
+;  (provide start-alpha-sim)
   
   (include (build-path "generic" "alpha_lib.ss"))
   (include (build-path "generic" "alpha_lib_scheduler.ss"))
@@ -38,7 +41,7 @@
 ;    (begin (require "alpha_lib.ss") (time (run-alpha-sim 15.0)))
 
 
-(define (node-code this)
+#;(define (node-code this)
   (define-structure (tokstore
                      storedgparent_21
                      storedgorigin_20
@@ -291,5 +294,5 @@
               (node-start 1)
               (soc-start 4))))))))
 
-(require alpha_lib)
-(define (t) (start-alpha-sim node-code 'simple 10.0))
+;(require alpha_lib)
+;(define (t) (start-alpha-sim node-code 'simple 10.0))
