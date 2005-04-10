@@ -7,34 +7,8 @@
 ;; This returns:
 ;; 1) meta-token-handler of type (msg-object, vtime -> ())
 ;; 2) a cost-table mapping toknames to vtime costs
-;(define node-code #f)
-(define (node-code this)
-  (define-structure (tokstore))
-  "This is the simulation seed."
-  "It returns an initial set of scheduled actions for the simulator to execute."
-  (let ([local-sense
-         (lambda ()
-           ((current-sense-function)
-            (node-pos (simobject-node this))))])
-    (let* ()
-      (letrec ()
-        (let ([dyndispatch_table (make-default-hash-table)])
-          (begin)
-          (values
-            (lambda (msgob current-vtime)
-              (mvlet
-                (((name subtok)
-                  (let ([tok (msg-object-token msgob)])
-                    (if (pair? tok)
-                        (values (car tok) (cdr tok))
-                        (values tok 0)))))
-                (let ([handler (hashtab-get dyndispatch_table name)])
-                  (apply
-                    handler
-                    current-vtime
-                    subtok
-                    (msg-object-args msgob)))))
-            '()))))))
+(define node-code #f)
+
 
 
 ;; #f trumps any time, EXCEPT 0, 0 trumps all.
