@@ -65,6 +65,119 @@
         )
   )
 
-;     (require simulator_alpha)
+     (require simulator_alpha)
 
+(compile-simulate-alpha 
+'(cps-tokmac-lang
+  '(program
+     (bindings (result_50 '3))
+     (nodepgm
+       (tokens
+         (returnhandler_53
+           retid
+           (destid flag val toind viaind)
+           (stored (acc_55 '#f))
+           (let ([oldacc acc_55])
+             (begin (set! acc_55 '())
+                    (if (= (my-id)
+                           (ext-ref
+                             (tok global-tree viaind)
+                             storedgorigin_58))
+                        (call (tok soc-return-handler toind)
+                              (cons val oldacc))
+                        (bcast
+                          (tok returnhandler_53 retid)
+                          (ext-ref
+                            (tok global-tree viaind)
+                            storedgparent_59)
+                          '333
+                          (cons val oldacc)
+                          '0
+                          '0))
+                    (void))))
+         (global-tree
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_59 #0='#f)
+             (storedgorigin_58 #1='#f)
+             (storedghopcount_57 #2='#f)
+             (storedgversion_56 #3='#f))
+           (if (if (not storedghopcount_57)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_56)
+                           (if (= g_version storedgversion_56)
+                               (< g_hopcount storedghopcount_57)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (bcast
+                        (tok global-tree subtok_ind)
+                        (my-id)
+                        g_origin
+                        (+ '1 g_hopcount)
+                        g_version)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_59 g_parent)
+                                 (set! storedgorigin_58 g_origin)
+                                 (set! storedghopcount_57 g_hopcount)
+                                 (set! storedgversion_56 g_version)
+                                 (void))
+                          (void))
+                      (void))
+               (void)))
+         (spread-global
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_65 #0#)
+             (storedgorigin_64 #1#)
+             (storedghopcount_63 #2#)
+             (storedgversion_62 #3#)
+             (ver_61 (void))
+             (storedliftoption_60 '#f))
+           (if (if (not storedghopcount_63)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_62)
+                           (if (= g_version storedgversion_62)
+                               (< g_hopcount storedghopcount_63)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (if (not storedliftoption_60)
+                          (begin (set! storedliftoption_60 '#t)
+                                 (set! ver_61 '0)
+                                 (void))
+                          (void))
+                      (set! ver_61 (+ '1 ver_61))
+                      (bcast (tok global-tree '0) (my-id) '1 ver_61)
+                      (timed-call
+                        1000
+                        (tok spread-global 0)
+                        '#f
+                        '#f
+                        '0
+                        '#f)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_65 g_parent)
+                                 (set! storedgorigin_64 g_origin)
+                                 (set! storedghopcount_63 g_hopcount)
+                                 (set! storedgversion_62 g_version)
+                                 (void))
+                          (void))
+                      (void))
+               (void)))
+         (node-start subtok_ind () (stored) (void))
+         (soc-start
+           subtok_ind
+           ()
+           (stored)
+           (let ([aggrid_52 (+ (* '1000 '0) '0)])
+             (call (tok returnhandler_53 aggrid_52)
+                   '333
+                   result_50
+                   '0
+                   '0))))))))
 

@@ -218,10 +218,13 @@
 
 (define (id x) x)
 
+;; This is done safely so that it cannot conflict with the BASE_ID or NULL_ID.
 (define (random-node) 
   (make-node 
    (let loop ((id (random 1000)))
-     (if (eq? id BASE_ID) (loop (random 1000))
+     (if (or (eq? id BASE_ID) 
+	     (eq? id NULL_ID))
+	 (loop (random 1000))
 	 id))
    (list (random world-xbound)
 	 (random world-ybound))
@@ -356,6 +359,8 @@
 
 
 (define (process-statement current-handler-name tokbinds stored cost-table)
+  (disp "PROCSTATMENT: COSTTABLE" (map car cost-table))
+  
   (let ([allstored (apply append (map cadr stored))])
     (letrec ([find-which-stored
 	      (lambda (v)
@@ -411,11 +416,15 @@
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
-		   `(set-simobject-local-msg-buf! this
-		    (cons (make-simevt #f ;; No scheduled time, ASAP
-				  ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
-				  (bare-msg-object ',rator (list ,@rand*) current-vtime))
-			  (simobject-local-msg-buf this)))]
+                   (let ((tok (assq (token->name rator) cost-table)))
+                     (if (not tok)
+                         (error 'compile-simulate-alpha "No cost-table entry for token: ~a name: ~a" 
+                                rator (token->name rator)))
+                     `(set-simobject-local-msg-buf! this
+                           (cons (make-simevt #f ;; No scheduled time, ASAP
+                                              ,(cadr tok) ;; Time cost
+                                              (bare-msg-object ',rator (list ,@rand*) current-vtime))
+                                 (simobject-local-msg-buf this))))]
 
 		  [(bcast ,rator ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
@@ -539,7 +548,6 @@
   (let* ([allstored
           (map (lambda (bind)
 		 (mvlet ([(tok id args stored bindings body) (destructure-tokbind bind)])
-			(disp "STORED: " (map car stored))
 			(list tok (map car stored))))
                tbinds)]
 			 
@@ -594,27 +602,39 @@
       [(program (bindings ,nodebinds ...)
 		(nodepgm (tokens ,nodetoks ...) ;(startup ,starttoks ...)
 			 ))
-;	`(lambda (soc-return soc-finished SOC-processor this sim)
-       (define cost-table 
+       ;; Here we hack in an extra handler for doing SOC-return's...
+       (set! nodetoks
+	     (cons `[SOC-return-handler (x)
+		       (if (= ',BASE_ID (my-id))
+			   (simulator-soc-return x)				  
+			   (error 'SOC-return-handler
+				  "ran on non-base node! id: ~a"
+				  (my-id)))]
+		   nodetoks))
+
+       (let  ([cost-table 
 	 ;; More cluginess, just stick in these hand-added handlers:
-	 (cons '(SOC-return-handler 0)
+;	 (cons '(SOC-return-handler 0)
 	 (map (lambda (tbind)
                 (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
                        (list tok 
                              (compute-handler-duration body))))
-	      nodetoks)))
+	      nodetoks)])
+         
+         (disp "COSTTABLE" (map car cost-table))
+
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks cost-table)])
 
 	      ;; Here we hack an extra handler into tbinds:
-	      (set! tbinds
-		    (cons `[SOC-return-handler
-			    (lambda (current-vtime subtok-index x)
-			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
-				  (soc-return x)				  
-				  (error 'SOC-return-handler
-					 "ran on non-base node! id: ~a"
-					 (node-id (simobject-node this)))))]
-			  tbinds))
+; 	      (set! tbinds
+; 		    (cons `[SOC-return-handler
+; 			    (lambda (current-vtime subtok-index x)
+; 			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
+; 				  (simulator-soc-return x)				  
+; 				  (error 'SOC-return-handler
+; 					 "ran on non-base node! id: ~a"
+; 					 (node-id (simobject-node this)))))]
+; 			  tbinds))
 
 	`(define (node-code this)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
@@ -652,10 +672,9 @@
 		     ;; Then the cost-table.
 		     ',cost-table
 		     )
-		 ))))))]
+		 )))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
-
 
 
 ;; ======================================================================

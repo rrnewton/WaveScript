@@ -79,7 +79,13 @@
 (define SPECIAL_RETURN_TOKEN 'RETTT)
 
 ;; Id number for the base-station / Source-of-Control (SOC)
-(define BASE_ID 0)
+;; I don't want to use negative numbers. I set this high for now
+;; so it should not conflict with any other ID -- it's an upper bound.  
+;; (Right now other ids are 1-1000)
+(define BASE_ID 10000)  
+;; We "option lift" the ID type by having this number signify "NULL":  
+;; This is because our backend is not sophisticated enough yet to have real option types.
+(define NULL_ID 0)
 
 ;; In milliseconds, this is effectively the epoch size.  
 ;; Nodes aggregate and resend at this frequency.
@@ -93,7 +99,6 @@
 ;; Vtimes:
 (define RADIO_DELAY 0)
 (define PROCESSING_TIME 0)
-
 
 
 ;;======================================================================

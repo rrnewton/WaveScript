@@ -179,4 +179,116 @@
 
 ;(ra '(tokens (node-start () (soc-return 3))))
 
-
+(ra
+'(cps-tokmac-lang
+  '(program
+     (bindings (result_2 '3))
+     (nodepgm
+       (tokens
+         (returnhandler_5
+           retid
+           (destid flag val toind viaind)
+           (stored (acc_7 '#f))
+           (let* ([oldacc acc_7])
+             (begin (set! acc_7 '())
+                    (if (= (my-id)
+                           (ext-ref
+                             (tok global-tree viaind)
+                             storedgorigin_10))
+                        (call (tok soc-return-handler toind)
+                              (cons val oldacc))
+                        (bcast
+                          (tok returnhandler_5 retid)
+                          (ext-ref
+                            (tok global-tree viaind)
+                            storedgparent_11)
+                          '333
+                          (cons val oldacc)
+                          '0
+                          '0))
+                    #0=(void))))
+         (global-tree
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_11 #1='#f)
+             (storedgorigin_10 #2='#f)
+             (storedghopcount_9 #3='#f)
+             (storedgversion_8 #4='#f))
+           (if (if (not storedghopcount_9)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_8)
+                           (if (= g_version storedgversion_8)
+                               (< g_hopcount storedghopcount_9)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (bcast
+                        (tok global-tree subtok_ind)
+                        (my-id)
+                        g_origin
+                        (+ '1 g_hopcount)
+                        g_version)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_11 g_parent)
+                                 (set! storedgorigin_10 g_origin)
+                                 (set! storedghopcount_9 g_hopcount)
+                                 (set! storedgversion_8 g_version)
+                                 #0#)
+                          (void))
+                      #0#)
+               (void)))
+         (spread-global
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_17 #1#)
+             (storedgorigin_16 #2#)
+             (storedghopcount_15 #3#)
+             (storedgversion_14 #4#)
+             (ver_13 (void))
+             (storedliftoption_12 '#f))
+           (if (if (not storedghopcount_15)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_14)
+                           (if (= g_version storedgversion_14)
+                               (< g_hopcount storedghopcount_15)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (if (not storedliftoption_12)
+                          (begin (set! storedliftoption_12 '#t)
+                                 (set! ver_13 '0)
+                                 #0#))
+                      (set! ver_13 (+ '1 ver_13))
+                      (bcast (tok global-tree '0) (my-id) '1 ver_13)
+                      (timed-call
+                        1000
+                        (tok spread-global 0)
+                        '#f
+                        '#f
+                        '0
+                        '#f)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_17 g_parent)
+                                 (set! storedgorigin_16 g_origin)
+                                 (set! storedghopcount_15 g_hopcount)
+                                 (set! storedgversion_14 g_version)
+                                 #0#)
+                          (void))
+                      #0#)
+               (void)))
+         (node-start subtok_ind () (stored) (void))
+         (soc-start
+           subtok_ind
+           ()
+           (stored)
+           (let* ([aggrid_4 (+ (* '1000 '0) '0)])
+             (call (tok returnhandler_5 aggrid_4)
+                   '333
+                   result_2
+                   '0
+                   '0)))))))
+)

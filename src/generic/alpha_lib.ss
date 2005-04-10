@@ -215,11 +215,11 @@
   (sqrt (+ (expt (- (car a) (car b)) 2)
            (expt (- (cadr a) (cadr b)) 2)))]
 
-[define (soc-return x)
+[define (simulator-soc-return x)
   (printf "~n  SOCRETURN: ~a ~n" x)
   (soc-return-buffer (cons x (soc-return-buffer)))]
 
-[define (soc-finished)
+[define (simulator-soc-finished)
   (printf "~nSOC-FINISHED!~n")(flush-output-port)
   ((escape-alpha-sim))]
 

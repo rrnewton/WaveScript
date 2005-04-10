@@ -44,7 +44,8 @@
   (define-syntax with-values
       (syntax-rules ()
         ((_ P C) (call-with-values (lambda () P) C))))
-    (define-syntax syntax-lambda
+
+  (define-syntax syntax-lambda
       (lambda (x)
         (syntax-case x ()
           ((_ (Pat ...) Body0 Body ...)
@@ -52,6 +53,7 @@
              #'(lambda (X ...)
                  (with-syntax ((Pat X) ...)
                    Body0 Body ...)))))))
+
     (define-syntax with-temp
       (syntax-rules ()
         ((_ V Body0 Body ...)

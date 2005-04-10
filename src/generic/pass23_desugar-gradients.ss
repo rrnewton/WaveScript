@@ -82,9 +82,9 @@
     (define STORED_VERSION_ARG 'stored_g_version)
     
     ;; Call flags:
-    (define INIT 11)
-    (define LOCAL 22)
-    (define REMOTE 33)
+    (define INIT 111)
+    (define LOCAL 222)
+    (define REMOTE 333)
 
     (define (token->tokname t)
       (match t
@@ -139,7 +139,6 @@
 	       [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
 	       [(tok ,t ,[loop -> etb e])                (values etb `(tok ,t ,e))]
 	       [,other (error 'statictok "this is not a token: ~a" other)])))
-
 
 	    
     (define process-expr
@@ -225,23 +224,21 @@
 	       ;; When called remotely, this builds up the aggregation accumulator.
 	       ;; If there is no aggregation operator provided, it does the same thing except 
 	       ;; simply builds lists of results that are passed up to parents.
-	       (cons `[,return-handler retid (destid flag val toind viaind)
-		
-TODO		       
-;; USE DESTID
-
-		        (let-stored ([acc ,seed_exp])
- 		     ;; Must be initialized with the seed value before aggregation begins.
-;		     (if (= flag ,INIT)
-;			 (set! acc val)
-
+	       (cons `[,return-handler retid (destid flag val toind viaind)		
+		        (stored [acc ,seed_exp])
+			;; Only proceed if we are the intended destination.
+			(if (not (or (= destid ',NULL_ID) (= destid (my-id))))
+			    (void)
+			    ;; Must be initialized with the seed value before aggregation begins.
+					;		     (if (= flag ,INIT)
+					;			 (set! acc val)
 		       ;; If there is not an aggregator, the implicit aggregator forms a list of all results.
 		       ,(let ([fold (lambda (ac)
-				    (if aggr
-					`(subcall ,aggr val ,ac)
-					`(cons val ,ac)))]
-			    [theseed (if aggr seed_exp ''())])
-			`(if (= flag ,LOCAL) ;; This is the sign to send to upward:
+				      (if aggr
+					  `(subcall ,aggr val ,ac)
+					  `(cons val ,ac)))]
+			      [theseed (if aggr seed_exp ''())])
+			`(if (= flag ',LOCAL) ;; This is the sign to send to upward:
 			     (let ([oldacc acc])
 			       (set! acc ,theseed)
 			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
@@ -252,8 +249,11 @@ TODO
 				   ;; Otherwise, send it on up to the parent:
 				   ;; TODO: Should use "send_to" form here, but haven't implemented yet:
 				   (bcast (tok ,return-handler retid)
-					  (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
-					  ,(fold 'oldacc))))
+					  (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG) ;; destid
+					  ',REMOTE        ;; flag
+					  ,(fold 'oldacc) ;; val
+					  ,toind ,viaind  ;; toind, viaind
+					  )))
 			     ;; Otherwise we simply accumulate and wait.
 			     (set! acc ,(fold 'acc)))))]
 		     (append etb ttb vtb stb))     
@@ -263,7 +263,6 @@ TODO
 		 `(let ([,aggr_ID (+ (* ,MAX_SUBTOK ,toind) ,viaind)])
 		    ;; Just call off to the appropriate local aggregator:
 		    (call (tok ,return-handler ,aggr_ID) ',REMOTE ,expr ,toind ,viaind))))]
-
 
 	     ;; This is a local call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
@@ -315,6 +314,7 @@ TODO
 	     ))])
 
 	  loop)))
+    
 
     (define process-tokbind 
 	(lambda (env tokens tainted)

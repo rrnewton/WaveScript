@@ -16,7 +16,7 @@
          
          unknown-place noplace
          
-	 world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN BASE_ID
+	 world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN BASE_ID NULL_ID
 	 
 	 return-window-size
 
