@@ -7,9 +7,7 @@
 ;; This returns:
 ;; 1) meta-token-handler of type (msg-object, vtime -> ())
 ;; 2) a cost-table mapping toknames to vtime costs
-(define node-code #f)
-
-
+;(define node-code #f)
 
 ;; #f trumps any time, EXCEPT 0, 0 trumps all.
 (define (evntlessthan a b)
@@ -247,7 +245,7 @@
   [node-start () (display "N")])
 
 ;; Uses global "node-code" binding.
-(define (alpha-repl)
+#;(define (alpha-repl)
   (printf "sim> ") (flush-output-port)
   (let ((input (read)))
     (unless (eq? 'exit input)

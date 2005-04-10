@@ -12,11 +12,10 @@
   (provide (all-defined))
   )
 
-;(require pass25_rename-stored)
+(require pass25_rename-stored)
 
-#;(define (t)
 (rename-stored 
-'(desugar-let-stored-lang
+ '(desugar-let-stored-lang
   '(program
      (bindings (result_1 '3))
      (nodepgm
@@ -26,7 +25,12 @@
            ()
            (stored)
            (begin (void)
-                  (soc-return result_1)
+                  (let ([aggrid_4 (+ (* '1000 '0) '0)])
+                    (call (tok returnhandler_3 aggrid_4)
+                          '33
+                          result_1
+                          '0
+                          '0))
                   (soc-finished)
                   'multiple-bindings-for-token))
          (node-start subtok_ind () (stored) (void))
@@ -38,8 +42,8 @@
              (stored_g_origin #1='#f)
              (stored_g_hopcount #2='#f)
              (stored_g_version #3='#f)
-             (ver_2 (void))
-             (storedliftoption_3 '#f))
+             (ver_2 . #4=((void)))
+             (storedliftoption_6 . #5=('#f)))
            (if (if (not stored_g_hopcount)
                    '#t
                    (if (= '0 g_hopcount)
@@ -49,8 +53,8 @@
                                '#f)
                            '#f)
                        '#f))
-               (begin (if (not storedliftoption_3)
-                          (begin (set! storedliftoption_3 '#t)
+               (begin (if (not storedliftoption_6)
+                          (begin (set! storedliftoption_6 . #6=('#t))
                                  (set! ver_2 '0)))
                       (set! ver_2 (+ '1 ver_2))
                       (bcast (tok global-tree 0) (my-id) '1 ver_2)
@@ -97,4 +101,28 @@
                                  (set! stored_g_hopcount g_hopcount)
                                  (set! stored_g_version g_version))
                           (void)))
-               (void)))))))))
+               (void)))
+         (returnhandler_3
+           retid
+           (flag val toind viaind)
+           (stored (acc . #4#) (storedliftoption_5 . #5#))
+           (begin (if (not storedliftoption_5)
+                      (begin (set! storedliftoption_5 . #6#)
+                             (set! acc '#f)))
+                  (if (= flag '22)
+                      (let ([oldacc acc])
+                        (begin (set! acc '())
+                               (if (= (my-id)
+                                      (ext-ref
+                                        (tok global-tree viaind)
+                                        stored_g_origin))
+                                   (call (tok soc-return-handler toind)
+                                         (cons val oldacc))
+                                   (send_to
+                                     (ext-ref
+                                       (tok global-tree viaind)
+                                       stored_g_parent)
+                                     (tok return-handler_395 retid)
+                                     (cons val oldacc)))))
+                      (set! acc (cons val acc)))))))))
+)

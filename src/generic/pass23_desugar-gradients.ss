@@ -1,3 +1,8 @@
+
+;; CHECK FOR REFERENCES TO GLOBAL-TREE!!!
+
+
+
 ;; [2005.02.25]
 ;; This pass will convert TM's with gradients to TM's without them.
 ;; It represents one particular (and fragile) algorithm for gradient implementation.
@@ -111,7 +116,7 @@
 	     [(relay (tok ,t ,[e])) e]
 	     [(dist (tok ,t ,[e])) e]
 	     ;; The to's and the vias are static! Aggr has no subtok index!
-	     [(return ,[expr] (to (tok ,t)) (via (tok ,v)) (seed ,[seed_val]) (aggr (tok ,a)))
+	     [(return ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
 	      (append expr seed_val)]
 
 	     [(leds ,what ,which) '()]
@@ -211,38 +216,54 @@
 		      (to (tok ,to ,[ttb toind]))
 		      (via (tok ,via ,[vtb viaind]))
 		      (seed ,[stb seed_exp])
-		      (aggr (tok ,aggr 0)))
+		      (aggr ,aggr)) 
 	      (let ([aggr_ID (unique-name 'aggr_ID)]
 		    [return-handler (unique-name 'return-handler)])
 	      (values 
 	       ;; First return a new handler for the aggregation object corresponding to this particular return statment.
 	       ;; When called locally, this sends the aggregate to the parent, and resets the acc.
 	       ;; When called remotely, this builds up the aggregation accumulator.
-	       (cons `[,return-handler retid (flag val toind viaind)
+	       ;; If there is no aggregation operator provided, it does the same thing except 
+	       ;; simply builds lists of results that are passed up to parents.
+	       (cons `[,return-handler retid (destid flag val toind viaind)
+		
+TODO		       
+;; USE DESTID
+
 		        (let-stored ([acc ,seed_exp])
  		     ;; Must be initialized with the seed value before aggregation begins.
 ;		     (if (= flag ,INIT)
 ;			 (set! acc val)
-		     (if (= flag ,LOCAL) ;; This is the sign to send to upward:
-			 (let ([oldacc acc])
-			   (set! acc ,seed_exp)
-			   ;; Now, if we're the destination we need to call the 'to' token.
-			   (if (= (my-id) (ext-ref (tok ,via viaind) ,STORED_ORIGIN_ARG)) ;; NOTE!!! FIXME: TODO: Should this always be STORED_ ??
-			       (call (tok ,to toind) (subcall (tok ,aggr 0) val oldacc))
-			       ;; While the subcall is hapenning this return_handler very well may be called again.
+
+		       ;; If there is not an aggregator, the implicit aggregator forms a list of all results.
+		       ,(let ([fold (lambda (ac)
+				    (if aggr
+					`(subcall ,aggr val ,ac)
+					`(cons val ,ac)))]
+			    [theseed (if aggr seed_exp ''())])
+			`(if (= flag ,LOCAL) ;; This is the sign to send to upward:
+			     (let ([oldacc acc])
+			       (set! acc ,theseed)
+			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
 			       ;; But we just reset the acc, so any calls from this moment on will be in the next epoch.
-			       (send_to (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
-					(tok return-handler_395 retid)
-					(subcall (tok ,aggr 0) val oldacc))))
-			 ;; Otherwise we simply accumulate and wait.
-			 (set! acc (subcall (tok ,aggr 0) val acc))))]
-		     (append etb ttb vtb stb))		     
+			       (if (= (my-id) (ext-ref (tok ,via viaind) ,STORED_ORIGIN_ARG)) ;; NOTE!!! FIXME: TODO: Should this always be STORED_ ??
+				   ;; Now, if we're the destination we need to call the 'to' token.
+				   (call (tok ,to toind) ,(fold 'oldacc))
+				   ;; Otherwise, send it on up to the parent:
+				   ;; TODO: Should use "send_to" form here, but haven't implemented yet:
+				   (bcast (tok ,return-handler retid)
+					  (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
+					  ,(fold 'oldacc))))
+			     ;; Otherwise we simply accumulate and wait.
+			     (set! acc ,(fold 'acc)))))]
+		     (append etb ttb vtb stb))     
 
 	       ;; Second, return the generated code for the return statement.
 	       ;; Each aggregation is unique based on its to, via, and aggr arguments.
 		 `(let ([,aggr_ID (+ (* ,MAX_SUBTOK ,toind) ,viaind)])
 		    ;; Just call off to the appropriate local aggregator:
 		    (call (tok ,return-handler ,aggr_ID) ',REMOTE ,expr ,toind ,viaind))))]
+
 
 	     ;; This is a local call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)

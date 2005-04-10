@@ -1011,13 +1011,15 @@
 	 [(tok ,name) name]
 	 [(tok ,name ,num) name]
 	   ;[(,name . ,_) name]
-	 [,name name]))
+	 [,name (guard (symbol? name)) name]
+	 [,other (error 'token->name "bad token: ~a" other)]))
 (define (token->subtok t)
   (match t
 	 [(tok ,name) 0]
 	 [(tok ,name ,num) num]
 	 ;[(,_ . ,subtok) subtok]
-	 [,_ 0]))
+	 [,name (guard (symbol? name)) 0]
+	 [,other (error 'token->name "bad token: ~a" other)]))
 
 
 ;; Allocate a token name, possibly with a seed name.

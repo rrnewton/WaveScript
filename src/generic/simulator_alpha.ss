@@ -356,7 +356,6 @@
 
 
 (define (process-statement current-handler-name tokbinds stored cost-table)
-  (disp "process statement, allstored: " stored)
   (let ([allstored (apply append (map cadr stored))])
     (letrec ([find-which-stored
 	      (lambda (v)
@@ -375,8 +374,8 @@
 		  ;; Token references return pairs which index the token store hash table.
 		  [(tok ,t ,[e]) `(cons ',t ,e)]
 
-		  [(ext-ref '(tok ,tokname ,subtok) ,x)
-		   (guard (and (symbol? x) (memq x allstored)))		   
+		  [(ext-ref (tok ,tokname ,subtok) ,x)
+		   (guard (and (symbol? x) (memq x allstored)))
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
@@ -385,7 +384,7 @@
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
-		  [(ext-set! '(tok ,tokname ,subtok) ,x ,[e])
+		  [(ext-set! (tok ,tokname ,subtok) ,x ,[e])
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (if (not (eq? which-tok tokname))
@@ -402,8 +401,8 @@
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
                                (error 'simulator_alpha:process-statement 
-				      "bad local stored-ref: ~a actually belongs to ~a" 
-				      x which-tok))
+				      "bad local stored-ref: ~a actually belongs to ~a not ~a" 
+				      x which-tok current-handler-name))
                            ;; 'tokobj' is already bound to our token object
                            `(vector-ref tokobj ,(+ 1 pos)))]
 
@@ -419,7 +418,6 @@
 			  (simobject-local-msg-buf this)))]
 
 		  [(bcast ,rator ,[rand*] ...)
-                   (disp "bout to look up: Tok name:" (token->name rator) " from " rator)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
 				       ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
@@ -450,7 +448,9 @@
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
 			  (if (not (eq? which-tok current-handler-name))
-			      (error 'simulator_alpha:process-statement "(set!) bad local stored-ref: ~a" v))
+			      (error 'simulator_alpha:process-statement 
+				     "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
+				     v which-tok current-handler-name))
                           `(vector-set! tokobj ,(+ 1 pos) ,rhs))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
@@ -459,6 +459,11 @@
 		   `(if ,test ,conseq ,altern)]
 
 		  [(my-id) '(node-id (simobject-node this))]
+		  [(soc-return ,x)
+		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
+
+		  ;[(soc-finished)
+		  
 
 		  [(loc) '(sim-loc)]
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
@@ -541,10 +546,7 @@
          [binds 
           (map
            (lambda (tbind)
-;	    (match tbind 
-;		   [(,tok (,args ...) (stored [,storedvars ,initvals] ...) ,expr* ...)
-
-		 (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
+	     (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
 			(lambda (current-vtime subtok-index ,@args) ;world)
 ;			  (lambda args			 
@@ -573,7 +575,7 @@
                          ]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
-    (printf "Allstored was: ~a~n" allstored)
+    (printf "Allstored was:~n") (pretty-print allstored)
     (printf "~n   Cost table: ~a~n" cost-table)
     (printf "<-------------------------------------------------------------------->~n")
     ;(pretty-print binds)
@@ -594,12 +596,25 @@
 			 ))
 ;	`(lambda (soc-return soc-finished SOC-processor this sim)
        (define cost-table 
+	 ;; More cluginess, just stick in these hand-added handlers:
+	 (cons '(SOC-return-handler 0)
 	 (map (lambda (tbind)
                 (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
                        (list tok 
                              (compute-handler-duration body))))
-	      nodetoks))
+	      nodetoks)))
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks cost-table)])
+
+	      ;; Here we hack an extra handler into tbinds:
+	      (set! tbinds
+		    (cons `[SOC-return-handler
+			    (lambda (current-vtime subtok-index x)
+			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
+				  (soc-return x)				  
+				  (error 'SOC-return-handler
+					 "ran on non-base node! id: ~a"
+					 (node-id (simobject-node this)))))]
+			  tbinds))
 
 	`(define (node-code this)
 	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
@@ -608,7 +623,7 @@
 				((current-sense-function)
 				 (node-pos (simobject-node this))))])
 	      (let* ,(process-binds nodebinds)
-		(letrec ,tbinds
+		(letrec ,tbinds		  
 		 ;; Within this body, toks are bound, we return a list of start actions
 		  ;"Initialize our simobject message buffers"
 		  
@@ -626,6 +641,9 @@
 				  (values (token->name tok)
 					  (token->subtok tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
+				(if (not handler)
+				    (error 'node-code
+					   "no handler for token name: ~a in table: ~n~a" name dyndispatch_table))
 				;; Invoke:
 				(apply handler current-vtime subtok 
 				       (msg-object-args msgob))
@@ -716,3 +734,6 @@
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand
+
+
+
