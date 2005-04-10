@@ -851,7 +851,11 @@
 	  (loop (vector-ref o1 i) 
 		(vector-ref o2 i)
 		(cons i (cons 'v index))))])))
-
+;; This goes along, it's for performing deep-index lookups
+(define (list-ref-deep ls ind)
+  (let loop ((x ls) (ind ind))
+    (if (null? ind) x
+	(loop (list-ref x (car ind)) (cdr ind)))))
 
 
 ;; This strings out a list of all the cons cells in a given list (not
@@ -959,7 +963,10 @@
         (define unique-name
           (lambda args
 	    (let ((sym (if (null? args) 'gensym (car args))))
-	      (let ((sym (if (string? sym) (string->symbol sym) sym)))
+	      (let ((sym (cond
+			  [(string? sym) (string->symbol sym)]
+			  [(symbol? sym) sym]
+			  [else (error 'unique-name "invalid name root: ~a" sym)])))
             (string->symbol
               (string-append
                 (strip-illegal ;;RRN - THIS IS STUPID, CHANGE ME

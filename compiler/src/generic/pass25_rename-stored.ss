@@ -30,35 +30,35 @@
     [(ext-set ,t ,v ,[x])
 	  `(ext-set! ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))) ,x)]
 	 
-	 [,var (guard (symbol? var)) var]
-	 [(set! ,v ,[x]) 
-;	  (disp "Set! non local stored:" v)
-	  `(set! ,v ,x)]
-	 [(begin ,[xs] ...) `(begin ,xs ...)]
-	 ;; Shouldn't have to handle this:
-	 [(if ,[test] ,[conseq]) `(if ,test ,conseq)]
-	 [(if ,[test] ,[conseq] ,[altern])
-	  `(if ,test ,conseq ,altern)]
-	 [(let ([,lhs ,[rhs]]) ,[body])
-	  `(let ([,lhs ,rhs]) ,body)]
-	 [(,call-style ,[args*] ...)
-	  (guard (memq call-style '(call timed-call)))
-	  `(,call-style ,args* ...)]
-	 [(leds ,what ,which) `(leds ,what ,which)]
-	 [(,prim ,[rands] ...)
-	  (guard (or (token-machine-primitive? prim)
-		     (basic-primitive? prim)))
-	  `(,prim ,rands ...)]
+    [,var (guard (symbol? var)) var]
+    [(set! ,v ,[x]) 
+					;	  (disp "Set! non local stored:" v)
+     `(set! ,v ,x)]
+    [(begin ,[xs] ...) `(begin ,xs ...)]
+    ;; Shouldn't have to handle this:
+    [(if ,[test] ,[conseq]) `(if ,test ,conseq)]
+    [(if ,[test] ,[conseq] ,[altern])
+     `(if ,test ,conseq ,altern)]
+    [(let ([,lhs ,[rhs]]) ,[body])
+     `(let ([,lhs ,rhs]) ,body)]
+    [(,call-style ,[args*] ...)
+     (guard (memq call-style '(call timed-call)))
+     `(,call-style ,args* ...)]
+    [(leds ,what ,which) `(leds ,what ,which)]
+    [(,prim ,[rands] ...)
+     (guard (or (token-machine-primitive? prim)
+		(basic-primitive? prim)))
+     `(,prim ,rands ...)]
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
-	 [(,[rator] ,[rands] ...)
-	  (warning 'rename-stored
-		   "arbitrary application of rator: ~s" rator)	      
-	  `(,rator ,rands ...)]
-	 [,otherwise
-	  (error 'rename-stored:process-expr 
-		 "bad expression: ~s" otherwise)]
-	)))
-      
+    [(,[rator] ,[rands] ...)
+     (warning 'rename-stored
+	      "arbitrary application of rator: ~s" rator)	      
+     `(,rator ,rands ...)]
+    [,otherwise
+     (error 'rename-stored:process-expr 
+	    "bad expression: ~s" otherwise)]
+    )))
+
 
 (define (make-subst tbs)
   (map 
@@ -87,6 +87,4 @@
 		   (nodepgm (tokens 
 			     ,@(map (lambda (tb) (process-tokbind subst tb)) toks))))))])
 )))
-
-
 

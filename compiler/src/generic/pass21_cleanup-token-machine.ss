@@ -141,7 +141,7 @@
 			 [formals* (map handler->formals all-handlers)]
 			 [body* (map handler->body all-handlers)]
 			 )
-;		(disp "GOT DUPS " tok formals*)
+
 		    (DEBUGMODE
 		     (if (not (apply myequal? formals*))
 		     (error 'simulator_nought:remove-duplicate-tokbinds
@@ -188,6 +188,12 @@
 
 	     [,t (guard (symbol? t) (memq t tokens))
 		 `(tok ,t ,DEFAULT_SUBTOK)]
+
+	     ;; Cleanup does not verify that this is a valid stored-reference.
+	     ;; That's done elsewhere:
+	     [(ext-ref ,t ,v) `(ext-ref ,t ,v)]
+	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,t ,v ,x)]
+
 	     [(tok ,t) `(tok ,t ,DEFAULT_SUBTOK)]
 	     ;; Static form
 	     [(tok ,t ,n) (guard (number? n)) `(tok ,t ,n)]
@@ -364,14 +370,12 @@
       (lambda (env tokens)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-;		 (disp "PROCESSING TOKBIND" args stored tokbind)
-
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
 			,((process-expr (append args (map car stored) bindings env) tokens tok id)
 			  body))))))
 	    
     (define decode 
-      (lambda (stuff)
+      (lambda (lang stuff)
 	(let ([bindings '()]
 	      [socbindings '()]
 	      [socpgm '()]
@@ -383,7 +387,7 @@
 ;	    (disp "Decoding from" ls)
 		 
 	    (if (null? ls)
-		(let ((result `(deglobalize-lang
+		(let ((result `(,lang
 				'(program (bindings ,@bindings)
 					  (socpgm (bindings ,@socbindings) ,@socpgm)
 					  (nodepgm (tokens ,@nodetoks)
@@ -417,7 +421,7 @@
 				  other)])
 		  (loop (cdr ls))))))))
 
-    (define (cleanup socconsts nodeconsts socpgm tokens nodestartups)
+    (define (cleanup lang socconsts nodeconsts socpgm tokens nodestartups)
       (if (not (null? nodestartups))
 	  (set! tokens
 		(cons `[node-start () ,@(map (lambda (t) `(call ,t)) nodestartups)]
@@ -445,7 +449,7 @@
 				      '() tokens))]
 	    ;; Duplicate elimination happens before other processing of token handlers:
 	    [nodup-toks (remove-duplicate-tokbinds tokens)])
-	`(cleanup-token-machine-lang
+	`(,lang
 	     '(program (bindings ,@nodeconsts)
 		       (nodepgm (tokens
 				 ,@(map (process-tokbind (map car allconsts)
@@ -456,6 +460,8 @@
     ;; Main body of cleanup-token-machine
     (lambda (prog)
       (match prog
+	;; If there is a specified input language, we don't change it.
+	;; This pass is called from multiple places, so that would confuse things:
         [(,lang '(program (bindings ,constbinds ...)
 			  (socpgm (bindings ,socbinds ...) 
 				  ,socstmts ...)
@@ -469,10 +475,10 @@
 ; 	       "tokens" (map car nodetoks)
 ; 	       "starttoks" starttoks)
 
-	 (cleanup socbinds constbinds 
+	 (cleanup lang socbinds constbinds 
                   (if (null? socstmts) #f `(begin ,@socstmts))
                   nodetoks starttoks)]
-	[(,lang '(program ,stuff ...)) (cleanup-token-machine (decode stuff))]
+	[(,lang '(program ,stuff ...)) (cleanup-token-machine (decode lang stuff))]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
 	;; without the language annotation:
@@ -483,10 +489,10 @@
 			   (startup ,starttoks ...)))
 	 (cleanup-token-machine `(UNKNOWNLANG ',prog))]
 
-	['(program ,stuff ...) (cleanup-token-machine (decode stuff))]
-	[(program ,stuff ...) (cleanup-token-machine (decode stuff))]
+	['(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
+	[(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
 	
-	[,stuff (cleanup-token-machine (decode (list stuff)))]
+	[,stuff (cleanup-token-machine (decode 'cleanup-token-machine (list stuff)))]
 	))))
 
 

@@ -147,7 +147,6 @@
 
 (define (process-tokbind tb)
   (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
-	 (disp "GOT TOKBIND" tok id args stored constbinds)
          (mvlet ([(newstored newbod) (process-expr (map car constbinds) body)])
                 `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
