@@ -1,13 +1,14 @@
 (module temp mzscheme
+  
+  (require "constants.ss")
+;  (require "test.ss")
+  
+;  (provide BASE_ID)
+;  (provide (all-from "test.ss"))
+  (provide (all-from "constants.ss"))
+  
+  )
 
-(require "graphics_stub.ss")
-;(require "simulator_nought_graphics.ss")
-;(test-this 'verbose)
-;(close-graphics)
+(require temp)
+(display BASE_ID)
 
-;(define (g) (load "temp.ss"))
-(printf "temp loaded~n")
-
-  (fluid-let ((foob 'newb))
-    (disp 'yay))  
-)

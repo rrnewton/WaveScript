@@ -1,4 +1,4 @@
-
+#cs ;; Case Sensitivity
 (module alpha_lib mzscheme
   (require 
    "iu-match.ss"

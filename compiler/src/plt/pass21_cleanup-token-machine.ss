@@ -1,3 +1,4 @@
+#cs ;; Case Sensitivity
 (module pass21_cleanup-token-machine mzscheme
 
   (require (lib "include.ss"))

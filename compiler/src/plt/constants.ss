@@ -1,8 +1,7 @@
 
-
+#cs ;; Case Sensitivity
 (module constants mzscheme
 	(require (lib "include.ss"))
-  ;(require "helpers.ss")
 
 	(provide 
          ;; Syntax:
@@ -16,7 +15,8 @@
          
          unknown-place noplace
          
-	 world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN BASE_ID NULL_ID
+	 world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
+         BASE_ID NULL_ID
 	 
 	 return-window-size
 
@@ -24,9 +24,7 @@
          MAX_SUBTOK
          
          RADIO_DELAY PROCESSING_TIME
-   
-         
 	 )
 	
 	(include (build-path "generic" "constants.ss"))
-	)
+  )
