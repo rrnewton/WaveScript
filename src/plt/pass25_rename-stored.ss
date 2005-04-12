@@ -1,3 +1,4 @@
+#cs ;; Case Sensitivity
 
 (module pass25_rename-stored mzscheme
   (require (lib "include.ss"))

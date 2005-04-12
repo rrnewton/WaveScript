@@ -3,6 +3,8 @@
 ;; Here is the main file for my compiler.
 ;;======================================================================
 
+#cs ;; Case Sensitivity
+
 ;; [2004.06.16] This should have been done already, but just for good measure...
 (define current_interpreter 'mzscheme)
 
@@ -179,23 +181,25 @@
 
 ;(ra '(tokens (node-start () (soc-return 3))))
 
-(ra
-'(cps-tokmac-lang
+
+(define (t)
+  (ra
+   '(cps-tokmac-lang
   '(program
-     (bindings (result_2 '3))
+     (bindings (result_2 '393939))
      (nodepgm
        (tokens
          (returnhandler_5
            retid
            (destid flag val toind viaind)
            (stored (acc_7 '#f))
-           (let* ([oldacc acc_7])
+           (let ([oldacc acc_7])
              (begin (set! acc_7 '())
                     (if (= (my-id)
                            (ext-ref
                              (tok global-tree viaind)
                              storedgorigin_10))
-                        (call (tok soc-return-handler toind)
+                        (call (tok SOC-return-handler toind)
                               (cons val oldacc))
                         (bcast
                           (tok returnhandler_5 retid)
@@ -206,15 +210,15 @@
                           (cons val oldacc)
                           '0
                           '0))
-                    #0=(void))))
+                    (void))))
          (global-tree
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (storedgparent_11 #1='#f)
-             (storedgorigin_10 #2='#f)
-             (storedghopcount_9 #3='#f)
-             (storedgversion_8 #4='#f))
+             (storedgparent_11 #0='#f)
+             (storedgorigin_10 #1='#f)
+             (storedghopcount_9 #2='#f)
+             (storedgversion_8 #3='#f))
            (if (if (not storedghopcount_9)
                    '#t
                    (if (= '0 g_hopcount)
@@ -235,18 +239,18 @@
                                  (set! storedgorigin_10 g_origin)
                                  (set! storedghopcount_9 g_hopcount)
                                  (set! storedgversion_8 g_version)
-                                 #0#)
+                                 (void))
                           (void))
-                      #0#)
+                      (void))
                (void)))
          (spread-global
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (storedgparent_17 #1#)
-             (storedgorigin_16 #2#)
-             (storedghopcount_15 #3#)
-             (storedgversion_14 #4#)
+             (storedgparent_17 #0#)
+             (storedgorigin_16 #1#)
+             (storedghopcount_15 #2#)
+             (storedgversion_14 #3#)
              (ver_13 (void))
              (storedliftoption_12 '#f))
            (if (if (not storedghopcount_15)
@@ -261,7 +265,8 @@
                (begin (if (not storedliftoption_12)
                           (begin (set! storedliftoption_12 '#t)
                                  (set! ver_13 '0)
-                                 #0#))
+                                 (void))
+                          (void))
                       (set! ver_13 (+ '1 ver_13))
                       (bcast (tok global-tree '0) (my-id) '1 ver_13)
                       (timed-call
@@ -276,19 +281,20 @@
                                  (set! storedgorigin_16 g_origin)
                                  (set! storedghopcount_15 g_hopcount)
                                  (set! storedgversion_14 g_version)
-                                 #0#)
+                                 (void))
                           (void))
-                      #0#)
+                      (void))
                (void)))
          (node-start subtok_ind () (stored) (void))
          (soc-start
            subtok_ind
            ()
            (stored)
-           (let* ([aggrid_4 (+ (* '1000 '0) '0)])
+           (let ([aggrid_4 (+ (* '1000 '0) '0)])
              (call (tok returnhandler_5 aggrid_4)
                    '333
                    result_2
                    '0
                    '0)))))))
-)
+ 
+   ))

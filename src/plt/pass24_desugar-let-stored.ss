@@ -1,4 +1,4 @@
-
+#cs ;; Case Sensitivity
 (module pass24_desugar-let-stored mzscheme
 
 ;  (require-for-syntax "constants.ss")

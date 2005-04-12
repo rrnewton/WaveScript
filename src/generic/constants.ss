@@ -82,7 +82,7 @@
 ;; I don't want to use negative numbers. I set this high for now
 ;; so it should not conflict with any other ID -- it's an upper bound.  
 ;; (Right now other ids are 1-1000)
-(define BASE_ID 10000)  
+(define BASE_ID 10000)
 ;; We "option lift" the ID type by having this number signify "NULL":  
 ;; This is because our backend is not sophisticated enough yet to have real option types.
 (define NULL_ID 0)

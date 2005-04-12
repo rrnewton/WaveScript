@@ -29,10 +29,10 @@
 (define-structure (simevt vtime duration msgobj))
 
 ;; This structure contains everything an executing token handler needs
-;; to know about the local node. 
-;; "this" is a simobject.
-;; tokstore is a struct containing all the stored values.
-;; [2005.03.05] Putting everything in simobject, "this" provides everything.
+;; to know about the local node.  "this" is a simobject.  tokstore is
+;; a struct containing all the stored values.
+
+;  [2005.03.05] Putting everything in simobject, "this" provides everything.
 ;(define-structure (localinfo this I-am-SOC tokstore))
 
 ;; Positions are just 2-element lists.
@@ -568,7 +568,7 @@
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
-					   (set! tokobj (vector 0 ,@(map cdr stored)))
+					   (set! tokobj (vector 0 ,@(map cadr stored)))
 					   (hashtab-set! the-store this-tokname tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
@@ -637,7 +637,8 @@
 ; 			  tbinds))
 
 	`(define (node-code this)
-	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
+	   ;; Now we have subtoks:
+;	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
 	   ;; Need to update the sensing machinery...
 	   (let ([local-sense (lambda ()
 				((current-sense-function)

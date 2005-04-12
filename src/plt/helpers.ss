@@ -1,4 +1,4 @@
-
+#cs ;; Case Sensitivity
 (module helpers mzscheme 
   (require "iu-match.ss"
            (lib "include.ss")
