@@ -74,6 +74,7 @@
 	  [(tok ,tok ,[expr]) expr]
 	  [(ext-ref ,tok ,var) '()]
 	  [(ext-set! ,tok ,var ,[expr]) expr]
+	  [(set! ,v ,[e]) (cons v e)]
 	  [(begin ,[xs] ...) (apply append xs)]
 	  [(if ,[test] ,[conseq] ,[altern]) 
 	   (append test conseq altern)]
@@ -84,7 +85,7 @@
 	   (guard (or (token-machine-primitive? prim)
 		      (basic-primitive? prim)))
 	   rands]
-	  [(,[rator] ,[rands] ...) `(apply append rator rands)]
+	  [(app ,[rator] ,[rands] ...) `(apply append rator rands)]
 	  [,otherwise
 	   (error 'cps-tokmac:freevars 
 		  "bad expression: ~s" otherwise)]))
@@ -95,6 +96,9 @@
 	  [,x (guard (memq x fvs)) 
 	      ;`(vector-ref args (quote ,(list-find-position x fvs)))
 	      (string->symbol (format "fv~a" (list-find-position x fvs)))]
+	  [(set! ,x ,[e]) (guard (memq x fvs))
+	   `(set! ,(string->symbol (format "fv~a" (list-find-position x fvs)))
+		  ,e)]
 	  
 	  [,const (guard (constant? const)) `(quote ,const)]
 	  [(quote ,const) `(quote ,const)]
@@ -103,6 +107,8 @@
 	  [(tok ,tok ,[expr]) `(tok ,tok ,expr)]
 	  [(ext-ref ,tok ,var) `(ext-ref ,tok ,var)]
 	  [(ext-set! ,tok ,var ,[expr]) `(ext-set! ,tok ,var ,expr)]
+	  [(set! ,v ,[e]) `(set! ,v ,e)]
+
 	  [(begin ,[xs] ...) `(begin ,@xs)]
 	  [(if ,[test] ,[conseq] ,[altern]) `(if ,test ,conseq ,altern)]
 	  [(let ( (,lhs ,[rhs]) ...) ,body)	 
@@ -135,6 +141,7 @@
 		   [(tok ,tok ,[expr]) (kify `(tok ,tok ,expr))]
 		   [(ext-ref ,tok ,var) (kify `(ext-ref ,tok ,var))]
 		   [(ext-set! ,tok ,var ,[expr]) (kify `(ext-set! ,tok ,var ,expr))]
+		   [(set! ,v ,[e]) `(begin `(set! ,v ,e) ,(kify '(void)))]
 		   ;; This case shouldn't be used:
 		   [(begin) '(begin)]
 		   [(begin ,xs ...) 
@@ -190,12 +197,14 @@
 	(define loop
 	  (lambda (expr  pvk)
 	    (match expr
-;	     [,x (guard (begin (disp "PEXP" x) #f)) 3]
+;	     [,x (guard (begin (disp "  PEXP" x) #f)) 3]
 		   
 	     [,const (guard (constant? const)) 
 		     (pvk `(quote ,const))]
 	     [(quote ,const) (pvk `(quote ,const))]
 	     [,var (guard (symbol? var)) (pvk var)]
+	     [(set! ,v ,expr)
+	      (loop expr (lambda (e) (pvk `(set! ,v ,e))))]
 	     [(tok ,tok) (pvk `(tok ,tok))]
 	     [(tok ,tok ,expr) 
 	      (loop expr
@@ -226,7 +235,7 @@
 		 (lambda (r)
 		   (loop body
 			 (lambda (b)
-			   `(let*  ([,lhs ,r]) ,b)))))]
+			   (pvk `(let ([,lhs ,r]) ,b))))))]
 	     
 	     [(subcall ,tok ,args* ...)
 	      (let* (;; This expression represents the continuation of the subcall:
@@ -289,8 +298,10 @@
 			 (lambda (ls)
 			   (pvk
 			    `(,prim ,@ls))))]
-	     [(,opera* ...)
-	      (loop-list opera*  pvk)]
+	     [(app ,opera* ...)
+	      (warning 'cps-tokmac 
+		       "arbitrary application of rator: ~s" opera*);(car opera*))
+	      (loop-list opera*  (lambda (ls) (pvk (cons 'app ls))))]
 
 	     [,otherwise
 	      (error 'cps-tokmac:process-expr 
@@ -323,7 +334,6 @@
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,nodetoks ...))))
-	 (disp "Got prog... bout to do binds")
 	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
 	   (let ([newtoks2
 		  (map (lambda (tb)

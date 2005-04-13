@@ -527,8 +527,7 @@
 				     ,(if (assq entry constbinds)
 					  ;; Socpgm bindings are null for now:
 					  `(socpgm (bindings ) 
-						   (soc-return ,entry) 
-						   (soc-finished))
+						   (soc-return-finished ,entry))
 					  `(socpgm (bindings) (call spread-global))
 					  )
 			      (nodepgm (tokens ,@tokenbinds

@@ -184,47 +184,55 @@
 
 (define (t)
   (ra
-   '(cps-tokmac-lang
+   '
+
+
+(cps-tokmac-lang
   '(program
-     (bindings (result_2 '393939))
+     (bindings (result_1 '34234324324))
      (nodepgm
        (tokens
-         (returnhandler_5
+         (returnhandler_6
            retid
            (destid flag val toind viaind)
-           (stored (acc_7 '#f))
-           (let ([oldacc acc_7])
-             (begin (set! acc_7 '())
-                    (if (= (my-id)
-                           (ext-ref
-                             (tok global-tree viaind)
-                             storedgorigin_10))
-                        (call (tok SOC-return-handler toind)
-                              (cons val oldacc))
-                        (bcast
-                          (tok returnhandler_5 retid)
-                          (ext-ref
-                            (tok global-tree viaind)
-                            storedgparent_11)
-                          '333
-                          (cons val oldacc)
-                          '0
-                          '0))
-                    (void))))
+           (stored (acc_9 ()))
+           (if (= flag '222)
+               (let ([oldacc_5 acc_9])
+                 (begin (set! acc_9 '())
+                        (let ([parentpointer_7
+                               (ext-ref
+                                 (tok global-tree viaind)
+                                 storedgparent_13)])
+                          (if (not parentpointer_7)
+                              (dbg '"ERROR: fell off the via tree.")
+                              (if (= '0 parentpointer_7)
+                                  (call (tok SOC-return-handler toind)
+                                        (cons val oldacc_5))
+                                  (bcast
+                                    (tok returnhandler_6 retid)
+                                    parentpointer_7
+                                    '333
+                                    (cons val oldacc_5)
+                                    '0
+                                    '0))))
+                        #0=(void)))
+               (if (not (if (= destid '0) '#t (= destid (my-id))))
+                   (void)
+                   (set! acc_9 (cons val acc_9)))))
          (global-tree
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (storedgparent_11 #0='#f)
-             (storedgorigin_10 #1='#f)
-             (storedghopcount_9 #2='#f)
-             (storedgversion_8 #3='#f))
-           (if (if (not storedghopcount_9)
+             (storedgparent_13 #1='#f)
+             (storedgorigin_12 #2='#f)
+             (storedghopcount_11 #3='#f)
+             (storedgversion_10 #4='#f))
+           (if (if (not storedghopcount_11)
                    '#t
                    (if (= '0 g_hopcount)
-                       (if (> g_version storedgversion_8)
-                           (if (= g_version storedgversion_8)
-                               (< g_hopcount storedghopcount_9)
+                       (if (> g_version storedgversion_10)
+                           (if (= g_version storedgversion_10)
+                               (< g_hopcount storedghopcount_11)
                                '#f)
                            '#f)
                        '#f))
@@ -235,40 +243,41 @@
                         (+ '1 g_hopcount)
                         g_version)
                       (if (not (= g_hopcount '0))
-                          (begin (set! storedgparent_11 g_parent)
-                                 (set! storedgorigin_10 g_origin)
-                                 (set! storedghopcount_9 g_hopcount)
-                                 (set! storedgversion_8 g_version)
-                                 (void))
+                          (begin (set! storedgparent_13 g_parent)
+                                 (set! storedgorigin_12 g_origin)
+                                 (set! storedghopcount_11 g_hopcount)
+                                 (set! storedgversion_10 g_version)
+                                 #0#)
                           (void))
-                      (void))
+                      #0#)
                (void)))
          (spread-global
            subtok_ind
            (g_parent g_origin g_hopcount g_version)
            (stored
-             (storedgparent_17 #0#)
-             (storedgorigin_16 #1#)
-             (storedghopcount_15 #2#)
-             (storedgversion_14 #3#)
-             (ver_13 (void))
-             (storedliftoption_12 '#f))
-           (if (if (not storedghopcount_15)
+             (storedgparent_19 #1#)
+             (storedgorigin_18 #2#)
+             (storedghopcount_17 #3#)
+             (storedgversion_16 #4#)
+             (ver_15 (void))
+             (storedliftoption_14 '#f))
+           (if (if (not storedghopcount_17)
                    '#t
                    (if (= '0 g_hopcount)
-                       (if (> g_version storedgversion_14)
-                           (if (= g_version storedgversion_14)
-                               (< g_hopcount storedghopcount_15)
+                       (if (> g_version storedgversion_16)
+                           (if (= g_version storedgversion_16)
+                               (< g_hopcount storedghopcount_17)
                                '#f)
                            '#f)
                        '#f))
-               (begin (if (not storedliftoption_12)
-                          (begin (set! storedliftoption_12 '#t)
-                                 (set! ver_13 '0)
-                                 (void))
-                          (void))
-                      (set! ver_13 (+ '1 ver_13))
-                      (bcast (tok global-tree '0) (my-id) '1 ver_13)
+               (begin (if storedliftoption_14
+                          (void)
+                          (begin (set! storedliftoption_14 '#t)
+                                 (set! ver_15 '0)
+                                 #0#))
+                      (ext-set! (tok global-tree 0) storedgparent_13 '0)
+                      (set! ver_15 (+ '1 ver_15))
+                      (bcast (tok global-tree '0) (my-id) '1 ver_15)
                       (timed-call
                         1000
                         (tok spread-global 0)
@@ -277,24 +286,31 @@
                         '0
                         '#f)
                       (if (not (= g_hopcount '0))
-                          (begin (set! storedgparent_17 g_parent)
-                                 (set! storedgorigin_16 g_origin)
-                                 (set! storedghopcount_15 g_hopcount)
-                                 (set! storedgversion_14 g_version)
-                                 (void))
+                          (begin (set! storedgparent_19 g_parent)
+                                 (set! storedgorigin_18 g_origin)
+                                 (set! storedghopcount_17 g_hopcount)
+                                 (set! storedgversion_16 g_version)
+                                 #0#)
                           (void))
-                      (void))
+                      #0#)
                (void)))
          (node-start subtok_ind () (stored) (void))
-         (soc-start
+         (SOC-start
            subtok_ind
            ()
            (stored)
-           (let ([aggrid_4 (+ (* '1000 '0) '0)])
-             (call (tok returnhandler_5 aggrid_4)
-                   '333
-                   result_2
-                   '0
-                   '0)))))))
- 
+           (begin (void)
+                  (let ([aggrID_3 (+ (* '1000 '0) '0)])
+                    (call (tok returnhandler_6 aggrID_3)
+                          (my-id)
+                          '222
+                          result_1
+                          '0
+                          '0))
+                  (soc-finished)
+                  'multiple-bindings-for-token
+                  #0#))))))
+
+
+   
    ))

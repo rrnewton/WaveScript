@@ -27,7 +27,7 @@
     ;; External stored references:
     [(ext-ref ,t ,v)
      `(ext-ref ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))))]
-    [(ext-set ,t ,v ,[x])
+    [(ext-set! ,t ,v ,[x])
 	  `(ext-set! ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))) ,x)]
 	 
     [,var (guard (symbol? var)) var]
@@ -50,10 +50,10 @@
 		(basic-primitive? prim)))
      `(,prim ,rands ...)]
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
-    [(,[rator] ,[rands] ...)
+    [(app ,[rator] ,[rands] ...)
      (warning 'rename-stored
 	      "arbitrary application of rator: ~s" rator)	      
-     `(,rator ,rands ...)]
+     `(app ,rator ,rands ...)]
     [,otherwise
      (error 'rename-stored:process-expr 
 	    "bad expression: ~s" otherwise)]

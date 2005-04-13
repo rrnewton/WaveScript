@@ -379,13 +379,15 @@
 		  ;; Token references return pairs which index the token store hash table.
 		  [(tok ,t ,[e]) `(cons ',t ,e)]
 
+		  ;; This is sketchy: we just fail silently and return #f if there is no token there.
+		  ;; TODO: We should seriously have some sort of better error handling convention.
 		  [(ext-ref (tok ,tokname ,subtok) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
 				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
-			  `(let ([exttokobj (hashtab-get '(,tokname . ,subtok) the-store)])
+			  `(let ([exttokobj (hashtab-get the-store '(,tokname . ,subtok))])
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
@@ -395,7 +397,7 @@
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
 				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
-			  `(let ([exttokobj (hashtab-get '(,tokname . ,subtok) the-store)])
+			  `(let ([exttokobj (hashtab-get the-store '(,tokname . ,subtok))])
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
 				 (error 'ext-set! "token not present: ~a" `(,tokname . subtok)))))]
@@ -451,7 +453,7 @@
 
 		  ;; If it's in the hash table, it's present:
 		  ;; This is static wrt to token name for the moment:
-		  [(is_present (tokname ,t ,[e])) `(hashtab-get '(,t . ,e) the-store)]
+		  [(is_present (tokname ,t ,[e])) `(hashtab-get the-store '(,t . ,e))]
 		  ;; evict TODO
 
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
