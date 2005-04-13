@@ -18,4 +18,4 @@
   (provide (all-defined))
   )
 
-;(require pass24_desugar-stored-let)
+;(require pass24_desugar-let-stored)

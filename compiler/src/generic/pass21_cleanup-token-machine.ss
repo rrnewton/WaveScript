@@ -336,9 +336,14 @@
 			     '(aggr #f))))]
 
 
-	     ;; For now this is just syntactic sugar for routing on the global tree:
+	     ;; For now this is just syntactic sugar for routing on the global tree:	     
 	     [(soc-return ,x)
-	      (loop `(return ,x (to SOC-return-handler) (via global-tree)))]
+	      (loop `(return ,x (to SOC-return-handler) (via (tok global-tree 0))))]
+
+	     [(soc-return-finished ,x)
+	      (loop `(return ,x (to SOC-return-handler) (via (tok global-tree 1))))]
+	     
+
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
 
@@ -353,14 +358,22 @@
 ;		     "keyword expression not allowed: ~s" stmt)]
 	     
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
+
+	     [(app ,[rator] ,[rands] ...)
+	      (warning 'cleanup-token-machine
+		       "free form app of rator: ~s" rator)
+	      `(app ,rator ,rands ...)]
+
 	     [(,[rator] ,[rands] ...)
 	      (warning 'cleanup-token-machine
-		       "arbitrary application of rator: ~s" rator)	      
+		       "arbitrary application of rator: ~s" rator)
 	      (DEBUGMODE 
 	       (if (or (not (symbol? rator)) (not (memq rator env)))
 		   (warning 'cleanup-token-machine
 			    "unbound rator: ~s" rator)))
-	      `(,rator ,rands ...)]
+	      `(app ,rator ,rands ...)]
+
+
 	     [,otherwise
 	      (error 'cleanup-token-machine:process-expr 
 		     "bad expression: ~s" otherwise)]

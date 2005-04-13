@@ -233,8 +233,8 @@
 
      (this () Object)
      (local-sense () Number)
-     (soc-return (Number) Object)
-     (soc-finished () Object)
+     (soc-return (Number) Void)
+     (soc-return-finished (Number) Void)
      
      ;; For simulator only:
      (draw-mark)

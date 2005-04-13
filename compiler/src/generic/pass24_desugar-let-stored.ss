@@ -80,7 +80,7 @@
     [(tok ,t ,[st e])                  (values st `(tok ,t ,e))]
     ;; No renaming or anything here:
     [(ext-ref ,tok ,var)               (values () `(ext-ref ,tok ,var))]
-    [(ext-set! ,tok ,var ,[expr])      (values expr `(ext-set! ,tok ,var ,expr))]
+    [(ext-set! ,tok ,var ,[st e])      (values st `(ext-set! ,tok ,var ,e))]
 
     [,var (guard (symbol? var))        (values () var)]
     [(begin ,[st xs] ...)
@@ -121,7 +121,8 @@
        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
                (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
                        (make-begin 
-                        (list `(if (not ,newvar) ;; If first time, initialize
+                        (list `(if ,newvar ;; If first time, initialize
+				   (void)
                                    (begin 
                                      (set! ,newvar '#t)
                                      (set! ,lhs ,rhs)))
@@ -133,11 +134,11 @@
                 (basic-primitive? prim)))
      (values (apply append rst*)
              `(,prim ,rands ...))]
-    [(,[rst1 rator] ,[rst* rands] ...)
+    [(app ,[rst1 rator] ,[rst* rands] ...)
      (warning 'desugare-let-stored
               "arbitrary application of rator: ~s~n" rator)
      (values (apply append rst1 rst*)
-             `(,rator ,rands ...))]
+             `(app ,rator ,rands ...))]
 
     [,otherwise
 	 (error 'desugar-let-stored:process-expr 

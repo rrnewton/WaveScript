@@ -5,7 +5,7 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
-;(case-sensitive #t)
+(case-sensitive #t)
 
 ;; This makes our modules work properly in newer versions of Chez:
 (eval-when (compile load eval)
