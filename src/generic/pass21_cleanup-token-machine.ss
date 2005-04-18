@@ -167,15 +167,16 @@
 
 	  (define-syntax check-tok
 	    (syntax-rules ()
-	      [(_ call tok)
-	       (let ((name (match tok
-				  [,s (guard (symbol? tok)) s]
-				  [(tok ,tok) tok]
-				  [(tok ,tok ,_.) tok])))
+	      [(_ call tokexp)
+	       (let ((name (match tokexp
+				  [,s (guard (symbol? s)) s]
+				  [(tok ,t) t]
+				  [(tok ,t ,num) t]
+				  [,other (error 'check-tok "invalid token: ~s" other)])))
 		 (if (not (memq name tokens))
 		     (if (regiment-verbose)
 			 (warning 'cleanup-token-machine
-				  "~s to unknown token: ~s" call tok))))]))
+				  "~s to unknown token: ~s" call tokexp))))]))
 	  (define (tokname? t) (memq t tokens))
 
 	  (lambda (stmt)
@@ -296,7 +297,7 @@
 	      (check-tok 'return-to memb)
 	      (check-tok 'return-via parent)
 
-	      (let ((seed (if (null? seed_vals) #f
+	      (let ((seed (if (null? seed_vals) ''#f
 			      (car seed_vals)))
 		    (aggr (if (null? rator_toks) #f
 			      (car rator_toks))))
@@ -591,3 +592,4 @@
 (define tests21 these-tests)
 (define test-cleanup-token-machine test-this)
 (define tests-cleanup-token-machine these-tests)
+

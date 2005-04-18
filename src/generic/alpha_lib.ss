@@ -21,9 +21,7 @@
    [(not bt) #f]
    [else (<= at bt)]))
 
-
 (define global-graph #f)
-
 
 ;; Global parameter contains continuation for exiting the alpha-sim.  Invoked by soc-finished.
 (define escape-alpha-sim
