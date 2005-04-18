@@ -1,5 +1,5 @@
 
-;; TODO: is_scheduled etc...
+;; TO: is_scheduled etc...
 
 
 ;; simulator_alpha.ss
@@ -143,6 +143,11 @@
 				expr ...)]))
 
 ;; ======================================================================
+
+;; Invariant checker:
+(define (check-store tokstore)
+  (hashtab-map 
+  )
 
 (define (free-vars expr)
   (let loop ((env ()) (expr expr))
@@ -387,7 +392,10 @@
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
 				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
-			  `(let ([exttokobj (hashtab-get the-store '(,tokname . ,subtok))])
+			  `(let ([exttokobj (hashtab-get the-store 
+							 ,(if (number? subtok)
+							      `'(,tokname . ,subtok)
+							      `(cons ',tokname ,subtok)))])
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
@@ -425,14 +433,15 @@
                      `(set-simobject-local-msg-buf! this
                            (cons (make-simevt #f ;; No scheduled time, ASAP
                                               ,(cadr tok) ;; Time cost
-                                              (bare-msg-object ',rator (list ,@rand*) current-vtime))
+                                              (bare-msg-object ',(token->name rator) 
+							       (list ,@rand*) current-vtime))
                                  (simobject-local-msg-buf this))))]
 
 		  [(bcast ,rator ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
 				       ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
-				       (bare-msg-object ',rator (list ,@rand*) current-vtime))
+				       (bare-msg-object ',(token->name rator) (list ,@rand*) current-vtime))
 			    (simobject-local-msg-buf this)))]
 
 ;;TODO:
@@ -561,17 +570,21 @@
 			(lambda (current-vtime subtok-index ,@args) ;world)
 ;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
-				   [this-tokname (cons ',tok subtok-index)]
+				   [tokname-pair (cons ',tok subtok-index)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
 				   [old-local    (simobject-local-msg-buf this)])
+			      ,(DEBUGMODE 
+				;; Check invariants on the store:
+				(check-store the-store))
+
 			      "Is there already an allocated token object?:"
 			      ;; Requires equal? based hash table:
-			      (let ([tokobj (hashtab-get the-store this-tokname)])
+			      (let ([tokobj (hashtab-get the-store tokname-pair)])
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
 					   (set! tokobj (vector 0 ,@(map cadr stored)))
-					   (hashtab-set! the-store this-tokname tokobj)))
+					   (hashtab-set! the-store tokname-pair tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
