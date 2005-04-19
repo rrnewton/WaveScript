@@ -46,9 +46,9 @@
                          (start-alpha-sim ,sim))))
       'replace))
   
-  (define (make-default-hash-table) (make-hash-table 'equal))
-  (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
-  (define hashtab-set! hash-table-put!)
+;  (define (make-default-hash-table) (make-hash-table 'equal))
+;  (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
+;  (define hashtab-set! hash-table-put!)
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
   (include (build-path "generic" "simulator_alpha.ss"))
