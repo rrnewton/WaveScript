@@ -491,7 +491,10 @@
       (for-each (lambda (x) 
 		  (case method
 		    [(write plain) (write x p)(newline p)]
-		    [(pretty pretty-print) (pretty-print x p)])
+		    [(pretty pretty-print) 
+		     (parameterize ([print-level #f]
+				    [print-graph #f])
+				   (pretty-print x p))])
 		  (newline p))
 		slist)
       (close-output-port p))]))

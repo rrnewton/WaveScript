@@ -221,6 +221,22 @@
   (printf "~nSOC-FINISHED!~n")(flush-output-port)
   ((escape-alpha-sim))]
 
+
+;; Invariant checker: used only in DEBUGMODE
+[define (check-store tokstore)
+  (hashtab-for-each
+   (lambda (namepair tokobj)
+     (or (and (pair? namepair)
+	      (symbol? (car namepair))
+	      (number? (cdr namepair))
+	      (vector? tokobj))
+	 (error 'check-store "Bad token store at entry: ~a, tokobj: ~n~a" namepair tokobj)))
+   tokstore)]
+
+;======================================================================
+
+
+
 (define (t)
   (alpha-it
    '(program
@@ -259,6 +275,8 @@
   ;; Bind the current program to a global variable:
     (eval `(define alph ',comped))
     (eval comped)))
+
+
 
 
 

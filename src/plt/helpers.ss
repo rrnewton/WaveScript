@@ -65,6 +65,12 @@
     (printf "Warning ~s: ~a " sym (apply format args)))
 
 
+(define (make-default-hash-table) (make-hash-table))
+(define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
+(define hashtab-set! hash-table-put!)
+(define (hashtab-for-each f h) (hash-table-for-each h f))
+
+
 ;; ======================================================================  
 
   (include (build-path "generic" "helpers.ss"))
@@ -111,6 +117,7 @@
    
    ;; Meet in the middle with chez:
    print-level print-length
+   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin strip-illegal

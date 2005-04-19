@@ -179,6 +179,7 @@
 		(ext-set! ,tok ,STORED_PARENT_ARG ',NULL_ID)
 		;; Increment persistent version counter:
 		(set! ,ver (+ 1 ,ver))
+		(dbg "Emitting %d from %d\n" tok (my-id))
 		(bcast ,tok (my-id) 1 ,ver ,@args*))))]
 
 	     ;; TODO: This doesn't cache or pass any arguments on to the relayed tokhand!!!!
@@ -256,25 +257,37 @@
 			      [parent_pointer (unique-name 'parent_pointer)])
 			`(if (= flag ',LOCAL) ;; When we get the local value, we lump together and send upwards.
 			     (let ([,oldacc ,acc])
+			       ,@(DEBUGMODE `((dbg "Returning locally at %d val %d" (my-id) ,(fold oldacc))))
+
 			       ;; Reset the accumulator:
 			       (set! ,acc ,theseed)
 			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
 			       ;; But we just reset the acc, so any calls from this moment on will be in the next epoch.
 			       ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?
+			       ,@(DEBUGMODE 
+				  (if (not (is_present? (tok ,via viaind)))
+				      `((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))
+				  
+				  TODO FINISISIHIHSISHI)
+
 			       (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
 				 (if (not ,parent_pointer)
-				     (dbg "ERROR: fell off the via tree.")
+				     ,@(DEBUGMODE `((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))
 				     (if (= ',NULL_ID ,parent_pointer)
 					 ;; Now, if we're the destination we need to call the 'to' token.
 					 (call (tok ,to toind) ,(fold oldacc))
-				   ;; Otherwise, send it on up to the parent:
-				   ;; TODO: Should use "send_to" form here, but haven't implemented yet:
-				   (bcast (tok ,return-handler retid)
-					  ,parent_pointer ;; destid
-					  ',REMOTE        ;; flag
-					  ,(fold oldacc) ;; val
-					  ,toind ,viaind  ;; toind, viaind
-					  )))))
+					 ;; Otherwise, send it on up to the parent:
+					 ;; TODO: Should use "send_to" form here, but haven't implemented yet:
+					 (begin 
+					   ,@(DEBUGMODE
+					      `((dbg "Returning up tree from %d to %d val %d" 
+						 (my-id) '(tok ,return-handler retid) ,(fold oldacc))))
+					 (bcast (tok ,return-handler retid)
+						,parent_pointer ;; destid
+						',REMOTE        ;; flag
+						,(fold oldacc) ;; val
+						,toind ,viaind  ;; toind, viaind
+						))))))
 
 			     ;; Otherwise, flag = REMOTE
 			     ;; If called remotely, we only proceed if we are the intended destination.
@@ -282,7 +295,7 @@
 				 (void) ;; Might want to evict self here -- wasted space on useless tokens.
 				 ;; Now we simply accumulate and wait for the local call.
 				 (set! ,acc ,(fold acc)))))]
-		     (append etb ttb vtb stb))     
+		     (append etb ttb vtb stb))
 
 	       ;; Second return value: the generated code for the return statement.
 	       ;; This will call the return-handler on the local node,

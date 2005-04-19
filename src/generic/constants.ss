@@ -19,7 +19,7 @@
 ;; ON
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 ;; OFF
-;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
+;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
 
 
 (define-syntax DEBUGASSERT 

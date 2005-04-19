@@ -144,10 +144,6 @@
 
 ;; ======================================================================
 
-;; Invariant checker:
-(define (check-store tokstore)
-  (hashtab-map 
-  )
 
 (define (free-vars expr)
   (let loop ((env ()) (expr expr))
@@ -490,9 +486,26 @@
 
 		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		  [(leds ,which ,what) `(sim-leds ',which ',what)]
-		  [(dbg ,str ,[args] ...)
+		  [(dbg (quote ,str) ,[args] ...)
 		   ;; TODO FIX ME: would be nice to print properly
-		   `(begin (display (format ,str ,@args)) (newline))]
+		   (let ([massage-str 
+			  (lambda (s)
+			    (let ((newstr (string-copy s)))
+			      (let loop ((i (- (string-length s) 2)))
+				(cond
+				 [(< i 0) (void)]
+				 [(and (eq? (string-ref s i) #\%)
+				       (eq? (string-ref s (add1 i)) #\d))
+				  (string-set! newstr i #\~)
+				  (string-set! newstr (add1 i) #\a)
+				  (loop (sub1 i))]
+				 [(and (eq? (string-ref s i) #\\)
+				       (eq? (string-ref s (add1 i)) #\n))
+				  (string-set! newstr i #\~)
+				  (loop (sub1 i))]
+				 [else (loop (sub1 i))]))
+			      newstr))])
+		     `(begin (display (format ,(massage-str str) ,@args)) (newline)))]
 
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
@@ -573,9 +586,9 @@
 				   [tokname-pair (cons ',tok subtok-index)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
 				   [old-local    (simobject-local-msg-buf this)])
-			      ,(DEBUGMODE 
-				;; Check invariants on the store:
-				(check-store the-store))
+			      (DEBUGMODE 
+			       ;; Check invariants on the store:
+			       (check-store the-store))
 
 			      "Is there already an allocated token object?:"
 			      ;; Requires equal? based hash table:

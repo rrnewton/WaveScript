@@ -37,10 +37,6 @@
             (begin (vector-set! newv n (vector-ref v n))
                    (loop (sub1 n)))))))
   
-  (define (make-default-hash-table) (make-hash-table))
-  (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
-  (define hashtab-set! hash-table-put!)
-  
   ;; These need to be defined for the module system to be happy.
   (define soc-return 'not-bound-yet-in-plt)
   (define soc-finished 'not-bound-yet-in-plt)
