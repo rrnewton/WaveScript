@@ -261,12 +261,17 @@
 
 			       ;; Reset the accumulator:
 			       (set! ,acc ,theseed)
+
+			     ;; Otherwise, flag = REMOTE
+			     ;; If called remotely, we only proceed if we are the intended destination.
+;;??			     (if (not (or (= destid ',NULL_ID) (= destid (my-id))))
+
 			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
-			       ;; But we just reset the acc, so any calls from this moment on will be in the next epoch.
+			       ;; But we just reset the acc above , so any calls from this moment on will be in the next epoch.
 			       ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?
 			       ,@(DEBUGMODE 
-				  `(if (not (token-present? (tok ,via viaind)))
-                                       ((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id)))))
+				  `((if (not (token-present? (tok ,via viaind)))
+					((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))))
 				  
 
 			       (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
