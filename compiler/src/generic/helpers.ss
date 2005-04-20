@@ -224,9 +224,9 @@
      (bcast (Token . Object) Void)
      (timed-call (Integer Token . Object) Void)
      (subcall (Token . Object) Object)
-     (is_scheduled (Token) Bool)
-     (deschedule (Token) Void)
-     (is_present (Token) Bool)
+     (schedule (Token) Void)
+     (token-scheduled? (Token) Bool)
+     (token-present? (Token) Bool)
      (evict (Token) Void)
 
      (void () Object)

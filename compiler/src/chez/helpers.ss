@@ -49,6 +49,7 @@
 (define hashtab-get (hash-inquirer equal?))
 (define hashtab-set! (hash-associator equal?))
 (define hashtab-for-each hash-for-each)
+(define hashtab-remove! (hash-remover equal?))
 
  ;; [2004.06.13] Matches the function defined in plt, provides
  ;; functionality used by the generic code.
