@@ -458,8 +458,10 @@
 
 		  ;; If it's in the hash table, it's present:
 		  ;; This is static wrt to token name for the moment:
-		  [(is_present (tokname ,t ,[e])) `(hashtab-get the-store '(,t . ,e))]
-		  ;; evict TODO
+		  [(token-present? (tok ,t ,n)) (guard (number? n)) `(hashtab-get the-store (cons ',t ,n))]
+		  [(token-present? (tok ,t ,[e])) `(hashtab-get the-store (cons ',t ,e))]
+
+		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (cons ',t ,e))]
 
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
@@ -475,11 +477,17 @@
 		   `(if ,test ,conseq ,altern)]
 
 		  [(my-id) '(node-id (simobject-node this))]
-		  [(soc-return ,x)
-		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
 
-		  ;[(soc-finished)
-		  
+		  [(soc-return ,x)		   
+		   (process-expr `(return ,x 
+					  (to (tok SOC-return-handler 0) )
+					  (via (tok 
+
+,x))]
+
+		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
+		 
+		  ;[(soc-return-finished ,x) 		  
 
 		  [(loc) '(sim-loc)]
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
@@ -499,12 +507,13 @@
 				  (string-set! newstr i #\~)
 				  (string-set! newstr (add1 i) #\a)
 				  (loop (sub1 i))]
-				 [(and (eq? (string-ref s i) #\\)
-				       (eq? (string-ref s (add1 i)) #\n))
-				  (string-set! newstr i #\~)
-				  (loop (sub1 i))]
+;				 [(and (eq? (string-ref s i) #\\)
+;				       (eq? (string-ref s (add1 i)) #\n))
+;				  (string-set! newstr i #\~)
+;				  (loop (sub1 i))]
 				 [else (loop (sub1 i))]))
 			      newstr))])
+;		     (disp "MANGLED" (massage-str str))
 		     `(begin (display (format ,(massage-str str) ,@args)) (newline)))]
 
 		  [(,prim ,[rand*] ...)

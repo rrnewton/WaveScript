@@ -69,6 +69,7 @@
 (define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
 (define hashtab-set! hash-table-put!)
 (define (hashtab-for-each f h) (hash-table-for-each h f))
+(define hashtab-remove!  hash-table-remove!)
 
 
 ;; ======================================================================  
@@ -117,7 +118,7 @@
    
    ;; Meet in the middle with chez:
    print-level print-length
-   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each
+   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
    
    get-formals
    unique-name reset-name-count! extract-suffix make-begin strip-illegal
