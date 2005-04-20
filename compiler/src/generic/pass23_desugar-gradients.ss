@@ -265,10 +265,9 @@
 			       ;; But we just reset the acc, so any calls from this moment on will be in the next epoch.
 			       ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?
 			       ,@(DEBUGMODE 
-				  (if (not (is_present? (tok ,via viaind)))
-				      `((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))
+				  `(if (not (token-present? (tok ,via viaind)))
+                                       ((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id)))))
 				  
-				  TODO FINISISIHIHSISHI)
 
 			       (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
 				 (if (not ,parent_pointer)
