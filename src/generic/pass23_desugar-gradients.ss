@@ -148,14 +148,14 @@
 	  (match expr
 	     [(quote ,const) (values () `(quote ,const))]
              ;; Only for recurring on tokens:
-	     [,num (guard (number? num)) (values () num)]
+	     [,num (guard (number? num))  (values () num)]
 	     [,var (guard (symbol? var))  (values () var)]
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
 	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
 	     [(ext-set ,[ttb t] ,v ,[e2]) (values ttb `(ext-set ,t ,v ,e2))]
 	     ;; This is "dynamic" context so no tainted names are allowed!
 	     ;; Basically gradient bearing token handlers are second class!
-	     [(tok ,t ,n) (guard (number? n))  
+	     [(tok ,t ,n) (guard (number? n))
 	      (if (memq t tainted) 
 		  (error 'desugar_gradients:process-expr "dynamic token ref to tainted token!: ~a" t)
 		  (values () `(tok ,t ,n)))]
@@ -179,7 +179,7 @@
 		(ext-set! ,tok ,STORED_PARENT_ARG ',NULL_ID)
 		;; Increment persistent version counter:
 		(set! ,ver (+ 1 ,ver))
-		(dbg "Emitting %d from %d\n" tok (my-id))
+		(dbg "Emitting %d from %d\n" ',tok (my-id))
 		(bcast ,tok (my-id) 1 ,ver ,@args*))))]
 
 	     ;; TODO: This doesn't cache or pass any arguments on to the relayed tokhand!!!!
@@ -255,43 +255,47 @@
 					  `(cons val ,ac)))]
 			      [theseed (if aggr seed_exp ''())]
 			      [parent_pointer (unique-name 'parent_pointer)])
+
+
 			`(if (= flag ',LOCAL) ;; When we get the local value, we lump together and send upwards.
 			     (let ([,oldacc ,acc])
 			       ,@(DEBUGMODE `((dbg "Returning locally at %d val %d" (my-id) ,(fold oldacc))))
 
 			       ;; Reset the accumulator:
 			       (set! ,acc ,theseed)
-
-			     ;; Otherwise, flag = REMOTE
-			     ;; If called remotely, we only proceed if we are the intended destination.
-;;??			     (if (not (or (= destid ',NULL_ID) (= destid (my-id))))
-
+			      
 			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
 			       ;; But we just reset the acc above , so any calls from this moment on will be in the next epoch.
-			       ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?
-			       ,@(DEBUGMODE 
-				  `((if (not (token-present? (tok ,via viaind)))
-					((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))))
-				  
 
-			       (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
-				 (if (not ,parent_pointer)
-				     ,@(DEBUGMODE `((dbg "ERROR: fell off the via tree: %d at node %d\n" ,via (my-id))))
-				     (if (= ',NULL_ID ,parent_pointer)
-					 ;; Now, if we're the destination we need to call the 'to' token.
-					 (call (tok ,to toind) ,(fold oldacc))
-					 ;; Otherwise, send it on up to the parent:
-					 ;; TODO: Should use "send_to" form here, but haven't implemented yet:
-					 (begin 
-					   ,@(DEBUGMODE
-					      `((dbg "Returning up tree from %d to %d val %d" 
-						 (my-id) '(tok ,return-handler retid) ,(fold oldacc))))
-					 (bcast (tok ,return-handler retid)
-						,parent_pointer ;; destid
-						',REMOTE        ;; flag
-						,(fold oldacc) ;; val
-						,toind ,viaind  ;; toind, viaind
-						))))))
+
+			       ;; Next, do we have the via token?
+			       (if (not (token-present? (tok ,via viaind)))
+
+				   ;; NOTE: FIZZLE SEMANTICS.
+				   ;; That is, if we get a local return before the trees there.  Then we just fizzle.
+				   ;; One could imagine buffering here, but that gets complex.
+				   (begin 
+				   ,@(DEBUGMODE `( (dbg "Warning: Didn't have the via token %d at node %d (FIZZLE)\n" ',via (my-id)))))
+
+				   ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?	
+				   (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
+				     (if (not ,parent_pointer)
+					 ,@(DEBUGMODE `((dbg "ERROR: fell off the via tree: %d at node %d\n" ',via (my-id))))
+					 (if (= ',NULL_ID ,parent_pointer)
+					     ;; Now, if we're the destination we need to call the 'to' token.
+					     (call (tok ,to toind) ,(fold oldacc))
+					     ;; Otherwise, send it on up to the parent:
+					     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
+					     (begin 
+					       ,@(DEBUGMODE
+						  `((dbg "Returning up tree from %d to %d val %d" 
+							 (my-id) '(tok ,return-handler retid) ,(fold oldacc))))
+					       (bcast (tok ,return-handler retid)
+						      ,parent_pointer ;; destid
+						      ',REMOTE        ;; flag
+						      ,(fold oldacc) ;; val
+						      ,toind ,viaind  ;; toind, viaind
+						      )))))))
 
 			     ;; Otherwise, flag = REMOTE
 			     ;; If called remotely, we only proceed if we are the intended destination.

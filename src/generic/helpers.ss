@@ -240,7 +240,7 @@
      (draw-mark)
      (rgb)
 
-     (dbg (String) Void)
+     (dbg (String . Object) Void)
 
     ;; This is a syntax:
     ;(leds ...

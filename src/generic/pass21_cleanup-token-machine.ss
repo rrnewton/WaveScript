@@ -337,12 +337,18 @@
 			     '(aggr #f))))]
 
 
-	     ;; For now this is just syntactic sugar for routing on the global tree:	     
+	     ;; For now this is just syntactic sugar for routing on the global tree:   
+	     ;; return-retry indi
 	     [(soc-return ,x)
-	      (loop `(return ,x (to SOC-return-handler) (via (tok global-tree 0))))]
-
+;	      (loop `(return-retry ,x (to (tok SOC-return-handler 0)) (via (tok global-tree 0))))]
+	      (let ([socretval (unique-name 'socretval)])
+		(loop `(let ([,socretval ,x])
+			 (if (= (my-id) ',BASE_ID)
+			     (call (tok SOC-return-handler 0) ,socretval)
+			     (return ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
+	     ;; Sending to subtok 1 indicates that we're finished.
 	     [(soc-return-finished ,x)
-	      (loop `(return ,x (to SOC-return-handler) (via (tok global-tree 1))))]
+	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 	     
 
 
