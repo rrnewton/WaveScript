@@ -150,10 +150,16 @@
 		      set)])
       (test-all))))
 
-(define (r x)  ;; shorthand
-  (let ((prog  x))
-    (parameterize ((tracer #t)) ;'()))
-		  (test-one prog))))
+(define r  ;; shorthand
+  (letrec ((loop
+	    (case-lambda 
+	     [(pass x)
+	      (let ((prog  x))
+		(fluid-let ((pass-names (list-remove-after pass pass-names)))
+		  (parameterize ((tracer #t))
+				(test-one prog))))]
+	     [(x) (loop (rac pass-names) x)])))
+    loop))
 
 ;; Token Run:  
 (define (tr x)  ;; shorthand

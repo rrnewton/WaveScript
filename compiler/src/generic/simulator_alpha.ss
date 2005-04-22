@@ -481,11 +481,10 @@
 		  [(soc-return ,x)		   
 		   (process-expr `(return ,x 
 					  (to (tok SOC-return-handler 0) )
-					  (via (tok 
-
-,x))]
-
-		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
+					  (via (tok global-tree 0))
+					  (seed '#f)
+					  (aggr #f)))]
+;		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
 		 
 		  ;[(soc-return-finished ,x) 		  
 
