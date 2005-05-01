@@ -30,10 +30,10 @@
 
 ;; [2004.06.28] Moving this here, hope that works:
 ;(load "../depends/slib/chez.init")
-;(include "../depends/slib/chez.init")
+(include "../depends/slib/chez.init")
 ;; [2005.04.21] Just stealing the files I need from slib for portability:
-(include "slib/chez.init")
-;(require 'tsort) ;; for the simulator: 
+;(include "slib/chez.init")
+(require 'tsort) ;; for the simulator: 
 
 (include "generic/constants.ss")
 

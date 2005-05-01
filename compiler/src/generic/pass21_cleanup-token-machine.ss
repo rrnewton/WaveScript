@@ -27,7 +27,7 @@
 ;; Whatever, let them all be global.
 
 
-;;;   (*) It expands out some primitive applications
+;;;   (*) Desugaring: It expands out some primitive applications
 ;;;   that are just shorthands.  (For example, (dist) becomes
 ;;;   (dist <this-token>)    ;;; TODO: not finished...
 ;;;   It also expands some syntaxes (and, or), and regularizes certain usages 
@@ -121,7 +121,7 @@
 		      [(begin begin ,[expr*] ...) (apply append expr*)]
 		      [(begin ,[expr*] ...) (apply append expr*)]
 		      [,expr (list expr)])
-	       [() (void)]
+	       [() '(void)]
 	       [(,x) x]
 	       [(,x ,x* ...) `(begin ,x ,x* ...)])))
 
@@ -263,8 +263,26 @@
 	       `(let ([,l1 ,r1])
 		  (let* ,rest ,bodies ...)))]
 
+
+	     [(activate (tok ,t ,n) ,[args*] ...)
+	      (guard (number? n))
+	      `(if (not (token-scheduled? (tok ,t ,n)))
+		   (call (tok ,t ,n) ,@args*))]
+
+	     [(activate ,[e] ,[args*] ...)
+	      (disp "ACTIV" e)
+	      (match e
+		[(tok ,t ,v) 
+		 `(if (not (token-scheduled? ,e))
+		      (call ,e ,@args*))]
+		[,other
+		 (let ([ind (unique-name 'ind)])       
+		   `(let ((,ind ,e))
+		      (if (token-scheduled? ,ind)
+			  (call ,ind ,@args*))))])]
+	     	     
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(emit call activate bcast))) ;; Activate should be desugared at some point!
+	      (guard (memq call-style '(emit call bcast)))
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
@@ -344,11 +362,13 @@
 	      (let ([socretval (unique-name 'socretval)])
 		(loop `(let ([,socretval ,x])
 			 (if (= (my-id) ',BASE_ID)
-			     (call (tok SOC-return-handler 0) ,socretval)
+			     (begin 
+			       ,@(DEBUGMODE `((dbg "Soc return on basenode, returning directly: %d" ,socretval)))
+			       (call (tok SOC-return-handler 0) ,socretval))
 			     (return ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
 	     ;; Sending to subtok 1 indicates that we're finished.
-	     [(soc-return-finished ,x)
-	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
+;	     [(soc-return-finished ,x)
+;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 	     
 
 

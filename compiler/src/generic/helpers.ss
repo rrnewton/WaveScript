@@ -175,8 +175,22 @@
 (define get-primitive-entry
   (lambda (prim)
     (or (assq prim regiment-primitives)
+	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
+
+(define map-prim-w-types
+  (lambda (f prim origargs)
+    (let loop ([args origargs] [types (cadr (get-primitive-entry prim))])
+      (cond
+       [(null? args) '()]
+       [(null? types)
+	(error 'map-prim-w-types "too many arguments to prim ~a: ~a" prim origargs)]
+       [(pair? types) 
+	(cons (f (car args) (car types))
+	      (loop (cdr args) (cdr types)))]
+       [else (cons (f (car args) types)
+		   (loop (cdr args) types))]))))
 
 #;(define (get-primitive-arity prim)
   (let* ([entry (get-primitive-entry prim)]
@@ -212,13 +226,13 @@
 ;     (timed-call)
 ;     (activate)
 ;     (dist) 
-     (light-up)
+     (light-up (Integer Integer Integer) Void)
 ;     (sense)
-     (my-id)
-     (my-clock)
-     (loc )
+     (my-id  () Integer)
+     (my-clock () Integer)
+     (loc () Location)
 
-     (printf)
+     (printf (String . Object) Void)
 
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
@@ -237,8 +251,9 @@
      (soc-return-finished (Number) Void)
      
      ;; For simulator only:
-     (draw-mark)
-     (rgb)
+     ; [2005.04.30] Disabling these for now, will get them back up later.
+     ;(draw-mark)
+     ;(rgb)
 
      (dbg (String . Object) Void)
 

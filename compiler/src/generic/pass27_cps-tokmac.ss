@@ -197,7 +197,9 @@
 	(define loop
 	  (lambda (expr  pvk)
 	    (match expr
-;	     [,x (guard (begin (disp "  PEXP" x) #f)) 3]
+	     [,x (guard (begin (display-constrained "\n  PExp: " (list x 50) "\n")
+;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
+			       #f)) 3]
 		   
 	     [,const (guard (constant? const)) 
 		     (pvk `(quote ,const))]
@@ -240,6 +242,7 @@
 	     [(subcall ,tok ,args* ...)
 	      (let* (;; This expression represents the continuation of the subcall:
 		     [broken-off-code (pvk 'fv0)] ;(pvk RETVAL_VARNAME)]
+		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
 		     [fvs (free-vars broken-off-code)]
 		     [args (map (lambda (n)
 				  (string->symbol (format "arg~a" n)))
@@ -329,7 +332,7 @@
 				`(,tok ,subid ,args (stored ,@stored) ,newexpr)
 				(append newtokbinds tbacc)))))))))
 
-      	 
+    ;; CPS-tokmac main body:
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
@@ -371,3 +374,199 @@
 (define test-cps-tokmac test-this)
 (define tests-cps-tokmac these-tests)
 
+
+(define (temptest)
+  (cps-tokmac
+   '(rename-stored-lang
+  '(program
+     (bindings)
+     (nodepgm
+       (tokens
+         (SOC-start
+           subtok_ind
+           ()
+           (stored)
+           (begin (void)
+                  (call (tok spread-global 0))
+                  'multiple-bindings-for-token))
+         (node-start
+           subtok_ind
+           ()
+           (stored)
+           (begin (call (tok leaf-pulsar_tmpworld_7 0))
+                  (call (tok spark-world 0))))
+         (f_token_tmpworld_7
+           subtok_ind
+           ()
+           (stored)
+           (call (tok m_token_tmpworld_7 0)))
+         (spark-world
+           subtok_ind
+           ()
+           (stored)
+           (call (tok m_token_tmpworld_7 0)))
+         (tmpfunc_8
+           subtok_ind
+           (a_1)
+           (stored)
+           (let ([result_4 (local-sense)]) result_4))
+         (m_token_tmpworld_7
+           subtok_ind
+           ()
+           (stored)
+           (if (not (token-scheduled? (tok f_token_tmprmap_9 0)))
+               (call (tok f_token_tmprmap_9 0))
+               (void)))
+         (f_token_tmprmap_9
+           subtok_ind
+           ()
+           (stored)
+           (begin (call (tok m_token_tmprmap_9 0)
+                        (call (tok tmpfunc_8 0) this))
+                  (timed-call 100 (tok f_token_tmprmap_9 0))))
+         (tmpfunc_10
+           subtok_ind
+           (a_3 b_2)
+           (stored)
+           (let ([result_5 (+ a_3 b_2)]) result_5))
+         (m_token_tmprmap_9
+           subtok_ind
+           (v)
+           (stored)
+           (call (tok f_token_result_6 0) v))
+         (f_token_result_6
+           subtok_ind
+           (v)
+           (stored)
+           (let ([aggrID_20 (+ (* '1000 '0) '0)])
+             (call (tok returnhandler_23 aggrID_20)
+                   (my-id)
+                   '222
+                   v
+                   '0
+                   '0)))
+         (m_token_result_6
+           subtok_ind
+           (v)
+           (stored)
+           (let ([socretval_13 v])
+             (if (= (my-id) '10000)
+                 (call (tok SOC-return-handler 0) socretval_13)
+                 (let ([aggrID_15 (+ (* '1000 '0) '0)])
+                   (call (tok returnhandler_18 aggrID_15)
+                         (my-id)
+                         '222
+                         socretval_13
+                         '0
+                         '0)))))
+         (leaf-pulsar_tmpworld_7
+           subtok_ind
+           ()
+           (stored)
+           (begin (call (tok f_token_tmpworld_7 0))
+                  (timed-call 1000 (tok leaf-pulsar_tmpworld_7 0))))
+         (spread-global
+           subtok_ind
+           ()
+           (stored (ver_33 (void)) (storedliftoption_32 '#f))
+           (begin (if storedliftoption_32
+                      (void)
+                      (begin (set! storedliftoption_32 '#t)
+                             (set! ver_33 '0)))
+                  (ext-set! #0=(tok global-tree 0) storedgparent_31 '0)
+                  (set! ver_33 (+ '1 ver_33))
+                  (dbg '"Emitting %d from %d\n" '#0# (my-id))
+                  (bcast (tok global-tree 0) (my-id) '1 ver_33)
+                  (timed-call 1000 (tok spread-global 0))))
+         (global-tree
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (storedgparent_31 '#f)
+             (storedgorigin_30 '#f)
+             (storedghopcount_29 '#f)
+             (storedgversion_28 '#f))
+           (if (if (not storedghopcount_29)
+                   '#t
+                   (if (= '0 g_hopcount)
+                       (if (> g_version storedgversion_28)
+                           (if (= g_version storedgversion_28)
+                               (< g_hopcount storedghopcount_29)
+                               '#f)
+                           '#f)
+                       '#f))
+               (begin (bcast
+                        (tok global-tree subtok_ind)
+                        (my-id)
+                        g_origin
+                        (+ '1 g_hopcount)
+                        g_version)
+                      (if (not (= g_hopcount '0))
+                          (begin (set! storedgparent_31 g_parent)
+                                 (set! storedgorigin_30 g_origin)
+                                 (set! storedghopcount_29 g_hopcount)
+                                 (set! storedgversion_28 g_version))
+                          (void)))
+               (void)))
+         (returnhandler_23
+           retid
+           #1=(destid flag val toind viaind)
+           (stored (acc_27 '0))
+           (if (= flag '222)
+               (let ([oldacc_22 acc_27])
+                 (begin (set! acc_27 '0)
+                        (if (not (token-present? (tok global-tree viaind)))
+                            (void)
+                            (let ([parentpointer_24
+                                   (ext-ref
+                                     (tok global-tree . #2=(viaind))
+                                     storedgparent_31)])
+                              (if (not parentpointer_24)
+                                  (if (= '0 parentpointer_24)
+                                      (call (tok m_token_result_6 toind)
+                                            (subcall
+                                              (tok tmpfunc_10 0)
+                                              val
+                                              oldacc_22))
+                                      (bcast
+                                        (tok returnhandler_23 retid)
+                                        parentpointer_24
+                                        '333
+                                        (subcall
+                                          (tok tmpfunc_10 0)
+                                          val
+                                          oldacc_22)
+                                        '0
+                                        '0))
+                                  (void))))))
+               (if (not (if (= destid '0) '#t (= destid (my-id))))
+                   (void)
+                   (set! acc_27 (subcall (tok tmpfunc_10 0) val acc_27)))))
+         (returnhandler_18
+           retid
+           #1#
+           (stored (acc_26 ()))
+           (if (= flag '222)
+               (let ([oldacc_17 acc_26])
+                 (begin (set! acc_26 '())
+                        (if (not (token-present? (tok global-tree viaind)))
+                            (void)
+                            (let ([parentpointer_19
+                                   (ext-ref
+                                     (tok global-tree . #2#)
+                                     storedgparent_31)])
+                              (if (not parentpointer_19)
+                                  (if (= '0 parentpointer_19)
+                                      (call (tok SOC-return-handler toind)
+                                            (cons val oldacc_17))
+                                      (bcast
+                                        (tok returnhandler_18 retid)
+                                        parentpointer_19
+                                        '333
+                                        (cons val oldacc_17)
+                                        '0
+                                        '0))
+                                  (void))))))
+               (if (not (if (= destid '0) '#t (= destid (my-id))))
+                   (void)
+                   (set! acc_26 (cons val acc_26)))))))))))
