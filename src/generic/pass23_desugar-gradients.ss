@@ -1,6 +1,10 @@
 
 ;; CHECK FOR REFERENCES TO GLOBAL-TREE!!!
 
+;; TODO: heuristic optimization: if there are no emits to unknown
+;; tokens, then we needn't be conservative about first class token refs.
+
+
 
 
 ;; [2005.02.25]
@@ -90,8 +94,25 @@
       (match t
 	[(tok ,t ,e) t]))
 
-    (define (find-emittoks expr)
-      (match expr
+    (define find-emittoks
+      (letrec ([tok-allowed-loop 
+		(lambda (expr)
+		  (match expr
+			 [(tok ,t ,[main-loop -> e]) e]
+			 [,e (main-loop e)]))]
+	       [do-primitive
+		(lambda (prim args)
+		  (apply append
+		  (map-prim-w-types 
+		   (lambda (arg type)
+		     (match (cons type arg)
+		       [(Token . (tok ,tok ,[main-loop -> e])) e]
+		       [(,other . ,[main-loop -> e]) e]))
+		   prim args)))]
+	       [main-loop
+		(lambda (expr)
+		  (match expr
+	     ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
 	     [(quote ,_) '()]
 	     [,num (guard (number? num)) '()]
 	     [,var (guard (symbol? var)) '()]
@@ -109,8 +130,10 @@
 	     ;; "Direct call":  Not allowing dynamic emit's for now:
 	     [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
 	     ;; Indirect emit call... could consider restricting these.
-					;[(emit ,[e] ,[args*] ...) (apply append e args*)]
-
+	     [(emit ,[e] ,[args*] ...)
+	      (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+	      ;(apply append e args*)
+	      ]
 	     ;; Also allowing dynamic relays and dists.  
 	     ;; These don't matter as much because I'm basing 
 	     [(relay (tok ,t ,[e])) e]
@@ -120,18 +143,33 @@
 	      (append expr seed_val)]
 
 	     [(leds ,what ,which) '()]
-	     [(call ,[args*] ...) (apply append args*)]
-	     [(subcall ,[args*] ...) (apply append args*)]
-	     [(bcast ,[args*] ...) (apply append args*)]
-	     [(timed-call ,[args*] ...) (apply append args*)]
-					;	 [(activate ,_ ,[args*] ...) (apply append args*)]
-	     
-	     [(,[rator] ,[rands] ...) (apply append rator rands)]
 
+	     ;; Static calls are allowed:
+	     [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     ;; Anything more dynamic makes us think the operand is potentially emitted.
+#|	     [(call ,[args*] ...) (apply append args*)]
+	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     [(subcall ,[args*] ...) (apply append args*)]
+	     [(bcast (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     [(bcast ,[args*] ...) (apply append args*)]
+	     [(timed-call ,[time] (tok ,t ,[e]) ,[args*] ...) (apply append time e args*)]
+	     [(timed-call ,[args*] ...) 
+	      ;(disp "TIMED call to dynamic tokens...")
+	      (apply append args*)]
+|#	     
+	     ;; All primitives that can take tokenss
+	     [(,prim ,args* ...)
+	      (do-primitive prim args*)
+	      ]
+
+	     [(,[rator] ,[rands] ...) (apply append rator rands)]
 	     [,otherwise
 	      (error 'desugar-gradient:find-emittoks
 		     "bad expression: ~s" otherwise)]
-	     ))
+	     ))])
+
+	main-loop))
+
 
     (define (statictok loop)
       (lambda (tk)
