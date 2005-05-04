@@ -178,7 +178,7 @@
     ;; Best way to represent a thing with a hole in it is a continuation:
     ;; This pass itself carries a continuation representing the context of the current expression.
     (define process-expr
-      (trace-lambda process-expr (expr)
+      (lambda (expr)
 	;; These simply accumulate.  There is no reason to complicate
 	;; the continuation passing algorithm below by adding extra
 	;; arguments to the continuation.

@@ -17,9 +17,9 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be had from.
 ;; ON
-(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
+;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
 ;;;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
-;;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
+;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
 ;; OFF
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
 

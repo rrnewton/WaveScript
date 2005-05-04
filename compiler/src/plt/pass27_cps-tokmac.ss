@@ -7,6 +7,7 @@
 
   (require (lib "include.ss"))
   (require (lib "list.ss"))
+;  (require (lib "trace.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
   (require (all-except "helpers.ss" filter))
