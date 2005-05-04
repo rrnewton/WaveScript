@@ -174,8 +174,9 @@
 
 	  
     ;; Best way to represent a thing with a hole in it is a continuation:
+    ;; This pass itself carries a continuation representing the context of the current expression.
     (define process-expr
-      (lambda (expr)
+      (trace-lambda process-expr (expr)
 	;; These simply accumulate.  There is no reason to complicate
 	;; the continuation passing algorithm below by adding extra
 	;; arguments to the continuation.
@@ -190,14 +191,15 @@
 	    (pvk
 	     (let inner ([ls ls])
 	       (if (null? ls) '()
-		   (loop (car ls)  
+		   (loop (car ls)
 			 (lambda (x)
 			   (cons x (inner (cdr ls))))))))))
 
+	;; Pvk is the continuation representing the enclosing expression to the current being processed.
 	(define loop
 	  (lambda (expr  pvk)
 	    (match expr
-	     [,x (guard (begin (display-constrained "\n  PExp: " (list x 50) "\n")
+	     [,x (guard (begin (display-constrained "\n  Loop: " (list x 50) "\n")
 ;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
 			       #f)) 3]
 		   
@@ -208,6 +210,8 @@
 	     [(set! ,v ,expr)
 	      (loop expr (lambda (e) (pvk `(set! ,v ,e))))]
 	     [(tok ,tok) (pvk `(tok ,tok))]
+	     [(tok ,tok ,n) (guard (number? n))
+	      (pvk '(tok ,tok ,n))]
 	     [(tok ,tok ,expr) 
 	      (loop expr
 		    (lambda (e) (pvk `(tok ,tok ,e))))]
@@ -216,14 +220,15 @@
 	      (loop expr
 		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
              [(begin) (pvk '(void))]
+	     [(begin ,x) (loop x pvk)]
 	     [(begin ,x ,y ...)
 	      (loop x 
 		    (lambda (e) 
-                      (loop `(begin ,@y)
-                            (lambda (e2)
-                              (pvk ;`(begin ,e ,e2)
-			       (make-begin `(begin ,e ,e2))
-			       )))))]
+		      (make-begin 
+		       `(begin ,e
+			       ,(loop `(begin ,@y)
+				      (lambda (e2) (pvk (make-begin e2))))))))]
+
               [(if ,test ,conseq ,altern)
 	      (loop test 
 		    (lambda (t)
@@ -260,9 +265,9 @@
 					;(map list fvns args))
 					;(make-vector ,(length fvs)))
 				 (if (eq? flag ,INIT)
-				     `(begin
+				     (begin
 				       ,@(map (lambda (fv a)
-					       `(set! ,fv ,a))
+						`(set! ,fv ,a))
 					      fvns args))
 				     ;; Otherwise, assume the flag is CALL
 				     (begin
@@ -276,10 +281,11 @@
 		(loop-list args* 
 			   (lambda (ls)
 			     ;; Get a fresh subtokname for our continuation:
-			     `(let ([ktok (make-tokname ',KNAME 
-							(ext-ref ',KCOUNTER counter))])
-				(call ktok ,INIT ,@fvs)
-				(call ,tok ktok ,@ls))))
+			     (let ([kind (unique-name 'kind)])
+			       `(let ([,kind (ext-ref ',KCOUNTER counter)])
+				  (ext-set ',KCOUNTER counter (+ kind '1))
+				  (call (tok ,KNAME ,kind) ,INIT ,@fvs)
+				  (call ,tok (tok ,KNAME ,kind) ,@ls)))))
 		)]
 
 	     [(call ,tok ,args* ...)
@@ -312,6 +318,7 @@
 	     )))
 	
 	;; process-expr returns an expression, tainted-tokens, and new handlers
+	(disp "boutta loop" expr)
 	(let ((newexpr (loop expr (lambda (x) x))))
 	  (values newexpr 
 		  tainted-toks
@@ -337,8 +344,10 @@
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,nodetoks ...))))
+	 ;; This does the main transformation, eliminates 'subcall':
 	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
 	   (let ([newtoks2
+		  ;; This just adds extra arguments ot the appropriate handlers.
 		  (map (lambda (tb)
 			 (if (memq (car tb) tainted)
 			     (amend-tainted tb)
@@ -570,3 +579,8 @@
                (if (not (if (= destid '0) '#t (= destid (my-id))))
                    (void)
                    (set! acc_26 (cons val acc_26)))))))))))
+
+
+(define (testcps e)
+  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,e)))))))
+
