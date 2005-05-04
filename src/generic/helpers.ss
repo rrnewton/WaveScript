@@ -680,7 +680,7 @@
 ;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
 ;; 
 (define make-begin
-  (lambda (expr*)
+  (lambda  (expr*)
     (let ([initlst (match expr*
 			  [(begin ,x* ...) x*]
 			  [,ls ls])])
