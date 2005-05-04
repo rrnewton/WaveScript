@@ -58,6 +58,7 @@
 
     (define INIT 0)
     (define CALL 0)
+    (define FREEVAR0 'fv0)
 
     ;; Name of the token which represents the global variable storing the continuation
     ;; token count.
@@ -67,8 +68,9 @@
 
     (define (free-vars e)
 	(match e
+	  [,x (guard (begin (disp "FV loop" x) #f)) 3]
 	  [,const (guard (constant? const)) '()]
-	  [(quote ,const) '()]	  
+	  [(quote ,const) '()]
 	  [,var (guard (symbol? var)) (list var)]
 	  [(tok ,tok) '()]
 	  [(tok ,tok ,[expr]) expr]
@@ -163,11 +165,11 @@
 			   "bad expression: ~s" otherwise)]))
 
 	  (define do-amend
-	    (lambda (tokbind)
+	    (lambda (tokbind)	      
 	      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tokbind)])
 		     (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
 		     `(,tok ,id (k ,@args) (stored ,@stored)
-			     ,(amend-tainted body)))))
+			     ,(put-k body)))))
 	  
 	  (lambda (tokbinds)
 	    (map do-amend tokbinds))))
@@ -188,12 +190,14 @@
 
 	(define loop-list
 	  (lambda (ls  pvk)
-	    (pvk
-	     (let inner ([ls ls])
-	       (if (null? ls) '()
+	     (let inner ([ls ls] [thisk pvk]) ;(lambda (ls) (pvk (reverse ls)))])
+	       (printf "\n   INNER loop list: ~s\n" ls)
+	       (if (null? ls) 
+		   (thisk '())
 		   (loop (car ls)
 			 (lambda (x)
-			   (cons x (inner (cdr ls))))))))))
+			   (inner (cdr ls) 
+				  (lambda (ls) (thisk (cons x ls))))))))))
 
 	;; Pvk is the continuation representing the enclosing expression to the current being processed.
 	(define loop
@@ -227,7 +231,7 @@
 		      (make-begin 
 		       `(begin ,e
 			       ,(loop `(begin ,@y)
-				      (lambda (e2) (pvk (make-begin e2))))))))]
+				      (lambda (e2) (pvk (make-begin `(begin ,e2)))))))))]
 
               [(if ,test ,conseq ,altern)
 	      (loop test 
@@ -246,46 +250,58 @@
 	     
 	     [(subcall ,tok ,args* ...)
 	      (let* (;; This expression represents the continuation of the subcall:
-		     [broken-off-code (pvk 'fv0)] ;(pvk RETVAL_VARNAME)]
+		     [broken-off-code (pvk FREEVAR0)] ;(pvk RETVAL_VARNAME)]
 		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
-		     [fvs (free-vars broken-off-code)]
+		     [fvs (remq FREEVAR0 (free-vars broken-off-code))]
+		     [__ (disp "GOT fvs: " fvs)]
 		     [args (map (lambda (n)
 				  (string->symbol (format "arg~a" n)))
 				(iota (length fvs)))]
 		     [fvns (map (lambda (n)
 				   (string->symbol (format "fv~a" n)))
 				(iota (length fvs)))]
+		     ;; Get a fresh name & subtokindex name for our continuation:
+		     [kind (unique-name 'kind)]
+		     [kname (unique-name 'K)]
 		     )
 		;; Now we mutate our accumulators:
 		(set! tainted-toks (cons tok tainted-toks))
 		(set! new-handlers
 		      (cons
-		       `(,KNAME id (flag ,@args)
-				 (stored ,@fvns)
+		       `(,kname subtokind (flag ,@args)
+				 (stored [,KCOUNTER '0] ,@fvns)
 					;(map list fvns args))
 					;(make-vector ,(length fvs)))
-				 (if (eq? flag ,INIT)
-				     (begin
-				       ,@(map (lambda (fv a)
-						`(set! ,fv ,a))
-					      fvns args))
+				 (if (eq? flag ',INIT)
+				     (if (= subtokind '0)
+					 ;; No freevars if we're just initializing the counter-object.
+					 (void)
+					 (begin
+					   ,@(map (lambda (fv a)
+						    `(set! ,fv ,a))
+						  fvns args)))
 				     ;; Otherwise, assume the flag is CALL
 				     (begin
 				       ,(number-freevars broken-off-code)
 				       ;; Since these are one-shot continuations, 
 				       ;; we deallocate ourselves on the way out:
-				       (evict ,KNAME)
+				       (evict ,kname)
 				       )))
 		       new-handlers))
 		
 		(loop-list args* 
 			   (lambda (ls)
-			     ;; Get a fresh subtokname for our continuation:
-			     (let ([kind (unique-name 'kind)])
-			       `(let ([,kind (ext-ref ',KCOUNTER counter)])
-				  (ext-set ',KCOUNTER counter (+ kind '1))
-				  (call (tok ,KNAME ,kind) ,INIT ,@fvs)
-				  (call ,tok (tok ,KNAME ,kind) ,@ls)))))
+			       `(let ([,kind 
+				      (if (token-present? (tok ,kname '0))
+					  (let ([new (+ '1 (ext-ref (tok ,kname '0) ,KCOUNTER))])
+					    (ext-set! (tok ,kname '0) ,KCOUNTER new)
+					    new)
+					  (begin (call (tok ,kname '0) ',INIT)
+						 '1))])
+				 ;; Initialize continuation:
+				  (call (tok ,kname ,kind) ',INIT ,@fvs)
+				  ;; Call function with continuation token:
+				  (call ,tok (tok ,kname ,kind) ,@ls))))
 		)]
 
 	     [(call ,tok ,args* ...)
@@ -303,8 +319,10 @@
 	     [(,prim ,rands ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
+	      (disp "PRIM: " prim)
 	      (loop-list rands 
 			 (lambda (ls)
+			   (printf "\nGot prim args back: ~s\n" ls)
 			   (pvk
 			    `(,prim ,@ls))))]
 	     [(app ,opera* ...)
@@ -348,11 +366,9 @@
 	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
 	   (let ([newtoks2
 		  ;; This just adds extra arguments ot the appropriate handlers.
-		  (map (lambda (tb)
-			 (if (memq (car tb) tainted)
-			     (amend-tainted tb)
-			     tb))
-		       newtoks1)])
+		  (append 
+		   (filter (lambda (x) (not (memq x tainted))) newtoks1)
+		   (amend-tainted (filter (lambda (x) (memq x tainted)) newtoks1)))])
 	     `(cps-tokmac-lang '(program (bindings ,constbinds ...)
 					 (nodepgm (tokens ,@newtoks2))))))]))))
 
@@ -369,6 +385,9 @@
 	  (nodepgm (tokens)))))
      ,(lambda (_) #t)]
 
+    ["Testing free-vars" 
+     (free-vars '(dbg '"woot %d %d\n" fv0 x))
+     (fv0 x)]
 
 ))
 
@@ -583,4 +602,16 @@
 
 (define (testcps e)
   (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,e)))))))
+
+;(cps-tokmac '(toheu '(program (bindings) (nodepgm (tokens (tok1 () (begin '1 (subcall tok2 '9) '3)) (tok2 (x) x))))))
+
+'(cps-tokmac '(toheu 
+	      '(program (bindings) 
+			(nodepgm (tokens 
+				  (tok1 () (begin '1 (subcall tok2 '9) '3)) 
+				  (tok2 (x) x)
+				  (tok3 () (dbg "woot %d\n" (subcall tok1)))
+				  )))))
+
+
 
