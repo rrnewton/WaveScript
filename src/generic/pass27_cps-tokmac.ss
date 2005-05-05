@@ -50,8 +50,28 @@
 
 ;;; Output Grammar:
 
-;;; Subcall's are gone.
+;;; Subcall's and "return" statements are gone.
 
+
+;; I accumulate tests through mutation throughout this file.
+;; This method allows me to test internal functions whose definitions
+;; are not exposed at the top level.
+(define these-tests '())
+
+(define cps-tokmac
+  (let ()
+
+    (define INIT 0)
+    (define CALL 0)
+    (define FREEVAR0 'fv0)
+
+    ;; Name of the token which represents the global variable storing the continuation
+    ;; token count.
+    (define KCOUNTER 'kcounter)
+    ;; And the root name of continuation tokens.
+    (define KNAME 'K)
+
+    (define (id x) x)
 
     (define (generic-traverse driver fuse e)
       (let loop ((e e))
@@ -69,9 +89,11 @@
 		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
 		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
 		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
+		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
+		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
+		                                   (fuse (list a b c) `(if ,a ,b ,c))]
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
 		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
-		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
 		    [(,prim ,[loop -> rands] ...)
 		     (guard (or (token-machine-primitive? prim)
 				(basic-primitive? prim)))
@@ -112,7 +134,6 @@
 	 (lambda (ls def) def)
 	 e)))
 
-
   (define (get-tainted expr)
     (generic-traverse
      (lambda (x loop)
@@ -130,23 +151,28 @@
 		[,e (loop e)]))
        (lambda (ls _) (ormap id ls))
        expr))
+
   ;; Has returns at all return positions?
-  (define (has-allreturns? expr)
-    (let outer ((expr expr))
-      (generic-traverse
-       (lambda (x loop)
-	 (match x 
-		[(return ,[loop -> e]) e]
-		[(begin ,x ...)
-		 (and (not (ormap loop (rdc x)))
-		      (loop (rac x)))]
-		[(let ((,lhs ,[loop -> rhs])) ,[loop -> bod])
-		 (and (not rhs) bod)]
-		[(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		 (and (not a) b c)]
-		[,x (loop x)]))
-       (lambda (ls _) (not (ormap id ls)))
-       expr)))
+  (define (valid-returns? expr)
+    (let ((nonret (lambda (expr)
+		    (generic-traverse
+		     (lambda (exp loop)
+		       (match exp
+			      [(return ,_) #f]
+			      [,other (loop other)]))
+		     (lambda (ls _) (andmap id ls))
+		     expr))))
+      ;; Now, this loop climbs down the spine of the expression, making sure all paths end in return:
+      (match expr
+	   [(return ,[nonret -> e]) e]
+	   [(begin ,[nonret -> e*] ... ,[e])
+	    (and e (andmap id e*))]
+	   [(let ((,lhs ,[nonret -> rhs])) ,[bod])
+	    (and rhs bod)]
+	   [(if ,[nonret -> a] ,[b] ,[c])
+	    (and a b c)]
+	   [,_ #f])))
+
 
 ;; Tainted tokens must take continuations and return values to them:
 (define (find-tainted tbs)      
@@ -155,20 +181,6 @@
 	  33
 	  ))
 
-
-
-(define cps-tokmac
-  (let ()
-
-    (define INIT 0)
-    (define CALL 0)
-    (define FREEVAR0 'fv0)
-
-    ;; Name of the token which represents the global variable storing the continuation
-    ;; token count.
-    (define KCOUNTER 'kcounter)
-    ;; And the root name of continuation tokens.
-    (define KNAME 'K)
 
       (define amend-tainted
 	(let ()
@@ -290,7 +302,7 @@
 	      (let* (;; This expression represents the continuation of the subcall:
 		     [broken-off-code (pvk FREEVAR0)] ;(pvk RETVAL_VARNAME)]
 		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
-		     [fvs (remq FREEVAR0 (free-vars broken-off-code))]
+		     [fvs (remq FREEVAR0 (cpstokmac-free-vars broken-off-code))]
 ;		     [__ (disp "GOT fvs: " fvs)]
 		     [args (map (lambda (n)
 				  (string->symbol (format "arg~a" n)))
@@ -390,6 +402,49 @@
 				`(,tok ,subid ,args (stored ,@stored) ,newexpr)
 				(append newtokbinds tbacc)))))))))
 
+
+
+    ;; Now add unit tests of the above internal helper functions:
+    (set! these-tests
+          (append 
+	   `(
+	     ["Testing free-vars" 
+	      (,cpstokmac-free-vars '(dbg '"woot %d %d\n" fv0 x))
+	      (fv0 x)]
+	     [(,cpstokmac-free-vars '(begin x y (let ((z 3)) z)))
+	      (x y)]
+
+	     [(,cpstokmac-free-vars '(begin a (if b c (let ((d e)) d)) f))
+	      ,(lambda x #t)]
+
+
+	     ["Next testing number-freevars"
+	      (,number-freevars '(begin x y (let ((z '3)) z)))
+	      (begin fv0 fv1 (let ((z '3)) z))]
+	     [(,number-freevars '(begin x y (let ((z 3)) (+ ht z))))
+	      (begin fv0 fv1 (let ([z 3]) (+ fv2 z)))]
+        
+	     ["Now testing valid-returns?"
+	      (,valid-returns? ''3) #f]
+	     [(,valid-returns? '(return '3)) #t]
+	     [(,valid-returns? '(return (return '3))) #f]
+	     [(,valid-returns? '(begin '1 '2 (return '3))) #t]
+	     [(,valid-returns? '(return (begin '1 '2 '3))) #t]    
+	     [(,valid-returns? '(begin '1 '2 '3)) #f]
+	     [(,valid-returns? '(if '1 '2 '3)) #f]
+	     [(,valid-returns? '(if (return '1) '2 '3)) #f]
+	     [(,valid-returns? '(if '1 (return '2) '3)) #f]
+	     [(,valid-returns? '(if '1 '2 (return '3))) #f]
+	     [(,valid-returns? '(if '1 (return '2) (return '3))) #t]
+	     [(,valid-returns? '(begin '1 (if '2 (return '3) (let ((x '4)) (return x))))) #t] 
+	     [(,valid-returns? '(begin '1 (if '2 (return '3) (return (let ((x '4)) x))))) #t] 
+	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) x))))) #t] 
+	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x '4)) x))))) #t]
+	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x (return '4))) x))))) #f]
+	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
+	     
+	     ) these-tests))
+
     ;; CPS-tokmac main body:
     (lambda (prog)
       (match prog
@@ -407,9 +462,10 @@
 					 (nodepgm (tokens ,@newtoks2))))))]))))
 
 
-
-(define these-tests
-  `(
+;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
+(set! these-tests
+  (append 
+   `(
     
     ["Put an empty test through." 
      (cps-tokmac
@@ -418,21 +474,8 @@
 	  (bindings )
 	  (nodepgm (tokens)))))
      ,(lambda (_) #t)]
-
-    ["Testing free-vars" 
-     (cpstokmac-free-vars '(dbg '"woot %d %d\n" fv0 x))
-     (fv0 x)]
-
-    [(cpstokmac-free-vars '(begin x y (let ((z 3)) z)))
-     (x y)]
-
-    [(number-freevars '(begin x y (let ((z 3)) z)))
-     (begin fv0 fv1 z)]
-
-    [(number-freevars '(begin x y (let ((z 3)) (+ ht z))))
-     (begin fv0 fv1 (let ([z 3]) (+ fv2 z)))]
-    
-))
+    )
+   these-tests))
 
 
 (define test-this (default-unit-tester

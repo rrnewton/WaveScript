@@ -1182,6 +1182,12 @@
 (define default-unit-tester
   (lambda (message these-tests . extras)
 
+    ;; Print widths:
+    ;; TODO: I should make these adjustable parameters.
+    (define TESTWIDTH 60)
+    (define ORACLEWIDTH 30)
+    (define INTENDEDWIDTH 20)
+
     (let (;; If the second argument is a procedure, use it as the equal.
 	  [teq? (if (or (null? extras) (not (procedure? (car extras))))
 		    tester-equal?		    
@@ -1227,12 +1233,12 @@
 	       (flush-output-port)
 	       ;; This prints a name, or description for the test:
 	       (if (and verbose descr) (printf "   ~s~n" descr))
-	       (display-constrained `(,num 10) "  " `(,expr 40)
+	       (display-constrained `(,num 10) "  " `(,expr ,TESTWIDTH)
 				    " -> ")
 	       (if (procedure? intended)
 		   (display-constrained "Satisfy oracle? " 
-					`(,intended 30) ": ")
-		   (display-constrained `(,intended 20) ": "))
+					`(,intended ,ORACLEWIDTH) ": ")
+		   (display-constrained `(,intended ,INTENDEDWIDTH) ": "))
 	       
 	       (flush-output-port)
 	       (let ([result 
