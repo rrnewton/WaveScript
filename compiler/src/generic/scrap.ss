@@ -144,3 +144,52 @@
                          (apply m_token_result_2 args))]))])
            (f_token_tmp_3))
 ))
+
+
+
+
+
+
+
+     (define amend-tainted
+	(let ()
+	  (define (kify e) `(call k ,e))
+	  (define (put-k expr)
+	    (match expr
+		   [,const (guard (constant? const)) (kify `(quote ,const))]
+		   [(quote ,const) (kify `(quote ,const))]
+		   [,var (guard (symbol? var)) (kify var)]
+		   [(tok ,tok) (kify `(tok ,tok))]
+		   [(tok ,tok ,[expr]) (kify `(tok ,tok ,expr))]
+		   [(ext-ref ,tok ,var) (kify `(ext-ref ,tok ,var))]
+		   [(ext-set! ,tok ,var ,[expr]) (kify `(ext-set! ,tok ,var ,expr))]
+		   [(set! ,v ,[e]) `(begin `(set! ,v ,e) ,(kify '(void)))]
+		   ;; This case shouldn't be used:
+		   [(begin) '(begin)]
+		   [(begin ,xs ...) 
+		    `(begin ,@(rdc xs) ,(kify (rac xs)))]
+		   [(if ,test ,[conseq] ,[altern])
+		    `(if ,test ,conseq ,altern)]
+		   [(let ( (,lhs ,[rhs]) ...) ,body)	 
+		    `(let  ([,lhs ,rhs])
+		       ,(kify body))]
+		   [(leds ,what ,which) (kify `(leds ,what ,which))]
+		   [(,prim ,rands ...)
+		    (guard (or (token-machine-primitive? prim)
+			       (basic-primitive? prim)))
+		    (kify `(,prim ,rands ...))]
+		   [(,[rator] ,[rands] ...) 
+		    (kify `(,rator ,rands ...))]
+		   [,otherwise
+		    (error 'cps-tokmac:number-freevars 
+			   "bad expression: ~s" otherwise)]))
+	  (define do-amend
+	    (lambda  (tokbind)	      
+	      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tokbind)])
+		     (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
+		     `(,tok ,id (k ,@args) (stored ,@stored)
+			     ,(put-k body)))))	  
+	  (lambda (tokbinds)
+	    (disp "AMEND TAINTED..." (length tokbinds))
+	    (map do-amend tokbinds))))
+

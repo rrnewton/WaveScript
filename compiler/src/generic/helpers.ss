@@ -217,6 +217,7 @@
 ;; get this sorted out eventually.
 ;; TODO: add some kind of type info.
 ;; [2004.10.22]  For now everything that handles tokens is a syntax not a prim.
+;; [2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
   '( ;(elect-leader) (flood) ;; These are actually macros, but what the heck
 ;     (return)
@@ -1184,7 +1185,7 @@
 
     ;; Print widths:
     ;; TODO: I should make these adjustable parameters.
-    (define TESTWIDTH 60)
+    (define TESTWIDTH 70)
     (define ORACLEWIDTH 30)
     (define INTENDEDWIDTH 20)
 
