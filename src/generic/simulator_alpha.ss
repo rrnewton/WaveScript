@@ -529,7 +529,7 @@
 		  [(,rator ,[rand*] ...)
 		   ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))
-			  (not (memq rator '(emit call timed-call activate relay return))))
+			  (not (memq rator '(emit bcast call timed-call activate relay return))))
 		   `(,(process-expr rator) ,rand* ...)]
 		  
 		  [,otherwise (error 'simulator_nought.process-expr 
