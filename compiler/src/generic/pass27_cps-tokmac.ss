@@ -53,6 +53,110 @@
 ;;; Subcall's are gone.
 
 
+    (define (generic-traverse driver fuse e)
+      (let loop ((e e))
+	(driver e 
+	   (lambda (x)
+	     (match x
+;		    [,x (guard (begin (disp "LOOP" x) #f)) 3]
+		    [,const (guard (constant? const)) (fuse () const)]
+		    [(quote ,const)                (fuse ()   `(quote ,const))]
+		    [,var (guard (symbol? var))    (fuse ()    var)]
+		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
+		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
+		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
+		    [(ext-set! ,tok ,var ,[loop -> expr])  
+		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
+		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
+		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
+		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
+		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
+		    [(,prim ,[loop -> rands] ...)
+		     (guard (or (token-machine-primitive? prim)
+				(basic-primitive? prim)))
+		                                   (fuse rands `(,prim ,rands ...))]
+		    [(,[loop -> rator] ,[loop -> rands] ...)
+		                                   (fuse (cons rator rands) `(,rator ,rands ...))]
+		    [,otherwise
+		     (error 'generic-traverse
+			    "bad expression: ~s" otherwise)])))))
+
+    (define (cpstokmac-free-vars e)
+      (generic-traverse
+       ;; driver, fuser, expression
+       (lambda  (x loop) 
+	 (match x
+		[,v (guard (symbol? v)) (list v)]
+		[(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
+		 (append rhs (remq lhs bod))
+		 ]
+		[,x (loop x)]))
+       (lambda (ls _) (apply append ls))
+       e))
+
+    (define (number-freevars e)
+      (define (build-fv x fvs) (string->symbol (format "fv~a" (list-find-position x fvs))))
+      (let outer ((e e) (fvs (cpstokmac-free-vars e)))
+	(generic-traverse
+	 (lambda  (x loop)
+	   (match x
+		  [(let ((,lhs ,[loop -> rhs])) ,bod)
+		   `(let ((,lhs ,rhs))
+		      ,(outer bod (remq lhs fvs)))]
+		  [,x (guard (memq x fvs))
+ 		      (build-fv x fvs)]
+		  [(set! ,x ,[loop -> e]) (guard (memq x fvs))
+		   `(set! ,(build-fv x fvs) ,e)]
+		  [,other (loop other)]))
+	 (lambda (ls def) def)
+	 e)))
+
+
+  (define (get-tainted expr)
+    (generic-traverse
+     (lambda (x loop)
+       (match x
+	      [(subcall (tok ,t ,[loop -> e]) ,[loop -> args] ...)
+	       (apply append (list t) e args)]
+	      [,e (loop e)]))
+     (lambda (ls _) (apply append ls))
+     expr))
+  (define (has-return? expr)
+    (generic-traverse
+       (lambda (x loop)
+	 (match x 
+		[(return ,e) #t]
+		[,e (loop e)]))
+       (lambda (ls _) (ormap id ls))
+       expr))
+  ;; Has returns at all return positions?
+  (define (has-allreturns? expr)
+    (let outer ((expr expr))
+      (generic-traverse
+       (lambda (x loop)
+	 (match x 
+		[(return ,[loop -> e]) e]
+		[(begin ,x ...)
+		 (and (not (ormap loop (rdc x)))
+		      (loop (rac x)))]
+		[(let ((,lhs ,[loop -> rhs])) ,[loop -> bod])
+		 (and (not rhs) bod)]
+		[(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
+		 (and (not a) b c)]
+		[,x (loop x)]))
+       (lambda (ls _) (not (ormap id ls)))
+       expr)))
+
+;; Tainted tokens must take continuations and return values to them:
+(define (find-tainted tbs)      
+  (lambda (tbs)
+    (define tainted-toks '())
+	  33
+	  ))
+
+
+
 (define cps-tokmac
   (let ()
 
@@ -65,71 +169,6 @@
     (define KCOUNTER 'kcounter)
     ;; And the root name of continuation tokens.
     (define KNAME 'K)
-
-    (define (free-vars e)
-	(match e
-	  [,x (guard (begin (disp "FV loop" x) #f)) 3]
-	  [,const (guard (constant? const)) '()]
-	  [(quote ,const) '()]
-	  [,var (guard (symbol? var)) (list var)]
-	  [(tok ,tok) '()]
-	  [(tok ,tok ,[expr]) expr]
-	  [(ext-ref ,tok ,var) '()]
-	  [(ext-set! ,tok ,var ,[expr]) expr]
-	  [(set! ,v ,[e]) (cons v e)]
-	  [(begin ,[xs] ...) (apply append xs)]
-	  [(if ,[test] ,[conseq] ,[altern]) 
-	   (append test conseq altern)]
-	  [(let ( (,lhs ,[rhs])) ,[body])
-	   (append rhs (remq lhs body))]
-	  [(leds ,what ,which) '()]
-	  [(,prim ,[rands] ...) 
-	   (guard (or (token-machine-primitive? prim)
-		      (basic-primitive? prim)))
-	   rands]
-	  [(app ,[rator] ,[rands] ...) `(apply append rator rands)]
-	  [,otherwise
-	   (error 'cps-tokmac:freevars 
-		  "bad expression: ~s" otherwise)]))
-
-    (define (number-freevars e)
-      (let loop ([expr e] [fvs (free-vars e)])	
-	(match expr
-	  [,x (guard (memq x fvs)) 
-	      ;`(vector-ref args (quote ,(list-find-position x fvs)))
-	      (string->symbol (format "fv~a" (list-find-position x fvs)))]
-	  [(set! ,x ,[e]) (guard (memq x fvs))
-	   `(set! ,(string->symbol (format "fv~a" (list-find-position x fvs)))
-		  ,e)]
-	  
-	  [,const (guard (constant? const)) `(quote ,const)]
-	  [(quote ,const) `(quote ,const)]
-	  [,var (guard (symbol? var)) var]
-	  [(tok ,tok) `(tok ,tok)]
-	  [(tok ,tok ,[expr]) `(tok ,tok ,expr)]
-	  [(ext-ref ,tok ,var) `(ext-ref ,tok ,var)]
-	  [(ext-set! ,tok ,var ,[expr]) `(ext-set! ,tok ,var ,expr)]
-	  [(set! ,v ,[e]) `(set! ,v ,e)]
-
-	  [(begin ,[xs] ...) `(begin ,@xs)]
-	  [(if ,[test] ,[conseq] ,[altern]) `(if ,test ,conseq ,altern)]
-	  [(let ( (,lhs ,[rhs]) ...) ,body)	 
-	   `(let  ([,lhs ,rhs])
-	      ,(loop body (remq lhs fvs)))]
-;	  [(,call-style ,tok ,[args*] ...)
-;	   (guard (memq call-style '(call subcall)))
-;	   `(,call-style ,tok ,args* ...)]
-;	  [(timed-call ,time ,tok ,[args*] ...)
-;	   `(timed-call ,time ,tok ,args* ...)]
-	  [(leds ,what ,which) `(leds ,what ,which)]
-	  [(,prim ,[rands] ...)
-	   (guard (or (token-machine-primitive? prim)
-		      (basic-primitive? prim)))
-	   `(,prim ,rands ...)]
-	  [(,[rator] ,[rands] ...) `(,rator ,rands ...)]
-	  [,otherwise
-	   (error 'cps-tokmac:number-freevars 
-		  "bad expression: ~s" otherwise)])))
 
       (define amend-tainted
 	(let ()
@@ -165,16 +204,17 @@
 			   "bad expression: ~s" otherwise)]))
 
 	  (define do-amend
-	    (lambda (tokbind)	      
+	    (lambda  (tokbind)	      
 	      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tokbind)])
 		     (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
 		     `(,tok ,id (k ,@args) (stored ,@stored)
 			     ,(put-k body)))))
 	  
 	  (lambda (tokbinds)
+	    (disp "AMEND TAINTED..." (length tokbinds))
 	    (map do-amend tokbinds))))
-
-	  
+      
+    ;; process-expr expands out 
     ;; Best way to represent a thing with a hole in it is a continuation:
     ;; This pass itself carries a continuation representing the context of the current expression.
     (define process-expr
@@ -183,15 +223,13 @@
 	;; the continuation passing algorithm below by adding extra
 	;; arguments to the continuation.
 
-	;; Tainted tokens, must take continuations and return values to them:
-	(define tainted-toks '())
+
 	;; Continuation code must reside in new handlers:
 	(define new-handlers '())
 
 	(define loop-list
 	  (lambda (ls  pvk)
 	     (let inner ([ls ls] [thisk pvk]) ;(lambda (ls) (pvk (reverse ls)))])
-	       (printf "\n   INNER loop list: ~s\n" ls)
 	       (if (null? ls) 
 		   (thisk '())
 		   (loop (car ls)
@@ -201,11 +239,11 @@
 
 	;; Pvk is the continuation representing the enclosing expression to the current being processed.
 	(define loop
-	  (lambda (expr  pvk)
+	  (lambda (expr pvk)
 	    (match expr
-	     [,x (guard (begin (display-constrained "\n  Loop: " (list x 50) "\n")
-;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
-			       #f)) 3]
+;	     [,x (guard (begin (display-constrained "\n  Loop: " (list x 50) "\n")
+;;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
+;			       #f)) 3]
 		   
 	     [,const (guard (constant? const)) 
 		     (pvk `(quote ,const))]
@@ -253,7 +291,7 @@
 		     [broken-off-code (pvk FREEVAR0)] ;(pvk RETVAL_VARNAME)]
 		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
 		     [fvs (remq FREEVAR0 (free-vars broken-off-code))]
-		     [__ (disp "GOT fvs: " fvs)]
+;		     [__ (disp "GOT fvs: " fvs)]
 		     [args (map (lambda (n)
 				  (string->symbol (format "arg~a" n)))
 				(iota (length fvs)))]
@@ -264,8 +302,7 @@
 		     [kind (unique-name 'kind)]
 		     [kname (unique-name 'K)]
 		     )
-		;; Now we mutate our accumulators:
-		(set! tainted-toks (cons tok tainted-toks))
+
 		(set! new-handlers
 		      (cons
 		       `(,kname subtokind (flag ,@args)
@@ -319,10 +356,8 @@
 	     [(,prim ,rands ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
-	      (disp "PRIM: " prim)
 	      (loop-list rands 
 			 (lambda (ls)
-			   (printf "\nGot prim args back: ~s\n" ls)
 			   (pvk
 			    `(,prim ,@ls))))]
 	     [(app ,opera* ...)
@@ -335,11 +370,9 @@
 		     "bad expression: ~s" otherwise)]
 	     )))
 	
-	;; process-expr returns an expression, tainted-tokens, and new handlers
-	(disp "boutta loop" expr)
+	;; process-expr returns an expression and new handlers
 	(let ((newexpr (loop expr (lambda (x) x))))
 	  (values newexpr 
-		  tainted-toks
 		  new-handlers))))
 
     ;; Returns a set of tainted token-names and a list of new tokbinds.
@@ -364,11 +397,12 @@
 			  (nodepgm (tokens ,nodetoks ...))))
 	 ;; This does the main transformation, eliminates 'subcall':
 	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
+	   (disp "GOT tainted: " tainted)
 	   (let ([newtoks2
 		  ;; This just adds extra arguments ot the appropriate handlers.
 		  (append 
-		   (filter (lambda (x) (not (memq x tainted))) newtoks1)
-		   (amend-tainted (filter (lambda (x) (memq x tainted)) newtoks1)))])
+		   (filter (lambda (x) (not (memq (car x) tainted))) newtoks1)
+		   (amend-tainted (filter (lambda (x) (memq (car x) tainted)) newtoks1)))])
 	     `(cps-tokmac-lang '(program (bindings ,constbinds ...)
 					 (nodepgm (tokens ,@newtoks2))))))]))))
 
@@ -386,9 +420,18 @@
      ,(lambda (_) #t)]
 
     ["Testing free-vars" 
-     (free-vars '(dbg '"woot %d %d\n" fv0 x))
+     (cpstokmac-free-vars '(dbg '"woot %d %d\n" fv0 x))
      (fv0 x)]
 
+    [(cpstokmac-free-vars '(begin x y (let ((z 3)) z)))
+     (x y)]
+
+    [(number-freevars '(begin x y (let ((z 3)) z)))
+     (begin fv0 fv1 z)]
+
+    [(number-freevars '(begin x y (let ((z 3)) (+ ht z))))
+     (begin fv0 fv1 (let ([z 3]) (+ fv2 z)))]
+    
 ))
 
 
@@ -612,6 +655,3 @@
 				  (tok2 (x) x)
 				  (tok3 () (dbg "woot %d\n" (subcall tok1)))
 				  )))))
-
-
-
