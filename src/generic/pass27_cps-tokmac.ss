@@ -149,7 +149,6 @@
       (let ([allowed1
 	     (lambda (loop)
 	       (lambda (x)
-		 (disp "allowed: " x)
 		 (match x 
 			[(tok ,t ,n) (guard (integer? x)) '()]
 			[(tok ,t ,[e]) e]
@@ -165,7 +164,7 @@
 		  [(,call ,[allowed -> rator] ,[rands] ...)
 		   (guard (memq call '(bcast call)))
 		   (apply append rator rands)]
-		  [(timed-call ,t ,[allowed -> rator] ,[rands] ...)a
+		  [(timed-call ,t ,[allowed -> rator] ,[rands] ...)
 		   (guard (number? t))
 		   (apply append rator rands)]
 		  [(,prim ,[allowed -> args])
@@ -242,7 +241,7 @@
      ;; Takes a tainted tokbind; we add a continuation argument and desugar (return _) statements.
      (define kify-tokbind
 	(lambda (tb)
-	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tbs)])
+	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tb)])
 	    (let* ([k (unique-name 'k)]	    
 		   [desugar-return 
 		    (lambda (expr)
@@ -344,26 +343,26 @@
 		     )
 		(set! new-handlers
 		      (cons
-		       `(,kname subtokind (flag ,@args)
-				 (stored [,KCOUNTER 0] ,@fvns)
+		       `(,kname subtokind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
+				 (stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv '0]) fvs))
 					;(map list fvns args))
 					;(make-vector ,(length fvs)))
-				 (if (eq? flag ',INIT)
+				 (if (= flag ',INIT)
 				     (if (= subtokind '0)
 					 ;; No freevars if we're just initializing the counter-object.
 					 (void)
 					 (begin
-					   ,@(map (lambda (fv a)
-						    `(set! ,fv ,a))
-						  fvns args)))
+					   ,@(map (lambda (fv fvn)
+						    `(set! ,fv ,fvn))
+						  fvs fvns)))
 				     ;; Otherwise, assume the flag is CALL
 				     (begin
 				       ,(number-freevars broken-off-code)
 				       ;; Since these are one-shot continuations, 
 				       ;; we deallocate ourselves on the way out:
-				       (evict ,kname)
+				       (evict (tok ,kname subtokind))
 				       )))
-		       new-handlers))		
+		       new-handlers))
 		(loop-list args* 
 			   (lambda (ls)
 			       `(let ([,kind 
@@ -436,19 +435,6 @@
 
 ;		 (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
 
-
-
-
-
-
-(call-with-values (lambda () (process-subcalls '(begin '1 (subcall t '2) '3))) list)
-
-
-
-
-
-
-
     ;; Now add unit tests of the above internal helper functions:
     (set! these-tests
           (append 
@@ -460,31 +446,40 @@
 	      ,(lambda (ls) (set-equal? ls '(x y)))]
 	     [(,free-vars '(begin a (if b c (let ((d e)) d)) f))
 	      ,(lambda (ls) (set-equal? ls '(a b c e f)))]
-
-
+	     [(,free-vars '(begin '0 '1 (let ([z '3]) z)))
+	      ()]
+	     	     
 	     ["Next testing number-freevars"
-	      (,number-freevars '(begin x y (let ((z '3)) z)))
-	      ,(lambda (exp)
-		 (set-equal? (free-vars exp)
-			     '(fv0 fv1)))]
-	     [(,number-freevars '(begin x y (let ((z 3)) (+ ht z))))
-	      ,(lambda (exp)
-		 (set-equal? (free-vars exp)
-			     '(fv0 fv1 fv2)))]	     
-
+	      (,free-vars (,number-freevars '(begin x y (let ((z '3)) z))))
+	      ,(lambda (ls) (set-equal? ls '(fv0 fv1)))]
+	     [(,free-vars (,number-freevars '(begin x y (let ((z 3)) (+ ht z)))))
+	      ,(lambda (ls) (set-equal? ls '(fv0 fv1 fv2)))]
+	     	     	     
 
 	     ["Testing toks escaped"
-	      (toks-escaped '(begin '1
-				    (let ([kind_4 '22])
-				      (begin '11
-					     (call t (tok K_5 kind_4) '2)))))
+	      (toks-escaped '(begin '1 (let ([kind_4 '22])
+					 (begin '11
+						(call t (tok K_5 kind_4) '2)))))
 	      (K_5)]
-	     [(toks-escaped '(begin '1
+	     [(toks-escaped '(begin '1 (let ([kind_4 '22])
+					 (begin '11
+						(call (tok K_5 kind_4) '2)))))
+	      ()]
+	     [(toks-escaped '(if (= flag '0)
+				 (if (= subtokind '0) (void) (begin))
+				 (begin (begin fv0 '3) (evict (tok K_5 0)))))
+	      ()]
+	     [(toks-escaped '(if (= flag '0)
+				 (if (= subtokind '0) (void) (begin))
+				 (begin (begin fv0 '3) (tok K_5 0))))
+	      (K_5)]
+	     
+	     [" and its companion: toks-referenced "
+	      (toks-referenced '(begin '1
 				    (let ([kind_4 '22])
 				      (begin '11
 					     (call (tok K_5 kind_4) '2)))))
-	      ()]
-
+	      (K_5)]
         
 	     ["Now testing valid-returns?"
 	      (,valid-returns? ''3) #f]
@@ -505,14 +500,28 @@
 	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x (return '4))) x))))) #f]
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
 	     
-	     ) these-tests))
+	     [(call-with-values 
+		  (lambda () (,process-subcalls '(begin '1 (subcall t '2) '3)))
+		(lambda (expr ktbs)
+		  (and (= 1 (length ktbs))
+		       (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
+			      (list (equal? (,toks-referenced body) (list tok))
+				    (equal? (,toks-escaped body) '())
+				    (set-equal? (list->set (,free-vars body)) '(flag subtokind fv0))
+				    (,free-vars expr))))))
+	      (#t #t #t (t))]
 
+
+	      
+	     ) these-tests))
 
 
 (define cps-tokmac
   (let ()
-
-
+    (lambda (prog)
+      0)))
+#;(define cps-tokmac
+  (let ()
     ;; CPS-tokmac main body:
     (lambda (prog)
       (match prog
@@ -556,202 +565,6 @@
 (define test-cps-tokmac test-this)
 (define tests-cps-tokmac these-tests)
 
-
-(define (temptest)
-  (cps-tokmac
-   '(rename-stored-lang
-  '(program
-     (bindings)
-     (nodepgm
-       (tokens
-         (SOC-start
-           subtok_ind
-           ()
-           (stored)
-           (begin (void)
-                  (call (tok spread-global 0))
-                  'multiple-bindings-for-token))
-         (node-start
-           subtok_ind
-           ()
-           (stored)
-           (begin (call (tok leaf-pulsar_tmpworld_7 0))
-                  (call (tok spark-world 0))))
-         (f_token_tmpworld_7
-           subtok_ind
-           ()
-           (stored)
-           (call (tok m_token_tmpworld_7 0)))
-         (spark-world
-           subtok_ind
-           ()
-           (stored)
-           (call (tok m_token_tmpworld_7 0)))
-         (tmpfunc_8
-           subtok_ind
-           (a_1)
-           (stored)
-           (let ([result_4 (local-sense)]) result_4))
-         (m_token_tmpworld_7
-           subtok_ind
-           ()
-           (stored)
-           (if (not (token-scheduled? (tok f_token_tmprmap_9 0)))
-               (call (tok f_token_tmprmap_9 0))
-               (void)))
-         (f_token_tmprmap_9
-           subtok_ind
-           ()
-           (stored)
-           (begin (call (tok m_token_tmprmap_9 0)
-                        (call (tok tmpfunc_8 0) this))
-                  (timed-call 100 (tok f_token_tmprmap_9 0))))
-         (tmpfunc_10
-           subtok_ind
-           (a_3 b_2)
-           (stored)
-           (let ([result_5 (+ a_3 b_2)]) result_5))
-         (m_token_tmprmap_9
-           subtok_ind
-           (v)
-           (stored)
-           (call (tok f_token_result_6 0) v))
-         (f_token_result_6
-           subtok_ind
-           (v)
-           (stored)
-           (let ([aggrID_20 (+ (* '1000 '0) '0)])
-             (call (tok returnhandler_23 aggrID_20)
-                   (my-id)
-                   '222
-                   v
-                   '0
-                   '0)))
-         (m_token_result_6
-           subtok_ind
-           (v)
-           (stored)
-           (let ([socretval_13 v])
-             (if (= (my-id) '10000)
-                 (call (tok SOC-return-handler 0) socretval_13)
-                 (let ([aggrID_15 (+ (* '1000 '0) '0)])
-                   (call (tok returnhandler_18 aggrID_15)
-                         (my-id)
-                         '222
-                         socretval_13
-                         '0
-                         '0)))))
-         (leaf-pulsar_tmpworld_7
-           subtok_ind
-           ()
-           (stored)
-           (begin (call (tok f_token_tmpworld_7 0))
-                  (timed-call 1000 (tok leaf-pulsar_tmpworld_7 0))))
-         (spread-global
-           subtok_ind
-           ()
-           (stored (ver_33 (void)) (storedliftoption_32 '#f))
-           (begin (if storedliftoption_32
-                      (void)
-                      (begin (set! storedliftoption_32 '#t)
-                             (set! ver_33 '0)))
-                  (ext-set! #0=(tok global-tree 0) storedgparent_31 '0)
-                  (set! ver_33 (+ '1 ver_33))
-                  (dbg '"Emitting %d from %d\n" '#0# (my-id))
-                  (bcast (tok global-tree 0) (my-id) '1 ver_33)
-                  (timed-call 1000 (tok spread-global 0))))
-         (global-tree
-           subtok_ind
-           (g_parent g_origin g_hopcount g_version)
-           (stored
-             (storedgparent_31 '#f)
-             (storedgorigin_30 '#f)
-             (storedghopcount_29 '#f)
-             (storedgversion_28 '#f))
-           (if (if (not storedghopcount_29)
-                   '#t
-                   (if (= '0 g_hopcount)
-                       (if (> g_version storedgversion_28)
-                           (if (= g_version storedgversion_28)
-                               (< g_hopcount storedghopcount_29)
-                               '#f)
-                           '#f)
-                       '#f))
-               (begin (bcast
-                        (tok global-tree subtok_ind)
-                        (my-id)
-                        g_origin
-                        (+ '1 g_hopcount)
-                        g_version)
-                      (if (not (= g_hopcount '0))
-                          (begin (set! storedgparent_31 g_parent)
-                                 (set! storedgorigin_30 g_origin)
-                                 (set! storedghopcount_29 g_hopcount)
-                                 (set! storedgversion_28 g_version))
-                          (void)))
-               (void)))
-         (returnhandler_23
-           retid
-           #1=(destid flag val toind viaind)
-           (stored (acc_27 '0))
-           (if (= flag '222)
-               (let ([oldacc_22 acc_27])
-                 (begin (set! acc_27 '0)
-                        (if (not (token-present? (tok global-tree viaind)))
-                            (void)
-                            (let ([parentpointer_24
-                                   (ext-ref
-                                     (tok global-tree . #2=(viaind))
-                                     storedgparent_31)])
-                              (if (not parentpointer_24)
-                                  (if (= '0 parentpointer_24)
-                                      (call (tok m_token_result_6 toind)
-                                            (subcall
-                                              (tok tmpfunc_10 0)
-                                              val
-                                              oldacc_22))
-                                      (bcast
-                                        (tok returnhandler_23 retid)
-                                        parentpointer_24
-                                        '333
-                                        (subcall
-                                          (tok tmpfunc_10 0)
-                                          val
-                                          oldacc_22)
-                                        '0
-                                        '0))
-                                  (void))))))
-               (if (not (if (= destid '0) '#t (= destid (my-id))))
-                   (void)
-                   (set! acc_27 (subcall (tok tmpfunc_10 0) val acc_27)))))
-         (returnhandler_18
-           retid
-           #1#
-           (stored (acc_26 ()))
-           (if (= flag '222)
-               (let ([oldacc_17 acc_26])
-                 (begin (set! acc_26 '())
-                        (if (not (token-present? (tok global-tree viaind)))
-                            (void)
-                            (let ([parentpointer_19
-                                   (ext-ref
-                                     (tok global-tree . #2#)
-                                     storedgparent_31)])
-                              (if (not parentpointer_19)
-                                  (if (= '0 parentpointer_19)
-                                      (call (tok SOC-return-handler toind)
-                                            (cons val oldacc_17))
-                                      (bcast
-                                        (tok returnhandler_18 retid)
-                                        parentpointer_19
-                                        '333
-                                        (cons val oldacc_17)
-                                        '0
-                                        '0))
-                                  (void))))))
-               (if (not (if (= destid '0) '#t (= destid (my-id))))
-                   (void)
-                   (set! acc_26 (cons val acc_26)))))))))))
 
 
 (define (testcps e)

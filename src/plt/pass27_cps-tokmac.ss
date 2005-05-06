@@ -1,5 +1,4 @@
 
-
 (module pass27_cps-tokmac mzscheme
 
 ;  (require-for-syntax "constants.ss")
@@ -19,7 +18,7 @@
   (provide (all-defined))
   )
 
-;(require pass27_cps-tokmac)
+(require pass27_cps-tokmac)
 
 #;(cps-tokmac '(cps-tokmac-lang '(program (bindings) (nodepgm (tokens)))))
 
@@ -31,7 +30,6 @@
       (tokens
        [tok1 id () (bindings) (stored) (printf "foo~n")]
        )))))
-
 
 
 #;(cps-tokmac
