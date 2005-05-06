@@ -15,7 +15,10 @@
 
   (include (build-path  "generic" "pass27_cps-tokmac.ss"))
   
-  (provide (all-defined))
+;  (provide (all-defined))
+  (provide cps-tokmac test27 tests27 test-cps-tokmac tests-cps-tokmac testcps
+           mvlet destructure-tokbind
+           )
   )
 
 (require pass27_cps-tokmac)
