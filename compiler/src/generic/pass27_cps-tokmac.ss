@@ -58,6 +58,9 @@
 ;; are not exposed at the top level.
 (define these-tests '())
 
+(define cps-tokmac
+  (let ()
+
     (define INIT 0)
     (define CALL 0)
     (define FREEVAR0 'fv0)
@@ -69,6 +72,10 @@
     (define KNAME 'K)
 
     (define (id x) x)
+
+    (define (tb->body tb)
+      (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tb)])
+	     body))
 
     ;; This is confusing, but there are so many small traversals of
     ;; the program tree in this pass that it is much easier to reuse this tree walk:
@@ -104,6 +111,7 @@
 		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (number? time))		     
 		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
+		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
 		    [(,prim ,[loop -> rands] ...)
 		     (guard (or (token-machine-primitive? prim)
 				(basic-primitive? prim)))
@@ -254,13 +262,13 @@
 				[,x (loop x)]))
 		       (lambda (_ exp) exp) ;; fuser
 		       expr))])
-	      `[,tok ,id (,k ,@args) (stored ,@stored)
+	      `[,tok ,subid (,k ,@args) (stored ,@stored)
 		     ,(desugar-return body)]))))
 		           
-    ;; process-subcalls expands out all subcalls 
+    ;; expand-subcalls expands out all subcalls 
     ;; Best way to represent a thing with a hole in it is a continuation:
     ;; Thus this pass itself carries a continuation representing the context of the current expression.
-    (define process-subcalls
+    (define expand-subcalls
       (lambda (expr)
       ;; Continuation code must reside in new handlers:
       (let ([new-handlers '()]) ;; MUTABLE
@@ -328,7 +336,7 @@
 	     [(subcall ,tok ,args* ...)
 	      (let* (;; This expression represents the continuation of the subcall:
 		     [broken-off-code (pvk FREEVAR0)] ;(pvk RETVAL_VARNAME)]
-		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
+;		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
 		     [fvs (remq FREEVAR0 (free-vars broken-off-code))]
 ;		     [__ (disp "GOT fvs: " fvs)]
 		     [args (map (lambda (n)
@@ -400,40 +408,30 @@
 	      (loop-list opera*  (lambda (ls) (pvk (cons 'app ls))))]
 
 	     [,otherwise
-	      (error 'cps-tokmac:process-subcalls
+	      (error 'cps-tokmac:expand-subcalls
 		     "bad expression: ~s" otherwise)]
 	     )))
 		
-	;; process-subcalls returns an expression and new handlers
+	;; expand-subcalls returns an expression and new handlers
 	  (let ((newexpr (loop expr (lambda (x) x))))
 	    (values newexpr 
 		    new-handlers)))))
-      
 
-    ;; Tainted tokens must take continuations and return values to them:
-   (define (find-tainted tbs)      
-     (lambda (tbs)
-       (define tainted-toks '())
-       33
-       ))
 
-    ;; Returns a set of tainted token-names and a list of new tokbinds.
+    ;; Applies expand-subcalls to all tokbinds
       (define process-tokbinds
 	(lambda (tokenbinds)
-	  (let loop ([tbs tokenbinds] [tainted '()] [tbacc '()])
+	  (let loop ([tbs tokenbinds] [tbacc '()])
 	    (if (null? tbs)
-		(values (list->set tainted) tbacc)
+		(reverse! tbacc)
 		(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tbs))])
 		  (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
-		  (mvlet ([(newexpr taints newtokbinds) (process-subcalls body)])
+		  (mvlet ([(newexpr newtokbinds) (expand-subcalls body)])
 			 (loop (cdr tbs)
-			       (append taints tainted)
-			       (cons 
-				`(,tok ,subid ,args (stored ,@stored) ,newexpr)
-				(append newtokbinds tbacc)))))))))
-
-
-;		 (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
+				(append newtokbinds 
+					(cons 
+					 `(,tok ,subid ,args (stored ,@stored) ,newexpr)
+					 tbacc)))))))))
 
     ;; Now add unit tests of the above internal helper functions:
     (set! these-tests
@@ -457,25 +455,25 @@
 	     	     	     
 
 	     ["Testing toks escaped"
-	      (toks-escaped '(begin '1 (let ([kind_4 '22])
+	      (,toks-escaped '(begin '1 (let ([kind_4 '22])
 					 (begin '11
 						(call t (tok K_5 kind_4) '2)))))
 	      (K_5)]
-	     [(toks-escaped '(begin '1 (let ([kind_4 '22])
+	     [(,toks-escaped '(begin '1 (let ([kind_4 '22])
 					 (begin '11
 						(call (tok K_5 kind_4) '2)))))
 	      ()]
-	     [(toks-escaped '(if (= flag '0)
+	     [(,toks-escaped '(if (= flag '0)
 				 (if (= subtokind '0) (void) (begin))
 				 (begin (begin fv0 '3) (evict (tok K_5 0)))))
 	      ()]
-	     [(toks-escaped '(if (= flag '0)
+	     [(,toks-escaped '(if (= flag '0)
 				 (if (= subtokind '0) (void) (begin))
 				 (begin (begin fv0 '3) (tok K_5 0))))
 	      (K_5)]
 	     
 	     [" and its companion: toks-referenced "
-	      (toks-referenced '(begin '1
+	      (,toks-referenced '(begin '1
 				    (let ([kind_4 '22])
 				      (begin '11
 					     (call (tok K_5 kind_4) '2)))))
@@ -501,7 +499,7 @@
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
 	     
 	     [(call-with-values 
-		  (lambda () (,process-subcalls '(begin '1 (subcall t '2) '3)))
+		  (lambda () (,expand-subcalls '(begin '1 (subcall t '2) '3)))
 		(lambda (expr ktbs)
 		  (and (= 1 (length ktbs))
 		       (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
@@ -516,32 +514,51 @@
 	     ) these-tests))
 
 
-(define cps-tokmac
-  (let ()
-    (lambda (prog)
-      0)))
-#;(define cps-tokmac
-  (let ()
-    ;; CPS-tokmac main body:
+    ;; Main body of cps-tokmac
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,nodetoks ...))))
-	 ;; This does the main transformation, eliminates 'subcall':
-	 (mvlet ([(tainted newtoks1) (process-tokbinds nodetoks)])
-	   (disp "GOT tainted: " tainted)
-	   (let ([newtoks2
-		  ;; This just adds extra arguments ot the appropriate handlers.
-		  (append 
-		   (filter (lambda (x) (not (memq (car x) tainted))) newtoks1)
-		   (amend-tainted (filter (lambda (x) (memq (car x) tainted)) newtoks1)))])
-	     `(cps-tokmac-lang '(program (bindings ,constbinds ...)
-					 (nodepgm (tokens ,@newtoks2))))))]))))
+	 (let ([alltoks (map car nodetoks)]
+	       [returntokbinds (filter (lambda (tb) (has-return? (tb->body tb))) nodetoks)]
+	       [subcalledtoks (apply append (map get-tainted (map tb->body nodetoks)))])
+	   (let ([returntoks (map car returntokbinds)])
+	   ;; Verify that the return toks have valid returns:
+	   (for-each (lambda (x) 
+		       (if (not (valid-returns? (tb->body x)))
+			   (error 'cps-tokmac 
+				  "token handler(s) does not have a 'return' statement on all code paths: ~a"
+				  x)))
+		     returntokbinds)
+             (let ([subonly (difference subcalledtoks returntoks)]
+		 [retonly (difference returntoks subcalledtoks)])
+	     (if (not (null? subonly))
+		 (for-each 
+		  (lambda (x)
+		    (if (memq x alltoks)
+			(warning 'cps-tokmac
+				 "Token handlers for ~a are subcalled but do not have return statements!"
+				 x)
+			(warning 'cps-tokmac
+				 "Subcall to nonexistent token handler!: ~a" x)))
+		  subonly))
+	     (if (not (null? retonly))
+		 (warning 'cps-tokmac
+			  "Token handlers for ~a have return statements but there are no subcalls to them!"
+			  retonly)))
+	   ;; Now for the real work.
+	   ;; First we add k-arguments to any tainted tokens:
+	   (let ([newtbs (map kify-tokbind returntokbinds)]
+		 [oldtbs (filter (lambda (tb) (not (memq (car tb) returntoks))) nodetoks)])
+	     ;; Next we process all tokbinds to expand out subcalls:
+	     `(,lang '(program (bindings ,constbinds ...)
+			  (nodepgm (tokens ,@(process-tokbinds (append oldtbs newtbs))))))
+	     )))]))))
 
 
 ;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
 (set! these-tests
-  (append 
+  (append these-tests
    `(
     
     ["Put an empty test through." 
@@ -551,8 +568,46 @@
 	  (bindings )
 	  (nodepgm (tokens)))))
      ,(lambda (_) #t)]
+
+    [(cps-tokmac '(foolang
+		   '(program
+		     (bindings)
+		     (nodepgm
+		      (tokens (tok1 () (+ '1 (subcall (tok tok2 0) '2)))
+			      (tok2 (x) (return (* '2 x))))))))
+     ,(lambda (x)
+	(match x 
+	  [(foolang
+	    '(program
+	      (bindings)
+	      (nodepgm
+	       (tokens
+		(tok1 subtok_ind
+		      ()
+		      (stored)
+		      (let ([,kind1
+			     (if (token-present? (tok ,k1 0))
+				 (let ([new (+ '1 (ext-ref (tok ,k2 0) kcounter))])
+				   (begin (ext-set! (tok ,k3 0) kcounter new)
+					  new))
+				 (begin (call (tok ,k4 0) '0) '1))])
+			(begin (call (tok ,k5 ,kind2) '0)
+                        (call (tok tok2 0) (tok ,k6 ,kind3) '2))))
+		(,k7 subtokind
+		     (flag fv0)
+		     (stored (kcounter 0))
+		     (if (= flag '0)
+			 (if (= subtokind '0) (void) (begin))
+			 (begin (+ '1 fv0) (evict (tok ,k8 subtokind)))))
+		(tok2 subtok_ind (,otherk1 x) (stored) (call ,otherk2 (* '2 x)))))))
+	   (guard (andmap (lambda (x) (eq? x k1)) (list k2 k3 k4 k5 k6 k7 k8))
+		  (andmap (lambda (x) (eq? x kind1)) (list kind2 kind3))
+		  (eq? otherk1 otherk2))
+	   #t]
+	  [,other #f]))]
+	   
     )
-   these-tests))
+   ))
 
 
 (define test-this (default-unit-tester
@@ -568,7 +623,11 @@
 
 
 (define (testcps e)
-  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,e)))))))
+  (match e 
+	 [(tokens ,tbs ...)
+	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens ,@tbs)))))]
+	 [,expr
+	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,expr))))))]))
 
 ;(cps-tokmac '(toheu '(program (bindings) (nodepgm (tokens (tok1 () (begin '1 (subcall tok2 '9) '3)) (tok2 (x) x))))))
 
@@ -579,3 +638,31 @@
 				  (tok2 (x) x)
 				  (tok3 () (dbg "woot %d\n" (subcall tok1)))
 				  )))))
+
+
+(define x 
+  '(foolang
+  '(program
+     (bindings)
+     (nodepgm
+       (tokens
+         (SOC-start
+           subtok_ind
+           ()
+           (stored)
+           (let ([kind_21
+                  (if (token-present? (tok K_22 0))
+                      (let ([new (+ '1 (ext-ref (tok K_22 0) kcounter))])
+                        (begin (ext-set! (tok K_22 0) kcounter new) new))
+                      (begin (call (tok K_22 0) '0) '1))])
+             (begin (call (tok K_22 kind_21) '0)
+                    (call (tok tok2 0) (tok K_22 kind_21) '2))))
+         (K_22 subtokind
+               (flag fv0)
+               (stored (kcounter 0))
+               (if (= flag '0)
+                   (if (= subtokind '0) (void) (begin))
+                   (begin (dbg '"foo %d\n" (+ '1 fv0))
+                          (evict (tok K_22 subtokind)))))
+         (tok2 subtok_ind (k_20 x) (stored) (call k_20 (* '2 x)))))))
+)
