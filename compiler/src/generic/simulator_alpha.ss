@@ -322,53 +322,11 @@
      
      (make-simworld graph obgraph allobs hash)))
 
-
                          
 ;; ======================================================================
 
-;; 
-;; This makes up a vtime for the duration of a given handler body.
-;; Right now I use a VERY unrealistic approximation.  I make up random costs for different constructs.
-(define (compute-handler-duration expr)
-  (match expr
-	 [(ext-ref '(,tokname . ,subtok) ,x) 1]
-	 ;; ext-set!
-	 [,x (guard (symbol? x)) 0]
-	 [(quote ,x) 0]
-	 ;; Lenient...
-	 [,v (guard (or (number? v) (string? v))) 0]
 
-	 [(call ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
-	 [(bcast ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
-;		  [(activate ,rator ,rand* ...)
-	 [(timed-call ,delay ,rator ,[rand*] ...) (+ 2 (apply + rand*))]
-	 ;; is_scheduled
-	 ;; 
-	 ;; is_
-	 ;; evict
-	 [(set! ,v ,[rhs]) (+ 1 rhs)]
-	 [(begin ,[exps] ...) (apply + exps)]
-	 [(if ,[test] ,[conseq] ,[altern]) (+ test (max conseq altern))]
-	 [(my-id) 1]
-	 [(loc) 1]
-	 [(locdiff ,[l1] ,[l2]) (+ 1 l1 l2)]
-	 [(light-up ,r ,g ,b) 1]
-	 [(leds ,which ,what) 1]
-	 [(dbg ,str ,[args] ...) 0]
-	 [(,prim ,[rand*] ...)
-	  (guard (or (token-machine-primitive? prim)
-		     (basic-primitive? prim)))
-	  (+ 1 (apply + rand*))]
-	 [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
-	  (+ (apply + rhs) (apply + bods))]
-	 ;; Lenient: this lets other prims through:
-	 [(,[rator] ,[rand*] ...) (apply + 1 rator rand*)]
-	 [,otherwise (error 'simulator_alpha:compute-handler-duration
-			    "don't know what to do with this: ~s" otherwise)]))
-
-
-(define (process-statement current-handler-name tokbinds stored cost-table)
-  (disp "PROCSTATMENT: COSTTABLE" (map car cost-table))
+(define (process-statement current-handler-name tokbinds stored)
   
   (let ([allstored (apply append (map cadr stored))])
     (letrec ([find-which-stored
@@ -386,30 +344,31 @@
 		  [(quote ,const) `(quote ,const)]
 		  [,num (guard (number? num)) num]
 		  ;; Token references return pairs which index the token store hash table.
-		  [(tok ,t ,[e]) `(cons ',t ,e)]
+		  [(tok ,t ,[e]) `(make-simtok ',t ,e)]
 
 		  ;; This is sketchy: we just fail silently and return #f if there is no token there.
 		  ;; TODO: We should seriously have some sort of better error handling convention.
 		  [(ext-ref (tok ,tokname ,subtok) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))
+		   ;; The stored names should be unique at this point!  So this should be ok:
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
+			  (DEBUGMODE
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
-				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
+				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store 
-							 ,(if (number? subtok)
-							      `'(,tokname . ,subtok)
-							      `(cons ',tokname ,subtok)))])
+							 (make-simtok ',tokname ,subtok))])
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
 		  [(ext-set! (tok ,tokname ,subtok) ,x ,[e])
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
-			  (if (not (eq? which-tok tokname))
+			  (DEBUGMODE
+			   (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
-				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x))
-			  `(let ([exttokobj (hashtab-get the-store '(,tokname . ,subtok))])
+				     "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
+			  `(let ([exttokobj (hashtab-get the-store (make-simtok ',tokname ,subtok))])
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
 				 (error 'ext-set! "token not present: ~a" `(,tokname . subtok)))))]
@@ -423,6 +382,7 @@
 				      "bad local stored-ref: ~a actually belongs to ~a not ~a" 
 				      x which-tok current-handler-name))
                            ;; 'tokobj' is already bound to our token object
+			   "We add one to the position because zeroth is the invocation counter."
                            `(vector-ref tokobj ,(+ 1 pos)))]
 
 		  [,x (guard (or (symbol? x) (constant? x))) x]
@@ -430,22 +390,18 @@
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)
-                   (let ((tok (assq (token->name rator) cost-table)))
-                     (if (not tok)
-                         (error 'compile-simulate-alpha "No cost-table entry for token: ~a name: ~a" 
-                                rator (token->name rator)))
                      `(set-simobject-local-msg-buf! this
                            (cons (make-simevt #f ;; No scheduled time, ASAP
-                                              ,(cadr tok) ;; Time cost
-                                              (bare-msg-object ',(token->name rator) 
-							       (list ,@rand*) current-vtime))
-                                 (simobject-local-msg-buf this))))]
+                                              0 ;,(cadr tok) ;; Time cost
+                                              (bare-msg-object ,rator
+							       ,rand* current-vtime))
+                                 (simobject-local-msg-buf this)))]
 
 		  [(bcast ,rator ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
-				       ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
-				       (bare-msg-object ',(token->name rator) (list ,@rand*) current-vtime))
+				       0 ;,(cadr (assq (token->name rator) cost-table)) ;; Time cost
+				       (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			    (simobject-local-msg-buf this)))]
 
 ;;TODO:
@@ -456,8 +412,8 @@
 		   ;; Delay is in milleseconds.
 		  `(set-simobject-timed-token-buf!
 		    this (cons (make-simevt (+ ,delay current-vtime)
-					    ,(cadr (assq (token->name rator) cost-table)) ;; Time cost
-					    (bare-msg-object ',rator (list ,@rand*) current-vtime))
+					    0 ;,(cadr (assq (token->name rator) cost-table)) ;; Time cost
+					    (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			       (simobject-timed-token-buf this)))]
 
 
@@ -466,27 +422,27 @@
 
 		  ;; If it's in the hash table, it's present:
 		  ;; This is static wrt to token name for the moment:
-		  [(token-present? (tok ,t ,n)) (guard (number? n)) `(hashtab-get the-store (cons ',t ,n))]
-		  [(token-present? (tok ,t ,[e])) `(hashtab-get the-store (cons ',t ,e))]
+		  [(token-present? (tok ,t ,n)) (guard (number? n)) `(hashtab-get the-store (make-simtok ',t ,n))]
+		  [(token-present? (tok ,t ,[e])) `(hashtab-get the-store (make-simtok ',t ,e))]
 
-		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (cons ',t ,e))]
+		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
 
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
-			  (if (not (eq? which-tok current-handler-name))
-			      (error 'simulator_alpha:process-statement 
-				     "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
-				     v which-tok current-handler-name))
+			  (DEBUGMODE
+			   (if (not (eq? which-tok current-handler-name))
+			       (error 'simulator_alpha:process-statement 
+				      "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
+				      v which-tok current-handler-name)))
                           `(vector-set! tokobj ,(+ 1 pos) ,rhs))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
 
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
-
 		  [(my-id) '(node-id (simobject-node this))]
-
-		  [(soc-return ,x)		   
+		  ;; [2005.05.07] Shouldn't run into this now:
+#;		  [(soc-return ,x)
 		   (process-expr `(return ,x 
 					  (to (tok SOC-return-handler 0) )
 					  (via (tok global-tree 0))
@@ -522,25 +478,27 @@
 			      newstr))])
 ;		     (disp "MANGLED" (massage-str str))
 		     `(begin (display (format ,(massage-str str) ,@args)) (newline)))]
-
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
 			      (basic-primitive? prim)))
 		   `(,prim ,rand* ...)]
-
 		  ;; We're being REAL lenient in what we allow in token machines being simulated:
 		  [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
 		   `(let ((,lhs ,rhs)  ...) ,bods ...)]
-
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
+		  [(app ,rator ,[rand*] ...)
+		   `(,(process-expr rator) ,rand* ...)]
 		  [(,rator ,[rand*] ...)
+		   ;; This is an arbitrary scheme application. Where would these come from?
 		   ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit bcast call timed-call activate relay return))))
+		   (warning 'simulator_alpha.process-expr
+			    "arbitrary rator applied: ~a" rator)
 		   `(,(process-expr rator) ,rand* ...)]
 		  
-		  [,otherwise (error 'simulator_nought.process-expr 
+		  [,otherwise (error 'simulator_alpha.process-expr 
 				"don't know what to do with this: ~s" otherwise)])
 	   )])
     (lambda (stmt) (process-expr stmt)))))
@@ -557,7 +515,7 @@
 	  (map (lambda (sym) 
 		 (let ([bind (assq sym binds)])
 		   (if bind bind
-		       (error 'simulator_nought:process-binds
+		       (error 'simulator_alpha:process-binds
 			      "no entry for sym '~s' in constant binds ~s" sym binds))))
 	       flat)])
     (if (cyclic? graph)
@@ -584,7 +542,7 @@
 
 ;; Takes token bindings, returns compiled bindings
 ;; along with an association list of stored-vars.
-(define (process-tokbinds tbinds cost-table)
+(define (process-tokbinds tbinds)
   (let* ([allstored
           (map (lambda (bind)
 		 (mvlet ([(tok id args stored bindings body) (destructure-tokbind bind)])
@@ -599,7 +557,7 @@
 			(lambda (current-vtime subtok-index ,@args) ;world)
 ;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
-				   [tokname-pair (cons ',tok subtok-index)]
+				   [simtok-obj (make-simtok ',tok subtok-index)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
 				   [old-local    (simobject-local-msg-buf this)])
 			      (DEBUGMODE 
@@ -608,16 +566,16 @@
 
 			      "Is there already an allocated token object?:"
 			      ;; Requires equal? based hash table:
-			      (let ([tokobj (hashtab-get the-store tokname-pair)])
+			      (let ([tokobj (hashtab-get the-store simtok-obj)])
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
 					   (set! tokobj (vector 0 ,@(map cadr stored)))
-					   (hashtab-set! the-store tokname-pair tokobj)))
+					   (hashtab-set! the-store simtok-obj tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
-				,((process-statement tok tbinds allstored cost-table) body)
+				,((process-statement tok tbinds allstored) body)
 				;; We must reverse the outgoing order because of how they were added:
 				(set-simobject-outgoing-msg-buf! this 
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
@@ -628,7 +586,6 @@
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
     (printf "Allstored was:~n") (pretty-print allstored)
-    (printf "~n   Cost table: ~a~n" cost-table)
     (printf "<-------------------------------------------------------------------->~n")
     ;(pretty-print binds)
 
@@ -648,7 +605,7 @@
 			 ))
        ;; Here we hack in an extra handler for doing SOC-return's...
        (set! nodetoks
-	     (cons `[SOC-return-handler (x)
+	     (cons `[SOC-return-handler subtokid (x) (stored)
 		       (if (= ',BASE_ID (my-id))
 			   (simulator-soc-return x)				  
 			   (error 'SOC-return-handler
@@ -656,18 +613,8 @@
 				  (my-id)))]
 		   nodetoks))
 
-       (let  ([cost-table 
-	 ;; More cluginess, just stick in these hand-added handlers:
-;	 (cons '(SOC-return-handler 0)
-	 (map (lambda (tbind)
-                (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
-                       (list tok 
-                             (compute-handler-duration body))))
-	      nodetoks)])
-         
-         (disp "COSTTABLE" (map car cost-table))
-
-       (mvlet ([(tbinds allstored) (process-tokbinds nodetoks cost-table)])
+       
+       (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
 
 	      ;; Here we hack an extra handler into tbinds:
 ; 	      (set! tbinds
@@ -694,17 +641,15 @@
 		  
 		  (let ([dyndispatch_table (make-default-hash-table)])
 		    (begin ,@(map (lambda (tok)
-				    `(hashtab-set! dyndispatch_table ',tok ,tok))
+				    `(hashtab-set! dyndispatch_table ',(simtok-name tok) ,tok))
 				  (map car tbinds)))
 
 		    ;; Return the real meta-handler
-		    (values 
-		     ;; First the meta handler:
 		     (lambda (msgob current-vtime)
 		       (mvlet ([(name subtok)
 				(let ((tok (msg-object-token msgob)))
-				  (values (token->name tok)
-					  (token->subtok tok)))])
+				  (values (simtok->name tok)
+					  (simtok->subid tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
 				(if (not handler)
 				    (error 'node-code
@@ -714,10 +659,7 @@
 				       (msg-object-args msgob))
 				;; That returns nothing but fills up the simobjects buffers.
 				)))
-		     ;; Then the cost-table.
-		     ',cost-table
-		     )
-		 )))))))]
+		 ))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 
@@ -798,6 +740,3 @@
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand
-
-
-

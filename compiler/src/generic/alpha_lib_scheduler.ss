@@ -207,7 +207,7 @@
 
     ;;========================================    
     ;; MAIN BODY:
-    (mvlet ([(mhandler cost-table) (node-code-fun ob)])
+    (let ([mhandler (node-code-fun ob)])
     ;; Install the scheduler and handler incase anybody else wants to use them:
     (set-simobject-scheduler! ob private-scheduler)
     (set-simobject-meta-handler! ob mhandler)
@@ -219,12 +219,12 @@
     ;; The incoming buffer starts out with just the start actions SOC-start and node-start.
     (set-simobject-local-msg-buf! ob				
 	(list (make-simevt 0
-			   (cadr (assq 'node-start cost-table))
+			   0 ;(cadr (assq 'node-start cost-table))
 			   (bare-msg-object 'node-start '() 0))))
     (if (simobject-I-am-SOC ob)
 	(set-simobject-local-msg-buf! ob
 	   (cons (make-simevt 0
-			      (cadr (assq 'node-start cost-table))
+			      0 ;(cadr (assq 'node-start cost-table))
 			      (bare-msg-object 'SOC-start '() 0))
 		 (simobject-local-msg-buf ob))))
 

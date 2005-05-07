@@ -64,7 +64,7 @@
 
   ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
-	(mvlet ([(mhandler _) (node-code-fun ob)])
+    (let ([mhandler (node-code-fun ob)])
 
     ;; Install null scheduler and the handler:
     (set-simobject-scheduler! ob #f)
@@ -78,12 +78,12 @@
     (set-simobject-local-msg-buf! ob				
 	(list (make-simevt 0
 			   #f ; ignored
-			   (bare-msg-object 'node-start '() 0))))
+			   (bare-msg-object (make-simtok 'node-start 0) '() 0))))
     (if (= BASE_ID (node-id (simobject-node ob)))
 	(set-simobject-local-msg-buf! ob
 	   (cons (make-simevt 0
 			      #f ; ignored
-			      (bare-msg-object 'SOC-start '() 0))
+			      (bare-msg-object (make-simtok 'SOC-start 0) '() 0))
 		 (simobject-local-msg-buf ob))))
     ))
 
