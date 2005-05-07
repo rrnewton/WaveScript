@@ -31,7 +31,7 @@
 
 ;; [2005.05.06]
 ;; A first class representation of tokens:
-(define-structure (tok name subid))
+(define-structure (simtok name subid))
 ;; TODO: Change the system to use these ^^
 
 
@@ -78,12 +78,11 @@
 
 ;; This structure represents a message transmitted across a channel.
 ;; None of these should be mutated:
-(define-structure (msg-object token 
+(define-structure (msg-object token ;; This is a simtok object.  Used to just be a symbol (name).
 			      sent-time ;; when it was sent 
 			      parent ;; :: simobject - who I got it from
 			      to   ;; :: nodeid - who its going to, #f for broadcast
 			      args))
-
 
 ;; ======================================================================
 
@@ -167,7 +166,8 @@
 
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)
-  (unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
+  ;(unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
+  (unless (simtok? token) (error 'safe-construct-msg-object "bad token: ~s" token))
   (unless (or (number? timestamp) (not timestamp))
 	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
   (unless (list? args)
@@ -326,6 +326,7 @@
                          
 ;; ======================================================================
 
+;; 
 ;; This makes up a vtime for the duration of a given handler body.
 ;; Right now I use a VERY unrealistic approximation.  I make up random costs for different constructs.
 (define (compute-handler-duration expr)
