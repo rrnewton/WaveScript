@@ -119,3 +119,12 @@
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
 
+
+;; This is a simple random number generator interface for use in this Regiment codebase:
+(define reg:random-int
+  (case-lambda 
+   [() (#%random most-positive-fixnum)]
+   [(k) (#%random k)]))
+(define (reg:get-random-state) (random-seed))
+(define (reg:set-random-state! s) (random-seed s))
+

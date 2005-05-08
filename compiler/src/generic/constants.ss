@@ -131,3 +131,5 @@
 (define PROCESSING_TIME 0)
 
 (define-regiment-parameter simalpha-num-nodes 30)
+(define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
+

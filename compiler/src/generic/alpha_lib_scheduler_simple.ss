@@ -5,7 +5,7 @@
 
 ;; This is written in totally imperative style.
 ;; One buffer and one vtime, no reason to thread them otherwise.
-(define (run-alpha-simple-scheduler sim node-code-fun stopping-time?)
+(define (run-alpha-simple-scheduler sim node-code-fun stopping-time? meta-port)
   
 ;  (define SOC (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 ;			   (simworld-all-objs sim))))
@@ -158,10 +158,12 @@
     ;; First process all incoming-buffers, scheduling events.
     (for-each process-incoming (simworld-all-objs sim))
     (cond
-     [(stopping-time? vtime) (printf "Out of time.~n")]
+     [(stopping-time? vtime) 
+      ;; This is a meta-message, not part of the output of the simulation:
+      (fprintf meta-port "Out of time.~n")]
      [(null? buffer)
-      (printf "~n<-------------------------------------------------------------------->~n")
-      (printf "Simulator ran fresh out of actions!~n")]
+      (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
+      (fprintf meta-port "Simulator ran fresh out of actions!~n")]
      [else 
       (let ([ob (cdar buffer)]
 	    [evt (caar buffer)])	

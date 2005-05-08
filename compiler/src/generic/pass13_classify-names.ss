@@ -312,7 +312,7 @@
   ))
 
 (define test-this (default-unit-tester
-		    "Classify-names: to annotate simple variable properties"
+		    "Classify-Names: to annotate simple variable properties"
 		    these-tests))
 
 (define test13 test-this)

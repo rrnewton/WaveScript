@@ -15,16 +15,19 @@
          
          unknown-place noplace
          
-	 world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
-         BASE_ID NULL_ID
-	 
-	 return-window-size
-
 	 DEFAULT_SUBTOK DEFAULT_SUBTOK_VAR
          MAX_SUBTOK
          
          RADIO_DELAY PROCESSING_TIME
-	 )
+
+         world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
+         BASE_ID NULL_ID	 
+       	 return-window-size
+
+         simalpha-num-nodes
+         simalpha-output-port
+         
+         )
 	
 	(include (build-path "generic" "constants.ss"))
   )

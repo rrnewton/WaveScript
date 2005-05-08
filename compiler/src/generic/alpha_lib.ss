@@ -82,9 +82,17 @@
 	 (set! global-graph (simworld-graph sim)))
 
 	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
-	(if simple-scheduler
-	    (run-alpha-simple-scheduler sim node-code-fun stopping-time?)
-	    (run-alpha-full-scheduler sim node-code-fun stopping-time?))
+	;; Redirect output to the designated place:
+	(let ((old-output-port (current-output-port)))
+	  (parameterize ((current-output-port
+			(if (simalpha-output-port)
+			    (begin (printf "~n!!!  Redirecting output to port: ~a  !!!~n" (simalpha-output-port))
+				   (simalpha-output-port))
+			    (current-output-port))))
+  	    (if simple-scheduler
+		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
+		(run-alpha-full-scheduler sim node-code-fun stopping-time?))
+	  ))
 		   
     ;; Out of main loop:
     (if (simulation-logger) (close-output-port (simulation-logger)))))

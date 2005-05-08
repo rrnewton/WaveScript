@@ -72,6 +72,17 @@
 (define hashtab-remove!  hash-table-remove!)
 
 
+
+;; This is a simple random number generator interface for use in this Regiment codebase:
+(define reg:random-int
+  (case-lambda
+   [() (reg:random-int (- (expt 2 31) 1))]
+   [(k) (random k)]))
+(define (reg:get-random-state)
+  (pseudo-random-generator->vector (current-pseudo-random-generator)))
+(define (reg:set-random-state! s)
+  (current-pseudo-random-generator (vector->pseudo-random-generator s)))
+
 ;; ======================================================================  
 
   (include (build-path "generic" "helpers.ss"))
@@ -158,6 +169,8 @@
    symbol-append 
 
    testhelpers
+
+   reg:random-int reg:get-random-state reg:set-random-state!
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

@@ -611,7 +611,7 @@
 
 
 (define test-this (default-unit-tester
-		    "Pass cps-tokmac: use CPS on blocking calls."
+		    "27: CPS-Tokmac: use CPS on blocking calls."
 		    these-tests))
 
 
