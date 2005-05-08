@@ -70,39 +70,6 @@
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 (define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
 
-;; Used primarily by Simulator_nought.ss:
-;;===================================================
-;; These are the virtual coordinate bounds of the world.
-(define world-xbound 60)
-(define world-ybound 60)
-(define radius 20) ;; And the comm radius.
-(define numsimnodes 30) ;; And the total # processors.
-
-(define SPECIAL_RETURN_TOKEN 'RETTT)
-
-;; Id number for the base-station / Source-of-Control (SOC)
-;; I don't want to use negative numbers. I set this high for now
-;; so it should not conflict with any other ID -- it's an upper bound.  
-;; (Right now other ids are 1-1000)
-(define BASE_ID 10000)
-;; We "option lift" the ID type by having this number signify "NULL":  
-;; This is because our backend is not sophisticated enough yet to have real option types.
-(define NULL_ID 0)
-
-;; In milliseconds, this is effectively the epoch size.  
-;; Nodes aggregate and resend at this frequency.
-(define return-window-size 500)
-
-;; Used primarily by Simulator_alpha.ss:
-;;===================================================
-
-(define token-store-size 1000) ;; Store up to 1000 token-objs per node.
-
-;; Vtimes:
-(define RADIO_DELAY 0)
-(define PROCESSING_TIME 0)
-
-
 ;;======================================================================
 
 (define regiment-parameters (make-parameter '()))
@@ -128,3 +95,39 @@
 
 (define-regiment-parameter regiment-consec-ids #t)
 
+
+;; Used primarily by Simulator_nought.ss:
+;;===================================================
+;; These are the virtual coordinate bounds of the world.
+(define world-xbound 60)
+(define world-ybound 60)
+(define radius 20) ;; And the comm radius.
+(define numsimnodes 30) ;; And the total # processors.
+
+(define SPECIAL_RETURN_TOKEN 'RETTT)
+
+;; Id number for the base-station / Source-of-Control (SOC)
+;; I don't want to use negative numbers. I set this high for now
+;; so it should not conflict with any other ID -- it's an upper bound.  
+;; (Right now other ids are 1-1000)
+(define BASE_ID 10000)
+;; We "option lift" the ID type by having this number signify "NULL":  
+;; This is because our backend is not sophisticated enough yet to have real option types.
+(define NULL_ID 0)
+
+;; In milliseconds, this is effectively the epoch size.  
+;; Nodes aggregate and resend at this frequency.
+(define return-window-size 500)
+
+
+;; Used primarily by Simulator_alpha.ss:
+;;===================================================
+;; Sim alpha also reuses some of the parameters from Sim nought.
+
+(define token-store-size 1000) ;; Store up to 1000 token-objs per node.
+
+;; Vtimes:
+(define RADIO_DELAY 0)
+(define PROCESSING_TIME 0)
+
+(define-regiment-parameter simalpha-num-nodes 30)
