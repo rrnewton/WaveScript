@@ -287,8 +287,9 @@
 
 (define (fresh-simulation)
    (let* ([graph 
-          (let ((seed (map (lambda (_) (random-node)) (iota numsimnodes))))
+          (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
             ;; TEMP: Here I give the nodes distinct, consecutive ids.
+	    ;; They should have randomized ids.
             (if (regiment-consec-ids)
                 (for-each set-node-id! 
                           seed (iota (length seed))))
@@ -640,16 +641,16 @@
 		  ;"Initialize our simobject message buffers"
 		  
 		  (let ([dyndispatch_table (make-default-hash-table)])
-		    (begin ,@(map (lambda (tok)
-				    `(hashtab-set! dyndispatch_table ',(simtok-name tok) ,tok))
+		    (begin ,@(map (lambda (tokname)
+				    `(hashtab-set! dyndispatch_table ',tokname ,tokname))
 				  (map car tbinds)))
 
 		    ;; Return the real meta-handler
 		     (lambda (msgob current-vtime)
 		       (mvlet ([(name subtok)
 				(let ((tok (msg-object-token msgob)))
-				  (values (simtok->name tok)
-					  (simtok->subid tok)))])
+				  (values (simtok-name tok)
+					  (simtok-subid tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
 				(if (not handler)
 				    (error 'node-code
@@ -740,3 +741,38 @@
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand
+
+;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
+;; This handles writing the generated code to a file and loading it back.
+;; FLAGS:
+;; 'numnodes int -- Set the number of nodes in the world to int.
+;; 'outport prt  -- Set the printed output of the simulation to port prt.
+;; 'srand int    -- Seed the random number generator with int.
+(define run-simulator-alpha
+  (let ([read-params
+	 (lambda params
+	   (match params
+	     [(numnodes ,n . rest)
+	      (if (not (integer? n))
+		  (error 'run-simulator-alpha
+			 "'numnodes switch should be followed by an integer, not: ~a" n))
+	      
+	    
+
+(lambda args
+  (match args
+
+  (case-lambda 
+   [(tm)
+    (let ((cleaned (cleanup-token-machine tm)))
+      (let ([comped (compile-simulate-alpha cleaned)])
+	(slist->file (list comped) "_genned_node_code.ss" 'pretty)
+	(ra)))]
+   [()
+    (load "_genned_node_code.ss")
+    (disp "NODE CODE:" node-code "global: " (eval 'node-code) " eq: " (eq? node-code (eval 'node-code)))
+    (if (not node-code)  (error 'ra "node-code not defined!"))
+    (start-alpha-sim node-code 10.0 'simple)]
+   ))
+
+(define ra run-simulator-alpha) ;; shorthand
