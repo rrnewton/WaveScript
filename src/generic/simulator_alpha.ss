@@ -70,7 +70,7 @@
 			     ;; This function takes msg-obj and vtime and executes a tokhand:
 			     meta-handler
 			     ))
-;; The token store is a hash table mapping token names, like (Red . 34), to token objects.
+;; The token store is a hash table mapping simtok objects to token objects.
 ;; The token objects themselves are just vectors of stored variables.
 ;; By convention, the first slot of the token object is a counter for how many times the 
 ;; handler has been invoked.
@@ -367,12 +367,13 @@
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (DEBUGMODE
 			   (if (not (eq? which-tok tokname))
-			      (error 'simulator_alpha:process-statement 
-				     "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
+			       (error 'simulator_alpha:process-statement 
+				      "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store (make-simtok ',tokname ,subtok))])
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
-				 (error 'ext-set! "token not present: ~a" `(,tokname . subtok)))))]
+				 (warning 'ext-set! "token not present: ~a" `(,tokname . subtok))
+				 )))]
 
 		  ;; Local tokstore-reference:
 		  [,x (guard (and (symbol? x) (memq x allstored)))

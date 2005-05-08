@@ -159,10 +159,12 @@
 |#	     
 	     ;; All primitives that can take tokenss
 	     [(,prim ,args* ...)
+	      (guard (or (token-machine-primitive? prim)
+			 (basic-primitive? prim)))
 	      (do-primitive prim args*)
 	      ]
 
-	     [(,[rator] ,[rands] ...) (apply append rator rands)]
+	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
 	     [,otherwise
 	      (error 'desugar-gradient:find-emittoks
 		     "bad expression: ~s" otherwise)]
@@ -393,7 +395,7 @@
 			 (basic-primitive? prim)))
 	      (values (apply append rtb*) `(,prim ,rands ...))]
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
-	     [(,[rtb rator] ,[rtb* rands] ...)
+	     [(app ,[rtb rator] ,[rtb* rands] ...)
 	      (warning 'desugar-gradient
 		       "arbitrary application of rator: ~s" rator)
 	      (values (apply append rtb rtb*)

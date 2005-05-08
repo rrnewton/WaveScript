@@ -308,14 +308,38 @@
     ["Now we test running the Simulator Alpha on a very simple token machine."
      (let ((prt (open-output-string)))
        (display "(" prt)
-       (run-simulator-alpha '(tokens (node-start () (display " ") (display (my-id))))
-			    'outport prt)
+       (run-simulator-alpha 
+	'(tokens (node-start () (display " ") (display (my-id))))
+	'outport prt)
        (display ")" prt)
        (read (open-input-string (get-output-string prt))))
      ,(lambda (ls) 	
 	(set-equal? (list->set ls)
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
     
+    [
+
+     (fluid-let ((pass-names
+		  (list-remove-after 'cps-tokmac
+				     (list-remove-before 'cleanup-token-machine pass-names))))
+       (disp "PASS NAMES" pass-names)
+       (let ((prog 
+	      (run-compiler
+	       '(tokens 
+		 (SOC-start () (emit gradient))
+		 (gradient () 
+			   (greturn x (to handler))
+			   (relay))
+		 (handler (x) (display " ") (display x))
+		 ))))
+	 (disp "PROG")
+	 (pp prog)
+	 (run-simulator-alpha prog)
+	 ))
+
+
+	]
+
     ))
 
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
