@@ -606,7 +606,7 @@
 
 
 (define test-this (default-unit-tester
-		    "Deglobalize: to convert global to local program."
+		    "20: Deglobalize: to convert global to local program."
 		    these-tests))
 
 (define test20 test-this)

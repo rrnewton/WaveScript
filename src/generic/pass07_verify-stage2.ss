@@ -245,7 +245,7 @@
      
 
 (define test-this (default-unit-tester 
-		    "Pass05: Verify valid stage2 program (unfinished)"
+		    "Verify-Stage2: Pass to verify valid stage2 program (unfinished)"
 		    these-tests))
 
 #;(define test-this

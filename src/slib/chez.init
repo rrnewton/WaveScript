@@ -1,4 +1,4 @@
-;;; RRN: I made a few changes to keep them from hosing 
+;;; RRN: I made a few changes to keep them from hosing chez stuff.
 
 ;;;"chez.init" Initialization file for SLIB for Chez Scheme 6.0a -*-scheme-*-
 ;;; Authors: dorai@cs.rice.edu (Dorai Sitaram) and Aubrey Jaffer.

@@ -5,6 +5,7 @@
 ;;; The algorithm is inspired by Cormen, Leiserson and Rivest (1990)
 ;;; "Introduction to Algorithms", chapter 23
 
+;; [2005.05.08] RRN: I would like to chop this module out of slib:
 (require 'hash-table)
 (require 'primes)
 

@@ -292,7 +292,7 @@
 ;; has access to internal functions.
 
 (define test-this (default-unit-tester 
-		    "Pass to verify initial regiment language."
+		    "Verify-Regiment: Pass to verify initial regiment language."
 		    these-tests))
 
 #;(define test-this

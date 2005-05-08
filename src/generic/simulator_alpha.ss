@@ -229,13 +229,13 @@
 ;; This is done safely so that it cannot conflict with the BASE_ID or NULL_ID.
 (define (random-node) 
   (make-node 
-   (let loop ((id (random 1000)))
+   (let loop ((id (reg:random-int 1000)))
      (if (or (eq? id BASE_ID) 
 	     (eq? id NULL_ID))
-	 (loop (random 1000))
+	 (loop (reg:random-int 1000))
 	 id))
-   (list (random world-xbound)
-	 (random world-ybound))
+   (list (reg:random-int world-xbound)
+	 (reg:random-int world-ybound))
    ))
   
 (define (dotted-append ls ob)
@@ -741,38 +741,3 @@
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand
-
-;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
-;; This handles writing the generated code to a file and loading it back.
-;; FLAGS:
-;; 'numnodes int -- Set the number of nodes in the world to int.
-;; 'outport prt  -- Set the printed output of the simulation to port prt.
-;; 'srand int    -- Seed the random number generator with int.
-(define run-simulator-alpha
-  (let ([read-params
-	 (lambda params
-	   (match params
-	     [(numnodes ,n . rest)
-	      (if (not (integer? n))
-		  (error 'run-simulator-alpha
-			 "'numnodes switch should be followed by an integer, not: ~a" n))
-	      
-	    
-
-(lambda args
-  (match args
-
-  (case-lambda 
-   [(tm)
-    (let ((cleaned (cleanup-token-machine tm)))
-      (let ([comped (compile-simulate-alpha cleaned)])
-	(slist->file (list comped) "_genned_node_code.ss" 'pretty)
-	(ra)))]
-   [()
-    (load "_genned_node_code.ss")
-    (disp "NODE CODE:" node-code "global: " (eval 'node-code) " eq: " (eq? node-code (eval 'node-code)))
-    (if (not node-code)  (error 'ra "node-code not defined!"))
-    (start-alpha-sim node-code 10.0 'simple)]
-   ))
-
-(define ra run-simulator-alpha) ;; shorthand

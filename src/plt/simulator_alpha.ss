@@ -10,6 +10,8 @@
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
    (all-except "tsort.ss" test-this these-tests)
+  
+   ;(all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
    )
 
   ;(require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           

@@ -61,7 +61,7 @@
 ;;;                | <GExpr>
 ;;; <GExpr>      ::= (emit <DynToken> <Expr> ...)
 ;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
 ;;;                | (dist <DynToken>)
 
 ;;;  <Prim> ::= <BasicPrim> 
@@ -139,7 +139,7 @@
 	     [(relay (tok ,t ,[e])) e]
 	     [(dist (tok ,t ,[e])) e]
 	     ;; The to's and the vias are static! Aggr has no subtok index!
-	     [(return ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
+	     [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
 	      (append expr seed_val)]
 
 	     [(leds ,what ,which) '()]
@@ -253,7 +253,7 @@
 	     ;; However, we don't *know* that frequency.  Do we have enough info to aggregate?
 	     ;; Well, for now we just do the epoch-skewed thing.  Each time we're called we send 
 	     ;; up our old results and start aggregating new ones.
-	     [(return ,[etb expr]            ;; Value
+	     [(greturn ,[etb expr]            ;; Value
 		      (to (tok ,to ,[ttb toind]))
 		      (via (tok ,via ,[vtb viaind]))
 		      (seed ,[stb seed_exp])
@@ -261,7 +261,7 @@
 	      (let ([aggr_ID (unique-name 'aggr_ID)]
 		    [acc (unique-name 'acc)]
 		    [oldacc (unique-name 'oldacc)]
-		    [return-handler (unique-name 'return-handler)])
+		    [return-handler (unique-name 'greturn-handler)])
 	      (values 
 	       ;; First return value: a new handler for the aggregation object
 	       ;; corresponding to this particular return statment.
@@ -478,41 +478,45 @@
       '(cleanup-token-machine-lang
 	'(program
 	  (bindings )
-	  (socpgm (bindings ) )
-	  (nodepgm (tokens) (startup ) ))))
-     (desugar-gradients-lang
-      '(program
-	(bindings )
-	(socpgm (bindings ) )
-	(nodepgm (tokens) (startup ) ))) ]
+	  (nodepgm (tokens) ))))
+     (desugar-gradient-lang
+      '(program (bindings) (nodepgm (tokens))))]
+
 
     ["Make sure it gets all the gradient calls out.." 
-     (desugar-gradients
-      '(cleanup-token-machine-lang
-	'(program
-	  (bindings )
-	  (socpgm (bindings ) (call f))
-	  (nodepgm (tokens
-		    (f () 
-		       (emit g '3))
-		    (g (x) (if (< (dist) '3) 
-			       (relay)
-			       (return (dist) (to h) (via g) (seed '#f) (aggr #f))))
-		    (h (v) (dbg '"Got val: %d\\n" v))
-		    )
-		   (startup ) ))))
-     ,(lambda (x) #t) ]
-    
-
+     (let ((x (desugar-gradients
+      '(foolang '(program (bindings) 
+        (nodepgm
+	 (tokens
+	  (node-start subtok_ind () (stored) (void))
+	  (SOC-start subtok_ind () (stored) (call (tok f 0)))
+	  (f subtok_ind () (stored) (emit (tok g 0) '3))
+	  (g subtok_ind
+	     (x)
+	     (stored)
+	     (if (< (dist (tok g subtokind)) '3)
+		 (relay (tok g subtok_ind))
+                (greturn (dist (tok g subtokind))
+			(to (tok h 0))
+			(via (tok g 0))
+			(seed '#f)
+			(aggr #f))))
+	  (h subtok_ind (v) (stored) (dbg '"Got val: %d\\n" v)))))))))
+       (list (deep-assq 'emit x)
+	     (deep-assq 'relay x)
+	     (deep-assq 'greturn x)
+	     (deep-assq 'dist x)))
+     (#f #f #f #f)]
+		        
 ))
 
 
 (define test-this (default-unit-tester
-		    "Pass 18d cps-tokmac: use CPS on blocking calls."
+		    "23: Desugar-Gradient: convert gradient commands to plain token machine code." 
 		    these-tests))
 
 
 (define test23 test-this)
 (define tests23 these-tests)
 (define test-desugar-gradients test-this)
-(define tests-desugar-gradients these-tests)
+/(define tests-desugar-gradients these-tests)

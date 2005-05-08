@@ -241,7 +241,7 @@
 
 (define test-this
   (default-unit-tester 
-    "Testing pass to verify initial regiment language."
+    "Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
     these-tests))
   
 

@@ -31,7 +31,7 @@
 ;;;   that are just shorthands.  (For example, (dist) becomes
 ;;;   (dist <this-token>)    ;;; TODO: not finished...
 ;;;   It also expands some syntaxes (and, or), and regularizes certain usages 
-;;;   (return's arguments become ordered properly, defaults supplied).
+;;;   (greturn's arguments become ordered properly, defaults supplied).
 
 ;;;   (*) Should be IDEMPOTENT.  
 ;;;   Can run it multiple times or inbetween different passes.
@@ -79,7 +79,7 @@
 ;;;                | <GExpr>
 ;;;                | <Sugar> 
 ;;;  <GExpr>     ::= (emit <DynToken> <Expr> ...)
-;;;                | (return <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
+;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
 ;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
 ;;;                | (dist <DynToken>)
 ;;;  <Sugar>     ::= (flood <Expr>)
@@ -305,9 +305,13 @@
 	      `(relay (tok ,t ,e))]
 	     
 	     ;; Expand this out to refer to the precise token...
-	     [(dist) `(dist ,this-token)]
+	     ;; TODO FIXME TODO: change this to refer to the specific subtokind:
+	     [(dist) `(dist (tok ,this-token subtokind))]
+	     [(dist (tok ,t ,[n]))  `(dist (tok ,t ,n))]
+	     [(dist ,t) (guard (tokname? t)) `(dist (tok ,t 0))]
+	     [(dist ,[e]) `(dist ,e)]
 	     
-	     [(return ,[expr]            ;; Value
+	     [(greturn ,[expr]            ;; Value
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
 		      (seed ,[seed_vals] ...) ;; With seed
@@ -327,22 +331,22 @@
 			 [(tok ,t ,n) `(tok ,t ,n)]))
 
 		(if aggr (check-tok 'return-aggr aggr))
-		`(return ,expr 
+		`(greturn ,expr 
 			 (to ,(fix-token memb)) 
 			 (via ,(fix-token parent))
 			 (seed ,seed) 
 			 (aggr ,(if aggr (fix-token aggr) aggr))))]
 
-	     ;; This fills in defaults for missing return parameters:
-	     [(return ,thing ,stuff ...)
+	     ;; This fills in defaults for missing greturn parameters:
+	     [(greturn ,thing ,stuff ...)
 	      (if (or (not (andmap pair? stuff))
 		      (not (set? (map car stuff)))
 		      (not (subset? (map car stuff)
 				    '(to via seed aggr))))
 		  (error 'cleanup-token-machine
-			 "process-expr: bad syntax for return: ~s" `(return ,stuff ...)))
+			 "process-expr: bad syntax for greturn: ~s" `(greturn ,stuff ...)))
 	      (loop
-	       `(return ,thing 
+	       `(greturn ,thing 
 			,(assq 'to stuff)
 			,(if (assq 'via stuff)
 			     (assq 'via stuff)
@@ -561,13 +565,14 @@
 	  (bindings )
 	  (socpgm (bindings ) )
 	  (nodepgm (tokens) (startup ) ))))    
-     (cleanup-token-machine-lang
+
+     (deglobalize-lang
       '(program
-        (bindings)
-        (nodepgm
-         (tokens
-          (soc-start #f () (stored) (void))
-          (node-start #f () (stored) (void))))))]
+	(bindings)
+	(nodepgm
+	 (tokens
+	  (SOC-start subtok_ind () (stored) (void))
+	  (node-start subtok_ind () (stored) (void))))))]
 
     ["Now collapse two tokens of the same name"
      (cleanup-token-machine 
@@ -577,13 +582,13 @@
 	  (socpgm (bindings ) (emit tok1))
 	  (nodepgm
 	   (tokens
-	    [tok1 () (fun1)]
-	    [tok1 () (fun2)])
+	    [tok1 () (app fun1)]
+	    [tok1 () (app fun2)])
 	   (startup )
 	   ))))
      ,(lambda (p)
 	(match p 
-	  [(cleanup-token-machine-lang
+	  [(deglobalize-lang
 	    '(program (bindings )
 		      (nodepgm (tokens ,toks ...))))
            (let* ([tok1 (assq 'tok1 toks)]
@@ -591,26 +596,33 @@
 	   (and (deep-member? '(fun1) body)
 		(deep-member? '(fun2) body)))]))]
     
-    ["Test of return normalization #1"
-     (cleanup-token-machine 
-      '(deglobalize-lang 
-	'(program
-	  (bindings ) (socpgm (bindings ) (emit tok1))
-	  (nodepgm
-	   (tokens
-	    [tok1 () (return 3 (to tok2) )]
-	    [tok2 (x) 3])
-	   (startup )
-	   ))))
-#f
-     ]
+    ["Test of greturn normalization #1"
+     (deep-assq 'greturn
+		(cleanup-token-machine 
+		 '(deglobalize-lang 
+		   '(program
+		     (bindings ) (socpgm (bindings ) (emit tok1))
+		     (nodepgm
+		      (tokens
+		       [tok1 () (greturn 3 (to tok2) )]
+		       [tok2 (x) 3])
+		      (startup ))))))
+     (greturn
+      '3
+      (to (tok tok2 0))
+      (via (tok tok1 0))
+      (seed '#f)
+      (aggr #f))]
+
+    
+
     
 ))
 
 
 
 (define test-this (default-unit-tester
-		    "Pass cleanup-token-machine: regularize token machine"
+		    "21: Cleanup-Token-Machine: regularize syntax of token machine"
 		    these-tests))
 
 

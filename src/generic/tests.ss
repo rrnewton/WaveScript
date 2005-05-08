@@ -120,6 +120,14 @@
 ;; are already loaded, and just calls their unit testers by name.
 
 (define (test-units . args)
+  (printf "~n;; Performing all unit tests:~n~n")
+  (for-each (lambda (pr) (newline) (newline) (apply (cadr pr) args)) 
+	    (reg:all-unit-tests)))
+
+(define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
+
+;; Replacing this with much simpler system above:
+#;(define (test-units . args)
   (printf "~n;; Performing all unit tests:~n")    
   ;; Pass flags ('quiet 'verbose) onward to the unit tester:
   (let ([test-it (case-lambda

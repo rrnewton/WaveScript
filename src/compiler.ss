@@ -53,24 +53,6 @@
 
 
 
-;;======================================================================
-
-(define these-tests 
-  `( 
-    ;; Urg, this is wrong:
-    ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
-    
-    ["Verify that the trivial program produces no token bindings but the defaults"
-     (filter (lambda (tokbind)
-	       (not (memq (car tokbind) '(spread-global global-tree))))
-	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
-     ()]
-    ))
-
-(define test-this (default-unit-tester "Main compiler unit." these-tests))
-
-
-
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
 
@@ -213,9 +195,6 @@
        (startup))))
 
 
-(define compilertests these-tests)
-(define compilertest test-this)
-
 ;; These are some temporary diagnostic functions:
 (define (all-incoming) ;; shorthand
   (filter (lambda (ls) (not (null? ls)))
@@ -251,3 +230,94 @@
 (define mp;;myprog ;; shorthand
 ;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
   '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
+
+
+;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
+;; This handles writing the generated code to a file and loading it back.
+;; FLAGS:
+;; 'numnodes int -- Set the number of nodes in the world to int.
+;; 'outport prt  -- Set the printed output of the simulation to port prt.
+;; 'srand int    -- Seed the random number generator with int.
+(define run-simulator-alpha
+  (letrec ([run-alpha-loop
+	    (lambda args
+	      (match args
+		     ;; This is a weak requirement... 
+		     ;; We consider the first arg to represent a token machine if it is a *list*.
+		     [(,tm . ,rest) (guard (list? tm))
+		      (let ((cleaned (cleanup-token-machine tm)))
+			(let ([comped (compile-simulate-alpha cleaned)])
+			  (slist->file (list comped) "_genned_node_code.ss" 'pretty)
+			  (read-params rest)			  
+			  ))]
+		     ))]
+	    [read-params
+	     (lambda (params)	       
+	       (match params
+;		      [,x (guard (disp "read params" params) #f) 3]
+		      [() 
+		       (load "_genned_node_code.ss")
+                       ;; We have to do this because of the module system:
+                       (let ((node-code (eval 'node-code)))
+                         ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
+                         ;(printf "Node code loaded from file.~n")
+                         ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
+                         (start-alpha-sim node-code 10.0 'simple))]
+		      [(numnodes ,n . ,rest)
+		       (if (not (integer? n))
+			   (error 'run-simulator-alpha
+				  "'numnodes switch should be followed by an integer, not: ~a" n))
+		       (parameterize ([simalpha-num-nodes n])
+				     (read-params rest))]
+		      [(outport ,p . ,rest)
+		       (if (not (output-port? p))
+			   (error 'run-simulator-alpha
+				  "'outport switch should be followed by a port object, not: ~a" n))
+		       (parameterize ([simalpha-output-port p])
+				     (read-params rest))]
+		      [(srand ,n . ,rest)
+;		       (if (not (integer? n))
+;			   (error 'run-simulator-alpha
+;				  "'srand switch should be followed by an integer, not: ~a" n))
+		       (let ([stored-state #f])
+			 (dynamic-wind
+			     (lambda () (set! stored-state (reg:get-random-state)))
+			     (lambda () (read-params rest))
+			     (lambda () (reg:set-random-state! stored-state))))
+		       ]))])
+	   run-alpha-loop))
+	    
+(define ra run-simulator-alpha) ;; shorthand
+
+;;======================================================================
+
+;; These are some of our system tests.  They test the compiler and the simulator as a whole.
+;; The rest of the system tests are in the files named tests_*.ss
+;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
+(define these-tests 
+  `( 
+    ;; Urg, this is wrong:
+    ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
+    
+    ["Verify that the trivial program produces no token bindings but the defaults"
+     (filter (lambda (tokbind)
+	       (not (memq (car tokbind) '(spread-global global-tree))))
+	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
+     ()]
+
+    ["Now we test running the Simulator Alpha on a very simple token machine."
+     (let ((prt (open-output-string)))
+       (display "(" prt)
+       (run-simulator-alpha '(tokens (node-start () (display " ") (display (my-id))))
+			    'outport prt)
+       (display ")" prt)
+       (read (open-input-string (get-output-string prt))))
+     ,(lambda (ls) 	
+	(set-equal? (list->set ls)
+		    (list->set (cons BASE_ID (cdr (iota 30))))))]
+    
+    ))
+
+(define test-this (default-unit-tester "Main compiler unit." these-tests))
+(define maintests these-tests)
+(define maintest test-this)

@@ -126,7 +126,7 @@
   ))
 
 (define test-this (default-unit-tester
-		    "Analyze-places: to infer place relationships"
+		    "17: Analyze-places: to infer place relationships"
 		    these-tests))
 
 (define test17 test-this)

@@ -2,9 +2,8 @@
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
-;; REQUIRES: On chez/plt primitive open-output-string.
-;; REQUIRES: (On other chez/plt features which I'm not aware of...)
-
+;; REQUIRES/DEPENDS: On chez/plt primitive open-output-string.
+;; REQUIRES/DEPENDS: (On other chez/plt features which I'm not aware of...)
 
 ;==============================================================================;
 
@@ -17,31 +16,13 @@
 
 (define id (lambda (x) x))
 
-'(define regiment-basic-primitives 
-  '(cons car cdr 
-	 + - * / 
-	 < > <= >= = eq? equal?
-	 null? pair? number? 
-	 not
-
-	 locdiff
-	 ))
-
-'(define regiment-distributed-primitives 
-  '(rmap rfold smap time-of
-	 circle circle-at anchor anchor-at anchor-where k-neighborhood time
-	 cluster sparsify border planarize treeize filter union intersect
-	 until when swhen-any rwhen-any when-percentage 
-	 sense neighbors ))
-
 
 ;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
-;; Ok, redoing those with type information:
+;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
 ;;   Function, Number, Integer, Float, Bool, Object
 ;;   List
-
 
 ;; Since I'm going to go statically typed eventually, Object is just
 ;; my way of signifying "for all alpha" right now.
@@ -220,7 +201,7 @@
 ;; [2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
   '( ;(elect-leader) (flood) ;; These are actually macros, but what the heck
-;     (return)
+;     (greturn)
 ;     (emit)
 ;     (relay)
 ;     (call)
@@ -268,9 +249,11 @@
     (and (memq x '(quote set! if begin letrec let let-stored)) #t)))
 
 
-;; Note: I am no longer using handler-local constant "bindings", but
-;; it doesn't hurt that this function handles them:
-(define (destructure-tokbind tbind)  
+;; There are different syntactic ways to write down token handler bindings.
+;; (Thanks to optional forms in the syntax.)  This parses tokbinds.
+;; (Note: I am no longer using handler-local constant "bindings", but
+;; it doesn't hurt that this function handles them:)
+(define (destructure-tokbind tbind)
   (define (process-stored s)
     (match s
 	   [(,v ,e) `(,v ,e)]
@@ -897,9 +880,17 @@
 	     (write arg port)   (newline port)
 	     (let ((str (get-output-string port)))
 	       (if (> (string-length str) bound)
-		   (begin (display (substring str 0 (max 0 (- bound 3))))
-			  (display "..."))
-		   ;; Gotta cut off the newline.
+		   ;; Here we chop the string.  I go to a little extra
+		   ;; work to make sure we don't print a lone double
+		   ;; quote -- for emacs' sake.
+		   (let ((substr (substring str 0 (max 0 (- bound 3)))))
+		     (do ([i 0 (add1 i)])
+			 ((= i (string-length substr)))
+		       (if (eq? (string-ref substr i) #\")
+			   (string-set! substr i #\')))
+		     (display substr)
+		     (display "..."))
+		   ;; Gotta cut off the newline:
 		   (display (substring str 0 (- (string-length str) 1))))))))
 	      args)))
 
@@ -1180,6 +1171,7 @@
 ;; [2005.02.24] Working around weird PLT bug:
 (define voidproc (lambda args (void)))
 
+(define-regiment-parameter reg:all-unit-tests '())
 (define default-unit-tester
   (lambda (message these-tests . extras)
 
@@ -1189,7 +1181,7 @@
     (define ORACLEWIDTH 30)
     (define INTENDEDWIDTH 20)
 
-    (let (;; If the second argument is a procedure, use it as the equal.
+    (let (;; If the third argument is a procedure, use it as the equal method:
 	  [teq? (if (or (null? extras) (not (procedure? (car extras))))
 		    tester-equal?		    
 		    (eq-deep (car extras)))]
@@ -1199,7 +1191,8 @@
 	       (cadr extras)
 	       (lambda (x) x))])
 
-    (lambda args 
+      (let ((testerproc 
+	     	     (lambda args 
     (call/cc
      (lambda (return)
        (let ([entries
@@ -1218,7 +1211,8 @@
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (memq 'quiet args)]
 	       ;; Flag to print test descriptions as well as code/output.
-	       [verbose (memq 'verbose args)]
+	       [verbose (or (memq 'verbose args)
+			    (memq 'descrips args))]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
 	       [intended (map caddr entries)]
@@ -1290,54 +1284,14 @@
 			  ))))
 	     (iota (length tests))
 	     tests descriptions intended)
-	    ))))))))
+	  )))))
+		     )) ;; End testerproc let binding
+	;; Regiment specific:
+	;; Add this unit-tester to the global list:       
+	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests)))
+	testerproc))))
 
-
-;;; OLD VER:
-'(define (default-unit-tester MESSAGE TESTS)
-    (lambda args 
-      (let ((verbose (memq 'verbose args)))
-	
-	(let ((tests (map car TESTS))
-	      (intended (map cadr TESTS)))
-	  (let ((results (map eval tests)))
-	    (if verbose 
-		(begin
-		  (display MESSAGE)
-		  (newline)
-		  (newline) (display "Here are intended results:") (newline)
-		  (write intended) (newline) (newline)
-		  (newline) (display "Here are actual results:") (newline)
-		  (write results) (newline) (newline)))
-	    (andmap tester-eq? intended results)
-	    )))))
 			
-
-#;(define marshal
-(lambda (x)
-  (let ((str (format "~s" x)))
-    (let ((in (open-input-string str)))
-      (read in)))))
-#;(define (marshaltest x) (eq? x (marshal x)))
-
-#;(define load:dump-expansion
-(lambda (file dumpfile)
-  (parameterize ([current-output-port (open-output-file dumpfile 'replace)]
-                 [print-graph #t]
-                 [current-eval
-                   (case-lambda
-                     [(exp)
-                      (unless (and (pair? exp) (equal? "noexpand" (car exp)))
-                        (write (expand exp)) (newline)(newline))
-                      (eval exp)]
-                     [(exp envspec)
-                      (error
-                        'load:dump-expansion
-                        "Proxy eval procedure not prepared~s~a"
-                        " to receive env-spec:" envspec)])])
-    (load file)
-    (close-port (current-output-port)))))
-
 ;===============================================================================
 ;;; helpers.ss
 ;;; Kent Dybvig
@@ -2228,8 +2182,6 @@
 
 (define these-tests
   `(
-
-
 
     [(deep-all-matches null? '(1 (3) (4 . 5)))
      (() ())]

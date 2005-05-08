@@ -257,7 +257,7 @@
     ))
 
 (define test-this (default-unit-tester
-		    "Staic-elaborate: to evaluate the first stage of computation"
+		    "Staic-Elaborate: to evaluate the first stage of computation"
 		    these-tests))
 
 (define test04 test-this)

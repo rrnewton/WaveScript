@@ -150,7 +150,7 @@
    test-programs))
 
 (define test-this (default-unit-tester 
-		    "Pass to verify the simplifed core language."
+		    "Verify-Core: Pass to verify the simplifed core language."
 		    these-tests))
 #;(define test-this
   (let ((these-tests these-tests))
