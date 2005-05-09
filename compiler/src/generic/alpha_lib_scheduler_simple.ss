@@ -44,7 +44,7 @@
 		  (cons
 		   (make-simevt (let ((t (simevt-vtime e)))
 				  (if t t (+ SCHEDULE_DELAY vtime)))
-				(simevt-duration e)
+				;(simevt-duration e)
 				(simevt-msgobj e))
 		   ob))
 		newevnts)])
@@ -77,12 +77,12 @@
     ;; The incoming buffer starts out with just the start actions SOC-start and node-start.
     (set-simobject-local-msg-buf! ob				
 	(list (make-simevt 0
-			   #f ; ignored
+;			   #f ; ignored
 			   (bare-msg-object (make-simtok 'node-start 0) '() 0))))
     (if (= BASE_ID (node-id (simobject-node ob)))
 	(set-simobject-local-msg-buf! ob
 	   (cons (make-simevt 0
-			      #f ; ignored
+;			      #f ; ignored
 			      (bare-msg-object (make-simtok 'SOC-start 0) '() 0))
 		 (simobject-local-msg-buf ob))))
     ))

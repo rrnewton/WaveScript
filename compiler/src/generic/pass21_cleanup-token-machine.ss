@@ -73,6 +73,7 @@
 ;;;                | (let ((<Symbol> <Expr>)) <Expr>)
 ;;;                | (if <Expr> <Expr> <Expr>)
 ;;;                | (subcall <DynToken> <Expr>...)
+;;;                | (return <Expr>)
 ;;;                | (<Prim> <Expr> ...)
 ;;;                | (<Expr> ...)
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
@@ -282,7 +283,7 @@
 			  (call ,ind ,@args*))))])]
 	     	     
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(emit call bcast)))
+	      (guard (memq call-style '(emit call bcast subcall)))
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
@@ -295,6 +296,7 @@
 				      `(tok ,tok ,DEFAULT_SUBTOK)
 				      tok)
 			   ,args* ...)]
+	     [(return ,[x]) `(return ,x)]
 	     [(relay) `(relay (tok ,this-token ,this-subtok))]
 	     [(relay ,tok) (guard (tokname? tok))
 	      (check-tok 'relay tok)
