@@ -335,53 +335,6 @@
      (result 303)]
      
 
-    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
-		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
-		 (tok2 () (return 55))
-		 (tok3 () (return 45))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-
-
-
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
-		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
-		 (tok2 () (return 55))
-		 (tok3 () (return 45))
-		 )
-
-
-    [
-     '(fluid-let ((pass-names
-		  (list-remove-after desugar-gradients ;'cps-tokmac
-				     (list-remove-before 'cleanup-token-machine pass-names))))
-       (disp "PASS NAMES" pass-names)
-       (let ((prog 
-	      (run-compiler
-	       '(tokens 
-		 (SOC-start () (emit gradient))
-		 (gradient () 
-			   (greturn x (to handler))
-			   (relay))
-		 (handler (x) (display " ") (display x))
-		 ))))
-	 (disp "PROG")
-	 (pp prog)
-;	 (run-simulator-alpha prog)
-	 ))
-     
-     ,(lambda a #t)
-     ]
-
     ))
 
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
@@ -410,3 +363,53 @@
 	 (pp prog)
 ;	 (run-simulator-alpha prog)
 	 ))
+
+
+
+#;
+    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	 (let ((prog 
+		(run-compiler
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
+		 (tok2 () (return 55))
+		 (tok3 () (return 45))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+
+
+
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
+		 (tok2 () (return 55))
+		 (tok3 () (return 45))
+		 )
+
+
+#;    [
+     '(fluid-let ((pass-names
+		  (list-remove-after desugar-gradients ;'cps-tokmac
+				     (list-remove-before 'cleanup-token-machine pass-names))))
+       (disp "PASS NAMES" pass-names)
+       (let ((prog 
+	      (run-compiler
+	       '(tokens 
+		 (SOC-start () (emit gradient))
+		 (gradient () 
+			   (greturn x (to handler))
+			   (relay))
+		 (handler (x) (display " ") (display x))
+		 ))))
+	 (disp "PROG")
+	 (pp prog)
+;	 (run-simulator-alpha prog)
+	 ))
+     
+     ,(lambda a #t)
+     ]
