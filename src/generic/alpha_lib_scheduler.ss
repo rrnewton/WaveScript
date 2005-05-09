@@ -49,7 +49,7 @@
 			       ;; bring it up to that time!
                                (max (simevt-vtime next) private-vtime)
                                private-vtime)
-                           (simevt-duration next)
+;                           (simevt-duration next)
                            (simevt-msgobj next))))]
 
 	    [(pop)
@@ -100,11 +100,11 @@
                                      (let loop ([acc '()] [budget time-remaining] [evts flexible])
                                        (cond 
                                          [(null? evts) (values flexible '())]
-                                         [(< budget (simevt-duration (car evts)))
+                                         [(< budget 1);(simevt-duration (car evts)))
                                           ;; We can't afford it, stop here:
                                           (values (reverse! acc) evts)]
                                          [else (loop (cons (car evts) acc) 
-                                                     (- budget (simevt-duration (car evts)))
+                                                     (- budget 1);(simevt-duration (car evts)))
                                                      (cdr evts))]))])
                                    (if (not (null? letslide))
                                        (set! buffer
@@ -219,12 +219,10 @@
     ;; The incoming buffer starts out with just the start actions SOC-start and node-start.
     (set-simobject-local-msg-buf! ob				
 	(list (make-simevt 0
-			   0 ;(cadr (assq 'node-start cost-table))
 			   (bare-msg-object 'node-start '() 0))))
     (if (simobject-I-am-SOC ob)
 	(set-simobject-local-msg-buf! ob
 	   (cons (make-simevt 0
-			      0 ;(cadr (assq 'node-start cost-table))
 			      (bare-msg-object 'SOC-start '() 0))
 		 (simobject-local-msg-buf ob))))
 
@@ -263,16 +261,16 @@
 	(if (not next) 
 	    #f    ;; We just fizzle if our schedule is empty.  
             (begin 
-	      (logger 3 "~a: Updated schedule, got head: vt~a d~a ~a, buffer ~a~n" 
+	      (logger 3 "~a: Updated schedule, got head: vt~a  ~a, buffer ~a~n" 
 		      (node-id (simobject-node ob))
-		      (simevt-vtime next) (simevt-duration next)
+		      (simevt-vtime next) ;(simevt-duration next)
 		      (msg-object-token (simevt-msgobj next)) 
 		      (map (lambda (evt) (list (simevt-vtime evt)
 					       (msg-object-token (simevt-msgobj evt))))
 			   (scheduler 'get-buffer)))
 	      (make-simevt
                (simevt-vtime next)
-               (simevt-duration next)
+;               (simevt-duration next)
                ;; Action thunk that executes message:
                (lambda ()
 		 (DEBUGMODE
@@ -303,11 +301,12 @@
                  ;; Now that the atomic action is finished, do the radio transimission:		 
 		 ;; The actual time that outgoing messages are launched is at the 
 		 ;; end of the atomic actions completion:
-                 (launch-outgoing (+ ourtime (simevt-duration next)))
+		 ;; RRN: [2005.05.08] Getting rid of durration estimates.
+                 (launch-outgoing (+ ourtime 1));(simevt-duration next)))
                  
                  ;; Finally we must tell our scheduler that we have executed this action:
                  ;; First, advance the clock appropriately.
-                 (scheduler 'advance-time (simevt-duration next))
+                 (scheduler 'advance-time 1) ;(simevt-duration next))
                  (scheduler 'pop)  ;; Next, pop off that action since we're done with it.
                  )))))))))
 

@@ -26,8 +26,7 @@
 ;; obj-hash maps node-ids onto simobjects
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
-(define-structure (simevt vtime duration msgobj))
-;; TODO: REMOVE DURATION!!
+(define-structure (simevt vtime msgobj))
 
 ;; [2005.05.06]
 ;; A first class representation of tokens:
@@ -156,7 +155,7 @@
     (match expr	 
 	   [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
 	   [(quote ,x) '()]
-	   [(,prim ,rand* ...) (regiment-primitive? prim)
+ 	   [(,prim ,rand* ...) (regiment-primitive? prim)
 	    (let ((frees (map (lambda (x) (loop env x)) rand*)))
 	      (apply append frees))]
 	   [(lambda (,formals) ,expr)
@@ -167,7 +166,7 @@
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)
   ;(unless (token-name? token) (error 'safe-construct-msg-object "bad token name: ~s" token))
-  (unless (simtok? token) (error 'safe-construct-msg-object "bad token: ~s" token))
+  (unless (simtok? token) (error 'safe-construct-msg-object "bad token: ~s" token)) ;
   (unless (or (number? timestamp) (not timestamp))
 	  (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
   (unless (list? args)
@@ -390,19 +389,19 @@
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
+		  [(begin ,[x] ...) `(begin ,x ...)]
+		  
 		  ;; NOTE! These rands ARE NOT simple.
-		  [(call ,rator ,[rand*] ...)
+		  [(call ,[rator] ,[rand*] ...)
                      `(set-simobject-local-msg-buf! this
                            (cons (make-simevt #f ;; No scheduled time, ASAP
-                                              0 ;,(cadr tok) ;; Time cost
                                               (bare-msg-object ,rator
-							       ,rand* current-vtime))
+							       (list ,@rand*) current-vtime))
                                  (simobject-local-msg-buf this)))]
 
-		  [(bcast ,rator ,[rand*] ...)
+		  [(bcast ,[rator] ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
-				       0 ;,(cadr (assq (token->name rator) cost-table)) ;; Time cost
 				       (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			    (simobject-local-msg-buf this)))]
 
@@ -410,11 +409,10 @@
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
 
-		  [(timed-call ,delay ,rator ,[rand*] ...)
+		  [(timed-call ,delay ,[rator] ,[rand*] ...)
 		   ;; Delay is in milleseconds.
 		  `(set-simobject-timed-token-buf!
 		    this (cons (make-simevt (+ ,delay current-vtime)
-					    0 ;,(cadr (assq (token->name rator) cost-table)) ;; Time cost
 					    (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			       (simobject-timed-token-buf this)))]
 
@@ -489,8 +487,8 @@
 		   `(let ((,lhs ,rhs)  ...) ,bods ...)]
 		  ;; We're letting them get away with other primitives because
 		  ;; we're being lenient, as mentioned above.
-		  [(app ,rator ,[rand*] ...)
-		   `(,(process-expr rator) ,rand* ...)]
+		  [(app ,[rator] ,[rand*] ...)
+		   `(,rator ,rand* ...)]
 		  [(,rator ,[rand*] ...)
 		   ;; This is an arbitrary scheme application. Where would these come from?
 		   ;; Don't want to be too lenient tho:

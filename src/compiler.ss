@@ -316,9 +316,24 @@
      ,(lambda (ls) 	
 	(set-equal? (list->set ls)
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
-    
-    [
 
+
+    ["Next we test and simulate passes from back to front.  Test cps-tokmac:"
+     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac)))
+       (let ((prog 
+	      (run-compiler
+	       '(tokens 
+		 (SOC-start () (printf "Subcall result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (+ x 1)))
+		 ))))
+	 (disp "PROG")
+	 (pp prog)
+	 (run-simulator-alpha prog)
+	 ))
+
+     3]
+
+    [
      (fluid-let ((pass-names
 		  (list-remove-after 'cps-tokmac
 				     (list-remove-before 'cleanup-token-machine pass-names))))
@@ -336,9 +351,9 @@
 	 (pp prog)
 	 (run-simulator-alpha prog)
 	 ))
-
-
-	]
+     
+     ,(lambda a #f)
+     ]
 
     ))
 

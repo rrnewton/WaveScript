@@ -171,6 +171,7 @@
    testhelpers
 
    reg:random-int reg:get-random-state reg:set-random-state!
+   reg:all-unit-tests 
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
