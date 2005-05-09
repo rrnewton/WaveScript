@@ -232,22 +232,23 @@
 	    (loop `(call ,k ',CALL ,v))]
 		   
 
-	   [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
+	   [(let ([,k (lambda (,hole) ,body1)]) ,body2)	      
 	    (let ([kname (unique-name 'K)])
-	      (mvlet ([(closure khandler)
-		       (build-continuation kname body1 hole)])
+	      (mvlet ([(closure khandler) (build-continuation kname body1 hole)])
   	         (set! new-handlers (cons khandler new-handlers))
+		 (disp "ADDED NEW HAND" (length new-handlers))
 		 `(let ([,k ,closure])
 		    ,(outer-loop body2
 				 (cons (list k kname) kbinds)))))]
 	    
-	   [(lambda (,v) ,[body])
+	   [(lambda (,v) ,body)
 	    (disp "LAMBDA" v body)
 	    (let ([kname (unique-name 'K)])
 ;		  [newbod (outer-loop body kbinds)])
 	      (mvlet ([(closure khandler) (build-continuation kname body v)])
+		     (disp "KHANDLER" khandler)
   	         (set! new-handlers (cons khandler new-handlers))
-
+		 (disp "ADDED NEW HAND" (length new-handlers))
 		 closure))]
 ;	    (error 'closure-convert "ran into lambda not in a \"let ([k\" context: ~a" `(lambda ,vars ,bods ...))]
 	    
@@ -255,12 +256,14 @@
 	    (lambda (ls def) def)
 	    expr))
 	 ;; Also return the new-handlers:
-	 new-handlers)))
+	 (begin (disp "RETURNING" (length new-handlers))
+	 new-handlers))))
 
 
     (define (process-tokbind tb)
       (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
 	     (mvlet ([(newexpr newtokbinds) (process-expr body)])
+		    (disp "NEWTOKBINDS" newtokbinds)
 		    (cons 
 		     `[,tok ,id ,args (stored ,@stored) ,newexpr]
 		     newtokbinds))))
@@ -296,9 +299,10 @@
 		 (+ r '3)]
 		[(,stripk 'v '(+ r (if '1 (app v '3) (app v '4))))
 		 (+ r (if '1 '3 '4))]
-
-
-
+		
+		[(,process-tokbind '[t1 id () (stored) (+ '3 (subcall (tok t2 0) 3))])
+		 ,(lambda (x) (disp x))]
+		
 	      )))      
 
       (lambda (prog)
