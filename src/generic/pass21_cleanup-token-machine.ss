@@ -538,7 +538,7 @@
 	['(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
 	[(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
 	
-	[,stuff (cleanup-token-machine (decode 'cleanup-token-machine (list stuff)))]
+	[,stuff (cleanup-token-machine (decode 'cleanup-token-machine-lang (list stuff)))]
 	))))
 
 

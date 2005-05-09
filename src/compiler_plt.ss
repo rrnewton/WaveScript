@@ -53,6 +53,7 @@
 ;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
 
 (all-except "plt/pass27_cps-tokmac.ss" these-tests test-this)
+(all-except "plt/pass28_closure-convert.ss" these-tests test-this)
 
 ;;(all-except "plt/pass29_verify-token-machine.ss" these-tests test-this)
 (all-except "plt/pass30_haskellize-tokmac.ss" these-tests test-this)

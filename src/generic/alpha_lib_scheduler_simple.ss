@@ -168,16 +168,18 @@
       (let ([ob (cdar buffer)]
 	    [evt (caar buffer)])	
 	;; Set the clock to the time of this next action:
-	(set! vtime (simevt-vtime (caar buffer)))  
+	(set! vtime (simevt-vtime (caar buffer)))
 	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) buffer len ~a ~n" vtime (length buffer))
 	;(printf "<~a>" vtime)
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
-                 (logger "~a: Executing: ~a at time ~a~n"
+                 (logger "~a: Executing: ~a at time ~a    args: ~a~n"
 			 (node-id (simobject-node ob))
 			 (msg-object-token (simevt-msgobj (caar buffer)))
-			 vtime)
+			 vtime
+			 (msg-object-args (simevt-msgobj (caar buffer)))
+			 )
 
 		 '(DEBUGMODE ;; check invariant:
 		   (if (not (null? (simobject-outgoing-msg-buf ob)))
