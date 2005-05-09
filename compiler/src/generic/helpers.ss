@@ -219,8 +219,11 @@
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
      (timed-call (Integer Token . Object) Void)
+
      (subcall (Token . Object) Object)
-     (schedule (Token) Void)
+     (return (Object) Void)
+     
+;     (schedule (Token) Void)
      (token-scheduled? (Token) Bool)
      (token-present? (Token) Bool)
      (evict (Token) Void)

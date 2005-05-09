@@ -96,6 +96,7 @@
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")
 (include "generic/pass27_cps-tokmac.ss")
+(include "generic/pass28_closure-convert.ss")
 
 ;;(include "generic/pass29_verify-token-machine.ss")
 (include "generic/pass30_haskellize-tokmac.ss")

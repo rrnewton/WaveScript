@@ -47,6 +47,7 @@
     ;    analyze-tokmac-recursion
     ;    inline-tokmac
     cps-tokmac
+    closure-convert
     ;    verify-token-machine
     ;    haskellize-tokmac 
     ))
@@ -319,23 +320,49 @@
 
 
     ["Next we test and simulate passes from back to front.  Test cps-tokmac:"
-     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac)))
-       (let ((prog 
-	      (run-compiler
+     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	 (let ((prog 
+		(run-compiler
 	       '(tokens 
-		 (SOC-start () (printf "Subcall result ~a" (subcall tok1 3)))
-		 (tok1 (x) (return (+ x 1)))
+		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (+ x 300)))
 		 ))))
-	 (disp "PROG")
-	 (pp prog)
-	 (run-simulator-alpha prog)
-	 ))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+     (result 303)]
+     
 
-     3]
+    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	 (let ((prog 
+		(run-compiler
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
+		 (tok2 () (return 55))
+		 (tok3 () (return 45))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+
+
+
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
+		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
+		 (tok2 () (return 55))
+		 (tok3 () (return 45))
+		 )
+
 
     [
-     (fluid-let ((pass-names
-		  (list-remove-after 'cps-tokmac
+     '(fluid-let ((pass-names
+		  (list-remove-after desugar-gradients ;'cps-tokmac
 				     (list-remove-before 'cleanup-token-machine pass-names))))
        (disp "PASS NAMES" pass-names)
        (let ((prog 
@@ -349,10 +376,10 @@
 		 ))))
 	 (disp "PROG")
 	 (pp prog)
-	 (run-simulator-alpha prog)
+;	 (run-simulator-alpha prog)
 	 ))
      
-     ,(lambda a #f)
+     ,(lambda a #t)
      ]
 
     ))
@@ -360,3 +387,26 @@
 (define test-this (default-unit-tester "Main compiler unit." these-tests))
 (define maintests these-tests)
 (define maintest test-this)
+
+
+
+'
+
+     (fluid-let ((pass-names
+		  (list-remove-after desugar-gradients ;'cps-tokmac
+				     (list-remove-before 'cleanup-token-machine pass-names))))
+       (disp "PASS NAMES" pass-names)
+       (game-eval (lambda args (void)))
+       (let ((prog 
+	      (r
+	       '(tokens 
+		 (SOC-start () (emit gradient))
+		 (gradient () 
+			   (greturn x (to handler))
+			   (relay))
+		 (handler (x) (display " ") (display x))
+		 ))))
+	 (disp "PROG")
+	 (pp prog)
+;	 (run-simulator-alpha prog)
+	 ))

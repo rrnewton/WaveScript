@@ -147,6 +147,9 @@
 	     ;; Static calls are allowed:
 	     [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
 	     ;; Anything more dynamic makes us think the operand is potentially emitted.
+
+	     [(return ,[e])  e]
+
 #|	     [(call ,[args*] ...) (apply append args*)]
 	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
 	     [(subcall ,[args*] ...) (apply append args*)]
@@ -356,6 +359,8 @@
 			  (my-id)
 			  ',LOCAL ;; flag
 			  ,expr ,toind ,viaind))))]
+
+	     [(return ,[etb e]) (values etb `(return ,e))]
 
 	     ;; This is a local call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)

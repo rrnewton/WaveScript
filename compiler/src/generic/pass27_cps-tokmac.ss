@@ -3,6 +3,9 @@
 ;; cps-tokmac
 ;; This pass does the CPS transformation for the token machine.
 
+;; Introduces lambda's and kcall.
+
+
 ;; INIT message = 0
 ;; CALL message = 1
 
@@ -60,16 +63,6 @@
 
 (define cps-tokmac
   (let ()
-
-    (define INIT 0)
-    (define CALL 0)
-    (define FREEVAR0 'fv0)
-
-    ;; Name of the token which represents the global variable storing the continuation
-    ;; token count.
-    (define KCOUNTER 'kcounter)
-    ;; And the root name of continuation tokens.
-    (define KNAME 'K)
 
     (define (id x) x)
 
@@ -185,24 +178,6 @@
        (lambda (ls _) (apply append ls))
        e)))
 
-    ;; Replace the free vars in an expression with "fv0" "fv1" etc.
-    (define (number-freevars e)
-      (define (build-fv x fvs) (string->symbol (format "fv~a" (list-find-position x fvs))))
-      (let outer ((e e) (fvs (free-vars e)))
-	(generic-traverse
-	 (lambda  (x loop)
-	   (match x
-		  [(let ((,lhs ,[rhs])) ,bod)
-		   `(let ((,lhs ,rhs))
-		      ,(outer bod (remq lhs fvs)))]
-		  [,x (guard (memq x fvs))
- 		      (build-fv x fvs)]
-		  [(set! ,x ,[e]) (guard (memq x fvs))
-		   `(set! ,(build-fv x fvs) ,e)]
-		  [,other (loop other)]))
-	 (lambda (ls def) def)
-	 e)))
-
   ;; Traverse the expression looking for tokens tainted by "subcalls"
   (define (get-tainted expr)
     (generic-traverse
@@ -256,7 +231,7 @@
 		      (generic-traverse
 		       (lambda (expr loop) ;; driver
 			 (match expr
-				[(return ,[x]) `(call ,k ,x)]
+				[(return ,[x]) `(kcall ,k ,x)]
 				[(set! ,v ,[e])
 				 `(begin `(set! ,v ,e) (call ,k (void)))]
 				[,x (loop x)]))
@@ -318,14 +293,33 @@
 			       ,(loop `(begin ,@y)
 				      (lambda (e2) (pvk (make-begin `(begin ,e2)))))))))]
 
+	     ;; Alright, let's think through conditionals:
+	     
+	     ;; What should this generate?
+	     ;; (if (subcall a) (subcall b) (subcall c))	     
+	     ;; -> ... (A K1)
+	     ;; (def K1 (x) (if x (b K2) (c K2)))
+
+	     ;; (if a (subcall b) (subcall c))
+	     ;; -> ... (if a (b K1) (c K1))
+	     
+	     ;; THIS REQUIRES NAMING THE CONTEXT: (or duplicating the code)
+	     ;; (if a b (subcall c))
+	     ;; -> ... (if a (K1 b) (c K1))	     
+	     ;;
+	     ;; Can we *detect* when this happens?  We don't want to
+	     ;; always cps convert conditionals...
+	     ;; In our case it seems difficult to recover through optimization.
               [(if ,test ,conseq ,altern)
-	      (loop test 
-		    (lambda (t)
-		      (loop conseq
-			(lambda (c)
-			  (loop altern
-			    (lambda (a)
-			      (pvk `(if ,t ,c ,a))))))))]
+	       (loop test
+		     (lambda (t)
+		       (let* ([k (unique-name 'k)]
+			      [v (unique-name 'HOLE)])		
+			 `(let ([,k (lambda (,v) ,(pvk v))])
+			    (if ,t
+				,(loop conseq (lambda (c) `(kcall ,k ,c)))
+				,(loop altern (lambda (a) `(kcall ,k ,a))))))))]
+
 	     [(let ((,lhs ,rhs)) ,body)
 	      (loop rhs
 		 (lambda (r)
@@ -334,60 +328,17 @@
 			   (pvk `(let ([,lhs ,r]) ,b))))))]
 
 	     
-	     [(subcall ,tok ,args* ...)
-	      (let* (;; This expression represents the continuation of the subcall:
-		     [broken-off-code (pvk FREEVAR0)] ;(pvk RETVAL_VARNAME)]
-;		     [_ (disp "GOT BROKEN OFF: " broken-off-code)]
-		     [fvs (remq FREEVAR0 (free-vars broken-off-code))]
-;		     [__ (disp "GOT fvs: " fvs)]
-		     [args (map (lambda (n)
-				  (string->symbol (format "arg~a" n)))
-				(iota (length fvs)))]
-		     [fvns (map (lambda (n)
-				   (string->symbol (format "fv~a" n)))
-				(iota (length fvs)))]
-		     ;; Get a fresh name & subtokindex name for our continuation:
-		     [kind (unique-name 'kind)]
-		     [kname (unique-name 'K)]
-		     )
-		(set! new-handlers
-		      (cons
-		       `(,kname subtokind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
-				 (stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv '0]) fvs))
-					;(map list fvns args))
-					;(make-vector ,(length fvs)))
-				 (if (= flag ',INIT)
-				     (if (= subtokind '0)
-					 ;; No freevars if we're just initializing the counter-object.
-					 (void)
-					 (begin
-					   ,@(map (lambda (fv fvn)
-						    `(set! ,fv ,fvn))
-						  fvs fvns)))
-				     ;; Otherwise, assume the flag is CALL
-				     (begin
-				       ,(number-freevars broken-off-code)
-				       ;; Since these are one-shot continuations, 
-				       ;; we deallocate ourselves on the way out:
-				       (evict (tok ,kname subtokind))
-				       )))
-		       new-handlers))
-		(loop-list args* 
+	     [(subcall ,tok ,args ...)
+	      (let* ([valvar (unique-name 'HOLE)]
+		     ;; This expression represents the continuation of the subcall:
+		     [broken-off-code (pvk valvar)] ;(pvk RETVAL_VARNAME)]
+		     )		
+		(loop-list args
 			   (lambda (ls)
-			       `(let ([,kind 
-				      (if (token-present? (tok ,kname 0))
-					  (let ([new (+ '1 (ext-ref (tok ,kname 0) ,KCOUNTER))])
-					    (begin (ext-set! (tok ,kname 0) ,KCOUNTER new)
-						   new))
-					  (begin (call (tok ,kname 0) ',INIT)
-						 '1))])
-				  (begin 
-				    ;; Initialize continuation:
-				    (call (tok ,kname ,kind) ',INIT ,@fvs)
-				    ;; Call function with continuation token:
-				    (call ,tok (tok ,kname ,kind) ,@ls)))))
-		)]
+			     `(call ,tok (lambda (,valvar) ,broken-off-code) ,@ls))))]
 
+
+	     ;; These can be treated as normal primitives:
 	     [(,call ,tok ,args* ...)
 	      (guard (memq call '(call bcast)))
 	      (loop-list args* 
@@ -395,6 +346,16 @@
 	     [(timed-call ,time ,tok ,args* ...)
 	      (loop-list args* 
 			 (lambda (ls) (pvk `(timed-call ,time ,tok ,@ls))))]
+
+
+	     [(kcall ,t ,v)
+	      (loop t
+		    (lambda (t)
+		      (loop v
+			    (lambda (v)
+			      `(kcall ,t ,v)))))]
+
+
 	     [(leds ,what ,which) (pvk `(leds ,what ,which))]
 	     [(,prim ,rands ...)
 	      (guard (or (token-machine-primitive? prim)
@@ -448,12 +409,6 @@
 	     [(,free-vars '(begin '0 '1 (let ([z '3]) z)))
 	      ()]
 	     	     
-	     ["Next testing number-freevars"
-	      (,free-vars (,number-freevars '(begin x y (let ((z '3)) z))))
-	      ,(lambda (ls) (set-equal? ls '(fv0 fv1)))]
-	     [(,free-vars (,number-freevars '(begin x y (let ((z 3)) (+ ht z)))))
-	      ,(lambda (ls) (set-equal? ls '(fv0 fv1 fv2)))]
-	     	     	     
 
 	     ["Testing toks escaped"
 	      (,toks-escaped '(begin '1 (let ([kind_4 '22])
@@ -532,12 +487,14 @@
 				  x)))
 		     returntokbinds)
              (let ([subonly (difference subcalledtoks returntoks)]
-		 [retonly (difference returntoks subcalledtoks)])
+		   [retonly (difference returntoks subcalledtoks)])
+	       (disp "Results, sub&ret: " (intersection subcalledtoks returntoks)  subonly retonly)
+	       
 	     (if (not (null? subonly))
 		 (for-each 
 		  (lambda (x)
 		    (if (memq x alltoks)
-			(warning 'cps-tokmac
+			(error 'cps-tokmac
 				 "Token handlers for ~a are subcalled but do not have return statements!"
 				 x)
 			(warning 'cps-tokmac
@@ -556,6 +513,13 @@
 			  (nodepgm (tokens ,@(process-tokbinds (append oldtbs newtbs))))))
 	     )))]))))
 
+
+(define (testcps-expr e)
+  (match e 
+	 [(tokens ,tbs ...)
+	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens ,@tbs)))))]
+	 [,expr
+	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,expr))))))]))
 
 ;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
 (set! these-tests
@@ -606,7 +570,20 @@
 		  (eq? otherk1 otherk2))
 	   #t]
 	  [,other #f]))]
-	   
+
+    
+    [(,testcps-expr '(begin a (if b c d)))
+     99]
+
+    [(,testcps-expr '(if a b (begin c d)))
+     99]
+    
+    [(,testcps-expr '(if a (begin b c) d))
+     99]
+        
+
+
+          
     )
    ))
 
@@ -621,14 +598,6 @@
 (define test-cps-tokmac test-this)
 (define tests-cps-tokmac these-tests)
 
-
-
-(define (testcps e)
-  (match e 
-	 [(tokens ,tbs ...)
-	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens ,@tbs)))))]
-	 [,expr
-	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,expr))))))]))
 
 ;(cps-tokmac '(toheu '(program (bindings) (nodepgm (tokens (tok1 () (begin '1 (subcall tok2 '9) '3)) (tok2 (x) x))))))
 

@@ -554,10 +554,31 @@
            (lambda (tbind)
 	     (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
-			(lambda (current-vtime subtok-index ,@args) ;world)
+			(lambda (current-vtime subtokind . vals) ;world)
+			  (let ,(map list args (make-list (length args) ''sim-alpha-uninitialized))
+
+			    (let ([numvals (length vals)])
+
+ 			      (if (< numvals ,(length args))
+ 				  (warning 'simulator-alpha "executing ~a padding args ~a with zero." 
+ 					   ',tok (list-tail ',args numvals)))
+ 			      (if (> numvals ,(length args))
+ 				  (error 'simulator-alpha "executing ~a, got excess vals ~a for args ~a"					 
+ 					   ',tok vals ',args))
+; 			      (begin 
+ 				,@(map (lambda (arg)
+ 					 `(if (null? vals)
+ 					      (set! ,arg 0)
+ 					      (begin (set! ,arg (car vals))
+ 						     (set! vals (cdr vals)))))
+ 				       args)
+				"Done initializing arguments."
+
+
+
 ;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
-				   [simtok-obj (make-simtok ',tok subtok-index)]
+				   [simtok-obj (make-simtok ',tok subtokind)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
 				   [old-local    (simobject-local-msg-buf this)])
 			      (DEBUGMODE 
@@ -581,7 +602,7 @@
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
 				(set-simobject-local-msg-buf! this 
                                   (append (reverse (simobject-local-msg-buf this)) old-local))
-				(void))))
+				(void))))))
                          ]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -619,7 +640,7 @@
 	      ;; Here we hack an extra handler into tbinds:
 ; 	      (set! tbinds
 ; 		    (cons `[SOC-return-handler
-; 			    (lambda (current-vtime subtok-index x)
+; 			    (lambda (current-vtime subtokind x)
 ; 			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
 ; 				  (simulator-soc-return x)				  
 ; 				  (error 'SOC-return-handler

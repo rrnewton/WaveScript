@@ -29,6 +29,7 @@
 ;;;                | (let ((<Symbol> <Expr>)) <Expr>)
 ;;;                | (if <Expr> <Expr> <Expr>)
 ;;;                | (subcall <DynToken> <Expr>...)
+;;;                | (return <Expr>)
 ;;;                | (<Prim> <Expr> ...)
 ;;;                | (<Expr> ...)
 ;;;                | <Sugar> 
@@ -40,11 +41,76 @@
 ;;;           | (elect-leader <Token> [<Token>])
               ;; <TODO> optional second argument.. decider
 
-
 (define desugar-let-stored
   (let ()
 
-(define (free-vars e)
+
+    ;; This is confusing, but there are so many small traversals of
+    ;; the program tree in this pass that it is much easier to reuse this tree walk:
+    ;;
+    ;; NOTE: A common failure mode when using this is invoking the
+    ;; wrong loop when making a recursive pattern match.  Be careful.
+    (define (generic-traverse driver fuse e)
+      (let loop ((e e))
+	(driver e 
+	   (lambda (x)
+	     (match x
+;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+		    [,const (guard (constant? const)) (fuse () const)]
+		    [(quote ,const)                (fuse ()   `(quote ,const))]
+		    [,var (guard (symbol? var))    (fuse ()    var)]
+		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
+		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
+		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
+		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
+		    [(ext-set! ,tok ,var ,[loop -> expr])  
+		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
+		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
+		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
+		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
+		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
+		                                   (fuse (list a b c) `(if ,a ,b ,c))]
+		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
+		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		    ;; "activate" and the gradient calls have already been desugared:
+		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
+		     (guard (memq call '(bcast subcall call)))
+		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
+		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
+		     (guard (number? time))		     
+		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
+		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
+		    [(,prim ,[loop -> rands] ...)
+		     (guard (or (token-machine-primitive? prim)
+				(basic-primitive? prim)))
+		     (fuse rands `(,prim ,rands ...))]
+		    [(app ,[loop -> rator] ,[loop -> rands] ...)
+		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
+		    [,otherwise
+		     (error 'generic-traverse
+			    "bad expression: ~s" otherwise)])))))
+
+
+    ;; Get the free vars from an expression
+    (define (free-vars e)
+      (generic-traverse
+       ;; driver, fuser, expression
+       (lambda  (x loop) 
+	 (match x
+		[,v (guard (symbol? v)) (list v)]
+		[(let ([,lhs ,[rhs]]) ,[bod])
+		 (append rhs (remq lhs bod))
+		 ]
+
+;; FIXME TODO:
+;		[(let-stored ...
+
+
+		[,x (loop x)]))
+       (lambda (ls _) (apply append ls))
+       e))
+
+#;(define (free-vars e)
   (match e
     [,const (guard (constant? const)) '()]
     [(quote ,const) '()]
@@ -119,7 +185,7 @@
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
      (let ([newvar (unique-name 'stored-liftoption)])
        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
-               (values (append `([,lhs (void)] [,newvar '#f]) rst bst)
+               (values (append `([,lhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
                        (make-begin 
                         (list `(if ,newvar ;; If first time, initialize
 				   (void)
