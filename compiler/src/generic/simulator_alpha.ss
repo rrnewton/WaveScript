@@ -489,6 +489,12 @@
 		  ;; we're being lenient, as mentioned above.
 		  [(app ,[rator] ,[rand*] ...)
 		   `(,rator ,rand* ...)]
+
+		  ;; Supporting the output of cps-tokmac also:
+		  [(kcall ,[rator]  ,[rand*] ...)
+		   `(,rator ,rand* ...)]
+		  [(lambda (,v) ,[bod]) `(lambda (,v) ,bod)]
+
 		  [(,rator ,[rand*] ...)
 		   ;; This is an arbitrary scheme application. Where would these come from?
 		   ;; Don't want to be too lenient tho:

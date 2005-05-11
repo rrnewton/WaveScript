@@ -12,7 +12,7 @@
 
     (define INIT 11)
     (define CALL 99)
-;    (define FREEVAR0 'fv0)
+    (define FREEVAR0 'fv0)
 
     ;; Name of the token which represents the global variable storing the continuation
     ;; token count.
@@ -50,6 +50,8 @@
 		    [(lambda (,v) ,[loop -> e])    (fuse (list e) `(lambda (,v) ,e))]		     
 		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) `(kcall ,k ,e))]
 		    
+		    [(build-kclosure ,kname (,fvs ...)) (fuse () `(build-kclosure ,kname (,fvs ...)))]
+
 
 		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (memq call '(bcast subcall call)))
@@ -91,6 +93,7 @@
 		[(let ([,lhs ,[rhs]]) ,[bod])
 		 (append rhs (remq lhs bod))
 		 ]
+		[(lambda (,v) ,[e]) (remq v e)]		 
 		[,x (loop x)]))
        (lambda (ls _) (apply append ls))
        e))
@@ -232,23 +235,28 @@
 	    (loop `(call ,k ',CALL ,v))]
 		   
 
-	   [(let ([,k (lambda (,hole) ,body1)]) ,body2)	      
-	    (let ([kname (unique-name 'K)])
-	      (mvlet ([(closure khandler) (build-continuation kname body1 hole)])
+	   [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
+	    (let ([kname (unique-name 'K)]
+		  [fvs (remq hole (free-vars body1))])
+	      (mvlet ([(closure khandler)  
+		       (build-continuation kname body1 hole)])
+;		       (values `(build-kclosure ,kname ,fvs)
+;			       `[,kname subtokid (flag ,@fvs) (stored) ,(subst body1 v FREEVAR0)])])
+
   	         (set! new-handlers (cons khandler new-handlers))
-		 (disp "ADDED NEW HAND" (length new-handlers))
 		 `(let ([,k ,closure])
 		    ,(outer-loop body2
-				 (cons (list k kname) kbinds)))))]
+				 (cons (list k kname) kbinds)))))
+	    ]
 	    
-	   [(lambda (,v) ,body)
-	    (disp "LAMBDA" v body)
-	    (let ([kname (unique-name 'K)])
-;		  [newbod (outer-loop body kbinds)])
-	      (mvlet ([(closure khandler) (build-continuation kname body v)])
-		     (disp "KHANDLER" khandler)
+	   [(lambda (,v) ,[body])
+	    (let ([kname (unique-name 'K)]
+		  [fvs (remq v (free-vars body))])
+	      (mvlet ([(closure khandler) 
+		       (build-continuation kname body v)])
+;		       (values `(build-kclosure ,kname ,fvs)
+;			       `[,kname subtokid (flag ,@fvs) (stored) ,(subst body v FREEVAR0) ])])
   	         (set! new-handlers (cons khandler new-handlers))
-		 (disp "ADDED NEW HAND" (length new-handlers))
 		 closure))]
 ;	    (error 'closure-convert "ran into lambda not in a \"let ([k\" context: ~a" `(lambda ,vars ,bods ...))]
 	    
@@ -256,14 +264,14 @@
 	    (lambda (ls def) def)
 	    expr))
 	 ;; Also return the new-handlers:
-	 (begin (disp "RETURNING" (length new-handlers))
+	 (begin ;(disp "RETURNING" (length new-handlers))
 	 new-handlers))))
 
 
     (define (process-tokbind tb)
       (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
 	     (mvlet ([(newexpr newtokbinds) (process-expr body)])
-		    (disp "NEWTOKBINDS" newtokbinds)
+;		    (disp "NEWTOKBINDS" newtokbinds)
 		    (cons 
 		     `[,tok ,id ,args (stored ,@stored) ,newexpr]
 		     newtokbinds))))
@@ -287,7 +295,18 @@
 		 ,(lambda (ls) (set-equal? ls '(fv0 fv1)))]
 		[(,free-vars (,number-freevars '(begin x y (let ((z 3)) (+ ht z)))))
 		 ,(lambda (ls) (set-equal? ls '(fv0 fv1 fv2)))]	       
-
+		[(,free-vars '(lambda (HOLE_2)
+			       (call (tok tok1 0)
+				     (lambda (HOLE_3)
+				       (printf '"result ~a" (+ HOLE_2 HOLE_3)))
+				     '3)))
+		 ()]
+		[(,free-vars '(lambda (HOLE_2)
+			       (call (tok tok1 0)
+				     (lambda (HOLE_3)
+				       (printf '"result ~a" (+ HOLE_2 x5)))
+				     '3)))
+		 (x5)]
 
 		[(,no-first-class? 'v 'v) #f]
 		[(,no-first-class? 'v '(+ v 1)) #f]
@@ -301,7 +320,7 @@
 		 (+ r (if '1 '3 '4))]
 		
 		[(,process-tokbind '[t1 id () (stored) (+ '3 (subcall (tok t2 0) 3))])
-		 ,(lambda (x) (disp x))]
+		 ,(lambda (x) (disp x))]	       
 		
 	      )))      
 
