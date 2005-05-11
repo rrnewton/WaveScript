@@ -246,7 +246,7 @@
 		     ;; This is a weak requirement... 
 		     ;; We consider the first arg to represent a token machine if it is a *list*.
 		     [(,tm . ,rest) (guard (list? tm))
-		      (let ((cleaned (cleanup-token-machine tm)))
+		      (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
 			(let ([comped (compile-simulate-alpha cleaned)])
 			  (slist->file (list comped) "_genned_node_code.ss" 'pretty)
 			  (read-params rest)			  
@@ -310,7 +310,7 @@
      (let ((prt (open-output-string)))
        (display "(" prt)
        (run-simulator-alpha 
-	'(tokens (node-start () (display " ") (display (my-id))))
+	(cleanup-token-machine '(tokens (node-start () (display " ") (display (my-id)))))
 	'outport prt)
        (display ")" prt)
        (read (open-input-string (get-output-string prt))))
@@ -319,21 +319,62 @@
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
 
 
-    ["Next we test and simulate passes from back to front.  Test cps-tokmac:"
-     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+    
+     ["Run simulator on simple subcall program." 
+      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	 (let ((prog 
-		(run-compiler
+		(cleanup-token-machine (run-compiler
 	       '(tokens 
 		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
 		 (tok1 (x) (return (+ x 300)))
-		 ))))
+		 )))))
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt))))))
      (result 303)]
+
+
+     ["Add two subcalls (only through cps-tokmac)"
+      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )))
+	 (let ((prog 
+		(run-compiler
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
+		 (tok1 (x) (return (+ x 300)))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      (result 607)]
+     ["Same test but now with closure-convert"
+     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	 (let ((prog 
+		(run-compiler
+	       '(tokens 
+		 (SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
+		 (tok1 (x) (return (+ x 300)))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      (result 607)]
+
+
      
+     ["Testing simple combinations of passes: generate a continuation." 
+      (let ((toks (cdr (deep-assq 'tokens 
+		 (closure-convert (cleanup-token-machine '(tokens (tok1 () (subcall tok2)))))))))	
+	(let ((x (remq 'SOC-start (remq 'node-start (map car toks)))))
+	  ;; This is the continuation that was added:
+	  (length x)))
+      1]
+    		
 
     ))
 

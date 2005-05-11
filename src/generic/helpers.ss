@@ -1212,10 +1212,12 @@
 	       these-tests)])
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
-	       [quiet (memq 'quiet args)]
+	       [quiet (or (memq 'quiet args)
+			  (memq 'qv args))]
 	       ;; Flag to print test descriptions as well as code/output.
 	       [verbose (or (memq 'verbose args)
-			    (memq 'descrips args))]
+			    (memq 'descrips args)
+			    (memq 'qv args))]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
 	       [intended (map caddr entries)]
