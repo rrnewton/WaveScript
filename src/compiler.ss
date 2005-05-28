@@ -248,9 +248,23 @@
 		     [(,tm . ,rest) (guard (list? tm))
 		      (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
 			(let ([comped (compile-simulate-alpha cleaned)])
-			  (slist->file (list comped) "_genned_node_code.ss" 'pretty)
-			  (read-params rest)			  
+			  (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
+;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
+			    (parameterize ([print-level #f]
+					   [pretty-maximum-lines #f]
+					   [print-graph #t])				    					  
+			    (pretty-print comped out)
+			    (newline out)
+			    (newline out)
+			    (display ";; Above is compiled program for this token machine: " out)
+			    (newline out)
+			    (display "'" out)
+			    (pretty-print tm out)
+			    (newline out))
+			    (close-output-port out))
+			  (read-params rest)
 			  ))]
+		     [(,rest ...) (read-params rest)]
 		     ))]
 	    [read-params
 	     (lambda (params)	       
@@ -335,37 +349,26 @@
 	     (read (open-input-string (get-output-string prt))))))
      (result 303)]
 
-
-     ["Add two subcalls (only through cps-tokmac)"
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )))
-	 (let ((prog 
-		(run-compiler
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
-		 (tok1 (x) (return (+ x 300)))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-      (result 607)]
-     ["Same test but now with closure-convert"
-     (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
-		 (tok1 (x) (return (+ x 300)))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-      (result 607)]
-
-
+     ,@(let ([commontest 
+	     '(let ((prog 
+		     (run-compiler
+		      '(tokens 
+			(SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
+			(tok1 (x) (return (+ x 300)))
+			))))
+		(let ((prt (open-output-string)))
+		  (display "(" prt)
+		  (run-simulator-alpha prog 'outport prt)
+		  (display ")" prt)
+		  (read (open-input-string (get-output-string prt)))))])	 
+	 `(["Add two subcalls (only through cps-tokmac)"
+	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )))
+	      ,commontest)
+	    (result 607)]
+	   ["Same test but now with closure-convert"
+	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	      ,commontest)
+	    (result 607)]))
      
      ["Testing simple combinations of passes: generate a continuation." 
       (let ((toks (cdr (deep-assq 'tokens 

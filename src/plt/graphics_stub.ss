@@ -6,7 +6,7 @@
 
 (module graphics_stub mzscheme	
   (provide draw-procs draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
-	   get-state these-tests test-this 
+	   get-state these-tests test-this testgraphics
 	   clear-buffer)
   
   (require "helpers.ss"
@@ -202,7 +202,7 @@
       ))
   
   (define test-this (default-unit-tester "graphics interface for simulator" these-tests))
-  
+  (define testgraphics test-this)
   );;End module
 
 ;(require graphics_stub)

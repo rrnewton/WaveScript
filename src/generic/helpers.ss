@@ -762,7 +762,14 @@
      [(vector? struct)
       (list->vector (map loop (filter pred (vector->list struct))))]
      [else struct])))
-	   
+
+(define (deep-flatten input)
+  (let loop ((x input))
+    (cond
+     [(list? x) (apply append (map loop x))]
+     [(vector? x) (apply append (map loop (vector->list x)))]
+     [else (list x)])))
+          
 ;[01.10.23] - I'm surprised this wasn't added a million years ago:
 (define (deep-memq? ob struct)
   (let outer ([struct struct])
@@ -905,9 +912,6 @@
 ;;; name from a unique name has the effect of replacing the old
 ;;; unique suffix with a new one.
 ;;;
-;;; reset-name-count! resets the internal counter used to produce
-;;; the unique suffix.
-;;;
 ;;; code-name takes a unique name and replaces its suffix ".nnn"
 ;;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
 ;;;
@@ -920,18 +924,12 @@
 ;; [2004.06.28] I am replacing this with a version that uses
 ;; a hash-table to keep a counter per seed-name.
 (begin
-        (define unique-name-count 0)
+        (define unique-name-counter 
+	  (make-parameter 0
+			  (lambda (x) (if (integer? x) x (error 'unique-name-counter "bad value: ~a" x)))))
         (define (unique-suffix ignored)
-            (set! unique-name-count (+ unique-name-count 1))
-            (number->string unique-name-count))
-        (define reset-name-count! 
-	  (lambda opt
-	    (match opt
-		   [() (set! unique-name-count 0)]
-		   [(,n) 
-		    (if (number? n)
-			(set! unique-name-count n)
-			(error 'reset-name-count "bad arg: ~a" n))])))
+            (unique-name-counter (+ (unique-name-counter) 1))
+            (number->string (unique-name-counter)))
 
         (define extract-root
           (lambda (sym)
@@ -1213,10 +1211,12 @@
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (or (memq 'quiet args)
+			  (memq 'q args)
 			  (memq 'qv args))]
 	       ;; Flag to print test descriptions as well as code/output.
 	       [verbose (or (memq 'verbose args)
 			    (memq 'descrips args)
+			    (memq 'v args)
 			    (memq 'qv args))]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
@@ -2238,7 +2238,7 @@
 
     ))
 
-(define test-this (default-unit-tester "heplers.ss: my messy utils file." these-tests))
+(define test-this (default-unit-tester "helpers.ss: my messy utils file." these-tests))
 (define testhelpers test-this)
 
 '

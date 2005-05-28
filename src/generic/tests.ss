@@ -122,7 +122,7 @@
 (define (test-units . args)
   (printf "~n;; Performing all unit tests:~n~n")
   (for-each (lambda (pr) (newline) (newline) (apply (cadr pr) args)) 
-	    (reg:all-unit-tests)))
+	    (reverse (reg:all-unit-tests))))
 
 (define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
 

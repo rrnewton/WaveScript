@@ -389,6 +389,7 @@
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
+		  [(begin) '(void)]
 		  [(begin ,[x] ...) `(begin ,x ...)]
 		  
 		  ;; NOTE! These rands ARE NOT simple.
@@ -667,10 +668,10 @@
 		  ;"Initialize our simobject message buffers"
 		  
 		  (let ([dyndispatch_table (make-default-hash-table)])
-		    (begin ,@(map (lambda (tokname)
-				    `(hashtab-set! dyndispatch_table ',tokname ,tokname))
-				  (map car tbinds)))
-
+		    (begin (void) ,@(map (lambda (tokname)
+					   `(hashtab-set! dyndispatch_table ',tokname ,tokname))
+					 (map car tbinds)))
+		    
 		    ;; Return the real meta-handler
 		     (lambda (msgob current-vtime)
 		       (mvlet ([(name subtok)
