@@ -109,6 +109,12 @@
 		     (guard (or (token-machine-primitive? prim)
 				(basic-primitive? prim)))
 		     (fuse rands `(,prim ,rands ...))]
+
+		    ;; Allowing lambda's.  
+		    ;; These aren't in the input language but are in the output language.
+		    [(lambda (,vars ...) ,[loop -> expr])
+		     (fuse (list expr) `(lambda ,vars ,expr))]
+
 		    [(app ,[loop -> rator] ,[loop -> rands] ...)
 		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
 		    [,otherwise
@@ -246,7 +252,7 @@
     (define expand-subcalls
       (lambda (expr)
       ;; Continuation code must reside in new handlers:
-      (let ([new-handlers '()]) ;; MUTABLE
+;      (let ([new-handlers '()]) ;; MUTABLE
 	;; These simply accumulate.  There is no reason to complicate
 	;; the continuation passing algorithm below by adding extra
 	;; arguments to the continuation.
@@ -376,8 +382,9 @@
 		
 	;; expand-subcalls returns an expression and new handlers
 	  (let ((newexpr (loop expr (lambda (x) x))))
-	    (values newexpr 
-		    new-handlers)))))
+	    newexpr)))
+;	    (values newexpr 
+;		    new-handlers)))))
 
 
     ;; Applies expand-subcalls to all tokbinds
@@ -388,12 +395,13 @@
 		(reverse! tbacc)
 		(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tbs))])
 		  (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
-		  (mvlet ([(newexpr newtokbinds) (expand-subcalls body)])
+;		  (mvlet ([(newexpr newtokbinds) (expand-subcalls body)])
+		  (let ([newexpr (expand-subcalls body)])
 			 (loop (cdr tbs)
-				(append newtokbinds 
+;				(append newtokbinds 
 					(cons 
 					 `(,tok ,subid ,args (stored ,@stored) ,newexpr)
-					 tbacc)))))))))
+					 tbacc))))))))
 
     ;; Now add unit tests of the above internal helper functions:
     (set! these-tests
@@ -453,16 +461,36 @@
 	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x '4)) x))))) #t]
 	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x (return '4))) x))))) #f]
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
-	     
-	     [(call-with-values 
-		  (lambda () (,expand-subcalls '(begin '1 (subcall t '2) '3)))
-		(lambda (expr ktbs)
-		  (and (= 1 (length ktbs))
-		       (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
-			      (list (equal? (,toks-referenced body) (list tok))
-				    (equal? (,toks-escaped body) '())
-				    (set-equal? (list->set (,free-vars body)) '(flag subtokind fv0))
-				    (,free-vars expr))))))
+
+
+	     ["Test expand-subcalls"
+	      (parameterize ((unique-name-counter 0))
+	      (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3))])
+		(let ([lam (deep-assq 'lambda expr)])
+		  (list 
+		   (,toks-referenced expr)
+		   (,toks-escaped expr)
+		   (,free-vars lam)
+		   (,free-vars expr)
+		   ))))
+	      ((t) () (HOLE_1) (HOLE_1))]
+
+
+;; Maybe use in next pass:     
+#;	     ["Test expand-subcalls"
+	      (call-with-values 
+		  (lambda () (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3)))
+		(lambda (expr) ;ktbs)
+		  (or 
+		   (and (= 1 (length ktbs))
+			(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
+			       (list (equal? (,toks-referenced body) (list tok))
+				     (equal? (,toks-escaped body) '())
+				     (set-equal? (list->set (,free-vars body)) '(flag subtokind fv0))
+				     (,free-vars expr))))
+		   ;; If the test fails, give information:
+		   (list expr ktbs)
+		   )))
 	      (#t #t #t (t))]
 
 
@@ -534,12 +562,37 @@
 	  (nodepgm (tokens)))))
      ,(lambda (_) #t)]
 
-    [(cps-tokmac '(foolang
+    ["Now test with two tokens and one subcall."
+     (parameterize ((unique-name-counter 0))
+		   (cps-tokmac '(foolang
+				 '(program
+				   (bindings)
+				   (nodepgm
+				    (tokens (tok1 () (+ '1 (subcall (tok tok2 0) '2)))
+					    (tok2 (x) (return (* '2 x)))))))))
+     ;; This might not be safe under different implementations.
+     ;; Different arg evaluation and map ordering could very well change the unique-naming below.
+     (foolang
+      '(program
+	(bindings)
+	(nodepgm
+	 (tokens
+	  (tok1 subtok_ind
+		()
+		(stored)
+		(call (tok tok2 0) (lambda (HOLE_2) (+ '1 HOLE_2)) '2))
+	  (tok2 subtok_ind (k_1 x) (stored) (kcall k_1 (* '2 x)))))))]
+     
+;; Maybe move to the next pass in some fashion:
+#;    ["Now test with two tokens and one subcall."
+     (cps-tokmac '(foolang
 		   '(program
 		     (bindings)
 		     (nodepgm
 		      (tokens (tok1 () (+ '1 (subcall (tok tok2 0) '2)))
 			      (tok2 (x) (return (* '2 x))))))))
+     ;; This oracle procedure just abstracts over varying generated names.  
+     ;; Instead we should just reset the name generator.
      ,(lambda (x)
 	(match x 
 	  [(foolang
@@ -572,16 +625,36 @@
 	  [,other #f]))]
 
     
-    [(,testcps-expr '(begin a (if b c d)))
-     99]
+    ["Testing using 'testcps-expr': an if in begin."
+     (,testcps-expr '(begin a (if b c d)))
+     ,(lambda (x)
+	(match (deep-assq 'if x)
+	       [(if b (kcall ,k c) (kcall ,k_ d))
+		(eq? k k_)]
+	       [,else #f]))]
 
-    [(,testcps-expr '(if a b (begin c d)))
-     99]
+    ["Testing using 'testcps-expr': an if in begin with non-identity continuation"
+     (,testcps-expr '(begin a (if b c d) e))
+     ,(lambda (x)
+	(match (deep-assq 'lambda x)
+	       [(lambda (,hole) (begin ,hole_ e)) #t]
+	       [,else #f]))]
     
-    [(,testcps-expr '(if a (begin b c) d))
-     99]
-        
+    ["Testing using 'testcps-expr': a begin in an if branch."
+     (,testcps-expr '(if a b (begin c d)))
 
+     ,(lambda (x)
+	(match (deep-assq 'if x)
+	       ;; It should push the kcall into the begin:
+	       [(if a (kcall ,k b) (begin c (kcall ,k_ d))) #t]
+	       [,else #f]))]    
+    ["Testing using 'testcps-expr': same thing, testing the left branch."
+     (,testcps-expr '(if a (begin b c) d))
+     ,(lambda (x)
+	(match (deep-assq 'if x)
+	       ;; It should push the kcall into the begin:
+	       [(if a (begin b (kcall ,k_ c)) (kcall ,k d)) #t]
+	       [,else #f]))]
 
           
     )

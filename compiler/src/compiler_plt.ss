@@ -40,7 +40,7 @@
 (all-except "plt/pass16_add-places.ss" these-tests test-this)
 (all-except "plt/pass17_analyze-places.ss" these-tests test-this)
 ;(all-except "plt/pass18_add-routing.ss" these-tests test-this
-)
+
 (all-except "plt/pass20_deglobalize.ss" these-tests test-this)
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
 
