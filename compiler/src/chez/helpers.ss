@@ -69,17 +69,6 @@
 ;; because we've linked the "generic" subdir from both locations.
 (include "generic/helpers.ss")
 
-(define disp
-  (let ((sub-disp
-	 (lambda (a)
-	   (if (null? a)
-	       (newline)
-	       (begin (display (car a)) (display " ") (sub-disp (cdr a)))))))
-    (lambda args 
-      (critical-section
-       (newline)
-       (sub-disp args)))))
-
 
 (define (crit-printf . args)
   (critical-section (apply printf args)))
