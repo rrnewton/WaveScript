@@ -342,7 +342,7 @@
 	      (lambda (expr)
 		;; This is a little wider than the allowable grammar to allow
 		;; me to do test cases:
-		(match expr
+		(match expr		       
 		  [(quote ,const) `(quote ,const)]
 		  [,num (guard (number? num)) num]
 		  ;; Token references return pairs which index the token store hash table.
@@ -378,7 +378,7 @@
 
 		  ;; Local tokstore-reference:
 		  [,x (guard (and (symbol? x) (memq x allstored)))
-		      (disp "Local TokStore reference:" x)
+		      (disp "Local TokStore reference:" x allstored)
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
                                (error 'simulator_alpha:process-statement 
@@ -748,8 +748,12 @@
 	 ))))
      '??]
 |#
+   
 
-    ))
+))
+
+'    (compile-simulate-alpha 
+     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtokind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtokind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtokind)))))) (K_1 subtokind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~a") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
 
 
 (define testsalpha (map (lambda (test)

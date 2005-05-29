@@ -162,7 +162,7 @@
    extract-file-extension remove-file-extension file->string string->file file->slist slist->file
    graph-map graph-get-connected-component graph-neighbors cyclic? 
    graph:simple->vertical graph:vertical->simple
-   deep-assq deep-member? deep-all-matches deep-filter
+   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
    list-get-random unfold-list average clump
    partition partition-equal split-before
    myequal?

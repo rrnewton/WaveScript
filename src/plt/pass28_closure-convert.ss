@@ -5,7 +5,7 @@
 ;  (require constants)
 
   (require (lib "include.ss"))
-  (require (lib "list.ss"))
+;  (require (lib "list.ss"))
 ;  (require (lib "trace.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
@@ -21,8 +21,9 @@
 ;  (provide (all-defined))
   (provide closure-convert test28 tests28 test-closure-convert tests-closure-convert
            mvlet destructure-tokbind
-           unique-name-counter deep-assq
+           unique-name-counter deep-assq deep-assq-all
            )
   )
 
 ;(require pass28_closure-convert)
+;(test28 'qv)

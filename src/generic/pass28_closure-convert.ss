@@ -37,6 +37,13 @@
 
     (define (id x) x)
 
+    (define (remq-all x ls)
+      (let loop ((ls ls) (acc ()))
+	(cond 
+	 [(null? ls) (reverse! acc)]
+	 [(eq? x (car ls)) (loop (cdr ls) acc)]
+	 [else (loop (cdr ls) (cons (car ls) acc))])))    
+
     ;; This is copied from the cps-tokmac pass.  Should share it!
     ;; Man, this would be easier to understand if it were strongly typed (sadly, that's tough - see peyton jones "boilerplate"):
     ;; The arguments are as follows:
@@ -70,7 +77,7 @@
 		                                   (fuse (list expr) (lambda (x) `(ext-set! ,tok ,var ,x)))]
 		    [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
 		    [(leds ,what ,which)           (fuse ()      (lambda () `(leds ,what ,which)))]
-		    [(begin ,[loop -> x] ...)      (fuse x           (lambda ls `(begin ,ls ...)))]
+		    [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls `(begin ,ls ...)))]
 		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 		                                   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
@@ -110,25 +117,28 @@
 		  [(lambda (,var) ,e) (guard (eq? var v))
 		   ;; Stop substitituting:
 		   `(lambda (,var) ,e)]
+		  [(let ((,lhs ,[rhs])) ,e) (guard (eq? lhs v))
+		   ;; Stop substitituting:
+		   `(let ((,lhs ,rhs)) ,e)]
 		  [,x (loop x)]))
-	 (lambda (ls f) (disp "FUSE" ls f)
-	   (apply f ls))
+	 (lambda (ls f) (apply f ls))
 	 e1))
 
     ;; Get the free vars from an expression
     (define (free-vars e)
-      (generic-traverse
-       ;; driver, fuser, expression
-       (lambda  (x loop) 
-	 (match x
-		[,v (guard (symbol? v)) (list v)]
-		[(let ([,lhs ,[rhs]]) ,[bod])
-		 (append rhs (remq lhs bod))
-		 ]
-		[(lambda (,v) ,[e]) (remq v e)]		 
-		[,x (loop x)]))
-       (lambda (ls _) (apply append ls))
-       e))
+      (list->set 
+       (generic-traverse
+	;; driver, fuser, expression
+	(lambda  (x loop) 
+	  (match x
+;		 [,x (guard (begin (printf "Driver loop: ~a~n" x) #f)) 3]
+		 [,v (guard (symbol? v)) (list v)]
+		 [(let ([,lhs ,[rhs]]) ,[bod])
+		  (append rhs (remq-all lhs bod))]
+		 [(lambda (,v) ,[e]) (remq-all v e)]		 
+		 [,x (loop x)]))
+	(lambda (ls _) (apply append ls))
+	e)))
 
     ;; Replace the free vars in an expression with "fv0" "fv1" etc.
     (define (number-freevars e)
@@ -139,7 +149,7 @@
 	   (match x
 		  [(let ((,lhs ,[rhs])) ,bod)
 		   `(let ((,lhs ,rhs))
-		      ,(outer bod (remq lhs fvs)))]
+		      ,(outer bod (remq-all lhs fvs)))]
 		  [,x (guard (memq x fvs))
  		      (build-fv x fvs)]
 		  [(set! ,x ,[e]) (guard (memq x fvs))
@@ -153,7 +163,7 @@
 	     
 	     [body (subst body hole FREEVAR0)]
 
-	     [fvs (remq FREEVAR0 (free-vars body))]
+	     [fvs (remq-all FREEVAR0 (free-vars body))]
 ;		     [__ (disp "GOT fvs: " fvs)]
 ;		   [args (map (lambda (n)
 ;				(string->symbol (format "arg~a" n)))
@@ -378,8 +388,7 @@
 		     
 		     
 		     [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
-		      (let ([kname (unique-name 'K)]
-			    [fvs (remq hole (free-vars body1))])
+		      (let ([kname (unique-name 'K)])
 			(mvlet ([(closure khandler)  
 				 (build-continuation kname body1 hole)])
 			       (disp "SETTING NEW HANDLERS(1), ADDING " khandler)
@@ -391,8 +400,7 @@
 		      ]
 		     
 		     [(lambda (,v) ,[body])
-		      (let ([kname (unique-name 'K)]
-			    [fvs (remq v (free-vars body))])
+		      (let ([kname (unique-name 'K)])
 			(mvlet ([(closure khandler) 
 				 (build-continuation kname body v)])
 			       (disp "SETTING NEW HANDLERS(2), ADDING " khandler)
@@ -450,6 +458,83 @@
 				     '3)))
 		 (x5)]
 
+		[(,free-vars '(let ([kind '1]) kind)) ()]
+		[(,free-vars '(let ([kind '1]) (tok foo kind))) ()]
+		[(,free-vars '(let ([new (let ([kind '1]) (tok foo kind))]) '34))  ()]
+		[(,free-vars (let ([new '3]) (begin new new)))   ()]
+		[(,free-vars (if '3 (let ([new '3]) (begin new new)) '4)) ()]
+
+
+		[(,free-vars 
+		  '(let ([kind_19 (let ([new '3]) (begin new new))])
+		     '5))
+		 ()]
+
+
+
+#;		[(,free-vars 
+		  '(let ([kind_19 (if '3
+				      (let ([new '3]) (begin new new))
+				      '4)])
+		     '5))
+		 ()]
+		 
+
+#;		[(,free-vars 
+		  '(let ([kind_19
+			  (if (token-present?
+			       (tok K_18 0))
+			      (let ([new
+				     (+ '1
+					(ext-ref
+					 (tok K_18 0)
+					 kcounter))])
+				(begin (ext-set!
+					(tok K_18 0)
+					kcounter
+					new)
+				       new))
+			      (begin 
+				(call (tok K_18 0) '11 (void))
+				'1))])
+		     (begin (call (tok K_18 kind_19) '11 fv0)
+			    (tok K_18 kind_19))))
+                   
+		 (subtokind fv0 flag)]
+
+#;		[(,free-vars 
+		  '(if (= flag '11)
+                   (if (= subtokind '0) (void) (begin))
+                   (begin (call (tok tok1 0)
+                                (begin "This whole block represents the allocation of a continuation closure:"
+                                       (let ([kind_19
+                                              (if (token-present?
+                                                    (tok K_18 0))
+                                                  (let ([new
+                                                         (+ '1
+                                                            (ext-ref
+                                                              (tok K_18 0)
+                                                              kcounter))])
+                                                    (begin (ext-set!
+                                                             (tok K_18 0)
+                                                             kcounter
+                                                             new)
+                                                           new))
+                                                  (begin "Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
+                                                         (call (tok K_18 0)
+                                                               '11
+                                                               (void))
+                                                         '1))])
+                                         (begin "Do the actual token object (closure) allocation.  Capture freevars:"
+                                                (call (tok K_18 kind_19)
+                                                      '11
+                                                      fv0)
+                                                "Return the name of this continuation object:"
+                                                (tok K_18 kind_19))))
+                                '3)
+                          (evict (tok K_20 subtokind)))))
+		 (subtokind fv0 flag)]
+
 		[(,no-first-class? 'v 'v) #f]
 		[(,no-first-class? 'v '(+ v 1)) #f]
 		[(,no-first-class? 'v '(+ r (app v '3 '4))) #t]
@@ -464,6 +549,8 @@
 		[(,process-tokbind '[t1 id () (stored) (+ '3 (subcall (tok t2 0) 3))])
 		 ,(lambda (x) (disp x))]	       
 		
+
+
 	      )))      
 
       (lambda (prog)
@@ -499,7 +586,31 @@
 			       (stored)
 			       (kcall k_22 (+ x '300))))))))))))
        (node-start SOC-start K_1 tok1)]
-  
+
+      ["Trying to make sure we get the right stored vars."
+       (map car (apply append (map cdr
+       (deep-assq-all 'stored 
+	 (closure-convert 
+	  '(cleanup-token-machine-lang
+	    '(program
+	      (bindings)
+	      (nodepgm
+	       (tokens
+		(node-start subtok_ind () (stored) (void))
+		(SOC-start subtok_ind ()
+		 (stored)
+		 (call (tok tok1 0)
+		       (lambda (HOLE_59)
+			 (call (tok tok1 0)
+			       (lambda (HOLE_60)
+				 (printf '"result ~a" (+ HOLE_59 HOLE_60)))
+			       '3))
+		       '4))
+		(tok1 subtok_ind (k_58 x)
+		      (stored)
+		      (kcall k_58 (+ x '1000))))))))))))
+       (kcounter kcounter HOLE_59)]
+       
       )))
 	       
 
