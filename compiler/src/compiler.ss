@@ -333,7 +333,8 @@
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
 
 
-    
+    ;; [2005.05.29] Note tok1 should be statically called and is currently called dynamically!
+    ;; Oh duh, that's because all calls go through the dyndispatch table.
      ["Run simulator on simple subcall program." 
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	 (let ((prog 
@@ -342,6 +343,9 @@
 		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
 		 (tok1 (x) (return (+ x 300)))
 		 )))))
+	   
+	   (disp "CLEANED")(pretty-print prog)
+
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
@@ -354,7 +358,7 @@
 		     (run-compiler
 		      '(tokens 
 			(SOC-start () (printf "result ~a" (+ (subcall tok1 4) (subcall tok1 3))))
-			(tok1 (x) (return (+ x 300)))
+			(tok1 (x) (return (+ x 1000)))
 			))))
 		(let ((prt (open-output-string)))
 		  (display "(" prt)
@@ -364,11 +368,11 @@
 	 `(["Add two subcalls (only through cps-tokmac)"
 	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )))
 	      ,commontest)
-	    (result 607)]
+	    (result 2007)]
 	   ["Same test but now with closure-convert"
 	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	      ,commontest)
-	    (result 607)]))
+	    (result 2007)]))
      
      ["Testing simple combinations of passes: generate a continuation." 
       (let ((toks (cdr (deep-assq 'tokens 

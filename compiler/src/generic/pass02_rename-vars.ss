@@ -124,9 +124,9 @@
 			     `(,input-language '(program ,body)))]))))
 	(match optional
 	       [(count ,n) 
-		(reset-name-count! n)
+		(unique-name-counter n)
 		(let ((res (run expr)))
-		  (reset-name-count! n)
+		  (unique-name-counter n)
 		  res)]
 	       [,else (run expr)])))
     ))
@@ -148,7 +148,7 @@
 
 (define test-this
   (default-unit-tester 
-    "Rename-Vars: Pass to rename variabless."
+    " 2: Rename-Vars: Pass to rename variabless."
     these-tests))
   
 

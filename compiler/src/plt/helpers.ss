@@ -62,7 +62,7 @@
                    (th)))))
   
   (define (warning sym . args)
-    (printf "Warning ~s: ~a " sym (apply format args)))
+    (fprintf (current-error-port) "Warning ~s: ~a " sym (apply format args)))
 
 
 (define (make-default-hash-table) (make-hash-table))
@@ -72,6 +72,8 @@
 (define hashtab-remove!  hash-table-remove!)
 
 
+;; This matches the chez parameter, but does nothing.
+(define pretty-maximum-lines (make-parameter #f))
 
 ;; This is a simple random number generator interface for use in this Regiment codebase:
 (define reg:random-int
@@ -126,13 +128,14 @@
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
    flush-output-port with-error-handlers warning cpu-time ;; error-handler 
+   pretty-maximum-lines
    
    ;; Meet in the middle with chez:
    print-level print-length
    make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
    
    get-formals
-   unique-name reset-name-count! extract-suffix make-begin strip-illegal
+   unique-name unique-name-counter extract-suffix make-begin strip-illegal
    
    ;; Hmm, not sure what meaning immediate has here...
    immediate? constant? datum? 

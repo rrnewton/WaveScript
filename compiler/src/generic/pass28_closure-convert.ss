@@ -2,6 +2,21 @@
 ;; Sigh, there are some general optimizations that are really lacking now.
 ;; Alias analysis is needed to fix the "direct calls" that are broken by this pass.
 
+
+;; [2005.05.29] I just went through and wasted some time rewriting
+;; generic-traverse to be more general, and rewriting process-expr to
+;; pass the new-handlers up explicitely (returning a vector of two
+;; results) rather than using mutation to accumulate new-handlers (as
+;; in OLDprocess-expr).
+;;   As far as I can tell Petite Chez Scheme had a bug a bug which
+;; caused OLDprocess-expr not to work.  The "new-handlers" variable
+;; would be mutated, but then would still be null when returned.  I
+;; could investigate this further, but for now I've rewritten to work
+;; around it.
+;;   I'm pretty sure it *is* a petite bug though, it works 
+
+
+
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
@@ -23,52 +38,68 @@
     (define (id x) x)
 
     ;; This is copied from the cps-tokmac pass.  Should share it!
+    ;; Man, this would be easier to understand if it were strongly typed (sadly, that's tough - see peyton jones "boilerplate"):
+    ;; The arguments are as follows:
+    ;;   driver : expr -> k -> alpha
+    ;;   fuse : [alpha] -> (expr* ... -> expr) -> alpha
+    ;;   e : expr
+
+    ;; The driver gives the users code first hack at the data tree.
+    ;; The driver may hand off to its "k" argument if it wants to
+    ;; continue the "generic" traversal, but it's not obligated to
+    ;; return another expression, it may return its own alpha type.
+    ;;   The fuser is a function that reassembles the results of
+    ;;   generic traversal (closure abstracted over children expressions)
+    ;;   with the alpha-type resulting from the drivers execution on all those children.
+    ;; The whole traversal returns an alpha value.
+        
     (define (generic-traverse driver fuse e)
       (let loop ((e e))
 	(driver e 
-	   (lambda (x)
-	     (match x
+	   (lambda (expression)
+	     (match expression
 ;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
-		    [,const (guard (constant? const)) (fuse () const)]
-		    [(quote ,const)                (fuse ()   `(quote ,const))]
-		    [,var (guard (symbol? var))    (fuse ()    var)]
-		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
-		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
-		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
-		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
+		    [,const (guard (constant? const)) (fuse () (lambda () const))]
+		    [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
+		    [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
+		    [(tok ,tok)                    (fuse ()      (lambda () `(tok ,tok)))]
+		    [(tok ,tok ,n) (guard (integer? n)) (fuse () (lambda () `(tok ,tok ,n)))]
+		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) (lambda (x) `(tok ,tok ,x)))]
+		    [(ext-ref ,tok ,var)           (fuse ()      (lambda () `(ext-ref ,tok ,var)))]
 		    [(ext-set! ,tok ,var ,[loop -> expr])  
-		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
-		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
-		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
-		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
+		                                   (fuse (list expr) (lambda (x) `(ext-set! ,tok ,var ,x)))]
+		    [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
+		    [(leds ,what ,which)           (fuse ()      (lambda () `(leds ,what ,which)))]
+		    [(begin ,[loop -> x] ...)      (fuse x           (lambda ls `(begin ,ls ...)))]
 		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		                                   (fuse (list a b c) `(if ,a ,b ,c))]
+		                                   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
-		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		                                   (fuse (list rhs bod) 
+							 (lambda (x y) `(let ([,lhs ,x]) ,y)))]
 		    ;; "activate" and the gradient calls have already been desugared:
 
-		    [(lambda (,v) ,[loop -> e])    (fuse (list e) `(lambda (,v) ,e))]		     
-		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) `(kcall ,k ,e))]
+		    [(lambda (,v) ,[loop -> e])    (fuse (list e) (lambda (x) `(lambda (,v) ,x)))]
+		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) (lambda (x y) `(kcall ,x ,y)))]
 		    
-		    [(build-kclosure ,kname (,fvs ...)) (fuse () `(build-kclosure ,kname (,fvs ...)))]
-
+		    [(build-kclosure ,kname (,fvs ...)) (fuse () (lambda () `(build-kclosure ,kname (,fvs ...))))]
 
 		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (memq call '(bcast subcall call)))
-		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
+		     (fuse (cons rator rands) (lambda (x . ls) `(,call ,x ,ls ...)))]
 		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (number? time))		     
-		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
-		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
+		     (fuse (cons rator rands) (lambda (x . ls) `(timed-call ,time ,x ,ls ...)))]
+		    [(return ,[loop -> e])         (fuse (list e) (lambda (x) `(return ,x)))]
 		    [(,prim ,[loop -> rands] ...)
 		     (guard (or (token-machine-primitive? prim)
 				(basic-primitive? prim)))
-		     (fuse rands `(,prim ,rands ...))]
+		     (fuse rands (lambda ls `(,prim ,ls ...)))]
 		    [(app ,[loop -> rator] ,[loop -> rands] ...)
-		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
+		     (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
 		    [,otherwise
 		     (error 'generic-traverse
 			    "bad expression: ~s" otherwise)])))))
+
 
     (define (subst e1 v e2)
         (generic-traverse
@@ -78,9 +109,10 @@
 		  [,var (guard (eq? var v)) e2]
 		  [(lambda (,var) ,e) (guard (eq? var v))
 		   ;; Stop substitituting:
-		   `(lambda (,var) ,e)]		   
+		   `(lambda (,var) ,e)]
 		  [,x (loop x)]))
-	 (lambda (_ def) def)
+	 (lambda (ls f) (disp "FUSE" ls f)
+	   (apply f ls))
 	 e1))
 
     ;; Get the free vars from an expression
@@ -113,7 +145,7 @@
 		  [(set! ,x ,[e]) (guard (memq x fvs))
 		   `(set! ,(build-fv x fvs) ,e)]
 		  [,other (loop other)]))
-	 (lambda (ls def) def)
+	 (lambda (ls f) (apply f ls))
 	 e)))
 
     (define (build-continuation kname body hole)
@@ -200,78 +232,188 @@
 	   [(app ,v ,[x]) (guard (eq? v k))
 	    x]
 	   [,x (loop x)]))
-       (lambda (_ def) def)
+       (lambda (ls f) (apply f ls))
        expr))
-    
+
     (define (process-expr expr)
+      (define (addhands newhands vec)
+	(vector (append newhands (vector-ref vec 0)) (vector-ref vec 1)))
+	
+      ;; We do a very lame alias-analysis on our way down.
+      ;; This lets us get a few obvious direct calls.
+      ;; kbinds binds continuation names to token names.
+      (let ((result
+	     ;; As we go *down* the structure, we accumulate kbinds.
+	     ;; As we come *up* we accumulate new handlers.
+	 (let outer-loop ([expr expr] [kbinds '()])
+	   (generic-traverse
+	    (lambda (x loop)
+	      (match x
+		     ;; This first case is a hack that depends on exactly what the previous pass outputs.
+		     ;; This transformation should be accomplished by a much more general optimization.
+		     [(let ([,k (lambda (,hole) ,kbody)]) (if ,t ,c ,a))
+		      (guard (no-first-class? k c)
+			     (no-first-class? k a))
+		      (loop ;; Done with it, pass it on to loop.
+		       (subst kbody hole `(if ,t ,(stripk k c) ,(stripk k a))))]
+
+		     ;; We try to make direct calls here if we can.
+		     [(kcall ,k ,[val])  (guard (assq k kbinds))
+		      (let ([newhands (vector-ref val 0)] [v (vector-ref val 1)])
+			(addhands newhands
+				  (loop `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))))]
+		     [(kcall ,k ,[val])
+		      (let ([newhands (vector-ref val 0)] [v (vector-ref val 1)])
+			(if (not (symbol? k))
+			    (error 'closure-convert "kcall with this unexpected rator: ~a" k))
+			(addhands newhands
+				  (loop `(call ,k ',CALL ,v))))]
+		     [(let ([,k (lambda (,hole) ,[val])]) ,body2)
+		      (let ([newhands1 (vector-ref val 0)] [body1 (vector-ref val 1)])
+			(let ([kname (unique-name 'K)])
+			  (mvlet ([(closure khandler) (build-continuation kname body1 hole)])
+				 (let* ([result (outer-loop body2 (cons (list k kname) kbinds))]
+					[newhands2 (vector-ref result 0)]
+					[newbody (vector-ref result 1)])
+				   (vector (cons khandler (append newhands1 newhands2))
+					   `(let ([,k ,closure]) ,newbody))))))]
+		     [(lambda (,v) ,[val])
+		      (let ([newhands (vector-ref val 0)] [body (vector-ref val 1)])
+			(let ([kname (unique-name 'K)])
+			  (mvlet ([(closure khandler) (build-continuation kname body v)])
+				 (vector (cons khandler newhands)
+					 closure))))]
+		     [,x (loop x)]))
+	    ;; Generic traverse 2nd argument: fuser
+	    (lambda (vals f) 
+	      (let ([newhands (map (lambda (v) (vector-ref v 0)) vals)]
+		    [newexpr* (map (lambda (v) (vector-ref v 1)) vals)])
+		(vector (apply append newhands)
+			(apply f newexpr*))))
+	    ;; Generic traverse 3rd argument: expression
+	    expr
+	    ))))
+	(values (vector-ref result 1) (vector-ref result 0))))
+    
+
+
+    (define (OLDgeneric-traverse driver fuse e)
+      (let loop ((e e))
+	(driver e 
+	   (lambda (x)
+	     (match x
+;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+		    [,const (guard (constant? const)) (fuse () const)]
+		    [(quote ,const)                (fuse ()   `(quote ,const))]
+		    [,var (guard (symbol? var))    (fuse ()    var)]
+		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
+		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
+		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
+		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
+		    [(ext-set! ,tok ,var ,[loop -> expr])  
+		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
+		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
+		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
+		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
+		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
+		                                   (fuse (list a b c) `(if ,a ,b ,c))]
+		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
+		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		    ;; "activate" and the gradient calls have already been desugared:
+
+		    [(lambda (,v) ,[loop -> e])    (fuse (list e) `(lambda (,v) ,e))]		     
+		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) `(kcall ,k ,e))]
+		    
+		    [(build-kclosure ,kname (,fvs ...)) (fuse () `(build-kclosure ,kname (,fvs ...)))]
+
+
+		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
+		     (guard (memq call '(bcast subcall call)))
+		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
+		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
+		     (guard (number? time))		     
+		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
+		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
+		    [(,prim ,[loop -> rands] ...)
+		     (guard (or (token-machine-primitive? prim)
+				(basic-primitive? prim)))
+		     (fuse rands `(,prim ,rands ...))]
+		    [(app ,[loop -> rator] ,[loop -> rands] ...)
+		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
+		    [,otherwise
+		     (error 'generic-traverse
+			    "bad expression: ~s" otherwise)])))))
+
+    (define (OLDprocess-expr expr)
       (let ([new-handlers '()]) ;; MUTABLE
 
       ;; We do a very lame alias-analysis on our way down.
       ;; This lets us get a few obvious direct calls.
       ;; kbinds binds continuation names to token names.
 	(values 
+	 ;; First return the new expression:
 	 (let outer-loop ([expr expr] [kbinds '()])
-	   (generic-traverse
+	   (OLDgeneric-traverse
 	    (lambda (x loop)
 	      (match x
 
-	   ;; This is a hack that depends on exactly what the previous pass outputs.
-	   ;; This transformation should be accomplished by a much more general optimization.
-	   [(let ([,k (lambda (,hole) ,kbody)]) (if ,t ,c ,a))
-	    (guard (no-first-class? k c)
-		   (no-first-class? k a))
-	    (loop ;; Done with it, pass it on to loop.
-	     (subst kbody hole `(if ,t ,(stripk k c) ,(stripk k a))))]
-
-	   ;; We try to make direct calls here if we can.
-	   [(kcall ,k ,[v])
-	    (guard (assq k kbinds))
-	    (loop
-	     `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))]
-
-	   [(kcall ,k ,[v])
-	    (if (not (symbol? k))
-		(error 'closure-convert "kcall with this unexpected rator: ~a" k))
-	    (loop `(call ,k ',CALL ,v))]
-		   
-
-	   [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
-	    (let ([kname (unique-name 'K)]
-		  [fvs (remq hole (free-vars body1))])
-	      (mvlet ([(closure khandler)  
-		       (build-continuation kname body1 hole)])
-;		       (values `(build-kclosure ,kname ,fvs)
-;			       `[,kname subtokid (flag ,@fvs) (stored) ,(subst body1 v FREEVAR0)])])
-
-  	         (set! new-handlers (cons khandler new-handlers))
-		 `(let ([,k ,closure])
-		    ,(outer-loop body2
-				 (cons (list k kname) kbinds)))))
-	    ]
-	    
-	   [(lambda (,v) ,[body])
-	    (let ([kname (unique-name 'K)]
-		  [fvs (remq v (free-vars body))])
-	      (mvlet ([(closure khandler) 
-		       (build-continuation kname body v)])
-;		       (values `(build-kclosure ,kname ,fvs)
-;			       `[,kname subtokid (flag ,@fvs) (stored) ,(subst body v FREEVAR0) ])])
-  	         (set! new-handlers (cons khandler new-handlers))
-		 closure))]
-;	    (error 'closure-convert "ran into lambda not in a \"let ([k\" context: ~a" `(lambda ,vars ,bods ...))]
-	    
-	   [,x (loop x)]))
+		     ;; This is a hack that depends on exactly what the previous pass outputs.
+		     ;; This transformation should be accomplished by a much more general optimization.
+		     [(let ([,k (lambda (,hole) ,kbody)]) (if ,t ,c ,a))
+		      (guard (no-first-class? k c)
+			     (no-first-class? k a))
+		      (loop ;; Done with it, pass it on to loop.
+		       (subst kbody hole `(if ,t ,(stripk k c) ,(stripk k a))))]
+		     
+		     ;; We try to make direct calls here if we can.
+		     [(kcall ,k ,[v])
+		      (guard (assq k kbinds))
+		      (loop
+		       `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))]
+		     
+		     [(kcall ,k ,[v])
+		      (if (not (symbol? k))
+			  (error 'closure-convert "kcall with this unexpected rator: ~a" k))
+		      (loop `(call ,k ',CALL ,v))]
+		     
+		     
+		     [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
+		      (let ([kname (unique-name 'K)]
+			    [fvs (remq hole (free-vars body1))])
+			(mvlet ([(closure khandler)  
+				 (build-continuation kname body1 hole)])
+			       (disp "SETTING NEW HANDLERS(1), ADDING " khandler)
+			       (set! new-handlers (cons khandler new-handlers))
+			       (disp "NEW " (map car new-handlers))
+			       `(let ([,k ,closure])
+				  ,(outer-loop body2
+					       (cons (list k kname) kbinds)))))
+		      ]
+		     
+		     [(lambda (,v) ,[body])
+		      (let ([kname (unique-name 'K)]
+			    [fvs (remq v (free-vars body))])
+			(mvlet ([(closure khandler) 
+				 (build-continuation kname body v)])
+			       (disp "SETTING NEW HANDLERS(2), ADDING " khandler)
+			       (set! new-handlers (cons khandler new-handlers))
+			       (disp "NEW " (map car new-handlers))
+			       closure))]
+		     [,x (loop x)]))	    
+	    ;; Generic traverse 2nd argument: fuser
 	    (lambda (ls def) def)
+	    ;; Generic traverse 3rd argument: expression
 	    expr))
+	 
 	 ;; Also return the new-handlers:
-	 (begin ;(disp "RETURNING" (length new-handlers))
-	 new-handlers))))
+	 (begin (disp "RETURNING" (map car new-handlers))
+	   new-handlers))))
 
 
     (define (process-tokbind tb)
       (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
 	     (mvlet ([(newexpr newtokbinds) (process-expr body)])
-;		    (disp "NEWTOKBINDS" newtokbinds)
+;	     (mvlet ([(newexpr newtokbinds) (OLDprocess-expr body)])
 		    (cons 
 		     `[,tok ,id ,args (stored ,@stored) ,newexpr]
 		     newtokbinds))))
@@ -333,6 +475,33 @@
 			    (nodepgm (tokens ,(apply append toks) ...))))]))
       ))
       
+
+;; Now test the whole module:a
+(set! these-tests
+  (append these-tests
+    `(
+      ["Closure convert a program with one continuation.  Make sure we get the right token bindings."
+       (map car (cdr (deep-assq 'tokens 
+         (parameterize ((unique-name-counter 0))
+          (closure-convert 
+	   '(cleanup-token-machine-lang
+	     '(program (bindings)
+		       (nodepgm
+			(tokens
+			 (node-start subtok_ind () (stored) (void))
+			 (SOC-start subtok_ind ()
+				    (stored)
+				    (call (tok tok1 0)
+					  (lambda (HOLE_23) (printf '"result ~a" HOLE_23))
+					  '3))
+			 (tok1 subtok_ind
+			       (k_22 x)
+			       (stored)
+			       (kcall k_22 (+ x '300))))))))))))
+       (node-start SOC-start K_1 tok1)]
+  
+      )))
+	       
 
 (define test-this (default-unit-tester
 		    "27: CPS-Tokmac: use CPS on blocking calls."

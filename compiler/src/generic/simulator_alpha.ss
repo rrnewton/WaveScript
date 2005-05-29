@@ -16,6 +16,8 @@
 ;; that we may actually implement the atomic action model.
 
 
+;; NOTE: Right now all calls go through the dyndispatch table.
+
 (define this-unit-description 
   "simulator_alpha.ss: event-queue simulator for nodal language")
 
@@ -666,7 +668,8 @@
 		(letrec ,tbinds		  
 		 ;; Within this body, toks are bound, we return a list of start actions
 		  ;"Initialize our simobject message buffers"
-		  
+
+		  ;; This is the table through which dynamic token references can be invoked:
 		  (let ([dyndispatch_table (make-default-hash-table)])
 		    (begin (void) ,@(map (lambda (tokname)
 					   `(hashtab-set! dyndispatch_table ',tokname ,tokname))
@@ -679,9 +682,14 @@
 				  (values (simtok-name tok)
 					  (simtok-subid tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
+				
+;				(fprintf (current-error-port) "Dyndispatch: ~a in table: " name)
+;				(hashtab-for-each (lambda (name _) (fprintf (current-error-port) "~a " name)) dyndispatch_table)
+;				(newline (current-error-port))
+
 				(if (not handler)
 				    (error 'node-code
-					   "no handler for token name: ~a in table: ~n~a" name dyndispatch_table))
+					   "dyndispatch: no handler for token name: ~a in table: ~n~a" name dyndispatch_table))
 				;; Invoke:
 				(apply handler current-vtime subtok 
 				       (msg-object-args msgob))
