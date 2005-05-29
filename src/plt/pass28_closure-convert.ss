@@ -21,6 +21,7 @@
 ;  (provide (all-defined))
   (provide closure-convert test28 tests28 test-closure-convert tests-closure-convert
            mvlet destructure-tokbind
+           unique-name-counter deep-assq
            )
   )
 

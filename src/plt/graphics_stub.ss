@@ -201,7 +201,9 @@
        unspecified]
       ))
   
-  (define test-this (default-unit-tester "graphics interface for simulator" these-tests))
+  ;; This test is disabled right now because it's messed up and will only run in the plt/ directory.
+  ;; It can still be run manually but will not be included in the collected unit tests for the system.
+  (define test-this (default-unit-tester "graphics interface for simulator" these-tests 'disabled))
   (define testgraphics test-this)
   );;End module
 

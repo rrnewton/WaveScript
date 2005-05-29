@@ -1190,7 +1190,10 @@
 	   (if (and (> (length extras) 1)
 		    (procedure? (cadr extras)))
 	       (cadr extras)
-	       (lambda (x) x))])
+	       (lambda (x) x))]
+	  
+	  [enabled (not (memq 'disabled extras))]
+	  )
 
       (let ((testerproc 
 	     	     (lambda args 
@@ -1210,6 +1213,7 @@
 	       these-tests)])
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
+
 	       [quiet (or (memq 'quiet args)
 			  (memq 'q args)
 			  (memq 'qv args))]
@@ -1289,11 +1293,14 @@
 			  ))))
 	     (iota (length tests))
 	     tests descriptions intended)
-	  )))))
+	)))))
 		     )) ;; End testerproc let binding
+
 	;; Regiment specific:
-	;; Add this unit-tester to the global list:       
-	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests)))
+	(if enabled
+	    ;; Add this unit-tester to the global list:     
+	    (reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))	  
+
 	testerproc))))
 
 			

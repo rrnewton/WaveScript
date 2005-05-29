@@ -89,6 +89,7 @@
 (require
 ;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
 ; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
+   (all-except "plt/graphics_stub.ss" these-test test-this)
  )
 
 (require
