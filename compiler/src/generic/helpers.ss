@@ -810,6 +810,10 @@
 		(outer (cdr struct))))
 	#f)))
 
+(define (deep-assq-all ob struct)
+  (deep-all-matches (lambda (x) (and (pair? x) (eq? ob (car x))))
+		    struct))
+
 ;; [2004.06.15] Copying this from generic utils file.
 (define list-get-random
   (lambda (ls)
@@ -840,7 +844,7 @@
   (let loop ([o1 obj1] 
 	     [o2 obj2]
 	     [index '()])
-    (printf "~s: len ~s ~s~n" index 
+    (printf "~s: len ~s ~s~n" (reverse index)
 	    (if (list? o1) (length o1) #f)
 	    (if (list? o2) (length o2) #f))    
     (cond
@@ -862,7 +866,12 @@
 	    ((= i (vector-length o1)))
 	  (loop (vector-ref o1 i) 
 		(vector-ref o2 i)
-		(cons i (cons 'v index))))])))
+		(cons i (cons 'v index))))]
+       [else (printf "~n  Diff at ~a: " (reverse index))
+	     (display-constrained (list o1 35) " " (list o2 35))
+	     (newline)]       
+       )))
+
 ;; This goes along, it's for performing deep-index lookups
 (define (list-ref-deep ls ind)
   (let loop ((x ls) (ind ind))
