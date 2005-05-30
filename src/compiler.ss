@@ -396,6 +396,79 @@
       1]
 
 
+     ["Now use a stored var."
+      (fluid-let ((pass-names '(cleanup-token-machine 
+				desugar-let-stored  rename-stored
+				cps-tokmac closure-convert cleanup-token-machine)))
+	(let ((prog 
+		(run-compiler
+		 '(tokens 
+		   (SOC-start () 
+			      (call tok1 99) 
+			      (call tok1 100)
+			      (call tok1 101)
+			      (call tok1 999))
+		   (tok1 (x) (stored (y 3))
+			 (printf "~a " y)
+			 (set! y x)))
+		   )))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      (3 99 100 101)]
+
+
+     ["Now use let-stored:"
+      (parameterize ((unique-name-counter 0))
+      (fluid-let ((pass-names '(cleanup-token-machine 
+				desugar-let-stored  rename-stored
+				cps-tokmac closure-convert cleanup-token-machine)))
+	(let ((prog 
+		(run-compiler
+		 '(tokens 
+		   (SOC-start () 
+			      (call tok1 0) 
+			      (call tok1 1)
+			      (call tok1 0)
+			      (call tok1 1))
+		   (tok1 (x) 
+			 (printf ". ")
+			 (if (= x 0)
+			     (let-stored ((y (begin (printf " !!! ") 3))) y)))
+		   ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt)))))))
+      (3 99 100 101)]
+
+
+
+
+
+
+
+     ["Now use a simple gradient, just an emit and unconditional relay." 
+      (fluid-let ((pass-names '(cleanup-token-machine 
+				desugar-gradients  cleanup-token-machine  				
+				desugar-let-stored  rename-stored
+				cps-tokmac closure-convert cleanup-token-machine)))
+	(let ((prog 
+		(run-compiler
+		 '(tokens 
+		   (SOC-start () (emit tok1))
+		   (tok1 (x) (printf "." (relay)))
+		   ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      98352258536]
+
 
     		
      ["Write a troublesome simulator program to disk and try to execute it."
