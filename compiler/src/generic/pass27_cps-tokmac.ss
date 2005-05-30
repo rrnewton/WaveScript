@@ -195,6 +195,15 @@
      (lambda (ls _) (apply append ls))
      expr))
 
+  (define (has-subcall? expr)
+    (generic-traverse
+     (lambda (x loop)
+       (match x
+	      [(subcall (tok ,t ,e) ,args ...) #t]
+	      [,e (loop e)]))
+     (lambda (ls _) (ormap id ls))
+     expr))
+
   ;; Traverse the expression checking to see if it has a (return _) statement.
   (define (has-return? expr)
     (generic-traverse
@@ -318,14 +327,22 @@
 	     ;; In our case it seems difficult to recover through optimization.
               [(if ,test ,conseq ,altern)
 	       (loop test
-		     (lambda (t)
-		       (let* ([k (unique-name 'k)]
-			      [v (unique-name 'HOLE)])		
-			 `(let ([,k (lambda (,v) ,(pvk v))])
-			    (if ,t
-				,(loop conseq (lambda (c) `(kcall ,k ,c)))
-				,(loop altern (lambda (a) `(kcall ,k ,a))))))))]
+		     (lambda (t)		       
+		       ;; Only if there is a subcall on one of these branches do we capture the continuation:
+		       (if (or (has-subcall? conseq)
+			       (has-subcall? altern))
 
+
+			   (let* ([k (unique-name 'k)]
+				  [v (unique-name 'HOLE)])		
+			     `(let ([,k (lambda (,v) ,(pvk v))])
+				(if ,t
+				    ,(loop conseq (lambda (c) `(kcall ,k ,c)))
+				    ,(loop altern (lambda (a) `(kcall ,k ,a))))))
+			   (pvk `(if ,t
+				     ,(loop conseq id)
+				     ,(loop altern id))))))]
+	       
 	     [(let ((,lhs ,rhs)) ,body)
 	      (loop rhs
 		 (lambda (r)

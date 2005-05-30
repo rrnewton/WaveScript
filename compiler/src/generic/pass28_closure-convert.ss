@@ -158,6 +158,11 @@
 	 (lambda (ls f) (apply f ls))
 	 e)))
 
+#;    (define (build-continuation kname body hole)
+      (values
+       `(lambda (,hole) ,body)
+       `(,kname subtokind () (stored) 'FOOO)))
+
     (define (build-continuation kname body hole)
       (let* ([FREEVAR0 'fv0] ;(unique-name 'fv0)]
 	     
@@ -177,7 +182,8 @@
       (values 
        ;; Return an expression which builds the continutation closure:
        (let ([kind (unique-name 'kind)])
-	 `(begin "This whole block represents the allocation of a continuation closure:"
+	 `(begin "This whole block represents the allocation of a continuation closure."
+		 ,(format "Continuation = ~a" kname)
 		(let ([,kind 
 		       (if (token-present? (tok ,kname 0))
 			   (let ([new (+ '1 (ext-ref (tok ,kname 0) ,KCOUNTER))])
@@ -193,17 +199,22 @@
 				  '1))])
 		  (begin 
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
-		    ;; FIXME!!! Don't have zeroing of omitted arguments yet!!  This includes a dummy arg.
-		    ;; FIXME: PADDING.
+		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
 		    (call (tok ,kname ,kind) ',INIT ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
+		    (dbg '"Initialized continuation (tok ~a ~a) <~a> with fvs ~a = ~a" 
+			    ',kname ',kind subtokind ',fvs (list ,@fvs))
 		    "Return the name of this continuation object:"
 		    (tok ,kname ,kind)))))
        
        ;; Return a new token handler to hold the continuations' code.
+       (let ([newfvs (map unique-name fvs)])
        `(,kname subtokind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
-		(stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv '0]) fvs))
+		(stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv '0]) newfvs))
 					;(map list fvns args))
 					;(make-vector ,(length fvs)))
+		(dbg '"Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a"
+			',kname subtokind flag (list ,@fvns) ',newfvs (list ,@newfvs))
+			
 		(if (= flag ',INIT)
 		    (if (= subtokind '0)
 			;; No freevars if we're just initializing the counter-object.
@@ -211,14 +222,18 @@
 			(begin
 			  ,@(map (lambda (fv fvn)
 				   `(set! ,fv ,fvn))
-				 fvs fvns)))
+				 newfvs fvns)))
 		    ;; Otherwise, assume the flag is CALL
 		    (begin
-		      ,body ;,(number-freevars body)
+		      ,(let loop ((fvs fvs) (newfvs newfvs) (body body))
+			 (if (null? fvs) body
+			     (loop (cdr fvs) (cdr newfvs)
+				   (subst body (car fvs) (car newfvs)))))
+					;,(number-freevars body)
 		      ;; Since these are one-shot continuations, 
 		      ;; we deallocate ourselves on the way out:
 		      (evict (tok ,kname subtokind))
-		      ))))))
+		      )))))))
 
     (define (no-first-class? k expr)
       (generic-traverse

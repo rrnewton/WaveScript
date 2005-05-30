@@ -349,7 +349,7 @@
 		  [(tok ,t ,[e]) `(make-simtok ',t ,e)]
 
 		  ;; This is sketchy: we just fail silently and return #f if there is no token there.
-		  ;; TODO: We should seriously have some sort of better error handling convention.
+		  ;; FIXME TODO: We should seriously have some sort of better error handling convention.
 		  [(ext-ref (tok ,tokname ,subtok) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))
 		   ;; The stored names should be unique at this point!  So this should be ok:
@@ -360,6 +360,8 @@
 				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store 
 							 (make-simtok ',tokname ,subtok))])
+			     "FOOBAR"
+			     ,(format "Ext-ref of (tok ~a ~a) variable ~a" tokname subtok x)
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
@@ -371,6 +373,7 @@
 			       (error 'simulator_alpha:process-statement 
 				      "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store (make-simtok ',tokname ,subtok))])
+			     ,(format "Ext-set! of (tok ~a ~a) variable ~a" tokname subtok x)
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
 				 (warning 'ext-set! "token not present: ~a" `(,tokname . subtok))
@@ -378,15 +381,16 @@
 
 		  ;; Local tokstore-reference:
 		  [,x (guard (and (symbol? x) (memq x allstored)))
-		      (disp "Local TokStore reference:" x allstored)
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
                                (error 'simulator_alpha:process-statement 
 				      "bad local stored-ref: ~a actually belongs to ~a not ~a" 
 				      x which-tok current-handler-name))
                            ;; 'tokobj' is already bound to our token object
-			   "We add one to the position because zeroth is the invocation counter."
-                           `(vector-ref tokobj ,(+ 1 pos)))]
+			   `(begin 
+			     ,(format "Local Stored Ref of variable: ~a" x)
+			     "We add one to the position because zeroth is the invocation counter."
+			     (vector-ref tokobj ,(+ 1 pos))))]
 
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
@@ -430,6 +434,7 @@
 
 		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
 
+		  ;; Local Stored variable mutation:
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
 			  (DEBUGMODE
@@ -437,7 +442,9 @@
 			       (error 'simulator_alpha:process-statement 
 				      "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
 				      v which-tok current-handler-name)))
-                          `(vector-set! tokobj ,(+ 1 pos) ,rhs))]
+			  `(begin 
+			     ,(format "Local Stored Set! of variable: ~a" v)
+			     (vector-set! tokobj ,(+ 1 pos) ,rhs)))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
 
@@ -454,6 +461,8 @@
 ;		   (process-expr `(call (tok SOC-return-handler 0) ,x))]
 		 
 		  ;[(soc-return-finished ,x) 		  
+
+		[(token->subid ,[e]) `(simtok-subid ,e)]
 
 		  [(loc) '(sim-loc)]
 		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
@@ -480,7 +489,8 @@
 				 [else (loop (sub1 i))]))
 			      newstr))])
 ;		     (disp "MANGLED" (massage-str str))
-		     `(begin (display (format ,(massage-str str) ,@args)) (newline)))]
+		     `(begin (display (format ,(massage-str str) ,@args) (current-error-port))
+			     (newline (current-error-port))))]
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
 			      (basic-primitive? prim)))
