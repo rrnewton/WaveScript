@@ -86,6 +86,9 @@
     ;; Gotta have a way to remove tokens also!
     ;; Not to mention expiration dates!!
 
+    
+
+
     (rfoldwith (Token Function Object Region) Signal)
     ))
 
@@ -227,6 +230,8 @@
      (token-scheduled? (Token) Bool)
      (token-present? (Token) Bool)
      (evict (Token) Void)
+
+     (token->subid (Token) Integer)
 
      (void () Object)
 

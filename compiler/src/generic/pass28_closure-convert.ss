@@ -611,6 +611,41 @@
 		      (kcall k_58 (+ x '1000))))))))))))
        (kcounter kcounter HOLE_59)]
        
+      ["This is just for regression, popped up an error before due to token->subid."
+       (closure-convert '(rename-stored-lang
+        '(program
+	  (bindings)
+	  (nodepgm
+	   (tokens
+	    (node-start subtok_ind () (stored) (void))
+	    (SOC-start
+	     subtok_ind
+	     ()
+	     (stored)
+	     (begin (call (tok tok1 0) '0)
+		    (call (tok tok1 0) '1)
+		    (call (tok tok1 0) '0)
+		    (call (tok tok1 0) '1)))
+	    (tok1 subtok_ind
+		  (x)
+		  (stored
+                 (y_80 'let-stored-uninitialized)
+                 (storedliftoption_79 '#f))
+		  (begin (printf '". ")
+			 (let ([k_81 (lambda (HOLE_82) HOLE_82)])
+			   (if (= x '0)
+			       (let ([k_83
+				      (lambda (HOLE_84)
+					(begin HOLE_84 (kcall k_81 y_80)))])
+				 (if storedliftoption_79
+				     (kcall k_83 (void))
+				     (begin (set! storedliftoption_79 '#t)
+					    (printf '" !!! ")
+					    (kcall k_83 (set! y_80 '3)))))
+			       (kcall k_81 (void)))))))))))
+       ,(lambda (x) #t)]
+      
+
       )))
 	       
 
