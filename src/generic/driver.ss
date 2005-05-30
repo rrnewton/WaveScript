@@ -356,7 +356,7 @@
                       (when (memq pass-name (tracer))
                         (pretty-print output-expr))
                       (run output-expr)])))))))
-      (reset-name-count!)
+      (unique-name-counter 0)
       (parameterize ([remaining-pass-names pass-names])
         (run original-input-expr)))))
 

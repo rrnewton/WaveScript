@@ -420,35 +420,110 @@
       (3 99 100 101)]
 
 
-     ["Now use let-stored:"
-      (parameterize ((unique-name-counter 0))
-      (fluid-let ((pass-names '(cleanup-token-machine 
-				desugar-let-stored  rename-stored
-				cps-tokmac closure-convert cleanup-token-machine)))
-	(let ((prog 
+     ;; This doesn't work after closure-convert because while it does
+     ;; maintain orderings of local invocations, that does not include
+     ;; subsequent continuation invocations of those local
+     ;; invocations...
+     ;;   Ok, now it works because I changed the CPS algorithm not to
+     ;;   introduce a continuation in this case.
+     ,@(let ((common 
+	     '(parameterize ((unique-name-counter 0))
+	      (let ((prog 
 		(run-compiler
 		 '(tokens 
 		   (SOC-start () 
-			      (call tok1 0) 
 			      (call tok1 1)
 			      (call tok1 0)
-			      (call tok1 1))
+			      (call tok1 1)
+			      (call tok1 0)
+			      )
 		   (tok1 (x) 
-			 (printf ". ")
+;			 (printf "_ ")
 			 (if (= x 0)
-			     (let-stored ((y (begin (printf " !!! ") 3))) y)))
-		   ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (3 99 100 101)]
+			     (let-stored ((y (begin (printf "a") 3))) (printf "b ") y)
+			     (printf "c "))))
+		   )))
+		(let ((prt (open-output-string)))
+		  (display "(" prt)
+		  (run-simulator-alpha prog 'outport prt)
+		  (display ")" prt)
+		  (read (open-input-string (get-output-string prt))))))))	
+	 `(["Now use let-stored:"
+	    (fluid-let ((pass-names '(cleanup-token-machine 
+				      desugar-let-stored  rename-stored
+				      cps-tokmac      )))
+	      ,common)	   
+	    (c ab c b)]
+	   ["Same test but with closure-convert."
+	    (fluid-let ((pass-names '(cleanup-token-machine 
+				      desugar-let-stored  rename-stored
+				      cps-tokmac closure-convert   )))
+	      ,common)
+	    (c ab c b)]))
 
 
+     ,@(let ((common 
+	      '(parameterize ((unique-name-counter 0))
+	      (let ((prog 
+		(run-compiler
+		 '(tokens 
+		   (SOC-start () 
+			      (call tok1 1)
+			      (call tok1 0)
+			      (call tok1 1)
+			      (call tok1 0)
+			      )
+		   (tok1 (x) 
+			 (if (= x 0)
+			     (let-stored ((y (begin (printf "a") 3))) (printf "b ") y)
+			     (begin (subcall tok2) (printf "c "))))
+		   (tok2 () (return 3)))
+		   )))
+		(let ((prt (open-output-string)))
+		  (display "(" prt)
+		  (run-simulator-alpha prog 'outport prt)
+		  (display ")" prt)
+		  (read (open-input-string (get-output-string prt))))))))
+	 `(["This time I force a continutaion by using subcall.  Thus the c's are delayed."
+	   (fluid-let ((pass-names '(cleanup-token-machine 
+				     desugar-let-stored  rename-stored
+				     cps-tokmac )))
+	     ,common)
+	   (ab b c c)]
+	   ["And one last time using subcall and closure convert."
+	    (fluid-let ((pass-names '(cleanup-token-machine 
+				      desugar-let-stored  rename-stored
+				      cps-tokmac closure-convert)))
+	      ,common)
+	    (c ab c b)]))
 
 
-
+     (fluid-let ([pass-names
+		  '(cleanup-token-machine
+		    desugar-let-stored
+		    rename-stored
+		    cps-tokmac
+		    ;closure-convert
+		    )])
+       (parameterize ([unique-name-counter 0])
+		     (let ([prog
+			    (run-compiler
+			     '(tokens
+			       (SOC-start
+				()
+				(call tok1 1)
+				(call tok1 0)
+				(call tok1 1)
+				(call tok1 0))
+			       (tok1 (x)
+				     (if (= x 0)
+					 (let-stored
+					  ((y (begin (printf "a") 3)))
+					  (printf "b ")
+					  y)
+					 (begin (subcall tok2) (printf "c "))))
+			       (tok2 () (return 3))))])
+		       prog)))
 
 
      ["Now use a simple gradient, just an emit and unconditional relay." 
