@@ -193,8 +193,8 @@
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
 	     ;; That's done elsewhere:
-	     [(ext-ref ,t ,v) `(ext-ref ,t ,v)]
-	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,t ,v ,x)]
+	     [(ext-ref ,t ,v) `(ext-ref ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) t) ,v)]
+	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) t) ,v ,x)]
 
 	     [(tok ,t) `(tok ,t ,DEFAULT_SUBTOK)]
 	     ;; Static form
@@ -307,11 +307,32 @@
 	      `(relay (tok ,t ,e))]
 	     
 	     ;; Expand this out to refer to the precise token...
-	     ;; TODO FIXME TODO: change this to refer to the specific subtokind:
-	     [(dist) `(dist (tok ,this-token subtokind))]
+	     ;; TODO FIXME TODO: change this to refer to the specific subtok_ind:
+	     [(dist) `(dist (tok ,this-token subtok_ind))]
 	     [(dist (tok ,t ,[n]))  `(dist (tok ,t ,n))]
 	     [(dist ,t) (guard (tokname? t)) `(dist (tok ,t 0))]
 	     [(dist ,[e]) `(dist ,e)]
+
+	     [(parent) `(parent (tok ,this-token subtok_ind))]
+	     [(parent (tok ,t ,[n]))  `(parent (tok ,t ,n))]
+	     [(parent ,t) (guard (tokname? t)) `(parent (tok ,t 0))]
+	     [(parent ,[e]) `(parent ,e)]
+
+	     [(origin) `(origin (tok ,this-token subtok_ind))]
+	     [(origin (tok ,t ,[n]))  `(origin (tok ,t ,n))]
+	     [(origin ,t) (guard (tokname? t)) `(origin (tok ,t 0))]
+	     [(origin ,[e]) `(origin ,e)]
+
+	     [(hopcount) `(hopcount (tok ,this-token subtok_ind))]
+	     [(hopcount (tok ,t ,[n]))  `(hopcount (tok ,t ,n))]
+	     [(hopcount ,t) (guard (tokname? t)) `(hopcount (tok ,t 0))]
+	     [(hopcount ,[e]) `(hopcount ,e)]
+
+	     [(version) `(version (tok ,this-token subtok_ind))]
+	     [(version (tok ,t ,[n]))  `(version (tok ,t ,n))]
+	     [(version ,t) (guard (tokname? t)) `(version (tok ,t 0))]
+	     [(version ,[e]) `(version ,e)]
+
 	     
 	     [(greturn ,[expr]            ;; Value
 		      (to ,memb)         ;; To
@@ -369,7 +390,7 @@
 		(loop `(let ([,socretval ,x])
 			 (if (= (my-id) ',BASE_ID)
 			     (begin 
-			       ,@(DEBUGMODE `((dbg "Soc return on basenode, returning directly: %d" ,socretval)))
+			       ,@(DEBUGMODE `(dbg "Soc return on basenode, returning directly: %d" ,socretval))
 			       (call (tok SOC-return-handler 0) ,socretval))
 			     (return ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
 	     ;; Sending to subtok 1 indicates that we're finished.
@@ -417,7 +438,7 @@
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
 		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (append args (map car stored) bindings env) tokens tok id)
+			,((process-expr (cons id (append args (map car stored) bindings env)) tokens tok id)
 			  body))))))
 	    
     (define decode 
@@ -615,7 +636,6 @@
       (via (tok tok1 0))
       (seed '#f)
       (aggr #f))]
-
   
 ))
 

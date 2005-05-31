@@ -234,9 +234,9 @@
 [define (check-store tokstore)
   (hashtab-for-each
    (lambda (namepair tokobj)
-     (or (and (pair? namepair)
-	      (symbol? (car namepair))
-	      (number? (cdr namepair))
+     (or (and (simtok? namepair) ;(pair? namepair)
+	      (symbol? (simtok-name namepair)) ;(symbol? (car namepair))
+	      (number? (simtok-subid namepair)) ;(number? (cdr namepair))
 	      (vector? tokobj))
 	 (error 'check-store "Bad token store at entry: ~a, tokobj: ~n~a" namepair tokobj)))
    tokstore)]

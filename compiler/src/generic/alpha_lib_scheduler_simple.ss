@@ -10,11 +10,6 @@
 ;  (define SOC (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 ;			   (simworld-all-objs sim))))
 
-  ;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
-  (define ACTION_LENGTH 1)  ;; Thus we ignore the "duration" field of simevts.
-
-  (define SCHEDULE_DELAY 1)
-
   (define buffer '()) ;; Contains pairs (simevt . simob) where simob is the object handling the event.
   (define vtime 0)    ;; Clock for the whole simulator.
 
@@ -31,6 +26,7 @@
   ;; Is called with the local time that the scheduling hapens.
   ;; New events may have times in the future, but should not have times in the past.
   (define (schedule ob . newevnts)        
+    ;; ASSUME: all the new events are already tagged with concrete times.
     (DEBUGMODE
      (for-each (lambda (ne)
 		 (if (and (simevt-vtime ne) (< (simevt-vtime ne) vtime))
@@ -38,18 +34,12 @@
 			     vtime
 			     (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
 	       newevnts))
-    ;; We tag specific times on those "ASAP" events without them.
-    (let ([timedevnts
-	   (map (lambda (e) 
-		  (cons
-		   (make-simevt (let ((t (simevt-vtime e)))
-				  (if t t (+ SCHEDULE_DELAY vtime)))
-				;(simevt-duration e)
-				(simevt-msgobj e))
-		   ob))
-		newevnts)])
+
+    (let ([pairedevnts (map (lambda (x) (cons x ob)) newevnts)])
       (unless (null? newevnts)
-	      (set! buffer (merge lessthan timedevnts buffer))
+	      ;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
+	      ;; Before I merely merged them:
+	      (set! buffer (sort lessthan (append pairedevnts buffer)))
 
 	      (logger 3 "Scheduling ~a new events ~a, new schedule len: ~a~n"
 		      (length newevnts)
@@ -61,6 +51,7 @@
 		      ;(map (lambda (e) (list (simevt-vtime (car e)) (msg-object-token (simevt-msgobj (car e)))))  buffer)
 		      )
 	      )))
+
 
   ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
@@ -74,17 +65,21 @@
     (set-simobject-local-msg-buf! ob '())
     (set-simobject-timed-token-buf! ob '())
     (set-simobject-outgoing-msg-buf! ob '())
+
     ;; The incoming buffer starts out with just the start actions SOC-start and node-start.
+    ;; Node-start executes before SOC-start.
     (set-simobject-local-msg-buf! ob				
 	(list (make-simevt 0
 ;			   #f ; ignored
 			   (bare-msg-object (make-simtok 'node-start 0) '() 0))))
     (if (= BASE_ID (node-id (simobject-node ob)))
 	(set-simobject-local-msg-buf! ob
-	   (cons (make-simevt 0
-;			      #f ; ignored
-			      (bare-msg-object (make-simtok 'SOC-start 0) '() 0))
-		 (simobject-local-msg-buf ob))))
+				      (append 
+				       (simobject-local-msg-buf ob)
+				       (list (make-simevt 0
+					;			      #f ; ignored
+							  (bare-msg-object (make-simtok 'SOC-start 0) '() 0)))
+				       )))
     ))
 
 
@@ -115,9 +110,29 @@
 	    (printf "NOT ALL SIMEVT ~a ~a ~a~n" 
 		    timed local incoming)))
       
-      ;; Process incoming and local msgs:
-      ;; Schedule timed local tokens:
-      (apply schedule ob (append timed local incoming))))
+;      (if (not (null? incoming)) (disp "INCOMING TIMES:" (map simevt-vtime incoming)))
+
+    ;; We tag specific times on those "ASAP" events without them.
+      (let ([timedevnts
+	     (append timed		     
+		     (map (lambda (e) 
+			    (make-simevt (let ((t (simevt-vtime e)))
+					   (if t t (+ SCHEDULE_DELAY vtime)))
+					 (simevt-msgobj e)))	  ;(simevt-duration e)
+			  local)
+		     (map (lambda (e) 
+			    (make-simevt 
+			     (let ((t (simevt-vtime e)))
+			       (if t
+				   (max t (+ RADIO_DELAY SCHEDULE_DELAY vtime))
+				   (+ RADIO_DELAY SCHEDULE_DELAY vtime)))
+			     (simevt-msgobj e)))
+			  incoming))])
+	;; Process incoming and local msgs:
+	;; Schedule timed local tokens:
+	(apply schedule ob timedevnts))))
+
+
 
   ;; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
   (define (launch-outgoing ob)

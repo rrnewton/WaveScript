@@ -17,11 +17,11 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be had from.
 ;; ON
-;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
+;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
 ;;;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
-;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
 ;; OFF
-(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
+;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
 
 
 (define-syntax DEBUGASSERT 
@@ -48,6 +48,10 @@
   (syntax-rules ()
 ;    [(_ expr ...) (begin expr ...)]))
     [(_ expr ...) (void)]))
+
+
+
+
 ;;======================================================================
 
 
@@ -127,9 +131,19 @@
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
 ;; Vtimes:
-(define RADIO_DELAY 0)
-(define PROCESSING_TIME 0)
+(define RADIO_DELAY 10)  ;; Communication time
+;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
 (define-regiment-parameter simalpha-num-nodes 30)
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
 
+(define-regiment-parameter simalpha-dbg-on #t)      ;; dbg print statements
+(define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded
+
+
+;; Used primarily by alpha_lib_scheduler_simple.ss
+;;====================
+
+;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
+;(define ACTION_LENGTH 100)  ;; Thus we ignore the "duration" field of simevts.
+(define SCHEDULE_DELAY 1)

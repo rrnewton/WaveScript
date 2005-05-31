@@ -60,6 +60,7 @@
     (>=  (Number Number) Bool)
 ;    (eq? (Object Object) Bool)
     (equal? (Object Object) Bool)
+    (eq? (Object Object) Bool)  ;; This should just be = when it comes down to it.
     (null? (List) Bool)
 
     ;; These are dynamically typed primitives: 
@@ -80,14 +81,18 @@
 (define local-node-primitives 
   '(
     (my-id () NodeID)
-    (dist (Token) Integer)
+    (dist (Token) Integer) ;; Phase this out "dist" is wrong.
+    (hopcount (Token) Integer)
+    (parent (Token) NodeID)
+    (origin (Token) NodeID)
+    (version (Token) Integer)
     
     (check-tok (Token) Bool)
     ;; Gotta have a way to remove tokens also!
     ;; Not to mention expiration dates!!
 
-    
-
+    (list Object List)
+    (append List List)
 
     (rfoldwith (Token Function Object Region) Signal)
     ))
@@ -218,6 +223,7 @@
      (loc () Location)
 
      (printf (String . Object) Void)
+     (dbg (String . Object) Void)
 
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
@@ -919,6 +925,16 @@
 	      args)))
 
 
+
+(define (all-equal? ls)
+  (if (null? ls) #t
+      (let ((x (car ls)))
+	(let loop ((ls (cdr ls)))
+	  (cond
+	   [(null? ls) #t]
+	   [(equal? x (car ls)) (loop (cdr ls))]
+	   [else #f])))))
+		  
 ;; ======================================================================
 
 ;;; unique-name produces a unique name derived the input name by
