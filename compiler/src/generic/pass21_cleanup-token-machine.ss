@@ -239,7 +239,7 @@
 	     [(or ,[a]) a]
 	     [(or ,[a] ,b ...)
 	      `(if ,a '#t
-		   ,(loop `(and ,b ...)))]
+		   ,(loop `(or ,b ...)))]
 
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]

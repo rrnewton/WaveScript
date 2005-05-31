@@ -87,6 +87,9 @@
 
     ;; This signifies that we're at the root of the tree.
     (define NO_PARENT 'noparent)
+
+    ;; Value for the g_hopcount argument to indicate that it's a local (non-gradient) invocation.
+    (define LOCALCALL 'nongrad-invoke)
     
     ;; Call flags:
 ;    (define RHINIT 111)
@@ -102,8 +105,7 @@
     ;; Won't hold buffered values forever...
     (define DEFAULT_RHTIMEOUT 1000)
 
-    ;; Value for the g_hopcount argument to indicate that it's a local (non-gradient) invocation.
-    (define LOCALCALL ''nongrad-invoke)
+
 
     (define (token->tokname t)
       (match t
@@ -278,7 +280,7 @@
 		      (if (eq? (token->tokname tok) this-token)
 			  ;; In this case we're inside the handler currently:
 			  ;; Choose based on whether it's a real gradient call, or just local:
-			  `(if (eq? ,LOCALCALL ,HOPCOUNT_ARG)
+			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_HOPCOUNT_ARG
 			       ,HOPCOUNT_ARG)
 ;			  HOPCOUNT_ARG
@@ -286,28 +288,28 @@
 	     [(hopcount ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
-			  `(if (eq? ,LOCALCALL ,HOPCOUNT_ARG)
+			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_HOPCOUNT_ARG
 			       ,HOPCOUNT_ARG)
 			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG)))]
 	     [(parent ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
-			  `(if (eq? ,LOCALCALL ,HOPCOUNT_ARG)
+			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_PARENT_ARG
 			       ,PARENT_ARG)
 			  `(ext-ref ,tok ,STORED_PARENT_ARG)))]
 	     [(origin ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
-			  `(if (eq? ,LOCALCALL ,HOPCOUNT_ARG)
+			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_ORIGIN_ARG
 			       ,ORIGIN_ARG)
 			  `(ext-ref ,tok ,STORED_ORIGIN_ARG)))]
 	     [(version ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
-			  `(if (eq? ,LOCALCALL ,HOPCOUNT_ARG)
+			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_VERSION_ARG
 			       ,VERSION_ARG)
 			  `(ext-ref ,tok ,STORED_VERSION_ARG)))]	     	    
@@ -326,7 +328,9 @@
 	      (let ([aggr_ID (unique-name 'aggr_ID)]
 		    [acc (unique-name 'acc)]
 		    [oldacc (unique-name 'oldacc)]
+		    [parent_pointer (unique-name 'parent_pointer)]
 		    [return-handler (unique-name 'greturn-handler)])
+
 	      (values 
 	       ;; First return value: a new handler for the aggregation object
 	       ;; corresponding to this particular return statment.
@@ -341,36 +345,14 @@
 					  seed_exp)])
 
 			,@(DEBUGMODE
-			 `(if (or (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id))))
-				  (eq? flag ',RHLOCAL)
+			 `(if (or (eq? flag ',RHLOCAL)
 				  (eq? flag ',RHTIMEOUT)
-				  (eq? flag ',RHINIT))
+				  (eq? flag ',RHINIT)
+				  (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
 			      (dbg '"~a: Return Handler<~a>: args (~a ~a ~a ~a ~a) stored acc: ~a"
-				   (my-id) retid destid flag val toind viaind ,acc)))
+				   (my-id) retid destid flag val toind viaind ,acc)
+			      (void)))
 
-			;; TODO: we need to have a facility for intermediate nodes on the tree to NOT 
-			;; be part of the aggregation.  This will probably amount to another "mode flag" 
-			;; -- a version of RHLOCAL that just ignores "val".  But we'll still need to set up 
-			;; a timed call to fire the return-handler with this INTERMEDIARY flag.
-
-		       ;; First thing is to check the flag to see if we're being called locally or remotely.
-		       ;; But before that we'll bind some functions for our aggregator and seed.
-		       ;; If there is not a user-provided aggregator, the implicit aggregator forms a list of all results.
-		       ,(let ([fold (lambda (ac)
-				      `(begin "This is THE accumulated value transmitted upwards."
-					 (if (eq? flag ',RHTIMEOUT)
-					   ,ac ;; When the timeout fires there is no new value, just the accumulator.
-					   ,(if aggr
-						`(subcall ,aggr val ,ac)
-						`(if (eq? flag ',RHLOCAL)
-						     (cons val ,ac)
-						     (append val ,ac))
-						     ))))]
-			      [theseed (if aggr seed_exp ''())]
-			      [parent_pointer (unique-name 'parent_pointer)])
-			  				      
-
-			`(begin
 			;; We need to activate a timer on every node that receives a return message.
 			;; This timer will insure that *every* return value gets returned at some point.
 			;; RHLOCAL and RHREMOTE calls will both  reset the timer.
@@ -380,67 +362,78 @@
 					   (tok ,return-handler retid)
 					   destid ',RHTIMEOUT 0 toind viaind))
 
-			  ;; When we get the local value, we lump together and send upwards.
-			  ;; We also do this if our timer runs out:
-			   (if (or (eq? flag ',RHLOCAL) (eq? flag ',RHTIMEOUT))
-			     (let ([,oldacc ,acc])
-			       ,@(DEBUGMODE `(if (eq? flag ',RHLOCAL)
-						 (dbg "Returning locally at %d val %d oldacc %d" (my-id) val ,oldacc)
-						 (dbg "%d: Timeout fired, aggregate: ~a" (my-id) ,oldacc)))
-			       ;; Reset the accumulator:
-			       (set! ,acc ,theseed)
-			      
-			       ;; While the potential subcall is hapenning below this return_handler very well may be called again.
-			       ;; But we just reset the acc above , so any calls from this moment on will be in the next epoch.
-
-
-			       ;; Next, do we have the via token?
-			       (if (not (token-present? (tok ,via viaind)))
-
-				   ;; NOTE: FIZZLE SEMANTICS.
-				   ;; That is, if we get a local return before the trees there.  Then we just fizzle.
-				   ;; One could imagine buffering here, but that gets complex.
-				   (begin 
-				   ,@(DEBUGMODE 
-				      `(dbg "Warning: Didn't have the via token %d at node %d (FIZZLE)" ',via (my-id))))
-
-				   ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?	
-				   (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
-				     (if (not ,parent_pointer)
-					 (begin ,@(DEBUGMODE `(dbg "ERROR: fell off the via tree: %d at node %d" ',via (my-id)))
-						(void))
-					 (if (eq? ',NO_PARENT ,parent_pointer)
-					     ;; Now, if we're the destination we need to call the 'to' token.
-					     ,(let ([temp (unique-name 'temp)])
-						`(let* ((,temp ,(fold oldacc)))
-						   (begin
-						     ,@(DEBUGMODE 
-							`(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a"
-							      (my-id) ',to toind ,temp))
-						     (call (tok ,to toind) ,temp))))
-					     ;; Otherwise, send it on up to the parent:
-					     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
-					     (begin 
-					       ,@(DEBUGMODE
-						  `(dbg "Returning up tree from %d to %d val %d acc %d" 
+			;; The timeout flag causes an the aggregate to move onward.  
+			;; This either means up the tree or to the destination:
+			(if (eq? flag ',RHTIMEOUT)
+			    (begin 
+			      (let ([,oldacc ,acc])
+				;; Reset the accumulator:
+				(set! ,acc ,(if aggr seed_exp ''()))
+				;; Next, do we have the via token?
+				(if (not (token-present? (tok ,via viaind)))
+				    ;; NOTE: FIZZLE SEMANTICS.
+				    ;; That is, if we get a local return before the trees there.  Then we just fizzle.
+				    ;; One could imagine buffering here, but that gets complex.
+				    (begin 
+				      ,@(DEBUGMODE 
+					 `(dbg "Warning: Didn't have the via token %d at node %d (FIZZLE)" ',via (my-id))))
+				    ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?	
+				    (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
+				      (if (not ,parent_pointer)
+					  (begin ,@(DEBUGMODE `(dbg "ERROR: fell off the via tree: %d at node %d" ',via (my-id)))
+						 (void))
+					  (if (eq? ',NO_PARENT ,parent_pointer)
+					      ;; Now, if we're the destination we need to call the 'to' token.
+					      (begin
+						,@(DEBUGMODE 
+						   `(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a" (my-id) ',to toind ,oldacc))
+						(call (tok ,to toind) ,oldacc))
+					      ;; Otherwise, send it on up to the parent:
+					      ;; TODO: Should use "send_to" form here, but haven't implemented yet:
+					      (begin 
+						,@(DEBUGMODE
+						   `(dbg "~a: Returning up tree to %d val %d acc %d" 
 							 (my-id) '(tok ,return-handler retid) val ,oldacc))
-					       (bcast (tok ,return-handler retid)
-						      ,parent_pointer ;; destid
-						      ',RHREMOTE        ;; flag
-						      ,(fold oldacc) ;; val
-						      ,toind ,viaind  ;; toind, viaind
-						      )))))))
+						(bcast (tok ,return-handler retid)
+						       ,parent_pointer ;; destid
+						       ',RHREMOTE        ;; flag
+						       ,oldacc ;; val
+						       ,toind ,viaind  ;; toind, viaind
+						       ))))))))
 
-			     ;; Otherwise, flag = RHREMOTE
-			     ;; If called remotely, we only proceed if we are the intended destination.
-			     (if (not (or (= destid ',NULL_ID) (= destid (my-id))))
-				 (begin
-				   ;(DEBUGMODE (dbg '"  CANCELED, not destination."))
-				   (void)) ;; Might want to evict self here -- wasted space on useless tokens.
-				 ;; Now we simply accumulate and wait for the local call.
-				 (set! ,acc ,(fold acc))))
 
-				      ))]
+			    ;; While the potential subcall is hapenning below this return_handler very well may be called again.
+			    ;; FIXME: This is dangerous.
+			    ;; One of the values may get lost.
+			    ;; We need something like a lock on the ACC variable.
+			    (if (eq? flag ',RHLOCAL)
+				;; When we get the local value, we lump it together:
+				(begin
+				  ,@(DEBUGMODE `(if (eq? flag ',RHLOCAL)
+						    (dbg "Returning locally at %d val %d acc %d" (my-id) val ,acc)
+						    (dbg "%d: Timeout fired, aggregate: ~a" (my-id) ,acc)))
+				  (begin 
+				    (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
+						    `(cons val ,acc)))
+				    ;; Local does a timeout if the timer isn't already set.
+				    (if #t ;; (not (is_scheduled? ...
+					(call (tok ,return-handler retid) 
+					      '#f          ;; destid
+					      ',RHTIMEOUT  ;; flag
+					      '#f          ;; val
+					      ,toind ,viaind))))				
+
+				;; Otherwise, flag = RHREMOTE
+				;; If called remotely, we only proceed if we are the intended destination.
+				(if (not (or (= destid ',NULL_ID) (= destid (my-id))))
+				    (begin
+					;(DEBUGMODE (dbg '"  CANCELED, not destination."))
+				      (void)) ;; Might want to evict self here -- wasted space on useless tokens.
+				    ;; Now we simply accumulate and wait for the local call.
+				    (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
+						    `(append val ,acc))))
+				))]
+		     ;; Add this new return handler to the other bindings:
 		     (append etb ttb vtb stb))
 
 	       ;; Second return value: the generated code for the return statement.
@@ -459,16 +452,18 @@
 
 	     [(return ,[etb e]) (values etb `(return ,e))]
 
-	     ;; This is a local call to a gradient-bearing token:
+	     ;; This is a non-gradient call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
 	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
 	      (values (apply append etb atb*)
-		      `(call (tok ,t e)
-			     '#f ;; parent
-			     '#f ;; origin
-			     0   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT 0
-			     '#f ;; version
+		      `(,call-style (tok ,t e)
+				    '#f ;; parent
+				    '#f ;; origin
+				    ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
+				    '#f ;; version
 			     ,args* ...))]
+
+	     
 	     ;; OTHERWISE, let it fall through to the prim case.
 	     ;; Call to non-gradient bearing token:
 ;	     [(,call-style ,[ttb tok] ,[atb* args*] ...) 
@@ -482,7 +477,7 @@
 		      `(timed-call ,time (tok ,t ,e)
 				   '#f ;; parent
 				   '#f ;; origin
-				   0   ;; hopcount
+				   ',LOCALCALL   ;; hopcount
 				   '#f ;; version
 				   ,args* ...))]
 	     ;; OTHERWISE, let it fall through to the prim case.
@@ -529,7 +524,7 @@
 						      ,@stored)
 
 	    ,@(DEBUGMODE
-	       `(if (not (eq? ,LOCALCALL ,HOPCOUNT_ARG))
+	       `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
 		    (dbg "~a: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
 			 (my-id) ',tok ,id
 			 ,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG 
@@ -537,10 +532,11 @@
 			 (list ,@args))))
 
 					    ;; Here we decide whether or not to accept the token:
-					    (if (or (begin '"First time received we definitely run:" 
-							   (not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
+					    (if (or 
 						    (begin '"Local calls have special hopcount (usually 0), accept those:"
-							   (eq? ,LOCALCALL ,HOPCOUNT_ARG))                  ;; Local calls we accept
+							   (eq? ',LOCALCALL ,HOPCOUNT_ARG))                  ;; Local calls we accept
+						    (begin '"First time received we definitely run:" 
+							   (not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
 						    (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
 						    (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
 							 (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
@@ -553,7 +549,7 @@
 						  newbod
 						  ;; And then store these gradient parameters for next time:
 						  ;; (Unless it was a local call, in which case there's nothing to store.)
-						  `(if (not (eq? ,LOCALCALL ,HOPCOUNT_ARG))
+						  `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
 						       (begin '"If it's not a local message, set stored gradient info:"
 							 (set! ,STORED_PARENT_ARG ,PARENT_ARG)
 							 (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
