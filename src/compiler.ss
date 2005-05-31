@@ -882,7 +882,7 @@
 
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -892,12 +892,47 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (printf "SOCSTART ") 
+		  (SOC-start () ;(printf "SOCSTART ") 
 			     (emit tok1)
+			     ;; Manual timeout:
+			     (timed-call 1000 tok1)
 			     )
-		  (catcher (v) (printf "Got:~a" v))
-		  (tok1 () (printf "_ ")
+		  (catcher (v) (printf "~a" v))
+		  (tok1 () ;(printf "_ ")
 			(greturn (my-id) (to catcher)))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    (list
+	     (car lst)
+	     (if (memq BASE_ID (cadr lst)) #t #f)
+	     (> (length (cadr lst)) 1)	     )
+	    ))))     
+      ((,BASE_ID) #t #t)]
+
+
+     ["Gradients: execute a repeated return from 1-hop neighbors. (NONDETERMINISTIC)"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          cps-tokmac
+		     closure-convert        cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (call tok1 '10))
+		  (catcher (v) (printf "~a" v))
+		  (tok1 (reps) 
+			(emit tok2)
+			(if (> reps 0)
+			    (timed-call 500 tok1 (- reps 1))))
+		  (tok2 () (greturn (my-id) (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
@@ -907,7 +942,76 @@
 		   (read (open-input-string (get-output-string prt))))))
 	    lst
 	    ))))
-	(#t 1 2 #t)]
+      ,(lambda (x)
+	 ;; ASSUMES LOSSLESS CHANNELS AND DETERMINISTIC TIMING:
+	 (all-equal? (cdr x)))]
+
+
+     ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (call tok1 '10))
+		  (catcher (v) (printf "~a" v))
+		  (tok1 (reps) 
+			(emit tok2)
+			(if (> reps 0)
+			    (timed-call 500 tok1 (- reps 1))))
+		  (tok2 () (relay) (greturn (my-id) (to catcher)))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    (for-each (lambda (x) (display x) (newline)) lst)
+;	    (let ((lens (map length lst)))
+	    ))))
+      ,(lambda (x) #t)]
+
+
+     ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (call tok1 '10))
+		  (catcher (v) (printf "~a" v))
+		  (tok1 (reps) 
+			(emit tok2)
+			(if (> reps 0)
+			    (timed-call 500 tok1 (- reps 1))))
+		  (tok2 () (relay) 
+			;(if (= (dist) 2)
+			(greturn (dist) (to catcher))
+			)
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    (for-each (lambda (x) (display x) (newline)) lst)
+	    ))))
+      ,(lambda (x) #t)]
+
 
 
 #;
