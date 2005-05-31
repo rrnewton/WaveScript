@@ -881,14 +881,13 @@
 	(#t (0 1 2) #t)]
 
 
-#;
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
 		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
+;		     closure-convert        cleanup-token-machine
 		     )])
 	(let ([prog
 	       (run-compiler
@@ -897,10 +896,8 @@
 			     (emit tok1)
 			     )
 		  (catcher (v) (printf "Got:~a" v))
-		  (tok1 () 
-			(if (= (my-id) BASE_ID)
-			    (printf "_ ")
-			    (printf "!~a " (my-id))))
+		  (tok1 () (printf "_ ")
+			(greturn (my-id) (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
