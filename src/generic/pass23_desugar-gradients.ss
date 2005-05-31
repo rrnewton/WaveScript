@@ -374,7 +374,8 @@
 			;; We need to activate a timer on every node that receives a return message.
 			;; This timer will insure that *every* return value gets returned at some point.
 			;; RHLOCAL and RHREMOTE calls will both  reset the timer.
-#;			   (if (or (eq? flag ',RHLOCAL) (eq? flag ',RHREMOTE))
+#;		
+			   (if (or (eq? flag ',RHLOCAL) (eq? flag ',RHREMOTE))
 			       (timed-call ,DEFAULT_RHTIMEOUT 
 					   (tok ,return-handler retid)
 					   destid ',RHTIMEOUT 0 toind viaind))
@@ -410,8 +411,13 @@
 						(void))
 					 (if (eq? ',NO_PARENT ,parent_pointer)
 					     ;; Now, if we're the destination we need to call the 'to' token.
-					     
-					     (call (tok ,to toind) ,(fold oldacc))
+					     ,(let ([temp (unique-name 'temp)])
+						`(let* ((,temp ,(fold oldacc)))
+						   (begin
+						     ,@(DEBUGMODE 
+							`(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a"
+							      (my-id) ',to toind ,temp))
+						     (call (tok ,to toind) ,temp))))
 					     ;; Otherwise, send it on up to the parent:
 					     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
 					     (begin 
