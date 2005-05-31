@@ -376,7 +376,7 @@
 			     ,(format "Ext-set! of (tok ~a ~a) variable ~a" tokname subtok x)
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
-				 (warning 'ext-set! "token not present: ~a" `(,tokname . subtok))
+				 (warning 'ext-set! "var ~a: token not present: ~a" ',x `(,tokname . subtok))
 				 )))]
 
 		  ;; Local tokstore-reference:
@@ -410,7 +410,7 @@
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
 				       (bare-msg-object ,rator (list ,@rand*) current-vtime))
-			    (simobject-local-msg-buf this)))]
+			    (simobject-outgoing-msg-buf this)))]
 
 ;;TODO:
 ;		  [(activate ,rator ,rand* ...)
@@ -429,8 +429,10 @@
 
 		  ;; If it's in the hash table, it's present:
 		  ;; This is static wrt to token name for the moment:
-		  [(token-present? (tok ,t ,n)) (guard (number? n)) `(hashtab-get the-store (make-simtok ',t ,n))]
-		  [(token-present? (tok ,t ,[e])) `(hashtab-get the-store (make-simtok ',t ,e))]
+		  [(token-present? (tok ,t ,n)) (guard (number? n)) 
+		   `(if (hashtab-get the-store (make-simtok ',t ,n)) #t #f)]
+		  [(token-present? (tok ,t ,[e])) 
+		   `(if (hashtab-get the-store (make-simtok ',t ,e)) #t #f)]
 
 		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
 
@@ -451,6 +453,9 @@
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
 		  [(my-id) '(node-id (simobject-node this))]
+		  [(my-clock) 
+		   'current-vtime]
+
 		  ;; [2005.05.07] Shouldn't run into this now:
 #;		  [(soc-return ,x)
 		   (process-expr `(return ,x 
@@ -489,8 +494,9 @@
 				 [else (loop (sub1 i))]))
 			      newstr))])
 ;		     (disp "MANGLED" (massage-str str))
-		     `(begin (display (format ,(massage-str str) ,@args) (current-error-port))
-			     (newline (current-error-port))))]
+		     `(if (simalpha-dbg-on)
+			  (begin (display (format ,(massage-str str) ,@args) (current-error-port))
+				 (newline (current-error-port)))))]
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
 			      (basic-primitive? prim)))
@@ -573,14 +579,15 @@
            (lambda (tbind)
 	     (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
-			(lambda (current-vtime subtokind . vals) ;world)
+			(lambda (current-vtime ,id . vals) ;world)
 			  (let ,(map list args (make-list (length args) ''sim-alpha-uninitialized))
 
 			    (let ([numvals (length vals)])
 
  			      (if (< numvals ,(length args))
- 				  (warning 'simulator-alpha "executing ~a padding args ~a with zero." 
- 					   ',tok (list-tail ',args numvals)))
+				  (if (simalpha-padding-warning)
+				      (warning 'simulator-alpha "executing ~a padding args ~a with zero." 
+					       ',tok (list-tail ',args numvals))))
  			      (if (> numvals ,(length args))
  				  (error 'simulator-alpha "executing ~a, got excess vals ~a for args ~a"					 
  					   ',tok vals ',args))
@@ -597,7 +604,7 @@
 
 ;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
-				   [simtok-obj (make-simtok ',tok subtokind)]
+				   [simtok-obj (make-simtok ',tok ,id)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
 				   [old-local    (simobject-local-msg-buf this)])
 			      (DEBUGMODE 
@@ -620,7 +627,8 @@
 				(set-simobject-outgoing-msg-buf! this 
 	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
 				(set-simobject-local-msg-buf! this 
-                                  (append (reverse (simobject-local-msg-buf this)) old-local))
+                                  (append (simobject-local-msg-buf this) ;(reverse (simobject-local-msg-buf this)) 
+					  old-local))
 				(void))))))
                          ]))
 	  tbinds)])
@@ -659,7 +667,7 @@
 	      ;; Here we hack an extra handler into tbinds:
 ; 	      (set! tbinds
 ; 		    (cons `[SOC-return-handler
-; 			    (lambda (current-vtime subtokind x)
+; 			    (lambda (current-vtime subtok_ind x)
 ; 			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
 ; 				  (simulator-soc-return x)				  
 ; 				  (error 'SOC-return-handler
@@ -763,7 +771,7 @@
 ))
 
 '    (compile-simulate-alpha 
-     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtokind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtokind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtokind)))))) (K_1 subtokind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~a") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
+     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtok_ind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtok_ind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtok_ind)))))) (K_1 subtok_ind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~a") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
 
 
 (define testsalpha (map (lambda (test)

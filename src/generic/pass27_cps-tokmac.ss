@@ -290,7 +290,7 @@
 	      (loop expr (lambda (e) (pvk `(set! ,v ,e))))]
 	     [(tok ,tok) (pvk `(tok ,tok))]
 	     [(tok ,tok ,n) (guard (number? n))
-	      (pvk '(tok ,tok ,n))]
+	      (pvk `(tok ,tok ,n))]
 	     [(tok ,tok ,expr) 
 	      (loop expr
 		    (lambda (e) (pvk `(tok ,tok ,e))))]
@@ -300,13 +300,20 @@
 		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
              [(begin) (pvk '(void))]
 	     [(begin ,x) (loop x pvk)]
-	     [(begin ,x ,y ...)
+	     ;; This does blatantly invalid lifts!!
+#;	     [(begin ,x ,y ...)
 	      (loop x 
 		    (lambda (e) 
 		      (make-begin 
 		       `(begin ,e
 			       ,(loop `(begin ,@y)
 				      (lambda (e2) (pvk (make-begin `(begin ,e2)))))))))]
+	     [(begin ,x ,y ...)
+	      (loop x 
+		    (lambda (e1) 
+		      (loop `(begin ,@y)
+			    (lambda (e2) (pvk (make-begin `(begin ,e1 ,e2)))))))]
+
 
 	     ;; Alright, let's think through conditionals:
 	     
@@ -334,14 +341,16 @@
 
 
 			   (let* ([k (unique-name 'k)]
-				  [v (unique-name 'HOLE)])		
+				  [v (unique-name 'HOLE)])
+			     ;(disp "HAD SUBCALL: CAPTURING..." (has-subcall? conseq) (has-subcall? altern))
 			     `(let ([,k (lambda (,v) ,(pvk v))])
 				(if ,t
 				    ,(loop conseq (lambda (c) `(kcall ,k ,c)))
 				    ,(loop altern (lambda (a) `(kcall ,k ,a))))))
+			   (begin ;(disp "NO SUBCALL" conseq altern)
 			   (pvk `(if ,t
 				     ,(loop conseq id)
-				     ,(loop altern id))))))]
+				     ,(loop altern id)))))))]
 	       
 	     [(let ((,lhs ,rhs)) ,body)
 	      (loop rhs
@@ -445,11 +454,11 @@
 						(call (tok K_5 kind_4) '2)))))
 	      ()]
 	     [(,toks-escaped '(if (= flag '0)
-				 (if (= subtokind '0) (void) (begin))
+				 (if (= subtok_ind '0) (void) (begin))
 				 (begin (begin fv0 '3) (evict (tok K_5 0)))))
 	      ()]
 	     [(,toks-escaped '(if (= flag '0)
-				 (if (= subtokind '0) (void) (begin))
+				 (if (= subtok_ind '0) (void) (begin))
 				 (begin (begin fv0 '3) (tok K_5 0))))
 	      (K_5)]
 	     
@@ -503,7 +512,7 @@
 			(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car ktbs))])
 			       (list (equal? (,toks-referenced body) (list tok))
 				     (equal? (,toks-escaped body) '())
-				     (set-equal? (list->set (,free-vars body)) '(flag subtokind fv0))
+				     (set-equal? (list->set (,free-vars body)) '(flag subtok_ind fv0))
 				     (,free-vars expr))))
 		   ;; If the test fails, give information:
 		   (list expr ktbs)
@@ -628,12 +637,12 @@
 				 (begin (call (tok ,k4 0) '0) '1))])
 			(begin (call (tok ,k5 ,kind2) '0)
                         (call (tok tok2 0) (tok ,k6 ,kind3) '2))))
-		(,k7 subtokind
+		(,k7 subtok_ind
 		     (flag fv0)
 		     (stored (kcounter 0))
 		     (if (= flag '0)
-			 (if (= subtokind '0) (void) (begin))
-			 (begin (+ '1 fv0) (evict (tok ,k8 subtokind)))))
+			 (if (= subtok_ind '0) (void) (begin))
+			 (begin (+ '1 fv0) (evict (tok ,k8 subtok_ind)))))
 		(tok2 subtok_ind (,otherk1 x) (stored) (call ,otherk2 (* '2 x)))))))
 	   (guard (andmap (lambda (x) (eq? x k1)) (list k2 k3 k4 k5 k6 k7 k8))
 		  (andmap (lambda (x) (eq? x kind1)) (list kind2 kind3))
@@ -643,39 +652,70 @@
 
     
     ["Testing using 'testcps-expr': an if in begin."
-     (,testcps-expr '(begin a (if b c d)))
+     (deep-assq 'if (,testcps-expr '(begin a (if b c d))))
      ,(lambda (x)
-	(match (deep-assq 'if x)
+	(match x
 	       [(if b (kcall ,k c) (kcall ,k_ d))
 		(eq? k k_)]
+	       [(if b c d) #t]
 	       [,else #f]))]
-
     ["Testing using 'testcps-expr': an if in begin with non-identity continuation"
-     (,testcps-expr '(begin a (if b c d) e))
-     ,(lambda (x)
-	(match (deep-assq 'lambda x)
+     (deep-assq 'lambda (,testcps-expr '(begin a (if b c d) e)))
+     ,(lambda (x) (disp "FO" x)
+	(match x 
+	       [#f #t] ;; Did not cps it -- that's fine.
 	       [(lambda (,hole) (begin ,hole_ e)) #t]
-	       [,else #f]))]
-    
-    ["Testing using 'testcps-expr': a begin in an if branch."
-     (,testcps-expr '(if a b (begin c d)))
-
-     ,(lambda (x)
-	(match (deep-assq 'if x)
-	       ;; It should push the kcall into the begin:
-	       [(if a (kcall ,k b) (begin c (kcall ,k_ d))) #t]
 	       [,else #f]))]    
-    ["Testing using 'testcps-expr': same thing, testing the left branch."
-     (,testcps-expr '(if a (begin b c) d))
+    ["Testing using 'testcps-expr': a begin in an if branch."
+     (deep-assq 'if (,testcps-expr '(if a b (begin c d))))
      ,(lambda (x)
-	(match (deep-assq 'if x)
+	(match x
 	       ;; It should push the kcall into the begin:
+	       [(if a b (begin c d)) #t]
+	       [(if a (kcall ,k b) (begin c (kcall ,k_ d))) #t]
+	       [,else #f]))]
+    ["Testing using 'testcps-expr': same thing, testing the left branch."
+     (deep-assq 'if (,testcps-expr '(if a (begin b c) d)))
+     ,(lambda (x)
+	(match x
+	       ;; It should push the kcall into the begin:
+	       [(if a (begin b c) d) #t]
 	       [(if a (begin b (kcall ,k_ c)) (kcall ,k d)) #t]
 	       [,else #f]))]
 
-          
-    )
-   ))
+
+    ["Testing using 'testcps-expr': an if in a (+) (w SUBCALL to force cps)"
+     (deep-assq 'if 
+		(cps-tokmac 
+		 (cleanup-token-machine 
+		  '(tokens (tok1 () (+ '1 (if b c (subcall tok2)))) 
+			   (tok2 () (return 3))))))
+     ,(lambda (x)
+	(match x
+	       [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+	       [,else #f]))]
+    ["Testing using 'testcps-expr': an if in begin (w SUBCALL to force cps)"
+     (deep-assq 'if 
+		(cps-tokmac 
+		 (cleanup-token-machine 
+		  '(tokens (tok1 () (begin (if b c (subcall tok2)) d))
+			   (tok2 () (return 3))))))
+     ,(lambda (x)
+	(match x
+	       [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+	       [,else #f]))]
+
+    
+    ["Make sure we don't lift begin clauses out in an inappropriate way."
+     (car (reverse
+	   (deep-assq 'tok1 (cps-tokmac 
+			     (cleanup-token-machine 
+			      '(tokens 
+				[tok1 () (let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))]))))))
+     ;; Should be unchanged:
+     (let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))]
+         
+   )))
 
 
 (define test-this (default-unit-tester
@@ -716,12 +756,12 @@
                       (begin (call (tok K_22 0) '0) '1))])
              (begin (call (tok K_22 kind_21) '0)
                     (call (tok tok2 0) (tok K_22 kind_21) '2))))
-         (K_22 subtokind
+         (K_22 subtok_ind
                (flag fv0)
                (stored (kcounter 0))
                (if (= flag '0)
-                   (if (= subtokind '0) (void) (begin))
+                   (if (= subtok_ind '0) (void) (begin))
                    (begin (dbg '"foo %d\n" (+ '1 fv0))
-                          (evict (tok K_22 subtokind)))))
+                          (evict (tok K_22 subtok_ind)))))
          (tok2 subtok_ind (k_20 x) (stored) (call k_20 (* '2 x)))))))
 )

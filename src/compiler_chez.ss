@@ -156,7 +156,7 @@
 ;(import simulator_alpha)
 
 (include "generic/alpha_lib.ss")
-(include "generic/alpha_lib_scheduler.ss")
+;(include "generic/alpha_lib_scheduler.ss")
 (include "generic/alpha_lib_scheduler_simple.ss")
 
 ;; If we're in SWL then load the GRAPHICS portion:

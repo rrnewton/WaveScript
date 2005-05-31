@@ -201,7 +201,7 @@
      (values (apply append rst*)
              `(,prim ,rands ...))]
     [(app ,[rst1 rator] ,[rst* rands] ...)
-     (warning 'desugare-let-stored
+     (warning 'desugar-let-stored
               "arbitrary application of rator: ~s~n" rator)
      (values (apply append rst1 rst*)
              `(app ,rator ,rands ...))]

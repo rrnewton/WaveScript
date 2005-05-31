@@ -16,7 +16,6 @@
 ;;   I'm pretty sure it *is* a petite bug though, it works 
 
 
-
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
@@ -103,6 +102,9 @@
 		     (fuse rands (lambda ls `(,prim ,ls ...)))]
 		    [(app ,[loop -> rator] ,[loop -> rands] ...)
 		     (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
+		    [(,[loop -> rator] ,[loop -> rands] ...)
+		     (warning 'closure-convert "allowing arbitrary application of rator: ~a" rator)
+		     (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
 		    [,otherwise
 		     (error 'generic-traverse
 			    "bad expression: ~s" otherwise)])))))
@@ -161,11 +163,12 @@
 #;    (define (build-continuation kname body hole)
       (values
        `(lambda (,hole) ,body)
-       `(,kname subtokind () (stored) 'FOOO)))
+       `(,kname subtok_ind () (stored) 'FOOO)))
 
-    (define (build-continuation kname body hole)
+    (define (build-continuation kname body hole)      
       (let* ([FREEVAR0 'fv0] ;(unique-name 'fv0)]
-	     
+	     [KCOUNTER (unique-name KCOUNTER)]
+
 	     [body (subst body hole FREEVAR0)]
 
 	     [fvs (remq-all FREEVAR0 (free-vars body))]
@@ -176,7 +179,7 @@
 	     [fvns (map (lambda (n)
 			  (string->symbol (format "fv~a" n)))
 			(iota (length fvs)))]
-		   ;; Get a fresh name & subtokindex name for our continuation:
+		   ;; Get a fresh name & subtok index name for our continuation:
 	     )
 	      	     
       (values 
@@ -189,39 +192,46 @@
 			   (let ([new (+ '1 (ext-ref (tok ,kname 0) ,KCOUNTER))])
 			     (begin (ext-set! (tok ,kname 0) ,KCOUNTER new)
 				    new))
+			   ;; NOTE: [2005.05.31] Now this should never happen because I do it in node-start:
 			   (begin "Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
 				  ;; Here we should just allocate a SEPARATE token for this, holding just the counter.
 				  ;; OR we should have one token that holds everybody's counters.  But for now I want 
 				  ;; to everything grouped under this one token "class".
+				  (dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname)
 				  ;; FIXME: PADDING
 				  (call (tok ,kname 0) ',INIT 
-					,@(make-list (max 1 (length fvs)) '(void))) ;; The void takes up the fv0 position
+					,@(make-list (max 1 (length fvs)) 
+						     ''counter-holder-tok-dummy-val)) ;; The void takes up the fv0 position
 				  '1))])
 		  (begin 
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
 		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
 		    (call (tok ,kname ,kind) ',INIT ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
-		    (dbg '"Initialized continuation (tok ~a ~a) <~a> with fvs ~a = ~a" 
-			    ',kname ',kind subtokind ',fvs (list ,@fvs))
+;		    (dbg '"~a: Initialized continuation (tok ~a ~a) <~a> with fvs ~a = ~a" 
+;			    (my-id)  ',kname ',kind subtok_ind ',fvs (list ,@fvs))
 		    "Return the name of this continuation object:"
 		    (tok ,kname ,kind)))))
        
        ;; Return a new token handler to hold the continuations' code.
        (let ([newfvs (map unique-name fvs)])
-       `(,kname subtokind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
-		(stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv '0]) newfvs))
-					;(map list fvns args))
-					;(make-vector ,(length fvs)))
-		(dbg '"Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a"
-			',kname subtokind flag (list ,@fvns) ',newfvs (list ,@newfvs))
+       `(,kname subtok_ind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
+		(stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) newfvs))
+;		(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
+;		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
+;		     (simobject-token-store this))
 			
 		(if (= flag ',INIT)
-		    (if (= subtokind '0)
+		    (if (= subtok_ind '0)
 			;; No freevars if we're just initializing the counter-object.
 			(void)
 			(begin
 			  ,@(map (lambda (fv fvn)
-				   `(set! ,fv ,fvn))
+				   `(begin 
+				      (set! ,fv ,fvn)
+				      (dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: ~a~n" 
+					   (my-id)
+					   ',fv ,fvn (simobject-token-store this))
+				      ))
 				 newfvs fvns)))
 		    ;; Otherwise, assume the flag is CALL
 		    (begin
@@ -232,7 +242,7 @@
 					;,(number-freevars body)
 		      ;; Since these are one-shot continuations, 
 		      ;; we deallocate ourselves on the way out:
-		      (evict (tok ,kname subtokind))
+		      (evict (tok ,kname subtok_ind))
 		      )))))))
 
     (define (no-first-class? k expr)
@@ -487,68 +497,6 @@
 
 
 
-#;		[(,free-vars 
-		  '(let ([kind_19 (if '3
-				      (let ([new '3]) (begin new new))
-				      '4)])
-		     '5))
-		 ()]
-		 
-
-#;		[(,free-vars 
-		  '(let ([kind_19
-			  (if (token-present?
-			       (tok K_18 0))
-			      (let ([new
-				     (+ '1
-					(ext-ref
-					 (tok K_18 0)
-					 kcounter))])
-				(begin (ext-set!
-					(tok K_18 0)
-					kcounter
-					new)
-				       new))
-			      (begin 
-				(call (tok K_18 0) '11 (void))
-				'1))])
-		     (begin (call (tok K_18 kind_19) '11 fv0)
-			    (tok K_18 kind_19))))
-                   
-		 (subtokind fv0 flag)]
-
-#;		[(,free-vars 
-		  '(if (= flag '11)
-                   (if (= subtokind '0) (void) (begin))
-                   (begin (call (tok tok1 0)
-                                (begin "This whole block represents the allocation of a continuation closure:"
-                                       (let ([kind_19
-                                              (if (token-present?
-                                                    (tok K_18 0))
-                                                  (let ([new
-                                                         (+ '1
-                                                            (ext-ref
-                                                              (tok K_18 0)
-                                                              kcounter))])
-                                                    (begin (ext-set!
-                                                             (tok K_18 0)
-                                                             kcounter
-                                                             new)
-                                                           new))
-                                                  (begin "Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
-                                                         (call (tok K_18 0)
-                                                               '11
-                                                               (void))
-                                                         '1))])
-                                         (begin "Do the actual token object (closure) allocation.  Capture freevars:"
-                                                (call (tok K_18 kind_19)
-                                                      '11
-                                                      fv0)
-                                                "Return the name of this continuation object:"
-                                                (tok K_18 kind_19))))
-                                '3)
-                          (evict (tok K_20 subtokind)))))
-		 (subtokind fv0 flag)]
 
 		[(,no-first-class? 'v 'v) #f]
 		[(,no-first-class? 'v '(+ v 1)) #f]
@@ -572,9 +520,31 @@
 	(match prog
 	       [(,lang '(program (bindings ,constbinds ...)
 				 (nodepgm (tokens ,[process-tokbind -> toks] ...))))
-		`(,lang
-		  '(program (bindings ,constbinds ...)
-			    (nodepgm (tokens ,(apply append toks) ...))))]))
+                (let* ([ktoks (apply append (map cdr toks))]
+		       [all-toks (apply append toks)]
+		       [node-start-tok (assq 'node-start all-toks)]
+		       [new-starts
+			(match node-start-tok
+			       [(node-start ,subtok_ind () (stored) ,body)
+				(list `[node-start ,subtok_ind () (stored)
+						   (begin 
+;						     (dbg '"~a: node-start initializing continuation counters: ~a" 
+;							  (my-id) ',(map car ktoks))
+						     ,@(map (lambda (k)
+							      `(call (tok ,(car k) 0) ',INIT))
+							    ktoks)
+;						     ,@(make-list (max 1 (length fvs)) 
+;								  ''counter-holder-tok-dummy-val))
+						     (call (tok actual-node-start ,subtok_ind)))]
+				      `[actual-node-start ,subtok_ind () (stored) 
+							  (begin 
+;							    (dbg '"~a: running actual-node-start..." (my-id))
+							    ,body)])]
+			       [,other (error 'closure-convert "bad node-start tokhandler: ~a" other)])])
+		  `(,lang
+		    '(program (bindings ,constbinds ...)
+			      (nodepgm (tokens ,(append new-starts
+							(remq node-start-tok all-toks)) ...)))))]))
       ))
       
 
@@ -600,9 +570,10 @@
 			       (k_22 x)
 			       (stored)
 			       (kcall k_22 (+ x '300))))))))))))
-       (node-start SOC-start K_1 tok1)]
+       (node-start actual-node-start SOC-start K_1 tok1)]
 
-      ["Trying to make sure we get the right stored vars."
+      ["Trying to make sure we get the right stored vars."       
+       (parameterize ((unique-name-counter 0))
        (map car (apply append (map cdr
        (deep-assq-all 'stored 
 	 (closure-convert 
@@ -623,8 +594,8 @@
 		       '4))
 		(tok1 subtok_ind (k_58 x)
 		      (stored)
-		      (kcall k_58 (+ x '1000))))))))))))
-       (kcounter kcounter HOLE_59)]
+		      (kcall k_58 (+ x '1000)))))))))))))
+       (kcounter_6 kcounter_2 HOLE_4)]
        
       ["This is just for regression, popped up an error before due to token->subid."
        (closure-convert '(rename-stored-lang
@@ -665,7 +636,7 @@
 	       
 
 (define test-this (default-unit-tester
-		    "27: CPS-Tokmac: use CPS on blocking calls."
+		    "28: Closure-convert: explicitely construct continuation closures."
 		    these-tests))
 
 (define test28 test-this)
@@ -674,3 +645,68 @@
 (define tests-closure-convert these-tests)
 
 
+
+
+
+#;		[(,free-vars 
+		  '(let ([kind_19 (if '3
+				      (let ([new '3]) (begin new new))
+				      '4)])
+		     '5))
+		 ()]
+		 
+
+#;		[(,free-vars 
+		  '(let ([kind_19
+			  (if (token-present?
+			       (tok K_18 0))
+			      (let ([new
+				     (+ '1
+					(ext-ref
+					 (tok K_18 0)
+					 kcounter))])
+				(begin (ext-set!
+					(tok K_18 0)
+					kcounter
+					new)
+				       new))
+			      (begin 
+				(call (tok K_18 0) '11 (void))
+				'1))])
+		     (begin (call (tok K_18 kind_19) '11 fv0)
+			    (tok K_18 kind_19))))
+                   
+		 (subtok_ind fv0 flag)]
+
+#;		[(,free-vars 
+		  '(if (= flag '11)
+                   (if (= subtok_ind '0) (void) (begin))
+                   (begin (call (tok tok1 0)
+                                (begin "This whole block represents the allocation of a continuation closure:"
+                                       (let ([kind_19
+                                              (if (token-present?
+                                                    (tok K_18 0))
+                                                  (let ([new
+                                                         (+ '1
+                                                            (ext-ref
+                                                              (tok K_18 0)
+                                                              kcounter))])
+                                                    (begin (ext-set!
+                                                             (tok K_18 0)
+                                                             kcounter
+                                                             new)
+                                                           new))
+                                                  (begin "Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
+                                                         (call (tok K_18 0)
+                                                               '11
+                                                               (void))
+                                                         '1))])
+                                         (begin "Do the actual token object (closure) allocation.  Capture freevars:"
+                                                (call (tok K_18 kind_19)
+                                                      '11
+                                                      fv0)
+                                                "Return the name of this continuation object:"
+                                                (tok K_18 kind_19))))
+                                '3)
+                          (evict (tok K_20 subtok_ind)))))
+		 (subtok_ind fv0 flag)]
