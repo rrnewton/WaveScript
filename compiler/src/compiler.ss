@@ -948,7 +948,7 @@
 
 
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
