@@ -1039,6 +1039,26 @@
 			   n)])))
 )
 
+(define deunique-name
+  (lambda (sym)
+    (let ((str (symbol->string sym)))
+      (string->symbol
+       (car (string-split str #\_))))))
+
+(define string-split
+  (lambda (str char)
+    (let ((ls (string->list str)))
+      (map list->string
+	   (let loop ((ls ls) (acc1 '()) (acc2 '()))
+	     (cond
+	      [(null? ls) (if (null? acc1)
+			      (reverse! acc2)
+			      (reverse! (cons (reverse! acc1) acc2)))]
+	      [(eq? char (car ls))
+	       (loop (cdr ls) '() (cons (reverse! acc1) acc2))]
+	      [else (loop (cdr ls) (cons (car ls) acc1) acc2)]))))))
+
+
 ;;============================================================
 ;; DEALING WITH TOKEN NAMES.  
 ;; Sloppy interface right now.  

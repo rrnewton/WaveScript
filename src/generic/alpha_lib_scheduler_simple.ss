@@ -72,14 +72,14 @@
 	(list (make-simevt 0
 ;			   #f ; ignored
 			   (bare-msg-object (make-simtok 'node-start 0) '() 0))))
-    (if (= BASE_ID (node-id (simobject-node ob)))
-	(set-simobject-local-msg-buf! ob
-				      (append 
-				       (simobject-local-msg-buf ob)
-				       (list (make-simevt 0
-					;			      #f ; ignored
-							  (bare-msg-object (make-simtok 'SOC-start 0) '() 0)))
-				       )))
+;     (if (= BASE_ID (node-id (simobject-node ob)))
+; 	(set-simobject-local-msg-buf! ob
+; 				      (append 
+; 				       (simobject-local-msg-buf ob)
+; 				       (list (make-simevt 0
+; 					;			      #f ; ignored
+; 							  (bare-msg-object (make-simtok 'SOC-start 0) '() 0)))
+; 				       )))
     ))
 
 

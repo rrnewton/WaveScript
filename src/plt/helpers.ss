@@ -135,7 +135,7 @@
    make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
    
    get-formals
-   unique-name unique-name-counter extract-suffix make-begin strip-illegal
+   deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
    
    ;; Hmm, not sure what meaning immediate has here...
    immediate? constant? datum? 

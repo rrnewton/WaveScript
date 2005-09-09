@@ -42,11 +42,9 @@
 
 
 
-
-
 ;;; INPUT GRAMMAR:
 
-;; Extremely messy, ad-hoc and lenient.
+;; Extremely messy, ad-hoc, and lenient.
 
 
 ;;; OUTPUT GRAMMAR:
@@ -489,12 +487,21 @@
 		  (loop (cdr ls))))))))
 
     (define (cleanup lang socconsts nodeconsts socpgm tokens nodestartups)
-      (if (not (null? nodestartups))
-	  (set! tokens
-		(cons `[node-start () ,@(map (lambda (t) `(call ,t)) nodestartups)]
-		      tokens)))
-      (if (not (assq 'node-start tokens))
-	  (set! tokens (cons `[node-start () (void)] tokens)))
+      
+      (let ((hasns (assq 'node-start tokens))
+	    (hassts (not (null? nodestartups))))
+	(if (not hasns)
+	    (set! tokens
+		  (cons `[node-start ()
+			    (begin 
+			      ,@(map (lambda (t) `(call ,t)) nodestartups)
+			      (void)
+			      )]
+			tokens))
+	    (if (and hasns hassts)
+		(error 'cleanup-token-machine "TM has both a \"node-start\" token and designated \"startup\" tokens."))
+	    ))
+
       (if (not (assq 'SOC-start tokens))
 	  (set! tokens (cons `[SOC-start () (void)] tokens)))
       (if socpgm
@@ -544,7 +551,8 @@
 
 	 (cleanup lang socbinds constbinds 
                   (if (null? socstmts) #f `(begin ,@socstmts))
-                  nodetoks starttoks)]
+                  nodetoks 
+		  starttoks)]
 	[(,lang '(program ,stuff ...)) (cleanup-token-machine (decode lang stuff))]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
@@ -588,7 +596,6 @@
 	  (bindings )
 	  (socpgm (bindings ) )
 	  (nodepgm (tokens) (startup ) ))))    
-
      (deglobalize-lang
       '(program
 	(bindings)
@@ -596,6 +603,7 @@
 	 (tokens
 	  (SOC-start subtok_ind () (stored) (void))
 	  (node-start subtok_ind () (stored) (void))))))]
+
 
     ["Now collapse two tokens of the same name"
      (cleanup-token-machine 
@@ -651,3 +659,92 @@
 (define test-cleanup-token-machine test-this)
 (define tests-cleanup-token-machine these-tests)
 
+
+
+
+;; TODO RENAME
+    (define find-emittoks fooooo 
+      (letrec ([tok-allowed-loop 
+		(lambda (expr)
+		  (match expr
+			 [(tok ,t ,[main-loop -> e]) e]
+			 [,e (main-loop e)]))]
+	       [do-primitive
+		(lambda (prim args)
+		  (apply append
+		  (map-prim-w-types 
+		   (lambda (arg type)
+		     (match (cons type arg)
+		       [(Token . (tok ,tok ,[main-loop -> e])) e]
+		       [(,other . ,[main-loop -> e]) e]))
+		   prim args)))]
+	       [main-loop
+		(lambda (expr)
+		  (match expr
+	     ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
+	     [(quote ,_) '()]
+	     [,num (guard (number? num)) '()]
+	     [,var (guard (symbol? var)) '()]
+	     [(set! ,var ,[e]) e]
+	     [(ext-ref (tok ,t ,[e]) ,v) e]
+	     [(ext-set (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
+	     ;; If we ever have a first class reference to a token name, it is potentially tainted.
+	     ;; This is a conservative estimate:
+	     [(tok ,t ,n) (guard (number? n)) (list t)]
+	     [(tok ,t ,[e]) (cons t e)]
+	     [(begin ,[exprs] ...) (apply append exprs)]
+	     [(if ,[exprs] ...) (apply append exprs)]
+	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
+
+	     ;; "Direct call":  Not allowing dynamic emit's for now:
+	     [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	     ;; Indirect emit call... could consider restricting these.
+	     [(emit ,[e] ,[args*] ...)
+	      (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+	      ;(apply append e args*)
+	      ]
+	     ;; Also allowing dynamic relays and dists.  
+	     ;; These don't matter as much because I'm basing 
+	     [(relay (tok ,t ,[e])) e]
+	     [(dist (tok ,t ,[e])) e]
+	     [(parent (tok ,t ,[e])) e]
+	     [(origin (tok ,t ,[e])) e]
+	     [(hopcount (tok ,t ,[e])) e]
+	     [(version (tok ,t ,[e])) e]
+
+	     ;; The to's and the vias are static! Aggr has no subtok index!
+	     [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
+	      (append expr seed_val)]
+
+	     [(leds ,what ,which) '()]
+
+	     ;; Static calls are allowed:
+	     [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     ;; Anything more dynamic makes us think the operand is potentially emitted.
+
+	     [(return ,[e])  e]
+
+#|	     [(call ,[args*] ...) (apply append args*)]
+	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     [(subcall ,[args*] ...) (apply append args*)]
+	     [(bcast (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	     [(bcast ,[args*] ...) (apply append args*)]
+	     [(timed-call ,[time] (tok ,t ,[e]) ,[args*] ...) (apply append time e args*)]
+	     [(timed-call ,[args*] ...) 
+	      ;(disp "TIMED call to dynamic tokens...")
+	      (apply append args*)]
+|#	     
+	     ;; All primitives that can take tokenss
+	     [(,prim ,args* ...)
+	      (guard (or (token-machine-primitive? prim)
+			 (basic-primitive? prim)))
+	      (do-primitive prim args*)
+	      ]
+
+	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
+	     [,otherwise
+	      (error 'desugar-gradient:find-emittoks
+		     "bad expression: ~s" otherwise)]
+	     ))])
+
+	main-loop))

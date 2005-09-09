@@ -40,14 +40,18 @@
 
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
-
-    desugar-let-stored
-    rename-stored
     
     ;    analyze-tokmac-recursion
     ;    inline-tokmac
-    cps-tokmac
-    closure-convert
+
+;; Temporarily I am disabling these ..
+;    cps-tokmac
+;    closure-convert
+
+    ;; moving these after closure-convert.
+    desugar-let-stored
+    rename-stored
+
     ;    verify-token-machine
     ;    haskellize-tokmac 
     ))
@@ -457,12 +461,15 @@
 			 (call tok3))
 		   (tok3 () (printf "~a " (my-clock)))
 		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (1 2 102 103)]
+	   (let ((result 
+		  (let ((prt (open-output-string)))
+		    (display "(" prt)       
+		    (run-simulator-alpha prog 'outport prt)
+		    (display ")" prt)
+		    (read (open-input-string (get-output-string prt))))))
+	     ;; RRN: modified this test to be indiffirent to how much time soc-start takes:
+	     (map (lambda (x) (- x (car result))) result)))))
+      (0 1 101 102)]
 
      ["Bcast:"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -470,24 +477,26 @@
 	 (let ((prog 
 		(run-compiler
 		 '(tokens 
-		   (SOC-start () (bcast tok1 3))
+		   (SOC-start () (printf "~a" (my-clock)) (bcast tok1 3))
 		   (tok1 (x) (printf "(~a ~a)" (my-id) (my-clock)))
 		 ))))
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
 	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))            
-      ,(lambda (ls)
-	 (and (< (length ls) 30)
-	      (> (length ls) 1)
+	     (read (open-input-string (get-output-string prt)))))))
+      ,(lambda (results)
+	 (let ((SOCSTRT (car results)) ;; This compensates for whatever time is consumed before soc-start runs.
+	       (ls (cdr results)))
+	   (printf "Testing ~a\n" (+ SOCSTRT RADIO_DELAY SCHEDULE_DELAY))
+	 (and (< (length ls) 30) (> (length ls) 1) ;; There should be "some" responses
 	      (andmap (lambda (x) (equal? (cadr x) 
-					  (+ RADIO_DELAY SCHEDULE_DELAY)))
+					  (+ SOCSTRT RADIO_DELAY SCHEDULE_DELAY)))
 		      ls)
-	      (not (memq BASE_ID (map car ls)))))]
+	      (not (memq BASE_ID (map car ls))))))]
 
-     ;; Before I had a bug where call tokens were going to neighbors. 
-     ;; (but outgoing tokens did not hit arrive locally)
+     ;; Before I had a simulator bug wherein call-tokens were going to neighbors. 
+     ;; (but bcast tokens did not arrive locally)
      ["Test for interference between calls and bcasts. " 
       (filter (lambda (x) (eq? (car x) 'tok3))
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
@@ -500,7 +509,7 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (call (tok tok3 0)) (bcast tok1))
+		  (SOC-start () (printf "(start ~a ~a)" (my-id) (my-clock)) (call (tok tok3 0)) (bcast tok1))
 		  (tok1 () (printf " (tok1 ~a) " (my-id)))
 		  (tok3 () (printf " (tok3 ~a) " (my-id)))
 		  ))])

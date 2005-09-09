@@ -225,3 +225,77 @@
        '(program (bindings ,constbinds ...)
 		 (nodepgm (tokens ,toks ...))))]))
 ))
+
+
+
+(define sim-to-string
+  (lambda (prog)
+    (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+		  (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+		    (let ((prt (open-output-string)))
+		      (run-simulator-alpha prog 'outport prt)
+		      (get-output-string prt))))))
+
+(define simulate-and-compare
+  (lambda (pass origprog)
+    (let ([result1 (sim-to-string origprog)]
+	  [result2 (sim-to-string (pass origprog))])
+	(list result1 result2))))
+
+(define these-tests
+  `(  
+    ["Run simulator on empty TMs" 
+     (simulate-and-compare desugar-let-stored (cleanup-token-machine '()))
+     ("" "")]
+
+    ["Now start to test let-stored in a basic way."
+     (sim-to-string
+      (desugar-let-stored 
+       (cleanup-token-machine 
+	'(tokens
+	  (SOC-start () (call foo) (call foo))
+	  (foo () (let-stored ((x1 #t))
+			      (if x1 (begin (set! x1 #f)
+					    (printf "1")))))))))
+     "1"]
+
+    ["Now seeing if it only initializes at the right time."
+     (sim-to-string
+      (desugar-let-stored 
+       (cleanup-token-machine 
+	'(tokens
+	  (SOC-start () (call foo 1) (call foo 2) (call foo 2) (call foo 1))
+	  (foo (v) (if (= v 2)
+		       (let-stored ((x1 (begin (printf "2") #t)))				  
+				   (if x1 (begin (set! x1 #f)
+						 (printf "3"))
+				       (printf "4")))
+		       (printf "1")))))))
+     "12341"]
+
+    ["Now test scoping."
+     (sim-to-string
+      (rename-stored
+       (desugar-let-stored 
+	(cleanup-token-machine 
+	 '(tokens
+	   (SOC-start () (call bar 1))
+	   (bar (x)
+		(display x)
+		(let-stored ((x 2))
+			    (display x))))))))
+      "12341"]
+    
+    
+
+
+))
+
+(define test-this (default-unit-tester
+		    "24: Desugar-Let-Stored: convert let-stored to plain stored variables."
+		    these-tests))
+
+(define test24 test-this)
+(define tests24 these-tests)
+(define test-desugar-let-stored  test-this)
+(define tests-desugar-let-stored these-tests)
