@@ -685,26 +685,28 @@
 
 
     ["Testing using 'testcps-expr': an if in a (+) (w SUBCALL to force cps)"
-     (deep-assq 'if 
-		(cps-tokmac 
-		 (cleanup-token-machine 
-		  '(tokens (tok1 () (+ '1 (if b c (subcall tok2)))) 
-			   (tok2 () (return 3))))))
-     ,(lambda (x)
-	(match x
-	       [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
-	       [,else #f]))]
+     (length (deep-all-matches
+      ,(lambda (x)
+	 (match x
+		[(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+		[,else #f])) 
+      (cps-tokmac 
+       (cleanup-token-machine 
+	'(tokens (tok1 () (+ '1 (if b c (subcall tok2)))) 
+		 (tok2 () (return 3)))))))
+     1]
     ["Testing using 'testcps-expr': an if in begin (w SUBCALL to force cps)"
-     (deep-assq 'if 
-		(cps-tokmac 
-		 (cleanup-token-machine 
-		  '(tokens (tok1 () (begin (if b c (subcall tok2)) d))
-			   (tok2 () (return 3))))))
-     ,(lambda (x)
-	(match x
-	       [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
-	       [,else #f]))]
-
+     (length 
+      (deep-all-matches 
+       ,(lambda (x)
+	  (match x
+		 [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+		 [,else #f]))
+       (cps-tokmac 
+	(cleanup-token-machine 
+	 '(tokens (tok1 () (begin (if b c (subcall tok2)) d))
+		  (tok2 () (return 3)))))))
+     1]
     
     ["Make sure we don't lift begin clauses out in an inappropriate way."
      (car (reverse

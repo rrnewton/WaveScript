@@ -16,6 +16,15 @@
 ;;   I'm pretty sure it *is* a petite bug though, it works 
 
 
+;; NOTE:  Had to add a hack for SOC-start to avoid race condition.
+;;;   Now we explicitely call the SOC-start from the node-start handler.
+;;;   This is for *sequencing*.  We want the things called by
+;;;   node-start to all complete *before* soc-start runs.a
+
+;;;  ACTUALLY... this is currently implemented straight in the simulator.
+
+
+
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
@@ -24,8 +33,8 @@
 (define closure-convert
   (let ()
 
-    (define INIT 11)
-    (define CALL 99)
+    (define INIT 'KINIT) ; 11
+    (define CALL 'KCALL) ; 99 
     (define FREEVAR0 'fv0)
 
     ;; Name of the token which represents the global variable storing the continuation
@@ -220,8 +229,11 @@
 ;		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
 ;		     (simobject-token-store this))
 			
-		(if (= flag ',INIT)
-		    (if (= subtok_ind '0)
+		(if (eq? flag ',INIT)
+		    (begin
+		      (printf "~a: Init continuation: ~a~n" (my-id) ',kname) (flush-output-port)
+			      
+		      (if (= subtok_ind '0)
 			;; No freevars if we're just initializing the counter-object.
 			(void)
 			(begin
@@ -232,7 +244,7 @@
 					   (my-id)
 					   ',fv ,fvn (simobject-token-store this))
 				      ))
-				 newfvs fvns)))
+				 newfvs fvns))))
 		    ;; Otherwise, assume the flag is CALL
 		    (begin
 		      ,(let loop ((fvs fvs) (newfvs newfvs) (body body))
@@ -595,8 +607,12 @@
 		(tok1 subtok_ind (k_58 x)
 		      (stored)
 		      (kcall k_58 (+ x '1000)))))))))))))
-       (kcounter_6 kcounter_2 HOLE_4)]
-       
+       ,(lambda (x)
+	  (match (map deunique-name x)
+		 [(kcounter kcounter HOLE) #t]
+		 [,else #f]))]
+		 
+
       ["This is just for regression, popped up an error before due to token->subid."
        (closure-convert '(rename-stored-lang
         '(program
@@ -679,7 +695,7 @@
 		 (subtok_ind fv0 flag)]
 
 #;		[(,free-vars 
-		  '(if (= flag '11)
+		  '(if (eq? flag '11)
                    (if (= subtok_ind '0) (void) (begin))
                    (begin (call (tok tok1 0)
                                 (begin "This whole block represents the allocation of a continuation closure:"

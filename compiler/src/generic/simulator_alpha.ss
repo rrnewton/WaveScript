@@ -653,14 +653,26 @@
 			 ))
        ;; Here we hack in an extra handler for doing SOC-return's...
        (set! nodetoks
-	     (cons `[SOC-return-handler subtokid (x) (stored)
+	     (cons `[SOC-return-handler subtokid (socrethandlerval) (stored)
 		       (if (= ',BASE_ID (my-id))
-			   (simulator-soc-return x)				  
+			   (simulator-soc-return socrethandlerval)				  
 			   (error 'SOC-return-handler
 				  "ran on non-base node! id: ~a"
 				  (my-id)))]
 		   nodetoks))
 
+       ;; Here we mutate the node-start to also call SOC-start.
+       (printf "TOKS: ~s\n" (map car nodetoks))
+       (set! nodetoks
+	     (cons 
+	      (match (assq 'node-start nodetoks)
+		     [(node-start ,id () (stored ,s ...) ,body)
+		      ;; CALL SOC START EXPLICITELY FROM NODE_START: (AFTER NODE-START!)
+		      `(node-start ,id () (stored ,@s) 
+			 (begin ,body
+			    (if (= (my-id) ',BASE_ID) (call (tok SOC-start 0))  (void))))]
+		     [,other (error 'compile-simulate-alpha "bad node-start! ~s" other)])
+	      (alist-remove 'node-start nodetoks)))
        
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
 
