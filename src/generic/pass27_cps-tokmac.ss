@@ -65,17 +65,33 @@
   (let ()
 
     (define (id x) x)
-
+a
     (define (tb->body tb)
       (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tb)])
 	     body))
 
     ;; This is confusing, but there are so many small traversals of
     ;; the program tree in this pass that it is much easier to reuse this tree walk:
+    ;; It's complex, but saves a lot of boilerplate. 
+    ;;
+    ;; NOTE: Duplicated code.  This function also appears in other passes, where it 
+    ;; works on a slightly different grammar.
     ;;
     ;; NOTE: A common failure mode when using this is invoking the
     ;; wrong loop when making a recursive pattern match.  Be careful.
     (define (generic-traverse driver fuse e)
+      ;; The "driver" takes the first shot at an expression, transforms the
+      ;; subcases that it wants to, and then hands the rest on to its
+      ;; continuation to do the automated traversal. The automated
+      ;; traversal, in turn, uses the "fuse" function to glue back together
+      ;; the parts of the tree.  The fuse function is passed a list of child
+      ;; exprss and another continuation representing the "default fuser" which
+      ;; just puts the expression back together like it was before (given the child terms).
+      ;; Types:
+      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
+      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
+      ;;   e : expr 
+      ;; Return value: 'result 
       (let loop ((e e))
 	(driver e 
 	   (lambda (x)

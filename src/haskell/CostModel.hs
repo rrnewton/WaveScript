@@ -1,3 +1,6 @@
+-- ONLY A SKETCH:
+-- Prototyping...
+
 --import HUnit 
 import TokenMachine
 
