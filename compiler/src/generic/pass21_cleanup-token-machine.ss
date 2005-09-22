@@ -660,10 +660,9 @@
 (define tests-cleanup-token-machine these-tests)
 
 
-
-
 ;; TODO RENAME
-    (define find-emittoks fooooo 
+;; TODO USE IN THIS MODULE??  WHAT WAS LEFT UNDONE?
+ (define find-emittoks_RENAME_ME
       (letrec ([tok-allowed-loop 
 		(lambda (expr)
 		  (match expr
@@ -748,3 +747,4 @@
 	     ))])
 
 	main-loop))
+
