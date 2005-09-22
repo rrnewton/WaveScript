@@ -47,10 +47,26 @@
 
     ;; This is confusing, but there are so many small traversals of
     ;; the program tree in this pass that it is much easier to reuse this tree walk:
+    ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
+    ;;
+    ;; NOTE: Duplicated code.  This function also appears in other passes, where it 
+    ;; works on a slightly different grammar.
     ;;
     ;; NOTE: A common failure mode when using this is invoking the
     ;; wrong loop when making a recursive pattern match.  Be careful.
     (define (generic-traverse driver fuse e)
+      ;; The "driver" takes the first shot at an expression, transforms the
+      ;; subcases that it wants to, and then hands the rest on to its
+      ;; continuation to do the automated traversal. The automated
+      ;; traversal, in turn, uses the "fuse" function to glue back together
+      ;; the parts of the tree.  The fuse function is passed a list of child
+      ;; exprss and another continuation representing the "default fuser" which
+      ;; just puts the expression back together like it was before (given the child terms).
+      ;; Types:
+      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
+      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
+      ;;   e : expr 
+      ;; Return value: 'result 
       (let loop ((e e))
 	(driver e 
 	   (lambda (x)
@@ -110,36 +126,12 @@
        (lambda (ls _) (apply append ls))
        e))
 
-#;(define (free-vars e)
-  (match e
-    [,const (guard (constant? const)) '()]
-    [(quote ,const) '()]
-    [,var (guard (symbol? var)) (list var)]
-    [(tok ,tok ,[expr]) expr]
-    [(ext-ref ,tok ,var) '()]
-    [(ext-set! ,tok ,var ,[expr]) expr]
-    [(begin ,[xs] ...) (apply append xs)]
-    [(if ,[test] ,[conseq] ,[altern]) (append test conseq altern)]
-    [(let ( (,lhs ,[rhs])) ,[body])
-     (append rhs (remq lhs body))]
-    [(leds ,what ,which) '()]
-    [(,prim ,[rands] ...) 
-	 (guard (or (token-machine-primitive? prim)
-		    (basic-primitive? prim)))     
-	 rands]
-    [(,[rator] ,[rands] ...) `(apply append rator rands)]
-    [,otherwise
-     (error 'cps-tokmac:freevars 
-	    "bad expression: ~s" otherwise)]))
-
-
+;; Returns a list of stored var bindings (var, value pairs) and a transformed expression
 (define process-expr 
-  (lambda (env expr)
+  (lambda (env expr) ;; env contains both normal local vars and "stored" vars.
 ;  (trace-lambda PE (env expr)
-  
   (match expr
 ;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
-
     [(quote ,const)                    (values () `(quote ,const))]
     [,num (guard (number? num))        (values () num)]
     [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
@@ -149,7 +141,7 @@
     [(ext-set! ,tok ,var ,[st e])      (values st `(ext-set! ,tok ,var ,e))]
 
     [,var (guard (symbol? var))        (values () var)]
-    [(begin ,[st xs] ...)
+    [(begin ,[st* xs] ...)
      (values (apply append st) (make-begin xs))]
     [(if ,[tst test] ,[cst conseq] ,[ast altern])
      (values (append tst cst ast) 
@@ -171,25 +163,22 @@
     ;; expression is executed (and only the first), the RHS is
     ;; evaluated and stored.
     [(let-stored () ,[st body]) (values st body)]
+    ;; Multiple bindings just expand out in a let* style:
     [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
-;     (let ([all-lhs (cons lhs1 (cons lhs2 lhs*))]
-;	   [all-free (apply append (map free-vars (cons rhs1 (cons rhs2 rhs*))))])
-;       (if (not (null? (intersection all-lhs all-free)))
-;	   (error 'desugar-let-stored:process-expr
-;		  "let-stored cannot have any recursive bindings"
-;		  `(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
      (process-expr env `(let-stored ([,lhs1 ,rhs1]) 
 			  (let-stored ([,lhs2 ,rhs2])
 			     (let-stored ([,lhs* ,rhs*] ...) ,body))))]
 
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
-     (let ([newvar (unique-name 'stored-liftoption)])
+     (let ([newvar (unique-name 'stored-liftoption)]) ;; This is a "presence bit" for the let-stored var
        (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
+	      ;; The stored var is initially "null" (uninitialized)
+	      ;; The new "presence bit" is initially false:
                (values (append `([,lhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
                        (make-begin 
                         (list `(if ,newvar ;; If first time, initialize
 				   (void)
-                                   (begin 
+                                   (begin ;; This is where the rhs is finally evaluated:
                                      (set! ,newvar '#t)
                                      (set! ,lhs ,rhs)))
                                newbod)))))]
@@ -273,6 +262,9 @@
 		       (printf "1")))))))
      "12341"]
 
+    
+    ;; In the process of debugging this right now. [2005.09.22]
+    ;; Seems like it might be a problem with the execution, not this pass.
     ["Now test scoping."
      (sim-to-string
       (rename-stored
@@ -299,3 +291,24 @@
 (define tests24 these-tests)
 (define test-desugar-let-stored  test-this)
 (define tests-desugar-let-stored these-tests)
+
+
+(define curdebug
+  '(desugar-let-stored-lang
+  '(program
+    (bindings)
+     (nodepgm
+       (tokens
+         (node-start subtok_ind () (stored) (void))
+         (SOC-start subtok_ind () (stored) (call (tok bar 0) '1))
+         (bar subtok_ind
+              (x)
+              (stored
+                (x 'let-stored-uninitialized)
+                (storedliftoption_25 '#f))
+              (begin (app display x)
+                     (if storedliftoption_25
+                         (void)
+                         (begin (set! storedliftoption_25 '#t)
+                                (set! x '2)))
+                     (app display x))))))))

@@ -53,22 +53,29 @@
 	 [else (loop (cdr ls) (cons (car ls) acc))])))    
 
     ;; This is copied from the cps-tokmac pass.  Should share it!
-    ;; Man, this would be easier to understand if it were strongly typed (sadly, that's tough - see peyton jones "boilerplate"):
-    ;; The arguments are as follows:
-    ;;   driver : expr -> k -> alpha
-    ;;   fuse : [alpha] -> (expr* ... -> expr) -> alpha
-    ;;   e : expr
 
-    ;; The driver gives the users code first hack at the data tree.
-    ;; The driver may hand off to its "k" argument if it wants to
-    ;; continue the "generic" traversal, but it's not obligated to
-    ;; return another expression, it may return its own alpha type.
-    ;;   The fuser is a function that reassembles the results of
-    ;;   generic traversal (closure abstracted over children expressions)
-    ;;   with the alpha-type resulting from the drivers execution on all those children.
-    ;; The whole traversal returns an alpha value.
-        
+    ;; This is confusing, but there are so many small traversals of
+    ;; the program tree in this pass that it is much easier to reuse this tree walk:
+    ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
+    ;;
+    ;; NOTE: Duplicated code.  This function also appears in other passes, where it 
+    ;; works on a slightly different grammar.
+    ;;
+    ;; NOTE: A common failure mode when using this is invoking the
+    ;; wrong loop when making a recursive pattern match.  Be careful.
     (define (generic-traverse driver fuse e)
+      ;; The "driver" takes the first shot at an expression, transforms the
+      ;; subcases that it wants to, and then hands the rest on to its
+      ;; continuation to do the automated traversal. The automated
+      ;; traversal, in turn, uses the "fuse" function to glue back together
+      ;; the parts of the tree.  The fuse function is passed a list of child
+      ;; exprss and another continuation representing the "default fuser" which
+      ;; just puts the expression back together like it was before (given the child terms).
+      ;; Types:
+      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
+      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
+      ;;   e : expr 
+      ;; Return value: 'result 
       (let loop ((e e))
 	(driver e 
 	   (lambda (expression)
