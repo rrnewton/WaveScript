@@ -831,10 +831,13 @@
 	    (let ((base (cdr (assq BASE_ID lst)))
 		  (others (map cdr (alist-remove BASE_ID lst))))
 	      (if (all-equal? others)
-		  (list base (car others))
-		  others))
+		  ;; Return something that won't vary based on sim parameters:
+		  (list (assq BASE_ID lst) (car others))
+		  `(ERROR: ,others)))
 	    ))))
-      ((: noparent 10000 0 1 : 1) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY)))]
+      ;; This timing stuff is a bit fragile
+      ((10000 : noparent 10000 0 1 : 2) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))
+      ]
 
 
      ;; TODO: need to explicitely control tho network parameters for this one:
@@ -941,7 +944,8 @@
 			(emit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
-		  (tok2 () (greturn (my-id) (to catcher)))
+		  (tok2 () (greturn (my-id) 
+				    (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
@@ -1192,3 +1196,32 @@
       (display ")" prt)
       (read (open-input-string (get-output-string prt))))))
 
+
+
+
+'
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          cps-tokmac
+		     closure-convert        cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (call tok1 '1))
+		  (catcher (v) (printf "~a" v))
+		  (tok1 (reps) 
+			(emit tok2)
+			(if (> reps 0)
+			    (timed-call 500 tok1 (- reps 1))))
+		  (tok2 () (greturn 34 ;(my-id) 
+				    (to catcher)))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (run-simulator-alpha prog)
+		   (read (open-input-string (get-output-string prt))))))
+	    lst
+	    ))))

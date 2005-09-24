@@ -8,7 +8,10 @@
 ;; association lists binding old-names to new-names.
 (define process-expr 
   (lambda (subst this-tok expr)
-  (define this-subst (cadr (assq this-tok subst)))
+  (define this-subst 
+    (let ((entry (assq this-tok subst)))
+      (if (not entry) (error 'rename-stored.process-expr "this-tok was not in subst list"))
+      (cadr entry)))
   (match expr
 ;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
 
