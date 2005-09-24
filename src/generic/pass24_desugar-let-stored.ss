@@ -3,7 +3,7 @@
 ;; to externally with "ext-refs" or should they be local.  They
 ;; probably should be local-only, but I haven't implemented it that
 ;; way now.
-
+;; ANSWER: [2005.09.24]  I'm deciding NO, for now.  Uniquely renaming let-stored vars.
 
 ;; Input Grammar:
 
@@ -128,8 +128,10 @@
 
 ;; Returns a list of stored var bindings (var, value pairs) and a transformed expression
 (define process-expr 
-  (lambda (env expr) ;; env contains both normal local vars and "stored" vars.
-;  (trace-lambda PE (env expr)
+  (lambda (subst expr) 
+    ;; subst contains both normal local vars and "stored" vars,
+    ;; It's an association list between bound-var [old] name and its new name.
+;  (trace-lambda PE (subst expr)
   (match expr
 ;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
     [(quote ,const)                    (values () `(quote ,const))]
@@ -140,16 +142,23 @@
     [(ext-ref ,tok ,var)               (values () `(ext-ref ,tok ,var))]
     [(ext-set! ,tok ,var ,[st e])      (values st `(ext-set! ,tok ,var ,e))]
 
-    [,var (guard (symbol? var))        (values () var)]
-    [(begin ,[st* xs] ...)
-     (values (apply append st) (make-begin xs))]
-    [(if ,[tst test] ,[cst conseq] ,[ast altern])
-     (values (append tst cst ast) 
-             `(if ,test ,conseq ,altern))]
+    [,var (guard (symbol? var))        
+	  (let ((entry (assq var subst)))
+	    (if entry 
+		(values () (cadr entry))
+		(values () var)))]
     [(set! ,v ,[rst rhs])
-     (values rst `(set! ,v ,rhs))]
+	  (let ((entry (assq v subst)))
+	    (if entry 
+		(values rst `(set! ,(cadr entry) ,rhs))
+		(values rst `(set! ,v ,rhs))))]
+    [(begin ,[st* xs] ...)
+     (values (apply append st*) (make-begin xs))]
+    [(if ,[tst test] ,[cst conseq] ,[ast altern])
+     (values (append tst cst ast)
+             `(if ,test ,conseq ,altern))]
     [(let ([,lhs ,[rst rhs]]) ,body)
-     (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
+     (mvlet ([(bst newbod) (process-expr (cons `(,lhs ,lhs) subst) body)])
 	    (values (append bst rst)
 		    `(let ([,lhs ,rhs]) ,newbod)))]
 
@@ -165,22 +174,23 @@
     [(let-stored () ,[st body]) (values st body)]
     ;; Multiple bindings just expand out in a let* style:
     [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
-     (process-expr env `(let-stored ([,lhs1 ,rhs1]) 
+     (process-expr subst `(let-stored ([,lhs1 ,rhs1]) 
 			  (let-stored ([,lhs2 ,rhs2])
 			     (let-stored ([,lhs* ,rhs*] ...) ,body))))]
 
     [(let-stored ([,lhs ,[rst rhs]]) ,body)
-     (let ([newvar (unique-name 'stored-liftoption)]) ;; This is a "presence bit" for the let-stored var
-       (mvlet ([(bst newbod) (process-expr (cons lhs env) body)])
+     (let ([newvar (unique-name 'stored-liftoption)] ;; This is a "presence bit" for the let-stored var
+	   [newlhs (unique-name lhs)]) ;; Deciding to rename these vars to avoid capture, no ext-refs!
+       (mvlet ([(bst newbod) (process-expr (cons `(,lhs ,newlhs) subst) body)])
 	      ;; The stored var is initially "null" (uninitialized)
 	      ;; The new "presence bit" is initially false:
-               (values (append `([,lhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
+               (values (append `([,newlhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
                        (make-begin 
                         (list `(if ,newvar ;; If first time, initialize
 				   (void)
                                    (begin ;; This is where the rhs is finally evaluated:
                                      (set! ,newvar '#t)
-                                     (set! ,lhs ,rhs)))
+                                     (set! ,newlhs ,rhs)))
                                newbod)))))]
 
     [(leds ,what ,which) (values () `(leds ,what ,which))]
@@ -267,7 +277,8 @@
     ;; Seems like it might be a problem with the execution, not this pass.
     ["Now test scoping."
      (sim-to-string
-      (rename-stored
+      ;; Got to include the renaming to make absolutely sure the x's don't collide:
+      ;(rename-stored ;; No longer true.. fixed it so it renames let-stored vars [2005.09.24]
        (desugar-let-stored 
 	(cleanup-token-machine 
 	 '(tokens
@@ -275,11 +286,8 @@
 	   (bar (x)
 		(display x)
 		(let-stored ((x 2))
-			    (display x))))))))
-      "12341"]
-    
-    
-
+			    (display x)))))))
+      "12"]
 
 ))
 
@@ -293,10 +301,10 @@
 (define tests-desugar-let-stored these-tests)
 
 
-(define curdebug
-  '(desugar-let-stored-lang
+(define deb
+'(rename-stored-lang
   '(program
-    (bindings)
+     (bindings)
      (nodepgm
        (tokens
          (node-start subtok_ind () (stored) (void))
@@ -304,11 +312,11 @@
          (bar subtok_ind
               (x)
               (stored
-                (x 'let-stored-uninitialized)
-                (storedliftoption_25 '#f))
-              (begin (app display x)
-                     (if storedliftoption_25
-                         (void)
-                         (begin (set! storedliftoption_25 '#t)
-                                (set! x '2)))
-                     (app display x))))))))
+                (x_4 'let-stored-uninitialized)
+                (storedliftoption_3 '#f))
+              (begin
+                (app display x_4)
+                (if storedliftoption_3
+                    (void)
+                    (begin (set! storedliftoption_3 '#t) (set! x_4 '2)))
+                (app display x_4))))))))
