@@ -1077,10 +1077,8 @@
 	   (tok1 () (greturn (my-id) (to catcher)))
 	   )))
 
-
-
-    		
-     ["Temporary: Write a troublesome simulator program to disk and try to execute it."
+;; [2005.09.25] I forgot what this did, so it's hard to work on it right now:
+#;     ["Temporary: Write a troublesome simulator program to disk and try to execute it."
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
@@ -1089,9 +1087,6 @@
 	(display ")" prt)
 	(read (open-input-string (get-output-string prt))))
       (result 2007)]
-
-
-
 
 ))
 

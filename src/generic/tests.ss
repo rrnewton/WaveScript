@@ -111,7 +111,7 @@
 (define (test-everything . args)
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
-    (test-all) (newline)  (newline)
+    (test-all) (newline)  (newline)    
     (apply test-units args))
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
