@@ -300,23 +300,3 @@
 (define test-desugar-let-stored  test-this)
 (define tests-desugar-let-stored these-tests)
 
-
-(define deb
-'(rename-stored-lang
-  '(program
-     (bindings)
-     (nodepgm
-       (tokens
-         (node-start subtok_ind () (stored) (void))
-         (SOC-start subtok_ind () (stored) (call (tok bar 0) '1))
-         (bar subtok_ind
-              (x)
-              (stored
-                (x_4 'let-stored-uninitialized)
-                (storedliftoption_3 '#f))
-              (begin
-                (app display x_4)
-                (if storedliftoption_3
-                    (void)
-                    (begin (set! storedliftoption_3 '#t) (set! x_4 '2)))
-                (app display x_4))))))))

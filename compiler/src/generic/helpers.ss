@@ -1214,6 +1214,10 @@
 ;; [2004.06.03] Adding optional preprocessor function
 ;; [2004.07.21] Added a 'quiet flag.  
 ;; [2005.02.06] Made the quiet flag also suppress warnings.
+;; [2005.09.24] Making failed tests retry optionally, run with flag 'retry
+;;              This is for nondeterministic tests that merely have a high 
+;;              probability of success.  'retry can be specified either at 
+;;              tester-construction time or test-time.
 ;; Forms:
 ;;  (default-unit-tester message these-tests)
 ;;  (default-unit-tester message these-tests equalfun)
@@ -1232,21 +1236,34 @@
     (define ORACLEWIDTH 30)
     (define INTENDEDWIDTH 20)
 
-    (let (;; If the third argument is a procedure, use it as the equal method:
-	  [teq? (if (or (null? extras) (not (procedure? (car extras))))
-		    tester-equal?		    
-		    (eq-deep (car extras)))]
-	  [preprocessor 
-	   (if (and (> (length extras) 1)
-		    (procedure? (cadr extras)))
-	       (cadr extras)
-	       (lambda (x) x))]
-	  
-	  [enabled (not (memq 'disabled extras))]
-	  )
-
-      (let ((testerproc 
-	     	     (lambda args 
+    ;; Default values of tester-construction time parameters:
+    (let ([teq? tester-equal?]
+	  [preprocessor (lambda (x) x)]
+	  [retry-failures #f]
+	  [enabled #t])
+    ;; Go through tester-construction time additional arguments: 
+    (let arg-loop ([ls extras] [procsseen 0])
+      (cond
+       [(null? ls) (void)]
+       ;; This is a little lame, first proc is equality function, second is preprocessor:
+       [(procedure? (car ls))
+	(set! procsseen (add1 procsseen))
+	(if (= 1 procsseen)
+	    (set! teq? (car ls))
+	    (if (= 2 procsseen)
+		(set! preprocessor (car ls))
+		(error 'default-unit-tester "Too many proc arguments!: ~a" (car ls))))
+	(loop (cdr ls))]
+       [(eq? (car ls) 'disable) 
+	(set! enabled #f)
+	(loop (cdr ls))]
+       [(eq? (car ls) 'retry) 
+	(set! retry-failures #t)
+	(loop (cdr ls))]
+       [else (error 'default-unit-tester "Unknown argument or flag: ~a" (car ls))]))
+	
+    ;; Now we construct the actual tester procedure:
+    (let ((testerproc (lambda args 
     (call/cc
      (lambda (return)
        (let ([entries
@@ -1272,6 +1289,8 @@
 			    (memq 'descrips args)
 			    (memq 'v args)
 			    (memq 'qv args))]
+	       [retry-failures (or retry-failures ;; If already set above, or..
+				   (memq 'retry args))]
 	       [descriptions (map car entries)]
 	       [tests (map cadr entries)]
 	       [intended (map caddr entries)]
