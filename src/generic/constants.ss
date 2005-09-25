@@ -137,7 +137,7 @@
 (define-regiment-parameter simalpha-num-nodes 30)
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
 
-(define-regiment-parameter simalpha-dbg-on #t)      ;; dbg print statements
+(define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
 (define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded
 
 
