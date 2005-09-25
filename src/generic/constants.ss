@@ -54,6 +54,12 @@
 
 ;;======================================================================
 
+;; Used primarily by helpers.ss:
+;;===================================================
+
+;; If retry is enabled, let's retry three times:
+(define-regiment-parameter default-unit-tester-retries 3)
+
 
 ;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
@@ -103,6 +109,8 @@
 ;; Used primarily by Simulator_nought.ss:
 ;;===================================================
 ;; These are the virtual coordinate bounds of the world.
+;; [2005.09.25] These are constants for an out of use file:
+;; Now we use regiment-parameters for this type of thing...
 (define world-xbound 60)
 (define world-ybound 60)
 (define radius 20) ;; And the comm radius.
