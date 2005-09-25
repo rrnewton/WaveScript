@@ -1218,6 +1218,8 @@
 ;;              This is for nondeterministic tests that merely have a high 
 ;;              probability of success.  'retry can be specified either at 
 ;;              tester-construction time or test-time.
+;; [2005.09.25] Modifying the tester to return true or false based on 
+;;              whether all tests pass.
 ;; Forms:
 ;;  (default-unit-tester message these-tests)
 ;;  (default-unit-tester message these-tests equalfun)
@@ -1247,19 +1249,18 @@
        [(null? ls) (void)]
        ;; This is a little lame, first proc is equality function, second is preprocessor:
        [(procedure? (car ls))
-	(set! procsseen (add1 procsseen))
-	(if (= 1 procsseen)
+	(if (= 0 procsseen)
 	    (set! teq? (car ls))
-	    (if (= 2 procsseen)
+	    (if (= 1 procsseen)
 		(set! preprocessor (car ls))
 		(error 'default-unit-tester "Too many proc arguments!: ~a" (car ls))))
-	(loop (cdr ls))]
+	(arg-loop (cdr ls) (add1 procsseen))]
        [(eq? (car ls) 'disable) 
 	(set! enabled #f)
-	(loop (cdr ls))]
+	(arg-loop (cdr ls) procsseen)]
        [(eq? (car ls) 'retry) 
 	(set! retry-failures #t)
-	(loop (cdr ls))]
+	(arg-loop (cdr ls) procsseen)]
        [else (error 'default-unit-tester "Unknown argument or flag: ~a" (car ls))]))
 	
     ;; Now we construct the actual tester procedure:
@@ -1280,7 +1281,6 @@
 	       these-tests)])
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
-
 	       [quiet (or (memq 'quiet args)
 			  (memq 'q args)
 			  (memq 'qv args))]
@@ -1296,14 +1296,11 @@
 	       [intended (map caddr entries)]
 	       [success #t])
 
-	  (if verbose 
-	      (begin (printf ";; Testing module: ~s~n" message)
-		     (if quiet (printf ";; (with test output suppressed)~n"))
-		     ))
-	  (flush-output-port)
-	  (for-each 
-	   (lambda (num expr descr intended)
-	       (flush-output-port)
+	   ;; This (long) sub-procedure executes a single test:
+	 (let ([execute-one-test
+	       (lambda (num expr descr intended)
+		 (let retryloop ((try 0))
+		   (flush-output-port)
 	       ;; This prints a name, or description for the test:
 	       (if (and verbose descr) (printf "   ~s~n" descr))
 	       (display-constrained `(,num 10) "  " `(,expr ,TESTWIDTH)
@@ -1335,13 +1332,18 @@
 ;	       (newline)
 		(if (or (and (procedure? intended) ;; This means its an oracle
 			    (intended result))
-		       (teq? intended result)) ;; Otherwise its an expected answer
+			(teq? intended result)) ;; Otherwise its an expected answer
+		   ;; This test was a success:
 		   (begin
-;		     (if (procedure? intended)
-;			 (printf "~s, " result))
 		     (printf "PASS~n"))
-
-		   (begin (set! success #f)
+		   ;; This test was a failure:
+		   (if retry-failures ;; But if we're in retry mode try again...
+		       (if (< try (default-unit-tester-retries))
+			   (begin (printf "fail:  But retrying... Retry #~a\n" try)
+				  (retryloop (add1 try))))
+		       ;; Otherwise just print a notification of the failure and bind it to a global var:
+		       (begin 
+			  (set! success #f)
 			  (newline)
 			  (if (procedure? intended)
 			      (printf "FAIL: Expected result to satisfy procedure: ~s~n" intended)
@@ -1356,21 +1358,33 @@
 			  (newline)
 			  (eval `(define failed-unit-test ',expr))
 			  (printf "Violating test bound to global-variable \"failed-unit-test\"~n")
-;; I decided to make this crash after all:
+			  ;; I decided to make this crash after all:
 ;			  (return (void))
-			  (error 'default-unit-tester "failed test")
-			  ))))
-	     (iota (length tests))
-	     tests descriptions intended)
-	)))))
-		     )) ;; End testerproc let binding
+			  (return #f)
+;			  (error 'default-unit-tester "failed test")
+			  ))))))]) ;; end execute-one-test
 
-	;; Regiment specific:
-	(if enabled
-	    ;; Add this unit-tester to the global list:     
-	    (reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))	  
+	   ;; Main body of tester:
+	  (if verbose 
+	      (begin (printf ";; Testing module: ~s~n" message)
+		     (if quiet (printf ";; (with test output suppressed)~n"))
+		     ))
+	  (flush-output-port)
+	  (for-each execute-one-test
+		    (iota (length tests))
+		    tests descriptions intended)
+	  ;; If we made it this far, we've passed all the tests, return #t:
+	  #t
+	  ))))))
+    )) ;; End testerproc let binding
 
-	testerproc))))
+    ;; Regiment specific:
+    (if enabled
+	;; Add this unit-tester to the global list:     
+	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))	  
+	  
+    ;; Finally, return the test-executor procedure:  
+    testerproc))))
 
 			
 ;===============================================================================
@@ -2311,6 +2325,13 @@
     [(graph-get-connected-component 'a '((a b) (b a)))                         (b a)]
     [(graph-get-connected-component 'a '((a b) (b a c)))                       (c b a)]
 
+    ["Test the default unit tester... (retry feature)"
+     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
+       (let ([fun (default-unit-tester "testing tester" 
+		    `[(3 3) ((random 10) 3)]
+		    'retry)])
+	 (fun 'qv)))
+     #t]
 
     ))
 
