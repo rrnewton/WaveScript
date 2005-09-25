@@ -734,7 +734,7 @@
 
 (define these-tests
   `(
-    ;[3 3] ;; UNIT TESTER BROKEN ATM...
+    [3 3] ;; UNIT TESTER BROKEN ATM...
     
 #|
     [(compile-simulate-alpha

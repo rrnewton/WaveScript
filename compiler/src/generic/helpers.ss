@@ -1268,14 +1268,14 @@
     (call/cc
      (lambda (return)
        (let ([entries
-	      ;; This canonicalizes them so that they're all three-long:
+	      ;; This canonicalizes them so that they're all four-long:
 	      (map 
 	       (lambda (entry)
-		 (cond
-		  [(= 3 (length entry))  entry]
-		  [(= 2 (length entry))
-		   ;; Pads out with #f for entry name:
-		   (cons #f entry)]
+		 (match entry 
+		  [(,test ,result)      `(#f   () ,test ,result)]
+		  [(,msg ,test ,result) `(,msg () ,test ,result)]
+		  [(,msg ,moreargs ... ,test ,result)
+		   `(,msg ,moreargs ,test ,result)]
 		  [else (error 'default-unit-tester 
 			       " This is a bad test-case entry!: ~s~n" entry)]))
 	       these-tests)])
@@ -1291,14 +1291,19 @@
 			    (memq 'qv args))]
 	       [retry-failures (or retry-failures ;; If already set above, or..
 				   (memq 'retry args))]
-	       [descriptions (map car entries)]
-	       [tests (map cadr entries)]
-	       [intended (map caddr entries)]
+;	       [descriptions (map car entries)]
+;	       [tests (map caddr entries)]
+;	       [intended (map cadddr entries)]
 	       [success #t])
 
 	   ;; This (long) sub-procedure executes a single test:
 	 (let ([execute-one-test
-	       (lambda (num expr descr intended)
+	       (lambda (num entry)
+		 (match entry
+		   [(,descr ,extraflags ,expr ,intended)
+		    ;(printf "extraflags! ~a\n"  extraflags)
+		    (fluid-let ([retry-failures (or retry-failures (memq 'retry extraflags))])
+		    
 		 (let retryloop ((try 0))
 		   (flush-output-port)
 	       ;; This prints a name, or description for the test:
@@ -1362,7 +1367,7 @@
 ;			  (return (void))
 			  (return #f)
 ;			  (error 'default-unit-tester "failed test")
-			  ))))))]) ;; end execute-one-test
+			  ))))))]))]) ;; end execute-one-test
 
 	   ;; Main body of tester:
 	  (if verbose 
@@ -1371,8 +1376,8 @@
 		     ))
 	  (flush-output-port)
 	  (for-each execute-one-test
-		    (iota (length tests))
-		    tests descriptions intended)
+		    (iota (length entries))
+		    entries)
 	  ;; If we made it this far, we've passed all the tests, return #t:
 	  #t
 	  ))))))
@@ -2330,6 +2335,18 @@
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((random 10) 3)]
 		    'retry)])
+	 (fun 'qv)))
+     #t]
+    ["This just gives the retry argument at test time."
+     (parameterize ([default-unit-tester-retries 100]) ;; Set retries way up
+       (let ([fun (default-unit-tester "testing tester" 
+		    `[(3 3) ((random 3) 0)])])
+	 (fun 'qv 'retry)))
+     #t]
+    ["This just gives the retry argument within the test itself."
+     (parameterize ([default-unit-tester-retries 100]) ;; Set retries way up
+       (let ([fun (default-unit-tester "testing tester" 
+		    `[(3 3) ["" retry (random 3) 0]])])
 	 (fun 'qv)))
      #t]
 

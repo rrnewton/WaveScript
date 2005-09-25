@@ -54,13 +54,6 @@
 
 ;;======================================================================
 
-;; Used primarily by helpers.ss:
-;;===================================================
-
-;; If retry is enabled, let's retry three times:
-(define-regiment-parameter default-unit-tester-retries 3)
-
-
 ;; Used primarily by pass12_add-heartbeats:
 ;;===================================================
 ;; The slow-pulse is used for region formation.
@@ -104,6 +97,14 @@
 (define-regiment-parameter simulation-logger-count #f)
 
 (define-regiment-parameter regiment-consec-ids #t)
+
+
+
+;; Used primarily by helpers.ss:
+;;===================================================
+
+;; If retry is enabled, let's retry three times:
+(define-regiment-parameter default-unit-tester-retries 3)
 
 
 ;; Used primarily by Simulator_nought.ss:
