@@ -230,7 +230,7 @@
      (timed-call (Integer Token . Object) Void)
 
      (subcall (Token . Object) Object)
-     (return (Object) Void)
+     ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      
 ;     (schedule (Token) Void)
      (token-scheduled? (Token) Bool)

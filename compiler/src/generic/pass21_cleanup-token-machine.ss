@@ -28,8 +28,8 @@
 
 
 ;;;   (*) Desugaring: It expands out some primitive applications
-;;;   that are just shorthands.  (For example, (dist) becomes
-;;;   (dist <this-token>)    ;;; TODO: not finished...
+;;;   that are just shorthands.  (For example, (gdist) becomes
+;;;   (gdist <this-token>)    ;;; TODO: not finished...
 ;;;   It also expands some syntaxes (and, or), and regularizes certain usages 
 ;;;   (greturn's arguments become ordered properly, defaults supplied).
 
@@ -77,10 +77,14 @@
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
 ;;;                | <GExpr>
 ;;;                | <Sugar> 
-;;;  <GExpr>     ::= (emit <DynToken> <Expr> ...)
+;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)
 ;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
-;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (dist <DynToken>)
+;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;;;                | (gdist <DynToken>)
+;;;                | (gparent <DynToken>)
+;;;                | (gorigin <DynToken>)
+;;;                | (ghopcount <DynToken>)
+;;;                | (gversion <DynToken>)
 ;;;  <Sugar>     ::= (flood <Expr>)
 ;;;                | (elect-leader <Token> [<Token>])
                      ;; <TODO> optional second argument.. decider
@@ -89,6 +93,8 @@
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 
+(define gram_21 ;; full_but_clean_tml
+  `(,@
 
 ;===============================================================================
 
@@ -281,7 +287,7 @@
 			  (call ,ind ,@args*))))])]
 	     	     
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(emit call bcast subcall)))
+	      (guard (memq call-style '(gemit call bcast subcall)))
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
@@ -294,43 +300,42 @@
 				      `(tok ,tok ,DEFAULT_SUBTOK)
 				      tok)
 			   ,args* ...)]
-	     [(return ,[x]) `(return ,x)]
-	     [(relay) `(relay (tok ,this-token ,this-subtok))]
-	     [(relay ,tok) (guard (tokname? tok))
-	      (check-tok 'relay tok)
+	     [(return ,[x]) `(return ,x)] ;; A local return, not a gradient one.
+	     [(grelay) `(grelay (tok ,this-token ,this-subtok))]
+	     [(grelay ,tok) (guard (tokname? tok))
+	      (check-tok 'grelay tok)
 	      ;; There is some question here as to whether we should
 	      ;; default to this-subtok or to Zero subtoken index.
-	      `(relay (tok ,tok ,this-subtok))]
-	     [(relay (tok ,t ,[e])) (check-tok 'relay t)
-	      `(relay (tok ,t ,e))]
+	      `(grelay (tok ,tok ,this-subtok))]
+	     [(grelay (tok ,t ,[e])) (check-tok 'grelay t)
+	      `(grelay (tok ,t ,e))]
 	     
 	     ;; Expand this out to refer to the precise token...
 	     ;; TODO FIXME TODO: change this to refer to the specific subtok_ind:
-	     [(dist) `(dist (tok ,this-token subtok_ind))]
-	     [(dist (tok ,t ,[n]))  `(dist (tok ,t ,n))]
-	     [(dist ,t) (guard (tokname? t)) `(dist (tok ,t 0))]
-	     [(dist ,[e]) `(dist ,e)]
+	     [(gdist)                         `(gdist (tok ,this-token subtok_ind))]
+	     [(gdist (tok ,t ,[n]))           `(gdist (tok ,t ,n))]
+	     [(gdist ,t) (guard (tokname? t)) `(gdist (tok ,t 0))]
+	     [(gdist ,[e])                    `(gdist ,e)]
 
-	     [(parent) `(parent (tok ,this-token subtok_ind))]
-	     [(parent (tok ,t ,[n]))  `(parent (tok ,t ,n))]
-	     [(parent ,t) (guard (tokname? t)) `(parent (tok ,t 0))]
-	     [(parent ,[e]) `(parent ,e)]
+	     [(gparent)                         `(gparent (tok ,this-token subtok_ind))]
+	     [(gparent (tok ,t ,[n]))           `(gparent (tok ,t ,n))]
+	     [(gparent ,t) (guard (tokname? t)) `(gparent (tok ,t 0))]
+	     [(gparent ,[e])                    `(gparent ,e)]
 
-	     [(origin) `(origin (tok ,this-token subtok_ind))]
-	     [(origin (tok ,t ,[n]))  `(origin (tok ,t ,n))]
-	     [(origin ,t) (guard (tokname? t)) `(origin (tok ,t 0))]
-	     [(origin ,[e]) `(origin ,e)]
+	     [(gorigin)                         `(gorigin (tok ,this-token subtok_ind))]
+	     [(gorigin (tok ,t ,[n]))           `(gorigin (tok ,t ,n))]
+	     [(gorigin ,t) (guard (tokname? t)) `(gorigin (tok ,t 0))]
+	     [(gorigin ,[e])                    `(gorigin ,e)]
 
-	     [(hopcount) `(hopcount (tok ,this-token subtok_ind))]
-	     [(hopcount (tok ,t ,[n]))  `(hopcount (tok ,t ,n))]
-	     [(hopcount ,t) (guard (tokname? t)) `(hopcount (tok ,t 0))]
-	     [(hopcount ,[e]) `(hopcount ,e)]
+	     [(ghopcount)                         `(ghopcount (tok ,this-token subtok_ind))]
+	     [(ghopcount (tok ,t ,[n]))           `(ghopcount (tok ,t ,n))]
+	     [(ghopcount ,t) (guard (tokname? t)) `(ghopcount (tok ,t 0))]
+	     [(ghopcount ,[e])                    `(ghopcount ,e)]
 
-	     [(version) `(version (tok ,this-token subtok_ind))]
-	     [(version (tok ,t ,[n]))  `(version (tok ,t ,n))]
-	     [(version ,t) (guard (tokname? t)) `(version (tok ,t 0))]
-	     [(version ,[e]) `(version ,e)]
-
+	     [(gversion)                          `(version (tok ,this-token subtok_ind))]
+	     [(gversion (tok ,t ,[n]))            `(version (tok ,t ,n))]
+	     [(gversion ,t) (guard (tokname? t))  `(version (tok ,t 0))]
+	     [(gversion ,[e])                     `(version ,e)]
 	     
 	     [(greturn ,[expr]            ;; Value
 		      (to ,memb)         ;; To
@@ -530,10 +535,13 @@
 							 (map car nodup-toks))
 					nodup-toks)))))
 	))
-
-    ;; Main body of cleanup-token-machine
-    (lambda (prog)
-      (match prog
+  
+    (build-compiler-pass ;; This wraps the main function with extra debugging
+     `(input)
+     `(output (grammar ,full_but_clean_tml))
+     ;; Main body of cleanup-token-machine
+     (lambda (prog)
+       (match prog
 	;; If there is a specified input language, we don't change it.
 	;; This pass is called from multiple places, so that would confuse things:
         [(,lang '(program (bindings ,constbinds ...)
@@ -568,7 +576,7 @@
 	[(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
 	
 	[,stuff (cleanup-token-machine (decode 'cleanup-token-machine-lang (list stuff)))]
-	))))
+	)))))
 
 
 ;	 (let* ([initenv (map car bindings)]
@@ -610,7 +618,7 @@
       '(deglobalize-lang 
 	'(program
 	  (bindings )
-	  (socpgm (bindings ) (emit tok1))
+	  (socpgm (bindings ) (gemit tok1))
 	  (nodepgm
 	   (tokens
 	    [tok1 () (app fun1)]
@@ -632,7 +640,7 @@
 		(cleanup-token-machine 
 		 '(deglobalize-lang 
 		   '(program
-		     (bindings ) (socpgm (bindings ) (emit tok1))
+		     (bindings ) (socpgm (bindings ) (gemit tok1))
 		     (nodepgm
 		      (tokens
 		       [tok1 () (greturn 3 (to tok2) )]
@@ -644,6 +652,14 @@
       (via (tok tok1 0))
       (seed '#f)
       (aggr #f))]
+    
+    ["Test of gdist normalization"
+     (deep-assq 'gdist
+		(cleanup-token-machine '(tokens (tok1 () (gdist)))))
+     ,(lambda (x) (match x 
+		   [(gdist (tok tok1 ,_)) #t]
+		   [,_ #f]))]
+	     
   
 ))
 
@@ -695,17 +711,17 @@
 	     [(if ,[exprs] ...) (apply append exprs)]
 	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
 
-	     ;; "Direct call":  Not allowing dynamic emit's for now:
-	     [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-	     ;; Indirect emit call... could consider restricting these.
-	     [(emit ,[e] ,[args*] ...)
-	      (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+	     ;; "Direct call":  Not allowing dynamic gemit's for now:
+	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	     ;; Indirect gemit call... could consider restricting these.
+	     [(gemit ,[e] ,[args*] ...)
+	      (error 'pass23_desugar-gradients "not allowing dynamically targetted gemits atm.")
 	      ;(apply append e args*)
 	      ]
 	     ;; Also allowing dynamic relays and dists.  
 	     ;; These don't matter as much because I'm basing 
-	     [(relay (tok ,t ,[e])) e]
-	     [(dist (tok ,t ,[e])) e]
+	     [(grelay (tok ,t ,[e])) e]
+	     [(gdist (tok ,t ,[e])) e]
 	     [(parent (tok ,t ,[e])) e]
 	     [(origin (tok ,t ,[e])) e]
 	     [(hopcount (tok ,t ,[e])) e]
