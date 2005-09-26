@@ -303,6 +303,7 @@
 				      tok)
 			   ,args* ...)]
 	     [(return ,[x]) `(return ,x)] ;; A local return, not a gradient one.
+
 	     [(grelay) `(grelay (tok ,this-token ,this-subtok))]
 	     [(grelay ,tok) (guard (tokname? tok))
 	      (check-tok 'grelay tok)
@@ -397,7 +398,7 @@
 			     (begin 
 			       ,@(DEBUGMODE `(dbg "Soc return on basenode, returning directly: %d" ,socretval))
 			       (call (tok SOC-return-handler 0) ,socretval))
-			     (return ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
+			     (greturn ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
 	     ;; Sending to subtok 1 indicates that we're finished.
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
