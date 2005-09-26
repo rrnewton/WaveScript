@@ -208,7 +208,26 @@
 ;; [2004.10.22]  For now everything that handles tokens is a syntax not a prim.
 ;; [2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
-  '( ;(elect-leader) (flood) ;; These are actually macros, but what the heck
+  '( 
+
+    ;; Arithmetic
+    (+ (Number Number) Number) 
+    (- (Number Number) Number) 
+    (* (Number Number) Number) 
+    (/ (Number Number) Number) 
+
+    (not (Bool) Bool)
+    ; predicates
+    (=  (Number Number) Bool)
+    (<  (Number Number) Bool)
+    (>  (Number Number) Bool)
+    (<=  (Number Number) Bool)
+    (>=  (Number Number) Bool)
+;    (eq? (Object Object) Bool)
+    (equal? (Object Object) Bool)
+    (eq? (Object Object) Bool)
+
+;(elect-leader) (flood) ;; These are actually macros, but what the heck
 ;     (greturn)
 ;     (emit)
 ;     (relay)
@@ -230,6 +249,7 @@
      (timed-call (Integer Token . Object) Void)
 
      (subcall (Token . Object) Object)
+     (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      
 ;     (schedule (Token) Void)

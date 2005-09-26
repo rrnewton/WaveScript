@@ -93,8 +93,6 @@
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 
-(define gram_21 ;; full_but_clean_tml
-  `(,@
 
 ;===============================================================================
 
@@ -104,6 +102,10 @@
 ;; [2005.03.28]  Moving destructure-tokbind to helpers.ss
 
 (define cleanup-token-machine
+  (build-compiler-pass ;; This wraps the main function with extra debugging
+   'cleanup-token-machine
+   `(input)
+   `(output (grammar ,full_but_clean_tml))
   (let ()
 
     ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
@@ -332,10 +334,10 @@
 	     [(ghopcount ,t) (guard (tokname? t)) `(ghopcount (tok ,t 0))]
 	     [(ghopcount ,[e])                    `(ghopcount ,e)]
 
-	     [(gversion)                          `(version (tok ,this-token subtok_ind))]
-	     [(gversion (tok ,t ,[n]))            `(version (tok ,t ,n))]
-	     [(gversion ,t) (guard (tokname? t))  `(version (tok ,t 0))]
-	     [(gversion ,[e])                     `(version ,e)]
+	     [(gversion)                          `(gversion (tok ,this-token subtok_ind))]
+	     [(gversion (tok ,t ,[n]))            `(gversion (tok ,t ,n))]
+	     [(gversion ,t) (guard (tokname? t))  `(gversion (tok ,t 0))]
+	     [(gversion ,[e])                     `(gversion ,e)]
 	     
 	     [(greturn ,[expr]            ;; Value
 		      (to ,memb)         ;; To
@@ -536,11 +538,9 @@
 					nodup-toks)))))
 	))
   
-    (build-compiler-pass ;; This wraps the main function with extra debugging
-     `(input)
-     `(output (grammar ,full_but_clean_tml))
      ;; Main body of cleanup-token-machine
      (lambda (prog)
+       (let matchloop ((prog prog))
        (match prog
 	;; If there is a specified input language, we don't change it.
 	;; This pass is called from multiple places, so that would confuse things:
@@ -561,7 +561,7 @@
                   (if (null? socstmts) #f `(begin ,@socstmts))
                   nodetoks 
 		  starttoks)]
-	[(,lang '(program ,stuff ...)) (cleanup-token-machine (decode lang stuff))]
+	[(,lang '(program ,stuff ...)) (matchloop (decode lang stuff))]
 	;; Cleanup-token-machine is a real lenient pass.  
 	;; It will take the token machines in other forms, such as
 	;; without the language annotation:
@@ -570,13 +570,13 @@
 			  ,socstmts ...)
 		  (nodepgm (tokens ,nodetoks ...)
 			   (startup ,starttoks ...)))
-	 (cleanup-token-machine `(UNKNOWNLANG ',prog))]
+	 (matchloop `(UNKNOWNLANG ',prog))]
 
-	['(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
-	[(program ,stuff ...) (cleanup-token-machine (decode 'cleanup-token-machine-lang stuff))]
+	['(program ,stuff ...) (matchloop (decode 'cleanup-token-machine-lang stuff))]
+	[(program ,stuff ...) (matchloop (decode 'cleanup-token-machine-lang stuff))]
 	
-	[,stuff (cleanup-token-machine (decode 'cleanup-token-machine-lang (list stuff)))]
-	)))))
+	[,stuff (matchloop (decode 'cleanup-token-machine-lang (list stuff)))]
+	))))))
 
 
 ;	 (let* ([initenv (map car bindings)]
@@ -634,7 +634,7 @@
                   [body (rac tok1)])
 	   (and (deep-member? '(fun1) body)
 		(deep-member? '(fun2) body)))]))]
-    
+
     ["Test of greturn normalization #1"
      (deep-assq 'greturn
 		(cleanup-token-machine 
@@ -763,4 +763,3 @@
 	     ))])
 
 	main-loop))
-
