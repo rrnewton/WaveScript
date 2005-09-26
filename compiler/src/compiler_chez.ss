@@ -45,6 +45,8 @@
 (include "chez/helpers.ss")
 ;(eval-when (compile eval) (cd ".."))
 
+(include "generic/grammar_checker.ss")
+
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 (define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/language-mechanism.ss")
