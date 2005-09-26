@@ -11,7 +11,8 @@
 ;(module compiler_plt mzscheme
  
 (require (lib "include.ss")
-         (all-except "plt/helpers.ss" id rec))
+         (all-except "plt/helpers.ss" id rec)
+         (all-except "plt/grammar_checker.ss" these-tests test-this))
 
 (require "plt/constants.ss"
          "plt/iu-match.ss"

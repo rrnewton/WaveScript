@@ -573,7 +573,7 @@
 	[(,lang '(program (bindings ,constbinds ...) 
 			  (nodepgm ,toks)))
 	 (let ([tainted (findall-emittoks (cdr toks))])
-	   (disp "EMITTOKS:" tainted)
+	   ;(disp "EMITTOKS:" tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(tokens ,[processtb -> newtoks toks] ...)

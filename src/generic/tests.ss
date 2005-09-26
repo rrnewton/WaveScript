@@ -216,10 +216,8 @@
        (error 'test-everything "RYAN FINISH THIS")]
       )
     ))
-  
- 
+   
 ;===============================================================================
-
 
 (define tests
 					;  `( ,@tests_old

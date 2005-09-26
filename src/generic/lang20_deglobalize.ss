@@ -6,6 +6,7 @@
 (define (deglobalize-lang prog)
 ;  (run-simulation
 ;   (build-simulation
-    (compile-simulate-nought prog))
+;    (compile-simulate-nought prog))
+    (compile-simulate-alpha prog))
 ;   2.0))
 

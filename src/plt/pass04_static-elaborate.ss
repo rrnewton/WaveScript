@@ -5,10 +5,6 @@
            "iu-match.ss"
            "helpers.ss")
   
-  (define (make-list n x)
-    (if (zero? n) '()
-        (cons x (make-list (sub1 n) x))))
-  
   (define (remq x ls)
     (cond 
       [(null? ls) ls]

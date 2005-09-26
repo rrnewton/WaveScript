@@ -622,8 +622,8 @@
 	  (socpgm (bindings ) (gemit tok1))
 	  (nodepgm
 	   (tokens
-	    [tok1 () (app fun1)]
-	    [tok1 () (app fun2)])
+	    [tok1 () 'fun1]
+	    [tok1 () 'fun2])
 	   (startup )
 	   ))))
      ,(lambda (p)
@@ -633,8 +633,8 @@
 		      (nodepgm (tokens ,toks ...))))
            (let* ([tok1 (assq 'tok1 toks)]
                   [body (rac tok1)])
-	   (and (deep-member? '(fun1) body)
-		(deep-member? '(fun2) body)))]))]
+	   (and (deep-member? 'fun1 body)
+		(deep-member? 'fun2 body)))]))]
 
     ["Test of greturn normalization #1"
      (deep-assq 'greturn

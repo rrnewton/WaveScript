@@ -6,6 +6,7 @@
   (require "constants.ss")
   (require "iu-match.ss")
   (require (all-except "helpers.ss" filter))
+  (require (all-except "grammar_checker.ss" test-this these-tests))
 
   (require (lib "trace.ss"))
 
@@ -15,8 +16,6 @@
 ;;	   test-this these-tests test12 tests12)
   (provide (all-defined))
   )
-
- ;(require pass21_cleanup-token-machine)
    
 ;   (cleanup-token-machine '(tokens))
    
@@ -50,3 +49,7 @@
 ;   (f p)
    
 ;   (deep-member? '(foo) '(bar (foo) zoo))
+     
+     
+;(require pass21_cleanup-token-machine)
+;(require "helpers.ss")

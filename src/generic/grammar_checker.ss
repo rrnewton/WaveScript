@@ -124,12 +124,12 @@
 	     (check-grammar prog (cadr ingram))
 	     (error 'build-compiler-pass "Bad input to pass: \n ~a" prog))
 	 (let ((result (transform prog)))	   
-	   (printf "~a: Got result, checking output grammar...\n" name)
+	   ;(printf "~a: Got result, checking output grammar...\n" name)
 	   (or (not outgram)
 	       (check-grammar result (cadr outgram))
 	       (begin (pretty-print result) #f)
 	       (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))
-	   (printf "~a: Output grammar passed.\n" name)
+	   ;(printf "~a: Output grammar passed.\n" name)
 	   result
 	   )))]))
 
