@@ -29,7 +29,7 @@
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
 
-;;; Output grammar:
+;;; Output grammar: UNFINISHED:
 
 ;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
 ;;;  <SOCPgm> ::= <Statement*>
@@ -42,11 +42,16 @@
 
 ;;;  <Code> ::= <Statement>*
 ;;;  <Statement>  ::= <BasicStuff?>
-;;;                | (emit <Token> <Simple>*)
-;;;                | (relay <Token>)
-;;;                | (dist <Token>)
-;;;                | (return <Token> <Simple>)
+;;;                | <GExpr>
 ;;;                | <Macro> 
+;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)
+;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
+;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;;;                | (gdist <DynToken>)
+;;;                | (gparent <DynToken>)
+;;;                | (gorigin <DynToken>)
+;;;                | (ghopcount <DynToken>)
+;;;                | (gversion <DynToken>)
 ;;;  <Macro> ::= (flood <Token>)
 ;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
 ;;;  <Simple> ::= (quote <Lit>) | <Var>
@@ -54,6 +59,12 @@
 ;;;  <Token> ::= <Symbol> | ...???
 ;;;  <Exp>  ::= ???
 
+
+(define deglobalize_output_grammar
+   `([code (statement ...)]
+     [statement basic_tml]
+     [statement gexpr]
+     ))
 
 ;;========================================
 ;; EXAMPLE:
@@ -112,7 +123,7 @@
       [(rfold)
        (match args
 	      [(,rator_tok ,seed_val)	       
-	       `((return this              ;; Value
+	       `((greturn this              ;; Value
 			 (to ,memb) ;; To
 			 (via ,parent)           ;; Via
 			 (seed ,seed_val)       ;; With seed
@@ -125,7 +136,7 @@
       [(rfold)
        (match args
 	      [(,rator_tok ,seed_val)
-	       `( (return ,formal              ;; Value
+	       `((greturn ,formal              ;; Value
 			  (to ,memb) ;; To
 			  (via ,parent)           ;; Via
 			  (seed ,seed_val)       ;; With seed
@@ -211,7 +222,7 @@
 				 `(call ,form v)
 				 `(activate ,form v))]
 		   [,form ,(if push? '(v) '())
-			  (return
+			  (greturn
 			     ,(if push? 'v 'this)                     ;; Value
 			     (to ,memb)             ;; To
 ;			     (via ,parent)          ;; Via
@@ -234,12 +245,12 @@
 		 
 		 ;; <TODO> <FIXME> ALLOW VARIABLE ARGUMENTS FOR TOKENS!!!
 		 `(
-		   ;[,parent (v) (emit ,form (my-id))] ;,spread-cluster)]
+		   ;[,parent (v) (gemit ,form (my-id))] ;,spread-cluster)]
 		   ;[,parent (v) (elect-leader ,memb (my-id))]
 		   ;[elect-leader
 		   [,form (id)
 			  (if (check-tok ,parent)
-			      (begin (relay) (call ,leader-tok))
+			      (begin (grelay) (call ,leader-tok))
 			      ;; Here we remove ourselves if we've overflowed?
 					;(remove-tok ,spread-cluster)
 			      )]
@@ -284,8 +295,8 @@
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
-;		 [,form () (emit ,memb this)]
-		 [,form () (emit ,memb)]
+;		 [,form () (gemit ,memb this)]
+		 [,form () (gemit ,memb)]
 		 ;; Display stuff:
 ;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
@@ -293,7 +304,7 @@
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
-		 [,memb () (if (< (dist) ,rad) (relay))]
+		 [,memb () (if (< (gdist) ,rad) (grelay))]
 		 )
 	       )]
 
@@ -304,7 +315,7 @@
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
 ;		 [,form () (emit ,memb this)]
-		 [,form () (emit ,memb)]
+		 [,form () (gemit ,memb)]
 		 ;; Display stuff:
 ;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
@@ -312,7 +323,7 @@
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
-		 [,memb () (if (< (dist) ,rad) (relay))]
+		 [,memb () (if (< (gdist) ,rad) (grelay))]
 		 )
 	       )]
 
@@ -321,8 +332,8 @@
 	     (let ([rad (cadr args)]
 		   [loc (car args)])
 	       `(
-		 [,form () (emit ,memb)]
-		 [,memb () (if (< (dist ,form) ,rad) (relay))]
+		 [,form () (gemit ,memb)]
+		 [,memb () (if (< (gdist ,form) ,rad) (grelay))]
 		 ))]	   
 		 
             ;; Does this work with flickering?
@@ -543,9 +554,9 @@
 						      leaves leaftoks)
 					       ;; Pulse the global gradient at one hertz:
 					       [spread-global ()
-							      (emit global-tree)
+							      (gemit global-tree)
 							      (timed-call 1000 spread-global)]
-					       [global-tree () (relay)]
+					       [global-tree () (grelay)]
 
 					       ;; THIS IS A YUCKY WAY TO DO IT:
 ;					       [spark-world () (call ,(get-membership-name 'world) this)]
@@ -568,16 +579,19 @@
   `(
 ;    [(lazy-letrec () '3) unspecified]
 
-    [(mvlet ([(a b) (get-names 'x)]) (list a b))
+    ["Test get-names" 
+     (mvlet ([(a b) (get-names 'x)]) (list a b))
      (f_token_x m_token_x)]
 
-    [(deglobalize '(lang '(program 
+    ["Deglobalize simple program... (don't check result)"
+     (deglobalize '(lang '(program 
 			   (props [result_1 final local])
 			   (control-flow )
 			   (lazy-letrec ((result_1 #f _ _ '3)) result_1))))
      unspecified]
 
-    [(deglobalize '(lang '(program 
+    ["Deglobalize region-returning program: circle around anchor (don't check result)."
+     (deglobalize '(lang '(program 
 			   (props [b local]
 				  [a local]
 				  [anch distributed anchor]
@@ -670,9 +684,9 @@
 			       (elect-leader memb_a)
 			       '#f)]
 		 [memb_a () (call form_r)]
-		 [form_r () (emit memb_r)]
-		 [memb_r () (begin (if (< (dist) 50) 
-				       (relay))
+		 [form_r () (gemit memb_r)]
+		 [memb_r () (begin (if (< (gdist) 50) 
+				       (grelay))
 				   (call fold_it))]
 		 [memb_r:ret (v) (call map_it v)]
 		 [fold_it () (return memb_r (aggregator f) (sense))]
@@ -685,10 +699,10 @@
 
 '(f_token_result_2
   ((m_token_tmp_3 () (call f_token_result_2))
-   (f_token_result_2 () (emit m_token_result_2))
+   (f_token_result_2 () (gemit m_token_result_2))
    (m_token_result_2
     ()
-    (if (< (dist f_token_result_2) '50) (relay)))
+    (if (< (gdist f_token_result_2) '50) (grelay)))
    (f_token_tmp_3 () (flood token_6))
    (token_6
     ()
