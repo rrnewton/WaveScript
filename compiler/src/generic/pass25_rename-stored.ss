@@ -87,7 +87,7 @@
     [(,lang '(program (bindings ,constbinds ...)
 		      (nodepgm (tokens ,toks ...))))          
      (let ([subst (make-subst toks)])
-       (pp subst)
+       ;(pretty-print subst)
        `(rename-stored-lang
 	 '(program (bindings ,constbinds ...)
 		   (nodepgm (tokens 

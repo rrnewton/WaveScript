@@ -61,9 +61,8 @@
 (include "generic/lang13_control-flow.ss")
 (include "generic/lang14_places.ss")
 
-(include "generic/lang16_deglobalize.ss") ;; deglobalize
-
-(include "generic/lang19_haskellize-tokmac.ss") 
+(include "generic/lang20_deglobalize.ss") 
+(include "generic/lang30_haskellize-tokmac.ss") 
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")

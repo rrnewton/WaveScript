@@ -85,6 +85,11 @@
 (define (reg:set-random-state! s)
   (current-pseudo-random-generator (vector->pseudo-random-generator s)))
 
+  (define (make-list n x)
+    (let loop ((acc ()))
+      (if (zero? n) acc
+          (loop (cons x acc)))))
+  
 ;; ======================================================================  
 
   (include (build-path "generic" "helpers.ss"))
@@ -128,7 +133,7 @@
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
    flush-output-port with-error-handlers warning cpu-time ;; error-handler 
-   pretty-maximum-lines
+   pretty-maximum-lines make-list
    
    ;; Meet in the middle with chez:
    print-level print-length

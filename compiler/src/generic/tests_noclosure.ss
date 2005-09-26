@@ -7,7 +7,7 @@
      (* -6 7)
      (cons 0 '())
      (cons (cons 0 '()) (cons 1 '()))
-     (cdr (cons 16 32))
+     (cdr (cons 16 '()))
      ;; Cannot have toplevel void!!
      (letrec ((x 0)) x)
      (letrec ([x 17]) (+ x x))

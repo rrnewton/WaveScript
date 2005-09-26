@@ -185,18 +185,10 @@
                    (f (cdr tests) (+ n 1) (+ passed 1) (+ (modulo m mod) 1)))
                  (f (cdr tests) (+ n 1) passed mod)))))]))
 
-(define test-all-but
-  (lambda ()
-    ;; Remove last pass (generate-MSIL) and run test-all.
-    ;; Also make sure snet-optimize-level is high enough that
-    ;; primitive names are reserved.
-    (fluid-let ([pass-names (rdc pass-names)])
-      (test-all))))
-
 
 (define test-all
   (case-lambda
-    [() (real-test-all #t #t 2)]
+    [() (real-test-all #t #f 2)]
     [(emit?) (real-test-all emit? #t 2)]
     [(emit? verbose?) (real-test-all emit? verbose? 2)]
     [(emit? verbose? optlvl) (real-test-all emit? verbose? optlvl)]))
@@ -205,11 +197,11 @@
   (lambda (emit? verbose? optlvl)
       (let f ([tests tests] [n 0])
         (unless (null? tests)
-          (when verbose?
+          (begin ;when verbose?
             (let ([s (format "~s: " n)])
               (display s)
 ;              (parameterize ([pretty-initial-indent (string-length s)])
-                (pretty-print (car tests))
+	      (pretty-print (car tests))
 ;		)
 	      ))
           ($test-one (car tests) emit? verbose? n)
@@ -256,12 +248,13 @@
              e1 e2 ...)]))
       (define check-eval
         (lambda (pass-name input-expr output-expr)
-          (on-error
-            (when verbose?
-              (printf "~%~s input:~%" pass-name)
-              (pretty-print input-expr)
-              (printf "========~%~s output:~%" pass-name)
-              (pretty-print output-expr))
+          (on-error  (void)
+	   ;(disp "VERBOSE?" verbose?)
+	   (when verbose?
+		 (printf "~%~s input:~%" pass-name)
+		 (pretty-print input-expr)
+		 (printf "========~%~s output:~%" pass-name)
+		 (pretty-print output-expr))
             (let ([t 
                    ;; RRN Cancelling this for PLT compatibility
 ;                   (parameterize ([run-cp0 (lambda (cp0 x) x)])
@@ -271,7 +264,7 @@
                                      pass-name ordinal)
                              (printf "~%Error occurred running output of pass ~s" pass-name))
                          ((if pre-deglobalize
-			      (game-eval) 
+			      (game-eval)
 			      stub-eval) output-expr));)
                        ])
               (unless (tester-eq? t answer)
@@ -336,26 +329,12 @@
                               (printf "~%~s input:~%" pass-name)
                               (pretty-print input-expr)))
                           (pass input-expr))])
-                  (case pass-name
-                    [(generate-C-code)
-                     (when emit?
-                       (check-build-eval pass-name input-expr output-expr
-                                         "c" pretty-C-print))
-                     (when (memq pass-name (tracer))
-                       (pretty-C-print output-expr))
-                     (run input-expr)]
-                    [(generate-Sparc-code)
-                     (when emit?
-                       (check-build-eval pass-name input-expr output-expr
-                                         "s" pretty-asm-print))
-                     (when (memq pass-name (tracer))
-                       (print-file "stst.s"))
-                     (run input-expr)]
-                    [else
-                      (check-eval pass-name input-expr output-expr)
-                      (when (memq pass-name (tracer))
-                        (pretty-print output-expr))
-                      (run output-expr)])))))))
+		  (begin
+		    (check-eval pass-name input-expr output-expr)
+		    (when (memq pass-name (tracer))
+			  (pretty-print output-expr))
+		    (run output-expr))
+		  ))))))
       (unique-name-counter 0)
       (parameterize ([remaining-pass-names pass-names])
         (run original-input-expr)))))

@@ -171,6 +171,7 @@
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	   ;(break)
 	   (if (null? lhs*)
 	       (process-expr expr env)
 	   (let* ([newenv (append (map list lhs* rhs*) env)]

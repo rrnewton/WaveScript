@@ -81,11 +81,11 @@
 (define local-node-primitives 
   '(
     (my-id () NodeID)
-    (dist (Token) Integer) ;; Phase this out "dist" is wrong.
-    (hopcount (Token) Integer)
-    (parent (Token) NodeID)
-    (origin (Token) NodeID)
-    (version (Token) Integer)
+    ;(gdist (Token) Integer) ;; Phase this out "dist" is wrong.
+    ;(ghopcount (Token) Integer)
+    ;(gparent (Token) NodeID)
+    ;(gorigin (Token) NodeID)
+    ;(gversion (Token) Integer)
     
     (check-tok (Token) Bool)
     ;; Gotta have a way to remove tokens also!
@@ -272,6 +272,14 @@
      ;(rgb)
 
      (dbg (String . Object) Void)
+
+     ;; TEMPORARY, just for debugging/testing:
+     (cons (Object List) List) 
+     (car (List) Object)
+     (cdr (List) List)
+     (null? (List) Bool)
+     (list Object List)
+     (append List List)
 
     ;; This is a syntax:
     ;(leds ...
@@ -481,7 +489,7 @@
         (cons (f (car ls))
               (mapright f (cdr ls))))))
 
-(define list-set
+#;(define list->set
   (lambda (origls origpos v)
     (let list-set-loop ([ls origls] [pos origpos])
       (cond
