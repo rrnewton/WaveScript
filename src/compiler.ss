@@ -57,6 +57,26 @@
     ))
 
 
+;; ==================================================================
+;; This is the constructor for compiler passes.  It takes the main
+;; function that does the real work of the compiler, and then wraps it
+;; with some extra debugging code.
+
+(define (build-compiler-pass input-spec output-spec transform)  
+  (match (list input-spec output-spec)
+    [((input ,instuff) (output ,outstuff))
+     (lambda (prog)
+       (let ([ingram (assq 'grammar instuff)]
+	     [outgram (assq 'grammar outstuff)])
+	 (or (not ingram)
+	     (check-grammar prog (cadr ingram))
+	     (error "Bad input to pass: \n ~a" prog))
+	 (let ((result (transform prog)))	   
+	   (or (not outgram)
+	       (check-grammar result (cadr outgram))
+	       (error "Bad pass output failed grammar: \n ~a" prog))
+	   )))]))	 
+
 
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
