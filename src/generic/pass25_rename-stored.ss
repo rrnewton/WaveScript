@@ -27,6 +27,7 @@
     [(set! ,var ,[x])
      (guard (symbol? var) (assq var this-subst))
      `(set! ,(cadr (assq var this-subst)) ,x)]
+        
     ;; External stored references:
     [(ext-ref ,t ,v)
      `(ext-ref ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))))]
@@ -44,9 +45,11 @@
      `(if ,test ,conseq ,altern)]
     [(let ([,lhs ,[rhs]]) ,[body])
      `(let ([,lhs ,rhs]) ,body)]
-    [(,call-style ,[args*] ...)
-     (guard (memq call-style '(call timed-call)))
-     `(,call-style ,args* ...)]
+    ;; These are just primitives, they don't need their own form:
+    ;[(return ,[x]) `(return ,x)]
+    ;[(,call-style ,[args*] ...)
+    ;(guard (memq call-style '(subcall call timed-call)))
+    ; `(,call-style ,args* ...)]
     [(leds ,what ,which) `(leds ,what ,which)]
     [(,prim ,[rands] ...)
      (guard (or (token-machine-primitive? prim)

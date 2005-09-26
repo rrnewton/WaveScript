@@ -1,7 +1,8 @@
 
+
+
 ;; [2005.09.26]
 ;; This compiler has grown large enough..
-
 
 ;; [2005.09.26] This is limited right now.
 (define (check-grammar expr grammar)
@@ -35,7 +36,8 @@
       [(,x ,fun) (guard (procedure? fun))
 	    (if (fun x) fun ;'<fun>
 		(fail))]
-      [(,x ',sym) (if (eq? x sym) sym #f)]
+      [(,x (quote ,sym)) ;(guard (atom? x))
+       (if (eq? x sym) `(quote ,sym) #f)]
       [(,x (,p* ...)) ;; A list production
        (if (not (list? x))
 	   #f
@@ -66,7 +68,7 @@
 
 	    [((,x ,lsnew ...)
 	      ((quote ,p) ,p*new ...))
-	     (guard (symbol? x))
+	     ;(guard (atom? x))
 	     (if (eq? x p)
 		 (cons `(quote ,p) (listloop lsnew p*new))
 		 (fail))]
@@ -104,8 +106,37 @@
 	    ))))))
 
    (scangrammar expr grammar))))
-		  
 
+
+;; ==================================================================
+;; This is the constructor for compiler passes.  It takes the main
+;; function that does the real work of the compiler, and then wraps it
+;; with some extra debugging code.
+
+;; Todo, add invariant-procedures as well as grammars:
+(define (build-compiler-pass name input-spec output-spec transform)  
+  (match (list input-spec output-spec)
+    [((input ,instuff ...) (output ,outstuff ...))
+     (lambda (prog)
+       (let ([ingram (assq 'grammar instuff)]
+	     [outgram (assq 'grammar outstuff)])
+	 (or (not ingram)
+	     (check-grammar prog (cadr ingram))
+	     (error 'build-compiler-pass "Bad input to pass: \n ~a" prog))
+	 (let ((result (transform prog)))	   
+	   (printf "~a: Got result, checking output grammar...\n" name)
+	   (or (not outgram)
+	       (check-grammar result (cadr outgram))
+	       (begin (pretty-print result) #f)
+	       (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))
+	   (printf "~a: Output grammar passed.\n" name)
+	   result
+	   )))]))
+
+
+
+		  
+;; ======================================================================
 
 ;;;                | <Sugar> 
 
@@ -116,9 +147,10 @@
 ;;;           | call | subcall | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 (define basic_tml_grammar
-  `([PassInput (Lang ('quote Program))]
+  `(
+    [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
-    [Program ('program ('bindings Cbind ...) NodePgm)]
+    [Program ('program ('bindings (Var Const) ...) NodePgm)]
     ;       NOTE: tokens will inclide a binding for SOC-start and node-start:
     [NodePgm ('nodepgm ('tokens TokBinding ...))] 
     [TokBinding (TokName Var ;; subtokid
@@ -139,7 +171,6 @@
     [Expr ('let ([Var Expr] ...) Expr)]
     [Expr ('if Expr Expr Expr)]
     [Expr ('subcall DynToken Expr ...)]
-    [Expr ('return Expr)]
     [Expr ('leds LedColor LedState)]    
     [LedColor 'Red]
     [LedColor 'Yellow]
@@ -153,31 +184,58 @@
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))]) 
 	   token-machine-primitives)
     [Expr ('app Expr ...)]
+    [Expr ('call DynToken Expr ...)]
 
+    [Expr ('dbg DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
+    [DebugArg Expr]
+    [DebugArg ('quote DebugArgConstData)]
+    [DebugArgConstData ,atom?]
+    [DebugArgConstData (DebugArgConstData ...)]
+    
+
+;; These are now just primitives:  
+;; But still need to remember to subtract them when the grammar shrinks.
+;    [Expr ('return Expr)]
+;    [Expr ('subcall DynToken Expr ...)]
 
     [Num ,integer?]
     [Var ,(lambda (x) (and (symbol? x) (not (token-machine-keyword? x))))]
-    [DynToken Token]
+;    [DynToken Token]
     [DynToken ('tok TokName Expr)]
-    [Token ('tok TokName Expr)]
+    [Token ('tok TokName Const)]
     [TokName ,symbol?]
-    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
+;    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
     [Const ('quote ,atom?)]
+
     ))
 
 (define tml_gradient_grammar
-  `([GExpr ('gemit DynToken Expr)]
+  `([GExpr ('gemit DynToken Expr ...)]
     [GExpr ('greturn Expr
 		     ('to DynToken)
 		     ('via DynToken)
 		     ('seed Expr)
-		     ('aggr Token))]
+		     ('aggr TokenOrFalse)
+		     )]
+    [TokenOrFalse Token]
+    [TokenOrFalse '#f]
     [GExpr ('gdist DynToken)]
     [GExpr ('gparent DynToken)]
     [GExpr ('gorigin DynToken)]
     [GExpr ('ghopcount DynToken)]
     [GExpr ('gversion DynToken)]
     ))
+
+(define tml_letstored_grammar
+  `([LetStored ('let-stored ([Var Expr] ...) Expr)]))
+
+(define full_but_clean_tml
+  `(,@ basic_tml_grammar
+    [Expr GExpr]
+    ,@ tml_gradient_grammar
+    [Expr LetStored]
+    ,@ tml_letstored_grammar
+ ))
 
 
 ;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)

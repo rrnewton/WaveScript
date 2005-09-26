@@ -152,6 +152,7 @@
 	    (if entry 
 		(values rst `(set! ,(cadr entry) ,rhs))
 		(values rst `(set! ,v ,rhs))))]
+
     [(begin ,[st* xs] ...)
      (values (apply append st*) (make-begin xs))]
     [(if ,[tst test] ,[cst conseq] ,[ast altern])
@@ -167,6 +168,7 @@
 ;     (guard (memq call-style '(call timed-call bcast )))
 ;     (values (apply append st*)
 ;             `(,call-style ,args* ...))]
+;    [(return ,[xst x]) (values xst `(return ,x))]
 
     ;; The semantics of let-stored are that the first time the
     ;; expression is executed (and only the first), the RHS is

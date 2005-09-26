@@ -58,27 +58,6 @@
 
 
 ;; ==================================================================
-;; This is the constructor for compiler passes.  It takes the main
-;; function that does the real work of the compiler, and then wraps it
-;; with some extra debugging code.
-
-(define (build-compiler-pass input-spec output-spec transform)  
-  (match (list input-spec output-spec)
-    [((input ,instuff) (output ,outstuff))
-     (lambda (prog)
-       (let ([ingram (assq 'grammar instuff)]
-	     [outgram (assq 'grammar outstuff)])
-	 (or (not ingram)
-	     (check-grammar prog (cadr ingram))
-	     (error "Bad input to pass: \n ~a" prog))
-	 (let ((result (transform prog)))	   
-	   (or (not outgram)
-	       (check-grammar result (cadr outgram))
-	       (error "Bad pass output failed grammar: \n ~a" prog))
-	   )))]))	 
-
-
-;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
 
 (define (dump-tokenmachine-to-file prog fn)
@@ -828,7 +807,7 @@
 	    ]))
 
 
-     ["Test gradient hopcount, version, parent, origin."
+     ["Test gradient ghopcount, gversion, gparent, gorigin."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
@@ -839,8 +818,8 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (emit tok1))
-		  (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (parent) (origin) (hopcount) (version) (my-clock)))
+		  (SOC-start () (gemit tok1))
+		  (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
@@ -861,7 +840,7 @@
 
 
      ;; TODO: need to explicitely control tho network parameters for this one:
-     ["Gradients: just an emit and unconditional relay. (NONDETERMINISTIC)" 
+     ["Gradients: just a gemit and unconditional grelay. (NONDETERMINISTIC)" 
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
@@ -871,8 +850,8 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (emit tok1))
-		  (tok1 (x) (printf "~a " (dist)) (relay))))])
+		  (SOC-start () (gemit tok1))
+		  (tok1 (x) (printf "~a " (gdist)) (grelay))))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
@@ -898,8 +877,8 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (emit tok1))
-		  (tok1 (x) (printf "~a " (dist)) (if (< (dist) 2) (relay)))))])
+		  (SOC-start () (gemit tok1))
+		  (tok1 (x) (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
@@ -925,7 +904,7 @@
 	       (run-compiler
 		'(tokens
 		  (SOC-start () ;(printf "SOCSTART ") 
-			     (emit tok1)
+			     (gemit tok1)
 			     ;; Manual timeout:
 			     (timed-call 1000 tok1)
 			     )
@@ -961,7 +940,7 @@
 		  (SOC-start () (call tok1 '10))
 		  (catcher (v) (printf "~a" v))
 		  (tok1 (reps) 
-			(emit tok2)
+			(gemit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
 		  (tok2 () (greturn (my-id) 
@@ -996,10 +975,10 @@
 		  (SOC-start () (call tok1 '10))
 		  (catcher (v) (printf "~a" v))
 		  (tok1 (reps) 
-			(emit tok2)
+			(gemit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
-		  (tok2 () (relay) (greturn (my-id) (to catcher)))
+		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
@@ -1028,12 +1007,12 @@
 		  (SOC-start () (call tok1 '10))
 		  (catcher (v) (printf "~a" v))
 		  (tok1 (reps) 
-			(emit tok2)
+			(gemit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
-		  (tok2 () (relay) 
-			;(if (= (dist) 2)
-			(greturn (dist) (to catcher))
+		  (tok2 () (grelay) 
+			;(if (= (gdist) 2)
+			(greturn (gdist) (to catcher))
 			)
 		  ))])
 	  (let ((lst 
@@ -1061,7 +1040,7 @@
 	       (run-compiler
 		'(tokens
 		  (SOC-start () (printf "SOCSTART ") 
-			     (emit tok1)
+			     (gemit tok1)
 ;			     (timed-call 1000 timeout)
 			     )
 		  (catcher (v) (printf "Got: ~a" v))
@@ -1092,7 +1071,7 @@
 		     cps-tokmac  closure-convert  )])
 	(run-compiler
 	 '(tokens
-	   (SOC-start () (emit tok1))
+	   (SOC-start () (gemit tok1))
 	   (catcher (v) (printf "Got return: ~a" v))
 	   (tok1 () (greturn (my-id) (to catcher)))
 	   )))
@@ -1125,10 +1104,10 @@
        (let ((prog 
 	      (r
 	       '(tokens 
-		 (SOC-start () (emit gradient))
+		 (SOC-start () (gemit gradient))
 		 (gradient () 
 			   (greturn x (to handler))
-			   (relay))
+			   (grelay))
 		 (handler (x) (display " ") (display x))
 		 ))))
 	 (disp "PROG")
@@ -1172,10 +1151,10 @@
        (let ((prog 
 	      (run-compiler
 	       '(tokens 
-		 (SOC-start () (emit gradient))
+		 (SOC-start () (gemit gradient))
 		 (gradient () 
 			   (greturn x (to handler))
-			   (relay))
+			   (grelay))
 		 (handler (x) (display " ") (display x))
 		 ))))
 	 (disp "PROG")
@@ -1204,8 +1183,8 @@
   (let ([prog
          (run-compiler
            '(tokens
-              (SOC-start () (emit tok1))
-              (tok1 (x) (printf "_ ") (relay))))])
+              (SOC-start () (gemit tok1))
+              (tok1 (x) (printf "_ ") (grelay))))])
     (let ([prt (open-output-string)])
       (display "(" prt)
       (run-simulator-alpha prog 'outport prt)
@@ -1229,7 +1208,7 @@
 		  (SOC-start () (call tok1 '1))
 		  (catcher (v) (printf "~a" v))
 		  (tok1 (reps) 
-			(emit tok2)
+			(gemit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
 		  (tok2 () (greturn 34 ;(my-id) 

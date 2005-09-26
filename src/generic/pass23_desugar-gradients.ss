@@ -59,10 +59,10 @@
 ;;;                | (<Expr> ...)
 ;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
 ;;;                | <GExpr>
-;;; <GExpr>      ::= (emit <DynToken> <Expr> ...)
-;;;                | (relay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;;; <GExpr>      ::= (gemit <DynToken> <Expr> ...)
+;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
 ;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
-;;;                | (dist <DynToken>)
+;;;                | (gdist <DynToken>)
 
 ;;;  <Prim> ::= <BasicPrim> 
 ;;;           | call | subcall | timed-call | bcast
@@ -144,21 +144,21 @@
 	     [(if ,[exprs] ...) (apply append exprs)]
 	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
 
-	     ;; "Direct call":  Not allowing dynamic emit's for now:
-	     [(emit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-	     ;; Indirect emit call... could consider restricting these.
-	     [(emit ,[e] ,[args*] ...)
+	     ;; "Direct call":  Not allowing dynamic gemit's for now:
+	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	     ;; Indirect gemit call... could consider restricting these.
+	     [(gemit ,[e] ,[args*] ...)
 	      (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
 	      ;(apply append e args*)
 	      ]
-	     ;; Also allowing dynamic relays and dists.  
+	     ;; Also allowing dynamic grelays and gdists.  
 	     ;; These don't matter as much because I'm basing 
-	     [(relay (tok ,t ,[e])) e]
-	     [(dist (tok ,t ,[e])) e]
-	     [(parent (tok ,t ,[e])) e]
-	     [(origin (tok ,t ,[e])) e]
-	     [(hopcount (tok ,t ,[e])) e]
-	     [(version (tok ,t ,[e])) e]
+	     [(grelay (tok ,t ,[e])) e]
+	     [(gdist (tok ,t ,[e])) e]
+	     [(gparent (tok ,t ,[e])) e]
+	     [(gorigin (tok ,t ,[e])) e]
+	     [(ghopcount (tok ,t ,[e])) e]
+	     [(gversion (tok ,t ,[e])) e]
 
 	     ;; The to's and the vias are static! Aggr has no subtok index!
 	     [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
@@ -236,12 +236,12 @@
 	      (values (append rtb btb)
 		      `(let ([,lhs ,rhs]) ,body))]
 
-	     [(emit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
+	     [(gemit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
 	      (let ((ver (unique-name 'ver))
 		    (emitargs (map unique-name (make-list (length args*) 'emitargs))))
 	      `(let-stored ([,ver 0])
-		;; Set our parent flag to NULL_ID, indicating this node is the root of this tree.
+		;; Set our gparent flag to NULL_ID, indicating this node is the root of this tree.
 		;(ext-set! ,tok ,STORED_PARENT_ARG ',NULL_ID)
 			   ;; DOESNT WORK ^^^ Might not be there.
 		;; Increment persistent version counter:
@@ -253,8 +253,8 @@
 		  (bcast ,tok (my-id) (my-id) 1 ,ver ,@emitargs)
 		  ))))]
 
-	     ;; TODO: This doesn't cache or pass any arguments on to the relayed tokhand!!!!
-	     [(relay (tok ,t ,n)) (guard (number? n))
+	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
+	     [(grelay (tok ,t ,n)) (guard (number? n))
 	      (values ()
 	      (if (eq? this-token t)
 		  `(bcast (tok ,t ,n) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
@@ -263,7 +263,7 @@
 			  (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
 			  (+ 1 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG))
 			  (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG))))]
-	     [(relay (tok ,t ,[etb e]))
+	     [(grelay (tok ,t ,[etb e]))
 	      (values etb
 	      (if (eq? this-token t)
 		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
@@ -275,7 +275,7 @@
 			       (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
 			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))))))]
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(dist ,[(statictok loop) -> ttb tok])
+	     [(gdist ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  ;; In this case we're inside the handler currently:
@@ -285,28 +285,28 @@
 			       ,HOPCOUNT_ARG)
 ;			  HOPCOUNT_ARG
 			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG)))]
-	     [(hopcount ,[(statictok loop) -> ttb tok])
+	     [(ghopcount ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_HOPCOUNT_ARG
 			       ,HOPCOUNT_ARG)
 			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG)))]
-	     [(parent ,[(statictok loop) -> ttb tok])
+	     [(gparent ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_PARENT_ARG
 			       ,PARENT_ARG)
 			  `(ext-ref ,tok ,STORED_PARENT_ARG)))]
-	     [(origin ,[(statictok loop) -> ttb tok])
+	     [(gorigin ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_ORIGIN_ARG
 			       ,ORIGIN_ARG)
 			  `(ext-ref ,tok ,STORED_ORIGIN_ARG)))]
-	     [(version ,[(statictok loop) -> ttb tok])
+	     [(gversion ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
@@ -457,10 +457,10 @@
 	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
 	      (values (apply append etb atb*)
 		      `(,call-style (tok ,t e)
-				    '#f ;; parent
-				    '#f ;; origin
+				    '#f ;; gparent
+				    '#f ;; gorigin
 				    ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
-				    '#f ;; version
+				    '#f ;; gversion
 			     ,args* ...))]
 
 	     
@@ -475,10 +475,10 @@
 	      (guard (memq t tainted))
 	      (values (apply append ttb etb atb*)
 		      `(timed-call ,time (tok ,t ,e)
-				   '#f ;; parent
-				   '#f ;; origin
-				   ',LOCALCALL   ;; hopcount
-				   '#f ;; version
+				   '#f ;; gparent
+				   '#f ;; gorigin
+				   ',LOCALCALL   ;; ghopcount
+				   '#f ;; gversion
 				   ,args* ...))]
 	     ;; OTHERWISE, let it fall through to the prim case.
 ;	     [(timed-call ,[ttb time] ,[ttb2 tok] ,[atb* args*] ...) 
@@ -604,22 +604,22 @@
 	 (tokens
 	  (node-start subtok_ind () (stored) (void))
 	  (SOC-start subtok_ind () (stored) (call (tok f 0)))
-	  (f subtok_ind () (stored) (emit (tok g 0) '3))
+	  (f subtok_ind () (stored) (gemit (tok g 0) '3))
 	  (g subtok_ind
 	     (x)
 	     (stored)
-	     (if (< (dist (tok g subtok_ind)) '3)
-		 (relay (tok g subtok_ind))
-                (greturn (dist (tok g subtok_ind))
+	     (if (< (gdist (tok g subtok_ind)) '3)
+		 (grelay (tok g subtok_ind))
+                (greturn (gdist (tok g subtok_ind))
 			(to (tok h 0))
 			(via (tok g 0))
 			(seed '#f)
 			(aggr #f))))
 	  (h subtok_ind (v) (stored) (dbg '"Got val: %d\\n" v)))))))))
-       (list (deep-assq 'emit x)
-	     (deep-assq 'relay x)
-	     (deep-assq 'greturn x)
-	     (deep-assq 'dist x)))
+       (list (deep-assq 'gemit x)
+	     (deep-assq 'grelay x)
+	     (deep-assq 'ggreturn x)
+	     (deep-assq 'gdist x)))
      (#f #f #f #f)]
 		        
 ))
