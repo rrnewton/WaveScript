@@ -1,10 +1,21 @@
 
+;; alpha_lib_scheduler_simple.ss
+;; This file contains a single function (the scheduler) used by alpha_lib.ss
+
 ;; Doing what Matt said and simplifying.  No reason for complex scheduling.
 ;; This took little time and appears to work.  Fantastic.
 
+;===============================================================================
+;; Changes:
+
+;; [2005.09.27] Changing the scheduler to use a queue in the global
+;; sim instead of a piece of local state.  This allows other code to
+;; see the queue.
+
+;===============================================================================
 
 ;; This is written in totally imperative style.
-;; One buffer and one vtime, no reason to thread them otherwise.
+;; One schedule-queue and one vtime, no reason to thread them otherwise.
 (define (run-alpha-simple-scheduler sim node-code-fun stopping-time? meta-port)
   ;; Inputs:
   ;; Output: 
@@ -14,16 +25,24 @@
 ;			   (simworld-all-objs sim))))
 
   ;; Buffer is the scheduling queue:
-  (define buffer '()) ;; Contains pairs (simevt . simob) where simob is the object handling the event.
+  ;(define buffer '()) ;; Contains pairs (simevt . simob) where simob is the object handling the event.
+  ;; First refactoring to abstract gets/sets to queue:
+  ;(define (set-queue! x) (set! buffer x))
+  ;(define (get-queue) buffer)
+  ;; That passed all regression tests.  NOW REFACTORING TO USE (simworld-scheduler-queue sim) !!!
+  (define (set-queue! x) (set-simworld-scheduler-queue! sim x))
+  (define (get-queue) (simworld-scheduler-queue sim))
+
   (define vtime 0)    ;; Clock for the whole simulator.
 
   (define (pop)
-    (if (null? buffer)
-	(error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-    (logger 3 "Popped off action: ~a at vtime ~a ~n" 
-	    (msg-object-token (simevt-msgobj (caar buffer)))
-	    (simevt-vtime (caar buffer)))
-    (set! buffer (cdr buffer)))
+    (let ((queue (get-queue)))
+      (if (null? queue)
+	  (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
+      (logger 3 "Popped off action: ~a at vtime ~a ~n" 
+	      (msg-object-token (simevt-msgobj (caar queue)))
+	      (simevt-vtime (caar queue)))
+      (set-queue! (cdr queue))))
 
   (define (lessthan a b) (evntlessthan (car a) (car b)))
 
@@ -43,7 +62,7 @@
       (unless (null? newevnts)
 	      ;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
 	      ;; Before I merely merged them:
-	      (set! buffer (sort lessthan (append pairedevnts buffer)))
+	      (set-queue! (sort lessthan (append pairedevnts (get-queue))))
 
 	      (logger 3 "Scheduling ~a new events ~a, new schedule len: ~a~n"
 		      (length newevnts)
@@ -51,11 +70,10 @@
 			     (list (msg-object-token (simevt-msgobj e))
 				   (simevt-vtime e)))
 			   newevnts)
-		      (+ (length buffer) (length newevnts))
+		      (+ (length (get-queue)) (length newevnts))
 		      ;(map (lambda (e) (list (simevt-vtime (car e)) (msg-object-token (simevt-msgobj (car e)))))  buffer)
 		      )
 	      )))
-
 
   ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
@@ -93,13 +111,13 @@
     (if (not (null? (append (simobject-local-msg-buf ob)
 			    (simobject-timed-token-buf ob)
 			    (simobject-incoming-msg-buf ob))))
-	(logger 1.5 "~a: Receiving (t:~a): ~a local, ~a timed, ~a remote. Buffer len ~a~n"		  
+	(logger 1.5 "~a: Receiving (t:~a): ~a local, ~a timed, ~a remote. Queue len ~a~n"		  
 		(node-id (simobject-node ob))
 		vtime
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))
-		(length buffer)
+		(length (get-queue))
 		))
 
     (let ([timed (simobject-timed-token-buf ob)]
@@ -172,6 +190,7 @@
   ;; ======================================================================
   ;; First Initialize.
   (for-each init-simobject (simworld-all-objs sim))
+  (set-queue! '()) ;; Start with no scheduled events.
   ;; Then, run loop.
   (let main-sim-loop ()
     ;; First process all incoming-buffers, scheduling events.
@@ -180,24 +199,24 @@
      [(stopping-time? vtime) 
       ;; This is a meta-message, not part of the output of the simulation:
       (fprintf meta-port "Out of time.~n")]
-     [(null? buffer)
+     [(null? (get-queue))
       (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
       (fprintf meta-port "Simulator ran fresh out of actions!~n")]
      [else 
-      (let ([ob (cdar buffer)]
-	    [evt (caar buffer)])	
+      (let ([ob (cdar (get-queue))]
+	    [evt (caar (get-queue))])
 	;; Set the clock to the time of this next action:
-	(set! vtime (simevt-vtime (caar buffer)))
-	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) buffer len ~a ~n" vtime (length buffer))
+	(set! vtime (simevt-vtime (caar (get-queue))))
+	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) queue len ~a ~n" vtime (length (get-queue)))
 	;(printf "<~a>" vtime)
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
                  (logger "~a: Executing: ~a at time ~a    args: ~a~n"
 			 (node-id (simobject-node ob))
-			 (msg-object-token (simevt-msgobj (caar buffer)))
+			 (msg-object-token (simevt-msgobj (caar (get-queue))))
 			 vtime
-			 (msg-object-args (simevt-msgobj (caar buffer)))
+			 (msg-object-args (simevt-msgobj (caar (get-queue))))
 			 )
 
 		 '(DEBUGMODE ;; check invariant:
