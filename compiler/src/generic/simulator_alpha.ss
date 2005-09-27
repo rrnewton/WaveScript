@@ -27,9 +27,12 @@
   "simulator_alpha.ss: event-queue simulator for nodal language")
 
 ;===============================================================================
+;; Changes:
+
+;===============================================================================
 
 ;; This structure contains all the global data needed a simulation.
-(define-structure (simworld graph object-graph all-objs obj-hash))
+(define-structure (simworld graph object-graph all-objs obj-hash scheduler-queue))
 ;; obj-hash maps node-ids onto simobjects
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
@@ -56,9 +59,9 @@
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
 ;; [2004.06.13] Be careful to change "cleanse-world" if you change
-;; this, we don't want multiple simulation to be thrashing eachother.
+;;   this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
-;; token-cache in the structure too
+;;   token-cache in the structure too
 (define-structure (simobject node I-am-SOC
 			     token-store ;; Changing this to hash table mapping names to 
 
@@ -293,6 +296,7 @@
 
 		 so)) g))
 
+;; Returns a simworld object.
 (define (fresh-simulation)
    (let* ([graph 
           (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
@@ -321,7 +325,8 @@
 	     (for-each (lambda (ob)
 			 (hashtab-set! h (node-id (simobject-node ob)) ob))
 		       allobs)
-	     h)])
+	     h)]
+	  [scheduler-queue '()])
 
      ;; Set I-am-SOC
      (for-each (lambda (ob)
@@ -329,7 +334,8 @@
 		  (= (node-id (simobject-node ob)) BASE_ID)))
 	       allobs)
      
-     (make-simworld graph obgraph allobs hash)))
+     (make-simworld graph obgraph allobs hash scheduler-queue)
+     ))
 
                          
 ;; ======================================================================
