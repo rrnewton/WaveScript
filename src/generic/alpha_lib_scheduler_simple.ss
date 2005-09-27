@@ -1,15 +1,19 @@
 
-;; Doing what Matt said and simplifying.
+;; Doing what Matt said and simplifying.  No reason for complex scheduling.
 ;; This took little time and appears to work.  Fantastic.
 
 
 ;; This is written in totally imperative style.
 ;; One buffer and one vtime, no reason to thread them otherwise.
 (define (run-alpha-simple-scheduler sim node-code-fun stopping-time? meta-port)
-  
+  ;; Inputs:
+  ;; Output: 
+
+
 ;  (define SOC (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 ;			   (simworld-all-objs sim))))
 
+  ;; Buffer is the scheduling queue:
   (define buffer '()) ;; Contains pairs (simevt . simob) where simob is the object handling the event.
   (define vtime 0)    ;; Clock for the whole simulator.
 

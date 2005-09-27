@@ -152,13 +152,11 @@
 		  
 ;; ======================================================================
 
-;;;                | <Sugar> 
-
 ;;;  <Sugar>     ::= (flood <Expr>)
 ;;;                | (elect-leader <Token> [<Token>])
-                     ;; <TODO> optional second argument.. decider
+
 ;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed-call | bcast
+;;;           |  | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 (define basic_tml_grammar
   `(
@@ -185,7 +183,6 @@
     [Expr ('begin Expr ...)]
     [Expr ('let ([Var Expr] ...) Expr)]
     [Expr ('if Expr Expr Expr)]
-    [Expr ('subcall DynToken Expr ...)]
     [Expr ('leds LedColor LedState)]    
     [LedColor 'Red]
     [LedColor 'Yellow]
@@ -207,7 +204,6 @@
     [DebugArgConstData ,atom?]
     [DebugArgConstData (DebugArgConstData ...)]
     
-
 ;; These are now just primitives:  
 ;; But still need to remember to subtract them when the grammar shrinks.
 ;    [Expr ('return Expr)]

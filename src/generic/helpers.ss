@@ -252,7 +252,7 @@
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      
-;     (schedule (Token) Void)
+;     (deschedule (Token) Void)
      (token-scheduled? (Token) Bool)
      (token-present? (Token) Bool)
      (evict (Token) Void)
@@ -2366,13 +2366,13 @@
 	 (fun 'qv)))
      #t]
     ["This just gives the retry argument at test time."
-     (parameterize ([default-unit-tester-retries 100]) ;; Set retries way up
+     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((random 3) 0)])])
 	 (fun 'qv 'retry)))
      #t]
     ["This just gives the retry argument within the test itself."
-     (parameterize ([default-unit-tester-retries 100]) ;; Set retries way up
+     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ["" retry (random 3) 0]])])
 	 (fun 'qv)))

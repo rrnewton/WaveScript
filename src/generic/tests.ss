@@ -113,10 +113,10 @@
 
 ;; This runs all the system tests AND unit tests.
 (define (test-everything . args)
+    (apply test-units 'verbose 'quiet args)
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
-    (test-all) (newline)  (newline)
-    (apply test-units 'verbose 'quiet args))
+    (test-all) (newline)  (newline))
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
 ;; runs all the unit tests.
@@ -129,6 +129,7 @@
 	    (reverse (reg:all-unit-tests))))
 
 (define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
+(define (te . args) (apply test-everything 'verbose 'quiet args)) ;; shorthand
 
 ;; Replacing this with much simpler system above:
 #;(define (test-units . args)
