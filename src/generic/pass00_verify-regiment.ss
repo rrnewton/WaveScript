@@ -76,6 +76,7 @@
       (match expr
           [,const (guard (constant? const))
 		  (cond
+		   [(boolean? const) 'Bool]
 		   [(number? const) 'Number]
 		   [(list? const) 'List] 
 		   [else (error 'verify-regiment:infer-type

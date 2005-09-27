@@ -105,7 +105,7 @@
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'cleanup-token-machine
    `(input)
-   `(output (grammar ,full_but_clean_tml))
+   `(output (grammar ,full_but_clean_tml PassInput))
   (let ()
 
     ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
@@ -277,7 +277,7 @@
 		   (call (tok ,t ,n) ,@args*))]
 
 	     [(activate ,[e] ,[args*] ...)
-	      (disp "ACTIV" e)
+	      (if (regiment-verbose) (printf "\nDesugaring activate call to: ~a args: ~a\n" e args*))
 	      (match e
 		[(tok ,t ,v) 
 		 `(if (not (token-scheduled? ,e))

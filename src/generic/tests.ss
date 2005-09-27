@@ -28,10 +28,11 @@
 
 (define tests_regiment 
   '(
-    (circle-at '(30 40) 50)
+    (circle-at 30 40 50) ;; Location 30,40 radius 50
 
-    (rmap (lambda (r) (rfold + 0 r))
-	  (cluster (rfilter even? (rmap nodeid world))))
+; [2005.09.27] Disabling temporarily: 
+;    (rmap (lambda (r) (rfold + 0 r))
+;	  (cluster (rfilter even? (rmap nodeid world))))
     ))
 
 ;===============================================================================
@@ -111,8 +112,8 @@
 (define (test-everything . args)
     ;; Finlly run all the compiler system tests.
     (printf "~n;; Testing the whole system on the compiler test cases:~n")
-    (test-all) (newline)  (newline)    
-    (apply test-units args))
+    (test-all) (newline)  (newline)
+    (apply test-units 'verbose 'quiet args))
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
 ;; runs all the unit tests.
