@@ -1,13 +1,18 @@
 
-;; TO: is_scheduled etc...
-
+;; TODO: is_scheduled etc...
 
 ;; simulator_alpha.ss
 ;;  -Ryan Newton [2005.02.25]
+;; Related files include:
+;;   alpha_lib.ss -- "run time" library for the running simulator.
+;;   alpha_lib_scheduler_simple.ss -- Basic action scheduler
+;;   alpha_lib_scheduler.ss -- NOT USED right now [2005.09.27]
+;;   simulator_nought.examples.ss -- Some sample programs.
 ;===============================================================================
 
-;; This will be a second attempt simulator.
-;; However, it will support only core tml (no gradients).
+;; This will be a second attempt simulator.  (First was simulator_nought.)
+
+;; It will support only core tml (no gradients).
 
 ;; It will have a single thread of control and a queue of simulator
 ;; events sorted by virtual clock times.
@@ -68,7 +73,9 @@
 
 			     ;; This is a function that processes incoming messages
 			     scheduler ;; and returns simulation actions.
-			     ;; This function takes msg-obj and vtime and executes a tokhand:
+			     ;; Not used in the simple scheduler as of [2005.09.27]
+
+			     ;; This function takes msg-obj and vtime and executes a token handler:
 			     meta-handler
 			     ))
 ;; The token store is a hash table mapping simtok objects to token objects.
@@ -327,7 +334,7 @@
                          
 ;; ======================================================================
 
-
+;; Subroutine of compile-simulate-alpha below
 (define (process-statement current-handler-name tokbinds stored)
   
   (let ([allstored (apply append (map cadr stored))])
@@ -412,7 +419,7 @@
 				       (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			    (simobject-outgoing-msg-buf this)))]
 
-;;TODO:
+;; These are desugared before now.
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
 
@@ -423,9 +430,18 @@
 					    (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			       (simobject-timed-token-buf this)))]
 
-
+		  ;; TODO
+		  [(token-scheduled? ,tok)
+		   (let ((queue '0));((simobject-scheduler this) 'get-queue)))
+		     ;; queue is list containing (simevt . simob) pairs.
+		     (void))
+		   ]
+		   
 		  ;; is_scheduled TODO TODO
 		  ;; deschedule   TODO TODO
+		  ;(token-scheduled? (Token) Bool)
+		  ;(token-present? (Token) Bool)
+		  ;(evict (Token) Void)
 
 		  ;; If it's in the hash table, it's present:
 		  ;; This is static wrt to token name for the moment:

@@ -124,7 +124,7 @@
 
 
 ;; ======================================================================
-;; Gets set by .... Something?  TODO FIX UP:
+;; Gets set by .... Something?  TODO FIX UP: seems like this is a param, and below these funs expect a direct var binding
 ;; All node level utilities below depend on this parameter being set properly.
 [define this (make-parameter #f)]
 
@@ -161,7 +161,7 @@
       ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
       )]
 
-;; INCOMPLETE (we don't yet draw the leds directly.)
+;; todo INCOMPLETE (we don't yet draw the leds directly.)
 [define (sim-leds what which)
   (let* ([colors 
           (case which
