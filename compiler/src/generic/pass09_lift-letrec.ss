@@ -126,7 +126,7 @@
              (append test-decl* conseq-decl* altern-decl*))]
 
 	  [(lambda ,formalexp (free ,free ,[body body-decl]))
-	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now!" free))
+	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now! ~a" free))
 
 	   ;; This version lifts to the top of each lambda:
 	   ;(values `(lambda ,formalexp (lazy-letrec ,body-decl ,body)) '())

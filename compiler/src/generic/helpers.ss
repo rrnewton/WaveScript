@@ -346,7 +346,7 @@
 		  (loop (cdr ls) (car ls) thisval)
 		  (loop (cdr ls) maxelem maxval)))))))	    
 
-(define list-head
+'(define list-head
   (lambda (lst n)
     (cond
       [(zero? n) '()]
@@ -726,7 +726,8 @@
       [(,x) x]
       [(,x ,x* ...) `(code ,x ,x* ...)])))
 
-(define with-output-to-string
+; [2005.09.27] Why redefine this prim?
+'(define with-output-to-string
   (lambda (th)
     (parameterize ([current-output-port (open-output-string)])
       (th)
@@ -2156,7 +2157,7 @@
 ;; If the graph is acyclic, return #f.
 ;; Otherwise, return the list of nodes participating in cycles.
 ;; 
-;; REQUIRES: 
+;; REQUIRES:  slib tsort
 (define (cyclic? g . compare)
   ;; Umm is this really bad form to perform this INSIDE the cyclic? function??
   ;; How efficient is require??  A linear search through a list of things loaded?
@@ -2164,11 +2165,11 @@
   ;;(slib:require 'tsort)
   (let ((eq (if (null? compare) eq?
 		(if (> (length compare) 1)
-		    (error 'cyclic? "too many optional arguments: %s" compare)
+		    (error 'cyclic? "too many optional arguments: ~s" compare)
 		    (if (procedure? (car compare))
 			(car compare)
 			(error 'cyclic? 
-			       "optional argument must contain a comparison procedure, received : %s"
+			       "optional argument must contain a comparison procedure, received : ~s"
 			       (car compare)))))))
     (let ((flat (topological-sort g eq?)))
       (let ((cycles

@@ -6,13 +6,12 @@
 		 (if (null? args) (void) (car args))))
 
 (case-sensitive #t)
+(print-graph #f)
 
 ;; This makes our modules work properly in newer versions of Chez:
 (eval-when (compile load eval)
 	   (if (top-level-bound? 'internal-defines-as-letrec*)
 	       (internal-defines-as-letrec* #t)))
-
-(define random #%random)
 
 ;; TEMP
 (define current_interpreter 'chezscheme)
@@ -28,15 +27,16 @@
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 
-;; [2004.06.28] Moving this here, hope that works:
-;(load "../depends/slib/chez.init")
+;(optimize-level 1)
+;; [2005.09.27] Disabling this, don't need it without simulator_nought
+(define random #%random)
+;;;; [2004.06.28] Moving this here, hope that works:
 (include "../depends/slib/chez.init")
-;; [2005.04.21] Just stealing the files I need from slib for portability:
-;(include "slib/chez.init")
+;;;; [2005.04.21] Just stealing the files I need from slib for portability:
 (require 'tsort) ;; for the simulator: 
+;(optimize-level 2)
 
 (include "generic/constants.ss")
-
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 

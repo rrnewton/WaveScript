@@ -192,10 +192,10 @@
 		   `([,parent (v) (call ,form v)]
 		     [,form (v)
 			    (call ,memb
-				  (call ,rator_tok v))])
+				  (subcall ,rator_tok v))])
 		   `([,parent () (activate ,form)]
 		     [,form () 
-			    (call ,memb (call ,rator_tok this))
+			    (call ,memb (subcall ,rator_tok this))
 			    (timed-call ,heartbeat ,form)])
 		   ))]
 
@@ -264,7 +264,7 @@
 	       [(,pred_tok ,region_tok)
 		(let ([parent (get-membership-name region_tok)])
 		  `( [,parent (v) (call ,form v)] ;; member of that area
-		     [,form (v) (if (call ,pred_tok v)
+		     [,form (v) (if (subcall ,pred_tok v)
 				    (call ,memb v))] ))])]
 			 
 	    ;; This is not a region; it carries no value on its membership token!
@@ -354,7 +354,7 @@
 		    [region_tok (cadr args)]
 		    [mem_reg (get-membership-name region_tok)])
 	       ;; If we pass, fire that event!
-	       `([,mem_reg (v) (if (call ,rator_tok v)
+	       `([,mem_reg (v) (if (subcall ,rator_tok v)
 				   (call ,memb v))]))]
 
 	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))

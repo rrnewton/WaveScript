@@ -214,6 +214,7 @@
 ;    [DynToken Token]
     [DynToken ('tok TokName Expr)]
     [Token ('tok TokName Const)]
+    [Token ('tok TokName ,integer?)]
     [TokName ,symbol?]
 ;    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
     [Const ('quote ,atom?)]
@@ -239,7 +240,8 @@
     ))
 
 (define tml_letstored_grammar
-  `([LetStored ('let-stored ([Var Expr] ...) Expr)]))
+;  `([LetStored ('let-stored ([Var Expr] ...) Expr)]))
+  `([LetStored ('let-stored ([Var Expr]) Expr)])) ;; Restricting let-stored further.
 
 (define full_but_clean_tml
   `(,@ basic_tml_grammar

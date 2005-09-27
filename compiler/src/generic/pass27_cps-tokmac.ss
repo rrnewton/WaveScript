@@ -113,6 +113,9 @@
 		                                   (fuse (list a b c) `(if ,a ,b ,c))]
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
 		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
+		                                   (fuse (append rhs* (list bod)) 
+							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
 		    ;; "activate" and the gradient calls have already been desugared:
 		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (memq call '(bcast subcall call)))
@@ -273,6 +276,7 @@
 		           
     ;; expand-subcalls expands out all subcalls 
     ;; Best way to represent a thing with a hole in it is a continuation:
+    ;; (Using CPS to convert to CPS.)
     ;; Thus this pass itself carries a continuation representing the context of the current expression.
     (define expand-subcalls
       (lambda (expr)
@@ -368,13 +372,13 @@
 				     ,(loop conseq id)
 				     ,(loop altern id)))))))]
 	       
-	     [(let ((,lhs ,rhs)) ,body)
+	     [(,lettype ((,lhs ,rhs)) ,body)
+	      (guard (memq lettype '(let let-stored)))
 	      (loop rhs
 		 (lambda (r)
 		   (loop body
 			 (lambda (b)
 			   (pvk `(let ([,lhs ,r]) ,b))))))]
-
 	     
 	     [(subcall ,tok ,args ...)
 	      (let* ([valvar (unique-name 'HOLE)]
@@ -558,22 +562,42 @@
 		     returntokbinds)
              (let ([subonly (difference subcalledtoks returntoks)]
 		   [retonly (difference returntoks subcalledtoks)])
-	       (disp "Results, sub&ret: " (intersection subcalledtoks returntoks)  subonly retonly)
+	       ;(if (regiment-verbose)
+	       ;(disp "Results, sub&ret: " (intersection subcalledtoks returntoks)  subonly retonly)
 	       
+	     ;; Issue warnings for tokens that are subcalled but don't have return statements.
 	     (if (not (null? subonly))
 		 (for-each 
 		  (lambda (x)
 		    (if (memq x alltoks)
-			(error 'cps-tokmac
+			(warning 'cps-tokmac
 				 "Token handlers for ~a are subcalled but do not have return statements!"
 				 x)
 			(warning 'cps-tokmac
 				 "Subcall to nonexistent token handler!: ~a" x)))
 		  subonly))
+	     ;; It's also worth a warning if we have useless returns:
 	     (if (not (null? retonly))
 		 (warning 'cps-tokmac
 			  "Token handlers for ~a have return statements but there are no subcalls to them!"
-			  retonly)))
+			  retonly))
+
+	     ;; For now we're going to be lenient and put in implicit return statements:
+	     ;; Then we need to update our list of tokbinds carrying returns.
+	     (set! nodetoks (map (lambda (tb)
+				   (if (memq (car tb) subonly)
+				       (match tb 
+					      [(,tok ,subid ,args (stored ,st* ...) ,bod)
+					      `(,tok ,subid ,args (stored ,st* ...) (return ,bod))])
+				       tb))
+				 nodetoks))
+	     (set! returntokbinds (filter (lambda (tb) (has-return? (tb->body tb))) nodetoks))
+	     (set! returntoks (map car returntokbinds))
+
+	     ;(disp "  postupdate: Results, sub&ret: " (intersection subcalledtoks returntoks) subcalledtoks returntoks)
+	     )
+
+
 	   ;; Now for the real work.
 	   ;; First we add k-arguments to any tainted tokens:
 	   (let ([newtbs (map kify-tokbind returntokbinds)]
@@ -581,7 +605,8 @@
 	     ;; Next we process all tokbinds to expand out subcalls:
 	     `(,lang '(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,@(process-tokbinds (append oldtbs newtbs))))))
-	     )))]))))
+	     )))]))
+))
 
 
 (define (testcps-expr e)

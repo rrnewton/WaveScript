@@ -44,11 +44,18 @@
     ;    analyze-tokmac-recursion
     ;    inline-tokmac
 
-;; Temporarily I am disabling these ..
-;    cps-tokmac
-;    closure-convert
+;    desugar-let-stored
+;    rename-stored
 
-    ;; moving these after closure-convert.
+;; Temporarily I am disabling these ..
+    cps-tokmac
+    closure-convert
+
+    cleanup-token-machine ;; Trying this.. [2005.09.27]
+
+    ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
+;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
+;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
     desugar-let-stored
     rename-stored
 
@@ -113,6 +120,7 @@
 	 (match tm 
 		[(,lang ,prog)
 		 (case lang
+		   [(add-places-language) 'analyze-places] ;; Not strictly correct.
 		   [(deglobalize-lang) 'deglobalize]
 		   [(cleanup-token-machine-lang) 'cleanup-token-machine]
 		   [(cps-tokmac-lang) 'cps-tokmac]
@@ -121,6 +129,7 @@
 		   [else 'deglobalize])])
 	 ])
   (let ((passes (cdr (list-remove-before starting-place pass-names))))
+    (disp "Assembling tokmac with passes: " passes)
 ;    (lambda (tm)
       (fluid-let ([pass-names passes])
 	(apply run-compiler tm args)))))
@@ -339,7 +348,7 @@
      
      ["Testing simple combinations of passes: generate a continuation." 
       (let ((toks (cdr (deep-assq 'tokens 
-		 (closure-convert (cleanup-token-machine '(tokens (tok1 () (subcall tok2)))))))))	
+		 (closure-convert (cleanup-token-machine '(tokens (tok1 () (subcall tok2)))))))))
 	(let ((x (remq 'SOC-start (remq 'node-start (remq 'actual-node-start (map car toks))))))
 	  ;; This is the continuation that was added:
 	  (length x)))
@@ -589,26 +598,99 @@
 	     (read (open-input-string (get-output-string prt)))))))
       (#f tok1 #t #f)]
 
-;; TODO: FINISH!
-#;     ["Token Scheduled?"
+     ["token-scheduled? test"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )));closure-convert)))
+	(let ([prog
+	       (cleanup-token-machine
+		'(tokens
+		  (SOC-start () 
+			     (call tok1 '10)
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     (if (token-scheduled? tok2)
+				 (display "yes ")
+				 (display "no "))
+			     (call tok2 11))
+		  (tok1 (x) (void))
+		  (tok2 (x) (void))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    lst)))
+      (yes no)]
+
+     ["Another Token Scheduled?"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
+					;'(cleanup-token-machine cps-tokmac )));closure-convert)))
 	 (let ((prog 
 		(run-compiler
 		 '(tokens 		   
 		   (SOC-start () 
+			      (printf "~a " (token-scheduled? (tok tok1 0)))
 			      (timed-call 500 (tok tok1 0))
-			      (timed-call 100 check))
+			      (timed-call 100 check)
+			      (timed-call 800 check))
 		   (tok1 () (printf "tok1 "))
-		   (check () (printf "~a" (token-scheduled? (tok tok1 0))))
+		   (check () (printf "~a " (token-scheduled? (tok tok1 0))))
 		 ))))
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
-      (#f tok1 #t #f)]
-      
+      (#f #t tok1 #f)]
+
+;; TODO FIXME: GOOD TEST:  GET THIS TO WORK!!!!
+#;     ["Try token-scheduled? with some subcall trickery"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+      (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
+					;'(cleanup-token-machine cps-tokmac )));closure-convert)))
+	 (let ((prog 
+		(run-compiler
+		 '(tokens 		   
+		   (SOC-start ()
+			      ;; Use subcall to call it immediately,befoe the rest proceeds.
+			      (subcall check)
+			      (timed-call 500 (tok tok1 0))
+			      (timed-call 100 check)
+			      (timed-call 800 check))
+		   (tok1 () (printf "tok1 "))
+		   (check () (printf "~a " (token-scheduled? (tok tok1 0))))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt)))))))
+      (#f #t tok1 #f)]
+
+
+     ["Make sure simulator can handle subcalls directly if need be."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+	 (let ((prog 
+		(cleanup-token-machine
+		 '(tokens 		   
+		   (SOC-start ()
+			      (printf "a ")
+			      (subcall tok1)
+			      (printf "c ")
+			      (call tok2)
+			      (printf "d "))
+		   (tok1 () (printf "b "))
+		   (tok2 () (printf "e "))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      (a b c d e)]
      
     ;; [2005.05.29] Note tok1 should be statically called and is currently called dynamically!
     ;; Oh duh, that's because all calls go through the dyndispatch table.
@@ -1059,31 +1141,77 @@
 	    ))))
 	(#t 1 2 #t)]      
 
-     ["Test token-scheduled?"
+     ;; TODO FIXME: finish:
+#;     ["Now simulate gradients and subcalls in one program."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-	(let ([prog
-	       (cleanup-token-machine
-		'(tokens
-		  (SOC-start () 
-			     (call tok1 '10)
-			     (if (token-scheduled? tok1)
-				 (display "yes ")
-				 (display "no "))
-			     (if (token-scheduled? tok2)
-				 (display "yes ")
-				 (display "no "))
-			     (call tok2 11))
-		  (tok1 (x) (void))
-		  (tok2 (x) (void))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst)))
-      (yes no)]
+        ;; Respect the actual ordering of passes used by the compiler:
+        (fluid-let ([pass-names (list-remove-before 'cleanup-token-machine pass-names)])
+	  (let ([prog
+		 (run-compiler
+		  '(tokens
+		    (SOC-start () (call spread-global))
+		    (node-start () (void))
+		    (spread-global ()
+		       (gemit global-tree)
+		       (timed-call 100 spread-global))
+		    (global-tree ()
+				 (printf "Tree spreading... ~a\n" (my-id))
+				 (grelay))
+		    ))])
+	    (let ((lst 
+		   (let ([prt (open-output-string)])
+		     (display "(" prt)
+		     (run-simulator-alpha prog );'outport prt)
+		     (display ")" prt)
+		     (read (open-input-string (get-output-string prt))))))
+	      lst
+	      ))))
+      ,(lambda (x) #t)]
+
+     ;; TODO FIXME: This causes a system freeze when you attempt to simulate.
+#;     ["Finish assembly of a simple rfold over a rmap"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+      (fluid-let ([pass-names (list-remove-before 'deglobalize pass-names)])
+	(let ((prog
+	       (run-compiler
+		'(add-places-language
+		  '(program
+		    (props (result_4 local) (a_1 local)
+			   (tmpworld_7 leaf region area distributed)
+			   (tmpfunc_8 function local) (result_5 local) (b_2 local)
+			   (a_3 local) (tmprmap_9 area distributed)
+			   (tmpfunc_10 function local)
+			   (result_6 signal distributed final))
+		    (control-flow (SOC tmpworld_7 tmprmap_9 result_6))
+		    (lazy-letrec
+		     ((result_6 100 (X_12) SOC (rfold tmpfunc_10 '0 tmprmap_9))
+		      (tmpfunc_10
+		       #f
+		       _
+		       _
+		       (lambda (a_3 b_2)
+			 (lazy-letrec ((result_5 #f _ _ (+ a_3 b_2))) result_5)))
+		      (tmprmap_9 100 (X_11) (X_11) (rmap tmpfunc_8 tmpworld_7))
+		      (tmpfunc_8
+		       #f
+		       _
+		       _
+		       (lambda (a_1)
+			 (lazy-letrec ((result_4 #f _ _ (nodeid a_1))) result_4)))
+		      (tmpworld_7 1000 _ _ world))
+		     result_6))))))
+	      (let ((lst 
+		     (let ([prt (open-output-string)])
+		       (display "(" prt)
+		       (run-simulator-alpha prog 'outport prt)
+		       (display ")" prt)
+		       (read (open-input-string (get-output-string prt))))))
+		lst))))
+      foo]
+	
+
+
+
 
 
 #;
