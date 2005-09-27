@@ -123,25 +123,27 @@
        (let ([ingram (assq 'grammar instuff)]
 	     [outgram (assq 'grammar outstuff)])
 	 ;; Check input grammar:
-	 (match ingram
+	 (DEBUGMODE ;; When we're not in debugmode we don't waste cycles on this.
+	  (match ingram
 	   [#f (void)]
 	   ;; The optional initial production may or may not be supplied:
 	   [(grammar ,gram ,optional_initialprod ...)
 	    (or (apply check-grammar result gram optional_initialprod)
-		(error 'build-compiler-pass "Bad input to pass: \n ~a" prog))])
+		(error 'build-compiler-pass "Bad input to pass: \n ~a" prog))]))
 	 (let ((result (transform prog)))
-	   (if (regiment-verbose) 
-	       (printf "~a: Got result, checking output grammar...\n" name))
-	   ;; Check output grammar:
-	   (match outgram
+	   (DEBUGMODE
+	    (if (regiment-verbose) 
+		(printf "~a: Got result, checking output grammar...\n" name))
+	    ;; Check output grammar:	   
+	    (match outgram
 	     [#f (void)]
 	     ;; The optional initial production may or may not be supplied:
 	     [(grammar ,gram ,optional_initialprod ...)
 	      (or (apply check-grammar result gram optional_initialprod)
 		  (begin (pretty-print result) #f)
 		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))])
-	   (if (regiment-verbose)
-	       (printf "~a: Output grammar passed.\n" name))
+	    (if (regiment-verbose)
+		(printf "~a: Output grammar passed.\n" name)))
 	   result
 	   )))]))
 
