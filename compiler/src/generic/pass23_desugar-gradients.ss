@@ -1,3 +1,6 @@
+;; TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
+
+
 
 ;; CHECK FOR REFERENCES TO GLOBAL-TREE!!!
 
@@ -341,7 +344,7 @@
 	       (cons `[,return-handler retid (destid flag val toind viaind)
 			;; Must be initialized with the seed value before aggregation begins.
 		        (stored [,acc ,(if (equal? aggr '#f)
-					  '()
+					  ''()
 					  seed_exp)])
 
 			,@(DEBUGMODE

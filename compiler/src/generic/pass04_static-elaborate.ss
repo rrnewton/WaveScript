@@ -30,15 +30,18 @@
 (define static-elaborate
   (let ()
 
+    (define computable-prims 
+      '(+ - * / car cons cdr
+	  = < <= > >= 
+	  equal? null? pair? number? even? odd? not))
+
     (define (do-prim prim args)
-      (case prim
-	[(+ - * / car cons cdr
-	    = < <= > >= equal? null? pair? number? even? odd? not)
-	 `(quote ,(eval `(,prim ,@args)))]
-	[else (warning 'do-prim "cannot statically compute primitive! ~a" prim)
-	      `(,prim ,@args)]
-;	[else `(,prim ,args ...)]
-	))
+      (if (ormap symbol? args)
+	  (error 'do-prim "args contain unevaluated variable: ~a" args))
+      (if (memq prim computable-prims)
+	  `(quote ,(eval `(,prim ,@(map (lambda (a) `(quote ,a)) args))))
+	  (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
+		 `(,prim ,@args))))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
@@ -126,7 +129,7 @@
     ;; unavailable, to *void*.
     (define process-expr
       (lambda (expr env)
-	(letrec ([available?
+	(letrec ([available? ;; Is this value available at compile time.
 		  (lambda (x)
 		    (if (eq? x not-available) #f
 			(match x
@@ -136,7 +139,7 @@
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
 			   [,else #f])))]
-		 [getval
+		 [getval ;; If available, follow aliases until you have a real value expression:
 		  (lambda (x)
 		    (match x
 			   [(quote ,datum) datum]
@@ -149,6 +152,7 @@
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
           [,var (guard (symbol? var))
+		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
 		var]
           [(lambda ,formals ,expr)
@@ -171,12 +175,13 @@
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
-	   ;(break)
 	   (if (null? lhs*)
 	       (process-expr expr env)
 	   (let* ([newenv (append (map list lhs* rhs*) env)]
 		  [newrhs* (map (lambda (x) (process-expr x newenv)) rhs*)]
+;		  [_ 	   (break)]
 		  [newbod (process-expr expr newenv)]
+;		  [__ 	   (break)]
 		  [occurs (map (lambda (v myrhs) 
 				 (apply + (count-refs v newbod)
 					(map (lambda (x) (count-refs v x)) 
@@ -197,8 +202,10 @@
 		   conseq  altern)
 	       `(if ,test ,conseq ,altern))]
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-	   (if (andmap available? rand*)
-	       (do-prim prim rand*)
+	   ;(disp "PRIM: " prim rand* (map available? rand*))
+	   (if (and (memq prim computable-prims)
+		    (andmap available? rand*))
+	       (do-prim prim (map getval rand*))
 	       `(,prim ,rand* ...))]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we
@@ -254,6 +261,15 @@
 	      (rfilter
 	       f
 	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))))]
+
+    ["Simple test to make sure we keep the quotes on:" 
+     (static-elaborate '(foolang '(program (cons (+ '3 '4) (unknownfun)))))
+     (foolang '(program (cons (quote 7) (unknownfun))))]
+
+    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) (unknownfun))))])
+       `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
+	 (static-elaborate ',prog)
+	 ,prog])
 
     ))
 

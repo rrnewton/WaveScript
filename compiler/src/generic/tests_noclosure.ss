@@ -25,7 +25,7 @@
          (+ x y)))
      (not (if #f #t (not #f)))
      (letrec ([x 0][y 4000]) x)
-     (letrec ((x (cons 16 32))) (pair? x))
+     (letrec ((x (cons 16 '(32)))) (pair? x))
 
      (if (if #t #t #f) (if #t #t #f) (if #t #t #f))
      (letrec
@@ -94,7 +94,7 @@
                (equal? (- a 1) b)
                (= a (+ b 2)))))
      
-     (letrec ([x (cons #f #t)] [y 17])
+     (letrec ([x (cons #f '(#t))] [y 17])
        (if (if (car x) #t (< y 20))
            (* y (* y 2))
            0))

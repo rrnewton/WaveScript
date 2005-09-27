@@ -287,7 +287,7 @@
 					 (map (lambda (prop)
 					      (match prop
 						     [(alias-of ,x) 
-						      (disp "PROP IS X" x)
+						      ;(disp "PROP IS X" x)
 						      (cdr (assq x table))]
 						     [,prop (list prop)]))
 					      (cdr entry)))))

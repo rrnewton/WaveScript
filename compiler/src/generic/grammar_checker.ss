@@ -5,7 +5,7 @@
 ;; This compiler has grown large enough..
 
 ;; [2005.09.26] This is limited right now.
-(define (check-grammar expr grammar)
+(define (check-grammar expr grammar . initialprod)
   ;; expr is an sexpression
   ;; grammar is just a list of productions
   (define allvariants (list->set (map car grammar)))
@@ -105,7 +105,9 @@
 		   (fail))))]
 	    ))))))
 
-   (scangrammar expr grammar))))
+   (scangrammar expr (if (null? initialprod) 
+			 grammar
+			 (cut-grammar (car initialprod)))))))
 
 
 ;; ==================================================================
@@ -120,16 +122,26 @@
      (lambda (prog)
        (let ([ingram (assq 'grammar instuff)]
 	     [outgram (assq 'grammar outstuff)])
-	 (or (not ingram)
-	     (check-grammar prog (cadr ingram))
-	     (error 'build-compiler-pass "Bad input to pass: \n ~a" prog))
-	 (let ((result (transform prog)))	   
-	   ;(printf "~a: Got result, checking output grammar...\n" name)
-	   (or (not outgram)
-	       (check-grammar result (cadr outgram))
-	       (begin (pretty-print result) #f)
-	       (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))
-	   ;(printf "~a: Output grammar passed.\n" name)
+	 ;; Check input grammar:
+	 (match ingram
+	   [#f (void)]
+	   ;; The optional initial production may or may not be supplied:
+	   [(grammar ,gram ,optional_initialprod ...)
+	    (or (apply check-grammar result gram optional_initialprod)
+		(error 'build-compiler-pass "Bad input to pass: \n ~a" prog))])
+	 (let ((result (transform prog)))
+	   (if (regiment-verbose) 
+	       (printf "~a: Got result, checking output grammar...\n" name))
+	   ;; Check output grammar:
+	   (match outgram
+	     [#f (void)]
+	     ;; The optional initial production may or may not be supplied:
+	     [(grammar ,gram ,optional_initialprod ...)
+	      (or (apply check-grammar result gram optional_initialprod)
+		  (begin (pretty-print result) #f)
+		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))])
+	   (if (regiment-verbose)
+	       (printf "~a: Output grammar passed.\n" name))
 	   result
 	   )))]))
 
@@ -150,7 +162,8 @@
   `(
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
-    [Program ('program ('bindings (Var Const) ...) NodePgm)]
+    ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
+    [Program ('program ('bindings (Var Expr) ...) NodePgm)]
     ;       NOTE: tokens will inclide a binding for SOC-start and node-start:
     [NodePgm ('nodepgm ('tokens TokBinding ...))] 
     [TokBinding (TokName Var ;; subtokid
@@ -211,6 +224,7 @@
 
 (define tml_gradient_grammar
   `([GExpr ('gemit DynToken Expr ...)]
+    [GExpr ('grelay DynToken Expr ...)]
     [GExpr ('greturn Expr
 		     ('to DynToken)
 		     ('via DynToken)

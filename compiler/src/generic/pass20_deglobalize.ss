@@ -259,7 +259,7 @@
 		   )))]
 
 	    
-	    [(filter)
+	    [(rfilter)
 	     (match args
 	       [(,pred_tok ,region_tok)
 		(let ([parent (get-membership-name region_tok)])
@@ -409,10 +409,10 @@
 	  ;; membership tokname for the circle.  Later we'll put some
 	  ;; other hack in.
 	  ;(soc-return '(CIRC ,tokname this))
-	  (soc-return CIRC-NUM)
+	  (soc-return ',CIRC-NUM)
 	  ])]
 
-      [(filter)     
+      [(rfilter)     
        `([,tokname (v)
 	  (soc-return (list 'FILTRATION ',tokname (my-id) this))])]
 
@@ -525,7 +525,7 @@
 	 	 
 	 ;; Make sure the final value is tagged simple:
 ;	 (if (memq 'local (assq fin proctable))
-;	 (let ((temp (filter (lambda (ls) (memq 'final ls)
+;	 (let ((temp (rfilter (lambda (ls) (memq 'final ls)
 	 (let* ([leaves (map car (filter (lambda (ls) (memq 'leaf (cdr ls))) table))]
 		[leaftoks (map (lambda (name) (symbol-append 'leaf-pulsar_ name)) leaves)])
 

@@ -143,7 +143,7 @@
 	      (let ((prog  x))
 		(fluid-let ((pass-names (list-remove-after pass pass-names)))
 		  (parameterize ((tracer #t))
-				(test-one prog))))]
+				(test-one prog #f #f))))]
 	     [(x) (loop (rac pass-names) x)])))
     loop))
 
