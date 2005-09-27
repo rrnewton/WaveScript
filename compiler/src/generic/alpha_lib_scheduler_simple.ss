@@ -50,14 +50,14 @@
   ;; New events may have times in the future, but should not have times in the past.
   (define (schedule ob . newevnts)        
     ;; ASSUME: all the new events are already tagged with concrete times.
-    (DEBUGMODE
+    (DEBUGASSERT (simobject? ob))
+    (DEBUGMODE     
      (for-each (lambda (ne)
 		 (if (and (simevt-vtime ne) (< (simevt-vtime ne) vtime))
 		     (logger 0 "ERROR: Scheduled event has time in past (now ~a): ~a~n"
 			     vtime
 			     (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
 	       newevnts))
-
     (let ([pairedevnts (map (lambda (x) (cons x ob)) newevnts)])
       (unless (null? newevnts)
 	      ;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:

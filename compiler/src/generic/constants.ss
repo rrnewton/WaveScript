@@ -26,8 +26,10 @@
 
 (define-syntax DEBUGASSERT 
   (syntax-rules () 
-    [(_ expr ...) (if (and expr ...) #t 
-		      (error 'DEBUGASSERT "failed: ~s" (quote (and expr ...))))]))
+    [(_ expr ...) 
+     (DEBUGMODE
+      (if (and expr ...) #t 
+	  (error 'DEBUGASSERT "failed: ~s" (quote (and expr ...)))))]))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ;;;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
