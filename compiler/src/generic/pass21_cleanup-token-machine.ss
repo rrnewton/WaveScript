@@ -274,19 +274,22 @@
 	     [(activate (tok ,t ,n) ,[args*] ...)
 	      (guard (number? n))
 	      `(if (not (token-scheduled? (tok ,t ,n)))
-		   (call (tok ,t ,n) ,@args*))]
+		   (call (tok ,t ,n) ,@args*)
+		   (void))]
 
 	     [(activate ,[e] ,[args*] ...)
 	      (if (regiment-verbose) (printf "\nDesugaring activate call to: ~a args: ~a\n" e args*))
 	      (match e
 		[(tok ,t ,v) 
 		 `(if (not (token-scheduled? ,e))
-		      (call ,e ,@args*))]
+		      (call ,e ,@args*)
+		      (void))]
 		[,other
 		 (let ([ind (unique-name 'ind)])       
 		   `(let ((,ind ,e))
 		      (if (token-scheduled? ,ind)
-			  (call ,ind ,@args*))))])]
+			  (call ,ind ,@args*)
+			  (void))))])]
 	     	     
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(gemit call bcast subcall)))
