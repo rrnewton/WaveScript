@@ -227,23 +227,25 @@
 		 (nodepgm (tokens ,toks ...))))]))
 ))
 
-
-
-(define sim-to-string
-  (lambda (prog)
-    (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-		  (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-		    (let ((prt (open-output-string)))
-		      (run-simulator-alpha prog 'outport prt)
-		      (get-output-string prt))))))
-
-(define simulate-and-compare
-  (lambda (pass origprog)
-    (let ([result1 (sim-to-string origprog)]
-	  [result2 (sim-to-string (pass origprog))])
-	(list result1 result2))))
-
+;; Here I've decided to start breaking my rules about unit tests requiring
+;; only the content of that file.
+;; This requires a number of other passes as well as the simulator.
 (define these-tests
+  (let () 
+
+    (define sim-to-string
+      (lambda (prog)
+	(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+		      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+			(let ((prt (open-output-string)))
+			  (run-simulator-alpha prog 'outport prt)
+			  (get-output-string prt))))))
+
+    (define simulate-and-compare
+      (lambda (pass origprog)
+	(let ([result1 (sim-to-string origprog)]
+	      [result2 (sim-to-string (pass origprog))])
+	  (list result1 result2))))
   `(  
     ["Run simulator on empty TMs" 
      (simulate-and-compare desugar-let-stored (cleanup-token-machine '()))
@@ -290,8 +292,7 @@
 		(let-stored ((x 2))
 			    (display x)))))))
       "12"]
-
-))
+)))
 
 (define test-this (default-unit-tester
 		    "24: Desugar-Let-Stored: convert let-stored to plain stored variables."

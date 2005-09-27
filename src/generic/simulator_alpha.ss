@@ -1,6 +1,8 @@
 
 ;; TODO: is_scheduled etc...
 
+;; TODO: REHIDE the scheduler state if we don't need it!!
+
 ;; simulator_alpha.ss
 ;;  -Ryan Newton [2005.02.25]
 ;; Related files include:
@@ -80,6 +82,8 @@
 
 			     ;; This function takes msg-obj and vtime and executes a token handler:
 			     meta-handler
+			     
+			     worldptr ;; A pointer to the relevent simworld object.
 			     ))
 ;; The token store is a hash table mapping simtok objects to token objects.
 ;; The token objects themselves are just vectors of stored variables.
@@ -90,7 +94,7 @@
 ;; This structure represents a message transmitted across a channel.
 ;; None of these should be mutated:
 (define-structure (msg-object token ;; This is a simtok object.  Used to just be a symbol (name).
-			      sent-time ;; when it was sent 
+			      sent-time ;; when it was sent --This is currently mutated within the scheduler [2005.09.27]
 			      parent ;; :: simobject - who I got it from
 			      to   ;; :: nodeid - who its going to, #f for broadcast
 			      args))
@@ -270,35 +274,37 @@
 (define (all-connected simob sim)
   (graph-get-connected-component simob (simworld-object-graph sim)))
 
-;; This generates the default, random topology: 
-;; (There are more topologies in "network_topologies.ss"
-(define (make-object-graph g) 
-  (graph-map (lambda (nd) 
-	       (let ([so (apply make-simobject (make-list 14 'simobject-field-uninitialized))])
-		 (set-simobject-node! so nd)
-		 (set-simobject-token-store! so (make-default-hash-table))
-
-		 (set-simobject-incoming-msg-buf! so '())
-		 (set-simobject-outgoing-msg-buf! so '())
-		 (set-simobject-local-msg-buf! so '())
-		 (set-simobject-timed-token-buf! so '())
-
-		 (set-simobject-local-sent-messages! so 0)
-		 (set-simobject-local-recv-messages! so 0)
-
-		 (set-simobject-redraw! so #f)
-		 (set-simobject-gobj! so #f)
-		 (set-simobject-homepage! so '())
-		 (set-simobject-I-am-SOC! so #f)
-
-		 (set-simobject-scheduler! so #f)
-		 (set-simobject-meta-handler! so #f)
-
-		 so)) g))
-
 ;; Returns a simworld object.
-(define (fresh-simulation)
-   (let* ([graph 
+(define (fresh-simulation)  
+  ;; This subroutine generates the default, random topology: 
+  ;; (There are more topologies in "network_topologies.ss"
+  (define (make-object-graph g world) 
+    (graph-map (lambda (nd) 
+		 (let ([so (apply make-simobject (make-list 15 'simobject-field-uninitialized))])
+		   (set-simobject-node! so nd)
+		   (set-simobject-token-store! so (make-default-hash-table))
+
+		   (set-simobject-incoming-msg-buf! so '())
+		   (set-simobject-outgoing-msg-buf! so '())
+		   (set-simobject-local-msg-buf! so '())
+		   (set-simobject-timed-token-buf! so '())
+
+		   (set-simobject-local-sent-messages! so 0)
+		   (set-simobject-local-recv-messages! so 0)
+
+		   (set-simobject-redraw! so #f)
+		   (set-simobject-gobj! so #f)
+		   (set-simobject-homepage! so '())
+		   (set-simobject-I-am-SOC! so #f)
+
+		   (set-simobject-scheduler! so #f)
+		   (set-simobject-meta-handler! so #f)
+
+		   (set-simobject-worldptr! so world)
+		   so)) g))
+
+   (let* ([theworld (make-simworld #f #f #f #f #f)]
+	  [graph 
           (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
             ;; TEMP: Here I give the nodes distinct, consecutive ids.
 	    ;; They should have randomized ids.
@@ -318,7 +324,7 @@
                        seed))
             seed)]
 ;	  [soc (caar graph)]
-          [obgraph (make-object-graph graph)]
+          [obgraph (make-object-graph graph theworld)]
           [allobs  (map car obgraph)]
 	  [hash
 	   (let ([h (make-default-hash-table)])
@@ -333,9 +339,12 @@
 		 (set-simobject-I-am-SOC! ob		  
 		  (= (node-id (simobject-node ob)) BASE_ID)))
 	       allobs)
-     
-     (make-simworld graph obgraph allobs hash scheduler-queue)
-     ))
+     (set-simworld-graph! theworld graph)
+     (set-simworld-object-graph! theworld obgraph)
+     (set-simworld-all-objs! theworld allobs)
+     (set-simworld-obj-hash! theworld hash)
+     (set-simworld-scheduler-queue! theworld scheduler-queue)
+     theworld))
 
                          
 ;; ======================================================================
@@ -437,11 +446,37 @@
 			       (simobject-timed-token-buf this)))]
 
 		  ;; TODO
-		  [(token-scheduled? ,tok)
-		   (let ((queue '0));((simobject-scheduler this) 'get-queue)))
-		     ;; queue is list containing (simevt . simob) pairs.
-		     (void))
-		   ]
+		  [(token-scheduled? ,[tok]) ;; INEFFICIENT
+		   ;; queue is list containing (simevt . simob) pairs.
+		   ;; We go through the current queue looking for a scheduled event that matches this token.
+		   ;; NOTE: This is the queue of *all* events, we also must make sure it happens on this *node*.
+		   `(begin		      
+		      '(disp "SCANNING QUEUE: " (length (simworld-scheduler-queue (simobject-worldptr this)))
+			    "and locals: "     (length (simobject-local-msg-buf this))
+			    (map msg-object-token 
+				 (map simevt-msgobj
+				      (simobject-local-msg-buf this))))
+
+		      (or ;;; First, check the schedulers queue:
+		       ;; (TODO FIXME, CHECK: THIS MIGHT NOT EVEN BE NECESSARY:)
+		       (let loop ((queue (simworld-scheduler-queue (simobject-worldptr this))))
+			 (if (null? queue) #f 
+			     (let ((simtok (msg-object-token (simevt-msgobj (caar queue)))))
+			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
+					(equal? ,tok simtok)
+					(begin 
+					  (DEBUGMODE (printf "Wow! we actually found the answer to token-scheduled? ~a"
+							     "in the scheduler-queue!"))
+					  #t)
+					) ;; If so is it the token in question?
+				   (loop (cdr queue))))))
+		       ;; Second, check the local msg buf:
+		       (let loop ((locals (simobject-local-msg-buf this)))
+			 (if (null? locals) #f
+			     (let ((simtok (msg-object-token (simevt-msgobj (car locals)))))
+			       (or (equal? ,tok simtok)
+				   (loop (cdr locals)))))))
+		       )]
 		   
 		  ;; is_scheduled TODO TODO
 		  ;; deschedule   TODO TODO
