@@ -107,7 +107,7 @@
 ;;>   (sorted? b less?) are true, and returns a new list in which the
 ;;>   elements of `a' and `b' have been stably interleaved so that (sorted?
 ;;>   (merge less? a b) less?) is true.  Note: this does not accept vectors.
-(define (merge less? a b)
+'(define (merge less? a b)
   (cond [(null? a) b]
         [(null? b) a]
         [else (let loop ([x (car a)] [a (cdr a)] [y (car b)] [b (cdr b)])

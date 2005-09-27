@@ -420,6 +420,15 @@
 		  [(begin) '(void)]
 		  [(begin ,[x] ...) `(begin ,x ...)]
 		  
+		  ;; TODO: Implement subcall directly:
+		  [(subcall ,[rator] ,[rand*] ...)		  
+		   ;; Call the handler directly
+		   `(begin "Simulator subcall code" 
+			   ((simobject-meta-handler this)
+			    (bare-msg-object ,rator
+					     (list ,@rand*) current-vtime)
+			    current-vtime))]
+
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,[rator] ,[rand*] ...)
                      `(set-simobject-local-msg-buf! this
@@ -427,7 +436,7 @@
                                               (bare-msg-object ,rator
 							       (list ,@rand*) current-vtime))
                                  (simobject-local-msg-buf this)))]
-
+		  
 		  [(bcast ,[rator] ,[rand*] ...)
 		   `(set-simobject-outgoing-msg-buf! this
   		      (cons (make-simevt #f ;; No scheduled time, ASAP
@@ -464,9 +473,10 @@
 			     (let ((simtok (msg-object-token (simevt-msgobj (caar queue)))))
 			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
 					(equal? ,tok simtok)
-					(begin 
-					  (DEBUGMODE (printf "Wow! we actually found the answer to token-scheduled? ~a"
-							     "in the scheduler-queue!"))
+					(begin 	       
+					  (if (regiment-verbose)
+					  (DEBUGMODE (printf "Wow! we actually found the answer to ~a\n"
+							     "token-scheduled? in the scheduler-queue!")))
 					  #t)
 					) ;; If so is it the token in question?
 				   (loop (cdr queue))))))

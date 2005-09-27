@@ -88,6 +88,15 @@
 		                                   (fuse (list a b c) `(if ,a ,b ,c))]
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
 		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
+		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
+		                                   (fuse (append rhs* (list bod)) 
+							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
+
+		    ;; For now we just don't touch the insides of a dbg statement:
+		    [(dbg ,rand ...)		     
+		     (fuse () `(dbg ,rand ...))]
+		     
+
 		    ;; "activate" and the gradient calls have already been desugared:
 		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
 		     (guard (memq call '(bcast subcall call)))
@@ -152,6 +161,9 @@
 	    (if entry 
 		(values rst `(set! ,(cadr entry) ,rhs))
 		(values rst `(set! ,v ,rhs))))]
+
+    ;; For now we just don't touch the insides of a dbg statement:
+    [(dbg ,rand ...) (values () `(dbg ,rand ...))]
 
     [(begin ,[st* xs] ...)
      (values (apply append st*) (make-begin xs))]
@@ -248,11 +260,11 @@
 	  (list result1 result2))))
   `(  
     ["Run simulator on empty TMs" 
-     (simulate-and-compare desugar-let-stored (cleanup-token-machine '()))
+     (,simulate-and-compare desugar-let-stored (cleanup-token-machine '()))
      ("" "")]
 
     ["Now start to test let-stored in a basic way."
-     (sim-to-string
+     (,sim-to-string
       (desugar-let-stored 
        (cleanup-token-machine 
 	'(tokens
@@ -263,7 +275,7 @@
      "1"]
 
     ["Now seeing if it only initializes at the right time."
-     (sim-to-string
+     (,sim-to-string
       (desugar-let-stored 
        (cleanup-token-machine 
 	'(tokens
@@ -280,7 +292,7 @@
     ;; In the process of debugging this right now. [2005.09.22]
     ;; Seems like it might be a problem with the execution, not this pass.
     ["Now test scoping."
-     (sim-to-string
+     (,sim-to-string
       ;; Got to include the renaming to make absolutely sure the x's don't collide:
       ;(rename-stored ;; No longer true.. fixed it so it renames let-stored vars [2005.09.24]
        (desugar-let-stored 
@@ -292,6 +304,7 @@
 		(let-stored ((x 2))
 			    (display x)))))))
       "12"]
+
 )))
 
 (define test-this (default-unit-tester

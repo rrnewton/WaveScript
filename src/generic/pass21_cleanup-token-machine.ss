@@ -290,7 +290,9 @@
 		      (if (token-scheduled? ,ind)
 			  (call ,ind ,@args*)
 			  (void))))])]
-	     	     
+
+	     ;; TODO: check to see if the "tok" is a locally bound variable if it is not a tokname?
+	     ;; Should give warning if not.
 	     [(,call-style ,tok ,[args*] ...)
 	      (guard (memq call-style '(gemit call bcast subcall)))
 	      (check-tok call-style tok)	     

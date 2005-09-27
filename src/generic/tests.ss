@@ -31,6 +31,7 @@
     (circle-at 30 40 50) ;; Location 30,40 radius 50
 
     (rmap nodeid world)
+    (rfold + 0 (rmap nodeid world))        
 
 ; [2005.09.27] Disabling temporarily: 
 ;    (rmap (lambda (r) (rfold + 0 r))
@@ -113,10 +114,10 @@
 
 ;; This runs all the system tests AND unit tests.
 (define (test-everything . args)
-    (apply test-units 'verbose 'quiet args)
-    ;; Finlly run all the compiler system tests.
-    (printf "~n;; Testing the whole system on the compiler test cases:~n")
-    (test-all) (newline)  (newline))
+  (and (apply test-units 'verbose 'quiet args)
+       ;; Finlly run all the compiler system tests.
+       (printf "~n;; Testing the whole system on the compiler test cases:~n")
+       (test-all) (newline)  (newline)))
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
 ;; runs all the unit tests.
@@ -125,8 +126,8 @@
 
 (define (test-units . args)
   (printf "~n;; Performing all unit tests:~n~n")
-  (for-each (lambda (pr) (newline) (newline) (apply (cadr pr) args)) 
-	    (reverse (reg:all-unit-tests))))
+  (andmap (lambda (pr) (newline) (newline) (apply (cadr pr) args))
+	  (reverse (reg:all-unit-tests))))
 
 (define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
 (define (te . args) (apply test-everything 'verbose 'quiet args)) ;; shorthand

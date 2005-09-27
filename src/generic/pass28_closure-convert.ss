@@ -98,6 +98,9 @@
 		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
 		                                   (fuse (list rhs bod) 
 							 (lambda (x y) `(let ([,lhs ,x]) ,y)))]
+		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
+		                                   (fuse (append rhs* (list bod)) 
+							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
 		    ;; "activate" and the gradient calls have already been desugared:
 
 		    [(lambda (,v) ,[loop -> e])    (fuse (list e) (lambda (x) `(lambda (,v) ,x)))]
@@ -201,7 +204,7 @@
       (values 
        ;; Return an expression which builds the continutation closure:
        (let ([kind (unique-name 'kind)])
-	 `(begin "This whole block represents the allocation of a continuation closure."
+	 `(begin '"This whole block represents the allocation of a continuation closure."
 		 ,(format "Continuation = ~a" kname)
 		(let ([,kind 
 		       (if (token-present? (tok ,kname 0))
@@ -209,7 +212,7 @@
 			     (begin (ext-set! (tok ,kname 0) ,KCOUNTER new)
 				    new))
 			   ;; NOTE: [2005.05.31] Now this should never happen because I do it in node-start:
-			   (begin "Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
+			   (begin '"Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:"
 				  ;; Here we should just allocate a SEPARATE token for this, holding just the counter.
 				  ;; OR we should have one token that holds everybody's counters.  But for now I want 
 				  ;; to everything grouped under this one token "class".
@@ -247,9 +250,10 @@
 			  ,@(map (lambda (fv fvn)
 				   `(begin 
 				      (set! ,fv ,fvn)
-				      (dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: ~a~n" 
+				      (dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: <DISABLED,CHECKCODE>~n" 
 					   (my-id)
-					   ',fv ,fvn (simobject-token-store this))
+					   ',fv ,fvn ;(simobject-token-store this)
+					   )
 				      ))
 				 newfvs fvns))))
 		    ;; Otherwise, assume the flag is CALL

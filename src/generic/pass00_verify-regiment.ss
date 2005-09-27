@@ -80,7 +80,7 @@
 		   [(number? const) 'Number]
 		   [(list? const) 'List] 
 		   [else (error 'verify-regiment:infer-type
-			 "Unknown type of constant: " const)])]
+			 "Unknown type of constant: ~a" const)])]
           [(quote ,datum)
 	   (guard (not (memq 'quote env)) (datum? datum))
 	   (cond
