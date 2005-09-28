@@ -85,10 +85,18 @@
 (define (reg:set-random-state! s)
   (current-pseudo-random-generator (vector->pseudo-random-generator s)))
 
-  (define (make-list n x)
-    (let loop ((acc ()))
-      (if (zero? n) acc
-          (loop (cons x acc)))))
+;; Primitive in chez:
+(define (make-list n x)
+  (let loop ((acc ()))
+    (if (zero? n) acc
+	(loop (cons x acc)))))
+(define list-head
+  (lambda (lst n)
+    (cond
+      [(zero? n) '()]
+      [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
+                          lst n)]
+      [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
   
 ;; ======================================================================  
 
@@ -144,7 +152,8 @@
    
    ;; Hmm, not sure what meaning immediate has here...
    immediate? constant? datum? 
-   formalexp? cast-formals default-unit-tester tester-eq? 
+   formalexp? cast-formals default-unit-tester tester-eq?
+   default-unit-tester-retries
 
    regiment-primitives regiment-primitive? 
    token-machine-primitives token-machine-primitive? 
@@ -193,4 +202,3 @@
   )
 
 ;(require helpers)
-

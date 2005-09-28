@@ -1,3 +1,13 @@
+;; compiler_chez.ss
+;; Loads the regiment compiler in Chez Scheme.
+
+;; NOTE: This file uses (include ...) rather than (load ...) 
+;; This basically inlines all the code in question into this file at compile time.
+;; Thus, making a compiled copy of this file makes a compiled copy of the whole system.
+;; HOWEVER: I broke this rule for things that depend on whether or not SWL is loaded.
+;; TODO FIXME: I can also make this happen at compile time, via macros.
+
+;; ======================================================================
 
 (if (not (top-level-bound? 'default-break-handler))
     (define-top-level-value 'default-break-handler (break-handler)))
@@ -5,7 +15,10 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
-(case-sensitive #t)
+;; The regiment compiler expects case-sensitive treatment of symbols:
+;; (But hopefully it should work either way, as long as its consistent.
+(eval-when (compile load eval) 
+	   (case-sensitive #t))
 (print-graph #f)
 
 ;; This makes our modules work properly in newer versions of Chez:

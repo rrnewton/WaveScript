@@ -346,15 +346,6 @@
 		  (loop (cdr ls) (car ls) thisval)
 		  (loop (cdr ls) maxelem maxval)))))))	    
 
-'(define list-head
-  (lambda (lst n)
-    (cond
-      [(zero? n) '()]
-      [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
-                          lst n)]
-      [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
-
-
 (define filter
   (lambda (pred lst)
     (cond

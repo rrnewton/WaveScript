@@ -48,6 +48,7 @@ all: reg
 mzscheme: compiled/compiler.zo compiled/compiler_plt.zo $(GENERIC_SRC) $(PLT_SRC) $(PLT_MAIN_FILE)
 	(cd plt; $(MAKE) "SRCFILES=$(PLT_SRC)")
 
+chez: chez_native
 chez_native:
 	echo '(compile-file "compiler_chez.ss")' | chez
 
@@ -104,7 +105,7 @@ runplt:
 
 clean:
 	(cd plt; $(MAKE) clean)
-	$(RM) *.zo _SIM_*
+	$(RM) *.zo *.so _SIM_*
 
 #	find -name "*.zo" | xargs rm # This is excessive...
 #	(cd compiled; $(MAKE) clean)
