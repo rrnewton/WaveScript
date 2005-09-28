@@ -539,20 +539,20 @@
 		(run-compiler
 		 '(tokens 		   
 		   (SOC-start () 
-			      (printf "First: ~a" (token-present? (tok tok1 0)))
+			      (printf "first: ~a" (token-present? (tok tok1 0)))
 			      ;(call tok1)
 			      (timed-call 200 tok2)
 			      (timed-call 100 tok1)
 			      )
 		   (tok1 () (printf "tok1 "))
-		   (tok2 () (printf "Second: ~a" (token-present? (tok tok1 0))))
+		   (tok2 () (printf "second: ~a" (token-present? (tok tok1 0))))
 		 ))))
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
-     (First: #f tok1 Second: #t)]
+     (first: #f tok1 second: #t)]
      [
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )));closure-convert)))
@@ -560,20 +560,20 @@
 		(run-compiler
 		 '(tokens 		   
 		   (SOC-start () 
-			      (printf "First: ~a" (token-present? (tok tok1 0)))
+			      (printf "first: ~a" (token-present? (tok tok1 0)))
 			      (timed-call 200 tok2)
 			      (call tok1)
 			      (timed-call 100 tok2)
 			      )
 		   (tok1 () (printf "tok1 "))
-		   (tok2 () (printf "Second: ~a" (token-present? (tok tok1 0))))
+		   (tok2 () (printf "second: ~a" (token-present? (tok tok1 0))))
 		 ))))
 	   (let ((prt (open-output-string)))
 	     (display "(" prt)       
 	     (run-simulator-alpha prog 'outport prt)
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
-      (First: #f tok1 Second: #t Second: #t)]
+      (first: #f tok1 second: #t second: #t)]
 
      ["Token Evict"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
