@@ -5,6 +5,7 @@
 (module grammar_checker mzscheme
   (require (lib "include.ss"))
   (require "iu-match.ss")
+  (require "constants.ss") ;; For DEBUGMODE
   (require (all-except "helpers.ss" test-this these-tests))
   
   (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x)))

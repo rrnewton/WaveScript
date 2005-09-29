@@ -11,6 +11,59 @@
 ;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest.
 ;; [2005.03.29] MOVING DEBUGMODE to this file.
 
+;; [2005.09.29] Moved this here because we need to access it from a variety of places.
+;; And well, after all it is a *constant* (shouldn't change during compilation, except 
+;; for unit testing and stuff which uses fluid-let against this binding).
+(define pass-names
+  '(verify-regiment
+    eta-primitives
+    rename-var
+    remove-unquoted-constant                        ;;  5
+    
+    static-elaborate
+    
+    reduce-primitives    
+    remove-complex-constant                         ;;  7
+    uncover-free                                    ;; 14
+    ;    convert-closure                                 ;; 15
+    lift-letrec                                     ;; 16
+    lift-letrec-body                                ;; 22
+    remove-complex-opera*
+    verify-core
+    classify-names
+    add-heartbeats
+    add-control-flow
+    add-places
+    ;    add-routing
+    analyze-places
+    deglobalize
+    
+    cleanup-token-machine    
+
+    desugar-gradients
+    cleanup-token-machine   ;; Rerun to expand out some stuff.
+    
+    ;    analyze-tokmac-recursion
+    ;    inline-tokmac
+
+;    desugar-let-stored
+;    rename-stored
+
+;; Temporarily I am disabling these ..
+    cps-tokmac
+    closure-convert
+
+    cleanup-token-machine ;; Trying this.. [2005.09.27]
+
+    ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
+;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
+;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
+    desugar-let-stored
+    rename-stored
+
+    ;    verify-token-machine
+    ;    haskellize-tokmac 
+    ))
 
 
 ;;======================================================================
@@ -158,3 +211,6 @@
 ;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
 ;(define ACTION_LENGTH 100)  ;; Thus we ignore the "duration" field of simevts.
 (define SCHEDULE_DELAY 1)
+
+
+

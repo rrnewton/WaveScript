@@ -128,7 +128,7 @@
 	   [#f (void)]
 	   ;; The optional initial production may or may not be supplied:
 	   [(grammar ,gram ,optional_initialprod ...)
-	    (or (apply check-grammar result gram optional_initialprod)
+	    (or (apply check-grammar prog gram optional_initialprod)
 		(error 'build-compiler-pass "Bad input to pass: \n ~a" prog))]))
 	 (let ((result (transform prog)))
 	   (DEBUGMODE
