@@ -12,57 +12,7 @@
 ;; Moved this *again*.  Now the simulator just defines this (via
 ;; eval), when it starts running.
 
-(define pass-names
-  '(verify-regiment
-    eta-primitives
-    rename-var
-    remove-unquoted-constant                        ;;  5
-    
-    static-elaborate
-    
-    reduce-primitives    
-    remove-complex-constant                         ;;  7
-    uncover-free                                    ;; 14
-    ;    convert-closure                                 ;; 15
-    lift-letrec                                     ;; 16
-    lift-letrec-body                                ;; 22
-    remove-complex-opera*
-    verify-core
-    classify-names
-    add-heartbeats
-    add-control-flow
-    add-places
-    ;    add-routing
-    analyze-places
-    deglobalize
-    
-    cleanup-token-machine    
-
-    desugar-gradients
-    cleanup-token-machine   ;; Rerun to expand out some stuff.
-    
-    ;    analyze-tokmac-recursion
-    ;    inline-tokmac
-
-;    desugar-let-stored
-;    rename-stored
-
-;; Temporarily I am disabling these ..
-    cps-tokmac
-    closure-convert
-
-    cleanup-token-machine ;; Trying this.. [2005.09.27]
-
-    ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
-;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
-;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
-    desugar-let-stored
-    rename-stored
-
-    ;    verify-token-machine
-    ;    haskellize-tokmac 
-    ))
-
+;; Moved definition of "pass-names" to constants.ss
 
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
