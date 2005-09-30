@@ -26,5 +26,5 @@
            )
   )
 
-(require pass28_closure-convert)
+;(require pass28_closure-convert)
 ;(test28 'qv)
