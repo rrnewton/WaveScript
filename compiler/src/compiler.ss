@@ -12,7 +12,57 @@
 ;; Moved this *again*.  Now the simulator just defines this (via
 ;; eval), when it starts running.
 
-;; Moved definition of "pass-names" to constants.ss
+(define pass-names
+  '(verify-regiment
+    eta-primitives
+    rename-var
+    remove-unquoted-constant                        ;;  5
+    
+    static-elaborate
+    
+    reduce-primitives    
+    remove-complex-constant                         ;;  7
+    uncover-free                                    ;; 14
+    ;    convert-closure                                 ;; 15
+    lift-letrec                                     ;; 16
+    lift-letrec-body                                ;; 22
+    remove-complex-opera*
+    verify-core
+    classify-names
+    add-heartbeats
+    add-control-flow
+    add-places
+    ;    add-routing
+    analyze-places
+    deglobalize
+    
+    cleanup-token-machine    
+
+    desugar-gradients
+    cleanup-token-machine   ;; Rerun to expand out some stuff.
+    
+    ;    analyze-tokmac-recursion
+    ;    inline-tokmac
+
+;    desugar-let-stored
+;    rename-stored
+
+;; Temporarily I am disabling these ..
+    cps-tokmac
+    closure-convert
+
+    cleanup-token-machine ;; Trying this.. [2005.09.27]
+
+    ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
+;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
+;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
+    desugar-let-stored
+    rename-stored
+
+    ;    verify-token-machine
+    ;    haskellize-tokmac 
+    ))
+
 
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
@@ -194,88 +244,7 @@
 ;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
   '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
 
-
-;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
-;; This handles writing the generated code to a file and loading it back.
-;; FLAGS:
-;; 'numnodes int -- Set the number of nodes in the world to int.
-;; 'outport prt  -- Set the printed output of the simulation to port prt.
-;; 'srand int    -- Seed the random number generator with int.
-(define run-simulator-alpha
-  (letrec ([run-alpha-loop
-	    (lambda args
-	      (match args
-		     ;; This is a weak requirement... 
-		     ;; We consider the first arg to represent a token machine if it is a *list*.
-		     [(,tm . ,rest) (guard (list? tm))
-		      (match tm
-			;; Already compiled
-			[(define (node-code this) ,e)
-			 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
-			   (parameterize ([print-level #f]
-					  [pretty-maximum-lines #f]
-					  [print-graph #t])
-   		              (write tm out);(pretty-print tm out)
-			      (newline out)
-			      (close-output-port out)))
-			 (read-params rest)]
-			;; Otherwise compile it
-			[,tm			     
-			 (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
-			   (let ([comped (compile-simulate-alpha cleaned)])
-			     (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
-;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
-			    (parameterize ([print-level #f]
-					   [pretty-maximum-lines #f]
-					   [print-graph #t])				    					  
-			    (pretty-print comped out)
-			    (newline out)
-			    (newline out)
-			    (display ";; Above is compiled program for this token machine: " out)
-			    (newline out)
-			    (display "'" out)
-			    (pretty-print tm out)
-			    (newline out))
-			    (close-output-port out))
-			  (read-params rest)
-			  ))])]
-		     [(,rest ...) (read-params rest)]
-		     ))]
-	    [read-params
-	     (lambda (params)	       
-	       (match params
-;		      [,x (guard (disp "read params" params) #f) 3]
-		      [() 
-		       (load "_genned_node_code.ss")
-                       ;; We have to do this because of the module system:
-                       (let ((node-code (eval 'node-code)))
-                         ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
-                         ;(printf "Node code loaded from file.~n")
-                         ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
-                         (start-alpha-sim node-code 10.0 'simple))]
-		      [(numnodes ,n . ,rest)
-		       (if (not (integer? n))
-			   (error 'run-simulator-alpha
-				  "'numnodes switch should be followed by an integer, not: ~a" n))
-		       (parameterize ([simalpha-num-nodes n])
-				     (read-params rest))]
-		      [(outport ,p . ,rest)
-		       (if (not (output-port? p))
-			   (error 'run-simulator-alpha
-				  "'outport switch should be followed by a port object, not: ~a" n))
-		       (parameterize ([simalpha-output-port p])
-				     (read-params rest))]
-		      [(srand ,n . ,rest)
-;		       (if (not (integer? n))
-;			   (error 'run-simulator-alpha
-;				  "'srand switch should be followed by an integer, not: ~a" n))
-		       (let ([stored-state #f])
-			 (dynamic-wind
-			     (lambda () (set! stored-state (reg:get-random-state)))
-			     (lambda () (read-params rest))
-			     (lambda () (reg:set-random-state! stored-state))))
-		       ]))])
-	   run-alpha-loop))
+;; [2005.09.29] Moved run-simulator-alpha to simulator_alpha.ss
 	    
 (define ra run-simulator-alpha) ;; shorthand
 

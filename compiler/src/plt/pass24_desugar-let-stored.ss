@@ -7,7 +7,10 @@
   (require (lib "include.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
-  (require "helpers.ss")
+  (require (all-except "helpers.ss" test-this these-tests))
+
+  ;; Some of the unit tests run the simulator:
+  (require (all-except "simulator_alpha.ss" test-this these-tests))
 
   (require (all-except (lib "list.ss") filter))
   
@@ -18,4 +21,4 @@
   (provide (all-defined))
   )
 
-;(require pass24_desugar-let-stored)
+(require pass24_desugar-let-stored)

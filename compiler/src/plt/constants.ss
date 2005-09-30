@@ -30,10 +30,7 @@
          simalpha-dbg-on
 
          default-unit-tester-retries
-         
-         ;; [2005.09.29] Just moved this from compiler.ss
-         pass-names
-         
+                  
          )
 	
 	(include (build-path "generic" "constants.ss"))

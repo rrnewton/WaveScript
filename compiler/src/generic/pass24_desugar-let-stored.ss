@@ -248,11 +248,10 @@
     (define sim-to-string
       (lambda (prog)
 	(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-		      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-			(let ((prt (open-output-string)))
-			  (run-simulator-alpha prog 'outport prt)
-			  (get-output-string prt))))))
-
+		      (let ((prt (open-output-string)))
+			(run-simulator-alpha prog 'outport prt)
+			(get-output-string prt)))))
+  
     (define simulate-and-compare
       (lambda (pass origprog)
 	(let ([result1 (sim-to-string origprog)]
