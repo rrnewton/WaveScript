@@ -28,7 +28,8 @@
          simalpha-output-port
          
          simalpha-dbg-on
-
+         SCHEDULE_DELAY
+         
          default-unit-tester-retries
                   
          )

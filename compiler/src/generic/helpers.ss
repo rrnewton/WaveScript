@@ -1275,7 +1275,7 @@
 		(set! preprocessor (car ls))
 		(error 'default-unit-tester "Too many proc arguments!: ~a" (car ls))))
 	(arg-loop (cdr ls) (add1 procsseen))]
-       [(eq? (car ls) 'disable) 
+       [(memq (car ls) '(disable disabled))
 	(set! enabled #f)
 	(arg-loop (cdr ls) procsseen)]
        [(eq? (car ls) 'retry) 
