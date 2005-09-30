@@ -9,20 +9,9 @@
 ;; 2) a cost-table mapping toknames to vtime costs
 ;(define node-code #f)
 
-;; #f trumps any time, EXCEPT 0, 0 trumps all.
-(define (evntlessthan a b)
-  (vtimelessthan (simevt-vtime a) (simevt-vtime b)))
 
-(define (vtimelessthan at bt)
-  (cond
-   [(eq? at 0) #t]
-   [(eq? bt 0) #f]
-   [(not at) #t]
-   [(not bt) #f]
-   [else (<= at bt)]))
-
-
-;; [2005.09.29] Moved start-alpha-sim to simulator_alpha.ss
+;; [2005.09.29] Moved start-alpha-sim and some other global bindings
+;; and helpers to simulator_alpha.ss
 
 ;; From Swindle:
 ;;>> (merge less? a b)

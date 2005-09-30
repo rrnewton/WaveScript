@@ -26,3 +26,5 @@
   
   (include (build-path "generic" "grammar_checker.ss"))
 )
+
+;(require grammar_checker)

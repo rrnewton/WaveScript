@@ -87,9 +87,9 @@
 
 ;; Primitive in chez:
 (define (make-list n x)
-  (let loop ((acc ()))
+  (let loop ((acc ()) (n n))
     (if (zero? n) acc
-	(loop (cons x acc)))))
+	(loop (cons x acc) (sub1 n)))))
 (define list-head
   (lambda (lst n)
     (cond

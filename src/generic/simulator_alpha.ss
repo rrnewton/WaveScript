@@ -799,6 +799,19 @@
 
 ;; ======================================================================
 
+
+;; #f trumps any time, EXCEPT 0, 0 trumps all.
+(define (evntlessthan a b)
+  (vtimelessthan (simevt-vtime a) (simevt-vtime b)))
+
+(define (vtimelessthan at bt)
+  (cond
+   [(eq? at 0) #t]
+   [(eq? bt 0) #f]
+   [(not at) #t]
+   [(not bt) #f]
+   [else (<= at bt)]))
+
 (define global-graph #f)
 
 ;; Global parameter contains continuation for exiting the alpha-sim.  Invoked by soc-finished.
@@ -953,7 +966,10 @@
 			    (current-output-port))))
   	    (if simple-scheduler
 		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
-		(run-alpha-full-scheduler sim node-code-fun stopping-time?))
+		; [2005.09.30] Disabling for now, not loading the full scheduler:
+		; (run-alpha-full-scheduler sim node-code-fun stopping-time?)
+		(error 'start-alpha-sim "full scheduler not loaded")
+		)
 	  ))
 		   
     ;; Out of main loop:
