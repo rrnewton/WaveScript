@@ -21,17 +21,6 @@
    [(not bt) #f]
    [else (<= at bt)]))
 
-(define global-graph #f)
-
-;; Global parameter contains continuation for exiting the alpha-sim.  Invoked by soc-finished.
-(define escape-alpha-sim
-  (make-parameter (lambda (x) (error 'escape-alpha-sim "parameter holds no continuation"))
-		  (lambda (k) (if (procedure? k) k
-				  (error 'escape-alpha-sim "bad continuation: ~a" k)))))
-;; Global parameter to hold globally returned values:
-(define soc-return-buffer
-  (make-parameter '()
-		  (lambda (ls) ls)))
 
 ;; [2005.09.29] Moved start-alpha-sim to simulator_alpha.ss
 

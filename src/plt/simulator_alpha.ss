@@ -55,6 +55,7 @@
 ;  (define hashtab-set! hash-table-put!)
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
+  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
   (include (build-path "generic" "simulator_alpha.ss"))
         
   (set! structure-copy
