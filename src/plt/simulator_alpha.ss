@@ -19,6 +19,8 @@
   
   ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
+  ;; Ideally we would find a better way to do this.  For example the simulated programs 
+  ;; could be generated in "prevaled" form, where the closures are stuck right in the sexp.
   (provide (all-defined)
 ;           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
            (all-from "copy-struct.ss")
@@ -36,7 +38,7 @@
 
   (define vector-copy (void))
   
-  (define make-list srfi1.make-list)
+  ;(define make-list srfi1.make-list)
   
   (define (write-sim-to-file sim fn)
     (with-output-to-file fn

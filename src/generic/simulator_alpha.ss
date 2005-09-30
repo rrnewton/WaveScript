@@ -799,6 +799,91 @@
 
 ;; ======================================================================
 
+;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
+;; This handles writing the generated code to a file and loading it back.
+;; FLAGS:
+;; 'numnodes int -- Set the number of nodes in the world to int.
+;; 'outport prt  -- Set the printed output of the simulation to port prt.
+;; 'srand int    -- Seed the random number generator with int.
+(define run-simulator-alpha
+  (letrec ([run-alpha-loop
+	    (lambda args
+	      (match args
+		     ;; This is a weak requirement... 
+		     ;; We consider the first arg to represent a token machine if it is a *list*.
+		     [(,tm . ,rest) (guard (list? tm))
+		      (match tm
+			;; Already compiled
+			[(define (node-code this) ,e)
+			 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
+			   (parameterize ([print-level #f]
+					  [pretty-maximum-lines #f]
+					  [print-graph #t])
+   		              (write tm out);(pretty-print tm out)
+			      (newline out)
+			      (close-output-port out)))
+			 (read-params rest)]
+			;; Otherwise compile it
+			[,tm			     
+			 (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
+			   (let ([comped (compile-simulate-alpha cleaned)])
+			     (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
+;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
+			    (parameterize ([print-level #f]
+					   [pretty-maximum-lines #f]
+					   [print-graph #t])				    					  
+			    (pretty-print comped out)
+			    (newline out)
+			    (newline out)
+			    (display ";; Above is compiled program for this token machine: " out)
+			    (newline out)
+			    (display "'" out)
+			    (pretty-print tm out)
+			    (newline out))
+			    (close-output-port out))
+			  (read-params rest)
+			  ))])]
+		     [(,rest ...) (read-params rest)]
+		     ))]
+	    [read-params
+	     (lambda (params)	       
+	       (match params
+;		      [,x (guard (disp "read params" params) #f) 3]
+		      [() 
+		       (load "_genned_node_code.ss")
+                       ;; We have to do this because of the module system:
+                       (let ((node-code (eval 'node-code)))
+                         ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
+                         ;(printf "Node code loaded from file.~n")
+                         ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
+                         (start-alpha-sim node-code 10.0 'simple))]
+		      [(numnodes ,n . ,rest)
+		       (if (not (integer? n))
+			   (error 'run-simulator-alpha
+				  "'numnodes switch should be followed by an integer, not: ~a" n))
+		       (parameterize ([simalpha-num-nodes n])
+				     (read-params rest))]
+		      [(outport ,p . ,rest)
+		       (if (not (output-port? p))
+			   (error 'run-simulator-alpha
+				  "'outport switch should be followed by a port object, not: ~a" n))
+		       (parameterize ([simalpha-output-port p])
+				     (read-params rest))]
+		      [(srand ,n . ,rest)
+;		       (if (not (integer? n))
+;			   (error 'run-simulator-alpha
+;				  "'srand switch should be followed by an integer, not: ~a" n))
+		       (let ([stored-state #f])
+			 (dynamic-wind
+			     (lambda () (set! stored-state (reg:get-random-state)))
+			     (lambda () (read-params rest))
+			     (lambda () (reg:set-random-state! stored-state))))
+		       ]))])
+	   run-alpha-loop))
+
+;; ======================================================================
+
+
 (define these-tests
   `(
     [3 3] ;; UNIT TESTER BROKEN ATM...

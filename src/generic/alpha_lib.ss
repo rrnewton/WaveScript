@@ -33,73 +33,7 @@
   (make-parameter '()
 		  (lambda (ls) ls)))
 
-;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.
-;; I've written two different engines at different levels of time-modeling complexity.
-(define (start-alpha-sim node-code-fun . args)
-  (disp "Start-alpha-sim" node-code-fun args)
-  ;; In some scheme's these internal defines don't evaluate in order!!
-  (let* ([logfile "__temp.log"]
-	 [simple-scheduler #f]
-	 [flags-processed (filter (lambda (arg)
-				    (disp "ARG" arg (eq? arg 'simple))
-				    (if (eq? arg 'simple)
-					(begin (set! simple-scheduler #t) #f)
-					#t))
-				  args)]
-	 ;; With flags out of the way
-	 [stopping-time? 
-	  (if (null? flags-processed)
-	      (lambda (t) #f)	      
-	      (let ([stop-time (car flags-processed)])
-		(if (inexact? stop-time)
-		    ;; It's in seconds:
-		    (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
-		      (printf "Stopping after ~a seconds.~n" stop-time)
-		      (lambda (_) (>= (cpu-time) end-time)))
-		    ;; Otherwise, vtime:
-		    (begin (printf "Stopping after vtime ~a.~n" stop-time)
-			   (lambda (t) (>= t stop-time))))))]
-	 [sim (fresh-simulation)])
-
-  (disp "RUNNING ALPH" args simple-scheduler)
-
-  (if (file-exists? logfile) (delete-file logfile))
- 
-  (let/cc exitk
-  (parameterize ([simulation-logger (open-output-file logfile 'replace)]
-		 [simulation-logger-count 0]
-		 [escape-alpha-sim exitk]
-		 [soc-return-buffer '()])
-		(printf "Running simulator alpha (~a version) (logfile ~s)" 
-			(if simple-scheduler 'simple 'full)
-			logfile)
-		(DEBUGMODE (display " with Debug-Mode enabled"))
-		(printf ".~n")
-		(printf "<-------------------------------------------------------------------->~n")
-
-	;; DEBUG DEBUG DEBUG
-	(DEBUGMODE
-	 (set! global-graph (simworld-graph sim)))
-
-	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
-	;; Redirect output to the designated place:
-	(let ((old-output-port (current-output-port)))
-	  (parameterize ((current-output-port
-			(if (simalpha-output-port)
-			    (begin (printf "~n!!!  Redirecting output to port: ~a  !!!~n" (simalpha-output-port))
-				   (simalpha-output-port))
-			    (current-output-port))))
-  	    (if simple-scheduler
-		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
-		(run-alpha-full-scheduler sim node-code-fun stopping-time?))
-	  ))
-		   
-    ;; Out of main loop:
-    (if (simulation-logger) (close-output-port (simulation-logger)))))
-  ;; Out of let/cc:
-    (printf "~nTotal globally returned values:~n ~a~n" (reverse (soc-return-buffer)))
-    ))
-
+;; [2005.09.29] Moved start-alpha-sim to simulator_alpha.ss
 
 ;; From Swindle:
 ;;>> (merge less? a b)
