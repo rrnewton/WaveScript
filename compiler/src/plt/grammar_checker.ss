@@ -8,7 +8,7 @@
   (require "constants.ss") ;; For DEBUGMODE
   (require (all-except "helpers.ss" test-this these-tests))
   
-  (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x)))
+  (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
   
   (provide 
          check-grammar

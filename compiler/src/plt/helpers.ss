@@ -185,7 +185,7 @@
    display-constrained
    symbol-append 
 
-   testhelpers
+   testhelpers testshelpers test-this these-tests
 
    reg:random-int reg:get-random-state reg:set-random-state!
    reg:all-unit-tests 
