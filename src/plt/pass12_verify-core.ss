@@ -4,7 +4,7 @@
   (require (lib "include.ss"))
   
   (require "iu-match.ss")
-  (require "helpers.ss")
+  (require (all-except "helpers.ss" test-this these-tests))
 
   (include (build-path "generic" "pass12_verify-core.ss"))
   

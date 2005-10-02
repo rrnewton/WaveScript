@@ -2,7 +2,7 @@
 (module pass00_verify-regiment  mzscheme  
   (require (lib "include.ss")           
            "iu-match.ss"
-           "helpers.ss"
+           (all-except "helpers.ss" test-this these-tests)
 	   "constants.ss")
   (include (build-path "generic" "pass00_verify-regiment.ss"))
   

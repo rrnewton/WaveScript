@@ -5,7 +5,7 @@
   (require (lib "list.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
-  (require (all-except "helpers.ss" filter))
+  (require (all-except "helpers.ss" filter test-this these-tests))
   (require (all-except "grammar_checker.ss" test-this these-tests))
 
   (require (lib "trace.ss"))

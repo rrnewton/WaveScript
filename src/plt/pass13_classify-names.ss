@@ -3,7 +3,7 @@
   (require (lib "include.ss"))  
   (require (lib "pretty.ss"))
   (require "iu-match.ss")
-  (require "helpers.ss")
+  (require (all-except "helpers.ss" test-this these-tests))
   (require "constants.ss")
 
 

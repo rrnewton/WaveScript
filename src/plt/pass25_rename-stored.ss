@@ -4,7 +4,7 @@
   (require (lib "include.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
-  (require "helpers.ss")
+  (require (all-except "helpers.ss" test-this these-tests))
 
   (require (all-except (lib "list.ss") filter)) 
 

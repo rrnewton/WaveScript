@@ -2,7 +2,7 @@
 (module pass06_remove-complex-constant mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
-                  "helpers.ss")
+                  (all-except "helpers.ss" test-this these-tests))
 
 	(include (build-path "generic" 
 			     "pass06_remove-complex-constant.ss"))

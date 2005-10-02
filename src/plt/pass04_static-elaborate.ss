@@ -3,7 +3,7 @@
   (require (lib "include.ss")
            (all-except (lib "compat.ss") flush-output-port)
            "iu-match.ss"
-           "helpers.ss")
+           (all-except "helpers.ss" test-this these-tests))
   
   (define (remq x ls)
     (cond 
