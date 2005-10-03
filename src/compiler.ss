@@ -1037,7 +1037,8 @@
 
      ["Test soc-return (#2).  Try it WITH desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names (list-remove-after 'desugar-gradients pass-names)])
+      ;; Go all the way through desugar-gradients and the subsequent cleanup-token-machine
+      (fluid-let ([pass-names (rdc (list-remove-after 'cps-tokmac pass-names))])
 	(let ([prog (run-compiler 399)])
 	  (run-simulator-alpha prog))))
       (399)]
