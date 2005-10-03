@@ -97,6 +97,55 @@
       [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
                           lst n)]
       [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
+;; RRN: Non-tail recursive version
+'(define (merge f l1 l2)
+  ;(let loop ((acc '()) (l1 l1) (l2 l2))
+  (cond
+   [(null? l1) l2]
+   [(null? l2) l1]
+   [(f (car l1) (car l2))
+    ;(loop (cons (car l1) acc)
+    (cons (car l1)
+	  (merge f (cdr l1) l2))]
+   ;; This gives us stability:
+   [(f (car l1) (car l2))
+    (cons (car l2)
+	  (merge f l1 (cdr l2)))]
+   ;; If they're equal, l1 goes first:
+   [else 
+    (cons (car l1)
+	  (merge f (cdr l1) l2))]))
+
+;; From Swindle:
+;;>> (merge less? a b)
+;;>   Takes two lists `a' and `b' such that both (sorted? a less?) and
+;;>   (sorted? b less?) are true, and returns a new list in which the
+;;>   elements of `a' and `b' have been stably interleaved so that (sorted?
+;;>   (merge less? a b) less?) is true.  Note: this does not accept vectors.
+'(define (merge less? a b)
+  (cond [(null? a) b]
+        [(null? b) a]
+        [else (let loop ([x (car a)] [a (cdr a)] [y (car b)] [b (cdr b)])
+                ;; The loop handles the merging of non-empty lists.  It has
+                ;; been written this way to save testing and car/cdring.
+                (if (less? y x)
+                  (if (null? b)
+                    (cons y (cons x a))
+                    (cons y (loop x a (car b) (cdr b))))
+                  ;; x <= y
+                  (if (null? a)
+                    (cons x (cons y b))
+                    (cons x (loop (car a) (cdr a) y b)))))]))
+
+(define merge
+    (lambda (pred? l1 l2)
+      (cond
+        ((null? l1) l2)
+        ((null? l2) l1)
+        ((pred? (car l2) (car l1))
+         (cons (car l2) (merge pred? l1 (cdr l2))))
+        (else (cons (car l1) (merge pred? (cdr l1) l2))))))
+
   
 ;; ======================================================================  
 
@@ -170,7 +219,7 @@
 
    set? subset? set-equal? list->set set-cons union intersection difference
    alist-remove list-head list-remove-first list-remove-last! list-remove-after 
-   filter list-index snoc rac rdc last
+   filter list-index snoc rac rdc last merge
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp pretty-print crit-printf
    extract-file-extension remove-file-extension file->string string->file file->slist slist->file
@@ -188,7 +237,7 @@
    testhelpers testshelpers test-this these-tests
 
    reg:random-int reg:get-random-state reg:set-random-state!
-   reg:all-unit-tests 
+					;reg:all-unit-tests 
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

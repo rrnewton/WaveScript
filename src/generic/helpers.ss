@@ -1248,7 +1248,6 @@
 ;; [2005.02.24] Working around weird PLT bug:
 (define voidproc (lambda args (void)))
 
-(define-regiment-parameter reg:all-unit-tests '())
 (define default-unit-tester
   (lambda (message these-tests . extras)
 

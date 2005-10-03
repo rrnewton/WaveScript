@@ -44,11 +44,11 @@
 
 (all-except "plt/pass20_deglobalize.ss" these-tests test-this)
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
-
+#|
 (all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
 (all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
 (all-except "plt/pass25_rename-stored.ss" these-tests test-this)
-
+|#
 ;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
 ;(all-except "plt/pass25_inline.ss" these-tests test-this)
 ;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
@@ -87,11 +87,12 @@
         ;          "plt/pass09_separate-graph.ss"
 )
 
+(GRAPHICSONLY
 (require
-;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
-; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
+;;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
+;; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
    (all-except "plt/graphics_stub.ss" these-test test-this)
- )
+ ))
 
 (require
 ; (all-except "plt/simulator_nought.ss" these-tests test-this)

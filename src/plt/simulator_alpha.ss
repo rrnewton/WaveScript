@@ -8,7 +8,7 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
-   (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
+;   (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
    (all-except "tsort.ss" test-this these-tests)
   
    ;(all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
@@ -21,7 +21,7 @@
   ;; stuff once they are "eval"ed.
   ;; Ideally we would find a better way to do this.  For example the simulated programs 
   ;; could be generated in "prevaled" form, where the closures are stuck right in the sexp.
-  (provide (all-defined)
+  (provide (all-defined-except );run-alpha-simple-simulator)
 ;           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
            (all-from "copy-struct.ss")
 ;           (all-from "constants.ss")
@@ -55,8 +55,10 @@
 ;  (define hashtab-set! hash-table-put!)
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
-  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
   (include (build-path "generic" "simulator_alpha.ss"))
+    ;; The scheduler is part of the simulator rather than alpha_lib, actually:
+;  (require "alpha_lib_scheduler_simple.ss")
+  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
         
   (set! structure-copy
         (lambda (s)

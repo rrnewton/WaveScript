@@ -9,10 +9,11 @@
    "constants.ss"  
    (all-except "helpers.ss" test-this these-tests filter)
    (all-except "basic_graphics.ss" test-this these-tests)
-   (all-except "graphics_stub.ss" test-this these-tests) 
+;   (all-except "graphics_stub.ss" test-this these-tests) 
    (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
    ;; Would like to remove this dependency eventually:
-   (all-except "simulator_alpha.ss" ) 
+   (all-except "simulator_alpha.ss") ;run-alpha-simple-scheduler)
+   ;(all-except "alpha_lib_scheduler_simple.ss")
    )
 
   (provide (all-defined))
@@ -20,9 +21,13 @@
   ;; ONLY provide this:
 ;  (provide start-alpha-sim)
   
+;  (printf "Test0: ~a\n" set-simworld-scheduler-queue!)
+  
   (include (build-path "generic" "alpha_lib.ss"))
-  (include (build-path "generic" "alpha_lib_scheduler.ss"))
-  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
+  ;(include (build-path "generic" "alpha_lib_scheduler.ss"))  
+  ;(printf "Test: ~a\n" run-alpha-simple-scheduler)
+  ;; Right now this is also loaded in the simulator_alpha.ss above.
+  ;(include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
  )
 
 

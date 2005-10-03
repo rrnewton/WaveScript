@@ -534,6 +534,12 @@
 		 
 		  ;[(soc-return-finished ,x) 		  
 
+		;; [2005.10.02] Inserting magical soc-returns so that
+		;; we can (kind-of) simulate code where they haven't
+		;; been desugared.
+		[(soc-return ,[x])
+		 `(simulator-soc-return ,x)]
+
 		[(token->subid ,[e]) `(simtok-subid ,e)]
 
 		  [(loc) '(sim-loc)]
