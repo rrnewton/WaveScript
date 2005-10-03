@@ -79,7 +79,7 @@
     ;;
     ;; NOTE: A common failure mode when using this is invoking the
     ;; wrong loop when making a recursive pattern match.  Be careful.
-    (define (generic-traverse driver fuse e)
+#;    (define (generic-traverse driver fuse e)
       ;; The "driver" takes the first shot at an expression, transforms the
       ;; subcases that it wants to, and then hands the rest on to its
       ;; continuation to do the automated traversal. The automated
@@ -142,7 +142,7 @@
 
     ;; Get the free vars from an expression
     (define (free-vars e)
-      (generic-traverse
+      (tml-generic-traverse
        ;; driver, fuser, expression
        (lambda  (x loop) 
 	 (match x
@@ -157,7 +157,7 @@
     ;; Returns a list of tokens referenced in (tok _ _) expressions.
     ;; The consumer probably wants to convert the output to a set.
     (define (toks-referenced e)
-      (generic-traverse
+      (tml-generic-traverse
        ;; driver, fuser, expression
        (lambda  (x loop) 
 	 (match x
@@ -179,7 +179,7 @@
 			[(tok ,t ,n) (guard (integer? x)) '()]
 			[(tok ,t ,[e]) e]
 			[,x (loop x)])))])
-	(generic-traverse
+	(tml-generic-traverse
 	 ;; driver, fuser, expression
 	 (lambda  (x loop)
 	   (define allowed (allowed1 loop))
@@ -205,7 +205,7 @@
 
   ;; Traverse the expression looking for tokens tainted by "subcalls"
   (define (get-tainted expr)
-    (generic-traverse
+    (tml-generic-traverse
      (lambda (x loop)
        (match x
 	      [(subcall (tok ,t ,[e]) ,[args] ...)
@@ -215,7 +215,7 @@
      expr))
 
   (define (has-subcall? expr)
-    (generic-traverse
+    (tml-generic-traverse
      (lambda (x loop)
        (match x
 	      [(subcall (tok ,t ,e) ,args ...) #t]
@@ -225,18 +225,22 @@
 
   ;; Traverse the expression checking to see if it has a (return _) statement.
   (define (has-return? expr)
-    (generic-traverse
-       (lambda (x loop)
+    (let ((result
+    (tml-generic-traverse
+       (lambda  (x loop)
 	 (match x 
 		[(return ,e) #t]
 		[,e (loop e)]))
        (lambda (ls _) (ormap id ls))
-       expr))
+       expr)))
+      ;(break)
+      result
+    ))
 
   ;; Verify that every program path ends in a (return _) statement.
   (define (valid-returns? expr)
     (let ((nonret (lambda (expr)
-		    (generic-traverse
+		    (tml-generic-traverse
 		     (lambda (exp loop)
 		       (match exp
 			      [(return ,_) #f]
@@ -262,14 +266,14 @@
 	    (let* ([k (unique-name 'k)]	    
 		   [desugar-return 
 		    (lambda (expr)
-		      (generic-traverse
+		      (tml-generic-traverse
 		       (lambda (expr loop) ;; driver
 			 (match expr
 				[(return ,[x]) `(kcall ,k ,x)]
 				[(set! ,v ,[e])
 				 `(begin `(set! ,v ,e) (call ,k (void)))]
 				[,x (loop x)]))
-		       (lambda (_ exp) exp) ;; fuser
+		       (lambda (expls reconstruct) (apply reconstruct expls)) ;; fuser
 		       expr))])
 	      `[,tok ,subid (,k ,@args) (stored ,@stored)
 		     ,(desugar-return body)]))))
@@ -508,6 +512,20 @@
 	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x (return '4))) x))))) #f]
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
 
+	     
+	     ["Now to do a little verification of generic-traverse, check datatypes"
+	      (call/cc (lambda (esc)
+			 (tml-generic-traverse
+			  (lambda (x loop)
+			    (or (procedure? loop) (esc `(driver-non-procedure-k)))
+			    (cond
+			     [(and (list? x) (eq? (car x) 'return)) #t]
+			     [else (loop x)]))
+			  (lambda (ls k) (or (procedure? k) (esc `(fuser-non-procedure-k ,k)))
+				  (ormap (lambda (x) x) ls))
+			  '(+ '1 (subcall (tok tok2 0) '2)))
+			 #f))
+	      #f]
 
 	     ["Test expand-subcalls"
 	      (parameterize ((unique-name-counter 0))
