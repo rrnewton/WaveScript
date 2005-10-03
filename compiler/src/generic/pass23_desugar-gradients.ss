@@ -574,12 +574,11 @@
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...) 
-			  (nodepgm ,toks)))
-	 (let ([tainted (findall-emittoks (cdr toks))])
-	   ;(disp "EMITTOKS:" tainted)
+			  (nodepgm (tokens ,toks ...))))
+	 (let ([tainted (findall-emittoks toks)])
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
-	     [(tokens ,[processtb -> newtoks toks] ...)
+	     [(,[processtb -> newtoks toks] ...)
 	      `(desugar-gradient-lang
 		'(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,@(apply append toks newtoks)))))])))]))

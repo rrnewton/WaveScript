@@ -512,21 +512,6 @@
 	     [(,valid-returns? '(return (begin '1 (if '2 '3 (let ((x (return '4))) x))))) #f]
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
 
-	     
-	     ["Now to do a little verification of generic-traverse, check datatypes"
-	      (call/cc (lambda (esc)
-			 (tml-generic-traverse
-			  (lambda (x loop)
-			    (or (procedure? loop) (esc `(driver-non-procedure-k)))
-			    (cond
-			     [(and (list? x) (eq? (car x) 'return)) #t]
-			     [else (loop x)]))
-			  (lambda (ls k) (or (procedure? k) (esc `(fuser-non-procedure-k ,k)))
-				  (ormap (lambda (x) x) ls))
-			  '(+ '1 (subcall (tok tok2 0) '2)))
-			 #f))
-	      #f]
-
 	     ["Test expand-subcalls"
 	      (parameterize ((unique-name-counter 0))
 	      (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3))])
@@ -782,7 +767,6 @@
 (define test-this (default-unit-tester
 		    "27: CPS-Tokmac: use CPS on blocking calls."
 		    these-tests))
-
 
 (define test27 test-this)
 (define tests27 these-tests)

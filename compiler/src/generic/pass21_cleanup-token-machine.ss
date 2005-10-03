@@ -395,7 +395,7 @@
 
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
-	     [(soc-return ,x)
+#;	     [(soc-return ,x)
 ;	      (loop `(return-retry ,x (to (tok SOC-return-handler 0)) (via (tok global-tree 0))))]
 	      (let ([socretval (unique-name 'socretval)])
 		(loop `(let ([,socretval ,x])

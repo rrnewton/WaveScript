@@ -1283,21 +1283,24 @@
        [else (error 'default-unit-tester "Unknown argument or flag: ~a" (car ls))]))
 	
     ;; Now we construct the actual tester procedure:
-    (let ((testerproc (lambda args 
+    (let ((testerproc 
+      (let ([entries
+	      ;; This canonicalizes them so that they're all four-long:
+	   (map 
+	    (lambda (entry)
+	      (match entry 
+		     [(,test ,result)      `(#f   () ,test ,result)]
+		     [(,msg ,test ,result) `(,msg () ,test ,result)]
+		     [(,msg ,moreargs ... ,test ,result)
+		      `(,msg ,moreargs ,test ,result)]
+		     [else (error 'default-unit-tester 
+				  " This is a bad test-case entry!: ~s~n" entry)]))
+	       these-tests)])
+    (lambda args 
     (call/cc
      (lambda (return)
-       (let ([entries
-	      ;; This canonicalizes them so that they're all four-long:
-	      (map 
-	       (lambda (entry)
-		 (match entry 
-		  [(,test ,result)      `(#f   () ,test ,result)]
-		  [(,msg ,test ,result) `(,msg () ,test ,result)]
-		  [(,msg ,moreargs ... ,test ,result)
-		   `(,msg ,moreargs ,test ,result)]
-		  [else (error 'default-unit-tester 
-			       " This is a bad test-case entry!: ~s~n" entry)]))
-	       these-tests)])
+         (if (memq 'get-tests args)
+	     (return entries))
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (or (memq 'quiet args)
@@ -1413,6 +1416,8 @@
     ;; Finally, return the test-executor procedure:  
     testerproc))))
 
+(define (reg:counttests) ;;shorthand
+  (apply + (map (lambda (x) (length ((cadr x) 'get-tests))) (reg:all-unit-tests))))
 			
 ;===============================================================================
 ;;; helpers.ss

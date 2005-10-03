@@ -173,3 +173,25 @@
 		    [,otherwise
 		     (error 'generic-traverse
 			    "bad expression: ~s" otherwise)])))))
+
+
+(define these-tests
+  `(	     
+    ["Do a little verification of generic-traverse, check datatypes"
+     (call/cc (lambda (esc)
+		(tml-generic-traverse
+		 (lambda (x loop)
+		   (or (procedure? loop) (esc `(driver-non-procedure-k)))
+		   (cond
+		    [(and (list? x) (eq? (car x) 'return)) #t]
+		    [else (loop x)]))
+		 (lambda (ls k) (or (procedure? k) (esc `(fuser-non-procedure-k ,k)))
+			 (ormap (lambda (x) x) ls))
+		 '(+ '1 (subcall (tok tok2 0) '2)))
+		#f))
+     #f]
+    ))
+
+(define test-this (default-unit-tester
+		    "TML Generic-Traverse: abstracts tree-walks over TML code."
+		    these-tests))
