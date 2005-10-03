@@ -1,8 +1,10 @@
 
-bc:
+bc: bytecode
+bytecode: 
 	(cd ../; export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos ./plt)
 
-nc:
+nc: native
+native: 
 	(cd ../; export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension ./plt)
 
 clean: clean_byte clean_native

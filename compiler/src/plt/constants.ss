@@ -10,6 +10,7 @@
 	 define-regiment-parameter regiment-parameters
 	 regiment-verbose simulation-logger simulation-logger-count
 	 regiment-consec-ids simulation-logger-level
+	 reg:all-unit-tests
 	 
          slow-pulse fast-pulse
          

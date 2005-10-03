@@ -27,6 +27,8 @@
 	  "simulator_nought.ss"
 	  "simulator_nought_graphics.ss"
 
+	  "alpha_lib_scheduler_simple.ss"
+
 	  "pass15_add-routing.ss"	  
 	  "passXX_separate-graph.ss"))
   (define compile-zo-omit-files (list))

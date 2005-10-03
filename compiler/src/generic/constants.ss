@@ -74,6 +74,12 @@
 
 ;;======================================================================
 
+;; In this manner we distinguish regiment parameters from normal
+;; parameters.  We keep a list of all the existing regiment
+;; parameters.  And it also makes it more acceptable for us to scatter
+;; around the parameter definitions, because you can grep for
+;; define-regiment-parameter.
+
 (define regiment-parameters (make-parameter '()))
 (define-syntax define-regiment-parameter
   (syntax-rules () 
@@ -97,7 +103,7 @@
 
 (define-regiment-parameter regiment-consec-ids #t)
 
-
+(define-regiment-parameter reg:all-unit-tests '())
 
 ;; Used primarily by helpers.ss:
 ;;===================================================

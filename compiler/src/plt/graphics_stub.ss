@@ -9,7 +9,7 @@
 	   get-state these-tests test-this testgraphics
 	   clear-buffer)
   
-  (require "helpers.ss"
+  (require (all-except "helpers.ss" test-this these-tests)
 	   "iu-match.ss"
            (prefix plt: (lib "graphics.ss" "graphics"))
            (lib "include.ss")
