@@ -44,7 +44,6 @@
   ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
   ;;   e : expr 
   ;; Return value: 'result 
-;(disp "TMLGENTRAVERSE: " driver fuse)
   (let loop ((e e))
     (driver e 
       (lambda (expression)
@@ -71,10 +70,51 @@
 	   (fuse (append (list bod) rhs*)
 		 (lambda (bod . rhs*)
 		   `(let-stored ([,lhs* ,rhs*] ...) ,bod)))]
-	   ;; "activate" and the gradient calls have already been desugared:
+
+
+
+	  ;; Gradient forms are a bit annoying to handle properly:
+	  [(gdist (tok ,t ,n)) (guard (integer? n))  (fuse () (lambda () `(gdist (tok ,t ,n))))]
+	  [(gdist (tok ,t ,[loop -> ind]))           (fuse `(,ind) (lambda (n) `(gdist (tok ,t ,n))))]
+
+	  [(gemit (tok ,t ,n) ,[loop -> rands] ...) (guard (integer? n))
+	   (fuse rands (lambda rands `(gemit (tok ,t ,n) ,@rands)))]
+	  [(gemit (tok ,t ,[loop -> ind]) ,[loop -> rands] ...)
+	   (fuse (cons ind rands) (lambda (n . rands) `(gemit (tok ,t ,n) ,@rands)))]
+	  [(grelay (tok ,t ,n)) (guard (integer? n)) (fuse () (lambda () `(grelay (tok ,t ,n))))]
+	  [(grelay (tok ,t ,[loop -> ind]))          (fuse `(,ind) (lambda (n) `(grelay (tok ,t ,n))))]
+	  [(greturn ,[loop -> e]
+		    (to (tok ,t1 ,e1))
+		    (via (tok ,t2 ,e2))
+		    (seed ,[loop -> e3])
+		    (aggr ,aggr))
+	   (define (f e e1 e2 e3)
+	     `(greturn ,e 
+		       (to (tok ,t1 ,e1)) 
+		       (via (tok ,t2 ,e2)) 
+		       (seed ,e3) 
+		       (aggr ,aggr)))
+	   ;; This is more than a little annoying:
+	   (cond
+	    [(and (integer? e1) (integer? e2))
+	     (fuse (list e e3) (lambda ls (match ls [(,e ,e3) (f e e1 e2 e3)])))]
+	    [(integer? e1)
+	     (fuse (list e e2 e3) (lambda ls (match ls [(,e ,e2 ,e3) (f e e1 e2 e3)])))]
+	    [(integer? e2)
+	     (fuse (list e e1 e3) (lambda ls (match ls [(,e ,e1 ,e3) (f e e1 e2 e3)])))]
+	    [else
+	     (fuse (list e e1 e2 e3) (lambda ls (match ls [(,e ,e1 ,e2 ,e3) (f e e1 e2 e3)])))])]
+	  [(greturn ,xs ...)
+	   (error 'tml-generic-traverse
+		  "bad gradient return statement: ~a" `(greturn ,@xs))]
+
+
+
 	  [(,call ,[loop -> rator] ,[loop -> rands] ...)
-	   (guard (memq call '(bcast subcall call)))
+	   (guard (memq call '(bcast subcall call activate)))
 	   (fuse (cons rator rands) (lambda (x . ls) `(,call ,x ,ls ...)))]
+
+
 	  [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
 	   (guard (number? time))		     
 	   (fuse (cons rator rands) (lambda (x . ls) `(timed-call ,time ,x ,ls ...)))]
@@ -98,82 +138,11 @@
 		      (basic-primitive? prim)))
 	   (fuse rands (lambda ls `(,prim ,ls ...)))]
 	  [(,[loop -> rator] ,[loop -> rands] ...)
-	   (warning 'closure-convert "allowing arbitrary application of rator: ~a" rator)
+	   (warning 'tml-generic-traverse "allowing arbitrary application of rator: ~a" rator)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
 	  [,otherwise
-	   (error 'generic-traverse
+	   (error 'tml-generic-traverse
 		  "bad expression: ~s" otherwise)])))))
-
-
-
-
-#;    (define (tml-generic-traverse driver fuse e)
-      ;; The "driver" takes the first shot at an expression, transforms the
-      ;; subcases that it wants to, and then hands the rest on to its
-      ;; continuation to do the automated traversal. The automated
-      ;; traversal, in turn, uses the "fuse" function to glue back together
-      ;; the parts of the tree.  The fuse function is passed a list of child
-      ;; exprss and another continuation representing the "default fuser" which
-      ;; just puts the expression back together like it was before (given the child terms).
-      ;; Types:
-      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
-      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
-      ;;   e : expr 
-      ;; Return value: 'result 
-      (trace-let loop ((e e))
-	;(disp " Loop " e)
-	(driver e 
-	   (trace-lambda fallthrough (x)
-	     ;(disp " Fell through to cont, with" x)
-	     (match x
-;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
-		    [,const (guard (constant? const)) (fuse () const)]
-		    [(quote ,const)                (fuse ()   `(quote ,const))]
-		    [,var (guard (symbol? var))    (fuse ()    var)]
-		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
-		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
-		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
-		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
-		    [(ext-set! ,tok ,var ,[loop -> expr])  
-		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
-		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
-		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
-		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
-		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		                                   (fuse (list a b c) `(if ,a ,b ,c))]
-		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
-		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
-		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
-		                                   (fuse (append rhs* (list bod)) 
-							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
-		    ;; "activate" and the gradient calls have already been desugared:
-		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (memq call '(bcast subcall call)))
-		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
-		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (number? time))		     
-		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
-		    [(return ,[loop -> x])         
-		     (guard (disp "DAMN RETURN:"))
-		     (fuse (list x) `(return ,x))]
-		    [(,prim ,[loop -> rands] ...)
-		     (guard (or (token-machine-primitive? prim)
-				(basic-primitive? prim))
-			    (disp "prim" prim)
-			    )
-		     (fuse rands `(,prim ,rands ...))]
-
-		    ;; Allowing lambda's.  
-		    ;; These aren't in the input language but are in the output language.
-		    [(lambda (,vars ...) ,[loop -> expr])
-		     (fuse (list expr) `(lambda ,vars ,expr))]
-
-		    [(app ,[loop -> rator] ,[loop -> rands] ...)
-		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
-		    [,otherwise
-		     (error 'generic-traverse
-			    "bad expression: ~s" otherwise)])))))
-
 
 (define these-tests
   `(	     
@@ -190,8 +159,46 @@
 		 '(+ '1 (subcall (tok tok2 0) '2)))
 		#f))
      #f]
+
+    ["Test the gradient forms a bit because they're confusing:"
+     (sort <
+     (tml-generic-traverse
+      (lambda (x k) 
+	(if (and (list? x) (= 2 (length x)) (eq? 'quote (car x)))
+	    (list (cadr x))
+	    (k x)))
+      (lambda (ls k) (filter number? (apply append ls)))
+      '(begin
+	 (grelay (tok t 1))
+	 (grelay (tok t '2))
+	 (gdist (tok t 3))
+	 (gdist (tok t '4))
+	 (gemit (tok t '5) '6 '7)
+	 (gemit (tok t 8))
+	 (gemit (tok t 9))
+	 (gemit (tok t '10))
+	 (greturn (void) 
+		  (to (tok t '11))
+		  (via (tok t '12))
+		  (seed (void))
+		  (aggr #f))
+	 (greturn (void) 
+		  (to (tok t 13))
+		  (via (tok t 14))
+		  (seed (void))
+		  (aggr (tok t 15)))
+	 (greturn '16 (to (tok t 17))
+		  (via (tok t '18))
+		  (seed (void))
+		  (aggr (tok t 19)))
+	 )))
+     (2 4 5 6 7 10 11 12 16 18)]
+	
+
     ))
 
 (define test-this (default-unit-tester
 		    "TML Generic-Traverse: abstracts tree-walks over TML code."
 		    these-tests))
+
+(define test-generic-traverse test-this)

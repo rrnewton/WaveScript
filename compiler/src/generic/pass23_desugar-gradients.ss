@@ -65,6 +65,7 @@
 ;;; <GExpr>      ::= (gemit <DynToken> <Expr> ...)
 ;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
 ;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr #f))
 ;;;                | (gdist <DynToken>)
 
 ;;;  <Prim> ::= <BasicPrim> 

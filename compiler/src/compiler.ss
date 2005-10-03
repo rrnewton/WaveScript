@@ -37,7 +37,7 @@
     deglobalize
     
     cleanup-token-machine    
-;    desugar-soc-return
+    desugar-soc-return
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
     
@@ -99,11 +99,12 @@
                   [(eq? arg 'haskell-tokens) (void)]))
 	      args)
     (let ((funs (map eval passes)))
+      (disp "PASSS" passes)
       (let loop ([p p] [funs funs])
         (if (null? funs) 
             (begin (if filename (dump-tokenmachine-to-file p filename)
                        p))
-(loop ((car funs) p) (cdr funs)))))))
+	    (loop ((car funs) p) (cdr funs)))))))
 
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)
@@ -1027,7 +1028,12 @@
 	    ))))
       ,(lambda (x) #t)]
 
-
+     ["Test soc-return.  Try it w/out desugar-soc-return."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
+	(let ([prog (run-compiler 399)])
+	  (run-simulator-alpha prog))))
+      (399)]
 
 #;
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
@@ -1059,6 +1065,7 @@
 	    lst
 	    ))))
 	(#t 1 2 #t)]      
+
 
      ;; TODO FIXME: finish:
 #;     ["Now simulate gradients and subcalls in one program."
