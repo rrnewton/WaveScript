@@ -250,7 +250,7 @@
 			   ;; DOESNT WORK ^^^ Might not be there.
 		;; Increment persistent version counter:
 		(set! ,ver (+ 1 ,ver))
-		(dbg "~a: Emitting %d ver ~a" (my-id) ',tok ,ver)
+		,@(DEBUGMODE '((dbg "~a: Emitting %d ver ~a" (my-id) ',tok ,ver)))
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs
 		  (call ,tok ',NO_PARENT (my-id) 0 ,ver ,@emitargs)
