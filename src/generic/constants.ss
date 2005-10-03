@@ -16,9 +16,9 @@
 ;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
 ;;;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 ;; ON
-(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
+;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
 ;; OFF
-;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
 
 
 (define-syntax DEBUGASSERT 

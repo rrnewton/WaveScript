@@ -1035,6 +1035,28 @@
 	  (run-simulator-alpha prog))))
       (399)]
 
+     ["Test soc-return (#2).  Try it WITH desugar-soc-return."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names (list-remove-after 'desugar-gradients pass-names)])
+	(let ([prog (run-compiler 399)])
+	  (run-simulator-alpha prog))))
+      (399)]
+
+    ["Test soc-return (#3). soc-returns from one hop neighbors."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names '(cleanup-token-machine 
+				desugar-soc-return 
+				desugar-gradients cleanup-token-machine
+				desugar-let-stored
+				;rename-stored
+				)])
+	(let ([prog (run-compiler
+		     '(tokens
+		       (SOC-start () (gemit tok1))
+		       (tok1 () (soc-return (gdist)))))])
+	  (run-simulator-alpha prog))))
+      395]
+
 #;
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
