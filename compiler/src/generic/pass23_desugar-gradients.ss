@@ -79,6 +79,14 @@
 
 (define desugar-gradients
   (let ()
+
+    ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
+    ;(IFDEBUG
+       (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
+      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
+    ;)
+
+
     (define PARENT_ARG 'g_parent)
     (define ORIGIN_ARG 'g_origin)
     (define HOPCOUNT_ARG 'g_hopcount)
@@ -250,7 +258,7 @@
 			   ;; DOESNT WORK ^^^ Might not be there.
 		;; Increment persistent version counter:
 		(set! ,ver (+ 1 ,ver))
-		,@(DEBUGMODE '((dbg "~a: Emitting %d ver ~a" (my-id) ',tok ,ver)))
+		,@(DEBUG_GRADIENTS `(dbg "~a: Emitting tok %d ver ~a" (my-id) ',tok ,ver))
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs
 		  (call ,tok ',NO_PARENT (my-id) 0 ,ver ,@emitargs)
@@ -340,31 +348,50 @@
 	       ;; corresponding to this particular return statment.
 	       ;; When called locally, this sends the aggregate to the parent, and resets the acc.
 	       ;; When called remotely, this builds up the aggregation accumulator.
-	       ;; If there is no aggregation operator provided, it does the same thing except 
-	       ;; simply builds lists of results that are passed up to parents.
+	       ;; If there is no aggregation operator provided, it still aggregates; it  
+	       ;; simply builds *lists* of results that are passed up to parents.  (i.e. cons is default aggregator)
 	       (cons `[,return-handler retid (destid flag val toind viaind)
+			;; retid is used as a unique identifier to keep different aggregations from overlapping
+			;; destid is ID number of node that the message is bound for (??????)
+			;; flag indicates which type of invocation this is
+			;; val is the value itself
+                        ;; toind is the subtoken index of the "to" token
+			;; viaind is the subtoken index of the "via" token
+
+;; FIXME TODO: Must check destid before running stuff....
+;(if (not (= destid (my-id)))
+;    (printf  "WARNING gradient-aggregation: destid ~a not equal myid ~a\n" destid (my-id)))
+
 			;; Must be initialized with the seed value before aggregation begins.
 		        (stored [,acc ,(if (equal? aggr '#f)
 					  ''()
 					  seed_exp)])
 
-			,@(DEBUGMODE
+			,@(DEBUG_GRADIENTS
 			 `(if (or (eq? flag ',RHLOCAL)
 				  (eq? flag ',RHTIMEOUT)
 				  (eq? flag ',RHINIT)
 				  (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
-			      (dbg '"~a: Return Handler<~a>: args (~a ~a ~a ~a ~a) stored acc: ~a"
-				   (my-id) retid destid flag val toind viaind ,acc)
+			      (dbg '"~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) stored acc: ~a"
+				   (my-id) retid destid flag val ',to toind ',via viaind ,acc)
 			      (void)))
+
 
 			;; We need to activate a timer on every node that receives a return message.
 			;; This timer will insure that *every* return value gets returned at some point.
 			;; RHLOCAL and RHREMOTE calls will both  reset the timer.
-#;		
+			#;		
 			   (if (or (eq? flag ',RHLOCAL) (eq? flag ',RHREMOTE))
+			       (begin ;,@(DEBUG_GRADIENTS
+				      ;   (dbg '"~a: Setting return handler (%d.%d) timer: current time %d delta %d"
+					;      ,return-handler retid
+					;      (my-clock) ,DEFAULT_RHTIMEOUT))
 			       (timed-call ,DEFAULT_RHTIMEOUT 
 					   (tok ,return-handler retid)
-					   destid ',RHTIMEOUT 0 toind viaind))
+					   '#f         ;; destid 
+					   ',RHTIMEOUT ;; flag
+					   '#f         ;; val 
+					   toind viaind)))
 
 			;; The timeout flag causes an the aggregate to move onward.  
 			;; This either means up the tree or to the destination:
@@ -379,25 +406,26 @@
 				    ;; That is, if we get a local return before the trees there.  Then we just fizzle.
 				    ;; One could imagine buffering here, but that gets complex.
 				    (begin 
-				      ,@(DEBUGMODE 
+				      ,@(DEBUG_GRADIENTS
 					 `(dbg "Warning: Didn't have the via token %d at node %d (FIZZLE)" ',via (my-id))))
 				    ;; Now we look at the via tree for this aggregation. Have we reached the root of the tree?	
 				    (let ((,parent_pointer (ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)))
 				      (if (not ,parent_pointer)
-					  (begin ,@(DEBUGMODE `(dbg "ERROR: fell off the via tree: %d at node %d" ',via (my-id)))
+					  (begin ,@(DEBUG_GRADIENTS `(dbg "ERROR: fell off the via tree: %d at node %d" ',via (my-id)))
 						 (void))
 					  (if (eq? ',NO_PARENT ,parent_pointer)
 					      ;; Now, if we're the destination we need to call the 'to' token.
 					      (begin
-						,@(DEBUGMODE 
+						,@(DEBUG_GRADIENTS 
 						   `(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a" (my-id) ',to toind ,oldacc))
 						(call (tok ,to toind) ,oldacc))
 					      ;; Otherwise, send it on up to the parent:
 					      ;; TODO: Should use "send_to" form here, but haven't implemented yet:
 					      (begin 
-						,@(DEBUGMODE
-						   `(dbg "~a: Returning up tree to %d val %d acc %d" 
-							 (my-id) '(tok ,return-handler retid) val ,oldacc))
+						,@(DEBUG_GRADIENTS
+						   `(dbg "~a: Returning up tree %d, parent %d to %d val %d acc %d" 
+							 (my-id) ',via ,parent_pointer
+							 '(tok ,return-handler retid) val ,oldacc))
 						(bcast (tok ,return-handler retid)
 						       ,parent_pointer ;; destid
 						       ',RHREMOTE        ;; flag
@@ -413,25 +441,32 @@
 			    (if (eq? flag ',RHLOCAL)
 				;; When we get the local value, we lump it together:
 				(begin
-				  ,@(DEBUGMODE `(if (eq? flag ',RHLOCAL)
+				  ,@(DEBUG_GRADIENTS `(if (eq? flag ',RHLOCAL)
 						    (dbg "Returning locally at %d val %d acc %d" (my-id) val ,acc)
 						    (dbg "%d: Timeout fired, aggregate: ~a" (my-id) ,acc)))
 				  (begin 
 				    (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
 						    `(cons val ,acc)))
-				    ;; Local does a timeout if the timer isn't already set.
-				    (if #t ;; (not (is_scheduled? ...
+
+
+				    ;; FIXME: [2005.10.03] Right now we just do the aggregation when we get the local value.
+				    ;; Need a better timing model.
+				    ;; A difficulty here is that we can't distinguish scheduled tokens with one flag, from
+				    ;; scheduled tokens with another flag.
+				    
+				    ;; [2005.10.03] Ok, if there's already a token scheduled, we don't call our aggregator.
+				    (if #t ;(not (token-scheduled? (tok ,return-handler retid)))
 					(call (tok ,return-handler retid) 
 					      '#f          ;; destid
 					      ',RHTIMEOUT  ;; flag
 					      '#f          ;; val
-					      ,toind ,viaind))))				
+					      ,toind ,viaind))))
 
 				;; Otherwise, flag = RHREMOTE
 				;; If called remotely, we only proceed if we are the intended destination.
 				(if (not (or (= destid ',NULL_ID) (= destid (my-id))))
 				    (begin
-					;(DEBUGMODE (dbg '"  CANCELED, not destination."))
+					;(DEBUG_GRADIENTS (dbg '"  CANCELED, not destination."))
 				      (void)) ;; Might want to evict self here -- wasted space on useless tokens.
 				    ;; Now we simply accumulate and wait for the local call.
 				    (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
@@ -527,7 +562,7 @@
 						      [,STORED_VERSION_ARG  '#f]
 						      ,@stored)
 
-	    ,@(DEBUGMODE
+	    ,@(DEBUG_GRADIENTS
 	       `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
 		    (dbg "~a: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
 			 (my-id) ',tok ,id
@@ -576,6 +611,7 @@
       (match prog
 	[(,lang '(program (bindings ,constbinds ...) 
 			  (nodepgm (tokens ,toks ...))))
+
 	 (let ([tainted (findall-emittoks toks)])
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks

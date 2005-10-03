@@ -136,6 +136,7 @@
        e))
 
 ;; Returns a list of stored var bindings (var, value pairs) and a transformed expression
+;; [2005.10.03]  This substitution part would really be a lot simpler if I used tml-generic-traverse.
 (define process-expr 
   (lambda (subst expr) 
     ;; subst contains both normal local vars and "stored" vars,
@@ -163,7 +164,10 @@
 		(values rst `(set! ,v ,rhs))))]
 
     ;; For now we just don't touch the insides of a dbg statement:
-    [(dbg ,rand ...) (values () `(dbg ,rand ...))]
+    ;; [2005.10.03] ACK, I had decided so as not to mess with complex constants used.
+    ;; But this gives me problems, it doesn't receive var renames if it's opaque!! 
+    ;; So openning up that black box again.
+    ;[(dbg ,rand ...) (values () `(dbg ,rand ...))]
 
     [(begin ,[st* xs] ...)
      (values (apply append st*) (make-begin xs))]

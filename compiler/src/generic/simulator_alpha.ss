@@ -837,7 +837,8 @@
 ;; 'outport prt  -- Set the printed output of the simulation to port prt.
 ;; 'srand int    -- Seed the random number generator with int.
 (define run-simulator-alpha
-  (letrec ([run-alpha-loop
+  (lambda args
+    (define run-alpha-loop
 	    (lambda args
 	      (match args
 		     ;; This is a weak requirement... 
@@ -875,11 +876,14 @@
 			  (read-params rest)
 			  ))])]
 		     [(,rest ...) (read-params rest)]
-		     ))]
-	    [read-params
+		     )))
+    ;; A default parameter setting that might get changed:
+    (define timeout 10.0)
+    (define read-params
 	     (lambda (params)	       
 	       (match params
 ;		      [,x (guard (disp "read params" params) #f) 3]
+		      ;; When we get to the end of the params we start it up:
 		      [() 
 		       (load "_genned_node_code.ss")
                        ;; We have to do this because of the module system:
@@ -887,7 +891,10 @@
                          ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
                          ;(printf "Node code loaded from file.~n")
                          ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
-                         (start-alpha-sim node-code 10.0 'simple))]
+                         (start-alpha-sim node-code timeout 'simple))]
+		      [(timeout ,n . ,rest)
+		       (set! timeout n)
+		       (read-params rest)]
 		      [(numnodes ,n . ,rest)
 		       (if (not (integer? n))
 			   (error 'run-simulator-alpha
@@ -909,8 +916,10 @@
 			     (lambda () (set! stored-state (reg:get-random-state)))
 			     (lambda () (read-params rest))
 			     (lambda () (reg:set-random-state! stored-state))))
-		       ]))])
-	   run-alpha-loop))
+		       ]
+		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~a" other)]
+		      )))
+  (apply run-alpha-loop args)))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
