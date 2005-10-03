@@ -101,6 +101,10 @@
 ;(include "generic/pass18_add-routing.ss")
 
 (include "chez/pass20_deglobalize.ss") (import deglobalize)
+
+;; This is used by the subsequent passes that process TML:
+(include "generic/tml_generic_traverse.ss")
+
 (include "generic/pass21_cleanup-token-machine.ss")
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass24_desugar-let-stored.ss")

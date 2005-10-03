@@ -54,7 +54,7 @@
     ;;
     ;; NOTE: A common failure mode when using this is invoking the
     ;; wrong loop when making a recursive pattern match.  Be careful.
-    (define (generic-traverse driver fuse e)
+#;    (define (generic-traverse driver fuse e)
       ;; The "driver" takes the first shot at an expression, transforms the
       ;; subcases that it wants to, and then hands the rest on to its
       ;; continuation to do the automated traversal. The automated
@@ -118,7 +118,7 @@
 
     ;; Get the free vars from an expression
     (define (free-vars e)
-      (generic-traverse
+      (tml-generic-traverse
        ;; driver, fuser, expression
        (lambda  (x loop) 
 	 (match x

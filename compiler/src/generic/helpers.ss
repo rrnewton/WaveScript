@@ -1355,6 +1355,9 @@
 						))))])
 ;	       (newline)
 		(if (or (and (procedure? intended) ;; This means its an oracle
+			     ;; If we get an error result, don't run the oracle proc!
+			     ;; Oracle proc might not be ready to handle 'error result:
+			     (and (not (eq? result 'error)))
 			    (intended result))
 			(teq? intended result)) ;; Otherwise its an expected answer
 		   ;; This test was a success:

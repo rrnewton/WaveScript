@@ -63,7 +63,7 @@
     ;;
     ;; NOTE: A common failure mode when using this is invoking the
     ;; wrong loop when making a recursive pattern match.  Be careful.
-    (define (generic-traverse driver fuse e)
+#;    (define (generic-traverse driver fuse e)
       ;; The "driver" takes the first shot at an expression, transforms the
       ;; subcases that it wants to, and then hands the rest on to its
       ;; continuation to do the automated traversal. The automated
@@ -130,7 +130,7 @@
 
 
     (define (subst e1 v e2)
-        (generic-traverse
+        (tml-generic-traverse
 	 ;; driver, fuser, expression
 	 (lambda  (x loop)
 	   (match x
@@ -148,7 +148,7 @@
     ;; Get the free vars from an expression
     (define (free-vars e)
       (list->set 
-       (generic-traverse
+       (tml-generic-traverse
 	;; driver, fuser, expression
 	(lambda  (x loop) 
 	  (match x
@@ -165,7 +165,7 @@
     (define (number-freevars e)
       (define (build-fv x fvs) (string->symbol (format "fv~a" (list-find-position x fvs))))
       (let outer ((e e) (fvs (free-vars e)))
-	(generic-traverse
+	(tml-generic-traverse
 	 (lambda  (x loop)
 	   (match x
 		  [(let ((,lhs ,[rhs])) ,bod)
@@ -269,7 +269,7 @@
 		      )))))))
 
     (define (no-first-class? k expr)
-      (generic-traverse
+      (tml-generic-traverse
        (lambda (x loop)
 	 (match x 
 	   [,v (guard (eq? v k)) #f]
@@ -281,7 +281,7 @@
 
 
     (define (stripk k expr)
-      (generic-traverse
+      (tml-generic-traverse
        (lambda (x loop)
 	 (match x 
 	   [,v (guard (eq? v k)) 
@@ -304,7 +304,7 @@
 	     ;; As we go *down* the structure, we accumulate kbinds.
 	     ;; As we come *up* we accumulate new handlers.
 	 (let outer-loop ([expr expr] [kbinds '()])
-	   (generic-traverse
+	   (tml-generic-traverse
 	    (lambda (x loop)
 	      (match x
 		     ;; This first case is a hack that depends on exactly what the previous pass outputs.
