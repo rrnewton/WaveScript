@@ -930,7 +930,9 @@
 
 
      ["Gradients: execute a repeated return from 1-hop neighbors. (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f]
+		     [simalpha-channel-model 'lossless])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -959,8 +961,8 @@
 	    ))))
       ,(lambda (x)
 	 ;; ASSUMES LOSSLESS CHANNELS AND DETERMINISTIC TIMING:
+	 ;; Makes sure we hear from the same neighbors every time:
 	 (all-equal? (cdr x)))]
-
 
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] 
@@ -991,9 +993,17 @@
 		   (read (open-input-string (get-output-string prt))))))
 	    (for-each (lambda (x) (display x) (newline)) lst)
 ;	    (let ((lens (map length lst)))
+	    lst
 	    ))))
-      ,(lambda (x) #t)]
-
+      ;; You will see a staggered reception of results.
+      ;; First from the one-hop neighbors, then also the two-hops, and so on.
+      ,(lambda (x) 
+	 ;; Let's make sure the list increases in distance at first:
+	 ;; Check the first three.
+	 (let ([one   (length (car x))]
+	       [two   (length (cadr x))]
+	       [three (length (caddr x))])
+	   (< one two three)))]
 
      ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -1009,7 +1019,7 @@
 		'(tokens
 		  (SOC-start () (call tok1 '10))
 		  (catcher (v) (printf "~a" v))
-		  (tok1 (reps) 
+		  (tok1 (reps)  
 			(gemit tok2)
 			(if (> reps 0)
 			    (timed-call 500 tok1 (- reps 1))))
@@ -1025,17 +1035,24 @@
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
 	    (for-each (lambda (x) (display x) (newline)) lst)
+	    lst
 	    ))))
-      ,(lambda (x) #t)]
+      ,(lambda (x) 
+	 ;; Let's make sure the list increases in distance at first:
+	 ;; Check the first three.
+	 (let ([one   (/ (apply + (car x)) (length (car x)))]
+	       [two   (/ (apply + (cadr x)) (length (cadr x)))]
+	       [three (/ (apply + (caddr x)) (length (caddr x)))])
+	   (< one two three)))]
 
-     ["Test soc-return.  Try it w/out desugar-soc-return."
+     ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
 	(let ([prog (run-compiler 399)])
 	  (run-simulator-alpha prog))))
       (399)]
 
-     ["Test soc-return (#2).  Try it WITH desugar-soc-return."
+     ["Test soc-return (#2).  Try it WITH desugar-soc-return, but still on base station."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       ;; Go all the way through desugar-gradients and the subsequent cleanup-token-machine
       (fluid-let ([pass-names (rdc (list-remove-after 'cps-tokmac pass-names))])
@@ -1043,8 +1060,29 @@
 	  (run-simulator-alpha prog))))
       (399)]
 
-    ["Test soc-return (#3). soc-returns from one hop neighbors."
+    ["Test soc-return (#3). soc-returns from one hop neighbors, without desugar gradients."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	(let ([prog (cleanup-token-machine
+		     '(tokens
+		       (SOC-start () (soc-return (my-id)) (bcast tok1))
+		       (tok1 () 
+			     (printf " recvd ")
+			     (soc-return (my-id))
+			     )
+		       ))])
+	  (run-simulator-alpha prog)))
+      ;; Result should be base_id followed by some number of non-base-ids.
+      ,(lambda (ls)
+	 (and (> (length ls) 1)
+	      (eq? (car ls) BASE_ID)
+	      (andmap (lambda (n) (not (eq? n BASE_ID))) (cdr ls))))
+      ]
+
+#; ; FIXME: Not there yet:
+    ["Test soc-return (#4). soc-returns from one hop neighbors, WITH desugar gradients."
+     (parameterize ([unique-name-counter 0] 
+		    [simalpha-dbg-on #t] ;; (dbg ...) statements
+		    )
       (fluid-let ([pass-names '(cleanup-token-machine 
 				desugar-soc-return 
 				desugar-gradients cleanup-token-machine
@@ -1053,9 +1091,24 @@
 				)])
 	(let ([prog (run-compiler
 		     '(tokens
-		       (SOC-start () (gemit tok1))
-		       (tok1 () (soc-return (gdist)))))])
-	  (run-simulator-alpha prog))))
+		       (SOC-start () 
+				  (call spread-global)
+				  (soc-return (my-id)) 
+				  ;; Wait till the gradient has spread to do our soc-return:
+				  (timed-call 1000 sendit))
+		       (sendit () (bcast tok1))
+		       (tok1 ()
+			     (printf " recvd ")
+			     (greturn (my-id) (to SOC-return-handler) (via global-tree))
+			     ;(soc-return (my-id))
+			     ;(soc-return (gdist))
+			     )
+		       ;; The global tree is required for soc-return to work.
+		       (spread-global () (printf "Spreading global (~a, clock ~a)...\n" (my-id) (my-clock))
+				      (gemit global-tree) (timed-call 1000 spread-global))
+		       (global-tree () (printf "~a." (my-id)) (grelay))
+		       ))])
+	  (run-simulator-alpha prog 'timeout 5000))))
       395]
 
 #;

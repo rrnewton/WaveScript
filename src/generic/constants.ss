@@ -11,17 +11,16 @@
 ;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest.
 ;; [2005.03.29] MOVING DEBUGMODE to this file.
 ;;======================================================================
+
+;; DEBUGMODE toggles is like a #define that toggles debug code for the whole compiler.
 ;; This is not a very appropriate place for this definition, but it's the most convenient
-;; so that it can be had from.
-;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr) expr]))
-;;;;;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
-;; ON
-;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (list expr ...)]))
-;; OFF
-(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) ()]))
+;; so that it can be seen from everywhere.
+;; Uncomment one line for debug mode, the other to deactivate it.
+ (define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
-
-(define-syntax DEBUGASSERT 
+(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
+(define-syntax DEBUGASSERT
   (syntax-rules () 
     [(_ expr ...) 
      (DEBUGMODE
@@ -150,6 +149,12 @@
 
 (define-regiment-parameter simalpha-num-nodes 30)
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
+
+;; [2005.10.03] Can only be 'lossless right now.  (Need to implement 'disc and 'empirical.)
+(define-regiment-parameter simalpha-channel-model 'lossless)
+;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
+(define-regiment-parameter simalpha-failure-module 'none)
+
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
 (define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded

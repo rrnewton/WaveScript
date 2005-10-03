@@ -50,6 +50,7 @@
 	(match expression
 	  ;[,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
+	  ;; We don't put any restrictions on what can be in a quoted constant:
 	  [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
 	  [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
 	  [(tok ,tok)                    (fuse ()      (lambda () `(tok ,tok)))]
@@ -129,9 +130,8 @@
 	  [(build-kclosure ,kname (,fvs ...)) 
 	   (fuse () (lambda () `(build-kclosure ,kname (,fvs ...))))]
 
-	  ;; For now we just don't touch the insides of a dbg statement:
-	  ;; It's treated as a non-traversable atom:
-;	  [(dbg ,rand ...)  (fuse () `(dbg ,rand ...))]
+	  
+	  [(dbg ,[loop -> rand*] ...)  (fuse rand* (lambda rand* `(dbg ,rand* ...)))]
 
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (token-machine-primitive? prim)
