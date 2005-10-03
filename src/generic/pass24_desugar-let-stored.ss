@@ -230,6 +230,7 @@
          (mvlet ([(newstored newbod) (process-expr (map car constbinds) body)])
                 `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
+;; Main body of this pass:
 (lambda (prog)
   (match prog
     [(,lang '(program (bindings ,constbinds ...)

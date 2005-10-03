@@ -106,6 +106,7 @@
 (include "generic/tml_generic_traverse.ss")
 
 (include "generic/pass21_cleanup-token-machine.ss")
+(include "generic/pass22_desugar-soc-return.ss")
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass24_desugar-let-stored.ss")
 (include "generic/pass25_rename-stored.ss")

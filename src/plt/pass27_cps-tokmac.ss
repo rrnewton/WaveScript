@@ -12,7 +12,8 @@
   (require (all-except "helpers.ss" filter test-this these-tests))
 
   (require (lib "trace.ss"))
-
+  (require "tml_generic_traverse.ss")
+  
   (include (build-path  "generic" "pass27_cps-tokmac.ss"))
   
 ;  (provide (all-defined))
