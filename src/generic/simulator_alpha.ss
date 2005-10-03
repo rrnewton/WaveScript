@@ -946,11 +946,11 @@
 
   (if (file-exists? logfile) (delete-file logfile))
  
+  (parameterize ([soc-return-buffer '()])
   (let/cc exitk
   (parameterize ([simulation-logger (open-output-file logfile 'replace)]
 		 [simulation-logger-count 0]
-		 [escape-alpha-sim exitk]
-		 [soc-return-buffer '()])
+		 [escape-alpha-sim exitk])
 		(printf "Running simulator alpha (~a version) (logfile ~s)" 
 			(if simple-scheduler 'simple 'full)
 			logfile)
@@ -981,9 +981,9 @@
     ;; Out of main loop:
     (if (simulation-logger) (close-output-port (simulation-logger)))))
   ;; Out of let/cc:
-    (printf "~nTotal globally returned values:~n ~a~n" (reverse (soc-return-buffer)))
-    ))
-
+  (let ((result (reverse (soc-return-buffer))))
+    (printf "~nTotal globally returned values:~n ~a~n" result)
+    result))))
 
 ;; ======================================================================
 
