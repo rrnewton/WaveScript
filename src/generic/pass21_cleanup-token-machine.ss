@@ -179,7 +179,7 @@
 				  [,s (guard (symbol? s)) s]
 				  [(tok ,t) t]
 				  [(tok ,t ,num) t]
-				  [,other (error 'check-tok "invalid token: ~s" other)])))
+				  [,other (error 'check-tok "(~s) invalid token: ~s" call other)])))
 		 (if (not (memq name tokens))
 		     (if (regiment-verbose)
 			 (warning 'cleanup-token-machine
@@ -302,6 +302,8 @@
 				 tok)
 			    ,args* ...)]
 	     [(timed-call ,time ,tok ,[args*] ...)
+	      (if (not (number? time))
+		  (error 'cleanup-token-machine "first argument to timed-call must be a time!, not: ~a" time))
 	      (check-tok 'timed-call tok)
 	      `(timed-call ,time ,(if (tokname? tok)
 				      `(tok ,tok ,DEFAULT_SUBTOK)
