@@ -252,8 +252,8 @@
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      
-;     (deschedule (Token) Void)
      (token-scheduled? (Token) Bool)
+     (token-deschedule (Token) Void)
      (token-present? (Token) Bool)
      (evict (Token) Void)
 

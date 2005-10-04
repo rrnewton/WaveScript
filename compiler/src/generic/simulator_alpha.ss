@@ -31,6 +31,8 @@
 ;===============================================================================
 ;; Changes:
 
+;; [2005.10.03] Implemented token-deschedule
+
 ;===============================================================================
 
 ;; This structure contains all the global data needed a simulation.
@@ -454,7 +456,13 @@
 					    (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			       (simobject-timed-token-buf this)))]
 
-		  ;; TODO
+		  ;; If it's in the hash table, it's present:
+		  ;; This is static wrt to token name for the moment:
+;		  [(token-present? (tok ,t ,n)) (guard (number? n)) 
+;		   `(if (hashtab-get the-store (make-simtok ',t ,n)) #t #f)]  ;; Needs not be separate case. [2005.10.03]
+		  [(token-present? (tok ,t ,[e])) 
+		   `(if (hashtab-get the-store (make-simtok ',t ,e)) #t #f)]
+		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
 		  [(token-scheduled? ,[tok]) ;; INEFFICIENT
 		   ;; queue is list containing (simevt . simob) pairs.
 		   ;; We go through the current queue looking for a scheduled event that matches this token.
@@ -487,21 +495,50 @@
 			       (or (equal? ,tok simtok)
 				   (loop (cdr locals)))))))
 		       )]
-		   
-		  ;; is_scheduled TODO TODO
-		  ;; deschedule   TODO TODO
-		  ;(token-scheduled? (Token) Bool)
-		  ;(token-present? (Token) Bool)
-		  ;(evict (Token) Void)
+		  [(token-deschedule ,[tok]) ;; INEFFICIENT
+		   ;; queue is list containing (simevt . simob) pairs.
+		   ;; We go through the current queue looking for a scheduled event that matches this token.
+		   ;; NOTE: This is the queue of *all* events, we also must make sure it happens on this *node*.
+		   `(let* ([thistok ,tok]
+			   [notthistok (lambda (x) 
+					 (let ((tok (cond 
+						     [(and (pair? x) (simevt? (car x)))
+						      (msg-object-token (simevt-msgobj (car x)))]
+						     [(simevt? x)
+						      (msg-object-token (simevt-msgobj x))]
+						     [else (error 'token-deschedule-generated-code "code error.")])))
+					;(not (and (eq? (simtok-name thistok) (simtok-name tok))
+					;	  (eq? (simtok-subid thistok) (simtok-subid tok))))
+					   (not (equal? tok thistok))))]
+			   [world (simobject-worldptr this)])
+		      ;; Clear the actual simulation queue.
+		      (set-simworld-scheduler-queue! world (filter notthistok (simworld-scheduler-queue world)))
+		      (set-simobject-local-msg-buf! this (filter notthistok (simobject-local-msg-buf this)))
 
-		  ;; If it's in the hash table, it's present:
-		  ;; This is static wrt to token name for the moment:
-		  [(token-present? (tok ,t ,n)) (guard (number? n)) 
-		   `(if (hashtab-get the-store (make-simtok ',t ,n)) #t #f)]
-		  [(token-present? (tok ,t ,[e])) 
-		   `(if (hashtab-get the-store (make-simtok ',t ,e)) #t #f)]
 
-		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
+		      (or ;;; First, check the schedulers queue:
+		       ;; (TODO FIXME, CHECK: THIS MIGHT NOT EVEN BE NECESSARY:)
+		       (let loop ((queue (simworld-scheduler-queue (simobject-worldptr this))))
+			 (if (null? queue) #f 
+			     (let ((simtok (msg-object-token (simevt-msgobj (caar queue)))))
+			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
+					(equal? ,tok simtok)
+					(begin 	       
+					  (if (regiment-verbose)
+					  (DEBUGMODE (printf "Wow! we actually found the answer to ~a\n"
+							     "token-scheduled? in the scheduler-queue!")))
+					  #t)
+					) ;; If so is it the token in question?
+				   (loop (cdr queue))))))
+		       ;; Second, check the local msg buf:
+		       (let loop ((locals (simobject-local-msg-buf this)))
+			 (if (null? locals) #f
+			     (let ((simtok (msg-object-token (simevt-msgobj (car locals)))))
+			       (or (equal? ,tok simtok)
+				   (loop (cdr locals)))))))
+		       )]
+
+
 
 		  ;; Local Stored variable mutation:
 		  [(set! ,v ,[rhs]) (guard (memq v allstored))

@@ -84,11 +84,13 @@
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
 (define (run-compiler p . args )
   (let ([filename #f]
-	[passes pass-names])    
+	[passes pass-names]
+	[verbose #f])    
     (for-each (lambda (arg)
 		(cond
                   [(string? arg) ;; It's an output filename.
                    (set! filename arg)]
+		  [(eq? arg 'verbose) (set! verbose #t)]
                   [(eq? arg 'barely-tokens)
                    (set! passes (list-remove-after 'deglobalize pass-names))]
                   [(eq? arg 'almost-tokens)
@@ -99,12 +101,17 @@
                   [(eq? arg 'haskell-tokens) (void)]))
 	      args)
     (let ((funs (map eval passes)))
-      (disp "PASSS" passes)
-      (let loop ([p p] [funs funs])
+      (let loop ([p p] [funs funs] [names passes])
         (if (null? funs) 
             (begin (if filename (dump-tokenmachine-to-file p filename)
                        p))
-	    (loop ((car funs) p) (cdr funs)))))))
+	    (let ((result ((car funs) p)))
+	      (if verbose
+		  (begin
+		    (printf ";===============================================================================\n")
+		    (printf "~a:\n\n" (car names))
+		    (pretty-print result) (newline)))
+	      (loop result (cdr funs) (cdr names))))))))
 
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)
