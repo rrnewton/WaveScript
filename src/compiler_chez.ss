@@ -20,6 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t))
 (print-graph #f)
+(print-gensym #f)
 
 ;; This makes our modules work properly in newer versions of Chez:
 (eval-when (compile load eval)

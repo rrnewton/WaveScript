@@ -123,6 +123,49 @@
       (match t
 	[(tok ,t ,e) t]))
 
+
+
+;; Replacing this the verbose case with a simple generic-traversal: 
+;; FIXME: NOT DONE YET
+; (define find-emittoks 
+;   (letrec ([do-primitive
+; 	    ;; We don't count direct references to tokens in primitive 
+; 	    ;; arguments as tainted.
+; 	    (lambda (prim args loopk)
+; 	      (apply append
+; 		     (map-prim-w-types 
+; 		      (lambda (arg type)
+; 			(match (cons type arg)
+; 			       [(Token . (tok ,tok ,[loopk -> e])) e]
+; 			       [(,other . ,[loopk -> e]) e]))
+; 		      prim args)))])
+
+;   (lambda (expr)
+;     (tml-generic-traverse
+;      (lambda (x k)
+;        (match x
+
+;          ;; "Direct call":  Not allowing dynamic gemit's for now:
+; 	 [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+; 	     ;; Indirect gemit call... could consider restricting these.
+; 	 [(gemit ,[e] ,[args*] ...)
+; 	  (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+; 					;(apply append e args*)
+; 	  ]
+; 	 ;; Also allowing dynamic grelays and gdists.  
+; 	 ;; These don't matter as much because I'm basing 
+; 	 [(grelay (tok ,t ,[e])) e]
+; 	 [(gdist (tok ,t ,[e])) e]
+; 	 [(gparent (tok ,t ,[e])) e]
+; 	 [(gorigin (tok ,t ,[e])) e]
+; 	 [(ghopcount (tok ,t ,[e])) e]
+; 	 [(gversion (tok ,t ,[e])) e]
+
+; 	 ;; The to's and the vias are static! Aggr has no subtok index! 
+; 	 [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
+; 	  (append expr seed_val)]
+  
+
     (define find-emittoks
       (letrec ([tok-allowed-loop 
 		(lambda (expr)
@@ -174,7 +217,8 @@
 
 	     ;; The to's and the vias are static! Aggr has no subtok index!
 	     [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
-	      (append expr seed_val)]
+	      ;; The via requires that a tree be there, and hence it be gradientized.
+	      (cons v (append expr seed_val))]
 
 	     [(leds ,what ,which) '()]
 
@@ -333,8 +377,8 @@
 	     ;; Well, for now we just do the epoch-skewed thing.  Each time we're called we send 
 	     ;; up our old results and start aggregating new ones.
 	     [(greturn ,[etb expr]            ;; Value
-		      (to (tok ,to ,[ttb toind]))
-		      (via (tok ,via ,[vtb viaind]))
+		      (to (tok ,to ,[ttb toind_expr]))
+		      (via (tok ,via ,[vtb viaind_expr]))
 		      (seed ,[stb seed_exp])
 		      (aggr ,aggr)) 
 	      (let ([aggr_ID (unique-name 'aggr_ID)]
@@ -342,7 +386,7 @@
 		    [oldacc (unique-name 'oldacc)]
 		    [parent_pointer (unique-name 'parent_pointer)]
 		    [return-handler (unique-name 'greturn-handler)]
-		    [return-timer-handler (unique-name 'greturn-timer-handler)]
+		    [return-timeout-handler (unique-name 'greturn-timeout-handler)]
 		    )
 
 	      (values 
@@ -353,7 +397,7 @@
 	       ;;  for timer events on for this aggregation.
 	       `(
 		 ;; First the timer handler.  When it fires it does the aggregation and sends it up the tree.
-		 [,return-timer-handler retid (toind viaind) (stored)
+		 [,return-timeout-handler retid (toind viaind) (stored)
 		   ;; First thing first we check to see if the data token exists.
 		   ;; If not there is no point in firing.
 		   (if (not (token-present? (tok ,return-handler retid)))
@@ -393,8 +437,12 @@
 					      ,parent_pointer ;; destid
 					      ',RHREMOTE        ;; flag
 					      ,oldacc ;; val
-					      ,toind ,viaind  ;; toind, viaind
-					      ))))))))]
+					      toind viaind  ;; toind, viaind
+					      ))))))))		   
+		   '"Reset the default time-out timer"
+		   (token-deschedule (tok ,return-timeout-handler retid));)
+		   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
+		   ]
 		;; Now the data handler.
 		;; When called locally, this triggers aggregation.
 		;; When called remotely, this builds up the accumulator.
@@ -439,10 +487,13 @@
 			   (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
 					   `(cons val ,acc)))
 			   ;; Now kill the scheduled timer token if there is one, and set a new timer.
-			   ;; (Don't bother with the if, because default semantics for deschedule is to fizzle if its not there.)
-			   ;(if (token-scheduled? (tok ,return-timer-handler retid))
-			   (token-deschedule (tok ,return-timer-handler retid));)
-			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timer-handler retid) ,toind ,viaind))
+			   ;; (Don't bother with the if, because default semantics for deschedule 
+			   ;; is to fizzle if its not there.)
+			   ;(if (token-scheduled? (tok ,return-timeout-handler retid))
+			   '"Reset the default time-out timer"
+			   (token-deschedule (tok ,return-timeout-handler retid));)
+			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
+			   )
 		       
 		       ;; Otherwise, flag = RHREMOTE
 		       ;; If called remotely, we only proceed if we are the intended destination.
@@ -463,14 +514,19 @@
 	       ;; This expression is expected to be executed regularly, to drive a regular 
 	       ;; aggregation process.  It doesn't yet work for return-once 
 	       ;; Each aggregation is unique based on its to, via, and aggr arguments:
-		 `(let ([,aggr_ID (begin '"This statically computed aggregation identifier incorporates the TO and VIA components:"
-					 (+ (* ,MAX_SUBTOK ,toind) ,viaind))])
-		    (begin '"Call the appropriate local return 'server'"
-			   (call (tok ,return-handler ,aggr_ID) 
-				 (my-id)
-				 ',RHLOCAL ;; flag
-				 ,expr ,toind ,viaind)))))]
-
+	       (let ([toind_tmp (unique-name 'toind)]
+		     [viaind_tmp (unique-name 'viaind)])
+		 `(let ((,toind_tmp ,toind_expr))
+		    (let ((,viaind_tmp ,viaind_expr))
+		      (let ([,aggr_ID (begin '"This aggregation identifier incorporates the TO and VIA components:"
+					     (+ (* ,MAX_SUBTOK ,toind_tmp) ,viaind_tmp))])
+			(begin '"Call the appropriate local return 'server'"
+			       (call (tok ,return-handler ,aggr_ID) 
+				     (my-id)
+				     ',RHLOCAL ;; flag
+				     ,expr ,toind_tmp ,viaind_tmp))))))
+	       ))]
+	      
 	     [(return ,[etb e]) (values etb `(return ,e))]
 
 	     ;; This is a non-gradient call to a gradient-bearing token:
@@ -595,6 +651,7 @@
 			  (nodepgm (tokens ,toks ...))))
 
 	 (let ([tainted (findall-emittoks toks)])
+	   (disp "TAINTED: " tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(,[processtb -> newtoks toks] ...)
