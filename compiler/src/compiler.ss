@@ -57,7 +57,7 @@
 ;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
 ;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
     desugar-let-stored
-    rename-stored
+;    rename-stored
 
     ;    verify-token-machine
     ;    haskellize-tokmac 
@@ -916,7 +916,7 @@
 		  (SOC-start () ;(printf "SOCSTART ") 
 			     (gemit tok1)
 			     ;; Manual timeout:
-			     (timed-call 1000 tok1)
+			     ;(timed-call 1000 tok1)
 			     )
 		  (catcher (v) (printf "~a" v))
 		  (tok1 () ;(printf "_ ")
@@ -928,7 +928,8 @@
 		   (run-simulator-alpha prog 'outport prt)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
-	    (list
+	    lst
+	    #;(list
 	     (car lst)
 	     (if (memq BASE_ID (cadr lst)) #t #f)
 	     (> (length (cadr lst)) 1)	     )

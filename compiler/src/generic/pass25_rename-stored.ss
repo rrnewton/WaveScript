@@ -30,9 +30,15 @@
         
     ;; External stored references:
     [(ext-ref ,t ,v)
-     `(ext-ref ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))))]
+     (let ((entry (assq (token->name t) subst)))
+       (if (not entry)
+	   (error 'rename-stored "got ext-ref to token that's not in subst: ~a" t))
+     `(ext-ref ,t ,(cadr (assq v (cadr entry)))))]
     [(ext-set! ,t ,v ,[x])
-	  `(ext-set! ,t ,(cadr (assq v (cadr (assq (token->name t) subst)))) ,x)]
+     (let ((entry (assq (token->name t) subst)))
+       (if (not entry)
+	   (error 'rename-stored "got ext-set! to token that's not in subst: ~a" t))
+       `(ext-set! ,t ,(cadr (assq v (cadr entry))) ,x))]
 	 
     [,var (guard (symbol? var)) var]
     [(set! ,v ,[x]) 
