@@ -504,6 +504,36 @@
            (begin exp ...
                   (loop (sub1 n)))))]))
 
+;; [2005.10.05]
+;; Evaluate expression and mask output by search string.  (Just does string match, not regexp.)
+(define-syntax grep
+  (syntax-rules ()
+    [(_ pat exp)
+     (let ((str (open-output-string))
+	   (searchpat pat)
+	   (leftovers ""))
+       (let ([print (lambda ()		      
+		      (let ((chunks (string-split 
+				     (string-append leftovers (get-output-string str))
+				     #\newline)))
+;			(if (> (length chunks) 1)  (printf "\nGot chunks: ~s\n" chunks))
+			(for-each (lambda (s)
+				   (when (substring? searchpat s)
+					 (display s (console-output-port))
+					 (newline (console-output-port))))
+				 (rdc chunks))
+			(set! leftovers (rac chunks))))]
+	     [eng (make-engine (lambda () 
+				 (parameterize ((current-output-port str)
+						(console-output-port str))
+					       exp)))])
+	 (let loop ((eng eng))
+	   (eng 100
+		(lambda (ticks val) (print) val)
+		(lambda (neweng) 
+		  (print) 
+		  (loop neweng))))))]))
+
 
 ;[2001.07.15]
 (define file->slist
@@ -850,7 +880,7 @@
   (lambda (ls)
     (if (null? ls)
         (error 'list-get-random "cannot get random element from null list.")
-        (list-ref ls (random (length ls))))))
+        (list-ref ls (reg:random-int (length ls))))))
 ;; This too:
 (define randomize-list
   (lambda (ls)
@@ -862,7 +892,7 @@
 		      (vector-set! vec j temp)))])
 	(do ([i 0 (add1 i)]) ((= i len))
 	  ;; Swap with a later position:
-	  (swap i (+ i (random (- len i)))))
+	  (swap i (+ i (reg:random-int (- len i)))))
 	(vector->list vec)))))
 
 
@@ -1065,19 +1095,32 @@
       (string->symbol
        (car (string-split str #\_))))))
 
+;; inefficient
 (define string-split
   (lambda (str char)
     (let ((ls (string->list str)))
       (map list->string
 	   (let loop ((ls ls) (acc1 '()) (acc2 '()))
 	     (cond
-	      [(null? ls) (if (null? acc1)
-			      (reverse! acc2)
-			      (reverse! (cons (reverse! acc1) acc2)))]
+	      [(null? ls) 
+	       ;(if (null? acc1)
+		;   (reverse! acc2)
+		   (reverse! (cons (reverse! acc1) acc2))]
 	      [(eq? char (car ls))
 	       (loop (cdr ls) '() (cons (reverse! acc1) acc2))]
 	      [else (loop (cdr ls) (cons (car ls) acc1) acc2)]))))))
 
+;; inefficient
+(define substring?
+  (lambda (s1 s2)
+    (let ([l1 (string-length s1)] [l2 (string-length s2)])
+    (if (< l2 l1)
+	#f
+	(let loop ((i 0))
+	  (if (> i (- l2 l1))
+	      #f
+	      (or (equal? s1 (substring s2 i (+ i l1)))
+		  (loop (add1 i)))))))))
 
 ;;============================================================
 ;; DEALING WITH TOKEN NAMES.  
@@ -2268,16 +2311,10 @@
       (delay (cons (f (stream-car s))
 		   (loop (stream-cdr s)))))))
     
-	  
 ;; A stream of non-negative integers:
 (define counter-stream
   (let loop ((i 0))
     (delay (cons i (loop (add1 i))))))
-
-;; A silly little stream of random number
-(define (random-stream inp)
-  (let loop ()
-    (delay (cons (random inp) (loop)))))
 
 ;;==============================
 
@@ -2357,24 +2394,32 @@
     [(graph-get-connected-component 'a '((a b) (b a)))                         (b a)]
     [(graph-get-connected-component 'a '((a b) (b a c)))                       (c b a)]
 
+    [(list (substring? "ab" "abc")
+	   (substring? "ab" "a")
+	   (substring? "ab" "ab")
+	   (substring? "bc" "abc")
+	   (substring? "ac" "abc"))
+     (#t #f #t #t #f)]
+
+
 ;; [2005.09.27] TEMP:  These are malfunctioning for some reason: ; TODO FIXME:
 #|    ["Test the default unit tester... (retry feature)"
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
-		    `[(3 3) ((random 10) 3)]
+		    `[(3 3) ((reg:random-int 10) 3)]
 		    'retry)])
 	 (fun 'qv)))
      #t]
     ["This just gives the retry argument at test time."
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
-		    `[(3 3) ((random 3) 0)])])
+		    `[(3 3) ((reg:random-int 3) 0)])])
 	 (fun 'qv 'retry)))
      #t]
     ["This just gives the retry argument within the test itself."
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
-		    `[(3 3) ["" retry (random 3) 0]])])
+		    `[(3 3) ["" retry (reg:random-int 3) 0]])])
 	 (fun 'qv)))
      #t]
 |#

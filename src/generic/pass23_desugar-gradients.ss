@@ -430,8 +430,8 @@
 				     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
 				     (begin 
 				       ,@(DEBUG_GRADIENTS
-					  `(dbg "~a: Returning up tree %d, parent %d to %d acc %d" 
-						(my-id) ',via ,parent_pointer
+					  `(dbg "%d.%d: Returning up tree %d, parent %d to %d acc %d" 
+						(my-clock) (my-id) ',via ,parent_pointer
 						'(tok ,return-handler retid) ,oldacc))
 				       (bcast (tok ,return-handler retid)
 					      ,parent_pointer ;; destid
@@ -470,8 +470,8 @@
 			       (eq? flag ',RHTIMEOUT)
 			       (eq? flag ',RHINIT)
 			       (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
-			   (dbg '"~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) stored acc: ~a"
-				(my-id) retid destid flag val ',to toind ',via viaind ,acc)
+			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) stored acc: ~a"
+				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind ,acc)
 			   (void)))
 		       
 		   ;; While the potential subcall is hapenning below this return_handler very well may be called again.
@@ -481,9 +481,6 @@
 		   (if (eq? flag ',RHLOCAL)
 		       ;; When we get the local value, we lump it together:
 		       (begin
-			 ,@(DEBUG_GRADIENTS `(if (eq? flag ',RHLOCAL)
-						 (dbg "Returning locally at %d val %d acc %d" (my-id) val ,acc)
-						 (dbg "%d: Timeout fired, aggregate: ~a" (my-id) ,acc)))
 			   (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
 					   `(cons val ,acc)))
 			   ;; Now kill the scheduled timer token if there is one, and set a new timer.
@@ -602,8 +599,8 @@
 
 	    ,@(DEBUG_GRADIENTS
 	       `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
-		    (dbg "~a: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
-			 (my-id) ',tok ,id
+		    (dbg "%d.%d: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
+			 (my-clock) (my-id) ',tok ,id
 			 ,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG 
 			 ,STORED_PARENT_ARG ,STORED_ORIGIN_ARG ,STORED_HOPCOUNT_ARG ,STORED_VERSION_ARG
 			 (list ,@args))))

@@ -605,8 +605,8 @@
 			      newstr))])
 ;		     (disp "MANGLED" (massage-str str))
 		     `(if (simalpha-dbg-on)
-			  (begin (display (format ,(massage-str str) ,@args) (current-error-port))
-				 (newline (current-error-port)))))]
+			  (begin (display (format ,(massage-str str) ,@args) (console-output-port))
+				 (newline (console-output-port)))))]
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
 			      (basic-primitive? prim)))
@@ -948,6 +948,7 @@
 ;		       (if (not (integer? n))
 ;			   (error 'run-simulator-alpha
 ;				  "'srand switch should be followed by an integer, not: ~a" n))
+		       (printf "Setting up random number generator for simulator.  Srand: ~a\n" n)
 		       (let ([stored-state #f])
 			 (dynamic-wind
 			     (lambda () (set! stored-state (reg:get-random-state)))
