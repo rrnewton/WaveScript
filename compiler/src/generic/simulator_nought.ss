@@ -275,11 +275,11 @@
 
 (define (random-node) 
   (make-node 
-   (let loop ((id (random 1000)))
-     (if (eq? id BASE_ID) (loop (random 1000))
+   (let loop ((id (reg:random-int 1000)))
+     (if (eq? id BASE_ID) (loop (reg:random-int 1000))
 	 id))
-   (list (random world-xbound)
-	 (random world-ybound))
+   (list (reg:random-int world-xbound)
+	 (reg:random-int world-ybound))
    ))
   
 (define (dotted-append ls ob)
@@ -389,7 +389,7 @@
 ;    (disp "build call" rator rand*)
     (let* ([sym (string->symbol
 		 (string-append "call-result-" 
-				(number->string (random 1000))))])
+				(number->string (reg:random-int 1000))))])
       `(handler (bare-msg-object ,rator (list ,@rand*)))
 ;    `(let ((,sym
 ;;	    ;(sendmsg (bare-msg-object ,rator (list ,@rand*)) this)

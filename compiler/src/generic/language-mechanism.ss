@@ -36,9 +36,9 @@
 (define the-test-field 
   (make-n-list 100
 	       (lambda (ign) 
-		 (make-baselang-simnode (random 10000) 
+		 (make-baselang-simnode (reg:random-int 10000) 
                           (random-real) ;(prim_random 1.0) 
-                          (list (random 100) (random 100))))))
+                          (list (reg:random-int 100) (reg:random-int 100))))))
      
 
 

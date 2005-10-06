@@ -33,9 +33,9 @@
               '()
               (loop (sub1 n) '())))))) 
 
- 
+;; This maybe shouldn't use the regiment random num generator: 
 (define processors_temp
-  (map (lambda (_) (list (random window-width) (random window-height))) 
+  (map (lambda (_) (list (reg:random-int window-width) (reg:random-int window-height))) 
        (iota 100)))
 
 

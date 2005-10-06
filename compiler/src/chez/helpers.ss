@@ -114,6 +114,6 @@
   (case-lambda 
    [() (#%random most-positive-fixnum)]
    [(k) (#%random k)]))
-(define (reg:get-random-state) (random-seed))
+(define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
 (define (reg:set-random-state! s) (random-seed s))
 

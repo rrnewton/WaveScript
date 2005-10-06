@@ -203,35 +203,37 @@
       (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
       (fprintf meta-port "Simulator ran fresh out of actions!~n")]
      [else 
-      (let ([ob (cdar (get-queue))]
-	    [evt (caar (get-queue))])
+      (let ([first (car (get-queue))])
+	;; Now discard that event from the queue:
+	(pop)
+
+	(let ([ob (cdr first)]
+	      [evt (car first)])
 	;; Set the clock to the time of this next action:
-	(set! vtime (simevt-vtime (caar (get-queue))))
-	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) queue len ~a ~n" vtime (length (get-queue)))
+	(set! vtime (simevt-vtime evt))
+	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) queue len ~a ~n" 
+		vtime (add1 (length (get-queue))))
 	;(printf "<~a>" vtime)
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
-                 (logger "~a: Executing: ~a at time ~a    args: ~a~n"
-			 (node-id (simobject-node ob))
-			 (msg-object-token (simevt-msgobj (caar (get-queue))))
-			 vtime
-			 (msg-object-args (simevt-msgobj (caar (get-queue))))
-			 )
-
-		 '(DEBUGMODE ;; check invariant:
-		   (if (not (null? (simobject-outgoing-msg-buf ob)))
-		     (error 'build-node-sim 
-			    "Trying to execute action at time ~a, but there's already an outgoing(s) msg: ~a~n"
-			    global-mintime (simobject-outgoing-msg-buf ob))))
+	(logger "~a: Executing: ~a at time ~a    args: ~a~n"
+		(node-id (simobject-node ob))
+		(msg-object-token (simevt-msgobj evt))
+		vtime
+		(msg-object-args (simevt-msgobj evt))
+		)
+	
+	'(DEBUGMODE ;; check invariant:
+	  (if (not (null? (simobject-outgoing-msg-buf ob)))
+	      (error 'build-node-sim 
+		     "Trying to execute action at time ~a, but there's already an outgoing(s) msg: ~a~n"
+		     global-mintime (simobject-outgoing-msg-buf ob))))
 	
 	;; Now the lucky simobject gets its message.
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 
-
-	;; Then we discard that event.
-	(pop)
 	;; Finally, we push outgoing-buffers to incoming-buffers:
 	(for-each launch-outgoing (simworld-all-objs sim))	
-	(main-sim-loop))]))
+	(main-sim-loop)))]))
   )
