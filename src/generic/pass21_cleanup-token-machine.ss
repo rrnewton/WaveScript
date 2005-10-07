@@ -113,10 +113,16 @@
     (define (handler->formals tb)
       (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
 	     args))
-
     (define (handler->body tb)
       (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
 	     body))
+    (define (handler->subtokid tb)
+      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+	     id))
+    (define (handler->stored tb)
+      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+	     stored))
+  
 
     ;; [2005.03.27] Adding a somewhat unsafe hack (assumes all variables
     ;; renamed) that makes this do the right thing when it's given a begin
@@ -143,22 +149,41 @@
 	    (let* ([tok (caar ls)]
 		   [dups (filter (lambda (entry) (eq? tok (car entry))) (cdr ls))])
 	      (if (null? dups)
-		  (cons (car ls) (loop (cdr ls)))	      	      
+		  (cons (car ls) (loop (cdr ls)))	    
+
+
+		  ;(mvlet ([(tok id args stored bindings body) (destructure-tokbind all-handlers)])  	      
 		  (let* ([all-handlers (cons (car ls) dups)]
 			 [formals* (map handler->formals all-handlers)]
 			 [body* (map handler->body all-handlers)]
+			 [subid* (map handler->subtokid all-handlers)]
+			 [stored* (map handler->stored all-handlers)]
+			 [allstored (apply append stored*)]
+			 ;; bindings ignored... no longer used.
 			 )
-
 		    (DEBUGMODE
 		     (if (not (apply myequal? formals*))
-		     (error 'simulator_nought:remove-duplicate-tokbinds
+		     (error 'remove-duplicate-tokbinds
 			    "handlers for token ~s don't all take the same arguments: ~s" 
 			    tok formals*))
+		     (if (not (apply myequal? subid*))
+		     (error 'remove-duplicate-tokbinds
+			    "handlers for token ~s don't all take the same subtokids: ~s" 
+			    tok subid*))
+		     ;; Make sure there is no intersection between stored vars:
+		     (let ((svars (map car allstored)))
+		       (if (not (= (length svars) (length (list->set svars))))
+			   (error 'remove-duplicate-tokbinds
+			    "handlers for token ~s have overlapping stored vars: ~s" tok svars)))
 		     )
 		    (let ([mergedhandler
-			   `[,tok ,(car formals*)
+			   `[,tok ,(car subid*) ,(car formals*)
+				  (stored ,@allstored)
 				  ,(make-begin (snoc ''multiple-bindings-for-token
-						     (randomize-list body*)))]
+						     ;; FIXME: Is it really necessary to randomize??
+						     ;(randomize-list body*)
+						     body*
+						     ))]
 ;		             (begin ,@body* 'multiple-bindings-for-token)
 			     ])
 ;		  (disp "MERGED:" mergedhandler)

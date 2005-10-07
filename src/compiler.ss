@@ -602,6 +602,40 @@
 	    lst)))
       (yes no no yes yes)]
 
+
+     ["Token Timed-Schedule/Deschedule test"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	(let ([prog
+	       (cleanup-token-machine
+		'(tokens
+		  (SOC-start () 
+			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
+			     (timed-call 100 tok1 '10)
+			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
+			     (token-deschedule tok1)
+			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
+			     (timed-call 100 tok1 '10)
+			     (timed-call 200 tok1 '10)
+			     (token-deschedule tok1)
+			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
+			     (call tok1 '10)
+			     (call tok1 '10)
+			     (timed-call 200 tok1 '10)
+			     (timed-call 100 tok1 '10)
+			     (token-deschedule tok1)
+			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
+			     )
+		  (tok1 (x) (void))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    lst)))
+      (no yes no no no)]
+
      ["Another Token Scheduled?"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
@@ -1011,7 +1045,7 @@
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
+		     ;rename-stored         ; cps-tokmac
 ;		     closure-convert        cleanup-token-machine
 		     )])
 	(let ([prog
@@ -1019,11 +1053,24 @@
 		'(tokens
 		  (SOC-start () (gemit tok1))
 		  (catcher (x) (void))
-		  (tok1 () (greturn (my-id) (to catcher)))
+		  (tok1 () (greturn (my-id) 
+				    (to (tok catcher 0))
+				    (via (tok tok1 0))
+				    (aggr #f)))
 		  ))])
+	  ;; Dig out the name of the timeout:
 	  (let ((timeout-name
-		 (rac (rdc (deep-assq 'tokens prog)))))
-	    timeout-name))))
+		 (car (rac (rdc (deep-assq 'tokens prog))))))
+	    (let ((newprog
+		   ;; Insert some more functionality for tok1:
+		   (append (deep-assq 'tokens prog)
+			   `([tok1 (g_parent g_origin g_hopcount g_version)
+				   (printf "~a.~a: tok1: Is time-out set? ~a\n" 
+					      (my-clock) (my-id) (token-present? (tok ,timeout-name 0)))]))))
+	      (run-simulator-alpha
+	       (cleanup-token-machine newprog)
+	       'timeout 5000)
+	      )))))
       unspecified]
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"

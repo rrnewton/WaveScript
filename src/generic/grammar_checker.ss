@@ -249,6 +249,8 @@
     ,@ tml_gradient_grammar
     [Expr LetStored]
     ,@ tml_letstored_grammar
+    ;; Allowing this for now:
+    [Expr ('lambda (Var ...) Expr)]
  ))
 
 

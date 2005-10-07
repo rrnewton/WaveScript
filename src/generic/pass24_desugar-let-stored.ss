@@ -179,6 +179,12 @@
 	    (values (append bst rst)
 		    `(let ([,lhs ,rhs]) ,newbod)))]
 
+    ;; Being lenient, and accepting this even though it should be out of the language by now.
+    [(lambda (,args ...) ,body)
+     (mvlet ([(bst newbod) (process-expr (append (map list args args) subst) body)])
+	    (values bst
+		    `(lambda ,args ,newbod)))]
+
 ;; These are just primitives, they do not need their own form.
 ;    [(,call-style ,[st* args*] ...)
 ;     (guard (memq call-style '(call timed-call bcast )))
