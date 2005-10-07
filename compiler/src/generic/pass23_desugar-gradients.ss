@@ -488,9 +488,10 @@
 			       (eq? flag ',RHTIMEOUT)
 			       (eq? flag ',RHINIT)
 			       (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
-			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) parent:~a stored acc: ~a"
+			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) parent:~a timeron?:~a stored acc: ~a"
 				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind 
-				(ext-ref (tok ,to toind) ,STORED_PARENT_ARG)
+				(ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
+				(token-present? (tok ,return-timeout-handler retid))
 				,acc)
 			   (void)))
 		       
