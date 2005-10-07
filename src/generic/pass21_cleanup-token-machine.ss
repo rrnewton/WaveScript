@@ -252,6 +252,14 @@
 	     [(if ,test ,conseq)
 	      (loop `(if ,test ,conseq (void)))]
 
+	     ;; Match lambdas because they might be used in inbetween stages. 
+	     ;; (e.g. between cps and closure-convert)
+	     [(lambda (,args ...) ,bodies ...)
+	      ;; Be careful "this-token" might be lying if this lambda is really going to 
+	      ;; be transformed into another token of its own.
+	      `(lambda ,args (begin ,@(map (process-expr (append args env) tokens this-token this-subtok)
+					  bodies)))]
+
 	     [(let ([,lhs ,[rhs]]) ,bodies ...)
 	      `(let ([,lhs ,rhs])
 		 ,(make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
@@ -393,24 +401,6 @@
 			,(if (assq 'aggr stuff)
 			     (assq 'aggr stuff)
 			     '(aggr #f))))]
-
-
-	     ;; For now this is just syntactic sugar for routing on the global tree:   
-	     ;; return-retry indi
-#;	     [(soc-return ,x)
-;	      (loop `(return-retry ,x (to (tok SOC-return-handler 0)) (via (tok global-tree 0))))]
-	      (let ([socretval (unique-name 'socretval)])
-		(loop `(let ([,socretval ,x])
-			 (if (= (my-id) ',BASE_ID)
-			     (begin 
-			       ,@(DEBUGMODE `(dbg "Soc return on basenode, returning directly: %d" ,socretval))
-			       (call (tok SOC-return-handler 0) ,socretval))
-			     (greturn ,socretval (to (tok SOC-return-handler 0)) (via (tok global-tree 0)))))))]
-	     ;; Sending to subtok 1 indicates that we're finished.
-;	     [(soc-return-finished ,x)
-;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
-	     
-
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
 

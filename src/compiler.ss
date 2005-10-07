@@ -1006,6 +1006,26 @@
 	(#t (0 1 2) #t)]
 
 
+     ["Gradients: Make sure the timer gets set right. "
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored         ; cps-tokmac
+;		     closure-convert        cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (gemit tok1))
+		  (catcher (x) (void))
+		  (tok1 () (greturn (my-id) (to catcher)))
+		  ))])
+	  (let ((timeout-name
+		 (rac (rdc (deep-assq 'tokens prog)))))
+	    timeout-name))))
+      unspecified]
+
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
