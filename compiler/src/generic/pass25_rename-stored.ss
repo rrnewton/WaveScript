@@ -33,7 +33,10 @@
      (let ((entry (assq (token->name t) subst)))
        (if (not entry)
 	   (error 'rename-stored "got ext-ref to token that's not in subst: ~a" t))
-     `(ext-ref ,t ,(cadr (assq v (cadr entry)))))]
+       (let ((entry2 (assq v (cadr entry))))
+	 (if (not entry2)
+	     (error 'rename-stored "couldn't find binding for var ~a in token ~a" v t))
+	 `(ext-ref ,t ,(cadr entry2))))]
     [(ext-set! ,t ,v ,[x])
      (let ((entry (assq (token->name t) subst)))
        (if (not entry)

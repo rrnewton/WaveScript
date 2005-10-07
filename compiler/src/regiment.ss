@@ -1,5 +1,12 @@
-(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
-(load "compiler_chez.ss")
+;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
+(if (file-exists? "compiler_chez.ss")
+    (if (file-exists? "compiler_chez.so")
+	(load "compiler_chez.so")
+	(load "compiler_chez.ss"))
+    (parameterize ([current-directory "~/RegionStreams/compiler/src"])
+      (if (file-exists? "~/RegionStreams/compiler/src/compiler_chez.so")
+	(load "~/RegionStreams/compiler/src/compiler_chez.so")
+	(load "~/RegionStreams/compiler/src/compiler_chez.ss"))))
 
 ;; ======================================================================
 
@@ -23,7 +30,7 @@
   (printf "  -l3  output haskell style external format ~n")
   (printf "~n")
   (printf "Simulator Options: ~n")
-  (printf "  <none atm> ~n")
+  (printf "  -timeout <n>  timeout after n clock ticks ~n")
   )
 	   
 (define main 
@@ -33,14 +40,14 @@
 	(begin (print-help) (exit 0)))
 ;    (printf "regimentc: compile regiment programs!~n")
     (let ([opts '()]
-	  [extension ".tmh"])
+	  [extension ".sim"])
       (letrec ([loop 
 	      (lambda (args)
 		(match args
 		    [() '()]
 
 		    [(-v ,rest ...) 
-					;(set! opts (cons 'verbose opts))
+		     (set! opts (cons 'verbose opts))
 		     (regiment-verbose #t)
 		     (loop rest)
 		     ]
@@ -51,9 +58,13 @@
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
 		                     (set! extension ".tm")  (loop rest)]
 		    [(-l2 ,rest ...) (set! opts (cons 'almost-haskell opts)) 
-                                     (set! extension ".tm") (loop rest)]
+                                     (set! extension ".sim") (loop rest)]
 		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
                                      (set! extension ".tmh") (loop rest)]
+
+		    [(-timeout ,n ,rest ...)
+		     (let ((n (read (open-input-string (format "~a" n)))))
+		     (set! opts (cons 'timeout (cons n opts))))]
 
 		    ;; otherwise a file to compile that we add to the list
 		    [(,fn ,rest ...)
@@ -69,20 +80,39 @@
 
 	(disp "MODE: " mode "OPTS: " opts)
 	
-	(if (null? filenames)
-	    (begin
-	      (printf "No input file.  Type toop-level Regiment expression.~n")
-	      (printf "> ")(flush-output-port)
-	      (let* ([expr (read)])
-		(printf "~n Using default output file: out.tm...~n")		
-		(apply run-compiler expr "out.tm" opts)))
-	    (for-each (lambda (fn)
-			(let ([out (string-append (remove-file-extension fn) extension)])
-			  (printf "~n  Writing token machine to: ~s ~n" out)			  
-			  (apply run-compiler (car (file->slist fn)) out opts)))
-		      filenames)))))))
+	(case mode
+	  [(c)
+	    (if (null? filenames)
+		(begin
+		  (printf "No input file.  Type top-level Regiment expression.~n")
+		  (printf "> ")(flush-output-port)
+		  (let* ([expr (read)])
+		    (printf "~n Using default output file: out.tm...~n")		
+		    (apply run-compiler expr "out.tm" opts)))
+		(for-each (lambda (fn)
+			    (let ([type (extract-file-extension fn)])
+			      (fluid-let ([pass-names
+					   (cond
+					    [(equal? type "rs") pass-names]
+					    [(equal? type "tm") (list-remove-before 'cleanup-token-machine
+										    pass-names)]
+					    [else (error 'regiment "unknown input file extension: ~s" type)]
+					    )])
+				(let ([out (string-append (remove-file-extension fn) extension)])
+				  (if (member out filenames)
+				      (set! out (string-append "out." extension)))
+				  (printf "~n  Writing token machine to: ~s ~n" out)			  
+				  (apply run-compiler (car (file->slist fn)) out opts)))))
+			  filenames))]
+	  [(s) ;; simulate
+	   (let ((fn (if (null? filenames)
+			 "out.sim"
+			 (car filenames))))
+	     (printf "Running simulation from file: ~a\n" fn)
+	     (apply run-simulator-alpha (car (file->slist fn)) opts))
+	   ]
+	  ))))))
   
-
 
 
 ;; ======================================================================

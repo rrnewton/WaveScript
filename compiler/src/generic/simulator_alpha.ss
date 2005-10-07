@@ -394,7 +394,7 @@
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (DEBUGMODE
 			   (if (not (eq? which-tok tokname))
-			       (error 'simulator_alpha:process-statement 
+			       (error 'compile-simulate-alpha:process-statement 
 				      "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store (make-simtok ',tokname ,subtok))])
 			     ,(format "Ext-set! of (tok ~a ~a) variable ~a" tokname subtok x)
@@ -407,7 +407,7 @@
 		  [,x (guard (and (symbol? x) (memq x allstored)))
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
-                               (error 'simulator_alpha:process-statement 
+                               (error 'compile-simulate-alpha:process-statement 
 				      "bad local stored-ref: ~a actually belongs to ~a not ~a" 
 				      x which-tok current-handler-name))
                            ;; 'tokobj' is already bound to our token object
@@ -545,7 +545,7 @@
 		   (mvlet ([(which-tok pos) (find-which-stored v)])
 			  (DEBUGMODE
 			   (if (not (eq? which-tok current-handler-name))
-			       (error 'simulator_alpha:process-statement 
+			       (error 'compile-simulate-alpha:process-statement 
 				      "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
 				      v which-tok current-handler-name)))
 			  `(begin 

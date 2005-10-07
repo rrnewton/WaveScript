@@ -85,33 +85,45 @@
 (define (run-compiler p . args )
   (let ([filename #f]
 	[passes pass-names]
-	[verbose #f])    
+	[verbose #f]
+	;; If there are still values that need to be evaluated and filled in in the TM, do it.
+	[p (match p
+	     [(quasiquote ,_) (eval p)]
+	     [,_ p])])
     (for-each (lambda (arg)
 		(cond
                   [(string? arg) ;; It's an output filename.
                    (set! filename arg)]
 		  [(eq? arg 'verbose) (set! verbose #t)]
+		  ;; The pass-names may have already been restricted to be just the TML passes:
                   [(eq? arg 'barely-tokens)
-                   (set! passes (list-remove-after 'deglobalize pass-names))]
+                   (set! passes (list-remove-first 'cleanup-token-machine
+				  (list-remove-after 'cleanup-token-machine pass-names)))]
                   [(eq? arg 'almost-tokens)
-                   (set! passes (list-remove-first 'deglobalize
-                                                   (list-remove-after 'deglobalize pass-names)))]
+                   (set! passes (list-remove-first 'deglobalize ;; <- might fizzle
+				  (list-remove-first 'cleanup-token-machine
+                                     (list-remove-after 'cleanup-token-machine pass-names))))]
                   [(eq? arg 'almost-haskell)
                    (set! passes (remq 'haskellize-tokmac pass-names))]
                   [(eq? arg 'haskell-tokens) (void)]))
 	      args)
+    (when verbose
+	  (printf "Running compiler with pass-names: \n")
+	  (pretty-print passes))
     (let ((funs (map eval passes)))
       (let loop ([p p] [funs funs] [names passes])
         (if (null? funs) 
             (begin (if filename (dump-tokenmachine-to-file p filename)
                        p))
-	    (let ((result ((car funs) p)))
+	    (begin 
 	      (if verbose
 		  (begin
 		    (printf ";===============================================================================\n")
-		    (printf "~a:\n\n" (car names))
-		    (pretty-print result) (newline)))
-	      (loop result (cdr funs) (cdr names))))))))
+		    (printf "~a:\n\n" (car names))))
+	      (let ((result ((car funs) p)))
+		(if verbose
+		    (pretty-print result) (newline))
+		(loop result (cdr funs) (cdr names)))))))))
 
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)
@@ -551,6 +563,45 @@
 	    lst)))
       (yes no)]
 
+     ["token-deschedule test"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	(let ([prog
+	       (cleanup-token-machine
+		'(tokens
+		  (SOC-start () 
+			     (call tok1 '10)
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     (token-deschedule tok1)
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     (token-deschedule tok1)
+			     (token-deschedule tok1)
+			     (token-deschedule tok1)
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     (call tok1 '10)
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     (if (token-scheduled? tok1)
+				 (display "yes ")
+				 (display "no "))
+			     )
+		  (tok1 (x) (void))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	    lst)))
+      (yes no no yes yes)]
+
      ["Another Token Scheduled?"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
@@ -618,6 +669,59 @@
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt))))))
       (a b c d e)]
+
+
+     
+     ["Testing sim: 'manually' propogate a flood"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-let-stored
+		     ;rename-stored          cps-tokmac
+		     ;closure-convert        cleanup-token-machine
+					    )])
+	(let ([prog
+	       (run-compiler
+		(read (open-input-file "demos/manual_tree.tm"))
+		)])
+	  (run-simulator-alpha prog 'timeout 5000)
+	  )))
+      unspecified]
+
+
+
+;      ["Testing sim: 'manually' propogate a flood"
+;       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+; 	 (let ((prog 
+; 		(run-compiler
+; 		 `(tokens
+; 		   [SOC-start () 
+; 			      (printf "~a: Root spreading...\n" (my-clock))
+; 			      (bcast down (my-id) 1)
+; 			      (timed-call 1000 SOC-start)
+; 			      ]
+; 		   [down (p h)
+; 			 (stored [parent -1] [hops 1000])
+; 			 (if (< h hops)
+; 			     (begin 
+; 			       (printf "~a.~a: Down   p:~a  hops:~a\n" (my-clock) (my-id) p h)
+; 			       (set! parent p)
+; 			       (set! hops h)			
+; 			       (bcast down (my-id) (+ hops 1))))
+; 			 ]
+; 		   [up (dest v)
+; 					;(if (not (token-present? down))
+; 					;  (printf "Not on tree!"))
+; 		       (if (= dest (my-id))
+; 			   (if (token-present? down)
+; 			       (if (= (my-id) ,BASE_ID)
+; 				   (printf "Got return: ~a\n" v)
+; 				   (bcast up (ext-ref down parent) (+ v 1)))))
+; 		       ])
+		 
+; 		 )
+
+
+
      
     ;; [2005.05.29] Note tok1 should be statically called and is currently called dynamically!
     ;; Oh duh, that's because all calls go through the dyndispatch table.
@@ -918,25 +1022,25 @@
 			     ;; Manual timeout:
 			     ;(timed-call 1000 tok1)
 			     )
-		  (catcher (v) (printf "~a" v))
+		  (catcher (v) (printf " ~a " v))
 		  (tok1 () ;(printf "_ ")
 			(greturn (my-id) (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
+		   (run-simulator-alpha prog 'outport prt 'timeout 5000)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
-	    lst
-	    #;(list
+	    (list
 	     (car lst)
-	     (if (memq BASE_ID (cadr lst)) #t #f)
-	     (> (length (cadr lst)) 1)	     )
-	    ))))     
-      ((,BASE_ID) #t #t)]
+	     (if (memq BASE_ID lst) #t #f)
+	     (> (length lst) 1)	     )
+	    ))))
+      (,BASE_ID #t #t)]
 
-
+     ;; [2005.10.06] After doing my refactoring to make multiple return-handler tokens
+     ;; this isn't working.  We're only getting a return from one of our neighbors.
      ["Gradients: execute a repeated return from 1-hop neighbors. (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f]
@@ -986,7 +1090,7 @@
 	       (run-compiler
 		'(tokens
 		  (SOC-start () (call tok1 '10))
-		  (catcher (v) (printf "~a" v))
+		  (catcher (v) (printf " ~a " v))
 		  (tok1 (reps) 
 			(gemit tok2)
 			(if (> reps 0)

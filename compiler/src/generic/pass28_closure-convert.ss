@@ -1,3 +1,6 @@
+; FIXME: TODO: When lifting node-start to actual-node-start should probably change the references to node-start...
+
+
 
 ;; Sigh, there are some general optimizations that are really lacking now.
 ;; Alias analysis is needed to fix the "direct calls" that are broken by this pass.
