@@ -396,7 +396,19 @@
 	       ;;  One for storing state (aggregation accumulator), and one 
 	       ;;  for timer events on for this aggregation.
 	       `(
-		 ;; First the timer handler.  When it fires it does the aggregation and sends it up the tree.
+		 ;; Invoke the timeout handler from node-start:
+		 ;; ASSUMES STATIC TOIND VIAIND:
+		 [node-start () 
+		    (let ((retid 
+			   ',(if (not (and (integer? viaind_expr)
+					   (integer? toind_expr)))
+				 (error 'desugar-gradient "not allowed to have dynamic viaind/toind: ~a/~a\n"
+					viaind_expr toind_expr)
+				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
+		      (token-deschedule (tok ,return-timeout-handler retid))
+		      (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
+
+		 ;; First the timeout handler.  When it fires it does the aggregation and sends it up the tree.
 		 [,return-timeout-handler retid (toind viaind) (stored)
 		   ;; First thing first we check to see if the data token exists.
 		   ;; If not there is no point in firing.
@@ -425,7 +437,13 @@
 				     (begin
 				       ,@(DEBUG_GRADIENTS 
 					  `(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a" (my-id) ',to toind ,oldacc))
-				       (call (tok ,to toind) ,oldacc))
+				       
+				       ;; TEMP:
+				       ,(if aggr
+					    `(call (tok ,to toind) ,oldacc)
+					    `(map (lambda (x) (call (tok ,to toind) x))
+						  ,oldacc))
+				       )
 				     ;; Otherwise, send it on up to the parent:
 				     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
 				     (begin 
@@ -470,8 +488,10 @@
 			       (eq? flag ',RHTIMEOUT)
 			       (eq? flag ',RHINIT)
 			       (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
-			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) stored acc: ~a"
-				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind ,acc)
+			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) parent:~a stored acc: ~a"
+				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind 
+				(ext-ref (tok ,to toind) ,STORED_PARENT_ARG)
+				,acc)
 			   (void)))
 		       
 		   ;; While the potential subcall is hapenning below this return_handler very well may be called again.
@@ -487,9 +507,13 @@
 			   ;; (Don't bother with the if, because default semantics for deschedule 
 			   ;; is to fizzle if its not there.)
 			   ;(if (token-scheduled? (tok ,return-timeout-handler retid))
-			   '"Reset the default time-out timer"
-			   (token-deschedule (tok ,return-timeout-handler retid));)
-			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
+
+			   ;; Do aggregation right now:
+			   (call (tok ,return-timeout-handler retid) toind viaind)
+
+;			   '"Reset the default time-out timer"
+;			   (token-deschedule (tok ,return-timeout-handler retid));)
+;			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
 			   )
 		       
 		       ;; Otherwise, flag = RHREMOTE
@@ -498,9 +522,17 @@
 			   (begin
 					;(DEBUG_GRADIENTS (dbg '"  CANCELED, not destination."))
 			     (void)) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
-			   ;; Now we simply accumulate and wait for the local call.
-			   (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
-					   `(append val ,acc))))
+			   (begin
+			     ;; Now we simply accumulate and wait for the local call.
+			     (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
+					     `(append val ,acc)))
+
+			     ;; TEMP: FIXME
+			   '"Reset the default time-out timer"
+			   (token-deschedule (tok ,return-timeout-handler retid))
+			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
+
+			     ))
 		       )]
 		;; And finally add the new return handler(s) to the other bindings:
 		,@(append etb ttb vtb stb))
@@ -585,55 +617,57 @@
 	  (lambda (tokbind)
 	    (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
  	       (mvlet ([(newtoks newbod) ((process-expr env tokens tok tainted) body)])
-		      (values newtoks
-			      (if (memq tok tainted)				  
-				  `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,@args)
-
-					 ;; Don't use let-stored for these, it incurs extra overhead:
-					 (stored ;[call-count 0]
-						      [,STORED_PARENT_ARG   '#f]
-						      [,STORED_ORIGIN_ARG   '#f]
-						      [,STORED_HOPCOUNT_ARG '#f]
-						      [,STORED_VERSION_ARG  '#f]
-						      ,@stored)
-
-	    ,@(DEBUG_GRADIENTS
-	       `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
-		    (dbg "%d.%d: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
-			 (my-clock) (my-id) ',tok ,id
-			 ,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG 
-			 ,STORED_PARENT_ARG ,STORED_ORIGIN_ARG ,STORED_HOPCOUNT_ARG ,STORED_VERSION_ARG
-			 (list ,@args))))
-
-					    ;; Here we decide whether or not to accept the token:
-					    (if (or 
-						    (begin '"Local calls have special hopcount (usually 0), accept those:"
-							   (eq? ',LOCALCALL ,HOPCOUNT_ARG))                  ;; Local calls we accept
-						    (begin '"First time received we definitely run:" 
-							   (not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
-						    (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
-						    (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
-							 (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
-						,(make-begin 
-						  (list
-						   '"The gradient-tagged message is accepted, handler fires."
-						  ;; If the msg is accepted we run our code:
-						  ;; It can get to both the current version of 
-						  ;; the gradient parameters and the "stored" version from last time:
-						  newbod
-						  ;; And then store these gradient parameters for next time:
-						  ;; (Unless it was a local call, in which case there's nothing to store.)
-						  `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
-						       (begin '"If it's not a local message, set stored gradient info:"
-							 (set! ,STORED_PARENT_ARG ,PARENT_ARG)
-							 (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
-							 (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
-							 (set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
-						;; Otherwise, fizzle
-						(begin '"Gradient message fizzles." (void))
-						))
-				  `(,tok ,id ,args ,newbod))))))))
-
+		 (values newtoks
+		   (if (not (memq tok tainted))
+		       ;; Just return the plain old token handler:
+		       `(,tok ,id ,args (stored ,@stored) ,newbod)
+		       ;; In this case make it a gradient token:
+		       `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,@args)
+			 ;; Don't use let-stored for these, it incurs extra overhead:
+			 (stored ;[call-count 0]
+			  [,STORED_PARENT_ARG   '#f]
+			  [,STORED_ORIGIN_ARG   '#f]
+			  [,STORED_HOPCOUNT_ARG '#f]
+			  [,STORED_VERSION_ARG  '#f]
+			  ,@stored)
+			 
+			 ,@(DEBUG_GRADIENTS
+			    `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
+				 (dbg "%d.%d: Gradientized token firing: ~a<~a> with gradargs (~a ~a ~a ~a) and stored (~a ~a ~a ~a) and real args ~a"
+				      (my-clock) (my-id) ',tok ,id
+				      ,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG 
+				      ,STORED_PARENT_ARG ,STORED_ORIGIN_ARG ,STORED_HOPCOUNT_ARG ,STORED_VERSION_ARG
+				      (list ,@args))))
+			 
+			 ;; Here we decide whether or not to accept the token:
+			 (if (or 
+			      (begin '"Local calls have special hopcount (usually 0), accept those:"
+				     (eq? ',LOCALCALL ,HOPCOUNT_ARG))                  ;; Local calls we accept
+			      (begin '"First time received we definitely run:" 
+				     (not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
+			      (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
+			      (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
+				   (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
+			     ,(make-begin 
+			       (list
+				'"The gradient-tagged message is accepted, handler fires."
+				;; If the msg is accepted we run our code:
+				;; It can get to both the current version of 
+				;; the gradient parameters and the "stored" version from last time:
+				newbod
+				;; And then store these gradient parameters for next time:
+				;; (Unless it was a local call, in which case there's nothing to store.)
+				`(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
+				     (begin '"If it's not a local message, set stored gradient info:"
+					    (set! ,STORED_PARENT_ARG ,PARENT_ARG)
+					    (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
+					    (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
+					    (set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
+			     ;; Otherwise, fizzle
+			     (begin '"Gradient message fizzles." (void))
+			     ))
+		       )))))))
+    
     (define findall-emittoks
       (lambda (tbs)
 	(if (null? tbs) '()
@@ -647,7 +681,7 @@
 	[(,lang '(program (bindings ,constbinds ...) 
 			  (nodepgm (tokens ,toks ...))))
 
-	 (let ([tainted (findall-emittoks toks)])
+	 (let ([tainted (list->set (findall-emittoks toks))])
 	   (disp "TAINTED: " tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
