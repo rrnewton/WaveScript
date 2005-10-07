@@ -488,8 +488,11 @@
 					  #t)
 					) ;; If so is it the token in question?
 				   (loop (cdr queue))))))
-		       ;; Second, check the local msg buf:
-		       (let loop ((locals (simobject-local-msg-buf this)))
+		       ;; Second, check the msg bufs:
+		       (let loop ((locals (append 
+					   (simobject-local-msg-buf this)
+					   (simobject-timed-token-buf this)
+					   )))
 			 (if (null? locals) #f
 			     (let ((simtok (msg-object-token (simevt-msgobj (car locals)))))
 			       (or (equal? ,tok simtok)
@@ -514,28 +517,8 @@
 		      ;; Clear the actual simulation queue.
 		      (set-simworld-scheduler-queue! world (filter notthistok (simworld-scheduler-queue world)))
 		      (set-simobject-local-msg-buf! this (filter notthistok (simobject-local-msg-buf this)))
+		      (set-simobject-timed-token-buf! this (filter notthistok (simobject-timed-token-buf this)))
 
-
-		      (or ;;; First, check the schedulers queue:
-		       ;; (TODO FIXME, CHECK: THIS MIGHT NOT EVEN BE NECESSARY:)
-		       (let loop ((queue (simworld-scheduler-queue (simobject-worldptr this))))
-			 (if (null? queue) #f 
-			     (let ((simtok (msg-object-token (simevt-msgobj (caar queue)))))
-			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
-					(equal? ,tok simtok)
-					(begin 	       
-					  (if (regiment-verbose)
-					  (DEBUGMODE (printf "Wow! we actually found the answer to ~a\n"
-							     "token-scheduled? in the scheduler-queue!")))
-					  #t)
-					) ;; If so is it the token in question?
-				   (loop (cdr queue))))))
-		       ;; Second, check the local msg buf:
-		       (let loop ((locals (simobject-local-msg-buf this)))
-			 (if (null? locals) #f
-			     (let ((simtok (msg-object-token (simevt-msgobj (car locals)))))
-			       (or (equal? ,tok simtok)
-				   (loop (cdr locals)))))))
 		       )]
 
 
