@@ -39,7 +39,8 @@
 			   (if (and (simevt-vtime next)
 				    (< (simevt-vtime next) private-vtime))
 			       (logger 0 
-				       "~a: WARNING: token event ~a has time in the past (~a) relative to current local clock (~a)~n"
+				       "~a~a: WARNING: token event ~a has time in the past (~a) relative to current local clock (~a)~n"
+				       (pad-width 5 current-vtime)
 				       (node-id (simobject-node ob))
 				       (msg-object-token (simevt-msgobj next))
 				       (simevt-vtime next)
@@ -57,7 +58,8 @@
 	    [(pop)
 	     (if (null? buffer)
 		 (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-	     (logger 3 "~a: Popped off action: ~a at vtime ~a ~n" 
+	     (logger 3 "~a~a: Popped off action: ~a at vtime ~a ~n" 
+		     (pad-width 5 current-vtime)
 		     (node-id (simobject-node ob))
 		     (msg-object-token (simevt-msgobj (car buffer)))
 		     (simevt-vtime (car buffer)))

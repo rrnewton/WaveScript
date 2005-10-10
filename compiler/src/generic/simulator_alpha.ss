@@ -127,7 +127,9 @@
 		 (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
 			(- (simulation-logger-count) 1))
 		 "foo"))
-	     level))
+;	     (column-width 4 (number->string current-vtime))
+	     (column-width 3 level)
+	     ))
 
   (if (and (simulation-logger)
 	   (<= level (simulation-logger-level)))
@@ -587,9 +589,13 @@
 				 [else (loop (sub1 i))]))
 			      newstr))])
 ;		     (disp "MANGLED" (massage-str str))
-		     `(if (simalpha-dbg-on)
-			  (begin (display (format ,(massage-str str) ,@args) (console-output-port))
-				 (newline (console-output-port)))))]
+		     (let ((massaged (massage-str str)))
+		       `(begin (if (simalpha-dbg-on)
+				   (begin (display (format ,massaged ,@args) (console-output-port))
+					  (newline (console-output-port))))
+			       ;; Send a copy to the logger as well:
+			       (logger (string-append "<dbg> " (format ,massaged ,@args)))))
+		     )]
 		  [(,prim ,[rand*] ...)
 		   (guard (or (token-machine-primitive? prim)
 			      (basic-primitive? prim)))
