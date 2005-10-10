@@ -16,8 +16,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
- (define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -71,9 +71,10 @@
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 (define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
 
+
 ;;======================================================================
 
-;; In this manner we distinguish regiment parameters from normal
+;; In the following manner we distinguish regiment parameters from normal
 ;; parameters.  We keep a list of all the existing regiment
 ;; parameters.  And it also makes it more acceptable for us to scatter
 ;; around the parameter definitions, because you can grep for
@@ -100,9 +101,16 @@
 ;; set to zero at the start of a simulation.
 (define-regiment-parameter simulation-logger-count #f)
 
-(define-regiment-parameter regiment-consec-ids #t)
+;; This is used by the simulator, 
+;; if true then the node ids are small consecutive numbers rather than
+;; large random ones.
+(define-regiment-parameter simalpha-consec-ids #t)
 
+;; This parameter accumulates all the unit tests from the system as they are defined.
 (define-regiment-parameter reg:all-unit-tests '())
+
+;; This parameter 
+(define-regiment-parameter reg:comment-code #f)
 
 ;; Used primarily by helpers.ss:
 ;;===================================================

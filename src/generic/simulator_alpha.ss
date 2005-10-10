@@ -310,7 +310,7 @@
           (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
             ;; TEMP: Here I give the nodes distinct, consecutive ids.
 	    ;; They should have randomized ids.
-            (if (regiment-consec-ids)
+            (if (simalpha-consec-ids)
                 (for-each set-node-id! 
                           seed (iota (length seed))))
             ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.

@@ -313,7 +313,7 @@
   (set! graph   
 	(let ((seed (map (lambda (_) (random-node)) (iota numsimnodes))))
 	  ;; TEMP: Here I give the nodes distinct, consecutive ids.
-	  (if (regiment-consec-ids)
+	  (if (simalpha-consec-ids)
 	      (for-each set-node-id! 
 			seed (iota (length seed))))
 				  

@@ -407,7 +407,7 @@
 				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
 		      (token-deschedule (tok ,return-timeout-handler retid))
 		      (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
-
+		 
 		 ;; First the timeout handler.  When it fires it does the aggregation and sends it up the tree.
 		 [,return-timeout-handler retid (toind viaind) (stored)
 		   ;; First thing first we check to see if the data token exists.
@@ -417,8 +417,10 @@
 		     ;; Otherwise it's time to aggregate!
 		     ;; NOTE: This is cheating!!  I'm using pointers and heap allocation here.  Not part of the strict model!
 		     (let ([,oldacc (ext-ref (tok ,return-handler retid) ,acc)])
-		       ;; Reset the accumulator:
-		       (ext-set! (tok ,return-handler retid) ,acc ,(if aggr seed_exp ''()))
+		       ;; Reset the accumulator, doesn't matter if there's no aggregator:
+		       ,@(if aggr
+			    `((ext-set! (tok ,return-handler retid) ,acc ,seed_exp))
+			    ())
 		       ;; Next, do we have the via token?
 		       (if (not (token-present? (tok ,via viaind)))
 			   ;; NOTE: FIZZLE SEMANTICS.
@@ -437,12 +439,7 @@
 				     (begin
 				       ,@(DEBUG_GRADIENTS 
 					  `(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a" (my-id) ',to toind ,oldacc))
-				       
-				       ;; TEMP:
-				       ,(if aggr
-					    `(call (tok ,to toind) ,oldacc)
-					    `(map (lambda (x) (call (tok ,to toind) x))
-						  ,oldacc))
+				       `(call (tok ,to toind) ,oldacc)
 				       )
 				     ;; Otherwise, send it on up to the parent:
 				     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
@@ -456,7 +453,7 @@
 					      ',RHREMOTE        ;; flag
 					      ,oldacc ;; val
 					      toind viaind  ;; toind, viaind
-					      ))))))))		   
+					      ))))))))
 		   '"Reset the default time-out timer"
 		   (token-deschedule (tok ,return-timeout-handler retid));)
 		   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
@@ -477,11 +474,11 @@
 ;; FIXME TODO: Must check destid before running stuff....
 ;(if (not (= destid (my-id)))
 ;    (printf  "WARNING gradient-aggregation: destid ~a not equal myid ~a\n" destid (my-id)))
-
-			;; Must be initialized with the seed value before aggregation begins.
-		   (stored [,acc ,(if (equal? aggr '#f)
-				      ''() ;; Use lists as our default aggregation.
-				      seed_exp)])
+				 
+		   ;; Must be initialized with the seed value before aggregation begins.
+		   ;; If there is no aggregator, the accumulator stores just a single value,
+		   ;; each returned datum is handled/transmitted seperately.
+		   (stored [,acc ,(if aggr seed_exp 'val)])
 		   
 		   ,@(DEBUG_GRADIENTS
 		      `(if (or (eq? flag ',RHLOCAL)
@@ -502,15 +499,14 @@
 		   (if (eq? flag ',RHLOCAL)
 		       ;; When we get the local value, we lump it together:
 		       (begin
-			   (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
-					   `(cons val ,acc)))
-			   ;; Now kill the scheduled timer token if there is one, and set a new timer.
-			   ;; (Don't bother with the if, because default semantics for deschedule 
-			   ;; is to fizzle if its not there.)
+			 (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 'val))
+			 ;; Now kill the scheduled timer token if there is one, and set a new timer.
+			 ;; (Don't bother with the if, because default semantics for deschedule 
+			 ;; is to fizzle if its not there.)
 			   ;(if (token-scheduled? (tok ,return-timeout-handler retid))
 
-			   ;; Do aggregation right now:
-			   (call (tok ,return-timeout-handler retid) toind viaind)
+			 ;; Do aggregation right now:
+			 (call (tok ,return-timeout-handler retid) toind viaind)
 
 ;			   '"Reset the default time-out timer"
 ;			   (token-deschedule (tok ,return-timeout-handler retid));)
@@ -525,8 +521,7 @@
 			     (void)) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
 			   (begin
 			     ;; Now we simply accumulate and wait for the local call.
-			     (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
-					     `(append val ,acc)))
+			     (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 'val))
 
 			     ;; TEMP: FIXME
 			   '"Reset the default time-out timer"

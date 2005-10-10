@@ -1115,7 +1115,8 @@
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
-		     rename-stored          cps-tokmac
+		     ;rename-stored          
+		     cps-tokmac
 		     closure-convert        cleanup-token-machine
 		     )])
 	(let ([prog
@@ -1129,11 +1130,12 @@
 			    (timed-call 500 tok1 (- reps 1))))
 		  (tok2 () (greturn (my-id) 
 				    (to catcher)))
-		  ))])
+		  )
+		'verbose)])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
+		   (run-simulator-alpha prog 'timeout 5000 );'outport prt)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
 	    lst
