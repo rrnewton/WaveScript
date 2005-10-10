@@ -222,7 +222,7 @@
    filter list-index snoc rac rdc last merge
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp pretty-print crit-printf
-   extract-file-extension remove-file-extension file->string string->file file->slist slist->file
+   extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
    graph-map graph-get-connected-component graph-neighbors cyclic? 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter

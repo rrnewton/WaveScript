@@ -81,11 +81,15 @@
   (let ()
 
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
+    ;; For now coupling it to global "DEBUGMODE"
     ;(IFDEBUG
-       (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
+      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
       ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
     ;)
 
+   (define-syntax COMMENT 
+     (syntax-rules ()
+       [(_ str) (if (reg:comment-code) '('str) ())]))
 
     (define PARENT_ARG 'g_parent)
     (define ORIGIN_ARG 'g_origin)
@@ -107,15 +111,15 @@
 ;    (define RHINIT 111)
 ;    (define RHLOCAL 222)
 ;    (define RHREMOTE 333)
-;    (define RHTIMEOUT 444)
+;    (define RHSEND 444)
     (define RHINIT 'rhinit)
     (define RHLOCAL 'rhlocal)
     (define RHREMOTE 'rhremote)
-    (define RHTIMEOUT 'rhtimeout)
+    (define RHSEND 'rhsend)
 
     ;; Default return-handler timeout:
     ;; Won't hold buffered values forever...
-    (define DEFAULT_RHTIMEOUT 1000)
+    (define DEFAULT_RHSEND 1000)
 
 
 
@@ -197,7 +201,10 @@
 	     [(tok ,t ,[e]) (cons t e)]
 	     [(begin ,[exprs] ...) (apply append exprs)]
 	     [(if ,[exprs] ...) (apply append exprs)]
+
 	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
+
+	     [(let-stored ([,_ ,[rhs*]] ...) ,[body])	(append body (apply append rhs*))]
 
 	     ;; "Direct call":  Not allowing dynamic gemit's for now:
 	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
@@ -291,6 +298,11 @@
 	     [(let ([,lhs ,[rtb rhs]]) ,[btb body])
 	      (values (append rtb btb)
 		      `(let ([,lhs ,rhs]) ,body))]
+
+	     [(let-stored ([,lhs ,[rtb rhs]]) ,[btb body])
+	      (values (append rtb btb)
+		      `(let ([,lhs ,rhs]) ,body))]
+	     
 
 	     [(gemit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
@@ -387,6 +399,7 @@
 		    [parent_pointer (unique-name 'parent_pointer)]
 		    [return-handler (unique-name 'greturn-handler)]
 		    [return-timeout-handler (unique-name 'greturn-timeout-handler)]
+		    [return-aggr-and-send (unique-name 'greturn-aggrsend-handler)]
 		    )
 
 	      (values 
@@ -406,11 +419,19 @@
 					viaind_expr toind_expr)
 				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
 		      (token-deschedule (tok ,return-timeout-handler retid))
-		      (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
+		      (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
 		 
 		 ;; First the timeout handler.  When it fires it does the aggregation and sends it up the tree.
 		 [,return-timeout-handler retid (toind viaind) (stored)
-		   ;; First thing first we check to see if the data token exists.
+		   ;; Do the aggregate-and-send:
+		   (call (tok ,return-aggr-and-send retid) toind viaind)
+		   ,@(COMMENT "Reset the default time-out timer")
+		   (token-deschedule (tok ,return-timeout-handler retid))
+		   (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
+		   ]
+
+		 [,return-aggr-and-send retid (toind viaind) (stored)
+                   ;; First thing first we check to see if the data token exists.
 		   ;; If not there is no point in firing.
 		   (if (not (token-present? (tok ,return-handler retid)))
 		       (void) ;; fizzle
@@ -438,8 +459,9 @@
 				     ;; Now, if we're the destination we need to call the 'to' token.
 				     (begin
 				       ,@(DEBUG_GRADIENTS 
-					  `(dbg "~a: At ROOT of tree, invoking ~a<~a> with ~a" (my-id) ',to toind ,oldacc))
-				       `(call (tok ,to toind) ,oldacc)
+					  `(dbg "~a.~a: At ROOT of tree, invoking ~a<~a> with ~a" 
+						(my-clock) (my-id) ',to toind ,oldacc))
+				       (call (tok ,to toind) ,oldacc)
 				       )
 				     ;; Otherwise, send it on up to the parent:
 				     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
@@ -454,9 +476,6 @@
 					      ,oldacc ;; val
 					      toind viaind  ;; toind, viaind
 					      ))))))))
-		   '"Reset the default time-out timer"
-		   (token-deschedule (tok ,return-timeout-handler retid));)
-		   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
 		   ]
 		;; Now the data handler.
 		;; When called locally, this triggers aggregation.
@@ -482,13 +501,14 @@
 		   
 		   ,@(DEBUG_GRADIENTS
 		      `(if (or (eq? flag ',RHLOCAL)
-			       (eq? flag ',RHTIMEOUT)
+			       (eq? flag ',RHSEND)
 			       (eq? flag ',RHINIT)
 			       (and (eq? flag ',RHREMOTE) (or (= destid ',NULL_ID) (= destid (my-id)))))
-			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) parent:~a timeron?:~a stored acc: ~a"
+			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) prnt:~a timeout?:~a aggrsend?:~a acc: ~a"
 				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind 
 				(ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
 				(token-present? (tok ,return-timeout-handler retid))
+				(token-present? (tok ,return-aggr-and-send retid))
 				,acc)
 			   (void)))
 		       
@@ -506,29 +526,21 @@
 			   ;(if (token-scheduled? (tok ,return-timeout-handler retid))
 
 			 ;; Do aggregation right now:
-			 (call (tok ,return-timeout-handler retid) toind viaind)
+			 (call (tok ,return-aggr-and-send retid) toind viaind)
 
-;			   '"Reset the default time-out timer"
-;			   (token-deschedule (tok ,return-timeout-handler retid));)
-;			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
-			   )
+			 ,@(COMMENT "Reset the default time-out timer")
+			 (token-deschedule (tok ,return-timeout-handler retid));)
+			 (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
+			 )
 		       
 		       ;; Otherwise, flag = RHREMOTE
 		       ;; If called remotely, we only proceed if we are the intended destination.
 		       (if (not (or (= destid ',NULL_ID) (= destid (my-id))))
-			   (begin
-					;(DEBUG_GRADIENTS (dbg '"  CANCELED, not destination."))
-			     (void)) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
-			   (begin
+			     ;(DEBUG_GRADIENTS (dbg '"  CANCELED, not destination."))
+			     (void) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
 			     ;; Now we simply accumulate and wait for the local call.
 			     (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 'val))
-
-			     ;; TEMP: FIXME
-			   '"Reset the default time-out timer"
-			   (token-deschedule (tok ,return-timeout-handler retid))
-			   (timed-call ,DEFAULT_RHTIMEOUT (tok ,return-timeout-handler retid) toind viaind)
-
-			     ))
+			     )
 		       )]
 		;; And finally add the new return handler(s) to the other bindings:
 		,@(append etb ttb vtb stb))
@@ -543,13 +555,16 @@
 		     [viaind_tmp (unique-name 'viaind)])
 		 `(let ((,toind_tmp ,toind_expr))
 		    (let ((,viaind_tmp ,viaind_expr))
-		      (let ([,aggr_ID (begin '"This aggregation identifier incorporates the TO and VIA components:"
-					     (+ (* ,MAX_SUBTOK ,toind_tmp) ,viaind_tmp))])
-			(begin '"Call the appropriate local return 'server'"
-			       (call (tok ,return-handler ,aggr_ID) 
-				     (my-id)
-				     ',RHLOCAL ;; flag
-				     ,expr ,toind_tmp ,viaind_tmp))))))
+		      (let ([,aggr_ID (begin 
+					,@(COMMENT "This aggregation identifier incorporates the TO and VIA components:")
+					(+ (* ,MAX_SUBTOK ,toind_tmp) ,viaind_tmp))])
+			,(make-begin 
+			  (append 
+			   (COMMENT "Call the appropriate local return 'server'")
+			   `((call (tok ,return-handler ,aggr_ID) 
+				  (my-id)
+				  ',RHLOCAL ;; flag
+				  ,expr ,toind_tmp ,viaind_tmp))))))))
 	       ))]
 	      
 	     [(return ,[etb e]) (values etb `(return ,e))]
@@ -637,16 +652,18 @@
 			 
 			 ;; Here we decide whether or not to accept the token:
 			 (if (or 
-			      (begin '"Local calls have special hopcount (usually 0), accept those:"
+			      (begin ,@(COMMENT "Local calls have special hopcount (usually 0), accept those:")
 				     (eq? ',LOCALCALL ,HOPCOUNT_ARG))                  ;; Local calls we accept
-			      (begin '"First time received we definitely run:" 
-				     (not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
+			      (begin 
+				,@(COMMENT "First time received we definitely run:")
+				(not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
 			      (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
 			      (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
 				   (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
 			     ,(make-begin 
-			       (list
-				'"The gradient-tagged message is accepted, handler fires."
+			       (append 
+				(COMMENT "The gradient-tagged message is accepted, handler fires.")
+				(list
 				;; If the msg is accepted we run our code:
 				;; It can get to both the current version of 
 				;; the gradient parameters and the "stored" version from last time:
@@ -654,13 +671,15 @@
 				;; And then store these gradient parameters for next time:
 				;; (Unless it was a local call, in which case there's nothing to store.)
 				`(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
-				     (begin '"If it's not a local message, set stored gradient info:"
-					    (set! ,STORED_PARENT_ARG ,PARENT_ARG)
-					    (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
-					    (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
-					    (set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
+				     (begin 
+				       ,@(COMMENT "If it's not a local message, set stored gradient info:")
+				       (set! ,STORED_PARENT_ARG ,PARENT_ARG)
+				       (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
+				       (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
+				       (set! ,STORED_VERSION_ARG ,VERSION_ARG))))))
 			     ;; Otherwise, fizzle
-			     (begin '"Gradient message fizzles." (void))
+			     (begin ,@(COMMENT "Gradient message fizzles.") (void))
+				
 			     ))
 		       )))))))
     

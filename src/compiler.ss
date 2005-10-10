@@ -274,6 +274,22 @@
 ;; The rest of the system tests are in the files named tests_*.ss
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
 (define these-tests 
+  (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
+	 (lambda (tm)
+	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	       (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored         ; cps-tokmac
+;		     closure-convert        ;cleanup-token-machine
+		     )])
+		 (let ([prog (run-compiler ',tm)])
+		   (let ((prt (open-output-string)))
+		     (display "(" prt)
+		     (run-simulator-alpha prog 'outport prt)
+		     (display ")" prt)
+		     (read (open-input-string (get-output-string prt)))))))
+	   )])
   `( 
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
@@ -351,6 +367,38 @@
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
      (tok2 tok3 tok1)]
+
+     ["Timed tokens 2: test simultaneous timed/untimed calls to same token, then deschedule one timed"
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	 (let ((prog 
+		(run-compiler
+		 '(tokens 
+		   (SOC-start () 
+			      (call tok1) 
+			      (timed-call 100 tok1)
+			      (call tok2)
+			      (timed-call 100 tok2))
+		   (tok1 () (printf "tok1 ")
+			     (token-deschedule tok1))
+		   (tok2 () (printf "tok2 "))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt)))))))
+     (tok1 tok2 tok2)]
+
+     ["Timed tokens 3: make two timed calls to the same token."
+      (apply < ,(tm-to-list
+	'(tokens
+	  (SOC-start () (timed-call 100 tok1)
+		        (timed-call 200 tok1))
+	  (tok1 () (printf "~a \n" (my-clock))))))
+      #t]
+
+
      [
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
@@ -851,7 +899,28 @@
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
       ((1 2 3) (1 10 3) (1 10 10) (10 10 10))]
-     
+
+     ["Now keep stored vars on all 1-hop neighbors, make sure they don't change."  
+      ,(tm-to-list
+	'(tokens 
+	  (SOC-start () 			      
+		     (bcast tok1)
+		     (timed-call 100 tok2)
+		     (printf "\n")
+		     (timed-call 200 tok2)
+		     )
+	  (tok2 () (bcast tok1))
+	  (tok1 () (stored [count 0])
+		(let-stored ([id (my-id)])
+		(if (= count 0)
+		    (begin
+		      (printf "fst ~a ~a \n" (my-id) id)
+		      (set! count 1))
+		    (printf "snd ~a ~a \n" (my-id) id))))))
+      unspecified]
+	
+
+
      ;; Ok before I was having problems with how I do the counters for
      ;; subtok indices of the continuations.  This double invocation tests that:
      ["Test double invocation of a continuation-bearing token." 
@@ -952,7 +1021,6 @@
 	    (ab b c c)
 	    ;(c ab c b)
 	    ]))
-
 
      ["Test gradient ghopcount, gversion, gparent, gorigin."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -1073,8 +1141,112 @@
 	      )))))
       unspecified]
 
+
+     ["Gradients: dissection of emitted code."      
+      (run-simulator-alpha 
+       (desugar-let-stored 
+       (cleanup-token-machine
+	'(desugar-gradient-lang
+  '(program
+     (bindings)
+     (nodepgm
+       (tokens (node-start subtok_ind () (stored) (void))
+         (SOC-start
+           subtok_ind
+           ()
+           (stored)
+           (let-stored
+             ((ver_9 0))
+             (set! ver_9 (+ 1 ver_9))
+             (let* ()
+               (call (tok tok1 0) 'noparent (my-id) 0 ver_9)
+               (bcast (tok tok1 0) (my-id) (my-id) 1 ver_9))))
+         (catcher subtok_ind (v) (stored) (printf '" ~a " v))
+         (tok1
+           subtok_ind
+           (g_parent g_origin g_hopcount g_version)
+           (stored
+             (stored_g_parent '#f)
+             (stored_g_origin '#f)
+             (stored_g_hopcount '#f)
+             (stored_g_version '#f))
+           (if (or (begin (eq? 'nongrad-invoke g_hopcount))
+                   (begin (not stored_g_hopcount))
+                   (> g_version stored_g_version)
+                   (and (= g_version stored_g_version)
+                        (< g_hopcount stored_g_hopcount)))
+               (begin
+                 (printf '"_ ")
+                 (let ([toind_7 0])
+                   (let ([viaind_8 0])
+                     (let ([aggrID_3 (begin
+                                       (+ (* 1000 toind_7) viaind_8))])
+                       (call (tok greturnhandler_1 aggrID_3) (my-id)
+                         'rhlocal (my-id) toind_7 viaind_8))))
+                 (if (not (eq? 'nongrad-invoke g_hopcount))
+                     (begin
+                       (set! stored_g_parent g_parent)
+                       (set! stored_g_origin g_origin)
+                       (set! stored_g_hopcount g_hopcount)
+                       (set! stored_g_version g_version))))
+               (begin (void))))
+         (node-start
+           ()
+           (let ([retid '0])
+             ;(token-deschedule (tok greturntimeouthandler_2 retid))
+             (timed-call 1000 (tok greturntimeouthandler_2 retid) 0 0)
+	     ))
+         (greturntimeouthandler_2 retid (toind viaind) (stored)
+	   (printf "TIMEOUT~a " (my-id))
+           (if (not (token-present? (tok greturnhandler_1 retid)))
+               (void)
+               (let ([oldacc_5 (ext-ref
+                                 (tok greturnhandler_1 retid)
+                                 acc_4)])
+                 (if (not (token-present? (tok tok1 viaind)))
+                     (begin)
+                     (let ([parentpointer_6 (ext-ref
+                                              (tok tok1 viaind)
+                                              stored_g_parent)])
+                       (if (not parentpointer_6)
+                           (begin (void))
+                           (if (eq? 'noparent parentpointer_6)
+                               (begin (call (tok catcher toind) oldacc_5))
+                               (begin
+                                 (bcast (tok greturnhandler_1 retid)
+                                   parentpointer_6 'rhremote oldacc_5 toind
+                                   viaind))))))))
+           ;(token-deschedule (tok greturntimeouthandler_2 retid))
+           (timed-call
+             1000
+             (tok greturntimeouthandler_2 retid)
+             toind
+             viaind))
+         (greturnhandler_1
+           retid
+           (destid flag val toind viaind)
+           (stored (acc_4 val))
+           (if (eq? flag 'rhlocal)
+               (begin
+		 (printf " +~a " (my-id))
+                 (set! acc_4 val)
+                 (call (tok greturntimeouthandler_2 retid) toind viaind))
+               (if (not (or (= destid '0) (= destid (my-id))))
+                   (begin (void))
+                   (begin
+                     (set! acc_4 val)
+                     ;(token-deschedule (tok greturntimeouthandler_2 retid))
+                     (timed-call
+                       1000
+                       (tok greturntimeouthandler_2 retid)
+                       toind
+                       viaind)))))))))))
+       'timeout 5000)
+	unspecified]
+
+
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -1090,19 +1262,21 @@
 			     ;(timed-call 1000 tok1)
 			     )
 		  (catcher (v) (printf " ~a " v))
-		  (tok1 () ;(printf "_ ")
+		  (tok1 () (printf "_ ")
 			(greturn (my-id) (to catcher)))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt 'timeout 5000)
+		   (run-simulator-alpha prog ;'outport prt 
+					'timeout 10000)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
-	    (list
-	     (car lst)
-	     (if (memq BASE_ID lst) #t #f)
-	     (> (length lst) 1)	     )
+;	    (list
+;	     (car lst)
+;	     (if (memq BASE_ID lst) #t #f)
+;	     (> (length lst) 1)	     )
+	    lst
 	    ))))
       (,BASE_ID #t #t)]
 
@@ -1430,7 +1604,7 @@
 	(read (open-input-string (get-output-string prt))))
       (result 2007)]
 
-))
+)))
 
 
 (define test-this (default-unit-tester "Main compiler unit." these-tests))

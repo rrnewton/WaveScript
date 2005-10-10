@@ -39,7 +39,8 @@
     (let ((queue (get-queue)))
       (if (null? queue)
 	  (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-      (logger 3 "Popped off action: ~a at vtime ~a ~n" 
+      (logger 3 "~a Popped off action: ~a at vtime ~a ~n"
+	      (pad-width 5 (simevt-vtime (caar queue)))
 	      (msg-object-token (simevt-msgobj (caar queue)))
 	      (simevt-vtime (caar queue)))
       (set-queue! (cdr queue))))
@@ -64,7 +65,8 @@
 	      ;; Before I merely merged them:
 	      (set-queue! (sort lessthan (append pairedevnts (get-queue))))
 
-	      (logger 3 "Scheduling ~a new events ~a, new schedule len: ~a~n"
+	      (logger 3 "~a  Scheduling ~a new events ~a, new schedule len: ~a~n"
+		      (pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
 		      (length newevnts)
 		      (map (lambda (e) 
 			     (list (msg-object-token (simevt-msgobj e))
@@ -111,9 +113,9 @@
     (if (not (null? (append (simobject-local-msg-buf ob)
 			    (simobject-timed-token-buf ob)
 			    (simobject-incoming-msg-buf ob))))
-	(logger 1.5 "~a: Receiving (t:~a): ~a local, ~a timed, ~a remote. Queue len ~a~n"		  
+	(logger 1.5 "~a ~a: Receiving: ~a local, ~a timed, ~a remote. Queue len ~a~n"
+		(pad-width 5 vtime)
 		(node-id (simobject-node ob))
-		vtime
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))
@@ -172,10 +174,10 @@
 		  outgoing)
 
 	(let ((neighbors (graph-neighbors (simworld-object-graph sim) ob)))
-	  (logger "~a: bcast ~a at time ~a to -> ~a~n" 
+	  (logger "~a ~a: bcast ~a to -> ~a~n" 
+		  (pad-width 5 vtime )
 		  (node-id (simobject-node ob)) 
 		  (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)
-		  vtime
 		  (map (lambda (x) (node-id (simobject-node x))) neighbors))
 	  
 	  (for-each 
@@ -196,12 +198,12 @@
     ;; First process all incoming-buffers, scheduling events.
     (for-each process-incoming (simworld-all-objs sim))
     (cond
-     [(stopping-time? vtime) 
-      ;; This is a meta-message, not part of the output of the simulation:
-      (fprintf meta-port "Out of time.~n")]
      [(null? (get-queue))
       (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
       (fprintf meta-port "Simulator ran fresh out of actions!~n")]
+     [(stopping-time? (simevt-vtime (caar (get-queue))))
+      ;; This is a meta-message, not part of the output of the simulation:
+      (fprintf meta-port "Out of time.~n")]
      [else 
       (let ([first (car (get-queue))])
 	;; Now discard that event from the queue:
@@ -211,16 +213,16 @@
 	      [evt (car first)])
 	;; Set the clock to the time of this next action:
 	(set! vtime (simevt-vtime evt))
-	(logger 2 "  Main sim loop: vtime ~a (vtime of next action) queue len ~a ~n" 
-		vtime (add1 (length (get-queue))))
+	(logger 2 "~a  Main sim loop: (vtime of next action) queue len ~a ~n" 
+		(pad-width 5 vtime) (add1 (length (get-queue))))
 	;(printf "<~a>" vtime)
 
                  ;(printf "Busting thunk, running action: ~a~n" next)
                  ;; For now, the time actually executed is what's scheduled
-	(logger "~a: Executing: ~a at time ~a    args: ~a~n"
+	(logger "~a ~a: Executing: ~a args: ~a~n"
+		(pad-width 5 vtime)
 		(node-id (simobject-node ob))
 		(msg-object-token (simevt-msgobj evt))
-		vtime
 		(msg-object-args (simevt-msgobj evt))
 		)
 	

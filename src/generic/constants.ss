@@ -16,8 +16,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -101,11 +101,6 @@
 ;; set to zero at the start of a simulation.
 (define-regiment-parameter simulation-logger-count #f)
 
-;; This is used by the simulator, 
-;; if true then the node ids are small consecutive numbers rather than
-;; large random ones.
-(define-regiment-parameter simalpha-consec-ids #t)
-
 ;; This parameter accumulates all the unit tests from the system as they are defined.
 (define-regiment-parameter reg:all-unit-tests '())
 
@@ -156,6 +151,12 @@
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
 (define-regiment-parameter simalpha-num-nodes 30)
+
+;; This is used by the simulator, 
+;; if true then the node ids are small consecutive numbers rather than
+;; large random ones.
+(define-regiment-parameter simalpha-consec-ids #t)
+
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
 
 ;; [2005.10.03] Can only be 'lossless right now.  (Need to implement 'disc and 'empirical.)

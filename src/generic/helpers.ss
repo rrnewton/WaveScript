@@ -598,9 +598,15 @@
         [(eq? (car ls) #\.)
          (list->string (reverse (cdr ls)))]
         [else (loop (cdr ls))]))))
-
 ;; TODO: These need to by system independent, but aren't yet.
 
+
+;; [2005.10.09] Making this global, its useful.
+  (define (pad-width w ob)
+    (let ((s (format "~a" ob)))
+      (if (< (string-length s) w)
+	  (string-append s (make-string (- w (string-length s)) #\space))
+	  s)))
 
 
 
