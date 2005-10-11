@@ -83,8 +83,8 @@
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
     ;; For now coupling it to global "DEBUGMODE"
     ;(IFDEBUG
-      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
-      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
+      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
+      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
     ;)
 
    (define-syntax COMMENT 
@@ -438,7 +438,7 @@
 		   ,@(COMMENT "Reset the default time-out timer")
 		   
 		   (if ,(if aggr ''#t ;; COULD OPTIMIZE THIS.
-			    `(and (token-present? (tok ,return-handler retid))
+			    `(and (token-present? (tok ,return-handler retid)) ;; <- OUTDATED
 				  (not (null? (ext-ref (tok ,return-handler retid) ,acc)))))
 		       (begin 
 			 ,@(DEBUG_GRADIENTS
