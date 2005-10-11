@@ -646,10 +646,12 @@
           (loop lst1 lst2)
           (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
 
+;; [2005.10.11]  Added reverse! to make the result in the same order as orig.
 (define list->set
   (lambda (ls)
     (if (null? ls) '()
-        (set-cons (car ls) (list->set (cdr ls))))))
+	(reverse! 
+	 (set-cons(car ls) (list->set (cdr ls)))))))
 
 (define set-cons
   (lambda (x set)
@@ -1365,7 +1367,9 @@
 ;	       [descriptions (map car entries)]
 ;	       [tests (map caddr entries)]
 ;	       [intended (map cadddr entries)]
-	       [success #t])
+	       [success #t]
+	       [tests-to-run (filter number? args)]
+	       )
 
 	   ;; This (long) sub-procedure executes a single test:
 	 (let ([execute-one-test
@@ -1449,9 +1453,15 @@
 		     (if quiet (printf ";; (with test output suppressed)~n"))
 		     ))
 	  (flush-output-port)
-	  (for-each execute-one-test
-		    (iota (length entries))
-		    entries)
+	  (let ((entries 
+		 (if (null? tests-to-run) entries
+		     (map (lambda (i) (list-ref entries i)) tests-to-run)))
+		(indices (if (null? tests-to-run)
+			     (iota (length entries))
+			     tests-to-run)))
+	    (for-each execute-one-test
+		      indices
+		      entries))
 	  ;; If we made it this far, we've passed all the tests, return #t:
 	  #t
 	  ))))))

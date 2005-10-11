@@ -465,9 +465,24 @@
       (lambda (env tokens)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
-		 `(,tok ,id ,args (stored ,@stored) ;(bindings ,@bindings)
-			,((process-expr (cons id (append args (map car stored) bindings env)) tokens tok id)
-			  body))))))
+		 (let ((baseenv (cons id (append args bindings env))))
+		 (let ((newstored 
+			(reverse
+			 (cadr 
+			  (foldl
+			  (lambda (binding a)
+			    (match a
+				   [(,env ,stored)
+				    (list 
+				     (cons (car binding) env)
+				     (cons (list (car binding) 
+						 ((process-expr env tokens tok id) (cadr binding)))
+					   stored))]))
+			  (list baseenv '())
+			  stored)))))
+		 `(,tok ,id ,args (stored ,@newstored) ;(bindings ,@bindings)
+			,((process-expr (append (map car stored) baseenv) tokens tok id)
+			  body))))))))
 	    
     (define decode 
       (lambda (lang stuff)

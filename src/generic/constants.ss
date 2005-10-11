@@ -162,7 +162,7 @@
 ;; [2005.10.03] Can only be 'lossless right now.  (Need to implement 'disc and 'empirical.)
 (define-regiment-parameter simalpha-channel-model 'lossless)
 ;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
-(define-regiment-parameter simalpha-failure-module 'none)
+(define-regiment-parameter simalpha-failure-mode 'none)
 
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
