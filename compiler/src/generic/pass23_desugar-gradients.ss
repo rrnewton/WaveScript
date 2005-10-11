@@ -83,8 +83,8 @@
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
     ;; For now coupling it to global "DEBUGMODE"
     ;(IFDEBUG
-      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
-      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
+      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
+      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
     ;)
 
    (define-syntax COMMENT 
