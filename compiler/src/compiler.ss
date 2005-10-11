@@ -1248,7 +1248,7 @@
 
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -1274,20 +1274,23 @@
 					'timeout 10000)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
-;	    (list
-;	     (car lst)
-;	     (if (memq BASE_ID lst) #t #f)
-;	     (> (length lst) 1)	     )
 	    lst
 	    ))))
-      (,BASE_ID #t #t)]
+      ,(lambda (lst)
+	 (let ((lst (filter number? lst)))
+	   (and
+	    (eq? BASE_ID (car lst))
+	    (not (memq BASE_ID (cdr lst)))
+	    (> (length lst) 1)
+	    (eq? (length lst) (length (list->set lst))))))]
 
      ;; [2005.10.06] After doing my refactoring to make multiple return-handler tokens
      ;; this isn't working.  We're only getting a return from one of our neighbors.
      ["Gradients: execute a repeated return from 1-hop neighbors. (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f]
-		     [simalpha-channel-model 'lossless])
+		     [simalpha-channel-model 'lossless]
+		     [simalpha-failure-module 'none])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -1298,30 +1301,90 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (call tok1 '10))
-		  (catcher (v) (printf "~a" v))
+		  (SOC-start () (printf "(")
+			     (call tok1 '10))
+		  (catcher (v) (printf "~a " v))
 		  (tok1 (reps) 
+			(printf ") (")
 			(gemit tok2)
 			(if (> reps 0)
-			    (timed-call 500 tok1 (- reps 1))))
-		  (tok2 () (greturn (my-id) 
-				    (to catcher)))
-		  )
-		'verbose)])
+			    (timed-call 1000 tok1 (- reps 1))))
+		  (tok2 () ;(printf "_ ") 
+			(greturn (my-id) 
+				 (to catcher)))
+		  ) 'verbose
+		)])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
-		   (run-simulator-alpha prog 'timeout 5000 );'outport prt)
-		   (display ")" prt)
+		   (run-simulator-alpha prog 'outport prt) ;'timeout 5000 );
+		   (display "))" prt)
 		   (read (open-input-string (get-output-string prt))))))
 	    lst
 	    ))))
       ,(lambda (x)
 	 ;; ASSUMES LOSSLESS CHANNELS AND DETERMINISTIC TIMING:
 	 ;; Makes sure we hear from the same neighbors every time:
-	 (all-equal? (cdr x)))]
+	 ;(printf "Checking : ~a\n" x)
+	 ;(set! x (map (lambda (l) (filter number? l)) x))
+	 (and (eq? (car x) ())
+	      ;(equal? (cadr x) (list BASE_ID)) ;; No longer true.  Not staggering epochs for non-aggregated greturn.
+	      (all-equal? (map (lambda (l) (sort < (filter number? l))) 
+			       (rdc (cddr x))))))]
 
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f]
+		     [simalpha-consec-ids #t]
+		     [simalpha-channel-model 'lossless]
+		     [simalpha-failure-module 'none])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () (call tok1 '5))
+		  (catcher (v) (printf " ~a " v))
+		  (tok1 (reps) 
+			(printf ") (")
+			(gemit tok2)
+			(if (> reps 0)
+			    (timed-call 1000 tok1 (- reps 1))))
+		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "((" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display "))" prt)
+		   (read (open-input-string (get-output-string prt))))))
+
+;	    (for-each (lambda (x) (display x) (newline)) lst)
+;	    (let ((lens (map length lst)))
+	    lst
+	    ))))
+
+      ;; You will see a staggered reception of results.
+      ;; First from the one-hop neighbors, then also the two-hops, and so on.
+      ,(lambda (x) 
+	 (and
+	 ;; Let's make sure the list increases in distance at first:
+; 	 ;; Check the first three.
+; 	  (let ([one   (length (car x))]
+; 	       [two   (length (cadr x))]
+; 	       [three (length (caddr x))])
+; 	   (< one two three))
+	 ;; Also check to make sure whe heard from everyone.
+	 (= (simalpha-num-nodes)
+	    (length (list->set (apply append x))))
+	 ))]
+
+     ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f])
       (fluid-let ([pass-names
@@ -1334,73 +1397,48 @@
 	(let ([prog
 	       (run-compiler
 		'(tokens
-		  (SOC-start () (call tok1 '10))
-		  (catcher (v) (printf " ~a " v))
-		  (tok1 (reps) 
-			(gemit tok2)
-			(if (> reps 0)
-			    (timed-call 500 tok1 (- reps 1))))
-		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    (for-each (lambda (x) (display x) (newline)) lst)
-;	    (let ((lens (map length lst)))
-	    lst
-	    ))))
-      ;; You will see a staggered reception of results.
-      ;; First from the one-hop neighbors, then also the two-hops, and so on.
-      ,(lambda (x) 
-	 ;; Let's make sure the list increases in distance at first:
-	 ;; Check the first three.
-	 (let ([one   (length (car x))]
-	       [two   (length (cadr x))]
-	       [three (length (caddr x))])
-	   (< one two three)))]
-
-     ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
-		'(tokens
-		  (SOC-start () (call tok1 '10))
-		  (catcher (v) (printf "~a" v))
+		  (SOC-start () (call tok1 '5))
+		  (catcher (v) (printf "~a " v))
 		  (tok1 (reps)  
+			(printf ") (")
 			(gemit tok2)
-			(if (> reps 0)
-			    (timed-call 500 tok1 (- reps 1))))
+			(if (> reps 1)
+			    (timed-call 1500 tok1 (- reps 1))))
 		  (tok2 () (grelay) 
-			;(if (= (gdist) 2)
-			(greturn (gdist) (to catcher))
-			)
+			(if (= (gdist) 1)
+			    (greturn (gversion) (to catcher))
+			(if (= (gdist) 2)
+			    (greturn (+ 100 (gversion)) (to catcher)))
+			))
 		  ))])
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
-		   (display "(" prt)
+		   (display "((" prt)
 		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
+		   (display "))" prt)
 		   (read (open-input-string (get-output-string prt))))))
-	    (for-each (lambda (x) (display x) (newline)) lst)
+	    ;(for-each (lambda (x) (display x) (newline)) lst)
 	    lst
 	    ))))
+
       ,(lambda (x) 
+	 (and 
 	 ;; Let's make sure the list increases in distance at first:
 	 ;; Check the first three.
-	 (let ([one   (/ (apply + (car x)) (length (car x)))]
-	       [two   (/ (apply + (cadr x)) (length (cadr x)))]
-	       [three (/ (apply + (caddr x)) (length (caddr x)))])
-	   (< one two three)))]
+	 ; (let ([one   (/ (apply + (car x)) (length (car x)))]
+; 	       [two   (/ (apply + (cadr x)) (length (cadr x)))]
+; 	       [three (/ (apply + (caddr x)) (length (caddr x)))])
+; 	   (< one two three))
+
+	  ;; This asserts that there are more two-hop than one-hop neighbors:
+	  (andmap (lambda (ls)
+		    (let ((small (filter (lambda (n) (< n 100)) ls))
+			  (big   (filter (lambda (n) (> n 100)) ls)))
+		      (> (length big) (length small))))
+		  ;; Don't count first or last batch:
+		  (cddr (rdc x)))
+	 
+	 ))]
 
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])

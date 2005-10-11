@@ -411,24 +411,43 @@
 	       `(
 		 ;; Invoke the timeout handler from node-start:
 		 ;; ASSUMES STATIC TOIND VIAIND:
-		 [node-start () 
+;; [2005.10.10] DONT NEED THIS, JUST MAKE SURE THAT ANY GRETURN ACTIVITY SETS TIMER.
+#;		 [node-start () 
 		    (let ((retid 
 			   ',(if (not (and (integer? viaind_expr)
 					   (integer? toind_expr)))
 				 (error 'desugar-gradient "not allowed to have dynamic viaind/toind: ~a/~a\n"
 					viaind_expr toind_expr)
 				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
+		      ,@(DEBUG_GRADIENTS
+			 `(dbg "%d.%d: Setting gradient aggr/up-send time-out timer, retid %d." (my-clock) (my-id) retid))
 		      (token-deschedule (tok ,return-timeout-handler retid))
 		      (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
-		 
+
 		 ;; First the timeout handler.  When it fires it does the aggregation and sends it up the tree.
-		 [,return-timeout-handler retid (toind viaind) (stored)
+	         ;; We only use this when there's an aggregator, otherwise return vals go straight up!
+		 ,@(if aggr
+		 `([,return-timeout-handler retid (toind viaind) (stored)
 		   ;; Do the aggregate-and-send:
-		   (call (tok ,return-aggr-and-send retid) toind viaind)
+		   ,@(DEBUG_GRADIENTS
+		      `(dbg "%d.%d  Time-out fired!" (my-clock) (my-id)))
+		   (if ,(if aggr ''#t 
+			    `(and (ext-ref (tok ,return-handler retid) ,acc)
+				       (not (null? (ext-ref (tok ,return-handler retid) ,acc)))))
+		       (call (tok ,return-aggr-and-send retid) toind viaind))
 		   ,@(COMMENT "Reset the default time-out timer")
-		   (token-deschedule (tok ,return-timeout-handler retid))
-		   (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
-		   ]
+		   
+		   (if ,(if aggr ''#t ;; COULD OPTIMIZE THIS.
+			    `(and (token-present? (tok ,return-handler retid))
+				  (not (null? (ext-ref (tok ,return-handler retid) ,acc)))))
+		       (begin 
+			 ,@(DEBUG_GRADIENTS
+			    `(dbg "%d.%d: Reset timer again." (my-clock) (my-id)))
+			 (token-deschedule (tok ,return-timeout-handler retid))
+			 (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind))
+		       (begin ,@(DEBUG_GRADIENTS
+				 `(dbg "%d.%d: Nothing in acc, stop time-out timer." (my-clock) (my-id)))))
+		   ]) ())
 
 		 [,return-aggr-and-send retid (toind viaind) (stored)
                    ;; First thing first we check to see if the data token exists.
@@ -438,10 +457,20 @@
 		     ;; Otherwise it's time to aggregate!
 		     ;; NOTE: This is cheating!!  I'm using pointers and heap allocation here.  Not part of the strict model!
 		     (let ([,oldacc (ext-ref (tok ,return-handler retid) ,acc)])
-		       ;; Reset the accumulator, doesn't matter if there's no aggregator:
-		       ,@(if aggr
-			    `((ext-set! (tok ,return-handler retid) ,acc ,seed_exp))
-			    ())
+		       (if ,(if aggr ''#t 
+				`(or (not (null? ,oldacc))
+				     (begin 
+				       (dbg "~a.~a: WARNING: Trying to return-aggr-and-send with a null accumulator on non-aggr greturn!"
+					    (my-clock) (my-id))
+				       #f)
+				     ))
+			   (begin 
+			     ,@(DEBUG_GRADIENTS
+				`(dbg "%d.%d: Aggr-and-send: ~a" (my-clock) (my-id) ,oldacc))
+
+			     ;; Reset the accumulator, doesn't matter if there's no aggregator:		       
+			     (ext-set! (tok ,return-handler retid) ,acc ,(if aggr seed_exp `(cdr ,oldacc)))
+			     
 		       ;; Next, do we have the via token?
 		       (if (not (token-present? (tok ,via viaind)))
 			   ;; NOTE: FIZZLE SEMANTICS.
@@ -456,12 +485,13 @@
 				 (begin ,@(DEBUG_GRADIENTS `(dbg "ERROR: fell off the via tree: %d at node %d" ',via (my-id)))
 					(void))
 				 (if (eq? ',NO_PARENT ,parent_pointer)
-				     ;; Now, if we're the destination we need to call the 'to' token.
 				     (begin
+				       ,@(COMMENT "Reached tree root, calling to token.")
 				       ,@(DEBUG_GRADIENTS 
 					  `(dbg "~a.~a: At ROOT of tree, invoking ~a<~a> with ~a" 
-						(my-clock) (my-id) ',to toind ,oldacc))
-				       (call (tok ,to toind) ,oldacc)
+						(my-clock) (my-id) ',to toind 
+						,(if aggr oldacc `(car ,oldacc))))
+				       (call (tok ,to toind) ,(if aggr oldacc `(car ,oldacc)))
 				       )
 				     ;; Otherwise, send it on up to the parent:
 				     ;; TODO: Should use "send_to" form here, but haven't implemented yet:
@@ -473,9 +503,18 @@
 				       (bcast (tok ,return-handler retid)
 					      ,parent_pointer ;; destid
 					      ',RHREMOTE        ;; flag
-					      ,oldacc ;; val
+					      ,(if aggr oldacc `(car ,oldacc)) ;; val
 					      toind viaind  ;; toind, viaind
-					      ))))))))
+					      ))))))
+		       ;; If we're in non-aggregation mode, we just keep sending whatever we've got:
+		       ,@(if aggr ()
+			     `((if (and (not (null? (cdr ,oldacc)))
+					(not (token-scheduled? (tok ,return-aggr-and-send retid))))
+				   (begin 
+				     ,@(DEBUG_GRADIENTS
+					`(dbg "%d.%d: Still have stuff left, continue aggregating..." (my-clock) (my-id)))
+				     (call (tok ,return-aggr-and-send retid) toind viaind)))))
+		       ))))
 		   ]
 		;; Now the data handler.
 		;; When called locally, this triggers aggregation.
@@ -497,7 +536,7 @@
 		   ;; Must be initialized with the seed value before aggregation begins.
 		   ;; If there is no aggregator, the accumulator stores just a single value,
 		   ;; each returned datum is handled/transmitted seperately.
-		   (stored [,acc ,(if aggr seed_exp 'val)])
+		   (stored [,acc ,(if aggr seed_exp ''())])
 		   
 		   ,@(DEBUG_GRADIENTS
 		      `(if (or (eq? flag ',RHLOCAL)
@@ -507,8 +546,8 @@
 			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) prnt:~a timeout?:~a aggrsend?:~a acc: ~a"
 				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind 
 				(ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
-				(token-present? (tok ,return-timeout-handler retid))
-				(token-present? (tok ,return-aggr-and-send retid))
+				,(if aggr `(token-scheduled? (tok ,return-timeout-handler retid)) '_)
+				(token-scheduled? (tok ,return-aggr-and-send retid))
 				,acc)
 			   (void)))
 		       
@@ -519,7 +558,8 @@
 		   (if (eq? flag ',RHLOCAL)
 		       ;; When we get the local value, we lump it together:
 		       (begin
-			 (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 'val))
+			 (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
+					      `(cons val ,acc)))
 			 ;; Now kill the scheduled timer token if there is one, and set a new timer.
 			 ;; (Don't bother with the if, because default semantics for deschedule 
 			 ;; is to fizzle if its not there.)
@@ -529,8 +569,13 @@
 			 (call (tok ,return-aggr-and-send retid) toind viaind)
 
 			 ,@(COMMENT "Reset the default time-out timer")
-			 (token-deschedule (tok ,return-timeout-handler retid));)
-			 (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
+			 ,@(if aggr
+			    `((begin 
+			       (token-deschedule (tok ,return-timeout-handler retid));)
+			       (dbg "%d.%d: Setting time-out!!" (my-clock) (my-id))
+			       (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
+			       (dbg "%d.%d: Time-out set: %d" (my-clock) (my-id) (token-scheduled? (tok ,return-timeout-handler retid)))))
+			    ())
 			 )
 		       
 		       ;; Otherwise, flag = RHREMOTE
@@ -539,8 +584,19 @@
 			     ;(DEBUG_GRADIENTS (dbg '"  CANCELED, not destination."))
 			     (void) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
 			     ;; Now we simply accumulate and wait for the local call.
-			     (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 'val))
-			     )
+			     (begin 
+			       (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 
+					       `(cons val ,acc)))
+
+			       ,(if aggr 
+				 `(begin 
+				    ,@(COMMENT "Now we don't reset the timer, but we ENSURE that it's set:")
+				    (if (not (token-scheduled? (tok ,return-timeout-handler retid)))
+					(timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)))
+				 `(begin
+				    ,@(COMMENT "For non-aggregated returns we just send up immediately.")
+				    (call (tok ,return-aggr-and-send retid) toind viaind))
+			       )))
 		       )]
 		;; And finally add the new return handler(s) to the other bindings:
 		,@(append etb ttb vtb stb))
@@ -697,7 +753,7 @@
 			  (nodepgm (tokens ,toks ...))))
 
 	 (let ([tainted (list->set (findall-emittoks toks))])
-	   (disp "TAINTED: " tainted)
+	   ;(disp "TAINTED: " tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(,[processtb -> newtoks toks] ...)
