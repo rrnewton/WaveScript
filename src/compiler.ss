@@ -1147,20 +1147,20 @@
        (desugar-let-stored 
        (cleanup-token-machine
 	'(desugar-gradient-lang
-  '(program
-     (bindings)
-     (nodepgm
+	  '(program
+	    (bindings)
+	    (nodepgm
        (tokens (node-start subtok_ind () (stored) (void))
          (SOC-start
            subtok_ind
            ()
            (stored)
            (let-stored
-             ((ver_9 0))
-             (set! ver_9 (+ 1 ver_9))
+             ((ver_11 0))
+             (set! ver_11 (+ 1 ver_11))
              (let* ()
-               (call (tok tok1 0) 'noparent (my-id) 0 ver_9)
-               (bcast (tok tok1 0) (my-id) (my-id) 1 ver_9))))
+               (call (tok tok1 0) 'noparent (my-id) 0 ver_11)
+               (bcast (tok tok1 0) (my-id) (my-id) 1 ver_11))))
          (catcher subtok_ind (v) (stored) (printf '" ~a " v))
          (tok1
            subtok_ind
@@ -1177,12 +1177,12 @@
                         (< g_hopcount stored_g_hopcount)))
                (begin
                  (printf '"_ ")
-                 (let ([toind_7 0])
-                   (let ([viaind_8 0])
-                     (let ([aggrID_3 (begin
-                                       (+ (* 1000 toind_7) viaind_8))])
-                       (call (tok greturnhandler_1 aggrID_3) (my-id)
-                         'rhlocal (my-id) toind_7 viaind_8))))
+                 (let ([toind_9 0])
+                   (let ([viaind_10 0])
+                     (let ([aggrID_5 (begin
+                                       (+ (* 1000 toind_9) viaind_10))])
+                       (call (tok greturnhandler_2 aggrID_5) (my-id)
+                         'rhlocal (my-id) toind_9 viaind_10))))
                  (if (not (eq? 'nongrad-invoke g_hopcount))
                      (begin
                        (set! stored_g_parent g_parent)
@@ -1193,56 +1193,58 @@
          (node-start
            ()
            (let ([retid '0])
-             ;(token-deschedule (tok greturntimeouthandler_2 retid))
-             (timed-call 1000 (tok greturntimeouthandler_2 retid) 0 0)
-	     ))
-         (greturntimeouthandler_2 retid (toind viaind) (stored)
-	   (printf "TIMEOUT~a " (my-id))
-           (if (not (token-present? (tok greturnhandler_1 retid)))
-               (void)
-               (let ([oldacc_5 (ext-ref
-                                 (tok greturnhandler_1 retid)
-                                 acc_4)])
-                 (if (not (token-present? (tok tok1 viaind)))
-                     (begin)
-                     (let ([parentpointer_6 (ext-ref
-                                              (tok tok1 viaind)
-                                              stored_g_parent)])
-                       (if (not parentpointer_6)
-                           (begin (void))
-                           (if (eq? 'noparent parentpointer_6)
-                               (begin (call (tok catcher toind) oldacc_5))
-                               (begin
-                                 (bcast (tok greturnhandler_1 retid)
-                                   parentpointer_6 'rhremote oldacc_5 toind
-                                   viaind))))))))
-           ;(token-deschedule (tok greturntimeouthandler_2 retid))
+             (token-deschedule (tok greturntimeouthandler_3 retid))
+             (timed-call 1000 (tok greturntimeouthandler_3 retid) 0 0)))
+         (greturntimeouthandler_3 retid (toind viaind) (stored)
+           (call (tok greturnaggrsendhandler_4 retid) toind viaind)
+           (token-deschedule (tok greturntimeouthandler_3 retid))
            (timed-call
              1000
-             (tok greturntimeouthandler_2 retid)
+             (tok greturntimeouthandler_3 retid)
              toind
              viaind))
-         (greturnhandler_1
+         (greturnaggrsendhandler_4
+           retid
+           (toind viaind)
+           (stored)
+           (if (not (token-present? (tok greturnhandler_2 retid)))
+               (void)
+               (let ([oldacc_7 (ext-ref
+                                 (tok greturnhandler_2 retid)
+                                 acc_6)])
+                 (if (not (token-present? (tok tok1 viaind)))
+                     (begin)
+                     (let ([parentpointer_8 (ext-ref
+                                              (tok tok1 viaind)
+                                              stored_g_parent)])
+                       (if (not parentpointer_8)
+                           (begin (void))
+                           (if (eq? 'noparent parentpointer_8)
+                               (begin (call (tok catcher toind) oldacc_7))
+                               (begin
+                                 (bcast (tok greturnhandler_2 retid)
+                                   parentpointer_8 'rhremote oldacc_7 toind
+                                   viaind)))))))))
+         (greturnhandler_2
            retid
            (destid flag val toind viaind)
-           (stored (acc_4 val))
+           (stored (acc_6 val))
            (if (eq? flag 'rhlocal)
                (begin
-		 (printf " +~a " (my-id))
-                 (set! acc_4 val)
-                 (call (tok greturntimeouthandler_2 retid) toind viaind))
+                 (set! acc_6 val)
+                 (call (tok greturnaggrsendhandler_4 retid) toind viaind)
+                 (token-deschedule (tok greturntimeouthandler_3 retid))
+                 (timed-call
+                   1000
+                   (tok greturntimeouthandler_3 retid)
+                   toind
+                   viaind))
                (if (not (or (= destid '0) (= destid (my-id))))
-                   (begin (void))
-                   (begin
-                     (set! acc_4 val)
-                     ;(token-deschedule (tok greturntimeouthandler_2 retid))
-                     (timed-call
-                       1000
-                       (tok greturntimeouthandler_2 retid)
-                       toind
-                       viaind)))))))))))
+                   (void)
+                   (set! acc_6 val))))))))
+	))
        'timeout 5000)
-	unspecified]
+      unspecified]
 
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
@@ -1268,7 +1270,7 @@
 	  (let ((lst 
 		 (let ([prt (open-output-string)])
 		   (display "(" prt)
-		   (run-simulator-alpha prog ;'outport prt 
+		   (run-simulator-alpha prog 'outport prt 
 					'timeout 10000)
 		   (display ")" prt)
 		   (read (open-input-string (get-output-string prt))))))
