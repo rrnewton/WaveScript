@@ -432,6 +432,7 @@
 			    (bare-msg-object ,rator
 					     (list ,@rand*) current-vtime)
 			    current-vtime))]
+		  [(return ,[x]) x]
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,[rator] ,[rand*] ...)
@@ -611,7 +612,7 @@
 		  ;; Supporting the output of cps-tokmac also:
 		  [(kcall ,[rator]  ,[rand*] ...)
 		   `(,rator ,rand* ...)]
-		  [(lambda (,v) ,[bod]) `(lambda (,v) ,bod)]
+		  [(lambda (,v ...) ,[bod]) `(lambda (,v ...) ,bod)]
 
 		  [(,rator ,[rand*] ...)
 		   ;; This is an arbitrary scheme application. Where would these come from?
@@ -721,14 +722,15 @@
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.
-				,((process-statement tok tbinds allstored) body)
-				;; We must reverse the outgoing order because of how they were added:
-				(set-simobject-outgoing-msg-buf! this 
-	   		  	  (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
-				(set-simobject-local-msg-buf! this 
-                                  (append (simobject-local-msg-buf this) ;(reverse (simobject-local-msg-buf this)) 
-					  old-local))
-				(void))))))
+				(let ((this-handler-retval ,((process-statement tok tbinds allstored) body)))
+				  ;; We must reverse the outgoing order because of how they were added:
+				  (set-simobject-outgoing-msg-buf! this 
+	   		  	    (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing))
+				  (set-simobject-local-msg-buf! this 
+                                    (append (simobject-local-msg-buf this) ;(reverse (simobject-local-msg-buf this)) 
+					    old-local))
+				  this-handler-retval)
+				)))))
                          ]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")

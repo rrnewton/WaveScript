@@ -276,14 +276,16 @@
 (define these-tests 
   (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm)
-	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
 	       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
 		     rename-stored         ; cps-tokmac
 ;		     closure-convert        ;cleanup-token-machine
 		     )])
-		 (let ([prog (run-compiler ',tm)])
+		 (let ([prog (run-compiler ',tm
+					   'verbose
+					   )])
 		   (let ((prt (open-output-string)))
 		     (display "(" prt)
 		     (run-simulator-alpha prog 'outport prt)
@@ -752,6 +754,21 @@
 	     (read (open-input-string (get-output-string prt))))))
       (a b c d e)]
 
+     ["Make sure simulator can handle subcalls directly if need be #2."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+	 (let ((prog 
+		(cleanup-token-machine
+		 '(tokens 		   
+		   (SOC-start () (printf "~a " (subcall tok1)))
+		   (tok1 () (return 349))
+		 ))))
+	   (let ((prt (open-output-string)))
+	     (display "(" prt)       
+	     (run-simulator-alpha prog 'outport prt)
+	     (display ")" prt)
+	     (read (open-input-string (get-output-string prt))))))
+      (349)]
+
 
      
      ["Testing sim: 'manually' propogate a flood"
@@ -1142,111 +1159,6 @@
       unspecified]
 
 
-     ["Gradients: dissection of emitted code."      
-      (run-simulator-alpha 
-       (desugar-let-stored 
-       (cleanup-token-machine
-	'(desugar-gradient-lang
-	  '(program
-	    (bindings)
-	    (nodepgm
-       (tokens (node-start subtok_ind () (stored) (void))
-         (SOC-start
-           subtok_ind
-           ()
-           (stored)
-           (let-stored
-             ((ver_11 0))
-             (set! ver_11 (+ 1 ver_11))
-             (let* ()
-               (call (tok tok1 0) 'noparent (my-id) 0 ver_11)
-               (bcast (tok tok1 0) (my-id) (my-id) 1 ver_11))))
-         (catcher subtok_ind (v) (stored) (printf '" ~a " v))
-         (tok1
-           subtok_ind
-           (g_parent g_origin g_hopcount g_version)
-           (stored
-             (stored_g_parent '#f)
-             (stored_g_origin '#f)
-             (stored_g_hopcount '#f)
-             (stored_g_version '#f))
-           (if (or (begin (eq? 'nongrad-invoke g_hopcount))
-                   (begin (not stored_g_hopcount))
-                   (> g_version stored_g_version)
-                   (and (= g_version stored_g_version)
-                        (< g_hopcount stored_g_hopcount)))
-               (begin
-                 (printf '"_ ")
-                 (let ([toind_9 0])
-                   (let ([viaind_10 0])
-                     (let ([aggrID_5 (begin
-                                       (+ (* 1000 toind_9) viaind_10))])
-                       (call (tok greturnhandler_2 aggrID_5) (my-id)
-                         'rhlocal (my-id) toind_9 viaind_10))))
-                 (if (not (eq? 'nongrad-invoke g_hopcount))
-                     (begin
-                       (set! stored_g_parent g_parent)
-                       (set! stored_g_origin g_origin)
-                       (set! stored_g_hopcount g_hopcount)
-                       (set! stored_g_version g_version))))
-               (begin (void))))
-         (node-start
-           ()
-           (let ([retid '0])
-             (token-deschedule (tok greturntimeouthandler_3 retid))
-             (timed-call 1000 (tok greturntimeouthandler_3 retid) 0 0)))
-         (greturntimeouthandler_3 retid (toind viaind) (stored)
-           (call (tok greturnaggrsendhandler_4 retid) toind viaind)
-           (token-deschedule (tok greturntimeouthandler_3 retid))
-           (timed-call
-             1000
-             (tok greturntimeouthandler_3 retid)
-             toind
-             viaind))
-         (greturnaggrsendhandler_4
-           retid
-           (toind viaind)
-           (stored)
-           (if (not (token-present? (tok greturnhandler_2 retid)))
-               (void)
-               (let ([oldacc_7 (ext-ref
-                                 (tok greturnhandler_2 retid)
-                                 acc_6)])
-                 (if (not (token-present? (tok tok1 viaind)))
-                     (begin)
-                     (let ([parentpointer_8 (ext-ref
-                                              (tok tok1 viaind)
-                                              stored_g_parent)])
-                       (if (not parentpointer_8)
-                           (begin (void))
-                           (if (eq? 'noparent parentpointer_8)
-                               (begin (call (tok catcher toind) oldacc_7))
-                               (begin
-                                 (bcast (tok greturnhandler_2 retid)
-                                   parentpointer_8 'rhremote oldacc_7 toind
-                                   viaind)))))))))
-         (greturnhandler_2
-           retid
-           (destid flag val toind viaind)
-           (stored (acc_6 val))
-           (if (eq? flag 'rhlocal)
-               (begin
-                 (set! acc_6 val)
-                 (call (tok greturnaggrsendhandler_4 retid) toind viaind)
-                 (token-deschedule (tok greturntimeouthandler_3 retid))
-                 (timed-call
-                   1000
-                   (tok greturntimeouthandler_3 retid)
-                   toind
-                   viaind))
-               (if (not (or (= destid '0) (= destid (my-id))))
-                   (void)
-                   (set! acc_6 val))))))))
-	))
-       'timeout 5000)
-      unspecified]
-
-
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
@@ -1439,6 +1351,19 @@
 		  (cddr (rdc x)))
 	 
 	 ))]
+
+     ["Gradients: Now try aggregated greturn."
+      (tm-to-list
+	'(tokens 
+	  (SOC-start () (gemit tok1))
+	  (catcher (x) (printf "~a " x))
+	  (tok1 () 
+		(greturn (gdist)
+			 (to catcher)
+			 (seed 0)
+			 (aggr sum)))
+	  (sum (x y) (+ x y))))
+      unspecified]
 
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
