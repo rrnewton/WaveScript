@@ -102,7 +102,7 @@
     (define STORED_VERSION_ARG 'stored_g_version)
 
     ;; This signifies that we're at the root of the tree.
-    (define NO_PARENT 'noparent)
+    (define NO_PARENT 'atroot)
 
     ;; Value for the g_hopcount argument to indicate that it's a local (non-gradient) invocation.
     (define LOCALCALL 'nongrad-invoke)
@@ -396,6 +396,7 @@
 	      (let ([aggr_ID (unique-name 'aggr_ID)]
 		    [acc (unique-name 'acc)]
 		    [oldacc (unique-name 'oldacc)]
+		    [stored_seed (unique-name 'stored_seed)]
 		    [parent_pointer (unique-name 'parent_pointer)]
 		    [return-handler (unique-name 'greturn-handler)]
 		    [return-timeout-handler (unique-name 'greturn-timeout-handler)]
@@ -431,15 +432,16 @@
 		   ;; Do the aggregate-and-send:
 		   ,@(DEBUG_GRADIENTS
 		      `(dbg "%d.%d  Time-out fired!" (my-clock) (my-id)))
-		   (if ,(if aggr ''#t 
-			    `(and (ext-ref (tok ,return-handler retid) ,acc)
-				       (not (null? (ext-ref (tok ,return-handler retid) ,acc)))))
-		       (call (tok ,return-aggr-and-send retid) toind viaind))
-		   ,@(COMMENT "Reset the default time-out timer")
+
+		   (call (tok ,return-aggr-and-send retid) toind viaind)
+
+		   ,@(COMMENT "Reset the default time-out timer, if there's anything left to aggregate")
 		   
-		   (if ,(if aggr ''#t ;; COULD OPTIMIZE THIS.
-			    `(and (token-present? (tok ,return-handler retid)) ;; <- OUTDATED
-				  (not (null? (ext-ref (tok ,return-handler retid) ,acc)))))
+		   (if (and (token-present? (tok ,return-handler retid))
+			    (not (equal? (ext-ref (tok ,return-handler retid) ,acc)
+					 ;(ext-ref (tok ,return-handler retid) ,stored_seed)
+					 ,seed_exp
+					 )))
 		       (begin 
 			 ,@(DEBUG_GRADIENTS
 			    `(dbg "%d.%d: Reset timer again." (my-clock) (my-id)))
@@ -536,7 +538,9 @@
 		   ;; Must be initialized with the seed value before aggregation begins.
 		   ;; If there is no aggregator, the accumulator stores just a single value,
 		   ;; each returned datum is handled/transmitted seperately.
-		   (stored [,acc ,(if aggr seed_exp ''())])
+		   (stored 
+;		    ,@(if aggr `([,stored_seed ,seed_exp]) ())
+		    [,acc ,(if aggr seed_exp ''())])
 		   
 		   ,@(DEBUG_GRADIENTS
 		      `(if (or (eq? flag ',RHLOCAL)
@@ -546,7 +550,7 @@
 			   (dbg '"~a.~a: Return Handler<~a>: args (~a ~a ~a to:~a.~a via:~a.~a) prnt:~a timeout?:~a aggrsend?:~a acc: ~a"
 				(my-clock) (my-id) retid destid flag val ',to toind ',via viaind 
 				(ext-ref (tok ,via viaind) ,STORED_PARENT_ARG)
-				,(if aggr `(token-scheduled? (tok ,return-timeout-handler retid)) '_)
+				,(if aggr `(token-scheduled? (tok ,return-timeout-handler retid)) ''NA)
 				(token-scheduled? (tok ,return-aggr-and-send retid))
 				,acc)
 			   (void)))

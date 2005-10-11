@@ -276,7 +276,7 @@
 (define these-tests 
   (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm)
-	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
+	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
 	       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -769,7 +769,6 @@
 	     (read (open-input-string (get-output-string prt))))))
       (349)]
 
-
      
      ["Testing sim: 'manually' propogate a flood"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
@@ -916,6 +915,19 @@
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
       ((1 2 3) (1 10 3) (1 10 10) (10 10 10))]
+
+; FIXME: HAVEN'T FIXED THE SIM UP FOR THIS YET:
+#;
+     ["Stored vars: Check order of evaluation for stored vars."
+      , (tm-to-list
+	'(tokens 
+	  (SOC-start () (call tok1) (call tok1) (call tok1))
+	  (tok1 () 
+		(stored [a (begin (printf "a ") 3)]
+			[b (begin (printf "b ") (+ 1 a))])
+		(printf "~a " (+ a b)))))
+      ]
+     
 
      ["Now keep stored vars on all 1-hop neighbors, make sure they don't change."  
       ,(tm-to-list
@@ -1124,7 +1136,8 @@
 	    ))))
 	(#t (0 1 2) #t)]
 
-
+;; This case was too fragile and dependent on the ordering.  I could make it better and bring it back.
+;; Problem is that it depends on the aggregator being turned on, because without aggregation we no longer use the timer.
      ["Gradients: Make sure the timer gets set right. "
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
@@ -1202,7 +1215,7 @@
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f]
 		     [simalpha-channel-model 'lossless]
-		     [simalpha-failure-module 'none])
+		     [simalpha-failure-mode 'none])
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -1245,6 +1258,7 @@
 			       (rdc (cddr x))))))]
 
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
+      retry
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f]
 		     [simalpha-consec-ids #t]
@@ -1297,6 +1311,7 @@
 	 ))]
 
      ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
+      retry
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f])
       (fluid-let ([pass-names
@@ -1330,40 +1345,263 @@
 		   (display "))" prt)
 		   (read (open-input-string (get-output-string prt))))))
 	    ;(for-each (lambda (x) (display x) (newline)) lst)
-	    lst
+
+
+	    (list 
+	     lst
+	    (map (lambda (ls)
+		   (let ((small (filter (lambda (n) (< n 100)) ls))
+			 (big   (filter (lambda (n) (> n 100)) ls)))
+		     (list (length big) (length small))))
+
+		 ;; Don't count first or last batch:
+		 (cddr (rdc lst))))
+
 	    ))))
 
-      ,(lambda (x) 
+      ,(lambda (result) 
 	 (and 
-	 ;; Let's make sure the list increases in distance at first:
-	 ;; Check the first three.
-	 ; (let ([one   (/ (apply + (car x)) (length (car x)))]
-; 	       [two   (/ (apply + (cadr x)) (length (cadr x)))]
-; 	       [three (/ (apply + (caddr x)) (length (caddr x)))])
-; 	   (< one two three))
-
 	  ;; This asserts that there are more two-hop than one-hop neighbors:
-	  (andmap (lambda (ls)
-		    (let ((small (filter (lambda (n) (< n 100)) ls))
-			  (big   (filter (lambda (n) (> n 100)) ls)))
-		      (> (length big) (length small))))
-		  ;; Don't count first or last batch:
-		  (cddr (rdc x)))
-	 
+	  (andmap (lambda (x) (apply > x))
+		  (cadr result))
 	 ))]
 
      ["Gradients: Now try aggregated greturn."
-      (tm-to-list
+      (filter (lambda (x) (not (zero? x)))
+	      ,(tm-to-list
+		'(tokens 
+		  (SOC-start () (gemit tok1))
+		  (catcher (x) (printf "~a " x))
+		  (tok1 () 
+			(greturn (gdist)
+				 (to catcher)
+				 (seed 0)
+				 (aggr sum)))
+		  (sum (x y) (+ x y)))))
+      ,(lambda (ls)
+	 (and (= (length ls) 1)
+	      (> (car ls) 0)))]
+
+     ["Gradients: Now try cons-aggregated greturn from one-hops"
+      retry  ;; It's possibly we have no neighbors at all!
+      (map list->set
+	   (filter (lambda (x) (not (null? x)))
+		   , (tm-to-list
+		     '(tokens 
+		       (SOC-start () (call tok1 '5))
+		       (tok1 (reps)
+			     (gemit tok2)
+			     (if (> reps 1)
+				 (timed-call 1000 tok1 (- reps 1))))
+		       (catcher (x) (printf "~a " x))
+		       (tok2 () 
+			     (greturn (list (gdist))
+				      (to catcher)
+				      (seed ())
+				      (aggr f)))
+		       (f (x y) (append x y))))))
+      ;; Epoch staggered aggregation
+      ((0) (0 1) (0 1) (0 1) (0 1) (1))
+      ]
+
+     ["Gradients: Same thing but to whole network."
+      , (tm-to-list
 	'(tokens 
-	  (SOC-start () (gemit tok1))
+	  (SOC-start () (call tok1 '10))
+	  (tok1 (reps)
+		(gemit tok2)
+		(if (> reps 1)
+		    (timed-call 1000 tok1 (- reps 1))))
 	  (catcher (x) (printf "~a " x))
-	  (tok1 () 
-		(greturn (gdist)
+	  (tok2 () 
+		(grelay)
+		(greturn (list (gdist))
 			 (to catcher)
-			 (seed 0)
-			 (aggr sum)))
-	  (sum (x y) (+ x y))))
+			 (seed ())
+			 (aggr f)))
+	  (f (x y) (append x y))))
+      ;; Epoch staggered aggregation
+	,(lambda (x) 
+	;; Let's make sure the list increases in distance at first:
+	;; Check the first three.
+
+	(let ([one   (/ (apply + (car x)) (length (car x)))]
+	      [two   (/ (apply + (cadr x)) (length (cadr x)))]
+	      [three (/ (apply + (caddr x)) (length (caddr x)))])
+	  (< one two three)))]
+
+     ["Gradients: Now look at clock-skew."
+      (map (lambda (ls) (and (not (null? ls))
+			     (- (apply max ls) (apply min ls))))
+      , (tm-to-list
+	'(tokens 
+	  (SOC-start () (call tok1 '10))
+	  (tok1 (reps)
+		(gemit tok2)
+		(if (> reps 1)
+		    (timed-call 1000 tok1 (- reps 1))))
+	  (catcher (x) (printf "~a " x))
+	  (tok2 () 
+		(grelay)
+		(greturn (list (my-clock)) ; (my-id)))
+			 (to catcher)
+			 (seed ())
+			 (aggr f)))
+	  (f (x y) (append x y)))))
+      ;; Epoch staggered aggregation
+      ,(lambda (x) 
+	;; Let's make sure the list increases in distance at first:
+	;; Check the first three.
+	 (apply <= (list-head (filter number? x) 5)))]
+
+     ["Gradients: now launch three nested gradients. (NONDETERMINISTIC)"
+      retry ;; Must retry, network might not be connected
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f]
+		     [simalpha-failure-mode 'none]
+		     [simalpha-channel-model 'lossless]
+		     [simalpha-consec-ids #t]
+		     [simalpha-num-nodes 30])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () 
+			     (printf "(~a ~a \"A launching\")\n" (my-clock) (my-id))
+			     (gemit a)
+			     (timed-call 1000 print-dists))
+		  (print-dists ()
+			     (printf "(\"After a period of time, dists at base are:\" ~a ~a ~a)"
+				     (gdist a) (gdist b) (gdist c)))
+		  (a () (grelay)
+		        (if (= (my-id) 15)
+			    (begin 
+			      (printf "(~a ~a ~a \"B launching\")\n" (my-clock) (my-id) (gdist a))
+			      (gemit b))))
+		  (b () (grelay)
+		        (if (= (my-id) 20)
+			    (begin
+			      (printf "(~a ~a ~a ~a \"C launching\")\n" (my-clock) (my-id) (gdist a) (gdist b))
+			      (gemit c))))
+		  (c () (grelay)
+		        (if (= (my-id) BASE_ID)
+			    (begin 
+			      (printf "(~a ~a ~a ~a ~a \"C hit home!\")\n" (my-clock) (my-id) (gdist a) (gdist b) (gdist c))
+			      ;(printf "home")
+			      )))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	     lst
+	     ))))
+      ,(lambda (ls)
+	 ;; Received all messages:
+	 (= (length ls) 5))]
+
+     ["Gradients: return value through three nested gradients. (NONDETERMINISTIC)"
+      retry ;; Must retry, network might not be connected
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f]
+		     [simalpha-failure-mode 'none]
+		     [simalpha-channel-model 'lossless]
+		     [simalpha-consec-ids #t]
+		     [simalpha-num-nodes 30])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () 
+			     (gemit a)
+			     (timed-call 1000 return-up))
+		  (return-up ()
+			     (greturn 8967
+				      (to catcher1)
+				      (via c)))
+		  (catcher1 (v) (greturn v 
+					 (to catcher2)
+					 (via b)))
+		  (catcher2 (v) (greturn v
+					 (to catcher3)
+					 (via a)))
+		  (catcher3 (v) (printf "~a ~a ~a ~a" (my-id) 
+					(> (my-clock) 1000)
+					(< (my-clock) 2000)
+					v))
+
+		  (a () (grelay)
+		        (if (= (my-id) 15)
+			      (gemit b)))
+		  (b () (grelay)
+		        (if (= (my-id) 20)
+			      (gemit c)))
+		  (c () (grelay))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog 'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	     lst
+	     ))))
+      (,BASE_ID #t #t 8967)]
+
+
+     ["Gradients: let a thousand flowers bloom (gradient from everywhere)."
+      retry ;; Must retry, network might not be connected
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f]
+		     [simalpha-failure-mode 'none]
+		     [simalpha-channel-model 'lossless]
+		     [simalpha-consec-ids #t]
+		     [simalpha-num-nodes 30])
+      (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored          
+					;cps-tokmac ;closure-convert        
+		     cleanup-token-machine
+		     )])
+	(let ([prog
+	       (run-compiler
+		'(tokens
+		  (SOC-start () 
+			     (gemit spark)
+			     ;(timed-call 1000 return-up)
+			     )
+		  (spark () (grelay)
+			    (printf "(Spark ~a)\n" (my-id))
+			    (gemit secondary))
+		  (secondary () (grelay)
+			     (printf "(~a ~a ~a ~a)\n" (gorigin) (gparent) (my-id) (gdist)))
+		  ))])
+	  (let ((lst 
+		 (let ([prt (open-output-string)])
+		   (display "(" prt)
+		   (run-simulator-alpha prog) ;'outport prt)
+		   (display ")" prt)
+		   (read (open-input-string (get-output-string prt))))))
+	     lst
+	     ))))
+      ;; FIXME : Finish
       unspecified]
+
 
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
