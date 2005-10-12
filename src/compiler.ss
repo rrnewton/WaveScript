@@ -1079,7 +1079,7 @@
 		  `(ERROR: ,others)))
 	    ))))
       ;; This timing stuff is a bit fragile
-      ((10000 : noparent 10000 0 1 : 2) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))
+      ((10000 : atroot 10000 0 1 : 2) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))
       ]
 
 
