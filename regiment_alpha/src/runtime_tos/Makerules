@@ -1,5 +1,5 @@
 #-*-Makefile-*- vim:syntax=make
-#$Id: Makerules,v 1.2 2004/12/01 19:39:05 newton Exp $
+#$Id$
 
 # @author Cory Sharp <cssharp@eecs.berkeley.edu>
 

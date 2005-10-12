@@ -1,4 +1,4 @@
-// $Id: Location.nc,v 1.1 2004/08/06 16:23:15 newton Exp $
+// $Id$
 
 /* Copyright (c) 2002 Intel Corporation
  * All rights reserved.
