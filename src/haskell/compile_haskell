@@ -1,0 +1,3 @@
+#!/bin/sh
+        ghc -fext-core -fwarn-incomplete-patterns --make assembler -o assembler
+

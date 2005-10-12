@@ -1,0 +1,52 @@
+
+WHERE STUFF IS:
+======================================================================
+
+Unit Tests:
+The unit test executor itself is in generic/helpers.ss
+
+Every file that has unit tests defines its own "these-tests" variable,
+as well as a "test-this" variable.  (It may optionally bind these to
+other (more unique) names as well: test1, test2, and so on.)
+
+The function "test-units" runs (or should) all the unit tests in the
+system.
+
+I have made some effort to insure that a unit-tests will run after
+only loading the file in question.  Anything bigger counts as a
+"system test", and goes in compiler.ss.  However, in a bunch of places
+this doesn't quite make sense (in particular, utility files and the
+cleanup-token-machine pass), so I believe this convention is begining
+to slip in certain places. -rrn [2005.09.24]
+
+  Simulator unit tests:
+  The old simulator nought, which had problems, also had many unit tests.
+  The current simulator alpha doesn't have so many, because I decided
+  to start doing things that seem like "system tests" in compiler.ss,
+  and most of simulator alpha's tests fall into this category.
+  I should, however, look at the progs in simulator_nought.examples.ss
+  and make simulator_alpha tests for them..
+  -rrn [2005.09.24]
+ 
+
+
+======================================================================
+
+[2004.11.13]
+
+I need to explain the multi-backend structure of this project.  For
+now suffice it to say that it supports two backends (drscheme and
+chezscheme).  There's a directory for shared code (generic) and
+directories specific to each.  Sometimes within the shared code I
+might use the "current_interpreter" variable to switch the behavior
+based on which backend we're using.
+
+
+[2005.02.13]
+
+I have tagged all my little shorthand commands for invoking the system with a
+";; shorthand" comment.  By searching for this I should be able to find all the 
+shorthands.  These are esoteric, and will make the system confusing to
+others, but you should just be able to ignore them.
+
+

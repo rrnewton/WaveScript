@@ -1,0 +1,253 @@
+I'm writing down most of my *thinking* in AMORIDEAS.emacs.txt.  But I
+realized that my day-to-day development issues should go in a separate
+file; so here we are. -2004.04.29
+
+[2004.04.29]
+  Hmm, without "identifier-syntax" I can't get things working fully
+under PLT.  Until I can write a "lazy-letrec" macro for PLT I'm not
+going to be able to have testing in drscheme.  Sigh.  Ok, for the
+moment I'm just going to focus on the chez code.
+
+
+[2004.05.21]
+
+WEIRD. Chez scheme started up with the normal heap is hanging on
+(define-record a (b c)).  What is wrong with my system right now??
+
+[2004.05.26]
+  Right now I'm trying to hack the final Sim_nought together.
+Annoying model/view issues without object system.  It's gonna be work
+to get the plt version working.
+
+[2004.05.27]
+  15:30: There! Dammit, the basic simulator works in swl.  Now gotta
+get an actual meaningful display of it up.
+  17:30: Yay! Ok, for the first time runnning a little token-machine
+with graphics!
+
+[2004.06.09] {How to return values?}
+ 9:47am:   Ok, I'm trying to tie together the compiler and the
+graphical simulator.  Right now I'm trying to figure out how
+*returning values* should work.  Especially since almost all the
+return values will be streams.
+
+ 8:05pm:  I'm all screwed up now wrt the status of local bindings for
+token handlers.  I'm trying to make my token-language a little wider
+than it needs to be for my compiler, that makes it easier for me to
+make test-cases by hand. 
+
+[2004.06.10]
+  Need to think about what happens when two processes are using
+gradients when the same token name, and they start hitting eachother!
+Sonuds like a big problem, how did that not occur to me before.
+
+
+[2004.06.13]
+  It's annoying to add more complexity like this.  But I'm adding an
+(ONLYPLT <expr>*) and possibly ONLYCHEZ syntax to my code in the
+generic/ branch.  SCRATCH THAT.  Not doing it yet.  Might do it soon
+tho, it's not that unreasonably an idea.
+
+[2004.06.16]
+  Dammit I got burned again by a recompilation failure on
+graphics_stub.zo.  PLTs system for time-stamp checks on compiled files
+is totally broken...  Or maybe my clock skew is all to blame.
+  Overall my ratio of messing with my environment vs. making progress
+has been horrible, and this isn't entirely my fault.  My environment
+has big problems.  Sigh, I should have used a safer language, I don't
+think I'm really getting enough benifits from scheme... but it's too
+late to back out now.  Eventually it will be a haskell compiler, so
+theoretically I can dump this compiler as soon as I'm done with my
+masters.
+  Although, even given my decisions thusfar, it was a bad idea to make
+a simulator at all.. I *totally* should have just hacked onward
+towards NesC.  Sigh.
+
+1:33pm: *THere* all the damn graphical simulator tests work in PLT
+also..
+
+[2004.06.17]
+URGH.  Having problems returning a stream of answers.  Can't nest
+engines dammit!  So run-flat-threads is not a sufficient interface...
+
+Hmmm strange bug right now, trying to get my stream-outputting
+simulator to work.  It'll run for a while and then get an invalid
+application for soc-return.  How does it suddenly come out of that
+fluid-let?  What's with that?
+
+[2004.07.07]
+Ok, need to drive to finish up a demo for tomorrow.  I don't have
+*returns* working right.  That's the priority for right this second.
+Making a big fat complex test in the test-suite for simulator_nought.ss.
+Got test suite up for simulator_nought with the return-test.  Now for
+a bigger test that actual returns some values!
+
+*) Rudimentary heartbeat
+*) Time and widen the aggregation-window...
+
+[2004.07.13]
+Ok, gonna do a refactoring to lift out a "build-call" within simulator_nought.
+
+
+
+TODO: Fix unit-tester so that it won't give the special 'error value
+to the oracle!!!
+
+[2004.07.27] Trying to finish return values
+  Ok, I was going to add a time-window for the return values, but
+right now I'm deciding between that and an explicit generation
+counter.  But how would I know whether I've gotten everything in
+the generation?  Could use a safely large time-window and seperate
+out the different generations within it?
+
+[2004.07.30] {Tokens first class and skeleton pushing}
+  Ok, going to make token-names *first class values*.  Reason is, that
+map is going to dynamically pass along the name of the token that
+provides the skeleton for the map.  I could do this with a static
+analysis, but that makes me even less scalable to more general
+language features.
+  ACTUALLY, I take it back, I may do that in the future, but right now
+I'm just going to introduce a simple propogate-skeletons pass which
+annotates folds appropriately.
+
+I still need to make tokens first class at somepoint... right now I'm
+being inconsistent with them.  I should also right down a type-system
+and some semantics for the token machines.  (Also need to think about
+Matt's modifications...)
+
+Sigh, right now I'm throwing a bunch of hackery into deglobalize that
+should probably properly belong in other passes.  This is bad form.
+But some of these things are so experimental and temporary, that
+setting up extra passes for them seems not worth it...
+
+[2004.08.06]
+  Reading about TinyOS.  I like how you can wire outwires to multiple
+components. Like hooking Main.StdControl to multiple targets.  But
+what are the semantics for which of these calls comes first?  In the
+order you list the edges??
+
+[2004.08.11]
+I need to sort things out... I'd like all areas to take a single
+argument carrying their value.. but regions must be otherwise.  "this"
+isn't going to be first class in the token-machine abstraction, so
+it's not viable for Regions to pass "this" as the token argument.
+  Problem is when you're generating code for "filter" you don't know
+off the bat whether it's running against a Region, or some other Area.
+
+
+We can always just pass null, or the node id as the value carried for
+region membership...
+
+[2004.08.15]
+Ok I'm working on places and routing now.  Maybe next I need pull/push
+and/or known/unknown annotations.  I really like doing more of the
+work before deglobalize.
+
+[2004.08.16]
+Ok, I'm digging into TinyOS a bit more now.  I've used it
+embarassingly little.  Notes...
+  Data segment of a message is fixed to 29 bytes.  Don't put more than
+that in it!  
+  TOSH_DATA_LENGTH
+  TOS_LOCAL_ADDRESS = our local address
+
+[2004.08.20]
+  So that TOS_Msg struct definition is in AM.h
+
+[2004.09.07]
+WHOA! If I have a BareSendMsg interface (wired to UARTNoCRC...), when
+I send the message it *also* fires the sendDone event from this
+*other* SendMsg component I have!??!  I guess it's just determined by
+the message type, and doesn't give a damn about the static component
+bindings and whether or not you sent with the corresponding send method....
+
+But I still can't get a message sent with a BareSendMsg interface...
+ 
+[2004.09.29]
+
+There's some serious lack of clarity in my head right now as to what
+the abstraction boundary should be between the generated NesC code and
+the static NesC runtime.  As much as possible should be factored over
+to the runtime side.  But the generated code needs to provide the
+actual handler for tokens.  Although that can just be *one* function.
+
+WAIT: stupid question, but TinyOs does make a seperate instantiation
+for each use of each module?  Or are all timers the same timer!?
+
+[2004.10.17]
+I finished my brief return to messing with the front-end.  Looking at
+this NesC code again.  I see the FIFO I set up is working correctly
+now.
+
+
+[2004.10.21]
+
+Gonna switch it so no prims take LISTS..
+
+[2004.10.24]
+
+Sigh, right now I'm hacking on the simulator, trying to get it back up
+to speed...  Doing some cleanup and documentation in the process.
+
+Adding "reject".  It has a pretty yucky semantics at the minute.  I
+need to simplify simplify...  It's inclusion presently is yet another
+quick and nasty hack.
+
+[2004.11.04]
+
+The component model is tricky... you need to remember to get
+StdControl to things.  I still have very embarassing
+non-understandings of the way things work.
+
+I need to understand the memory management a lot better.  I don't know
+when it's safe for me to give a pointer to a send or receive, because
+I don't want the memory to be corrupted while something else still
+needs it.  For example what on earth happens if I send a pointer to a
+local variable to SendMsg.send??
+
+[2004.11.05]
+
+Ok, making a relatively big change here.  I've got the tokenhandlers
+just working right off the message (token), figuring that the token is already
+allocated, and they can use that.  This is a bad assumption, because
+sometimes it isn't... and allocating an extra whole TOS_Msg is horrible.
+
+Right now I have really broken buffer management, I need to get some
+locks on things and try to make sense of stuff. 
+
+[2004.11.08]
+
+I have had some seriously bad experience using the tossim simulator.
+It will hang, I don't always think the gui display is saying the right
+thing, etc...
+
+[2004.12.01]
+
+Ok, trying to get back into it for a final run of (pre-masters)
+hacking.
+
+Grr.. trying to run drscheme on jetta still gets the symbol error with
+__libc_stack_end from ld-linux.so.2  (GLIBC 2).  Sigh.  
+
+Could try hacking in my own version and using ldconfig...
+
+[2004.12.05]
+
+Wow, Mondrian had support for dynamic specialization stuff?
+
+[2004.12.06]
+
+Messing around with the simulator and GUI, there's some severe
+timing-dependency problems there.  I can do a simulation at 20 nodes
+and have things basically work, but then not work at 100 nodes.
+
+Man if I actually get anyone else to work on this with me maybe the
+right thing to do for the second version would be to do it in Java or
+something (with a C-like external rep for Token Machines).
+
+
+[2005.01.13]
+
+Thusfar the NesC component system has just got in my way and annoyed me.
+
+
