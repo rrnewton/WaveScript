@@ -42,9 +42,11 @@
               ;; <TODO> optional second argument.. decider
 
 (define desugar-let-stored
+  (build-compiler-pass
+   'desugar-gradientsa
+   `(input)
+   `(output );(grammar ,basic_tml_grammar PassInput))
   (let ()
-
-
     ;; This is confusing, but there are so many small traversals of
     ;; the program tree in this pass that it is much easier to reuse this tree walk:
     ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
@@ -248,7 +250,7 @@
      `(desugar-let-stored-lang
        '(program (bindings ,constbinds ...)
 		 (nodepgm (tokens ,toks ...))))]))
-))
+)))
 
 ;; Here I've decided to start breaking my rules about unit tests requiring
 ;; only the content of that file.
