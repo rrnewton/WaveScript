@@ -282,16 +282,18 @@
 ;		     closure-convert        ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm
-					   'verbose
+					   ;'verbose
 					   )])
 		   (let ((prt (open-output-string)))
 		     (display "(" prt)
 		     (let ((result (run-simulator-alpha prog 
-							);'outport prt)
+					'timeout 10000
+					;'outport prt
+							)
 				   ))
 		     (display ")" prt)
 		     (read (open-input-string (get-output-string prt)))
-		     result
+		     result ;; Returns the soc-returned values rather than the output list.
 		     )))))
 	   )]
 
@@ -299,7 +301,30 @@
 ;; The rest of the system tests are in the files named tests_*.ss
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
 (define these-tests 
-  (let (;; moved tm-to-list to global scope
+  (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
+	 (lambda (tm)
+	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	       (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored         ; cps-tokmac
+;		     closure-convert        ;cleanup-token-machine
+		     )])
+		 (let ([prog (run-compiler ',tm
+					   'verbose
+					   )])
+		   (let ((prt (open-output-string)))
+		     (display "(" prt)
+		     (let ((result (run-simulator-alpha prog 
+					;'timeout 10000
+					'outport prt
+							)
+				   ))
+		       (display ")" prt)
+		       (read (open-input-string (get-output-string prt)))
+		       ;result ;; Returns the soc-returned values rather than the output list.
+		     )))))
+	   )]
 	)
   `( 
     ;; Urg, this is wrong:
@@ -1612,8 +1637,8 @@
       unspecified]
 
 
-     ["Run complex buffered-gradient file"
-      ,(tm-to-list (car (file->slist "demos/buffered_gradients.tm")))      
+     ["Run complex buffered-gradient TM from file"
+      ,(tm-to-list (car (file->slist "demos/buffered_gradients.tm")))
       unspecified]
 
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
