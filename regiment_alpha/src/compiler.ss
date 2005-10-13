@@ -135,18 +135,20 @@
 (define ct compile-to-tokens) ;; shorthand
 
 ;; This finishes off the compilation of scheme-format token machine.
+;; It's just a front-end to run-compiler that restricts the passes we run over.
 (define (assemble-tokmac tm . args)
+  (printf "assem tokmac...\n" )
   (let ([starting-place 
 	 (match tm 
-		[(,lang ,prog)
-		 (case lang
-		   [(add-places-language) 'analyze-places] ;; Not strictly correct.
-		   [(deglobalize-lang) 'deglobalize]
-		   [(cleanup-token-machine-lang) 'cleanup-token-machine]
-		   [(cps-tokmac-lang) 'cps-tokmac]
-
-		   ;[(haskellize-tokmac-lang) (error...
-		   [else 'deglobalize])])
+	   [(,lang ,prog)
+	    (case lang
+	      [(add-places-language) 'analyze-places] ;; Not strictly correct.
+	      [(deglobalize-lang) 'deglobalize]
+	      [(cleanup-token-machine-lang) 'cleanup-token-machine]
+	      [(cps-tokmac-lang) 'cps-tokmac]
+	      
+					;[(haskellize-tokmac-lang) (error...
+	      [else 'deglobalize])])
 	 ])
   (let ((passes (cdr (list-remove-before starting-place pass-names))))
     (disp "Assembling tokmac with passes: " passes)
@@ -270,11 +272,7 @@
 
 ;;======================================================================
 
-;; These are some of our system tests.  They test the compiler and the simulator as a whole.
-;; The rest of the system tests are in the files named tests_*.ss
-;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
-(define these-tests 
-  (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
+[define tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm)
 	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
 	       (fluid-let ([pass-names
@@ -288,10 +286,21 @@
 					   )])
 		   (let ((prt (open-output-string)))
 		     (display "(" prt)
-		     (run-simulator-alpha prog 'outport prt)
+		     (let ((result (run-simulator-alpha prog 
+							);'outport prt)
+				   ))
 		     (display ")" prt)
-		     (read (open-input-string (get-output-string prt)))))))
-	   )])
+		     (read (open-input-string (get-output-string prt)))
+		     result
+		     )))))
+	   )]
+
+;; These are some of our system tests.  They test the compiler and the simulator as a whole.
+;; The rest of the system tests are in the files named tests_*.ss
+;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
+(define these-tests 
+  (let (;; moved tm-to-list to global scope
+	)
   `( 
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
@@ -1603,6 +1612,10 @@
       unspecified]
 
 
+     ["Run complex buffered-gradient file"
+      ,(tm-to-list (car (file->slist "demos/buffered_gradients.tm")))      
+      unspecified]
+
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
@@ -1791,6 +1804,9 @@
 	   (catcher (v) (printf "Got return: ~a" v))
 	   (tok1 () (greturn (my-id) (to catcher)))
 	   )))
+
+
+
 
 
 ;; [2005.09.25] I forgot what this did, so it's hard to work on it right now:

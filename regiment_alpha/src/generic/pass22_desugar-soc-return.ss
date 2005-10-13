@@ -4,6 +4,10 @@
 
 ;; [2005.10.02] I was just doing this in cleanup-tokmac, but I'm going to move it here.
 
+;; [2005.10.12]
+;; For now we're only allowing soc-returns from the base-station node,
+;; there is no implicit "global tree" in TML.  (Regiment does generate
+;; code for such a global tree, but TML makes no such assumption.)
 
 (define desugar-soc-return
   (let ()

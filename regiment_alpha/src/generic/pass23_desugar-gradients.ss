@@ -78,8 +78,11 @@
 
 
 (define desugar-gradients
+  (build-compiler-pass
+   'desugar-gradientsa
+   `(input)
+   `(output ) ;(grammar ,foo PassInput))
   (let ()
-
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
     ;; For now coupling it to global "DEBUGMODE"
     ;(IFDEBUG
@@ -170,21 +173,30 @@
 ; 	  (append expr seed_val)]
   
 
+    ;; Handles primitives that take tokne args.
+    (define do-primitive-w-tokens
+      (lambda (prim args f)
+					;		  (disp "DOPRIM" prim args)
+	(apply append
+	       (map-prim-w-types 
+		(lambda (arg type)
+		  (match (cons type arg)
+		    [(Token . (tok ,tok ,[f -> e])) 
+;			(disp "HIT VALID: " tok)
+		     e]
+		       ;; Temp:
+;		       [(Token . ,[main-loop -> e])
+;			(disp "INVALID: " e)
+;			e]
+		    [(,other . ,[f -> e]) e]))
+		prim args))))
+
     (define find-emittoks
       (letrec ([tok-allowed-loop 
 		(lambda (expr)
 		  (match expr
 			 [(tok ,t ,[main-loop -> e]) e]
 			 [,e (main-loop e)]))]
-	       [do-primitive
-		(lambda (prim args)
-		  (apply append
-		  (map-prim-w-types 
-		   (lambda (arg type)
-		     (match (cons type arg)
-		       [(Token . (tok ,tok ,[main-loop -> e])) e]
-		       [(,other . ,[main-loop -> e]) e]))
-		   prim args)))]
 	       [main-loop
 		(lambda (expr)
 		  (match expr
@@ -249,7 +261,7 @@
 	     [(,prim ,args* ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
-	      (do-primitive prim args*)
+	      (do-primitive-w-tokens prim args* main-loop)
 	      ]
 
 	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
@@ -260,7 +272,9 @@
 
 	main-loop))
 
-
+    
+    ;; This is a front-end that takes an expression processor and wraps it
+    ;; so as not to accept tokens directly.
     (define (statictok loop)
       (lambda (tk)
 	(match tk
@@ -274,6 +288,8 @@
 	(letrec ([loop 
 	  (lambda (expr)
 	  (match expr
+	     [,x (guard (begin (disp "PEXPmatch" x) #f)) 3]
+
 	     [(quote ,const) (values () `(quote ,const))]
              ;; Only for recurring on tokens:
 	     [,num (guard (number? num))  (values () num)]
@@ -281,6 +297,7 @@
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
 	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
 	     [(ext-set ,[ttb t] ,v ,[e2]) (values ttb `(ext-set ,t ,v ,e2))]
+
 	     ;; This is "dynamic" context so no tainted names are allowed!
 	     ;; Basically gradient bearing token handlers are second class!
 	     [(tok ,t ,n) (guard (number? n))
@@ -303,7 +320,6 @@
 	      (values (append rtb btb)
 		      `(let ([,lhs ,rhs]) ,body))]
 	     
-
 	     [(gemit ,[(statictok loop) -> ttb tok] ,[atb* args*] ...)
 	      (values (apply append ttb atb*)
 	      (let ((ver (unique-name 'ver))
@@ -381,7 +397,6 @@
 			       ,STORED_VERSION_ARG
 			       ,VERSION_ARG)
 			  `(ext-ref ,tok ,STORED_VERSION_ARG)))]	     	    
-
 	     
 	     ;; TODO: THIS WILL NEED TO GET MUCH MORE COMPLEX:
 	     ;; I'm assuming this chunk of code will get hit with regular frequency.
@@ -664,10 +679,21 @@
 
 	     [(leds ,what ,which)                      
 	      (values () `(leds ,what ,which))]
-	     [(,prim ,[rtb* rands] ...)
-	      (guard (or (token-machine-primitive? prim)
-			 (basic-primitive? prim)))
-	      (values (apply append rtb*) `(,prim ,rands ...))]
+	     [(,prim ,args ...)
+	      (guard (or (begin (disp "Prim: " prim) #f)
+			 (token-machine-primitive? prim)
+			 (basic-primitive? prim))
+		     )
+	      ;; Treat token args differently:
+	      (let* ([results (map (lambda (x) 
+				     (mvlet ([(rtb rand) (do-primitive-w-tokens prim x loop)])
+				       (list rtb rand)))
+				   args)]
+		     [rtb* (map car results)]
+		     [rands (map car results)])
+		(values (apply append rtb*) `(,prim ,rands ...))
+		)]
+
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
 	     [(app ,[rtb rator] ,[rtb* rands] ...)
 	      (warning 'desugar-gradient
@@ -680,8 +706,7 @@
 		     "bad expression: ~s" otherwise)]
 	     ))])
 
-	  loop)))
-    
+	  loop)))    
 
     (define process-tokbind 
 	(lambda (env tokens tainted)
@@ -764,7 +789,7 @@
 	      `(desugar-gradient-lang
 		'(program (bindings ,constbinds ...)
 			  (nodepgm (tokens ,@(apply append toks newtoks)))))])))]))
-    ))
+    )))
 
 
 

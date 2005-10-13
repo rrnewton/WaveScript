@@ -21,8 +21,8 @@
 ;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Integer, Float, Bool, Object
-;;   List
+;;   Function, Number, Integer, Float, Bool, Object, Void
+;;   List, Array
 
 ;; Since I'm going to go statically typed eventually, Object is just
 ;; my way of signifying "for all alpha" right now.
@@ -280,6 +280,12 @@
      (null? (List) Bool)
      (list Object List)
      (append List List)
+     
+     (vector Object Array)
+     (make-vector (Integer Object) Array)
+     (vector-ref (Array Integer) Object)
+     (vector-set! (Array Integer Object) Void)
+     (vector-length (Array) Integer)
 
     ;; This is a syntax:
     ;(leds ...
