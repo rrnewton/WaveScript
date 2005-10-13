@@ -135,7 +135,7 @@
 ;; Replacing this the verbose case with a simple generic-traversal: 
 ;; FIXME: NOT DONE YET
 ; (define find-emittoks 
-;   (letrec ([do-primitive
+;   (letrec ([do-primargs
 ; 	    ;; We don't count direct references to tokens in primitive 
 ; 	    ;; arguments as tainted.
 ; 	    (lambda (prim args loopk)
@@ -172,24 +172,6 @@
 ; 	 [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
 ; 	  (append expr seed_val)]
   
-
-    ;; Handles primitives that take tokne args.
-    (define do-primitive-w-tokens
-      (lambda (prim args f)
-					;		  (disp "DOPRIM" prim args)
-	(apply append
-	       (map-prim-w-types 
-		(lambda (arg type)
-		  (match (cons type arg)
-		    [(Token . (tok ,tok ,[f -> e])) 
-;			(disp "HIT VALID: " tok)
-		     e]
-		       ;; Temp:
-;		       [(Token . ,[main-loop -> e])
-;			(disp "INVALID: " e)
-;			e]
-		    [(,other . ,[f -> e]) e]))
-		prim args))))
 
     (define find-emittoks
       (letrec ([tok-allowed-loop 
@@ -247,6 +229,7 @@
 
 	     [(return ,[e])  e]
 
+;; These are just primitives, and are treated as such:
 #|	     [(call ,[args*] ...) (apply append args*)]
 	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
 	     [(subcall ,[args*] ...) (apply append args*)]
@@ -261,8 +244,17 @@
 	     [(,prim ,args* ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
-	      (do-primitive-w-tokens prim args* main-loop)
-	      ]
+
+	       (define do-primargs-w-tokens;; Handles primitives that take tokne args.
+		(lambda (prim args f) ;; Takes a function for processing exprs 
+		  (map-prim-w-types 
+		   (lambda (arg type)
+		     (match (cons type arg)
+		       [(Token . (tok ,tok ,e)) (f e)]
+		       [(,other . ,e) (f e)]))
+		   prim args)))
+	       (apply append (do-primargs-w-tokens prim args* main-loop))
+	       ]
 
 	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
 	     [,otherwise
@@ -288,7 +280,7 @@
 	(letrec ([loop 
 	  (lambda (expr)
 	  (match expr
-	     [,x (guard (begin (disp "PEXPmatch" x) #f)) 3]
+;	     [,x (guard (begin (printf  "PEXPmatch ~s\n" x) #f)) 3]
 
 	     [(quote ,const) (values () `(quote ,const))]
              ;; Only for recurring on tokens:
@@ -643,18 +635,6 @@
 	       ))]
 	      
 	     [(return ,[etb e]) (values etb `(return ,e))]
-
-	     ;; This is a non-gradient call to a gradient-bearing token:
-	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
-	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
-	      (values (apply append etb atb*)
-		      `(,call-style (tok ,t e)
-				    '#f ;; gparent
-				    '#f ;; gorigin
-				    ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
-				    '#f ;; gversion
-			     ,args* ...))]
-
 	     
 	     ;; OTHERWISE, let it fall through to the prim case.
 	     ;; Call to non-gradient bearing token:
@@ -679,20 +659,44 @@
 
 	     [(leds ,what ,which)                      
 	      (values () `(leds ,what ,which))]
+
+
+	     ;; This is a non-gradient call to a gradient-bearing token:
+	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
+	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
+	      (values (apply append etb atb*)
+		      `(,call-style (tok ,t ,e)
+				    '#f ;; gparent
+				    '#f ;; gorigin
+				    ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
+				    '#f ;; gversion
+			     ,args* ...))]
+
 	     [(,prim ,args ...)
-	      (guard (or (begin (disp "Prim: " prim) #f)
+	      (guard (or ;(begin (disp "Prim: " prim args) #f)
 			 (token-machine-primitive? prim)
 			 (basic-primitive? prim))
 		     )
-	      ;; Treat token args differently:
-	      (let* ([results (map (lambda (x) 
-				     (mvlet ([(rtb rand) (do-primitive-w-tokens prim x loop)])
-				       (list rtb rand)))
-				   args)]
-		     [rtb* (map car results)]
-		     [rands (map car results)])
-		(values (apply append rtb*) `(,prim ,rands ...))
-		)]
+; 	      (DEBUG_GRADIENTS
+; 	       (if (memq prim '(call subcall bcast))
+; 		   (error 'desugar-gradients:process-expr
+; 			  "Somehow this call form fell through to prim case: ~a" `(,prim ,@args))))
+	      ;; Treat token args differently:	      
+	      (let ([newtbs '()])
+		(let ([newargs		       
+		       (map-prim-w-types 
+			(lambda (arg type)
+			  (match (cons type arg)
+			    [(Token . (tok ,tok ,[loop -> tb* e]))
+			     (set! newtbs (append tb* newtbs))
+			     `(tok ,tok ,e)]
+			    [(,other . ,[loop -> tb* e])
+			     (set! newtbs (append tb* newtbs))
+			     e]))
+			prim args)])
+		  
+		  (values newtbs `(,prim ,newargs ...))
+		  ))]
 
 	     ;;; TEMPORARY, We allow arbitrary other applications too!
 	     [(app ,[rtb rator] ,[rtb* rands] ...)
@@ -706,7 +710,7 @@
 		     "bad expression: ~s" otherwise)]
 	     ))])
 
-	  loop)))    
+	  loop)))
 
     (define process-tokbind 
 	(lambda (env tokens tainted)
@@ -805,6 +809,37 @@
      (desugar-gradient-lang
       '(program (bindings) (nodepgm (tokens))))]
 
+    ["Run a random program that (was) currently causing a problem, should have same input as output."
+     ,@(let ((prog '(program
+			(bindings)
+		      (nodepgm
+			  (tokens
+			      (node-start subtok_ind () (stored) (void))
+			    (SOC-start
+			     subtok_ind
+			     ()
+			     (stored)
+			     (begin
+			       (timed-call 100 (tok tok1 0))
+			       (timed-call 200 (tok tok1 0))))
+			    (tok1 subtok_ind
+				  ()
+				  (stored)
+				  (printf '"~a \n" (my-clock))))))))
+	 `((desugar-gradients '(cleanup-token-machine-lang ',prog))
+	   (desugar-gradient-lang ',prog)))]
+
+
+    ["Run a random program that (was) currently causing a problem, should have same input as output."
+     ,@(let ((prog '(program
+			(bindings)
+		      (nodepgm
+			  (tokens
+			    (node-start subtok_ind () (stored) (call (tok datafeed 99)))
+			    (SOC-start subtok_ind () (stored) (void))
+			    (datafeed subtok_ind () (stored) (void)))))))
+	 `((desugar-gradients '(cleanup-token-machine-lang ',prog))
+	   (desugar-gradient-lang ',prog)))]
 
     ["Make sure it gets all the gradient calls out.." 
      (let ((x (desugar-gradients

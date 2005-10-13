@@ -18,7 +18,9 @@
 ;; The regiment compiler expects case-sensitive treatment of symbols:
 ;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
-	   (case-sensitive #t))
+	   (case-sensitive #t)
+	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
+	   )
 (print-graph #f)
 (print-gensym #f)
 

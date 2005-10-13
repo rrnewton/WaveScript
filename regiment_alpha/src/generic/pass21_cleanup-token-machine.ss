@@ -213,7 +213,7 @@
 
 	  (lambda (stmt)
 	  (match stmt
-;	     [,x (guard (begin (disp "PEXPmatch" x) #f)) 3]
+;	     [,x (guard (begin (printf  "PEXPmatch ~s\n" x) #f)) 3]
 		 
 	     [,const (guard (constant? const))
 		     `(quote ,const)]
