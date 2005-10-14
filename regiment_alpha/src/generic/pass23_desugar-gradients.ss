@@ -196,7 +196,7 @@
 	     [(begin ,[exprs] ...) (apply append exprs)]
 	     [(if ,[exprs] ...) (apply append exprs)]
 
-	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
+	     [(let ([,_ ,[rhs*]] ...) ,[body])	(apply append body rhs*)]
 
 	     [(let-stored ([,_ ,[rhs*]] ...) ,[body])	(append body (apply append rhs*))]
 

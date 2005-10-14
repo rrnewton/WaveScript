@@ -170,7 +170,7 @@
 ;; ======================================================================
 
 
-(define (free-vars expr)
+(define (simalpha-free-vars expr)
   (let loop ((env ()) (expr expr))
     (match expr	 
 	   [,var (guard (symbol? var)) (if (memq var env) '() (list var))]   
@@ -180,7 +180,7 @@
 	      (apply append frees))]
 	   [(lambda (,formals) ,expr)
 	    (loop (append formals env) expr)]
-	   [,else (error 'free-vars "not simple expression: ~s" expr)])))
+	   [,else (error 'simalpha-free-vars "not simple expression: ~s" expr)])))
 
 
 ;; Safer version:
@@ -633,7 +633,7 @@
 ;  (disp "processbinds" binds expr)
   (let* ([graph (map (lambda (bind)
 		       (cons (car bind)
-			     (free-vars (cadr bind))))
+			     (simalpha-free-vars (cadr bind))))
 		     binds)]
 	 [flat (reverse (topological-sort graph eq?))]
 	 [newbinds 
@@ -905,8 +905,6 @@
 			  ))])]
 		     [(,rest ...) (read-params rest)]
 		     )))
-    ;; A default parameter setting that might get changed:
-    (define timeout 10.0)
     (define read-params
 	     (lambda (params)	       
 	       (match params
@@ -919,22 +917,22 @@
                          ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
                          ;(printf "Node code loaded from file.~n")
                          ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
-                         (start-alpha-sim node-code timeout 'simple))]
+                         (start-alpha-sim node-code 'simple))]
 		      [(timeout ,n . ,rest)
-		       (set! timeout n)
-		       (read-params rest)]
+		       (parameterize ((simalpha-timeout n))
+			 (read-params rest))]
 		      [(numnodes ,n . ,rest)
 		       (if (not (integer? n))
 			   (error 'run-simulator-alpha
 				  "'numnodes switch should be followed by an integer, not: ~a" n))
 		       (parameterize ([simalpha-num-nodes n])
-				     (read-params rest))]
+			 (read-params rest))]
 		      [(outport ,p . ,rest)
 		       (if (not (output-port? p))
 			   (error 'run-simulator-alpha
 				  "'outport switch should be followed by a port object, not: ~a" p))
 		       (parameterize ([simalpha-output-port p])
-				     (read-params rest))]
+			 (read-params rest))]
 		      [(srand ,n . ,rest)
 ;		       (if (not (integer? n))
 ;			   (error 'run-simulator-alpha
@@ -967,9 +965,9 @@
 				  args)]
 	 ;; With flags out of the way
 	 [stopping-time? 
-	  (if (null? flags-processed)
-	      (lambda (t) #f)	      
-	      (let ([stop-time (car flags-processed)])
+	  (let ([stop-time (simalpha-timeout)])
+	    (if (not stop-time)
+		(lambda (t) #f)
 		(if (inexact? stop-time)
 		    ;; It's in seconds:
 		    (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
