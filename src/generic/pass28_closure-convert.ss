@@ -237,7 +237,7 @@
        ;; Return a new token handler to hold the continuations' code.
        (let ([newfvs (map unique-name fvs)])
        `(,kname subtok_ind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
-		(stored [,KCOUNTER 0] ,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) newfvs))
+		(stored [,KCOUNTER '0] ,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) newfvs))
 ;		(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
 ;		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
 ;		     (simobject-token-store this))

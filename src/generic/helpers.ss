@@ -215,6 +215,8 @@
     (- (Number Number) Number) 
     (* (Number Number) Number) 
     (/ (Number Number) Number) 
+    (max (Number Number) Number)
+    (min (Number Number) Number)
 
     (not (Bool) Bool)
     ; predicates

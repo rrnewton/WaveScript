@@ -273,8 +273,11 @@
 ;;======================================================================
 
 [define tm-to-list ;; This is boilerplate, many of these tests just run the following:
-	 (lambda (tm)
-	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	 (lambda (tm . extraparams)
+	   `(parameterize ([unique-name-counter 0] 
+			   [simalpha-dbg-on #f]
+			   ,@extraparams
+			   )
 	       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -302,8 +305,11 @@
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
 (define these-tests 
   (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
-	 (lambda (tm)
-	   `(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	 (lambda (tm . extraparams)
+	   `(parameterize ([unique-name-counter 0] 
+			   [simalpha-dbg-on #f]
+			   ,@extraparams
+			   )
 	       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
@@ -1638,7 +1644,8 @@
 
 
      ["Run complex buffered-gradient TM from file"
-      ,(tm-to-list (car (file->slist "demos/buffered_gradients.tm")))
+      , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
+		    '[simalpha-timeout 5000])
       unspecified]
 
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."

@@ -152,6 +152,12 @@
 
 (define-regiment-parameter simalpha-num-nodes 30)
 
+;; Valid values:
+;; #f    : No time-out
+;; Float : Time out after certain number of cpu seconds.
+;; Int   : Timeout after certain number of simulator clock ticks
+(define-regiment-parameter simalpha-timeout 10.0)
+
 ;; This is used by the simulator, 
 ;; if true then the node ids are small consecutive numbers rather than
 ;; large random ones.

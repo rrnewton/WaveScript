@@ -285,9 +285,16 @@
 	      `(lambda ,args (begin ,@(map (process-expr (append args env) tokens this-token this-subtok)
 					  bodies)))]
 
-	     [(let ([,lhs ,[rhs]]) ,bodies ...)
-	      `(let ([,lhs ,rhs])
-		 ,(make-begin (map (process-expr (cons lhs env) tokens this-token this-subtok) bodies)))]
+	     [(let ([,lhs* ,[rhs*]] ...) ,bodies ...)
+	      ;; Temporary, should rename vars:
+	      (if (not (null? (intersection lhs* (apply append (map tml-free-vars rhs*)))))
+		  (error 'cleanup-token-machine:process-expr "Temporarily not allowed to refer to let's lhss in rhss:"))
+	      (let loop ((l lhs*) (r rhs*))
+		(if (null? l)
+		    (make-begin (map (process-expr (append lhs* env) tokens this-token this-subtok)
+				     bodies))
+		    `(let ([,(car l) ,(car r)])
+		       ,(loop (cdr l) (cdr r)))))]
 
 	     ;; Here we have letrec style binding.  Probably shouldn't.
 	     [(let-stored ([,lhs* ,rhs*] ...) ,bodies ...)
@@ -747,7 +754,7 @@
 	     [(tok ,t ,[e]) (cons t e)]
 	     [(begin ,[exprs] ...) (apply append exprs)]
 	     [(if ,[exprs] ...) (apply append exprs)]
-	     [(let ([,_ ,[rhs]]) ,[body])	(append body rhs)]
+	     [(let ([,_ ,[rhs*]] ...) ,[body])	(apply append body rhs)]
 
 	     ;; "Direct call":  Not allowing dynamic gemit's for now:
 	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]

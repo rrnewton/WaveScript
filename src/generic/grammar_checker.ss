@@ -105,9 +105,15 @@
 		   (fail))))]
 	    ))))))
 
-   (scangrammar expr (if (null? initialprod) 
-			 grammar
-			 (cut-grammar (car initialprod)))))))
+   (scangrammar expr (if (null? initialprod)
+;			 (if (assq 'PassInput grammar)
+;			     (begin ;; This is cheesy but convenient for me:
+;			       (printf "Defaulting to using 'PassInput as starting production for grammar check.\n")
+;			       (cut-grammar 'PassInput))
+			     ;; Otherwise we allow a match against any production in the grammar:
+			     grammar
+			 (cut-grammar (car initialprod))))
+   )))
 
 
 ;; ==================================================================
@@ -181,7 +187,8 @@
 
 ;       NOTE: These are static token refs for now.
     [Expr ('begin Expr ...)]
-    [Expr ('let ([Var Expr] ...) Expr)]
+    ;[Expr ('let ([Var Expr] ...) Expr)]
+    [Expr ('let ([Var Expr]) Expr)]
     [Expr ('if Expr Expr Expr)]
     [Expr ('leds LedColor LedState)]    
     [LedColor 'Red]
@@ -309,9 +316,9 @@
 
 
 (define these-tests
-  `([(check-grammar '(set! foo 3) basic_tml_grammar) ,list?]
-    [(check-grammar '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar) ,list?]
-    [(check-grammar '(let ((x 4) (y 5)) 3) basic_tml_grammar) ,list?]
+  `([(check-grammar '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
+    [(check-grammar '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
+    [(check-grammar '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr) ,list?]
     [(check-grammar '(nodepgm (tokens)) basic_tml_grammar) ,list?]
     [(car (check-grammar '(tok1 subind () (stored) 333) basic_tml_grammar)) TokBinding]
     [(check-grammar '(program (bindings) (nodepgm (tokens))) basic_tml_grammar) ,list?]

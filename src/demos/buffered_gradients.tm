@@ -1,27 +1,31 @@
 (tokens
 
   ;; ======================================================================
-  ;; Base code:
+  ;; Base code: (Runs only on SOC)
 
-  [SOC-start ()
-	     (call feed-tree)
-	     ]
+  [SOC-start () (call feed-tree)]
   [feed-tree () 
-	     (printf "~a~a Launching tree...\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))
-	     (gemit tree) (timed-call 1000 feed-tree)]
+    (printf "~a~a Launching tree...\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))
+    (gemit tree) (timed-call 1000 feed-tree)]
 
+
+  ;; ========================================
+  ;; Value catchers.  Receive the results of aggregation:
+  
   [depthmeasure (d) 
-		(stored [maxd 0])
-		(if (> d maxd) (set! maxd d))]
+     (stored [maxd 0])
+     (if (> d maxd) (set! maxd d))]
+
+  [catcher (v) 
+    (printf "~a~a Catcher, got val at root!: ~a maxdepth: ~a\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id))
+	    v (ext-ref depthmeasure maxd))
+    ]
 
   ;; ======================================================================
   ;; Node code:
 
   [tree () (grelay)]
-
-  [node-start () 
-	      (call datafeed)
-	      ]
+  [node-start () (call datafeed)]
 
   [datafeed ()
    (if (token-present? tree)
@@ -35,11 +39,12 @@
 		  (aggr max))
 
 	 ;; Additionally, report data.
-	 (greturn (list (my-clock) (my-id))
+	 (greturn (list (list (my-clock) (my-clock)) ;; Time span
+			(my-id)) ;; Value
 		  (to catcher)
 		  (via tree)
-		  (seed '())
-		  (aggr f)
+;		  (seed '())
+;		  (aggr buffered-aggr)
 		  ))
        (begin 
 	; (printf "~a~a Tree not here yet!\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))
@@ -49,17 +54,27 @@
    (timed-call 1000 datafeed)
    ]
 
-  [catcher (v) 
-	   (printf "~a~a Catcher, got val at root!: ~a maxdepth: ~a\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id))
-		   v (ext-ref depthmeasure maxd))
-   ]
-  
+  ;; ========================================
+  ;; Aggregators:
     
   ;; This is the aggregator function
-  [f (x y)
+  [buffered-aggr (x y)
      (stored [buffer (make-vector 5 0)])
-     (return (append x y))
+
+     (let ([span1 (car x)] [v1 (cadr x)]
+	   [span2 (car y)] [v2 (cadr y)])
+;       (printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
+       (return (list (list (min (car span1) (car span2))
+			   (max (cadr span1) (cadr span2)))
+		     (append v1 v2))
+	       ))
      ]
+;  [span-length (s) (return (- (cadr span) (car span)))]
+
 
   [max (x y) (if (< x y) y x)]
+
+
+
 )
+

@@ -144,6 +144,27 @@
 	   (error 'tml-generic-traverse
 		  "bad expression: ~s" otherwise)])))))
 
+;; This is a generic free-vars which can be shared by different passes that have non-conflicting grammars.
+(define (tml-free-vars e)
+  (tml-generic-traverse
+   ;; driver, fuser, expression
+   (lambda  (x loop) 
+     (match x
+       [,v (guard (symbol? v)) (list v)]
+       [(let ([,lhs ,[rhs]]) ,[bod])
+	(append rhs (remq lhs bod))
+	]
+       [(lambda (,lhs* ...) ,[bod])
+	(difference bod* ;(list->set (apply append bod*)) 
+		    lhs*)]
+       [(let-stored ((,lhs ,[rhs])) ,[bod])
+	(append rhs (remq lhs bod))]
+
+       [,x (loop x)]))
+   (lambda (ls _) (apply append ls))
+   e))
+
+
 (define these-tests
   `(	     
     ["Do a little verification of generic-traverse, check datatypes"
