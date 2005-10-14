@@ -16,6 +16,7 @@
   ;(define (fail) (failedcheck #f)) ;; Default fail function, for jumping out.
   (define (fail) #f)
 
+  ;; This just goes through the grammar in order until it hits a match.
   (define (scangrammar expr prods)
     ;(define (fail) (scangrammar expr (cdr prods)))
     ;(printf "Scanning ~a against ~a\n" expr (map car prods))
@@ -26,6 +27,7 @@
 	     (if check `(,lhs ,@check)
 		 (scangrammar expr (cdr prods))))])))
 
+  ;; This sees if an expression matches a given production.
   (define (checkmatch expr prod)
     ;; For this function failing means returning #f:
     (fluid-let ((fail (lambda () #f)))
@@ -48,6 +50,7 @@
        (error check-grammar "This is production-symbol is not bound: ~a" p)]
       )))
 
+  ;; This is for compound productions that have some structure to 'em.
   (define (matchlist ls p*)
      ;; For this function any failure means the whole list failed:
      (call/cc (lambda (failedlist)

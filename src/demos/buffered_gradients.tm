@@ -43,8 +43,8 @@
 			(my-id)) ;; Value
 		  (to catcher)
 		  (via tree)
-;		  (seed '())
-;		  (aggr buffered-aggr)
+		  (seed '())
+		  (aggr buffered-aggr)
 		  ))
        (begin 
 	; (printf "~a~a Tree not here yet!\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))
@@ -63,7 +63,7 @@
 
      (let ([span1 (car x)] [v1 (cadr x)]
 	   [span2 (car y)] [v2 (cadr y)])
-;       (printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
+       (printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
        (return (list (list (min (car span1) (car span2))
 			   (max (cadr span1) (cadr span2)))
 		     (append v1 v2))
