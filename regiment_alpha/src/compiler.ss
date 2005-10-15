@@ -726,8 +726,9 @@
 	    lst)))
       (no yes no no no)]
 
+     ;; This one will cause token-scheduled? to have to look in the timed-tok buf:
      ["Another Token Scheduled?"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f] [regiment-verbose #f])
       (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
 					;'(cleanup-token-machine cps-tokmac )));closure-convert)))
 	 (let ((prog 
@@ -1417,7 +1418,8 @@
 				 (to catcher)
 				 (seed 0)
 				 (aggr sum)))
-		  (sum (x y) (+ x y)))))
+		  (sum (x y) (+ x y)))
+		'[regiment-verbose #f]))
       ,(lambda (ls)
 	 (and (= (length ls) 1)
 	      (> (car ls) 0)))]
@@ -1459,7 +1461,9 @@
 			 (to catcher)
 			 (seed ())
 			 (aggr f)))
-	  (f (x y) (append x y))))
+	  (f (x y) (append x y)))
+	'[regiment-verbose #f]
+	)
       ;; Epoch staggered aggregation
 	,(lambda (x) 
 	;; Let's make sure the list increases in distance at first:
@@ -1487,7 +1491,9 @@
 			 (to catcher)
 			 (seed ())
 			 (aggr f)))
-	  (f (x y) (append x y)))))
+	  (f (x y) (append x y)))
+	'[regiment-verbose #f]
+	))
       ;; Epoch staggered aggregation
       ,(lambda (x) 
 	;; Let's make sure the list increases in distance at first:
