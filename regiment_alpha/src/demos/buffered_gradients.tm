@@ -43,8 +43,8 @@
 			(my-id)) ;; Value
 		  (to catcher)
 		  (via tree)
-		  (seed '())
-		  (aggr buffered-aggr)
+;		  (seed '())
+;		  (aggr buffered-aggr)
 		  ))
        (begin 
 	; (printf "~a~a Tree not here yet!\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))

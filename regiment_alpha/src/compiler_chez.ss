@@ -20,6 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
+	   (optimize-level 1)
 	   )
 (print-graph #f)
 (print-gensym #f)

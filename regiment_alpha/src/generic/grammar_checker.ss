@@ -13,85 +13,133 @@
 
   (call/cc (lambda (failedcheck)
 
+  ;; Keeps track of the places where we fail, might be able to give some feedback.
+  (define fail-points '())
+  ;; This keeps track of how deep we are, for purposes of deciding which failure to report.
+  (define current-depth 0)
+  (define failure-stack '())
+
+  (define (add-failure x p k)
+    (set! failure-stack (cons (list current-depth x p k)
+			      failure-stack)))
+  (define (clear-failures)
+    (printf "  Clearing stack: ~s\n" failure-stack)
+    (set! failure-stack '()))
+
+  (define-syntax goingdeeper
+    (syntax-rules ()
+      [(_ e) 
+       (begin 
+	 ;(clear-failures)
+	 (fluid-let ((current-depth (add1 current-depth))) e))]))
+
   ;(define (fail) (failedcheck #f)) ;; Default fail function, for jumping out.
-  (define (fail) #f)
+  (define failfun (lambda (x p k) 
+;		 (printf "Failing1: ~a ~a depth ~a\n" x p current-depth)
+		 (add-failure x p k)
+		 ;; Signal failure and keep trying
+		 (k #f)))
+
+  (define-syntax fail
+    (syntax-rules ()
+      [(_ x p k)
+       (failfun x p k)]))
 
   ;; This just goes through the grammar in order until it hits a match.
-  (define (scangrammar expr prods)
+  (define (scangrammar expr prods k)
     ;(define (fail) (scangrammar expr (cdr prods)))
     ;(printf "Scanning ~a against ~a\n" expr (map car prods))
-    (if (null? prods) (fail)
+    (if (null? prods) (fail expr prods k)
 	(match (car prods)
 	  [(,lhs ,rhs)
-	   (let ((check (checkmatch expr rhs)))
-	     (if check `(,lhs ,@check)
-		 (scangrammar expr (cdr prods))))])))
+	   (checkmatch expr rhs
+		       (lambda (check)
+			 (if check 
+			     (k `(,lhs ,@check))
+			     (scangrammar expr (cdr prods) k))))])))
 
   ;; This sees if an expression matches a given production.
-  (define (checkmatch expr prod)
+  (define (checkmatch expr prod k)
     ;; For this function failing means returning #f:
-    (fluid-let ((fail (lambda () #f)))
+    (fluid-let ((failfun (lambda (x p k) 
+;			(printf "Failing2: ~a ~a depth ~a\n" x p current-depth)
+			(add-failure x p k)
+			;; Signal failure and keep trying
+			(k #f))))
     (match (list expr prod)
 ;		 [(,lhs ,type) (guard (basic-type? type))
 ;		  (if (check-basic expr type) #t
 ;		      (fail))]
       [(,x ,fun) (guard (procedure? fun))
-	    (if (fun x) fun ;'<fun>
-		(fail))]
+	    (if (fun x) 
+		(k fun) ;'<fun>
+		(fail x fun k))]
       [(,x (quote ,sym)) ;(guard (atom? x))
-       (if (eq? x sym) `(quote ,sym) #f)]
+       (if (eq? x sym) 
+	   (k `(quote ,sym))
+	   (fail x `(quote ,sym) k))]
       [(,x (,p* ...)) ;; A list production
        (if (not (list? x))
-	   #f
-	   (matchlist x p*))]
+	   (fail x p* k)
+	   (goingdeeper (matchlist x p* k)))]
       [(,x ,p) (guard (memq p allvariants))
-	 (scangrammar x (cut-grammar p))]
+           (scangrammar x (cut-grammar p) k)]
       [(,_ ,p) (guard (symbol? p))
        (error check-grammar "This is production-symbol is not bound: ~a" p)]
       )))
 
   ;; This is for compound productions that have some structure to 'em.
-  (define (matchlist ls p*)
+  (define (matchlist ls p* k)
      ;; For this function any failure means the whole list failed:
      (call/cc (lambda (failedlist)
-     (fluid-let ((fail (lambda () (failedlist #f))))
-     (let listloop ((ls ls) (p* p*))
+     (fluid-let ((failfun (lambda (x p k)
+;			(printf "Failing3: ~a ~a depth ~a\n" x p current-depth)
+			(add-failure x p k)
+			;; No backtracking here (lists are linear), exit the whole list.
+			;(failedlist #f)
+			;; Scratch that, now all fail's are in tail pos:
+			;; Signal failure and keep trying:
+			(k #f)
+			)))
+     (let listloop ((ls ls) (p* p*) (k k))
      (match (list ls p*)
-	    [(() ()) ()]
-	    [(,_ ()) (fail)]
-	    [(() (,_ ,v)) (guard (eq? v '...)) ()] ;; If we ran out on a "..." that's ok.s
-	    [(() ,_) (fail)]
+	    [(() ()) (k ())]
+	    [(,x ()) (fail x () k)]
+	    [(() (,_ ,v)) (guard (eq? v '...)) (k ())] ;; If we ran out on a "..." that's ok.s
+	    [(() ,x) (fail () x k)]
 	    
 	    [((,x ,lsnew ...)
 	      (,fun ,p*new ...))
 	     (guard (procedure? fun))
 	     (if (fun x)
-		 (cons fun (listloop lsnew p*new))
-		 (fail))]
+		 (goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons fun e)) (k #f)))))
+		 (fail x fun k))]
 
 	    [((,x ,lsnew ...)
 	      ((quote ,p) ,p*new ...))
 	     ;(guard (atom? x))
 	     (if (eq? x p)
-		 (cons `(quote ,p) (listloop lsnew p*new))
-		 (fail))]
+		 (goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons `(quote ,p) e)) (k #f)))))
+		 (fail x `(quote ,p) k))]
 
-	    ;; Here we greedily eat up everything when we have a "..." or "*" BNF notation:
+	    ;; Here we greedily eat up everything when we have a "..." ("*" BNF notation):
 	    [((,x ,lsnew ...)
-	      (,p ,v ,p*new ...)) (guard (eq? v '...))
-	     (let ((check (checkmatch x p)))
-	       (if check
-		   (cons check (listloop lsnew p*))
-		   (listloop ls p*new)))]
+	      (,p ,elipses ,p*new ...)) (guard (eq? elipses '...))
+	      (goingdeeper (checkmatch x p
+		 (lambda (check)
+		   (if check
+		       (goingdeeper (listloop lsnew p* (lambda (e) (if e (k (cons check e)) (k #f)))))
+		       (goingdeeper (listloop ls p*new k))))))]
 
 	    ;; Named production:
 	    [((,x ,lsnew ...)
 	      (,p ,p*new ...))
 	     (guard (memq p allvariants))
-	     (let ((scan (scangrammar x (cut-grammar p))))
-	       (if scan
-		   (cons scan (listloop lsnew p*new))
-		   (fail)))]	     
+	     (scangrammar x (cut-grammar p)
+			  (lambda (scan)
+			    (if scan
+				(goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons scan e)) (k #f)))))
+				(fail x p k))))]
 	    [((,x ,lsnew ...)
 	      (,p ,p*new ...))
 	     (guard (symbol? p))
@@ -101,23 +149,59 @@
 	    [((,x ,lsnew ...)
 	      ((,subp* ...) ,p*new ...))
 	     (if (not (list? x))
-		 (fail)
-	     (let ((sub (listloop x subp*)))
-	       (if sub
-		   (cons sub (listloop lsnew p*new))
-		   (fail))))]
+		 (fail x subp* k)
+		 (goingdeeper (listloop x subp*
+					(lambda (sub)
+					  (if sub
+					      (listloop lsnew p*new (lambda (e) (if e (k (cons sub e)) (k #f))))
+					      (fail x subp* k))))))]
 	    ))))))
 
-   (scangrammar expr (if (null? initialprod)
+  (set-top-level-value! 'checkmatch checkmatch)
+  (set-top-level-value! 'matchlist matchlist)
+  (set-top-level-value! 'scangrammar scangrammar)
+
+
+  (let ((result 
+	 (scangrammar expr (if (null? initialprod)
 ;			 (if (assq 'PassInput grammar)
 ;			     (begin ;; This is cheesy but convenient for me:
 ;			       (printf "Defaulting to using 'PassInput as starting production for grammar check.\n")
 ;			       (cut-grammar 'PassInput))
 			     ;; Otherwise we allow a match against any production in the grammar:
-			     grammar
-			 (cut-grammar (car initialprod))))
-   )))
+			 grammar
+			 (cut-grammar (car initialprod)))
+		(lambda (e) e))))
+    (if (not result)
+	(begin (set-top-level-value! 'failure-stack failure-stack)
+	       (printf "Grammar check failed.  Stored failure trace in global var \"failure-stack\"\n")
+	       (printf "Run (analyze-grammar-failure failure-stack) to see what went wrong.\n")
+	       #f)
+	result)
+   ))))
 
+(define (analyze-grammar-failure grammar-failure)
+  ;; Could do something more sophisticated here in the future involving the depth:
+  (let ((max-size 0)
+	(winner 'UNINTIALIZED-ERROR-IN-ANALYZE-GRAMMAR-FAILURE))
+    (for-each (lambda (ls)
+   		(match ls 
+		  [(,d ,x ,p ,k)
+		   (let ((reconstructed (k 'FAIL)))
+		     (let ((size (count-nodes reconstructed)))
+		       (when (> size max-size)
+			 (set! max-size size)
+			 (set! winner (list d x p reconstructed)))))]))
+	      grammar-failure)
+    (match winner
+      [(,d ,x ,p ,context)
+       (printf "Most likely failed parsing: \n")
+       (printf "Failure depth ~a\n Expression ~a did not satisfy ~a\n Context:\n   " d x p)
+       (parameterize ((pretty-standard-indent 5)
+		      (pretty-initial-indent 5))
+	 (pretty-print context))]
+      )))
+	      
 
 ;; ==================================================================
 ;; This is the constructor for compiler passes.  It takes the main
@@ -168,6 +252,8 @@
 ;;;           |  | timed-call | bcast
 ;;;           | is_scheduled | deschedule | is_present | evict
 (define basic_tml_grammar
+  (let ()
+    (define (is-var? x) (and (symbol? x) (not (token-machine-keyword? x))))
   `(
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
@@ -183,10 +269,10 @@
     [Expr Var]
     [Expr Num] ;; Allow unquoted?
     [Expr Const]
-    [Expr DynToken] ;; NOTE: Either the whole token reference or just the sub-index can be dynamic.
+    [Expr Token] ;; NOTE: Either the whole token reference or just the sub-index can be dynamic.
     [Expr ('set! Var Expr)]
-    [Expr ('ext-ref DynToken Var)]
-    [Expr ('ext-set! DynToken Var Expr)]
+    [Expr ('ext-ref Token Var)]
+    [Expr ('ext-set! Token Var Expr)]
 
 ;       NOTE: These are static token refs for now.
     [Expr ('begin Expr ...)]
@@ -206,7 +292,7 @@
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))]) 
 	   token-machine-primitives)
     [Expr ('app Expr ...)]
-    [Expr ('call DynToken Expr ...)]
+    [Expr ('call Token Expr ...)]
 
     [Expr ('dbg DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
     [DebugArg Expr]
@@ -220,33 +306,33 @@
 ;    [Expr ('subcall DynToken Expr ...)]
 
     [Num ,integer?]
-    [Var ,(lambda (x) (and (symbol? x) (not (token-machine-keyword? x))))]
-;    [DynToken Token]
+    [Var ,is-var?]
+    [Token StaticToken]
+    [Token DynToken]
+    [StaticToken ('tok TokName ,integer?)]
     [DynToken ('tok TokName Expr)]
-    [Token ('tok TokName Const)]
-    [Token ('tok TokName ,integer?)]
     [TokName ,symbol?]
 ;    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
     [Const ('quote ,atom?)]
 
-    ))
+    )))
 
 (define tml_gradient_grammar
-  `([GExpr ('gemit DynToken Expr ...)]
-    [GExpr ('grelay DynToken Expr ...)]
+  `([GExpr ('gemit Token Expr ...)]
+    [GExpr ('grelay Token Expr ...)]
     [GExpr ('greturn Expr
-		     ('to DynToken)
-		     ('via DynToken)
+		     ('to Token)
+		     ('via Token)
 		     ('seed Expr)
 		     ('aggr TokenOrFalse)
 		     )]
     [TokenOrFalse Token]
     [TokenOrFalse '#f]
-    [GExpr ('gdist DynToken)]
-    [GExpr ('gparent DynToken)]
-    [GExpr ('gorigin DynToken)]
-    [GExpr ('ghopcount DynToken)]
-    [GExpr ('gversion DynToken)]
+    [GExpr ('gdist Token)]
+    [GExpr ('gparent Token)]
+    [GExpr ('gorigin Token)]
+    [GExpr ('ghopcount Token)]
+    [GExpr ('gversion Token)]
     ))
 
 (define tml_letstored_grammar
@@ -354,4 +440,3 @@
 (define test-grammar test-this)
 (define tests-grammar these-tests)
 
-    
