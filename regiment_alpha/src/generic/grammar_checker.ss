@@ -11,39 +11,25 @@
   (define allvariants (list->set (map car grammar)))
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 
-  (call/cc (lambda (failedcheck)
-
-  ;; Keeps track of the places where we fail, might be able to give some feedback.
-  (define fail-points '())
   ;; This keeps track of how deep we are, for purposes of deciding which failure to report.
   (define current-depth 0)
+  ;; Keeps track of the places where we fail, might be able to give some feedback.
   (define failure-stack '())
 
   (define (add-failure x p k)
     (set! failure-stack (cons (list current-depth x p k)
 			      failure-stack)))
-  (define (clear-failures)
-    (printf "  Clearing stack: ~s\n" failure-stack)
-    (set! failure-stack '()))
-
   (define-syntax goingdeeper
     (syntax-rules ()
-      [(_ e) 
-       (begin 
-	 ;(clear-failures)
-	 (fluid-let ((current-depth (add1 current-depth))) e))]))
-
-  ;(define (fail) (failedcheck #f)) ;; Default fail function, for jumping out.
-  (define failfun (lambda (x p k) 
-;		 (printf "Failing1: ~a ~a depth ~a\n" x p current-depth)
-		 (add-failure x p k)
-		 ;; Signal failure and keep trying
-		 (k #f)))
-
+      [(_ e) (fluid-let ((current-depth (add1 current-depth))) e)]))
   (define-syntax fail
     (syntax-rules ()
       [(_ x p k)
-       (failfun x p k)]))
+       (begin
+;	 (printf "Failing: ~a ~a depth ~a\n" x p current-depth)
+	 (add-failure x p k)
+	 ;; Signal failure and keep trying
+	 (k #f))]))
 
   ;; This just goes through the grammar in order until it hits a match.
   (define (scangrammar expr prods k)
@@ -60,12 +46,6 @@
 
   ;; This sees if an expression matches a given production.
   (define (checkmatch expr prod k)
-    ;; For this function failing means returning #f:
-    (fluid-let ((failfun (lambda (x p k) 
-;			(printf "Failing2: ~a ~a depth ~a\n" x p current-depth)
-			(add-failure x p k)
-			;; Signal failure and keep trying
-			(k #f))))
     (match (list expr prod)
 ;		 [(,lhs ,type) (guard (basic-type? type))
 ;		  (if (check-basic expr type) #t
@@ -86,21 +66,10 @@
            (scangrammar x (cut-grammar p) k)]
       [(,_ ,p) (guard (symbol? p))
        (error check-grammar "This is production-symbol is not bound: ~a" p)]
-      )))
+      ))
 
   ;; This is for compound productions that have some structure to 'em.
   (define (matchlist ls p* k)
-     ;; For this function any failure means the whole list failed:
-     (call/cc (lambda (failedlist)
-     (fluid-let ((failfun (lambda (x p k)
-;			(printf "Failing3: ~a ~a depth ~a\n" x p current-depth)
-			(add-failure x p k)
-			;; No backtracking here (lists are linear), exit the whole list.
-			;(failedlist #f)
-			;; Scratch that, now all fail's are in tail pos:
-			;; Signal failure and keep trying:
-			(k #f)
-			)))
      (let listloop ((ls ls) (p* p*) (k k))
      (match (list ls p*)
 	    [(() ()) (k ())]
@@ -155,12 +124,7 @@
 					  (if sub
 					      (listloop lsnew p*new (lambda (e) (if e (k (cons sub e)) (k #f))))
 					      (fail x subp* k))))))]
-	    ))))))
-
-  (set-top-level-value! 'checkmatch checkmatch)
-  (set-top-level-value! 'matchlist matchlist)
-  (set-top-level-value! 'scangrammar scangrammar)
-
+	    )))
 
   (let ((result 
 	 (scangrammar expr (if (null? initialprod)
@@ -178,7 +142,7 @@
 	       (printf "Run (analyze-grammar-failure failure-stack) to see what went wrong.\n")
 	       #f)
 	result)
-   ))))
+   ))
 
 (define (analyze-grammar-failure grammar-failure)
   ;; Could do something more sophisticated here in the future involving the depth:
@@ -407,7 +371,7 @@
 (define these-tests
   `([(check-grammar '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
     [(check-grammar '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
-    [(check-grammar '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr) ,list?]
+    [(check-grammar '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr)   ,list?]
     [(check-grammar '(nodepgm (tokens)) basic_tml_grammar) ,list?]
     [(car (check-grammar '(tok1 subind () (stored) 333) basic_tml_grammar)) TokBinding]
     [(check-grammar '(program (bindings) (nodepgm (tokens))) basic_tml_grammar) ,list?]
