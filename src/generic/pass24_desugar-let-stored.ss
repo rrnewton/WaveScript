@@ -5,47 +5,15 @@
 ;; way now.
 ;; ANSWER: [2005.09.24]  I'm deciding NO, for now.  Uniquely renaming let-stored vars.
 
-;; Input Grammar:
+;; Output grammar:
 
-;;;  <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
-;;;  <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
-;       NOTE: tokens will inclide a binding for SOC-start and node-start
-;;;  <Cbind> ::= (<var> <Exp>)
-;       NOTE: This expressions will be statically calculable -- constants.
-;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
-;;;  <TokName>   ::= <Symbol> 
-;;;  <SubtokId>  ::= <Number>
-;;;  <Token>     ::= (tok <TokName>) | (tok <Tokname> <Int>)
-;;;  <DynToken>  ::= (tok <Tokname> <Expr>) | <Token>
-;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
-;;;  <Expr>      ::= (quote <Constant>)
-;;;                | <Var>
-;;;                | <DynToken>
-;;;                | (set! <Var> <Expr>)
-;;;                | (ext-ref <Token> <Var>)
-;;;                | (ext-set! <Token> <Var> <Expr>)
-;       NOTE: These are static token refs for now.
-;;;                | (begin <Expr> ...)
-;;;                | (let ((<Symbol> <Expr>)) <Expr>)
-;;;                | (if <Expr> <Expr> <Expr>)
-;;;                | (subcall <DynToken> <Expr>...)
-;;;                | (return <Expr>)
-;;;                | (<Prim> <Expr> ...)
-;;;                | (<Expr> ...)
-;;;                | <Sugar> 
-;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
-;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed-call | bcast
-;;;           | is_scheduled | deschedule | is_present | evict
-;;;  <Sugar>  ::= (flood <Expr>)
-;;;           | (elect-leader <Token> [<Token>])
-              ;; <TODO> optional second argument.. decider
+;; basic_tml_grammar, as verified below:
 
 (define desugar-let-stored
   (build-compiler-pass
    'desugar-gradientsa
    `(input)
-   `(output );(grammar ,basic_tml_grammar PassInput))
+   `(output (grammar ,basic_tml_grammar PassInput))
   (let ()
     ;; This is confusing, but there are so many small traversals of
     ;; the program tree in this pass that it is much easier to reuse this tree walk:
