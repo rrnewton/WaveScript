@@ -386,6 +386,37 @@
     (if (null? ls) (/ sum count)
 	(loop (+ (car ls) sum) (+ 1 count) (cdr ls)))))
 
+;; This does a size-measure on lists and vectors.
+;; Really crappy implementation, don't rely on this:
+(define count-nodes
+  (lambda (lsvec)
+    (cond
+     [(or (number? lsvec)
+	  (boolean? lsvec)
+;	  (port? lsvec)
+	  (null? lsvec)
+	  (symbol? lsvec)
+	  (string? lsvec)
+	  (char? lsvec)
+	  (procedure? lsvec))
+      1]
+;      [(list? lsvec) (+ (length lsvec)
+;                        (apply + (map count-nodes lsvec)))]
+
+      [(pair? lsvec) (+ 1 (count-nodes (car lsvec))
+			  (count-nodes (cdr lsvec)))]
+;                        (apply + (map count-nodes lsvec)))]
+
+      [(vector? lsvec) (+ (vector-length lsvec)
+                          (let loop ((i (sub1 (vector-length lsvec))))
+                            (if (zero? i)
+                                (count-nodes (vector-ref lsvec 0))
+                                (+ (count-nodes (vector-ref lsvec i))
+                                   (loop (sub1 i))))))]
+      [else (error 'count-nodes
+                   "only knows how to count the nodes of a list or vector, not ~a" lsvec
+                   )])))
+
 (define list-index
   (lambda (pred ls)
     (cond
