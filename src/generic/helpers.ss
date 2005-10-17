@@ -417,6 +417,21 @@
                    "only knows how to count the nodes of a list or vector, not ~a" lsvec
                    )])))
 
+;; [2005.10.16] Not tail recursive!!
+(define (mapi f ls)
+  (let mapi-loop ((i 0) (ls ls))
+    (if (null? ls)
+	'()
+	(cons (f i (car ls))
+	      (mapi-loop (add1 i) (cdr ls))))))
+;; [2005.10.16] 
+(define (for-eachi f ls)
+  (let foreachi-loop ((i 0) (ls ls))
+    (if (null? ls)
+	(void)
+	(begin (f i (car ls))
+	       (foreachi-loop (add1 i) (cdr ls))))))
+
 (define list-index
   (lambda (pred ls)
     (cond
@@ -542,6 +557,17 @@
            (void)
            (begin exp ...
                   (loop (sub1 n)))))]))
+
+;; [2005.10.16]  I hate do syntax
+(define-syntax for
+  (syntax-rules (= to)
+    [(_ v = start to end expr ...)
+     (let ((s start)
+	   (e end))
+       (do ([v s (add1 v)])
+	   ((> v e))
+	 expr ...))]))
+
 
 ;; [2005.10.05]
 ;; Evaluate expression and mask output by search string.  (Just does string match, not regexp.)
@@ -2285,6 +2311,88 @@
 	    cycles)))))
 
 
+
+;; ======================================================================
+
+(define (display-progress-meter totalcount)
+  (let ((ticksize (/ totalcount 100))
+	(lasttick 0)
+	(counter 0))
+    (lambda ()
+      (when (= 0 counter) 
+	(printf "\nProgress:         20%                           50%                                              100%\n")
+	(printf "[") (flush-output-port))
+      (set! counter (add1 counter))
+      (if (= lasttick 100)
+       #f ;; We're finished, signal that there's no more work to do
+       (let ((newticks (floor (/ counter ticksize))))
+	 (when (> newticks lasttick)
+	  (for i = 1 to (- newticks lasttick)
+	       (display #\.))
+	  (flush-output-port)
+	  (set! lasttick newticks))
+	 (when (= newticks 100) (display #\]) (newline) (flush-output-port))
+	 #t)))))
+;; Example
+' (let ((f (display-progress-meter 100)))
+    (for i = 1 to 100 
+	 (for i = 1 to 100000)
+	 (f)))
+
+
+;; [2005.10.16] Making a simple interface to gnuplot for graphing results
+;; of queries.
+
+;; Input: Either 
+;;   1) A list of (X Y) pairs
+;;   2) A list of numbers
+;;   3) A stream of numbers/(X Y) pairs.
+;; (See stream implementation, this file.)
+(define (gnuplot data)
+  (let ([fn1 "_temp_gnuplot.script"]
+	[fn2 "_temp_gnuplot.dat"])
+  (let ([scrip (open-output-file fn1 'replace)]
+	[dat   (open-output-file fn2 'replace)]
+	[command (format "gnuplot ~a -" fn1)])
+    (define (plot-one i d)
+      (if (number? d)
+	  (fprintf dat "~s ~s\n" i d)
+	  (fprintf dat "~s ~s\n" (car d) (cadr d))))
+    ;; Write script file:
+    (fprintf scrip "set autoscale;\n")
+    (fprintf scrip "plot ~s with linespoints;\n" fn2)
+    ;; Write data file:
+    (cond 
+     [(list? data) 
+      (if (not (or (andmap number? data) 
+		   (andmap (lambda (l) (and (list? l) (= 2 (length l)) (andmap number? l)))
+			   data)))
+	  (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
+      (for-eachi plot-one data)]
+     [(stream? data)
+      (error 'to-implement "FIXME not implemented yet!!")
+      ]
+     [else (error 'gnuplot "unknown input type, bad dataset: ~s" data)])
+;    (for i = 1 to 20
+;	 (fprintf dat "~a ~a\n" i (* i 2)))
+    ;; Done.  Now close files and call it.
+    (close-output-port scrip)
+    (close-output-port dat)
+    (printf "Calling gnuplot with command ~s.\n" command)
+    (system command)
+
+;    (delete-file fn1)
+;    (delete-file fn2)
+  
+  )))
+
+;; Example:
+' (let* ([ind (map (\\ x (* (- x 150) 0.1)) (iota 300))] [ys (map sin ind)]) (gnuplot (map list ind ys)))
+
+
+;; ======================================================================
+
+
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
@@ -2296,32 +2404,32 @@
 ;;           | (item* . promise)
 ;;           | promise
 
-;; This version has a look-ahead of one, so the stream had better not
-;; contain bottom!
-
+;; [2005.10.16] Just switched this from head-strict to not.
+;; I should probably switch over to using the standard SRFI-40 stream
+;; implementation at some point.
 
 (define (stream? s)
   ;; Is it a proper list?
   (or (list? s)
       ;; Or an improper list that's still being computed?
       (live-stream? s)))
-
 ;; A live stream is one not all of whom's values have been computed yet.
 (define (live-stream? s)
   (or (promise? s)
       (and (pair? s) (stream? (cdr s)))))
-
 (define stream-empty? 
   (lambda (s)
     (cond 
      [(null? s) #t]
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
-
 ;; TODO! This should memoize the second argument if it's a procedure...
-(define stream-cons cons)
+;(define stream-cons cons)
+(define-syntax stream-cons
+  (syntax-rules ()
+    [(_ a b) (delay (cons a b))]))
+;; Appends a finite-stream to a potentially infinite one:
 (define stream-append append)
-
 (define stream-car
   (lambda (s)
     (let scloop ((s s))
@@ -2332,7 +2440,6 @@
        [(pair? s) (car s)]
        [(null? s) (error 'stream-car "Stream is null!")]
        [else (error 'stream-car "invalid stream: ~s" s)]))))
-
 (define (stream-cdr s)
   (cond
    [(promise? s)      
@@ -2346,7 +2453,6 @@
 		 (stream-cdr s))
 	  (cdr s))]
    [else (error 'stream-cdr "invalid stream: ~s" s)]))
-
 ;; Take N elements from a stream
 (define stream-take 
   (lambda (n s)
@@ -2358,18 +2464,17 @@
        [else 
 	(cons (stream-car s)
 	      (stloop (sub1 n) (stream-cdr s)))]))))
-  
 ;; Layer on those closures!
 (define stream-map 
   (lambda (f s)
     (let loop ((s s))
       (delay (cons (f (stream-car s))
 		   (loop (stream-cdr s)))))))
-    
 ;; A stream of non-negative integers:
 (define counter-stream
   (let loop ((i 0))
     (delay (cons i (loop (add1 i))))))
+
 
 ;;==============================
 

@@ -1,5 +1,5 @@
 
-
+;; [2005.10.15] For decent (medium) size programs analyze-grammar-failure is working *very* slowly.
 
 ;; [2005.09.26]
 ;; This compiler has grown large enough..
@@ -148,24 +148,28 @@
   ;; Could do something more sophisticated here in the future involving the depth:
   (let ((max-size 0)
 	(winner 'UNINTIALIZED-ERROR-IN-ANALYZE-GRAMMAR-FAILURE))
+    (let* ((count (length grammar-failure))
+	   (progressbar (display-progress-meter count)))
+      (printf "\nAnalyzing ~a failure scenarios.\n" count)
     (for-each (lambda (ls)
    		(match ls 
 		  [(,d ,x ,p ,k)
 		   (let ((reconstructed (k 'FAIL)))
 		     (let ((size (count-nodes reconstructed)))
+		       (progressbar)
 		       (when (> size max-size)
 			 (set! max-size size)
 			 (set! winner (list d x p reconstructed)))))]))
 	      grammar-failure)
     (match winner
       [(,d ,x ,p ,context)
-       (printf "Most likely failed parsing: \n")
+       (printf "\nMost likely failed parsing: \n")
        (printf "Failure depth ~a\n Expression ~a did not satisfy ~a\n Context:\n   " d x p)
        (parameterize ((pretty-standard-indent 5)
 		      (pretty-initial-indent 5))
 	 (pretty-print context))]
-      )))
-	      
+      ))))
+
 
 ;; ==================================================================
 ;; This is the constructor for compiler passes.  It takes the main
