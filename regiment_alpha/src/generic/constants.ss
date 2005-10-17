@@ -147,7 +147,7 @@
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
 ;; Vtimes:
-(define RADIO_DELAY 10)  ;; Communication time
+(define RADIO_DELAY 10)  ;; Communication timea
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
 (define-regiment-parameter simalpha-num-nodes 30)
@@ -173,6 +173,20 @@
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
 (define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded
+
+
+;; This globally defined functions decides the sensor values.
+;; Here's a version that makes the sensor reading the distance from the origin:
+(define (sense-dist-from-origin id x y t)
+  (sqrt (+ (expt x 2) (expt y 2))))
+
+(define (sense-sine-wave id x y t)
+  (printf "(sensing ~a ~a ~a ~a) " id x y t)
+  (inexact->exact 
+   (floor
+    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
+
+(define-regiment-parameter simalpha-sense-function sense-sine-wave)
 
 
 ;; Used primarily by alpha_lib_scheduler_simple.ss

@@ -226,14 +226,6 @@
 		  (list? args)))))
 |#
 
-;; This globally defined functions decides the sensor values.
-;; Here's a version that makes the sensor reading the distance from the origin:
-(define (sense-dist-from-origin loc)
-  (let ([x (car loc)] [y (cadr loc)])
-    (sqrt (+ (expt x 2) (expt y 2)))))
-
-;(define-parameter 
-(define (current-sense-function) sense-dist-from-origin)
 
 ;;========================================
 
@@ -542,6 +534,15 @@
 
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
+
+		  [(local-sense)
+		   ;; Feed id, x, y, t to sensor function:
+		   `((simalpha-sense-function) 
+		     ,(process-expr '(my-id))
+		     (car ,(process-expr '(loc)))
+		     (cadr ,(process-expr '(loc)))
+		     ,(process-expr '(my-clock)))]
+
 		  [(my-id) '(node-id (simobject-node this))]
 		  [(my-clock) 
 		   'current-vtime]
@@ -680,6 +681,8 @@
 	     (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
 			(lambda (current-vtime ,id . vals) ;world)
+			  ;; Set the global "this" for the below dynamic extent.
+			  (parameterize ((current-simobject this))
 			  (let ,(map list args (make-list (length args) ''sim-alpha-uninitialized))
 
 			    (let ([numvals (length vals)])
@@ -730,7 +733,7 @@
                                     (append (simobject-local-msg-buf this) ;(reverse (simobject-local-msg-buf this)) 
 					    old-local))
 				  this-handler-retval)
-				)))))
+				))))))
                          ]))
 	  tbinds)])
     (printf "~n;  Converted program for Simulator:~n")
@@ -789,12 +792,22 @@
 ; 			  tbinds))
 
 	`(define (node-code this)
+	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
+	   ;; Set the global parameter that library code needs to access "this".
+	   (parameterize ((current-simobject this))
 	   ;; Now we have subtoks:
 ;	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
 	   ;; Need to update the sensing machinery...
-	   (let ([local-sense (lambda ()
+	   (let (
+		 #;
+		 [local-sense (lambda (t)
 				((current-sense-function)
-				 (node-pos (simobject-node this))))])
+				 (node-id (simobject-node this))
+				 (car (node-pos (simobject-node this)))
+				 (cadr (node-pos (simobject-node this)))
+				 current-vtime
+				 ))]
+		 )
 	      (let* ,(process-binds nodebinds)
 		(letrec ,tbinds		  
 		 ;; Within this body, toks are bound, we return a list of start actions
@@ -826,7 +839,7 @@
 				       (msg-object-args msgob))
 				;; That returns nothing but fills up the simobjects buffers.
 				)))
-		 ))))))]
+		 )))))))]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 

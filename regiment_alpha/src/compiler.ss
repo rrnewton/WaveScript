@@ -300,6 +300,8 @@
 		     )))))
 	   )]
 
+;; TODO FIXME:  Expand some of these tests to use more passes.
+
 ;; These are some of our system tests.  They test the compiler and the simulator as a whole.
 ;; The rest of the system tests are in the files named tests_*.ss
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
@@ -328,9 +330,29 @@
 				   ))
 		       (display ")" prt)
 		       (read (open-input-string (get-output-string prt)))
-		       ;result ;; Returns the soc-returned values rather than the output list.
 		     )))))
 	   )]
+	
+	;; This one returns soc-return'd vals rather than the printed data.
+	[tm-to-socvals
+	 (lambda (tm . extraparams)
+	   `(parameterize ([unique-name-counter 0] 
+			   [simalpha-dbg-on #f]
+			   ,@extraparams
+			   )
+	       (fluid-let ([pass-names
+		   '(cleanup-token-machine  desugar-gradients
+		     cleanup-token-machine desugar-let-stored
+		     rename-stored         ; cps-tokmac
+;		     closure-convert        ;cleanup-token-machine
+		     )])
+		 (let ([prog (run-compiler ',tm )])
+		   (let ((result (run-simulator-alpha prog 
+					;'timeout 10000
+						      )))
+		     result ;; Returns the soc-returned values rather than the output list.
+		     )))))]
+
 	)
   `( 
     ;; Urg, this is wrong:
@@ -364,8 +386,6 @@
      ,(lambda (ls) 	
 	(set-equal? (list->set ls)
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
-
-
 
      ["Respect call order."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -441,7 +461,7 @@
       #t]
 
 
-     [
+     ["Timed tokens 4"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	 (let ((prog 
@@ -461,7 +481,7 @@
 	     (display ")" prt)
 	     (read (open-input-string (get-output-string prt)))))))
       (c b a)]
-     [
+     ["Timed tokens 5"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	 (let ((prog 
@@ -560,6 +580,18 @@
 	    )))))
       ((tok3 ,BASE_ID))]
 
+    ["Test reading sensor values in simulation."
+     , (tm-to-socvals
+	'(tokens
+	   (SOC-start () (call loop 100))
+	   (loop (reps) (if (> reps 0)
+			    (begin (soc-return (list (my-clock) (local-sense)))
+				   (timed-call 100 loop (- reps 1)))))))
+       ,(lambda (ls) 
+	  (let ((vals (map cadr ls)))
+	    ;; Make sure our sin wave goes from 0 to 255:
+	    (and (<= (apply min vals) 10)
+		 (>= (apply max vals) 245))))]
 
      ["Token present?"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])

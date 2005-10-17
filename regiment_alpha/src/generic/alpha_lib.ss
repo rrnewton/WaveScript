@@ -15,9 +15,13 @@
 
 
 ;; ======================================================================
-;; Gets set by .... Something?  TODO FIX UP: seems like this is a param, and below these funs expect a direct var binding
-;; All node level utilities below depend on this parameter being set properly.
-[define this (make-parameter #f)]
+
+;; [2005.10.16] The code below does not exist within the scope of the
+;; "this" parameter to node-code.  Node-code is kind enough to set
+;; this global parameter correctly, so that the current simobject may
+;; be accessed by the below library code.
+;; NOTE: this is not a "regiment-parameter" because it should not be user-adjustable.
+[define current-simobject (make-parameter 'current-simobject_uninitialized!)]
 
 ;; ======================================================================
 ;; Node level utilities 
@@ -45,8 +49,8 @@
 
 [define (sim-light-up r g b)
   ((sim-debug-logger) "~n~a: light-up ~a ~a ~a"
-                      (node-id (simobject-node this)) r g b)
-  (if (simobject-gobj this)
+                      (node-id (simobject-node (current-simobject))) r g b)
+  (if (simobject-gobj (current-simobject))
       ;(GRAPHICSONLY ;; Fizzle if graphics is not enabled.
        ;(change-color! (simobject-gobj this) (rgb r g b));)
       (void)
@@ -67,7 +71,7 @@
          ;	     [oldcolors '(0 0 0)]
          )
     (let ((string (format "~a: (time ~s) (Leds: ~a ~a ~a)~n" 	
-                          (node-id (simobject-node this)) (cpu-time) which what
+                          (node-id (simobject-node (current-simobject))) (cpu-time) which what
                           (case what
                             [(on) 
                              (set! led-toggle-state (list->set (cons which led-toggle-state)))
@@ -100,7 +104,7 @@
             (msg-object-count this-message)
             (error 'simulator_nought.process-statement:dist
                    "inside simulator (dist) is broken!")))
-      (let ((entry (hashtab-get (simobject-token-cache this) (car tok))))
+      (let ((entry (hashtab-get (simobject-token-cache (current-simobject)) (car tok))))
         (if (and entry (msg-object-count entry))
             (msg-object-count this-message)
             (error 'simulator_nought.process-statement:dist
@@ -109,10 +113,10 @@
             )))]
 
 [define (sim-loc) ;; Return this nodes location.
-  (node-pos (simobject-node this))]
+  (node-pos (simobject-node (current-simobject)))]
 
 [define (sim-locdiff a b)
-  (sqrt (+ (expt (- (car a) (car b)) 2)
+   (sqrt (+ (expt (- (car a) (car b)) 2)
            (expt (- (cadr a) (cadr b)) 2)))]
 
 [define (simulator-soc-return x)

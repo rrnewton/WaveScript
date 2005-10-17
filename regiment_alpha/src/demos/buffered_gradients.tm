@@ -36,15 +36,15 @@
 		  (to depthmeasure)
 		  (via tree)
 		  (seed 0)
-		  (aggr max))
+		  (aggr max_aggr))
 
 	 ;; Additionally, report data.
 	 (greturn (list (list (my-clock) (my-clock)) ;; Time span
-			(my-id)) ;; Value
+			(list (my-id))) ;; Value
 		  (to catcher)
 		  (via tree)
-;		  (seed '())
-;		  (aggr buffered-aggr)
+		  (seed '#f);(list (list '0 '0) '()))
+		  (aggr buffered-aggr)
 		  ))
        (begin 
 	; (printf "~a~a Tree not here yet!\n" (pad-width 5 (my-clock)) (pad-width 5 (my-id)))
@@ -61,18 +61,31 @@
   [buffered-aggr (x y)
      (stored [buffer (make-vector 5 0)])
 
-     (let ([span1 (car x)] [v1 (cadr x)]
-	   [span2 (car y)] [v2 (cadr y)])
-       (printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
-       (return (list (list (min (car span1) (car span2))
-			   (max (cadr span1) (cadr span2)))
-		     (append v1 v2))
-	       ))
+     (if (not x) y
+	 (if (not y) x
+	     (let ([span1 (car x)] [v1 (cadr x)]
+		   [span2 (car y)] [v2 (cadr y)])
+					;(printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
+	       (printf "Aggr: ~a.~a ~a.~a   ~a ~a  result: ~a  damn: ~a\n"
+		       (car span1)(cadr span1)
+		       (car span2)(cadr span2)
+		       v1 v2
+		       (list (list (min (car span1) (car span2))
+				   (cons (cadr span1) (cadr span2))
+				   (max (cadr span1) (cadr span2))
+				   )
+			     (append v1 v2))
+		       (max 0 9001)
+		       )
+	       (return (list (list (min (car span1) (car span2))
+				   (max (cadr span1) (cadr span2)))
+			     (append v1 v2))
+		       ))))
      ]
-;  [span-length (s) (return (- (cadr span) (car span)))]
+  [span-length (s) (return (- (cadr s) (car s)))]
 
 
-  [max (x y) (if (< x y) y x)]
+  [max_aggr (x y) (return (max x y))]
 
 
 
