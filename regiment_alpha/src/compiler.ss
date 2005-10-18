@@ -50,7 +50,6 @@
 ;; Temporarily I am disabling these ..
     cps-tokmac
     closure-convert
-
     cleanup-token-machine ;; Trying this.. [2005.09.27]
 
     ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
@@ -139,8 +138,8 @@
 (define (assemble-tokmac tm . args)
   (printf "assem tokmac...\n" )
   (let ([starting-place 
-	 (match tm 
-	   [(,lang ,prog)
+	 (match tm
+	   [(,lang ,prog ...)
 	    (case lang
 	      [(add-places-language) 'analyze-places] ;; Not strictly correct.
 	      [(deglobalize-lang) 'deglobalize]
@@ -347,6 +346,7 @@
 ;		     closure-convert        ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm )])
+		   (profile-clear) ;; Temp: profiling the simulator:
 		   (let ((result (run-simulator-alpha prog 
 					;'timeout 10000
 						      )))
@@ -580,6 +580,24 @@
 	    )))))
       ((tok3 ,BASE_ID))]
 
+     ["Test the 'activate' form of token-invocation."
+      , (tm-to-socvals
+	 '(tokens
+	      (SOC-start () 
+			 (timed-call 100 tok1)
+			 (timed-call 50 tok2))
+	      (tok1 () (soc-return (vector 'tok1 (my-clock))))
+	      (tok2 () (soc-return (vector 'tok2 (my-clock)))
+		       (activate tok1)
+		       (activate tok3))
+	      (tok3 () (soc-return (vector 'tok3 (my-clock))))))
+	,(lambda (v)
+	   (match v
+	     [(#(tok2 ,x) #(tok3 ,y) #(tok1 ,z))
+	      (and (= (- y x) SCHEDULE_DELAY)
+		   (> z 100))]))
+	]
+			 
     ["Test reading sensor values in simulation."
      , (tm-to-socvals
 	'(tokens
@@ -1124,6 +1142,9 @@
 	    ;(c ab c b)
 	    ]))
 
+     ;; FIXME BUG: I got an error on this test when running all units.
+     ;; Unfortunately, it was not repeatable, and I don't know what the error was.
+     ;; I should modify the unit tester to save output for erroneous tests. [2005.10.17]
      ["Test gradient ghopcount, gversion, gparent, gorigin."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
@@ -1641,6 +1662,7 @@
       (,BASE_ID #t #t 8967)]
 
 
+     ;; FIXME: This needs more work:
      ["Gradients: let a thousand flowers bloom (gradient from everywhere)."
       retry ;; Must retry, network might not be connected
       (parameterize ([unique-name-counter 0] 
@@ -1680,6 +1702,41 @@
       ;; FIXME : Finish
       unspecified]
 
+
+    ["Gradients:  Return an average sensor reading over the network."
+     , (tm-to-socvals
+	'(tokens 
+	  (SOC-start () (call spread))
+	  (spread () (gemit tree) (timed-call 600 SOC-start))
+	  (catcher (v) 
+		   (if (> (cadr v) 0)
+		       (begin 
+			 (printf "Got soc-val at time ~a: (~a ~a) avg: ~a\n"
+				 (my-clock) (car v) (cadr v) (* 1.0 (/ (car v) (cadr v))))
+			 (soc-return (list (my-clock) (local-sense) (* 1.0 (/ (car v) (cadr v))))))
+		       (printf "Soc-val at time ~a: but it's empty!!\n" (my-clock))))
+
+	  (tree () 
+;		(printf "~a tree..\n" (my-clock))
+		(activate upfeed) (grelay))
+	  (upfeed ()
+;		  (printf "~a ~a upfeed...\n" (my-id) (my-clock))
+		  (greturn (list (local-sense) 1)
+			   (to catcher)
+			   (via tree)
+			   (seed (list 0 0))
+			   (aggr avg_aggr))
+		  (timed-call 100 upfeed))
+
+	  (avg_aggr (x y)
+		    ;(printf "Average acc: ~a ~a\n"  x y)
+		    (return (list (+ (car x) (car y))
+				  (+ (cadr x) (cadr y))))))
+	  '[regiment-verbose #f]
+	  '[simalpha-timeout 10000]
+;	  '[simalpha-stream-result #t]
+	  )
+       unspecified]
 
      ["Run complex buffered-gradient TM from file"
       , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
@@ -2026,3 +2083,7 @@
 		   (read (open-input-string (get-output-string prt))))))
 	    lst
 	    ))))
+
+
+(define (test)
+  (eval (caddr (list-ref (maintest 'get-tests) 50))))

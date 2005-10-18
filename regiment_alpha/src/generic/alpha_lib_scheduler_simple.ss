@@ -63,7 +63,9 @@
       (unless (null? newevnts)
 	      ;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
 	      ;; Before I merely merged them:
-	      (set-queue! (sort lessthan (append pairedevnts (get-queue))))
+	      (IFDEBUG ;; [2005.10.17] Profiling indicates this wastes a lot of time.  Only doing this in debug mode.
+	       (set-queue! (sort lessthan (append pairedevnts (get-queue))))
+	       (set-queue! (merge lessthan pairedevnts (get-queue))))
 
 	      (logger 3 "~a  Scheduling ~a new events ~a, new schedule len: ~a~n"
 		      (pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))

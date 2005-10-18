@@ -7,6 +7,74 @@
            (all-except "tsort.ss" test-this these-tests)
            
            "constants.ss")
+
+ (provide     	;; Remember to update the plt equivalent when you update this:
+   ;; Syntax:
+   mvlet rec 
+   
+   ;; Values:
+   ;; For chez compatibility:
+   define-top-level-value set-top-level-value! top-level-bound? top-level-value
+   flush-output-port with-error-handlers warning cpu-time ;; error-handler 
+   pretty-maximum-lines make-list
+   list-head merge pretty-print
+
+   ;; Meet in the middle with chez:
+   print-level print-length
+   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
+   
+   get-formals
+   deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
+   
+   ;; Hmm, not sure what meaning immediate has here...
+   immediate? constant? datum? 
+   formalexp? cast-formals default-unit-tester tester-eq?
+   ;default-unit-tester-retries ;; This is in constants.
+
+   regiment-primitives regiment-primitive? 
+   token-machine-primitives token-machine-primitive? 
+   token-machine? token-machine->program token-machine-keyword?
+   basic-primitive? distributed-primitive?
+   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
+   get-primitive-return-type
+   map-prim-w-types
+   
+   ;; Token names:
+   token-name? new-token-name token-names get-names get-formation-name get-membership-name
+   token->name token->subtok
+   destructure-tokbind
+
+   set? subset? set-equal? list->set set-cons union intersection difference
+   alist-remove list-remove-first list-remove-last! list-remove-after 
+   filter list-index snoc rac rdc last 
+   list-find-position list-remove-before
+   randomize-list  insert-between iota disp pp  crit-printf
+   extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
+   graph-map graph-get-connected-component graph-neighbors cyclic? 
+   graph:simple->vertical graph:vertical->simple
+   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
+   list-get-random unfold-list average clump
+   partition partition-equal split-before
+   myequal?
+   stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+   counter-stream stream-append ;random-stream 
+   display-constrained
+   symbol-append 
+
+   testhelpers testshelpers test-this these-tests
+
+   reg:random-int reg:get-random-state reg:set-random-state!
+					;reg:all-unit-tests 
+   
+;   (all-except (lib "rutils_generic.ss")
+;               list->set union intersection difference set?
+;               list-head filter list-index snoc rac rdc 
+;               insert-between iota disp)
+;   (all-from (lib "rutils_generic.ss") )
+   ;   (all-from-except (lib "rutils_generic.ss") 
+   ;                    list->set union intersection difference set?) 
+   )
+
   
   ;; This might not be necessary: 
   ; (require "~/scheme/plt/utils/rutils_generic.ss")
@@ -182,71 +250,7 @@
   ;          (error-escape-handler (lambda () (void)))
 	    (error-display-handler (car arg)))))
   
-  (provide    
-   ;; Syntax:
-   mvlet rec 
-   
-   ;; Values:
-   ;; For chez compatibility:
-   define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port with-error-handlers warning cpu-time ;; error-handler 
-   pretty-maximum-lines make-list
-   
-   ;; Meet in the middle with chez:
-   print-level print-length
-   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
-   
-   get-formals
-   deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
-   
-   ;; Hmm, not sure what meaning immediate has here...
-   immediate? constant? datum? 
-   formalexp? cast-formals default-unit-tester tester-eq?
-   default-unit-tester-retries
-
-   regiment-primitives regiment-primitive? 
-   token-machine-primitives token-machine-primitive? 
-   token-machine? token-machine->program token-machine-keyword?
-   basic-primitive? distributed-primitive?
-   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-   get-primitive-return-type
-   map-prim-w-types
-   
-   ;; Token names:
-   token-name? new-token-name token-names get-names get-formation-name get-membership-name
-   token->name token->subtok
-   destructure-tokbind
-
-   set? subset? set-equal? list->set set-cons union intersection difference
-   alist-remove list-head list-remove-first list-remove-last! list-remove-after 
-   filter list-index snoc rac rdc last merge
-   list-find-position list-remove-before
-   randomize-list  insert-between iota disp pp pretty-print crit-printf
-   extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
-   graph-map graph-get-connected-component graph-neighbors cyclic? 
-   graph:simple->vertical graph:vertical->simple
-   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
-   list-get-random unfold-list average clump
-   partition partition-equal split-before
-   myequal?
-   stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
-   counter-stream random-stream stream-append
-   display-constrained
-   symbol-append 
-
-   testhelpers testshelpers test-this these-tests
-
-   reg:random-int reg:get-random-state reg:set-random-state!
-					;reg:all-unit-tests 
-   
-;   (all-except (lib "rutils_generic.ss")
-;               list->set union intersection difference set?
-;               list-head filter list-index snoc rac rdc 
-;               insert-between iota disp)
-;   (all-from (lib "rutils_generic.ss") )
-   ;   (all-from-except (lib "rutils_generic.ss") 
-   ;                    list->set union intersection difference set?) 
-   )
+ 
 
   )
 

@@ -16,8 +16,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -91,8 +91,14 @@
 ;; This parameter determines whether the compiler should output extra debugging info.
 (define-regiment-parameter regiment-verbose #f)
 
-;; This one optionally provides a target for logging simulation data.
-(define-regiment-parameter simulation-logger #f)
+;; This one toggles logging.  
+;; It can be set to : 
+;;   #t -- Turn logging on, use default log files.
+;;   #f -- Turn logging off.
+;;   string -- log to specified file 
+;;   function -- use specified logger function
+;; FIXME : Finish implementing these behaviors.
+(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
@@ -174,6 +180,11 @@
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
 (define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded
 
+;; When this parameter is turned on, the simulator returns a stream of
+;; soc-return values rather than waiting for the sim to end
+
+(define-regiment-parameter simalpha-stream-result #f)
+
 
 ;; This globally defined functions decides the sensor values.
 ;; Here's a version that makes the sensor reading the distance from the origin:
@@ -181,6 +192,14 @@
   (sqrt (+ (expt x 2) (expt y 2))))
 
 (define (sense-sine-wave id x y t)
+  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+  ;(exact->inexact
+   (inexact->exact 
+    (floor
+     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
+
+#;
+(define (sense-fast-sine-wave id x y t)
   (printf "(sensing ~a ~a ~a ~a) " id x y t)
   (inexact->exact 
    (floor

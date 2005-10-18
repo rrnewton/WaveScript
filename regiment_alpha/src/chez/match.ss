@@ -48,20 +48,22 @@
 
 ;; YOU'RE NOT ALLOWED TO REFER TO CATA VARS IN GUARDS. (reasonable!)
 
-;(module ((match+ match-help match-help1 clause-body let-values**
-;           guard-body convert-pat mapper my-backquote extend-backquote
-;           sexp-dispatch)
-;         (trace-match+ match-help match-help1 clause-body let-values**
-;           guard-body convert-pat mapper my-backquote extend-backquote
-;           sexp-dispatch)
-;         (match match-help match-help1 clause-body let-values**
-;           guard-body convert-pat mapper my-backquote extend-backquote
-;           sexp-dispatch)
-;         (trace-match match-help match-help1 clause-body let-values**
-;           guard-body convert-pat mapper my-backquote extend-backquote
-;           sexp-dispatch))
-;
-;(import scheme)
+(module ((match+ match-help match-help1 clause-body let-values**
+          guard-body convert-pat mapper my-backquote extend-backquote
+          sexp-dispatch)
+        (trace-match+ match-help match-help1 clause-body let-values**
+          guard-body convert-pat mapper my-backquote extend-backquote
+          sexp-dispatch)
+        (match match-help match-help1 clause-body let-values**
+          guard-body convert-pat mapper my-backquote extend-backquote
+          sexp-dispatch)
+        (trace-match match-help match-help1 clause-body let-values**
+          guard-body convert-pat mapper my-backquote extend-backquote
+          sexp-dispatch)
+	;; RRN: exposing these
+	letcc let/cc)
+
+(import scheme)
 
 (define-syntax match+
   (lambda (x)
@@ -591,7 +593,7 @@
                   vals
                   (fail)))))))))
 
-;) ;; End Module
+) ;; End Module
 
 #!eof
 
@@ -690,6 +692,7 @@
 ;;;         | (if <Expr> <Expr> <Expr>)
 ;;;         | (<Expr> <Expr*>)
 
+
 (define parse
   (lambda (x)
     (define Prog
@@ -775,3 +778,4 @@
 ;;    ,v ...      ==> ,@v
 ;;    (,v ,w) ... ==> ,@(map list v w)
 ;;    etc.
+

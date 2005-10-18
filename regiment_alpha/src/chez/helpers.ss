@@ -1,4 +1,69 @@
 
+(module helpers   
+	;; Remember to update the plt equivalent when you update this:
+	(;; Syntax:
+	  mvlet 
+	   
+	  ;; For plt compat:
+	  foldl
+
+	  make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
+
+	  substring? periodic-display all-equal?
+
+	  ;; Values:	    
+	  unique-name unique-name-counter extract-suffix make-begin strip-illegal 	  deunique-name 
+
+	  ;; Hmm, not sure what meaning immediate has here...
+	  immediate? constant? datum? 
+	  formalexp? cast-formals default-unit-tester tester-eq?
+	  ;default-unit-tester-retries
+
+	  regiment-primitives regiment-primitive? 
+	  token-machine-primitives token-machine-primitive? 
+	  token-machine? token-machine->program token-machine-keyword?
+	  basic-primitive? distributed-primitive?
+	  get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
+	  get-primitive-return-type
+	  map-prim-w-types
+
+	  ;; Token names:
+	  token-name? new-token-name token-names get-names get-formation-name get-membership-name
+	  token->name token->subtok
+	  destructure-tokbind
+
+	  set? subset? set-equal? list->set set-cons union intersection difference
+	  alist-remove list-remove-first list-remove-last! list-remove-after 
+	  filter list-index snoc rac rdc last 
+	  list-find-position list-remove-before
+	  randomize-list  insert-between iota disp crit-printf
+	  extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
+	  graph-map graph-get-connected-component graph-neighbors cyclic? 
+	  graph:simple->vertical graph:vertical->simple
+	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
+	  list-get-random unfold-list average clump
+	  partition partition-equal split-before
+	  myequal?
+	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+	  counter-stream stream-append ;random-stream 
+	  display-constrained
+	  symbol-append 
+
+	  testhelpers testshelpers test-this these-tests
+
+	  reg:random-int reg:get-random-state reg:set-random-state!
+					;reg:all-unit-tests 
+	  
+					;   (all-except (lib "rutils_generic.ss")
+					;               list->set union intersection difference set?
+					;               list-head filter list-index snoc rac rdc 
+					;               insert-between iota disp)
+					;   (all-from (lib "rutils_generic.ss") )
+					;   (all-from-except (lib "rutils_generic.ss") 
+					;                    list->set union intersection difference set?) 
+
+
+	  )
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
 ;; substitute.  That's the kind of thing I'd like my
@@ -33,6 +98,7 @@
     [(_ v exp ...)
      (call/1cc (lambda (v) exp ...))]))
 
+
 ;(define-syntax define-values
 ;  (syntax-rules ()
 ;    [(_ (v ...) exp)
@@ -40,10 +106,10 @@
 ;       (call-with-values
 		
   
-
 ;; This defines a *simple* and unified interface into hash-tables.
 ;; First we require hash-tables from slib:
-(require 'hash-table)
+(define ___ (require 'hash-table))
+
 ;(define (make-default-hash-table) (make-hash-table 50))
 (define (make-default-hash-table) (make-hash-table 5))
 (define hashtab-get (hash-inquirer equal?))
@@ -64,11 +130,12 @@
 ;; This is too lenient, but there's no other option.
 (define promise? procedure?)
 
+;; Moved include!
+
 ;; We play nasty tricks with symbolic links here. 
 ;; It doesn't matter if we load this file from "src" or "src/chez"
 ;; because we've linked the "generic" subdir from both locations.
 (include "generic/helpers.ss")
-
 
 (define (crit-printf . args)
   (critical-section (apply printf args)))
@@ -117,3 +184,4 @@
 (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
 (define (reg:set-random-state! s) (random-seed s))
 
+)

@@ -97,7 +97,8 @@
       (logger string)
       ))]
 
-'[define (sim-dist . tok)
+#;
+[define (sim-dist . tok)
   (if (null? tok)
       (begin 
         (if (msg-object-count this-message)
@@ -160,7 +161,8 @@
 			   (timed-call 1000 tok3 (- y 1))))]
 	  )))))
 
-'(tokens 
+#;
+(tokens 
   [soc-start () (display "S")]
   [node-start () (display "N")])
 
