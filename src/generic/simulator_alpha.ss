@@ -101,9 +101,14 @@
 			      to   ;; :: nodeid - who its going to, #f for broadcast
 			      args))
 
+;; This is just used to count up the messages during a simulation.
+(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
+
+
 ;; ======================================================================
 
 ;; This is our logger for events in the simulator:
+;; TODO: make this a syntax so that the calls disappear entirely in non-debug mode.
 (define logger
   (lambda input
   (mvlet ([(level ob args)
@@ -434,11 +439,13 @@
 							       (list ,@rand*) current-vtime))
                                  (simobject-local-msg-buf this)))]
 		  
-		  [(bcast ,[rator] ,[rand*] ...)
-		   `(set-simobject-outgoing-msg-buf! this
-  		      (cons (make-simevt #f ;; No scheduled time, ASAP
-				       (bare-msg-object ,rator (list ,@rand*) current-vtime))
-			    (simobject-outgoing-msg-buf this)))]
+		  [(bcast ,[rator] ,[rand*] ...)		   
+		   `(begin 
+		      (simalpha-total-messages (add1 (simalpha-total-messages)))
+		      (set-simobject-outgoing-msg-buf! this
+  		        (cons (make-simevt #f ;; No scheduled time, ASAP
+					   (bare-msg-object ,rator (list ,@rand*) current-vtime))
+			      (simobject-outgoing-msg-buf this))))]
 
 ;; These are desugared before now.
 ;		  [(activate ,rator ,rand* ...)
@@ -463,11 +470,15 @@
 		   ;; We go through the current queue looking for a scheduled event that matches this token.
 		   ;; NOTE: This is the queue of *all* events, we also must make sure it happens on this *node*.
 		   `(begin		      
-		      '(disp "SCANNING QUEUE: " (length (simworld-scheduler-queue (simobject-worldptr this)))
+		      #;
+		      (disp "SCANNING QUEUE: " (length (simworld-scheduler-queue (simobject-worldptr this)))
 			    "and locals: "     (length (simobject-local-msg-buf this))
 			    (map msg-object-token 
 				 (map simevt-msgobj
 				      (simobject-local-msg-buf this))))
+		      
+		      ;; FIXME: 
+		      ;; PROFILING INDICATES THAT THIS IS VERY SLOW:
 
 		      (or ;;; First, check the schedulers queue:
 		       ;; (TODO FIXME, CHECK: THIS MIGHT NOT EVEN BE NECESSARY:)
@@ -790,8 +801,8 @@
 ; 					 "ran on non-base node! id: ~a"
 ; 					 (node-id (simobject-node this)))))]
 ; 			  tbinds))
-
-	`(define (node-code this)
+	 (let ((node-code
+	 `(define (node-code this)
 	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
 	   ;; Set the global parameter that library code needs to access "this".
 	   (parameterize ((current-simobject this))
@@ -839,7 +850,17 @@
 				       (msg-object-args msgob))
 				;; That returns nothing but fills up the simobjects buffers.
 				)))
-		 )))))))]
+		 ))))))))
+	   ;; Final return value of compile-simulate-alpha:
+	   ;; If chez:
+	   `(begin
+	      (module genned-code (node-code) 
+		      (import alpha_lib)
+		      (import alpha_lib_scheduler_simple)
+		      ,node-code)
+	      (import genned-code)))
+	      
+	 )]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~a" prog)])))
 
@@ -904,7 +925,7 @@
 ;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
 			    (parameterize ([print-level #f]
 					   [pretty-maximum-lines #f]
-					   [print-graph #t])				    					  
+					   [print-graph #f])
 			    (pretty-print comped out)
 			    (newline out)
 			    (newline out)
@@ -959,7 +980,9 @@
 		       ]
 		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~a" other)]
 		      )))
-  (apply run-alpha-loop args)))
+    ;; Reset global message counter:
+    (simalpha-total-messages 0)
+    (apply run-alpha-loop args)))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
@@ -996,9 +1019,10 @@
   (if (file-exists? logfile) (delete-file logfile))
  
   (parameterize ([soc-return-buffer '()])
-  (let/cc exitk
-  (parameterize ([simulation-logger (open-output-file logfile 'replace)]
-		 [simulation-logger-count 0]
+  (let/cc exitk	
+	  ;; FOR NOW: only log if we're in debugmode [2005.10.17]
+  (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
+		 [simulation-logger-count (IFDEBUG 0 #f)]
 		 [escape-alpha-sim exitk])
 		(printf "Running simulator alpha (~a version) (logfile ~s)" 
 			(if simple-scheduler 'simple 'full)
@@ -1086,7 +1110,7 @@
 
 ))
 
-'    (compile-simulate-alpha 
+#;    (compile-simulate-alpha 
      '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtok_ind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtok_ind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtok_ind)))))) (K_1 subtok_ind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~a") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
 
 
@@ -1110,7 +1134,6 @@
 		  )))
     (lambda args
       (apply tester args))))
-
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand

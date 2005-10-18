@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 1)
+	   (optimize-level 1) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
 	   )
 (print-graph #f)
 (print-gensym #f)
@@ -59,7 +59,7 @@
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
 ;; therefore we don't need to change directories.
 ;(eval-when (compile eval) (cd "chez"))
-(include "chez/helpers.ss")
+(include "chez/helpers.ss") (import helpers)
 ;(eval-when (compile eval) (cd ".."))
 
 (include "generic/grammar_checker.ss")
@@ -175,12 +175,11 @@
 	 )
 	(include "chez/simulator_alpha.ss")
 )
-(include "chez/simulator_alpha.ss")
-;(import simulator_alpha)
+(include "chez/simulator_alpha.ss") (import simulator_alpha)
 
-(include "generic/alpha_lib.ss")
+(include "chez/alpha_lib.ss") (import alpha_lib)
 ;(include "generic/alpha_lib_scheduler.ss")
-(include "generic/alpha_lib_scheduler_simple.ss")
+(include "chez/alpha_lib_scheduler_simple.ss") (import alpha_lib_scheduler_simple)
 
 ;; If we're in SWL then load the GRAPHICS portion:
 '(when (top-level-bound? 'SWL-ACTIVE)

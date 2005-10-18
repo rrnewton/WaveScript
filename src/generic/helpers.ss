@@ -16,7 +16,6 @@
 
 (define id (lambda (x) x))
 
-
 ;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:
@@ -181,7 +180,8 @@
        [else (cons (f (car args) types)
 		   (loop (cdr args) types))]))))
 
-#;(define (get-primitive-arity prim)
+#;
+(define (get-primitive-arity prim)
   (let* ([entry (get-primitive-entry prim)]
 	 [args (cadr entry)])
     (cond
@@ -279,6 +279,7 @@
      (cons (Object List) List) 
      (car (List) Object)
      (cdr (List) List)
+     (cadr (List) Object)
      (null? (List) Bool)
      (list Object List)
      (append List List)
@@ -485,13 +486,15 @@
       [(equal? x (car lst)) (list-remove-all x (cdr lst))]
       [else (cons (car lst) (list-remove-all x (cdr lst)))])))
 
-#;(define timeeval
+#;
+(define timeeval
   (lambda (x)
     (let ([start (real-time)])
       (eval x)
       (- (real-time) start))))
 
-#;(define cpueval
+#;
+(define cpueval
   (lambda (x)
     (let ([start (cpu-time)])
       (eval x)
@@ -534,7 +537,8 @@
         (cons (f (car ls))
               (mapright f (cdr ls))))))
 
-#;(define list->set
+#;
+(define list->set
   (lambda (origls origpos v)
     (let list-set-loop ([ls origls] [pos origpos])
       (cond
@@ -821,7 +825,8 @@
       [(,x ,x* ...) `(code ,x ,x* ...)])))
 
 ; [2005.09.27] Why redefine this prim?
-'(define with-output-to-string
+#;
+(define with-output-to-string
   (lambda (th)
     (parameterize ([current-output-port (open-output-string)])
       (th)
@@ -1047,8 +1052,6 @@
 		   (display (substring str 0 (- (string-length str) 1))))))))
 	      args)))
 
-
-
 (define (all-equal? ls)
   (if (null? ls) #t
       (let ((x (car ls)))
@@ -1059,6 +1062,12 @@
 	   [else #f])))))
 		  
 ;; ======================================================================
+
+(define deunique-name
+  (lambda (sym)
+    (let ((str (symbol->string sym)))
+      (string->symbol
+       (car (string-split str #\_))))))
 
 ;;; unique-name produces a unique name derived the input name by
 ;;; adding a unique suffix of the form .<digit>+.  creating a unique
@@ -1114,9 +1123,11 @@
               (filter (lambda (c) (or (char-alphabetic? c)
                                       (char-numeric? c)))
                       (string->list str)))))
-       '(define illegal-chars
+#;
+	(define illegal-chars
             '(#\! #\@ #\# #\$ #\% #\^ #\& #\* #\. #\-))
-       '(define strip-illegal
+#;
+	(define strip-illegal
             (lambda (str)
               (let loop ([ls illegal-chars]
                          [chars (string->list str)])
@@ -1140,7 +1151,8 @@
 
 ;; [2004.06.28]  NEW VERSION, counter per seed name:
 ;; Just overwriting definitions from above:
-'(begin
+#;
+(begin
         (define unique-name-count (make-default-hash-table))
 
         (define (unique-suffix sym)
@@ -1161,12 +1173,6 @@
 			   "this version of reset-name-count! cannot handle argument: ~s"
 			   n)])))
 )
-
-(define deunique-name
-  (lambda (sym)
-    (let ((str (symbol->string sym)))
-      (string->symbol
-       (car (string-split str #\_))))))
 
 ;; inefficient
 (define string-split
@@ -1599,8 +1605,6 @@
 
 
 
-
-
 ;; These are the symbols I use for different types right now:
 ;;   Bool Char Float64 Int32 List Object
 ;;   Number Pair Port String Symbol Vector Void
@@ -1629,7 +1633,8 @@
 
         )))
 
-#;(define constant->type
+#;
+(define constant->type
   (lambda (imm)
     (cond
       [(fx-integer? imm) 'Int32]
@@ -1655,7 +1660,8 @@
       (null? x) ;; RRN added. [2004.04.28]
       ))
 
-#;(define immediate?
+#;
+(define immediate?
   (lambda (x)
     (or ;(null? x)
       (char? x)
@@ -1664,7 +1670,8 @@
       ;(boolean? x)
       )))
 
-#;(define boxed-type?
+#;
+(define boxed-type?
   (lambda (type)
     (case type
       [(Char Int32 Float64) #t]
@@ -1961,7 +1968,8 @@
 ;; If the numargs is variable, this function returns a pair
 ;; such as (a . b) indicating the range of possible argument counts
 ;; (+inf.0 is a very likely candidate for b).
-#;(define (get-primitive-numargs prim)
+#;
+(define (get-primitive-numargs prim)
   (let ([entrynum (list-ref (get-primitive-entry prim) 1)])
     (if (eq? 'variable entrynum)
         (match (get-primitive-rand-types prim)
@@ -1970,9 +1978,11 @@
           [(,v ... . ,l) (cons (length v) +inf.0)])
         entrynum)))
 
-#;(define (get-primitive-context prim)
+#;
+(define (get-primitive-context prim)
   (list-ref (get-primitive-entry prim) 2))
-#;(define get-primitive-rand-types
+#;
+(define get-primitive-rand-types
   (case-lambda
     [(prim) (list-ref (get-primitive-entry prim) 3)]
     [(prim len)
@@ -2334,7 +2344,8 @@
 	 (when (= newticks 100) (display #\]) (newline) (flush-output-port))
 	 #t)))))
 ;; Example
-' (let ((f (display-progress-meter 100)))
+#;
+(let ((f (display-progress-meter 100)))
     (for i = 1 to 100 
 	 (for i = 1 to 100000)
 	 (f)))
@@ -2357,15 +2368,26 @@
     (define (plot-one i d)
       (if (number? d)
 	  (fprintf dat "~s ~s\n" i d)
-	  (fprintf dat "~s ~s\n" (car d) (cadr d))))
+	  (begin (for-each (lambda (n)
+			     (fprintf dat "~s " n))
+			   d)
+		 (fprintf dat "\n"))))
+    (if (null? data)
+	(void)	
+    (begin
     ;; Write script file:
     (fprintf scrip "set autoscale;\n")
-    (fprintf scrip "plot ~s with linespoints;\n" fn2)
+    (fprintf scrip "plot ~s using 1:2 with linespoints" fn2)
+    (for n = 3 to (length (car data))
+	 (fprintf scrip ", ~s using 1:~a with linespoints" fn2 n))
+    (fprintf scrip ";\n")
+
+    ;(fprintf scrip "exit;\n")
     ;; Write data file:
     (cond 
      [(list? data) 
       (if (not (or (andmap number? data) 
-		   (andmap (lambda (l) (and (list? l) (= 2 (length l)) (andmap number? l)))
+		   (andmap (lambda (l) (and (list? l) (andmap number? l)))
 			   data)))
 	  (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
       (for-eachi plot-one data)]
@@ -2384,10 +2406,10 @@
 ;    (delete-file fn1)
 ;    (delete-file fn2)
   
-  )))
-
+  )))))
 ;; Example:
-' (let* ([ind (map (\\ x (* (- x 150) 0.1)) (iota 300))] [ys (map sin ind)]) (gnuplot (map list ind ys)))
+#;
+(let* ([ind (map (\\ x (* (- x 150) 0.1)) (iota 300))] [ys (map sin ind)]) (gnuplot (map list ind ys)))
 
 
 ;; ======================================================================
@@ -2563,7 +2585,8 @@
 
 
 ;; [2005.09.27] TEMP:  These are malfunctioning for some reason: ; TODO FIXME:
-#|    ["Test the default unit tester... (retry feature)"
+#|    
+    ["Test the default unit tester... (retry feature)"
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((reg:random-int 10) 3)]
@@ -2589,8 +2612,8 @@
 (define testhelpers test-this)
 (define testshelpers these-tests)
 
-'
 ;(call/cc (lambda (out)
+#;
 	   (with-error-handlers (lambda args (disp "error disp:" args))
 				(lambda args (disp "error escape:" args) 999)
 				(lambda () (disp "handlers: " 
