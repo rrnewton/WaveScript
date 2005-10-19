@@ -703,6 +703,7 @@
 	   ;; If chez:
 	   `(begin
 	      (module genned-code (node-code) 
+		      (import scheme)
 		      (import simulator_alpha_datatypes)
 		      (import alpha_lib)
 		      (import alpha_lib_scheduler_simple)

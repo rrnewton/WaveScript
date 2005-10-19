@@ -4,7 +4,8 @@
 	(
 	 run-alpha-simple-scheduler
 	 )
-	
+
+	(import scheme)
 	(import simulator_alpha_datatypes)
 ;	(import simulator_alpha)
 	

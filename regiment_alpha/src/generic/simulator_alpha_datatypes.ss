@@ -192,11 +192,13 @@
 
 ;; These shouldn't need to be reset after/before a run of the simulator.
 (define reverse-table (make-default-hash-table))
+;; This is not going to *change* over the course of our evaluation:
+(define max-positive (most-positive-fixnum))
 (define (token->key t)
   (DEBUGMODE
    (if (not (simtok? t))
        (error 'token->key "This is not a simtok object: ~s" t)))
-  (let ((n (hash t most-positive-fixnum)))
+  (let ((n (hash t max-positive)))
     (hashtab-set! reverse-table n t)
     ;(disp " Token->key " t n)
     n))
