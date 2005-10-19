@@ -1,3 +1,5 @@
+;; REQUIRES EQUAL? BASED HASH TABLES!!!
+
 
 ;; simulator_nought.ss
 ;;  -Ryan Newton [2004.05]

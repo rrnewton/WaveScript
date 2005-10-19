@@ -67,6 +67,8 @@
 	       (set-queue! (sort lessthan (append pairedevnts (get-queue))))
 	       (set-queue! (merge lessthan pairedevnts (get-queue))))
 
+	      ;(printf "Woot: ~a\n" (map simevt-vtime (map car (get-queue))))
+
 	      (logger 3 "~a  Scheduling ~a new events ~a, new schedule len: ~a~n"
 		      (pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
 		      (length newevnts)

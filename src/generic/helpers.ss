@@ -2584,8 +2584,21 @@
      (#t #f #t #t #f)]
 
 
+    ["Test with-error-handlers"
+     (let ((return ()))
+       (call/cc (lambda (k)
+		  (with-error-handlers disp
+				       (lambda () (k (void)))
+				       (lambda ()
+					 (set! return (cons 1 return))
+					 (error 'foo "bar")
+					 (set! return (cons 2 return))))))
+       return)
+     (1)]
+
+
 ;; [2005.09.27] TEMP:  These are malfunctioning for some reason: ; TODO FIXME:
-#|    
+
     ["Test the default unit tester... (retry feature)"
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
@@ -2593,6 +2606,7 @@
 		    'retry)])
 	 (fun 'qv)))
      #t]
+
     ["This just gives the retry argument at test time."
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
@@ -2605,7 +2619,7 @@
 		    `[(3 3) ["" retry (reg:random-int 3) 0]])])
 	 (fun 'qv)))
      #t]
-|#
+
     ))
 
 (define test-this (default-unit-tester "helpers.ss: my messy utils file." these-tests))

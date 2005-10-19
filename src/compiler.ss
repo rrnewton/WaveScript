@@ -1733,7 +1733,7 @@
 		    (return (list (+ (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
 	  '[regiment-verbose #f]
-	  '[simalpha-timeout 10000]
+	  '[simalpha-timeout 5000]
 ;	  '[simalpha-stream-result #t]
 	  )
        unspecified]

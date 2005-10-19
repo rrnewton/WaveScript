@@ -5,4 +5,8 @@
 	 run-alpha-simple-scheduler
 	 )
 	
-	(include "generic/alpha_lib_scheduler_simple.ss"))
+	(import simulator_alpha_datatypes)
+;	(import simulator_alpha)
+	
+	(include "generic/alpha_lib_scheduler_simple.ss")
+)
