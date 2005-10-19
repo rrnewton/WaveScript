@@ -1,3 +1,5 @@
+
+
 ;; [2004.07.02]
 ;; Hmm, I considered making this a while ago.  But I never know
 ;; whether to keep constants module-local or lift them out like this.
@@ -16,8 +18,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT

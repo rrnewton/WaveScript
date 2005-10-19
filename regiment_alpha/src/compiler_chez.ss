@@ -62,6 +62,13 @@
 (include "chez/helpers.ss") (import helpers)
 ;(eval-when (compile eval) (cd ".."))
 
+(include "chez/simulator_alpha_datatypes.ss")
+(include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+;(include "generic/alpha_lib_scheduler.ss")
+(include "chez/simulator_alpha.ss") (import simulator_alpha)
+(include "chez/alpha_lib.ss") ;(import alpha_lib)
+
+
 (include "generic/grammar_checker.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
@@ -162,24 +169,7 @@
 )
 ;(import simulator_nought)
 
-'(module simulator_alpha
-	(;run-simulation
-	 ;run-simulation-stream
-	 ;compile-simulate-nought 
-	 ;build-simulation
-	 ;process-statement-nought
-	 ;init-world
-	 ;cleanse-world
-	 ;testsim
-	 ;testssim
-	 )
-	(include "chez/simulator_alpha.ss")
-)
-(include "chez/simulator_alpha.ss") (import simulator_alpha)
 
-(include "chez/alpha_lib.ss") (import alpha_lib)
-;(include "generic/alpha_lib_scheduler.ss")
-(include "chez/alpha_lib_scheduler_simple.ss") (import alpha_lib_scheduler_simple)
 
 ;; If we're in SWL then load the GRAPHICS portion:
 '(when (top-level-bound? 'SWL-ACTIVE)

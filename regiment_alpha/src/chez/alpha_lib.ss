@@ -16,5 +16,7 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 	 )
-	
+
+	(import simulator_alpha_datatypes)
+
 	(include "generic/alpha_lib.ss"))

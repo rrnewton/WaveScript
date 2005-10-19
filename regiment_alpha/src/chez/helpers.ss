@@ -11,8 +11,12 @@
 
 	  substring? periodic-display all-equal?
 
+	  with-error-handlers
+
+
 	  ;; Values:	    
-	  unique-name unique-name-counter extract-suffix make-begin strip-illegal 	  deunique-name 
+	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name 
+	  get-formals
 
 	  ;; Hmm, not sure what meaning immediate has here...
 	  immediate? constant? datum? 
@@ -65,6 +69,8 @@
 
 	  )
 
+;(import scheme)
+
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
 ;; substitute.  That's the kind of thing I'd like my
 ;; scheme-meta-language/package-manager to do for me!!
@@ -105,23 +111,37 @@
 ;     (begin 
 ;       (call-with-values
 		
-  
+;; ========================================  
 ;; This defines a *simple* and unified interface into hash-tables.
-;; First we require hash-tables from slib:
-(define ___ (require 'hash-table))
+;; It assumes *equal?* type key equivalence!
+;; It returns #f for a failed hashtab-get (which is sloppy, but that's slib)
 
-;(define (make-default-hash-table) (make-hash-table 50))
-(define (make-default-hash-table) (make-hash-table 5))
-(define hashtab-get (hash-inquirer equal?))
-(define hashtab-set! (hash-associator equal?))
-(define hashtab-for-each hash-for-each)
-(define hashtab-remove! (hash-remover equal?))
+;; First we require hash-tables from slib:
+(begin
+  (define ___ (require 'hash-table))
+  (define (make-default-hash-table) (make-hash-table 5)) ;50))
+  (define hashtab-get (hash-inquirer equal?))
+  (define hashtab-set! (hash-associator equal?))
+  (define hashtab-for-each hash-for-each)
+  (define hashtab-remove! (hash-remover equal?)))
+
+;; [2005.10.18]
+;; Switching this to chez's native hash tables rather than slib's:
+#;(begin
+ (define make-default-hash-table #%make-hash-table)
+ (define hashtab-set! #%put-hash-table!)
+ (define hashtab-remove! #%remove-hash-table!)
+ (define (hashtab-for-each f ht) (#%hash-table-for-each ht f))
+ (define (hashtab-get ht k) (#%get-hash-table ht k #f)))
+;; ========================================  
+
+
 
  ;; [2004.06.13] Matches the function defined in plt, provides
  ;; functionality used by the generic code.
  ;; The escape handler had *better* escape.
  (define (with-error-handlers display escape th)
-   (parameterize ([error-handler (lambda args 
+   (parameterize ([#%error-handler (lambda args 
 				   (apply display args)
 				   (escape))])
 		 (th)))

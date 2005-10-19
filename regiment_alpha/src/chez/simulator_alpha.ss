@@ -9,88 +9,12 @@
 	 test-this these-tests
 	 testalpha testsalpha
 
-	 ;; Extras
-	 make-simtok bare-msg-object make-simevt logger
-	 evntlessthan simalpha-total-messages
-	 soc-return-buffer
-	 
-;; HACK: FIXME : FIND A BETTER SYSTEM
+	 posdist
+	 )
 
-simworld?
-simworld-graph 
-simworld-object-graph 
-simworld-all-objs 
-simworld-obj-hash 
-simworld-scheduler-queue
-set-simworld-graph!
-set-simworld-object-graph!
-set-simworld-all-objs!
-set-simworld-obj-hash!
-set-simworld-scheduler-queue!
+(import simulator_alpha_datatypes)
+(import alpha_lib_scheduler_simple)
 
-simevt?
-simevt-vtime 
-simevt-msgobj
-set-simevt-vtime!
-set-simevt-msgobj!
-
-simtok?
-simtok-name 
-simtok-subid
-set-simtok-name!
-set-simtok-subid!
-
-node?
-node-id
-node-pos
-set-node-id!
-set-node-pos!
-
-simobject?
-simobject-node
-simobject-I-am-SOC
-simobject-token-store
-simobject-incoming-msg-buf 
-simobject-local-msg-buf
-simobject-outgoing-msg-buf
-simobject-timed-token-buf 
-simobject-local-sent-messages
-simobject-local-recv-messages
-simobject-redraw 
-simobject-gobj 
-simobject-homepage 
-simobject-scheduler 
-simobject-meta-handler	       	     
-simobject-worldptr 
-set-simobject-node!
-set-simobject-I-am-SOC!
-set-simobject-token-store!
-set-simobject-incoming-msg-buf!
-set-simobject-local-msg-buf!
-set-simobject-outgoing-msg-buf!
-set-simobject-timed-token-buf!
-set-simobject-local-sent-messages!
-set-simobject-local-recv-messages!
-set-simobject-redraw!
-set-simobject-gobj!
-set-simobject-homepage!
-set-simobject-scheduler!
-set-simobject-meta-handler!
-set-simobject-worldptr!
-
-msg-object?
-msg-object-token
-msg-object-sent-time
-msg-object-parent
-msg-object-to
-msg-object-args
-set-msg-object-token!
-set-msg-object-sent-time!
-set-msg-object-parent!
-set-msg-object-to!
-set-msg-object-args!
-
-)
 ;; We are loaded from the root directory, not the chez subdirectory.
 ;(include "generic/simulator_nought.examples.ss")
 (include "generic/simulator_alpha.ss")
