@@ -14,7 +14,7 @@
 ;(define region-primitives)
 ;(define anchor-primitives)
 
-(define id (lambda (x) x))
+(define (id x) x)
 
 ;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;; Ok, redoing primitive listings with type information:
@@ -1653,6 +1653,7 @@
 ;; Things that need boxing (sigh):
 ;; TODO: Fix this up when my language actually becomes a bit more concrete:
 ;; I'm not even sure what meaning this has.  These are simple constants...
+#;
 (define (immediate? x)
   (or (number? x)
       (symbol? x)

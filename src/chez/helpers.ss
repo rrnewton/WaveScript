@@ -8,7 +8,8 @@
 	  foldl
 
 	  make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
-
+	  make-n-list
+	  id
 	  substring? periodic-display all-equal?
 
 	  with-error-handlers
@@ -19,7 +20,8 @@
 	  get-formals
 
 	  ;; Hmm, not sure what meaning immediate has here...
-	  immediate? constant? datum? 
+	  ;immediate? 
+	  constant? datum? 
 	  formalexp? cast-formals default-unit-tester tester-eq?
 	  ;default-unit-tester-retries
 
@@ -69,6 +71,7 @@
 
 	  )
 
+(import (except topsort-module test-this these-tests))
 ;(import scheme)
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
@@ -117,7 +120,7 @@
 ;; It returns #f for a failed hashtab-get (which is sloppy, but that's slib)
 
 ;; First we require hash-tables from slib:
-(begin
+#;(begin
   (define ___ (require 'hash-table))
   (define (make-default-hash-table) (make-hash-table 5)) ;50))
   (define hashtab-get (hash-inquirer equal?))
@@ -127,12 +130,33 @@
 
 ;; [2005.10.18]
 ;; Switching this to chez's native hash tables rather than slib's:
-#;(begin
+(begin
  (define make-default-hash-table #%make-hash-table)
- (define hashtab-set! #%put-hash-table!)
  (define hashtab-remove! #%remove-hash-table!)
  (define (hashtab-for-each f ht) (#%hash-table-for-each ht f))
- (define (hashtab-get ht k) (#%get-hash-table ht k #f)))
+ (IFDEBUG  
+  (begin
+    (define (hashtab-get ht k)
+      (if (not (immediate? k)) (error 'hashtab-get "this key is not an atom: ~s" k))
+      (#%get-hash-table ht k #f))
+    (define (hashtab-set! ht k v)
+      (if (not (immediate? k)) (error 'hashtab-set! "this key is not an atom: ~s" k))
+      (#%put-hash-table! ht k v)))
+  (begin 
+    (define (hashtab-get ht k) (#%get-hash-table ht k #f))
+    (define hashtab-set! #%put-hash-table!)))
+ )
+
+;; This is implementation specific, these are the types for which eq? <=> equal?
+(define (immediate? x)
+  (or (fixnum? x) 
+      ; (flonum? x) ;; Floats don't follow eq? properly.
+      ; (char? x)   ;; Chars don't follow eq? properly.
+      (symbol? x)
+      (null? x)
+      (boolean? x)
+      ))
+      
 ;; ========================================  
 
 
@@ -199,7 +223,7 @@
 ;; This is a simple random number generator interface for use in this Regiment codebase:
 (define reg:random-int
   (case-lambda 
-   [() (#%random most-positive-fixnum)]
+   [() (#%random (#%most-positive-fixnum))]
    [(k) (#%random k)]))
 (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
 (define (reg:set-random-state! s) (random-seed s))

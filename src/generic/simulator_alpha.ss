@@ -230,7 +230,7 @@
 			      (error 'simulator_alpha:process-statement 
 				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store 
-							 (make-simtok ',tokname ,subtok))])
+							 (token->key (make-simtok ',tokname ,subtok)))])
 			     "FOOBAR"
 			     ,(format "Ext-ref of (tok ~a ~a) variable ~a" tokname subtok x)
 			     (if exttokobj
@@ -243,7 +243,7 @@
 			   (if (not (eq? which-tok tokname))
 			       (error 'compile-simulate-alpha:process-statement 
 				      "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
-			  `(let ([exttokobj (hashtab-get the-store (make-simtok ',tokname ,subtok))])
+			  `(let ([exttokobj (hashtab-get the-store (token->key (make-simtok ',tokname ,subtok)))])
 			     ,(format "Ext-set! of (tok ~a ~a) variable ~a" tokname subtok x)
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
@@ -311,8 +311,8 @@
 ;		  [(token-present? (tok ,t ,n)) (guard (number? n)) 
 ;		   `(if (hashtab-get the-store (make-simtok ',t ,n)) #t #f)]  ;; Needs not be separate case. [2005.10.03]
 		  [(token-present? (tok ,t ,[e])) 
-		   `(if (hashtab-get the-store (make-simtok ',t ,e)) #t #f)]
-		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (make-simtok ',t ,e))]
+		   `(if (hashtab-get the-store (token->key (make-simtok ',t ,e))) #t #f)]
+		  [(evict (tok ,t ,[e])) `(hashtab-remove! the-store (token->key (make-simtok ',t ,e)))]
 		  [(token-scheduled? ,[tok]) ;; INEFFICIENT
 		   ;; queue is list containing (simevt . simob) pairs.
 		   ;; We go through the current queue looking for a scheduled event that matches this token.
@@ -575,12 +575,12 @@
 
 			      "Is there already an allocated token object?:"
 			      ;; Requires equal? based hash table:
-			      (let ([tokobj (hashtab-get the-store simtok-obj)])
+			      (let ([tokobj (hashtab-get the-store (token->key simtok-obj))])
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
 					   (set! tokobj (vector 0 ,@(map cadr stored)))
-					   (hashtab-set! the-store simtok-obj tokobj)))
+					   (hashtab-set! the-store (token->key simtok-obj) tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
 				;; Timed-token-buf need not be reversed, because it is ordered by vtime.

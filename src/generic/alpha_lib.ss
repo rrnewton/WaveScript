@@ -105,7 +105,7 @@
             (msg-object-count this-message)
             (error 'simulator_nought.process-statement:dist
                    "inside simulator (dist) is broken!")))
-      (let ((entry (hashtab-get (simobject-token-cache (current-simobject)) (car tok))))
+      (let ((entry (hashtab-get (simobject-token-cache (current-simobject)) (token->key (car tok)))))
         (if (and entry (msg-object-count entry))
             (msg-object-count this-message)
             (error 'simulator_nought.process-statement:dist
@@ -132,12 +132,13 @@
 ;; Invariant checker: used only in DEBUGMODE
 [define (check-store tokstore)
   (hashtab-for-each
-   (lambda (namepair tokobj)
-     (or (and (simtok? namepair) ;(pair? namepair)
-	      (symbol? (simtok-name namepair)) ;(symbol? (car namepair))
-	      (number? (simtok-subid namepair)) ;(number? (cdr namepair))
+   (lambda (key tokobj)
+     (let ((token (key->token key)))
+     (or (and (simtok? token) ;(pair? token)
+	      (symbol? (simtok-name token)) ;(symbol? (car token))
+	      (number? (simtok-subid token)) ;(number? (cdr token))
 	      (vector? tokobj))
-	 (error 'check-store "Bad token store at entry: ~a, tokobj: ~n~a" namepair tokobj)))
+	 (error 'check-store "Bad token store at entry: key:~a, token:~a, tokobj: ~n~a" key token tokobj))))
    tokstore)]
 
 ;======================================================================
