@@ -72,7 +72,7 @@
 	  )
 
 (import (except topsort-module test-this these-tests))
-;(import scheme)
+(import scheme)
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
 ;; substitute.  That's the kind of thing I'd like my

@@ -1475,9 +1475,9 @@
 					      (lambda () 
 						(if quiet						    
 						    (let ([trash (open-output-string)])
-						      (fluid-let ([warning voidproc])
+						      ;(fluid-let ([warning voidproc])
 						      (parameterize ([current-output-port trash])
-								    (eval (preprocessor expr)))))
+								    (eval (preprocessor expr))))
 						    (eval (preprocessor expr)))
 						))))])
 ;	       (newline)

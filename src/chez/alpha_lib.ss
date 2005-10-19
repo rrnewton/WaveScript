@@ -17,6 +17,7 @@
 	 ;alpha-it ;; shorthand
 	 )
 
+	(import scheme)
 	(import simulator_alpha_datatypes)
 
 	(include "generic/alpha_lib.ss"))
