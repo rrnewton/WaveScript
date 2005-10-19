@@ -12,6 +12,7 @@
 	 posdist
 	 )
 
+(import (except topsort-module test-this these-tests))
 (import simulator_alpha_datatypes)
 (import alpha_lib_scheduler_simple)
 

@@ -115,7 +115,7 @@
       (lambda (expr)
         (match expr
           [(quote ,datum)
-           (guard (immediate? datum))
+           (guard (constant? datum)) ;; Not required to be immediate?
            (values `(quote ,datum) '())]
           ;; Symbols are not *technically* immediate (they are boxed);
           ;; however, neither are they complex.

@@ -190,3 +190,16 @@
 		  (lambda (k) (if (procedure? k) k
 				  (error 'escape-alpha-sim "bad continuation: ~a" k)))))
 
+;; These shouldn't need to be reset after/before a run of the simulator.
+(define reverse-table (make-default-hash-table))
+(define (token->key t)
+  (DEBUGMODE
+   (if (not (simtok? t))
+       (error 'token->key "This is not a simtok object: ~s" t)))
+  (let ((n (hash t most-positive-fixnum)))
+    (hashtab-set! reverse-table n t)
+    ;(disp " Token->key " t n)
+    n))
+
+(define (key->token k)
+  (hashtab-get reverse-table k))

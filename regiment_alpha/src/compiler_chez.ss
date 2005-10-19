@@ -44,14 +44,11 @@
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 
-;(optimize-level 1)
 ;; [2005.09.27] Disabling this, don't need it without simulator_nought
-(define random #%random)
+;(define random #%random)
 ;;;; [2004.06.28] Moving this here, hope that works:
-(include "../depends/slib/chez.init")
-;;;; [2005.04.21] Just stealing the files I need from slib for portability:
-(require 'tsort) ;; for the simulator: 
-;(optimize-level 2)
+;(include "../depends/slib/chez.init")  ;; Freeing myself of slib [2005.10.19]
+;(require 'tsort) ;; for the simulator: 
 
 (include "generic/constants.ss")
 
@@ -59,7 +56,13 @@
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
 ;; therefore we don't need to change directories.
 ;(eval-when (compile eval) (cd "chez"))
-(include "chez/helpers.ss") (import helpers)
+(include "chez/hash.ss") (import hash) ;; TEMPORARY
+(include "chez/tsort.ss") (import topsort-module)
+(include "chez/helpers.ss") (import (except helpers test-this these-tests))
+;; This is a trick to deal with mutual recursion in the modules:
+(define test-tsort (let () (import topsort-module) (test-this)))  
+
+
 ;(eval-when (compile eval) (cd ".."))
 
 (include "chez/simulator_alpha_datatypes.ss")

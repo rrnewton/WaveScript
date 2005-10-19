@@ -1,14 +1,15 @@
 
 (module simulator_alpha_datatypes
 	(	 
-	 ;; HACK: FIXME : FIND A BETTER SYSTEM
-
 	 simalpha-total-messages
 	 logger
 	 evntlessthan 
 	 soc-return-buffer
 	 escape-alpha-sim
 
+	 token->key key->token
+
+	 ;; HACK: FIXME : FIND A BETTER SYSTEM
 	 make-simworld
 	 simworld?
 	 simworld-graph 

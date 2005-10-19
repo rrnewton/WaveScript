@@ -27,7 +27,8 @@
    deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
    
    ;; Hmm, not sure what meaning immediate has here...
-   immediate? constant? datum? 
+   ;immediate? 
+   constant? datum? 
    formalexp? cast-formals default-unit-tester tester-eq?
    ;default-unit-tester-retries ;; This is in constants.
 
