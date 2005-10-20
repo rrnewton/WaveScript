@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 1) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
+	   (optimize-level 2) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
 	   )
 (print-graph #f)
 (print-gensym #f)
