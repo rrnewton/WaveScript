@@ -5,7 +5,7 @@
 ;; ======================================================================
 
 ;; This structure contains all the global data needed a simulation.
-(define-structure (simworld graph object-graph all-objs obj-hash scheduler-queue))
+(define-structure (simworld graph object-graph all-objs obj-hash scheduler-queue vtime))
 ;; obj-hash maps node-ids onto simobjects
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.

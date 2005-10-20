@@ -121,8 +121,8 @@
            (expt (- (cadr a) (cadr b)) 2)))]
 
 [define (simulator-soc-return x)
-  (printf "~n  SOCRETURN(t=000) ~a ~n" 
-	  
+  (printf "~n  SOCRETURN(t=~a) ~a ~n" 
+	  (simworld-vtime (simobject-worldptr (current-simobject)))
 	  x)
   (soc-return-buffer (cons x (soc-return-buffer)))]
 
