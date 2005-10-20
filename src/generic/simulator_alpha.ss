@@ -152,11 +152,9 @@
 		   (set-simobject-worldptr! so world)
 		   so)) g))
 
-   (let* ([theworld (make-simworld #f #f #f #f #f)]
+   (let* ([theworld (make-simworld #f #f #f #f #f #f)]
 	  [graph 
           (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
-            ;; TEMP: Here I give the nodes distinct, consecutive ids.
-	    ;; They should have randomized ids.
             (if (simalpha-consec-ids)
                 (for-each set-node-id! 
                           seed (iota (length seed))))
@@ -193,6 +191,7 @@
      (set-simworld-all-objs! theworld allobs)
      (set-simworld-obj-hash! theworld hash)
      (set-simworld-scheduler-queue! theworld scheduler-queue)
+     (set-simworld-vtime! theworld 0)
      theworld))
 
                          

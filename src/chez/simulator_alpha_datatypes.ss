@@ -17,11 +17,13 @@
 	 simworld-all-objs 
 	 simworld-obj-hash 
 	 simworld-scheduler-queue
+	 simworld-vtime
 	 set-simworld-graph!
 	 set-simworld-object-graph!
 	 set-simworld-all-objs!
 	 set-simworld-obj-hash!
 	 set-simworld-scheduler-queue!
+	 set-simworld-vtime!
 
 	 make-simevt
 	 simevt?

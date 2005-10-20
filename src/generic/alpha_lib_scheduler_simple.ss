@@ -225,6 +225,8 @@
   ;; First Initialize.
   (for-each init-simobject (simworld-all-objs sim))
   (set-queue! '()) ;; Start with no scheduled events.
+
+  ;; ======================================================================
   ;; Then, run loop.
   (let main-sim-loop ()
     ;; First process all incoming-buffers, scheduling events.
@@ -245,6 +247,9 @@
 	      [evt (car first)])
 	;; Set the clock to the time of this next action:
 	(set! vtime (simevt-vtime evt))
+	;; Also copy this value to the simworld object so alpha_lib closures can get to it:
+	(set-simworld-vtime! sim vtime)
+
 	(logger 2 "~a  Main sim loop: (vtime of next action) queue len ~a ~n" 
 		(pad-width 5 vtime) (add1 (length (get-queue))))
 	;(printf "<~a>" vtime)
