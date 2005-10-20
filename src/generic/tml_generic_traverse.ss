@@ -50,6 +50,10 @@
 	(match expression
 	  ;[,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
+
+          ;; This is for debugging, we just don't touch it:
+	  [(BLACKBOX ,expr ...) `(BLACKBOX ,expr ...)]
+
 	  ;; We don't put any restrictions on what can be in a quoted constant:
 	  [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
 	  [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
@@ -72,7 +76,7 @@
 		 (lambda (bod . rhs*)
 		   `(let-stored ([,lhs* ,rhs*] ...) ,bod)))]
 
-
+	  
 
 	  ;; Gradient forms are a bit annoying to handle properly:
 	  [(gdist (tok ,t ,n)) (guard (integer? n))  (fuse () (lambda () `(gdist (tok ,t ,n))))]

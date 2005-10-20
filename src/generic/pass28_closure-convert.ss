@@ -1,4 +1,12 @@
+
+;; TODO FIXME:  Should refactor to use MORE seperate tokens.  
+;; Shouldn't combine functionality in one token when it's not absolutely necessary.
+
+;; TODO: FIXME:  Are the "subtok_ind" bindings treated properly??
+
 ; FIXME: TODO: When lifting node-start to actual-node-start should probably change the references to node-start...
+
+;; FIXME: TODO: Sit down and think carefully about token scheduling order for continuation init, etc.
 
 
 
@@ -187,12 +195,14 @@
        `(lambda (,hole) ,body)
        `(,kname subtok_ind () (stored) 'FOOO)))
 
-    (define (build-continuation kname body hole)      
+    (define (build-continuation kname env body hole)      
       (let* ([FREEVAR0 'fv0] ;(unique-name 'fv0)]
 	     [KCOUNTER (unique-name KCOUNTER)]
 
 	     [body (subst body hole FREEVAR0)]
-
+	     
+	     ;; Subtract the set of bound vars to get free-vars
+	     ;[fvs (difference (free-vars body) (cons FREEVAR0 env))]
 	     [fvs (remq-all FREEVAR0 (free-vars body))]
 ;		     [__ (disp "GOT fvs: " fvs)]
 ;		   [args (map (lambda (n)
@@ -203,6 +213,8 @@
 			(iota (length fvs)))]
 		   ;; Get a fresh name & subtok index name for our continuation:
 	     )
+
+	;(printf "Got fvs for body: ~a \n" fvs) (pretty-print body)
 	      	     
       (values 
        ;; Return an expression which builds the continutation closure:
@@ -219,8 +231,10 @@
 				  ;; Here we should just allocate a SEPARATE token for this, holding just the counter.
 				  ;; OR we should have one token that holds everybody's counters.  But for now I want 
 				  ;; to everything grouped under this one token "class".
-				  (dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname)
+				  ,@(REGIMENT_DEBUG
+				     `(dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname))
 				  ;; FIXME: PADDING
+;; Consider getting rid of:
 				  (call (tok ,kname 0) ',INIT 
 					,@(make-list (max 1 (length fvs)) 
 						     ''counter-holder-tok-dummy-val)) ;; The void takes up the fv0 position
@@ -229,18 +243,32 @@
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
 		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
 		    (call (tok ,kname ,kind) ',INIT ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
-;		    (dbg '"~a: Initialized continuation (tok ~a ~a) <~a> with fvs ~a = ~a" 
-;			    (my-id)  ',kname ',kind subtok_ind ',fvs (list ,@fvs))
+		    ,@(REGIMENT_DEBUG
+		       `(dbg '"~a: Launched an continuation-allocation call (tok ~a ~a) with fvs ~a = ~a" 
+			     (my-id)  ',kname ,kind ',fvs (list ,@fvs))
+		       ;'(sim-print-queue (my-id))
+		       )
 		    "Return the name of this continuation object:"
 		    (tok ,kname ,kind)))))
        
        ;; Return a new token handler to hold the continuations' code.
-       (let ([newfvs (map unique-name fvs)])
+       (let ([newfvs (map unique-name fvs)]
+	     [fvs-initialized-yet (unique-name 'fvs-initialized-yet)])
        `(,kname subtok_ind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
-		(stored [,KCOUNTER '0] ,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) newfvs))
-;		(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
-;		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
-;		     (simobject-token-store this))
+		(stored [,KCOUNTER '0] 
+			,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) 
+			       newfvs)
+			,@(REGIMENT_DEBUG `[,fvs-initialized-yet #f])
+			)		
+		(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
+		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
+		     (simobject-token-store this))
+
+		,@(REGIMENT_DEBUG
+		   ;`(sim-print-queue (my-id))
+		   `(if (not (token-present? (tok ,kname 0)))
+			(error ',kname
+			       "This continuation token was called before its kcounter was allocated (0th-indexed token).")))
 			
 		(if (eq? flag ',INIT)
 		    (begin
@@ -250,17 +278,24 @@
 			;; No freevars if we're just initializing the counter-object.
 			(void)
 			(begin
+			  (dbg "~a: Initializing continuation (tok ~a <~a>) freevars! vals: ~a\n" 
+			       (my-id) ',kname subtok_ind (list ,@fvns))
+			  ,@(REGIMENT_DEBUG `(set! ,fvs-initialized-yet #t))
 			  ,@(map (lambda (fv fvn)
 				   `(begin 
 				      (set! ,fv ,fvn)
-				      (dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: <DISABLED,CHECKCODE>~n" 
-					   (my-id)
-					   ',fv ,fvn ;(simobject-token-store this)
-					   )
+				      ,@(REGIMENT_DEBUG
+					 `(dbg '"~a:  Set stored/captured freevar: ~a to ~a~n   NEWTOKSTORE: <DISABLED,CHECKCODE>~n" 
+					       (my-id)
+					       ',fv ,fvn ;(simobject-token-store this)
+					       ))
 				      ))
 				 newfvs fvns))))
 		    ;; Otherwise, assume the flag is CALL
 		    (begin
+#;		      ,@(REGIMENT_DEBUG `(if (not ,fvs-initialized-yet)
+					     (error ',kname 
+						    "This continuation token was called before its fvs were initialized.")))
 		      ,(let loop ((fvs fvs) (newfvs newfvs) (body body))
 			 (if (null? fvs) body
 			     (loop (cdr fvs) (cdr newfvs)
@@ -296,7 +331,8 @@
        (lambda (ls f) (apply f ls))
        expr))
 
-    (define (process-expr expr)
+    (define (process-expr expr env)
+      ;; env: Just a list of bound variables (the arguments plus the subtok_id)
       (define (addhands newhands vec)
 	(vector (append newhands (vector-ref vec 0)) (vector-ref vec 1)))
 	
@@ -324,15 +360,24 @@
 			(addhands newhands
 				  (loop `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))))]
 		     [(kcall ,k ,[val])
-		      (let ([newhands (vector-ref val 0)] [v (vector-ref val 1)])
+		      (let ([newhands (vector-ref val 0)]
+			    [temp (unique-name 'temp)]
+			    [v (vector-ref val 1)])
 			(if (not (symbol? k))
 			    (error 'closure-convert "kcall with this unexpected rator: ~a" k))
 			(addhands newhands
-				  (loop `(call ,k ',CALL ,v))))]
+				  (loop 
+				   `(let ((,temp ,v))
+				      (begin
+					,@(REGIMENT_DEBUG
+					   `(dbg "~a: Scheduling invocation of continution token: ~a  arg: ~a"
+						 (my-id) ,k ,temp))
+					(call ,k ',CALL ,temp))))))]
 		     [(let ([,k (lambda (,hole) ,[val])]) ,body2)
-		      (let ([newhands1 (vector-ref val 0)] [body1 (vector-ref val 1)])
+		      (let ([newhands1 (vector-ref val 0)] 
+			    [body1 (vector-ref val 1)])
 			(let ([kname (unique-name 'K)])
-			  (mvlet ([(closure khandler) (build-continuation kname body1 hole)])
+			  (mvlet ([(closure khandler) (build-continuation kname env body1 hole)])
 				 (let* ([result (outer-loop body2 (cons (list k kname) kbinds))]
 					[newhands2 (vector-ref result 0)]
 					[newbody (vector-ref result 1)])
@@ -341,7 +386,7 @@
 		     [(lambda (,v) ,[val])
 		      (let ([newhands (vector-ref val 0)] [body (vector-ref val 1)])
 			(let ([kname (unique-name 'K)])
-			  (mvlet ([(closure khandler) (build-continuation kname body v)])
+			  (mvlet ([(closure khandler) (build-continuation kname env body v)])
 				 (vector (cons khandler newhands)
 					 closure))))]
 		     [,x (loop x)]))
@@ -358,124 +403,14 @@
     
 
 
-    (define (OLDgeneric-traverse driver fuse e)
-      (let loop ((e e))
-	(driver e 
-	   (lambda (x)
-	     (match x
-;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
-		    [,const (guard (constant? const)) (fuse () const)]
-		    [(quote ,const)                (fuse ()   `(quote ,const))]
-		    [,var (guard (symbol? var))    (fuse ()    var)]
-		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
-		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
-		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
-		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
-		    [(ext-set! ,tok ,var ,[loop -> expr])  
-		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
-		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
-		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
-		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
-		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		                                   (fuse (list a b c) `(if ,a ,b ,c))]
-		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
-		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
-		    ;; "activate" and the gradient calls have already been desugared:
-
-		    [(lambda (,v) ,[loop -> e])    (fuse (list e) `(lambda (,v) ,e))]		     
-		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) `(kcall ,k ,e))]
-		    
-		    [(build-kclosure ,kname (,fvs ...)) (fuse () `(build-kclosure ,kname (,fvs ...)))]
-
-
-		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (memq call '(bcast subcall call)))
-		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
-		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (number? time))		     
-		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
-		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
-		    [(,prim ,[loop -> rands] ...)
-		     (guard (or (token-machine-primitive? prim)
-				(basic-primitive? prim)))
-		     (fuse rands `(,prim ,rands ...))]
-		    [(app ,[loop -> rator] ,[loop -> rands] ...)
-		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
-		    [,otherwise
-		     (error 'generic-traverse
-			    "bad expression: ~s" otherwise)])))))
-
-    (define (OLDprocess-expr expr)
-      (let ([new-handlers '()]) ;; MUTABLE
-
-      ;; We do a very lame alias-analysis on our way down.
-      ;; This lets us get a few obvious direct calls.
-      ;; kbinds binds continuation names to token names.
-	(values 
-	 ;; First return the new expression:
-	 (let outer-loop ([expr expr] [kbinds '()])
-	   (OLDgeneric-traverse
-	    (lambda (x loop)
-	      (match x
-
-		     ;; This is a hack that depends on exactly what the previous pass outputs.
-		     ;; This transformation should be accomplished by a much more general optimization.
-		     [(let ([,k (lambda (,hole) ,kbody)]) (if ,t ,c ,a))
-		      (guard (no-first-class? k c)
-			     (no-first-class? k a))
-		      (loop ;; Done with it, pass it on to loop.
-		       (subst kbody hole `(if ,t ,(stripk k c) ,(stripk k a))))]
-		     
-		     ;; We try to make direct calls here if we can.
-		     [(kcall ,k ,[v])
-		      (guard (assq k kbinds))
-		      (loop
-		       `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))]
-		     
-		     [(kcall ,k ,[v])
-		      (if (not (symbol? k))
-			  (error 'closure-convert "kcall with this unexpected rator: ~a" k))
-		      (loop `(call ,k ',CALL ,v))]
-		     
-		     
-		     [(let ([,k (lambda (,hole) ,[body1])]) ,body2)	      
-		      (let ([kname (unique-name 'K)])
-			(mvlet ([(closure khandler)  
-				 (build-continuation kname body1 hole)])
-			       (disp "SETTING NEW HANDLERS(1), ADDING " khandler)
-			       (set! new-handlers (cons khandler new-handlers))
-			       (disp "NEW " (map car new-handlers))
-			       `(let ([,k ,closure])
-				  ,(outer-loop body2
-					       (cons (list k kname) kbinds)))))
-		      ]
-		     
-		     [(lambda (,v) ,[body])
-		      (let ([kname (unique-name 'K)])
-			(mvlet ([(closure khandler) 
-				 (build-continuation kname body v)])
-			       (disp "SETTING NEW HANDLERS(2), ADDING " khandler)
-			       (set! new-handlers (cons khandler new-handlers))
-			       (disp "NEW " (map car new-handlers))
-			       closure))]
-		     [,x (loop x)]))	    
-	    ;; Generic traverse 2nd argument: fuser
-	    (lambda (ls def) def)
-	    ;; Generic traverse 3rd argument: expression
-	    expr))
-	 
-	 ;; Also return the new-handlers:
-	 (begin (disp "RETURNING" (map car new-handlers))
-	   new-handlers))))
-
-
     (define (process-tokbind tb)
-      (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
-	     (mvlet ([(newexpr newtokbinds) (process-expr body)])
+      (mvlet ([(tok subtokid args stored constbinds body) (destructure-tokbind tb)])
+	     (mvlet ([(newexpr newtokbinds) (process-expr body (cons subtokid args))])
 ;	     (mvlet ([(newexpr newtokbinds) (OLDprocess-expr body)])
 		    (cons 
-		     `[,tok ,id ,args (stored ,@stored) ,newexpr]
+		     `[,tok ,subtokid ,args (stored ,@stored) ,newexpr]
 		     newtokbinds))))
+
     
       ;; Add some unit tests that use local bindings:
       (set! these-tests
@@ -556,6 +491,8 @@
 						   (begin 
 ;						     (dbg '"~a: node-start initializing continuation counters: ~a" 
 ;							  (my-id) ',(map car ktoks))
+;; Disabling for now:
+
 						     ,@(map (lambda (k)
 							      `(call (tok ,(car k) 0) ',INIT))
 							    ktoks)
@@ -596,7 +533,7 @@
 			       (k_22 x)
 			       (stored)
 			       (kcall k_22 (+ x '300))))))))))))
-       (node-start actual-node-start SOC-start K_1 tok1)]
+       (node-start actual-node-start SOC-start K_2 tok1)]
 
       ["Trying to make sure we get the right stored vars."       
        (parameterize ((unique-name-counter 0))
@@ -622,7 +559,7 @@
 		      (stored)
 		      (kcall k_58 (+ x '1000)))))))))))))
        ,(lambda (x)
-	  (match (map deunique-name x)
+	  (match (filter (lambda (x) (memq x '(kcounter HOLE))) (map deunique-name x))
 		 [(kcounter kcounter HOLE) #t]
 		 [,else #f]))]
 		 

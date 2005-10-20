@@ -95,6 +95,8 @@
 	 
 	 )
 
+(import scheme)
+
 (include "generic/simulator_alpha_datatypes.ss")
 )
 

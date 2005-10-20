@@ -128,6 +128,33 @@
   (printf "~nSOC-FINISHED!~n")(flush-output-port)
   ((escape-alpha-sim))]
 
+;; Just for debugging:
+[define (sim-print-queue . id)
+  (let ([Q (simworld-scheduler-queue (simobject-worldptr (current-simobject)))]
+	[format-evt
+	 (lambda (evt)
+		 (list (simevt-vtime evt)
+		       (list (simtok-name (msg-object-token (simevt-msgobj evt)))
+			     (simtok-subid (msg-object-token (simevt-msgobj evt))))
+		       (msg-object-args (simevt-msgobj evt))))])
+  (printf "Current queue: \n")
+  (pretty-print
+	  (map (lambda (x) (format-evt (car x)))
+	       (if (null? id)
+		   Q
+		   (filter 
+		    (lambda (pr) (= (car id)
+				    (node-id (simobject-node (cdr pr)))))
+		    Q))))
+  (printf "  With local messages: \n")
+  (pretty-print (map format-evt (simobject-local-msg-buf (current-simobject))))
+  (printf "  And incoming messages: \n")
+  (pretty-print (map format-evt (simobject-incoming-msg-buf (current-simobject))))
+  (printf "  And timed messages: \n")
+  (pretty-print (map format-evt (simobject-timed-token-buf (current-simobject))))
+  (newline)
+  )]
+
 
 ;; Invariant checker: used only in DEBUGMODE
 [define (check-store tokstore)

@@ -290,8 +290,9 @@
      (vector-set! (Array Integer Object) Void)
      (vector-length (Array) Integer)
 
-    ;; This is a syntax:
-    ;(leds ...
+     ;; For debugging only:
+     (sim-print-queue Number Void)
+
      ))
 
 ;; Keywords allowed in the restricted token machine language.
@@ -1440,10 +1441,11 @@
 ;	       [intended (map cadddr entries)]
 	       [success #t]
 	       [tests-to-run (filter number? args)]
+	       [suppressed-test-output (open-output-string)]
 	       )
 
 	   ;; This (long) sub-procedure executes a single test:
-	 (let ([execute-one-test
+	   (let ([execute-one-test
 	       (lambda (num entry)
 		 (match entry
 		   [(,descr ,extraflags ,expr ,intended)
@@ -1454,6 +1456,7 @@
 		   (flush-output-port)
 	       ;; This prints a name, or description for the test:
 	       (if (and verbose descr) (printf "   ~s~n" descr))
+
 	       (display-constrained `(,num 10) "  " `(,expr ,TESTWIDTH)
 				    " -> ")
 	       (if (procedure? intended)
@@ -1465,7 +1468,12 @@
 	       (let ([result 
 		      (call/cc 
 		       (lambda (escape-eval)
-			 (with-error-handlers (lambda args 
+			 ;; Clear output cache for each new test:
+			 (set! suppressed-test-output (open-output-string))
+			 (with-error-handlers (lambda args 						
+						;; Should format the output, but don't want to cause *another* error
+						;; and thereby go into an infinite loop.
+						;; Could reparameterize the error-handler... TODO
 						(printf "default-unit-tester, got ERROR: ~n  ~s~n"
 							args)
 						;(if (car args) (printf "~s: " (car args)))
@@ -1474,10 +1482,13 @@
 					      (lambda () (escape-eval 'error))
 					      (lambda () 
 						(if quiet						    
-						    (let ([trash (open-output-string)])
-						      ;(fluid-let ([warning voidproc])
-						      (parameterize ([current-output-port trash])
-								    (eval (preprocessor expr))))
+						      (with-warning-handler 
+						       (lambda (who str . args) 
+							 (fprintf suppressed-test-output "Warning in ~a: ~a\n" 
+								  who (apply format str args)))
+						       (lambda ()
+							 (parameterize ([current-output-port suppressed-test-output])
+							   (eval (preprocessor expr)))))
 						    (eval (preprocessor expr)))
 						))))])
 ;	       (newline)
@@ -1511,7 +1522,11 @@
 			  (pretty-print expr)
 			  (newline)
 			  (eval `(define failed-unit-test ',expr))
-			  (printf "Violating test bound to global-variable \"failed-unit-test\"~n")
+			  (printf "Violating test bound to global-variable, try (eval failed-unit-test)\n")
+			  (set-top-level-value! 'default-unit-tester-output
+						(get-output-string suppressed-test-output))
+			  (printf "If test output was suppressed, you may wish to inspect it: ")
+			  (printf "(display default-unit-tester-output)\n")
 			  ;; I decided to make this crash after all:
 ;			  (return (void))
 			  (return #f)
@@ -2620,6 +2635,20 @@
 		    `[(3 3) ["" retry (reg:random-int 3) 0]])])
 	 (fun 'qv)))
      #t]
+
+    ["This tests unit tests that call error"
+     (let ([fun (default-unit-tester "testing tester" 
+		  `(["" (error 'foo "bar") 
+		     error]))])
+	 (fun 'qv))
+     #t]
+
+    ["This just makes sure the unit tester returns #f when a test fails."
+     (let ([fun (default-unit-tester "testing tester"
+		  `([3 3] [4 5]))])
+       (fun ))
+     #f]
+
 
     ))
 

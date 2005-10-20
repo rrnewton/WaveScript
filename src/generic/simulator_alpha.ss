@@ -281,12 +281,14 @@
 
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,[rator] ,[rand*] ...)
-                     `(set-simobject-local-msg-buf! this
+		   (let ((rands (unique-name 'rands)))
+                     `(let ((,rands (list ,@rand*)))
+			;; Make sure those ^^ are all done evaluating before we mess with the msg buf:
+			(set-simobject-local-msg-buf! this
                            (cons (make-simevt #f ;; No scheduled time, ASAP
-                                              (bare-msg-object ,rator
-							       (list ,@rand*) current-vtime))
-                                 (simobject-local-msg-buf this)))]
-		  
+                                              (bare-msg-object ,rator ,rands current-vtime))
+                                 (simobject-local-msg-buf this)))))]
+		     
 		  [(bcast ,[rator] ,[rand*] ...)		   
 		   `(begin 
 		      (set! simalpha-total-messages (add1 simalpha-total-messages))
@@ -737,6 +739,7 @@
 			 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
 			   (parameterize ([print-level #f]
 					  [pretty-maximum-lines #f]
+					  [pretty-line-length 150]
 					  [print-graph #t])
    		              (write tm out);(pretty-print tm out)
 			      (newline out)
@@ -750,6 +753,7 @@
 ;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
 			    (parameterize ([print-level #f]
 					   [pretty-maximum-lines #f]
+					   [pretty-line-length 150]
 					   [print-graph #f])
 			    (pretty-print comped out)
 			    (newline out)

@@ -1,4 +1,9 @@
 
+[2005.10.19]
+
+Make the chez version use records.  Better safety that way.  Can't remember why I didn't originally.
+
+
 [2004.05.25]  I'm making a note of things I need to do when I cool this code base down:
 
 Export useful things from helpers.ss to my generic utility files, including:
