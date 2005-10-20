@@ -20,7 +20,13 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 2) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
+	   (optimize-level 3) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
+	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
+	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
+	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
+	   ;; 3: 25488 ms elapsed cpu time, including 8571 ms collecting
+	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
+	   ;; Wow, down to 3.251 seconds on my 10second network average-value test.
 	   )
 (print-graph #f)
 (print-gensym #f)
