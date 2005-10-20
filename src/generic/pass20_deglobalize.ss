@@ -80,9 +80,9 @@
 
 
 ;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
-(define RMAP-NUM 39)
-(define ANCH-NUM 49)
-(define CIRC-NUM 59)
+(define RMAP-NUM 'RMAP) ;39)  ;; [2005.10.20] Why numbers?  Jeez...
+(define ANCH-NUM 'ANCH) ;49)
+(define CIRC-NUM 'CIRC) ;59)
 
 
 ;===============================================================================
@@ -398,7 +398,7 @@
 	  ;; At each formation click, we output this node.
 	  ;(soc-return (list 'ANCH this))
 	  (soc-return ,ANCH-NUM)
-		   ])]
+	  ])]
 
       [(circle circle-at)     
        `([,tokname 
@@ -431,7 +431,7 @@
 
       [(rmap)
        `([,tokname (v)
-		   (soc-return ,RMAP-NUM)])] ;(list 'RMAP (my-id)))])]
+		   (greturn v (to catcher) (via global-tree))])]
 
       ;; When the membership token has fired, the event has fired!
       [(when-any)
@@ -557,6 +557,7 @@
 							      (gemit global-tree)
 							      (timed-call 1000 spread-global)]
 					       [global-tree () (grelay)]
+					       [catcher (v) (soc-return v)]
 
 					       ;; THIS IS A YUCKY WAY TO DO IT:
 ;					       [spark-world () (call ,(get-membership-name 'world) this)]

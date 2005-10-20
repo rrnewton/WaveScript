@@ -48,14 +48,14 @@
 ;    rename-stored
 
 ;; Temporarily I am disabling these ..
-    cps-tokmac
-    closure-convert
-    cleanup-token-machine ;; Trying this.. [2005.09.27]
+;    cps-tokmac
+;    closure-convert
+;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
     ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
 ;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
 ;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
-    desugar-let-stored
+;    desugar-let-stored
 ;    rename-stored
 
     ;    verify-token-machine
@@ -360,7 +360,7 @@
     
     ["Verify that the trivial program produces no token bindings but the defaults"
      (filter (lambda (tokbind)
-	       (not (memq (car tokbind) '(spread-global global-tree))))
+	       (not (memq (car tokbind) '(spread-global global-tree catcher))))
 	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
 
@@ -1760,6 +1760,21 @@
 	      (andmap (lambda (n) (not (eq? n BASE_ID))) (cdr ls))))
       ]
 
+
+    ["Run and simulate complete regiment program." 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none])
+       (run-simulator-alpha 
+	(run-compiler '(rmap nodeid world))
+	'timeout 350))
+     ,(lambda (ls)
+	;; Can't make very strong statements about timing, but we
+	;; shoud have heard from the first *two* generations by this
+	;; time:
+	(and (> (length ls) (* 2(simalpha-num-nodes)))
+	     (equal?
+	      (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes)))))
+	      (sort < (list->set ls)))))]
 
     ["Gradients:  Return an average sensor reading over the network."
      , (tm-to-socvals
