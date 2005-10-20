@@ -164,13 +164,20 @@
 ;  (push-comp prim args)
 ;  (activate-comp prim args)
 
-;; (Name, DistributedPrim, Args) -> TokenBinds
+
 ;; This produces a list of token bindings.
 ;; It generates code for one node in the dataflow graph.  It uses
 ;; get_membership_name to figure out from where control flow will come
 ;; on incoming edges.  
 ;; Below, "parent" won't be available if we don't have the full stream-graph...
 (define explode-primitive
+;; Inputs:
+;;   form - the name of the formation token that sparks this node
+;;   memb - the name of the membership token to which our output flows
+;;   prim - the name of the distributed primitive (rmap, etc)
+;;   args - the arguments to the primitive (they simple: names/constants)
+;;   heartbeat - the rate at which this primitive beats, if any.
+;; Output: TokenBinds
   (lambda (form memb prim args heartbeat)
 ;	(disp "Explode primitive" name prim args)
 	  (case prim
@@ -189,15 +196,29 @@
 		    [parent (get-membership-name region_tok)]
 		    [push? (not (check-prop 'region region_tok))])
 	       (if push?
+		   ;; In this case membership in the parent drives the rmap.
 		   `([,parent (v) (call ,form v)]
 		     [,form (v)
 			    (call ,memb
 				  (subcall ,rator_tok v))])
+		   ;; In this case rmap must run it's own heartbeat to keep it alive.
 		   `([,parent () (activate ,form)]
 		     [,form () 
 			    (call ,memb (subcall ,rator_tok this))
 			    (timed-call ,heartbeat ,form)])
 		   ))]
+	    
+	    ;; [2005.10.20] We might want to think about doing some routing here.
+	    ;; You can perform the smap anywhere between the stream source and destination.
+	    ;; (In fact, you could even distribute it, if the computation were expensive!)
+	    ;; But for now I just perform the computation at the source.
+	    ;; So this is currently almost the same as rmap:
+	    [(smap)
+	     (let* ([rator_tok (car args)]
+		    [region_tok (cadr args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v) (call ,form v)]
+		 [,form (v) (call ,memb (subcall ,rator_tok v))]))]
 
 	    ;; [2004.06.28] This may or may not take an argument, and
 	    ;; that depends on the *type* that it's specialized too,

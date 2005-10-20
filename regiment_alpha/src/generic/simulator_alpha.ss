@@ -201,6 +201,16 @@
 ;; Subroutine of compile-simulate-alpha below
 (define (process-statement current-handler-name tokbinds stored)
   
+  ;; [2005.10.20] This is a substitution list, used for simple renaming of primitives:
+  ;; Right now I'm tightening up my numeric ops, getting it more ready for static typing.
+  ;; TODO: Make this PLT compatible.
+  (define prim-substs
+    '([+ fx+] [- fx-] [* fx*] [/ fx/]
+      [+. fl+] [-. fl-] [*. fl*] [/. fl/]
+      [int->float fixnum->flonum]
+      [float->int flonum->fixnum]
+      ))
+  
   (let ([allstored (apply append (map cadr stored))])
     (letrec ([find-which-stored
 	      (lambda (v)
@@ -396,6 +406,9 @@
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
 
+		  ;; ========================================
+		  ;; Now we generate specific code for many of the primitives
+
 		  [(local-sense)
 		   ;; Feed id, x, y, t to sensor function:
 		   `((simalpha-sense-function) 
@@ -427,16 +440,16 @@
 
 		[(token->subid ,[e]) `(simtok-subid ,e)]
 
-		  [(loc) '(sim-loc)]
-		  [(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
-
-		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
-		  [(leds ,which ,what) `(sim-leds ',which ',what)]
-		  [(dbg (quote ,str) ,[args] ...)
-		   ;; TODO FIX ME: would be nice to print properly
-		   (let ([massage-str 
-			  (lambda (s)
-			    (let ((newstr (string-copy s)))
+		[(loc) '(sim-loc)]
+		[(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
+		
+		[(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
+		[(leds ,which ,what) `(sim-leds ',which ',what)]
+		[(dbg (quote ,str) ,[args] ...)
+		 ;; TODO FIX ME: would be nice to print properly
+		 (let ([massage-str 
+			(lambda (s)
+			  (let ((newstr (string-copy s)))
 			      (let loop ((i (- (string-length s) 2)))
 				(cond
 				 [(< i 0) (void)]
@@ -459,34 +472,41 @@
 			       ;; Send a copy to the logger as well:
 			       (logger (string-append "<dbg> " (format ,massaged ,@args)))))
 		     )]
-		  [(,prim ,[rand*] ...)
-		   (guard (or (token-machine-primitive? prim)
-			      (basic-primitive? prim)))
-		   `(,prim ,rand* ...)]
-		  ;; We're being REAL lenient in what we allow in token machines being simulated:
-		  [(let ((,lhs ,[rhs]) ...) ,[bods] ...)
-		   `(let ((,lhs ,rhs)  ...) ,bods ...)]
-		  ;; We're letting them get away with other primitives because
-		  ;; we're being lenient, as mentioned above.
-		  [(app ,[rator] ,[rand*] ...)
-		   `(,rator ,rand* ...)]
 
-		  ;; Supporting the output of cps-tokmac also:
-		  [(kcall ,[rator]  ,[rand*] ...)
-		   `(,rator ,rand* ...)]
-		  [(lambda (,v ...) ,[bod]) `(lambda (,v ...) ,bod)]
+		;; Any prim apps that didn't get caught above are equivalent to the normal Scheme versions:
+		[(,prim ,[rand*] ...)
+		 (guard (or (token-machine-primitive? prim)
+			    (basic-primitive? prim)))
+;		 (printf "Prim : ~a\n" prim)
+		 (let ((entry (assq prim prim-substs)))
+		   (if entry
+		       `(,(cadr entry) ,rand* ...)
+		       `(,prim ,rand* ...)))]
 
-		  [(,rator ,[rand*] ...)
-		   ;; This is an arbitrary scheme application. Where would these come from?
-		   ;; Don't want to be too lenient tho:
+		;; We're being REAL lenient in what we allow in token machines being simulated:
+		[(let ((,lhs ,[rhs]) ...) ,[bods] ...)
+		 `(let ((,lhs ,rhs)  ...) ,bods ...)]
+		;; We're letting them get away with other primitives because
+		;; we're being lenient, as mentioned above.
+		[(app ,[rator] ,[rand*] ...)
+		 `(,rator ,rand* ...)]
+		
+		;; Supporting the output of cps-tokmac also:
+		[(kcall ,[rator]  ,[rand*] ...)
+		 `(,rator ,rand* ...)]
+		[(lambda (,v ...) ,[bod]) `(lambda (,v ...) ,bod)]
+		
+		[(,rator ,[rand*] ...)
+		 ;; This is an arbitrary scheme application. Where would these come from?
+		 ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit bcast call timed-call activate relay return))))
 		   (warning 'simulator_alpha.process-expr
 			    "arbitrary rator applied: ~a" rator)
 		   `(,(process-expr rator) ,rand* ...)]
-		  
-		  [,otherwise (error 'simulator_alpha.process-expr 
-				"don't know what to do with this: ~s" otherwise)])
+		
+		[,otherwise (error 'simulator_alpha.process-expr 
+				   "don't know what to do with this: ~s" otherwise)])
 	   )])
     (lambda (stmt) (process-expr stmt)))))
 

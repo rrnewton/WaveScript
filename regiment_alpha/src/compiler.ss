@@ -629,7 +629,8 @@
 	   (SOC-start () (call loop 100))
 	   (loop (reps) (if (> reps 0)
 			    (begin (soc-return (list (my-clock) (local-sense)))
-				   (timed-call 100 loop (- reps 1)))))))
+				   (timed-call 100 loop (- reps 1))))))
+	'[simalpha-sense-function sense-sine-wave])
        ,(lambda (ls) 
 	  (let ((vals (map cadr ls)))
 	    ;; Make sure our sin wave goes from 0 to 255:
@@ -1771,10 +1772,89 @@
 	;; Can't make very strong statements about timing, but we
 	;; shoud have heard from the first *two* generations by this
 	;; time:
-	(and (> (length ls) (* 2(simalpha-num-nodes)))
+	(and (> (length ls) (* 2 (simalpha-num-nodes)))
 	     (equal?
 	      (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes)))))
 	      (sort < (list->set ls)))))]
+
+
+    ["Run a simple fold in regiment." 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none]
+		    [simalpha-num-nodes 10])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(letrec ([readings (rmap sense world)]
+		   [sum (rfold + 0 readings)])
+	    sum)
+	 )
+	'timeout 1500))
+     unspecified]
+
+    ["Run an average 'temperature' calculation in regiment." 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none]
+		    [simalpha-sense-function sense-sine-wave])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) 1))
+				   world)]
+		   [aggr (lambda (x y)
+			   (cons (+ (car x)
+				    (car y))
+				 (+ (cdr x)
+				    (cdr y))))]
+		   [div (lambda (v) (/ (car v) (cdr v)))]
+		   [sums (rfold aggr (cons 0 0) readings)]
+		   [result (smap div sums)])
+	    result)
+	 ;'verbose
+	 ;'barely-tokens
+	 )
+	'timeout 3000))
+     unspecified]
+
+#;
+    ["Run an average 'temperature' calculation in regiment." 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) 1))
+				   world)]
+		   [aggr (lambda (x y)
+			   (cons (+ (car x)
+				    (car y))
+				 (+ (cdr x)
+				    (cdr y))))]
+		   [sum (rfold aggr (cons 0 0) readings)])
+	    (smap (lambda (v) (/ (car v) (cdr v)))
+		  sum))
+	 )
+	'timeout 2000))
+     unspecified]
+
+#;
+    ;; Finish
+    ["Run an average 'temperature' calculation in regiment." 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(letrec ([readings (rmap (lambda (n) (vector (sense n) 1))
+				   world)]
+		   [aggr (lambda (x y)
+			   (vector (+ (vector-ref x 0)
+				    (vector-ref y 0))
+				 (+ (vector-ref x 1)
+				    (vector-ref y 1))))]
+		   [sum (rfold aggr (vector 0 0) readings)])
+	    (smap (lambda (v) (/ (vector-ref 0) (vector-ref 1)))
+		  sum))
+	 )
+	'timeout 2000))
+     unspecified]
+
 
     ["Gradients:  Return an average sensor reading over the network."
      , (tm-to-socvals
@@ -1784,9 +1864,11 @@
 	  (catcher (v) 
 		   (if (> (cadr v) 0)
 		       (begin 
-			 (printf "Got soc-val at time ~a: (~a ~a) avg: ~a\n"
-				 (my-clock) (car v) (cadr v) (* 1.0 (/ (car v) (cadr v))))
-			 (soc-return (list (my-clock) (local-sense) (* 1.0 (/ (car v) (cadr v))))))
+;			 (printf "Got soc-val at time ~a: (~a ~a) avg: ~a\n"
+;				 (my-clock) (car v) (cadr v) (/. (car v) (int->float (cadr v))))
+			 (soc-return (list (my-clock) 
+					   (local-sense)
+					   (float->int (/. (car v) (int->float (cadr v)))))))
 		       (printf "Soc-val at time ~a: but it's empty!!\n" (my-clock))))
 
 	  (tree () 
@@ -1794,19 +1876,19 @@
 		(activate upfeed) (grelay))
 	  (upfeed ()
 ;		  (printf "~a ~a upfeed...\n" (my-id) (my-clock))
-		  (greturn (list (local-sense) 1)
+		  (greturn (list (int->float (local-sense)) 1)
 			   (to catcher)
 			   (via tree)
-			   (seed (list 0 0))
+			   (seed (list 0. 0))
 			   (aggr avg_aggr))
-		  (timed-call 100 upfeed))
+		  (timed-call 130 upfeed))
 
 	  (avg_aggr (x y)
 		    ;(printf "Average acc: ~a ~a\n"  x y)
-		    (return (list (+ (car x) (car y))
+		    (return (list (+. (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
 	  '[regiment-verbose #f]
-	  '[simalpha-timeout 10000]
+	  '[simalpha-timeout 4000]
 ;	  '[simalpha-stream-result #t]
 	  )
        unspecified]

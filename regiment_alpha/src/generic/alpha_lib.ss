@@ -121,7 +121,9 @@
            (expt (- (cadr a) (cadr b)) 2)))]
 
 [define (simulator-soc-return x)
-  (printf "~n  SOCRETURN: ~a ~n" x)
+  (printf "~n  SOCRETURN(t=000) ~a ~n" 
+	  
+	  x)
   (soc-return-buffer (cons x (soc-return-buffer)))]
 
 [define (simulator-soc-finished)

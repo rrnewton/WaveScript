@@ -206,6 +206,17 @@
     (floor
      (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
 
+;; This one changes amplitude across space:
+(define (sense-spatial-sine-wave id x y t)
+  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+  ;(exact->inexact
+   (inexact->exact 
+    (floor
+     (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
+	   (distorigin (sqrt (+ (* x x) (* y y))))
+	   (maxdist (sqrt (+ (^ world-xbound 2) (^ world-ybound 2)))))
+       (* waveamp (/ distorigin maxdist))))))
+
 #;
 (define (sense-fast-sine-wave id x y t)
   (printf "(sensing ~a ~a ~a ~a) " id x y t)
@@ -213,7 +224,9 @@
    (floor
     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
 
-(define-regiment-parameter simalpha-sense-function sense-sine-wave)
+(define-regiment-parameter simalpha-sense-function 
+  sense-spatial-sine-wave)
+;  sense-sine-wave)
 
 
 ;; Used primarily by alpha_lib_scheduler_simple.ss

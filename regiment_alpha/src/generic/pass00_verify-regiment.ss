@@ -42,19 +42,19 @@
      (letrec ((a (anchor-at 30 40)))
        (letrec ((r (circle a 50))
 		(f (lambda (tot next)
-		     (cons (+ (car tot) (sense next))
-			   (cons (+ (car (cdr tot)) 1)
+		     (cons (+. (car tot) (sense next))
+			   (cons (+. (car (cdr tot)) 1.0)
 				 '()))))
-		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
-	 (smap g (rfold f '(0 0) r))))
+		(g (lambda (tot) (/. (car tot) (car (cdr tot))))))
+	 (smap g (rfold f '(0. 0.) r))))
 
      (letrec ((R (circle-at 30 40 50))
 	      (f (lambda (tot next)
-		   (cons (+ (car tot) (sense next))
-			 (cons (+ (car (cdr tot)) 1)
+		   (cons (+. (car tot) (sense next))
+			 (cons (+. (car (cdr tot)) 1.)
 			       '()))))
-	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))
-       (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) R))))
+	      (g (lambda (tot) (/. (car tot) (car (cdr tot))))))
+       (letrec ((avg (smap g (rfold f (cons 0. (cons 0. '())) R))))
 	 (until (swhen-any (lambda (x) (> x 15.3)) avg)
 		R
 		(circle-at 0 0 100))))
@@ -77,7 +77,7 @@
           [,const (guard (constant? const))
 		  (cond
 		   [(boolean? const) 'Bool]
-		   [(number? const) 'Number]
+		   [(number? const) (if (inexact? const) 'Float 'Integer)]
 		   [(list? const) 'List] 
 		   [else (error 'verify-regiment:infer-type
 			 "Unknown type of constant: ~a" const)])]
@@ -148,10 +148,12 @@
 
 	     ;; Locations are just lists for the moment!
 	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
-	     [(set-equal? (list infered-type expected-type) '(Dist Number))  (void)]
+	     ;; We're using integral rather than floating point distances for the time being:
+	     [(set-equal? (list infered-type expected-type) '(Dist Integer))  (void)]
 
-	     ;; Floats are the only numbers for now:
+	     ;; We are lenient and allow either a float or an int to match a Number.
 	     [(set-equal? (list infered-type expected-type) '(Float Number)) (void)]
+	     [(set-equal? (list infered-type expected-type) '(Integer Number)) (void)]
 
 	     [(and (eq? infered-type 'Region)
 		   (eq? expected-type 'Area))]

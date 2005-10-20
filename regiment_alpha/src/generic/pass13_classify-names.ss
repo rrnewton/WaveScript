@@ -146,7 +146,7 @@
        (add-prop! name 'anchor)]
 
       ;; Does Node belong here?
-      [(Location Reading Function Number Integer Float Bool List Node)
+      [(Location Reading Function Number Integer Float Bool List Pair Node)
        (add-prop! name 'local)]
 
       ;; There's really not anything that we know about objects...
