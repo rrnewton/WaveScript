@@ -39,13 +39,29 @@
   '(
   
     ; value primitives
-    (cons (Object List) List) 
-    (car (List) Object)
-    (cdr (List) List)
-    (+ (Number Number) Number) 
-    (- (Number Number) Number) 
-    (* (Number Number) Number) 
-    (/ (Number Number) Number) 
+
+;    (cons (Object List) List) 
+;    (cdr (List) List)
+;    (car (List) Object)
+;; [2005.10.20] Allowing improper lists for the moment:
+    (cons (Object Object) Pair) 
+    (cdr (Pair) Object)
+    (car (Pair) Object)
+
+    (+ (Integer Integer) Integer) 
+    (- (Integer Integer) Integer) 
+    (* (Integer Integer) Integer) 
+    (/ (Integer Integer) Integer) 
+
+    (+. (Float Float) Float) 
+    (-. (Float Float) Float) 
+    (*. (Float Float) Float) 
+    (/. (Float Float) Float) 
+
+;    (vector Object Array)
+    (make-vector (Object Integer) Array)
+    (vector-ref (Array Integer) Object)
+    (vector-set! (Array Integer Object) Void)
 
     (locdiff (Location Location) Float)
 
@@ -211,12 +227,19 @@
   '( 
 
     ;; Arithmetic
-    (+ (Number Number) Number) 
-    (- (Number Number) Number) 
-    (* (Number Number) Number) 
-    (/ (Number Number) Number) 
+    (+ (Integer Integer) Integer) 
+    (- (Integer Integer) Integer) 
+    (* (Integer Integer) Integer) 
+    (/ (Integer Integer) Integer) 
     (max (Number Number) Number)
     (min (Number Number) Number)
+
+    (+. (Float Float) Float) 
+    (-. (Float Float) Float) 
+    (*. (Float Float) Float) 
+    (/. (Float Float) Float) 
+    (int->float (Integer) Float)
+    (float->int (Float) Integer)
 
     (not (Bool) Bool)
     ; predicates
@@ -2394,8 +2417,9 @@
     ;; Write script file:
     (fprintf scrip "set autoscale;\n")
     (fprintf scrip "plot ~s using 1:2 with linespoints" fn2)
-    (for n = 3 to (length (car data))
-	 (fprintf scrip ", ~s using 1:~a with linespoints" fn2 n))
+    (if (list? (car data))
+	(for n = 3 to (length (car data))
+	     (fprintf scrip ", ~s using 1:~a with linespoints" fn2 n)))
     (fprintf scrip ";\n")
 
     ;(fprintf scrip "exit;\n")

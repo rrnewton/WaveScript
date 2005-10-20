@@ -16,6 +16,8 @@
 	  current-error-port
 
 	  ;; Values:	    
+	  gnuplot
+	  
 	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name 
 	  get-formals
 
