@@ -55,7 +55,7 @@
     ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
 ;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
 ;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
-;    desugar-let-stored
+    desugar-let-stored
 ;    rename-stored
 
     ;    verify-token-machine
