@@ -12,8 +12,8 @@
 	  id
 	  substring? periodic-display all-equal?
 
-	  with-error-handlers
-
+	  with-error-handlers with-warning-handler
+	  current-error-port
 
 	  ;; Values:	    
 	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name 
@@ -169,10 +169,16 @@
 				   (apply display args)
 				   (escape))])
 		 (th)))
+(define (with-warning-handler fun th)
+  (parameterize ([#%warning-handler fun])
+    (th)))
 
 
 ;; This is too lenient, but there's no other option.
 (define promise? procedure?)
+
+(define current-error-port current-output-port)
+
 
 ;; Moved include!
 

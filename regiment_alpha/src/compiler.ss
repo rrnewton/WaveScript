@@ -408,7 +408,32 @@
 	     (read (open-input-string (get-output-string prt)))))))
       (a b c)]
 
+     ["Check call scheduling order."
+      , (tm-to-list
+       '(tokens 
+	    (SOC-start () (call a)
+		       (call b))
+	  (a (x) (printf "a ") (call a2))
+	  (b (x) (printf "b ") (call b2))
+	  (a2 (x) (printf "a2 "))
+	  (b2 (x) (printf "b2 "))
+	  ))
+      ,(lambda (x) ;; All of these are semantically valid.
+	 (member x '[(a b a2 b2) ;; This is the straightforward FIFO one
+		     (a a2 b b2) ;; This one works like a Stack
+		     (a b b2 a2)] ;; This one is kinda weird.
+		 ))]
 
+     ["Stress generated code for 'call'."
+      , (tm-to-list 
+	 '(tokens 
+	      [SOC-start () (call tok1 (begin (printf "rand\n") (call tok2)))
+					;(printf "~a\n" (call tok2))
+			 (printf "~a ~a\n" (token-scheduled? tok1) (token-scheduled? tok2))]
+	    [tok1 (v) (printf "~a\n" 1)]
+	    [tok2 () (printf "~a\n" 2)]))
+	(rand #t #t 2 1)]
+	 
      ["Timed tokens: test the simulator with timed tokens."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
@@ -948,7 +973,7 @@
 	      ,commontest)
 	    (result 2007)]
 	   ["Same test but now with closure-convert"
-	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
+	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert cleanup-token-machine)))
 	      ,commontest)
 	    (result 2007)]))
 
@@ -1044,7 +1069,7 @@
      ;; Ok before I was having problems with how I do the counters for
      ;; subtok indices of the continuations.  This double invocation tests that:
      ["Test double invocation of a continuation-bearing token." 
-      (fluid-let ([pass-names '(cleanup-token-machine  desugar-let-stored rename-stored  cps-tokmac closure-convert)])
+      (fluid-let ([pass-names '(cleanup-token-machine  desugar-let-stored rename-stored  cps-tokmac closure-convert cleanup-token-machine)])
        (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
          (let ((prog
 		(run-compiler
@@ -1136,7 +1161,7 @@
 	   ["And one last time using subcall and closure convert."
 	    (fluid-let ((pass-names '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
-				      cps-tokmac closure-convert)))
+				      cps-tokmac closure-convert cleanup-token-machine)))
 	      ,common)
 	    (ab b c c)
 	    ;(c ab c b)
@@ -1702,6 +1727,39 @@
       ;; FIXME : Finish
       unspecified]
 
+     ["Test soc-return (#1).  Try it w/out desugar-soc-return."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
+	(let ([prog (run-compiler 399)])
+	  (run-simulator-alpha prog))))
+      (399)]
+
+     ["Test soc-return (#2).  Try it WITH desugar-soc-return, but still on base station."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      ;; Go all the way through desugar-gradients and the subsequent cleanup-token-machine
+      (fluid-let ([pass-names (rdc (list-remove-after 'cps-tokmac pass-names))])
+	(let ([prog (run-compiler 399)])
+	  (run-simulator-alpha prog))))
+      (399)]
+
+    ["Test soc-return (#3). soc-returns from one hop neighbors, without desugar gradients."
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	(let ([prog (cleanup-token-machine
+		     '(tokens
+		       (SOC-start () (soc-return (my-id)) (bcast tok1))
+		       (tok1 () 
+			     (printf " recvd ")
+			     (soc-return (my-id))
+			     )
+		       ))])
+	  (run-simulator-alpha prog)))
+      ;; Result should be base_id followed by some number of non-base-ids.
+      ,(lambda (ls)
+	 (and (> (length ls) 1)
+	      (eq? (car ls) BASE_ID)
+	      (andmap (lambda (n) (not (eq? n BASE_ID))) (cdr ls))))
+      ]
+
 
     ["Gradients:  Return an average sensor reading over the network."
      , (tm-to-socvals
@@ -1743,38 +1801,7 @@
 		    '[simalpha-timeout 5000])
       unspecified]
 
-     ["Test soc-return (#1).  Try it w/out desugar-soc-return."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
-	(let ([prog (run-compiler 399)])
-	  (run-simulator-alpha prog))))
-      (399)]
 
-     ["Test soc-return (#2).  Try it WITH desugar-soc-return, but still on base station."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      ;; Go all the way through desugar-gradients and the subsequent cleanup-token-machine
-      (fluid-let ([pass-names (rdc (list-remove-after 'cps-tokmac pass-names))])
-	(let ([prog (run-compiler 399)])
-	  (run-simulator-alpha prog))))
-      (399)]
-
-    ["Test soc-return (#3). soc-returns from one hop neighbors, without desugar gradients."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-	(let ([prog (cleanup-token-machine
-		     '(tokens
-		       (SOC-start () (soc-return (my-id)) (bcast tok1))
-		       (tok1 () 
-			     (printf " recvd ")
-			     (soc-return (my-id))
-			     )
-		       ))])
-	  (run-simulator-alpha prog)))
-      ;; Result should be base_id followed by some number of non-base-ids.
-      ,(lambda (ls)
-	 (and (> (length ls) 1)
-	      (eq? (car ls) BASE_ID)
-	      (andmap (lambda (n) (not (eq? n BASE_ID))) (cdr ls))))
-      ]
 
 #; ; FIXME: Not there yet:
     ["Test soc-return (#4). soc-returns from one hop neighbors, WITH desugar gradients."

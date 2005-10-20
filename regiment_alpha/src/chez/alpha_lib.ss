@@ -7,6 +7,7 @@
 	 neighbors
 	 sendmsg
 	 sim-light-up
+	 sim-print-queue
 	 sim-leds
 	 ;sim-dist
 	 sim-loc

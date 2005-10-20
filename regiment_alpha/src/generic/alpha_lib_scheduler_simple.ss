@@ -65,7 +65,32 @@
 	      ;; Before I merely merged them:
 	      (IFDEBUG ;; [2005.10.17] Profiling indicates this wastes a lot of time.  Only doing this in debug mode.
 	       (set-queue! (sort lessthan (append pairedevnts (get-queue))))
-	       (set-queue! (merge lessthan pairedevnts (get-queue))))
+	       (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue))))
+
+	      ;; TEMP:
+	      #;
+	      (DEBUGMODE
+	       (let ((current-times (map simevt-vtime (map car (get-queue)))))
+		 ;(fprintf (console-output-port) "~a\n\n" current-times )
+		 (if (not (equal? current-times (sort < current-times)))
+		     (error 'run-alpha-simple-scheduler
+			    "Queue was in an invalid state at time ~a:  events not in order:\n ~a"
+			    current-vtime current-times))))
+	      #;
+	      (DEBUGMODE
+	       (if (not (equal? 
+			 (map simevt-vtime (map car 
+			 (sort lessthan (append pairedevnts (get-queue)))))
+			 (map simevt-vtime (map car 
+						(merge lessthan (sort lessthan pairedevnts) (get-queue))))))
+		   (error 'run-alpha-simple-scheduler 
+			  "Something is wrong with merge or evntlessthan: merged in ~a and \n ~a \n not same as : \n ~a\n"
+			  (map simevt-vtime (map car pairedevnts))
+			  (map simevt-vtime (map car 
+			       (sort lessthan (append pairedevnts (get-queue)))))
+			  (map simevt-vtime (map car
+			       (merge lessthan pairedevnts (get-queue)))))))
+			  
 
 	      ;(printf "Woot: ~a\n" (map simevt-vtime (map car (get-queue))))
 
@@ -156,6 +181,9 @@
 				   (+ RADIO_DELAY SCHEDULE_DELAY vtime)))
 			     (simevt-msgobj e)))
 			  incoming))])
+
+;; FIXME: Should we do a little sorting of the events here?
+
 	;; Process incoming and local msgs:
 	;; Schedule timed local tokens:
 	(apply schedule ob timedevnts))))

@@ -18,8 +18,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -49,7 +49,10 @@
 ;    [(_ expr ...) (begin expr ...)]))
     [(_ expr ...) (void)]))
 
-
+;; Just a shorthand:
+(define-syntax REGIMENT_DEBUG
+  (syntax-rules ()
+    [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
 
 
 ;;======================================================================
@@ -90,8 +93,11 @@
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
 
-;; This parameter determines whether the compiler should output extra debugging info.
+;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
+
+;; This parameter adds extra debug/assertion code to the generated code.
+(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
 
 ;; This one toggles logging.  
 ;; It can be set to : 
