@@ -98,8 +98,8 @@
 	     (eq? id NULL_ID))
 	 (loop (reg:random-int 1000))
 	 id))
-   (list (reg:random-int world-xbound)
-	 (reg:random-int world-ybound))
+   (list (reg:random-int (simalpha-world-xbound))
+	 (reg:random-int (simalpha-world-ybound)))
    ))
   
 (define (dotted-append ls ob)
@@ -125,6 +125,7 @@
 
 ;; Returns a simworld object.
 (define (fresh-simulation)  
+
   ;; This subroutine generates the default, random topology: 
   ;; (There are more topologies in "network_topologies.ss"
   (define (make-object-graph g world) 
@@ -152,24 +153,91 @@
 		   (set-simobject-worldptr! so world)
 		   so)) g))
 
+  ;; Set global parameter:
+  ;; This is a function which takes two locations and returns either
+  ;;  1) a number, representing the loss percentage
+  ;;  2) a function of time, representing the loss percentage over time
+  (simalpha-connectivity-function
+    (case (simalpha-channel-model)
+      [(lossless)
+       (lambda (p1 p2) ;x1 y1 x2 y2)
+	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
+	   (if (< dist (simalpha-outer-radius))
+	       100
+	       0)))]
+      [(linear-disc)
+       (printf "Got linear disc...\n")
+       (lambda (p1 p2)	
+	 (let ((dist (posdist p1 p2))
+	       (outer (simalpha-outer-radius))
+	       (inner (simalpha-inner-radius)))
+;	   (printf "Considering ~a (~a, ~a) between ~a and ~a\n" dist p1 p2 inner outer)
+	   (cond
+	    [(< dist inner) 100]
+	    [(> dist outer) 0]
+	    [else
+	     (inexact->exact (floor (* 100 (/ (- dist inner) (- outer inner)))))])))]))
+  
+ 
+  ;; TODO, FIXME, need to use a real graph library for this!
+  ;; (One that treats edges with due respect, and that uses hash tables.)
+
    (let* ([theworld (make-simworld #f #f #f #f #f #f)]
+	  [collide? (lambda (n1 n2)
+			(let ((connectivity ((simalpha-connectivity-function)
+					     (node-pos n1) (node-pos n2))))
+			  (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
+			  (not (eqv? 0 connectivity))))]
+			  
 	  [graph 
-          (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
-            (if (simalpha-consec-ids)
-                (for-each set-node-id! 
-                          seed (iota (length seed))))
-            ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
-            (set-node-id! (car seed) BASE_ID)
-            ;; Connect the graph:
-            (set! seed
+	   (if (simalpha-ensure-connected)
+	       ;; This might have some serious biases in the layout and distribution of degree.
+	       (let ((start-node (let ((x (random-node)))				   
+				   (set-node-id! x BASE_ID)
+				   x)))
+	       (let loop ((graph (list (list start-node))) (count (sub1 (simalpha-num-nodes))))
+;		 (printf "\nLooping: graph:\n")
+;		 (pretty-print graph)
+		 (if (<= count 0)
+		     graph
+		     (let ((newnode (random-node)))
+		       ;; Here we number them as we go.  
+		       ;; This will result in a non-random spatial distribution of node-ids.
+		       (if (simalpha-consec-ids)
+			   (set-node-id! newnode count))
+		       (let ((nbr-rows (filter (lambda (row) (collide? newnode (car row))) graph)))
+			 (if (null? nbr-rows)
+			     (loop graph count)
+			     (begin 
+			       (for-each (lambda (row)
+					   ;; Splice in this as a neighbor:
+					   (set-cdr! row (cons newnode (cdr row))))
+					 nbr-rows)
+			       (loop (cons (cons newnode (map car nbr-rows))
+					   graph)
+				     (sub1 count)))))))))
+
+	       ;; Old method, doesn't produce connected graph:
+	       (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
+		 (if (simalpha-consec-ids)
+		     (for-each set-node-id! 
+			       seed (iota (length seed))))
+		 ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+		 (set-node-id! (car seed) BASE_ID)
+		 ;; Connect the graph:
+		 ;; TODO: Make the graph representation better.  Should cache the connectivity functions on the edges.
+		 (set! seed
                   (map (lambda (node)
                          (cons node 
                                (filter (lambda (n) 
                                          (and (not (eq? node n))
-                                              (< (posdist (node-pos node) (node-pos n)) radius)))
+					      (let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
+						;; We establish a connection unless we get zero-reception
+						(not (eqv? connection 0))
+						)))
                                        seed)))
                        seed))
-            seed)]
+            seed))]
 ;	  [soc (caar graph)]
           [obgraph (make-object-graph graph theworld)]
           [allobs  (map car obgraph)]
@@ -180,6 +248,11 @@
 		       allobs)
 	     h)]
 	  [scheduler-queue '()])
+
+     (DEBUGMODE
+      (andmap (lambda (row) (andmap node? row))
+	      graph))
+	      
 
      ;; Set I-am-SOC
      (for-each (lambda (ob)
@@ -193,6 +266,23 @@
      (set-simworld-scheduler-queue! theworld scheduler-queue)
      (set-simworld-vtime! theworld 0)
      theworld))
+
+
+(define (print-connectivity world)
+  (for-each (lambda (row)
+;	      (printf "Bang : ~a \n" (map node-id row))
+	      (printf "~a: ~a\n" (car row)
+		      (map (lambda (nbr) 			     
+;			     (printf "Woot ~a ~a ~a ~a \n" 
+;				     (node? (car row)) (node? nbr)
+;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
+;				     )
+			     ((simalpha-connectivity-function)
+			      (node-pos (car row))
+			      (node-pos nbr)))
+			   (cdr row))))
+	    (simworld-graph world)))
+
 
                          
 ;; ======================================================================
@@ -830,6 +920,7 @@
 		      )))
     ;; Reset global message counter:
     (set! simalpha-total-messages 0)
+    (set! simalpha-total-tokens 0)
     (apply run-alpha-loop args)))
 
 
@@ -867,8 +958,14 @@
   (disp "RUNNING ALPH" args simple-scheduler)
 
   (if (file-exists? logfile) (delete-file logfile))
+
+
+  ;; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
+  (simalpha-current-simworld sim)
  
-  (parameterize ([soc-return-buffer '()])
+  (parameterize ([soc-return-buffer '()]
+		 ;; This is not used by simalpha itself, but anyone else who wants to peek:
+		 [simalpha-current-simworld sim])
   (let/cc exitk	
 	  ;; FOR NOW: only log if we're in debugmode [2005.10.17]
   (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
@@ -906,7 +1003,9 @@
   ;; Out of let/cc:
   (let ((result (reverse (soc-return-buffer))))
     (printf "~nTotal globally returned values:~n ~a~n" result)
-    result))))
+    result))
+  
+  ))
 
 ;; ======================================================================
 

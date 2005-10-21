@@ -18,8 +18,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -164,7 +164,27 @@
 (define RADIO_DELAY 10)  ;; Communication timea
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
+;; Just a global pointer to whatever the currently running simworld is.
+(define simalpha-current-simworld 
+  (make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) 
+				  x
+				     (error 'simalpha-current-simworld 
+					    "invalid val for param: ~a" x)))))
+
 (define-regiment-parameter simalpha-num-nodes 30)
+(define-regiment-parameter simalpha-world-xbound 60)
+(define-regiment-parameter simalpha-world-ybound 60)
+;; Comm radius's:
+(define-regiment-parameter simalpha-outer-radius 15)
+(define-regiment-parameter simalpha-inner-radius 10)
+
+
+;; When this parameter is set a different node-placement strategy is 
+;; used, which tries to ensure that the communication graph is "connected".
+;; Bear in mind that it may introduce other biases in the distribution
+;; of placements that it produces.
+;; (But with an opaque channel function it cannot guarantee this.)
+(define-regiment-parameter simalpha-ensure-connected #t)
 
 ;; Valid values:
 ;; #f    : No time-out
@@ -179,10 +199,17 @@
 
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
 
-;; [2005.10.03] Can only be 'lossless right now.  (Need to implement 'disc and 'empirical.)
+;; [2005.10.03] Can be:
+;;   'lossless -- 100% until simalpha-outer-radius, 0% beyond  
+;;   'linear-disc -- 100% at simalpha-inner-radius radius, 0% past outer, linear interpolation between.
+;;   'empirical -- Uses gathered data on radio connectivity (UNIMPLEMENTED)
 (define-regiment-parameter simalpha-channel-model 'lossless)
+
 ;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
 (define-regiment-parameter simalpha-failure-mode 'none)
+
+;; This is a read-only parameter set by the system.  
+(define simalpha-connectivity-function (make-parameter 'uninitialized id))
 
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements

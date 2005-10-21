@@ -224,8 +224,8 @@
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
 	     ;; That's done elsewhere:
-	     [(ext-ref ,t ,v) `(ext-ref ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) t) ,v)]
-	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) t) ,v ,x)]
+	     [(ext-ref ,t ,v) `(ext-ref ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v)]
+	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v ,x)]
 
 	     [(tok ,t) `(tok ,t ,DEFAULT_SUBTOK)]
 	     ;; Static form
@@ -339,7 +339,7 @@
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
 ;				 `(tok ,tok)
-				 tok)
+				 (loop tok))
 			    ,args* ...)]
 	     [(timed-call ,time ,tok ,[args*] ...)
 	      (if (not (number? time))
@@ -347,18 +347,18 @@
 	      (check-tok 'timed-call tok)
 	      `(timed-call ,time ,(if (tokname? tok)
 				      `(tok ,tok ,DEFAULT_SUBTOK)
-				      tok)
+				      (loop tok))
 			   ,args* ...)]
 	     [(return ,[x]) `(return ,x)] ;; A local return, not a gradient one.
 
 	     [(grelay) `(grelay (tok ,this-token ,this-subtok))]
+	     [(grelay (tok ,t ,[e])) (check-tok 'grelay t)
+	      `(grelay (tok ,t ,e))]
 	     [(grelay ,tok) (guard (tokname? tok))
 	      (check-tok 'grelay tok)
 	      ;; There is some question here as to whether we should
 	      ;; default to this-subtok or to Zero subtoken index.
 	      `(grelay (tok ,tok ,this-subtok))]
-	     [(grelay (tok ,t ,[e])) (check-tok 'grelay t)
-	      `(grelay (tok ,t ,e))]
 	     
 	     ;; Expand this out to refer to the precise token...
 	     ;; TODO FIXME TODO: change this to refer to the specific subtok_ind:
@@ -404,7 +404,7 @@
 		  (match t
 			 [,s (guard (symbol? s)) `(tok ,s 0)]
 			 [(tok ,t) `(tok ,t 0)]
-			 [(tok ,t ,n) `(tok ,t ,n)]))
+			 [(tok ,t ,[loop -> n]) `(tok ,t ,n)]))
 
 		(if aggr (check-tok 'return-aggr aggr))
 		`(greturn ,expr 
@@ -439,6 +439,7 @@
 	     [(,prim ,[rands] ...)
 	      (guard (or (token-machine-primitive? prim)
 			 (basic-primitive? prim)))
+;	      (printf "prim ~a args: ~a \n" prim rands)
 	      `(,prim ,rands ...)]
 
 ;	     [(,kwd ,stuff ...)

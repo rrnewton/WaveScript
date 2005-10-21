@@ -228,6 +228,7 @@
 
     (define sim-to-string
       (lambda (prog)
+	(import simulator_alpha_datatypes)
 	(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
 		      (let ((prt (open-output-string)))
 			(run-simulator-alpha prog 'outport prt)
@@ -235,6 +236,7 @@
   
     (define simulate-and-compare
       (lambda (pass origprog)
+	(import simulator_alpha_datatypes)
 	(let ([result1 (sim-to-string origprog)]
 	      [result2 (sim-to-string (pass origprog))])
 	  (list result1 result2))))
