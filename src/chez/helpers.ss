@@ -46,7 +46,7 @@
 	  list-find-position list-remove-before
 	  randomize-list  insert-between iota disp crit-printf
 	  extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
-	  graph-map graph-get-connected-component graph-neighbors cyclic? 
+	  graph-map graph-get-connected-component graph-neighbors ;cyclic? 
 	  graph:simple->vertical graph:vertical->simple
 	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
 	  list-get-random unfold-list average clump
@@ -73,7 +73,7 @@
 
 	  )
 
-(import (except topsort-module test-this these-tests))
+;(import (except topsort-module test-this these-tests))
 (import scheme)
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect

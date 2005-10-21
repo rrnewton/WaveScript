@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 2) ;; FIXME: TODO: GET IT TO WORK WITH OPT LEVEL 2 & 3 
+	   (optimize-level 2) 
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -28,7 +28,7 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   ;; Wow, down to 3.251 seconds on my 10second network average-value test.
 	   )
-(print-graph #f)
+(print-graph #t)
 (print-gensym #f)
 
 ;; This makes our modules work properly in newer versions of Chez:
@@ -63,8 +63,9 @@
 ;; therefore we don't need to change directories.
 ;(eval-when (compile eval) (cd "chez"))
 (include "chez/hash.ss") (import hash) ;; TEMPORARY
-(include "chez/tsort.ss") (import topsort-module)
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
+(include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
+
 ;; This is a trick to deal with mutual recursion in the modules:
 ;; FIXME: Doesn't work right now:
 ;(define test-tsort (let () (import topsort-module) (test-this)))  
@@ -72,7 +73,7 @@
 
 ;(eval-when (compile eval) (cd ".."))
 
-(include "chez/simulator_alpha_datatypes.ss") 
+(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 (include "chez/simulator_alpha.ss") (import simulator_alpha)
@@ -131,6 +132,9 @@
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass24_desugar-let-stored.ss")
 (include "generic/pass25_rename-stored.ss")
+
+;; TODO: Merge with pass22, besides this isn't really 26 anyway!
+(include "generic/pass26_desugar-macros.ss")
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")

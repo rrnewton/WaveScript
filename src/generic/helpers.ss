@@ -252,7 +252,9 @@
     (equal? (Object Object) Bool)
     (eq? (Object Object) Bool)
 
-;(elect-leader) (flood) ;; These are actually macros, but what the heck
+    (elect-leader Token) 
+    (flood Token) ;; These are actually macros, but what the heck
+
 ;     (greturn)
 ;     (emit)
 ;     (relay)
@@ -1447,6 +1449,12 @@
      (lambda (return)
          (if (memq 'get-tests args)
 	     (return entries))
+	 (when (memq 'print-tests args)
+	   (for-eachi (lambda (i test)
+			(if (string? (car test))
+			    (printf "~a: ~a\n" i (car test))))
+		      entries)
+	   (return (void)))
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (or (memq 'quiet args)
@@ -2321,45 +2329,6 @@
 		 [outgroup (cadr pr)])
 	    (cons (cons first ingroup) 
 		  (loop outgroup)))))))
-
-
-;; Tells whether or not a graph is cyclic.  
-;; Requires canonical form where each node has exactly one entry.
-;; If the graph is acyclic, return #f.
-;; Otherwise, return the list of nodes participating in cycles.
-;; 
-;; REQUIRES:  slib tsort
-(define (cyclic? g . compare)
-  ;; Umm is this really bad form to perform this INSIDE the cyclic? function??
-  ;; How efficient is require??  A linear search through a list of things loaded?
-  ;; I'm considering defining "let-run-once"
-  ;;(slib:require 'tsort)
-  (let ((eq (if (null? compare) eq?
-		(if (> (length compare) 1)
-		    (error 'cyclic? "too many optional arguments: ~s" compare)
-		    (if (procedure? (car compare))
-			(car compare)
-			(error 'cyclic? 
-			       "optional argument must contain a comparison procedure, received : ~s"
-			       (car compare)))))))
-    (let ((flat (topological-sort g eq?)))
-      (let ((cycles
-	     (filter 
-	      (lambda (x) x)
-	      (map 
-	       (lambda (entry)
-		 (let ((lst (memq (car entry) flat)))
-		   (if (not lst) (error 'cyclic? "uhh, definition broken")
-		       (if (andmap (lambda (edge) (memq edge lst))
-				   (cdr entry))
-			   #f
-			   (car entry)))))
-	       g))))
-	(if (null? cycles)
-	    #f
-	    cycles)))))
-
-
 
 ;; ======================================================================
 

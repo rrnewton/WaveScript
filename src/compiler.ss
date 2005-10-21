@@ -38,6 +38,7 @@
     
     cleanup-token-machine    
     desugar-soc-return
+    desugar-macros
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
     
@@ -147,7 +148,8 @@
 	      [(cps-tokmac-lang) 'cps-tokmac]
 	      
 					;[(haskellize-tokmac-lang) (error...
-	      [else 'deglobalize])])
+	      [else 'deglobalize])]
+	   [,else 'deglobalize])
 	 ])
   (let ((passes (cdr (list-remove-before starting-place pass-names))))
     (disp "Assembling tokmac with passes: " passes)
@@ -278,10 +280,17 @@
 			   ,@extraparams
 			   )
 	       (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
+		   '(
+		     cleanup-token-machine 
+;		     desugar-soc-return 			
+		     desugar-macros
+		     desugar-gradients
+		     cleanup-token-machine 
+		     desugar-let-stored
+		     rename-stored  
+  		     ; cps-tokmac
+		     ;  closure-convert      
+		     ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm
 					   ;'verbose
@@ -312,10 +321,23 @@
 			   ,@extraparams
 			   )
 	       (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
+		   '(
+
+		     cleanup-token-machine 
+;		     desugar-soc-return 	
+		     desugar-macros		
+		     desugar-gradients
+		     cleanup-token-machine 
+		     desugar-let-stored
+		     rename-stored  
+  		     ; cps-tokmac
+		     ;  closure-convert      
+		     ;cleanup-token-machine
+
+;		     cleanup-token-machine  desugar-gradients
+;		     cleanup-token-machine desugar-let-stored
+;		     rename-stored         ; cps-tokmac
+;;		     closure-convert        ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm
 					   'verbose
@@ -340,10 +362,24 @@
 			   ,@extraparams
 			   )
 	       (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
+		   '(
+
+		     cleanup-token-machine 
+;		     desugar-soc-return 	
+		     desugar-macros		
+		     desugar-gradients
+		     cleanup-token-machine 
+		     desugar-let-stored
+		     rename-stored  
+  		     ; cps-tokmac
+		     ;  closure-convert      
+		     ;cleanup-token-machine
+
+
+;		     cleanup-token-machine  desugar-gradients
+;		     cleanup-token-machine desugar-let-stored
+;		     rename-stored         ; cps-tokmac
+;;		     closure-convert        ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm )])
 		   (profile-clear) ;; Temp: profiling the simulator:
@@ -1761,6 +1797,88 @@
 	      (andmap (lambda (n) (not (eq? n BASE_ID))) (cdr ls))))
       ]
 
+    ;; This is broken:  It's an incorrect algorithm:
+    ["Elect leader. #1"
+     , (tm-to-list
+	'(tokens
+	   [node-start () 
+	       (gemit (tok lead (my-id)))
+	       (printf "\nLaunch: ~a " (my-id))
+	       ]
+	   [lead id () 		 
+		 (let-stored ([cur-leader (my-id)])
+		   (if (> id cur-leader)
+		       (begin 
+			 (printf "~a " id) (flush-output-port)
+			 (set! cur-leader id)
+			 (grelay))
+		       (begin 
+			 (printf "_ ") (flush-output-port)
+			 (gemit (tok lead cur-leader)))))]
+	   )
+	'[simalpha-num-nodes 3]
+	'[simalpha-consec-ids #f]
+	'[simalpha-timeout 10000])
+       unspecified]
+
+
+    ["Elect leader. #2" 
+     , (tm-to-list
+	'(tokens
+	   [SOC-start () (timed-call 1000 open)
+		         (timed-call 6000 close)]
+	   [open () (printf "\n(final ")]
+	   [close () (printf ")")]
+	   [node-start () (stored [cur-leader #f])
+	       (set! cur-leader (my-id))
+	       (gemit (tok lead (my-id)))
+	       (printf "(launch ~a) \n" (my-id))
+	       (timed-call 5000 final-report)
+	       ]
+	   [lead id () 		 
+		 (if (< id (ext-ref node-start cur-leader))
+		     (begin 
+		       (printf "(~a ~a) " id (ext-ref node-start cur-leader)) (flush-output-port)
+		       (ext-set! node-start cur-leader id)
+		       (grelay))
+		     (begin 
+		       (printf "~a " ;(my-id) 
+			       (ext-ref node-start cur-leader)) 
+		       (flush-output-port)
+		       ;(gemit (tok lead (ext-ref node-start cur-leader)))
+		       ))]
+	   [final-report () (printf "~n   ~a " (ext-ref node-start cur-leader))]
+	   )
+	'[simalpha-num-nodes 10]
+	'[simalpha-consec-ids #f]
+	'[simalpha-ensure-connected #t]
+	'[simalpha-channel-model 'linear-disc]
+	'[simalpha-timeout 10000])
+       unspecified]
+	
+    ["Now test elect-leader macro."
+     , (tm-to-list
+	'(tokens
+	   [SOC-start () (elect-leader tok1)]
+	   [tok1 () (printf "~a " (my-id))])
+	'[simalpha-channel-model 'lossless]
+	'[simalpha-num-nodes 10])
+       unspecified]
+	
+    ["Test flood macro."
+     , (tm-to-list
+	'(tokens
+	   [SOC-start () (flood tok1)]
+	   [tok1 () (printf "~a " (my-id))])
+	'[simalpha-channel-model 'lossless]
+	'[simalpha-num-nodes 10])
+       ,(lambda (ls)
+	  (equal? (sort < ls)
+		  (sort < (map node-id 
+			       (map simobject-node 
+				    (simworld-all-objs
+				     (simalpha-current-simworld)))))))]
+
 
     ["Run and simulate complete regiment program." 
      (parameterize ([simalpha-channel-model 'lossless]
@@ -1777,11 +1895,10 @@
 	      (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes)))))
 	      (sort < (list->set ls)))))]
 
-
     ["Run a simple fold in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-mode  'none]
-		    [simalpha-num-nodes 10])
+		    [simalpha-num-nodes 30])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap sense world)]
@@ -1790,6 +1907,26 @@
 	 )
 	'timeout 1500))
      unspecified]
+
+    ["Count nodes in network under message loss conditions."  
+     retry
+     (parameterize ([simalpha-channel-model 'linear-disc]
+		    [simalpha-failure-mode  'none]
+		    [simalpha-ensure-connected #t]
+		    [simalpha-inner-radius 10]
+		    [simalpha-outer-radius 20]
+		    [simalpha-world-xbound 60]
+		    [simalpha-world-ybound 60]
+		    [simalpha-num-nodes 10])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(letrec ([readings (rmap (lambda (_) 1) world)]
+		   [sum (rfold + 0 readings)])
+	    sum)
+	 )
+	'timeout 1000))
+     ;; Should have missed a message in one out of the last 3 aggregations:
+     ,(lambda (ls) (< (apply + (list-head (reverse ls) 3)) 30))]
 
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]

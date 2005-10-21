@@ -27,6 +27,14 @@
          
          simalpha-num-nodes
          simalpha-output-port
+
+	 simalpha-outer-radius
+	 simalpha-inner-radius
+	 simalpha-ensure-connected
+	 simalpha-world-xbound
+	 simalpha-world-ybound
+	 simalpha-channel-model
+	 simalpha-failure-mode
          
          simalpha-dbg-on
          SCHEDULE_DELAY

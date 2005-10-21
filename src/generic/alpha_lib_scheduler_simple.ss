@@ -193,7 +193,6 @@
   ;; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
   (define (launch-outgoing ob)
       ;; This does the "radio transmission", and puts msgs in their respective incoming buffers.
-      ;; TODO: Here's where we insert the better radio model!!!
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
 	
 	(unless (null? outgoing)
@@ -214,9 +213,27 @@
 	  
 	  (for-each 
 	   (lambda (nbr)
-	     (set-simobject-incoming-msg-buf! 
-	      nbr (append  outgoing
-			   (simobject-incoming-msg-buf nbr))))
+	     ;; Here's where we simulate the channel and determine if the message goes through.
+	     (let ((connectivity ((simalpha-connectivity-function) 
+				  (node-pos (simobject-node ob))
+				  (node-pos (simobject-node nbr)))))
+#;
+	       (printf "Checking connectivity: ~a ~a ~a\n"
+		       connectivity
+		       (simobject-node ob)
+		       (simobject-node nbr))
+	       (if (cond
+		    [(fixnum? connectivity)
+		     (fx< (reg:random-int 100) connectivity)]
+		    [(procedure? connectivity)
+		     (fx< (reg:random-int 100) (connectivity vtime))]
+		    [else 
+		     (error 'launch-outgoing "bad connectivity function result: ~a" connectivity)])
+		   (set-simobject-incoming-msg-buf! 
+		    nbr (append  outgoing
+				 (simobject-incoming-msg-buf nbr)))
+		   ;; Otherwise fizzle:
+		   (void))))
 	   neighbors)
 	;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
@@ -270,9 +287,10 @@
 		     global-mintime (simobject-outgoing-msg-buf ob))))
 	
 	;; Now the lucky simobject gets its message.
+	(set! simalpha-total-tokens (add1 simalpha-total-tokens))
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 
 	;; Finally, we push outgoing-buffers to incoming-buffers:
-	(for-each launch-outgoing (simworld-all-objs sim))	
+	(for-each launch-outgoing (simworld-all-objs sim))
 	(main-sim-loop)))]))
   )

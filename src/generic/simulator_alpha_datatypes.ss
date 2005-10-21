@@ -73,7 +73,7 @@
 ;; This is just used to count up the messages during a simulation.
 (define simalpha-total-messages 0) ;(make-parameter 0 (lambda (x) x)))
 ;; This one counts total token handlers fired.
-;(define simalpha-total-tokens 0)
+(define simalpha-total-tokens 0)
 
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)

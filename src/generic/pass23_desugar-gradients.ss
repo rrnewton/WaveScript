@@ -188,7 +188,7 @@
 	     [,var (guard (symbol? var)) '()]
 	     [(set! ,var ,[e]) e]
 	     [(ext-ref (tok ,t ,[e]) ,v) e]
-	     [(ext-set (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
+	     [(ext-set! (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
 	     ;; If we ever have a first class reference to a token name, it is potentially tainted.
 	     ;; This is a conservative estimate:
 	     [(tok ,t ,n) (guard (number? n)) (list t)]
@@ -288,7 +288,8 @@
 	     [,var (guard (symbol? var))  (values () var)]
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
 	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
-	     [(ext-set ,[ttb t] ,v ,[e2]) (values ttb `(ext-set ,t ,v ,e2))]
+	     [(ext-set! ,[ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb) 
+						       `(ext-set! ,t ,v ,e2))]
 
 	     ;; This is "dynamic" context so no tainted names are allowed!
 	     ;; Basically gradient bearing token handlers are second class!
