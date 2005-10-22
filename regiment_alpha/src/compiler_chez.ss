@@ -128,13 +128,15 @@
 (include "generic/tml_generic_traverse.ss")
 
 (include "generic/pass21_cleanup-token-machine.ss")
-(include "generic/pass22_desugar-soc-return.ss")
+;(include "generic/pass22_desugar-soc-return.ss")
+;; TODO: Merge with pass22, besides this isn't really 26 anyway!
+(include "generic/pass22_desugar-macros.ss")
+(include "generic/pass26_desugar-macros.ss")
+
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass24_desugar-let-stored.ss")
 (include "generic/pass25_rename-stored.ss")
 
-;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/pass26_desugar-macros.ss")
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
