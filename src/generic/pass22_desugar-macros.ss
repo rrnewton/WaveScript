@@ -15,11 +15,11 @@
   (define (process-expr expr)
        (tml-generic-traverse
 	;; Driver:
-	(lambda (x k)
+	(lambda (x autoloop)
 	  (match x
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
-	     [(soc-return ,[k -> x])
+	     [(soc-return ,[autoloop -> x])
 ;	      (loop `(return-retry ,x (to (tok SOC-return-handler 0)) (via (tok global-tree 0))))]
 	      (let ([socretval (unique-name 'socretval)])
 		`(let ([,socretval ,x])
@@ -37,7 +37,7 @@
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 	     
-	     [,other (k other)]))
+	     [,other (autoloop other)]))
 	;; Fuser:
 	(lambda (ls k) (apply k ls))
 	;; Expression:
