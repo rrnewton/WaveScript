@@ -20,26 +20,30 @@
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
 	     [(soc-return ,[autoloop -> x])
-;	      (loop `(return-retry ,x (to (tok SOC-return-handler 0)) (via (tok global-tree 0))))]
-	      (let ([socretval (unique-name 'socretval)])
-		`(let ([,socretval ,x])
-		   (if (= (my-id) ',BASE_ID)
-		       (begin 
-			 ,@(DEBUGMODE `(dbg '"Soc return on basenode, returning directly: %d" ,socretval))
-			 (call (tok SOC-return-handler 0) ,socretval))
-		       (greturn ,socretval 
-				(to (tok SOC-return-handler 0)) 
-				(via (tok global-tree 0))
-				(seed '#f)
-				(aggr #f)
-				))))]
+	      (match x
+		[#(,v ,tbs)
+		 (let ([socretval (unique-name 'socretval)])
+		   `(let ([,socretval ,v])
+		      (if (= (my-id) ',BASE_ID)
+			  (begin 
+			    ,@(DEBUGMODE `(dbg '"Soc return on basenode, returning directly: %d" ,socretval))
+			    (call (tok SOC-return-handler 0) ,socretval))
+			  (greturn ,socretval 
+				   (to (tok SOC-return-handler 0)) 
+				   (via (tok global-tree 0))
+				   (seed '#f)
+				   (aggr #f)
+				   ))))])]
 	     ;; Sending to subtok 1 indicates that we're finished.
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 	     
 	     [,other (autoloop other)]))
 	;; Fuser:
-	(lambda (ls k) (apply k ls))
+	(lambda (vec k) 
+	  (match vec
+	    [(,v ,
+	  (vector (apply k ls) 
 	;; Expression:
 	expr))
 
