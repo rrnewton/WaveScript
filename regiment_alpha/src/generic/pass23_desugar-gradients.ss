@@ -1,6 +1,6 @@
 ;; TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
-
-
+;; TODO!!!! REFACTOR TO USE TML-GENERIC-TRAVERSE
+;; TODO!!!! Make version that uses estimated link quality.
 
 ;; CHECK FOR REFERENCES TO GLOBAL-TREE!!!
 
