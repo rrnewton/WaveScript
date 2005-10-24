@@ -209,7 +209,7 @@
 (define-regiment-parameter simalpha-failure-mode 'none)
 
 ;; This is a read-only parameter set by the system.  
-(define simalpha-connectivity-function (make-parameter 'uninitialized id))
+(define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))
 
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
@@ -241,7 +241,7 @@
     (floor
      (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
 	   (distorigin (sqrt (+ (* x x) (* y y))))
-	   (maxdist (sqrt (+ (^ world-xbound 2) (^ world-ybound 2)))))
+	   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
        (* waveamp (/ distorigin maxdist))))))
 
 #;

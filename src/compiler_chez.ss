@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 2) 
+	   (optimize-level 0);2) 
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting

@@ -37,7 +37,7 @@
     deglobalize
     
     cleanup-token-machine    
-    desugar-soc-return
+    ;desugar-soc-return
     desugar-macros
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
