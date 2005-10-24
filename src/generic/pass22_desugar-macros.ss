@@ -17,47 +17,98 @@
 	;; Driver:
 	(lambda (x autoloop)
 	  (match x
+
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
 	     [(soc-return ,[autoloop -> x])
 	      (match x
 		[#(,v ,tbs)
-		 (let ([socretval (unique-name 'socretval)])
-		   `(let ([,socretval ,v])
-		      (if (= (my-id) ',BASE_ID)
-			  (begin 
-			    ,@(DEBUGMODE `(dbg '"Soc return on basenode, returning directly: %d" ,socretval))
-			    (call (tok SOC-return-handler 0) ,socretval))
+		 (vector
+		  (let ([socretval (unique-name 'socretval)])
+		    `(let ([,socretval ,v])
+		       (if (= (my-id) ',BASE_ID)
+			   (begin 
+			     ,@(DEBUGMODE `(dbg '"Soc return on basenode, returning directly: %d" ,socretval))
+			     (call (tok SOC-return-handler 0) ,socretval))
 			  (greturn ,socretval 
 				   (to (tok SOC-return-handler 0)) 
 				   (via (tok global-tree 0))
 				   (seed '#f)
 				   (aggr #f)
-				   ))))])]
+				   ))))
+		  tbs)])]
 	     ;; Sending to subtok 1 indicates that we're finished.
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
+
+
+	     [(flood ,[process-tok -> tok])
+	      (let-match ([#(,t ,tbs) tok])
+		 (let ((newtok (unique-name 'floodtok)))
+		   (vector
+		    `(gemit (tok ,newtok (my-id)))
+		    `([,newtok subid () 
+			       (grelay (tok ,newtok subid))
+			       (call ,t)]))))]
+	    
+	     ;; FIXME: doesn't work yet:
+	     [(elect-leader ,t)
+	      (let* ((compete (unique-name 'compete))
+		     (storagename (unique-name 'leaderstorage))
+		     (storage `(tok ,storagename 0))
+		     (cur-leader (unique-name 'cur-leader))
+		     (check-winner (unique-name 'am-i-winner))
+		     (id (unique-name 'subtokid)))
+		(vector
+		 `(begin 
+		    (gemit (tok ,compete (my-id)))
+		    (timed-call 1000 ,check-winner)
+		    )
+		 `([,storagename () (stored [,cur-leader #f]) (set! ,cur-leader (my-id))]
+		   [,compete ,id () 		 
+		    (if (token-present? ,storage )
+			(void)
+			(subcall ,storage))
+		    (if (< ,id (ext-ref ,storage ,cur-leader))
+			(begin 
+			  (printf '"(~a ~a) " id (ext-ref ,storage ,cur-leader)) 
+			  (ext-set! ,storage ,cur-leader ,id)
+			  (grelay (tok ,compete ,id)))
+			(begin 
+			  (printf '"~a "(ext-ref ,storage ,cur-leader))
+			  ))]
+		   [,check-winner ()
+		      (if (= (ext-ref ,storage ,cur-leader) (my-id))
+			  (call ,t)
+			  (void))])
+		 ))]
 	     
 	     [,other (autoloop other)]))
 	;; Fuser:
-	(lambda (vec k) 
-	  (match vec
-	    [(,v ,
-	  (vector (apply k ls) 
+	(lambda (subresults reconstruct)
+	  (match subresults
+	    [(#(,arg* ,newtbs*) ...)
+	     (vector (apply reconstruct arg*)
+		     (apply append newtbs*))]))
 	;; Expression:
 	expr))
 
   (define (process-tokbind tb)
     (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
-       `[,tok ,id ,args (stored ,@stored) 
-	      ,(process-expr body)]))
+      (match (process-expr body)
+	[#(,newbod ,tbs)
+	 (cons `[,tok ,id ,args (stored ,@stored) ,newbod]
+	       tbs)])))
 
   (lambda (prog)
     (match prog
-      [(,lang '(program (bindings ,constbinds ...) 
-			(nodepgm (tokens ,[process-tokbind -> toks] ...))))
-      `(,lang '(program (bindings ,constbinds ...)
-			(nodepgm (tokens ,toks ...))))]))))
+      [(,lang '(program (bindings ,constbinds ...)
+		 (nodepgm (tokens ,toks ...))))
+       `(desugar-macros-lang
+	 '(program (bindings ,constbinds ...)
+	    (nodepgm (tokens 
+			 ,@(apply append (map process-tokbind toks))))))]))
+  ))
 
 
 
@@ -65,7 +116,7 @@
 (define these-tests
   `(
     ,@(let ((randomprog
-	     '(cleanup-token-machine-lang
+	     '(desugar-macros-lang
 	      '(program
 		(bindings)
 		(nodepgm

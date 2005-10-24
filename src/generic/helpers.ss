@@ -598,6 +598,35 @@
 	   ((> v e))
 	 expr ...))]))
 
+;; [2005.10.23] Should have used these more before
+;; Only works for one argument functions currently:
+;; Need to use syntax-case I believe.
+(define-syntax match-lambda 
+  (syntax-rules ()
+    [(_ (pat ...) expr ...)
+     (match-lambda-helper ((x pat) ...) expr ...)]))
+
+;     (lambda (x)
+;       (match x
+;	 [pat expr ...]))]))
+
+(define-syntax let-match
+  (syntax-rules (unquote)
+    [(_ () expr ...)
+     (begin expr ...)]
+    [(_ ([pat rhs] other ...) expr ...)
+     (match rhs [pat (let-match (other ...) expr ...)])]))
+
+
+(define-syntax let-match
+  (lambda (x)
+    (syntax-case x ()
+      [(_ ([Pat Exp]  ...) Body ...)
+       #'(let ((tmp Exp))
+	   (match
+           (match-help _ f x () Clause ...))])))
+
+
 
 ;; [2005.10.05]
 ;; Evaluate expression and mask output by search string.  (Just does string match, not regexp.)

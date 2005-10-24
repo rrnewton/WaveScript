@@ -131,7 +131,7 @@
 ;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
 (include "generic/pass22_desugar-macros.ss")
-(include "generic/pass26_desugar-macros.ss")
+;(include "generic/pass26_desugar-macros.ss")
 
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass24_desugar-let-stored.ss")
