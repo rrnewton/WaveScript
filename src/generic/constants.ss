@@ -160,10 +160,6 @@
 
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
-;; Vtimes:
-(define RADIO_DELAY 10)  ;; Communication timea
-;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
-
 ;; Just a global pointer to whatever the currently running simworld is.
 (define simalpha-current-simworld 
   (make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) 
@@ -262,6 +258,9 @@
 ;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
 ;(define ACTION_LENGTH 100)  ;; Thus we ignore the "duration" field of simevts.
 (define SCHEDULE_DELAY 1)
+;; Vtimes:
+(define RADIO_DELAY 30)  ;; Communication time
+;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
 
 

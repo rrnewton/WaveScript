@@ -1490,15 +1490,17 @@
 
 
     ["Run and simulate complete regiment program." 
+     retry
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-mode  'none])
        (run-simulator-alpha 
 	(run-compiler '(rmap nodeid world))
-	'timeout 350))
+	'timeout 400))
      ,(lambda (ls)
 	;; Can't make very strong statements about timing, but we
 	;; shoud have heard from the first *two* generations by this
 	;; time:
+	;; UNLESS, RADIO_DELAY is set really large:
 	(and (> (length ls) (* 2 (simalpha-num-nodes)))
 	     (equal?
 	      (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes)))))
@@ -1558,7 +1560,23 @@
 	 ;'barely-tokens
 	 )
 	'timeout 3000))
+     ;;; FIXME: constrain further:
      unspecified]
+
+    ["Regiment: Run a filter and then aggregate" 
+     (parameterize ([simalpha-channel-model 'lossless]
+		    [simalpha-failure-mode  'none]
+		    [simalpha-sense-function sense-sine-wave])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(rfold append	'()
+		 (rmap (lambda (n) (cons (nodeid n) '()))
+		       (rfilter (lambda (n) (even? (nodeid n))) world)))
+	 ;'verbose
+	 ;'barely-tokens
+	 )
+	'timeout 5000))
+     ,(lambda (ls) (andmap even? (apply append ls)))]
 
 #;
     ["Run an average 'temperature' calculation in regiment." 

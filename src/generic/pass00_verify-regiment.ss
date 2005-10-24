@@ -255,6 +255,9 @@
 	   (let ([entry (get-primitive-entry prim)])
 	     
 	     ;; Make sure the infered for each argument matches the expected type:
+	     (if (not (= (length rand*) (length (cadr entry))))
+		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
+			prim (cadr entry) rand*))
 	     (for-each (type-check env type-env)
 		       rand* (cadr entry))
 	   
