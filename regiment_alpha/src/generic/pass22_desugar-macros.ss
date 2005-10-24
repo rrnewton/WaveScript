@@ -1,4 +1,11 @@
 
+;; This removes various sugar:
+;;  *) soc-return
+;;  *) elect-leader
+;;  *) flood
+
+;; ======================================================================
+
 ;; [2005.04.20]
 ;; Soc-return's are a strange beast.
 
@@ -9,15 +16,23 @@
 ;; there is no implicit "global tree" in TML.  (Regiment does generate
 ;; code for such a global tree, but TML makes no such assumption.)
 
-(define desugar-soc-return
+(define desugar-macros
   (let ()
 
   (define (process-expr expr)
        (tml-generic-traverse
 	;; Driver:
 	(lambda (x autoloop)
-	  (match x
+	  (define (process-tok t)
+	    (match t
+	      [(tok ,name ,n) (guard (integer? n))
+	       (vector `(tok ,name ,n) ())]
+	      [(tok ,name ,e) 
+	       (match (autoloop e)
+		 [#(,v ,tbs) (vector `(tok ,name ,v) tbs)])]
+	      [,other (error 'desugar-macros:process-tok "bad token: ~a" other)]))
 
+	  (match x
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
 	     [(soc-return ,[autoloop -> x])
@@ -30,7 +45,10 @@
 			   (begin 
 			     ,@(DEBUGMODE `(dbg '"Soc return on basenode, returning directly: %d" ,socretval))
 			     (call (tok SOC-return-handler 0) ,socretval))
-			  (greturn ,socretval 
+			   (dbg '"ERROR: soc-return called on node other than base station, node id: %d" (my-id))
+			   ;; Disabling for now, don't want to assume global-tree
+			   #;
+			   (greturn ,socretval 
 				   (to (tok SOC-return-handler 0)) 
 				   (via (tok global-tree 0))
 				   (seed '#f)
@@ -41,7 +59,6 @@
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 
-
 	     [(flood ,[process-tok -> tok])
 	      (let-match ([#(,t ,tbs) tok])
 		 (let ((newtok (unique-name 'floodtok)))
@@ -49,7 +66,8 @@
 		    `(gemit (tok ,newtok (my-id)))
 		    `([,newtok subid () 
 			       (grelay (tok ,newtok subid))
-			       (call ,t)]))))]
+			       (call ,t)]
+		      ,@tbs))))]
 	    
 	     ;; FIXME: doesn't work yet:
 	     [(elect-leader ,t)
@@ -98,7 +116,8 @@
       (match (process-expr body)
 	[#(,newbod ,tbs)
 	 (cons `[,tok ,id ,args (stored ,@stored) ,newbod]
-	       tbs)])))
+	       tbs)]
+	[,other (error 'desugar-macros:process-tokbind "BUG: invalid returned val from process-expr: ~a")])))
 
   (lambda (prog)
     (match prog
@@ -134,14 +153,14 @@
        
       `(
 	["Just make sure we get the same thing back for a prog without soc-return:"
-	 (desugar-soc-return ',randomprog)
+	 (desugar-macros ',randomprog)
 	 ,randomprog]
 	))   
 
     ))
 
 (define test-this (default-unit-tester
-		    "22: Desugar-Soc-Return: convert return-to-base statements to use gradients"
+		    "22: Desugar-Macros: expand various macros"
 		    these-tests))
 
 (define test22 test-this)

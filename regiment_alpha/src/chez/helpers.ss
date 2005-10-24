@@ -2,7 +2,8 @@
 (module helpers   
 	;; Remember to update the plt equivalent when you update this:
 	(;; Syntax:
-	  mvlet 
+	  mvlet let-match (match-lambda match-lambda-helper)
+	  ^ ;; Exponentiation
 	   
 	  ;; For plt compat:
 	  foldl

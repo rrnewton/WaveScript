@@ -588,7 +588,7 @@
            (begin exp ...
                   (loop (sub1 n)))))]))
 
-;; [2005.10.16]  I hate do syntax
+;; [2005.10.16]  I hate 'do' syntax
 (define-syntax for
   (syntax-rules (= to)
     [(_ v = start to end expr ...)
@@ -598,35 +598,47 @@
 	   ((> v e))
 	 expr ...))]))
 
+(define-syntax ^
+  (lambda (x)
+    (syntax-case x ()
+		 [id (identifier? #'id) #'#%expt]
+		 [(_ a b)  #'(#%expt a b)])))
+
+
 ;; [2005.10.23] Should have used these more before
 ;; Only works for one argument functions currently:
 ;; Need to use syntax-case I believe.
+(define-syntax match-lambda-helper
+  (lambda (x) 
+    (syntax-case x (unquote)
+      [(_ () (V ...) E ...)
+       #'(lambda (V ...) E ...)]
+      [(_ (P1 P ...) (V ...) E ...)
+       #'(match-lambda-helper (P ...) (V ... tmp) (let-match ((P1 tmp)) E ...))])))
 (define-syntax match-lambda 
-  (syntax-rules ()
-    [(_ (pat ...) expr ...)
-     (match-lambda-helper ((x pat) ...) expr ...)]))
-
-;     (lambda (x)
-;       (match x
-;	 [pat expr ...]))]))
-
-(define-syntax let-match
-  (syntax-rules (unquote)
-    [(_ () expr ...)
-     (begin expr ...)]
-    [(_ ([pat rhs] other ...) expr ...)
-     (match rhs [pat (let-match (other ...) expr ...)])]))
-
+  (lambda (x)
+    (syntax-case x (unquote)
+      [(_ (Pat ...) Expr ...)
+       ;(printf "Woot: ~a\n" #'(Pat ...))
+       #'(match-lambda-helper (Pat ...) () Expr ...)
+       ])))
+;(expand '((match-lambda (x y) #t) 'x 'y))
+;(expand '(match-lambda (,x ,y) #t))
+;((match-lambda ((,x ,y) #(,z) ,w) (list x z w)) `(a b) #(3) 4)
 
 (define-syntax let-match
   (lambda (x)
-    (syntax-case x ()
-      [(_ ([Pat Exp]  ...) Body ...)
-       #'(let ((tmp Exp))
-	   (match
-           (match-help _ f x () Clause ...))])))
-
-
+    (syntax-case x (unquote)
+      [(_ () Body ...)
+       #'(begin Body ...)]
+      [(_ ([Pat Exp] Rest ...) Body ...)
+       #'(match Exp
+	   [Pat (let-match (Rest ...) Body ...)]
+	   ;[,other (error 'let-match "unmatched object: ~s" other)]
+	   )])))
+;(expand '(let-match () 3))
+;(expand '(let-match ([,x 3]) x))
+;(let-match ([(,x ,y ...) (list 3 4 5 6)] [,z 99]) (list y z))
 
 ;; [2005.10.05]
 ;; Evaluate expression and mask output by search string.  (Just does string match, not regexp.)

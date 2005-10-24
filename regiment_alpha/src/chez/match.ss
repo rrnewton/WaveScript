@@ -60,10 +60,14 @@
         (trace-match match-help match-help1 clause-body let-values**
           guard-body convert-pat mapper my-backquote extend-backquote
           sexp-dispatch)
+	;; RRN: Adding these [2005.10.24]
+;	(let-match match)
+;	(match-lambda match)
 	;; RRN: exposing these
 	letcc let/cc)
 
 (import scheme)
+
 
 (define-syntax match+
   (lambda (x)
