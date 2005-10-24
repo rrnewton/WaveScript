@@ -130,139 +130,54 @@
       (match t
 	[(tok ,t ,e) t]))
 
+    (define (find-emittoks expr)
+      (tml-generic-traverse
+       (lambda (x autoloop)
+	 (match x
+	        ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
+	   ;; If we ever have a first class reference to a token name, it is potentially tainted.
+	   ;; This is a conservative estimate:
+	   [(tok ,t ,n) (guard (number? n)) (list t)]
+	   [(tok ,t ,[e]) (cons t e)]
 
+	   ;; "Direct call":  
+	   [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
+	   ;; Indirect gemit call... could consider restricting these.
+	   [(gemit ,[e] ,[args*] ...)
+	    (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+					;(apply append e args*)
+	    ]
+	   
+	   ;; The to's and the vias are static! Aggr has no subtok index!
+	   [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
+	    ;; The via requires that a tree be there, and hence it be gradientized.
+	    (cons v (append expr seed_val))]
+	   
+	   ;; Static calls are allowed:
+	   [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
+	   ;; Anything more dynamic makes us think the operand is potentially emitted.
 
-;; Replacing this the verbose case with a simple generic-traversal: 
-;; FIXME: NOT DONE YET
-; (define find-emittoks 
-;   (letrec ([do-primargs
-; 	    ;; We don't count direct references to tokens in primitive 
-; 	    ;; arguments as tainted.
-; 	    (lambda (prim args loopk)
-; 	      (apply append
-; 		     (map-prim-w-types 
-; 		      (lambda (arg type)
-; 			(match (cons type arg)
-; 			       [(Token . (tok ,tok ,[loopk -> e])) e]
-; 			       [(,other . ,[loopk -> e]) e]))
-; 		      prim args)))])
-
-;   (lambda (expr)
-;     (tml-generic-traverse
-;      (lambda (x k)
-;        (match x
-
-;          ;; "Direct call":  Not allowing dynamic gemit's for now:
-; 	 [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-; 	     ;; Indirect gemit call... could consider restricting these.
-; 	 [(gemit ,[e] ,[args*] ...)
-; 	  (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
-; 					;(apply append e args*)
-; 	  ]
-; 	 ;; Also allowing dynamic grelays and gdists.  
-; 	 ;; These don't matter as much because I'm basing 
-; 	 [(grelay (tok ,t ,[e])) e]
-; 	 [(gdist (tok ,t ,[e])) e]
-; 	 [(gparent (tok ,t ,[e])) e]
-; 	 [(gorigin (tok ,t ,[e])) e]
-; 	 [(ghopcount (tok ,t ,[e])) e]
-; 	 [(gversion (tok ,t ,[e])) e]
-
-; 	 ;; The to's and the vias are static! Aggr has no subtok index! 
-; 	 [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
-; 	  (append expr seed_val)]
-  
-
-    (define find-emittoks
-      (letrec ([tok-allowed-loop 
-		(lambda (expr)
-		  (match expr
-			 [(tok ,t ,[main-loop -> e]) e]
-			 [,e (main-loop e)]))]
-	       [main-loop
-		(lambda (expr)
-		  (match expr
-	     ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
-	     [(quote ,_) '()]
-	     [,num (guard (number? num)) '()]
-	     [,var (guard (symbol? var)) '()]
-	     [(set! ,var ,[e]) e]
-	     [(ext-ref (tok ,t ,[e]) ,v) e]
-	     [(ext-set! (tok ,t ,[e]) ,v ,[e2]) (append e e2)]
-	     ;; If we ever have a first class reference to a token name, it is potentially tainted.
-	     ;; This is a conservative estimate:
-	     [(tok ,t ,n) (guard (number? n)) (list t)]
-	     [(tok ,t ,[e]) (cons t e)]
-	     [(begin ,[exprs] ...) (apply append exprs)]
-	     [(if ,[exprs] ...) (apply append exprs)]
-
-	     [(let ([,_ ,[rhs*]] ...) ,[body])	(apply append body rhs*)]
-
-	     [(let-stored ([,_ ,[rhs*]] ...) ,[body])	(append body (apply append rhs*))]
-
-	     ;; "Direct call":  Not allowing dynamic gemit's for now:
-	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-	     ;; Indirect gemit call... could consider restricting these.
-	     [(gemit ,[e] ,[args*] ...)
-	      (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
-	      ;(apply append e args*)
-	      ]
-	     ;; Also allowing dynamic grelays and gdists.  
-	     ;; These don't matter as much because I'm basing 
-	     [(grelay (tok ,t ,[e])) e]
-	     [(gdist (tok ,t ,[e])) e]
-	     [(gparent (tok ,t ,[e])) e]
-	     [(gorigin (tok ,t ,[e])) e]
-	     [(ghopcount (tok ,t ,[e])) e]
-	     [(gversion (tok ,t ,[e])) e]
-
-	     ;; The to's and the vias are static! Aggr has no subtok index!
-	     [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
-	      ;; The via requires that a tree be there, and hence it be gradientized.
-	      (cons v (append expr seed_val))]
-
-	     [(leds ,what ,which) '()]
-
-	     ;; Static calls are allowed:
-	     [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	     ;; Anything more dynamic makes us think the operand is potentially emitted.
-
-	     [(return ,[e])  e]
-
-;; These are just primitives, and are treated as such:
-#|	     [(call ,[args*] ...) (apply append args*)]
-	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	     [(subcall ,[args*] ...) (apply append args*)]
-	     [(bcast (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	     [(bcast ,[args*] ...) (apply append args*)]
-	     [(timed-call ,[time] (tok ,t ,[e]) ,[args*] ...) (apply append time e args*)]
-	     [(timed-call ,[args*] ...) 
-	      ;(disp "TIMED call to dynamic tokens...")
-	      (apply append args*)]
-|#	     
-	     ;; All primitives that can take tokenss
-	     [(,prim ,args* ...)
-	      (guard (or (token-machine-primitive? prim)
-			 (basic-primitive? prim)))
-
-	       (define do-primargs-w-tokens;; Handles primitives that take tokne args.
-		(lambda (prim args f) ;; Takes a function for processing exprs 
-		  (map-prim-w-types 
-		   (lambda (arg type)
-		     (match (cons type arg)
-		       [(Token . (tok ,tok ,e)) (f e)]
-		       [(,other . ,e) (f e)]))
-		   prim args)))
-	       (apply append (do-primargs-w-tokens prim args* main-loop))
-	       ]
-
-	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
-	     [,otherwise
-	      (error 'desugar-gradient:find-emittoks
-		     "bad expression: ~s" otherwise)]
-	     ))])
-
-	main-loop))
+	   ;; All primitives that can take tokenss
+	   [(,prim ,args* ...)
+	    (guard (or (token-machine-primitive? prim)
+		       (basic-primitive? prim)))
+	    (define do-primargs-w-tokens;; Handles primitives that take tokne args.
+	      (lambda (prim args)
+		(map-prim-w-types 
+		 (lambda (arg type)
+		   (match (cons type arg)
+		     [(Token . (tok ,tok ,e)) (find-emittoks e)]
+		     [(,other . ,e)           (find-emittoks e)]))
+		 prim args)))
+	    (apply append (do-primargs-w-tokens prim args*))
+	    ]
+	   
+	   [,other (autoloop other)]))
+       ;; Fuser
+       (lambda (results recombine)
+	 (apply append results))
+       ;; Start expression:
+       expr))
 
     
     ;; This is a front-end that takes an expression processor and wraps it

@@ -17,7 +17,7 @@
 	  current-error-port
 
 	  ;; Values:	    
-	  gnuplot
+	  gnuplot display-progress-meter count-nodes
 	  
 	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name 
 	  get-formals

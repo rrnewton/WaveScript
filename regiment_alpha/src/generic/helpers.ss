@@ -47,6 +47,7 @@
     (cons (Object Object) Pair) 
     (cdr (Pair) Object)
     (car (Pair) Object)
+    (append (List List) List)
 
     (+ (Integer Integer) Integer) 
     (- (Integer Integer) Integer) 
@@ -251,6 +252,8 @@
 ;    (eq? (Object Object) Bool)
     (equal? (Object Object) Bool)
     (eq? (Object Object) Bool)
+    (even? (Integer) Bool)
+    (odd? (Integer) Bool)
 
     (elect-leader Token) 
     (flood Token) ;; These are actually macros, but what the heck

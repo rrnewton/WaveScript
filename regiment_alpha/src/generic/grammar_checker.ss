@@ -164,7 +164,7 @@
     (match winner
       [(,d ,x ,p ,context)
        (printf "\nMost likely failed parsing: \n")
-       (printf "Failure depth ~a\n Expression ~a did not satisfy ~a\n Context:\n   " d x p)
+       (printf "\n Context:\nFailure depth ~a\n Expression ~a did not satisfy ~a\n   " d x p)
        (parameterize ((pretty-standard-indent 5)
 		      (pretty-initial-indent 5))
 	 (pretty-print context))]
@@ -202,7 +202,8 @@
 	     [(grammar ,gram ,optional_initialprod ...)
 	      (or (apply check-grammar result gram optional_initialprod)
 		  (begin (pretty-print result) #f)
-		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar: \n ~a" name prog))])
+		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~a" 
+			 name prog))])
 	    (if (regiment-verbose)
 		(printf "~a: Output grammar passed.\n" name)))
 	   result

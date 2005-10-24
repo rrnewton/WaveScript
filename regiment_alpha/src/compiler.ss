@@ -4,7 +4,7 @@
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
-(define-regiment-parameter regiment-version 0.59)
+(define-regiment-parameter regiment-version 0.81)
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
