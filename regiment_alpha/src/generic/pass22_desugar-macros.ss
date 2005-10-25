@@ -117,7 +117,8 @@
 	[#(,newbod ,tbs)
 	 (cons `[,tok ,id ,args (stored ,@stored) ,newbod]
 	       tbs)]
-	[,other (error 'desugar-macros:process-tokbind "BUG: invalid returned val from process-expr: ~a")])))
+	[,other (error 'desugar-macros:process-tokbind 
+		       "BUG: invalid returned val from process-expr: ~a" other)])))
 
   (lambda (prog)
     (match prog

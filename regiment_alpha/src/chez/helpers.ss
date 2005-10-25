@@ -2,7 +2,7 @@
 (module helpers   
 	;; Remember to update the plt equivalent when you update this:
 	(;; Syntax:
-	  mvlet let-match (match-lambda match-lambda-helper)
+	  for grep mvlet let-match (match-lambda match-lambda-helper)
 	  ^ ;; Exponentiation
 	   
 	  ;; For plt compat:
@@ -45,7 +45,7 @@
 	  alist-remove list-remove-first list-remove-last! list-remove-after 
 	  filter list-index snoc rac rdc last 
 	  list-find-position list-remove-before
-	  randomize-list  insert-between iota disp crit-printf
+	  randomize-list randomize-vector insert-between iota disp crit-printf
 	  extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
 	  graph-map graph-get-connected-component graph-neighbors ;cyclic? 
 	  graph:simple->vertical graph:vertical->simple

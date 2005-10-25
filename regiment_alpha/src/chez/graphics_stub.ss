@@ -22,11 +22,15 @@
 
 ;(load "basic_graphics.ss")
 
-(module graphics_stub (draw-procs draw-proc draw-edge draw-mark draw-circle
+(module graphics_stub (draw-network draw-proc draw-edge draw-mark draw-circle
 				  clear-buffer delete-gobj
 				  Starting-Node-Color
 				  change-color! ;set-color!
 				  ;get-state ;; [2004.11.13] including
+
+				  ;; temporarily exposed:
+				  processor-screen-radius
+				  
 				  these-tests test-this 
 				  test-graphics-stub)
   (import basic_graphics)
@@ -38,6 +42,7 @@
 ;; GLOBAL BINDINGS:
 
 ;; These three keep track of the SWL widgets.  Could use a hash.
+;; Basically we use these to clear the screen by destroying everything mentioned in these lists.
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 (define other-objs '())
@@ -116,27 +121,35 @@
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
 ;; This one DOES SHOW the processors.
-(define (draw-procs procs)
-  (DEBUGMODE
-   (if (not the-win) (error 'draw-procs "graphics window is not initialized"))
+(define (draw-network procs)
+  (DEBUGMODE ;; Invariant checking:
+   (if (not the-win) (error 'draw-network "graphics window is not initialized"))
    (for-each (lambda (proc)
 		(if (not (and (list? proc)
 			      (= (length proc) 2)
 			      (number? (car proc))
 			      (number? (cadr proc))))
-		    (error 'draw-procs
+		    (error 'draw-network
 			   "Invalid processor coordinates: ~s among processors ~n~s~n" 
 			   proc procs)))
 	     procs))
   ;; This is not an efficient use of the SWL library:
-  (for-each destroy processor-screen-objs)
-  (set! processor-screen-objs '())
+  ;; We don't clear the entire buffer, we're just drawing new procs and edges 
+  ;; and we leave whatever else was drawn on the screen.
+  (begin 
+    (for-each destroy processor-screen-objs)
+    ;(for-each destroy edge-screen-objs)
+    ;(set! edge-screen-objs '())
+    (set! processor-screen-objs '()))
+
+  ;; Draw nodes:
   (for-each draw-proc procs)
-  (for-each show processor-screen-objs)
+  (for-each show processor-screen-objs) 
   processor-screen-objs)
 
 
-;; This *does not show* the screen object that it creates.
+;; This *does not show* the screen object (gobj) that it creates.
+;; Screen objects are SWL objects.  Their represention is opaque to us.
 (define (draw-proc pr)  
   (mvlet ([(x y) (coord:sim->screen pr)])
 	 (let ((circ (create <oval> the-win
@@ -178,7 +191,8 @@
 	   (set! other-objs (cons obj other-objs))
 	   obj)))
 
-;; This being caled involves
+;; This draws a new edge and adds that graphics object to the global list, 
+;; as well as returning it.
 (define (draw-edge pos1 pos2)
   (let ([box1 (list 0 0 world-xbound world-ybound)]
 	[box2 (list 0 0 window-width window-height)])

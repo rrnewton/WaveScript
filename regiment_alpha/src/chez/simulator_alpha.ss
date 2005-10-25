@@ -9,7 +9,8 @@
 	 test-this these-tests
 
 	 print-connectivity fresh-simulation
-	 
+	 simalpha-draw-world	 
+
 	 testalpha testsalpha
 
 	 posdist

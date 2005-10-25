@@ -48,16 +48,14 @@
 
 
 [define (sim-light-up r g b)
-  ((sim-debug-logger) "~n~a: light-up ~a ~a ~a"
-                      (node-id (simobject-node (current-simobject))) r g b)
-  (if (simobject-gobj (current-simobject))
-      ;(GRAPHICSONLY ;; Fizzle if graphics is not enabled.
-       ;(change-color! (simobject-gobj this) (rgb r g b));)
-      (void)
-
+  ;((sim-debug-logger) "~n~a: light-up ~a ~a ~a" (node-id (simobject-node (current-simobject))) r g b)
+  (logger "~n~a: light-up ~a ~a ~a" (node-id (simobject-node (current-simobject))) r g b)
+  (IF_GRAPHICS ;; Fizzle if graphics is not enabled.
+   (if (simobject-gobj (current-simobject))       
+       (change-color! (simobject-gobj this) (rgb r g b))
       ;; We're allowing light-up of undrawn objects atm:
       ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-      )]
+       ))]
 
 ;; todo INCOMPLETE (we don't yet draw the leds directly.)
 [define (sim-leds what which)

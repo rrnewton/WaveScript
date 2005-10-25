@@ -87,7 +87,7 @@
         ;          "plt/pass09_separate-graph.ss"
 )
 
-(GRAPHICSONLY
+(IF_GRAPHICS
 (require
 ;;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
 ;; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)

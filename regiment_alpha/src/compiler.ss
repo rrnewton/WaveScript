@@ -49,7 +49,7 @@
 ;    rename-stored
 
 ;; Temporarily I am disabling these ..
-    cps-tokmac
+;    cps-tokmac
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
@@ -158,7 +158,6 @@
 	(apply run-compiler tm args)))))
 
 (define at assemble-tokmac) ;; shorthand
-(define assemble at) ;; shorthand
 
 (define test
   (lambda (set)
@@ -340,7 +339,7 @@
 ;;		     closure-convert        ;cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm
-					   'verbose
+					   ;'verbose
 					   )])
 		   (let ((prt (open-output-string)))
 		     (display "(" prt)

@@ -1,4 +1,4 @@
-xb ;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn't;;
+;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn't;;
 ;;; use a lot of the stuff in here.                                           ;;
 ;==============================================================================;
 
@@ -592,13 +592,14 @@ xb ;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn'
                   (loop (sub1 n)))))]))
 
 ;; [2005.10.16]  I hate 'do' syntax
+;; For now we only allow fixnum indices:
 (define-syntax for
   (syntax-rules (= to)
     [(_ v = start to end expr ...)
      (let ((s start)
 	   (e end))
-       (do ([v s (add1 v)])
-	   ((> v e))
+       (do ([v s (fx+ v 1)])
+	   ((fx> v e))
 	 expr ...))]))
 
 (define-syntax ^
@@ -1032,17 +1033,18 @@ xb ;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn'
 ;; This too:
 (define randomize-list
   (lambda (ls)
-    (let* ([vec (list->vector ls)]
-	   [len (vector-length vec)])
-      (let ([swap (lambda (i j)
-		    (let ([temp (vector-ref vec i)])
-		      (vector-set! vec i (vector-ref vec j))
-		      (vector-set! vec j temp)))])
-	(do ([i 0 (add1 i)]) ((= i len))
-	  ;; Swap with a later position:
-	  (swap i (+ i (reg:random-int (- len i)))))
-	(vector->list vec)))))
-
+    (let* ([vec (list->vector ls)])
+      (vector->list (randomize-vector vec)))))
+(define (randomize-vector vec)
+  (let ([len (vector-length vec)])
+    (let ([swap (lambda (i j)
+		  (let ([temp (vector-ref vec i)])
+		    (vector-set! vec i (vector-ref vec j))
+		  (vector-set! vec j temp)))])
+      (do ([i 0 (add1 i)]) ((= i len))
+	;; Swap with a later position:
+	(swap i (+ i (reg:random-int (- len i)))))
+      vec)))
 
 ;;  [2004.06.11] Man also can't believe that I've never written this
 ;;  before.  This is dinky; a real version of this would do an
@@ -1491,9 +1493,9 @@ xb ;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn'
     (lambda args 
     (call/cc
      (lambda (return)
-         (if (memq 'get-tests args)
+         (if (or (memq 'get-tests args) (memq 'get args))
 	     (return entries))
-	 (when (memq 'print-tests args)
+	 (when (or (memq 'print-tests args) (memq 'print args))
 	   (for-eachi (lambda (i test)
 			(if (string? (car test))
 			    (printf "~a: ~a\n" i (car test))))

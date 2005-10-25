@@ -126,8 +126,10 @@
 
 (define (test-units . args)
   (printf "~n;; Performing all unit tests:~n~n")
-  (andmap (lambda (pr) (newline) (newline) (apply (cadr pr) args))
-	  (reverse (reg:all-unit-tests))))
+  (if (andmap (lambda (pr) (newline) (newline) (apply (cadr pr) args))
+	      (reverse (reg:all-unit-tests)))
+      (begin (printf "\n PASSED ALL TESTS.\n") #t)
+      #f))
 
 (define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
 (define (te . args) (apply test-everything 'verbose 'quiet args)) ;; shorthand

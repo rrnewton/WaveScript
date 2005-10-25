@@ -123,6 +123,8 @@
 (define (all-connected simob sim)
   (graph-get-connected-component simob (simworld-object-graph sim)))
 
+;; ================================================================================
+
 ;; Returns a simworld object.
 (define (fresh-simulation)  
   ;; This subroutine generates the default, random topology: 
@@ -151,56 +153,118 @@
 
 		   (set-simobject-worldptr! so world)
 		   so)) g))
-  (define (make-topology) ;; Returns the graph
-  	   (if (simalpha-ensure-connected)
-	       ;; This might have some serious biases in the layout and distribution of degree.
-	       (let ((start-node (let ((x (random-node)))				   
-				   (set-node-id! x BASE_ID)
-				   x)))
-	       (let loop ((graph (list (list start-node))) (count (sub1 (simalpha-num-nodes))))
-;		 (printf "\nLooping: graph:\n")
-;		 (pretty-print graph)
-		 (if (<= count 0)
-		     graph
-		     (let ((newnode (random-node)))
-		       ;; Here we number them as we go.  
-		       ;; This will result in a non-random spatial distribution of node-ids.
-		       (if (simalpha-consec-ids)
-			   (set-node-id! newnode count))
-		       (let ((nbr-rows (filter (lambda (row) (collide? newnode (car row))) graph)))
-			 (if (null? nbr-rows)
-			     (loop graph count)
-			     (begin 
-			       (for-each (lambda (row)
-					   ;; Splice in this as a neighbor:
-					   (set-cdr! row (cons newnode (cdr row))))
-					 nbr-rows)
-			       (loop (cons (cons newnode (map car nbr-rows))
-					   graph)
-				     (sub1 count)))))))))
+  
+  ;; This is our helper function that checks for collisions.
+  (define (collide?  n1 n2)
+    (let ((connectivity ((simalpha-connectivity-function)
+			 (node-pos n1) (node-pos n2))))
+      (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
+      (not (eqv? 0 connectivity))))
 
-	       ;; Old method, doesn't produce connected graph:
-	       (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
-		 (if (simalpha-consec-ids)
-		     (for-each set-node-id! 
-			       seed (iota (length seed))))
-		 ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
-		 (set-node-id! (car seed) BASE_ID)
-		 ;; Connect the graph:
-		 ;; TODO: Make the graph representation better.  Should cache the connectivity functions on the edges.
-		 (set! seed
-                  (map (lambda (node)
-                         (cons node 
-                               (filter (lambda (n) 
-                                         (and (not (eq? node n))
-					      (let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
-						;; We establish a connection unless we get zero-reception
-						(not (eqv? connection 0))
-						)))
-                                       seed)))
-                       seed))
-            seed)))
+  (define (make-random-topology)    
+    ;; Old method, doesn't produce connected graph:
+    (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
+      (if (simalpha-consec-ids)
+	  (for-each set-node-id! 
+		    seed (iota (length seed))))
+      ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+      (set-node-id! (car seed) BASE_ID)
+      ;; Connect the graph:
+      ;; TODO: Make the graph representation better.  Should cache the connectivity functions on the edges.
+      (set! seed
+	    (map (lambda (node)
+		   (cons node 
+			 (filter (lambda (n) 
+				   (and (not (eq? node n))
+					(let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
+					  ;; We establish a connection unless we get zero-reception
+					  (not (eqv? connection 0))
+					  )))
+				 seed)))
+		 seed))
+      seed))
 
+  (define (make-connected-topology)
+    ;; This might have some serious biases in the layout and distribution of degree.
+    (let ((start-node (let ((x (random-node)))				   
+			(set-node-id! x BASE_ID)
+			x)))
+      (let loop ((graph (list (list start-node))) (count (sub1 (simalpha-num-nodes))))
+					;		 (printf "\nLooping: graph:\n")
+					;		 (pretty-print graph)
+	(if (<= count 0)
+	    graph
+	    (let ((newnode (random-node)))
+	      ;; Here we number them as we go.  
+	      ;; This will result in a non-random spatial distribution of node-ids.
+	      (if (simalpha-consec-ids)
+		  (set-node-id! newnode count))
+	      (let ((nbr-rows (filter (lambda (row) (collide? newnode (car row))) graph)))
+		(if (null? nbr-rows)
+		    (loop graph count)
+		    (begin 
+		      (for-each (lambda (row)
+				  ;; Splice in this as a neighbor:
+				  (set-cdr! row (cons newnode (cdr row))))
+				nbr-rows)
+		      (loop (cons (cons newnode (map car nbr-rows))
+				  graph)
+			    (sub1 count))))))))))
+
+  (define (make-gridlike-topology perfect?)
+    (let* ([num-nodes (simalpha-num-nodes)]
+	   [seed (make-vector num-nodes)]
+	   ;; Calculate dimensions
+	   [height (inexact->exact (floor (sqrt num-nodes)))]
+	   [width (ceiling (/ num-nodes height))]
+	   [step (fxmin (fx/ (simalpha-world-xbound) width)
+			(fx/ (simalpha-world-ybound) height))]
+	   [offsetx (fx/ (fx- (simalpha-world-xbound) (fx* (fx- width 1) step)) 2)]
+	   [offsety (fx/ (fx- (simalpha-world-ybound) (fx* (fx- height 1) step)) 2)])
+
+      ;; For now we use a simple linear perturbation.
+      (define (perturb coord)
+	(if perfect? coord
+	    (+ coord (reg:random-int (quotient step 2)))))
+
+      (for i = 0 to (sub1 num-nodes) ;; Allocate the nodes.
+	   (vector-set! seed i (random-node)))
+      (if (simalpha-consec-ids)
+	  (begin (set-node-id! (vector-ref seed 0) BASE_ID)
+		 (for i = 1 to (sub1 num-nodes)
+		      (set-node-id! (vector-ref seed i) i))
+		 ;; Have to mix it up after that
+		 (randomize-vector seed))
+	  ;; Otherwise a random node becomes base:
+	  (set-node-id! (vector-ref seed (reg:random-int num-nodes)) BASE_ID))
+      ;; Now we tile them in a gridlike fashion, and perturb them.
+      (for i = 0 to (sub1 num-nodes) 
+	   (set-node-pos! (vector-ref seed i)
+			  (let ((pos (list (fx+ offsetx (fx* step (quotient i height)))
+					   (fx+ offsety (fx* step (remainder i height))))))
+			    ;; Then we perturb them randomly off that position:
+			    (map perturb pos))))
+      ;; Finally, connect the graph:
+      (let ((seed (vector->list seed)))
+	(map (lambda (node)
+	       (cons node 
+		     (filter (lambda (n) 
+			       (and (not (eq? node n))
+				    (let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
+				      ;; We establish a connection unless we get zero-reception
+				      (not (eqv? connection 0))
+				      )))
+				 seed)))
+	     seed))))
+
+  (define (make-topology) ;; Returns the graph	  
+    (case (simalpha-placement-type)
+      [(random) (make-random-topology)]
+      [(connected) (make-connected-topology)]
+      [(gridlike) (make-gridlike-topology #f)]
+      [else (error 'simulator_alpha:fresh-simulation 
+		   "unknown node placement strategy: ~a" (simalpha-placement-type))]))
+  
   ;; Set global parameter:
   ;; This is a function which takes two locations and returns either
   ;;  1) a number, representing the loss percentage
@@ -229,11 +293,6 @@
   ;; TODO, FIXME, need to use a real graph library for this!
   ;; (One that treats edges with due respect, and that uses hash tables.)
    (let* ([theworld (make-simworld #f #f #f #f #f #f)]
-	  [collide? (lambda (n1 n2)
-			(let ((connectivity ((simalpha-connectivity-function)
-					     (node-pos n1) (node-pos n2))))
-			  (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
-			  (not (eqv? 0 connectivity))))]
 	  [graph (make-topology)]
 ;	  [soc (caar graph)]
           [obgraph (make-object-graph graph theworld)]
@@ -262,49 +321,40 @@
      (set-simworld-vtime! theworld 0)
      theworld))  ;; End fresh-simulation
 
+;; ================================================================================
+
+
 ;; This takes a simworld object and draws it on the screen:
 (define (simalpha-draw-world world)
   (IF_GRAPHICS
    (let ()
-     (define edge-table (make-default-hash-table))
-     (define proc-table (make-default-hash-table))
+;     (define edge-table (make-default-hash-table))
+;     (define proc-table (make-default-hash-table))
      
      ;; This is a promise so as to be called only once.
-     (define wipe-screen (delay clear-buffer))
+;     (define wipe-screen (delay clear-buffer))
      ;; Contains a graphics object, and the last drawn state.
      (define-structure (edgestate gobj oldstate))
 
-     (draw-procs (map node-pos (map simobject-node (simworld-all-objs world))))
+     (if (not the-win) (init-graphics))
+     (clear-buffer)
 
-#;
-     (if (simworld-object-graph world)
-	 ;; Fill up our two hash tables with drawn objects.
-	 (for-each (lambda (graph-entry)
-		     (let ([proc (car graph-entry)]
-			   [edges (unfold-list (cdr graph-entry))])
-		       (let ([origpos (node-pos (simobject-node proc))])
-			 ;; If the processor has already been drawn, we trigger a screen wipe.
-			 (if (simobject-gobj proc) (force wipe-screen))
-		      ;; If we're the base-station, draw a mark also:
-			 (if (base-station? proc) (draw-mark origpos (rgb 0 255 0)))		      
-			 (let ((gobj (draw-proc origpos)))
-			   (hashtab-set! proc-table proc gobj)
-			   (set-simobject-gobj! proc gobj))
-			 ;; Not done yet.
-			 ;; This just draws the edges once... need to take responsibility for
-			 ;; changing them:
-		      (if (SHOW_EDGES)
-			  (for-each 
-			   (lambda (edgeob)
-			     (hashtab-set! edge-table edgeob
-					   (make-edgestate
-					    (draw-edge origpos (node-pos (simobject-node (car edgeob))))
-					    (structure-copy (car edgeob)))))
-			   edges))
-		      )))
-		   (simworld-object-graph world)))
+     ;; Draw edges:
+     (for-each (lambda (graph-entry)
+		 (let ([here (node-pos (car graph-entry))])
+		   (for-each (lambda (nbr)
+			       (draw-edge here (node-pos nbr)))
+			     (cdr graph-entry))))
+	       (simworld-graph world))
+     ;; This is not a good abstraction boundary.
+     ;; We just drew the edges, and now we call "draw network" just to draw nodes:
+     ;; Associate with each simobject the resultant graphics object "gobj".
+     (let ((all-objs (simworld-all-objs world)))
+       (for-each set-simobject-gobj!
+		 all-objs 
+		 (draw-network (map node-pos (map simobject-node all-objs)))))
      )
-   (error 'simalpha-draw-world "graphics not loaded.")))
+  (error 'simalpha-draw-world "graphics not loaded.")))
 
 
 (define (print-connectivity world)
