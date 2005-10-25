@@ -31,6 +31,18 @@
 (print-graph #t)
 (print-gensym #f)
 
+(define-syntax IF_GRAPHICS
+  (lambda (x)
+    (syntax-case x ()
+		 [(_ E1 E2)
+		  ;; The swl script sets this variable:
+		  ;; When we build through SWL, we link in the SWL code.  Otherwise not.
+		  (if (getenv "SWL_ROOT")
+		      #'E1
+		      #'E2)]
+		 [(_ E1)
+		  #'(IF_GRAPHICS E1 (void))])))
+
 ;; This makes our modules work properly in newer versions of Chez:
 (eval-when (compile load eval)
 	   (if (top-level-bound? 'internal-defines-as-letrec*)
@@ -40,6 +52,10 @@
 (define current_interpreter 'chezscheme)
 
 (printf "Loading compiler in chezscheme..~n")
+(IF_GRAPHICS (printf "(Linking GUI code using SWL.)\n")
+	(printf "(No GUI available.)\n"))
+(flush-output-port)
+
 (include "chez/match.ss")
 
 ;(include "generic/constants.ss")
@@ -151,7 +167,7 @@
 ;(require 'tsort) ;; for the simulator: 
 
 ;; Basic parallel computation (engines):
-(if (top-level-bound? 'SWL-ACTIVE)
+(IF_GRAPHICS
     (load "chez/swl_flat_threads.ss")
     (load "chez/flat_threads.ss"))
 
@@ -159,7 +175,7 @@
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
 ;; Load this before the simulator.
-(if (top-level-bound? 'SWL-ACTIVE)
+(IF_GRAPHICS
     (begin
       (load "chez/basic_graphics.ss")
       (load "chez/graphics_stub.ss")
@@ -188,7 +204,9 @@
 
 
 ;; If we're in SWL then load the GRAPHICS portion:
-'(when (top-level-bound? 'SWL-ACTIVE)
+;; Disabled temporarily!:
+#; 
+(when (top-level-bound? 'SWL-ACTIVE)
       (load "chez/demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
@@ -207,7 +225,9 @@
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "generic/repl.ss")
 
-'(if (top-level-bound? 'SWL-ACTIVE)
+;; DISABLED TEMPORARILY:
+#;
+(if (top-level-bound? 'SWL-ACTIVE)
     (begin
       (eval '(import basic_graphics))
       (eval '(import graphics_stub))
@@ -239,6 +259,7 @@
 
       (define-top-level-value 'grepl graphical-repl)
       ))
+
 
 (define (g) (eval (cadadr testssim)))
 (pretty-maximum-lines 2000)

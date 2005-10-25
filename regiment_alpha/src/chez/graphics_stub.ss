@@ -27,17 +27,19 @@
 				  Starting-Node-Color
 				  change-color! ;set-color!
 				  ;get-state ;; [2004.11.13] including
-				  these-tests test-this )
+				  these-tests test-this 
+				  test-graphics-stub)
   (import basic_graphics)
 
 ;; CONSTANTS:
 ;(define Starting-Node-Color (make <rgb> 200 10 10))
 (define Starting-Node-Color (make <rgb> 130 130 130))
 
+;; GLOBAL BINDINGS:
 
+;; These three keep track of the SWL widgets.  Could use a hash.
 (define processor-screen-objs '())
 (define edge-screen-objs '())
-
 (define other-objs '())
 
 ;; Include definitions common to the chez and plt versions:
@@ -48,7 +50,8 @@
 ;;===============================================================================
 ;; Utils:
 
-;; Returns a fixnum or flonum
+;; Returns a fixnum or flonum, 
+;; Maps a coordinate in one box to the anologous coordinate in another.
 (define scale2d 
   (let ((prep (lambda (x)
 		(if (not (integer? x))
@@ -100,7 +103,7 @@
 		   (make <rgb>
 		     (rgb-red c)
 		     (rgb-green c)
-		     (rgb-blue c))))		     
+		     (rgb-blue c))))
 
 (define (get-state sym ob)
   (case sym
@@ -117,14 +120,15 @@
   (DEBUGMODE
    (if (not the-win) (error 'draw-procs "graphics window is not initialized"))
    (for-each (lambda (proc)
-	       (if (not (and (list? proc)
-			     (= (length proc) 2)
-			     (number? (car proc))
-			     (number? (cadr proc))))
-		          (error 'draw-procs
-				 "Invalid processor coordinates: ~s among processors ~n~s~n" 
-				 proc procs)))
+		(if (not (and (list? proc)
+			      (= (length proc) 2)
+			      (number? (car proc))
+			      (number? (cadr proc))))
+		    (error 'draw-procs
+			   "Invalid processor coordinates: ~s among processors ~n~s~n" 
+			   proc procs)))
 	     procs))
+  ;; This is not an efficient use of the SWL library:
   (for-each destroy processor-screen-objs)
   (set! processor-screen-objs '())
   (for-each draw-proc procs)
@@ -200,6 +204,7 @@
 (include "generic/graphics_stub.tests")
 
 (define test-this (default-unit-tester this-unit-description these-tests))
+(define test-graphics-stub test-this)
 
 ;;===============================================================================
 ;; INITIALIZATION:
