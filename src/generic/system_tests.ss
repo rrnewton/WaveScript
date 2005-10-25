@@ -17,7 +17,7 @@
 	  ;; This is the continuation that was added:
 	  (length x)))
       1]
-
+         
 
     ["Simalpha: Now we test running the Simulator Alpha on a very simple token machine."
      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -31,6 +31,14 @@
      ,(lambda (ls) 	
 	(set-equal? (list->set ls)
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
+
+
+    ["Simalpha: run a simple program that floods lights."
+     , (tm-to-socvals
+	'(tokens
+	     [SOC-start () (gemit lightup)]
+	   [lightup () (leds toggle red) (grelay)]))
+       unspecified]
 
      ["Respect call order."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -1460,7 +1468,7 @@
 	   )
 	'[simalpha-num-nodes 10]
 	'[simalpha-consec-ids #f]
-	'[simalpha-ensure-connected #t]
+	'[simalpha-placement-type 'connected]
 	'[simalpha-channel-model 'linear-disc]
 	'[simalpha-timeout 10000])
        unspecified]
@@ -1480,7 +1488,9 @@
 	   [SOC-start () (flood tok1)]
 	   [tok1 () (printf "~a " (my-id))])
 	'[simalpha-channel-model 'lossless]
-	'[simalpha-num-nodes 10])
+	'[simalpha-placement-type 'connected]
+	'[simalpha-num-nodes 10]
+	)
        ,(lambda (ls)
 	  (equal? (sort < ls)
 		  (sort < (map node-id 
@@ -1523,7 +1533,7 @@
      retry
      (parameterize ([simalpha-channel-model 'linear-disc]
 		    [simalpha-failure-mode  'none]
-		    [simalpha-ensure-connected #t]
+		    [simalpha-placement-type 'connected]
 		    [simalpha-inner-radius 10]
 		    [simalpha-outer-radius 20]
 		    [simalpha-world-xbound 60]

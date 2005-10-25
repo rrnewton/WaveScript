@@ -174,14 +174,6 @@
 (define-regiment-parameter simalpha-outer-radius 15)
 (define-regiment-parameter simalpha-inner-radius 10)
 
-
-;; When this parameter is set a different node-placement strategy is 
-;; used, which tries to ensure that the communication graph is "connected".
-;; Bear in mind that it may introduce other biases in the distribution
-;; of placements that it produces.
-;; (But with an opaque channel function it cannot guarantee this.)
-(define-regiment-parameter simalpha-ensure-connected #t)
-
 ;; Valid values:
 ;; #f    : No time-out
 ;; Float : Time out after certain number of cpu seconds.
@@ -194,6 +186,16 @@
 (define-regiment-parameter simalpha-consec-ids #t)
 
 (define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
+
+
+;; This parameter determines node-placement strategy.  Valid settings are:
+;;  'random    -- A simple random topology.
+;;  'connected -- A random topology which tries to ensure that the
+;;                communication graph is "connected". Bear in mind that it may
+;;                introduce other biases in the distribution of placements that it
+;;                 produces.  (But with an opaque channel function it cannot guarantee this.)
+;;  'gridlike   -- a randomly perturbed grid.  TODO: Expose some parameters for controlling the randomness.
+(define-regiment-parameter simalpha-placement-type 'gridlike)
 
 ;; [2005.10.03] Can be:
 ;;   'lossless -- 100% until simalpha-outer-radius, 0% beyond  

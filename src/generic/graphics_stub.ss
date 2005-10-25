@@ -8,7 +8,7 @@
 
 ;(define processor-screen-radius 25)
 
-(define processor-screen-radius (/ window-width 32.))
+(define processor-screen-radius (/ window-width 45.))
 
 
 ;; TODO: interface description

@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 0);2) 
+	   (optimize-level 2) 
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -88,6 +88,16 @@
 
 
 ;(eval-when (compile eval) (cd ".."))
+
+;; Load this before the simulator.
+(IF_GRAPHICS
+    (begin
+      (load "chez/basic_graphics.ss")
+      (load "chez/graphics_stub.ss")
+      (import basic_graphics)
+      (import graphics_stub))
+    (begin (define draw-mark (lambda args (void)))
+	   (define rgb (lambda args (void)))))
 
 (include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
@@ -174,15 +184,6 @@
 ;; LAME:
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
-;; Load this before the simulator.
-(IF_GRAPHICS
-    (begin
-      (load "chez/basic_graphics.ss")
-      (load "chez/graphics_stub.ss")
-      (eval '(import basic_graphics))
-      (eval '(import graphics_stub)))
-    (eval '(begin (define draw-mark (lambda args (void)))
-		  (define rgb (lambda args (void))))))
 
 ;; Basic simulator for the nodal language:
 ;(load "chez/simulator_nought.ss")
@@ -260,10 +261,13 @@
       (define-top-level-value 'grepl graphical-repl)
       ))
 
-
-(define (g) (eval (cadadr testssim)))
-(pretty-maximum-lines 2000)
-
+(IF_GRAPHICS
+ (begin 
+   (define-syntax ig (identifier-syntax (init-graphics))) ;; shorthand
+   (define-syntax cg (identifier-syntax (close-graphics))) ;; shorthand
+   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
+   (define-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
+   ))
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
 

@@ -2,7 +2,9 @@
 ;; [2005.10.15] For decent (medium) size programs analyze-grammar-failure is working *very* slowly.
 
 ;; [2005.09.26]
-;; This compiler has grown large enough..
+;; This compiler has grown large enough I'm going to check the output
+;; of passes to make sure they actually fit their announced grammars.
+;; This also forces me to make first class representations of grammars.
 
 ;; [2005.09.26] This is limited right now.
 (define (check-grammar expr grammar . initialprod)
@@ -148,27 +150,52 @@
   ;; Could do something more sophisticated here in the future involving the depth:
   (let ((max-size 0)
 	(winner 'UNINTIALIZED-ERROR-IN-ANALYZE-GRAMMAR-FAILURE))
+
     (let* ((count (length grammar-failure))
 	   (progressbar (display-progress-meter count)))
-      (printf "\nAnalyzing ~a failure scenarios.\n" count)
-    (for-each (lambda (ls)
-   		(match ls 
-		  [(,d ,x ,p ,k)
-		   (let ((reconstructed (k 'FAIL)))
-		     (let ((size (count-nodes reconstructed)))
-		       (progressbar)
-		       (when (> size max-size)
-			 (set! max-size size)
-			 (set! winner (list d x p reconstructed)))))]))
-	      grammar-failure)
-    (match winner
-      [(,d ,x ,p ,context)
-       (printf "\nMost likely failed parsing: \n")
-       (printf "\n Context:\nFailure depth ~a\n Expression ~a did not satisfy ~a\n   " d x p)
-       (parameterize ((pretty-standard-indent 5)
-		      (pretty-initial-indent 5))
-	 (pretty-print context))]
-      ))))
+      (printf "\nAnalyzing ~a failure scenarios.\n" count)      
+      (let ((winner-list
+	     (map (lambda (ls)
+		    (match ls 
+		      [(,d ,x ,p ,k)
+		       (let ((reconstructed (k 'FAIL)))
+			 (let ((size (count-nodes reconstructed)))
+			   (progressbar)
+			   `(,size ,d ,x ,p ,reconstructed)))]))
+		  grammar-failure)))
+
+	;; First we sort minimizing depth:
+	;; Weird, but this seems heuristically to work ok:
+	(set! winner-list (sort! (lambda (x y) (< (cadr x) (cadr y))) winner-list))
+	
+	(printf "\nMost likely failed parsing: \n")
+	(set! winner-list (sort! (lambda (x y) (> (car x) (car y))) winner-list))
+	
+	(pretty-print winner-list)
+
+	(let userloop ((ls winner-list) (past ()))
+	  (if (null? ls) (printf "\n No more grammar failures to analyze.\n")
+	      (match (car ls)
+		[(,size ,d ,x ,p ,context)
+		 (printf "\nAt failure depth ~a, expression below did not satisfy ~a (context size ~a)\n    " d p size)
+		 (parameterize ((pretty-standard-indent 5)
+				(pretty-initial-indent 5))
+		   (pretty-print x))
+		 (let menuloop ()
+		   (printf "  Press n(next), p(previous), c(failure context), q(quit): ")
+		   (let readloop ()
+		     (case (read)
+		       [(q) (void)]
+		       [(n) (userloop (cdr ls) (cons (car ls) past))]
+		       [(p) (userloop (cons (car past) ls) (cdr past))]
+		       [(c) 
+			(printf "\nContext:\n")
+			(parameterize ((pretty-standard-indent 5)
+				       (pretty-initial-indent 5))
+			  (pretty-print context))
+			(menuloop)]
+		       [else (printf "\nInvalid input.\n") (readloop)]
+		       )))])))))))
 
 
 ;; ==================================================================
@@ -248,13 +275,13 @@
     ;[Expr ('let ([Var Expr] ...) Expr)]
     [Expr ('let ([Var Expr]) Expr)]
     [Expr ('if Expr Expr Expr)]
-    [Expr ('leds LedColor LedState)]    
-    [LedColor 'Red]
-    [LedColor 'Yellow]
-    [LedColor 'Green]
-    [LedState 'On]
-    [LedState 'Off]
-    [LedState 'Toggle]   
+    [Expr ('leds LedState LedColor)]
+    [LedColor 'red]
+    [LedColor 'yellow]
+    [LedColor 'green]
+    [LedState 'on]
+    [LedState 'off]
+    [LedState 'toggle]
 
 ;; Should scratch this and explicitely enforce argument count in grammar:
     [Expr (Prim Expr ...)]
