@@ -15,77 +15,6 @@
    `(input)
    `(output (grammar ,basic_tml_grammar PassInput))
   (let ()
-    ;; This is confusing, but there are so many small traversals of
-    ;; the program tree in this pass that it is much easier to reuse this tree walk:
-    ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
-    ;;
-    ;; NOTE: Duplicated code.  This function also appears in other passes, where it 
-    ;; works on a slightly different grammar.
-    ;;
-    ;; NOTE: A common failure mode when using this is invoking the
-    ;; wrong loop when making a recursive pattern match.  Be careful.
-#;    (define (generic-traverse driver fuse e)
-      ;; The "driver" takes the first shot at an expression, transforms the
-      ;; subcases that it wants to, and then hands the rest on to its
-      ;; continuation to do the automated traversal. The automated
-      ;; traversal, in turn, uses the "fuse" function to glue back together
-      ;; the parts of the tree.  The fuse function is passed a list of child
-      ;; exprss and another continuation representing the "default fuser" which
-      ;; just puts the expression back together like it was before (given the child terms).
-      ;; Types:
-      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
-      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
-      ;;   e : expr 
-      ;; Return value: 'result 
-      (let loop ((e e))
-	(driver e 
-	   (lambda (x)
-	     (match x
-;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
-		    [,const (guard (constant? const)) (fuse () const)]
-		    [(quote ,const)                (fuse ()   `(quote ,const))]
-		    [,var (guard (symbol? var))    (fuse ()    var)]
-		    [(tok ,tok)                    (fuse ()   `(tok ,tok))]
-		    [(tok ,tok ,n) (guard (integer? n)) (fuse () `(tok ,tok ,n))]
-		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) `(tok ,tok ,expr))]
-		    [(ext-ref ,tok ,var)           (fuse ()   `(ext-ref ,tok ,var))]
-		    [(ext-set! ,tok ,var ,[loop -> expr])  
-		                                   (fuse (list expr) `(ext-set! ,tok ,var ,expr))]
-		    [(set! ,v ,[loop -> e])        (fuse (list e)    `(set! ,v ,e))]
-		    [(leds ,what ,which)           (fuse () `(leds ,what ,which))]
-		    [(begin ,[loop -> x] ...)      (fuse x           `(begin ,x ...))]
-		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		                                   (fuse (list a b c) `(if ,a ,b ,c))]
-		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
-		                                   (fuse (list rhs bod) `(let ([,lhs ,rhs]) ,bod))]
-		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
-		                                   (fuse (append rhs* (list bod)) 
-							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
-
-		    ;; For now we just don't touch the insides of a dbg statement:
-		    [(dbg ,rand ...)		     
-		     (fuse () `(dbg ,rand ...))]
-		     
-
-		    ;; "activate" and the gradient calls have already been desugared:
-		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (memq call '(bcast subcall call)))
-		     (fuse (cons rator rands) `(,call ,rator ,rands ...))]
-		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (number? time))		     
-		     (fuse (cons rator rands) `(timed-call ,time ,rator ,rands ...))]
-		    [(return ,[loop -> x])         (fuse (list x) `(return ,x))]
-		    [(,prim ,[loop -> rands] ...)
-		     (guard (or (token-machine-primitive? prim)
-				(basic-primitive? prim)))
-		     (fuse rands `(,prim ,rands ...))]
-		    [(app ,[loop -> rator] ,[loop -> rands] ...)
-		     (fuse (cons rator rands) `(app ,rator ,rands ...))]
-		    [,otherwise
-		     (error 'generic-traverse
-			    "bad expression: ~s" otherwise)])))))
-
-
     ;; Get the free vars from an expression
     (define (free-vars e)
       (tml-generic-traverse
@@ -97,9 +26,9 @@
 		 (append rhs (remq lhs bod))
 		 ]
 
-;; FIXME TODO:
-;		[(let-stored ...
-
+;; TODO: VERIFY: does this make sense:
+		[(let-stored ([,lhs ,[rhs]] ...) ,[bod])
+		 (append rhs (difference bod lhs))]
 
 		[,x (loop x)]))
        (lambda (ls _) (apply append ls))
