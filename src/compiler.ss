@@ -49,7 +49,7 @@
 ;    rename-stored
 
 ;; Temporarily I am disabling these ..
-;    cps-tokmac
+    cps-tokmac
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
