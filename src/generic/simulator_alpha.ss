@@ -125,7 +125,6 @@
 
 ;; Returns a simworld object.
 (define (fresh-simulation)  
-
   ;; This subroutine generates the default, random topology: 
   ;; (There are more topologies in "network_topologies.ss"
   (define (make-object-graph g world) 
@@ -152,45 +151,8 @@
 
 		   (set-simobject-worldptr! so world)
 		   so)) g))
-
-  ;; Set global parameter:
-  ;; This is a function which takes two locations and returns either
-  ;;  1) a number, representing the loss percentage
-  ;;  2) a function of time, representing the loss percentage over time
-  (simalpha-connectivity-function
-    (case (simalpha-channel-model)
-      [(lossless)
-       (lambda (p1 p2) ;x1 y1 x2 y2)
-	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
-	   (if (< dist (simalpha-outer-radius))
-	       100
-	       0)))]
-      [(linear-disc)
-       (printf "Got linear disc...\n")
-       (lambda (p1 p2)	
-	 (let ((dist (posdist p1 p2))
-	       (outer (simalpha-outer-radius))
-	       (inner (simalpha-inner-radius)))
-;	   (printf "Considering ~a (~a, ~a) between ~a and ~a\n" dist p1 p2 inner outer)
-	   (cond
-	    [(< dist inner) 100]
-	    [(> dist outer) 0]
-	    [else
-	     (inexact->exact (floor (* 100 (/ (- dist inner) (- outer inner)))))])))]))
-  
- 
-  ;; TODO, FIXME, need to use a real graph library for this!
-  ;; (One that treats edges with due respect, and that uses hash tables.)
-
-   (let* ([theworld (make-simworld #f #f #f #f #f #f)]
-	  [collide? (lambda (n1 n2)
-			(let ((connectivity ((simalpha-connectivity-function)
-					     (node-pos n1) (node-pos n2))))
-			  (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
-			  (not (eqv? 0 connectivity))))]
-			  
-	  [graph 
-	   (if (simalpha-ensure-connected)
+  (define (make-topology) ;; Returns the graph
+  	   (if (simalpha-ensure-connected)
 	       ;; This might have some serious biases in the layout and distribution of degree.
 	       (let ((start-node (let ((x (random-node)))				   
 				   (set-node-id! x BASE_ID)
@@ -237,7 +199,42 @@
 						)))
                                        seed)))
                        seed))
-            seed))]
+            seed)))
+
+  ;; Set global parameter:
+  ;; This is a function which takes two locations and returns either
+  ;;  1) a number, representing the loss percentage
+  ;;  2) a function of time, representing the loss percentage over time
+  (simalpha-connectivity-function
+    (case (simalpha-channel-model)
+      [(lossless)
+       (lambda (p1 p2) ;x1 y1 x2 y2)
+	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
+	   (if (< dist (simalpha-outer-radius))
+	       100
+	       0)))]
+      [(linear-disc)
+       (printf "Got linear disc...\n")
+       (lambda (p1 p2)	
+	 (let ((dist (posdist p1 p2))
+	       (outer (simalpha-outer-radius))
+	       (inner (simalpha-inner-radius)))
+;	   (printf "Considering ~a (~a, ~a) between ~a and ~a\n" dist p1 p2 inner outer)
+	   (cond
+	    [(< dist inner) 100]
+	    [(> dist outer) 0]
+	    [else
+	     (inexact->exact (floor (* 100 (/ (- dist inner) (- outer inner)))))])))]))
+   
+  ;; TODO, FIXME, need to use a real graph library for this!
+  ;; (One that treats edges with due respect, and that uses hash tables.)
+   (let* ([theworld (make-simworld #f #f #f #f #f #f)]
+	  [collide? (lambda (n1 n2)
+			(let ((connectivity ((simalpha-connectivity-function)
+					     (node-pos n1) (node-pos n2))))
+			  (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
+			  (not (eqv? 0 connectivity))))]
+	  [graph (make-topology)]
 ;	  [soc (caar graph)]
           [obgraph (make-object-graph graph theworld)]
           [allobs  (map car obgraph)]
@@ -252,8 +249,6 @@
      (DEBUGMODE
       (andmap (lambda (row) (andmap node? row))
 	      graph))
-	      
-
      ;; Set I-am-SOC
      (for-each (lambda (ob)
 		 (set-simobject-I-am-SOC! ob		  
@@ -265,7 +260,51 @@
      (set-simworld-obj-hash! theworld hash)
      (set-simworld-scheduler-queue! theworld scheduler-queue)
      (set-simworld-vtime! theworld 0)
-     theworld))
+     theworld))  ;; End fresh-simulation
+
+;; This takes a simworld object and draws it on the screen:
+(define (simalpha-draw-world world)
+  (IF_GRAPHICS
+   (let ()
+     (define edge-table (make-default-hash-table))
+     (define proc-table (make-default-hash-table))
+     
+     ;; This is a promise so as to be called only once.
+     (define wipe-screen (delay clear-buffer))
+     ;; Contains a graphics object, and the last drawn state.
+     (define-structure (edgestate gobj oldstate))
+
+     (draw-procs (map node-pos (map simobject-node (simworld-all-objs world))))
+
+#;
+     (if (simworld-object-graph world)
+	 ;; Fill up our two hash tables with drawn objects.
+	 (for-each (lambda (graph-entry)
+		     (let ([proc (car graph-entry)]
+			   [edges (unfold-list (cdr graph-entry))])
+		       (let ([origpos (node-pos (simobject-node proc))])
+			 ;; If the processor has already been drawn, we trigger a screen wipe.
+			 (if (simobject-gobj proc) (force wipe-screen))
+		      ;; If we're the base-station, draw a mark also:
+			 (if (base-station? proc) (draw-mark origpos (rgb 0 255 0)))		      
+			 (let ((gobj (draw-proc origpos)))
+			   (hashtab-set! proc-table proc gobj)
+			   (set-simobject-gobj! proc gobj))
+			 ;; Not done yet.
+			 ;; This just draws the edges once... need to take responsibility for
+			 ;; changing them:
+		      (if (SHOW_EDGES)
+			  (for-each 
+			   (lambda (edgeob)
+			     (hashtab-set! edge-table edgeob
+					   (make-edgestate
+					    (draw-edge origpos (node-pos (simobject-node (car edgeob))))
+					    (structure-copy (car edgeob)))))
+			   edges))
+		      )))
+		   (simworld-object-graph world)))
+     )
+   (error 'simalpha-draw-world "graphics not loaded.")))
 
 
 (define (print-connectivity world)

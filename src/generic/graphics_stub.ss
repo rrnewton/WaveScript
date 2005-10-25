@@ -25,8 +25,11 @@
 ;; Change-color redraws immediately, and it's the only way to state-change...
 
 ;; provides:
-;;   draw-procs draw-proc draw-edge draw-mark draw-circle
-;;   change-color! get-state 
-;;   these-tests test-this 
+;;   draw-proc  :  (x y)      -> <void>
+;;   draw-procs : ((x y) ...) -> <void>
+;;   draw-edge draw-mark draw-circle
+;;   change-color! 
+;;   get-state  : gobj, flag  -> relevent-state
 ;;   init-graphics close-graphics clear-buffer
+;;   these-tests test-this test-graphics-stub
 
