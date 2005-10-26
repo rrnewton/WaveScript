@@ -70,11 +70,20 @@
 (define unknown-place '?) ;'X?)
 (define noplace '_)
 
-;; Used primarily by pass21_cleanup_tokmac
+;; Used primarily by pass21_cleanup-token-machine
 ;;===================================================
 (define DEFAULT_SUBTOK 0)
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 (define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
+
+
+;; Used primarily by pass cps-tokmac
+;;===================================================
+;; This object is used as null pointer for continuations.
+;; If a token handler is called with the null continuation, 
+;; it need not invoke it.
+(define NULLK ''NULLK)
+
 
 
 ;;======================================================================

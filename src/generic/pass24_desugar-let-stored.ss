@@ -40,104 +40,70 @@
   (lambda (subst expr) 
     ;; subst contains both normal local vars and "stored" vars,
     ;; It's an association list between bound-var [old] name and its new name.
-;  (trace-lambda PE (subst expr)
-  (match expr
-;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
-    [(quote ,const)                    (values () `(quote ,const))]
-    [,num (guard (number? num))        (values () num)]
-    [(tok ,t ,n) (guard (number? n))   (values () `(tok ,t ,n))]
-    [(tok ,t ,[st e])                  (values st `(tok ,t ,e))]
-    ;; No renaming or anything here:
-    [(ext-ref ,tok ,var)               (values () `(ext-ref ,tok ,var))]
-    [(ext-set! ,tok ,var ,[st e])      (values st `(ext-set! ,tok ,var ,e))]
-
-    [,var (guard (symbol? var))        
-	  (let ((entry (assq var subst)))
-	    (if entry 
-		(values () (cadr entry))
-		(values () var)))]
-    [(set! ,v ,[rst rhs])
-	  (let ((entry (assq v subst)))
-	    (if entry 
-		(values rst `(set! ,(cadr entry) ,rhs))
-		(values rst `(set! ,v ,rhs))))]
-
-    ;; For now we just don't touch the insides of a dbg statement:
-    ;; [2005.10.03] ACK, I had decided so as not to mess with complex constants used.
-    ;; But this gives me problems, it doesn't receive var renames if it's opaque!! 
-    ;; So openning up that black box again.
-    ;[(dbg ,rand ...) (values () `(dbg ,rand ...))]
-
-    [(begin ,[st* xs] ...)
-     (values (apply append st*) (make-begin xs))]
-    [(if ,[tst test] ,[cst conseq] ,[ast altern])
-     (values (append tst cst ast)
-             `(if ,test ,conseq ,altern))]
-    [(let ([,lhs ,[rst rhs]]) ,body)
-     (mvlet ([(bst newbod) (process-expr (cons `(,lhs ,lhs) subst) body)])
-	    (values (append bst rst)
+    (tml-generic-traverse
+     (lambda (x autoloop)
+       (match x
+					;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
+	 [,var (guard (symbol? var))
+	       (let ((entry (assq var subst)))
+		 (if entry 
+		     (vector () (cadr entry))
+		     (vector () var)))]
+	 [(set! ,v ,[x])
+	  (let-match ([#(,rst ,rhs) x])
+	    (let ((entry (assq v subst)))
+	      (if entry 
+		  (vector rst `(set! ,(cadr entry) ,rhs))
+		  (vector rst `(set! ,v ,rhs)))))]
+	 [(let ([,lhs ,[x]]) ,body)
+	  (let-match ([#(,rst ,rhs) x]
+		      ;; This is a cheesy way of shadowing stored variable refs:
+		      [#(,bst ,newbod) (process-expr (cons `(,lhs ,lhs) subst) body)])
+	    (vector (append bst rst)
 		    `(let ([,lhs ,rhs]) ,newbod)))]
-
-    ;; Being lenient, and accepting this even though it should be out of the language by now.
-    [(lambda (,args ...) ,body)
-     (mvlet ([(bst newbod) (process-expr (append (map list args args) subst) body)])
-	    (values bst
+	 ;; Being lenient, and accepting this even though it should be out of the language by now.
+	 [(lambda (,args ...) ,body)
+	  (let-match ([#(,bst ,newbod) (process-expr (append (map list args args) subst) body)])
+	    (vector bst
 		    `(lambda ,args ,newbod)))]
-
-;; These are just primitives, they do not need their own form.
-;    [(,call-style ,[st* args*] ...)
-;     (guard (memq call-style '(call timed-call bcast )))
-;     (values (apply append st*)
-;             `(,call-style ,args* ...))]
-;    [(return ,[xst x]) (values xst `(return ,x))]
-
-    ;; The semantics of let-stored are that the first time the
-    ;; expression is executed (and only the first), the RHS is
-    ;; evaluated and stored.
-    [(let-stored () ,[st body]) (values st body)]
-    ;; Multiple bindings just expand out in a let* style:
-    [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
-     (process-expr subst `(let-stored ([,lhs1 ,rhs1]) 
-			  (let-stored ([,lhs2 ,rhs2])
-			     (let-stored ([,lhs* ,rhs*] ...) ,body))))]
-
-    [(let-stored ([,lhs ,[rst rhs]]) ,body)
-     (let ([newvar (unique-name 'stored-liftoption)] ;; This is a "presence bit" for the let-stored var
-	   [newlhs (unique-name lhs)]) ;; Deciding to rename these vars to avoid capture, no ext-refs!
-       (mvlet ([(bst newbod) (process-expr (cons `(,lhs ,newlhs) subst) body)])
-	      ;; The stored var is initially "null" (uninitialized)
-	      ;; The new "presence bit" is initially false:
-               (values (append `([,newlhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
-                       (make-begin 
-                        (list `(if ,newvar ;; If first time, initialize
-				   (void)
-                                   (begin ;; This is where the rhs is finally evaluated:
-                                     (set! ,newvar '#t)
-                                     (set! ,newlhs ,rhs)))
-                               newbod)))))]
-
-    [(leds ,what ,which) (values () `(leds ,what ,which))]
-    [(,prim ,[rst* rands] ...)
-     (guard (or (token-machine-primitive? prim)
-                (basic-primitive? prim)))
-     (values (apply append rst*)
-             `(,prim ,rands ...))]
-    [(app ,[rst1 rator] ,[rst* rands] ...)
-     (warning 'desugar-let-stored
-              "arbitrary application of rator: ~s~n" rator)
-     (values (apply append rst1 rst*)
-             `(app ,rator ,rands ...))]
-
-    [,otherwise
-	 (error 'desugar-let-stored:process-expr 
-		"bad expression: ~s" otherwise)]
-	)))
-      
+	 ;; The semantics of let-stored are that the first time the
+	 ;; expression is executed (and only the first), the RHS is
+	 ;; evaluated and stored.
+	 [(let-stored () ,[x])
+	  (let-match ((#(,st ,body) x))
+	    (vector st body))]
+	 ;; Multiple bindings just expand out in a let* style:
+	 [(let-stored ([,lhs1 ,rhs1] [,lhs2 ,rhs2] [,lhs* ,rhs*] ...) ,body)
+	  (process-expr subst `(let-stored ([,lhs1 ,rhs1]) 
+				 (let-stored ([,lhs2 ,rhs2])
+				   (let-stored ([,lhs* ,rhs*] ...) ,body))))]
+	 ;; A single binding desugars here:
+	 [(let-stored ([,lhs ,[x]]) ,body)
+	  (let-match ((#(,rst ,rhs) x))
+	    (let ([newvar (unique-name 'stored-liftoption)] ;; This is a "presence bit" for the let-stored var
+		  [newlhs (unique-name lhs)]) ;; Deciding to rename these vars to avoid capture, no ext-refs!
+	      (let-match ([#(,bst ,newbod) (process-expr (cons `(,lhs ,newlhs) subst) body)])
+		;; The stored var is initially "null" (uninitialized)
+		;; The new "presence bit" is initially false:
+		(vector (append `([,newlhs 'let-stored-uninitialized] [,newvar '#f]) rst bst)
+			(make-begin 
+			 (list `(if ,newvar ;; If first time, initialize
+				    (void)
+				    (begin ;; This is where the rhs is finally evaluated:
+				      (set! ,newvar '#t)
+				      (set! ,newlhs ,rhs)))
+                               newbod))))))]
+	 [,other (autoloop other)]))
+     (lambda (results recombine)
+       (let-match (((#(,stored ,exps) ...) results))
+	 (vector (apply append stored)
+		 (apply recombine exps))))
+     expr)))
 
 (define (process-tokbind tb)
   (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
-         (mvlet ([(newstored newbod) (process-expr (map car constbinds) body)])
-                `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
+         (let-match ([#(,newstored ,newbod) (process-expr (map car constbinds) body)])
+	   `[,tok ,id ,args (stored ,@stored ,@newstored) ,newbod])))
 
 ;; Main body of this pass:
 (lambda (prog)

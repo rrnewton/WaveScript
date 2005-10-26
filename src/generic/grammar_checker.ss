@@ -171,7 +171,7 @@
 	(printf "\nMost likely failed parsing: \n")
 	(set! winner-list (sort! (lambda (x y) (> (car x) (car y))) winner-list))
 	
-	(pretty-print winner-list)
+;	(pretty-print winner-list)
 
 	(let userloop ((ls winner-list) (past ()))
 	  (if (null? ls) (printf "\n No more grammar failures to analyze.\n")
@@ -343,6 +343,7 @@
     ,@ tml_letstored_grammar
     ;; Allowing this for now:
     [Expr ('lambda (Var ...) Expr)]
+    [Expr ('kcall Expr Expr)]
  ))
 
 

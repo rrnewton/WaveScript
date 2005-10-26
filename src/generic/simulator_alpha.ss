@@ -671,8 +671,16 @@
 		
 		;; Supporting the output of cps-tokmac also:
 		[(kcall ,[rator]  ,[rand*] ...)
-		 `(,rator ,rand* ...)]
-		[(lambda (,v ...) ,[bod]) `(lambda (,v ...) ,bod)]
+		 (let ((tmp (unique-name 'tmprator))
+		       (tmp2 (unique-name 'tmprands)))
+		   `(let ((,tmp ,rator)
+			  (,tmp2 (list ,@rand*)))
+		      ;(printf "Kcall ~a ~a ..\n" ,tmp ,tmp2)
+		      (if (eq? ,tmp ,NULLK)
+			  "kcall fizzles."
+			  (apply ,tmp ,tmp2))))]
+		[(lambda (,v ...) ,[bod]) `(lambda (,v ...) ;(printf "cont invoked...\n")
+						   ,bod)]
 		
 		[(,rator ,[rand*] ...)
 		 ;; This is an arbitrary scheme application. Where would these come from?
