@@ -330,6 +330,9 @@
 		      (if (token-scheduled? ,ind)
 			  (call ,ind ,@args*)
 			  (void))))])]
+	     
+	     ;; This is for the purpose of accepting the output of cps-tokmac.
+;	     [(kcall ,[k] ,[e]) `(kcall ,k ,e)]
 
 	     ;; TODO: check to see if the "tok" is a locally bound variable if it is not a tokname?
 	     ;; Should give warning if not.
