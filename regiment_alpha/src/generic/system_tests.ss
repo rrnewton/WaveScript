@@ -1181,6 +1181,7 @@
 			 (aggr f)))
 	  (f (x y) (append x y)))
 	'[regiment-verbose #f]
+	'[simalpha-placement-type 'gridlike]
 	)
       ;; Epoch staggered aggregation
 	,(lambda (x) 
@@ -1548,7 +1549,9 @@
 				    (car y))
 				 (+ (cdr x)
 				    (cdr y))))]
-		   [div (lambda (v) (/ (car v) (cdr v)))]
+		   [div (lambda (v) 
+			  (if (= (cdr v) 0) 0 ;; Just return zero if there are no samples to avg.
+			      (/ (car v) (cdr v))))]
 		   [sums (rfold aggr (cons 0 0) readings)]
 		   [result (smap div sums)])
 	    result)

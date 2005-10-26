@@ -638,7 +638,7 @@
       [(_ ([Pat Exp] Rest ...) Body ...)
        #'(match Exp
 	   [Pat (let-match (Rest ...) Body ...)]
-	   ;[,other (error 'let-match "unmatched object: ~s" other)]
+	   [,other (error 'let-match "unmatched object: ~s" other)]
 	   )])))
 ;(expand '(let-match () 3))
 ;(expand '(let-match ([,x 3]) x))
