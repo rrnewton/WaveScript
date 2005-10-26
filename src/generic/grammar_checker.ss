@@ -7,7 +7,7 @@
 ;; This also forces me to make first class representations of grammars.
 
 ;; [2005.09.26] This is limited right now.
-(define (check-grammar expr grammar . initialprod)
+(define (check-grammar origexpr grammar . initialprod)
   ;; expr is an sexpression
   ;; grammar is just a list of productions
   (define allvariants (list->set (map car grammar)))
@@ -53,8 +53,10 @@
 ;		  (if (check-basic expr type) #t
 ;		      (fail))]
       [(,x ,fun) (guard (procedure? fun))
-	    (if (fun x) 
-		(k fun) ;'<fun>
+	    (if (fun x)
+		(if (atom? x)
+		    (k (cons fun x))
+		    (k fun)) ;'<fun>
 		(fail x fun k))]
       [(,x (quote ,sym)) ;(guard (atom? x))
        (if (eq? x sym) 
@@ -83,7 +85,9 @@
 	      (,fun ,p*new ...))
 	     (guard (procedure? fun))
 	     (if (fun x)
-		 (goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons fun e)) (k #f)))))
+		 (goingdeeper (listloop lsnew p*new 
+					(lambda (e) (if e (k (cons (if (atom? x) (cons fun x) fun) e))
+							(k #f)))))
 		 (fail x fun k))]
 
 	    [((,x ,lsnew ...)
@@ -129,7 +133,7 @@
 	    )))
 
   (let ((result 
-	 (scangrammar expr (if (null? initialprod)
+	 (scangrammar origexpr (if (null? initialprod)
 ;			 (if (assq 'PassInput grammar)
 ;			     (begin ;; This is cheesy but convenient for me:
 ;			       (printf "Defaulting to using 'PassInput as starting production for grammar check.\n")
@@ -140,33 +144,45 @@
 		(lambda (e) e))))
     (if (not result)
 	(begin (set-top-level-value! 'failure-stack failure-stack)
-	       (printf "Grammar check failed.  Stored failure trace in global var \"failure-stack\"\n")
+	       (set-top-level-value! 'current-parse origexpr)
+	       (printf "Grammar check failed.  Stored failure trace in global var \"failure-stack\", and program in \"current-parse\"\n")
 	       (printf "Run (analyze-grammar-failure failure-stack) to see what went wrong.\n")
 	       #f)
 	result)
    ))
 
 (define (analyze-grammar-failure grammar-failure)
-  ;; Could do something more sophisticated here in the future involving the depth:
-  (let ((max-size 0)
-	(winner 'UNINTIALIZED-ERROR-IN-ANALYZE-GRAMMAR-FAILURE))
 
     (let* ((count (length grammar-failure))
 	   (progressbar (display-progress-meter count)))
-      (printf "\nAnalyzing ~a failure scenarios.\n" count)      
+      (printf "\nAnalyzing ~a failure scenarios.\n" count)
       (let ((winner-list
-	     (map (lambda (ls)
-		    (match ls 
-		      [(,d ,x ,p ,k)
-		       (let ((reconstructed (k 'FAIL)))
-			 (let ((size (count-nodes reconstructed)))
-			   (progressbar)
-			   `(,size ,d ,x ,p ,reconstructed)))]))
-		  grammar-failure)))
+	     (filter id 
+	       (map (lambda (ls)
+		      (match ls
+			[(,d ,x ,p ,k)
+			 (let ((reconstructed (k 'FAIL)))
+			   (let ((failcount (length (deep-all-matches (lambda (x) (eq? x 'FAIL)) reconstructed))))
+			     (printf "Failcount ~a\n" failcount)
+			     (if (= 0 failcount)
+				 #f
+				 ;; This is not a failure!
+;				 (error "Correct Parsing!\n ~s \n Correct Parsing! \n"
+;					reconstructed))
+				 ;; This is my random scoring heuristic:
+				 ;; We want a large context and a small expression:
+			     (let ((score (/ (- (count-nodes reconstructed)
+						(* 30 (count-nodes x)))
+					     failcount)))
+			       (progressbar)
+			       `(,score ,d ,x ,p ,reconstructed)))
+			     ))]))
+		 grammar-failure))))
 
 	;; First we sort minimizing depth:
 	;; Weird, but this seems heuristically to work ok:
-	(set! winner-list (sort! (lambda (x y) (< (cadr x) (cadr y))) winner-list))
+;; [2005.10.26] Disabling again... it's hard to say with these heuristics:
+;	(set! winner-list (sort! (lambda (x y) (< (cadr x) (cadr y))) winner-list))
 	
 	(printf "\nMost likely failed parsing: \n")
 	(set! winner-list (sort! (lambda (x y) (> (car x) (car y))) winner-list))
@@ -176,8 +192,8 @@
 	(let userloop ((ls winner-list) (past ()))
 	  (if (null? ls) (printf "\n No more grammar failures to analyze.\n")
 	      (match (car ls)
-		[(,size ,d ,x ,p ,context)
-		 (printf "\nAt failure depth ~a, expression below did not satisfy ~a (context size ~a)\n    " d p size)
+		[(,score ,d ,x ,p ,context)
+		 (printf "\nAt failure depth ~a, expression below did not satisfy ~a (context score ~a)\n    " d p score)
 		 (parameterize ((pretty-standard-indent 5)
 				(pretty-initial-indent 5))
 		   (pretty-print x))
@@ -195,7 +211,7 @@
 			  (pretty-print context))
 			(menuloop)]
 		       [else (printf "\nInvalid input.\n") (readloop)]
-		       )))])))))))
+		       )))]))))))
 
 
 ;; ==================================================================
@@ -217,7 +233,7 @@
 	   ;; The optional initial production may or may not be supplied:
 	   [(grammar ,gram ,optional_initialprod ...)
 	    (or (apply check-grammar prog gram optional_initialprod)
-		(error 'build-compiler-pass "Bad input to pass: \n ~a" prog))]))
+		(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]))
 	 (let ((result (transform prog)))
 	   (DEBUGMODE
 	    (if (regiment-verbose) 
@@ -229,7 +245,7 @@
 	     [(grammar ,gram ,optional_initialprod ...)
 	      (or (apply check-grammar result gram optional_initialprod)
 		  (begin (pretty-print result) #f)
-		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~a" 
+		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
 			 name prog))])
 	    (if (regiment-verbose)
 		(printf "~a: Output grammar passed.\n" name)))
