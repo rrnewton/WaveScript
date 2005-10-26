@@ -478,32 +478,21 @@
 	     (read (open-input-string (get-output-string prt)))))))
       (#f #t tok1 #f)]
 
-;; TODO FIXME: GOOD TEST:  GET THIS TO WORK!!!!
-#;     ["Try token-scheduled? with some subcall trickery"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-      (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
-					;'(cleanup-token-machine cps-tokmac )));closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 		   
-		   (SOC-start ()
-			      ;; Use subcall to call it immediately,befoe the rest proceeds.
-			      (subcall check)
-			      (timed-call 500 (tok tok1 0))
-			      (timed-call 100 check)
-			      (timed-call 800 check))
-		   (tok1 () (printf "tok1 "))
-		   (check () (printf "~a " (token-scheduled? (tok tok1 0))))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
+     ["Subcall: Try token-scheduled? with some subcall trickery"
+      , (tm-to-list
+	 '(tokens 		   
+	      (SOC-start ()
+			 ;; Use subcall to call it immediately,befoe the rest proceeds.
+			 (subcall check)
+			 (timed-call 500 (tok tok1 0))
+			 (timed-call 100 check)
+			 (timed-call 800 check))
+	    (tok1 () (printf "tok1 "))
+	    (check () (printf "~a " (token-scheduled? (tok tok1 0))))
+	    ))
       (#f #t tok1 #f)]
 
-
-     ["Make sure simulator can handle subcalls directly if need be."
+     ["Subcall: Make sure simulator can handle subcalls directly if need be."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
 	 (let ((prog 
 		(cleanup-token-machine
@@ -524,7 +513,7 @@
 	     (read (open-input-string (get-output-string prt))))))
       (a b c d e)]
 
-     ["Make sure simulator can handle subcalls directly if need be #2."
+     ["Subcall: Make sure simulator can handle subcalls directly if need be #2."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
 	 (let ((prog 
 		(cleanup-token-machine
@@ -593,7 +582,7 @@
      
     ;; [2005.05.29] Note tok1 should be statically called and is currently called dynamically!
     ;; Oh duh, that's because all calls go through the dyndispatch table.
-     ["Subcalls: Run simulator on simple subcall program." 
+     ["Subcall: Run simulator on simple subcall program." 
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
 	 (let ((prog 
@@ -686,9 +675,7 @@
 	     (read (open-input-string (get-output-string prt)))))))
       ((1 2 3) (1 10 3) (1 10 10) (10 10 10))]
 
-; FIXME: HAVEN'T FIXED THE SIM UP FOR THIS YET:
-#;
-     ["Stored vars: Check order of evaluation for stored vars."
+     ["Stored vars: Initializations should not be able to reference eachother."
       , (tm-to-list
 	'(tokens 
 	  (SOC-start () (call tok1) (call tok1) (call tok1))
@@ -696,8 +683,7 @@
 		(stored [a (begin (printf "a ") 3)]
 			[b (begin (printf "b ") (+ 1 a))])
 		(printf "~a " (+ a b)))))
-      ]
-     
+	error]     
 
      ["Now keep stored vars on all 1-hop neighbors, make sure they don't change."  
       ,(tm-to-list
@@ -722,7 +708,7 @@
 
      ;; Ok before I was having problems with how I do the counters for
      ;; subtok indices of the continuations.  This double invocation tests that:
-     ["Test double invocation of a continuation-bearing token." 
+     ["Subcall: Test double invocation of a continuation-bearing token." 
       (fluid-let ([pass-names '(cleanup-token-machine  desugar-let-stored rename-stored  cps-tokmac closure-convert cleanup-token-machine)])
        (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
          (let ((prog
@@ -1673,101 +1659,9 @@
       unspecified]
 
 
-
-#; ; FIXME: Not there yet:
-    ["Test soc-return (#4). soc-returns from one hop neighbors, WITH desugar gradients."
-     (parameterize ([unique-name-counter 0] 
-		    [simalpha-dbg-on #t] ;; (dbg ...) statements
-		    )
-      (fluid-let ([pass-names '(cleanup-token-machine 
-				desugar-soc-return 
-				desugar-gradients cleanup-token-machine
-				desugar-let-stored
-				;rename-stored
-				)])
-	(let ([prog (run-compiler
-		     '(tokens
-		       (SOC-start () 
-				  (call spread-global)
-				  (soc-return (my-id)) 
-				  ;; Wait till the gradient has spread to do our soc-return:
-				  (timed-call 1000 sendit))
-		       (sendit () (bcast tok1))
-		       (tok1 ()
-			     (printf " recvd ")
-			     (greturn (my-id) (to SOC-return-handler) (via global-tree))
-			     ;(soc-return (my-id))
-			     ;(soc-return (gdist))
-			     )
-		       ;; The global tree is required for soc-return to work.
-		       (spread-global () (printf "Spreading global (~a, clock ~a)...\n" (my-id) (my-clock))
-				      (gemit global-tree) (timed-call 1000 spread-global))
-		       (global-tree () (printf "~a." (my-id)) (grelay))
-		       ))])
-	  (run-simulator-alpha prog 'timeout 5000))))
-      395]
-
-#;
-     ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
-		'(tokens
-		  (SOC-start () (printf "SOCSTART ") 
-			     (gemit tok1)
-;			     (timed-call 1000 timeout)
-			     )
-		  (catcher (v) (printf "Got: ~a" v))
-		  (tok1 () (printf "~a_ " (my-id))) ;(greturn (my-id) (to catcher)))
-;		  (timeout () (printf "! ")
-;			   (greturn (my-id) (to catcher) (via tok1)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst
-	    ))))
-	(#t 1 2 #t)]      
-
-
-     ;; TODO FIXME: finish:
-#;     ["Now simulate gradients and subcalls in one program."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-        ;; Respect the actual ordering of passes used by the compiler:
-        (fluid-let ([pass-names (list-remove-before 'cleanup-token-machine pass-names)])
-	  (let ([prog
-		 (run-compiler
-		  '(tokens
-		    (SOC-start () (call spread-global))
-		    (node-start () (void))
-		    (spread-global ()
-		       (gemit global-tree)
-		       (timed-call 100 spread-global))
-		    (global-tree ()
-				 (printf "Tree spreading... ~a\n" (my-id))
-				 (grelay))
-		    ))])
-	    (let ((lst 
-		   (let ([prt (open-output-string)])
-		     (display "(" prt)
-		     (run-simulator-alpha prog );'outport prt)
-		     (display ")" prt)
-		     (read (open-input-string (get-output-string prt))))))
-	      lst
-	      ))))
-      ,(lambda (x) #t)]
-
      ;; TODO FIXME: This causes a system freeze when you attempt to simulate.
-#;     ["Finish assembly of a simple rfold over a rmap"
+#; 
+    ["Finish assembly of a simple rfold over a rmap"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
       (fluid-let ([pass-names (list-remove-before 'deglobalize pass-names)])
 	(let ((prog
@@ -1805,47 +1699,6 @@
 		       (display ")" prt)
 		       (read (open-input-string (get-output-string prt))))))
 		lst))))
-      foo]
-	
-
-
-
-
-
-#;
-			  (printf "~ntok1 at ~a: input ~a stored ~a~n" 
-				  (node-id (simobject-node this))
-				  (list g_parent g_origin g_hopcount g_version)
-				  tokobj)
-
-
-#;      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine  desugar-let-stored  rename-stored          
-		     cps-tokmac  closure-convert  )])
-	(run-compiler
-	 '(tokens
-	   (SOC-start () (gemit tok1))
-	   (catcher (v) (printf "Got return: ~a" v))
-	   (tok1 () (greturn (my-id) (to catcher)))
-	   )))
-
-
-
-
-
-;; [2005.09.25] I forgot what this did, so it's hard to work on it right now:
-#;     ["Temporary: Write a troublesome simulator program to disk and try to execute it."
-      (let ((prt (open-output-string)))
-	(display "(" prt)
-	(run-simulator-alpha
-	 '(define (node-code this) (let ((local-sense (lambda () ((current-sense-function) (node-pos (simobject-node this)))))) (let* () (letrec ((SOC-return-handler (lambda #0=(current-vtime subtokind . vals) (let ((x #1=(quote sim-alpha-uninitialized))) (let #2=((numvals (length vals))) (if (< numvals 1) (warning #3=(quote simulator-alpha) #4="executing ~a padding args ~a with zero." (quote SOC-return-handler) (list-tail (quote #5=(x)) . #6=(numvals)))) (if (> numvals 1) (error #7=(quote simulator-alpha) #8="executing ~a, got excess vals ~a for args ~a" (quote SOC-return-handler) vals (quote #5#))) (if #9=(null? vals) (set! x . #10=(0)) (begin (set! x . #11=((car vals))) . #12=((set! vals (cdr vals))))) #13="Done initializing arguments." (let* (#14=(the-store (simobject-token-store this)) (simtok-obj (make-simtok (quote SOC-return-handler) . #15=(subtokind))) . #16=((old-outgoing (simobject-outgoing-msg-buf this)) (old-local (simobject-local-msg-buf this)))) #17=(DEBUGMODE (check-store the-store)) #18="Is there already an allocated token object?:" (let #19=((tokobj (hashtab-get the-store simtok-obj))) (if #20=(not tokobj) (begin #21="If not, then we allocate that token object..." #22=" setting the invoke counter to zero." (set! tokobj (vector 0)) . #23=((hashtab-set! the-store simtok-obj tokobj)))) #24=(set-simobject-outgoing-msg-buf! this (quote ())) #25=(set-simobject-local-msg-buf! this (quote ())) (if (= (quote 10000) #26=(node-id (simobject-node this))) (simulator-soc-return x) (error (quote SOC-return-handler) "ran on non-base node! id: ~a" #26#)) . #27=((set-simobject-outgoing-msg-buf! this (append (reverse (simobject-outgoing-msg-buf this)) old-outgoing)) (set-simobject-local-msg-buf! this (append (reverse (simobject-local-msg-buf this)) old-local)) (void)))))))) (node-start (lambda #0# (let () (let #2# (if (< numvals 0) (warning #3# #4# (quote node-start) (list-tail (quote ()) . #6#))) (if (> numvals 0) (error #7# #8# (quote node-start) vals (quote ()))) #13# (let* (#14# (simtok-obj (make-simtok (quote node-start) . #15#)) . #16#) #17# #18# (let #19# (if #20# (begin #21# #22# (set! tokobj (vector 0)) . #23#)) #24# #25# (void) . #27#)))))) (SOC-start (lambda #0# (let () (let #2# (if (< numvals 0) (warning #3# #4# (quote SOC-start) (list-tail (quote ()) . #6#))) (if (> numvals 0) (error #7# #8# (quote SOC-start) vals (quote ()))) #13# (let* (#14# (simtok-obj (make-simtok (quote SOC-start) . #15#)) . #16#) #17# #18# (let #19# (if #20# (begin #21# #22# (set! tokobj (vector 0)) . #23#)) #24# #25# (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote tok1) 0) (list (begin #28="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (hashtab-get the-store (make-simtok (quote K_3) 0)) (let ((new (+ (quote 1) (let ((exttokobj (hashtab-get the-store (make-simtok (quote K_3) 0)))) (if exttokobj (vector-ref exttokobj 1) . #29=(#f)))))) (begin (let ((exttokobj (hashtab-get the-store (make-simtok (quote K_3) 0)))) (if exttokobj (vector-set! exttokobj 1 new) (warning #30=(quote ext-set!) #31="token not present: ~a" (quasiquote (K_3 . subtok))))) new)) (begin #32="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote K_3) 0) (list (quote 11) (void)) . #33=(current-vtime))) . #34=((simobject-local-msg-buf this)))) (quote 1))))) (begin #35="Do the actual token object (closure) allocation.  Capture freevars:" (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote K_3) kind_4) (list (quote 11)) . #33#)) . #34#)) #36="Return the name of this continuation object:" (make-simtok (quote K_3) kind_4)))) (quote 4)) . #33#)) . #34#)) . #27#)))))) (K_3 (lambda #0# (let ((flag #1#) (fv0 #1#)) (let #2# (if (< numvals 2) (warning #3# #4# (quote K_3) (list-tail (quote #37=(flag fv0)) . #6#))) (if (> numvals 2) (error #7# #8# (quote K_3) vals (quote #37#))) (if #9# (set! flag . #10#) (begin (set! flag . #11#) . #12#)) (if #9# (set! fv0 . #10#) (begin (set! fv0 . #11#) . #12#)) #13# (let* (#14# (simtok-obj (make-simtok (quote K_3) . #15#)) . #16#) #17# #18# (let #19# (if #20# (begin #21# #22# (set! tokobj (vector 0 0)) . #23#)) #24# #25# (if (= flag (quote 11)) (if (= subtokind (quote 0)) (void) (void)) (begin (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote tok1) 0) (list (begin #28# (let ((kind_2 (if (hashtab-get the-store (make-simtok (quote K_1) 0)) (let ((new (+ (quote 1) (let ((exttokobj (hashtab-get the-store (make-simtok (quote K_1) 0)))) (if exttokobj (vector-ref exttokobj 1) . #29#))))) (begin (let ((exttokobj (hashtab-get the-store (make-simtok (quote K_1) 0)))) (if exttokobj (vector-set! exttokobj 1 new) (warning #30# #31# (quasiquote (K_1 . subtok))))) new)) (begin #32# (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote K_1) 0) (list (quote 11) (void)) . #33#)) . #34#)) (quote 1))))) (begin #35# (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object (make-simtok (quote K_1) kind_2) (list (quote 11) fv0) . #33#)) . #34#)) #36# (make-simtok (quote K_1) kind_2)))) (quote 3)) . #33#)) . #34#)) (hashtab-remove! the-store (make-simtok (quote K_3) subtokind)))) . #27#)))))) (K_1 (lambda #0# (let ((flag #1#) (fv0 #1#)) (let #2# (if (< numvals 2) (warning #3# #4# (quote K_1) (list-tail (quote #38=(flag fv0)) . #6#))) (if (> numvals 2) (error #7# #8# (quote K_1) vals (quote #38#))) (if #9# (set! flag . #10#) (begin (set! flag . #11#) . #12#)) (if #9# (set! fv0 . #10#) (begin (set! fv0 . #11#) . #12#)) #13# (let* (#14# (simtok-obj (make-simtok (quote K_1) . #15#)) . #16#) #17# #18# (let #19# (if #20# (begin #21# #22# (set! tokobj (vector 0 0 (quote 0))) . #23#)) #24# #25# (if (= flag (quote 11)) (if (= subtokind (quote 0)) (void) (begin (vector-set! tokobj 2 fv0))) (begin (printf (quote "result ~a") (+ (vector-ref tokobj 2) fv0)) (hashtab-remove! the-store (make-simtok (quote K_1) subtokind)))) . #27#)))))) (tok1 (lambda #0# (let ((k_58 #1#) (x #1#)) (let #2# (if (< numvals 2) (warning #3# #4# (quote tok1) (list-tail (quote #39=(k_58 x)) . #6#))) (if (> numvals 2) (error #7# #8# (quote tok1) vals (quote #39#))) (if #9# (set! k_58 . #10#) (begin (set! k_58 . #11#) . #12#)) (if #9# (set! x . #10#) (begin (set! x . #11#) . #12#)) #13# (let* (#14# (simtok-obj (make-simtok (quote tok1) . #15#)) . #16#) #17# #18# (let #19# (if #20# (begin #21# #22# (set! tokobj (vector 0)) . #23#)) #24# #25# (set-simobject-local-msg-buf! this (cons (make-simevt #f (bare-msg-object k_58 (list (quote 99) (+ x (quote 1000))) . #33#)) . #34#)) . #27#))))))) (let ((dyndispatch_table (make-default-hash-table))) (begin (void) (hashtab-set! dyndispatch_table (quote SOC-return-handler) SOC-return-handler) (hashtab-set! dyndispatch_table (quote node-start) node-start) (hashtab-set! dyndispatch_table (quote SOC-start) SOC-start) (hashtab-set! dyndispatch_table (quote K_3) K_3) (hashtab-set! dyndispatch_table (quote K_1) K_1) (hashtab-set! dyndispatch_table (quote tok1) tok1)) (lambda (msgob current-vtime) (mvlet (((name subtok) (let ((tok (msg-object-token msgob))) (values (simtok-name tok) (simtok-subid tok))))) (let ((handler (hashtab-get dyndispatch_table name))) (if (not handler) (error (quote node-code) "dyndispatch: no handler for token name: ~a in table: ~n~a" name dyndispatch_table)) (apply handler current-vtime subtok (msg-object-args msgob)))))))))
-
-
-)
-	 'outport prt)
-	(display ")" prt)
-	(read (open-input-string (get-output-string prt))))
-      (result 2007)]
+      foo]	
 
 )
