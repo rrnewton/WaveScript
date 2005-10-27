@@ -5,7 +5,7 @@
 ;; This uses "proc" to refer to "processor", as in "node", which is a bit confusing.
 
 (module graphics_stub mzscheme	
-  (provide draw-procs draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
+  (provide draw-network draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
 	   get-state these-tests test-this testgraphics
 	   clear-buffer)
   
@@ -49,7 +49,7 @@
 
   (define (clear-buffer) ((plt:clear-viewport the-win)))
 
-  (define (draw-procs procs)
+  (define (draw-network procs)
     (map draw-proc procs))
     
     ;    ((draw-viewport the-win) (make-rgb 0 0 0))
@@ -194,7 +194,7 @@
       ["You should see three \"processors\""
        (begin (require "basic_graphics.ss")
               (init-graphics)
-              (let ((x (draw-procs '((10 20) (50 50) (30 10)))))
+              (let ((x (draw-network  '((10 20) (50 50) (30 10)))))
                 (sleep 0.3)
                 (close-graphics)
                 x))

@@ -30,11 +30,11 @@
 
 	 simalpha-outer-radius
 	 simalpha-inner-radius
-	 simalpha-ensure-connected
+	 simalpha-placement-type
 	 simalpha-world-xbound
 	 simalpha-world-ybound
 	 simalpha-channel-model
-	 simalpha-failure-mode
+	 simalpha-failure-model
          
          simalpha-dbg-on
          SCHEDULE_DELAY

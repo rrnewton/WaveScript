@@ -61,8 +61,8 @@
   [buffered-aggr (x y)
      (stored [buffer (make-vector 5 0)])
 
-     (if (not x) y
-	 (if (not y) x
+     (if (not x) (return y)
+	 (if (not y) (return x)
 	     (let ([span1 (car x)] [v1 (cadr x)]
 		   [span2 (car y)] [v2 (cadr y)])
 					;(printf "Aggr: ~a ~a\n" (subcall span-length span1) (subcall span-length span2))
@@ -79,8 +79,8 @@
 		       )
 	       (return (list (list (min (car span1) (car span2))
 				   (max (cadr span1) (cadr span2)))
-			     (append v1 v2))
-		       ))))
+			     (append v1 v2)))
+	       )))
      ]
   [span-length (s) (return (- (cadr s) (car s)))]
 

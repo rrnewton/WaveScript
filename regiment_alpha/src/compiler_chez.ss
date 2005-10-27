@@ -265,7 +265,7 @@
  (begin 
    (define-syntax ig (identifier-syntax (init-graphics))) ;; shorthand
    (define-syntax cg (identifier-syntax (close-graphics))) ;; shorthand
-   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
+;   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
    (define-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
    ))
 

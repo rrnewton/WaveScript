@@ -231,17 +231,16 @@
 	    (match expr
 ;	     [,x (guard (begin (display-constrained "\n  Loop: " (list x 50) "\n")
 ;;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
-;			       #f)) 3]		   
-	     [,const (guard (constant? const)) 
-		     (pvk `(quote ,const))]
+;			       #f)) 3]
+	     [,const (guard (constant? const)) (pvk const)]
 	     [(quote ,const) (pvk `(quote ,const))]
 	     [,var (guard (symbol? var)) (pvk var)]
 	     [(set! ,v ,expr)
 	      (loop expr (lambda (e) (pvk `(set! ,v ,e))))]
-	     [(tok ,tok) (pvk `(tok ,tok))]
+;	     [(tok ,tok) (pvk `(tok ,tok))]
 	     [(tok ,tok ,n) (guard (number? n))
 	      (pvk `(tok ,tok ,n))]
-	     [(tok ,tok ,expr) 
+	     [(tok ,tok ,expr)
 	      (loop expr
 		    (lambda (e) (pvk `(tok ,tok ,e))))]
 	     [(ext-ref ,tok ,var) (pvk `(ext-ref ,tok ,var))]
@@ -250,7 +249,9 @@
 		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
              [(begin) (pvk '(void))]
 	     [(begin ,x) (loop x pvk)]
+
 	     ;; This does blatantly invalid lifts!! FIXME??
+	     ;; [2005.10.26]  Huh?  How?
 #;	     [(begin ,x ,y ...)
 	      (loop x 
 		    (lambda (e) 
@@ -258,12 +259,13 @@
 		       `(begin ,e
 			       ,(loop `(begin ,@y)
 				      (lambda (e2) (pvk (make-begin `(begin ,e2)))))))))]
-	     [(begin ,x ,y ...)
-	      (loop x 
-		    (lambda (e1) 
-		      (loop `(begin ,@y)
-			    (lambda (e2) (pvk (make-begin `(begin ,e1 ,e2)))))))]
-
+	    [(begin ,x ,y ...)
+	     (loop x 
+		   (lambda (e1)
+		     (pvk
+		      (make-begin `(begin ,e1 
+					  ,(loop `(begin ,@y)
+						 (lambda (e2) (make-begin `(begin ,e2)))))))))]
 
 	     ;; Alright, let's think through conditionals:
 	     
@@ -308,7 +310,7 @@
 		 (lambda (r)
 		   (loop body
 			 (lambda (b)
-			   (pvk `(let ([,lhs ,r]) ,b))))))]
+			   (pvk `(,lettype ([,lhs ,r]) ,b))))))]
 	     
 	     [(subcall ,tok ,args ...)
 	      (let* ([valvar (unique-name 'HOLE)]
@@ -361,13 +363,12 @@
 		      (loop-list args* 
 				 (lambda (ls) (pvk `(timed-call ,time ,e2 ,NULLK ,@ls))))))]
 
-
 	     [(kcall ,t ,v)
 	      (loop t
 		    (lambda (t)
 		      (loop v
 			    (lambda (v)
-			      `(kcall ,t ,v)))))]
+			      (pvk `(kcall ,t ,v))))))]
 
 
 	     [(leds ,what ,which) (pvk `(leds ,what ,which))]
@@ -516,10 +517,11 @@
 	   (let ([returntoks (map car returntokbinds)])
 	   ;; Verify that the return toks have valid returns:
 	   (for-each (lambda (x) 
-		       (if (not (valid-returns? (tb->body x)))
-			   (error 'cps-tokmac 
-				  "token handler(s) does not have a 'return' statement on all code paths: ~a"
-				  x)))
+		       (unless (valid-returns? (tb->body x))
+			 (pretty-print x)
+			 (error 'cps-tokmac 
+				"token handler(s) ^^^ does not have a 'return' statement on all code paths: \n~s"
+				x)))
 		     returntokbinds)
              (let ([subonly (difference subcalledtoks returntoks)]
 		   [retonly (difference returntoks subcalledtoks)])
@@ -565,13 +567,26 @@
 	   (let ([newtbs (map kify-tokbind returntokbinds)]
 		 ;; Inefficient:
 		 [oldtbs (filter (lambda (tb) (not (memq (car tb) returntoks))) nodetoks)])
-	     ;; Next we process all tokbinds to expand out subcalls:
-	     `(,lang '(program (bindings ,constbinds ...)
-			  (nodepgm (tokens 
-				       ,@(process-tokbinds (append oldtbs newtbs) 
-							   ;; Pass tainted toks:
-							   returntoks)))))
-	     )))]))
+
+	     (let ((final 
+		    ;; Next we process all tokbinds to expand out subcalls:
+		    `(,lang '(program (bindings ,constbinds ...)
+			       (nodepgm (tokens 
+					    ,@(process-tokbinds (append oldtbs newtbs) 
+								;; Pass tainted toks:
+								returntoks)))))))
+	       (DEBUGMODE ;; If we're in debug mode, let's make sure the pass had no effect on non-subcall programs.
+		(and (not (deep-assq 'subcall prog))
+		     (not (equal? prog final))
+		     (begin (printf "Input: \n")
+			    (set-top-level-value! 'a prog)
+			    (pretty-print prog)
+			    (printf "Output: \n")
+			    (set-top-level-value! 'b final)
+			    (pretty-print final)
+		     (error 'cps-tokmac "BUG: Changed input program ^^^ (bound to 'a', output bound to 'b') even though it had no subcalls."))))
+	       final
+	       ))))]))
 ))
 
 
@@ -580,7 +595,7 @@
 	 [(tokens ,tbs ...)
 	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens ,@tbs)))))]
 	 [,expr
-	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought () ,expr))))))]))
+	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought subtokid () (stored) ,expr))))))]))
 
 ;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
 (set! these-tests
@@ -716,13 +731,38 @@
      1]
     
     ["Make sure we don't lift begin clauses out in an inappropriate way."
-     (car (reverse
-	   (deep-assq 'tok1 (cps-tokmac 
+     (let ((result (cps-tokmac 
 			     (cleanup-token-machine 
 			      '(tokens 
-				[tok1 () (let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))]))))))
+				[tok1 () (let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))]
+				[tok2 (x) (call (tok tok2 0) (begin '88 '99))]
+				)))))
+       (list (car (reverse (deep-assq 'tok1 result)))
+	     (car (reverse (deep-assq 'tok2 result)))))
      ;; Should be unchanged:
-     (let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))]
+     ((let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))
+      (call (tok tok2 0) (begin '88 '99)))]
+
+    ["Make sure we do extract subcalls from begin contexts appropriately."
+     (match (deep-assq 'begin (cps-tokmac (cleanup-token-machine 
+					   '(tokens       
+						[tok1 () (begin '1 (subcall tok1) '2 (return '3))]))))
+       [(begin '1 (call ,',tok (lambda ,',_ ...))) #t])
+     #t]
+
+    ["Look at how we treat lets."
+     (match (deep-assq 'let 
+		       (cps-tokmac 
+			 (cleanup-token-machine 
+			  '(tokens 
+			       [SOC-start () (soc-return (subcall tok1))]
+			     [tok1 () (let ((y '3)) (let ((x y)) (return (+ x y))))]))))
+       ;; Lame unquote quote unquote!!
+       [(let ([y ,',_]) (let ([x ,',__]) ,',b)) #t]
+       [,',else #f])
+     #t]
+
+    
          
    )))
 

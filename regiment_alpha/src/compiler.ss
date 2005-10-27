@@ -287,7 +287,7 @@
 		     cleanup-token-machine 
 		     desugar-let-stored
 		     rename-stored  
-  		     ; cps-tokmac
+		     cps-tokmac
 		     ;  closure-convert      
 		     ;cleanup-token-machine
 		     )])
@@ -297,7 +297,7 @@
 		   (let ((prt (open-output-string)))
 		     (display "(" prt)
 		     (let ((result (run-simulator-alpha prog 
-					'timeout 10000
+					;'timeout 10000
 					;'outport prt
 							)
 				   ))
@@ -380,7 +380,8 @@
 ;		     rename-stored         ; cps-tokmac
 ;;		     closure-convert        ;cleanup-token-machine
 		     )])
-		 (let ([prog (run-compiler ',tm )])
+		 (let ([prog (run-compiler ',tm 
+					   )])
 		   (profile-clear) ;; Temp: profiling the simulator:
 		   (let ((result (run-simulator-alpha prog 
 					;'timeout 10000
