@@ -66,11 +66,7 @@
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
 ;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
 
-;; [2005.09.27] Disabling this, don't need it without simulator_nought
 ;(define random #%random)
-;;;; [2004.06.28] Moving this here, hope that works:
-;(include "../depends/slib/chez.init")  ;; Freeing myself of slib [2005.10.19]
-;(require 'tsort) ;; for the simulator: 
 
 (include "generic/constants.ss")
 
@@ -78,7 +74,8 @@
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
 ;; therefore we don't need to change directories.
 ;(eval-when (compile eval) (cd "chez"))
-(include "chez/hash.ss") (import hash) ;; TEMPORARY
+(include "chez/hash.ss") (import hashfun) ;; TEMPORARY
+(include "chez/hashtab.ss") (import hashtab)
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
 

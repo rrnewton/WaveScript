@@ -48,8 +48,8 @@
 
 
 [define (sim-light-up r g b)
-  ;((sim-debug-logger) "~n~a: light-up ~a ~a ~a" (node-id (simobject-node (current-simobject))) r g b)
-  (logger "~n~a: light-up ~a ~a ~a" (node-id (simobject-node (current-simobject))) r g b)
+  ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
+  (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (IF_GRAPHICS ;; Fizzle if graphics is not enabled.
    (if (simobject-gobj (current-simobject))       
        (change-color! (simobject-gobj this) (rgb r g b))
@@ -64,11 +64,11 @@
             [(red)   '(255 0 0)]
             [(green) '(0 255 0)]
             [(blue)  '(0 0 255)]
-            [else (error 'sim-leds "bad color: ~a" which)])]
+            [else (error 'sim-leds "bad color: ~s" which)])]
          ;; INCOMPLETE:
          ;	     [oldcolors '(0 0 0)]
          )
-    (let ((string (format "~a: (time ~s) (Leds: ~a ~a ~a)~n" 	
+    (let ((string (format "~s: (time ~s) (Leds: ~s ~s ~s)~n" 	
                           (node-id (simobject-node (current-simobject))) (cpu-time) which what
                           (case what
                             [(on) 
@@ -90,7 +90,7 @@
                                    (apply sim-light-up colors)
                                    "on")
                                  )]
-                            [else (error 'sim-leds "bad action: ~a" what)]))))
+                            [else (error 'sim-leds "bad action: ~s" what)]))))
       ;((sim-debug-logger) string)
       (logger string)
       ))]
@@ -119,7 +119,7 @@
            (expt (- (cadr a) (cadr b)) 2)))]
 
 [define (simulator-soc-return x)
-  (printf "~n  SOCRETURN(t=~a) ~a ~n" 
+  (printf "~n  SOCRETURN(t=~s) ~s ~n" 
 	  (simworld-vtime (simobject-worldptr (current-simobject)))
 	  x)
   (soc-return-buffer (cons x (soc-return-buffer)))]
@@ -165,7 +165,7 @@
 	      (symbol? (simtok-name token)) ;(symbol? (car token))
 	      (number? (simtok-subid token)) ;(number? (cdr token))
 	      (vector? tokobj))
-	 (error 'check-store "Bad token store at entry: key:~a, token:~a, tokobj: ~n~a" key token tokobj))))
+	 (error 'check-store "Bad token store at entry: key:~s, token:~s, tokobj: ~n~s" key token tokobj))))
    tokstore)]
 
 ;======================================================================
