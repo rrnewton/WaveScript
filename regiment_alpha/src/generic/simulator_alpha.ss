@@ -86,7 +86,7 @@
   (cond 
    [(simobject? x) (= BASE_ID (node-id (simobject-node x)))]
    [(node? x)      (= BASE_ID (node-id x))]
-   [else (error base-station? "bad input: ~a" x)]))
+   [else (error base-station? "bad input: ~s" x)]))
 
 (define (id x) x)
 
@@ -158,7 +158,7 @@
   (define (collide?  n1 n2)
     (let ((connectivity ((simalpha-connectivity-function)
 			 (node-pos n1) (node-pos n2))))
-      (if (not (memq connectivity '(0 100))) (printf "connectivity: ~a\n" connectivity))
+      (if (not (memq connectivity '(0 100))) (printf "connectivity: ~s\n" connectivity))
       (not (eqv? 0 connectivity))))
 
   (define (make-random-topology)    
@@ -263,7 +263,7 @@
       [(connected) (make-connected-topology)]
       [(gridlike) (make-gridlike-topology #f)]
       [else (error 'simulator_alpha:fresh-simulation 
-		   "unknown node placement strategy: ~a" (simalpha-placement-type))]))
+		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
   
   ;; Set global parameter:
   ;; This is a function which takes two locations and returns either
@@ -283,7 +283,7 @@
 	 (let ((dist (posdist p1 p2))
 	       (outer (simalpha-outer-radius))
 	       (inner (simalpha-inner-radius)))
-;	   (printf "Considering ~a (~a, ~a) between ~a and ~a\n" dist p1 p2 inner outer)
+;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
 	   (cond
 	    [(< dist inner) 100]
 	    [(> dist outer) 0]
@@ -359,10 +359,10 @@
 
 (define (print-connectivity world)
   (for-each (lambda (row)
-;	      (printf "Bang : ~a \n" (map node-id row))
-	      (printf "~a: ~a\n" (car row)
+;	      (printf "Bang : ~s \n" (map node-id row))
+	      (printf "~s: ~s\n" (car row)
 		      (map (lambda (nbr) 			     
-;			     (printf "Woot ~a ~a ~a ~a \n" 
+;			     (printf "Woot ~s ~s ~s ~s \n" 
 ;				     (node? (car row)) (node? nbr)
 ;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
 ;				     )
@@ -416,11 +416,11 @@
 			  (DEBUGMODE
 			  (if (not (eq? which-tok tokname))
 			      (error 'simulator_alpha:process-statement 
-				     "bad ext-ref: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
+				     "bad ext-ref: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store 
 							 (token->key (make-simtok ',tokname ,subtok)))])
 			     "FOOBAR"
-			     ,(format "Ext-ref of (tok ~a ~a) variable ~a" tokname subtok x)
+			     ,(format "Ext-ref of (tok ~s ~s) variable ~s" tokname subtok x)
 			     (if exttokobj
 				 (vector-ref exttokobj ,(+ 1 pos))
 				 #f)))]
@@ -430,12 +430,12 @@
 			  (DEBUGMODE
 			   (if (not (eq? which-tok tokname))
 			       (error 'compile-simulate-alpha:process-statement 
-				      "bad ext-set to: (ext-ref (~a . ~a) ~a)" tokname subtok x)))
+				      "bad ext-set to: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
 			  `(let ([exttokobj (hashtab-get the-store (token->key (make-simtok ',tokname ,subtok)))])
-			     ,(format "Ext-set! of (tok ~a ~a) variable ~a" tokname subtok x)
+			     ,(format "Ext-set! of (tok ~s ~s) variable ~s" tokname subtok x)
 			     (if exttokobj
 				 (vector-set! exttokobj ,(+ 1 pos) ,e)
-				 (warning 'ext-set! "var ~a: token not present: ~a" ',x `(,tokname . subtok))
+				 (warning 'ext-set! "var ~s: token not present: ~s" ',x `(,tokname . subtok))
 				 )))]
 
 		  ;; Local tokstore-reference:
@@ -443,11 +443,11 @@
                     (mvlet ([(which-tok pos) (find-which-stored x)])
                            (if (not (eq? which-tok current-handler-name))
                                (error 'compile-simulate-alpha:process-statement 
-				      "bad local stored-ref: ~a actually belongs to ~a not ~a" 
+				      "bad local stored-ref: ~s actually belongs to ~s not ~s" 
 				      x which-tok current-handler-name))
                            ;; 'tokobj' is already bound to our token object
 			   `(begin 
-			     ,(format "Local Stored Ref of variable: ~a" x)
+			     ,(format "Local Stored Ref of variable: ~s" x)
 			     "We add one to the position because zeroth is the invocation counter."
 			     (vector-ref tokobj ,(+ 1 pos))))]
 
@@ -527,7 +527,7 @@
 					(equal? ,tok simtok)
 					(begin 	       
 					  (if (regiment-verbose)
-					  (DEBUGMODE (printf "Wow! we actually found the answer to ~a\n"
+					  (DEBUGMODE (printf "Wow! we actually found the answer to ~s\n"
 							     "token-scheduled? in the scheduler-queue!")))
 					  #t)
 					) ;; If so is it the token in question?
@@ -573,10 +573,10 @@
 			  (DEBUGMODE
 			   (if (not (eq? which-tok current-handler-name))
 			       (error 'compile-simulate-alpha:process-statement 
-				      "(set!) bad local stored-ref: ~a actually belongs to ~a not ~a" 
+				      "(set!) bad local stored-ref: ~s actually belongs to ~s not ~s" 
 				      v which-tok current-handler-name)))
 			  `(begin 
-			     ,(format "Local Stored Set! of variable: ~a" v)
+			     ,(format "Local Stored Set! of variable: ~s" v)
 			     (vector-set! tokobj ,(+ 1 pos) ,rhs)))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
@@ -655,7 +655,7 @@
 		[(,prim ,[rand*] ...)
 		 (guard (or (token-machine-primitive? prim)
 			    (basic-primitive? prim)))
-;		 (printf "Prim : ~a\n" prim)
+;		 (printf "Prim : ~s\n" prim)
 		 (let ((entry (assq prim prim-substs)))
 		   (if entry
 		       `(,(cadr entry) ,rand* ...)
@@ -675,7 +675,7 @@
 		       (tmp2 (unique-name 'tmprands)))
 		   `(let ((,tmp ,rator)
 			  (,tmp2 (list ,@rand*)))
-		      ;(printf "Kcall ~a ~a ..\n" ,tmp ,tmp2)
+		      ;(printf "Kcall ~s ~s ..\n" ,tmp ,tmp2)
 		      (if (eq? ,tmp ,NULLK)
 			  "kcall fizzles."
 			  (apply ,tmp ,tmp2))))]
@@ -688,7 +688,7 @@
 		   (guard (not (token-machine-primitive? rator))
 			  (not (memq rator '(emit bcast call timed-call activate relay return))))
 		   (warning 'simulator_alpha.process-expr
-			    "arbitrary rator applied: ~a" rator)
+			    "arbitrary rator applied: ~s" rator)
 		   `(,(process-expr rator) ,rand* ...)]
 		
 		[,otherwise (error 'simulator_alpha.process-expr 
@@ -703,7 +703,7 @@
 		       (cons (car bind)
 			     (simalpha-free-vars (cadr bind))))
 		     binds)]
-	 [flat (reverse (topological-sort graph eq?))]
+	 [flat (reverse (topological-sort graph ))];eq?))]
 	 [newbinds 
 	  (map (lambda (sym) 
 		 (let ([bind (assq sym binds)])
@@ -756,10 +756,10 @@
 
  			      (if (< numvals ,(length args))
 				  (if (simalpha-padding-warning)
-				      (warning 'simulator-alpha "executing ~a padding args ~a with zero." 
+				      (warning 'simulator-alpha "executing ~s padding args ~s with zero." 
 					       ',tok (list-tail ',args numvals))))
  			      (if (> numvals ,(length args))
- 				  (error 'simulator-alpha "executing ~a, got excess vals ~a for args ~a"					 
+ 				  (error 'simulator-alpha "executing ~s, got excess vals ~s for args ~s"					 
  					   ',tok vals ',args))
 ; 			      (begin 
  				,@(map (lambda (arg)
@@ -828,7 +828,7 @@
 		       (if (= ',BASE_ID (my-id))
 			   (simulator-soc-return socrethandlerval)				  
 			   (error 'SOC-return-handler
-				  "ran on non-base node! id: ~a"
+				  "ran on non-base node! id: ~s"
 				  (my-id)))]
 		   nodetoks))
 
@@ -854,7 +854,7 @@
 ; 			      (if (eq? ,BASE_ID (node-id (simobject-node this)))
 ; 				  (simulator-soc-return x)				  
 ; 				  (error 'SOC-return-handler
-; 					 "ran on non-base node! id: ~a"
+; 					 "ran on non-base node! id: ~s"
 ; 					 (node-id (simobject-node this)))))]
 ; 			  tbinds))
 	 (let ((node-code
@@ -894,13 +894,13 @@
 					  (simtok-subid tok)))])
 			      (let ([handler (hashtab-get dyndispatch_table name)])
 				
-;				(fprintf (current-error-port) "Dyndispatch: ~a in table: " name)
-;				(hashtab-for-each (lambda (name _) (fprintf (current-error-port) "~a " name)) dyndispatch_table)
+;				(fprintf (current-error-port) "Dyndispatch: ~s in table: " name)
+;				(hashtab-for-each (lambda (name _) (fprintf (current-error-port) "~s " name)) dyndispatch_table)
 ;				(newline (current-error-port))
 
 				(if (not handler)
 				    (error 'node-code
-					   "dyndispatch: no handler for token name: ~a in table: ~n~a" name dyndispatch_table))
+					   "dyndispatch: no handler for token name: ~s in table: ~n~s" name dyndispatch_table))
 				;; Invoke:
 				(apply handler current-vtime subtok 
 				       (msg-object-args msgob))
@@ -920,7 +920,7 @@
 	      
 	 )]
       [,otherwise (error 'compile-simulate-alpha
-			 "unmatched input program: ~a" prog)])))
+			 "unmatched input program: ~s" prog)])))
 
 
 ;; ======================================================================
@@ -993,27 +993,27 @@
 		      [(numnodes ,n . ,rest)
 		       (if (not (integer? n))
 			   (error 'run-simulator-alpha
-				  "'numnodes switch should be followed by an integer, not: ~a" n))
+				  "'numnodes switch should be followed by an integer, not: ~s" n))
 		       (parameterize ([simalpha-num-nodes n])
 			 (read-params rest))]
 		      [(outport ,p . ,rest)
 		       (if (not (output-port? p))
 			   (error 'run-simulator-alpha
-				  "'outport switch should be followed by a port object, not: ~a" p))
+				  "'outport switch should be followed by a port object, not: ~s" p))
 		       (parameterize ([simalpha-output-port p])
 			 (read-params rest))]
 		      [(srand ,n . ,rest)
 ;		       (if (not (integer? n))
 ;			   (error 'run-simulator-alpha
-;				  "'srand switch should be followed by an integer, not: ~a" n))
-		       (printf "Setting up random number generator for simulator.  Srand: ~a\n" n)
+;				  "'srand switch should be followed by an integer, not: ~s" n))
+		       (printf "Setting up random number generator for simulator.  Srand: ~s\n" n)
 		       (let ([stored-state #f])
 			 (dynamic-wind
 			     (lambda () (set! stored-state (reg:get-random-state)))
 			     (lambda () (read-params rest))
 			     (lambda () (reg:set-random-state! stored-state))))
 		       ]
-		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~a" other)]
+		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
     ;; Reset global message counter:
     (set! simalpha-total-messages 0)
@@ -1046,10 +1046,10 @@
 		(if (inexact? stop-time)
 		    ;; It's in seconds:
 		    (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
-		      (printf "Stopping after ~a seconds.~n" stop-time)
+		      (printf "Stopping after ~s seconds.~n" stop-time)
 		      (lambda (_) (>= (cpu-time) end-time)))
 		    ;; Otherwise, vtime:
-		    (begin (printf "Stopping after vtime ~a.~n" stop-time)
+		    (begin (printf "Stopping after vtime ~s.~n" stop-time)
 			   (lambda (t) (>= t stop-time))))))]
 	 [sim (fresh-simulation)])
 
@@ -1069,7 +1069,7 @@
   (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
 		 [simulation-logger-count (IFDEBUG 0 #f)]
 		 [escape-alpha-sim exitk])
-		(printf "Running simulator alpha (~a version) (logfile ~s)" 
+		(printf "Running simulator alpha (~s version) (logfile ~s)" 
 			(if simple-scheduler 'simple 'full)
 			logfile)
 		(DEBUGMODE (display " with Debug-Mode enabled"))
@@ -1080,14 +1080,17 @@
 	(DEBUGMODE
 	 (set! global-graph (simworld-graph sim)))
 
-	;(printf "Starting!  Local: ~a~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
+	;(printf "Starting!  Local: ~s~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
 	;; Redirect output to the designated place:
 	(let ((old-output-port (current-output-port)))
-	  (parameterize ((current-output-port
-			(if (simalpha-output-port)
-			    (begin (printf "~n!!!  Redirecting output to port: ~a  !!!~n" (simalpha-output-port))
-				   (simalpha-output-port))
-			    (current-output-port))))
+	  (parameterize ([current-output-port
+			  (if (simalpha-output-port)
+			      (begin (printf "~n!!!  Redirecting output to port: ~s  !!!~n" (simalpha-output-port))
+				     (simalpha-output-port))
+			      (current-output-port))]
+			 ;; Just to be safe I'm resetting this here.  Don't want to freeze on any print statements! -[2005.10.26] 
+			 [print-graph #t]
+			 )
   	    (if simple-scheduler
 		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
 		; [2005.09.30] Disabling for now, not loading the full scheduler:
@@ -1100,7 +1103,7 @@
     (if (simulation-logger) (close-output-port (simulation-logger)))))
   ;; Out of let/cc:
   (let ((result (reverse (soc-return-buffer))))
-    (printf "~nTotal globally returned values:~n ~a~n" result)
+    (printf "~nTotal globally returned values:~n ~s~n" result)
     result))
   
   ))
@@ -1147,7 +1150,7 @@
 	(nodepgm 
 	 (tokens
 	  [SOC-start () (stored) (display "S")]
-	  [node-start () (stored) ];(begin (printf "N~a" (simobject-I-am-SOC this)) (call tok1))]
+	  [node-start () (stored) ];(begin (printf "N~s" (simobject-I-am-SOC this)) (call tok1))]
 	  [tok1 () (stored) (begin (display ".") (bcast tok2 " "))]
 	  [tok2 (x) (stored) (display x)]
 	 ))))
@@ -1158,7 +1161,7 @@
 ))
 
 #;    (compile-simulate-alpha 
-     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtok_ind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtok_ind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtok_ind)))))) (K_1 subtok_ind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~a") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
+     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtok_ind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtok_ind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtok_ind)))))) (K_1 subtok_ind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~s") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
 
 
 (define testsalpha (map (lambda (test)

@@ -8,9 +8,7 @@
 	  ;; For plt compat:
 	  foldl
 
-	  make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
-	  make-n-list
-	  id
+	  make-n-list  id
 	  substring? periodic-display all-equal?
 
 	  with-error-handlers with-warning-handler
@@ -117,52 +115,6 @@
 ;     (begin 
 ;       (call-with-values
 		
-;; ========================================  
-;; This defines a *simple* and unified interface into hash-tables.
-;; It assumes *equal?* type key equivalence!
-;; It returns #f for a failed hashtab-get (which is sloppy, but that's slib)
-
-;; First we require hash-tables from slib:
-#;(begin
-  (define ___ (require 'hash-table))
-  (define (make-default-hash-table) (make-hash-table 5)) ;50))
-  (define hashtab-get (hash-inquirer equal?))
-  (define hashtab-set! (hash-associator equal?))
-  (define hashtab-for-each hash-for-each)
-  (define hashtab-remove! (hash-remover equal?)))
-
-;; [2005.10.18]
-;; Switching this to chez's native hash tables rather than slib's:
-(begin
- (define make-default-hash-table #%make-hash-table)
- (define hashtab-remove! #%remove-hash-table!)
- (define (hashtab-for-each f ht) (#%hash-table-for-each ht f))
- (IFDEBUG  
-  (begin
-    (define (hashtab-get ht k)
-      (if (not (immediate? k)) (error 'hashtab-get "this key is not an atom: ~s" k))
-      (#%get-hash-table ht k #f))
-    (define (hashtab-set! ht k v)
-      (if (not (immediate? k)) (error 'hashtab-set! "this key is not an atom: ~s" k))
-      (#%put-hash-table! ht k v)))
-  (begin 
-    (define (hashtab-get ht k) (#%get-hash-table ht k #f))
-    (define hashtab-set! #%put-hash-table!)))
- )
-
-;; This is implementation specific, these are the types for which eq? <=> equal?
-(define (immediate? x)
-  (or (fixnum? x) 
-      ; (flonum? x) ;; Floats don't follow eq? properly.
-      ; (char? x)   ;; Chars don't follow eq? properly.
-      (symbol? x)
-      (null? x)
-      (boolean? x)
-      ))
-      
-;; ========================================  
-
-
 
  ;; [2004.06.13] Matches the function defined in plt, provides
  ;; functionality used by the generic code.

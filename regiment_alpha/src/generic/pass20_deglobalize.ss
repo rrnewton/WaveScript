@@ -385,6 +385,11 @@
     ;; This produces a list of constant bindings, token bindings, and
     ;; a token entry point of zero arguments.  The entrypoint is the
     ;; root, or finally returned edge of the data flow graph...
+
+    ;; [2005.10.27] This was blatantly incorrect before.  It just
+    ;; turned the lazy letrec into a normal let*.  Now I'm making a
+    ;; first attempt to reprocess the lazy-letrec bindings into a
+    ;; valid let* binding using delazy-bindings.
     (define process-letrec
       (lambda (expr)
         (match expr
@@ -397,7 +402,8 @@
 				      (mvlet (((form memb) (token-names body)))
 					     form)
 				      body)
-				  cacc tacc)
+				  (delazy-bindings cacc (list body))
+				  tacc)
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
 			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car heartbeat*) (car rhs*))])
@@ -408,8 +414,141 @@
 		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
 	  )))
 
+(define delazy-bindings
+  (lambda (origbindings otherrefs)
+    ;; Takes a list of (,name ,const), (,name ,name), (,name (,prim ,args ...)), or (,name (if ,x ,y ,z))
+    ;; FIXME: TODO: check for cycles.
+    
+    (define (ref-counts binds)
+      (let ((hash (make-default-hash-table)))
+	;; First take into account any "external" refs to this block of bindings.
+	(for-each 
+	    (lambda (s) (let ((cur (hashtab-get hash s)))
+			  (hashtab-set! hash s (if cur (fx+ 1 cur) 1))))
+	  otherrefs)
+	(for-each (lambda (b)
+		    ;; Make sure there's an entry for every bound symbol:
+		    (if (not (hashtab-get hash (car b))) (hashtab-set! hash (car b) 0))
 
- ;; This produces code for returning a value to the SOC 
+		    (let-match ([(,name ,rhs) b])
+		      (match rhs
+				   [,sym (guard (symbol? sym))
+					 (let ((entry (hashtab-get hash sym)))
+					   (if entry
+					       (hashtab-set! hash sym (fx+ 1 entry))
+					       (hashtab-set! hash sym 1)))]
+				   [(quote ,const) (guard (constant? const)) (void)]
+				   ;; This is node-local code now, check against TML prims:
+				   [(,prim ,[args] ...)
+				    (guard (or (token-machine-primitive? prim)
+					       (basic-primitive? prim)))
+				    (void)]
+				   [(if ,[x] ,[y] ,[z]) (void)]
+				   [,other (error 'deglobalize:delazy-bindings "trying to refcount, bad rhs subexpr: ~s" other)])))
+	  binds)
+	hash))
+
+    (define firstcounts (ref-counts origbindings))
+
+    ;; Simply inline everything that has only one reference:
+    (define substituted-binds
+	(begin ;(hashtab-for-each (lambda (k c) (printf "  Got count: ~s ~s\n" k c)) firstcounts)
+	(let loop ((curbinds origbindings))
+	  (if (null? curbinds) '()
+	      (let-match ([(,name ,rhs) (car curbinds)])
+		;; This inlines varrefs and creates a new rhs:
+		(let ((newrhs (let inner ((xp rhs))
+					 (match xp
+					   [,sym (guard (symbol? sym))
+						 ;(printf "Doing it to ~s... ~s ~s\n" sym (hashtab-get firstcounts sym) (assq sym origbindings))
+						 (if (eq? 1 (hashtab-get firstcounts sym)) ;; Could be #f
+						     (let ((entry (assq sym origbindings)))
+						       (if entry
+							   (inner (cadr (assq sym origbindings)))
+							   ;; Otherwise it's a free variable!  Nothing to do with that.
+							   sym))
+						     sym)]
+					   [(quote ,c) (guard (constant? c)) `(quote ,c)]
+					   [(if ,[x] ,[y] ,[z]) `(if ,x ,y ,z)]
+					   [(,prim ,[args] ...) 
+					    (guard (or (token-machine-primitive? prim)
+						       (basic-primitive? prim)))
+					    `(,prim ,args ...)]
+					   [,other (error 'deglobalize:delazy-bindings 
+							  "trying to inline, bad rhs subexpr: ~s" other)]
+					   ))))
+		  (cons `(,name ,newrhs) 
+			(loop (cdr curbinds)))))))))
+
+    (define newcounts (ref-counts substituted-binds))
+    
+    ;; Now recount the refs and remove anything that is unreferenced.
+    (define pruned-binds
+      (begin ;(hashtab-for-each (lambda (k c) (printf "Got new counts: ~s ~s\n" k c)) newcounts)
+      (filter (match-lambda ((,name ,rhs))
+		;; HACK: FIXME..
+		;; We don't nix it unless WE made it unreferenced via our inlining.
+		(not (and (eq? 0 (hashtab-get newcounts name))
+			  (not (eq? 0 (hashtab-get firstcounts name))))))
+	  substituted-binds)))
+
+    ;; Check if IF is fixed up sufficiently.
+    (for-each (match-lambda ((,name ,rhs))
+		(define (nono rhs)
+		  (match rhs
+		    [,sym (guard (symbol? sym))
+			  ;; Cannot currently delazify this, and we won't generate incorrect code:
+			  (if (assq sym origbindings)
+			      (error 'deglobalize:delazy-bindings
+				     "IF construct currently cannot have lazy references in conseq/altern: reference to ~s in ~s"
+				     sym rhs))]
+		    [(quote ,const) (guard (constant? const)) (void)]
+		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
+						    (basic-primitive? prim))) (void)]
+		    [(if ,[x] ,[y] ,[z]) (void)]))
+		(define (ok rhs)
+		  (match rhs
+		    [,sym (guard (symbol? sym)) (void)]
+		    [(quote ,const) (guard (constant? const)) (void)]
+		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
+						    (basic-primitive? prim))) (void)]
+		    [(if ,[x] ,[nono -> y] ,[nono -> z]) (void)]))
+		(ok rhs))
+      pruned-binds)
+		
+    ;; Check if ordering is satisfied.
+    (let ((edges (map (match-lambda ((,name ,rhs))
+			(apply list name (filter (lambda (v) (assq v pruned-binds))
+					   (tml-free-vars rhs))))
+		   pruned-binds)))
+      (if (cyclic? edges)
+	  (error 'deglobalize:delazy-bindings
+		 "Not allowed to have cycles in node-code let bindings: \n~s"
+		 pruned-binds))
+      
+      ;; Return the appropriately sorted bindings:
+      (map (lambda (v) (assq v pruned-binds))
+	(reverse! (tsort edges))))
+;    pruned-binds
+    ))
+
+
+
+    ;; Conditionals need to assert constraints on the ordering:
+;     (let ((edges ;; Could use hashtable, but this shouldn't get too big. 
+; 	   (map (lambda (bind)
+; 		  (match bind
+; 		    [(,name (if ,x ,y ,z))
+; 		     ;; The test has to happen before the if.
+; 		     ;; And the conseq/altern have to be inlined below or it's not a branch!
+; 		     `((,x ,y))]
+		     
+; 		    [(,name (,prim ,names ...))
+; 		     (filter symbol? names)
+	   
+
+
+;; This produces code for returning a value to the SOC 
  ;; from a particular primitive application.
 (define primitive-return
   (lambda (prim tokname) ;; The tokname is a membership-name
@@ -497,13 +636,13 @@
 
   	 ;; Don't need to make a new token name, the name of this
   	 ;; function is already unique:
-	  [(lambda ,formalexp ,[process-letrec -> entry constbinds tokenbinds])
+	  [(lambda ,formalexp ,[process-letrec -> entry primbinds tokenbinds])
 ;	   (if (not (null? tokenbinds))
 ;	       (error 'deglobalize 
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
 ;		      tokenbinds))	   
 	   (values '() 
-		   (cons `[,name ,formalexp (let* ,constbinds ,entry)];(call ,entry))]
+		   (cons `[,name ,formalexp (let* ,primbinds ,entry)];(call ,entry))]
 			 tokenbinds))]
 
 
@@ -627,6 +766,40 @@
 			     (circ 1.0 _ _ (circle anch '50)))
 			    circ))))
      unspecified]
+
+
+    ["Test delazy-bindings #1"
+     (,delazy-bindings '((fooobo '3985) (barbar fooobo)) '(barbar))
+     ((barbar '3985))]
+
+    ["Test dalazy-bindings #2."
+     (,delazy-bindings '((result_369 (if tmpbasic_373 '0 tmpbasic_376))
+			 (tmpbasic_373 (= tmpbasic_372 '0))
+			 (tmpbasic_372 (cdr v_364))
+			 (tmpbasic_376 (/ tmpbasic_375 tmpbasic_374))
+			 (tmpbasic_375 (car v_364)) 
+			 (tmpbasic_374 (cdr v_364))
+			 (fooobo '3985) )
+		       '(result_369 fooobo))
+     ([result_369 (if (= (cdr v_364) '0) '0 (/ (car v_364) (cdr v_364)))]
+      [fooobo '3985])]
+
+    ["Test delazy-bindings #3"
+     (,delazy-bindings '((a '1) (b a) (c a)) '(c))
+     ((a '1) (b a) (c a))
+     ;((a '1) (c a))  ;; This depends on my nasty hack above...
+     ]
+
+    ["Test delazy-bindings #4"
+     (,delazy-bindings '((a b) (b a)) '(a b))
+     error]
+    ["Test delazy-bindings #5"
+     (,delazy-bindings '((a b) (b a)) '(a))
+     error]
+
+    ["Test delazy-bindings #6 (w free vars)"
+     (,delazy-bindings '((result_7 (+ a_5 b_4))) '(result_7))
+     ((result_7 (+ a_5 b_4)))]
 
 
 ;[2004.08.03] Eliminating for now... might bring it back later...

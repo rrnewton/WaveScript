@@ -39,7 +39,7 @@
     (let ((queue (get-queue)))
       (if (null? queue)
 	  (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-      (logger 3 "~a Popped off action: ~a at vtime ~a ~n"
+      (logger 3 "~s Popped off action: ~s at vtime ~s ~n"
 	      (pad-width 5 (simevt-vtime (caar queue)))
 	      (msg-object-token (simevt-msgobj (caar queue)))
 	      (simevt-vtime (caar queue)))
@@ -55,7 +55,7 @@
     (DEBUGMODE     
      (for-each (lambda (ne)
 		 (if (and (simevt-vtime ne) (< (simevt-vtime ne) vtime))
-		     (logger 0 "ERROR: Scheduled event has time in past (now ~a): ~a~n"
+		     (logger 0 "ERROR: Scheduled event has time in past (now ~s): ~s~n"
 			     vtime
 			     (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
 	       newevnts))
@@ -71,10 +71,10 @@
 	      #;
 	      (DEBUGMODE
 	       (let ((current-times (map simevt-vtime (map car (get-queue)))))
-		 ;(fprintf (console-output-port) "~a\n\n" current-times )
+		 ;(fprintf (console-output-port) "~s\n\n" current-times )
 		 (if (not (equal? current-times (sort < current-times)))
 		     (error 'run-alpha-simple-scheduler
-			    "Queue was in an invalid state at time ~a:  events not in order:\n ~a"
+			    "Queue was in an invalid state at time ~s:  events not in order:\n ~s"
 			    current-vtime current-times))))
 	      #;
 	      (DEBUGMODE
@@ -84,7 +84,7 @@
 			 (map simevt-vtime (map car 
 						(merge lessthan (sort lessthan pairedevnts) (get-queue))))))
 		   (error 'run-alpha-simple-scheduler 
-			  "Something is wrong with merge or evntlessthan: merged in ~a and \n ~a \n not same as : \n ~a\n"
+			  "Something is wrong with merge or evntlessthan: merged in ~s and \n ~s \n not same as : \n ~s\n"
 			  (map simevt-vtime (map car pairedevnts))
 			  (map simevt-vtime (map car 
 			       (sort lessthan (append pairedevnts (get-queue)))))
@@ -92,9 +92,9 @@
 			       (merge lessthan pairedevnts (get-queue)))))))
 			  
 
-	      ;(printf "Woot: ~a\n" (map simevt-vtime (map car (get-queue))))
+	      ;(printf "Woot: ~s\n" (map simevt-vtime (map car (get-queue))))
 
-	      (logger 3 "~a  Scheduling ~a new events ~a, new schedule len: ~a~n"
+	      (logger 3 "~s  Scheduling ~s new events ~s, new schedule len: ~s~n"
 		      (pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
 		      (length newevnts)
 		      (map (lambda (e) 
@@ -142,7 +142,7 @@
     (if (not (null? (append (simobject-local-msg-buf ob)
 			    (simobject-timed-token-buf ob)
 			    (simobject-incoming-msg-buf ob))))
-	(logger 1.5 "~a ~a: Receiving: ~a local, ~a timed, ~a remote. Queue len ~a~n"
+	(logger 1.5 "~s ~s: Receiving: ~s local, ~s timed, ~s remote. Queue len ~s~n"
 		(pad-width 5 vtime)
 		(node-id (simobject-node ob))
 		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
@@ -160,7 +160,7 @@
 
       (DEBUGMODE
 	(if (not (andmap simevt? (append timed local incoming)))
-	    (printf "NOT ALL SIMEVT ~a ~a ~a~n" 
+	    (printf "NOT ALL SIMEVT ~s ~s ~s~n" 
 		    timed local incoming)))
       
 ;      (if (not (null? incoming)) (disp "INCOMING TIMES:" (map simevt-vtime incoming)))
@@ -205,7 +205,7 @@
 		  outgoing)
 
 	(let ((neighbors (graph-neighbors (simworld-object-graph sim) ob)))
-	  (logger "~a ~a: bcast ~a to -> ~a~n" 
+	  (logger "~s ~s: bcast ~s to -> ~s~n" 
 		  (pad-width 5 vtime )
 		  (node-id (simobject-node ob)) 
 		  (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)
@@ -218,7 +218,7 @@
 				  (node-pos (simobject-node ob))
 				  (node-pos (simobject-node nbr)))))
 #;
-	       (printf "Checking connectivity: ~a ~a ~a\n"
+	       (printf "Checking connectivity: ~s ~s ~s\n"
 		       connectivity
 		       (simobject-node ob)
 		       (simobject-node nbr))
@@ -228,7 +228,7 @@
 		    [(procedure? connectivity)
 		     (fx< (reg:random-int 100) (connectivity vtime))]
 		    [else 
-		     (error 'launch-outgoing "bad connectivity function result: ~a" connectivity)])
+		     (error 'launch-outgoing "bad connectivity function result: ~s" connectivity)])
 		   (set-simobject-incoming-msg-buf! 
 		    nbr (append  outgoing
 				 (simobject-incoming-msg-buf nbr)))
@@ -267,23 +267,28 @@
 	;; Also copy this value to the simworld object so alpha_lib closures can get to it:
 	(set-simworld-vtime! sim vtime)
 
-	(logger 2 "~a  Main sim loop: (vtime of next action) queue len ~a ~n" 
+	(logger 2 "~s  Main sim loop: (vtime of next action) queue len ~s ~n" 
 		(pad-width 5 vtime) (add1 (length (get-queue))))
-	;(printf "<~a>" vtime)
+	;(printf "<~s>" vtime)
 
-                 ;(printf "Busting thunk, running action: ~a~n" next)
+                 ;(printf "Busting thunk, running action: ~s~n" next)
                  ;; For now, the time actually executed is what's scheduled
-	(logger "~a ~a: Executing: ~a args: ~a~n"
+	
+	;; This might print big structures, keep it tight:
+	(parameterize ([print-level 5]
+		       [print-length 15]
+		       [print-graph #t])
+	(logger "~s ~s: Executing: ~s args: ~s~n"
 		(pad-width 5 vtime)
 		(node-id (simobject-node ob))
 		(msg-object-token (simevt-msgobj evt))
 		(msg-object-args (simevt-msgobj evt))
-		)
+		))
 	
 	'(DEBUGMODE ;; check invariant:
 	  (if (not (null? (simobject-outgoing-msg-buf ob)))
 	      (error 'build-node-sim 
-		     "Trying to execute action at time ~a, but there's already an outgoing(s) msg: ~a~n"
+		     "Trying to execute action at time ~s, but there's already an outgoing(s) msg: ~s~n"
 		     global-mintime (simobject-outgoing-msg-buf ob))))
 	
 	;; Now the lucky simobject gets its message.

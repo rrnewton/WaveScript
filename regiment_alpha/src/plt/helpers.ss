@@ -3,10 +3,11 @@
   (require "iu-match.ss"
            (lib "include.ss")
            (lib "pretty.ss")
+           (lib "process.ss")
            (all-except (lib "list.ss") filter)
-           (all-except "tsort.ss" test-this these-tests)
-           
-           "constants.ss")
+;           (all-except "tsort.ss" test-this these-tests)
+           "constants.ss"
+           )
 
  (provide     	;; Remember to update the plt equivalent when you update this:
    ;; Syntax:
@@ -15,13 +16,14 @@
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port with-error-handlers warning cpu-time ;; error-handler 
+   flush-output-port with-error-handlers warning with-warning-handler cpu-time ;; error-handler 
    pretty-maximum-lines make-list
    list-head merge pretty-print
+   fx+ fx- fx* fx/ fx< fx> fx= fx<= fx>=
+   
 
    ;; Meet in the middle with chez:
    print-level print-length
-   make-default-hash-table hashtab-get hashtab-set! hashtab-for-each hashtab-remove!
    
    get-formals
    deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
@@ -51,7 +53,7 @@
    list-find-position list-remove-before
    randomize-list  insert-between iota disp pp  crit-printf
    extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
-   graph-map graph-get-connected-component graph-neighbors cyclic? 
+   graph-map graph-get-connected-component graph-neighbors 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
    list-get-random unfold-list average clump
@@ -116,6 +118,17 @@
   ;; Can't adjust the length from PLT:
   (define print-length (lambda _ #f))
 
+  ;; Tried to make a generic "alias"
+  (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))
+  (define-syntax fx- (syntax-rules () [(_ e ...) (- e ...)]))
+  (define-syntax fx* (syntax-rules () [(_ e ...) (* e ...)]))
+  (define-syntax fx/ (syntax-rules () [(_ e ...) (/ e ...)]))
+  (define-syntax fx= (syntax-rules () [(_ e ...) (= e ...)]))
+  (define-syntax fx< (syntax-rules () [(_ e ...) (< e ...)]))
+  (define-syntax fx> (syntax-rules () [(_ e ...) (> e ...)]))
+  (define-syntax fx<= (syntax-rules () [(_ e ...) (<= e ...)]))
+  (define-syntax fx>= (syntax-rules () [(_ e ...) (>= e ...)]))
+  
 ;; Temporary! < FIXME>:
   (define crit-printf printf)
 
@@ -132,14 +145,9 @@
   
   (define (warning sym . args)
     (fprintf (current-error-port) "Warning ~s: ~a " sym (apply format args)))
-
-
-(define (make-default-hash-table) (make-hash-table))
-(define (hashtab-get t s) (hash-table-get t s (lambda () #f)))
-(define hashtab-set! hash-table-put!)
-(define (hashtab-for-each f h) (hash-table-for-each h f))
-(define hashtab-remove!  hash-table-remove!)
-
+  (define (with-warning-handler fun th)
+    (fluid-let ((warning fun))
+      (th)))  
 
 ;; This matches the chez parameter, but does nothing.
 (define pretty-maximum-lines (make-parameter #f))
