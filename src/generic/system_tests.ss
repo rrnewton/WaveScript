@@ -24,7 +24,8 @@
      (let ((prt (open-output-string)))
        (display "(" prt)
        (run-simulator-alpha 
-	(cleanup-token-machine '(tokens (node-start () (display " ") (display (my-id)))))
+	(cleanup-token-machine 
+	 '(tokens (node-start () (display " ") (display (my-id)))))
 	'outport prt)
        (display ")" prt)
        (read (open-input-string (get-output-string prt)))))
@@ -41,24 +42,16 @@
        unspecified]
 
      ["Respect call order."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () 
-			      (call a)
-			      (call b)
-			      (call c))
-		   (a (x) (printf "a "))
-		   (b (x) (printf "b "))
-		   (c (x) (printf "c "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
+      , (tm-to-list
+	 '(tokens 
+	      (SOC-start () 
+			 (call a)
+			 (call b)
+			 (call c))
+	    (a (x) (printf "a "))
+	    (b (x) (printf "b "))
+	    (c (x) (printf "c "))
+	    ))
       (a b c)]
 
      ["Check call scheduling order."
@@ -86,49 +79,30 @@
 	    [tok1 (v) (printf "~a\n" 1)]
 	    [tok2 () (printf "~a\n" 2)]))
 	(rand #t #t 2 1)]
-	 
+
      ["Timed tokens: test the simulator with timed tokens."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () 
-			      (timed-call 200 tok1)
-			      (timed-call 100 tok2))
-		   (tok1 (x) (printf "tok1 "))
-		   (tok2 (x) (printf "tok2 ")
+      , (tm-to-list '(tokens 
+			 (SOC-start () 
+				    (timed-call 200 tok1)
+				    (timed-call 100 tok2))
+		       (tok1 (x) (printf "tok1 "))
+		       (tok2 (x) (printf "tok2 ")
 			     (timed-call 50 tok3))
-		   (tok3 (x) (printf "tok3 "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-     (tok2 tok3 tok1)]
+		       (tok3 (x) (printf "tok3 "))))
+	(tok2 tok3 tok1)]
 
      ["Timed tokens 2: test simultaneous timed/untimed calls to same token, then deschedule one timed"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () 
-			      (call tok1) 
-			      (timed-call 100 tok1)
-			      (call tok2)
-			      (timed-call 100 tok2))
-		   (tok1 () (printf "tok1 ")
-			     (token-deschedule tok1))
-		   (tok2 () (printf "tok2 "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-     (tok1 tok2 tok2)]
+      , (tm-to-list
+	 '(tokens 
+	      (SOC-start () 
+			 (call tok1) 
+			 (timed-call 100 tok1)
+			 (call tok2)
+			 (timed-call 100 tok2))
+	    (tok1 () (printf "tok1 ")
+		  (token-deschedule tok1))
+	    (tok2 () (printf "tok2 "))))
+	(tok1 tok2 tok2)]
 
      ["Timed tokens 3: make two timed calls to the same token."
       (apply < ,(tm-to-list
@@ -138,54 +112,34 @@
 	  (tok1 () (printf "~a \n" (my-clock))))))
       #t]
 
-
      ["Timed tokens 4"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () 
-			      (timed-call 200 a)
-			      (timed-call 100 b)
-			      (timed-call  50 c))
-		   (a (x) (printf "a "))
-		   (b (x) (printf "b "))
-		   (c (x) (printf "c "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (c b a)]
-     ["Timed tokens 5"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () 
-			      (timed-call 200 a)
-			      (call b)
-			      (timed-call  50 c))
-		   (a (x) (printf "a "))
-		   (b (x) (printf "b "))
-		   (c (x) (printf "c "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (b c a)]
+      , (tm-to-list
+	 '(tokens 
+	      (SOC-start () 
+			 (timed-call 200 a)
+			 (timed-call 100 b)
+			 (timed-call  50 c))
+	    (a (x) (printf "a "))
+	    (b (x) (printf "b "))
+	    (c (x) (printf "c "))
+	    ))
+	(c b a)]
 
+     ["Timed tokens 5"
+      , (tm-to-list 
+	 '(tokens 
+	      (SOC-start () 
+			 (timed-call 200 a)
+			 (call b)
+			      (timed-call  50 c))
+	    (a (x) (printf "a "))
+	    (b (x) (printf "b "))
+	    (c (x) (printf "c "))
+	    ))
+	(b c a)]
 
      ["Clocks"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
+      (let ((result  , (tm-to-list
 		 '(tokens 
 		   (SOC-start () (call tok0))
 		   (tok0 () (printf "~a " (my-clock))
@@ -196,30 +150,16 @@
 			 (call tok3))
 		   (tok3 () (printf "~a " (my-clock)))
 		 ))))
-	   (let ((result 
-		  (let ((prt (open-output-string)))
-		    (display "(" prt)       
-		    (run-simulator-alpha prog 'outport prt)
-		    (display ")" prt)
-		    (read (open-input-string (get-output-string prt))))))
-	     ;; RRN: modified this test to be indiffirent to how much time soc-start takes:
-	     (map (lambda (x) (- x (car result))) result)))))
+	;; RRN: modified this test to be indiffirent to how much time soc-start takes:
+	(map (lambda (x) (- x (car result))) result))
       (0 1 101 102)]
 
      ["Bcast:"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-		 '(tokens 
-		   (SOC-start () (printf "~a" (my-clock)) (bcast tok1 3))
-		   (tok1 (x) (printf "(~a ~a)" (my-id) (my-clock)))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
+      , (tm-to-list
+	 '(tokens 
+	      (SOC-start () (printf "~a" (my-clock)) (bcast tok1 3))
+	    (tok1 (x) (printf "(~a ~a)" (my-id) (my-clock)))
+	    ))
       ,(lambda (results)
 	 (let ((SOCSTRT (car results)) ;; This compensates for whatever time is consumed before soc-start runs.
 	       (ls (cdr results)))
@@ -234,28 +174,12 @@
      ;; (but bcast tokens did not arrive locally)
      ["Test for interference between calls and bcasts. " 
       (filter (lambda (x) (eq? (car x) 'tok3))
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+	, (tm-to-list
 		'(tokens
 		  (SOC-start () (printf "(start ~a ~a)" (my-id) (my-clock)) (call (tok tok3 0)) (bcast tok1))
 		  (tok1 () (printf " (tok1 ~a) " (my-id)))
 		  (tok3 () (printf " (tok3 ~a) " (my-id)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst
-	    )))))
+		  )))
       ((tok3 ,BASE_ID))]
 
      ["Test the 'activate' form of token-invocation."
@@ -291,10 +215,7 @@
 		 (>= (apply max vals) 245))))]
 
      ["Token present?"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )));closure-convert)))
-	 (let ((prog 
-		(run-compiler
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start () 
 			      (printf "first: ~a" (token-present? (tok tok1 0)))
@@ -304,18 +225,11 @@
 			      )
 		   (tok1 () (printf "tok1 "))
 		   (tok2 () (printf "second: ~a" (token-present? (tok tok1 0))))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-     (first: #f tok1 second: #t)]
-     [
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )));closure-convert)))
-	 (let ((prog 
-		(run-compiler
+		 ))
+	(first: #f tok1 second: #t)]
+
+     ["Another Token-present? test"
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start () 
 			      (printf "first: ~a" (token-present? (tok tok1 0)))
@@ -325,19 +239,11 @@
 			      )
 		   (tok1 () (printf "tok1 "))
 		   (tok2 () (printf "second: ~a" (token-present? (tok tok1 0))))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (first: #f tok1 second: #t second: #t)]
+		 ))
+	(first: #f tok1 second: #t second: #t)]
 
      ["Token Evict"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac )));closure-convert)))
-	 (let ((prog 
-		(run-compiler
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start () 
 			      (call check)
@@ -348,18 +254,11 @@
 		   (tok1 () (printf "tok1 "))
 		   (check () (printf "~a" (token-present? (tok tok1 0))))
 		   (kickout () (evict (tok tok1 0)))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (#f tok1 #t #f)]
+		 ))
+	(#f tok1 #t #f)]
 
      ["token-scheduled? test"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-	(let ([prog
-	       (cleanup-token-machine
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (call tok1 '10)
@@ -372,20 +271,11 @@
 			     (call tok2 11))
 		  (tok1 (x) (void))
 		  (tok2 (x) (void))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst)))
-      (yes no)]
+		  ))
+	(yes no)]
 
      ["token-deschedule test"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-	(let ([prog
-	       (cleanup-token-machine
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (call tok1 '10)
@@ -411,21 +301,12 @@
 				 (display "no "))
 			     )
 		  (tok1 (x) (void))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst)))
-      (yes no no yes yes)]
+		  ))
+	(yes no no yes yes)]
 
 
      ["Token Timed-Schedule/Deschedule test"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-	(let ([prog
-	       (cleanup-token-machine
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
@@ -445,23 +326,12 @@
 			     (if (token-scheduled? (tok tok1 0)) (display "yes ") (display "no "))
 			     )
 		  (tok1 (x) (void))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst)))
-      (no yes no no no)]
+		  ))
+	(no yes no no no)]
 
      ;; This one will cause token-scheduled? to have to look in the timed-tok buf:
      ["Another Token Scheduled?"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f] [regiment-verbose #f])
-      (fluid-let ((pass-names (list-remove-before 'cleanup-token-machine pass-names)))
-					;'(cleanup-token-machine cps-tokmac )));closure-convert)))
-	 (let ((prog 
-		(run-compiler
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start () 
 			      (printf "~a " (token-scheduled? (tok tok1 0)))
@@ -470,13 +340,8 @@
 			      (timed-call 800 check))
 		   (tok1 () (printf "tok1 "))
 		   (check () (printf "~a " (token-scheduled? (tok tok1 0))))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      (#f #t tok1 #f)]
+		 ))
+	(#f #t tok1 #f)]
 
      ["Subcall: Try token-scheduled? with some subcall trickery"
       , (tm-to-list
@@ -493,9 +358,7 @@
       (#f #t tok1 #f)]
 
      ["Subcall: Make sure simulator can handle subcalls directly if need be."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-	 (let ((prog 
-		(cleanup-token-machine
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start ()
 			      (printf "a ")
@@ -505,45 +368,22 @@
 			      (printf "d "))
 		   (tok1 () (printf "b "))
 		   (tok2 () (printf "e "))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-      (a b c d e)]
+		 ))
+	(a b c d e)]
 
      ["Subcall: Make sure simulator can handle subcalls directly if need be #2."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-	 (let ((prog 
-		(cleanup-token-machine
+      , (tm-to-list
 		 '(tokens 		   
 		   (SOC-start () (printf "~a " (subcall tok1)))
 		   (tok1 () (return 349))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-      (349)]
+		 ))
+	(349)]
 
-     
+     ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-let-stored
-		     ;rename-stored          cps-tokmac
-		     ;closure-convert        cleanup-token-machine
-					    )])
-	(let ([prog
-	       (run-compiler
-		(read (open-input-file "demos/manual_tree.tm"))
-		)])
-	  (run-simulator-alpha prog 'timeout 5000)
-	  )))
+      , (tm-to-list (car (file->slist "demos/manual_tree.tm"))
+		    '[simalpha-timeout 5000])
       unspecified]
-
 
 
 ;      ["Testing sim: 'manually' propogate a flood"
@@ -582,21 +422,13 @@
      
     ;; [2005.05.29] Note tok1 should be statically called and is currently called dynamically!
     ;; Oh duh, that's because all calls go through the dyndispatch table.
+     ;; Works with convert closure:
      ["Subcall: Run simulator on simple subcall program." 
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(cleanup-token-machine (run-compiler
-	       '(tokens 
+      , (tm-to-list '(tokens 
 		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
 		 (tok1 (x) (return (+ x 300)))
-		 )))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-     (result 303)]
+		 ))
+	(result 303)]
      
      ,@(let ([commontest 
 	      '(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
@@ -621,12 +453,7 @@
 	    (result 2007)]))
 
      ["Stored vars: Now use a stored var."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine 
-				desugar-let-stored  rename-stored
-				cps-tokmac closure-convert cleanup-token-machine)))
-	(let ((prog 
-		(run-compiler
+      , (tm-to-list
 		 '(tokens 
 		   (SOC-start () 
 			      (call tok1 99) 
@@ -635,22 +462,11 @@
 			      (call tok1 999))
 		   (tok1 (x) (stored (y 3))
 			 (printf "~a " y)
-			 (set! y x)))
-		   )))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
+			 (set! y x))))
       (3 99 100 101)]
 
      ["Stored vars: Now many stored vars."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ((pass-names '(cleanup-token-machine 
-				desugar-let-stored  rename-stored
-				cps-tokmac closure-convert cleanup-token-machine)))
-	(let ((prog 
-		(run-compiler
+      , (tm-to-list
 		 '(tokens 
 		   (SOC-start () 			      
 			      (call tok1 1 2 3)
@@ -667,13 +483,8 @@
 			 (printf "(~a ~a ~a)" (ext-ref tok1 x) (ext-ref tok1 y) (ext-ref tok1 z))
 			 (ext-set! tok1 x 10)
 			 (printf "(~a ~a ~a)" (ext-ref tok1 x) (ext-ref tok1 y) (ext-ref tok1 z))
-			 )))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
-      ((1 2 3) (1 10 3) (1 10 10) (10 10 10))]
+			 )))
+	((1 2 3) (1 10 3) (1 10 10) (10 10 10))]
 
      ["Stored vars: Initializations should not be able to reference eachother."
       , (tm-to-list
@@ -683,7 +494,7 @@
 		(stored [a (begin (printf "a ") 3)]
 			[b (begin (printf "b ") (+ 1 a))])
 		(printf "~a " (+ a b)))))
-	error]     
+	error]
 
      ["Now keep stored vars on all 1-hop neighbors, make sure they don't change."  
       ,(tm-to-list
@@ -709,21 +520,13 @@
      ;; Ok before I was having problems with how I do the counters for
      ;; subtok indices of the continuations.  This double invocation tests that:
      ["Subcall: Test double invocation of a continuation-bearing token." 
-      (fluid-let ([pass-names '(cleanup-token-machine  desugar-let-stored rename-stored  cps-tokmac closure-convert cleanup-token-machine)])
-       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-         (let ((prog
-		(run-compiler
+      , (tm-to-list
 		 '(tokens
 		   (SOC-start () (printf "SOCSTART~n")
 			      (call tok1 55)
 			      (call tok1 66))
 		   (tok1 (x) (printf " ~a " (+ x (subcall tok2))))
-		   (tok2 () (return 3))))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt)))))))
+		   (tok2 () (return 3))))
       (SOCSTART 58 69)]
 
 
@@ -811,89 +614,46 @@
      ;; Unfortunately, it was not repeatable, and I don't know what the error was.
      ;; I should modify the unit tester to save output for erroneous tests. [2005.10.17]
      ["Test gradient ghopcount, gversion, gparent, gorigin."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        ;cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
-		'(tokens
-		  (SOC-start () (gemit tok1))
-		  (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    (let ((base (cdr (assq BASE_ID lst)))
-		  (others (map cdr (alist-remove BASE_ID lst))))
-	      (if (all-equal? others)
-		  ;; Return something that won't vary based on sim parameters:
-		  (list (assq BASE_ID lst) (car others))
-		  `(ERROR: ,others)))
-	    ))))
+      (let ((lst ,(tm-to-list
+		   '(tokens
+		      (SOC-start () (gemit tok1))
+		      (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock)))
+		      ))))
+	(let ((base (cdr (assq BASE_ID lst)))
+	      (others (map cdr (alist-remove BASE_ID lst))))
+	  (if (all-equal? others)
+	      ;; Return something that won't vary based on sim parameters:
+	      (list (assq BASE_ID lst) (car others))
+	      `(ERROR: ,others))))
       ;; This timing stuff is a bit fragile
-      ((10000 : atroot 10000 0 1 : 2) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))
-      ]
+      ((10000 : atroot 10000 0 1 : 2) (: 10000 10000 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))]
 
 
      ;; TODO: need to explicitely control tho network parameters for this one:
      ["Gradients: just a gemit and unconditional grelay. (NONDETERMINISTIC)" 
       retry ;; Retry this test if it fails... it's nondeterministic.
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine  desugar-let-stored
-		     rename-stored          cps-tokmac
-		     closure-convert        cleanup-token-machine)])
-	(let ([prog
-	       (run-compiler
-		'(tokens
-		  (SOC-start () (gemit tok1))
-		  (tok1 (x) (printf "~a " (gdist)) (grelay))))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))	    
-	    (list (length lst) 
-		  (car lst)
-		  (cadr lst)
-		  (> (car (reverse lst)) 1)
-		  (equal? lst (sort < lst)))
-	    )))) ;; Only true with VERY restricted simulation model.
-	(30 0 1 #t #t)]
+      (let ((lst , (tm-to-list
+		    '(tokens
+			 (SOC-start () (gemit tok1))
+		       (tok1 (x) (printf "~a " (gdist)) (grelay))))))
+	(list (length lst) 
+	      (car lst)
+	      (cadr lst)
+	      (> (car (reverse lst)) 1)
+	      (equal? lst (sort < lst)))
+	) ;; Only true with VERY restricted simulation model.
+      (30 0 1 #t #t)]
 
 
      ["Gradients: make a two hop neighborhood. (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine  desugar-let-stored
-		     rename-stored          cps-tokmac
-		     closure-convert        cleanup-token-machine)])
-	(let ([prog
-	       (run-compiler
+      (let ((lst , (tm-to-list
 		'(tokens
 		  (SOC-start () (gemit tok1))
-		  (tok1 (x) (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    (list (< (length lst) 30)
-		  (sort < (list->set lst))
-		  (equal? lst (sort < lst))) ;; Only true with VERY restricted simulation model.
-	    ))))
-	(#t (0 1 2) #t)]
+		  (tok1 (x) (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))))
+	(list (< (length lst) 30)
+	      (sort < (list->set lst))
+	      (equal? lst (sort < lst)))) ;; Only true with VERY restricted simulation model.
+      (#t (0 1 2) #t)]
 
 ;; This case was too fragile and dependent on the ordering.  I could make it better and bring it back.
 ;; Problem is that it depends on the aggregator being turned on, because without aggregation we no longer use the timer.
@@ -902,7 +662,8 @@
       (fluid-let ([pass-names
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
-		     ;rename-stored         ; cps-tokmac
+		     ;rename-stored         
+		     cps-tokmac
 ;		     closure-convert        cleanup-token-machine
 		     )])
 	(let ([prog
@@ -932,15 +693,7 @@
 
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored         ; cps-tokmac
-;		     closure-convert        cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () ;(printf "SOCSTART ") 
 			     (gemit tok1)
@@ -950,16 +703,7 @@
 		  (catcher (v) (printf " ~a " v))
 		  (tok1 () (printf "_ ")
 			(greturn (my-id) (to catcher)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt 
-					'timeout 10000)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst
-	    ))))
+		  ))
       ,(lambda (lst)
 	 (let ((lst (filter number? lst)))
 	   (and
@@ -971,22 +715,12 @@
      ;; [2005.10.06] After doing my refactoring to make multiple return-handler tokens
      ;; this isn't working.  We're only getting a return from one of our neighbors.
      ["Gradients: execute a repeated return from 1-hop neighbors. (NONDETERMINISTIC)"
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f]
-		     [simalpha-channel-model 'lossless]
-		     [simalpha-failure-mode 'none])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     ;rename-stored          
-		     cps-tokmac
-		     closure-convert        cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () (printf "(")
-			     (call tok1 '10))
+			     (call tok1 '10)
+			     (timed-call 8000 close))
+		  (close () (printf ")"))
 		  (catcher (v) (printf "~a " v))
 		  (tok1 (reps) 
 			(printf ") (")
@@ -995,17 +729,10 @@
 			    (timed-call 1000 tok1 (- reps 1))))
 		  (tok2 () ;(printf "_ ") 
 			(greturn (my-id) 
-				 (to catcher)))
-		  ) 'verbose
-		)])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt) ;'timeout 5000 );
-		   (display "))" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    lst
-	    ))))
+				 (to catcher))) )
+		'[simalpha-timeout #f]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-failure-model 'none])
       ,(lambda (x)
 	 ;; ASSUMES LOSSLESS CHANNELS AND DETERMINISTIC TIMING:
 	 ;; Makes sure we hear from the same neighbors every time:
@@ -1018,22 +745,12 @@
 
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
       retry
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f]
-		     [simalpha-consec-ids #t]
-		     [simalpha-channel-model 'lossless]
-		     [simalpha-failure-module 'none])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+      , (tm-to-list
 		'(tokens
-		  (SOC-start () (call tok1 '5))
+		  (SOC-start () (printf "(")
+			     (call tok1 '5)
+			     (timed-call 20000 close))
+		  (close () (printf ")"))
 		  (catcher (v) (printf " ~a " v))
 		  (tok1 (reps) 
 			(printf ") (")
@@ -1041,19 +758,11 @@
 			(if (> reps 0)
 			    (timed-call 1000 tok1 (- reps 1))))
 		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "((" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display "))" prt)
-		   (read (open-input-string (get-output-string prt))))))
-
-;	    (for-each (lambda (x) (display x) (newline)) lst)
-;	    (let ((lens (map length lst)))
-	    lst
-	    ))))
-
+		  )
+		'[simalpha-consec-ids #t]
+		'[simalpha-placement-type 'connected]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-failure-model 'none])
       ;; You will see a staggered reception of results.
       ;; First from the one-hop neighbors, then also the two-hops, and so on.
       ,(lambda (x) 
@@ -1071,19 +780,12 @@
 
      ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
       retry
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+      (let ((lst , (tm-to-list
 		'(tokens
-		  (SOC-start () (call tok1 '5))
+		  (SOC-start () (printf "(")
+			     (call tok1 '5)
+			     (timed-call 20000 close))
+		  (close () (printf ")"))
 		  (catcher (v) (printf "~a " v))
 		  (tok1 (reps)  
 			(printf ") (")
@@ -1096,16 +798,7 @@
 			(if (= (gdist) 2)
 			    (greturn (+ 100 (gversion)) (to catcher)))
 			))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "((" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display "))" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	    ;(for-each (lambda (x) (display x) (newline)) lst)
-
-
+		  ))))
 	    (list 
 	     lst
 	    (map (lambda (ls)
@@ -1114,10 +807,7 @@
 		     (list (length big) (length small))))
 
 		 ;; Don't count first or last batch:
-		 (cddr (rdc lst))))
-
-	    ))))
-
+		 (cddr (rdc lst)))))
       ,(lambda (result) 
 	 (and 
 	  ;; This asserts that there are more two-hop than one-hop neighbors:
@@ -1165,6 +855,7 @@
       ]
 
      ["Gradients: Same thing but to whole network."
+      retry ;; Really messed up topology could cause this to not work.
       , (tm-to-list
 	'(tokens 
 	  (SOC-start () (call tok1 '10))
@@ -1221,21 +912,7 @@
 
      ["Gradients: now launch three nested gradients. (NONDETERMINISTIC)"
       retry ;; Must retry, network might not be connected
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f]
-		     [simalpha-failure-mode 'none]
-		     [simalpha-channel-model 'lossless]
-		     [simalpha-consec-ids #t]
-		     [simalpha-num-nodes 30])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+      , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (printf "(~a ~a \"A launching\")\n" (my-clock) (my-id))
@@ -1260,36 +937,18 @@
 			      (printf "(~a ~a ~a ~a ~a \"C hit home!\")\n" (my-clock) (my-id) (gdist a) (gdist b) (gdist c))
 			      ;(printf "home")
 			      )))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	     lst
-	     ))))
+		  )
+		'[simalpha-failure-model 'none]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-consec-ids #t]
+		'[simalpha-num-nodes 30])
       ,(lambda (ls)
 	 ;; Received all messages:
 	 (= (length ls) 5))]
 
      ["Gradients: return value through three nested gradients. (NONDETERMINISTIC)"
       retry ;; Must retry, network might not be connected
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f]
-		     [simalpha-failure-mode 'none]
-		     [simalpha-channel-model 'lossless]
-		     [simalpha-consec-ids #t]
-		     [simalpha-num-nodes 30])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+     , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (gemit a)
@@ -1316,36 +975,18 @@
 		        (if (= (my-id) 20)
 			      (gemit c)))
 		  (c () (grelay))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog 'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	     lst
-	     ))))
+		  )
+		'[simalpha-failure-model 'none]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-consec-ids #t]
+		'[simalpha-num-nodes 30])
       (,BASE_ID #t #t 8967)]
 
 
      ;; FIXME: This needs more work:
      ["Gradients: let a thousand flowers bloom (gradient from everywhere)."
       retry ;; Must retry, network might not be connected
-      (parameterize ([unique-name-counter 0] 
-		     [simalpha-dbg-on #f]
-		     [simalpha-failure-mode 'none]
-		     [simalpha-channel-model 'lossless]
-		     [simalpha-consec-ids #t]
-		     [simalpha-num-nodes 30])
-      (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
-		     cleanup-token-machine desugar-let-stored
-		     rename-stored          
-					;cps-tokmac ;closure-convert        
-		     cleanup-token-machine
-		     )])
-	(let ([prog
-	       (run-compiler
+     , (tm-to-list
 		'(tokens
 		  (SOC-start () 
 			     (gemit spark)
@@ -1355,16 +996,11 @@
 			    (printf "(Spark ~a)\n" (my-id))
 			    (gemit secondary))
 		  (secondary () (grelay)
-			     (printf "(~a ~a ~a ~a)\n" (gorigin) (gparent) (my-id) (gdist)))
-		  ))])
-	  (let ((lst 
-		 (let ([prt (open-output-string)])
-		   (display "(" prt)
-		   (run-simulator-alpha prog) ;'outport prt)
-		   (display ")" prt)
-		   (read (open-input-string (get-output-string prt))))))
-	     lst
-	     ))))
+			     (printf "(~a ~a ~a ~a)\n" (gorigin) (gparent) (my-id) (gdist))))
+		'[simalpha-failure-model 'none]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-consec-ids #t]
+		'[simalpha-num-nodes 30])
       ;; FIXME : Finish
       unspecified]
 
@@ -1489,10 +1125,9 @@
     ["Run and simulate complete regiment program." 
      retry
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none])
-       (run-simulator-alpha 
-	(run-compiler '(rmap nodeid world))
-	'timeout 400))
+		    [simalpha-failure-model  'none]
+		    [simalpha-timeout 400])
+       (run-simulator-alpha (run-compiler '(rmap nodeid world))))
      ,(lambda (ls)
 	;; Can't make very strong statements about timing, but we
 	;; shoud have heard from the first *two* generations by this
@@ -1505,7 +1140,7 @@
 
     ["Run a simple fold in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none]
+		    [simalpha-failure-model  'none]
 		    [simalpha-num-nodes 30])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1519,7 +1154,7 @@
     ["Count nodes in network under message loss conditions."  
      retry
      (parameterize ([simalpha-channel-model 'linear-disc]
-		    [simalpha-failure-mode  'none]
+		    [simalpha-failure-model  'none]
 		    [simalpha-placement-type 'connected]
 		    [simalpha-inner-radius 10]
 		    [simalpha-outer-radius 20]
@@ -1538,7 +1173,7 @@
 
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none]
+		    [simalpha-failure-model  'none]
 		    [simalpha-sense-function sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1564,7 +1199,7 @@
 
     ["Regiment: Run a filter and then aggregate" 
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none]
+		    [simalpha-failure-model  'none]
 		    [simalpha-sense-function sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1580,7 +1215,7 @@
 #;
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none])
+		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) 1))
@@ -1601,7 +1236,7 @@
     ;; Finish
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
-		    [simalpha-failure-mode  'none])
+		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap (lambda (n) (vector (sense n) 1))

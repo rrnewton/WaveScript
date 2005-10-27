@@ -213,7 +213,7 @@
 (define-regiment-parameter simalpha-channel-model 'lossless)
 
 ;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
-(define-regiment-parameter simalpha-failure-mode 'none)
+(define-regiment-parameter simalpha-failure-model 'none)
 
 ;; This is a read-only parameter set by the system.  
 (define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))

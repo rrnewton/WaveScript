@@ -47,6 +47,14 @@
   (let loop ((e e))
     (driver e 
       (lambda (expression)
+	(define dotok 
+	  (lambda (tok fun)
+	      (match tok
+		[(tok ,t ,n) (guard (integer? n))
+		 (fuse () (lambda () (fun `(tok ,t ,n))))]
+		[(tok ,t ,[loop -> e])
+		 (fuse (list e) (lambda (n) (fun `(tok ,t ,n))))]
+		[,e (error 'foo "~a" e)])))
 	(match expression
 	  ;[,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
@@ -65,7 +73,9 @@
 	   (fuse (list expr) (lambda (x) `(ext-set! ,tok ,var ,x)))]
 	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
 	  [(leds ,what ,which)           (fuse ()      (lambda () `(leds ,what ,which)))]
-	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls `(begin ,ls ...)))]
+
+	  ;; Always run make-begin, hope this is safe:
+	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
 	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 	  [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
@@ -77,10 +87,16 @@
 		   `(let-stored ([,lhs* ,rhs*] ...) ,bod)))]
 
 	  
+	  ;; Handling gradient forms as well.
 
+;	  [(gdist (tok ,t ,n)) (guard (integer? n)) 
+;	  [(gdist (tok ,t ,[loop -> ind]))         
 	  ;; Gradient forms are a bit annoying to handle properly:
-	  [(gdist (tok ,t ,n)) (guard (integer? n))  (fuse () (lambda () `(gdist (tok ,t ,n))))]
-	  [(gdist (tok ,t ,[loop -> ind]))           (fuse `(,ind) (lambda (n) `(gdist (tok ,t ,n))))]
+	  [(gdist ,t)   (dotok t (lambda (x) `(gdist ,x)))]
+	  [(gparent ,t)   (dotok t (lambda (x) `(gparent ,x)))]
+	  [(gorigin ,t)   (dotok t (lambda (x) `(gorigin ,x)))]
+	  [(ghopcount ,t) (dotok t (lambda (x) `(ghopcount ,x)))]
+	  [(gversion ,t)  (dotok t (lambda (x) `(gversion ,x)))]
 
 	  [(gemit (tok ,t ,n) ,[loop -> rands] ...) (guard (integer? n))
 	   (fuse rands (lambda rands `(gemit (tok ,t ,n) ,@rands)))]

@@ -1040,6 +1040,7 @@
 	 ;; With flags out of the way
 	 [stopping-time? 
 	  (let ([stop-time (simalpha-timeout)])
+	    (disp "STOP TIME" stop-time)
 	    (if (not stop-time)
 		(lambda (t) #f)
 		(if (inexact? stop-time)

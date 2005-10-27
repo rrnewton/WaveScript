@@ -3,7 +3,7 @@
 (module demo_display mzscheme	
   (provide processors_temp test-this ;these-tests
            ;; from graphics_stub
-           draw-procs draw-proc draw-edge 
+           draw-network draw-proc draw-edge 
            ;; from basic_graphics
            init-graphics close-graphics
 	   window-width window-height the-win
@@ -23,4 +23,4 @@
 (require (lib "graphics.ss" "graphics"))
 (define (t)
   (init-graphics)
-  (draw-procs processors_temp))
+  (draw-network processors_temp))

@@ -1509,13 +1509,13 @@
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (or (memq 'quiet args)
+			  (memq 'silent args)
 			  (memq 'q args)
-			  (memq 'qv args))]
+			  (not (or (memq 'verbose args)
+				   (memq 'v args))))]
 	       ;; Flag to print test descriptions as well as code/output.
-	       [verbose (or (memq 'verbose args)
-			    (memq 'descrips args)
-			    (memq 'v args)
-			    (memq 'qv args))]
+	       [titles (not (or (memq 'silent args)
+				(memq 'nodescrips args)))]
 	       [retry-failures (or retry-failures ;; If already set above, or..
 				   (memq 'retry args))]
 ;	       [descriptions (map car entries)]
@@ -1537,7 +1537,7 @@
 		 (let retryloop ((try 0))
 		   (flush-output-port)
 	       ;; This prints a name, or description for the test:
-	       (if (and verbose descr) (printf "   ~s~n" descr))
+	       (if (and titles descr) (printf "   ~s~n" descr))
 
 	       (display-constrained `(,num 10) "  " `(,expr ,TESTWIDTH)
 				    " -> ")
@@ -1584,10 +1584,10 @@
 		   (begin
 		     (printf "PASS~n"))
 		   ;; This test was a failure:
-		   (if retry-failures ;; But if we're in retry mode try again...
-		       (if (< try (default-unit-tester-retries))
-			   (begin (printf "fail:  But retrying... Retry #~a\n" try)
-				  (retryloop (add1 try))))
+		   (if (and retry-failures ;; But if we're in retry mode try again...
+			    (< try (default-unit-tester-retries)))
+		       (begin (printf "fail:  But retrying... Retry #~a\n" try)
+			      (retryloop (add1 try)))
 		       ;; Otherwise just print a notification of the failure and bind it to a global var:
 		       (begin 
 			  (set! success #f)
@@ -1616,7 +1616,7 @@
 			  ))))))]))]) ;; end execute-one-test
 
 	   ;; Main body of tester:
-	  (if verbose 
+	  (if titles 
 	      (begin (printf ";; Testing module: ~s~n" message)
 		     (if quiet (printf ";; (with test output suppressed)~n"))
 		     ))
@@ -2664,27 +2664,27 @@
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((reg:random-int 10) 3)]
 		    'retry)])
-	 (fun 'qv)))
+	 (fun 'quiet)))
      #t]
 
     ["This just gives the retry argument at test time."
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((reg:random-int 3) 0)])])
-	 (fun 'qv 'retry)))
+	 (fun 'quiet 'retry)))
      #t]
     ["This just gives the retry argument within the test itself."
      (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ["" retry (reg:random-int 3) 0]])])
-	 (fun 'qv)))
+	 (fun 'quiet)))
      #t]
 
     ["This tests unit tests that call error"
      (let ([fun (default-unit-tester "testing tester" 
 		  `(["" (error 'foo "bar") 
 		     error]))])
-	 (fun 'qv))
+	 (fun 'quiet))
      #t]
 
     ["This just makes sure the unit tester returns #f when a test fails."
