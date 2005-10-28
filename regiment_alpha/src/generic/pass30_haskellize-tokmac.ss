@@ -172,30 +172,7 @@
   
 
 (define these-tests
-  `([(haskellize-tokmac
-      '(cleanup-token-machine-lang
-	'(program
-	(bindings (result_1 '3))
-	(socpgm (bindings) (soc-return result_1) (soc-finished))
-	(nodepgm
-	 (tokens
-	  (spread-global
-           ()
-           (begin (emit global-tree) (timed-call 1000 spread-global)))
-	  (global-tree () (relay)))
-	 (startup)))))
-     ,(lambda (x)
-       (or 
-	(equal? x '(haskellize-tokmac-language
-		    "(Pgm {\n  consts = [((Id \"result_1\"), (Econst 3))],\n  socconsts=[],\n  socpgm=[(Esocreturn (Evar (Id \"result_1\"))), Esocfinished],\n  nodetoks=[((Token \"spread-global\"), [], (Eseq [(Eemit Nothing (Token \"global-tree\") []), (Ecall (Just 1000) (Token \"spread-global\") [])])), ((Token \"global-tree\"), [], (Erelay Nothing))],\n  startup=[]\n})\n"))
-	(equal? x '(haskellize-tokmac-language "(Pgm {
-  consts = [((Id \"result_1\"), (Econst 3))],
-  socconsts=[],
-  socpgm=[(Esocreturn (Evar (Id \"result_1\"))), Esocfinished],
-  nodetoks=[((Token \"spread-global\"), [], (Eseq [(Eemit Nothing (Token \"global-tree\") []), (Ecall (Just 1000) (Token \"spread-global\") [])])), ((Token \"global-tree\"), [], (Erelay Nothing))],
-  startup=[]
-})
-"))))]
+  `(
     ))
 
 
