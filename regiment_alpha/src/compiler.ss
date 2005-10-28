@@ -50,8 +50,8 @@
 
 ;; Temporarily I am disabling these ..
     cps-tokmac
-;    closure-convert
-;    cleanup-token-machine ;; Trying this.. [2005.09.27]
+    closure-convert
+    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
     ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
 ;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 

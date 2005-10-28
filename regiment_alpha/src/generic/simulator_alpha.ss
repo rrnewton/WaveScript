@@ -587,7 +587,8 @@
 		  ;; ========================================
 		  ;; Now we generate specific code for many of the primitives
 
-		  [(local-sense)
+		  [(,senseprim)
+		   (guard (memq senseprim '(async-sense sync-sense)))
 		   ;; Feed id, x, y, t to sensor function:
 		   `((simalpha-sense-function) 
 		     ,(process-expr '(my-id))
@@ -822,15 +823,24 @@
       [(program (bindings ,nodebinds ...)
 		(nodepgm (tokens ,nodetoks ...) ;(startup ,starttoks ...)
 			 ))
-       ;; Here we hack in an extra handler for doing SOC-return's...
+       
+       ;; Here we hack in some special handlers that are assumed by TML:
        (set! nodetoks
-	     (cons `[SOC-return-handler subtokid (socrethandlerval) (stored)
+	     ;; An extra handler for doing SOC-return's...
+	     `([SOC-return-handler subtokid (socrethandlerval) (stored)
 		       (if (= ',BASE_ID (my-id))
 			   (simulator-soc-return socrethandlerval)				  
 			   (error 'SOC-return-handler
 				  "ran on non-base node! id: ~s"
 				  (my-id)))]
-		   nodetoks))
+	       ;; The actual sense function:
+	       ;; This is flexible and does not assume that cps-conversion
+	       ;; has taken place.  It optionally takes a continuation argument:
+	       [SenseTok subtokid (k_maybe) (stored)
+			 (if (eq? '0 k_maybe)
+			     (sync-sense)
+			     (call k_maybe (sync-sense)))]
+	       ,@nodetoks))
 
        ;; Here we mutate the node-start to also call SOC-start.
        (printf "TOKS: ~s\n" (map car nodetoks))
@@ -867,7 +877,7 @@
 	   ;; Need to update the sensing machinery...
 	   (let (
 		 #;
-		 [local-sense (lambda (t)
+		 [sync-sense (lambda (t)
 				((current-sense-function)
 				 (node-id (simobject-node this))
 				 (car (node-pos (simobject-node this)))

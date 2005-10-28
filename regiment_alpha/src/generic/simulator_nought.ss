@@ -1175,7 +1175,7 @@
 	   ;; running on the SOC has to know that it's physically on
 	   ;; the SOC:
 	    (let ([I-am-SOC (eq? this SOC-processor)]
-		  [local-sense (lambda ()
+		  [sync-sense (lambda ()
 				 ((current-sense-function)
 				  (node-pos (simobject-node this))))])
 

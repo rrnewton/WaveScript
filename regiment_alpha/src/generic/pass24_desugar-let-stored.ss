@@ -13,7 +13,7 @@
   (build-compiler-pass
    'desugar-gradientsa
    `(input)
-   `(output) ;(grammar ,basic_tml_grammar PassInput))
+   `(output );(grammar ,basic_tml_grammar PassInput)) ;; TODO FIXME REENABLE
   (let ()
     ;; Get the free vars from an expression
     (define (free-vars e)

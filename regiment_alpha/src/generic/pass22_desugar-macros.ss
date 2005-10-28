@@ -100,6 +100,12 @@
 			  (call ,t)
 			  (void))])
 		 ))]
+
+	     ;; [2005.10.28]
+	     [(sync-sense)
+	      (vector
+	       `(subcall (tok SenseTok 0))
+	       ())]
 	     
 	     [,other (autoloop other)]))
 	;; Fuser:

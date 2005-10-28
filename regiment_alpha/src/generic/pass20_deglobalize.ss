@@ -186,7 +186,7 @@
 	    ;; -=<TODO>=- UNSURE OF THIS
 	    ;; SEEMS PRETTY USELESS!
 	    ;[(sense)
-	    ;`([,form () (local-sense)]
+	    ;`([,form () (sync-sense)]
 					;;[,memb () ]
 	    ;)]
 
@@ -648,7 +648,7 @@
 
 	  ;; FIXME FIXME... this is lame.
 	  [(sense ,_ ...)
-	   (values `([,name (local-sense)]) '())]
+	   (values `([,name (sync-sense)]) '())]
 
 	  ;; TODO:	   
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
