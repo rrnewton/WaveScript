@@ -92,30 +92,11 @@
 	 (format "(Eif ~a ~a ~a)" test conseq altern)]
 
 	;; Both of these take timing arguments in the Haskell AST:
-	[(emit ,tok ,[args*] ...)
-	 (format "(Eemit Nothing ~a ~a)" (htok tok) (hlist args*))]
+
 	[(call ,tok ,[args*] ...)
 	 (format "(Ecall Nothing ~a ~a)" (htok tok) (hlist args*))]
 	[(timed-call ,time ,tok ,[args*] ...)
 	 (format "(Ecall (Just ~a) ~a ~a)" time (htok tok) (hlist args*))]
-	[(activate ,tok ,[args*] ...)
-	 (format "(Eactivate ~a ~a)" (htok tok) (hlist args*))]
-
-	[(flood ,tok) (format "(Eflood ~a)" (htok tok))]
-	[(elect-leader ,tok) (format "(Eelectleader ~a)" (htok tok))]
-
-	[(relay) "(Erelay Nothing)"]
-
-	[(return ,[expr]            ;; Value
-		 (to ,memb)         ;; To
-		 (via ,parent)      ;; Via
-		 (seed ,[seed_val]) ;; With seed
-		 (aggr ,rator_tok)) ;; Aggregator 
-         (if rator_tok
-           (format "(Ereturn {val = ~a, to = ~a, via = ~a, seed = Just ~a, aggr = Just ~a})"
-		   expr (htok memb) (htok parent) seed_val (htok rator_tok))
-  	   (format "(Ereturn {val = ~a, to = ~a, via = ~a, seed = Nothing, aggr = Nothing})"
-		   expr (htok memb) (htok parent)))]
 
         ;; This is a primitive, but handled special.
         ;; User better use double slashes.
@@ -137,7 +118,7 @@
 	[(soc-return ,[body]) (format "(Esocreturn ~a)" body)]
 
 	;; Assuming that it's synchronous!!
-	[(local-sense) "(Esense)"]
+	[(sync-sense) "(Esense)"]
 	
 	[(,prim ,[rand*] ...)
 	 (guard (token-machine-primitive? prim))

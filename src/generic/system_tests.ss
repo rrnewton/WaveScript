@@ -205,7 +205,7 @@
 	'(tokens
 	   (SOC-start () (call loop 100))
 	   (loop (reps) (if (> reps 0)
-			    (begin (soc-return (list (my-clock) (local-sense)))
+			    (begin (soc-return (list (my-clock) (sync-sense)))
 				   (timed-call 100 loop (- reps 1))))))
 	'[simalpha-sense-function sense-sine-wave])
        ,(lambda (ls) 
@@ -1265,7 +1265,7 @@
 ;			 (printf "Got soc-val at time ~a: (~a ~a) avg: ~a\n"
 ;				 (my-clock) (car v) (cadr v) (/. (car v) (int->float (cadr v))))
 			 (soc-return (list (my-clock) 
-					   (local-sense)
+					   (sync-sense)
 					   (float->int (/. (car v) (int->float (cadr v)))))))
 		       (printf "Soc-val at time ~a: but it's empty!!\n" (my-clock))))
 
@@ -1274,7 +1274,7 @@
 		(activate upfeed) (grelay))
 	  (upfeed ()
 ;		  (printf "~a ~a upfeed...\n" (my-id) (my-clock))
-		  (greturn (list (int->float (local-sense)) 1)
+		  (greturn (list (int->float (sync-sense)) 1)
 			   (to catcher)
 			   (via tree)
 			   (seed (list 0. 0))

@@ -292,7 +292,9 @@
      (void () Object)
 
      (this () Object)
-     (local-sense () Number)
+     ;; TODO: add different kinds of sensors.
+     ;; This desugars into (subcall (tok SenseTok 0)):
+     (sync-sense () Number)
      (soc-return (Number) Void)
      (soc-return-finished (Number) Void)
      

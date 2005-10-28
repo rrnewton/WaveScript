@@ -257,7 +257,7 @@
          (m_token_tmpkhood_9 () (if (< (dist) '10) (relay)))
          (tmpfunc_10
            (a_1)
-           (lazy-letrec ((result_5 (local-sense))) result_5))
+           (lazy-letrec ((result_5 (sync-sense))) result_5))
          (m_token_tmpkhood_9 () (activate f_token_tmpunknpr_11))
          (f_token_tmpunknpr_11
            ()
