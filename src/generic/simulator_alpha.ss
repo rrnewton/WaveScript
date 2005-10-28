@@ -839,7 +839,11 @@
 	       [SenseTok subtokid (k_maybe) (stored)
 			 (if (eq? '0 k_maybe)
 			     (sync-sense)
-			     (call k_maybe (sync-sense)))]
+			     ;; If we have run cps-tokmac without convert closure
+			     ;; then it will be an actual procedure:
+			     (if (procedure? k_maybe)
+				 (kcall k_maybe (sync-sense))
+				 (call k_maybe (sync-sense))))]
 	       ,@nodetoks))
 
        ;; Here we mutate the node-start to also call SOC-start.
