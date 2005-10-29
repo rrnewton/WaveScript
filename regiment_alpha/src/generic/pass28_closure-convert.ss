@@ -63,83 +63,6 @@
 	 [(eq? x (car ls)) (loop (cdr ls) acc)]
 	 [else (loop (cdr ls) (cons (car ls) acc))])))    
 
-    ;; This is copied from the cps-tokmac pass.  Should share it!
-
-    ;; This is confusing, but there are so many small traversals of
-    ;; the program tree in this pass that it is much easier to reuse this tree walk:
-    ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
-    ;;
-    ;; NOTE: Duplicated code.  This function also appears in other passes, where it 
-    ;; works on a slightly different grammar.
-    ;;
-    ;; NOTE: A common failure mode when using this is invoking the
-    ;; wrong loop when making a recursive pattern match.  Be careful.
-#;    (define (generic-traverse driver fuse e)
-      ;; The "driver" takes the first shot at an expression, transforms the
-      ;; subcases that it wants to, and then hands the rest on to its
-      ;; continuation to do the automated traversal. The automated
-      ;; traversal, in turn, uses the "fuse" function to glue back together
-      ;; the parts of the tree.  The fuse function is passed a list of child
-      ;; exprss and another continuation representing the "default fuser" which
-      ;; just puts the expression back together like it was before (given the child terms).
-      ;; Types:
-      ;;   driver : expr, (expr -> 'intermediate) -> 'result)
-      ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
-      ;;   e : expr 
-      ;; Return value: 'result 
-      (let loop ((e e))
-	(driver e 
-	   (lambda (expression)
-	     (match expression
-;		    [,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
-		    [,const (guard (constant? const)) (fuse () (lambda () const))]
-		    [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
-		    [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
-		    [(tok ,tok)                    (fuse ()      (lambda () `(tok ,tok)))]
-		    [(tok ,tok ,n) (guard (integer? n)) (fuse () (lambda () `(tok ,tok ,n)))]
-		    [(tok ,tok ,[loop -> expr])    (fuse (list expr) (lambda (x) `(tok ,tok ,x)))]
-		    [(ext-ref ,tok ,var)           (fuse ()      (lambda () `(ext-ref ,tok ,var)))]
-		    [(ext-set! ,tok ,var ,[loop -> expr])  
-		                                   (fuse (list expr) (lambda (x) `(ext-set! ,tok ,var ,x)))]
-		    [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
-		    [(leds ,what ,which)           (fuse ()      (lambda () `(leds ,what ,which)))]
-		    [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls `(begin ,ls ...)))]
-		    [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
-		                                   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
-		    [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
-		                                   (fuse (list rhs bod) 
-							 (lambda (x y) `(let ([,lhs ,x]) ,y)))]
-		    [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
-		                                   (fuse (append rhs* (list bod)) 
-							 `(let-stored ([,lhs* ,rhs*] ...) ,bod))]
-		    ;; "activate" and the gradient calls have already been desugared:
-
-		    [(lambda (,v) ,[loop -> e])    (fuse (list e) (lambda (x) `(lambda (,v) ,x)))]
-		    [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) (lambda (x y) `(kcall ,x ,y)))]
-		    
-		    [(build-kclosure ,kname (,fvs ...)) (fuse () (lambda () `(build-kclosure ,kname (,fvs ...))))]
-
-		    [(,call ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (memq call '(bcast subcall call)))
-		     (fuse (cons rator rands) (lambda (x . ls) `(,call ,x ,ls ...)))]
-		    [(timed-call ,time ,[loop -> rator] ,[loop -> rands] ...)
-		     (guard (number? time))		     
-		     (fuse (cons rator rands) (lambda (x . ls) `(timed-call ,time ,x ,ls ...)))]
-		    [(return ,[loop -> e])         (fuse (list e) (lambda (x) `(return ,x)))]
-		    [(,prim ,[loop -> rands] ...)
-		     (guard (or (token-machine-primitive? prim)
-				(basic-primitive? prim)))
-		     (fuse rands (lambda ls `(,prim ,ls ...)))]
-		    [(app ,[loop -> rator] ,[loop -> rands] ...)
-		     (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
-		    [(,[loop -> rator] ,[loop -> rands] ...)
-		     (warning 'closure-convert "allowing arbitrary application of rator: ~a" rator)
-		     (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
-		    [,otherwise
-		     (error 'generic-traverse
-			    "bad expression: ~s" otherwise)])))))
-
-
     (define (subst e1 v e2)
         (tml-generic-traverse
 	 ;; driver, fuser, expression
@@ -356,10 +279,17 @@
 
 		     ;; We try to make direct calls here if we can.
 		     [(kcall ,k ,[val])  (guard (assq k kbinds))
-		      (let ([newhands (vector-ref val 0)] [v (vector-ref val 1)])
-			(addhands newhands
-				  (loop `(call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v))))]
-		     [(kcall ,k ,[val])
+			(let-match ([#(,newhands ,v) val])
+			  ;; It should be ok to duplicate this code:
+			  (DEBUGMODE (if (not (symbol? (cadr (assq k kbinds))))
+					 (error 'convert-closure 
+						"tried to duplicate code that was supposed to be a symbol, but it's not: ~s"
+						(cadr (assq k kbinds)))))
+			  (addhands newhands
+				    (loop `(if (eq? ,(cadr (assq k kbinds)) ,NULLK)
+					       (void) ;; Fizzle if it's the null continuation object.
+					       (call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v)))))]
+		     [(kcall ,k ,[val])		      
 		      (let ([newhands (vector-ref val 0)]
 			    [temp (unique-name 'temp)]
 			    [v (vector-ref val 1)])
@@ -372,7 +302,9 @@
 					,@(REGIMENT_DEBUG
 					   `(dbg "~a: Scheduling invocation of continution token: ~a  arg: ~a"
 						 (my-id) ,k ,temp))
-					(call ,k ',CALL ,temp))))))]
+					(if (eq? ,k ,NULLK)
+					    (void) ;; Fizzle on null continuation.
+					    (call ,k ',CALL ,temp)))))))]
 		     [(let ([,k (lambda (,hole) ,[val])]) ,body2)
 		      (let ([newhands1 (vector-ref val 0)] 
 			    [body1 (vector-ref val 1)])
@@ -511,7 +443,7 @@
       ))
       
 
-;; Now test the whole module:a
+;; Now test the whole module:
 (set! these-tests
   (append these-tests
     `(
