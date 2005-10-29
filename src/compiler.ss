@@ -35,13 +35,13 @@
     ;    add-routing
     analyze-places
     deglobalize
-    
-    cleanup-token-machine    
-    ;desugar-soc-return
-    desugar-macros
+
+
+    cleanup-token-machine 
+    desugar-macros		
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
-    
+
     ;    analyze-tokmac-recursion
     ;    inline-tokmac
 
@@ -50,14 +50,14 @@
 
 ;; Temporarily I am disabling these ..
     cps-tokmac
-    closure-convert
-    cleanup-token-machine ;; Trying this.. [2005.09.27]
+;    closure-convert
+;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
     ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
 ;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
 ;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
     desugar-let-stored
-;    rename-stored
+    rename-stored
 
     ;    verify-token-machine
     ;    haskellize-tokmac 
@@ -288,8 +288,8 @@
 		     desugar-let-stored
 		     rename-stored  
 		     cps-tokmac
-		     ;  closure-convert      
-		     ;cleanup-token-machine
+;		     closure-convert      
+;		     cleanup-token-machine
 		     )])
 		 (let ([prog (run-compiler ',tm
 					   ;'verbose
@@ -319,26 +319,21 @@
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
-	       (fluid-let ([pass-names
+	       (fluid-let (#;
+			   [pass-names
 		   '(
 
 		     cleanup-token-machine 
-;		     desugar-soc-return 	
 		     desugar-macros		
 		     desugar-gradients
 		     cleanup-token-machine 
 		     desugar-let-stored
 		     rename-stored  
 		     cps-tokmac
-		     ;  closure-convert      
+;		     closure-convert      
 ;		     cleanup-token-machine
-
-;		     cleanup-token-machine  desugar-gradients
-;		     cleanup-token-machine desugar-let-stored
-;		     rename-stored         ; cps-tokmac
-;;		     closure-convert        ;cleanup-token-machine
 		     )])
-		 (let ([prog (run-compiler ',tm
+		 (let ([prog (assemble-tokmac ',tm
 					   ;'verbose
 					   )])
 		   (let ((prt (open-output-string)))
@@ -360,27 +355,21 @@
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
-	       (fluid-let ([pass-names
+	       (fluid-let (#;
+			   [pass-names
 		   '(
 
 		     cleanup-token-machine 
-;		     desugar-soc-return 	
 		     desugar-macros		
 		     desugar-gradients
 		     cleanup-token-machine 
 		     desugar-let-stored
 		     rename-stored  
 		     cps-tokmac
-		     ;  closure-convert      
+;		     closure-convert      
 ;		     cleanup-token-machine
-
-
-;		     cleanup-token-machine  desugar-gradients
-;		     cleanup-token-machine desugar-let-stored
-;		     rename-stored         ; cps-tokmac
-;;		     closure-convert        ;cleanup-token-machine
 		     )])
-		 (let ([prog (run-compiler ',tm 
+		 (let ([prog (assemble-tokmac ',tm 
 					   )])
 		   (profile-clear) ;; Temp: profiling the simulator:
 		   (let ((result (run-simulator-alpha prog 

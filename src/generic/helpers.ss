@@ -273,6 +273,8 @@
 
      (printf (String . Object) Void)
      (dbg (String . Object) Void)
+     (error (Object String . Object) Void)
+
 
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
