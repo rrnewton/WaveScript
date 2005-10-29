@@ -29,6 +29,29 @@
 ;; Is set to a list of all the leds that are toggled on.    
 [define led-toggle-state '()]
 
+;; [2005.10.29] These three are the interface through which the token-store is accessed.
+(trace-define (retrieve-token the-store stok)
+  (let ((ls (hashtab-get the-store (token->key stok))))
+    (if (not ls) #f
+	(let ((entry (assoc stok ls)))
+	  (if entry (cdr entry) #f)))))
+
+(trace-define (evict-token the-store stok)
+  (let* ([key (token->key stok)]
+	 [ls (hashtab-get the-store key)]
+	 [newls (filter (lambda (x) (not (equal? (car x) simtok))) ls)])
+    (if (null? newls)
+	(hashtab-remove! the-store key)
+	(hashtab-set! the-store key newls))))
+
+(trace-define (add-token the-store stok val)
+  (let* ([key (token->key stok)]
+	 [ls (hashtab-get the-store key)])
+    (hashtab-set! the-store key 
+		  (cons (cons stok val) 
+			(if ls ls ())))))
+
+
 ;; MAKE SURE NOT TO INCLUDE OURSELVES:
 [define (neighbors obj sim)
   (let ((entry (assq obj (simworld-object-graph sim))))
@@ -159,12 +182,18 @@
 ;; Invariant checker: used only in DEBUGMODE
 [define (check-store tokstore)
   (hashtab-for-each
-   (lambda (key tokobj)
+   (lambda (key entries)
      (let ((token (key->token key)))
      (or (and (simtok? token) ;(pair? token)
 	      (symbol? (simtok-name token)) ;(symbol? (car token))
 	      (number? (simtok-subid token)) ;(number? (cdr token))
-	      (vector? tokobj))
+	      (andmap (lambda (entry)
+			(and (pair? entry)
+			     (simtok? (car entry))
+			     (or (vector? (cdr entry)) ;; Not sure which of these it'll be.
+				 (record? (cdr entry)))))
+		      entries)
+	      )
 	 (error 'check-store "Bad token store at entry: key:~s, token:~s, tokobj: ~n~s" key token tokobj))))
    tokstore)]
 

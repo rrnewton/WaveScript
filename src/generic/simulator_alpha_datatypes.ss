@@ -199,7 +199,7 @@
   (DEBUGMODE
    (if (not (simtok? t))
        (error 'token->key "This is not a simtok object: ~s" t)))
-  (let ((n (hash t max-positive)))
+  (let ((n (hash (list (simtok-name t) (simtok-subid t)) max-positive)))
     (hashtab-set! reverse-table n t)
     ;(disp " Token->key " t n)
     n))
