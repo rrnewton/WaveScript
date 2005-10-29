@@ -5,15 +5,15 @@
 ;; ======================================================================
 
 ;; This structure contains all the global data needed a simulation.
-(define-structure (simworld graph object-graph all-objs obj-hash scheduler-queue vtime))
+(reg:define-struct (simworld graph object-graph all-objs obj-hash scheduler-queue vtime))
 ;; obj-hash maps node-ids onto simobjects
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
-(define-structure (simevt vtime msgobj))
+(reg:define-struct (simevt vtime msgobj))
 
 ;; [2005.05.06]
 ;; A first class representation of tokens:
-(define-structure (simtok name subid))
+(reg:define-struct (simtok name subid))
 ;; TODO: Change the system to use these ^^
 
 
@@ -22,10 +22,10 @@
 ;; a struct containing all the stored values.
 
 ;  [2005.03.05] Putting everything in simobject, "this" provides everything.
-;(define-structure (localinfo this I-am-SOC tokstore))
+;(reg:define-struct (localinfo this I-am-SOC tokstore))
 
 ;; Positions are just 2-element lists.
-(define-structure (node id pos))
+(reg:define-struct (node id pos))
 
 ;; This structure represents a simulated node:
 ;; Incoming is a list of token messages.
@@ -35,7 +35,7 @@
 ;;   this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
 ;;   token-cache in the structure too
-(define-structure (simobject node I-am-SOC
+(reg:define-struct (simobject node I-am-SOC
 			     token-store ;; Changing this to hash table mapping names to 
 
 			     ;; All these buffers get changed when a token handler runs:
@@ -64,7 +64,7 @@
 
 ;; This structure represents a message transmitted across a channel.
 ;; None of these should be mutated:
-(define-structure (msg-object token ;; This is a simtok object.  Used to just be a symbol (name).
+(reg:define-struct (msg-object token ;; This is a simtok object.  Used to just be a symbol (name).
 			      sent-time ;; when it was sent --This is currently mutated within the scheduler [2005.09.27]
 			      parent ;; :: simobject - who I got it from
 			      to   ;; :: nodeid - who its going to, #f for broadcast

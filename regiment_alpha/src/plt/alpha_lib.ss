@@ -5,7 +5,7 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (lib "list.ss")
-   (all-except (lib "compat.ss") define-structure flush-output-port) 
+   (all-except (lib "compat.ss") reg:define-struct flush-output-port) 
    "constants.ss"  
    (all-except "helpers.ss" test-this these-tests filter)
    (all-except "basic_graphics.ss" test-this these-tests)

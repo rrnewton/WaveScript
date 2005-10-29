@@ -11,5 +11,5 @@
 
 (define the-win #f)
 
-(define-structure (rgb red green blue))
+(reg:define-struct (rgb red green blue))
 (define rgb make-rgb)

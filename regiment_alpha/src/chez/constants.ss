@@ -10,3 +10,4 @@
 ;; Used by graphics_stub.ss
 ;(define Starting-Node-Color (make <rgb> 200 10 10))
 (define Starting-Node-Color (make-rgb 130 130 130))
+

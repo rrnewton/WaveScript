@@ -116,8 +116,6 @@
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
 
-(define structure-copy  vector-copy)
-
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob sim)
@@ -334,7 +332,7 @@
      ;; This is a promise so as to be called only once.
 ;     (define wipe-screen (delay clear-buffer))
      ;; Contains a graphics object, and the last drawn state.
-     (define-structure (edgestate gobj oldstate))
+     (reg:define-struct (edgestate gobj oldstate))
 
      (if (not the-win) (init-graphics))
      (clear-buffer)
@@ -413,16 +411,16 @@
 		   (guard (and (symbol? x) (memq x allstored)))
 		   ;; The stored names should be unique at this point!  So this should be ok:
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
-			  (DEBUGMODE
-			  (if (not (eq? which-tok tokname))
-			      (error 'simulator_alpha:process-statement 
-				     "bad ext-ref: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
-			  `(let ([exttokobj (hashtab-get the-store 
-							 (token->key (make-simtok ',tokname ,subtok)))])
-			     "FOOBAR"
+		     (DEBUGMODE
+		      (if (not (eq? which-tok tokname))
+			  (error 'simulator_alpha:process-statement 
+				 "bad ext-ref: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
+		     `(let ([exttokobj (hashtab-get the-store 
+						    (token->key (make-simtok ',tokname ,subtok)))])
+			"FOOBAR"
 			     ,(format "Ext-ref of (tok ~s ~s) variable ~s" tokname subtok x)
 			     (if exttokobj
-				 (vector-ref exttokobj ,(+ 1 pos))
+				 (,(string->symbol (format "~a-~a" tokname x)) exttokobj)
 				 #f)))]
 		  [(ext-set! (tok ,tokname ,subtok) ,x ,[e])
 		   (guard (and (symbol? x) (memq x allstored)))		   
@@ -434,7 +432,7 @@
 			  `(let ([exttokobj (hashtab-get the-store (token->key (make-simtok ',tokname ,subtok)))])
 			     ,(format "Ext-set! of (tok ~s ~s) variable ~s" tokname subtok x)
 			     (if exttokobj
-				 (vector-set! exttokobj ,(+ 1 pos) ,e)
+				 (,(string->symbol (format "set-~a-~a!" tokname x)) exttokobj ,e)
 				 (warning 'ext-set! "var ~s: token not present: ~s" ',x `(,tokname . subtok))
 				 )))]
 
@@ -449,7 +447,7 @@
 			   `(begin 
 			     ,(format "Local Stored Ref of variable: ~s" x)
 			     "We add one to the position because zeroth is the invocation counter."
-			     (vector-ref tokobj ,(+ 1 pos))))]
+			     (,(string->symbol (format "~a-~a" which-tok x)) tokobj)))]
 
 		  [,x (guard (or (symbol? x) (constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
@@ -577,7 +575,7 @@
 				      v which-tok current-handler-name)))
 			  `(begin 
 			     ,(format "Local Stored Set! of variable: ~s" v)
-			     (vector-set! tokobj ,(+ 1 pos) ,rhs)))]
+			     (,(string->symbol (format "set-~a-~a!" which-tok v)) tokobj ,rhs)))]
 
 		  [(set! ,v ,[rhs])  `(set! ,v ,rhs)]
 
@@ -788,7 +786,8 @@
 				(if (not tokobj)				   
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
-					   (set! tokobj (vector 0 ,@(map cadr stored)))
+					   (set! tokobj (,(string->symbol (format "make-~a" tok))
+							 0 ,@(map cadr stored)))
 					   (hashtab-set! the-store (token->key simtok-obj) tokobj)))
 				(set-simobject-outgoing-msg-buf! this '())
 				(set-simobject-local-msg-buf! this '())
@@ -843,7 +842,8 @@
 			     ;; then it will be an actual procedure:
 			     (if (procedure? k_maybe)
 				 (kcall k_maybe (sync-sense))
-				 (call k_maybe (sync-sense))))]
+				 (call k_maybe ',KCALL_FLAG (sync-sense))
+				 ))]
 	       ,@nodetoks))
 
        ;; Here we mutate the node-start to also call SOC-start.
@@ -873,11 +873,19 @@
 ; 			  tbinds))
 	 (let ((node-code
 	 `(define (node-code this)
+	   ;; First define datatype definitions for the tokens:
+	   ,@(let ((alltoks (list->set (map car allstored))))
+	       (map (lambda (t)		
+		      `(reg:define-struct (,t invoke-counter 
+					      ,@(cadr (assq t allstored)))))
+		 alltoks))
+
 	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
+
 	   ;; Set the global parameter that library code needs to access "this".
 	   (parameterize ((current-simobject this))
 	   ;; Now we have subtoks:
-;	   (define-structure (tokstore ,@(apply append (map cadr allstored))))
+;	   (reg:define-struct (tokstore ,@(apply append (map cadr allstored))))
 	   ;; Need to update the sensing machinery...
 	   (let (
 		 #;

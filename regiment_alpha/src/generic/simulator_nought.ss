@@ -147,7 +147,7 @@
 				expr ...)]))
 
 ;; Positions are just 2-element lists.
-(define-structure (node id pos))
+(reg:define-struct (node id pos))
 ;; Incoming is a list of messages (or return-objs).
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
 ;; [2004.06.11] Added homepage just for my internal hackery.
@@ -155,14 +155,14 @@
 ;; this, we don't want multiple simulation to be thrashing eachother.
 ;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
 ;; token-cache in the structure too
-(define-structure (simobject node incoming timed-tokens redraw gobj homepage 
+(reg:define-struct (simobject node incoming timed-tokens redraw gobj homepage 
 			     token-cache local-sent-messages local-recv-messages
 			     ))
 
 ;; This record holds the info that the token cache needs to maintain
 ;; per each token name.
 ;; NOTE: The lack of a *parent* indicates that the message is a local call:
-(define-structure (msg-object token 
+(reg:define-struct (msg-object token 
 			      timestamp ;; when it was sent 
 			      origin ;; :: simobject - original source of message
 			      parent ;; :: simobject - who I got it from
@@ -171,7 +171,7 @@
 
 ;; [2004.07.27]
 ;; Doing a refactoring to add this, seperating msg-object's from return-objs
-(define-structure 
+(reg:define-struct 
   (return-obj
    ;; has some analogous fields to msg-object:
    timestamps parent counts

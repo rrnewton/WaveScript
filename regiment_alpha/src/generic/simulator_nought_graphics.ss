@@ -38,7 +38,7 @@
   (define wipe-screen (delay clear-buffer))
 
   ;; Contains a graphics object, and the last drawn state.
-  (define-structure (edgestate gobj oldstate))
+  (reg:define-struct (edgestate gobj oldstate))
 
   (if object-graph
   ;; Fill up our two hash tables with drawn objects.

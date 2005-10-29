@@ -278,20 +278,7 @@
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
-	       (fluid-let ([pass-names
-		   '(
-		     cleanup-token-machine 
-;		     desugar-soc-return 			
-		     desugar-macros
-		     desugar-gradients
-		     cleanup-token-machine 
-		     desugar-let-stored
-		     rename-stored  
-		     cps-tokmac
-;		     closure-convert      
-;		     cleanup-token-machine
-		     )])
-		 (let ([prog (run-compiler ',tm
+		 (let ([prog (assemble-tokmac ',tm
 					   ;'verbose
 					   )])
 		   (let ((prt (open-output-string)))
@@ -304,7 +291,7 @@
 		     (display ")" prt)
 		     (read (open-input-string (get-output-string prt)))
 		     result ;; Returns the soc-returned values rather than the output list.
-		     )))))
+		     ))))
 	   )]
 
 ;; TODO FIXME:  Expand some of these tests to use more passes.
@@ -319,20 +306,6 @@
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
-	       (fluid-let (#;
-			   [pass-names
-		   '(
-
-		     cleanup-token-machine 
-		     desugar-macros		
-		     desugar-gradients
-		     cleanup-token-machine 
-		     desugar-let-stored
-		     rename-stored  
-		     cps-tokmac
-;		     closure-convert      
-;		     cleanup-token-machine
-		     )])
 		 (let ([prog (assemble-tokmac ',tm
 					   ;'verbose
 					   )])
@@ -345,7 +318,7 @@
 				   ))
 		       (display ")" prt)
 		       (read (open-input-string (get-output-string prt)))
-		     )))))
+		     ))))
 	   )]
 	
 	;; This one returns soc-return'd vals rather than the printed data.
@@ -355,20 +328,6 @@
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
-	       (fluid-let (#;
-			   [pass-names
-		   '(
-
-		     cleanup-token-machine 
-		     desugar-macros		
-		     desugar-gradients
-		     cleanup-token-machine 
-		     desugar-let-stored
-		     rename-stored  
-		     cps-tokmac
-;		     closure-convert      
-;		     cleanup-token-machine
-		     )])
 		 (let ([prog (assemble-tokmac ',tm 
 					   )])
 		   (profile-clear) ;; Temp: profiling the simulator:
@@ -376,7 +335,7 @@
 					;'timeout 10000
 						      )))
 		     result ;; Returns the soc-returned values rather than the output list.
-		     )))))]
+		     ))))]
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:

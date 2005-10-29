@@ -1,5 +1,5 @@
 
-(define-syntax define-structure
+(define-syntax reg:define-struct
   (lambda (x)
     (define gen-id
       (lambda (template-id . args)
@@ -15,7 +15,7 @@
     (syntax-case x ()
       ((_ (name field1 ...))       
        (andmap identifier? (syntax (name field1 ...)))
-       (syntax (define-structure (name field1 ...) ())))
+       (syntax (reg:define-struct (name field1 ...) ())))
       ((_ (name field1 ...) ((field2 init) ...))
        (andmap identifier? (syntax (name field1 ... field2 ...)))
        (with-syntax
