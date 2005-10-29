@@ -6,7 +6,7 @@
 	   (lib "pretty.ss")          
            ;; NO SLIB:
            ;           (lib "load.ss" "slibinit")
-           (lib "compat.ss") ;; gives us define-structure
+           (lib "compat.ss") ;; gives us reg:define-struct  
            )
   (require 
    "constants.ss"

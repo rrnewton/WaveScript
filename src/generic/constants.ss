@@ -84,6 +84,9 @@
 ;; it need not invoke it.
 (define NULLK ''NULLK)
 
+;; And by convert closure:
+(define KINIT_FLAG 'KINIT) ; 11
+(define KCALL_FLAG 'KCALL) ; 99 
 
 
 ;;======================================================================

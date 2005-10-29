@@ -29,7 +29,7 @@
 
 (define-language 'nil-language '(begin))
 
-(define-structure (baselang-simnode id sensor pos))
+(reg:define-struct (baselang-simnode id sensor pos))
 
 ;; Define this once for the simulation so that our answers are deterministic.
 ;; This is a list of <sensereading, xpos, ypos> 
@@ -53,7 +53,7 @@
      (define world (map cons the-test-field the-test-field))
      (define radius 27.0)
 
-;     (define-structure (baselang-simnode id sensor pos))
+;     (reg:define-struct (baselang-simnode id sensor pos))
      
      (define (entry? r)
        (and (pair? r)

@@ -10,7 +10,7 @@
 	  "lang00.ss"
 	  "lang10.ss"
 	  "language-mechanism.ss"
-	  "define-structure.ss"
+	  "reg:define-struct.ss"
 	  "temp.ss"
 	  "tests.ss"
 	  "test.ss"

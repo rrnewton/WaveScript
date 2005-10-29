@@ -4,7 +4,7 @@
    (all-except "constants.ss" test-this these-tests)
    (all-except "helpers.ss" id flush-output-port test-this these-tests)  
    "iu-match.ss"           
-   (all-except (lib "compat.ss") define-structure) ;; gives us define-structure           
+   (all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct           
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
@@ -31,7 +31,7 @@
 ;           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
   
-  (define-syntax define-structure
+  (define-syntax reg:define-struct
     (syntax-rules ()
       [(_ (sname field ...))
        (define-struct sname (field ...) (make-inspector))]))  

@@ -44,8 +44,6 @@
 (define closure-convert
   (let ()
 
-    (define INIT 'KINIT) ; 11
-    (define CALL 'KCALL) ; 99 
     (define FREEVAR0 'fv0)
 
     ;; Name of the token which represents the global variable storing the continuation
@@ -158,14 +156,14 @@
 				     `(dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname))
 				  ;; FIXME: PADDING
 ;; Consider getting rid of:
-				  (call (tok ,kname 0) ',INIT 
+				  (call (tok ,kname 0) ',KINIT_FLAG 
 					,@(make-list (max 1 (length fvs)) 
 						     ''counter-holder-tok-dummy-val)) ;; The void takes up the fv0 position
 				  '1))])
 		  (begin 
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
 		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
-		    (call (tok ,kname ,kind) ',INIT ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
+		    (call (tok ,kname ,kind) ',KINIT_FLAG ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
 		    ,@(REGIMENT_DEBUG
 		       `(dbg '"~a: Launched an continuation-allocation call (tok ~a ~a) with fvs ~a = ~a" 
 			     (my-id)  ',kname ,kind ',fvs (list ,@fvs))
@@ -193,7 +191,7 @@
 			(error ',kname
 			       "This continuation token was called before its kcounter was allocated (0th-indexed token).")))
 			
-		(if (eq? flag ',INIT)
+		(if (eq? flag ',KINIT_FLAG)
 		    (begin
 		      ;[2005.09.24];(printf "~a: Init continuation: ~a~n" (my-id) ',kname) (flush-output-port)
 			      
@@ -214,7 +212,7 @@
 					       ))
 				      ))
 				 newfvs fvns))))
-		    ;; Otherwise, assume the flag is CALL
+		    ;; Otherwise, assume the flag is KCALL_FLAG
 		    (begin
 #;		      ,@(REGIMENT_DEBUG `(if (not ,fvs-initialized-yet)
 					     (error ',kname 
@@ -288,7 +286,7 @@
 			  (addhands newhands
 				    (loop `(if (eq? ,(cadr (assq k kbinds)) ,NULLK)
 					       (void) ;; Fizzle if it's the null continuation object.
-					       (call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',CALL ,v)))))]
+					       (call (tok ,(cadr (assq k kbinds)) (token->subid ,k)) ',KCALL_FLAG ,v)))))]
 		     [(kcall ,k ,[val])		      
 		      (let ([newhands (vector-ref val 0)]
 			    [temp (unique-name 'temp)]
@@ -304,7 +302,7 @@
 						 (my-id) ,k ,temp))
 					(if (eq? ,k ,NULLK)
 					    (void) ;; Fizzle on null continuation.
-					    (call ,k ',CALL ,temp)))))))]
+					    (call ,k ',KCALL_FLAG ,temp)))))))]
 		     [(let ([,k (lambda (,hole) ,[val])]) ,body2)
 		      (let ([newhands1 (vector-ref val 0)] 
 			    [body1 (vector-ref val 1)])
@@ -426,7 +424,7 @@
 ;; Disabling for now:
 
 						     ,@(map (lambda (k)
-							      `(call (tok ,(car k) 0) ',INIT))
+							      `(call (tok ,(car k) 0) ',KINIT_FLAG))
 							    ktoks)
 ;						     ,@(make-list (max 1 (length fvs)) 
 ;								  ''counter-holder-tok-dummy-val))
