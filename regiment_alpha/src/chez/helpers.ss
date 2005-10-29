@@ -79,8 +79,8 @@
 
 (define-syntax reg:define-struct
   (syntax-rules ()
-    [(_ (name field ...))  (define-structure (name field ...))]
-;    [(_ (name field ...))  (define-record name (field ...))]
+;    [(_ (name field ...))  (define-structure (name field ...))]
+    [(_ (name field ...))  (define-record name (field ...))]
     ))
 
 

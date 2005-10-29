@@ -4,6 +4,11 @@
 	(
 	 current-simobject
 	 led-toggle-state
+
+	 retrieve-token
+	 add-token
+	 evict-token	 
+
 	 neighbors
 	 sendmsg
 	 sim-light-up
