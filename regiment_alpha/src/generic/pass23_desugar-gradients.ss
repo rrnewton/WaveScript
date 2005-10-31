@@ -84,11 +84,12 @@
    `(output ) ;(grammar ,foo PassInput))
   (let ()
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
-    ;; For now coupling it to global "DEBUGMODE"
-    ;(IFDEBUG
-      (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
-      ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
-    ;)
+    ;; For now coupling it to global "REGIMENT_DEBUG"
+
+    (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG (list expr ...))]))
+    ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
+    ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
+
 
    (define-syntax COMMENT 
      (syntax-rules ()
@@ -499,9 +500,12 @@
 			 ,@(if aggr
 			    `((begin 
 			       (token-deschedule (tok ,return-timeout-handler retid));)
-			       (dbg "%d.%d: Setting time-out!!" (my-clock) (my-id))
+			       ,@(DEBUG_GRADIENTS
+				  `(dbg "%d.%d: Setting time-out!!" (my-clock) (my-id)))
 			       (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) toind viaind)
-			       (dbg "%d.%d: Time-out set: %d" (my-clock) (my-id) (token-scheduled? (tok ,return-timeout-handler retid)))))
+			       ,@(DEBUG_GRADIENTS
+				  `(dbg "%d.%d: Time-out set: %d" 
+					(my-clock) (my-id) (token-scheduled? (tok ,return-timeout-handler retid))))))
 			    ())
 			 )
 		       

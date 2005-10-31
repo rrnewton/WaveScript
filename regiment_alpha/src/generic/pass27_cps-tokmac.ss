@@ -763,6 +763,33 @@
      #t]
 
     
+    ["Currently subcalls in if branches make useless continuations."
+     ;; Could try to optimize these away in a variety of manners:
+     (cps-tokmac (cleanup-token-machine '(if #t (subcall (tok sum 0) val acc_7))))
+     ,(lambda (p)
+	(= 2 (length (deep-assq-all 'lambda p))))]
+;; Currently produces: [2005.10.30]
+#;
+(cleanup-token-machine-lang
+  '(program
+     (bindings)
+     (nodepgm
+       (tokens
+         (SOC-start subtok_ind () (stored) (void))
+         (node-start
+           subtok_ind
+           ()
+           (stored)
+           (let ([k_88 (lambda (HOLE_89) HOLE_89)])
+             (if '#t
+                 (call
+                   (tok sum 0)
+                   (lambda (HOLE_90) (kcall k_88 HOLE_90))
+                   val
+                   acc_7)
+                 (kcall k_88 (void)))))))))
+
+    
          
    )))
 

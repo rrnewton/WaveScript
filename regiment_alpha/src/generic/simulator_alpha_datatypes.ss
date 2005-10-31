@@ -15,7 +15,12 @@
 ;; A first class representation of tokens:
 (reg:define-struct (simtok name subid))
 ;; TODO: Change the system to use these ^^
-
+(define (simtok-equal? x y)
+  (DEBUGMODE 
+   (unless (and (simtok? x) (simtok? y))
+     (error 'simtok-equal? "These are not both simtoks: ~s ~s" x y)))
+  (and (eq? (simtok-name x) (simtok-name y))
+       (eqv? (simtok-subid x) (simtok-subid y))))
 
 ;; This structure contains everything an executing token handler needs
 ;; to know about the local node.  "this" is a simobject.  tokstore is

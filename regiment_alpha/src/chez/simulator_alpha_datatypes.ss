@@ -38,6 +38,8 @@
 	 simtok-subid
 	 set-simtok-name!
 	 set-simtok-subid!
+	 
+	 simtok-equal?
 
 	 make-node
 	 node?

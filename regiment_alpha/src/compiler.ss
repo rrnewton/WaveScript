@@ -50,6 +50,7 @@
 
 ;; Temporarily I am disabling these ..
     cps-tokmac
+    add-kclosure
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 

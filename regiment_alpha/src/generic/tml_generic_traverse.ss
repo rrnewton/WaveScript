@@ -60,7 +60,7 @@
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
 
           ;; This is for debugging, we just don't touch it:
-	  [(BLACKBOX ,expr ...) `(BLACKBOX ,expr ...)]
+	  [(BLACKBOX ,expr ...)             (fuse () (lambda () `(BLACKBOX ,expr ...)))]
 
 	  ;; We don't put any restrictions on what can be in a quoted constant:
 	  [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
@@ -146,6 +146,7 @@
 
 	  ;; For the convert-closure pass, processing the output of cps-tokmac
 	  [(lambda (,v) ,[loop -> e])    (fuse (list e) (lambda (x) `(lambda (,v) ,x)))]
+	  [(kclosure ,fvs ,v ,[loop -> e]) (fuse (list e) (lambda (x) `(kclosure ,fvs ,v ,x)))]
 	  [(kcall ,[loop -> k] ,[loop -> e]) (fuse (list k e) (lambda (x y) `(kcall ,x ,y)))]
 	  [(build-kclosure ,kname (,fvs ...)) 
 	   (fuse () (lambda () `(build-kclosure ,kname (,fvs ...))))]
@@ -175,7 +176,7 @@
 	(append rhs (remq lhs bod))
 	]
        [(lambda (,lhs* ...) ,[bod])
-	(difference bod* ;(list->set (apply append bod*)) 
+	(difference bod ;(list->set (apply append bod*)) 
 		    lhs*)]
        [(let-stored ((,lhs ,[rhs])) ,[bod])
 	(append rhs (remq lhs bod))]

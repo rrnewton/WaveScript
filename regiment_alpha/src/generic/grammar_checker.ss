@@ -162,21 +162,28 @@
 		      (match ls
 			[(,d ,x ,p ,k)
 			 (let ((reconstructed (k 'FAIL)))
-			   (let ((failcount (length (deep-all-matches (lambda (x) (eq? x 'FAIL)) reconstructed))))
-			     (printf "Failcount ~a\n" failcount)
-			     (if (= 0 failcount)
-				 #f
-				 ;; This is not a failure!
-;				 (error "Correct Parsing!\n ~s \n Correct Parsing! \n"
-;					reconstructed))
-				 ;; This is my random scoring heuristic:
-				 ;; We want a large context and a small expression:
-			     (let ((score (/ (- (count-nodes reconstructed)
-						(* 30 (count-nodes x)))
-					     failcount)))
-			       (progressbar)
-			       `(,score ,d ,x ,p ,reconstructed)))
-			     ))]))
+			   (if reconstructed
+			       (let ((failcount (length (deep-all-matches (lambda (x) (eq? x 'FAIL)) reconstructed))))
+					;(printf "Failcount ~a\n" failcount)
+				 (if (= 0 failcount)
+					;#f
+				     ;; This is not a failure!
+				     (error 'analyze-grammar-failure 
+					    "Correct Parsing!\n ~s \n Correct Parsing! \n"
+					    reconstructed)
+				     ;; This is my random scoring heuristic:
+				     ;; We want a large context and a small expression:
+				     (let ((score (- (count-nodes reconstructed)
+							(* 30 (count-nodes x)))
+						  ;failcount
+						     ))
+				       (progressbar)
+				       `(,score ,d ,x ,p ,reconstructed))))
+			       (begin (progressbar)
+				      ;; We couldn't do anything at all with it, failed reconstruct:
+				      ;; TODO: FIXME: WHEN DOES THIS HAPPEN, WHY?
+				      #f))
+			   )]))
 		 grammar-failure))))
 
 	;; First we sort minimizing depth:
@@ -189,21 +196,31 @@
 	
 ;	(pretty-print winner-list)
 
-	(let userloop ((ls winner-list) (past ()))
+	(let userloop ((i 0) (ls winner-list) (past ()))
 	  (if (null? ls) (printf "\n No more grammar failures to analyze.\n")
 	      (match (car ls)
 		[(,score ,d ,x ,p ,context)
-		 (printf "\nAt failure depth ~a, expression below did not satisfy ~a (context score ~a)\n    " d p score)
+		 (printf "\n~a: At failure depth ~a, expression below did not satisfy ~a (context score ~a)\n    " i d p score)
 		 (parameterize ((pretty-standard-indent 5)
-				(pretty-initial-indent 5))
+				(pretty-initial-indent 5)
+				(print-level 3)
+				(print-length 5))
 		   (pretty-print x))
 		 (let menuloop ()
 		   (printf "  Press n(next), p(previous), c(failure context), q(quit): ")
 		   (let readloop ()
 		     (case (read)
 		       [(q) (void)]
-		       [(n) (userloop (cdr ls) (cons (car ls) past))]
-		       [(p) (userloop (cons (car past) ls) (cdr past))]
+		       [(n) 
+			(if (null? ls)
+			    (begin (printf "No more failure scenarios.")
+				   (userloop i ls past))
+			    (userloop (add1 i) (cdr ls) (cons (car ls) past)))]
+		       [(p) 
+			(if (null? past)
+			    (begin (printf "No more previous failure scenarios.\n")
+				   (userloop i ls past))
+			    (userloop (sub1 i) (cons (car past) ls) (cdr past)))]
 		       [(c) 
 			(printf "\nContext:\n")
 			(parameterize ((pretty-standard-indent 5)
@@ -212,6 +229,133 @@
 			(menuloop)]
 		       [else (printf "\nInvalid input.\n") (readloop)]
 		       )))]))))))
+
+
+;; ================================================================================
+
+;; Trying again: no backtrack
+(define (check-grammar2 origexpr grammar . initialprod)
+  ;; expr is an sexpression
+  ;; grammar is just a list of productions
+  (define allvariants (list->set (map car grammar)))
+  (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
+
+  ;; This just goes through the grammar in order until it hits a match.
+  (define (scangrammar expr prods)
+    (if (null? prods) 'FAIL
+	(match (car prods)
+	  [(,lhs ,rhs)
+	   (let ((check (checkmatch expr rhs)))
+	     (if check
+		 `(,lhs ,@check)
+		 (scangrammar expr (cdr prods))))])))
+
+;; FIXME: FINISH BELOW
+
+  ;; This sees if an expression matches a given production.
+  (define (checkmatch expr prod k)
+    (match (list expr prod)
+;		 [(,lhs ,type) (guard (basic-type? type))
+;		  (if (check-basic expr type) #t
+;		      (fail))]
+      [(,x ,fun) (guard (procedure? fun))
+	    (if (fun x)
+		(if (atom? x)
+		    (k (cons fun x))
+		    (k fun)) ;'<fun>
+		(fail x fun k))]
+      [(,x (quote ,sym)) ;(guard (atom? x))
+       (if (eq? x sym) 
+	   (k `(quote ,sym))
+	   (fail x `(quote ,sym) k))]
+      [(,x (,p* ...)) ;; A list production
+       (if (not (list? x))
+	   (fail x p* k)
+	   (goingdeeper (matchlist x p* k)))]
+      [(,x ,p) (guard (memq p allvariants))
+           (scangrammar x (cut-grammar p) k)]
+      [(,_ ,p) (guard (symbol? p))
+       (error check-grammar "This is production-symbol is not bound: ~a" p)]
+      ))
+
+  ;; This is for compound productions that have some structure to 'em.
+  (define (matchlist ls p* k)
+     (let listloop ((ls ls) (p* p*) (k k))
+     (match (list ls p*)
+	    [(() ()) (k ())]
+	    [(,x ()) (fail x () k)]
+	    [(() (,_ ,v)) (guard (eq? v '...)) (k ())] ;; If we ran out on a "..." that's ok.s
+	    [(() ,x) (fail () x k)]
+	    
+	    [((,x ,lsnew ...)
+	      (,fun ,p*new ...))
+	     (guard (procedure? fun))
+	     (if (fun x)
+		 (goingdeeper (listloop lsnew p*new 
+					(lambda (e) (if e (k (cons (if (atom? x) (cons fun x) fun) e))
+							(k #f)))))
+		 (fail x fun k))]
+
+	    [((,x ,lsnew ...)
+	      ((quote ,p) ,p*new ...))
+	     ;(guard (atom? x))
+	     (if (eq? x p)
+		 (goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons `(quote ,p) e)) (k #f)))))
+		 (fail x `(quote ,p) k))]
+
+	    ;; Here we greedily eat up everything when we have a "..." ("*" BNF notation):
+	    [((,x ,lsnew ...)
+	      (,p ,elipses ,p*new ...)) (guard (eq? elipses '...))
+	      (goingdeeper (checkmatch x p
+		 (lambda (check)
+		   (if check
+		       (goingdeeper (listloop lsnew p* (lambda (e) (if e (k (cons check e)) (k #f)))))
+		       (goingdeeper (listloop ls p*new k))))))]
+
+	    ;; Named production:
+	    [((,x ,lsnew ...)
+	      (,p ,p*new ...))
+	     (guard (memq p allvariants))
+	     (scangrammar x (cut-grammar p)
+			  (lambda (scan)
+			    (if scan
+				(goingdeeper (listloop lsnew p*new (lambda (e) (if e (k (cons scan e)) (k #f)))))
+				(fail x p k))))]
+	    [((,x ,lsnew ...)
+	      (,p ,p*new ...))
+	     (guard (symbol? p))
+	     (error check-grammar "This is production-symbol is not bound: ~a" p)]
+
+	    ;; [sub]List pattern:
+	    [((,x ,lsnew ...)
+	      ((,subp* ...) ,p*new ...))
+	     (if (not (list? x))
+		 (fail x subp* k)
+		 (goingdeeper (listloop x subp*
+					(lambda (sub)
+					  (if sub
+					      (listloop lsnew p*new (lambda (e) (if e (k (cons sub e)) (k #f))))
+					      (fail x subp* k))))))]
+	    )))
+
+  (let ((result 
+	 (scangrammar origexpr (if (null? initialprod)
+;			 (if (assq 'PassInput grammar)
+;			     (begin ;; This is cheesy but convenient for me:
+;			       (printf "Defaulting to using 'PassInput as starting production for grammar check.\n")
+;			       (cut-grammar 'PassInput))
+			     ;; Otherwise we allow a match against any production in the grammar:
+			 grammar
+			 (cut-grammar (car initialprod)))
+		(lambda (e) e))))
+    (if (not result)
+	(begin (set-top-level-value! 'failure-stack failure-stack)
+	       (set-top-level-value! 'current-parse origexpr)
+	       (printf "Grammar check failed.  Stored failure trace in global var \"failure-stack\", and program in \"current-parse\"\n")
+	       (printf "Run (analyze-grammar-failure failure-stack) to see what went wrong.\n")
+	       #f)
+	result)
+   ))
 
 
 ;; ==================================================================
@@ -302,16 +446,22 @@
 ;; Should scratch this and explicitely enforce argument count in grammar:
     [Expr (Prim Expr ...)]
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))]) 
-	   token-machine-primitives)
+	   ;; Remove dbg from the list... we handle that special:
+	   (assq-remove-all 'dbg token-machine-primitives))
     [Expr ('app Expr ...)]
     [Expr ('call Token Expr ...)]
 
-    [Expr ('dbg DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
+    [Expr ('dbg ('quote ,string?) DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
     [DebugArg Expr]
     [DebugArg ('quote DebugArgConstData)]
     [DebugArgConstData ,atom?]
     [DebugArgConstData (DebugArgConstData ...)]
-    
+
+    ;; 
+    ;; This is dangerous, but I allow arbitrary debug statements to put hidden in "BLACKBOX" syntax.
+    ;; This are absolutely opaque both to the grammar checker and subsequent passes' transformations.
+    [Expr ('BLACKBOX ,(lambda (_) #t))]
+
 ;; These are now just primitives:  
 ;; But still need to remember to subtract them when the grammar shrinks.
 ;    [Expr ('return Expr)]
@@ -444,6 +594,12 @@
 			(SOC-start subtok_ind () (stored) (void))
 			(node-start subtok_ind () (stored) (printf '"woot"))))) basic_tml_grammar)
      ,list?]
+
+
+    #; 
+    ["Test a failed grammar check."
+     (check-grammar '(dbg "test" '1 '2 '3) basic_tml_grammar 'Expr)
+     ????]
 
     ))
 

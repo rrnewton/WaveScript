@@ -21,6 +21,8 @@
 	 simulator-soc-finished
 	 check-store
 	 ;alpha-it ;; shorthand
+
+	 test-this these-tests test-alphalib
 	 )
 
 	(import scheme)

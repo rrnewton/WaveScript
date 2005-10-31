@@ -165,6 +165,8 @@
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")
 (include "generic/pass27_cps-tokmac.ss")
+;(include "generic/pass27.1_sever-state.ss")
+(include "generic/pass27.2_add-kclosure.ss")
 (include "generic/pass28_closure-convert.ss")
 
 ;;(include "generic/pass29_verify-token-machine.ss")
