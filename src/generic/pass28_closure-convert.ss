@@ -42,6 +42,10 @@
 (define these-tests '())
 
 (define closure-convert
+  (build-compiler-pass
+   'closure-convert
+   `(input)
+   `(output );(grammar ,basic_tml_grammar PassInput))
   (let ()
 
     (define FREEVAR0 'fv0)
@@ -53,14 +57,7 @@
     (define KNAME 'K)
 
     (define (id x) x)
-
-    (define (remq-all x ls)
-      (let loop ((ls ls) (acc ()))
-	(cond 
-	 [(null? ls) (reverse! acc)]
-	 [(eq? x (car ls)) (loop (cdr ls) acc)]
-	 [else (loop (cdr ls) (cons (car ls) acc))])))    
-
+   
     (define (subst e1 v e2)
         (tml-generic-traverse
 	 ;; driver, fuser, expression
@@ -111,7 +108,8 @@
 	 (lambda (ls f) (apply f ls))
 	 e)))
 
-#;    (define (build-continuation kname body hole)
+#;
+    (define (build-continuation kname body hole)
       (values
        `(lambda (,hole) ,body)
        `(,kname subtok_ind () (stored) 'FOOO)))
@@ -180,11 +178,12 @@
 			,@(map (lambda (fv) `[,fv 'stored-captured-var-uninitialized]) 
 			       newfvs)
 			,@(REGIMENT_DEBUG `[,fvs-initialized-yet #f])
-			)		
-		(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
-		     (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
-		     (simobject-token-store this))
-
+			)
+		,@(REGIMENT_DEBUG
+		   `(dbg '"~a: Invoked continuation (tok ~a <~a>) with flag:~a args = ~a, fvs ~a = ~a ~n   TOKSTORE: ~a~n~n"
+			 (my-id) ',kname subtok_ind flag (list ,@fvns) ',newfvs (list ,@newfvs) 
+			 ((BLACKBOX simobject-token-store) this)))
+		
 		,@(REGIMENT_DEBUG
 		   ;`(sim-print-queue (my-id))
 		   `(if (not (token-present? (tok ,kname 0)))
@@ -199,8 +198,9 @@
 			;; No freevars if we're just initializing the counter-object.
 			(void)
 			(begin
-			  (dbg "~a: Initializing continuation (tok ~a <~a>) freevars! vals: ~a\n" 
-			       (my-id) ',kname subtok_ind (list ,@fvns))
+			  ,@(REGIMENT_DEBUG
+			     `(dbg '"~a: Initializing continuation (tok ~a <~a>) freevars! vals: ~a\n" 
+				   (my-id) ',kname subtok_ind (list ,@fvns)))
 			  ,@(REGIMENT_DEBUG `(set! ,fvs-initialized-yet #t))
 			  ,@(map (lambda (fv fvn)
 				   `(begin 
@@ -214,7 +214,8 @@
 				 newfvs fvns))))
 		    ;; Otherwise, assume the flag is KCALL_FLAG
 		    (begin
-#;		      ,@(REGIMENT_DEBUG `(if (not ,fvs-initialized-yet)
+#;
+		      ,@(REGIMENT_DEBUG `(if (not ,fvs-initialized-yet)
 					     (error ',kname 
 						    "This continuation token was called before its fvs were initialized.")))
 		      ,(let loop ((fvs fvs) (newfvs newfvs) (body body))
@@ -298,7 +299,7 @@
 				   `(let ((,temp ,v))
 				      (begin
 					,@(REGIMENT_DEBUG
-					   `(dbg "~a: Scheduling invocation of continution token: ~a  arg: ~a"
+					   `(dbg '"~a: Scheduling invocation of continution token: ~a  arg: ~a"
 						 (my-id) ,k ,temp))
 					(if (eq? ,k ,NULLK)
 					    (void) ;; Fizzle on null continuation.
@@ -438,7 +439,7 @@
 		    '(program (bindings ,constbinds ...)
 			      (nodepgm (tokens ,(append new-starts
 							(remq node-start-tok all-toks)) ...)))))]))
-      ))
+      ))) ;; End main closure-convert function.
       
 
 ;; Now test the whole module:

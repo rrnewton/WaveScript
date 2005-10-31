@@ -620,7 +620,7 @@
 		      (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock)))
 		      ))))
 	(let ((base (cdr (assq BASE_ID lst)))
-	      (others (map cdr (alist-remove BASE_ID lst))))
+	      (others (map cdr (assq-remove-all BASE_ID lst))))
 	  (if (all-equal? others)
 	      ;; Return something that won't vary based on sim parameters:
 	      (list (assq BASE_ID lst) (car others))
@@ -815,9 +815,101 @@
 		  (cadr result))
 	 ))]
 
+     ["Now before doing aggregated greturn, let's manually do some subcalls and return up values."
+      , (tm-to-list
+	 `(tokens
+	      (SOC-start () (bcast tok1) (timed-call 50 retransmit))
+	    (retransmit () (bcast tok1))
+	    (catcher (v) (if (= (my-id) ,BASE_ID)
+			    (printf "~a ~a\n" (my-clock) v)))
+	    (tok1 () (call handler (subcall f (my-id) 3)))
+	    (handler (v) (stored (acc '()))
+		     (set! acc (cons v acc))
+		     (if (not (token-scheduled? timeout))
+			 (timed-call 1000 timeout)))
+	    (timeout () 
+		     (bcast catcher (ext-ref handler acc)))
+	    (f (x y) (return (+ x y)))
+	    ))
+	342]
+	 
+
+     ["Let's manually do some tricky continuations and stress closure-convert."
+      (let ((prt (open-output-string)))
+	(display "(" prt)
+	(run-simulator-alpha
+	 (cleanup-token-machine
+	  (closure-convert
+	   (cleanup-token-machine
+	    '(tokens
+		 (SOC-start subtok_ind () (stored)
+			    (let ([k_88 (lambda (HOLE_89) (printf "k2 ~a\n" HOLE_89))])
+			      (if '#t
+				  (call (tok sum 0)
+					(lambda (HOLE_90) (printf "k1 ") (kcall k_88 HOLE_90))
+					99 
+					1)
+				  (kcall k_88 #f))))
+	       (sum (k x y) (kcall k (+ x y)))))))
+	 'outport prt)
+	(display ")" prt)
+	(read (open-input-string (get-output-string prt))))
+      (k1 k2 100)]
+
+     ["Let's manually do some tricky continuations and stress closure-convert. #2"
+      (let ((prt (open-output-string)))
+	(display "(" prt)
+	(run-simulator-alpha
+	 (cleanup-token-machine
+	  (closure-convert
+	   (cleanup-token-machine
+	    '(tokens
+		 [sum subtok_ind
+		      (k_98 x y)
+		      (stored)
+		      (kcall k_98 (+ x y))]
+	       [SOC-start () 
+			  (call TEST 0 'rhlocal 999 0 0)]
+	       [timeout () 
+			(printf " (timeout ~a) " (ext-ref TEST acc_92))]
+	       [TEST (destid flag val toind viaind)
+		     (stored (acc_92 '0))
+		(let ([k_99 (lambda (HOLE_100) (printf "outif2")
+				    HOLE_100)])
+		  (if (eq? flag 'rhlocal)
+		      (call (tok sum 0)
+			    (lambda (HOLE_101)
+			      (kcall k_99
+				     (begin
+				       (set! acc_92 HOLE_101)
+				       (printf "local-and-fire ")
+				       (timed-call 1000 timeout))))
+
+			    val
+			    acc_92)
+		      #;
+		      (let ([k_102 (lambda (HOLE_103) (printf "outif1 ")
+					   (kcall k_99 HOLE_103))])
+			(if (not (if (= destid '0) '#t (= destid (my-id))))
+			    (kcall k_102 (void))
+			    (call (tok sum 0)
+				  (lambda (HOLE_104)
+				    (kcall k_102
+					   (begin
+					     (set! acc_92 HOLE_104)
+					     (printf "remote "))))
+				  val
+				  acc_92)))))]))))))
+
+      ]
+
+			    
+
+
+
      ["Gradients: Now try aggregated greturn."
       (filter (lambda (x) (not (zero? x)))
-	      ,(tm-to-list
+	      , (tm-to-list
 		'(tokens 
 		  (SOC-start () (gemit tok1))
 		  (catcher (x) (printf "~a " x))
@@ -827,10 +919,15 @@
 				 (seed 0)
 				 (aggr sum)))
 		  (sum (x y) (+ x y)))
-		'[regiment-verbose #f]))
+		'[regiment-verbose #f]
+		'[simalpha-placement-type 'connected]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-failure-model 'none]		
+		))
       ,(lambda (ls)
 	 (and (= (length ls) 1)
 	      (> (car ls) 0)))]
+
 
      ["Gradients: Now try cons-aggregated greturn from one-hops"
       retry  ;; It's possibly we have no neighbors at all!

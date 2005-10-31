@@ -214,13 +214,16 @@
 	  (lambda (stmt)
 	  (match stmt
 ;	     [,x (guard (begin (printf  "PEXPmatch ~s\n" x) #f)) 3]
-		 
-	     [,const (guard (constant? const))
-		     `(quote ,const)]
-	     [(quote ,const) `(quote ,const)]
 
-	     [,t (guard (symbol? t) (memq t tokens))
-		 `(tok ,t ,DEFAULT_SUBTOK)]
+	    ;; [2005.10.29]  This is an absolutely opaque form for debugging.  Use carefully.
+	    [(BLACKBOX ,unknown) `(BLACKBOX ,unknown)]
+	    
+	    [,const (guard (constant? const))
+		    `(quote ,const)]
+	    [(quote ,const) `(quote ,const)]
+	    
+	    [,t (guard (symbol? t) (memq t tokens))
+		`(tok ,t ,DEFAULT_SUBTOK)]
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
 	     ;; That's done elsewhere:
@@ -337,7 +340,7 @@
 	     ;; TODO: check to see if the "tok" is a locally bound variable if it is not a tokname?
 	     ;; Should give warning if not.
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(gemit call bcast subcall)))
+	      (guard (memq call-style '(gemit call bcast subcall kcall))) ;; Even allowing kcall!
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
@@ -708,8 +711,13 @@
      ,(lambda (x) (match x 
 		   [(gdist (tok tok1 ,_)) #t]
 		   [,_ #f]))]
-	     
-  
+
+    ["Test sketchy BLACKBOX construct."
+     (deep-assq 'tok1
+		(cleanup-token-machine '(tokens [tok1 () (BLACKBOX (foobar . boobaz))])))
+     (tok1 subtok_ind ()(stored)
+	   (BLACKBOX (foobar . boobaz)))]
+	       
 ))
 
 

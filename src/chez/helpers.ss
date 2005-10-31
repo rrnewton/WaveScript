@@ -5,7 +5,8 @@
 	  for grep mvlet let-match (match-lambda match-lambda-helper)
 	  ^ ;; Exponentiation
 	  reg:define-struct ;; Could be define-structure or define-record.
-	   
+	  apply-ordered
+	  
 	  ;; For plt compat:
 	  foldl
 
@@ -41,7 +42,7 @@
 	  destructure-tokbind
 
 	  set? subset? set-equal? list->set set-cons union intersection difference
-	  alist-remove list-remove-first list-remove-last! list-remove-after 
+	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
 	  filter list-index snoc rac rdc last 
 	  list-find-position list-remove-before
 	  randomize-list randomize-vector insert-between iota disp crit-printf

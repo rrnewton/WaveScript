@@ -42,7 +42,7 @@
     ;; It's an association list between bound-var [old] name and its new name.
     (tml-generic-traverse
      (lambda (x autoloop)
-       (match x
+       (match  x
 					;    [,x (guard (begin (disp "PEXP" x) #f)) 3]
 	 [,var (guard (symbol? var))
 	       (let ((entry (assq var subst)))

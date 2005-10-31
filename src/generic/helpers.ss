@@ -466,6 +466,35 @@
 	(begin (f i (car ls))
 	       (foreachi-loop (add1 i) (cdr ls))))))
 
+;; [2005.10.29] In scheme order of evaluation of operands is not specified.
+;; This forces left-to-right evaluation.
+#;
+(define-syntax apply-ordered
+  (lambda (x)
+    (syntax-case x ()
+      [(_ f x ...)
+       (begin 
+	 (disp "Woot:" (map identifier? #'(x ...)))
+	 (let apply-ordered-loop ([args (reverse #'(x ...))] [newargs '()] [binds '()])
+	   (if (null? (args)
+	       (with-syntax ((b binds) (na newargs))
+		 #'(let*foo b (f . na)))
+	       (let ((tmp #'tmp))
+		 (apply-ordered-loop (cdr args)				     
+				     (cons tmp newargs)
+				     (with-syntax ((t tmp) (a (car args)))
+				       (cons ;#`(#,tmp #,(car args))
+					     #'(t a)
+					     newargs
+					     ))))))))])))
+
+(define-syntax apply-ordered
+  (lambda (x)
+    (syntax-case x ()
+      [(appord f x ...)
+       (with-syntax (((tmp ...) (map (lambda (_) (datum->syntax-object #'appord (gensym "tmp"))) #'(x ...))))
+	 #'(let* ((tmp x) ...) (f tmp ...)))])))
+
 (define list-index
   (lambda (pred ls)
     (cond
@@ -480,12 +509,20 @@
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
 
-(define (alist-remove x ls)
+;; This removes all!  Not just first.
+(define (assq-remove-all x ls)
   (let loop ((ls ls))
     (cond
      [(null? ls) '()]
      [(eq? (caar ls) x) (loop (cdr ls))]
      [else (cons (car ls) (loop (cdr ls)))])))
+
+(define (remq-all x ls)
+  (let loop ((ls ls) (acc ()))
+    (cond 
+     [(null? ls) (reverse! acc)]
+     [(eq? x (car ls)) (loop (cdr ls) acc)]
+     [else (loop (cdr ls) (cons (car ls) acc))])))
 
 ;; USES equal? !!
 (define list-remove-after

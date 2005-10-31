@@ -30,27 +30,31 @@
 [define led-toggle-state '()]
 
 ;; [2005.10.29] These three are the interface through which the token-store is accessed.
-(trace-define (retrieve-token the-store stok)
+(define (retrieve-token the-store stok)
+  ;; This is defined lamely because equal? doesn't work on records.
   (let ((ls (hashtab-get the-store (token->key stok))))
+;    (inspect (cons ls stok))
     (if (not ls) #f
-	(let ((entry (assoc stok ls)))
-	  (if entry (cdr entry) #f)))))
+	(let loop ((ls ls))
+	  (cond 
+	   [(null? ls) #f]
+	   [(simtok-equal? (caar ls) stok)  (cdar ls)]
+	   [else (loop (cdr ls))])))))
 
-(trace-define (evict-token the-store stok)
+(define (evict-token the-store stok)
   (let* ([key (token->key stok)]
 	 [ls (hashtab-get the-store key)]
-	 [newls (filter (lambda (x) (not (equal? (car x) simtok))) ls)])
+	 [newls (filter (lambda (x) (not (simtok-equal? (car x) stok))) ls)])
     (if (null? newls)
 	(hashtab-remove! the-store key)
 	(hashtab-set! the-store key newls))))
 
-(trace-define (add-token the-store stok val)
+(define (add-token the-store stok val)
   (let* ([key (token->key stok)]
 	 [ls (hashtab-get the-store key)])
     (hashtab-set! the-store key 
 		  (cons (cons stok val) 
 			(if ls ls ())))))
-
 
 ;; MAKE SURE NOT TO INCLUDE OURSELVES:
 [define (neighbors obj sim)
@@ -198,6 +202,28 @@
    tokstore)]
 
 ;======================================================================
+
+(define these-tests
+  `(
+
+    ["Test adding and retrieving tokens to the store."
+     (let ((s (make-default-hash-table)))
+       (define-record foo (a b c))
+       (apply-ordered list
+	(,retrieve-token s (make-simtok 'foo 0))
+	(,add-token s [make-simtok 'foo 0] [make-foo 0 'let-stored-uninitialized #f])
+	(,retrieve-token s [make-simtok 'foo 0])))
+     ,(match-lambda ((,x ,y ,z))
+	(and (not x)
+	     (pair? y)
+	     (record? z)))]
+
+    ))
+
+(define test-this 
+  (default-unit-tester "Alpha Lib. run time library supporting simulator alpha."
+    these-tests))
+(define test-alphalib test-this)
 
 ;; Junk:
 

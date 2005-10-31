@@ -18,8 +18,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -109,6 +109,7 @@
 (define-regiment-parameter regiment-verbose #f)
 
 ;; This parameter adds extra debug/assertion code to the generated code.
+;; Currently we just set it based on whether the whole system is in debug mode.
 (define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
 
 ;; This one toggles logging.  

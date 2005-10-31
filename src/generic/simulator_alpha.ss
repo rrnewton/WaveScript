@@ -400,8 +400,13 @@
 		;; This is a little wider than the allowable grammar to allow
 		;; me to do test cases:
 		(match expr		       
-		  [(quote ,const) `(quote ,const)]
+		  [(quote ,const) `(quote ,const)]		  
 		  [,num (guard (number? num)) num]
+
+		  [(BLACKBOX ,[stuff]) 
+		   ;; This finally gets popped open here at the simulator.
+		   stuff]
+
 		  ;; Token references return pairs which index the token store hash table.
 		  [(tok ,t ,[e]) `(make-simtok ',t ,e)]
 
@@ -445,7 +450,6 @@
                            ;; 'tokobj' is already bound to our token object
 			   `(begin 
 			     ,(format "Local Stored Ref of variable: ~s" x)
-			     "We add one to the position because zeroth is the invocation counter."
 			     (,(string->symbol (format "~a-~a" which-tok x)) tokobj)))]
 
 		  [,x (guard (or (symbol? x) (constant? x))) x]
@@ -521,7 +525,7 @@
 			 (if (null? queue) #f 
 			     (let ((simtok (msg-object-token (simevt-msgobj (caar queue)))))
 			       (or (and (eq? this (cdar queue)) ;; Is it an event on this node.
-					(equal? ,tok simtok)
+					(simtok-equal? ,tok simtok)
 					(begin 	       
 					  (if (regiment-verbose)
 					  (DEBUGMODE (printf "Wow! we actually found the answer to ~s\n"
@@ -536,7 +540,7 @@
 					   )))
 			 (if (null? locals) #f
 			     (let ((simtok (msg-object-token (simevt-msgobj (car locals)))))
-			       (or (equal? ,tok simtok)
+			       (or (simtok-equal? ,tok simtok)
 				   (loop (cdr locals)))))))
 		       )]
 		  [(token-deschedule ,[tok]) ;; INEFFICIENT
@@ -553,7 +557,7 @@
 						     [else (error 'token-deschedule-generated-code "code error.")])))
 					;(not (and (eq? (simtok-name thistok) (simtok-name tok))
 					;	  (eq? (simtok-subid thistok) (simtok-subid tok))))
-					   (not (equal? tok thistok))))]
+					   (not (simtok-equal? tok thistok))))]
 			   [world (simobject-worldptr this)])
 		      ;; Clear the actual simulation queue.
 		      (set-simworld-scheduler-queue! world (filter notthistok (simworld-scheduler-queue world)))
@@ -857,7 +861,7 @@
 			 (begin ,body
 			    (if (= (my-id) ',BASE_ID) (call (tok SOC-start 0))  (void))))]
 		     [,other (error 'compile-simulate-alpha "bad node-start! ~s" other)])
-	      (alist-remove 'node-start nodetoks)))
+	      (assq-remove-all 'node-start nodetoks)))
        
        (mvlet ([(tbinds allstored) (process-tokbinds nodetoks)])
 
