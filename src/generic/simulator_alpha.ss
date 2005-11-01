@@ -412,7 +412,7 @@
 
 		  ;; This is sketchy: we just fail silently and return #f if there is no token there.
 		  ;; FIXME TODO: We should seriously have some sort of better error handling convention.
-		  [(ext-ref (tok ,tokname ,subtok) ,x)
+		  [(ext-ref (tok ,tokname ,[subtok]) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))
 		   ;; The stored names should be unique at this point!  So this should be ok:
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
@@ -426,7 +426,7 @@
 			     (if exttokobj
 				 (,(string->symbol (format "~a-~a" tokname x)) exttokobj)
 				 #f)))]
-		  [(ext-set! (tok ,tokname ,subtok) ,x ,[e])
+		  [(ext-set! (tok ,tokname ,[subtok]) ,x ,[e])
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
 			  (DEBUGMODE
@@ -477,6 +477,17 @@
                            (cons (make-simevt #f ;; No scheduled time, ASAP
                                               (bare-msg-object ,rator ,rands current-vtime))
                                  (simobject-local-msg-buf this)))))]
+
+		  
+		  ;; [2005.10.31] This is my first hack at high-priority scheduling for subcalls:
+		  [(call-fast ,[rator] ,[rand*] ...)
+		   (let ((rands (unique-name 'rands)))
+                     `(let ((,rands (list ,@rand*)))
+			;; Make sure those ^^ are all done evaluating before we mess with the msg buf:
+			(set-simobject-timed-token-buf! this
+                           (cons (make-simevt (- current-vtime 1) ;; Scheduled time is yesterday!
+                                              (bare-msg-object ,rator ,rands current-vtime))
+                                 (simobject-timed-token-buf this)))))]
 		     
 		  [(bcast ,[rator] ,[rand*] ...)		   
 		   `(begin 
@@ -688,7 +699,7 @@
 		 ;; This is an arbitrary scheme application. Where would these come from?
 		 ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))
-			  (not (memq rator '(emit bcast call timed-call activate relay return))))
+			  (not (memq rator '(emit bcast call timed-call activate relay return call-fast))))
 		   (warning 'simulator_alpha.process-expr
 			    "arbitrary rator applied: ~s" rator)
 		   `(,(process-expr rator) ,rand* ...)]
@@ -732,11 +743,9 @@
 ;; remote, and timed messages.
 
 
-;; [2005.03.28]  Moved destructure-tokbind to helpers.ss
 
-
-;; Takes token bindings, returns compiled bindings
-;; along with an association list of stored-vars.
+;; This takes token bindings, returns compiled bindings along with an
+;; association list of stored-vars.
 (define (process-tokbinds tbinds)
   (let* ([allstored
           (map (lambda (bind)
@@ -816,7 +825,7 @@
 
 ;; ======================================================================
 
-(define (compile-simulate-alpha prog)
+(define (compile-simulate-alpha prog . extraparams)
   ;; Accept either with or without the language wrapper:
   (let ((prog (match prog 
 		     [(tokens ,t ...) `(program (bindings) (nodepgm (tokens ,t ...)))]
@@ -876,7 +885,8 @@
 ; 					 (node-id (simobject-node this)))))]
 ; 			  tbinds))
 	 (let ((node-code
-	 `(define (node-code this)
+	 `(define (node-code this)	    
+
 	   ;; First define datatype definitions for the tokens:
 	   ,@(let ((alltoks (list->set (map car allstored))))
 	       (map (lambda (t)		
@@ -887,7 +897,8 @@
 	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
 
 	   ;; Set the global parameter that library code needs to access "this".
-	   (parameterize ((current-simobject this))
+	   (parameterize ((current-simobject this)
+			  ,@extraparams)
 	   ;; Now we have subtoks:
 ;	   (reg:define-struct (tokstore ,@(apply append (map cadr allstored))))
 	   ;; Need to update the sensing machinery...

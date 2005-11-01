@@ -1,12 +1,20 @@
+;#! /usr/bin/scheme --script
+;#!/usr/bin/chez --script
+
 ;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
+
+(define start-dir (current-directory))
+
+(printf "STARTING: ~s\n" start-dir)
+
 (if (file-exists? "compiler_chez.ss")
     (if (file-exists? "compiler_chez.so")
 	(load "compiler_chez.so")
 	(load "compiler_chez.ss"))
-    (parameterize ([current-directory "~/RegionStreams/compiler/src"])
-      (if (file-exists? "~/RegionStreams/compiler/src/compiler_chez.so")
-	(load "~/RegionStreams/compiler/src/compiler_chez.so")
-	(load "~/RegionStreams/compiler/src/compiler_chez.ss"))))
+    (parameterize ([current-directory "~/cur"])
+      (if (file-exists? "~/cur/compiler_chez.so")
+	(load "~/cur/compiler_chez.so")
+	(load "~/cur/compiler_chez.ss"))))
 
 ;; ======================================================================
 
@@ -35,6 +43,9 @@
 	   
 (define main 
   (lambda args
+    
+    (define makesimcode #f)
+
     (disp "Main called w ARGS: " args)
     (if (null? args)
 	(begin (print-help) (exit 0)))
@@ -62,6 +73,12 @@
 		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
                                      (set! extension ".tmh") (loop rest)]
 
+		    [(-l4 ,rest ...) 
+		     (set! makesimcode #t)
+		     (set! opts (cons 'almost-haskell opts))
+		     (set! extension ".sim") (loop rest)]
+
+
 		    [(-timeout ,n ,rest ...)
 		     (let ((n (read (open-input-string (format "~a" n)))))
 		     (set! opts (cons 'timeout (cons n opts))))]
@@ -82,6 +99,11 @@
 	
 	(case mode
 	  [(c)
+
+	   ;; FIXME: HACK:
+	   ;(let ((params 
+
+
 	    (if (null? filenames)
 		(begin
 		  (printf "No input file.  Type top-level Regiment expression.~n")
@@ -101,8 +123,26 @@
 				(let ([out (string-append (remove-file-extension fn) extension)])
 				  (if (member out filenames)
 				      (set! out (string-append "out." extension)))
-				  (printf "~n  Writing token machine to: ~s ~n" out)			  
-				  (apply run-compiler (car (file->slist fn)) out opts)))))
+				  (printf "~n  Writing token machine to: ~s ~n" out) 
+				  
+				  (if makesimcode
+				      (match (file->slist fn)
+					[((parameters ,p ...) ,prog)
+					 (delete-file out)
+					 (let ((comped 
+						(apply compile-simulate-alpha
+						     (apply run-compiler prog opts)
+						     p)))
+					   (with-output-to-file out
+					     (lambda ()
+					       (parameterize ([print-graph #t]
+							      [print-level #f]
+							      [print-length #f])
+						 (pretty-print
+						  comped)))))]
+					[(,prog)
+					      (apply run-compiler prog out opts)])
+				      (apply run-compiler (car (file->slist fn)) out opts))))))
 			  filenames))]
 	  [(s) ;; simulate
 	   (let ((fn (if (null? filenames)

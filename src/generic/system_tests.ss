@@ -170,6 +170,53 @@
 		      ls)
 	      (not (memq BASE_ID (map car ls))))))]
 
+     ["Test fast-call"
+      , (tm-to-list
+	'(tokens 
+	   [SOC-start () 
+		      (printf "(start: ~s) \n" (my-clock))
+		      (call f)
+		      (call-fast g)]
+	   [f () (printf "(f ~s) \n" (my-clock))]
+	   [g () (printf "(g ~s) \n" (my-clock))]))
+	,(lambda (x)
+	   (equal? (map car x)
+		   '(start: g f)))]
+
+     ["Test fast-call #2: two fast calls"
+      , (tm-to-list
+	'(tokens 
+	   [SOC-start () 
+		      (printf "(start: ~s) \n" (my-clock))
+		      (call-fast g 'a)
+		      (call f)
+		      (call-fast g 'b)]
+	   [f () (printf "(f ~s) \n" (my-clock))]
+	   [g (v) (printf "(g ~s ~s) \n" (my-clock) v)]))
+	,(lambda (x)
+	   (match x
+		  [((start: ,_) 
+		    (g ,__ a) 
+		    (g ,___ b) 
+		    (f ,____)) #t]
+		  [,_ #f]))]
+
+     ["Test fast-call #3: try a fast and a timed call, which happens first? (should be fast-call)"
+      , (tm-to-list
+	'(tokens 
+	   [SOC-start () 
+		      (printf "(start: ~s) \n" (my-clock))
+		      (timed-call 0 f)
+		      (call-fast g)]
+	   [f () (printf "(f ~s) \n" (my-clock))]
+	   [g () (printf "(g ~s) \n" (my-clock))]))
+	,(lambda (x)
+	   (match x
+		  [((start: ,_) 
+		    (g ,__) 
+		    (f ,___)) #t]
+		  [,_ #f]))]
+
      ;; Before I had a simulator bug wherein call-tokens were going to neighbors. 
      ;; (but bcast tokens did not arrive locally)
      ["Test for interference between calls and bcasts. " 
@@ -379,6 +426,13 @@
 		 ))
 	(349)]
 
+;     ["Subcall: split state across subcall." 
+;      , (tm-to-list
+;	 '(tokens 
+;	    (SOC-start
+
+
+
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
       , (tm-to-list (car (file->slist "demos/manual_tree.tm"))
@@ -585,6 +639,7 @@
 			      (call tok1 0)
 			      )
 		   (tok1 (x) 
+			 (printf "_ ")
 			 (if (= x 0)
 			     (let-stored ((y (begin (printf "a") 3))) (printf "b ") y)
 			     (begin (subcall tok2) (printf "c "))))
@@ -600,14 +655,16 @@
 				     desugar-let-stored  rename-stored
 				     cps-tokmac )))
 	     ,common)
-	   (ab b c c)]
+	   ;(_ _ ab _ _ b c c) ;; [2005.10.31] Enabled call-fast for cps'd code:
+	   (_ c _ ab _ c _ b)
+	   ]
 	   ["And one last time using subcall and closure convert."
 	    (fluid-let ((pass-names '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
 				      cps-tokmac closure-convert cleanup-token-machine)))
 	      ,common)
-	    (ab b c c)
-	    ;(c ab c b)
+	    ;(_ _ ab _ b _ c c) ;; [2005.10.31] Enabled call-fast for cps'd code:
+	    (_ _ ab _ b _ c c)
 	    ]))
 
      ;; FIXME BUG: I got an error on this test when running all units.
@@ -815,13 +872,13 @@
 		  (cadr result))
 	 ))]
 
-     ["Now before doing aggregated greturn, let's manually do some subcalls and return up values."
+     ["#1 Now before doing aggregated greturn, let's manually do some subcalls and return up values."
       , (tm-to-list
 	 `(tokens
 	      (SOC-start () (bcast tok1) (timed-call 50 retransmit))
 	    (retransmit () (bcast tok1))
 	    (catcher (v) (if (= (my-id) ,BASE_ID)
-			    (printf "~a ~a\n" (my-clock) v)))
+			    (printf "(~a ~a)\n" (my-clock) v)))
 	    (tok1 () (call handler (subcall f (my-id) 3)))
 	    (handler (v) (stored (acc '()))
 		     (set! acc (cons v acc))
@@ -831,10 +888,12 @@
 		     (bcast catcher (ext-ref handler acc)))
 	    (f (x y) (return (+ x y)))
 	    ))
-	342]
-	 
+	,(lambda (ls)
+	   (match ls
+	     [((,t (,id1 ,id2)) ...) (equal? id1 id2)]
+	     [,_ #f]))]
 
-     ["Let's manually do some tricky continuations and stress closure-convert."
+     ["#2 Let's manually do some more tricky continuations and stress closure-convert."
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
@@ -856,56 +915,80 @@
 	(read (open-input-string (get-output-string prt))))
       (k1 k2 100)]
 
-     ["Let's manually do some tricky continuations and stress closure-convert. #2"
+     ;; This was how I realized what eggregious read-write atomicity
+     ;; problems I was having in my gradient/subcall generated code:
+     ;; [2005.10.31] Changed to use call-fast!!!
+     ["#3 Let's manually do some more tricky continuations and stress closure-convert."
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
 	 (cleanup-token-machine
-	  (closure-convert
-	   (cleanup-token-machine
+	  (id;closure-convert
+	   (id;sever-cont-state
+	   (id;cleanup-token-machine
 	    '(tokens
-		 [sum subtok_ind
-		      (k_98 x y)
-		      (stored)
-		      (kcall k_98 (+ x y))]
+	       [sum subtok_ind
+		    (k_98 x y)
+		    (stored)
+		    (printf "(sum ~a ~a) \n" x y)
+		    (kcall k_98 (+ x y))]
 	       [SOC-start () 
-			  (call TEST 0 'rhlocal 999 0 0)]
+			  (call TEST 0 'rhlocal 1000 0 0)
+			  (call TEST 0 'rhlocal 13 0 0)
+			  ;(timed-call 10 TEST 0 'rhlocal 13 0 0)
+			  ]
 	       [timeout () 
-			(printf " (timeout ~a) " (ext-ref TEST acc_92))]
+			(printf " (timeout ~a) \n" (ext-ref TEST acc_92))]
 	       [TEST (destid flag val toind viaind)
 		     (stored (acc_92 '0))
-		(let ([k_99 (lambda (HOLE_100) (printf "outif2")
+		(let ([k_99 (lambda (HOLE_100) (printf "outif2 ")
 				    HOLE_100)])
 		  (if (eq? flag 'rhlocal)
-		      (call (tok sum 0)
+		      (call-fast (tok sum 0)
 			    (lambda (HOLE_101)
 			      (kcall k_99
 				     (begin
+				       (printf "(acc ~s to ~s) \n" acc_92 HOLE_101)
 				       (set! acc_92 HOLE_101)
 				       (printf "local-and-fire ")
-				       (timed-call 1000 timeout))))
+				       (if (not (token-scheduled? timeout))
+					   (timed-call 1000 timeout)))))
 
 			    val
 			    acc_92)
-		      #;
-		      (let ([k_102 (lambda (HOLE_103) (printf "outif1 ")
-					   (kcall k_99 HOLE_103))])
-			(if (not (if (= destid '0) '#t (= destid (my-id))))
-			    (kcall k_102 (void))
-			    (call (tok sum 0)
-				  (lambda (HOLE_104)
-				    (kcall k_102
-					   (begin
-					     (set! acc_92 HOLE_104)
-					     (printf "remote "))))
-				  val
-				  acc_92)))))]))))))
-
-      ]
-
-			    
+		      ))])))))
+	 'outport prt
+	 )
+	(display ")" prt)
+	(read (open-input-string (get-output-string prt)))      
+	)
+      ((sum 1000 0) (acc 0 to 1000) local-and-fire outif2
+       (sum 13 1000) (acc 1000 to 1013) local-and-fire outif2
+       (timeout 1013))]
 
 
+#;
+     (let ((prt (open-output-string)))
+	(display "(" prt)
+	(run-simulator-alpha
+	 (cleanup-token-machine
+	  (id;closure-convert
+	   (id;sever-cont-state
+	   (id;cleanup-token-machine
+	    '(tokens
+	       [SOC-start ()
+			  (call TEST 0 'rhlocal 1000 0 0)
+			  (call TEST 0 'rhlocal 3 0 0)
+			  (timed-call 1000 timeout)
+			  ]
+	       [timeout () (printf "~a\n" (ext-ref TEST acc))]
+	       [TEST (destid flag val toind viaind)
+		     (stored (acc '0))
+		     (set! acc (+ acc val))])))))
+	 )
+
+	 )
+    
 
      ["Gradients: Now try aggregated greturn."
       (filter (lambda (x) (not (zero? x)))
@@ -1391,7 +1474,60 @@
      ["Run complex buffered-gradient TM from file"
       , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
 		    '[simalpha-timeout 5000])
+	unspecified]
+
+     
+     ["Regiment: aggregate all node ids (using a list accumulator)."
+      (map (lambda (ls) (sort < ls))
+      (parameterize ([simalpha-channel-model 'lossless]
+		     [simalpha-placement-type 'connected]
+		     [simalpha-failure-model  'none]
+		     [simalpha-timeout 2000])
+       (run-simulator-alpha 
+	(run-compiler 
+	 '(rfold append () 
+		 (rmap (lambda (n) (cons (nodeid n) '())) world))))))
+      ;; Make sure we heard from everyone by the end there:
+      , (lambda (ls)
+	  (let ((ls (list-head (reverse ls) 2)))
+	    (and (apply equal? ls)
+		 (equal? (car ls) 
+			 (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes))))))
+		 )))]
+
+     ["Regiment: Fire a simple event when a threshold is crossed."
+      (parameterize ([simalpha-channel-model 'lossless]
+		     [simalpha-placement-type 'connected]
+		     [simalpha-failure-model  'none]
+		     ;[simalpha-sense-function sense-noisy-rising]
+		     [simalpha-sense-function sense-random-1to100]
+		     [simalpha-timeout 2000])
+	(run-simulator-alpha 
+	 (run-compiler 
+	  '(rwhen-any (lambda (pr) (> (car (cdr pr)) 99))
+		      (rmap (lambda (n) (cons (nodeid n) (cons (sense n) '())))
+			    world)))
+	 ))
+      ,(lambda (ls) (not (null? ls)))]
+
+      
+     ["Regiment: nested regions, sum number of neighbors."
+      (parameterize ([simalpha-channel-model 'lossless]
+		     [simalpha-failure-model  'none])
+	(run-simulator-alpha 
+	 (run-compiler 
+	  '(letrec ([nbrs (rmap (lambda (n) (khood (node->anchor n) 1))
+				world)]
+		    ;; Compute sizes:
+		    [sizes (rmap (lambda (a) (rfold + 0 (rmap (lambda (n) 1) a)))
+				 nbrs)])
+		   ;; Return a list of sizes:
+	     (rfold append () (rmap (lambda (x) (cons x '())) sizes)))) 
+	'timeout 2000))
       unspecified]
+     
+     
+
 
 
      ;; TODO FIXME: This causes a system freeze when you attempt to simulate.

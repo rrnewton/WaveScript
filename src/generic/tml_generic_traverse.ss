@@ -31,7 +31,8 @@
 ;;
 ;; NOTE: A common failure mode when using this is invoking the
 ;; wrong loop when making a recursive pattern match.  Be careful.
-(define (tml-generic-traverse driver fuse e)
+(define tml-generic-traverse 
+  (let ()
   ;; The "driver" takes the first shot at an expression, transforms the
   ;; subcases that it wants to, and then hands the rest on to its
   ;; continuation to do the automated traversal. The automated
@@ -44,7 +45,13 @@
   ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
   ;;   e : expr 
   ;; Return value: 'result 
+  (define (build-traverser driver fuse e)
   (let loop ((e e))
+    (define (tokonly x)
+      (match x
+	     [(tok ,_ ,__) (loop x)]
+ 	     [,_ (error tml-generic-traverse 
+			"This expression was expected to be a (tok <t> <e>) form: ~s" x)]))
     (driver e 
       (lambda (expression)
 	(define dotok 
@@ -55,8 +62,10 @@
 		[(tok ,t ,[loop -> e])
 		 (fuse (list e) (lambda (n) (fun `(tok ,t ,n))))]
 		[,e (error 'foo "~a" e)])))
-	(match expression
+	
+	(match  expression
 	  ;[,x (guard (begin (printf "~nGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
 
           ;; This is for debugging, we just don't touch it:
@@ -68,9 +77,13 @@
 	  [(tok ,tok)                    (fuse ()      (lambda () `(tok ,tok)))]
 	  [(tok ,tok ,n) (guard (integer? n)) (fuse () (lambda () `(tok ,tok ,n)))]
 	  [(tok ,tok ,[loop -> expr])    (fuse (list expr) (lambda (x) `(tok ,tok ,x)))]
-	  [(ext-ref ,tok ,var)           (fuse ()      (lambda () `(ext-ref ,tok ,var)))]
-	  [(ext-set! ,tok ,var ,[loop -> expr])  
-	   (fuse (list expr) (lambda (x) `(ext-set! ,tok ,var ,x)))]
+
+	  ;; [2005.10.31] May decide to not restrict these to token expressions only in the future:
+	  [(ext-ref ,[tokonly -> tok] ,var)      
+	   (fuse (list tok) (lambda (tok) `(ext-ref ,tok ,var)))]
+	  [(ext-set! ,[tokonly -> tok] ,var ,[loop -> expr])
+	   (fuse (list tok expr) (lambda (t x) `(ext-set! ,t ,var ,x)))]
+
 	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
 	  [(leds ,what ,which)           (fuse ()      (lambda () `(leds ,what ,which)))]
 
@@ -98,41 +111,29 @@
 	  [(ghopcount ,t) (dotok t (lambda (x) `(ghopcount ,x)))]
 	  [(gversion ,t)  (dotok t (lambda (x) `(gversion ,x)))]
 
-	  [(gemit (tok ,t ,n) ,[loop -> rands] ...) (guard (integer? n))
-	   (fuse rands (lambda rands `(gemit (tok ,t ,n) ,@rands)))]
-	  [(gemit (tok ,t ,[loop -> ind]) ,[loop -> rands] ...)
-	   (fuse (cons ind rands) (lambda (n . rands) `(gemit (tok ,t ,n) ,@rands)))]
-	  [(grelay (tok ,t ,n)) (guard (integer? n)) (fuse () (lambda () `(grelay (tok ,t ,n))))]
-	  [(grelay (tok ,t ,[loop -> ind]))          (fuse `(,ind) (lambda (n) `(grelay (tok ,t ,n))))]
+	  ;; [2005.10.31] Simplifying this by simply exposing the token expression
+	  ;; as a valid EXPR visible to this generic traversal.  Before I was hiding it.
+	  [(gemit ,[tokonly -> t] ,[loop -> rands] ...)
+	   (fuse (cons t rands) (lambda (tok . rands) `(gemit ,tok ,@rands)))]
+	  [(grelay ,[tokonly -> t]) 
+	   (fuse (list t) (lambda (t) `(grelay ,t)))]
 	  [(greturn ,[loop -> e]
-		    (to (tok ,t1 ,e1))
-		    (via (tok ,t2 ,e2))
+		    (to ,[tokonly -> t1])
+		    (via ,[tokonly -> t2])
 		    (seed ,[loop -> e3])
 		    (aggr ,aggr))
-	   (define (f e e1 e2 e3)
+	   (define (f e t1 t2 e3 aggr)
 	     `(greturn ,e 
-		       (to (tok ,t1 ,e1)) 
-		       (via (tok ,t2 ,e2)) 
-		       (seed ,e3) 
+		       (to ,t1) 
+		       (via ,t2) 
+		       (seed ,e3)
 		       (aggr ,aggr)))
-	   ;; This is more than a little annoying:
-	   (cond
-	    [(and (integer? e1) (integer? e2))
-	     (fuse (list e e3) (lambda ls (match ls [(,e ,e3) (f e e1 e2 e3)])))]
-	    [(integer? e1)
-	     (fuse (list e e2 e3) (lambda ls (match ls [(,e ,e2 ,e3) (f e e1 e2 e3)])))]
-	    [(integer? e2)
-	     (fuse (list e e1 e3) (lambda ls (match ls [(,e ,e1 ,e3) (f e e1 e2 e3)])))]
-	    [else
-	     (fuse (list e e1 e2 e3) (lambda ls (match ls [(,e ,e1 ,e2 ,e3) (f e e1 e2 e3)])))])]
-	  [(greturn ,xs ...)
-	   (error 'tml-generic-traverse
-		  "bad gradient return statement: ~a" `(greturn ,@xs))]
-
-
+	   (if (not aggr)
+	       (fuse (list e t1 t2 e3)      (lambda (a b c d)   (f a b c d #f)))
+	       (fuse (list e t1 t2 e3 (tokonly aggr)) (lambda (a b c d e) (f a b c d e))))]
 
 	  [(,call ,[loop -> rator] ,[loop -> rands] ...)
-	   (guard (memq call '(bcast subcall call activate)))
+	   (guard (memq call '(bcast subcall call activate call-fast)))
 	   (fuse (cons rator rands) (lambda (x . ls) `(,call ,x ,ls ...)))]
 
 
@@ -165,6 +166,34 @@
 	   (error 'tml-generic-traverse
 		  "bad expression: ~s" otherwise)])))))
 
+  ;; Main body of tml-generic-traverse:
+  (case-lambda 
+    [(d f e) (build-traverser d f e)]
+    [(d f) (lambda (e) (build-traverser d f e))])))
+
+
+;; This construct allows us to build simple passes by defining only
+;; the process-expr function.  It just encapsulates some boilerplate.
+(define tml-simple-pass
+  (let ([def-ptb (lambda (pe)
+		   (lambda (tb)
+		     (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
+		       `[,tok ,id ,args (stored ,@stored )
+			      ,(pe ;(map car constbinds) 
+				   body)])))]
+	[def-pp (lambda (ptb)
+		  (lambda (prog)
+		    (match prog
+		      [(,lang '(program (bindings ,constbinds ...)
+				 (nodepgm (tokens ,[ptb -> toks] ...))))
+		       `(,lang
+			 '(program (bindings ,constbinds ...)
+			    (nodepgm (tokens ,toks ...))))])))])
+    (case-lambda
+      [(pe) (def-pp (def-ptb pe))]
+      [(pe ptb) (def-pp ptb)])))
+
+
 ;; This is a generic free-vars which can be shared by different passes that have non-conflicting grammars.
 (define (tml-free-vars e)
   (tml-generic-traverse
@@ -184,6 +213,8 @@
        [,x (loop x)]))
    (lambda (ls _) (apply append ls))
    e))
+
+
 
 
 (define these-tests

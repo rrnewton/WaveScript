@@ -156,7 +156,7 @@
 ;; Consider getting rid of:
 				  (call (tok ,kname 0) ',KINIT_FLAG 
 					,@(make-list (max 1 (length fvs)) 
-						     ''counter-holder-tok-dummy-val)) ;; The void takes up the fv0 position
+						     ''captured-tok-fv-dummy-val)) ;; The void takes up the fv0 position
 				  '1))])
 		  (begin 
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
@@ -171,7 +171,7 @@
 		    (tok ,kname ,kind)))))
        
        ;; Return a new token handler to hold the continuations' code.
-       (let ([newfvs (map unique-name fvs)]
+       (let ([newfvs (map (lambda (x) (unique-name (symbol-append 'kcaptured_ x))) fvs)]
 	     [fvs-initialized-yet (unique-name 'fvs-initialized-yet)])
        `(,kname subtok_ind (flag ,@(if (null? fvns) (list FREEVAR0) fvns))
 		(stored [,KCOUNTER '0] 
@@ -490,8 +490,8 @@
 		      (stored)
 		      (kcall k_58 (+ x '1000)))))))))))))
        ,(lambda (x)
-	  (match (filter (lambda (x) (memq x '(kcounter HOLE))) (map deunique-name x))
-		 [(kcounter kcounter HOLE) #t]
+	  (match (filter (lambda (x) (memq x '(kcounter kcapturedHOLE))) (map deunique-name x))
+		 [(kcounter kcounter kcapturedHOLE) #t]
 		 [,else #f]))]
 		 
 
