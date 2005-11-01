@@ -25,7 +25,7 @@
 	`(set! ,(cadr (assq var this-subst)) ,x)]
        
        ;; External stored references:
-       [(ext-ref ,t ,v)
+       [(ext-ref ,[t] ,v)
 	(let ((entry (assq (token->name t) subst)))
 	  (if (not entry)
 	      (error 'rename-stored "got ext-ref to token that's not in subst: ~a" t))
@@ -33,7 +33,7 @@
 	    (if (not entry2)
 		(error 'rename-stored "couldn't find binding for var ~a in token ~a" v t))
 	    `(ext-ref ,t ,(cadr entry2))))]
-       [(ext-set! ,t ,v ,[x])
+       [(ext-set! ,[t] ,v ,[x])
 	(let ((entry (assq (token->name t) subst)))
 	  (if (not entry)
 	      (error 'rename-stored "got ext-set! to token that's not in subst: ~a" t))

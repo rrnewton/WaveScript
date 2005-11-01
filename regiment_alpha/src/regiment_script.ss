@@ -1,6 +1,6 @@
 #! /bin/sh
 #|
-exec petite --script "$0" ${1+"$@"}
+exec chez --script "$0" ${1+"$@"}
 |#
 
 ; /usr/bin/scheme --script
@@ -8,7 +8,8 @@ exec petite --script "$0" ${1+"$@"}
 ; (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
 ; (load "compiler_chez.ss")
 
-(load "regiment.ss")
+;(parameterize ([current-directory "~/cur"])
+(load "~/cur/regiment.ss")
 
 ; (suppress-greeting #t)
 ; (scheme-start main)

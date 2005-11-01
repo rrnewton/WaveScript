@@ -233,6 +233,7 @@
 
 ;; ================================================================================
 
+#|
 ;; Trying again: no backtrack
 (define (check-grammar2 origexpr grammar . initialprod)
   ;; expr is an sexpression
@@ -356,7 +357,7 @@
 	       #f)
 	result)
    ))
-
+|#
 
 ;; ==================================================================
 ;; This is the constructor for compiler passes.  It takes the main
@@ -395,7 +396,6 @@
 		(printf "~a: Output grammar passed.\n" name)))
 	   result
 	   )))]))
-
 
 
 		  
@@ -449,7 +449,10 @@
 	   ;; Remove dbg from the list... we handle that special:
 	   (assq-remove-all 'dbg token-machine-primitives))
     [Expr ('app Expr ...)]
-    [Expr ('call Token Expr ...)]
+    ;; These are PRIMS:
+;    [Expr ('call Token Expr ...)]
+;    [Expr ('call-fast Token Expr ...)]
+;    [Expr ('bcast Token Expr ...)]
 
     [Expr ('dbg ('quote ,string?) DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
     [DebugArg Expr]

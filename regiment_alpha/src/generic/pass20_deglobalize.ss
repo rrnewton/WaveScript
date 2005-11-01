@@ -207,7 +207,24 @@
 			    (call ,memb (subcall ,rator_tok this))
 			    (timed-call ,heartbeat ,form)])
 		   ))]
-	    
+
+	    [(rwhen-any)
+	     (let* ([rator_tok (car args)]
+		    [region_tok (cadr args)]
+		    [parent (get-membership-name region_tok)]
+		    ;[push? (not (check-prop 'region region_tok))]
+		    )
+	       ;; When we are a member of the input region, we locally try to detect the event:
+	       `([,parent (v)
+		   ;; If the predicate holds:
+		   (if (subcall ,rator_tok v)
+		       ;; Then we fire an event:
+		       (begin 
+			 ;(printf "Node ~s detected event ~s at time ~s!\n" (my-id) v (my-clock))
+			 (call ,memb v)))]
+		 [,form (v) (void)] ;; The formation token does nothing!
+		 ))]
+
 	    ;; [2005.10.20] We might want to think about doing some routing here.
 	    ;; You can perform the smap anywhere between the stream source and destination.
 	    ;; (In fact, you could even distribute it, if the computation were expensive!)
@@ -594,10 +611,16 @@
 		   (greturn v (to catcher) (via global-tree))])]
 
       ;; When the membership token has fired, the event has fired!
-      [(when-any)
-       `([,tokname (v) ;; Event value
-	    (soc-return v)])]
-      
+      ;; TODO: Need to implement greturn with retries!!
+      [(rwhen-any)
+       `([,tokname (v) ;; Event value		   
+		   ;(soc-return (list 'EVENT v))
+		   ;; Use global tree:
+		   (greturn (list 'EVENT v)
+			    (to SOC-return-handler)
+			    (via global-tree))
+		   ])]
+
       [else (error 'primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
 		   prim)]

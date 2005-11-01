@@ -103,10 +103,11 @@ clean:
 #.scm.o:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
 
-count: wordcount
+wc:        wordcount
+count:     wordcount
 linecount: wordcount
 wordcount:
-	wc *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs
+	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v "^_" | xargs wc
 
 sortcount:
 	ls -rS *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | xargs wc

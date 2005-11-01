@@ -118,7 +118,7 @@
 		  [(ext-ref ,[allowed -> t] ,v) t]
 		  [(ext-set! ,[allowed -> t] ,v ,[e]) (append t e)]
 		  [(,call ,[allowed -> rator] ,[rands] ...)
-		   (guard (memq call '(bcast call)))
+		   (guard (memq call '(bcast call call-fast)))
 		   (apply append rator rands)]
 		  [(timed-call ,t ,[allowed -> rator] ,[rands] ...)
 		   (guard (number? t))
@@ -311,7 +311,9 @@
 		   (loop body
 			 (lambda (b)
 			   (pvk `(,lettype ([,lhs ,r]) ,b))))))]
-	     
+
+
+	     ;; [2005.10.31] Changed to use high-priority scheduling for subcalls:
 	     [(subcall ,tok ,args ...)
 	      (let* ([valvar (unique-name 'HOLE)]
 		     ;; This expression represents the continuation of the subcall:
@@ -319,10 +321,12 @@
 		     )		
 		(loop-list args
 			   (lambda (ls)
-			     `(call ,tok (lambda (,valvar) ,broken-off-code) ,@ls))))]
+			     `(call-fast ,tok (lambda (,valvar) ,broken-off-code) ,@ls)
+			     ;`(call ,tok (lambda (,valvar) ,broken-off-code) ,@ls)
+			     )))]
 
 	     [(,call (tok ,t ,e) ,args* ...)
-	      (guard (memq call '(call bcast))
+	      (guard (memq call '(call bcast call-fast))
 		     (memq t tainted))
 	      (loop e 
 		    (lambda (e2)
@@ -330,14 +334,14 @@
 				 ;; Insert null continuation argument:
 				 (lambda (ls) (pvk `(,call (tok ,t ,e2) ,NULLK ,@ls))))))]
 	     [(,call (tok ,t ,e) ,args* ...)
-	      (guard (memq call '(call bcast)))
+	      (guard (memq call '(call bcast call-fast)))
 	      (loop e 
 		    (lambda (e2)
 		      (loop-list args* 
 				 (lambda (ls) (pvk `(,call (tok ,t ,e2) ,@ls))))))]
 	      ;; Call to unknown token:
 	     [(,call ,e ,args* ...)
-	      (guard (memq call '(call bcast)))
+	      (guard (memq call '(call bcast call-fast)))
 	      (loop e 
 		    (lambda (e2)
 		      (loop-list args* 
@@ -628,7 +632,7 @@
 	  (tok1 subtok_ind
 		()
 		(stored)
-		(call (tok tok2 0) (lambda (HOLE_2) (+ '1 HOLE_2)) '2))
+		(call-fast (tok tok2 0) (lambda (HOLE_2) (+ '1 HOLE_2)) '2))
 	  (tok2 subtok_ind (k_1 x) (stored) (kcall k_1 (* '2 x)))))))]
      
 ;; Maybe move to the next pass in some fashion:
@@ -710,7 +714,7 @@
      (length (deep-all-matches
       ,(lambda (x)
 	 (match x
-		[(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+		[(if b (kcall ,k c) (call-fast (tok tok2 0) ,k_)) #t]
 		[,else #f])) 
       (cps-tokmac 
        (cleanup-token-machine 
@@ -722,7 +726,7 @@
       (deep-all-matches 
        ,(lambda (x)
 	  (match x
-		 [(if b (kcall ,k c) (call (tok tok2 0) ,k_)) #t]
+		 [(if b (kcall ,k c) (call-fast (tok tok2 0) ,k_)) #t]
 		 [,else #f]))
        (cps-tokmac 
 	(cleanup-token-machine 
@@ -747,7 +751,7 @@
      (match (deep-assq 'begin (cps-tokmac (cleanup-token-machine 
 					   '(tokens       
 						[tok1 () (begin '1 (subcall tok1) '2 (return '3))]))))
-       [(begin '1 (call ,',tok (lambda ,',_ ...))) #t])
+       [(begin '1 (call-fast ,',tok (lambda ,',_ ...))) #t])
      #t]
 
     ["Look at how we treat lets."

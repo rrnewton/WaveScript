@@ -50,7 +50,8 @@
 
 ;; Temporarily I am disabling these ..
     cps-tokmac
-    add-kclosure
+;    add-kclosure
+    sever-cont-state
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
@@ -84,6 +85,7 @@
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
 (define (run-compiler p . args )
+  ;(disp "RUN COMP:" p)
   (let ([filename #f]
 	[passes pass-names]
 	[verbose #f]
@@ -331,7 +333,7 @@
 			   )
 		 (let ([prog (assemble-tokmac ',tm 
 					   )])
-		   (profile-clear) ;; Temp: profiling the simulator:
+		   ;(profile-clear) ;; Temp: profiling the simulator:
 		   (let ((result (run-simulator-alpha prog 
 					;'timeout 10000
 						      )))

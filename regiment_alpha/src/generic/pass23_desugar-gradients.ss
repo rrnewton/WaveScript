@@ -86,7 +86,7 @@
     ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
     ;; For now coupling it to global "REGIMENT_DEBUG"
 
-    (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG (list expr ...))]))
+    (define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG expr ...)]))
     ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
     ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
 
@@ -140,6 +140,9 @@
 	   ;; This is a conservative estimate:
 	   [(tok ,t ,n) (guard (number? n)) (list t)]
 	   [(tok ,t ,[e]) (cons t e)]
+
+	   [(ext-ref (tok ,t ,[ls]) ,v) ls]
+	   [(ext-set! (tok ,t ,[ls]) ,v ,[ls2]) (append ls ls2)]
 
 	   ;; "Direct call":  
 	   [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
@@ -195,7 +198,7 @@
       (lambda (env tokens this-token tainted)
 	(letrec ([loop 
 	  (lambda (expr)
-	  (match expr
+	    (match expr
 ;	     [,x (guard (begin (printf  "PEXPmatch ~s\n" x) #f)) 3]
 
 	     [(quote ,const) (values () `(quote ,const))]
@@ -203,8 +206,8 @@
 	     [,num (guard (number? num))  (values () num)]
 	     [,var (guard (symbol? var))  (values () var)]
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
-	     [(ext-ref ,[ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
-	     [(ext-set! ,[ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb) 
+	     [(ext-ref ,[(statictok loop)  -> ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
+	     [(ext-set! ,[(statictok loop) -> ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb) 
 						       `(ext-set! ,t ,v ,e2))]
 
 	     ;; This is "dynamic" context so no tainted names are allowed!
@@ -240,6 +243,7 @@
 		;; Increment persistent version counter:
 		(set! ,ver (+ 1 ,ver))
 		,@(DEBUG_GRADIENTS `(dbg "~a: Emitting tok %d ver ~a" (my-id) ',tok ,ver))
+		
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs
 		  (call ,tok ',NO_PARENT (my-id) 0 ,ver ,@emitargs)
@@ -583,7 +587,7 @@
 
 	     ;; This is a non-gradient call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
-	      (guard (memq t tainted) (memq call-style '(call subcall bcast)))
+	      (guard (memq t tainted) (memq call-style '(call subcall bcast call-fast)))
 	      (values (apply append etb atb*)
 		      `(,call-style (tok ,t ,e)
 				    '#f ;; gparent
@@ -706,7 +710,7 @@
 			  (nodepgm (tokens ,toks ...))))
 
 	 (let ([tainted (list->set (findall-emittoks toks))])
-	   ;(disp "TAINTED: " tainted)
+;	   (disp "TAINTED: " tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(,[processtb -> newtoks toks] ...)

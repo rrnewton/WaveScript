@@ -47,66 +47,68 @@
 
   (define (lessthan a b) (evntlessthan (car a) (car b)))
 
-  ;; Is called with the local time that the scheduling hapens.
-  ;; New events may have times in the future, but should not have times in the past.
-  (define (schedule ob . newevnts)        
-    ;; ASSUME: all the new events are already tagged with concrete times.
-    (DEBUGASSERT (simobject? ob))
-    (DEBUGMODE     
-     (for-each (lambda (ne)
-		 (if (and (simevt-vtime ne) (< (simevt-vtime ne) vtime))
-		     (logger 0 "ERROR: Scheduled event has time in past (now ~s): ~s~n"
-			     vtime
-			     (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
-	       newevnts))
-    (let ([pairedevnts (map (lambda (x) (cons x ob)) newevnts)])
-      (unless (null? newevnts)
-	      ;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
-	      ;; Before I merely merged them:
-	      (IFDEBUG ;; [2005.10.17] Profiling indicates this wastes a lot of time.  Only doing this in debug mode.
-	       (set-queue! (sort lessthan (append pairedevnts (get-queue))))
-	       (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue))))
+  ;; ================================================================================
+    ;; This is called with the local time that the scheduling hapens.
+    ;; New events may have times in the future, but should not have times in the past.
+    (define (schedule ob . newevnts)
+      ;; ASSUME: all the new events are already tagged with concrete times.
+      (DEBUGASSERT (simobject? ob))
+      (DEBUGMODE     
+       (for-each (lambda (ne)
+		   (if (and (simevt-vtime ne) (< (simevt-vtime ne) vtime))
+		       (logger 0 "ERROR: Scheduled event has time in past (now ~s): ~s~n"
+			       vtime
+			       (list (simevt-vtime ne) (msg-object-token (simevt-msgobj ne))))))
+		 newevnts))
+      (let ([pairedevnts (map (lambda (x) (cons x ob)) newevnts)])
+	(unless (null? newevnts)
+		;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
+		;; Before I merely merged them:
+		(IFDEBUG ;; [2005.10.17] Profiling indicates this wastes a lot of time.  Only doing this in debug mode.
+		 (set-queue! (sort lessthan (append pairedevnts (get-queue))))
+		 (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue))))
 
-	      ;; TEMP:
-	      #;
-	      (DEBUGMODE
-	       (let ((current-times (map simevt-vtime (map car (get-queue)))))
-		 ;(fprintf (console-output-port) "~s\n\n" current-times )
-		 (if (not (equal? current-times (sort < current-times)))
-		     (error 'run-alpha-simple-scheduler
-			    "Queue was in an invalid state at time ~s:  events not in order:\n ~s"
-			    current-vtime current-times))))
-	      #;
-	      (DEBUGMODE
-	       (if (not (equal? 
-			 (map simevt-vtime (map car 
-			 (sort lessthan (append pairedevnts (get-queue)))))
-			 (map simevt-vtime (map car 
-						(merge lessthan (sort lessthan pairedevnts) (get-queue))))))
-		   (error 'run-alpha-simple-scheduler 
-			  "Something is wrong with merge or evntlessthan: merged in ~s and \n ~s \n not same as : \n ~s\n"
-			  (map simevt-vtime (map car pairedevnts))
-			  (map simevt-vtime (map car 
-			       (sort lessthan (append pairedevnts (get-queue)))))
-			  (map simevt-vtime (map car
-			       (merge lessthan pairedevnts (get-queue)))))))
-			  
+		;; TEMP:
+		#;
+		(DEBUGMODE
+		 (let ((current-times (map simevt-vtime (map car (get-queue)))))
+		   ;(fprintf (console-output-port) "~s\n\n" current-times )
+		   (if (not (equal? current-times (sort < current-times)))
+		       (error 'run-alpha-simple-scheduler
+			      "Queue was in an invalid state at time ~s:  events not in order:\n ~s"
+			      current-vtime current-times))))
+		#;
+		(DEBUGMODE
+		 (if (not (equal? 
+			   (map simevt-vtime (map car 
+			   (sort lessthan (append pairedevnts (get-queue)))))
+			   (map simevt-vtime (map car 
+						  (merge lessthan (sort lessthan pairedevnts) (get-queue))))))
+		     (error 'run-alpha-simple-scheduler 
+			    "Something is wrong with merge or evntlessthan: merged in ~s and \n ~s \n not same as : \n ~s\n"
+			    (map simevt-vtime (map car pairedevnts))
+			    (map simevt-vtime (map car 
+				 (sort lessthan (append pairedevnts (get-queue)))))
+			    (map simevt-vtime (map car
+				 (merge lessthan pairedevnts (get-queue)))))))
 
-	      ;(printf "Woot: ~s\n" (map simevt-vtime (map car (get-queue))))
 
-	      (logger 3 "~s  Scheduling ~s new events ~s, new schedule len: ~s~n"
-		      (pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
-		      (length newevnts)
-		      (map (lambda (e) 
-			     (list (msg-object-token (simevt-msgobj e))
-				   (simevt-vtime e)))
-			   newevnts)
-		      (+ (length (get-queue)) (length newevnts))
-		      ;(map (lambda (e) (list (simevt-vtime (car e)) (msg-object-token (simevt-msgobj (car e)))))  buffer)
-		      )
-	      )))
+		;(printf "Woot: ~s\n" (map simevt-vtime (map car (get-queue))))
 
-  ;; Initializes some of the simobject's state.
+		(logger 3 "~s  Scheduling ~s new events ~s, new schedule len: ~s~n"
+			(pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
+			(length newevnts)
+			(map (lambda (e) 
+			       (list (msg-object-token (simevt-msgobj e))
+				     (simevt-vtime e)))
+			     newevnts)
+			(+ (length (get-queue)) (length newevnts))
+			;(map (lambda (e) (list (simevt-vtime (car e)) (msg-object-token (simevt-msgobj (car e)))))  buffer)
+			)
+		)))
+    
+    ;; ================================================================================
+    ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
     (let ([mhandler (node-code-fun ob)])
 
@@ -136,8 +138,11 @@
     ))
 
 
+  ;; ================================================================================
   ;; This processes the incoming messages on a given simobject, and
   ;; schedules them in the global scheduler.
+  ;; [2005.10.31]  Currently we allow actions scheduled in the past!  (They're considered "overdue".)
+  ;; Overdue actions can't actually occur in the past.  They're just given scheduling priority.
   (define (process-incoming ob)
     (if (not (null? (append (simobject-local-msg-buf ob)
 			    (simobject-timed-token-buf ob)
@@ -164,15 +169,16 @@
 		    timed local incoming)))
       
 ;      (if (not (null? incoming)) (disp "INCOMING TIMES:" (map simevt-vtime incoming)))
-
-    ;; We tag specific times on those "ASAP" events without them.
+            
+      ;; We tag specific times on those "ASAP" events without them.
       (let ([timedevnts
 	     (append timed		     
 		     (map (lambda (e) 
 			    (make-simevt (let ((t (simevt-vtime e)))
-					   (if t t (+ SCHEDULE_DELAY vtime)))
+					   (if t t 
+					       (+ SCHEDULE_DELAY vtime)))
 					 (simevt-msgobj e)))	  ;(simevt-duration e)
-			  local)
+		       local)
 		     (map (lambda (e) 
 			    (make-simevt 
 			     (let ((t (simevt-vtime e)))
@@ -189,7 +195,7 @@
 	(apply schedule ob timedevnts))))
 
 
-
+  ;; ================================================================================
   ;; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
   (define (launch-outgoing ob)
       ;; This does the "radio transmission", and puts msgs in their respective incoming buffers.
@@ -262,10 +268,13 @@
 
 	(let ([ob (cdr first)]
 	      [evt (car first)])
-	;; Set the clock to the time of this next action:
-	(set! vtime (simevt-vtime evt))
-	;; Also copy this value to the simworld object so alpha_lib closures can get to it:
-	(set-simworld-vtime! sim vtime)
+
+	  ;; Set the clock to the time of this next action:
+	  ;; HOWEVER, the clock can't move backwards:
+	  (set! vtime (max vtime (simevt-vtime evt)))
+
+	  ;; Also copy this value to the simworld object so alpha_lib closures can get to it:
+	  (set-simworld-vtime! sim vtime)
 
 	(logger 2 "~s  Main sim loop: (vtime of next action) queue len ~s ~n" 
 		(pad-width 5 vtime) (add1 (length (get-queue))))

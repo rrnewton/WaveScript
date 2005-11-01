@@ -18,8 +18,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -110,7 +110,7 @@
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.
-(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
+(define-regiment-parameter regiment-emit-debug #f) ;(IFDEBUG #t #f))
 
 ;; This one toggles logging.  
 ;; It can be set to : 
@@ -254,6 +254,13 @@
 	   (distorigin (sqrt (+ (* x x) (* y y))))
 	   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
        (* waveamp (/ distorigin maxdist))))))
+
+;; TODO: add noise to this, store state per ID: curry inputs:
+(define (sense-noisy-rising id x y t)
+  (/ t 100.))
+
+(define (sense-random-1to100 id x y t)
+  (add1 (reg:random-int 100)))
 
 #;
 (define (sense-fast-sine-wave id x y t)

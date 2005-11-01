@@ -275,9 +275,9 @@
      (dbg (String . Object) Void)
      (error (Object String . Object) Void)
 
-
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
+     (call-fast (Token . Object) Void)
      (timed-call (Integer Token . Object) Void)
 
      (subcall (Token . Object) Object)
@@ -1092,6 +1092,34 @@
 	(swap i (+ i (reg:random-int (- len i)))))
       vec)))
 
+
+;; Lifted this from the internet, does this really work??
+;   float x1, x2, w, y1, y2;
+ 
+;          do {
+;                  x1 = 2.0 * ranf() - 1.0;
+;                  x2 = 2.0 * ranf() - 1.0;
+;                  w = x1 * x1 + x2 * x2;
+;          } while ( w >= 1.0 );
+
+;          w = sqrt( (-2.0 * ln( w ) ) / w );
+;          y1 = x1 * w;
+;          y2 = x2 * w;
+(define (gaussian)
+  (let ((x1 0.0) (x2 0.0) (w 0.0) (y1 0.0) (y2 0.0))
+    (let loop ()
+      (set! x1 (* 2.0 (- (random 1.0) 1.0)))
+      (set! x2 (* 2.0 (- (random 1.0) 1.0)))
+      (set! w  (+ (* x1 x1) (* x2 x2)))
+      (if (>= w 1.0) (loop)))
+    (set! w (sqrt (/ (* -2.0 (log w)) w)))
+    (set! y1 (* x1 w))
+    ;(set! y2 (* x2 w))
+    ;(list y1 y2)
+    y1
+    ))
+
+
 ;;  [2004.06.11] Man also can't believe that I've never written this
 ;;  before.  This is dinky; a real version of this would do an
 ;;  alignment of the structures intelligently.  I don't know how
@@ -1291,6 +1319,24 @@
 			   "this version of reset-name-count! cannot handle argument: ~s"
 			   n)])))
 )
+
+;; [2005.10.31]  This is a simple function to use for efficiency:
+
+;; For example, if you have a set of numbers, you can convert it to a hash for
+;; repeated membership checks:
+(define (set->hashtab s)
+  (let ((h (make-default-hash-table)))
+    (for-each (lambda (ob)
+		(hashtab-set! h ob #t))
+      s)
+    h))
+
+(define (hashtab->list h)
+  (let ((ls ()))
+    (hashtab-for-each (lambda (k x)
+			(set! ls (cons (cons k x) ls)))
+		      h)
+    (reverse! ls)))
 
 ;; inefficient
 (define string-split

@@ -2,4 +2,6 @@
 
 #scheme -h regimentc.1.heap $*
 #chez -h regimentc.1.heap $*
-chez -h $HOME/cur/build/regimentc.1.heap $*
+#chez -h $HOME/cur/build/regimentc.1.heap $*
+($HOME/cur/regiment_script.ss $*)
+
