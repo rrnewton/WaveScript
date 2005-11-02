@@ -288,6 +288,8 @@
 	      `(lambda ,args (begin ,@(map (process-expr (append args env) tokens this-token this-subtok)
 					  bodies)))]
 
+	     ;; This (semantically) transforms let into let*.
+	     ;; It checks to make sure no variables are captured in the process.
 	     [(let ([,lhs* ,[rhs*]] ...) ,bodies ...)
 	      ;; Temporary, should rename vars:
 	      (if (not (null? (intersection lhs* (apply append (map tml-free-vars rhs*)))))

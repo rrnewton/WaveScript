@@ -103,7 +103,8 @@
     (define (process-primapp prim args)
       (let ([expr (cons prim args)])
 	(case prim
-	  [(anchor-at) (values expr unknown-place (new-place))]
+	  [(anchor-at anchor-maximizing) (values expr unknown-place (new-place))]
+
 	  ;; Both of these start in the center and spread to some extent.
 	  [(circle khood) (values expr (new-place) (list (new-place)))]
 

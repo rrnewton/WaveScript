@@ -131,7 +131,10 @@
     (smap           (Function Signal) Signal)
 
     (anchor-at      (Number Number) Anchor)
-    (anchor-where   (Function) Anchor)
+
+    ;; Takes a function to optimize, and an optional refresh rate to re-elect at:
+    ;; If no refresh rate is zero, the election only happens once.
+    (anchor-maximizing (Function Number) Anchor)
 
     (circle         (Anchor Dist)   Region)
     (circle-at      (Number Number Dist) Region)
@@ -255,7 +258,8 @@
     (even? (Integer) Bool)
     (odd? (Integer) Bool)
 
-    (elect-leader Token) 
+    ;; Takes an optional second argument, that's the fun to optimize.
+    (elect-leader Token . Token)
     (flood Token) ;; These are actually macros, but what the heck
 
 ;     (greturn)
@@ -269,7 +273,8 @@
 ;     (sense)
      (my-id  () Integer)
      (my-clock () Integer)
-     (loc () Location)
+     (loc () List) ;(loc () Location)
+     (locdiff (List List) Float) ;(locdiff (Location Location) Float)
 
      (printf (String . Object) Void)
      (dbg (String . Object) Void)
@@ -690,27 +695,29 @@
 (define-syntax grep
   (syntax-rules ()
     [(_ pat exp)
-     (let ((str (open-output-string))
-	   (searchpat pat)
-	   (leftovers ""))
-       (let ([print (lambda ()		      
-		      (let ((chunks (string-split 
+     (let ([str (open-output-string)]
+	   [searchpat pat]
+	   [leftovers ""])
+       (let* ([guarded-display (lambda (s)
+				 (when (substring? searchpat s)
+				   (display s (console-output-port))
+				   (newline (console-output-port))))]
+	      [print (lambda ()		      
+		       (let ((chunks (string-split 
 				     (string-append leftovers (get-output-string str))
 				     #\newline)))
 ;			(if (> (length chunks) 1)  (printf "\nGot chunks: ~s\n" chunks))
-			(for-each (lambda (s)
-				   (when (substring? searchpat s)
-					 (display s (console-output-port))
-					 (newline (console-output-port))))
-				 (rdc chunks))
-			(set! leftovers (rac chunks))))]
-	     [eng (make-engine (lambda () 
-				 (parameterize ((current-output-port str)
-						(console-output-port str))
-					       exp)))])
+			(cond 
+			 [(null? chunks) (void)]
+			 [else (for-each guarded-display (rdc chunks))
+			       (set! leftovers (rac chunks))])))]
+	      [eng (make-engine (lambda () 
+				  (parameterize ((current-output-port str)
+						 (console-output-port str))
+				    exp)))])
 	 (let loop ((eng eng))
 	   (eng 100
-		(lambda (ticks val) (print) val)
+		(lambda (ticks val) (print) val (guarded-display leftovers))
 		(lambda (neweng) 
 		  (print) 
 		  (loop neweng))))))]))

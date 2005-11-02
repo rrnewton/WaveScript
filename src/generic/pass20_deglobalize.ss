@@ -14,6 +14,8 @@
 ;;; of scheme, but it gets reduced further in the next pass 
 ;;; (cleanup-token-machine).
 
+;; NOTE: To add code for a new primitive, the most important things to do are
+;; to add an entry to explode-primitive and to primitive-return.
 
 
 ;;; Input grammar:
@@ -29,36 +31,7 @@
 ;;; <Simple> ::= (quote <Lit>) | <Var>
 
 
-;;; Output grammar: UNFINISHED:
-
-;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
-;;;  <SOCPgm> ::= <Statement*>
-;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
-;;;;;;;  <Entry>  ::= <Token>
-;;;  <Decl> ::= (<var> <Exp>)
-;;;  <TokBinding> ::= (<Token>  <Code>*)
-;;; <TODO> DECIDE ON LOCAL BINDINGS:
-;;;  <TokBinding> ::= (<Token> (bindings <Decl>*) <Code>*)
-
-;;;  <Code> ::= <Statement>*
-;;;  <Statement>  ::= <BasicStuff?>
-;;;                | <GExpr>
-;;;                | <Macro> 
-;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)
-;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
-;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (gdist <DynToken>)
-;;;                | (gparent <DynToken>)
-;;;                | (gorigin <DynToken>)
-;;;                | (ghopcount <DynToken>)
-;;;                | (gversion <DynToken>)
-;;;  <Macro> ::= (flood <Token>)
-;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
-;;;  <Simple> ::= (quote <Lit>) | <Var>
-
-;;;  <Token> ::= <Symbol> | ...???
-;;;  <Exp>  ::= ???
-
+;;; Output grammar = Input grammar to cleanup-token-machine = messy
 
 (define deglobalize_output_grammar
    `([code (statement ...)]
@@ -327,6 +300,23 @@
 			(light-up 0 255 255)]
 		 ))]
 
+	    ;; This is not a region; it carries no value on its membership token!
+	    [(anchor-maximizing)
+	     (let-match ([(,fun_tok ,refresh_rate) args])
+	       (let ([consider (new-token-name 'cons-tok)]
+		     [leader (new-token-name 'leader-tok)])
+		 
+	     `([,form () (flood ,consider)]
+	       [,consider () (elect-leader ,memb ,fun_tok)]
+	       [,form () (draw-mark ,target (rgb 0 100 100))]
+	       ;; DEBUGGING
+	       ;; This just lights up the node when it becomes anchor, for visualization:
+	       [,memb () 
+		      ;; Note that we are an anchor.
+;			(set-simobject-homepage! 
+;			 this (cons 'anchor (simobject-homepage this)))
+			(light-up 0 255 255)])))]
+
 	    [(circle)
 	     (let ([anch (car args)]
 		   [rad (cadr args)])
@@ -570,12 +560,12 @@
 (define primitive-return
   (lambda (prim tokname) ;; The tokname is a membership-name
     (case prim
-      [(anchor-at)
+      [(anchor-at anchor-maximizing)
        `([,tokname ()
-	  ;; At each formation click, we output this node.
-	  ;(soc-return (list 'ANCH this))
-	  (soc-return ,ANCH-NUM)
-	  ])]
+		   ;; At each formation click, we output this node [id].
+		   (soc-return (list 'ANCH (my-id)))
+		   ;(soc-return ,ANCH-NUM)
+		   ])]
 
       [(circle circle-at)     
        `([,tokname 

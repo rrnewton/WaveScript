@@ -1,3 +1,6 @@
+;; TODO: USE NULLK
+
+
 ;; [2005.02.10]
 
 ;; cps-tokmac
@@ -199,208 +202,176 @@
 		      (tml-generic-traverse
 		       (lambda (expr loop) ;; driver
 			 (match expr
-				[(return ,[x]) `(kcall ,k ,x)]
+			   ; [2005.11.02] Disabling: now original return statements do nothing:
+;				[(return ,[x]) `(kcall ,k ,x)]
+			   [(return ,x) x]
+
+
 				;; [2005.10.26] What does this do??  Looks like junk: removing  ;; FIXME!!!
 ;				[(set! ,v ,[e])
 ;				 `(begin (set! ,v ,e) (call ,k (void)))]
 				[,x (loop x)]))
 		       (lambda (expls reconstruct) (apply reconstruct expls)) ;; fuser
 		       expr))])
-	      `[,tok ,subid (,k ,@args) (stored ,@stored)
-		     ,(desugar-return body)]))))
+	      (values
+	       `[,tok ,subid (,k ,@args) (stored ,@stored)
+		      ,(desugar-return body)]
+	       k)))))
 		           
     ;; expand-subcalls expands out all subcalls 
     ;; Best way to represent a thing with a hole in it is a continuation:
     ;; (Using CPS to convert to CPS.)
     ;; Thus this pass itself carries a continuation representing the context of the current expression.
     (define expand-subcalls
-      (lambda (expr tainted)
+      (lambda (expr tainted k-arg)
+    ;---------------------------------------
+    (define generate-k
+      (lambda ()
+        (unique-name 'k)))  ;; This could just return 'k
+    ;---------------------------------------
+    ;;Continuation Lambda: this closes up a continuation (like a clam ;) ).
+    (trace-define (CLAM E)
+        (let ((formal (unique-name 'HOLE)))
+          (let ((body (E formal)))
+	    (match body
+	      ;; [2005.11.02] This is a quick little eta-reduce optimization:
+	      ;; It can effectively serve as tail call optimization:
+	      [(kcall ,k ,v) (guard (eq? v formal) (symbol? k))  k]
+	      ;; [2005.11.02] Hopefully we'll do better optimizations in our inline pass
+	      ;; but this removes generation of unnecessary closures:
+	      [,v (guard (symbol? v) (eq? formal v))    NULLK]
+	      [,_  `(lambda (,formal) ,body)]))))
+    ;---------------------------------------
+    (define possible-letk
+      (lambda (cont-exp abs-body)
+        (let ([k (generate-k)])
+          (let ([body (abs-body k)])
+            `(let ((,k ,cont-exp))
+               ,body)))))
+    ;---------------------------------------
+    (define cps*
+      (lambda (N* E)
+        (cond
+          ((null? N*) (E '()))
+          (else (cps (car N*)
+                     (lambda (a)
+                       (cps* (cdr N*)
+                             (lambda (d) (E (cons a d))))))))))
+    ;---------------------------------------
+    (define cps
+      (lambda (t E)
+	;; E is the continuation representing the enclosing expression to the current being processed.
+        (match t
+	  [,c (guard (constant? c)) (E c)]
+          [(quote ,c) (E `(quote ,c))]
+	  [(leds ,what ,which) (E `(leds ,what ,which))]
 
-	(define loop-list
-	  (lambda (ls  pvk)
-	     (let inner ([ls ls] [thisk pvk]) ;(lambda (ls) (pvk (reverse ls)))])
-	       (if (null? ls) 
-		   (thisk '())
-		   (loop (car ls)
-			 (lambda (x)
-			   (inner (cdr ls) 
-				  (lambda (ls) (thisk (cons x ls))))))))))
-	;; Pvk is the continuation representing the enclosing expression to the current being processed.
-	(define loop
-	  (lambda (expr pvk)
-	    (match expr
-;	     [,x (guard (begin (display-constrained "\n  Loop: " (list x 50) "\n")
-;;			       (display-constrained "  Cont: " (list (pvk (unique-name 'HOLE)) 50) "\n")
-;			       #f)) 3]
-	     [,const (guard (constant? const)) (pvk const)]
-	     [(quote ,const) (pvk `(quote ,const))]
-	     [,var (guard (symbol? var)) (pvk var)]
-	     [(set! ,v ,expr)
-	      (loop expr (lambda (e) (pvk `(set! ,v ,e))))]
-;	     [(tok ,tok) (pvk `(tok ,tok))]
-	     [(tok ,tok ,n) (guard (number? n))
-	      (pvk `(tok ,tok ,n))]
-	     [(tok ,tok ,expr)
-	      (loop expr
-		    (lambda (e) (pvk `(tok ,tok ,e))))]
-	     [(ext-ref ,tok ,var) (pvk `(ext-ref ,tok ,var))]
-	     [(ext-set! ,tok ,var ,expr)
-	      (loop expr
-		    (lambda (e) (pvk `(ext-set! ,tok ,var ,e))))]
-             [(begin) (pvk '(void))]
-	     [(begin ,x) (loop x pvk)]
+          [,x (guard (symbol? x)) (E x)]	  
+	  [(set! ,v ,x)  (cps x (lambda (x) (E `(set! ,v ,x))))]
+	  [(tok ,t ,n) (guard (integer? n)) (E `(tok ,t ,n))]
+	  [(tok ,t ,x) (cps x (lambda (x) (E `(tok ,t ,x))))]
+	  [(ext-ref ,x ,v) (cps x (lambda (x) `(ext-ref ,x ,v)))]
+	  [(ext-set! ,e1 ,v ,e2) 
+	   (cps e1 (lambda (e1)   
+		     (cps e2 (lambda (e2)
+			       `(ext-set! ,e1 ,v ,e2)))))]
+	  [(begin) (E '(void))]
+          [(begin ,x) (cps x E)]
+          [(begin ,expr ,expr* ...)
 
-	     ;; This does blatantly invalid lifts!! FIXME??
-	     ;; [2005.10.26]  Huh?  How?
-#;	     [(begin ,x ,y ...)
-	      (loop x 
-		    (lambda (e) 
-		      (make-begin 
-		       `(begin ,e
-			       ,(loop `(begin ,@y)
-				      (lambda (e2) (pvk (make-begin `(begin ,e2)))))))))]
-	    [(begin ,x ,y ...)
-	     (loop x 
-		   (lambda (e1)
-		     (pvk
-		      (make-begin `(begin ,e1 
-					  ,(loop `(begin ,@y)
-						 (lambda (e2) (make-begin `(begin ,e2)))))))))]
+;	   (printf "DOING BEGIN: Here's clam: ~s" (CLAM E))
 
-	     ;; Alright, let's think through conditionals:
-	     
-	     ;; What should this generate?
-	     ;; (if (subcall a) (subcall b) (subcall c))	     
-	     ;; -> ... (A K1)
-	     ;; (def K1 (x) (if x (b K2) (c K2)))
+           (cps expr
+                (lambda (v)
+		  (make-begin `(begin ,v ,(cps `(begin ,expr* ...) E)))))]
+          [(if ,test-exp ,true-exp ,false-exp)
+           (possible-letk (CLAM E)
+                          (lambda (k)
+                            (cps test-exp
+                                 (lambda (v)
+                                   `(if ,v
+                                        ,(cps true-exp (lambda (v) `(kcall ,k ,v)))
+                                        ,(cps false-exp (lambda (v) `(kcall ,k ,v))))))))]
+          [(,lettype ((,x ,N) ...) ,body)
+	   (guard (memq lettype '(let let-stored)))
+           (possible-letk (CLAM E)
+                          (lambda (k)
+                            (cps* `(,N ...)
+                                  (lambda (w*)
+                                    `(,lettype ,(map list `(,x ...) w*)
+                                       ,(cps body (lambda (v) `(kcall ,k ,v))))))))]
+	  ;; [2005.10.31] Changed to use high-priority scheduling for subcalls:
+	  ;; This is where we CLAM the continuation:
+	  [(subcall ,tok ,args ...)
+	   (cps tok (lambda (t)
+		      (cps* args
+			    (lambda (w*)
+			      `(call-fast ,t ,(CLAM E) ,@w*)))))]
 
-	     ;; (if a (subcall b) (subcall c))
-	     ;; -> ... (if a (b K1) (c K1))
-	     
-	     ;; THIS REQUIRES NAMING THE CONTEXT: (or duplicating the code)
-	     ;; (if a b (subcall c))
-	     ;; -> ... (if a (K1 b) (c K1))	     
-	     ;;
-	     ;; Can we *detect* when this happens?  We don't want to
-	     ;; always cps convert conditionals...
-	     ;; In our case it seems difficult to recover through optimization.
-              [(if ,test ,conseq ,altern)
-	       (loop test
-		     (lambda (t)		       
-		       ;; Only if there is a subcall on one of these branches do we capture the continuation:
-		       (if (or (has-subcall? conseq)
-			       (has-subcall? altern))
+	  ;; A "direct call":
+	  [(,call (tok ,t ,x) ,args ...)
+	   (guard (memq call '(call bcast call-fast )))
+	   (cps x (lambda (m)
+		    (cps* args
+			  (lambda (w*)
+			    ;; If it's a tainted token we insert a continuation argument:
+			    (if (memq t tainted)
+				(E `(,call (tok ,t ,m) ,NULLK ,@w*))
+				(E `(,call (tok ,t ,m) ,@w*)))))))]
+	  ;; Same for timed call:
+	  [(timed-call ,time (tok ,tok ,x) ,args ...)
+	   (cps time (lambda (time)
+		       (cps x (lambda (x)
+				(cps* args
+				      (lambda (args)
+					;; If it's a tainted token we insert a continuation argument:
+					(if (memq t tainted)
+					    (E `(timed-call (tok ,t ,m) ,NULLK ,@w*))
+					    (E `(timed-call (tok ,t ,m) ,@w*)))))))))]
+	  ;; This is an unknown call, so we've got to add a continuation argument:
+	  [(,call ,opera* ...)
+	   (guard (memq call '(call bcast call-fast timed-call)))
+	   (cps* opera*
+		 (lambda (opera*)
+		   (if (eq? call 'timed-call)
+		       (E `(timed-call ,(car opera*) ,(cadr opera*) ,NULLK ,(cddr opera*)))
+		       (E `(,call ,(car opera*) ,NULLK ,(cdr opera*))))))]
 
+	  [(kcall ,t ,v)
+	   ;(error 'cps-tokmac "what's this doing here?  found a kcall in cps-tokmac..: ~s" `(kcall ,t v))]
+	   (cps t (lambda (t)
+		    (cps v (lambda (v)
+			     (E `(kcall ,t ,v))))))]
 
-			   (let* ([k (unique-name 'k)]
-				  [v (unique-name 'HOLE)])
-			     ;(disp "HAD SUBCALL: CAPTURING..." (has-subcall? conseq) (has-subcall? altern))
-			     `(let ([,k (lambda (,v) ,(pvk v))])
-				(if ,t
-				    ,(loop conseq (lambda (c) `(kcall ,k ,c)))
-				    ,(loop altern (lambda (a) `(kcall ,k ,a))))))
-			   (begin ;(disp "NO SUBCALL" conseq altern)
-			   (pvk `(if ,t
-				     ,(loop conseq id)
-				     ,(loop altern id)))))))]
-	       
-	     [(,lettype ((,lhs ,rhs)) ,body)
-	      (guard (memq lettype '(let let-stored)))
-	      (loop rhs
-		 (lambda (r)
-		   (loop body
-			 (lambda (b)
-			   (pvk `(,lettype ([,lhs ,r]) ,b))))))]
+	  [(,prim ,rands ...)
+	   (guard (or (token-machine-primitive? prim)
+		      (basic-primitive? prim)))
+	   (cps* rands 
+		 (lambda (ls)
+		   (E `(,prim ,@ls))))]
 
+	  [(app ,opera* ...)
+	   (warning 'cps-tokmac  "arbitrary application of rator: ~s" opera*);(car opera*))
+	   (cps* opera*  (lambda (ls) (E (cons 'app ls))))]
 
-	     ;; [2005.10.31] Changed to use high-priority scheduling for subcalls:
-	     [(subcall ,tok ,args ...)
-	      (let* ([valvar (unique-name 'HOLE)]
-		     ;; This expression represents the continuation of the subcall:
-		     [broken-off-code (pvk valvar)] ;(pvk RETVAL_VARNAME)]
-		     )		
-		(loop-list args
-			   (lambda (ls)
-			     `(call-fast ,tok (lambda (,valvar) ,broken-off-code) ,@ls)
-			     ;`(call ,tok (lambda (,valvar) ,broken-off-code) ,@ls)
-			     )))]
-
-	     [(,call (tok ,t ,e) ,args* ...)
-	      (guard (memq call '(call bcast call-fast))
-		     (memq t tainted))
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 ;; Insert null continuation argument:
-				 (lambda (ls) (pvk `(,call (tok ,t ,e2) ,NULLK ,@ls))))))]
-	     [(,call (tok ,t ,e) ,args* ...)
-	      (guard (memq call '(call bcast call-fast)))
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 (lambda (ls) (pvk `(,call (tok ,t ,e2) ,@ls))))))]
-	      ;; Call to unknown token:
-	     [(,call ,e ,args* ...)
-	      (guard (memq call '(call bcast call-fast)))
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 (lambda (ls) (pvk `(,call ,e2 ,NULLK ,@ls))))))]
-
-	     ;; Same thing for timed-call:
-	     [(timed-call ,time (tok ,t ,e) ,args* ...)
-	      (guard (memq t tainted))
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 ;; Insert null continuation argument:
-				 (lambda (ls) (pvk `(timed-call ,time (tok ,t ,e2) ,NULLK ,@ls))))))]
-	     [(timed-call ,time (tok ,t ,e) ,args* ...)
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 (lambda (ls) (pvk `(timed-call ,time (tok ,t ,e2) ,@ls))))))]
-	      ;; Call to unknown token:
-	     [(timed-call ,time ,e ,args* ...)
-	      (loop e 
-		    (lambda (e2)
-		      (loop-list args* 
-				 (lambda (ls) (pvk `(timed-call ,time ,e2 ,NULLK ,@ls))))))]
-
-	     [(kcall ,t ,v)
-	      (loop t
-		    (lambda (t)
-		      (loop v
-			    (lambda (v)
-			      (pvk `(kcall ,t ,v))))))]
-
-
-	     [(leds ,what ,which) (pvk `(leds ,what ,which))]
-	     [(,prim ,rands ...)
-	      (guard (or (token-machine-primitive? prim)
-			 (basic-primitive? prim)))
-	      (loop-list rands 
-			 (lambda (ls)
-			   (pvk
-			    `(,prim ,@ls))))]
-	     [(app ,opera* ...)
-	      (warning 'cps-tokmac 
-		       "arbitrary application of rator: ~s" opera*);(car opera*))
-	      (loop-list opera*  (lambda (ls) (pvk (cons 'app ls))))]
-
-	     [,otherwise
-	      (error 'cps-tokmac:expand-subcalls
-		     "bad expression: ~s" otherwise)]
-	     )))
-		
+	  [,otherwise (error 'cps-tokmac:expand-subcalls "bad expression: ~s" otherwise)]
+	  )))
+    ;---------------------------------------	
 	;; expand-subcalls returns an expression and new handlers
-	  (let ((newexpr (loop expr (lambda (x) x))))
-	    newexpr)))
+      (let ((newexpr (cps expr (lambda (x) (if k-arg `(kcall ,k-arg ,x) x)))))
+	newexpr)))
 ;	    (values newexpr 
 ;		    new-handlers)))))
 
+      (define process-tokbind
+	(lambda (tokenbind tainted k-arg)
+	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tokenbind))])
+	    (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
+	    (let ([newexpr (expand-subcalls body tainted k-arg)])
+	      `(,tok ,subid ,args (stored ,@stored) ,newexpr)))))
 
-    ;; Applies expand-subcalls to all tokbinds
+ 
+#;   ;; Applies expand-subcalls to all tokbinds
       (define process-tokbinds
 	(lambda (tokenbinds tainted)
 	  (let loop ([tbs tokenbinds] [tbacc '()])
@@ -477,7 +448,7 @@
 
 	     ["Test expand-subcalls"
 	      (parameterize ((unique-name-counter 0))
-	      (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) '(t))])
+	      (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) '(t) #f)])
 		(let ([lam (deep-assq 'lambda expr)])
 		  (list 
 		   (,toks-referenced expr)
@@ -567,26 +538,39 @@
 
 
 	   ;; Now for the real work.
-	   ;; First we add k-arguments to any tainted tokens:
-	   (let ([newtbs (map kify-tokbind returntokbinds)]
-		 ;; Inefficient:
-		 [oldtbs (filter (lambda (tb) (not (memq (car tb) returntoks))) nodetoks)])
+	   (let* (;; First transform all the handler bodies:
+;		 [processedtbs (process-tokbinds nodetoks
+;					  ;; Pass tainted toks:
+;						 returntoks)]
+;		 [newtbs 
+;		  (map (lambda (tb)
+;			 (if (memq (car tb) returntoks)
+;			     (kify-tokbind tb) ;; Just inserts a continuation argument.
+;			     tb))
+;		    processedtbs)])
 
+		  [newtbs
+		   (map (lambda (tb)
+			  (if (memq (car tb) returntoks)
+			      (mvlet ([(tb k-arg) (kify-tokbind tb)])
+				(process-tokbind tb returntoks k-arg))
+			      (process-tokbind tb returntoks #f)))
+		     nodetoks)])
+			  
 	     (let ((final 
 		    ;; Next we process all tokbinds to expand out subcalls:
 		    `(,lang '(program (bindings ,constbinds ...)
-			       (nodepgm (tokens 
-					    ,@(process-tokbinds (append oldtbs newtbs) 
-								;; Pass tainted toks:
-								returntoks)))))))
+			       (nodepgm (tokens ,@newtbs))))))
+
+	       #; ;; [2005.11.02] Removing this because it's no longer true that we make no changes to non-subcalling programs.
 	       (DEBUGMODE ;; If we're in debug mode, let's make sure the pass had no effect on non-subcall programs.
 		(and (not (deep-assq 'subcall prog))
 		     (not (equal? prog final))
 		     (begin (printf "Input: \n")
-			    (set-top-level-value! 'a prog)
+			    (define-top-level-value 'a prog)
 			    (pretty-print prog)
 			    (printf "Output: \n")
-			    (set-top-level-value! 'b final)
+			    (define-top-level-value 'b final)
 			    (pretty-print final)
 		     (error 'cps-tokmac "BUG: Changed input program ^^^ (bound to 'a', output bound to 'b') even though it had no subcalls."))))
 	       final
@@ -743,7 +727,16 @@
 				)))))
        (list (car (reverse (deep-assq 'tok1 result)))
 	     (car (reverse (deep-assq 'tok2 result)))))
-     ;; Should be unchanged:
+     ;; Some unnecessary bindings get generated, hopefully we'll optimize these away in a later pass.
+     ,(lambda (p) 
+	(match p 
+	  [((let ([,k1 'NULLK])
+	      (let ([y '3])
+		(let ([,k2 ,k3])
+		  (let ([x y]) (begin (set! y '4) (kcall ,k4 '99))))))
+	    (begin '88 (call (tok tok2 0) '99))) #t]
+	  [,_ #f]))
+     #;     
      ((let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))
       (call (tok tok2 0) (begin '88 '99)))]
 
@@ -762,7 +755,12 @@
 			       [SOC-start () (soc-return (subcall tok1))]
 			     [tok1 () (let ((y '3)) (let ((x y)) (return (+ x y))))]))))
        ;; Lame unquote quote unquote!!
-       [(let ([y ,',_]) (let ([x ,',__]) ,',b)) #t]
+       ;[(let ([y ,',_]) (let ([x ,',__]) ,',b)) #t]
+       [(let ([,',k1 'NULLK])
+             (let ([y '3])
+               (let ([,',k2 ,',k3])
+                 (let ([x y]) (kcall ,',k4 (kcall ,',k5 (+ x y)))))))
+	#t]
        [,',else #f])
      #t]
 
@@ -844,3 +842,94 @@
                           (evict (tok K_22 subtok_ind)))))
          (tok2 subtok_ind (k_20 x) (stored) (call k_20 (* '2 x)))))))
 )
+
+
+
+
+;; FIXME: BUG
+;; This (non-minimal) program currently does not CPS correctly.
+;; The state mutation gets moved around in a broken way.
+#!eof
+(desugar-macros-lang
+  '(program
+     (bindings)
+     (nodepgm
+       (tokens
+         (SOC-start subtok_ind () (stored) (gemit (tok tree 0)))
+         (tree subtok_ind () (stored) (grelay (tok tree subtok_ind)))
+         (node-start
+           subtok_ind
+           ()
+           (stored)
+           (timed-call 500 (tok start-election 0)))
+         (start-election
+           subtok_ind
+           ()
+           (stored)
+           (begin
+             (subcall (tok leaderstorage_2 0))
+             (printf
+               '" (Launching: ~s) \n"
+               (ext-ref (tok leaderstorage_2 0) mycred_4))
+             (gemit
+               (tok compete_1 (my-id))
+               (ext-ref (tok leaderstorage_2 0) mycred_4))
+             (timed-call 1000 amiwinner_7)))
+         (leaderstorage_2
+           ()
+           (stored
+             (curleader_3 'leader-uninitialized)
+             (mycred_4 'mycreds-uninitialized))
+           (begin
+             (set! curleader_3 (my-id))
+             (let ([tmp_5 (subcall (tok fun 0))])
+               (begin
+                 (printf '" (INIT ~s) \n" tmp_5)
+                 (set! mycred_4 tmp_5)))))
+         (compete_1
+           subtokid_8
+           (val_9)
+           (begin
+             '"If storage has not been allocated, do it now."
+             '"This means the message just got to a new node."
+             (if (token-present? (tok leaderstorage_2 0))
+                 (void)
+                 (subcall (tok leaderstorage_2 0)))
+             (if (> val_9 (ext-ref (tok leaderstorage_2 0) mycred_4))
+                 (begin
+                   '"If they beat the local leader, then the new winner is them."
+                   (printf
+                     '"(~a ~a) "
+                     val_9
+                     (ext-ref (tok leaderstorage_2 0) mycred_4))
+                   (ext-set!
+                     (tok leaderstorage_2 0)
+                     curleader_3
+                     subtokid_8)
+                   (ext-set! (tok leaderstorage_2 0) mycred_4 val_9)
+                   '"And since they won, we bear their flag onward:"
+                   (grelay (tok compete_1 subtokid_8)))
+                 (begin
+                   '"If they don't change our mind about who's leading, we do nothing."
+                   (printf
+                     '"~a "
+                     (ext-ref (tok leaderstorage_2 0) curleader_3))))))
+         (amiwinner_7
+           ()
+           (begin
+             (if (= (ext-ref (tok leaderstorage_2 0) curleader_3)
+                    (my-id))
+                 (begin
+                   (printf
+                     '"\n(winner ~a at time ~a)\n"
+                     (my-id)
+                     (my-clock))
+                   (call (tok lead 0)))
+                 (void))))
+         (lead
+           subtok_ind
+           ()
+           (stored)
+           (greturn (my-id) (to (tok SOC-return-handler 0))
+             (via (tok tree 0)) (seed '#f) (aggr #f)))
+         (fun subtok_ind () (stored) (my-id))))))
