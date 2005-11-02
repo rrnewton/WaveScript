@@ -110,7 +110,7 @@
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.
-(define-regiment-parameter regiment-emit-debug #f) ;(IFDEBUG #t #f))
+(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
 
 ;; This one toggles logging.  
 ;; It can be set to : 

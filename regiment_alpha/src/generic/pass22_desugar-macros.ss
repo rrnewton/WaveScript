@@ -23,19 +23,19 @@
        (tml-generic-traverse
 	;; Driver:
 	(lambda (x autoloop)
-	  (define (process-tok t)
+	  (define (tokonly t)
 	    (match t
 	      [(tok ,name ,n) (guard (integer? n))
 	       (vector `(tok ,name ,n) ())]
 	      [(tok ,name ,e) 
 	       (match (autoloop e)
 		 [#(,v ,tbs) (vector `(tok ,name ,v) tbs)])]
-	      [,other (error 'desugar-macros:process-tok "bad token: ~a" other)]))
+	      [,other (error 'desugar-macros:tokonly "bad token: ~a" other)]))
 
 	  (match x
 	     ;; For now this is just syntactic sugar for routing on the global tree:   
 	     ;; return-retry indi
-	     [(soc-return ,[autoloop -> x])
+	     [(soc-return ,[x])
 	      (match x
 		[#(,v ,tbs)
 		 (vector
@@ -59,7 +59,7 @@
 ;	     [(soc-return-finished ,x)
 ;	      (loop `(return ,x (to (tok SOC-return-handler 1)) (via (tok global-tree 0))))]
 
-	     [(flood ,[process-tok -> tok])
+	     [(flood ,[tokonly -> tok])
 	      (let-match ([#(,t ,tbs) tok])
 		 (let ((newtok (unique-name 'floodtok)))
 		   (vector
@@ -69,37 +69,87 @@
 			       (call ,t)]
 		      ,@tbs))))]
 	    
+
+	     [(elect-leader ,t) (process-expr `(elect-leader ,t #f #f))]
+	     [(elect-leader ,t ,c) (process-expr `(elect-leader ,t ,c #f))]
+
 	     ;; FIXME: doesn't work yet:
-	     [(elect-leader ,t)
-	      (let* ((compete (unique-name 'compete))
-		     (storagename (unique-name 'leaderstorage))
-		     (storage `(tok ,storagename 0))
-		     (cur-leader (unique-name 'cur-leader))
-		     (check-winner (unique-name 'am-i-winner))
-		     (id (unique-name 'subtokid)))
+	     ;; TODO: Make this work better for constrained regions.
+	     ;; The token part has to be totally static.
+	     ;; Otherwise we have to TRANSMIT information along during the competition,
+	     ;; telling everyone who to elect if you win.
+	     [(elect-leader ,[tokonly -> t] ,[c] ,[b])
+	      ;; Also maybe want to name the ^^ compete token, so that you can return vals to the leader.
+	      (let-match ([#(,t        ,tbs0) t]
+			  [#(,criteria ,tbs1) c]
+			  [#(,bounding ,tbs2) b])
+		(let* ((compete      (unique-name 'compete))
+		       (storagename  (unique-name 'leaderstorage))
+		       (cur-leader   (unique-name 'cur-leader))
+		       (my-criteria  (unique-name 'my-cred))
+		       (tmp          (unique-name 'tmp))
+		       (tmp0          (unique-name 'tmp))
+;		       (tmp1          (unique-name 'tmp))
+;		       (tmp2          (unique-name 'tmp))
+		       (check-winner (unique-name 'am-i-winner))
+		       (id           (unique-name 'subtokid))
+		       (val           (unique-name 'val))
+		       (storage `(tok ,storagename 0)))
 		(vector
 		 `(begin 
-		    (gemit (tok ,compete (my-id)))
+		    (subcall ,storage) ;; First allocate storage locally.
+		    (printf '" (Launching: ~s) \n" (ext-ref ,storage ,my-criteria))
+		    (gemit (tok ,compete (my-id)) (ext-ref ,storage ,my-criteria))
 		    (timed-call 1000 ,check-winner)
 		    )
-		 `([,storagename () (stored [,cur-leader #f]) (set! ,cur-leader (my-id))]
-		   [,compete ,id () 		 
-		    (if (token-present? ,storage )
-			(void)
-			(subcall ,storage))
-		    (if (< ,id (ext-ref ,storage ,cur-leader))
-			(begin 
-			  (printf '"(~a ~a) " id (ext-ref ,storage ,cur-leader)) 
-			  (ext-set! ,storage ,cur-leader ,id)
-			  (grelay (tok ,compete ,id)))
-			(begin 
-			  (printf '"~a "(ext-ref ,storage ,cur-leader))
-			  ))]
+		 `([,storagename () 
+				 (stored [,cur-leader 'leader-uninitialized]
+					 [,my-criteria 'mycreds-uninitialized])
+				 (begin 
+				   (set! ,cur-leader (my-id))
+				   ,(if criteria
+					;; Now we compute our local score ONCE:
+					;; (Once per call to elect-leader.)
+					`(let ((,tmp (subcall ,criteria)))					   
+					   (begin 
+					     (printf '" (INIT ~s) \n" ,tmp)
+					     (set! ,my-criteria ,tmp)))
+					`(set! ,my-criteria (- 0 (my-id)))))]
+		   [,compete ,id (,val)
+		    (begin	
+;		      ,@(REGIMENT_DEBUG
+;			 `(if (token-present? ,storage) (void)
+;			      (dbg '"~s.~s ERROR: leader election, was expecting ~s storage token to exist." 
+;				   (my-clock) (my-id) ',storage)))
+		      '"If storage has not been allocated, do it now."
+		      '"This means the message just got to a new node."
+		      (if (token-present? ,storage ) (void)
+			  (subcall ,storage))
+			(if (> ,val (ext-ref ,storage ,my-criteria))
+;				(printf '"Comparing: ~s\n" (list (subcall ,criteria) (ext-ref ,storage ,cur-leader)))
+			    (begin '"If they beat the local leader, then the new winner is them."
+				   (printf '"(~a ~a) " ,val (ext-ref ,storage ,my-criteria))
+				   (ext-set! ,storage ,cur-leader ,id)
+				   (ext-set! ,storage ,my-criteria ,val)
+				   '"And since they won, we bear their flag onward:"
+				   (grelay (tok ,compete ,id)))
+			    (begin 
+			      '"If they don't change our mind about who's leading, we do nothing."
+			      (printf '"~a "(ext-ref ,storage ,cur-leader))
+			      ))
+		      )]
 		   [,check-winner ()
-		      (if (= (ext-ref ,storage ,cur-leader) (my-id))
-			  (call ,t)
-			  (void))])
-		 ))]
+				  (begin
+				    (if (= (ext-ref ,storage ,cur-leader) (my-id))
+					(begin 
+					  (printf '"\n(winner ~a at time ~a)\n" (my-id) (my-clock))
+					  (call ,t))
+					(void)))]
+		   ,@tbs0
+		   ,@tbs1
+		   ,@tbs2
+		   )
+		 )))]
 
 	     ;; [2005.10.28]
 	     [(sync-sense)

@@ -1,4 +1,4 @@
-
+ 
   `( 
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
@@ -53,6 +53,7 @@
 	    (c (x) (printf "c "))
 	    ))
       (a b c)]
+
 
      ["Check call scheduling order."
       , (tm-to-list
@@ -405,18 +406,19 @@
       (#f #t tok1 #f)]
 
      ["Subcall: Make sure simulator can handle subcalls directly if need be."
-      , (tm-to-list
-		 '(tokens 		   
-		   (SOC-start ()
-			      (printf "a ")
-			      (subcall tok1)
-			      (printf "c ")
-			      (call tok2)
-			      (printf "d "))
-		   (tok1 () (printf "b "))
-		   (tok2 () (printf "e "))
-		 ))
-	(a b c d e)]
+      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	  (let ([prog (cleanup-token-machine
+		       '(tokens
+			  (SOC-start () (printf "a ") (subcall tok1) (printf "c ")
+				     (call tok2) (printf "d "))
+			  (tok1 () (printf "b "))
+			  (tok2 () (printf "e "))))])
+	    (let ([prt (open-output-string)])
+	      (display "(" prt)
+	      (let ([result (run-simulator-alpha prog 'outport prt)])
+		(display ")" prt)
+		(read (open-input-string (get-output-string prt)))))))
+      (a b c d e)]
 
      ["Subcall: Make sure simulator can handle subcalls directly if need be #2."
       , (tm-to-list
@@ -426,10 +428,82 @@
 		 ))
 	(349)]
 
-;     ["Subcall: split state across subcall." 
-;      , (tm-to-list
-;	 '(tokens 
-;	    (SOC-start
+     ["Subcall: make the stack three deep."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (soc-return (cons 1 (subcall f))))
+	    (f () (cons 2 (subcall g)))
+	    (g () (cons 3 (subcall h)))
+	    (h () (return (cons 4 '())))))
+	((1 2 3 4))]
+     ["Subcall: Test for sanity wrt to subcall ordering reads/writes."
+      , (tm-to-list
+	 '(tokens
+	    (SOC-start () (printf " (before ~s) \n" (ext-ref storage foo))
+		       (subcall storage)
+		       (printf " (after ~s) \n" (ext-ref storage foo)))
+	    (storage () (stored [foo 'uninit])
+		     (set! foo 'yay))))
+	((before #f) 
+	 (after yay))]
+     ["Subcall: combine both the prior two tests make a deep stack and then mess with state."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (soc-return (let ((v (subcall f)))
+					(cons (ext-ref f foo) v))))
+	    (f () (stored (foo 'uninit))
+	       (begin 
+		 (let ((ret (cons 2 (subcall g))))
+		   (set! foo 'yay)
+		   ret)))
+	    (g () (cons 3 ()))))
+	((yay 2 3))]
+
+#;   ;; FIXME: REACTIVATE
+     ["Subcall: Now make that even a little harder."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (soc-return (let ((v (subcall f)))
+					(cons (ext-ref f foo) 
+					      (cons (ext-ref f bar)
+						    v)))))
+	    (f () (stored (foo 'uninit) (bar 'baruninit))
+	       (begin 
+		 (set! bar 'hmm)
+		 (let ((ret (cons 2 (subcall g))))
+		   (set! foo 'yay)
+		   ret)))
+	    (g () (cons 3 ())))
+	 )
+	((yay hmm 2 3))]
+
+   ;; FIXME: REACTIVATE
+     ["Subcall: this is a simple form of a cps bug."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (soc-return (subcall f)))
+	    (f () 
+	       (begin 
+		 (printf " a ")
+		 (subcall g)))
+	    (g () (cons 3 ()))))
+	(3)]
+
+
+;      ["Subcall: combine both the prior two tests make a deep stack and then mess with state."
+;       , (tm-to-socvals
+; 	 '(tokens
+; 	    (SOC-start () (soc-return (let ((v (subcall f)))
+; 					(cons (ext-ref f foo) v))))
+; 	    (f () (stored (foo 'uninit))
+; 	       (begin 
+; 		 (let ((ret (cons 2 (subcall g))))
+; 		   (set! foo 'yay)
+; 		   ret)))
+; 	    (g () (cons 3 ()))))
+; 	((1 2 3 4))]
+
+
 
 
 
@@ -700,6 +774,22 @@
 	      (equal? lst (sort < lst)))
 	) ;; Only true with VERY restricted simulation model.
       (30 0 1 #t #t)]
+
+
+     ;; [2005.11.01] Currently there is inconsistency in the order a neighbor receives messages sent by one tokhandler.
+     ;; TODO: FIXME
+     ["Gradients: Respect emit order just like call order. (FIXME)"
+      , (tm-to-list
+	 '(tokens 
+	      (SOC-start () 
+			 (gemit a)
+			 (call b)
+			 (gemit c))
+	    (a (x) (printf "(~s a) " (my-id)))
+	    (b (x) (printf "(~s b) " (my-id)))
+	    (c (x) (printf "(~s c) " (my-id)))
+	    ))
+	unspecified]
 
 
      ["Gradients: make a two hop neighborhood. (NONDETERMINISTIC)"
@@ -1242,6 +1332,7 @@
        unspecified]
 
 
+    ;; This is better.
     ["Elect leader. #2" 
      , (tm-to-list
 	'(tokens
@@ -1275,15 +1366,56 @@
 	'[simalpha-channel-model 'linear-disc]
 	'[simalpha-timeout 10000])
        unspecified]
-	
+
+    ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
     ["Now test elect-leader macro."
-     , (tm-to-list
+     , (tm-to-socvals
 	'(tokens
-	   [SOC-start () (elect-leader tok1)]
-	   [tok1 () (printf "~a " (my-id))])
-	'[simalpha-channel-model 'lossless]
-	'[simalpha-num-nodes 10])
-       unspecified]
+	   [SOC-start () (gemit tree)] 
+	   [tree () (grelay)]
+	   [node-start () (elect-leader tok1)]
+	   [tok1 () (greturn (my-id) (to SOC-return-handler) (via tree))])
+	'[simalpha-channel-model  'lossless]
+	'[simalpha-placement-type 'connected]
+	'[simalpha-failure-model  'none]
+	'[simalpha-num-nodes 10]
+	'[simalpha-consec-ids #f])
+       ;; This requires that you get actual minimum:
+       ,(lambda (ls)
+	  (and (= 1 (length ls))
+	       (= (car ls) 
+		  (apply min 
+			 (map node-id 
+			   (map simobject-node 
+			     (simworld-all-objs
+			      (simalpha-current-simworld))))
+			 ))))]
+
+    ["Again elect-leader macro, but with a function to maximize."
+     , (tm-to-socvals
+	'(tokens
+	   [SOC-start () (gemit tree)] 
+	   [tree () (grelay)]
+	   [node-start () (timed-call 500 start-election)]
+	   [start-election () (elect-leader lead fun)]
+	   [lead () (greturn (my-id) (to SOC-return-handler) (via tree))]
+	   [fun () (my-id)])
+	'[simalpha-channel-model  'lossless]
+	'[simalpha-placement-type 'connected]
+	'[simalpha-failure-model  'none]
+	'[simalpha-num-nodes 10]
+	'[simalpha-consec-ids #f])
+       ;; This requires that you get actual minimum:
+       ,(lambda (ls)
+	  (and (= 1 (length ls))
+	       (= (car ls) 
+		  (apply min 
+			 (map node-id 
+			   (map simobject-node 
+			     (simworld-all-objs
+			      (simalpha-current-simworld))))
+			 ))))]
+
 	
     ["Test flood macro."
      , (tm-to-list
@@ -1510,7 +1642,22 @@
 	 ))
       ,(lambda (ls) (not (null? ls)))]
 
-      
+
+     ["Regiment: Test a simple anchor election."
+      (parameterize ([simalpha-channel-model 'lossless]
+		     [simalpha-placement-type 'connected]
+		     [simalpha-failure-model  'none]
+		     [simalpha-sense-function sense-dist-from-origin]
+		     [simalpha-timeout 2000])
+	(run-simulator-alpha 
+	 (run-compiler 
+	  ;'(anchor-maximizing sense 0)))
+	  '(anchor-at 30 40)))
+	 )
+      ????????]
+
+
+#;   ;; FIXME : TODO : REACTIVATE      
      ["Regiment: nested regions, sum number of neighbors."
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-failure-model  'none])

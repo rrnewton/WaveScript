@@ -11,7 +11,7 @@
 	  foldl
 
 	  make-n-list  id
-	  substring? periodic-display all-equal?
+	  string-split substring? periodic-display all-equal?
 
 	  with-error-handlers with-warning-handler
 	  current-error-port

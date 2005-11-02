@@ -148,7 +148,7 @@
 	   [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
 	   ;; Indirect gemit call... could consider restricting these.
 	   [(gemit ,[e] ,[args*] ...)
-	    (error 'pass23_desugar-gradients "not allowing dynamically targetted emits atm.")
+	    (error 'pass23_desugar-gradients "not allowing dynamically targeted emits atm: ~s" x)
 					;(apply append e args*)
 	    ]
 	   
