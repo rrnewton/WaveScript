@@ -1,4 +1,6 @@
 ;; TODO: USE NULLK
+;; TODO: Add the hack that it just doesn't touch a handler that has no SUBCALL.
+
 
 
 ;; [2005.02.10]
@@ -155,6 +157,14 @@
 	      [,e (loop e)]))
      (lambda (ls _) (ormap id ls))
      expr))
+  (define (has-kcall? expr)
+    (tml-generic-traverse
+     (lambda (x loop)
+       (match x
+	      [(kcall ,k ,v) #t]
+	      [,e (loop e)]))
+     (lambda (ls _) (ormap id ls))
+     expr))
 
   ;; Traverse the expression checking to see if it has a (return _) statement.
   (define (has-return? expr)
@@ -236,7 +246,7 @@
 	    (match body
 	      ;; [2005.11.02] This is a quick little eta-reduce optimization:
 	      ;; It can effectively serve as tail call optimization:
-	      [(kcall ,k ,v) (guard (eq? v formal) (symbol? k))  k]
+	      [(kcall ,k ,v) (guard (eq? v formal) (or (symbol? k) (equal? k NULLK)))  k]
 	      ;; [2005.11.02] Hopefully we'll do better optimizations in our inline pass
 	      ;; but this removes generation of unnecessary closures:
 	      [,v (guard (symbol? v) (eq? formal v))    NULLK]
@@ -244,10 +254,20 @@
     ;---------------------------------------
     (define possible-letk
       (lambda (cont-exp abs-body)
-        (let ([k (generate-k)])
-          (let ([body (abs-body k)])
-            `(let ((,k ,cont-exp))
-               ,body)))))
+	;; [2005.11.03] RRN optimize aliases:
+	(if (or (symbol? cont-exp)
+		(equal? cont-exp NULLK))
+	    (abs-body cont-exp)
+	    (let ([k (generate-k)])
+	      (let ([body (abs-body k)])
+		`(let ((,k ,cont-exp))
+		   ,body))))))
+    ;---------------------------------------
+    (define make-kcall
+      (lambda (k v)
+	(if (equal? k NULLK)
+	    v
+	    `(kcall ,k ,v))))
     ;---------------------------------------
     (define cps*
       (lambda (N* E)
@@ -261,7 +281,7 @@
     (define cps
       (lambda (t E)
 	;; E is the continuation representing the enclosing expression to the current being processed.
-        (match t
+        (match  t
 	  [,c (guard (constant? c)) (E c)]
           [(quote ,c) (E `(quote ,c))]
 	  [(leds ,what ,which) (E `(leds ,what ,which))]
@@ -283,13 +303,34 @@
                 (lambda (v)
 		  (make-begin `(begin ,v ,(cps `(begin ,expr* ...) E)))))]
           [(if ,test-exp ,true-exp ,false-exp)
-           (possible-letk (CLAM E)
-                          (lambda (k)
-                            (cps test-exp
-                                 (lambda (v)
-                                   `(if ,v
-                                        ,(cps true-exp (lambda (v) `(kcall ,k ,v)))
-                                        ,(cps false-exp (lambda (v) `(kcall ,k ,v))))))))]
+	   (define (default-case)
+	     (possible-letk (CLAM E)
+			    (lambda (k)
+			      (cps test-exp
+				   (lambda (v)
+				     `(if ,v
+					  ,(cps true-exp (lambda (v) (make-kcall k v)))
+					  ,(cps false-exp (lambda (v) (make-kcall k v))))
+				     )))))
+	   ;; Optimization:
+	   (if (and (not (has-subcall? true-exp))
+		    (not (has-subcall? false-exp))
+		    ;#f ;; DISABLING
+		    )
+	       ;; TODO FIXME: HACK [2005.11.03] - 
+	       ;; if there are no subcalls on either branch, then there's
+	       ;; no reason to grab the continuation.
+	       ;; Need to verify that this is correct, and also think 
+	       ;; about what problems it doesn't solve.
+	       (let ((left (cps true-exp (lambda (v) v)))
+		     (right (cps false-exp (lambda (v) v))))
+		 (if (or (has-kcall? left)
+			 (has-kcall? right))
+		     ;; Then this optimization is not legal, revert to default:
+		     (default-case)
+		     ;; Otherwise it's safe, let's go ahead.
+		     (cps test-exp (lambda (v) (E `(if ,v ,left ,right))))))
+	       (default-case))]
 
           [(let ((,x ,N) ...) ,body)
            (possible-letk (CLAM E)
@@ -297,7 +338,7 @@
                             (cps* `(,N ...)
                                   (lambda (w*)
                                     `(let ,(map list `(,x ...) w*)
-                                       ,(cps body (lambda (v) `(kcall ,k ,v))))))))]
+                                       ,(cps body (lambda (v) (make-kcall k v))))))))]
 	  
 	  
 
@@ -449,16 +490,16 @@
 	     [(,valid-returns? '(begin '1 (return (if '2 '3 (let ((x '4)) (return x)))))) #f]
 
 	     ["Test expand-subcalls"
-	      (parameterize ((unique-name-counter 0))
-	      (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) '(t) #f)])
-		(let ([lam (deep-assq 'lambda expr)])
-		  (list 
-		   (,toks-referenced expr)
-		   (,toks-escaped expr)
+	      (reunique-names
+	       (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) '(t) #f)])
+		 (let ([lam (deep-assq 'lambda expr)])
+		   (list 
+		    (,toks-referenced expr)
+		    (,toks-escaped expr)
 		   (,free-vars lam)
 		   (,free-vars expr)
 		   ))))
-	      ((t) () (HOLE_1) (HOLE_1))]
+	      ((t) () (HOLE) (HOLE))]
 
 
 ;; Maybe use in next pass:     
@@ -555,6 +596,7 @@
 		   (map (lambda (tb)
 			  (if (memq (car tb) returntoks)
 			      (mvlet ([(tb k-arg) (kify-tokbind tb)])
+;				(printf "AFTER KIFY: \n") (pretty-print tb)
 				(process-tokbind tb returntoks k-arg))
 			      (process-tokbind tb returntoks #f)))
 		     nodetoks)])
@@ -736,7 +778,11 @@
 	      (let ([y '3])
 		(let ([,k2 ,k3])
 		  (let ([x y]) (begin (set! y '4) (kcall ,k4 '99))))))
-	    (begin '88 (call (tok tok2 0) '99))) #t]
+	    (begin '88 (call (tok tok2 0) '99))) 
+	   #t]
+	  [((let ([y '3]) (let ([x y]) (begin (set! y '4) '99)))
+	    (begin '88 (call (tok tok2 0) '99)))
+	   #t]
 	  [,_ #f]))
      #;     
      ((let ((y '3)) (let ((x y)) (begin (set! y '4) '99)))
@@ -750,22 +796,21 @@
      #t]
 
     ["Look at how we treat lets."
-     (match (deep-assq 'let 
-		       (cps-tokmac 
-			 (cleanup-token-machine 
-			  '(tokens 
-			       [SOC-start () (soc-return (subcall tok1))]
-			     [tok1 () (let ((y '3)) (let ((x y)) (return (+ x y))))]))))
-       ;; Lame unquote quote unquote!!
-       ;[(let ([y ,',_]) (let ([x ,',__]) ,',b)) #t]
-       [(let ([,',k1 ,',topk])
-             (let ([y '3])
-               (let ([,',k2 ,',k3])
-                 (let ([x y]) (kcall ,',k4 (+ x y))))))
-	#t]
-       [,',else #f])
-     #t]
-
+     (deep-assq 'let 
+		(cps-tokmac 
+		 (cleanup-token-machine 
+		  '(tokens 
+		       [SOC-start () (soc-return (subcall tok1))]
+		     [tok1 () (let ((y '3)) (let ((x y)) (return (+ x y))))]))))
+     , (lambda (res) 
+	 (match res
+	   [(let ([y ,_]) (let ([x ,__]) ,b)) #t]
+	   [(let ([,k1 ,topk])
+	      (let ([y '3])
+		(let ([,k2 ,k3])
+		  (let ([x y]) (kcall ,k4 (+ x y))))))
+	    #t]
+	   [,else #f]))]
     
     ["Currently subcalls in if branches make useless continuations."
      ;; Could try to optimize these away in a variety of manners:
