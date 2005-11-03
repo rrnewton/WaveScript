@@ -50,6 +50,9 @@
   ;; ================================================================================
     ;; This is called with the local time that the scheduling hapens.
     ;; New events may have times in the future, but should not have times in the past.
+  
+    ;; [2005.11.03] Note just had a bug concerning INSTABILITY of
+    ;; equally timed tokens in the queue.  Examining now.
     (define (schedule ob . newevnts)
       ;; ASSUME: all the new events are already tagged with concrete times.
       (DEBUGASSERT (simobject? ob))
@@ -65,8 +68,14 @@
 		;; [2005.05.31] I'm having a scheduling bug, so just to be careful I'm sorting these:
 		;; Before I merely merged them:
 		(IFDEBUG ;; [2005.10.17] Profiling indicates this wastes a lot of time.  Only doing this in debug mode.
-		 (set-queue! (sort lessthan (append pairedevnts (get-queue))))
-		 (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue))))
+
+		 ;; [2005.11.03]  The below line just caused an eggregious scheduling bug 
+		 ;; thanks to its instability.  I'm not clear how it did that.  Sort should be stable!
+		 ;(set-queue! (sort lessthan (append pairedevnts (get-queue))))
+
+		 (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue)))
+		 (set-queue! (merge! lessthan (sort lessthan pairedevnts) (get-queue)))
+		 )
 
 		;; TEMP:
 		#;
@@ -192,7 +201,42 @@
 
 	;; Process incoming and local msgs:
 	;; Schedule timed local tokens:
-	(apply schedule ob timedevnts))))
+	(apply schedule ob timedevnts)
+	
+(let ((sim-print-queue 
+       (lambda id
+  (let ([Q (get-queue)]
+	[format-evt
+	 (lambda (evt)
+		 (list (simevt-vtime evt)
+		       (list (simtok-name (msg-object-token (simevt-msgobj evt)))
+			     (simtok-subid (msg-object-token (simevt-msgobj evt))))
+		       (msg-object-args (simevt-msgobj evt))))])
+  (printf "Current queue: \n")
+  (pretty-print
+	  (map (lambda (x) (format-evt (car x)))
+	       (if (null? id)
+		   Q
+		   (filter 
+		    (lambda (pr) (= (car id)
+				    (node-id (simobject-node (cdr pr)))))
+		    Q))))
+  (printf "  With local messages: \n")
+  (pretty-print (map format-evt (simobject-local-msg-buf ob)))
+  (printf "  And incoming messages: \n")
+  (pretty-print (map format-evt (simobject-incoming-msg-buf ob)))
+  (printf "  And timed messages: \n")
+  (pretty-print (map format-evt (simobject-timed-token-buf ob)))
+  (newline)
+  ))))
+
+  (void)
+#;
+  (unless (null? timedevnts)
+    (disp "SCHEDULED NEW")
+    (sim-print-queue BASE_ID)
+    ))
+	)))
 
 
   ;; ================================================================================

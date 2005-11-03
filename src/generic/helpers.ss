@@ -276,9 +276,7 @@
      (loc () List) ;(loc () Location)
      (locdiff (List List) Float) ;(locdiff (Location Location) Float)
 
-     (printf (String . Object) Void)
      (dbg (String . Object) Void)
-     (error (Object String . Object) Void)
 
      (call (Token . Object) Void)
      (bcast (Token . Object) Void)
@@ -305,13 +303,6 @@
      (soc-return (Number) Void)
      (soc-return-finished (Number) Void)
      
-     ;; For simulator only:
-     ; [2005.04.30] Disabling these for now, will get them back up later.
-     ;(draw-mark)
-     ;(rgb)
-
-     (dbg (String . Object) Void)
-
      ;; TEMPORARY, just for debugging/testing:
      (cons (Object List) List) 
      (car (List) Object)
@@ -329,7 +320,14 @@
 
      ;; For debugging only:
      (sim-print-queue Number Void)
-
+     (error (Object String . Object) Void)
+     (printf (String . Object) Void)
+     (procedure? (Object) Bool)
+     (pad-width (Number String) Void)
+     ;; For simulator only:
+     ; [2005.04.30] Disabling these for now, will get them back up later.
+     ;(draw-mark)
+     ;(rgb)
      ))
 
 ;; Keywords allowed in the restricted token machine language.
@@ -1221,6 +1219,35 @@
     (let ((str (symbol->string sym)))
       (string->symbol
        (car (string-split str #\_))))))
+
+;; [2005.11.03] This is for comparing test outputs that differ only in unique names.
+;; It goes through the structure in a fixed, deterministic order, and introduces 
+;; unique names that are platform independent.
+(define reunique-names
+  (lambda (expr)
+    (define table (make-default-hash-table))
+    (define (make-entry) (cons -1 (make-default-hash-table)))
+    (define (process s) (let* ((basesym (deunique-name s))
+			       (entry (hashtab-get table basesym)))
+			  (when (not entry)
+			    (set! entry (make-entry))
+			    (hashtab-set! table basesym entry))
+			  (when (not (hashtab-get (cdr entry) s))
+			    ;; Increment our counter:
+			    (set-car! entry (add1 (car entry)))
+			    (hashtab-set! (cdr entry) s 
+					  (string->symbol 
+					   (if (zero? (car entry))
+					       ""   (format "_~s" (car entry))))))
+			  (symbol-append basesym (hashtab-get (cdr entry) s))))
+      (let loop ((ls expr))
+	(cond
+	 [(null? ls) ()]
+	 [(symbol? (car ls)) (let ((first (process (car ls))))
+			       (cons first (loop (cdr ls))))]
+	 [(list? (car ls)) (let ((first (loop (car ls))))
+			     (cons first (loop (cdr ls))))]
+	 [else (error 'reunique-names "bad subexpression: ~s" (car ls))]))))
 
 ;;; unique-name produces a unique name derived the input name by
 ;;; adding a unique suffix of the form .<digit>+.  creating a unique
@@ -2787,6 +2814,13 @@
        (fun ))
      #f]
 
+
+    ["Reunique names" 
+     (reunique-names '(foo_3 foo_43 foo_3 foo))
+     (foo foo_1 foo foo_2)]
+    ["Reunique names #2"
+     (reunique-names '(foo_3 (bar_3) foo_43 foo_3 (bar_3 bar_4)))
+     (foo (bar) foo_1 foo (bar bar_1))]
 
     ))
 

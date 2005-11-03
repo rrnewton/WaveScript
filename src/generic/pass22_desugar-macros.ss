@@ -98,7 +98,7 @@
 		(vector
 		 `(begin 
 		    (subcall ,storage) ;; First allocate storage locally.
-		    (printf '" (Launching: ~s) \n" (ext-ref ,storage ,my-criteria))
+;		    (printf '" (Launching: ~s) \n" (ext-ref ,storage ,my-criteria))
 		    (gemit (tok ,compete (my-id)) (ext-ref ,storage ,my-criteria))
 		    (timed-call 1000 ,check-winner)
 		    )
