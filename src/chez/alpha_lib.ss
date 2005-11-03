@@ -22,10 +22,20 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 
+	 ;; Simple functions that compute sensor values:
+	 sense-dist-from-origin
+	 sense-sine-wave
+	 sense-noisy-rising
+	 sense-random-1to100
+
 	 test-this these-tests test-alphalib
 	 )
 
 	(import scheme)
 	(import simulator_alpha_datatypes)
+
+	;; Consider compiling simulator code in opt 3 when it's stable.
+;	(eval-when (compile load eval)
+;	  (optimize-level (IFDEBUG 2 2)))
 
 	(include "generic/alpha_lib.ss"))

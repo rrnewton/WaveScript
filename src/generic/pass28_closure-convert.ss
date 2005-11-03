@@ -152,15 +152,19 @@
 				  ,@(REGIMENT_DEBUG
 				     `(dbg '"~a: No counter token for K=~a! Allocating..." (my-id) ',kname))
 				  ;; FIXME: PADDING
-;; Consider getting rid of:
-				  (call (tok ,kname 0) ',KINIT_FLAG 
+
+				  ;; Consider getting rid of:
+				  ;; I initialize counter-holders from node-start:
+				  (call-fast ;; TEMP FIXME: trying out call-fast here.
+				   (tok ,kname 0) ',KINIT_FLAG 
 					,@(make-list (max 1 (length fvs)) 
 						     ''captured-tok-fv-dummy-val)) ;; The void takes up the fv0 position
 				  '1))])
 		  (begin 
 		    "Do the actual token object (closure) allocation.  Capture freevars:"
 		    ;; NOTE: Relying on the automatic padding/zeroing of omitted args:
-		    (call (tok ,kname ,kind) ',KINIT_FLAG ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
+		    (call-fast ;; TEMP FIXME: trying out call-fast here.
+		     (tok ,kname ,kind) ',KINIT_FLAG ,@fvs) ;,@(if (null? fvs) '((void)) fvs))
 		    ,@(REGIMENT_DEBUG
 		       `(dbg '"~a: Launched an continuation-allocation call (tok ~a ~a) with fvs ~a = ~a" 
 			     (my-id)  ',kname ,kind ',fvs (list ,@fvs))

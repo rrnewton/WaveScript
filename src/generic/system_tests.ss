@@ -948,6 +948,9 @@
 	      (all-equal? (map (lambda (l) (sort < (filter number? l))) 
 			       (rdc (cddr x))))))]
 
+
+     ;; [2005.11.03] Ok having problems with this one when using closure-convert
+     ;; [2005.11.03] Hmm.. it passed on fort, but only after one retry.  What's wrong?
      ["Gradients: execute a repeated return from whole network. (NONDETERMINISTIC)"
       retry
       , (tm-to-list
@@ -1114,28 +1117,25 @@
        (sum 13 1000) (acc 1000 to 1013) local-and-fire outif2
        (timeout 1013))]
 
-
-#;
-     (let ((prt (open-output-string)))
-	(display "(" prt)
-	(run-simulator-alpha
-	 (cleanup-token-machine
-	  (id;closure-convert
-	   (id;sever-cont-state
-	   (id;cleanup-token-machine
-	    '(tokens
-	       [SOC-start ()
-			  (call TEST 0 'rhlocal 1000 0 0)
-			  (call TEST 0 'rhlocal 3 0 0)
-			  (timed-call 1000 timeout)
-			  ]
-	       [timeout () (printf "~a\n" (ext-ref TEST acc))]
-	       [TEST (destid flag val toind viaind)
-		     (stored (acc '0))
-		     (set! acc (+ acc val))])))))
-	 )
-
-	 )
+;      (let ((prt (open-output-string)))
+;        (display "(" prt)
+;        (run-simulator-alpha
+; 	(cleanup-token-machine
+; 	 (id;closure-convert
+; 	  (id;sever-cont-state
+; 	   (id;cleanup-token-machine
+; 	    '(tokens
+; 	       [SOC-start ()
+; 			  (call TEST 0 'rhlocal 1000 0 0)
+; 			  (call TEST 0 'rhlocal 3 0 0)
+; 			  (timed-call 1000 timeout)
+; 			  ]
+; 	       [timeout () (printf "~a\n" (ext-ref TEST acc))]
+; 	       [TEST (destid flag val toind viaind)
+; 		     (stored (acc '0))
+; 		     (set! acc (+ acc val))])))))
+; 	)
+;        )
     
 
      ["Gradients: Now try aggregated greturn."
@@ -1182,6 +1182,7 @@
       ((0) (0 1) (0 1) (0 1) (0 1) (1))
       ]
 
+     ;; [2005.11.03] This totally fails with closure-convert.
      ["Gradients: Same thing but to whole network."
       retry ;; Really messed up topology could cause this to not work.
       , (tm-to-list
@@ -1193,6 +1194,7 @@
 		    (timed-call 1000 tok1 (- reps 1))))
 	  (catcher (x) (printf "~a " x))
 	  (tok2 () 
+		;(printf "~s " (my-id)) ;(printf "~s.~s tok2..\n" (my-clock) (my-id))
 		(grelay)
 		(greturn (list (gdist))
 			 (to catcher)
@@ -1200,7 +1202,11 @@
 			 (aggr f)))
 	  (f (x y) (append x y)))
 	'[regiment-verbose #f]
-	'[simalpha-placement-type 'gridlike]
+	'[simalpha-placement-type 'connected]
+	'[simalpha-consec-ids #t]
+	'[simalpha-failure-model 'none]
+	'[simalpha-channel-model 'lossless]
+	'[simalpha-num-nodes 10]
 	)
       ;; Epoch staggered aggregation
 	,(lambda (x) 
