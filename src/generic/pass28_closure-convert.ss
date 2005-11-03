@@ -108,13 +108,7 @@
 	 (lambda (ls f) (apply f ls))
 	 e)))
 
-#;
-    (define (build-continuation kname body hole)
-      (values
-       `(lambda (,hole) ,body)
-       `(,kname subtok_ind () (stored) 'FOOO)))
-
-    (define (build-continuation kname env body hole)      
+    (define (build-continuation kname env stored body hole)
       (let* ([FREEVAR0 'fv0] ;(unique-name 'fv0)]
 	     [KCOUNTER (unique-name KCOUNTER)]
 
@@ -122,7 +116,12 @@
 	     
 	     ;; Subtract the set of bound vars to get free-vars
 	     ;[fvs (difference (free-vars body) (cons FREEVAR0 env))]
-	     [fvs (remq-all FREEVAR0 (free-vars body))]
+	     [fvs (filter (lambda (v)
+			    (cond
+			     [(eq? v FREEVAR0) #f]
+			     [(memq v stored) #f]
+			     [else #t]))				
+			  (free-vars body))]
 ;		     [__ (disp "GOT fvs: " fvs)]
 ;		   [args (map (lambda (n)
 ;				(string->symbol (format "arg~a" n)))
@@ -253,7 +252,7 @@
        (lambda (ls f) (apply f ls))
        expr))
 
-    (define (process-expr expr env)
+    (define (process-expr expr env stored)
       ;; env: Just a list of bound variables (the arguments plus the subtok_id)
       (define (addhands newhands vec)
 	(vector (append newhands (vector-ref vec 0)) (vector-ref vec 1)))
@@ -308,7 +307,7 @@
 		      (let ([newhands1 (vector-ref val 0)] 
 			    [body1 (vector-ref val 1)])
 			(let ([kname (unique-name 'K)])
-			  (mvlet ([(closure khandler) (build-continuation kname env body1 hole)])
+			  (mvlet ([(closure khandler) (build-continuation kname env stored body1 hole)])
 				 (let* ([result (outer-loop body2 (cons (list k kname) kbinds))]
 					[newhands2 (vector-ref result 0)]
 					[newbody (vector-ref result 1)])
@@ -317,7 +316,7 @@
 		     [(lambda (,v) ,[val])
 		      (let ([newhands (vector-ref val 0)] [body (vector-ref val 1)])
 			(let ([kname (unique-name 'K)])
-			  (mvlet ([(closure khandler) (build-continuation kname env body v)])
+			  (mvlet ([(closure khandler) (build-continuation kname env stored body v)])
 				 (vector (cons khandler newhands)
 					 closure))))]
 		     [,x (loop x)]))
@@ -336,8 +335,7 @@
 
     (define (process-tokbind tb)
       (mvlet ([(tok subtokid args stored constbinds body) (destructure-tokbind tb)])
-	     (mvlet ([(newexpr newtokbinds) (process-expr body (cons subtokid args))])
-;	     (mvlet ([(newexpr newtokbinds) (OLDprocess-expr body)])
+	     (mvlet ([(newexpr newtokbinds) (process-expr body (cons subtokid args) (map car stored))])
 		    (cons 
 		     `[,tok ,subtokid ,args (stored ,@stored) ,newexpr]
 		     newtokbinds))))

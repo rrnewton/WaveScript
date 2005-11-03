@@ -43,23 +43,18 @@
     cleanup-token-machine   ;; Rerun to expand out some stuff.
 
     ;    analyze-tokmac-recursion
-    ;    inline-tokmac
 
-;    desugar-let-stored
-;    rename-stored
 
-;; Temporarily I am disabling these ..
+    desugar-let-stored
+    rename-stored
+
     cps-tokmac
 ;    add-kclosure
     sever-cont-state
-;    closure-convert
-;    cleanup-token-machine ;; Trying this.. [2005.09.27]
+    closure-convert
+    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
-    ;; moving these after closure-convert.  WHY? Can't remember atm [2005.09.27]
-;; [2005.09.27] OH.  I moved them because I didn't want cps to split references to 
-;; a let-stored variable across two tokens.  (That gets messy, one has to use ext-ref.)
-    desugar-let-stored
-    rename-stored
+    ;    inline-tokmac ???
 
     ;    verify-token-machine
     ;    haskellize-tokmac 
