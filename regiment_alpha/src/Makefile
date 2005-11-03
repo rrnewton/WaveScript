@@ -36,6 +36,9 @@ chez: chez_native
 chez_native:
 	echo '(compile-file "compiler_chez.ss")' | chez
 
+test: clean chez
+	./regiment_script.ss test
+
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
@@ -102,6 +105,7 @@ clean:
 #*---------------------------------------------------------------------*/
 #.scm.o:
 #	$(BIGLOO) -c $(BFLAGS) $*.scm -o $*.o
+
 
 wc:        wordcount
 count:     wordcount

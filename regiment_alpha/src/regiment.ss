@@ -27,6 +27,7 @@
   (printf "  help          prints this message~n")
   (printf "  compile  (c)  compile Regiment to token machines~n")
   (printf "  simulate (s)  simulate a token machine file~n")
+  (printf "  test     (t)  run all regiment tests~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -98,12 +99,14 @@
 	(disp "MODE: " mode "OPTS: " opts)
 	
 	(case mode
-	  [(c)
+	  [(t test)
+	   (test-units)
+	   ;(test-everything)
+	   ]
+	  [(c compile)
 
 	   ;; FIXME: HACK:
 	   ;(let ((params 
-
-
 	    (if (null? filenames)
 		(begin
 		  (printf "No input file.  Type top-level Regiment expression.~n")
@@ -144,7 +147,7 @@
 					      (apply run-compiler prog out opts)])
 				      (apply run-compiler (car (file->slist fn)) out opts))))))
 			  filenames))]
-	  [(s) ;; simulate
+	  [(s simulate)
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
 			 (car filenames))))

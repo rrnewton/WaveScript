@@ -21,6 +21,10 @@
 (import simulator_alpha_datatypes)
 (import alpha_lib_scheduler_simple)
 
+;; Consider compiling simulator code in opt 3 when it's stable.
+;(eval-when (compile load eval)
+;  (optimize-level (IFDEBUG 2 2)))
+
 ;; We are loaded from the root directory, not the chez subdirectory.
 ;(include "generic/simulator_nought.examples.ss")
 (include "generic/simulator_alpha.ss")

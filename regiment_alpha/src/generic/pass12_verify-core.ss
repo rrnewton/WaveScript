@@ -85,7 +85,7 @@
 	   #t]
 
           [(,prim ,rand* ...)
-           (guard ;(>= (snet-optimize-level) 2)
+           (guard 
                   (not (memq prim env))
                   (regiment-primitive? prim)
 		  (andmap (lambda (x) (process-expr x env)) rand*)

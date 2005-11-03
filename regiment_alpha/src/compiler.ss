@@ -51,8 +51,8 @@
     cps-tokmac
 ;    add-kclosure
     sever-cont-state
-    closure-convert
-    cleanup-token-machine ;; Trying this.. [2005.09.27]
+;    closure-convert
+;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
     ;    inline-tokmac ???
 

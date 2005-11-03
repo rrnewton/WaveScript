@@ -247,7 +247,7 @@
 	     `(letrec ([,lhs* ,rands] ...) ,body))]
           
           [(,prim ,[rand*] ...)
-           (guard ;(>= (snet-optimize-level) 2)
+           (guard 
             (not (memq prim env))
             (regiment-primitive? prim))
 	   ;      (check-primitive-numargs prim rand*)

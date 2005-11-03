@@ -67,7 +67,7 @@
 ;           (error 'verify-scheme "invalid syntax ~s" `(,keyword ,form* ...))]
                     
           [(,prim ,rand* ...)
-           (guard ;(>= (snet-optimize-level) 2)
+           (guard 
                   (not (memq prim env))
                   (blanko-primitive? prim)
 		  (andmap symbol? rand*)

@@ -2,6 +2,9 @@
 ;; TODO: Add the hack that it just doesn't touch a handler that has no SUBCALL.
 
 
+;; NOTE: Everiwhere that "OPTIMIZE" occurs is a (potentially
+;; dangerous) optimization that could be turned off.
+
 
 ;; [2005.02.10]
 
@@ -228,12 +231,42 @@
 		      ,(desugar-return body)]
 	       k)))))
 		           
+    (define add-kargs
+      (lambda (expr tainted)
+	(tml-generic-traverse
+	 (lambda (expr loop) ;; driver
+	   (match expr
+	     [(timed-call ,[time] (tok ,tok ,[subtok]) ,[args] ...)
+	      (if (memq tok tainted)
+		  `(timed-call ,time (tok ,tok ,subtok) ,NULLK ,@args)
+		  `(timed-call ,time (tok ,tok ,subtok) ,@args))]
+	     [(,call (tok ,t ,[subtok]) ,[args] ...)
+	      (guard (memq call '(call bcast call-fast )))
+	      ;; If it's a tainted token we insert a continuation argument:
+	      (if (memq t tainted)
+		  `(,call (tok ,t ,subtok) ,NULLK ,@args)
+		  `(,call (tok ,t ,subtok) ,@args))]
+	     ;; Anonymous call:
+	     [(,call ,[opera*] ...)
+	      (guard (memq call '(call bcast call-fast timed-call)))	     
+	      (if (eq? call 'timed-call)
+		  `(timed-call ,(car opera*) ,(cadr opera*) ,NULLK ,(cddr opera*))
+		  `(,call ,(car opera*) ,NULLK ,(cdr opera*)))]
+
+	     ;; This is just a hack to stop add-kargs from adding a *second* k argument:
+	     [(kcall-fast ,[x*] ...)
+	      `(call-fast ,x* ...)]
+
+	     [,x (loop x)]))
+	 (lambda (expls reconstruct) (apply reconstruct expls)) ;; fuser
+	 expr)))
+
     ;; expand-subcalls expands out all subcalls 
     ;; Best way to represent a thing with a hole in it is a continuation:
     ;; (Using CPS to convert to CPS.)
     ;; Thus this pass itself carries a continuation representing the context of the current expression.
     (define expand-subcalls
-      (lambda (expr tainted k-arg)
+      (lambda (expr k-arg)
     ;---------------------------------------
     (define generate-k
       (lambda ()
@@ -244,17 +277,17 @@
         (let ((formal (unique-name 'HOLE)))
           (let ((body (E formal)))
 	    (match body
-	      ;; [2005.11.02] This is a quick little eta-reduce optimization:
+	      ;; [2005.11.02] This is a quick little eta-reduce OPTIMIZATION:
 	      ;; It can effectively serve as tail call optimization:
 	      [(kcall ,k ,v) (guard (eq? v formal) (or (symbol? k) (equal? k NULLK)))  k]
-	      ;; [2005.11.02] Hopefully we'll do better optimizations in our inline pass
-	      ;; but this removes generation of unnecessary closures:
+	      ;; [2005.11.02] Hopefully we'll do better opts in our inline pass
+	      ;; but this OPTIMIZATION removes generation of unnecessary closures:
 	      [,v (guard (symbol? v) (eq? formal v))    NULLK]
 	      [,_  `(lambda (,formal) ,body)]))))
     ;---------------------------------------
     (define possible-letk
       (lambda (cont-exp abs-body)
-	;; [2005.11.03] RRN optimize aliases:
+	;; [2005.11.03] RRN OPTIMIZE aliases:
 	(if (or (symbol? cont-exp)
 		(equal? cont-exp NULLK))
 	    (abs-body cont-exp)
@@ -312,7 +345,7 @@
 					  ,(cps true-exp (lambda (v) (make-kcall k v)))
 					  ,(cps false-exp (lambda (v) (make-kcall k v))))
 				     )))))
-	   ;; Optimization:
+	   ;; OPTIMIZATION
 	   (if (and (not (has-subcall? true-exp))
 		    (not (has-subcall? false-exp))
 		    ;#f ;; DISABLING
@@ -348,36 +381,44 @@
 	   (cps tok (lambda (t)
 		      (cps* args
 			    (lambda (w*)
-			      `(call-fast ,t ,(CLAM E) ,@w*)))))]
+			      `(kcall-fast ,t ,(CLAM E) ,@w*)))))]
 
-	  ;; A "direct call":
+#;	  ;; A "direct call":
 	  [(,call (tok ,t ,x) ,args ...)
 	   (guard (memq call '(call bcast call-fast )))
 	   (cps x (lambda (m)
 		    (cps* args
 			  (lambda (w*)
 			    ;; If it's a tainted token we insert a continuation argument:
+			    (E `(,call (tok ,t ,m) ,@w*))		    
+#;
 			    (if (memq t tainted)
 				(E `(,call (tok ,t ,m) ,NULLK ,@w*))
-				(E `(,call (tok ,t ,m) ,@w*)))))))]
-	  ;; Same for timed call:
+				(E `(,call (tok ,t ,m) ,@w*)))
+			    ))))]
+#;	  ;; Same for timed call:
 	  [(timed-call ,time (tok ,tok ,x) ,args ...)
 	   (cps time (lambda (time)
 		       (cps x (lambda (subtok)
 				(cps* args
 				      (lambda (args)
+					(E `(timed-call ,time (tok ,tok ,subtok) ,@args))
 					;; If it's a tainted token we insert a continuation argument:
+					#;
 					(if (memq tok tainted)
 					    (E `(timed-call ,time (tok ,tok ,subtok) ,NULLK ,@args))
-					    (E `(timed-call ,time (tok ,tok ,subtok) ,@args)))))))))]
+					    (E `(timed-call ,time (tok ,tok ,subtok) ,@args)))
+					))))))]
 	  ;; This is an unknown call, so we've got to add a continuation argument:
 	  [(,call ,opera* ...)
 	   (guard (memq call '(call bcast call-fast timed-call)))
 	   (cps* opera*
 		 (lambda (opera*)
-		   (if (eq? call 'timed-call)
-		       (E `(timed-call ,(car opera*) ,(cadr opera*) ,NULLK ,(cddr opera*)))
-		       (E `(,call ,(car opera*) ,NULLK ,(cdr opera*))))))]
+;		   (if (eq? call 'timed-call)
+;		       (E `(timed-call ,(car opera*) ,(cadr opera*) ,NULLK ,(cddr opera*)))
+;		       (E `(,call ,(car opera*) ,NULLK ,(cdr opera*))))
+		   (E `(,call ,opera* ...))
+		   ))]
 
 	  [(kcall ,t ,v)
 	   ;(error 'cps-tokmac "what's this doing here?  found a kcall in cps-tokmac..: ~s" `(kcall ,t v))]
@@ -410,26 +451,15 @@
 	  (disp "TAINTED" tainted)
 	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tokenbind)])
 	    (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
-	    (let ([newexpr (expand-subcalls body tainted k-arg)])
-	      `(,tok ,subid ,args (stored ,@stored) ,newexpr)))))
+	    ;; Splitting this into two traversals:
+	    (let* ([newexpr1 ;; OPTIMIZATION: don't bother cps'ing at all if there are no subcalls.
+		    (if (has-subcall? body)
+			(expand-subcalls body k-arg)
+			(if k-arg `(kcall ,k-arg ,body) body))]
+		   [newexpr2 (add-kargs newexpr1 tainted)])
+	      `(,tok ,subid ,args (stored ,@stored) ,newexpr2)))))
 
  
-#;   ;; Applies expand-subcalls to all tokbinds
-      (define process-tokbinds
-	(lambda (tokenbinds tainted)
-	  (let loop ([tbs tokenbinds] [tbacc '()])
-	    (if (null? tbs)
-		(reverse! tbacc)
-		(mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tbs))])
-		  (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
-;		  (mvlet ([(newexpr newtokbinds) (expand-subcalls body)])
-		  (let ([newexpr (expand-subcalls body tainted)])
-			 (loop (cdr tbs)
-;				(append newtokbinds 
-					(cons 
-					 `(,tok ,subid ,args (stored ,@stored) ,newexpr)
-					 tbacc))))))))
-
     ;; Now add unit tests of the above internal helper functions:
     (set! these-tests
           (append 
@@ -491,7 +521,9 @@
 
 	     ["Test expand-subcalls"
 	      (reunique-names
-	       (let ([expr (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) '(t) #f)])
+	       (let ([expr 
+		      (,add-kargs (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3) #f)
+				  '(t))])
 		 (let ([lam (deep-assq 'lambda expr)])
 		   (list 
 		    (,toks-referenced expr)
@@ -581,18 +613,7 @@
 
 
 	   ;; Now for the real work.
-	   (let* (;; First transform all the handler bodies:
-;		 [processedtbs (process-tokbinds nodetoks
-;					  ;; Pass tainted toks:
-;						 returntoks)]
-;		 [newtbs 
-;		  (map (lambda (tb)
-;			 (if (memq (car tb) returntoks)
-;			     (kify-tokbind tb) ;; Just inserts a continuation argument.
-;			     tb))
-;		    processedtbs)])
-
-		  [newtbs
+	   (let* ([newtbs
 		   (map (lambda (tb)
 			  (if (memq (car tb) returntoks)
 			      (mvlet ([(tb k-arg) (kify-tokbind tb)])
@@ -779,6 +800,9 @@
 		(let ([,k2 ,k3])
 		  (let ([x y]) (begin (set! y '4) (kcall ,k4 '99))))))
 	    (begin '88 (call (tok tok2 0) '99))) 
+	   #t]
+	  [((let ([y '3]) (let ([x y]) (begin (set! y '4) '99)))
+	   (call (tok tok2 0) (begin '88 '99)))
 	   #t]
 	  [((let ([y '3]) (let ([x y]) (begin (set! y '4) '99)))
 	    (begin '88 (call (tok tok2 0) '99)))
