@@ -1674,8 +1674,7 @@
 	       
 	       (flush-output-port)
 	       (let ([result 
-		      (call/cc 
-		       (lambda (escape-eval)
+		      (let/ec escape-eval
 			 ;; Clear output cache for each new test:
 			 (set! suppressed-test-output (open-output-string))
 			 (with-error-handlers (lambda args 						
@@ -1698,7 +1697,7 @@
 							 (parameterize ([current-output-port suppressed-test-output])
 							   (eval (preprocessor expr)))))
 						    (eval (preprocessor expr)))
-						))))])
+						)))])
 ;	       (newline)
 		(if (or (and (procedure? intended) ;; This means its an oracle
 			     ;; If we get an error result, don't run the oracle proc!
@@ -1731,7 +1730,7 @@
 			  (newline)
 			  (eval `(define failed-unit-test ',expr))
 			  (printf "Violating test bound to global-variable, try (eval failed-unit-test)\n")
-			  (set-top-level-value! 'default-unit-tester-output
+			  (define-top-level-value 'default-unit-tester-output
 						(get-output-string suppressed-test-output))
 			  (printf "If test output was suppressed, you may wish to inspect it: ")
 			  (printf "(display default-unit-tester-output)\n")
@@ -2772,21 +2771,20 @@
 
     ["Test with-error-handlers"
      (let ((return ()))
-       (call/cc (lambda (k)
-		  (with-error-handlers disp
-				       (lambda () (k (void)))
-				       (lambda ()
-					 (set! return (cons 1 return))
-					 (error 'foo "bar")
-					 (set! return (cons 2 return))))))
+       (let/ec k
+	 (with-error-handlers disp
+			      (lambda () (k (void)))
+			      (lambda ()
+				(set! return (cons 1 return))
+				(error 'foo "bar")
+				(set! return (cons 2 return)))))
        return)
      (1)]
-
 
 ;; [2005.09.27] TEMP:  These are malfunctioning for some reason: ; TODO FIXME:
 
     ["Test the default unit tester... (retry feature)"
-     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
+     (parameterize ([,default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((reg:random-int 10) 3)]
 		    'retry)])
@@ -2794,31 +2792,30 @@
      #t]
 
     ["This just gives the retry argument at test time."
-     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
+     (parameterize ([,default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ((reg:random-int 3) 0)])])
 	 (fun 'quiet 'retry)))
      #t]
     ["This just gives the retry argument within the test itself."
-     (parameterize ([default-unit-tester-retries 1000]) ;; Set retries way up
+     (parameterize ([,default-unit-tester-retries 1000]) ;; Set retries way up
        (let ([fun (default-unit-tester "testing tester" 
 		    `[(3 3) ["" retry (reg:random-int 3) 0]])])
 	 (fun 'quiet)))
      #t]
 
     ["This tests unit tests that call error"
-     (let ([fun (default-unit-tester "testing tester" 
+     (let ([fun (,default-unit-tester "testing tester" 
 		  `(["" (error 'foo "bar") 
 		     error]))])
 	 (fun 'quiet))
      #t]
 
     ["This just makes sure the unit tester returns #f when a test fails."
-     (let ([fun (default-unit-tester "testing tester"
+     (let ([fun (,default-unit-tester "testing tester"
 		  `([3 3] [4 5]))])
        (fun ))
      #f]
-
 
     ["Reunique names" 
      (reunique-names '(foo_3 foo_43 foo_3 foo))

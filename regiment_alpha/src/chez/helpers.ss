@@ -9,9 +9,10 @@
 	  
 	  ;; For plt compat:
 	  foldl
+	  let/ec call/ec
 
 	  make-n-list  id
-	  string-split substring? periodic-display all-equal?
+	  string-split periodic-display all-equal?
 
 	  with-error-handlers with-warning-handler
 	  current-error-port
@@ -28,6 +29,7 @@
 	  constant? datum? 
 	  formalexp? cast-formals default-unit-tester tester-eq?
 	  ;default-unit-tester-retries
+	  substring?
 
 	  regiment-primitives regiment-primitive? 
 	  token-machine-primitives token-machine-primitive? 
@@ -120,7 +122,7 @@
   (syntax-rules ()
     [(_ v exp ...)
      (call/1cc (lambda (v) exp ...))]))
-
+(alias call/ec call/1cc)
 
 ;(define-syntax define-values
 ;  (syntax-rules ()

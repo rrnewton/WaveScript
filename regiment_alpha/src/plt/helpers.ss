@@ -7,9 +7,13 @@
            (all-except (lib "list.ss") filter)
 ;           (all-except "tsort.ss" test-this these-tests)
            "constants.ss"
+           "hashtab.ss"
            )
 
- (provide     	;; Remember to update the plt equivalent when you update this:
+ (provide     	
+  (all-from "constants.ss")
+  
+  ;; Remember to update the plt equivalent when you update this:
    ;; Syntax:
    mvlet rec 
    
@@ -26,7 +30,7 @@
    print-level print-length
    
    get-formals
-   deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
+   reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
    set->hashtab
    
    ;; Hmm, not sure what meaning immediate has here...
@@ -34,7 +38,8 @@
    constant? datum? 
    formalexp? cast-formals default-unit-tester tester-eq?
    ;default-unit-tester-retries ;; This is in constants.
-
+   substring?
+   
    regiment-primitives regiment-primitive? 
    token-machine-primitives token-machine-primitive? 
    token-machine? token-machine->program token-machine-keyword?
@@ -119,7 +124,7 @@
   (define print-level pretty-print-depth)
   ;(define print-length pretty-print-length)
   ;; Can't adjust the length from PLT:
-  (define print-length (lambda _ #f))
+  (define print-length (lambda _ #f))4
 
   ;; Tried to make a generic "alias"
   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))
@@ -136,15 +141,17 @@
   (define crit-printf printf)
 
   ;; This isn't working right now.
-  (define (with-error-handlers display escape th)
-      (call/cc (lambda (out)
-                 (parameterize ([error-display-handler display]
-                                [error-escape-handler 
-                                 (lambda args
-                                   (let ((result (apply escape args)))
-                                   ;; If the escape procedure is not called, we must destroy the 
-                                     (out result)))])
-                   (th)))))
+  (define (with-error-handlers displayproc escape th)
+    (let/ec out
+      (parameterize ([error-display-handler 
+                      ;(lambda (ob s) (printf "Error ~s in context ~s\n" s ob))
+                      displayproc]
+                     [error-escape-handler 
+                      (lambda args
+		      (let ((result (apply escape args)))
+			;; If the escape procedure is not called, we must destroy the continuation:
+			(out result)))])
+        (th))))
   
   (define (warning sym . args)
     (fprintf (current-error-port) "Warning ~s: ~a " sym (apply format args)))
@@ -267,3 +274,4 @@
   )
 
 ;(require helpers)
+;(testhelpers)
