@@ -90,6 +90,15 @@
 	(lambda (ls _) (apply append ls))
 	e)))
 
+    (define redirect-node-start-refs
+      (tml-generic-traverse
+       (lambda (x k)
+	 (match x
+	   [(tok node-start ,[e])	    
+	    `(tok actual-node-start ,e)]
+	   [,o (k o)]))
+       (lambda (ls f) (apply f ls))))
+
     ;; Replace the free vars in an expression with "fv0" "fv1" etc.
     (define (number-freevars e)
       (define (build-fv x fvs) (string->symbol (format "fv~a" (list-find-position x fvs))))
@@ -336,14 +345,14 @@
 	(values (vector-ref result 1) (vector-ref result 0))))
     
 
-
     (define (process-tokbind tb)
       (mvlet ([(tok subtokid args stored constbinds body) (destructure-tokbind tb)])
-	     (mvlet ([(newexpr newtokbinds) (process-expr body (cons subtokid args) (map car stored))])
-		    (cons 
-		     `[,tok ,subtokid ,args (stored ,@stored) ,newexpr]
-		     newtokbinds))))
-
+	;; This renames all refs to "node-start":
+	(let ((body (redirect-node-start-refs body)))
+	  (mvlet ([(newexpr newtokbinds) (process-expr body (cons subtokid args) (map car stored))])
+	    (cons 
+	     `[,tok ,subtokid ,args (stored ,@stored) ,newexpr]
+	     newtokbinds)))))
     
       ;; Add some unit tests that use local bindings:
       (set! these-tests
@@ -419,7 +428,7 @@
 		       [node-start-tok (assq 'node-start all-toks)]
 		       [new-starts
 			(match node-start-tok
-			       [(node-start ,subtok_ind () (stored) ,body)
+			       [(node-start ,subtok_ind () (stored ,st ...) ,body)
 				(list `[node-start ,subtok_ind () (stored)
 						   (begin 
 ;						     (dbg '"~a: node-start initializing continuation counters: ~a" 
@@ -432,7 +441,7 @@
 ;						     ,@(make-list (max 1 (length fvs)) 
 ;								  ''counter-holder-tok-dummy-val))
 						     (call (tok actual-node-start ,subtok_ind)))]
-				      `[actual-node-start ,subtok_ind () (stored) 
+				      `[actual-node-start ,subtok_ind () (stored ,st ...)
 							  (begin 
 ;							    (dbg '"~a: running actual-node-start..." (my-id))
 							    ,body)])]

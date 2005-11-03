@@ -284,6 +284,8 @@
      (timed-call (Integer Token . Object) Void)
 
      (subcall (Token . Object) Object)
+     ;; This one happens immediately, possibly by inlining:
+     (direct-subcall (Token . Object) Object)
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      
@@ -1243,6 +1245,9 @@
       (let loop ((ls expr))
 	(cond
 	 [(null? ls) ()]
+	 [(or (constant? (car ls))
+	      (match (car ls) [(quote ,c) (guard (constant? c)) #t] [,_ #f]))
+	  (cons (car ls) (loop (cdr ls)))]
 	 [(symbol? (car ls)) (let ((first (process (car ls))))
 			       (cons first (loop (cdr ls))))]
 	 [(list? (car ls)) (let ((first (loop (car ls))))

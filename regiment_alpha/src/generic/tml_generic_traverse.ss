@@ -133,7 +133,7 @@
 	       (fuse (list e t1 t2 e3 (tokonly aggr)) (lambda (a b c d e) (f a b c d e))))]
 
 	  [(,call ,[loop -> rator] ,[loop -> rands] ...)
-	   (guard (memq call '(bcast subcall call activate call-fast)))
+	   (guard (memq call '(bcast subcall direct-subcall call activate call-fast)))
 	   (fuse (cons rator rands) (lambda (x . ls) `(,call ,x ,ls ...)))]
 
 

@@ -1,5 +1,4 @@
- 
-  `( 
+`( 
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
     
@@ -611,6 +610,23 @@
 	    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert cleanup-token-machine)))
 	      ,commontest)
 	    (result 2007)]))
+
+     ["Direct-subcall: simple test of direct subcall."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (call tok1))
+	    (tok1 () (stored (x 3))
+		  (direct-subcall tok2)
+		  (soc-return x))
+	    (tok2 ()
+		  (ext-set! tok1 x (+ 1 (ext-ref tok1 x)))))
+	 '[simalpha-num-nodes 1])
+	(4)]
+     ["Direct-subcall: should not be allowed for unknown token target."
+      , (tm-to-socvals
+	 '(tokens
+	    (tok1 (v) (direct-subcall v))))
+	error]
 
      ["Stored vars: Now use a stored var."
       , (tm-to-list
@@ -1674,13 +1690,13 @@
       , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
 		    '[simalpha-timeout 5000])
 	unspecified]
-
      
      ["Regiment: aggregate all node ids (using a list accumulator)."
       (map (lambda (ls) (sort < ls))
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
+		     [simalpha-num-nodes 10]
 		     [simalpha-timeout 2000])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1691,7 +1707,7 @@
 	  (let ((ls (list-head (reverse ls) 2)))
 	    (and (apply equal? ls)
 		 (equal? (car ls) 
-			 (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes))))))
+			 (sort < (cons BASE_ID (cdr (iota 10)))))
 		 )))]
 
      ["Regiment: Fire a simple event when a threshold is crossed."

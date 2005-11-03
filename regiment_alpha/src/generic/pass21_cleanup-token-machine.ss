@@ -193,9 +193,10 @@
 
     (define process-expr 
       ;(trace-lambda cleanuptokmac:procexp 
-      (lambda (env tokens this-token this-subtok)
+      (lambda (env storedtable this-token this-subtok)
+	(define tokens (map car storedtable))
 	;; This just loops back with the same context:
-	(define (loop x) ((process-expr env tokens this-token this-subtok) x))
+	(define (loop x) ((process-expr env storedtable this-token this-subtok) x))
 
 	  (define-syntax check-tok
 	    (syntax-rules ()
@@ -206,9 +207,24 @@
 				  [(tok ,t ,num) t]
 				  [,other (error 'check-tok "(~s) invalid token: ~s" call other)])))
 		 (if (not (memq name tokens))
-		     (if (regiment-verbose)
-			 (warning 'cleanup-token-machine
-				  "~s to unknown token: ~s" call tokexp))))]))
+		     (if (eq? call 'direct-subcall)
+			 (error 'cleanup-token-machine:check-tok
+				"direct-subcall must be to a known-token: ~s" name)
+			 (if (regiment-verbose)		     
+			     (warning 'cleanup-token-machine
+				      "~s to unknown token: ~s" call tokexp)))
+
+		     ;; FIXME: Disabling this restriction temporarily:
+		     ;; But it was a good restriction!
+		     #;
+		     (if (eq? call 'direct-subcall)
+			 (let ((tokstored (cadr (assq name storedtable))))
+			   (if (not (null? tokstored))
+			       (error 'cleanup-token-machine:process-expr
+				      "direct-subcall must be to a token with no storedvars, not to ~s which stores ~s"
+				      name tokstored))))
+		     
+		     ))]))
 	  (define (tokname? t) (memq t tokens))
 
 	  (lambda (stmt)
@@ -285,7 +301,7 @@
 	     [(lambda (,args ...) ,bodies ...)
 	      ;; Be careful "this-token" might be lying if this lambda is really going to 
 	      ;; be transformed into another token of its own.
-	      `(lambda ,args (begin ,@(map (process-expr (append args env) tokens this-token this-subtok)
+	      `(lambda ,args (begin ,@(map (process-expr (append args env) storedtable this-token this-subtok)
 					  bodies)))]
 
 	     ;; This (semantically) transforms let into let*.
@@ -296,7 +312,7 @@
 		  (error 'cleanup-token-machine:process-expr "Temporarily not allowed to refer to let's lhss in rhss:"))
 	      (let loop ((l lhs*) (r rhs*))
 		(if (null? l)
-		    (make-begin (map (process-expr (append lhs* env) tokens this-token this-subtok)
+		    (make-begin (map (process-expr (append lhs* env) storedtable this-token this-subtok)
 				     bodies))
 		    `(let ([,(car l) ,(car r)])
 		       ,(loop (cdr l) (cdr r)))))]
@@ -304,7 +320,7 @@
 	     ;; Here we have letrec style binding.  Probably shouldn't.
 	     [(let-stored ([,lhs* ,rhs*] ...) ,bodies ...)
 	      (let ([newenv (append lhs* env)])
-		(let ([loop (process-expr newenv tokens this-token this-subtok)])
+		(let ([loop (process-expr newenv storedtable this-token this-subtok)])
 		  `(let-stored ([,lhs* ,(map loop rhs*)] ...)
 			       ,(make-begin (map loop bodies)))))]
 
@@ -316,12 +332,12 @@
 		  (let* ,rest ,bodies ...)))]
 
 
+;; TODO: MOVE TO DESUGAR-MACROS:
 	     [(activate (tok ,t ,n) ,[args*] ...)
 	      (guard (number? n))
 	      `(if (not (token-scheduled? (tok ,t ,n)))
 		   (call (tok ,t ,n) ,@args*)
 		   (void))]
-
 	     [(activate ,[e] ,[args*] ...)
 	      (if (regiment-verbose) (printf "\nDesugaring activate call to: ~a args: ~a\n" e args*))
 	      (match e
@@ -335,14 +351,11 @@
 		      (if (token-scheduled? ,ind)
 			  (call ,ind ,@args*)
 			  (void))))])]
-	     
-	     ;; This is for the purpose of accepting the output of cps-tokmac.
-;	     [(kcall ,[k] ,[e]) `(kcall ,k ,e)]
-
+	     			   
 	     ;; TODO: check to see if the "tok" is a locally bound variable if it is not a tokname?
 	     ;; Should give warning if not.
 	     [(,call-style ,tok ,[args*] ...)
-	      (guard (memq call-style '(gemit call call-fast bcast subcall kcall ))) ;; Even allowing kcall!
+	      (guard (memq call-style '(gemit call call-fast bcast subcall direct-subcall kcall ))) ;; Even allowing kcall!
 	      (check-tok call-style tok)	     
 	      `(,call-style ,(if (tokname? tok)
 				 `(tok ,tok ,DEFAULT_SUBTOK)
@@ -357,6 +370,7 @@
 				      `(tok ,tok ,DEFAULT_SUBTOK)
 				      (loop tok))
 			   ,args* ...)]
+
 	     [(return ,[x]) `(return ,x)] ;; A local return, not a gradient one.
 
 	     [(grelay) `(grelay (tok ,this-token ,this-subtok))]
@@ -478,7 +492,7 @@
 	     ))))
     
     (define process-tokbind 
-      (lambda (env tokens)
+      (lambda (env storedtable)
 	(lambda (tokbind)
 	  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
 		 (let ((baseenv (cons id (append args bindings env))))
@@ -492,12 +506,12 @@
 				    (list 
 				     (cons (car binding) env)
 				     (cons (list (car binding) 
-						 ((process-expr env tokens tok id) (cadr binding)))
+						 ((process-expr env storedtable tok id) (cadr binding)))
 					   stored))]))
 			  (list baseenv '())
 			  stored)))))
 		 `(,tok ,id ,args (stored ,@newstored) ;(bindings ,@bindings)
-			,((process-expr (append (map car stored) baseenv) tokens tok id)
+			,((process-expr (append (map car stored) baseenv) storedtable tok id)
 			  body))))))))
 	    
     (define decode 
@@ -588,7 +602,10 @@
 	     '(program (bindings ,@nodeconsts)
 		       (nodepgm (tokens
 				 ,@(map (process-tokbind (map car allconsts)
-							 (map car nodup-toks))
+							 (map (lambda (tb)
+								(list (car tb) (handler->stored tb)))
+							   nodup-toks)
+							 )
 					nodup-toks)))))
 	))
   
@@ -798,16 +815,6 @@
 
 	     [(return ,[e])  e]
 
-#|	     [(call ,[args*] ...) (apply append args*)]
-	     [(subcall (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	     [(subcall ,[args*] ...) (apply append args*)]
-	     [(bcast (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	     [(bcast ,[args*] ...) (apply append args*)]
-	     [(timed-call ,[time] (tok ,t ,[e]) ,[args*] ...) (apply append time e args*)]
-	     [(timed-call ,[args*] ...) 
-	      ;(disp "TIMED call to dynamic tokens...")
-	      (apply append args*)]
-|#	     
 	     ;; All primitives that can take tokenss
 	     [(,prim ,args* ...)
 	      (guard (or (token-machine-primitive? prim)
@@ -817,7 +824,7 @@
 
 	     [(app ,[rator] ,[rands] ...) (apply append rator rands)]
 	     [,otherwise
-	      (error 'desugar-gradient:find-emittoks
+	      (error 'cleanup-token-machine:foo
 		     "bad expression: ~s" otherwise)]
 	     ))])
 
