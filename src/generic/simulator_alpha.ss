@@ -459,7 +459,8 @@
 		  [(begin ,[x] ...) `(begin ,x ...)]
 		  
 		  ;; TODO: Implement subcall directly:
-		  [(subcall ,[rator] ,[rand*] ...)		  
+		  [(,subcall ,[rator] ,[rand*] ...)		  
+		   (guard (memq subcall '(subcall direct-subcall)))
 		   ;; Call the handler directly
 		   `(begin "Simulator subcall code" 
 			   ((simobject-meta-handler this)

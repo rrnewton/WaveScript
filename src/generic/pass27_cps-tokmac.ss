@@ -382,41 +382,11 @@
 		      (cps* args
 			    (lambda (w*)
 			      `(kcall-fast ,t ,(CLAM E) ,@w*)))))]
-
-#;	  ;; A "direct call":
-	  [(,call (tok ,t ,x) ,args ...)
-	   (guard (memq call '(call bcast call-fast )))
-	   (cps x (lambda (m)
-		    (cps* args
-			  (lambda (w*)
-			    ;; If it's a tainted token we insert a continuation argument:
-			    (E `(,call (tok ,t ,m) ,@w*))		    
-#;
-			    (if (memq t tainted)
-				(E `(,call (tok ,t ,m) ,NULLK ,@w*))
-				(E `(,call (tok ,t ,m) ,@w*)))
-			    ))))]
-#;	  ;; Same for timed call:
-	  [(timed-call ,time (tok ,tok ,x) ,args ...)
-	   (cps time (lambda (time)
-		       (cps x (lambda (subtok)
-				(cps* args
-				      (lambda (args)
-					(E `(timed-call ,time (tok ,tok ,subtok) ,@args))
-					;; If it's a tainted token we insert a continuation argument:
-					#;
-					(if (memq tok tainted)
-					    (E `(timed-call ,time (tok ,tok ,subtok) ,NULLK ,@args))
-					    (E `(timed-call ,time (tok ,tok ,subtok) ,@args)))
-					))))))]
-	  ;; This is an unknown call, so we've got to add a continuation argument:
+	  
 	  [(,call ,opera* ...)
 	   (guard (memq call '(call bcast call-fast timed-call)))
 	   (cps* opera*
 		 (lambda (opera*)
-;		   (if (eq? call 'timed-call)
-;		       (E `(timed-call ,(car opera*) ,(cadr opera*) ,NULLK ,(cddr opera*)))
-;		       (E `(,call ,(car opera*) ,NULLK ,(cdr opera*))))
 		   (E `(,call ,opera* ...))
 		   ))]
 

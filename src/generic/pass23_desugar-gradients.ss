@@ -490,7 +490,7 @@
 		   (if (eq? flag ',RHLOCAL)
 		       ;; When we get the local value, we lump it together:
 		       (begin
-			 (set! ,acc ,(if aggr `(subcall ,aggr val ,acc)
+			 (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) ;; [2005.11.03] Making direct for now.
 					      `(cons val ,acc)))
 			 ;; Now kill the scheduled timer token if there is one, and set a new timer.
 			 ;; (Don't bother with the if, because default semantics for deschedule 
@@ -520,7 +520,7 @@
 			     (void) ;; TODO: FIXME OPTIMIZATION: Might want to evict self here -- wasted space on useless tokens.
 			     ;; Now we simply accumulate and wait for the local call.
 			     (begin 
-			       (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) 
+			       (set! ,acc ,(if aggr `(subcall ,aggr val ,acc) ;; [2005.11.03] Making direct for now
 					       `(cons val ,acc)))
 
 			       ,(if aggr 
