@@ -230,7 +230,7 @@
         (unique-name 'k)))  ;; This could just return 'k
     ;---------------------------------------
     ;;Continuation Lambda: this closes up a continuation (like a clam ;) ).
-    (trace-define (CLAM E)
+    (define (CLAM E)
         (let ((formal (unique-name 'HOLE)))
           (let ((body (E formal)))
 	    (match body
@@ -270,17 +270,15 @@
 	  [(set! ,v ,x)  (cps x (lambda (x) (E `(set! ,v ,x))))]
 	  [(tok ,t ,n) (guard (integer? n)) (E `(tok ,t ,n))]
 	  [(tok ,t ,x) (cps x (lambda (x) (E `(tok ,t ,x))))]
-	  [(ext-ref ,x ,v) (cps x (lambda (x) `(ext-ref ,x ,v)))]
+	  [(ext-ref ,x ,v) (cps x (lambda (x) (E `(ext-ref ,x ,v))))]
 	  [(ext-set! ,e1 ,v ,e2) 
 	   (cps e1 (lambda (e1)   
 		     (cps e2 (lambda (e2)
-			       `(ext-set! ,e1 ,v ,e2)))))]
+			       (E `(ext-set! ,e1 ,v ,e2))))))]
 	  [(begin) (E '(void))]
           [(begin ,x) (cps x E)]
-          [(begin ,expr ,expr* ...)
-
-;	   (printf "DOING BEGIN: Here's clam: ~s" (CLAM E))
-
+          [(begin ,expr ,expr* ...)	   
+;	   (printf "DOING BEGIN: ~s ~s Here's clam: ~s\n" expr expr* (CLAM E))
            (cps expr
                 (lambda (v)
 		  (make-begin `(begin ,v ,(cps `(begin ,expr* ...) E)))))]
@@ -292,14 +290,17 @@
                                    `(if ,v
                                         ,(cps true-exp (lambda (v) `(kcall ,k ,v)))
                                         ,(cps false-exp (lambda (v) `(kcall ,k ,v))))))))]
-          [(,lettype ((,x ,N) ...) ,body)
-	   (guard (memq lettype '(let let-stored)))
+
+          [(let ((,x ,N) ...) ,body)
            (possible-letk (CLAM E)
                           (lambda (k)
                             (cps* `(,N ...)
                                   (lambda (w*)
-                                    `(,lettype ,(map list `(,x ...) w*)
+                                    `(let ,(map list `(,x ...) w*)
                                        ,(cps body (lambda (v) `(kcall ,k ,v))))))))]
+	  
+	  
+
 	  ;; [2005.10.31] Changed to use high-priority scheduling for subcalls:
 	  ;; This is where we CLAM the continuation:
 	  [(subcall ,tok ,args ...)
@@ -321,13 +322,13 @@
 	  ;; Same for timed call:
 	  [(timed-call ,time (tok ,tok ,x) ,args ...)
 	   (cps time (lambda (time)
-		       (cps x (lambda (x)
+		       (cps x (lambda (subtok)
 				(cps* args
 				      (lambda (args)
 					;; If it's a tainted token we insert a continuation argument:
-					(if (memq t tainted)
-					    (E `(timed-call (tok ,t ,m) ,NULLK ,@w*))
-					    (E `(timed-call (tok ,t ,m) ,@w*)))))))))]
+					(if (memq tok tainted)
+					    (E `(timed-call ,time (tok ,tok ,subtok) ,NULLK ,@args))
+					    (E `(timed-call ,time (tok ,tok ,subtok) ,@args)))))))))]
 	  ;; This is an unknown call, so we've got to add a continuation argument:
 	  [(,call ,opera* ...)
 	   (guard (memq call '(call bcast call-fast timed-call)))
@@ -365,7 +366,8 @@
 
       (define process-tokbind
 	(lambda (tokenbind tainted k-arg)
-	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind (car tokenbind))])
+	  (disp "TAINTED" tainted)
+	  (mvlet ([(tok subid args stored constbinds body) (destructure-tokbind tokenbind)])
 	    (if (not (null? constbinds)) (error 'cps-tokmac "Not expecting local constbinds!"))
 	    (let ([newexpr (expand-subcalls body tainted k-arg)])
 	      `(,tok ,subid ,args (stored ,@stored) ,newexpr)))))
@@ -730,7 +732,7 @@
      ;; Some unnecessary bindings get generated, hopefully we'll optimize these away in a later pass.
      ,(lambda (p) 
 	(match p 
-	  [((let ([,k1 'NULLK])
+	  [((let ([,k1 ,topk])
 	      (let ([y '3])
 		(let ([,k2 ,k3])
 		  (let ([x y]) (begin (set! y '4) (kcall ,k4 '99))))))
@@ -756,10 +758,10 @@
 			     [tok1 () (let ((y '3)) (let ((x y)) (return (+ x y))))]))))
        ;; Lame unquote quote unquote!!
        ;[(let ([y ,',_]) (let ([x ,',__]) ,',b)) #t]
-       [(let ([,',k1 'NULLK])
+       [(let ([,',k1 ,',topk])
              (let ([y '3])
                (let ([,',k2 ,',k3])
-                 (let ([x y]) (kcall ,',k4 (kcall ,',k5 (+ x y)))))))
+                 (let ([x y]) (kcall ,',k4 (+ x y))))))
 	#t]
        [,',else #f])
      #t]
@@ -768,8 +770,9 @@
     ["Currently subcalls in if branches make useless continuations."
      ;; Could try to optimize these away in a variety of manners:
      (cps-tokmac (cleanup-token-machine '(if #t (subcall (tok sum 0) val acc_7))))
+     ;; Actually now they just make NULLK
      ,(lambda (p)
-	(= 2 (length (deep-assq-all 'lambda p))))]
+	(= 1 (length (deep-assq-all 'NULLK p))))]
 ;; Currently produces: [2005.10.30]
 #;
 (cleanup-token-machine-lang

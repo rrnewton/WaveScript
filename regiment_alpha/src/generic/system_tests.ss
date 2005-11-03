@@ -12,7 +12,9 @@
      
      ["Testing simple combinations of passes: generate a continuation." 
       (let ((toks (cdr (deep-assq 'tokens 
-		 (closure-convert (cleanup-token-machine '(tokens (tok1 () (subcall tok2)))))))))
+		 (closure-convert 
+		  (sever-cont-state 
+		   (cps-tokmac (cleanup-token-machine '(tokens (tok1 () (subcall tok2)))))))))))
 	(let ((x (remq 'SOC-start (remq 'node-start (remq 'actual-node-start (map car toks))))))
 	  ;; This is the continuation that was added:
 	  (length x)))
@@ -247,7 +249,22 @@
 	      (and (= (- y x) SCHEDULE_DELAY)
 		   (> z 100))]))
 	]
-			 
+
+     ["Test to make sure stored vars on different subtokids don't interfere."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () 
+		       (call (tok t 1) 'init 3)
+		       (call (tok t 2) 'init 4)
+		       (timed-call 500 p))
+	    (t (flag v)
+	       (stored (s 0))
+	       (set! s v))
+	    (p ()
+	       (soc-return (ext-ref (tok t 1) s))
+	       (soc-return (ext-ref (tok t 2) s)))))
+	(3 4)]
+	       
     ["Test reading sensor values in simulation."
      , (tm-to-socvals
 	'(tokens
@@ -487,7 +504,7 @@
 		 (printf " a ")
 		 (subcall g)))
 	    (g () (cons 3 ()))))
-	(3)]
+	((3))]
 
 
 ;      ["Subcall: combine both the prior two tests make a deep stack and then mess with state."
@@ -695,7 +712,8 @@
 	   ["Same test but with closure-convert."
 	    (fluid-let ((pass-names '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
-				      cps-tokmac closure-convert   )))
+				      cps-tokmac sever-cont-state closure-convert   
+				      )))
 	      ,common)
 	    (c ab c b)]))
 
