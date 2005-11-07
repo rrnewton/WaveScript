@@ -26,9 +26,6 @@
 ;; ======================================================================
 ;; Node level utilities 
 
-;; Is set to a list of all the leds that are toggled on.    
-[define led-toggle-state '()]
-
 ;; [2005.10.29] These three are the interface through which the token-store is accessed.
 (define (retrieve-token the-store stok)
   ;; This is defined lamely because equal? doesn't work on records.
@@ -79,48 +76,59 @@
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (IF_GRAPHICS 
-   (if (simobject-gobj (current-simobject))       
-       (change-color! (simobject-gobj (current-simobject)) (make-rgb r g b))
+   (match (simobject-gobj (current-simobject))       
+     [#f (void)
       ;; We're allowing light-up of undrawn objects atm:
       ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-       )
+      ]
+     [#(,circ ,rled ,gled ,bled ,text)
+       (change-color! (simobject-gobj (current-simobject)) (make-rgb r g b))])
    ;; Fizzle if graphics is not enabled.
    (void))]
 
 ;; todo INCOMPLETE (we don't yet draw the leds directly.)
-[define (sim-leds what which)
-  (let* ([colors 
-          (case which
-            [(red)   '(255 0 0)]
-            [(green) '(0 255 0)]
-            [(blue)  '(0 0 255)]
-            [else (error 'sim-leds "bad color: ~s" which)])]
-         ;; INCOMPLETE:
-         ;	     [oldcolors '(0 0 0)]
+[define (sim-leds what which)  
+  (let* ([nodeid (node-id (simobject-node (current-simobject)))]
+	 [state-table (simworld-led-toggle-states (simobject-worldptr (current-simobject)))]
+	 [led-toggle-state (let ((entry (hashtab-get state-table nodeid)))
+			     (if entry entry
+				 (begin (hashtab-set! state-table nodeid ())
+					())))]	
          )
     (let ((string (format "~s: (time ~s) (Leds: ~s ~s ~s)~n" 	
                           (node-id (simobject-node (current-simobject))) (cpu-time) which what
                           (case what
                             [(on) 
                              (set! led-toggle-state (list->set (cons which led-toggle-state)))
-                             (apply sim-light-up colors)
                              "" ]
                             [(off)
                              (set! led-toggle-state (remq which led-toggle-state))
-                             (sim-light-up '(0 0 0))
                              "" ]
                             [(toggle)
                              (if (memq which led-toggle-state)
                                  (begin 
                                    (set! led-toggle-state (remq which led-toggle-state))
-                                   (sim-light-up 0 0 0)
                                    "off")
                                  (begin 
                                    (set! led-toggle-state (list->set (cons which led-toggle-state)))
-                                   (apply sim-light-up colors)
                                    "on")
                                  )]
                             [else (error 'sim-leds "bad action: ~s" what)]))))
+      ;; Now color the actual leds:
+      (match (simobject-gobj (current-simobject))       
+	[#f (void)] ;; Do nothing if there's no gobj.
+	[#(,circ ,rled ,gled ,bled ,text) ;; If there is a graphical representation, change it.
+	 (if (memq which led-toggle-state)
+	     (case which
+	       [(red)   (change-color! rled (make-rgb 255 0 0))]
+	       [(green) (change-color! gled (make-rgb 0 255 0))]
+	       [(blue)  (change-color! bled (make-rgb 0 0 255))]
+	       [else (error 'sim-leds "bad led color: ~s" which)])
+	     (case which
+	       [(red)   (change-color! rled (make-rgb 0 0 0))]
+	       [(green) (change-color! gled (make-rgb 0 0 0))]
+	       [(blue)  (change-color! bled (make-rgb 0 0 0))]
+	       [else (error 'sim-leds "bad led color: ~s" which)]))])
       ;((sim-debug-logger) string)
       (logger string)
       ))]

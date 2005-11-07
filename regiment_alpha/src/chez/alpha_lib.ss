@@ -3,7 +3,6 @@
 (module alpha_lib
 	(
 	 current-simobject
-	 led-toggle-state
 
 	 retrieve-token
 	 add-token

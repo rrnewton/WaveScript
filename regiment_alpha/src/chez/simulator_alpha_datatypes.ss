@@ -22,12 +22,14 @@
 	 simworld-obj-hash 
 	 simworld-scheduler-queue
 	 simworld-vtime
+	 simworld-led-toggle-states
 	 set-simworld-graph!
 	 set-simworld-object-graph!
 	 set-simworld-all-objs!
 	 set-simworld-obj-hash!
 	 set-simworld-scheduler-queue!
 	 set-simworld-vtime!
+	 set-simworld-led-toggle-states!
 
 	 make-simevt
 	 simevt?

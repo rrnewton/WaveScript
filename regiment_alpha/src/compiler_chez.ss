@@ -89,12 +89,14 @@
 ;; Load this before the simulator.
 (IF_GRAPHICS
     (begin
-      (load "chez/basic_graphics.ss")
-      (load "chez/graphics_stub.ss")
+      (include "chez/basic_graphics.ss")
+      (include "chez/graphics_stub.ss")
       (import basic_graphics)
       (import graphics_stub))
+    ;; Otherwise, throw in some stubs that are invoked by the generated code:
     (begin (define draw-mark (lambda args (void)))
-	   (define rgb (lambda args (void)))))
+	   (define make-rgb (lambda args (void)))
+	   ))
 
 (include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
@@ -267,6 +269,16 @@
    (define-syntax cg (identifier-syntax (close-graphics))) ;; shorthand
 ;   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
    (define-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
+   (define-syntax world (identifier-syntax (simalpha-current-simworld))) ;; shorthand
+   (define (node id) ;; shorthand
+     (let loop ((ls (simworld-all-objs (simalpha-current-simworld))))
+       (cond
+	[(null? ls) (error 'node "couldn't find ~s" id)]
+	[(= (node-id (simobject-node (car ls))) id) (car ls)]
+	[else (loop (cdr ls))])))
+   (define (dist id1 id2) ;; shorthand
+     (sim-locdiff (node-pos (simobject-node (node id1)))
+		  (node-pos (simobject-node (node id2)))))
    ))
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))

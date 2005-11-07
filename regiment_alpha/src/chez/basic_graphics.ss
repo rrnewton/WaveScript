@@ -7,7 +7,7 @@
 
 (module basic_graphics (window-height window-width  
 			init-graphics close-graphics  
-			rgb? rgb-red rgb-green rgb-blue
+			make-rgb rgb? rgb-red rgb-green rgb-blue
 			the-win 
 			;; current-drawing-color 
 			;; current-filling-color

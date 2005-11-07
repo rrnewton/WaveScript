@@ -103,6 +103,8 @@
 
 ;;===============================================================================
 
+;; We don't keep track of which objects need to be redrawn, that's all
+;; handled by tcl/tk.
 (define (change-color! ob c)
   (set-fill-color! ob
 		   (make <rgb>
@@ -121,7 +123,8 @@
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
 ;; This one DOES SHOW the processors.
-(define (draw-network procs)
+;; Input: list of pairs (coordinates).
+(define (draw-network procs ids)
   (DEBUGMODE ;; Invariant checking:
    (if (not the-win) (error 'draw-network "graphics window is not initialized"))
    (for-each (lambda (proc)
@@ -143,31 +146,56 @@
     (set! processor-screen-objs '()))
 
   ;; Draw nodes:
-  (for-each draw-proc procs)
-  (for-each show processor-screen-objs) 
-  processor-screen-objs)
+  (let ((results (map draw-proc procs ids)))
+    (for-each show processor-screen-objs) 
+    results))
 
 
 ;; This *does not show* the screen object (gobj) that it creates.
 ;; Screen objects are SWL objects.  Their represention is opaque to us.
-(define (draw-proc pr)  
+;; [2005.11.07] Now this returns a vector with four graphics: circle + three led boxes
+(define (draw-proc pr nodeid)
   (mvlet ([(x y) (coord:sim->screen pr)])
-	 (let ((circ (create <oval> the-win
+  (let ([boundx1 (- x processor-screen-radius)]
+	[boundy1 (- y processor-screen-radius)]
+	[boundx2 (+ x processor-screen-radius)]
+	[boundy2 (+ y processor-screen-radius)]
+	[third (/ (* 2 processor-screen-radius) 3)])
+    (let ((circ (create <oval> the-win
 ;			     50 50 
 ;			     100 100)))
-	       (- x processor-screen-radius)
-	       (- y processor-screen-radius)
-	       (+ x processor-screen-radius)
-	       (+ y processor-screen-radius))))
+			     boundx1 boundy1 boundx2 boundy2)))
 ;			     (flonum->fixnum (- x processor-screen-radius))
 ;			     (flonum->fixnum (- y processor-screen-radius))
 ;			     (flonum->fixnum (+ x processor-screen-radius))
-;			     (flonum->fixnum (+ y processor-screen-radius)))))
+;			     (flonum->fixnum (+ y processor-screen-radius)))))	  
+
+	   (let ([box1 (create <rectangle> the-win 
+			       boundx1                 (+ boundy1 (* .8 third))
+			       (+ boundx1 third)       (- boundy2 (* .8 third)))]
+		 [box2 (create <rectangle> the-win 
+			       (+ boundx1 third)       (+ boundy1 (* .8 third))
+			       (+ boundx1 (* 2 third)) (- boundy2 (* .8 third)))]
+		 [box3 (create <rectangle> the-win 
+                               (+ boundx1 (* 2 third)) (+ boundy1 (* .8 third))
+			       (+ boundx1 (* 3 third)) (- boundy2 (* .8 third)))]
+		 [defled (make <rgb> 0 50 50)]
+		 [text (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
+			                             (- boundy1 (* 0.3 processor-screen-radius))
+			       with (title: (format "~s" nodeid )))]
+		 )
+	     (show text)
+
+	     (set-fill-color! box1 defled)
+	     (set-fill-color! box2 defled)
+	     (set-fill-color! box3 defled)
+	   
 	   (set-fill-color! circ Starting-Node-Color)
 ;	   (show circ)
 	   (set! processor-screen-objs
-		 (cons circ processor-screen-objs))
-	   circ)))
+		 (append (list circ box1 box2 box3 text)
+			 processor-screen-objs))
+	   (vector circ box1 box2 box3 text))))))
 
 ;; This returns nothing.
 (define (draw-mark pr color)

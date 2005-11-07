@@ -282,7 +282,7 @@
 	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
-		   [target (car args)] ;; FIXME, it now no longer takes a pair.
+		   [target args] ;; Location is an X/Y pair
 		   )
 	       `([,form () (flood ,consider)]
 		 [,consider () 

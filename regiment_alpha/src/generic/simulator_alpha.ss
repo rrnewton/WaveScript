@@ -290,7 +290,7 @@
    
   ;; TODO, FIXME, need to use a real graph library for this!
   ;; (One that treats edges with due respect, and that uses hash tables.)
-   (let* ([theworld (make-simworld #f #f #f #f #f #f)]
+   (let* ([theworld (make-simworld #f #f #f #f #f #f #f)]
 	  [graph (make-topology)]
 ;	  [soc (caar graph)]
           [obgraph (make-object-graph graph theworld)]
@@ -317,6 +317,8 @@
      (set-simworld-obj-hash! theworld hash)
      (set-simworld-scheduler-queue! theworld scheduler-queue)
      (set-simworld-vtime! theworld 0)
+     
+     (set-simworld-led-toggle-states! theworld (make-default-hash-table))
      theworld))  ;; End fresh-simulation
 
 ;; ================================================================================
@@ -347,11 +349,12 @@
      ;; This is not a good abstraction boundary.
      ;; We just drew the edges, and now we call "draw network" just to draw nodes:
      ;; Associate with each simobject the resultant graphics object "gobj".
-     (let ((all-objs (simworld-all-objs world)))
-       (for-each set-simobject-gobj!
-		 all-objs 
-		 (draw-network (map node-pos (map simobject-node all-objs)))))
-     )
+     (let* ((all-objs (simworld-all-objs world))
+	    (nodes (map simobject-node all-objs)))
+       (let ((gobjs (draw-network (map node-pos nodes)
+				  (map node-id nodes))))
+	 (for-each set-simobject-gobj! all-objs  gobjs)
+	 )))
   (error 'simalpha-draw-world "graphics not loaded.")))
 
 
@@ -1091,6 +1094,13 @@
 
   ;; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
   (simalpha-current-simworld sim)
+  
+  ;; If there are no graphics available, we turn it off:
+  (parameterize ([simalpha-graphics-on
+		  (IF_GRAPHICS (simalpha-graphics-on) #f)])
+			       
+  ;; Draw the world, if necessary.
+  (if (simalpha-graphics-on)  (simalpha-draw-world sim))
  
   (parameterize ([soc-return-buffer '()]
 		 ;; This is not used by simalpha itself, but anyone else who wants to peek:
@@ -1135,9 +1145,8 @@
   ;; Out of let/cc:
   (let ((result (reverse (soc-return-buffer))))
     (printf "~nTotal globally returned values:~n ~s~n" result)
-    result))
-  
-  ))
+    result))  
+  )))
 
 ;; ======================================================================
 
