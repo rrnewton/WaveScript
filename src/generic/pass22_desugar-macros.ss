@@ -73,7 +73,12 @@
 	     [(elect-leader ,t) (process-expr `(elect-leader ,t #f #f))]
 	     [(elect-leader ,t ,c) (process-expr `(elect-leader ,t ,c #f))]
 
-	     ;; FIXME: doesn't work yet:
+
+
+	     ;; elect-leader: The first argument is a token to fire when the leader is determined.
+	     ;; The token is called on all nodes participating, it's passed the ID of the leader as argument.
+	     ;; If the ID matches your ID, you win!
+
 	     ;; TODO: Make this work better for constrained regions.
 	     ;; The token part has to be totally static.
 	     ;; Otherwise we have to TRANSMIT information along during the competition,
@@ -135,10 +140,12 @@
 				   (grelay (tok ,compete ,id) ,val))
 			    (begin 
 			      '"If they don't change our mind about who's leading, we do nothing."
-			      (printf '"~a "(ext-ref ,storage ,cur-leader))
+			      (printf '"~a "(ext-ref ,storage ,my-criteria))
 			      ))
 		      )]
 		   [,check-winner ()
+				  (call ,t (ext-ref ,storage ,cur-leader))
+#;
 				  (begin
 				    (if (= (ext-ref ,storage ,cur-leader) (my-id))
 					(begin 

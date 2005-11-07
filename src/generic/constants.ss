@@ -106,7 +106,6 @@
 ;; This parameter accumulates all the unit tests from the system as they are defined.
 (define-regiment-parameter reg:all-unit-tests '())
 
-
 ;;======================================================================
 
 ;; Used primarily by pass12_add-heartbeats:
@@ -250,6 +249,8 @@
 
 (define-regiment-parameter simalpha-stream-result #f)
 
+;; If #t the simulator will open up a GUI as it simulates (if it can).
+(define-regiment-parameter simalpha-graphics-on #t)
 
 ;; Defining this one here because it's the default, the rest of these are in alpha_lib.ss
 ;; This one changes amplitude across space:

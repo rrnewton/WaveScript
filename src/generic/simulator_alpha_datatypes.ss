@@ -5,8 +5,18 @@
 ;; ======================================================================
 
 ;; This structure contains all the global data needed a simulation.
-(reg:define-struct (simworld graph object-graph all-objs obj-hash scheduler-queue vtime))
-;; obj-hash maps node-ids onto simobjects
+(reg:define-struct 
+ (simworld graph object-graph all-objs 
+	   ;; obj-hash maps node-ids onto simobjects:
+	   obj-hash 
+	   ;; This is a pointer to the queue used by the scheduler.
+	   ;; It's a sorted list of simevts?
+	   scheduler-queue 
+	   ;; This is updated by the scheduler, the current global vtime.
+	   vtime
+	   ;; [2005.11.07] A hash table mapping node-ids to a list of all the leds that are toggled on.
+	   ;; Could have added this to the simobject structure, but I'm reluctant, as it is only a presentation detail:
+	   led-toggle-states))
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
 (reg:define-struct (simevt vtime msgobj))
@@ -50,7 +60,9 @@
 			     timed-token-buf  ;; Stores simulation events
 
 			     local-sent-messages local-recv-messages
-			     redraw gobj homepage 
+			     redraw 
+			     gobj 
+			     homepage 
 
 			     ;; This is a function that processes incoming messages
 			     scheduler ;; and returns simulation actions.

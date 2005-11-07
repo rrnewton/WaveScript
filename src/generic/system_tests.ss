@@ -35,11 +35,36 @@
 		    (list->set (cons BASE_ID (cdr (iota 30))))))]
 
 
+    ;; If graphics are enabled, we run some very simple tests to draw different world topologies.
+    ,@(IF_GRAPHICS
+       `(["Graphics: draw a gridish world."
+	  (begin , (tm-to-socvals '(tokens)
+				  '[simalpha-placement-type 'gridlike])
+		   (simalpha-draw-world (simalpha-current-simworld)))
+	  unspecified]
+	 ["Graphics: draw a random world."
+	  (begin , (tm-to-socvals '(tokens)
+				  '[simalpha-placement-type 'random])
+		   (simalpha-draw-world (simalpha-current-simworld)))
+	  unspecified]
+	 ["Graphics: draw a connected world."
+	  (begin , (tm-to-socvals '(tokens)
+				  '[simalpha-placement-type 'connected])
+		   (simalpha-draw-world (simalpha-current-simworld)))
+	  unspecified]
+	 )
+       ())
+
     ["Simalpha: run a simple program that floods lights."
      , (tm-to-socvals
 	'(tokens
-	     [SOC-start () (gemit lightup)]
-	   [lightup () (leds toggle red) (grelay)]))
+	   [SOC-start () (leds on green) (gemit lightup) (timed-call 1000 base)]
+	   [base () (leds on blue)]
+	   [lightup () (printf "~s: lightup \n" (my-id))
+		    (leds toggle red) (grelay)])
+	'[simalpha-placement-type 'gridlike] ;'connected]
+	'[simalpha-num-nodes 30]
+	'[simalpha-graphics-on #t])
        unspecified]
     ["Do a basic test of token-handler argument passing."
      , (tm-to-socvals 
@@ -1467,19 +1492,29 @@
 
     ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
     ;; [2005.11.03] FIXME WEIRD: when I first load the compiler this returns nothing.  Then on subsequent runs it does!
+    ;; [2005.11.07] Got two winners again.  Got to save the seed and figure out what's going on.
    ["Now test elect-leader macro."
 ;     retry ;; TEMP: FIXME: SHOULDNT NEED RETRY
      , (tm-to-socvals
 	'(tokens
-	   [SOC-start () (gemit tree)] 
+	   [SOC-start () (leds on green) (gemit tree)] 
 	   [tree () (grelay)]
 	   [node-start () (elect-leader tok1)]
-	   [tok1 () (greturn (my-id) (to SOC-return-handler) (via tree))])
+	   [tok1 (ldr)
+		 (if (= ldr (my-id))
+		     (begin (leds on red)
+			    (fprintf (console-error-port) "\n\n WINNER: ~s at nod ~s\n" (subcall f))				    
+			    (greturn (my-id) 
+				     (to SOC-return-handler) 
+				     (via tree)))
+		     (leds on blue))])
 	'[simalpha-channel-model  'lossless]
-	'[simalpha-placement-type 'connected]
+	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
-	'[simalpha-num-nodes 10]
-	'[simalpha-consec-ids #f])
+	'[simalpha-num-nodes 30]
+	'[simalpha-consec-ids #f]
+	'[simalpha-graphics-on #t]
+	)
        ;; This requires that you get actual minimum:
        ,(lambda (ls)
 	  (and (= 1 (length ls))
@@ -1490,6 +1525,36 @@
 			     (simworld-all-objs
 			      (simalpha-current-simworld))))
 			 ))))]
+
+   ;; [2005.11.07] WHOA: got a "triangle".  And the base node thought it was farthest from itself?
+   ["Now test elect-leader macro with a supplied criterion function."
+;     retry ;; TEMP: FIXME: SHOULDNT NEED RETRY
+     , (tm-to-socvals
+	'(tokens
+	   [SOC-start () (leds on green) (gemit tree)] 
+	   [tree () (grelay)]
+	   [node-start () (elect-leader tok1 f)]
+	   [f () (sync-sense)]
+	   [tok1 (ldr)
+		 (if (= ldr (my-id))
+		     (begin (leds on red)
+			    (greturn (my-id) 
+				     (to SOC-return-handler) 
+				     (via tree)))
+		     (leds on blue))])
+	'[simalpha-sense-function sense-dist-from-origin]
+	'[simalpha-zeropad-args #t]
+	'[simalpha-channel-model  'lossless]
+	'[simalpha-placement-type 'gridlike] ;'connected]
+	'[simalpha-failure-model  'none]
+	'[simalpha-num-nodes 30]
+	'[simalpha-consec-ids #t]
+	'[simalpha-graphics-on #t]
+	)
+       ;; This requires that you get actual minimum:
+       unspecified] ;; FIXME: tighten oracle
+
+
 #; ;; FIXME: FINISH
     ["Again elect-leader macro, but with a function to maximize."
      , (tm-to-socvals
@@ -1731,7 +1796,7 @@
 	    (and (apply equal? ls)
 		 (equal? (car ls) 
 			 (sort < (cons BASE_ID (cdr (iota 10)))))
-		 )))]
+		 )))] 
 
      ["Regiment: Fire a simple event when a threshold is crossed."
       (parameterize ([simalpha-channel-model 'lossless]
@@ -1750,12 +1815,13 @@
       ,(lambda (ls) (not (null? ls)))]
 
 
-#; ;; FIXME: FINISH
+ ;; FIXME: FINISH
      ["Regiment: Test a simple anchor election."
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
 		     [simalpha-sense-function sense-dist-from-origin]
+		     [simalpha-graphics-on #t]
 		     [simalpha-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
