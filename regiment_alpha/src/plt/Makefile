@@ -1,4 +1,5 @@
 
+
 bc: bytecode
 bytecode: 
 	(cd ../; export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos ./plt)

@@ -1,4 +1,7 @@
 
+;; [2005.11.04] Don't know what this was for, but it's not in use now.
+;; Maybe it was a struct syntax that would make structs printable?
+
 (define-syntax reg:define-struct
   (lambda (x)
     (define gen-id

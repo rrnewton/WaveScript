@@ -634,13 +634,13 @@
      ,(lambda (_) #t)]
 
     ["Now test with two tokens and one subcall."
-     (parameterize ((unique-name-counter 0))
-		   (cps-tokmac '(foolang
-				 '(program
-				   (bindings)
-				   (nodepgm
-				    (tokens (tok1 () (+ '1 (subcall (tok tok2 0) '2)))
-					    (tok2 (x) (return (* '2 x)))))))))
+     (reunique-names
+      (cps-tokmac '(foolang
+		    '(program
+			 (bindings)
+		       (nodepgm
+			   (tokens (tok1 () (+ '1 (subcall (tok tok2 0) '2)))
+				   (tok2 (x) (return (* '2 x)))))))))
      ;; This might not be safe under different implementations.
      ;; Different arg evaluation and map ordering could very well change the unique-naming below.
      (foolang
@@ -651,8 +651,8 @@
 	  (tok1 subtok_ind
 		()
 		(stored)
-		(call-fast (tok tok2 0) (lambda (HOLE_2) (+ '1 HOLE_2)) '2))
-	  (tok2 subtok_ind (k_1 x) (stored) (kcall k_1 (* '2 x)))))))]
+		(call-fast (tok tok2 0) (lambda (HOLE) (+ '1 HOLE)) '2))
+	  (tok2 subtok_ind (k x) (stored) (kcall k (* '2 x)))))))]
      
 ;; Maybe move to the next pass in some fashion:
 #;    ["Now test with two tokens and one subcall."
@@ -891,7 +891,7 @@
 ;; FIXME: BUG
 ;; This (non-minimal) program currently does not CPS correctly.
 ;; The state mutation gets moved around in a broken way.
-#!eof
+#;
 (desugar-macros-lang
   '(program
      (bindings)

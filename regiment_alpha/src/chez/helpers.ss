@@ -11,14 +11,14 @@
 	  foldl
 	  let/ec call/ec
 
-	  make-n-list  id
-	  string-split periodic-display all-equal?
+	  make-n-list 
 
 	  with-error-handlers with-warning-handler
 	  current-error-port
 
 	  ;; Values:	    
-	  gnuplot display-progress-meter count-nodes
+	  id gnuplot display-progress-meter count-nodes
+	  string-split periodic-display all-equal?
 	  
 	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name  reunique-names
 	  get-formals
@@ -45,7 +45,8 @@
 	  destructure-tokbind
 
 	  gaussian
-
+	  
+	  diff
 	  set? subset? set-equal? list->set set-cons union intersection difference
 	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
 	  filter list-index snoc rac rdc last 

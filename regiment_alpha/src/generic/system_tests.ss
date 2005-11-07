@@ -41,17 +41,29 @@
 	     [SOC-start () (gemit lightup)]
 	   [lightup () (leds toggle red) (grelay)]))
        unspecified]
+    ["Do a basic test of token-handler argument passing."
+     , (tm-to-socvals 
+	'(tokens (SOC-start () (call f 1 2 3 4 5)) 
+		 (f (a b c d e) (soc-return (list a b c d e)))))
+       ((1 2 3 4 5))]
+    ["Do a basic test of token-handler argument *padding*."
+     , (tm-to-socvals 
+	'(tokens (SOC-start () (call f 1 2 3))
+		 (f (a b c d e) (soc-return (list a b c d e))))
+       '[simalpha-zeropad-args 'warning])
+       ((1 2 3 0 0))]
 
-     ["Respect call order."
-      , (tm-to-list
-	 '(tokens 
+
+    ["Respect call order."
+     , (tm-to-list
+	'(tokens 
 	      (SOC-start () 
 			 (call a)
 			 (call b)
 			 (call c))
-	    (a (x) (printf "a "))
-	    (b (x) (printf "b "))
-	    (c (x) (printf "c "))
+	    (a () (printf "a "))
+	    (b () (printf "b "))
+	    (c () (printf "c "))
 	    ))
       (a b c)]
 
@@ -63,10 +75,10 @@
 		       (call b)
 		       ;(sim-print-queue)
 		       )
-	  (a (x) (printf "a ") (call a2))
-	  (b (x) (printf "b ") (call b2))
-	  (a2 (x) (printf "a2 "))
-	  (b2 (x) (printf "b2 "))
+	  (a () (printf "a ") (call a2))
+	  (b () (printf "b ") (call b2))
+	  (a2 () (printf "a2 "))
+	  (b2 () (printf "b2 "))
 	  ))
       ,(lambda (x) ;; All of these are semantically valid.
 	 (member x '[(a b a2 b2) ;; This is the straightforward FIFO one
@@ -105,10 +117,10 @@
 			 (SOC-start () 
 				    (timed-call 200 tok1)
 				    (timed-call 100 tok2))
-		       (tok1 (x) (printf "tok1 "))
-		       (tok2 (x) (printf "tok2 ")
+		       (tok1 () (printf "tok1 "))
+		       (tok2 () (printf "tok2 ")
 			     (timed-call 50 tok3))
-		       (tok3 (x) (printf "tok3 "))))
+		       (tok3 () (printf "tok3 "))))
 	(tok2 tok3 tok1)]
 
      ["Timed tokens 2: test simultaneous timed/untimed calls to same token, then deschedule one timed"
@@ -139,9 +151,9 @@
 			 (timed-call 200 a)
 			 (timed-call 100 b)
 			 (timed-call  50 c))
-	    (a (x) (printf "a "))
-	    (b (x) (printf "b "))
-	    (c (x) (printf "c "))
+	    (a () (printf "a "))
+	    (b () (printf "b "))
+	    (c () (printf "c "))
 	    ))
 	(c b a)]
 
@@ -152,9 +164,9 @@
 			 (timed-call 200 a)
 			 (call b)
 			      (timed-call  50 c))
-	    (a (x) (printf "a "))
-	    (b (x) (printf "b "))
-	    (c (x) (printf "c "))
+	    (a () (printf "a "))
+	    (b () (printf "b "))
+	    (c () (printf "c "))
 	    ))
 	(b c a)]
 
@@ -291,6 +303,7 @@
 	   (loop (reps) (if (> reps 0)
 			    (begin (soc-return (list (my-clock) (sync-sense)))
 				   (timed-call 100 loop (- reps 1))))))
+	'[simalpha-zeropad-args 'warning]
 	'[simalpha-sense-function sense-sine-wave])
        ,(lambda (ls) 
 	  (let ((vals (map cadr ls)))
@@ -590,7 +603,9 @@
 	(result 303)]
      
      ,@(let ([commontest 
-	      '(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+	      '(parameterize ([unique-name-counter 0] 
+			      [simalpha-dbg-on #f]
+			      [simalpha-zeropad-args 'warning])
 		 (let ((prog 
 		     (run-compiler
 		      '(tokens 
@@ -775,7 +790,8 @@
 
      ,@(let ((common 
 	      '(parameterize ((unique-name-counter 0)
-			      (simalpha-dbg-on #f))
+			      (simalpha-dbg-on #f)
+			      [simalpha-zeropad-args 'warning])
 	      (let ((prog 
 		(run-compiler
 		 '(tokens 
@@ -839,9 +855,10 @@
       retry ;; Retry this test if it fails... it's nondeterministic.
       (let ((lst , (tm-to-list
 		    '(tokens
-			 (SOC-start () (gemit tok1))
-		       (tok1 (x) (printf "~a " (gdist)) (grelay))))))
-	(list (length lst) 
+		       (SOC-start () (gemit tok1 99))
+		       (tok1 (x) (printf "~a " (gdist)) (grelay tok1 99)))
+		    )))
+	(list (length lst)
 	      (car lst)
 	      (cadr lst)
 	      (> (car (reverse lst)) 1)
@@ -856,12 +873,12 @@
       , (tm-to-list
 	 '(tokens 
 	      (SOC-start () 
-			 (gemit a)
-			 (call b)
+			 (gemit a )
+			 (call b )
 			 (gemit c))
-	    (a (x) (printf "(~s a) " (my-id)))
-	    (b (x) (printf "(~s b) " (my-id)))
-	    (c (x) (printf "(~s c) " (my-id)))
+	    (a () (printf "(~s a) " (my-id)))
+	    (b () (printf "(~s b) " (my-id)))
+	    (c () (printf "(~s c) " (my-id)))
 	    ))
 	unspecified]
 
@@ -870,7 +887,7 @@
       (let ((lst , (tm-to-list
 		'(tokens
 		  (SOC-start () (gemit tok1))
-		  (tok1 (x) (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))))
+		  (tok1 () (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))))
 	(list (< (length lst) 30)
 	      (sort < (list->set lst))
 	      (equal? lst (sort < lst)))) ;; Only true with VERY restricted simulation model.
@@ -1061,6 +1078,7 @@
 	     [,_ #f]))]
 
      ["#2 Let's manually do some more tricky continuations and stress closure-convert."
+      (parameterize ([simalpha-zeropad-args 'warning]) ;; This has to be on because we're using closure-convert.
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
@@ -1079,7 +1097,7 @@
 	       (sum (k x y) (kcall k (+ x y)))))))
 	 'outport prt)
 	(display ")" prt)
-	(read (open-input-string (get-output-string prt))))
+	(read (open-input-string (get-output-string prt)))))
       (k1 k2 100)]
 
      ;; This was how I realized what eggregious read-write atomicity
@@ -1449,7 +1467,6 @@
 
     ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
     ;; [2005.11.03] FIXME WEIRD: when I first load the compiler this returns nothing.  Then on subsequent runs it does!
-#; 
    ["Now test elect-leader macro."
 ;     retry ;; TEMP: FIXME: SHOULDNT NEED RETRY
      , (tm-to-socvals
@@ -1536,7 +1553,9 @@
     ["Run a simple fold in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
-		    [simalpha-num-nodes 30])
+		    [simalpha-num-nodes 30]
+		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
+		    )
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap sense world)]
@@ -1569,6 +1588,7 @@
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
+		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
 		    [simalpha-sense-function sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1595,6 +1615,7 @@
     ["Regiment: Run a filter and then aggregate" 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
+		    [simalpha-zeropad-args 'warning] ;; TEMP: TODO: THINK ABOUT THIS.
 		    [simalpha-sense-function sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
@@ -1682,10 +1703,12 @@
 				  (+ (cadr x) (cadr y))))))
 	  '[regiment-verbose #f]
 	  '[simalpha-timeout 4000]
+	  '[simalpha-zeropad-args 'warning] ;; Must be on for sensing
 ;	  '[simalpha-stream-result #t]
 	  )
        unspecified]
 
+    ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
       , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
 		    '[simalpha-timeout 5000])
@@ -1714,7 +1737,8 @@
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
-		     ;[simalpha-sense-function sense-noisy-rising]
+		     ;[simalpha-sense-function sense-noisy-rising] ;; TODO: FIXME: FINISH this sensing model.
+		     [simalpha-zeropad-args 'warning] ;; Must be on for sensing.
 		     [simalpha-sense-function sense-random-1to100]
 		     [simalpha-timeout 2000])
 	(run-simulator-alpha 

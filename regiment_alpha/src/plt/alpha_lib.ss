@@ -7,27 +7,51 @@
    (lib "list.ss")
    (all-except (lib "compat.ss") reg:define-struct flush-output-port) 
    "constants.ss"  
+    "hashtab.ss"
    (all-except "helpers.ss" test-this these-tests filter)
-   (all-except "basic_graphics.ss" test-this these-tests)
-;   (all-except "graphics_stub.ss" test-this these-tests) 
    (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
    ;; Would like to remove this dependency eventually:
-   (all-except "simulator_alpha.ss") ;run-alpha-simple-scheduler)
+
+   (all-except "simulator_alpha_datatypes.ss") ;run-alpha-simple-scheduler)
+   
    ;(all-except "alpha_lib_scheduler_simple.ss")
    )
 
-  (provide (all-defined))
+  (IF_GRAPHICS (require (all-except "basic_graphics.ss" test-this these-tests)))
+  (IF_GRAPHICS (require (all-except "graphics_stub.ss" test-this these-tests)))
+
+  (provide 
+   	 current-simobject
+	 led-toggle-state
+
+	 retrieve-token
+	 add-token
+	 evict-token	 
+
+	 neighbors
+	 sendmsg
+	 sim-light-up
+	 sim-print-queue
+	 sim-leds
+	 ;sim-dist
+	 sim-loc
+	 sim-locdiff
+	 simulator-soc-return
+	 simulator-soc-finished
+	 check-store
+	 ;alpha-it ;; shorthand
+
+	 ;; Simple functions that compute sensor values:
+	 sense-dist-from-origin
+	 sense-sine-wave
+	 sense-noisy-rising
+	 sense-random-1to100
+
+	 test-this these-tests test-alphalib   
 ;           (all-from "simulator_alpha.ss"))
-  ;; ONLY provide this:
-;  (provide start-alpha-sim)
-  
-;  (printf "Test0: ~a\n" set-simworld-scheduler-queue!)
-  
+   )
+   
   (include (build-path "generic" "alpha_lib.ss"))
-  ;(include (build-path "generic" "alpha_lib_scheduler.ss"))  
-  ;(printf "Test: ~a\n" run-alpha-simple-scheduler)
-  ;; Right now this is also loaded in the simulator_alpha.ss above.
-  ;(include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
  )
 
 

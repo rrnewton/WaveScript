@@ -2,10 +2,14 @@
 (module simulator_alpha_datatypes
 	(	 
 	 simalpha-total-messages
+	 simalpha-total-tokens
 	 logger
 	 evntlessthan 
 	 soc-return-buffer
 	 escape-alpha-sim
+
+	 ;; Global parameter: temporary, for debugging:
+	 global-graph	 
 
 	 token->key key->token
 

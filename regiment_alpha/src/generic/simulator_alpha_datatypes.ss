@@ -75,10 +75,13 @@
 			      to   ;; :: nodeid - who its going to, #f for broadcast
 			      args))
 
-;; This is just used to count up the messages during a simulation.
-(define simalpha-total-messages 0) ;(make-parameter 0 (lambda (x) x)))
+;; [2005.11.03] These totals were simply global vars.  But PLT's module
+;; system had a problem with that.  I could maybe think of something
+;; more efficient to do here since these are called hundreds of thousands of times.
+;; This one is just used to count up the messages during a simulation:
+(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
 ;; This one counts total token handlers fired.
-(define simalpha-total-tokens 0)
+(define simalpha-total-tokens (make-parameter 0 (lambda (x) x)))
 
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)
@@ -182,8 +185,7 @@
    [else (<= at bt)]))
 
 
-
-(define global-graph #f)
+(define global-graph (make-parameter #f (lambda (x) x)))
 
 ;; Global parameter to hold globally returned values:
 (define soc-return-buffer

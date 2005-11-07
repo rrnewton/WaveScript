@@ -4,31 +4,46 @@
            (lib "include.ss")
            (lib "pretty.ss")
            (lib "process.ss")
+	   (lib "compat.ss")
            (all-except (lib "list.ss") filter)
 ;           (all-except "tsort.ss" test-this these-tests)
            "constants.ss"
            "hashtab.ss"
+           (prefix swindle: (lib "misc.ss" "swindle"))
            )
 
  (provide     	
-  (all-from "constants.ss")
+  ;(all-from "constants.ss")
   
   ;; Remember to update the plt equivalent when you update this:
    ;; Syntax:
-   mvlet rec 
+   for grep mvlet let-match match-lambda
+   ^ ;; Exponentiation
+   rec 
+   reg:define-struct
+   apply-ordered
    
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   flush-output-port with-error-handlers warning with-warning-handler cpu-time ;; error-handler 
-   pretty-maximum-lines make-list
-   list-head merge pretty-print
-   fx+ fx- fx* fx/ fx< fx> fx= fx<= fx>=
-   
+   record?
+   with-error-handlers warning with-warning-handler cpu-time ;; error-handler 
+   console-output-port flush-output-port 
+   make-list
+   fx+ fx- fx* fx/ fx< fx> fx= fx<= fx>= fixnum? fxmin fxmax flonum->fixnum
+   fl+ fl- fl* fl/ fl< fl> fl= fl<= fl>= flonum? fixnum->flonum
+   most-positive-fixnum
+   remq list-head merge sort merge! sort!
 
+   pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
    print-level print-length
    
+   cd
+   ;; Other values 
+   id gnuplot display-progress-meter count-nodes
+   string-split periodic-display all-equal?   
+	  
    get-formals
    reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
    set->hashtab
@@ -55,11 +70,12 @@
    
    gaussian
 
+   diff
    set? subset? set-equal? list->set set-cons union intersection difference
-   assq-remove-all list-remove-first list-remove-last! list-remove-after 
+   remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before
-   randomize-list  insert-between iota disp pp  crit-printf
+   randomize-vector randomize-list  insert-between iota disp pp  crit-printf
    extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
    graph-map graph-get-connected-component graph-neighbors 
    graph:simple->vertical graph:vertical->simple
@@ -84,7 +100,7 @@
 ;   (all-from (lib "rutils_generic.ss") )
    ;   (all-from-except (lib "rutils_generic.ss") 
    ;                    list->set union intersection difference set?) 
-   )
+   ) ;; End provide
 
   
   ;; This might not be necessary: 
@@ -100,13 +116,20 @@
 ;  (load (build-path (collection-path "slibinit") "init.ss"))
 ;  (include "/usr/local/plt/collects/slibinit/init.ss")  
 
-    (define-syntax rec
-      (syntax-rules ()
-	((_ x e) (letrec ((x e)) x))))
+  (define-syntax rec
+    (syntax-rules ()
+      ((_ x e) (letrec ((x e)) x))))
 
-    (define-syntax mvlet
-      (syntax-rules ()
-	  [(mvlet stuff ...) (let-values stuff ...)]))
+  (define-syntax mvlet
+    (syntax-rules ()
+      [(mvlet stuff ...) (let-values stuff ...)]))
+  
+  (define-syntax reg:define-struct
+    (syntax-rules ()
+      [(_ (sname field ...))
+       (define-struct sname (field ...) (make-inspector))]))
+  
+  (define cd current-directory) ;; shorthand
 
   (define (define-top-level-value sym obj)
     (eval `(define ,sym ',obj)))
@@ -117,14 +140,20 @@
     (error 'top-level-bound?
 	   "This is a chez function which can't ~a"
 	     "be emulated right now in Plt. -RRN"))
-
-  (define flush-output-port flush-output)
+  
+  (define record? struct?)
+  ;(define flush-output-port flush-output)
+  ;; [2005.11.05] HACK: This gets set to the normal console output, and stays that way:
+  (define console-output-port (make-parameter (current-output-port)))
   (define pp pretty-print)                   
   (define cpu-time current-process-milliseconds)
   (define print-level pretty-print-depth)
+  (define pretty-line-length pretty-print-columns)
+  
   ;(define print-length pretty-print-length)
   ;; Can't adjust the length from PLT:
-  (define print-length (lambda _ #f))4
+  ;; So this does nothing:
+  (define print-length (make-parameter #f))
 
   ;; Tried to make a generic "alias"
   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))
@@ -136,6 +165,35 @@
   (define-syntax fx> (syntax-rules () [(_ e ...) (> e ...)]))
   (define-syntax fx<= (syntax-rules () [(_ e ...) (<= e ...)]))
   (define-syntax fx>= (syntax-rules () [(_ e ...) (>= e ...)]))
+  (define-syntax fxmin (syntax-rules () [(_ e ...) (min e ...)]))
+  (define-syntax fxmax (syntax-rules () [(_ e ...) (max e ...)]))
+
+  (define-syntax fl+ (syntax-rules () [(_ e ...) (+ e ...)]))
+  (define-syntax fl- (syntax-rules () [(_ e ...) (- e ...)]))
+  (define-syntax fl* (syntax-rules () [(_ e ...) (* e ...)]))
+  (define-syntax fl/ (syntax-rules () [(_ e ...) (/ e ...)]))
+  (define-syntax fl= (syntax-rules () [(_ e ...) (= e ...)]))
+  (define-syntax fl< (syntax-rules () [(_ e ...) (< e ...)]))
+  (define-syntax fl> (syntax-rules () [(_ e ...) (> e ...)]))
+  (define-syntax fl<= (syntax-rules () [(_ e ...) (<= e ...)]))
+  (define-syntax fl>= (syntax-rules () [(_ e ...) (>= e ...)]))
+  ;; [2005.11.03] This is lame but apparently PLT doesn't have any such thing.
+  ;; Further, this might be dangerous.  Chez promises that fixnum's are eq?
+  ;; but I haven't found a place in the PLT documentation where they guarantee that.
+  (define most-positive-fixnum
+    (let ((x (- (expt 2 30) 1)))
+      (lambda () x)))
+  (define fixnum?
+    (let ((x (expt 2 30)))
+      (lambda (n) (and (integer? n) (< n x)))))
+  (define (flonum? x) (inexact? x))
+  (define (flonum->fixnum x) (inexact->exact (floor x)))
+  (define (fixnum->flonum x) (exact->inexact x))
+  
+  ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.
+  ;(define (merge! a b) (merge a b))
+  (define (merge! p a b) (swindle:merge! a b p))
+  (define (sort! p l)    (swindle:sort! l p))
   
 ;; Temporary! < FIXME>:
   (define crit-printf printf)
@@ -269,7 +327,6 @@
   ;          (error-escape-handler (lambda () (void)))
 	    (error-display-handler (car arg)))))
   
- 
 
   )
 

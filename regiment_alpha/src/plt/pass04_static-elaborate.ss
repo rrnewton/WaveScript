@@ -4,14 +4,15 @@
            (all-except (lib "compat.ss") flush-output-port)
            "iu-match.ss"
            (all-except "helpers.ss" test-this these-tests))
-  
+
+#; ; This is in helpers now:  
   (define (remq x ls)
     (cond 
       [(null? ls) ls]
       [(eq? x (car ls)) (remq x (cdr ls))]
       [else (cons (car ls) (remq x (cdr ls)))]))
   
-  (define (id x) x)
+;  (define (id x) x)
   
   (include (build-path "generic" "pass04_static-elaborate.ss"))
   

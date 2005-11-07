@@ -9,7 +9,9 @@
 ;   (lib "pretty.ss")
 ;   (lib "list.ss")
    (all-except (lib "compat.ss") reg:define-struct flush-output-port) 
-;   "constants.ss"  
+   (lib "list.ss")
+   
+   "constants.ss"  
    (all-except "helpers.ss" test-this these-tests filter)
 ;   (all-except "basic_graphics.ss" test-this these-tests)
 ;   (all-except "graphics_stub.ss" test-this these-tests) 
@@ -17,14 +19,18 @@
    ;; Would like to remove this dependency eventually:
 ;   (all-except "simulator_alpha.ss") ;run-alpha-simple-scheduler)
 ;   (all-except "alpha_lib_scheduler_simple.ss")
+   "simulator_alpha_datatypes.ss"
    )
 
-  (provide (all-defined))
+  (provide 
+   ;(all-defined)
+   run-alpha-simple-scheduler
+   )
 ;           (all-from "simulator_alpha.ss"))
   ;; ONLY provide this:
 ;  (provide start-alpha-sim)
   
-  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))
-  
+  (include (build-path "generic" "alpha_lib_scheduler_simple.ss"))  
   )
 
+;(require alpha_lib_scheduler_simple)

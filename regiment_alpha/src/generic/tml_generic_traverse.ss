@@ -115,8 +115,12 @@
 	  ;; as a valid EXPR visible to this generic traversal.  Before I was hiding it.
 	  [(gemit ,[tokonly -> t] ,[loop -> rands] ...)
 	   (fuse (cons t rands) (lambda (tok . rands) `(gemit ,tok ,@rands)))]
-	  [(grelay ,[tokonly -> t]) 
-	   (fuse (list t) (lambda (t) `(grelay ,t)))]
+	  [(grelay ,[tokonly -> t] ,[loop -> rands] ...)
+	   (fuse (cons t rands) (lambda (t . rands) `(grelay ,t ,@rands)))]
+	  [(grelay ,other ...)
+	   (error 'tml-generic-traverse
+		  "bad grelay form: ~s" `(grelay ,other ...))]
+
 	  [(greturn ,[loop -> e]
 		    (to ,[tokonly -> t1])
 		    (via ,[tokonly -> t2])
@@ -221,7 +225,7 @@
   `(	     
     ["Do a little verification of generic-traverse, check datatypes"
      (call/cc (lambda (esc)
-		(tml-generic-traverse
+		(,tml-generic-traverse
 		 (lambda (x loop)
 		   (or (procedure? loop) (esc `(driver-non-procedure-k)))
 		   (cond
@@ -234,8 +238,8 @@
      #f]
 
     ["Test the gradient forms a bit because they're confusing:"
-     (sort <
-     (tml-generic-traverse
+     (,sort <
+     (,tml-generic-traverse
       (lambda (x k) 
 	(if (and (list? x) (= 2 (length x)) (eq? 'quote (car x)))
 	    (list (cadr x))

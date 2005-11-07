@@ -3,9 +3,13 @@
   (define name "PLT Regiment")
 ;  (define mred-launcher-libraries (list))
 ;  (define mred-launcher-names (list))
+
+  ;; These are all the files that SHOULD NOT be compiled as part of the package.
   (define compile-omit-files 
     (list "pass_check_simple.ss"
 	  "demo_display.ss"
+	  "define-structure.ss"
+	  "copy-struct.ss" ;; [2005.11.04] Don't need this any more.
 	  "network_topologies.ss"
 	  "lang00.ss"
 	  "lang10.ss"
@@ -14,6 +18,7 @@
 	  "temp.ss"
 	  "tests.ss"
 	  "test.ss"
+	  "testfoo.ss"
 	  "driver.ss"
 	  "engines2.ss"
 
@@ -27,7 +32,7 @@
 	  "simulator_nought.ss"
 	  "simulator_nought_graphics.ss"
 
-	  "alpha_lib_scheduler_simple.ss"
+;	  "alpha_lib_scheduler_simple.ss"
 
 	  "pass15_add-routing.ss"	  
 	  "passXX_separate-graph.ss"))

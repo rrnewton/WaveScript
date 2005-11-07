@@ -79,7 +79,7 @@
 
 
 (define these-tests  
-  `([(tsort '((shirt tie belt)
+  `([(,tsort '((shirt tie belt)
 	     (tie jacket)
 	     (belt jacket)
 	     (watch)
@@ -88,15 +88,14 @@
 	     (socks shoes))
             );eq?)
     unspecified]
-  [(tsort '((a b) (b c) (c a)
+  [(,tsort '((a b) (b c) (c a)
 	     (d e) (e f))
            );eq?)
     unspecified]
 
-  [(and (cyclic? '((a b) (b a))) #t)  #t]
-  [(and (cyclic? '((a a))) #t)        #t]
-  [(cyclic? '((a b) (b c)))  #f]
-
+  [(and (,cyclic? '((a b) (b a))) #t)  #t]
+  [(and (,cyclic? '((a a))) #t)        #t]
+  [(,cyclic? '((a b) (b c)))  #f]
 )
   )
 

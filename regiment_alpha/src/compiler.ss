@@ -4,7 +4,7 @@
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
-(define-regiment-parameter regiment-version 0.81)
+(define-regiment-parameter regiment-version 0.87)
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
@@ -36,7 +36,6 @@
     analyze-places
     deglobalize
 
-
     cleanup-token-machine 
     desugar-macros		
     desugar-gradients
@@ -48,8 +47,8 @@
     desugar-let-stored
     rename-stored
 
-    cps-tokmac
-    sever-cont-state
+;    cps-tokmac
+;    sever-cont-state
 
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
@@ -227,7 +226,6 @@
                            (soc-return (list 'anch this))))
        (startup))))
 
-
 ;; These are some temporary diagnostic functions:
 (define (all-incoming) ;; shorthand
   (filter (lambda (ls) (not (null? ls)))
@@ -338,6 +336,7 @@
 
     ;; I put them in another file because they were simply taking up too many LOC:
     (include "generic/system_tests.ss")
+;    ()
 ))
 
 (define test-this (default-unit-tester "Main compiler units + system tests." these-tests))

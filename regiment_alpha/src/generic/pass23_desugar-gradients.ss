@@ -251,26 +251,32 @@
 		  ))))]
 
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
-	     [(grelay (tok ,t ,n)) (guard (number? n))
-	      (values ()
+	     [(grelay (tok ,t ,n) ,[atb* arg*] ...) (guard (number? n))
+	      (values (apply append atb*)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
+		  `(bcast (tok ,t ,n) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG ,@arg*)
 		  `(bcast (tok ,t ,n)
 			  (my-id)
 			  (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
 			  (+ 1 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG))
-			  (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG))))]
-	     [(grelay (tok ,t ,[etb e]))
-	      (values etb
+			  (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG)
+			  ,@arg*)))]
+	     [(grelay (tok ,t ,[etb e]) ,[atb* arg*] ...)
+	      (values (apply append etb atb*)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)
+		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG ,@arg*)
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       `(bcast (tok ,t ,num)
 			       (my-id)
 			       (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
 			       (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
-			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))))))]
+			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG)
+			       ,@arg*)))))]
+	     [(grelay ,other ...)
+	      (error 'desugar-gradients
+		     "bad grelay form: ~s" `(grelay ,other ...))]
+
 	     ;; Uses the current version rather than the stored one if its available.
 	     [(gdist ,[(statictok loop) -> ttb tok])
 	      (values ttb
@@ -627,7 +633,7 @@
 	      (warning 'desugar-gradient
 		       "arbitrary application of rator: ~s" rator)
 	      (values (apply append rtb rtb*)
-		      `(,rator ,rands ...))]
+		      `(app ,rator ,rands ...))]
 
 	     [,otherwise
 	      (error 'desugar-gradient:process-expr 

@@ -201,8 +201,8 @@
 	      (match (car ls)
 		[(,score ,d ,x ,p ,context)
 		 (printf "\n~a: At failure depth ~a, expression below did not satisfy ~a (context score ~a)\n    " i d p score)
-		 (parameterize ((pretty-standard-indent 5)
-				(pretty-initial-indent 5)
+		 (parameterize (;(pretty-standard-indent 5)  ;; <- This didn't have the desired effect 
+				;(pretty-initial-indent 5)   ;; And isn't in plt anyway...
 				(print-level 3)
 				(print-length 5))
 		   (pretty-print x))
@@ -223,8 +223,9 @@
 			    (userloop (sub1 i) (cons (car past) ls) (cdr past)))]
 		       [(c) 
 			(printf "\nContext:\n")
-			(parameterize ((pretty-standard-indent 5)
-				       (pretty-initial-indent 5))
+			(parameterize (;(pretty-standard-indent 5)
+				       ;(pretty-initial-indent 5)
+                                       )
 			  (pretty-print context))
 			(menuloop)]
 		       [else (printf "\nInvalid input.\n") (readloop)]

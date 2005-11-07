@@ -49,6 +49,7 @@
 	(hashtab-remove! the-store key)
 	(hashtab-set! the-store key newls))))
 
+;; Returns: unspecified
 (define (add-token the-store stok val)
   (let* ([key (token->key stok)]
 	 [ls (hashtab-get the-store key)])
@@ -77,12 +78,14 @@
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
-  (IF_GRAPHICS ;; Fizzle if graphics is not enabled.
+  (IF_GRAPHICS 
    (if (simobject-gobj (current-simobject))       
-       (change-color! (simobject-gobj this) (rgb r g b))
+       (change-color! (simobject-gobj (current-simobject)) (make-rgb r g b))
       ;; We're allowing light-up of undrawn objects atm:
       ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-       ))]
+       )
+   ;; Fizzle if graphics is not enabled.
+   (void))]
 
 ;; todo INCOMPLETE (we don't yet draw the leds directly.)
 [define (sim-leds what which)
@@ -198,7 +201,7 @@
 				 (record? (cdr entry)))))
 		      entries)
 	      )
-	 (error 'check-store "Bad token store at entry: key:~s, token:~s, tokobj: ~n~s" key token tokobj))))
+	 (error 'check-store "Bad token store at entry: key:~s, token:~s, \n" key token))))
    tokstore)]
 
 
@@ -240,16 +243,15 @@
 
     ["Test adding and retrieving tokens to the store."
      (let ((s (make-default-hash-table)))
-       (define-record foo (a b c))
+       (reg:define-struct (foo a b c))
        (apply-ordered list
-	(,retrieve-token s (make-simtok 'foo 0))
-	(,add-token s [make-simtok 'foo 0] [make-foo 0 'let-stored-uninitialized #f])
-	(,retrieve-token s [make-simtok 'foo 0])))
+	(,retrieve-token s (,make-simtok 'foo 0))
+	(,add-token s [,make-simtok 'foo 0] [make-foo 0 'let-stored-uninitialized #f])
+	(,retrieve-token s [,make-simtok 'foo 0])))
      ,(match-lambda ((,x ,y ,z))
 	(and (not x)
-	     (pair? y)
+	     ; (pair? y) ;; unspecified
 	     (record? z)))]
-
     ))
 
 (define test-this 
@@ -259,27 +261,6 @@
 
 ;; Junk:
 
-(define (t)
-  (alpha-it
-   '(program
-     (bindings)
-     (nodepgm 
-	 (tokens
-	  [node-start _ () (stored) (bindings) (display "N")]
-	  ;[node-start () (stored) (void)]
-	  [SOC-start _ () (stored) (bindings) (begin (printf "S") (call tok1))]
-	  [tok1 _ () (stored) (bindings) (begin (display ".") (bcast tok2 5))]
-	  [tok2 _ (x) (stored) (bindings) (timed-call 500 tok3 x)]
-	  [tok3 _ (y) (stored) (bindings)
-		(if (not (= y 0))		    		    
-		    (begin (display y)
-			   (timed-call 1000 tok3 (- y 1))))]
-	  )))))
-
-#;
-(tokens 
-  [soc-start () (display "S")]
-  [node-start () (display "N")])
 
 ;; Uses global "node-code" binding.
 #;(define (alpha-repl)
@@ -293,15 +274,4 @@
 	      (start-alpha-sim node-code 10.0 'simple)
 	      (alpha-repl)))))
 
-(define (alpha-it tm)
-  (let ([comped (compile-simulate-alpha tm)])
-  ;; Bind the current program to a global variable:
-    (eval `(define alph ',comped))
-    (eval comped)))
-
-
-
-
-
-
-;     (begin (t) (time (start-alpha-sim 10.0)))
+  

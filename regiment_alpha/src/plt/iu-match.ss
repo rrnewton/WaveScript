@@ -50,10 +50,10 @@
 
 #cs
 (module iu-match mzscheme
-  (provide match+ trace-match+ match trace-match)
+  (provide match+ trace-match+ match trace-match )
   (require-for-syntax "iu-exptime.ss" (lib "stx.ss" "syntax"))
   (require (lib "list.ss") (lib "etc.ss") )
-
+  
   (define (make-list n v)
     (vector->list (make-vector n v)))
 
@@ -244,8 +244,14 @@
 	   (ellipsis? #'Dots)
 	   (let-synvalues* (((Dpat Dvars Dcdecls)
 			     (f #'Pat vars cdecls (add1 depth))))
-			   (with-syntax ((Size (- (length (syntax->list #'Dvars)) 
-						  (length (syntax->list vars)))))
+;                           (printf "GOT VARS: ~s\n" vars)
+			   (with-syntax ((Size (- (length (syntax->list #'Dvars))
+						  ;; RRN: this is screwy:
+						  (length 
+						   (if (syntax? vars)
+						       (syntax->list vars)
+						       vars))
+						  )))
 			     ;;MCJ wrapped syntax->list around vars 
 			     (values #'#(each Dpat Size) #'Dvars #'Dcdecls))))
 	  ((Pat Dots . Rest)
@@ -570,6 +576,10 @@
 
 ;;;CHANGELOG
 
+;; [04 Nov 2005]
+;; rrn fixed a bug in the code for handling ellipses.  
+;; (was (length (syntax->list vars)) rather than (length vars))
+
 ;; [13 March 2002]
 ;; rkd added following change by Friedman and Ganz to the main source
 ;; code thread and fixed a couple of minor problems.
@@ -674,3 +684,11 @@
 ;;    ,v ...      ==> ,@v
 ;;    (,v ,w) ... ==> ,@(map list v w)
 ;;    etc.
+
+;(require iu-match)
+
+;; RRN: DEBUGGING
+;(define (f)
+;  (match '((1 2) (3 4))
+;    [((,x ,y) ...) y]))
+;(f)

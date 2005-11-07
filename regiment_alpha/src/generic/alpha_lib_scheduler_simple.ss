@@ -345,7 +345,8 @@
 		     global-mintime (simobject-outgoing-msg-buf ob))))
 	
 	;; Now the lucky simobject gets its message.
-	(set! simalpha-total-tokens (add1 simalpha-total-tokens))
+	;(set! simalpha-total-tokens (add1 simalpha-total-tokens))
+	(simalpha-total-tokens (add1 (simalpha-total-tokens)))
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 
 	;; Finally, we push outgoing-buffers to incoming-buffers:
