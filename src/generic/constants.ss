@@ -14,12 +14,30 @@
 ;; [2005.03.29] MOVING DEBUGMODE to this file.
 ;;======================================================================
 
+;; In the following manner we distinguish regiment parameters from normal
+;; parameters.  We keep a list of all the existing regiment
+;; parameters.  And it also makes it more acceptable for us to scatter
+;; around the parameter definitions, because you can grep for
+;; define-regiment-parameter.
+
+(define regiment-parameters (make-parameter '()))
+(define-syntax define-regiment-parameter
+  (syntax-rules () 
+    [(_ name args ...)
+     (define name 
+       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
+	      (make-parameter args ...)))]))
+
+;;======================================================================;;
+;;                       <<< DEBUG TOGGLES >>>                          ;;
+;;======================================================================;;
+
 ;; DEBUGMODE toggles is like a #define that toggles debug code for the whole compiler.
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -53,6 +71,40 @@
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
+
+;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
+(define-regiment-parameter regiment-verbose #f)
+
+;; This parameter adds extra debug/assertion code to the generated code.
+;; Currently we just set it based on whether the whole system is in debug mode.
+(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
+
+
+;; This one toggles logging.  
+;; It can be set to : 
+;;   #t -- Turn logging on, use default log files.
+;;   #f -- Turn logging off.
+;;   string -- log to specified file 
+;;   function -- use specified logger function
+;; FIXME : Finish implementing these behaviors.
+(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
+(define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
+
+;; Just a counter for the simulation logger messages.  
+;; If it's #f that means it's not set, but it can be 
+;; set to zero at the start of a simulation.
+(define-regiment-parameter simulation-logger-count #f)
+
+;; This parameter determines whether comments will be inserted in generated code.
+;; Does not effect execution one way or the other
+(define-regiment-parameter reg:comment-code #f)
+
+
+;; ========================================
+
+;; This parameter accumulates all the unit tests from the system as they are defined.
+(define-regiment-parameter reg:all-unit-tests '())
 
 
 ;;======================================================================
@@ -88,51 +140,6 @@
 (define KINIT_FLAG 'KINIT) ; 11
 (define KCALL_FLAG 'KCALL) ; 99 
 
-
-;;======================================================================
-
-;; In the following manner we distinguish regiment parameters from normal
-;; parameters.  We keep a list of all the existing regiment
-;; parameters.  And it also makes it more acceptable for us to scatter
-;; around the parameter definitions, because you can grep for
-;; define-regiment-parameter.
-
-(define regiment-parameters (make-parameter '()))
-(define-syntax define-regiment-parameter
-  (syntax-rules () 
-    [(_ name args ...)
-     (define name 
-       (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
-	      (make-parameter args ...)))]))
-
-;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
-(define-regiment-parameter regiment-verbose #f)
-
-;; This parameter adds extra debug/assertion code to the generated code.
-;; Currently we just set it based on whether the whole system is in debug mode.
-(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
-
-;; This one toggles logging.  
-;; It can be set to : 
-;;   #t -- Turn logging on, use default log files.
-;;   #f -- Turn logging off.
-;;   string -- log to specified file 
-;;   function -- use specified logger function
-;; FIXME : Finish implementing these behaviors.
-(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
-;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
-(define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
-
-;; Just a counter for the simulation logger messages.  
-;; If it's #f that means it's not set, but it can be 
-;; set to zero at the start of a simulation.
-(define-regiment-parameter simulation-logger-count #f)
-
-;; This parameter accumulates all the unit tests from the system as they are defined.
-(define-regiment-parameter reg:all-unit-tests '())
-
-;; This parameter 
-(define-regiment-parameter reg:comment-code #f)
 
 ;; Used primarily by helpers.ss:
 ;;===================================================
@@ -180,6 +187,9 @@
 				     (error 'simalpha-current-simworld 
 					    "invalid val for param: ~a" x)))))
 
+;; This is the null pointer representation.  Probably just Zero.
+(define TMNULL ''0)
+
 (define-regiment-parameter simalpha-num-nodes 30)
 (define-regiment-parameter simalpha-world-xbound 60)
 (define-regiment-parameter simalpha-world-ybound 60)
@@ -192,6 +202,10 @@
 ;; Float : Time out after certain number of cpu seconds.
 ;; Int   : Timeout after certain number of simulator clock ticks
 (define-regiment-parameter simalpha-timeout 10.0)
+
+;; When this is set to #t, the simulator slows itself down to match real-time.
+;; If it can't match real time, will have undefined behavior.
+(define-regiment-parameter simalpha-realtime-mode #t)
 
 ;; This is used by the simulator, 
 ;; if true then the node ids are small consecutive numbers rather than
@@ -224,7 +238,12 @@
 
 
 (define-regiment-parameter simalpha-dbg-on #f)      ;; dbg print statements
-(define-regiment-parameter simalpha-padding-warning #f) ;; warning when omitted args are zeroed/padded
+
+;; This parameter controls the feature wherein omitted trailing args to token handlers are
+;; filled in as ZERO.  It may be set to:
+;; #t/#f turn padding on/off
+;; warning: turn padding on, but issue a warning when it is used.
+(define-regiment-parameter simalpha-zeropad-args #f) ; 'warning) 
 
 ;; When this parameter is turned on, the simulator returns a stream of
 ;; soc-return values rather than waiting for the sim to end

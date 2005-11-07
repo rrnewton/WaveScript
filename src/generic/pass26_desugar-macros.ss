@@ -54,6 +54,10 @@
 
 	   [,other (autoloop other)]))
        (lambda (subresults reconstruct)
+;	  (vector (apply reconstruct (map (lambda (x) (vector-ref x 0)) subresults))
+;		  (apply append (map (lambda (x) (vector-ref x 1)) subresults)))
+	  ;; This pattern doesn't work in the PLT-port of match: 
+	  ;; Could consider fixing it. (FIXED IT)
 	 (match subresults
 	   [(#(,arg* ,newtbs*) ...)
 	    (vector (apply reconstruct arg*)

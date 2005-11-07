@@ -4,6 +4,8 @@
   (require (lib "include.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
+;  (require (all-except "grammar_checker.ss" test-this these-tests))
+  (require (all-except "tml_generic_traverse.ss" test-this these-tests))
   (require (all-except "helpers.ss" test-this these-tests))
 
   (require (all-except (lib "list.ss") filter)) 

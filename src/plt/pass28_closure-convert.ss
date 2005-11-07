@@ -10,6 +10,8 @@
 ;  (require (lib "trace.ss"))
   (require "constants.ss")
   (require "iu-match.ss")
+  (require (all-except "tml_generic_traverse.ss" filter test-this these-tests))
+  (require (all-except "grammar_checker.ss" filter test-this these-tests))
   (require (all-except "helpers.ss" filter test-this these-tests))
 
   (require (lib "trace.ss"))

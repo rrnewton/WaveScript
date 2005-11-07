@@ -7,3 +7,5 @@
   (include (build-path "generic" "hash.ss"))
   
   )
+
+;(require hash)

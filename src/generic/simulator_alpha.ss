@@ -492,7 +492,7 @@
 		     
 		  [(bcast ,[rator] ,[rand*] ...)		   
 		   `(begin 
-		      (set! simalpha-total-messages (add1 simalpha-total-messages))
+		      (simalpha-total-messages (add1 (simalpha-total-messages)))
 		      (set-simobject-outgoing-msg-buf! this
   		        (cons (make-simevt #f ;; No scheduled time, ASAP
 					   (bare-msg-object ,rator (list ,@rand*) current-vtime))
@@ -765,26 +765,27 @@
 			  (let ,(map list args (make-list (length args) ''sim-alpha-uninitialized))
 
 			    (let ([numvals (length vals)])
-
+			      ;; Issue a single warning if we're padding arguments:
  			      (if (< numvals ,(length args))
-				  (if (simalpha-padding-warning)
-				      (warning 'simulator-alpha "executing ~s padding args ~s with zero." 
-					       ',tok (list-tail ',args numvals))))
+				  (case (simalpha-zeropad-args) 
+				    [(#t) (void)]
+				    [(warning)
+				      (warning 'simulator-alpha "executing handler <~s.~s> padding args ~s with zero." 
+					       ',tok ,id (list-tail ',args numvals))]
+				    [(#f) (error 'simulator-alpha "executing handler <~s.~s> padding args ~s with zero.\nSupplied args were:\n~s\n"
+						 ',tok ,id (list-tail ',args numvals) vals)]))
  			      (if (> numvals ,(length args))
- 				  (error 'simulator-alpha "executing ~s, got excess vals ~s for args ~s"					 
- 					   ',tok vals ',args))
-; 			      (begin 
- 				,@(map (lambda (arg)
- 					 `(if (null? vals)
- 					      (set! ,arg 0)
- 					      (begin (set! ,arg (car vals))
- 						     (set! vals (cdr vals)))))
- 				       args)
-				"Done initializing arguments."
+ 				  (error 'simulator-alpha "executing ~s, got too many args: ~s for inputs ~s" 
+					 ',tok vals ',args))
+			      
+			      ,@(map (lambda (arg)
+				       `(if (null? vals)
+					    (set! ,arg 0)
+					    (begin (set! ,arg (car vals))
+						   (set! vals (cdr vals)))))
+				  args)
+			      "Done initializing arguments."
 
-
-
-;			  (lambda args			 
 			    (let* ([the-store (simobject-token-store this)]
 				   [simtok-obj (make-simtok ',tok ,id)]
 				   [old-outgoing (simobject-outgoing-msg-buf this)]
@@ -946,16 +947,8 @@
 				)))
 		 ))))))))
 	   ;; Final return value of compile-simulate-alpha:
-	   ;; If chez:
-	   `(begin
-	      (module genned-code (node-code) 
-		      (import scheme)
-		      (import simulator_alpha_datatypes)
-		      (import alpha_lib)
-		      (import alpha_lib_scheduler_simple)
-		      ,node-code)
-	      (import genned-code)))
-	      
+	   (build-genned-code-module node-code)
+	   )
 	 )]
       [,otherwise (error 'compile-simulate-alpha
 			 "unmatched input program: ~s" prog)])))
@@ -1004,7 +997,7 @@
 			    (newline out)
 			    (display ";; Above is compiled program for this token machine: " out)
 			    (newline out)
-			    (display "'" out)
+			    (display "#;\n" out)
 			    (pretty-print tm out)
 			    (newline out))
 			    (close-output-port out))
@@ -1054,8 +1047,8 @@
 		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
     ;; Reset global message counter:
-    (set! simalpha-total-messages 0)
-    (set! simalpha-total-tokens 0)
+    (simalpha-total-messages 0)
+    (simalpha-total-tokens 0)
     (apply run-alpha-loop args)))
 
 
@@ -1116,7 +1109,7 @@
 
 	;; DEBUG DEBUG DEBUG
 	(DEBUGMODE
-	 (set! global-graph (simworld-graph sim)))
+	 (global-graph (simworld-graph sim)))
 
 	;(printf "Starting!  Local: ~s~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
 	;; Redirect output to the designated place:

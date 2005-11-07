@@ -869,7 +869,7 @@
       ((sim-debug-logger) "~n~a: light-up ~a ~a ~a"
        (node-id (simobject-node this)) r g b)
       (if (simobject-gobj this)
-	  (change-color! (simobject-gobj this) (rgb r g b))
+	  (change-color! (simobject-gobj this) (make-rgb r g b))
 	  ;; We're allowing light-up of undrawn objects atm:
 	   ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
 	  )]

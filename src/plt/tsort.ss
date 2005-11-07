@@ -10,7 +10,8 @@
 ;           (lib "list.ss")
            (all-except "helpers.ss" test-this these-tests)
            (all-except "hashtab.ss" test-this these-tests))
-  (provide tsort topological-sort test-this these-tests test-tsort cyclic?)
+  (provide tsort topological-sort  cyclic?
+	   test-this these-tests test-tsort)
 
   (include (build-path "generic" "tsort.ss"))
   

@@ -49,7 +49,7 @@
 		      ;; If the processor has already been drawn, we trigger a screen wipe.
 		      (if (simobject-gobj proc) (force wipe-screen))
 		      ;; If we're the base-station, draw a mark also:
-		      (if (base-station? proc) (draw-mark origpos (rgb 0 255 0)))		      
+		      (if (base-station? proc) (draw-mark origpos (make-rgb 0 255 0)))		      
 		      (let ((gobj (draw-proc origpos)))
 			(hashtab-set! proc-table proc gobj)
 			(set-simobject-gobj! proc gobj))
@@ -117,7 +117,7 @@
 			    (for-each (lambda (ob) 
 					(change-color!
 					 (simobject-gobj ob)
-					 (rgb 0 255 0)))
+					 (make-rgb 0 255 0)))
 				      all-objs))
 			  '()))
 		  1.0)))
@@ -138,7 +138,7 @@
 			   (for-each (lambda (ob)
 				       (change-color!
 					(simobject-gobj ob)
-					(rgb 0 255 0)))
+					(make-rgb 0 255 0)))
 				     all-objs))
 			 )))
 	 1.0)

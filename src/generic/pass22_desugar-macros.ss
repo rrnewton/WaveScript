@@ -132,7 +132,7 @@
 				   (ext-set! ,storage ,cur-leader ,id)
 				   (ext-set! ,storage ,my-criteria ,val)
 				   '"And since they won, we bear their flag onward:"
-				   (grelay (tok ,compete ,id)))
+				   (grelay (tok ,compete ,id) ,val))
 			    (begin 
 			      '"If they don't change our mind about who's leading, we do nothing."
 			      (printf '"~a "(ext-ref ,storage ,cur-leader))
@@ -160,10 +160,15 @@
 	     [,other (autoloop other)]))
 	;; Fuser:
 	(lambda (subresults reconstruct)
+;	  (vector (apply reconstruct (map (lambda (x) (vector-ref x 0)) subresults))
+;		  (apply append (map (lambda (x) (vector-ref x 1)) subresults)))
+	  ;; This pattern doesn't work in the PLT-port of match: 
+	  ;; Could consider fixing it. (FIXED IT)
 	  (match subresults
 	    [(#(,arg* ,newtbs*) ...)
 	     (vector (apply reconstruct arg*)
-		     (apply append newtbs*))]))
+		     (apply append newtbs*))])
+	  )
 	;; Expression:
 	expr))
 
@@ -175,6 +180,7 @@
 	       tbs)]
 	[,other (error 'desugar-macros:process-tokbind 
 		       "BUG: invalid returned val from process-expr: ~a" other)])))
+
 
   (lambda (prog)
     (match prog
@@ -222,4 +228,3 @@
 
 (define test22 test-this)
 (define tests22 these-tests)
-

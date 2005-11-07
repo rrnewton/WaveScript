@@ -95,6 +95,9 @@
                                newbod))))))]
 	 [,other (autoloop other)]))
      (lambda (results recombine)
+;       (let ([stored (map (lambda (x) (vector-ref x 0)) results)]
+;	     [exps   (map (lambda (x) (vector-ref x 1)) results)])
+       ;; This pattern doesn't work in the PLT-port of match: 
        (let-match (((#(,stored ,exps) ...) results))
 	 (vector (apply append stored)
 		 (apply recombine exps))))
@@ -123,7 +126,7 @@
 
     (define sim-to-string
       (lambda (prog)
-	(import simulator_alpha_datatypes)
+	;(import simulator_alpha_datatypes)
 	(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
 		      (let ((prt (open-output-string)))
 			(run-simulator-alpha prog 'outport prt)
@@ -131,7 +134,7 @@
   
     (define simulate-and-compare
       (lambda (pass origprog)
-	(import simulator_alpha_datatypes)
+	;(import simulator_alpha_datatypes)
 	(let ([result1 (sim-to-string origprog)]
 	      [result2 (sim-to-string (pass origprog))])
 	  (list result1 result2))))

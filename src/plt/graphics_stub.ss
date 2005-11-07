@@ -5,9 +5,11 @@
 ;; This uses "proc" to refer to "processor", as in "node", which is a bit confusing.
 
 (module graphics_stub mzscheme	
-  (provide draw-network draw-proc draw-edge draw-mark draw-circle init-graphics change-color!
-	   get-state these-tests test-this testgraphics
-	   clear-buffer)
+  (provide draw-network draw-proc draw-edge draw-mark draw-circle init-graphics 
+           change-color! get-state 
+           these-tests test-this testgraphics
+	   clear-buffer
+           )
   
   (require (all-except "helpers.ss" test-this these-tests)
 	   "iu-match.ss"
@@ -20,8 +22,8 @@
   
   (include (build-path "generic" "graphics_stub.ss"))
 
-  (define default-proc-color (rgb 200 20 20))
-  (define default-edge-color (rgb 0 0 0))
+  (define default-proc-color (make-rgb 200 20 20))
+  (define default-edge-color (make-rgb 0 0 0))
   
   ;;============================================================
   

@@ -12,6 +12,8 @@
  
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id rec)
+	 "plt/hashtab.ss"
+	 "plt/hash.ss"
          (all-except "plt/grammar_checker.ss" these-tests test-this))
 
 (require "plt/constants.ss"
@@ -44,16 +46,17 @@
 
 (all-except "plt/pass20_deglobalize.ss" these-tests test-this)
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
-#|
+(all-except "plt/pass22_desugar-macros.ss" these-tests test-this)
 (all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
 (all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
 (all-except "plt/pass25_rename-stored.ss" these-tests test-this)
-|#
+
 ;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
 ;(all-except "plt/pass25_inline.ss" these-tests test-this)
 ;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
 
 (all-except "plt/pass27_cps-tokmac.ss" these-tests test-this)
+(all-except "plt/pass27.1_sever-cont-state.ss" these-tests test-this)
 (all-except "plt/pass28_closure-convert.ss" these-tests test-this)
 
 ;;(all-except "plt/pass29_verify-token-machine.ss" these-tests test-this)
@@ -88,16 +91,25 @@
 )
 
 (IF_GRAPHICS
-(require
+ (require
 ;;;; (all-except "plt/simulator_nought.ss" these-tests test-this)
 ;; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
-   (all-except "plt/graphics_stub.ss" these-test test-this)
- ))
+  (all-except "plt/graphics_stub.ss" these-test test-this)))
+
+
+;; [2005.11.05]  We need to load these, but not necessarily to import the modules.
+;; Ideall these are only imported by the genned simulation code itself.
+;(load/use-compiled "plt/simulator_alpha_datatypes.ss")
+;(load/use-compiled "plt/alpha_lib.ss") 
+;; No, instead import these for the benefit of the unit tests below:
+(require "plt/alpha_lib.ss")
+(require "plt/simulator_alpha_datatypes.ss")
 
 (require
 ; (all-except "plt/simulator_nought.ss" these-tests test-this)
  (all-except "plt/simulator_alpha.ss" these-tests test-this)
- (all-except "plt/alpha_lib.ss" these-tests test-this)
+; (all-except "plt/alpha_lib_scheduler_simple.ss" these-tests test-this) 
+ ;(all-except "plt/alpha_lib.ss" these-tests test-this)
  )
 ;  (require "plt/demo_display.ss")
 

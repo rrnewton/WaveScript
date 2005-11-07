@@ -27,33 +27,26 @@ all: reg
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
 
+plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
 	(cd plt; $(MAKE))
-
-chez: chez_native
-chez_native:
-	echo '(compile-file "compiler_chez.ss")' | chez
-
-test: clean chez
-	./regiment_script.ss test
 
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
 	(cd plt; $(MAKE) nc)
 
-
+# I don't use a saved heap anymore because it doesn't work right on Mac OS
+chez: chez_native
+chez_native:
+	echo '(compile-file "compiler_chez.ss")' | chez
 #build/regimentc.1.heap: regiment.ss $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
 #	echo '(load "regiment.ss")' | chez -s1 build/regimentc.1.heap
 
-
-#mred:
-#	$(MRED) -f $(PLT_MAIN_FILE) -e "(require compiler)"
-#swl:
-#	$(SWL) $(CHEZ_MAIN_FILE)
-
+test: clean chez
+	./regiment_script.ss test
 
 #/*--------------------------------------------------------------------*/
 #*    Running                                                          */
@@ -66,6 +59,13 @@ runchez:
 
 runplt: 
 	$(MZSCHEME) -e "(load/use-compiled \"$(PLT_MAIN_FILE)\")"
+
+
+#mred:
+#	$(MRED) -f $(PLT_MAIN_FILE) -e "(require compiler)"
+#swl:
+#	$(SWL) $(CHEZ_MAIN_FILE)
+
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */

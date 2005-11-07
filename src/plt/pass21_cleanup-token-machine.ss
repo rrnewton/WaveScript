@@ -7,7 +7,7 @@
   (require "iu-match.ss")
   (require (all-except "helpers.ss" filter test-this these-tests))
   (require (all-except "grammar_checker.ss" test-this these-tests))
-
+  (require (all-except "tml_generic_traverse.ss" test-this these-tests))
   (require (lib "trace.ss"))
 
   (include (build-path  "generic" "pass21_cleanup-token-machine.ss"))

@@ -12,3 +12,5 @@
   (define hashtab-remove!  hash-table-remove!)
   
   )
+
+;(require hashtab)

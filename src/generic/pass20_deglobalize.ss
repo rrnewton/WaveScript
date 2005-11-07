@@ -282,7 +282,7 @@
 	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
-		   [target (car args)]
+		   [target (car args)] ;; FIXME, it now no longer takes a pair.
 		   )
 	       `([,form () (flood ,consider)]
 		 [,consider () 
@@ -290,7 +290,7 @@
 			    (if (< (locdiff (loc) ,target) 10)
 				(elect-leader ,memb)
 				'#f)]
-		 [,form () (draw-mark ,target (rgb 0 100 100))]
+		 [,form () (draw-mark ,target (make-rgb 0 100 100))]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
 		 [,memb () 
@@ -308,7 +308,7 @@
 		 
 	     `([,form () (flood ,consider)]
 	       [,consider () (elect-leader ,memb ,fun_tok)]
-	       [,form () (draw-mark ,target (rgb 0 100 100))]
+;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING
 	       ;; This just lights up the node when it becomes anchor, for visualization:
 	       [,memb () 
@@ -628,8 +628,10 @@
           ;; spark to whatever value-name this is, and wires the
           ;; formation token straight to the membership.
           [world (values '() 
-			 `([,(get-formation-name name) () (call ,(get-membership-name name))]
-			   [spark-world () (call ,(get-membership-name name))]))]
+			 `([,(get-formation-name name) () (call ,(get-membership-name name) ;,TMNULL
+								)]
+			   [spark-world () (call ,(get-membership-name name) ;,TMNULL
+						 )]))]
 
           ;; The possibility that the final value is local is
 	  ;; handled in 'deglobalize' so we don't worry about it here:
@@ -916,3 +918,4 @@
     ()
     (if (< (locdiff (loc) tmp_1) 10.0)
 	(elect-leader m_token_tmp_3)))))
+

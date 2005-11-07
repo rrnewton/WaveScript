@@ -374,13 +374,16 @@
 	     [(return ,[x]) `(return ,x)] ;; A local return, not a gradient one.
 
 	     [(grelay) `(grelay (tok ,this-token ,this-subtok))]
-	     [(grelay (tok ,t ,[e])) (check-tok 'grelay t)
-	      `(grelay (tok ,t ,e))]
-	     [(grelay ,tok) (guard (tokname? tok))
+	     [(grelay (tok ,t ,[e]) ,[args] ...) (check-tok 'grelay t)
+	      `(grelay (tok ,t ,e) ,args ...)]
+	     [(grelay ,tok ,[args] ...) (guard (tokname? tok))
 	      (check-tok 'grelay tok)
 	      ;; There is some question here as to whether we should
 	      ;; default to this-subtok or to Zero subtoken index.
-	      `(grelay (tok ,tok ,this-subtok))]
+	      `(grelay (tok ,tok ,this-subtok) ,args ...)]
+	     [(grelay ,other ...)
+	      (error 'cleanup-token-machine
+		     "bad grelay form: ~s" `(grelay ,other ...))]
 	     
 	     ;; Expand this out to refer to the precise token...
 	     ;; TODO FIXME TODO: change this to refer to the specific subtok_ind:
@@ -785,7 +788,7 @@
 	     [(tok ,t ,[e]) (cons t e)]
 	     [(begin ,[exprs] ...) (apply append exprs)]
 	     [(if ,[exprs] ...) (apply append exprs)]
-	     [(let ([,_ ,[rhs*]] ...) ,[body])	(apply append body rhs)]
+	     [(let ([,_ ,[rhs*]] ...) ,[body])	(apply append body rhs*)]
 
 	     ;; "Direct call":  Not allowing dynamic gemit's for now:
 	     [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
