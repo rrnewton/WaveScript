@@ -20,7 +20,7 @@
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
-	   (optimize-level 2) ;3) 
+	   (optimize-level 2) ;1);2) ;3) 
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -167,9 +167,9 @@
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")
-(include "generic/pass27_cps-tokmac.ss")
-(include "generic/pass27.1_sever-cont-state.ss")
-(include "generic/pass27.2_add-kclosure.ss")
+(include "generic/pass26_cps-tokmac.ss")
+(include "generic/pass27_sever-cont-state.ss")
+;; (include "generic/pass27.2_add-kclosure.ss")
 (include "generic/pass28_closure-convert.ss")
 
 ;;(include "generic/pass29_verify-token-machine.ss")

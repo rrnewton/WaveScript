@@ -22,7 +22,6 @@
 
   (provide 
    	 current-simobject
-	 led-toggle-state
 
 	 retrieve-token
 	 add-token

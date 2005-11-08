@@ -115,20 +115,22 @@
                                  )]
                             [else (error 'sim-leds "bad action: ~s" what)]))))
       ;; Now color the actual leds:
-      (match (simobject-gobj (current-simobject))       
-	[#f (void)] ;; Do nothing if there's no gobj.
-	[#(,circ ,rled ,gled ,bled ,text) ;; If there is a graphical representation, change it.
-	 (if (memq which led-toggle-state)
-	     (case which
-	       [(red)   (change-color! rled (make-rgb 255 0 0))]
-	       [(green) (change-color! gled (make-rgb 0 255 0))]
-	       [(blue)  (change-color! bled (make-rgb 0 0 255))]
-	       [else (error 'sim-leds "bad led color: ~s" which)])
-	     (case which
-	       [(red)   (change-color! rled (make-rgb 0 0 0))]
-	       [(green) (change-color! gled (make-rgb 0 0 0))]
-	       [(blue)  (change-color! bled (make-rgb 0 0 0))]
-	       [else (error 'sim-leds "bad led color: ~s" which)]))])
+      (IF_GRAPHICS
+       (match (simobject-gobj (current-simobject))       
+	 [#f (void)] ;; Do nothing if there's no gobj.
+	 [#(,circ ,rled ,gled ,bled ,text) ;; If there is a graphical representation, change it.
+	  (if (memq which led-toggle-state)
+	      (case which
+		[(red)   (change-color! rled (make-rgb 255 0 0))]
+		[(green) (change-color! gled (make-rgb 0 255 0))]
+		[(blue)  (change-color! bled (make-rgb 0 0 255))]
+		[else (error 'sim-leds "bad led color: ~s" which)])
+	      (case which
+		[(red)   (change-color! rled (make-rgb 0 0 0))]
+		[(green) (change-color! gled (make-rgb 0 0 0))]
+		[(blue)  (change-color! bled (make-rgb 0 0 0))]
+		[else (error 'sim-leds "bad led color: ~s" which)]))
+	  ]))
       ;((sim-debug-logger) string)
       (logger string)
       ))]
