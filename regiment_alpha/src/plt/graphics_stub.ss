@@ -196,7 +196,7 @@
       ["You should see three \"processors\""
        (begin (require "basic_graphics.ss")
               (init-graphics)
-              (let ((x (draw-network  '((10 20) (50 50) (30 10)))))
+              (let ((x (draw-network  '((10 20) (50 50) (30 10)) )))
                 (sleep 0.3)
                 (close-graphics)
                 x))
