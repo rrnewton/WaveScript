@@ -8,7 +8,7 @@ import Utils
 import TM
 import TM_simple as TMS 
 
-import Data.Set
+--import Data.Set
 import Debug.Trace
 import Control.Monad.State
 import Control.Exception
@@ -21,6 +21,8 @@ import Control.Exception
 -- to hold their return values.
 
 -----------------------------------------------------------------------------
+
+
 
 flatten_tm :: TMPgm -> State Int TMS.Pgm
 flatten_tm (TM.Pgm consts socconsts socpgm nodetoks startup) =     
@@ -179,6 +181,7 @@ pe e = do (b,rv) <- loop e
 				     : map fst args),
 		      Nothing)
 -}
+       (Elambda _ _)      -> error "Flatten.hs cannot handle lambda expressions!"
        (Eflood tok)       -> error "Flatten.hs cannot handle flood expressions!"
        (Eelectleader tok) -> error "Flatten.hs cannot handle election expressions!"
 --       _ -> error ("Flatten.hs: unmatched expression: " ++ show e)

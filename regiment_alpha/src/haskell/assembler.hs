@@ -95,6 +95,7 @@ process_stmt indent tokargs e =
 	   Pgeq     -> f $ "("++ e1++" >= "++e2 ++")"
 	   Peq      -> f $ "("++ e1++" == "++e2 ++")"
 	   Pmyid    -> f $ "TOS_LOCAL_ADDRESS"
+	   Pvoid    -> f $ "0" -- What should void turn into?? {}?  Depends on value/effect context...
 	   Plightup -> err
 	   Ploc     -> err
 	   Plocdiff -> err
@@ -543,9 +544,8 @@ build_configuration (TMS.Pgm consts socconsts socpgm nodetoks startup) =
 
 build_header_file (TMS.Pgm consts socconsts socpgm nodetoks startup) = 
     "\n"++
-    "#define BASE_STATION 0"++
-    "#define NUM_TOKS "++ show (length nodetoks) ++
-    "\n"++
+    "#define BASE_STATION 0 \n"++
+    "#define NUM_TOKS "++ show (length nodetoks) ++ "\n"++
     "enum {\n"++
     (concat $ 
      map2 (\ t n -> "  "++tok_id t++" = "++show n++",\n")

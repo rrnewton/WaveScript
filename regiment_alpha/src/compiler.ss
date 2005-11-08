@@ -55,8 +55,7 @@
 
     ;    inline-tokmac ???
 
-    ;    verify-token-machine
-    ;    haskellize-tokmac 
+    haskellize-tokmac 
     ))
 
 
