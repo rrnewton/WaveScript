@@ -48,15 +48,6 @@
     (define hbegin
       (lambda (expr*)
 	(format "(Eseq ~a)" (hlist expr*))))
-
-#|	(let loop ([expr (match `(begin ,@expr*)
-				[(begin ,[expr*] ...) (apply append expr*)]
-				[,expr (list expr)])])	  
-	  (match expr
-	     [(,x) x]
-	     [(,x ,x* ...)
-	      (format "(Eseq ~a ~a)" x (loop x*))]))))
-|#
     
     (define (htok t) (format "(Token \"~a\")" t))
     (define (hid id) (format "(Id \"~a\")" id))
@@ -69,6 +60,7 @@
     (define process-expr 
      (lambda (expr)
       (match expr
+	[,c (guard (constant? c)) (process-expr `(quote ,c))]
 	[(quote ,const)
 	 (cond 
 	  [(integer? const) (format "(Econst ~a)" const)]
@@ -80,22 +72,25 @@
 		       "cannot handle this type of constant presently: ~s" const)])]
 	[,var (guard (symbol? var)) (format "(Evar ~a)" (hid var))]
 
+	[(set! ,v ,[e]) "SET_NOTDONE"]
+	[(ext-ref ,[tok] ,v) "EXTREF_NOTDONE"]
+	[(ext-set! ,[tok] ,v ,[x]) "EXTSET_NOTDONE"]
+	[(tok ,t ,[ind])
+	 ;; FIXME
+	 (htok t)]
+	
 	[(begin ,[x]) x]
         [(begin ,[xs] ...)  (format "(Eseq ~a)" (hlist xs))]
-#|	[(begin ,[x] ,y ...) a
-	 (let ([rest (process-expr `(begin ,y ...))])
-;	   (disp "BUILDING ESEQ" x rest)
-	   (format "(Eseq ~a ~a)" x rest))]
-|#
 	
 	[(if ,[test] ,[conseq] ,[altern])
 	 (format "(Eif ~a ~a ~a)" test conseq altern)]
 
 	;; Both of these take timing arguments in the Haskell AST:
-
-	[(call ,tok ,[args*] ...)
+	;; FIXME: FINISH
+	[(call (tok ,tok ,[ind]) ,[args*] ...)
+	 ;(guard (memq call '(bcast subcall direct-subcall call activate call-fast)))
 	 (format "(Ecall Nothing ~a ~a)" (htok tok) (hlist args*))]
-	[(timed-call ,time ,tok ,[args*] ...)
+	[(timed-call ,time (tok ,tok ,[ind]) ,[args*] ...)
 	 (format "(Ecall (Just ~a) ~a ~a)" time (htok tok) (hlist args*))]
 
         ;; This is a primitive, but handled special.
@@ -105,8 +100,6 @@
 		      [(quote ,st) st]
 		      [,st st]))) 
            (format "(Edbg \"~a\" ~a)" str (hlist args)))]
-
-        [(dist ,t) (format "(Edist ~a)" (htok t))]
 
         [(leds ,what ,which)
          (format "(Eled ~a ~a)"
@@ -123,16 +116,14 @@
 	[(,prim ,[rand*] ...)
 	 (guard (token-machine-primitive? prim))
 	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
-
+#;
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
 	 (format "(Eprimapp ~a ~a)" (hprim prim) (hlist rand*))]
 
-	[(let* ([,lhs* ,[rhs*]] ...) ,[body])
+	[(let ([,lhs ,[rhs]]) ,[body])
 	 (format "(Elet ~a ~a)" 
-		 (hlist (map (lambda (lhs rhs)
-			       (format "(~a, ~a)" (hid lhs) rhs))
-			     lhs* rhs*))
+		 (format "(~a, ~a)" (hid lhs) rhs)
 		 body)]
 	 
 ;	[,other "UNMATCHED_SCHEMETOKSTUF"]
@@ -141,34 +132,29 @@
 
     (define process-tokbind 
       (lambda  (tokbind)
-      (match tokbind
-	[(,tok ,args ,body ,body* ...)
-	 (format "(~a, ~a, ~a)" 
-		 (htok tok) 
-		 (hlist (map hid args)) 
-		 (if (not (null? body*))
-		     (hbegin (map process-expr (cons body body*)))
-		     (process-expr body))
-		 )])))
-		
+	(mvlet ([(tok id args stored bindings body) (destructure-tokbind tokbind)])
+	  (format "(~a, ~a, ~a)" 
+		  (htok tok) 
+		  (hlist (map hid args))
+		  (process-expr body)
+		 ))))
+  
     (lambda (prog)
       (match prog
 	;; Accept the program with or without the "language" wrapper:
-	[(program ,contents ...)
-	 (haskellize-tokmac `(no-lang '(program ,contents ...)))]
         [(,lang '(program (bindings ,[process-constbind -> cbinds] ...)
-				(socpgm (bindings ,[process-constbind -> socbinds] ...)
-					,[process-expr -> socstmts] ...)
-				(nodepgm (tokens ,[process-tokbind -> nodetoks] ...)
-					 (startup ,[htok -> starttoks] ...))))
-	 `(haskellize-tokmac-language
-	   ,(format 
-	     "(Pgm {~n  consts = ~a,~n  socconsts=~a,~n  socpgm=~a,~n  nodetoks=~a,~n  startup=~a~n})~n"
-	     (hlist cbinds)
-	     (hlist socbinds)
-	     (hlist socstmts)
-	     (hlist nodetoks)
-	     (hlist starttoks)))]))))
+		   (nodepgm (tokens ,nodetoks ...))))
+
+	 (let ((soc-tok (assq 'SOC-start nodetoks))
+	       (other-toks (filter (lambda (t) (not (eq? (car t) 'SOC-start))) nodetoks)))
+
+	   (mvlet ([(_ _1 _2 _3 _4 socbod) (destructure-tokbind soc-tok)])
+	     `(haskellize-tokmac-language
+	       ,(format 
+		 "(Pgm {~n  consts = ~a,~n  socconsts=[],~n  socpgm=~a,~n  nodetoks=~a,~n  startup=[Token \"node-start\"]~n})~n"	     
+		 (hlist cbinds)    
+		 (hlist (list (process-expr socbod)))
+		 (hlist (map process-tokbind other-toks))))))]))))
   
 
 (define these-tests

@@ -1503,7 +1503,7 @@
 	   [tok1 (ldr)
 		 (if (= ldr (my-id))
 		     (begin (leds on red)
-			    (fprintf (console-error-port) "\n\n WINNER: ~s at nod ~s\n" (subcall f))				    
+			    ;(fprintf (console-error-port) "\n\n WINNER: ~s at nod ~s\n" (subcall f))
 			    (greturn (my-id) 
 				     (to SOC-return-handler) 
 				     (via tree)))
@@ -1816,6 +1816,7 @@
 
 
  ;; FIXME: FINISH
+#;
      ["Regiment: Test a simple anchor election."
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]

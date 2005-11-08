@@ -56,11 +56,13 @@ longest (h:t) = loop h (length h) t
 
 largest_number :: [String] -> Int
 largest_number strings =
-    maximum $ 
-    map read $ 
-    filter_just $ 
-    map (largest_contig isDigit)
-        strings
+    let ls = map read $ 
+	     filter_just $ 
+	     map (largest_contig isDigit)
+	     strings
+    in if ls == []
+       then 0
+       else maximum ls
 
 ----------------------------------------------------------------------
 

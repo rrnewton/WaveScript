@@ -38,10 +38,11 @@ data TMPgm = Pgm { consts    :: [ConstBind],
 
 data Prim = Pplus | Pminus | Pmult | Pdiv
 	  | Pless | Pgreater | Pleq | Pgeq | Peq
-	  | Plocdiff | Ploc
+	  | Plocdiff | Ploc 
 --	  | Pflood | Pelectleader
 	  | Pdrawmark | Plightup | Prgb
 	  | Pmyid 
+	  | Pvoid
 	  --Pamap | Pafold
   deriving (Eq, Show, Read)
 
