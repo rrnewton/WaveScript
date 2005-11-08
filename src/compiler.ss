@@ -55,7 +55,7 @@
 
     ;    inline-tokmac ???
 
-    haskellize-tokmac 
+;    haskellize-tokmac 
     ))
 
 

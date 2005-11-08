@@ -1,5 +1,5 @@
 
-(module pass27_cps-tokmac mzscheme
+(module pass26_cps-tokmac mzscheme
 
 ;  (require-for-syntax "constants.ss")
 ;  (require constants)
@@ -13,7 +13,7 @@
   (require (all-except "tml_generic_traverse.ss" test-this these-tests))
   (require (lib "trace.ss"))
   
-  (include (build-path  "generic" "pass27_cps-tokmac.ss"))
+  (include (build-path  "generic" "pass26_cps-tokmac.ss"))
   
 ;  (provide (all-defined))
   (provide cps-tokmac test27 tests27 test-cps-tokmac tests-cps-tokmac testcps-expr
@@ -21,7 +21,7 @@
            )
   )
 
-;(require pass27_cps-tokmac)
+;(require pass26_cps-tokmac)
 
 #;(cps-tokmac '(cps-tokmac-lang '(program (bindings) (nodepgm (tokens)))))
 

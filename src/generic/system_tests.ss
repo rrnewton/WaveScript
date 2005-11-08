@@ -1431,6 +1431,7 @@
       ]
 
     ;; This is broken:  It's an incorrect algorithm:
+    ;; [2005.11.08]  Failed on this under PLT (but then passes when I try again... HUH?)
     ["Elect leader. #1"
      , (tm-to-list
 	'(tokens

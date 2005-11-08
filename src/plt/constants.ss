@@ -50,7 +50,8 @@
 	 simalpha-zeropad-args
 	 simalpha-stream-result 
 	 simalpha-sense-function
-	 
+	 simalpha-graphics-on
+         
 	 sense-spatial-sine-wave 
 	 
 	 default-unit-tester-retries
