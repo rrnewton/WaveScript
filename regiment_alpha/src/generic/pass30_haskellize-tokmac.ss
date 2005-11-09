@@ -89,9 +89,9 @@
 	;; FIXME: FINISH
 	[(call (tok ,tok ,[ind]) ,[args*] ...)
 	 ;(guard (memq call '(bcast subcall direct-subcall call activate call-fast)))
-	 (format "(Ecall Nothing ~a ~a)" (htok tok) (hlist args*))]
+	 (format "(Ecall Local ~a ~a)" (htok tok) (hlist args*))]
 	[(timed-call ,time (tok ,tok ,[ind]) ,[args*] ...)
-	 (format "(Ecall (Just ~a) ~a ~a)" time (htok tok) (hlist args*))]
+	 (format "(Ecall (Timed ~a) ~a ~a)" time (htok tok) (hlist args*))]
 
         ;; This is a primitive, but handled special.
         ;; User better use double slashes.

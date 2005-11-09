@@ -21,10 +21,11 @@
 			      (and (file-exists? "../test_tokmac_comp.tm") "../test_tokmac_comp.tm")
 			      (error 'run_tm "Missing test_tokmac_comp.tm") )])	    		
 		;; First use the assembler:
-		(system (string-append "./assembler " file))
-		;; Then use the NesC compiler:
-		(system "make pc")
-		 )))))
+		(if (zero? (system (string-append "./assembler " file)))
+		    ;; Then use the NesC compiler:
+		    (system "make pc")
+		    (error 'haskellized-tokmac "did not parse or assemble.")
+		 ))))))
     (run_tm)))
 
 

@@ -90,9 +90,6 @@ pe e = do (b,rv) <- loop e
 			  return (concat_blocks (reverse blks), ret)
 
        (Eled act col) -> return (Block [] [Sled act col], Nothing)
-       (Edist t)      -> do id <- newid "dist_"
-			    return (Block [id] [Sdist id t],
-				    Just (Bvar id))
 
        (Eif a b c) -> do newvar <- newid "ifret_" 
 			 (blka,Just ra) <- loop a
@@ -127,43 +124,13 @@ pe e = do (b,rv) <- loop e
 		      return (Block [newvar] [Ssense (Just newvar)],
 			      Just $ Bvar newvar)
 
-       -- Special forms: socreturn and socfinished expand out to Sreturn's here:
-       (Esocreturn e) -> do (blk, Just ret) <- loop e
-			    return (append_blocks blk 
-				    (Block [] 
-				     [Sgradreturn ret socret_target global_tree Nothing Nothing]),
-				    Nothing)
-       (Esocfinished) -> return (Block []
-				 [Sgradreturn (Bconst 0) socfinished_target global_tree Nothing Nothing], 
-				 Nothing)
 
-       (Ereturn val to via (Just seed) (Just aggr)) ->
-	   do (blk1,Just rval)  <- loop val
-	      (blk2,Just rseed) <- loop seed -- do s <- seed; return (loop s)
-	      -- Maybe this should return the local vars used, but it doesn't matter:
-	      return (concat_blocks [blk1, blk2,
-				     Block [] [Sgradreturn rval to via (Just rseed) (Just aggr)]],
-		      Nothing)
-
-       (Ereturn val to via Nothing Nothing) ->
-	   do (blk1,Just rval)  <- loop val
-	      -- Maybe this should return the local vars used, but it doesn't matter:
-	      return (concat_blocks [blk1,
-				     Block [] [Sgradreturn rval to via Nothing Nothing]],
-		      Nothing)
-
-       (Ereturn _ _ _ _ _) -> error "Bad form of Ereturn"
-
-       (Erelay mbtok) -> return (Block [] [Srelay mbtok], Nothing)
-
-       (Eemit mbtime tok args) -> call_helper args (Semit         mbtime tok)
-       (Eactivate    tok args) -> call_helper args (Sactivate            tok)
-       (Ecall mbtime tok args) -> 
+       (Ecall Local tok args) -> 
 	   do args' <- mapM loop (args::[Expr])
 	      id <- newid "call_"
 	      let rets = map (\ (_, Just r) -> r) args'
 	      return (concat_blocks ( map fst args' ++ 
-				      [ Block [id] [Scall (Just id) mbtime tok rets] ]),
+				      [ Block [id] [Scall (Just id) Nothing tok rets] ]),
 		      Just (Bvar id))
 --	   do id <- newid "call_"
 --	      call_helper args (\ args -> [Scall id  mbtime tok args])
@@ -182,8 +149,6 @@ pe e = do (b,rv) <- loop e
 		      Nothing)
 -}
        (Elambda _ _)      -> error "Flatten.hs cannot handle lambda expressions!"
-       (Eflood tok)       -> error "Flatten.hs cannot handle flood expressions!"
-       (Eelectleader tok) -> error "Flatten.hs cannot handle election expressions!"
 --       _ -> error ("Flatten.hs: unmatched expression: " ++ show e)
 
 -- This really doesn't do much right now.  Theoretically it could do

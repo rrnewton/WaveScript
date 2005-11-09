@@ -18,8 +18,8 @@ module BasicTMCommM {
     interface StdControl;
     //    interface ReceiveMsg;
 
-    // I don't actually want to expose these, but I don't know how to
-    // make private commands.
+    // FIXME: I don't actually want to expose these, but I don't know
+    // how to make private commands.
     async command result_t add_msg(TOS_MsgPtr token);     
     async command result_t pop_msg(TOS_MsgPtr dest);
     async command TOS_Msg peek_nth_msg(uint16_t indx);
@@ -59,7 +59,6 @@ module BasicTMCommM {
   // For the time being we only have one slot in the out buffer:
   TOS_Msg token_out_buffer; //[TOKBUFFER_LENGTH];
   bool send_pending; //[TOKBUFFER_LENGTH];
-
 
 
   // ======================================================================
@@ -226,144 +225,10 @@ module BasicTMCommM {
     // The TMComm interface is what the TMModule expects the
     // communications system to be able to do:
 
-  command uint16_t TMComm.get_dist[uint8_t id]() {
-    TOS_MsgPtr t = call TMComm.get_cached[id](id);
-
-    if ( t == NULL) 
-      return -1;
-    else 
-      return ((TM_Payload*)(cached_tokens[id-1].data))->counter;
-  }
-
-  // The three functions below are rather uninspired.
-
-  // Hope this gets statically wired and inlined 
-  // ID and type should be the same...
-  command result_t TMComm.emit[uint8_t id](uint8_t length, TOS_MsgPtr msg) {
-    TM_Payload* payload;
-   
-    if (send_pending) {
-      return FAIL;
-    } else {
-      send_pending = TRUE;
-      // OPTIMIZE THIS:
-      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
-
-      payload = (TM_Payload*)token_out_buffer.data;
-
-      // Since this is an emisson, set the origin to *US*.
-      payload->origin = TOS_LOCAL_ADDRESS;
-      payload->parent = TOS_LOCAL_ADDRESS;
-      payload->timestamp = 999; // TODO FIXME
-      payload->generation = 1001; // TODO FIXME
-      payload->counter = 1; // The nodes to receive this are hopcount 1.
-
-      token_out_buffer.type = id;      
-      token_out_buffer.length = length;
-
-      dbg(DBG_USR1, "TM BasicTMCommM: Emitting message of length:%d, orig:%d, type:%d id:%d/%d\n", 
-	  length, TOS_LOCAL_ADDRESS, msg->type, id);
-      return call SendMsg.send[id](TOS_BCAST_ADDR, length, &token_out_buffer);
-    }
-  }
-
-  //  command result_t TMComm.relay[uint8_t id](uint16_t address, uint8_t length, TOS_MsgPtr msg) {
-  command result_t TMComm.relay[uint8_t id]() {
-    TM_Payload* payload;
-
-    if ( !is_processing ) 
-      return FAIL;
-
-    if (send_pending) {
-      return FAIL;
-    } else {
-      send_pending = TRUE;
-      memcpy(&token_out_buffer, &currently_processing, sizeof(TOS_Msg));
-      payload = (TM_Payload*)token_out_buffer.data;
-
-      dbg(DBG_USR1, "TM BasicTMCommM: Relaying message of length:%d, orig:%d, par:%d, type:%d/%d\n", 
-	currently_processing.length, payload->origin, payload->parent, currently_processing.type, id);
-
-      payload->parent = TOS_LOCAL_ADDRESS;
-      //payload->timestamp = 999; // TODO FIXME
-      payload->counter++; // Increment the hopcount!
-      token_out_buffer.type = id;      
-      return call SendMsg.send[id](TOS_BCAST_ADDR, sizeof(uint16_t) * token_out_buffer.length, &token_out_buffer);
-    }
-  }
+  // [2005.11.09] Removed all gradient functions.
 
   // ============================================================
-  // These don't actually use ID and so are not specific to this token-interface:
-  
-  //  command void process_return(TM_ReturnPayload* msg) {   }
-
-  // This essentially ignores "id" because it sends along the 'via' channel.
-  // But id and via need to be the same so that we use the right parent pointer!!
-  command result_t TMComm.return_home[uint8_t id](uint8_t length, TOS_MsgPtr msg) {
-    TM_ReturnPayload* ret;
-    uint16_t parent;
-
-    dbg(DBG_USR1, "TM BasicTMCommM: Starting return home.\n");
-
-    if (send_pending) {
-      dbg(DBG_USR1, "TM BasicTMCommM: return_home failed because send in progress.\n");
-      return FAIL;
-    } else {
-      send_pending = TRUE;
-
-      // OPTIMIZE THIS:
-      memcpy(&token_out_buffer, msg, sizeof(TOS_Msg));
-
-      ret = (TM_ReturnPayload*)token_out_buffer.data;
-      dbg(DBG_USR1, "TM: RETURNING HOME: to%d,  via:%d,  lng:%d,  sd:%d,  aggr:%d  \n", 
-	  ret->to_tok,
-	  ret->via_tok, 
-	  length, 
-	  ret->seed_val, 
-	  ret->aggr_tok);
-
-      token_out_buffer.type = AM_RETURNMSG;
-      token_out_buffer.length = length;
-
-      if ( !(cached_presence[id-1] || is_processing) ) {
-	dbg(DBG_USR1, "TM: ERROR: returning home... but no parent pointer!!\n");
-	return FAIL;
-      } else {
-	
-	if (cached_presence[id-1])
-	  parent = ((TM_Payload*)(& cached_tokens[id-1].data))->parent;
-	else 
-	  parent = ((TM_Payload*)(& currently_processing.data))->parent;
-
-	// Send to the parent pointer:
-	// IS this send on the right channel though.
-	return call SendMsg.send[AM_RETURNMSG](parent, length, &token_out_buffer);
-      }
-    }
-  }
-
-  /*typedef struct TM_ReturnPayload
-{
-  uint16_t to_tok; // Where the return is going.
-  uint16_t via_tok; // The spanning tree it's using
-
-  uint16_t aggr_tok; // The aggregation function, 0 for no aggregation.
-  uint16_t seed_val; // The seed value, for aggregation
-
-  uint16_t timestamp; // timestamp that the return fired
-
-  uint16_t generation; // The generation of this emission.
-
-  //  int8_t length; // length of return_val
-
-  // Thus the actual payload is the remaining space after we've
-  // factored out our overhead for the bookkeeping fields you see above.
-  int8_t return_val[RETURNTOK_DATA_LENGTH];
-
-  // Return messages will be a little different.
-
-} TM_ReturnPayload;
-*/
+  // These don't actually use ID and so are not specific to this token-interface:  
 
 
   // ======================================================================
