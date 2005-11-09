@@ -1,4 +1,4 @@
 #!/bin/sh
 
-./build/pc/main.exe -b=1 -r=simple 30
+./build/pc/main.exe -b=1 -r=simple 10
 #./build/pc/main.exe -b=1 -r=disc10 30

@@ -64,7 +64,6 @@ data Expr = -- Stndard forms:
 
           | Eled  LedAction LedColor
 	  | Edbg String [Expr]
-	  | Edist Token
 
 	  | Eprimapp Prim [Expr]
           | Esense
@@ -72,21 +71,12 @@ data Expr = -- Stndard forms:
             -- Special forms:
 	  | Esocreturn Expr
 	  | Esocfinished	  
-	  | Ereturn {val :: Expr,
-		     to  :: Token,
-		     via :: Token,
-		     seed :: Maybe Expr,
-		     aggr :: Maybe Token}
-	  | Erelay (Maybe Token)
-	  | Eemit (Maybe Time) Token [Expr]
-	  | Ecall (Maybe Time) Token [Expr]
-	  | Eactivate Token [Expr]
---	  | Eflood Token [Expr]
-	  | Eflood Token 
-	  | Eelectleader Token
 
+	  | Ecall CallType Token [Expr]
   deriving (Eq, Show, Read)
 
+data CallType = Local | Bcast | Timed Time | Fast
+  deriving (Eq, Show, Read)
 
 --data UNOP = 
 data BINOP = TMPplus | TMPmult
@@ -128,8 +118,6 @@ expr_collect_ids = f
        (Esense)       -> []       
        (Esocfinished) -> []
        (Eled _ _)     -> []
-       (Erelay mbtok) -> []
-       (Edist  tok)   -> []
        (Evar (Id s))  -> [s]
        (Elambda ids e) -> map (\ (Id s) -> s) ids ++ f e
        (Elet binds e)  -> (concat $ map (\ ((Id s),rhs) -> s : f rhs) binds) ++ f e
@@ -138,14 +126,8 @@ expr_collect_ids = f
        (Eprimapp _ args) -> concat $ map f args
        (Edbg _ args)     -> concat $ map f args
        (Esocreturn e) -> f e
-       (Ereturn val _ _ (Just seed) _) -> f val ++ f seed
-       (Ereturn val _ _  Nothing    _) -> f val 
        (Eassign (Id v) e) -> v : f e
-       (Eemit mbtime (Token s) args) -> s : (concat $ map f args)
-       (Ecall mbtime (Token s) args) -> s : (concat $ map f args)
-       (Eactivate    (Token s) args) -> s : (concat $ map f args)
-       (Eelectleader (Token s)) -> [s]
-       (Eflood (Token s))       -> [s]
+       (Ecall _ (Token s) args) -> s : (concat $ map f args)
 
 
 --------------------------------------------------------------------------------
@@ -241,43 +223,45 @@ doit = do s <- readFile "test.tm";
 -}
 
 
-b = (Pgm {
-  consts = [],
-  socconsts=[],
-  socpgm=[(Ecall Nothing (Token "spread-global") [])],
-  nodetoks=[((Token "f_token_result_1"), [], 
-	     (Eseq [(Eflood (Token "constok_4")), 
-		    (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])]),
-		    (Econst 25966)])),
-	    ((Token "constok_4"), [], 
-	     (Eif (Eprimapp Pless [(Eprimapp Plocdiff [(Eprimapp Ploc []), (Econst 30)]), 
-				   (Econst 10)]) 
-	      (Eelectleader (Token "m_token_result_1")) 
-	      (Econst 0))),
-	    ((Token "m_token_result_1"), [], 
-	     (Eseq [(Esocreturn (Econst 49)),
-		    (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]),
-		    (Econst 25966)])),
-	    ((Token "leaf-pulsar_result_1"), [], 
-	     (Eseq [(Ecall Nothing (Token "f_token_result_1") []),
-		    (Ecall (Just 1000) (Token "leaf-pulsar_result_1") [])])),
-	    ((Token "spread-global"), [], 
-	     (Eseq [(Eemit Nothing (Token "global-tree") []),
-		    (Ecall (Just 1000) (Token "spread-global") [])])),
-	    ((Token "global-tree"), [], (Erelay Nothing))],
- startup=[(Token "leaf-pulsar_result_1")]
-})
+-- [2005.11.09] Commenting because I've now disabled the gradients:
+
+-- b = (Pgm {
+--   consts = [],
+--   socconsts=[],
+--   socpgm=[(Ecall Nothing (Token "spread-global") [])],
+--   nodetoks=[((Token "f_token_result_1"), [], 
+-- 	     (Eseq [(Eflood (Token "constok_4")), 
+-- 		    (Eprimapp Pdrawmark [(Econst 30), (Eprimapp Prgb [(Econst 0), (Econst 100), (Econst 100)])]),
+-- 		    (Econst 25966)])),
+-- 	    ((Token "constok_4"), [], 
+-- 	     (Eif (Eprimapp Pless [(Eprimapp Plocdiff [(Eprimapp Ploc []), (Econst 30)]), 
+-- 				   (Econst 10)]) 
+-- 	      (Eelectleader (Token "m_token_result_1")) 
+-- 	      (Econst 0))),
+-- 	    ((Token "m_token_result_1"), [], 
+-- 	     (Eseq [(Esocreturn (Econst 49)),
+-- 		    (Eprimapp Plightup [(Econst 0), (Econst 255), (Econst 255)]),
+-- 		    (Econst 25966)])),
+-- 	    ((Token "leaf-pulsar_result_1"), [], 
+-- 	     (Eseq [(Ecall Nothing (Token "f_token_result_1") []),
+-- 		    (Ecall (Just 1000) (Token "leaf-pulsar_result_1") [])])),
+-- 	    ((Token "spread-global"), [], 
+-- 	     (Eseq [(Eemit Nothing (Token "global-tree") []),
+-- 		    (Ecall (Just 1000) (Token "spread-global") [])])),
+-- 	    ((Token "global-tree"), [], (Erelay Nothing))],
+--  startup=[(Token "leaf-pulsar_result_1")]
+-- })
 
 
-t = (Pgm {
-	  consts = [],
-	  socconsts=[],
-	  socpgm=[(Edbg "SOC Running %d\n" [(Eprimapp Pmyid [])]), (Eemit Nothing (Token "tok1") [])],
-	  nodetoks=[((Token "tok1_return"), [(Id "v")], (Edbg "Got return! at %d, value %d" [(Eprimapp Pmyid []), (Evar (Id "v"))])), 
-		    ((Token "tok1"), [], (Eseq [(Erelay Nothing), 
-						(Ereturn (Edist (Token "tok1")) (Token "tok1_return") (Token "tok1") Nothing Nothing)
-					       ]))],
-	  startup=[]
-	 })
+-- t = (Pgm {
+-- 	  consts = [],
+-- 	  socconsts=[],
+-- 	  socpgm=[(Edbg "SOC Running %d\n" [(Eprimapp Pmyid [])]), (Eemit Nothing (Token "tok1") [])],
+-- 	  nodetoks=[((Token "tok1_return"), [(Id "v")], (Edbg "Got return! at %d, value %d" [(Eprimapp Pmyid []), (Evar (Id "v"))])), 
+-- 		    ((Token "tok1"), [], (Eseq [(Erelay Nothing), 
+-- 						(Ereturn (Edist (Token "tok1")) (Token "tok1_return") (Token "tok1") Nothing Nothing)
+-- 					       ]))],
+-- 	  startup=[]
+-- 	 })
 
-t2 = Pgm {consts = [], socconsts = [], socpgm = [Edbg "SOC Running %d\n" [Eprimapp Pmyid []],Eemit Nothing (Token "tok1") []], nodetoks = [(Token "tok1_return",[Id "v"],Edbg "Got return! at %d, value %d" [Eprimapp Pmyid [],Evar (Id "v")]),(Token "tok1",[],Eseq [Erelay Nothing,Ereturn {val = Edist (Token "tok1"), to = Token "tok1_return", via = Token "tok1", seed = Nothing, aggr = Nothing}])], startup = []}
+-- t2 = Pgm {consts = [], socconsts = [], socpgm = [Edbg "SOC Running %d\n" [Eprimapp Pmyid []],Eemit Nothing (Token "tok1") []], nodetoks = [(Token "tok1_return",[Id "v"],Edbg "Got return! at %d, value %d" [Eprimapp Pmyid [],Evar (Id "v")]),(Token "tok1",[],Eseq [Erelay Nothing,Ereturn {val = Edist (Token "tok1"), to = Token "tok1_return", via = Token "tok1", seed = Nothing, aggr = Nothing}])], startup = []}

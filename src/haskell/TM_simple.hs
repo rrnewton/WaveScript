@@ -1,3 +1,6 @@
+-- This file represents the datatype of *simplified* token machines.
+-- Programs in this grammar are ready for code emission.
+
 module TM_simple where
 
 import TM (Const, Time, Id(Id), Token(Token), Prim, LedColor, LedAction)
@@ -9,7 +12,7 @@ type TokHandler = (Token, [Id], Block)
 --data Statement = PrimStat
 --  deriving (Eq, Show, Read)
 
-a = (Pgm {
+{-a = (Pgm {
   consts = [((TM.Id "result_1"), (Bconst 3))],
   socconsts=[],
   socpgm= Block [] [],
@@ -21,7 +24,7 @@ a = (Pgm {
       Block [] [Srelay Nothing])],  
   startup=[]
     })
-
+-}
 
 data Pgm = Pgm { consts    :: [ConstBind],
 		 socconsts :: [ConstBind],
@@ -51,18 +54,9 @@ data Stmt = Svoid
           | Sif Basic [Stmt] [Stmt]
 	  | Sled LedAction LedColor
 	  | Sdbg String [Basic]
-	  | Sdist Id Token
           | Ssense (Maybe Id)
 	  | Sprimapp (Maybe Id) Prim [Basic]               -- returns value!
 	  | Scall    (Maybe Id) (Maybe Time) Token [Basic] -- returns value!
-	  | Semit (Maybe Time) Token [Basic] -- no value
-	  | Sactivate Token [Basic]          -- no value
-	  | Srelay (Maybe Token)             -- no value
-	  | Sgradreturn {val :: Basic,           -- no value
-			 to  :: Token,
-			 via :: Token,
-			 seed :: Maybe Basic,
-			 aggr :: Maybe Token}
 --	  | Ssocreturn Basic                 -- no value
 --	  | Ssocfinished                     -- no value
 	  | Sreturn Basic -- This becomes the return value for a token handler.

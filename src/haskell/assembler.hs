@@ -11,7 +11,6 @@ This will read
 
 import TM -- Token Machine language definition
 import qualified TM_simple as TMS
-import Expand
 import Flatten
 import Utils
 
@@ -109,9 +108,6 @@ process_stmt indent tokargs e =
 	  extra_args (map process_basic args)
 	  ++");\n"]
 
-    TMS.Sdist (Id id) t -> 
-	[indent ++ id ++ " = call TMComm_"++ tokname t ++".get_dist();\n"]
-
     TMS.Sif b s1 s2 ->
 	[ indent ++ "if ( " ++ process_basic b ++ " ) {\n" ] ++
 	(concat $ map (process_stmt (indent++"  ") tokargs) s1) ++
@@ -124,33 +120,6 @@ process_stmt indent tokargs e =
     TMS.Ssense (Just (Id id)) -> [ indent ++ id ++ " = call ADC.getData();\n" ]
     TMS.Ssense Nothing        -> error "shouldn't have Ssense with no storage location"
 
-    TMS.Sgradreturn e to via seed aggr -> 
-	let seed' = case seed of 
-		    Nothing -> "0"
-		    Just s  -> process_basic s 
-	    -- This should not cause a conflict because no token is allowed to have the number 0:
-	    aggr' = case aggr of 
-		    Nothing -> "0"
-		    Just a  -> tok_id a
-        in
-	[ 
-	 indent ++ "the_packet.type = "++ tok_id via ++";\n", 
-	 
-	 indent ++ "the_retpayload->to_tok = "++ tok_id to ++";\n", 
-	 indent ++ "the_retpayload->via_tok = "++ tok_id via ++";\n", 
-	 indent ++ "the_retpayload->seed_val = "++ seed' ++";\n", 
-	 indent ++ "the_retpayload->aggr_tok = "++ aggr' ++";\n", 
-	 indent ++ "the_retpayload_args[0] = "++ process_basic e ++";\n",
-         indent ++ "call TMComm_"++ tokname via ++".return_home( "++ 
-	         "BASE_TM_RETPAYLOAD_SIZE + sizeof(uint16_t) * 1, " -- Only one return value, 16 bits
-	         ++ "&the_packet);\n " ]
---		 seed' ++", "++
---		 aggr' ++");\n" ]
-
-    TMS.Srelay (Just t) -> 
-        [indent ++ "call TMComm_"++ tokname t ++".relay();\n"]
-    TMS.Srelay Nothing -> 
-	[indent ++"// FAILED relay nothing\n"]
 
     -- FIXME
     TMS.Scall dest time (Token t) args -> 
@@ -176,34 +145,6 @@ process_stmt indent tokargs e =
 			    map process_basic args)
 			   ++ ");\n" 
 	]
-
-    TMS.Sactivate t args -> 
-	(indent++"// Cannot time activate..\n")
-	: (process_stmt indent tokargs (TMS.Scall Nothing Nothing t args))
-
-
-    TMS.Semit (Just time) t exps -> 
-	error "assembler: process_expr.  Can't handle optional time argument to emit."
-
-    TMS.Semit Nothing t exps -> 
-	-- UNLIKE Sendmsg.send my emit function is going to have a message copying semantics.
-        -- The buffer must get copied somewhere, so it might as well be there.
-	[
-
-         indent ++"the_packet.type = " ++ tok_id t ++ ";\n",
-	 {-indent ++"the_payload->origin = TOS_LOCAL_ADDRESS;\n",
-	 indent ++"the_payload->parent = TOS_LOCAL_ADDRESS;\n",
-	 indent ++"the_payload->counter = 1;\n",
-	 indent ++"the_payload->generation = 0; // TODO: generations don't increment yet.\n",
-	 indent ++"// the_payload->timestamp = ...; // Fill this in! \n",
-	 -}
-
-	 indent ++"/* Should fill in arg data here... */\n",
-	 
-	 indent ++"call TMComm_"++ tokname t ++
-	 ".emit(BASE_TM_PAYLOAD_SIZE + sizeof(uint8_t) * " 
-	 ++ show (length exps) ++
-	 ", &the_packet);\n"]
 
 {-
     Ecall (Just time) t exps -> 
@@ -338,30 +279,11 @@ process_handlers hnds =
     "  }\n"++
     "\n"++
     "\n  // This is the main token-processing function:\n"++
-    "  // Like receiveMsg, t must return a TOS_MsgPtr to replace the one it consumes.\n"++
+    "  // Like receiveMsg, it must return a TOS_MsgPtr to replace the one it consumes.\n"++
     "  command TOS_MsgPtr TMModule.process_token(TOS_MsgPtr msg) { \n" ++
     "    TM_Payload* payload = (TM_Payload*)msg->data;\n"++
-    "    TM_ReturnPayload* retpayload = (TM_ReturnPayload*)msg->data;\n"++
     "    uint16_t* args = (uint16_t*)(payload->args);\n"++
-    "    uint8_t dist;\n"++
-    "      if ( msg->type == AM_RETURNMSG ) {\n"++
-    "        // Here we've got a return message...\n"++
-    "        dbg(DBG_USR1, \"TM: return: got a return message to process.\\n\");\n"++
-    "        dist = call any_get_dist(retpayload->via_tok);\n"++
-    "        if ( 0 == dist ) {\n"++
-    "          // We've got back to the source, deliver it to its destination.\n"++
-      "        dbg(DBG_USR1, \"TM: return: all the way back to source.\\n\");\n"++
-    "          call apply_token(retpayload->to_tok, args);\n"++
-    "        } else {\n"++
-    "          // Otherwise we keep on sending it... NEED TO ADD AGGREGATION.\n"++
-    "          // Here we have to use the via_tok to get the right parent pointer..\n"++
-    "          dbg(DBG_USR1, \"TM: return: sending further up, dist %d.\\n\", dist);\n"++
-    "          call any_return_home(retpayload->via_tok, msg->length, msg);\n"++
-    "        }\n"++
-    "      } else { \n"++ 
-    "        // Otherwise we just have a normal message and we apply the token handler.\n"++
-    "        call apply_token(msg->type, args);\n"++
-    "      }\n"++
+    "    call apply_token(msg->type, args);\n"++
     "    return msg;\n" ++ 
     "  }\n\n"
 
@@ -380,9 +302,6 @@ build_module_header toks =
        "  provides command void start_socpgm();\n"++
        "  // Helper functions only: \n"++
        "  provides command void apply_token(uint16_t tok, uint16_t* args);\n"++    
-       "  // These are just wasting memory, need to find a better way:\n"++
-       "  provides command uint16_t any_get_dist(uint16_t tok);\n"++
-       "  provides command uint16_t any_return_home(uint16_t tok, uint8_t length, TOS_MsgPtr msg);\n"++
 --       "  uses interface Timer;\n" ++ 
        "  uses interface Leds;\n" ++ 
        concat
@@ -483,27 +402,12 @@ build_module (TMS.Pgm consts socconsts socpgm nodetoks startup) =
     build_implementation_footer nodetoks startup ++
     "}\n"
 
+-- [2005.11.09] Don't have any of these now that I am removing all gradient code.
 handwritten_helpers toks = 
     let mkcase s t = "      case "++tok_id t++": \n"++
 		     "        return call TMComm_"++ tokname t ++"."++ s ++";\n"++ 
 		     "      break;\n"
-    in ("\n"++
-	"  command uint16_t any_get_dist(uint16_t tok) {\n"++
-	"    switch (tok) {\n"++ 
-	(foldl (++) "" (map (mkcase "get_dist()") toks)) ++
-	"    default:\n"++
-	"      dbg(DBG_USR1, \"TM TestMachine: any_get_dist, UNMATCHED TOK TYPE: %d\\n\", tok);\n"++
-	"    }\n"++
-	"  }\n\n"
-	++
-	"  command uint16_t any_return_home(uint16_t tok, uint8_t length, TOS_MsgPtr msg) {\n"++
-	"    switch (tok) {\n"++ 
-	(foldl (++) "" (map (mkcase "return_home(length, msg)") toks)) ++
- 	"    default:\n"++
-	"      dbg(DBG_USR1, \"TM TestMachine: any_return_home, UNMATCHED TOK TYPE: %d\\n\", tok);\n"++
-	"    }\n"++
-	"  }\n\n")
-
+    in ("\n")
 
 
 -------------------------------------------------------------------------------
@@ -581,11 +485,13 @@ main = do args <- System.getArgs
 			    return (read str :: TMPgm))
 		  (\e -> if IO.isDoesNotExistError e 
      		         then (do putStr "File not found.  Compiling default tokmac.\n"
-			          return (b :: TMPgm))
+			          --return (b :: TMPgm)
+			          error "No file."
+			      )
 		         else ioError e)
 
 	  putStr "Expanding token machine... \n" 
-	  let prog2 = expand_tm prog
+	  let prog2 = prog --expand_tm prog
 	  putStr "Flattening token machine... \n" 
 	  -- This uses the state monad to keep track of 
 	  --let prog3 = flatten_tm prog2
@@ -604,21 +510,21 @@ main = do args <- System.getArgs
 	  writeFile headerfile header
 	  putStr "\n.. dumped.\n\n"
 
-test = (Pgm { consts = [],  
-	      socconsts=[],  
-	      socpgm=[(Eemit Nothing (Token "tok1") [])],  
-	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
-			((Token "tok2"), [], (Eled Toggle Red))],
-	      startup=[]})
+-- test = (Pgm { consts = [],  
+-- 	      socconsts=[],  
+-- 	      socpgm=[(Eemit Nothing (Token "tok1") [])],  
+-- 	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
+-- 			((Token "tok2"), [], (Eled Toggle Red))],
+-- 	      startup=[]})
 
 
-test2 = (Pgm {
-	      consts = [],
-	      socconsts=[],
-	      socpgm=[(Eemit Nothing (Token "tok1") [])],
-	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
-			((Token "tok2"), [], (Eled Toggle Red))],
-	      startup=[]
-	     })
+-- test2 = (Pgm {
+-- 	      consts = [],
+-- 	      socconsts=[],
+-- 	      socpgm=[(Eemit Nothing (Token "tok1") [])],
+-- 	      nodetoks=[((Token "tok1"), [], (Eseq [(Eled Toggle Red), (Erelay Nothing), (Ecall (Just 500) (Token "tok2") [])])), 
+-- 			((Token "tok2"), [], (Eled Toggle Red))],
+-- 	      startup=[]
+-- 	     })
 
 
