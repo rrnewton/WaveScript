@@ -1507,7 +1507,8 @@
     ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
     ;; [2005.11.03] FIXME WEIRD: when I first load the compiler this returns nothing.  Then on subsequent runs it does!
     ;; [2005.11.07] Got two winners again.  Got to save the seed and figure out what's going on.
-    ;; [2005.11.09] Screws up only occassionally.
+    ;; [2005.11.09] Screws up only occassionally, can run 20 times in a row with no problems.  Always two leaders.
+    ;; [2005.11.09] OH DUH.  That was because of random ids that could be the same!!  Makes sense.
    ["Now test elect-leader macro."
 ;     retry ;; TEMP: FIXME: SHOULDNT NEED RETRY
      , (tm-to-socvals
@@ -1527,7 +1528,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[simalpha-num-nodes 30]
-	'[simalpha-consec-ids #f]
+	'[simalpha-consec-ids #t]
 	'[simalpha-graphics-on #t]
 	)
        ;; This requires that you get actual minimum:
