@@ -91,9 +91,14 @@
 	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
 	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
+
 	  [(let ([,lhs ,[loop -> rhs]]) ,[loop -> bod])
 	   (fuse (list rhs bod) 
 		 (lambda (x y) `(let ([,lhs ,x]) ,y)))]
+	  ;; [2005.11.09] SOME passes allow this as a shorthand, but not all.
+	  [(let* ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
+	   (fuse (cons bod rhs*)
+		 (lambda (x . y*) `(let ([,lhs* ,y*] ...) ,x)))]
 	  [(let-stored ([,lhs* ,[loop -> rhs*]] ...) ,[loop -> bod])
 	   (fuse (append (list bod) rhs*)
 		 (lambda (bod . rhs*)

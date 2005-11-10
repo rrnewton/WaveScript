@@ -443,6 +443,13 @@
 				 (warning 'ext-set! "var ~s: token not present: ~s" ',x `(,tokname . subtok))
 				 )))]
 
+		  [(ext-ref ,foo ...)
+		   (error 'compile-simulate-alpha:process-statement
+			  "Ext-refs are only allowed for known tokens at the moment: ~s" `(ext-ref ,foo ...))]
+		  [(ext-set! ,foo ...)
+		   (error 'compile-simulate-alpha:process-statement
+			  "Ext-set!s are only allowed for known tokens at the moment: ~s" `(ext-set! ,foo ...))]		  
+
 		  ;; Local tokstore-reference:
 		  [,x (guard (and (symbol? x) (memq x allstored)))
                     (mvlet ([(which-tok pos) (find-which-stored x)])
@@ -679,8 +686,9 @@
 		       `(,prim ,rand* ...)))]
 
 		;; We're being REAL lenient in what we allow in token machines being simulated:
-		[(let ((,lhs ,[rhs]) ...) ,[bods] ...)
-		 `(let ((,lhs ,rhs)  ...) ,bods ...)]
+		[(,lettype ((,lhs ,[rhs]) ...) ,[bods] ...)
+		 (guard (memq lettype '(let let*)))
+		 `(,lettype ((,lhs ,rhs)  ...) ,bods ...)]
 		;; We're letting them get away with other primitives because
 		;; we're being lenient, as mentioned above.
 		[(app ,[rator] ,[rand*] ...)
