@@ -78,6 +78,18 @@
        '[simalpha-zeropad-args 'warning])
        ((1 2 3 0 0))]
 
+    ["Do a basic test of argument evaluation order."
+     , (tm-to-list
+	'(tokens 
+	   (SOC-start () 
+		      (printf "~s ~s \n"
+			      (begin (printf "~s " 
+					     (begin (printf "3 ")
+						    2))
+				     1)
+			      (begin (printf "b ")
+				     'a)))))
+       (3 2 b 1 a)]
 
     ["Respect call order."
      , (tm-to-list
@@ -712,8 +724,9 @@
 		(printf "~a " (+ a b)))))
 	error]
 
+     ;; [2005.11.09] This jus mutated top-level binding "id"!  Weird.
      ["Now keep stored vars on all 1-hop neighbors, make sure they don't change."  
-      ,(tm-to-list
+      , (tm-to-list
 	'(tokens 
 	  (SOC-start () 			      
 		     (bcast tok1)
@@ -1494,6 +1507,7 @@
     ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
     ;; [2005.11.03] FIXME WEIRD: when I first load the compiler this returns nothing.  Then on subsequent runs it does!
     ;; [2005.11.07] Got two winners again.  Got to save the seed and figure out what's going on.
+    ;; [2005.11.09] Screws up only occassionally.
    ["Now test elect-leader macro."
 ;     retry ;; TEMP: FIXME: SHOULDNT NEED RETRY
      , (tm-to-socvals

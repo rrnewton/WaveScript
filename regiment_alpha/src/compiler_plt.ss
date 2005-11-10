@@ -62,6 +62,8 @@
 ;;(all-except "plt/pass29_verify-token-machine.ss" these-tests test-this)
 (all-except "plt/pass30_haskellize-tokmac.ss" these-tests test-this)
 
+(all-except "plt/pass31_flatten-tokmac.ss" these-tests test-this)
+
 
 ;          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
 ;          "plt/pass01_eta-primitives.ss"

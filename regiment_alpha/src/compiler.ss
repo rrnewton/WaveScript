@@ -55,9 +55,10 @@
 
     ;    inline-tokmac ???
 
-    haskellize-tokmac 
+    ;haskellize-tokmac 
+    
+    flatten-tokmac
     ))
-
 
 ;; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.

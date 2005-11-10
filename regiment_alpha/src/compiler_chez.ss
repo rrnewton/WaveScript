@@ -175,6 +175,8 @@
 ;;(include "generic/pass29_verify-token-machine.ss")
 (include "generic/pass30_haskellize-tokmac.ss")
 
+(include "generic/pass31_flatten-tokmac.ss")
+
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
 
