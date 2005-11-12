@@ -109,21 +109,7 @@
   (let ()
 
     ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
-
-    (define (handler->formals tb)
-      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
-	     args))
-    (define (handler->body tb)
-      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
-	     body))
-    (define (handler->subtokid tb)
-      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
-	     id))
-    (define (handler->stored tb)
-      (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
-	     stored))
   
-
     ;; [2005.03.27] Adding a somewhat unsafe hack (assumes all variables
     ;; renamed) that makes this do the right thing when it's given a begin
     ;; expression as opposed to a list.

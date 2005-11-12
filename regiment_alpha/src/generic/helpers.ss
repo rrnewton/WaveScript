@@ -376,6 +376,26 @@
 		 (values t i a stored bindings body))]
 	 [,other (error 'destructure-tokbind "bad tokbind: ~a" other)]))
 
+(define (handler->tokname tb)
+  ;; More efficient for now:
+  (car tb)
+  ;(mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+  ;tok))
+  )
+
+(define (handler->formals tb)
+  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+    args))
+(define (handler->body tb)
+  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+    body))
+(define (handler->subtokid tb)
+  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+    id))
+(define (handler->stored tb)
+  (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
+    stored))
+
 
 ;;============================================================
 
@@ -2612,6 +2632,29 @@
 #;
 (let* ([ind (map (\\ x (* (- x 150) 0.1)) (iota 300))] [ys (map sin ind)]) (gnuplot (map list ind ys)))
 
+(define histogram
+  (case-lambda 
+    [(ls) (error 'histogram "auto-bin sizes not implemented.")]
+    [(ls binsize) (histogram ls binsize (apply min ls))]
+    [(ls binsize start)
+     (let* ((max (apply max ls))
+	   (size (inexact->exact (ceiling (/ (- max start) binsize))))
+	   (bins (make-vector (add1 size) 0)))
+       (let loop ((ls ls))
+	 (if (null? ls)
+	     ;; Fix fencepost condition:
+	     (if (zero? (vector-ref bins size))
+		 (rdc (vector->list bins))
+		 (vector->list bins))
+	     (let ((ind (inexact->exact (floor (/ (- (car ls) start) binsize)))))
+	       (vector-set! bins ind (add1 (vector-ref bins ind)))
+	       (loop (cdr ls))
+	       ))))
+     ]))
+
+;(histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2)
+;; 1-3 3-5 5-7
+
 
 ;; ======================================================================
 
@@ -2845,6 +2888,9 @@
        (apply-ordered list (set! x (cons 1 x)) (set! x (cons 2 x)) (set! x (cons 3 x))) 
        (reverse x))
      (1 2 3)]
+
+    [(histogram '(1 1 1 2 3 4 5 5 5 5 6 6) 2)   (4 2 6)]
+    [(histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2) (4 2 6 1)]
 
     ))
 

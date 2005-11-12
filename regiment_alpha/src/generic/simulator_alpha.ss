@@ -967,6 +967,10 @@
 
 ;; ======================================================================
 
+;; [2005.11.11] Modifying this to have an option of not going to disk
+;; for the simulation programs.  This should increase performance when
+;; I'm just running unit tests and not debugging.
+
 ;; This requires pass21_cleanup-token-machine.ss as well as helpers.ss
 ;; This handles writing the generated code to a file and loading it back.
 ;; FLAGS:
@@ -975,6 +979,7 @@
 ;; 'srand int    -- Seed the random number generator with int.
 (define run-simulator-alpha
   (lambda args
+    (define THEPROG 'uninitialized)
     (define run-alpha-loop
 	    (lambda args
 	      (match args
@@ -984,45 +989,56 @@
 		      (match tm
 			;; Already compiled
 			[(define (node-code this) ,e)
-			 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
-			   (parameterize ([print-level #f]
-					  [pretty-maximum-lines #f]
-					  [pretty-line-length 150]
-					  [print-graph #t])
-   		              (write tm out);(pretty-print tm out)
-			      (newline out)
-			      (close-output-port out)))
+			 (if (simalpha-write-sims-to-disk)
+			     (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
+			       (parameterize ([print-level #f]
+					      [pretty-maximum-lines #f]
+					      [pretty-line-length 150]
+					      [print-graph #t])
+				 (write tm out);(pretty-print tm out)
+				 (newline out)
+				 (close-output-port out)))
+			     (set! THEPROG tm))
 			 (read-params rest)]
+
 			;; Otherwise compile it
 			[,tm			     
 			 (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
-			     (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
-;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
-			    (parameterize ([print-level #f]
-					   [pretty-maximum-lines #f]
-					   [pretty-line-length 150]
-					   [print-graph #f])
-			    (pretty-print comped out)
-			    (newline out)
-			    (newline out)
-			    (display ";; Above is compiled program for this token machine: " out)
-			    (newline out)
-			    (display "#;\n" out)
-			    (pretty-print tm out)
-			    (newline out))
-			    (close-output-port out))
-			  (read-params rest)
-			  ))])]
-		     [(,rest ...) (read-params rest)]
+			     (if (simalpha-write-sims-to-disk)
+				 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
+					;			    (printf "Ouputting token machine to file: _genned_node_code.ss~n")
+				   (parameterize ([print-level #f]
+						  [pretty-maximum-lines #f]
+						  [pretty-line-length 150]
+						  [print-graph #f])
+				     (pretty-print comped out)
+				     (newline out)
+				     (newline out)
+				     (display ";; Above is compiled program for this token machine: " out)
+				     (newline out)
+				     (display "#;\n" out)
+				     (pretty-print tm out)
+				     (newline out))
+				   (close-output-port out))
+				 (set! THEPROG comped))
+			     (read-params rest)
+			     ))])]
+		     [(,rest ...) 
+		      ;; [2005.11.11]:
+		      (error 'run-simulator-alpha "umm, shouldn't reach here I don't think...")
+		      (read-params rest)]
 		     )))
     (define read-params
 	     (lambda (params)	       
 	       (match params
 ;		      [,x (guard (disp "read params" params) #f) 3]
+
 		      ;; When we get to the end of the params we start it up:
 		      [() 
-		       (load "_genned_node_code.ss")
+		       (if (simalpha-write-sims-to-disk)
+			   (load "_genned_node_code.ss")
+			   (eval THEPROG))
                        ;; We have to do this because of the module system:
                        (let ((node-code (eval 'node-code)))
                          ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
