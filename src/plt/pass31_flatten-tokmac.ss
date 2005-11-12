@@ -17,8 +17,9 @@
            )
   )
 
-(require pass31_flatten-tokmac)
+;(require pass31_flatten-tokmac)
 
+#;
 (flatten-tokmac
  '(rename-stored-lang
   '(program

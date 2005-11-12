@@ -1,6 +1,10 @@
 ;#! /usr/bin/scheme --script
 ;#!/usr/bin/chez --script
 
+;; Regiment.ss
+;; This file is a script that drives the regiment compiler/simulator.
+
+
 ;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
 
 (define start-dir (current-directory))
@@ -104,9 +108,6 @@
 	   ;(test-everything)
 	   ]
 	  [(c compile)
-
-	   ;; FIXME: HACK:
-	   ;(let ((params 
 	    (if (null? filenames)
 		(begin
 		  (printf "No input file.  Type top-level Regiment expression.~n")
@@ -126,27 +127,26 @@
 				(let ([out (string-append (remove-file-extension fn) extension)])
 				  (if (member out filenames)
 				      (set! out (string-append "out." extension)))
-				  (printf "~n  Writing token machine to: ~s ~n" out) 
-				  
-				  (if makesimcode
-				      (match (file->slist fn)
-					[((parameters ,p ...) ,prog)
-					 (delete-file out)
-					 (let ((comped 
-						(apply compile-simulate-alpha
-						     (apply run-compiler prog opts)
-						     p)))
-					   (with-output-to-file out
-					     (lambda ()
-					       (parameterize ([print-graph #t]
-							      [print-level #f]
-							      [print-length #f])
-						 (pretty-print
-						  comped)))))]
-					[(,prog)
-					      (apply run-compiler prog out opts)])
-				      (apply run-compiler (car (file->slist fn)) out opts))))))
-			  filenames))]
+				  (printf "~n  Writing token machine to: ~s ~n" out) 				  
+				  (mvlet ([(prog params) (read-regiment-source-file fn)])
+				    (if makesimcode
+					(begin
+					  (delete-file out)
+					  (let ((comped 
+						 (apply compile-simulate-alpha
+							(apply run-compiler prog opts)
+							params)))
+					    (with-output-to-file out
+					      (lambda ()
+						(parameterize ([print-graph #t]
+							       [print-level #f]
+							       [print-length #f])
+						  (pretty-print comped))))))
+					;; Should include the parameters here too?
+					;; Should they just affect simulation or compilation also?
+					(apply run-compiler prog out opts)))))))
+		  filenames))]
+
 	  [(s simulate)
 	   (let ((fn (if (null? filenames)
 			 "out.sim"

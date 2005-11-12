@@ -66,11 +66,12 @@
    ;; Token names:
    token-name? new-token-name token-names get-names get-formation-name get-membership-name
    token->name token->subtok
-   destructure-tokbind
+   destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
+
    
    gaussian
 
-   diff
+   mapi for-eachi diff
    set? subset? set-equal? list->set set-cons union intersection difference
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc last 

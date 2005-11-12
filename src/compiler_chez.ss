@@ -106,6 +106,7 @@
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 
 
+(include "generic/source_loader.ss")
 (include "generic/grammar_checker.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
@@ -176,6 +177,7 @@
 (include "generic/pass30_haskellize-tokmac.ss")
 
 (include "generic/pass31_flatten-tokmac.ss")
+(include "generic/pass32_emit-nesc.ss")
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

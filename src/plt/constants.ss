@@ -51,7 +51,8 @@
 	 simalpha-stream-result 
 	 simalpha-sense-function
 	 simalpha-graphics-on
-         
+         simalpha-write-sims-to-disk
+
 	 sense-spatial-sine-wave 
 	 
 	 default-unit-tester-retries
