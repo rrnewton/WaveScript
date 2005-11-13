@@ -253,7 +253,7 @@
 (define-regiment-parameter simalpha-graphics-on #t)
 
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
-(define-regiment-parameter simalpha-write-sims-to-disk #f)
+(define-regiment-parameter simalpha-write-sims-to-disk #t)
 
 ;; Defining this one here because it's the default, the rest of these are in alpha_lib.ss
 ;; This one changes amplitude across space:
