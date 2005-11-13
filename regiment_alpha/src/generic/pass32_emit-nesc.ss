@@ -3,17 +3,6 @@
 ;; Generate NesC code.  Porting this from the haskell code.
 
 
-
-
-
-
-
-
-
-
-
-
-
 (define-syntax ++
   (lambda (x)
     (syntax-case x ()
@@ -77,15 +66,14 @@
 
 ;; Returns the text corresponding to an expression evaluating same
 ;; value as the givoen Basic expression.
-(define Basic 
-  (lambda (x)
+(define (Basic x)
     (match x
       [,v (guard (symbol? v)) (symbol->string v)]
       [(quote ,c) (guard (constant? c)) (format "~a" c)]
       ;; This is occuring in operand position, for now we allow only 256
       ;; tokens and 256 subids, this fitting the whole thing in a uint16_t
       [(tok ,t ,[id]) (format "(~a + ~a)" (* 256 (token->number t)) id)]
-      )))
+      ))
 
 (define basic?
   (lambda (x)
@@ -114,7 +102,7 @@
       ;; Set!'s might have non-basic RHS:
       [(set! ,v ,[(Statement "" tokargs) -> rhs])
        (list (format "~a~a = ~a" indent v rhs))]
-      [(,prim ,[Basic -> args] ...)
+      [(,prim ,args ...)
        (guard (token-machine-primitive? prim))
        (define (e1) (Basic (car args)))
        (define (e2) (Basic (cadr args)))
@@ -137,7 +125,7 @@
 	   (begin ,[(Statement (++ "  " indent) tokargs) -> c*] ...) 
 	   (begin ,[(Statement (++ "  " indent) tokargs) -> a*] ...))
        (apply ++
-	      `(indent 
+	      `(,indent 
 		"if (" ,t ") {\n"
 		,@c* ;(map list (make-list (length c*) indent) c*)
 		,indent "} else {\n"
@@ -290,8 +278,8 @@ module " modname "M
 	 (map (lambda (name args)
 		(++ "  provides command uint16_t token_" name "("
 		    (apply ++ (insert-between ", " (prepend-all "uint16_t " (map symbol->string args))))
-		    ");\n")))
-	 toknames arglsts)
+		    ");\n"))
+	   toknames arglsts))
   "\n"
   (apply ++ 	 
          (map (lambda (name)
@@ -355,7 +343,7 @@ module " modname "M
       ;-- First spit out just a little header:
      (++ "
 // Automatically generated module for " (number->string (length tb*)) " token handlers:
-" (apply ++ (map (lambda (tb) (format "//   ~a\n" (handler->tokname tb)))) tb*)	"
+" (apply ++ (map (lambda (tb) (format "//   ~a\n" (handler->tokname tb))) tb*))	"
 includes TestMachine;
 includes TokenMachineRuntime;
 
@@ -375,7 +363,9 @@ implementation {
 "
   // Token handlers and their helper functions:
 " (Handlers tb*)
-  (build_socfun socconsts socpgm)
+  (build_socfun () ;socconsts
+                (handler->body (assq 'SOC-start tb*)) ;socpgm
+                )
   ;  -- Put the StdControl stuff in the footer:
   (handwritten_helpers (map handler->tokname tb*))
   (build_implementation_footer tb* 'node-start) "
@@ -426,7 +416,7 @@ includes TokenMachineRuntime;
     [(,lang '(program (bindings ,cb* ...) (nodepgm (tokens ,tb* ...))))
      (++ "
 #define BASE_STATION 0
-#define NUM_TOKS " (number->string (length nodetoks)) "
+#define NUM_TOKS " (number->string (length tb*)) "
 enum {
 " 
 (apply ++ (mapi (lambda (i t)
@@ -509,8 +499,7 @@ main = do args <- System.getArgs
     [(let ((f (token-numberer))) (apply-ordered list (f 'foo) (f 'bar) (f 'foo) (f 'foo) (f 'bar) (f 'baz)))
      (0 1 0 0 1 2)]
 
-    [((Statement "" ()) '(+ '1 x))
-     ??]
+    [((Statement "" ()) '(+ '1 x)) "(1 + x)"]
 
     ))
 
