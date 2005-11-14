@@ -19,7 +19,7 @@
   ;; Remember to update the plt equivalent when you update this:
    ;; Syntax:
    for grep mvlet let-match match-lambda
-   ^ ;; Exponentiation
+   ++ ^ ;; Exponentiation
    rec 
    reg:define-struct
    apply-ordered

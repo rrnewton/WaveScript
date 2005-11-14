@@ -4,7 +4,7 @@
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
-(define-regiment-parameter regiment-version 0.87)
+(define-regiment-parameter regiment-version "0.87.2")
 
 ;; This is a global variable mutated by the node-programs in the
 ;; simulator_nought...  Counts total communications received.
@@ -56,7 +56,7 @@
 
     ;haskellize-tokmac 
     
-    flatten-tokmac
+;    flatten-tokmac
 ;    emit-nesc
 
     ))
@@ -71,7 +71,8 @@
        (lambda () (display str) (newline))
        'replace)]
     ;; If it's an earlier file, pretty print it:
-    [(,lang ,prog)
+    [(,lang ,prog ,rest ...)
+     (guard (list? prog))
      (with-output-to-file fn
        (lambda () (pretty-print `(,lang ,prog)))
        'replace)]

@@ -21,14 +21,12 @@
 	  (let ((start (cdar pos)))
 	    (substring s start (string-length s))))))
   (define params ())
-
   ;; Sift through extra options.  Params are for us, everything else
   ;; is for the assembler.
   (set! opts (filter (lambda (x)
 		       (match x 
 			 [(params (,p ,v) ...) (set! params `((,p ,v) ...)) #f]
 			 [,else #t])) opts))
-
   ;; Pump out some stack frames for each param. ;)
   (let loop ((params params))
     (if (not (null? params))
@@ -40,7 +38,7 @@
 	  (match (apply assemble-tokmac tm opts)
 	    [(emit-nesc-language ,p)
 	     (if (eqv? 0 (emit-nesc-language p))
-		 (parameterize ((current-directory "~/cur/haskell/"))
+		 (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/haskell/")))
 		   (define time (let ((t (sim-timeout)))
 				  (if (not t) ""
 				      (format "-t=~a"
@@ -51,7 +49,6 @@
 		   (define stagger (quotient (sim-startup-stagger) 1000))
 		   (define command (format "./build/pc/main.exe -b=~a ~a -r=simple ~a | grep TMPRNT"
 					   stagger time (sim-num-nodes)))
-
 		   (fprintf (current-error-port) "\n\n  <RUNNING_NESC_CODE_IN_TOSSIM>\n")
 		   (fprintf (current-error-port) "Command: ~s\n" command)
 		   (fprintf (current-error-port) 
@@ -81,7 +78,7 @@
   (lambda (prog)
     (match prog
       [#(,mstr ,cstr ,hstr)
-       (parameterize ((current-directory "~/cur/haskell"))
+       (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/haskell")))
        (printf "~nDumping token machine into directory: ~s~n" (current-directory))
        (let ([modF    (open-output-file (string-append emit-nesc-modname "M.nc") 'replace)]
 	     [confF   (open-output-file (string-append emit-nesc-modname ".nc") 'replace)]

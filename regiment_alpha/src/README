@@ -1,4 +1,49 @@
 
+
+INSTALLATION
+======================================================================
+
+Step 1: Bind enviroment variable REGIMENTD to the location of the
+        regiment directory.
+
+Step 2: add $REGIMENTD/bin to your path (or just run "regiment" from there).
+
+Step 3: try typing 'regiment' and see if you get the help output.
+
+
+If you did that means the free copy of Petite Chez Scheme was able to
+run and successfully load all of the Regiment source.  Or it means
+that you acquired a compiled heap image in
+$REGIMENTD/build/regiment.0.heap, which Petite loaded from (this is
+much faster).
+
+Either way, try "regiment t" to run all the unit tests.
+  ([2005.11.14] For me this takes 48 seconds with petite, and 18 with a
+   built heap when all debugging is turned on.)
+
+
+
+
+
+
+
+Basic Summary of Files
+======================================================================
+
+
+generic/pass??_*:
+  These files are the passes that 
+
+
+
+
+
+
+
+
+
+
+
 WHERE STUFF IS:
 ======================================================================
 

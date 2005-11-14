@@ -15,11 +15,21 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
+;(define REGIMENTDIR (if (getenv "REGIMENTD") (getenv "REGIMENTD") "~/cur"))
+
 ;; The regiment compiler expects case-sensitive treatment of symbols:
 ;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
-	   (source-directories '("." "~/cur" "~/cur/chez" "~/cur/generic"))
+
+	   (if (not (getenv "REGIMENTD"))
+	       (error 'regiment "environment variable REGIMENTD was not set"))
+
+	   (source-directories (list "."
+				     (getenv "REGIMENTD")
+				     (string-append (getenv "REGIMENTD") "/chez")
+				     (string-append (getenv "REGIMENTD") "/generic")))
+
 	   (optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting

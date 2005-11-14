@@ -9,11 +9,6 @@
 (define emit-nesc
   (let ()
 
-(define-syntax ++
-  (lambda (x)
-    (syntax-case x ()
-		 [id (identifier? #'id) #'string-append]
-		 [(_ E ...) #'(string-append E ...)])))
 (define (prepend-all x ls)
   (if (null? ls) ()
       (cons (++ x (car ls)) (prepend-all x (cdr ls)))))
@@ -523,7 +518,7 @@ enum {
      (0 1 0 0 1 2)]
 
     [((,Expr "" id ()) '(+ '1 x))
-     ("1 + x;\n")]
+     ("(1 + x);\n")]
     [((,Expr "" id ()) '(set! v (if '#t (begin '3) (begin '4))))
      ("if (1) {\n" "  v = 3;\n" "} else {\n" "  v = 4;\n" "}\n")]
     [(rac ((,Expr "" id ()) '(call (tok f 0) '3)))

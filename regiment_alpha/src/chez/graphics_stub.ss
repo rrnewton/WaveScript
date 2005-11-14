@@ -245,7 +245,8 @@
 ;; Get the tests for this unit:
 (include "generic/graphics_stub.tests")
 
-(define test-this (default-unit-tester this-unit-description these-tests))
+(define test-this (default-unit-tester "GraphicsStub: common graphics interface for PLT and chez" 
+		    these-tests))
 (define test-graphics-stub test-this)
 
 ;;===============================================================================

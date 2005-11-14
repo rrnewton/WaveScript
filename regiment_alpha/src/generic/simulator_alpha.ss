@@ -25,9 +25,6 @@
 
 ;; NOTE: Right now all calls go through the dyndispatch table.
 
-(define this-unit-description 
-  "simulator_alpha.ss: event-queue simulator for nodal language")
-
 ;===============================================================================
 ;; Changes:
 
@@ -988,21 +985,23 @@
 	      (match args
 		     ;; This is a weak requirement... 
 		     ;; We consider the first arg to represent a token machine if it is a *list*.
-		     [(,tm . ,rest) (guard (list? tm))
+		     [(,tm ,rest ...) (guard (list? tm))
+		      (define (run-compiled)
+			(if (simalpha-write-sims-to-disk)
+			    (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
+			      (parameterize ([print-level #f]
+					     [pretty-maximum-lines #f]
+					     [pretty-line-length 150]
+					     [print-graph #t])
+				(write tm out);(pretty-print tm out)
+				(newline out)
+				(close-output-port out)))
+			    (set! THEPROG tm)))
 		      (match tm
-			;; Already compiled
-			[(define (node-code this) ,e)
-			 (if (simalpha-write-sims-to-disk)
-			     (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
-			       (parameterize ([print-level #f]
-					      [pretty-maximum-lines #f]
-					      [pretty-line-length 150]
-					      [print-graph #t])
-				 (write tm out);(pretty-print tm out)
-				 (newline out)
-				 (close-output-port out)))
-			     (set! THEPROG tm))
-			 (read-params rest)]
+			;; Already compiled:
+			[(define (node-code this) ,e)    (run-compiled) (read-params rest)]
+			[(begin (module ,_ ...) ,__ ...) (run-compiled) (read-params rest)]
+			[(module ,_ ...)                 (run-compiled) (read-params rest)]
 
 			;; Otherwise compile it
 			[,tm			     
@@ -1243,7 +1242,7 @@
 ;; But this also makes sure the world is initialized before doing unit tests:
 (define test-this
   (let ((tester (default-unit-tester 
-		  this-unit-description 
+		  "simulator_alpha.ss: event-queue simulator for nodal language"
 		  ;; Make sure that the world is clean before each test.
 		  testsalpha
 		  tester-eq?

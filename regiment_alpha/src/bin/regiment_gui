@@ -1,0 +1,13 @@
+#! /bin/bash
+
+#scheme -h regimentc.1.heap $*
+#chez -h regimentc.1.heap $*
+
+# Use my default location if it is not set.
+if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/cur; fi
+
+# If we can we use the stored heap, otherwise we run it as a script.
+if [ -f $REGIMENTD/build/regiment.0.heap ];
+then $REGIMENTD/depends/rawscheme -h $REGIMENTD/build/regiment.0.heap $*;
+else $REGIMENTD/regiment_script.ss $*;
+fi

@@ -522,6 +522,12 @@
 				  (syntax-object->datum #'(x ...)))))
 	 #'(let* ((tmp x) ...) (f tmp ...)))])))
 
+(define-syntax ++
+  (lambda (x)
+    (syntax-case x ()
+		 [id (identifier? #'id) #'string-append]
+		 [(_ E ...) #'(string-append E ...)])))
+
 (define list-index
   (lambda (pred ls)
     (cond
