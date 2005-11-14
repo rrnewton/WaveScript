@@ -40,6 +40,7 @@
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
    print-level print-length
+   system/echoed
    
    cd
    ;; Other values 
@@ -223,6 +224,9 @@
   (define (with-warning-handler fun th)
     (fluid-let ((warning fun))
       (th)))  
+
+;; There's no problem with this in PLT:
+(define system/echoed system)
 
 ;; This matches the chez parameter, but does nothing.
 (define pretty-maximum-lines (make-parameter #f))

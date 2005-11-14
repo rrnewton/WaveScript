@@ -57,7 +57,7 @@
     ;haskellize-tokmac 
     
     flatten-tokmac
-    emit-nesc
+;    emit-nesc
 
     ))
 
@@ -258,43 +258,7 @@
 ;;======================================================================
 ;; RUNNING THROUGH NESC
 
-;; This is the equivalent of "tm-to-list" for nesc:
-(define (run-via-nesc tm)
-  (define (mask s)
-    (let ((pos (pregexp-match-positions "TMPRNT: " s)))
-      (if (not pos) (error 'run-via-nesc "inconsistent!")
-	  (let ((start (cdar pos)))
-	    (substring s start (string-length s))))))
-
-  (fluid-let ((pass-names
-	       (append (remq 'flatten-tokmac (remq 'emit-nesc pass-names))
-		       '(flatten-tokmac emit-nesc))))
-  (match (assemble-tokmac tm)
-    [(emit-nesc-language ,p)
-     (if (zero? (emit-nesc-language p))
-	 (parameterize ((current-directory "~/cur/haskell/"))	   
-	   (fprintf (current-error-port) "\n\n  <RUNNING_NESC_CODE_IN_TOSSIM>\n")
-	   (fprintf (current-error-port) 
-		    ";;======================================================================\n")
-	   (flush-output-port)
-	   (let ((result
-		  (let-match (((,in ,out ,id) 
-			       (process "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
-		    (let loop ((line (read-line in)) (acc ()))
-		      (if (or (not line) (eof-object? line))
-			  (reverse! acc)
-			  (let ((outline (mask line)))
-			    (display outline) (newline)
-			    (flush-output-port)4
-			    (loop (read-line in) (cons outline acc))))))))	     
-	     ;(system "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
-	   (fprintf (current-error-port) 
-		    ";;======================================================================\n")
-	   (flush-output-port)
-	   result))
-	 (error 'run-via-nesc "error on NesC build."))]
-    [,other (error 'run-via-nesc "did not assemble to emit-nesc-language program: \n~s" other)]
-    )))
+;; See tossim.ss
 
 ;;======================================================================
 ;; RUNNING THROUGH SIMALPHA
@@ -340,7 +304,7 @@
 (define these-tests 
   (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm . extraparams)
-	   `(parameterize ([unique-name-counter 0] 
+	   `(parameterize ([unique-name-counter 0]
 			   [simalpha-dbg-on #f]
 			   ,@extraparams
 			   )
@@ -384,34 +348,6 @@
 (define test-this (default-unit-tester "Main compiler units + system tests." these-tests))
 (define maintests these-tests)
 (define maintest test-this)
-
-
-(define (test-nesc)
-    ((default-unit-tester "Testing NesC emission and code simulation."
-       `(
-	 ["NesC: printing with printf"
-	  (run-via-nesc '(tokens (SOC-start () (printf "123\n") (printf "abc\n"))))
-	  ("123" "abc")]
-	 ["NesC: a conditional"
-	  (run-via-nesc '(tokens (SOC-start () (if #t (printf "yay\n")))))
-	  ("yay")]
-	 
-	 ["NesC: do a simple local call."
-	  (run-via-nesc '(tokens (SOC-start () (call tok1))
-				 (tok1 () (printf "cheers\n"))) )
-	  ("cheers")]
-
-	 ["NesC: compute factorial of 6 in tail recursive fashion."
-	  (run-via-nesc 
-	   '(tokens (SOC-start () (call fib 6 1))
-		    (fib (x acc) (if (= x 0) 
-				     (printf "%d\n" acc) 
-				     (call fib (- x 1) (* x acc))))))
-	  ("720")]
-
-
-	 ))))
-
 
 
 

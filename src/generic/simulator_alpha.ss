@@ -161,7 +161,7 @@
 
   (define (make-random-topology)    
     ;; Old method, doesn't produce connected graph:
-    (let ((seed (map (lambda (_) (random-node)) (iota (simalpha-num-nodes)))))
+    (let ((seed (map (lambda (_) (random-node)) (iota (sim-num-nodes)))))
       (if (simalpha-consec-ids)
 	  (for-each set-node-id! 
 		    seed (iota (length seed))))
@@ -187,7 +187,7 @@
     (let ((start-node (let ((x (random-node)))				   
 			(set-node-id! x BASE_ID)
 			x)))
-      (let loop ((graph (list (list start-node))) (count (sub1 (simalpha-num-nodes))))
+      (let loop ((graph (list (list start-node))) (count (sub1 (sim-num-nodes))))
 					;		 (printf "\nLooping: graph:\n")
 					;		 (pretty-print graph)
 	(if (<= count 0)
@@ -210,7 +210,7 @@
 			    (sub1 count))))))))))
 
   (define (make-gridlike-topology perfect?)
-    (let* ([num-nodes (simalpha-num-nodes)]
+    (let* ([num-nodes (sim-num-nodes)]
 	   [seed (make-vector num-nodes)]
 	   ;; Calculate dimensions
 	   [height (inexact->exact (floor (sqrt num-nodes)))]
@@ -1049,13 +1049,13 @@
                          ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
                          (start-alpha-sim node-code 'simple))]
 		      [(timeout ,n . ,rest)
-		       (parameterize ((simalpha-timeout n))
+		       (parameterize ((sim-timeout n))
 			 (read-params rest))]
 		      [(numnodes ,n . ,rest)
 		       (if (not (integer? n))
 			   (error 'run-simulator-alpha
 				  "'numnodes switch should be followed by an integer, not: ~s" n))
-		       (parameterize ([simalpha-num-nodes n])
+		       (parameterize ([sim-num-nodes n])
 			 (read-params rest))]
 		      [(outport ,p . ,rest)
 		       (if (not (output-port? p))
@@ -1100,7 +1100,7 @@
 				  args)]
 	 ;; With flags out of the way
 	 [stopping-time? 
-	  (let ([stop-time (simalpha-timeout)])
+	  (let ([stop-time (sim-timeout)])
 	    (disp "STOP TIME" stop-time)
 	    (if (not stop-time)
 		(lambda (t) #f)

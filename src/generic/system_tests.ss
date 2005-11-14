@@ -63,7 +63,7 @@
 	   [lightup () (printf "~s: lightup \n" (my-id))
 		    (leds toggle red) (grelay)])
 	'[simalpha-placement-type 'gridlike] ;'connected]
-	'[simalpha-num-nodes 30]
+	'[sim-num-nodes 30]
 	'[simalpha-graphics-on #t])
        unspecified]
     ["Do a basic test of token-handler argument passing."
@@ -591,7 +591,7 @@
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
       , (tm-to-list (car (file->slist "demos/manual_tree.tm"))
-		    '[simalpha-timeout 5000])
+		    '[sim-timeout 5000])
       unspecified]
 
 
@@ -672,7 +672,7 @@
 		  (soc-return x))
 	    (tok2 ()
 		  (ext-set! tok1 x (+ 1 (ext-ref tok1 x)))))
-	 '[simalpha-num-nodes 1])
+	 '[sim-num-nodes 1])
 	(4)]
      ["Direct-subcall: should not be allowed for unknown token target."
       , (tm-to-socvals
@@ -1006,7 +1006,7 @@
 		  (tok2 () ;(printf "_ ") 
 			(greturn (my-id) 
 				 (to catcher))) )
-		'[simalpha-timeout #f]
+		'[sim-timeout #f]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-failure-model 'none])
       ,(lambda (x)
@@ -1053,7 +1053,7 @@
 ; 	       [three (length (caddr x))])
 ; 	   (< one two three))
 	 ;; Also check to make sure whe heard from everyone.
-	 (= (simalpha-num-nodes)
+	 (= (sim-num-nodes)
 	    (length (list->set (apply append x))))
 	 ))]
 
@@ -1278,7 +1278,7 @@
 	'[simalpha-consec-ids #t]
 	'[simalpha-failure-model 'none]
 	'[simalpha-channel-model 'lossless]
-	'[simalpha-num-nodes 10]
+	'[sim-num-nodes 10]
 	)
       ;; Epoch staggered aggregation
 	,(lambda (x) 
@@ -1347,7 +1347,7 @@
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-consec-ids #t]
-		'[simalpha-num-nodes 30])
+		'[sim-num-nodes 30])
       ,(lambda (ls)
 	 ;; Received all messages:
 	 (= (length ls) 5))]
@@ -1385,7 +1385,7 @@
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-consec-ids #t]
-		'[simalpha-num-nodes 30])
+		'[sim-num-nodes 30])
       (,BASE_ID #t #t 8967)]
 
 
@@ -1406,7 +1406,7 @@
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-consec-ids #t]
-		'[simalpha-num-nodes 30])
+		'[sim-num-nodes 30])
       ;; FIXME : Finish
       unspecified]
 
@@ -1463,9 +1463,9 @@
 			 (printf "_ ") (flush-output-port)
 			 (gemit (tok lead cur-leader)))))]
 	   )
-	'[simalpha-num-nodes 3]
+	'[sim-num-nodes 3]
 	'[simalpha-consec-ids #f]
-	'[simalpha-timeout 10000])
+	'[sim-timeout 10000])
        unspecified]
 
 
@@ -1497,11 +1497,11 @@
 		       ))]
 	   [final-report () (printf "~n   ~a " (ext-ref node-start cur-leader))]
 	   )
-	'[simalpha-num-nodes 10]
+	'[sim-num-nodes 10]
 	'[simalpha-consec-ids #f]
 	'[simalpha-placement-type 'connected]
 	'[simalpha-channel-model 'linear-disc]
-	'[simalpha-timeout 10000])
+	'[sim-timeout 10000])
        unspecified]
 
     ;; [2005.11.01] Whoa!  I got two winners from this even with these network conditions:
@@ -1527,7 +1527,7 @@
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
-	'[simalpha-num-nodes 30]
+	'[sim-num-nodes 30]
 	'[simalpha-consec-ids #t]
 	'[simalpha-graphics-on #t]
 	)
@@ -1563,7 +1563,7 @@
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
-	'[simalpha-num-nodes 30]
+	'[sim-num-nodes 30]
 	'[simalpha-consec-ids #t]
 	'[simalpha-graphics-on #t]
 	)
@@ -1584,7 +1584,7 @@
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'connected]
 	'[simalpha-failure-model  'none]
-	'[simalpha-num-nodes 10]
+	'[sim-num-nodes 10]
 	'[simalpha-consec-ids #f])
        ;; This requires that you get actual minimum:
        ,(lambda (ls)
@@ -1605,7 +1605,7 @@
 	   [tok1 () (printf "~a " (my-id))])
 	'[simalpha-channel-model 'lossless]
 	'[simalpha-placement-type 'connected]
-	'[simalpha-num-nodes 10]
+	'[sim-num-nodes 10]
 	)
        ,(lambda (ls)
 	  (equal? (sort < ls)
@@ -1619,22 +1619,22 @@
      retry
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
-		    [simalpha-timeout 400])
+		    [sim-timeout 400])
        (run-simulator-alpha (run-compiler '(rmap nodeid world))))
      ,(lambda (ls)
 	;; Can't make very strong statements about timing, but we
 	;; shoud have heard from the first *two* generations by this
 	;; time:
 	;; UNLESS, RADIO_DELAY is set really large:
-	(and (> (length ls) (* 2 (simalpha-num-nodes)))
+	(and (> (length ls) (* 2 (sim-num-nodes)))
 	     (equal?
-	      (sort < (cons BASE_ID (cdr (iota (simalpha-num-nodes)))))
+	      (sort < (cons BASE_ID (cdr (iota (sim-num-nodes)))))
 	      (sort < (list->set ls)))))]
 
     ["Run a simple fold in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
-		    [simalpha-num-nodes 30]
+		    [sim-num-nodes 30]
 		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
 		    )
        (run-simulator-alpha 
@@ -1655,7 +1655,7 @@
 		    [simalpha-outer-radius 20]
 		    [simalpha-world-xbound 60]
 		    [simalpha-world-ybound 60]
-		    [simalpha-num-nodes 10])
+		    [sim-num-nodes 10])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap (lambda (_) 1) world)]
@@ -1783,7 +1783,7 @@
 		    (return (list (+. (car x) (car y))
 				  (+ (cadr x) (cadr y))))))
 	  '[regiment-verbose #f]
-	  '[simalpha-timeout 4000]
+	  '[sim-timeout 4000]
 	  '[simalpha-zeropad-args 'warning] ;; Must be on for sensing
 ;	  '[simalpha-stream-result #t]
 	  )
@@ -1792,7 +1792,7 @@
     ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
       , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
-		    '[simalpha-timeout 5000])
+		    '[sim-timeout 5000])
 	unspecified]
      
      ["Regiment: aggregate all node ids (using a list accumulator)."
@@ -1800,8 +1800,8 @@
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
-		     [simalpha-num-nodes 10]
-		     [simalpha-timeout 2000])
+		     [sim-num-nodes 10]
+		     [sim-timeout 2000])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(rfold append () 
@@ -1821,7 +1821,7 @@
 		     ;[simalpha-sense-function sense-noisy-rising] ;; TODO: FIXME: FINISH this sensing model.
 		     [simalpha-zeropad-args 'warning] ;; Must be on for sensing.
 		     [simalpha-sense-function sense-random-1to100]
-		     [simalpha-timeout 2000])
+		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
 	  '(rwhen-any (lambda (pr) (> (car (cdr pr)) 99))
@@ -1839,7 +1839,7 @@
 		     [simalpha-failure-model  'none]
 		     [simalpha-sense-function sense-dist-from-origin]
 		     [simalpha-graphics-on #t]
-		     [simalpha-timeout 2000])
+		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
 	  ;'(anchor-maximizing sense 0)))
