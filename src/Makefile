@@ -81,13 +81,15 @@ package: clean
 	@echo =================================================================
 	rm -rf $(PKGDIR)
 	mkdir $(PKGDIR)
-	cp -pr $(REGIMENTD) $(PKGDIR)/base
+	mkdir $(PKGDIR)/base
+	cp -pr $(REGIMENTD)/* $(PKGDIR)/base/
 	$(MAKE) heap
 	$(MAKE) chez
 # Now clean that out a little:
 	rm $(PKGDIR)/base/depends
 	rm -rf $(PKGDIR)/base/old_passes
 	rm -rf $(PKGDIR)/base/plots
+	rm -rf $(PKGDIR)/base/haskell/assembler
 	find $(PKGDIR)/base -name "*.svn" | xargs rm -rf 
 	find $(PKGDIR)/base -name "*~" | xargs rm -rf 
 	find $(PKGDIR)/base -name "_*" | xargs rm -rf 
@@ -110,6 +112,7 @@ package: clean
 
 clean:
 	(cd plt; $(MAKE) clean)
+	(cd haskell; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_*
 	$(RM) build/*.heap
 	$(RM) __temp.log _genned_node_code.ss
