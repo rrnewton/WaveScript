@@ -379,6 +379,25 @@
 
 ;; Subroutine of compile-simulate-alpha below
 (define (process-statement current-handler-name tokbinds stored)
+
+  ;; Turns a %d using string into a ~a using string.
+  (define massage-str 
+    (lambda (s)
+      (let ((newstr (string-copy s)))
+	(let loop ((i (- (string-length s) 2)))
+	  (cond
+	   [(< i 0) (void)]
+	   [(and (eq? (string-ref s i) #\%)
+		 (eq? (string-ref s (add1 i)) #\d))
+	    (string-set! newstr i #\~)
+	    (string-set! newstr (add1 i) #\a)
+	    (loop (sub1 i))]
+					;				 [(and (eq? (string-ref s i) #\\)
+					;				       (eq? (string-ref s (add1 i)) #\n))
+					;				  (string-set! newstr i #\~)
+					;				  (loop (sub1 i))]
+	   [else (loop (sub1 i))]))
+	newstr)))
   
   ;; [2005.10.20] This is a substitution list, used for simple renaming of primitives:
   ;; Right now I'm tightening up my numeric ops, getting it more ready for static typing.
@@ -649,23 +668,7 @@
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
 		[(dbg (quote ,str) ,[args] ...)
 		 ;; TODO FIX ME: would be nice to print properly
-		 (let ([massage-str 
-			(lambda (s)
-			  (let ((newstr (string-copy s)))
-			      (let loop ((i (- (string-length s) 2)))
-				(cond
-				 [(< i 0) (void)]
-				 [(and (eq? (string-ref s i) #\%)
-				       (eq? (string-ref s (add1 i)) #\d))
-				  (string-set! newstr i #\~)
-				  (string-set! newstr (add1 i) #\a)
-				  (loop (sub1 i))]
-;				 [(and (eq? (string-ref s i) #\\)
-;				       (eq? (string-ref s (add1 i)) #\n))
-;				  (string-set! newstr i #\~)
-;				  (loop (sub1 i))]
-				 [else (loop (sub1 i))]))
-			      newstr))])
+		 (let ()
 ;		     (disp "MANGLED" (massage-str str))
 		     (let ((massaged (massage-str str)))
 		       `(begin (if (simalpha-dbg-on)

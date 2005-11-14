@@ -184,10 +184,13 @@
        (define (e1) (Basic (car args)))
        (define (e2) (Basic (cadr args)))
        (define (e3) (Basic (caddr args)))
-       (define (err) (format "~a // Primitive ~a not available!\n" indent prim))
+       (define (err) 
+	 (warning 'emit-nesc "Primitive \"~a\" not available!!!!!\n" prim)
+	 (format "~a // Primitive \"~a\" not available!!!!!\n" indent prim))
        (let ((result (case prim
 		       [(+ - * / < > <= >=)
-			(k (format "~a ~a ~a;\n" (e1) prim (e2)))]
+			(k (format "(~a ~a ~a);\n" (e1) prim (e2)))]
+		       [(=) (k (format "(~a == ~a);\n" (e1) (e2)))]
 		       [(my-id) (k "TOS_LOCAL_ADDRESS;\n")]
 		       ;; Not implemented yet:
 		       [(lightup loc locdiff rgb drawmark)
