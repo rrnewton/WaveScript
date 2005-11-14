@@ -147,7 +147,7 @@
 (define-regiment-parameter default-unit-tester-retries 3)
 
 
-;; Used primarily by Simulator_nought.ss:
+;; Used primarily by Simulator_nought.ss: (phased out)
 ;;===================================================
 ;; These are the virtual coordinate bounds of the world.
 ;; [2005.09.25] These are constants for an out of use file:
@@ -173,6 +173,24 @@
 (define return-window-size 500)
 
 
+
+;; Used primarily by MULTIPLE SIMULATORS
+;;===================================================
+;; [2005.11.14] I'm segregating and renaming the parameters that are
+;; used by the tossim interface and simulator alpha.
+
+(define-regiment-parameter sim-num-nodes 30)
+
+;; Valid values:
+;; #f    : No time-out
+;; Float : Time out after certain number of cpu seconds.
+;; Int   : Timeout after certain number of simulator clock ticks
+(define-regiment-parameter sim-timeout 10.0)
+
+;; Number of milleseconds over which to start up the nodes.
+;; [2005.11.14] Not used yet in simulator-alpha.
+(define-regiment-parameter sim-startup-stagger 0)
+
 ;; Used primarily by Simulator_alpha.ss:
 ;;===================================================
 ;; Sim alpha also reuses some of the parameters from Sim nought.
@@ -189,18 +207,11 @@
 ;; This is the null pointer representation.  Probably just Zero.
 (define TMNULL ''0)
 
-(define-regiment-parameter simalpha-num-nodes 30)
 (define-regiment-parameter simalpha-world-xbound 60)
 (define-regiment-parameter simalpha-world-ybound 60)
 ;; Comm radius's:
 (define-regiment-parameter simalpha-outer-radius 15)
 (define-regiment-parameter simalpha-inner-radius 10)
-
-;; Valid values:
-;; #f    : No time-out
-;; Float : Time out after certain number of cpu seconds.
-;; Int   : Timeout after certain number of simulator clock ticks
-(define-regiment-parameter simalpha-timeout 10.0)
 
 ;; When this is set to #t, the simulator slows itself down to match real-time.
 ;; If it can't match real time, will have undefined behavior.

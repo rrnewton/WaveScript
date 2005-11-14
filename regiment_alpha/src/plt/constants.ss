@@ -32,7 +32,7 @@
          BASE_ID NULL_ID	 
        	 return-window-size
          
-         simalpha-num-nodes
+         sim-num-nodes
          simalpha-output-port
 	 simalpha-outer-radius
 	 simalpha-inner-radius
@@ -43,7 +43,7 @@
 	 simalpha-failure-model
          simalpha-connectivity-function
 	 simalpha-current-simworld 
-	 simalpha-timeout
+	 sim-timeout
 	 simalpha-realtime-mode
 	 simalpha-consec-ids
 	 simalpha-dbg-on

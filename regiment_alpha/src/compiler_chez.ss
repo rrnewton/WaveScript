@@ -106,8 +106,8 @@
 (include "chez/alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 
-
-(include "generic/source_loader.ss")
+(include "generic/tossim.ss")
+(include "generic/source_loader.ss") ;; For loading regiment sources.
 (include "generic/grammar_checker.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.

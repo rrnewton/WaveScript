@@ -16,6 +16,8 @@
 	  with-error-handlers with-warning-handler
 	  current-error-port
 
+	  system/echoed
+
 	  ;; Values:	    
 	  id gnuplot histogram display-progress-meter count-nodes
 	  string-split periodic-display all-equal?
@@ -196,6 +198,22 @@
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
 
+
+
+;; [2005.11.14] This is like chez's system command, except it routes
+;; the output through the standard scheme output port.  This way it
+;; can be captured/redirected by the normal means.
+(define (system/echoed str)
+  (let-match ([(,in ,out ,id) (process str)])
+    (let loop ((line (read-line in)))
+      (unless (or (not line) (eof-object? line))
+	(display line)(newline)
+	(loop (read-line in))))
+    ;; Alas, I don't know how to get the error-code through "process",
+    ;; so we must assume there was no error:
+    0))
+;; Example: compare (with-output-to-string (lambda () (system "ls")))
+;;               to (with-output-to-string (lambda () (system/echoed "ls")))
 
 ;; This is a simple random number generator interface for use in this Regiment codebase:
 (define reg:random-int
