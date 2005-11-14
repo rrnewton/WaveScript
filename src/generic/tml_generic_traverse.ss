@@ -184,24 +184,27 @@
 ;; This construct allows us to build simple passes by defining only
 ;; the process-expr function.  It just encapsulates some boilerplate.
 (define tml-simple-pass
-  (let ([def-ptb (lambda (pe)
+  (let (;; Default proces token binding:
+	[def-ptb (lambda (pe)
 		   (lambda (tb)
 		     (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
 		       `[,tok ,id ,args (stored ,@stored )
 			      ,(pe ;(map car constbinds) 
 				   body)])))]
-	[def-pp (lambda (ptb)
+	;; Default process program:
+	[def-pp (lambda (ptb newlang)
 		  (lambda (prog)
 		    (match prog
 		      [(,lang '(program (bindings ,constbinds ...)
 				 (nodepgm (tokens ,[ptb -> toks] ...))))
-		       `(,lang
+		       `(,(if newlang newlang lang)
 			 '(program (bindings ,constbinds ...)
 			    (nodepgm (tokens ,toks ...))))])))])
     (case-lambda
-      [(pe) (def-pp (def-ptb pe))]
-      [(pe ptb) (def-pp ptb)])))
-
+      [(pe) (def-pp (def-ptb pe) #f)]
+      [(pe ptb) (def-pp ptb #f)]
+      [(pe ptb newlang) (def-pp ptb newlang)]
+      )))
 
 ;; This is a generic free-vars which can be shared by different passes that have non-conflicting grammars.
 (define (tml-free-vars e)

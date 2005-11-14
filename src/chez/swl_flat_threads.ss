@@ -5,9 +5,6 @@
 ;(module flat_threads (run-flat-threads yield-thread
 ;		      these-tests test-this)
 
-(define this-unit-description 
-  "swl_flat_threads.ss: simple interface for parallel computations")
-
 (define yield-thread thread-yield)
 
 ;; Using hefty granularity right now.
@@ -61,7 +58,9 @@
 
 (define these-tests (include "generic/flat_threads.tests"))
 
-(define test-this (default-unit-tester this-unit-description these-tests))
+(define test-this (default-unit-tester 
+		    "swl_flat_threads.ss: simple interface for parallel computations"
+		    these-tests))
 (define testswlflatthreads test-this)
 
 ;) ;; End module

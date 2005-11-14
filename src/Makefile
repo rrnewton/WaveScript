@@ -42,8 +42,11 @@ mzscheme_native:
 chez: chez_native
 chez_native:
 	echo '(compile-file "compiler_chez.ss")' | chez
-#build/regimentc.1.heap: regiment.ss $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
-#	echo '(load "regiment.ss")' | chez -s1 build/regimentc.1.heap
+
+heap: # build/regimentc.1.heap:  # regiment.ss $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
+	echo '(load "regiment.ss")' | chez -s0 build/regiment.0.heap
+
+
 
 test: clean chez
 	./regiment_script.ss test
@@ -66,6 +69,37 @@ runplt:
 #swl:
 #	$(SWL) $(CHEZ_MAIN_FILE)
 
+#/*--------------------------------------------------------------------*/
+#*    Installation Packages                                            */
+#*---------------------------------------------------------------------*/
+
+# This makes three separate tarfile packages that must be unzipped in the same dir.
+PKGDIR=~/build/regiment
+package: clean
+	@echo
+	@echo PACKAGING REGIMENT
+	@echo =================================================================
+	rm -rf $(PKGDIR)/*
+	mkdir $(PKGDIR)
+	cp -pr $(REGIMENTD) $(PKGDIR)/base
+	$(MAKE) heap
+# Now clean that out a little:
+	rm $(PKGDIR)/base/depends
+	rm -rf $(PKGDIR)/base/old_passes
+	rm -rf $(PKGDIR)/base/plots
+	find $(PKGDIR)/base -name "*.svn" | xargs rm -rf 
+	find $(PKGDIR)/base -name "*~" | xargs rm -rf 
+	find $(PKGDIR)/base -name "_*" | xargs rm -rf 
+	@echo
+	@echo BUILDING TARFILES
+	@echo =================================================================
+	(cd $(PKGDIR)/base; tar cjf ../regiment_src.tbz *)
+#	rm $(PKGDIR)/base
+	(cd $(REGIMENTD); tar cvjf $(PKGDIR)/regiment_heap.tbz build/regiment.0.heap)
+	mkdir $(PKGDIR)/depends
+	(cd $(REGIMENTD)/; cp -pr depends/* $(PKGDIR)/depends/)
+	(cd $(PKGDIR); tar cjf regiment_depends.tbz depends)
+
 
 #/*--------------------------------------------------------------------*/
 #*    Cleaning                                                         */
@@ -75,6 +109,8 @@ runplt:
 clean:
 	(cd plt; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_*
+	$(RM) build/*.heap
+	$(RM) __temp.log _genned_node_code.ss
 
 #	find -name "*.zo" | xargs rm # This is excessive...
 #	(cd compiled; $(MAKE) clean)

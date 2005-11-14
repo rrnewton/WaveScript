@@ -1,0 +1,7 @@
+#!/bin/bash
+
+## This is a very simple script to get you up and running quickly.
+## Run it from the directory in which it resides.
+
+export PATH=`pwd`/bin:$PATH
+export REGIMENTD=`pwd`

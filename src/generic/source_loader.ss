@@ -6,11 +6,18 @@
 
 (define read-regiment-source-file
   (lambda (fn)
+    (define (desugar exps)
+      (let loop ((ls exps))
+	(match ls
+	  [() (error 'read-regiment-source-file "file has no return expression.")]
+	  [((define ,x ,y) ,rest ...)
+	   `(letrec ((,x ,y)) ,(loop rest))]
+	  [(,retexp) retexp]
+	  [(,other ,rest ...) (error 'read-regiment-source-file
+				     "invalid expression in definition context: ~s" other)])))
 
     (match (file->slist fn)
-      [((parameters ,p ...) ,prog)
-       (values prog p)]
-      
-      [,prog (values prog ())]
-
-      )))
+      [((parameters ,p ...) ,exps ...)
+       (values (desugar exps) p)]
+      [(,prog ...) 
+       (values (desugar prog) ())])))

@@ -1,6 +1,6 @@
 #! /bin/sh
 #|
-exec $REGIMENTD/depends/petite --script "$0" ${1+"$@"}
+exec $REGIMENTD/depends/petite_swl --script "$0" ${1+"$@"}
 |#
 
 ; /usr/bin/scheme --script

@@ -151,5 +151,6 @@
 		     ;; That's just for the simulator (and if we're not using CPS).
 		     (begin ,@ss ,x)))])))
 
+     
      ;; This fills in some more boilerplate.
-     (tml-simple-pass Value Tokbind))))
+     (tml-simple-pass Value Tokbind 'flatten-tokmac-lang))))

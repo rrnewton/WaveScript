@@ -590,7 +590,7 @@
 
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
-      , (tm-to-list (car (file->slist "demos/manual_tree.tm"))
+      , (tm-to-list (car (file->slist "demos/token_machs/manual_tree.tm"))
 		    '[sim-timeout 5000])
       unspecified]
 
@@ -1631,6 +1631,7 @@
 	      (sort < (cons BASE_ID (cdr (iota (sim-num-nodes)))))
 	      (sort < (list->set ls)))))]
 
+    ;; [2005.11.14] Huh, just started getting some errors on this when running from command line.
     ["Run a simple fold in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
@@ -1791,7 +1792,7 @@
 
     ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
-      , (tm-to-list (car (file->slist "demos/buffered_gradients.tm")) 
+      , (tm-to-list (car (file->slist "demos/token_machs/buffered_gradients.tm"))
 		    '[sim-timeout 5000])
 	unspecified]
      
