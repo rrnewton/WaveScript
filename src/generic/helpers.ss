@@ -2573,7 +2573,7 @@
 
 ;; [2005.10.16] Making a simple interface to gnuplot for graphing results
 ;; of queries.
-
+;;
 ;; Input: Either 
 ;;   1) A list of (X Y) pairs
 ;;   2) A list of numbers
@@ -2651,7 +2651,7 @@
 	       (loop (cdr ls))
 	       ))))
      ]))
-
+;;
 ;(histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2)
 ;; 1-3 3-5 5-7
 

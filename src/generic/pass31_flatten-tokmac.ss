@@ -46,7 +46,8 @@
 ; 	;; Then we make it side-effect only
 ; 	(lambda (ls f)
 ; 	  (let-match ((#(,vs ,ss ,x) ls)
-	   
+
+     ;; Returns: #(vars statmnts retval)
      (define Value
        (tml-generic-traverse
 	;; TREE WALKER:
@@ -98,7 +99,7 @@
 			 [#(,vc ,sc ,xc) c]
 			 [#(,va ,sa ,xa) a])
 	       (let ([tmp (unique-name 'if_ret)])		 
-		 (vector (append vt vc va)
+		 (vector (cons tmp (append vt vc va))
 			 (append st 
 				 `((if ,xt
 				       (begin ,@sc (set! ,tmp ,xc))

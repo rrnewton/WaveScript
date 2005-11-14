@@ -2,6 +2,7 @@
 (module helpers mzscheme 
   (require "iu-match.ss"
            (lib "include.ss")
+           (lib "date.ss")
            (lib "pretty.ss")
            (lib "process.ss")
 	   (lib "compat.ss")
@@ -34,6 +35,7 @@
    fl+ fl- fl* fl/ fl< fl> fl= fl<= fl>= flonum? fixnum->flonum
    most-positive-fixnum
    remq list-head merge sort merge! sort!
+   date-and-time
 
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
@@ -195,6 +197,10 @@
   ;(define (merge! a b) (merge a b))
   (define (merge! p a b) (swindle:merge! a b p))
   (define (sort! p l)    (swindle:sort! l p))
+  
+  (define (date-and-time)
+    (let ((d (seconds->date (current-seconds))))
+      (format "~a, ~a:~a:~a" (date->string d) (date-hour d) (date-minute d) (date-second d))))
   
 ;; Temporary! < FIXME>:
   (define crit-printf printf)

@@ -255,8 +255,45 @@
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
   
+;;======================================================================
+;; RUNNING THROUGH NESC
 
-(define theprog '(rfold + 0 (rmap sense world)))
+;; This is the equivalent of "tm-to-list" for nesc:
+(define (run-via-nesc tm)
+  (define (mask s)
+    (let ((pos (pregexp-match-positions "TMPRNT: " s)))
+      (if (not pos) (error 'run-via-nesc "inconsistent!")
+	  (let ((start (cdar pos)))
+	    (substring s start (string-length s))))))
+  (match (assemble-tokmac tm)
+    [(emit-nesc-language ,p)
+     (if (zero? (emit-nesc-language p))
+	 (parameterize ((current-directory "~/cur/haskell/"))	   
+	   (fprintf (current-error-port) "\n\n  <RUNNING_NESC_CODE_IN_TOSSIM>\n")
+	   (fprintf (current-error-port) 
+		    ";;======================================================================\n")
+	   (flush-output-port)
+	   (let ((result
+		  (let-match (((,in ,out ,id) 
+			       (process "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
+		    (let loop ((line (read-line in)) (acc ()))
+		      (if (or (not line) (eof-object? line))
+			  (reverse! acc)
+			  (let ((outline (mask line)))
+			    (display outline) (newline)
+			    (flush-output-port)4
+			    (loop (read-line in) (cons outline acc))))))))	     
+	     ;(system "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
+	   (fprintf (current-error-port) 
+		    ";;======================================================================\n")
+	   (flush-output-port)
+	   result))
+	 (error 'run-via-nesc "error on NesC build."))]
+    [,other (error 'run-via-nesc "did not assemble to emit-nesc-language program: \n~s" other)]
+    ))
+
+;;======================================================================
+;; RUNNING THROUGH SIMALPHA
 
 ;; I'm binding all these little random letter combinations!  Bah!
 (define mp;;myprog ;; shorthand
@@ -345,25 +382,14 @@
 (define maintest test-this)
 
 
-'
-     (fluid-let ((pass-names
-		  (list-remove-after desugar-gradients ;'cps-tokmac
-				     (list-remove-before 'cleanup-token-machine pass-names))))
-       (disp "PASS NAMES" pass-names)
-       (game-eval (lambda args (void)))
-       (let ((prog 
-	      (r
-	       '(tokens 
-		 (SOC-start () (gemit gradient))
-		 (gradient () 
-			   (greturn x (to handler))
-			   (grelay))
-		 (handler (x) (display " ") (display x))
-		 ))))
-	 (disp "PROG")
-	 (pp prog)
-;	 (run-simulator-alpha prog)
-	 ))
+(define (test-nesc)
+  (fluid-let ((pass-names (snoc 'emit-nesc pass-names)))
+    ((default-unit-tester "Testing NesC emission and code simulation."
+       `([(run-via-nesc '(tokens (SOC-start () (printf "123\n") (printf "abc\n"))))
+	  ("123" "abc")]
+	 [(run-via-nesc '(tokens (SOC-start () (if #t (printf "yay\n")))))
+	  ("yay")])))))
+
 
 
 
@@ -474,3 +500,7 @@
 
 (define (test)
   (eval (caddr (list-ref (maintest 'get-tests) 55))))
+
+
+
+

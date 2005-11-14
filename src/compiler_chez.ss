@@ -78,6 +78,7 @@
 (include "chez/hashtab.ss") (import hashtab)
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
+(include "chez/pregexp.ss") (import pregexp_module)
 
 ;; This is a trick to deal with mutual recursion in the modules:
 ;; FIXME: Doesn't work right now:
@@ -125,6 +126,7 @@
 
 (include "generic/lang20_deglobalize.ss") 
 (include "generic/lang30_haskellize-tokmac.ss") 
+(include "generic/lang32_emit-nesc.ss")
 
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
