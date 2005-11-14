@@ -53,6 +53,8 @@
   (provide match+ trace-match+ match trace-match )
   (require-for-syntax "iu-exptime.ss" (lib "stx.ss" "syntax"))
   (require (lib "list.ss") (lib "etc.ss") )
+  ;; RRN: [2005.11.13]
+  (require "cheztrace.ss")
   
   (define (make-list n v)
     (vector->list (make-vector n v)))
@@ -92,8 +94,8 @@
     (lambda (x)
       (syntax-case x ()
 	[(_ Name Exp Clause ...)
-	 #'(letrec ((f (trace-lambda  (x) Name (x)
-				      (match-help _ f x () Clause ...))))
+	 #'(letrec ((f (trace-lambda Name (x)
+				     (match-help _ f x () Clause ...))))
 	     (f Exp))])))
 
 ;;; ------------------------------
