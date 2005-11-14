@@ -1,6 +1,9 @@
 #! /bin/sh
 #|
-exec $REGIMENTD/depends/petite --script "$0" ${1+"$@"}
+if [ -f $REGIMENTD/depends/petite ];
+then exec $REGIMENTD/depends/petite --script "$0" ${1+"$@"};
+else petite --script "$0" ${1+"$@"};
+fi
 |#
 
 ; /usr/bin/scheme --script
