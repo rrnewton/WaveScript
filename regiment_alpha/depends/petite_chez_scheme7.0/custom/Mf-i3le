@@ -1,0 +1,27 @@
+# custom/Mf-i3le
+# Copyright (C) 1997 Cadence Research Systems
+
+# Usage: included in custom/Makefile
+
+# Add additional machine-dependent C libraries here.
+mdclib=-lm -ldl -lcurses
+
+# Add additinal machine-dependent object files to clean here
+mdclean=
+
+# Define C compiler here
+C=gcc
+
+# Define default installation group here
+group=root
+
+.SUFFIXES: .c .o
+.c.o: ; $C -c -I${Include} $*.c
+
+${Scheme}: ${Kernel} ${Custom} ${cobj} ${Archive}
+	/bin/rm -f ${Scheme}
+	echo "const char *S_date_stamp = \"`date +%m%d%Y%H%M%S`\";" > datestamp.c
+	$C -rdynamic -o ${Scheme} datestamp.c ${Kernel} ${Custom} ${cobj} ${Archive} ${clib} ${mdclib}
+	chmod 551 ${Scheme}
+
+include Mf-install

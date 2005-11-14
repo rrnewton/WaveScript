@@ -1,9 +1,0 @@
-#!/bin/sh
-
-#echo Calling petite script $0
-
-DIR=`dirname $0`
-MACHINE=`uname`
-exec $DIR/csv6.9c/bin/$MACHINE/scheme -b $DIR/csv6.9c/boot/$MACHINE/petite.boot $*
-
-

@@ -1,0 +1,27 @@
+# custom/Mf-ppcosx
+# Copyright (C) 2002 Cadence Research Systems
+
+# Usage: included in custom/Makefile
+
+# Add additional machine-dependent C libraries here.
+mdclib=-lm
+
+# Add additinal machine-dependent object files to clean here
+mdclean=
+
+# Define C compiler here
+C=cc
+
+# Define default installation group here
+group=wheel
+
+.SUFFIXES: .c .o
+.c.o: ; $C -c -I${Include} $*.c
+
+${Scheme}: ${Kernel} ${Custom} ${cobj} ${Archive}
+	/bin/rm -f ${Scheme}
+	echo "const char *S_date_stamp = \"`date +%m%d%Y%H%M%S`\";" > datestamp.c
+	$C -o ${Scheme} datestamp.c ${Kernel} ${Custom} ${cobj} ${Archive} ${clib} ${mdclib} -framework CoreServices
+	chmod 551 ${Scheme}
+
+include Mf-install
