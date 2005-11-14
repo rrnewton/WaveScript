@@ -57,7 +57,7 @@
     ;haskellize-tokmac 
     
     flatten-tokmac
-;    emit-nesc
+    emit-nesc
 
     ))
 
@@ -265,6 +265,10 @@
       (if (not pos) (error 'run-via-nesc "inconsistent!")
 	  (let ((start (cdar pos)))
 	    (substring s start (string-length s))))))
+
+  (fluid-let ((pass-names
+	       (append (remq 'flatten-tokmac (remq 'emit-nesc pass-names))
+		       '(flatten-tokmac emit-nesc))))
   (match (assemble-tokmac tm)
     [(emit-nesc-language ,p)
      (if (zero? (emit-nesc-language p))
@@ -290,7 +294,7 @@
 	   result))
 	 (error 'run-via-nesc "error on NesC build."))]
     [,other (error 'run-via-nesc "did not assemble to emit-nesc-language program: \n~s" other)]
-    ))
+    )))
 
 ;;======================================================================
 ;; RUNNING THROUGH SIMALPHA
@@ -383,12 +387,30 @@
 
 
 (define (test-nesc)
-  (fluid-let ((pass-names (snoc 'emit-nesc pass-names)))
     ((default-unit-tester "Testing NesC emission and code simulation."
-       `([(run-via-nesc '(tokens (SOC-start () (printf "123\n") (printf "abc\n"))))
+       `(
+	 ["NesC: printing with printf"
+	  (run-via-nesc '(tokens (SOC-start () (printf "123\n") (printf "abc\n"))))
 	  ("123" "abc")]
-	 [(run-via-nesc '(tokens (SOC-start () (if #t (printf "yay\n")))))
-	  ("yay")])))))
+	 ["NesC: a conditional"
+	  (run-via-nesc '(tokens (SOC-start () (if #t (printf "yay\n")))))
+	  ("yay")]
+	 
+	 ["NesC: do a simple local call."
+	  (run-via-nesc '(tokens (SOC-start () (call tok1))
+				 (tok1 () (printf "cheers\n"))) )
+	  ("cheers")]
+
+	 ["NesC: compute factorial of 6 in tail recursive fashion."
+	  (run-via-nesc 
+	   '(tokens (SOC-start () (call fib 6 1))
+		    (fib (x acc) (if (= x 0) 
+				     (printf "%d\n" acc) 
+				     (call fib (- x 1) (* x acc))))))
+	  ("720")]
+
+
+	 ))))
 
 
 
