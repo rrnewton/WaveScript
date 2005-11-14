@@ -79,10 +79,11 @@ package: clean
 	@echo
 	@echo PACKAGING REGIMENT
 	@echo =================================================================
-	rm -rf $(PKGDIR)/*
+	rm -rf $(PKGDIR)
 	mkdir $(PKGDIR)
 	cp -pr $(REGIMENTD) $(PKGDIR)/base
 	$(MAKE) heap
+	$(MAKE) chez
 # Now clean that out a little:
 	rm $(PKGDIR)/base/depends
 	rm -rf $(PKGDIR)/base/old_passes
@@ -99,6 +100,7 @@ package: clean
 	mkdir $(PKGDIR)/depends
 	(cd $(REGIMENTD)/; cp -pr depends/* $(PKGDIR)/depends/)
 	(cd $(PKGDIR); tar cjf regiment_depends.tbz depends)
+	(cd $(REGIMENTD)/; tar cvjf $(PKGDIR)/regiment_object.tbz compiler_chez.so)
 
 
 #/*--------------------------------------------------------------------*/
