@@ -86,7 +86,7 @@ package: clean
 	$(MAKE) heap
 	$(MAKE) chez
 # Now clean that out a little:
-	rm $(PKGDIR)/base/depends
+	rm -f $(PKGDIR)/base/depends
 	rm -rf $(PKGDIR)/base/old_passes
 	rm -rf $(PKGDIR)/base/plots
 	rm -rf $(PKGDIR)/base/haskell/assembler
