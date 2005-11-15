@@ -38,7 +38,7 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   ;; Wow, down to 3.251 seconds on my 10second network average-value test.
 	   )
-(print-graph #t)
+(print-graph #f) ;#t)
 (print-gensym #f)
 
 (define-syntax IF_GRAPHICS

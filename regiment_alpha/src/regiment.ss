@@ -68,7 +68,7 @@
     (define makesimcode #f)
     (define outfile #f)
     (define plot #f)
-    ;(disp "Main called w ARGS: " args)
+    (disp "Main called w ARGS: " args)
     (when (null? args) (print-help) (exit 0))
     
 ;    (printf "regimentc: compile regiment programs!~n")
@@ -204,6 +204,8 @@
 		      (with-evaled-params params
 					  (lambda () 
 					    (apply run-simulator-alpha prog opts))))))
+	       ;; Print simalpha stats:
+	       (print-stats)
 	       (if plot (gnuplot result))
 	       result))]
 	  )))))))

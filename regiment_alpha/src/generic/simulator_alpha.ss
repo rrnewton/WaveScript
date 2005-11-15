@@ -663,6 +663,9 @@
 		
 		[(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
+
+		;; ================================================================================
+		;; Printing functions
 		[(dbg (quote ,str) ,[args] ...)
 		 ;; TODO FIX ME: would be nice to print properly
 		 (let ()
@@ -672,8 +675,14 @@
 				   (begin (display (format ,massaged ,@args) (console-output-port))
 					  (newline (console-output-port))))
 			       ;; Send a copy to the logger as well:
-			       (logger (string-append "<dbg> " (format ,massaged ,@args)))))
-		     )]
+			       (logger (string-append "<dbg> " (format ,massaged ,@args))))) )]
+		[(printf (quote ,str) ,[args] ...)
+		 (let ((massaged (massage-str str)))
+		   `(printf ,massaged ,@args))]
+		[(setlabel (quote ,str) ,[args] ...)
+		 `(sim-setlabel (format ,str ,@args))]
+		;; ================================================================================
+
 
 		;; Any prim apps that didn't get caught above are equivalent to the normal Scheme versions:
 		[(,prim ,[rand*] ...)
@@ -1081,6 +1090,11 @@
     (apply run-alpha-loop args)))
 
 
+(define (print-stats)
+  (printf "\nStatistics for most recent run of SimAlpha.\n")
+  (printf "  Total tokens fired: ~s\n" (simalpha-total-tokens))
+  (printf "  Total messages broadcast: ~s  (per-node ~s)\n" 
+	  (simalpha-total-messages) (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss

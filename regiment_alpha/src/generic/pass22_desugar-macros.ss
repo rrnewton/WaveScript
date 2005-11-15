@@ -91,11 +91,11 @@
 		(let* ((compete      (unique-name 'compete))
 		       (storagename  (unique-name 'leaderstorage))
 		       (cur-leader   (unique-name 'cur-leader))
-		       (my-criteria  (unique-name 'my-cred))
+		       (ldr-criteria  (unique-name 'my-cred))
 		       (tmp          (unique-name 'tmp))
 		       (tmp0          (unique-name 'tmp))
-;		       (tmp1          (unique-name 'tmp))
-;		       (tmp2          (unique-name 'tmp))
+		       (tmp1          (unique-name 'ldr-crit))
+		       (tmp2          (unique-name 'ldr-id))
 		       (check-winner (unique-name 'am-i-winner))
 		       (id           (unique-name 'subtokid))
 		       (val           (unique-name 'val))
@@ -103,13 +103,13 @@
 		(vector
 		 `(begin 
 		    (subcall ,storage) ;; First allocate storage locally.
-;		    (printf '" (Launching: ~s) \n" (ext-ref ,storage ,my-criteria))
-		    (gemit (tok ,compete (my-id)) (ext-ref ,storage ,my-criteria))
+;		    (printf '" (Launching: ~s) \n" (ext-ref ,storage ,ldr-criteria))
+		    (gemit (tok ,compete (my-id)) (ext-ref ,storage ,ldr-criteria))
 		    (timed-call 1000 ,check-winner)
 		    )
 		 `([,storagename () 
 				 (stored [,cur-leader 'leader-uninitialized]
-					 [,my-criteria 'mycreds-uninitialized])
+					 [,ldr-criteria 'mycreds-uninitialized])
 				 (begin 
 				   (set! ,cur-leader (my-id))
 				   ,(if criteria
@@ -118,10 +118,12 @@
 					`(let ((,tmp (subcall ,criteria)))					   
 					   (begin 
 					     (printf '" (INIT ~s) \n" ,tmp)
-					     (set! ,my-criteria ,tmp)))
-					`(set! ,my-criteria (- 0 (my-id)))))]
+					     (set! ,ldr-criteria ,tmp)))
+					`(set! ,ldr-criteria (- 0 (my-id)))))]
 		   [,compete ,id (,val)
 		    (begin	
+		      ;; TEMP: 
+		      (leds toggle blue)
 ;		      ,@(REGIMENT_DEBUG
 ;			 `(if (token-present? ,storage) (void)
 ;			      (dbg '"~s.~s ERROR: leader election, was expecting ~s storage token to exist." 
@@ -130,22 +132,35 @@
 		      '"This means the message just got to a new node."
 		      (if (token-present? ,storage ) (void)
 			  (subcall ,storage))
-			(if (> ,val (ext-ref ,storage ,my-criteria))
+		      
+		      (if (let ((,tmp1 (ext-ref ,storage ,ldr-criteria)))
+			    ;; Either they beat us flat out, or they tie us and beat us on the ID based tie-breaker:
+			    (if (> ,val ,tmp1) '#t
+				(if (= ,val ,tmp1)
+				    (begin
+				      ;(printf '"\nAt <~a> does node ~a beat ~a in tie breaker?\n" (my-id) ,id (ext-ref ,storage ,cur-leader))
+				      ;; Prefer lower ID numbers:
+				      (< (ext-ref ,storage ,cur-leader) ,id))
+				    '#f)))
 ;				(printf '"Comparing: ~s\n" (list (subcall ,criteria) (ext-ref ,storage ,cur-leader)))
-			    (begin '"If they beat the local leader, then the new winner is them."
-				   (printf '"(~a ~a) " ,val (ext-ref ,storage ,my-criteria))
-				   (ext-set! ,storage ,cur-leader ,id)
-				   (ext-set! ,storage ,my-criteria ,val)
-				   '"And since they won, we bear their flag onward:"
-				   (grelay (tok ,compete ,id) ,val))
-			    (begin 
+			  (begin '"If they beat the local leader, then the new winner is them."
+				 (printf '"(~a ~a) " ,val (ext-ref ,storage ,ldr-criteria))
+				 (ext-set! ,storage ,cur-leader ,id)
+				 (ext-set! ,storage ,ldr-criteria ,val)
+				 '"And since they won, we bear their flag onward:"
+				 (grelay (tok ,compete ,id) ,val))
+			  (begin 
 			      '"If they don't change our mind about who's leading, we do nothing."
-			      (printf '"~a "(ext-ref ,storage ,my-criteria))
+			      (printf '"~a "(ext-ref ,storage ,ldr-criteria))
+			      ;; TEMP: FIXME: I am temporarily: RECOMPETING in this case:
+			      ;(gemit (tok ,compete (ext-ref ,storage ,cur-leader)) (ext-ref ,storage ,ldr-criteria))
 			      ))
 		      )]
 		   [,check-winner ()
-				  (call ,t (ext-ref ,storage ,cur-leader))
-#;
+				  ;; Call the users hook with leader ID and leader criteria.
+				  (call ,t (ext-ref ,storage ,cur-leader)
+					   (ext-ref ,storage ,ldr-criteria))
+				  #;
 				  (begin
 				    (if (= (ext-ref ,storage ,cur-leader) (my-id))
 					(begin 

@@ -5,6 +5,7 @@
 ;; then the ups should happen repeatedly.
 `(tokens
  [SOC-start () 
+	    (leds on green)
 	    (printf "~a: Root spreading...\n" (my-clock))
 	    (bcast down (my-id) 1)
 	    (timed-call 1000 SOC-start)
@@ -12,6 +13,7 @@
  [node-start () (call up 0 0) (timed-call 1000 node-start)]
  [down (p h)
        (stored [parent -1] [hops 1000])
+       (leds on blue)
        (if (< h hops)
 	   (begin 
 	     (printf "~a.~a: Down   p:~a  hops:~a\n" (my-clock) (my-id) p h)
@@ -20,6 +22,7 @@
 	     (bcast down (my-id) (+ hops 1))))
        ]
  [up (dest v)
+     (leds on red)
      (if (or (= dest (my-id)) (= dest 0))
 	 (if (token-present? down)
 	     (if (= (my-id) ,BASE_ID)
