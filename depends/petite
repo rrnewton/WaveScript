@@ -1,15 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
 MACHINE=`uname`
 
 if [ $MACHINE == "Linux" ];
 then DIR=i3le;
+     SCHEME=scheme;
 elif [ $MACHINE == "Darwin" ];
 then DIR=ppcosx;
-elif [ $MACHINE == "Windows" ];
+     SCHEME=scheme;
+elif [ $MACHINE == "CYGWIN_NT-5.1" ];
 then DIR=i3nt;
+     SCHEME=petite.exe;
 else echo Unknown platform: $MACHINE
 fi
 
-
-$REGIMENTD/depends/petite_chez_scheme7.0/bin/$DIR/scheme -b $REGIMENTD/depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*
+#echo $REGIMENTD/depends/petite_chez_scheme7.0/bin/$DIR/$SCHEME -b $REGIMENTD/depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*
+(cd $REGIMENTD; ./depends/petite_chez_scheme7.0/bin/$DIR/$SCHEME -b ./depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*)
