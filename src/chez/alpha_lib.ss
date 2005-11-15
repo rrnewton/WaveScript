@@ -13,6 +13,7 @@
 	 sim-light-up
 	 sim-print-queue
 	 sim-leds
+	 sim-setlabel
 	 ;sim-dist
 	 sim-loc
 	 sim-locdiff

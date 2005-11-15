@@ -81,8 +81,22 @@
       ;; We're allowing light-up of undrawn objects atm:
       ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
       ]
-     [#(,circ ,rled ,gled ,bled ,text)
-       (change-color! (simobject-gobj (current-simobject)) (make-rgb r g b))])
+     [#(,circ ,rled ,gled ,bled ,text ,text2)
+       (change-color! ;(simobject-gobj (current-simobject)) 
+	circ
+	(make-rgb r g b))])
+   ;; Fizzle if graphics is not enabled.
+   (void))]
+
+[define (sim-setlabel str)
+  (IF_GRAPHICS 
+   (match (simobject-gobj (current-simobject))       
+     [#f (void)
+      ;; We're allowing light-up of undrawn objects atm:
+      ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
+      ]
+     [#(,circ ,rled ,gled ,bled ,text ,text2)
+       (change-text! text2 str)])
    ;; Fizzle if graphics is not enabled.
    (void))]
 
@@ -118,7 +132,7 @@
       (IF_GRAPHICS
        (match (simobject-gobj (current-simobject))       
 	 [#f (void)] ;; Do nothing if there's no gobj.
-	 [#(,circ ,rled ,gled ,bled ,text) ;; If there is a graphical representation, change it.
+	 [#(,circ ,rled ,gled ,bled ,text ,text2) ;; If there is a graphical representation, change it.
 	  (if (memq which led-toggle-state)
 	      (case which
 		[(red)   (change-color! rled (make-rgb 255 0 0))]
@@ -155,8 +169,12 @@
   (node-pos (simobject-node (current-simobject)))]
 
 [define (sim-locdiff a b)
-   (sqrt (+ (expt (- (car a) (car b)) 2)
-           (expt (- (cadr a) (cadr b)) 2)))]
+  ;(flonum->fixnum ;; TEMP: FIXME: SHOULD RETURN FLOAT
+   (exact->inexact 
+    (sqrt (+ (expt (- (car a) (car b)) 2)
+	     (expt (- (cadr a) (cadr b)) 2))))
+   ;)
+   ]
 
 [define (simulator-soc-return x)
   (printf "~n  SOCRETURN(t=~s) ~s ~n" 

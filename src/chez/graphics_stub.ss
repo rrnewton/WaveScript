@@ -27,7 +27,7 @@
 				  Starting-Node-Color
 				  change-color! ;set-color!
 				  ;get-state ;; [2004.11.13] including
-
+				  change-text!
 				  ;; temporarily exposed:
 				  processor-screen-radius
 				  
@@ -112,6 +112,8 @@
 		     (rgb-green c)
 		     (rgb-blue c))))
 
+(define change-text! set-title!)
+
 (define (get-state sym ob)
   (case sym
     [(color) (get-fill-color ob)]
@@ -183,8 +185,16 @@
 		 [text (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
 			                             (- boundy1 (* 0.3 processor-screen-radius))
 			       with (title: (format "~s" nodeid )))]
+		 [text2 (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
+			                             (+ boundy2 (* 0.35 processor-screen-radius))
+						     with (title: "") ;(format "~s" nodeid ))
+						          (fill-color: (make <rgb> 0 100 0)))]
 		 )
 	     (show text)
+	     (show text2)
+
+	     ;(set-foreground-color! text2 (make <rgb> 255 0 0))
+	     ;(set-color! text2 (make <rgb> 255 0 0))
 
 	     (set-fill-color! box1 defled)
 	     (set-fill-color! box2 defled)
@@ -193,12 +203,13 @@
 	   (set-fill-color! circ Starting-Node-Color)
 ;	   (show circ)
 	   (set! processor-screen-objs
-		 (append (list circ box1 box2 box3 text)
+		 (append (list circ box1 box2 box3 text text2)
 			 processor-screen-objs))
-	   (vector circ box1 box2 box3 text))))))
+	   (vector circ box1 box2 box3 text text2))))))
 
 ;; This returns nothing.
-(define (draw-mark pr color)
+(define (draw-mark pr . color)
+  (set! color (if (null? color) (make <rgb> 0 0 0) (car color)))
   (mvlet ([(x y) (coord:sim->screen pr)])
     (let ((len 10)) ;; shouldn't be constant.
       (let ([l1 (create <line> the-win (- x len) (- y len) (+ x len) (+ y len))]
@@ -234,7 +245,8 @@
 ;	  [c (car pos1)] [d (cadr pos1)])
     (mvlet ([(x1 y1) (scale2d pos1 box1 box2)]
 	    [(x2 y2) (scale2d pos2 box1 box2)])
-	   (let ((line (create <line> the-win x1 y1 x2 y2)))
+	   (let ((line (create <line> the-win x1 y1 x2 y2
+			       with (fill-color: (make <rgb> 10 10 10)))))
 	     (set! edge-screen-objs
 		   (cons line edge-screen-objs))
 	     line))))

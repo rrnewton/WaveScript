@@ -327,8 +327,11 @@
      (procedure? (Object) Bool)
      (pad-width (Number String) Void)
      ;; For simulator only:
+
+     ;; This just displays text by a nodes' icon.
+     (setlabel (String . Object) Void)
      ; [2005.04.30] Disabling these for now, will get them back up later.
-     ;(draw-mark)
+     (draw-mark (List) Void)
      ;(rgb)
      ))
 

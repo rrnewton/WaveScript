@@ -282,22 +282,33 @@
 	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
-		   [target args] ;; Location is an X/Y pair
+		   [calcdist (new-token-name 'calc-dist)]
+		   [target `(list ,@args)] ;; Location is an X/Y pair
 		   )
-	       `([,form () (flood ,consider)]
-		 [,consider () 
+	       `([,form () (elect-leader ,memb ,calcdist)] ;(flood ,consider)]
+;		 [,consider () 
 ;			    (if (< (locdiff (loc) ,target) 10.0)
-			    (if (< (locdiff (loc) ,target) 10)
-				(elect-leader ,memb)
-				'#f)]
-		 [,form () (draw-mark ,target (make-rgb 0 100 100))]
+			    ;(if (< (locdiff (loc) ,target) 10)
+;				(elect-leader ,memb)
+				;'#f)
+;			    ]
+		 ;; Returns our score:
+		 [,calcdist ()
+			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
+			    (-. 0. (locdiff (loc) ,target))]
+		 [,form () 
+			(draw-mark ,target)
+			(leds on blue)
+			]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
-		 [,memb () 
+		 [,memb (ldr val) 
 			;; Note that we are an anchor.
-;			(set-simobject-homepage! 
-;			 this (cons 'anchor (simobject-homepage this)))
-			(light-up 0 255 255)]
+;;			(set-simobject-homepage! 
+;;			 this (cons 'anchor (simobject-homepage this)))
+			;(light-up 0 255 255)
+			(leds on red)
+			]
 		 ))]
 
 	    ;; This is not a region; it carries no value on its membership token!
@@ -306,8 +317,10 @@
 	       (let ([consider (new-token-name 'cons-tok)]
 		     [leader (new-token-name 'leader-tok)])
 		 
-	     `([,form () (flood ,consider)]
-	       [,consider () (elect-leader ,memb ,fun_tok)]
+	     `([,form () (elect-leader ,memb ,fun_tok)] ;(flood ,consider)]
+;	       [,consider () (elect-leader ,memb ,fun_tok)]
+
+
 ;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING
 	       ;; This just lights up the node when it becomes anchor, for visualization:
@@ -561,7 +574,7 @@
   (lambda (prim tokname) ;; The tokname is a membership-name
     (case prim
       [(anchor-at anchor-maximizing)
-       `([,tokname ()
+       `([,tokname (ldr val)
 		   ;; At each formation click, we output this node [id].
 		   (soc-return (list 'ANCH (my-id)))
 		   ;(soc-return ,ANCH-NUM)
