@@ -32,6 +32,7 @@
   (printf "  help          prints this message~n")
   (printf "  compile  (c)  compile Regiment source (.rs) to token machines~n")
   (printf "  simulate (s)  simulate a token machine or simulator file~n")
+  (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
   (printf "~n")
   (printf "General Options:  ~n")
@@ -48,6 +49,7 @@
   (printf "Simulator Options: ~n")
   (printf "  -timeout <n>  timeout after n clock ticks\n")
   (printf "  -plot         when simulation finishes, gnuplot output\n")
+  (printf "  -repl         when simulation finishes, run interactive REPL\n")
   )
 
 
@@ -68,6 +70,7 @@
     (define makesimcode #f)
     (define outfile #f)
     (define plot #f)
+    (define simrepl #f)
     (disp "Main called w ARGS: " args)
     (when (null? args) (print-help) (exit 0))
     
@@ -88,6 +91,7 @@
 		    [(.h ,rest ...) (print-help) (exit 0)]
 
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
+		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
 
 		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))		     
                                      (set! extension ".sexp") (loop rest)]
@@ -206,7 +210,11 @@
 	       ;; Print simalpha stats:
 	       (print-stats)
 	       (if plot (gnuplot result))
+	       (if simrepl (new-cafe))
 	       result))]
+
+	  [(i interact) (new-cafe)]
+
 	  )))))))
   
 

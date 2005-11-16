@@ -113,6 +113,7 @@ package: clean
 clean:
 	(cd plt; $(MAKE) clean)
 	(cd haskell; $(MAKE) clean)
+	(cd chez/usleep; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_*
 	$(RM) build/*.heap
 	$(RM) __temp.log _genned_node_code.ss
