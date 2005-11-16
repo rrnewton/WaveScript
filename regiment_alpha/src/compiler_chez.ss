@@ -15,13 +15,12 @@
 		 (apply default-break-handler args) 
 		 (if (null? args) (void) (car args))))
 
-;(define REGIMENTDIR (if (getenv "REGIMENTD") (getenv "REGIMENTD") "~/cur"))
-
 ;; The regiment compiler expects case-sensitive treatment of symbols:
 ;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 
+	   ;; For now let's just error if we have no dir:
 	   (if (not (getenv "REGIMENTD"))
 	       (error 'regiment "environment variable REGIMENTD was not set"))
 
@@ -38,6 +37,10 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   ;; Wow, down to 3.251 seconds on my 10second network average-value test.
 	   )
+
+;; But here is the kinder behavior, try the current directory:
+(define REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+
 (print-graph #f) ;#t)
 (print-gensym #f)
 
@@ -65,6 +68,26 @@
 (IF_GRAPHICS (printf "(Linking GUI code using SWL.)\n")
 	(printf "(No GUI available.)\n"))
 (flush-output-port)
+
+
+
+;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
+;; This tries to dynamically load the shared object the first time the function is called:
+(define (sleep t)
+  ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
+  (parameterize ((current-directory REGIMENTD))
+    (if (not (file-exists? (format "chez/usleep/~a/usleep.so" (machine-type))))
+	(system "(cd chez/usleep; make)"))
+    (if (file-exists? (format "chez/usleep/~a/usleep.so" (machine-type)))
+	(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
+	  (load "usleep.so" ))
+	;; If that build failed and we still don't have it we have to throw an error:
+	(define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
+  (sleep t))
+
+;(load-shared-object (format "chez/usleep/~a/usleep.o" (machine-type)))
+;(define sleep (foreign-procedure "rrn_usleep" (integer-32) void))
+
 
 (include "chez/match.ss")
 
