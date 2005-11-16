@@ -198,7 +198,12 @@
     (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
       (match (process-expr body)
 	[#(,newbod ,tbs)
-	 (cons `[,tok ,id ,args (stored ,@stored) ,newbod]
+	 (cons `[,tok ,id ,args (stored ,@stored) 
+		      (begin 
+			;; TEMP: display message count:
+;			(if (token-present? (tok mgcount 0))
+;			    (setlabel ".~a." (ext-ref (tok msgcount 0) count)))
+			,newbod)]
 	       tbs)]
 	[,other (error 'desugar-macros:process-tokbind 
 		       "BUG: invalid returned val from process-expr: ~a" other)])))
@@ -211,7 +216,9 @@
        `(desugar-macros-lang
 	 '(program (bindings ,constbinds ...)
 	    (nodepgm (tokens 
-			 ,@(apply append (map process-tokbind toks))))))]))
+;		       (msgcount _ () (stored (count 0)) (void))
+;		       (node-start _ () (stored) (call msgcount))
+		       ,@(apply append (map process-tokbind toks))))))]))
   ))
 
 

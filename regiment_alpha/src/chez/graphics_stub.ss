@@ -209,7 +209,7 @@
 
 ;; This returns nothing.
 (define (draw-mark pr . color)
-  (set! color (if (null? color) (make <rgb> 0 0 0) (car color)))
+  (set! color (if (null? color) (make-rgb 0 0 0) (car color)))
   (mvlet ([(x y) (coord:sim->screen pr)])
     (let ((len 10)) ;; shouldn't be constant.
       (let ([l1 (create <line> the-win (- x len) (- y len) (+ x len) (+ y len))]
