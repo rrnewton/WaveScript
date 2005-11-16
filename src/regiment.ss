@@ -62,7 +62,7 @@
 	(parameterize ([(eval (caar ls)) (eval (cadar ls))])
 	  (printf "Setting parameter: ~a ~a\n" (caar ls) (cadar ls))
 	  (loop (cdr ls))))))
-	   
+
 (define main 
   (lambda args    
     (define makesimcode #f)
@@ -125,7 +125,6 @@
       ;; I keep disjoint options for the two modes so I use the same option-processor (loop)
 	(let ([symargs (map string->symbol args)])
 	  (let runloop ([mode (car symargs)] [filenames (loop (cdr symargs))])
-	    
 	(case mode
 	  [(t test)
 	   (test-units)
