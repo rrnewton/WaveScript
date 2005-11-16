@@ -34,6 +34,7 @@
   (define (get-queue) (simworld-scheduler-queue sim))
 
   (define vtime 0)    ;; Clock for the whole simulator.
+  (define realtime #f) ;; This records the realtime corresponding to the vtime.
 
   (define (pop)
     (let ((queue (get-queue)))
@@ -292,9 +293,11 @@
   ;; First Initialize.
   (for-each init-simobject (simworld-all-objs sim))
   (set-queue! '()) ;; Start with no scheduled events.
+  ;; Snapshot the real time:
+  (set! realtime (real-time))
 
   ;; ======================================================================
-  ;; Then, run loop.
+  ;; Then, run loop.  This is the main loop that drives the simulation.
   (let main-sim-loop ()
     ;; First process all incoming-buffers, scheduling events.
     (for-each process-incoming (simworld-all-objs sim))
@@ -315,7 +318,16 @@
 
 	  ;; Set the clock to the time of this next action:
 	  ;; HOWEVER, the clock can't move backwards:
-	  (set! vtime (max vtime (simevt-vtime evt)))
+	  (let ((last-vtime vtime))
+	    (set! vtime (max vtime (simevt-vtime evt)))
+	    ;; Now if the flag is set we wait for real-time to catch up to this virtual time.
+	    (if (simalpha-realtime-mode)
+		(let ((diff (- vtime last-vtime))
+		      (real (- (real-time) realtime)))
+		  (let ((gap (- diff real)))
+		    (if (> gap 50)
+			(sleep gap)) ;; Might want to subtract some for overhead
+		    ))))
 
 	  ;; Also copy this value to the simworld object so alpha_lib closures can get to it:
 	  (set-simworld-vtime! sim vtime)

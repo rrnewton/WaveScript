@@ -38,6 +38,9 @@
 
     cleanup-token-machine 
     desugar-macros		
+
+    cleanup-token-machine   ;; TEMP: FIXME
+
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
 
