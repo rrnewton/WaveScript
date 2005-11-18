@@ -187,6 +187,7 @@
 	    ))
 	(b c a)]
 
+
      ["Clocks"
       (let ((result  , (tm-to-list
 		 '(tokens 
@@ -570,7 +571,7 @@
 
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
-      , (tm-to-list (car (file->slist "demos/token_machs/manual_tree.tm"))
+      , (tm-to-list (car (file->slist (++ REGIMENTD "/demos/token_machs/manual_tree.tm")))
 		    '[sim-timeout 5000])
       unspecified]
 
@@ -892,6 +893,34 @@
       (30 0 1 #t #t)]
 
 
+     ["Gradients: SLOWly spread a gradient through the network.  Try this one in real time with GUI."
+      , (tm-to-socvals
+	 '(tokens
+	    (SOC-start () (leds on green)
+		       (gemit tok1))
+	    (tok1 () 
+		   (if (odd? (ghopcount tok1))
+		       (leds on red)
+		       (leds on blue))
+		   (highlight-edge (gparent))
+		   
+		   (printf "~a.~a.A.~a \n" (pad-width 5 (my-clock)) (pad-width 3 (my-id)) (gdist))
+		   (timed-call 1000 tok1b)
+		   ;(call tok1b)
+		   ;(grelay tok1)
+		   )
+	    (tok1b ()
+		   (printf "~a.~a.B \n" (pad-width 5 (my-clock))  (pad-width 3 (my-id)))
+		   (grelay tok1)))
+	 '[simalpha-zeropad-args #t]
+	 '[simalpha-channel-model  'lossless]
+	 '[simalpha-placement-type 'gridlike] ;'connected]
+	 '[simalpha-failure-model  'none]
+	 '[sim-num-nodes 30]
+	 '[simalpha-consec-ids #t]
+	 '[simalpha-graphics-on #t])
+	unspecified]
+
      ;; [2005.11.01] Currently there is inconsistency in the order a neighbor receives messages sent by one tokhandler.
      ;; TODO: FIXME
      ["Gradients: Respect emit order just like call order. (FIXME)"
@@ -1044,6 +1073,7 @@
 	    (length (list->set (apply append x))))
 	 ))]
 
+     ;; [2005.11.16] This just FAILED when I had realtime mode turned on.  But succeeded when I tried again.
      ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
       retry
       (let ((lst , (tm-to-list
@@ -1883,7 +1913,7 @@
 
     ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
-      , (tm-to-list (car (file->slist "demos/token_machs/buffered_gradients.tm"))
+      , (tm-to-list (car (file->slist (++ REGIMENTD "/demos/token_machs/buffered_gradients.tm")))
 		    '[sim-timeout 5000])
 	unspecified]
      

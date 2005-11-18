@@ -1,3 +1,7 @@
+;; NOTE: 
+;; Hopefully this is temporary.  I haven't figured out how to
+;; systematically export all the structure accessors/mutators from a
+;; Chez module yet, so here they are, listed out verbosely.
 
 (module simulator_alpha_datatypes
 	(	 
@@ -86,6 +90,23 @@
 	 set-simobject-scheduler!
 	 set-simobject-meta-handler!
 	 set-simobject-worldptr!
+
+	 make-gobject
+	 gobject?
+	 gobject-circ
+	 gobject-rled
+	 gobject-gled
+	 gobject-bled
+	 gobject-title
+	 gobject-label
+	 gobject-edgetable
+	 set-gobject-circ!
+	 set-gobject-rled!
+	 set-gobject-gled!
+	 set-gobject-bled!
+	 set-gobject-title!
+	 set-gobject-label!
+	 set-gobject-edgetable!
 
 	 make-msg-object
 	 msg-object?

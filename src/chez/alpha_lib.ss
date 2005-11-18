@@ -10,8 +10,10 @@
 
 	 neighbors
 	 sendmsg
-	 sim-light-up
+
 	 sim-print-queue
+	 sim-light-up
+	 sim-highlight-edge
 	 sim-leds
 	 sim-setlabel
 	 ;sim-dist

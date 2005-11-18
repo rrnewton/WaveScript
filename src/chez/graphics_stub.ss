@@ -35,9 +35,10 @@
 				  test-graphics-stub)
   (import basic_graphics)
 
-;; CONSTANTS:
+  ;; CONSTANTS:
 ;(define Starting-Node-Color (make <rgb> 200 10 10))
 (define Starting-Node-Color (make <rgb> 130 130 130))
+(define Default-Edge-Color  (make <rgb> 10 10 10))
 
 ;; GLOBAL BINDINGS:
 
@@ -246,7 +247,7 @@
     (mvlet ([(x1 y1) (scale2d pos1 box1 box2)]
 	    [(x2 y2) (scale2d pos2 box1 box2)])
 	   (let ((line (create <line> the-win x1 y1 x2 y2
-			       with (fill-color: (make <rgb> 10 10 10)))))
+			       with (fill-color: Default-Edge-Color))))
 	     (set! edge-screen-objs
 		   (cons line edge-screen-objs))
 	     line))))

@@ -215,7 +215,7 @@
 
 ;; When this is set to #t, the simulator slows itself down to match real-time.
 ;; If it can't match real time, will have undefined behavior.
-(define-regiment-parameter simalpha-realtime-mode #t)
+(define-regiment-parameter simalpha-realtime-mode #f)
 
 ;; This is used by the simulator, 
 ;; if true then the node ids are small consecutive numbers rather than

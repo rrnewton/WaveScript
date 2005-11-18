@@ -199,11 +199,11 @@
       (match (process-expr body)
 	[#(,newbod ,tbs)
 	 (cons `[,tok ,id ,args (stored ,@stored) 
-		      (begin 
+;		      (begin 
 			;; TEMP: display message count:
 ;			(if (token-present? (tok mgcount 0))
 ;			    (setlabel ".~a." (ext-ref (tok msgcount 0) count)))
-			,newbod)]
+			,newbod]
 	       tbs)]
 	[,other (error 'desugar-macros:process-tokbind 
 		       "BUG: invalid returned val from process-expr: ~a" other)])))

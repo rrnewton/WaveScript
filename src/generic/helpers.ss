@@ -330,6 +330,7 @@
 
      ;; This just displays text by a nodes' icon.
      (setlabel (String . Object) Void)
+     (highlight-edge (Integer) Void)
      ; [2005.04.30] Disabling these for now, will get them back up later.
      (draw-mark (List) Void)
      ;(rgb)
