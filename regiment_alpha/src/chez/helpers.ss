@@ -16,7 +16,8 @@
 	  with-error-handlers with-warning-handler
 	  current-error-port
 
-	  system/echoed
+	  system/echoed system-to-str 
+	  chomp shell-expand-string
 
 	  ;; Values:	    
 	  id gnuplot histogram display-progress-meter count-nodes
@@ -215,6 +216,34 @@
 ;; Example: compare (with-output-to-string (lambda () (system "ls")))
 ;;               to (with-output-to-string (lambda () (system/echoed "ls")))
 
+;; [2005.11.17] This one is similar 
+(define (system-to-str str)
+  (let-match ([(,in ,out ,id) (process str)])
+    (let ((p (open-output-string)))
+    (let loop ((c (read-char in)))
+      (if (eof-object? c)	  
+	  (begin 
+	    (close-input-port in)
+	    (close-output-port out)
+	    (get-output-string p))
+	  (begin (display c p)
+		 (loop (read-char in))))))))
+
+;; [2005.11.17] This is reminescent of the perl command "chomp" 
+(define (chomp s)
+  (cond
+   [(string? s)
+    (let ((ind (sub1 (string-length s))))
+      (if (eq? #\newline (string-ref s ind))
+	  (substring s 0 ind)
+	  s))]
+   [(null? s) '()]
+   [(pair? s) (cons (chomp (car s)) (chomp (cdr s)))]
+   [else (error 'chomp "bad input: ~s" s)]))
+
+(define (shell-expand-string s)
+  (chomp (system-to-str (string-append "exec echo " s))))
+
 ;; This is a simple random number generator interface for use in this Regiment codebase:
 (define reg:random-int
   (case-lambda 
@@ -224,3 +253,4 @@
 (define (reg:set-random-state! s) (random-seed s))
 
 )
+

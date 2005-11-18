@@ -2,6 +2,12 @@
 ;; [2005.10.18] This file encapsulates the datatype definitions and
 ;; global parameters used by the simulator.
 
+;; NOTE: If I had this to do over again I would use some kind of oop system.
+;; There is basically a class-hierarchy three deep:
+;;  NODE              -- Basic information about a node.
+;;  |-> SIMOBJECT     -- State associated with the simulator
+;;      |-> GOBJECT   -- State associated with the visualization of the simulator.
+
 ;; ======================================================================
 
 ;; This structure contains all the global data needed a simulation.
@@ -42,6 +48,27 @@
 ;; Positions are just 2-element lists.
 (reg:define-struct (node id pos))
 
+
+;; [2005.11.16] NOT USED YET:
+;; Graphical Node-Object
+;; This is the graphical representation of a node.
+(reg:define-struct (gobject circ           ;; The circle
+			    rled gled bled ;; The LEDs
+			    title label    ;; The title above the node, and debug-text/label below the node.
+			    edgetable ;; An association list binding neighbor ID to a graphical line object.
+			    ))
+;; Optionally put in a guarded constructor:
+#;(DEBUGMODE
+ (define make-gobject
+   (let ((orig make-gobject))
+     (lambda (c r g b t l e)
+       (if (and (list? e)
+		;; Don't know how to check instance relationships for SWL objects...
+		)
+	   (orig c r g b t l e)
+	   (error 'make-gobject "Invalid edge table: ~s" e))))))
+
+
 ;; This structure represents a simulated node:
 ;; Incoming is a list of token messages.
 ;; Redraw is a boolean indicating whether the object needs be redrawn.
@@ -61,8 +88,8 @@
 
 			     local-sent-messages local-recv-messages
 			     redraw 
-			     gobj 
-			     homepage 
+			     gobj     ;; Pointer to the graphical representation of this object.
+			     homepage ;; Not currently used, a "blackboard".
 
 			     ;; This is a function that processes incoming messages
 			     scheduler ;; and returns simulation actions.

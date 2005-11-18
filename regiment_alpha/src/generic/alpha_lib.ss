@@ -71,32 +71,40 @@
                   ;(set-simobject-redraw! ob #t)
                   )]
 
+[define (sim-highlight-edge nbr)
+  (let ((g (simobject-gobj (current-simobject))))
+    (when g 
+      (let ((pr (assq nbr (gobject-edgetable g))))
+	(inspect pr)
+	(if pr 
+	    (change-color! (cadr pr) (make-rgb 255 255 0))
+	    (error 'sim-highlight-edge 
+		   "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))
+  ]
+
 
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (IF_GRAPHICS 
-   (match (simobject-gobj (current-simobject))       
-     [#f (void)
-      ;; We're allowing light-up of undrawn objects atm:
-      ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-      ]
-     [#(,circ ,rled ,gled ,bled ,text ,text2)
-       (change-color! ;(simobject-gobj (current-simobject)) 
-	circ
-	(make-rgb r g b))])
+   (if (simobject-gobj (current-simobject))
+       (change-color! 
+	(gobject-circ (simobject-gobj (current-simobject)))
+	(make-rgb r g b)))
+   ;; We're allowing light-up of undrawn objects atm:
+					;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
+   
    ;; Fizzle if graphics is not enabled.
    (void))]
 
 [define (sim-setlabel str)
   (IF_GRAPHICS 
-   (match (simobject-gobj (current-simobject))       
-     [#f (void)
-      ;; We're allowing light-up of undrawn objects atm:
-      ;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
-      ]
-     [#(,circ ,rled ,gled ,bled ,text ,text2)
-       (change-text! text2 str)])
+   (let ((g (simobject-gobj (current-simobject))))
+   (when g
+     (DEBUGMODE (if (not (gobject? g)) (error 'sim-setlabel "found simobject with invalid gobject!\n")))
+     ;(inspect (gobject-label (simobject-gobj (current-simobject))))
+     (change-text! (gobject-label (simobject-gobj (current-simobject)))
+		   str)))
    ;; Fizzle if graphics is not enabled.
    (void))]
 
@@ -130,21 +138,19 @@
                             [else (error 'sim-leds "bad action: ~s" what)]))))
       ;; Now color the actual leds:
       (IF_GRAPHICS
-       (match (simobject-gobj (current-simobject))       
-	 [#f (void)] ;; Do nothing if there's no gobj.
-	 [#(,circ ,rled ,gled ,bled ,text ,text2) ;; If there is a graphical representation, change it.
-	  (if (memq which led-toggle-state)
-	      (case which
-		[(red)   (change-color! rled (make-rgb 255 0 0))]
-		[(green) (change-color! gled (make-rgb 0 255 0))]
-		[(blue)  (change-color! bled (make-rgb 0 0 255))]
-		[else (error 'sim-leds "bad led color: ~s" which)])
-	      (case which
-		[(red)   (change-color! rled (make-rgb 0 0 0))]
-		[(green) (change-color! gled (make-rgb 0 0 0))]
-		[(blue)  (change-color! bled (make-rgb 0 0 0))]
-		[else (error 'sim-leds "bad led color: ~s" which)]))
-	  ]))
+       (let ((g (simobject-gobj (current-simobject))))
+	 (if g ;; Do nothing if there's no gobj.
+	     (if (memq which led-toggle-state)
+		 (case which
+		   [(red)   (change-color! (gobject-rled g) (make-rgb 255 0 0))]
+		   [(green) (change-color! (gobject-gled g) (make-rgb 0 255 0))]
+		   [(blue)  (change-color! (gobject-bled g) (make-rgb 0 0 255))]
+		   [else (error 'sim-leds "bad led color: ~s" which)])
+		 (case which
+		   [(red)   (change-color! (gobject-rled g) (make-rgb 0 0 0))]
+		   [(green) (change-color! (gobject-gled g) (make-rgb 0 0 0))]
+		   [(blue)  (change-color! (gobject-bled g) (make-rgb 0 0 0))]
+		   [else (error 'sim-leds "bad led color: ~s" which)])))))
       ;((sim-debug-logger) string)
       (logger string)
       ))]

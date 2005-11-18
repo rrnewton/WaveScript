@@ -331,27 +331,40 @@
      ;; This is a promise so as to be called only once.
 ;     (define wipe-screen (delay clear-buffer))
      ;; Contains a graphics object, and the last drawn state.
-     (reg:define-struct (edgestate gobj oldstate))
 
      (if (not the-win) (init-graphics))
      (clear-buffer)
 
-     ;; Draw edges:
-     (for-each (lambda (graph-entry)
-		 (let ([here (node-pos (car graph-entry))])
-		   (for-each (lambda (nbr)
-			       (draw-edge here (node-pos nbr)))
-			     (cdr graph-entry))))
-	       (simworld-graph world))
+     ;; This temporarily stores all edges:
+     (let ((edge-table (make-default-hash-table)))
+       ;; Draw edges:
+       (for-each (lambda (graph-entry)
+		   (hashtab-set! 
+		    edge-table (node-id (car graph-entry))
+		    (let ([here (node-pos (car graph-entry))])
+		      (map (lambda (nbr)
+			     (draw-edge here (node-pos nbr)))
+			(cdr graph-entry)))))
+	 (simworld-graph world))
+
      ;; This is not a good abstraction boundary.
      ;; We just drew the edges, and now we call "draw network" just to draw nodes:
      ;; Associate with each simobject the resultant graphics object "gobj".
      (let* ((all-objs (simworld-all-objs world))
 	    (nodes (map simobject-node all-objs)))
-       (let ((gobjs (draw-network (map node-pos nodes)
+       (let ((gvecs (draw-network (map node-pos nodes)
 				  (map node-id nodes))))
-	 (for-each set-simobject-gobj! all-objs  gobjs)
-	 )))
+	 (for-each (lambda (simob vec)
+		     (match vec
+		       [#(,circ ,r ,g ,b ,text ,label)
+			;; Construct a graphics object:
+			;(set-title! label "TEST")
+			(set-simobject-gobj! simob
+			 (make-gobject circ r g b text label 
+				       (hashtab-get edge-table 
+						    (node-id (simobject-node simob)))))]))
+	   all-objs gvecs)
+	 ))))
   (error 'simalpha-draw-world "graphics not loaded.")))
 
 
@@ -663,6 +676,7 @@
 		
 		[(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
+		[(highlight-edge ,[n]) `(sim-highlight-edge ,n)]
 
 		;; ================================================================================
 		;; Printing functions

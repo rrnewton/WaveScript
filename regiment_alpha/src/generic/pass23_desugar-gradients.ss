@@ -1,4 +1,4 @@
-;; TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
+;; FIXME: TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
 ;; TODO!!!! REFACTOR TO USE TML-GENERIC-TRAVERSE
 ;; TODO!!!! Make version that uses estimated link quality.
 
@@ -267,12 +267,12 @@
 		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG ,@arg*)
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
-		       `(bcast (tok ,t ,num)
-			       (my-id)
-			       (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
-			       (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
-			       (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG)
-			       ,@arg*)))))]
+		       (bcast (tok ,t ,num)
+			      (my-id)
+			      (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
+			      (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
+			      (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG)
+			      ,@arg*)))))]
 	     [(grelay ,other ...)
 	      (error 'desugar-gradients
 		     "bad grelay form: ~s" `(grelay ,other ...))]

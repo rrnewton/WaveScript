@@ -322,12 +322,16 @@
 	    (set! vtime (max vtime (simevt-vtime evt)))
 	    ;; Now if the flag is set we wait for real-time to catch up to this virtual time.
 	    (if (simalpha-realtime-mode)
-		(let ((diff (- vtime last-vtime))
-		      (real (- (real-time) realtime)))
-		  (let ((gap (- diff real)))
-		    (if (> gap 50)
-			(sleep gap)) ;; Might want to subtract some for overhead
-		    ))))
+		(let ((last-rtime realtime))
+		  (set! realtime (real-time))
+		  (let ((v_elapsed (- vtime last-vtime))
+			(r_elapsed (- realtime last-rtime)))
+		    ;; If more virtual time has elapsed in this last clock-jump than real-time, then wait.
+		    (let ((gap (- v_elapsed r_elapsed)))
+		      ;(disp "GAP BETWEEN REAL AND VIRT " v_elapsed r_elapsed gap)
+		      (if (> gap 50)
+			  (sleep gap)) ;; Might want to subtract some for overhead
+		      )))))
 
 	  ;; Also copy this value to the simworld object so alpha_lib closures can get to it:
 	  (set-simworld-vtime! sim vtime)
