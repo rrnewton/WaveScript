@@ -12,7 +12,7 @@ fi
 ; (load "compiler_chez.ss")
 
 ;(parameterize ([current-directory "~/cur"])
-(load (string-append (getenv "REGIMENTD") "/regiment.ss"))
+(load (string-append (getenv "REGIMENTD") "/src/regiment.ss"))
 
 ; (suppress-greeting #t)
 ; (scheme-start main)

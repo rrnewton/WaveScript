@@ -16,10 +16,10 @@
     (if (file-exists? "compiler_chez.so")
 	(load "compiler_chez.so")
 	(load "compiler_chez.ss"))
-    (parameterize ([current-directory "~/cur"])
-      (if (file-exists? (string-append (getenv "REGIMENTD") "/compiler_chez.so"))
-	(load (string-append (getenv "REGIMENTD") "/compiler_chez.so"))
-	(load (string-append (getenv "REGIMENTD") "/compiler_chez.ss")))))
+    (parameterize ();[current-directory "~/cur"])
+      (if (file-exists? (string-append (getenv "REGIMENTD") (format "/src/build/~a/compiler_chez.so" (machine-type))))
+	(load (string-append (getenv "REGIMENTD") (format "/src/build/~a/compiler_chez.so" (machine-type))))
+	(load (string-append (getenv "REGIMENTD") (format "/src/compiler_chez.ss"))))))
 
 ; =======================================================================
 
