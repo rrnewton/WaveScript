@@ -1,0 +1,106 @@
+
+; TEMP:
+(if (< (length (command-line-arguments)) 2)
+    (command-line-arguments '("./html/generic/" "simulator_alpha.ss")))
+
+
+(load "schemedoc/laml.init")
+(load "schemedoc/laml.scm")
+
+
+;; I thought I could run one script that would process multiple files.  
+;; But it looks like that won't work.  LAML causes problems.
+#|
+(define laml-dir "~/macroprogramming/regiment_alpha/doc/schemedoc/")
+(load (string-append laml-dir "laml.scm"))
+
+(define DIR (string-append (getenv "REGIMENTD") "/"))
+;(define DIR (string-append (current-directory) "/"))
+;(define DIR "/home/newton/regiment_alpha/")
+(define REGIMENTFILES
+;  (map (lambda (x) (string-append "src/" x))
+  '(
+    "compiler.ss"
+    "regiment.ss"
+    ;"regiment_script.ss"
+    ))
+|#
+
+;(fake-startup-parameters "NOTSETYET" DIR)
+(fake-startup-parameters (cadr (command-line-arguments)) (car (command-line-arguments)))
+(laml-style "xml-in-laml/schemedoc-2/schemedoc")
+(define FILE (cadr (command-line-arguments)))
+
+;; Now actually generate pages:
+;(for-each 
+;    (lambda (FILE)
+      (printf "------------------------------------------------------------------------------\n")
+      (printf "Generating documentation for Regiment source file: ~s\n" FILE)
+
+;      (fake-startup-parameters FILE DIR)
+;      (laml-style "xml-in-laml/schemedoc-2/schemedoc")
+
+      (manual
+       (manual-front-matters
+	'laml-resource "false"
+	'css-prestylesheet "compact"
+	'css-stylesheet "original"
+	'css-stylesheet-copying "true"
+	'scheme-source-linking "true"
+;	'source-destination-delta "doc/html/"
+;	'source-destination-delta "man/"
+;	'source-destination-delta "../doc/"
+;	'scheme-report "include"
+
+	(manual-title "Regiment Compiler Manual")
+	(manual-author "Ryan Newton" "newton@ai.mit.edu" )
+	(manual-affiliation "Computer Science and Artificial Intelligence Laboratory" "MIT" "")
+
+	(scheme-source-linking-manual "LAML Fundamental lib"
+				      'key "laml"  
+				      'file-path "./schemedoc/man/laml"
+				      )
+
+	(scheme-source-linking-manual "LAML general lib"
+				      'key "general"  
+				      'file-path "./schemedoc/lib/man/general"
+				      )
+
+	)
+
+       (manual-from-scheme-file 'src FILE))
+;       )
+;  REGIMENTFILES)
+
+;(printf "------------------------------------------------------------------------------\n")
+;(printf "Done generating Regiment documentation.\n")
+
+
+
+
+#| 
+(load (string-append laml-dir "laml.scm"))
+
+(define RRNFILE "compiler.ss")
+(fake-startup-parameters RRNFILE (string-append (current-directory) "/"))
+
+(laml-style "xml-in-laml/schemedoc-2/schemedoc")
+
+(manual
+  (manual-front-matters
+    (manual-title "Regiment Source Documentation")
+    (manual-author "Ryan Newton")
+    (manual-affiliation "MIT CSAIL")
+    (manual-abstract "Some abstract. As an example we extract
+                      interface documention from the color library.")
+
+    'laml-resource "false"
+    'css-prestylesheet "compact"
+    'css-stylesheet "original"
+    'css-stylesheet-copying "true"
+    'documentation-commenting-style "documentation-mark"
+  )
+
+  (manual-from-scheme-file 'src RRNFILE)
+)
+|#
