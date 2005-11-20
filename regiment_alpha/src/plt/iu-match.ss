@@ -24,7 +24,7 @@
 ;;; If you are reading this comment, then you do not have
 ;;; the most recent version of 'match'.
 
-;;; ============================================================
+;; =============================================================
 
 ;; Exp    ::= (match              Exp Clause)
 ;;         || (trace-match        Exp Clause)

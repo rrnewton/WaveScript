@@ -8,7 +8,7 @@
 ;; I want a simulator to serve the role of doctor scheme's "Expander"
 ;; language.  That is, to show conceptually what is meant 
 
-;;======================================================================
+;=======================================================================
 
 
 ;; This file must be used from a context where this makes senes:

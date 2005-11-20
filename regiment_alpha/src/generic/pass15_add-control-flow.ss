@@ -1,7 +1,7 @@
 
 
 ;; Pass: Add Control Flow
-;; ======================================================================
+; =======================================================================
 ;; [2004.08.20] 
 
 ;; This creates a separate parallel control flow graph.
@@ -43,7 +43,7 @@
 ;;; <Pgm>  ::= (program (props <CatEntry>*) (control-flow <CFG>*) <Let>)
 ;;; <CFG>  ::= (<var>*)
 
-;; ======================================================================
+; =======================================================================
 
 ;; [2004.12.06] Right now the control flow still isn't used by
 ;; anything downstream.  It's just a simple dependency graph for the

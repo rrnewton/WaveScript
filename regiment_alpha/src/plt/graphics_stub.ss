@@ -25,7 +25,7 @@
   (define default-proc-color (make-rgb 200 20 20))
   (define default-edge-color (make-rgb 0 0 0))
   
-  ;;============================================================
+  ;=============================================================
   
   ;; Returns a fixnum or flonum
   (define scale2d 
@@ -47,7 +47,7 @@
     (scale2d pr (list 0 0 world-xbound world-ybound)
 	     (list 0 0 window-width window-height)))
   
-  ;;============================================================
+  ;=============================================================
 
   (define (clear-buffer) ((plt:clear-viewport the-win)))
 

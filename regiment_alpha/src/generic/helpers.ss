@@ -401,7 +401,7 @@
     stored))
 
 
-;;============================================================
+;=============================================================
 
 
 ;; [2004.10.04]  Finds the element in a list maximizing a metric:
@@ -1246,7 +1246,7 @@
 	   [(equal? x (car ls)) (loop (cdr ls))]
 	   [else #f])))))
 		  
-;; ======================================================================
+; =======================================================================
 
 (define deunique-name
   (lambda (sym)
@@ -1441,7 +1441,7 @@
 	      (or (equal? s1 (substring s2 i (+ i l1)))
 		  (loop (add1 i)))))))))
 
-;;============================================================
+;=============================================================
 ;; DEALING WITH TOKEN NAMES.  
 ;; Sloppy interface right now.  
 ;; Used by the deglobalize pass.
@@ -1507,7 +1507,7 @@
 ;	(mvlet ([(f m) (token-names v)]) m)))
 (define (get-formation-name v) (mvlet ([(f m) (token-names v)]) f))
 (define (get-membership-name v) (mvlet ([(f m) (token-names v)]) m))
-;;============================================================
+;=============================================================
 ;; Dealing with token-machines in sexp form
 
 (define (token-machine? x)
@@ -2276,7 +2276,7 @@
   (last (get-primitive-entry prim)))
 
 
-;;;============================================================================
+;;=============================================================================
 ;;;
 ;;; CC
 ;;;
@@ -2306,7 +2306,7 @@
     (memv x attributes)))
 
 ;;;
-;;;============================================================================
+;;=============================================================================
 
 
 ;;; presently defined for either Scheme or internal Scheme primitives
@@ -2399,7 +2399,7 @@
                     "invalid formals expression: ~a" formalexp)])))
        
 ;; GRAPHS
-;; ======================================================================
+; =======================================================================
 
 ;; SIMPLE, VERTICAL, and HORIZONTAL graphs.
 
@@ -2516,7 +2516,7 @@
 	     (map list (rdc edge) (cdr edge))))
        g))
 
-;; ======================================================================
+; =======================================================================
 
 
 
@@ -2552,7 +2552,7 @@
 	    (cons (cons first ingroup) 
 		  (loop outgroup)))))))
 
-;; ======================================================================
+; =======================================================================
 
 (define (display-progress-meter totalcount)
   (let ((ticksize (/ totalcount 100))
@@ -2666,13 +2666,13 @@
 ;; 1-3 3-5 5-7
 
 
-;; ======================================================================
+; =======================================================================
 
 
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
-;;======================================================================
+;=======================================================================
 ;; [2004.06.17] These functions deal with streams that are represented
 ;; as a list, promise, or improper list with a promise as its final
 ;; cdr-pointer.  That is:
@@ -2752,7 +2752,7 @@
     (delay (cons i (loop (add1 i))))))
 
 
-;;==============================
+;===============================
 
 ;; [2004.06.18] This displays the changes in a piece of state only
 ;; when the changes accumulate to greater than a certain delta.
@@ -2777,7 +2777,7 @@
       (set! last newval))))
 
  
-;;======================================================================
+;=======================================================================
 ;; And here are the unit tests for this file... Don't have many of these yet.
 
 (define these-tests

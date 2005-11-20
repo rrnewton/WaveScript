@@ -1,5 +1,5 @@
 ;; Pass: Rename Stored
-;; ======================================================================
+; =======================================================================
 
 ;; Renames all stored variables so that they are globally unique rather than per-handler unique.
 
