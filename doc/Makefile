@@ -2,17 +2,20 @@
 ## The big problem is that schemedoc doesn't work with #;
 
 FILES = \
-#  compiler.ss \
-#  regiment.ss \
+  compiler.ss \
+  regiment.ss \
+
 
 GENERICFILES = \
+  generic/helpers.ss \
   generic/hash.ss \
   generic/alpha_lib.ss \
   generic/alpha_lib_scheduler_simple.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
 
-CHEZFILES = 
+CHEZFILES = \
+  chez/helpers.ss \
 
 PLTFILES = 
 

@@ -29,9 +29,9 @@
 ;	      [(#\[) #\(]
 ;	      [(#\]) #\)]
 	      ;; Can't handle the commas within a match construct:
-	      [(#\,) #\?]
+;	      [(#\,) #\?]
 	      ;; Hell, I'm just removing quasiquote entirely:
-	      [(#\`) #\']
+;	      [(#\`) #\']
 	      [else c]))]
 	 [loop 
 	  (lambda (a b)
@@ -46,6 +46,23 @@
 	      ;; Block comment:
 	      [(#\# #\|)
 	       (apply-ordered deadloop (read-char in) (read-char in))]
+
+	      ;; Syntax quotation
+	      [(#\# #\')
+	       (write-char #\' out)
+	       (apply-ordered loop (read-char in) (read-char in))]
+
+	      ;; Raw Primitive references:
+	      [(#\# #\%)
+	       (apply-ordered loop (read-char in) (read-char in))]
+
+	      ;; Remove unquotes before lists
+	      [(#\, ,open) (guard (memq open '(#\( #\[)))
+	       (loop b (read-char in))]
+	      ;; Otherwise replace unquote by ?
+	      [(#\, ,_) 
+	       (write-char #\? out)
+	       (loop b (read-char in))]
 
 	      ;; Semi then Double-quote
 	      [(#\; #\")
