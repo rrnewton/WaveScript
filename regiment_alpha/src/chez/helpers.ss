@@ -89,9 +89,8 @@
 
 (define-syntax reg:define-struct
   (syntax-rules ()
-;    [(_ (name field ...))  (define-structure (name field ...))]
-    [(_ (name field ...))  (define-record name (field ...))]
-    ))
+    [(_ (name field ...))  (define-record name (field ...))]))
+;   [(_ (name field ...))  (define-structure (name field ...))]))
 
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect

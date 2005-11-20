@@ -43,6 +43,9 @@
 
       (manual
        (manual-front-matters
+	'documentation-commenting-style "multi-semicolon" 
+	;'documentation-commenting-style "documentation-mark"
+
 	'laml-resource "false"
 	'css-prestylesheet "compact"
 	'css-stylesheet "original"

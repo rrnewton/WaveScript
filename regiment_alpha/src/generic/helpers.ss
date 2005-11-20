@@ -36,18 +36,16 @@
 
 ;; These are really the *local* primitives:
 (define regiment-basic-primitives 
-  '(
-  
     ; value primitives
-
-;    (cons (Object List) List) 
-;    (cdr (List) List)
-;    (car (List) Object)
-;; [2005.10.20] Allowing improper lists for the moment:
-    (cons (Object Object) Pair) 
+  '((cons (Object Object) Pair) 
     (cdr (Pair) Object)
     (car (Pair) Object)
     (append (List List) List)
+;    (cons (Object List) List) 
+;    (cdr (List) List)
+;    (car (List) Object)
+;; [2005.10.20] Allowing improper lists for the moment ^^^
+
 
     (+ (Integer Integer) Integer) 
     (- (Integer Integer) Integer) 
@@ -228,10 +226,8 @@
 ;; [2004.10.22]  For now everything that handles tokens is a syntax not a prim.
 ;; [2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
-  '( 
-
-    ;; Arithmetic
-    (+ (Integer Integer) Integer) 
+    ; Arithmetic prims:
+  '((+ (Integer Integer) Integer) 
     (- (Integer Integer) Integer) 
     (* (Integer Integer) Integer) 
     (/ (Integer Integer) Integer) 
@@ -1767,10 +1763,10 @@
 			  (pretty-print expr)
 			  (newline)
 			  ;(eval `(define failed-unit-test ',expr))
-			  (define-top-level-value 'unit-test-received result)
-			  (define-top-level-value 'unit-test-expected intended)
-			  (define-top-level-value 'failed-unit-test expr)
-			  (define-top-level-value 'default-unit-tester-output (get-output-string suppressed-test-output))
+			  (set-top-level-value! 'unit-test-received result)
+			  (set-top-level-value! 'unit-test-expected intended)
+			  (set-top-level-value! 'failed-unit-test expr)
+			  (set-top-level-value! 'default-unit-tester-output (get-output-string suppressed-test-output))
 
 			  (printf "Violating test bound to global-variable, try (eval failed-unit-test)\n")
 			  (printf "Expected and received also bound to globals, consider: ")
@@ -1974,11 +1970,10 @@
 
 (define base-scheme-primitives
   '(
-     ;; Incompletely implemented:
-     (console-output-port 0 value () Port)
-     (console-input-port 0 value () Port)
-     (make-vector 1 value (Int32) Vector) ;; needs case lambda
-     (ash 2 value (Number Number) Number) ;; needs right shifting
+     (console-output-port 0 value () Port)   ; Incompletely implemented
+     (console-input-port 0 value () Port)    ; Incompletely implemented
+     (make-vector 1 value (Int32) Vector) ; needs case lambda
+     (ash 2 value (Number Number) Number) ; needs right shifting
      
      ; not is a special case
      (not 1 not)
@@ -2094,13 +2089,15 @@
 ;;; reduced into base scheme primitives.
 (define derived-scheme-primitives
   '(
+     (<= variable test (Number . Number) Bool)
+     (> variable test (Number . Number) Bool)
+     (>= variable test (Number . Number) Bool)
+
      ;; These two are treated oddly, they are in here, but they
      ;; also have library definitions.  This is redundant but efficient.
      (vector variable value Object Object)
      (list variable value Object Object)
-     (<= variable test (Number . Number) Bool)
-     (> variable test (Number . Number) Bool)
-     (>= variable test (Number . Number) Bool)))
+     ))
 
 ;; These primitives are defined in terms of other primitives, and are
 ;; accessible only through closures (not in any "inline" form).
@@ -2202,8 +2199,7 @@
 ;;; new primitives added during compilation
 (define internal-scheme-primitives
   '(
-     ; value-producing
-     (make-bignum 2 value (Bool Vector) Object)
+     (make-bignum 2 value (Bool Vector) Object)      ; value-producing
      (closure-code 1 value (Object) Object)
      (closure-freevar 1 value (Tag) Object)
      
@@ -2676,7 +2672,7 @@
 ;; [2004.06.17] These functions deal with streams that are represented
 ;; as a list, promise, or improper list with a promise as its final
 ;; cdr-pointer.  That is:
-;;  Stream ::= (item*)
+;;  Stream  := (item*)
 ;;           | (item* . promise)
 ;;           | promise
 
@@ -2821,8 +2817,9 @@
     [(stream-cdr (delay '(1))) ()]
     [(stream-car (delay '(1))) 1]
 
-    [(unfold-list '(a b c d))
-     ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
+; This doesn't make schemedoc happy, eliminating:
+;    [(unfold-list '(a b c d))
+;     ((a . #0=(b . #1=(c . #2=(d)))) #0# #1# #2#)]
 
     [(graph-get-connected-component 'e '((a b c) (b c) (c) (d e f) (e g h)))   (h g e)]
     [(graph-get-connected-component 'h '((a b c) (b c) (c) (d e f) (e g h)))   (h)]
