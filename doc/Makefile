@@ -19,6 +19,7 @@ CHEZFILES =
 PLTFILES = 
 
 all:
+	if ! [ -d schemedoc ];    then tar xjvf schemedoc.tbz; fi
 	if ! [ -d html ];         then mkdir html        ; fi
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
 	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
