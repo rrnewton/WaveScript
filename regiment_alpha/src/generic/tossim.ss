@@ -38,7 +38,7 @@
 	  (match (apply assemble-tokmac tm opts)
 	    [(emit-nesc-language ,p)
 	     (if (eqv? 0 (emit-nesc-language p))
-		 (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/haskell/")))
+		 (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell/")))
 		   (define time (let ((t (sim-timeout)))
 				  (if (not t) ""
 				      (format "-t=~a"
@@ -78,7 +78,7 @@
   (lambda (prog)
     (match prog
       [#(,mstr ,cstr ,hstr)
-       (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/haskell")))
+       (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell")))
        (printf "~nDumping token machine into directory: ~s~n" (current-directory))
        (let ([modF    (open-output-file (string-append emit-nesc-modname "M.nc") 'replace)]
 	     [confF   (open-output-file (string-append emit-nesc-modname ".nc") 'replace)]

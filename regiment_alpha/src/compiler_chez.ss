@@ -25,9 +25,9 @@
 	       (error 'regiment "environment variable REGIMENTD was not set"))
 
 	   (source-directories (list "."
-				     (getenv "REGIMENTD")
-				     (string-append (getenv "REGIMENTD") "/chez")
-				     (string-append (getenv "REGIMENTD") "/generic")))
+				     (string-append (getenv "REGIMENTD") "/src")
+				     (string-append (getenv "REGIMENTD") "/src/chez")
+				     (string-append (getenv "REGIMENTD") "/src/generic")))
 
 	   (optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
@@ -75,7 +75,7 @@
 ;; This tries to dynamically load the shared object the first time the function is called:
 (define (sleep t)
   ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
-  (parameterize ((current-directory REGIMENTD))
+  (parameterize ((current-directory (string-append REGIMENTD "/src/")))
     (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
 	(system "(cd chez/usleep; make)"))
     (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))

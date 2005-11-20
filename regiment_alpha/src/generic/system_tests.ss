@@ -571,7 +571,7 @@
 
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
-      , (tm-to-list (car (file->slist (++ REGIMENTD "/demos/token_machs/manual_tree.tm")))
+      , (tm-to-list (car (file->slist (++ REGIMENTD "/src/demos/token_machs/manual_tree.tm")))
 		    '[sim-timeout 5000])
       unspecified]
 
@@ -1913,7 +1913,7 @@
 
     ;; [2005.11.07] Seems to throw an error sometimes!??
      ["Run complex buffered-gradient TM from file"
-      , (tm-to-list (car (file->slist (++ REGIMENTD "/demos/token_machs/buffered_gradients.tm")))
+      , (tm-to-list (car (file->slist (++ REGIMENTD "/src/demos/token_machs/buffered_gradients.tm")))
 		    '[sim-timeout 5000])
 	unspecified]
      

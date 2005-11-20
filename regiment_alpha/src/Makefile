@@ -23,6 +23,8 @@ all: reg
 	(cd plt; $(MAKE) nc)
 	(cd haskell; $(MAKE))
 
+MT = `echo '(display (machine-type))' | chez -q`
+
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
@@ -41,10 +43,12 @@ mzscheme_native:
 # I don't use a saved heap anymore because it doesn't work right on Mac OS
 chez: chez_native
 chez_native:
-	echo '(compile-file "compiler_chez.ss")' | chez
+	echo '(compile-file "compiler_chez.ss" (format "build/~a/compiler_chez.so" (machine-type)))' | chez
 
-heap: # build/regimentc.1.heap:  # regiment.ss $(CHEZ_SRC) $(GENERIC_SRC) $(CHEZ_MAIN_FILE)
-	echo '(load "regiment.ss")' | chez -s0 build/regiment.0.heap
+heap:
+	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+	$(RM) -f build/regiment.0.heap 
+	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
 
 
@@ -116,6 +120,7 @@ clean:
 	(cd chez/usleep; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_*
 	$(RM) build/*.heap
+	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 	$(RM) __temp.log _genned_node_code.ss
 
 #	find -name "*.zo" | xargs rm # This is excessive...
