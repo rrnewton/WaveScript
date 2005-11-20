@@ -1,8 +1,9 @@
 
 ; TEMP:
+;(if (< (length (command-line-arguments)) 2)
+;    (command-line-arguments '("./html/generic/" "simulator_alpha.ss")))
 (if (< (length (command-line-arguments)) 2)
-    (command-line-arguments '("./html/generic/" "simulator_alpha.ss")))
-
+    (error 'regiment.laml "not enough arguments!"))
 
 (load "schemedoc/laml.init")
 (load "schemedoc/laml.scm")
@@ -52,7 +53,7 @@
 ;	'source-destination-delta "../doc/"
 ;	'scheme-report "include"
 
-	(manual-title "Regiment Compiler Manual")
+;	(manual-title "Regiment Compiler Manual")
 	(manual-author "Ryan Newton" "newton@ai.mit.edu" )
 	(manual-affiliation "Computer Science and Artificial Intelligence Laboratory" "MIT" "")
 

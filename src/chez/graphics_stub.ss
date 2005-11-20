@@ -53,7 +53,7 @@
 ;; Down in the INITIALIZATION section of this file I mutate some of
 ;; the state from here...
 
-;;===============================================================================
+;===============================================================================
 ;; Utils:
 
 ;; Returns a fixnum or flonum, 
@@ -102,7 +102,7 @@
 		   (set-simobject-gobj! simob #f))
 		 all-objs)))
 
-;;===============================================================================
+;================================================================================
 
 ;; We don't keep track of which objects need to be redrawn, that's all
 ;; handled by tcl/tk.
@@ -253,7 +253,7 @@
 	     line))))
 
 
-;;===============================================================================
+;================================================================================
 
 ;; Get the tests for this unit:
 (include "generic/graphics_stub.tests")
@@ -262,7 +262,7 @@
 		    these-tests))
 (define test-graphics-stub test-this)
 
-;;===============================================================================
+;================================================================================
 ;; INITIALIZATION:
 
 ;; This is imported from the above.  Make sure that it is a flonum,

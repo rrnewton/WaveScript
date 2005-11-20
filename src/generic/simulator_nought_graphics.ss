@@ -10,7 +10,7 @@
 (define this-unit-description 
   "simulator_nought_graphics.ss: simple simulator with graphics.")
 
-;;===============================================================================
+;================================================================================
 
 ;; <<TODO>> THESE ARE REDUNDANT!! DO AWAY WITH:
 (define edge-table (make-default-hash-table))
@@ -92,7 +92,7 @@
 
 (define gsim graphical-simulation)
 
-;;===============================================================================
+;================================================================================
 
 ;; UNIT TESTS:
 
@@ -226,7 +226,7 @@
 (define testgsim test-this)
 (define testsgsim these-tests)
 
-;;===============================================================================
+;================================================================================
 ;; JUNK 
 
 '(define csn  compile-simulate-nought)

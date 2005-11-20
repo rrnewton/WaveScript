@@ -3,41 +3,41 @@
 
 ;; TODO: REHIDE the scheduler state if we don't need it!!
 
-;; simulator_alpha.ss
-;;  -Ryan Newton [2005.02.25]
-;; Related files include:
-;;   alpha_lib.ss -- "run time" library for the running simulator.
-;;   alpha_lib_scheduler_simple.ss -- Basic action scheduler
-;;   alpha_lib_scheduler.ss -- NOT USED right now [2005.09.27]
-;;   simulator_nought.examples.ss -- Some sample programs.
+;;;; .title Simulator Alpha: A second Token Machine simulator.
+; simulator_alpha.ss
+;  -Ryan Newton [2005.02.25]
+; Related files include:
+;   alpha_lib.ss -- "run time" library for the running simulator.
+;   alpha_lib_scheduler_simple.ss -- Basic action scheduler
+;   alpha_lib_scheduler.ss -- NOT USED right now [2005.09.27]
+;   simulator_nought.examples.ss -- Some sample programs.
 ;===============================================================================
 
-;; This will be a second attempt simulator.  (First was simulator_nought.)
+;;;; This will be a second attempt simulator.  (The first was simulator_nought.)
+;;;; It will support only core tml (no gradients).
+;;;;
+;;;; It will have a single thread of control and a queue of simulator
+;;;; events sorted by virtual clock times.
+;;;;
+;;;; Later, it may serve as a place to test scheduling algorithms so
+;;;; that we may actually implement the atomic action model.
 
-;; It will support only core tml (no gradients).
 
-;; It will have a single thread of control and a queue of simulator
-;; events sorted by virtual clock times.
-
-;; Later, it may serve as a place to test scheduling algorithms so
-;; that we may actually implement the atomic action model.
-
-
-;; NOTE: Right now all calls go through the dyndispatch table.
-
-;===============================================================================
-;; Changes:
-
-;; [2005.10.03] Implemented token-deschedule
-
-;; [2005.10.18] Factored out datatype defs and global params (and even
-;; some helper functions) to a separate files.
+; NOTE: Right now all calls go through the dyndispatch table.
 
 ;===============================================================================
+; Changes:
 
-;; ======================================================================
+; [2005.10.03] Implemented token-deschedule
 
+; [2005.10.18] Factored out datatype defs and global params (and even
+; some helper functions) to a separate files.
 
+;===============================================================================
+
+; =======================================================================
+
+;; Simple free variables function:
 (define (simalpha-free-vars expr)
   (let loop ((env ()) (expr expr))
     (match expr	 
@@ -77,7 +77,7 @@
 |#
 
 
-;;========================================
+;=========================================
 
 (define (base-station? x)
   (cond 
@@ -118,7 +118,7 @@
 (define (all-connected simob sim)
   (graph-get-connected-component simob (simworld-object-graph sim)))
 
-;; ================================================================================
+; =================================================================================
 
 ;; Returns a simworld object.
 (define (fresh-simulation)  
@@ -318,7 +318,7 @@
      (set-simworld-led-toggle-states! theworld (make-default-hash-table))
      theworld))  ;; End fresh-simulation
 
-;; ================================================================================
+; =================================================================================
 
 
 ;; This takes a simworld object and draws it on the screen:
@@ -385,7 +385,7 @@
 
 
                          
-;; ======================================================================
+; =======================================================================
 
 ;; Subroutine of compile-simulate-alpha below
 (define (process-statement current-handler-name tokbinds stored)
@@ -636,7 +636,7 @@
 		  [(if ,[test] ,[conseq] ,[altern])
 		   `(if ,test ,conseq ,altern)]
 
-		  ;; ========================================
+		  ; =========================================
 		  ;; Now we generate specific code for many of the primitives
 
 		  [(,senseprim)
@@ -678,7 +678,7 @@
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
 		[(highlight-edge ,[n]) `(sim-highlight-edge ,n)]
 
-		;; ================================================================================
+		; =================================================================================
 		;; Printing functions
 		[(dbg (quote ,str) ,[args] ...)
 		 ;; TODO FIX ME: would be nice to print properly
@@ -695,7 +695,7 @@
 		   `(printf ,massaged ,@args))]
 		[(setlabel (quote ,str) ,[args] ...)
 		 `(sim-setlabel (format ,str ,@args))]
-		;; ================================================================================
+		; =================================================================================
 
 
 		;; Any prim apps that didn't get caught above are equivalent to the normal Scheme versions:
@@ -859,7 +859,7 @@
 
     (values binds allstored)))
 
-;; ======================================================================
+; =======================================================================
 
 (define (compile-simulate-alpha prog . extraparams)
   ;; Accept either with or without the language wrapper:
@@ -988,7 +988,7 @@
 			 "unmatched input program: ~s" prog)])))
 
 
-;; ======================================================================
+; =======================================================================
 
 ;; [2005.11.11] Modifying this to have an option of not going to disk
 ;; for the simulation programs.  This should increase performance when
@@ -1202,7 +1202,7 @@
     result))  
   )))
 
-;; ======================================================================
+; =======================================================================
 
 
 (define these-tests

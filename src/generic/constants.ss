@@ -12,7 +12,7 @@
 
 ;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest.
 ;; [2005.03.29] MOVING DEBUGMODE to this file.
-;;======================================================================
+;=======================================================================
 
 ;; In the following manner we distinguish regiment parameters from normal
 ;; parameters.  We keep a list of all the existing regiment
@@ -28,9 +28,9 @@
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
 
-;;======================================================================;;
+;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
-;;======================================================================;;
+;=======================================================================;;
 
 ;; DEBUGMODE toggles is like a #define that toggles debug code for the whole compiler.
 ;; This is not a very appropriate place for this definition, but it's the most convenient
@@ -101,15 +101,15 @@
 (define-regiment-parameter reg:comment-code #f)
 
 
-;; ========================================
+; =========================================
 
 ;; This parameter accumulates all the unit tests from the system as they are defined.
 (define-regiment-parameter reg:all-unit-tests '())
 
-;;======================================================================
+;=======================================================================
 
 ;; Used primarily by pass12_add-heartbeats:
-;;===================================================
+;====================================================
 ;; The slow-pulse is used for region formation.
 (define slow-pulse 1000) ;; MILLISECONDS
 ;; The fast-pulse is used for folding.
@@ -117,19 +117,19 @@
 
 ;; Used primarily by pass14_add-places:
 ;; (and by pass15_add-routing
-;;===================================================
+;====================================================
 (define unknown-place '?) ;'X?)
 (define noplace '_)
 
 ;; Used primarily by pass21_cleanup-token-machine
-;;===================================================
+;====================================================
 (define DEFAULT_SUBTOK 0)
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 (define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
 
 
 ;; Used primarily by pass cps-tokmac
-;;===================================================
+;====================================================
 ;; This object is used as null pointer for continuations.
 ;; If a token handler is called with the null continuation, 
 ;; it need not invoke it.
@@ -141,14 +141,14 @@
 
 
 ;; Used primarily by helpers.ss:
-;;===================================================
+;====================================================
 
 ;; If retry is enabled, let's retry three times:
 (define-regiment-parameter default-unit-tester-retries 3)
 
 
 ;; Used primarily by Simulator_nought.ss: (phased out)
-;;===================================================
+;====================================================
 ;; These are the virtual coordinate bounds of the world.
 ;; [2005.09.25] These are constants for an out of use file:
 ;; Now we use regiment-parameters for this type of thing...
@@ -175,7 +175,7 @@
 
 
 ;; Used primarily by MULTIPLE SIMULATORS
-;;===================================================
+;====================================================
 ;; [2005.11.14] I'm segregating and renaming the parameters that are
 ;; used by the tossim interface and simulator alpha.
 
@@ -192,7 +192,7 @@
 (define-regiment-parameter sim-startup-stagger 0)
 
 ;; Used primarily by Simulator_alpha.ss:
-;;===================================================
+;====================================================
 ;; Sim alpha also reuses some of the parameters from Sim nought.
 
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
@@ -284,7 +284,7 @@
 
 
 ;; Used primarily by alpha_lib_scheduler_simple.ss
-;;====================
+;=====================
 
 ;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
 ;(define ACTION_LENGTH 100)  ;; Thus we ignore the "duration" field of simevts.

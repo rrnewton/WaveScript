@@ -8,7 +8,7 @@
 ;;  |-> SIMOBJECT     -- State associated with the simulator
 ;;      |-> GOBJECT   -- State associated with the visualization of the simulator.
 
-;; ======================================================================
+; =======================================================================
 
 ;; This structure contains all the global data needed a simulation.
 (reg:define-struct 

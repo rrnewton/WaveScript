@@ -11,7 +11,7 @@
 ;; sim-timeout
 
 
-;; ================================================================================
+; =================================================================================
 
 ;; This is the equivalent of "tm-to-list" for nesc:
 (define (run-via-nesc tm . opts)
@@ -52,7 +52,7 @@
 		   (fprintf (current-error-port) "\n\n  <RUNNING_NESC_CODE_IN_TOSSIM>\n")
 		   (fprintf (current-error-port) "Command: ~s\n" command)
 		   (fprintf (current-error-port) 
-			    ";;======================================================================\n")
+			    ";=======================================================================\n")
 		   (flush-output-port)
 		   (let ((result
 			  (let-match ((  (,in ,out ,id)   (process command)))
@@ -65,14 +65,14 @@
 				    (loop (read-line in) (cons outline acc))))))))  
 					;(system "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
 		     (fprintf (current-error-port)
-			      ";;======================================================================\n")
+			      ";=======================================================================\n")
 		     (flush-output-port)
 		     result))
 		 (error 'run-via-nesc "error on NesC build."))]
 	    [,other (error 'run-via-nesc "did not assemble to emit-enesc-language program: \n~s" other)]
 	    )))))
 
-;; ================================================================================
+; =================================================================================
 
 (define emit/compile-nesc
   (lambda (prog)
@@ -103,7 +103,7 @@
       [,other (error 'emit-nesc-language "Bad program: ~s" other)])))
 
 
-;; ================================================================================
+; =================================================================================
 
 ;; We don't include this in the test suite that is run automatically.
 ;; The user must run this manually.

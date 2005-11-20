@@ -17,7 +17,7 @@
 
 ;; <TODO>: Make the simulator not use global state for the graph!!
 
-;;============================================================
+;=============================================================
 ;; REQUIRES: This file requires that the slib 'tsort module be loaded
 ;; providing the topological-sort function.
 
@@ -265,7 +265,7 @@
 ;(define-parameter 
 (define (current-sense-function) sense-dist-from-origin)
 
-;;========================================
+;=========================================
 
 (define (base-station? x)
   (cond 
@@ -372,7 +372,7 @@
     (fluid-let ((all-objs (map car object-graph)))
       (th))))
 
-;;========================================  
+;=========================================  
 
 (define (free-vars expr)
   (let loop ((env ()) (expr expr))
@@ -1368,7 +1368,7 @@
 ;(define (simulator-nought-language expr)
 ;  (void)
 
-;;===============================================================================
+;================================================================================
 
 ;; [2004.06.16] This is the shared structure of both the text
 ;; simulator and the graphical one.  It serves the role of a parent
@@ -1490,7 +1490,7 @@
        generic-text-simulator-core))
 )
 
-;;===============================================================================
+;================================================================================
 ;; Some display and helper functions.
 
 (define print-caches
@@ -1529,7 +1529,7 @@
 		  (node-id (simobject-node y))))
 	     all-objs))))
 
-;;===============================================================================
+;================================================================================
 
 ;; NOTE: Assumes that "simulator_nought.examples.ss" has been loaded...
 
@@ -1917,7 +1917,7 @@
   (lambda ()  (pretty-print (cadadr these-tests)))
   'replace)
       
-;;===============================================================================
+;================================================================================
 ;; JUNK 
 
 (define csn  compile-simulate-nought)

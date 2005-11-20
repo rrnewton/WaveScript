@@ -39,7 +39,7 @@
      [statement gexpr]
      ))
 
-;;========================================
+;=========================================
 ;; EXAMPLE:
 
 ;; This program just returns 3.  It has a generic binding defining a

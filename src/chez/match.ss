@@ -24,7 +24,7 @@
 
 ;; Previous changelog listings at end of file.
 
-;;; ============================================================
+;; =============================================================
 
 ;; Exp    ::= (match              Exp Clause)
 ;;         || (trace-match        Exp Clause)

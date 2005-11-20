@@ -21,7 +21,7 @@
 	(load (string-append (getenv "REGIMENTD") "/compiler_chez.so"))
 	(load (string-append (getenv "REGIMENTD") "/compiler_chez.ss")))))
 
-;; ======================================================================
+; =======================================================================
 
 
 (define (print-help)
@@ -219,7 +219,7 @@
   
 
 
-;; ======================================================================
+; =======================================================================
 (suppress-greeting #t)
 (scheme-start main)
 (when (top-level-bound? 'command-line-arguments)

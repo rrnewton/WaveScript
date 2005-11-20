@@ -90,7 +90,7 @@
 	      (set-cdr! entry (union (cdr entry) syms))
 	      (set! dependencies (cons (cons sym syms) dependencies))))))
       
-  ;;============================================================  
+  ;=============================================================  
   
   (define (free-vars expr)
     (let loop ((env ()) (expr expr))
@@ -252,7 +252,7 @@
           [,unmatched
 	   (error 'classify-names "invalid syntax ~s" unmatched)])))
 
-  ;;============================================================  
+  ;=============================================================  
     
     (match expr
 	   [(,input-language (quote (program (lazy-letrec (,binds ...) ,fin))))

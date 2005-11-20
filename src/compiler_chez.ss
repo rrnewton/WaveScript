@@ -7,7 +7,7 @@
 ;; HOWEVER: I broke this rule for things that depend on whether or not SWL is loaded.
 ;; TODO FIXME: I can also make this happen at compile time, via macros.
 
-;; ======================================================================
+; =======================================================================
 
 (if (not (top-level-bound? 'default-break-handler))
     (define-top-level-value 'default-break-handler (break-handler)))

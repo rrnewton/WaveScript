@@ -11,7 +11,7 @@
 	      (boolean? x)
 	      ))
 
-	;; ========================================  
+	; =========================================  
 	;; This defines a *simple* and unified interface into hash-tables.
 	;; It assumes *equal?* type key equivalence!
 	;; It returns #f for a failed hashtab-get (which is sloppy, but that's slib)

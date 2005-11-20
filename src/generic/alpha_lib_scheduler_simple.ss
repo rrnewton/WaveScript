@@ -48,7 +48,7 @@
 
   (define (lessthan a b) (evntlessthan (car a) (car b)))
 
-  ;; ================================================================================
+  ; =================================================================================
     ;; This is called with the local time that the scheduling hapens.
     ;; New events may have times in the future, but should not have times in the past.
   
@@ -117,7 +117,7 @@
 			)
 		)))
     
-    ;; ================================================================================
+    ; =================================================================================
     ;; Initializes some of the simobject's state.
   (define (init-simobject ob)
     (let ([mhandler (node-code-fun ob)])
@@ -148,7 +148,7 @@
     ))
 
 
-  ;; ================================================================================
+  ; =================================================================================
   ;; This processes the incoming messages on a given simobject, and
   ;; schedules them in the global scheduler.
   ;; [2005.10.31]  Currently we allow actions scheduled in the past!  (They're considered "overdue".)
@@ -240,7 +240,7 @@
 	)))
 
 
-  ;; ================================================================================
+  ; =================================================================================
   ;; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
   (define (launch-outgoing ob)
       ;; This does the "radio transmission", and puts msgs in their respective incoming buffers.
@@ -289,14 +289,14 @@
 	;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 
-  ;; ======================================================================
+  ; =======================================================================
   ;; First Initialize.
   (for-each init-simobject (simworld-all-objs sim))
   (set-queue! '()) ;; Start with no scheduled events.
   ;; Snapshot the real time:
   (set! realtime (real-time))
 
-  ;; ======================================================================
+  ; =======================================================================
   ;; Then, run loop.  This is the main loop that drives the simulation.
   (let main-sim-loop ()
     ;; First process all incoming-buffers, scheduling events.

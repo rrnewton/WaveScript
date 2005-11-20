@@ -209,7 +209,7 @@
 	;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 
-    ;;========================================    
+    ;=========================================    
     ;; MAIN BODY:
     (let ([mhandler (node-code-fun ob)])
     ;; Install the scheduler and handler incase anybody else wants to use them:

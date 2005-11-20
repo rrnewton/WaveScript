@@ -54,7 +54,7 @@
 	       (for-each thread-kill thread-ids)
 	       'Threads_Timed_Out]))))))
 	
-;;======================================================================
+;=======================================================================
 
 (define these-tests (include "generic/flat_threads.tests"))
 

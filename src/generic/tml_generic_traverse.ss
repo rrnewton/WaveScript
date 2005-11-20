@@ -22,7 +22,7 @@
 
 ;; [2005.10.02] Just factored this out into this file.
 
-;; ======================================================================
+; =======================================================================
 
 ;; This is confusing, but there are so many small traversals of
 ;; the program tree in this pass that it is much easier to reuse this tree walk:
