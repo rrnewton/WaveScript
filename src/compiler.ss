@@ -1,17 +1,16 @@
-;; This is the core.  Loaded by both the Chez and PLT versions.
+;;; Compiler Core.
+;;; This contains the core compiler entry points. 
+;;; Loaded by both the Chez and PLT versions.
 
-;;======================================  
+;======================================  
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
 (define-regiment-parameter regiment-version "0.87.2")
 
-;; This is a global variable mutated by the node-programs in the
-;; simulator_nought...  Counts total communications received.
-;;(define total-messages 0)
-;; Moved this *again*.  Now the simulator just defines this (via
-;; eval), when it starts running.
 
+;; This is the global variable that determines which transformations
+;; (passes) the compiler applies and in what order.
 (define pass-names
   '(verify-regiment
     eta-primitives
@@ -64,7 +63,7 @@
 
     ))
 
-;; ==================================================================
+; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.
 
 (define (dump-tokenmachine-to-file prog fn)
@@ -133,9 +132,6 @@
 (define (compile-almost-to-tokens p . args)
   (apply run-compiler p 'almost-tokens args))
 
-(define rc run-compiler) ;; shorthand
-(define ct compile-to-tokens) ;; shorthand
-
 ;; This finishes off the compilation of scheme-format token machine.
 ;; It's just a front-end to run-compiler that restricts the passes we run over.
 (define (assemble-tokmac tm . args)
@@ -159,7 +155,6 @@
       (fluid-let ([pass-names passes])
 	(apply run-compiler tm args)))))
 
-(define at assemble-tokmac) ;; shorthand
 
 (define test
   (lambda (set)
@@ -168,6 +163,10 @@
 			`(base-language '(program ,p)))
 		      set)])
       (test-all))))
+
+; =============================================================
+;;; Shorthands.  
+;;; These are just for my convenient usage in interactive invocation of the compiler.
 
 (define r  ;; shorthand
   (letrec ((loop
@@ -180,6 +179,14 @@
 	     [(x) (loop (rac pass-names) x)])))
     loop))
 
+(define at assemble-tokmac) ;; shorthand
+
+(define rc run-compiler) ;; shorthand
+
+(define ct compile-to-tokens) ;; shorthand
+
+(define ra run-simulator-alpha) ;; shorthand
+
 ;; Token and later compiler:
 (define (tr x)  ;; shorthand
   (let ((prog  x))
@@ -189,16 +196,29 @@
       (fluid-let ((pass-names (cdr (list-remove-before 'deglobalize pass-names))))
 	(test-one prog)))))
 
-;; Temp =============================================================
-
-(newline)
-
+; temp:
 (define (rr) (r '(circle 50 (anchor-at '(30 40))))) ;; shorthand
-
+; temp:
 (define (doit x) ;; shorthand
   (cleanse-world)
   (run-simulation (build-simulation (compile-simulate-nought x))		  
 		  20.0))
+
+
+;; These are some temporary diagnostic functions:
+(define (all-incoming) ;; shorthand
+  (filter (lambda (ls) (not (null? ls)))
+          (map simobject-incoming all-objs)))
+(define (all-homepage) ;; shorthand
+  (filter (lambda (ls) (not (null? ls)))
+          (map simobject-homepage all-objs)))
+
+(define (sim) (build-simulation  ;; shorthand
+	     (compile-simulate-nought 
+	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
+
+; =============================================================
+;;; Temporary junk:
 
 ;; This is my big target program!!
 '(define theprog
@@ -231,19 +251,6 @@
                            (soc-return (list 'anch this))))
        (startup))))
 
-;; These are some temporary diagnostic functions:
-(define (all-incoming) ;; shorthand
-  (filter (lambda (ls) (not (null? ls)))
-          (map simobject-incoming all-objs)))
-(define (all-homepage) ;; shorthand
-  (filter (lambda (ls) (not (null? ls)))
-          (map simobject-homepage all-objs)))
-
-
-(define (sim) (build-simulation  ;; shorthand
-	     (compile-simulate-nought 
-	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
-
 ;; HOW TO RUN:
 ;; ----------------------------------------
 ;; Here I'll give some examples of how to run the system.  
@@ -259,12 +266,12 @@
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
   
-;;======================================================================
+;======================================================================
 ;; RUNNING THROUGH NESC
 
 ;; See tossim.ss
 
-;;======================================================================
+;======================================================================
 ;; RUNNING THROUGH SIMALPHA
 
 ;; I'm binding all these little random letter combinations!  Bah!
@@ -274,9 +281,8 @@
 
 ;; [2005.09.29] Moved run-simulator-alpha to simulator_alpha.ss
 	    
-(define ra run-simulator-alpha) ;; shorthand
 
-;;======================================================================
+;======================================================================
 
 [define tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm . extraparams)
@@ -355,60 +361,8 @@
 
 
 
-#;
-    (fluid-let ((pass-names '(cleanup-token-machine cps-tokmac closure-convert)))
-	 (let ((prog 
-		(run-compiler
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
-		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
-		 (tok2 () (return 55))
-		 (tok3 () (return 45))
-		 ))))
-	   (let ((prt (open-output-string)))
-	     (display "(" prt)       
-	     (run-simulator-alpha prog 'outport prt)
-	     (display ")" prt)
-	     (read (open-input-string (get-output-string prt))))))
-
-
-
-	       '(tokens 
-		 (SOC-start () (printf "result ~a" (subcall tok1 3)))
-		 (tok1 (x) (return (* x (+ (subcall tok2) (subcall tok3)))))
-		 (tok2 () (return 55))
-		 (tok3 () (return 45))
-		 )
-
-
-#;    [
-     '(fluid-let ((pass-names
-		  (list-remove-after desugar-gradients ;'cps-tokmac
-				     (list-remove-before 'cleanup-token-machine pass-names))))
-       (disp "PASS NAMES" pass-names)
-       (let ((prog 
-	      (run-compiler
-	       '(tokens 
-		 (SOC-start () (gemit gradient))
-		 (gradient () 
-			   (greturn x (to handler))
-			   (grelay))
-		 (handler (x) (display " ") (display x))
-		 ))))
-	 (disp "PROG")
-	 (pp prog)
-;	 (run-simulator-alpha prog)
-	 ))
-     
-     ,(lambda a #t)
-     ]
-
-
-
-
 
 '
-
 (fluid-let ([pass-names
              '(cleanup-token-machine
                 desugar-gradients

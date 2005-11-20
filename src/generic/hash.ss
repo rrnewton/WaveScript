@@ -53,7 +53,7 @@
 	      h)))))
 
 (define hash:hash-string hash:hash-string-ci)
-;@
+
 (define (hash obj n)
   (let hs ((d 10) (obj obj))
     (cond
@@ -129,7 +129,7 @@
 ;;; PC-Scheme and MITScheme).  We use it only on strings, pairs,
 ;;; vectors, and records.  This also allows us to use it for both
 ;;; hashq and hashv.
-;@
+
 ; (define hashv
 ;   (lambda (obj k)
 ;     (if (or (string? obj) (pair? obj) (vector? obj) (record? obj))
