@@ -13,6 +13,15 @@
 (define in (open-input-file (car (command-line-arguments))))
 (define out (open-output-file (cadr (command-line-arguments)) 'replace))
 
+
+(define read-line
+  (case-lambda 
+    [() (read-line (current-output-port))]
+    [(p) (let loop ((c (read-char p)) (acc '()))
+	   (if (or (eof-object? c) (char=? #\newline c))
+	       (list->string (reverse! acc))
+	       (loop (read-char p) (cons c acc))))]))
+
 (define-syntax apply-ordered
   (lambda (x)
     (syntax-case x ()
@@ -68,12 +77,24 @@
 	      [(#\; #\")
 	       (write-char #\; out)
 	       (write-char #\space out) ;; Insert an extra space
-	       (loop b (read-char in))]
+	       ;; Then we go ahead and cut out the rest of the line.  Shouldn't hurt a comment:
+	       (display (read-line in) out)
+	       (newline out)
+	       (apply-ordered loop (read-char in) (read-char in))]
+	      ;; Other line-comments: 
+	      [(#\; ,_)
+	       (write-char a out)
+	       (write-char b out)
+	       (display (read-line in) out)	       
+	       (newline out)
+	       (apply-ordered loop (read-char in) (read-char in))]
 	      
 	      ;; Anything else is fit to print:
 	      [(,_ ,__)
 	       (write-char (subst a) out)
 	       (loop b (read-char in))]))]
+
+	 
 
 	 [deadloop 
 	  (lambda (a b)

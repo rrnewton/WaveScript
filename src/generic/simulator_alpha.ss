@@ -368,6 +368,8 @@
   (error 'simalpha-draw-world "graphics not loaded.")))
 
 
+;; Helper function to print out a table listing which nodes are
+;; connected to eachother (any two without provably zero connectivity).
 (define (print-connectivity world)
   (for-each (lambda (row)
 ;	      (printf "Bang : ~s \n" (map node-id row))
@@ -409,8 +411,8 @@
 	   [else (loop (sub1 i))]))
 	newstr)))
   
-  ;; [2005.10.20] This is a substitution list, used for simple renaming of primitives:
-  ;; Right now I'm tightening up my numeric ops, getting it more ready for static typing.
+  ;; This is a substitution list, used for simple renaming of primitives:
+  ;; Right now I'm tightening up my numeric ops, getting it more ready for static typing. -[2005.10.20] 
   ;; TODO: Make this PLT compatible.
   (define prim-substs
     '([+ fx+] [- fx-] [* fx*] [/ fx/]
@@ -570,7 +572,7 @@
 		      ;; FIXME: 
 		      ;; PROFILING INDICATES THAT THIS IS VERY SLOW:
 
-		      (or ;;; First, check the schedulers queue:
+		      (or ; First, check the schedulers queue:
 		       ;; (TODO FIXME, CHECK: THIS MIGHT NOT EVEN BE NECESSARY:)
 		       (let loop ((queue (simworld-scheduler-queue (simobject-worldptr this))))
 			 (if (null? queue) #f 
@@ -767,20 +769,20 @@
 
 
 
-;; Every token handler, once converted for the simulator, has a signature: 
-
-;;   simobject, vtime, subtoken-index -> args -> ()      
-;;   (mutates tokstore, outgoing-msg-buf, local-msg-buf, timed-tokens)
-
+;; Every token handler, once converted for the simulator, has a signature: <br>&nbsp;
+;; 
+;;   simobject, vtime, subtoken-index -> args -> ()                        <br>&nbsp;
+;;   (mutates tokstore, outgoing-msg-buf, local-msg-buf, timed-tokens)     <br>
+;;
 ;; The result of running a handler is to mutate certain fields of the
 ;; simobject.  The handler *does not* directly interface with the
 ;; scheduler.  It merely changes the token store and accumulates local,
-;; remote, and timed messages.
-
-
-
+;; remote, and timed messages.                                             <br>
+;;
 ;; This takes token bindings, returns compiled bindings along with an
 ;; association list of stored-vars.
+;; .parameter tbinds Token bindings (source code)
+;; .returns   2 values: compiled-binds, ((tokname storedV ...) ...)
 (define (process-tokbinds tbinds)
   (let* ([allstored
           (map (lambda (bind)
@@ -861,8 +863,19 @@
 
 ; =======================================================================
 
+
+;;
+
+;; .returns A code module containing a definition for "node-code".
+;; The resulting binding for node-code is a function that takes the "this" simobject.  
+;; And returns a "meta-token-handler", which has type: <br>&nbsp;&nbsp;
+;;   (msg-object, vtime -> ()) <br>
+;; This meta-handler is a dispatcher for all of the individual token
+;; handlers.  It dispatches based on the token-name contained in the msg-object.
 (define (compile-simulate-alpha prog . extraparams)
-  ;; Accept either with or without the language wrapper:
+  ;; .parameter prog A Token-Machine either with or without the (foo-lang ...) wrapper.
+  ;; .parameter extraparams A list of bindings to "parameterize" when the simulation runs.
+
   (let ((prog (match prog 
 		     [(tokens ,t ...) `(program (bindings) (nodepgm (tokens ,t ...)))]
 		     [(program ,_ ...) prog]
@@ -1028,7 +1041,7 @@
 
 			;; Otherwise compile it
 			[,tm			     
-			 (let ((cleaned tm )) ;;;(cleanup-token-machine tm)))
+			 (let ((cleaned tm )) ; (cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
 			     (if (simalpha-write-sims-to-disk)
 				 (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
@@ -1103,12 +1116,31 @@
     (simalpha-total-tokens 0)
     (apply run-alpha-loop args)))
 
-
+;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
 (define (print-stats)
   (printf "\nStatistics for most recent run of SimAlpha.\n")
-  (printf "  Total tokens fired: ~s\n" (simalpha-total-tokens))
-  (printf "  Total messages broadcast: ~s  (per-node ~s)\n" 
-	  (simalpha-total-messages) (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
+  (printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
+  (printf "  Total tokens fired      : ~a (per-node ~a)\n" 
+	  (pad-width 5 (simalpha-total-tokens)) 
+	  (round-to 2 (exact->inexact (/ (simalpha-total-tokens) (sim-num-nodes)))))
+  (printf "  Total messages broadcast: ~a (per-node ~a)\n" 
+	  (pad-width 5 (simalpha-total-messages))
+	  (round-to 2 (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
+  (printf "  Msg distribution (sorted based on hops from base):\n")
+
+  (let* ([sim (simalpha-current-simworld)]
+	 [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
+	 [sorted (sort (lambda (x y) (< (cdr x) (cdr y))) measured)]
+	 [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
+	 )
+    (printf "sent: ~a\n" 
+	    (map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
+    (printf "rcvd: ~a\n" 
+	    (map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
+    (printf "dsts: ~a\n" 
+	    (map (lambda (x) (pad-width 3 (cdr x))) sorted))
+    (printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
+  ))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
@@ -1146,17 +1178,18 @@
   (if (file-exists? logfile) (delete-file logfile))
 
 
-  ;; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
+  ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
   (simalpha-current-simworld sim)
-  
-  ;; If there are no graphics available, we turn it off:
+  [soc-return-buffer '()] ; Same for the return buffer.
+
+  ; If there are no graphics available, we turn it off:
   (parameterize ([simalpha-graphics-on
 		  (IF_GRAPHICS (simalpha-graphics-on) #f)])
 			       
-  ;; Draw the world, if necessary.
+  ; Draw the world, if necessary.
   (if (simalpha-graphics-on)  (simalpha-draw-world sim))
- 
-  (parameterize ([soc-return-buffer '()]
+  
+  (parameterize (;[soc-return-buffer '()]
 		 ;; This is not used by simalpha itself, but anyone else who wants to peek:
 		 [simalpha-current-simworld sim])
   (let/cc exitk	
@@ -1199,7 +1232,7 @@
   ;; Out of let/cc:
   (let ((result (reverse (soc-return-buffer))))
     (printf "~nTotal globally returned values:~n ~s~n" result)
-    result))  
+    result))
   )))
 
 ; =======================================================================

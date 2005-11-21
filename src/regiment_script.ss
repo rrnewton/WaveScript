@@ -1,8 +1,8 @@
 #! /bin/sh
 #|
 if [ -f $REGIMENTD/depends/petite ];
-then exec $REGIMENTD/depends/petite --script "$0" ${1+"$@"};
-else petite --script "$0" ${1+"$@"};
+then exec $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"};
+else petite --script "$0" `pwd` ${1+"$@"};
 fi
 |#
 
@@ -11,9 +11,11 @@ fi
 ; (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
 ; (load "compiler_chez.ss")
 
+;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])
-(load (string-append (getenv "REGIMENTD") "/src/regiment.ss"))
-
+(parameterize ([current-directory (car (command-line-arguments))])
+  (load (string-append (getenv "REGIMENTD") "/src/regiment.ss")))
+  
 ; (suppress-greeting #t)
 ; (scheme-start main)
 ; (when (top-level-bound? 'command-line-arguments)
