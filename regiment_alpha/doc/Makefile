@@ -41,8 +41,13 @@ all:
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
 	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
 	if ! [ -d html/plt ];     then mkdir html/plt    ; fi
-##      Now go ahead and build individual manuals:
+	@echo
+	@echo First scrub source:
+	@echo -------------------
 	$(MAKE) $(DUPSRC)
+	@echo
+	@echo Second build individual manuals:
+	@echo --------------------------------
 	$(MAKE) $(OBJFILES)
 ##	echo $(FILES) | xargs -n1 echo | xargs -i "sed 's/#;/\`/' $(REGIMENTD)/{} > ./{}"
 ##	echo $(FILES) | xargs -n1 echo | xargs -i ./clean_hashsemi $(REGIMENTD)/src/{} ./html/{}

@@ -58,7 +58,7 @@
 
     ;haskellize-tokmac 
     
-;    flatten-tokmac
+    flatten-tokmac
 ;    emit-nesc
 
     ))
@@ -122,8 +122,8 @@
 		    (printf ";===============================================================================\n")
 		    (printf "~a:\n\n" (car names))))
 	      (let ((result ((car funs) p)))
-		(if verbose
-		    (pretty-print result) (newline))
+		(when verbose
+		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names)))))))))
 
 ;; This one just stops after deglobalize:

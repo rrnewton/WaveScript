@@ -170,7 +170,9 @@
 		      (if (member out_file filenames) (set! out (string-append "out." extension)))
 
 		      (printf "~n  Writing token machine to: ~s ~n" out_file)
-		      (mvlet ([(prog params) (read-regiment-source-file fn)])
+		      (mvlet ([(prog params) 
+			       (parameterize ([current-directory start-dir])
+				 (read-regiment-source-file fn))])
 		       
 			(delete-file out_file)
 			(let ((comped 
@@ -222,6 +224,6 @@
 ; =======================================================================
 (suppress-greeting #t)
 (scheme-start main)
-(when (top-level-bound? 'command-line-arguments)
-      (apply main (command-line-arguments))
-      (disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments)))
+
+;; Shave off the first argument, it just carries the working directory:
+(apply main (cdr (command-line-arguments)))

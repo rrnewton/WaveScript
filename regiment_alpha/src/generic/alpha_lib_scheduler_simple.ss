@@ -169,6 +169,10 @@
     (let ([timed (simobject-timed-token-buf ob)]
 	  [local (simobject-local-msg-buf ob)]
 	  [incoming (simobject-incoming-msg-buf ob)])
+
+      ; Increment message counter:
+      (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
+
       (set-simobject-local-msg-buf! ob '())
       (set-simobject-timed-token-buf! ob '())
       (set-simobject-incoming-msg-buf! ob '())
@@ -241,11 +245,13 @@
 
 
   ; =================================================================================
-  ;; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
+  ; This scrapes the outgoing messages off of a simobject and puts them in the global scheduler.
   (define (launch-outgoing ob)
-      ;; This does the "radio transmission", and puts msgs in their respective incoming buffers.
+      ; This does the "radio transmission", and puts msgs in their respective incoming buffers.
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
-	
+	; Increment message counter:
+        (set-simobject-local-sent-messages! ob (fx+ (length outgoing) (simobject-local-sent-messages ob)))
+
 	(unless (null? outgoing)
 	;; They're all broadcasts for now
 	(for-each (lambda (evt)
@@ -368,4 +374,5 @@
 	;; Finally, we push outgoing-buffers to incoming-buffers:
 	(for-each launch-outgoing (simworld-all-objs sim))
 	(main-sim-loop)))]))
-  )
+  ) ; End run-alpha-simple-scheduler 
+

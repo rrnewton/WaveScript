@@ -80,8 +80,8 @@
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before
    randomize-vector randomize-list  insert-between iota disp pp  crit-printf
-   extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width
-   graph-map graph-get-connected-component graph-neighbors 
+   extract-file-extension remove-file-extension file->string string->file file->slist slist->file pad-width round-to
+   graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
    list-get-random unfold-list average clump

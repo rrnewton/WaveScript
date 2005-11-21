@@ -161,17 +161,16 @@
 
 ;; Id number for the base-station / Source-of-Control (SOC)
 ;; I don't want to use negative numbers. I set this high for now
-;; so it should not conflict with any other ID -- it's an upper bound.  
-;; (Right now other ids are 1-1000)
-(define BASE_ID 10000)
+;; so it should not conflict with any other ID -- it's an upper bound. <br> 
+;; (Right now other ids are 1-1000)                                    <br>
+(define BASE_ID 0) ;; I've been using 10000 or 0.
 ;; We "option lift" the ID type by having this number signify "NULL":  
 ;; This is because our backend is not sophisticated enough yet to have real option types.
-(define NULL_ID 0)
+(define NULL_ID 10001)
 
 ;; In milliseconds, this is effectively the epoch size.  
 ;; Nodes aggregate and resend at this frequency.
 (define return-window-size 500)
-
 
 
 ;; Used primarily by MULTIPLE SIMULATORS

@@ -1,9 +1,14 @@
-;;; RRN: this file needs some serious cleaning-out.  The .NET compiler doesn't;;
-;;; use a lot of the stuff in here.                                           ;;
+
+
+;;;; .title 
+;;;; RRN: this file needs some serious cleaning-out.  It has a bunch
+;;;; of old junk in it that's not used by the Regiment system.
+
+
 ;==============================================================================;
 
-;; REQUIRES/DEPENDS: On chez/plt primitive open-output-string.
-;; REQUIRES/DEPENDS: (On other chez/plt features which I'm not aware of...)
+;;;; <br> REQUIRES/DEPENDS: On chez/plt primitive open-output-string.
+;;;; <br> REQUIRES/DEPENDS: (On other chez/plt features which I'm not aware of...)
 
 ;==============================================================================;
 
@@ -169,9 +174,9 @@
 ;    (time (Node) Time)
      ))
   
-;;; 2004.03.31 - I don't know what the system's going to be called so
-;;; I'm using the placeholder "blanko" which I will replace later. 
-;;; OK, replacing with "regiment"
+; [2004.03.31] - I don't know what the system's going to be called so
+; I'm using the placeholder "blanko" which I will replace later. 
+; OK, replacing with "regiment"
 (define regiment-primitives
   (append regiment-basic-primitives
 	  regiment-distributed-primitives
@@ -750,6 +755,16 @@
 		  (print) 
 		  (loop neweng))))))]))
 
+;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
+;; Man, they need a standardized set of libraries.
+;; .parameter port (optional) Port to read from.
+(define read-line
+  (case-lambda 
+    [() (read-line (current-output-port))]
+    [(p) (let loop ((c (read-char p)) (acc '()))
+	   (if (or (eof-object? c) (char=? #\newline c))
+	       (list->string (reverse! acc))
+	       (loop (read-char p) (cons c acc))))]))
 
 ;[2001.07.15]
 (define file->slist
@@ -824,7 +839,11 @@
 	  (string-append s (make-string (- w (string-length s)) #\space))
 	  s)))
 
-
+;; This rounds a number to a given # of decimal points. -[2005.11.20] 
+(define (round-to dec n)
+  (if (integer? n) n
+      (let ((shift (expt 10.0 dec)))
+	(/ (round (* shift n)) shift))))
 
 (define insert-between
   (lambda (x lst)
@@ -835,9 +854,11 @@
         [else (cons (car lst)
                     (cons x (loop (cdr lst))))]))))
 
-;; Removed mvlet! [2004.04.28]
+; Removed mvlet! [2004.04.28]
 
-;;; procedures for manipulating sets
+
+;;; Procedures for manipulating sets.
+
 (define set?
   (lambda (ls)
     (or (null? ls)
@@ -936,8 +957,9 @@
                     [(member? (car set1) set2) (loop (cdr set1))]
                     [else (cons (car set1) (loop (cdr set1)))])))))))))
 
-;;; (iota n) => (0 1 ... n-1)
-;;; (iota i n) => (i i+1 ... i+n-1)
+;; Produce a list of consecutive integers.
+;; .example (iota n) => (0 1 ... n-1)
+;; .example (iota i n) => (i i+1 ... i+n-1)
 (define iota
   (case-lambda
     [(n) (iota 0 n)]
@@ -947,8 +969,8 @@
          (cons i (iota (+ i 1) (- n 1))))]))
 
 
-;;; create a "flattened" begin from list of expressions
-;;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
+;; create a "flattened" begin from list of expressions
+;; e.g., (make-begin '(1 (begin 2) (begin 3 4) 5)) => (begin 1 2 3 4 5)
 ;; 
 (define make-begin
   (lambda  (expr*)
@@ -980,7 +1002,7 @@
       (get-output-string (current-output-port)))))
 
 
-;;; we can only handle exact integers in the fixnum range
+;; Note: we can only handle exact integers in the fixnum range.
 (define fx-integer?
   (let ()
     ;;RRN: Unfortunately MSIL can't handle boxed immediates, so fixnums
@@ -1244,6 +1266,8 @@
 		  
 ; =======================================================================
 
+;;; Unique names.
+
 (define deunique-name
   (lambda (sym)
     (let* ([str (symbol->string sym)]
@@ -1287,20 +1311,21 @@
 			     (cons first (loop (cdr ls))))]
 	 [else (error 'reunique-names "bad subexpression: ~s" (car ls))]))))
 
-;;; unique-name produces a unique name derived the input name by
-;;; adding a unique suffix of the form .<digit>+.  creating a unique
-;;; name from a unique name has the effect of replacing the old
-;;; unique suffix with a new one.
-;;;
-;;; code-name takes a unique name and replaces its suffix ".nnn"
-;;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
-;;;
-;;; extract-suffix returns the numeric portion of the unique suffix
-;;; of a unique name or code-name, or #f if passed a non unique name.
+;; unique-name produces a unique name derived the input name by
+;; adding a unique suffix of the form .<digit>+.  creating a unique
+;; name from a unique name has the effect of replacing the old
+;; unique suffix with a new one.
+;;
+;; code-name takes a unique name and replaces its suffix ".nnn"
+;; with "$nnn", e.g., f.3 => f$3.  It is used by convert-closure.
+;;
+;; extract-suffix returns the numeric portion of the unique suffix
+;; of a unique name or code-name, or #f if passed a non unique name.
 ;;(module (unique-name reset-name-count! extract-suffix
 ;;                     code-name label-name #;method-name)
         ;RRN [01.09.16] -- We need to phase out code-name...
 
+;; <br><br> 
 ;; [2004.06.28] I am replacing this with a version that uses
 ;; a hash-table to keep a counter per seed-name.
 (begin
@@ -1814,73 +1839,67 @@
   (apply + (map (lambda (x) (length ((cadr x) 'get-tests))) (reg:all-unit-tests))))
 			
 ;===============================================================================
-;;; helpers.ss
-;;; Kent Dybvig
-;;; January 4, 2001
+; helpers.ss
+; Kent Dybvig
+; January 4, 2001
 
-;;; This file contains some useful helpers, including some generally
-;;; useful for everyday Scheme programming and some specific to the
-;;; p423 compilers.
+; This file contains some useful helpers, including some generally
+; useful for everyday Scheme programming and some specific to the
+; p423 compilers.
 
-;;; 03/08/2002 clc added new object-related keywords, attributes,
-;;;                and primitives
+; 03/08/2002 clc added new object-related keywords, attributes,
+;                and primitives
 
-;;; 04/19/2001 rkd changed register-mapping to avoid use of %o6
-;;; 04/15/2001 rkd added operand-constraints nad register-mapping
-;;;                to the machine definition, and added new helper
-;;;                with-output-to-string.
-;;; 04/03/2001 rkd moved ap into the caller-save-registers list where
-;;;                it should have been all along
-;;; 03/25/2001 rkd added pick, rem, edge-maker, home-of, neighbors,
-;;;                neighbor-homes, extended-neighbor-homes; added
-;;;                align-shift to machine definition; added ap to
-;;;                machine-definition list of all-registers; added
-;;;                sll to list of uil primitives
-;;; 03/04/2001 rkd added generalized-member?, generalized-union?, and
-;;;                new-frame-var?
-;;; 02/26/2001 rkd added caller-save-registers and all-registers to the
-;;;                machine definition.  knocked number of parameter
-;;;                registers down to two for now.  added frame-var,
-;;;                new-frame-var, frame-var?, frame-var->index, and
-;;;                register?  fixed a bug in code-name caused by the
-;;;                change to extract-suffix.
-;;; 02/25/2001 rkd added parameter-registers and return-value-register
-;;;                to the machine definition.  modified extract-suffix
-;;;                to return only the numeric part of the suffix.
-;;;                eliminated fref from uil-primitives (for now).
-;;; 02/11/2001 rkd added definitions of uil-primitives, uil-primitive?,
-;;;                uil-effect-primitive?, uil-predicate-primitive?, and
-;;;                uil-value-primitive?
-;;; 01/31/2001 rkd added definitions of logand, sll, sra, hybrid->datum,
-;;;                and ptr->datum
-;;; 01/28/2001 rkd added definitions of internal-scheme-primitives,
-;;;                extended-scheme-primitive?, value-primitive?,
-;;;                predicate-primitive?, and effect-primitive?
-;;; 01/21/2001 rkd changed implementation of code-name
-;;; 01/14/2001 rkd changed datum? to permit improper lists.
-;;; 01/14/2001 rkd added immediate?
-;;; 2002.05.22 rrn added get-formals, cast-formals, and cast-args
+; 04/19/2001 rkd changed register-mapping to avoid use of %o6
+; 04/15/2001 rkd added operand-constraints nad register-mapping
+;                to the machine definition, and added new helper
+;                with-output-to-string.
+; 04/03/2001 rkd moved ap into the caller-save-registers list where
+;                it should have been all along
+; 03/25/2001 rkd added pick, rem, edge-maker, home-of, neighbors,
+;                neighbor-homes, extended-neighbor-homes; added
+;                align-shift to machine definition; added ap to
+;                machine-definition list of all-registers; added
+;                sll to list of uil primitives
+; 03/04/2001 rkd added generalized-member?, generalized-union?, and
+;                new-frame-var?
+; 02/26/2001 rkd added caller-save-registers and all-registers to the
+;                machine definition.  knocked number of parameter
+;                registers down to two for now.  added frame-var,
+;                new-frame-var, frame-var?, frame-var->index, and
+;                register?  fixed a bug in code-name caused by the
+;                change to extract-suffix.
+; 02/25/2001 rkd added parameter-registers and return-value-register
+;                to the machine definition.  modified extract-suffix
+;                to return only the numeric part of the suffix.
+;                eliminated fref from uil-primitives (for now).
+; 02/11/2001 rkd added definitions of uil-primitives, uil-primitive?,
+;                uil-effect-primitive?, uil-predicate-primitive?, and
+;                uil-value-primitive?
+; 01/31/2001 rkd added definitions of logand, sll, sra, hybrid->datum,
+;                and ptr->datum
+; 01/28/2001 rkd added definitions of internal-scheme-primitives,
+;                extended-scheme-primitive?, value-primitive?,
+;                predicate-primitive?, and effect-primitive?
+; 01/21/2001 rkd changed implementation of code-name
+; 01/14/2001 rkd changed datum? to permit improper lists.
+; 01/14/2001 rkd added immediate?
+; 2002.05.22 rrn added get-formals, cast-formals, and cast-args
 
-;;; the subset of Scheme keywords we support
-;;; [2004.06.28] RRN: Removed 'let'
+
+
+;;; .section-id regiment-prims
+;;; The regiment primitives definitions.                       <br>
+;;; These are the symbols I use for different types right now: <br>&nbsp;&nbsp;
+;;;   Bool Char Float64 Int32 List Object                      
+;;;   Number Pair Port String Symbol Vector Void
+
+
+;; The subset of Scheme keywords we support. <br>
+;; [2004.06.28] RRN: Removed 'let'
 (define base-keyword?
   (lambda (x)
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
-
-
-
-;; These are the symbols I use for different types right now:
-;;   Bool Char Float64 Int32 List Object
-;;   Number Pair Port String Symbol Vector Void
-
-;;; In the below primitive table, you will also see 'Tag, which indicatess
-;;; that the specified position simply holds information for the compiler,
-;;; these tags are always symbols, so the recursion on operands spills over
-;;; them harmlessly.  It would be nice if the primitive application case in
-;;; each pass would abstain from recurring on Tag operands, but that would
-;;; require bloating the code unnecessarily.  The tags at this point have
-;;; the limited purpose of storing class names and such; it should not be
-;;; a problem to keep track of.
 
 ;;; constants  (which can all occur unquoted)
 (define constant?
@@ -1914,41 +1933,7 @@
                    "unknown constant: ~s" imm)])))
 
 
-;; Things that need boxing (sigh):
-;; TODO: Fix this up when my language actually becomes a bit more concrete:
-;; I'm not even sure what meaning this has.  These are simple constants...
-#;
-(define (immediate? x)
-  (or (number? x)
-      (symbol? x)
-      (char? x)
-      (null? x) ;; RRN added. [2004.04.28]
-      ))
-
-#;
-(define immediate?
-  (lambda (x)
-    (or ;(null? x)
-      (char? x)
-      (fx-integer? x) ;; Not bignums
-      (flonum? x)
-      ;(boolean? x)
-      )))
-
-#;
-(define boxed-type?
-  (lambda (type)
-    (case type
-      [(Char Int32 Float64) #t]
-      [(Bool List Object Number Pair Port String Symbol Vector Void)
-       #f]
-      [(Tag) (error 'boxed-type?
-                    "it is not reasonable to ask whether tags are boxed: ~a"
-                    rand-type)]
-      [else (error 'boxed-type?
-                   "unknown type name: ~s" type)])))
-
-;;; structured data
+;; Datums include structured constants as well as atoms.
 (define datum?
   (lambda (x)
     (or (constant? x)
@@ -1959,15 +1944,14 @@
             (and (datum? (car x)) (datum? (cdr x)))
             (and (vector? x) (andmap datum? (vector->list x)))))))
 
-;;; These are the basic scheme primitives:
-;;; Entries are of the format:
-;;   (<prim> <arity> <context> <rand-type(s)> <return-type>)
-;;  <rand-type(s)> follows the same shape as the corresponding formals:
-;;     (Int32 Int32)       -- Two fixint arguments
-;;      Int32              -- Any number of fixint arguments
-;;     (Char Char . Int32) -- Two characters, followed by any # of fixints
-;;; For the latter two cases, <arity> will be the symbol "variable"
-
+;; These are the basic scheme primitives:                                  <br>
+;; Entries are of the format:                                              <br>&nbsp;&nbsp;
+;;   (<prim> <arity> <context> <rand-type(s)> <return-type>)                <br>
+;;  <rand-type(s)> follows the same shape as the corresponding formals:     <br>&nbsp;&nbsp;
+;;     (Int32 Int32)       -- Two fixint arguments                          <br>&nbsp;&nbsp;
+;;      Int32              -- Any number of fixint arguments                <br>&nbsp;&nbsp;
+;;     (Char Char . Int32) -- Two characters, followed by any # of fixints  <br>
+;; For the latter two cases, <arity> will be the symbol "variable"
 (define base-scheme-primitives
   '(
      (console-output-port 0 value () Port)   ; Incompletely implemented
@@ -2085,8 +2069,8 @@
      (\#flround 1 value (Float64) Float64)
      ))
 
-;;; These are scheme primitives that we support, but which get
-;;; reduced into base scheme primitives.
+;; These are scheme primitives that we support, but which get
+;; reduced into base scheme primitives.
 (define derived-scheme-primitives
   '(
      (<= variable test (Number . Number) Bool)
@@ -2186,7 +2170,7 @@
      ;(kbelow 2)
      ))
 
-;;; the subset of Scheme primitives we support
+;; The subset of normal Scheme primitives we support.
 (define scheme-primitives
   `(
      ,@base-scheme-primitives
@@ -2196,7 +2180,16 @@
      ,@library-scheme-primitives
      ))
 
-;;; new primitives added during compilation
+;; New primitives added during compilation. <br>
+;;
+;;   In this primitive table, you will also see 'Tag, which indicatess
+;; that the specified position simply holds information for the compiler,
+;; these tags are always symbols, so the recursion on operands spills over
+;; them harmlessly.  It would be nice if the primitive application case in
+;; each pass would abstain from recurring on Tag operands, but that would
+;; require bloating the code unnecessarily.  The tags at this point have
+;; the limited purpose of storing class names and such; it should not be
+;; a problem to keep track of.
 (define internal-scheme-primitives
   '(
      (make-bignum 2 value (Bool Vector) Object)      ; value-producing
@@ -2272,40 +2265,11 @@
   (last (get-primitive-entry prim)))
 
 
-;;=============================================================================
-;;;
-;;; CC
-;;;
-;;; The following are new "primitive?"-esque things relating to the object
-;;;  system.
-;;;
+;=============================================================================
 
-(define access-attributes
-  '(public protected private))
-(define access-attribute?
-  (lambda (x)
-    (memv x access-attributes)))
+; RRN: [2005.11.20] Not currently used:
 
-(define storage-attributes
-  '(static instance))
-(define storage-attribute?
-  (lambda (x)
-    (memv x storage-attributes)))
-
-(define attributes
-  (append
-    access-attributes
-    storage-attributes))
-
-(define attribute?
-  (lambda (x)
-    (memv x attributes)))
-
-;;;
-;;=============================================================================
-
-
-;;; presently defined for either Scheme or internal Scheme primitives
+; Presently defined for either Scheme or internal Scheme primitives
 (define predicate-primitive?
   (lambda (x)
     (cond
@@ -2394,8 +2358,10 @@
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
        
-;; GRAPHS
+
 ; =======================================================================
+;;; Graph functions
+;;; .section-id graphs
 
 ;; SIMPLE, VERTICAL, and HORIZONTAL graphs.
 
@@ -2447,6 +2413,34 @@
 			     children)])
 	(loop (append viable (cdr todo))
 	      (cons (car todo) acc)))])))
+
+;; This essentially floods a "gradient" from a part of the graph,
+;; noting the hopcounts everywhere else.
+(define (graph-label-dists obj graph)
+  ; Assumes eq? based hash tables:
+  ; Convert the list to a hashtab for fast lookup:
+  (define len (length graph))
+  (define hgraph (make-default-hash-table len))
+  ;; Next make a distance table:
+  (define dists (make-default-hash-table len))
+  (for-each (lambda (pr) (hashtab-set! hgraph (car pr) (cdr pr))
+		         (hashtab-set! dists  (car pr) #f))
+    graph)
+  ; Now loop until we flood the network:
+  (let loop ((point obj) (dist 0))
+    (let ((old (hashtab-get dists point)))
+      (unless (and old (< old dist))
+	(hashtab-set! dists point dist)
+	;; Broadcast to neighbors:
+	(let ((nbrs (hashtab-get hgraph point)))
+	  (if nbrs
+	      (for-each (lambda (x) (loop x (add1 dist)))
+		nbrs))))))
+
+  (map (lambda (pr)
+	 (cons (cons (car pr) (hashtab-get dists (car pr)))
+	       (cdr pr)))
+    graph))
 
 
 ;; Takes a horizontal or simple graph.

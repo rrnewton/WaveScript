@@ -6,15 +6,26 @@
 
 (define read-regiment-source-file
   (lambda (fn)
+    (define (desugar-token e)      
+      (match e
+	[((,name . ,subtok) (,arg ...) ,bods ...)
+	 `[,name ,subtok (,arg ...) ,bods ...]]
+	[(,name (,arg ...) ,bods ...)
+	 `[,name (,arg ...) ,bods ...]]))
     (define (desugar exps)
       (let loop ((ls exps))
 	(match ls
 	  [() (error 'read-regiment-source-file "file has no return expression.")]
-	  [((define ,x ,y) ,rest ...)
-	   `(letrec ((,x ,y)) ,(loop rest))]
-	  [(,retexp) retexp]
-	  [(,other ,rest ...) (error 'read-regiment-source-file
-				     "invalid expression in definition context: ~s" other)])))
+	  [((,lang '(program ,stuff ...)))
+	   (car ls)]
+	  [((define ,x* ,y*) ... ,main)
+	   `(letrec ((,x* ,y*) ...) ,main)]
+	  [((token ,stuff* ...) ...)
+	   `(tokens ,@(map desugar-token stuff*))]
+	  ;[,retexp retexp]
+	  [(,other ,rest ...)
+	   (error 'read-regiment-source-file
+		  "invalid expression in definition context: ~s" other)])))
 
     (match (file->slist fn)
       [((parameters ,p ...) ,exps ...)
@@ -23,7 +34,7 @@
        (values (desugar prog) ())])))
 
 #!eof
-#|
+#|  ; UNFINISHED!
 ;; This loads (e.g. reads, compiles, and simulates) a regiment program:
 ;; [2005.11.17] Currently redundant with code in regiment.ss:
 (define load-regiment
