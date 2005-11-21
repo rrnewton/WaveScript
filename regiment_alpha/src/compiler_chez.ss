@@ -64,7 +64,10 @@
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
-(printf "Loading compiler in chezscheme..~n")
+(printf "Loading compiler in chezscheme~a...\n"
+	(if (top-level-bound? 'regiment-origin)
+	    (format " (from ~a)" regiment-origin)
+	    ""))
 (IF_GRAPHICS (printf "(Linking GUI code using SWL.)\n")
 	(printf "(No GUI available.)\n"))
 (flush-output-port)
