@@ -45,10 +45,17 @@ chez: chez_native
 chez_native:
 	echo '(compile-file "compiler_chez.ss" (format "build/~a/compiler_chez.so" (machine-type)))' | chez
 
-heap:
-	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+heap: 
+	petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
+#	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 	$(RM) -f build/regiment.0.heap 
-	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+#	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+
+fullheap:
+	scheme -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
+#	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+	$(RM) -f build/regiment.0.heap 
+#	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
 
 

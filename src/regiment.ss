@@ -9,23 +9,24 @@
 
 (define start-dir (current-directory))
 
-(printf "STARTING: ~s\n" start-dir)
+;(printf "STARTING: ~s\n" start-dir)
+
+(define regiment-origin "unknown")
 
 ;; If the compiled version is there, use that:
-(if (file-exists? "compiler_chez.ss")
-    (if (file-exists? "compiler_chez.so")
-	(load "compiler_chez.so")
-	(load "compiler_chez.ss"))
-    (parameterize ();[current-directory "~/cur"])
-      (if (file-exists? (string-append (getenv "REGIMENTD") (format "/src/build/~a/compiler_chez.so" (machine-type))))
-	(load (string-append (getenv "REGIMENTD") (format "/src/build/~a/compiler_chez.so" (machine-type))))
-	(load (string-append (getenv "REGIMENTD") (format "/src/compiler_chez.ss"))))))
+(parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
+  (if (file-exists? (format "./build/~a/compiler_chez.so" (machine-type)))
+      (begin 
+	(set! regiment-origin "compiled .so")
+	(load (format "./build/~a/compiler_chez.so" (machine-type))))
+      (begin (printf "Loading Regiment from source...\n")
+	     (set! regiment-origin "source")
+	     (load "./compiler_chez.ss"))))
 
 ; =======================================================================
 
-
 (define (print-help)
-  (printf "Regiment system, version ~s~n" (regiment-version))
+  (printf "Regiment system, version ~s (loaded from ~a)\n" (regiment-version) regiment-origin)
   (printf "Usage: regiment command [options] ~n")
   (printf "~n")
   (printf "Commands: ~n")
@@ -71,8 +72,8 @@
     (define outfile #f)
     (define plot #f)
     (define simrepl #f)
-    (disp "Main called w ARGS: " args)
-    (when (null? args) (print-help) (exit 0))
+;    (disp "Main called w ARGS: " args)
+    (when (null? args) (print-help) (regiment-exit 0))
     
 ;    (printf "regimentc: compile regiment programs!~n")
     (let ([opts '()]
@@ -88,7 +89,7 @@
 		     (regiment-verbose #t)
 		     (loop rest)
 		     ]
-		    [(.h ,rest ...) (print-help) (exit 0)]
+		    [(.h ,rest ...) (print-help) (regiment-exit 0)]
 
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
 		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
@@ -224,6 +225,13 @@
 ; =======================================================================
 (suppress-greeting #t)
 (scheme-start main)
+
+(define (regiment-exit code)
+  ;; In case we're building a heap, we set this before we exit.
+  ;(disp "SETTING HEAP: " regiment-origin (top-level-value 'regiment-origin))
+  (set! regiment-origin "saved heap")
+  ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
+  (exit code))
 
 ;; Shave off the first argument, it just carries the working directory:
 (apply main (cdr (command-line-arguments)))
