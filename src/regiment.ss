@@ -8,8 +8,7 @@
 ;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
 
 (define start-dir (current-directory))
-
-;(printf "STARTING: ~s\n" start-dir)
+(printf "STARTING: ~s\n" start-dir)
 
 (define regiment-origin "unknown")
 
@@ -53,18 +52,6 @@
   (printf "  -repl         when simulation finishes, run interactive REPL\n")
   )
 
-
-(define (with-evaled-params params th)
-  (let loop ((ls params))
-    (if (null? ls) 
-	(begin 
-	  ;(disp "PARAMED TIME: " (sim-timeout))
-	  ;(inspect sim-timeout)
-	  (newline)
-	  (th))
-	(parameterize ([(eval (caar ls)) (eval (cadar ls))])
-	  (printf "Setting parameter: ~a ~a\n" (caar ls) (cadar ls))
-	  (loop (cdr ls))))))
 
 (define main 
   (lambda args    
@@ -196,11 +183,14 @@
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
 			 (car filenames))))
-	     ;; If it's not simulatable yet, we compile it just for convenience:
+	     ;; If it's not simulatable yet, we switch to compile-mode and compiler it first:
 	     (let ([type (extract-file-extension fn)])
-	       (when (equal? type "rs")
-		 (runloop 'compile (list fn))
-		 (set! fn out_file)))
+	       (if (equal? type "rs")
+		   (begin (runloop 'compile (list fn))
+			  (set! fn out_file))
+		   (if (equal? type "tm")
+		       (begin (runloop 'compile (list fn))
+			      (set! fn out_file)))))
 
 	     (printf "Running simulation from file: ~a\n" fn)
 	     (let ((result
@@ -209,7 +199,9 @@
 					;(inspect params)
 		      (with-evaled-params params
 					  (lambda () 
-					    (apply run-simulator-alpha prog opts))))))
+					    (apply run-simulator-alpha prog 
+						   'srand (current-time)
+						   opts))))))
 	       ;; Print simalpha stats:
 	       (print-stats)
 	       (if plot (gnuplot result))
@@ -221,11 +213,6 @@
 	  )))))))
   
 
-
-; =======================================================================
-(suppress-greeting #t)
-(scheme-start main)
-
 (define (regiment-exit code)
   ;; In case we're building a heap, we set this before we exit.
   ;(disp "SETTING HEAP: " regiment-origin (top-level-value 'regiment-origin))
@@ -233,5 +220,18 @@
   ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
   (exit code))
 
+; =======================================================================
+(suppress-greeting #t)
+;; If we're running from heap, we need to set the scheme-start:
+;; Set the invocation directory to whatever the current directory is:
+(scheme-start (lambda args (set! start-dir (cd)) 
+		      (random-seed (current-time))
+		      (apply main args)))
+(random-seed (current-time))
+
+;; If we're running from source, we invoke main right here:
 ;; Shave off the first argument, it just carries the working directory:
+;(apply main (cdr (command-line-arguments)))
+(if (null? (command-line-arguments))
+    (error 'regiment.ss "script must take at least one argument.  First argument should be working directory."))
 (apply main (cdr (command-line-arguments)))

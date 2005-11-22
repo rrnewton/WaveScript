@@ -73,21 +73,6 @@
 (flush-output-port)
 
 
-
-;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
-;; This tries to dynamically load the shared object the first time the function is called:
-(define (sleep t)
-  ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
-  (parameterize ((current-directory (string-append REGIMENTD "/src/")))
-    (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
-	(system "(cd chez/usleep; make)"))
-    (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
-	;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
-	(load (format "build/~a/usleep_libc.so" (machine-type)))
-	;; If that build failed and we still don't have it we have to throw an error:
-	(define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
-  (sleep t))
-
 ;(load-shared-object (format "chez/usleep/~a/usleep.o" (machine-type)))
 ;(define sleep (foreign-procedure "rrn_usleep" (integer-32) void))
 
@@ -121,6 +106,26 @@
 ;(define test-tsort (let () (import topsort-module) (test-this)))  
 
 
+
+;======================================================================
+;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
+;; This tries to dynamically load the shared object the first time the function is called:
+(define (sleep t)
+  ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
+  (parameterize ((current-directory (string-append REGIMENTD "/src/")))
+    (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
+	(system "(cd chez/usleep; make)"))
+    (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
+	;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
+	(load (format "build/~a/usleep_libc.so" (machine-type)))
+	;; If that build failed and we still don't have it we have to throw an error:
+	(define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
+  (sleep t))
+;; Only make a system call once to sync us with the outside world.
+(define current-time (seconds-since-1970))
+;======================================================================
+
+
 ;(eval-when (compile eval) (cd ".."))
 
 ;; Load this before the simulator.
@@ -136,11 +141,11 @@
 	   ))
 
 (include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+(include "chez/alpha_lib.ss") 
+(import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 (include "chez/simulator_alpha.ss") (import simulator_alpha)
-(include "chez/alpha_lib.ss") 
-(import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 
 (include "generic/tossim.ss")
 (include "generic/source_loader.ss") ;; For loading regiment sources.

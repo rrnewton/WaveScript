@@ -4,7 +4,7 @@
 #chez -h regimentc.1.heap $*
 
 # Use my default location if it is not set.
-if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/cur; fi
+if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/regiment_alpha; fi
 
 # If we can we use the stored heap, otherwise we run it as a script.
 #if [ -f $REGIMENTD/build/regiment.0.heap ];
@@ -12,4 +12,4 @@ if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/cur; fi
 #else $REGIMENTD/regiment_script.ss $*;
 #fi
 
-swl_bare --script $REGIMENTD/regiment.ss $*
+swl_bare --script $REGIMENTD/src/regiment.ss ./ $*

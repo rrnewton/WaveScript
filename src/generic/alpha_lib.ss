@@ -91,16 +91,15 @@
    ;; Fizzle if graphics is not enabled.
    (void))]
 
-[define (sim-setlabel str)
+[define (sim-setlabel str . ob)
   (IF_GRAPHICS 
-   (let ((g (simobject-gobj (current-simobject))))
-   (when g
-     (DEBUGMODE (if (not (gobject? g)) (error 'sim-setlabel "found simobject with invalid gobject!\n")))
-     ;(inspect (gobject-label (simobject-gobj (current-simobject))))
-     (change-text! (gobject-label (simobject-gobj (current-simobject)))
-		   str)))
+   (let ((ob (if (null? ob) (current-simobject) (car ob))))
+     (let ((g (simobject-gobj ob)))
+       (when g
+	 (DEBUGMODE (if (not (gobject? g)) (error 'sim-setlabel "found simobject with invalid gobject!\n")))
+	 (change-text! (gobject-label (simobject-gobj ob)) str)))
    ;; Fizzle if graphics is not enabled.
-   (void))]
+     (void)))]
 
 ;; todo INCOMPLETE (we don't yet draw the leds directly.)
 [define (sim-leds what which)  

@@ -7,6 +7,7 @@
 
 	(import scheme)
 	(import simulator_alpha_datatypes)
+	(import alpha_lib)
 ;	(import simulator_alpha)
 
 	;; Consider compiling simulator code in opt 3 when it's stable.

@@ -58,7 +58,7 @@
 
     ;haskellize-tokmac 
     
-    flatten-tokmac
+;    flatten-tokmac
 ;    emit-nesc
 
     ))

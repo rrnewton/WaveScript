@@ -172,6 +172,11 @@
 
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
+      ;; If GUI message counters are turned on, print our count on the screen:
+      (IF_GRAPHICS
+       (if (simalpha-label-msgscounts)
+	   (sim-setlabel (format "~a->~a" (simobject-local-sent-messages ob)
+				 (simobject-local-recv-messages ob)) ob)))
 
       (set-simobject-local-msg-buf! ob '())
       (set-simobject-timed-token-buf! ob '())
@@ -251,6 +256,11 @@
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
 	; Increment message counter:
         (set-simobject-local-sent-messages! ob (fx+ (length outgoing) (simobject-local-sent-messages ob)))
+        ; If GUI message counters are turned on, print our count on the screen:
+        (IF_GRAPHICS
+          (if (simalpha-label-msgscounts)
+	    (sim-setlabel (format "~a->~a" (simobject-local-sent-messages ob)
+				 (simobject-local-recv-messages ob)) ob)))
 
 	(unless (null? outgoing)
 	;; They're all broadcasts for now

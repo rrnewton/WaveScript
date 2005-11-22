@@ -16,8 +16,8 @@
 	  with-error-handlers with-warning-handler
 	  current-error-port
 
-	  system/echoed system-to-str 
-	  chomp shell-expand-string
+	  system/echoed system-to-str with-evaled-params 
+	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
 	  id gnuplot histogram display-progress-meter count-nodes
@@ -250,6 +250,16 @@
    [(k) (#%random k)]))
 (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
 (define (reg:set-random-state! s) (random-seed s))
+
+
+;; Return the current time in seconds since 1970:
+(define seconds-since-1970
+  (lambda ()
+    (let ((absolute (string->number (chomp (system-to-str "date +%s"))))
+	  (syncpoint (quotient (real-time) 1000)))
+      (lambda () 
+	(+ (- (quotient (real-time) 1000) syncpoint)
+	   absolute)))))
 
 )
 

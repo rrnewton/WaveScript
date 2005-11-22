@@ -265,6 +265,9 @@
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
 (define-regiment-parameter simalpha-write-sims-to-disk #t)
 
+;; This is a little feature that will print message counts to the GUI:
+(define-regiment-parameter simalpha-label-msgscounts #f)
+
 ;; Defining this one here because it's the default, the rest of these are in alpha_lib.ss
 ;; This one changes amplitude across space:
 (define (sense-spatial-sine-wave id x y t)
