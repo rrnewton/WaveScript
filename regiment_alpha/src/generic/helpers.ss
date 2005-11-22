@@ -258,7 +258,8 @@
     (eq? (Object Object) Bool)
     (even? (Integer) Bool)
     (odd? (Integer) Bool)
-
+    (random (Integer) Integer)
+    
     ;; Takes an optional second argument, that's the fun to optimize.
     (elect-leader Token . Token)
     (flood Token) ;; These are actually macros, but what the heck
@@ -306,7 +307,7 @@
      (soc-return (Number) Void)
      (soc-return-finished (Number) Void)
      
-     ;; TEMPORARY, just for debugging/testing:
+     ;; LISTS: TEMPORARY, just for debugging/testing:
      (cons (Object List) List) 
      (car (List) Object)
      (cdr (List) List)
@@ -314,7 +315,7 @@
      (null? (List) Bool)
      (list Object List)
      (append List List)
-     
+    
      (vector Object Array)
      (make-vector (Integer Object) Array)
      (vector-ref (Array Integer) Object)
@@ -517,6 +518,20 @@
 					     #'(t a)
 					     newargs
 					     ))))))))])))
+
+(define (with-evaled-params params th)
+  (let loop ((ls params))
+    (if (null? ls) 
+	(begin 
+	  ;(disp "PARAMED TIME: " (sim-timeout))
+	  ;(inspect sim-timeout)
+	  (newline)
+	  (th))
+	(parameterize ([(eval (caar ls)) (eval (cadar ls))])
+	  (printf "Setting parameter: ~a ~a\n" 
+		  (caar ls) ;(pad-width 23 (caar ls))
+		  (cadar ls))
+	  (loop (cdr ls))))))
 
 (define-syntax apply-ordered
   (lambda (x)

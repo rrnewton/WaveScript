@@ -3,7 +3,8 @@
 (parameters 
     [sim-num-nodes 30]
     [sim-timeout 2000]
-    [simalpha-channel-model 'lossless]
+    [simalpha-placement-type 'gridlike] ;'random]  ;'connected]    
+    [simalpha-channel-model 'linear-disc] ;'lossless]
     [simalpha-failure-model 'none])
 
 ;; This is like the hello world of Regiment:

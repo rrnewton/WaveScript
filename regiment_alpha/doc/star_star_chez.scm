@@ -33,7 +33,7 @@
    [(pair? s) (cons (chomp (car s)) (chomp (cdr s)))]
    [else (error 'chomp "bad input: ~s" s)]))
 
-;; Return the current time in seconds
+;; Return the current time in seconds since 1970:
 (define current-time
   (let ((absolute (string->number (chomp (system-to-str "date +%s"))))
 	(syncpoint (quotient (real-time) 1000)))

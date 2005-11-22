@@ -419,6 +419,7 @@
       [+. fl+] [-. fl-] [*. fl*] [/. fl/]
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]
+      [random reg:random-int]
       ))
   
   (let ([allstored (apply append (map cadr stored))])
@@ -796,6 +797,7 @@
 	     (mvlet ([(tok id args stored bindings body) (destructure-tokbind tbind)])
 		      `[,tok 
 			(lambda (current-vtime ,id . vals) ;world)
+
 			  ;; Set the global "this" for the below dynamic extent.
 			  (parameterize ((current-simobject this))
 			  (let ,(map list args (make-list (length args) ''sim-alpha-uninitialized))
@@ -974,6 +976,9 @@
 		    
 		    ;; Return the real meta-handler
 		     (lambda (msgob current-vtime)
+		       ;; Here we set the parameters again because this is a different dynamic context:
+		       (parameterize (,@extraparams)
+
 		       (mvlet ([(name subtok)
 				(let ((tok (msg-object-token msgob)))
 				  (values (simtok-name tok)
@@ -991,7 +996,7 @@
 				(apply handler current-vtime subtok 
 				       (msg-object-args msgob))
 				;; That returns nothing but fills up the simobjects buffers.
-				)))
+				))))
 		 ))))))))
 	   ;; Final return value of compile-simulate-alpha:
 	   (build-genned-code-module node-code)
@@ -1130,7 +1135,11 @@
 
   (let* ([sim (simalpha-current-simworld)]
 	 [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
-	 [sorted (sort (lambda (x y) (< (cdr x) (cdr y))) measured)]
+	 [sorted (sort (lambda (x y) 
+			 (cond 
+			  [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
+			  [(cdr x) #t] [else #f]))
+		       measured)]
 	 [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
 	 )
     (printf "sent: ~a\n" 

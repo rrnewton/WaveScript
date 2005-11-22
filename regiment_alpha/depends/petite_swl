@@ -11,8 +11,8 @@ then DIR=i3nt;
 else echo Unknown platform: $MACHINE
 fi
 
-export SWL_ROOT=$REGIMENTD/depends/petite_chez_scheme7.0/swllib
-export SWL_LIBRARY=$REGIMENTD/depends/petite_chez_scheme7.0/bin/$DIR
+export SWL_ROOT=$REGIMENTD/depends/swl0.9z/swllib
+export SWL_LIBRARY=$REGIMENTD/depends/swl0.9z/bin/$DIR
 
 #echo $SWL_ROOT
 #echo $SWL_LIBRARY

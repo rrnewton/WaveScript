@@ -40,7 +40,7 @@
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
    print-level print-length
-   system/echoed
+   system/echoed system-to-str with-evaled-params
    
    cd
    ;; Other values 
