@@ -16,7 +16,7 @@
        (leds on blue)
        (if (< h hops)
 	   (begin 
-	     (printf "~a.~a: Down   p:~a  hops:~a\n" (my-clock) (my-id) p h)
+	     (printf "~a,~a: Down   p:~a  hops:~a\n" (my-clock) (my-id) p h)
 	     (set! parent p)
 	     (set! hops h)			
 	     (bcast down (my-id) (+ hops 1))))
@@ -27,7 +27,7 @@
 	 (if (token-present? down)
 	     (if (= (my-id) ,BASE_ID)
 		 (begin
-		   (printf "~a.~a: Got return: ~a\n" (my-clock) (my-id) v)
+		   (printf "~a,~a: Got return: ~a\n" (my-clock) (my-id) v)
 		   (soc-return v)
 		   )
 		 (bcast up (ext-ref down parent) (+ v 1)))

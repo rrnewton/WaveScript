@@ -16,6 +16,11 @@
       (let loop ((ls exps))
 	(match ls
 	  [() (error 'read-regiment-source-file "file has no return expression.")]
+	  ;; First of all, we allow some load-time evaluation for syntax preprocessing:
+	  [((quasiquote ,form) ,rest ...)
+	   ;; Just evaluat it and loop:
+	   (desugar (cons (eval `(quasiquote ,form)) rest))]
+
 	  ;; These first forms are the "single construct" style:
 	  [((,lang '(program ,stuff ...)))
 	   (car ls)]
@@ -41,8 +46,12 @@
 ;; This loads (e.g. reads, compiles, and simulates) a regiment program:
 ;; [2005.11.17] Currently redundant with code in regiment.ss:
 (define load-regiment
-  (lambda (fn)    
-    (mvlet ([(prog params passes)
+  (lambda (fn . opts)
+    ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
+    ;; Flags get passed to run-compiler and compile-simulate-alpha.
+    (let ((flags (filter symbol? opts))
+	  (userparams (filter list? opts)))
+    (mvlet ([(prog codeparams passes)
 	     (let ([type (string->symbol (extract-file-extension fn))])
 	       (mvlet (((prg params) (read-regiment-source-file fn)))
 		 (case type
@@ -52,23 +61,21 @@
 		   [(sim alpha) (values prg params ())]
 		   [else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 		   )))])
-      ;(inspect params)
-      #;
-      (inspect (apply compile-simulate-alpha
-		      (run-compiler prog)
-		      params))
+      
+      ;; User params override those set in the code:
+      (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
       ;; Set all the params before running things:
       (let ((result (with-evaled-params params
 			  (lambda ()
 			    (fluid-let ([pass-names passes])
 			      (run-simulator-alpha
 			       (apply compile-simulate-alpha
-				      (run-compiler prog)
-				      params)
+				      (apply run-compiler prog flags)
+				      (append flags params))
 			       'srand (current-time)
 			       ))))))
 	(print-stats)
-	result))))
+	result))))))
 
 #|	      
 
