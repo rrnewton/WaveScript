@@ -6,12 +6,7 @@
     [simalpha-channel-model 'lossless]
     [simalpha-failure-model 'none])
 
-;; This token machine program 
-
-(token send-foo ()
-  
-  (void))
-
+; ======================================================================  
 
 ;; A Route Request packet
 (token (RREQ . subid) (destid newest-dest-seq)

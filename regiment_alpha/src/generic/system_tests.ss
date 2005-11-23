@@ -567,12 +567,10 @@
 
 
 
-
-
      ;; FIXME: Add better oracle
      ["Testing sim: 'manually' propogate a flood"
-      , (tm-to-list (car (file->slist (++ REGIMENTD "/src/demos/token_machs/manual_tree.tm")))
-		    '[sim-timeout 5000])
+      (load-regiment (++ REGIMENTD "/src/demos/token_machs/manual_tree.tm")
+		     '[sim-timeout 2.0])
       unspecified]
 
 
