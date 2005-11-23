@@ -8,8 +8,10 @@
   [sim-timeout 2000])
 
 
-;; Main program
-(rwhen-any (lambda (pr) (> (car (cdr pr)) 99))
-	   (rmap (lambda (n) (cons (nodeid n) (cons (sense n) '())))
-		 world))
+;(define 2hop (lambda (n) (khood (node->anchor n) 2)))
+;(define sum (lambda (r) (rfold + 0 r)))
+;(define valfield (rmap sense world))
 
+;; Main program
+;(sum valfield)
+(rmap node->anchor world)

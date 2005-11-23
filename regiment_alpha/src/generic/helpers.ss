@@ -146,6 +146,9 @@
     (khood          (Anchor Number) Region)
     (khood-at       (Number Number Number) Region)
 
+    ;; This lifts a node value into the Signal monad:
+    (node->anchor   (Node) Anchor)
+
     ;; This one returns a region of regions:
     (cluster        (Area) Area)
     (sparsify       (Area) Area)
