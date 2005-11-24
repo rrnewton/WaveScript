@@ -330,6 +330,11 @@
 ;			 this (cons 'anchor (simobject-homepage this)))
 			(light-up 0 255 255)])))]
 
+	    ;; [2005.11.23] This does essentially nothing.  It's
+	    ;; formed at a node, it's membership is that node.
+	    [(node->anchor)
+	     `([,form () (call ,memb)])]
+
 	    [(circle)
 	     (let ([anch (car args)]
 		   [rad (cadr args)])
@@ -369,7 +374,8 @@
 	       )]
 
 
-#;	    [(circle-at)
+#;	    
+	    [(circle-at)
 	     (let ([rad (cadr args)]
 		   [loc (car args)])
 	       `(
@@ -401,16 +407,17 @@
 	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))
 
 
-    ;; LetrecExpr -> (Entry, Cbinds, TokenBinds)
-    ;; This produces a list of constant bindings, token bindings, and
-    ;; a token entry point of zero arguments.  The entrypoint is the
-    ;; root, or finally returned edge of the data flow graph...
-
-    ;; [2005.10.27] This was blatantly incorrect before.  It just
-    ;; turned the lazy letrec into a normal let*.  Now I'm making a
-    ;; first attempt to reprocess the lazy-letrec bindings into a
-    ;; valid let* binding using delazy-bindings.
-    (define process-letrec
+;  ======================================================================
+;; LetrecExpr -> (Entry, Cbinds, TokenBinds)
+;; This produces a list of constant bindings, token bindings, and
+;; a token entry point of zero arguments.  The entrypoint is the
+;; root, or finally returned edge of the data flow graph...
+;;   <br><br>
+;; [2005.10.27] This was blatantly incorrect before.  It just
+;; turned the lazy letrec into a normal let*.  Now I'm making a
+;; first attempt to reprocess the lazy-letrec bindings into a
+;; valid let* binding using delazy-bindings.
+(define process-letrec
       (lambda (expr)
         (match expr
 	       [(lazy-letrec ([,lhs* ,heartbeat* ,formplace ,membplace ,rhs*] ...) ,body)
@@ -418,9 +425,15 @@
 		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))
 		      (if (null? lhs*)
+
+			  ; [2005.11.23] Why do we return the formation tok for a distributed value?
+
+			  ; Making this return the membership token, idea being that you can use that 
+			  ; membership token to observe the value of the distributed prim (if you're 
+			  ; in the right place!).
 			  (values (if (check-prop 'distributed body)
 				      (mvlet (((form memb) (token-names body)))
-					     form)
+					     memb)
 				      body)
 				  (delazy-bindings cacc (list body))
 				  tacc)
@@ -434,6 +447,9 @@
 		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
 	  )))
 
+; ======================================================================
+;; Takes a set of lazy-letrec bindings and orders it (verifying that
+;; there are no cycles) so that it will work with eager evaluation.
 (define delazy-bindings
   (lambda (origbindings otherrefs)
     ;; Takes a list of (,name ,const), (,name ,name), (,name (,prim ,args ...)), or (,name (if ,x ,y ,z))
@@ -552,6 +568,7 @@
 ;    pruned-binds
     ))
 
+; ======================================================================
 
 
     ;; Conditionals need to assert constraints on the ordering:
@@ -573,8 +590,9 @@
 (define primitive-return
   (lambda (prim tokname) ;; The tokname is a membership-name
     (case prim
-      [(anchor-at anchor-maximizing)
-       `([,tokname (ldr val)
+      [(anchor-at anchor-maximizing node->anchor)
+       ;; Node->anchor actually takes zero args.  But that should be fine.
+       `([,tokname (ldr val) 
 		   ;; At each formation click, we output this node [id].
 		   (soc-return (list 'ANCH (my-id)))
 		   ;(soc-return ,ANCH-NUM)
@@ -699,6 +717,9 @@
             (error 'deglobalize "invalid expression: ~s"
                    unmatched)]))))
 
+; ==============================================================================
+
+;; This is the main procedure for the pass itself.
 (define deglobalize
   (let ()
 
@@ -722,47 +743,49 @@
    ;	       (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
 		;; This pass uses the same language as the prior pass, lift-letrec
 					;`(,input-language '(program ,body))
-		`(deglobalize-lang '(program 
-				     (bindings ,@constbinds)
-				     ,(if (assq entry constbinds)
-					  ;; Socpgm bindings are null for now:
-					  `(socpgm (bindings ) 
+		`(deglobalize-lang 
+		  '(program 
+		       (bindings ,@constbinds)
+		     ,(if (assq entry constbinds)
+			  ;; Socpgm bindings are null for now:
+			  `(socpgm (bindings ) 
 ;[2005.04.22] Getting rid of this temporarily
 ;	;					   (soc-return-finished ,entry)
-						   (soc-return ,entry)
-						   )
-					  `(socpgm (bindings) (call spread-global))
-					  )
-			      (nodepgm (tokens ,@tokenbinds
-					       ;; Make a pulsator for each leaf:
-					       ,@(map (lambda (leaf leaftokname) 
-							`[,leaftokname () 
-							    (call ,(get-formation-name leaf))
-							    (timed-call ,slow-pulse ,leaftokname)])
-						      leaves leaftoks)
-					       ;; Pulse the global gradient at one hertz:
-					       [spread-global ()
-							      (gemit global-tree)
-							      (timed-call 1000 spread-global)]
-					       [global-tree () (grelay)]
-					       [catcher (v) (soc-return v)]
-
-					       ;; THIS IS A YUCKY WAY TO DO IT:
+			     (soc-return ,entry)
+			     )
+			  `(socpgm (bindings) (call spread-global))
+			  )
+		     (nodepgm (tokens ,@tokenbinds
+				      ;; Make a pulsator for each leaf:
+				      ,@(map (lambda (leaf leaftokname) 
+					       `[,leaftokname () 
+							      (call ,(get-formation-name leaf))
+							      (timed-call ,slow-pulse ,leaftokname)])
+					  leaves leaftoks)
+				      ;; Pulse the global gradient at one hertz:
+				      [spread-global ()
+						     (gemit global-tree)
+						     (timed-call 1000 spread-global)]
+				      [global-tree () (grelay)]
+				      [catcher (v) (soc-return v)]
+				      
+				      ;; THIS IS A YUCKY WAY TO DO IT:
 ;					       [spark-world () (call ,(get-membership-name 'world) this)]
-					       )
+				      )
 				       				       
-				       ;; <TODO> It's the LEAVES that need priming:
-				       ,(if (assq entry constbinds)
-					   `(startup )
-					   ;; Here I should really only prime the world_tok if the
-					   ;; world prim is used in the program:
-					   `(startup ,@leaftoks ,@(if (assq 'spark-world tokenbinds)
-								      (list 'spark-world)
-								      '()))))
-				       ))))
+		       ;; <TODO> It's the LEAVES that need priming:
+		       ,(if (assq entry constbinds)
+			    `(startup )
+			    ;; Here I should really only prime the world_tok if the
+			    ;; world prim is used in the program:
+			    `(startup ,@leaftoks ,@(if (assq 'spark-world tokenbinds)
+						       (list 'spark-world)
+						       '()))))
+		     ))))
 	 ]))))
 
-;========================================
+; ==============================================================================
+;;; Unit tests.
 
 (define these-tests 
   `(

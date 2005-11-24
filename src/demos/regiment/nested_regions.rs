@@ -15,3 +15,6 @@
 ;; Main program
 ;(sum valfield)
 (rmap node->anchor world)
+
+; ======================================================================
+; (mvlet (((prog _) (read-regiment-source-file "demos/regiment/nested_regions.rs"))) (rc prog 'verbose))
