@@ -33,6 +33,7 @@
 	  formalexp? cast-formals default-unit-tester tester-eq?
 	  ;default-unit-tester-retries
 	  substring?
+	  gobj? 
 
 	  regiment-primitives regiment-primitive? 
 	  token-machine-primitives token-machine-primitive? 
@@ -150,6 +151,19 @@
 ;; This is too lenient, but there's no other option.
 (define promise? procedure?)
 
+
+;; This is a hack, it's not safe because it can report false
+;; positives.  This is used to tell when something is a graphics
+;; screen object as constructed with SWL's (make <foo> ...):
+(define gobj?
+  (lambda (x)
+    (and (vector? x)
+	 (> (vector-length x) 2)
+	 (procedure? (vector-ref x 0))
+	 (vector? (vector-ref x 1))
+	 (> (vector-length (vector-ref x 1)) 1)
+	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
+ 
 (define current-error-port current-output-port)
 
 

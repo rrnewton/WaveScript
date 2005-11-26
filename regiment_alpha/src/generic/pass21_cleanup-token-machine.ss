@@ -137,6 +137,7 @@
 	      (if (null? dups)
 		  (cons (car ls) (loop (cdr ls)))	    
 
+		  ;; TODO: I could lift the restriction that the formals match and just do renaming where necessary.
 
 		  ;(mvlet ([(tok id args stored bindings body) (destructure-tokbind all-handlers)])  	      
 		  (let* ([all-handlers (cons (car ls) dups)]
@@ -145,13 +146,29 @@
 			 [subid* (map handler->subtokid all-handlers)]
 			 [stored* (map handler->stored all-handlers)]
 			 [allstored (apply append stored*)]
+			 ; The final formals list used for the result is just the [a] longest one:
+			 [theformals (let loop ((ls (cdr formals*))
+						(maxlen (length (car formals*)))
+						(max (car formals*)))
+				       (if (null? ls) max
+					   (let ((len (length (car ls))))
+					   (if (> len maxlen)
+					       (loop (cdr ls) len (car ls))
+					       (loop (cdr ls) maxlen max)))))]
 			 ;; bindings ignored... no longer used.
 			 )
+		    (list formals* theformals)
 		    (DEBUGMODE
-		     (if (not (apply myequal? formals*))
-		     (error 'remove-duplicate-tokbinds
-			    "handlers for token ~s don't all take the same arguments: ~s" 
-			    tok formals*))
+		     ;; This makes sure that all the formals, if present, are the same:
+		     (let ((notnull (lambda (x) (not (null? x)))))
+		       (let loop ((ls (filter notnull formals*)))
+			 (unless (null? ls)
+			   (if (apply myequal? (map car ls))
+			       (loop (filter notnull (map cdr ls)))
+			       (error 'remove-duplicate-tokbinds
+				      "handlers for token ~s don't all take the same arguments: ~s" 
+				      tok formals*)))))
+
 		     (if (not (apply myequal? subid*))
 		     (error 'remove-duplicate-tokbinds
 			    "handlers for token ~s don't all take the same subtokids: ~s" 
@@ -163,7 +180,7 @@
 			    "handlers for token ~s have overlapping stored vars: ~s" tok svars)))
 		     )
 		    (let ([mergedhandler
-			   `[,tok ,(car subid*) ,(car formals*)
+			   `[,tok ,(car subid*) ,theformals
 				  (stored ,@allstored)
 				  ,(make-begin (snoc ''multiple-bindings-for-token
 						     ;; FIXME: Is it really necessary to randomize??
@@ -184,14 +201,21 @@
 	;; This just loops back with the same context:
 	(define (loop x) ((process-expr env storedtable this-token this-subtok) x))
 
+	; This makes sure that a token expression is correct and compatible with a type of call:
 	  (define-syntax check-tok
 	    (syntax-rules ()
 	      [(_ call tokexp)
-	       (let ((name (match tokexp
-				  [,s (guard (symbol? s)) s]
-				  [(tok ,t) t]
-				  [(tok ,t ,num) t]
-				  [,other (error 'check-tok "(~s) invalid token: ~s" call other)])))
+	       (let ([err (lambda ()  
+			    (error 'cleanup-token-machine 
+				   "process-expr/check-tok user cannot reference/call node-start or SOC-start in: ~s" tokexp))])
+		 (let ((name (match tokexp
+			     ;; Cannot make references or user-calls to the *-start tokens.
+			     [,s (guard (memq s '(node-start SOC-start))) (err)]
+			     [,s (guard (symbol? s)) s]
+			     [(tok ,t . rest) (guard (memq t '(node-start SOC-start))) (err)]
+			     [(tok ,t) t]
+			     [(tok ,t ,num) t]
+			     [,other (error 'check-tok "(~s) invalid token: ~s" call other)])))
 		 (if (not (memq name tokens))
 		     (if (eq? call 'direct-subcall)
 			 (error 'cleanup-token-machine:check-tok
@@ -210,7 +234,7 @@
 				      "direct-subcall must be to a token with no storedvars, not to ~s which stores ~s"
 				      name tokstored))))
 		     
-		     ))]))
+		     )))]))
 	  (define (tokname? t) (memq t tokens))
 
 	  (lambda (stmt)

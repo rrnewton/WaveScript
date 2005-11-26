@@ -26,12 +26,13 @@
 	   (car ls)]
 	  [((tokens ,tok* ...))
 	   (car ls)]
+
 	  ;; These two are the "multiple construct" style, in which
 	  ;; many seperate "define" or "token" clauses are allowed.
-	  [((define ,x* ,y*) ... ,main)
-	   `(letrec ((,x* ,y*) ...) ,main)]
 	  [((token ,stuff* ...) ...)
 	   `(tokens ,@(map desugar-token stuff*))]
+	  [((define ,x* ,y*) ... ,main)
+	   `(letrec ((,x* ,y*) ...) ,main)]
 	  ;[,retexp retexp]
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file

@@ -99,14 +99,14 @@
 	 gobject-bled
 	 gobject-title
 	 gobject-label
-	 gobject-edgetable
+	 gobject-edgelist
 	 set-gobject-circ!
 	 set-gobject-rled!
 	 set-gobject-gled!
 	 set-gobject-bled!
 	 set-gobject-title!
 	 set-gobject-label!
-	 set-gobject-edgetable!
+	 set-gobject-edgelist!
 
 	 make-msg-object
 	 msg-object?

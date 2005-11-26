@@ -131,13 +131,14 @@
       (match t
 	[(tok ,t ,e) t]))
 
+    ;; This returns all tokens which will or could be gradientized (tainted).
+    ;; If we ever have a first class reference to a token name, it is potentially tainted.
+    ;; This is a conservative estimate.
     (define (find-emittoks expr)
       (tml-generic-traverse
        (lambda (x autoloop)
 	 (match x
 	        ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
-	   ;; If we ever have a first class reference to a token name, it is potentially tainted.
-	   ;; This is a conservative estimate:
 	   [(tok ,t ,n) (guard (number? n)) (list t)]
 	   [(tok ,t ,[e]) (cons t e)]
 
@@ -161,11 +162,11 @@
 	   [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
 	   ;; Anything more dynamic makes us think the operand is potentially emitted.
 
-	   ;; All primitives that can take tokenss
+	   ;; Tokens fed to primitives don't count as "escaped".
 	   [(,prim ,args* ...)
 	    (guard (or (token-machine-primitive? prim)
 		       (basic-primitive? prim)))
-	    (define do-primargs-w-tokens;; Handles primitives that take tokne args.
+	    (define do-primargs-w-tokens;; Handles primitives that take token args.
 	      (lambda (prim args)
 		(map-prim-w-types 
 		 (lambda (arg type)
@@ -209,15 +210,14 @@
 	     [(ext-ref ,[(statictok loop)  -> ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
 	     [(ext-set! ,[(statictok loop) -> ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb) 
 						       `(ext-set! ,t ,v ,e2))]
-
 	     ;; This is "dynamic" context so no tainted names are allowed!
 	     ;; Basically gradient bearing token handlers are second class!
 	     [(tok ,t ,n) (guard (number? n))
-	      (if (memq t tainted) 
+	      (if #f ;(memq t tainted) ; Allowing -[2005.11.23]
 		  (error 'desugar_gradients:process-expr "dynamic token ref to tainted token!: ~a" t)
 		  (values () `(tok ,t ,n)))]
 	     [(tok ,t ,[etb e])                
-	      (if (memq t tainted) 
+	      (if #f ;(memq t tainted) ; Allowing -[2005.11.23]
 		  (error 'desugar_gradients:process-expr "dynamic token ref to tainted token!: ~a" t)
 		  (values etb `(tok ,t ,e)))]
 	     [(begin ,[tb* expr*] ...)         (values (apply append tb*) `(begin ,expr* ...))]

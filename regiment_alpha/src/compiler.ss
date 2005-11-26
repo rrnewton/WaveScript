@@ -418,5 +418,5 @@
   (eval (caddr (list-ref (maintest 'get-tests) 55))))
 
 
-
-
+(define (t1) (begin (close-graphics) b2))
+(define (t2) (parameterize ((simalpha-realtime-mode #t)) (eval (caddr (list-ref (maintest 'get) 60)))))

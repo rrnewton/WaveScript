@@ -28,7 +28,7 @@
   ;; stuff once they are "eval"ed.
   ;; Ideally we would find a better way to do this.  For example the simulated programs 
   ;; could be generated in "prevaled" form, where the closures are stuck right in the sexp.
-  (provide (all-defined-except );run-alpha-simple-simulator)
+  (provide (all-defined-except start-alpha-sim);run-alpha-simple-simulator)
 ;           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
 ;           (all-from "copy-struct.ss")
 ;           (all-from "constants.ss")

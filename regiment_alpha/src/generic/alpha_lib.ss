@@ -68,10 +68,13 @@
 [define (sim-highlight-edge nbr)
   (let ((g (simobject-gobj (current-simobject))))
     (when g 
-      (let ((pr (assq nbr (gobject-edgetable g))))
-	(inspect pr)
+      (let ((pr (assq nbr (gobject-edgelist g))))
 	(if pr 
-	    (change-color! (cadr pr) (make-rgb 255 255 0))
+	    (begin 
+	      ;; TEMP [2005.11.26] FIXME: Breaking abstraction boundary:	      
+	      (change-color! (cadr pr) (make-rgb 0 0 200))
+	      (set-line-thickness! (cadr pr) 2)
+	      )
 	    (error 'sim-highlight-edge 
 		   "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))
   ]
@@ -102,16 +105,19 @@
      (void)))]
 
 ;; todo INCOMPLETE (we don't yet draw the leds directly.)
-[define (sim-leds what which)  
-  (let* ([nodeid (node-id (simobject-node (current-simobject)))]
-	 [state-table (simworld-led-toggle-states (simobject-worldptr (current-simobject)))]
+[define (sim-leds what which . ob)
+  (let* ([ob (if (null? ob) (current-simobject) (car ob))]
+	 [nodeid (node-id (simobject-node ob))]
+	 [state-table (simworld-led-toggle-states (simobject-worldptr ob))]
 	 [led-toggle-state (let ((entry (hashtab-get state-table nodeid)))
 			     (if entry entry
 				 (begin (hashtab-set! state-table nodeid ())
-					())))]	
+					())))]
          )
+;    (disp (node-id (simobject-node ob))
+;	  "sim-leds " what which (hashtab->list state-table)) (flush-output-port)
     (let ((string (format "~s: (time ~s) (Leds: ~s ~s ~s)~n" 	
-                          (node-id (simobject-node (current-simobject))) (cpu-time) which what
+                          (node-id (simobject-node ob)) (cpu-time) which what
                           (case what
                             [(on) 
                              (set! led-toggle-state (list->set (cons which led-toggle-state)))
@@ -131,7 +137,7 @@
                             [else (error 'sim-leds "bad action: ~s" what)]))))
       ;; Now color the actual leds:
       (IF_GRAPHICS
-       (let ((g (simobject-gobj (current-simobject))))
+       (let ((g (simobject-gobj ob)))
 	 (if g ;; Do nothing if there's no gobj.
 	     (if (memq which led-toggle-state)
 		 (case which
@@ -144,6 +150,10 @@
 		   [(green) (change-color! (gobject-gled g) (make-rgb 0 0 0))]
 		   [(blue)  (change-color! (gobject-bled g) (make-rgb 0 0 0))]
 		   [else (error 'sim-leds "bad led color: ~s" which)])))))
+
+      ; Finally, commit changes back to the global table of led-states:
+      (hashtab-set! state-table nodeid led-toggle-state)
+
       ;((sim-debug-logger) string)
       (logger string)
       ))]
