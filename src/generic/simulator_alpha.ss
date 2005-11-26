@@ -318,6 +318,38 @@
      (set-simworld-led-toggle-states! theworld (make-default-hash-table))
      theworld))  ;; End fresh-simulation
 
+
+;; This scrubs an existing simworld:
+(define (clean-simworld sim)
+  (set-simworld-scheduler-queue! sim '())
+  (set-simworld-vtime! sim 0)
+  (hashtab-for-each 
+   (lambda (id flipped)
+     (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
+       (for-each (lambda (x) (sim-leds 'toggle x ob)) flipped)))
+   (simworld-led-toggle-states sim))
+  (DEBUGMODE ; Now make sure that we actually turned off all the LEDs:
+   (hashtab-for-each (lambda (id flipped) (DEBUGASSERT (null? flipped)))
+		     (simworld-led-toggle-states sim)))
+  
+  ;; Reset all the transient state on the simobjects:
+  (for-each (lambda (so)
+	      (set-simobject-token-store! so (make-default-hash-table))
+	      (set-simobject-incoming-msg-buf! so '())
+	      (set-simobject-outgoing-msg-buf! so '())
+	      (set-simobject-local-msg-buf! so '())
+	      (set-simobject-timed-token-buf! so '())
+	      (set-simobject-local-sent-messages! so 0)
+	      (set-simobject-local-recv-messages! so 0)
+	      (set-simobject-redraw! so #f)
+	      (set-simobject-homepage! so '())
+;	      (set-simobject-scheduler! so #f)
+;	      (set-simobject-meta-handler! so #f)
+	      (set-simobject-worldptr! so world)
+	      so)
+    (simworld-all-objs sim))  
+  )
+
 ; =================================================================================
 
 
@@ -337,15 +369,38 @@
 
      ;; This temporarily stores all edges:
      (let ((edge-table (make-default-hash-table)))
-       ;; Draw edges:
-       (for-each (lambda (graph-entry)
-		   (hashtab-set! 
-		    edge-table (node-id (car graph-entry))
-		    (let ([here (node-pos (car graph-entry))])
-		      (map (lambda (nbr)
-			     (draw-edge here (node-pos nbr)))
-			(cdr graph-entry)))))
-	 (simworld-graph world))
+	 (for-each (lambda (graph-entry)
+		     (hashtab-set! 
+		      edge-table (node-id (car graph-entry))
+		      (let ([here (node-pos (car graph-entry))]
+			    [id (node-id (car graph-entry))])
+			;; This forms a list of line objects:
+			(map (lambda (nbr)
+			       (let ([line 
+				      ; If there's already an entry in the other direction, use it.
+				      (let ((entry (hashtab-get edge-table (node-id nbr))))
+					(if (and entry (assq id entry))
+					    (begin 
+					      ;(inspect (list id (node-id nbr)))
+					      (cadr (assq id entry)))
+					    (draw-edge here (node-pos nbr))))])
+				 (list (node-id nbr) line)))
+			  (cdr graph-entry)))))
+	   (simworld-graph world))
+
+       ;; Make sure the edge table is the correct type:
+       ;; It binds ids to nbr-alists.
+       (DEBUGMODE 
+	(hashtab-for-each
+	 (lambda (k alst)
+	   (DEBUGASSERT
+	    (and (integer? k)
+		 (andmap (lambda (pr)
+			   (and (list? pr) (= (length pr) 2)
+				(integer? (car pr))
+				(gobj? (cadr pr))))
+			 alst))))
+	 edge-table))
 
      ;; This is not a good abstraction boundary.
      ;; We just drew the edges, and now we call "draw network" just to draw nodes:
@@ -1008,6 +1063,16 @@
 
 ; =======================================================================
 
+;; This is a module-local parameter to the currently running sim program. -[2005.11.25]
+(define simalpha-current-nodeprog (make-parameter #f (lambda (x) x)))
+
+;; This simply runs the simulator again on whatever the last simulation was.
+;; .param args Can optionally contain 'use-stale-world
+(define (rerun-simulator-alpha . args)
+  (if (simalpha-current-nodeprog)
+      (apply start-alpha-sim (simalpha-current-nodeprog) 'simple args)
+      (error 'start-alpha-sim "cannot rerun from last simulated program, this is the first time!")))
+
 ;; [2005.11.11] Modifying this to have an option of not going to disk
 ;; for the simulation programs.  This should increase performance when
 ;; I'm just running unit tests and not debugging.
@@ -1039,12 +1104,16 @@
 				(close-output-port out)))
 			    (set! THEPROG tm)))
 		      (match tm
-			;; Already compiled:
+			; Already compiled:
 			[(define (node-code this) ,e)    (run-compiled) (read-params rest)]
 			[(begin (module ,_ ...) ,__ ...) (run-compiled) (read-params rest)]
 			[(module ,_ ...)                 (run-compiled) (read-params rest)]
 
-			;; Otherwise compile it
+			; Convenience: if it's a (tokens ...) form it hasn't been cleaned up yet.
+			[((tokens ,tok* ...) ,rest ...)
+			 (apply run-alpha-loop (cleanup-token-machine `(tokens ,tok* ...)) rest)]
+
+			; Otherwise compile it
 			[,tm			     
 			 (let ((cleaned tm )) ; (cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
@@ -1069,7 +1138,8 @@
 			     ))])]
 		     [(,rest ...) 
 		      ;; [2005.11.11]:
-		      (error 'run-simulator-alpha "umm, shouldn't reach here I don't think...")
+		      ;(error 'run-simulator-alpha "umm, shouldn't reach here I don't think...")
+		      ; [2005.11.25] Allowing this again, if there are no args we just run on the already compiled sim.
 		      (read-params rest)]
 		     )))
     (define read-params
@@ -1083,10 +1153,12 @@
 			   (load "_genned_node_code.ss")
 			   (eval THEPROG))
                        ;; We have to do this because of the module system:
-                       (let ((node-code (eval 'node-code)))
+                       (let ((node-code (top-level-value 'node-code)))
                          ;(disp "NODE CODE:" node-code) ;" eq: " (eq? node-code (eval 'node-code)))
                          ;(printf "Node code loaded from file.~n")
                          ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
+			 ;; Cache this in a global parameter:
+			 (simalpha-current-nodeprog node-code)
                          (start-alpha-sim node-code 'simple))]
 		      [(timeout ,n . ,rest)
 		       (parameterize ((sim-timeout n))
@@ -1123,126 +1195,134 @@
 
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
 (define (print-stats)
-  (printf "\nStatistics for most recent run of SimAlpha.\n")
-  (printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
-  (printf "  Total tokens fired      : ~a (per-node ~a)\n" 
-	  (pad-width 5 (simalpha-total-tokens)) 
-	  (round-to 2 (exact->inexact (/ (simalpha-total-tokens) (sim-num-nodes)))))
-  (printf "  Total messages broadcast: ~a (per-node ~a)\n" 
-	  (pad-width 5 (simalpha-total-messages))
-	  (round-to 2 (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
-  (printf "  Msg distribution (sorted based on hops from base):\n")
+  (if (not (simalpha-current-simworld))
+      (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
+      (begin 
+	(printf "\nStatistics for most recent run of SimAlpha.\n")
+	(printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
+	(printf "  Total tokens fired      : ~a (per-node ~a)\n" 
+		(pad-width 5 (simalpha-total-tokens)) 
+		(round-to 2 (exact->inexact (/ (simalpha-total-tokens) (sim-num-nodes)))))
+	(printf "  Total messages broadcast: ~a (per-node ~a)\n" 
+		(pad-width 5 (simalpha-total-messages))
+		(round-to 2 (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
+	(printf "  Msg distribution (sorted based on hops from base):\n")
 
-  (let* ([sim (simalpha-current-simworld)]
-	 [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
-	 [sorted (sort (lambda (x y) 
-			 (cond 
-			  [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
-			  [(cdr x) #t] [else #f]))
-		       measured)]
-	 [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
-	 )
-    (printf "sent: ~a\n" 
-	    (map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
-    (printf "rcvd: ~a\n" 
-	    (map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
-    (printf "dsts: ~a\n" 
-	    (map (lambda (x) (pad-width 3 (cdr x))) sorted))
-    (printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
-  ))
+	(let* ([sim (simalpha-current-simworld)]
+	       [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
+	       [sorted (sort (lambda (x y) 
+			       (cond 
+				[(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
+				[(cdr x) #t] [else #f]))
+			     measured)]
+	       [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
+	       )
+	  (printf "sent: ~a\n" 
+		  (map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
+	  (printf "rcvd: ~a\n" 
+		  (map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
+	  (printf "dsts: ~a\n" 
+		  (map (lambda (x) (pad-width 3 (cdr x))) sorted))
+	  (printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
+	  ))))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
 ;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.
 ;; I've written two different engines at different levels of time-modeling complexity.
-(define (start-alpha-sim node-code-fun . args)
-  (disp "Start-alpha-sim" node-code-fun args)
-  ;; In some scheme's these internal defines don't evaluate in order!!
-  (let* ([logfile "__temp.log"]
-	 [simple-scheduler #f]
-	 [flags-processed (filter (lambda (arg)
-				    (disp "ARG" arg (eq? arg 'simple))
-				    (if (eq? arg 'simple)
-					(begin (set! simple-scheduler #t) #f)
-					#t))
-				  args)]
-	 ;; With flags out of the way
-	 [stopping-time? 
-	  (let ([stop-time (sim-timeout)])
-	    (disp "STOP TIME" stop-time)
-	    (if (not stop-time)
-		(lambda (t) #f)
-		(if (inexact? stop-time)
-		    ;; It's in seconds:
-		    (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
-		      (printf "Stopping after ~s seconds.~n" stop-time)
-		      (lambda (_) (>= (cpu-time) end-time)))
-		    ;; Otherwise, vtime:
-		    (begin (printf "Stopping after vtime ~s.~n" stop-time)
-			   (lambda (t) (>= t stop-time))))))]
-	 [sim (fresh-simulation)])
-
-  (disp "RUNNING ALPH" args simple-scheduler)
-
-  (if (file-exists? logfile) (delete-file logfile))
-
-
-  ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
-  (simalpha-current-simworld sim)
-  [soc-return-buffer '()] ; Same for the return buffer.
-
-  ; If there are no graphics available, we turn it off:
-  (parameterize ([simalpha-graphics-on
-		  (IF_GRAPHICS (simalpha-graphics-on) #f)])
-			       
-  ; Draw the world, if necessary.
-  (if (simalpha-graphics-on)  (simalpha-draw-world sim))
+;; It is called by run-simulator-alpha, which is the front-end that users should use.
+;;     <br><br>
+;; This procedure is not exposed in the API, it's internal.
+(define start-alpha-sim 
+  (lambda (node-code-fun . flags)
+     (disp "Start-alpha-sim" node-code-fun flags)
   
-  (parameterize (;[soc-return-buffer '()]
-		 ;; This is not used by simalpha itself, but anyone else who wants to peek:
-		 [simalpha-current-simworld sim])
-  (let/cc exitk	
-	  ;; FOR NOW: only log if we're in debugmode [2005.10.17]
-  (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
-		 [simulation-logger-count (IFDEBUG 0 #f)]
-		 [escape-alpha-sim exitk])
-		(printf "Running simulator alpha (~s version) (logfile ~s)" 
-			(if simple-scheduler 'simple 'full)
-			logfile)
-		(DEBUGMODE (display " with Debug-Mode enabled"))
-		(printf ".~n")
-		(printf "<-------------------------------------------------------------------->~n")
-
-	;; DEBUG DEBUG DEBUG
-	(DEBUGMODE
-	 (global-graph (simworld-graph sim)))
-
-	;(printf "Starting!  Local: ~s~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
-	;; Redirect output to the designated place:
-	(let ((old-output-port (current-output-port)))
-	  (parameterize ([current-output-port
-			  (if (simalpha-output-port)
-			      (begin (printf "~n!!!  Redirecting output to port: ~s  !!!~n" (simalpha-output-port))
-				     (simalpha-output-port))
-			      (current-output-port))]
-			 ;; Just to be safe I'm resetting this here.  Don't want to freeze on any print statements! -[2005.10.26] 
-			 [print-graph #t]
-			 )
-  	    (if simple-scheduler
-		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
-		; [2005.09.30] Disabling for now, not loading the full scheduler:
-		; (run-alpha-full-scheduler sim node-code-fun stopping-time?)
-		(error 'start-alpha-sim "full scheduler not loaded")
-		)
-	  ))
-		   
-    ;; Out of main loop:
-    (if (simulation-logger) (close-output-port (simulation-logger)))))
-  ;; Out of let/cc:
-  (let ((result (reverse (soc-return-buffer))))
-    (printf "~nTotal globally returned values:~n ~s~n" result)
-    result))
-  )))
+    ;; Only allow accepted flags:
+    (DEBUGASSERT (subset? flags '(simple use-stale-world)))
+    
+    (let* ([logfile "__temp.log"]
+	   [simple-scheduler (memq 'simple flags)]
+	   ;; With flags out of the way, the argument remaining is the stopping time:
+	   [stopping-time? 
+	    (let ([stop-time (sim-timeout)])
+	      (disp "STOP TIME" stop-time)
+	      (if (not stop-time)
+		  (lambda (t) #f)
+		  (if (inexact? stop-time)
+		      ;; It's in seconds:
+		      (let ([end-time (+ (* 1000 stop-time) (cpu-time))])
+			(printf "Stopping after ~s seconds.~n" stop-time)
+			(lambda (_) (>= (cpu-time) end-time)))
+		      ;; Otherwise, vtime:
+		      (begin (printf "Stopping after vtime ~s.~n" stop-time)
+			     (lambda (t) (>= t stop-time))))))]
+	   [sim (if (memq 'use-stale-world flags)
+		    ; We reuse the stale world, but we freshen it at least:
+		    (clean-simworld (simalpha-current-simworld))
+		    (fresh-simulation))])
+  
+    (if (file-exists? logfile) (delete-file logfile))
+  
+    ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
+    (simalpha-current-simworld sim)
+    (soc-return-buffer '()) ; Same for the return buffer.
+  
+    ; If there are no graphics available, we turn it off:
+    (parameterize ([simalpha-graphics-on
+  		  (IF_GRAPHICS (simalpha-graphics-on) #f)])
+  			       
+    ; Draw the world, if necessary.
+    (if (simalpha-graphics-on) 
+	(if (not (memq 'use-stale-world flags))
+	    (simalpha-draw-world sim)))
+    
+    
+    (parameterize (;[soc-return-buffer '()]
+  		 ;; This is not used by simalpha itself, but anyone else who wants to peek:
+  		 ;[simalpha-current-simworld sim]
+		 )
+    (let/cc exitk	
+  	  ;; FOR NOW: only log if we're in debugmode [2005.10.17]
+    (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
+  		 [simulation-logger-count (IFDEBUG 0 #f)]
+  		 [escape-alpha-sim exitk])
+  		(printf "Running simulator alpha (~s version) (logfile ~s)" 
+  			(if simple-scheduler 'simple 'full)
+  			logfile)
+  		(DEBUGMODE (display " with Debug-Mode enabled"))
+  		(printf ".~n")
+  		(printf "<-------------------------------------------------------------------->~n")
+  
+  	;; DEBUG DEBUG DEBUG
+  	(DEBUGMODE
+  	 (global-graph (simworld-graph sim)))
+  
+  	;(printf "Starting!  Local: ~s~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
+  	;; Redirect output to the designated place:
+  	(let ((old-output-port (current-output-port)))
+  	  (parameterize ([current-output-port
+  			  (if (simalpha-output-port)
+  			      (begin (printf "~n!!!  Redirecting output to port: ~s  !!!~n" (simalpha-output-port))
+  				     (simalpha-output-port))
+  			      (current-output-port))]
+  			 ;; Just to be safe I'm resetting this here.  Don't want to freeze on any print statements! -[2005.10.26] 
+  			 [print-graph #t]
+  			 )
+    	    (if simple-scheduler
+  		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
+  		; [2005.09.30] Disabling for now, not loading the full scheduler:
+  		; (run-alpha-full-scheduler sim node-code-fun stopping-time?)
+  		(error 'start-alpha-sim "full scheduler not loaded")
+  		)
+  	  ))
+  		   
+      ;; Out of main loop:
+      (if (simulation-logger) (close-output-port (simulation-logger)))))
+    ;; Out of let/cc:
+    (let ((result (reverse (soc-return-buffer))))
+      (printf "~nTotal globally returned values:~n ~s~n" result)
+      result))
+    ))))
 
 ; =======================================================================
 

@@ -1,16 +1,21 @@
 
 ;; This manually floods down a tree, and then returns back up.
 ;; Should see correctly staggered timing.
-;; With perfect communication the down's should only happen once, 
-;; then the ups should happen repeatedly.
 `(tokens
- [SOC-start () 
-	    (leds on green)
-	    (printf "~a: Root spreading...\n" (my-clock))
-	    (bcast down (my-id) 1)
-	    (timed-call 1000 SOC-start)
-	    ]
- [node-start () (call up 0 0) (timed-call 1000 node-start)]
+
+ [SOC-start () (call launch-down)] 
+ [node-start () (timed-call 1000 launch-ups)]
+
+ ;; Start a downward tree two seconds:
+ [launch-down ()
+	      (leds on green)
+	      (printf "~a: Root spreading...\n" (my-clock))
+	      (bcast down (my-id) 1)
+	      (timed-call 2000 launch-down)]
+ [launch-ups ()
+	     (call up ,NULL_ID 0)
+	     (timed-call 1000 launch-ups)]
+
  [down (p h)
        (stored [parent -1] [hops 1000])
        (leds on blue)
@@ -23,7 +28,8 @@
        ]
  [up (dest v)
      (leds on red)
-     (if (or (= dest (my-id)) (= dest 0))
+     ;; Was this broadcast message to me?
+     (if (or (= dest (my-id)) (= dest ,NULL_ID))
 	 (if (token-present? down)
 	     (if (= (my-id) ,BASE_ID)
 		 (begin

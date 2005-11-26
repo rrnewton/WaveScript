@@ -173,10 +173,11 @@
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
       ;; If GUI message counters are turned on, print our count on the screen:
-      (IF_GRAPHICS
-       (if (simalpha-label-msgscounts)
-	   (sim-setlabel (format "~a->~a" (simobject-local-sent-messages ob)
-				 (simobject-local-recv-messages ob)) ob)))
+;      (IF_GRAPHICS
+;       (if (simalpha-label-msgcounts)
+;	   (sim-setlabel (format "~a->~a"
+;				 (simobject-local-recv-messages ob)
+;				 (simobject-local-sent-messages ob)) ob)))
 
       (set-simobject-local-msg-buf! ob '())
       (set-simobject-timed-token-buf! ob '())
@@ -257,10 +258,11 @@
 	; Increment message counter:
         (set-simobject-local-sent-messages! ob (fx+ (length outgoing) (simobject-local-sent-messages ob)))
         ; If GUI message counters are turned on, print our count on the screen:
-        (IF_GRAPHICS
-          (if (simalpha-label-msgscounts)
-	    (sim-setlabel (format "~a->~a" (simobject-local-sent-messages ob)
-				 (simobject-local-recv-messages ob)) ob)))
+;       (IF_GRAPHICS
+;          (if (simalpha-label-msgcounts)
+;	    (sim-setlabel (format "~a->~a" 
+;				 (simobject-local-recv-messages ob)
+;				 (simobject-local-sent-messages ob)) ob)))
 
 	(unless (null? outgoing)
 	;; They're all broadcasts for now
@@ -302,7 +304,7 @@
 		   ;; Otherwise fizzle:
 		   (void))))
 	   neighbors)
-	;; They're all delivered, so we clear our own outgoing buffer.
+	  ;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 
   ; =======================================================================
@@ -313,62 +315,62 @@
   (set! realtime (real-time))
 
   ; =======================================================================
-  ;; Then, run loop.  This is the main loop that drives the simulation.
-  (let main-sim-loop ()
-    ;; First process all incoming-buffers, scheduling events.
-    (for-each process-incoming (simworld-all-objs sim))
-    (cond
-     [(null? (get-queue))
-      (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
-      (fprintf meta-port "Simulator ran fresh out of actions!~n")]
-     [(stopping-time? (simevt-vtime (caar (get-queue))))
-      ;; This is a meta-message, not part of the output of the simulation:
-      (fprintf meta-port "Out of time.~n")]
-     [else 
-      (let ([first (car (get-queue))])
-	;; Now discard that event from the queue:
-	(pop)
+;; Then, run loop.  This is the main loop that drives the simulation.
+(let main-sim-loop ()
+  ;; First process all incoming-buffers, scheduling events.
+  (for-each process-incoming (simworld-all-objs sim))
+  (cond
+   [(null? (get-queue))
+    (fprintf meta-port "~n<-------------------------------------------------------------------->~n")
+    (fprintf meta-port "Simulator ran fresh out of actions!~n")]
+   [(stopping-time? (simevt-vtime (caar (get-queue))))
+    ;; This is a meta-message, not part of the output of the simulation:
+    (fprintf meta-port "Out of time.~n")]
+   [else 
+    (let ([first (car (get-queue))])
+      ;; Now discard that event from the queue:
+      (pop)
 
-	(let ([ob (cdr first)]
-	      [evt (car first)])
+      (let ([ob (cdr first)]
+	    [evt (car first)])
 
-	  ;; Set the clock to the time of this next action:
-	  ;; HOWEVER, the clock can't move backwards:
-	  (let ((last-vtime vtime))
-	    (set! vtime (max vtime (simevt-vtime evt)))
-	    ;; Now if the flag is set we wait for real-time to catch up to this virtual time.
-	    (if (simalpha-realtime-mode)
-		(let ((last-rtime realtime))
-		  (set! realtime (real-time))
-		  (let ((v_elapsed (- vtime last-vtime))
-			(r_elapsed (- realtime last-rtime)))
-		    ;; If more virtual time has elapsed in this last clock-jump than real-time, then wait.
-		    (let ((gap (- v_elapsed r_elapsed)))
-		      ;(disp "GAP BETWEEN REAL AND VIRT " v_elapsed r_elapsed gap)
-		      (if (> gap 50)
-			  (sleep gap)) ;; Might want to subtract some for overhead
-		      )))))
+	;; Set the clock to the time of this next action:
+	;; HOWEVER, the clock can't move backwards:
+	(let ((last-vtime vtime))
+	  (set! vtime (max vtime (simevt-vtime evt)))
+	  ;; Now if the flag is set we wait for real-time to catch up to this virtual time.
+	  (if (simalpha-realtime-mode)
+	      (let ((last-rtime realtime))
+		(set! realtime (real-time))
+		(let ((v_elapsed (- vtime last-vtime))
+		      (r_elapsed (- realtime last-rtime)))
+		  ;; If more virtual time has elapsed in this last clock-jump than real-time, then wait.
+		  (let ((gap (- v_elapsed r_elapsed)))
+					;(disp "GAP BETWEEN REAL AND VIRT " v_elapsed r_elapsed gap)
+		    (if (> gap 50)
+			(sleep gap)) ;; Might want to subtract some for overhead
+		    )))))
 
-	  ;; Also copy this value to the simworld object so alpha_lib closures can get to it:
-	  (set-simworld-vtime! sim vtime)
+	;; Also copy this value to the simworld object so alpha_lib closures can get to it:
+	(set-simworld-vtime! sim vtime)
 
 	(logger 2 "~s  Main sim loop: (vtime of next action) queue len ~s ~n" 
 		(pad-width 5 vtime) (add1 (length (get-queue))))
-	;(printf "<~s>" vtime)
+					;(printf "<~s>" vtime)
 
-                 ;(printf "Busting thunk, running action: ~s~n" next)
-                 ;; For now, the time actually executed is what's scheduled
+					;(printf "Busting thunk, running action: ~s~n" next)
+	;; For now, the time actually executed is what's scheduled
 	
 	;; This might print big structures, keep it tight:
 	(parameterize ([print-level 5]
 		       [print-length 15]
 		       [print-graph #t])
-	(logger "~s ~s: Executing: ~s args: ~s~n"
-		(pad-width 5 vtime)
-		(node-id (simobject-node ob))
-		(msg-object-token (simevt-msgobj evt))
-		(msg-object-args (simevt-msgobj evt))
-		))
+	  (logger "~s ~s: Executing: ~s args: ~s~n"
+		  (pad-width 5 vtime)
+		  (node-id (simobject-node ob))
+		  (msg-object-token (simevt-msgobj evt))
+		  (msg-object-args (simevt-msgobj evt))
+		  ))
 	
 	'(DEBUGMODE ;; check invariant:
 	  (if (not (null? (simobject-outgoing-msg-buf ob)))
@@ -377,12 +379,12 @@
 		     global-mintime (simobject-outgoing-msg-buf ob))))
 	
 	;; Now the lucky simobject gets its message.
-	;(set! simalpha-total-tokens (add1 simalpha-total-tokens))
+					;(set! simalpha-total-tokens (add1 simalpha-total-tokens))
 	(simalpha-total-tokens (add1 (simalpha-total-tokens)))
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 
 	;; Finally, we push outgoing-buffers to incoming-buffers:
 	(for-each launch-outgoing (simworld-all-objs sim))
 	(main-sim-loop)))]))
-  ) ; End run-alpha-simple-scheduler 
+) ; End run-alpha-simple-scheduler 
 

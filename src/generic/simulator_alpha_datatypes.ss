@@ -51,11 +51,11 @@
 
 ;; [2005.11.16] NOT USED YET:
 ;; Graphical Node-Object
-;; This is the graphical representation of a node.
+;; This is the graphical representation of a node, it consists of several graphical subparts.
 (reg:define-struct (gobject circ           ;; The circle
 			    rled gled bled ;; The LEDs
 			    title label    ;; The title above the node, and debug-text/label below the node.
-			    edgetable ;; An association list binding neighbor ID to a graphical line object.
+			    edgelist ;; An association list binding neighbor ID to a graphical line object.
 			    ))
 ;; Optionally put in a guarded constructor:
 #;(DEBUGMODE

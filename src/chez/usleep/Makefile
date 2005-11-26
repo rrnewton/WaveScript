@@ -22,4 +22,5 @@ usleep: usleep.c
 	cp $(DIR)/usleep.so ../../build/$(DIR)/
 
 clean:
-	$(RM) -rf *~ *.so *.o *.boot i3nt i3le ppcosx
+	$(RM) -rf *~ *.so *.o *.boot 
+#        $(RM) -rf i3nt i3le ppcosx

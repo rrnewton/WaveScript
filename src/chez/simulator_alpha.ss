@@ -4,7 +4,7 @@
     [(_) bar]))
 
 (module simulator_alpha
-	(run-simulator-alpha
+	(run-simulator-alpha rerun-simulator-alpha clean-simworld
 	 compile-simulate-alpha csa ; shorthand
 	 test-this these-tests
 

@@ -1,3 +1,7 @@
+;;; TODO: Make it so that returning a distributed value actually
+;;; collects and returns all the values therein, rather than just
+;;; returning the corresponding membership token.
+
 
 ;; INCOMPLETE: this doesn't actually use the CFG right now.
 
@@ -283,9 +287,10 @@
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
 		   [calcdist (new-token-name 'calc-dist)]
+		   [amwinner (new-token-name 'am-winner?)]
 		   [target `(list ,@args)] ;; Location is an X/Y pair
 		   )
-	       `([,form () (elect-leader ,memb ,calcdist)] ;(flood ,consider)]
+	       `([,form () (elect-leader ,amwinner ,calcdist)] ;(flood ,consider)]
 ;		 [,consider () 
 ;			    (if (< (locdiff (loc) ,target) 10.0)
 			    ;(if (< (locdiff (loc) ,target) 10)
@@ -302,13 +307,18 @@
 			]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
-		 [,memb (ldr val) 
+		 [,amwinner (ldr val) 
 			;; Note that we are an anchor.
 ;;			(set-simobject-homepage! 
 ;;			 this (cons 'anchor (simobject-homepage this)))
 			;(light-up 0 255 255)
-			(leds on red)
+			(if (= ldr (my-id))
+			    (begin (leds on red)
+				   (call ,memb)))
 			]
+
+		 [,memb () (leds on green) (printf "AM WINNER! ~a\n" (my-id))]
+		 		 
 		 ))]
 
 	    ;; This is not a region; it carries no value on its membership token!
@@ -369,7 +379,7 @@
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(light-up 0 100 100)]
-		 [,memb () (if (< (gdist) ,rad) (grelay))]
+		 [,memb () (if (< (ghopcount) ,rad) (grelay))]
 		 )
 	       )]
 
@@ -436,7 +446,14 @@
 					     memb)
 				      body)
 				  (delazy-bindings cacc (list body))
-				  tacc)
+				  ; Because we're returning the name of the member, 
+				  ; we need to insure that there's some binding for it.
+				  (append 
+				   (if (check-prop 'distributed body)
+				       (mvlet (((form memb) (token-names body)))
+					 `((,memb () (void))))
+				       ())
+				   tacc))
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
 			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car heartbeat*) (car rhs*))])
@@ -592,9 +609,9 @@
     (case prim
       [(anchor-at anchor-maximizing node->anchor)
        ;; Node->anchor actually takes zero args.  But that should be fine.
-       `([,tokname (ldr val) 
+       `([,tokname ()
 		   ;; At each formation click, we output this node [id].
-		   (soc-return (list 'ANCH (my-id)))
+		   (call reg-return (list 'ANCH (my-id)))
 		   ;(soc-return ,ANCH-NUM)
 		   ])]
 
@@ -606,40 +623,35 @@
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
 	  ;; other hack in.
-	  ;(soc-return '(CIRC ,tokname this))
-	  (soc-return ',CIRC-NUM)
+	  ;(call reg-return '(CIRC ,tokname this))
+	  (call reg-return ',CIRC-NUM)
 	  ])]
 
       [(rfilter)     
        `([,tokname (v)
-	  (soc-return (list 'FILTRATION ',tokname (my-id) this))])]
+	  (call reg-return (list 'FILTRATION ',tokname (my-id) this))])]
 
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
       [(rfold)
        `([,tokname (v) ;; This value is a sample in the stream
-	  (soc-return v)])]
+	  (call reg-return v)])]
       
       [(khood khood-at)
        `([,tokname 
-	  () (soc-return '(KHOOD ,tokname))])]
+	  () (call reg-return '(KHOOD ,tokname))])]
 
       [(smap)
-       `([,tokname (v) (soc-return v)])]
+       `([,tokname (v) (call reg-return v)])]
 
       [(rmap)
-       `([,tokname (v)
-		   (greturn v (to catcher) (via global-tree))])]
+       `([,tokname (v) (call reg-return v)])]
 
       ;; When the membership token has fired, the event has fired!
       ;; TODO: Need to implement greturn with retries!!
       [(rwhen-any)
        `([,tokname (v) ;; Event value		   
-		   ;(soc-return (list 'EVENT v))
-		   ;; Use global tree:
-		   (greturn (list 'EVENT v)
-			    (to SOC-return-handler)
-			    (via global-tree))
+		   (call reg-return (list 'EVENT v))
 		   ])]
 
       [else (error 'primitive-return 
@@ -767,8 +779,15 @@
 						     (gemit global-tree)
 						     (timed-call 1000 spread-global)]
 				      [global-tree () (grelay)]
-				      [catcher (v) (soc-return v)]
-				      
+				      ;[catcher (v) (soc-return v)]
+				      [reg-return (v)
+						  (if (= (my-id) ,BASE_ID)
+						      (soc-return v)
+						      ;; Otherwise use the global tree:
+						      (greturn v
+							       (to SOC-return-handler)
+							       (via global-tree)))]
+
 				      ;; THIS IS A YUCKY WAY TO DO IT:
 ;					       [spark-world () (call ,(get-membership-name 'world) this)]
 				      )

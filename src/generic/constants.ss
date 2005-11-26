@@ -36,8 +36,8 @@
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 (define-syntax DEBUGASSERT
@@ -198,10 +198,10 @@
 
 ;; Just a global pointer to whatever the currently running simworld is.
 (define simalpha-current-simworld 
-  (make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) 
+  (make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) ;; Can't check this simworld? not defined yet.
 				  x
-				     (error 'simalpha-current-simworld 
-					    "invalid val for param: ~a" x)))))
+				  (error 'simalpha-current-simworld 
+					 "invalid val for param: ~a" x)))))
 
 ;; This is the null pointer representation.  Probably just Zero.
 (define TMNULL ''0)
@@ -266,7 +266,14 @@
 (define-regiment-parameter simalpha-write-sims-to-disk #t)
 
 ;; This is a little feature that will print message counts to the GUI:
-(define-regiment-parameter simalpha-label-msgscounts #f)
+(define-regiment-parameter simalpha-label-msgcounts #f)
+
+
+;; This pauses the simulator.  Unpaused state is #f.
+;; Set it to #t to tell the simulator to pause.  When it finishes the current action, it
+;; will stop and store a restart-thunk in this parameter.  Run that thunk when ready to unpause.
+;(define-regiment-parameter simalpha-pause-hook #f)
+
 
 ;; Defining this one here because it's the default, the rest of these are in alpha_lib.ss
 ;; This one changes amplitude across space:

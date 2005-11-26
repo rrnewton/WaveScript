@@ -41,7 +41,7 @@
 ;; But here is the kinder behavior, try the current directory:
 (define REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
-(print-graph #f) ;#t)
+(print-graph #t)
 (print-gensym #f)
 
 (define-syntax IF_GRAPHICS
@@ -111,22 +111,27 @@
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
 ;; This tries to dynamically load the shared object the first time the function is called:
 (define (sleep t)
-  ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
-  (parameterize ((current-directory (string-append REGIMENTD "/src/")))
-    (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
-	(system "(cd chez/usleep; make)"))
-    (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
-	;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
-	(load (format "build/~a/usleep_libc.so" (machine-type)))
-	;; If that build failed and we still don't have it we have to throw an error:
-	(define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
-  (sleep t))
+  (IF_GRAPHICS
+   (thread-sleep t)
+   (begin
+    ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
+     (parameterize ((current-directory (string-append REGIMENTD "/src/")))
+       (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
+	   (system "(cd chez/usleep; make)"))
+       (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
+					;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
+	   (load (format "build/~a/usleep_libc.so" (machine-type)))
+	   ;; If that build failed and we still don't have it we have to throw an error:
+	   (define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
+     (sleep t))))
 ;; Only make a system call once to sync us with the outside world.
 (define current-time (seconds-since-1970))
 ;======================================================================
 
 
 ;(eval-when (compile eval) (cd ".."))
+
+(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
@@ -140,7 +145,6 @@
 	   (define make-rgb (lambda args (void)))
 	   ))
 
-(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 (include "chez/alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
