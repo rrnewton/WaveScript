@@ -260,6 +260,7 @@
       [else (error 'simulator_alpha:fresh-simulation 
 		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
   
+  (printf "Rolling fresh simulator world.\n")
   ;; Set global parameter:
   ;; This is a function which takes two locations and returns either
   ;;  1) a number, representing the loss percentage

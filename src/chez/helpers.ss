@@ -70,7 +70,7 @@
 
 	  testhelpers testshelpers test-this these-tests
 
-	  reg:random-int reg:get-random-state reg:set-random-state!
+	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 					;reg:all-unit-tests 
 	  
 					;   (all-except (lib "rutils_generic.ss")
@@ -258,6 +258,10 @@
   (case-lambda 
    [() (#%random (#%most-positive-fixnum))]
    [(k) (#%random k)]))
+(define reg:random-real
+  (case-lambda
+    [() (#%random 1.0)]
+    [(n) (#%random n)]))
 (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
 (define (reg:set-random-state! s) (random-seed s))
 
