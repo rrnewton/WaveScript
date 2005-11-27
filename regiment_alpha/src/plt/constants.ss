@@ -52,7 +52,7 @@
 	 simalpha-sense-function
 	 simalpha-graphics-on
          simalpha-write-sims-to-disk
-	 simalpha-pause-hook
+;	 simalpha-pause-hook
 
 	 sense-spatial-sine-wave 
 	 

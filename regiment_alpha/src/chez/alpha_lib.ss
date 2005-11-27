@@ -34,7 +34,7 @@
 	 )
 
 	(import scheme)
-	(import simulator_alpha_datatypes)
+;temp;	(import simulator_alpha_datatypes)
 
 	;; Consider compiling simulator code in opt 3 when it's stable.
 ;	(eval-when (compile load eval)

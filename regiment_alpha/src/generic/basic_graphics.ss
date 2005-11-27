@@ -11,5 +11,6 @@
 
 (define the-win #f)
 
-(reg:define-struct (rgb red green blue))
-;(define rgb make-rgb)
+;; [Chez] This simply makes a SWL rgb value out of our standard record representation.
+(define (rec->rgb rec)
+  (make <rgb> (rgb-red rec) (rgb-green rec) (rgb-blue rec)))

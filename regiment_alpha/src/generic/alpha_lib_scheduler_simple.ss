@@ -317,6 +317,11 @@
   ; =======================================================================
 ;; Then, run loop.  This is the main loop that drives the simulation.
 (let main-sim-loop ()
+  ; Pause if there is a request to do so:
+  (if (simalpha-pause-hook) 
+      (begin (printf "Simulator Paused.\n")
+	     ((simalpha-pause-hook))))
+
   ;; First process all incoming-buffers, scheduling events.
   (for-each process-incoming (simworld-all-objs sim))
   (cond
@@ -380,7 +385,8 @@
 	
 	;; Now the lucky simobject gets its message.
 					;(set! simalpha-total-tokens (add1 simalpha-total-tokens))
-	(simalpha-total-tokens (add1 (simalpha-total-tokens)))
+	;(simalpha-total-tokens (add1 (simalpha-total-tokens)))       
+	
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 
 	;; Finally, we push outgoing-buffers to incoming-buffers:

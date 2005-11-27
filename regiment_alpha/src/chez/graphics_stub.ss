@@ -24,10 +24,12 @@
 
 (module graphics_stub (draw-network draw-proc draw-edge draw-mark draw-circle
 				  clear-buffer delete-gobj
-				  Starting-Node-Color
+;				  Starting-Node-Color
 				  change-color! ;set-color!
 				  ;get-state ;; [2004.11.13] including
 				  change-text!
+				  highlight-edge
+				  unhighlight-edge
 				  ;; temporarily exposed:
 				  processor-screen-radius
 				  
@@ -35,10 +37,6 @@
 				  test-graphics-stub)
   (import basic_graphics)
 
-  ;; CONSTANTS:
-;(define Starting-Node-Color (make <rgb> 200 10 10))
-(define Starting-Node-Color (make <rgb> 130 130 130))
-(define Default-Edge-Color  (make <rgb> 10 10 10))
 
 ;; GLOBAL BINDINGS:
 
@@ -102,6 +100,7 @@
 		   (set-simobject-gobj! simob #f))
 		 all-objs)))
 
+
 ;================================================================================
 
 ;; We don't keep track of which objects need to be redrawn, that's all
@@ -122,6 +121,16 @@
     [else (error 'chez/graphics_stub.ss "unknown state property: ~s" sym)]))
 
 ;(define links '())
+
+;; Highlights a line gobj.
+(define (highlight-edge line)
+  (change-color! line (make-rgb 0 0 200))
+  (set-line-thickness! line 2))
+
+;; Turns the line gobj back to default appearance.
+(define (unhighlight-edge line)
+  (change-color! line Default-Edge-Color)
+  (set-line-thickness! line 1))
 
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
@@ -201,7 +210,7 @@
 	     (set-fill-color! box2 defled)
 	     (set-fill-color! box3 defled)
 	   
-	   (set-fill-color! circ Starting-Node-Color)
+	   (set-fill-color! circ (rec->rgb Starting-Node-Color))
 ;	   (show circ)
 	   (set! processor-screen-objs
 		 (append (list circ box1 box2 box3 text text2)
@@ -247,7 +256,7 @@
     (mvlet ([(x1 y1) (scale2d pos1 box1 box2)]
 	    [(x2 y2) (scale2d pos2 box1 box2)])
 	   (let ((line (create <line> the-win x1 y1 x2 y2
-			       with (fill-color: Default-Edge-Color))))
+			       with (fill-color: (rec->rgb Default-Edge-Color)))))
 	     (set! edge-screen-objs
 		   (cons line edge-screen-objs))
 	     line))))

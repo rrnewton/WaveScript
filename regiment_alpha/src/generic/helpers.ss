@@ -889,6 +889,8 @@
 	       l1)
        #t))
 
+;(define set-eq?
+
 (define set-equal?
   (lambda (lst1 lst2)
     (letrec ((loop (lambda (lst1 lst2)
@@ -901,13 +903,15 @@
           (loop lst1 lst2)
           (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
 
-;; [2005.10.11]  Added reverse! to make the result in the same order as orig.
+;; [2005.10.11]  Added reverse! to make the result in the same order as orig. <br>
+;; NOTE: Uses eq? !
 (define list->set
   (lambda (ls)
     (if (null? ls) '()
 	(reverse! 
 	 (set-cons(car ls) (list->set (cdr ls)))))))
 
+;; NOTE: Uses eq? !
 (define set-cons
   (lambda (x set)
     (cond
