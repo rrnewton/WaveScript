@@ -37,9 +37,9 @@
   (make-n-list 100
 	       (lambda (ign) 
 		 (make-baselang-simnode (reg:random-int 10000) 
-                          (random-real) ;(prim_random 1.0) 
+                          (reg:random-real 1.0) ;(prim_random 1.0) 
                           (list (reg:random-int 100) (reg:random-int 100))))))
-     
+
 
 
 ;; I ended up deciding on a weird format for regions in this
