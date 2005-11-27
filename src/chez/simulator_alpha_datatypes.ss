@@ -5,8 +5,9 @@
 
 (module simulator_alpha_datatypes
 	(	 
-	 simalpha-total-messages
-	 simalpha-total-tokens
+;	 simalpha-total-messages
+;	 simalpha-total-tokens
+
 	 logger
 	 evntlessthan 
 	 soc-return-buffer

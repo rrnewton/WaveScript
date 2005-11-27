@@ -13,9 +13,11 @@ GENERICFILES = \
   generic/alpha_lib_scheduler_simple.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
+  generic/constants.ss \
 
 CHEZFILES = \
   chez/helpers.ss \
+  chez/constants.ss \
 
 PLTFILES = 
 
@@ -71,7 +73,7 @@ $(OBJFILES): html/%.html: html/%
 #$(<:html/%=%)
 
 $(DUPSRC): html/%.ss: ../src/%.ss
-	./scrub_source.ss $< $@	
+	petite --script scrub_source.ss $< $@	
 
 clean: 
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk

@@ -4,7 +4,7 @@
 	(;; Syntax:
 	  for grep mvlet let-match (match-lambda match-lambda-helper)
 	  ++ ^ ;; Exponentiation
-	  reg:define-struct ;; Could be define-structure or define-record.
+	  ;;reg:define-struct ;; Could be define-structure or define-record. ;; Moved to constants.ss
 	  apply-ordered
 	  
 	  ;; For plt compat:
@@ -88,11 +88,7 @@
 (import scheme)
 
 
-(define-syntax reg:define-struct
-  (syntax-rules ()
-    [(_ (name field ...))  (define-record name (field ...))]))
-;   [(_ (name field ...))  (define-structure (name field ...))]))
-
+;; [2005.11.26] Moved reg:define-struct to chez/constants.ss
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
 ;; substitute.  That's the kind of thing I'd like my

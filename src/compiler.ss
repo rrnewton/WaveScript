@@ -419,4 +419,6 @@
 
 
 (define (t1) (begin (close-graphics) b2))
-(define (t2) (parameterize ((simalpha-realtime-mode #t)) (eval (caddr (list-ref (maintest 'get) 60)))))
+;(define (t2) (parameterize ((simalpha-realtime-mode #f)) (eval (caddr (list-ref (maintest 'get) 60)))))
+(dsis t2 (load-regiment "demos/regiment/nested_regions.rs"))
+(define (t3) (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))

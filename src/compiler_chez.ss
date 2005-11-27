@@ -79,8 +79,6 @@
 
 (include "chez/match.ss")
 
-;(include "generic/constants.ss")
-
 ;; [2004.06.04] MOVED THIS DEFINIITON to helpers.ss
 ;; Uncomment this to remove debugging code and possibly make the
 ;; system run faster.
@@ -89,7 +87,7 @@
 
 ;(define random #%random)
 
-(include "generic/constants.ss")
+(include "chez/constants.ss")
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
@@ -141,8 +139,8 @@
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
-    (begin (define draw-mark (lambda args (void)))
-	   (define make-rgb (lambda args (void)))
+    (begin (define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ...)]))
+	   (define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ...)]))
 	   ))
 
 (include "chez/alpha_lib.ss") 

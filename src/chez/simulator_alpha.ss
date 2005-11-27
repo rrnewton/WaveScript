@@ -4,7 +4,7 @@
     [(_) bar]))
 
 (module simulator_alpha
-	(run-simulator-alpha rerun-simulator-alpha clean-simworld
+	(run-simulator-alpha rerun-simulator-alpha clean-simworld!
 	 compile-simulate-alpha csa ; shorthand
 	 test-this these-tests
 
@@ -19,7 +19,7 @@
 
 (import scheme)
 (import (except topsort-module test-this these-tests))
-(import simulator_alpha_datatypes)
+;temp; (import simulator_alpha_datatypes)
 (import alpha_lib_scheduler_simple)
 
 ;; Consider compiling simulator code in opt 3 when it's stable.

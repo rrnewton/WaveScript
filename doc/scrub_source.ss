@@ -1,5 +1,13 @@
 #!/usr/bin/env petite --script
 
+; #! /bin/sh
+; #| 
+; $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"}; 
+; |#
+
+;; [2005.11.26] This script invocation wasn't working for me on faith.csail:
+;; #!/usr/bin/env petite --script
+
 ;; [2005.11.19] This scrubs my scheme source file of characters and
 ;; constructs that LAML SchemeDoc can't handle.
 

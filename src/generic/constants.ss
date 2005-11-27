@@ -1,17 +1,22 @@
 
+;;;; .title Constants.ss -- A collection of global constants, flags, and datatype defs
+;;;; .author Ryan Newton
 
-;; [2004.07.02]
-;; Hmm, I considered making this a while ago.  But I never know
-;; whether to keep constants module-local or lift them out like this.
-;; I'm just going to settle for an ad-hoc strategy, anything that
-;; needs to (or might need to) be used in more than one module will
-;; get lifted up here.
+;;;; A collection of global constants, flags, and datatype defs.<br><br>
 
-;; [2005.02.24]
-;; Now I'm keeping some parameters (which are actually not constant) in here as well.
+;;;; [2004.07.02] <br>
+;;;; Hmm, I considered making this a while ago.  But I never know
+;;;; whether to keep constants module-local or lift them out like this.
+;;;; I'm just going to settle for an ad-hoc strategy, anything that
+;;;; needs to (or might need to) be used in more than one module will
+;;;; get lifted up here. <br><br>
 
-;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest.
-;; [2005.03.29] MOVING DEBUGMODE to this file.
+;;;; [2005.02.24] <br>
+;;;; Now I'm keeping some parameters (which are actually not constant) in here as well. 
+;;;; <br><br>
+
+;;;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest. <br>
+;;;; [2005.03.29] MOVING DEBUGMODE to this file. <br><br>
 ;=======================================================================
 
 ;; In the following manner we distinguish regiment parameters from normal
@@ -31,43 +36,53 @@
 ;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
 ;=======================================================================;;
+;;; Debug Toggles
 
-;; DEBUGMODE toggles is like a #define that toggles debug code for the whole compiler.
+;; The IFDEBUG/DEBUGMODE toggles are like a #define that toggles debug code for the whole compiler.
 ;; This is not a very appropriate place for this definition, but it's the most convenient
 ;; so that it can be seen from everywhere.
+;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
 (define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
 ;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
+;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
+;; any number of subexpressions and executes them only when IFDEBUG is activated.
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
+
+;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
 (define-syntax DEBUGASSERT
   (syntax-rules () 
-    [(_ expr ...) 
+    [(_ expr) 
      (DEBUGMODE
-      (if (and expr ...) #t 
-	  (error 'DEBUGASSERT "failed: ~s" (quote (and expr ...)))))]))
+      (if expr #t 
+	  (error 'DEBUGASSERT "failed: ~s" (quote expr))))]
+    [(_ obj expr)
+     (DEBUGMODE
+      (if expr #t 
+	  (error obj "DEBUGASSERT failed: ~s" (quote expr))))]
+    ))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
-;;;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
-;;;(define Regiment-Log-File (string-append "Regiment.log.ss"))
-;; Delete that logfile at load time:
+; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
+; ; ;(define Regiment-Log-File (string-append "Regiment.log.ss"))
+; ; Delete that logfile at load time:
 ;(if (file-exists? Regiment-Log-File)
 ;    (delete-file Regiment-Log-File))
 
 
-;; THESE ARE ONLY USED BY SIMULATOR_NOUGHT PRESENTLY. [2005.03.18]
-;; This one prints nothing at all:
-(define-syntax DEBUGPRINT 
-  (syntax-rules ()
-;    [(_ expr ...) (begin expr ...)]))
-    [(_ expr ...) (void)]))
-;; This is a SECOND print channel for even lamer information:
-(define-syntax DEBUGPRINT2
-  (syntax-rules ()
-;    [(_ expr ...) (begin expr ...)]))
-    [(_ expr ...) (void)]))
+; THESE ARE ONLY USED BY SIMULATOR_NOUGHT PRESENTLY. [2005.03.18]
+; This one prints nothing at all:
+;(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (begin expr ...)]))
+(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (void)]))
+; This is a SECOND print channel for even lamer information:
+(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (void)]))            ; ON
+;(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (begin expr ...)]))  ; OFF
 
-;; Just a shorthand:
+;; Just syntactic sugar.  This one is for the Regiment compiler.  It
+;; checks the (regiment-emit-debug) parameter, and if true, returns
+;; its arguments in a list, otherwise null.
+;; .returns Its arguments in list form or the null list.
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
@@ -88,6 +103,7 @@
 ;;   function -- use specified logger function
 ;; FIXME : Finish implementing these behaviors.
 (define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
@@ -108,53 +124,77 @@
 
 ;=======================================================================
 
-;; Used primarily by pass12_add-heartbeats:
+;;; Used primarily by pass12_add-heartbeats:
 ;====================================================
+
 ;; The slow-pulse is used for region formation.
 (define slow-pulse 1000) ;; MILLISECONDS
+
 ;; The fast-pulse is used for folding.
 (define fast-pulse 100)  ;; MILLISECONDS
 
-;; Used primarily by pass14_add-places:
-;; (and by pass15_add-routing
+;;; Used primarily by pass14_add-places:
+; (and by pass15_add-routing
 ;====================================================
-(define unknown-place '?) ;'X?)
-(define noplace '_)
 
-;; Used primarily by pass21_cleanup-token-machine
+(define unknown-place '?) ;'X?) ;; This symbol marks a place we don't know.
+
+(define noplace '_)             ;; This symbol marks no place at all.
+
+;;; Used primarily by pass21_cleanup-token-machine
 ;====================================================
+
+;; This is the subtok ID that's implicitly inserted when a user omits
+;; the subtokid by not using the full (tok <name> <subid>) form.
 (define DEFAULT_SUBTOK 0)
+
+;; This is the variable name that's stuck in if no binding for
+;; subtokid is provided by the user for a particular token. <br><br>
+;; Currently [2005.11.26], I believe capture may occur.
+;; FIXME: This should be a gensym that's user-unusable.
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
+
 (define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
 
 
-;; Used primarily by pass cps-tokmac
+;;; Used primarily by pass cps-tokmac
 ;====================================================
 ;; This object is used as null pointer for continuations.
 ;; If a token handler is called with the null continuation, 
 ;; it need not invoke it.
 (define NULLK ''NULLK)
 
-;; And by convert closure:
-(define KINIT_FLAG 'KINIT) ; 11
-(define KCALL_FLAG 'KCALL) ; 99 
+;;; And by convert closure:
+;==========================
+
+;; Datum passed as a flag to signal continuation initialization.
+(define KINIT_FLAG 'KINIT) ; 11  
+
+;; Datum passed as a flag to signal continuation invocation.
+(define KCALL_FLAG 'KCALL) ; 99  ;; 
 
 
-;; Used primarily by helpers.ss:
+;;; Used primarily by helpers.ss:
 ;====================================================
 
-;; If retry is enabled, let's retry three times:
+;; Controls the number of times the default unit tester will retry a failed test.
+;; (Only applies to nondeterministic tests marked as 'retry'.)<br>
 (define-regiment-parameter default-unit-tester-retries 3)
 
 
-;; Used primarily by Simulator_nought.ss: (phased out)
+;;; Used primarily by Simulator_nought.ss: (DEPRECATED)
 ;====================================================
+
 ;; These are the virtual coordinate bounds of the world.
 ;; [2005.09.25] These are constants for an out of use file:
 ;; Now we use regiment-parameters for this type of thing...
 (define world-xbound 60)
-(define world-ybound 60)
+
+;; And the y-bound
+(define world-ybound 60) 
+
 (define radius 20) ;; And the comm radius.
+
 (define numsimnodes 30) ;; And the total # processors.
 
 (define SPECIAL_RETURN_TOKEN 'RETTT)
@@ -164,6 +204,7 @@
 ;; so it should not conflict with any other ID -- it's an upper bound. <br> 
 ;; (Right now other ids are 1-1000)                                    <br>
 (define BASE_ID 0) ;; I've been using 10000 or 0.
+
 ;; We "option lift" the ID type by having this number signify "NULL":  
 ;; This is because our backend is not sophisticated enough yet to have real option types.
 (define NULL_ID 10001)
@@ -173,26 +214,27 @@
 (define return-window-size 500)
 
 
-;; Used primarily by MULTIPLE SIMULATORS
+;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================
 ;; [2005.11.14] I'm segregating and renaming the parameters that are
 ;; used by the tossim interface and simulator alpha.
 
 (define-regiment-parameter sim-num-nodes 30)
 
-;; Valid values:
-;; #f    : No time-out
-;; Float : Time out after certain number of cpu seconds.
+;; Controls the time-out for both simulator-alpha and tossim. <br>
+;; Valid values:                                              <br>
+;; #f    : No time-out                                        <br>
+;; Float : Time out after certain number of cpu seconds.      <br>
 ;; Int   : Timeout after certain number of simulator clock ticks
 (define-regiment-parameter sim-timeout 10.0)
 
-;; Number of milleseconds over which to start up the nodes.
-;; [2005.11.14] Not used yet in simulator-alpha.
+;; Number of milleseconds over which to start up the nodes.   <br>
+;; [2005.11.14] FIXME: Not used yet in simulator-alpha.
 (define-regiment-parameter sim-startup-stagger 0)
 
-;; Used primarily by Simulator_alpha.ss:
+;;; Used primarily by Simulator_alpha.ss: <br>
+;;; Sim alpha also reuses some of the parameters from Sim Nought.
 ;====================================================
-;; Sim alpha also reuses some of the parameters from Sim nought.
 
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
@@ -203,13 +245,21 @@
 				  (error 'simalpha-current-simworld 
 					 "invalid val for param: ~a" x)))))
 
-;; This is the null pointer representation.  Probably just Zero.
+;; This is the null pointer representation for Token names.  Probably just Zero.
 (define TMNULL ''0)
 
+
+;;; HOW DO YOU DO .form!???! FIXME
+;; .form Simalpha uses parameters for the world bounds.  This is the xbound.
 (define-regiment-parameter simalpha-world-xbound 60)
+
+;; .form And the ybound...
 (define-regiment-parameter simalpha-world-ybound 60)
-;; Comm radius's:
+
+;; .form????????? Comm radius: outer.
 (define-regiment-parameter simalpha-outer-radius 15)
+
+;; Comm radius: inner.
 (define-regiment-parameter simalpha-inner-radius 10)
 
 ;; When this is set to #t, the simulator slows itself down to match real-time.
@@ -221,7 +271,8 @@
 ;; large random ones.
 (define-regiment-parameter simalpha-consec-ids #t)
 
-(define-regiment-parameter simalpha-output-port #f) ;; If this is false, default is stdout.
+;; If this is false, default is stdout.  Otherwise it must be set to an output port.
+(define-regiment-parameter simalpha-output-port #f) 
 
 
 ;; This parameter determines node-placement strategy.  Valid settings are:
@@ -268,12 +319,8 @@
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)
 
-
-;; This pauses the simulator.  Unpaused state is #f.
-;; Set it to #t to tell the simulator to pause.  When it finishes the current action, it
-;; will stop and store a restart-thunk in this parameter.  Run that thunk when ready to unpause.
-;(define-regiment-parameter simalpha-pause-hook #f)
-
+;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
+(define simalpha-pause-hook (make-parameter #f))
 
 ;; Defining this one here because it's the default, the rest of these are in alpha_lib.ss
 ;; This one changes amplitude across space:
@@ -292,7 +339,7 @@
 ;  sense-sine-wave)
 
 
-;; Used primarily by alpha_lib_scheduler_simple.ss
+;;; Used primarily by alpha_lib_scheduler_simple.ss
 ;=====================
 
 ;; Constant: amount of virtual time consumed by an action.  Nonzero to force forward progress.
@@ -303,4 +350,15 @@
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
 
+;;; Used primarily by the graphics system:
+; ========================================
 
+;; This isn't a "constant" but it's a datatype def that needs to be visible everywhere.
+(reg:define-struct (rgb red green blue))
+
+(define Default-Drawing-Color (make-rgb 0 255 0))
+(define Default-Background-Color (make-rgb 200 200 200))
+
+;(define Starting-Node-Color (make <rgb> 200 10 10))
+(define Starting-Node-Color (make-rgb 130 130 130))
+(define Default-Edge-Color  (make-rgb 10 10 10))

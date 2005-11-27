@@ -6,7 +6,7 @@
 	 )
 
 	(import scheme)
-	(import simulator_alpha_datatypes)
+;temp;	(import simulator_alpha_datatypes)
 	(import alpha_lib)
 ;	(import simulator_alpha)
 

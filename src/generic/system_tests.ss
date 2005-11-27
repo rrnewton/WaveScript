@@ -1904,7 +1904,7 @@
      , (tm-to-socvals
 	'(tokens 
 	  (SOC-start () (call spread))
-	  (spread () (gemit tree) (timed-call 600 SOC-start))
+	  (spread () (gemit tree) (timed-call 600 spread))
 	  (catcher (v) 
 		   (if (> (cadr v) 0)
 		       (begin 

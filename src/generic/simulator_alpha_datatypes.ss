@@ -117,10 +117,13 @@
 ;; [2005.11.03] These totals were simply global vars.  But PLT's module
 ;; system had a problem with that.  I could maybe think of something
 ;; more efficient to do here since these are called hundreds of thousands of times.
-;; This one is just used to count up the messages during a simulation:
-(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
+;; This one is just used to count up the messages during a simulation: <br>
+
+;; [2005.11.26] This information is now in the individual simobjects,
+;; replacing these with functions that sum up the simobject values.
+;(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
 ;; This one counts total token handlers fired.
-(define simalpha-total-tokens (make-parameter 0 (lambda (x) x)))
+;(define simalpha-total-tokens (make-parameter 0 (lambda (x) x)))
 
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)

@@ -319,10 +319,15 @@
      theworld))  ;; End fresh-simulation
 
 
-;; This scrubs an existing simworld:
-(define (clean-simworld sim)
+;; This scrubs all the transient state off an existing simworld.
+;; .returns The cleaned simworld.
+(define clean-simworld!
+  (lambda (sim) ;(sim : simworld? -> simworld?)
+
   (set-simworld-scheduler-queue! sim '())
   (set-simworld-vtime! sim 0)
+
+  ; Flip off all the LEDs
   (hashtab-for-each 
    (lambda (id flipped)
      (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
@@ -331,8 +336,20 @@
   (DEBUGMODE ; Now make sure that we actually turned off all the LEDs:
    (hashtab-for-each (lambda (id flipped) (DEBUGASSERT (null? flipped)))
 		     (simworld-led-toggle-states sim)))
+
+  ; Flip off all the edge highlights:
+  (let ((lines
+	 (list->set ;; eq? based list->set
+	  (apply append
+		 (map (lambda (simob)
+			(map cadr (gobject-edgelist (simobject-gobj simob))))
+		   (simworld-all-objs sim))))))
+    (for-each unhighlight-edge lines))
   
-  ;; Reset all the transient state on the simobjects:
+  ; Set all labels to the empty string:
+  (for-each (lambda (x) (sim-setlabel "" x)) (simworld-all-objs sim))
+
+  ; Reset all the transient state on the simobjects:
   (for-each (lambda (so)
 	      (set-simobject-token-store! so (make-default-hash-table))
 	      (set-simobject-incoming-msg-buf! so '())
@@ -345,9 +362,16 @@
 	      (set-simobject-homepage! so '())
 ;	      (set-simobject-scheduler! so #f)
 ;	      (set-simobject-meta-handler! so #f)
-	      (set-simobject-worldptr! so world)
+	      (set-simobject-worldptr! so sim)
 	      so)
-    (simworld-all-objs sim))  
+    (simworld-all-objs sim))
+  sim))
+
+;; And this cleans the global parameters that go along with a simulation.
+(define (clean-simalpha-counters!)
+  ;(simalpha-total-messages 0)
+  ;(simalpha-total-tokens 0)
+  (void)
   )
 
 ; =================================================================================
@@ -425,7 +449,8 @@
 
 ;; Helper function to print out a table listing which nodes are
 ;; connected to eachother (any two without provably zero connectivity).
-(define (print-connectivity world)
+(define (print-connectivity . sim)
+  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
   (for-each (lambda (row)
 ;	      (printf "Bang : ~s \n" (map node-id row))
 	      (printf "~s: ~s\n" (car row)
@@ -438,9 +463,7 @@
 			      (node-pos (car row))
 			      (node-pos nbr)))
 			   (cdr row))))
-	    (simworld-graph world)))
-
-
+	    (simworld-graph world))))
                          
 ; =======================================================================
 
@@ -589,7 +612,7 @@
 		     
 		  [(bcast ,[rator] ,[rand*] ...)		   
 		   `(begin 
-		      (simalpha-total-messages (add1 (simalpha-total-messages)))
+		      ;(simalpha-total-messages (add1 (simalpha-total-messages)))
 		      (set-simobject-outgoing-msg-buf! this
   		        (cons (make-simevt #f ;; No scheduled time, ASAP
 					   (bare-msg-object ,rator (list ,@rand*) current-vtime))
@@ -1189,42 +1212,46 @@
 		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
     ;; Reset global message counter:
-    (simalpha-total-messages 0)
-    (simalpha-total-tokens 0)
+    (clean-simalpha-counters!)
+
     (apply run-alpha-loop args)))
 
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
 (define (print-stats)
   (if (not (simalpha-current-simworld))
       (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
-      (begin 
+      (let* ([sim (simalpha-current-simworld)]
+	     [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
+	     [sorted (sort (lambda (x y) 
+			     (cond 
+			      [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
+			      [(cdr x) #t] [else #f]))
+			   measured)]
+	     [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
+
+	     [total-messages
+	      (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))]
+	     [total-tokens 99999999999999999]
+	     )
+	
 	(printf "\nStatistics for most recent run of SimAlpha.\n")
 	(printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
 	(printf "  Total tokens fired      : ~a (per-node ~a)\n" 
-		(pad-width 5 (simalpha-total-tokens)) 
-		(round-to 2 (exact->inexact (/ (simalpha-total-tokens) (sim-num-nodes)))))
+		(pad-width 5 total-tokens) 
+		(round-to 2 (exact->inexact (/ total-tokens (sim-num-nodes)))))
 	(printf "  Total messages broadcast: ~a (per-node ~a)\n" 
-		(pad-width 5 (simalpha-total-messages))
-		(round-to 2 (exact->inexact (/ (simalpha-total-messages) (sim-num-nodes)))))
+		(pad-width 5 total-messages)
+		(round-to 2 (exact->inexact (/ total-messages (sim-num-nodes)))))
 	(printf "  Msg distribution (sorted based on hops from base):\n")
-
-	(let* ([sim (simalpha-current-simworld)]
-	       [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
-	       [sorted (sort (lambda (x y) 
-			       (cond 
-				[(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
-				[(cdr x) #t] [else #f]))
-			     measured)]
-	       [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
-	       )
-	  (printf "sent: ~a\n" 
-		  (map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
-	  (printf "rcvd: ~a\n" 
-		  (map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
-	  (printf "dsts: ~a\n" 
-		  (map (lambda (x) (pad-width 3 (cdr x))) sorted))
-	  (printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
-	  ))))
+	
+	(printf "sent: ~a\n" 
+		(map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
+	(printf "rcvd: ~a\n" 
+		(map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
+	(printf "dsts: ~a\n" 
+		(map (lambda (x) (pad-width 3 (cdr x))) sorted))
+	(printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
+	)))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
@@ -1235,12 +1262,18 @@
 ;; This procedure is not exposed in the API, it's internal.
 (define start-alpha-sim 
   (lambda (node-code-fun . flags)
-     (disp "Start-alpha-sim" node-code-fun flags)
+    (define logfile "__temp.log")
+
+    (disp "Start-alpha-sim" node-code-fun flags)
   
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
+
+    ;; FOR NOW: only log if we're in debugmode [2005.10.17]
+    (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
+		   [simulation-logger-count (IFDEBUG 0 #f)])
     
-    (let* ([logfile "__temp.log"]
+    (let* (
 	   [simple-scheduler (memq 'simple flags)]
 	   ;; With flags out of the way, the argument remaining is the stopping time:
 	   [stopping-time? 
@@ -1258,8 +1291,12 @@
 			     (lambda (t) (>= t stop-time))))))]
 	   [sim (if (memq 'use-stale-world flags)
 		    ; We reuse the stale world, but we freshen it at least:
-		    (clean-simworld (simalpha-current-simworld))
+		    (begin 
+		      (clean-simalpha-counters!)
+		      (clean-simworld! (simalpha-current-simworld)))
 		    (fresh-simulation))])
+
+      (DEBUGASSERT 'start-alpha-sim (simworld? sim))
   
     (if (file-exists? logfile) (delete-file logfile))
   
@@ -1282,10 +1319,7 @@
   		 ;[simalpha-current-simworld sim]
 		 )
     (let/cc exitk	
-  	  ;; FOR NOW: only log if we're in debugmode [2005.10.17]
-    (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
-  		 [simulation-logger-count (IFDEBUG 0 #f)]
-  		 [escape-alpha-sim exitk])
+    (parameterize ([escape-alpha-sim exitk])
   		(printf "Running simulator alpha (~s version) (logfile ~s)" 
   			(if simple-scheduler 'simple 'full)
   			logfile)
@@ -1294,8 +1328,8 @@
   		(printf "<-------------------------------------------------------------------->~n")
   
   	;; DEBUG DEBUG DEBUG
-  	(DEBUGMODE
-  	 (global-graph (simworld-graph sim)))
+;  	(DEBUGMODE
+;  	 (global-graph (simworld-graph sim)))
   
   	;(printf "Starting!  Local: ~s~n" (map simobject-local-msg-buf (simworld-all-objs sim)))
   	;; Redirect output to the designated place:
@@ -1322,7 +1356,7 @@
     (let ((result (reverse (soc-return-buffer))))
       (printf "~nTotal globally returned values:~n ~s~n" result)
       result))
-    ))))
+    )))))
 
 ; =======================================================================
 
