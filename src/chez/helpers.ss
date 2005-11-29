@@ -25,13 +25,14 @@
 	  string-split periodic-display all-equal?
 	  
 	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name  reunique-names
-	  get-formals
+	  get-formals 
 	  set->hashtab hashtab->list
 
 	  ;; Hmm, not sure what meaning immediate has here...
 	  ;immediate? 
 	  constant? datum? 
-	  formalexp? cast-formals default-unit-tester tester-eq?
+	  formalexp? cast-formals fit-formals-to-args
+	  default-unit-tester tester-eq?
 	  ;default-unit-tester-retries
 	  substring?
 	  gobj? 

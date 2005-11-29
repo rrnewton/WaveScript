@@ -256,7 +256,7 @@
   '(program
     (socpgm (bindings) 
 	    (disp "SOCPROG" )
-	    (light-up 0 255 255)
+	    (light-node 0 255 255)
 	    (emit tok1))
     (nodepgm
 ;       result_2
@@ -267,7 +267,7 @@
 	      (flood tok2)]
 	[tok2 () 
 	      (disp "Firing Tok2 and lighting up")
-	      (light-up 255 255 0)])
+	      (light-node 255 255 0)])
        () ;; seed tokens
        )))
 

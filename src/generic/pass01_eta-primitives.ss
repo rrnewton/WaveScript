@@ -42,6 +42,26 @@
 	     (let ([rhs* (process-expr* rhs* env)]
 		   [expr (process-expr expr env)])
 	       `(letrec ([,lhs* ,rhs*] ...) ,expr)))]
+
+	  ;; A bit of sugar.
+          ;; This just expands "lists" into a bunch of cons cells.
+	  [(list ,rands ...)
+	   (process-expr (match rands
+			   [() ''()]
+			   [(,a . ,[b]) `(cons ,a ,b)])
+			 env)]
+	  ;; More sugar.
+	  [(or ,rands ...)
+	   (process-expr (match rands
+			   [() ''#f]
+			   [(,a . ,[b]) `(if ,a '#t ,b)])
+			 env)]
+	  [(and ,rands ...)
+	   (process-expr (match rands
+			   [() ''#t]
+			   [(,a . ,[b]) `(if ,a ,b '#f)])
+			 env)]
+
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
            `(,prim ,rand* ...)]

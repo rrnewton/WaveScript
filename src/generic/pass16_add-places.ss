@@ -149,6 +149,10 @@
 	  [(smap2)
 	   (values expr (list (new-place)) (new-place))]
 
+	  [(light-up)
+	   (let ((np (list (new-place))))
+	     (values expr np np))]
+
 	  ;; TODO
 	  ;; Events are pretty sketchy at this phase.
 	  ;; It should have the formation place of its stream argument.

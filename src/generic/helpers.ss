@@ -46,11 +46,11 @@
     (cdr (Pair) Object)
     (car (Pair) Object)
     (append (List List) List)
+    (list Object List)
 ;    (cons (Object List) List) 
 ;    (cdr (List) List)
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
-
 
     (+ (Integer Integer) Integer) 
     (- (Integer Integer) Integer) 
@@ -62,14 +62,16 @@
     (*. (Float Float) Float) 
     (/. (Float Float) Float) 
 
-;    (vector Object Array)
-    (make-vector (Object Integer) Array)
+    (vector Object Array)
+    ;(make-vector (Object Integer) Array)
     (vector-ref (Array Integer) Object)
-    (vector-set! (Array Integer Object) Void)
+    ;(vector-set! (Array Integer Object) Void)
 
     (locdiff (Location Location) Float)
 
     (not (Bool) Bool)
+    (or Bool Bool)
+    (and Bool Bool)
 
     ; predicates
     (=  (Number Number) Bool)
@@ -135,6 +137,10 @@
     
     ;; This joins two signals in the network.
     (smap2          (Function Signal Signal) Signal)
+
+    ;; This is the identity function on regions.  
+    ;; However it also lights an LED.
+    (light-up (Area) Area)
 
     (anchor-at      (Number Number) Anchor)
 
@@ -277,7 +283,7 @@
 ;     (timed-call)
 ;     (activate)
 ;     (dist) 
-     (light-up (Integer Integer Integer) Void)
+     (light-node (Integer Integer Integer) Void)
 ;     (sense)
      (my-id  () Integer)
      (my-clock () Integer)
@@ -2386,7 +2392,21 @@
       [,else (error 'cast-formals
                     "invalid formals expression: ~a" formalexp)])))
 
-(define cast-args
+;; [2005.11.28]
+(define fit-formals-to-args
+  (lambda (formals args)
+    (let loop ((f formals) (a args))
+      (cond
+       [(and (null? f) (null? a)) ()]
+       [(and (symbol? f) (null? a)) ()]
+       [(and (pair? f) (pair? a))
+	(cons (car f) (loop (cdr f) (cdr a)))]
+       [(and (symbol? f) (pair? a))
+	(cons f (loop f (cdr a)))]
+       [else (error 'fit-formals-to-args
+		    "cannot fit formals ~a to args ~a" formals args)]))))
+
+#;(define cast-args
   (lambda (argexps formalexp)
     (match formalexp
       [,v (guard (symbol? v)) (list (cons 'list argexps))]

@@ -55,7 +55,8 @@
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
    constant? datum? 
-   formalexp? cast-formals default-unit-tester tester-eq?
+   formalexp? cast-formals fit-formals-to-args
+   default-unit-tester tester-eq?
    ;default-unit-tester-retries ;; This is in constants.
    substring?
    

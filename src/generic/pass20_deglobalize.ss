@@ -79,7 +79,11 @@
 
 (define (check-prop p s)
   (let ((entry (assq s proptable)))
-    (if entry (memq p (cdr entry))
+    (if entry 
+	;; The given symbol is either in the list of properties, or
+	;; its the index to an association pair.
+	(or (memq p (cdr entry))
+	    (assq p (filter list? (cdr entry))))
 	(error 'deglobalize:check-prop
 	       "This should not happen!  ~nName ~s has no entry in ~s."
 	       s proptable))))
@@ -167,23 +171,50 @@
 					;;[,memb () ]
 	    ;)]
 
-	    [(rmap) ;; CHECK
-	     (let* ([rator_tok (car args)]
-		    [region_tok (cadr args)]
-		    [parent (get-membership-name region_tok)]
-		    [push? (not (check-prop 'region region_tok))])
-	       (if push?
-		   ;; In this case membership in the parent drives the rmap.
-		   `([,parent (v) (call ,form v)]
-		     [,form (v)
-			    (call ,memb
-				  (subcall ,rator_tok v))])
-		   ;; In this case rmap must run it's own heartbeat to keep it alive.
-		   `([,parent () (activate ,form)]
-		     [,form () 
-			    (call ,memb (subcall ,rator_tok this))
-			    (timed-call ,heartbeat ,form)])
-		   ))]
+	    [(rmap) 
+	     (let* ([rator_tok (car args)]   ; The function
+		    [region_tok (cadr args)] ; The region
+		    [parent (get-membership-name region_tok)])
+
+	     ;; We must check the type of the return value of our function.
+	     (let ((rettype (check-prop 'returns rator_tok)))
+	       (if (not rettype)
+		   (error 'deglobalize:explode-primitive 
+			  "rmap: Could not find the return value/type of function: ~s" region_tok))	       
+	       (if (check-prop 'distributed (cadr rettype))
+		   ;; First case: we're dealing with a function that returns a distributed value.
+
+		   ;; All we can do here is trigger the formation token and wire the "return" (membership token)
+		   ;; to our return.
+		   ;; TODO: FIXME: HAVE WE MADE THE CLOSURE NON-REENTRANT?
+		   (let ((form_child (get-formation-name (cadr rettype)))
+			 (memb_child (get-membership-name (cadr rettype))))
+		     ; We wire our control-flow parent directly to our child's formation token:
+		     `([,parent (v) (call ,form_child v)]
+		       [,memb_child (v) (call ,memb v)]))
+
+		   ;; Second case: it's a local function, we simply subcall to it.
+		   (if (not (check-prop 'region region_tok)) ; Is it push?
+		       ;; In this case membership in the parent drives the rmap.
+		       `([,parent (v) (call ,form v)]
+			 [,form (v)
+				(call ,memb
+				      (subcall ,rator_tok v))])
+		       ;; In this case rmap must run it's own heartbeat to keep it alive.
+		       `([,parent () (activate ,form)]
+			 [,form () "rmap with heartbeat"
+				(call ,memb (subcall ,rator_tok this))
+				(timed-call ,heartbeat ,form)]))
+		   )))]
+
+	    ;; This is always push.
+	    [(light-up)
+	     (let* ([region_tok (car args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v) (call ,form v)]
+		 [,form (v)
+			(leds on green)
+			(call ,memb v)]))]
 
 	    [(rwhen-any)
 	     (let* ([rator_tok (car args)]
@@ -375,12 +406,15 @@
 		      ;; Note that we are an anchor.
 ;			(set-simobject-homepage! 
 ;			 this (cons 'anchor (simobject-homepage this)))
-			(light-up 0 255 255)])))]
+		      (begin
+			(light-node 0 255 255)
+			)]
+	       )))]
 
 	    ;; [2005.11.23] This does essentially nothing.  It's
 	    ;; formed at a node, it's membership is that node.
 	    [(node->anchor)
-	     `([,form () (call ,memb)])]
+	     `([,form (v) (call ,memb)])]
 
 	    [(circle)
 	     (let ([anch (car args)]
@@ -389,34 +423,48 @@
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
 ;		 [,form () (gemit ,memb this)]
-		 [,form () (gemit ,memb)]
+		 [,form (v) (gemit ,memb)]
 		 ;; Display stuff:
 ;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
-			(light-up 0 100 100)]
+			(begin 
+			  ;(light-node 0 100 100)
+			  )]
 		 [,memb () (if (< (gdist) ,rad) (grelay))]
 		 )
 	       )]
 
 	    [(khood)
 	     (let ([anch (car args)]
-		   [rad (cadr args)])
+		   [rad (cadr args)]
+		   [spread (new-token-name 'spread-khood)]
+		   [temp (new-token-name 'delay)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
 ;		 [,form () (emit ,memb this)]
-		 [,form () (gemit ,memb)]
+		 [,form (v) (gemit ,spread)]
 		 ;; Display stuff:
 ;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
-			(light-up 0 100 100)]
-		 [,memb () (if (< (ghopcount) ,rad) (grelay))]
+			(leds on red)
+			;(light-node 0 100 100)
+			]
+
+
+;		 [,memb () (if (< (ghopcount) ,rad) (grelay))]
+
+		 ;; TEMP:
+		 [,spread () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
+			  (if (< (ghopcount) ,rad) (timed-call 1000 ,temp))]
+		 [,temp () (grelay ,spread)]
+		 
 		 )
 	       )]
 
@@ -666,7 +714,7 @@
 
       [(rfilter)     
        `([,tokname (v)
-	  (call reg-return (vector 'FILTRATION ',tokname (my-id) this))])]
+	  (call reg-return (vector 'FILTRATION ',tokname (my-id)))])]
 
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
@@ -679,10 +727,10 @@
 		   (leds on red)
 		   (call reg-return (vector 'KHOOD ',tokname (my-id)))])]
 
-      [(smap smap2) 
-       `([,tokname (v) (call reg-return v)])]
+;      [(smap smap2) 
+;       `([,tokname (v) (call reg-return v)])]
 
-      [(rmap)
+      [(rmap light-up smap smap2)
        `([,tokname (v) (call reg-return v)])]
 
       ;; When the membership token has fired, the event has fired!

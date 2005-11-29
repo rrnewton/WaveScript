@@ -24,6 +24,6 @@
       [tok2 () 
 	    (display #\_)
 ;	    (disp "tok2" (node-id (simobject-node this)))
-	    (light-up 0 255 0)])
+	    (light-node 0 255 0)])
      (startup ) ;; seed tokens
      ))))
