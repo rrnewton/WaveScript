@@ -24,6 +24,8 @@
           [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
            (process-primapp prim rand*)]          
+	  [(,[rator] ,[rand*] ...)
+	   `(,rator ,rand* ...)]
           [,unmatched
             (error 'reduce-primitives "invalid expression: ~s"
                    unmatched)])))

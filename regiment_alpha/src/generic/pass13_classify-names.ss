@@ -40,8 +40,7 @@
 
 (define (classify-names expr)
   
-  ;; This table accumulates all the properties which become attached
-  ;; to names:
+  ;; This table accumulates all the properties which become attached to names:
   (define table '())
   ;; <TODO>, <TOOPTIMIZE> Ryan, rewrite this with a hash table for more speediness.
 
@@ -105,15 +104,6 @@
 	      (loop (append formals env) expr)]
 	     [,else (error 'free-vars "not simple expression: ~s" expr)])))
 
-  (define (process-let name expr env)
-    (match expr
-	   [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
-	    (for-each (lambda (lhs rhs)
-			(process-expr lhs rhs env))
-		      lhs* rhs*)
-	    (process-expr name expr (union lhs* env))]))
-  
-  
   (define (simple-rand? expr)
     (match expr
 	   [,var (guard (symbol? var) (not (regiment-constant? var))) 
@@ -146,7 +136,7 @@
        (add-prop! name 'anchor)]
 
       ;; Does Node belong here?
-      [(Location Reading Function Number Integer Float Bool List Pair Node)
+      [(Location Reading Function Number Integer Float Bool List Array Pair Node)
        (add-prop! name 'local)]
 
       ;; There's really not anything that we know about objects...
@@ -169,11 +159,21 @@
        (lambda (arg type)
 	 (match arg
 		[(quote ,const) (void)]
-		[,var (guard (symbol? arg))		      
+		[,var (guard (symbol? arg))	      
+		      ;(disp "VAR: " var type)
 		      (reconcile-type type var)]
 		[,other (error 'classify-names:type-inference-primapp
 			       "primitive ~s should take only simple arguments: ~s" prim args)]))
-       args (cadr entry))))
+       args (fit-formals-to-args (cadr entry) args))))
+
+  (define (process-let name expr env)
+    (match expr
+	   [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
+	    (if (not (symbol? expr)) (error 'classify-names "body of lazy-letrec should be a symbol!"))
+	    (for-each (lambda (lhs rhs)
+			(process-expr lhs rhs env))
+		      lhs* rhs*)
+	    (process-expr name expr (union lhs* env))]))
 
   (define process-expr
     (lambda (name expr env)
@@ -190,14 +190,22 @@
 		(add-prop! name `(alias-of ,var))
 		]
 		
-          [(lambda ,formalexp ,expr)
+          [(lambda ,formalexp (lazy-letrec ,binds ,bod))
 	   ;; NOTE: No additional dependency for name... this is a closure.
-	   ;; <TODO> CONSIDER THIS:
-	   ;(process-let name expr (union formalexp env))
+	   ;; <TODO> CONSIDER THIS: It would let dependencies go through lambdas.
+	   ;(process-let name expr (union formalexp env)) 
 	   (add-prop! name 'function)
 	   (add-prop! name 'local)
-	   (process-let #f expr (union formalexp env))
-	   
+	   (add-prop! name `(returns ,bod))
+	   (let ((formals (get-formals formalexp)))
+	     (for-each (lambda (v) (add-prop! v 'formal))
+	       formals)
+	     ;; Add a dependency on the formal params so the system
+	     ;; doesn't think its got leaf nodes:
+	     (for-each (lambda (bind)
+			 (add-dependency! (car bind) formals))
+	       binds)
+	     (process-let #f `(lazy-letrec ,binds ,bod) (union formalexp env)))
 	   ]
  
 	  ;; These are all simple.
@@ -262,14 +270,21 @@
 	    ;; Now we label the leaves:
 	    (for-each (lambda (node)
 			(if (memq 'distributed (get-props (car node)))
-			    (let ([these-deps 
+			    (let ([these-deps
+				   ;; Filter down to only those deps that count:
 				   (filter (lambda (dep)
-					     (not (memq 'local (get-props dep))))
-					   (cdr node))])			      
+					     ;(disp dep (get-props dep))
+					     (let ((props (get-props dep)))
+					       (or (not (memq 'local props))
+						   (memq 'formal props))))
+				     (cdr node))])      
 			      (if (null? these-deps) ;; No dependencies
 				  (add-prop! (car node) 'leaf))
 			      )))
 		      dependencies)
+
+	    (printf "Dependencies:\n")
+	    (pp dependencies)
 	    
 	    (let ((finaltable 
 		   (cons 'props 

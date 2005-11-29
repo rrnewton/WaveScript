@@ -743,7 +743,7 @@
 		[(loc) '(sim-loc)]
 		[(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
 		
-		[(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
+		[(light-node ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
 		[(highlight-edge ,[args] ...) `(sim-highlight-edge ,args ...)]
 

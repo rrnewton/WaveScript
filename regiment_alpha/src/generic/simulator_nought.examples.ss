@@ -104,7 +104,7 @@
 ;       result_2
        (tokens
 	[tok1 () (flood tok2)]
-	[tok2 () (light-up 0 255 0)])
+	[tok2 () (light-node 0 255 0)])
        (startup ) ;; seed tokens
        )))
 ;; [2004.06.03] TODO BUG.  Sometimes it doesn't flood the whole
@@ -122,7 +122,7 @@
 ;       result_2
        (tokens
 	[tok1 () (call tok2) (relay)]
-	[tok2 () (light-up 0 255 0)])
+	[tok2 () (light-node 0 255 0)])
        (startup ) ;; seed tokens
        )))
 
@@ -140,7 +140,7 @@
 	      ...)
 	    (printf " ~s " (dist))
 	    (relay)]
-      [tok2 () (light-up 0 255 0)])
+      [tok2 () (light-node 0 255 0)])
      (startup ) ;; seed tokens
      )))
 
@@ -172,7 +172,7 @@
       [tok2 () 
 	    (display #\_)
 ;	    (disp "tok2" (node-id (simobject-node this)))
-	    (light-up 0 255 0)])
+	    (light-node 0 255 0)])
      (startup ) ;; seed tokens
      )))
 
@@ -202,7 +202,7 @@
 	    (if (not (and (integer? x) (integer? y)))
 		(error 'test "NOT BOTH INTEGERS: ~s ~s~n" x y))
 	    (+ x y)]
-      [tok2 () (light-up 0 255 0)])
+      [tok2 () (light-node 0 255 0)])
      (startup ) ;; seed tokens
      )))
 

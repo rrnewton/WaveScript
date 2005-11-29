@@ -252,13 +252,6 @@
 		  [body  (process-expr expr newenv new-type-env)])
 	     `(letrec ([,lhs* ,rands] ...) ,body))]
 
-          ;; This just expands "lists" into a bunch of cons cells.
-	  [(list ,rands ...)
-	   (process-expr (match rands
-			   [() ''()]
-			   [(,a . ,[b]) `(cons ,a ,b)])
-			 env type-env)]
-
           [(,prim ,[rand*] ...)
            (guard 
             (not (memq prim env))
@@ -268,17 +261,17 @@
 	   (let ([entry (get-primitive-entry prim)])
 	     
 	     ;; Make sure the infered for each argument matches the expected type:
-	     (if (not (= (length rand*) (length (cadr entry))))
-		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
-			prim (cadr entry) rand*))
-	     (for-each (type-check env type-env)
-		       rand* (cadr entry))
+;	     (if (not (= (length rand*) (length (cadr entry))))
+;		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
+;			prim (cadr entry) rand*))
+	     (let ((types (fit-formals-to-args (cadr entry) rand*)))
+	     
+	       (for-each (type-check env type-env) rand* types)
 	   
-	     ;; Add type constraints to the variables based on their usage in this primitive.
-	     (for-each (lambda (rand expected)
-			 (set! type-env
-			       (add-type-constraint rand expected type-env)))
-		        rand* (cadr entry)))
+	       ;; Add type constraints to the variables based on their usage in this primitive.
+	       (for-each (lambda (rand expected)
+			   (set! type-env (add-type-constraint rand expected type-env)))
+		 rand* types)))
 
 	   `(,prim ,rand* ...)]
           

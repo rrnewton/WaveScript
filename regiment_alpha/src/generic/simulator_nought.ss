@@ -539,7 +539,7 @@
 		     ;; FIXME: does seed need a quote!!!???
 		     `(sim-return ,x ,totok ,via ,seed ',aggr))]
 
-		  [(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
+		  [(light-node ,r ,g ,b) `(sim-light-up ,r ,g ,b)]		  
 		  [(leds ,which ,what) `(sim-leds ',which ',what)]
 		  [(dbg ,str ,[args] ...)
 		   ;; TODO FIX ME: would be nice to print properly
@@ -1930,7 +1930,7 @@
        (bindings)
        (tokens
 	[tok1 () (flood tok2)]
-	[tok2 () (light-up 255 0 100)])
+	[tok2 () (light-node 255 0 100)])
        ()
        )))
 

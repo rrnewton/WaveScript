@@ -1081,6 +1081,7 @@
 			    (timed-call 1000 tok1 (- reps 1))))
 		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
 		  )
+		'[sim-timeout 30000]
 		'[simalpha-consec-ids #t]
 		'[simalpha-placement-type 'connected]
 		'[simalpha-channel-model 'lossless]
@@ -1121,7 +1122,13 @@
 			(if (= (gdist) 2)
 			    (greturn (+ 100 (gversion)) (to catcher)))
 			))
-		  ))))
+		  )
+		'[sim-timeout 30000]
+		'[simalpha-consec-ids #t]
+		'[simalpha-placement-type 'gridlike]
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-failure-model 'none]
+		)))
 	    (list 
 	     lst
 	    (map (lambda (ls)
@@ -1293,7 +1300,12 @@
 				      (to catcher)
 				      (seed ())
 				      (aggr f)))
-		       (f (x y) (append x y))))))
+		       (f (x y) (append x y)))
+		     '[sim-timeout 10.0]
+		     '[simalpha-placement-type 'connected]
+		     '[simalpha-channel-model 'lossless]
+		     '[simalpha-failure-model 'none]		
+		     )))
       ;; Epoch staggered aggregation
       ((0) (0 1) (0 1) (0 1) (0 1) (1))
       ]
@@ -1318,6 +1330,7 @@
 			 (aggr f)))
 	  (f (x y) (append x y)))
 	'[regiment-verbose #f]
+	'[sim-timeout 10.0]
 	'[simalpha-placement-type 'connected]
 	'[simalpha-consec-ids #t]
 	'[simalpha-failure-model 'none]
@@ -1353,6 +1366,7 @@
 			 (aggr f)))
 	  (f (x y) (append x y)))
 	'[regiment-verbose #f]
+	'[sim-timeout 5000]
 	))
       ;; Epoch staggered aggregation
       ,(lambda (x) 
@@ -1633,6 +1647,7 @@
 				     (via tree)))
 		     (if (odd? (ghopcount tree))
 			 (leds on blue)))])
+	'[sim-timeout 10.0]
 	'[simalpha-sense-function sense-dist-from-origin]
 	'[simalpha-zeropad-args #t]
 	'[simalpha-channel-model  'lossless]
@@ -1709,13 +1724,14 @@
 		 ;(timed-call 1000 spread-global)
 		 )
 	  (global-tree () (grelay)) (catcher (v) (soc-return v)))
-       	'[simalpha-zeropad-args #t]
-	'[simalpha-channel-model  'lossless]
-	'[simalpha-placement-type 'gridlike] ;'connected]
-	'[simalpha-failure-model  'none]
-	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
-	'[simalpha-graphics-on #t])
+       '[sim-timeout 5000]
+       '[simalpha-zeropad-args #t]
+       '[simalpha-channel-model  'lossless]
+       '[simalpha-placement-type 'gridlike] ;'connected]
+       '[simalpha-failure-model  'none]
+       '[sim-num-nodes 30]
+       '[simalpha-consec-ids #t]
+       '[simalpha-graphics-on #t])
       ((ANCH ,(min 1 BASE_ID)))]
 
 
