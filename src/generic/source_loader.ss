@@ -70,13 +70,20 @@
 			  (lambda ()
 			    (fluid-let ([pass-names passes])
 			      (run-simulator-alpha
-			       (apply compile-simulate-alpha
-				      (apply run-compiler prog flags)
-				      (append flags params))
+
+;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
+			      (apply run-compiler prog flags)
+;			       (apply compile-simulate-alpha
+;				      (apply run-compiler prog flags)
+;				      (append flags params))
+
 			       'srand (current-time)
 			       ))))))
 	(print-stats)
 	result))))))
+
+
+
 
 #|	      
 

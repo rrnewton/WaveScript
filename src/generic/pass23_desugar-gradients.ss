@@ -436,6 +436,10 @@
 					  `(dbg "%d.%d: Returning up tree %d, parent %d to %d acc %d" 
 						(my-clock) (my-id) ',via ,parent_pointer
 						'(tok ,return-handler retid) ,oldacc))
+
+					;TODO: (if (simalpha-visualize-gradients)
+				       (highlight-edge ,parent_pointer (rgb 200 0 0))
+				       
 				       (bcast (tok ,return-handler retid)
 					      ,parent_pointer ;; destid
 					      ',RHREMOTE        ;; flag
@@ -680,22 +684,23 @@
 			      (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
 				   (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
 			     ,(make-begin 
-			       (append 
-				(COMMENT "The gradient-tagged message is accepted, handler fires.")
-				(list
+				`(,@(COMMENT "The gradient-tagged message is accepted, handler fires.")
+				  				  
+				  (highlight-edge ,PARENT_ARG (rgb 0 0 150) 1000)
+
 				;; If the msg is accepted we run our code:
 				;; It can get to both the current version of 
 				;; the gradient parameters and the "stored" version from last time:
-				newbod
+				  ,newbod
 				;; And then store these gradient parameters for next time:
 				;; (Unless it was a local call, in which case there's nothing to store.)
-				`(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
-				     (begin 
-				       ,@(COMMENT "If it's not a local message, set stored gradient info:")
-				       (set! ,STORED_PARENT_ARG ,PARENT_ARG)
-				       (set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
-				       (set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
-				       (set! ,STORED_VERSION_ARG ,VERSION_ARG))))))
+				  (if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
+				      (begin 
+					,@(COMMENT "If it's not a local message, set stored gradient info:")
+					(set! ,STORED_PARENT_ARG ,PARENT_ARG)
+					(set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
+					(set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
+					(set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
 			     ;; Otherwise, fizzle
 			     (begin ,@(COMMENT "Gradient message fizzles.") (void))
 				

@@ -126,9 +126,9 @@
   ;; (There are more topologies in "network_topologies.ss"
   (define (make-object-graph g world) 
     (graph-map (lambda (nd) 
-		 (let ([so (apply make-simobject (make-list 15 'simobject-field-uninitialized))])
+		 (let ([so (apply make-simobject (make-list 16 'simobject-field-uninitialized))])
 		   (set-simobject-node! so nd)
-		   (set-simobject-token-store! so (make-default-hash-table))
+		   (set-simobject-token-store! so (make-default-hash-table 100))
 
 		   (set-simobject-incoming-msg-buf! so '())
 		   (set-simobject-outgoing-msg-buf! so '())
@@ -137,6 +137,7 @@
 
 		   (set-simobject-local-sent-messages! so 0)
 		   (set-simobject-local-recv-messages! so 0)
+		   (set-simobject-token-table! so (make-default-hash-table 100))
 
 		   (set-simobject-redraw! so #f)
 		   (set-simobject-gobj! so #f)
@@ -220,7 +221,10 @@
       ;; For now we use a simple linear perturbation.
       (define (perturb coord)
 	(if perfect? coord
-	    (+ coord (reg:random-int (quotient step 2)))))
+	    (if (zero? (simalpha-max-gridlike-perturbation)) coord
+		(+ coord (reg:random-int 
+			  (inexact->exact 
+			   (floor (* step (simalpha-max-gridlike-perturbation)))))))))
 
       (for i = 0 to (sub1 num-nodes) ;; Allocate the nodes.
 	   (vector-set! seed i (random-node)))
@@ -260,7 +264,7 @@
       [else (error 'simulator_alpha:fresh-simulation 
 		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
   
-  (printf "Rolling fresh simulator world.\n")
+  (printf "Rolling fresh simulator world (current srand seed ~a).\n" (reg:get-random-state))
   ;; Set global parameter:
   ;; This is a function which takes two locations and returns either
   ;;  1) a number, representing the loss percentage
@@ -352,7 +356,8 @@
 
   ; Reset all the transient state on the simobjects:
   (for-each (lambda (so)
-	      (set-simobject-token-store! so (make-default-hash-table))
+	      (set-simobject-token-store! so (make-default-hash-table 100))
+	      (set-simobject-token-table! so (make-default-hash-table 100))
 	      (set-simobject-incoming-msg-buf! so '())
 	      (set-simobject-outgoing-msg-buf! so '())
 	      (set-simobject-local-msg-buf! so '())
@@ -447,24 +452,6 @@
 	 ))))
   (error 'simalpha-draw-world "graphics not loaded.")))
 
-
-;; Helper function to print out a table listing which nodes are
-;; connected to eachother (any two without provably zero connectivity).
-(define (print-connectivity . sim)
-  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
-  (for-each (lambda (row)
-;	      (printf "Bang : ~s \n" (map node-id row))
-	      (printf "~s: ~s\n" (car row)
-		      (map (lambda (nbr) 			     
-;			     (printf "Woot ~s ~s ~s ~s \n" 
-;				     (node? (car row)) (node? nbr)
-;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
-;				     )
-			     ((simalpha-connectivity-function)
-			      (node-pos (car row))
-			      (node-pos nbr)))
-			   (cdr row))))
-	    (simworld-graph world))))
                          
 ; =======================================================================
 
@@ -731,8 +718,8 @@
 		     ,(process-expr '(my-clock)))]
 
 		  [(my-id) '(node-id (simobject-node this))]
-		  [(my-clock) 
-		   'current-vtime]
+		  [(my-clock)  'current-vtime]
+		  [(rgb ,[r] ,[g] ,[b]) `(make-rgb ,r ,g ,b)]
 
 		  ;; [2005.05.07] Shouldn't run into this now:
 #;		  [(soc-return ,x)
@@ -758,7 +745,7 @@
 		
 		[(light-up ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
-		[(highlight-edge ,[n]) `(sim-highlight-edge ,n)]
+		[(highlight-edge ,[args] ...) `(sim-highlight-edge ,args ...)]
 
 		; =================================================================================
 		;; Printing functions
@@ -1123,12 +1110,14 @@
 					     [pretty-maximum-lines #f]
 					     [pretty-line-length 150]
 					     [print-graph #t])
-				(write tm out);(pretty-print tm out)
+				;(write tm out)
+				(fprintf out ";; Pre-generated code written out to this file: \n")
+				(pretty-print tm out) ; [2005.11.28] why was this commented just now?
 				(newline out)
 				(close-output-port out)))
 			    (set! THEPROG tm)))
 		      (match tm
-			; Already compiled:
+			; Already compiled for the simulator:
 			[(define (node-code this) ,e)    (run-compiled) (read-params rest)]
 			[(begin (module ,_ ...) ,__ ...) (run-compiled) (read-params rest)]
 			[(module ,_ ...)                 (run-compiled) (read-params rest)]
@@ -1166,6 +1155,7 @@
 		      ; [2005.11.25] Allowing this again, if there are no args we just run on the already compiled sim.
 		      (read-params rest)]
 		     )))
+    ;; This deals with the many options that run-simulator-alpha can handle:
     (define read-params
 	     (lambda (params)	       
 	       (match params
@@ -1204,11 +1194,12 @@
 ;			   (error 'run-simulator-alpha
 ;				  "'srand switch should be followed by an integer, not: ~s" n))
 		       (printf "Setting up random number generator for simulator.  Srand: ~s\n" n)
+		       ;; TODO: Should just do this as a parameter.
 		       (let ([stored-state #f])
 			 (dynamic-wind
-			     (lambda () (set! stored-state (reg:get-random-state)))
+			     (lambda () (set! stored-state (reg:get-random-state)) (reg:set-random-state! n))
 			     (lambda () (read-params rest))
-			     (lambda () (reg:set-random-state! stored-state))))
+			     (lambda () (reg:set-random-state! stored-state) (set! stored-state #f))))
 		       ]
 		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
@@ -1218,11 +1209,11 @@
     (apply run-alpha-loop args)))
 
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
-(define (print-stats)
-  (if (not (simalpha-current-simworld))
+(define (print-stats . sim)
+  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
+  (if (not sim)
       (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
-      (let* ([sim (simalpha-current-simworld)]
-	     [measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
+      (let* ([measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
 	     [sorted (sort (lambda (x y) 
 			     (cond 
 			      [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
@@ -1232,14 +1223,21 @@
 
 	     [total-messages
 	      (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))]
-	     [total-tokens 99999999999999999]
 	     )
 	
 	(printf "\nStatistics for most recent run of SimAlpha.\n")
 	(printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
-	(printf "  Total tokens fired      : ~a (per-node ~a)\n" 
-		(pad-width 5 total-tokens) 
-		(round-to 2 (exact->inexact (/ total-tokens (sim-num-nodes)))))
+
+	(let ([isum 0])
+	  (for-each (lambda (ob)
+		      (hashtab-for-each
+		       (lambda (k vec) (set! isum (+ isum (vector-ref vec 0))))
+		       (simobject-token-table ob)))
+	    obs)
+	  (printf "  Total tokens fired      : ~a (per-node ~a)\n" 
+		  (pad-width 5 isum)
+		  (round-to 2 (exact->inexact (/ isum (sim-num-nodes))))))
+	
 	(printf "  Total messages broadcast: ~a (per-node ~a)\n" 
 		(pad-width 5 total-messages)
 		(round-to 2 (exact->inexact (/ total-messages (sim-num-nodes)))))
@@ -1252,7 +1250,73 @@
 	(printf "dsts: ~a\n" 
 		(map (lambda (x) (pad-width 3 (cdr x))) sorted))
 	(printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
-	)))
+	))))
+
+
+;; [2005.11.28] <br>
+;; This is mainly for use with GUI, click on a node to get the node statistics.
+(define (print-node-stats id . sim)
+  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
+    (if (not sim)
+	(error 'print-node-stats "got uninitialized simulator."))
+    (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
+      (if (not ob)
+	  (error 'print-node-stats "could not find node ~a in simworld's object hash." id))
+      (printf "\nStatistics for node ~a.\n" id)
+;      (printf "  Total sent messages: ~a\n" (simobject-local-sent-messages ob))
+;      (printf "  Total rcvd messages: ~a\n" (simobject-local-recv-messages ob))
+      (printf "  Token breakdown:                 invoked  sent  received\n")
+
+	(hashtab-for-each 
+	 (lambda (k vec)
+	   (printf "    ~a ~a ~a ~a\n"
+		   (pad-width 30 k)
+		   (pad-width 8 (vector-ref vec 0))
+		   (pad-width 5 (vector-ref vec 1))
+		                (vector-ref vec 2)))
+	 (simobject-token-table ob))
+
+      (let ([isum 0] [ssum 0] [rsum 0])
+	(hashtab-for-each
+	 (lambda (k vec)
+	   (set! isum (+ isum (vector-ref vec 0)))
+	   (set! ssum (+ ssum (vector-ref vec 1)))
+	   (set! rsum (+ rsum (vector-ref vec 2))))
+	 (simobject-token-table ob))
+	(printf "  Total:                           ~a ~a ~a\n"
+		(pad-width 8 isum)
+		(pad-width 5 ssum)
+		             rsum))
+
+      (printf "  Token Store: \n")
+      (parameterize ([print-gensym #f])
+	(hashtab-for-each
+	 (lambda (k pr)	   
+	   (let ((tk (key->token k)))
+	     (display-constrained "    " (pad-width 37 (cons (simtok-name tk) (simtok-subid tk)))
+				  " | "  (list (cdar pr) 80)  "\n")))
+	 (simobject-token-store ob)))
+      )))
+
+;; Helper function to print out a table listing which nodes are
+;; connected to eachother (any two without provably zero connectivity).
+(define (print-connectivity . sim)
+  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
+  (printf "\nCurrent network connectivity at vtime ~a.\n" (simworld-vtime world))
+  (parameterize ([print-gensym #f])
+  (for-each (lambda (row)
+;	      (printf "Bang : ~s \n" (map node-id row))
+	      (printf "  ~s: ~s\n" (car row)
+		      (map (lambda (nbr) 			     
+;			     (printf "Woot ~s ~s ~s ~s \n" 
+;				     (node? (car row)) (node? nbr)
+;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
+;				     )
+			     ((simalpha-connectivity-function)
+			      (node-pos (car row))
+			      (node-pos nbr)))
+			   (cdr row))))
+	    (simworld-graph world)))))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss

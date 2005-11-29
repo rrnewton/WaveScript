@@ -43,8 +43,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -226,7 +226,7 @@
 ;; #f    : No time-out                                        <br>
 ;; Float : Time out after certain number of cpu seconds.      <br>
 ;; Int   : Timeout after certain number of simulator clock ticks
-(define-regiment-parameter sim-timeout 10.0)
+(define-regiment-parameter sim-timeout 2000)
 
 ;; Number of milleseconds over which to start up the nodes.   <br>
 ;; [2005.11.14] FIXME: Not used yet in simulator-alpha.
@@ -283,6 +283,11 @@
 ;;                 produces.  (But with an opaque channel function it cannot guarantee this.)
 ;;  'gridlike   -- a randomly perturbed grid.  TODO: Expose some parameters for controlling the randomness.
 (define-regiment-parameter simalpha-placement-type 'gridlike)
+
+;; This is the fraction of a grid square (can be greater than 1) that
+;; represents the maximum pertubation of a node's x or y coordinate in
+;; 'gridlike' mode.
+(define-regiment-parameter simalpha-max-gridlike-perturbation 1/2)
 
 ;; [2005.10.03] Can be:
 ;;   'lossless -- 100% until simalpha-outer-radius, 0% beyond  
@@ -349,16 +354,54 @@
 (define RADIO_DELAY 30)  ;; Communication time
 ;(define PROCESSING_TIME 0)  ;; Not used yet... time to process incoming messages
 
-
 ;;; Used primarily by the graphics system:
 ; ========================================
 
 ;; This isn't a "constant" but it's a datatype def that needs to be visible everywhere.
 (reg:define-struct (rgb red green blue))
 
-(define Default-Drawing-Color (make-rgb 0 255 0))
-(define Default-Background-Color (make-rgb 200 200 200))
+;; My light background theme:
+#;(begin
+  (define Default-Drawing-Color     (make-rgb 0 255 0))
+  (define Default-Window-Color      (make-rgb 200 200 200))
+  (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
+  (define Default-Background-Color  (make-rgb 215 215 255))
+  (define Default-Canvas-Text-Color (make-rgb 0 0 0))
+  (define Default-Supertext-Color   (make-rgb 0 0 0))
+  (define Default-Subtext-Color     (make-rgb 0 100 0))
+  (define Default-LED-Off-Color     (make-rgb 0 50 50))
+  
+  ;(define Starting-Node-Color (make <rgb> 200 10 10))
+  (define Default-Node-Color           (make-rgb 130 130 130))
+  (define Default-Base-Border-Color    (make-rgb 130 130 130))
+;  (define Default-Edge-Color           (make-rgb 10 10 10))
+  (define Default-Edge-Full-Color      (make-rgb 10 10 10))
+  (define Default-Edge-Dead-Color      (make-rgb 200 200 240))
+  (define Default-Line-Highlight-Color (make-rgb 0 0 200))
+  (define Default-Mark-Color           (make-rgb 0 0 0))
+  (define Default-Proc-Border-Color    (make-rgb 0 0 0))
+  (define Default-Mouse-Highlight-Color (make-rgb 200 200 0))
+  )
 
-;(define Starting-Node-Color (make <rgb> 200 10 10))
-(define Starting-Node-Color (make-rgb 130 130 130))
-(define Default-Edge-Color  (make-rgb 10 10 10))
+;; My dark background theme:
+(begin
+  (define Default-Drawing-Color     (make-rgb 0 255 0))
+  (define Default-Window-Color      (make-rgb 150 150 150))
+  (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
+  (define Default-Background-Color  (make-rgb 50 50 50))
+  (define Default-Canvas-Text-Color (make-rgb 150 150 200))
+  (define Default-Supertext-Color   (make-rgb 200 200 200))
+  (define Default-Subtext-Color     (make-rgb 100 200 100))
+  (define Default-LED-Off-Color     (make-rgb 0 50 50))
+  
+  ;(define Starting-Node-Color (make <rgb> 200 10 10))
+  (define Default-Node-Color           (make-rgb 130 130 130))
+  (define Default-Base-Border-Color    (make-rgb 0 255 0))
+;  (define Default-Edge-Full-Color           (make-rgb 70 70 70))
+  (define Default-Edge-Full-Color      (make-rgb 160 160 160))
+  (define Default-Edge-Dead-Color      (make-rgb 55 55 55))
+  (define Default-Line-Highlight-Color (make-rgb 0 0 200))
+  (define Default-Mark-Color           (make-rgb 255 0 0))
+  (define Default-Proc-Border-Color    (make-rgb 0 0 0))
+  (define Default-Mouse-Highlight-Color (make-rgb 200 200 0))
+  )

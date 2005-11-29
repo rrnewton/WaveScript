@@ -65,15 +65,17 @@
                   ;(set-simobject-redraw! ob #t)
                   )]
 
-(define (sim-highlight-edge nbr)
-  (let ((g (simobject-gobj (current-simobject))))
-    (when g 
-      (let ((pr (assq nbr (gobject-edgelist g))))
-	(if pr 
-	    (highlight-edge (cadr pr))
-	    (error 'sim-highlight-edge 
-		   "tried to highlight an edge to non-connected neighbor: ~s" nbr))))))
-
+(define (sim-highlight-edge nbr . extra)
+  (if (integer? nbr)
+      (let ((g (simobject-gobj (current-simobject))))
+	(when g 
+	  (let ((pr (assq nbr (gobject-edgelist g))))
+	    (if pr 
+		;; This calls the actual graphics procedure:
+		(apply highlight-edge (cadr pr) extra)
+		(error 'sim-highlight-edge 
+		       "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))))
+  
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)

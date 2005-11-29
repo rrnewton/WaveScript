@@ -3,6 +3,8 @@
 ;; Should provide the same functionality as plt/graphics_stub.ss
 
 ;; THERE IS NO ABSTRACTION BOUNDARY BETWEEN THIS AND BASIC_GRAPHICS.SS
+;; FIXME TODO: MERGE WITH BASIC_GRAPHICS.SS
+
 
 ;; TODO IMPLEMENT GET-STATE
 
@@ -122,15 +124,40 @@
 
 ;(define links '())
 
-;; Highlights a line gobj.
-(define (highlight-edge line)
-  (change-color! line (make-rgb 0 0 200))
-  (set-line-thickness! line 2))
+;; Highlights a line gobj, optionally unhighlighting after a period of time.
+(define highlight-edge   
+  (case-lambda 
+    [(line) (highlight-edge line Default-Line-Highlight-Color)]   
+    [(line color) (send line highlight-edge color)]
+    [(line color time) (send line highlight-edge color time)]))
+#;    [(line color)
+     (change-color! line color)
+     (set-line-thickness! line 2)]
+#;    [(line color time)
+     (let ((oldcolor (get-fill-color line))
+	   (oldthickness (get-line-thickness line))
+	   (col (rec->rgb color)))
+       ;(when (not (number? oldthickness)) (printf "Bad oldthickness! \n")(inspect oldthickness))
+       (when (and oldcolor oldthickness)
+	 (set-fill-color! line col)
+	 (set-line-thickness! line 2)
+	 (thread-fork 
+	  (lambda ()	  
+	    (thread-sleep time)
+	    ;(when (and (eq? oldcolor (get-fill-color line))
+	    (set-fill-color! line oldcolor) 
+	    (set-line-thickness! line (inexact->exact oldthickness))
+	    (thread-sleep 500)
+	    (show line)
+	    ))))]
 
 ;; Turns the line gobj back to default appearance.
 (define (unhighlight-edge line)
-  (change-color! line Default-Edge-Color)
-  (set-line-thickness! line 1))
+  ; ;(change-color! line Default-Edge-Full-Color)
+  ; ;(set-line-thickness! line 1)
+  ;(send line restore-defaults)
+  (send line unhighlight-edge)
+  )
 
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
@@ -166,39 +193,81 @@
 ;; This *does not show* the screen object (gobj) that it creates.
 ;; Screen objects are SWL objects.  Their represention is opaque to us.
 ;; [2005.11.07] Now this returns a vector with four graphics: circle + three led boxes
-(define (draw-proc pr nodeid)
-  (mvlet ([(x y) (coord:sim->screen pr)])
-  (let ([boundx1 (- x processor-screen-radius)]
-	[boundy1 (- y processor-screen-radius)]
-	[boundx2 (+ x processor-screen-radius)]
-	[boundy2 (+ y processor-screen-radius)]
-	[third (/ (* 2 processor-screen-radius) 3)])
-    (let ((circ (create <oval> the-win
+(define draw-proc 
+  (let ()
+    (define-class (<proc-oval> prnt x1 y1 x2 y2) (<oval> prnt x1 y1 x2 y2)
+      (ivars (nodeid #f))
+      (inherited) (inheritable)
+      (private) (protected)
+      (public
+       [set-node-id! (nid)
+		     (set-fill-color! self (rec->rgb Default-Node-Color))
+		     (set! nodeid nid)
+		     (send self set-border)]
+
+       [set-border ()
+		   (if (eqv? nodeid BASE_ID)
+		       (set-outline-color! self (rec->rgb Default-Base-Border-Color))
+		       (set-outline-color! self (rec->rgb Default-Proc-Border-Color)))]
+
+;       [init (prnt x1 y1 x2 y2)
+;	     (send-base self prnt x1 y1 x2 y2)]
+
+       [mouse-enter (x y mods)
+		    (set-line-thickness! self 2)
+		    (set-outline-color! self (rec->rgb Default-Mouse-Highlight-Color))]
+       [mouse-leave (x y mods)
+		    (set-line-thickness! self 1)
+		    ;(set-outline-color! self (rec->rgb Default-Proc-Border-Color))
+		    (send self set-border)]
+       [mouse-release (x y mods)
+		      (eval `(print-node-stats ,nodeid))]
+       ))
+    (define-class (<child-rect> prnt x1 y1 x2 y2) (<rectangle> (get-parent prnt) x1 y1 x2 y2)
+      (ivars (prnt prnt))
+      (inherited) (inheritable) (private) (protected)
+      (public ; This is transparent, just acts as part of the parent:
+       [mouse-enter   (x y mods) (send prnt mouse-enter x y mods)]
+       [mouse-leave   (x y mods) (send prnt mouse-leave x y mods)]
+       [mouse-press   (x y mods) (send prnt mouse-press x y mods)]
+       [mouse-release (x y mods) (send prnt mouse-release x y mods)]
+       ))
+
+    (lambda (pr nodeid)
+      (mvlet ([(x y) (coord:sim->screen pr)])
+	(let ([boundx1 (- x processor-screen-radius)]
+	      [boundy1 (- y processor-screen-radius)]
+	      [boundx2 (+ x processor-screen-radius)]
+	      [boundy2 (+ y processor-screen-radius)]
+	      [third (/ (* 2 processor-screen-radius) 3)])
+	  (let ((circ (create <proc-oval> the-win
 ;			     50 50 
 ;			     100 100)))
-			     boundx1 boundy1 boundx2 boundy2)))
+			      boundx1 boundy1 boundx2 boundy2 
+			      with (node-id: nodeid))))
 ;			     (flonum->fixnum (- x processor-screen-radius))
 ;			     (flonum->fixnum (- y processor-screen-radius))
 ;			     (flonum->fixnum (+ x processor-screen-radius))
 ;			     (flonum->fixnum (+ y processor-screen-radius)))))	  
 
-	   (let ([box1 (create <rectangle> the-win 
+	   (let ([box1 (create <child-rect> circ
 			       boundx1                 (+ boundy1 (* .8 third))
 			       (+ boundx1 third)       (- boundy2 (* .8 third)))]
-		 [box2 (create <rectangle> the-win 
+		 [box2 (create <child-rect> circ 
 			       (+ boundx1 third)       (+ boundy1 (* .8 third))
 			       (+ boundx1 (* 2 third)) (- boundy2 (* .8 third)))]
-		 [box3 (create <rectangle> the-win 
+		 [box3 (create <child-rect> circ
                                (+ boundx1 (* 2 third)) (+ boundy1 (* .8 third))
 			       (+ boundx1 (* 3 third)) (- boundy2 (* .8 third)))]
-		 [defled (make <rgb> 0 50 50)]
+		 [defled (rec->rgb Default-LED-Off-Color)]
 		 [text (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
 			                             (- boundy1 (* 0.3 processor-screen-radius))
-			       with (title: (format "~s" nodeid )))]
+			       with (title: (format "~s" nodeid ))
+			       (fill-color: (rec->rgb Default-Supertext-Color)))]
 		 [text2 (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
 			                             (+ boundy2 (* 0.35 processor-screen-radius))
 						     with (title: "") ;(format "~s" nodeid ))
-						          (fill-color: (make <rgb> 0 100 0)))]
+						     (fill-color: (rec->rgb Default-Subtext-Color)))]
 		 )
 	     (show text)
 	     (show text2)
@@ -210,16 +279,15 @@
 	     (set-fill-color! box2 defled)
 	     (set-fill-color! box3 defled)
 	   
-	   (set-fill-color! circ (rec->rgb Starting-Node-Color))
 ;	   (show circ)
 	   (set! processor-screen-objs
 		 (append (list circ box1 box2 box3 text text2)
 			 processor-screen-objs))
-	   (vector circ box1 box2 box3 text text2))))))
+	   (vector circ box1 box2 box3 text text2))))))))
 
 ;; This returns nothing.
 (define (draw-mark pr . color)
-  (set! color (if (null? color) (make-rgb 0 0 0) (car color)))
+  (set! color (if (null? color) Default-Mark-Color (car color)))
   (mvlet ([(x y) (coord:sim->screen pr)])
     (let ((len 10)) ;; shouldn't be constant.
       (let ([l1 (create <line> the-win (- x len) (- y len) (+ x len) (+ y len))]
@@ -243,22 +311,117 @@
 ;; This draws a new edge and adds that graphics object to the global list, 
 ;; as well as returning it.
 (define (draw-edge pos1 pos2)
+  (define (interpolate per c1 c2)
+    (define (->fixnum n) (inexact->exact (floor n)))
+    (let ((frac (/ per 100)))
+      (make <rgb> 
+	(->fixnum (+ (rgb-red c1) (* frac (- (rgb-red c2) (rgb-red c1)))))
+	(->fixnum (+ (rgb-green c1) (* frac (- (rgb-green c2) (rgb-green c1)))))
+	(->fixnum (+ (rgb-blue c1) (* frac (- (rgb-blue c2) (rgb-blue c1))))))))
+
   (let ([box1 (list 0 0 world-xbound world-ybound)]
-	[box2 (list 0 0 window-width window-height)])
+	[box2 (list 0 0 window-width window-height)]
+	[connectivity ((simalpha-connectivity-function) pos1 pos2)])
+
+    (define-class (<my-line> prnt x1 y1 x2 y2) (<line> prnt x1 y1 x2 y2)
+      (ivars [orig-color 'uninit-color]
+	     [orig-thickness 'unit-thickness]
+	     [currently-flashing #f]
+	     [highlight-stack '()]
+	     )
+      (inherited) (inheritable)
+      (private) (protected)
+      (public
+       [mouse-enter  (x y mods) (send self trigger-higlight)]
+       [mouse-leave  (x y mods) (send self trigger-higlight)]
+       [mouse-motion (x y mods) (send self trigger-higlight)]
+
+       [restore-defaults ()
+			 (set-fill-color! self orig-color)
+			 (set-line-thickness! self 1)
+			 (void)]
+
+       ;; Destroy the highlight-stack and permanently set a color:
+       [highlight-edge (color)
+		       (set! highlight-stack ())
+		       (change-color! self color)
+		       (set-line-thickness! self 2)]
+       [highlight-edge (color time)
+		       ;; (printf "Highlight stack: len ~a: ~a ~a\n" (length highlight-stack) (real-time) (map car highlight-stack))
+		       ;; Add a frame to the highlight stack:
+		       (critical-section
+			(set! highlight-stack
+			      (cons (list (+ (real-time) time)
+					  (get-fill-color self)
+					  (get-line-thickness self))
+				    highlight-stack )))			            
+		       (set-fill-color! self (rec->rgb color))
+		       (set-line-thickness! self 2)
+		       (thread-fork 
+			(lambda ()	  
+			  (thread-sleep time)
+			  ;; Unwind the highlight-stack:
+			  (send self unhighlight-edge)))]
+
+       ;; Pops off the stack.
+       [unhighlight-edge ()
+			 (critical-section
+			   (let ((t (real-time)))
+			     ;(printf "Unwinding stack of len: ~a ~a ~a\n" (length highlight-stack) t (map car highlight-stack))
+			     (let ((next (let loop ((ls highlight-stack) (mostrecent #f))
+					   (cond
+					    [(null? ls) (set! highlight-stack ()) mostrecent]
+					    ; If this next frame has already expired we pop it and keep going.
+					    [(< (caar ls) t)  (loop (cdr ls) (car ls))]
+					    ; If we reach a frame in the future we stop.
+					    [else (set! highlight-stack ls) mostrecent]))))
+			       ;(printf "Unwound to  len: ~a: ~a\n" (length highlight-stack) (map car highlight-stack))
+			       (if next
+				   (begin 
+				     (when (not (number? (caddr next)) )
+				       (printf "Bad oldthickness! \n")(inspect oldthickness))
+				     (set-fill-color! self (cadr next))
+				     (set-line-thickness! self (inexact->exact (caddr next))))
+				   ; Fizzle, we're already gone:
+				   (void)
+				   ;(send self restore-defaults)
+				   ))))]
+	
+       [init (prnt x1 y1 x2 y2)
+	     (send-base self init prnt x1 y1 x2 y2)
+	     (set! orig-color (interpolate connectivity
+					   Default-Edge-Dead-Color
+					   Default-Edge-Full-Color))
+	     (set! orig-thickness
+		   (if (and (not (eq? (simalpha-channel-model) 'lossless))
+			    (number? connectivity) (> connectivity 50))
+		       2 1))
+	     (set-fill-color! self orig-color)
+	     (set-line-thickness! self orig-thickness)
+	     ]
+
+       [trigger-higlight ()
+		(when (or (not currently-flashing)
+			  (< 1000 (- (real-time) currently-flashing)))
+		  (set! currently-flashing (real-time))
+		  (highlight-edge self Default-Mouse-Highlight-Color 300)
+		  ;(printf "Edge ~a->~a Connectivity: ~a\n" pos1 pos2 connectivity)
+		  (flash-text (format "Edge ~a->~a Connectivity: ~a" 
+				      pos1 pos2 connectivity) 1500))
+		]
+       ))
+
     (DEBUGMODE
      (if (not (and (list? pos1) (= 2 (length pos1))
 		   (list? pos2) (= 2 (length pos2))))
 	 (error 'chez/graphics_stub.draw-edge
 		"Invalid input positions: ~s ~s" pos1 pos2)))
 
-;    (let ([a (car pos1)] [b (cadr pos1)]
-;	  [c (car pos1)] [d (cadr pos1)])
     (mvlet ([(x1 y1) (scale2d pos1 box1 box2)]
 	    [(x2 y2) (scale2d pos2 box1 box2)])
-	   (let ((line (create <line> the-win x1 y1 x2 y2
-			       with (fill-color: (rec->rgb Default-Edge-Color)))))
-	     (set! edge-screen-objs
-		   (cons line edge-screen-objs))
+	   (let ((line (create <my-line> the-win x1 y1 x2 y2)))
+	     (set! edge-screen-objs (cons line edge-screen-objs))
+	     (show line)
 	     line))))
 
 

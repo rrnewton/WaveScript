@@ -43,6 +43,9 @@
 
 (print-graph #t)
 (print-gensym #f)
+(print-level 8)
+(print-length 80)
+(pretty-maximum-lines 700)
 
 (define-syntax IF_GRAPHICS
   (lambda (x)
@@ -312,23 +315,6 @@
       (define-top-level-value 'grepl graphical-repl)
       ))
 
-(IF_GRAPHICS
- (begin 
-   (define-syntax ig (identifier-syntax (init-graphics))) ;; shorthand
-   (define-syntax cg (identifier-syntax (close-graphics))) ;; shorthand
-;   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
-   (define-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
-   (define-syntax world (identifier-syntax (simalpha-current-simworld))) ;; shorthand
-   (define (node id) ;; shorthand
-     (let loop ((ls (simworld-all-objs (simalpha-current-simworld))))
-       (cond
-	[(null? ls) (error 'node "couldn't find ~s" id)]
-	[(= (node-id (simobject-node (car ls))) id) (car ls)]
-	[else (loop (cdr ls))])))
-   (define (dist id1 id2) ;; shorthand
-     (sim-locdiff (node-pos (simobject-node (node id1)))
-		  (node-pos (simobject-node (node id2)))))
-   ))
 
 ;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
 

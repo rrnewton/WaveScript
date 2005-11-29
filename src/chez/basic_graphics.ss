@@ -14,6 +14,8 @@
 			;; current-filling-color
 			;; current-background-color
 			;; draw-ellipse ....
+
+			flash-text
 			)
 
 
@@ -52,19 +54,31 @@
      (thread-sleep ms)
      (destroy ob))))
 
-(define (flash-text txt ms)
-  (if (not the-text-readout)
-      (error 'flash-text "the-text-readout is null, graphics must not be initialized."))
-  (thread-fork
-   (lambda ()
-     (let ((snapshot (get-title the-text-readout)))
-       (set-title! the-text-readout txt)
-       (thread-sleep ms)
-       ;; If we haven't been displaced, reset text:
-       ;(if (equal? txt (get-title the-text-readout)) (set-title! the-text-readout snapshot))
+;(define (new-timer t th) (thread-fork (lambda () (thread-sleep ms) (th))))
+
+;; Flashes a bit of text at the bottom of the GUI window for a given period of time.
+(define flash-text 
+  ; Currently this list should only contain one flash:
+  (let ((current-flashes '()))
+    (lambda (txt ms)
+      (if (not the-text-readout)
+	  (error 'flash-text "the-text-readout is null, graphics must not be initialized."))
+      (critical-section 
+       (for-each thread-kill current-flashes)
        (set-title! the-text-readout "")
-       (thread-kill)
-       ))))
+       (let ((newthread (thread-fork
+			 (lambda ()
+			   (let ((snapshot (get-title the-text-readout)))
+			     (set-title! the-text-readout txt)
+			     (thread-sleep ms)
+			     ;; If we haven't been displaced, reset text:
+					;(if (equal? txt (get-title the-text-readout)) (set-title! the-text-readout snapshot))
+			     (set-title! the-text-readout "")
+			     (critical-section
+			      (set! current-flashes (remq (thread-self) current-flashes)))
+			     (thread-kill)
+			     )))))
+	 (set! current-flashes (cons newthread current-flashes)))))))
 
 ;; Init the graphics system, bring up a window.<br> 
 ;; [2005.11.25] Man I'm having some serious annoyance figuring out how to do proper layout with SWL.
@@ -72,7 +86,10 @@
 ;; <br> [2005.11.26] NOTE: Having problems with modules/imports/records here.  Using 'eval' as a hack: (FIXME)
 (define (init-graphics)
   
-  ;; This entry calls its action every time a key is typed:
+  ;; [internal] A list of thunks to call when the view is being updated.
+  (define view-update-hooks '())
+
+  ;; [internal] This entry calls its action every time a key is typed:
   (define-class (<better-entry> parent) (<entry> parent)
     (ivars)
     (inherited) (inheritable)
@@ -82,6 +99,72 @@
      [key-release (k mods)     ((get-action self) self)]
      ))
 
+  ;; [internal] This class displays a label next to the entry, and
+  ;; monitors the associated numeric parameter for changes, updating
+  ;; the view accordingly.
+  (define-class (<numeric-param-entry> name label param parent) (<frame> parent)
+    (ivars (label-obj #f) (entry-obj #f))
+    (inherited)  (inheritable)  (private)   (protected)
+    (public
+      ;[mouse-leave (x y mods) ((get-action self) self)]
+     [init (nm lab prm prnt)
+	   (send-base self init prnt)	   
+	   (set! entry-obj 
+		 (create <better-entry> self with (width/char: 4)			
+			 (action: (lambda (self)
+				    (let ((num (string->number (get-string self))))
+				      (when num 
+					(flash-text (format "Setting ~a: ~s\n" nm (get-string self)) 1000)
+					(prm num)))))
+			 ;(fill-color: Default-Window-Text-Color)
+			 ))
+	   (insert entry-obj (number->string (prm)))
+	   (set! label-obj (create <label> self with (title: lab)))
+	   (pack entry-obj (side: 'left))
+	   (pack label-obj (side: 'right))
+
+	   (set-background-color! self      (rec->rgb Default-Window-Color))
+	   (set-background-color! entry-obj (rec->rgb Default-Window-Color))
+	   (set-background-color! label-obj (rec->rgb Default-Window-Color))
+	   
+	   ;; Add an update hook for this:
+	   (set! view-update-hooks (cons (lambda ()
+					   (let ((curval (string->number (get-string entry-obj))))
+					     (if curval
+						 (unless (equal? (prm) curval)
+						   (delete-all entry-obj)
+						   (insert entry-obj (number->string (prm)))))))
+					 view-update-hooks))
+	   ]
+     [set-width/char! (n) (set-width/char! entry-obj n)]
+     ))
+
+  ;; [internal] This class check-button and also manages the book-keeping.
+    (define-class (<bool-param-button> name label param parent) (<checkbutton> parent)
+    (ivars) 
+    (inherited) (inheritable) (private) (protected)
+    (public
+      ;[mouse-leave (x y mods) ((get-action self) self)]
+     [init (nm lab prm prnt)
+	   (send-base self init prnt)
+	   (set-title! self lab)
+	   (if (prm) (send self select) (send self deselect))
+
+	   (set-action! self
+	    (lambda (self)
+	      ;(set! realtime-state (not realtime-state))
+	      (prm (not (prm)))
+	      (flash-text (format "Setting ~a: ~a\n" nm (prm)) 1000)
+	      (if (prm) (send self select) (send self deselect))))
+
+	   (set-background-color! self (rec->rgb Default-Window-Color))
+
+	   (set! view-update-hooks
+		 (cons (lambda ()
+			 (if (prm) (send self select) (send self deselect)))
+		       view-update-hooks))]
+     ))
+  
   ;; We set up a single additional thread for evaluation.  It receives
   ;; expressions via this queue.
 ;  (define eval-queue (thread-make-msg-queue 'graphics-eval-queue))
@@ -92,7 +175,9 @@
 			      (set! sim-busy #t) 
 			      (eval exp)
 			      (set! sim-busy snap)
-			      (flash-text "Simulation Finished." 900)))))
+			      (printf "Simulation Finished.\n")
+			      (flash-text "Simulation Finished." 900)
+			      (thread-kill)))))
 
 ;  (printf "Running graphical interface to simple simulator.~n")
   (if the-win 
@@ -101,31 +186,38 @@
 	    [group #f])
 
 	(set! the-winframe (create <toplevel> with 
-			      (title: "Region Streams Demo")))
+				   (title: "Region Streams Demo")
+				   (background-color: (rec->rgb Default-Window-Color))
+				   ))
 
-	(set! group (create <frame> the-winframe))
+	(set! group (create <frame> the-winframe with
+			    (background-color: (rec->rgb Default-Window-Color))))
 
 	(set! the-panel (create <frame>  group ;the-winframe
 				with
 				;(width: (in->pixels 1)) ;(+ window-width 200))
 				;(height: window-height)
 				;(background-color: (make <rgb> 100 50 50))
+				(background-color: (rec->rgb Default-Window-Color))
 				))
 	(set! the-panel2 (create <frame>  the-winframe
 				with
 				;(width: (in->pixels 1)) ;(+ window-width 200))
 				;(height: window-height)
 				;(background-color: (make <rgb> 100 50 50))
+				(background-color: (rec->rgb Default-Window-Color))
 				))
 	(set! the-win (create <canvas> group ;the-winframe
 				 with
 				 (width: window-width) ;(in->pixels 5))
 				 (height: window-height) ;(in->pixels 5))
-				 (background-color: (make <rgb> 215 215 255))
+				 (background-color: (rec->rgb Default-Background-Color))
 				 ))
 
 	(set! the-text-readout (create <canvas-text> the-win (- (/ window-width 2) 10) (- window-height 13)
-					with (title: "")))
+					with (title: "")
+					(fill-color: (rec->rgb Default-Canvas-Text-Color))
+					))
 
 	;; We start up a single additional thread for evaluation:
 #;
@@ -161,23 +253,11 @@
 								       ))
 						))
 				     )))]
-	       ; Wow, I can't believe that there doesn't seem to be a way to get the current state of a checkbutton. [2005.11.26]
-	       [realtime-state #f]
-	       [realtime-button (create <checkbutton> the-panel2 with (title: "Realtime")
-;				(draw-indicator: #f)
-				(action:				
-				   (lambda (_)
-				     (set! realtime-state (not realtime-state))
-				     (simalpha-realtime-mode (not (simalpha-realtime-mode))))))]
-	       [msgcounts-state #f]
-	       [msgcounts-button (create <checkbutton> the-panel2 with (title: "Show MsgCounts")
-				(action: (lambda (self)
-					   (set! msgcounts-state (not msgcounts-state))
-					   (simalpha-label-msgcounts (not (simalpha-label-msgcounts)))
-					   (unless msgcounts-state
-					     (eval '(for-each (lambda (x) (sim-setlabel "" x))
-						      (simworld-all-objs (simalpha-current-simworld)))))
-					   )))]
+
+	       [realtime-button (create <bool-param-button> 'simalpha-realtime-mode 
+					"Realtime"           simalpha-realtime-mode the-panel2)]
+	       [msgcounts-button (create <bool-param-button> 'simalpha-label-msgcounts 
+					 "Show MsgCounts"     simalpha-label-msgcounts the-panel2)]
 
 	       ;; UNFINISHED:
 	       [showedges-state #t]
@@ -193,68 +273,74 @@
 						    (if showedges-state
 							(for-each show edges)
 							(for-each hide edges))))))]
-
 	       [num-nodes-widget 
-		(let ((f (create <frame> the-panel2)))
-		  (let ((e (create <better-entry> f with (width/char: 4)			
-				   (action: (lambda (self)
-					      (flash-text (format "Setting sim-num-nodes: ~s\n" (get-string self)) 1000)
-					      ;(printf "Setting sim-num-nodes: ~s\n" (get-string self))
-					      (sim-num-nodes (string->number (get-string self))))))))
-		    (insert e (number->string (sim-num-nodes)))
-		    (pack e (side: 'left))
-		    (pack (create <label> f with (title: "Nodes")) (side: 'right))
-		    f))]
+		(create <numeric-param-entry> 'sim-num-nodes "NumNodes" sim-num-nodes the-panel2
+			with (width/char: 4))]
+	       [timeout-widget 
+		(create <numeric-param-entry> 'sim-timeout "Timeout" sim-timeout the-panel2
+			with (width/char: 6))]
 	       
 	       [placement-widget
-		(let* ((f (create <frame> the-panel2))
+		(let* ((f (create <frame> the-panel2 with
+				  (background-color: (rec->rgb Default-Window-Color))))
 		       (b1 (create <radiobutton> f with (title: "Connected")
-				(action: (lambda _ (simalpha-placement-type 'connected)))))
+				   (action: (lambda _ (simalpha-placement-type 'connected)))
+				   (background-color: (rec->rgb Default-Window-Color))))
 		       (b2 (create <radiobutton> f with (title: "Gridlike")
-				(action: (lambda _ (simalpha-placement-type 'gridlike)))))
+				   (action: (lambda _ (simalpha-placement-type 'gridlike)))
+				   (background-color: (rec->rgb Default-Window-Color))))
 		       (b3 (create <radiobutton> f with (title: "Random")
-				(action: (lambda _ (simalpha-placement-type 'random))))))
+				   (action: (lambda _ (simalpha-placement-type 'random)))
+				   (background-color: (rec->rgb Default-Window-Color)))))
 		  (pack b1 (anchor: 'w))
-		  (pack b2 (anchor: 'w))
 		  (pack b3 (anchor: 'w))
+		  (pack b2 (anchor: 'w))
 		  (case (simalpha-placement-type)
 		    [(connected) (send b1 select)]
 		    [(gridlike)  (send b2 select)]
 		    [(random)    (send b3 select)])
+
+		  ;(let ((f2 (create <frame> f)))
+; 		  (let ((e (create <better-entry> f with (width/char: 4)			
+; 				   (action: (lambda (self)
+; 					      (flash-text (format "Setting simalpha-max-gridlike-perturbation: ~s\n" (get-string self)) 1000)
+; 					      (let ((num (string->number (get-string self))))
+; 						(if num (simalpha-max-gridlike-perturbation num))))))))
+; 		      (insert e (number->string (simalpha-max-gridlike-perturbation)))
+; 		      (pack e (side: 'left))
+; 		      (pack (create <label> f with (title: "GridPerturbation")) (side: 'right)))
+		  (pack (create <numeric-param-entry> 'simalpha-max-gridlike-perturbation 
+				"GridPerturb"          simalpha-max-gridlike-perturbation the-panel2
+				with (width/char: 4))) ;(anchor: 'w))
 		  f)]
 
 	       [radio-widget
-		(let* ((f (create <frame> the-panel2))
+		(let* ((f (create <frame> the-panel2 with
+				  (background-color: (rec->rgb Default-Window-Color))))
 		       (b1 (create <radiobutton> f with (title: "Lossless")
-				   (action: (lambda _ (simalpha-channel-model 'lossless)))))
+				   (action: (lambda _ (simalpha-channel-model 'lossless)))
+				   (background-color: (rec->rgb Default-Window-Color))))
 		       (b2 (create <radiobutton> f with (title: "LinearDisc")
-				   (action: (lambda _ (simalpha-channel-model 'linear-disc))))))
+				   (action: (lambda _ (simalpha-channel-model 'linear-disc)))
+				   (background-color: (rec->rgb Default-Window-Color)))))
 		  (pack b1 (anchor: 'w))
 		  (pack b2 (anchor: 'w))
 		  (case (simalpha-channel-model)
 		    [(lossless)    (send b1 select)]
 		    [(linear-disc) (send b2 select)])
-		  
-		  (let* ((f2 (create <frame> f))
-			 (inner (create <better-entry> f2 with (width/char: 3)
-					(action: (lambda (self) (simalpha-inner-radius (string->number (get-string self))))))))
-		    (insert inner (number->string (simalpha-inner-radius)))
-		    (pack inner (side: 'left))
-		    (pack (create <label> f2 with (title: "Inner radius")) (side: 'left))
-		    (pack f2 (anchor: 'w)))
-		  (let* ((f3 (create <frame> f))
-			 (outer (create <better-entry> f3 with (width/char: 3)
-					(action: (lambda (self) (simalpha-outer-radius (string->number (get-string self))))))))
-		    (insert outer (number->string (simalpha-outer-radius)))
-		    (pack outer (side: 'left))
-		    (pack (create <label> f3 with (title: "Outer radius"))(side: 'left))
-		    (pack f3 (anchor: 'w)))
+
+		  (pack (create <numeric-param-entry> 'simalpha-inner-radius "Inner radius" simalpha-inner-radius f
+				with (width/char: 3)) (anchor: 'w))
+		  (pack (create <numeric-param-entry> 'simalpha-outer-radius "Outer radius" simalpha-outer-radius f
+				with (width/char: 3)) (anchor: 'w))
+
 		  f)]
 
 	       [clock-readout (create <canvas-text> the-win 
 				      30 ;(- (/ window-width 2) 10) 
 				      (- window-height 13)
 				      with (title: "t = ")
+				      (fill-color: (rec->rgb Default-Canvas-Text-Color))
 				      (font: (create <font> 'times 16 '(bold))))]
 
 
@@ -306,32 +392,37 @@
 				   (if (not (eq? win the-win)) (thread-kill))
 
 				   (DEBUGASSERT (simworld? (simalpha-current-simworld)))
-				   ;(printf "View update!\n")(flush-output-port)
+
+				   ; Draw the clock in the corner of the screen.
 				   (set-title! clock-readout 
 					       (format "t = ~s" (simworld-vtime (simalpha-current-simworld))))
 				   (show clock-readout)
 
-				   (unless (eq? realtime-state (simalpha-realtime-mode))
-				     (set! realtime-state (not realtime-state))
-				     (send realtime-button toggle))
-
-				   (unless (eq? msgcounts-state (simalpha-label-msgcounts))
-				     (set! msgcounts-state (not msgcounts-state))
-				     (send msgcounts-button toggle))
-
-				   ;; TODO: num-nodes
-				   ;; TODO: placement-widget
-
+				   ; This updates all the message labels.
 				   (if (simalpha-label-msgcounts)
-				       (thread-eval 
+				       (eval ; Was using thread-eval for this.  How long should it take?
 					'(for-each (lambda (ob)						   
 						   (sim-setlabel (format "~a->~a"
 									 (simobject-local-recv-messages ob)
 									 (simobject-local-sent-messages ob)) ob))
 					   (simworld-all-objs (simalpha-current-simworld)))))
 
+				   ;; Now call any other update hooks:
+				   ;; (Right now [2005.11.27] this is used for the text entry fields.)
+				   (for-each (lambda (th) (th)) view-update-hooks)
+
 				   (thread-sleep 250)
 				   (viewer-update-loop))))))
+
+	  ;; Let's add a bit more to wipe those msg count readouts when we turn the param off:
+	  (let ((oldac (get-action msgcounts-button)))
+	    (set-action! msgcounts-button
+			 (lambda (self)
+			   (oldac self)
+			   (if (not (simalpha-label-msgcounts))
+			       (eval '(for-each (lambda (x) (sim-setlabel "" x))
+					(simworld-all-objs (simalpha-current-simworld))))))))
+
 
 ;	  (send showedges-button toggle)
 	  	
@@ -344,13 +435,16 @@
 	  (pack printconn-button  (side: 'left))
 
 
-	  (pack (create <label> the-panel2 with (title: "Topology")) (anchor: 'w))
+	  (pack (create <label> the-panel2 with (title: "Topology")
+			(background-color: (rec->rgb Default-Window-Color))) (anchor: 'w))
 	  (pack placement-widget );(anchor: 'w)) ;(side: 'left))
-	  (pack (create <label> the-panel2 with (title: "Radio")) (anchor: 'w))
+	  (pack (create <label> the-panel2 with (title: "\nRadio")
+			(background-color: (rec->rgb Default-Window-Color))) (anchor: 'w))
 	  (pack radio-widget )
 	  (pack realtime-button  (anchor: 'w)) ;(side: 'left) (anchor: 'se))
 	  (pack msgcounts-button (anchor: 'w)) ;(side: 'left) (anchor: 'se))
 	  (pack num-nodes-widget (anchor: 'w)) ;(side: 'left))
+	  (pack timeout-widget (anchor: 'w)) ;(side: 'left))
 
 	  (pack showedges-button );(anchor: 'w)) ;(side: 'left) 
 

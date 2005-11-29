@@ -17,9 +17,11 @@
 ;(sum valfield)
 
 ;(rmap 2hop world)
-;(khood 
-(anchor-at 30 40) ;2)
+;(cons (khood (anchor-at 30 40) 1)
+;      (cons (anchor-at 50 10) ;(khood (anchor-at 50 10) 1)
+;	    '())
 
+(khood (anchor-at 10 40) 2)
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:

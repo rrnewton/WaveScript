@@ -1,3 +1,6 @@
+;;;; This is like the hello world of Regiment:
+;;;; It establishes a single spanning tree across the network and uses
+;;;; it to aggregate all the sensor readings.
 
 ;; Simulation configuration:
 (parameters 
@@ -7,9 +10,7 @@
     [simalpha-channel-model 'linear-disc] ;'lossless]
     [simalpha-failure-model 'none])
 
-;; This is like the hello world of Regiment:
-;; It establishes a single spanning tree across the network and uses
-;; it to aggregate all the sensor readings.
+;; Main program:
 
 (define readings (rmap sense world))
 

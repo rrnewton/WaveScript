@@ -132,6 +132,9 @@
 
     (rfold          (Function Object Area) Signal)
     (smap           (Function Signal) Signal)
+    
+    ;; This joins two signals in the network.
+    (smap2          (Function Signal Signal) Signal)
 
     (anchor-at      (Number Number) Anchor)
 
@@ -338,7 +341,7 @@
      (highlight-edge (Integer) Void)
      ; [2005.04.30] Disabling these for now, will get them back up later.
      (draw-mark (List) Void)
-     ;(rgb)
+     (rgb (Integer Integer Integer) Object)
      ))
 
 ;; Keywords allowed in the restricted token machine language.
@@ -522,6 +525,35 @@
 					     newargs
 					     ))))))))])))
 
+(define-syntax apply-ordered
+  (lambda (x)
+    (syntax-case x ()
+      [(appord f x ...)
+       (with-syntax (((tmp ...) (map 
+				    (lambda (_) (datum->syntax-object #'appord (gensym "tmp")))
+				  (syntax-object->datum #'(x ...)))))
+	 #'(let* ((tmp x) ...) (f tmp ...)))])))
+
+;; '++' is a string-append shorthand
+(define-syntax ++
+  (lambda (x)
+    (syntax-case x ()
+		 [id (identifier? #'id) #'string-append]
+		 [(_ E ...) #'(string-append E ...)])))
+
+;; This is used for defining convenient shorthands than need no parentheses!
+(define-syntax define-id-syntax  
+  (lambda (x)
+    (syntax-case 
+	x ()
+	[(_ v e)
+	 #'(define-syntax v 
+	     (lambda (x)
+	       (syntax-case x ()
+			    [id (identifier? #'id) #'e]
+			    [(id x (... ...)) (identifier? #'id)
+			     #'(e x (... ...))])))])))
+
 (define (with-evaled-params params th)
   (let loop ((ls params))
     (if (null? ls) 
@@ -536,20 +568,6 @@
 		  (cadar ls))
 	  (loop (cdr ls))))))
 
-(define-syntax apply-ordered
-  (lambda (x)
-    (syntax-case x ()
-      [(appord f x ...)
-       (with-syntax (((tmp ...) (map 
-				    (lambda (_) (datum->syntax-object #'appord (gensym "tmp")))
-				  (syntax-object->datum #'(x ...)))))
-	 #'(let* ((tmp x) ...) (f tmp ...)))])))
-
-(define-syntax ++
-  (lambda (x)
-    (syntax-case x ()
-		 [id (identifier? #'id) #'string-append]
-		 [(_ E ...) #'(string-append E ...)])))
 
 (define list-index
   (lambda (pred ls)
