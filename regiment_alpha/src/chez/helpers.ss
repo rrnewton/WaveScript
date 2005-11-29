@@ -4,6 +4,7 @@
 	(;; Syntax:
 	  for grep mvlet let-match (match-lambda match-lambda-helper)
 	  ++ ^ ;; Exponentiation
+	  define-id-syntax
 	  ;;reg:define-struct ;; Could be define-structure or define-record. ;; Moved to constants.ss
 	  apply-ordered
 	  

@@ -225,9 +225,9 @@
 ;; If we're running from heap, we need to set the scheme-start:
 ;; Set the invocation directory to whatever the current directory is:
 (scheme-start (lambda args (set! start-dir (cd)) 
-		      (random-seed (current-time))
+		      ;(random-seed (current-time))
 		      (apply main args)))
-(random-seed (current-time))
+;(random-seed (current-time))
 
 ;; If we're running from source, we invoke main right here:
 ;; Shave off the first argument, it just carries the working directory:

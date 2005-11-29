@@ -145,6 +145,9 @@
 	  [(smap) 	   
 	   (let ([newp (new-place)])
 	     (values expr newp newp))]
+	  ;; Now an smap2 is more unpredictable.  It needs to be routed.
+	  [(smap2)
+	   (values expr (list (new-place)) (new-place))]
 
 	  ;; TODO
 	  ;; Events are pretty sketchy at this phase.

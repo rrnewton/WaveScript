@@ -8,7 +8,7 @@
 	 compile-simulate-alpha csa ; shorthand
 	 test-this these-tests
 
-	 print-stats
+	 print-stats print-node-stats
 	 print-connectivity fresh-simulation
 	 simalpha-draw-world	 
 

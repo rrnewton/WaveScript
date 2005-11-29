@@ -37,6 +37,7 @@
 	 simalpha-outer-radius
 	 simalpha-inner-radius
 	 simalpha-placement-type
+	 simalpha-max-gridlike-perturbation
 	 simalpha-world-xbound
 	 simalpha-world-ybound
 	 simalpha-channel-model

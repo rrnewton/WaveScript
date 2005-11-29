@@ -214,6 +214,39 @@
 	       `([,parent (v) (call ,form v)]
 		 [,form (v) (call ,memb (subcall ,rator_tok v))]))]
 
+	    ;; [2005.11.27] smap2 is more tricky. 
+	    ;; For now I'm just joining signals at the base-station.
+	    [(smap2)
+	     (let* ([rator_tok (car args)]
+		    [sig1_tok (cadr args)]
+		    [sig2_tok (caddr args)]
+		    [parent1 (get-membership-name sig1_tok)]
+		    [parent2 (get-membership-name sig2_tok)]
+		    [catcher (new-token-name 'smap2_catcher)]
+		    )
+	       ;; Both parents return values to the base station:
+	       `(
+		 ; No binding for formation token!
+		 [,parent1 (v) 
+			   ;(printf "PARENT1: ~s\n" v)
+			   (greturn (vector 1 v) (to ,catcher) (via global-tree))]
+		 [,parent2 (v) 
+			   ;(printf "PARENT2: ~s\n" v)
+			   (greturn (vector 2 v) (to ,catcher) (via global-tree))]
+		 ;; This catcher receives both values, right now it does a lame merge where on every update it outputs a both.
+		 [,catcher (vec)
+			   (stored [left #f] [right #f])
+			   (printf "~a: SMAP2: left:~s right:~s\n" (my-id) left right)
+			   (if (= 1 (vector-ref vec 0))
+			       (set! left (vector-ref vec 1))
+			       (if (= 2 (vector-ref vec 0))
+				   (set! right (vector-ref vec 1))
+				   (error ',catcher "smap2 catcher got a bad flag: ~s" (vector-ref vec 0))))
+			   ;; Update the membership whenever we get a new left or new right:
+			   (call ,memb (subcall ,rator_tok left right))
+			   ]
+		 [,form (v) (call ,memb (subcall ,rator_tok v))]))]
+
 	    ;; [2004.06.28] This may or may not take an argument, and
 	    ;; that depends on the *type* that it's specialized too,
 	    ;; doesn't it?  My idea being that if it's operating over
@@ -282,7 +315,9 @@
 		     [,form (v) (if (subcall ,pred_tok v)
 				    (call ,memb v))] ))])]
 			 
-	    ;; This is not a region; it carries no value on its membership token!
+	    ;; This is not a region. It's a signal.  
+	    ;; The value on its membership token is the node-id of the leader.
+	    ;; (But this token only fires on that leader node anyway...)
 	    [(anchor-at) ;; 
 	     (let ([consider (new-token-name 'cons-tok)]
 		   [leader (new-token-name 'leader-tok)]
@@ -299,7 +334,7 @@
 ;			    ]
 		 ;; Returns our score:
 		 [,calcdist ()
-			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
+;			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
 			    (-. 0. (locdiff (loc) ,target))]
 		 [,form () 
 			(draw-mark ,target)
@@ -314,11 +349,13 @@
 			;(light-up 0 255 255)
 			(if (= ldr (my-id))
 			    (begin (leds on red)
-				   (call ,memb)))
+				   (call ,memb ldr)))
 			]
-
-		 [,memb () (leds on green) (printf "AM WINNER! ~a\n" (my-id))]
-		 		 
+		 [,memb (v) 
+			;(if simalpha-visualize-anchors
+			(leds on green) 
+			(printf "Anchor-at WINNER! ~a\n" (my-id))
+			]
 		 ))]
 
 	    ;; This is not a region; it carries no value on its membership token!
@@ -629,7 +666,7 @@
 
       [(rfilter)     
        `([,tokname (v)
-	  (call reg-return (list 'FILTRATION ',tokname (my-id) this))])]
+	  (call reg-return (vector 'FILTRATION ',tokname (my-id) this))])]
 
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
@@ -638,10 +675,11 @@
 	  (call reg-return v)])]
       
       [(khood khood-at)
-       `([,tokname 
-	  () (call reg-return '(KHOOD ,tokname))])]
+       `([,tokname () 
+		   (leds on red)
+		   (call reg-return (vector 'KHOOD ',tokname (my-id)))])]
 
-      [(smap)
+      [(smap smap2) 
        `([,tokname (v) (call reg-return v)])]
 
       [(rmap)
@@ -651,7 +689,7 @@
       ;; TODO: Need to implement greturn with retries!!
       [(rwhen-any)
        `([,tokname (v) ;; Event value		   
-		   (call reg-return (list 'EVENT v))
+		   (call reg-return (vector 'EVENT v))
 		   ])]
 
       [else (error 'primitive-return 
@@ -708,7 +746,18 @@
 	  [(sense ,_ ...)
 	   (values `([,name (sync-sense)]) '())]
 
-	  ;; TODO:	   
+	  ;; These are primapps that depend on distributed components.  They're tricky.
+	  ;; What does it mean ultimately to return a signal within a cons-cell for example?
+	  ;; I'm trying to decide whether to do a bit of automatic
+	  ;; lifting, or force the user to use smap2.
+	  [(,prim ,rand* ...)
+	   (guard (basic-primitive? prim)
+		  (ormap (lambda (x) (if (symbol? x) (check-prop 'distributed x) #f)) rand*))
+	   (error 'deglobalize:process-expr
+		  "primapp depends on distributed value: ~s" `(,prim ,rand* ...))
+	   ]
+
+	  ;; This is a local primitive that depends on only local values.  That means its constant.
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,(case prim
 			       [(nodeid) `(my-id)]

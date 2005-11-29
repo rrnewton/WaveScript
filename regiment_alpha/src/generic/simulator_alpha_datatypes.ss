@@ -87,6 +87,9 @@
 			     timed-token-buf  ;; Stores simulation events
 
 			     local-sent-messages local-recv-messages
+			     ;; This stores #(invoked sent received) counters for every token name:
+			     token-table
+			     
 			     redraw 
 			     gobj     ;; Pointer to the graphical representation of this object.
 			     homepage ;; Not currently used, a "blackboard".

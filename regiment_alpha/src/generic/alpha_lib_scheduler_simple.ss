@@ -46,7 +46,22 @@
 	      (simevt-vtime (caar queue)))
       (set-queue! (cdr queue))))
 
+  ; =================================================================================
+  ; Throw away helpers:
+
   (define (lessthan a b) (evntlessthan (car a) (car b)))
+
+  (define (token-table-entry ob evt)
+    ; The vector is of the form #(invoked sent received)
+    (let ((vec (hashtab-get (simobject-token-table ob) 
+			    (simtok-name (msg-object-token (simevt-msgobj evt))))))
+      (if (not vec)
+	  (let ((vec (vector 0 0 0)))
+	    (hashtab-set! (simobject-token-table ob) 
+			  (simtok-name (msg-object-token (simevt-msgobj evt)))
+			  vec)
+	    vec)
+	  vec)))
 
   ; =================================================================================
     ;; This is called with the local time that the scheduling hapens.
@@ -172,6 +187,13 @@
 
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
+      (for-each (lambda (evt)
+		  ;; Record that we received this particular token in our token table.
+		  ;; The vector is of the form #(invoked sent received)
+		  (let ((vec (token-table-entry ob evt)))
+		    (vector-set! vec 2 (fx+ 1 (vector-ref vec 2)))))
+	incoming)
+      
       ;; If GUI message counters are turned on, print our count on the screen:
 ;      (IF_GRAPHICS
 ;       (if (simalpha-label-msgcounts)
@@ -257,6 +279,7 @@
       (let ([outgoing (simobject-outgoing-msg-buf ob)])
 	; Increment message counter:
         (set-simobject-local-sent-messages! ob (fx+ (length outgoing) (simobject-local-sent-messages ob)))
+
         ; If GUI message counters are turned on, print our count on the screen:
 ;       (IF_GRAPHICS
 ;          (if (simalpha-label-msgcounts)
@@ -267,6 +290,11 @@
 	(unless (null? outgoing)
 	;; They're all broadcasts for now
 	(for-each (lambda (evt)
+		    ;; Record that we sent this particular token in our token table.
+		    (let ((vec (token-table-entry ob evt)))
+		      ; The vector is of the form #(invoked sent received)
+		      (vector-set! vec 1 (fx+ 1 (vector-ref vec 1))))
+
 		    ;; Timestame the message:
 		    (set-msg-object-sent-time! (simevt-msgobj evt) vtime)
 		    ;(let ([newmsg (structure-copy (simevt-msgobj evt))])
@@ -308,6 +336,8 @@
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 
   ; =======================================================================
+  ;; Now for the main body of run-alpha-simple-scheduler.
+
   ;; First Initialize.
   (for-each init-simobject (simworld-all-objs sim))
   (set-queue! '()) ;; Start with no scheduled events.
@@ -385,7 +415,12 @@
 	
 	;; Now the lucky simobject gets its message.
 					;(set! simalpha-total-tokens (add1 simalpha-total-tokens))
-	;(simalpha-total-tokens (add1 (simalpha-total-tokens)))       
+	;(simalpha-total-tokens (add1 (simalpha-total-tokens)))     
+
+	; But first increment the invocation counter for our statistics-keeping:
+	(let ((vec (token-table-entry ob evt)))
+	  ; The vector is of the form #(invoked sent received)
+	  (vector-set! vec 0 (fx+ 1 (vector-ref vec 0))))
 	
 	((simobject-meta-handler ob) (simevt-msgobj evt) vtime)
 

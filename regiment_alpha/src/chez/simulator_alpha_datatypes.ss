@@ -70,6 +70,7 @@
 	 simobject-timed-token-buf 
 	 simobject-local-sent-messages
 	 simobject-local-recv-messages
+	 simobject-token-table
 	 simobject-redraw 
 	 simobject-gobj 
 	 simobject-homepage 
@@ -85,6 +86,7 @@
 	 set-simobject-timed-token-buf!
 	 set-simobject-local-sent-messages!
 	 set-simobject-local-recv-messages!
+	 set-simobject-token-table!
 	 set-simobject-redraw!
 	 set-simobject-gobj!
 	 set-simobject-homepage!

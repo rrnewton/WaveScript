@@ -421,7 +421,7 @@
 	     [(gversion (tok ,t ,[n]))            `(gversion (tok ,t ,n))]
 	     [(gversion ,t) (guard (tokname? t))  `(gversion (tok ,t 0))]
 	     [(gversion ,[e])                     `(gversion ,e)]
-	     
+
 	     [(greturn ,[expr]            ;; Value
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
@@ -447,6 +447,12 @@
 			 (via ,(fix-token parent))
 			 (seed ,seed) 
 			 (aggr ,(if aggr (fix-token aggr) aggr))))]
+
+	     ;; Catch eroneous forms:
+	     [(greturn ,a (to ,b ...) (via ,c ...) (seed ,d ...) (aggr ,e ...))
+	      (error 'cleanup-token-machine
+		     "Invalid greturn form: ~a" 
+		     `(greturn ,a (to ,b ...) (via ,c ...) (seed ,d ...) (aggr ,e ...)))]
 
 	     ;; This fills in defaults for missing greturn parameters:
 	     [(greturn ,thing ,stuff ...)

@@ -20,8 +20,9 @@
    ;; Syntax:
    for grep mvlet let-match match-lambda
    ++ ^ ;; Exponentiation
+   define-id-syntax
    rec 
-   reg:define-struct
+   ;;reg:define-struct ;; Moved to constants.ss 
    apply-ordered
    
    ;; Values:

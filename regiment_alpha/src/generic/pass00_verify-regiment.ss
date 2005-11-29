@@ -150,13 +150,16 @@
 	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
 	     ;; We're using integral rather than floating point distances for the time being:
 	     [(set-equal? (list infered-type expected-type) '(Dist Integer))  (void)]
+	     
 
 	     ;; We are lenient and allow either a float or an int to match a Number.
 	     [(set-equal? (list infered-type expected-type) '(Float Number)) (void)]
 	     [(set-equal? (list infered-type expected-type) '(Integer Number)) (void)]
 
-	     [(and (eq? infered-type 'Region)
+	     [(and (eq? infered-type  'Region)
 		   (eq? expected-type 'Area))]
+	     [(and (eq? infered-type  'Anchor)
+		   (eq? expected-type 'Signal))]
 
 	     ;; Areas and Regions are Signals
 	     [(and (or (eq? infered-type 'Area) (eq? infered-type 'Region))
@@ -181,7 +184,10 @@
 	 [(eq? 'Object t1) t2]
 	 [(eq? 'Object t2) t1]
 	 ;; Subtyping!! (without polymorphism or anything)
+	 ; A region is an area.
 	 [(set-equal? (list t1 t2) '(Area Region)) 'Region]
+	 ; An anchor is really a signal:
+	 [(set-equal? (list t1 t2) '(Signal Anchor)) 'Anchor]
 
 	 ;; Floats are the only numbers for now:
 	 [(set-equal? (list t1 t2) '(Float Number)) 'Float]
@@ -245,7 +251,14 @@
 				(process-expr r newenv new-type-env)) rhs*)]
 		  [body  (process-expr expr newenv new-type-env)])
 	     `(letrec ([,lhs* ,rands] ...) ,body))]
-          
+
+          ;; This just expands "lists" into a bunch of cons cells.
+	  [(list ,rands ...)
+	   (process-expr (match rands
+			   [() ''()]
+			   [(,a . ,[b]) `(cons ,a ,b)])
+			 env type-env)]
+
           [(,prim ,[rand*] ...)
            (guard 
             (not (memq prim env))
