@@ -189,8 +189,9 @@
 	 ; An anchor is really a signal:
 	 [(set-equal? (list t1 t2) '(Signal Anchor)) 'Anchor]
 
-	 ;; Floats are the only numbers for now:
 	 [(set-equal? (list t1 t2) '(Float Number)) 'Float]
+	 [(set-equal? (list t1 t2) '(Integer Number)) 'Integer]
+
 	 [else (error 'type-union
 		      "Cannot union types: ~s and ~s" t1 t2)])))
 

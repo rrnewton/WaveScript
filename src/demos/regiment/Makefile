@@ -4,4 +4,4 @@ all:
 
 
 clean:
-	$(RM) *.tm *.sim *.sim.alpha *.sim.nesc *.tmh *.sexp *~ _genned*
+	$(RM) *.tm *.sim *.sim.alpha *.sim.nesc *.tmh *.sexp *~ _*

@@ -283,8 +283,8 @@
 			      )))
 		      dependencies)
 
-	    (printf "Dependencies:\n")
-	    (pp dependencies)
+	    ;(printf "Dependencies:\n")
+	    ;(pp dependencies)
 	    
 	    (let ((finaltable 
 		   (cons 'props 

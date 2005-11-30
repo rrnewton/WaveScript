@@ -449,4 +449,6 @@
 ;(define (t2) (parameterize ((simalpha-realtime-mode #f)) (eval (caddr (list-ref (maintest 'get) 60)))))
 (define-id-syntax t2 (load-regiment "demos/regiment/nested_regions.rs"))
 (define-id-syntax t3 (load-regiment "demos/regiment/simple_events.rs"))
-(define-id-syntax t4 (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
+(define-id-syntax t4 (load-regiment "demos/regiment/static_elab.rs"))
+
+(define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
