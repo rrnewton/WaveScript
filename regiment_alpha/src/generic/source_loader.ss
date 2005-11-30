@@ -36,7 +36,7 @@
 	  ;[,retexp retexp]
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file
-		  "invalid expression in definition context: ~s" other)])))
+		  "invalid expression in definition context: ~s" `(,other ,rest ...))])))
 
     (match (file->slist fn)
       [((parameters ,p ...) ,exps ...)

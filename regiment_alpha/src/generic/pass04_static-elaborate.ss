@@ -23,7 +23,7 @@
 ;;; than let-bound.  
 
 ;;;  The point of this restriction is that control-flow be totally
-;;;  known to the compiler.  (The let-boun restriction is stronger
+;;;  known to the compiler.  (The let-bound restriction is stronger
 ;;;  than it needs to be, a bit of control-flow analysis would allow
 ;;;  us to be more permissive.)
 

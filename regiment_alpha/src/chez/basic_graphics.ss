@@ -139,7 +139,7 @@
      [set-width/char! (n) (set-width/char! entry-obj n)]
      ))
 
-  ;; [internal] This class check-button and also manages the book-keeping.
+  ;; [internal] This class is a check-button that also manages the book-keeping.
     (define-class (<bool-param-button> name label param parent) (<checkbutton> parent)
     (ivars) 
     (inherited) (inheritable) (private) (protected)
@@ -165,6 +165,37 @@
 		       view-update-hooks))]
      ))
   
+  ;; [internal] This class provides a set of radio buttons for a Regiment parameter.
+    (define-class (<radio-param-selector> name label param options parent) (<frame> parent)
+      (ivars) 
+      (inherited) (inheritable) (private) (protected)
+      (public
+       [init (name label param options parent)
+	     (send-base self init parent)
+	     (set-background-color! self (rec->rgb Default-Window-Color))	     
+	     (let ((buttons 
+		    (map (lambda (option)
+			   (list option 
+				 (create <radiobutton> self with (title: (format "~a" (car option)))
+					 (action: (lambda _ (param (cdr option))))
+					 (background-color: (rec->rgb Default-Window-Color)))))
+		      options)))
+	       
+	       (pack (create <label> self with (title: label)
+			     (background-color: (rec->rgb Default-Window-Color))) (anchor: 'w))
+	       
+	       (for-each (lambda (b) (pack (cadr b) (anchor: 'w))) buttons)
+
+	       ;; Look up the current value of the parameter in the list we just created.
+	       (let ((entry (assq (param) buttons)))
+		 (if (not entry)
+		     (warning '<radio-param-selector>
+			      "Parameter ~a has unknown current value: ~a" name (param))
+		     ;; Otherwise select the correct button:
+		     (send (cadr entry) select))))
+	     ]))
+
+
   ;; We set up a single additional thread for evaluation.  It receives
   ;; expressions via this queue.
 ;  (define eval-queue (thread-make-msg-queue 'graphics-eval-queue))
@@ -280,6 +311,7 @@
 		(create <numeric-param-entry> 'sim-timeout "Timeout" sim-timeout the-panel2
 			with (width/char: 6))]
 	       
+	       ;; TODO: Abstract to use the generic <radio-param-selector> class for this:
 	       [placement-widget
 		(let* ((f (create <frame> the-panel2 with
 				  (background-color: (rec->rgb Default-Window-Color))))
@@ -292,6 +324,11 @@
 		       (b3 (create <radiobutton> f with (title: "Random")
 				   (action: (lambda _ (simalpha-placement-type 'random)))
 				   (background-color: (rec->rgb Default-Window-Color)))))
+
+		  (pack (create <numeric-param-entry> 'simalpha-max-gridlike-perturbation 
+				"GridPerturb"          simalpha-max-gridlike-perturbation the-panel2
+				with (width/char: 4))) ;(anchor: 'w))
+
 		  (pack b1 (anchor: 'w))
 		  (pack b3 (anchor: 'w))
 		  (pack b2 (anchor: 'w))
@@ -309,11 +346,10 @@
 ; 		      (insert e (number->string (simalpha-max-gridlike-perturbation)))
 ; 		      (pack e (side: 'left))
 ; 		      (pack (create <label> f with (title: "GridPerturbation")) (side: 'right)))
-		  (pack (create <numeric-param-entry> 'simalpha-max-gridlike-perturbation 
-				"GridPerturb"          simalpha-max-gridlike-perturbation the-panel2
-				with (width/char: 4))) ;(anchor: 'w))
+
 		  f)]
 
+	       ; Haha radio button for the radio widget...
 	       [radio-widget
 		(let* ((f (create <frame> the-panel2 with
 				  (background-color: (rec->rgb Default-Window-Color))))
@@ -335,6 +371,16 @@
 				with (width/char: 3)) (anchor: 'w))
 
 		  f)]
+
+	       [sensor-widget
+		(create <radio-param-selector> 'simalpha-sense-function "Sensor Readings"
+			simalpha-sense-function 
+			`(["Sine Wave" ,sense-sine-wave]
+			  ["Noise-Rising" ,sense-noisy-rising]
+			  ["Random 1-100" ,sense-random-1to100]
+			  ["Dist to Origin" ,sense-dist-from-origin]
+			  ["Spatial Sine Wave" ,sense-spatial-sine-wave])
+			the-panel2)]
 
 	       [clock-readout (create <canvas-text> the-win 
 				      30 ;(- (/ window-width 2) 10) 
@@ -434,6 +480,7 @@
 	  (pack printstats-button (side: 'left))
 	  (pack printconn-button  (side: 'left))
 
+	  (pack sensor-widget)
 
 	  (pack (create <label> the-panel2 with (title: "Topology")
 			(background-color: (rec->rgb Default-Window-Color))) (anchor: 'w))

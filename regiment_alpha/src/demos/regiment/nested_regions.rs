@@ -20,21 +20,38 @@
 		  (= (nodeid n) 14)))
 	    world)))
 
+(define twohop (lambda (n) (khood (node->anchor n) 2)))
+
+(define nbrhoods (rmap twohop nodes))
+
+;; Main query:
+
+nbrhoods
+
+; ======================================================================
+; These are some commands for invoking this file from the interactive REPL:
+; (mvlet (((prog _) (read-regiment-source-file "demos/regiment/nested_regions.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
+; (load-regiment "demos/regiment/nested_regions.rs")
+
+
+;; JUNK:
+
 ; ;(define anchs (rmap node->anchor world))
-(define twohop (lambda (n) (khood (node->anchor n) 1)))
 ; ;(define sum (lambda (r) (rfold + 0 r)))
 ; ;(define valfield (rmap sense world))
 
 ; ;(sum valfield)
 
-;; Main program
+
 
 ;(rmap (lambda (n) (vector (nodeid n) (sense n))) nodes)
-(define nbrhoods (rmap twohop nodes))
+
+
+
 ;(define sums (rmap (lambda (r) (rfold + 0 r)) nbrhoods))
 ;(define sums (rmap (lambda (n) (rfold + 0 (twohop n))) nodes))
 ;sums
-nbrhoods
+
 
 ;(cons (khood (anchor-at 30 40) 1)
 ;      (cons (anchor-at 50 10) ;(khood (anchor-at 50 10) 1)
@@ -42,7 +59,3 @@ nbrhoods
 
 ;(khood (anchor-at 10 40) 2)
 
-; ======================================================================
-; These are some commands for invoking this file from the interactive REPL:
-; (mvlet (((prog _) (read-regiment-source-file "demos/regiment/nested_regions.rs"))) (set! theprog (rc prog 'verbose 'barely-tokens)))
-; (load-regiment "demos/regiment/nested_regions.rs")
