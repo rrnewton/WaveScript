@@ -48,8 +48,6 @@
    id gnuplot display-progress-meter count-nodes
    string-split periodic-display all-equal?   
 	  
-   get-formals
-   reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
    set->hashtab
    
    ;; Hmm, not sure what meaning immediate has here...
@@ -60,19 +58,6 @@
    ;default-unit-tester-retries ;; This is in constants.
    substring?
    
-   regiment-primitives regiment-primitive? 
-   token-machine-primitives token-machine-primitive? 
-   token-machine? token-machine->program token-machine-keyword?
-   basic-primitive? distributed-primitive?
-   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-   get-primitive-return-type
-   map-prim-w-types
-   
-   ;; Token names:
-   token-name? new-token-name token-names get-names get-formation-name get-membership-name
-   token->name token->subtok
-   destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
-
    
    gaussian
 
@@ -96,8 +81,6 @@
 
    testhelpers testshelpers test-this these-tests
 
-   reg:random-int reg:get-random-state reg:set-random-state!
-					;reg:all-unit-tests 
    
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

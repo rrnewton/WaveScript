@@ -24,31 +24,13 @@
 	  id gnuplot histogram display-progress-meter count-nodes
 	  string-split periodic-display all-equal?
 	  
-	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name  reunique-names
-	  get-formals 
 	  set->hashtab hashtab->list
 
-	  ;; Hmm, not sure what meaning immediate has here...
-	  ;immediate? 
-	  constant? datum? 
-	  formalexp? cast-formals fit-formals-to-args
+
 	  default-unit-tester tester-eq?
 	  ;default-unit-tester-retries
 	  substring?
 	  gobj? 
-
-	  regiment-primitives regiment-primitive? 
-	  token-machine-primitives token-machine-primitive? 
-	  token-machine? token-machine->program token-machine-keyword?
-	  basic-primitive? distributed-primitive?
-	  get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-	  get-primitive-return-type
-	  map-prim-w-types
-
-	  ;; Token names:
-	  token-name? new-token-name token-names get-names get-formation-name get-membership-name
-	  token->name token->subtok
-	  destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
 
 	  gaussian
 	  
@@ -72,7 +54,6 @@
 
 	  testhelpers testshelpers test-this these-tests
 
-	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 					;reg:all-unit-tests 
 	  
 					;   (all-except (lib "rutils_generic.ss")
@@ -166,11 +147,13 @@
 
 
 ;; Moved include!
-
+; ======================================================================
 ;; We play nasty tricks with symbolic links here. 
 ;; It doesn't matter if we load this file from "src" or "src/chez"
 ;; because we've linked the "generic" subdir from both locations.
 (include "generic/helpers.ss")
+; ======================================================================
+
 
 (define (crit-printf . args)
   (critical-section (apply printf args)))
@@ -254,19 +237,6 @@
 
 (define (shell-expand-string s)
   (chomp (system-to-str (string-append "exec echo " s))))
-
-;; This is a simple random number generator interface for use in this Regiment codebase:
-(define reg:random-int
-  (case-lambda 
-   [() (#%random (#%most-positive-fixnum))]
-   [(k) (#%random k)]))
-(define reg:random-real
-  (case-lambda
-    [() (#%random 1.0)]
-    [(n) (#%random n)]))
-(define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
-(define (reg:set-random-state! s) (random-seed s))
-
 
 ;; Return the current time in seconds since 1970:
 (define seconds-since-1970
