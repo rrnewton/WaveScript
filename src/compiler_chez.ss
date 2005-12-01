@@ -130,9 +130,6 @@
 (define current-time (seconds-since-1970))
 ;======================================================================
 
-
-;(eval-when (compile eval) (cd ".."))
-
 (include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 
 ;; Load this before the simulator.

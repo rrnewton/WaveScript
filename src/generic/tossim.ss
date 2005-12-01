@@ -37,7 +37,9 @@
 			     '(flatten-tokmac emit-nesc))))
 	  (match (apply assemble-tokmac tm opts)
 	    [(emit-nesc-language ,p)
+	     ;; Here we invoke emit-nesc-language to call Make and compile the NesC code.
 	     (if (eqv? 0 (emit-nesc-language p))
+		 ;; Now, with main.exe built, we invoke it and read its output.
 		 (parameterize ((current-directory (string-append (getenv "REGIMENTD") "/src/haskell/")))
 		   (define time (let ((t (sim-timeout)))
 				  (if (not t) ""
@@ -55,14 +57,17 @@
 			    ";=======================================================================\n")
 		   (flush-output-port)
 		   (let ((result
-			  (let-match ((  (,in ,out ,id)   (process command)))
+			  (let-match ((  (,in ,out ,id)  
+					 ;(list (open-input-string "TMPRNT: foo\n") (open-output-string) 0)))
+					 (process command)))
 			    (let loop ((line (read-line in)) (acc ()))
-			      (if (or (not line) (eof-object? line))
+			      (if (or (not line) (eof-object? line) (equal? line ""))
 				  (reverse! acc)
 				  (let ((outline (mask line)))
+				    ;(inspect (list line outline))
 				    (display outline) (newline)
 				    (flush-output-port)4
-				    (loop (read-line in) (cons outline acc))))))))  
+				    (loop (read-line in) (cons outline acc))))))))
 					;(system "./build/pc/main.exe -b=1 -t=3 -r=simple 10 | grep TMPRNT")))
 		     (fprintf (current-error-port)
 			      ";=======================================================================\n")

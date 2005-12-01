@@ -34,10 +34,14 @@ all:
 #       Here we superimpose our "patches" to the standard schemedoc
 #       tree.  This isn't finished yet.  There are more files than
 #       star_star_chez.scm that are modified in the schemedoc/ tree.
+#       Right now this is just a lame way for me to avoid actually
+#       changing the tbz and wasting space in the repository.
 	if ! [ -d schemedoc ]; \
 	then tar xjvf schemedoc.tbz; \
-	     cp star_star_chez.scm schemedoc/lib/compatibility/; \
-	     cp time.scm schemedoc/lib/; \
+	     cp patches/star_star_chez.scm schemedoc/lib/compatibility/; \
+	     cp patches/time.scm schemedoc/lib/; \
+	     cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; \
+	     cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; \
 	fi
 	if ! [ -d html ];         then mkdir html        ; fi
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
@@ -74,6 +78,14 @@ $(OBJFILES): html/%.html: html/%
 
 $(DUPSRC): html/%.ss: ../src/%.ss
 	petite --script scrub_source.ss $< $@	
+
+
+install:
+	cp -vpr html /var/www/regimentman/
+	cp ../src/README /var/www/regimentman/
+	cp ../src/README.html /var/www/regimentman/
+	chgrp www-data -R /var/www/regimentman/
+	chmod g+rX -R /var/www/regimentman/
 
 clean: 
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk

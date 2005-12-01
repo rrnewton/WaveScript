@@ -392,23 +392,25 @@
 	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-maximizing)
 	     (let-match ([(,fun_tok ,refresh_rate) args])
-	       (let ([consider (new-token-name 'cons-tok)]
+	       (let ([consider (new-token-name 'cons-tok)]		     
 		     [leader (new-token-name 'leader-tok)])
 		 
-	     `([,form () (elect-leader ,memb ,fun_tok)] ;(flood ,consider)]
+	     `([,form () (elect-leader ,consider ,fun_tok)] ;(flood ,consider)]
 ;	       [,consider () (elect-leader ,memb ,fun_tok)]
 
 
 ;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING
 	       ;; This just lights up the node when it becomes anchor, for visualization:
-	       [,memb () 
+	       [,consider (ldr val)
 		      ;; Note that we are an anchor.
 ;			(set-simobject-homepage! 
 ;			 this (cons 'anchor (simobject-homepage this)))
-		      (begin
-			(light-node 0 255 255)
-			)]
+			  (if (= (my-id) ldr)
+			      (begin
+				(leds on red)
+				(light-node 0 255 255)
+				(call ,memb)))]
 	       )))]
 
 	    ;; [2005.11.23] This does essentially nothing.  It's
