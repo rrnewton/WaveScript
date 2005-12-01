@@ -100,6 +100,7 @@
 (include "chez/hash.ss") (import hashfun) ;; TEMPORARY
 (include "chez/hashtab.ss") (import hashtab)
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
+(include "chez/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
 

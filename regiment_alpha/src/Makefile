@@ -125,6 +125,8 @@ clean:
 	(cd plt; $(MAKE) clean)
 	(cd haskell; $(MAKE) clean)
 	(cd chez/usleep; $(MAKE) clean)
+	(cd demos/token_machs; $(MAKE) clean)
+	(cd demos/regiment; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_*
 	$(RM) build/*.heap
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*

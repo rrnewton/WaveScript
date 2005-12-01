@@ -327,54 +327,7 @@
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
 (define simalpha-pause-hook (make-parameter #f))
 
-
 ; ======================================================================
-;;; The various sensor-reading stubs.  Used by SimAlpha.
-;;; These are all simple functions that compute fake sensor values.
-
-;; This one changes amplitude across space and time.
-(define (sense-spatial-sine-wave id x y t)
-  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
-  ;(exact->inexact
-   (inexact->exact 
-    (floor
-     (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
-	   (distorigin (sqrt (+ (* x x) (* y y))))
-	   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
-       (* waveamp (/ distorigin maxdist))))))
-
-;; This parameter defines the default sensor function.
-(define-regiment-parameter simalpha-sense-function  sense-spatial-sine-wave) ;  sense-sine-wave)
-
-;; This globally defined functions decides the sensor values.
-;; Here's a version that makes the sensor reading the distance from the origin:
-(define (sense-dist-from-origin id x y t)
-  (sqrt (+ (expt x 2) (expt y 2))))
-
-(define (sense-sine-wave id x y t)
-  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
-  ;(exact->inexact
-   (inexact->exact 
-    (floor
-     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
-
-;; TODO: add noise to this, store state per ID: curry inputs:
-(define (sense-noisy-rising id x y t)
-  (/ t 100.))
-
-
-(define (sense-random-1to100 id x y t)
-  (add1 (reg:random-int 100)))
-
-#;
-(define (sense-fast-sine-wave id x y t)
-  (printf "(sensing ~a ~a ~a ~a) " id x y t)
-  (inexact->exact 
-   (floor
-    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
-
-; ======================================================================
-
 
 ;;; Used primarily by alpha_lib_scheduler_simple.ss
 ;=====================
@@ -437,3 +390,87 @@
   (define Default-Proc-Border-Color    (make-rgb 0 0 0))
   (define Default-Mouse-Highlight-Color (make-rgb 200 200 0))
   )
+
+
+; ======================================================================
+
+;;; Functions <br>
+;;; Everything below is not a constant or "preprocessor definition"
+;;; (macro), but a function.  However, these are functions that are
+;;; (1) simple and (2) must be scoped very broadly, thus justifying
+;;; their inclusion in this file.
+
+  ;;; Regiment Random Number Interface.<br>
+  ;;;   These provide a simple random number generator interface for use
+  ;;; within the Regiment codebase. <br>
+  ;;;    The simulator should only use this RNG interface to maintain
+  ;;; determinism.  (Currently this just uses the primitive Chez
+  ;;; Scheme RNG, so there is no proper seperation which would be
+  ;;; necessary for other concurrently running code to not ruin the
+  ;;; simulators determininms.)
+
+  ;; A random integer. 
+  (define reg:random-int
+    (case-lambda 
+      [() (#%random (#%most-positive-fixnum))]
+      [(k) (#%random k)]))
+
+  ;; A random real number.
+  (define reg:random-real
+    (case-lambda
+      [() (#%random 1.0)]
+      [(n) (#%random n)]))
+
+  ;; Get the state of the RNG.
+  (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
+
+  ;; Set the state of the RNG.
+  (define (reg:set-random-state! s) (random-seed s))
+
+
+; ======================================================================
+;;; The various sensor-reading stubs.  Used by SimAlpha.
+;;; These are all simple functions that compute fake sensor values.
+
+;; This one changes amplitude across space and time.
+(define (sense-spatial-sine-wave id x y t)
+  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+  ;(exact->inexact
+   (inexact->exact 
+    (floor
+     (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
+	   (distorigin (sqrt (+ (* x x) (* y y))))
+	   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
+       (* waveamp (/ distorigin maxdist))))))
+
+;; This parameter defines the default sensor function.
+(define-regiment-parameter simalpha-sense-function  sense-spatial-sine-wave) ;  sense-sine-wave)
+
+;; This globally defined functions decides the sensor values.
+;; Here's a version that makes the sensor reading the distance from the origin:
+(define (sense-dist-from-origin id x y t)
+  (sqrt (+ (expt x 2) (expt y 2))))
+
+(define (sense-sine-wave id x y t)
+  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+  ;(exact->inexact
+   (inexact->exact 
+    (floor
+     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
+
+;; TODO: add noise to this, store state per ID: curry inputs:
+(define (sense-noisy-rising id x y t)
+  (/ t 100.))
+
+
+(define (sense-random-1to100 id x y t)
+  (add1 (reg:random-int 100)))
+
+#;
+(define (sense-fast-sine-wave id x y t)
+  (printf "(sensing ~a ~a ~a ~a) " id x y t)
+  (inexact->exact 
+   (floor
+    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
+
+; ======================================================================
