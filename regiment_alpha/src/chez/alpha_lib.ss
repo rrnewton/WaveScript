@@ -24,12 +24,6 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 
-	 ;; Simple functions that compute sensor values:
-	 sense-dist-from-origin
-	 sense-sine-wave
-	 sense-noisy-rising
-	 sense-random-1to100
-
 	 test-this these-tests test-alphalib
 	 )
 

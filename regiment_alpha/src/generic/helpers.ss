@@ -800,6 +800,7 @@
 ;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
 ;; Man, they need a standardized set of libraries.
 ;; .parameter port (optional) Port to read from.
+#;
 (define read-line
   (case-lambda 
     [() (read-line (current-output-port))]
@@ -807,6 +808,30 @@
 	   (if (or (eof-object? c) (char=? #\newline c))
 	       (list->string (reverse! acc))
 	       (loop (read-char p) (cons c acc))))]))
+;; [2005.12.01] Above was the wrong definition, I need it to return false if there's no line:
+[define read-line ;returns false if the port is empty
+  (lambda args
+    (let ([port (if (null? args)
+                    (current-input-port)
+                    (car args))])
+      (letrec ([loop
+                 (lambda (c)
+                   (cond
+                     [(or (eof-object? c)
+                          (eq? c #\newline)) '()]
+                     [(or (eq? c #\linefeed)
+                          (eq? c #\return))
+                      (when (and (char-ready? port)
+                                 (eq? (peek-char port) #\newline))
+                            (read-char) '())]
+                     [else (cons c (loop (read-char port)))]))])
+        (let ([c (read-char port)])
+          (if (eof-object? c) #f
+              
+              ((lambda (x) x)
+               (list->string (loop c)))
+              )))))]
+
 
 ;[2001.07.15]
 (define file->slist

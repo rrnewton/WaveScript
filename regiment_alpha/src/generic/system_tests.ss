@@ -1997,7 +1997,7 @@
 
 
  ;; FIXME: FINISH
-     ["Regiment: Test a simple anchor election."
+     ["Regiment: Test an anchor-maximizing anchor election."
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
@@ -2006,8 +2006,8 @@
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
-	  ;'(anchor-maximizing sense 0)))
-	  '(anchor-at 30 40)
+	  '(anchor-maximizing sense 0)
+	  ;'(anchor-at 30 40)
 	  'verbose
 	  )))
 

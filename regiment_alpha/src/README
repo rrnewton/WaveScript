@@ -1,5 +1,5 @@
 
-INSTALLATION
+<INSTALLATION>
 ======================================================================
 
 Step 1: Bind enviroment variable REGIMENTD to the location of the
@@ -18,20 +18,29 @@ much faster).
 
 Either way, try "regiment t" to run all the unit tests.
   ([2005.11.14] For me this takes 48 seconds with petite, and 18 with a
-   built heap when all debugging is turned on.)
+   saved heap when all debugging is turned on.)
 
 
 
 
+<Running Regiment>
+======================================================================
+
+Section Under Construction...
+
+<Using the GUI>
+======================================================================
 
 
+Section Under Construction...
 
-Basic Summary of Files
+
+<Basic Summary of Files>
 ======================================================================
 
 
 generic/pass??_*:
-  These files are the passes that 
+  These files are the compilers primary transformations.
 
 
 
@@ -39,9 +48,7 @@ generic/pass??_*:
 
 
 
-
-
-WHERE STUFF IS:
+<WHERE STUFF IS>
 ======================================================================
 
 Unit Tests:

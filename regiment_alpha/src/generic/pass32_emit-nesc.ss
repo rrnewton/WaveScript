@@ -2,6 +2,8 @@
 
 ;; Generate NesC code.  Porting this from the haskell code.
 
+;; Also see tossim.ss.  Run (test-nesc) for an example.
+
 (define these-tests '())
 
 (define emit-nesc-modname "TestMachine")

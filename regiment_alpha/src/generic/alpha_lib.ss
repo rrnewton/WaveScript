@@ -237,38 +237,6 @@
 	 (error 'check-store "Bad token store at entry: key:~s, token:~s, \n" key token))))
    tokstore)]
 
-
-;; [2005.11.03] Moved here from constants.ss
-;; NOTE: sense-spatial-sine-wave is still in constants.ss
-
-;; This globally defined functions decides the sensor values.
-;; Here's a version that makes the sensor reading the distance from the origin:
-(define (sense-dist-from-origin id x y t)
-  (sqrt (+ (expt x 2) (expt y 2))))
-
-(define (sense-sine-wave id x y t)
-  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
-  ;(exact->inexact
-   (inexact->exact 
-    (floor
-     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
-
-;; TODO: add noise to this, store state per ID: curry inputs:
-(define (sense-noisy-rising id x y t)
-  (/ t 100.))
-
-
-(define (sense-random-1to100 id x y t)
-  (add1 (reg:random-int 100)))
-
-#;
-(define (sense-fast-sine-wave id x y t)
-  (printf "(sensing ~a ~a ~a ~a) " id x y t)
-  (inexact->exact 
-   (floor
-    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
-
-
 ;======================================================================
 
 (define these-tests
