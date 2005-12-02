@@ -5,7 +5,12 @@
 
 ;; THERE IS NO ABSTRACTION BOUNDARY BETWEEN THIS AND GRAHPICS_STUB.SS
 
-(module basic_graphics (window-height window-width  
+; ======================================================================
+
+;; [2004.06.21] Adding "draw-mark" to the interface, I use this for
+;; drawing 'X' marks for additional debugging info.
+
+(module basic_graphics (
 			init-graphics close-graphics  
 			rec->rgb ;; This converts rgb records into system specific (SWL) rgb values.
 ;			make-rgb rgb? rgb-red rgb-green rgb-blue
@@ -18,12 +23,8 @@
 			flash-text
 			)
 
-
-;; This defines window-width and window-height presets:
-;(include "../generic/basic_graphics.ss")
-;; Sadly scheme's path system makes no sense, so this loads from the 
-;; "Regionstreams/compiler/src" directory where compiler_chez.ss is:
-(include "generic/basic_graphics.ss")
+ ;; This global variable points to the drawing surface itself.
+(define the-win #f) 
 
 (define the-winframe #f)
 
@@ -35,6 +36,11 @@
 ;; [private] A single line of text used for messages to the user.
 (define the-text-readout #f)
 
+;; [Chez] This simply makes a SWL rgb value out of our standard record representation.
+(define (rec->rgb rec)
+  (make <rgb> (rgb-red rec) (rgb-green rec) (rgb-blue rec)))
+
+; Module local bindings:
 (define current-drawing-color (rec->rgb Default-Drawing-Color))
 (define current-filling-color #f)
 (define current-background-color (rec->rgb Default-Background-Color))
@@ -91,22 +97,31 @@
 
   ;; [internal] This entry calls its action every time a key is typed:
   (define-class (<better-entry> parent) (<entry> parent)
-    (ivars)
+    (ivars (parent parent))
     (inherited) (inheritable)
     (private)   (protected)
     (public
       ;[mouse-leave (x y mods) ((get-action self) self)]
      [key-release (k mods)     ((get-action self) self)]
+
+     [key-press (c mods) 
+		(send-base self key-press c mods)
+		(send parent key-press c mods)
+		]
      ))
 
   ;; [internal] This class displays a label next to the entry, and
   ;; monitors the associated numeric parameter for changes, updating
   ;; the view accordingly.
   (define-class (<numeric-param-entry> name label param parent) (<frame> parent)
-    (ivars (label-obj #f) (entry-obj #f))
+    (ivars (label-obj #f) (entry-obj #f) (counter 0))
     (inherited)  (inheritable)  (private)   (protected)
     (public
       ;[mouse-leave (x y mods) ((get-action self) self)]
+     
+     [key-press (c mods) 
+		(set! counter 8)]
+
      [init (nm lab prm prnt)
 	   (send-base self init prnt)	   
 	   (set! entry-obj 
@@ -128,13 +143,19 @@
 	   (set-background-color! label-obj (rec->rgb Default-Window-Color))
 	   
 	   ;; Add an update hook for this:
-	   (set! view-update-hooks (cons (lambda ()
-					   (let ((curval (string->number (get-string entry-obj))))
-					     (if curval
-						 (unless (equal? (prm) curval)
-						   (delete-all entry-obj)
-						   (insert entry-obj (number->string (prm)))))))
-					 view-update-hooks))
+	   (set! view-update-hooks 
+		 ;; I don't have a good way to tell when the user is editing this entry.
+		 ;; (It's very annoying when we reset over what they're trying to type.)
+		 ;; So what I do is I set the counter above when a key
+		 ;; is pressed, and it must count down to zero before we'll touch the contents.
+		 (cons (lambda ()
+			 (if (zero? counter)
+			     (let ((curval (string->number (get-string entry-obj))))
+			       (unless (equal? (prm) curval)
+				 (delete-all entry-obj)
+				 (insert entry-obj (number->string (prm)))))
+			     (set! counter (sub1 counter))))
+		       view-update-hooks))
 	   ]
      [set-width/char! (n) (set-width/char! entry-obj n)]
      ))
@@ -175,9 +196,9 @@
 	     (set-background-color! self (rec->rgb Default-Window-Color))	     
 	     (let ((buttons 
 		    (map (lambda (option)
-			   (list option 
+			   (list (cadr option)
 				 (create <radiobutton> self with (title: (format "~a" (car option)))
-					 (action: (lambda _ (param (cdr option))))
+					 (action: (lambda _ (param (cadr option))))
 					 (background-color: (rec->rgb Default-Window-Color)))))
 		      options)))
 	       
@@ -194,6 +215,16 @@
 		     ;; Otherwise select the correct button:
 		     (send (cadr entry) select))))
 	     ]))
+
+    ;; [internal] This is the regiment drawing surface.
+    (define-class (<regiment-canvas> parent) (<canvas> parent)
+      (ivars) 
+      (inherited) (inheritable) (private) (protected)
+      (public
+       [key-press (c mods)
+		  (send-base self key-press c mods)
+		  (flash-text (format "Key pressed: ~s" c) 1000)]
+       ))
 
 
   ;; We set up a single additional thread for evaluation.  It receives
@@ -235,17 +266,17 @@
 				with
 				;(width: (in->pixels 1)) ;(+ window-width 200))
 				;(height: window-height)
-				;(background-color: (make <rgb> 100 50 50))
+				;(background-color: (make <rgb> 100 50 50))*
 				(background-color: (rec->rgb Default-Window-Color))
 				))
-	(set! the-win (create <canvas> group ;the-winframe
+	(set! the-win (create <regiment-canvas> group ;the-winframe
 				 with
 				 (width: window-width) ;(in->pixels 5))
-				 (height: window-height) ;(in->pixels 5))
+				 (height: (+ window-height 25)) ;(in->pixels 5))
 				 (background-color: (rec->rgb Default-Background-Color))
 				 ))
 
-	(set! the-text-readout (create <canvas-text> the-win (- (/ window-width 2) 10) (- window-height 13)
+	(set! the-text-readout (create <canvas-text> the-win (- (/ window-width 2) 10) (- window-height -15);13)
 					with (title: "")
 					(fill-color: (rec->rgb Default-Canvas-Text-Color))
 					))
@@ -289,6 +320,8 @@
 					"Realtime"           simalpha-realtime-mode the-panel2)]
 	       [msgcounts-button (create <bool-param-button> 'simalpha-label-msgcounts 
 					 "Show MsgCounts"     simalpha-label-msgcounts the-panel2)]
+	       [sensorshow-button (create <bool-param-button> 'simalpha-label-sensorvals 
+					 "Show SensorVals"     simalpha-label-sensorvals the-panel2)]
 
 	       ;; UNFINISHED:
 	       [showedges-state #t]
@@ -325,13 +358,13 @@
 				   (action: (lambda _ (simalpha-placement-type 'random)))
 				   (background-color: (rec->rgb Default-Window-Color)))))
 
+		  (pack b1 (anchor: 'w))
+		  (pack b3 (anchor: 'w))
+		  (pack b2 (anchor: 'w))
 		  (pack (create <numeric-param-entry> 'simalpha-max-gridlike-perturbation 
 				"GridPerturb"          simalpha-max-gridlike-perturbation the-panel2
 				with (width/char: 4))) ;(anchor: 'w))
 
-		  (pack b1 (anchor: 'w))
-		  (pack b3 (anchor: 'w))
-		  (pack b2 (anchor: 'w))
 		  (case (simalpha-placement-type)
 		    [(connected) (send b1 select)]
 		    [(gridlike)  (send b2 select)]
@@ -384,7 +417,7 @@
 
 	       [clock-readout (create <canvas-text> the-win 
 				      30 ;(- (/ window-width 2) 10) 
-				      (- window-height 13)
+				      (- window-height -10) ;13)
 				      with (title: "t = ")
 				      (fill-color: (rec->rgb Default-Canvas-Text-Color))
 				      (font: (create <font> 'times 16 '(bold))))]
@@ -452,6 +485,23 @@
 									 (simobject-local-recv-messages ob)
 									 (simobject-local-sent-messages ob)) ob))
 					   (simworld-all-objs (simalpha-current-simworld)))))
+				   ;; And this updates the labels to reflect sensor values.
+				   (if (simalpha-label-sensorvals)
+				       (eval
+					'(let ((vtime (simworld-vtime (simalpha-current-simworld))))
+					   (for-each 
+					       (lambda (ob)
+						 (let ((reading ((simalpha-sense-function)
+								 (node-id (simobject-node ob))
+								 (car (node-pos (simobject-node ob)))
+								 (cadr (node-pos (simobject-node ob)))
+								 vtime)))
+						   (sim-setlabel 
+						    (if (number? reading)							
+							(number->string (round-to 2 reading))
+							(format "~a" reading))
+						    ob)))
+					     (simworld-all-objs (simalpha-current-simworld))))))
 
 				   ;; Now call any other update hooks:
 				   ;; (Right now [2005.11.27] this is used for the text entry fields.)
@@ -466,6 +516,14 @@
 			 (lambda (self)
 			   (oldac self)
 			   (if (not (simalpha-label-msgcounts))
+			       (eval '(for-each (lambda (x) (sim-setlabel "" x))
+					(simworld-all-objs (simalpha-current-simworld))))))))
+	  ;; Same for showing the sensor vals:
+	  (let ((oldac (get-action sensorshow-button)))
+	    (set-action! sensorshow-button
+			 (lambda (self)
+			   (oldac self)
+			   (if (not (simalpha-label-sensorvals))
 			       (eval '(for-each (lambda (x) (sim-setlabel "" x))
 					(simworld-all-objs (simalpha-current-simworld))))))))
 
@@ -490,6 +548,7 @@
 	  (pack radio-widget )
 	  (pack realtime-button  (anchor: 'w)) ;(side: 'left) (anchor: 'se))
 	  (pack msgcounts-button (anchor: 'w)) ;(side: 'left) (anchor: 'se))
+	  (pack sensorshow-button (anchor: 'w)) ;(side: 'left) (anchor: 'se))
 	  (pack num-nodes-widget (anchor: 'w)) ;(side: 'left))
 	  (pack timeout-widget (anchor: 'w)) ;(side: 'left))
 

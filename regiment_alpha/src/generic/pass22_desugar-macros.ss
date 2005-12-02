@@ -70,10 +70,13 @@
 		      ,@tbs))))]
 	    
 
-	     [(elect-leader ,t) (process-expr `(elect-leader ,t #f #f))]
-	     [(elect-leader ,t ,c) (process-expr `(elect-leader ,t ,c #f))]
 
-
+	     ;; Elect leader form: 
+	     ;;   (elect-leader target-token [criterion-evaluator] [criterion-comparator] [bounding-function])
+	     ;; Currently [2005.12.02] bounding functionality is not implemented.
+	     [(elect-leader ,t) (process-expr `(elect-leader ,t #f #f #f))]
+	     [(elect-leader ,t ,c) (process-expr `(elect-leader ,t ,c #f #f))]
+	     [(elect-leader ,t ,c ,comp) (process-expr `(elect-leader ,t ,c ,comp #f))]
 
 	     ;; elect-leader: The first argument is a token to fire when the leader is determined.
 	     ;; The token is called on all nodes participating, it's passed the ID of the leader as argument.
@@ -83,11 +86,12 @@
 	     ;; The token part has to be totally static.
 	     ;; Otherwise we have to TRANSMIT information along during the competition,
 	     ;; telling everyone who to elect if you win.
-	     [(elect-leader ,[tokonly -> t] ,[c] ,[b])
+	     [(elect-leader ,[tokonly -> t] ,[c] ,[comp] ,[b])
 	      ;; Also maybe want to name the ^^ compete token, so that you can return vals to the leader.
 	      (let-match ([#(,t        ,tbs0) t]
 			  [#(,criteria ,tbs1) c]
-			  [#(,bounding ,tbs2) b])
+			  [#(,comparison ,tbs2) comp] ;; Comparison returns -1 0 1 for less,equal,greater.
+			  [#(,bounding ,tbs3) b])  ;; NOT USED CURRENTLY
 		(let* ((compete      (unique-name 'compete))
 		       (storagename  (unique-name 'leaderstorage))
 		       (cur-leader   (unique-name 'cur-leader))
@@ -96,6 +100,7 @@
 		       (tmp0          (unique-name 'tmp))
 		       (tmp1          (unique-name 'ldr-crit))
 		       (tmp2          (unique-name 'ldr-id))
+		       (tmp3          (unique-name 'tmp))
 		       (check-winner (unique-name 'am-i-winner))
 		       (id           (unique-name 'subtokid))
 		       (val           (unique-name 'val))
@@ -112,6 +117,7 @@
 					 [,ldr-criteria 'mycreds-uninitialized])
 				 (begin 
 				   (set! ,cur-leader (my-id))
+				   ;; We only evaluate ourselves once and store the result. That is here:
 				   ,(if criteria
 					;; Now we compute our local score ONCE:
 					;; (Once per call to elect-leader.)
@@ -119,11 +125,12 @@
 					   (begin 
 ;					     (printf '" (INIT ~s) \n" ,tmp)
 					     (set! ,ldr-criteria ,tmp)))
+					;; Otherwise the default criteria for election is node ID:
 					`(set! ,ldr-criteria (- 0 (my-id)))))]
 		   [,compete ,id (,val)
 		    (begin	
 		      ;; TEMP: 
-		      (leds toggle blue)
+		      ;(leds toggle blue)
 ;		      ,@(REGIMENT_DEBUG
 ;			 `(if (token-present? ,storage) (void)
 ;			      (dbg '"~s.~s ERROR: leader election, was expecting ~s storage token to exist." 
@@ -134,14 +141,21 @@
 			  (subcall ,storage))
 		      
 		      (if (let ((,tmp1 (ext-ref ,storage ,ldr-criteria)))
-			    ;; Either they beat us flat out, or they tie us and beat us on the ID based tie-breaker:
-			    (if (> ,val ,tmp1) '#t
-				(if (= ,val ,tmp1)
-				    (begin
-				      ;(printf '"\nAt <~a> does node ~a beat ~a in tie breaker?\n" (my-id) ,id (ext-ref ,storage ,cur-leader))
-				      ;; Prefer lower ID numbers:
-				      (< (ext-ref ,storage ,cur-leader) ,id))
-				    '#f)))
+			    ,(if comparison
+				 `(let ([,tmp3 (subcall ,comparison ,val ,tmp1)])
+				    (if (= ,tmp3 1) '#t ;; They beat us
+				    (if (= ,tmp3 -1) '#f ;; They lost
+					(< (ext-ref ,storage ,cur-leader) ,id) ; Otherwise tie-breaker on ids
+				    )))
+				 ;; Default comparison: Either they beat us flat out, or 
+				 ;; they tie us and beat us on the ID based tie-breaker:
+				 `(if (> ,val ,tmp1) '#t
+				     (if (= ,val ,tmp1)
+					 (begin
+					;(printf '"\nAt <~a> does node ~a beat ~a in tie breaker?\n" (my-id) ,id (ext-ref ,storage ,cur-leader))
+					   ;; Prefer lower ID numbers:
+					   (< (ext-ref ,storage ,cur-leader) ,id))
+					 '#f))))
 ; ;				(printf '"Comparing: ~s\n" (list (subcall ,criteria) (ext-ref ,storage ,cur-leader)))
 			  (begin '"If they beat the local leader, then the new winner is them."
 ;				 (printf '"(~a ~a) " ,val (ext-ref ,storage ,ldr-criteria))

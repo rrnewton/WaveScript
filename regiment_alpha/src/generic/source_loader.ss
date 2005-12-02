@@ -66,8 +66,9 @@
       ;; User params override those set in the code:
       (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
       ;; Set all the params before running things:
-      (let ((result (with-evaled-params params
-			  (lambda ()
+      (for-each eval params) ;; [2005.12.02] Changing this so the params stick.  Better for re-running.
+      (let ((result ;(with-evaled-params params
+			;  (lambda ()
 			    (fluid-let ([pass-names passes])
 			      (run-simulator-alpha
 
@@ -78,7 +79,7 @@
 ;				      (append flags params))
 
 			       'srand (current-time)
-			       ))))))
+			       ))))
 	(print-stats)
 	result))))))
 

@@ -392,7 +392,7 @@
 	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-maximizing)
 	     (let-match ([(,fun_tok ,refresh_rate) args])
-	       (let ([consider (new-token-name 'cons-tok)]		     
+	       (let ([consider (new-token-name 'cons-tok)]	     
 		     [leader (new-token-name 'leader-tok)])
 		 
 	     `([,form () (elect-leader ,consider ,fun_tok)] ;(flood ,consider)]

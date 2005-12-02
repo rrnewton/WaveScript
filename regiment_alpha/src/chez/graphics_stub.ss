@@ -2,12 +2,24 @@
 ;; Implements the GRAPHICS_STUB interface, described in "generic/graphic_stub.ss".
 ;; Should provide the same functionality as plt/graphics_stub.ss
 
+;; I've moved this over to a "persistent object" kind of drawing interface.
+;; The "simobject" structure holds a "gobj", which is an
+;; implementation specific thingy that supports "get-state" for 
+;; retrieving properties and "change-color!".
+;;  The simobject also has a redraw flag that can be set to refresh
+;;  the processor during the periodic redraw.
+
+
 ;; THERE IS NO ABSTRACTION BOUNDARY BETWEEN THIS AND BASIC_GRAPHICS.SS
 ;; FIXME TODO: MERGE WITH BASIC_GRAPHICS.SS
 
 
 ;; TODO IMPLEMENT GET-STATE
 
+
+; ======================================================================
+;; [2004.06.05] Adding "get-state" to this interface so that the
+;; simulator can ask the graphics object, say, what color it is.
 
 ;; [2004.05.23]
 
@@ -22,6 +34,11 @@
 ;; REQUIRES: on world-xbound and world-ybound from simulator_nought.ss, 
 ;; it uses these to scale the world coordinates to the display.
 
+
+;; NOTE: Right now the "redraw" flag isn't used yet... [2005.02.25]
+;; Change-color redraws immediately, and it's the only way to state-change...
+
+
 ;(load "basic_graphics.ss")
 
 (module graphics_stub (draw-network draw-proc draw-edge draw-mark draw-circle
@@ -32,9 +49,7 @@
 				  change-text!
 				  highlight-edge
 				  unhighlight-edge
-				  ;; temporarily exposed:
-				  processor-screen-radius
-				  
+
 				  these-tests test-this 
 				  test-graphics-stub)
   (import basic_graphics)
@@ -47,11 +62,6 @@
 (define processor-screen-objs '())
 (define edge-screen-objs '())
 (define other-objs '())
-
-;; Include definitions common to the chez and plt versions:
-(include "generic/graphics_stub.ss")
-;; Down in the INITIALIZATION section of this file I mutate some of
-;; the state from here...
 
 ;===============================================================================
 ;; Utils:
@@ -235,20 +245,21 @@
 
     (lambda (pr nodeid)
       (mvlet ([(x y) (coord:sim->screen pr)])
-	(let ([boundx1 (- x processor-screen-radius)]
-	      [boundy1 (- y processor-screen-radius)]
-	      [boundx2 (+ x processor-screen-radius)]
-	      [boundy2 (+ y processor-screen-radius)]
-	      [third (/ (* 2 processor-screen-radius) 3)])
+	(let* ([radius (processor-screen-radius)]
+	       [boundx1 (- x radius)]
+	       [boundy1 (- y radius)]
+	       [boundx2 (+ x radius)]
+	       [boundy2 (+ y radius)]
+	       [third (/ (* 2 radius) 3)])
 	  (let ((circ (create <proc-oval> the-win
 ;			     50 50 
 ;			     100 100)))
 			      boundx1 boundy1 boundx2 boundy2 
 			      with (node-id: nodeid))))
-;			     (flonum->fixnum (- x processor-screen-radius))
-;			     (flonum->fixnum (- y processor-screen-radius))
-;			     (flonum->fixnum (+ x processor-screen-radius))
-;			     (flonum->fixnum (+ y processor-screen-radius)))))	  
+;			     (flonum->fixnum (- x radius))
+;			     (flonum->fixnum (- y radius))
+;			     (flonum->fixnum (+ x radius))
+;			     (flonum->fixnum (+ y radius)))))	  
 
 	   (let ([box1 (create <child-rect> circ
 			       boundx1                 (+ boundy1 (* .8 third))
@@ -260,12 +271,12 @@
                                (+ boundx1 (* 2 third)) (+ boundy1 (* .8 third))
 			       (+ boundx1 (* 3 third)) (- boundy2 (* .8 third)))]
 		 [defled (rec->rgb Default-LED-Off-Color)]
-		 [text (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
-			                             (- boundy1 (* 0.3 processor-screen-radius))
+		 [text (create <canvas-text> the-win (+ boundx1 (* 0.1 radius))
+			                             (- boundy1 (* 0.3 radius))
 			       with (title: (format "~s" nodeid ))
 			       (fill-color: (rec->rgb Default-Supertext-Color)))]
-		 [text2 (create <canvas-text> the-win (+ boundx1 (* 0.1 processor-screen-radius))
-			                             (+ boundy2 (* 0.35 processor-screen-radius))
+		 [text2 (create <canvas-text> the-win (+ boundx1 (* 0.1 radius))
+			                             (+ boundy2 (* 0.35 radius))
 						     with (title: "") ;(format "~s" nodeid ))
 						     (fill-color: (rec->rgb Default-Subtext-Color)))]
 		 )
@@ -433,12 +444,5 @@
 (define test-this (default-unit-tester "GraphicsStub: common graphics interface for PLT and chez" 
 		    these-tests))
 (define test-graphics-stub test-this)
-
-;================================================================================
-;; INITIALIZATION:
-
-;; This is imported from the above.  Make sure that it is a flonum,
-;; just so we don't end up with rationals:
-(set! processor-screen-radius (exact->inexact processor-screen-radius))
 
 ) ;; End module.

@@ -1628,6 +1628,47 @@
 	))
     1] ;; Get one leader only
 
+   ["Elect leader using custom comparator: sum of dist origin and dist lower left corner."
+    (length , (tm-to-socvals
+	'(tokens
+	   [SOC-start () (leds on green) (gemit tree)]
+	   [tree () (grelay)]
+	   [node-start () (elect-leader tok1 crit comp)]
+	   [crit () (vector (float->int (locdiff '(0 30) (loc)))
+			    (float->int (locdiff '(60 30) (loc))))]
+	   [comp (a b)
+#;		   (if (and (> (vector-ref a 0) (vector-ref b 0))
+			    (> (vector-ref a 1) (vector-ref b 1)))
+		       1
+		       (if (and (> (vector-ref b 0) (vector-ref a 0))
+				(> (vector-ref b 1) (vector-ref a 1)))
+			   -1
+			   0))
+		 (let ((v1 (* (vector-ref a 0) (vector-ref a 1)))
+		       (v2 (* (vector-ref b 0) (vector-ref b 1))))
+		   (if (> v1 v2) 1
+		   (if (= v1 v2) 0
+		       -1))
+		   )]
+	   [tok1 (ldr val)
+		 (setlabel "<~a,~a>" ldr val)
+		 (if (= ldr (my-id))
+		     (begin (leds on red)
+			    (greturn (my-id) 
+				     (to SOC-return-handler) 
+				     (via tree)))
+		     (leds on blue))])
+	'[simalpha-sense-function sense-dist-from-origin]
+	'[simalpha-zeropad-args #t]
+	'[simalpha-channel-model  'lossless]
+	'[simalpha-placement-type 'gridlike] ;'connected]
+	'[simalpha-failure-model  'none]
+	'[sim-num-nodes 30]
+	'[simalpha-consec-ids #t]
+	'[simalpha-graphics-on #t]
+	))
+    1]
+
    ["Elect leader based on number of hops from origin."
     (length , (tm-to-socvals
 	'(tokens
