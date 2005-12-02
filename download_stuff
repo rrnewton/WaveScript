@@ -6,6 +6,8 @@ then wget http://www.scheme.com/csv7.0/pcsv7.0-1.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/tcl8.4.4.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/tk8.4.4.pkg.tar.gz;
      ls *.tar.gz | xargs -n1 tar xzvf;
+elif [ `uname` == "CYGWIN_NT-5.1" ];
+then wget http://www.scheme.com/csv7.0/pcsv70.exe;
 else 
     echo Nothing to download for platform `uname`.
 fi
