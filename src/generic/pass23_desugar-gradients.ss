@@ -244,8 +244,8 @@
 		(set! ,ver (+ 1 ,ver))
 		,@(DEBUG_GRADIENTS `(dbg "~a: Emitting tok %d ver ~a" (my-id) ',tok ,ver))
 		
-		;; TEMP:
-		(light-node 0 100 100)
+		;; TEMP: mark emissions:
+		;(light-node 0 100 100)
 
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs

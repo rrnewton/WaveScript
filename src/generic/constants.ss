@@ -213,7 +213,21 @@
 ;; Nodes aggregate and resend at this frequency.
 (define return-window-size 500)
 
+;; These are the height and width of the drawing surface itself.  (Not
+;; the whole window as the name would imply.
+(define window-width 700)
+(define window-height 700)
 
+;; This determines the radius of a node when drawn on the screen.
+;; (It has to be inexact for SWL's sake; otherwise we end up with
+;; undesirable rational numbers.) <br><br>
+;;   This is a "read only" parameter.. e.g. just a thunk.
+(define (processor-screen-radius)
+  (min (exact->inexact (/ window-width 45.))
+       ;; If there's not enough room, we make them smaller.
+       (sqrt (/ (exact->inexact (* window-height window-width))
+		(* 8 (sim-num-nodes))))))
+  
 ;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================
 ;; [2005.11.14] I'm segregating and renaming the parameters that are
@@ -323,6 +337,7 @@
 
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)
+(define-regiment-parameter simalpha-label-sensorvals #f)
 
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
 (define simalpha-pause-hook (make-parameter #f))

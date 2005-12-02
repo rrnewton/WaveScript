@@ -451,6 +451,7 @@
 (define-id-syntax t3 (load-regiment "demos/regiment/simple_events.rs"))
 (define-id-syntax t4 (load-regiment "demos/regiment/static_elab.rs"))
 (define-id-syntax t5 (load-regiment "demos/regiment/anchor_free_localization.rs"))
+(define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))
 (define-id-syntax t6 (load-regiment "demos/regiment/tracking.rs"))
 
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))

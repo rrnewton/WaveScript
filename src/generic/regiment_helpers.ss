@@ -31,7 +31,7 @@
 ;; These are really the *local* primitives:
 (define regiment-basic-primitives 
     ; value primitives
-  '((cons (Object Object) Pair) 
+  '((cons (Object Object) Pair)
     (cdr (Pair) Object)
     (car (Pair) Object)
     (append (List List) List)
@@ -50,6 +50,9 @@
     (-. (Float Float) Float) 
     (*. (Float Float) Float) 
     (/. (Float Float) Float) 
+    (max (Number Number) Number)
+    (min (Number Number) Number)
+    (abs (Number) Number)
 
     (vector Object Array)
     ;(make-vector (Object Integer) Array)
@@ -132,6 +135,9 @@
     (light-up (Area) Area)
 
     (anchor-at      (Number Number) Anchor)
+    (anchor-dist    (Anchor Anchor) Number)
+
+    (anchor-optimizing (Function Region) Anchor)
 
     ;; Takes a function to optimize, and an optional refresh rate to re-elect at:
     ;; If no refresh rate is zero, the election only happens once.
@@ -239,6 +245,13 @@
     (/ (Integer Integer) Integer) 
     (max (Number Number) Number)
     (min (Number Number) Number)
+    (abs (Number) Number)
+    (cos (Float) Float)
+    (sin (Float) Float)
+    (tan (Float) Float)
+    (acos (Float) Float)
+    (asin (Float) Float)
+    (atan (Float) Float)
 
     (+. (Float Float) Float) 
     (-. (Float Float) Float) 

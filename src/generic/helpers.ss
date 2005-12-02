@@ -1310,26 +1310,32 @@
 
 ;; This essentially floods a "gradient" from a part of the graph,
 ;; noting the hopcounts everywhere else.
+; This is getting seriously non-linear performance.
 (define (graph-label-dists obj graph)
   ; Assumes eq? based hash tables:
-  ; Convert the list to a hashtab for fast lookup:
   (define len (length graph))
-  (define hgraph (make-default-hash-table len))
-  ;; Next make a distance table:
+  ;; We make a distance table mapping node-id to distance.
   (define dists (make-default-hash-table len))
+  ;; Checklist: this marks the nodes we've been to:
+  (define checklist (make-default-hash-table len))
+  ; Convert the list to a hashtab for fast lookup:
+  (define hgraph (make-default-hash-table len))
   (for-each (lambda (pr) (hashtab-set! hgraph (car pr) (cdr pr))
+		         (hashtab-set! checklist (car pr) #f)
 		         (hashtab-set! dists  (car pr) #f))
     graph)
-  ; Now loop until we flood the network:
-  (let loop ((point obj) (dist 0))
-    (let ((old (hashtab-get dists point)))
-      (unless (and old (< old dist))
-	(hashtab-set! dists point dist)
-	;; Broadcast to neighbors:
-	(let ((nbrs (hashtab-get hgraph point)))
-	  (if nbrs
-	      (for-each (lambda (x) (loop x (add1 dist)))
-		nbrs))))))
+  ; Now start at a point and do a breadth first flood:
+  (let loop ((current (list obj)) (dist 0))
+      (unless (null? current)
+	(loop (apply append 
+		     (map (lambda (point)
+			    (if (hashtab-get dists point) ()
+				(begin 
+				  (hashtab-set! dists point dist)
+				  (let ((nbrs (hashtab-get hgraph point)))
+				    (if nbrs nbrs ())))))
+		       current))
+	      (add1 dist))))
 
   (map (lambda (pr)
 	 (cons (cons (car pr) (hashtab-get dists (car pr)))
