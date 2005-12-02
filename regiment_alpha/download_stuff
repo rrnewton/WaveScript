@@ -4,7 +4,7 @@ if [ `uname` == "Darwin" ];
 then wget http://www.scheme.com/csv7.0/pcsv7.0-1.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/swl0.9z-1.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/tcl8.4.4.pkg.tar.gz;
-     wget http://www.scheme.com/csv7.0/tk.4.4.pkg.tar.gz;
+     wget http://www.scheme.com/csv7.0/tk8.4.4.pkg.tar.gz;
      tar xzvf *.tar.gz;
 else 
     echo Nothing to download for platform `uname`.
