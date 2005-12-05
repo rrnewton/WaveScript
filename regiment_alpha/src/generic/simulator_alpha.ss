@@ -624,6 +624,7 @@
 		  [(token-present? (tok ,t ,[e]))
 		   `(if (retrieve-token the-store (make-simtok ',t ,e)) #t #f)]
 		  [(evict (tok ,t ,[e])) `(evict-token the-store (make-simtok ',t ,e))]
+		  [(evict-all (tok ,t ,[e])) `(evict-all-tokens the-store (make-simtok ',t ,e))]
 		  [(token-scheduled? ,[tok]) ;; INEFFICIENT
 		   ;; queue is list containing (simevt . simob) pairs.
 		   ;; We go through the current queue looking for a scheduled event that matches this token.
@@ -905,7 +906,8 @@
 				    (begin "If not, then we allocate that token object..."
 					   " setting the invoke counter to zero."
 					   (set! tokobj (,(string->symbol (format "make-~a" tok))
-							 0 ,@(map cadr stored)))
+							 ;0 ;; invoke-counter
+							 ,@(map cadr stored)))
 					   (add-token the-store simtok-obj tokobj)
 					   ))
 				(set-simobject-outgoing-msg-buf! this '())
@@ -1007,7 +1009,7 @@
 	   ;; First define datatype definitions for the tokens:
 	   ,@(let ((alltoks (list->set (map car allstored))))
 	       (map (lambda (t)		
-		      `(reg:define-struct (,t invoke-counter 
+		      `(reg:define-struct (,t ;invoke-counter 
 					      ,@(cadr (assq t allstored)))))
 		 alltoks))
 
@@ -1262,7 +1264,7 @@
     (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
       (if (not ob)
 	  (error 'print-node-stats "could not find node ~a in simworld's object hash." id))
-      (printf "\nStatistics for node ~a.\n" id)
+      (printf "\nStatistics for node ~a, pos:~a\n" id (node-pos (simobject-node ob)))
 ;      (printf "  Total sent messages: ~a\n" (simobject-local-sent-messages ob))
 ;      (printf "  Total rcvd messages: ~a\n" (simobject-local-recv-messages ob))
       (printf "  Token breakdown:                 invoked  sent  received\n")

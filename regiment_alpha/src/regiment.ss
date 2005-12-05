@@ -170,7 +170,10 @@
 					  (apply run-compiler prog opts)
 					  params)
 				   (apply run-compiler prog opts))))			  
-			  (parameterize ([print-graph #t] [print-level #f] [print-length #f])
+			  (parameterize ([print-graph #t] 
+					 [print-level #f] 
+					 [print-length #f]
+					 [pretty-maximum-lines #f])
 			    (with-output-to-file out_file
 			      (lambda ()
 				;; Otherwise we need to propogate the params to the output file:

@@ -309,6 +309,8 @@
      (token-deschedule (Token) Void)
      (token-present? (Token) Bool)
      (evict (Token) Void)
+     ;; This one ignores subid and evicts all instances sharing the token name.
+     (evict-all (Token) Void)
 
      (token->subid (Token) Integer)
 

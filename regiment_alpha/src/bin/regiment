@@ -3,10 +3,16 @@
 #scheme -h regimentc.1.heap $*
 #chez -h regimentc.1.heap $*
 
-MT=`echo '(display (machine-type))' | chez -q`
+MT=`echo '(display (machine-type))' | petite -q`
 
 # Use my default location if it is not set.
-if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/regiment_alpha/; fi
+if ! [ $REGIMENTD ]; then 
+    if [ -d $HOME/regiment_alpha ];
+    then REGIMENTD=$HOME/regiment_alpha/; 
+    elif [ -d $HOME/macroprogramming/regiment_alpha ];
+    then REGIMENTD=$HOME/macroprogramming/regiment_alpha/; 
+    fi;
+fi
 
 # If we can we use the stored heap, otherwise we run it as a script.
 if [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
@@ -14,3 +20,4 @@ then #echo Running regiment from saved heap...;
     $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
 else $REGIMENTD/src/regiment_script.ss $*;
 fi
+

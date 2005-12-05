@@ -448,7 +448,10 @@
 	       `(;; Anchor membership carries no arguments:
 		 [,(get-membership-name anch) () (call ,form)]
 ;		 [,form () (emit ,memb this)]
-		 [,form (v) (gemit ,spread)]
+
+		 ;; Khood's are distinguished by their origin ID.
+		 ;; TODO: FIXME: This is not sufficiently general.
+		 [,form (v) (gemit (tok ,spread (my-id)))]
 		 ;; Display stuff:
 ;		 [,form () (draw-circle (loc) 20)]
 		 [,memb ()
@@ -463,9 +466,9 @@
 ;		 [,memb () (if (< (ghopcount) ,rad) (grelay))]
 
 		 ;; TEMP:
-		 [,spread () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
-			  (if (< (ghopcount) ,rad) (timed-call 1000 ,temp))]
-		 [,temp () (grelay ,spread)]
+		 [,spread id () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
+			  (if (< (ghopcount) ,rad) (timed-call 1000 (tok ,temp id)))]
+		 [,temp id () (grelay (tok ,spread id))]
 		 
 		 )
 	       )]
