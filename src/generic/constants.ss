@@ -209,6 +209,11 @@
 ;; This is because our backend is not sophisticated enough yet to have real option types.
 (define NULL_ID 10001)
 
+;; Nodeid? tells us whether a scheme object could potentially be a
+;; node id.  If you use symbols or other non-integers for BASE_ID or
+;; NULL_ID, you should change this binding appropriately.
+(define-syntax nodeid? (syntax-rules () [(_ x) (integer? x)]))
+
 ;; In milliseconds, this is effectively the epoch size.  
 ;; Nodes aggregate and resend at this frequency.
 (define return-window-size 500)
@@ -331,6 +336,10 @@
 
 ;; If #t the simulator will open up a GUI as it simulates (if it can).
 (define-regiment-parameter simalpha-graphics-on #t)
+
+;; Determines whether edges are drawn.  Sometimes drawing edges (and
+;; highlighting them), can be slow.
+;(define-regiment-parameter simalpha-draw-edges #t)
 
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
 (define-regiment-parameter simalpha-write-sims-to-disk #t)

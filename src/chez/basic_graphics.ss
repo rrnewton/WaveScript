@@ -5,6 +5,9 @@
 
 ;; THERE IS NO ABSTRACTION BOUNDARY BETWEEN THIS AND GRAHPICS_STUB.SS
 
+;; TODO FIXME: REMOVE eval's FROM THIS AND GRAPHICS_STUB.ss
+;; (HAVING PROBLEMS WITH RECORD-TYPES CURRENTLY. evals ARE A HACK)
+
 ; ======================================================================
 
 ;; [2004.06.21] Adding "draw-mark" to the interface, I use this for
@@ -20,7 +23,7 @@
 			;; current-background-color
 			;; draw-ellipse ....
 
-			flash-text
+			flash-text ;thread-eval
 			)
 
  ;; This global variable points to the drawing surface itself.
@@ -337,6 +340,7 @@
 						    (if showedges-state
 							(for-each show edges)
 							(for-each hide edges))))))]
+
 	       [num-nodes-widget 
 		(create <numeric-param-entry> 'sim-num-nodes "NumNodes" sim-num-nodes the-panel2
 			with (width/char: 4))]

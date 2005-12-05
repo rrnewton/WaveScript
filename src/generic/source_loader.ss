@@ -15,7 +15,8 @@
     (define (desugar exps)
       (let loop ((ls exps))
 	(match ls
-	  [() (error 'read-regiment-source-file "file has no return expression.")]
+	  ;[() (error 'read-regiment-source-file "file has no return expression.")]
+	  [() ()]
 	  ;; First of all, we allow some load-time evaluation for syntax preprocessing:
 	  [((quasiquote ,form) ,rest ...)
 	   ;; Just evaluat it and loop:
@@ -29,8 +30,11 @@
 
 	  ;; These two are the "multiple construct" style, in which
 	  ;; many seperate "define" or "token" clauses are allowed.
-	  [((token ,stuff* ...) ...)
-	   `(tokens ,@(map desugar-token stuff*))]
+	  [((token ,stuff ...) . ,rest)
+	   (match (desugar rest)
+	     [() `(tokens ,(desugar-token stuff))]
+	     [(tokens . ,others)
+	      `(tokens ,(desugar-token stuff) ,@others)])]
 	  [((define ,x* ,y*) ... ,main)
 	   `(letrec ((,x* ,y*) ...) ,main)]
 	  ;[,retexp retexp]
@@ -82,6 +86,7 @@
 			       ))))
 	(print-stats)
 	result))))))
+(define reg:load load-regiment) ;; shorthand
 
 
 

@@ -394,8 +394,27 @@
 		   (tok1 () (printf "tok1 "))
 		   (check () (printf "~a" (token-present? (tok tok1 0))))
 		   (kickout () (evict (tok tok1 0)))
-		 ))
+		   ))
 	(#f tok1 #t #f)]
+     ["Token Evict-All"
+      , (tm-to-list
+		 '(tokens 		   
+		   (SOC-start () 
+			      (call check)
+			      (call (tok tok1 1))
+			      (call check)
+			      (call (tok tok1 2))
+			      (call check)
+			      (call kickout)
+			      (call check))
+		   (tok1 id () (printf "(tok1 ~a) " id))
+		   (check () (printf "(~a ~a) " 
+				     (token-present? (tok tok1 1))
+				     (token-present? (tok tok1 2))
+				     ))
+		   (kickout () (evict-all (tok tok1 0))))
+		 '(sim-num-nodes 2))
+	((#f #f) (tok1 1) (#t #f) (tok1 2) (#t #t) (#f #f))]
 
      ["token-scheduled? test"
       , (tm-to-list

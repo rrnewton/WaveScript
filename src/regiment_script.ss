@@ -1,6 +1,8 @@
 #! /bin/sh
 #|
-if [ -f $REGIMENTD/depends/petite ];
+if which chez ;
+then chez --script "$0" `pwd` ${1+"$@"};
+elif [ -f $REGIMENTD/depends/petite ];
 then exec $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"};
 else petite --script "$0" `pwd` ${1+"$@"};
 fi

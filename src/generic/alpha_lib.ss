@@ -40,6 +40,18 @@
 	(hashtab-remove! the-store key)
 	(hashtab-set! the-store key newls))))
 
+(define (evict-all-tokens the-store stok)
+  (let ([name (simtok-name stok)]
+	[keys '()])
+    (hashtab-for-each
+     (lambda (k pr)
+       (if (eq? name (simtok-name (key->token k)))
+	   (set! keys (cons k keys))))
+     the-store)
+    (for-each (lambda (k)
+		(hashtab-remove! the-store k))
+      keys)))
+	 
 ;; Returns: unspecified
 (define (add-token the-store stok val)
   (let* ([key (token->key stok)]
@@ -73,8 +85,8 @@
 	    (if pr 
 		;; This calls the actual graphics procedure:
 		(apply highlight-edge (cadr pr) extra)
-		(error 'sim-highlight-edge 
-		       "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))))
+		(warning 'sim-highlight-edge 
+			 "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))))
   
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)

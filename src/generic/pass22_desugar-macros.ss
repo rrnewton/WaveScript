@@ -159,10 +159,15 @@
 ; ;				(printf '"Comparing: ~s\n" (list (subcall ,criteria) (ext-ref ,storage ,cur-leader)))
 			  (begin '"If they beat the local leader, then the new winner is them."
 ;				 (printf '"(~a ~a) " ,val (ext-ref ,storage ,ldr-criteria))
-				 (ext-set! ,storage ,cur-leader ,id)
-				 (ext-set! ,storage ,ldr-criteria ,val)
-				 '"And since they won, we bear their flag onward:"
-				 (grelay (tok ,compete ,id) ,val))
+				 (let ((,tmp2 (ext-ref ,storage ,cur-leader))) ; The loser's id.
+				   (begin 
+				     (ext-set! ,storage ,cur-leader ,id)
+				     (ext-set! ,storage ,ldr-criteria ,val)
+				     '"And since they won, we bear their flag onward:"
+				     (grelay (tok ,compete ,id) ,val)
+;				     '"We also evict the loser to reclaim memory." ;; [2005.12.04]
+;				     (evict (tok ,compete ,tmp2))
+				     )))
 			  (begin 
 			      '"If they don't change our mind about who's leading, we do nothing."
 ;			      (printf '"~a "(ext-ref ,storage ,ldr-criteria))
@@ -171,6 +176,8 @@
 			      ))
 		      )]
 		   [,check-winner ()
+				  '"First we clear out all the competition tokens."
+				  (evict-all (tok ,compete 0))
 				  ;; Call the users hook with leader ID and leader criteria.
 				  (call ,t (ext-ref ,storage ,cur-leader)
 					   (ext-ref ,storage ,ldr-criteria))

@@ -7,6 +7,7 @@
 	 retrieve-token
 	 add-token
 	 evict-token	 
+	 evict-all-tokens
 
 	 neighbors
 	 sendmsg
