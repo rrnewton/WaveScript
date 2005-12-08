@@ -12,15 +12,20 @@
 
 (letrec ([readings (rmap (lambda (n) (tuple (sense n) 1))
 			 world)]
-	 [aggr (lambda (x y)
-		 (tuple (+ (tupref 0 x)
-			   (tupref 0 y))
-			(+ (tupref 1 x)
-			   (tupref 1 y))))]
-	 [div (lambda (v)
-		(if (= (tupref 1 v) 0) 0 ;; Just return zero if there are no samples to avg.
-		    (/ (tupref 0 v) (tupref 1 v))))]
-	 [sums (rfold aggr (tuple 0 0) readings)]
-	 [result (smap div sums)])
-  result)
+	 [foo 3]
+;	 [aggr (lambda (x y)
+;		 (tuple (+ (tupref 0 x)
+;			   (tupref 0 y))
+;			(+ (tupref 1 x)
+;			   (tupref 1 y))))]
+;	 [div (lambda (v)
+;		(if (= (tupref 1 v) 0) 0 ;; Just return zero if there are no samples to avg.
+;		    (/ (tupref 0 v) (tupref 1 v))))]
+	 ;[sums (rfold aggr (tuple 0 0) readings)]
+	 ;[result (smap div sums)]
+	 )
+
+  (tuple readings )
+  ;result
+  )
 
