@@ -119,6 +119,7 @@
     (anchor         Constant         Anchor)
     ))
 
+;; These are the distributed primitives.  The real Regiment combinators.
 (define regiment-distributed-primitives 
   '(
     
@@ -197,6 +198,7 @@
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
 
+;; This lets you easily line up a primitives arguments with the expected types.
 (define map-prim-w-types
   (lambda (f prim origargs)
     (let loop ([args origargs] [types (cadr (get-primitive-entry prim))])
@@ -218,25 +220,31 @@
      [(eq? 'Constant args) #f]
      [else (length args)])))
 
+;; Is it a regiment primitive?
 (define (regiment-primitive? x)
   (if (assq x regiment-primitives) #t #f))
 
+;; Is it a regiment constant?
 (define (regiment-constant? x)
   (if (assq x regiment-constants) #t #f))
 
+;; More specific classification of Regiment primitives.
 (define (basic-primitive? x) 
   (if (assq x regiment-basic-primitives) #t #f))
+;; More specific classification of Regiment primitives.
 (define (distributed-primitive? x) 
   (if (assq x regiment-distributed-primitives) #t #f))
 
+;; Predicate for token machine primitives.
 (define (token-machine-primitive? x)
   (if (assq x token-machine-primitives) #t #f))
 
-;; [2004.06.09]  Many of these are actually language forms.  I gotta
+;; [2004.06.09]<br>  Many of these are actually language forms.  I gotta
 ;; get this sorted out eventually.
+;; 
 ;; TODO: add some kind of type info.
-;; [2004.10.22]  For now everything that handles tokens is a syntax not a prim.
-;; [2005.05] I revoked that.  Basically everything is a prim now.
+;; <br>[2004.10.22]  For now everything that handles tokens is a syntax not a prim.
+;; <br>[2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
     ; Arithmetic prims:
   '((+ (Integer Integer) Integer) 
@@ -398,19 +406,22 @@
 		 (values t i a stored bindings body))]
 	 [,other (error 'destructure-tokbind "bad tokbind: ~a" other)]))
 
+;; tokname accessor
 (define (handler->tokname tb)
   ;; More efficient for now:
   (car tb)
   ;(mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
   ;tok))
   )
-
+;; formals accessor
 (define (handler->formals tb)
   (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
     args))
+;; body accessor
 (define (handler->body tb)
   (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
     body))
+;; subtokid accessor
 (define (handler->subtokid tb)
   (mvlet ([(tok id args stored bindings body) (destructure-tokbind tb)])
     id))

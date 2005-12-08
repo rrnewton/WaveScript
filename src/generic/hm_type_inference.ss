@@ -1,13 +1,18 @@
-;; type ::= T                ;; symbol - an atomic type
-;; type ::= 'a               ;; quoted symbol - a type variable
-;; type ::= (T type ...)     ;; a type constructor
-;; type ::= (type -> type)   ;; a function type
-;; type ::= #(type ...)      ;; a tuple type
+;;;; .title The Regiment Type Inferencer.
 
-;; And internally, the algorithm uses these constructions:
-;; type ::= '(a . type)      ;; a type variable with binding
-;; type ::= '(a . #f)        ;; a type variable with no info
+; type := T                ; symbol - an atomic type
+; type := 'a               ; quoted symbol - a type variable
+; type := (T type ...)     ; a type constructor
+; type := (type -> type)   ; a function type
+; type := #(type ...)      ; a tuple type
 
+; And internally, the algorithm uses these constructions:
+; type := '(a . type)      ; a type variable with binding
+; type := '(a . #f)        ; a type variable with no info
+
+;;; Primitive type definitions
+
+;; These are type aliases that are defined by default.
 (define regiment-type-aliases
   '([Region (Area Node)]
     [Anchor (Signal Node)]
@@ -15,6 +20,7 @@
     ; [(Area 'a) (Signal (Space 'a))]
     ))
 
+;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
     ; value primitives
   '((cons ('a (List 'a)) (List 'a))
@@ -106,6 +112,7 @@
     (anchor         Anchor)
     ))
 
+;; These are the distributed primitives.  The real Regiment combinators.
 (define regiment-distributed-primitives 
   '(
     
@@ -174,20 +181,23 @@
   
 
 ; ======================================================================
+;;; Helpers
 
+;; Raises a generic type error at a particular expression.
 (define (raise-type-error t1 t2 exp)
   (error 'type-checker
 	 "Type mismatch: ~s doesn't match ~s in ~s~%"
 	 (export-type t1) (export-type t2) exp))
+;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)
   (error 'type-checker
 	 "Can't unify: ~s occurs in type ~s in expression ~s~%" 
 	 tvnum (export-type t2) exp))
+;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (error 'type-checker
 	 "Different numbers of arguments ~s and ~s in ~s\n"
 	 (export-type t1) (export-type t2) exp))
-
 
 (define make-tvar-generator
   (lambda ()
@@ -199,8 +209,13 @@
 	    (let ((res (car vars)))
 	      (set! vars (cdr vars))
 	      res))))))
+
+;; Makes a unique type variable.
 (define make-tvar (make-tvar-generator))
+;; Resets the unique name counter.
 (define (reset-tvar-generator) (set! make-tvar (make-tvar-generator)))
+;; Makes a new type variable along with associated cell for
+;; accumulating information on that variable..
 (define (make-tcell) `(quote (,(make-tvar) . #f)))
 
 ;; This associates new mutable cells with all tvars.
@@ -241,6 +256,7 @@
     [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
 
+;; Looks up a primitive and produces an instantiated version of its arrow-type.
 (define (prim->type p)
   (let ((entry (or (assq p regiment-basic-primitives)
 		   (assq p regiment-constants)
@@ -253,8 +269,14 @@
       [(,name ,args ,ret)
        (instantiate-type `(,@args -> ,ret))])))
 
-; ======================================================================
+;; A potentially quoted integer.
+(define (qinteger? n)
+  (match n
+    [,i (guard (integer? i)) #t]
+    [',i (guard (integer? i)) #t]
+    [,else #f]))
 
+; ======================================================================
 ;;; The main type checker.
 
 ;; Assign a type to a complete Regiment program.
@@ -262,13 +284,16 @@
 
 ;; Assign a type to an expression.
 (define (type-expression exp tenv)
-  (trace-let l ((exp exp))
+  (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (type-const c)]
       [(quote ,c) (type-const c)]
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (prim->type prim)]
-      [,v (guard (symbol? v)) (cadr (assq v tenv))]
+      [,v (guard (symbol? v)) 
+	  (let ((entry (assq v tenv)))
+	    (if entry (cadr entry)
+		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,te ,[l -> c] ,[l -> a])
        (let ((tt (l te)))
 	 (types-equal! tt 'Bool te)
@@ -279,37 +304,23 @@
        (type-lambda v* bod tenv)]
 
       [(tuple ,[l -> arg*] ...)  (apply vector arg*)]
-      [(tupref ,n ,[l -> t])
-       (if (not (integer? n))
-	   (error 'type-expression 
-		  "invalid tupref syntax, expected constant integer index, got: ~a" n))
-       (vector-ref t n)]
-
-#;      (let-exp (ids rands body) (type-of-let-exp ids rands body tenv))
-
+      [(tupref ,n ,len ,[l -> t])
+       (unless (and (qinteger? n) (qinteger? len))
+	 (error 'type-expression 
+		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
+       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
+	 (types-equal! t newtypes exp)
+	 (vector-ref newtypes n))]
       [(letrec ([,id* ,rhs*] ...) ,bod)
        (type-letrec id* rhs* bod tenv)]
-;      (letrec-exp (result-texps proc-names texpss idss bodies letrec-body)
-;        (type-of-letrec-exp
-;          result-texps proc-names texpss idss bodies
-;          letrec-body tenv))
-
-
-#;      (lettype-exp (type-name texp
-                     result-texps proc-names texpss
-                     idss bodies lettype-body)
-        (type-of-lettype-exp type-name texp
-          result-texps proc-names texpss idss bodies
-          lettype-body tenv))
-
       [(,prim ,[l -> rand*] ...)
        (guard (regiment-primitive? prim))
        (type-app (prim->type prim) rand* exp)]
       [(,[l -> rator] ,[l -> rand*] ...)
        (type-app rator rand* exp)]
       
-
       )))
+
 
 ;; Assign a basic type to a constant.
 (define (type-const c)
@@ -331,7 +342,7 @@
 ;; .param ids   The lambda formals.
 ;; .param body  The lambda body.
 ;; .param tenv  The type environment.
-(trace-define type-lambda
+(define type-lambda
   (lambda (;texps 
 	   ids body tenv)
     ;(let ((arg-types (expand-optional-type-expressions texps tenv)))
@@ -340,7 +351,7 @@
       `(,@argtypes -> ,result))))
 
 ;; Assign a type to a procedure application expression.
-(trace-define (type-app rator rands exp)
+(define (type-app rator rands exp)
   (let ([result (make-tcell)])
     ;; By instantiating a new type for the rator we allow let bound polymorphism.
     ;(inspect (vector (export-type rator) rands result))
@@ -359,7 +370,7 @@
 ;               (types-of-expressions rands tenv)
 ;               tenv)))
 ;       (type-of-expression body tenv-for-rands))))
-(trace-define (type-letrec id* rhs* bod tenv)
+(define (type-letrec id* rhs* bod tenv)
   ;; Make new cells for all these types
   (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
 	 [tenv (append (map list id* rhs-types) tenv)])
@@ -368,33 +379,6 @@
 		(types-equal! type (type-expression rhs tenv) rhs))
       rhs-types rhs*)
     (type-expression bod tenv)))
-
-
-#;(define type-of-letrec-exp
-  (lambda (result-texps proc-names arg-optional-texpss idss bodies
-            letrec-body tenv) 
-    (let
-      ((arg-typess
-         (map
-           (lambda (optional-texps)
-             (expand-optional-type-expressions optional-texps tenv))
-           arg-optional-texpss))
-       (result-types
-         (expand-optional-type-expressions result-texps tenv)))
-    (let ((the-proc-types
-            (map proc-type arg-typess result-types)))
-      (let ((tenv-for-body                 ;^ type env for all proc-bodies
-              (extend-tenv proc-names the-proc-types tenv)))
-        (for-each                     
-          (lambda (ids arg-types body result-type)
-            (check-equal-type!
-              (type-of-expression 
-                body
-                (extend-tenv ids arg-types tenv-for-body))
-              result-type
-              body))
-          idss arg-typess bodies result-types)
-        (type-of-expression letrec-body tenv-for-body))))))
 
 
 ; ======================================================================
@@ -411,7 +395,10 @@
       [(quote ,c)               (values c (type-const c))]
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
-      [,v (guard (symbol? v))   (values v (cadr (assq v tenv)))]
+      [,v (guard (symbol? v))   
+	  (let ((entry (assq v tenv)))
+	    (if entry (values v (cadr entry))
+		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te)
        (types-equal! ct at exp)
@@ -423,14 +410,15 @@
 	   (values `(lambda ,v* ,argtypes ,newbod)
 		   `(,@argtypes -> ,bodtype))))]
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (apply vector t*))]
-      [(tupref ,n ,[l -> e t])
-       (let ([n (match n
-		  [,i (guard (integer? i)) i]
-		  [',i  (guard (integer? i)) i]
-		  [,other
-		   (error 'annotate-expression
-			  "invalid tupref (tuple reference) syntax, expected constant integer index, got: ~a" n)])])
-	 (values `(tupref ',n ,e) (vector-ref t n)))]
+      [(tupref ,n ,len ,[l -> e t])
+       (unless (and (qinteger? n) (qinteger? len))
+	 (error 'type-expression 
+		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
+       (values `(tupref ,n ,len ,e)
+	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
+		 (types-equal! t newtypes exp)
+		 (vector-ref newtypes n)))]
+
       [(letrec ([,id* ,rhs*] ...) ,bod)
 
        ;; Make new cells for all these types
@@ -463,7 +451,7 @@
     (values 
      (match e
        [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-       [(lambda ,v* ,t* ,bod) `(lambda ,v* ,(map export-type t*) ,bod)]
+       [(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
        [(tuple ,[e*] ...) `(tuple ,e* ...)]
        [(tupref ,n ,[e]) `(tupref ,n ,e)]
        [(letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
@@ -476,7 +464,9 @@
 
 ;;; The unifier.
 
-(trace-define (types-equal! t1 t2 exp)
+;; This asserts that two types are equal.  Mutates the type variables
+;; to reflect this constraint.
+(define (types-equal! t1 t2 exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
     [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
@@ -492,11 +482,13 @@
 	     (types-equal! (instantiate-type (cadr entry)) nonsym exp)
 	     (raise-type-error x y exp))))]
     [[#(,x* ...) #(,y* ...)]
+     (guard (= (length x*) (length y*)))
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) x* y*)]
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
      (guard (symbol? x1) (symbol? y1)
 	    (not (memq '-> xargs))
-	    (not (memq '-> yargs)))
+	    (not (memq '-> yargs))
+	    (= (length xargs) (length yargs)))
      (if (not (eq? x1 y1))
 	 (error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp))
 ;     (types-equal! x1 y1 exp)
@@ -516,7 +508,8 @@
 		      `(,@yargs -> ,y) other)])]
     [,otherwise (raise-type-error t1 t2 exp)]))
 		   
-(trace-define (tvar-equal-type! tvar ty exp)
+;; This helper mutates a tvar cell while protecting against cyclic structures.
+(define (tvar-equal-type! tvar ty exp)
   (match tvar ;; Type variable should be a quoted pair.
     [',pr 
      (if (not (pair? pr))
@@ -526,6 +519,7 @@
 	 (begin (no-occurrence! tvar ty exp)
 		(set-cdr! pr ty)))]))
 
+;; This makes sure there are no cycles in a tvar's mutable cell.
 (define (no-occurrence! tvar ty exp)
   (match ty
     [,s (guard (symbol? s)) #t]
@@ -536,7 +530,9 @@
 
 
 ; ======================================================================
+;;; Unit tests.
 
+;; Unit tests.
 (define these-tests
   `([(let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x)
      ((List '(a . 99)) -> '(a . 99))]
@@ -563,6 +559,12 @@
     
     [(export-type (type-expression '(tuple 1 2.0 3) '()))
      #3(Integer Float Integer)]
+
+    [(export-type (type-expression '(lambda (x) (tupref 0 3 x)) ()))
+     ,(lambda (x)
+	(match x
+	  [(#(,v1 ,_ ,__) -> ,v2) (equal? v1 v2)]
+	  [,else #f]))]
 
     [(export-type (type-expression 
 		   '(letrec ([f (lambda (x) x)])
@@ -600,4 +602,7 @@
     ))
 
 (define test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
+;; Unit tester.
 (define test-inferencer test-this)
+
+ 

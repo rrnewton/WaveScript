@@ -1,15 +1,23 @@
 
-;; [2005.10.15] For decent (medium) size programs analyze-grammar-failure is working *very* slowly.
+;;;; .title Grammar Checker
 
-;; [2005.09.26]
-;; This compiler has grown large enough I'm going to check the output
-;; of passes to make sure they actually fit their announced grammars.
-;; This also forces me to make first class representations of grammars.
+; [2005.10.15] For decent (medium) size programs analyze-grammar-failure is working *very* slowly.
+
+; [2005.09.26]
+; This compiler has grown large enough I'm going to check the output
+; of passes to make sure they actually fit their announced grammars.
+; This also forces me to make first class representations of grammars.
+
+
+; ======================================================================
+
+;;; Main grammar checking entry points
 
 ;; [2005.09.26] This is limited right now.
 (define (check-grammar origexpr grammar . initialprod)
-  ;; expr is an sexpression
-  ;; grammar is just a list of productions
+  ;; .param origexpr is an sexpression
+  ;; .param grammar is just a list of productions
+  ;; .param initialprod indicates which production to use to start checking
   (define allvariants (list->set (map car grammar)))
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 
@@ -151,6 +159,11 @@
 	result)
    ))
 
+;; This function allows one to try to figure out where the problem was
+;; when a grammar check fails.  This is a total hack and operates
+;; according to an arbitrary heuristic I made up.  At some point I
+;; should take a more disciplined approach to this grammar checking
+;; business.
 (define (analyze-grammar-failure grammar-failure)
 
     (let* ((count (length grammar-failure))
@@ -364,7 +377,7 @@
 ;; This is the constructor for compiler passes.  It takes the main
 ;; function that does the real work of the compiler, and then wraps it
 ;; with some extra debugging code.
-
+;; <br><br>
 ;; Todo, add invariant-procedures as well as grammars:
 (define (build-compiler-pass name input-spec output-spec transform)  
   (match (list input-spec output-spec)
@@ -402,12 +415,15 @@
 		  
 ; =======================================================================
 
-;;;  <Sugar>     ::= (flood <Expr>)
-;;;                | (elect-leader <Token> [<Token>])
+;;; Token Machine Grammars
 
-;;;  <Prim> ::= <BasicPrim> 
-;;;           |  | timed-call | bcast
-;;;           | is_scheduled | deschedule | is_present | evict
+;  <Sugar>     := (flood <Expr>)
+;                | (elect-leader <Token> [<Token>])
+
+;  <Prim> := <BasicPrim> 
+;           |  | timed-call | bcast
+;           | is_scheduled | deschedule | is_present | evict
+;; This is the baseline TML grammar.
 (define basic_tml_grammar
   (let ()
     (define (is-var? x) (and (symbol? x) (not (token-machine-keyword? x))))
@@ -484,6 +500,7 @@
 
     )))
 
+;; This is a "mix-in" for adding gradients to the TML grammar.
 (define tml_gradient_grammar
   `([GExpr ('gemit Token Expr ...)]
     [GExpr ('grelay Token Expr ...)]
@@ -502,10 +519,13 @@
     [GExpr ('gversion Token)]
     ))
 
+;; This is another "mix-in" for the let-stored form.
 (define tml_letstored_grammar
 ;  `([LetStored ('let-stored ([Var Expr] ...) Expr)]))
   `([LetStored ('let-stored ([Var Expr]) Expr)])) ;; Restricting let-stored further.
 
+;; This is the frequently used "full TML" grammar.  For example, this
+;; characterizes the output cleanup-token-machines.
 (define full_but_clean_tml
   `(,@ basic_tml_grammar
     [Expr GExpr]
@@ -518,43 +538,43 @@
  ))
 
 
-;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)
-;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
-;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (gdist <DynToken>)
-;;;                | (gparent <DynToken>)
-;;;                | (gorigin <DynToken>)
-;;;                | (ghopcount <DynToken>)
-;;;                | (gversion <DynToken>)
+;    <GExpr>     := (gemit <DynToken> <Expr> ...)
+;                  | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
+;                  | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;                  | (gdist <DynToken>)
+;                  | (gparent <DynToken>)
+;                  | (gorigin <DynToken>)
+;                  | (ghopcount <DynToken>)
+;                  | (gversion <DynToken>)
 
 
-;;;  <Pgm> ::= (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
-;;;  <SOCPgm> ::= <Statement*>
-;;;  <NodePgm> ::= (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
-;;;;;;;  <Entry>  ::= <Token>
-;;;  <Decl> ::= (<var> <Exp>)
-;;;  <TokBinding> ::= (<Token>  <Code>*)
-;;; <TODO> DECIDE ON LOCAL BINDINGS:
-;;;  <TokBinding> ::= (<Token> (bindings <Decl>*) <Code>*)
+;    <Pgm> := (program (bindings <Decl>*) <SOCPgm> <NodePgm>)
+;    <SOCPgm> := <Statement*>
+;    <NodePgm> := (nodepgm <Entry> (bindings <Decl>*) (tokens <TokBinding>*))
+;  ;  ;  <Entry>  := <Token>
+;    <Decl> := (<var> <Exp>)
+;    <TokBinding> := (<Token>  <Code>*)
+;   <TODO> DECIDE ON LOCAL BINDINGS:
+;    <TokBinding> := (<Token> (bindings <Decl>*) <Code>*)
 
-;;;  <Code> ::= <Statement>*
-;;;  <Statement>  ::= <BasicStuff?>
-;;;                | <GExpr>
-;;;                | <Macro> 
-;;;  <GExpr>     ::= (gemit <DynToken> <Expr> ...)
-;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
-;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (gdist <DynToken>)
-;;;                | (gparent <DynToken>)
-;;;                | (gorigin <DynToken>)
-;;;                | (ghopcount <DynToken>)
-;;;                | (gversion <DynToken>)
-;;;  <Macro> ::= (flood <Token>)
-;;;            | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
-;;;  <Simple> ::= (quote <Lit>) | <Var>
+;    <Code> := <Statement>*
+;    <Statement>  := <BasicStuff?>
+;                  | <GExpr>
+;                  | <Macro> 
+;    <GExpr>     := (gemit <DynToken> <Expr> ...)
+;                  | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <Token>))
+;                  | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
+;                  | (gdist <DynToken>)
+;                  | (gparent <DynToken>)
+;                  | (gorigin <DynToken>)
+;                  | (ghopcount <DynToken>)
+;                  | (gversion <DynToken>)
+;    <Macro> := (flood <Token>)
+;              | (elect-leader <Token> [<Token>])  ;; <TODO> optional second argument.. decider
+;    <Simple> := (quote <Lit>) | <Var>
 
-;;;  <Token> ::= <Symbol> | ...???
-;;;  <Exp>  ::= ???
+;    <Token> := <Symbol> | ...???
+;    <Exp>  := ???
 
 
 ; (define deglobalize_output_grammar
@@ -569,9 +589,91 @@
 ;     [(symbol) (symbol? e)]
 ;     [(
   
-	      
 
+; =======================================================================
+;;; Regiment Grammars	      
 
+;; UNFINISHED
+(define basic_regiment_grammar
+  (let ()
+    (define (is-var? x) (and (symbol? x) (not (token-machine-keyword? x))))
+  `(
+    [PassInput (Lang ('quote Program))]
+    [Lang ,symbol?]
+    ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
+    [Program ('program ('bindings (Var Expr) ...) NodePgm)]
+    ;       NOTE: tokens will inclide a binding for SOC-start and node-start:
+    [NodePgm ('nodepgm ('tokens TokBinding ...))] 
+    [TokBinding (TokName Var ;; subtokid
+			 (Var ...) 
+			 ; ('bindings Cbind ...) ; Got rid of these local constant bindings
+			 ('stored (Var Expr) ...)
+			 Expr)]
+    [Expr Var]
+    [Expr Num] ;; Allow unquoted?
+    [Expr Const]
+    [Expr Token] ;; NOTE: Either the whole token reference or just the sub-index can be dynamic.
+    [Expr ('set! Var Expr)]
+    [Expr ('ext-ref Token Var)]
+    [Expr ('ext-set! Token Var Expr)]
+
+;       NOTE: These are static token refs for now.
+    [Expr ('begin Expr ...)]
+    ;[Expr ('let ([Var Expr] ...) Expr)]
+    [Expr ('let ([Var Expr]) Expr)]
+    [Expr ('if Expr Expr Expr)]
+    [Expr ('leds LedState LedColor)]
+    [LedColor 'red]
+    ;[LedColor 'yellow]
+    [LedColor 'blue]
+    [LedColor 'green]
+    [LedState 'on]
+    [LedState 'off]
+    [LedState 'toggle]
+
+;; Should scratch this and explicitely enforce argument count in grammar:
+    [Expr (Prim Expr ...)]
+    ,@(map (lambda (entry) `[Prim (quote ,(car entry))]) 
+	   ;; Remove dbg from the list... we handle that special:
+	   (assq-remove-all 'dbg token-machine-primitives))
+    [Expr ('app Expr ...)]
+    ;; These are PRIMS:
+;    [Expr ('call Token Expr ...)]
+;    [Expr ('call-fast Token Expr ...)]
+;    [Expr ('bcast Token Expr ...)]
+
+    [Expr ('dbg ('quote ,string?) DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
+    [DebugArg Expr]
+    [DebugArg ('quote DebugArgConstData)]
+    [DebugArgConstData ,atom?]
+    [DebugArgConstData (DebugArgConstData ...)]
+
+    ;; 
+    ;; This is dangerous, but I allow arbitrary debug statements to put hidden in "BLACKBOX" syntax.
+    ;; This are absolutely opaque both to the grammar checker and subsequent passes' transformations.
+    [Expr ('BLACKBOX ,(lambda (_) #t))]
+
+;; These are now just primitives:  
+;; But still need to remember to subtract them when the grammar shrinks.
+;    [Expr ('return Expr)]
+;    [Expr ('subcall DynToken Expr ...)]
+
+    [Num ,integer?]
+    [Var ,is-var?]
+    [Token StaticToken]
+    [Token DynToken]
+    [StaticToken ('tok TokName ,integer?)]
+    [DynToken ('tok TokName Expr)]
+    [TokName ,symbol?]
+;    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
+    [Const ('quote ,atom?)]
+
+    )))
+
+; =======================================================================
+;;; Unit tests.
+
+;; Unit tests.
 (define these-tests
   `([(check-grammar '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
     [(check-grammar '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
@@ -611,6 +713,8 @@
 (define test-this (default-unit-tester
 		    "grammar_checker: this is my by-hand grammar checker for pass input/output"
 		    these-tests))
+
+;; Unit tester.
 (define test-grammar test-this)
 (define tests-grammar these-tests)
 
