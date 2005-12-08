@@ -15,7 +15,7 @@
 
 ;; Main:
 
-(smap2 (lambda (n1 n2) (list n1 n2))
+(smap2 (lambda (n1 n2) (tuple n1 n2)) ;(list n1 n2))
        (anchor-at 50 10)
        (anchor-at 30 40))
 

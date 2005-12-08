@@ -1,5 +1,7 @@
 ;;; Pass 00: verify-regiment
 
+;; TODO: REMOVE CRAPPY OLD MONOMORPHIC TYPE CHECKER.
+
 ;;; This pass verifies that the input is in the regiment lanuguage.
 ;;; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
 
@@ -40,24 +42,24 @@
   '( 3
 
      (letrec ((a (anchor-at 30 40)))
-       (letrec ((r (circle a 50))
-		(f (lambda (tot next)
+       (letrec ((r (circle a 50.))
+		(f (lambda (next tot)
 		     (cons (+. (car tot) (sense next))
 			   (cons (+. (car (cdr tot)) 1.0)
 				 '()))))
 		(g (lambda (tot) (/. (car tot) (car (cdr tot))))))
 	 (smap g (rfold f '(0. 0.) r))))
 
-     (letrec ((R (circle-at 30 40 50))
-	      (f (lambda (tot next)
+     (letrec ((R (circle-at 30 40 50.))
+	      (f (lambda (next tot)
 		   (cons (+. (car tot) (sense next))
 			 (cons (+. (car (cdr tot)) 1.)
 			       '()))))
 	      (g (lambda (tot) (/. (car tot) (car (cdr tot))))))
        (letrec ((avg (smap g (rfold f (cons 0. (cons 0. '())) R))))
-	 (until (swhen-any (lambda (x) (> x 15.3)) avg)
-		R
-		(circle-at 0 0 100))))
+	 (runtil (swhen-any (lambda (x) (> x 15.3)) avg)
+		 R
+		 (circle-at 0 0 100.))))
      ))
 
 ;; This is modified below with a set!
@@ -149,7 +151,7 @@
 	     ;; Locations are just lists for the moment!
 	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
 	     ;; We're using integral rather than floating point distances for the time being:
-	     [(set-equal? (list infered-type expected-type) '(Dist Integer))  (void)]
+	     [(set-equal? (list infered-type expected-type) '(Dist Float))  (void)]
 	     
 
 	     ;; We are lenient and allow either a float or an int to match a Number.
@@ -223,6 +225,14 @@
 		     (not (regiment-primitive? var)))
                 (error 'verify-regiment (format "unbound variable: ~a~n" var))
                 var)]
+
+	  [(tuple ,[e] ...) `(tuple ,e ...)]
+	  [(tupref ,n ,[e])
+	   (match n 
+	     [,i (guard (integer? i)) (void)]
+	     [',i (guard (integer? i)) (void)]
+	     [,o (error 'verify-regiment "bad index to tupref: ~a" o)])
+	   `(tupref ,n ,e)]
           
 	  ;; In our super simple type inference we don't do arrow
 	  ;; types.  So we don't say anything about the types of
@@ -289,13 +299,14 @@
 	;; The input is already wrapped with the metadata:
         [(,input-language (quote (program ,body)))
          (let ([body (process-expr body '() '())]) 
-           ;; Doesn't change the input language... 		
-           `(,input-language '(program ,body)))]
+           ;; Changes input language only by annotating types:
+	   (mvlet ([(newprog t) (annotate-program body)])
+	     `(,input-language '(program ,newprog ,t))))]
 	;; Nope?  Well wrap that metadata:
         [,body
          (let ([body (process-expr body '() '())])
-           ;; Doesn't change the input language... 		
-           `(base-language '(program ,body)))]
+	   (mvlet ([(newprog t) (annotate-program body)])
+	     `(base-language '(program ,newprog ,t))))]
 	))))
 
 ;==============================================================================

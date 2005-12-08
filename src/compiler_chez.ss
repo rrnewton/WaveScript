@@ -68,13 +68,13 @@
 ;; TEMP
 (define current_interpreter 'chezscheme)
 
-(printf "Loading compiler in chezscheme~a...\n"
-	(if (top-level-bound? 'regiment-origin)
-	    (format " (from ~a)" regiment-origin)
-	    ""))
-(IF_GRAPHICS (printf "(Linking GUI code using SWL.)\n")
-	(printf "(No GUI available.)\n"))
-(flush-output-port)
+(fprintf stderr "Loading compiler in chezscheme~a...\n"
+	 (if (top-level-bound? 'regiment-origin)
+	     (format " (from ~a)" regiment-origin)
+	     ""))
+(IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
+	     (fprintf stderr "(No GUI available.)\n"))
+(flush-output-port stderr)
 
 
 ;(load-shared-object (format "chez/usleep/~a/usleep.o" (machine-type)))
@@ -173,6 +173,8 @@
 (include "generic/lang30_haskellize-tokmac.ss") 
 (include "generic/lang32_emit-nesc.ss")
 
+;; Type inference is used by verify-regiment.
+(include "generic/hm_type_inference.ss")
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
 (include "generic/pass02_rename-vars.ss")

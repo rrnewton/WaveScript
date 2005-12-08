@@ -1,11 +1,11 @@
 #! /bin/sh
 #|
-if which chez ;
-then chez --script "$0" `pwd` ${1+"$@"};
-elif [ -f $REGIMENTD/depends/petite ];
+if (which chez > /dev/null); 
+then exec chez --script "$0" `pwd` ${1+"$@"};
+elif [ -f $REGIMENTD/depends/petite ]; 
 then exec $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"};
-else petite --script "$0" `pwd` ${1+"$@"};
-fi
+else exec petite --script "$0" `pwd` ${1+"$@"}; 
+fi 
 |#
 
 ; /usr/bin/scheme --script

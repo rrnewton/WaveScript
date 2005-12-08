@@ -319,6 +319,16 @@
            (begin exp ...
                   (loop (sub1 n)))))]))
 
+(define (list-repeat! ls)
+  (if (null? ls) (error 'list-repeat! "cannot create infinite list from null list."))
+  (let loop ((p ls))
+    (if (null? (cdr p))
+	(set-cdr! p ls)
+	(loop (cdr p))))
+  ls)
+(define (make-repeats ls numelems)
+  (list-head (list-repeat! (list-copy ls)) numelems))
+
 ;; [2005.10.16]  I hate 'do' syntax
 ;; For now we only allow fixnum indices:
 (define-syntax for
@@ -1003,7 +1013,7 @@
 (define eq-deep 
   (lambda (eq)
     (lambda (obj1 obj2)
-      (let loop ((o1 obj1) (o2 obj2))
+      (trace-let loop ((o1 obj1) (o2 obj2))
 	(cond
 	 [(eq o1 o2) #t]
 	 [(and (list? o1) (list? o2))
@@ -1013,8 +1023,9 @@
 	 [(and (pair? o1) (pair? o2)) ;; Kinda silly to have both these.
 	  (and (loop (car o1) (car o2)) ;; the above should save stack space though..
 	       (loop (cdr o1) (cdr o2)))]
-	 [(and (vector? o1) (vector? 02))
-	  (andmap loop (vector->list o1) (vector->list o2))]
+	 [(and (vector? o1) (vector? o2))
+	  ; Treat same as lists:
+	  (loop (vector->list o1) (vector->list o2))]
 	 [else #f])))))
 
 (define tester-eq? (eq-deep lenient-compare?))

@@ -52,6 +52,8 @@
 				  change-text!
 				  highlight-edge
 				  highlight-parent-routes
+				  highlight-all-neighbors
+				  highlight-child-gradients
 				  unhighlight-edge
 
 				  these-tests test-this 
@@ -173,73 +175,138 @@
   (send line unhighlight-edge)
   )
 
+
+
+; ----------------------------------------------------------
+; These two are helper functions used by the bindings below:
+(define (get-grads ob)
+  (let ((grads '()))
+    (hashtab-for-each 
+     (lambda (k pr)
+       (let ([tok (caar pr)] [rec (cdar pr)])
+	 (let* ([lst (reg:struct->list rec)]
+		[len (length lst)])
+	   (if (>= len 4)
+	       (let* ([last4 (list-tail lst (- len 4))]
+		      [parent  (car last4)]
+		      [origin  (cadr last4)]
+		      [hops    (caddr last4)]
+		      [version (cadddr last4)]
+		      [subid (simtok-subid tok)])
+		 (when (and (or (symbol? parent) (nodeid? parent)) ;; Could be 'atroot
+			    (nodeid? origin)
+			    (number? hops)
+			    (integer? version))		     
+		   (set! grads (cons (vector (simtok-name tok) (simtok-subid tok)
+					     parent origin hops version) grads))))))))
+     (simobject-token-store ob))
+    grads))
+(define trace-grad-up 
+  (match-lambda (,id #(,tokname ,tokid ,parent ,origin ,hops ,version))
+    (let ([hash (simworld-obj-hash (simalpha-current-simworld))])
+    (let loop ([id id] [visited '()])
+      (cond 
+       [(eqv? id origin)
+	(printf "  Reached origin at ~a for grad on tok <~a:~a>\n"
+		origin tokname tokid)]
+       [(memq id visited)
+	(warning 'highlight-parent-routes
+		 "Found loop in parent pointers! Hit this node twice: ~a, all visited were: ~a"
+		 id visited)]
+       [else
+	(printf "Tracing gradient through ~a. on tok <~a:~a>, with parent:~a orig:~a hops:~a ver:~a\n" 
+		id tokname tokid parent origin hops version)
+					;		(sleep 1000)
+	(let ((ob (hashtab-get hash id)))
+					;		     (if (not (simobject? ob))
+					;			 (error 'highlight-parent-routes "bad simobjet: \n~a" ob))
+	  (let ((grads (filter (match-lambda (#(,tn ,tid ,p ,o ,h ,v)) 
+				 (and (eq? tn tokname)
+				      (eqv? tid tokid)
+				      (eqv? o origin)))
+			 (get-grads ob))))
+	    (cond
+	     [(null? grads) (void)]
+	     [(null? (cdr grads))
+	      (let ((parent (vector-ref (car grads) 2)))
+		(when (nodeid? parent)
+		  ;;(printf "Highlighting Suspected gradient from node ~a: tokname,tokid,orig,prnt,hops,ver:~s\n" 
+		  ;;	  id (car grads))
+		  (eval `(parameterize ([current-simobject ,ob])
+			   (sim-highlight-edge ',parent (make-rgb 0 255 0) 2000)))
+		  (loop parent (cons id visited))))]
+	     [else (warning 'highlight-parent-routes 
+			    "Found multiple token entries for one gradient! ~s" grads)])))])))))
+(define trace-grad-down
+  (match-lambda (,id ,color #(,tokname ,tokid ,parent ,origin ,hops ,version))
+    (let* ([sim (simalpha-current-simworld)]
+	   [hash (simworld-obj-hash sim)])
+    (define (neighbors id)
+      (cdr (assq (hashtab-get hash id)
+		 (simworld-object-graph sim))))
+    (let loop ((objs (neighbors id)) (visited (list id)))
+      (for-each (lambda (ob)
+		  (unless (memq ob visited)
+		    (for-each
+			(match-lambda (#(,tn ,tid ,p ,o ,h ,v)) 
+			  (when (and (eq? tn tokname)
+				     (eqv? tid tokid)
+				     (eqv? o origin)
+				     (nodeid? p))
+			    (eval `(parameterize ([current-simobject ,ob])
+				     (sim-highlight-edge ',p ,color 2000)))))
+		      (get-grads ob))))
+	objs)
+      (loop (apply append (map neighbors (map node-id (map simobject-node objs))))
+	    (append objs visited))))))
+; ----------------------------------------------------------
+
 ;; This takes a node-id and momentarily highlights all the
 ;; "parent-routes" from the gradients in which this node participates.
 ;; Currently it just uses a cheesy, unsound heuristic to guess which
 ;; tokens in the memory are gradients.
-(define (highlight-parent-routes id)
-  (let* ([sim (simalpha-current-simworld)]
-	 [hash (simworld-obj-hash sim)])
-    (define (get-grads ob)
-      (let ((grads '()))
-	(hashtab-for-each 
-	 (lambda (k pr)
-	   (let ([tok (caar pr)] [rec (cdar pr)])
-	     (let* ([lst (reg:struct->list rec)]
-		    [len (length lst)])
-	       (if (>= len 4)
-		   (let* ([last4 (list-tail lst (- len 4))]
-			  [parent  (car last4)]
-			  [origin  (cadr last4)]
-			  [hops    (caddr last4)]
-			  [version (cadddr last4)]
-			  [subid (simtok-subid tok)])
-		     (when (and (or (symbol? parent) (nodeid? parent)) ;; Could be 'atroot
-				(nodeid? origin)
-				(number? hops)
-				(integer? version))		     
-		       (set! grads (cons (vector (simtok-name tok) (simtok-subid tok)
-						 parent origin hops version) grads))))))))
-	 (simobject-token-store ob))
-	grads))
-    (define trace-grad
-      (match-lambda (,id #(,tokname ,tokid ,parent ,origin ,hops ,version))
-	(let loop ([id id] [visited '()])
-	  (cond 
-	   [(eqv? id origin)
-	    (printf "  Reached origin at ~a for grad on tok <~a:~a>\n"
-		    origin tokname tokid)]
-	   [(memq id visited)
-	    (warning 'highlight-parent-routes
-		     "Found loop in parent pointers! Hit this node twice: ~a, all visited were: ~a"
-		     id visited)]
-	   [else
-	    (printf "Tracing gradient through ~a. on tok <~a:~a>, with parent:~a orig:~a hops:~a ver:~a\n" 
-		    id tokname tokid parent origin hops version)
-					;		(sleep 1000)
-	    (let ((ob (hashtab-get hash id)))
-					;		     (if (not (simobject? ob))
-					;			 (error 'highlight-parent-routes "bad simobjet: \n~a" ob))
-	      (let ((grads (filter (match-lambda (#(,tn ,tid ,p ,o ,h ,v)) 
-				     (and (eq? tn tokname)
-					  (eqv? tid tokid)
-					  (eqv? o origin)))
-			     (get-grads ob))))
-		(cond
-		 [(null? grads) (void)]
-		 [(null? (cdr grads))
-		  (let ((parent (vector-ref (car grads) 2)))
-		    (when (nodeid? parent)
-		      ;;(printf "Highlighting Suspected gradient from node ~a: tokname,tokid,orig,prnt,hops,ver:~s\n" 
-		      ;;	  id (car grads))
-		      (eval `(parameterize ([current-simobject ,ob])
-			       (sim-highlight-edge ,parent (make-rgb 0 255 0) 2000)))
-		      (loop parent (cons id visited))))]
-		 [else (warning 'highlight-parent-routes 
-				"Found multiple token entries for one gradient! ~s" grads)])))]))))
-    ;; Now trace all gradients from the current node:
-    (let ((these-grads (get-grads (hashtab-get hash id))))
-      (for-each (lambda (x) (trace-grad id x)) these-grads))))
+(define highlight-parent-routes 
+  (lambda (id)
+    (let ([hash (simworld-obj-hash (simalpha-current-simworld))])
+      ;; Now trace all gradients from the current node:
+      (let ((these-grads (get-grads (hashtab-get hash id))))
+	(for-each (lambda (x) (trace-grad-up id x)) these-grads)))))
+
+;; This one highlights the full tree for all the gradients rooted at the current node.
+;; It uses different colors for each:
+(define highlight-child-gradients 
+  (lambda (my-id)
+    (let ([hash (simworld-obj-hash (simalpha-current-simworld))])
+      ;; Now trace all gradients from the current node:
+      (let* ([these-grads (get-grads (hashtab-get hash my-id))]
+	     [my-grads (filter (match-lambda (#(,tn ,tid ,p ,orig ,h ,v))
+				 (eq? orig my-id))
+			 these-grads)])
+	(for-each (lambda (x c) (trace-grad-down my-id c x))
+	  my-grads
+	  (make-repeats (list (make-rgb 0 0 255)
+			      (make-rgb 0 255 0)
+			      (make-rgb 255 0 0)
+			      (make-rgb 255 255 0)
+			      (make-rgb 0 255 255)
+			      (make-rgb 255 0 255))
+			(length my-grads)))))))
+
+;; This one simply highlights all the edges connected to a node.
+(define highlight-all-neighbors
+  (lambda (id)
+    (let* ([sim (simalpha-current-simworld)]
+	   [ob (hashtab-get (simworld-obj-hash sim) id)]
+	   [entry (assq ob (simworld-object-graph sim))]
+	   [nbrids (map node-id (map simobject-node (cdr entry)))])
+      (disp "ME" (node-id (simobject-node ob)) nbrids)
+      (eval `(parameterize ([current-simobject ,ob])
+	       (for-each (lambda (id)
+			   (sim-highlight-edge id (make-rgb 0 255 255) 1500))
+		 ',nbrids)))
+      )))
+
+
 
 ;; This function bears an onus to destroy old screen objects and post up new ones.
 ;; It might be called whenever the processor set changes.
@@ -306,8 +373,10 @@
 		    (send self set-border)]
        [mouse-release (x y mods)
 		      (event-case ((modifier= mods))
-			[([left-button]) (eval `(print-node-stats ,nodeid))]
+			[([left-button]) (eval `(print-node-stats ,nodeid))
+			                 (thread-eval `(highlight-all-neighbors ,nodeid))]
 			[([right-button]) (thread-eval `(highlight-parent-routes ,nodeid))]
+			[([middle-button]) (thread-eval `(highlight-child-gradients ,nodeid))]
 			)]
        ))
     (define-class (<child-rect> prnt x1 y1 x2 y2) (<rectangle> (get-parent prnt) x1 y1 x2 y2)

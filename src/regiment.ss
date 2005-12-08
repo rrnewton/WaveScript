@@ -8,9 +8,14 @@
 ;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
 
 (define start-dir (current-directory))
-(printf "STARTING: ~s\n" start-dir)
+;(printf "STARTING: ~s\n" start-dir)
 
 (define regiment-origin "unknown")
+(define stderr
+  (let ((buffer-size 1))
+    (let ((p (make-output-port 2 (make-string buffer-size))))
+      (set-port-output-size! p (- buffer-size 1))
+      p)))
 
 ;; If the compiled version is there, use that:
 (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
@@ -18,7 +23,7 @@
       (begin 
 	(set! regiment-origin "compiled .so")
 	(load (format "./build/~a/compiler_chez.so" (machine-type))))
-      (begin (printf "Loading Regiment from source...\n")
+      (begin (fprintf stderr "Loading Regiment from source...\n")
 	     (set! regiment-origin "source")
 	     (load "./compiler_chez.ss"))))
 
@@ -39,6 +44,7 @@
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
   (printf "~n")
   (printf "Compiler Options: ~n")
+  (printf "  -lt  type check only, print typed program to stdout           ~n")
   (printf "  -l0  stop compilation just before deglobalize          (.sexp)~n")
   (printf "  -l1  compile barely to tokens (just after deglobalize) (.tm)~n")
   (printf "  -l2  compile to just before haskellize-tokmac          (.sim)~n")
@@ -52,6 +58,22 @@
   (printf "  -repl         when simulation finishes, run interactive REPL\n")
   )
 
+(define (print-types-and-exit prog)
+  (printf ";; Regiment program with infered types: \n")
+  ;; Run just the verify regiment pass, it will associate types:
+  (match (verify-regiment `(lang '(program ,prog)))
+    [(,lang '(program ,p ,t))
+     (match p
+       [(letrec ([,id* ,t* ,rhs*] ...) ,bod)
+	(for-each (lambda (id t rhs)
+		    (pretty-print `(define ,id : ,t ,rhs))(newline))
+	  id* t* rhs*)
+	(pretty-print bod)]
+       [,p (pretty-print p)])
+     ;(printf "\n;; Regiment program return type: ~a\n" t)
+     (printf "  : ~a\n" t)
+     (exit)]
+    [,other (error 'print-types-and-exit "bad output from verify-regiment: ~s" other)]))
 
 (define main 
   (lambda args    
@@ -81,7 +103,8 @@
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
 		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
 
-		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))		     
+		    [(-lt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
+		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))
                                      (set! extension ".sexp") (loop rest)]
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
 		                     (set! extension ".tm")  (loop rest)]
@@ -118,10 +141,12 @@
 	(let ([symargs (map string->symbol args)])
 	  (let runloop ([mode (car symargs)] [filenames (loop (cdr symargs))])
 	(case mode
+	  ;; Unit Test mode:
 	  [(t test)
 	   (test-units)
 	   ;(test-everything)
 	   ]
+	  ;; Compile mode:
 	  [(c compile)
 	   (if (null? filenames)
 	       (begin
@@ -156,12 +181,15 @@
 		      (set! out_file (string-append (remove-file-extension fn) extension))
 		      ;; Don't overwrite one of our own input files!
 		      (if (member out_file filenames) (set! out (string-append "out." extension)))
-
-		      (printf "~n  Writing token machine to: ~s ~n" out_file)
 		      (mvlet ([(prog params) 
 			       (parameterize ([current-directory start-dir])
 				 (read-regiment-source-file fn))])
-		       
+
+			;; If we're in type-check mode we print types and exit here:
+			(if (memq 'type-only opts)
+			    (print-types-and-exit prog))
+
+			(printf "~n  Writing token machine to: ~s ~n" out_file)
 			(delete-file out_file)
 			(let ((comped 
 			       (if makesimcode 
@@ -181,7 +209,7 @@
 				    (pretty-print `(parameters ,@params)))
 				(pretty-print comped))))))
 		      ))))]
-
+	  ;; Simulation mode (also may invoke compiler):
 	  [(s simulate)
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
