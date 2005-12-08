@@ -5,9 +5,9 @@
 ;;; This pass verifies that the input is in the regiment lanuguage.
 ;;; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
 
-;;; <Pgm>  ::= <Exp>
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= 
+;;; <Pgm>  := <Exp>
+;;; <Decl> := (<var> <Exp>)
+;;; <Exp>  := 
 ;;;            (quote <datum>)
 ;;;          | <constant>
 ;;;          | <var>
@@ -15,10 +15,10 @@
 ;;;          | (lambda <Formalexp> <Exp>)
 ;;;          | (letrec (<Decl>*) <Exp>)
 ;;;          | (<primitive> <Exp>*)
-;;; <Formalexp> ::= (<var>*)
+;;; <Formalexp> := (<var>*)
 
 ;;; And in the output
-;;; <Pgm>  ::= (<language> '(program <Exp>))
+;;; <Pgm>  := (<language> '(program <Exp>))
 
 
 ;; No variable capture is allowed at this point.
@@ -227,12 +227,10 @@
                 var)]
 
 	  [(tuple ,[e] ...) `(tuple ,e ...)]
-	  [(tupref ,n ,[e])
-	   (match n 
-	     [,i (guard (integer? i)) (void)]
-	     [',i (guard (integer? i)) (void)]
-	     [,o (error 'verify-regiment "bad index to tupref: ~a" o)])
-	   `(tupref ,n ,e)]
+	  [(tupref ,n ,len ,[e])
+	   (unless (qinteger? n) (error 'verify-regiment "bad index to tupref: ~a" o))
+	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" o))
+	   `(tupref ,n ,len ,e)]
           
 	  ;; In our super simple type inference we don't do arrow
 	  ;; types.  So we don't say anything about the types of

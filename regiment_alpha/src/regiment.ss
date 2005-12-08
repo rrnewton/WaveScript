@@ -45,6 +45,7 @@
   (printf "~n")
   (printf "Compiler Options: ~n")
   (printf "  -lt  type check only, print typed program to stdout           ~n")
+  (printf "  -ltt type check only, print *only* top level types to stdout  ~n")
   (printf "  -l0  stop compilation just before deglobalize          (.sexp)~n")
   (printf "  -l1  compile barely to tokens (just after deglobalize) (.tm)~n")
   (printf "  -l2  compile to just before haskellize-tokmac          (.sim)~n")
@@ -58,7 +59,8 @@
   (printf "  -repl         when simulation finishes, run interactive REPL\n")
   )
 
-(define (print-types-and-exit prog)
+(define (print-types-and-exit prog . opts)
+  (define verbose? (memq 'verbose opts))
   (printf ";; Regiment program with infered types: \n")
   ;; Run just the verify regiment pass, it will associate types:
   (match (verify-regiment `(lang '(program ,prog)))
@@ -66,9 +68,11 @@
      (match p
        [(letrec ([,id* ,t* ,rhs*] ...) ,bod)
 	(for-each (lambda (id t rhs)
-		    (pretty-print `(define ,id : ,t ,rhs))(newline))
+		    (if verbose?
+			(begin (pretty-print `(define ,id : ,t ,rhs))(newline))
+			(printf "~a : ~a\n" (pad-width 30 id) t)))
 	  id* t* rhs*)
-	(pretty-print bod)]
+	(if verbose? (pretty-print bod))]
        [,p (pretty-print p)])
      ;(printf "\n;; Regiment program return type: ~a\n" t)
      (printf "  : ~a\n" t)
@@ -103,7 +107,9 @@
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
 		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
 
-		    [(-lt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
+		    [(-lt ,rest ...) (set! opts (cons 'type-only-verbose opts)) (loop rest)]
+		    [(-ltt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
+
 		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))
                                      (set! extension ".sexp") (loop rest)]
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
@@ -186,8 +192,11 @@
 				 (read-regiment-source-file fn))])
 
 			;; If we're in type-check mode we print types and exit here:
+			(if (memq 'type-only-verbose opts)
+			    (print-types-and-exit prog 'verbose))
 			(if (memq 'type-only opts)
 			    (print-types-and-exit prog))
+			    
 
 			(printf "~n  Writing token machine to: ~s ~n" out_file)
 			(delete-file out_file)

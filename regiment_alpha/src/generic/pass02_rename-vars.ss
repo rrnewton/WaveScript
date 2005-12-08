@@ -62,23 +62,13 @@
           ;; Other datums (numbers null etc) get left alone:
           [else datum])))
 
-    (define process-lambda-clause
-      (lambda (formalexp expr expr* env)
-        (let* ([formal* formalexp] ;(get-formals formalexp)]
-               [new-formal* (map unique-name formal*)]
-               [env (append (map cons formal* new-formal*) env)])
-          (let ([expr (process-expr expr env)]
-                [expr* (process-expr* expr* env)])
-            `(,(cast-formals new-formal* formalexp)
-               ,expr ,@expr*)))))
-
     (define process-expr*
       (lambda (expr* env)
         (map (lambda (expr) (process-expr expr env)) expr*)))
 
     (define process-expr
       (lambda (expr env)
-        (match expr
+        (trace-match PEXP expr
           [,const (guard (constant? const)) const]
           [(quote ,datum)
            (guard (not (assq 'quote env)))
@@ -92,20 +82,24 @@
            (guard (not (assq 'if env)))
            `(if ,test ,conseq ,altern)]
 
-          [(lambda ,formalexp ,expr ,expr* ...)
+          [(lambda ,formalexp ,types ,expr)
            (guard (not (assq 'lambda env)))
-           (cons 'lambda
-                 (process-lambda-clause formalexp expr expr* env))]
+	   (let* ([formal* formalexp] ;(get-formals formalexp)]
+		  [new-formal* (map unique-name formal*)]
+		  [env (append (map cons formal* new-formal*) env)])
+	     (inspect env)
+	     (let ([expr (process-expr expr env)])
+	       `(lambda ,(cast-formals new-formal* formalexp)
+		  ,types ,expr)))]
 
-          [(letrec ([,lhs* ,rhs*] ...) ,expr ,expr* ...)
+          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
            (guard (not (assq 'letrec env)))
            (let ([new-lhs* (map unique-name lhs*)])
              (let ([env (append (map cons lhs* new-lhs*) env)])
                (let ([rhs* (process-expr* rhs* env)]
                      [expr (process-expr expr env)]
                      [expr* (process-expr* expr* env)])
-                 `(letrec ([,new-lhs* ,rhs*] ...) ,expr ,expr* ...))))]
-
+                 `(letrec ([,new-lhs* ,type* ,rhs*] ...) ,expr ,expr* ...))))]
           
           [(,prim ,[rand*] ...)
            (guard (not (assq prim env)) (regiment-primitive? prim))
@@ -119,9 +113,9 @@
     (lambda (expr . optional)
       (let ((run (lambda (expr)
 		   (match expr
-			  [(,input-language (quote (program ,body)))
+			  [(,input-language (quote (program ,body ,type)))
 			   (let ([body (process-expr body '())])
-			     `(,input-language '(program ,body)))]))))
+			     `(,input-language '(program ,body ,type)))]))))
 	(match optional
 	       [(count ,n) 
 		(unique-name-counter n)

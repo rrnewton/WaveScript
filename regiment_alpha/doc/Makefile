@@ -8,12 +8,17 @@ FILES = \
 
 GENERICFILES = \
   generic/helpers.ss \
+  generic/regiment_helpers.ss \
   generic/hash.ss \
   generic/alpha_lib.ss \
   generic/alpha_lib_scheduler_simple.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
   generic/constants.ss \
+  generic/hm_type_inference.ss \
+  generic/grammar_checker.ss \
+  generic/pass00_verify-regiment.ss \
+
 
 CHEZFILES = \
   chez/helpers.ss \
@@ -85,7 +90,7 @@ install:
 	cp ../src/README /var/www/regimentman/
 	cp ../src/README.html /var/www/regimentman/
 	chgrp www-data -R /var/www/regimentman/
-	chmod g+rX -R /var/www/regimentman/
+	chmod g+rX -R /var/www/regimentman/*
 
 clean: 
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk

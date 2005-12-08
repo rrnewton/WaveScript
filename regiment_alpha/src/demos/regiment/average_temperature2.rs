@@ -13,17 +13,17 @@
 
 (define avg 
   (lambda (r)
-    (letrec ([readings (rmap (lambda (x) (cons x 1))
-			     world)]
+    (letrec ([readings (rmap (lambda (x) (tuple x 1)) r)]
 	     [aggr (lambda (x y)
-		     (cons (+ (car x) (car y))
-			   (+ (cdr x) (cdr y))))]
+		     (tuple (+ (tupref 0 2 x) (tupref 0 2 y))
+			    (+ (tupref 1 2 x) (tupref 1 2 y))))]
 	     [div (lambda (v) 
-		(if (= (cdr v) 0) 0 ;; Just return zero if there are no samples to avg.
-		    (/ (car v) (cdr v))))]
-	     [sums (rfold aggr (cons 0 0) readings)]
+		(if (= (tupref 1 2 v) 0) 0 ;; Just return zero if there are no samples to avg.
+		    (/ (tupref 0 2 v) (tupref 1 2 v))))]
+	     [sums (rfold aggr (tuple 0 0) readings)]
 	     [result (smap div sums)])
       result)))
 
+(define readings (rmap sense world))
 
-(avg (rmap sense world))
+(avg readings)

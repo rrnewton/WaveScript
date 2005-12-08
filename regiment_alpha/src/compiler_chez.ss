@@ -67,6 +67,11 @@
 
 ;; TEMP
 (define current_interpreter 'chezscheme)
+(define stderr
+  (let ((buffer-size 1))
+    (let ((p (make-output-port 2 (make-string buffer-size))))
+      (set-port-output-size! p (- buffer-size 1))
+      p)))
 
 (fprintf stderr "Loading compiler in chezscheme~a...\n"
 	 (if (top-level-bound? 'regiment-origin)

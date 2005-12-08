@@ -9,6 +9,11 @@
 ;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
 
 (define eta-primitives
+  (build-compiler-pass ;; This wraps the main function with extra debugging
+   'eta-primitives
+   `(input)
+   ;; This insures (among other things) that any new lambda's we generate have types attached:
+   `(output (grammar ,eta_prim_gramar PassInput))
   (let ()
     (define process-expr*
       (lambda (expr* env)
@@ -26,41 +31,48 @@
 		  (if (regiment-constant? var)
 		      var
 		      (let ([formals (list-head possible-formals (length args))])
-			`(lambda ,formals (,var ,@formals)))))]
+			`(lambda ,formals 
+			   ; Primitive types:
+			   ,(rdc (rdc (prim->type var)))
+			   (,var ,@formals)))))]
           [,var (guard (symbol? var))
 		var]
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
            `(if ,test ,conseq ,altern)]
-          [(lambda ,formals ,expr)
+          [(lambda ,formals ,types ,expr)
            (guard (not (memq 'lambda env)))
-	   `(lambda ,formals
+	   `(lambda ,formals ,types
 	      ,(process-expr expr (append formals env)))]
-          [(letrec ([,lhs* ,rhs*] ...) ,expr)
+          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
            (guard (not (memq 'letrec env)))
 	   (let ([env (append lhs* env)])
 	     (let ([rhs* (process-expr* rhs* env)]
 		   [expr (process-expr expr env)])
-	       `(letrec ([,lhs* ,rhs*] ...) ,expr)))]
+	       `(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)))]
 
 	  ;; A bit of sugar.
           ;; This just expands "lists" into a bunch of cons cells.
-	  [(list ,rands ...)
+	  [(list ,[rands] ...)
 	   (process-expr (match rands
 			   [() ''()]
 			   [(,a . ,[b]) `(cons ,a ,b)])
 			 env)]
 	  ;; More sugar.
-	  [(or ,rands ...)
+	  [(or ,[rands] ...)
 	   (process-expr (match rands
 			   [() ''#f]
 			   [(,a . ,[b]) `(if ,a '#t ,b)])
 			 env)]
-	  [(and ,rands ...)
+	  [(and ,[rands] ...)
 	   (process-expr (match rands
 			   [() ''#t]
 			   [(,a . ,[b]) `(if ,a ,b '#f)])
 			 env)]
+	  ;; Even more sugar.  This is convenient for doubletons:
+	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
+	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
+
 
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
@@ -71,8 +83,7 @@
           [,unmatched (error 'eta-primitives "invalid syntax ~s" unmatched)])))
     (lambda (expr)
       (match expr
-	     [(,input-language (quote (program ,body)))
+	     [(,input-language (quote (program ,body ,type)))
 	      (let ([body (process-expr body '())])
-		`(,input-language '(program ,body)))]))))
-
+		`(,input-language '(program ,body ,type)))])))))
 
