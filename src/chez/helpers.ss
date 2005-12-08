@@ -15,7 +15,7 @@
 	  make-n-list 
 
 	  with-error-handlers with-warning-handler
-	  current-error-port stderr
+	  current-error-port 
 
 	  system/echoed system-to-str with-evaled-params 
 	  chomp shell-expand-string seconds-since-1970
@@ -145,7 +145,7 @@
 	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
 
 
-(define stderr
+#;(define stderr
   (let ((buffer-size 1))
     (let ((p (make-output-port 2 (make-string buffer-size))))
       (set-port-output-size! p (- buffer-size 1))
