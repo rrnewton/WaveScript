@@ -10,16 +10,17 @@
 
 ;; Main program:
 
-(letrec ([readings (rmap (lambda (n) (cons (sense n) 1))
+(letrec ([readings (rmap (lambda (n) (tuple (sense n) 1))
 			 world)]
 	 [aggr (lambda (x y)
-		 (cons (+ (car x)
-			  (car y))
-		       (+ (cdr x)
-			  (cdr y))))]
-	 [div (lambda (v) 
-		(if (= (cdr v) 0) 0 ;; Just return zero if there are no samples to avg.
-		    (/ (car v) (cdr v))))]
-	 [sums (rfold aggr (cons 0 0) readings)]
+		 (tuple (+ (tupref 0 x)
+			   (tupref 0 y))
+			(+ (tupref 1 x)
+			   (tupref 1 y))))]
+	 [div (lambda (v)
+		(if (= (tupref 1 v) 0) 0 ;; Just return zero if there are no samples to avg.
+		    (/ (tupref 0 v) (tupref 1 v))))]
+	 [sums (rfold aggr (tuple 0 0) readings)]
 	 [result (smap div sums)])
   result)
+

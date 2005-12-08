@@ -1344,6 +1344,8 @@
     ;; FOR NOW: only log if we're in debugmode [2005.10.17]
     (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
 		   [simulation-logger-count (IFDEBUG 0 #f)])
+
+;    (IFDEBUG (inspect (simulation-logger)) ())
     
     (let* (
 	   [simple-scheduler (memq 'simple flags)]
@@ -1370,7 +1372,7 @@
 
       (DEBUGASSERT 'start-alpha-sim (simworld? sim))
   
-    (if (file-exists? logfile) (delete-file logfile))
+    ;(if (file-exists? logfile) (delete-file logfile))
   
     ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
     (simalpha-current-simworld sim)

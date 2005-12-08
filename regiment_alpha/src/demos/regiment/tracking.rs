@@ -7,17 +7,23 @@
   [simalpha-realtime-mode #t]
 
   [simalpha-channel-model 'lossless]
-  [simalpha-placement-type 'gridlike]
-  [simalpha-inner-radius 6] ;4];6]
-  [simalpha-outer-radius 8] ;5];8]
-  [sim-num-nodes 100]
+  ;[simalpha-placement-type 'gridlike]
+  ;[simalpha-inner-radius 6] ;4];6]
+  ;[simalpha-outer-radius 8] ;5];8]
+  ;[sim-num-nodes 100]
+
+  [simalpha-outer-radius 20]
+  [simalpha-placement-type 'connected]
+  [sim-num-nodes 3]
    
   [simalpha-failure-model  'none]
+
+  [simalpha-dbg-on #t]
 
   ;[simalpha-sense-function sense-noisy-rising]
   ;[simalpha-sense-function sense-random-1to100]
   [simalpha-sense-function sense-dist-from-origin]
-  [sim-timeout 10000])
+  [sim-timeout 5000])
 
 
 ;; Main program:
@@ -38,8 +44,9 @@
 (define nodes
   (light-up ; Identity function that just happens to perform a harmless side-effect.
    (rfilter (lambda (n)	    
-	      (or (= (nodeid n) 6)
-		  (= (nodeid n) 14)))
+	      (or (= (nodeid n) 1)
+		  ;(= (nodeid n) 14)
+		  ))
 	    world)))
 
 (define twohop (lambda (n) (khood (node->anchor n) 1)))

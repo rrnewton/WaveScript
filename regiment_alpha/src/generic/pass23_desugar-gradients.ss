@@ -345,7 +345,7 @@
 
 	       ;;  Two new token handlers.  These are the return handlers.  
 	       ;;  One for storing state (aggregation accumulator), and one 
-	       ;;  for timer events on for this aggregation.
+	       ;;  for timer events for this aggregation.
 	       `(
 		 ;; Invoke the timeout handler from node-start:
 		 ;; ASSUMES STATIC TOIND VIAIND:

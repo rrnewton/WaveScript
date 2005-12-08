@@ -15,7 +15,7 @@
 	  make-n-list 
 
 	  with-error-handlers with-warning-handler
-	  current-error-port
+	  current-error-port stderr
 
 	  system/echoed system-to-str with-evaled-params 
 	  chomp shell-expand-string seconds-since-1970
@@ -34,6 +34,7 @@
 
 	  gaussian
 	  
+	  list-repeat! make-repeats
 	  mapi for-eachi diff
 	  set? subset? set-equal? list->set set-cons union intersection difference
 	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
@@ -142,8 +143,14 @@
 	 (vector? (vector-ref x 1))
 	 (> (vector-length (vector-ref x 1)) 1)
 	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
- 
-(define current-error-port current-output-port)
+
+
+(define stderr
+  (let ((buffer-size 1))
+    (let ((p (make-output-port 2 (make-string buffer-size))))
+      (set-port-output-size! p (- buffer-size 1))
+      p)))
+(define current-error-port (make-parameter stderr))
 
 
 ;; Moved include!

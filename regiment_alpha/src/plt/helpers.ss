@@ -57,10 +57,10 @@
    default-unit-tester tester-eq?
    ;default-unit-tester-retries ;; This is in constants.
    substring?
-   
-   
+     
    gaussian
 
+   list-repeat! make-repeats
    mapi for-eachi diff
    set? subset? set-equal? list->set set-cons union intersection difference
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
