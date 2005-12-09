@@ -13,7 +13,7 @@
    'eta-primitives
    `(input)
    ;; This insures (among other things) that any new lambda's we generate have types attached:
-   `(output (grammar ,eta_prim_gramar PassInput))
+   `(output) ;(grammar ,eta_prim_gramar PassInput))
   (let ()
     (define process-expr*
       (lambda (expr* env)

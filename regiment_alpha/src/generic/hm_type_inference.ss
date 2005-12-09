@@ -72,8 +72,8 @@
     ;; These are dynamically typed primitives: 
     ;(pair? (Object) Bool)
     ;(number? (Object) Bool)
-    ;(even? (Integer) Bool)
-    ;(odd? (Integer) Bool)
+    (even? (Integer) Bool)
+    (odd? (Integer) Bool)
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
@@ -192,7 +192,8 @@
 (define (raise-occurrence-check tvnum t2 exp)
   (error 'type-checker
 	 "Can't unify: ~s occurs in type ~s in expression ~s~%" 
-	 tvnum (export-type t2) exp))
+	 tvnum t2 ;(export-type t2) 
+	 exp))
 ;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (error 'type-checker
@@ -218,22 +219,33 @@
 ;; accumulating information on that variable..
 (define (make-tcell) `(quote (,(make-tvar) . #f)))
 
+(define (tcell->name x)
+  (match x
+    [(quote (,n . ,t)) (DEBUGASSERT (symbol? n))
+     n]
+    [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
+
 ;; This associates new mutable cells with all tvars.
+;; It also renames all the tvars to assure uniqueness.
 (define (instantiate-type t)
   (let loop ((t t) (tenv '()))
     (match t
       [,s (guard (symbol? s)) s]
       [(quote (,n . ,v))
-       `(quote ,(or (assq n tenv)
-		    (let ((cell (cons n (if v (loop v tenv) #f))))
-		      (set! tenv (cons cell tenv))
-		      cell)))]
+       (let ((entry (assq n tenv)))
+	 `(quote ,(if entry
+		      (cadr entry)
+		      (let ((cell (cons (make-tvar) (if v (loop v tenv) #f))))
+			(set! tenv (cons (list n cell) tenv))
+			cell))))]
       [(quote ,n) (guard (symbol? n))
-       `(quote ,(or (assq n tenv)
-		    (let ((cell (cons n #f)))
-		      (set! tenv (cons cell tenv))
-		      cell)))]
-      [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
+       (let ((entry (assq n tenv)))
+	 `(quote ,(if entry
+		      (cadr entry)
+		      (let ((cell (cons (make-tvar) #f)))
+			(set! tenv (cons (list n cell) tenv))
+			cell))))]
+       [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
        `(,@arg* -> ,res)]
       [#(,[t*] ...) (apply vector t*)]
       [(,constructor ,[args] ...)
@@ -274,6 +286,18 @@
   (match n
     [,i (guard (integer? i)) #t]
     [',i (guard (integer? i)) #t]
+    [,else #f]))
+
+(define (type? t)
+  (define (id x) x)
+  (match t
+    [,s (guard (symbol? s)) #t]
+    [',v (guard (symbol? v)) #t]
+    ['(,v . #f) (guard (symbol? v)) #t]
+    ['(,v . ,[t]) (guard (symbol? v)) t]
+    [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+    [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+    [#(,[t] ...) (andmap id t)]
     [,else #f]))
 
 ; ======================================================================
@@ -469,6 +493,7 @@
 (define (types-equal! t1 t2 exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
+    [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
     [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
@@ -510,23 +535,44 @@
 		   
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp)
+  (DEBUGASSERT (type? ty))
   (match tvar ;; Type variable should be a quoted pair.
     [',pr 
      (if (not (pair? pr))
 	 (error 'tvar-equal-type! "bad tvar here: ~a" tvar))
      (if (cdr pr)
+
 	 (types-equal! (cdr pr) ty exp)
-	 (begin (no-occurrence! tvar ty exp)
+
+	 (begin (no-occurrence! (tcell->name tvar) ty exp)
 		(set-cdr! pr ty)))]))
 
 ;; This makes sure there are no cycles in a tvar's mutable cell.
 (define (no-occurrence! tvar ty exp)
+  (DEBUGASSERT (type? ty))
   (match ty
+    [#f (void)]
     [,s (guard (symbol? s)) #t]
+
+    ['(,tyvar . ,[tyt])
+     (if (equal? tyvar tvar)
+	 (raise-occurrence-check tvar ty exp))]
+
     [(,[arg*] ... -> ,[res]) res]
-    [,tyvar1 
-     (if (eqv? tyvar1 tvar)
-	 (raise-occurrence-check tvar ty exp))]))
+    [(,C ,[t*] ...) (guard (symbol? C)) #t]
+    [#(,[t*] ...) #t]
+;    ['(,tyvar . #f) #t]
+;    [(,tyvar . #f) #t]
+
+;; TEMP: THERE IS BAD INPUT TO THIS FUNCTION.
+;    [(,tyvar . ,[tyt])
+;     (if (equal? tyvar tvar)
+;	 (raise-occurrence-check tvar ty exp))]
+
+;    [,tyvar1 
+;     (if (eqv? tyvar1 tvar)
+    [,other (inspect (vector other tvar))]
+    ))
 
 
 ; ======================================================================
@@ -534,7 +580,7 @@
 
 ;; Unit tests.
 (define these-tests
-  `([(let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x)
+  `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
     [(type-expression '(if #t 1. 2.) '())         Float]
     [(export-type (type-expression '(+ 1 1) '())) Integer]

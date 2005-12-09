@@ -601,74 +601,34 @@
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
     ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
-    [Program ('program ('bindings (Var Expr) ...) NodePgm)]
-    ;       NOTE: tokens will inclide a binding for SOC-start and node-start:
-    [NodePgm ('nodepgm ('tokens TokBinding ...))] 
-    [TokBinding (TokName Var ;; subtokid
-			 (Var ...) 
-			 ; ('bindings Cbind ...) ; Got rid of these local constant bindings
-			 ('stored (Var Expr) ...)
-			 Expr)]
+    [Program ('program Expr)]
+    [Program ('program Expr Type)]
+
     [Expr Var]
     [Expr Num] ;; Allow unquoted?
     [Expr Const]
-    [Expr Token] ;; NOTE: Either the whole token reference or just the sub-index can be dynamic.
-    [Expr ('set! Var Expr)]
-    [Expr ('ext-ref Token Var)]
-    [Expr ('ext-set! Token Var Expr)]
 
-;       NOTE: These are static token refs for now.
-    [Expr ('begin Expr ...)]
-    ;[Expr ('let ([Var Expr] ...) Expr)]
-    [Expr ('let ([Var Expr]) Expr)]
+    [Expr ('letrec ([Var Expr]) Expr)]
     [Expr ('if Expr Expr Expr)]
-    [Expr ('leds LedState LedColor)]
-    [LedColor 'red]
-    ;[LedColor 'yellow]
-    [LedColor 'blue]
-    [LedColor 'green]
-    [LedState 'on]
-    [LedState 'off]
-    [LedState 'toggle]
 
-;; Should scratch this and explicitely enforce argument count in grammar:
+    [Expr (tuple Expr ...)]
+    [Expr (tupref Num Num Expr)]
+    
+    ;; Should scratch this and explicitely enforce argument count in grammar:
     [Expr (Prim Expr ...)]
-    ,@(map (lambda (entry) `[Prim (quote ,(car entry))]) 
+    ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:
 	   (assq-remove-all 'dbg token-machine-primitives))
-    [Expr ('app Expr ...)]
-    ;; These are PRIMS:
-;    [Expr ('call Token Expr ...)]
-;    [Expr ('call-fast Token Expr ...)]
-;    [Expr ('bcast Token Expr ...)]
-
-    [Expr ('dbg ('quote ,string?) DebugArg ...)] ;; Debug Args can "cheat" and go outside the scope of TML
-    [DebugArg Expr]
-    [DebugArg ('quote DebugArgConstData)]
-    [DebugArgConstData ,atom?]
-    [DebugArgConstData (DebugArgConstData ...)]
-
-    ;; 
-    ;; This is dangerous, but I allow arbitrary debug statements to put hidden in "BLACKBOX" syntax.
-    ;; This are absolutely opaque both to the grammar checker and subsequent passes' transformations.
-    [Expr ('BLACKBOX ,(lambda (_) #t))]
-
-;; These are now just primitives:  
-;; But still need to remember to subtract them when the grammar shrinks.
-;    [Expr ('return Expr)]
-;    [Expr ('subcall DynToken Expr ...)]
+    [Expr (Expr ...)]
 
     [Num ,integer?]
     [Var ,is-var?]
-    [Token StaticToken]
-    [Token DynToken]
-    [StaticToken ('tok TokName ,integer?)]
-    [DynToken ('tok TokName Expr)]
-    [TokName ,symbol?]
-;    [Cbind (Var Const)] ; NOTE: These expressions will be statically calculable -- constants.
     [Const ('quote ,atom?)]
 
     )))
+
+(define eta_prim_gramar 
+  basic_regiment_grammar)
 
 ; =======================================================================
 ;;; Unit tests.
