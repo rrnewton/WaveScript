@@ -20,6 +20,7 @@
 ;(define anchor-primitives)
 
 (define (id x) x)
+(define (ignore x) (void))
 
 (define symbol-append
   (lambda args

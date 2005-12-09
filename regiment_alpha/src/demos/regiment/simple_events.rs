@@ -16,6 +16,6 @@
 ;; Fire the event when any 1-100 reading is greater than 99.  Should
 ;; return a smattering of events from across the network.
 
-(rwhen-any (lambda (pr) (> (car (cdr pr)) 99))
-	   (rmap (lambda (n) (list (nodeid n) (sense n))) world)
+(rwhen-any (lambda (v) (> (tupref 1 2 v) 99))
+	   (rmap (lambda (n) (tuple (nodeid n) (sense n))) world)
 	   )

@@ -21,7 +21,7 @@
 	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
-	  id gnuplot histogram display-progress-meter count-nodes
+	  id ignore gnuplot histogram display-progress-meter count-nodes
 	  string-split periodic-display all-equal?
 	  
 	  set->hashtab hashtab->list

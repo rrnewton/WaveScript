@@ -294,6 +294,7 @@
 		    [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
 		    )
+	       (inspect region_tok)
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent ,(if push? '(v) '()) 
@@ -814,6 +815,8 @@
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
 	   (values `([,name ,(case prim
 			       [(nodeid) `(my-id)]
+			       [(tuple) `(vector ,rand* ...)]
+			       [(tupref) `(vector-ref ,(caddr rand*) ,(car rand*))]
 			       [else expr])])
 		   '())]
 
