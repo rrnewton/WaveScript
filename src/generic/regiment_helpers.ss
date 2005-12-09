@@ -59,6 +59,9 @@
     (vector-ref (Array Integer) Object)
     ;(vector-set! (Array Integer Object) Void)
 
+    (tuple Object Tuple)
+    (tupref Integer Integer Object)
+
     (locdiff (Location Location) Float)
 
     (not (Bool) Bool)

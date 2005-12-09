@@ -50,13 +50,19 @@
     ;(make-vector (Object Integer) Array)
     ;(vector-ref ((Array 'a) Integer) 'a)
     ;(vector-set! (Array Integer Object) Void)
-    ;(tupref...)
+    
+    ;; These are in here so that various passes can treat them as
+    ;; primitives rather than special forms.  (Just for the purpose of
+    ;; eliminating repetitive code.) However, they don't have valid
+    ;; types under our type system. 
+    (tuple Object Tuple)
+    (tupref Integer Integer Object)
 
     (locdiff (Location Location) Float)
 
     (not (Bool) Bool)
-    (or Bool Bool)
-    (and Bool Bool)
+    (or (Bool Bool) Bool)
+    (and (Bool Bool) Bool)
 
     ; predicates
     (=  ('a 'a) Bool)

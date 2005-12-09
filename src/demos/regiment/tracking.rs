@@ -44,9 +44,9 @@
 (define nodes
   (light-up ; Identity function that just happens to perform a harmless side-effect.
    (rfilter (lambda (n)	    
-	      (or (= (nodeid n) 1)
-		  ;(= (nodeid n) 14)
-		  ))
+	      (= (nodeid n) 1)
+		 ;(= (nodeid n) 14)
+		  )
 	    world)))
 
 (define twohop (lambda (n) (khood (node->anchor n) 1)))
