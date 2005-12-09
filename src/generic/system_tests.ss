@@ -1898,17 +1898,18 @@
 		    [simalpha-sense-function sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) 1))
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) (cons 1 ())))
 				   world)]
 		   [aggr (lambda (x y)
 			   (cons (+ (car x)
 				    (car y))
-				 (+ (cdr x)
-				    (cdr y))))]
+				 (cons (+ (car (cdr x))
+					  (car (cdr y)))
+				       ())))]
 		   [div (lambda (v) 
-			  (if (= (cdr v) 0) 0 ;; Just return zero if there are no samples to avg.
-			      (/ (car v) (cdr v))))]
-		   [sums (rfold aggr (cons 0 0) readings)]
+			  (if (= (car (cdr v)) 0) 0 ;; Just return zero if there are no samples to avg.
+			      (/ (car v) (car (cdr v)))))]
+		   [sums (rfold aggr (cons 0 (cons 0 ())) readings)]
 		   [result (smap div sums)])
 	    result)
 	 ;'verbose

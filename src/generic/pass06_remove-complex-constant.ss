@@ -133,7 +133,10 @@
                    (append test-b* conseq-b* altern-b*))]
           
           [(lambda ,formals ,[body body-b*])
-           (values `(lambda ,formals ,body) body-b*)]
+	   ;(values `(lambda ,formals ,body) body-b*)
+	   ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
+	   (values `(lambda ,formals (letrec ,body-b* ,body)) ())
+	   ]
 
           [(letrec ([,lhs* ,[rhs* rhs-b**]] ...) ,[body body-b*])
            (values `(letrec ([,lhs* ,rhs*] ...) ,body)

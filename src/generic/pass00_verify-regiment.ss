@@ -38,37 +38,35 @@
 
 ;;  ----------------------------------------
 
-(define test-programs 
-  '( 3
-
-     (letrec ((a (anchor-at 30 40)))
+(define these-tests
+  '( [(verify-regiment '(some-lang '(program 3)))
+      (some-lang (quote (program 3 Integer)))]
+      
+     [(verify-regiment '(some-lang '(program
+       (letrec ((a (anchor-at 30 40)))
        (letrec ((r (circle a 50.))
 		(f (lambda (next tot)
-		     (cons (+. (car tot) (sense next))
-			   (cons (+. (car (cdr tot)) 1.0)
+		     (cons (+ (car tot) (sense next))
+			   (cons (+ (car (cdr tot)) 1)
 				 '()))))
-		(g (lambda (tot) (/. (car tot) (car (cdr tot))))))
-	 (smap g (rfold f '(0. 0.) r))))
-
-     (letrec ((R (circle-at 30 40 50.))
+		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+	 (smap g (rfold f '(0 0) r)))))))
+      unspecified]
+      
+     [(verify-regiment '(some-lang '(program
+       (letrec ((R (circle-at 30 40 50.))
 	      (f (lambda (next tot)
-		   (cons (+. (car tot) (sense next))
-			 (cons (+. (car (cdr tot)) 1.)
+		   (cons (+ (car tot) (sense next))
+			 (cons (+ (car (cdr tot)) 1)
 			       '()))))
-	      (g (lambda (tot) (/. (car tot) (car (cdr tot))))))
-       (letrec ((avg (smap g (rfold f (cons 0. (cons 0. '())) R))))
-	 (runtil (swhen-any (lambda (x) (> x 15.3)) avg)
+	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+       (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) R))))
+	 (runtil (swhen-any (lambda (x) (> x 15)) avg)
 		 R
-		 (circle-at 0 0 100.))))
+		 (circle-at 0 0 100.)))))))
+      unspecified]
      ))
 
-;; This is modified below with a set!
-(define these-tests
-  (map
-   (lambda (prog)
-     `[(verify-regiment '(some-lang '(program ,prog)))
-       (some-lang '(program ,prog))])
-   test-programs))
 
 (define verify-regiment
   (let ()
@@ -274,8 +272,9 @@
 ;		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
 ;			prim (cadr entry) rand*))
 	     (let ((types (fit-formals-to-args (cadr entry) rand*)))
-	     
-	       (for-each (type-check env type-env) rand* types)
+
+;; [2005.12.08] Disabling, we've got a real type system now.	     
+;	       (for-each (type-check env type-env) rand* types)
 	   
 	       ;; Add type constraints to the variables based on their usage in this primitive.
 	       (for-each (lambda (rand expected)

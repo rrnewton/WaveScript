@@ -167,6 +167,7 @@
 
     ;; Prolly not the right type:
     (until          (Event Signal Signal) Signal)
+    (runtil          (Event Region Region) Signal)
     (areaWhen       (Event Area) Area)
     ;; The float is a time in seconds.
     (constEvent     (Object Float) Event)

@@ -68,7 +68,7 @@
 
     (define process-expr
       (lambda (expr env)
-        (trace-match PEXP expr
+        (match expr
           [,const (guard (constant? const)) const]
           [(quote ,datum)
            (guard (not (assq 'quote env)))
@@ -87,10 +87,11 @@
 	   (let* ([formal* formalexp] ;(get-formals formalexp)]
 		  [new-formal* (map unique-name formal*)]
 		  [env (append (map cons formal* new-formal*) env)])
-	     (inspect env)
+;	     (inspect env)
 	     (let ([expr (process-expr expr env)])
 	       `(lambda ,(cast-formals new-formal* formalexp)
-		  ,types ,expr)))]
+		  ;,types 
+		  ,expr)))]
 
           [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
            (guard (not (assq 'letrec env)))
@@ -99,7 +100,8 @@
                (let ([rhs* (process-expr* rhs* env)]
                      [expr (process-expr expr env)]
                      [expr* (process-expr* expr* env)])
-                 `(letrec ([,new-lhs* ,type* ,rhs*] ...) ,expr ,expr* ...))))]
+                 `(letrec ([,new-lhs* ;,type* 
+				      ,rhs*] ...) ,expr ,expr* ...))))]
           
           [(,prim ,[rand*] ...)
            (guard (not (assq prim env)) (regiment-primitive? prim))
@@ -115,7 +117,7 @@
 		   (match expr
 			  [(,input-language (quote (program ,body ,type)))
 			   (let ([body (process-expr body '())])
-			     `(,input-language '(program ,body ,type)))]))))
+			     `(,input-language '(program ,body)))]))))
 	(match optional
 	       [(count ,n) 
 		(unique-name-counter n)
@@ -131,11 +133,11 @@
   (map
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
-       `[(rename-var '(some-lang '(program ,prog)))
-	 (some-lang '(program ,res))])) 
+       `[(rename-var '(some-lang '(program ,prog notype)))
+	 (some-lang '(program ,res ))])) 
    '(
      [3 3]    
-     [(letrec ((x 1)) x) unspecified]     
+     [(letrec ((x notype 1)) x) unspecified]
      )
    )
   )

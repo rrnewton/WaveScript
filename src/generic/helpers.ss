@@ -1013,7 +1013,7 @@
 (define eq-deep 
   (lambda (eq)
     (lambda (obj1 obj2)
-      (trace-let loop ((o1 obj1) (o2 obj2))
+      (let loop ((o1 obj1) (o2 obj2))
 	(cond
 	 [(eq o1 o2) #t]
 	 [(and (list? o1) (list? o2))

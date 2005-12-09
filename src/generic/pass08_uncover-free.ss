@@ -68,7 +68,7 @@
            (mvlet ([(clause free*) (process-lambdaclause formalexp body)])
 	     ;;;; TODO: TEMPORARY RESTRICTION:
 		  (if (not (null? free*))
-		      (error 'uncover-free "No free variables allowed right now!: ~a" expr))
+		      (error 'uncover-free "No free variables in lambda's allowed right now! ~a were free in:\n ~a" free* expr))
 		  (values `(lambda ,@clause) free*))]
 
           [(if ,[test test-free*] ,[conseq conseq-free*] ,[altern altern-free*])
