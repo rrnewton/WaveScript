@@ -465,4 +465,13 @@
 (define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))
 (define-id-syntax t6 (load-regiment "demos/regiment/tracking.rs"))
 
+
+(define-id-syntax d1 (load-regiment "demos/regiment/simple_fold.rs"))
+(define-id-syntax d2 (load-regiment "demos/regiment/average_temperature2.rs"))
+(define-id-syntax d3 (load-regiment "demos/regiment/simple_events.rs"))
+(define-id-syntax d4 (load-regiment "demos/regiment/smap2_two_anchors.rs"))
+(define-id-syntax d5 (load-regiment "demos/regiment/nested_regions.rs"))
+(define-id-syntax d6 (load-regiment "demos/regiment/static_elab.rs"))
+
+
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
