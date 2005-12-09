@@ -1,12 +1,15 @@
 
 (parameters 
   [simalpha-realtime-mode #t]
-
+  
   [simalpha-channel-model 'lossless]
   [simalpha-placement-type 'gridlike]
   [simalpha-failure-model  'none]
   ;[simalpha-sense-function sense-noisy-rising]
   [simalpha-sense-function sense-random-1to100]
+
+  [sim-num-nodes 100]
+  [simalpha-outer-radius 8]
   [sim-timeout 2000])
 
 
@@ -27,6 +30,15 @@
 ;; Main query:
 
 nbrhoods
+
+
+
+
+
+
+
+
+
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:

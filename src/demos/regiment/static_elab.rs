@@ -8,7 +8,8 @@
   [simalpha-realtime-mode #f]
   [simalpha-consec-ids #t]  ;; Ids should be 0-29 if BASE_ID=0
   [simalpha-channel-model 'lossless]
-  [simalpha-placement-type 'connected]
+  [simalpha-outer-radius 15]
+  [simalpha-placement-type 'gridlike] ;'connected]
   [simalpha-failure-model  'none])
 
 
