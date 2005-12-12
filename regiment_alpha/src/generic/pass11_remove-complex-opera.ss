@@ -165,8 +165,8 @@
 	   (let ((newenv (append (map list lhs* type*) tenv)))
 	     (mvlet (((rhs* rhs-decls) ; This is an awkward way to loop across rhs*:
 		      (let loop ((ls rhs*) (acc ()) (declacc ()))
-			(if (null? ls) (reverse! acc) (reverse! declacc)
-			    (mvlet ((r rd) (process-expr (car ls) newenv))
+			(if (null? ls) (values (reverse! acc) (reverse! declacc))
+			    (mvlet ([(r rd) (process-expr (car ls) newenv)])
 			      (loop (cdr ls) (cons r acc) (cons rd declacc)))))))
 	       `(lazy-letrec ,(append (map list lhs* type* rhs*)
 				      (apply append rhs-decls*)) ,simple)))]
