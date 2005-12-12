@@ -40,7 +40,9 @@
 
 (define verify-stage2
   (let ()
-    
+
+    ;; TODO : USE TYPE INFO ALREADY EXISTING!!
+
     ;; Infers cheap and dirty types for some expressions, returns #f otherwise.
     (define (infer-type expr env type-env)
       (match expr
@@ -77,7 +79,7 @@
 ;	     (disp "RETURN TYPE" ret-type)
 	     ret-type)]
 
-          [(lambda ,formalexp ,expr) 'Function]
+          [(lambda ,formalexp ,types ,expr) 'Function]
           
           [(if ,[test] ,[conseq] ,[altern])
 	   (guard (not (memq 'if env)))
@@ -90,7 +92,7 @@
 		      altern conseq ))]
           
 	  ;; <TODO> <FIXME> THIS IS NOT ACTUALLY RECURSIVE ATM!
-	  [(letrec ([,lhs* ,[rhs*]] ...) ,body)
+	  [(letrec ([,lhs* ,type* ,[rhs*]] ...) ,body)
 	   (guard (not (memq 'letrec env)))	   
 	   (let ([new-type-env (append (map list lhs* rhs*) type-env)])
 	     (infer-type body env new-type-env))]
@@ -166,7 +168,7 @@
 	  ;; In our super simple type inference we don't do arrow
 	  ;; types.  So we don't say anything about the types of
 	  ;; formal variables unless they can be be infered from references to them..
-          [(lambda ,formalexp ,expr)
+          [(lambda ,formalexp ,type ,expr)
            (guard (list? formalexp) 
 		  (andmap symbol? formalexp)
 		  (set? formalexp)
@@ -179,7 +181,7 @@
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
           
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
@@ -218,7 +220,7 @@
     (lambda (expr)
       (match expr	    
 	;; The input is already wrapped with the metadata:
-        [(,input-language (quote (program ,body)))
+        [(,input-language (quote (program ,body ,type)))
          (let ([body (process-expr body '() '())]) 
            ;; Doesn't change the input language... 		
            `(,input-language '(program ,body)))]

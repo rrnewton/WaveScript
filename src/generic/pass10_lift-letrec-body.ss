@@ -1,15 +1,15 @@
-;;; Pass 23: lift-letrec-body
-;;; September 2001
-;===============================================================================
+;;;; Pass 10: Lift Letrec Body
+; ===============================================================================
 
 ;;; Output grammar:
-
-;;; This pass, which is really not a pass at all, makes a (first-order)
-;;; procedure out of the letrec body:
-
-;;; <Input> ::= (<language-name> <Program>)
-;;; <Program> ::= (program (<var>*) (<pkg>*) <class-def>* <Letrec>)
-;;; <Letrec>  ::= (letrec ((<var> <>)*) (entry-point <var>))
+;;;      <br>
+;;; This pass, which is really not a pass at all, makes sure the body
+;;; of the main letrec is simply a variable.
+;;;      <br>
+;;;      <br>
+;;; <Input> ::= (<language-name> <Program>)                           <br>
+;;; <Program> ::= (program ) <Letrec>)                                <br>
+;;; <Letrec>  ::= (letrec ((<var> <Type> <Expr>)*) <var>)             <br>
 
 (define lift-letrec-body
   (let ()
@@ -20,38 +20,46 @@
 	  [,otherwise #f]))
 
     (define process-letrec
-      (lambda (expr)
+      (lambda (tenv)
+	(lambda  (expr)
 ;	(disp "processing letrec")
 ;	(pp expr)
-
         (match expr
-          [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,[process-expr -> body])
+          [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+	   (let* ([newenv (append (map list lhs* type*) tenv)]
+		  [rhs* (map (process-expr newenv) rhs*)]
+		  [body ((process-expr newenv) body)])
 ;; NOW we lift it even if it is simple.
-;	   (if (simple? body)
+;;	   (if (simple? body)
            (if (and (symbol? body) (not (regiment-constant? body)))
-	       `(lazy-letrec ([,lhs* ,rhs*] ...) ,body)
-	       (let ([main (unique-name 'result)])
+	       `(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+	       (let* ([main (unique-name 'result)]
+		      [tenv (append (map list lhs* type*) tenv)]
+		      [maintype (type-expression body tenv)])
 					;(code-name 'main)]) ;; Old version used code-name for labels...
-		 `(lazy-letrec ([,lhs* ,rhs*] ...
-				[,main ,body])  ;(lambda () ,body))])
-			       ,main)))])))
+		 `(lazy-letrec ([,lhs* ,type* ,rhs*] ...
+				[,main ,maintype ,body])  ;(lambda () ,body))])
+			       ,main))))]))))
 
     (define process-expr
+      (lambda (tenv)
       (lambda (expr)
         (match expr
 	  [,x (guard (simple? x)) x]
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
-	  [(lambda ,formalexp ,[process-letrec -> body])
-	   `(lambda ,formalexp ,body)]
+	  [(lambda ,formalexp ,types ,body)
+	   ;; Assumes that formals is just a list.  No optional arguments allowed currently.
+	   (let ((newenv (append (map list formalexp types) tenv)))
+	     `(lambda ,formalexp ,types ,((process-letrec newenv) body)))]
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
             (error 'lift-letrec "invalid expression: ~s"
-                   unmatched)])))
+                   unmatched)]))))
 
     (lambda (prog)
       (match prog
-        [(,input-language (quote (program ,[process-letrec -> body])))
+        [(,input-language (quote (program ,[(process-letrec '()) -> body])) ,type)
 	 ;; This pass uses the same language as the prior pass, lift-letrec
-	 `(,input-language '(program ,body))]))))
+	 `(,input-language '(program ,body) ,type)]))))

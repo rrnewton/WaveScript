@@ -47,7 +47,7 @@
     (define (inline rator rands)
 ;      (disp "INLINGING " rator rands)
       (match rator
-	[(lambda ,formals ,body)
+	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
 	[,other (error 'static-elaborate:inline "bad rator: ~a" other)]))
 
@@ -57,11 +57,11 @@
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
 		(if (eq? var v) 1 0)]
-          [(lambda ,formals ,expr)
+          [(lambda ,formals ,types ,expr)
 	   (if (memq v formals) 0 (count-refs v expr))]
           [(if ,[test] ,[conseq] ,[altern])
 	   (+ test conseq altern)]
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
@@ -77,7 +77,7 @@
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
 		(if (eq? var v) 1 0)]
-          [(lambda ,formals ,expr)
+          [(lambda ,formals ,types ,expr)
 	   (if (memq v formals) 0 (count-refs v expr))]
           [(if ,[test] ,[conseq] ,[altern])
 	   (+ test conseq altern)]
@@ -97,8 +97,8 @@
           [,var (guard (symbol? var)) 
 		(let ((entry (assq var mapping)))
 		  (if entry (cadr entry) var))]
-          [(lambda ,formals ,expr)
-	   `(lambda ,formals
+          [(lambda ,formals ,types ,expr)
+	   `(lambda ,formals ,types
 	      ,(substitute
 		(filter (lambda (x)
 			  (not (memq (car x) formals)))
@@ -106,11 +106,11 @@
 		expr))]
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (let ((newmap (filter (lambda (x)
 				   (not (memq (car x) lhs*)))
 				 mapping)))	     
-	   `(letrec ([,lhs* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
+	   `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
 	      ,(substitute newmap expr)))]
 	  [(,[rator] ,[rands] ...) `(,rator ,rands ...)]
           [,unmatched
@@ -155,8 +155,8 @@
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
 		var]
-          [(lambda ,formals ,expr)
-	   `(lambda ,formals
+          [(lambda ,formals ,types ,expr)
+	   `(lambda ,formals ,types
 	      ,(process-expr expr 
 		 (map list formals (make-list (length formals) not-available))))]
 
@@ -174,7 +174,7 @@
 
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (null? lhs*)
 	       (process-expr expr env)
 	   (let* ([newenv (append (map list lhs* rhs*) env)]
@@ -189,10 +189,10 @@
 			       lhs* newrhs*)]
 		  [newbinds (filter id
 				    (map 
-				     (lambda (lhs rhs refs)
+				     (lambda (lhs type rhs refs)
 				       (and (> refs 0)
-					    `(,lhs ,rhs)))
-				     lhs* newrhs* occurs))])
+					    `(,lhs ,type ,rhs)))
+				     lhs* type* newrhs* occurs))])
 	     `(letrec ,newbinds ,newbod)))]
          
 	  ;; Here we do computation if the arguments are available:
@@ -223,11 +223,11 @@
     
     (lambda (expr)
       (match expr	    
-        [(,input-language (quote (program ,body)))
+        [(,input-language (quote (program ,body ,type)))
          (let loop ([oldbody body]
 		    [body (process-expr body '())])
 	   (if (equal? oldbody body)	   
-	       `(,input-language '(program ,body))
+	       `(,input-language '(program ,body ,type))
 	       (loop body (process-expr body '()))))]
 	))))
 

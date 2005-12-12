@@ -90,7 +90,7 @@
 ;	     (inspect env)
 	     (let ([expr (process-expr expr env)])
 	       `(lambda ,(cast-formals new-formal* formalexp)
-		  ;,types 
+		  ,types 
 		  ,expr)))]
 
           [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
@@ -100,7 +100,7 @@
                (let ([rhs* (process-expr* rhs* env)]
                      [expr (process-expr expr env)]
                      [expr* (process-expr* expr* env)])
-                 `(letrec ([,new-lhs* ;,type* 
+                 `(letrec ([,new-lhs* ,type* 
 				      ,rhs*] ...) ,expr ,expr* ...))))]
           
           [(,prim ,[rand*] ...)
@@ -117,7 +117,7 @@
 		   (match expr
 			  [(,input-language (quote (program ,body ,type)))
 			   (let ([body (process-expr body '())])
-			     `(,input-language '(program ,body)))]))))
+			     `(,input-language '(program ,body ,type)))]))))
 	(match optional
 	       [(count ,n) 
 		(unique-name-counter n)

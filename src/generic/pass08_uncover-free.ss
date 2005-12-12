@@ -50,11 +50,11 @@
   (let ()
 
     (define process-lambdaclause
-      (lambda (formalexp body)
+      (lambda (formalexp types body)
         (mvlet ([(body body-free*) (process-expr body)])
           (let ((free* (difference body-free* (get-formals formalexp))))
             (values
-	     `(,formalexp (free ,free* ,body))
+	     `(,formalexp ,types (free ,free* ,body))
 	     free*)))))
     
     (define process-expr
@@ -64,8 +64,8 @@
           [,var (guard (symbol? var) (not (regiment-constant? var)))
 		(values var (list var))]
 
-	  [(lambda ,formalexp ,body) 
-           (mvlet ([(clause free*) (process-lambdaclause formalexp body)])
+	  [(lambda ,formalexp ,types ,body) 
+           (mvlet ([(clause free*) (process-lambdaclause formalexp types body)])
 	     ;;;; TODO: TEMPORARY RESTRICTION:
 		  (if (not (null? free*))
 		      (error 'uncover-free "No free variables in lambda's allowed right now! ~a were free in:\n ~a" free* expr))
@@ -76,9 +76,9 @@
              `(if ,test ,conseq ,altern)
              (union test-free* (union conseq-free* altern-free*)))]
 
-          [(letrec ([,lhs* ,[rhs* rhs-free*]] ...) ,[body body-free*])
+          [(letrec ([,lhs* ,type* ,[rhs* rhs-free*]] ...) ,[body body-free*])
            (values
-             `(letrec ([,lhs* ,rhs*] ...) ,body)
+             `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
              (difference (union (apply union rhs-free*) body-free*) lhs*))]
 
 	  [,prim (guard (regiment-constant? prim)) (values prim '())]
@@ -93,9 +93,9 @@
    
     (lambda (prog)
       (match prog
-        [(base-language (quote (program ,body)))
+        [(base-language (quote (program ,body ,type)))
 	 (mvlet ([(body body-free*) (process-expr body)])
 		`(uncover-free-language ;uncover-free-language
-		  '(program ,body)))]))))
+		  '(program ,body ,type)))]))))
 
 
