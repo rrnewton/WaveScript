@@ -307,10 +307,8 @@
     [,else #f]))
 
 ; ======================================================================
-;;; The main type checker.
 
-;; Assign a type to a complete Regiment program.
-(define (type-program p) ?????????)
+;;; The main type checker.
 
 ;; Assign a type to an expression.
 (define (type-expression exp tenv)
@@ -351,6 +349,22 @@
       
       )))
 
+
+;; Used for recovering types for particular expressions within an already type-annotated program.
+(define (recover-type exp tenv)
+  (let l ((exp exp))
+    (match exp 
+      [(lambda ,formals ,types ,body)
+       `(,types ... -> ,(recover-type body (append (map list formals types) tenv)))]
+      [(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+       (recover-type body (append (map list lhs* type*) tenv))]
+      [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+      [(tuple ,[t*] ...) (list->vector t*)]
+      [(tupref ,n ,len ,[t]) (vector-ref t n)]
+      ;; Since the program is already typed, we just use the arrow type of the rator:
+      [(,[rat] ,rand ...) (rdc rat)]
+      [,other (type-expression other tenv)])))
+       
 
 ;; Assign a basic type to a constant.
 (define (type-const c)

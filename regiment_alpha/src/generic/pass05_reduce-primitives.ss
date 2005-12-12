@@ -17,10 +17,10 @@
           [,var (guard (symbol? var)) var]
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
-          [(lambda ,formals ,[body])
-	   `(lambda ,formals ,body)]
-          [(letrec ([,lhs* ,[rhs*]] ...) ,[body])
-	   `(letrec ([,lhs* ,rhs*] ...) ,body)]
+          [(lambda ,formals ,types ,[body])
+	   `(lambda ,formals ,types ,body)]
+          [(letrec ([,lhs* ,type* ,[rhs*]] ...) ,[body])
+	   `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)]
           [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
            (process-primapp prim rand*)]          
@@ -42,19 +42,10 @@
 		`(khood ,args ...)]
 	       [,orig orig])))
 
-    (define process-method
-      (lambda (meth)
-        (match meth
-          [(lambda ,args ,body)
-           (mvlet ([(body body-b*) (process-expr body)])
-             (if (null? body-b*)
-                 `(lambda ,args ,body)
-                 `(lambda ,args (let ,body-b* ,body))))])))
-
     (lambda (expr)
       (match expr
-	     [(,input-language (quote (program ,[process-expr -> body])))
-	      `(,input-language (quote (program ,body)))]
+	     [(,input-language (quote (program ,[process-expr -> body] ,type)))
+	      `(,input-language (quote (program ,body ,type)))]
 	     [,otherwise
 	      (error 'reduce-primitives "Invalid input program: ~s" otherwise)]))
     ))

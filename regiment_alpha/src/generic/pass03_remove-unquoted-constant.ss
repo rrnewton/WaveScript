@@ -39,8 +39,8 @@
           [(quote ,datum) `(quote ,datum)]
           [,var (guard (symbol? var)) var]
           [(if ,[test] ,[conseq] ,[altern]) `(if ,test ,conseq ,altern)]
-          [(lambda ,formals ,[body])  `(lambda ,formals ,body)]
-          [(letrec ([,lhs* ,[rhs*]] ...) ,[body]) `(letrec ([,lhs* ,rhs*] ...) ,body)]
+          [(lambda ,formals ,types ,[body])  `(lambda ,formals ,types ,body)]
+          [(letrec ([,lhs* ,type* ,[rhs*]] ...) ,[body]) `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)]
           [(,prim ,[rand*] ...)
            (guard (regiment-primitive? prim))
            `(,prim ,rand* ...)]
@@ -51,7 +51,7 @@
                    unmatched)])))
     (lambda (expr)
       (match expr
-	[(,input-language (quote (program ,body)))
+	[(,input-language (quote (program ,body ,type)))
 	 (let ([body (process-expr body)])
-	   `(,input-language '(program  ,body)))]))))
+	   `(,input-language '(program  ,body ,type)))]))))
 

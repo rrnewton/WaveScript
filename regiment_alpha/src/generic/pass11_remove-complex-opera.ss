@@ -80,37 +80,6 @@
 
 (define remove-complex-opera*
   (let ()
-
-    ;; [2004.06.28] HUH!!?? It looks like process-opera* is not
-    ;; CALLED!  Garbage collect this if you get a chance... -=<TODO>=-
-
-    ;===========================================================================
-    ;process-opera* takes a list of opera*, and returns 2 values as follows:
-    ;1) a new list of opera* (with complex opera* replaced by var refs)
-    ;2) a list of bindings, containing bindings which bind new names to
-    ;complex expressions.  There is a binding of this sort for each complex
-    ;opera* that occured in the input list.
-    (define process-opera*
-      (lambda (operalst)
-        (if (null? operalst)
-            (values '() '())
-            (match (car operalst)
-                   [(quote ,lit)
-                    (let-values
-                      ([(ops binds) (process-opera* (cdr operalst))])
-                      (values (cons (car operalst) ops) binds))]
-                   [,var
-                     (guard (symbol? var))
-                     (let-values
-                       ([(ops binds) (process-opera* (cdr operalst))])
-                       (values (cons (car operalst) ops) binds))]
-                   [,else
-                     (let ((new-var (unique-name (meaningful-name (car operalst)))))
-                       (let-values
-                         ([(ops binds) (process-opera* (cdr operalst))])
-                         (values
-                           (cons new-var ops)
-                           (cons `[,new-var ,(car operalst)] binds))))]))))
     
     ;; This is purely for readability, instead of just tmp_99, I try
     ;; to give things reasonable names based on what kinds of values
@@ -139,32 +108,34 @@
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp-nonprim]))
 
-    (define (simple? x) 
+    (define (simple? x)
       (match x
           [(quote ,imm) #t]
           [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
 	  [,otherwise #f]))
 
-    (define (make-simple x)
+    (define (make-simple x tenv)
       (if (simple? x) 
 	  (values x '())
-	  (mvlet ([(res binds) (process-expr x)]
+	  (mvlet ([(res binds) (process-expr x tenv)]
+		  [(type) (recover-type x tenv)]
 		  [(name) (unique-name (meaningful-name x))])
 		 (values name
-			 (cons (list name res) binds)))))
+			 (cons (list name type res) binds)))))
 
     (define process-expr
-      (lambda (expr)
+      (lambda (expr tenv)
         (match expr
 	  [,x (guard (simple? x)) (values x '())]
           [(if ,a ,b ,c)
-	   (mvlet ([(test test-decls) (make-simple a)]
-		   [(conseq conseq-decls) (make-simple b)]
-		   [(altern altern-decls) (make-simple c)])
-	     (values `(if ,test ,conseq ,altern) 
+	   (mvlet ([(test test-decls) (make-simple a tenv)]
+		   [(conseq conseq-decls) (make-simple b tenv)]
+		   [(altern altern-decls) (make-simple c tenv)])
+	     (values `(if ,test ,conseq ,altern)
 		     (append test-decls conseq-decls altern-decls)))]
-	  [(lambda ,formalexp ,[process-letrec -> body])
-	   (values `(lambda ,formalexp ,body) '())]
+	  [(lambda ,formalexp ,types ,body)
+	   (let ([body (process-letrec body expr)])
+	     (values `(lambda ,formalexp ,types ,body) '()))]
 
 	  ;;; Constants:
 	  [,prim (guard (regiment-primitive? prim))
@@ -176,51 +147,39 @@
           [(,prim ,rand* ...) (guard (regiment-primitive? prim))	   
 	   (let ((intermediate
 		  (map (lambda (rand) 
-			 (mvlet ([(res binds) (make-simple rand)])
+			 (mvlet ([(res binds) (make-simple rand tenv)])
 				(list res binds)))
 		       rand*)))
 	     (values (cons prim (map car intermediate))
 		     (apply append (map cadr intermediate))))]
           [,unmatched
 	   (error 'lift-letrec "invalid expression: ~s"
-		  unmatched)])))  
+		  unmatched)])))
     
     ;===========================================================================
     ;; LetrecExpr -> LetrecExpr
     (define process-letrec
-      (lambda (letrec-exp)
+      (lambda (letrec-exp tenv)
         (match letrec-exp
-               [(lazy-letrec ((,lhs* ,[process-expr -> rhs* rhs-decls*]) ...) 
-			     ,simple)
-	       `(lazy-letrec ,(append (map list lhs* rhs*) 
-				      (apply append rhs-decls*)) ,simple)]
-
-               [,else (error
-		       'remove-complex-opera*
-		       "lazy-letrec expression is incorrectly formatted:~s"
-		       letrec-exp)])))
-
-    ;===========================================================================
-'    (define LANGUAGE-DEFN
-      '(begin
-         (define make-closure
-           (lambda (code i) (make-procedure code (make-vector i))))
-         (define closure-ref
-           (lambda (cp i) (vector-ref (procedure-env cp) i)))
-         (define closure-set!
-           (lambda (cp i v) (vector-set! (procedure-env cp) i v)))
-         (define-syntax anonymous-call
-                        (syntax-rules ()
-                                      [(_ e0 e1 ...)
-                                       (let ([t e0])
-                                         ((procedure-code t) t e1 ...))]))
-         (define-record procedure ((immutable code) (immutable env)))))
+	  [(lazy-letrec ((,lhs* ,type* ,rhs*) ...) ,simple)
+	   (let ((newenv (append (map list lhs* type*) tenv)))
+	     (mvlet (((rhs* rhs-decls) ; This is an awkward way to loop across rhs*:
+		      (let loop ((ls rhs*) (acc ()) (declacc ()))
+			(if (null? ls) (reverse! acc) (reverse! declacc)
+			    (mvlet ((r rd) (process-expr (car ls) newenv))
+			      (loop (cdr ls) (cons r acc) (cons rd declacc)))))))
+	       `(lazy-letrec ,(append (map list lhs* type* rhs*)
+				      (apply append rhs-decls*)) ,simple)))]
+	  [,else (error
+		  'remove-complex-opera*
+		  "lazy-letrec expression is incorrectly formatted:\n~s"
+		  letrec-exp)])))
 
     ;===========================================================================
     (lambda (program)
       (match program
-             [(,input-lang '(program ,[process-letrec -> letexp]))
-	      `(,input-lang '(program ,letexp))]      
+             [(,input-lang '(program ,letexp) ,type)
+	      `(,input-lang '(program ,(process-letrec letexp '())))]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))

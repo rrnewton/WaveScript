@@ -38,49 +38,6 @@
 ;;; the transformed program.  This transformation is possible since the
 ;;; lambda expressions no longer have free variables.
 
-;;; (letrec ([map$1
-;;;           (lambda (cp.10 f.6 ls.5)
-;;;             (bind-free (cp.10 map.1)
-;;;               (if (null? ls.5)
-;;;                   '()
-;;;                   (cons (f.6 (car ls.5))
-;;;                         ((label map$1) map.1 f.6 (cdr ls.5))))))])
-;;;   (closures ([map.1 (label map$1) map.1])
-;;;     (letrec ([f$4
-;;;               (lambda (cp.9 x.2)
-;;;                 (bind-free (cp.9)
-;;;                   (letrec ([anon$7
-;;;                             (lambda (cp.8 y.3)
-;;;                               (bind-free (cp.8 x.2) (* x.2 y.3)))])
-;;;                     (closures ([anon.7 (label anon$7) x.2]) anon.7))))])
-;;;       (closures ([f.4 (label f$4)])
-;;;         ((label map$1)
-;;;          map.1
-;;;          ((label f$4) f.4 '7)
-;;;          (cons '1 (cons '2 (cons '3 '()))))))))
-;;;
-;;; becomes
-;;;
-;;; (letrec ([anon$7
-;;;           (lambda (cp.8 y.3) (bind-free (cp.8 x.2) (* x.2 y.3)))]
-;;;          [f$4
-;;;           (lambda (cp.9 x.2)
-;;;             (bind-free (cp.9)
-;;;               (closures ([anon.7 (label anon$7) x.2]) anon.7)))]
-;;;          [map$1
-;;;           (lambda (cp.10 f.6 ls.5)
-;;;             (bind-free (cp.10 map.1)
-;;;               (if (null? ls.5)
-;;;                   '()
-;;;                   (cons (f.6 (car ls.5))
-;;;                         ((label map$1) map.1 f.6 (cdr ls.5))))))])
-;;;   (closures ([map.1 (label map$1) map.1])
-;;;     (closures ([f.4 (label f$4)])
-;;;       ((label map$1)
-;;;        map.1
-;;;        ((label f$4) f.4 '7)
-;;;        (cons '1 (cons '2 (cons '3 '())))))))
-
 ;;; The input language is the same as the output language of Pass 12.
 
 ;;; The output language differs in that letrec is found only at the
@@ -125,20 +82,21 @@
              `(if ,test ,conseq ,altern)
              (append test-decl* conseq-decl* altern-decl*))]
 
-	  [(lambda ,formalexp (free ,free ,[body body-decl]))
-	   (if (not (null? free)) (error 'lift-letrec "free was supposed to be null for now! ~a" free))
+	  [(lambda ,formalexp ,types (free ,free ,[body body-decl]))
+	   (if (not (null? free)) 
+	       (error 'lift-letrec "free was supposed to be null for now! ~a" free))
 
 	   ;; This version lifts to the top of each lambda:
 	   ;(values `(lambda ,formalexp (lazy-letrec ,body-decl ,body)) '())
 	   ;; This version lifts all the way to the top.
-	   (values `(lambda ,formalexp (lazy-letrec () ,body)) body-decl)
+	   (values `(lambda ,formalexp ,types (lazy-letrec () ,body)) body-decl)
 	   ]
 	   
-	  [(letrec ([,lhs* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
+	  [(letrec ([,lhs* ,type* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
 	   (values body
 		   (append (apply append rhs-decl*)
 			   body-decl
-			   (map list lhs* rhs*)))]
+			   (map list lhs* type* rhs*)))]
 
           [(,prim ,[rand* rand-decl*] ...)
            (guard (regiment-primitive? prim))
@@ -152,8 +110,9 @@
 
     (lambda (prog)
       (match prog
-	     [(,input-language (quote (program ,body)))
+	     [(,input-language (quote (program ,body ,type)))
 	      (mvlet ([(body body-fn) (process-expr body)])
 		     `(lift-letrec-language
-		       '(program (lazy-letrec ,body-fn ,body))))]))
+		       '(program (lazy-letrec ,body-fn ,body))
+		       ,type))]))
     ))
