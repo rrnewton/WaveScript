@@ -54,7 +54,7 @@
           
   (lambda (expr)
     (match expr
-	   [(add-heartbeats-language (quote (program (props ,proptable ...) ,letexpr)))
+	   [(add-heartbeats-language (quote (program (props ,proptable ...) ,letexpr ,type)))
 
 	    (let ([check-prop 
 		   (lambda (p s)
@@ -67,7 +67,7 @@
     ;; Returns control flow graph
     (define (process-let expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[expr-dependencies -> deps*]] ...) ,expr)
+	 [ (lazy-letrec ([,lhs* ,type* ,heartbeat* ,[expr-dependencies -> deps*]] ...) ,expr)
 	   (apply append
 		  (map (lambda (lhs deps)
 			 (map (lambda (x) `(,x ,lhs)) deps))
@@ -83,7 +83,7 @@
 		    '()
 		    (list var))]
 	  ;; TODO:
-          [(lambda ,formalexp ,expr)
+          [(lambda ,formalexp ,types ,expr)
 	   '() ;; CHECK UP ON THIS; MAYBE TAKE FREE-VARS??
 	   ]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
@@ -108,6 +108,7 @@
 			    (append (map (lambda (x) `(SOC ,x)) leaves)
 				    (process-let letexpr))))
 			,letexpr
+			,type
 			)))))]
 	   ))))
 
@@ -115,4 +116,5 @@
 '(add-control-flow '(add-heartbeats-language
 		     '(program
 		       (props (result_1 local final))
-		       (lazy-letrec ((result_1 #f '3)) result_1))))
+		       (lazy-letrec ((result_1 #f '3)) result_1)
+		       )))

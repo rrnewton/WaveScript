@@ -521,7 +521,7 @@
 (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,heartbeat* ,formplace ,membplace ,rhs*] ...) ,body)
+	       [(lazy-letrec ([,lhs* ,type* ,heartbeat* ,formplace ,membplace ,rhs*] ...) ,body)
 		(if (symbol? body)
 		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))
@@ -786,7 +786,7 @@
 
   	 ;; Don't need to make a new token name, the name of this
   	 ;; function is already unique:
-	  [(lambda ,formalexp ,[process-letrec -> entry primbinds tokenbinds])
+	  [(lambda ,formalexp ,types ,[process-letrec -> entry primbinds tokenbinds])
 ;	   (if (not (null? tokenbinds))
 ;	       (error 'deglobalize 
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
@@ -845,7 +845,8 @@
       (match prog
         [(,lang ;add-places-language 
 	  (quote (program (props ,table ...) (control-flow ,cfg ...)
-			  (lazy-letrec ,binds ,fin))))
+			  (lazy-letrec ,binds ,fin)
+			  ,type)))
 	 ;; This is essentially a global constant for the duration of compilation:
 	 (set! proptable table)
 	 	 
@@ -923,7 +924,9 @@
      (deglobalize '(lang '(program 
 			   (props [result_1 final local])
 			   (control-flow )
-			   (lazy-letrec ((result_1 #f _ _ '3)) result_1))))
+			   (lazy-letrec ((result_1 _ #f _ _ '3)) result_1)
+			   notype
+			   )))
      unspecified]
 
     ["Deglobalize region-returning program: circle around anchor (don't check result)."
@@ -935,11 +938,12 @@
 				  )
 			   (control-flow soc anch circ)
 			   (lazy-letrec
-			    ((b #f _ _ (cons '2 '()))
-			     (a #f _ _ (cons '1 b))
-			     (anch 0.5 _ _ (anchor-at a))
-			     (circ 1.0 _ _ (circle anch '50)))
-			    circ))))
+			    ((b _ #f _ _ (cons '2 '()))
+			     (a _ #f _ _ (cons '1 b))
+			     (anch _ 0.5 _ _ (anchor-at a))
+			     (circ _ 1.0 _ _ (circle anch '50)))
+			    circ)
+			   notype)))
      unspecified]
 
 

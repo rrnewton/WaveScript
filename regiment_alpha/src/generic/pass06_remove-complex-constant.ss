@@ -71,8 +71,12 @@
            (guard (symbol? datum))
            (values `(quote ,datum) '())]
           [(quote ,datum)
-           (let ([tmp (unique-name 'tmp)])
-             (values tmp `((,tmp ,(datum->code datum)))))]
+           (let* ([tmp (unique-name 'tmp)]
+		  [exp (datum->code datum)]
+		  ;; Null tenv is ok, it's just a constant:
+		  [type (recover-type exp '())]
+		  )
+             (values tmp `((,tmp ,type ,exp))))]
           [,var (guard (symbol? var))
             (values var '())]
 

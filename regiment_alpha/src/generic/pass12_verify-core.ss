@@ -27,9 +27,9 @@
 
     (define (process-let expr env)
       (match expr
-	 [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
+	 [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (guard (not (memq 'lazy-letrec env))
-                  (andmap symbol? lhs*)
+                   (andmap symbol? lhs*)
 		  (set? lhs*) ;; No duplicate lhs's ..
 		  )
 	   (if (ormap (lambda (s) (memq s env)) lhs*)
@@ -58,7 +58,7 @@
 		    (error 'verify-core (format "unbound variable: ~a~n" var)))
 	       		#t]
 
-          [(lambda ,formalexp ,expr)
+          [(lambda ,formalexp ,types ,expr)
            (guard (list? formalexp)
 		  (andmap symbol? formalexp)
              	;(formalexp? formalexp)
@@ -100,7 +100,7 @@
 					;      (display "Running on ") (display expr) (newline)      
       (match expr
 	     ;; Doesn't change the input language... 
-        [(,input-language (quote (program ,body)))
+        [(,input-language (quote (program ,body ,type)))
 	 (if (process-let body '())
 	     expr
 	     (error 'verify-core 
@@ -113,7 +113,7 @@
 ;; These here are examples of core programs:
 (define test-programs   
   '( 
-    (lazy-letrec ((a '3)) a)
+    (lazy-letrec ((a _ '3)) a)
 
 ;; OLD:
 #;    (letrec ((tmp (cons '40 '()))
@@ -145,8 +145,8 @@
 (define these-tests
   (map
    (lambda (prog)
-     `[(verify-core '(some-lang '(program ,prog)))
-       (some-lang '(program ,prog))])
+     `[(verify-core '(some-lang '(program ,prog notype)))
+       (some-lang '(program ,prog notype))])
    test-programs))
 
 (define test-this (default-unit-tester 

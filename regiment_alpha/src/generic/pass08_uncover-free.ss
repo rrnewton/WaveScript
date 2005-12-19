@@ -81,6 +81,9 @@
              `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
              (difference (union (apply union rhs-free*) body-free*) lhs*))]
 
+	  [(letrec ,foo ,boo)
+	   (error 'bad-letrec "~a" foo)]
+
 	  [,prim (guard (regiment-constant? prim)) (values prim '())]
           [(,prim ,[rand* rand-free*] ...)
            (guard (regiment-primitive? prim)) ;; Used to be extended-scheme-primitive?
