@@ -248,7 +248,13 @@
 	       (if simrepl (new-cafe))
 	       result))]
 
-	  [(i interact) (new-cafe)]
+	  [(i interact)
+	   (for-each (lambda (arg)
+		       (and (not (equal? arg "i"))
+			    (not (equal? arg "interact"))
+			    (load arg)))
+	     args)
+	   (new-cafe)]
 
 	  )))))))
   
