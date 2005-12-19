@@ -168,6 +168,16 @@
 			    [(id x (... ...)) (identifier? #'id)
 			     #'(e x (... ...))])))])))
 
+;; Evaluate subexpressions but suppress output.
+;; TODO: Shouldn't waste memory on storing the output.  Need to send it to /dev/null.
+(define-syntax silently 
+  (syntax-rules ()
+    [(_ e ...)
+     (let ((ret #f))
+       (with-output-to-string
+	 (lambda () (set! ret (begin e ...))))
+       ret)]))
+
 (define (with-evaled-params params th)
   (let loop ((ls params))
     (if (null? ls) 

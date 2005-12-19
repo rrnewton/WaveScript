@@ -285,10 +285,10 @@
 	       (inner (simalpha-inner-radius)))
 ;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
 	   (cond
-	    [(< dist inner) 100]
+	    [(<= dist inner) 100]
 	    [(> dist outer) 0]
 	    [else
-	     (inexact->exact (floor (* 100 (/ (- dist inner) (- outer inner)))))])))]))
+	     (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
    
   ;; TODO, FIXME, need to use a real graph library for this!
   ;; (One that treats edges with due respect, and that uses hash tables.)
@@ -1303,6 +1303,7 @@
 ;; Helper function to print out a table listing which nodes are
 ;; connected to eachother (any two without provably zero connectivity).
 (define (print-connectivity . sim)
+  (define connects '()) ;; Just accumulates all the numeric connectivities.
   (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
   (printf "\nCurrent network connectivity at vtime ~a.\n" (simworld-vtime world))
   (parameterize ([print-gensym #f])
@@ -1315,15 +1316,20 @@
 					;				     (node? (car row)) (node? nbr)
 					;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
 					;				     )
-				 ((simalpha-connectivity-function)
-				  (node-pos (car row))
-				  (node-pos nbr)))
+				 (let ((connectivity ((simalpha-connectivity-function)
+						      (node-pos (car row))
+						      (node-pos nbr))))
+				   (if (number? connectivity) (set! connects (cons connectivity connects)))
+				   connectivity))
 			    (cdr row)))
 		  (set! edges (+ edges (length (cdr row)))))
 	(simworld-graph world))
       (printf "Total edges: ~a\n" (/ edges 2))
       (printf "Average degree: ~a\n" (exact->inexact (/ edges (sim-num-nodes))))
-  ))))
+      (let ((avg (exact->inexact (average connects))))
+	(printf "Average connectivity: ~a\n" avg)
+	avg)
+      ))))
 
 
 ;; [2005.09.29] Moved from alpha_lib.ss
