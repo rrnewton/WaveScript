@@ -113,6 +113,6 @@
 	     [(,input-language (quote (program ,body ,type)))
 	      (mvlet ([(body body-fn) (process-expr body)])
 		     `(lift-letrec-language
-		       '(program (lazy-letrec ,body-fn ,body))
-		       ,type))]))
+		       '(program (lazy-letrec ,body-fn ,body) ,type)
+		       ))]))
     ))

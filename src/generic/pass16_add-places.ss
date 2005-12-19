@@ -65,7 +65,8 @@
   (match p
 	 [(,input-language (quote (program (props ,proptable ...) 
 					   (control-flow ,cfg ...)
-					   (lazy-letrec ,binds ,expr))))
+					   (lazy-letrec ,binds ,expr)
+					   ,type)))
 	  (map (lambda (x) (list-head x 4)) binds)]))
 
 (define add-places
@@ -73,7 +74,8 @@
     (match expr
 	   [(,input-language (quote (program (props ,proptable ...) 
 					     (control-flow ,cfg ...)
-					     ,letexpr)))
+					     ,letexpr
+					     ,type)))
 
     ;; Constants defined in constants.ss
     ;(define unknown-place '?) ;'X?)
@@ -82,7 +84,7 @@
     (define (process-let expr)
 ;      (disp "processing let" expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
+	 [ (lazy-letrec ([,lhs* ,type* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
 
 ;	  (lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,expr)
 
@@ -94,7 +96,7 @@
 ;	    (disp "got stuff" stuff)
 ;	    (disp "for rhs" rhs*)
 
-	  `(lazy-letrec ([,lhs* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
+	  `(lazy-letrec ([,lhs* ,type* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
 	 [,other (error 'add-places:process-let "bad lazy-letrec expression: ~s" other)]))
     
     (define (new-place) (unique-name 'X))
@@ -192,8 +194,8 @@
         (match expr
           [(quote ,const) (values `(quote ,const) noplace noplace)]
           [,var (guard (symbol? var)) (values var noplace noplace)]
-          [(lambda ,formalexp ,expr)
-	   (values `(lambda ,formalexp ,(process-let expr))
+          [(lambda ,formalexp ,types ,expr)
+	   (values `(lambda ,formalexp ,types ,(process-let expr))
 		   noplace noplace)]
 	  ;; Hmm... if I can tell at compile time I should narrow this!
           [(if ,test ,conseq ,altern)
@@ -206,4 +208,5 @@
     
     `(add-places-language (quote (program (props ,proptable ...)
 					  (control-flow ,cfg ...)
-					  ,(process-let letexpr))))])))
+					  ,(process-let letexpr)
+					  ,type)))])))

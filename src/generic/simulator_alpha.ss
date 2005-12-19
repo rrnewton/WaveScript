@@ -1370,7 +1370,8 @@
 		      (clean-simworld! (simalpha-current-simworld)))
 		    (fresh-simulation))])
 
-      (DEBUGASSERT 'start-alpha-sim (simworld? sim))
+      (DEBUGASSERT ;'start-alpha-sim 
+		   (simworld? sim))
   
     ;(if (file-exists? logfile) (delete-file logfile))
   

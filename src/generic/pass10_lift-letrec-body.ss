@@ -34,8 +34,7 @@
            (if (and (symbol? body) (not (regiment-constant? body)))
 	       `(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
 	       (let* ([main (unique-name 'result)]
-		      [tenv (append (map list lhs* type*) tenv)]
-		      [maintype (type-expression body tenv)])
+		      [maintype (recover-type body newenv)])
 					;(code-name 'main)]) ;; Old version used code-name for labels...
 		 `(lazy-letrec ([,lhs* ,type* ,rhs*] ...
 				[,main ,maintype ,body])  ;(lambda () ,body))])
@@ -60,6 +59,6 @@
 
     (lambda (prog)
       (match prog
-        [(,input-language (quote (program ,[(process-letrec '()) -> body])) ,type)
+        [(,input-language (quote (program ,[(process-letrec '()) -> body] ,type)))
 	 ;; This pass uses the same language as the prior pass, lift-letrec
-	 `(,input-language '(program ,body) ,type)]))))
+	 `(,input-language '(program ,body ,type))]))))

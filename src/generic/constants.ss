@@ -51,7 +51,7 @@
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 
 ;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
-(define-syntax DEBUGASSERT
+#;(define-syntax DEBUGASSERT
   (syntax-rules () 
     [(_ expr) 
      (DEBUGMODE
@@ -62,6 +62,18 @@
       (if expr #t 
 	  (error obj "DEBUGASSERT failed: ~s" (quote expr))))]
     ))
+
+(define-syntax DEBUGASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) 
+       #'(DEBUGMODE
+	  (if expr #t 
+	      (error 'DEBUGASSERT "failed: ~s" 
+		     #'expr
+					;(quote expr)
+		     )))]
+      )))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))

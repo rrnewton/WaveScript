@@ -81,7 +81,7 @@
 	   (if (memq v formals) 0 (count-refs v expr))]
           [(if ,[test] ,[conseq] ,[altern])
 	   (+ test conseq altern)]
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
@@ -134,7 +134,7 @@
 		    (if (eq? x not-available) #f
 			(match x
 			   [(quote ,datum) #t]
-			   [(lambda ,vs ,bod) #t]
+			   [(lambda ,vs ,tys ,bod) #t]
 			   [,var (guard (symbol? var)) 
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
@@ -143,7 +143,7 @@
 		  (lambda (x)
 		    (match x
 			   [(quote ,datum) datum]
-			   [(lambda ,vs ,bod) `(lambda ,vs ,bod)]
+			   [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
 			   [,var (guard (symbol? var))
 				 (getval (cadr (assq var env)))]
 			   [,else (error 'static-elaborate "getval bad input: ~a" x)]))])
@@ -235,38 +235,44 @@
 (define these-tests 
   `( 
 
-    [(static-elaborate '(foo '(program (+ '3 '4))))
-     (foo '(program '7))]
+    [(static-elaborate '(foo '(program (+ '3 '4) notype)))
+     (foo '(program '7 notype))]
 
     [(static-elaborate
       '(foo '(program
-	      (letrec ([f (lambda (x) '#t)])
-		(f '3939)))))
-     (foo '(program '#t))]
+	      (letrec ([f _ (lambda (x) (_) '#t)])
+		(f '3939)) notype)))
+     (foo '(program '#t notype))]
 
     [(static-elaborate '(foo '(program 
-      (letrec ([fact (lambda (n) (if (= '0 n) '1 (* n (fact (- n '1)))))]) (fact '6)))))
-     (foo '(program '720))]
+      (letrec ([fact _ (lambda (n) (_) 
+			       (if (= '0 n) '1 (* n (fact (- n '1)))))]) 
+	(fact '6))
+      notype)))
+     (foo '(program '720 notype))]
 
     [(static-elaborate '(foo '(program 
-			       (letrec ([f (lambda (x) '#t)])
-				 (letrec ([loop (lambda (n)
-						  (if (= '0 n)
-						      world
-						      (rfilter f (loop (- n '1)))))])
-				   (loop '5))))))
+			       (letrec ([f _ (lambda (x) (_) '#t)])
+				 (letrec ([loop _ (lambda (n) (_)
+							  (if (= '0 n)
+							      world
+							      (rfilter f (loop (- n '1)))))])
+				   (loop '5)))
+			       notype)))
      ;unspecified]
      (foo '(program
-	    (letrec ([f (lambda (x) '#t)])
+	    (letrec ([f _ (lambda (x) (_) '#t)])
 	      (rfilter
 	       f
-	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))))]
+	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))
+	    notype))]
 
     ["Simple test to make sure we keep the quotes on:" 
-     (static-elaborate '(foolang '(program (cons (+ '3 '4) (unknownfun)))))
-     (foolang '(program (cons (quote 7) (unknownfun))))]
+     (static-elaborate '(foolang '(program (cons (+ '3 '4) (unknownfun)) notype)))
+     (foolang '(program (cons (quote 7) (unknownfun))
+		 notype))]
 
-    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) (unknownfun))))])
+    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) (unknownfun)) notype))])
        `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])

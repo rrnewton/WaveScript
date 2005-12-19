@@ -306,6 +306,13 @@
     [#(,[t] ...) (andmap id t)]
     [,else #f]))
 
+(define (tenv? x)
+  (match x
+    [([,v* ,t*] ...)
+     (and (andmap symbol? v*)
+	  (andmap type? t*))]
+    [,else #f]))
+
 ; ======================================================================
 
 ;;; The main type checker.
@@ -327,10 +334,6 @@
 	 (types-equal! tt 'Bool te)
 	 (types-equal! c a exp)
 	 c)]
-      [(lambda (,v* ...) ,bod)
-       ;; No optional type annotations currently.
-       (type-lambda v* bod tenv)]
-
       [(tuple ,[l -> arg*] ...)  (apply vector arg*)]
       [(tupref ,n ,len ,[l -> t])
        (unless (and (qinteger? n) (qinteger? len))
@@ -339,14 +342,30 @@
        (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
 	 (types-equal! t newtypes exp)
 	 (vector-ref newtypes n))]
+
+      [(lambda (,v* ...) ,bod)
+       (type-lambda v* bod tenv)]
       [(letrec ([,id* ,rhs*] ...) ,bod)
+       ;(guard (memq letrec '(lazy-letrec letrec)))
        (type-letrec id* rhs* bod tenv)]
+
+      ;; TODO: Doesn't actually take optional types into account.
+      [(lambda (,v* ...) ,types ,bod)
+       ;; No optional type annotations currently.
+       (type-lambda v* bod tenv)]
+      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)
+       ;(guard (memq letrec '(lazy-letrec letrec)))
+       (printf "LETREC\n")
+       (type-letrec id* rhs* bod tenv)]
+
+
       [(,prim ,[l -> rand*] ...)
        (guard (regiment-primitive? prim))
        (type-app (prim->type prim) rand* exp)]
       [(,[l -> rator] ,[l -> rand*] ...)
        (type-app rator rand* exp)]
-      
+
+      [,other (error 'type-expression "unknown expression: ~s" other)]
       )))
 
 
@@ -356,15 +375,22 @@
     (match exp 
       [(lambda ,formals ,types ,body)
        `(,types ... -> ,(recover-type body (append (map list formals types) tenv)))]
-      [(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+      [(,letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+       (guard (memq letrec '(letrec lazy-letrec)))
        (recover-type body (append (map list lhs* type*) tenv))]
+
       [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t n)]
       ;; Since the program is already typed, we just use the arrow type of the rator:
-      [(,[rat] ,rand ...) (rdc rat)]
-      [,other (type-expression other tenv)])))
-       
+      ;[(,[rat] ,rand ...) (rac rat)]
+      [,other (export-type (type-expression other 
+					    (map 
+						(lambda (x) 
+						  (match x 
+						    [(,v ,t) `(,v ,(instantiate-type t))]
+						    [,other (error 'recover-type "bad tenv entry: ~s" other)]))
+					      tenv)))])))
 
 ;; Assign a basic type to a constant.
 (define (type-const c)
@@ -591,7 +617,7 @@
 
 ;    [,tyvar1 
 ;     (if (eqv? tyvar1 tvar)
-    [,other (inspect (vector other tvar))]
+;    [,other (inspect (vector other tvar))]
     ))
 
 

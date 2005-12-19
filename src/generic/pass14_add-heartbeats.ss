@@ -31,6 +31,11 @@
 
 (define add-heartbeats
   (let ()
+    
+    ;; [2005.12.19] letrec bindings are now [lhs type rhs]
+    (define bind->lhs  car)
+    (define bind->type cadr)
+    (define bind->rhs  caddr)
 
     (define (simple? expr)
       (match expr
@@ -40,7 +45,7 @@
 
     (lambda (expr)
       (match expr
-	[(,input-language (quote (program (props ,proptable ...) ,letexpr)))
+	[(,input-language (quote (program (props ,proptable ...) ,letexpr ,type)))
 	 (let ()
 	   (define (check-prop p s)
 	     (let ((entry (assq s proptable)))
@@ -71,8 +76,8 @@
 		       (if (not node)
 			   (error 'add-heartbeats:derive-freqtable 
 				  "could not find binding for '~s in ~s" ret binds)
-		       (let ([deps (get-deps (cadr node))])
-			 (cons (assq (car node) freq-table)
+		       (let ([deps (get-deps (bind->rhs node))])
+			 (cons (assq (bind->lhs node) freq-table)
 			       (map 
 				(lambda (s) (loop (assq s binds)))
 				deps)))))]
@@ -85,7 +90,7 @@
 		     (lambda (name expr)
 		       (match expr
 			      [,exp (guard (simple? exp)) #f]
-			      [(lambda ,formalexp ,expr) #f]
+			      [(lambda ,formalexp ,types ,expr) #f]
 			      [(if ,test ,conseq ,altern) #f]
 			      ;; All regiment constants are presumed to be "slow prims" for now.
 			      [,prim (guard (regiment-constant? prim))
@@ -103,7 +108,7 @@
 		     (lambda (name expr)
 		       (match expr
 			      [,exp (guard (simple? exp)) #f]
-			      [(lambda ,formalexp ,expr) #f]
+			      [(lambda ,formalexp ,types ,expr) #f]
 			      [(if ,test ,conseq ,altern) #f]
 			      [(,prim ,rand* ...)				      
 			       (guard (distributed-primitive? prim))
@@ -123,15 +128,15 @@
 	       ;; Now loop up that tree from the root and set those frequencies.
 	       (for-each (lambda (freq-entry bind-entry)
 			   (DEBUGMODE 
-			    (if (not (eq? (car freq-entry)
-					  (car bind-entry)))
+			    (if (not (eq? (bind->lhs freq-entry)
+					  (bind->lhs bind-entry)))
 				(error 'add-heartbeats:process-let
 				       "Ryan, you did something wrong. bind list doesn't line up with freq-table.")))
-			   (if (slow-prim? (car freq-entry) ;; Edge name
-					   (cadr bind-entry)) ;; Generating Expression
+			   (if (slow-prim? (bind->lhs freq-entry) ;; Edge name
+					   (bind->rhs bind-entry)) ;; Generating Expression
 					;(set-cdr! freq-entry +inf.0)
 			       (set-cdr! freq-entry slow-pulse)
-			       (if (fast-prim? (car freq-entry) (cadr bind-entry))
+			       (if (fast-prim? (bind->lhs freq-entry) (bind->rhs bind-entry))
 				   (set-cdr! freq-entry fast-pulse)))
 			   )
 			 freq-table
@@ -150,13 +155,13 @@
     (define process-let
       (lambda (expr)
         (match expr
-	  [(lazy-letrec ([,lhs* ,[process-expr -> rhs*]] ...) ,fin)
-	   (let* ([binds (map list lhs* rhs*)]
+	  [(lazy-letrec ([,lhs* ,type* ,[process-expr -> rhs*]] ...) ,fin)
+	   (let* ([binds (map list lhs* type* rhs*)]
 		  [freq-table (derive-freqtable binds fin)]
 		  [newbinds (map (lambda (bind)
 				   (match bind
-					  [(,lhs ,rhs)					   
-					   `[,lhs ,(cdr (assq lhs freq-table)) ,rhs]]))
+					  [(,lhs ,type ,rhs)
+					   `[,lhs ,type ,(cdr (assq lhs freq-table)) ,rhs]]))
 				 binds)])	    
 	     `(lazy-letrec ,newbinds ,fin))])))
 
@@ -167,7 +172,7 @@
 	  [,var (guard (symbol? exp) (not (regiment-constant? exp)))
 		exp]
 	  [,simp (guard (simple? simp)) '()]
-          [(lambda ,formalexp ,bod) '()] ; lambdas have no free-vars
+          [(lambda ,formalexp ,types ,bod) '()] ; lambdas have no free-vars
           [(if ,[test] ,[conseq] ,[altern])
 	   (append test conseq altern)]
 	  ;; Don't need to recur on rands:
@@ -176,14 +181,14 @@
            (guard (regiment-primitive? prim))
 	   (apply append rand*)]
           [,unmatched
-	   (error 'TEMPLATE "invalid syntax ~s" unmatched)])))
+	   (error 'get-deps "invalid syntax ~s" unmatched)])))
 
     (define process-expr
       (lambda (expr)
         (match expr
 	  [,exp (guard (simple? exp)) exp]
-          [(lambda ,formalexp ,[process-let -> letexp])
-	   `(lambda ,formalexp ,letexp)]
+          [(lambda ,formalexp ,types ,[process-let -> letexp])
+	   `(lambda ,formalexp ,types ,letexp)]
 	  ;; Don't need to recur on exprs:
           [(if ,test ,conseq ,altern)
 	   `(if ,test ,conseq ,altern)]
@@ -198,4 +203,5 @@
     ;; Body of match case:    
     `(add-heartbeats-language
       (quote (program (props ,proptable ...)
-		      ,(process-let letexpr)))))]))))
+		      ,(process-let letexpr)
+		      ,type))))]))))

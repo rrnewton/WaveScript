@@ -168,7 +168,7 @@
 
   (define (process-let name expr env)
     (match expr
-	   [(lazy-letrec ([,lhs* ,rhs*] ...) ,expr)
+	   [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	    (if (not (symbol? expr)) (error 'classify-names "body of lazy-letrec should be a symbol!"))
 	    (for-each (lambda (lhs rhs)
 			(process-expr lhs rhs env))
@@ -190,7 +190,7 @@
 		(add-prop! name `(alias-of ,var))
 		]
 		
-          [(lambda ,formalexp (lazy-letrec ,binds ,bod))
+          [(lambda ,formalexp ,types (lazy-letrec ,binds ,bod))
 	   ;; NOTE: No additional dependency for name... this is a closure.
 	   ;; <TODO> CONSIDER THIS: It would let dependencies go through lambdas.
 	   ;(process-let name expr (union formalexp env)) 
@@ -263,8 +263,8 @@
   ;=============================================================  
     
     (match expr
-	   [(,input-language (quote (program (lazy-letrec (,binds ...) ,fin))))
-	    (add-prop! fin 'final)	    
+	   [(,input-language (quote (program (lazy-letrec (,binds ...) ,fin) ,type)))
+	    (add-prop! fin 'final)
 	    ;; This mutates the global list 'dependencies'.
 	    (process-let #f `(lazy-letrec (,binds ...) ,fin) ())
 	    ;; Now we label the leaves:
@@ -310,7 +310,7 @@
 
 	    ;; <TODO> Need to write the little lnaguage stub.
 	    `(classify-names-language
-	      '(program ,finaltable (lazy-letrec (,binds ...) ,fin)))
+	      '(program ,finaltable (lazy-letrec (,binds ...) ,fin) ,type))
 	    )]
 	   ))
 
@@ -320,8 +320,9 @@
 
     [(analyze-places '(add-places-language
 		       '(program (props) (control-flow)
-			       (lazy-letrec ([result 10 X? X? 3])
-					    result))))
+				 (lazy-letrec ([result _ 10 X? X? 3])
+					      result)
+				 notype)))
      unspecified]
 
   ))

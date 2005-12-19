@@ -134,7 +134,7 @@
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
        `[(rename-var '(some-lang '(program ,prog notype)))
-	 (some-lang '(program ,res ))])) 
+	 (some-lang '(program ,res notype))]))
    '(
      [3 3]    
      [(letrec ((x notype 1)) x) unspecified]

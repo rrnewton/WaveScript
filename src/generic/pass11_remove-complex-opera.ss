@@ -125,6 +125,7 @@
 
     (define process-expr
       (lambda (expr tenv)
+	(DEBUGASSERT (tenv? tenv))
         (match expr
 	  [,x (guard (simple? x)) (values x '())]
           [(if ,a ,b ,c)
@@ -133,9 +134,9 @@
 		   [(altern altern-decls) (make-simple c tenv)])
 	     (values `(if ,test ,conseq ,altern)
 		     (append test-decls conseq-decls altern-decls)))]
-	  [(lambda ,formalexp ,types ,body)
-	   (let ([body (process-letrec body expr)])
-	     (values `(lambda ,formalexp ,types ,body) '()))]
+	  [(lambda ,formals ,types ,body)
+	   (let ([body (process-letrec body (append (map list formals types) tenv))])
+	     (values `(lambda ,formals ,types ,body) '()))]
 
 	  ;;; Constants:
 	  [,prim (guard (regiment-primitive? prim))
@@ -160,10 +161,11 @@
     ;; LetrecExpr -> LetrecExpr
     (define process-letrec
       (lambda (letrec-exp tenv)
+	(DEBUGASSERT (tenv? tenv))
         (match letrec-exp
 	  [(lazy-letrec ((,lhs* ,type* ,rhs*) ...) ,simple)
 	   (let ((newenv (append (map list lhs* type*) tenv)))
-	     (mvlet (((rhs* rhs-decls) ; This is an awkward way to loop across rhs*:
+	     (mvlet (((rhs* rhs-decls*) ; This is an awkward way to loop across rhs*:
 		      (let loop ((ls rhs*) (acc ()) (declacc ()))
 			(if (null? ls) (values (reverse! acc) (reverse! declacc))
 			    (mvlet ([(r rd) (process-expr (car ls) newenv)])
@@ -178,8 +180,8 @@
     ;===========================================================================
     (lambda (program)
       (match program
-             [(,input-lang '(program ,letexp) ,type)
-	      `(,input-lang '(program ,(process-letrec letexp '())))]
+             [(,input-lang '(program ,letexp ,type))
+	      `(,input-lang '(program ,(process-letrec letexp '()) ,type))]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))
@@ -190,10 +192,10 @@
   (map
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
-       `[(remove-complex-opera* '(some-lang '(program ,prog)))
-	 (some-lang '(program ,res))])) 
+       `[(remove-complex-opera* '(some-lang '(program ,prog notype)))
+	 (some-lang '(program ,res notype))])) 
    '(
-     [(lazy-letrec ((x (cons '3 (cons '4 (cons '5 '()))))) x) unspecified]
+     [(lazy-letrec ([x _ (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
      )
    )
   ) 
