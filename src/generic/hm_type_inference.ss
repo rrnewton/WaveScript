@@ -189,11 +189,14 @@
 ; ======================================================================
 ;;; Helpers
 
+(define (safe-export-type t)
+  (if (type? t) (export-type t) `(NOT-A-TYPE ,t)))
+
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-error t1 t2 exp)
   (error 'type-checker
 	 "Type mismatch: ~s doesn't match ~s in ~s~%"
-	 (export-type t1) (export-type t2) exp))
+	 (safe-export-type t1) (safe-export-type t2) exp))
 ;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)
   (error 'type-checker
@@ -204,7 +207,9 @@
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (error 'type-checker
 	 "Different numbers of arguments ~s and ~s in ~s\n"
-	 (export-type t1) (export-type t2) exp))
+	 (safe-export-type t1) (safe-export-type t2) exp))
+
+; ----------------------------------------
 
 (define make-tvar-generator
   (lambda ()
@@ -221,44 +226,87 @@
 (define make-tvar (make-tvar-generator))
 ;; Resets the unique name counter.
 (define (reset-tvar-generator) (set! make-tvar (make-tvar-generator)))
-;; Makes a new type variable along with associated cell for
-;; accumulating information on that variable..
+
+;; A tcell is like a tvar (quoted, representing a variable).  Except
+;; instead of just containing a symbolic name, it is a cons cell also
+;; including constraints on that variables type.  It's a place for
+;; accumulating information on a variable.
 (define (make-tcell) `(quote (,(make-tvar) . #f)))
 
 (define (tcell->name x)
   (match x
-    [(quote (,n . ,t)) (DEBUGASSERT (symbol? n))
-     n]
+    [(quote (,n . ,t)) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
+
+(define (tenv-lookup tenv sym)
+  (DEBUGASSERT (tenv? tenv))
+  (let ([entry (assq sym tenv)])
+    (if entry (cadr entry) #f)))
+(define (tenv-extend tenv syms vals)
+  (DEBUGASSERT (tenv? tenv))
+  (DEBUGASSERT (andmap type? vals))
+  ;;  `((,sym ,val) . tenv))
+  (append (map list syms vals) tenv))
+  
+(define (tenv-map f tenv)
+  (DEBUGASSERT (tenv? tenv))
+  (map 
+      (lambda (x) 
+	(match x 
+	  [(,v ,t) `(,v ,(f t))]
+	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
+    tenv))
+
+(define (empty-tenv) '())
+(define (tenv? x)
+  (match x
+    [([,v* ,t*] ...)
+     (and (andmap symbol? v*)
+	  (andmap type? t*))]
+    [,else #f]))
+
+; ----------------------------------------
 
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
-(define (instantiate-type t)
-  (let loop ((t t) (tenv '()))
-    (match t
-      [,s (guard (symbol? s)) s]
-      [(quote (,n . ,v))
-       (let ((entry (assq n tenv)))
-	 `(quote ,(if entry
-		      (cadr entry)
-		      (let ((cell (cons (make-tvar) (if v (loop v tenv) #f))))
-			(set! tenv (cons (list n cell) tenv))
-			cell))))]
-      [(quote ,n) (guard (symbol? n))
-       (let ((entry (assq n tenv)))
-	 `(quote ,(if entry
-		      (cadr entry)
-		      (let ((cell (cons (make-tvar) #f)))
-			(set! tenv (cons (list n cell) tenv))
-			cell))))]
-       [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
-       `(,@arg* -> ,res)]
-      [#(,[t*] ...) (apply vector t*)]
-      [(,constructor ,[args] ...)
-       (guard (symbol? constructor))
-       `(,constructor ,args ...)]
-      [,other (error 'instantiate-type "bad type: ~a" other)]
-      )))
+(trace-define (instantiate-type t)
+  (let* ((tenv (empty-tenv))
+	 (result 
+	  (let loop ((t t))
+	   (match t
+	     [,s (guard (symbol? s)) s]
+	     ;; This type variable has a cell.  Replace it:
+	     [(quote (,n . ,v))
+	      (let ((entry (tenv-lookup tenv n)))
+		;; If there's already a cell allocated, we should use it.
+		(if entry
+		    entry ;`(quote ,(cons n entry))
+		    `(quote ,(cons n 
+				   (if v (loop v) v)))))
+;		`(quote ,(or entry
+;			     (let ((cell (cons (make-tvar) (if v (loop v tenv) #f))))
+;			       (set! tenv (tenv-extend tenv (list n) (list cell)))
+;			       cell))))
+	      ]
+
+	     ;; This is a type variable with no cell attached.  Make one and attach it.
+	     [(quote ,n) (guard (symbol? n))
+	      (let ((entry (tenv-lookup tenv n)))
+		(if entry
+		    entry ;`(quote (,n . ,entry))
+		    (let ((type `(quote (,n . #f))))
+		      (set! tenv (tenv-extend tenv (list n) (list type)))
+		      type)))]
+	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
+	      `(,@arg* -> ,res)]
+	     [#(,[t*] ...) (apply vector t*)]
+	     [(,constructor ,[args] ...)
+	      (guard (symbol? constructor))
+	      `(,constructor ,args ...)]
+	     [,other (error 'instantiate-type "bad type: ~a" other)]
+	     ))))
+    (DEBUGASSERT (type? result))
+    result))
 
 ;; This takes away the mutable cells, thereby converting to the
 ;; external representation.
@@ -306,19 +354,13 @@
     [#(,[t] ...) (andmap id t)]
     [,else #f]))
 
-(define (tenv? x)
-  (match x
-    [([,v* ,t*] ...)
-     (and (andmap symbol? v*)
-	  (andmap type? t*))]
-    [,else #f]))
-
 ; ======================================================================
 
 ;;; The main type checker.
 
 ;; Assign a type to an expression.
 (define (type-expression exp tenv)
+    (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (type-const c)]
@@ -326,8 +368,8 @@
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (prim->type prim)]
       [,v (guard (symbol? v)) 
-	  (let ((entry (assq v tenv)))
-	    (if entry (cadr entry)
+	  (let ((entry (tenv-lookup tenv v)))
+	    (or entry
 		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,te ,[l -> c] ,[l -> a])
        (let ((tt (l te)))
@@ -358,12 +400,13 @@
        (printf "LETREC\n")
        (type-letrec id* rhs* bod tenv)]
 
-
       [(,prim ,[l -> rand*] ...)
        (guard (regiment-primitive? prim))
-       (type-app (prim->type prim) rand* exp)]
+       (DEBUGASSERT (andmap type? rand*))
+       (type-app (prim->type prim) rand* exp tenv)]
       [(,[l -> rator] ,[l -> rand*] ...)
-       (type-app rator rand* exp)]
+       (DEBUGASSERT (andmap type? rand*))
+       (type-app rator rand* exp tenv)]
 
       [,other (error 'type-expression "unknown expression: ~s" other)]
       )))
@@ -371,26 +414,26 @@
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
 (define (recover-type exp tenv)
+  (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
     (match exp 
       [(lambda ,formals ,types ,body)
-       `(,types ... -> ,(recover-type body (append (map list formals types) tenv)))]
+       `(,types ... -> ,(recover-type body (tenv-extend tenv formals types)))]
       [(,letrec ([,lhs* ,type* ,rhs*] ...) ,body)
        (guard (memq letrec '(letrec lazy-letrec)))
-       (recover-type body (append (map list lhs* type*) tenv))]
+       (recover-type body (tenv-extend tenv lhs* type*))]
 
-      [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+      [(if ,t ,[c] ,[a]) 
+       (let ([a (instantiate-type a)] 
+	     [c (instantiate-type c)])
+	 (type-equal! c a `(if ,t ??? ???))
+	 (export-type c))]
+
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t n)]
       ;; Since the program is already typed, we just use the arrow type of the rator:
       ;[(,[rat] ,rand ...) (rac rat)]
-      [,other (export-type (type-expression other 
-					    (map 
-						(lambda (x) 
-						  (match x 
-						    [(,v ,t) `(,v ,(instantiate-type t))]
-						    [,other (error 'recover-type "bad tenv entry: ~s" other)]))
-					      tenv)))])))
+      [,other (export-type (type-expression other (tenv-map instantiate-type tenv)))])))
 
 ;; Assign a basic type to a constant.
 (define (type-const c)
@@ -417,17 +460,18 @@
 	   ids body tenv)
     ;(let ((arg-types (expand-optional-type-expressions texps tenv)))
     (let* ([argtypes (map (lambda (_) (make-tcell)) ids)]
-	   [result (type-expression body (append (map list ids argtypes) tenv))])
+	   [result (type-expression body (tenv-extend tenv ids argtypes))])
       `(,@argtypes -> ,result))))
 
 ;; Assign a type to a procedure application expression.
-(define (type-app rator rands exp)
+(define (type-app rator rands exp tenv)
+  (DEBUGASSERT (tenv? tenv))
   (let ([result (make-tcell)])
     ;; By instantiating a new type for the rator we allow let bound polymorphism.
     ;(inspect (vector (export-type rator) rands result))
     ;; Need to do this only for let-bound variables:
-    ;(types-equal! (instantiate-type rator) `(,@rands -> ,result) exp)
-    (types-equal! rator `(,@rands -> ,result) exp)
+    (types-equal! (instantiate-type rator) `(,@rands -> ,result) exp)
+    ;(types-equal! rator `(,@rands -> ,result) exp)
     ;(inspect (export-type rator))
     result))
 
@@ -443,7 +487,7 @@
 (define (type-letrec id* rhs* bod tenv)
   ;; Make new cells for all these types
   (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	 [tenv (append (map list id* rhs-types) tenv)])
+	 [tenv (tenv-extend tenv id* rhs-types)])
     ;; Unify all these new type variables with the rhs expressions
     (for-each (lambda (type rhs)
 		(types-equal! type (type-expression rhs tenv) rhs))
@@ -466,8 +510,8 @@
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
       [,v (guard (symbol? v))   
-	  (let ((entry (assq v tenv)))
-	    (if entry (values v (cadr entry))
+	  (let ((entry (tenv-lookup tenv v)))
+	    (if entry (values v entry)
 		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te)
@@ -476,7 +520,7 @@
       [(lambda (,v* ...) ,body)
        ;; No optional type annotations currently.
        (let ([argtypes (map (lambda (_) (make-tcell)) v*)])
-	 (mvlet ([(newbod bodtype) (annotate-expression body (append (map list v* argtypes) tenv))])
+	 (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv v* argtypes))])
 	   (values `(lambda ,v* ,argtypes ,newbod)
 		   `(,@argtypes -> ,bodtype))))]
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (apply vector t*))]
@@ -493,7 +537,7 @@
 
        ;; Make new cells for all these types
        (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	      [tenv (append (map list id* rhs-types) tenv)])
+	      [tenv (tenv-extend tenv id* rhs-types)])
 	 ;; Unify all these new type variables with the rhs expressions
 	 (let ([newrhs* 
 		(map (lambda (type rhs)
@@ -507,11 +551,11 @@
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (values `(,prim ,rand* ...)
-	       (type-app (prim->type prim) t* exp))]
+	       (type-app (prim->type prim) t* exp tenv))]
 
       [(,[l -> rator t1] ,[l -> rand* t*] ...)
        (values `(,rator ,rand* ...)
-	       (type-app t1 t* exp))]
+	       (type-app t1 t* exp tenv))]
       )))
 
 ;; This annotates the program, and then exports all the types to their
@@ -537,6 +581,7 @@
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
 (define (types-equal! t1 t2 exp)
+  (DEBUGASSERT (and (type? t1) (type? t2)))
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
     [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
