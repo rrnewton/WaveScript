@@ -239,35 +239,53 @@
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
 ; ----------------------------------------
-#|
+;;; Type Environment ADT
+
+;; Constructs an empty type environment.
+(define (empty-tenv) '())
+;; Predicate testing for type environments.
+(define (tenv? x)
+  (match x
+    [([,v* ,t* ,flag*] ...)
+     (and (andmap symbol? v*)
+	  (andmap type? t*)
+	  (andmap boolean? flag*))]
+    [,else #f]))
+;; Retrieves a type if a binding exists for sym, otherwise #f.
 (define (tenv-lookup tenv sym)
   (DEBUGASSERT (tenv? tenv))
   (let ([entry (assq sym tenv)])
     (if entry (cadr entry) #f)))
-(define (tenv-extend tenv syms vals)
+;; This returns #t if the let-bound flag for a given binding is set.
+;; If sym is lambda-bound or is unbound in the type environment, #f is
+;; returned.
+(define (tenv-is-let-bound? tenv sym)
   (DEBUGASSERT (tenv? tenv))
-  (DEBUGASSERT (andmap type? vals))
-  ;;  `((,sym ,val) . tenv))
-  (append (map list syms vals) tenv))  
+  (let ([entry (assq sym tenv)])
+    (if entry (caddr entry) #f)))
+;; Extends a type environment.
+;; .param tenv The type env to extend.
+;; .param syms The names to bind.
+;; .param vals The types to bind.
+;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
+;; .returns A new type environment.
+(define (tenv-extend tenv syms types . flag)
+  (DEBUGASSERT (tenv? tenv))
+  (DEBUGASSERT (andmap type? types))
+  (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
+    (append (map (lambda (a b) (list a b flag)) syms types) tenv)))
+;; Applies a function to all types in a type enviroment.
 (define (tenv-map f tenv)
   (DEBUGASSERT (tenv? tenv))
   (map 
       (lambda (x) 
 	(match x 
-	  [(,v ,t) `(,v ,(f t))]
+	  [(,v ,t ,flag) `(,v ,(f t) ,flag)]
 	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
     tenv))
-(define (empty-tenv) '())
-(define (tenv? x)
-  (match x
-    [([,v* ,t*] ...)
-     (and (andmap symbol? v*)
-	  (andmap type? t*))]
-    [,else #f]))
-|#
 
 ; ----------------------------------------
-
+#|
 (define (tenv-lookup tenv sym)
   (DEBUGASSERT (tenv? tenv))
   (set! tenv (vector->list tenv))
@@ -294,7 +312,7 @@
      (and (andmap symbol? v*)
 	  (andmap type? t*))]
     [,else #f]))
-
+|#
 ; ----------------------------------------
 
 ;; This associates new mutable cells with all tvars.
@@ -383,6 +401,12 @@
 
 ;;; The main type checker.
 
+;; If it's a let-bound function re-instantiate it for polymorphism:
+;(define (inject-polymorphism tenv v ty)
+;  (if (tenv-is-let-bound? tenv v)
+;      (instantiate-type entry)
+;      entry)
+
 ;; Assign a type to an expression.
 (define (type-expression exp tenv)
     (DEBUGASSERT (tenv? tenv))
@@ -394,7 +418,10 @@
 	     (prim->type prim)]
       [,v (guard (symbol? v)) 
 	  (let ((entry (tenv-lookup tenv v)))
-	    (or entry
+	    (if entry
+		;; If it's a let-bound variable re-instantiate it for polymorphism:
+		;(inject-polymorphism tenv v entry)
+		entry
 		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,te ,[l -> c] ,[l -> a])
        (let ((tt (l te)))
@@ -428,10 +455,11 @@
       [(,prim ,[l -> rand*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? rand*))
-       (type-app (prim->type prim) rand* exp tenv)]
-      [(,[l -> rator] ,[l -> rand*] ...)
+       (type-app prim (prim->type prim) rand* exp tenv)]
+      [(,rator ,[l -> rand*] ...)
        (DEBUGASSERT (andmap type? rand*))
-       (type-app rator rand* exp tenv)]
+       (let ((rattyp (l rator)))
+	 (type-app rator rattyp rand* exp tenv))]
 
       [,other (error 'type-expression "unknown expression: ~s" other)]
       )))
@@ -489,14 +517,16 @@
       `(,@argtypes -> ,result))))
 
 ;; Assign a type to a procedure application expression.
-(define (type-app rator rands exp tenv)
+(define (type-app rator rattyp rands exp tenv)
   (DEBUGASSERT (tenv? tenv))
+  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
-    ;; By instantiating a new type for the rator we allow let bound polymorphism.
     ;(inspect (vector (export-type rator) rands result))
-    ;; Need to do this only for let-bound variables:
-    (types-equal! (instantiate-type rator) `(,@rands -> ,result) exp)
-    ;(types-equal! rator `(,@rands -> ,result) exp)
+    (if (and (symbol? rator)
+	     (tenv-is-let-bound? tenv rator))
+	;; By instantiating a new type for the rator we allow let bound polymorphism.
+	(types-equal! (instantiate-type rattyp) `(,@rands -> ,result) exp)
+	(types-equal! rattyp `(,@rands -> ,result) exp))
     ;(inspect (export-type rator))
     result))
 
@@ -512,7 +542,7 @@
 (define (type-letrec id* rhs* bod tenv)
   ;; Make new cells for all these types
   (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	 [tenv (tenv-extend tenv id* rhs-types)])
+	 [tenv (tenv-extend tenv id* rhs-types #t)]) ; Pass flag to indicate let-bound.
     ;; Unify all these new type variables with the rhs expressions
     (for-each (lambda (type rhs)
 		(types-equal! type (type-expression rhs tenv) rhs))
@@ -535,8 +565,13 @@
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
       [,v (guard (symbol? v))   
+	  ;; TODO: FIXME: 
 	  (let ((entry (tenv-lookup tenv v)))
-	    (if entry (values v entry)
+	    (if entry 
+;		(values v (if (tenv-is-let-bound? tenv v)
+;			      (instantiate-type entry)
+;			      entry))
+		(values v entry)
 		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te)
@@ -562,7 +597,7 @@
 
        ;; Make new cells for all these types
        (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	      [tenv (tenv-extend tenv id* rhs-types)])
+	      [tenv (tenv-extend tenv id* rhs-types #t)])
 	 ;; Unify all these new type variables with the rhs expressions
 	 (let ([newrhs* 
 		(map (lambda (type rhs)
@@ -576,11 +611,11 @@
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (values `(,prim ,rand* ...)
-	       (type-app (prim->type prim) t* exp tenv))]
+	       (type-app prim (prim->type prim) t* exp tenv))]
 
       [(,[l -> rator t1] ,[l -> rand* t*] ...)
        (values `(,rator ,rand* ...)
-	       (type-app t1 t* exp tenv))]
+	       (type-app rator t1 t* exp tenv))]
       )))
 
 ;; This annotates the program, and then exports all the types to their
