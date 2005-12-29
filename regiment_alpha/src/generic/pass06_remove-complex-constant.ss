@@ -74,7 +74,7 @@
            (let* ([tmp (unique-name 'tmp)]
 		  [exp (datum->code datum)]
 		  ;; Null tenv is ok, it's just a constant:
-		  [type (recover-type exp '())]
+		  [type (recover-type exp (empty-tenv))]
 		  )
              (values tmp `((,tmp ,type ,exp))))]
           [,var (guard (symbol? var))

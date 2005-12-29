@@ -26,7 +26,7 @@
 ;; had wanted to be small, ideally.
 
 ;; Can we do better?
-#|
+
 (define rrmap 
   (lambda (f rr)
     (rmap (lambda (r) (rmap f r)) rr)))
@@ -35,7 +35,7 @@
     (rrmap (lambda (r) (rmap f r)) rrr)))
 
 (define crfold (lambda (f v) (lambda (r) (rfold f v r)))) ; Curried
-|#
+
 ;(define vals (rrrmap sense reg3))
 
 

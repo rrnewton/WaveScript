@@ -135,7 +135,7 @@
 	     (values `(if ,test ,conseq ,altern)
 		     (append test-decls conseq-decls altern-decls)))]
 	  [(lambda ,formals ,types ,body)
-	   (let ([body (process-letrec body (append (map list formals types) tenv))])
+	   (let ([body (process-letrec body (tenv-extend tenv formals types))])
 	     (values `(lambda ,formals ,types ,body) '()))]
 
 	  ;;; Constants:
@@ -164,7 +164,7 @@
 	(DEBUGASSERT (tenv? tenv))
         (match letrec-exp
 	  [(lazy-letrec ((,lhs* ,type* ,rhs*) ...) ,simple)
-	   (let ((newenv (append (map list lhs* type*) tenv)))
+	   (let ((newenv (tenv-extend tenv lhs* type*)))
 	     (mvlet (((rhs* rhs-decls*) ; This is an awkward way to loop across rhs*:
 		      (let loop ((ls rhs*) (acc ()) (declacc ()))
 			(if (null? ls) (values (reverse! acc) (reverse! declacc))
@@ -181,7 +181,7 @@
     (lambda (program)
       (match program
              [(,input-lang '(program ,letexp ,type))
-	      `(,input-lang '(program ,(process-letrec letexp '()) ,type))]
+	      `(,input-lang '(program ,(process-letrec letexp (empty-tenv)) ,type))]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))

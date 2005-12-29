@@ -26,7 +26,7 @@
 ;	(pp expr)
         (match expr
           [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
-	   (let* ([newenv (append (map list lhs* type*) tenv)]
+	   (let* ([newenv (tenv-extend tenv lhs* type*)]
 		  [rhs* (map (process-expr newenv) rhs*)]
 		  [body ((process-expr newenv) body)])
 ;; NOW we lift it even if it is simple.
@@ -49,7 +49,7 @@
 	   `(if ,test ,conseq ,altern)]
 	  [(lambda ,formalexp ,types ,body)
 	   ;; Assumes that formals is just a list.  No optional arguments allowed currently.
-	   (let ((newenv (append (map list formalexp types) tenv)))
+	   (let ((newenv (tenv-extend tenv formalexp types)))
 	     `(lambda ,formalexp ,types ,((process-letrec newenv) body)))]
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
@@ -59,6 +59,6 @@
 
     (lambda (prog)
       (match prog
-        [(,input-language (quote (program ,[(process-letrec '()) -> body] ,type)))
+        [(,input-language (quote (program ,[(process-letrec (empty-tenv)) -> body] ,type)))
 	 ;; This pass uses the same language as the prior pass, lift-letrec
 	 `(,input-language '(program ,body ,type))]))))
