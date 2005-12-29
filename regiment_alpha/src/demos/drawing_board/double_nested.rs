@@ -6,7 +6,7 @@
 
 (define reg1 world)
 (define reg2 (rmap lift world))
-(define reg3 (rmap lift2 reg2))
+;(define reg3 (rmap lift2 reg2))
 
 ;; Reg3 is an Area (Area (Area Node)).
 
@@ -26,7 +26,7 @@
 ;; had wanted to be small, ideally.
 
 ;; Can we do better?
-
+#|
 (define rrmap 
   (lambda (f rr)
     (rmap (lambda (r) (rmap f r)) rr)))
@@ -34,8 +34,10 @@
   (lambda (f rrr)
     (rrmap (lambda (r) (rmap f r)) rrr)))
 
-;(define vals (rrrmap sense reg3))
 (define crfold (lambda (f v) (lambda (r) (rfold f v r)))) ; Curried
+|#
+;(define vals (rrrmap sense reg3))
+
 
 ;(rmap (lambda (r1) (rmap (lambda (r2) (rfold + 0 r2)) r1))
 ;      reg3)

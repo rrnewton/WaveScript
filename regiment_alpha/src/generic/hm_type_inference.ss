@@ -238,6 +238,8 @@
     [(quote (,n . ,t)) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
+; ----------------------------------------
+
 (define (tenv-lookup tenv sym)
   (DEBUGASSERT (tenv? tenv))
   (let ([entry (assq sym tenv)])
@@ -246,8 +248,7 @@
   (DEBUGASSERT (tenv? tenv))
   (DEBUGASSERT (andmap type? vals))
   ;;  `((,sym ,val) . tenv))
-  (append (map list syms vals) tenv))
-  
+  (append (map list syms vals) tenv))  
 (define (tenv-map f tenv)
   (DEBUGASSERT (tenv? tenv))
   (map 
@@ -256,7 +257,6 @@
 	  [(,v ,t) `(,v ,(f t))]
 	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
     tenv))
-
 (define (empty-tenv) '())
 (define (tenv? x)
   (match x
@@ -269,7 +269,7 @@
 
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
-(trace-define (instantiate-type t)
+(define (instantiate-type t)
   (let* ((tenv (empty-tenv))
 	 (result 
 	  (let loop ((t t))
@@ -280,23 +280,18 @@
 	      (let ((entry (tenv-lookup tenv n)))
 		;; If there's already a cell allocated, we should use it.
 		(if entry
-		    entry ;`(quote ,(cons n entry))
-		    `(quote ,(cons n 
-				   (if v (loop v) v)))))
-;		`(quote ,(or entry
-;			     (let ((cell (cons (make-tvar) (if v (loop v tenv) #f))))
-;			       (set! tenv (tenv-extend tenv (list n) (list cell)))
-;			       cell))))
-	      ]
-
+		    entry
+		    (let ((newtype `(quote ,(cons (make-tvar) (if v (loop v) v)))))
+		      (DEBUGASSERT (not (tenv-lookup tenv n))) ;; 'n should not occur in v!
+		      (set! tenv (tenv-extend tenv (list n) (list newtype)))
+		      newtype)))]
 	     ;; This is a type variable with no cell attached.  Make one and attach it.
 	     [(quote ,n) (guard (symbol? n))
 	      (let ((entry (tenv-lookup tenv n)))
-		(if entry
-		    entry ;`(quote (,n . ,entry))
-		    (let ((type `(quote (,n . #f))))
-		      (set! tenv (tenv-extend tenv (list n) (list type)))
-		      type)))]
+		(or entry
+		    (let ((newtype `(quote (,(make-tvar) . #f))))
+		      (set! tenv (tenv-extend tenv (list n) (list newtype)))
+		      newtype)))]
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
 	     [#(,[t*] ...) (apply vector t*)]
@@ -426,7 +421,7 @@
       [(if ,t ,[c] ,[a]) 
        (let ([a (instantiate-type a)] 
 	     [c (instantiate-type c)])
-	 (type-equal! c a `(if ,t ??? ???))
+	 (types-equal! c a `(if ,t ??? ???))
 	 (export-type c))]
 
       [(tuple ,[t*] ...) (list->vector t*)]
@@ -561,7 +556,7 @@
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
 (define (annotate-program p)
-  (mvlet ([(e t) (annotate-expression p '())])
+  (mvlet ([(e t) (annotate-expression p (empty-tenv))])
     (values 
      (match e
        [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
@@ -639,29 +634,18 @@
 		(set-cdr! pr ty)))]))
 
 ;; This makes sure there are no cycles in a tvar's mutable cell.
+;; .returns #t if there are no loops, or throws an error otherwise.
 (define (no-occurrence! tvar ty exp)
   (DEBUGASSERT (type? ty))
   (match ty
-    [#f (void)]
+    [#f #t]
     [,s (guard (symbol? s)) #t]
-
     ['(,tyvar . ,[tyt])
      (if (equal? tyvar tvar)
 	 (raise-occurrence-check tvar ty exp))]
-
     [(,[arg*] ... -> ,[res]) res]
-    [(,C ,[t*] ...) (guard (symbol? C)) #t]
+    [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor
     [#(,[t*] ...) #t]
-;    ['(,tyvar . #f) #t]
-;    [(,tyvar . #f) #t]
-
-;; TEMP: THERE IS BAD INPUT TO THIS FUNCTION.
-;    [(,tyvar . ,[tyt])
-;     (if (equal? tyvar tvar)
-;	 (raise-occurrence-check tvar ty exp))]
-
-;    [,tyvar1 
-;     (if (eqv? tyvar1 tvar)
 ;    [,other (inspect (vector other tvar))]
     ))
 
@@ -673,31 +657,31 @@
 (define these-tests
   `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
-    [(type-expression '(if #t 1. 2.) '())         Float]
-    [(export-type (type-expression '(+ 1 1) '())) Integer]
-    [(export-type (type-lambda '(v) '(+ v v) '())) (Integer -> Integer)]
-    [(export-type (type-expression '(cons 3 (cons 4 '())) '())) (List Integer)]
-    [(export-type (type-expression '(cons 1 '(2 3 4)) '())) (List Integer)]
-    [(export-type (type-expression '(cons 1 '(2 3 4.)) '())) error]
+    [(type-expression '(if #t 1. 2.) (empty-tenv))         Float]
+    [(export-type (type-expression '(+ 1 1) (empty-tenv))) Integer]
+    [(export-type (type-lambda '(v) '(+ v v) (empty-tenv))) (Integer -> Integer)]
+    [(export-type (type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
+    [(export-type (type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
+    [(export-type (type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (type-lambda '(v) 'v '()))
+    [(export-type (type-lambda '(v) 'v (empty-tenv)))
      ,(lambda (x)
 	(match x
 	  [(',a -> ',b) (eq? a b)]
 	  [,else #f]))]
 
-    [(export-type (type-expression '((lambda (v) v) 3) '())) Integer]
+    [(export-type (type-expression '((lambda (v) v) 3) (empty-tenv))) Integer]
      
-    [(export-type (type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) '()))
+    [(export-type (type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
      (Integer -> Integer)]
 
-    [(export-type (type-expression '(rmap sense world) '()))
+    [(export-type (type-expression '(rmap sense world) (empty-tenv)))
      (Area Integer)]
     
-    [(export-type (type-expression '(tuple 1 2.0 3) '()))
+    [(export-type (type-expression '(tuple 1 2.0 3) (empty-tenv)))
      #3(Integer Float Integer)]
 
-    [(export-type (type-expression '(lambda (x) (tupref 0 3 x)) ()))
+    [(export-type (type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
      ,(lambda (x)
 	(match x
 	  [(#(,v1 ,_ ,__) -> ,v2) (equal? v1 v2)]
@@ -706,18 +690,21 @@
     [(export-type (type-expression 
 		   '(letrec ([f (lambda (x) x)])
 		      (tuple (f 3) "foo" f))
-		  '()))
-     ;#(Integer String ('b -> 'b))
-     #(Integer String (Integer -> Integer))
+		  (empty-tenv)))
+     #(Integer String ('unspecified -> 'unspecified))
+     ;#(Integer String (Integer -> Integer))
      ]
-
-    [(export-type (type-expression '(lambda (f) (tuple (f 3) f)) '()))
+  
+#;    ["Lambda bound arrow types are not polymorphic."
+     (export-type (type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
 	  [((Integer -> ,v1) -> #(,v2 (Integer -> ,v3)))
 	   (guard (equal? v1 v2) (equal? v2 v3)) #t]
 	  [,else #f]))]
-    [(export-type (type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) '()))
+
+#;    ["Non polymorphic funs cannot be applied differently."
+     (export-type (type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
      error]
     
     [(export-type (type-expression 
@@ -725,7 +712,7 @@
 		      (smap2
 		       (lambda (n1 n2) (tuple n1 n2))
 		      (anchor-at 50 10)
-		      (anchor-at 30 40))) '()))
+		      (anchor-at 30 40))) (empty-tenv)))
      (Signal #(Node Node))]
 
 
@@ -735,6 +722,10 @@
 	  [(letrec ([f (,v1 -> ,v2) (lambda (x) (,v3) x)]) 3)
 	   (guard (equal? v1 v2) (equal? v2 v3)) #t]
 	  [,else #f]))]
+
+    ;; This one doesn't actually verify shared structure:
+    [(instantiate-type '((#0='(a . #f) -> #1='(b . #f)) (Area #0#) -> (Area #1#)))
+     ((#2='(unspecified . #f) -> #3='(unspecified . #f)) (Area #2#) -> (Area #3#))]
 
     ))
 
