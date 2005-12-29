@@ -239,7 +239,7 @@
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
 ; ----------------------------------------
-
+#|
 (define (tenv-lookup tenv sym)
   (DEBUGASSERT (tenv? tenv))
   (let ([entry (assq sym tenv)])
@@ -261,6 +261,36 @@
 (define (tenv? x)
   (match x
     [([,v* ,t*] ...)
+     (and (andmap symbol? v*)
+	  (andmap type? t*))]
+    [,else #f]))
+|#
+
+; ----------------------------------------
+
+(define (tenv-lookup tenv sym)
+  (DEBUGASSERT (tenv? tenv))
+  (set! tenv (vector->list tenv))
+  (let ([entry (assq sym tenv)])
+    (if entry (cadr entry) #f)))
+(define (tenv-extend tenv syms vals)
+  (DEBUGASSERT (tenv? tenv))
+  (set! tenv (vector->list tenv))
+  (list->vector (append (map list syms vals) tenv)))
+(define (tenv-map f tenv)
+  (DEBUGASSERT (tenv? tenv))
+  (set! tenv (vector->list tenv))
+  (list->vector 
+   (map 
+      (lambda (x) 
+	(match x 
+	  [(,v ,t) `(,v ,(f t))]
+	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
+    tenv)))
+(define (empty-tenv) (vector))
+(define (tenv? x)
+  (match x
+    [#([,v* ,t*] ...)
      (and (andmap symbol? v*)
 	  (andmap type? t*))]
     [,else #f]))
