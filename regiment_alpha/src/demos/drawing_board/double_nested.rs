@@ -6,7 +6,7 @@
 
 (define reg1 world)
 (define reg2 (rmap lift world))
-;(define reg3 (rmap lift2 reg2))
+(define reg3 (rmap lift2 reg2))
 
 ;; Reg3 is an Area (Area (Area Node)).
 
@@ -36,20 +36,10 @@
 
 (define crfold (lambda (f v) (lambda (r) (rfold f v r)))) ; Curried
 
-;(define vals (rrrmap sense reg3))
+(define vals (rrrmap sense reg3))
+(define sigs (rrmap (crfold + 0) vals))
 
-
-;(rmap (lambda (r1) (rmap (lambda (r2) (rfold + 0 r2)) r1))
-;      reg3)
-;(rmap (lambda (r1) (rmap (lambda (r2) r2) r1))
-
-;reg3
-
-;(rmap (crfold + 0) (rrmap sense reg2))
-;reg2
-;(rmap (lambda (r) (rmap sense r)) reg2)
-;(rrmap sense reg2)
-reg2
+sigs
 
 ;; Well, one idea is that if we're sure we need storage proportional
 ;; to N, where N is the number of times "Area" occurs in our type,
@@ -70,3 +60,8 @@ reg2
 ;; optimizations that reuse trees rooted at node, while storing
 ;; "parent" information in separate tokens so as to be able to 
 
+
+
+
+; (annotate-program (mvlet (((a b) (read-regiment-source-file "demos/drawing_board/double_nested.rs"))) a))
+; (export-type (type-expression (mvlet (((a b) (read-regiment-source-file "demos/drawing_board/double_nested.rs"))) a) ()))
