@@ -418,10 +418,7 @@
 	     (prim->type prim)]
       [,v (guard (symbol? v)) 
 	  (let ((entry (tenv-lookup tenv v)))
-	    (if entry
-		;; If it's a let-bound variable re-instantiate it for polymorphism:
-		;(inject-polymorphism tenv v entry)
-		entry
+	    (or entry
 		(error 'type-expression "no binding in type environment for var: ~a" v)))]
       [(if ,te ,[l -> c] ,[l -> a])
        (let ((tt (l te)))
@@ -437,8 +434,7 @@
 	 (types-equal! t newtypes exp)
 	 (vector-ref newtypes n))]
 
-      [(lambda (,v* ...) ,bod)
-       (type-lambda v* bod tenv)]
+      [(lambda (,v* ...) ,bod) (type-lambda v* bod tenv)]
       [(letrec ([,id* ,rhs*] ...) ,bod)
        ;(guard (memq letrec '(lazy-letrec letrec)))
        (type-letrec id* rhs* bod tenv)]
@@ -549,14 +545,16 @@
       rhs-types rhs*)
     (type-expression bod tenv)))
 
-
 ; ======================================================================
 
-;;; Annotate types.
+;;; Annotate expressions/programs with types.
 
 ;; This is an alternative version of type-expression above which
 ;; simultaneously infers types and annotates the binding forms
-;; (letrec, lambda) with per-variable type information.
+;; (letrec, lambda) with per-variable type information.  As such, this
+;; is a bunch of duplicated code, and poses risks for bugs.
+;; <br> <br>
+;; Note, doesn't handle lazy-letrec, or already annotated programs.
 (define (annotate-expression exp tenv)
   (let l ((exp exp))
     (match exp 
@@ -564,15 +562,11 @@
       [(quote ,c)               (values c (type-const c))]
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
-      [,v (guard (symbol? v))   
-	  ;; TODO: FIXME: 
+      [,v (guard (symbol? v))
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
-;		(values v (if (tenv-is-let-bound? tenv v)
-;			      (instantiate-type entry)
-;			      entry))
 		(values v entry)
-		(error 'type-expression "no binding in type environment for var: ~a" v)))]
+		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te)
        (types-equal! ct at exp)
@@ -583,10 +577,10 @@
 	 (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv v* argtypes))])
 	   (values `(lambda ,v* ,argtypes ,newbod)
 		   `(,@argtypes -> ,bodtype))))]
-      [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (apply vector t*))]
+      [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
-	 (error 'type-expression 
+	 (error 'annotate-expression 
 		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
        (values `(tupref ,n ,len ,e)
 	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
@@ -594,7 +588,6 @@
 		 (vector-ref newtypes n)))]
 
       [(letrec ([,id* ,rhs*] ...) ,bod)
-
        ;; Make new cells for all these types
        (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
 	      [tenv (tenv-extend tenv id* rhs-types #t)])
@@ -613,15 +606,19 @@
        (values `(,prim ,rand* ...)
 	       (type-app prim (prim->type prim) t* exp tenv))]
 
-      [(,[l -> rator t1] ,[l -> rand* t*] ...)
-       (values `(,rator ,rand* ...)
-	       (type-app rator t1 t* exp tenv))]
+      [(,origrat ,[l -> rand* t*] ...)
+       (mvlet ([(rator t1) (l origrat)])
+	 (inspect (list origrat rator t1))
+	 (values `(,rator ,rand* ...)
+		 (type-app origrat t1 t* exp tenv)))]
+      
       )))
 
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
 (define (annotate-program p)
   (mvlet ([(e t) (annotate-expression p (empty-tenv))])
+    ;; Now strip mutable cells from annotated expression.
     (values 
      (match e
        [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
