@@ -22,6 +22,8 @@
 
 ;; [2005.10.02] Just factored this out into this file.
 
+;; [2006.01.12] Adding support for dynamically targetted ext-ref and ext-set!
+
 ; =======================================================================
 
 ;; This is confusing, but there are so many small traversals of
@@ -79,9 +81,10 @@
 	  [(tok ,tok ,[loop -> expr])    (fuse (list expr) (lambda (x) `(tok ,tok ,x)))]
 
 	  ;; [2005.10.31] May decide to not restrict these to token expressions only in the future:
-	  [(ext-ref ,[tokonly -> tok] ,var)      
+	  ;; [2006.01.12] Unrestricting now:
+	  [(ext-ref ,[loop -> tok] ,var)      
 	   (fuse (list tok) (lambda (tok) `(ext-ref ,tok ,var)))]
-	  [(ext-set! ,[tokonly -> tok] ,var ,[loop -> expr])
+	  [(ext-set! ,[loop -> tok] ,var ,[loop -> expr])
 	   (fuse (list tok expr) (lambda (t x) `(ext-set! ,t ,var ,x)))]
 
 	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]

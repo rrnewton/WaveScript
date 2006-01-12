@@ -523,10 +523,10 @@
 				 "bad ext-ref: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
 		     `(let ([exttokobj (retrieve-token the-store (make-simtok ',tokname ,subtok))])
 			"FOOBAR"
-			     ,(format "Ext-ref of (tok ~s ~s) variable ~s" tokname subtok x)
-			     (if exttokobj
-				 (,(string->symbol (format "~a-~a" tokname x)) exttokobj)
-				 #f)))]
+			,(format "Ext-ref of (tok ~s ~s) variable ~s" tokname subtok x)
+			(if exttokobj
+			    (,(string->symbol (format "~a-~a" tokname x)) exttokobj)
+			    #f)))]
 		  [(ext-set! (tok ,tokname ,[subtok]) ,x ,[e])
 		   (guard (and (symbol? x) (memq x allstored)))		   
 		   (mvlet ([(which-tok pos) (find-which-stored x)])
@@ -540,6 +540,15 @@
 				 (,(string->symbol (format "set-~a-~a!" tokname x)) exttokobj ,e)
 				 (warning 'ext-set! "var ~s: token not present: ~s" ',x `(,tokname . subtok))
 				 )))]
+
+		  [(ext-ref ,[e] ,n)  (guard (integer? n))
+		   ;; [2006.01.12] Ack, I went to the trouble of making my token 
+		   ;; objects use records rather than simply being vectors.  But 
+		   ;; now I want to reference them by index!  
+		   ;; Oh well, this gets ugly, supporting with an addition to the alpha_lib.
+		   `(tokobj-ref ,e ,n)]
+		  [(ext-set! ,[e] ,n ,[v])  (guard (integer? n))
+		   `(tokobj-set! ,e ,n ,v)]
 
 		  [(ext-ref ,foo ...)
 		   (error 'compile-simulate-alpha:process-statement
@@ -1008,10 +1017,31 @@
 
 	   ;; First define datatype definitions for the tokens:
 	   ,@(let ((alltoks (list->set (map car allstored))))
-	       (map (lambda (t)		
-		      `(reg:define-struct (,t ;invoke-counter 
-					      ,@(cadr (assq t allstored)))))
-		 alltoks))
+	       (append 
+		(map (lambda (t)		
+		       `(reg:define-struct (,t ;invoke-counter 
+					    ,@(cadr (assq t allstored)))))
+		  alltoks)
+		; Also include generic index-based getter/setter: [2006.01.12]
+		`((define (tokobj-ref obj ind)
+		   (cond
+		    ,@(map (lambda (rec-entry)
+			     (let ([rec (car rec-entry)]
+				   [fields (cadr rec-entry)])
+			       `[(,(symbol-append rec '?) obj)
+				 (case ind
+				   ,@(map (lambda (i field)
+					    `[(,i) (,(symbol-append rec '- field) obj)])
+				       (iota (length fields))
+				       fields)				   
+				   [else (error 'tokobj "bad index ~a for record type ~a" ind ',rec)])]))
+			;; Here as an optimization we put the bigger objectsfirst:  
+			;; (Most importantly toks with no stored vars go last!)
+			(map cdr
+			  (let ([labeled (map cons (map (lambda (ls) (length (cadr ls))) allstored) allstored)])
+			    (sort (lambda (l1 l2) (> (car l1) (car l2)))
+				  labeled)))
+			))))))
 
 	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
 
