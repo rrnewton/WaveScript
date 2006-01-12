@@ -76,6 +76,12 @@
 
 ;;; No more GExpr
 
+; ----------------------------------------------------------------------
+; Changes
+
+; [2006.01.12] Putting the introduced arguments at the end of the list
+; instead of the beginning.  This is because I'm now using indices for
+; dynamic ext-ref/set!.
 
 (define desugar-gradients
   (build-compiler-pass
@@ -185,15 +191,19 @@
        expr))
 
     
-    ;; This is a front-end that takes an expression processor and wraps it
-    ;; so as not to accept tokens directly.
+    ;; This is a front-end that takes an expression processor (looping
+    ;; function) and wraps it so as to expect a token expression in
+    ;; this context and to not touch the token expression directly.
+    ;; (The loop only gets to touch sub-expressions.)
     (define (statictok loop)
       (lambda (tk)
 	(match tk
 	       [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
-	       [(tok ,t ,[loop -> etb e])                (values etb `(tok ,t ,e))]
+	       [(tok ,t ,[loop -> etb e])        (values etb `(tok ,t ,e))]
 	       [,other (error 'statictok "this is not a token: ~a" other)])))
 
+    (define (add-grad-args-to args gradargs)
+      (append gradargs args))
 	    
     (define process-expr
       (lambda (env tokens this-token tainted)
@@ -207,8 +217,9 @@
 	     [,num (guard (number? num))  (values () num)]
 	     [,var (guard (symbol? var))  (values () var)]
 	     [(set! ,var ,[etb e])        (values etb  `(set! ,var ,e))]
-	     [(ext-ref ,[(statictok loop)  -> ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
-	     [(ext-set! ,[(statictok loop) -> ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb) 
+	     ;; [2006.01.12] Loosening statictok restriction on ext-ref/set!
+	     [(ext-ref ,[loop  -> ttb t] ,v)       (values ttb `(ext-ref ,t ,v))]
+	     [(ext-set! ,[loop -> ttb t] ,v ,[e2tb e2]) (values (append ttb e2tb)
 						       `(ext-set! ,t ,v ,e2))]
 	     ;; This is "dynamic" context so no tainted names are allowed!
 	     ;; Basically gradient bearing token handlers are second class!
@@ -318,7 +329,7 @@
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_VERSION_ARG
 			       ,VERSION_ARG)
-			  `(ext-ref ,tok ,STORED_VERSION_ARG)))]	     	    
+			  `(ext-ref ,tok ,STORED_VERSION_ARG)))]	    
 	     
 	     ;; TODO: THIS WILL NEED TO GET MUCH MORE COMPLEX:
 	     ;; I'm assuming this chunk of code will get hit with regular frequency.
@@ -572,7 +583,10 @@
 	       ))]
 	      
 	     [(return ,[etb e]) (values etb `(return ,e))]
-	     
+	     [(leds ,what ,which)                      
+	      (values () `(leds ,what ,which))]
+
+
 	     ;; OTHERWISE, let it fall through to the prim case.
 	     ;; Call to non-gradient bearing token:
 ;	     [(,call-style ,[ttb tok] ,[atb* args*] ...) 
@@ -584,30 +598,30 @@
 	      (guard (memq t tainted))
 	      (values (apply append ttb etb atb*)
 		      `(timed-call ,time (tok ,t ,e)
-				   '#f ;; gparent
-				   '#f ;; gorigin
-				   ',LOCALCALL   ;; ghopcount
-				   '#f ;; gversion
-				   ,args* ...))]
+				   ,@(add-grad-args-to
+				      args*
+				      `('#f ;; gparent
+					'#f ;; gorigin
+					',LOCALCALL   ;; ghopcount
+					'#f ;; gversion				   
+					))))]
 	     ;; OTHERWISE, let it fall through to the prim case.
 ;	     [(timed-call ,[ttb time] ,[ttb2 tok] ,[atb* args*] ...) 
 ;	      (values (apply append ttb ttb2 atb*)
 ;		      `(timed-call ,time ,tok ,args* ...))]
-
-	     [(leds ,what ,which)                      
-	      (values () `(leds ,what ,which))]
-
 
 	     ;; This is a non-gradient call to a gradient-bearing token:
 	     [(,call-style (tok ,t ,[etb e]) ,[atb* args*] ...)
 	      (guard (memq t tainted) (memq call-style '(call subcall bcast call-fast)))
 	      (values (apply append etb atb*)
 		      `(,call-style (tok ,t ,e)
-				    '#f ;; gparent
-				    '#f ;; gorigin
-				    ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
-				    '#f ;; gversion
-			     ,args* ...))]
+				    ,@(add-grad-args-to 
+				       args*
+				       `('#f ;; gparent
+					 '#f ;; gorigin
+					 ',LOCALCALL   ;; hopcount -- LOCAL CALLS HAVE HOPCOUNT "LOCALCALL"
+					 '#f ;; gversion
+					 ))))]
 
 	     [(,prim ,args ...)
 	      (guard (or ;(begin (disp "Prim: " prim args) #f)
@@ -659,7 +673,7 @@
 		       ;; Just return the plain old token handler:
 		       `(,tok ,id ,args (stored ,@stored) ,newbod)
 		       ;; In this case make it a gradient token:
-		       `(,tok ,id (,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG ,@args)
+		       `(,tok ,id ,(add-grad-args-to args `(,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG))
 			 ;; Don't use let-stored for these, it incurs extra overhead:
 			 (stored ;[call-count 0]
 			  [,STORED_PARENT_ARG   '#f]
