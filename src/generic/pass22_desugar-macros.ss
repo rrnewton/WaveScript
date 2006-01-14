@@ -137,16 +137,19 @@
 ;				   (my-clock) (my-id) ',storage)))
 		      '"If storage has not been allocated, do it now."
 		      '"This means the message just got to a new node."
-		      (if (token-present? ,storage ) (void)
-			  (subcall ,storage))
-		      
+		      (if (token-present? ,storage ) 
+			  (void)
+			  (subcall ,storage))  ;; Control-wise, this is a yield.
+
+		      '"A temporary variable stores our current 'leadership value':"
 		      (if (let ((,tmp1 (ext-ref ,storage ,ldr-criteria)))
+			    ;; There may or may not be a user comparison function that guides the competition.
 			    ,(if comparison
 				 `(let ([,tmp3 (subcall ,comparison ,val ,tmp1)])
 				    (if (= ,tmp3 1) '#t ;; They beat us
 				    (if (= ,tmp3 -1) '#f ;; They lost
 					(< (ext-ref ,storage ,cur-leader) ,id) ; Otherwise tie-breaker on ids
-				    )))
+					)))
 				 ;; Default comparison: Either they beat us flat out, or 
 				 ;; they tie us and beat us on the ID based tie-breaker:
 				 `(if (> ,val ,tmp1) '#t
@@ -173,6 +176,12 @@
 ;			      (printf '"~a "(ext-ref ,storage ,ldr-criteria))
 			      ;; TEMP: FIXME: I am temporarily: RECOMPETING in this case:
 			      ;(gemit (tok ,compete (ext-ref ,storage ,cur-leader)) (ext-ref ,storage ,ldr-criteria))
+
+			      '"Unless this is the root of the gradient, in that case we need to grelay anyway to get things started."
+			      (if (= (my-id) (gorigin (tok ,compete ,id)))
+				  (grelay (tok ,compete ,id) ,val)
+				  (void))
+
 			      ))
 		      )]
 		   [,check-winner ()

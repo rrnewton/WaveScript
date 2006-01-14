@@ -900,8 +900,19 @@
       (let ((lst ,(tm-to-list
 		   '(tokens
 		      (SOC-start () (gemit tok1))
-		      (tok1 () (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock)))
-		      ))))
+		      (tok1 () 			    
+			    (printf "(~a : ~a ~a ~a ~a : ~a)" (my-id) (gparent) (gorigin) (ghopcount) (gversion) (my-clock))
+			    (if (= (ghopcount) 0)
+				(grelay)))
+		      )
+		   '[simalpha-zeropad-args #f]
+		   '[simalpha-channel-model  'lossless]
+		   '[simalpha-placement-type 'connected]
+		   '[simalpha-failure-model  'none]
+		   '[sim-num-nodes 20]
+		   '[simalpha-consec-ids #t]
+		   '[simalpha-graphics-on #t])
+		 ))
 	(let ((base (cdr (assq BASE_ID lst)))
 	      (others (map cdr (assq-remove-all BASE_ID lst))))
 	  (if (all-equal? others)
@@ -909,7 +920,7 @@
 	      (list (assq BASE_ID lst) (car others))
 	      `(ERROR: ,others))))
       ;; This timing stuff is a bit fragile
-      ((,BASE_ID : atroot ,BASE_ID 0 1 : 2) (: ,BASE_ID ,BASE_ID 1 1 : ,(+ RADIO_DELAY SCHEDULE_DELAY 1)))]
+      ((,BASE_ID : atroot ,BASE_ID 0 1 : 2) (: ,BASE_ID ,BASE_ID 1 1 : ,(+ RADIO_DELAY (* 2 SCHEDULE_DELAY) 1)))]
 
 
      ;; TODO: need to explicitely control tho network parameters for this one:
@@ -920,13 +931,20 @@
 		       (SOC-start () (leds on green)
 				  (gemit tok1 99))
 		       (tok1 (x) 
+;			     (printf "(Running on: ~a) \n" (my-id))
 			     (setlabel "<~a,~a,~a,~a>" (ghopcount) (gparent) (gorigin) (gversion))
-			     (if (odd? (ghopcount))
-				 (leds on red)
-				 (leds on blue))
-			     (printf "~a " (gdist)) 
+			     (if (odd? (ghopcount)) (leds on red) (leds on blue))
+			     (printf "~a " (gdist))
 			     (grelay tok1 99)))
+		    '[simalpha-zeropad-args #f]
+		    '[simalpha-channel-model  'lossless]
+		    '[simalpha-placement-type 'connected]
+		    '[simalpha-failure-model  'none]
+		    '[sim-num-nodes 30]
+		    '[simalpha-consec-ids #t]
+		    '[simalpha-graphics-on #t]
 		    )))
+;	(inspect lst)
 	(list (length lst)
 	      (car lst)
 	      (cadr lst)
@@ -1040,6 +1058,7 @@
 			     )
 		  (catcher (v) (printf " ~a " v))
 		  (tok1 () (printf "_ ")
+			(if (= (ghopcount) 0) (grelay))
 			(greturn (my-id) (to catcher)))
 		  ))
       ,(lambda (lst)
@@ -1287,6 +1306,7 @@
 		  (SOC-start () (gemit tok1))
 		  (catcher (x) (printf "~a " x))
 		  (tok1 () 
+			(if (= (ghopcount) 0) (grelay))
 			(greturn (gdist)
 				 (to catcher)
 				 (seed 0)
@@ -1315,6 +1335,7 @@
 				 (timed-call 1000 tok1 (- reps 1))))
 		       (catcher (x) (printf "~a " x))
 		       (tok2 () 
+			     (if (= (ghopcount) 0) (grelay))
 			     (greturn (list (gdist))
 				      (to catcher)
 				      (seed ())
@@ -1621,7 +1642,7 @@
 
    ;; This senses which node is farthest from the (0,0) origin (upper left corner).  
    ;; (Not farthest from the base station!)
-   ["Now test elect-leader macro with a supplied criterion function."
+   ["Now test elect-leader macro with a supplied criterion function.  Elect most distant from origin."
     (length , (tm-to-socvals
 	'(tokens
 	   [SOC-start () (leds on green) (gemit tree)] 
