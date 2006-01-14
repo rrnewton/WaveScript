@@ -1,80 +1,84 @@
-;; FIXME: TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
-;; TODO!!!! REFACTOR TO USE TML-GENERIC-TRAVERSE
-;; TODO!!!! Make version that uses estimated link quality.
-
-;; CHECK FOR REFERENCES TO GLOBAL-TREE!!!
-
-;; TODO: heuristic optimization: if there are no emits to unknown
-;; tokens, then we needn't be conservative about first class token refs.
+;;;; Desugar gradients.  [2005.02.25]
 
 
 
+;  FIXME: TODO!!!! REWRITE ACCUMULATOR TO USE A FIXED SIZE VECTOR!!!
+;  TODO!!!! REFACTOR TO USE TML-GENERIC-TRAVERSE
+;  TODO!!!! Make version that uses estimated link quality.
 
-;; [2005.02.25]
-;; This pass will convert TM's with gradients to TM's without them.
-;; It represents one particular (and fragile) algorithm for gradient implementation.
+;  CHECK FOR REFERENCES TO GLOBAL-TREE!!!
 
-;; It proceeds by adding FOUR additional arguments to every token handler:
-;;   gradient parent, gradient origin node, hop-count, gradient version, 
-
-
-;; NOTE: Requires another CLEANUP (cleanup-token-machine) after this pass executes.
-;; (It uses shorthand such as "and" and "or" syntax.
-
-;; NOTE: For now token emission, relaying, distance checking, and
-;;       returning are all restricted to statically specified tokens
-;;       (but the subtok indices may be dynamically computed).
-;; This just makes it easier for me to determine which handlers need
-;; extra gradient arguments and which don't.  
-
-;; NOTE: For now we require that seed expressions be statically computable and deterministic!
-
-;; TODO: Two aggregations should merge with eachother even if they
-;; don't come from the same return statement!!  They just need to use
-;; the same tree, same destination, and same aggregator!
+;  TODO: heuristic optimization: if there are no emits to unknown
+;  tokens, then we needn't be conservative about first class token refs.
 
 
-;; Input grammar:
 
-;;;  <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
-;;;  <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
+
+;  [2005.02.25]
+;  This pass will convert TM's with gradients to TM's without them.
+;  It represents one particular (and fragile) algorithm for gradient implementation.
+
+;  It proceeds by adding FOUR additional arguments to every token handler:
+;    gradient parent, gradient origin node, hop-count, gradient version, 
+
+
+;  NOTE: Requires another CLEANUP (cleanup-token-machine) after this pass executes.
+;  (It uses shorthand such as "and" and "or" syntax.
+
+;  NOTE: For now token emission, relaying, distance checking, and
+;        returning are all restricted to statically specified tokens
+;        (but the subtok indices may be dynamically computed).
+;  This just makes it easier for me to determine which handlers need
+;  extra gradient arguments and which don't.  
+
+;  NOTE: For now we require that seed expressions be statically computable and deterministic!
+
+;  TODO: Two aggregations should merge with eachother even if they
+;  don't come from the same return statement!!  They just need to use
+;  the same tree, same destination, and same aggregator!
+
+
+;  Input grammar:
+
+;    <Pgm> := (program (bindings <Cbind>*) <NodePgm>)
+;    <NodePgm> := (nodepgm (tokens <TokBinding>*))
 ;       NOTE: tokens will inclide a binding for SOC-start and node-start
-;;;  <Cbind> ::= (<var> <Exp>)
+;    <Cbind> := (<var> <Exp>)
 ;       NOTE: This expressions will be statically calculable -- constants.
-;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
-;;;  <TokName>   ::= <Symbol> 
-;;;  <SubtokId>  ::= <Number>
-;;;  <Token>     ::= (tok <Tokname> <Int>)
-;;;  <DynToken>  ::= <Token>    | (tok <Tokname> <Expr>)
-;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
-;;;  <Expr>      ::= (quote <Constant>)
-;;;                | <Var>
-;;;                | <DynToken>
-;;;                | (set! <Var> <Expr>)
-;;;                | (ext-ref <Token> <Var>)
-;;;                | (ext-set! <Token> <Var> <Expr>)
+;    <TokBinding> := (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
+;    <TokName>   := <Symbol> 
+;    <SubtokId>  := <Number>
+;    <Token>     := (tok <Tokname> <Int>)
+;    <DynToken>  := <Token>    | (tok <Tokname> <Expr>)
+;       NOTE: Either the whole token reference or just the sub-index can be dynamic.
+;    <Expr>      := (quote <Constant>)
+;                  | <Var>
+;                  | <DynToken>
+;                  | (set! <Var> <Expr>)
+;                  | (ext-ref <Token> <Var>)
+;                  | (ext-set! <Token> <Var> <Expr>)
 ;       NOTE: These are static token refs for now.
-;;;                | (begin <Expr> ...)
-;;;                | (let ((<Symbol> <Expr>)) <Expr>)
-;;;                | (if <Expr> <Expr> <Expr>)
-;;;                | (subcall <DynToken> <Expr>...)
-;;;                | (<Prim> <Expr> ...)
-;;;                | (<Expr> ...)
-;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
-;;;                | <GExpr>
-;;; <GExpr>      ::= (gemit <DynToken> <Expr> ...)
-;;;                | (grelay <DynToken>) ;; NEED TO ADD RELAY ARGS!
-;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
-;;;                | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr #f))
-;;;                | (gdist <DynToken>)
+;                  | (begin <Expr> ...)
+;                  | (let ((<Symbol> <Expr>)) <Expr>)
+;                  | (if <Expr> <Expr> <Expr>)
+;                  | (subcall <DynToken> <Expr>...)
+;                  | (<Prim> <Expr> ...)
+;                  | (<Expr> ...)
+;                  | (leds <Red|Yellow|Green> <On|Off|Toggle>)
+;                  | <GExpr>
+;   <GExpr>      := (gemit <DynToken> <Expr> ...)
+;                  | (grelay <DynToken>)                    ; NEED TO ADD RELAY ARGS!
+;                  | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr <PlainTok>))
+;                  | (greturn <Expr> (to <DynToken>) (via <DynToken>) (seed <Expr>) (aggr #f))
+;                  | (gdist <DynToken>)
 
-;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed-call | bcast
-;;;           | is_scheduled | deschedule | is_present | evict
+;    <Prim> := <BasicPrim> 
+;             | call | subcall | timed-call | bcast
+;             | is_scheduled | deschedule | is_present | evict
 
-;;; Output Grammar:
+;   Output Grammar:
 
-;;; No more GExpr
+;   No more GExpr
 
 ; ----------------------------------------------------------------------
 ; Changes
@@ -82,6 +86,33 @@
 ; [2006.01.12] Putting the introduced arguments at the end of the list
 ; instead of the beginning.  This is because I'm now using indices for
 ; dynamic ext-ref/set!.
+
+
+; ----------------------------------------------------------------------
+;;; Global helpers
+
+;; These are the functions that manage where the gradient args are
+;; placed within the argument lists.  I'm making these global because
+;; other pieces of code need to know about them (namely, the GUI).
+(define (add-grad-args-to args gradargs)
+      ;(append args gradargs)
+  (append gradargs args)
+  )
+;; [2006.01.13] Also adding this for the GUI which needs to scrape these args back out:
+;; NOTE!  This is very inaccurate, it could be messed up by the
+;; later CPS pass that adds more args. 
+(define (retrieve-grad-args lst)
+  (let* ([len (length lst)]
+	 [last4 (list-tail lst (- len 4))]
+	 [parent  (car last4)]
+	 [origin  (cadr last4)]
+	 [hops    (caddr last4)]
+	 [version (cadddr last4)])
+    (values parent origin hops version)))
+
+; ----------------------------------------------------------------------
+;;; Main program
+
 
 (define desugar-gradients
   (build-compiler-pass
@@ -130,7 +161,6 @@
     ;; Default return-handler timeout:
     ;; Won't hold buffered values forever...
     (define DEFAULT_RHSEND 1000)
-
 
 
     (define (token->tokname t)
@@ -201,9 +231,6 @@
 	       [(tok ,t ,n) (guard (number? n))  (values () `(tok ,t ,n))]
 	       [(tok ,t ,[loop -> etb e])        (values etb `(tok ,t ,e))]
 	       [,other (error 'statictok "this is not a token: ~a" other)])))
-
-    (define (add-grad-args-to args gradargs)
-      (append gradargs args))
 	    
     (define process-expr
       (lambda (env tokens this-token tainted)
@@ -261,32 +288,38 @@
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs
 		  (call ,tok ',NO_PARENT (my-id) 0 ,ver ,@emitargs)
-		  (bcast ,tok (my-id) (my-id) 1 ,ver ,@emitargs)
+		  
+		  ;; [2006.01.12] Removing this broadcast, the callee does this via relay.
+;		  (bcast ,tok (my-id) (my-id) 1 ,ver ,@emitargs)
 		  ))))]
-
+	     
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
 	     [(grelay (tok ,t ,n) ,[atb* arg*] ...) (guard (number? n))
 	      (values (apply append atb*)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG ,@arg*)
+		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)))
 		  `(bcast (tok ,t ,n)
-			  (my-id)
-			  (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
-			  (+ 1 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG))
-			  (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG)
-			  ,@arg*)))]
+			  ,@(add-grad-args-to 
+			     arg*
+			     `((my-id)
+			       (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
+			       (+ 1 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG))
+			       (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG))
+			     ))))]
 	     [(grelay (tok ,t ,[etb e]) ,[atb* arg*] ...)
 	      (values (apply append etb atb*)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) (my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG ,@arg*)
+		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)))
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       (bcast (tok ,t ,num)
-			      (my-id)
-			      (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
-			      (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
-			      (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG)
-			      ,@arg*)))))]
+			      ,@(add-grad-args-to
+				 arg*
+				 `((my-id)
+				   (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
+				   (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
+				   (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))
+				 ))))))]
 	     [(grelay ,other ...)
 	      (error 'desugar-gradients
 		     "bad grelay form: ~s" `(grelay ,other ...))]
@@ -361,17 +394,17 @@
 		 ;; Invoke the timeout handler from node-start:
 		 ;; ASSUMES STATIC TOIND VIAIND:
 ;; [2005.10.10] DONT NEED THIS, JUST MAKE SURE THAT ANY GRETURN ACTIVITY SETS TIMER.
-#;		 [node-start () 
-		    (let ((retid 
-			   ',(if (not (and (integer? viaind_expr)
-					   (integer? toind_expr)))
-				 (error 'desugar-gradient "not allowed to have dynamic viaind/toind: ~a/~a\n"
-					viaind_expr toind_expr)
-				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
-		      ,@(DEBUG_GRADIENTS
-			 `(dbg "%d.%d: Setting gradient aggr/up-send time-out timer, retid %d." (my-clock) (my-id) retid))
-		      (token-deschedule (tok ,return-timeout-handler retid))
-		      (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
+; 		 [node-start () 
+; 		    (let ((retid 
+; 			   ',(if (not (and (integer? viaind_expr)
+; 					   (integer? toind_expr)))
+; 				 (error 'desugar-gradient "not allowed to have dynamic viaind/toind: ~a/~a\n"
+; 					viaind_expr toind_expr)
+; 				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
+; 		      ,@(DEBUG_GRADIENTS
+; 			 `(dbg "%d.%d: Setting gradient aggr/up-send time-out timer, retid %d." (my-clock) (my-id) retid))
+; 		      (token-deschedule (tok ,return-timeout-handler retid))
+; 		      (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
 
 		 ;; First the timeout handler.  When it fires it does the aggregation and sends it up the tree.
 	         ;; We only use this when there's an aggregator, otherwise return vals go straight up!
@@ -649,7 +682,7 @@
 		  (values newtbs `(,prim ,newargs ...))
 		  ))]
 
-	     ;;; TEMPORARY, We allow arbitrary other applications too!
+	     ; TEMPORARY, We allow arbitrary other applications too!
 	     [(app ,[rtb rator] ,[rtb* rands] ...)
 	      (warning 'desugar-gradient
 		       "arbitrary application of rator: ~s" rator)

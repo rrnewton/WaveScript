@@ -1,42 +1,42 @@
-;;; Pass 00: verify-regiment
+;;;; Pass 00: verify-regiment
 
-;; TODO: REMOVE CRAPPY OLD MONOMORPHIC TYPE CHECKER.
+; TODO: REMOVE CRAPPY OLD MONOMORPHIC TYPE CHECKER.
 
-;;; This pass verifies that the input is in the regiment lanuguage.
-;;; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
+; This pass verifies that the input is in the regiment lanuguage.
+; It also wraps the program in a trivial '(<lang> (program <Exp>)) form.
 
-;;; <Pgm>  := <Exp>
-;;; <Decl> := (<var> <Exp>)
-;;; <Exp>  := 
-;;;            (quote <datum>)
-;;;          | <constant>
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> <Exp>)
-;;;          | (letrec (<Decl>*) <Exp>)
-;;;          | (<primitive> <Exp>*)
-;;; <Formalexp> := (<var>*)
+; <Pgm>  := <Exp>
+; <Decl> := (<var> <Exp>)
+; <Exp>  := 
+;            (quote <datum>)
+;          | <constant>
+;          | <var>
+;          | (if <Exp> <Exp> <Exp>)
+;          | (lambda <Formalexp> <Exp>)
+;          | (letrec (<Decl>*) <Exp>)
+;          | (<primitive> <Exp>*)
+; <Formalexp> := (<var>*)
 
-;;; And in the output
-;;; <Pgm>  := (<language> '(program <Exp>))
-
-
-;; No variable capture is allowed at this point.
-
-;;; The implementation requires constant?, datum?, keyword?,
-;;; regiment-primitive?, set?, formalexp?, get-formals, and the list
-;;; regiment-primitives from helpers.ss.
+; And in the output
+; <Pgm>  := (<language> '(program <Exp>))
 
 
-;;; [2004.10.14]
+; No variable capture is allowed at this point.
 
-;; I added a kinda lame-o type inferencer/checker.  It uses a really
-;; simple type system listed in helpers.ss .  (No algebraic/arrow tyeps)
+; The implementation requires constant?, datum?, keyword?,
+; regiment-primitive?, set?, formalexp?, get-formals, and the list
+; regiment-primitives from helpers.ss.
 
-;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Integer, Float, Bool, Object  List
 
-;;  ----------------------------------------
+; [2004.10.14]
+
+; I added a kinda lame-o type inferencer/checker.  It uses a really
+; simple type system listed in helpers.ss .  (No algebraic/arrow tyeps)
+
+;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
+;   Function, Number, Integer, Float, Bool, Object  List
+
+;  ----------------------------------------
 
 (define these-tests
   '( [(verify-regiment '(some-lang '(program 3)))

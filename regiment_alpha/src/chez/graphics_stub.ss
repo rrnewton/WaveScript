@@ -176,9 +176,11 @@
   )
 
 
-
 ; ----------------------------------------------------------
 ; These two are helper functions used by the bindings below:
+; The helper "retrieve-grad-args" is in desugar-gradients to localize
+; things dealing with the add-to-end/add-to-beginning tradeoff.
+
 (define (get-grads ob)
   (let ((grads '()))
     (hashtab-for-each 
@@ -187,18 +189,14 @@
 	 (let* ([lst (reg:struct->list rec)]
 		[len (length lst)])
 	   (if (>= len 4)
-	       (let* ([last4 (list-tail lst (- len 4))]
-		      [parent  (car last4)]
-		      [origin  (cadr last4)]
-		      [hops    (caddr last4)]
-		      [version (cadddr last4)]
-		      [subid (simtok-subid tok)])
+	       (mvlet ([(parent origin hops version) (retrieve-grad-args lst)])
+		 (let ([subid (simtok-subid tok)])				
 		 (when (and (or (symbol? parent) (nodeid? parent)) ;; Could be 'atroot
 			    (nodeid? origin)
 			    (number? hops)
 			    (integer? version))		     
 		   (set! grads (cons (vector (simtok-name tok) (simtok-subid tok)
-					     parent origin hops version) grads))))))))
+					     parent origin hops version) grads)))))))))
      (simobject-token-store ob))
     grads))
 (define trace-grad-up 
