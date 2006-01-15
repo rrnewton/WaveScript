@@ -40,6 +40,8 @@
 
 ;    cleanup-token-machine   ;; TEMP: FIXME
 
+
+    find-emittoks
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
 

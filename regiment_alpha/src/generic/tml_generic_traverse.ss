@@ -186,6 +186,9 @@
 
 ;; This construct allows us to build simple passes by defining only
 ;; the process-expr function.  It just encapsulates some boilerplate.
+;; .form (tml-simple-pass <process-expr>)
+;; .form (tml-simple-pass <process-expr> <process-tokbind>)
+;; .form (tml-simple-pass <process-expr> <process-tokbind> <output-lang-name>)
 (define tml-simple-pass
   (let (;; Default proces token binding:
 	[def-ptb (lambda (pe)

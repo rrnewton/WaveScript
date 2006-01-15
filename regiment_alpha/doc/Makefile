@@ -15,9 +15,11 @@ GENERICFILES = \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
   generic/constants.ss \
+  generic/tml_generic_traverse.ss \
   generic/hm_type_inference.ss \
   generic/grammar_checker.ss \
   generic/pass00_verify-regiment.ss \
+  generic/pass23_desugar-gradients.ss \
 
 
 CHEZFILES = \
@@ -34,20 +36,12 @@ OBJFILES = $(DUPSRC:%=%.html)
 
 #SCRATCHFILE=.__scratch_makefile_junk
 
-all:
-
+all: schemedoc 
 #       Here we superimpose our "patches" to the standard schemedoc
 #       tree.  This isn't finished yet.  There are more files than
 #       star_star_chez.scm that are modified in the schemedoc/ tree.
 #       Right now this is just a lame way for me to avoid actually
 #       changing the tbz and wasting space in the repository.
-	if ! [ -d schemedoc ]; \
-	then tar xjvf schemedoc.tbz; \
-	     cp patches/star_star_chez.scm schemedoc/lib/compatibility/; \
-	     cp patches/time.scm schemedoc/lib/; \
-	     cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; \
-	     cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; \
-	fi
 	if ! [ -d html ];         then mkdir html        ; fi
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
 	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
@@ -75,6 +69,16 @@ all:
 ##	echo $(GENERICFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
 ##	echo $(CHEZFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
 	chez --script regiment_index.laml $(SRCFILES)
+
+schemedoc:
+	tar xjvf schemedoc.tbz; 
+	$(MAKE) patch
+
+patch:
+	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
+	cp patches/time.scm schemedoc/lib/; 
+	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
+	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
 
 $(OBJFILES): html/%.html: html/%
 	chez --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`

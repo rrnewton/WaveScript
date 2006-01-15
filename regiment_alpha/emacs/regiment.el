@@ -58,7 +58,7 @@
 				  (find-file-noselect (concat dir f))
 				))))
 		    (directory-files (concat regd dir))))
-	  '("generic/" "" "chez/" "plt/" "demos/regiment/" "demos/token_machs/"))
+	  '("generic/" "" "chez/" "plt/" "demos/regiment/" "demos/token_machs/" "linked_lib/"))
 	  ;'("~/cur/generic/"))
   ;(setq find-file-wildcards t)
   ;(find-file "~/cur/*.ss")

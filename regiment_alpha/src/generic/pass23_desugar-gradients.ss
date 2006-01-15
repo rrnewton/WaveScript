@@ -95,7 +95,7 @@
 ;; placed within the argument lists.  I'm making these global because
 ;; other pieces of code need to know about them (namely, the GUI).
 (define (add-grad-args-to args gradargs)
-      ;(append args gradargs)
+  ;(append args gradargs)
   (append gradargs args)
   )
 ;; [2006.01.13] Also adding this for the GUI which needs to scrape these args back out:
@@ -104,6 +104,7 @@
 (define (retrieve-grad-args lst)
   (let* ([len (length lst)]
 	 [last4 (list-tail lst (- len 4))]
+	 ;[last4 (list-head lst 4)]
 	 [parent  (car last4)]
 	 [origin  (cadr last4)]
 	 [hops    (caddr last4)]
@@ -116,7 +117,7 @@
 
 (define desugar-gradients
   (build-compiler-pass
-   'desugar-gradientsa
+   'desugar-gradients
    `(input)
    `(output ) ;(grammar ,foo PassInput))
   (let ()
@@ -166,60 +167,6 @@
     (define (token->tokname t)
       (match t
 	[(tok ,t ,e) t]))
-
-    ;; This returns all tokens which will or could be gradientized (tainted).
-    ;; If we ever have a first class reference to a token name, it is potentially tainted.
-    ;; This is a conservative estimate.
-    (define (find-emittoks expr)
-      (tml-generic-traverse
-       (lambda (x autoloop)
-	 (match x
-	        ;[,x (guard (begin (printf "FindEmitToks matching: ~a~n" x) #f)) 3]
-	   [(tok ,t ,n) (guard (number? n)) (list t)]
-	   [(tok ,t ,[e]) (cons t e)]
-
-	   [(ext-ref (tok ,t ,[ls]) ,v) ls]
-	   [(ext-set! (tok ,t ,[ls]) ,v ,[ls2]) (append ls ls2)]
-
-	   ;; "Direct call":  
-	   [(gemit (tok ,t ,[e]) ,[args*] ...)  (cons t (apply append e args*))]
-	   ;; Indirect gemit call... could consider restricting these.
-	   [(gemit ,[e] ,[args*] ...)
-	    (error 'pass23_desugar-gradients "not allowing dynamically targeted emits atm: ~s" x)
-					;(apply append e args*)
-	    ]
-	   
-	   ;; The to's and the vias are static! Aggr has no subtok index!
-	   [(greturn ,[expr] (to (tok ,t ,tn)) (via (tok ,v ,vn)) (seed ,[seed_val]) (aggr ,a))
-	    ;; The via requires that a tree be there, and hence it be gradientized.
-	    (cons v (append expr seed_val))]
-	   
-	   ;; Static calls are allowed:
-	   [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
-	   ;; Anything more dynamic makes us think the operand is potentially emitted.
-
-	   ;; Tokens fed to primitives don't count as "escaped".
-	   [(,prim ,args* ...)
-	    (guard (or (token-machine-primitive? prim)
-		       (basic-primitive? prim)))
-	    (define do-primargs-w-tokens;; Handles primitives that take token args.
-	      (lambda (prim args)
-		(map-prim-w-types 
-		 (lambda (arg type)
-		   (match (cons type arg)
-		     [(Token . (tok ,tok ,e)) (find-emittoks e)]
-		     [(,other . ,e)           (find-emittoks e)]))
-		 prim args)))
-	    (apply append (do-primargs-w-tokens prim args*))
-	    ]
-	   
-	   [,other (autoloop other)]))
-       ;; Fuser
-       (lambda (results recombine)
-	 (apply append results))
-       ;; Start expression:
-       expr))
-
     
     ;; This is a front-end that takes an expression processor (looping
     ;; function) and wraps it so as to expect a token expression in
@@ -709,11 +656,13 @@
 		       `(,tok ,id ,(add-grad-args-to args `(,PARENT_ARG ,ORIGIN_ARG ,HOPCOUNT_ARG ,VERSION_ARG))
 			 ;; Don't use let-stored for these, it incurs extra overhead:
 			 (stored ;[call-count 0]
+			  ,@stored 
+			  ;; We're adding these to the end to not mess up possible index-based references.
 			  [,STORED_PARENT_ARG   '#f]
 			  [,STORED_ORIGIN_ARG   '#f]
 			  [,STORED_HOPCOUNT_ARG '#f]
 			  [,STORED_VERSION_ARG  '#f]
-			  ,@stored)
+			  )
 			 
 			 ,@(DEBUG_GRADIENTS
 			    `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
@@ -757,27 +706,20 @@
 			     ))
 		       )))))))
     
-    (define findall-emittoks
-      (lambda (tbs)
-	(if (null? tbs) '()
-	    (mvlet ([(_ __ ___ ____ _____ body) (destructure-tokbind (car tbs))])
-		   (append (find-emittoks body)
-			   (findall-emittoks (cdr tbs)))))))
-
     ;; Main body of desugar-gradient
     (lambda (prog)
       (match prog
 	[(,lang '(program (bindings ,constbinds ...) 
-			  (nodepgm (tokens ,toks ...))))
-
-	 (let ([tainted (list->set (findall-emittoks toks))])
+			  (nodepgm (tokens ,toks ...))
+			  (emittoks ,tainted ...)))
 ;	   (disp "TAINTED: " tainted)
 	 (let ([processtb (process-tokbind (map car constbinds) toks tainted)])
 	   (match toks
 	     [(,[processtb -> newtoks toks] ...)
 	      `(desugar-gradient-lang
 		'(program (bindings ,constbinds ...)
-			  (nodepgm (tokens ,@(apply append toks newtoks)))))])))]))
+			  (nodepgm (tokens ,@(apply append toks newtoks)))))]))
+	 ]))
     )))
 
 
@@ -790,7 +732,8 @@
       '(cleanup-token-machine-lang
 	'(program
 	  (bindings )
-	  (nodepgm (tokens) ))))
+	  (nodepgm (tokens) )
+	  (emittoks))))
      (desugar-gradient-lang
       '(program (bindings) (nodepgm (tokens))))]
 
@@ -810,9 +753,11 @@
 			    (tok1 subtok_ind
 				  ()
 				  (stored)
-				  (printf '"~a \n" (my-clock))))))))
+				  (printf '"~a \n" (my-clock)))))
+		      (emittoks))))
 	 `((desugar-gradients '(cleanup-token-machine-lang ',prog))
-	   (desugar-gradient-lang ',prog)))]
+	   (desugar-gradient-lang ',(rdc prog)
+)))]
 
 
     ["Run a random program that (was) currently causing a problem, should have same input as output."
@@ -822,9 +767,10 @@
 			  (tokens
 			    (node-start subtok_ind () (stored) (call (tok datafeed 99)))
 			    (SOC-start subtok_ind () (stored) (void))
-			    (datafeed subtok_ind () (stored) (void)))))))
+			    (datafeed subtok_ind () (stored) (void))))
+		      (emittoks))))
 	 `((desugar-gradients '(cleanup-token-machine-lang ',prog))
-	   (desugar-gradient-lang ',prog)))]
+	   (desugar-gradient-lang ',(rdc prog))))]
 
     ["Make sure it gets all the gradient calls out.." 
      (let ((x (desugar-gradients
@@ -844,7 +790,9 @@
 			(via (tok g 0))
 			(seed '#f)
 			(aggr #f))))
-	  (h subtok_ind (v) (stored) (dbg '"Got val: %d\\n" v)))))))))
+	  (h subtok_ind (v) (stored) (dbg '"Got val: %d\\n" v))))
+	(emittoks)
+	)))))
        (list (deep-assq 'gemit x)
 	     (deep-assq 'grelay x)
 	     (deep-assq 'ggreturn x)

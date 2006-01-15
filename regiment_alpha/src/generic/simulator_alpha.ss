@@ -513,6 +513,7 @@
 
 		  ;; This is sketchy: we just fail silently and return #f if there is no token there.
 		  ;; FIXME TODO: We should seriously have some sort of better error handling convention.
+		  ;; FIXME TODO: Should I use fresh var bindings for the exttokobj bindings below???
 		  [(ext-ref (tok ,tokname ,[subtok]) ,x)
 		   (guard (and (symbol? x) (memq x allstored)))
 		   ;; The stored names should be unique at this point!  So this should be ok:
@@ -522,7 +523,6 @@
 			  (error 'simulator_alpha:process-statement 
 				 "bad ext-ref: (ext-ref (~s . ~s) ~s)" tokname subtok x)))
 		     `(let ([exttokobj (retrieve-token the-store (make-simtok ',tokname ,subtok))])
-			"FOOBAR"
 			,(format "Ext-ref of (tok ~s ~s) variable ~s" tokname subtok x)
 			(if exttokobj
 			    (,(string->symbol (format "~a-~a" tokname x)) exttokobj)
@@ -546,7 +546,10 @@
 		   ;; objects use records rather than simply being vectors.  But 
 		   ;; now I want to reference them by index!  
 		   ;; Oh well, this gets ugly, supporting with an addition to the alpha_lib.
-		   `(tokobj-ref ,e ,n)]
+
+		   `(let ([exttokobj (retrieve-token the-store ,e)])
+		      (if exttokobj (tokobj-ref exttokobj ,n) #f))]
+
 		  [(ext-set! ,[e] ,n ,[v])  (guard (integer? n))
 		   `(tokobj-set! ,e ,n ,v)]
 
@@ -1023,7 +1026,7 @@
 					    ,@(cadr (assq t allstored)))))
 		  alltoks)
 		; Also include generic index-based getter/setter: [2006.01.12]
-		`((define (tokobj-ref obj ind)
+		`((trace-define (tokobj-ref obj ind)
 		   (cond
 		    ,@(map (lambda (rec-entry)
 			     (let ([rec (car rec-entry)]
@@ -1041,7 +1044,9 @@
 			  (let ([labeled (map cons (map (lambda (ls) (length (cadr ls))) allstored) allstored)])
 			    (sort (lambda (l1 l2) (> (car l1) (car l2)))
 				  labeled)))
-			))))))
+			)
+		    [else (error 'tokobj-ref "this was not a token object: ~a" obj)]
+		    )))))
 
 	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
 
