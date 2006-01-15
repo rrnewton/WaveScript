@@ -3,9 +3,10 @@
 
 ;; Thinking about how to write a better gradient library so that not
 ;; so much complexity is pushed into the desugar-gradients compiler
-;; pass, and more can sit seperately in a library.
+;; pass, and more can sit separately in a library.
 
-;; This goes hand in hand with my current effort to improve gradients to use an LQI type metric to build
+;; This goes hand in hand with my current effort to improve gradients
+;; to use an LQI type metric to build better trees
 
 (token handler ()
 

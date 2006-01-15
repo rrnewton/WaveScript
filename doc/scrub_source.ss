@@ -1,5 +1,9 @@
 #!/usr/bin/env petite --script
 
+; [2006.01.13] Remember to manually strip the ::= character
+; sequence.  That causes a problem for some reason!!
+
+
 ; #! /bin/sh
 ; #| 
 ; $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"}; 
@@ -14,7 +18,7 @@
 ;; [2005.11.19] WHOA!  Just had a problem with semicolon followed by
 ;; double quote for some reason!  That's probably a bug, should report it.
 
-
+2
 ;; This script must only be run from the current directory.
 (load "../src/chez/match.ss")
 
@@ -73,9 +77,14 @@
 	      [(#\# #\%)
 	       (apply-ordered loop (read-char in) (read-char in))]
 
-	      ;; Remove unquotes before lists
+	      ;; Remove unquotes-at's:  [2006.01.13]
+	      [(#\, #\@)
+	       (apply-ordered loop (read-char in) (read-char in))]
+
+	      ;; Remove unquote's before lists:
 	      [(#\, ,open) (guard (memq open '(#\( #\[)))
 	       (loop b (read-char in))]
+
 	      ;; Otherwise replace unquote by ?
 	      [(#\, ,_) 
 	       (write-char #\? out)
@@ -101,7 +110,6 @@
 	      [(,_ ,__)
 	       (write-char (subst a) out)
 	       (loop b (read-char in))]))]
-
 	 
 
 	 [deadloop 

@@ -1,4 +1,5 @@
 
+;; gemit is transformed into a call 
 
 
 (token SOC-start ()
@@ -8,13 +9,14 @@
   )
 
 
+
 (token f (t)
   (printf "(Static_ext-ref: %d)\n" (ext-ref x acc))
   (printf "(Static_ext-set: %d)\n" (ext-set! x acc 4))
   (printf "(Static_ext-ref: %d)\n" (ext-ref x acc))
 
   (printf "(Dynamic Token: %d)\n" t)
-  (printf "(Dynamic ext-ref: %d\n" (ext-ref t 0))
+  (printf "(Dynamic ext-ref: %d)\n" (ext-ref t 0))
   
   )
 

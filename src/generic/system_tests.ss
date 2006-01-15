@@ -1016,7 +1016,7 @@
      ["Gradients: Make sure the timer gets set right. "
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       (fluid-let ([pass-names
-		   '(cleanup-token-machine  desugar-gradients
+		   '(cleanup-token-machine  find-emittoks desugar-gradients
 		     cleanup-token-machine desugar-let-stored
 		     ;rename-stored         
 		     cps-tokmac

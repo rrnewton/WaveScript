@@ -213,7 +213,11 @@
 (include "generic/pass22_desugar-macros.ss")
 ;(include "generic/pass26_desugar-macros.ss")
 
+
+(include "generic/pass23a_find-emittoks.ss")
 (include "generic/pass23_desugar-gradients.ss")
+(include "generic/pass23_desugar-gradients_simple.ss")
+
 (include "generic/pass24_desugar-let-stored.ss")
 (include "generic/pass25_rename-stored.ss")
 
