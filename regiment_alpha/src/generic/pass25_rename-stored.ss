@@ -28,7 +28,7 @@
 	  `(set! ,(cadr (assq var this-subst)) ,x)]
 	 
 	 ;; External stored references:
-	 [(ext-ref ,[t] ,v)
+	 [(ext-ref ,[t] ,v) (guard (symbol? v))
 	  (match t
 	    [(tok ,name ,subid)
 	     (let ((entry (assq name subst)))
@@ -48,13 +48,16 @@
 		 (error 'rename-stored "Dynamic ext-ref's may only use numeric-indices, not field names: ~a"
 			`(ext-ref ,other ,v)))])]
 
-	 [(ext-set! ,[t] ,v ,[x])
+	 [(ext-set! ,[t] ,v ,[x]) (guard (symbol? v))
 	  (match t
 	    [(tok ,name ,subid)
 	     (let ((entry (assq (token->name t) subst)))
 	       (if (not entry)
 		   (error 'rename-stored "got ext-set! to token that's not in subst: ~a" t))
-	       `(ext-set! ,t ,(cadr (assq v (cadr entry))) ,x))]
+	       (let ((entry2 (assq v (cadr entry))))
+		 (if (not entry2)
+		     (error 'rename-stored "couldn't find binding for var ~a in token ~a" v t))
+		 `(ext-set! ,t ,(cadr entry2) ,x)))]
 	    ;; [2006.01.12] Also allowing dynamic set!s:
 	    [,[loop -> other]
 	     (if (and (integer? v) (>= v 0))

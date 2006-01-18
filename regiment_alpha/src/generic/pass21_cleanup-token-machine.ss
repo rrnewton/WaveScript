@@ -105,7 +105,7 @@
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'cleanup-token-machine
    `(input)
-   `(output (grammar ,full_but_clean_tml PassInput))
+   `(output );;; (grammar ,full_but_clean_tml PassInput)) ;; [2006.01.18] Temporarily disabled.
   (let ()
 
     ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
@@ -197,6 +197,7 @@
     (define process-expr 
       ;(trace-lambda cleanuptokmac:procexp 
       (lambda (env storedtable this-token this-subtok)
+
 	(define tokens (map car storedtable))
 	;; This just loops back with the same context:
 	(define (loop x) ((process-expr env storedtable this-token this-subtok) x))
@@ -253,6 +254,7 @@
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
 	     ;; That's done elsewhere:
+	     ;; Further this even allows numeric as well as symbolic indices.
 	     [(ext-ref ,t ,v) `(ext-ref ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v)]
 	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v ,x)]
 
