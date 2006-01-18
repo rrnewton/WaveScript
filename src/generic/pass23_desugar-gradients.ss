@@ -234,7 +234,7 @@
 
 		(let* ,(map list emitargs args*)
 		  ;; Arguments: Parent, Origin, Hopcount, Version, realargs
-		  (call ,tok ',NO_PARENT (my-id) 0 ,ver ,@emitargs)
+		  (call ,tok ,@(add-grad-args-to emitargs `(',NO_PARENT (my-id) 0 ,ver)))
 		  
 		  ;; [2006.01.12] Removing this broadcast, the callee does this via relay.
 ;		  (bcast ,tok (my-id) (my-id) 1 ,ver ,@emitargs)

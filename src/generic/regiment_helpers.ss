@@ -380,27 +380,35 @@
   (define (process-stored s)
     (match s
 	   [(,v ,e) `(,v ,e)]
-	   [,v `(,v '#f)]))
+	   [,v (guard (symbol? v))
+	       `(,v '#f)]))
   (define (process-bods x)
     (match x
-	   [((stored ,s ...) (bindings ,b ...) ,bods ...)
-	    (values (map process-stored s)
-		    b
-		    (make-begin `((begin ,bods ...))))]
-	   [((bindings ,b ...) (stored ,s ...) ,bods ...)
-	    (values (map process-stored s)
-		    b
-		    (make-begin `((begin ,bods ...))))]
-	   [((stored ,s ...) ,bods ...)
-	    (values (map process-stored s)
-		    '()
-		    (make-begin `((begin ,bods ...))))]
-	   [((bindings ,b ...) ,bods ...)
-	    (values '() b
-		    (make-begin `((begin ,bods ...))))]
-	   [,bods 
-	    (values '() '()
-		    (make-begin `((begin ,bods ...))))]))
+      
+      [((stored ,s ...) (bindings ,b ...) ,bods ...)
+       (values (map process-stored s)
+	       b
+	       (make-begin `((begin ,bods ...))))]
+      [((bindings ,b ...) (stored ,s ...) ,bod ,bods ...)
+       (values (map process-stored s)
+	       b
+	       (make-begin `((begin ,bod ,bods ...))))]
+      [((stored ,s ...) ,bod ,bods ...)
+       (values (map process-stored s)
+	       '()
+	       (make-begin `((begin ,bod ,bods ...))))]
+            
+      [((bindings ,b ...) ,bod ,bods ...)
+       (values '() b
+		    (make-begin `((begin ,bods ,bods ...))))]
+
+      ;; This is missing an expression:
+      [(,_ ... (,keyword ,s ...)) (guard (memq keyword '(stored bindings)))
+       (error 'destructure-tokbind "Missing body from token handler declaration: ~a" x)]
+
+      [,bods 
+       (values '() '()
+	       (make-begin `((begin ,bods ...))))]))
   (match tbind
 	 [(,t (,a ...) ,bds ...)
 	  (mvlet ([(stored bindings body) (process-bods bds)])

@@ -43,8 +43,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -166,7 +166,8 @@
 ;; FIXME: This should be a gensym that's user-unusable.
 (define DEFAULT_SUBTOK_VAR 'subtok_ind)
 
-(define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
+;(define MAX_SUBTOK 1000)  ;; We allow there to be 1000 copies of any one token.
+(define MAX_SUBTOK 256) ;; On second thought let's make it an 8 bit value.
 
 
 ;;; Used primarily by pass cps-tokmac

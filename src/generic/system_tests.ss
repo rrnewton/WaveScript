@@ -324,7 +324,7 @@
 	     [,else #f]))
 	]
 
-     ["Test to make sure stored vars on different subtokids don't interfere."
+     ["Stored: Test to make sure stored vars on different subtokids don't interfere."
       , (tm-to-socvals
 	 '(tokens
 	    (SOC-start () 
@@ -338,6 +338,16 @@
 	       (soc-return (ext-ref (tok t 1) s))
 	       (soc-return (ext-ref (tok t 2) s)))))
 	(3 4)]
+
+
+     ["Stored: Make sure stored rhs's are only executed once and have access to passed arguments."
+      , (tm-to-list
+	 '(tokens
+	    (SOC-start () (call t 99) (call t 100))
+	    (t (v)
+	       (stored [s (begin (printf "stored-rhs\n") v)])
+	       (printf "(~a ~a)\n" v s))))
+	(stored-rhs (99 99) (100 99))]
 	       
     ["Test reading sensor values in simulation."
      , (tm-to-socvals
@@ -1299,7 +1309,7 @@
 ;        )
     
 
-     ["Gradients: Now try aggregated greturn."
+     ["Gradients: Now try aggregated greturn.  Basically counts one-hop neighbors."
       (filter (lambda (x) (not (zero? x)))
 	      , (tm-to-list
 		'(tokens 
@@ -1451,40 +1461,51 @@
 	 (= (length ls) 5))]
 
      ["Gradients: return value through three nested gradients. (NONDETERMINISTIC)"
-      retry ;; Must retry, network might not be connected
-     , (tm-to-list
+      ;retry ;; Must retry, network might not be connected
+      (rac , (tm-to-list
 		'(tokens
 		  (SOC-start () 
+			     (printf "(A-launch ~a ~a)\n" (my-clock) (my-id))
 			     (gemit a)
 			     (timed-call 1000 return-up))
 		  (return-up ()
-			     (greturn 8967
-				      (to catcher1)
-				      (via c)))
-		  (catcher1 (v) (greturn v 
-					 (to catcher2)
-					 (via b)))
-		  (catcher2 (v) (greturn v
-					 (to catcher3)
-					 (via a)))
-		  (catcher3 (v) (printf "~a ~a ~a ~a" (my-id) 
+			     (greturn 8967 (to catcher1) (via c)))
+		  (catcher1 (v) 
+			    (printf "(Returned-via-C ~a)\n" v)
+			    (greturn v (to catcher2) (via b)))
+		  (catcher2 (v) 
+			    (printf "(Returned-via-B ~a)\n" v)
+			    (greturn v (to catcher3) (via a)))
+		  (catcher3 (v) (printf "(catch3 ~a ~a ~a ~a)" (my-id) 
 					(> (my-clock) 1000)
 					(< (my-clock) 2000)
 					v))
 
 		  (a () (grelay)
-		        (if (= (my-id) 15)
-			      (gemit b)))
+		     (if (= (my-id) 15)
+			 (begin
+			   (printf "(B-launch ~a ~a ~a)\n" (my-clock) (my-id) (gdist a))
+			   (gemit b))))
 		  (b () (grelay)
 		        (if (= (my-id) 20)
-			      (gemit c)))
-		  (c () (grelay))
+			    (begin
+			      (printf "(C-launch ~a ~a ~a ~a)\n" (my-clock) (my-id) (gdist a) (gdist b))
+			      (gemit c))))
+		  (c () (grelay)
+		     (if (= (my-id) BASE_ID)
+			 (printf "(C-hit-home ~a ~a ~a ~a ~a)\n" (my-clock) (my-id) (gdist a) (gdist b) (gdist c))))
 		  )
+		'[sim-timeout 1500]
+		'[simalpha-dbg-on #f]
+		'[simalpha-placement-type 'connected]
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-consec-ids #t]
-		'[sim-num-nodes 30])
-      (,BASE_ID #t #t 8967)]
+		'[sim-num-nodes 30]))
+
+      ;((A-launch 1 0) (B-launch 64 15 2) (C-launch 158 20 1 3) (C-hit-home 190 0 0 2 1) 
+      ; (Returned-via-C 8967) (Returned-via-B 8967) 
+      (catch3 ,BASE_ID #t #t 8967)]
 
 
      ;; FIXME: This needs more work:

@@ -633,10 +633,12 @@
 		  ;; This is static wrt to token name for the moment:
 ;		  [(token-present? (tok ,t ,n)) (guard (number? n)) 
 ;		   `(if (hashtab-get the-store (make-simtok ',t ,n)) #t #f)]  ;; Needs not be separate case. [2005.10.03]
-		  [(token-present? (tok ,t ,[e]))
-		   `(if (retrieve-token the-store (make-simtok ',t ,e)) #t #f)]
-		  [(evict (tok ,t ,[e])) `(evict-token the-store (make-simtok ',t ,e))]
-		  [(evict-all (tok ,t ,[e])) `(evict-all-tokens the-store (make-simtok ',t ,e))]
+		  [(token-present? ,[e])
+		   `(if (retrieve-token the-store ,e) #t #f)]
+
+		  [(evict ,[e]) `(evict-token the-store ,e)]
+		  [(evict-all ,[e]) `(evict-all-tokens the-store ,e)]
+
 		  [(token-scheduled? ,[tok]) ;; INEFFICIENT
 		   ;; queue is list containing (simevt . simob) pairs.
 		   ;; We go through the current queue looking for a scheduled event that matches this token.
@@ -1026,7 +1028,7 @@
 					    ,@(cadr (assq t allstored)))))
 		  alltoks)
 		; Also include generic index-based getter/setter: [2006.01.12]
-		`((trace-define (tokobj-ref obj ind)
+		`((define (tokobj-ref obj ind)
 		   (cond
 		    ,@(map (lambda (rec-entry)
 			     (let ([rec (car rec-entry)]
