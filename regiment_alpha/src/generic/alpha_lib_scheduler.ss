@@ -1,5 +1,5 @@
 ;; [2005.09.27] NOT IN USE RIGHT NOW:
-;; Not even loading this file presently:
+;; Not even loading this file presently, using the simplified version!
 
 
 ;; This builds a simulation object for a specific node in the network.

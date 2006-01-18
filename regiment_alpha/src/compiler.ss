@@ -1,6 +1,7 @@
-;;; Compiler Core.
-;;; This contains the core compiler entry points. 
-;;; Loaded by both the Chez and PLT versions.
+;;;; .title Compiler Core (compiler.ss)
+
+;;;; This contains the core compiler entry points. 
+;;;; Loaded by both the Chez and PLT versions.
 
 ;======================================  
 ;(display "Loading main compiler module.  RegionStreams Demo.")

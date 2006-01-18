@@ -16,11 +16,13 @@
 ;;;; This will be a second attempt simulator.  (The first was simulator_nought.)
 ;;;; It will support only core tml (no gradients).
 ;;;;
+;;;;   <br><br>
 ;;;; It will have a single thread of control and a queue of simulator
 ;;;; events sorted by virtual clock times.
 ;;;;
+;;;;   <br><br>
 ;;;; Later, it may serve as a place to test scheduling algorithms so
-;;;; that we may actually implement the atomic action model.
+;;;; that we can actually implement the atomic action model (with action-abort).
 
 
 ; NOTE: Right now all calls go through the dyndispatch table.
@@ -36,6 +38,8 @@
 ;===============================================================================
 
 ; =======================================================================
+
+;;; Helper functions.
 
 ;; Simple free variables function:
 (define (simalpha-free-vars expr)
@@ -77,7 +81,7 @@
 |#
 
 
-;=========================================
+;----------------------------------------
 
 (define (base-station? x)
   (cond 
@@ -120,7 +124,9 @@
 
 ; =================================================================================
 
-;; Returns a simworld object.
+;;; Constructing and maintaining world objects.
+
+;; .returns A 'simworld' record.
 (define (fresh-simulation)  
   ;; This subroutine generates the default, random topology: 
   ;; (There are more topologies in "network_topologies.ss"
@@ -374,6 +380,7 @@
   sim))
 
 ;; And this cleans the global parameters that go along with a simulation.
+;; (Does nothing right now.)
 (define (clean-simalpha-counters!)
   ;(simalpha-total-messages 0)
   ;(simalpha-total-tokens 0)
@@ -382,6 +389,7 @@
 
 ; =================================================================================
 
+;;; Graphics related.
 
 ;; This takes a simworld object and draws it on the screen:
 (define (simalpha-draw-world world)
@@ -455,11 +463,13 @@
                          
 ; =======================================================================
 
-;; Subroutine of compile-simulate-alpha below
+;;; Compiling for simulation.
+
+;; Subroutine of compile-simulate-alpha below.
 (define (process-statement current-handler-name tokbinds stored)
 
-  ;; Turns a %d using string into a ~a using string.
   (define massage-str 
+    ;; Turns a %d using string into a ~a using string.
     (lambda (s)
       (let ((newstr (string-copy s)))
 	(let loop ((i (- (string-length s) 2)))
@@ -734,6 +744,16 @@
 
 		  [(my-id) '(node-id (simobject-node this))]
 		  [(my-clock)  'current-vtime]
+
+		  ;; These are temporarily symmetric.
+		  [(,linkqual ,[idexp])
+		   (guard (memq linkqual '(linkqual-to linkqual-from)))
+		   `((simalpha-connectivity-function)
+			    (node-pos (simobject-node this))
+			    (node-pos (simobject-node 
+				       (hashtab-get (simworld-obj-hash (simalpha-current-simworld))
+						    ,idexp))))]
+
 		  [(rgb ,[r] ,[g] ,[b]) `(make-rgb ,r ,g ,b)]
 
 		  ;; [2005.05.07] Shouldn't run into this now:
@@ -951,6 +971,8 @@
 ;;
 
 ;; .returns A code module containing a definition for "node-code".
+;; 
+;; This is the procedure for compiling a TML program into a simulator program. <br><br>
 ;; The resulting binding for node-code is a function that takes the "this" simobject.  
 ;; And returns a "meta-token-handler", which has type: <br>&nbsp;&nbsp;
 ;;   (msg-object, vtime -> ()) <br>
@@ -1113,6 +1135,8 @@
 
 ; =======================================================================
 
+;;; Invoking the simulator.
+
 ;; This is a module-local parameter to the currently running sim program. -[2005.11.25]
 (define simalpha-current-nodeprog (make-parameter #f (lambda (x) x)))
 
@@ -1246,6 +1270,11 @@
     (clean-simalpha-counters!)
 
     (apply run-alpha-loop args)))
+
+
+; ================================================================================
+
+;;; Printing simulator state.
 
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
 (define (print-stats . sim)
