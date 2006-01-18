@@ -1,5 +1,5 @@
 
-;;;; Regiment Helper Functions
+;;;; .title Regiment Helper Functions (regiment_helpers.ss)
 
 ;;;; <br> [2005.12.01] <br>
 
@@ -301,6 +301,10 @@
 ;     (sense)
      (my-id  () Integer)
      (my-clock () Integer)
+
+     (linkqual-from (Integer) Integer) ;; Approximate percentage 0-100.
+     (linkqual-to   (Integer) Integer) ;; Approximate percentage 0-100.
+
      (loc () List) ;(loc () Location)
      (locdiff (List List) Float) ;(locdiff (Location Location) Float)
 

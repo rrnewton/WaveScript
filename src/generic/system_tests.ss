@@ -512,6 +512,37 @@
 		 ))
 	(#f #t tok1 #f)]
 
+
+     ["LinkQual: test measurement of link quality."
+      retry ;; Retry until we get some sub-perfect links.
+      , (tm-to-list
+	 `(tokens
+	    (SOC-start () (bcast tok1 (my-id)))
+	    (tok1 (base_id) 
+		  (printf "(~a ~a ~a)\n" (my-id)
+			  (linkqual-from base_id)  ;; down
+			  (linkqual-to base_id)))) ;; up
+	 '[simalpha-channel-model  'linear-disc]
+	 '[simalpha-placement-type 'gridlike]
+	 '[sim-num-nodes 30]
+	 '[simalpha-failure-model  'none]
+	 '[simalpha-consec-ids #f])
+	,(lambda (ls)
+	   (let ([hit_hundred #f]
+		 [hit_subhundred #f])
+	     (and 
+	      (andmap
+	       (lambda (entry)
+		 (match entry
+		   [(,id ,down ,up)
+		    (if (equal? down 100) (set! hit_hundred #t))
+		    (if (< down 100) (set! hit_subhundred #t))
+		    (and (integer? down) (<= down 100) (>= down 0)
+			 (integer? up) (<= up 100) (>= up 0))]))
+	       ls)
+	      hit_hundred
+	      hit_subhundred)))]
+
      ["Subcall: Try token-scheduled? with some subcall trickery"
       , (tm-to-list
 	 '(tokens 		   

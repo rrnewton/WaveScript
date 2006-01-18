@@ -1,7 +1,7 @@
 
 
-;;;; .title 
-;;;; RRN: this file needs some serious cleaning-out.  It has a bunch
+;;;; .title Utility Function Library (helpers.ss)
+;;;; RRN: this file needs some serious cleaning-out.  It still has a bunch
 ;;;; of old junk in it that's not used by the Regiment system.
 
 

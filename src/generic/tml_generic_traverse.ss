@@ -1,28 +1,32 @@
 
-;; tml_generic_traverse.ss
+;;;; .title Generic Tree Walker for TML (tml_generic_traverse.ss)
 
-;; This is used by several passes which operate on TML (Token Machine
-;; Language) code.  It enables very easy traversal of TML code, for
-;; when you only need to match against and change a single case, and
-;; you want to avoid writing the "boilerplate" code that traverses the
-;; other cases.
+;;;; This is used by several passes which operate on TML (Token Machine
+;;;; Language) code.  It enables very easy traversal of TML code, for
+;;;; when you only need to match against and change a single case, and
+;;;; you want to avoid writing the "boilerplate" code that traverses the
+;;;; other cases.
+;;;; <br><br>
 
-;; It could be used by all the passes; they all do tree-walks.  And I
-;; may write more passes to use it.  But it's best for cases when you
-;; only touch a small fraction of the grammar's variants.
+;;;; It could be used by all the passes; they all do tree-walks.  And I
+;;;; may write more passes to use it.  But it's best for cases when you
+;;;; only touch a small fraction of the grammar's variants.
+;;;; <br><br>
 
-;; WIDE GRAMMAR: Currently, this is used in multiple passes
-;; (desugar-let-stored, desugare-soc-return, cps-tokmac,
-;; convert-closure, but it could be more).  As such, it basically
-;; supports the union of the grammars.  This hopefully will not cause
-;; bugs for us, because they are distinct forms that can't be confused
-;; with one another.  But watch out.
+;;;; WIDE GRAMMAR: Currently, this is used in multiple passes
+;;;; (desugar-let-stored, desugare-soc-return, cps-tokmac,
+;;;; convert-closure, but it could be more).  As such, it basically
+;;;; supports the union of the grammars.  This hopefully will not cause
+;;;; bugs for us, because they are distinct forms that can't be confused
+;;;; with one another.  But watch out.
+;;;; <br><br>
 
-;; As we use this for more passes we'll widen the grammar further.
+;;;; As we use this for more passes we'll widen the grammar further.
+;;;; <br><br>
 
-;; [2005.10.02] Just factored this out into this file.
+;;;; [2005.10.02] Just factored this out into this file. <br>
 
-;; [2006.01.12] Adding support for dynamically targetted ext-ref and ext-set!
+;;;; [2006.01.12] Adding support for dynamically targetted ext-ref and ext-set! <br>
 
 ; =======================================================================
 
@@ -32,9 +36,12 @@
 ;;
 ;;
 ;; NOTE: A common failure mode when using this is invoking the
-;; wrong loop when making a recursive pattern match.  Be careful.
+;; wrong loop when making a recursive pattern match.  Be careful. <br><br>
 (define tml-generic-traverse 
-  (let ()
+  ;; .param driver driver
+  ;; .param fuser  fuser
+  ;; .param expr   expression
+  ;;
   ;; The "driver" takes the first shot at an expression, transforms the
   ;; subcases that it wants to, and then hands the rest on to its
   ;; continuation to do the automated traversal. The automated
@@ -42,11 +49,13 @@
   ;; the parts of the tree.  The fuse function is passed a list of child
   ;; exprss and another continuation representing the "default fuser" which
   ;; just puts the expression back together like it was before (given the child terms).
-  ;; Types:
-  ;;   driver : expr, (expr -> 'intermediate) -> 'result)
-  ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)
-  ;;   e : expr 
-  ;; Return value: 'result 
+  ;;       <br><br>
+  ;; Types:    <br>
+  ;;   driver : expr, (expr -> 'intermediate) -> 'result)                <br>
+  ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)  <br>
+  ;;   e : expr                                                          <br>
+  ;; Return value: 'result                                               <br>
+  (let ()
   (define (build-traverser driver fuse e)
   (let loop ((e e))
     (define (tokonly x)
