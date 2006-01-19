@@ -1,7 +1,5 @@
 
-; TEMP:
-;(if (< (length (command-line-arguments)) 2)
-;    (command-line-arguments '("./html/generic/" "simulator_alpha.ss")))
+;; The command-line-arguments should consist of the the directory and the filename.
 (if (< (length (command-line-arguments)) 2)
     (error 'regiment.laml "not enough arguments!"))
 

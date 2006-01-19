@@ -748,11 +748,13 @@
 		  ;; These are temporarily symmetric.
 		  [(,linkqual ,[idexp])
 		   (guard (memq linkqual '(linkqual-to linkqual-from)))
-		   `((simalpha-connectivity-function)
-			    (node-pos (simobject-node this))
-			    (node-pos (simobject-node 
-				       (hashtab-get (simworld-obj-hash (simalpha-current-simworld))
-						    ,idexp))))]
+		   `(let* ([idnum ,idexp]
+			   [nbr (hashtab-get (simworld-obj-hash (simalpha-current-simworld))
+					     idnum)])
+		      (if (not nbr) (error 'linkqual "Cannot estimate link qual, bad neighbor ID: ~a" idnum))
+		      ((simalpha-connectivity-function)
+		       (node-pos (simobject-node this))
+		       (node-pos (simobject-node nbr))))]
 
 		  [(rgb ,[r] ,[g] ,[b]) `(make-rgb ,r ,g ,b)]
 
@@ -1072,7 +1074,7 @@
 		    [else (error 'tokobj-ref "this was not a token object: ~a" obj)]
 		    )))))
 
-	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject.")))
+	   ,@(DEBUGMODE '(if (not (simobject? this)) (error 'node-code "'this' was not a simobject, instead: \n~a" this)))
 
 	   ;; Set the global parameter that library code needs to access "this".
 	   (parameterize ((current-simobject this)

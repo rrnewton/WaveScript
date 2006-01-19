@@ -7,19 +7,24 @@ FILES = \
 
 
 GENERICFILES = \
-  generic/helpers.ss \
-  generic/regiment_helpers.ss \
-  generic/hash.ss \
   generic/alpha_lib.ss \
   generic/alpha_lib_scheduler_simple.ss \
+  generic/constants.ss \
+  generic/grammar_checker.ss \
+  generic/hash.ss \
+  generic/helpers.ss \
+  generic/hm_type_inference.ss \
+  generic/pass00_verify-regiment.ss \
+  generic/pass22_desugar-macros.ss \
+  generic/pass23a_find-emittoks.ss \
+  generic/pass23_desugar-gradients.ss \
+  generic/pass23_desugar-gradients_verbose.ss \
+  generic/pass23_desugar-gradients_simple.ss \
+  generic/pass23_desugar-gradients_ETX.ss \
+  generic/regiment_helpers.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
-  generic/constants.ss \
   generic/tml_generic_traverse.ss \
-  generic/hm_type_inference.ss \
-  generic/grammar_checker.ss \
-  generic/pass00_verify-regiment.ss \
-  generic/pass23_desugar-gradients.ss \
 
 
 CHEZFILES = \
@@ -80,6 +85,7 @@ patch:
 	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
 	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
 
+# This invokes regiment.laml with the directory and the filename as command line arguments:
 $(OBJFILES): html/%.html: html/%
 	chez --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`
