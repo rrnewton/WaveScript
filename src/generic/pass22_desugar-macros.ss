@@ -1,21 +1,28 @@
 
-;; This removes various sugar:
-;;  *) soc-return
-;;  *) elect-leader
-;;  *) flood
+;;;; .title Desugar macros (pass22_desugar-macros.ss)
+
+;;;; This removes various sugar:    <br>
+;;;;  *) soc-return                 <br>
+;;;;  *) elect-leader               <br>
+;;;;  *) flood
 
 ; =======================================================================
+;;;; NOTES: <br><br>
 
-;; [2005.04.20]
-;; Soc-return's are a strange beast.
+;;;; [2005.04.20] <br>
+;;;; Soc-return's are a strange beast. <br><br>
 
-;; [2005.10.02] I was just doing this in cleanup-tokmac, but I'm going to move it here.
+;;;; [2005.10.02] I was just doing this in cleanup-tokmac, but I'm going to move it here.
+;;;; <br><br>
 
-;; [2005.10.12]
-;; For now we're only allowing soc-returns from the base-station node,
-;; there is no implicit "global tree" in TML.  (Regiment does generate
-;; code for such a global tree, but TML makes no such assumption.)
+;;;; [2005.10.12] <br>
+;;;; For now we're only allowing soc-returns from the base-station node,
+;;;; there is no implicit "global tree" in TML.  (Regiment does generate
+;;;; code for such a global tree, but TML makes no such assumption.)
 
+;;; Main procedure.
+
+;; This is the compiler pass.
 (define desugar-macros
   (let ()
 
@@ -251,8 +258,7 @@
 		       ,@(apply append (map process-tokbind toks))))))]))
   ))
 
-
-
+;;; Unit tests.
 
 (define these-tests
   `(
@@ -285,5 +291,6 @@
 		    "22: Desugar-Macros: expand various macros"
 		    these-tests))
 
+;; The usual unit tester.
 (define test22 test-this)
 (define tests22 these-tests)

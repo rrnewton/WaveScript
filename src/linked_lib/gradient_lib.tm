@@ -10,12 +10,11 @@
 
 ;; This is a global constant which indicates the length of the "array"
 ;; storing data objects corresponding to each aggregation we're doing.
-(token GRAD:obj-count ()
-  (stored [count 0])
-  (void))
+;(token GRAD:obj-count ()
+;  (stored [count 0])
+;  (void))
 ;; Allocate it at startup.    
-(token node-start () (call GRAD:obj-count))
-
+;(token node-start () (call GRAD:obj-count))
 
 ; ================================================================================
 ;; GRAD:return-handler

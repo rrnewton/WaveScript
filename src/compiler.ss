@@ -44,7 +44,8 @@
 
     find-emittoks
 ;    desugar-gradients
-    desugar-gradients_simple
+;    desugar-gradients_simple
+    desugar-gradients_ETX
     cleanup-token-machine   ;; Rerun to expand out some stuff.
 
     ;    analyze-tokmac-recursion

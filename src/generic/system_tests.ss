@@ -948,8 +948,8 @@
 		      )
 		   '[simalpha-zeropad-args #f]
 		   '[simalpha-channel-model  'lossless]
-		   '[simalpha-placement-type 'connected]
 		   '[simalpha-failure-model  'none]
+		   '[simalpha-placement-type 'connected]
 		   '[sim-num-nodes 20]
 		   '[simalpha-consec-ids #t]
 		   '[simalpha-graphics-on #t])
@@ -975,7 +975,8 @@
 ;			     (printf "(Running on: ~a) \n" (my-id))
 			     (setlabel "<~a,~a,~a,~a>" (ghopcount) (gparent) (gorigin) (gversion))
 			     (if (odd? (ghopcount)) (leds on red) (leds on blue))
-			     (printf "~a " (gdist))
+			     ;(printf "~a " (gdist))
+			     (printf "~a " (ghopcount))
 			     (grelay tok1 99)))
 		    '[simalpha-zeropad-args #f]
 		    '[simalpha-channel-model  'lossless]

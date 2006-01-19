@@ -1,5 +1,5 @@
 
-;;; NOTE: for the moment I AM ALLOWING USAGE OF ARBITRARY SCHEME FUNCTIONS HERE!
+
 
 ;;; [2004.06.28] Pass: Cleanup Token Machine
 ;===============================================================================
@@ -40,6 +40,8 @@
 ;;;   merging token handlers without collisions between stored vars
 ;;;   and constant bindings.
 
+;;;; <br><br><br>
+;;;; NOTE: for the moment I AM ALLOWING USAGE OF ARBITRARY SCHEME FUNCTIONS HERE!
 
 
 ;;; INPUT GRAMMAR:

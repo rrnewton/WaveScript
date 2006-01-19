@@ -1,21 +1,26 @@
 
-;;;; Find-Emittoks
+;;;; .title Find-Emittoks  (pass23a_find-emittoks.ss)
 
-; [2006.01.15]
+;;;; [2006.01.15] <br><br>
 
-; I'm refactoring desugar-gradients to simplify it.  Part of this
-; effort is factoring out this pass.  
+;;;; I'm refactoring desugar-gradients to simplify it.  Part of this
+;;;; effort is factoring out this pass.  
+;;;;   <br> <br>
 
-; This pass finds all the tokens that might possibly be emitted in a
-; "gemit" statement.  This is necessarily a conservative estimate.
-; These are the tokens that will later be augmented to carry gradient
-; information in their argument list.
+;;;; This pass finds all the tokens that might possibly be emitted in a
+;;;; "gemit" statement.  This is necessarily a conservative estimate.
+;;;; These are the tokens that will later be augmented to carry gradient
+;;;; information in their argument list.
+;;;;   <br> <br>
 
-; Input language:
+;;;; Input language:   <br><br>
 
-; Output language:
-; - Contains an extra form storing the tainted "emittoks".
+;;;; Output language:  <br>
+;;;; - Contains an extra form storing the tainted "emittoks".
 
+
+
+;; This is the compiler pass.
 (define find-emittoks  
   (let ()
 

@@ -1,22 +1,22 @@
-;;;; .title Desugar gradients... simply!  (pass23_desugar-gradients_simple.ss)
 
-;;;; [2006.01.14] <br>
+;;;; .title Desugar gradients... with ETX!  (pass23_desugar-gradients_ETX.ss)
 
-;;;; This implementation is greatly simplified from the original
-;;;; desugar-gradients.  It uses a separate linked library for all of
-;;;; the data return/aggregation code.  All that "up"-stuff.
+;;;; [2006.01.18] <br>
+
+;;;; This version uses a different metric for choosing routing trees.
+;;;; It assumes "linkqual-from" and "linkqual-to" functons for
+;;;; assessing link quality.
 ;;;;   <br> <br>
 
-;;;; It's further simplified by the fact that it no longer has to
-;;;; generate extra token handlers as it traverses the program.  Thus
-;;;; the traversal is simpler and uses tml-generic-traverse.
-
+;;;; NOTE: This pass was forked off of desugar-gradients_simple, and
+;;;; shares almost all of its code with that pass.  They should
+;;;; probably be merged.
 
 ; ----------------------------------------------------------------------
 ;;; Main program
 
 ;; This is the compiler pass itself.
-(define desugar-gradients_simple
+(define desugar-gradients_ETX
   (build-compiler-pass
    'desugar-gradients
    `(input)
@@ -87,18 +87,18 @@
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
 	     [(grelay (tok ,t ,n) ,[arg*] ...) (guard (number? n))
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)))
+		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,HOPCOUNT_ARG) ,VERSION_ARG))); ETX modification
 		  `(bcast (tok ,t ,n)
 			  ,@(add-grad-args-to 
 			     arg*
 			     `((my-id)
 			       (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
-			       (+ 1 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG))
+			       (+ 0 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG)) ;; ETX modification
 			       (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG))
 			     )))]
 	     [(grelay (tok ,t ,[e]) ,[arg*] ...)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 1 ,HOPCOUNT_ARG) ,VERSION_ARG)))
+		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,HOPCOUNT_ARG) ,VERSION_ARG))); ETX modification
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       (bcast (tok ,t ,num)
@@ -106,7 +106,7 @@
 				 arg*
 				 `((my-id)
 				   (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
-				   (+ 1 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG))
+				   (+ 0 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG)) ;; ETX modification
 				   (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))
 				 )))))]
 	     [(grelay ,other ...)
@@ -127,7 +127,7 @@
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
 			       ,STORED_HOPCOUNT_ARG
-			       ,HOPCOUNT_ARG)
+			       ,COMPUTED_HOPCOUNT) ;; ETX modification
 			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG))]
 	     [(gparent ,[(statictok loop) -> tok])
 		      (if (eq? (token->tokname tok) this-token)
@@ -264,6 +264,14 @@
 			   [,STORED_VERSION_ARG  '#f]
 			   ,@stored 
 			   )
+
+			 (let ((,COMPUTED_HOPCOUNT  ;; ETX modification
+				(if (or (eq? ,HOPCOUNT_ARG ',LOCALCALL)
+					(eq? ,PARENT_ARG ',NO_PARENT))
+				    0
+				    (+ ,HOPCOUNT_ARG (/ 100 (linkqual-to ,PARENT_ARG))))))
+			   
+			   ;(printf "~a \n" (list ,HOPCOUNT_ARG ,COMPUTED_HOPCOUNT))
 			 
 			 ,@(DEBUG_GRADIENTS
 			    `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
@@ -282,7 +290,7 @@
 				(not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
 			      (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
 			      (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
-				   (< ,HOPCOUNT_ARG ,STORED_HOPCOUNT_ARG)))
+				   (< ,COMPUTED_HOPCOUNT ,STORED_HOPCOUNT_ARG))) ;; ETX modification
 			     ,(make-begin 
 				`(,@(COMMENT "The gradient-tagged message is accepted, handler fires.")
 				  				  
@@ -299,14 +307,14 @@
 					,@(COMMENT "If it's not a local message, set stored gradient info:")
 					(set! ,STORED_PARENT_ARG ,PARENT_ARG)
 					(set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
-					(set! ,STORED_HOPCOUNT_ARG ,HOPCOUNT_ARG)
+					(set! ,STORED_HOPCOUNT_ARG ,COMPUTED_HOPCOUNT) ;; ETX modification
 					(set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
 			     ;; Otherwise, fizzle
 			     (begin ,@(COMMENT "Gradient message fizzles.") (void))
 				
-			     ))
+			     )))
 		       ))))))
-    
+
     ;; Does a simple tree-walk to look for the occurence of a (greturn ...) form.
     (define (contains-greturn? tb)
       (mvlet ([(_ __ ___ ____ _____ body) (destructure-tokbind tb)])
@@ -328,7 +336,7 @@
 	 ;; If there are any greturns in the program, we link in the aggregation-code.
 	 (let ([linkedcode
 		(if (ormap contains-greturn? toks)
-		    (match (mvlet (((prog _) (read-regiment-source-file "linked_lib/gradient_lib.tm"))) prog)
+		    (match (mvlet (((prog _) (read-regiment-source-file "linked_lib/gradient_lib_ETX.tm"))) prog)
 		      [(tokens ,gradtoks ...) gradtoks])
 		    '())])
 
