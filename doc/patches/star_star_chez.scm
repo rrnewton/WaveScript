@@ -4,6 +4,8 @@
 ;;;; root documentation of the LAML system. Notice that some of the non-standard Scheme functions used
 ;;;; in LAML already happens to exist in Chez Scheme.
 
+;;;; .author Ryan Newton
+
 
 ;;; Definition of non-R4RS Scheme functions. 
 ;;; The functions in this section are general purpose functions which happen
@@ -49,7 +51,8 @@
 
 (define directory-exists? file-exists?)
 
-;; This only works on unix systems:
+;; This only works on unix systems.
+;; TODO: need to rename this file to reflect that lesser generality.
 (define (copy-file f1 f2)
   (define (system-to-str str)
     (let ([lst (process str)])
@@ -126,8 +129,7 @@
       (list 'laml 
 	    (vector-ref argv 0) (vector-ref argv 1)
 	    (if (>= (vector-length argv) 3) (vector-ref argv 2) '()))
-      #f)
-)
+      #f))
 
 ;; Fake the contextual startup parameters to a specific source file name and a specific startup directory.
 ;; Both of the parameters must be strings, or the boolean value #f (in case the informations are unknown).
@@ -166,3 +168,28 @@
 
 ; Case sensitive reading
 (case-sensitive #t)
+
+(optimize-level 1)
+
+; --------------------------------------------------------------------------------
+;; [2006.01.20]
+
+;; Trying to rewrite some evaluation-order-dependent functions to have
+;; more expected evaluation order. 
+
+;; NOTE: non-tail recursive!
+(define map 
+  (case-lambda 
+    [(f ls)
+     (let loop ((ls ls))
+       (if (null? ls) '()
+	   (let ((v (f (car ls))))
+	     (cons v (loop (cdr ls))))))]
+    [(f . lsts)
+     (let loop ([lsts lsts])
+       (cond 
+	[(#%andmap null? lsts) '()]
+	[(#%ormap null? lsts) 
+	 (error 'map "ran out of items in some list args but not others: ~a" lsts)]
+	[else (let ((v (apply f (#%map car lsts))))
+		(cons v (loop (#%map cdr lsts))))]))]))
