@@ -12,6 +12,12 @@
 ;;;; shares almost all of its code with that pass.  They should
 ;;;; probably be merged.
 
+
+; ----------------------------------------------------------------------
+;;; Global parameters.
+
+(define COMPUTED_HOPCOUNT (unique-name 'computed_hopcount))
+
 ; ----------------------------------------------------------------------
 ;;; Main program
 

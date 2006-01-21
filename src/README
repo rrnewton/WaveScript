@@ -89,7 +89,7 @@ The unit test executor itself is in generic/helpers.ss
 
 Every file that has unit tests defines its own "these-tests" variable,
 as well as a "test-this" variable.  (It may optionally bind these to
-other (more unique) names as well: test1, test2, and so on.)
+other, more unique, names as well: test1, test2, test-graphics, and so on.)
 
 The function "test-units" runs (or should) all the unit tests in the
 system.
@@ -110,6 +110,15 @@ to slip in certain places. -rrn [2005.09.24]
   and make simulator_alpha tests for them..
   -rrn [2005.09.24]
  
+
+NOTE on TESTING: There are a number of toggles and parameters in the
+system (mostly concentrated in constants.ss).  I am following a
+convention where I sprinkle the exact phrase "TOGGLE FOR UNIT TESTING"
+throughout the code.  When unit testing, you should be able to change
+the values of these parameters and have it complete its tests.  In
+fact, to test thoroughly, you should exercise the system in all of the
+major configurations.
+
 
 
 ======================================================================

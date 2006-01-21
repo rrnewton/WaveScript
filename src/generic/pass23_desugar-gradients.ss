@@ -90,7 +90,8 @@
 
 ;; Front end procedure for all versions of desugar-gradients.
 (define (desugar-gradients prog)
-  (case (desugar-gradient-mode)
+;  (inspect `(HRM ,prog ,(desugar-gradient-mode)))
+  (case (desugar-gradients-mode)
     [(static)   (desugar-gradients_verbose prog)]
     [(dynamic)  (desugar-gradients_simple prog)]
     [(etx)      (desugar-gradients_etx prog)]))
