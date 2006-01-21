@@ -95,7 +95,7 @@
 ;;; Main program
 
 ;; This is the compiler pass itself.
-(define desugar-gradients
+(define desugar-gradients_verbose
   (build-compiler-pass
    'desugar-gradients
    `(input)

@@ -170,6 +170,17 @@
 (define MAX_SUBTOK 256) ;; On second thought let's make it an 8 bit value.
 
 
+;;; Used primarily by pass desugar-gradients
+;====================================================
+
+;; This controls which gradient implementation is used. <br>
+;; Valid options are                                    <br>
+;;   'static  -- original method, build return handlers for every greturn statement.               <br>
+;;   'dynamic -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
+;;               NOTE: CURRENTLY DOESN'T WORK WITH NON-AGGREGATED GRETURNS!
+;;   'etx     -- like 'dynamic, but uses an ETX metric for selecting trees, rather than hopcount.  <br>
+(define-regiment-parameter desugar-gradients-mode 'dynamic) ; TOGGLE FOR UNIT TESTING.
+
 ;;; Used primarily by pass cps-tokmac
 ;====================================================
 ;; This object is used as null pointer for continuations.
