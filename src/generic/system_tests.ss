@@ -1055,7 +1055,7 @@
 
 ;; This case was too fragile and dependent on the ordering.  I could make it better and bring it back.
 ;; Problem is that it depends on the aggregator being turned on, because without aggregation we no longer use the timer.
-     ["Gradients: Make sure the timer gets set right. "
+     ["Gradients (static): Make sure the timer gets set right. "
       (parameterize ([unique-name-counter 0]
 		     [desugar-gradients-mode 'static] ;; Only works for this mode.
 		     [simalpha-dbg-on #f])
@@ -1091,6 +1091,9 @@
 	      )))))
       unspecified]
 
+
+     ;; ["Gradients (ETX):  " 
+     
 
      ["Gradients: execute a return from 1-hop neighbors. Manual timeout.  (NONDETERMINISTIC)"
       , (tm-to-list
