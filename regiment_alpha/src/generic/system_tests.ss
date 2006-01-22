@@ -980,7 +980,7 @@
 			     (grelay tok1 99)))
 		    '[simalpha-zeropad-args #f]
 		    '[simalpha-channel-model  'lossless]
-		    '[simalpha-placement-type 'connected]
+;		    '[simalpha-placement-type 'connected]
 		    '[simalpha-failure-model  'none]
 		    '[sim-num-nodes 30]
 		    '[simalpha-consec-ids #t]

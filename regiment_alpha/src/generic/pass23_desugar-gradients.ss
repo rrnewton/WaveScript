@@ -94,7 +94,7 @@
   (case (desugar-gradients-mode)
     [(static)   (desugar-gradients_verbose prog)]
     [(dynamic)  (desugar-gradients_simple prog)]
-    [(etx)      (desugar-gradients_etx prog)]))
+    [(etx)      (desugar-gradients_ETX prog)]))
 
 
 ; ----------------------------------------------------------------------
