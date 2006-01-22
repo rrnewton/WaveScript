@@ -93,7 +93,7 @@
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
 	     [(grelay (tok ,t ,n) ,[arg*] ...) (guard (number? n))
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,HOPCOUNT_ARG) ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,COMPUTED_HOPCOUNT) ,VERSION_ARG))); ETX modification
 		  `(bcast (tok ,t ,n)
 			  ,@(add-grad-args-to 
 			     arg*
@@ -104,7 +104,7 @@
 			     )))]
 	     [(grelay (tok ,t ,[e]) ,[arg*] ...)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,HOPCOUNT_ARG) ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,COMPUTED_HOPCOUNT) ,VERSION_ARG))); ETX modification
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       (bcast (tok ,t ,num)
@@ -120,15 +120,9 @@
 		     "bad grelay form: ~s" `(grelay ,other ...))]
 
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(gdist ,[(statictok loop) -> tok])
-		      (if (eq? (token->tokname tok) this-token)
-			  ;; In this case we're inside the handler currently:
-			  ;; Choose based on whether it's a real gradient call, or just local:
-			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
-			       ,STORED_HOPCOUNT_ARG
-			       ,HOPCOUNT_ARG)
-;			  HOPCOUNT_ARG
-			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG))]
+	     ;; TODO: MAKE DIFFERENT THAN GHOPCOUNT:
+	     ;; GDIST SHOULD BE ETX METRIC, GHOPCOUNT SHOULD BE ACTUAL HOPCOUNT..
+	     [(gdist ,tok) (loop `(ghopcount ,tok))]
 	     [(ghopcount ,[(statictok loop) -> tok])
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
@@ -271,13 +265,17 @@
 			   ,@stored 
 			   )
 
+;			 (if (eq? ,PARENT_ARG ',NO_PARENT)
+;			     (void)
+;			     (disp "LINKQUAL: "  (linkqual-to ,PARENT_ARG)))
+
 			 (let ((,COMPUTED_HOPCOUNT  ;; ETX modification
 				(if (or (eq? ,HOPCOUNT_ARG ',LOCALCALL)
 					(eq? ,PARENT_ARG ',NO_PARENT))
 				    0
 				    (+ ,HOPCOUNT_ARG (/ 100 (linkqual-to ,PARENT_ARG))))))
 			   
-			   ;(printf "~a \n" (list ,HOPCOUNT_ARG ,COMPUTED_HOPCOUNT))
+;			   (disp "COMPUTED" ,HOPCOUNT_ARG ,COMPUTED_HOPCOUNT)
 			 
 			 ,@(DEBUG_GRADIENTS
 			    `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))

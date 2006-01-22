@@ -211,7 +211,8 @@
 		     "bad grelay form: ~s" `(grelay ,other ...))]
 
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(gdist ,[(statictok loop) -> ttb tok])
+	     [(gdist ,tok) (loop `(ghopcount ,tok))]
+#;	     [(gdist ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
 			  ;; In this case we're inside the handler currently:

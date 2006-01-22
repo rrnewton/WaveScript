@@ -179,7 +179,7 @@
 ;;   'dynamic -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
 ;;               NOTE: CURRENTLY DOESN'T WORK WITH NON-AGGREGATED GRETURNS!
 ;;   'etx     -- like 'dynamic, but uses an ETX metric for selecting trees, rather than hopcount.  <br>
-(define-regiment-parameter desugar-gradients-mode 'dynamic) ; TOGGLE FOR UNIT TESTING.
+(define-regiment-parameter desugar-gradients-mode 'etx) ; TOGGLE FOR UNIT TESTING.
 
 ;;; Used primarily by pass cps-tokmac
 ;====================================================

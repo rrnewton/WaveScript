@@ -114,7 +114,8 @@
 		     "bad grelay form: ~s" `(grelay ,other ...))]
 
 	     ;; Uses the current version rather than the stored one if its available.
-	     [(gdist ,[(statictok loop) -> tok])
+	     [(gdist ,tok) (loop `(ghopcount ,tok))]
+#;	     [(gdist ,[(statictok loop) -> tok])
 		      (if (eq? (token->tokname tok) this-token)
 			  ;; In this case we're inside the handler currently:
 			  ;; Choose based on whether it's a real gradient call, or just local:
