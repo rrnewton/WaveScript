@@ -93,18 +93,18 @@
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
 	     [(grelay (tok ,t ,n) ,[arg*] ...) (guard (number? n))
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,COMPUTED_HOPCOUNT) ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_HOPCOUNT ,VERSION_ARG))); ETX modification
 		  `(bcast (tok ,t ,n)
 			  ,@(add-grad-args-to 
 			     arg*
 			     `((my-id)
 			       (ext-ref (tok ,t ,n) ,STORED_ORIGIN_ARG)
-			       (+ 0 (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG)) ;; ETX modification
+			       (ext-ref (tok ,t ,n) ,STORED_HOPCOUNT_ARG) ;; ETX modification
 			       (ext-ref (tok ,t ,n) ,STORED_VERSION_ARG))
 			     )))]
 	     [(grelay (tok ,t ,[e]) ,[arg*] ...)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG (+ 0 ,COMPUTED_HOPCOUNT) ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_HOPCOUNT ,VERSION_ARG))); ETX modification
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       (bcast (tok ,t ,num)
@@ -112,7 +112,7 @@
 				 arg*
 				 `((my-id)
 				   (ext-ref (tok ,t ,num) ,STORED_ORIGIN_ARG)
-				   (+ 0 (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG)) ;; ETX modification
+				   (ext-ref (tok ,t ,num) ,STORED_HOPCOUNT_ARG) ;; ETX modification
 				   (ext-ref (tok ,t ,num) ,STORED_VERSION_ARG))
 				 )))))]
 	     [(grelay ,other ...)
@@ -268,12 +268,14 @@
 ;			 (if (eq? ,PARENT_ARG ',NO_PARENT)
 ;			     (void)
 ;			     (disp "LINKQUAL: "  (linkqual-to ,PARENT_ARG)))
-
+			 
 			 (let ((,COMPUTED_HOPCOUNT  ;; ETX modification
 				(if (or (eq? ,HOPCOUNT_ARG ',LOCALCALL)
 					(eq? ,PARENT_ARG ',NO_PARENT))
 				    0
-				    (+ ,HOPCOUNT_ARG (/ 100 (linkqual-to ,PARENT_ARG))))))
+				    (+ ,HOPCOUNT_ARG (/ 100 
+							;(fixnum->flonum 
+							 (linkqual-to ,PARENT_ARG))))))
 			   
 ;			   (disp "COMPUTED" ,HOPCOUNT_ARG ,COMPUTED_HOPCOUNT)
 			 
