@@ -961,8 +961,15 @@
 	      (list (assq BASE_ID lst) (car others))
 	      `(ERROR: ,others))))
       ;; This timing stuff is a bit fragile
-      ((,BASE_ID : atroot ,BASE_ID 0 1 : 2) (: ,BASE_ID ,BASE_ID 1 1 : ,(+ RADIO_DELAY (* 2 SCHEDULE_DELAY) 1)))]
-
+      ,(lambda (x)
+	(match x 
+	  [((,base1 : atroot ,base2 ,basedist 1 : 2)
+	    (: ,base3 ,base4 ,gdist 1 : ,time))
+	   (and (= base1 base2 base3 base4 BASE_ID)
+		(= time (+ RADIO_DELAY (* 2 SCHEDULE_DELAY) 1))
+		(= basedist 0)
+		(> gdist 0))]
+	  [,else #f]))]
 
      ;; TODO: need to explicitely control tho network parameters for this one:
      ["Gradients: just a gemit and unconditional grelay. (NONDETERMINISTIC)" 
@@ -988,12 +995,12 @@
 		    )))
 ;	(inspect lst)
 	(list (length lst)
-	      (car lst)
-	      (cadr lst)
+	      (= (car lst) 0) ;; Distance at base is zero.
+	      (> (cadr lst) 0) ;; "Hopcount" is greater than zero.
 	      (> (car (reverse lst)) 1)
 	      (equal? lst (sort < lst)))
 	) ;; Only true with VERY restricted simulation model.
-      (30 0 1 #t #t)]
+      (30 #t #t #t #t)]
 
 
      ["Gradients: SLOWly spread a gradient through the network.  Try this one in real time with GUI."
@@ -1044,12 +1051,16 @@
 
 
      ["Gradients: make a two hop neighborhood. (NONDETERMINISTIC)"
+      retry
       (let ((lst , (tm-to-list
 		'(tokens
 		  (SOC-start () (gemit tok1))
-		  (tok1 () (printf "~a " (gdist)) (if (< (gdist) 2) (grelay)))))))
+		  (tok1 () (printf "~a " (gdist)) (if (< (gdist) 2) (grelay))))
+		'[simalpha-placement-type 'connected]
+		'[simalpha-channel-model 'lossless]
+		)))
 	(list (< (length lst) 30)
-	      (sort < (list->set lst))
+	      (sort < (list->set_equal lst))
 	      (equal? lst (sort < lst)))) ;; Only true with VERY restricted simulation model.
       (#t (0 1 2) #t)]
 
