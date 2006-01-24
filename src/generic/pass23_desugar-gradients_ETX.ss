@@ -16,7 +16,9 @@
 ; ----------------------------------------------------------------------
 ;;; Global parameters.
 
-(define COMPUTED_HOPCOUNT (unique-name 'computed_hopcount))
+(define ETX_ARG           (unique-name 'g_etx))         ;; not used yet
+(define STORED_ETX_METRIC (unique-name 'storeg_g_etx))  ;; not used yet
+(define COMPUTED_ETX      (unique-name 'computed_g_etx_metric))
 
 ; ----------------------------------------------------------------------
 ;;; Main program
@@ -93,7 +95,7 @@
 	     ;; TODO: This doesn't cache or pass any arguments on to the grelayed tokhand!!!!
 	     [(grelay (tok ,t ,n) ,[arg*] ...) (guard (number? n))
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_HOPCOUNT ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,n) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_ETX ,VERSION_ARG))); ETX modification
 		  `(bcast (tok ,t ,n)
 			  ,@(add-grad-args-to 
 			     arg*
@@ -104,7 +106,7 @@
 			     )))]
 	     [(grelay (tok ,t ,[e]) ,[arg*] ...)
 	      (if (eq? this-token t)
-		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_HOPCOUNT ,VERSION_ARG))); ETX modification
+		  `(bcast (tok ,t ,e) ,@(add-grad-args-to arg* `((my-id) ,ORIGIN_ARG ,COMPUTED_ETX ,VERSION_ARG))); ETX modification
 		  (let ([num (unique-name 'n)])
 		    `(let ([,num ,e])
 		       (bcast (tok ,t ,num)
@@ -122,13 +124,16 @@
 	     ;; Uses the current version rather than the stored one if its available.
 	     ;; TODO: MAKE DIFFERENT THAN GHOPCOUNT:
 	     ;; GDIST SHOULD BE ETX METRIC, GHOPCOUNT SHOULD BE ACTUAL HOPCOUNT..
-	     [(gdist ,tok) (loop `(ghopcount ,tok))]
-	     [(ghopcount ,[(statictok loop) -> tok])
-		      (if (eq? (token->tokname tok) this-token)
-			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
-			       ,STORED_HOPCOUNT_ARG
-			       ,COMPUTED_HOPCOUNT) ;; ETX modification
-			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG))]
+	     [(gdist ,tok) 	     
+	      (if (eq? (token->tokname tok) this-token)
+		  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
+		       ,STORED_HOPCOUNT_ARG
+		       ,COMPUTED_ETX) ;; ETX modification
+		  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG))]
+
+	     ;; TODO: RETURN ACTUAL HOPCOUNT FOR GHOPCOUNT (not the etx metric):
+	     [(ghopcount ,tok) `(/ ,(loop `(gdist ,tok)) '10)]
+
 	     [(gparent ,[(statictok loop) -> tok])
 		      (if (eq? (token->tokname tok) this-token)
 			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
@@ -269,15 +274,15 @@
 ;			     (void)
 ;			     (disp "LINKQUAL: "  (linkqual-to ,PARENT_ARG)))
 			 
-			 (let ((,COMPUTED_HOPCOUNT  ;; ETX modification
+			 (let ((,COMPUTED_ETX  ;; ETX modification
 				(if (or (eq? ,HOPCOUNT_ARG ',LOCALCALL)
 					(eq? ,PARENT_ARG ',NO_PARENT))
 				    0
-				    (+ ,HOPCOUNT_ARG (/ 100 
+				    (+ ,HOPCOUNT_ARG (/ 1000
 							;(fixnum->flonum 
 							 (linkqual-to ,PARENT_ARG))))))
 			   
-;			   (disp "COMPUTED" ,HOPCOUNT_ARG ,COMPUTED_HOPCOUNT)
+;			   (disp "COMPUTED" ,HOPCOUNT_ARG ,COMPUTED_ETX)
 			 
 			 ,@(DEBUG_GRADIENTS
 			    `(if (not (eq? ',LOCALCALL ,HOPCOUNT_ARG))
@@ -296,7 +301,7 @@
 				(not ,STORED_HOPCOUNT_ARG))   ;; First time we definitely accept
 			      (> ,VERSION_ARG ,STORED_VERSION_ARG) ;; Newer version we accept
 			      (and (= ,VERSION_ARG ,STORED_VERSION_ARG) ;; Smaller hopcounts we accept
-				   (< ,COMPUTED_HOPCOUNT ,STORED_HOPCOUNT_ARG))) ;; ETX modification
+				   (< ,COMPUTED_ETX ,STORED_HOPCOUNT_ARG))) ;; ETX modification
 			     ,(make-begin 
 				`(,@(COMMENT "The gradient-tagged message is accepted, handler fires.")
 				  				  
@@ -313,7 +318,7 @@
 					,@(COMMENT "If it's not a local message, set stored gradient info:")
 					(set! ,STORED_PARENT_ARG ,PARENT_ARG)
 					(set! ,STORED_ORIGIN_ARG ,ORIGIN_ARG)
-					(set! ,STORED_HOPCOUNT_ARG ,COMPUTED_HOPCOUNT) ;; ETX modification
+					(set! ,STORED_HOPCOUNT_ARG ,COMPUTED_ETX) ;; ETX modification
 					(set! ,STORED_VERSION_ARG ,VERSION_ARG)))))
 			     ;; Otherwise, fizzle
 			     (begin ,@(COMMENT "Gradient message fizzles.") (void))

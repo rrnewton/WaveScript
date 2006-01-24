@@ -311,13 +311,21 @@
      (dbg (String . Object) Void)
 
      (call (Token . Object) Void)
-     (bcast (Token . Object) Void)
+     ;; This is a rough attempt at a "high priority" scheduling.
      (call-fast (Token . Object) Void)
      (timed-call (Integer Token . Object) Void)
 
      (subcall (Token . Object) Object)
-     ;; This one happens immediately, possibly by inlining:
+     ;; This one happens immediately, possibly by inlining, but in any
+     ;; case it does not represent a yield.
      (direct-subcall (Token . Object) Object)
+
+     (bcast (Token . Object) Void)
+     ;; This takes a node ID:
+     (ucast (Integer Token . Object) Void)
+     ;; This is a synchronous command that returns the success or failure of the ucast.
+     (ucast-wack (Integer Token . Object) Bool)
+
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
      

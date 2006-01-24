@@ -210,18 +210,11 @@
 	      (error 'desugar-gradients
 		     "bad grelay form: ~s" `(grelay ,other ...))]
 
-	     ;; Uses the current version rather than the stored one if its available.
-	     [(gdist ,tok) (loop `(ghopcount ,tok))]
-#;	     [(gdist ,[(statictok loop) -> ttb tok])
-	      (values ttb
-		      (if (eq? (token->tokname tok) this-token)
-			  ;; In this case we're inside the handler currently:
-			  ;; Choose based on whether it's a real gradient call, or just local:
-			  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
-			       ,STORED_HOPCOUNT_ARG
-			       ,HOPCOUNT_ARG)
-;			  HOPCOUNT_ARG
-			  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG)))]
+	     ;; Gdist uses standard units of 10 rather than 1.
+	     [(gdist ,tok) 
+	      (mvlet ([(ttb expr) (loop `(ghopcount ,tok))])
+		(values ttb `(* 10 ,expr)))]
+	     ;; Uses the current version rather than the stored one if its available.	     
 	     [(ghopcount ,[(statictok loop) -> ttb tok])
 	      (values ttb
 		      (if (eq? (token->tokname tok) this-token)
