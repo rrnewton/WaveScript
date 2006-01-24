@@ -588,7 +588,7 @@
 	(reverse! 
 	 (set-cons(car ls) (list->set (cdr ls)))))))
 ;; [2006.01.23] Added version that uses equal?  For structure based equivalence.
-(define list->set_equal
+#;(define list->set_equal
   (lambda (ls)
     (let loop ((ls ls))
       (if (null? ls) '()

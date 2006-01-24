@@ -245,6 +245,18 @@
 		      ls)
 	      (not (memq BASE_ID (map car ls))))))]
 
+#;     ["Bcast to neighbors, ucast back to base." 
+      , (tm-to-list
+	 '(tokens
+	    (SOC-start () (bcast tok1 (my-id)))
+	    (tok1 (id) (ucast id tok2 (my-id)))
+	    (tok2 (my-id) (printf "(Received-ucast: ~a ~a)\n" (id) (my-id))))
+	 [simalpha-placement-type 'connected]
+	 )
+	,(lambda (ls)
+	   ; Just require a list of IDs:
+	   (andmap integer? ls))]
+
      ["Test fast-call"
       , (tm-to-list
 	'(tokens 
@@ -980,10 +992,10 @@
 				  (gemit tok1 99))
 		       (tok1 (x) 
 ;			     (printf "(Running on: ~a) \n" (my-id))
-			     (setlabel "<~a,~a,~a,~a>" (ghopcount) (gparent) (gorigin) (gversion))
+			     (setlabel "<~a,~a,~a,~a>" (gdist) (gparent) (gorigin) (gversion))
 			     (if (odd? (ghopcount)) (leds on red) (leds on blue))
 			     ;(printf "~a " (gdist))
-			     (printf "~a " (ghopcount))
+			     (printf "~a " (gdist))
 			     (grelay tok1 99)))
 		    '[simalpha-zeropad-args #f]
 		    '[simalpha-channel-model  'lossless]
@@ -1050,19 +1062,19 @@
 	unspecified]
 
 
-     ["Gradients: make a two hop neighborhood. (NONDETERMINISTIC)"
+     ["Gradients: make an (approximately) two hop neighborhood. (NONDETERMINISTIC)"
       retry
       (let ((lst , (tm-to-list
 		'(tokens
 		  (SOC-start () (gemit tok1))
-		  (tok1 () (printf "~a " (gdist)) (if (< (gdist) 2) (grelay))))
+		  (tok1 () (printf "~a " (gdist)) (if (< (gdist) 20) (grelay))))
 		'[simalpha-placement-type 'connected]
 		'[simalpha-channel-model 'lossless]
 		)))
 	(list (< (length lst) 30)
-	      (sort < (list->set_equal lst))
+	      (sort < (list->set lst))
 	      (equal? lst (sort < lst)))) ;; Only true with VERY restricted simulation model.
-      (#t (0 1 2) #t)]
+      (#t (0 10 20) #t)]
 
 ;; This case was too fragile and dependent on the ordering.  I could make it better and bring it back.
 ;; Problem is that it depends on the aggregator being turned on, because without aggregation we no longer use the timer.
@@ -1198,7 +1210,9 @@
 	 ))]
 
      ;; [2005.11.16] This just FAILED when I had realtime mode turned on.  But succeeded when I tried again.
-     ["Gradients: execute a repeated return from 2-hop neighbors. (NONDETERMINISTIC)"
+     ["Gradients: execute a repeated return from 2-hop neighbors. Tame network.  (NONDETERMINISTIC)"
+      ;; This is nondeterministic because it tries to verify that there are 
+      ;; more 2-hop neighbors than there are 1-hop neighbors.  Usually true but not guaranteed.
       retry
       (let ((lst , (tm-to-list
 		'(tokens
@@ -1213,9 +1227,9 @@
 			(if (> reps 1)
 			    (timed-call 1500 tok1 (- reps 1))))
 		  (tok2 () (grelay) 
-			(if (= (gdist) 1)
+			(if (and (> (gdist) 0) (<= (gdist) 10))
 			    (greturn (gversion) (to catcher))
-			(if (= (gdist) 2)
+			(if (and (> (gdist) 10) (<= (gdist) 20))
 			    (greturn (+ 100 (gversion)) (to catcher)))
 			))
 		  )
@@ -1380,8 +1394,8 @@
 	      (> (car ls) 0)))]
 
 
-     ["Gradients: Now try cons-aggregated greturn from one-hops"
-      retry  ;; It's possibly we have no neighbors at all!
+     ["Gradients: Now try cons-aggregated greturn from one-hops (Definitely SIM ONLY, does alloc)"
+      ;No it's not, require connected: ;retry  ;; It's possibly we have no neighbors at all!
       (map list->set
 	   (filter (lambda (x) (not (null? x)))
 		   , (tm-to-list
@@ -1405,7 +1419,7 @@
 		     '[simalpha-failure-model 'none]		
 		     )))
       ;; Epoch staggered aggregation
-      ((0) (0 1) (0 1) (0 1) (0 1) (1))
+      ((0) (0 10) (0 10) (0 10) (0 10) (10))
       ]
 
      ;; [2005.11.03] This totally fails with closure-convert.
