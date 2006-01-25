@@ -137,7 +137,7 @@
 	   (error 'safe-construct-msg-object "bad timestamp: ~s" timestamp))
    (unless (list? args)
 	   (error 'safe-construct-msg-object "bad args: ~s" args)))
-  (make-msg-object token timestamp #f parent args))
+  (make-msg-object token timestamp parent #f args))
 
 ;; [2004.06.28] This is a helper to construct the locally used
 ;; messages that don't have a parent, timestamp, etc.
@@ -146,7 +146,6 @@
 		   (if (null? time) #f (car time))    ;; timestamp
 		   #f    ;; parent
 		   rands))
-
 
 
 ;; This is our logger for events in the simulator:
