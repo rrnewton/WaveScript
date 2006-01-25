@@ -628,6 +628,15 @@
 					   (bare-msg-object ,rator (list ,@rand*) current-vtime))
 			      (simobject-outgoing-msg-buf this))))]
 
+		  [(ucast ,[dest] ,[rator] ,[rand*] ...)
+		   (let ([tmp (unique-name 'tmpmsgob)])
+		     `(let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])			
+			;; Set the "to" field.
+			(set-msg-object-to! ,tmp ,dest)
+			(set-simobject-outgoing-msg-buf! this
+  		           (cons (make-simevt #f tmp) ;; No scheduled time, ASAP					      
+				 (simobject-outgoing-msg-buf this)))))]
+		  
 ;; These are desugared before now.
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]

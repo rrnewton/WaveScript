@@ -169,7 +169,7 @@
   ;; [2005.10.31]  Currently we allow actions scheduled in the past!  (They're considered "overdue".)
   ;; Overdue actions can't actually occur in the past.  They're just given scheduling priority.
   (define (process-incoming ob)
-    (if (not (null? (append (simobject-local-msg-buf ob)
+    (if (not (null? (simobject-local-msg-buf ob)
 			    (simobject-timed-token-buf ob)
 			    (simobject-incoming-msg-buf ob))))
 	(logger 1.5 "~s ~s: Receiving: ~s local, ~s timed, ~s remote. Queue len ~s~n"
@@ -184,6 +184,13 @@
     (let ([timed (simobject-timed-token-buf ob)]
 	  [local (simobject-local-msg-buf ob)]
 	  [incoming (simobject-incoming-msg-buf ob)])
+
+      ; Filter incoming for messages directed to this node (or broadcast 
+      (set! incoming (filter (lambda (msg)
+			       (let ((dest (msg-object-to msg)))
+				 (or (not dest)
+				     (= dest msg))))
+		       
 
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))

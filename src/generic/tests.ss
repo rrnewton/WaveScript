@@ -131,6 +131,30 @@
       (begin (printf "\n PASSED ALL TESTS.\n") #t)
       #f))
 
+
+;; [2006.01.24] Adding this "metatester" to reparameterize the system
+;; in various major ways and run the unit tests in each configuration.
+(define (super-test . args)
+  (if (not (and 
+	    ;; First lets work through our different gradient implementations:
+	    (printf "\n;====================================================================================================\n")
+	    (printf ";; TESTING W/ STATIC GRADIENTS.\n")
+	    (desugar-gradients-mode 'static)
+	    (apply test-units args)
+
+	    (printf "\n;====================================================================================================\n")
+	    (desugar-gradients-mode 'dynamic)
+	    (apply test-units args)
+
+	    (printf "\n;====================================================================================================\n")
+	    (desugar-gradients-mode 'etx)
+	    (apply test-units args)
+
+	    (printf "\n;====================================================================================================\n")
+	    (printf ";; SUPER TEST COMPLETED.\n")
+	    ))
+      (error 'super-test "One of the batches of unit tests failed.")))
+
 (define (tu . args) (apply test-units 'verbose 'quiet args)) ;; shorthand
 (define (te . args) (apply test-everything 'verbose 'quiet args)) ;; shorthand
 
