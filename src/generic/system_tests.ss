@@ -263,7 +263,7 @@
 
      ;; Need to make this one have a higher probability of success.
      ["Now test Ucast-wACK"
-      retry
+      ;retry
       , (tm-to-list
 	 '(tokens
 	    ;; First discover a neighbor.
