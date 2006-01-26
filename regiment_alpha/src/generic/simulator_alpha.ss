@@ -647,10 +647,10 @@
 		     ;; Check the link quality, does this message go through?
 		     `(let* ([,dst ,dest]
 			     [,conn ,(process-expr `(linkqual-to ,dst))]) ;(get-connectivity ,(process-expr '(my-id)) ,dst)])
-			(printf "Ucast Wack\n")
+			;(printf "Ucast Wack\n")
 			(if (>= (random 100) ,conn)
 			    (let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])
-			      (printf "Got ACK! ~a\n" ,tmp)
+			      ;(printf "Got ACK! ~a\n" ,tmp)
 			      ;; Set the "to" field.
 			      (set-msg-object-to! ,tmp ,dst)
 			      (set-simobject-outgoing-msg-buf! this
