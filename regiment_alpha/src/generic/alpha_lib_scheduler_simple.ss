@@ -20,7 +20,6 @@
   ;; Inputs:
   ;; Output: 
 
-
 ;  (define SOC (car (filter (lambda (n) (eq? BASE_ID (node-id (simobject-node n))))
 ;			   (simworld-all-objs sim))))
 
@@ -169,9 +168,9 @@
   ;; [2005.10.31]  Currently we allow actions scheduled in the past!  (They're considered "overdue".)
   ;; Overdue actions can't actually occur in the past.  They're just given scheduling priority.
   (define (process-incoming ob)
-    (if (not (null? (simobject-local-msg-buf ob)
-			    (simobject-timed-token-buf ob)
-			    (simobject-incoming-msg-buf ob))))
+    (unless (and (null? (simobject-local-msg-buf ob))
+		 (null? (simobject-timed-token-buf ob))
+		 (null? (simobject-incoming-msg-buf ob)))
 	(logger 1.5 "~s ~s: Receiving: ~s local, ~s timed, ~s remote. Queue len ~s~n"
 		(pad-width 5 vtime)
 		(node-id (simobject-node ob))
@@ -187,10 +186,10 @@
 
       ; Filter incoming for messages directed to this node (or broadcast 
       (set! incoming (filter (lambda (msg)
-			       (let ((dest (msg-object-to msg)))
+			       (let ((dest (msg-object-to (simevt-msgobj msg))))
 				 (or (not dest)
-				     (= dest msg))))
-		       
+				     (= dest (node-id (simobject-node ob))))))
+		       incoming))
 
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
@@ -200,7 +199,7 @@
 		  (let ((vec (token-table-entry ob evt)))
 		    (vector-set! vec 2 (fx+ 1 (vector-ref vec 2)))))
 	incoming)
-      
+
       ;; If GUI message counters are turned on, print our count on the screen:
 ;      (IF_GRAPHICS
 ;       (if (simalpha-label-msgcounts)
@@ -275,8 +274,9 @@
   (unless (null? timedevnts)
     (disp "SCHEDULED NEW")
     (sim-print-queue BASE_ID)
-    ))
-	)))
+    )
+  )
+)))
 
 
   ; =================================================================================
@@ -295,7 +295,7 @@
 ;				 (simobject-local-sent-messages ob)) ob)))
 
 	(unless (null? outgoing)
-	;; They're all broadcasts for now
+
 	(for-each (lambda (evt)
 		    ;; Record that we sent this particular token in our token table.
 		    (let ((vec (token-table-entry ob evt)))
@@ -315,30 +315,17 @@
 		  (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)
 		  (map (lambda (x) (node-id (simobject-node x))) neighbors))
 	  
-	  (for-each 
-	   (lambda (nbr)
-	     ;; Here's where we simulate the channel and determine if the message goes through.
-	     (let ((connectivity ((simalpha-connectivity-function) 
-				  (node-pos (simobject-node ob))
-				  (node-pos (simobject-node nbr)))))
-#;
-	       (printf "Checking connectivity: ~s ~s ~s\n"
-		       connectivity
-		       (simobject-node ob)
-		       (simobject-node nbr))
-	       (if (cond
-		    [(fixnum? connectivity)
-		     (fx< (reg:random-int 100) connectivity)]
-		    [(procedure? connectivity)
-		     (fx< (reg:random-int 100) (connectivity vtime))]
-		    [else 
-		     (error 'launch-outgoing "bad connectivity function result: ~s" connectivity)])
+	  (for-each (lambda (nbr)
+	     (for-each (lambda (out-msg)
+	       ;; Here's where we simulate the channel and determine if the message goes through.
+	       (if (attempt-message-transmission ob nbr)
+		   ;; The message has succeeded, add it appropriately:
 		   (set-simobject-incoming-msg-buf! 
-		    nbr (append  outgoing
-				 (simobject-incoming-msg-buf nbr)))
+		    nbr (cons out-msg (simobject-incoming-msg-buf nbr)))
 		   ;; Otherwise fizzle:
-		   (void))))
-	   neighbors)
+		   (void)))
+	       outgoing))
+	    neighbors)
 	  ;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 

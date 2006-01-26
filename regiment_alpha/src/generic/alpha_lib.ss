@@ -18,6 +18,79 @@
 [define current-simobject (make-parameter 'current-simobject_uninitialized!)]
 
 ; =======================================================================
+;;; Helpers for accessing global simulation data structures.
+
+;; [2006.01.25] <br>
+;; A convenient function for getting the current connectivity between two node-ids.<br>
+;; Gets the information from the (simalpha-current-simworld) param. 
+;; Or uses an optional world parameter.
+(define (get-connectivity n1 n2 . sim)
+  (let ([sim (if (null? sim) 
+		 (simalpha-current-simworld)
+		 (car sim))])
+    (let ([n1 (get-node n1)]
+	  [n2 (get-node n2)])
+      ((simalpha-connectivity-function) 
+       (node-pos n1) 
+       (node-pos n2)))))
+
+;; [2006.01.25] <br>
+;; A convenient function for coercing an ID number, simobject, or node-obj into a node-obj.<br>
+;; Gets the information from the (simalpha-current-simworld) param. 
+;; Or uses an optional world parameter.
+(define (get-node ob . sim)
+  (cond
+   [(integer? ob)
+    (let ([sim (if (null? sim) 
+		   (simalpha-current-simworld)
+		   (car sim))])
+      (simobject-node (hashtab-get (simworld-obj-hash sim) ob)))]
+   [(simobject? ob)
+    (simobject-node ob)]
+   [(node? ob) ob]
+   [else (error 'get-node "cannot coerce this object to a node: ~a" ob)]))
+
+;; [2006.01.25] <br>
+;; A convenient function for coercing an ID number, simobject, or node-obj into a simobject.<br>
+;; Gets the information from the (simalpha-current-simworld) param. 
+;; Or uses an optional world parameter.
+(define (get-simobject ob . sim)
+  (cond
+   [(integer? ob)
+    (let ([sim (if (null? sim) 
+		   (simalpha-current-simworld)
+		   (car sim))])
+      (hashtab-get (simworld-obj-hash sim) ob))]
+   [(simobject? ob) ob]
+   [(node? ob) (get-simobject (node-id node))]
+   [else (error 'get-node "cannot coerce this object to a simobject: ~a" ob)]))
+
+; =======================================================================
+
+;;; Channel modeling.
+
+;; This function abstracts the modeling of the channel.  This
+;; simulates the attempted transmission of a message, and returns true
+;; or false based on whether it succeeded.  This could be arbitrarily
+;; more complex.
+(define (attempt-message-transmission p1 p2)
+  (let ((connectivity ((simalpha-connectivity-function)
+		       (node-pos (get-node p1))
+		       (node-pos (get-node p2)))))
+#;
+    (printf "Checking connectivity: ~s ~s ~s\n"
+	    connectivity
+	    (simobject-node ob)
+	    (simobject-node nbr))
+    (cond
+     [(fixnum? connectivity)
+      (fx< (reg:random-int 100) connectivity)]
+     [(procedure? connectivity)
+      (fx< (reg:random-int 100) (connectivity vtime))]
+     [else 
+      (error 'launch-outgoing "bad connectivity function result: ~s" connectivity)])))
+
+; =======================================================================
 ;; Node level utilities 
 
 ;; [2005.10.29] These three are the interface through which the token-store is accessed.
