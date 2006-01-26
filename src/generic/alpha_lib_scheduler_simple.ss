@@ -185,11 +185,11 @@
 	  [incoming (simobject-incoming-msg-buf ob)])
 
       ; Filter incoming for messages directed to this node (or broadcast 
-      (set! incoming (filter (lambda (msg)
-			       (let ((dest (msg-object-to (simevt-msgobj msg))))
-				 (or (not dest)
-				     (= dest (node-id (simobject-node ob))))))
-		       incoming))
+;      (set! incoming (filter (lambda (msg)
+;			       (let ((dest (msg-object-to (simevt-msgobj msg))))
+;				 (or (not dest)
+;				     (= dest (node-id (simobject-node ob))))))
+;		       incoming))
 
       ; Increment message counter:
       (set-simobject-local-recv-messages! ob (fx+ (length incoming) (simobject-local-recv-messages ob)))
@@ -318,14 +318,17 @@
 	  (for-each (lambda (nbr)
 	     (for-each (lambda (out-msg)
 	       ;; Here's where we simulate the channel and determine if the message goes through.
-	       (if (attempt-message-transmission ob nbr)
-		   ;; The message has succeeded, add it appropriately:
-		   (set-simobject-incoming-msg-buf! 
-		    nbr (cons out-msg (simobject-incoming-msg-buf nbr)))
-		   ;; Otherwise fizzle:
-		   (void)))
+	       ;; UCASTs have already been pre-screened, we don't need to put them through the rigamarole.
+	       (let ((is_ucast (msg-object-to (simevt-msgobj out-msg))))
+		 (if (or is_ucast   (attempt-message-transmission ob nbr))
+		     ;; The message beat the channel; add it appropriately:
+		     (if (or (not is_ucast) (= (node-id (simobject-node nbr)) is_ucast))
+			 (set-simobject-incoming-msg-buf! 
+			  nbr (cons out-msg (simobject-incoming-msg-buf nbr))))
+		     ;; Otherwise fizzle:
+		     (void))))
 	       outgoing))
-	    neighbors)
+	     neighbors)
 	  ;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 

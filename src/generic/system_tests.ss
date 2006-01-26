@@ -260,10 +260,10 @@
 		       [(Received-ucast: ,id ,base)
 			(and (integer? id) (not (= id BASE_ID)) (= base BASE_ID))]))
 		   ls))]
-#;
+
      ;; Need to make this one have a higher probability of success.
      ["Now test Ucast-wACK"
-      'retry
+      retry
       , (tm-to-list
 	 '(tokens
 	    ;; First discover a neighbor.
@@ -272,7 +272,10 @@
 	    (downloop (n) (if (not (= 0 n))
 			      (begin (bcast down (my-id))
 				     (call downloop (- n 1)))))
-	    (down (base) (call uploop base 100))
+	    (down (base) 
+		  ;; We only respond if it's a sub-par connection:
+		  (if (< (linkqual-from base) 100)
+		      (call uploop base 100)))
 	    (uploop (base n) (if (not (= 0 n))
 				 (begin
 				   (ucast base back (my-id))
@@ -282,24 +285,32 @@
 		  ;(printf "(Back ~a) " num)
 		  (if first_heard
 		      (begin (set! first_heard #f)
-			     (printf " calltry ")
+			     ;(printf " calltry ")
+			     (printf "(picked-child-w-qual: ~a)\n" (linkqual-to num))
 			     (call try_ucast num 10))))
 	    ;; Then send it a message.
 	    (try_ucast (dest count)
-		       (printf "Trying...~a ~a\n" dest count)
+		       ;(printf "Trying...~a ~a\n" dest count)
 		       (if (= 0 count)
 			   (printf "FAIL")
-			   (if (not (ucast-wack dest (tok yay 0) count))			      
+			   (if (not (ucast-wack dest (tok yay 0) count))
 			       (call try_ucast dest (- count 1))
-			       (printf "Yeah that worked\n")
+			       (if (= count 10)
+				   ;; Not allowable to succeed on first try, keep going:
+				   (call try_ucast dest count)
+					;(printf "Yeah that worked\n")
+				   )
 			       )))
 	    (yay (n) (printf "(SUCCEED ~a)" n)))
 	 '[simalpha-placement-type 'gridlike]
 	 '[simalpha-channel-model 'linear-disc]
 	 '[simalpha-inner-radius 0])
-	,(lambda (n)
-	   (and (integer? (cadr n))
-		(< (cadr n) 10)))]
+	,(lambda (ls)
+	   ;; Did we get something below 10:
+	   (not (null?
+		 (filter (lambda (n) (not (= n 10)))
+		   (map cadr
+		     (filter (lambda (x) (eq? (car x) 'SUCCEED)) ls))))))]
 
      ["Test fast-call"
       , (tm-to-list
