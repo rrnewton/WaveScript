@@ -630,13 +630,35 @@
 
 		  [(ucast ,[dest] ,[rator] ,[rand*] ...)
 		   (let ([tmp (unique-name 'tmpmsgob)])
-		     `(let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])			
+		     `(let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])
 			;; Set the "to" field.
 			(set-msg-object-to! ,tmp ,dest)
 			(set-simobject-outgoing-msg-buf! this
-  		           (cons (make-simevt #f tmp) ;; No scheduled time, ASAP					      
+  		           (cons (make-simevt #f ,tmp) ;; No scheduled time, ASAP 
 				 (simobject-outgoing-msg-buf this)))))]
-		  
+
+		  ;; This could potentially be desugared by an earlier pass and made 
+		  ;; split-phase by the CPS algorithm.  But currently I'mjust 
+		  ;; implementing it directly. [2006.01.25]
+		  [(ucast-wack ,[dest] ,[rator] ,[rand*] ...)
+		   (let ([tmp (unique-name 'tmpmsgob)]
+			 [dst (unique-name 'dest)]
+			 [conn (unique-name 'conn)])
+		     ;; Check the link quality, does this message go through?
+		     `(let* ([,dst ,dest]
+			     [,conn ,(process-expr `(linkqual-to ,dst))]) ;(get-connectivity ,(process-expr '(my-id)) ,dst)])
+			(printf "Ucast Wack\n")
+			(if (>= (random 100) ,conn)
+			    (let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])
+			      (printf "Got ACK! ~a\n" ,tmp)
+			      ;; Set the "to" field.
+			      (set-msg-object-to! ,tmp ,dst)
+			      (set-simobject-outgoing-msg-buf! this
+			         (cons (make-simevt #f ,tmp) ;; No scheduled time, ASAP 
+				       (simobject-outgoing-msg-buf this)))
+			      #t)
+			    #f)))]
+
 ;; These are desugared before now.
 ;		  [(activate ,rator ,rand* ...)
 ;		   (build-activate-call `(quote ,rator) rand*)]
@@ -754,7 +776,7 @@
 		  [(my-id) '(node-id (simobject-node this))]
 		  [(my-clock)  'current-vtime]
 
-		  ;; These are temporarily symmetric.
+		  ;; FIXME: These are temporarily symmetric.
 		  [(,linkqual ,[idexp])
 		   (guard (memq linkqual '(linkqual-to linkqual-from)))
 		   `(let* ([idnum ,idexp]

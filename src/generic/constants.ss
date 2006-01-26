@@ -179,7 +179,15 @@
 ;;   'dynamic -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
 ;;               NOTE: CURRENTLY DOESN'T WORK WITH NON-AGGREGATED GRETURNS!
 ;;   'etx     -- like 'dynamic, but uses an ETX metric for selecting trees, rather than hopcount.  <br>
-(define-regiment-parameter desugar-gradients-mode 'etx) ; TOGGLE FOR UNIT TESTING.
+(define-regiment-parameter desugar-gradients-mode 'static) ; TOGGLE FOR UNIT TESTING.
+
+;; Currently [2006.01.25] I'm implementing a very simple retry
+;; mechanism for up-sending data in ETX based gradients.  If an upward
+;; bound message doesn't receive an ACK it will be resent after a
+;; constant amount of time.H
+(define-regiment-parameter etx-retry-delay 50)
+;; And this is the maximum number of times a retry will be made.
+(define-regiment-parameter etx-max-retries 3)
 
 ;;; Used primarily by pass cps-tokmac
 ;====================================================
@@ -342,6 +350,9 @@
 (define-regiment-parameter simalpha-failure-model 'none)
 
 ;; This is a read-only parameter set by the system.  
+;; It is used by the simulator to determine link quality.  <br>
+;; The function currently takes two node positions and returns a transmission probability. <br>
+;;   NodePos, NodePos -> MsgProb1-100
 (define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))
 
 
@@ -394,7 +405,7 @@
 (reg:define-struct (rgb red green blue))
 
 ;; My light background theme:
-(begin
+#;(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 200 200 200))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
@@ -417,7 +428,7 @@
   )
 
 ;; My dark background theme:
-#;(begin
+(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 150 150 150))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET

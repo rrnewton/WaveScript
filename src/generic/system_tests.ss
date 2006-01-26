@@ -245,17 +245,61 @@
 		      ls)
 	      (not (memq BASE_ID (map car ls))))))]
 
-#;     ["Bcast to neighbors, ucast back to base." 
+     ["Bcast to neighbors, Ucast back to base." 
       , (tm-to-list
 	 '(tokens
-	    (SOC-start () (bcast tok1 (my-id)))
-	    (tok1 (id) (ucast id tok2 (my-id)))
-	    (tok2 (my-id) (printf "(Received-ucast: ~a ~a)\n" (id) (my-id))))
-	 [simalpha-placement-type 'connected]
+	    (SOC-start () (bcast down (my-id)))
+	    (down (num) (ucast num up (my-id)))
+	    (up   (num) (printf "(Received-ucast: ~a ~a)\n" num (my-id))))
+	 '[simalpha-placement-type 'connected]
 	 )
-	,(lambda (ls)
+	,(lambda (ls)	  
 	   ; Just require a list of IDs:
-	   (andmap integer? ls))]
+	   (andmap (lambda (x) 
+		     (match x
+		       [(Received-ucast: ,id ,base)
+			(and (integer? id) (not (= id BASE_ID)) (= base BASE_ID))]))
+		   ls))]
+#;
+     ;; Need to make this one have a higher probability of success.
+     ["Now test Ucast-wACK"
+      'retry
+      , (tm-to-list
+	 '(tokens
+	    ;; First discover a neighbor.
+	    ;; Repeat many times to overcome bad connections.
+	    (SOC-start () (call downloop 100))
+	    (downloop (n) (if (not (= 0 n))
+			      (begin (bcast down (my-id))
+				     (call downloop (- n 1)))))
+	    (down (base) (call uploop base 100))
+	    (uploop (base n) (if (not (= 0 n))
+				 (begin
+				   (ucast base back (my-id))
+				   (call uploop (- n 1)))))
+	    (back (num) 
+		  (stored [first_heard #t])
+		  ;(printf "(Back ~a) " num)
+		  (if first_heard
+		      (begin (set! first_heard #f)
+			     (printf " calltry ")
+			     (call try_ucast num 10))))
+	    ;; Then send it a message.
+	    (try_ucast (dest count)
+		       (printf "Trying...~a ~a\n" dest count)
+		       (if (= 0 count)
+			   (printf "FAIL")
+			   (if (not (ucast-wack dest (tok yay 0) count))			      
+			       (call try_ucast dest (- count 1))
+			       (printf "Yeah that worked\n")
+			       )))
+	    (yay (n) (printf "(SUCCEED ~a)" n)))
+	 '[simalpha-placement-type 'gridlike]
+	 '[simalpha-channel-model 'linear-disc]
+	 '[simalpha-inner-radius 0])
+	,(lambda (n)
+	   (and (integer? (cadr n))
+		(< (cadr n) 10)))]
 
      ["Test fast-call"
       , (tm-to-list

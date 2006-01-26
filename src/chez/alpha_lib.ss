@@ -2,6 +2,10 @@
 ;; run time functions for simulator code:
 (module alpha_lib
 	(
+
+	 get-connectivity get-node get-simobject ;; Utilities for coercion:
+	 attempt-message-transmission
+
 	 current-simobject
 
 	 retrieve-token
