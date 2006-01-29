@@ -92,10 +92,9 @@
 (define (desugar-gradients prog)
 ;  (inspect `(HRM ,prog ,(desugar-gradient-mode)))
   (case (desugar-gradients-mode)
-    [(static)   (desugar-gradients_verbose prog)]
-    [(dynamic)  (desugar-gradients_simple prog)]
+    [(inlined)   (desugar-gradients_verbose prog)]
+    [(linked)  (desugar-gradients_simple prog)]
     [(etx)      (desugar-gradients_ETX prog)]))
-
 
 ; ----------------------------------------------------------------------
 ;;; Tests.

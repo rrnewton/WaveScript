@@ -43,8 +43,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -175,11 +175,11 @@
 
 ;; This controls which gradient implementation is used. <br>
 ;; Valid options are                                    <br>
-;;   'static  -- original method, build return handlers for every greturn statement.               <br>
-;;   'dynamic -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
+;;   'inlined  -- original method, build return handlers for every greturn statement.               <br>
+;;   'linked   -- only a single return handler that takes extra arguments, reduces code bloat.      <br>
 ;;               NOTE: CURRENTLY DOESN'T WORK WITH NON-AGGREGATED GRETURNS!
 ;;   'etx     -- like 'dynamic, but uses an ETX metric for selecting trees, rather than hopcount.  <br>
-(define-regiment-parameter desugar-gradients-mode 'static) ; TOGGLE FOR UNIT TESTING.
+(define-regiment-parameter desugar-gradients-mode 'etx) ; TOGGLE FOR UNIT TESTING.
 
 ;; Currently [2006.01.25] I'm implementing a very simple retry
 ;; mechanism for up-sending data in ETX based gradients.  If an upward
