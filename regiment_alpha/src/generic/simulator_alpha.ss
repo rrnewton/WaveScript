@@ -647,8 +647,8 @@
 		     ;; Check the link quality, does this message go through?
 		     `(let* ([,dst ,dest]
 			     [,conn ,(process-expr `(linkqual-to ,dst))]) ;(get-connectivity ,(process-expr '(my-id)) ,dst)])
-			;(printf "Ucast Wack\n")
-			(if (>= (random 100) ,conn)
+			;(printf "Ucast Wack, conn: ~a\n" ,conn)
+			(if (< (random 100) ,conn)
 			    (let ([,tmp (bare-msg-object ,rator (list ,@rand*) current-vtime)])
 			      ;(printf "Got ACK! ~a\n" ,tmp)
 			      ;; Set the "to" field.

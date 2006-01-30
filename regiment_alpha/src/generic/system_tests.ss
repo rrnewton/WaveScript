@@ -1185,13 +1185,17 @@
 		  (tok1 () (printf "_ ")
 			(if (= (ghopcount) 0) (grelay))
 			(greturn (my-id) (to catcher)))
-		  ))
+		  )
+		'[simalpha-channel-model 'lossless]
+		'[simalpha-connectivity-function 'connected]
+		'[simalpha-failure-model 'none])
+	;; Should get a list of underscores and nodeids. 
       ,(lambda (lst)
 	 (let ((lst (filter number? lst)))
 	   (and
-	    (eq? BASE_ID (car lst))
-	    (not (memq BASE_ID (cdr lst)))
-	    (> (length lst) 1)
+	    (eq? BASE_ID (car lst))         ;; First should come BaseID:
+	    (not (memq BASE_ID (cdr lst)))  ;; And that should be the only BaseID
+	    (> (length lst) 1)              ;; Should have some neighbors, its connected.
 	    (eq? (length lst) (length (list->set lst))))))]
 
      ;; [2005.10.06] After doing my refactoring to make multiple return-handler tokens
