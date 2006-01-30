@@ -94,7 +94,8 @@
   (case (desugar-gradients-mode)
     [(inlined)   (desugar-gradients_verbose prog)]
     [(linked)  (desugar-gradients_simple prog)]
-    [(etx)      (desugar-gradients_ETX prog)]))
+    [(etx)      (desugar-gradients_ETX prog)]
+    [else (error 'desugar-gradients "unknown value for param 'desugar-gradients-mode: ~a" (desugar-gradients-mode))]))
 
 ; ----------------------------------------------------------------------
 ;;; Tests.

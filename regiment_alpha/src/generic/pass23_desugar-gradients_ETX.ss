@@ -188,7 +188,7 @@
 			   `(
 
 			     (call (tok GRAD:return-handler ,aggr_ID)
-				  ',NULL_ID   ; destid - UNUSED b/c this is a local call
+				   ;',NULL_ID   ; destid - UNUSED b/c this is a local call
 				  ',RHLOCAL   ; flag
 				  ,expr       ; val
 				  (tok ,to 0)   ; totok
