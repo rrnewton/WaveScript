@@ -198,7 +198,7 @@
 			exp ...))]))
 
 ;; This makes it use a lame sort of text display instead of the graphics display:
-(define-regiment-parameter simulator-output-text #f (lambda (x) x))
+;(define-regiment-parameter simulator-output-text #f (lambda (x) x))
 ;; This is a SEPERATE LOGGER for debug info as opposed to simulation events.
 ;; [2005.10.25]  This doesn't appear to be used
 ; (define-regiment-parameter sim-debug-logger 

@@ -82,7 +82,6 @@
 ;(if (file-exists? Regiment-Log-File)
 ;    (delete-file Regiment-Log-File))
 
-
 ; THESE ARE ONLY USED BY SIMULATOR_NOUGHT PRESENTLY. [2005.03.18]
 ; This one prints nothing at all:
 ;(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (begin expr ...)]))
@@ -127,14 +126,17 @@
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other
 (define-regiment-parameter reg:comment-code #f)
+; ----------------------------------------
 
 
-; =========================================
 
 ;; This parameter accumulates all the unit tests from the system as they are defined.
-(define-regiment-parameter reg:all-unit-tests '())
+(define reg:all-unit-tests (make-parameter '()))
 
-;=======================================================================
+
+;=======================================================================;;
+;;                         Per-module constants                         ;;
+;=======================================================================;;
 
 ;;; Used primarily by pass12_add-heartbeats:
 ;====================================================
@@ -322,6 +324,7 @@
 ;; large random ones.
 (define-regiment-parameter simalpha-consec-ids #t)
 
+;; This controls where the simulator writes its output.
 ;; If this is false, default is stdout.  Otherwise it must be set to an output port.
 (define-regiment-parameter simalpha-output-port #f) 
 
@@ -366,7 +369,6 @@
 
 ;; When this parameter is turned on, the simulator returns a stream of
 ;; soc-return values rather than waiting for the sim to end
-
 (define-regiment-parameter simalpha-stream-result #f)
 
 ;; If #t the simulator will open up a GUI as it simulates (if it can).
@@ -533,3 +535,41 @@
     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
 
 ; ======================================================================
+
+;; This prints the valus of the most important parameters.  It is for
+;; recording the state of the compiler/simulator.  It's primarily for
+;; good book-keeping while benchmarking.  It only records parameters
+;; relevent to the resulting data.
+(define (regiment-print-params prefix . port)
+  (let ([port (if (null? port) (current-output-port) (car port))]
+	[pad-width (if (top-level-bound? 'pad-width)
+		       (top-level-value 'pad-width)
+		       (lambda (_ x) (format "~a" x)))])
+    (for-each 
+	(lambda (param-name)	 
+	  (fprintf port "~a ~a = ~s\n" prefix 
+		   (pad-width 30 param-name)
+		   ((top-level-value param-name))))
+      (filter (lambda (p) 
+		(not (memq p 
+			   ;; This is an omit list:
+			   '(repl-stream-depth
+
+			     simalpha-label-sensorvals
+			     simalpha-label-msgcounts
+			     simalpha-write-sims-to-disk
+			     simalpha-graphics-on
+			     simalpha-stream-result
+
+			     simalpha-realtime-mode
+			     simalpha-output-port
+			     default-unit-tester-retries
+			     reg:comment-code
+			     simulation-logger-count
+			     simulation-logger-level
+			     simulation-logger
+			     regiment-emit-debug
+			     regiment-verbose
+			     ))))
+	(regiment-parameters))
+      )))

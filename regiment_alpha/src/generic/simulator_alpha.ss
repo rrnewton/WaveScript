@@ -803,8 +803,7 @@
 		;; [2005.10.02] Inserting magical soc-returns so that
 		;; we can (kind-of) simulate code where they haven't
 		;; been desugared.
-		[(soc-return ,[x]) 
-		 `(simulator-soc-return ,x)]
+		[(soc-return ,[x]) `(simulator-soc-return ,x)]
 
 		[(token->subid ,[e]) `(simtok-subid ,e)]
 
@@ -1025,11 +1024,13 @@
 			 ))
        
        ;; Here we hack in some special handlers that are assumed by TML:
+       ;; These handlers are processed by process-tokbinds below, they
+       ;; are thus part of the input grammar rather than the output grammar.
        (set! nodetoks
 	     ;; An extra handler for doing SOC-return's...
 	     `([SOC-return-handler subtokid (socrethandlerval) (stored)
 		       (if (= ',BASE_ID (my-id))
-			   (simulator-soc-return socrethandlerval)				  
+			   (soc-return socrethandlerval)
 			   (error 'SOC-return-handler
 				  "ran on non-base node! id: ~s"
 				  (my-id)))]
@@ -1309,6 +1310,10 @@
 
 ;;; Printing simulator state.
 
+(define (simalpha-total-messages . sim)
+  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
+    (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))))
+
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
 (define (print-stats . sim)
   (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
@@ -1322,8 +1327,9 @@
 			   measured)]
 	     [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
 
-	     [total-messages
-	      (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))]
+	     [total-messages (simalpha-total-messages sim)
+	      ;(apply + (map simobject-local-sent-messages (simworld-all-objs sim)))
+	      ]
 	     )
 	
 	(printf "\nStatistics for most recent run of SimAlpha.\n")

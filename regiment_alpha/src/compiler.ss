@@ -9,6 +9,9 @@
 
 (define-regiment-parameter regiment-version "0.87.2")
 
+(define-regiment-parameter svn-revision
+  (and (zero? (system "which svn > /dev/null"))
+       (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))))
 
 ;; This is the global variable that determines which transformations
 ;; (passes) the compiler applies and in what order.
@@ -40,7 +43,6 @@
     desugar-macros		
 
 ;    cleanup-token-machine   ;; TEMP: FIXME
-
 
     find-emittoks
     desugar-gradients

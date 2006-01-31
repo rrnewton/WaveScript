@@ -504,6 +504,11 @@
       (fprintf p str)
       (close-output-port p))))
 
+;; This uses read to get an sexp from a string:
+;(define string->sexp
+;  (lambda (s)    
+;    (read (open-input-string s))))
+
 ;(define partition-string
 
 (define extract-file-extension

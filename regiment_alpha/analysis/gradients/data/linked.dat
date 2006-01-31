@@ -1,0 +1,44 @@
+# This was data generated on Mon Jan 30 18:59:38 EST 2006.
+# The graph shows average connectivity (as inner radius
+# is reduced from 15 to 0) vs. number of received messages.
+# Trials per datapoint 5, nodes 30.
+
+# Current Param Settings:
+#   svn-revision                   = 1092
+#   regiment-version               = "0.87.2"
+#   simalpha-sense-function        = #<procedure sense-spatial-sine-wave>
+#   simalpha-zeropad-args          = #t
+#   simalpha-dbg-on                = #t
+#   simalpha-failure-model         = none
+#   simalpha-channel-model         = lossless
+#   simalpha-max-gridlike-perturbation = 1/2
+#   simalpha-placement-type        = gridlike
+#   simalpha-consec-ids            = #t
+#   simalpha-inner-radius          = 10
+#   simalpha-outer-radius          = 15
+#   simalpha-world-ybound          = 60
+#   simalpha-world-xbound          = 60
+#   sim-startup-stagger            = 0
+#   sim-timeout                    = 2000
+#   sim-num-nodes                  = 30
+#   etx-max-retries                = 5
+#   etx-retry-delay                = 100
+#   desugar-gradients-mode         = linked
+
+# Columns: AverageConnectivity,  AverageNodesHeardFrom
+25.995023492819804 1.3733333333333335 3.906666666666667 
+27.873168216438522 2.2533333333333334 9.940000000000001 
+29.779042509613607 1.7333333333333336 8.573333333333334 
+31.688969023818338 2.4 14.24666666666667 
+34.26501295816364 2.6599999999999997 10.059999999999999 
+38.707081473820324 2.58 15.139999999999997 
+42.966391157069 4.5600000000000005 20.32 
+48.694594768413026 5.373333333333333 26.94666666666667 
+52.011671171171166 7.24 28.113333333333333 
+58.43562838299681 8.7 29.24666666666667 
+64.1673477282951 11.793333333333333 30.106666666666666 
+73.80751504605026 14.013333333333335 30.119999999999997 
+80.10431927889462 19.78 30.666666666666664 
+86.28345178089482 21.77333333333333 30.6 
+94.68966642177168 24.68 30.706666666666667 
+100.0 26.1 30.753333333333337 
