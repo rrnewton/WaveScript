@@ -1,0 +1,44 @@
+# This was data generated on Mon Jan 30 18:59:38 EST 2006.
+# The graph shows average connectivity (as inner radius
+# is reduced from 15 to 0) vs. number of received messages.
+# Trials per datapoint 5, nodes 30.
+
+# Current Param Settings:
+#   svn-revision                   = 1092
+#   regiment-version               = "0.87.2"
+#   simalpha-sense-function        = #<procedure sense-spatial-sine-wave>
+#   simalpha-zeropad-args          = #t
+#   simalpha-dbg-on                = #t
+#   simalpha-failure-model         = none
+#   simalpha-channel-model         = lossless
+#   simalpha-max-gridlike-perturbation = 1/2
+#   simalpha-placement-type        = gridlike
+#   simalpha-consec-ids            = #t
+#   simalpha-inner-radius          = 10
+#   simalpha-outer-radius          = 15
+#   simalpha-world-ybound          = 60
+#   simalpha-world-xbound          = 60
+#   sim-startup-stagger            = 0
+#   sim-timeout                    = 2000
+#   sim-num-nodes                  = 30
+#   etx-max-retries                = 10
+#   etx-retry-delay                = 50
+#   desugar-gradients-mode         = etx
+
+# Columns: AverageConnectivity,  AverageNodesHeardFrom
+26.255087503985656 7.359999999999999 9.653333333333332 
+27.40702103029134 5.993333333333333 7.126666666666667 
+29.753883335390185 8.546666666666667 12.406666666666666 
+31.75935036406269 12.066666666666666 17.213333333333335 
+35.52692162341907 8.926666666666666 13.073333333333334 
+37.523326832791625 9.426666666666666 16.246666666666666 
+43.98202296792674 18.046666666666667 24.673333333333336 
+46.32899778726094 21.679999999999996 29.573333333333334 
+51.98202622607813 20.913333333333334 28.740000000000002 
+58.11414439946019 23.46666666666667 31.666666666666664 
+66.58691232077148 23.426666666666666 31.906666666666666 
+72.68303962703963 24.986666666666668 31.886666666666667 
+80.68322482791443 25.52 31.98 
+88.12943343054664 25.580000000000002 31.653333333333336 
+93.75185814185814 25.866666666666664 31.133333333333333 
+100.0 26.026666666666664 30.733333333333338 

@@ -322,7 +322,10 @@
 	 ;; If there are any greturns in the program, we link in the aggregation-code.
 	 (let ([linkedcode
 		(if (ormap contains-greturn? toks)
-		    (match (mvlet (((prog _) (read-regiment-source-file "linked_lib/gradient_lib.tm"))) prog)
+		    (match (mvlet (((prog _) 
+				    (read-regiment-source-file 
+				     (++ REGIMENTD "/src/linked_lib/gradient_lib.tm"))))
+			     prog)
 		      [(tokens ,gradtoks ...) gradtoks])
 		    '())])
 

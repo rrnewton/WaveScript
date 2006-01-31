@@ -8,6 +8,7 @@
 
 ;; "run" had better take a stream.
 
+;; The repl stops after reading this many values off the stream:
 (define-regiment-parameter repl-stream-depth
    20 (lambda (n)
 	(if (integer? n) n
