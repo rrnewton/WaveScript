@@ -766,12 +766,17 @@
 
 		  [(,senseprim)
 		   (guard (memq senseprim '(async-sense sync-sense)))
-		   ;; Feed id, x, y, t to sensor function:
-		   `((simalpha-sense-function) 
-		     ,(process-expr '(my-id))
-		     (car ,(process-expr '(loc)))
-		     (cadr ,(process-expr '(loc)))
-		     ,(process-expr '(my-clock)))]
+		   (process-expr `(,senseprim 'default))]
+		  [(,senseprim (quote ,type))
+		   (guard (memq senseprim '(async-sense sync-sense)))
+		   (unless (symbol? type) (error 'senseprim "invalid sensor type specifier: ~a" type))
+		   ;; Feed time, then type, id, x, y to sensor function:
+		   `(((simalpha-sense-function) ,(process-expr '(my-clock)))
+		     ',type                        ;; sensor-type
+		     ,(process-expr '(my-id))      ;; node-id
+		     (car ,(process-expr '(loc)))  ;; x-coord
+		     (cadr ,(process-expr '(loc))) ;; y-coord
+		     )]
 
 		  [(my-id) '(node-id (simobject-node this))]
 		  [(my-clock)  'current-vtime]
