@@ -33,6 +33,17 @@
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
 
+;; [2006.02.01] <br>
+;; This the name of a top-level parameter, and dangles a function off
+;; the parameter which is then called on the new parameter value when
+;; it changes.
+(define (add-parameter-hook pname hook)
+  (let ([origfun (top-level-value pname)])
+    (set-top-level-value! pname 
+			  (case-lambda
+			    [() (origfun)]
+			    [(v) (origfun v) (hook v)]))))
+
 ;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
 ;=======================================================================;;
@@ -258,18 +269,25 @@
 
 ;; These are the height and width of the drawing surface itself.  (Not
 ;; the whole window as the name would imply.
-(define window-width 700)
-(define window-height 700)
+;;; TODO FIXME: promote these to parameters and add hooks for processor screen radius.
+(define window-width 900)
+(define window-height 900)
 
-;; This determines the radius of a node when drawn on the screen.
+;; This determines the size of a node when drawn on the screen.
 ;; (It has to be inexact for SWL's sake; otherwise we end up with
 ;; undesirable rational numbers.) <br><br>
-;;   This is a "read only" parameter.. e.g. just a thunk.
-(define (processor-screen-radius)
-  (min (exact->inexact (/ window-width 45.))
-       ;; If there's not enough room, we make them smaller.
-       (sqrt (/ (exact->inexact (* window-height window-width))
-		(* 8 (sim-num-nodes))))))
+(define-regiment-parameter processor-screen-radius 16)
+
+;; This sets the value of the previous processor-screen-radius
+;; parameter based on the current number of processors and window size.
+(define (set-procesor-screen-radius!)
+  (processor-screen-radius
+   (min ;(exact->inexact (/ window-width 45.)) ;; Max relative size.
+	;16 ;; Max absolute size.
+	;; If there's not enough room, we make them smaller.
+	(sqrt (/ (exact->inexact (* window-height window-width)) ;; Compute pixel area.M
+		 (* 12 (sim-num-nodes))))) ;; Compute sqrt(1/8 * area-per-node)
+   ))
   
 ;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================
@@ -277,6 +295,8 @@
 ;; used by the tossim interface and simulator alpha.
 
 (define-regiment-parameter sim-num-nodes 30)
+(add-parameter-hook 'sim-num-nodes
+		    (lambda (_) (set-procesor-screen-radius!)))
 
 ;; Controls the time-out for both simulator-alpha and tossim. <br>
 ;; Valid values:                                              <br>
