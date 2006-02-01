@@ -27,12 +27,13 @@
 	;; Current set of fire objects.
 	[fires '()]
 
-	;; Constants:
+	;; Constants:  TODO: FIX THESE UP, MAKE THEM MORE REAL:
 	;; Need to make this much more sophisticated.
-	[lightning-prob .0001] ;; Probability per millisecond of lightning.
-	[fire-spread-rate .1] ;; Again, per millisecond.
-	[fire-width 2000] ;; The fire is a ring 500m thick.  It "burns out" in the center.
-	[fire-age 30000] ;; Total life in milleseconds.
+	[lightning-prob .00005] ;; Probability per millisecond of lightning.
+	[fire-spread-rate .2] ;; Again, per millisecond.
+	[fire-width 3000] ;; The fire is a ring 500m thick.  It "burns out" in the center.
+	[fire-age 60000] ;; Total life in milleseconds.
+	[fire-temp 300]  ;; Degrees in celcius.
 	)
     (reg:define-struct (fire x y t rad))    
     (lambda (t)
@@ -66,10 +67,12 @@
 		    [strike-x (random world-xbound)]
 		    [strike-y (random world-ybound)])
 		(printf "  LIGHTNING!! ~a\n" strike-time)
-		(set! fires (cons (make-fire strike-x strike-y strike-time 0) ;; Initial radius zero
-				  fires))
-		
-		))
+		(let ([newfire (make-fire strike-x strike-y strike-time 0)])  ;; Initial radius zero
+		  
+		  (draw-mark (list strike-x strike-y))
+		  (set! fires (cons newfire fires))
+		  
+		  )))
 
 	    (set! last-time t)
 	    ))
@@ -84,7 +87,7 @@
 			 (let ((dist (sqrt (+ (^ (- x (fire-x f)) 2)
 					      (^ (- y (fire-y f)) 2)))))
 			   (printf "Dist : ~a \n" dist)
-			   (sim-setlabel dist)
+			   ;(sim-setlabel (format "~a" dist))
 			   ;; Are we within the circle:
 			   (when (< dist (fire-rad f))
 			     ;; Are we within the "eye", however.
@@ -103,8 +106,11 @@
   ;(simalpha-sense-timestepper firelightning-timestepper)
 
   ;; Set the world size, 10KM square:
-  (set! world-xbound 10000)
-  (set! world-ybound 10000)
+  ;; Set both of these for now, lame:
+  (set! world-xbound 5000)
+  (set! world-ybound 5000)
+  (simalpha-world-xbound 5000)
+  (simalpha-world-ybound 5000)
 
   ;; Inner/Outer Radius for radios is 300/500 meters:
   (simalpha-inner-radius 300)
