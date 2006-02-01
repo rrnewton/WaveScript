@@ -7,7 +7,7 @@
 set xlabel 'Average link quality'
 set ylabel 'Average number of responses received per epoch'
 
-set label 'Foo Bar Baz' at graph 0.05,0.5 left
+#set label 'Foo Bar Baz' at graph 0.05,0.5 left
 
 plot \
      "../data/inlined.dat" using 1:2 with linespoints lw 2 , \

@@ -389,6 +389,7 @@
 
     (lambda (pr nodeid)
       (mvlet ([(x y) (coord:sim->screen pr)])
+	;(set-procesor-screen-radius!) ;; This needn't happen so often. TODO FIXME
 	(let* ([radius (processor-screen-radius)]
 	       [boundx1 (- x radius)]
 	       [boundy1 (- y radius)]
@@ -561,8 +562,8 @@
 		  (set! currently-flashing (real-time))
 		  (highlight-edge self Default-Mouse-Highlight-Color 300)
 		  ;(printf "Edge ~a->~a Connectivity: ~a\n" pos1 pos2 connectivity)
-		  (flash-text (format "Edge ~a->~a Connectivity: ~a" 
-				      pos1 pos2 connectivity) 1500))
+		  (flash-text (format "Edge ~a->~a len: ~a Connectivity: ~a" 
+				      pos1 pos2 (round-to 1 (posdist pos1 pos2)) connectivity) 1500))
 		]
        ))
 
