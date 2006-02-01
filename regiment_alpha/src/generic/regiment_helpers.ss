@@ -343,7 +343,7 @@
      (this () Object)
      ;; TODO: add different kinds of sensors.
      ;; This desugars into (subcall (tok SenseTok 0)):
-     (sync-sense () Number)
+     (sync-sense Symbol Number)
      (soc-return (Number) Void)
      (soc-return-finished (Number) Void)
      

@@ -81,21 +81,7 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
-
-;(load-shared-object (format "chez/usleep/~a/usleep.o" (machine-type)))
-;(define sleep (foreign-procedure "rrn_usleep" (integer-32) void))
-
-
 (include "chez/match.ss")
-
-;; [2004.06.04] MOVED THIS DEFINIITON to helpers.ss
-;; Uncomment this to remove debugging code and possibly make the
-;; system run faster.
-;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (void)]))
-;;(define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (begin expr ...)]))
-
-;(define random #%random)
-
 (include "chez/constants.ss")
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
@@ -109,11 +95,6 @@
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
 
-;; This is a trick to deal with mutual recursion in the modules:
-;; FIXME: Doesn't work right now:
-;(define test-tsort (let () (import topsort-module) (test-this)))  
-
-
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
 ;; This tries to dynamically load the shared object the first time the function is called:
@@ -124,6 +105,8 @@
     ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
      (parameterize ((current-directory (string-append REGIMENTD "/src/")))
        (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
+	   ;; This even resorts to calling make to build the sleep object!!
+	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.
 	   (system "(cd chez/usleep; make)"))
        (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
 					;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
@@ -145,8 +128,8 @@
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
-    (begin (define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ...)]))
-	   (define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ...)]))
+    (begin (define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'stub)]))
+	   (define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'stub)]))
 	   ))
 
 (include "chez/alpha_lib.ss") 
@@ -154,6 +137,7 @@
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 (include "chez/simulator_alpha.ss") (import simulator_alpha)
+(include "generic/firelightning_sim.ss")
 
 (include "generic/tossim.ss")
 (include "generic/source_loader.ss") ;; For loading regiment sources.

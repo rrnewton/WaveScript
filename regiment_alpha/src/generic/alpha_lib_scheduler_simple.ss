@@ -370,7 +370,11 @@
 	;; HOWEVER, the clock can't move backwards:
 	(let ((last-vtime vtime))
 	  (set! vtime (max vtime (simevt-vtime evt)))
-	  ;; Now if the flag is set we wait for real-time to catch up to this virtual time.
+
+	  ;; Now we update the simulated world that provides us with sensor values:
+	  ((simalpha-sense-function) vtime)
+
+	  ;; Now if the realtime flag is set we wait for realtime to catch up to this virtual time.
 	  (if (simalpha-realtime-mode)
 	      (let ((last-rtime realtime))
 		(set! realtime (real-time))
