@@ -127,10 +127,11 @@ clean:
 	(cd chez/usleep; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
-	$(RM) *.zo *.so _SIM_*
+	$(RM) *.zo *.so _SIM_* *~
 	$(RM) build/*.heap
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 	$(RM) __temp.log _genned_node_code.ss
+	find -name _genned_node_code.ss | xargs $(RM)
 
 #	find -name "*.zo" | xargs rm # This is excessive...
 #	(cd compiled; $(MAKE) clean)
@@ -167,7 +168,7 @@ wc:        wordcount
 count:     wordcount
 linecount: wordcount
 wordcount:
-	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v "^_" | xargs wc
+	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs demos/token_machs/*.tm demos/regiment/*.rs| grep -v "^_" | xargs wc
 
 wcnb:
 	sh -c "ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"

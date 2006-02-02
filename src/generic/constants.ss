@@ -282,7 +282,7 @@
 ;; parameter based on the current number of processors and window size.
 (define (set-procesor-screen-radius!)
   (processor-screen-radius
-   (min ;(exact->inexact (/ window-width 45.)) ;; Max relative size.
+   (min (exact->inexact (/ window-width 45.)) ;; Max relative size.
 	;16 ;; Max absolute size.
 	;; If there's not enough room, we make them smaller.
 	(sqrt (/ (exact->inexact (* window-height window-width)) ;; Compute pixel area.M
