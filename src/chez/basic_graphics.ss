@@ -189,7 +189,15 @@
 		       view-update-hooks))]
      ))
   
-  ;; [internal] This class provides a set of radio buttons for a Regiment parameter.
+    ;; [internal] This class provides a set of radio buttons for a Regiment parameter. <br>
+    ;; 
+    ;; .param name - The symbolic name of the parameter
+    ;; .param label - The user-visible label for the widget.
+    ;; .param param - The parameter closure itself
+    ;; .param options - An association list binding option title
+    ;; (string) to a thunk for creating a new object to bind to the
+    ;; parameter when the corresponding button is pressed.
+    ;; .param parent - As usual with SWL, the parent widget.
     (define-class (<radio-param-selector> name label param options parent) (<frame> parent)
       (ivars) 
       (inherited) (inheritable) (private) (protected)
@@ -201,7 +209,7 @@
 		    (map (lambda (option)
 			   (list (cadr option)
 				 (create <radiobutton> self with (title: (format "~a" (car option)))
-					 (action: (lambda _ (param (cadr option))))
+					 (action: (lambda _ (param ((cadr option)))))
 					 (background-color: (rec->rgb Default-Window-Color)))))
 		      options)))
 	       
@@ -410,7 +418,7 @@
 		  f)]
 
 	       [sensor-widget
-		(create <radio-param-selector> 'simalpha-sense-function "Sensor Readings"
+		(create <radio-param-selector> 'simalpha-sense-function-constructor "Sensor Readings"
 			simalpha-sense-function 
 			`(["Sine Wave" ,sense-sine-wave]
 			  ["Noise-Rising" ,sense-noisy-rising]

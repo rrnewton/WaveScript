@@ -7,9 +7,9 @@
   [simalpha-channel-model 'lossless]
   [simalpha-placement-type 'gridlike]
   [simalpha-failure-model  'none]
-  ;[simalpha-sense-function sense-noisy-rising]
-  ;[simalpha-sense-function sense-random-1to100]
-  [simalpha-sense-function sense-dist-from-origin]
+  ;[simalpha-sense-function-constructor sense-noisy-rising]
+  ;[simalpha-sense-function-constructor sense-random-1to100]
+  [simalpha-sense-function-constructor sense-dist-from-origin]
   [sim-timeout 2000])
 
 

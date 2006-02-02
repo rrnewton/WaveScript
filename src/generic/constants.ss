@@ -517,7 +517,10 @@
 ;;; The various sensor-reading stubs.  Used by SimAlpha. <br>
 ;;; These are all simple functions that compute fake sensor values. <br>
 ;;;
-;;; Sensor functions are called regularly with the current time.  They
+;;; Sensor-function constructors are thunks that allocate state for a
+;;; simulated sensed-world and return a sensor function.
+;;;
+;;; Sensor-functions are called regularly with the current time.  They
 ;;; are also called when a sensor value needs to be read, in which
 ;;; case the node-id, x/y coords, and sensor type are all provided.
 ;;;   <br>
@@ -525,45 +528,72 @@
 ;;; to have seperate sense objects for each node, each maintaining its
 ;;; own state according to its own clock.  That gets a little tricky,
 ;;; because presumably you're measuring a phenomena defined globally.
+;;; 
+;;; All told, sensor-function constructors have a type like the following: 
+;;; <br>
+;;;   ()   --{Newsim}--> 
+;;;   Time --{UpdateState}--> 
+;;;   (type, id, x, y)    --> 
+;;;    SensorReading
+;;; <br> 
+;;; 
+;;; Alternatively, these could be implemented as an object with a
+;;; constructor and two methods AdvanceClock, and and ReadSensor.  But
+;;; this way ensures that AdvanceClock is called before ReadSensor.
 
 ;; This one changes amplitude across space and time.
-(define (sense-spatial-sine-wave t)
-  (lambda (type id x y)
+(define sense-spatial-sine-wave 
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
   ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
   ;(exact->inexact
-   (inexact->exact 
-    (floor
-     (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
-	   (distorigin (sqrt (+ (* x x) (* y y))))
-	   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
-       (* waveamp (/ distorigin maxdist)))))))
+	(inexact->exact 
+	 (floor
+	  (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
+		(distorigin (sqrt (+ (* x x) (* y y))))
+		(maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
+	    (* waveamp (/ distorigin maxdist)))))))))
 
-;; This parameter defines the default sensor function.
-(define-regiment-parameter simalpha-sense-function  sense-spatial-sine-wave) ;  sense-sine-wave)
+;; This parameter is used to instantiate new instances of the sensed-world.
+(define-regiment-parameter simalpha-sense-function-constructor sense-spatial-sine-wave)
+;; This parameter on the hand is bound by the simulator to the constructed sensor-functions.
+(define-regiment-parameter simalpha-sense-function #f)
+;(define simalpha-sense-function (make-parameter #f (lambda (x) 
+;						     (inspect `(sensor! . ,x))
+;						     x)))
+
 
 ;; This globally defined functions decides the sensor values.
 ;; Here's a version that makes the sensor reading the distance from the origin:
-(define (sense-dist-from-origin t) 
-  (lambda (type id x y)
-    (sqrt (+ (expt x 2) (expt y 2)))))
-
-(define (sense-sine-wave t) 
-  (lambda (type id x y)
+(define sense-dist-from-origin 
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(sqrt (+ (expt x 2) (expt y 2)))))))
+    
+(define sense-sine-wave
+  (lambda ()
+    (lambda (t)    
+      (lambda (type id x y)
   ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
   ;(exact->inexact
-   (inexact->exact 
-    (floor
-     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000)))))))))
+	(inexact->exact 
+	 (floor
+	  (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000)))))))))))
 
 ;; TODO: add noise to this, store state per ID: curry inputs:
-(define (sense-noisy-rising t) 
-  (lambda (type id x y)
-    (/ t 100.)))
+(define sense-noisy-rising
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(/ t 100.)))))
 
-
-(define (sense-random-1to100 t)
-  (lambda (type id x y)
-    (add1 (reg:random-int 100))))
+(define sense-random-1to100
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(add1 (reg:random-int 100))))))
 
 #;
 (define (sense-fast-sine-wave id x y t)

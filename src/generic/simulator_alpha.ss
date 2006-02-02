@@ -1275,7 +1275,10 @@
                          ;(if (not node-code)  (error 'run-simulator-alpha "node-code not defined!"))
 			 ;; Cache this in a global parameter:
 			 (simalpha-current-nodeprog node-code)
-                         (start-alpha-sim node-code 'simple))]
+
+			 ;; Now to really run it, but first we instantiate the sensor-stubs for the program to read:
+			 (parameterize ([simalpha-sense-function ((simalpha-sense-function-constructor))])
+			   (start-alpha-sim node-code 'simple)))]
 		      [(timeout ,n . ,rest)
 		       (parameterize ((sim-timeout n))
 			 (read-params rest))]

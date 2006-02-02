@@ -51,6 +51,7 @@
 	 simalpha-zeropad-args
 	 simalpha-stream-result 
 	 simalpha-sense-function
+	 simalpha-sense-function-constructor
 	 simalpha-graphics-on
          simalpha-write-sims-to-disk
 ;	 simalpha-pause-hook
