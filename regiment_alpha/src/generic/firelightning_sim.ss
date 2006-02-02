@@ -10,16 +10,24 @@
 ;; This function maintains the global lightning state and also reads
 ;; off sensor values.  <br><br>
 ;; 
-;; It's a curried function whose outer layer is called every time the
+;; It's a curried function whose outmost layer is called only to
+;; produce a new world.  The second layer is invoked every time the
 ;; time changes so as to maintain the simulation state.  (However,
 ;; this is optional, it could very well only update when a sensor
 ;; reading is requested.)  The time-step must be
 ;; greater-than-or-equal-to the one inputted last.  However they
 ;; needn't be consecutive. <br><br>
 ;; 
-;; The inner lambda is only called when the simulator needs to read
-;; an actual sensor value.
-(define firelightning-sense-function
+
+;; The inner lambda is only called when the simulator needs to read an
+;; actual sensor value.  That is the type of this function is
+;; something like the following (where effects are written in the arrows): <br>
+;;
+;; ()   --{Newsim}--> 
+;; Time --{UpdateState}--> 
+;; (type, id, x, y)    --> 
+;;  SensorReading
+(define (firelightning-sensor)  
   ;; This is the statically allocated state used by the lightning sim.
   ;; Could refactor this to encapsulate it later:
   (let ([last-time #f]
@@ -39,7 +47,7 @@
     (lambda (t)
       (if (not last-time) (set! last-time t))
       (if (< t last-time)
-	  (error 'firelightning-timestepper 
+	  (error 'firelightning-sensor
 		 "can't go backwards in time from t=~a to t=~a." last-time t))
       (if (= t last-time)
 	  (void)
@@ -96,14 +104,13 @@
 	       fires)
 	     temp)]
 	  [(light) 9999] ;; TODO
-	  [else (error 'firelightning-sense-function 
+	  [else (error 'firelightning-sensor
 		       "unsupported sensor type: ~a" type)])))))
 
 ;----------------------------------------------------------------------
 ;; Install the lightning sim as the default sim:
 (define (install-firelightning)
-  (simalpha-sense-function firelightning-sense-function)
-  ;(simalpha-sense-timestepper firelightning-timestepper)
+  (simalpha-sense-function-constructor firelightning-sensor)
 
   ;; Set the world size, 10KM square:
   ;; Set both of these for now, lame:
@@ -120,4 +127,3 @@
   (simalpha-placement-type 'gridlike)
   (simalpha-failure-model 'none)
   )
-

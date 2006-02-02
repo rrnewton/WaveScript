@@ -6,7 +6,7 @@
 	    [simalpha-channel-model 'lossless]
 	    [simalpha-failure-model  'none]
 	    [simalpha-zeropad-args #t];'warning] ;; Sync-sensing necessitates continuations.
-	    [simalpha-sense-function sense-sine-wave])
+	    [simalpha-sense-function-constructor sense-sine-wave])
 
 ;; Main program:
 

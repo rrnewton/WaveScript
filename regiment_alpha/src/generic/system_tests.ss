@@ -424,7 +424,7 @@
 			    (begin (soc-return (list (my-clock) (sync-sense)))
 				   (timed-call 100 loop (- reps 1))))))
 	'[simalpha-zeropad-args 'warning]
-	'[simalpha-sense-function sense-sine-wave])
+	'[simalpha-sense-function-constructor sense-sine-wave])
        ,(lambda (ls) 
 	  (let ((vals (map cadr ls)))
 	    ;; Make sure our sin wave goes from 0 to 255:
@@ -1799,7 +1799,7 @@
 				     (to SOC-return-handler) 
 				     (via tree)))
 		     (leds on blue))])
-	'[simalpha-sense-function sense-dist-from-origin]
+	'[simalpha-sense-function-constructor sense-dist-from-origin]
 	'[simalpha-zeropad-args #t]
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
@@ -1840,7 +1840,7 @@
 				     (to SOC-return-handler) 
 				     (via tree)))
 		     (leds on blue))])
-	'[simalpha-sense-function sense-dist-from-origin]
+	'[simalpha-sense-function-constructor sense-dist-from-origin]
 	'[simalpha-zeropad-args #t]
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
@@ -1871,7 +1871,7 @@
 		     (if (odd? (ghopcount tree))
 			 (leds on blue)))])
 	'[sim-timeout 10.0]
-	'[simalpha-sense-function sense-dist-from-origin]
+	'[simalpha-sense-function-constructor sense-dist-from-origin]
 	'[simalpha-zeropad-args #t]
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
@@ -2058,7 +2058,7 @@
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
-		    [simalpha-sense-function sense-sine-wave])
+		    [simalpha-sense-function-constructor sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(letrec ([readings (rmap (lambda (n) (cons (sense n) (cons 1 ())))
@@ -2086,7 +2086,7 @@
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [simalpha-zeropad-args 'warning] ;; TEMP: TODO: THINK ABOUT THIS.
-		    [simalpha-sense-function sense-sine-wave])
+		    [simalpha-sense-function-constructor sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
 	 '(rfold append	'()
@@ -2207,9 +2207,9 @@
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
-		     ;[simalpha-sense-function sense-noisy-rising] ;; TODO: FIXME: FINISH this sensing model.
+		     ;[simalpha-sense-function-constructor sense-noisy-rising] ;; TODO: FIXME: FINISH this sensing model.
 		     [simalpha-zeropad-args 'warning] ;; Must be on for sensing.
-		     [simalpha-sense-function sense-random-1to100]
+		     [simalpha-sense-function-constructor sense-random-1to100]
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
@@ -2225,7 +2225,7 @@
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
-		     [simalpha-sense-function sense-dist-from-origin]
+		     [simalpha-sense-function-constructor sense-dist-from-origin]
 		     [simalpha-graphics-on #t]
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
