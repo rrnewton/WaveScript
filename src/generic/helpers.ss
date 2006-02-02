@@ -1514,12 +1514,15 @@
 ;;   2) A list of numbers
 ;;   3) A stream of numbers/(X Y) pairs.
 ;; (See stream implementation, this file.)
-(define (gnuplot data)
+(define (gnuplot data . flags)
   (let ([fn1 "_temp_gnuplot.script"]
 	[fn2 "_temp_gnuplot.dat"])
   (let ([scrip (open-output-file fn1 'replace)]
 	[dat   (open-output-file fn2 'replace)]
-	[command (format "gnuplot ~a -" fn1)])
+	[command (format "gnuplot ~a -" fn1)]
+	[setstmnts '()]
+	[withclause "with linespoints"])
+
     (define (plot-one i d)
       (if (number? d)
 	  (fprintf dat "~s ~s\n" i d)
@@ -1527,15 +1530,29 @@
 			     (fprintf dat "~s " n))
 			   d)
 		 (fprintf dat "\n"))))
+
+    ;; Process flags:
+    (for-each 
+	(lambda (flag)
+	  (case flag
+	    [(lines) (set! withclause "with linespoints")]
+	    [(boxes) (set! withclause "with boxes")
+	     (set! setstmnts (cons "set style fill solid 1.000000 border -1;\n" setstmnts))]))
+      flags)
+
     (if (null? data)
 	(void)	
     (begin
     ;; Write script file:
     (fprintf scrip "set autoscale;\n")
-    (fprintf scrip "plot ~s using 1:2 with linespoints" fn2)
+    (for-each (lambda (setline)
+		(fprintf scrip setline))
+      setstmnts)
+
+    (fprintf scrip "plot ~s using 1:2 ~a" fn2 withclause)
     (if (list? (car data))
 	(for n = 3 to (length (car data))
-	     (fprintf scrip ", ~s using 1:~a with linespoints" fn2 n)))
+	     (fprintf scrip ", ~s using 1:~a ~a" fn2 n withclause)))
     (fprintf scrip ";\n")
 
     ;(fprintf scrip "exit;\n")
