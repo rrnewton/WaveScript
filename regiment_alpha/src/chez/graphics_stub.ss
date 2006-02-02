@@ -535,7 +535,8 @@
 			       (if next
 				   (begin 
 				     (when (not (number? (caddr next)) )
-				       (printf "Bad oldthickness! \n")(inspect oldthickness))
+				       (printf "Bad oldthickness! \n");(inspect oldthickness))
+				       )
 				     (set-fill-color! self (cadr next))
 				     (set-line-thickness! self (inexact->exact (caddr next))))
 				   ; Fizzle, we're already gone:

@@ -515,7 +515,7 @@
 ;; Assign a type to a procedure application expression.
 (define (type-app rator rattyp rands exp tenv)
   (DEBUGASSERT (tenv? tenv))
-  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
+ ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
     ;(inspect (vector (export-type rator) rands result))
     (if (and (symbol? rator)
@@ -608,7 +608,7 @@
 
       [(,origrat ,[l -> rand* t*] ...)
        (mvlet ([(rator t1) (l origrat)])
-	 (inspect (list origrat rator t1))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	 (inspect (list origrat rator t1))
 	 (values `(,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv)))]
       
