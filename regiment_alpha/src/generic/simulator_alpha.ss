@@ -1441,6 +1441,30 @@
 	avg)
       ))))
 
+;; [2006.02.01] This is a simple routine that displays the connectivity distribution.
+(define (plot-connectivity . sim)
+  (define world (if (null? sim) (simalpha-current-simworld) (car sim)))
+  (define connects '()) ;; Just accumulates all the numeric connectivities.
+  (for-each (lambda (row)
+	      (map (lambda (nbr) 			     
+		     (let ((connectivity ((simalpha-connectivity-function)
+					  (node-pos (car row))
+					  (node-pos nbr))))
+		       (if (number? connectivity) (set! connects (cons connectivity connects)))
+		       connectivity))
+		(cdr row)))
+    (simworld-graph world))
+  (let* ([binsize 5]
+	 [hist (histogram connects 5)]
+	 [start (apply min connects)])
+    (gnuplot
+     (map list 
+       (map (lambda (n) (+ start (* binsize n)))
+	 (iota (length hist)))
+       hist)
+     'boxes
+     )))
+
 
 ;; [2005.09.29] Moved from alpha_lib.ss
 ;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.

@@ -4,7 +4,7 @@
 ;; This turns on the fire-simulation globally.  Can't be undone.
 (parameters 
   [dummy-param (install-firelightning)]
-  [sim-num-nodes 200]
+  [sim-num-nodes 250]
   [sim-timeout 1000000])
 
 

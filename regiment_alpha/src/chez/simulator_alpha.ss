@@ -10,7 +10,8 @@
 
 	 simalpha-total-messages
 	 print-stats print-node-stats 
-	 print-connectivity fresh-simulation
+	 print-connectivity plot-connectivity
+	 fresh-simulation
 	 simalpha-draw-world	 
 
 	 testalpha testsalpha

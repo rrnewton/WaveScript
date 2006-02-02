@@ -114,7 +114,7 @@
 
   ;; Inner/Outer Radius for radios is 300/500 meters:
   (simalpha-inner-radius 300)
-  (simalpha-inner-radius 500)
+  (simalpha-outer-radius 500)
 
   (simalpha-channel-model 'linear-disc)
   (simalpha-placement-type 'gridlike)

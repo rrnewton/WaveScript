@@ -420,7 +420,7 @@
 			the-panel2)]
 
 	       [clock-readout (create <canvas-text> the-win 
-				      30 ;(- (/ window-width 2) 10) 
+				      60 ;(- (/ window-width 2) 10) 
 				      (- window-height -10) ;13)
 				      with (title: "t = ")
 				      (fill-color: (rec->rgb Default-Canvas-Text-Color))
