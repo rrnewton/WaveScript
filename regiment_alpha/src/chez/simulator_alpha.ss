@@ -1,7 +1,4 @@
 
-(define-syntax foo
-  (syntax-rules ()
-    [(_) bar]))
 
 (module simulator_alpha
 	(run-simulator-alpha rerun-simulator-alpha clean-simworld!

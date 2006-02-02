@@ -136,7 +136,10 @@
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
-(include "chez/simulator_alpha.ss") (import simulator_alpha)
+
+
+(include "chez/simulator_alpha.ss") 
+(import simulator_alpha)
 (include "generic/firelightning_sim.ss")
 
 (include "generic/tossim.ss")
