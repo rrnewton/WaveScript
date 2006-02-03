@@ -54,8 +54,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -276,18 +276,19 @@
 ;; This determines the size of a node when drawn on the screen.
 ;; (It has to be inexact for SWL's sake; otherwise we end up with
 ;; undesirable rational numbers.) <br><br>
-(define-regiment-parameter processor-screen-radius 16)
+(define-regiment-parameter processor-screen-radius 16.0)
 
 ;; This sets the value of the previous processor-screen-radius
 ;; parameter based on the current number of processors and window size.
 (define (set-procesor-screen-radius!)
-  (processor-screen-radius
-   (min (exact->inexact (/ window-width 45.)) ;; Max relative size.
-	;16 ;; Max absolute size.
-	;; If there's not enough room, we make them smaller.
-	(sqrt (/ (exact->inexact (* window-height window-width)) ;; Compute pixel area.M
-		 (* 12 (sim-num-nodes))))) ;; Compute sqrt(1/8 * area-per-node)
-   ))
+  ;; Compute sqrt(1/8 * area-per-node)
+  (let ([newrad  (min (exact->inexact (/ window-width 45.)) ;; Max relative size.
+		      ;16 ;; Max absolute size.
+		      ;; If there's not enough room, we make them smaller.
+		      (sqrt (/ (exact->inexact (* window-height window-width)) ;; Compute pixel area.M
+			       (* 12 (sim-num-nodes)))))])
+    (DEBUGASSERT (flonum? newrad))
+    (processor-screen-radius newrad)))
   
 ;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================

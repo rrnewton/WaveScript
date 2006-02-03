@@ -396,6 +396,13 @@
 	       [boundx2 (+ x radius)]
 	       [boundy2 (+ y radius)]
 	       [third (/ (* 2 radius) 3)])
+	  
+	  (DEBUGASSERT (flonum? radius))
+	  (DEBUGASSERT (flonum? boundx1))
+	  (DEBUGASSERT (flonum? boundy1))
+	  (DEBUGASSERT (flonum? boundx2))
+	  (DEBUGASSERT (flonum? boundy2))
+
 	  (let ((circ (create <proc-oval> the-win
 ;			     50 50 
 ;			     100 100)))
