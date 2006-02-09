@@ -270,8 +270,8 @@
 ;; These are the height and width of the drawing surface itself.  (Not
 ;; the whole window as the name would imply.
 ;;; TODO FIXME: promote these to parameters and add hooks for processor screen radius.
-(define window-width 900)
-(define window-height 900)
+(define window-width 700)
+(define window-height 700)
 
 ;; This determines the size of a node when drawn on the screen.
 ;; (It has to be inexact for SWL's sake; otherwise we end up with

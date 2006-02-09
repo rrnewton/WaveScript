@@ -87,7 +87,7 @@
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
-    (sense         (Node) Float)
+    (sense         (Symbol Node)  Float)  ;; Takes either (Node) or (Symbol Node)
     (nodeid        (Node) Integer)
 
     ))
@@ -577,6 +577,9 @@
         (boolean? x)
         (char? x)
         (string? x) 
+	
+	;; [2006.02.09] Allowing symbols for now:
+	(symbol? x)
 
         )))
 

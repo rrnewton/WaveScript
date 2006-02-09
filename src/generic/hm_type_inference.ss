@@ -83,7 +83,7 @@
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
-    (sense         (Node) Integer) ;; Need to split out into multiple sense functions.
+    (sense         (Symbol Node) Integer)
     (nodeid        (Node) Integer)
 
     ))
@@ -491,6 +491,8 @@
    [(integer? c) 'Integer]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
+   ;; Temp, not sure if we're going to support symbols or not in the final language:
+   [(symbol? c) 'Symbol]
    [(null? c) `(List ,(make-tcell))]
    [(list? c)
     (let ([types (map type-const c)])
@@ -559,7 +561,7 @@
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
-      [(quote ,c)               (values c (type-const c))]
+      [(quote ,c)               (values `(quote ,c) (type-const c))]
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
       [,v (guard (symbol? v))

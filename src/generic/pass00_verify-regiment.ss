@@ -70,149 +70,9 @@
 
 (define verify-regiment
   (let ()
-    
-    ;; Infers cheap and dirty types for some expressions, returns #f otherwise.
-    (define (infer-type expr env type-env)
-      (match expr
-          [,const (guard (constant? const))
-		  (cond
-		   [(boolean? const) 'Bool]
-		   [(number? const) (if (inexact? const) 'Float 'Integer)]
-		   [(list? const) 'List] 
-		   [else (error 'verify-regiment:infer-type
-			 "Unknown type of constant: ~a" const)])]
-          [(quote ,datum)
-	   (guard (not (memq 'quote env)) (datum? datum))
-	   (cond
-	    [(number? datum) 'Number]
-	    [(list? datum) 'List]
-	    [else (error 'verify-regiment:infer-type
-			 "Unknown type of quoteconstant: ~s" `(quote ,datum))])]	  
-          [,var (guard (symbol? var)
-		       (not (regiment-primitive? var)))
-		(let ((entry (assq var type-env)))
-		  (if entry
-		      (cadr entry)
-		      ;; otherwise we have no type information on this variable and must return "Object".
-		      'Object))]
-
-          [(,prim ,[rand*] ...)
-           (guard (not (memq prim env)) (regiment-primitive? prim))
-	   (let ((ret-type (caddr (get-primitive-entry prim))))
-;	     (disp "RETURN TYPE" ret-type)
-	     ret-type)]
-
-          [(lambda ,formalexp ,expr) 'Function]
           
-          [(if ,[test] ,[conseq] ,[altern])
-	   (guard (not (memq 'if env)))
-	   (if (not (eq? test 'Bool))
-	       (warning 'verify-regiment "if test expr does not have type bool: ~s" test))
-	   (if (eq? conseq altern)
-	       conseq
-	       (error 'verify-regiment:infer-type
-		      "if branches don't have the same types: ~s and ~s "
-		      altern conseq ))]
-          
-	  ;; <TODO> <FIXME> THIS IS NOT ACTUALLY RECURSIVE ATM!
-	  [(letrec ([,lhs* ,[rhs*]] ...) ,body)
-	   (guard (not (memq 'letrec env)))	   
-	   (let ([new-type-env (append (map list lhs* rhs*) type-env)])
-	     (infer-type body env new-type-env))]
-
-	  [,prim (guard (regiment-constant? prim))
-		 (caddr (get-primitive-entry prim))]
-	  ;; Handle first class refs to other prims: 
-	  ;; All those other prims are functions!
-	  [,prim (guard (regiment-primitive? prim)) 'Function]	  
-
-	  [(,[rator] ,[rand*] ...) #f]
-
-	  [,other (error 'infer-type
-			 "unmatched expr: ~s" other)]
-      ))
-
-
-    ;; This returns nothing, throws error if it hits a problem.
-    (define type-check
-      (lambda (env type-env)
-	(lambda (expr expected-type)
-	  (let ([infered-type (infer-type expr env type-env)])
-	    (cond 
-	     [(eq? infered-type expected-type)
-	      (void)] ;; It's all good
-
-	     ;; We're using #f to mean "any type", so it matches anything:
-	     [(or (not infered-type) (not expected-type))
-	      (void)]
-
-	     ;; Locations are just lists for the moment!
-	     [(set-equal? (list infered-type expected-type) '(List Location))  (void)]
-	     ;; We're using integral rather than floating point distances for the time being:
-	     [(set-equal? (list infered-type expected-type) '(Dist Float))  (void)]
-	     
-
-	     ;; We are lenient and allow either a float or an int to match a Number.
-	     [(set-equal? (list infered-type expected-type) '(Float Number)) (void)]
-	     [(set-equal? (list infered-type expected-type) '(Integer Number)) (void)]
-
-	     [(and (eq? infered-type  'Region)
-		   (eq? expected-type 'Area))]
-	     [(and (eq? infered-type  'Anchor)
-		   (eq? expected-type 'Signal))]
-
-	     ;; Areas and Regions are Signals
-	     [(and (or (eq? infered-type 'Area) (eq? infered-type 'Region))
-		   (eq? expected-type 'Signal))]
-
-
-	     [(or (eq? 'Object infered-type)
-		  (eq? 'Object expected-type))
-	      (if (regiment-verbose)
-		  (warning 'type-check-arg
-			   "inferred type <~s> doesn't *quite* match expected type <~s> for expression: ~n~s"
-			   infered-type expected-type expr))]
-
-	     [else (error 'type-check-arg
-			    "inferred type <~s> doesn't match expected type <~s> for expression: ~n~s"
-			    infered-type expected-type expr)])))))
-
-    (define type-union
-      (lambda (t1 t2)
-	(cond 
-	 [(eq? t1 t2) t1]
-	 [(eq? 'Object t1) t2]
-	 [(eq? 'Object t2) t1]
-	 ;; Subtyping!! (without polymorphism or anything)
-	 ; A region is an area.
-	 [(set-equal? (list t1 t2) '(Area Region)) 'Region]
-	 ; An anchor is really a signal:
-	 [(set-equal? (list t1 t2) '(Signal Anchor)) 'Anchor]
-
-	 [(set-equal? (list t1 t2) '(Float Number)) 'Float]
-	 [(set-equal? (list t1 t2) '(Integer Number)) 'Integer]
-
-	 [else (error 'type-union
-		      "Cannot union types: ~s and ~s" t1 t2)])))
-
-    (define add-type-constraint
-      (lambda (var type type-env)
-	(if (regiment-verbose) (disp "add-type-constraint: " var type type-env))
-	;; Do nothing if the input is not a varref:
-	(if (and (symbol? var) (not (regiment-primitive? var)))
-	    (let ([entry (assq var type-env)])
-	      (if entry 
-		  (cons (list var (type-union (cadr entry) type))
-			(list-remove-first entry type-env))
-		  (cons (list var type)
-			type-env)))
-	    type-env)))
-      
     (define process-expr
       (lambda (expr env type-env)
-					;	(disp "process-expr, env" env "types:" type-env)
-
-					;        (disp "processing expr" expr env)
         (match expr
           [,const (guard (constant? const)) const]
           [(quote ,datum)
@@ -251,12 +111,9 @@
                   (andmap symbol? lhs*)
                   (set? lhs*))
 	   (let* ([newenv (union lhs* env)]
-		  [new-type-env (map list lhs*
-				     (map (lambda (x) (infer-type x newenv type-env))
-					  rhs*))]
 		  [rands (map (lambda (r) 
-				(process-expr r newenv new-type-env)) rhs*)]
-		  [body  (process-expr expr newenv new-type-env)])
+				(process-expr r newenv '())) rhs*)]
+		  [body  (process-expr expr newenv '())])
 	     `(letrec ([,lhs* ,rands] ...) ,body))]
 
           [(,prim ,[rand*] ...)
@@ -271,15 +128,9 @@
 ;	     (if (not (= (length rand*) (length (cadr entry))))
 ;		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
 ;			prim (cadr entry) rand*))
-	     (let ((types (fit-formals-to-args (cadr entry) rand*)))
-
-;; [2005.12.08] Disabling, we've got a real type system now.	     
-;	       (for-each (type-check env type-env) rand* types)
-	   
-	       ;; Add type constraints to the variables based on their usage in this primitive.
-	       (for-each (lambda (rand expected)
-			   (set! type-env (add-type-constraint rand expected type-env)))
-		 rand* types)))
+	     (let ((types (fit-formals-to-args (cadr entry) rand*)))	       
+	       (void)
+	       ))
 
 	   `(,prim ,rand* ...)]
           

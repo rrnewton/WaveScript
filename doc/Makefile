@@ -95,12 +95,14 @@ $(DUPSRC): html/%.ss: ../src/%.ss
 	petite --script scrub_source.ss $< $@	
 
 
-install:
+install: installreadme
 	cp -vpr html /var/www/regimentman/
-	cp ../src/README /var/www/regimentman/
-	cp ../src/README.html /var/www/regimentman/
 	chgrp www-data -R /var/www/regimentman/
 	chmod g+rX -R /var/www/regimentman/*
+
+installreadme:
+	cp ../src/README /var/www/regimentman/
+	cp ../src/README.html /var/www/regimentman/
 
 clean: 
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk
