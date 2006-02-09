@@ -14,7 +14,7 @@
 (token loop (n)
   (if (> n 0)
       (begin 
-	(printf "Yay ~a <<<~a>>>\n" (my-clock) (sync-sense 'temp))
+	;(printf "Yay ~a <<<~a>>>\n" (my-clock) (sync-sense 'temp))
 	(if (> (sync-sense 'temp) 0)
 	    (leds on red)
 	    (leds off red))
