@@ -8,10 +8,18 @@ Quick Start:
 You probably already checked out the code like this.
   svn co http://macroprogramming.ffh.us/repos/trunk macroprogramming
 
+Now switch to macroprogramming/regiment_alpha/src and run the script.
+  ./install_environment_vars
+
+NOW, if you're lucky (and this only currently will work on Linux), try
+running the command "regiment".  If it loads and you get the help
+info, then you're good to go.
+
 
 Slighly less Quick Start:
 
-The install_environment_vars script is just 
+If you want to manually (and more permanently) set up the necessary
+environment variables, all you need to do is the following.
 
 Step 1: Bind enviroment variable REGIMENTD to the location of the
         regiment directory.

@@ -797,8 +797,12 @@
 
 
 	  ;; FIXME FIXME... this is lame.
-	  [(sense ,_ ...)
+	  [(sense ,node) ;; Transforms into a local sense.
 	   (values `([,name (sync-sense)]) '())]
+
+	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.
+	   (guard (symbol? type))
+	   (values `([,name (sync-sense (quote ,type))]) '())]
 
 	  ;; These are primapps that depend on distributed components.  They're tricky.
 	  ;; What does it mean ultimately to return a signal within a cons-cell for example?
