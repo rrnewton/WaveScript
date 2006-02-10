@@ -80,10 +80,12 @@ schemedoc:
 	$(MAKE) patch
 
 patch:
-	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
-	cp patches/time.scm schemedoc/lib/; 
-	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
-	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
+#	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
+#	cp patches/time.scm schemedoc/lib/; 
+#	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
+#	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
+# Incorporated these patches into a new tarball, but there might be more in the future.
+
 
 # This invokes regiment.laml with the directory and the filename as command line arguments:
 $(OBJFILES): html/%.html: html/%
