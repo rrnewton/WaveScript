@@ -41,7 +41,7 @@
     (define (simple-rand? expr)
       (match expr
 	     [,var (guard (symbol? var)) #t]
-	     [(quote ,const) (guard (constant? const)) #t]
+	     [(quote ,const) (guard (or (constant? const) (symbol? const))) #t]
 	     [,else #f]))
 
     (define process-expr
@@ -49,7 +49,9 @@
         (match expr
 ;          [,const (guard (constant? const)) #t]
           [(quote ,const)
-           (guard (not (memq 'quote env)) (constant? const))
+	   ;; [2006.02.10] Currently we're still allowing symbols here:
+           (guard (not (memq 'quote env)) 
+		  (or (constant? const) (symbol? const)))
 	   #t]
 	 
           [,var (guard (symbol? var) (not (regiment-constant? var)))
