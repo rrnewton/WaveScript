@@ -581,7 +581,7 @@
 					   (if entry
 					       (hashtab-set! hash sym (fx+ 1 entry))
 					       (hashtab-set! hash sym 1)))]
-				   [(quote ,const) (guard (constant? const)) (void)]
+				   [(quote ,const) (guard (or (constant? const) (symbol? const))) (void)]
 				   ;; This is node-local code now, check against TML prims:
 				   [(,prim ,[args] ...)
 				    (guard (or (token-machine-primitive? prim)
@@ -612,7 +612,7 @@
 							   ;; Otherwise it's a free variable!  Nothing to do with that.
 							   sym))
 						     sym)]
-					   [(quote ,c) (guard (constant? c)) `(quote ,c)]
+					   [(quote ,c) (guard (or (constant? c) (symbol? c))) `(quote ,c)]
 					   [(if ,[x] ,[y] ,[z]) `(if ,x ,y ,z)]
 					   [(,prim ,[args] ...) 
 					    (guard (or (token-machine-primitive? prim)
@@ -646,14 +646,14 @@
 			      (error 'deglobalize:delazy-bindings
 				     "IF construct currently cannot have lazy references in conseq/altern: reference to ~s in ~s"
 				     sym rhs))]
-		    [(quote ,const) (guard (constant? const)) (void)]
+		    [(quote ,const) (guard (or (symbol? const) (constant? const))) (void)]
 		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
 						    (basic-primitive? prim))) (void)]
 		    [(if ,[x] ,[y] ,[z]) (void)]))
 		(define (ok rhs)
 		  (match rhs
 		    [,sym (guard (symbol? sym)) (void)]
-		    [(quote ,const) (guard (constant? const)) (void)]
+		    [(quote ,const) (guard (or (symbol? const) (constant? const))) (void)]
 		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
 						    (basic-primitive? prim))) (void)]
 		    [(if ,[x] ,[nono -> y] ,[nono -> z]) (void)]))
@@ -803,6 +803,8 @@
 	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.
 	   (guard (symbol? type))
 	   (values `([,name (sync-sense (quote ,type))]) '())]
+	  [(sense . ,other)
+	   (error 'deglobalize "invalid sense syntax: ~a" `(sense . ,other))]
 
 	  ;; These are primapps that depend on distributed components.  They're tricky.
 	  ;; What does it mean ultimately to return a signal within a cons-cell for example?

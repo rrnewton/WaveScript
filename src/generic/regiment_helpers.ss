@@ -565,7 +565,12 @@
   (lambda (x)
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
-;;; constants  (which can all occur unquoted)
+;; Test for constants, which can all occur unquoted. <br>
+;; Note that symbol constants may not occur unquoted.  Otherwise
+;; they'd be variables!  Thus in a lot of places you will see: <br>
+;;   (or (symbol? x) (constant? x))                            <br><br>
+;; Because this describes what can go inside a (quote _) expression
+;; after the complex constants have been removed.
 (define constant?
   (lambda (x)
     (or ;(fx-integer? x)
@@ -578,9 +583,6 @@
         (char? x)
         (string? x) 
 	
-	;; [2006.02.09] Allowing symbols for now:
-	(symbol? x)
-
         )))
 
 #; ; Not used:
@@ -595,7 +597,7 @@
       [(char? imm) 'Char]
       [(string? imm) 'String]
       [(null? imm) 'List]
-      [(symbol? imm) 'Symbol]
+;      [(symbol? imm) 'Symbol]
       [else (error 'constant->type
                    "unknown constant: ~s" imm)])))
 

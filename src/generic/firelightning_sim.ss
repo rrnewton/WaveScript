@@ -87,10 +87,10 @@
 	      )
 	    (set! last-time t)
 	    ))
+      ;; Done updating state, now create a function for reading sensor values:
 
       ; ========================================
-      ;; ACTUAL SENSING KERNEL:  Supports 'temp and 'light.
-      ;; Done updating state, now create a function for reading sensor values:
+      ;; ACTUAL SENSING KERNEL:  Supports 'temp and 'light sensors.
       (lambda (type id x y)
 	
 	(case type
@@ -124,6 +124,9 @@
 
 ;----------------------------------------------------------------------
 ;; Poisson processes: but can be very inefficient for large spans.
+;; And worse, this implementation can have failures of numeric
+;; accuracy as well when the timespan gets large.
+;; 
 ;; .param start - Start of spam for which events are generated.
 ;; .param end - End of time span.
 ;; .param base-rate - Average rate of events per time unit.
@@ -157,10 +160,12 @@
 
 
 ;; Poisson processes: with reasonable efficiency
-
+;; TODO
 
 ;----------------------------------------------------------------------
-;; Install the lightning sim as the default sim:
+;; Install the lightning sim as the default sim.  <br>
+;; As well as plugging in the correct sensing stub, this will set the
+;; dimensions of the world and the radio parameters correctly.
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 

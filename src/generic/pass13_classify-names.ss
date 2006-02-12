@@ -108,7 +108,7 @@
     (match expr
 	   [,var (guard (symbol? var) (not (regiment-constant? var))) 
 		 #t]
-	   [(quote ,const) (guard (constant? const)) #t]
+	   [(quote ,const) (guard (or (constant? const) (symbol? const))) #t]
 	   [,else #f]))
 
   ;; This reconciles a variable with the type that it's expected to

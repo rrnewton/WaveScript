@@ -403,6 +403,7 @@
 
 ;; If it's a let-bound function re-instantiate it for polymorphism:
 ;(define (inject-polymorphism tenv v ty)
+
 ;  (if (tenv-is-let-bound? tenv v)
 ;      (instantiate-type entry)
 ;      entry)
@@ -739,7 +740,7 @@
     [(export-type (type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
      (Integer -> Integer)]
 
-    [(export-type (type-expression '(rmap sense world) (empty-tenv)))
+    [(export-type (type-expression '(rmap (lambda (n) (sense 'light n)) world) (empty-tenv)))
      (Area Integer)]
     
     [(export-type (type-expression '(tuple 1 2.0 3) (empty-tenv)))
