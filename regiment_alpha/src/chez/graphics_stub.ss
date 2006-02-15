@@ -101,7 +101,11 @@
 ;; "graphics-objects" or gobjs used by the simulator.  They can be
 ;; uniformly destroyed with this procedure:
 (define (delete-gobj g)
-  (if (list? g) (map destroy g) (destroy g)))
+  (cond
+   ;; draw-mark and possibly other prims return a list of gobjs:
+   [(list? g) (map destroy g)]
+   ;; No good test for a SWL object.  Sigh.
+   [else (destroy g)]))
 
 ;; Deletes all the existing SWL widgets on the canvas..
 (define (clear-buffer)
@@ -461,7 +465,7 @@
 	(set! other-objs (cons l1 (cons l2 other-objs)))
 	(list l1 l2)))))
 
-;; This draws an empty circle:
+;; This draws an empty circle, returns an object of modifyable radius.
 (define (draw-circle pr rad)
   (mvlet ([(x y) (coord:sim->screen pr)]
 	  [(radx rady) (coord:sim->screen (list rad rad))])
@@ -469,7 +473,11 @@
 			    (- x radx) (- y rady)
 			    (+ x radx) (+ y rady))])
 	   (set! other-objs (cons obj other-objs))
-	   obj)))
+	   ;; Retrun a closure usable to modify the radius.
+	   (lambda (new-rad)
+	     (mvlet ([(radx rady) (coord:sim->screen (list new-rad new-rad))])
+	       (set-coords! obj (- x radx) (- y rady) (+ x radx) (+ y rady))
+	       obj)))))
 
 ;; This draws a new edge and adds that graphics object to the global list, 
 ;; as well as returning it.

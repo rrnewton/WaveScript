@@ -19,7 +19,7 @@
 	 reg:all-unit-tests
 	 reg:comment-code
 	 
-         slow-pulse fast-pulse
+         default-slow-pulse default-fast-pulse
          
          unknown-place noplace
          

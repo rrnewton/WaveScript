@@ -858,6 +858,9 @@
 ;          w = sqrt( (-2.0 * ln( w ) ) / w );
 ;          y1 = x1 * w;
 ;          y2 = x2 * w;
+;; <br> <br>
+;; [2006.02.12] This should have a stddev of 1.0 but it looks like it
+;; has a stddev of more like .90.
 (define (gaussian)
   (let ((x1 0.0) (x2 0.0) (w 0.0) (y1 0.0) (y2 0.0))
     (let loop ()
@@ -869,7 +872,9 @@
     (set! y1 (* x1 w))
     ;(set! y2 (* x2 w))
     ;(list y1 y2)
-    y1
+    (if (zero? (random 2))
+	y1
+	(- y1))
     ))
 
 
@@ -1594,10 +1599,12 @@
 	   (bins (make-vector (add1 size) 0)))
        (let loop ((ls ls))
 	 (if (null? ls)
-	     ;; Fix fencepost condition:
-	     (if (zero? (vector-ref bins size))
-		 (rdc (vector->list bins))
-		 (vector->list bins))
+	     (mapi (lambda (i count)
+		     (list (+ (* binsize i) start) count))
+		   ;; Fix fencepost condition:
+		   (if (zero? (vector-ref bins size))
+		       (rdc (vector->list bins))
+		       (vector->list bins)))
 	     (let ((ind (inexact->exact (floor (/ (- (car ls) start) binsize)))))
 	       (vector-set! bins ind (add1 (vector-ref bins ind)))
 	       (loop (cdr ls))
@@ -1842,8 +1849,8 @@
        (reverse x))
      (1 2 3)]
 
-    [(histogram '(1 1 1 2 3 4 5 5 5 5 6 6) 2)   (4 2 6)]
-    [(histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2) (4 2 6 1)]
+    [(map cadr (histogram '(1 1 1 2 3 4 5 5 5 5 6 6) 2))   (4 2 6)]
+    [(map cadr (histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2)) (4 2 6 1)]
 
     ))
 

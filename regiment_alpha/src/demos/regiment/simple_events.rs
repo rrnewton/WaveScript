@@ -17,5 +17,5 @@
 ;; return a smattering of events from across the network.
 
 (rwhen-any (lambda (v) (> (tupref 1 2 v) 99))
-	   (rmap (lambda (n) (tuple (nodeid n) (sense n))) world)
+	   (rmap (lambda (n) (tuple (nodeid n) (sense 'default n))) world)
 	   )

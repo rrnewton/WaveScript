@@ -1650,8 +1650,10 @@
       ;; FIXME : Finish
       unspecified]
 
+     ;; [2006.02.12] Strange this just failed returning '().  Shouldn't be a comm failure...
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
-      (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+      (parameterize ([unique-name-counter 0] 
+		     [simalpha-dbg-on #f])
       (fluid-let ([pass-names (rdc (list-remove-after 'desugar-soc-return pass-names))])
 	(let ([prog (run-compiler 399)])
 	  (run-simulator-alpha prog))))
@@ -2001,11 +2003,12 @@
 				    (simworld-all-objs
 				     (simalpha-current-simworld)))))))]
 
-
     ["Run and simulate complete regiment program." 
      retry
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
+		    [default-slow-pulse '1000]
+		    [default-fast-pulse '100]
 		    [sim-timeout 400])
        (run-simulator-alpha (run-compiler '(rmap nodeid world))))
      ,(lambda (ls)
@@ -2023,6 +2026,8 @@
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [sim-num-nodes 30]
+		    [default-slow-pulse '1000]
+		    [default-fast-pulse '100]
 		    [simalpha-zeropad-args 'warning] ;; Sync-sensing necessitates continuations.
 		    )
        (run-simulator-alpha 
@@ -2039,6 +2044,8 @@
      (parameterize ([simalpha-channel-model 'linear-disc]
 		    [simalpha-failure-model  'none]
 		    [simalpha-placement-type 'connected]
+		    [default-slow-pulse '1000]
+		    [default-fast-pulse '100]
 		    [simalpha-inner-radius 10]
 		    [simalpha-outer-radius 20]
 		    [simalpha-world-xbound 60]
@@ -2189,6 +2196,8 @@
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
 		     [simalpha-failure-model  'none]
+		     [default-slow-pulse '1000]
+		     [default-fast-pulse '100]
 		     [sim-num-nodes 10]
 		     [sim-timeout 2000])
        (run-simulator-alpha 
@@ -2210,6 +2219,8 @@
 		     ;[simalpha-sense-function-constructor sense-noisy-rising] ;; TODO: FIXME: FINISH this sensing model.
 		     [simalpha-zeropad-args 'warning] ;; Must be on for sensing.
 		     [simalpha-sense-function-constructor sense-random-1to100]
+		     [default-slow-pulse '1000]
+		     [default-fast-pulse '100]
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 

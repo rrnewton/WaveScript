@@ -157,10 +157,10 @@
 ;====================================================
 
 ;; The slow-pulse is used for region formation.
-(define slow-pulse 1000) ;; MILLISECONDS
+(define-regiment-parameter default-slow-pulse 30000) ;; MILLISECONDS
 
 ;; The fast-pulse is used for folding.
-(define fast-pulse 100)  ;; MILLISECONDS
+(define-regiment-parameter default-fast-pulse 1000)  ;; MILLISECONDS
 
 ;;; Used primarily by pass14_add-places:
 ; (and by pass15_add-routing
@@ -269,7 +269,7 @@
 
 ;; These are the height and width of the drawing surface itself.  (Not
 ;; the whole window as the name would imply.
-;;; TODO FIXME: promote these to parameters and add hooks for processor screen radius.
+; TODO FIXME: promote these to parameters and add hooks for processor screen radius.
 (define window-width 700)
 (define window-height 700)
 
@@ -292,8 +292,8 @@
   
 ;;; Used primarily by MULTIPLE SIMULATORS
 ;====================================================
-;; [2005.11.14] I'm segregating and renaming the parameters that are
-;; used by the tossim interface and simulator alpha.
+; [2005.11.14] I'm segregating and renaming the parameters that are
+; used by the tossim interface and simulator alpha.
 
 (define-regiment-parameter sim-num-nodes 30)
 (add-parameter-hook 'sim-num-nodes
@@ -310,9 +310,10 @@
 ;; [2005.11.14] FIXME: Not used yet in simulator-alpha.
 (define-regiment-parameter sim-startup-stagger 0)
 
-;;; Used primarily by Simulator_alpha.ss: <br>
-;;; Sim alpha also reuses some of the parameters from Sim Nought.
 ;====================================================
+;;; Used primarily by Simulator_alpha.ss: <br>
+;;;
+;;; Sim alpha also reuses some of the parameters from Sim Nought.
 
 (define token-store-size 1000) ;; Store up to 1000 token-objs per node.
 
@@ -413,6 +414,8 @@
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
 (define simalpha-pause-hook (make-parameter #f))
 
+(define pi 3.14159) ;; TODO: better accuracy wouldn't hurt.
+
 ; ======================================================================
 
 ;;; Used primarily by alpha_lib_scheduler_simple.ss
@@ -480,13 +483,15 @@
 
 ; ======================================================================
 
-;;; Functions <br>
-;;; Everything below is not a constant or "preprocessor definition"
+;;; Functions (not constants or macros). <br>
+;;;
+;;;   Everything below is not a constant or "preprocessor definition"
 ;;; (macro), but a function.  However, these are functions that are
 ;;; (1) simple and (2) must be scoped very broadly, thus justifying
 ;;; their inclusion in this file.
 
-  ;;; Regiment Random Number Interface.<br>
+  ;;; Regiment Random Number Interface. <br>
+  ;;;
   ;;;   These provide a simple random number generator interface for use
   ;;; within the Regiment codebase. <br>
   ;;;    The simulator should only use this RNG interface to maintain
@@ -516,19 +521,19 @@
 
 ; ======================================================================
 ;;; The various sensor-reading stubs.  Used by SimAlpha. <br>
-;;; These are all simple functions that compute fake sensor values. <br>
+;;; These are all simple functions that compute fake sensor values. <br><br>
 ;;;
 ;;; Sensor-function constructors are thunks that allocate state for a
-;;; simulated sensed-world and return a sensor function.
+;;; simulated sensed-world and return a sensor function. <br><br>
 ;;;
 ;;; Sensor-functions are called regularly with the current time.  They
 ;;; are also called when a sensor value needs to be read, in which
-;;; case the node-id, x/y coords, and sensor type are all provided.
-;;;   <br>
+;;; case the node-id, x/y coords, and sensor type are all provided. <br><br>
+;;;   
 ;;; If we wanted the simulator to be less synchronous, we would need
 ;;; to have seperate sense objects for each node, each maintaining its
 ;;; own state according to its own clock.  That gets a little tricky,
-;;; because presumably you're measuring a phenomena defined globally.
+;;; because presumably you're measuring a phenomena defined globally. <br><br>
 ;;; 
 ;;; All told, sensor-function constructors have a type like the following: 
 ;;; <br>

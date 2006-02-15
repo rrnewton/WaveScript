@@ -112,7 +112,9 @@
                                      (list-remove-after 'cleanup-token-machine pass-names))))]
                   [(eq? arg 'almost-haskell)
                    (set! passes (remq 'haskellize-tokmac pass-names))]
-                  [(eq? arg 'haskell-tokens) (void)]))
+                  [(eq? arg 'haskell-tokens) (void)]
+		  ;; Otherwise... do nothing.
+		  ))   
 	      args)
     (when verbose
 	  (printf "Running compiler with pass-names: \n")
@@ -470,7 +472,6 @@
 (define-id-syntax t5 (load-regiment "demos/regiment/anchor_free_localization.rs"))
 (define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))
 (define-id-syntax t6 (load-regiment "demos/regiment/tracking.rs"))
-
 
 (define-id-syntax t7 (load-regiment "demos/firelightning/simple_lightup.tm"))
 (define-id-syntax t8 (load-regiment "demos/firelightning/local_alarm.rs"))

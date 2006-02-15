@@ -135,9 +135,9 @@
 			   (if (slow-prim? (bind->lhs freq-entry) ;; Edge name
 					   (bind->rhs bind-entry)) ;; Generating Expression
 					;(set-cdr! freq-entry +inf.0)
-			       (set-cdr! freq-entry slow-pulse)
+			       (set-cdr! freq-entry (default-slow-pulse))
 			       (if (fast-prim? (bind->lhs freq-entry) (bind->rhs bind-entry))
-				   (set-cdr! freq-entry fast-pulse)))
+				   (set-cdr! freq-entry (default-fast-pulse))))
 			   )
 			 freq-table
 			 binds)
@@ -148,7 +148,7 @@
 	       
    	;		       (let treeloop ([node dependency-tree])
 	;			 (if (null? (cdr node))
-	;			     (reconcile slow-pulse (car node))				     			
+	;			     (reconcile default-slow-pulse (car node))				     			
 	       
 	       freq-table))
 

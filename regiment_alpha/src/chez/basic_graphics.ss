@@ -21,7 +21,7 @@
 			;; current-drawing-color 
 			;; current-filling-color
 			;; current-background-color
-			;; draw-ellipse ....
+			;;;;; draw-ellipse 
 
 			flash-text ;thread-eval
 			)
@@ -598,7 +598,7 @@
   (set! object-buffer '())
   )
 
-(define draw-ellipse
+#;(define draw-ellipse
   (let ((drawit (lambda (x1 y1 x2 y2 draw fill)		  
 		  (let ((circ (create <oval> the-win x1 y1 x2 y2)))
 		    (set-outline-color! circ 
