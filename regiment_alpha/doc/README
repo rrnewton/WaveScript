@@ -25,3 +25,23 @@ currently filtering out.
 look in the Makefile to see which ones.
 
 
+[2006.02.15]  
+Here's a simple explanation of how to format code for schemedoc
+comment extraction.
+
+;;;; .title Constants.ss -- A collection of global constants, flags, and datatype defs
+;;;; .author Ryan Newton
+
+;;;; Module description...
+;;;; Module description...
+
+;;; Section title ending in period.
+;;;
+;;; Section description
+;;; Section description
+
+;; This is a function
+;; .param x   This is x.
+;; .returns   Some other value.
+(define (f x) ...)
+
