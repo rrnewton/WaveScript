@@ -384,6 +384,14 @@
     [,i (guard (integer? i)) #t]
     [',i (guard (integer? i)) #t]
     [,else #f]))
+(define (qinteger->integer n)
+  (match n
+    [,i (guard (integer? i)) i]
+    [(quote ,i) 
+     (DEBUGASSERT (integer? i))
+     i]
+    [else (error 'qinteger->integer "this is not a qinteger: ~a" n)]))
+
 
 (define (type? t)
   (define (id x) x)
@@ -431,9 +439,9 @@
        (unless (and (qinteger? n) (qinteger? len))
 	 (error 'type-expression 
 		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
-       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
+       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
 	 (types-equal! t newtypes exp)
-	 (vector-ref newtypes n))]
+	 (vector-ref newtypes (qinteger->integer n)))]
 
       [(lambda (,v* ...) ,bod) (type-lambda v* bod tenv)]
       [(letrec ([,id* ,rhs*] ...) ,bod)
@@ -446,7 +454,6 @@
        (type-lambda v* bod tenv)]
       [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)
        ;(guard (memq letrec '(lazy-letrec letrec)))
-       (printf "LETREC\n")
        (type-letrec id* rhs* bod tenv)]
 
       [(,prim ,[l -> rand*] ...)
@@ -480,7 +487,7 @@
 	 (export-type c))]
 
       [(tuple ,[t*] ...) (list->vector t*)]
-      [(tupref ,n ,len ,[t]) (vector-ref t n)]
+      [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
       ;; Since the program is already typed, we just use the arrow type of the rator:
       ;[(,[rat] ,rand ...) (rac rat)]
       [,other (export-type (type-expression other (tenv-map instantiate-type tenv)))])))
@@ -586,9 +593,9 @@
 	 (error 'annotate-expression 
 		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
        (values `(tupref ,n ,len ,e)
-	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota len)))))
+	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
 		 (types-equal! t newtypes exp)
-		 (vector-ref newtypes n)))]
+		 (vector-ref newtypes (qinteger->integer n))))]
 
       [(letrec ([,id* ,rhs*] ...) ,bod)
        ;; Make new cells for all these types

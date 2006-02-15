@@ -4,21 +4,27 @@
 ;; This turns on the fire-simulation globally.  Can't be undone.
 (parameters 
   [dummy-param (install-firelightning)]
-  [sim-num-nodes 250]
-  [sim-timeout 1000000])
+  ;[simalpha-placement-type 'connected]
+
+  [simalpha-realtime-mode #t]
+  ;[sim-num-nodes 250]
+  [sim-num-nodes 30]
+  [sim-timeout 2000000])
 
 
 (token node-start ()
-  (call loop 90))
+  (call loop 1000))
 
 (token loop (n)
   (if (> n 0)
       (begin 
 	;(printf "Yay ~a <<<~a>>>\n" (my-clock) (sync-sense 'temp))
-	(if (> (sync-sense 'temp) 0)
-	    (leds on red)
-	    (leds off red))
+	(let ((temp (sync-sense 'temp)))
+	  (if (> temp 10)
+	      (leds on red)
+	      (leds off red))
+	  (if (> temp 190)
+	      (leds on green)
+	      (leds off green))
+	  (setlabel "T: ~a" (round-to 2 temp)))
 	(timed-call 1000 loop (- n 1)))))
-
-
-

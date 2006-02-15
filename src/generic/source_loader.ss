@@ -50,12 +50,15 @@
 
 ;; This loads (e.g. reads, compiles, and simulates) a regiment program:
 ;; [2005.11.17] Currently redundant with code in regiment.ss:
+;; [2006.02.15] NOTE: This currently passes the flags to BOTH the
+;; compiler and the simulator.  They both follow the bad practice of
+;; ignoring flags they don't understand.
 (define load-regiment
   (lambda (fn . opts)
     ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
     ;; Flags get passed to run-compiler and compile-simulate-alpha.
-    (let ((flags (filter symbol? opts))
-	  (userparams (filter list? opts)))
+    (let ([flags (filter (lambda (x) (not (list? x))) opts)]
+	  [userparams (filter list? opts)])
     (mvlet ([(prog codeparams passes)
 	     (let ([type (string->symbol (extract-file-extension fn))])
 	       (mvlet (((prg params) (read-regiment-source-file fn)))
@@ -74,7 +77,7 @@
       (let ((result ;(with-evaled-params params
 			;  (lambda ()
 			    (fluid-let ([pass-names passes])
-			      (run-simulator-alpha
+			      (apply run-simulator-alpha
 
 ;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
 			      (apply run-compiler prog flags)
@@ -82,8 +85,9 @@
 ;				      (apply run-compiler prog flags)
 ;				      (append flags params))
 
-			       'srand (current-time)
-			       ))))
+			      flags
+					;'srand (current-time)
+			      ))))
 	(print-stats)
 	result))))))
 (define reg:load load-regiment) ;; shorthand

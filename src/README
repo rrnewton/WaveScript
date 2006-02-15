@@ -6,17 +6,17 @@
 Quick Start:
 
 You probably already checked out the code like this.
-  svn co http://macroprogramming.ffh.us/repos/trunk macroprogramming
+  svn co http://macroprogramming.ffh.us/repos/trunk ~/macroprogramming
 
-Now switch to macroprogramming/regiment_alpha/src and run the script.
+Now switch to macroprogramming/regiment_alpha/src and run this script.
   ./install_environment_vars
 
-NOW, if you're lucky (and this only currently will work on Linux), try
-running the command "regiment".  If it loads and you get the help
-info, then you're good to go.
+NOW, if you're lucky (and this only currently works out of the box on
+Linux), try running the command "regiment".  If it loads and you get
+the help info, then you're good to go.
 
 
-Slighly less Quick Start:
+Slightly less Quick Start:
 
 If you want to manually (and more permanently) set up the necessary
 environment variables, all you need to do is the following.
@@ -78,14 +78,46 @@ you press "Print Stats" for example, the output goes here.)
 
 <Basic Summary of Files>
 ======================================================================
+This doesn't cover everything.
 
+compiler_chez.ss/compiler_plt.ss:
+  Entry point.  Load all the compiler files into Chez/PLT Scheme.
+
+compiler.ss:
+  This defines the compiler as a composition of the individual
+  passes.  It contains run-compiler for invoking the system.  (It
+  also, in spite of the name, contains a front-end to the simulator.
+  Really, it's the "main" file.)
 
 generic/pass??_*:
   These files are the compilers primary transformations.
 
+generic/lang??_*:
+  These files define executable simulations of the between-pass
+  languages.  We do have a simple, non-node-level, simulation that can
+  be run even before the token machine simulator.  But these lang files
+  are not used extensively and will be phased out.
 
+generic/system_tests.ss:
+  The primary system tests.
 
+generic/constants.ss:
+  Widely used constants and tunable parameters for the system.
 
+generic/helpers.ss:
+  Library code.  This has a bunch of unused stuff in it.
+
+generic/regiment_helpers.ss:
+  Various helper routines specifically for working with Regiment/TML code.
+  
+generic/hm_type_inference.ss:
+  The type checker.
+    
+generic/simulator_alpha.ss:
+generic/simulator_alpha_datatypes.ss:
+generic/alpha_lib.ss:
+generic/alpha_lib_scheduler_simple.ss:
+  The newest token machine simulator.
 
 
 
@@ -126,6 +158,18 @@ throughout the code.  When unit testing, you should be able to change
 the values of these parameters and have it complete its tests.  In
 fact, to test thoroughly, you should exercise the system in all of the
 major configurations.
+
+
+
+<Debugging tips>
+======================================================================
+
+ *) Whenever trying to use Chez's interactive debugger (using "(debug)"),
+you should remember to go to the top of compiler_chez.ss and set the
+optimize-level to 0.  Otherwise inlining might result in you not
+seeing stack frames in the inspector that you expect to see.
+
+
 
 
 

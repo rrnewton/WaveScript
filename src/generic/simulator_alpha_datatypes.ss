@@ -148,8 +148,13 @@
 		   rands))
 
 
-;; This is our logger for events in the simulator:
-;; TODO: make this a syntax so that the calls disappear entirely in non-debug mode.
+;; This is our logger for events in the simulator:                  <br> 
+;; .form (logger str args ...)                                      <br>        
+;; .form (logger print-level str args ...)                          <br><br>
+;;
+;; This uses the parameter "simulation-logger", expecting it to be bound to an output port.
+;;
+;; TODO: make this a syntax so that the calls disappear entirely in non-debug mode...
 (define logger
   (lambda input
   (mvlet ([(level ob args)

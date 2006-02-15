@@ -1276,9 +1276,7 @@
 			 ;; Cache this in a global parameter:
 			 (simalpha-current-nodeprog node-code)
 
-			 ;; Now to really run it, but first we instantiate the sensor-stubs for the program to read:
-			 (parameterize ([simalpha-sense-function ((simalpha-sense-function-constructor))])
-			   (start-alpha-sim node-code 'simple)))]
+			   (start-alpha-sim node-code 'simple))]
 		      [(timeout ,n . ,rest)
 		       (parameterize ((sim-timeout n))
 			 (read-params rest))]
@@ -1299,6 +1297,7 @@
 ;			   (error 'run-simulator-alpha
 ;				  "'srand switch should be followed by an integer, not: ~s" n))
 		       (printf "Setting up random number generator for simulator.  Srand: ~s\n" n)
+		       ;q(logger "## Setting up random number generator for simulator.  Srand: ~s\n" n)
 		       ;; TODO: Should just do this as a parameter.
 		       (let ([stored-state #f])
 			 (dynamic-wind
@@ -1479,13 +1478,14 @@
   (lambda (node-code-fun . flags)
     (define logfile "__temp.log")
 
-    (disp "Start-alpha-sim" node-code-fun flags)
-  
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
 
-    ;; FOR NOW: only log if we're in debugmode [2005.10.17]
-    (parameterize ([simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
+    ;; Now to really run it, but first we instantiate the sensor-stubs for the program to read:
+    (printf "Starting alpha-sim, initializing sensor-stub...\n")
+    (parameterize ([simalpha-sense-function ((simalpha-sense-function-constructor))]
+		   ;; FOR NOW: only log if we're in debugmode [2005.10.17]
+		   [simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
 		   [simulation-logger-count (IFDEBUG 0 #f)])
 
 ;    (IFDEBUG (inspect (simulation-logger)) ())

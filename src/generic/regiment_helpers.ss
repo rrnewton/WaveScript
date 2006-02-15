@@ -89,6 +89,7 @@
     ;; I'm not sure...
     (sense         (Symbol Node)  Float)  ;; Takes either (Node) or (Symbol Node)
     (nodeid        (Node) Integer)
+    ;(nodeclock     (Node) Integer)        ;; Could just make this a sensor reading...
 
     ))
 

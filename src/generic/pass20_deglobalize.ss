@@ -800,9 +800,13 @@
 	  [(sense ,node) ;; Transforms into a local sense.
 	   (values `([,name (sync-sense)]) '())]
 
-	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.
+	  ;; [2006.02.15] For now we have a cheater clock provided for us by the simulator:
+	  [(sense 'clock ,node) (values `([,name (my-clock)]) '())]
+
+	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.  Doesn't use node...
 	   (guard (symbol? type))
-	   (values `([,name (sync-sense (quote ,type))]) '())]
+	   (values `([,name (sync-sense (quote ,type))]) '())]	  
+
 	  [(sense . ,other)
 	   (error 'deglobalize "invalid sense syntax: ~a" `(sense . ,other))]
 
@@ -884,7 +888,7 @@
 				      ,@(map (lambda (leaf leaftokname) 
 					       `[,leaftokname () 
 							      (call ,(get-formation-name leaf))
-							      (timed-call ,slow-pulse ,leaftokname)])
+							      (timed-call ,(default-slow-pulse) ,leaftokname)])
 					  leaves leaftoks)
 				      ;; Pulse the global gradient at one hertz:
 				      [spread-global ()
