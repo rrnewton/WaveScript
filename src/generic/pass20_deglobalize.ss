@@ -156,7 +156,7 @@
 ;;   form - the name of the formation token that sparks this node
 ;;   memb - the name of the membership token to which our output flows
 ;;   prim - the name of the distributed primitive (rmap, etc)
-;;   args - the arguments to the primitive (they simple: names/constants)
+;;   args - the arguments to the primitive (they're simple: names/constants)
 ;;   heartbeat - the rate at which this primitive beats, if any.
 ;; Output: TokenBinds
   (lambda (form memb prim args heartbeat)
@@ -248,6 +248,7 @@
 	    ;; [2005.11.27] smap2 is more tricky. 
 	    ;; For now I'm just joining signals at the base-station.
 	    [(smap2)
+	     (DEBUGASSERT (= (length args) 3))
 	     (let* ([rator_tok (car args)]
 		    [sig1_tok (cadr args)]
 		    [sig2_tok (caddr args)]
@@ -315,27 +316,35 @@
 		 )))]
 
 	    ;; <TODO>: FIXME
-	    [(cluster)
-	     (let  ([region_tok (caddr args)])
+	    [(rrcluster)
+	     (DEBUGASSERT (= (length args) 1))
+	     (let  ([region_tok (car args)])
 	       (let ([parent (get-membership-name region_tok)]
-		     [spread-tok (new-token-name 'cluster-spread-tok)]
-		     [leader-tok (new-token-name 'cluster-leader-tok)]
+		     ;[spread-tok (new-token-name 'rrcluster-spread-tok)]
+		     [leader-tok (new-token-name 'rrcluster-leader-tok)]
 		     ;[push? (not (check-prop 'region region_tok))]
 		     )
 		 
 		 ;; <TODO> <FIXME> ALLOW VARIABLE ARGUMENTS FOR TOKENS!!!
-		 `(
-		   ;[,parent (v) (gemit ,form (my-id))] ;,spread-cluster)]
-		   ;[,parent (v) (elect-leader ,memb (my-id))]
-		   ;[elect-leader
-		   [,form (id)
-			  (if (check-tok ,parent)
-			      (begin (grelay) (call ,leader-tok))
+		 `(	    
+		   [,parent (v) (call ,form v)]
+		   [,form (v)
+			  (stored [heldval #f])
+			  ;; Freeze the value until we've formed the clusters
+			  (set! heldval v)
+			  (if (token-present? ,parent)
+			      ;; TODO: Need to use a bounding function here.
+			      (elect-leader (tok ,leader-tok 0))
+			      ;(begin (grelay) (call ,leader-tok))
 			      ;; Here we remove ourselves if we've overflowed?
 					;(remove-tok ,spread-cluster)
 			      )]
-;		   [(call 2
-;		 [,memb (v) ] ;; This occurs at the fold-point
+		   ;; Use the ID of the leader node to index this sub-region:
+		   [,leader-tok (ldr val)
+				(printf "WOOT: Cluster formed: index ~a, membership: \n" ldr )
+				;; Unfreeze the value and declare membership
+				;; NOTE: Currently no way that the spanning tree is revealed.
+				(call (tok ,memb ldr) (ext-ref ,form heldval))]
 		   )))]
 
 	    
@@ -346,6 +355,31 @@
 		  `( [,parent (v) (call ,form v)] ;; member of that area
 		     [,form (v) (if (subcall ,pred_tok v)
 				    (call ,memb v))] ))])]
+
+            ;; Does this work with flickering?
+	    ;; Ignores timing properties and just considers any
+	    ;; subregion firing a firing of the union region.
+	    [(runion)
+	     (let ([mem_a (get-membership-name (car args))]
+		   [mem_b (get-membership-name (cadr args))])	       
+	       `([,mem_a (v) (call ,memb v)]
+		 [,mem_b (v) (call ,memb v)]
+		 ))]
+	    ;; UNFINISHED:
+	    [(rintersect)
+	     (let ([mem_a (get-membership-name (car args))]
+		   [mem_b (get-membership-name (cadr args))])	       
+	       `([,form (v) (if (and (token-present? ,mem_a)
+				     (token-present? ,mem_b))
+				(call ,memb this)
+				(evict ,memb))]
+		 [,mem_a (v) (call ,form v)]
+		 [,mem_b (v) (call ,form v)]
+		 ))]
+	    
+	    [(rrflatten)
+	     (let ([parent (get-membership-name (car args))])	       
+	       `([,parent (v) (call ,memb v)]))]
 			 
 	    ;; This is not a region. It's a signal.  
 	    ;; The value on its membership token is the node-id of the leader.
@@ -461,6 +495,7 @@
 ;			 this (cons 'circle (simobject-homepage this)))
 			(leds on red)
 			;(light-node 0 100 100)
+			(void)
 			]
 
 
@@ -482,20 +517,7 @@
 	       `(
 		 [,form () (gemit ,memb)]
 		 [,memb () (if (< (gdist ,form) ,rad) (grelay))]
-		 ))]	   
-		 
-            ;; Does this work with flickering?
-	    [(union)
-	     (let ([mem_a (get-membership-name (car args))]
-		   [mem_b (get-membership-name (cadr args))])	       
-	       `([,form () (iftok (and ,mem_a ,mem_b)
-				  (call ,memb this)
-				  (remtok ,memb))]
-		 ;; These may be duplicate token entries:
-		 [,mem_a (v) (call ,form)]
-		 [,mem_b (v) (call ,form)]
-    ;	       [,memb ... Don't know what yet... that depends on varrefs ]
-		 ))]
+		 ))]	   		 
 
 	    [(when-any)
 	     (let* ([rator_tok (car args)]
@@ -736,7 +758,7 @@
 ;      [(smap smap2) 
 ;       `([,tokname (v) (call reg-return v)])]
 
-      [(rmap light-up smap smap2)
+      [(rmap light-up smap smap2 runion rrflatten rrcluster)
        `([,tokname (v) (call reg-return v)])]
 
       ;; When the membership token has fired, the event has fired!
@@ -746,7 +768,7 @@
 		   (call reg-return (vector 'EVENT v))
 		   ])]
 
-      [else (error 'primitive-return 
+      [else (error 'deglobalize:primitive-return 
 		   "This function incomplete; doesn't cover: ~s. Ryan, finish it! "
 		   prim)]
       )))
@@ -822,12 +844,13 @@
 	   ]
 
 	  ;; This is a local primitive that depends on only local values.  That means its constant.
+          ;; All args are simple:
           [(,prim ,rand* ...) (guard (basic-primitive? prim))
-	   (values `([,name ,(case prim
-			       [(nodeid) `(my-id)]
-			       [(tuple) `(vector ,rand* ...)]
-			       [(tupref) `(vector-ref ,(caddr rand*) ,(car rand*))]
-			       [else expr])])
+	   (values `([,name ,(match `(,prim . ,rand*)
+			       [(nodeid ,_) `(my-id)]
+			       [(tuple ,x* ...) `(vector ,x* ...)]
+			       [(tupref ,a ,b ,x) `(vector-ref ,x ,a)]
+			       [,else expr])])
 		   '())]
 
           [(,prim ,rand* ...) (guard (distributed-primitive? prim))

@@ -9,6 +9,8 @@
 ;;;; helpers.ss file.
 
 
+;=============================================================
+
 ;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:
@@ -26,7 +28,6 @@
 
 ;; Then some types that are used only in the local language are:
 ;;   Token NodeID
-
 
 ;; These are really the *local* primitives:
 (define regiment-basic-primitives 
@@ -124,6 +125,7 @@
     ))
 
 ;; These are the distributed primitives.  The real Regiment combinators.
+;; TODO: REMOVE THIS LIST.  Use the one in hm_type_inferencer
 (define regiment-distributed-primitives 
   '(
     
@@ -159,7 +161,7 @@
     (node->anchor   (Node) Anchor)
 
     ;; This one returns a region of regions:
-    (cluster        (Area) Area)
+    (rrcluster        (Area) Area)
     (sparsify       (Area) Area)
     (border         (Area) Area)
 ;    (planarize      (Area) Area)
@@ -168,6 +170,7 @@
     (rfilter         (Function Area) Area)
     (runion           (Area Area) Area)
     (rintersect       (Area Area) Area)
+    (rrflatten        (Area) Area)
 
     ;; Prolly not the right type:
     (until          (Event Signal Signal) Signal)

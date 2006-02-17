@@ -71,7 +71,7 @@
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
     ;; TODO FINISH:
-    (define count-app-refs
+    #;(define count-app-refs
       (lambda (v expr)
         (match expr
           [(quote ,datum) 0]
@@ -224,6 +224,7 @@
     (lambda (expr)
       (match expr	    
         [(,input-language (quote (program ,body ,type)))
+	 ;; Run until we reach a fixed point.
          (let loop ([oldbody body]
 		    [body (process-expr body '())])
 	   (if (equal? oldbody body)	   

@@ -124,6 +124,7 @@
 	     ;; Uses the current version rather than the stored one if its available.
 	     ;; TODO: MAKE DIFFERENT THAN GHOPCOUNT:
 	     ;; GDIST SHOULD BE ETX METRIC, GHOPCOUNT SHOULD BE ACTUAL HOPCOUNT..
+	     ;; NOTE: Could return #f if we're not on the gradient!
 	     [(gdist ,tok) 	     
 	      (if (eq? (token->tokname tok) this-token)
 		  `(if (eq? ',LOCALCALL ,HOPCOUNT_ARG)
@@ -132,7 +133,9 @@
 		  `(ext-ref ,tok ,STORED_HOPCOUNT_ARG))]
 
 	     ;; TODO: RETURN ACTUAL HOPCOUNT FOR GHOPCOUNT (not the etx metric):
-	     [(ghopcount ,tok) `(/ ,(loop `(gdist ,tok)) '10)]
+	     ;; NOTE: Could return #f if we're not on the gradient!
+	     [(ghopcount ,tok) `(let ([x ,(loop `(gdist ,tok))])
+				  (if x (/ x '10) x))]
 
 	     [(gparent ,[(statictok loop) -> tok])
 		      (if (eq? (token->tokname tok) this-token)

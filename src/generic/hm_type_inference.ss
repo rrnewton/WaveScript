@@ -155,13 +155,16 @@
 
     (rfilter         (('a -> Bool) (Area 'a)) (Area 'a))
     
-    ;; These don't make sense yet:
-    (runion           ((Area 'a) (Area 'a)) (Area 'a))
     (rintersect       ((Area 'a) (Area 'a)) (Area 'a))
+    (runion           ((Area 'a) (Area 'a)) (Area 'a))
+    (rrflatten        ((Area (Area 'a)))    (Area 'a))
+
     ;; This one returns a region of regions:
-    (cluster        ((Area 'a)) (Area (Area 'a)))
+    (rrcluster        ((Area 'a)) (Area (Area 'a)))
+    ;; These don't a lot of sense yet:
     (sparsify       ((Area 'a)) (Area 'a))
     (border         ((Area 'a)) (Area 'a))
+
 ;    (planarize      (Area) Area)
 ;    (treeize        (Area) Area)
 

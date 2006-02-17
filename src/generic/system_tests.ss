@@ -1760,12 +1760,14 @@
 	   [node-start () (elect-leader tok1)]
 	   [tok1 (ldr _)
 		 (if (= ldr (my-id))
-		     (begin (leds on red)
-			    ;(fprintf (console-error-port) "\n\n WINNER: ~s at nod ~s\n" (subcall f))
-			    (greturn (my-id) 
-				     (to SOC-return-handler) 
-				     (via tree)))
-		     (leds on blue))])
+		     (call YEP_LEADER)
+		     (leds on blue))]
+	   [YEP_LEADER () (leds on red)
+		       ;;(fprintf (console-error-port) "\n\n WINNER: ~s at nod ~s\n" (subcall f))
+		       (greturn (my-id) 
+				(to SOC-return-handler) 
+				(via tree))
+		       ])
 	'[simalpha-channel-model  'lossless]
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
@@ -1893,6 +1895,43 @@
 	   [tree () (leds on blue)
 		 (elect-leader memb)]
 	   [memb (ldr _)
+		 (setlabel "(~s)" ldr)
+		 (if (= ldr (my-id))
+		     (begin (leds on red)
+			    (greturn (my-id) 
+				     (to SOC-return-handler) 
+				     (via tree))))])
+	'[simalpha-zeropad-args #t]
+	'[simalpha-channel-model  'lossless]
+	'[simalpha-placement-type 'gridlike] ;'connected]
+	'[simalpha-failure-model  'none]
+	'[sim-num-nodes 30]
+	'[simalpha-consec-ids #t]
+	'[simalpha-graphics-on #t]
+	)
+       ;; This requires that you get actual minimum:
+       unspecified]
+
+   ["Elect a leader within a constrained area."
+     , (tm-to-socvals
+	`(tokens
+	   [SOC-start () (gemit tree)]
+	   [tree () 
+		 (if (< (ghopcount) 2) (grelay tree))
+		 (leds on blue)
+		 (elect-leader memb f)]
+	   [f () 
+;	      (if (token-present? tree)
+;		  (begin 
+;		    (printf " PRESENT: ~a HOPCOUNT: ~a  DIST:~a\n" (token-present? (tok tree 0)) 
+;			    (ghopcount (tok tree 0)) (gdist (tok tree 0)))
+;		    (printf " EXT_REF:~a\n" (ext-ref (tok tree 0) stored_g_hopcount))
+;		    (if (ghopcount (tok tree 0)) (ghopcount (tok tree 0)) 'FOOBAR??))
+;		  -1000)
+	      (if (= (my-id) ,BASE_ID)
+		  -1000
+		  (my-id))]
+	   [memb (ldr val)
 		 (setlabel "(~s)" ldr)
 		 (if (= ldr (my-id))
 		     (begin (leds on red)

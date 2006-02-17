@@ -61,7 +61,7 @@
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
 	  ;; Maps are more straightforward, they don't change extent.
-	  [(cluster rmap) 
+	  [(rrcluster rmap) 
 	   (let ([newp (list (new-place))])
 	     (values expr newp newp))]
 

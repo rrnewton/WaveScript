@@ -262,3 +262,8 @@
 
 (define (key->token k)
   (hashtab-get reverse-table k))
+
+;; Helper to determine the distance between two 2d positions.
+(define (posdist a b)
+  (sqrt (+ (expt (- (car a) (car b)) 2)
+	   (expt (- (cadr a) (cadr b)) 2))))
