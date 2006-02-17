@@ -16,56 +16,90 @@
 ;; This is the global variable that determines which transformations
 ;; (passes) the compiler applies and in what order.
 (define pass-names
-  '(verify-regiment
+  '(
+    ;; (1) Type checking comes first, but that happens before these passes
+    ;; are run.  Maybe should make it one of the "passes".
+    
+    ;; (2) Next we verify our input language.
+    verify-regiment
+
+    ;; (3) Then we do a little massaging/normalization.
     eta-primitives
     rename-var
-    remove-unquoted-constant                        ;;  5
-    
+    remove-unquoted-constant 
+
+    ;; (4) Then -- here comes the metaprogramming -- we evaluate as much
+    ;; of the program as can be evaluated.  The residual had better follow our
+    ;; restrictions on implementable Regiment programs.
     static-elaborate
     
+    ;; (5) Now we normalize the residual in a number of ways to
+    ;; produce the core query language, then we verify that core.
     reduce-primitives    
-    remove-complex-constant                         ;;  7
-    uncover-free                                    ;; 14
-    ;    convert-closure                            ;; 15
-    lift-letrec                                     ;; 16
-    lift-letrec-body                                ;; 22
+    remove-complex-constant  
+    uncover-free             
+    lift-letrec              
+    lift-letrec-body         
     remove-complex-opera*
     verify-core
+
+    ;; (6) Analysis: these passes analyze the query circuit and
+    ;; annotate it with various information which may be used in
+    ;; "deglobalize" further down the road.  Currently, most of these
+    ;; analyses are underdeveloped; more work is warranted.
     classify-names
     add-heartbeats
     add-control-flow
     add-places
-    ;    add-routing
+;    add-routing
     analyze-places
+
+    ;; (7) Finally, the core of the Regiment compiler.  Convert a
+    ;; Regiment query into a (albeit high level) node-level
+    ;; Token Machine program.
     deglobalize
 
+    ;; (8) There's a large gap from the high-level (human readable) TM
+    ;; language and the low-level (actually implemented) TM language.
+    ;; Cleanup-token-machine does a lot of the work of desugaring.
     cleanup-token-machine 
     desugar-macros		
-
 ;    cleanup-token-machine   ;; TEMP: FIXME
 
+    ;; (9) The next major step is desugaring the gradient
+    ;; communication constructs used in TML.  
     find-emittoks
     desugar-gradients
     cleanup-token-machine   ;; Rerun to expand out some stuff.
+    ;    analyze-tokmac-recursion    
 
-    ;    analyze-tokmac-recursion
-
+    ;; (10) Then we desugar another construct: "let-stored".
     desugar-let-stored
     rename-stored
 
+    ;; (11) CPS: we CPS the program to get rid of all non-tail calls.
+    ;; This is because Token handlers may only schedule more tokens,
+    ;; not wait for "child" handlers to return!  This is also the
+    ;; trick we use to implement synchronous sensor reading, which is
+    ;; really split-phased in the underlying NesC.
 ;    cps-tokmac
-;    sever-cont-state
- 
+;    sever-cont-state 
 ;    closure-convert
 ;    cleanup-token-machine ;; Trying this.. [2005.09.27]
 
+    ;; (12) Optimization: (unfinished) there's a bunch of low-hanging
+    ;; fruit optimizations on Token Machines that we should be doing.
     ;    inline-tokmac ???
 
+    ;; (*) OLD: The compiler back-end used to be in Haskell.  Thus we
+    ;; would export the intermediate language to a haskell readable
+    ;; form for the back-end to work with it.
     ;haskellize-tokmac 
     
+    ;; (13) This is the current back-end.  
+    ;; Uncomment to make the compiler generate NesC code.
 ;    flatten-tokmac
 ;    emit-nesc
-
     ))
 
 
@@ -467,7 +501,9 @@
 (define-id-syntax t1 (begin (close-graphics) b2))
 ;(define (t2) (parameterize ((simalpha-realtime-mode #f)) (eval (caddr (list-ref (maintest 'get) 60)))))
 (define-id-syntax t2 (load-regiment "demos/regiment/nested_regions.rs"))
-(define-id-syntax t3 (load-regiment "demos/regiment/simple_events.rs"))
+(define-id-syntax t3 (load-regiment "demos/regiment/simple/events.rs"))
+(define-id-syntax t3b (load-regiment "demos/regiment/simple/union.rs"))
+
 (define-id-syntax t4 (load-regiment "demos/regiment/static_elab.rs"))
 (define-id-syntax t5 (load-regiment "demos/regiment/anchor_free_localization.rs"))
 (define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))

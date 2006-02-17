@@ -24,7 +24,7 @@
 (define transfer
   (lambda (op args type)
     (match (list fun args type)
-       [(cluster ,args ,denstype)
+       [(rrcluster ,args ,denstype)
 	`[(contig-area ,denstype) (,diam ,area)]]
        [(sparsify ,args 
 		  ((,sparse-or-contig ,childtype) 

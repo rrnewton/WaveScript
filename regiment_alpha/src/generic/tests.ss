@@ -35,7 +35,7 @@
 
 ; [2005.09.27] Disabling temporarily: 
 ;    (rmap (lambda (r) (rfold + 0 r))
-;	  (cluster (rfilter even? (rmap nodeid world))))
+;	  (rrcluster (rfilter even? (rmap nodeid world))))
 
     ))
 

@@ -102,12 +102,15 @@
     (define (new-place) (unique-name 'X))
 
     ;; Returns expression, form-place, memb-place
+
+    ;; TODO: it looks like you could get a head-start on the
+    ;; constraint solving by looking at the args.
     (define (process-primapp prim args)
       (let ([expr (cons prim args)])
 	(case prim
 	  [(anchor-at anchor-maximizing) (values expr unknown-place (new-place))]
 
-	  [(node->anchor) (let ((p (new-place)))(values expr p p))]
+	  [(node->anchor) (let ((p (new-place))) (values expr p p))]
 
 	  ;; Both of these start in the center and spread to some extent.
 	  [(circle khood) (values expr (new-place) (list (new-place)))]
@@ -118,7 +121,7 @@
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
 	  ;; Maps are more straightforward, they don't change extent.
-	  [(cluster rmap) 
+	  [(rrcluster rmap runion rrflatten)
 	   (let ([newp (list (new-place))])
 	     (values expr newp newp))]
 

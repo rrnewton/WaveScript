@@ -16,11 +16,11 @@
 
 ;; Where let really behaves like letrec.
 
-;; No variable capture is allowed at this point.
+;; No variable capture is allowed at this point!! Ouch, that's a restriction!
 
-;;; The implementation requires constant?, datum?, keyword?,
-;;; regiment-primitive?, set?, formalexp?, get-formals, and the list
-;;; regiment-primitives from helpers.ss.
+;; [2006.02.17] TODO: This should also enforce the stronger
+;; (type-based) restrictions that we have considered, since the types
+;; are now fully available.
 
 (define verify-core 
   (let ()
@@ -70,7 +70,7 @@
           [(if ,test ,conseq ,altern)
            (guard (not (memq 'if env)))	   	  	
 	   ;; This is very restrictive.... 
-	   (andmap (lambda (s) 
+	   (andmap (lambda (s)
 		     (and (symbol? s) 
 			  (process-expr s env)))
 		   (list test conseq altern))

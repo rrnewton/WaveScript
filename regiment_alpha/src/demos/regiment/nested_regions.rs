@@ -29,9 +29,8 @@
 
 ;; Main query:
 
-nbrhoods
-
-
+(rrflatten nbrhoods)
+;nbrhoods
 
 
 

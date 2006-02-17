@@ -112,11 +112,6 @@
 (define (incr-top-level! v)
   (set-top-level-value! v (add1 (top-level-value v))))
 
-;; Helper to determine the distance between two 2d positions.
-(define (posdist a b)
-  (sqrt (+ (expt (- (car a) (car b)) 2)
-	   (expt (- (cadr a) (cadr b)) 2))))
-
 ;; TODO, returns all the nodes in the graph that are connected to the
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob sim)
@@ -550,7 +545,8 @@
 				 (,(string->symbol (format "set-~a-~a!" tokname x)) exttokobj ,e)
 				 (warning 'ext-set! "var ~s: token not present: ~s" ',x `(,tokname . subtok))
 				 )))]
-
+		  
+		  ;; [2006.02.16] Shouldn't really be using this right now.  Look into getting rid of:
 		  [(ext-ref ,[e] ,n)  (guard (integer? n))
 		   ;; [2006.01.12] Ack, I went to the trouble of making my token 
 		   ;; objects use records rather than simply being vectors.  But 
@@ -1305,7 +1301,8 @@
 			     (lambda () (read-params rest))
 			     (lambda () (reg:set-random-state! stored-state) (set! stored-state #f))))
 		       ]
-		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
+		      [,other (warning 'run-simulator-alpha "unrecognized parameters: ~s" other)]
+;		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
     ;; Reset global message counter:
     (clean-simalpha-counters!)

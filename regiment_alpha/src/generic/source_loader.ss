@@ -35,8 +35,19 @@
 	     [() `(tokens ,(desugar-token stuff))]
 	     [(tokens . ,others)
 	      `(tokens ,(desugar-token stuff) ,@others)])]
+
+;	  [((define (,f ,x* ...) ,y*) . ,[rest])
+;	   `(letrec ((,x* ,y*) ...) ,main)]
 	  [((define ,x* ,y*) ... ,main)
-	   `(letrec ((,x* ,y*) ...) ,main)]
+	   (let ([binds
+		  (map (lambda (x y)
+			 (match x
+			   [,s (guard (symbol? s))
+			       `[,s ,y]]
+			   [(,f ,x* ...) (guard (symbol? f) (andmap symbol? x*))
+			    `[,f (lambda ,x* ,y)]]))
+		    x* y*)])
+	     `(letrec (,binds ...) ,main))]
 	  ;[,retexp retexp]
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file

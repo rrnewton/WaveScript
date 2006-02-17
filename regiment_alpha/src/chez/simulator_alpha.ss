@@ -13,7 +13,6 @@
 
 	 testalpha testsalpha
 
-	 posdist
 	 )
 
 (import scheme)

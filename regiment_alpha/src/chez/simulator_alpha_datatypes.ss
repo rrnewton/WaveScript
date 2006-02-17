@@ -12,6 +12,7 @@
 	 evntlessthan 
 	 soc-return-buffer
 	 escape-alpha-sim
+	 posdist
 
 	 ;; Global parameter: temporary, for debugging:
 	 global-graph	 
@@ -126,7 +127,7 @@
 
 	 ;; Safer constructor:
 	 bare-msg-object 
-	 
+	 	
 	 )
 
 (import scheme)

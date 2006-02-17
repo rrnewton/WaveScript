@@ -131,7 +131,7 @@
 	   [(0 #f) (error 'rfilter "input not a region: ~n~a" r)]
 	   [else (filter f r)])))
      
-     (define (cluster r) (clump neighbors? r))
+     (define (rrcluster r) (clump neighbors? r))
 
       ;; Since this is frozen in time events have little meaning:
      (define (rwhen-any f r)
@@ -182,7 +182,7 @@
       (define (rfold f s r) (rfold f s (map car r)))
       (define (rmap f r) (map (lambda (x) (cons (f (car x)) (cdr x))) r))
       (define (rfilter f r) (filter (lambda (x) (f (car x))) r))
-      (define (cluster r) (clump neighbors? r))
+      (define (rrcluster r) (clump neighbors? r))
 
 ;     (define (anchor) '(ANCH world))
 ;     (define (anchor-at l) `(ANCH ,l))

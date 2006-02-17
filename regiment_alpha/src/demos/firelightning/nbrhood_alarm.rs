@@ -21,7 +21,7 @@
 
 ;; The neighborhoods around all light-triggered.
 (define area (rkhood light-triggered 2))
-(define locales (cluster area))
+(define locales (rrcluster area))
 ;(define heads (rmap anchor-in locales))
 
 (define local-avgs

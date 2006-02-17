@@ -1,3 +1,63 @@
+
+;;;; .title: CPS tokmac
+
+;;;; [2005.02.10] <br> 
+;;;; This pass does the CPS transformation for the token machine.  <br><br>
+
+;;;; Introduces lambda's and kcall.                                <br><br>
+
+
+; INIT message = 0
+; CALL message = 1
+
+; --------------------------------------------------------------------------------
+
+;;;;   Input Grammar:                                                   <br>
+;;;;   This is the standard "Post-Cleanup" grammar for token machines.  <br>
+;;;;   (except with gradients already desugared.)                       <br><br>
+
+;   NOTE: For now, subtokens are required to call static token
+;   destinations such that we know who to modify for CPS!
+
+;    <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
+;    <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
+;       NOTE: tokens will inclide a binding for SOC-start and node-start
+;    <Cbind> ::= (<var> <Exp>)
+;       NOTE: This expressions will be statically calculable -- constants.
+;    <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
+;    <TokName>   ::= <Symbol> 
+;    <SubtokId>  ::= <Number>
+;    <Token>     ::= (tok <TokName>) | (tok <Tokname> <Int>)
+;    <DynToken>  ::= (tok <Tokname> <Expr>) | <Token>
+;       NOTE: Either the whole token reference or just the sub-index can be dynamic.
+;    <Expr>      ::= (quote <Constant>)
+;                  | <Var>
+;                  | <DynToken>
+;                  | (set! <Var> <Expr>)
+;                  | (ext-ref <Token> <Var>)
+;                  | (ext-set! <Token> <Var> <Expr>)
+;       NOTE: These are static token refs for now.
+;                  | (begin <Expr> ...)
+;                  | (let ((<Symbol> <Expr>)) <Expr>)
+;                  | (if <Expr> <Expr> <Expr>)
+;                  | (subcall <DynToken> <Expr>...)
+;                  | (<Prim> <Expr> ...)
+;                  | (<Expr> ...)
+;                  | (leds <Red|Yellow|Green> <On|Off|Toggle>)
+;    <Prim> ::= <BasicPrim> 
+;             | call | subcall | timed-call
+;             | is_scheduled | deschedule | is_present | evict
+
+;   The call forms are all just plain prims.  This reflects the fact
+;   that they are permitted to have dynamically computed token
+;   arguments, and also dynamically computed times for timed-call.
+
+
+;;;; Output Grammar:                                                   <br><br>
+
+;;;; Subcall's and "return" statements are gone.                       <br>
+
+
 ;; TODO: USE NULLK
 ;; TODO: Add the hack that it just doesn't touch a handler that has no SUBCALL.
 
@@ -5,64 +65,7 @@
 ;; NOTE: Everiwhere that "OPTIMIZE" occurs is a (potentially
 ;; dangerous) optimization that could be turned off.
 
-
-;; [2005.02.10]
-
-;; cps-tokmac
-;; This pass does the CPS transformation for the token machine.
-
-;; Introduces lambda's and kcall.
-
-
-;; INIT message = 0
-;; CALL message = 1
-
-
-;;; Input Grammar:
-;;; This is the standard "Post-Cleanup" grammar for token machines.
-;;; (except with gradients already desugared.)
-
-;;; NOTE: For now, subtokens are required to call static token
-;;; destinations such that we know who to modify for CPS!
-
-;;;  <Pgm> ::= (program (bindings <Cbind>*) <NodePgm>)
-;;;  <NodePgm> ::= (nodepgm (tokens <TokBinding>*))
-;       NOTE: tokens will inclide a binding for SOC-start and node-start
-;;;  <Cbind> ::= (<var> <Exp>)
-;       NOTE: This expressions will be statically calculable -- constants.
-;;;  <TokBinding> ::= (<TokName> <SubtokId> (<Var> ...) (bindings <Cbind>*) (stored <Stored>) <Expr>)
-;;;  <TokName>   ::= <Symbol> 
-;;;  <SubtokId>  ::= <Number>
-;;;  <Token>     ::= (tok <TokName>) | (tok <Tokname> <Int>)
-;;;  <DynToken>  ::= (tok <Tokname> <Expr>) | <Token>
-;;;     NOTE: Either the whole token reference or just the sub-index can be dynamic.
-;;;  <Expr>      ::= (quote <Constant>)
-;;;                | <Var>
-;;;                | <DynToken>
-;;;                | (set! <Var> <Expr>)
-;;;                | (ext-ref <Token> <Var>)
-;;;                | (ext-set! <Token> <Var> <Expr>)
-;       NOTE: These are static token refs for now.
-;;;                | (begin <Expr> ...)
-;;;                | (let ((<Symbol> <Expr>)) <Expr>)
-;;;                | (if <Expr> <Expr> <Expr>)
-;;;                | (subcall <DynToken> <Expr>...)
-;;;                | (<Prim> <Expr> ...)
-;;;                | (<Expr> ...)
-;;;                | (leds <Red|Yellow|Green> <On|Off|Toggle>)
-;;;  <Prim> ::= <BasicPrim> 
-;;;           | call | subcall | timed-call
-;;;           | is_scheduled | deschedule | is_present | evict
-
-;;; The call forms are all just plain prims.  This reflects the fact
-;;; that they are permitted to have dynamically computed token
-;;; arguments, and also dynamically computed times for timed-call.
-
-
-;;; Output Grammar:
-
-;;; Subcall's and "return" statements are gone.
-
+; --------------------------------------------------------------------------------
 
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions

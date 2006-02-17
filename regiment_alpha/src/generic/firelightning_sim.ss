@@ -90,7 +90,7 @@
 								       (draw-mark (list strike-x strike-y)))
 								 '()))]
 				[mark (IF_GRAPHICS  '())])
-			    (printf " New fire!: ~a\n" newfire)
+			    (printf " New fire!: ~a\n" (list (fire-x newfire) (fire-y newfire) (fire-t newfire)))
 			    (set! fires (cons newfire fires))
 			    )))
 	      (let ([strikes 
@@ -123,7 +123,8 @@
 	       fires)
 	     ;; Our sensor has constant gaussian noise attached to it, stddev 5 degrees:
 	     ;(+ temp (* 5 (gaussian)))
-	     temp
+	     ;; TEMP: using integer temperature:
+	     (inexact->exact (floor temp))
 	     )]
 	  [(light) 9999] ;; TODO
 	  [else (error 'firelightning-sensor
