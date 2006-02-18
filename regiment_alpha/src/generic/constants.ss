@@ -170,6 +170,16 @@
 
 (define noplace '_)             ;; This symbol marks no place at all.
 
+;;; Used primarily by pass20_deglobalize
+;====================================================
+
+;; (Debugging, simulation only) <br> 
+;;   When this parameter is turned on, the emitted code returns tagged
+;;   values to the base-station.  This extra meta-data generally tells
+;;   the user what Regiment primitive produced the values, as well as
+;;   which node-ids they came from.
+(define-regiment-parameter deglobalize-markup-returns #f)
+
 ;;; Used primarily by pass21_cleanup-token-machine
 ;====================================================
 

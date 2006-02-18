@@ -129,6 +129,7 @@
     ;; unavailable, to *void*.
     (define process-expr
       (lambda (expr env)
+	;(printf "ENV: ~a ~a\n" expr env)
 	(letrec ([available? ;; Is this value available at compile time.
 		  (lambda (x)
 		    (if (eq? x not-available) #f
@@ -151,33 +152,50 @@
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
-          [,var (guard (symbol? var))
+	  [,prim (guard (regiment-primitive? prim)) prim]
+          [,var (guard (symbol? var))		
+		(match (assq var env)
+		  [#f (error 'static-elaborate "variable not in scope: ~a" var)]
+		  ;; Anything let-bound with a reference count of 1 gets inlined:
+;		  [(,_ ,x 1) 
+;`		   (printf "REFCOUNT1: ~a\n" var)
+;		   x]
+		  ;; Inline constants:
+		  [(,_ (quote ,d) ,__) `(quote ,d)]
+		  [(,_ ,not-available ,__) var]
+		  [(,_ ,v ,__) (guard (symbol? v))
+		       (process-expr v env)]
+		  ;; Otherwise, nothing we can do with it.
+		  [,else var])
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
-		var]
+		;var
+		]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(process-expr expr 
-		 (map list formals (make-list (length formals) not-available))))]
-
-	  ;; Here we inline if there's only one reference and it's a non-recursive binding:
-#;	  [(letrec ([,lhs ,rhs]) ,expr)
-	    (guard (and ;; (= 0 (count-refs lhs rhs)) ;; dissallow recursion
-			(= 1 (count-refs lhs expr))))
-	    (let ([body (process-expr 
-			 (substitute `((,lhs ,rhs)) expr)
-			 env)])
-	      ;; If we've got a recursive one we need to keep the binding around:
-	      (if (< 0 (count-refs lhs rhs))
-		  `(letrec ([,lhs ,rhs]) ,body)
-		  body))]
+			     (append (map list formals 
+					  (make-list (length formals) not-available)
+					  ;; The "reference count" for each var 
+					  (make-list (length formals) -1)) 
+				     env)))]
 
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (null? lhs*)
 	       (process-expr expr env)
-	   (let* ([newenv (append (map list lhs* rhs*) env)]
+	       ;; TODO: FIXME: NASTY COMPLEXITY:
+	       ;; This has complexity number vars * program size.
+	       ;; Inefficient ref-counting.
+	   (let* ([newenv (append (map list lhs* rhs* 
+				       (map (lambda (lhs)
+					      ;; TEMP [2006.02.18]: Disabling ref-counting.
+					      9999
+					      ;(count-refs lhs (cons expr rhs*))
+					      )
+					 lhs*))
+				  env)]
 		  [newrhs* (map (lambda (x) (process-expr x newenv)) rhs*)]
 ;		  [_ 	   (break)]
 		  [newbod (process-expr expr newenv)]
@@ -252,6 +270,10 @@
       notype)))
      (foo '(program '720 notype))]
 
+    ["Reduce a primop underneath a lambda."
+     (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+ '3 '4) x)) notype)))
+     (foolang '(program (lambda (x) (_) (cons '7 x)) notype))]
+
     [(static-elaborate '(foo '(program 
 			       (letrec ([f _ (lambda (x) (_) '#t)])
 				 (letrec ([loop _ (lambda (n) (_)
@@ -269,11 +291,11 @@
 	    notype))]
 
     ["Simple test to make sure we keep the quotes on:" 
-     (static-elaborate '(foolang '(program (cons (+ '3 '4) (unknownfun)) notype)))
-     (foolang '(program (cons (quote 7) (unknownfun))
+     (static-elaborate '(foolang '(program (cons (+ '3 '4) world) notype)))
+     (foolang '(program (cons (quote 7) world)
 		 notype))]
 
-    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) (unknownfun)) notype))])
+    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) world) notype))])
        `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])

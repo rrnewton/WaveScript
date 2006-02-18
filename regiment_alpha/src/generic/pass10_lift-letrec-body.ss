@@ -54,7 +54,7 @@
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched
-            (error 'lift-letrec "invalid expression: ~s"
+            (error 'lift-letrec-body "invalid expression: ~s"
                    unmatched)]))))
 
     (lambda (prog)

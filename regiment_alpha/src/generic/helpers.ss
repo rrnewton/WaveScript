@@ -539,6 +539,20 @@
 	  (string-append s (make-string (- w (string-length s)) #\space))
 	  s)))
 
+(define (uppercase str)  ;; Uppercase a string
+  (let ((new (string-copy str)))
+    (for i = 0 to (sub1 (string-length str))
+	 (string-set! new i (char-upcase (string-ref new i))))
+    new))
+(define (lowercase str)  ;; Lowercase a string
+  (let ((new (string-copy str)))
+    (for i = 0 to (sub1 (string-length str))
+	 (string-set! new i (char-downcase (string-ref new i))))
+    new))
+;; Lifted over symbols:
+(define (symbol-uppercase s)  (string->symbol (uppercase (symbol->string s))))
+(define (symbol-lowercase s)  (string->symbol (lowercase (symbol->string s)))) ;; ditto
+
 ;; This rounds a number to a given # of decimal points. -[2005.11.20] 
 (define (round-to dec n)
   (if (integer? n) n

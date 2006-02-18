@@ -724,8 +724,9 @@
        ;; Node->anchor actually takes zero args.  But that should be fine.
        `([,tokname ()
 		   ;; At each formation click, we output this node [id].
-		   (call reg-return (list 'ANCH (my-id)))
-		   ;(soc-return ,ANCH-NUM)
+		   ,(if (deglobalize-markup-returns)
+			`(call reg-return (list 'ANCH (my-id)))
+			`(call reg-return (my-id)))
 		   ])]
 
       [(circle circle-at)     
@@ -742,30 +743,42 @@
 
       [(rfilter)     
        `([,tokname (v)
-	  (call reg-return (vector 'FILTRATION ',tokname (my-id)))])]
+		   ,(if (deglobalize-markup-returns)
+			`(call reg-return (list (list 'FILTRATION ',tokname (my-id)) v))
+			`(call reg-return v))
+		   ])]
 
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
       [(rfold)
        `([,tokname (v) ;; This value is a sample in the stream
-	  (call reg-return v)])]
+		   ,(if (deglobalize-markup-returns)
+			`(call reg-return (list (list 'RFOLD ',tokname (my-id)) v))
+			`(call reg-return v))])]
       
       [(khood khood-at)
        `([,tokname () 
 		   (leds on red)
-		   (call reg-return (vector 'KHOOD ',tokname (my-id)))])]
-
-;      [(smap smap2) 
-;       `([,tokname (v) (call reg-return v)])]
+		   (call reg-return 
+			 ,(if (deglobalize-markup-returns)
+			      `(list (list ',(symbol-uppercase prim) ',tokname (my-id)) #f)
+			      (my-id))
+			 )])]
 
       [(rmap light-up smap smap2 runion rrflatten rrcluster)
-       `([,tokname (v) (call reg-return v)])]
+       `([,tokname (v) (call reg-return 
+			     ,(if (deglobalize-markup-returns)
+				  `(list (list ',(symbol-uppercase prim) (my-id)) v)
+				  'v)
+			     )])]
 
       ;; When the membership token has fired, the event has fired!
       ;; TODO: Need to implement greturn with retries!!
       [(rwhen-any)
-       `([,tokname (v) ;; Event value		   
-		   (call reg-return (vector 'EVENT v))
+       `([,tokname (v) ;; Event value		
+		   ,(if (deglobalize-markup-returns)
+			`(call reg-return (list (list 'EVENT (my-id)) v))
+			'(call reg-return v))
 		   ])]
 
       [else (error 'deglobalize:primitive-return 

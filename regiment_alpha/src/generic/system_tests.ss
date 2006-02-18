@@ -2046,6 +2046,7 @@
      retry
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
+		    [deglobalize-markup-returns #f]
 		    [default-slow-pulse '1000]
 		    [default-fast-pulse '100]
 		    [sim-timeout 400])
@@ -2270,7 +2271,7 @@
       ,(lambda (ls) (not (null? ls)))]
 
 
- ;; FIXME: FINISH
+;; FIXME: FINISH
      ["Regiment: Test an anchor-maximizing anchor election."
       (parameterize ([simalpha-channel-model 'lossless]
 		     [simalpha-placement-type 'connected]
@@ -2287,6 +2288,40 @@
 
       unspecified
       ]
+
+;; [2006.02.18] Now we test using some of the demo programs.  This is
+;; to better our regression testing; we don't want the demo programs
+;; to stop working without us knowing!!
+
+["Demos: smap2_two_anchors.rs"
+ (parameterize ([deglobalize-markup-returns #t])
+   (load-regiment (++ REGIMENTD "/demos/regiment/smap2_two_anchors.rs")))
+ ,(lambda (x) 
+    (match (map cadr x)
+      ;; Receive one or the other first:
+      [(#(#f ,b1) #(,a2 ,b2) . ,rest) (guard (= b1 b2)) #t]
+      [(#(,a1 #f) #(,a2 ,b2) . ,rest) (guard (= a1 a2)) #t]
+      [,else #f]))]
+
+["Demos: simple/events.rs" retry
+ (parameterize ([deglobalize-markup-returns #t])
+   (load-regiment (++ REGIMENTD "/demos/regiment/simple/events.rs")))
+ ,(lambda (ls)
+    (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
+
+#;
+["Demos: "
+ (load-regiment (++ REGIMENTD "/demos/regiment/"))
+ 3]
+
+;; TODO: simple/events
+;; TODO: simple/union
+;; TODO: simple/fold
+;; TODO: Demo average_temperature2
+;; TODO: nested_regions
+;; TODO: static_elab
+;; TODO: tracking??
+;; TODO: khood_anchor_at??
 
 
 #;   ;; FIXME : TODO : REACTIVATE      

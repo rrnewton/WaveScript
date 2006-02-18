@@ -3,22 +3,24 @@
 exec scheme --script "$0" `pwd` ${1+"$@"};
 |#
 
-;; Usage: ./script <outputname> <gradient-mode> <retry-delay> <max-retries>
-;; All the arguments are optional, but can only be omitted from the right.
+;;;; .title Count heard-from nodes per epoch for different gradients under different message loss conditions.
+
+;;;; Usage: ./script <outputname> <gradient-mode> <retry-delay> <max-retries>
+;;;; <br>  All the arguments are optional, but can only be omitted from the right.
+;;;; <br>  <br>
+
+;;;; This plots how many nodes we hear from as link quality declines.    <br>
+;;;; X-axis: average connectivity of network.                            <br>
+;;;; Y-axis: number of nodes in the network heard from                   <br><br>
+
+;; This script runs an experiment which produces a .data file.               
+;; The .data file is really an executable scheme file which plots the data.  
+;; Run it with: "regiment i foo.data"                                        
 
 
-;; This plots how many nodes we hear from as link quality declines.
-;; X-axis: average connectivity of network.
-;; Y-axis: number of nodes in the network heard from
-
-;; This script runs an experiment which produces a .data file.
-;; The .data file is really an executable scheme file which plots the data.
-;; Run it with: "regiment i foo.data"
-
-
-;; Two different wais to run it:
-;; ----------------------------------------
-;; Takes about ___ to run on Faith (2.4ghzOpteron) currently [2006.01.26].
+; Two different ways to run it:
+; ----------------------------------------
+; Takes about ___ to run on Faith (2.4ghzOpteron) currently [2006.01.26].
 (define trials 5)
 (define outer 15)
 (define nodes 30)
