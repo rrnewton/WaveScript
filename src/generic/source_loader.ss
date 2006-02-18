@@ -1,9 +1,10 @@
-;; source_loader.ss 
+;;;; .title source_loader.ss 
 
-;; [2005.11.11] This module loads regiment source from a ".rs" file
-;; and desugars it according to a few simple conventions that I've
-;; followed.
+;;;; [2005.11.11] This module loads regiment source from a ".rs" file
+;;;; and desugars it according to a few simple conventions that I've
+;;;; followed.  It can also load token machine ".tm" files.
 
+;; Read the file from disk, desugar the concrete syntax appropriately.
 (define read-regiment-source-file
   (lambda (fn)
     (define (desugar-token e)      
@@ -17,17 +18,24 @@
 	(match ls
 	  ;[() (error 'read-regiment-source-file "file has no return expression.")]
 	  [() ()]
+
+	  ;; Macro expansion:
+	  ;==================================================
 	  ;; First of all, we allow some load-time evaluation for syntax preprocessing:
 	  [((quasiquote ,form) ,rest ...)
 	   ;; Just evaluat it and loop:
 	   (desugar (cons (eval `(quasiquote ,form)) rest))]
 
+	  ;; Single expression file:
+	  ;==================================================
 	  ;; These first forms are the "single construct" style:
 	  [((,lang '(program ,stuff ...)))
 	   (car ls)]
 	  [((tokens ,tok* ...))
 	   (car ls)]
 
+	  ;; Multiple expression file:
+	  ;==================================================
 	  ;; These two are the "multiple construct" style, in which
 	  ;; many seperate "define" or "token" clauses are allowed.
 	  [((token ,stuff ...) . ,rest)
@@ -35,20 +43,9 @@
 	     [() `(tokens ,(desugar-token stuff))]
 	     [(tokens . ,others)
 	      `(tokens ,(desugar-token stuff) ,@others)])]
-
-;	  [((define (,f ,x* ...) ,y*) . ,[rest])
-;	   `(letrec ((,x* ,y*) ...) ,main)]
 	  [((define ,x* ,y*) ... ,main)
-	   (let ([binds
-		  (map (lambda (x y)
-			 (match x
-			   [,s (guard (symbol? s))
-			       `[,s ,y]]
-			   [(,f ,x* ...) (guard (symbol? f) (andmap symbol? x*))
-			    `[,f (lambda ,x* ,y)]]))
-		    x* y*)])
-	     `(letrec (,binds ...) ,main))]
-	  ;[,retexp retexp]
+	   `(letrec (,(map desugar-define x* y*) ...) ,(desugar-pattern-matching main))]
+
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file
 		  "invalid expression in definition context: ~s" `(,other ,rest ...))])))
@@ -59,9 +56,10 @@
       [(,prog ...) 
        (values (desugar prog) ())])))
 
-;; This loads (e.g. reads, compiles, and simulates) a regiment program:
-;; [2005.11.17] Currently redundant with code in regiment.ss:
-;; [2006.02.15] NOTE: This currently passes the flags to BOTH the
+;; This loads (e.g. reads, compiles, and simulates) a regiment program:  <br><br>
+;;
+;; [2005.11.17] Currently redundant with code in regiment.ss:            <br>
+;; [2006.02.15] NOTE: This currently passes the flags to BOTH the       
 ;; compiler and the simulator.  They both follow the bad practice of
 ;; ignoring flags they don't understand.
 (define load-regiment
@@ -104,7 +102,94 @@
 (define reg:load load-regiment) ;; shorthand
 
 
+; ================================================================================
+;;; Some syntactic sugar.
 
+;; Desugar define statements found within files into letrec statements.
+(define (desugar-define lhs rhs)  
+  (match lhs
+    [,s (guard (symbol? s))
+	`[,s ,(desugar-pattern-matching rhs)]]
+    [(,f ,x* ...) (guard (symbol? f))
+     `[,f ,(desugar-pattern-matching `(lambda ,x* ,rhs))]]
+    [,_  (error 'source_loader:desugar-define
+		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
+
+;; Desugar pattern matching within lambda's, letrecs, and "match" statements. <br>
+;; TODO: This should really not go in the source_loader.
+(define desugar-pattern-matching 
+  (let ([break-pattern 
+	 (lambda (pat)
+	   (match pat
+	     [,s (guard (symbol? s)) 
+		 (values s '())]
+	     [#(,[pv* binds*] ...)
+	      (let ([v (unique-name 'pattmp)]
+		    [len (length pv*)])
+		(values v
+			`( [,pv* (tupref ,(iota len) ,(make-list len len) ,(make-list len v))] ...
+			   ,@(apply append binds*)
+			   )))]
+	   ))])
+  (lambda (expr)
+  (let loop ([expr expr] [env '()] [subst '()])
+  (match expr 
+    [,c (guard (constant? c)) c]
+    [(quote ,d) `(quote ,d)]
+    [,var (guard (symbol? var))
+	  (let ((entry (assq var subst)))
+	    (if entry (cadr entry) var))]          
+    [(if ,[test] ,[conseq] ,[altern])
+     (guard (not (assq 'if env)))
+     `(if ,test ,conseq ,altern)]
+    ;; Pre type checking!!
+    [(lambda (,[break-pattern -> formal* binds* ] ...) ,expr)
+     (guard (not (assq 'lambda env)))     
+     (let ([bod (loop expr
+		 (append formal* env)
+		 ;(append (apply append subst*) subst)
+		 subst
+		 )]
+	   [binds (apply append binds*)])
+       (if (null? binds)
+	   `(lambda (,formal* ...)  ,bod)
+	   `(lambda (,formal* ...)  (letrec (,binds ...) ,bod))))]
+    [(letrec ((,[break-pattern -> lhs* binds*] ,[rhs*]) ...) ,[bod])
+     (guard (not (assq 'letrec env)))
+     
+     `(letrec ( [,lhs* ,rhs*] ...
+		,@(apply append binds*)
+	       )
+	,bod)]
+    ;; Only handles one-armed matches right now:
+;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
+    [(match ,[x] (,[break-pattern -> var binds] ,[rhs]))
+     `(letrec ([,var ,x]
+	       ,binds ...)
+	  ,rhs)]    
+    [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
+    )))))
+
+
+; ================================================================================
+
+(define these-tests
+  `(["Run a basic test of the pattern match expander."
+     (reunique-names (desugar-pattern-matching '(lambda (#(foo #(bar baz)) x) foo)))
+     (lambda (pattmp x)
+       (letrec ([foo (tupref 0 2 pattmp)]
+		[pattmp_1 (tupref 1 2 pattmp)]
+		[bar (tupref 0 2 pattmp_1)]
+		[baz (tupref 1 2 pattmp_1)])
+	 foo))]
+
+    [(desugar-pattern-matching '(match 3 [x x]))
+     (letrec ([x 3]) x)]
+
+    ))
+
+(define test-this (default-unit-tester "source_loader.ss: For reading regiment source files." these-tests))
+(define test_sourceloader test-this) ;; Unit test entry point.
 
 #|	      
 

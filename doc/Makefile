@@ -15,6 +15,7 @@ GENERICFILES = \
   generic/helpers.ss \
   generic/hm_type_inference.ss \
   generic/pass00_verify-regiment.ss \
+  generic/pass09_lift-letrec.ss \
   generic/pass22_desugar-macros.ss \
   generic/pass23a_find-emittoks.ss \
   generic/pass23_desugar-gradients.ss \
@@ -24,6 +25,7 @@ GENERICFILES = \
   generic/regiment_helpers.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
+  generic/source_loader.ss \
   generic/tml_generic_traverse.ss \
 
 
@@ -33,8 +35,10 @@ CHEZFILES = \
 
 PLTFILES = 
 
+ANALYSIS_FILES = \
+  ../analysis/gradients/reception_rate_vs_link_quality.ss
 
-SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES)
+SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
 DUPSRC   = $(SRCFILES:%=html/%)
 OBJFILES = $(DUPSRC:%=%.html)
 

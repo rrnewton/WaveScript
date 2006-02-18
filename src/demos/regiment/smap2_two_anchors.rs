@@ -10,6 +10,8 @@
   [simalpha-failure-model  'none]
   ;[simalpha-sense-function-constructor sense-noisy-rising]
   [simalpha-sense-function-constructor sense-random-1to100]
+  [default-slow-pulse 5000]
+  [default-slow-pulse 1000]
   [sim-timeout 2000])
 
 

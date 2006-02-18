@@ -106,6 +106,7 @@
 ;                 `(+ ,rand  ,datum* ...)
 ;                 (append rand-b* (apply append datum-b**))))]
 
+	  ;; No user apps left at this point:
           [(,prim ,[rand* rand-b**] ...)
            (guard (regiment-primitive? prim))
            (values `(,prim ,rand* ...) (apply append rand-b**))]
