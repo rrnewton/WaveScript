@@ -39,10 +39,9 @@
     (let ((queue (get-queue)))
       (if (null? queue)
 	  (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-      (logger 3 "~s Popped off action: ~s at vtime ~s ~n"
-	      (pad-width 5 (simevt-vtime (caar queue)))
-	      (msg-object-token (simevt-msgobj (caar queue)))
-	      (simevt-vtime (caar queue)))
+      (logger 3 (simevt-vtime (caar queue)) '_
+	      'Popped-off-action
+	      `[token ,(msg-object-token (simevt-msgobj (caar queue)))])
       (set-queue! (cdr queue))))
 
   ; =================================================================================
@@ -119,17 +118,15 @@
 
 		;(printf "Woot: ~s\n" (map simevt-vtime (map car (get-queue))))
 
-		(logger 3 "~s  Scheduling ~s new events ~s, new schedule len: ~s~n"
-			(pad-width 5 vtime) ;(apply min (map simevt-vtime newevnts)))
-			(length newevnts)
-			(map (lambda (e) 
-			       (list (msg-object-token (simevt-msgobj e))
-				     (simevt-vtime e)))
-			     newevnts)
-			(+ (length (get-queue)) (length newevnts))
-			;(map (lambda (e) (list (simevt-vtime (car e)) (msg-object-token (simevt-msgobj (car e)))))  buffer)
-			)
-		)))
+		(logger 3 vtime (node-id (simobject-node ob))
+			'Scheduling
+			;`[num ,(length newevnts)]
+			`[new-events ,(map (lambda (e) 
+					     (list (msg-object-token (simevt-msgobj e))
+						   (simevt-vtime e)))
+					newevnts)]
+			`[new-schedule-len ,(+ (length (get-queue)) (length newevnts))])
+		))) ;; end (schedule ob . newevnts)
     
     ; =================================================================================
     ;; Initializes some of the simobject's state.
@@ -171,14 +168,12 @@
     (unless (and (null? (simobject-local-msg-buf ob))
 		 (null? (simobject-timed-token-buf ob))
 		 (null? (simobject-incoming-msg-buf ob)))
-	(logger 1.5 "~s ~s: Receiving: ~s local, ~s timed, ~s remote. Queue len ~s~n"
-		(pad-width 5 vtime)
-		(node-id (simobject-node ob))
-		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))
-		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))
-		(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))
-		(length (get-queue))
-		))
+      (logger 1.5 vtime (node-id (simobject-node ob))
+	      'ReceivingMessages
+	      `[local ,(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))]
+	      `[timed ,(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))] 
+	      `[remote ,(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-incoming-msg-buf ob))] 
+	      `[QueueLen ,(length (get-queue))]))
 
     (let ([timed (simobject-timed-token-buf ob)]
 	  [local (simobject-local-msg-buf ob)]
@@ -309,12 +304,8 @@
 		  outgoing)
 
 	(let ((neighbors (graph-neighbors (simworld-object-graph sim) ob)))
-	  (logger "~s ~s: bcast ~s to -> ~s~n" 
-		  (pad-width 5 vtime )
-		  (node-id (simobject-node ob)) 
-		  (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)
-		  (map (lambda (x) (node-id (simobject-node x))) neighbors))
-	  
+	  (logger 2 vtime (node-id (simobject-node ob))
+		  'Bcast `[token (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)])
 	  (for-each (lambda (nbr)
 	     (for-each (lambda (out-msg)
 	       ;; Here's where we simulate the channel and determine if the message goes through.
@@ -390,23 +381,19 @@
 	;; Also copy this value to the simworld object so alpha_lib closures can get to it:
 	(set-simworld-vtime! sim vtime)
 
-	(logger 2 "~s  Main sim loop: (vtime of next action) queue len ~s ~n" 
-		(pad-width 5 vtime) (add1 (length (get-queue))))
-					;(printf "<~s>" vtime)
+	(logger 2 vtime '_ 'Main-sim-loop `[queue-len ,(add1 (length (get-queue)))])
 
-					;(printf "Busting thunk, running action: ~s~n" next)
 	;; For now, the time actually executed is what's scheduled
 	
 	;; This might print big structures, keep it tight:
 	(parameterize ([print-level 5]
 		       [print-length 15]
 		       [print-graph #t])
-	  (logger "~s ~s: Executing: ~s args: ~s~n"
-		  (pad-width 5 vtime)
-		  (node-id (simobject-node ob))
-		  (msg-object-token (simevt-msgobj evt))
-		  (msg-object-args (simevt-msgobj evt))
-		  ))
+	  (logger 3 vtime (node-id (simobject-node ob))
+		  'Executing 
+		  `[token ,(msg-object-token (simevt-msgobj evt))]
+		  `[args ,(msg-object-args (simevt-msgobj evt))])
+		  )
 	
 	'(DEBUGMODE ;; check invariant:
 	  (if (not (null? (simobject-outgoing-msg-buf ob)))

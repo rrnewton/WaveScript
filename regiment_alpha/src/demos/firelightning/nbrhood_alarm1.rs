@@ -1,6 +1,4 @@
-
-
-
+;; This tries to build a local neighborhood with which to detect fires.
 
 (parameters 
   [dummy-param (install-firelightning)]

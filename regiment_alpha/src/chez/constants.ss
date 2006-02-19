@@ -7,7 +7,8 @@
 ;; This defines the record-representation used throughout the regiment code.
 (define-syntax reg:define-struct
   (syntax-rules ()
-    [(_ (name field ...))  (define-record name (field ...))]))
+    [(_ (name field ...))  (begin (define-record name (field ...))
+				  (define ___ (record-reader 'name (type-descriptor name))))]))
 ;   [(_ (name field ...))  (define-structure (name field ...))]))
 
 ;; Uses introspection to make a record spill its guts.

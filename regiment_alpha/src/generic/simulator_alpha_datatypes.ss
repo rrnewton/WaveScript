@@ -152,46 +152,103 @@
 ;; .form (logger str args ...)                                      <br>        
 ;; .form (logger print-level str args ...)                          <br><br>
 ;;
-;; This uses the parameter "simulation-logger", expecting it to be bound to an output port.
+;; This uses the parameter "simulation-logger", expecting it to be bound to an output port. <br><br>
 ;;
-;; TODO: make this a syntax so that the calls disappear entirely in non-debug mode...
+;; TODO: make this a syntax so that the calls disappear entirely in non-debug mode...  <br><br>
+;;
+;; The current model for storing SExp logs allows them to be of the following type:    <br> 
+;;   LogLine ::= (vtime nodeid Symbol (field val)* )                                   <br>
+;;   Log ::= <LogLine>*                        -- A flat file of log-lines             <br>
+;;        |  #( <LogLine>* )*                  -- Log-lines chunked/batched by vectors <br><br>
+;;
+;; And further, log files can either be .log or .log.gz.
 (define logger
-  (lambda input
-  (mvlet ([(level ob args)
-	   (match input
-	     [(,lvl ,str ,args ...)
-	      (guard (number? lvl) (string? str))
-	      (values lvl str args)]
-	     [(,str ,args ...)	      
-	      (values 1 str args)])])
+  (let ()
+    ;; This is a bit of added complexity, but I'm going to write out
+    ;; chunks of log-file as vectors.  Thus I'm going to buffer the logging.
+    ;; UNFINISHED UNFINISHED::
+    (define buffered-writer
+      (if (top-level-bound? 'fork-thread)
+	  (let ()
+	    (define obj-buffer (make-vector 500 #f))
+	    (define num-objs 0)
+;	    (define buffer-mutex (make-mutex))
+;	    (fork-thread ;; Reader thread:
+	    
+	    (case-lambda 
+	      [() ;; This is a flush.
+	       (begin ;with-mutex buffer-mutex
+		 (fasl-write obj-buffer (simulation-logger))
+		 (set! num-objs 0)
+		 (vector-fill! obj-buffer #f))]
+	      [(obj)
+	       (begin ;with-mutex buffer-mutex
+		 (vector-set! obj-buffer num-objs obj)
+		 (set! num-objs (fx+ num-objs)))
+	       (if (= num-objs (vector-length obj-buffer))
+		   (buffered-writer))]))
+	  #f))
 
-  (define (column-width w ob)
-    (let ((s (format "~a" ob)))
-      (if (< (string-length s) w)
-	  (string-append s (make-string (- w (string-length s)) #\space))
-	  s)))
 
-  (define (print-header)
-    (fprintf (simulation-logger) "~a{~a} " 
-	     (column-width 4
-	     (if (simulation-logger-count)
-		 (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
-			(- (simulation-logger-count) 1))
-		 "foo"))
-;	     (column-width 4 (number->string current-vtime))
-	     (column-width 3 level)
-	     ))
-
-  (if (and (simulation-logger)
-	   (<= level (simulation-logger-level)))
-      (if (null? args)
-	  ;(critical-section
-	   (begin (print-header)
-		  (display ob (simulation-logger))
-		  (newline (simulation-logger)))
-           (begin ;critical-section
-	   (print-header)
-	   (display (apply format ob args) (simulation-logger))))))))
+    (define (do-logging input)
+      (mvlet ([(level ob args)
+	       (match input
+		 [(,lvl ,str ,args ...)
+		  (guard (number? lvl) (string? str))
+		  (values lvl str args)]
+		 [(,str ,args ...) (guard (string? str))
+		  (values 1 str args)]
+		 [(,lvl ,time ,nodeid ,sym ,pairs ...)
+		  (guard (number? lvl) (number? time) ;(integer? nodeid) 
+			 (symbol? sym) (andmap list? pairs))
+		  (values lvl (cons time (cons nodeid (cons sym pairs))) '())]
+		 [,else (error 'logger "invalid arguments: ~a" input)]
+		 )]
+	      [(port) (simulation-logger)])
+	(if (simulation-logger-human-readable)
+	    ;(log-line->human-readable level ob args)
+	    (let ()
+	      (define (column-width w ob)
+		(let ((s (format "~a" ob)))
+		  (if (< (string-length s) w)
+		      (string-append s (make-string (- w (string-length s)) #\space))
+		      s)))
+	      (define (print-header)
+		(fprintf port "~a{~a} " 
+			 (column-width 5
+				       (if (simulation-logger-count)
+					   (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
+						  (- (simulation-logger-count) 1))
+					   "foo"))
+					;	     (column-width 4 (number->string current-vtime))
+			 (column-width 3 level)
+			 ))
+	      (when (<= level (simulation-logger-level))
+		(print-header)
+		(cond
+		 [(list? ob) (fprintf port "~a ~a ~a -- " (pad-width 6 (car ob))
+				      (make-string (fx* 2 (inexact->exact (floor level))) #\space)
+				      (cadr ob))
+		  (display 
+		   (apply string-append 
+			  (insert-between ", "
+					  (map (lambda (pr)
+						 (format "~a: ~a" (car pr) (cadr pr)))
+					    (cddr ob))))
+		   port) (newline port)]
+		 [(null? args) (display ob port) (newline port)]
+		 [else (apply fprintf port ob args)])
+		))
+	    (begin
+	      (if (null? args)
+		  (write ob port)
+		  (write (apply format ob args) port))
+	      (newline port)
+	      ))))
+    ;; Body of logger:
+    (lambda input
+      (when (simulation-logger)
+	(do-logging input)))))
 
 ;; This is just another variant:
 ;; This has no critical section for now!!! [2005.02.25]

@@ -511,6 +511,7 @@
 
 (define-id-syntax t7 (load-regiment "demos/firelightning/simple_lightup.tm"))
 (define-id-syntax t8 (load-regiment "demos/firelightning/local_alarm.rs"))
+(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
 
 (define-id-syntax d1 (load-regiment "demos/regiment/simple_fold.rs"))
 (define-id-syntax d2 (load-regiment "demos/regiment/average_temperature2.rs"))

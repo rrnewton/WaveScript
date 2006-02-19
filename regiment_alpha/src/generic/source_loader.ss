@@ -102,6 +102,56 @@
 (define reg:load load-regiment) ;; shorthand
 
 
+;; TODO: Should be option to return a stream:
+(define (reg:load-log file . opts)
+  (let ((inport
+	 (open-input-file file 
+			  (if (equal? (extract-file-extension file) "gz")
+			      'compressed 'uncompressed))))
+    (let loop ([x (read inport)] [acc '()])
+      (if (eof-object? x)
+	  (reverse! acc)
+	  (loop (read inport) 
+		(append (reverse! (vector->list x)) acc))))))
+
+#|
+(define log-line->human-readable
+  (let ()
+    (define (column-width w ob)
+      (let ((s (format "~a" ob)))
+	(if (< (string-length s) w)
+	    (string-append s (make-string (- w (string-length s)) #\space))
+	    s)))
+    (define (print-header level)
+      (format "~a{~a} " 
+	      (column-width 5
+			    (if (simulation-logger-count)
+				(begin (simulation-logger-count (+ 1 (simulation-logger-count)))
+				       (- (simulation-logger-count) 1))
+				"foo"))
+					;	     (column-width 4 (number->string current-vtime))
+	      (column-width 3 level)
+	      ))
+    (lambda (level ob args port)
+      (when (<= level (simulation-logger-level))
+	(print-header level)
+	(cond
+	 [(list? ob) 
+	  (string-append
+	   (apply string-append 
+		  (format "~a ~a ~a -- " (pad-width 6 (car ob))
+			  (make-string (fx* 2 (inexact->exact (floor level))) #\space)
+			  (cadr ob))
+		  (insert-between ", "
+				  (map (lambda (pr)
+					 (format "~a: ~a" (car pr) (cadr pr)))
+				    (cddr ob))))
+	   "\n")]
+	 [(null? args) (display ob port) (newline port)]
+	 [else (apply fprintf port ob args)])
+	))))
+|#
+
 ; ================================================================================
 ;;; Some syntactic sugar.
 

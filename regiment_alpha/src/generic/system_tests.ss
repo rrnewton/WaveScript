@@ -774,6 +774,7 @@
      ,@(let ([commontest 
 	      '(parameterize ([unique-name-counter 0] 
 			      [simalpha-dbg-on #f]
+			      [simulation-logger #f] ;; Disable logging, continuation closures cant' be logged!
 			      [simalpha-zeropad-args 'warning])
 		 (let ((prog 
 		     (run-compiler

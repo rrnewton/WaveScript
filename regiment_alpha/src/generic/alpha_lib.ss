@@ -163,7 +163,8 @@
   
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
-  (logger "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
+  (logger 5 (simworld-vtime (simobject-worldptr (current-simobject)))
+	  (node-id (simobject-node (current-simobject))) 'LightUp `[r ,r] `[g ,g] `[b ,b])
   (IF_GRAPHICS 
    (if (simobject-gobj (current-simobject))
        (change-color! 
