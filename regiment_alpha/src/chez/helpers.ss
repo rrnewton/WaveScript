@@ -50,7 +50,7 @@
 	  list-get-random unfold-list average clump
 	  partition partition-equal split-before
 	  myequal?
-	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take
 	  counter-stream stream-append ;random-stream 
 	  display-constrained
 	  symbol-append 

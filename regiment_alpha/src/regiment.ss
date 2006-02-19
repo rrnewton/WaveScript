@@ -39,6 +39,7 @@
   (printf "  simulate (s)  simulate a token machine or simulator file~n")
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
+  (printf "  printlog (p)  print the contents of a log file~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -249,6 +250,7 @@
 	       (if simrepl (new-cafe))
 	       result))]
 
+	  ;; Interactive mode.  A Scheme REPL.
 	  [(i interact)
 	   (for-each (lambda (arg)
 		       (and (not (equal? arg "i"))
@@ -257,8 +259,26 @@
 	     args)
 	   (new-cafe)]
 
+	  ;; Printing SExp log files.
+	  [(p printlog)	   
+	   (match (filter (lambda (arg)
+			    (and (not (equal? arg "p"))
+				 (not (equal? arg "printlog"))))
+		    args)
+	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
+		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
+			 (error 'regiment:printlog "no log file supplied or found")))]
+	     [(,file) (reg:printlog file)]
+	     [,else  (error 'regiment:printlog "only can print one logfile at a time")])]
+
 	  )))))))
   
+(define (reg:printlog file)
+  (let ((stream (reg:read-log file 'stream)))
+    (let loop ((s (reg:read-log file 'stream)))
+      (unless (null? s)
+	(display (log-line->human-readable 0 (stream-car s) ()))
+	(loop (stream-cdr s))))))
 
 (define (regiment-exit code)
   ;; In case we're building a heap, we set this before we exit.

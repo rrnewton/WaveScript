@@ -102,19 +102,57 @@
 (define reg:load load-regiment) ;; shorthand
 
 
-;; TODO: Should be option to return a stream:
-(define (reg:load-log file . opts)
+;; This reads in a log file.  Either as a stream or all at once.
+;;
+;; I manually do the delays rather than using stream-cons/stream-append.
+;; Streams are not currently an ADT, they're representation is transparent.
+;; (They're simply lists with delayed tails.)
+(define (reg:read-log file . opts)
+  (define valid-options '(stream))
+  (define batch-size 1) ;; Number of lines of input to read at a time.
   (let ((inport
 	 (open-input-file file 
 			  (if (equal? (extract-file-extension file) "gz")
 			      'compressed 'uncompressed))))
-    (let loop ([x (read inport)] [acc '()])
-      (if (eof-object? x)
-	  (reverse! acc)
-	  (loop (read inport) 
-		(append (reverse! (vector->list x)) acc))))))
+    (for-each (lambda (opt) (if (not (memq opt valid-options)) 
+				(error 'reg:read-log "invalid option: ~a" opt)))
+      opts)
+    (if (memq 'stream opts)
+	(let ((first (read inport)))
+	  (if (vector? first)
+	      ;; If the file contains vectors, those are batches of log-lines.
+	      ;; We follow that existing granularity in our stream output.
+	      (let loop ((x first))
+		(if (eof-object? x) '()
+		    (append (vector->list x)
+			    (delay (loop (read inport))))))
+	      ;; Otherwise, the file is a flat set of log-lines.  We batch it on reading.
+	      (let loop ((x first) (count batch-size) (acc '()))
+		(cond
+		 [(eof-object? x) '()]
+		 [(= count 0) (append (reverse! acc)
+				      (delay (loop (read inport) batch-size '())))]
+		 [else (loop (read inport) (sub1 count) (cons x acc))]))))
+	;; Otherwise read the whole log file:
+	(let loop ([x (read inport)] [acc '()])
+	  (if (eof-object? x)
+	      (reverse! acc)
+	      (loop (read inport)
+		    (if (vector? x)
+			(append (reverse! (vector->list x)) acc)
+			(cons x acc)))))
+	)))
 
-#|
+;; This has multiple calling forms.                                  <br>
+;; .form (log-line->human-readable level ob args)                    <br>
+;; .param level -- the priority level (generally 0-5)      
+;; .param The object to print, which may be:                         <br>
+;;  1) A list: (vtime nodeid Symbol (field val)* )                   <br>
+;;     In this case args is ignored.                                 <br>
+;;  2) A string, in which case format is called and                  <br>
+;;     'args' are filled into the holes.                             <br>
+;; .param args -- Args to format, if ob is a string.
+;; .returns -- A string representing the line of log output.
 (define log-line->human-readable
   (let ()
     (define (column-width w ob)
@@ -132,25 +170,25 @@
 					;	     (column-width 4 (number->string current-vtime))
 	      (column-width 3 level)
 	      ))
-    (lambda (level ob args port)
+    (lambda (level ob args)
       (when (<= level (simulation-logger-level))
 	(print-header level)
 	(cond
 	 [(list? ob) 
 	  (string-append
 	   (apply string-append 
-		  (format "~a ~a ~a -- " (pad-width 6 (car ob))
+		  (format "~a ~a ~a ~a -- " (pad-width 6 (car ob))
+			  (pad-width 3 (cadr ob))
 			  (make-string (fx* 2 (inexact->exact (floor level))) #\space)
-			  (cadr ob))
+			  (caddr ob))
 		  (insert-between ", "
 				  (map (lambda (pr)
 					 (format "~a: ~a" (car pr) (cadr pr)))
-				    (cddr ob))))
+				    (cdddr ob))))
 	   "\n")]
-	 [(null? args) (display ob port) (newline port)]
-	 [else (apply fprintf port ob args)])
+	 [(null? args) (format "~a\n" ob)]
+	 [else (apply format ob args)])
 	))))
-|#
 
 ; ================================================================================
 ;;; Some syntactic sugar.

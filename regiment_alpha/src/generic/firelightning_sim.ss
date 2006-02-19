@@ -75,7 +75,9 @@
 			      (IF_GRAPHICS ((car (fire-gobj f)) (fire-rad f))) ;; Update the circle on the screen.
 			      #t)))
 		    fires))
-	    (logger 1 t '_ 'GROUND-TRUTH `[fires ,(map (lambda (f) (list (fire-x f) (fire-y f) (fire-t f))) fires)])
+	    (unless (null? fires)
+	      (logger 1 t '_ 'GROUND-TRUTH 
+		      `[fires ,(map (lambda (f) (list (fire-x f) (fire-y f) (fire-t f))) fires)]))
 
 	    ;(if (not (null? fires)) (printf "    Number Fires: ~a\n" (length fires)))
 

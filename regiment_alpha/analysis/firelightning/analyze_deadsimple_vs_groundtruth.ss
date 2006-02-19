@@ -17,9 +17,14 @@ exec chez --script "$0" `pwd` ${1+"$@"};
 (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))
 
 ;; Run the simulation.
-(define results
-  (load-regiment (++ REGIMENTD "/demos/firelightning/deadsimple_alarm.rs")
-		 '[simulation-logger "./deadsimple.log.gz"]
-		 ;;'[sim-timeout 500000]
-		 ))
 
+(load-regiment (++ REGIMENTD "/demos/firelightning/deadsimple_alarm.rs")
+	       '[simulation-logger "./deadsimple.log.gz"]
+	       ;;'[sim-timeout 500000]
+	       )
+(collect 4)
+
+(define log (reg:read-log "./deadsimple.log.gz" 'stream))
+
+(mvlet ([(x s) (stream-take 10 log)])
+  (printf "Took from stream: ~a \n" x))
