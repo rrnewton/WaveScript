@@ -1640,20 +1640,28 @@
 ;(define graph-flip...
 
 ;=======================================================================
-;; [2004.06.17] These functions deal with streams that are represented
-;; as a list, promise, or improper list with a promise as its final
-;; cdr-pointer.  That is:
-;;  Stream  := (item*)
-;;           | (item* . promise)
-;;           | promise
+;;; Stream functions.
+;;;
+;;; [2004.06.17] These functions deal with streams that are represented
+;;; as a list, promise, or improper list with a promise as its final
+;;; cdr-pointer.  That is:                         <br><br>
+;;;  Stream  := (item*)                            <br>
+;;;           | (item* . promise)                  <br>
+;;;           | promise                            <br><br>
+;;;
+;;; [2005.10.16] Just switched this from head-strict to not.
+;;; I should probably switch over to using the standard SRFI-40 stream
+;;; implementation at some point. <br><br>
+;;;
+;;; [2006.02.19] NOTE: Streams are not currently an ADT. They're
+;;; representation is transparent.  The user is free to construct
+;;; their own tail-delayed lists with whatever strictness pattern
+;;; they wish.
 
-;; [2005.10.16] Just switched this from head-strict to not.
-;; I should probably switch over to using the standard SRFI-40 stream
-;; implementation at some point.
-
+;; Is the object potentially a stream?  Can't tell for sure because
+;; promises are opaque.
 (define (stream? s)
-  ;; Is it a proper list?
-  (or (list? s)
+  (or (list? s)   ;; Is it a proper list?
       ;; Or an improper list that's still being computed?
       (live-stream? s)))
 ;; A live stream is one not all of whom's values have been computed yet.
@@ -1666,20 +1674,23 @@
      [(null? s) #t]
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
-;; TODO! This should memoize the second argument if it's a procedure...
-;(define stream-cons cons)
+;; This constructs streams where both branches are delayed, not just the tail.
 (define-syntax stream-cons
   (syntax-rules ()
     [(_ a b) (delay (cons a b))]))
+;; NOTE: Double delay for append:
+(define-syntax stream-append
+  (syntax-rules ()
+    [(_ args ... tail) (delay (append args ... (delay tail)))]))
 ;; Appends a finite-stream to a potentially infinite one:
-(define stream-append append)
+;(define stream-append append)
 (define stream-car
   (lambda (s)
     (let scloop ((s s))
       (cond
        [(promise? s)
 	;; We have no way of mutating the prior cell, so just return this:
-	(stream-car (force s))]
+	(scloop (force s))]
        [(pair? s) (car s)]
        [(null? s) (error 'stream-car "Stream is null!")]
        [else (error 'stream-car "invalid stream: ~s" s)]))))
@@ -1687,26 +1698,30 @@
   (cond
    [(promise? s)      
     ;; Again, this one isn't structured as a pair, so we can't mutate and extend.
+    ;; We just have to leave the promises in place.
     (stream-cdr (force s))]
    [(null? s) (error 'stream-cdr "Stream is null!")]
    [(pair? s)
-      (if (promise? (cdr s))
-	  (begin (set-cdr! s (force (cdr s)))
-		 ;; Might need to keep going, a promise may return a promise:
-		 (stream-cdr s))
-	  (cdr s))]
+; [2006.02.19] Why was I forcing this!?
+;      (if (promise? (cdr s))
+;	  (begin (set-cdr! s (force (cdr s)))
+;		 ;; Might need to keep going, a promise may return a promise:
+;		 (stream-cdr s))
+	  (cdr s)]
    [else (error 'stream-cdr "invalid stream: ~s" s)]))
 ;; Take N elements from a stream
+;; [2006.02.19] Modified to return two values, the second being the
+;; remainder of the stream.
 (define stream-take 
   (lambda (n s)
-    (let stloop ((n n) (s s))    
+    (let stloop ((n n) (s s) (acc '()))
       (cond
-       [(zero? n) '()]
+       [(fx= 0 n) (values (reverse! acc) s)]
        [(null? s)
 	(error 'stream-take "Stream ran out of elements before the end!")]
        [else 
-	(cons (stream-car s)
-	      (stloop (sub1 n) (stream-cdr s)))]))))
+	(stloop (fx- n 1) (stream-cdr s)
+		(cons (stream-car s) acc))]))))
 ;; Layer on those closures!
 (define stream-map 
   (lambda (f s)
@@ -1776,9 +1791,9 @@
        (get-output-string s))
      "test  abcdefg... again  abcdefghijklm...abcdefghijklmnop"]
 
-    [(stream-take 5 counter-stream)
+    [(mvlet ([(x _) (stream-take 5 counter-stream)]) x)
      (0 1 2 3 4)]
-    [(stream-take 3 `(1 2 . ,(delay '(3))))
+    [(mvlet ([(x _) (stream-take 3 `(1 2 . ,(delay '(3))))]) x)
      (1 2 3)]
     
 ;; Having problems with errors in drscheme.

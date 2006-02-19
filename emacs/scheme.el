@@ -329,7 +329,7 @@ See `run-hooks'."
 	       "parameterize" "parameters" "tokens" "token" "stored" "tok" "program" "nodepgm" "socpgm" "mvlet" "let-values"
 	       "fluid-let" "trace-define" "trace-lambda" "trace-let" "trace-define-syntax"
 	       "when" "unless" "for"
-	       "syntax-case" "define-syntax" "with-syntax"
+	       "syntax-case" "define-syntax" "with-syntax" "with-mutex" "fork-thread"
 	       "foldl" "filter" "for-eachi" "mapi"
 	       "case-lambda"
 	       "let/cc" "let/ec"
@@ -508,6 +508,7 @@ that variable's value is a string."
 (put 'when 'scheme-indent-function 1)
 (put 'fluid-let 'scheme-indent-function 1)
 (put 'with-syntax 'scheme-indent-function 1)
+(put 'with-mutex 'scheme-indent-function 1)
 (put 'trace-let 'scheme-indent-function 1)
 (put 'trace-lambda 'scheme-indent-function 1)
 (put 'mvlet 'scheme-indent-function 1)

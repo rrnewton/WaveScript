@@ -206,39 +206,7 @@
 		 )]
 	      [(port) (simulation-logger)])
 	(if (simulation-logger-human-readable)
-	    ;(log-line->human-readable level ob args)
-	    (let ()
-	      (define (column-width w ob)
-		(let ((s (format "~a" ob)))
-		  (if (< (string-length s) w)
-		      (string-append s (make-string (- w (string-length s)) #\space))
-		      s)))
-	      (define (print-header)
-		(fprintf port "~a{~a} " 
-			 (column-width 5
-				       (if (simulation-logger-count)
-					   (begin (simulation-logger-count (+ 1 (simulation-logger-count)))
-						  (- (simulation-logger-count) 1))
-					   "foo"))
-					;	     (column-width 4 (number->string current-vtime))
-			 (column-width 3 level)
-			 ))
-	      (when (<= level (simulation-logger-level))
-		(print-header)
-		(cond
-		 [(list? ob) (fprintf port "~a ~a ~a -- " (pad-width 6 (car ob))
-				      (make-string (fx* 2 (inexact->exact (floor level))) #\space)
-				      (cadr ob))
-		  (display 
-		   (apply string-append 
-			  (insert-between ", "
-					  (map (lambda (pr)
-						 (format "~a: ~a" (car pr) (cadr pr)))
-					    (cddr ob))))
-		   port) (newline port)]
-		 [(null? args) (display ob port) (newline port)]
-		 [else (apply fprintf port ob args)])
-		))
+	    (display (log-line->human-readable level ob args) port)
 	    (begin
 	      (if (null? args)
 		  (write ob port)

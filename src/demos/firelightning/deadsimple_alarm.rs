@@ -1,3 +1,7 @@
+
+
+
+
 ;; This can provide us a base-line.  It uses *no* fancy Regiment
 ;; features, it merely sends all the temperature values over a certain
 ;; threshold to the base station.
