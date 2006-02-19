@@ -463,8 +463,8 @@
 
 ;[2001.07.15]
 (define file->slist
-  (lambda (filename)
-    (let ([p (open-input-file filename)])
+  (lambda (filename . opts)
+    (let ([p (apply open-input-file filename opts)])
       (let loop ([exp (read p)])
         (if (eof-object? exp)
             (begin (close-input-port p)
@@ -1181,6 +1181,7 @@
 	   ;; This (long) sub-procedure executes a single test:
 	   (let ([execute-one-test
 	       (lambda (num entry)
+		 (collect) ;; [2006.02.18] Let's do a bit of collection between tests to reduce pauses.
 		 (match entry
 		   [(,descr ,extraflags ,expr ,intended)
 		    ;(printf "extraflags! ~a\n"  extraflags)
@@ -1221,8 +1222,11 @@
 								  who (apply format str args)))
 						       (lambda ()
 							 (parameterize ([current-output-port suppressed-test-output])
+						    ;;========================================
+						    ;; RUN THE TEST:
 							   (eval (preprocessor expr)))))
 						    (eval (preprocessor expr)))
+						    ;;========================================
 						)))])
 ;	       (newline)
 		(if (or (and (procedure? intended) ;; This means its an oracle

@@ -826,7 +826,9 @@
 				   (begin (display (format ,massaged ,@args) (console-output-port))
 					  (newline (console-output-port))))
 			       ;; Send a copy to the logger as well:
-			       (logger (string-append "<dbg> " (format ,massaged ,@args))))) )]
+			       (logger 1 (simworld-vtime (simalpha-current-simworld)) '_ 
+				       'DBG `[msg ,(apply format massaged args)])
+			       )))]
 		[(printf (quote ,str) ,[args] ...)
 		 (let ((massaged (massage-str str)))
 		   `(printf ,massaged ,@args))]
@@ -1473,7 +1475,7 @@
 ;; This procedure is not exposed in the API, it's internal.
 (define start-alpha-sim 
   (lambda (node-code-fun . flags)
-    (define logfile "__temp.log")
+    (define logfile "__temp.log.gz")
 
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
@@ -1482,7 +1484,8 @@
     (printf "Starting alpha-sim, initializing sensor-stub...\n")
     (parameterize ([simalpha-sense-function ((simalpha-sense-function-constructor))]
 		   ;; FOR NOW: only log if we're in debugmode [2005.10.17]
-		   [simulation-logger (IFDEBUG (open-output-file logfile 'replace) #f)]
+		   [simulation-logger (IFDEBUG (open-output-file logfile '(replace compressed))
+					       #f)]
 		   [simulation-logger-count (IFDEBUG 0 #f)])
 
 ;    (IFDEBUG (inspect (simulation-logger)) ())

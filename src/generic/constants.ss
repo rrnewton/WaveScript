@@ -129,10 +129,14 @@
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
 
+;; This toggles whether the file is printed in human readable form
+;; (indented, etc), or in machine readable (SExp) form.
+(define-regiment-parameter simulation-logger-human-readable #f)
+
 ;; Just a counter for the simulation logger messages.  
 ;; If it's #f that means it's not set, but it can be 
 ;; set to zero at the start of a simulation.
-(define-regiment-parameter simulation-logger-count #f)
+(define simulation-logger-count (make-parameter #f))
 
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other

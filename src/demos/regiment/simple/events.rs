@@ -12,7 +12,7 @@
   [simalpha-consec-ids #t]
   [default-slow-pulse 1000]
   [default-fast-pulse 100]
-  [sim-timeout 2000])
+  [sim-timeout 7000])
 
 ;; Main program
 

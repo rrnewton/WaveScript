@@ -58,11 +58,9 @@
 	    [(pop)
 	     (if (null? buffer)
 		 (error 'alpha-lib:build-node-sim "Can't pop from null scheduling queue"))
-	     (logger 3 "~a~a: Popped off action: ~a at vtime ~a ~n" 
-		     (pad-width 5 current-vtime)
-		     (node-id (simobject-node ob))
-		     (msg-object-token (simevt-msgobj (car buffer)))
-		     (simevt-vtime (car buffer)))
+	     (logger 3 (simevt-vtime (car buffer)) (node-id (simobject-node ob))
+		     'Popped-off-action
+		     `[token ,(msg-object-token (simevt-msgobj (car buffer)))])
 	     (set! buffer (cdr buffer))]
 
 	    ;; This is a questionable method.  When we have a gap in
@@ -70,9 +68,9 @@
 	    ;; when the "global clock" runs along past ours, and then
 	    ;; we set ours to catch up with it.
             [(catchup-time ,globvtime)
-	     (logger 3 "~a: Catchup time: ~a ~n"
-		     (node-id (simobject-node ob))
-		     globvtime)
+	     (logger 3 globvtime (node-id (simobject-node ob))
+		     'Catchup-to-global-time
+		     '["" "Simulator fell behind global clock"])
              (private-scheduler 'advance-time (- globvtime private-vtime))]
 
 	    [(advance-time ,increment)
@@ -81,10 +79,11 @@
 			 (node-id (simobject-node ob))
 			 increment))
 	     ;; Here we update the schedule to deal with the new local clock.
-             (when (> increment 0) ;; Fizzle if the increment is not positive
-	       (logger 3 "~a: Incrementing time by ~a, from ~a ~n"
-		       (node-id (simobject-node ob))
-		       increment private-vtime)
+             (when (> increment 0) ;; Fizzle if the increment is not positive	       
+	       (logger 3 (+ increment private-vtime) (node-id (simobject-node ob))
+		       'Incrementing-time
+		       `[incr ,increment]
+		       `[from ,private-vtime])
                (set! private-vtime (+ private-vtime increment))
 	       ;; But with that new time, we have to see if we still have time 
 	       (private-scheduler 'reconsider-schedule)
@@ -133,12 +132,12 @@
 		(set! buffer (merge evntlessthan newevnts buffer))
 		;; Setting the new time will reorder the buffer rationally
 		;;(private-scheduler 'catchup-time current-vtime)
-		(logger 3 "~a: Scheduling ~a new events ~a, new schedule: ~a~n"
-			(node-id (simobject-node ob))
-			(length newevnts)
-			(map (lambda (e) (msg-object-token (simevt-msgobj e))) newevnts)
-			(map (lambda (e) (list (simevt-vtime e) (msg-object-token (simevt-msgobj e))))
-			     buffer))
+		(logger 3 current-vtime (node-id (simobject-node ob))
+			'Scheduling
+			`[num ,(length newevnts)]
+			`[new-events ,(map (lambda (e) (msg-object-token (simevt-msgobj e))) newevnts)]
+			`[new-schedule ,(map (lambda (e) (list (simevt-vtime e) (msg-object-token (simevt-msgobj e))))
+					  buffer)])
 		)]
 	    
 	    [,err (error 'build-node-sim "Did not understand message: ~a" err)]
