@@ -1,0 +1,36 @@
+# This was data generated on Mon Feb 20 15:34:39 EST 2006.
+# These are the time-lags for fire detection in this run.
+# Current Param Settings:
+#   svn-revision                   = 1119
+#   regiment-version               = "0.87.2"
+#   simalpha-sense-function        = #f
+#   simalpha-sense-function-constructor = #<procedure sense-spatial-sine-wave>
+#   simalpha-zeropad-args          = #t
+#   simalpha-dbg-on                = #t
+#   simalpha-failure-model         = none
+#   simalpha-channel-model         = lossless
+#   simalpha-max-gridlike-perturbation = 1/2
+#   simalpha-placement-type        = gridlike
+#   simalpha-consec-ids            = #t
+#   simalpha-inner-radius          = 10
+#   simalpha-outer-radius          = 15
+#   simalpha-world-ybound          = 60
+#   simalpha-world-xbound          = 60
+#   sim-startup-stagger            = 0
+#   sim-timeout                    = 2000
+#   sim-num-nodes                  = 30
+#   processor-screen-radius        = 16.0
+#   etx-max-retries                = 3
+#   etx-retry-delay                = 50
+#   desugar-gradients-mode         = etx
+#   deglobalize-markup-returns     = #f
+#   default-fast-pulse             = 1000
+#   default-slow-pulse             = 30000
+#   simulation-logger-human-readable = #f
+
+# Data:
+77074
+85073
+-204895
+36071
+32103

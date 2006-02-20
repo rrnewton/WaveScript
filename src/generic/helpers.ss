@@ -1717,9 +1717,10 @@
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
 ;; This constructs streams where both branches are delayed, not just the tail.
+;; [2006.02.20] Just double-delaying.  It's inefficient but seems safest.
 (define-syntax stream-cons
   (syntax-rules ()
-    [(_ a b) (delay (cons a b))]))
+    [(_ a b) (cons a (delay b))]))
 ;; NOTE: Double delay for append:
 (define-syntax stream-append
   (syntax-rules ()

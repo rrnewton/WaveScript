@@ -20,7 +20,7 @@ exec chez --script "$0" ${1+"$@"};
       (load objectfile)
       (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))))
 
-(define curlogfile "./deadsimple.log.gz")
+(define curlogfile "./deadsimple.log")
 
 (random-seed (current-time))
 
@@ -90,10 +90,6 @@ exec chez --script "$0" ${1+"$@"};
      (set! ground (stream-filter (lambda (x) (eq? 'GROUND-TRUTH (caddr x))) logstream))
      (set! returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
 	 
-     ;; TEMP, intermediate, refactored partially
-     (time (set! ground (stream-take-all ground)))
-     (time (set! returned (stream-take-all returned)))
-
      (printf "We build a very simple model based on the returned data.\n")
 
      (let ()     
@@ -125,52 +121,49 @@ exec chez --script "$0" ${1+"$@"};
        (define (vectcar v) (vector-ref v 0))
 
        (set! estimates
-	 (let ([points '()]
-	       [output '()])
-	   ;; TRACKS ONLY ONE FIRE CURRENTLY:
-	   ;; This produces a stream of estimates.
-	   (let predictloop ((rets returned))
+	     ;; TRACKS ONLY ONE FIRE CURRENTLY:
+	     ;; This produces a stream of estimates.
+	   (let predictloop ((rets returned) (points '()))
 	     ;; Add the new data point:
-	     (if (null? rets)
-		 (reverse! output)
-		 (match (car rets)
+	     (if (stream-empty? rets) 
+		 '()
+		 (match (stream-car rets)
 		   [(,clock ,__ SOCRETURN [val #(,id ,nodeclock ,temp)])
 		    ;; Expire old points and remove the existing entry for this node.
-		    (set! points
-			  (filter (match-lambda (#(,i ,c ,t))
-				    (and (not (= i id))
-					 (not (> (- clock c) point-life))))
-			    points))
-		    (set! points (cons (vector id clock temp) points))
+		    (let ([newpoints
+			   (cons (vector id clock temp)
+				 (filter (match-lambda (#(,i ,c ,t))
+					   (and (not (= i id))
+						(not (> (- clock c) point-life))))
+				   points))])
 
-		    (let ([definites (filter (match-lambda (#(,i ,c ,t)) (> t 150)) points)])
+		    (let ([definites (filter (match-lambda (#(,i ,c ,t)) (> t 150)) newpoints)])
 		      (if (not (null? definites))
 			  ;; We are one hundred percent confident in the existence of a 
-			  ;; fire once we have any points over 150C.
-			  (set! output (cons (make-estimate 100 clock (centroid definites) (map vectcar definites)) output))
+			  ;; fire once we have any newpoints over 150C.
+			  (stream-cons (make-estimate 100 clock (centroid definites) (map vectcar definites))
+				       (predictloop (stream-cdr rets) newpoints))
 			  
 			  ;; Check if there's a critical mass.
-			;		    (let ([clusters (clump 500 points)])
+			;		    (let ([clusters (clump 500 newpoints)])
 			;		      (let ([sums (map (lambda (clust) 
 			;					 (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) clust))
 			;				    clusters)])
 			;			(for-each (lambda (pts sum)
 
 			  ;; SIMPLE SIMPLE for now:
-			  (let ([sum (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) 0 points)])
-			    (set! output 
-				  (cons 
-				   (if (and ;(> (length points) 1)
-					    (> sum 10))
-				       ;; Put in a random heuristic for confidence!
-				       (make-estimate (* .9 (- 100 (/ 100 (exp (/ (length points) 2)))))
-						      clock (centroid points) (map vectcar points))
-				       ;; Otherwise we estimate that there's no fire.
-				       (make-estimate 0 clock #f (map vectcar points)))
-				   output)))))
-		    (predictloop (cdr rets))]
+			  (let ([sum (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) 0 newpoints)])
+			    (stream-cons 
+			     (if (and ;(> (length newpoints) 1)
+				       (> sum 10))
+				 ;; Put in a random heuristic for confidence!
+				 (make-estimate (* .9 (- 100 (/ 100 (exp (/ (length newpoints) 2)))))
+						clock (centroid newpoints) (map vectcar newpoints))
+				 ;; Otherwise we estimate that there's no fire.
+				 (make-estimate 0 clock #f (map vectcar newpoints)))
+			     (predictloop (stream-cdr rets) newpoints))))))]
 		   [,other (error 'predictloop "bad output from query: ~a" other)]))
-	     ))) ; end estimates
+	     )) ; end estimates
 	   
        ;; Now we transform the stream of estimates into a stream of discrete detections.
        ;; CURRENTLY WORKS FOR ONE FIRE AT A TIME:
@@ -179,26 +172,28 @@ exec chez --script "$0" ${1+"$@"};
        (set! detected-events
 	 (let detectloop ((last #f) (estimates estimates))
 	   (cond
-	    [(null? estimates) '()]
-	    [(estimate-pos (car estimates))
-	     (let ((t (estimate-t (car estimates))))
+	    [(stream-empty? estimates) '()]
+	    [(estimate-pos (stream-car estimates))
+	     (let ((t (estimate-t (stream-car estimates))))
 	       (if (and last (< (- last t) 5000))
-		   (detectloop t (cdr estimates))
-		   (cons (car estimates) (detectloop t (cdr estimates)))))]
-	    [else (detectloop #f (cdr estimates))])))
+		   (detectloop t (stream-cdr estimates))
+		   (stream-cons (stream-car estimates) 
+				(detectloop t (stream-cdr estimates)))))]
+	    [else (detectloop #f (stream-cdr estimates))])))
+      
 
        (set! real-events
-	 (let detectloop ((last #f) (ground ground))
-	   (match ground
-	    [() '()]
-	    [((,newtime ,id GROUND-TRUTH [fires ,fires]) ,rest ...)
-	     (let ((new (filter (match-lambda ((,x ,y ,t ,r))
-				  (or (not last)
-				      (not (member `(,x ,y) last))))
-			  fires)))
-	       (append new
-		       (detectloop (map (match-lambda ((,x ,y ,t ,r)) `(,x ,y)) fires)
-				   (cdr ground))))])))
+	     (delay (let detectloop ((last #f) (ground ground))
+		      (if (stream-empty? ground) '()
+			  (match (stream-car ground)
+			    [(,newtime ,id GROUND-TRUTH [fires ,fires])
+			     (let ((new (filter (match-lambda ((,x ,y ,t ,r))
+						  (or (not last)
+						      (not (member `(,x ,y) last))))
+					  fires)))
+			       (stream-append new
+				  (detectloop (map (match-lambda ((,x ,y ,t ,r)) `(,x ,y)) fires)
+					      (stream-cdr ground))))])))))
 
        ;; Now compare the estimates with the ground truth
 ;       (let analyze ((t 0) (estimates estimates) (ground ground))
@@ -208,12 +203,6 @@ exec chez --script "$0" ${1+"$@"};
 ;	       [(,t ,id GROUND-TRUTH [fires ,fires])(m
 ;		(let 
 
-       (print-length 500)
-       (printf "Estimated detections: \n")
-       (pretty-print detected-events)
-       (printf "Actual events: \n")
-       (pretty-print real-events)
-
        ;; Analyze lag-till-detection.
        (printf "Computing lag times in detection.\n")
        (fprintf resultslog "# This was data generated on ~a.\n" (date))
@@ -221,20 +210,28 @@ exec chez --script "$0" ${1+"$@"};
        (fprintf resultslog "# Current Param Settings:\n")
        (regiment-print-params "#  " resultslog)
        (fprintf resultslog "\n# Data:\n")
+
+       ;; Now pull all those streams and pump out the results.
        (let loop ((detects detected-events) (actual real-events))
-	 (unless (null? actual)
-	   (match (car actual)
+	 (unless (stream-empty? actual)
+	   (printf "  Actual event: ~a\n" (stream-car real-events))
+	   (match (stream-car actual)
 	     [(,x ,y ,t ,r) 
 	      (let inner ((detects detects))
-		(if (null? detects)
+		(if (stream-empty? detects)
 		    (fprintf resultslog "-1\n")
-		    (if (>= (estimate-t (car detects)))
-			(begin 			  
-			  (fprintf resultslog "~a\n" (- (estimate-t (car detects)) t))
-			  (loop (cdr detects) (cdr actual)))
-			;; TODO: increment false positives!
-			(inner (cdr detects))
-			)))])))
+		    (begin 
+		      (printf "  Estimated detection: ~a\n" (stream-car detects))
+		      (if (>= (estimate-t (stream-car detects)))
+			  (begin 			  
+			    (fprintf resultslog "~a\n" (- (estimate-t (stream-car detects)) t))
+			    (printf "Lag time: ~a\n" (- (estimate-t (stream-car detects)) t))
+			    (loop (stream-cdr detects) (stream-cdr actual)))
+			  ;; TODO: increment false positives!
+			  (begin 
+			    (printf "    (Ignored detection: ~a)\n" (stream-car detects))
+			    (inner (stream-cdr detects)))
+			  ))))])))
        
        ;; Close open files.
        (close-output-port resultslog)
@@ -251,4 +248,4 @@ exec chez --script "$0" ${1+"$@"};
     [(analyze ,rest ...) (main 'analyze) (loop rest)]
     [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)]))
 
-(new-cafe)
+;(new-cafe)
