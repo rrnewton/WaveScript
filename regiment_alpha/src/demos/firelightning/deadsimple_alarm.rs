@@ -15,22 +15,24 @@
   [simalpha-dbg-on #f]
   ;[simalpha-sense-function sense-noisy-rising]
   ;[simalpha-sense-function sense-random-1to100]
-  [sim-timeout 500000]
+  [sim-timeout 200000]
   )
 
 (define (head #(a b)) a)
 (define (tail #(a b)) b)
 
-(define threshold 5)
+(define threshold 3)
 
 ;(define foo (tail (tuple 99 999)))
 
 ;; Main
 
-(rfilter
- (lambda (tup) (> (tail tup) threshold))
- (rmap (lambda (n) (tuple (nodeid n) (sense 'temp n)))
-       world))
+(define (read n)  
+  (tuple (nodeid n) (sense 'clock n) (sense 'temp n)))
+
+(define (filt #(_ __ temp)) (> temp threshold))
+
+(rfilter filt (rmap read world))
 
 ;; Region 'a = Area (Node, 'a)
 ;; world = Region ()

@@ -473,9 +473,7 @@
 
    (define-id-syntax debug-grammar (identifier-syntax (analyze-grammar-failure failure-stack)))
 
-   (define-id-syntax world (simalpha-current-simworld)) ;; shorthand
-
-   (define-id-syntax edges (identifier-syntax 
+   (define-id-syntax edges (identifier-syntax ;; shorthand
 			    (list->set 
 			     (apply append
 				    (map (lambda (x) (map cadr (gobject-edgelist (simobject-gobj x))))
@@ -487,16 +485,15 @@
 				  (printf "Regiment demos:\n")
 				  (system "ls")))
 				      
-   (define (node id) ;; shorthand
-     (let loop ((ls (simworld-all-objs (simalpha-current-simworld))))
-       (cond
-	[(null? ls) (error 'node "couldn't find ~s" id)]
-	[(= (node-id (simobject-node (car ls))) id) (car ls)]
-	[else (loop (cdr ls))])))
-   (define (dist id1 id2) ;; shorthand
-     (sim-locdiff (node-pos (simobject-node (node id1)))
-		  (node-pos (simobject-node (node id2)))))
    ))
+(begin ;; Some convenient syntax shortcuts:
+   (define (node id) ;; shorthand
+     (simobject-node (hashtab-get (simworld-obj-hash (simalpha-current-simworld)) id)))
+   (define (dist id1 id2) ;; shorthand
+     (sim-locdiff (node-pos (simobject-node (node id1)))a
+		  (node-pos (simobject-node (node id2)))))
+   (define-id-syntax world (simalpha-current-simworld)) ;; shorthand   
+)
 
 (define-id-syntax t1 (begin (close-graphics) b2))
 ;(define (t2) (parameterize ((simalpha-realtime-mode #f)) (eval (caddr (list-ref (maintest 'get) 60)))))

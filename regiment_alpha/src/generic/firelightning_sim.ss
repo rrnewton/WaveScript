@@ -51,6 +51,11 @@
     (printf "Constructing fire sim...\n")
 
     (lambda (t)
+      (define worldx (simalpha-world-xbound))
+      (define worldy (simalpha-world-ybound))
+      (define quartx (/ (simalpha-world-xbound) 4))
+      (define quarty (/ (simalpha-world-ybound) 4))
+
       (if (not last-time) (set! last-time t))
       (if (< t last-time)
 	  (error 'firelightning-sensor
@@ -77,14 +82,19 @@
 		    fires))
 	    (unless (null? fires)
 	      (logger 1 t '_ 'GROUND-TRUTH 
-		      `[fires ,(map (lambda (f) (list (fire-x f) (fire-y f) (fire-t f))) fires)]))
+		      `[fires ,(map (lambda (f) (list (fire-x f) (fire-y f) (fire-t f) (fire-rad f))) fires)]))
 
 	    ;(if (not (null? fires)) (printf "    Number Fires: ~a\n" (length fires)))
 
+	    ;; TEMP: FIXME:
+	    ;; Currently making it so there's one fire at a time for easy analysis.
+	    (when (null? fires)
 	    ;; See if there are new lightning strikes.
 	    (for-each (lambda (strike-time)
-			(let ([strike-x (random world-xbound)]
-			      [strike-y (random world-ybound)])
+			;; [2006.02.19] Restricting the fires to the inner portion of the square.  
+			;; Can't have them falling outside of the network.			
+			(let ([strike-x (+ quartx (random (/ worldx 2)))]
+			      [strike-y (+ quarty (random (/ worldy 2)))])
 			  ;(printf "  LIGHTNING!! ~a of ~a ~a\n" i numstrikes strike-time)
 			  (let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
 						    ;; The graphical object for this fire is a strange thing.  
@@ -104,7 +114,8 @@
 		;; It's annoying for me to run simulations and wait for a strike.
 		(if (and (>= t 10000) (null? fires) (null? strikes))
 		    (list t) strikes)
-		))
+		))	    
+	    )
 	    (set! last-time t)
 	    ))
       ;; Done updating state, now create a function for reading sensor values:
@@ -159,9 +170,9 @@
 	     ;; Nah, let's actually make it a constant "halo" area.
 	     ;(min 1.0 (fl/ 100.  (+ 100. (^ (- dist radius) 2))))
 
-	     ;; Ok, also trying just a linear falloff:
+	     ;; Ok, also trying just a 1/n falloff:
 	     (if (> (- dist radius) 350) 0.
-		 (min 1.0 (fl/ 1.  (+ 1.0 (- dist radius)))))
+		 (min 1.0 (fl/ 1.  (+ 1.0 (fl* 0.5 (- dist radius))))))
 	     
 	     )
 	  ))))
@@ -236,8 +247,8 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
-  ;; Set the world size, 10KM square:
-  ;; Set both of these for now, lame:
+  ;; Set the world size, square:
+  ;; Set both of these binds for now, lame:
 ;  (set! world-xbound 5000)
 ;  (set! world-ybound 5000)
 ;  (simalpha-world-xbound 5000)

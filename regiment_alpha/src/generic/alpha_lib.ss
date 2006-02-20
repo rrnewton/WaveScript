@@ -268,9 +268,9 @@
    ]
 
 [define (simulator-soc-return x)
-  (printf "~n  SOCRETURN(t=~s) ~s ~n" 
-	  (simworld-vtime (simobject-worldptr (current-simobject)))
-	  x)
+  (let ([vtime (simworld-vtime (simobject-worldptr (current-simobject)))])
+    (printf "~n  SOCRETURN(t=~s) ~s ~n" vtime x)
+    (logger 0 vtime '_ 'SOCRETURN `[val ,x]))
   (soc-return-buffer (cons x (soc-return-buffer)))]
 
 [define (simulator-soc-finished)

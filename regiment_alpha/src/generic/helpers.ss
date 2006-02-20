@@ -464,12 +464,13 @@
 ;[2001.07.15]
 (define file->slist
   (lambda (filename . opts)
-    (let ([p (apply open-input-file filename opts)])
-      (let loop ([exp (read p)])
+    (let ([p (if (input-port? filename) filename
+		 (apply open-input-file filename opts))])
+      (let loop ([exp (read p)] [acc '()])
         (if (eof-object? exp)
             (begin (close-input-port p)
-                   '())
-            (cons exp (loop (read p))))))))
+                   (reverse! acc))
+            (loop (read p) (cons exp acc)))))))
 ;; prints each expression to file.
 (define slist->file
   (case-lambda 
@@ -487,16 +488,22 @@
 		slist)
       (close-output-port p))]))
 
-
+;; [2006.02.20] Rewrote to have an efficient version:
 (define file->string
-  (lambda (filename)
-    (let ([p (open-input-file filename)])
-      (let loop ([c (read-char p)]
-                 [acc '()])
-        (if (eof-object? c)
-            (begin (close-input-port p)
-                   (list->string (reverse acc)))
-            (loop (read-char p) (cons c acc)))))))
+  (lambda (filename . opts)
+    (let* ([inp (open-input-file filename
+				 (if (not (memq 'unbuffered opts))
+				     (cons 'buffered opts)
+				     opts))]
+	   [outp (open-output-string)]
+	   [block-size 1024]
+	   [block (make-string block-size)])
+      (let loop ([count (block-read inp block block-size )])
+        (if (eof-object? count)
+	    (begin (close-input-port inp)
+		   (get-output-string outp))
+            (begin (block-write outp block count)
+		   (loop (block-read inp block block-size ))))))))
 
 (define string->file
   (lambda (str fn)
@@ -1502,6 +1509,8 @@
 
 ; =======================================================================
 
+;; This generates a simple text progress meter.  Call it with a total,
+;; and then invoke the returned thunk that many times to fill it up.
 (define (display-progress-meter totalcount)
   (let ((ticksize (/ totalcount 100))
 	(lasttick 0)
@@ -1528,6 +1537,17 @@
 	 (for i = 1 to 100000)
 	 (f)))
 
+(define progress-dots 
+  (case-lambda 
+    [(th)      (progress-dots th 50000000)]
+    [(th fuel) (progress-dots th fuel 
+			      (lambda () (display #\.) (flush-output-port)))]
+    [(th fuel progress)
+     (let loop ((engine (make-engine th)))
+       (progress)
+       (engine fuel
+	       (lambda (time-remaining val) (newline) (flush-output-port) val)
+	       loop))]))
 
 ;; [2005.10.16] Making a simple interface to gnuplot for graphing results
 ;; of queries.
@@ -1717,11 +1737,16 @@
     (let stloop ((n n) (s s) (acc '()))
       (cond
        [(fx= 0 n) (values (reverse! acc) s)]
-       [(null? s)
+       [(stream-empty? s)
 	(error 'stream-take "Stream ran out of elements before the end!")]
        [else 
 	(stloop (fx- n 1) (stream-cdr s)
 		(cons (stream-car s) acc))]))))
+;; Read the stream until it runs dry.  Had better be finite.
+(define (stream-take-all s)
+  (let stloop ((s s) (acc '()))
+    (if (stream-empty? s) (reverse! acc)
+	(stloop (stream-cdr s) (cons (stream-car s) acc)))))
 ;; Layer on those closures!
 (define stream-map 
   (lambda (f s)
