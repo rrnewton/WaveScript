@@ -212,6 +212,8 @@
 		  (write ob port)
 		  (write (apply format ob args) port))
 	      (newline port)
+	      ;; TEMP TEMP TEMP FIXME:
+	      (flush-output-port port)
 	      ))))
     ;; Body of logger:
     (lambda input

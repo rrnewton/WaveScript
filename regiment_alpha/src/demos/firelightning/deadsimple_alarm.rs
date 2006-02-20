@@ -15,7 +15,7 @@
   [simalpha-dbg-on #f]
   ;[simalpha-sense-function sense-noisy-rising]
   ;[simalpha-sense-function sense-random-1to100]
-  [sim-timeout 200000]
+  [sim-timeout 2000000]
   )
 
 (define (head #(a b)) a)

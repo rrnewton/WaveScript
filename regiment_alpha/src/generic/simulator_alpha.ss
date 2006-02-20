@@ -1484,8 +1484,8 @@
     (define logfile "__temp.log.gz")
     (define (open-opts f) 
       (if (equal? (extract-file-extension f) "gz") 
-	  '(replace compressed)
-	  '(replace uncompressed)))
+	  '(replace exclusive compressed)
+	  '(replace exclusive uncompressed)))
 
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
