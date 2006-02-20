@@ -23,7 +23,7 @@
 
 	  ;; Values:	    
 	  id ignore gnuplot histogram date grep-oblist
-	  display-progress-meter progress-dots count-nodes
+	  display-progress-meter progress-dots runN count-nodes
 	  string-split periodic-display all-equal?
 	  
 	  set->hashtab hashtab->list
@@ -51,7 +51,8 @@
 	  list-get-random unfold-list average clump
 	  partition partition-equal split-before
 	  myequal?
-	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take stream-take-all
+	  stream? live-stream? stream-empty? stream-car stream-cdr
+	  stream-map stream-filter stream-take stream-take-all 
 	  counter-stream stream-append ;random-stream 
 	  display-constrained
 	  symbol-append 
