@@ -109,6 +109,7 @@
 ;; (They're simply lists with delayed tails.)
 (define (reg:read-log file . opts)
   (define valid-options '(stream))
+  ;; [2006.02.19] This doesn't really seem to work as an optimization.
   (define batch-size 1) ;; Number of lines of input to read at a time.
   (let ((inport
 	 (open-input-file file 

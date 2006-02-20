@@ -40,6 +40,7 @@
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
   (printf "  printlog (p)  print the contents of a log file~n")
+  (printf "  reencode (r)  reencode a logfile in a compressed but fast-loading way~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -269,7 +270,31 @@
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
 			 (error 'regiment:printlog "no log file supplied or found")))]
 	     [(,file) (reg:printlog file)]
-	     [,else  (error 'regiment:printlog "only can print one logfile at a time")])]
+	     [,else  (error 'regiment::printlog "only can print one logfile at a time")])]
+
+	  [(r reencode)	 
+	   (match (filter (lambda (arg)
+			    (and (not (equal? arg "r"))
+				 (not (equal? arg "reencode"))))
+		    args)
+	     [(,in ,out)
+	      (let ((in (reg:read-log in 'stream))
+		    (out (open-output-file out '(compressed replace)))
+		    (block-size 1000)  ;; 1000 lines of log chunked at a time.
+		    (count 0))
+		(progress-dots 
+		 (lambda ()
+		   (let loop ((in in) (n block-size) (acc '()))
+		     (cond
+		      [(stream-empty? in) (close-output-port out)]
+		      [(fxzero? n)
+		       (fasl-write (list->vector (reverse! acc)) out)
+		       (loop in block-size acc)]
+		      [else 
+		       (set! count (add1 count))
+		       (loop (stream-cdr in) (fx- n 1) (cons (stream-car in) acc))]))
+		   )))]
+	     [,other (error 'regiment::reencode "bad arguments for log reencoding: ~a" other)])]
 
 	  )))))))
   

@@ -23,6 +23,10 @@
 ;;;;   <br><br>
 ;;;; Later, it may serve as a place to test scheduling algorithms so
 ;;;; that we can actually implement the atomic action model (with action-abort).
+;;;;
+;;;;   <br><br>
+;;;; 
+
 
 
 ; NOTE: Right now all calls go through the dyndispatch table.
@@ -1184,6 +1188,8 @@
       (apply start-alpha-sim (simalpha-current-nodeprog) 'simple args)
       (error 'start-alpha-sim "cannot rerun from last simulated program, this is the first time!")))
 
+;; This takes a token machine, rolls a new world, and runs it.  <br><br>
+;;
 ;; [2005.11.11] Modifying this to have an option of not going to disk
 ;; for the simulation programs.  This should increase performance when
 ;; I'm just running unit tests and not debugging.
@@ -1484,8 +1490,13 @@
     (printf "Starting alpha-sim, initializing sensor-stub...\n")
     (parameterize ([simalpha-sense-function ((simalpha-sense-function-constructor))]
 		   ;; FOR NOW: only log if we're in debugmode [2005.10.17]
-		   [simulation-logger (IFDEBUG (open-output-file logfile '(replace compressed))
-					       #f)]
+		   [simulation-logger (match (simulation-logger)
+					[#f #f]
+					[#t (open-output-file logfile '(replace compressed))]
+					[,s (guard (string? s)) 
+					    (open-output-file s '(replace compressed))]
+					[,other (error 'start-alpha-sim 
+						       "unsupported simulation-logger: ~a\n" other)])]
 		   [simulation-logger-count (IFDEBUG 0 #f)])
 
 ;    (IFDEBUG (inspect (simulation-logger)) ())
@@ -1513,10 +1524,12 @@
 		      (clean-simworld! (simalpha-current-simworld)))
 		    (fresh-simulation))])
 
-      (DEBUGASSERT ;'start-alpha-sim 
-		   (simworld? sim))
-  
-    ;(if (file-exists? logfile) (delete-file logfile))
+      (DEBUGASSERT (simworld? sim))
+      
+      ;; Now that the new world is generated, we write its essential info to the logfile.
+      ;; For now that's the nodes.
+      ;; [2006.02.20] Lame.  For now I'm having problems with writing records to disk.
+      (logger 0 -1 '_ 'NEWWORLD `[nodes ,(map reg:struct->list (map car (simworld-graph sim)))])
   
     ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
     (simalpha-current-simworld sim)
@@ -1569,12 +1582,12 @@
   	  ))
   		   
       ;; Out of main loop:
-      (if (simulation-logger) (close-output-port (simulation-logger)))))
+      (when (output-port? (simulation-logger)) (close-output-port (simulation-logger)))))
     ;; Out of let/cc:
     (let ((result (reverse (soc-return-buffer))))
       (printf "~nTotal globally returned values:~n ~s~n" result)
       result))
-    )))))
+    ))))) ;; End start-alpha-sim
 
 ; =======================================================================
 

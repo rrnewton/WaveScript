@@ -22,7 +22,7 @@
 	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
-	  id ignore gnuplot histogram display-progress-meter count-nodes
+	  id ignore gnuplot histogram display-progress-meter progress-dots count-nodes
 	  string-split periodic-display all-equal?
 	  
 	  set->hashtab hashtab->list
@@ -50,7 +50,7 @@
 	  list-get-random unfold-list average clump
 	  partition partition-equal split-before
 	  myequal?
-	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take
+	  stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take stream-take-all
 	  counter-stream stream-append ;random-stream 
 	  display-constrained
 	  symbol-append 
