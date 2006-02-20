@@ -1652,6 +1652,20 @@
 ;(histogram '(1 1 1 2 3 4 5 5 5 5 6 6 7) 2)
 ;; 1-3 3-5 5-7
 
+;; Return a string which somehow or another includes the date.
+(define (date)
+  (let ([pipes
+	 (case (machine-type)
+	   [(ti3le i3le ppcosx) (process "date")]
+	   [(i3nt ti3nt) (error 'date "don't know how to do date in windows")]
+	   [else (error 'date
+			"Ryan, what kind of machine are you on?!: ~a"
+			(machine-type))])])
+    (let ((res (read-line (car pipes))))
+      (close-port (car pipes))
+      (close-port (cadr pipes))
+
+      res)))
 
 ; =======================================================================
 

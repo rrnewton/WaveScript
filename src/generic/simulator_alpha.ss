@@ -1482,6 +1482,10 @@
 (define start-alpha-sim 
   (lambda (node-code-fun . flags)
     (define logfile "__temp.log.gz")
+    (define (open-opts f) 
+      (if (equal? (extract-file-extension f) "gz") 
+	  '(replace compressed)
+	  '(replace uncompressed)))
 
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
@@ -1492,9 +1496,9 @@
 		   ;; FOR NOW: only log if we're in debugmode [2005.10.17]
 		   [simulation-logger (match (simulation-logger)
 					[#f #f]
-					[#t (open-output-file logfile '(replace compressed))]
+					[#t (open-output-file logfile (open-opts logfile))]
 					[,s (guard (string? s)) 
-					    (open-output-file s '(replace compressed))]
+					    (open-output-file s (open-opts s))]
 					[,other (error 'start-alpha-sim 
 						       "unsupported simulation-logger: ~a\n" other)])]
 		   [simulation-logger-count (IFDEBUG 0 #f)])

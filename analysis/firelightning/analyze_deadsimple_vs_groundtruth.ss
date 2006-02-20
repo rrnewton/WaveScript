@@ -20,7 +20,7 @@ exec chez --script "$0" ${1+"$@"};
       (load objectfile)
       (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))))
 
-(define curlogfile "./deadsimple.log.gz")
+(define curlogfile "./deadsimple.log")
 
 (random-seed (current-time))
 
@@ -68,7 +68,7 @@ exec chez --script "$0" ${1+"$@"};
 	 (collect 4)))]
 
     [(analyze)
-     
+
      (printf "\nOpenning log file as stream...\n")
      ;; Note this takes advantage of Chez's ability to mutate undefined top level symbols:
      (set! logstream (reg:read-log curlogfile 'stream))
@@ -89,13 +89,8 @@ exec chez --script "$0" ${1+"$@"};
 	 
      (printf "We build a very simple model based on the returned data.\n")
 
-     (let ()
-;       (define (node->pos n)
-;	 (let loop ((nodes nodes))
-;	   (cond
-;	    [(null? nodes) (error 'node->pos "bad id: ~a" n)]
-;	    [(eq? (node-id (car nodes)) n) (node-pos (car nodes))]
-;	    [else (loop (cdr nodes))])))
+     (let ()     
+       (define resultslog (open-output-file "results.dat" 'replace))
 
        ;(reg:define-struct (datum t d))
        (reg:define-struct (estimate conf t pos nodes))
@@ -168,8 +163,7 @@ exec chez --script "$0" ${1+"$@"};
 				   output)))))
 		    (predictloop (cdr rets))]
 		   [,other (error 'predictloop "bad output from query: ~a" other)]))
-	     )))
-
+	     ))) ; end estimates
 	   
        ;; Now we transform the stream of estimates into a stream of discrete detections.
        ;; CURRENTLY WORKS FOR ONE FIRE AT A TIME:
@@ -212,7 +206,31 @@ exec chez --script "$0" ${1+"$@"};
        (pretty-print detected-events)
        (printf "Actual events: \n")
        (pretty-print real-events)
+
+       ;; Analyze lag-till-detection.
+       (printf "Computing lag times in detection.\n")
+       (fprintf resultslog "# This was data generated on ~a.\n" (date))
+       (fprintf resultslog "# These are the time-lags for fire detection in this run.\n")
+       (fprintf resultslog "\n# Current Param Settings:\n")
+       (regiment-print-params "#  " resultslog)
+       (let loop ((detects detected-events) (actual real-events))
+	 (unless (null? actual)
+	   (match (car actual)
+	     [(,x ,y ,t ,r) 
+	      (let inner ((detects detects))
+		(if (null? detects)
+		    (fprintf resultslog "-1\n")
+		    (if (>= (estimate-t (car detects)))
+			(begin 			  
+			  (fprintf resultslog "~a\n" (- (estimate-t (car detects)) t))
+			  (loop (cdr detects) (cdr actual)))
+			;; TODO: increment false positives!
+			(inner (cdr detects))
+			)))])))
        
+       ;; Close open files.
+       (close-output-port resultslog)
+
        )]))
 
 ;; Body of the script:

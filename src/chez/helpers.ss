@@ -22,7 +22,8 @@
 	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
-	  id ignore gnuplot histogram display-progress-meter progress-dots count-nodes
+	  id ignore gnuplot histogram date grep-oblist
+	  display-progress-meter progress-dots count-nodes
 	  string-split periodic-display all-equal?
 	  
 	  set->hashtab hashtab->list
@@ -231,6 +232,23 @@
 	    (get-output-string p))
 	  (begin (display c p)
 		 (loop (read-char in))))))))
+
+
+;; [2006.02.20] Copying here from my other utility files.
+;; This is a very useful little utility that allows you to search
+;; through all the currently bound top-level symbols.
+(define grep-oblist
+  ;; Only for unixy-machines
+  (lambda (str)
+    (let* ([name "___temp___.txt"]
+;           [out (open-output-file name 'replace)])
+           [out (open-output-file name )])
+      (for-each (lambda (o) (display o out) (newline out))
+                (oblist))
+      (system (format "cat \"~a\" | grep \"~a\"" name str))
+      (close-port out)
+      (delete-file name)
+      (void))))
 
 ;; [2005.11.17] This is reminescent of the perl command "chomp" 
 (define (chomp s)

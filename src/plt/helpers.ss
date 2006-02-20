@@ -45,7 +45,8 @@
    
    cd
    ;; Other values 
-   id gnuplot display-progress-meter count-nodes
+   id gnuplot gnuplot histogram date
+   display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
    set->hashtab
