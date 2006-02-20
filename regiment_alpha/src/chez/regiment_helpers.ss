@@ -26,6 +26,8 @@
 	  token->name token->subtok
 	  destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
 
+	  regiment-print-params
+
 	  )
   
   (include "generic/regiment_helpers.ss")

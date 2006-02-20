@@ -20,9 +20,13 @@ exec chez --script "$0" ${1+"$@"};
       (load objectfile)
       (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))))
 
-(define curlogfile "./deadsimple.log")
+(define curlogfile "./deadsimple.log.gz")
 
 (random-seed (current-time))
+
+(define-syntax mvfirst
+  (syntax-rules ()
+    [(_ e) (call-with-values (lambda () e) (lambda args (car args)))]))
 
 ;; Run the simulation.
 
@@ -75,18 +79,21 @@ exec chez --script "$0" ${1+"$@"};
        
      (printf "Analyzing performance vs. groundtruth...\n")
      
-     (time (set! all (stream-take-all logstream)) ;; inefficient
-	   )
+     (set! nodes (let loop ((s logstream))
+		   (if (stream-empty? s)
+		       (error 'analyze_deadsimple_vs_groundtruth "no world description in log")
+		       (match (stream-car s)
+			 [(,t ,id NEWWORLD ,binds ...)
+			  (cadr (assq 'nodes binds))]
+			 [,else (loop (stream-cdr s))]))))
 
-     (set! nodes (let loop ((l all))
-		   (match l
-		     [() (error 'analyze_deadsimple_vs_groundtruth "no world description in log")]
-		     [((,t ,id NEWWORLD ,binds ...) . ,_)
-		      (cadr (assq 'nodes binds))]
-		     [(,_ . ,rest) (loop rest)])))
-     (set! ground (filter (lambda (x) (eq? 'GROUND-TRUTH (caddr x))) all))
-     (set! returned (filter (lambda (x) (eq? 'SOCRETURN (caddr x))) all))
+     (set! ground (stream-filter (lambda (x) (eq? 'GROUND-TRUTH (caddr x))) logstream))
+     (set! returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
 	 
+     ;; TEMP, intermediate, refactored partially
+     (time (set! ground (stream-take-all ground)))
+     (time (set! returned (stream-take-all returned)))
+
      (printf "We build a very simple model based on the returned data.\n")
 
      (let ()     
@@ -211,8 +218,9 @@ exec chez --script "$0" ${1+"$@"};
        (printf "Computing lag times in detection.\n")
        (fprintf resultslog "# This was data generated on ~a.\n" (date))
        (fprintf resultslog "# These are the time-lags for fire detection in this run.\n")
-       (fprintf resultslog "\n# Current Param Settings:\n")
+       (fprintf resultslog "# Current Param Settings:\n")
        (regiment-print-params "#  " resultslog)
+       (fprintf resultslog "\n# Data:\n")
        (let loop ((detects detected-events) (actual real-events))
 	 (unless (null? actual)
 	   (match (car actual)

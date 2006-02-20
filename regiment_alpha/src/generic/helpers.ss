@@ -1537,6 +1537,7 @@
 	 (for i = 1 to 100000)
 	 (f)))
 
+;; [2006.02]
 (define progress-dots 
   (case-lambda 
     [(th)      (progress-dots th 50000000)]
@@ -1548,6 +1549,13 @@
        (engine fuel
 	       (lambda (time-remaining val) (newline) (flush-output-port) val)
 	       loop))]))
+
+;; [2006.02.20] A simple utility for running a long-running expression for only N ticks.
+(define-syntax runN
+  (syntax-rules ()
+    [(_ n exp) (let ((e (make-engine (lambda () exp))))
+		 (e n (lambda (_ val) val)
+		    (lambda (ee) (void))))]))
 
 ;; [2005.10.16] Making a simple interface to gnuplot for graphing results
 ;; of queries.
@@ -1762,11 +1770,23 @@
     (if (stream-empty? s) (reverse! acc)
 	(stloop (stream-cdr s) (cons (stream-car s) acc)))))
 ;; Layer on those closures!
-(define stream-map 
-  (lambda (f s)
-    (let loop ((s s))
-      (delay (cons (f (stream-car s))
-		   (loop (stream-cdr s)))))))
+(define (stream-map f s)
+  (let stream-map-loop ((s s))
+    (if (stream-empty? s) '()
+	(stream-cons (f (stream-car s))
+		     (stream-map-loop (stream-cdr s))))))
+(define (stream-filter f s) 
+  (let stream-filter-loop ((s s))
+    ;; This is a promise, that, when popped will scroll the stream
+    ;; forward to the next element that matches.
+    (delay 
+      (if (stream-empty? s) '()
+	  (let filter-scan-next ([first (stream-car s)] [rest (stream-cdr s)])
+	    (if (f first)
+		;; As we find matches, we build our new stream.
+		(cons first (stream-filter-loop rest))
+		(if (stream-empty? rest) '()
+		    (filter-scan-next (stream-car rest) (stream-cdr rest)))))))))
 ;; A stream of non-negative integers:
 (define counter-stream
   (let loop ((i 0))
@@ -1834,6 +1854,9 @@
      (0 1 2 3 4)]
     [(mvlet ([(x _) (stream-take 3 `(1 2 . ,(delay '(3))))]) x)
      (1 2 3)]
+
+    [(mvlet ([(x _) (stream-take 10 (stream-filter even? counter-stream))]) x)
+     (0 2 4 6 8 10 12 14 16 18)]
     
 ;; Having problems with errors in drscheme.
 ;    [(stream-take 5 `(1 2 . ,(delay '(3))))      error]
