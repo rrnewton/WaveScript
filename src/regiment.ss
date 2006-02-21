@@ -10,6 +10,8 @@
 (define start-dir (current-directory))
 ;(printf "STARTING: ~s\n" start-dir)
 
+(define orig-scheme-start (scheme-start))
+
 (define regiment-origin "unknown")
 (define stderr
   (let ((buffer-size 1))
@@ -39,8 +41,7 @@
   (printf "  simulate (s)  simulate a token machine or simulator file~n")
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
-  (printf "  printlog (p)  print the contents of a log file~n")
-  (printf "  reencode (r)  reencode a logfile in a compressed but fast-loading way~n")
+  (printf "  log      (l)  simulator trace manipulation mode~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -59,6 +60,14 @@
   (printf "  -timeout <n>  timeout after n clock ticks\n")
   (printf "  -plot         when simulation finishes, gnuplot output\n")
   (printf "  -repl         when simulation finishes, run interactive REPL\n")
+  (printf "~n")
+  (printf "Interactive Options: ~n")
+  (printf "  --script  <file>    run a scheme file as a script~n")
+  (printf "~n")
+  (printf "Log-manipulation Options: ~n")
+  (printf "  -print    <file>    print any log-file in human readable format~n")
+  (printf "  -examine  <file>    describe the chunking format of an existing logfile~n")
+  (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
   )
 
 (define (print-types-and-exit prog . opts)
@@ -252,38 +261,38 @@
 	       result))]
 
 	  ;; Interactive mode.  A Scheme REPL.
-	  [(i interact)
+	  #;[(i interact)
 	   (for-each (lambda (arg)
 		       (and (not (equal? arg "i"))
 			    (not (equal? arg "interact"))
 			    (load arg)))
 	     args)
 	   (new-cafe)]
+	  ;; Interactive mode.  A Scheme REPL.
+	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
+	  [(i interact)
+	   (printf "Exposing Regiment through interactive read-eval-print loop:\n")
+	   (cond
+	    [(null? (cdr args)) (new-cafe)]	    
+	    [(equal? (cadr args) "--script")
+	     (apply (scheme-script) (cddr args))]
+	    [else (apply orig-scheme-start (cdr args))])]
 
 	  ;; Printing SExp log files.
-	  [(p printlog)	   
-	   (match (filter (lambda (arg)
-			    (and (not (equal? arg "p"))
-				 (not (equal? arg "printlog"))))
-		    args)
+	  [(l log)
+	   (match (map string->symbol (cdr args))
 	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
-			 (error 'regiment:printlog "no log file supplied or found")))]
-	     [(,file) (reg:printlog file)]
-	     [,else  (error 'regiment::printlog "only can print one logfile at a time")])]
-
-	  [(r reencode)	 
-	   (match (filter (lambda (arg)
-			    (and (not (equal? arg "r"))
-				 (not (equal? arg "reencode"))))
-		    args)
-	     [(,in ,out)
-	      (let ((out (open-output-file out '(compressed replace)))
+			 (error 'regiment:log:print "no log file supplied or found")))]
+	     [(-print ,file) (reg:log:print (symbol->string file))]
+	     [(-print ,_ ...) (error 'regiment:log:print "only can print exactly one logfile at a time: ~a" args)]
+	     [(-reencode ,in ,out)
+	      (let ((out (open-output-file (symbol->string out) '(compressed replace)))
 		    (block-size 1000)  ;; 1000 lines of log chunked at a time.
 		    (count 0))
 		(progress-dots 
 		 (lambda ()
-		   (let loop ((in (reg:read-log in 'stream))
+		   (let loop ((in (reg:read-log (symbol->string in) 'stream))
 			      (n block-size) (acc '()))
 		     (cond
 		      [(stream-empty? in) (close-output-port out)]
@@ -294,7 +303,38 @@
 		       (set! count (add1 count))
 		       (loop (stream-cdr in) (fx- n 1) (cons (stream-car in) acc))]))
 		   )))]
-	     [,other (error 'regiment::reencode "bad arguments for log reencoding: ~a" other)])]
+	     [(-reencode ,_ ...)
+	      (error 'regiment:log:reencode 
+		     "bad arguments for log reencoding, expects input and output file: ~a" args)]
+	     [(-examine ,file)
+	      (newline)
+	      (let* ([file (symbol->string file)]
+		     [in (lambda ()
+			   (if (equal? (extract-file-extension file) "gz")
+			       (open-input-file file 'compressed)
+			       (open-input-file file)))]
+		     [first (read (in))])
+		;; First classify contents.
+		(cond
+		 [(vector? first)
+		  (printf "Log file batched into vectors, first vector is size: ~a\n" (vector-length first))]
+		 [(list? first)
+		  (printf "Log file contains raw, unbatched log entries.\n")]
+		 [else ("WARNING: Log file contains the following unrecognized object: ~a" first)])
+		;; Next classify fasl/plaintext.
+		(let* ([in (in)]
+		       [c1 (read-char in)]
+		       [c2 (read-char in)])
+		  (if (equal? "#@" (list->string (list c1 c2)))
+		      (printf "First expression in file is FASL encoded.  (Binary fast-loading format.)\n")
+		      (printf "First expression in file appears to be non-FASL plaintext~a.\n"
+			      (if (equal? (extract-file-extension file) "gz")
+				  " (except for being gzipped)" ""))
+		      )))]
+	     [(-examine ,_ ...)
+	      (error 'regiment:log:examine "-examine expects exactly one file name argument: ~a" args)]
+	     [,other (error 'regiment:log "unsupported options: ~a" other)]
+	     )]
 
 	  )))))))
   

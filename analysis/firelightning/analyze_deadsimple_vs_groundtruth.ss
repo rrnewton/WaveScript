@@ -1,6 +1,6 @@
 #! /bin/sh
 #| 
-exec chez --script "$0" ${1+"$@"};
+exec regiment i --script "$0" ${1+"$@"};
 |#
 
 ;;;; .title Analyze Dead-simple fire monitoring vs. groundtruth.
@@ -214,7 +214,6 @@ exec chez --script "$0" ${1+"$@"};
        (printf "ACTUAL: ~a\n" (mvfirst (stream-take 3 real-events)))
 
        ;; Now pull all those streams and pump out the results.
-       (runN 2000000
        (let loop ((detects detected-events) (actual real-events))
 	 (unless (stream-empty? actual)
 	   (printf "  Actual event: ~a\n" (stream-car actual))
@@ -235,7 +234,6 @@ exec chez --script "$0" ${1+"$@"};
 			    (printf "    (Ignored detection: ~a)\n" (stream-car detects))
 			    (inner (stream-cdr detects)))
 			  ))))])))
-       )
 
        ;; Close open files.
        (close-output-port resultslog)
