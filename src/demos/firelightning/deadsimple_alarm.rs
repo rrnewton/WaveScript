@@ -15,7 +15,9 @@
   [simalpha-dbg-on #f]
   ;[simalpha-sense-function sense-noisy-rising]
   ;[simalpha-sense-function sense-random-1to100]
-  [sim-timeout 2000000]
+  ;[sim-timeout 2000000]
+  ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
+  [sim-timeout 3600000] ;; An hour.
   )
 
 (define (head #(a b)) a)

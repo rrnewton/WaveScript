@@ -249,17 +249,17 @@
 
   ;; Set the world size, square:
   ;; Set both of these binds for now, lame:
-;  (set! world-xbound 5000)
-;  (set! world-ybound 5000)
-;  (simalpha-world-xbound 5000)
-;  (simalpha-world-ybound 5000)
-;  (sim-num-nodes 250)
+  (set! world-xbound 5000)
+  (set! world-ybound 5000)
+  (simalpha-world-xbound 5000)
+  (simalpha-world-ybound 5000)
+  (sim-num-nodes 250)
 
-  (set! world-xbound 1500)
-  (set! world-ybound 1500)
-  (simalpha-world-xbound 1500)
-  (simalpha-world-ybound 1500)
-  (sim-num-nodes 30)
+;  (set! world-xbound 1500)
+;  (set! world-ybound 1500)
+;  (simalpha-world-xbound 1500)
+;  (simalpha-world-ybound 1500)
+;  (sim-num-nodes 30)
 
   ;; Inner/Outer Radius for radios is 300/500 meters:
   (simalpha-inner-radius 300)
