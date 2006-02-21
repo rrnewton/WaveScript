@@ -20,7 +20,7 @@ exec chez --script "$0" ${1+"$@"};
       (load objectfile)
       (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))))
 
-(define curlogfile "./deadsimple.log")
+(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 
 (random-seed (current-time))
 
@@ -93,7 +93,7 @@ exec chez --script "$0" ${1+"$@"};
      (printf "We build a very simple model based on the returned data.\n")
 
      (let ()     
-       (define resultslog (open-output-file "results.dat" 'replace))
+       (define resultslog (open-output-file (format "results_~a.dat" (current-time)) 'replace))
 
        ;(reg:define-struct (datum t d))
        (reg:define-struct (estimate conf t pos nodes))
@@ -211,19 +211,22 @@ exec chez --script "$0" ${1+"$@"};
        (regiment-print-params "#  " resultslog)
        (fprintf resultslog "\n# Data:\n")
 
+       (printf "ACTUAL: ~a\n" (mvfirst (stream-take 3 real-events)))
+
        ;; Now pull all those streams and pump out the results.
+       (runN 2000000
        (let loop ((detects detected-events) (actual real-events))
 	 (unless (stream-empty? actual)
-	   (printf "  Actual event: ~a\n" (stream-car real-events))
+	   (printf "  Actual event: ~a\n" (stream-car actual))
 	   (match (stream-car actual)
 	     [(,x ,y ,t ,r) 
 	      (let inner ((detects detects))
 		(if (stream-empty? detects)
 		    (fprintf resultslog "-1\n")
 		    (begin 
-		      (printf "  Estimated detection: ~a\n" (stream-car detects))
-		      (if (>= (estimate-t (stream-car detects)))
+		      (if (>= (estimate-t (stream-car detects)) t)
 			  (begin 			  
+			    (printf "  Estimated detection: ~a\n" (stream-car detects))
 			    (fprintf resultslog "~a\n" (- (estimate-t (stream-car detects)) t))
 			    (printf "Lag time: ~a\n" (- (estimate-t (stream-car detects)) t))
 			    (loop (stream-cdr detects) (stream-cdr actual)))
@@ -232,7 +235,8 @@ exec chez --script "$0" ${1+"$@"};
 			    (printf "    (Ignored detection: ~a)\n" (stream-car detects))
 			    (inner (stream-cdr detects)))
 			  ))))])))
-       
+       )
+
        ;; Close open files.
        (close-output-port resultslog)
 
@@ -240,12 +244,16 @@ exec chez --script "$0" ${1+"$@"};
 
 ;; Body of the script:
 
+(let ([run-modes '()])
 (let loop ((x (map string->symbol (command-line-arguments))))
   (match x
-    [() (void)]
+    [() ;(inspect (vector run-modes curlogfile))
+     (if (null? run-modes)
+	 (void);(begin (main 'run) (main 'analyze))
+	 (for-each main run-modes))]
     [(-l ,file ,rest ...) (set! curlogfile (symbol->string file)) (loop rest)]
-    [(run ,rest ...) (main 'run) (loop rest)]
-    [(analyze ,rest ...) (main 'analyze) (loop rest)]
-    [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)]))
+    [(,action ,rest ...) (guard (memq action '(run analyze)))
+     (set! run-modes (snoc action run-modes)) (loop rest)]
+    [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)])))
 
 ;(new-cafe)

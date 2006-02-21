@@ -278,13 +278,13 @@
 				 (not (equal? arg "reencode"))))
 		    args)
 	     [(,in ,out)
-	      (let ((in (reg:read-log in 'stream))
-		    (out (open-output-file out '(compressed replace)))
+	      (let ((out (open-output-file out '(compressed replace)))
 		    (block-size 1000)  ;; 1000 lines of log chunked at a time.
 		    (count 0))
 		(progress-dots 
 		 (lambda ()
-		   (let loop ((in in) (n block-size) (acc '()))
+		   (let loop ((in (reg:read-log in 'stream))
+			      (n block-size) (acc '()))
 		     (cond
 		      [(stream-empty? in) (close-output-port out)]
 		      [(fxzero? n)

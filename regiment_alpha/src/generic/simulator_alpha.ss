@@ -1327,23 +1327,26 @@
     (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))))
 
 ;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
-(define (print-stats . sim)
-  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
-  (if (not sim)
-      (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
-      (let* ([measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
-	     [sorted (sort (lambda (x y) 
-			     (cond 
-			      [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
-			      [(cdr x) #t] [else #f]))
-			   measured)]
-	     [obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
-
-	     [total-messages (simalpha-total-messages sim)
-	      ;(apply + (map simobject-local-sent-messages (simworld-all-objs sim)))
-	      ]
-	     )
-	
+(define print-stats 
+  (case-lambda 
+    [() (print-stats "")]
+    [(prefix) (print-stats prefix (current-output-port))]
+    [(prefix port) (print-stats prefix port (simalpha-current-simworld))]
+    [(prefix port sim)    
+     (if (not sim)
+	 (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
+	 (let* ([measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
+		[sorted (sort (lambda (x y) 
+				(cond 
+				 [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
+				 [(cdr x) #t] [else #f]))
+			      measured)]
+		[obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
+		
+		[total-messages (simalpha-total-messages sim)
+					;(apply + (map simobject-local-sent-messages (simworld-all-objs sim)))
+				]
+		)	
 	(printf "\nStatistics for most recent run of SimAlpha.\n")
 	(printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
 
@@ -1369,7 +1372,7 @@
 	(printf "dsts: ~a\n" 
 		(map (lambda (x) (pad-width 3 (cdr x))) sorted))
 	(printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
-	))))
+	))]))
 
 
 ;; [2005.11.28] <br>
@@ -1484,8 +1487,8 @@
     (define logfile "__temp.log.gz")
     (define (open-opts f) 
       (if (equal? (extract-file-extension f) "gz") 
-	  '(replace exclusive compressed)
-	  '(replace exclusive uncompressed)))
+	  '(replace compressed) ; exclusive?
+	  '(replace uncompressed)))
 
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
@@ -1504,6 +1507,10 @@
 		   [simulation-logger-count (IFDEBUG 0 #f)])
 
 ;    (IFDEBUG (inspect (simulation-logger)) ())
+
+      (when (simulation-logger)
+	(regiment-print-params ";; " (simulation-logger))
+	(newline (simulation-logger)))
     
     (let* (
 	   [simple-scheduler (memq 'simple flags)]
