@@ -1675,6 +1675,109 @@
 
       res)))
 
+
+
+;; Add commas to a big number for printing. <br>
+;; [2006.02.21]  Moved this hear from other utility files.
+(define comma-number
+  (lambda (n)
+    (define bignumber-name-list
+      '(; [billion 9] [trillion 12] ;; Don't label these little guys.
+	[quadrillion  15]
+	[quintillion  18]
+	[sextillion  21]
+	[septillion  24]
+	[octillion  27]
+	[nonillion  30]
+	[decillion  33]
+	[undecillion  36]
+	[duodecillion  39]
+	[tredecillion  42]
+	[quattuordecillion  45]
+	[quindecillion  48]
+	[sexdecillion  51]
+	[septendecillion  54]
+	[octodecillion  57]
+	[novemdecillion  60]
+	[vigintillion  63]
+	[unvigintillion  66]
+	[duovigintillion  69]
+	[trevigintillion  72]
+	[quattuorvigintillion 75]
+	[quinvigintillion 78]
+	[sexvigintillion 81]
+	[septenvigintillion  84]
+	[octovigintillion  87]
+	[novemvigintillion  90]
+	[trigintillion  93]
+	[untrigintillion  96]
+	[duotrigintillion  99]
+	[googol 100]
+	[tretrigintillion  102]
+	[quattuortrigintillion 105]
+	[quintrigintillion 108]
+	[sextrigintillion 111]
+	[septentrigintillion 114]
+	[octotrigintillion  117]
+	[novemtrigintillion  120]))
+    (cond
+      [(or (fixnum? n) (bignum? n)) ;(integer? n)
+       (let* ([strls (string->list (number->string n))]
+              [power10 (sub1 (length strls))]
+              [groups 0])
+         (string-append
+           (list->string
+             (reverse
+               (let loop ([ls (reverse strls)])
+                 (if (< (length ls) 4)
+                     ls
+                     (begin
+                       (set! groups (add1 groups))
+                       (append (list (car ls) (cadr ls) (caddr ls) #\,)
+                               (loop (cdddr ls)))
+                       )))))
+           ;This assumes that the list of names is in magnitude order.
+           (let ([min (cadar bignumber-name-list)] ;better not be null
+                 [max (cadar (reverse bignumber-name-list))])
+             (cond
+               [(< power10 min)
+                ""]
+               [(> power10 max)
+                (format " (10^~s)" power10)]
+               [else
+                 (format
+                   " (10^~s -- ~a)" power10
+                   (let loop ([numnames bignumber-name-list]
+                              [curname #f]
+                              [curmag #f])
+                     ;At this point, the number to be printed is known
+                     ;to be between the min and max magnitudes.
+                     (if (null? numnames)
+                         (error 'comma-number
+                                "There is a bug in this function, number was~a"
+                                " thought to be within bounds, but isn't.")
+                         (let ([name (symbol->string (caar numnames))]
+                               [mag (cadar numnames)])
+                           (if (< power10 mag)
+                               (string-append
+                                 (case (- power10 curmag)
+                                       [(0) ""]
+                                       [(1) "ten "]
+                                       [(2) "hundred "]
+                                       [(3) "thousand "]
+                                       [(4) "ten thousand "]
+                                       [(5) "hundred thousand "]
+                                       [(6) "million "]
+                                       ;There better not be bigger gaps than that.
+                                       [else "MANY "])
+                                 curname)
+                               (loop (cdr numnames) name mag))))))]))))]
+      [else n]
+;      #;[else (error 'comma-number
+;                     "doesn't know how to comma non integers: ~a" n)]
+      )))
+
+
 ; =======================================================================
 
 
