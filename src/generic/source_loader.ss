@@ -101,20 +101,20 @@
 	result))))))
 (define reg:load load-regiment) ;; shorthand
 
-
+;----------------------------------------------------------------------
 ;; This reads in a log file.  Either as a stream or all at once.
 ;;
 ;; I manually do the delays rather than using stream-cons/stream-append.
 ;; Streams are not currently an ADT, they're representation is transparent.
 ;; (They're simply lists with delayed tails.)
 (define (reg:read-log file . opts)
-  (define valid-options '(stream))
+  (define valid-options '(stream)) ;; A superset of opts.
   ;; [2006.02.19] This doesn't really seem to work as an optimization.
   (define batch-size 1) ;; Number of lines of input to read at a time.
-  (let ((inport
-	 (open-input-file file 
-			  (if (equal? (extract-file-extension file) "gz")
-			      'compressed 'uncompressed))))
+  (let ((inport	(if (input-port? file) file
+		    (open-input-file
+		     file (if (equal? (extract-file-extension file) "gz")
+			      'compressed 'uncompressed)))))
     (for-each (lambda (opt) (if (not (memq opt valid-options)) 
 				(error 'reg:read-log "invalid option: ~a" opt)))
       opts)

@@ -22,7 +22,7 @@
 	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
-	  id ignore gnuplot histogram date grep-oblist
+	  id ignore gnuplot histogram date grep-oblist comma-number
 	  display-progress-meter progress-dots runN count-nodes
 	  string-split periodic-display all-equal?
 	  

@@ -33,7 +33,7 @@
 ;;
 ;; ()   --{Newsim}--> 
 ;; Time --{UpdateState}--> 
-;; (type, id, x, y)    --> 
+;; (type, id, x, y)  ----> 
 ;;  SensorReading
 (define (firelightning-sensor)
 
