@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+../deadsimple_alarm/analyze_vs_groundtruth.ss analyze \
+    -l "./logs/30n_1hr/deadsimple_30n_1hr_thresh8_noise6.log.gz" \
+    -o ./data/results_thresh8_noise6.dat;
+
+for i in `seq 9 10`;
+do
+  for j in `seq 4 6`;
+    do
+	../deadsimple_alarm/analyze_vs_groundtruth.ss analyze \
+	    -l "./logs/30n_1hr/deadsimple_30n_1hr_thresh"$i"_noise"$j".log.gz" \
+	    -o ./data/results_thresh"$i"_noise"$j".dat
+  done 
+done 

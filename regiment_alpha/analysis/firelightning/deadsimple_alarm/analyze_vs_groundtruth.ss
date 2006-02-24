@@ -24,6 +24,8 @@ exec regiment i --script "$0" ${1+"$@"};
 ;(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 (define curlogfile (format "./deadsimple.log.gz"))
 
+(define (number->integer x) (inexact->exact (floor x)))
+
 (random-seed (current-time))
 
 (define-syntax mvfirst
@@ -65,13 +67,12 @@ exec regiment i --script "$0" ${1+"$@"};
 
     [(analyze)
      (let ()
-					;     (set! logport (open-input-file curlogfile 
-					;		    (if (equal? "gz" (extract-file-extension curlogfile))
-					;			'(compressed) '())))
-					;     (define logstream (begin (printf "\nOpenning log file as stream...\n")
-					;			      (reg:read-log logport 'stream)))
+       (define logport (open-input-file 
+			curlogfile 
+			(if (equal? "gz" (extract-file-extension curlogfile))
+			    '(compressed) '())))
        (define logstream (begin (printf "\nOpenning log file as stream...\n")
-				(reg:read-log curlogfile 'stream)))
+				(reg:read-log logport 'stream)))
        
        (define nodes (begin (printf "Analyzing performance vs. groundtruth...\n")
 			    (let loop ((s logstream))
@@ -87,7 +88,8 @@ exec regiment i --script "$0" ${1+"$@"};
        
        (define resultslog 
 	 (begin (printf "We build a very simple model based on the returned data.\n")
-		(open-output-file (format "results_~a.dat" (current-time)) 'replace)))
+		(printf "Directing output to file: ~a\n" resultsfile)
+		(open-output-file resultsfile 'replace)))
 
        (reg:define-struct (estimate conf t pos nodes))
        ;; This is the length of time that a datapoint is considered valid.
@@ -200,27 +202,29 @@ exec regiment i --script "$0" ${1+"$@"};
        (printf "Computing lag times in detection.\n")
        (fprintf resultslog "# This was data generated on ~a.\n" (date))
        (fprintf resultslog "# These are the time-lags for fire detection in this run.\n")
-       (fprintf resultslog "# Current Param Settings:\n")
-       (regiment-print-params "#  " resultslog)
+
+;       (fprintf resultslog "# Current Param Settings:\n")
+;       (regiment-print-params "#  " resultslog)
        (fprintf resultslog "\n# Data:  false-positives  estimation-lag  Estimated(0)-or-Definite(1)\n")
        (flush-output-port resultslog)
 
        ;(printf "ACTUAL: ~a\n" (mvfirst (stream-take 3 real-events)))
 
        ;; Now pull all those streams and pump out the results.
-       ;; To avoid memory leaks we clear the pointers to the beginnings of these streams.
-       ;(set! logstream #f)
-       ;(set! nodes #f)
-       ;(set! ground #f)
-       ;(set! returned #f)
-       ;(set! estimates #f)
        ;; MAKE SURE THIS LOOP REMAINS IN TAIL POSITION:
-       (let loop ([detects (let ((x detected-events)) (set! detected-events #f) x)]
-		  [actual (let ((x real-events)) (set! real-events #f) x)])
+	 ;; NOTE: Currently assume no "missed" fires.  The fires get
+	 ;; big enough that they cover nodes and then detection is
+	 ;; guaranteed.
+       (let ([fileposacc 0]  ;; Keep track of the file-pos in spite of broken-ness.
+	     [filepos (file-position logport)])
+       (let loop ([detects detected-events] 
+		  [actual real-events]
+		  )
+	   (if (> filepos newpos)
+	       (set! fileposacc (+ fileposacc 2684354560)))
+	   (set! filepos newpos))
 
-;	 (call/cc inspect)
-
-         ;(printf "File position: ~a\n" (comma-number (file-position logport)))
+	 (printf "----> File position: ~a \n" (comma-number (+ fileposacc filepos)))
 	 (if (stream-empty? actual)
 	     (begin ;; No more fire events.
 	       ;; Close open files.
@@ -238,18 +242,19 @@ exec regiment i --script "$0" ${1+"$@"};
 			      (let ([lag (- (estimate-t head) t)])
 				(printf "  Estimated detection: ~a\n" head)
 				(fprintf resultslog "~a ~a ~a  # lag on top of t=~a\n" 
-					 falsepos (pad-width 10 lag)
+					 (pad-width 2 falsepos)
+					 (pad-width 10 (number->integer lag))
 					 (if (= 100 (estimate-conf head))
 					     1 0)
-					 t)
+					 (comma-number (number->integer t)))
 				(flush-output-port resultslog)
 				(printf "Lag time: ~a\n" lag)
 				(loop (stream-cdr detects) (stream-cdr actual)))
 			      (begin 
 				(printf "    (Ignored detection: ~a)\n" head)
 				(inner (add1 falsepos) (stream-cdr detects)))
-			      ))))]))))
-       )] ;; End "analyze" implementation.
+			      ))))])))))
+	)] ;; End "analyze" implementation.
     ))
 
 ;; Body of the script:
@@ -258,10 +263,18 @@ exec regiment i --script "$0" ${1+"$@"};
 (let loop ((x (map string->symbol (command-line-arguments))))
   (match x
     [() ;(inspect (vector run-modes curlogfile))
+     ;(set! curlogfile (format "./logs/deadsimple_30n_1hr_thresh~a_noise~a.log.gz" 
+     ;(varied-param) heat-noise-magnitude))     
      (if (null? run-modes)
 	 (void);(begin (main 'run) (main 'analyze))
 	 (for-each main run-modes))]
+
+    [(-param ,n ,rest ...) (varied-param (string->number (symbol->string n))) (loop rest)]
+    [(-noise ,n ,rest ...) (set! heat-noise-magnitude (string->number (symbol->string n))) (loop rest)]
+
     [(-l ,file ,rest ...) (set! curlogfile (symbol->string file)) (loop rest)]
+    [(-o ,file ,rest ...) (set! resultsfile (symbol->string file)) (loop rest)]    
+    ;; Actions:
     [(,action ,rest ...) (guard (memq action '(run analyze)))
      (set! run-modes (snoc action run-modes)) (loop rest)]
     [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)])))

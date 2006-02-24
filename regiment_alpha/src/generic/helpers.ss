@@ -436,8 +436,11 @@
 	   (if (or (eof-object? c) (char=? #\newline c))
 	       (list->string (reverse! acc))
 	       (loop (read-char p) (cons c acc))))]))
-;; [2005.12.01] Above was the wrong definition, I need it to return false if there's no line:
-[define read-line ;returns false if the port is empty
+;This read-line will handle line delimination either by #\newline
+;or by a consecutive #\return #\newline
+;JEEZ, this has some problems right now [01.06.08], Chez for windows
+;seems to be totally screwy regarding char-ready?.
+(define read-line ;returns false if the port is empty
   (lambda args
     (let ([port (if (null? args)
                     (current-input-port)
@@ -458,7 +461,8 @@
               
               ((lambda (x) x)
                (list->string (loop c)))
-              )))))]
+              ))))))
+;; TODO: write a more efficient version with block-read!!! [2006.02.22]
 
 
 ;[2001.07.15]
@@ -510,6 +514,38 @@
     (let ([p (open-output-file fn 'replace)])
       (fprintf p str)
       (close-output-port p))))
+
+;; [2006.02.22] <br>
+;; Reades all the expressions on each line into a list.
+;; Useful for space deliminited files of numbers.
+;; Potentially respects a comment character (other than semi-colon).
+;; (I use this for reading gnuplot data files.)
+(define file->linelists
+  (case-lambda 
+    [(f) (file->linelists f #\;)]
+    [(f comment-char)
+     (let ([in (if (input-port? f) f
+		   (open-input-file f))])
+       (let loop ([acc '()])
+	 (let ([str (read-line in)])
+	   ;; This loop crops the end of the line off if its a comment.
+	   (if (or (not str) (eof-object? str))
+	       (reverse! acc)
+	       (begin
+		 (let scan ([i 0])
+		   (cond
+		    [(= i (string-length str)) (void)]
+		    [(eq? comment-char (string-ref str i))
+		     (set! str (substring str 0 i))]
+		    [else (scan (fx+ 1 i))]))
+		 (loop (cons
+			(let ([port (open-input-string str)])
+			  (let munch-line ()
+			    (let ([x (read port)])
+			      (if (eof-object? x)
+				  '()
+				  (cons x (munch-line))))))
+			acc)))))))]))
 
 ;; This uses read to get an sexp from a string:
 ;(define string->sexp

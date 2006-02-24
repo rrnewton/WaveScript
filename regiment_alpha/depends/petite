@@ -15,4 +15,6 @@ else echo Unknown platform: $MACHINE
 fi
 
 #echo $REGIMENTD/depends/petite_chez_scheme7.0/bin/$DIR/$SCHEME -b $REGIMENTD/depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*
-(cd $REGIMENTD; ./depends/petite_chez_scheme7.0/bin/$DIR/$SCHEME -b ./depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*)
+#(cd $REGIMENTD; ./depends/petite_chez_scheme7.0/bin/$DIR/$SCHEME -b ./depends/petite_chez_scheme7.0/boot/$DIR/petite.boot $*)
+
+(cd $REGIMENTD; ./depends/petite_chez_scheme7.0a/bin/$DIR/$SCHEME -b ./depends/petite_chez_scheme7.0a/boot/$DIR/petite.boot $*)
