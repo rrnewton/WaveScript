@@ -455,7 +455,7 @@
 (reg:define-struct (rgb red green blue))
 
 ;; My light background theme:
-#;(begin
+(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 200 200 200))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
@@ -478,7 +478,7 @@
   )
 
 ;; My dark background theme:
-(begin
+#;(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 150 150 150))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
