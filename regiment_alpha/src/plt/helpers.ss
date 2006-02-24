@@ -28,7 +28,7 @@
    ;; Values:
    ;; For chez compatibility:
    define-top-level-value set-top-level-value! top-level-bound? top-level-value
-   record?
+;   record?
    with-error-handlers warning with-warning-handler cpu-time ;; error-handler 
    console-output-port flush-output-port 
    make-list
@@ -133,7 +133,7 @@
 	   "This is a chez function which can't ~a"
 	     "be emulated right now in Plt. -RRN"))
   
-  (define record? struct?)
+;  (define record? struct?)
   ;(define flush-output-port flush-output)
   ;; [2005.11.05] HACK: This gets set to the normal console output, and stays that way:
   (define console-output-port (make-parameter (current-output-port)))

@@ -316,8 +316,7 @@
 	      (andmap (lambda (entry)
 			(and (pair? entry)
 			     (simtok? (car entry))
-			     (or (vector? (cdr entry)) ;; Not sure which of these it'll be.
-				 (record? (cdr entry)))))
+			     (reg:struct? (cdr entry))))
 		      entries)
 	      )
 	 (error 'check-store "Bad token store at entry: key:~s, token:~s, \n" key token))))
@@ -338,7 +337,7 @@
      ,(match-lambda ((,x ,y ,z))
 	(and (not x)
 	     ; (pair? y) ;; unspecified
-	     (record? z)))]
+	     (reg:struct? z)))]
     ))
 
 (define test-this 
