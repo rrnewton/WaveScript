@@ -8,12 +8,15 @@
 
 ;;; Constants:  TODO: FIX THESE UP, MAKE THEM MORE REAL:
 	;; Need to make this much more sophisticated.
-(define lightning-rate .00001) ;; Probability per millisecond of lightning.
+;(define lightning-rate .00001) ;; Probability per millisecond of lightning.
+(define lightning-rate .00003) ;; Probability per millisecond of lightning.
 	;[lightning-rate 0.5] ;; Probability per millisecond of lightning.
 (define fire-spread-rate .001) ;; Again, per millisecond.
 (define fire-width 3000) ;; The fire is a ring 500m thick.  It "burns out" in the center.
-(define fire-max-age 300000) ;; Total life in milleseconds.
+(define fire-max-age 220000) ;; Total life in milleseconds.
 (define fire-temp 200)  ;; Degrees in celcius.
+
+(define heat-noise-magnitude 0)
 
 ;----------------------------------------------------------------------
 ;; This function maintains the global lightning state and also reads
@@ -62,7 +65,7 @@
 		 "can't go backwards in time from t=~a to t=~a." last-time t))
       (if (= t last-time)
 	  (void)
-	  (let ([delta (fx- t last-time)])
+	  (let ([delta (- t last-time)])
 	    ;(printf " delt:~a\n" delta)
 	    ;; Update State...
 	    ;; Propogate existing fires, while filtering dead fires.
@@ -90,7 +93,7 @@
 	    ;; Currently making it so there's one fire at a time for easy analysis.
 	    (when (null? fires)
 	    ;; See if there are new lightning strikes.
-	    (for-each (lambda (strike-time)
+	      (for-each (lambda (strike-time)
 			;; [2006.02.19] Restricting the fires to the inner portion of the square.  
 			;; Can't have them falling outside of the network.			
 			(let ([strike-x (+ quartx (random (/ worldx 2)))]
@@ -107,14 +110,15 @@
 			    (set! fires (cons newfire fires))
 			    )))
 	      (let ([strikes 
-					;(poisson-span last-time t lightning-rate)
-					;(fake-poisson last-time t lightning-rate)
-		     (poisson-span-optimized1 last-time t lightning-rate)])
+		     ;;(poisson-span last-time t lightning-rate)
+		     ;;(fake-poisson last-time t lightning-rate)
+		     (poisson-span-optimized1 last-time t lightning-rate)
+		     ])
 		;; HACK: If we haven't had any strikes by 10 seconds, just throw one in. 
 		;; It's annoying for me to run simulations and wait for a strike.
-		(if (and (>= t 10000) (null? fires) (null? strikes))
-		    (list t) strikes)
-		))	    
+		;(if (and (>= t 10000) (null? fires) (null? strikes)) (list t) strikes)
+		strikes
+		))    
 	    )
 	    (set! last-time t)
 	    ))
@@ -136,9 +140,9 @@
 				      (+ temp (compute-fire-heat dist (fire-rad f)))))))
 	       fires)
 	     ;; Our sensor has constant gaussian noise attached to it, stddev 5 degrees:
-	     ;(+ temp (* 5 (gaussian)))
+	     (inexact->exact (floor (+ temp (* heat-noise-magnitude (gaussian)))))
 	     ;; TEMP: using integer temperature:
-	     (inexact->exact (floor temp))
+	     ;(inexact->exact (floor temp))
 	     )]
 	  [(light) 9999] ;; TODO
 	  [else (error 'firelightning-sensor
@@ -247,19 +251,22 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
-  ;; Set the world size, square:
-  ;; Set both of these binds for now, lame:
-  (set! world-xbound 5000)
-  (set! world-ybound 5000)
-  (simalpha-world-xbound 5000)
-  (simalpha-world-ybound 5000)
-  (sim-num-nodes 250)
+#;
+  (begin 
+    ;; Set the world size, square:
+    ;; Set both of these binds for now, lame:
+    (set! world-xbound 5000)
+    (set! world-ybound 5000)
+    (simalpha-world-xbound 5000)
+    (simalpha-world-ybound 5000)
+    (sim-num-nodes 250))
 
-;  (set! world-xbound 1500)
-;  (set! world-ybound 1500)
-;  (simalpha-world-xbound 1500)
-;  (simalpha-world-ybound 1500)
-;  (sim-num-nodes 30)
+  (begin 
+    (set! world-xbound 1500)
+    (set! world-ybound 1500)
+    (simalpha-world-xbound 1500)
+    (simalpha-world-ybound 1500)
+    (sim-num-nodes 30))
 
   ;; Inner/Outer Radius for radios is 300/500 meters:
   (simalpha-inner-radius 300)

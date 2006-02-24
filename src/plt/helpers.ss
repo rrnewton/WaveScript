@@ -68,7 +68,8 @@
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before
    randomize-vector randomize-list  insert-between iota disp pp  crit-printf
-   extract-file-extension remove-file-extension file->string string->file file->slist slist->file 
+   extract-file-extension remove-file-extension 
+   file->string string->file file->slist slist->file file->linelists
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
    graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple

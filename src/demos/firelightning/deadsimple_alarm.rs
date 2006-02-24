@@ -15,28 +15,26 @@
   [simalpha-dbg-on #f]
   ;[simalpha-sense-function sense-noisy-rising]
   ;[simalpha-sense-function sense-random-1to100]
+
+  [default-slow-pulse (* 5 60 1000)] ;; 5 min
+  [default-fast-pulse (*    3 1000)] ;; 3 sec
+
   ;[sim-timeout 2000000]
   ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
   [sim-timeout 3600000] ;; An hour.
+
+  [varied-param 3] ;; Default value for the threshold.
   )
 
-(define (head #(a b)) a)
-(define (tail #(a b)) b)
-
-(define threshold 3)
-
-;(define foo (tail (tuple 99 999)))
+;; The varied parameter can be changed from outside the program source before load-time.
+`(define threshold ,(varied-param))
+;(define threshold 3)
 
 ;; Main
 
-(define (read n)  
-  (tuple (nodeid n) (sense 'clock n) (sense 'temp n)))
+(define (read n) (tuple (nodeid n) (sense 'clock n) (sense 'temp n)))
 
-(define (filt #(_ __ temp)) (> temp threshold))
+(define (filt #(_ _ temp)) (> temp threshold))
 
-(rfilter filt (rmap read world))
-
-;; Region 'a = Area (Node, 'a)
-;; world = Region ()
-;; khood : Node -> Region ()
-;; rmap : (a->b) -> Region a -> Region b
+;(tuple test
+ (rfilter filt (rmap read world))

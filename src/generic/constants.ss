@@ -138,6 +138,12 @@
 ;; set to zero at the start of a simulation.
 (define simulation-logger-count (make-parameter #f))
 
+
+;; [2006.02.22] <br>
+;; This is used by various demo programs to externally control a
+;; parameter that needs to be varied for testing/analysis purposes.
+(define-regiment-parameter varied-param 3)
+
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other
 (define-regiment-parameter reg:comment-code #f)

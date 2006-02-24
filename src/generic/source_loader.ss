@@ -215,10 +215,12 @@
 	     [#(,[pv* binds*] ...)
 	      (let ([v (unique-name 'pattmp)]
 		    [len (length pv*)])
-		(values v
-			`( [,pv* (tupref ,(iota len) ,(make-list len len) ,(make-list len v))] ...
-			   ,@(apply append binds*)
-			   )))]
+		(let ([newbinds 
+		       `([,pv* (tupref ,(iota len) ,(make-list len len) ,(make-list len v))] ...)])		  
+		  (values v
+			  `( ,@(filter (lambda (b) (not (eq? (car b) '_))) newbinds)
+			     ,@(apply append binds*)
+			     ))))]
 	   ))])
   (lambda (expr)
   (let loop ([expr expr] [env '()] [subst '()])

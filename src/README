@@ -180,6 +180,8 @@ you should remember to go to the top of compiler_chez.ss and set the
 optimize-level to 0.  Otherwise inlining might result in you not
 seeing stack frames in the inspector that you expect to see.
 
+ *) Chez's interactive inspecter is good, use "(break)" or 
+"(call/cc inspect)" liberally (sometimes the latter is what you need).
 
 
 
