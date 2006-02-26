@@ -17,6 +17,7 @@
 
 (import scheme)
 (import (except topsort-module test-this these-tests))
+(import regiment_helpers)
 ;temp; (import simulator_alpha_datatypes)
 (import alpha_lib_scheduler_simple)
 

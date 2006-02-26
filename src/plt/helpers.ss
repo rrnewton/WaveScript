@@ -1,3 +1,4 @@
+
 #cs ;; Case Sensitivity
 (module helpers mzscheme 
   (require "iu-match.ss"
@@ -10,6 +11,7 @@
 ;           (all-except "tsort.ss" test-this these-tests)
            "constants.ss"
            "hashtab.ss"
+           "engine.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
 
@@ -36,16 +38,17 @@
    fl+ fl- fl* fl/ fl< fl> fl= fl<= fl>= flonum? fixnum->flonum
    most-positive-fixnum
    remq list-head merge sort merge! sort!
-   date-and-time
+   date-and-time collect
 
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
    print-level print-length
-   system/echoed system-to-str with-evaled-params
+   system/echoed ; system-to-str 
+   with-evaled-params
    
    cd
    ;; Other values 
-   id gnuplot gnuplot histogram date
+   id gnuplot histogram date
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
@@ -53,8 +56,8 @@
    
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
-   constant? datum? 
-   formalexp? cast-formals fit-formals-to-args
+;   constant? datum? 
+;   formalexp? cast-formals fit-formals-to-args
    default-unit-tester tester-eq?
    ;default-unit-tester-retries ;; This is in constants.
    substring?
@@ -67,15 +70,16 @@
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before
-   randomize-vector randomize-list  insert-between iota disp pp  crit-printf
+
+   insert-between iota disp pp  crit-printf
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
    graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple
    deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
-   list-get-random unfold-list average clump
-   partition partition-equal split-before
+   unfold-list average clump
+    partition partition-equal split-before
    myequal?
    stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
    counter-stream stream-append ;random-stream 
@@ -115,20 +119,18 @@
   (define-syntax mvlet
     (syntax-rules ()
       [(mvlet stuff ...) (let-values stuff ...)]))
-  
-  (define-syntax reg:define-struct
-    (syntax-rules ()
-      [(_ (sname field ...))
-       (define-struct sname (field ...) (make-inspector))]))
-  
+    
   (define cd current-directory) ;; shorthand
 
+  ;;; Chez Compatability
+
+  ;; Chez functions for access to top level environment.
   (define (define-top-level-value sym obj)
     (eval `(define ,sym ',obj)))
-  (define (set-top-level-value! sym obj)
+  (define (set-top-level-value! sym obj) ;; ditto
     (eval `(set! ,sym ',obj)))
-  (define (top-level-value sym) (eval sym))
-  (define (top-level-bound? sym)
+  (define (top-level-value sym) (eval sym)) ;; ditto
+  (define (top-level-bound? sym) ;; ditto
     (error 'top-level-bound?
 	   "This is a chez function which can't ~a"
 	     "be emulated right now in Plt. -RRN"))
@@ -137,17 +139,18 @@
   ;(define flush-output-port flush-output)
   ;; [2005.11.05] HACK: This gets set to the normal console output, and stays that way:
   (define console-output-port (make-parameter (current-output-port)))
-  (define pp pretty-print)                   
-  (define cpu-time current-process-milliseconds)
-  (define print-level pretty-print-depth)
-  (define pretty-line-length pretty-print-columns)
+  (define pp pretty-print)
+  (define cpu-time current-process-milliseconds)   ;; Same param, diff name
+  (define print-level pretty-print-depth)          ;; Same param, diff name
+  (define pretty-line-length pretty-print-columns) ;; Same param, diff name
   
   ;(define print-length pretty-print-length)
   ;; Can't adjust the length from PLT:
   ;; So this does nothing:
   (define print-length (make-parameter #f))
 
-  ;; Tried to make a generic "alias"
+  ;; We don't have fixnum/flonum arithmetic in PLT:
+  ;; Tried to make a generic "alias", but that didn't work, so here are a bunch of defines.
   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))
   (define-syntax fx- (syntax-rules () [(_ e ...) (- e ...)]))
   (define-syntax fx* (syntax-rules () [(_ e ...) (* e ...)]))
@@ -159,7 +162,6 @@
   (define-syntax fx>= (syntax-rules () [(_ e ...) (>= e ...)]))
   (define-syntax fxmin (syntax-rules () [(_ e ...) (min e ...)]))
   (define-syntax fxmax (syntax-rules () [(_ e ...) (max e ...)]))
-
   (define-syntax fl+ (syntax-rules () [(_ e ...) (+ e ...)]))
   (define-syntax fl- (syntax-rules () [(_ e ...) (- e ...)]))
   (define-syntax fl* (syntax-rules () [(_ e ...) (* e ...)]))
@@ -173,7 +175,7 @@
   ;; Further, this might be dangerous.  Chez promises that fixnum's are eq?
   ;; but I haven't found a place in the PLT documentation where they guarantee that.
   (define most-positive-fixnum
-    (let ((x (- (expt 2 30) 1)))
+    (let ((x (- (expt 2 30) 1)))  ;; HACK.
       (lambda () x)))
   (define fixnum?
     (let ((x (expt 2 30)))
@@ -186,13 +188,14 @@
   ;(define (merge! a b) (merge a b))
   (define (merge! p a b) (swindle:merge! a b p))
   (define (sort! p l)    (swindle:sort! l p))
+  (define (list-copy l) (reverse! (reverse l))) ;; Reverse had better be tail-recursive!
   
   (define (date-and-time)
     (let ((d (seconds->date (current-seconds))))
       (format "~a, ~a:~a:~a" (date->string d) (date-hour d) (date-minute d) (date-second d))))
   
 ;; Temporary! < FIXME>:
-  (define crit-printf printf)
+  (define crit-printf printf) ;; Thread safe, critical section printf.
 
   ;; This isn't working right now.
   (define (with-error-handlers displayproc escape th)
@@ -206,7 +209,8 @@
 			;; If the escape procedure is not called, we must destroy the continuation:
 			(out result)))])
         (th))))
-  
+
+  ;; Chez's system for warnings -- same as error.
   (define (warning sym . args)
     (fprintf (current-error-port) "Warning ~s: ~a " sym (apply format args)))
   (define (with-warning-handler fun th)
@@ -218,16 +222,6 @@
 
 ;; This matches the chez parameter, but does nothing.
 (define pretty-maximum-lines (make-parameter #f))
-
-;; This is a simple random number generator interface for use in this Regiment codebase:
-(define reg:random-int
-  (case-lambda
-   [() (reg:random-int (- (expt 2 31) 1))]
-   [(k) (random k)]))
-(define (reg:get-random-state)
-  (pseudo-random-generator->vector (current-pseudo-random-generator)))
-(define (reg:set-random-state! s)
-  (current-pseudo-random-generator (vector->pseudo-random-generator s)))
 
 ;; Primitive in chez:
 (define (make-list n x)
@@ -281,7 +275,7 @@
                     (cons x (cons y b))
                     (cons x (loop (car a) (cdr a) y b)))))]))
 
-(define merge
+  (define merge
     (lambda (pred? l1 l2)
       (cond
         ((null? l1) l2)
@@ -290,7 +284,17 @@
          (cons (car l2) (merge pred? l1 (cdr l2))))
         (else (cons (car l1) (merge pred? (cdr l1) l2))))))
 
+  ;; More Chez compat:
+  (define (block-read inp str count)
+    (read-bytes-avail! str inp 0 count))
+  (define (block-write outp str count)
+    (write-bytes str outp 0 count))
+  (define collect collect-garbage)
   
+  (define (system-to-string cmd)
+    (eval 'TODO-IMPLEMENTM))
+            
+           
 ; =======================================================================  
 
   (include (build-path "generic" "helpers.ss"))

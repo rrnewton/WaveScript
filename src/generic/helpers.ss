@@ -193,6 +193,39 @@
 	  (loop (cdr ls))))))
 
 
+;; [2006.02]
+(define progress-dots 
+  (case-lambda 
+    [(th)      (progress-dots th 50000000)]
+    [(th fuel) (progress-dots th fuel 
+			      (lambda () (display #\.) (flush-output-port)))]
+    [(th fuel progress)
+     (let loop ((engine (make-engine th)))
+       (progress)
+       (engine fuel
+	       (lambda (time-remaining val) (newline) (flush-output-port) val)
+	       loop))]))
+
+;; [2006.02.20] A simple utility for running a long-running expression for only N ticks.
+(define-syntax runN
+  (syntax-rules ()
+    [(_ n exp) (let ((e (make-engine (lambda () exp))))
+		 (e n (lambda (_ val) val)
+		    (lambda (ee) (void))))]))
+
+
+;; [2006.02.01] <br>
+;; This takes the name of a top-level parameter, and dangles a function off
+;; the parameter which is then called on the new parameter value when
+;; it changes.
+(define (add-parameter-hook pname hook)
+  (let ([origfun (top-level-value pname)])
+    (set-top-level-value! pname 
+			  (case-lambda
+			    [() (origfun)]
+			    [(v) (origfun v) (hook v)]))))
+
+
 (define list-index
   (lambda (pred ls)
     (cond
@@ -424,45 +457,6 @@
 		(lambda (neweng) 
 		  (print) 
 		  (loop neweng))))))]))
-
-;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
-;; Man, they need a standardized set of libraries.
-;; .parameter port (optional) Port to read from.
-#;
-(define read-line
-  (case-lambda 
-    [() (read-line (current-output-port))]
-    [(p) (let loop ((c (read-char p)) (acc '()))
-	   (if (or (eof-object? c) (char=? #\newline c))
-	       (list->string (reverse! acc))
-	       (loop (read-char p) (cons c acc))))]))
-;This read-line will handle line delimination either by #\newline
-;or by a consecutive #\return #\newline
-;JEEZ, this has some problems right now [01.06.08], Chez for windows
-;seems to be totally screwy regarding char-ready?.
-(define read-line ;returns false if the port is empty
-  (lambda args
-    (let ([port (if (null? args)
-                    (current-input-port)
-                    (car args))])
-      (letrec ([loop
-                 (lambda (c)
-                   (cond
-                     [(or (eof-object? c)
-                          (eq? c #\newline)) '()]
-                     [(or (eq? c #\linefeed)
-                          (eq? c #\return))
-                      (when (and (char-ready? port)
-                                 (eq? (peek-char port) #\newline))
-                            (read-char) '())]
-                     [else (cons c (loop (read-char port)))]))])
-        (let ([c (read-char port)])
-          (if (eof-object? c) #f
-              
-              ((lambda (x) x)
-               (list->string (loop c)))
-              ))))))
-;; TODO: write a more efficient version with block-read!!! [2006.02.22]
 
 
 ;[2001.07.15]
@@ -878,29 +872,6 @@
 ;(define (deep-count-occurrences ob struct)
 ;  (length (deep-all-matches (lambda (x) (eq? ob  x))
 ;			    struct)))
-
-
-;; [2004.06.15] Copying this from generic utils file.
-(define list-get-random
-  (lambda (ls)
-    (if (null? ls)
-        (error 'list-get-random "cannot get random element from null list.")
-        (list-ref ls (reg:random-int (length ls))))))
-;; This too:
-(define randomize-list
-  (lambda (ls)
-    (let* ([vec (list->vector ls)])
-      (vector->list (randomize-vector vec)))))
-(define (randomize-vector vec)
-  (let ([len (vector-length vec)])
-    (let ([swap (lambda (i j)
-		  (let ([temp (vector-ref vec i)])
-		    (vector-set! vec i (vector-ref vec j))
-		  (vector-set! vec j temp)))])
-      (do ([i 0 (add1 i)]) ((= i len))
-	;; Swap with a later position:
-	(swap i (+ i (reg:random-int (- len i)))))
-      vec)))
 
 
 ;; Lifted this from the internet, does this really work??
@@ -1573,26 +1544,6 @@
 	 (for i = 1 to 100000)
 	 (f)))
 
-;; [2006.02]
-(define progress-dots 
-  (case-lambda 
-    [(th)      (progress-dots th 50000000)]
-    [(th fuel) (progress-dots th fuel 
-			      (lambda () (display #\.) (flush-output-port)))]
-    [(th fuel progress)
-     (let loop ((engine (make-engine th)))
-       (progress)
-       (engine fuel
-	       (lambda (time-remaining val) (newline) (flush-output-port) val)
-	       loop))]))
-
-;; [2006.02.20] A simple utility for running a long-running expression for only N ticks.
-(define-syntax runN
-  (syntax-rules ()
-    [(_ n exp) (let ((e (make-engine (lambda () exp))))
-		 (e n (lambda (_ val) val)
-		    (lambda (ee) (void))))]))
-
 ;; [2005.10.16] Making a simple interface to gnuplot for graphing results
 ;; of queries.
 ;;
@@ -1697,8 +1648,9 @@
 ;; 1-3 3-5 5-7
 
 ;; Return a string which somehow or another includes the date.
-(define (date)
-  (let ([pipes
+#;
+(define (date-string)
+  (let ([pipesa
 	 (case (machine-type)
 	   [(ti3le i3le ppcosx) (process "date")]
 	   [(i3nt ti3nt) (error 'date "don't know how to do date in windows")]
@@ -1757,7 +1709,7 @@
 	[octotrigintillion  117]
 	[novemtrigintillion  120]))
     (cond
-      [(or (fixnum? n) (bignum? n)) ;(integer? n)
+      [(or (integer? n)) ;(fixnum? n) (bignum? n)) ;(integer? n)
        (let* ([strls (string->list (number->string n))]
               [power10 (sub1 (length strls))]
               [groups 0])

@@ -18,6 +18,7 @@
 	 simulation-logger-level
 	 reg:all-unit-tests
 	 reg:comment-code
+	 reg:define-struct
 	 
          default-slow-pulse default-fast-pulse
          
@@ -55,9 +56,7 @@
 	 simalpha-graphics-on
          simalpha-write-sims-to-disk
 ;	 simalpha-pause-hook
-
-	 sense-spatial-sine-wave 
-	 
+	
 	 default-unit-tester-retries
                   
          )
@@ -76,13 +75,23 @@
           [(_ E1 E2) (if flag #'E1 #'E2)]
           [(_ E1) (if flag #'E1)]))))
   
-	(include (build-path "generic" "constants.ss"))
-;; [2005.11.04] I was having trouble with that.  When compiling from
-;; command line I'd get an error.  Let's just set it manually:
-(define-syntax IF_GRAPHICS
-  (syntax-rules ()
-    [(_ t f) f]
-    [(_ t)   (void)]))
+
+   
+   (define-syntax reg:define-struct
+     (syntax-rules ()
+       [(_ (sname field ...))
+	(define-struct sname (field ...) (make-inspector))]))
+
+   (include (build-path "generic" "constants.ss"))
+
+   
+   ;; [2005.11.04] I was having trouble with that.  When compiling from
+   ;; command line I'd get an error.  Let's just set it manually:
+   (define-syntax IF_GRAPHICS
+     (syntax-rules ()
+       [(_ t f) f]
+       [(_ t)   (void)]))
+
 )
 
 ;(require constants)

@@ -4,6 +4,15 @@
 
 ;;;; A collection of global constants, flags, and datatype defs.<br><br>
 
+
+
+;;;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest. <br>
+;;;; [2005.03.29] MOVING DEBUGMODE to this file. <br><br>
+
+;;;; [2005.02.24] <br>
+;;;; Now I'm keeping some parameters (which are actually not constant) in here as well. 
+;;;; <br><br>
+
 ;;;; [2004.07.02] <br>
 ;;;; Hmm, I considered making this a while ago.  But I never know
 ;;;; whether to keep constants module-local or lift them out like this.
@@ -11,20 +20,15 @@
 ;;;; needs to (or might need to) be used in more than one module will
 ;;;; get lifted up here. <br><br>
 
-;;;; [2005.02.24] <br>
-;;;; Now I'm keeping some parameters (which are actually not constant) in here as well. 
-;;;; <br><br>
-
-;;;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest. <br>
-;;;; [2005.03.29] MOVING DEBUGMODE to this file. <br><br>
 ;=======================================================================
+
+;;; Regiment parameters.
 
 ;; In the following manner we distinguish regiment parameters from normal
 ;; parameters.  We keep a list of all the existing regiment
 ;; parameters.  And it also makes it more acceptable for us to scatter
 ;; around the parameter definitions, because you can grep for
 ;; define-regiment-parameter.
-
 (define regiment-parameters (make-parameter '()))
 (define-syntax define-regiment-parameter
   (syntax-rules () 
@@ -32,17 +36,6 @@
      (define name 
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
-
-;; [2006.02.01] <br>
-;; This the name of a top-level parameter, and dangles a function off
-;; the parameter which is then called on the new parameter value when
-;; it changes.
-(define (add-parameter-hook pname hook)
-  (let ([origfun (top-level-value pname)])
-    (set-top-level-value! pname 
-			  (case-lambda
-			    [() (origfun)]
-			    [(v) (origfun v) (hook v)]))))
 
 ;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
@@ -299,7 +292,10 @@
 (define-regiment-parameter processor-screen-radius 16.0)
 
 ;; This sets the value of the previous processor-screen-radius
-;; parameter based on the current number of processors and window size.
+;; parameter based on the current number of processors and window size. <br><br>
+;;
+;; Note, if graphics are loaded a hook will be added to invoke this
+;; whenever the num-nodes (or, ideally, the window size) cahnges.
 (define (set-procesor-screen-radius!)
   ;; Compute sqrt(1/8 * area-per-node)
   (let ([newrad  (min (exact->inexact (/ window-width 45.)) ;; Max relative size.
@@ -316,8 +312,6 @@
 ; used by the tossim interface and simulator alpha.
 
 (define-regiment-parameter sim-num-nodes 30)
-(add-parameter-hook 'sim-num-nodes
-		    (lambda (_) (set-procesor-screen-radius!)))
 
 ;; Controls the time-out for both simulator-alpha and tossim. <br>
 ;; Valid values:                                              <br>
@@ -434,7 +428,19 @@
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
 (define simalpha-pause-hook (make-parameter #f))
 
-(define pi 3.14159) ;; TODO: better accuracy wouldn't hurt.
+
+;; This parameter is used to instantiate new instances of the sensed-world. <br> <br>
+;;
+;; Cannot set it right now because no sensor stubs have been defined yet here in constants.ss .  
+;; When sensor stubs are defined, this shoud be set to some default value.
+(define-regiment-parameter simalpha-sense-function-constructor 'unset)
+;; This parameter on the hand is bound by the simulator to the constructed sensor-functions.
+(define-regiment-parameter simalpha-sense-function #f)
+;(define simalpha-sense-function (make-parameter #f (lambda (x) 
+;						     (inspect `(sensor! . ,x))
+;						     x)))
+
+;(define pi 3.14159) ;; TODO: better accuracy wouldn't hurt.
 
 ; ======================================================================
 
@@ -510,123 +516,6 @@
 ;;; (1) simple and (2) must be scoped very broadly, thus justifying
 ;;; their inclusion in this file.
 
-  ;;; Regiment Random Number Interface. <br>
-  ;;;
-  ;;;   These provide a simple random number generator interface for use
-  ;;; within the Regiment codebase. <br>
-  ;;;    The simulator should only use this RNG interface to maintain
-  ;;; determinism.  (Currently this just uses the primitive Chez
-  ;;; Scheme RNG, so there is no proper seperation which would be
-  ;;; necessary for other concurrently running code to not ruin the
-  ;;; simulators determininms.)
-
-  ;; A random integer. 
-  (define reg:random-int
-    (case-lambda 
-      [() (#%random (#%most-positive-fixnum))]
-      [(k) (#%random k)]))
-
-  ;; A random real number.
-  (define reg:random-real
-    (case-lambda
-      [() (#%random 1.0)]
-      [(n) (#%random n)]))
-
-  ;; Get the state of the RNG.
-  (define (reg:get-random-state) (random-seed)) ;; This doesn't work!!! [2005.10.05]
-
-  ;; Set the state of the RNG.
-  (define (reg:set-random-state! s) (random-seed s))
-
-
-; ======================================================================
-;;; The various sensor-reading stubs.  Used by SimAlpha. <br>
-;;; These are all simple functions that compute fake sensor values. <br><br>
-;;;
-;;; Sensor-function constructors are thunks that allocate state for a
-;;; simulated sensed-world and return a sensor function. <br><br>
-;;;
-;;; Sensor-functions are called regularly with the current time.  They
-;;; are also called when a sensor value needs to be read, in which
-;;; case the node-id, x/y coords, and sensor type are all provided. <br><br>
-;;;   
-;;; If we wanted the simulator to be less synchronous, we would need
-;;; to have seperate sense objects for each node, each maintaining its
-;;; own state according to its own clock.  That gets a little tricky,
-;;; because presumably you're measuring a phenomena defined globally. <br><br>
-;;; 
-;;; All told, sensor-function constructors have a type like the following: 
-;;; <br>
-;;;   ()   --{Newsim}--> 
-;;;   Time --{UpdateState}--> 
-;;;   (type, id, x, y)    --> 
-;;;    SensorReading
-;;; <br> 
-;;; 
-;;; Alternatively, these could be implemented as an object with a
-;;; constructor and two methods AdvanceClock, and and ReadSensor.  But
-;;; this way ensures that AdvanceClock is called before ReadSensor.
-
-;; This one changes amplitude across space and time.
-(define sense-spatial-sine-wave 
-  (lambda ()
-    (lambda (t)
-      (lambda (type id x y)
-  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
-  ;(exact->inexact
-	(inexact->exact 
-	 (floor
-	  (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
-		(distorigin (sqrt (+ (* x x) (* y y))))
-		(maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
-	    (* waveamp (/ distorigin maxdist)))))))))
-
-;; This parameter is used to instantiate new instances of the sensed-world.
-(define-regiment-parameter simalpha-sense-function-constructor sense-spatial-sine-wave)
-;; This parameter on the hand is bound by the simulator to the constructed sensor-functions.
-(define-regiment-parameter simalpha-sense-function #f)
-;(define simalpha-sense-function (make-parameter #f (lambda (x) 
-;						     (inspect `(sensor! . ,x))
-;						     x)))
-
-
-;; This globally defined functions decides the sensor values.
-;; Here's a version that makes the sensor reading the distance from the origin:
-(define sense-dist-from-origin 
-  (lambda ()
-    (lambda (t)
-      (lambda (type id x y)
-	(sqrt (+ (expt x 2) (expt y 2)))))))
-    
-(define sense-sine-wave
-  (lambda ()
-    (lambda (t)    
-      (lambda (type id x y)
-  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
-  ;(exact->inexact
-	(inexact->exact 
-	 (floor
-	  (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000)))))))))))
-
-;; TODO: add noise to this, store state per ID: curry inputs:
-(define sense-noisy-rising
-  (lambda ()
-    (lambda (t)
-      (lambda (type id x y)
-	(/ t 100.)))))
-
-(define sense-random-1to100
-  (lambda ()
-    (lambda (t)
-      (lambda (type id x y)
-	(add1 (reg:random-int 100))))))
-
-#;
-(define (sense-fast-sine-wave id x y t)
-  (printf "(sensing ~a ~a ~a ~a) " id x y t)
-  (inexact->exact 
-   (floor
-    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
 
 ; ======================================================================
 

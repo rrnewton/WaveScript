@@ -10,14 +10,18 @@
            (all-except (lib "list.ss") filter)
            "constants.ss"
            "hashtab.ss"
+           "helpers.ss"
+           "engine.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
 
  (provide     	
 
+   reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 
    get-formals
    reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
+   randomize-list randomize-vector list-get-random
 
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
@@ -40,10 +44,30 @@
 
    ) ;; End provide
 
+
+;; This is a simple random number generator interface for use in this Regiment codebase:
+;;
+;; TODO: Seperate the reg random number generator from the generic PLT
+;; one.  It needs to be sandboxed.  (However, it shouldn't matter,
+;; because we're not really running any other computations concurrent
+;; with the simulator.)
+(define reg:random-int
+  (case-lambda
+   [() (reg:random-int (- (expt 2 31) 1))]
+   [(k) (random k)]))
+(define reg:random-real
+  (case-lambda
+    [() (random)]
+    [(k) (* k (random))]))
+  
+(define (reg:get-random-state)
+  (pseudo-random-generator->vector (current-pseudo-random-generator)))
+(define (reg:set-random-state! s)
+  (current-pseudo-random-generator (vector->pseudo-random-generator s)))  
   
 ; =======================================================================  
 
-  (include (build-path "generic" "helpers.ss"))
+  (include (build-path "generic" "regiment_helpers.ss"))
 
 ; =======================================================================
 
