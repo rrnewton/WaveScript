@@ -11,6 +11,117 @@
 
 ;=============================================================
 
+;;; A few utilities that depend on Regiment's isolated RNG.
+
+;; [2004.06.15] Copying this from generic utils file.
+(define list-get-random
+  (lambda (ls)
+    (if (null? ls)
+        (error 'list-get-random "cannot get random element from null list.")
+        (list-ref ls (reg:random-int (length ls))))))
+;; This too:
+(define randomize-list
+  (lambda (ls)
+    (let* ([vec (list->vector ls)])
+      (vector->list (randomize-vector vec)))))
+(define (randomize-vector vec)
+  (let ([len (vector-length vec)])
+    (let ([swap (lambda (i j)
+		  (let ([temp (vector-ref vec i)])
+		    (vector-set! vec i (vector-ref vec j))
+		  (vector-set! vec j temp)))])
+      (do ([i 0 (add1 i)]) ((= i len))
+	;; Swap with a later position:
+	(swap i (+ i (reg:random-int (- len i)))))
+      vec)))
+
+
+; ======================================================================
+;;; The various sensor-reading stubs.  Used by SimAlpha. <br>
+;;; These are all simple functions that compute fake sensor values. <br><br>
+;;;
+;;; Sensor-function constructors are thunks that allocate state for a
+;;; simulated sensed-world and return a sensor function. <br><br>
+;;;
+;;; Sensor-functions are called regularly with the current time.  They
+;;; are also called when a sensor value needs to be read, in which
+;;; case the node-id, x/y coords, and sensor type are all provided. <br><br>
+;;;   
+;;; If we wanted the simulator to be less synchronous, we would need
+;;; to have seperate sense objects for each node, each maintaining its
+;;; own state according to its own clock.  That gets a little tricky,
+;;; because presumably you're measuring a phenomena defined globally. <br><br>
+;;; 
+;;; All told, sensor-function constructors have a type like the following: 
+;;; <br>
+;;;   ()   --{Newsim}--> 
+;;;   Time --{UpdateState}--> 
+;;;   (type, id, x, y)    --> 
+;;;    SensorReading
+;;; <br> 
+;;; 
+;;; Alternatively, these could be implemented as an object with a
+;;; constructor and two methods AdvanceClock, and and ReadSensor.  But
+;;; this way ensures that AdvanceClock is called before ReadSensor.
+
+;; This one changes amplitude across space and time.
+(define sense-spatial-sine-wave 
+  (let ([fun (lambda ()
+	       (lambda (t)
+		 (lambda (type id x y)
+					;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+					;(exact->inexact
+		   (inexact->exact 
+		    (floor
+		     (let ((waveamp (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))
+			   (distorigin (sqrt (+ (* x x) (* y y))))
+			   (maxdist (sqrt (+ (expt world-xbound 2) (expt world-ybound 2)))))
+		       (* waveamp (/ distorigin maxdist))))))))])
+    ;; This is the default sensing function right now, so we set the parameter.
+    (simalpha-sense-function-constructor fun)
+    fun))
+
+;; This globally defined functions decides the sensor values.
+;; Here's a version that makes the sensor reading the distance from the origin:
+(define sense-dist-from-origin 
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(sqrt (+ (expt x 2) (expt y 2)))))))
+    
+(define sense-sine-wave
+  (lambda ()
+    (lambda (t)    
+      (lambda (type id x y)
+  ;(printf "(sensing ~a ~a ~a ~a) " id x y t)
+  ;(exact->inexact
+	(inexact->exact 
+	 (floor
+	  (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000)))))))))))
+
+;; TODO: add noise to this, store state per ID: curry inputs:
+(define sense-noisy-rising
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(/ t 100.)))))
+
+(define sense-random-1to100
+  (lambda ()
+    (lambda (t)
+      (lambda (type id x y)
+	(add1 (reg:random-int 100))))))
+
+#;
+(define (sense-fast-sine-wave id x y t)
+  (printf "(sensing ~a ~a ~a ~a) " id x y t)
+  (inexact->exact 
+   (floor
+    (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
+
+
+;=============================================================
+
 ;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:

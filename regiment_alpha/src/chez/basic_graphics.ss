@@ -8,6 +8,8 @@
 ;; TODO FIXME: REMOVE eval's FROM THIS AND GRAPHICS_STUB.ss
 ;; (HAVING PROBLEMS WITH RECORD-TYPES CURRENTLY. evals ARE A HACK)
 
+;;;; TODO: Refactor this into a separate file for the GUI as opposed to the graphics ops.
+
 ; ======================================================================
 
 ;; [2004.06.21] Adding "draw-mark" to the interface, I use this for
@@ -615,6 +617,15 @@
    [(x1 y1 x2 y2) (drawit x1 y1 x2 y2 current-drawing-color current-filling-color)]
    [(x1 y1 x2 y2 c1) (drawit x1 y1 x2 y2 c1 current-filling-color)]
    [(x1 y1 x2 y2 c1 c2) (drawit x1 y1 x2 y2 c1 c2)])))
+
+
+
+;======================================================================
+;;; HOOKS
+
+;; This changes the screen radius 
+(add-parameter-hook 'sim-num-nodes
+		    (lambda (_) (set-procesor-screen-radius!)))
 
 
 

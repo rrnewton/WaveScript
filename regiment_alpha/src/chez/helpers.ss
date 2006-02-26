@@ -18,11 +18,11 @@
 	  with-error-handlers with-warning-handler
 	  current-error-port 
 
-	  system/echoed system-to-str with-evaled-params 
+	  system/echoed system-to-str with-evaled-params add-parameter-hook
 	  chomp shell-expand-string seconds-since-1970
 
 	  ;; Values:	    
-	  id ignore gnuplot histogram date grep-oblist comma-number
+	  id ignore gnuplot histogram grep-oblist comma-number
 	  display-progress-meter progress-dots runN count-nodes
 	  string-split periodic-display all-equal?
 	  
@@ -42,14 +42,15 @@
 	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
 	  filter list-index snoc rac rdc last 
 	  list-find-position list-remove-before
-	  randomize-list randomize-vector insert-between iota disp crit-printf
+
+	  insert-between iota disp crit-printf
 	  extract-file-extension remove-file-extension
 	  file->string string->file file->slist slist->file file->linelists
 	  pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
 	  graph-map graph-get-connected-component graph-neighbors graph-label-dists ;cyclic? 
 	  graph:simple->vertical graph:vertical->simple
 	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
-	  list-get-random unfold-list average clump
+	   unfold-list average clump
 	  partition partition-equal split-before
 	  myequal?
 	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
@@ -167,6 +168,7 @@
 ; ======================================================================
 
 
+
 (define (crit-printf . args)
   (critical-section (apply printf args)))
 
@@ -264,6 +266,48 @@
    [(pair? s) (cons (chomp (car s)) (chomp (cdr s)))]
    [else (error 'chomp "bad input: ~s" s)]))
 
+
+
+;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
+;; Man, they need a standardized set of libraries.
+;; .parameter port (optional) Port to read from.
+#;
+(define read-line
+  (case-lambda 
+    [() (read-line (current-output-port))]
+    [(p) (let loop ((c (read-char p)) (acc '()))
+	   (if (or (eof-object? c) (char=? #\newline c))
+	       (list->string (reverse! acc))
+	       (loop (read-char p) (cons c acc))))]))
+;This read-line will handle line delimination either by #\newline
+;or by a consecutive #\return #\newline
+;JEEZ, this has some problems right now [01.06.08], Chez for windows
+;seems to be totally screwy regarding char-ready?.
+(define read-line ;returns false if the port is empty
+  (lambda args
+    (let ([port (if (null? args)
+                    (current-input-port)
+                    (car args))])
+      (letrec ([loop
+                 (lambda (c)
+                   (cond
+                     [(or (eof-object? c)
+                          (eq? c #\newline)) '()]
+                     [(or (eq? c #\linefeed)
+                          (eq? c #\return))
+                      (when (and (char-ready? port)
+                                 (eq? (peek-char port) #\newline))
+                            (read-char) '())]
+                     [else (cons c (loop (read-char port)))]))])
+        (let ([c (read-char port)])
+          (if (eof-object? c) #f
+              
+              ((lambda (x) x)
+               (list->string (loop c)))
+              ))))))
+;; TODO: write a more efficient version with block-read!!! [2006.02.22]
+
+;; Used for expanding strings with environment variables in them.
 (define (shell-expand-string s)
   (chomp (system-to-str (string-append "exec echo " s))))
 

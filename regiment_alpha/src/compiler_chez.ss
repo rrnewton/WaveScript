@@ -9,14 +9,13 @@
 
 ; =======================================================================
 
-(if (not (top-level-bound? 'default-break-handler))
-    (define-top-level-value 'default-break-handler (break-handler)))
-(break-handler (lambda args 
-		 (apply default-break-handler args) 
-		 (if (null? args) (void) (car args))))
-
-;; The regiment compiler expects case-sensitive treatment of symbols:
-;; (But hopefully it should work either way, as long as its consistent.
+;;; Compile-time configuration.
+;;;
+;;; This runs extra-early, when the file is compiled.         <br>
+;;; It sets up the location of the Regiment tree.             <br>
+;;;
+;;; The Regiment compiler expects case-sensitive treatment of symbols:
+;;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
 	   (case-sensitive #t)
 
@@ -35,12 +34,19 @@
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
 	   ;; 3: 25488 ms elapsed cpu time, including 8571 ms collecting
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
-	   ;; Wow, down to 3.251 seconds on my 10second network average-value test.
+
+	   ;; This makes our modules work properly in newer versions of Chez:
+	   ;; Otherwise we get unorder definitions, which breaks certain Regiment code.
+	   (if (top-level-bound? 'internal-defines-as-letrec*)
+	       (internal-defines-as-letrec* #t))
 	   )
 
-;; But here is the kinder behavior, try the current directory:
+;; A global scheme variable that is the equivalent of the eponymous environment var. <br>
+;; This uses the kinder behavior -- try the current directory.
+;; (However, that's a bit irrelevent if an error was already signaled above.)
 (define REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
+;; Set some Chez scheme parameters.
 (print-graph #t)
 (print-gensym #f)
 ;(print-level 8)
@@ -48,6 +54,17 @@
 (print-length 80)
 (pretty-maximum-lines 700)
 
+
+;; Storing and then modifying the default break handler.
+;; This is just a little hack to let us break "on" a value and then continue.
+(if (not (top-level-bound? 'default-break-handler))
+    (define-top-level-value 'default-break-handler (break-handler)))
+(break-handler (lambda args 
+		 (apply default-break-handler args)
+		 (if (null? args) (void) (car args))))
+
+;; This preprocessor form is used like an #IFDEF, evaluate code only
+;; if we've got a GUI loaded.
 (define-syntax IF_GRAPHICS
   (lambda (x)
     (syntax-case x ()
@@ -60,14 +77,11 @@
 		 [(_ E1)
 		  #'(IF_GRAPHICS E1 (void))])))
 
-;; This makes our modules work properly in newer versions of Chez:
-(eval-when (compile load eval)
-	   (if (top-level-bound? 'internal-defines-as-letrec*)
-	       (internal-defines-as-letrec* #t)))
-
 ;; TEMP
-(define current_interpreter 'chezscheme)
-(define stderr
+;(define current_interpreter 'chezscheme)
+;; This forces the output to standard error in spite the Scheme
+;; parameters console-output-port and current-output-port.
+(define stderr  
   (let ((buffer-size 1))
     (let ((p (make-output-port 2 (make-string buffer-size))))
       (set-port-output-size! p (- buffer-size 1))
