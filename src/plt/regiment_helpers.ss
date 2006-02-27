@@ -1,6 +1,6 @@
 #cs ;; Case Sensitivity
 
-(module helpers mzscheme 
+(module regiment_helpers mzscheme 
   (require "iu-match.ss"
            (lib "include.ss")
            (lib "date.ss")
@@ -10,7 +10,7 @@
            (all-except (lib "list.ss") filter)
            "constants.ss"
            "hashtab.ss"
-           "helpers.ss"
+           (all-except "helpers.ss" test-this these-tests)
            "engine.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
@@ -25,7 +25,7 @@
 
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
-   constant? datum? 
+   constant? datum? qinteger? qinteger->integer
    formalexp? cast-formals fit-formals-to-args
 
    regiment-primitives regiment-primitive? 

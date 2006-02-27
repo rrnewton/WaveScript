@@ -22,6 +22,7 @@ GENERICFILES = \
   generic/pass23_desugar-gradients_verbose.ss \
   generic/pass23_desugar-gradients_simple.ss \
   generic/pass23_desugar-gradients_ETX.ss \
+  generic/prim_defs.ss \
   generic/regiment_helpers.ss \
   generic/simulator_alpha_datatypes.ss \
   generic/simulator_alpha.ss \
@@ -35,8 +36,9 @@ CHEZFILES = \
 
 PLTFILES = 
 
-ANALYSIS_FILES = \
-  ../analysis/gradients/reception_rate_vs_link_quality.ss
+ANALYSIS_FILES = 
+#  analysis/gradients/reception.ss
+#  analysis/gradients/reception_rate_vs_link_quality_wwout_acks.ss
 
 SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
 DUPSRC   = $(SRCFILES:%=html/%)
@@ -55,6 +57,8 @@ all: schemedoc
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
 	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
 	if ! [ -d html/plt ];     then mkdir html/plt    ; fi
+#	if ! [ -d html/analysis ];     then mkdir html/analysis ; fi
+#	if ! [ -d html/analysis/gradients ];     then mkdir html/analysis/gradients ; fi
 	@echo
 	@echo First scrub source:
 	@echo -------------------

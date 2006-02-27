@@ -333,7 +333,7 @@ See `run-hooks'."
 	       "foldl" "filter" "for-eachi" "mapi"
 	       "case-lambda"
 	       "let/cc" "let/ec"
-	       "module"
+	       "module"	"chez:module"
 	       "reg:define-struct"  "define-record" "define-struct" "define-structure"
 
 	       "begin" "call-with-current-continuation" "call/cc"
@@ -533,6 +533,7 @@ that variable's value is a string."
 (put 'socpgm 'scheme-indent-function 1)
 (put 'for 'scheme-indent-function 2)
 (put 'module 'scheme-indent-function 2)
+(put 'chez:module 'scheme-indent-function 2)
 (put 'trace-define-syntax 'scheme-indent-function 2)
 (put 'trace-define 'scheme-indent-function 2)
 (put 'parameters 'scheme-indent-function 0)

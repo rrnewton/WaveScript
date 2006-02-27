@@ -21,7 +21,7 @@
 
 	  ;; Hmm, not sure what meaning immediate has here...
 	  ;immediate? 
-	  constant? datum? 
+	  constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
 
 	  regiment-primitives regiment-primitive? 

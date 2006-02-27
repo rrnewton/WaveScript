@@ -95,8 +95,9 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
-(include "chez/match.ss")
-(include "chez/constants.ss")
+(include "chez/regmodule.ss")  ;; Common module syntax.
+(include "chez/match.ss")      ;; Pattern matcher.
+(include "chez/constants.ss")  ;; Widely visible constants/parameters.
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
@@ -179,6 +180,7 @@
 (include "generic/lang32_emit-nesc.ss")
 
 ;; Type inference is used by verify-regiment.
+(include "generic/prim_defs.ss")
 (include "generic/hm_type_inference.ss")
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
