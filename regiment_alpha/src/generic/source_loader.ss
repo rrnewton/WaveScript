@@ -72,9 +72,9 @@
 	     (let ([type (string->symbol (extract-file-extension fn))])
 	       (mvlet (((prg params) (read-regiment-source-file fn)))
 		 (case type
-		   [(rs) (values prg params pass-names)]
+		   [(rs) (values prg params (pass-names))]
 		   [(tm) (values prg params 
-				 (list-remove-before 'cleanup-token-machine pass-names))]
+				 (list-remove-before 'cleanup-token-machine (pass-names)))]
 		   [(sim alpha) (values prg params ())]
 		   [else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 		   )))])
@@ -85,7 +85,7 @@
       (for-each eval params) ;; [2005.12.02] Changing this so the params stick.  Better for re-running.
       (let ((result ;(with-evaled-params params
 			;  (lambda ()
-			    (fluid-let ([pass-names passes])
+			    (parameterize ([pass-names passes])
 			      (apply run-simulator-alpha
 
 ;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
@@ -307,11 +307,11 @@
 
 
 
-		    (fluid-let ([pass-names
+		    (parameterize ([pass-names
 				 (cond
-				  [(equal? type "rs") pass-names]
+				  [(equal? type "rs") (pass-names)]
 				  [(equal? type "tm") (list-remove-before 'cleanup-token-machine
-									  pass-names)]
+									  (pass-names))]
 				  [else (error 'regiment "unknown input file extension: ~s" type)]
 				  )])
 		      (set! out_file (string-append (remove-file-extension fn) extension))
