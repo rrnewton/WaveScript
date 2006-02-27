@@ -5,15 +5,17 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
-   "iu-match.ss"           
+   "iu-match.ss" 
       
    "hashtab.ss"
    (all-except "constants.ss" test-this these-tests)
    (all-except "helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "regiment_helpers.ss" id flush-output-port test-this these-tests)
    (all-except "tsort.ss" test-this these-tests)
    (all-except "simulator_alpha_datatypes.ss")
+   (all-except "alpha_lib.ss" test-this these-tests)
    ;(all-except "alpha_lib_scheduler_simple.ss")
-   ;(all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
+   (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
    )
 
   ;(require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
@@ -38,7 +40,6 @@
 ;           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
   
-  (define vector-copy (void))
   
   ;; [2005.11.05] This fills in the implementation-specific casing for the generated code:
   ;; Could just be identity function, but wrapping in a module should give better performance.

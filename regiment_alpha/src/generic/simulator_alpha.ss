@@ -338,26 +338,29 @@
   (set-simworld-vtime! sim 0)
 
   ; Flip off all the LEDs
-  (hashtab-for-each 
-   (lambda (id flipped)
-     (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
-       (for-each (lambda (x) (sim-leds 'toggle x ob)) flipped)))
-   (simworld-led-toggle-states sim))
+    (IF_GRAPHICS
+     (hashtab-for-each 
+      (lambda (id flipped)
+        (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
+          (for-each (lambda (x) (sim-leds 'toggle x ob)) flipped)))
+      (simworld-led-toggle-states sim)))
   (DEBUGMODE ; Now make sure that we actually turned off all the LEDs:
    (hashtab-for-each (lambda (id flipped) (DEBUGASSERT (null? flipped)))
 		     (simworld-led-toggle-states sim)))
 
   ; Flip off all the edge highlights:
-  (let ((lines
-	 (list->set ;; eq? based list->set
-	  (apply append
-		 (map (lambda (simob)
-			(map cadr (gobject-edgelist (simobject-gobj simob))))
-		   (simworld-all-objs sim))))))
-    (for-each unhighlight-edge lines))
+    (IF_GRAPHICS
+     (let ((lines
+            (list->set ;; eq? based list->set
+             (apply append
+                    (map (lambda (simob)
+                           (map cadr (gobject-edgelist (simobject-gobj simob))))
+                         (simworld-all-objs sim))))))
+       (for-each unhighlight-edge lines)))
   
-  ; Set all labels to the empty string:
-  (for-each (lambda (x) (sim-setlabel "" x)) (simworld-all-objs sim))
+    ; Set all labels to the empty string:
+    (IF_GRAPHICS
+     (for-each (lambda (x) (sim-setlabel "" x)) (simworld-all-objs sim)))
 
   ; Reset all the transient state on the simobjects:
   (for-each (lambda (so)

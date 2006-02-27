@@ -14,12 +14,17 @@
          RADIO_DELAY ;PROCESSING_TIME ;; Not used yet
          
 	 define-regiment-parameter regiment-parameters
-	 regiment-verbose simulation-logger simulation-logger-count
-	 simulation-logger-level
+	 regiment-verbose 
+	 simulation-logger simulation-logger-count
+	 simulation-logger-level simulation-logger-human-readable
 	 reg:all-unit-tests
 	 reg:comment-code
 	 reg:define-struct
-	 
+         reg:struct?
+	 reg:struct->list
+         
+         pass-names
+         
          default-slow-pulse default-fast-pulse
          
          deglobalize-markup-returns
@@ -61,8 +66,10 @@
 	 simalpha-sense-function-constructor
 	 simalpha-graphics-on
          simalpha-write-sims-to-disk
-;	 simalpha-pause-hook
-	
+	 simalpha-label-msgcounts 
+	 simalpha-label-sensorvals 
+	 simalpha-pause-hook
+	 
 	 default-unit-tester-retries
                   
          )
@@ -87,6 +94,9 @@
      (syntax-rules ()
        [(_ (sname field ...))
 	(define-struct sname (field ...) (make-inspector))]))
+  (define reg:struct? struct?)
+  (define (reg:struct->list s)
+    (error 'unimplemented ""))
 
    (include (build-path "generic" "constants.ss"))
 

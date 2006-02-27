@@ -9,9 +9,8 @@
            (all-except "tml_generic_traverse.ss" test-this these-tests)
            (all-except "helpers.ss" test-this these-tests)
            (all-except "regiment_helpers.ss" test-this these-tests)
-;           "pass23_desugar-gradients_ETX.ss"
-;           "pass23_desugar-gradients_simple.ss"
-;           "pass23_desugar-gradients_verbose.ss"
+           ;"logfiles.ss"
+           "source_loader.ss"
            )
   
   (include (build-path  "generic" "pass23_desugar-gradients.ss"))

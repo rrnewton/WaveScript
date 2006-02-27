@@ -8,9 +8,10 @@
    (all-except (lib "compat.ss") reg:define-struct flush-output-port) 
    "constants.ss"  
     "hashtab.ss"
-   (all-except "helpers.ss" test-this these-tests filter)
-   (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
-   ;; Would like to remove this dependency eventually:
+    (all-except "helpers.ss" test-this these-tests filter)
+    (all-except "regiment_helpers.ss" test-this these-tests filter)
+    (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
+      ;; Would like to remove this dependency eventually:
 
    (all-except "simulator_alpha_datatypes.ss") ;run-alpha-simple-scheduler)
    
@@ -26,12 +27,15 @@
 	 retrieve-token
 	 add-token
 	 evict-token	 
-
+         
+         attempt-message-transmission
+         
 	 neighbors
 	 sendmsg
 	 sim-light-up
 	 sim-print-queue
 	 sim-leds
+         sim-setlabel
 	 ;sim-dist
 	 sim-loc
 	 sim-locdiff
@@ -40,12 +44,7 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 
-	 ;; Simple functions that compute sensor values:
-	 sense-dist-from-origin
-	 sense-sine-wave
-	 sense-noisy-rising
-	 sense-random-1to100
-
+         
 	 test-this these-tests test-alphalib   
 ;           (all-from "simulator_alpha.ss"))
    )

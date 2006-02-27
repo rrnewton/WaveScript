@@ -62,7 +62,7 @@
 		   (car sim))])
       (hashtab-get (simworld-obj-hash sim) ob))]
    [(simobject? ob) ob]
-   [(node? ob) (get-simobject (node-id node))]
+   [(node? ob) (get-simobject (node-id ob))]
    [else (error 'get-node "cannot coerce this object to a simobject: ~a" ob)]))
 
 ; =======================================================================
@@ -86,7 +86,7 @@
      [(fixnum? connectivity)
       (fx< (reg:random-int 100) connectivity)]
      [(procedure? connectivity)
-      (fx< (reg:random-int 100) (connectivity vtime))]
+      (fx< (reg:random-int 100) (connectivity (simworld-vtime (simalpha-current-simworld))))]
      [else 
       (error 'launch-outgoing "bad connectivity function result: ~s" connectivity)])))
 
@@ -151,15 +151,16 @@
                   )]
 
 (define (sim-highlight-edge nbr . extra)
-  (if (integer? nbr)
-      (let ((g (simobject-gobj (current-simobject))))
-	(when g 
-	  (let ((pr (assq nbr (gobject-edgelist g))))
-	    (if pr 
-		;; This calls the actual graphics procedure:
-		(apply highlight-edge (cadr pr) extra)
-		(warning 'sim-highlight-edge 
-			 "tried to highlight an edge to non-connected neighbor: ~s" nbr)))))))
+  (IF_GRAPHICS
+   (if (integer? nbr)
+       (let ((g (simobject-gobj (current-simobject))))
+         (when g 
+           (let ((pr (assq nbr (gobject-edgelist g))))
+             (if pr 
+                 ;; This calls the actual graphics procedure:
+                 (apply highlight-edge (cadr pr) extra)
+                 (warning 'sim-highlight-edge 
+                          "tried to highlight an edge to non-connected neighbor: ~s" nbr))))))))
   
 [define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)

@@ -44,9 +44,10 @@
    remq list-head merge sort merge! sort!
    date-and-time collect
 
+   fasl-write
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
-   print-level print-length
+   print-level print-length print-gensym
    system/echoed ; system-to-str 
    with-evaled-params
    
@@ -155,6 +156,8 @@
   ;; Can't adjust the length from PLT:
   ;; So this does nothing:
   (define print-length (make-parameter #f))
+  ;; There is also no print-gensym in PLT:
+  (define print-gensym (make-parameter #f))
 
   ;; We don't have fixnum/flonum arithmetic in PLT:
   ;; Tried to make a generic "alias", but that didn't work, so here are a bunch of defines.
@@ -224,35 +227,38 @@
     (fluid-let ((warning fun))
       (th)))  
 
-;; There's no problem with this in PLT:
-(define system/echoed system)
+  ;; There's no problem with this in PLT:
+  (define system/echoed system)
 
-;; This matches the chez parameter, but does nothing.
-(define pretty-maximum-lines (make-parameter #f))
+  ;; PLT doesn't support anything like fasl-writing as far as I can see.
+  (define fasl-write write)
+  
+  ;; This matches the chez parameter, but does nothing.
+  (define pretty-maximum-lines (make-parameter #f))
 
-;; Primitive in chez:
-(define (make-list n x)
-  (let loop ((acc ()) (n n))
-    (if (zero? n) acc
-	(loop (cons x acc) (sub1 n)))))
-(define list-head
-  (lambda (lst n)
-    (cond
-      [(zero? n) '()]
-      [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
-                          lst n)]
-      [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
-;; RRN: Non-tail recursive version
-'(define (merge f l1 l2)
-  ;(let loop ((acc '()) (l1 l1) (l2 l2))
-  (cond
-   [(null? l1) l2]
-   [(null? l2) l1]
-   [(f (car l1) (car l2))
-    ;(loop (cons (car l1) acc)
+  ;; Primitive in chez:
+  (define (make-list n x)
+    (let loop ((acc ()) (n n))
+      (if (zero? n) acc
+          (loop (cons x acc) (sub1 n)))))
+  (define list-head
+    (lambda (lst n)
+      (cond
+        [(zero? n) '()]
+        [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
+                            lst n)]
+        [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
+  ;; RRN: Non-tail recursive version
+  '(define (merge f l1 l2)
+     ;(let loop ((acc '()) (l1 l1) (l2 l2))
+     (cond
+       [(null? l1) l2]
+       [(null? l2) l1]
+       [(f (car l1) (car l2))
+        ;(loop (cons (car l1) acc)
     (cons (car l1)
 	  (merge f (cdr l1) l2))]
-   ;; This gives us stability:
+       ;; This gives us stability:
    [(f (car l1) (car l2))
     (cons (car l2)
 	  (merge f l1 (cdr l2)))]

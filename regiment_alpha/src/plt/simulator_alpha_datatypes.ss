@@ -10,6 +10,7 @@
    (all-except "helpers.ss" id flush-output-port test-this these-tests)  
    "hash.ss"
    "hashtab.ss"
+   "logfiles.ss"
    )
 
   (provide (all-defined))
