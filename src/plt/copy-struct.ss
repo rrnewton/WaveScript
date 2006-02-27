@@ -64,3 +64,4 @@ source structure is an instance of a subtype of the named structure type.
                                          #,(format "Incorrect structure type (not a ~a structure): " 
                                                    (syntax-object->datum #'info))
                                          the-struct)))))])))
+;(require copy-struct)
