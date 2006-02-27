@@ -9,6 +9,7 @@
   (require "constants.ss")
   (require "iu-match.ss")
   (require (all-except "helpers.ss" test-this these-tests))
+  (require (all-except "regiment_helpers.ss" test-this these-tests))
 
   (require (lib "trace.ss"))
 

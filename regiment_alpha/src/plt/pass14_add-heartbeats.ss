@@ -1,11 +1,11 @@
 (module pass14_add-heartbeats mzscheme
 
-  (require (lib "include.ss"))
-  (require "constants.ss")  
-  (require "iu-match.ss")
-  (require (all-except "helpers.ss" test-this these-tests))
-
-  (require (lib "trace.ss"))
+  (require (lib "include.ss")
+	   (lib "trace.ss")
+	   "constants.ss"
+	   "iu-match.ss"
+	   (all-except "helpers.ss" test-this these-tests)
+	   (all-except "regiment_helpers.ss" test-this these-tests))
 
   (include (build-path "generic" "pass14_add-heartbeats.ss"))
   ; "pass14_add-heartbeats.ss"))

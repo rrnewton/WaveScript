@@ -6,6 +6,7 @@
   (require "constants.ss")
   (require "iu-match.ss")
   (require (all-except "helpers.ss" filter test-this these-tests))
+  (require (all-except "regiment_helpers.ss" filter test-this these-tests))
   (require (all-except "grammar_checker.ss" test-this these-tests))
   (require (all-except "tml_generic_traverse.ss" test-this these-tests))
   (require (lib "trace.ss"))
@@ -22,7 +23,7 @@
 ;(test21)  
 
 
-;(.require "helpers.ss" "iu-match.ss")
+;(.require "regiment_helpers.ss" "iu-match.ss")
 
 #;(define p (cleanup-token-machine 
       '(deglobalize-lang 
@@ -52,4 +53,4 @@
      
      
 ;(require pass21_cleanup-token-machine)
-;(require "helpers.ss")
+;(require "regiment_helpers.ss")

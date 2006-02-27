@@ -22,6 +22,8 @@
 	 
          default-slow-pulse default-fast-pulse
          
+         deglobalize-markup-returns
+         
          unknown-place noplace
          
 	 TMNULL
@@ -29,6 +31,10 @@
 	 DEFAULT_SUBTOK DEFAULT_SUBTOK_VAR
          MAX_SUBTOK        
 
+	 desugar-gradients-mode 
+	 etx-retry-delay 
+	 etx-max-retries
+         
          world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
          BASE_ID NULL_ID	 
        	 return-window-size

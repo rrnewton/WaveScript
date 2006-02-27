@@ -2,7 +2,8 @@
 (module pass08_uncover-free mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
-                  (all-except "helpers.ss" test-this these-tests))
+		  (all-except "helpers.ss" test-this these-tests)
+                  (all-except "regiment_helpers.ss" test-this these-tests))
 
 	(include (build-path "generic" "pass08_uncover-free.ss"))
 

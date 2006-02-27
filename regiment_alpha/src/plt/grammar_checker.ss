@@ -7,6 +7,8 @@
   (require "iu-match.ss")
   (require "constants.ss") ;; For DEBUGMODE
   (require (all-except "helpers.ss" test-this these-tests))
+  (require (all-except "regiment_helpers.ss" test-this these-tests))
+  
   
   (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
   

@@ -2,7 +2,10 @@
 (module pass11_remove-complex-opera mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
-                  (all-except "helpers.ss" test-this these-tests))
+                  "constants.ss"
+		  (all-except "helpers.ss" test-this these-tests)
+                  (all-except "regiment_helpers.ss" test-this these-tests)
+                  (all-except "hm_type_inference.ss" test-this these-tests))
 
 	(include (build-path "generic" "pass11_remove-complex-opera.ss"))
 

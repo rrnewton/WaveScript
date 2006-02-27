@@ -2,7 +2,8 @@
 (module pass09_separate-graph mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
-                  "helpers.ss")
+                  "helpers.ss"
+                  "regiment_helpers.ss")
 
 	(include (build-path  "generic" "pass09_separate-graph"))
 

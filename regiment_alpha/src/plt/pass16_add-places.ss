@@ -1,11 +1,11 @@
 (module pass16_add-places mzscheme
 
-  (require (lib "include.ss"))
-  (require "constants.ss")
-  (require "iu-match.ss")
-  (require (all-except "helpers.ss" test-this these-tests))
-
-  (require (lib "trace.ss"))
+  (require (lib "include.ss")
+	   (lib "trace.ss")
+	   "constants.ss"
+	   "iu-match.ss"
+	   (all-except "helpers.ss" test-this these-tests)
+	   (all-except "regiment_helpers.ss" test-this these-tests))
 
   (include (build-path "generic" "pass16_add-places.ss"))
   
@@ -15,7 +15,7 @@
   ;; Should demonstrate point->area with the circle
   ;; unknown->point for the anchor.  
   ;; Alas, it should infer that these places are the same, but it doesn't know that right now.
-   (define (test14)
+   (define (test16)
      (add-places '(add-heartbeats-language
                   '(program
                     (props

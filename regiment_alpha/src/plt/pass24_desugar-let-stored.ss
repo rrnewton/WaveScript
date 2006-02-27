@@ -9,6 +9,7 @@
   (require (all-except "grammar_checker.ss" test-this these-tests id))
   (require (all-except "tml_generic_traverse.ss" test-this these-tests id))
   (require (all-except "helpers.ss" test-this these-tests id))
+  (require (all-except "regiment_helpers.ss" test-this these-tests id))
   ;; Some of the unit tests run the simulator:
   (require (all-except "simulator_alpha.ss" test-this these-tests))
 

@@ -15,7 +15,7 @@
 
 
 ; ----------------------------------------------------------------------
-;;; Constants shared by implementations.
+;;; Constants shared by gradient implementations.
 
 ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
 ;; For now coupling it to global "REGIMENT_DEBUG"
