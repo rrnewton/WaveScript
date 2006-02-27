@@ -32,8 +32,8 @@
     (if (not (null? params))
 	(parameterize ([(caar params) (cadar params)])
 	  (loop (cdr params)))
-	(fluid-let ((pass-names
-		     (append (remq 'flatten-tokmac (remq 'emit-nesc pass-names))
+	(parameterize ((pass-names
+		     (append (remq 'flatten-tokmac (remq 'emit-nesc (pass-names)))
 			     '(flatten-tokmac emit-nesc))))
 	  (match (apply assemble-tokmac tm opts)
 	    [(emit-nesc-language ,p)

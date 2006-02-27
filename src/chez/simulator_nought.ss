@@ -82,7 +82,7 @@
 		      void  ;; Startup
 		      void  ;; Cleanse		      
 		      (lambda (x) ;; Compiler
-			(fluid-let ([pass-names '(cleanup-token-machine)])
+			(parameterize ([pass-names '(cleanup-token-machine)])
 			  (match x
 				 [(precomp ,exp) `(unknown-lang (quote ,exp))]
 				 [,other (run-compiler other)])))		      

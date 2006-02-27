@@ -133,19 +133,19 @@
       [(x)
        (set! trace-list
              (cond
-               [(eq? x #t) pass-names]
-               [(and (symbol? x) (memq x pass-names)) (list x)]
-               [(and (list? x) (andmap (lambda (x) (memq x pass-names)) x)) x]
+               [(eq? x #t) (pass-names)]
+               [(and (symbol? x) (memq x (pass-names))) (list x)]
+               [(and (list? x) (andmap (lambda (x) (memq x (pass-names))) x)) x]
                [else (error 'tracer "invalid argument ~s" x)]))])))
 
 (define tracer
   (make-parameter '()
      (lambda (ls)
        (cond
-	[(eq? ls #t) pass-names]
+	[(eq? ls #t) (pass-names)]
 	[(eq? ls #f) '()]
-	[(and (symbol? ls) (memq x pass-names)) (list x)]
-	[(and (list? ls) (andmap (lambda (x) (memq x pass-names)) ls)) ls]
+	[(and (symbol? ls) (memq x (pass-names))) (list x)]
+	[(and (list? ls) (andmap (lambda (x) (memq x (pass-names))) ls)) ls]
 	[else (error 'tracer "invalid parameter value ~s" ls)]))))
 
 (define game-eval
@@ -336,7 +336,7 @@
 		    (run output-expr))
 		  ))))))
       (unique-name-counter 0)
-      (parameterize ([remaining-pass-names pass-names])
+      (parameterize ([remaining-pass-names (pass-names)])
         (run original-input-expr)))))
 
 (define pretty-asm-print
