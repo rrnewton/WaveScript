@@ -86,8 +86,8 @@
 
 	  [(tuple ,[e] ...) `(tuple ,e ...)]
 	  [(tupref ,n ,len ,[e])
-	   (unless (qinteger? n) (error 'verify-regiment "bad index to tupref: ~a" o))
-	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" o))
+	   (unless (qinteger? n) (error 'verify-regiment "bad index to tupref: ~a" n))
+	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" len))
 	   `(tupref ,n ,len ,e)]
           
 	  ;; In our super simple type inference we don't do arrow

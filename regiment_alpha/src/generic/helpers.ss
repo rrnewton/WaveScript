@@ -1239,7 +1239,7 @@
 						    ;;========================================
 						    ;; RUN THE TEST:
 							   (eval (preprocessor expr)))))
-						    (eval (preprocessor expr)))
+						      (eval (preprocessor expr)))
 						    ;;========================================
 						)))])
 ;	       (newline)
@@ -1274,10 +1274,10 @@
 			  (pretty-print expr)
 			  (newline)
 			  ;(eval `(define failed-unit-test ',expr))
-			  (set-top-level-value! 'unit-test-received result)
-			  (set-top-level-value! 'unit-test-expected intended)
-			  (set-top-level-value! 'failed-unit-test expr)
-			  (set-top-level-value! 'default-unit-tester-output (get-output-string suppressed-test-output))
+			  (define-top-level-value 'unit-test-received result)
+			  (define-top-level-value 'unit-test-expected intended)
+			  (define-top-level-value 'failed-unit-test expr)
+			  (define-top-level-value 'default-unit-tester-output (get-output-string suppressed-test-output))
 
 			  (printf "Violating test bound to global-variable, try (eval failed-unit-test)\n")
 			  (printf "Expected and received also bound to globals, consider: ")
@@ -2021,14 +2021,6 @@
        (fun ))
      #f]
 |#
-
-
-    ["Reunique names" 
-     (reunique-names '(foo_3 foo_43 foo_3 foo))
-     (foo foo_1 foo foo_2)]
-    ["Reunique names #2"
-     (reunique-names '(foo_3 (bar_3) foo_43 foo_3 (bar_3 bar_4)))
-     (foo (bar) foo_1 foo (bar bar_1))]
 
     ["Apply ordered." 
      (let ((x ())) 

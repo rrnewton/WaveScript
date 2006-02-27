@@ -10,184 +10,8 @@
 ; type := '(a . type)      ; a type variable with binding
 ; type := '(a . #f)        ; a type variable with no info
 
-;;; Primitive type definitions
 
-;; These are type aliases that are defined by default.
-(define regiment-type-aliases
-  '([Region (Area Node)]
-    [Anchor (Signal Node)]
-    ;[Dist   Float]
-    ; [(Area 'a) (Signal (Space 'a))]
-    ))
-
-;; These are the basic (non-distributed) primitives supported by the Regiment language.
-(define regiment-basic-primitives 
-    ; value primitives
-  '((cons ('a (List 'a)) (List 'a))
-    (cdr ((List 'a)) (List 'a))
-    (car ((List 'a)) 'a)
-    (append ((List 'a) (List 'a)) (List 'a))
-;    (list ('a ...) (List 'a))
-;    (cons (Object List) List) 
-;    (cdr (List) List)
-;    (car (List) Object)
-;; [2005.10.20] Allowing improper lists for the moment ^^^
-
-    (+ (Integer Integer) Integer)
-    (- (Integer Integer) Integer) 
-    (* (Integer Integer) Integer) 
-    (/ (Integer Integer) Integer) 
-
-    (+. (Float Float) Float)
-    (-. (Float Float) Float)
-    (*. (Float Float) Float)
-    (/. (Float Float) Float)
-    (max ('a 'a) 'a)
-    (min ('a 'a) 'a)
-    (abs (Integer Integer) Integer)
-
-    ;(vector ('a ...) (Array 'a))
-    ;(make-vector (Object Integer) Array)
-    ;(vector-ref ((Array 'a) Integer) 'a)
-    ;(vector-set! (Array Integer Object) Void)
-    
-    ;; These are in here so that various passes can treat them as
-    ;; primitives rather than special forms.  (Just for the purpose of
-    ;; eliminating repetitive code.) However, they don't have valid
-    ;; types under our type system. 
-    (tuple Object Tuple)
-    (tupref Integer Integer Object)
-
-    (locdiff (Location Location) Float)
-
-    (not (Bool) Bool)
-    (or (Bool Bool) Bool)
-    (and (Bool Bool) Bool)
-
-    ; predicates
-    (=  ('a 'a) Bool)
-    (<  ('a 'a) Bool)
-    (>  ('a 'a) Bool)
-    (<=  ('a 'a) Bool)
-    (>=  ('a 'a) Bool)
-;    (eq? (Object Object) Bool)
-    (equal? ('a 'a) Bool)
-    (eq? ('a 'a) Bool)  ;; This should just be = when it comes down to it.
-    (null? ((List 'a)) Bool)
-
-    ;; These are dynamically typed primitives: 
-    ;(pair? (Object) Bool)
-    ;(number? (Object) Bool)
-    (even? (Integer) Bool)
-    (odd? (Integer) Bool)
-
-    ;; Shouldn't this be local??
-    ;; I'm not sure...
-    (sense         (Symbol Node) Integer)
-    (nodeid        (Node) Integer)
-
-    ))
-
-;; These are pretty much compiler-internal primitives which can
-;; operate on the local node.
-(define local-node-primitives 
-  '(
-    (my-id () NodeID)
-    ;(gdist (Token) Integer) ;; Phase this out "dist" is wrong.
-    ;(ghopcount (Token) Integer)
-    ;(gparent (Token) NodeID)
-    ;(gorigin (Token) NodeID)
-    ;(gversion (Token) Integer)
-    
-    (check-tok (Token) Bool)
-    ;; Gotta have a way to remove tokens also!
-    ;; Not to mention expiration dates!!
-
-    (list ('a ...) (List 'a))
-    (append List List)
-
-    (rfoldwith (Token ('a 'b -> 'a) 'b (Area 'a)) (Signal 'b))
-    ))
-
-;; These count as primitives also.
-;; All regiment constants are presumed to be "slow prims" for
-;; now. (see add-heartbeats)
-(define regiment-constants
-  '(
-    (world          Region)
-    (anchor         Anchor)
-    ))
-
-;; These are the distributed primitives.  The real Regiment combinators.
-(define regiment-distributed-primitives 
-  '(
-    
-    (rmap           (('a -> 'b) (Area 'a)) (Area 'b))
-
-    (rfold          (('a 'b -> 'b) 'b (Area 'a)) (Signal 'b))
-    (smap           (('a -> 'b) (Signal 'a)) (Signal 'b))
-    
-    ;; This joins two signals in the network.
-    (smap2          (('a 'b -> 'c) (Signal 'a) (Signal 'b)) (Signal 'c))
-
-    ;; This is the identity function on regions.  
-    ;; However it also lights an LED.
-    (light-up ((Area 'a)) (Area 'a))
-
-    (anchor-at      (Integer Integer) Anchor)
-    (anchor-dist    (Anchor Anchor) Float)
-
-    ;(anchor-optimizing ((Node -> Integer) Region) Anchor)
-
-    ;; Takes a function to optimize, and an optional refresh rate to re-elect at:
-    ;; If no refresh rate is zero, the election only happens once.
-    (anchor-maximizing ((Node -> Integer) Integer) Anchor)
-
-    (circle         (Anchor Float)   Region)
-    (circle-at      (Integer Integer Float) Region)
-    (k-neighborhood (Anchor Integer) Region)
-    ;; Shorthand: 
-    (khood          (Anchor Integer) Region)
-    (khood-at       (Float Float Integer) Region)
-
-    ;; This lifts a node value into the Signal monad:
-    (node->anchor   (Node) Anchor)
-
-    (rfilter         (('a -> Bool) (Area 'a)) (Area 'a))
-    
-    (rintersect       ((Area 'a) (Area 'a)) (Area 'a))
-    (runion           ((Area 'a) (Area 'a)) (Area 'a))
-    (rrflatten        ((Area (Area 'a)))    (Area 'a))
-
-    ;; This one returns a region of regions:
-    (rrcluster        ((Area 'a)) (Area (Area 'a)))
-    ;; These don't a lot of sense yet:
-    (sparsify       ((Area 'a)) (Area 'a))
-    (border         ((Area 'a)) (Area 'a))
-
-;    (planarize      (Area) Area)
-;    (treeize        (Area) Area)
-
-    ;; Prolly not the right type:
-    ;; Currently this ignores the value carried on the event:
-    (until          ((Event 'a) (Signal 'b) (Signal 'b)) (Signal 'b))
-    (runtil         ((Event 'a) (Area 'b) (Area 'b)) (Area 'b))
-    (areaWhen       ((Event 'a) (Area 'b)) (Area 'b))
-
-    ;; The float is a time in seconds.
-    ;(constEvent     ('a Float) (Event 'a))
-
-    ;; What was this one supposed to do and what was it's type?
-;    (when           (Event Signal) Signal)
-    (rwhen-any        (('a -> Bool) (Area 'a))       (Event #())) ; Could carry the winning value.
-    (swhen-any        (('a -> Bool) (Signal 'a))     (Event #()))
-    (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
-
-;     neighbors 
-;    time-of
-;    (time (Node) Time)
-     ))
-  
+;; See the primitive type definitions in prim_defs.ss
 
 ; ======================================================================
 ;;; Helpers
@@ -196,7 +20,7 @@
   (if (type? t) (export-type t) `(NOT-A-TYPE ,t)))
 
 ;; Raises a generic type error at a particular expression.
-(define (raise-type-error t1 t2 exp)
+(define (raise-type-mismatch t1 t2 exp)
   (error 'type-checker
 	 "Type mismatch: ~s doesn't match ~s in ~s~%"
 	 (safe-export-type t1) (safe-export-type t2) exp))
@@ -380,21 +204,6 @@
       [(,name ,type) (instantiate-type type)]
       [(,name ,args ,ret)
        (instantiate-type `(,@args -> ,ret))])))
-
-;; A potentially quoted integer.
-(define (qinteger? n)
-  (match n
-    [,i (guard (integer? i)) #t]
-    [',i (guard (integer? i)) #t]
-    [,else #f]))
-(define (qinteger->integer n)
-  (match n
-    [,i (guard (integer? i)) i]
-    [(quote ,i) 
-     (DEBUGASSERT (integer? i))
-     i]
-    [else (error 'qinteger->integer "this is not a qinteger: ~a" n)]))
-
 
 (define (type? t)
   (define (id x) x)
@@ -658,7 +467,7 @@
     [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
-     (raise-type-error x y exp)]
+     (raise-type-mismatch x y exp)]
     ;; If one of them is a symbol, it might be a type alias.
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
      (let ([sym    (if (symbol? x) x y)]
@@ -666,7 +475,7 @@
        (let ([entry (assq sym regiment-type-aliases)])
 	 (if entry 
 	     (types-equal! (instantiate-type (cadr entry)) nonsym exp)
-	     (raise-type-error x y exp))))]
+	     (raise-type-mismatch x y exp))))]
     [[#(,x* ...) #(,y* ...)]
      (guard (= (length x*) (length y*)))
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) x* y*)]
@@ -692,7 +501,7 @@
 	(types-equal! x y exp)]
        [,other (error "procedure type ~a does not match: "
 		      `(,@yargs -> ,y) other)])]
-    [,otherwise (raise-type-error t1 t2 exp)]))
+    [,otherwise (raise-type-mismatch t1 t2 exp)]))
 		   
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp)

@@ -15,6 +15,10 @@
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
 
+  ;; [2006.02.26] 
+  ;; How can it possibly take 20sec on faith to native-code compile this one file?
+  ;; What's wrong with PLT's native-code compilation setup?
+
  (provide     	
   ;(all-from "constants.ss")
   
@@ -81,8 +85,11 @@
    unfold-list average clump
     partition partition-equal split-before
    myequal?
-   stream? live-stream? stream-empty? stream-car stream-cdr stream-map stream-take 
+   
+   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+   stream-map stream-filter stream-take stream-take-all 
    counter-stream stream-append ;random-stream 
+   
    display-constrained
    symbol-append 
 
@@ -334,4 +341,5 @@
   )
 
 ;(require helpers)
-;(testhelpers)
+;(time (testhelpers))
+
