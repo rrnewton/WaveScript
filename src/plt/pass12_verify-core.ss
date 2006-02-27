@@ -1,10 +1,10 @@
 
 (module pass12_verify-core mzscheme
 
-  (require (lib "include.ss"))
-  
-  (require "iu-match.ss")
-  (require (all-except "helpers.ss" test-this these-tests))
+  (require "iu-match.ss"
+	   (lib "include.ss")
+	   (all-except "helpers.ss" test-this these-tests)
+	   (all-except "regiment_helpers.ss" test-this these-tests))
 
   (include (build-path "generic" "pass12_verify-core.ss"))
   

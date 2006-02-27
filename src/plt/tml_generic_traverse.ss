@@ -3,7 +3,9 @@
   (require (lib "include.ss")           
            "iu-match.ss"
 	   ;(lib "compat.ss")
-           (all-except "helpers.ss" test-this these-tests filter))
+           (all-except "helpers.ss" test-this these-tests filter)
+           (all-except "regiment_helpers.ss" test-this these-tests filter)
+           )
   
   (include (build-path "generic" "tml_generic_traverse.ss"))
   

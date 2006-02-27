@@ -762,7 +762,7 @@
 		   (call reg-return 
 			 ,(if (deglobalize-markup-returns)
 			      `(list (list ',(symbol-uppercase prim) ',tokname (my-id)) #f)
-			      (my-id))
+			      `(my-id))
 			 )])]
 
       [(rmap light-up smap smap2 runion rrflatten rrcluster)

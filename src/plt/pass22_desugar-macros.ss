@@ -6,6 +6,7 @@
   
   (require "constants.ss")
   (require (all-except "helpers.ss" test-this these-tests))
+  (require (all-except "regiment_helpers.ss" test-this these-tests))
   (require (all-except "tml_generic_traverse.ss" test-this these-tests))
   (require (lib "trace.ss"))
 

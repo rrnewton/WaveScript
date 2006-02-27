@@ -1,15 +1,23 @@
 #cs ;; Case Sensitivity
 
 (module pass23_desugar-gradients mzscheme
-  (require (lib "include.ss"))
-  (require (lib "trace.ss"))
-  (require "constants.ss")
-  (require "iu-match.ss")
-  (require (all-except "grammar_checker.ss" test-this these-tests))
-  (require (all-except "tml_generic_traverse.ss" test-this these-tests))
-  (require (all-except "helpers.ss" test-this these-tests))
+  (require (lib "include.ss")
+           (lib "trace.ss")
+           "constants.ss"
+           "iu-match.ss"
+           (all-except "grammar_checker.ss" test-this these-tests)
+           (all-except "tml_generic_traverse.ss" test-this these-tests)
+           (all-except "helpers.ss" test-this these-tests)
+           (all-except "regiment_helpers.ss" test-this these-tests)
+;           "pass23_desugar-gradients_ETX.ss"
+;           "pass23_desugar-gradients_simple.ss"
+;           "pass23_desugar-gradients_verbose.ss"
+           )
   
   (include (build-path  "generic" "pass23_desugar-gradients.ss"))
+  (include (build-path  "generic" "pass23_desugar-gradients_ETX.ss"))
+  (include (build-path  "generic" "pass23_desugar-gradients_verbose.ss"))
+  (include (build-path  "generic" "pass23_desugar-gradients_simple.ss"))
   
   (provide (all-defined))
   )

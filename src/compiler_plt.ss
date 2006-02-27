@@ -127,10 +127,14 @@
 ;(define tests01 tests01)
 ;(define tests07 tests07)
 
+
+;============================================================
+;; INLINE THE MAIN COMPILER CODE
 ;(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
 ;(disp "Testing" (eval 'default-unit-tester))
 ;(load/use-compiled "compiler.ss")
 (include "compiler.ss")
+;============================================================
 
 ;(disp "BOUT TO LOAD DRIVER" pass-names)
 

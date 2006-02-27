@@ -4,6 +4,8 @@
                   "iu-match.ss"
 		  (all-except "helpers.ss" test-this these-tests)
 		  (all-except "regiment_helpers.ss" test-this these-tests)
+                  "grammar_checker.ss"
+                  (all-except "hm_type_inference.ss" test-this these-tests)                  
                   )
 
 	(include (build-path "generic" "pass01_eta-primitives.ss"))

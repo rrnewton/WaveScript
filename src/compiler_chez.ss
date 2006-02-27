@@ -218,6 +218,7 @@
 
 
 (include "generic/pass23a_find-emittoks.ss")
+(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass23_desugar-gradients_verbose.ss")
 (include "generic/pass23_desugar-gradients_simple.ss")
