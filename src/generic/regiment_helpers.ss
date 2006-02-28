@@ -667,7 +667,7 @@
 ;; relevent to the resulting data.
 (define (regiment-print-params prefix . port)
   (let ([port (if (null? port) (current-output-port) (car port))]
-	[pad-width (if (top-level-bound? 'pad-width)
+	[pad-width (if #f;(top-level-bound? 'pad-width) ;; [2006.02.27] FIXME
 		       (top-level-value 'pad-width)
 		       (lambda (_ x) (format "~a" x)))])
     (for-each 

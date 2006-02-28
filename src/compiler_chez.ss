@@ -27,13 +27,29 @@
 				     (string-append (getenv "REGIMENTD") "/src")
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
-
-	   (optimize-level 2) ;0/1/2/3)
+	   
+	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
 	   ;; 3: 25488 ms elapsed cpu time, including 8571 ms collecting
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
+	   
+	   ;; This configuration is for running simulations only:
+	   #;(begin (optimize-level 3)
+		  (compile-compressed #f)
+		  (generate-inspector-information #f)
+		  ;; Messing with this didn't seem to help performance.
+		  #;(run-cp0
+		   (lambda (cp0 x)
+		     (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
+				    [cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
+				    [cp0-outer-unroll-limit 3]) ;; inline recursive?
+		       (let ((x (cp0 x)))
+			 (parameterize (
+					(cp0-effort-limit 0)
+					)
+			   (cp0 x)))))))
 
 	   ;; This makes our modules work properly in newer versions of Chez:
 	   ;; Otherwise we get unorder definitions, which breaks certain Regiment code.
@@ -41,10 +57,8 @@
 	       (internal-defines-as-letrec* #t))
 	   )
 
-;; A global scheme variable that is the equivalent of the eponymous environment var. <br>
-;; This uses the kinder behavior -- try the current directory.
-;; (However, that's a bit irrelevent if an error was already signaled above.)
-(define REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+;======================================================================
+;;; Setup stuff.
 
 ;; Set some Chez scheme parameters.
 (print-graph #t)
@@ -53,7 +67,6 @@
 (print-level 20)
 (print-length 80)
 (pretty-maximum-lines 700)
-
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.
@@ -87,6 +100,8 @@
       (set-port-output-size! p (- buffer-size 1))
       p)))
 
+;======================================================================
+
 (fprintf stderr "Loading compiler in chezscheme~a...\n"
 	 (if (top-level-bound? 'regiment-origin)
 	     (format " (from ~a)" regiment-origin)
@@ -95,9 +110,20 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
+;======================================================================
+;;; Begin loading files.
+
+ ;; Load this first.  Widely visible constants/parameters.
+(include "chez/constants.ss") 
+
+;; A global parameter that is the equivalent of the eponymous
+;; environment var.  Now that constants.ss is loaded we can set this. <br>
+;; This uses the kinder behavior -- try the current directory.
+;; (However, that's a bit irrelevent if an error was already signaled above.)
+(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+
 (include "chez/regmodule.ss")  ;; Common module syntax.
 (include "chez/match.ss")      ;; Pattern matcher.
-(include "chez/constants.ss")  ;; Widely visible constants/parameters.
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
@@ -118,7 +144,7 @@
    (thread-sleep t)
    (begin
     ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
-     (parameterize ((current-directory (string-append REGIMENTD "/src/")))
+     (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))
        (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
 	   ;; This even resorts to calling make to build the sleep object!!
 	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.
@@ -216,9 +242,8 @@
 (include "generic/pass22_desugar-macros.ss")
 ;(include "generic/pass26_desugar-macros.ss")
 
-
 (include "generic/pass23a_find-emittoks.ss")
-(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
+;(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
 (include "generic/pass23_desugar-gradients.ss")
 (include "generic/pass23_desugar-gradients_verbose.ss")
 (include "generic/pass23_desugar-gradients_simple.ss")

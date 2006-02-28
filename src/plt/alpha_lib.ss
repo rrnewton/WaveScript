@@ -22,23 +22,31 @@
   (IF_GRAPHICS (require (all-except "graphics_stub.ss" test-this these-tests)))
 
   (provide 
+
+	 get-connectivity get-node get-simobject ;; Utilities for coercion:         
+         attempt-message-transmission
+
    	 current-simobject
 
 	 retrieve-token
 	 add-token
 	 evict-token	 
-         
-         attempt-message-transmission
+	 evict-all-tokens
+
+
          
 	 neighbors
 	 sendmsg
-	 sim-light-up
+
 	 sim-print-queue
+	 sim-light-up
+         sim-highlight-edge
+	 sim-draw-mark
 	 sim-leds
          sim-setlabel
 	 ;sim-dist
 	 sim-loc
-	 sim-locdiff
+	 sim-locdiff         
 	 simulator-soc-return
 	 simulator-soc-finished
 	 check-store
@@ -48,6 +56,7 @@
 	 test-this these-tests test-alphalib   
 ;           (all-from "simulator_alpha.ss"))
    )
+
    
   (include (build-path "generic" "alpha_lib.ss"))
  )

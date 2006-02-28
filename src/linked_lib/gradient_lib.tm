@@ -219,45 +219,8 @@
  		  (not (token-scheduled? (tok GRAD:return-aggr-and-send retid))))
  	     (begin 
  	       ,@(DEBUG_GRADIENTS `(dbg "%d.%d: Still have stuff left, continue aggregating..." (my-clock) (my-id)))
- 	       (call (tok GRAD:return-aggr-and-send retid) toind viaind))
+ 	       (call (tok GRAD:return-aggr-and-send retid) ))  ;;toind viaind))
  	     (void))
 
 	 )))
 
-
-
-
-#!eof
-;; ======================================================================
-;;====================================================================================================
-;;========================================================================================================================
-
-	       ;;  Two new token handlers.  These are the return handlers.  
-	       ;;  One for storing state (aggregation accumulator), and one 
-	       ;;  for timer events for this aggregation.
-
-
-		 ;; Invoke the timeout handler from node-start:
-;; [2005.10.10] DONT NEED THIS, JUST MAKE SURE THAT ANY GRETURN ACTIVITY SETS TIMER.
-; 		 [node-start () 
-; 		    (let ((retid 
-; 			   ',(if (not (and (integer? viaind_expr)
-; 					   (integer? toind_expr)))
-; 				 (error 'desugar-gradient "not allowed to have dynamic viaind/toind: ~a/~a\n"
-; 					viaind_expr toind_expr)
-; 				 (+ (* MAX_SUBTOK toind_expr) viaind_expr))))
-; 		      ,@(DEBUG_GRADIENTS
-; 			 `(dbg "%d.%d: Setting gradient aggr/up-send time-out timer, retid %d." (my-clock) (my-id) retid))
-; 		      (token-deschedule (tok ,return-timeout-handler retid))
-; 		      (timed-call ,DEFAULT_RHSEND (tok ,return-timeout-handler retid) ,toind_expr ,viaind_expr))]
-
-		 ,@(if aggr
-		 `(
-
-) ())
-
-
-
-
-		;; And finally add the new return handler(s) to the other bindings:
-		,@(append etb ttb vtb stb))

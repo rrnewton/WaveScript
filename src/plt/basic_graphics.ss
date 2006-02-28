@@ -3,14 +3,16 @@
   (require (lib "include.ss")
            ;(lib "compat.ss")
            "helpers.ss"
+           "constants.ss"
            (prefix plt: (lib "graphics.ss" "graphics")))
 ;  (provide init-graphics close-graphics	window-width window-height the-win)
   (provide (all-defined))
   
   ;; This defines window-width and window-height presets;.
-  (include (build-path "generic" "basic_graphics.ss"))
+  ;; This is gone now: [2006.02.27]
+  ;(include (build-path "generic" "basic_graphics.ss"))
   
-;  (define the-win #f) 
+  (define the-win #f) 
   (define (init-graphics) 
     (plt:open-graphics)
     (set! the-win (plt:open-viewport "Basic graphics for simulator." 

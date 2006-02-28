@@ -168,7 +168,7 @@
     ;; chunks of log-file as vectors.  Thus I'm going to buffer the logging.
     ;; UNFINISHED UNFINISHED::
     (define buffered-writer
-      (if (top-level-bound? 'fork-thread)
+      (if #f ;(top-level-bound? 'fork-thread) ;; TODO: FINISH
 	  (let ()
 	    (define obj-buffer (make-vector 500 #f))
 	    (define num-objs 0)

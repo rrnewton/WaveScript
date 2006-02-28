@@ -5,7 +5,7 @@
            (lib "include.ss")
            (lib "date.ss")
            (lib "pretty.ss")
-           (lib "process.ss")
+           ;(lib "process.ss")
 	   (lib "compat.ss")
            (all-except (lib "list.ss") filter)
            "constants.ss"
@@ -42,9 +42,13 @@
    destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
 
    regiment-print-params
-   
-   ) ;; End provide
 
+   sense-spatial-sine-wave 
+   sense-dist-from-origin 
+   sense-sine-wave
+   sense-noisy-rising
+   sense-random-1to100
+   )
 
 ;; This is a simple random number generator interface for use in this Regiment codebase:
 ;;

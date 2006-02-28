@@ -27,10 +27,19 @@
 	  "rrn-current-test.ss"
 	  "_SIM_nodeprog.ss"
 	  "_SIM_socprog.ss"
+	  "_genned_node_code.ss"
 
 	  ;; TEMPORARILY:
 	  "simulator_nought.ss"
 	  "simulator_nought_graphics.ss"
+
+
+	  ;; Used only via INCLUDES, don't contain modules:
+	  "prim_defs.ss"
+	  "prim_defs_OLD.ss"
+	  "pass23_desugar-gradients_verbose.ss"
+	  "pass23_desugar-gradients_simple.ss"
+	  "pass23_desugar-gradients_ETX.ss"
 
 ;	  "alpha_lib_scheduler_simple.ss"
 

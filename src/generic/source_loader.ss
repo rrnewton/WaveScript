@@ -177,7 +177,7 @@
 
 (define these-tests
   `(["Run a basic test of the pattern match expander."
-     (reunique-names (desugar-pattern-matching '(lambda (#(foo #(bar baz)) x) foo)))
+     (reunique-names (,desugar-pattern-matching '(lambda (#(foo #(bar baz)) x) foo)))
      (lambda (pattmp x)
        (letrec ([foo (tupref 0 2 pattmp)]
 		[pattmp_1 (tupref 1 2 pattmp)]
@@ -185,7 +185,7 @@
 		[baz (tupref 1 2 pattmp_1)])
 	 foo))]
 
-    [(desugar-pattern-matching '(match 3 [x x]))
+    [(,desugar-pattern-matching '(match 3 [x x]))
      (letrec ([x 3]) x)]
 
     ))

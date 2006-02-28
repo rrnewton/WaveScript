@@ -11,7 +11,8 @@
 ;(module compiler_plt mzscheme
  
 (require (lib "include.ss")
-         (all-except "plt/helpers.ss" id rec)
+         (all-except "plt/helpers.ss" id rec) 
+         (all-except "plt/regiment_helpers.ss" )         
 	 "plt/hashtab.ss"
 	 "plt/hash.ss"
          (all-except "plt/grammar_checker.ss" these-tests test-this))
@@ -19,8 +20,15 @@
 (require "plt/constants.ss"
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
-          "plt/critical_section.ss"
+          "plt/critical_section.ss")
 
+;; Set parameter:
+(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+
+(require 
+
+ (all-except "plt/hm_type_inference.ss" these-tests test-this)
+ 
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
 (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
@@ -47,6 +55,7 @@
 (all-except "plt/pass20_deglobalize.ss" these-tests test-this)
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
 (all-except "plt/pass22_desugar-macros.ss" these-tests test-this)
+(all-except "plt/pass23a_find-emittoks.ss" these-tests test-this)
 (all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
 (all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
 (all-except "plt/pass25_rename-stored.ss" these-tests test-this)
@@ -64,29 +73,6 @@
 
 (all-except "plt/pass31_flatten-tokmac.ss" these-tests test-this)
 (all-except "plt/pass32_emit-nesc.ss" these-tests test-this)
-
-;          (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-;          "plt/pass01_eta-primitives.ss"
-;          (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
-;          (all-except "plt/pass03_remove-unquoted-constant.ss")
-;          (all-except "plt/pass04_reduce-primitives.ss" these-tests test-this)
-;          (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
-;          (all-except "plt/pass05_remove-complex-constant.ss")
-;          (all-except "plt/pass06_uncover-free.ss")
-;          (all-except "plt/pass07_lift-letrec.ss")
-;          (all-except "plt/pass08_lift-letrec-body.ss")
-;          (all-except "plt/pass09_remove-complex-opera.ss" these-tests test-this)
-;          (all-except "plt/pass10_verify-core.ss" these-tests test-this)
-;          (all-except "plt/pass11_classify-names.ss" these-tests test-this)
-;          (all-except "plt/pass12_add-heartbeats.ss" )
-;          (all-except "plt/pass13_add-control-flow.ss")
-;          (all-except "plt/pass14_add-places.ss" these-tests test-this)
-;          (all-except "plt/pass15_analyze-places.ss" these-tests test-this)
-;          (all-except "plt/pass16_deglobalize.ss" these-tests test-this)
-;          (all-except "plt/pass17_cleanup-token-machine.ss" these-tests test-this)
-         
-;          (all-except "plt/pass19_haskellize-tokmac.ss" test-this these-tests)
-
          
 ;    (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
         ;          "plt/pass09_separate-graph.ss"
@@ -113,6 +99,10 @@
 ; (all-except "plt/alpha_lib_scheduler_simple.ss" these-tests test-this) 
  ;(all-except "plt/alpha_lib.ss" these-tests test-this)
  )
+
+(require (all-except "plt/source_loader.ss" these-tests test-this))
+(require (all-except "plt/logfiles.ss" these-tests test-this))
+
 ;  (require "plt/demo_display.ss")
 
 ;; Get those module bound identifiers out in the open!
@@ -349,3 +339,6 @@
    (flatten-tokmac 
     (cleanup-token-machine 
      '(tokens (SOC-start () (printf "woot\n")))))))
+
+
+;(test-units)

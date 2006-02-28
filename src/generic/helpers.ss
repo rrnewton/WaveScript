@@ -1172,6 +1172,7 @@
 			    (printf "~a: ~a\n" i (car test))))
 		      entries)
 	   (return (void)))
+
 	 (let (;; Flag to suppress test output.  This had better be passed
 	       ;; *after* any comparison or preprocessor arguments.
 	       [quiet (or (memq 'quiet args)

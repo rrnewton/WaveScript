@@ -91,3 +91,7 @@ exec mred -r "$0" ${1+"$@"}
 
 
 (apply main (vector->list (current-command-line-arguments)))
+
+
+;(parameterize ([current-directory (car (command-line-arguments))])
+;  (load (string-append (getenv "REGIMENTD") "/src/regiment.ss")))
