@@ -19,6 +19,7 @@
 	 sim-print-queue
 	 sim-light-up
 	 sim-highlight-edge
+	 sim-draw-mark
 	 sim-leds
 	 sim-setlabel
 	 ;sim-dist

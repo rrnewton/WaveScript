@@ -19,8 +19,8 @@
 ;           (all-except "simulator_nought.ss" test-this these-tests) ;; For world-xbound, ybound
            "constants.ss" ;; For world-xbound, ybound
            )
-  
-  (include (build-path "generic" "graphics_stub.ss"))
+  ;; [2006.02.27] No longer have a common file here:
+;  (include (build-path "generic" "graphics_stub.ss"))
 
   (define default-proc-color (make-rgb 200 20 20))
   (define default-edge-color (make-rgb 0 0 0))

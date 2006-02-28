@@ -5,7 +5,7 @@
            (lib "include.ss")
            (lib "date.ss")
            (lib "pretty.ss")
-           (lib "process.ss")
+           (prefix plt: (lib "process.ss"))
 	   (lib "compat.ss")
            (all-except (lib "list.ss") filter)
 ;           (all-except "tsort.ss" test-this these-tests)
@@ -48,7 +48,7 @@
    pretty-maximum-lines pretty-line-length pretty-print
    ;; Meet in the middle with chez:
    print-level print-length print-gensym
-   system/echoed ; system-to-str 
+   system/echoed system system-to-str 
    with-evaled-params
    
    cd
@@ -227,9 +227,25 @@
     (fluid-let ((warning fun))
       (th)))  
 
+  ;; Make this return a fake error code to act like the Chez version.
+  (define system plt:system/exit-code)
   ;; There's no problem with this in PLT:
-  (define system/echoed system)
+  (define system/echoed plt:system/exit-code)
 
+  (define (system-to-str str)
+    (let-match ([(,in ,out ,id ,err ,fun) (plt:process str)])
+      (let ((p (open-output-string)))
+        (let loop ((c (read-char in)))
+          (if (and (eof-object? c)
+                   (not (eq? 'running (fun 'status))))
+              (begin 
+                (close-input-port in)
+                (close-output-port out)
+                (close-input-port err)
+                (get-output-string p))
+              (begin (unless (eof-object? c) (display c p))
+                     (loop (read-char in))))))))
+  
   ;; PLT doesn't support anything like fasl-writing as far as I can see.
   (define fasl-write write)
   

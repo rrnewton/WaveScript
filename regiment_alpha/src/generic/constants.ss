@@ -37,6 +37,10 @@
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
 	      (make-parameter args ...)))]))
 
+;; Parameter determining the location of the Regiment tree. <br>
+;; This is set when the system loads.
+(define-regiment-parameter REGIMENTD "./")
+
 ;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
 ;=======================================================================;;

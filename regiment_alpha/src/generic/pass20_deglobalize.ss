@@ -403,7 +403,7 @@
 ;			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
 			    (-. 0. (locdiff (loc) ,target))]
 		 [,form () 
-			(draw-mark ,target)
+			(draw-mark ,target) ;,(IF_GRAPHICS `(draw-mark ,target) '(void))
 			(leds on blue)
 			]
 		 ;; DEBUGGING

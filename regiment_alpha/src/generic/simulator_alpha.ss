@@ -819,6 +819,8 @@
 		[(locdiff ,[l1] ,[l2]) `(sim-locdiff ,l1 ,l2)]
 		
 		[(light-node ,r ,g ,b) `(sim-light-up ,r ,g ,b)]
+		[(draw-mark ,[loc]) `(sim-draw-mark ,loc)]
+		[(draw-mark ,[loc] ,[col]) `(sim-draw-mark ,loc ,col)]
 		[(leds ,which ,what) `(sim-leds ',which ',what)]
 		[(highlight-edge ,[args] ...) `(sim-highlight-edge ,args ...)]
 

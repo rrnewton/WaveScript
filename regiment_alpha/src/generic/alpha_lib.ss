@@ -161,8 +161,12 @@
                  (apply highlight-edge (cadr pr) extra)
                  (warning 'sim-highlight-edge 
                           "tried to highlight an edge to non-connected neighbor: ~s" nbr))))))))
+
+;; Again, fizzle if no graphics loaded.
+(define (sim-draw-mark . args)
+  (IF_GRAPHICS (apply draw-mark args)))
   
-[define (sim-light-up r g b)
+(define (sim-light-up r g b)
   ;((sim-debug-logger) "~n~s: light-up ~s ~s ~s" (node-id (simobject-node (current-simobject))) r g b)
   (logger 5 (simworld-vtime (simobject-worldptr (current-simobject)))
 	  (node-id (simobject-node (current-simobject))) 'LightUp `[r ,r] `[g ,g] `[b ,b])
@@ -175,7 +179,7 @@
 					;(error 'sim-light-up "can't change color on undrawn object!: ~s" this)
    
    ;; Fizzle if graphics is not enabled.
-   (void))]
+   (void)))
 
 [define (sim-setlabel str . ob)
   (IF_GRAPHICS 

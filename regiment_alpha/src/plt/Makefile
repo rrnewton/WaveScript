@@ -2,7 +2,7 @@
 
 bc: bytecode
 bytecode: 
-	(cd ../; export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos ./plt)
+	(cd ../; export PLTCOLLECTS=`pwd`; mzc --collection-zos plt)
 
 nc: native
 native: 
