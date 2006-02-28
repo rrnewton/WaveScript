@@ -119,6 +119,18 @@ generic/alpha_lib.ss:
 generic/alpha_lib_scheduler_simple.ss:
   The newest token machine simulator.
 
+<URGENT note on code: Things in transition.>
+======================================================================
+
+Certain things are in the process of happening.  As a result the
+inconsistencies might be confusing.
+
+ *) Reformatting comments for Schemedoc is a work-in-progress.
+ *) Converting to the common module format.  (See regmodule.ss)
+    I'm gradually changing modules over, currently [2006.02.28], the
+    vast majority are still either in chez-format or PLT format.
+
+
 <Documentation>
 ======================================================================
 
@@ -182,6 +194,11 @@ seeing stack frames in the inspector that you expect to see.
 
  *) Chez's interactive inspecter is good, use "(break)" or 
 "(call/cc inspect)" liberally (sometimes the latter is what you need).
+
+ *) If you're using SWL and you get the cryptic "invalid command name "0""
+ error, this probably means that you're attempting a method call on a
+deleted object.  My memory is fuzzy however, I did figure this out in
+the past, but I need to remember exactly what causes this.  <TODO>
 
 
 

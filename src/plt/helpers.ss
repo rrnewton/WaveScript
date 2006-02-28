@@ -41,7 +41,7 @@
    fx+ fx- fx* fx/ fx< fx> fx= fx<= fx>= fixnum? fxmin fxmax flonum->fixnum
    fl+ fl- fl* fl/ fl< fl> fl= fl<= fl>= flonum? fixnum->flonum
    most-positive-fixnum
-   remq list-head merge sort merge! sort!
+   remq list-head merge sort merge! sort! atom?
    date-and-time collect
 
    fasl-write
@@ -193,6 +193,8 @@
   (define (flonum? x) (inexact? x))
   (define (flonum->fixnum x) (inexact->exact (floor x)))
   (define (fixnum->flonum x) (exact->inexact x))
+
+  (define ffofofo atom?);(define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
   
   ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.
   ;(define (merge! a b) (merge a b))

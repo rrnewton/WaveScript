@@ -9,6 +9,7 @@
          DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT
          IF_GRAPHICS
          REGIMENT_DEBUG
+         chezimports ;; To make the common module facility work.
          
          REGIMENTD
          SCHEDULE_DELAY         
@@ -115,6 +116,10 @@
 		'()
 		(cons (access s i) (loop (add1 i)))))))))
 
+  (define-syntax chezimports
+    (syntax-rules ()
+      [(_ e ...) (begin)]))
+  
    (include (build-path "generic" "constants.ss"))
 
    

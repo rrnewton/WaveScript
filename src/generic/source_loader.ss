@@ -4,6 +4,23 @@
 ;;;; and desugars it according to a few simple conventions that I've
 ;;;; followed.  It can also load token machine ".tm" files.
 
+; [2006.02.27] Refactored to use new common module syntax.
+
+(module source_loader mzscheme 
+  (require "../plt/iu-match.ss"
+           (lib "include.ss")
+           "../plt/constants.ss"
+           (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+           (all-except "../plt/simulator_alpha.ss" test-this these-tests id)
+           )
+  (provide     	
+   read-regiment-source-file
+   load-regiment reg:load
+   test_sourceloader
+   ) ;; End provide
+  (chezimports )
+
 ;; Read the file from disk, desugar the concrete syntax appropriately.
 (define read-regiment-source-file
   (lambda (fn)
@@ -193,12 +210,15 @@
 (define test-this (default-unit-tester "source_loader.ss: For reading regiment source files." these-tests))
 (define test_sourceloader test-this) ;; Unit test entry point.
 
+) ;; End Module.
+
+
 #|	      
 
 
       (when (equal? type "rs")
 	(runloop 'compile (list fn))
-	(set! fn out_file)))
+	(set! fn out_file))) 
 
 	     (printf "Running simulation from file: ~a\n" fn)
 	     (let ((result
