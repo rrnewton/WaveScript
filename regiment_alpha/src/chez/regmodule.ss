@@ -14,8 +14,8 @@
 ;;;; maintain the same list in two places within the Chez and PLT
 ;;;; code. <br><br>
 ;;;;
-;;;; The import list is implicit in Chez, or takes the form of
-;;;; "imports", and in PLT is represented by the "require" form.
+;;;; The import list can be implicit in Chez, or it can take the form of
+;;;; "(import m)" statements, and in PLT is represented by the "require" form.
 ;;;; These are different enough that I'm not going to try to share
 ;;;; them.  The Chez version will ignore the (require ...) section,
 ;;;; and the PLT version will ignore the (chezimports ...) section.
@@ -33,8 +33,8 @@
   (define-syntax module
     (let ()
       ;(import chez_module)
-      (syntax-rules ()
-	[(_ name parent (provide exports ...) (require _ ...) (chezimports imp ...) exp ...)
+      (syntax-rules (require provide chezimports)
+	[(_ name parent (require _ ...) (provide exports ...) (chezimports imp ...) exp ...)
 	 
 	 (chez:module name (exports ...)
 		      (import imp) ...

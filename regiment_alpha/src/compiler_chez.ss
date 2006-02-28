@@ -9,6 +9,10 @@
 
 ; =======================================================================
 
+;; Wipe *all* previous bindings before coming into the system.
+(import scheme)  ;; [2006.02.28] Without this we get killed by our redifining "module".
+;(import-only scheme)
+
 ;;; Compile-time configuration.
 ;;;
 ;;; This runs extra-early, when the file is compiled.         <br>
@@ -28,14 +32,14 @@
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
 	   
-	   (optimize-level 0) ;0/1/2/3)
+	   (optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
 	   ;; 3: 25488 ms elapsed cpu time, including 8571 ms collecting
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   
-	   ;; This configuration is for running simulations only:
+	   ;; This configuration is for running extended simulation-experiments only:
 	   #;(begin (optimize-level 3)
 		  (compile-compressed #f)
 		  (generate-inspector-information #f)
@@ -59,6 +63,8 @@
 
 ;======================================================================
 ;;; Setup stuff.
+
+(define current_interpreter 'chezscheme)
 
 ;; Set some Chez scheme parameters.
 (print-graph #t)
@@ -90,8 +96,6 @@
 		 [(_ E1)
 		  #'(IF_GRAPHICS E1 (void))])))
 
-;; TEMP
-;(define current_interpreter 'chezscheme)
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
 (define stderr  
@@ -188,8 +192,8 @@
 (include "generic/firelightning_sim.ss")
 
 (include "generic/tossim.ss")
-(include "generic/source_loader.ss") ;; For loading regiment sources.
-(include "generic/grammar_checker.ss")
+(include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+(include "generic/grammar_checker.ss") (import grammar_checker)
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
@@ -274,9 +278,10 @@
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
 
-;; Basic parallel computation (engines):
+;; Basic parallel computation (using engines):
+;; [2006.02.28] These were used by simulator_nought, but are not used currently.
 (IF_GRAPHICS
-    (load "chez/swl_flat_threads.ss")
+    (load "chez/swl_flat_threads.ss") ;; uses swl threads instead
     (load "chez/flat_threads.ss"))
 
 ;; LAME:

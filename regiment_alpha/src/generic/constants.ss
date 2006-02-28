@@ -51,8 +51,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -466,7 +466,7 @@
 (reg:define-struct (rgb red green blue))
 
 ;; My light background theme:
-(begin
+#;(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 200 200 200))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET
@@ -489,7 +489,7 @@
   )
 
 ;; My dark background theme:
-#;(begin
+(begin
   (define Default-Drawing-Color     (make-rgb 0 255 0))
   (define Default-Window-Color      (make-rgb 150 150 150))
   (define Default-Window-Text-Color (make-rgb 0 0 0)) ;; NOT USED YET

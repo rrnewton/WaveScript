@@ -251,3 +251,64 @@ something (with a C-like external rep for Token Machines).
 Thusfar the NesC component system has just got in my way and annoyed me.
 
 
+[2006.02.28] {Looking at poor SWL stability}
+
+Trying to remember exactly what it is that causes the SWL invalid
+command name problem.
+
+Right now I'm having a lot of nondeterminism / timing-dependency
+problems with SWL.  The unit tests will crash if run normally.
+Sometimes it will crash around test 9 with an obscure error.  However,
+if I run unit tests one at a time, manually, I haven't yet found one
+that doesn't pass.
+
+Further, this works fine:
+
+  (for i = 1 to 30 (sleep 500) (maintest 9))
+
+Also tried with test 5, and a couple others at random.  This will
+work in rapid fire also:  
+
+  (for i = 1 to 30 (maintest 16))
+
+Further, tests 1-50 work fine with some sleeping:
+
+  (for i = 1 to 50 (sleep 500) (maintest i))
+
+However, if you wave the mouse over the sim window you'll get 'Invalid
+command name "0" errors' which don't stop the tests from passing.
+(Those must be errors in the GUI event handlers resulting from objects
+being deleted out from under their noses.)
+
+Ok, now trying to do tests 1-50 in rapid fire.  Well, first try
+crashed SWL with "nonrecoverable invalid memory reference".  (Add that
+to the malformed stack errors I was getting earlier.)  Wow, that's
+actually a consistent behavior.  HMM.  Third try and I get hung SWL
+windows, but no crash.  SWL doesn't seem to be stable enough for
+actually deploying anything with it.  
+
+"nonrecoverable invalid memory reference" happens on blacksmoker as
+well as faith.
+
+I also need to take a look at what's going on with the
+threading/errors in SWL, because when I run tests 51-75 (with
+sleeping, as above), it currently gets an error on 72, but then keeps
+going, accumulating more errors.  I haven't looked at my unit tester
+in a while, but it could be that my attempts to redefine the error
+handlers isn't working correctly under SWL.
+
+Wow, just Segfaulted SWL by trying to go to "Exit" via the menu while
+it was in the process of spitting up a bunch of load errors from
+_genned_node_code.ss (I'm sure there are some legitimate bugs there.)
+
+Just did 75-100 manually, one at a time and they all passed.  (This is
+revision 1135.)
+
+Well, alas, no time to really track down these problems now.
+
+[Oops, note: 70 can fail even right after loading.  It gets a
+number->string error, and further, when run repeatedly, it can spit
+out "car: () is not a pair" probably from another thread, a graphics
+thread.]
+
+

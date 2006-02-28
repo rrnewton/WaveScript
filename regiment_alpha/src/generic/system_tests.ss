@@ -262,6 +262,8 @@
 		   ls))]
 
      ;; Need to make this one have a higher probability of success.
+     ;; [2006.02.27] Just failed with :
+     ;; (read "~? at char ~a of ~a" "unexpected end-of-file reading ~a" ("list") 5775 "./_genned_node_code.ss")
      ["Now test Ucast-wACK"
       ;retry
       , (tm-to-list
