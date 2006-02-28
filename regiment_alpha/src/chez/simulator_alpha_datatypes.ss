@@ -3,7 +3,7 @@
 ;; systematically export all the structure accessors/mutators from a
 ;; Chez module yet, so here they are, listed out verbosely.
 
-(module simulator_alpha_datatypes
+(chez:module simulator_alpha_datatypes
 	(	 
 ;	 simalpha-total-messages
 ;	 simalpha-total-tokens

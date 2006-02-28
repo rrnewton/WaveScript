@@ -2,7 +2,7 @@
 
 
 
-(module regiment_helpers
+(chez:module regiment_helpers
     (
 
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!

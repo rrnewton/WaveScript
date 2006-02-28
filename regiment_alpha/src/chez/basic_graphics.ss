@@ -15,7 +15,7 @@
 ;; [2004.06.21] Adding "draw-mark" to the interface, I use this for
 ;; drawing 'X' marks for additional debugging info.
 
-(module basic_graphics (
+(chez:module basic_graphics (
 			init-graphics close-graphics  
 			rec->rgb ;; This converts rgb records into system specific (SWL) rgb values.
 ;			make-rgb rgb? rgb-red rgb-green rgb-blue

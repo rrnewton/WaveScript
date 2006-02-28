@@ -1,6 +1,6 @@
 
 
-(module simulator_alpha
+(chez:module simulator_alpha
 	(run-simulator-alpha rerun-simulator-alpha clean-simworld!
 	 compile-simulate-alpha csa ; shorthand
 	 test-this these-tests
@@ -29,7 +29,7 @@
 ;; Could just be identity function, but wrapping in a module should give better performance.
 (define (build-genned-code-module node-code)
   `(begin	      
-     (module genned-code (node-code) 
+     (chez:module genned-code (node-code) 
        (import scheme)
        (import simulator_alpha_datatypes)
        (import alpha_lib)

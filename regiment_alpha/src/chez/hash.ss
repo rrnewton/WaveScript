@@ -1,6 +1,6 @@
 ;;; RRN: Lifted this code from slib:
 
-(module hashfun (hash)
+(chez:module hashfun (hash)
 	
 	(import-only scheme)
 
