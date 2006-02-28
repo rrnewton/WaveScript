@@ -123,6 +123,10 @@
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
 (include "chez/regmodule.ss")  ;; Common module syntax.
+;; After this point, everything must use chez:module for native chez modules.
+;; 'module' will become my chez/plt portable regiment modules.
+(import reg:module)
+
 (include "chez/match.ss")      ;; Pattern matcher.
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
@@ -281,7 +285,7 @@
 
 ;; Basic simulator for the nodal language:
 ;(load "chez/simulator_nought.ss")
-(module simulator_nought
+(chez:module simulator_nought
 	(;run-simulation
 	 ;run-simulation-stream
 	 ;compile-simulate-nought 

@@ -1,5 +1,5 @@
 
-(module hashtab (make-default-hash-table (hashtab-get immediate?) (hashtab-set! immediate?) hashtab-for-each hashtab-remove!)
+(chez:module hashtab (make-default-hash-table (hashtab-get immediate?) (hashtab-set! immediate?) hashtab-for-each hashtab-remove!)
 	
 	;; This is implementation specific, these are the types for which eq? <=> equal?
 	(define (immediate? x)

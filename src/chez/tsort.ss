@@ -1,6 +1,6 @@
 ;; RRN: I lifted this from SLIB.
 
-(module topsort-module (tsort topological-sort test-this these-tests test-tsort cyclic?)
+(chez:module topsort-module (tsort topological-sort test-this these-tests test-tsort cyclic?)
 
 	(import scheme)
 	(import (except helpers test-this these-tests))

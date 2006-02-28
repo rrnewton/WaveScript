@@ -14,7 +14,7 @@
 ;;   The module system is just defunct now... I think I was having
 ;; similar problems earlier.
 
-;(module flat_threads_foob (run-flat-threads yield-thread
+;(chez:module flat_threads_foob (run-flat-threads yield-thread
 ;		      these-tests test-this)
 
 (define this-unit-description "flat_threads.ss: Simple interface for parallel computations.")

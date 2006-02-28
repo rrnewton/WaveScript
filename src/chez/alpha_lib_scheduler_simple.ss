@@ -1,6 +1,6 @@
 
 
-(module alpha_lib_scheduler_simple 
+(chez:module alpha_lib_scheduler_simple 
 	(
 	 run-alpha-simple-scheduler
 	 )

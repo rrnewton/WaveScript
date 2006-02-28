@@ -2,7 +2,7 @@
 
 ;; This version is for use with the SchemeWidgetLibrary.
 
-;(module flat_threads (run-flat-threads yield-thread
+;(chez:module flat_threads (run-flat-threads yield-thread
 ;		      these-tests test-this)
 
 (define yield-thread thread-yield)

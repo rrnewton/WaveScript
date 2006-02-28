@@ -44,7 +44,7 @@
 
 ;(load "basic_graphics.ss")
 
-(module graphics_stub (draw-network draw-proc draw-edge draw-mark draw-circle
+(chez:module graphics_stub (draw-network draw-proc draw-edge draw-mark draw-circle
 				  clear-buffer delete-gobj
 ;				  Starting-Node-Color
 				  change-color! ;set-color!

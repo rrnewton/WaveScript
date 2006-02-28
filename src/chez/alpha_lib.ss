@@ -1,6 +1,6 @@
 
 ;; run time functions for simulator code:
-(module alpha_lib
+(chez:module alpha_lib
 	(
 
 	 get-connectivity get-node get-simobject ;; Utilities for coercion:

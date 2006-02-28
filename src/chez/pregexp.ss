@@ -7,7 +7,7 @@
 ;Dorai Sitaram
 ;http://www.ccs.neu.edu/~dorai/pregexp/pregexp.html
 
-(module pregexp_module 
+(chez:module pregexp_module 
         (pregexp
 	 pregexp-match-positions
 	 pregexp-match
