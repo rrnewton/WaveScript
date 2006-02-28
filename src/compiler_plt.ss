@@ -23,7 +23,10 @@
           "plt/critical_section.ss")
 
 ;; Set parameter:
-(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") 
+               ;(path->string (current-directory))
+               "~/regiment_alpha/"
+               ))
 
 (require 
 
