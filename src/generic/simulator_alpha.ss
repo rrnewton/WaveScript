@@ -4,29 +4,33 @@
 ;; TODO: REHIDE the scheduler state if we don't need it!!
 
 ;;;; .title Simulator Alpha: A second Token Machine simulator.
-; simulator_alpha.ss
-;  -Ryan Newton [2005.02.25]
-; Related files include:
-;   alpha_lib.ss -- "run time" library for the running simulator.
-;   alpha_lib_scheduler_simple.ss -- Basic action scheduler
-;   alpha_lib_scheduler.ss -- NOT USED right now [2005.09.27]
-;   simulator_nought.examples.ss -- Some sample programs.
+;;;; .author Ryan Newton [2005.02.25]
+
+
+;;;;<br> Related files include: (as of [2006.03.01]) 
+;;;;<br>   simulator_alpha_datatypes.ss  -- data type definitions             
+;;;;<br>   alpha_lib.ss                  -- "run time" library for the running simulator. 
+;;;;<br>   alpha_lib_scheduler_simple.ss -- Basic action scheduler            
+;;;;<br>   alpha_lib_scheduler.ss        -- NOT USED right now [2005.09.27]   
+;;;;<br>   simalpha_rollworld.ss         -- Constructing random topologies    
+;;;;<br>   simalpha_ui.ss                -- Functions for printing/displaying sim state 
+;;;;<br>   simulator_nought.examples.ss  -- Some sample programs              
+;;;;<br>                                   (for old sim, but still applicable)
+;;;;<br>  
+
 ;===============================================================================
 
 ;;;; This will be a second attempt simulator.  (The first was simulator_nought.)
-;;;; It will support only core tml (no gradients).
+;;;; It will support only core tml (no gradients). <br><br>
 ;;;;
-;;;;   <br><br>
 ;;;; It will have a single thread of control and a queue of simulator
-;;;; events sorted by virtual clock times.
+;;;; events sorted by virtual clock times. <br><br>
 ;;;;
-;;;;   <br><br>
 ;;;; Later, it may serve as a place to test scheduling algorithms so
-;;;; that we can actually implement the atomic action model (with action-abort).
+;;;; that we can actually implement the atomic action model (with
+;;;; action-abort). <br><br>
 ;;;;
-;;;;   <br><br>
 ;;;; 
-
 
 
 ; NOTE: Right now all calls go through the dyndispatch table.
@@ -39,9 +43,12 @@
 ; [2005.10.18] Factored out datatype defs and global params (and even
 ; some helper functions) to a separate files.
 
+; [2006.03.01] Factored again, removing UI functions and
+; world-construction.  Now only the front-end invocation procedure and
+; the tm-to-sim code-conversion should be in this file.
+
 ;===============================================================================
 
-; =======================================================================
 
 ;;; Helper functions.
 
@@ -120,347 +127,6 @@
 ;; given simobject.  Gonna use this for unit testing oracles.
 (define (all-connected simob sim)
   (graph-get-connected-component simob (simworld-object-graph sim)))
-
-; =================================================================================
-
-;;; Constructing and maintaining world objects.
-
-;; .returns A 'simworld' record.
-(define (fresh-simulation)  
-  ;; This subroutine generates the default, random topology: 
-  ;; (There are more topologies in "network_topologies.ss"
-  (define (make-object-graph g world) 
-    (graph-map (lambda (nd) 
-		 (let ([so (apply make-simobject (make-list 16 'simobject-field-uninitialized))])
-		   (set-simobject-node! so nd)
-		   (set-simobject-token-store! so (make-default-hash-table 100))
-
-		   (set-simobject-incoming-msg-buf! so '())
-		   (set-simobject-outgoing-msg-buf! so '())
-		   (set-simobject-local-msg-buf! so '())
-		   (set-simobject-timed-token-buf! so '())
-
-		   (set-simobject-local-sent-messages! so 0)
-		   (set-simobject-local-recv-messages! so 0)
-		   (set-simobject-token-table! so (make-default-hash-table 100))
-
-		   (set-simobject-redraw! so #f)
-		   (set-simobject-gobj! so #f)
-		   (set-simobject-homepage! so '())
-		   (set-simobject-I-am-SOC! so #f)
-
-		   (set-simobject-scheduler! so #f)
-		   (set-simobject-meta-handler! so #f)
-
-		   (set-simobject-worldptr! so world)
-		   so)) g))
-  
-  ;; This is our helper function that checks for collisions.
-  (define (collide?  n1 n2)
-    (let ((connectivity ((simalpha-connectivity-function)
-			 (node-pos n1) (node-pos n2))))
-      (if (not (memq connectivity '(0 100))) (printf "connectivity: ~s\n" connectivity))
-      (not (eqv? 0 connectivity))))
-
-  (define (make-random-topology)    
-    ;; Old method, doesn't produce connected graph:
-    (let ((seed (map (lambda (_) (random-node)) (iota (sim-num-nodes)))))
-      (if (simalpha-consec-ids)
-	  (for-each set-node-id! 
-		    seed (iota (length seed))))
-      ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
-      (set-node-id! (car seed) BASE_ID)
-      ;; Connect the graph:
-      ;; TODO: Make the graph representation better.  Should cache the connectivity functions on the edges.
-      (set! seed
-	    (map (lambda (node)
-		   (cons node 
-			 (filter (lambda (n) 
-				   (and (not (eq? node n))
-					(let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
-					  ;; We establish a connection unless we get zero-reception
-					  (not (eqv? connection 0))
-					  )))
-				 seed)))
-		 seed))
-      seed))
-
-  (define (make-connected-topology)
-    ;; This might have some serious biases in the layout and distribution of degree.
-    (let ((start-node (let ((x (random-node)))				   
-			(set-node-id! x BASE_ID)
-			x)))
-      (let loop ((graph (list (list start-node))) (count (sub1 (sim-num-nodes))))
-					;		 (printf "\nLooping: graph:\n")
-					;		 (pretty-print graph)
-	(if (<= count 0)
-	    graph
-	    (let ((newnode (random-node)))
-	      ;; Here we number them as we go.  
-	      ;; This will result in a non-random spatial distribution of node-ids.
-	      (if (simalpha-consec-ids)
-		  (set-node-id! newnode count))
-	      (let ((nbr-rows (filter (lambda (row) (collide? newnode (car row))) graph)))
-		(if (null? nbr-rows)
-		    (loop graph count)
-		    (begin 
-		      (for-each (lambda (row)
-				  ;; Splice in this as a neighbor:
-				  (set-cdr! row (cons newnode (cdr row))))
-				nbr-rows)
-		      (loop (cons (cons newnode (map car nbr-rows))
-				  graph)
-			    (sub1 count))))))))))
-
-  (define (make-gridlike-topology perfect?)
-    (let* ([num-nodes (sim-num-nodes)]
-	   [seed (make-vector num-nodes)]
-	   ;; Calculate dimensions
-	   [height (inexact->exact (floor (sqrt num-nodes)))]
-	   [width (ceiling (/ num-nodes height))]
-	   [step (fxmin (fx/ (simalpha-world-xbound) width)
-			(fx/ (simalpha-world-ybound) height))]
-	   [offsetx (fx/ (fx- (simalpha-world-xbound) (fx* (fx- width 1) step)) 2)]
-	   [offsety (fx/ (fx- (simalpha-world-ybound) (fx* (fx- height 1) step)) 2)])
-
-      ;; For now we use a simple linear perturbation.
-      (define (perturb coord)
-	(if perfect? coord
-	    (if (zero? (simalpha-max-gridlike-perturbation)) coord
-		(+ coord (reg:random-int 
-			  (inexact->exact 
-			   (floor (* step (simalpha-max-gridlike-perturbation)))))))))
-
-      (for i = 0 to (sub1 num-nodes) ;; Allocate the nodes.
-	   (vector-set! seed i (random-node)))
-      (if (simalpha-consec-ids)
-	  (begin (set-node-id! (vector-ref seed 0) BASE_ID)
-		 (for i = 1 to (sub1 num-nodes)
-		      (set-node-id! (vector-ref seed i) i))
-		 ;; Have to mix it up after that
-		 (randomize-vector seed))
-	  ;; Otherwise a random node becomes base:
-	  (set-node-id! (vector-ref seed (reg:random-int num-nodes)) BASE_ID))
-      ;; Now we tile them in a gridlike fashion, and perturb them.
-      (for i = 0 to (sub1 num-nodes) 
-	   (set-node-pos! (vector-ref seed i)
-			  (let ((pos (list (fx+ offsetx (fx* step (quotient i height)))
-					   (fx+ offsety (fx* step (remainder i height))))))
-			    ;; Then we perturb them randomly off that position:
-			    (map perturb pos))))
-      ;; Finally, connect the graph:
-      (let ((seed (vector->list seed)))
-	(map (lambda (node)
-	       (cons node 
-		     (filter (lambda (n) 
-			       (and (not (eq? node n))
-				    (let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
-				      ;; We establish a connection unless we get zero-reception
-				      (not (eqv? connection 0))
-				      )))
-				 seed)))
-	     seed))))
-
-  (define (make-topology) ;; Returns the graph	  
-    (case (simalpha-placement-type)
-      [(random) (make-random-topology)]
-      [(connected) (make-connected-topology)]
-      [(gridlike) (make-gridlike-topology #f)]
-      [else (error 'simulator_alpha:fresh-simulation 
-		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
-  
-  (printf "Rolling fresh simulator world (current srand seed ~a).\n" (reg:get-random-state))
-  ;; Set global parameter:
-  ;; This is a function which takes two locations and returns either
-  ;;  1) a number, representing the loss percentage
-  ;;  2) a function of time, representing the loss percentage over time
-  (simalpha-connectivity-function
-    (case (simalpha-channel-model)
-      [(lossless)
-       (lambda (p1 p2) ;x1 y1 x2 y2)
-	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
-	   (if (< dist (simalpha-outer-radius))
-	       100
-	       0)))]
-      [(linear-disc)
-       (printf "Got linear disc...\n")
-       (lambda (p1 p2)	
-	 (let ((dist (posdist p1 p2))
-	       (outer (simalpha-outer-radius))
-	       (inner (simalpha-inner-radius)))
-;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
-	   (cond
-	    [(<= dist inner) 100]
-	    [(> dist outer) 0]
-	    [else
-	     (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
-   
-  ;; TODO, FIXME, need to use a real graph library for this!
-  ;; (One that treats edges with due respect, and that uses hash tables.)
-   (let* ([theworld (make-simworld #f #f #f #f #f #f #f)]
-	  [graph (make-topology)]
-;	  [soc (caar graph)]
-          [obgraph (make-object-graph graph theworld)]
-          [allobs  (map car obgraph)]
-	  [hash
-	   (let ([h (make-default-hash-table)])
-	     (for-each (lambda (ob)
-			 (hashtab-set! h (node-id (simobject-node ob)) ob))
-		       allobs)
-	     h)]
-	  [scheduler-queue '()])
-
-     (DEBUGMODE
-      (andmap (lambda (row) (andmap node? row))
-	      graph))
-     ;; Set I-am-SOC
-     (for-each (lambda (ob)
-		 (set-simobject-I-am-SOC! ob		  
-		  (= (node-id (simobject-node ob)) BASE_ID)))
-	       allobs)
-     (set-simworld-graph! theworld graph)
-     (set-simworld-object-graph! theworld obgraph)
-     (set-simworld-all-objs! theworld allobs)
-     (set-simworld-obj-hash! theworld hash)
-     (set-simworld-scheduler-queue! theworld scheduler-queue)
-     (set-simworld-vtime! theworld 0)
-     
-     (set-simworld-led-toggle-states! theworld (make-default-hash-table))
-     theworld))  ;; End fresh-simulation
-
-
-;; This scrubs all the transient state off an existing simworld.
-;; .returns The cleaned simworld.
-(define clean-simworld!
-  (lambda (sim) ;(sim : simworld? -> simworld?)
-
-  (set-simworld-scheduler-queue! sim '())
-  (set-simworld-vtime! sim 0)
-
-  ; Flip off all the LEDs
-    (IF_GRAPHICS
-     (hashtab-for-each 
-      (lambda (id flipped)
-        (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
-          (for-each (lambda (x) (sim-leds 'toggle x ob)) flipped)))
-      (simworld-led-toggle-states sim)))
-  (DEBUGMODE ; Now make sure that we actually turned off all the LEDs:
-   (hashtab-for-each (lambda (id flipped) (DEBUGASSERT (null? flipped)))
-		     (simworld-led-toggle-states sim)))
-
-  ; Flip off all the edge highlights:
-    (IF_GRAPHICS
-     (let ((lines
-            (list->set ;; eq? based list->set
-             (apply append
-                    (map (lambda (simob)
-                           (map cadr (gobject-edgelist (simobject-gobj simob))))
-                         (simworld-all-objs sim))))))
-       (for-each unhighlight-edge lines)))
-  
-    ; Set all labels to the empty string:
-    (IF_GRAPHICS
-     (for-each (lambda (x) (sim-setlabel "" x)) (simworld-all-objs sim)))
-
-  ; Reset all the transient state on the simobjects:
-  (for-each (lambda (so)
-	      (set-simobject-token-store! so (make-default-hash-table 100))
-	      (set-simobject-token-table! so (make-default-hash-table 100))
-	      (set-simobject-incoming-msg-buf! so '())
-	      (set-simobject-outgoing-msg-buf! so '())
-	      (set-simobject-local-msg-buf! so '())
-	      (set-simobject-timed-token-buf! so '())
-	      (set-simobject-local-sent-messages! so 0)
-	      (set-simobject-local-recv-messages! so 0)
-	      (set-simobject-redraw! so #f)
-	      (set-simobject-homepage! so '())
-;	      (set-simobject-scheduler! so #f)
-;	      (set-simobject-meta-handler! so #f)
-	      (set-simobject-worldptr! so sim)
-	      so)
-    (simworld-all-objs sim))
-  sim))
-
-;; And this cleans the global parameters that go along with a simulation.
-;; (Does nothing right now.)
-(define (clean-simalpha-counters!)
-  ;(simalpha-total-messages 0)
-  ;(simalpha-total-tokens 0)
-  (void)
-  )
-
-; =================================================================================
-
-;;; Graphics related.
-
-;; This takes a simworld object and draws it on the screen:
-(define (simalpha-draw-world world)
-  (IF_GRAPHICS
-   (let ()
-;     (define edge-table (make-default-hash-table))
-;     (define proc-table (make-default-hash-table))
-     
-     ;; This is a promise so as to be called only once.
-;     (define wipe-screen (delay clear-buffer))
-     ;; Contains a graphics object, and the last drawn state.
-
-     (if (not the-win) (init-graphics))
-     (clear-buffer)
-
-     ;; This temporarily stores all edges:
-     (let ((edge-table (make-default-hash-table)))
-	 (for-each (lambda (graph-entry)
-		     (hashtab-set! 
-		      edge-table (node-id (car graph-entry))
-		      (let ([here (node-pos (car graph-entry))]
-			    [id (node-id (car graph-entry))])
-			;; This forms a list of line objects:
-			(map (lambda (nbr)
-			       (let ([line 
-				      ; If there's already an entry in the other direction, use it.
-				      (let ((entry (hashtab-get edge-table (node-id nbr))))
-					(if (and entry (assq id entry))
-					    (begin 
-					      ;(inspect (list id (node-id nbr)))
-					      (cadr (assq id entry)))
-					    (draw-edge here (node-pos nbr))))])
-				 (list (node-id nbr) line)))
-			  (cdr graph-entry)))))
-	   (simworld-graph world))
-
-       ;; Make sure the edge table is the correct type:
-       ;; It binds ids to nbr-alists.
-       (DEBUGMODE 
-	(hashtab-for-each
-	 (lambda (k alst)
-	   (DEBUGASSERT
-	    (and (integer? k)
-		 (andmap (lambda (pr)
-			   (and (list? pr) (= (length pr) 2)
-				(integer? (car pr))
-				(gobj? (cadr pr))))
-			 alst))))
-	 edge-table))
-
-     ;; This is not a good abstraction boundary.
-     ;; We just drew the edges, and now we call "draw network" just to draw nodes:
-     ;; Associate with each simobject the resultant graphics object "gobj".
-     (let* ((all-objs (simworld-all-objs world))
-	    (nodes (map simobject-node all-objs)))
-       (let ((gvecs (draw-network (map node-pos nodes)
-				  (map node-id nodes))))
-	 (for-each (lambda (simob vec)
-		     (match vec
-		       [#(,circ ,r ,g ,b ,text ,label)
-			;; Construct a graphics object:
-			;(set-title! label "TEST")
-			(set-simobject-gobj! simob
-			 (make-gobject circ r g b text label 
-				       (hashtab-get edge-table 
-						    (node-id (simobject-node simob)))))]))
-	   all-objs gvecs)
-	 ))))
-  (error 'simalpha-draw-world "graphics not loaded.")))
 
                          
 ; =======================================================================
@@ -893,6 +559,7 @@
     (lambda (stmt) (process-expr stmt)))))
 
 
+;; Subroutine of compile-simulate-alpha below.
 (define (process-binds binds)
 ;  (disp "processbinds" binds expr)
   (let* ([graph (map (lambda (bind)
@@ -911,9 +578,6 @@
 	(error 'process-binds "for now can't take a cyclic graph: ~s" newbinds))
     newbinds))
 	 
-
-
-
 
 ;; Every token handler, once converted for the simulator, has a signature: <br>&nbsp;
 ;; 
@@ -1012,16 +676,14 @@
 ; =======================================================================
 
 
-;;
-
-;; .returns A code module containing a definition for "node-code".
-;; 
 ;; This is the procedure for compiling a TML program into a simulator program. <br><br>
 ;; The resulting binding for node-code is a function that takes the "this" simobject.  
 ;; And returns a "meta-token-handler", which has type: <br>&nbsp;&nbsp;
 ;;   (msg-object, vtime -> ()) <br>
 ;; This meta-handler is a dispatcher for all of the individual token
 ;; handlers.  It dispatches based on the token-name contained in the msg-object.
+;; 
+;; .returns A code module containing a definition for "node-code".
 (define (compile-simulate-alpha prog . extraparams)
   ;; .parameter prog A Token-Machine either with or without the (foo-lang ...) wrapper.
   ;; .parameter extraparams A list of bindings to "parameterize" when the simulation runs.
@@ -1179,8 +841,7 @@
 			 "unmatched input program: ~s" prog)])))
 
 
-; =======================================================================
-
+;================================================================================
 ;;; Invoking the simulator.
 
 ;; This is a module-local parameter to the currently running sim program. -[2005.11.25]
@@ -1208,7 +869,8 @@
 (define run-simulator-alpha
   (lambda args
     (define THEPROG 'uninitialized)
-    (define run-alpha-loop
+    ;; First this loop runs, to get the token machine ready; stores it in THEPROG.
+    (define prep-token-machine
 	    (lambda args
 	      (match args
 		     ;; This is a weak requirement... 
@@ -1227,17 +889,17 @@
 				(newline out)
 				(close-output-port out)))
 			    (set! THEPROG tm)))
-		      (match tm
-			; Already compiled for the simulator:
+		      (match tm ;; What kind of form is the token machine in?
+			; Already compiled for the simulator?
 			[(define (node-code this) ,e)    (run-compiled) (read-params rest)]
 			[(begin (module ,_ ...) ,__ ...) (run-compiled) (read-params rest)]
 			[(module ,_ ...)                 (run-compiled) (read-params rest)]
 
 			; Convenience: if it's a (tokens ...) form it hasn't been cleaned up yet.
-			[((tokens ,tok* ...) ,rest ...)
-			 (apply run-alpha-loop (cleanup-token-machine `(tokens ,tok* ...)) rest)]
+			[((tokens ,tok* ...) ,rest ...) ; So clean it up now:
+			 (apply prep-token-machine (cleanup-token-machine `(tokens ,tok* ...)) rest)]
 
-			; Otherwise compile it
+			; Otherwise, compile that token machine!
 			[,tm			     
 			 (let ((cleaned tm )) ; (cleanup-token-machine tm)))
 			   (let ([comped (compile-simulate-alpha cleaned)])
@@ -1266,6 +928,7 @@
 		      ; [2005.11.25] Allowing this again, if there are no args we just run on the already compiled sim.
 		      (read-params rest)]
 		     )))
+    ;; Next this loop runs.
     ;; This deals with the many options that run-simulator-alpha can handle:
     (define read-params
 	     (lambda (params)	       
@@ -1320,167 +983,9 @@
     ;; Reset global message counter:
     (clean-simalpha-counters!)
 
-    (apply run-alpha-loop args)))
+    (apply prep-token-machine args)))
 
-
-; ================================================================================
-
-;;; Printing simulator state.
-
-(define (simalpha-total-messages . sim)
-  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
-    (apply + (map simobject-local-sent-messages (simworld-all-objs sim)))))
-
-;; This prints all the simalpha counters: how many tokens fired, messages broadcast, etc.
-(define print-stats 
-  (case-lambda 
-    [() (print-stats "")]
-    [(prefix) (print-stats prefix (current-output-port))]
-    [(prefix port) (print-stats prefix port (simalpha-current-simworld))]
-    [(prefix port sim)    
-     (if (not sim)
-	 (printf "\nCouldn't print statistics, no value for simalpha-current-simworld!\n")
-	 (let* ([measured (map car (graph-label-dists BASE_ID (graph-map node-id (simworld-graph sim))))]
-		[sorted (sort (lambda (x y) 
-				(cond 
-				 [(and (cdr x) (cdr y)) (< (cdr x) (cdr y))]
-				 [(cdr x) #t] [else #f]))
-			      measured)]
-		[obs (map (lambda (pr) (hashtab-get (simworld-obj-hash sim) (car pr))) sorted)]
-		
-		[total-messages (simalpha-total-messages sim)
-					;(apply + (map simobject-local-sent-messages (simworld-all-objs sim)))
-				]
-		)	
-	(printf "\nStatistics for most recent run of SimAlpha.\n")
-	(printf "  Values returned         : ~s\n" (length (soc-return-buffer)))
-
-	(let ([isum 0])
-	  (for-each (lambda (ob)
-		      (hashtab-for-each
-		       (lambda (k vec) (set! isum (+ isum (vector-ref vec 0))))
-		       (simobject-token-table ob)))
-	    obs)
-	  (printf "  Total tokens fired      : ~a (per-node ~a)\n" 
-		  (pad-width 5 isum)
-		  (round-to 2 (exact->inexact (/ isum (sim-num-nodes))))))
-	
-	(printf "  Total messages broadcast: ~a (per-node ~a)\n" 
-		(pad-width 5 total-messages)
-		(round-to 2 (exact->inexact (/ total-messages (sim-num-nodes)))))
-	(printf "  Msg distribution (sorted based on hops from base):\n")
-	
-	(printf "sent: ~a\n" 
-		(map (lambda (x) (pad-width 3 (simobject-local-sent-messages x))) obs))
-	(printf "rcvd: ~a\n" 
-		(map (lambda (x) (pad-width 3 (simobject-local-recv-messages x))) obs))
-	(printf "dsts: ~a\n" 
-		(map (lambda (x) (pad-width 3 (cdr x))) sorted))
-	(printf " ids: ~a\n" (map (lambda (x) (pad-width 3 (node-id (simobject-node x)))) obs))
-	))]))
-
-
-;; [2005.11.28] <br>
-;; This is mainly for use with GUI, click on a node to get the node statistics.
-(define (print-node-stats id . sim)
-  (let ((sim (if (null? sim) (simalpha-current-simworld) (car sim))))
-    (if (not sim)
-	(error 'print-node-stats "got uninitialized simulator."))
-    (let ((ob (hashtab-get (simworld-obj-hash sim) id)))
-      (if (not ob)
-	  (error 'print-node-stats "could not find node ~a in simworld's object hash." id))
-      (printf "\nStatistics for node ~a, pos:~a\n" id (node-pos (simobject-node ob)))
-;      (printf "  Total sent messages: ~a\n" (simobject-local-sent-messages ob))
-;      (printf "  Total rcvd messages: ~a\n" (simobject-local-recv-messages ob))
-      (printf "  Token breakdown:                 invoked  sent  received\n")
-
-	(hashtab-for-each 
-	 (lambda (k vec)
-	   (printf "    ~a ~a ~a ~a\n"
-		   (pad-width 30 k)
-		   (pad-width 8 (vector-ref vec 0))
-		   (pad-width 5 (vector-ref vec 1))
-		                (vector-ref vec 2)))
-	 (simobject-token-table ob))
-
-      (let ([isum 0] [ssum 0] [rsum 0])
-	(hashtab-for-each
-	 (lambda (k vec)
-	   (set! isum (+ isum (vector-ref vec 0)))
-	   (set! ssum (+ ssum (vector-ref vec 1)))
-	   (set! rsum (+ rsum (vector-ref vec 2))))
-	 (simobject-token-table ob))
-	(printf "  Total:                           ~a ~a ~a\n"
-		(pad-width 8 isum)
-		(pad-width 5 ssum)
-		             rsum))
-
-      (printf "  Token Store: \n")
-      (parameterize ([print-gensym #f])
-	(hashtab-for-each
-	 (lambda (k pr)	   
-	   (let ((tk (key->token k)))
-	     (display-constrained "    " (pad-width 37 (cons (simtok-name tk) (simtok-subid tk)))
-				  " | "  (list (cdar pr) 80)  "\n")))
-	 (simobject-token-store ob)))
-      )))
-
-;; Helper function to print out a table listing which nodes are
-;; connected to eachother (any two without provably zero connectivity).
-(define (print-connectivity . sim)
-  (define connects '()) ;; Just accumulates all the numeric connectivities.
-  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
-  (printf "\nCurrent network connectivity at vtime ~a.\n" (simworld-vtime world))
-  (parameterize ([print-gensym #f])
-    (let ((edges 0))
-      (for-each (lambda (row)
-					;	      (printf "Bang : ~s \n" (map node-id row))
-		  (printf "  ~s: ~s\n" (car row)
-			  (map (lambda (nbr) 			     
-					;			     (printf "Woot ~s ~s ~s ~s \n" 
-					;				     (node? (car row)) (node? nbr)
-					;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
-					;				     )
-				 (let ((connectivity ((simalpha-connectivity-function)
-						      (node-pos (car row))
-						      (node-pos nbr))))
-				   (if (number? connectivity) (set! connects (cons connectivity connects)))
-				   connectivity))
-			    (cdr row)))
-		  (set! edges (+ edges (length (cdr row)))))
-	(simworld-graph world))
-      (printf "Total edges: ~a\n" (/ edges 2))
-      (printf "Average degree: ~a\n" (exact->inexact (/ edges (sim-num-nodes))))
-      (let ((avg (exact->inexact (average connects))))
-	(printf "Average connectivity: ~a\n" avg)
-	avg)
-      ))))
-
-;; [2006.02.01] This is a simple routine that displays the connectivity distribution.
-(define (plot-connectivity . sim)
-  (define world (if (null? sim) (simalpha-current-simworld) (car sim)))
-  (define connects '()) ;; Just accumulates all the numeric connectivities.
-  (for-each (lambda (row)
-	      (map (lambda (nbr) 			     
-		     (let ((connectivity ((simalpha-connectivity-function)
-					  (node-pos (car row))
-					  (node-pos nbr))))
-		       (if (number? connectivity) (set! connects (cons connectivity connects)))
-		       connectivity))
-		(cdr row)))
-    (simworld-graph world))
-  (let* ([binsize 5]
-	 [hist (histogram connects 5)]
-	 [start (apply min connects)])
-    (gnuplot
-     (map list 
-       (map (lambda (n) (+ start (* binsize n)))
-	 (iota (length hist)))
-       hist)
-     'boxes
-     )))
-
-
+;  ================================================================================
 ;; [2005.09.29] Moved from alpha_lib.ss
 ;; This just sets up the sim and the logger and invokes one of the scheduler/execution engines.
 ;; I've written two different engines at different levels of time-modeling complexity.
@@ -1609,10 +1114,16 @@
 
 
 (define these-tests
-  `(
-    [3 3] ;; UNIT TESTER BROKEN ATM...
+  (map (lambda (test)
+	 (match test
+	   [(,prog ,res) `(,prog ,res)] ;`((begin (cleanse-world) ,prog) ,res)]
+	   [(,name ,prog ,res) 
+	    `(,name ,prog ;(begin (cleanse-world) ,prog)
+		    ,res)]))
+    `(
+      [3 3] 
     
-#|
+#|  ;; These aren't working, what was the reason?
     [(compile-simulate-alpha
       '(program
 	(bindings)
@@ -1655,19 +1166,7 @@
 |#
    
 
-))
-
-#;    (compile-simulate-alpha 
-     '(cleanup-token-machine-lang (quote (program (bindings) (nodepgm (tokens (node-start subtok_ind () (stored) (void)) (SOC-start subtok_ind () (stored) (call (tok tok1 0) (begin #0="This whole block represents the allocation of a continuation closure:" (let ((kind_4 (if (token-present? (tok K_3 0)) (let ((new (+ (quote 1) (ext-ref (tok K_3 . #1=(0)) kcounter)))) (begin (ext-set! (tok K_3 . #2=(0)) kcounter new) new)) (begin #3="Allocate this zeroeth token object just to hold a counter MEMORY WASTEFUL!:" (call (tok K_3 0) (quote 11) (void)) (quote 1))))) (begin #4="Do the actual token object (closure) allocation.  Capture freevars:" (call (tok K_3 kind_4) (quote 11)) #5="Return the name of this continuation object:" (tok K_3 kind_4)))) (quote 4))) (K_3 subtok_ind (flag fv0) (stored (kcounter . #6=(0))) (if (= flag (quote 11)) (if #7=(= subtok_ind (quote 0)) #8=(void) (begin)) (begin (call (tok tok1 0) (begin #0# (let ((kind_2 (if (token-present? (tok K_1 0)) (let ((new (+ (quote 1) (ext-ref (tok K_1 . #1#) kcounter)))) (begin (ext-set! (tok K_1 . #2#) kcounter new) new)) (begin #3# (call (tok K_1 0) (quote 11) (void)) (quote 1))))) (begin #4# (call (tok K_1 kind_2) (quote 11) fv0) #5# (tok K_1 kind_2)))) (quote 3)) (evict (tok K_3 . #9=(subtok_ind)))))) (K_1 subtok_ind (flag fv0) (stored (kcounter . #6#) (HOLE_59 (quote 0))) (if (= flag (quote 11)) (if #7# #8# (begin (set! HOLE_59 fv0))) (begin (printf (quote "result ~s") (+ HOLE_59 fv0)) (evict (tok K_1 . #9#))))) (tok1 subtok_ind (k_58 x) (stored) (call k_58 (quote 99) (+ x (quote 1000))))))))))
-
-
-(define testsalpha (map (lambda (test)
-			  (match test
-				 [(,prog ,res) `(,prog ,res)] ;`((begin (cleanse-world) ,prog) ,res)]
-				 [(,name ,prog ,res) 
-				  `(,name ,prog ;(begin (cleanse-world) ,prog)
-					  ,res)]))
-			these-tests))
+    )))
 
 ;; Use the default unit tester from helpers.ss:
 ;; But this also makes sure the world is initialized before doing unit tests:
@@ -1675,7 +1174,7 @@
   (let ((tester (default-unit-tester 
 		  "simulator_alpha.ss: event-queue simulator for nodal language"
 		  ;; Make sure that the world is clean before each test.
-		  testsalpha
+		  these-tests
 		  tester-eq?
 		  id ;wrap-def-simulate
 		  )))
