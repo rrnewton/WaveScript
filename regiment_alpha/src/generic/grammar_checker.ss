@@ -1,6 +1,9 @@
 
 ;;;; .title Grammar Checker
 
+;;;; This module allows me to write down and check grammars for the
+;;;; mini-languages that occur between passes.
+
 ; [2005.10.15] For decent (medium) size programs analyze-grammar-failure is working *very* slowly.
 
 ; [2005.09.26]
@@ -14,7 +17,7 @@
 	   "../plt/iu-match.ss"
 	   "../plt/constants.ss" ;; For DEBUGMODE
 	   (all-except "../plt/helpers.ss" test-this these-tests)
-	   (all-except "../plt/regiment_helpers.ss" test-this these-tests))  
+	   (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   (provide 
          check-grammar
          build-compiler-pass
@@ -472,6 +475,7 @@
 
 (define base_regiment_forms
   (let ()
+    (define (is-var? x) (and (symbol? x) (not (regiment-keyword? x))))
   `(
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
@@ -494,7 +498,7 @@
 
     [Int ,integer?]
     [Float ,flonum?]
-    [Var ,symbol?]
+    [Var ,is-var?]
     [Const ('quote ,atom?)]
 
     ,@type_grammar

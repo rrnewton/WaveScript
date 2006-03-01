@@ -31,8 +31,9 @@ GENERICFILES = \
 
 
 CHEZFILES = \
-  chez/helpers.ss \
   chez/constants.ss \
+  chez/helpers.ss \
+  chez/regmodule.ss \
 
 PLTFILES = 
 
@@ -44,6 +45,9 @@ SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
 DUPSRC   = $(SRCFILES:%=html/%)
 OBJFILES = $(DUPSRC:%=%.html)
 
+#SCHEME = chez
+#SCHEME = scheme
+SCHEME = regiment i
 
 #SCRATCHFILE=.__scratch_makefile_junk
 
@@ -81,23 +85,26 @@ all: schemedoc
 ##      Now generate index:
 ##	echo $(GENERICFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
 ##	echo $(CHEZFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
-	chez --script regiment_index.laml $(SRCFILES)
+	$(SCHEME) --script regiment_index.laml $(SRCFILES)
 
 schemedoc:
 	tar xjvf schemedoc.tbz; 
 	$(MAKE) patch
 
 patch:
+	cp patches/schemedoc-extractor.scm ./schemedoc/tools/schemedoc-extractor/
+
+# Incorporated these patches into a new tarball, but there might be more in the future:
 #	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
 #	cp patches/time.scm schemedoc/lib/; 
 #	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
 #	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
-# Incorporated these patches into a new tarball, but there might be more in the future.
+
 
 
 # This invokes regiment.laml with the directory and the filename as command line arguments:
 $(OBJFILES): html/%.html: html/%
-	chez --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`
 #$(<:html/%=%)
 

@@ -18,7 +18,7 @@
 ;; [2005.11.19] WHOA!  Just had a problem with semicolon followed by
 ;; double quote for some reason!  That's probably a bug, should report it.
 
-2
+
 ;; This script must only be run from the current directory.
 (load "../src/chez/match.ss")
 

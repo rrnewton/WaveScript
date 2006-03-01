@@ -475,15 +475,18 @@
    [(slist fn) (slist->file slist fn 'write)]
    [(slist fn method)
     (let ([p (open-output-file fn 'replace)])
-      (for-each (lambda (x) 
-		  (case method
-		    [(write plain) (write x p)(newline p)]
-		    [(pretty pretty-print) 
-		     (parameterize ([print-level #f]
-				    [print-graph #f])
-				   (pretty-print x p))])
-		  (newline p))
-		slist)
+      (parameterize ([print-level #f]
+		     [print-length #f]
+		     [pretty-maximum-lines #f])
+	  (for-each (lambda (x) 
+		      (case method
+			[(write plain) (write x p)(newline p)]
+			[(pretty pretty-print) 
+			 (parameterize ([print-level #f]
+					[print-graph #f])
+			   (pretty-print x p))])
+		      (newline p))
+	    slist))
       (close-output-port p))]))
 
 ;; [2006.02.20] Rewrote to have an efficient version:
@@ -917,7 +920,7 @@
 	     [index '()])
     (printf "~s: len ~s ~s~n" (reverse index)
 	    (if (list? o1) (length o1) #f)
-	    (if (list? o2) (length o2) #f))    
+	    (if (list? o2) (length o2) #f))
     (cond
        [(equal? o1 o2) (void)]
        [(and (list? o1) (list? o2))
@@ -940,7 +943,7 @@
 		(cons i (cons 'v index))))]
        [else (printf "~n  Diff at ~a: " (reverse index))
 	     (display-constrained (list o1 35) " " (list o2 35))
-	     (newline)]       
+	     (newline)]
        )))
 
 ;; This goes along, it's for performing deep-index lookups
