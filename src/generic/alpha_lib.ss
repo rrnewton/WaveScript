@@ -30,7 +30,7 @@
 		 (car sim))])
     (let ([n1 (get-node n1)]
 	  [n2 (get-node n2)])
-      ((simalpha-connectivity-function) 
+      ((simworld-connectivity-function sim)
        (node-pos n1) 
        (node-pos n2)))))
 
@@ -74,7 +74,7 @@
 ;; or false based on whether it succeeded.  This could be arbitrarily
 ;; more complex.
 (define (attempt-message-transmission p1 p2)
-  (let ((connectivity ((simalpha-connectivity-function)
+  (let ((connectivity ((simworld-connectivity-function (simalpha-current-simworld))
 		       (node-pos (get-node p1))
 		       (node-pos (get-node p2)))))
 #;

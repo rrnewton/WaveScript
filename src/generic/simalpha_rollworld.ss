@@ -15,7 +15,6 @@
 ;;
 ;;<br>  Relevent parameters include (as of [2006.03.01]):
 ;;<br>    simalpha-placement-type
-;;<br>    simalpha-connectivity-function
 ;;<br>    simalpha-channel-model
 ;;<br>    simalpha-outer-radius
 ;;<br>    simalpha-inner-radius
@@ -27,26 +26,51 @@
 ;; <br><br>
 ;; Parameterize these before calling to control the nature of the created simworld object.
 ;;
+;;<br> 
+;;<br> Note, EFFECTS: This function also mutates some global parameters.  Currently, only:
+;;<br>     simalpha-connectivity-function
+;;
 ;; <br><br>
 ;;  This subroutine generates randomzied topology: 
 ;; (There are more topologies in "network_topologies.ss")
 ;;
 ;;   .returns A 'simworld' record.
 (define (fresh-simulation)  
-
-  ;; Make a graph of simobjects out of the graph of nodes.
-  (define (make-object-graph g world)
-    (graph-map (lambda (n) (node->simobject n world)) g))
   
+  ;; Here we build a new connectivity function based on the current parameter settings.
+  ;; This is a function which takes two locations and returns either
+  ;;  1) a number, representing a fixed loss percentage
+  ;;  2) a function of time, representing the loss percentage over time
+  (define connectivity-fun
+    (case (simalpha-channel-model)
+      [(lossless)
+       (lambda (p1 p2) ;x1 y1 x2 y2)
+	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
+	   (if (< dist (simalpha-outer-radius))
+	       100
+	       0)))]
+      [(linear-disc)
+       (printf "Got linear disc...\n")
+       (lambda (p1 p2)	
+	 (let ((dist (posdist p1 p2))
+	       (outer (simalpha-outer-radius))
+	       (inner (simalpha-inner-radius)))
+;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
+	   (cond
+	    [(<= dist inner) 100]
+	    [(> dist outer) 0]
+	    [else
+	     (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
+
   ;; This is our helper function that checks for collisions.
   (define (collide?  n1 n2)
-    (let ((connectivity ((simalpha-connectivity-function)
+    (let ((connectivity (connectivity-fun
 			 (node-pos n1) (node-pos n2))))
       (if (not (memq connectivity '(0 100))) (printf "connectivity: ~s\n" connectivity))
       (not (eqv? 0 connectivity))))
- 
+  
   ; --------------------------------------------------
-  ;; Randomly places nodes.
+  ;; Function that randomly places nodes.
   (define (make-random-topology)    
     ;; Old method, doesn't produce connected graph:
     (let ((seed (map (lambda (_) (random-node)) (iota (sim-num-nodes)))))
@@ -62,7 +86,7 @@
 		   (cons node 
 			 (filter (lambda (n) 
 				   (and (not (eq? node n))
-					(let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
+					(let ((connection (connectivity-fun (node-pos node) (node-pos n))))
 					  ;; We establish a connection unless we get zero-reception
 					  (not (eqv? connection 0))
 					  )))
@@ -143,7 +167,7 @@
 	       (cons node 
 		     (filter (lambda (n) 
 			       (and (not (eq? node n))
-				    (let ((connection ((simalpha-connectivity-function) (node-pos node) (node-pos n))))
+				    (let ((connection (connectivity-fun (node-pos node) (node-pos n))))
 				      ;; We establish a connection unless we get zero-reception
 				      (not (eqv? connection 0))
 				      )))
@@ -161,36 +185,14 @@
   
   (printf "Rolling fresh simulator world (current srand seed ~a).\n" (reg:get-random-state))
   ;; Set global parameter:
-  ;; This is a function which takes two locations and returns either
-  ;;  1) a number, representing the loss percentage
-  ;;  2) a function of time, representing the loss percentage over time
-  (simalpha-connectivity-function
-    (case (simalpha-channel-model)
-      [(lossless)
-       (lambda (p1 p2) ;x1 y1 x2 y2)
-	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
-	   (if (< dist (simalpha-outer-radius))
-	       100
-	       0)))]
-      [(linear-disc)
-       (printf "Got linear disc...\n")
-       (lambda (p1 p2)	
-	 (let ((dist (posdist p1 p2))
-	       (outer (simalpha-outer-radius))
-	       (inner (simalpha-inner-radius)))
-;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
-	   (cond
-	    [(<= dist inner) 100]
-	    [(> dist outer) 0]
-	    [else
-	     (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
+  ;(simalpha-connectivity-function connectivity-fun)
    
   ;; TODO, FIXME, need to use a real graph library for this!
   ;; (One that treats edges with due respect, and that uses hash tables.)
-   (let* ([theworld (make-simworld #f #f #f #f #f #f #f)]
+   (let* ([theworld (make-simworld #f #f #f #f #f #f #f #f)]
 	  [graph (make-topology)]
 ;	  [soc (caar graph)]
-          [obgraph (make-object-graph graph theworld)]
+          [obgraph (graph-map (lambda (n) (node->simobject n theworld)) graph)]
           [allobs  (map car obgraph)]
 	  [hash
 	   (let ([h (make-default-hash-table)])
@@ -200,10 +202,9 @@
 	     h)]
 	  [scheduler-queue '()])
 
-     (DEBUGMODE
-      (andmap (lambda (row) (andmap node? row))
-	      graph))
-     ;; Set I-am-SOC
+     (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
+
+     ;; Set I-am-SOC on every node:
      (for-each (lambda (ob)
 		 (set-simobject-I-am-SOC! ob		  
 		  (= (node-id (simobject-node ob)) BASE_ID)))
@@ -216,10 +217,12 @@
      (set-simworld-vtime! theworld 0)
      
      (set-simworld-led-toggle-states! theworld (make-default-hash-table))
+     (set-simworld-connectivity-function! theworld connectivity-fun)
      theworld))  ;; End fresh-simulation
 
-
+; ======================================================================
 ;; This scrubs all the transient state off an existing simworld.
+;; But it keeps the topological structure of the world the same.
 ;; .returns The cleaned simworld.
 (define clean-simworld!
   (lambda (sim) ;(sim : simworld? -> simworld?)

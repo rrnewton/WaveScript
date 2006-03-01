@@ -1190,7 +1190,7 @@
 			(greturn (my-id) (to catcher)))
 		  )
 		'[simalpha-channel-model 'lossless]
-		'[simalpha-connectivity-function 'connected]
+		'[simalpha-placement-type 'connected]
 		'[simalpha-failure-model 'none])
 	;; Should get a list of underscores and nodeids. 
       ,(lambda (lst)

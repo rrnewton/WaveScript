@@ -15,7 +15,9 @@
 	  sense-random-1to100
 	  ;sense-fast-sine-wave
 
-	  unique-name unique-name-counter extract-suffix make-begin strip-illegal deunique-name  reunique-names
+	  unique-name unique-name-counter extract-suffix make-begin 
+	  deep-reg:struct->list 
+	  strip-illegal deunique-name  reunique-names
 	  get-formals 
 
 

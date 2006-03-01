@@ -492,7 +492,7 @@
 
   (let ([box1 (list 0 0 world-xbound world-ybound)]
 	[box2 (list 0 0 window-width window-height)]
-	[connectivity ((simalpha-connectivity-function) pos1 pos2)])
+	[connectivity ((simworld-connectivity-function (simalpha-current-simworld)) pos1 pos2)])
 
     (define-class (<my-line> prnt x1 y1 x2 y2) (<line> prnt x1 y1 x2 y2)
       (ivars [orig-color 'uninit-color]

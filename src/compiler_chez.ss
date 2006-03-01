@@ -182,8 +182,9 @@ a		  (generate-inspector-information #f)
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
-    (begin (define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'stub)]))
-	   (define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'stub)]))
+    (begin ;; [2006.03.01] Nixing these.  Instead we should be disciplined about not generating any such calls.
+           ;(define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
+	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
 (include "chez/alpha_lib.ss") 

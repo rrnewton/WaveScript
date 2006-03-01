@@ -10,7 +10,9 @@
 
 ; =======================================================================
 
-;; This structure contains all the global data needed a simulation.
+;; This structure contains all the global data needed by a simulation.
+;; (Well, that's a bit of a lie, because the simulator also requires a
+;; number of global parameters to be set appropropriately.)
 (reg:define-struct 
  (simworld graph object-graph all-objs 
 	   ;; obj-hash maps node-ids onto simobjects:
@@ -22,7 +24,13 @@
 	   vtime
 	   ;; [2005.11.07] A hash table mapping node-ids to a list of all the leds that are toggled on.
 	   ;; Could have added this to the simobject structure, but I'm reluctant, as it is only a presentation detail:
-	   led-toggle-states))
+	   led-toggle-states
+
+	   ;; This is a function which models the channels, it takes two locations and returns either:
+	   ;;  1) a number, representing a fixed loss percentage
+	   ;;  2) a function of time, representing the loss percentage over time
+	   connectivity-function
+	   ))
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
 (reg:define-struct (simevt vtime msgobj))
@@ -110,6 +118,7 @@
 			     ))
 ;; The following builds a simobject from a node and initializes all the values to their default state.
 ;; This is essentially the constructor for the type 'simobject.
+;; Optionally takes 
 ;; .returns A fresh, initialized simobject.
 (define node->simobject 
   (case-lambda 

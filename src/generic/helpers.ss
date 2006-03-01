@@ -872,6 +872,7 @@
   (deep-all-matches (lambda (x) (and (pair? x) (eq? ob (car x))))
 		    struct))
 
+
 ;(define (deep-count-occurrences ob struct)
 ;  (length (deep-all-matches (lambda (x) (eq? ob  x))
 ;			    struct)))

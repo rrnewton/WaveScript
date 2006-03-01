@@ -186,7 +186,7 @@
 ;; connected to eachother (any two without provably zero connectivity).
 (define (print-connectivity . sim)
   (define connects '()) ;; Just accumulates all the numeric connectivities.
-  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))
+  (let ((world (if (null? sim) (simalpha-current-simworld) (car sim))))    
   (printf "\nCurrent network connectivity at vtime ~a.\n" (simworld-vtime world))
   (parameterize ([print-gensym #f])
     (let ((edges 0))
@@ -198,7 +198,7 @@
 					;				     (node? (car row)) (node? nbr)
 					;				     (car row) nbr ;(node-pos (car row)) (node-pos nbr)
 					;				     )
-				 (let ((connectivity ((simalpha-connectivity-function)
+				 (let ((connectivity ((simworld-connectivity-function world)
 						      (node-pos (car row))
 						      (node-pos nbr))))
 				   (if (number? connectivity) (set! connects (cons connectivity connects)))
@@ -219,7 +219,7 @@
   (define connects '()) ;; Just accumulates all the numeric connectivities.
   (for-each (lambda (row)
 	      (map (lambda (nbr) 			     
-		     (let ((connectivity ((simalpha-connectivity-function)
+		     (let ((connectivity ((simworld-connectivity-function world)
 					  (node-pos (car row))
 					  (node-pos nbr))))
 		       (if (number? connectivity) (set! connects (cons connectivity connects)))
