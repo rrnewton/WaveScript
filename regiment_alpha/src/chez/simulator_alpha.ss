@@ -11,7 +11,7 @@
 	 fresh-simulation
 	 simalpha-draw-world	 
 
-	 testalpha testsalpha
+	 testalpha 
 
 	 )
 
@@ -39,6 +39,8 @@
 
 ;; We are loaded from the root directory, not the chez subdirectory.
 ;(include "generic/simulator_nought.examples.ss")
+(include "generic/simalpha_ui.ss")
+(include "generic/simalpha_rollworld.ss")
 (include "generic/simulator_alpha.ss")
 
 )
