@@ -272,8 +272,12 @@
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
 	  [(i interact)
 	   (printf "Exposing Regiment through interactive read-eval-print loop:\n")
+	   ;; [2006.02.28] We want to reset global bindings before loading any more source:
+	   ;(eval '(import scheme))
+	   ;; Can't trust new code to not mutate primitive names:
+	   (optimize-level 0)
 	   (cond
-	    [(null? (cdr args)) (new-cafe)]	    
+	    [(null? (cdr args)) (new-cafe)]
 	    [(equal? (cadr args) "--script")
 	     (apply (scheme-script) (cddr args))]
 	    [else (apply orig-scheme-start (cdr args))])]
