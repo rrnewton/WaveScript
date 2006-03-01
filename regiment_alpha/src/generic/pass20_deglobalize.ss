@@ -37,7 +37,7 @@
 
 ;;; Output grammar = Input grammar to cleanup-token-machine = messy
 
-(define deglobalize_output_grammar
+#;(define deglobalize_output_grammar
    `([code (statement ...)]
      [statement basic_tml]
      [statement gexpr]

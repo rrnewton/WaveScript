@@ -1,5 +1,5 @@
 
-;;;; Regiment module syntax.
+;;;; .title Regiment module syntax.
 ;;;; .author Ryan Newton
 ;;;;
 ;;;; [2006.02.26] <br>
@@ -21,7 +21,21 @@
 ;;;; and the PLT version will ignore the (chezimports ...) section.
 ;;;; Still this is much less duplicated effort than the long lists of
 ;;;; exported symbols.
+;;;;
+;;;; The common module syntax will also have the advantage that I will
+;;;; be able to fully exploit DrScheme's editting capabilities.  It
+;;;; can't check-syntax properly when code is included from anther
+;;;; file with (include ...)
+;;;;
+;;;; Further, when this is all eventually finished, all my Chez code
+;;;; will properly be wrapped up in modules, so I should be able to
+;;;; remove the top-level (import ...) statements.
 
+;;;; NOTE: I just noticed that using modules stops SchemeDOC from
+;;;; catching the bindings.  Need to find a way around this.  I can
+;;;; kill the module binding in my preprocessor...
+
+;; Common module syntax.
 (module reg:module (chez:module module)
   
   ;; Bind chez:module to be the *real* thing.

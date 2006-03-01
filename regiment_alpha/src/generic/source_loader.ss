@@ -19,7 +19,14 @@
    load-regiment reg:load
    test_sourceloader
    ) ;; End provide
-  (chezimports )
+
+  (chezimports ;constants
+               (except helpers   test-this these-tests)
+	       (except regiment_helpers   test-this these-tests)
+	       (except simulator_alpha   test-this these-tests)
+	       )
+; ================================================================================
+
 
 ;; Read the file from disk, desugar the concrete syntax appropriately.
 (define read-regiment-source-file

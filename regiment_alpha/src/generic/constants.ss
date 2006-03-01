@@ -308,7 +308,7 @@
 		      ;; If there's not enough room, we make them smaller.
 		      (sqrt (/ (exact->inexact (* window-height window-width)) ;; Compute pixel area.M
 			       (* 12 (sim-num-nodes)))))])
-    (DEBUGASSERT (flonum? newrad))
+    (DEBUGASSERT (inexact? newrad))
     (processor-screen-radius newrad)))
   
 ;;; Used primarily by MULTIPLE SIMULATORS

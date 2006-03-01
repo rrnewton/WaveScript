@@ -11,7 +11,6 @@
 
 ;; Wipe *all* previous bindings before coming into the system.
 (import scheme)  ;; [2006.02.28] Without this we get killed by our redifining "module".
-;(import-only scheme)
 
 ;;; Compile-time configuration.
 ;;;
@@ -32,7 +31,7 @@
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
 	   
-	   (optimize-level 2) ;0/1/2/3)
+	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -72,6 +71,7 @@
 ;(print-level 8)
 (print-level 20)
 (print-length 80)
+(print-vector-length #f)
 (pretty-maximum-lines 700)
 
 ;; Storing and then modifying the default break handler.
@@ -117,6 +117,9 @@
 ;======================================================================
 ;;; Begin loading files.
 
+
+
+
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/constants.ss") 
 
@@ -126,12 +129,13 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
+(include "chez/match.ss")      ;; Pattern matcher, dependency.
+
 (include "chez/regmodule.ss")  ;; Common module syntax.
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.
 (import reg:module)
 
-(include "chez/match.ss")      ;; Pattern matcher.
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
 ;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 

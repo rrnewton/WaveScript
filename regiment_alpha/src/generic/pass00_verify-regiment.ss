@@ -69,20 +69,24 @@
 
 
 (define verify-regiment
-  (let ()
-          
-    (define process-expr
-      (lambda (expr env type-env)
-        (match expr
-          [,const (guard (constant? const)) const]
-          [(quote ,datum)
-	   (guard (not (memq 'quote env)) (datum? datum))
-	   `(quote ,datum)]
-          [,var (guard (symbol? var))
-            (if (and (not (memq var env))
-		     (not (regiment-primitive? var)))
-                (error 'verify-regiment (format "unbound variable: ~a~n" var))
-                var)]
+  (build-compiler-pass ;; This wraps the main function with extra debugging
+   'cleanup-token-machine
+   `(input)
+   `(output (grammar ,initial_regiment_grammar PassInput))
+   (let ()
+     
+     (define process-expr
+       (lambda (expr env type-env)
+	 (match expr
+	   [,const (guard (constant? const)) const]
+	   [(quote ,datum)
+	    (guard (not (memq 'quote env)) (datum? datum))
+	    `(quote ,datum)]
+	   [,var (guard (symbol? var))
+		 (if (and (not (memq var env))
+			  (not (regiment-primitive? var)))
+		     (error 'verify-regiment (format "unbound variable: ~a~n" var))
+		     var)]
 
 	  [(tuple ,[e] ...) `(tuple ,e ...)]
 	  [(tupref ,n ,len ,[e])
@@ -134,10 +138,13 @@
 
 	   `(,prim ,rand* ...)]
           
-	  ;; Adding normal applications because the static elaborator will get rid of them.
+	  ;; Allowing normal applications because the static elaborator will get rid of them.
+	  ;;
+	  ;; Even though this is just a VERIFY pass, I do a teensy weensy bit of normalization 
+	  ;; here -- add "app".  This makes grammar-checking sane.
 	  [(,[rator] ,[rand*] ...)
 	   ;; Don't do any type inference for now.
-	   `(,rator ,rand* ...)]
+	   `(app ,rator ,rand* ...)]
 
           [,unmatched
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
@@ -155,7 +162,7 @@
          (let ([body (process-expr body '() '())])
 	   (mvlet ([(newprog t) (annotate-program body)])
 	     `(base-language '(program ,newprog ,t))))]
-	))))
+	)))))
 
 ;==============================================================================
      
