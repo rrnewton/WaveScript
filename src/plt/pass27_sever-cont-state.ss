@@ -6,7 +6,8 @@
 
   (require "constants.ss"
 	   "hashtab.ss"
-	   "iu-match.ss")
+	   "iu-match.ss"
+	   "prim_defs.ss")
   (require (all-except "tml_generic_traverse.ss" test-this these-tests)
 	   (all-except "helpers.ss" filter test-this these-tests)
 	   (all-except "regiment_helpers.ss" filter test-this these-tests))

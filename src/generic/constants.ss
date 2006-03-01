@@ -19,7 +19,7 @@
 ;;;; I'm just going to settle for an ad-hoc strategy, anything that
 ;;;; needs to (or might need to) be used in more than one module will
 ;;;; get lifted up here. <br><br>
-
+	
 ;=======================================================================
 
 ;;; Regiment parameters.
@@ -98,6 +98,13 @@
 (define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (void)]))            ; ON
 ;(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (begin expr ...)]))  ; OFF
 
+;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
+(define-regiment-parameter regiment-verbose #f)
+
+;; This parameter adds extra debug/assertion code to the generated code.
+;; Currently we just set it based on whether the whole system is in debug mode.
+(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
+
 ;; Just syntactic sugar.  This one is for the Regiment compiler.  It
 ;; checks the (regiment-emit-debug) parameter, and if true, returns
 ;; its arguments in a list, otherwise null.
@@ -105,13 +112,6 @@
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
-
-;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
-(define-regiment-parameter regiment-verbose #f)
-
-;; This parameter adds extra debug/assertion code to the generated code.
-;; Currently we just set it based on whether the whole system is in debug mode.
-(define-regiment-parameter regiment-emit-debug (IFDEBUG #t #f))
 
 
 ;; This one toggles logging.  
@@ -524,3 +524,5 @@
 
 ; ======================================================================
 
+;) ;; End Module
+;(import constants)

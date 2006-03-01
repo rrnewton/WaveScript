@@ -8,7 +8,8 @@
   (require (lib "list.ss"))
 ;  (require (lib "list.ss"))
 ;  (require (lib "trace.ss"))
-  (require "constants.ss")
+  (require "constants.ss"
+	   "prim_defs.ss")
   (require "iu-match.ss")
   (require (all-except "tml_generic_traverse.ss" filter test-this these-tests))
   (require (all-except "grammar_checker.ss" filter test-this these-tests))

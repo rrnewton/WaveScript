@@ -119,7 +119,11 @@ a		  (generate-inspector-information #f)
 ;;; Begin loading files.
 
 
-
+(include "chez/match.ss")      ;; Pattern matcher, dependency.
+(include "chez/regmodule.ss")  ;; Common module syntax.
+;; After this point, everything must use chez:module for native chez modules.
+;; 'module' will become my chez/plt portable regiment modules.
+(import reg:module)
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/constants.ss") 
@@ -130,12 +134,6 @@ a		  (generate-inspector-information #f)
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
-(include "chez/match.ss")      ;; Pattern matcher, dependency.
-
-(include "chez/regmodule.ss")  ;; Common module syntax.
-;; After this point, everything must use chez:module for native chez modules.
-;; 'module' will become my chez/plt portable regiment modules.
-(import reg:module)
 
 
 ;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.

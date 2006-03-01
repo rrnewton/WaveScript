@@ -8,6 +8,7 @@
    "iu-match.ss" 
       
    "hashtab.ss"
+   "prim_defs.ss"
    (all-except "constants.ss" test-this these-tests)
    (all-except "helpers.ss" id flush-output-port test-this these-tests)
    (all-except "regiment_helpers.ss" id flush-output-port test-this these-tests)

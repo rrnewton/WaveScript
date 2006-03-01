@@ -5,7 +5,8 @@
   (require (all-except (lib "list.ss") filter))  
   (require "iu-match.ss")
 
-  (require "constants.ss")
+  (require "constants.ss"
+	   "prim_defs.ss")
   (require (all-except "grammar_checker.ss" test-this these-tests id))
   (require (all-except "tml_generic_traverse.ss" test-this these-tests id))
   (require (all-except "helpers.ss" test-this these-tests id))

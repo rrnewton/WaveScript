@@ -2,7 +2,8 @@
 
 (module pass25_rename-stored mzscheme
   (require (lib "include.ss"))
-  (require "constants.ss")
+  (require "constants.ss"
+	   "prim_defs.ss")
   (require "iu-match.ss")
 ;  (require (all-except "grammar_checker.ss" test-this these-tests))
   (require (all-except "tml_generic_traverse.ss" test-this these-tests))

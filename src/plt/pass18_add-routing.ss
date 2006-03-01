@@ -5,6 +5,7 @@
   (require (lib "include.ss")
 	   (lib "trace.ss")
 	   "constants.ss"
+	   "prim_defs.ss"
 	   "iu-match.ss"
 	   (all-except "helpers.ss" test-this these-tests)
 	   (all-except "regiment_helpers.ss" test-this these-tests))

@@ -4,7 +4,8 @@
   (require (lib "include.ss"))
   (require (lib "list.ss"))
   (require "constants.ss")
-  (require "iu-match.ss")
+  (require "iu-match.ss"
+	   "prim_defs.ss")
   (require (all-except "helpers.ss" filter test-this these-tests))
   (require (all-except "regiment_helpers.ss" filter test-this these-tests))
   (require (all-except "grammar_checker.ss" test-this these-tests))
