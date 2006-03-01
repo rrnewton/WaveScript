@@ -70,7 +70,7 @@
 
 (define verify-regiment
   (build-compiler-pass ;; This wraps the main function with extra debugging
-   'cleanup-token-machine
+   'verify-regiment
    `(input)
    `(output (grammar ,initial_regiment_grammar PassInput))
    (let ()

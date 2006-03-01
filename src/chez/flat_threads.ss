@@ -163,7 +163,7 @@
 ;) ;; End module
 
 
-(define p '(let ([s (open-output-string)])
+#; (define p '(let ([s (open-output-string)])
   (parameterize ([current-output-port s])
     (let loop ([eng
                 (run-flat-threads-engine

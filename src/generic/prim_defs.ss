@@ -19,6 +19,37 @@
 ;;;   Token NodeID
 
 
+(module prim_defs mzscheme
+  (require "../plt/iu-match.ss"
+           "../plt/constants.ss"
+           "../plt/helpers.ss"
+           (lib "include.ss")
+           )
+  (provide 
+           regiment-type-aliases
+	   regiment-basic-primitives
+	   local-node-primitives
+	   regiment-constants
+	   regiment-distributed-primitives
+	   regiment-primitives
+	   token-machine-primitives
+
+	   regiment-keyword?
+ 	   token-machine-keyword?
+ 	   get-primitive-entry
+	   get-primitive-return-type
+ 	   map-prim-w-types
+ 	   regiment-primitive?
+ 	   regiment-constant?
+ 	   basic-primitive?
+ 	   distributed-primitive?
+ 	   token-machine-primitive?
+
+	   )
+  (chezimports )
+
+;=============================================================
+
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
   '([Region (Area Node)]
@@ -175,7 +206,6 @@
 ;    (time (Node) Time)
      ))
   
-#;  
 ; [2004.03.31]
 (define regiment-primitives
   (append regiment-basic-primitives
@@ -207,11 +237,11 @@
 
     (rfoldwith (Token ('a 'b -> 'a) 'b (Area 'a)) (Signal 'b))
     ))
-#;
+
+
 ;; [2004.06.09]<br>  Many of these are actually language forms.  I gotta
 ;; get this sorted out eventually.
 ;; 
-;; TODO: add some kind of type info.
 ;; <br>[2004.10.22]  For now everything that handles tokens is a syntax not a prim.
 ;; <br>[2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
@@ -347,14 +377,14 @@
 
 ;;; Various small, related functions.
 
-#|
-
 ;; Keywords allowed in the restricted token machine language.
 (define token-machine-keyword?
   (lambda (x)
     (and (memq x '(quote set! if begin let let-stored)) #t)))
 
-
+(define regiment-keyword?
+  (lambda (x)
+    (and (memq x '(quote set! if letrec lazy-letrec lambda)) #t)))
 
 ;; [2004.06.24]<br> This is for the regiment primitives:
 (define get-primitive-entry
@@ -363,6 +393,10 @@
 	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
+
+;; Gotta remember to update this if I change the format of prim entries..
+(define (get-primitive-return-type prim)
+  (last (get-primitive-entry prim)))
 
 ;; This lets you easily line up a primitives arguments with the expected types.
 (define map-prim-w-types
@@ -409,4 +443,4 @@
   (if (assq x token-machine-primitives) #t #f))
 
 
-|#
+) ;; end module

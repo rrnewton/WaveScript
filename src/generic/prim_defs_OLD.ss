@@ -19,6 +19,33 @@
 ;;   Number Pair Port String Symbol Vector Void
 
 
+(module prim_defs_OLD mzscheme
+  (require "iu-match.ss"        ;; PLT requires.
+           (lib "include.ss")
+           )
+  (provide 
+;           regiment-type-aliases
+	   regiment-basic-primitives
+	   local-node-primitives
+	   regiment-constants
+	   regiment-distributed-primitives
+	   regiment-primitives
+	   token-machine-primitives
+
+;	   regiment-keyword?
+ 	   token-machine-keyword?
+ 	   get-primitive-entry
+ 	   map-prim-w-types
+ 	   regiment-primitive?
+ 	   regiment-constant?
+ 	   basic-primitive?
+ 	   distributed-primitive?
+ 	   token-machine-primitive?
+
+	   )
+  (chezimports )
+
+
 ;; Then some types that are used only in the local language are:
 ;;   Token NodeID
 
@@ -380,3 +407,4 @@
   (lambda (x)
     (and (memq x '(quote set! if begin letrec let let-stored)) #t)))
 
+)

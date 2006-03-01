@@ -16,22 +16,24 @@
   (require (lib "include.ss")
 	   "../plt/iu-match.ss"
 	   "../plt/constants.ss" ;; For DEBUGMODE
+           "../plt/prim_defs.ss"
 	   (all-except "../plt/helpers.ss" test-this these-tests)
 	   (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   (provide 
          check-grammar
          build-compiler-pass
+	 analyze-grammar-failure 
          
          ;; Predifined Grammars
 	 initial_regiment_grammar
 	 ; elaborated_regiment_grammar
          basic_tml_grammar
-         tml_gradient_grammar
-         tml_letstored_grammar
+;         tml_gradient_grammar
+;         tml_letstored_grammar
          full_but_clean_tml
          
-         these-tests test-this
-         test-grammar tests-grammar
+;         these-tests test-this
+;         test-grammar tests-grammar
          )
 
   (chezimports ;constants
@@ -456,22 +458,26 @@
 
 ;; This is the type grammar supported by the Regiment source language.
 (define type_grammar
-  `(
-    [Type 'Integer]
-    [Type 'Float]
-    [Type 'Bool]
+  (let ()
+    `(
+      [Type 'Integer]
+      [Type 'Float]
+      [Type 'Bool]
+      
+      [Type 'Node]
+      [Type 'Anchor]
+      [Type 'Region]
+      [Type ('Signal Type)]
+      [Type ('Area Type)]
+      [Type ('Event Type)]
+      
+      [Type ('List Type)]
+      [Type #(Type ...)] ;; Tuples
+      [Type (Type ... '-> Type)]
 
-    [Type 'Node]
-    [Type 'Anchor]
-    [Type 'Region]
-    [Type ('Signal Type)]
-    [Type ('Area Type)]
-    [Type ('Event Type)]
-    
-    [Type ('List Type)]
-    [Type #(Type ...)] ;; Tuples
-    [Type (Type '-> Type)]
-    ))
+      ;; Also type vars:
+      [Type ('quote ,symbol?)]
+      )))
 
 (define base_regiment_forms
   (let ()
@@ -485,9 +491,9 @@
     [Expr Var]
     [Expr Int]   
     [Expr Float] 
-    [Expr Const]
+    [Expr ('quote Datum)]
     [Expr ('if Expr Expr Expr)]
-    [Expr ('letrec ([Var Expr] ...) Expr)]
+    [Expr ('letrec ([Var Type Expr] ...) Expr)]
     [Expr ('tuple Expr ...)]
     [Expr ('tupref Int Int Expr)]
     [Expr (Prim Expr ...)]
@@ -499,7 +505,10 @@
     [Int ,integer?]
     [Float ,flonum?]
     [Var ,is-var?]
-    [Const ('quote ,atom?)]
+    ;[QuotedDatum ,atom?]
+    ;[QuotedDatum ,list?]
+    [Datum ,atom?]
+    [Datum (Datum ...)] ;; Quite flexible here, any sort of thing is a const.
 
     ,@type_grammar
     )))

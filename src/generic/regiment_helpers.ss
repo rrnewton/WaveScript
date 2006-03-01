@@ -120,7 +120,7 @@
     (+ 127.5 (* 127.5 (sin (* t (/ 3.14 1000))))))))
 
 
-(include "prim_defs_OLD.ss")
+;(include "prim_defs_OLD.ss")
 
 ;======================================================================
 
@@ -369,11 +369,6 @@
         (if (pair? x)
             (and (datum? (car x)) (datum? (cdr x)))
             (and (vector? x) (andmap datum? (vector->list x)))))))
-
-
-;; Gotta remember to update this if I change the format of prim entries..
-(define (get-primitive-return-type prim)
-  (last (get-primitive-entry prim)))
 
 
 ;; create a "flattened" begin from list of expressions
@@ -658,6 +653,33 @@
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
        
+
+;; TODO: TEST THIS
+(define (regiment-free-vars expr)
+  (list->set 
+   (let loop ((env ()) (expr expr))
+     (match expr	 
+       [,var (guard (symbol? var) (not (regiment-constant? var)))
+	     (if (memq var env) '() (list var))]
+       [(quote ,x) '()]
+       [(,prim ,rand* ...) (regiment-primitive? prim)
+	(let ((frees (map (lambda (x) (loop env x)) rand*)))
+	  (apply append frees))]
+       [(lambda (,formals) ,expr)
+	(loop (append formals env) expr)]
+       [(lambda (,formals) ,types ,expr)
+	(loop (append formals env) expr)]
+       [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+       [(,letrec ([,lhs* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+       [(,app ,[opera*] ...)
+	(apply append opera*)]       
+       [,else (error 'free-vars "not simple expression: ~s" expr)]))))
 
 ; ======================================================================
 

@@ -12,6 +12,7 @@
            "hashtab.ss"
            (all-except "helpers.ss" test-this these-tests)
            "engine.ss"
+           "prim_defs.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
 
@@ -28,13 +29,13 @@
    constant? datum? qinteger? qinteger->integer
    formalexp? cast-formals fit-formals-to-args
 
-   regiment-primitives regiment-primitive? 
-   token-machine-primitives token-machine-primitive? 
-   token-machine? token-machine->program token-machine-keyword?
-   basic-primitive? distributed-primitive?
-   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-   get-primitive-return-type
-   map-prim-w-types
+;   regiment-primitives regiment-primitive? 
+;;   token-machine-primitives token-machine-primitive? 
+;   token-machine? token-machine->program token-machine-keyword?
+;   basic-primitive? distributed-primitive?
+;   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
+;   get-primitive-return-type
+;   map-prim-w-types
      
    ;; Token names:
    token-name? new-token-name token-names get-names get-formation-name get-membership-name
