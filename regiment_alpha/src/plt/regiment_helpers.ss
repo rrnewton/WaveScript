@@ -21,7 +21,9 @@
    reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 
    get-formals
-   reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin strip-illegal
+   reunique-names deunique-name unique-name unique-name-counter extract-suffix make-begin 
+   deep-reg:struct->list 
+   strip-illegal
    randomize-list randomize-vector list-get-random
 
    ;; Hmm, not sure what meaning immediate has here...

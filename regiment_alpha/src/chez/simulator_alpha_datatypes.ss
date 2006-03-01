@@ -1,7 +1,9 @@
-;; NOTE: 
-;; Hopefully this is temporary.  I haven't figured out how to
-;; systematically export all the structure accessors/mutators from a
-;; Chez module yet, so here they are, listed out verbosely.
+;;;; .title simulator_alpha_datatypes
+
+;;;; NOTE: 
+;;;; Hopefully this is temporary.  I haven't figured out how to
+;;;; systematically export all the structure accessors/mutators from a
+;;;; Chez module yet, so here they are, listed out verbosely.
 
 (chez:module simulator_alpha_datatypes
 	(	 
@@ -29,6 +31,7 @@
 	 simworld-scheduler-queue
 	 simworld-vtime
 	 simworld-led-toggle-states
+	 simworld-connectivity-function
 	 set-simworld-graph!
 	 set-simworld-object-graph!
 	 set-simworld-all-objs!
@@ -36,6 +39,7 @@
 	 set-simworld-scheduler-queue!
 	 set-simworld-vtime!
 	 set-simworld-led-toggle-states!
+	 set-simworld-connectivity-function!
 
 	 make-simevt
 	 simevt?

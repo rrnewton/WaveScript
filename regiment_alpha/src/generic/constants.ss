@@ -401,10 +401,10 @@
 ;; It is used by the simulator to determine link quality.  <br>
 ;; The function currently takes two node positions and returns a transmission probability. <br>
 ;;   NodePos, NodePos -> MsgProb1-100
-(define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))
+;(define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))
 
-
-(define-regiment-parameter simalpha-dbg-on #t)      ;; dbg print statements
+;; Controls whether dbg print statements happen.  Can be changed dynamically.
+(define-regiment-parameter simalpha-dbg-on #t)
 
 ;; This parameter controls the feature wherein omitted trailing args to token handlers are
 ;; filled in as ZERO.  It may be set to:

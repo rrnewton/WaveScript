@@ -58,7 +58,7 @@
 	 simalpha-world-ybound
 	 simalpha-channel-model
 	 simalpha-failure-model
-         simalpha-connectivity-function
+;         simalpha-connectivity-function
 	 simalpha-current-simworld 
 	 sim-timeout
 	 simalpha-realtime-mode

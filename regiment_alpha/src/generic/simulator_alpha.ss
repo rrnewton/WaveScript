@@ -457,7 +457,7 @@
 			   [nbr (hashtab-get (simworld-obj-hash (simalpha-current-simworld))
 					     idnum)])
 		      (if (not nbr) (error 'linkqual "Cannot estimate link qual, bad neighbor ID: ~a" idnum))
-		      ((simalpha-connectivity-function)
+		      ((simworld-connectivity-function (simalpha-current-simworld))
 		       (node-pos (simobject-node this))
 		       (node-pos (simobject-node nbr))))]
 

@@ -387,6 +387,17 @@
       [(,x ,x* ...) `(begin ,x ,x* ...)]))))
 
 
+;; [2006.03.01] Flatten out a whole struct (record) into a list.
+(define (deep-reg:struct->list x)
+  (cond
+   [(pair? x) (cons (deep-reg:struct->list (car x))
+		    (deep-reg:struct->list (cdr x)))]
+   [(vector? x) (vector-map deep-reg:struct->list x)]
+   [(reg:struct? x) 
+    (map deep-reg:struct->list (reg:struct->list x))]
+   [(atom? x) x]
+   [else (error 'deep-reg:struct->list "what on earth is this object? ~a" x)]))
+   
 ;=============================================================================
 
 ; RRN: [2005.11.20] Not currently used:
