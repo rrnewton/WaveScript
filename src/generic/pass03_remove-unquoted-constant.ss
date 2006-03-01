@@ -45,7 +45,7 @@
            (guard (regiment-primitive? prim))
            `(,prim ,rand* ...)]
 	  ;; Adding normal applications because the static elaborator will get rid of them.
-	  [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
+	  [(app ,[rator] ,[rand*] ...) `(app ,rator ,rand* ...)]
           [,unmatched
             (error 'remove-unquoted-constant "invalid expression: ~s"
                    unmatched)])))

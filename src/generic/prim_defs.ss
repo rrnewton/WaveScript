@@ -12,7 +12,7 @@
 ;;; Ok, redoing primitive listings with type information:
 ;;; The types I'm using right now are:
 ;;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;;   Function, Number, Integer, Float, Bool, Object, Void
+;;;   Number, Integer, Float, Bool, Void
 ;;;   List, Array, Tuple
 ;;;
 ;;; Then some types that are used only in the local language are:
@@ -352,7 +352,7 @@
 ;; Keywords allowed in the restricted token machine language.
 (define token-machine-keyword?
   (lambda (x)
-    (and (memq x '(quote set! if begin letrec let let-stored)) #t)))
+    (and (memq x '(quote set! if begin let let-stored)) #t)))
 
 
 

@@ -9,7 +9,6 @@
 ; This also forces me to make first class representations of grammars.
 
 
-
 (module grammar_checker mzscheme
   (require (lib "include.ss")
 	   "../plt/iu-match.ss"
@@ -21,6 +20,8 @@
          build-compiler-pass
          
          ;; Predifined Grammars
+	 initial_regiment_grammar
+	 ; elaborated_regiment_grammar
          basic_tml_grammar
          tml_gradient_grammar
          tml_letstored_grammar
@@ -30,8 +31,10 @@
          test-grammar tests-grammar
          )
 
-  (chezimports )
-
+  (chezimports ;constants
+               (except helpers   test-this these-tests)
+	       (except regiment_helpers   test-this these-tests)
+	       )
 ; ======================================================================
 
 ;;; Main grammar checking entry points
@@ -97,10 +100,18 @@
        (if (not (list? x))
 	   (fail x p* k)
 	   (goingdeeper (matchlist x p* k)))]
-      [(,x ,p) (guard (memq p allvariants))
+      [(,x #(,p* ...)) ;; A vector production, just convert to list
+       (if (not (vector? x))
+	   (fail x (list->vector p*) k)
+	   (goingdeeper (matchlist (vector->list x) p* 
+				   ;; Add to the continuation to convert back to vector
+				   (lambda (x) (k (list->vector x))))))]
+      [(,x ,p) (guard (memq p allvariants)) ;; A production-name
            (scangrammar x (cut-grammar p) k)]
       [(,_ ,p) (guard (symbol? p))
        (error check-grammar "This is production-symbol is not bound: ~a" p)]
+      [(,_ ,p)
+       (error check-grammar "Unknown kind of production in the grammar: ~a" p)]
       ))
 
   ;; This is for compound productions that have some structure to 'em.
@@ -161,6 +172,7 @@
 					  (if sub
 					      (listloop lsnew p*new (lambda (e) (if e (k (cons sub e)) (k #f))))
 					      (fail x subp* k))))))]
+	    [,other (error 'check-grammar:match-list "unmatched sexp/pattern pair: ~a\n" other)]
 	    )))
 
   (let ((result 
@@ -435,6 +447,84 @@
 	   )))]))
 
 
+
+; =======================================================================
+;;; Regiment Grammars.
+
+;; This is the type grammar supported by the Regiment source language.
+(define type_grammar
+  `(
+    [Type 'Integer]
+    [Type 'Float]
+    [Type 'Bool]
+
+    [Type 'Node]
+    [Type 'Anchor]
+    [Type 'Region]
+    [Type ('Signal Type)]
+    [Type ('Area Type)]
+    [Type ('Event Type)]
+    
+    [Type ('List Type)]
+    [Type #(Type ...)] ;; Tuples
+    [Type (Type '-> Type)]
+    ))
+
+(define base_regiment_forms
+  (let ()
+  `(
+    [PassInput (Lang ('quote Program))]
+    [Lang ,symbol?]
+    ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
+    [Program ('program Expr Type)]
+
+    [Expr Var]
+    [Expr Int]   
+    [Expr Float] 
+    [Expr Const]
+    [Expr ('if Expr Expr Expr)]
+    [Expr ('letrec ([Var Expr] ...) Expr)]
+    [Expr ('tuple Expr ...)]
+    [Expr ('tupref Int Int Expr)]
+    [Expr (Prim Expr ...)]
+
+    ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
+	   ;; Remove dbg from the list... we handle that special:
+	regiment-primitives)
+
+    [Int ,integer?]
+    [Float ,flonum?]
+    [Var ,symbol?]
+    [Const ('quote ,atom?)]
+
+    ,@type_grammar
+    )))
+
+;; This is the grammar output from verify-regiment.
+(define initial_regiment_grammar
+  `( ,@base_regiment_forms
+     ;; These are forms only valid for the meta-language (pre-elaboration)
+     [Expr ('lambda (Var ...) (Type ...) Expr)]
+     [Expr (Expr ...)]  ;; Application.  Should make this labeled.
+    ))
+
+;; This is the grammar for the output of static-elaborate
+;; UNFINISHED:
+(define elaborated_regiment_grammar
+  ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
+  (lambda (subcheck)
+    `( ,@base_regiment_forms
+       [Expr ('lambda . ValidLambda)]
+       ;; Lambda's are no longer allowed to have free-vars.
+       [ValidLambda ,(lambda (ls)
+		       (match ls
+			 [((,v* ...) (,t* ...) ,e)
+			  (and (subcheck e 'Expr)
+			       (= (length v*) (length t*))
+			       ;; No free vars allowed!!
+			       (subset? ('TODOfree-vars e) v*))]
+			 [,else #f]))]
+       )))
 		  
 ; =======================================================================
 
@@ -612,46 +702,6 @@
 ;     [(symbol) (symbol? e)]
 ;     [(
   
-
-; =======================================================================
-;;; Regiment Grammars	      
-
-;; UNFINISHED
-(define basic_regiment_grammar
-  (let ()
-    (define (is-var? x) (and (symbol? x) (not (token-machine-keyword? x))))
-  `(
-    [PassInput (Lang ('quote Program))]
-    [Lang ,symbol?]
-    ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
-    [Program ('program Expr)]
-    [Program ('program Expr Type)]
-
-    [Expr Var]
-    [Expr Num] ;; Allow unquoted?
-    [Expr Const]
-
-    [Expr ('letrec ([Var Expr]) Expr)]
-    [Expr ('if Expr Expr Expr)]
-
-    [Expr (tuple Expr ...)]
-    [Expr (tupref Num Num Expr)]
-    
-    ;; Should scratch this and explicitely enforce argument count in grammar:
-    [Expr (Prim Expr ...)]
-    ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
-	   ;; Remove dbg from the list... we handle that special:
-	   (assq-remove-all 'dbg token-machine-primitives))
-    [Expr (Expr ...)]
-
-    [Num ,integer?]
-    [Var ,is-var?]
-    [Const ('quote ,atom?)]
-
-    )))
-
-(define eta_prim_gramar 
-  basic_regiment_grammar)
 
 ; =======================================================================
 ;;; Unit tests.

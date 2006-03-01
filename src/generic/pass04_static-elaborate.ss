@@ -112,7 +112,9 @@
 				 mapping)))	     
 	   `(letrec ([,lhs* ,type* ,(map (lambda (x) (substitute newmap x)) rhs*)] ...)
 	      ,(substitute newmap expr)))]
-	  [(,[rator] ,[rands] ...) `(,rator ,rands ...)]
+	  [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
+	   `(,prim ,rands ...)]
+	  [(app ,[rator] ,[rands] ...) `(app ,rator ,rands ...)]
           [,unmatched
             (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
 
@@ -230,11 +232,11 @@
 	  ;; don't get any accidental variable capture:
 ;	  [((lambda ,formals ,expr) ,rands ...)
 ;	   (substitute (map list formals rands) expr)]
-	  [(,[rator] ,[rands] ...)
+	  [(app ,[rator] ,[rands] ...)
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
 	       (inline (getval rator) rands)
-	       `(,rator ,rands ...))]
+	       `(app ,rator ,rands ...))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))))
@@ -260,13 +262,13 @@
     [(static-elaborate
       '(foo '(program
 	      (letrec ([f _ (lambda (x) (_) '#t)])
-		(f '3939)) notype)))
+		(app f '3939)) notype)))
      (foo '(program '#t notype))]
 
     [(static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
-			       (if (= '0 n) '1 (* n (fact (- n '1)))))]) 
-	(fact '6))
+			       (if (= '0 n) '1 (* n (app fact (- n '1)))))])
+	(app fact '6))
       notype)))
      (foo '(program '720 notype))]
 
@@ -279,8 +281,8 @@
 				 (letrec ([loop _ (lambda (n) (_)
 							  (if (= '0 n)
 							      world
-							      (rfilter f (loop (- n '1)))))])
-				   (loop '5)))
+							      (rfilter f (app loop (- n '1)))))])
+				   (app loop '5)))
 			       notype)))
      ;unspecified]
      (foo '(program
