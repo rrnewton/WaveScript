@@ -58,6 +58,8 @@
 	    (require _genned_node_code)))
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
+  (include (build-path "generic" "simalpha_rollworld.ss"))
+  (include (build-path "generic" "simalpha_ui.ss"))
   (include (build-path "generic" "simulator_alpha.ss"))
     ;; The scheduler is part of the simulator rather than alpha_lib, actually:
 ;  (require "alpha_lib_scheduler_simple.ss")

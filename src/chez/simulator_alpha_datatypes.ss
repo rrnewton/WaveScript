@@ -60,6 +60,8 @@
 	 set-node-id!
 	 set-node-pos!
 
+	 node->simobject
+
 	 make-simobject
 	 simobject?
 	 simobject-node
