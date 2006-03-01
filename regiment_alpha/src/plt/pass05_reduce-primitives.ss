@@ -2,6 +2,7 @@
 (module pass05_reduce-primitives mzscheme
   (require (lib "include.ss")
            "iu-match.ss"
+	   "prim_defs.ss"
 	   (all-except "helpers.ss" test-this these-tests)
            (all-except "regiment_helpers.ss" test-this these-tests)
            (all-except "hm_type_inference.ss" test-this these-tests)

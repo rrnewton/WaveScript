@@ -2,6 +2,7 @@
 (module pass12_verify-core mzscheme
 
   (require "iu-match.ss"
+	   "prim_defs.ss"
 	   (lib "include.ss")
 	   (all-except "helpers.ss" test-this these-tests)
 	   (all-except "regiment_helpers.ss" test-this these-tests))

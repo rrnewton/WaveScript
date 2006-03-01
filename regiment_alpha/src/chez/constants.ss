@@ -8,8 +8,11 @@
 
 ;======================================================================
 
-(begin  ;; This defines structs as chez records.
-  
+(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list)
+  ;(import scheme)
+
+  ; Defined using RECORDS:
+  ; ======================================================================
   ;; This version uses generative records and should work if you want to use it.
   (define-syntax reg:define-struct
     (syntax-rules ()
@@ -52,28 +55,31 @@
       (map (lambda (name)
 	     ((#%record-field-accessor type name) x))
 	(#%record-type-field-names type))))
-)
 
-;======================================================================
-#;
-(begin ;; This defines structs's as chez structures (vectors).
-  (define reg:define-struct_name-table (make-hash-table))
-  (define-syntax reg:define-struct
-    (syntax-rules ()
-      [(_ (name field ...))  
-       (begin (define-structure (name field ...))
+  ;; Defined using 
+  ;;======================================================================
+  #|
+  (begin ;; This begin-block defines structs's as chez structures (vectors).
+    (define reg:define-struct_name-table (make-hash-table))
+    (define-syntax reg:define-struct
+      (syntax-rules ()
+	[(_ (name field ...))  
+	 (begin (define-structure (name field ...))
 	      (define reg:struct-dummy-val 
 		(put-hash-table! reg:define-struct_name-table 'name (void))))]))
-  (define reg:struct? 
-    (let ([lookup-failure (gensym)])
-      (lambda (x)
-	(and (vector? x) 
-	     (>= (vector-length x) 1)
-	     (not (eq? (get-hash-table reg:define-struct_name-table 
-				       (vector-ref x 0) lookup-failure)
-		       lookup-failure))))))
-  (define (reg:struct->list x) (cdr (vector->list x)))
-  )
+    (define reg:struct? 
+      (let ([lookup-failure (gensym)])
+	(lambda (x)
+	  (and (vector? x) 
+	       (>= (vector-length x) 1)
+	       (not (eq? (get-hash-table reg:define-struct_name-table 
+					 (vector-ref x 0) lookup-failure)
+			 lookup-failure))))))
+    (define (reg:struct->list x) (cdr (vector->list x)))
+    |#
 
+) ;; End module
+
+(import chez_constants)
 
 (include "generic/constants.ss")

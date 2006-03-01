@@ -7,7 +7,8 @@
   (require (lib "include.ss"))
   (require (lib "list.ss"))
 ;  (require (lib "trace.ss"))
-  (require "constants.ss")
+  (require "constants.ss"
+	   "prim_defs.ss")
   (require "iu-match.ss")
   (require (all-except "helpers.ss" filter test-this these-tests))
   (require (all-except "regiment_helpers.ss" filter test-this these-tests))

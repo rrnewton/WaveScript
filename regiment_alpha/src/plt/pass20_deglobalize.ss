@@ -7,6 +7,7 @@
 	   "constants.ss"
            "iu-match.ss"
            "hashtab.ss"
+	   "prim_defs.ss"
            (all-except "tsort.ss" test-this these-tests)
            (all-except "tml_generic_traverse.ss" test-this these-tests)
            (all-except "helpers.ss" test-this these-tests)
