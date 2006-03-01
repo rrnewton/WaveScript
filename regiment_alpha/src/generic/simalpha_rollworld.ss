@@ -8,35 +8,35 @@
 
 ;;; Constructing and maintaining world objects.
 
-;; .returns A 'simworld' record.
+;; This is the function (of no arguments) for creating a new world
+;; simulation.  It takes no arguments because all the decisions
+;; affecting the kind of topology to create are made based upon the
+;; values of global regiment system parameters. <br><br>
+;;
+;;<br>  Relevent parameters include (as of [2006.03.01]):
+;;<br>    simalpha-placement-type
+;;<br>    simalpha-connectivity-function
+;;<br>    simalpha-channel-model
+;;<br>    simalpha-outer-radius
+;;<br>    simalpha-inner-radius
+;;<br>    simalpha-consec-ids
+;;<br>    simalpha-world-xbound
+;;<br>    simalpha-world-ybound
+;;<br>    simalpha-max-gridlike-perturbation
+;;
+;; <br><br>
+;; Parameterize these before calling to control the nature of the created simworld object.
+;;
+;; <br><br>
+;;  This subroutine generates randomzied topology: 
+;; (There are more topologies in "network_topologies.ss")
+;;
+;;   .returns A 'simworld' record.
 (define (fresh-simulation)  
-  ;; This subroutine generates the default, random topology: 
-  ;; (There are more topologies in "network_topologies.ss"
-  (define (make-object-graph g world) 
-    (graph-map (lambda (nd) 
-		 (let ([so (apply make-simobject (make-list 16 'simobject-field-uninitialized))])
-		   (set-simobject-node! so nd)
-		   (set-simobject-token-store! so (make-default-hash-table 100))
 
-		   (set-simobject-incoming-msg-buf! so '())
-		   (set-simobject-outgoing-msg-buf! so '())
-		   (set-simobject-local-msg-buf! so '())
-		   (set-simobject-timed-token-buf! so '())
-
-		   (set-simobject-local-sent-messages! so 0)
-		   (set-simobject-local-recv-messages! so 0)
-		   (set-simobject-token-table! so (make-default-hash-table 100))
-
-		   (set-simobject-redraw! so #f)
-		   (set-simobject-gobj! so #f)
-		   (set-simobject-homepage! so '())
-		   (set-simobject-I-am-SOC! so #f)
-
-		   (set-simobject-scheduler! so #f)
-		   (set-simobject-meta-handler! so #f)
-
-		   (set-simobject-worldptr! so world)
-		   so)) g))
+  ;; Make a graph of simobjects out of the graph of nodes.
+  (define (make-object-graph g world)
+    (graph-map (lambda (n) (node->simobject n world)) g))
   
   ;; This is our helper function that checks for collisions.
   (define (collide?  n1 n2)
@@ -44,7 +44,9 @@
 			 (node-pos n1) (node-pos n2))))
       (if (not (memq connectivity '(0 100))) (printf "connectivity: ~s\n" connectivity))
       (not (eqv? 0 connectivity))))
-
+ 
+  ; --------------------------------------------------
+  ;; Randomly places nodes.
   (define (make-random-topology)    
     ;; Old method, doesn't produce connected graph:
     (let ((seed (map (lambda (_) (random-node)) (iota (sim-num-nodes)))))
@@ -68,6 +70,8 @@
 		 seed))
       seed))
 
+  ; --------------------------------------------------
+  ;; Places nodes randomly, but each node must be connected to the nodes placed before.
   (define (make-connected-topology)
     ;; This might have some serious biases in the layout and distribution of degree.
     (let ((start-node (let ((x (random-node)))				   
@@ -95,6 +99,8 @@
 				  graph)
 			    (sub1 count))))))))))
 
+    ; --------------------------------------------------
+  ;; A perturbed grid of nodes.
   (define (make-gridlike-topology perfect?)
     (let* ([num-nodes (sim-num-nodes)]
 	   [seed (make-vector num-nodes)]
@@ -144,6 +150,7 @@
 				 seed)))
 	     seed))))
 
+  ; --------------------------------------------------
   (define (make-topology) ;; Returns the graph	  
     (case (simalpha-placement-type)
       [(random) (make-random-topology)]

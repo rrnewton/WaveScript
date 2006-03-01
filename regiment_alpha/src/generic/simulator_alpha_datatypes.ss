@@ -69,16 +69,21 @@
 	   (error 'make-gobject "Invalid edge table: ~s" e))))))
 
 
-;; This structure represents a simulated node:
-;; Incoming is a list of token messages.
-;; Redraw is a boolean indicating whether the object needs be redrawn.
-;; [2004.06.11] Added homepage just for my internal hackery.
-;; [2004.06.13] Be careful to change "cleanse-world" if you change
-;;   this, we don't want multiple simulation to be thrashing eachother.
-;; [2004.07.08] I don't know why I didn't do this, but I'm storing the
-;;   token-cache in the structure too
+;; This is a very important and central structure that represents a simulated node.
+;;<br>
+;;<br> [2004.06.11] Added homepage just for my internal hackery.
+;;<br> [2004.06.13] Be careful to change "cleanse-world" if you change
+;;<br>   this, we don't want multiple simulation to be thrashing eachother.
+;;<br> [2004.07.08] I don't know why I didn't do this, but I'm storing the
+;;<br>   token-cache in the structure too
 (reg:define-struct (simobject node I-am-SOC
-			     token-store ;; Changing this to hash table mapping names to 
+
+			     ;; The token store is a hash table mapping simtok objects to token
+			     ;; objects.  The token objects themselves are just records of stored
+			     ;; variables.  However, by convention, the first slot of the token
+			     ;; object is a counter for how many times the handler has been
+			     ;; invoked.
+			     token-store ;; Changing this to hash table indexed by token names.
 
 			     ;; All these buffers get changed when a token handler runs:
 			     incoming-msg-buf ;; Stores simulation events
@@ -90,7 +95,7 @@
 			     ;; This stores #(invoked sent received) counters for every token name:
 			     token-table
 			     
-			     redraw 
+			     redraw   ;; A boolean indicating whether the object needs be redrawn.
 			     gobj     ;; Pointer to the graphical representation of this object.
 			     homepage ;; Not currently used, a "blackboard".
 
@@ -103,10 +108,37 @@
 			     
 			     worldptr ;; A pointer to the relevent simworld object.
 			     ))
-;; The token store is a hash table mapping simtok objects to token objects.
-;; The token objects themselves are just vectors of stored variables.
-;; By convention, the first slot of the token object is a counter for how many times the 
-;; handler has been invoked.
+;; The following builds a simobject from a node and initializes all the values to their default state.
+;; This is essentially the constructor for the type 'simobject.
+;; .returns A fresh, initialized simobject.
+(define node->simobject 
+  (case-lambda 
+    [(nd) (node->simobject nd #f)]
+    [(nd world)
+     (DEBUGASSERT (or (not world) (simworld? world)))
+     (let ([so (apply make-simobject (make-list 16 'simobject-field-uninitialized))])
+       (set-simobject-node! so nd)
+       (set-simobject-token-store! so (make-default-hash-table 100))
+       
+       (set-simobject-incoming-msg-buf! so '())
+       (set-simobject-outgoing-msg-buf! so '())
+       (set-simobject-local-msg-buf! so '())
+       (set-simobject-timed-token-buf! so '())
+       
+       (set-simobject-local-sent-messages! so 0)
+       (set-simobject-local-recv-messages! so 0)
+       (set-simobject-token-table! so (make-default-hash-table 100))
+       
+       (set-simobject-redraw! so #f)
+       (set-simobject-gobj! so #f)
+       (set-simobject-homepage! so '())
+       (set-simobject-I-am-SOC! so #f)
+       
+       (set-simobject-scheduler! so #f)
+       (set-simobject-meta-handler! so #f)
+       
+       (set-simobject-worldptr! so world)
+       so)]))
 
 
 ;; This structure represents a message transmitted across a channel.
@@ -121,7 +153,7 @@
 ;; system had a problem with that.  I could maybe think of something
 ;; more efficient to do here since these are called hundreds of thousands of times.
 ;; This one is just used to count up the messages during a simulation: <br>
-
+;;
 ;; [2005.11.26] This information is now in the individual simobjects,
 ;; replacing these with functions that sum up the simobject values.
 ;(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
