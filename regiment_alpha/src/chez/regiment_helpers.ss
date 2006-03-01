@@ -24,13 +24,13 @@
 	  constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
 
-	  regiment-primitives regiment-primitive? 
-	  token-machine-primitives token-machine-primitive? 
-	  token-machine? token-machine->program token-machine-keyword?
-	  basic-primitive? distributed-primitive?
-	  get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
-	  get-primitive-return-type
-	  map-prim-w-types
+
+;	  token-machine-primitives token-machine-primitive? 
+;	  token-machine? token-machine->program token-machine-keyword?
+;	  basic-primitive? distributed-primitive?
+;	  get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
+;	  get-primitive-return-type
+;	  map-prim-w-types
 
 	  ;; Token names:
 	  token-name? new-token-name token-names get-names get-formation-name get-membership-name
@@ -41,7 +41,8 @@
 
 	  )
 
-
+  (import prim_defs)
+  
   ;;; Regiment Random Number Interface. <br>
   ;;;
   ;;;   These provide a simple random number generator interface for use

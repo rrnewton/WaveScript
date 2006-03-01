@@ -42,7 +42,7 @@
 	   ;; This configuration is for running extended simulation-experiments only:
 	   #;(begin (optimize-level 3)
 		  (compile-compressed #f)
-		  (generate-inspector-information #f)
+a		  (generate-inspector-information #f)
 		  ;; Messing with this didn't seem to help performance.
 		  #;(run-cp0
 		   (lambda (cp0 x)
@@ -145,6 +145,8 @@
 (include "chez/hash.ss") (import hashfun) ;; TEMPORARY
 (include "chez/hashtab.ss") (import hashtab)
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
+;; Lists all the Regiment primitives and their types:
+(include "generic/prim_defs.ss") (import prim_defs)
 (include "chez/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
@@ -200,6 +202,12 @@
 (include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 (include "generic/grammar_checker.ss") (import grammar_checker)
 
+;; Type inference is used by verify-regiment, below.
+(include "generic/hm_type_inference.ss")
+;(include "generic/prim_defs_OLD.ss")
+;(import prim_defs_OLD) ;; TEMP
+
+
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/language-mechanism.ss")
@@ -218,9 +226,6 @@
 (include "generic/lang30_haskellize-tokmac.ss") 
 (include "generic/lang32_emit-nesc.ss")
 
-;; Type inference is used by verify-regiment.
-(include "generic/prim_defs.ss")
-(include "generic/hm_type_inference.ss")
 (include "generic/pass00_verify-regiment.ss")
 (include "generic/pass01_eta-primitives.ss")
 (include "generic/pass02_rename-vars.ss")

@@ -1,8 +1,11 @@
-;; NEED TO RENUMBER
+
 
 ; <TODO> -- Doesn't do anchors right now..
 
-;;; Pass 09: classify-names
+;;;; FIXME: NEED TO FIX THIS ACCORDING TO THE NEW TYPE SYSTEM.
+
+
+;;; Pass 13: classify-names
 
 ;;; This pass takes the simple top level progam, which is basically a
 ;;; dataflow graph, and categorizes its edges.
@@ -48,34 +51,32 @@
   (define dependencies '())
 
   ;; Note, you can send this #f instead of a symbol to make it fizzle:
-  (define add-prop! 
-    (letrec ([all-memq (lambda (obs ls)
-			 (if (null? obs) #t
-			     (if (memq (car obs) ls)
-				 (all-memq (cdr obs) ls)
-				 #f)))]
-	     [check-valid (lambda (name prop proplst)
+  (define add-props! 
+    (letrec ([check-valid (lambda (name props)
+			    (DEBUGASSERT (list? props))
 			    (cond 
-			     [(all-memq '(distributed local) proplst)
-			      (error 'classify-names:add-prop! 
-				     "var ~s cannot be both a distributed and local value: Cannot add ~s."
-				     name prop)]
-			     ; final and leaf?
-			     ; anchor and region?
+			     [(subset? '(distributed local) props)
+			      (error 'classify-names:add-props! 
+				     "var ~s cannot be both a distributed and local value: ~a"
+				     name props)]
+					; final and leaf?
+					; anchor and region?
 			     ))])
-    (lambda (s p)
+    (lambda (s p*)
+      (DEBUGASSERT (andmap (lambda (p) (match p 
+					 [,s (guard (symbol? s)) #t]
+					 [(,s1 ,s2) (guard (symbol? s1) (symbol? s2)) #t]
+					 [,else #f]))
+			   p*))
       (if s
 	  (let ((entry (assq s table)))
-					;	  (DEBUGMODE (if (not entry)
-					;			 (error 'pass09_classify-names:add-prop!
-;				"symbol ~s has no entry in table ~s" s table)))
+	    ;(inspect (vector p* entry (and entry (union p* (cdr entry))) table))
 	    (if entry 
-		(if (not (memq p (cdr entry)))
-		    (begin 
-		      (set-cdr! entry (cons p (cdr entry)))
-		      (check-valid s p (cdr entry))
-		      ))
-		(set! table (cons (list s p) table)))	   
+		(begin 
+		  (set-cdr! entry (union p* (cdr entry)))
+		  ;; Every time we change, check sanity:
+		  (check-valid s (cdr entry)))
+		(set! table (cons (cons s p*) table)))
 	    )))))
     
   (define (get-props s)
@@ -113,44 +114,45 @@
 
   ;; This reconciles a variable with the type that it's expected to
   ;; have based on its usage context.  Basically it just tries to add
-  ;; props and add-prop! raises an error if conflicting properties are
+  ;; props and add-props! raises an error if conflicting properties are
   ;; attached to a variable.  
   (define reconcile-type 
     (lambda (type name)
-    (case type
-      [(Region)
-       (add-prop! name 'distributed)
-       (add-prop! name 'area)
-       (add-prop! name 'region)]
+    (match type
+      [Region
+       (add-props! name '(distributed area region))]
       
-      [(Area)
-       (add-prop! name 'distributed)
-       (add-prop! name 'area)]
+      [(Area ,a)
+       (add-props! name '(distributed area))]
 
-      [(Signal)
-       (add-prop! name 'distributed)
-       (add-prop! name 'signal)]
+      [(Signal ,a)
+       (add-props! name '(distributed signal))]
       
-      [(Anchor)
-       (add-prop! name 'distributed)
-       (add-prop! name 'anchor)]
+      [Anchor
+       (add-props! name '(distributed anchor))]
 
       ;; Does Node belong here?
-      [(Location Reading Function Number Integer Float Bool List Array Pair Node Tuple)
-       (add-prop! name 'local)]
+      [,t (guard (memq t '(Location Reading Number Integer Float Bool Node Tuple)))
+	  (add-props! name '(local))]
 
-      ;; There's really not anything that we know about objects...
-      [(Object)
-       (add-prop! name 'unknown)]
+      ;; TEMP:
+      [Object (add-props! name '())]
 
-      [(Event)
-       (add-prop! name 'distributed)
-       (add-prop! name 'event)
-       ;(error 'classify-names:reconcile-type "unhandled type: ~s" type)
-       ]
+      ;; TEMP: These should have been static-elaborated away.
+      [(List ,t)
+       (add-props! name '(local))]
+      
+      [(Event ,a)
+       (add-props! name '(distributed event))]
 
-      [else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
+      [(quote ,a) (guard (symbol? a)) (add-props! name ())]
+      [(,[a] ... -> ,[b])             (add-props! name ())]
+      [#(,[t] ...)                    (add-props! name ())]
 
+      [,else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
+
+  
+  ;; TODO: FIXME: Replace, this should be out-date by the new type system.
   ;; This is a cheap (and definitely non-polymorphic) kind of type
   ;; inference for variables used as arguments to primitive functions.
   (define (type-inference-primapp prim args)
@@ -181,24 +183,22 @@
 	     
 	  ;; This means that the name is bound directly to a constant.
 	  ;; A local binding:
-          [(quote ,const) (add-prop! name 'local)]
+          [(quote ,const) (add-props! name '(local))]
 
 	  ;; Here the name is bound directly to this other name, we
 	  ;; temporarily add an alias, then at the end we replace it.
           [,var (guard (symbol? var) (not (regiment-constant? var)))
 		;(add-dependency! name (list var))
-		(add-prop! name `(alias-of ,var))
+		(add-props! name `((alias-of ,var)))
 		]
 		
           [(lambda ,formalexp ,types (lazy-letrec ,binds ,bod))
 	   ;; NOTE: No additional dependency for name... this is a closure.
 	   ;; <TODO> CONSIDER THIS: It would let dependencies go through lambdas.
 	   ;(process-let name expr (union formalexp env)) 
-	   (add-prop! name 'function)
-	   (add-prop! name 'local)
-	   (add-prop! name `(returns ,bod))
+	   (add-props! name `(function local (returns ,bod)))
 	   (let ((formals (get-formals formalexp)))
-	     (for-each (lambda (v) (add-prop! v 'formal))
+	     (for-each (lambda (v) (add-props! v '(formal)))
 	       formals)
 	     ;; Add a dependency on the formal params so the system
 	     ;; doesn't think its got leaf nodes:
@@ -209,22 +209,18 @@
 	   ]
  
 	  ;; These are all simple.
-	  [(if ,test ,conseq ,altern) 
+	  [(if ,test ,conseq ,altern)
 	   ;; This is silly: <TODO> REMOVE
-	   (add-prop! name 'conditional)
+	   (add-props! name '(conditional))
 	   (add-dependency! name (union (free-vars test)
 					(free-vars conseq)
 					(free-vars altern)))]
 	  
 	  ;; BETTER HANDLE ALL CONSTANTS HERE
           [world 
-	   (add-prop! name 'area)
-	   (add-prop! name 'region)
-	   (add-prop! name 'leaf)]
+	   (add-props! name '(area region leaf))]
           [anchor 
-	   (add-prop! name 'area)
-	   (add-prop! name 'leaf)]
-
+	   (add-props! name '(area leaf))]
 
           [(,prim ,rand* ...)
            (guard (regiment-primitive? prim))
@@ -238,20 +234,20 @@
 	    (get-primitive-return-type prim)
 	    name)
 
-	   '(cond 
+	   #;
+	   (cond 
 	    [(distributed-primitive? prim)
-	     (add-prop! name 'distributed)
+	     (add-props! name '(distributed))
 	     (cond
 	      [(eq? 'Region (get-primitive-return-type prim))
-	       (add-prop! name 'area)
-	       (add-prop! name 'region)]
+	       (add-props! name '(area region))]
 	      [(eq? 'Area (get-primitive-return-type prim))
-	       (add-prop! name 'area)]
+	       (add-props! name '(area))]
 	      [(eq? 'Signal (get-primitive-return-type prim))
-	       (add-prop! name 'signal)]
+	       (add-props! name '(signal))]
 	      [(eq? 'Anchor (get-primitive-return-type prim))
-	       (add-prop! name 'anchor)])]
-	    [(basic-primitive? prim) (add-prop! name 'local)]
+	       (add-props! name '(anchor))])]
+	    [(basic-primitive? prim) (add-props! name '(local))]
 	    [else (error 'classify-names.process-expr 
 			 "This regiment primitive is neither basic nor distributed!:~s"
 			 prim)])
@@ -264,7 +260,7 @@
     
     (match expr
 	   [(,input-language (quote (program (lazy-letrec (,binds ...) ,fin) ,type)))
-	    (add-prop! fin 'final)
+	    (add-props! fin '(final))
 	    ;; This mutates the global list 'dependencies'.
 	    (process-let #f `(lazy-letrec (,binds ...) ,fin) ())
 	    ;; Now we label the leaves:
@@ -279,7 +275,7 @@
 						   (memq 'formal props))))
 				     (cdr node))])      
 			      (if (null? these-deps) ;; No dependencies
-				  (add-prop! (car node) 'leaf))
+				  (add-props! (car node) '(leaf)))
 			      )))
 		      dependencies)
 
@@ -292,7 +288,8 @@
 			    ;; Well, there had better not be more than
 			    ;; one alias-of's in there:
 			    (DEBUGMODE
-			     (if (not (<= (length (filter list? (cdr entry))) 1))
+			     (if (not (<= (length (filter (lambda (ls) (match ls [(alias-of ,v) #t] [,_ #f]))
+						    (cdr entry))) 1))
 				 (error 'classify_names
 					"makes no sense! entry is an `alias` of more than one variable!: ~s"
 					entry)))
