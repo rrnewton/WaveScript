@@ -312,3 +312,12 @@ out "car: () is not a pair" probably from another thread, a graphics
 thread.]
 
 
+[2006.03.01]
+
+Just got this error, but not from inside SWL:
+
+ "sweep_stack(gc): malformed stack"
+
+This time it must have been a stack overflow error, because I was
+loading a program that had a quasiquote with a cyclic structure inside
+it (even though it was unquoted! hmm!).

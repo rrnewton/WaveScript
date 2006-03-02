@@ -26,9 +26,6 @@
 ;; <br><br>
 ;; Parameterize these before calling to control the nature of the created simworld object.
 ;;
-;;<br> 
-;;<br> Note, EFFECTS: This function also mutates some global parameters.  Currently, only:
-;;<br>     simalpha-connectivity-function
 ;;
 ;; <br><br>
 ;;  This subroutine generates randomzied topology: 
@@ -184,8 +181,6 @@
 		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
   
   (printf "Rolling fresh simulator world (current srand seed ~a).\n" (reg:get-random-state))
-  ;; Set global parameter:
-  ;(simalpha-connectivity-function connectivity-fun)
    
   ;; TODO, FIXME, need to use a real graph library for this!
   ;; (One that treats edges with due respect, and that uses hash tables.)
@@ -281,3 +276,29 @@
   ;(simalpha-total-tokens 0)
   (void)
   )
+
+
+; ================================================================================
+;;; Marshalling world objects.
+
+;;; I would like to save simworld's to disk so that I may use the same
+;;; one repeatedly for many experiments.
+
+;; This removes all the hash-tables and procedures (unmarshalable
+;; things) from the simworld object.  Thereafter we can write it to a file.
+(define freeze-world
+  (lambda (world)
+    9
+    ))
+
+;; This takes 
+(define animate-world
+  (lambda (world)
+    (let ([world (cond
+		  [(simworld? world) world]
+		  [(string? world) (animate-world (car (file->slist world)))]
+		  [(input-port? world) (animate-world (read world))]
+		  [else (error 'animate-world "bad input: ~a\n" world)])])
+      9 
+      )))
+

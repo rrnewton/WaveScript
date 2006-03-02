@@ -57,7 +57,7 @@
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
-   set->hashtab
+   set->hashtab hashtab->list
    
    ;; Hmm, not sure what meaning immediate has here...
    ;immediate? 
@@ -72,6 +72,7 @@
    list-repeat! make-repeats
    mapi for-eachi diff
    set? subset? set-equal? list->set set-cons union intersection difference
+   setq? subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before

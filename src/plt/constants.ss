@@ -58,7 +58,6 @@
 	 simalpha-world-ybound
 	 simalpha-channel-model
 	 simalpha-failure-model
-;         simalpha-connectivity-function
 	 simalpha-current-simworld 
 	 sim-timeout
 	 simalpha-realtime-mode
@@ -111,10 +110,12 @@
     (let-values ([(strty _) (struct-info s)])
       (let-values ([(name initf autof access mutat immutlst super skipped?) (struct-type-info strty)])
 	(let ([stop (+ initf autof)])
-	  (let loop ([i 0])
-	    (if (= i stop)
-		'()
-		(cons (access s i) (loop (add1 i)))))))))
+	  (cons (string-copy name)
+		(let loop ([i 0])
+		  (if (= i stop)
+		      '()
+		      (cons (access s i) (loop (add1 i))))))
+	  ))))
 
   (define-syntax chezimports
     (syntax-rules ()

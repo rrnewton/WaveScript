@@ -387,16 +387,38 @@
       [(,x ,x* ...) `(begin ,x ,x* ...)]))))
 
 
-;; [2006.03.01] Flatten out a whole struct (record) into a list.
+;; [2006.03.01] 
+;;<br>  Flatten out a whole struct (record) into a list.
+;;<br>  This handles cyclic structures.
 (define (deep-reg:struct->list x)
-  (cond
-   [(pair? x) (cons (deep-reg:struct->list (car x))
-		    (deep-reg:struct->list (cdr x)))]
-   [(vector? x) (vector-map deep-reg:struct->list x)]
-   [(reg:struct? x) 
-    (map deep-reg:struct->list (reg:struct->list x))]
-   [(atom? x) x]
-   [else (error 'deep-reg:struct->list "what on earth is this object? ~a" x)]))
+  (let ([touched (make-default-hash-table)]) 
+      (let loop ((x x))
+	(cond
+	 [(hashtab-get touched x) => (lambda (v) v)]
+	 [(pair? x) 
+	  ;; Add the original cell to the touched list.
+	  (let ([newcell (cons #f #f)])
+	    ;; Associate the old cell with the new cell.
+	    (hashtab-set! touched x newcell)
+	    (set-car! newcell (loop (car x)))
+	    (set-cdr! newcell (loop (cdr x)))
+	    newcell)]
+	 [(vector? x) 
+	  (let ([newvec (make-vector (vector-length x) #f)])
+	    (hashtab-set! touched x newvec)
+	    (for i = 0 to (sub1 (vector-length x))
+		 (vector-set! newvec i (loop (vector-ref x i))))
+	    newvec)]
+	 [(reg:struct? x)
+	  (let ([newlst (reg:struct->list x)])
+	    (hashtab-set! touched x newlst)
+	    (let innerloop ([lst (cdr newlst)])
+	      (unless (null? lst)
+		(set-car! lst (loop (car lst)))
+		(innerloop (cdr lst))))
+	    newlst)]
+	 [(atom? x) x]
+	 [else (error 'deep-reg:struct->list "what on earth is this object? ~a" x)]))))
    
 ;=============================================================================
 
@@ -742,6 +764,22 @@
     ["Reunique names #2"
      (reunique-names '(foo_3 (bar_3) foo_43 foo_3 (bar_3 bar_4)))
      (foo (bar) foo_1 foo (bar bar_1))]
+
+    ["deep reg:struct->list"
+     (let* ([v (vector 'a 'b)]
+	   [s (list 1 v 2)])       
+       (reg:define-struct (foo a b))
+       (vector-set! v 0 s)
+       (set-car! s v)
+       (let ([foo (make-foo 1 2)])
+	 (set-foo-b! foo foo)
+	 (set-foo-a! foo s)
+	 (deep-reg:struct->list foo)
+	 ))
+     ,(lambda (x)
+	(and (list? x)
+	     (= (length x) 3)
+	     (equal? (car x) "foo")))]
     ))
 
 (define test-this (default-unit-tester "regiment_helpers.ss: Regiment-specific utils." these-tests))
