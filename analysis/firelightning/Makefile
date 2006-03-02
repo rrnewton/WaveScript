@@ -8,10 +8,13 @@
 #
 # It took 50 minutes to run 250 nodes for a virtual "hour".
 
-all: 
+all: world.sim allruns
 
 
+world.sim:
+	./deadsimple_alarm/create_topology.ss world.sim
 
+allruns:
 
 # This runs the simulation while also running the analysis.
 # NOTE: Have to make sure the logger is flushing each of its writes.
