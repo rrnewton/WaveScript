@@ -41,6 +41,8 @@
 
 	  regiment-print-params
 
+	  test-regiment_helpers
+
 	  )
 
   (import prim_defs)

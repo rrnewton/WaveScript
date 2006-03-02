@@ -21,8 +21,8 @@
    ) ;; End provide
 
   (chezimports ;constants
-               (except helpers   test-this these-tests)
-	       (except regiment_helpers   test-this these-tests)
+               (except helpers           test-this these-tests)
+	       (except regiment_helpers  test-this these-tests)
 	       (except simulator_alpha   test-this these-tests)
 	       )
 ; ================================================================================

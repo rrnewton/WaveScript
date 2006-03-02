@@ -397,12 +397,6 @@
 ;; [2005.10.03] Can only be 'none right now.  Can implement other kinds of stopping failure at some point.
 (define-regiment-parameter simalpha-failure-model 'none)
 
-;; This is a read-only parameter set by the system.  
-;; It is used by the simulator to determine link quality.  <br>
-;; The function currently takes two node positions and returns a transmission probability. <br>
-;;   NodePos, NodePos -> MsgProb1-100
-;(define simalpha-connectivity-function (make-parameter 'uninitialized (lambda (x) x)))
-
 ;; Controls whether dbg print statements happen.  Can be changed dynamically.
 (define-regiment-parameter simalpha-dbg-on #t)
 

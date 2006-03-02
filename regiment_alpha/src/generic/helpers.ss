@@ -613,31 +613,46 @@
 
 ;;; Procedures for manipulating sets.
 
-(define set?
-  (lambda (ls)
-    (or (null? ls)
-        (and (not (memq (car ls) (cdr ls)))
-             (set? (cdr ls))))))
+#;
+(define genmember
+  (lambda (eqfun)
+    (cond
+     [(eq? eqfun eq?) memq]
+     [(eq? eqfun equal?) member]
+     [else (error 'genmember "unsupported eq-fun: ~a\n" eqfun)])))
+;    (lambda (x ls)
+;      (
+
+;; eq? based:
+(define (set? ls)
+  (or (null? ls)
+      (and (not (member (car ls) (cdr ls)))
+	   (set? (cdr ls)))))
+(define (setq? ls)
+  (or (null? ls)
+      (and (not (memq (car ls) (cdr ls)))
+	   (set? (cdr ls)))))
 
 ;; Inefficient for ordered types:
 (define (subset? l1 l2)
-  (and (andmap (lambda (a) (member a l2))
-	       l1)
-       #t))
+  (andmap (lambda (a) (member a l2)) l1))
+(define (subsetq? l1 l2)
+  (andmap (lambda (a) (member a l2)) l1))
 
-;(define set-eq?
-
-(define set-equal?
-  (lambda (lst1 lst2)
-    (letrec ((loop (lambda (lst1 lst2)
-                     (cond
-                       [(and (null? lst1) (null? lst2)) #t]
-                       [(or (null? lst1) (null? lst2)) #f]
-                       [(member (car lst1) lst2) (loop (cdr lst1) (list-remove-all (car lst1) lst2))]
-                       [else #f]))))
-      (if (and (set? lst1) (set? lst2))
-          (loop lst1 lst2)
-          (error 'set-equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2)))))
+(define set-comparator
+  (lambda (testfun memfun)
+    (lambda (lst1 lst2)
+      (letrec ((loop (lambda (lst1 lst2)
+		       (cond
+			[(and (null? lst1) (null? lst2)) #t]
+			[(or (null? lst1) (null? lst2)) #f]
+			[(memfun (car lst1) lst2) (loop (cdr lst1) (list-remove-all (car lst1) lst2))]
+			[else #f]))))
+	(if (and (testfun lst1) (testfun lst2))
+	    (loop lst1 lst2)
+	    (error 'set-eq/equal? "must take two sets, improper arguments: ~s ~s" lst1 lst2))))))
+(define set-eq?    (set-comparator setq? memq))
+(define set-equal? (set-comparator set?  member))
 
 ;; [2005.10.11]  Added reverse! to make the result in the same order as orig. <br>
 ;; NOTE: Uses eq? !

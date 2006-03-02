@@ -190,7 +190,8 @@
     (hashtab-for-each 
      (lambda (k pr)
        (let ([tok (caar pr)] [rec (cdar pr)])
-	 (let* ([lst (reg:struct->list rec)]
+	 ;; Cdr to remove the first element, which is the struct-name:
+	 (let* ([lst (cdr (reg:struct->list rec))]
 		[len (length lst)])
 	   (if (>= len 4)
 	       (mvlet ([(parent origin hops version) (retrieve-grad-args lst)])

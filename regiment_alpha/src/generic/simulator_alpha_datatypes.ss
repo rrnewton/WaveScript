@@ -8,6 +8,151 @@
 ;;  |-> SIMOBJECT     -- State associated with the simulator
 ;;      |-> GOBJECT   -- State associated with the visualization of the simulator.
 
+
+(module simulator_alpha_datatypes mzscheme
+    (require (all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct     
+	     (lib "include.ss")
+
+	     (all-except "../plt/constants.ss" test-this these-tests)
+	     (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)  
+	     "../plt/iu-match.ss"	     
+	     "../plt/hash.ss"
+	     "../plt/hashtab.ss"
+	     "../plt/logfiles.ss"
+	     )
+    (provide 
+;	 simalpha-total-messages
+;	 simalpha-total-tokens
+
+	 logger
+	 evntlessthan 
+	 soc-return-buffer
+	 escape-alpha-sim
+	 posdist
+
+	 ;; Global parameter: temporary, for debugging:
+	 global-graph	 
+
+	 token->key key->token
+
+	 invcheck-simworld
+	 invcheck-simobject
+	 simtok-equal?
+	 node->simobject ;; Constructor.
+	 bare-msg-object ;; Safe msg-object constructor.
+
+	 ;;==================================================
+	 ;; HACK: FIXME : FIND A BETTER SYSTEM	 
+	 make-simworld
+	 simworld?
+	 simworld-graph 
+	 simworld-object-graph 
+	 simworld-all-objs 
+	 simworld-obj-hash 
+	 simworld-scheduler-queue
+	 simworld-vtime
+	 simworld-led-toggle-states
+	 simworld-connectivity-function
+	 set-simworld-graph!
+	 set-simworld-object-graph!
+	 set-simworld-all-objs!
+	 set-simworld-obj-hash!
+	 set-simworld-scheduler-queue!
+	 set-simworld-vtime!
+	 set-simworld-led-toggle-states!
+	 set-simworld-connectivity-function!
+
+	 make-simevt
+	 simevt?
+	 simevt-vtime 
+	 simevt-msgobj
+	 set-simevt-vtime!
+	 set-simevt-msgobj!
+
+	 make-simtok
+	 simtok?
+	 simtok-name 
+	 simtok-subid
+	 set-simtok-name!
+	 set-simtok-subid!
+	 
+	 make-node
+	 node?
+	 node-id
+	 node-pos
+	 set-node-id!
+	 set-node-pos!
+	 	 
+	 make-simobject
+	 simobject?
+	 simobject-node
+	 simobject-I-am-SOC
+	 simobject-token-store
+	 simobject-incoming-msg-buf 
+	 simobject-local-msg-buf
+	 simobject-outgoing-msg-buf
+	 simobject-timed-token-buf 
+	 simobject-local-sent-messages
+	 simobject-local-recv-messages
+	 simobject-token-table
+	 simobject-redraw 
+	 simobject-gobj 
+	 simobject-homepage 
+	 simobject-scheduler 
+	 simobject-meta-handler	       	     
+	 simobject-worldptr 
+	 set-simobject-node!
+	 set-simobject-I-am-SOC!
+	 set-simobject-token-store!
+	 set-simobject-incoming-msg-buf!
+	 set-simobject-local-msg-buf!
+	 set-simobject-outgoing-msg-buf!
+	 set-simobject-timed-token-buf!
+	 set-simobject-local-sent-messages!
+	 set-simobject-local-recv-messages!
+	 set-simobject-token-table!
+	 set-simobject-redraw!
+	 set-simobject-gobj!
+	 set-simobject-homepage!
+	 set-simobject-scheduler!
+	 set-simobject-meta-handler!
+	 set-simobject-worldptr!
+
+	 make-gobject
+	 gobject?
+	 gobject-circ
+	 gobject-rled
+	 gobject-gled
+	 gobject-bled
+	 gobject-title
+	 gobject-label
+	 gobject-edgelist
+	 set-gobject-circ!
+	 set-gobject-rled!
+	 set-gobject-gled!
+	 set-gobject-bled!
+	 set-gobject-title!
+	 set-gobject-label!
+	 set-gobject-edgelist!
+
+	 make-msg-object
+	 msg-object?
+	 msg-object-token
+	 msg-object-sent-time
+	 msg-object-parent
+	 msg-object-to
+	 msg-object-args
+	 set-msg-object-token!
+	 set-msg-object-sent-time!
+	 set-msg-object-parent!
+	 set-msg-object-to!
+	 set-msg-object-args!
+	 ;;==================================================
+	 	
+	 )
+
+    (chezimports scheme)
+
 ; =======================================================================
 
 ;; This structure contains all the global data needed by a simulation.
@@ -31,6 +176,55 @@
 	   ;;  2) a function of time, representing the loss percentage over time
 	   connectivity-function
 	   ))
+;; Sanity checker for simworld.
+;; Fairly heavy weight, probably don't want to run constantly.
+;; Keep this up to date with changing data structure invariants. 
+;;
+;; This is not fully defensive, so if there is a corruption in the
+;; data-structure, you may get any number of different of errors.  But
+;; you will get some kind of error.  Anything that goes through is as
+;; clean as we can certify.
+;; 
+;; You can improve the error messages as needed.  Even on the fly if
+;; you encounter a violation.
+(define (invcheck-simworld w)
+  (or (and (simworld? w)
+	   ; Check graph-of-nodes
+	   (let ((g (simworld-graph w)))
+	     (or (and (list? g)         ;; Don't have to check explicitely
+		      (andmap list? g)
+		      (andmap (lambda (row) (andmap node? row)) g))
+		 (error 'invcheck-simworld "graph failed invariant: ~s" g)))
+	   ; Check graph-of-simobject, plus sanity check simobjects:
+	   (let ((og (simworld-object-graph w)))
+	     (or (and (list? og)
+		      (andmap list? og)
+		      (andmap (lambda (row) (andmap invcheck-simobject row)) og)
+		      ;; Make sure the simobjects correspond physically to the nodes.
+		      (set-eq? (map simobject-node (map car og))
+			       (map car (simworld-graph w))))	    
+		 (error 'invcheck-simworld "object graph failed invariant: ~s" og)))
+	   ; Make sure the hash-table contains the same substance as the object-graph.
+	   (let ((hsh (hashtab->list (simworld-obj-hash w))))
+	     (for-each (lambda (pr) 
+			 (DEBUGASSERT (= (car pr) (node-id (simobject-node (cdr pr))))))
+	       hsh)
+	     (DEBUGASSERT (set-eq? (map cdr hsh) (map car (simworld-object-graph w)))))
+	   ; Check vtime.
+	   (DEBUGASSERT (integer? (simworld-vtime w)))
+	   ; Check led-toggle-states
+	   (let ([hsh (hashtab->list (simworld-led-toggle-states w))]
+		 [ids (map node-id (map car (simworld-graph w)))])
+	     (or (andmap (lambda (pr)
+			   (and (memq (car pr) ids)
+				(subsetq? (cdr pr) '(red green blue))))
+			 hsh)))
+	   ; Check connectivity-function, not much to say here.
+	   (or (not (simworld-connectivity-function w))
+	       (procedure? (simworld-connectivity-function w)))
+	   )
+      (error 'invcheck-simworld "invariant failure.\n")))
+
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.
 (reg:define-struct (simevt vtime msgobj))
@@ -66,7 +260,8 @@
 			    edgelist ;; An association list binding neighbor ID to a graphical line object.
 			    ))
 ;; Optionally put in a guarded constructor:
-#;(DEBUGMODE
+#;
+(DEBUGMODE
  (define make-gobject
    (let ((orig make-gobject))
      (lambda (c r g b t l e)
@@ -148,7 +343,12 @@
        
        (set-simobject-worldptr! so world)
        so)]))
-
+;; And then this is the invariant-checker for simobjects.
+(define (invcheck-simobject so)
+  (or (and (simobject? so)
+	   ;; TODO: FINISH
+       )
+      (error 'invcheck-simobject "failed invariant:\n ~s\n" so)))
 
 ;; This structure represents a message transmitted across a channel.
 ;; None of these should be mutated:
@@ -335,3 +535,6 @@
 (define (posdist a b)
   (sqrt (+ (expt (- (car a) (car b)) 2)
 	   (expt (- (cadr a) (cadr b)) 2))))
+
+) ;; End module
+

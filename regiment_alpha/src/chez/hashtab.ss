@@ -35,10 +35,14 @@
 	  (IFDEBUG  
 	   (begin
 	     (define (hashtab-get ht k)
-	       (if (not (immediate? k)) (error 'hashtab-get "this key is not an atom: ~s" k))
+	       ;; [2006.03.01] Allowing non-immediate indices, because
+	       ;; I want to use hash tables in this way now.  Both
+	       ;; Chez and PLT support eq? style indexing behavior.
+
+	       ;(if (not (immediate? k)) (error 'hashtab-get "this key is not an atom: ~s" k))
 	       (#%get-hash-table ht k #f))
 	     (define (hashtab-set! ht k v)
-	       (if (not (immediate? k)) (error 'hashtab-set! "this key is not an atom: ~s" k))
+	       ;(if (not (immediate? k)) (error 'hashtab-set! "this key is not an atom: ~s" k))
 	       (#%put-hash-table! ht k v)))
 	   (begin 
 	     (define (hashtab-get ht k) (#%get-hash-table ht k #f))

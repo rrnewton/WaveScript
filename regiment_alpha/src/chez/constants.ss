@@ -50,11 +50,13 @@
 
   (define reg:struct? record?)
   ;; Uses introspection to make a record spill its guts.
+  ;; [2006.03.01] Modified this to add the record name in the front.
   (define (reg:struct->list x)
     (let ((type (#%record-type-descriptor x)))
-      (map (lambda (name)
-	     ((#%record-field-accessor type name) x))
-	(#%record-type-field-names type))))
+      (cons (string-copy (record-type-name type))
+       (map (lambda (name)
+	      ((#%record-field-accessor type name) x))
+	 (#%record-type-field-names type)))))
 
   ;; Defined using 
   ;;======================================================================
