@@ -333,7 +333,7 @@
   (set! realtime (real-time))
 
   ; =======================================================================
-;; Then, run loop.  This is the main loop that drives the simulation.
+;; Then, run loop.  This is the MAIN LOOP that drives the simulation.
 (let main-sim-loop ()
   ; Pause if there is a request to do so:
   (if (simalpha-pause-hook) 
@@ -414,6 +414,10 @@
 
 	;; Finally, we push outgoing-buffers to incoming-buffers:
 	(for-each launch-outgoing (simworld-all-objs sim))
+
+	;; If we're in debug mode we check the datatype invariants on the world.
+	(DEBUGMODE (invcheck-simworld sim))
+	;; Then it's time for another time-step.
 	(main-sim-loop)))]))
 ) ; End run-alpha-simple-scheduler 
 
