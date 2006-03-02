@@ -101,18 +101,6 @@
    [else (error base-station? "bad input: ~s" x)]))
 
 (define (id x) x)
-
-;; This is done safely so that it cannot conflict with the BASE_ID or NULL_ID.
-(define (random-node) 
-  (make-node 
-   (let loop ((id (reg:random-int 1000)))
-     (if (or (eq? id BASE_ID) 
-	     (eq? id NULL_ID))
-	 (loop (reg:random-int 1000))
-	 id))
-   (list (reg:random-int (simalpha-world-xbound))
-	 (reg:random-int (simalpha-world-ybound)))
-   ))
   
 (define (dotted-append ls ob)
   (let loop ((ls ls))

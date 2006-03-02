@@ -82,6 +82,11 @@
 					;(quote expr)
 		     )))]
       )))
+(define-syntax ASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) 
+       #'(if expr #t (error 'ASSERT "failed: ~s" #'expr))])))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
@@ -316,7 +321,9 @@
 ; [2005.11.14] I'm segregating and renaming the parameters that are
 ; used by the tossim interface and simulator alpha.
 
-(define-regiment-parameter sim-num-nodes 30)
+(define-regiment-parameter sim-num-nodes 30 
+  (lambda (x) (if (and (integer? x) (>= x 1))
+		  x (error 'sim-num-nodes "must be a positive integer"))))
 
 ;; Controls the time-out for both simulator-alpha and tossim. <br>
 ;; Valid values:                                              <br>

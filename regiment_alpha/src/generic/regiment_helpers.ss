@@ -23,8 +23,8 @@
 (define randomize-list
   (lambda (ls)
     (let* ([vec (list->vector ls)])
-      (vector->list (randomize-vector vec)))))
-(define (randomize-vector vec)
+      (vector->list (randomize-vector! vec)))))
+(define (randomize-vector! vec)
   (let ([len (vector-length vec)])
     (let ([swap (lambda (i j)
 		  (let ([temp (vector-ref vec i)])

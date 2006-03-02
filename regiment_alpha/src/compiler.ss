@@ -518,6 +518,6 @@
 (define-id-syntax d6 (load-regiment "demos/regiment/static_elab.rs"))
 
 
-
-
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
+
+(define-id-syntax ttt (identifier-syntax (time (test-units)))) ;; uber shorthand

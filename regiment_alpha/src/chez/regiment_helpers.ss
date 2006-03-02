@@ -6,7 +6,7 @@
     (
 
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
-	  randomize-list randomize-vector list-get-random
+	  randomize-list randomize-vector! list-get-random
 
 	  sense-spatial-sine-wave
 	  sense-dist-from-origin 
@@ -56,6 +56,13 @@
   ;;; Scheme RNG, so there is no proper seperation which would be
   ;;; necessary for other concurrently running code to not ruin the
   ;;; simulators determininms.)
+
+  ;;; TODO: FIXME: [2006.03.01]
+  ;;; I should overhall this.  Really, what I want is a separate RNG for simulator-alpha.
+  ;;; And then I'd like another seperate RNG for the sensor data-generator.
+
+  ;; NOTE: This is currently unisolated anyways.  So it's just a
+  ;; common interface into Chez/PLT's RNG's.  Need to go further than that.
 
   ;; A random integer. 
   (define reg:random-int

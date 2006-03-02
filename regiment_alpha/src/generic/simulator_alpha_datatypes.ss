@@ -188,42 +188,38 @@
 ;; You can improve the error messages as needed.  Even on the fly if
 ;; you encounter a violation.
 (define (invcheck-simworld w)
-  (or (and (simworld? w)
-	   ; Check graph-of-nodes
-	   (let ((g (simworld-graph w)))
-	     (or (and (list? g)         ;; Don't have to check explicitely
-		      (andmap list? g)
-		      (andmap (lambda (row) (andmap node? row)) g))
-		 (error 'invcheck-simworld "graph failed invariant: ~s" g)))
-	   ; Check graph-of-simobject, plus sanity check simobjects:
-	   (let ((og (simworld-object-graph w)))
-	     (or (and (list? og)
-		      (andmap list? og)
-		      (andmap (lambda (row) (andmap invcheck-simobject row)) og)
-		      ;; Make sure the simobjects correspond physically to the nodes.
-		      (set-eq? (map simobject-node (map car og))
-			       (map car (simworld-graph w))))	    
-		 (error 'invcheck-simworld "object graph failed invariant: ~s" og)))
-	   ; Make sure the hash-table contains the same substance as the object-graph.
-	   (let ((hsh (hashtab->list (simworld-obj-hash w))))
-	     (for-each (lambda (pr) 
-			 (DEBUGASSERT (= (car pr) (node-id (simobject-node (cdr pr))))))
-	       hsh)
-	     (DEBUGASSERT (set-eq? (map cdr hsh) (map car (simworld-object-graph w)))))
-	   ; Check vtime.
-	   (DEBUGASSERT (integer? (simworld-vtime w)))
-	   ; Check led-toggle-states
-	   (let ([hsh (hashtab->list (simworld-led-toggle-states w))]
-		 [ids (map node-id (map car (simworld-graph w)))])
-	     (or (andmap (lambda (pr)
-			   (and (memq (car pr) ids)
-				(subsetq? (cdr pr) '(red green blue))))
-			 hsh)))
-	   ; Check connectivity-function, not much to say here.
-	   (or (not (simworld-connectivity-function w))
-	       (procedure? (simworld-connectivity-function w)))
-	   )
-      (error 'invcheck-simworld "invariant failure.\n")))
+  (ASSERT (simworld? w))
+  ;; Check graph-of-nodes
+  (let ((g (simworld-graph w)))
+    (ASSERT (list? g))         ;; Don't have to check explicitely
+    (ASSERT (andmap list? g))
+    (ASSERT (andmap (lambda (row) (andmap node? row)) g)))  
+  ;; Check graph-of-simobject, plus sanity check simobjects:
+  (let ((og (simworld-object-graph w)))
+    (ASSERT (list? og))
+    (ASSERT (andmap list? og))
+    (ASSERT (andmap (lambda (row) (andmap invcheck-simobject row)) og))
+    ;; Make sure the simobjects correspond physically to the nodes.
+    (ASSERT (set-eq? (map simobject-node (map car og))
+			  (map car (simworld-graph w)))))
+  ;; Make sure the hash-table contains the same substance as the object-graph.
+  (let ((hsh (hashtab->list (simworld-obj-hash w))))
+    (for-each (lambda (pr) 
+		(ASSERT (= (car pr) (node-id (simobject-node (cdr pr))))))  hsh)
+    (ASSERT (set-eq? (map cdr hsh) (map car (simworld-object-graph w)))))
+  ;; Check vtime.
+  (ASSERT (integer? (simworld-vtime w)))
+  ;; Check led-toggle-states
+  (let ([hsh (hashtab->list (simworld-led-toggle-states w))]
+	[ids (map node-id (map car (simworld-graph w)))])
+    (for-each (lambda (pr)
+		(ASSERT (memq (car pr) ids))
+		(ASSERT (subsetq? (cdr pr) '(red green blue))))
+      hsh))
+  ;; Check connectivity-function, not much to say here.
+  (ASSERT (or (not (simworld-connectivity-function w))
+		   (procedure? (simworld-connectivity-function w))))
+  #t)
 
 
 ;; [2005.03.13]  Adding this to represent events-to-happen in the simulator.

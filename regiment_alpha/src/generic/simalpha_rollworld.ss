@@ -8,6 +8,19 @@
 
 ;;; Constructing and maintaining world objects.
 
+;; Utility for generating a node with random id in random location.
+;; This is done safely so that it cannot conflict with the BASE_ID or NULL_ID.
+(define (random-node) 
+  (make-node 
+   (let loop ((id (reg:random-int 1000)))
+     (if (or (eq? id BASE_ID) 
+	     (eq? id NULL_ID))
+	 (loop (reg:random-int 1000))
+	 id))
+   (list (reg:random-int (simalpha-world-xbound))
+	 (reg:random-int (simalpha-world-ybound)))
+   ))
+
 ;; This is the function (of no arguments) for creating a new world
 ;; simulation.  It takes no arguments because all the decisions
 ;; affecting the kind of topology to create are made based upon the
@@ -66,16 +79,30 @@
       (if (not (memq connectivity '(0 100))) (printf "connectivity: ~s\n" connectivity))
       (not (eqv? 0 connectivity))))
   
+  ;; This generates a valid set of node-ids.  Either randomly or in order.
+  ;; [2006.03.01] Added the restriction for now that ids be unique.
+  (define (roll-node-ids)
+    ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
+    (cons BASE_ID 
+	  (if (simalpha-consec-ids)
+	      ;; Is BASE_ID in this 1-n span?  If so have to ensure no dups.
+	      (if (and (>= BASE_ID 1) (< BASE_ID (sim-num-nodes)))
+		  (remq BASE_ID (cdr (iota (add1 (sim-num-nodes)))))
+		  (cdr (iota (sim-num-nodes))))
+	      (let loop ((n (sub1 (sim-num-nodes))) (acc ()))
+		(if (zero? n) acc
+		    (let ([x (reg:random-int 1000)])
+		      (if (or (memq x acc) (= x BASE_ID) (= x NULL_ID))
+			  (loop n acc)
+			  (loop (sub1 n) (cons x acc)))))))))
+  
   ; --------------------------------------------------
   ;; Function that randomly places nodes.
   (define (make-random-topology)    
     ;; Old method, doesn't produce connected graph:
     (let ((seed (map (lambda (_) (random-node)) (iota (sim-num-nodes)))))
-      (if (simalpha-consec-ids)
-	  (for-each set-node-id! 
-		    seed (iota (length seed))))
-      ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
-      (set-node-id! (car seed) BASE_ID)
+      (for-each set-node-id! seed (roll-node-ids)) 
+
       ;; Connect the graph:
       ;; TODO: Make the graph representation better.  Should cache the connectivity functions on the edges.
       (set! seed
@@ -95,19 +122,15 @@
   ;; Places nodes randomly, but each node must be connected to the nodes placed before.
   (define (make-connected-topology)
     ;; This might have some serious biases in the layout and distribution of degree.
-    (let ((start-node (let ((x (random-node)))				   
-			(set-node-id! x BASE_ID)
-			x)))
+    (let ((start-node (random-node)))
       (let loop ((graph (list (list start-node))) (count (sub1 (sim-num-nodes))))
-					;		 (printf "\nLooping: graph:\n")
-					;		 (pretty-print graph)
 	(if (<= count 0)
-	    graph
+	    (begin 
+	      ;; Randomly assign node-ids
+	      (for-each set-node-id! (randomize-list (map car graph)) (roll-node-ids))
+	      ;; Then the graph is ready to return.
+	      graph)
 	    (let ((newnode (random-node)))
-	      ;; Here we number them as we go.  
-	      ;; This will result in a non-random spatial distribution of node-ids.
-	      (if (simalpha-consec-ids)
-		  (set-node-id! newnode count))
 	      (let ((nbr-rows (filter (lambda (row) (collide? newnode (car row))) graph)))
 		(if (null? nbr-rows)
 		    (loop graph count)
@@ -143,14 +166,11 @@
 
       (for i = 0 to (sub1 num-nodes) ;; Allocate the nodes.
 	   (vector-set! seed i (random-node)))
-      (if (simalpha-consec-ids)
-	  (begin (set-node-id! (vector-ref seed 0) BASE_ID)
-		 (for i = 1 to (sub1 num-nodes)
-		      (set-node-id! (vector-ref seed i) i))
-		 ;; Have to mix it up after that
-		 (randomize-vector seed))
-	  ;; Otherwise a random node becomes base:
-	  (set-node-id! (vector-ref seed (reg:random-int num-nodes)) BASE_ID))
+
+      ;; Set node ids randomly:
+      (for-each set-node-id! (randomize-list (vector->list seed))
+		(roll-node-ids))
+
       ;; Now we tile them in a gridlike fashion, and perturb them.
       (for i = 0 to (sub1 num-nodes) 
 	   (set-node-pos! (vector-ref seed i)
@@ -196,8 +216,10 @@
 		       allobs)
 	     h)]
 	  [scheduler-queue '()])
-
+     
      (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
+     ;; There had better be no duplicate identifiers.  We don't allow this for now.
+     (DEBUGASSERT (set? (map node-id (map car graph))))
 
      ;; Set I-am-SOC on every node:
      (for-each (lambda (ob)
@@ -213,6 +235,10 @@
      
      (set-simworld-led-toggle-states! theworld (make-default-hash-table))
      (set-simworld-connectivity-function! theworld connectivity-fun)
+
+     ;; Make sure the world's sane before we release it!
+     (DEBUGMODE (invcheck-simworld theworld))
+     
      theworld))  ;; End fresh-simulation
 
 ; ======================================================================

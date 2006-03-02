@@ -6,7 +6,7 @@
 	(provide 
          ;; Syntax:
          IFDEBUG
-         DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT
+         DEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
          IF_GRAPHICS
          REGIMENT_DEBUG
          chezimports ;; To make the common module facility work.
