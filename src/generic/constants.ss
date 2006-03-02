@@ -58,6 +58,10 @@
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
 (define-syntax DEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
 
+;; This is for debug annotations that take a really long time.
+;; For now it's enabled at the same time that DEBUGMODE is.
+(define-syntax UBERDEBUGMODE (syntax-rules () [(_ expr ...) (IFDEBUG (list expr ...) ())]))
+
 ;; DEBUGASSERT is another piece of sugar.  Asserts a boolean value if IFDEBUG is activated.
 #;(define-syntax DEBUGASSERT
   (syntax-rules () 

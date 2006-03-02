@@ -416,7 +416,7 @@
 	(for-each launch-outgoing (simworld-all-objs sim))
 
 	;; If we're in debug mode we check the datatype invariants on the world.
-	(DEBUGMODE (invcheck-simworld sim))
+	(UBERDEBUGMODE (invcheck-simworld sim))
 	;; Then it's time for another time-step.
 	(main-sim-loop)))]))
 ) ; End run-alpha-simple-scheduler 
