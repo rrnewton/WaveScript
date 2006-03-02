@@ -1,9 +1,13 @@
 #!/bin/sh
 
 
-for i in `seq 1 10`;
+#for i in `seq 1 10`;
+#do
+#  for j in `seq 1 6`;
+
+for i in `seq 1 1`;
 do
-  for j in `seq 1 6`;
+  for j in `seq 1 1`;
     do
 	../deadsimple_alarm/analyze_vs_groundtruth.ss run -param $i -noise $j
   done 

@@ -866,7 +866,7 @@
 		     [(,tm ,rest ...) (guard (list? tm))
 		      (define (run-compiled)
 			(if (simalpha-write-sims-to-disk)
-			    (let ((out (open-output-file "_genned_node_code.ss" 'replace)))			      
+			    (let ((out (open-output-file "_genned_node_code.ss" 'replace)))
 			      (parameterize ([print-level #f]
 					     [pretty-maximum-lines #f]
 					     [pretty-line-length 150]

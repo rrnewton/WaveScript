@@ -29,6 +29,7 @@
 
 
 ;; Read the file from disk, desugar the concrete syntax appropriately.
+;; .returns Two values: desugared program, and parameters.
 (define read-regiment-source-file
   (lambda (fn)
     (define (desugar-token e)      
@@ -106,7 +107,7 @@
       ;; User params override those set in the code:
       (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
       ;; Set all the params before running things:
-      (for-each eval params) ;; [2005.12.02] Changing this so the params stick.  Better for re-running.
+      (for-each eval params) ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
       (let ((result ;(with-evaled-params params
 			;  (lambda ()
 			    (parameterize ([pass-names passes])

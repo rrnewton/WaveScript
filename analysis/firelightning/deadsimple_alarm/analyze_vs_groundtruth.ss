@@ -5,8 +5,15 @@ exec regiment i --script "$0" ${1+"$@"};
 
 ;;;; .title Analyze Dead-simple fire monitoring vs. groundtruth.
 
-;;;; Usage: ./<script-name> <outputname> <gradient-mode> <retry-delay> <max-retries>
-;;;;   <br><br>
+;;;; TODO: POSSIBLE OTHER CONTROLS: <gradient-mode> <retry-delay> <max-retries>
+
+;;;;<br>  Usage: ./<script-name> <mode> <options>
+;;;;<br>  Mode: 'run' or 'analyze'
+;;;;<br>  Options: 
+;;;;<br>     -l <logfile>
+;;;;<br>     -o <resultsfile>
+;;;;<br>     -param <n>   Set the value of 'varied-param'.  In this case it changes the local temp threshold.
+;;;;<br>     -noise <n>   Set the level of heat-noise-magnitude, this is stddev in heat readings
 
 ;;;; This script uses the deadsimple_alarm.rs query to read *all* the
 ;;;; temperature readings in the network (over a threshold).  The
@@ -14,12 +21,6 @@ exec regiment i --script "$0" ${1+"$@"};
 
 
 ;----------------------------------------
-;; Load the compiler.
-;; UNNECESSARY, now I run with regiment i
-#; (let ((objectfile (format "~a/src/build/~a/compiler_chez.so" (getenv "REGIMENTD") (machine-type))))
-  (if (file-exists? objectfile) 
-      (load objectfile)
-      (load (string-append (getenv "REGIMENTD") "/src/compiler_chez.ss"))))
 
 ;(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 (define curlogfile (format "./deadsimple.log.gz"))
@@ -45,23 +46,27 @@ exec regiment i --script "$0" ${1+"$@"};
        (parameterize ([current-output-port devnull]
 					;[console-output-port devnull]
 		      )
-	 (let loop ((engine 
-		     (make-engine 
-		      (lambda () 
-			(load-regiment (++ REGIMENTD "/demos/firelightning/deadsimple_alarm.rs")
-				       '[simulation-logger curlogfile]
-				       ;;'[sim-timeout 500000]
-				       )))))
-	   ;; Print progress using globally stored vtime:
-	   (if (simalpha-current-simworld)
-	       (fprintf real-console " ~a" (simworld-vtime (simalpha-current-simworld)))
-	       (display #\. real-console))
-	   (flush-output-port real-console)
-	   (engine 75000000 ;536870911
-		   (lambda (time-remaining val) (void)) ;; Execute purely for effect.
-		   loop))
-
-	 (printf "Simulation finished.\n")
+#|
+	 
+	 (run-simulator-alpha
+	  (run-compiler 
+	 ))
+	  |# 
+	   	 
+	 (progress-dots 
+	  (lambda ()
+	    (load-regiment (++ (REGIMENTD) "/demos/firelightning/deadsimple_alarm.rs")
+			   '[simulation-logger curlogfile]
+			   ;;'[sim-timeout 500000]
+			   ))
+	  75000000 ;536870911
+	  (lambda () 
+	    (if (simalpha-current-simworld)
+		(fprintf real-console " ~a" (simworld-vtime (simalpha-current-simworld)))
+		(display #\. real-console))
+	    (flush-output-port real-console)))
+ 
+	 (fprintf real-console "\nSimulation finished.\n")
 	 (close-output-port devnull)
 	 (collect 4)))]
 
@@ -254,13 +259,14 @@ exec regiment i --script "$0" ${1+"$@"};
 				(printf "    (Ignored detection: ~a)\n" head)
 				(inner (add1 falsepos) (stream-cdr detects)))
 			      ))))])))))
-	)] ;; End "analyze" implementation.
+     ] ;; End "analyze" implementation.
     ))
 
 ;; Body of the script:
 
+(define (thescript script-args)
 (let ([run-modes '()])
-(let loop ((x (map string->symbol (command-line-arguments))))
+(let loop ((x (map string->symbol script-args)))
   (match x
     [() ;(inspect (vector run-modes curlogfile))
      ;(set! curlogfile (format "./logs/deadsimple_30n_1hr_thresh~a_noise~a.log.gz" 
@@ -277,6 +283,9 @@ exec regiment i --script "$0" ${1+"$@"};
     ;; Actions:
     [(,action ,rest ...) (guard (memq action '(run analyze)))
      (set! run-modes (snoc action run-modes)) (loop rest)]
-    [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)])))
+    [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)]))))
+
+(define (go) (thescript (command-line-arguments)))
+(go)
 
 ;(new-cafe)
