@@ -520,4 +520,4 @@
 
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
 
-(define-id-syntax ttt (identifier-syntax (time (test-units)))) ;; uber shorthand
+(define-id-syntax t (time (test-units))) ;; uber shorthand
