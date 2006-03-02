@@ -8,6 +8,10 @@
 #
 # It took 50 minutes to run 250 nodes for a virtual "hour".
 
+all: 
+
+
+
 
 # This runs the simulation while also running the analysis.
 # NOTE: Have to make sure the logger is flushing each of its writes.

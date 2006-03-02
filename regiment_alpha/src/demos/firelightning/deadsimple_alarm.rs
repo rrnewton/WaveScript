@@ -21,7 +21,9 @@
 
   ;[sim-timeout 2000000]
   ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
-  [sim-timeout 3600000] ;; An hour.
+  ;[sim-timeout 3600000] ;; An hour.
+  ;[sim-timeout 600000] ;; Ten minutes
+  [sim-timeout 60000] ;; One minute
 
   [varied-param 3] ;; Default value for the threshold.
   )

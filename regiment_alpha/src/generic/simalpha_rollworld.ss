@@ -21,6 +21,31 @@
 	 (reg:random-int (simalpha-world-ybound)))
    ))
 
+;; Here we build a new connectivity function based on the current parameter settings.
+;; This is a function which takes two locations and returns either
+;;  1) a number, representing a fixed loss percentage
+;;  2) a function of time, representing the loss percentage over time
+(define (build-connectivity-fun)
+  (case (simalpha-channel-model)
+    [(lossless)
+     (lambda (p1 p2) ;x1 y1 x2 y2)
+       (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
+	 (if (< dist (simalpha-outer-radius))
+	     100
+	     0)))]
+    [(linear-disc)
+     (printf "Got linear disc...\n")
+     (lambda (p1 p2)	
+       (let ((dist (posdist p1 p2))
+	     (outer (simalpha-outer-radius))
+	     (inner (simalpha-inner-radius)))
+					;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
+	 (cond
+	  [(<= dist inner) 100]
+	  [(> dist outer) 0]
+	  [else
+	   (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
+
 ;; This is the function (of no arguments) for creating a new world
 ;; simulation.  It takes no arguments because all the decisions
 ;; affecting the kind of topology to create are made based upon the
@@ -45,32 +70,9 @@
 ;; (There are more topologies in "network_topologies.ss")
 ;;
 ;;   .returns A 'simworld' record.
-(define (fresh-simulation)  
-  
-  ;; Here we build a new connectivity function based on the current parameter settings.
-  ;; This is a function which takes two locations and returns either
-  ;;  1) a number, representing a fixed loss percentage
-  ;;  2) a function of time, representing the loss percentage over time
-  (define connectivity-fun
-    (case (simalpha-channel-model)
-      [(lossless)
-       (lambda (p1 p2) ;x1 y1 x2 y2)
-	 (let ((dist (posdist p1 p2))) ;(sqrt (^ (- x2 x1) 2) (^ (- y2 y1) 2))))
-	   (if (< dist (simalpha-outer-radius))
-	       100
-	       0)))]
-      [(linear-disc)
-       (printf "Got linear disc...\n")
-       (lambda (p1 p2)	
-	 (let ((dist (posdist p1 p2))
-	       (outer (simalpha-outer-radius))
-	       (inner (simalpha-inner-radius)))
-;	   (printf "Considering ~s (~s, ~s) between ~s and ~s\n" dist p1 p2 inner outer)
-	   (cond
-	    [(<= dist inner) 100]
-	    [(> dist outer) 0]
-	    [else
-	     (inexact->exact (floor (* 100 (/ (- outer dist) (- outer inner)))))])))]))
+(define (fresh-simulation)    
+
+  (define connectivity-fun (build-connectivity-fun))
 
   ;; This is our helper function that checks for collisions.
   (define (collide?  n1 n2)
@@ -201,45 +203,13 @@
 		   "unknown node placement strategy: ~s" (simalpha-placement-type))]))
   
   (printf "Rolling fresh simulator world (current srand seed ~a).\n" (reg:get-random-state))
-   
-  ;; TODO, FIXME, need to use a real graph library for this!
-  ;; (One that treats edges with due respect, and that uses hash tables.)
-   (let* ([theworld (make-simworld #f #f #f #f #f #f #f #f)]
-	  [graph (make-topology)]
-;	  [soc (caar graph)]
-          [obgraph (graph-map (lambda (n) (node->simobject n theworld)) graph)]
-          [allobs  (map car obgraph)]
-	  [hash
-	   (let ([h (make-default-hash-table)])
-	     (for-each (lambda (ob)
-			 (hashtab-set! h (node-id (simobject-node ob)) ob))
-		       allobs)
-	     h)]
-	  [scheduler-queue '()])
-     
-     (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
-     ;; There had better be no duplicate identifiers.  We don't allow this for now.
-     (DEBUGASSERT (set? (map node-id (map car graph))))
 
-     ;; Set I-am-SOC on every node:
-     (for-each (lambda (ob)
-		 (set-simobject-I-am-SOC! ob		  
-		  (= (node-id (simobject-node ob)) BASE_ID)))
-	       allobs)
-     (set-simworld-graph! theworld graph)
-     (set-simworld-object-graph! theworld obgraph)
-     (set-simworld-all-objs! theworld allobs)
-     (set-simworld-obj-hash! theworld hash)
-     (set-simworld-scheduler-queue! theworld scheduler-queue)
-     (set-simworld-vtime! theworld 0)
-     
-     (set-simworld-led-toggle-states! theworld (make-default-hash-table))
-     (set-simworld-connectivity-function! theworld connectivity-fun)
+  (let ([theworld (make-simworld (make-topology) #f #f #f #f #f #f #f)])
+    (animate-world! theworld)
+    theworld)
 
-     ;; Make sure the world's sane before we release it!
-     (DEBUGMODE (invcheck-simworld theworld))
-     
-     theworld))  ;; End fresh-simulation
+)  ;; End fresh-simulation
+
 
 ; ======================================================================
 ;; This scrubs all the transient state off an existing simworld.
@@ -312,19 +282,81 @@
 
 ;; This removes all the hash-tables and procedures (unmarshalable
 ;; things) from the simworld object.  Thereafter we can write it to a file.
+;; 
+;; .param mode Either 'full or 'topo-only.  We either want to store
+;; just the layout of the nodes, or we want to flash-freeze the whole
+;; world (even in-flight messages!).
 (define freeze-world
-  (lambda (world)
-    9
+  (case-lambda 
+    [(world) (freeze-world 'topo-only)]
+    [(world mode)
+     9]
     ))
 
-;; This takes 
-(define animate-world
+;; This takes a dessicated simworld and reanimates its lively state
+;; from whatever dead-state remains.  The bare minimum is that the
+;; node-graph exist.
+;;
+;; Missing fields in the record are assumed to be represented by #f.
+;;
+;; TODO FIXME: Currently the connectivity function is reanimated using the
+;; CURRENT value of the global parameter.  This state needs to be
+;; encapsulated within the frozen world object.  (Along with bindings
+;; for BASE_ID and other parameters.)
+(define animate-world!
   (lambda (world)
     (let ([world (cond
 		  [(simworld? world) world]
 		  [(string? world) (animate-world (car (file->slist world)))]
 		  [(input-port? world) (animate-world (read world))]
 		  [else (error 'animate-world "bad input: ~a\n" world)])])
-      9 
-      )))
 
+      ;; TODO, FIXME: One day need to use a real graph library for this!
+      ;; (One that treats edges with due respect, and that uses hash tables.)
+      (define graph
+	(or (simworld-graph world)
+	    (error 'animate-world "need to at least have the node-graph to start with!\n")))
+
+      (define scheduler-queue '())
+
+      (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
+      ;; There had better be no duplicate identifiers.  We don't allow this for now.
+      (DEBUGASSERT (set? (map node-id (map car graph))))
+
+      (unless (simworld-object-graph world)
+	(set-simworld-object-graph! world
+	    (graph-map (lambda (n) (node->simobject n world)) graph))
+	;; Thus need to rebuild the hash table:
+	;(set-simworld-obj-hash! world #f)
+	)
+
+      ;; Regardless of whether its present, rebuild
+      (set-simworld-all-objs! world (map car (simworld-object-graph world)))
+
+      ;(unless (simworld-obj-hash world)
+	(set-simworld-obj-hash! world 
+	      (let ([h (make-default-hash-table)])
+		(for-each (lambda (ob)
+			    (hashtab-set! h (node-id (simobject-node ob)) ob))
+		  (simworld-all-objs world))
+		h))
+
+      ;; Set I-am-SOC on every node:
+      (for-each (lambda (ob)
+		  (set-simobject-I-am-SOC! ob		  
+					   (= (node-id (simobject-node ob)) BASE_ID)))
+	(simworld-all-objs world))
+	
+      (set-simworld-vtime! world 0)
+      
+      (unless (simworld-led-toggle-states world)
+	(set-simworld-led-toggle-states! world (make-default-hash-table)))
+      
+      (unless (and (simworld-connectivity-function world)
+		   (procedure? (simworld-connectivity-function world)))
+	(set-simworld-connectivity-function! world (build-connectivity-fun)))
+
+	;; Make sure the world's sane before we release it!
+      (DEBUGMODE (invcheck-simworld world))
+
+      (void))))

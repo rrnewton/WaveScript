@@ -149,11 +149,12 @@
 	 #'(let* ((tmp x) ...) (f tmp ...)))])))
 
 ;; '++' is a string-append shorthand
-(define-syntax ++
+#;(define-syntax ++
   (lambda (x)
     (syntax-case x ()
 		 [id (identifier? #'id) #'string-append]
 		 [(_ E ...) #'(string-append E ...)])))
+(define ++ string-append)  ;; Trust the inliner. [2006.03.02]
 
 ;; This is used for defining convenient shorthands than need no parentheses!
 (define-syntax define-id-syntax  

@@ -28,6 +28,7 @@
 	  "_SIM_nodeprog.ss"
 	  "_SIM_socprog.ss"
 	  "_genned_node_code.ss"
+	  "._genned_node_code.ss"
 
 	  ;; TEMPORARILY:
 	  "simulator_nought.ss"
