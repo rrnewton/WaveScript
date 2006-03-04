@@ -14,6 +14,7 @@
   (define valid-options '(stream)) ;; A superset of opts.
   ;; [2006.02.19] This doesn't really seem to work as an optimization.
   (define batch-size 1) ;; Number of lines of input to read at a time.
+  ;; NOTE: This didn't increase performance, so I'm leaving it at 1.
   (let ((inport	(if (input-port? file) file
 		    (open-input-file
 		     file (if (equal? (extract-file-extension file) "gz")
@@ -117,57 +118,85 @@
     ;; chunks of log-file as vectors.  Thus I'm going to buffer the logging.
     ;; UNFINISHED UNFINISHED::
     (define buffered-writer
-      (if #f ;(top-level-bound? 'fork-thread) ;; TODO: FINISH
-	  (let ()
-	    (define obj-buffer (make-vector 500 #f))
-	    (define num-objs 0)
-;	    (define buffer-mutex (make-mutex))
-;	    (fork-thread ;; Reader thread:
-	    
-	    (case-lambda 
-	      [() ;; This is a flush.
-	       (begin ;with-mutex buffer-mutex
-		 (fasl-write obj-buffer (simulation-logger))
-		 (set! num-objs 0)
-		 (vector-fill! obj-buffer #f))]
-	      [(obj)
-	       (begin ;with-mutex buffer-mutex
-		 (vector-set! obj-buffer num-objs obj)
-		 (set! num-objs (fx+ num-objs)))
-	       (if (= num-objs (vector-length obj-buffer))
-		   (buffered-writer))]))
-	  #f))
-
-
-    (define (do-logging input)
+      (let ([obj-buffer 
+	     (if (integer? (simulation-logger-fasl-batched))
+		 (make-vector (simulation-logger-fasl-batched) #f)
+		 (make-vector 1 #f))]
+	    [num-objs 0])
+	(case-lambda 
+	  [() ;; This is a flush.
+	   (buffered-writer (simulation-logger))]
+	  [(port) ;; This is a flush.
+	   ;(fprintf (current-error-port) "Bufwrite:     FLUSH ~a\n" num-objs)
+	   (when (> num-objs 0)
+	     (fasl-write 
+	      (if (= num-objs (vector-length obj-buffer))
+		  ;; If it's full, then blast out the whole thing.
+		  obj-buffer
+		  ;; Otherwise, print a shortened chunk:
+		  (let ([outchunk (make-vector num-objs)])
+		    (for i = 0 to (sub1 num-objs)
+			 (vector-set! outchunk i (vector-ref obj-buffer i)))
+		    outchunk))
+	      port)
+	     (set! num-objs 0)
+	     (vector-fill! obj-buffer #f))]
+	  [(obj port)
+	   (vector-set! obj-buffer num-objs obj)
+	   (set! num-objs (fx+ 1 num-objs))
+	   ;(fprintf (current-error-port) "Bufwrite: num curr ~a/~a\n" num-objs  (vector-length obj-buffer))
+	   ;; If we're full initiate a flush.
+	   (if (= num-objs (vector-length obj-buffer))
+	       (buffered-writer port))])))
+    
+    (define (do-logging input writer)
+      ;; Several different ways to invoke the logger:
       (mvlet ([(level ob args)
 	       (match input
+		 ;; These two forms are basically like a printf:
 		 [(,lvl ,str ,args ...)
 		  (guard (number? lvl) (string? str))
 		  (values lvl str args)]
 		 [(,str ,args ...) (guard (string? str))
 		  (values 1 str args)]
+		 ;; This form is for structured, SEXP output:
 		 [(,lvl ,time ,nodeid ,sym ,pairs ...)
 		  (guard (number? lvl) (number? time) ;(integer? nodeid) 
 			 (symbol? sym) (andmap list? pairs))
 		  (values lvl (cons time (cons nodeid (cons sym pairs))) '())]
 		 [,else (error 'logger "invalid arguments: ~a" input)]
-		 )]
-	      [(port) (simulation-logger)])
-	(if (simulation-logger-human-readable)
-	    (display (log-line->human-readable level ob args) port)
+		 )])
+	(let ([port (simulation-logger)])
+	  (if (simulation-logger-human-readable)
+	      (begin 
+		(if (simulation-logger-fasl-batched)
+		    (error 'logger "cannot have both human-readable and fasl mode turned on."))
+		(display (log-line->human-readable level ob args) port))
 	    (begin
 	      (if (null? args)
-		  (write ob port)
-		  (write (apply format ob args) port))
-	      (newline port)
+		  (writer ob port)
+		  (writer (apply format ob args) port))
+	      (if (not (simulation-logger-fasl-batched))
+		  (newline port))
 	      ;; TEMP TEMP TEMP FIXME:
 	      ;(flush-output-port port)
-	      ))))
+	      )))))
+
     ;; Body of logger:
-    (lambda input
-      (when (simulation-logger)
-	(do-logging input)))))
+    (case-lambda 
+      ;; This is a flush, pass it on.
+      [() 
+       (when (simulation-logger)
+	 (buffered-writer (simulation-logger)))]
+      [input
+       (when (simulation-logger)
+	 (do-logging input 
+		     ;; Pick a writer based on this parameter.
+		     (case (simulation-logger-fasl-batched)
+		       [(#f) write]
+		       [(#t) fasl-write]
+		       [else buffered-writer]
+		       )))])))
 
 ;; This is just another variant:
 ;; This has no critical section for now!!! [2005.02.25]

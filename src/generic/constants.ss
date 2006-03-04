@@ -139,6 +139,18 @@
 ;; (indented, etc), or in machine readable (SExp) form.
 (define-regiment-parameter simulation-logger-human-readable #f)
 
+;; This toggles whether or not the logfile is written in plaintext
+;; form (well, except for gizpping), or in "FASL" (fast loading) form,
+;; which is a fast-loading way to marshal scheme data structures to a
+;; binary file.  Values:
+;;  #f - plaintext
+;;  #t - same log output, but fasl encoded
+;;  <int> - In addition to fasling, also "batch" the output into vector-chunks
+;;          This greatly reduces file size and also increases reading speed.
+(define-regiment-parameter simulation-logger-fasl-batched 500
+  (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x)))) 
+	  x))
+
 ;; Just a counter for the simulation logger messages.  
 ;; If it's #f that means it's not set, but it can be 
 ;; set to zero at the start of a simulation.

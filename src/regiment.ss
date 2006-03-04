@@ -10,7 +10,9 @@
 (define start-dir (current-directory))
 ;(printf "STARTING: ~s\n" start-dir)
 
+;; Capture these because they are overwritten.
 (define orig-scheme-start (scheme-start))
+(define orig-scheme-script (scheme-script))
 
 (define regiment-origin "unknown")
 (define stderr
@@ -278,9 +280,19 @@
 	   (optimize-level 0)
 	   (cond
 	    [(null? (cdr args)) (new-cafe)]
+	    ;; --script must be the first argument after "regiment i"
+	    ;;
+	    ;; This won't occur, chez grabs the --script parameter
+	    ;; directly.  This code should go in the scheme-script
+	    ;; parameter.
 	    [(equal? (cadr args) "--script")
-	     (apply (scheme-script) (cddr args))]
-	    [else (apply orig-scheme-start (cdr args))])]
+	     ;(printf "Using Regiment to invoke script: ~a\n" args)
+	     ;(error 'regiment.ss "this shouldn't happen.")
+	     ;(inspect (command-line-arguments))
+	     (apply orig-scheme-script (cddr args))]
+	    [else 
+	     ;(inspect (list->vector args))
+	     (apply orig-scheme-start (cdr args))])]
 
 	  ;; Printing SExp log files.
 	  [(l log)
@@ -288,10 +300,15 @@
 	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
 			 (error 'regiment:log:print "no log file supplied or found")))]
-	     [(-print ,file) (reg:log:print (symbol->string file))]
+	     [(-print ,file) 
+	      (let loop ([s (reg:read-log (symbol->string file) 'stream)])
+		(unless (stream-empty? s) 
+		  (printf "~a\n" (stream-car s))
+		  (loop (stream-cdr s))))]
 	     [(-print ,_ ...) (error 'regiment:log:print "only can print exactly one logfile at a time: ~a" args)]
 	     [(-reencode ,in ,out)
-	      (let ((out (open-output-file (symbol->string out) '(compressed replace)))
+	      ;; Do not replace output file if it's there:
+	      (let ((out (open-output-file (symbol->string out) '(compressed)))
 		    (block-size 1000)  ;; 1000 lines of log chunked at a time.
 		    (count 0))
 		(progress-dots 
@@ -299,10 +316,12 @@
 		   (let loop ((in (reg:read-log (symbol->string in) 'stream))
 			      (n block-size) (acc '()))
 		     (cond
-		      [(stream-empty? in) (close-output-port out)]
+		      [(stream-empty? in) 
+		       (fasl-write (list->vector (reverse! acc)) out)
+		       (close-output-port out)]
 		      [(fxzero? n)
 		       (fasl-write (list->vector (reverse! acc)) out)
-		       (loop in block-size acc)]
+		       (loop in block-size '())]
 		      [else 
 		       (set! count (add1 count))
 		       (loop (stream-cdr in) (fx- n 1) (cons (stream-car in) acc))]))
@@ -324,7 +343,7 @@
 		  (printf "Log file batched into vectors, first vector is size: ~a\n" (vector-length first))]
 		 [(list? first)
 		  (printf "Log file contains raw, unbatched log entries.\n")]
-		 [else ("WARNING: Log file contains the following unrecognized object: ~a" first)])
+		 [else (printf "WARNING: Log file contains the following unrecognized object: ~a" first)])
 		;; Next classify fasl/plaintext.
 		(let* ([in (in)]
 		       [c1 (read-char in)]
@@ -363,6 +382,26 @@
 (scheme-start (lambda args (set! start-dir (cd)) 
 		      ;(random-seed (current-time))
 		      (apply main args)))
+
+;; If we're running from the heap and we're running in script mode,
+;; that's because I'm using "regiment i" as the interpreter for a
+;; script.
+(scheme-script (lambda (fn . args)
+		 (set! start-dir (current-directory))
+		 ;(printf "SCHEME SCRIPT\n")
+		 (unless (and (>= (length args) 1)
+			      (member (car args) '("i" "interact")))
+		   (error 'regiment 
+			  "bad script-mode arguments to regiment, --script should only be used with 'interact' mode: ~a\n"
+			  args))
+		 ;(inspect args)
+		 ;(inspect (command-line-arguments))
+		 ;(apply main `(,(cadr args) "--script" ,@(cddr args)))
+		 (command-line (cons fn (cdr args)))
+		 (command-line-arguments (cdr args))
+		 (load fn) ;; We don't call main, we already know it's interact mode.
+		 ))
+
 ;(random-seed (current-time))
 
 ;; If we're running from source, we invoke main right here:
