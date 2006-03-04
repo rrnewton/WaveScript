@@ -1103,7 +1103,9 @@
   	  ))
   		   
       ;; Out of main loop:
-      (when (output-port? (simulation-logger)) (close-output-port (simulation-logger)))))
+	;; Now on the way out of the simulator, flush logger output and close logfile.
+	(logger) ;; Logger with no arguments is a flush.
+	(when (output-port? (simulation-logger)) (close-output-port (simulation-logger)))))
     ;; Out of let/cc:
     (let ((result (reverse (soc-return-buffer))))
       (printf "~nTotal globally returned values:~n ~s~n" result)
