@@ -1,6 +1,6 @@
 
 
-
+ 
 
 ;; This can provide us a base-line.  It uses *no* fancy Regiment
 ;; features, it merely sends all the temperature values over a certain
@@ -21,9 +21,11 @@
 
   ;[sim-timeout 2000000]
   ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
-  ;[sim-timeout 3600000] ;; An hour.
+  [sim-timeout 3600000] ;; An hour.
   ;[sim-timeout 600000] ;; Ten minutes
-  [sim-timeout 60000] ;; One minute
+  ;[sim-timeout 60000] ;; One minute
+
+  ;[sim-timeout 3600000] ;; An hour.
 
   [varied-param 3] ;; Default value for the threshold.
   )

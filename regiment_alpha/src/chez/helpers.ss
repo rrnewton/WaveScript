@@ -51,7 +51,7 @@
 	  graph-map graph-get-connected-component graph-neighbors graph-label-dists ;cyclic? 
 	  graph:simple->vertical graph:vertical->simple
 	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
-	   unfold-list average clump
+	   unfold-list average median stddev clump
 	  partition partition-equal split-before
 	  myequal?
 	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr

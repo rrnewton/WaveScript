@@ -87,43 +87,54 @@
 ;; [2006.02.15] NOTE: This currently passes the flags to BOTH the       
 ;; compiler and the simulator.  They both follow the bad practice of
 ;; ignoring flags they don't understand.
-(define load-regiment
-  (lambda (fn . opts)
-    ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
-    ;; Flags get passed to run-compiler and compile-simulate-alpha.
-    (let ([flags (filter (lambda (x) (not (list? x))) opts)]
-	  [userparams (filter list? opts)])
-    (mvlet ([(prog codeparams passes)
-	     (let ([type (string->symbol (extract-file-extension fn))])
-	       (mvlet (((prg params) (read-regiment-source-file fn)))
-		 (case type
-		   [(rs) (values prg params (pass-names))]
-		   [(tm) (values prg params 
-				 (list-remove-before 'cleanup-token-machine (pass-names)))]
-		   [(sim alpha) (values prg params ())]
-		   [else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
-		   )))])
-      
-      ;; User params override those set in the code:
-      (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
-      ;; Set all the params before running things:
-      (for-each eval params) ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
-      (let ((result ;(with-evaled-params params
-			;  (lambda ()
-			    (parameterize ([pass-names passes])
-			      (apply run-simulator-alpha
+;;
+;; [2006.03.02] To make the argument conventions even more confusing,
+;; I just added the option to include a simworld argument before the file-name.
+(define (load-regiment . args)
+  (match args    
+    [(,world ,fn . ,opts) (guard (simworld? world) (string? fn))
+     ;; We pass the world by putting it in the global parameter and
+     ;; telling the simulator to use the existing "stale" simworld.
+     (simalpha-current-simworld world)
+     (apply load-regiment fn 'use-stale-world opts)]
+    [(,fn . ,opts) (guard (string? fn))
+     ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
+     ;; Flags get passed to run-compiler and compile-simulate-alpha.
+     (let ([flags (filter (lambda (x) (not (list? x))) opts)]
+	     [userparams (filter list? opts)])
+	 (mvlet ([(prog codeparams passes)
+		  (let ([type (string->symbol (extract-file-extension fn))])
+		    (mvlet (((prg params) (read-regiment-source-file fn)))
+		      (case type
+			[(rs) (values prg params (pass-names))]
+			[(tm) (values prg params 
+				      (list-remove-before 'cleanup-token-machine (pass-names)))]
+			[(sim alpha) (values prg params ())]
+			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
+			)))])
+	   
+	   ;; User params override those set in the code:
+	   (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
+	     ;; Set all the params before running things:
+	     (for-each eval params) ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
+	     (let ((result ;(with-evaled-params params
+					;  (lambda ()
+		    (parameterize ([pass-names passes])
+		      (apply run-simulator-alpha
 
-;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
-			      (apply (top-level-value 'run-compiler) prog flags)
-;			       (apply compile-simulate-alpha
-;				      (apply run-compiler prog flags)
-;				      (append flags params))
+			     ;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
+			     (apply (top-level-value 'run-compiler) prog flags)
+					;			       (apply compile-simulate-alpha
+					;				      (apply run-compiler prog flags)
+					;				      (append flags params))
 
-			      flags
+			     flags
 					;'srand (current-time)
-			      ))))
-	(print-stats)
-	result))))))
+			     ))))
+	       (print-stats)
+	       result))))]
+    [,other (error 'load-regiment "bad arguments: ~s\n" other)]))
+
 (define reg:load load-regiment) ;; shorthand
 
 
@@ -232,7 +243,6 @@
 	     (let ((result
 		    ;; Be careful to watch for parameterization:	     
 		    (mvlet (([prog params] (read-regiment-source-file fn)))
-					;(inspect params)
 		      (with-evaled-params params
 					  (lambda () 
 					    (apply run-simulator-alpha prog opts))))))

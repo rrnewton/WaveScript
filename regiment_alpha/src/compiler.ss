@@ -148,6 +148,7 @@
                    (set! passes (remq 'haskellize-tokmac (pass-names)))]
                   [(eq? arg 'haskell-tokens) (void)]
 		  ;; Otherwise... do nothing.
+		  ;[else (warning 'run-compiler "ignored flag: ~s" arg)]
 		  ))   
 	      args)
     (when verbose
