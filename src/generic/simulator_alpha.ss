@@ -916,10 +916,11 @@
 		      ; [2005.11.25] Allowing this again, if there are no args we just run on the already compiled sim.
 		      (read-params rest)]
 		     )))
+    (define flags ())
     ;; Next this loop runs.
     ;; This deals with the many options that run-simulator-alpha can handle:
     (define read-params
-	     (lambda (params)	       
+	     (lambda (params) 
 	       (match params
 ;		      [,x (guard (disp "read params" params) #f) 3]
 
@@ -936,7 +937,7 @@
 			 ;; Cache this in a global parameter:
 			 (simalpha-current-nodeprog node-code)
 
-			   (start-alpha-sim node-code 'simple))]
+			   (apply start-alpha-sim node-code 'simple flags))]
 		      [(timeout ,n . ,rest)
 		       (parameterize ((sim-timeout n))
 			 (read-params rest))]
@@ -965,7 +966,17 @@
 			     (lambda () (read-params rest))
 			     (lambda () (reg:set-random-state! stored-state) (set! stored-state #f))))
 		       ]
-		      [,other (warning 'run-simulator-alpha "unrecognized parameters: ~s" other)]
+		      ;; Pass these flags on to start-alpha-sim
+		      [(,pass-through . ,rest)
+		       (guard (memq pass-through '(use-stale-world)))
+		       (set! flags (cons 'use-stale-world flags))
+		       (read-params rest)]
+		      ;; These flags are recognized, but ignored.
+		      [(,ignored . ,rest)
+		       (guard (memq ignored '(verbose)))
+		       (read-params rest)]
+		       
+		      [,other (warning 'run-simulator-alpha "contains unrecognized parameters: ~s" other)]
 ;		      [,other (error 'run-simulator-alpha "unrecognized parameters: ~s" other)]
 		      )))
     ;; Reset global message counter:
@@ -1029,6 +1040,7 @@
 	   [sim (if (memq 'use-stale-world flags)
 		    ; We reuse the stale world, but we freshen it at least:
 		    (begin 
+		      (printf "Starting alpha sim based on the existing \"stale\" simworld.\n")
 		      (clean-simalpha-counters!)
 		      (clean-simworld! (simalpha-current-simworld)))
 		    (fresh-simulation))])

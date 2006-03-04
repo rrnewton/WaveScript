@@ -32,7 +32,7 @@
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
 	   
-	   (optimize-level 2) ;0/1/2/3)
+	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -192,11 +192,10 @@
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 
-
 (include "chez/simulator_alpha.ss") 
 (import simulator_alpha)
 (include "generic/firelightning_sim.ss")
-
+(include "generic/logfiles.ss") 
 (include "generic/tossim.ss")
 (include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 (include "generic/grammar_checker.ss") (import grammar_checker)
@@ -378,3 +377,9 @@
 
 ;; Open this up so we can read the global counters:
 (import simulator_alpha_datatypes)
+
+(IF_GRAPHICS 
+ (define (load-world)
+   0
+   )
+ )

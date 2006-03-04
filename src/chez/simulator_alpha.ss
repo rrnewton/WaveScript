@@ -11,6 +11,9 @@
 	 fresh-simulation
 	 simalpha-draw-world	 
 
+	 freeze-world
+	 animate-world!
+
 	 testalpha 
 
 	 )

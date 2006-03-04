@@ -67,9 +67,25 @@
 	   (cdr ls))))))
 
 (define (average ls)
+  (if (null? ls)
+      (error 'average "list of numbers cannot be null."))
   (let loop ((sum 0) (count 0) (ls ls))
     (if (null? ls) (/ sum count)
 	(loop (+ (car ls) sum) (+ 1 count) (cdr ls)))))
+(define (stddev ls)
+  (if (null? ls)
+      (error 'stddev "list of numbers cannot be null."))
+  (let* ([sum (foldl + 0 ls)]
+	 [len (length ls)]
+	 [av  (/ sum len)]
+	 [var (/ (foldl (lambda (n acc) (+ (^ (- n av) 2) acc)) 0 ls)
+		 len ;(sub1 len)
+		 )])
+    (sqrt var)))
+(define (median ls)
+  (if (null? ls)
+      (error 'median "list of numbers cannot be null."))
+  (list-ref (sort < ls) (quotient (length ls) 2)))
 
 ;; This does a size-measure on lists and vectors.
 ;; Really crappy implementation, don't rely on this:

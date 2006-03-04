@@ -288,9 +288,11 @@
 ;; world (even in-flight messages!).
 (define freeze-world
   (case-lambda 
-    [(world) (freeze-world 'topo-only)]
+    [(world) (freeze-world world 'topo-only)]
     [(world mode)
-     9]
+     (case mode
+       [(topo-only) (make-simworld (simworld-graph world) #f #f #f #f #f #f #f)]       
+       [(full) (error 'freeze-world "full - not implemented yet!\n")])]
     ))
 
 ;; This takes a dessicated simworld and reanimates its lively state

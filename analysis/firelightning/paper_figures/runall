@@ -1,14 +1,18 @@
 #!/bin/sh
 
+# Normally 1-10 by 1-6
 
-#for i in `seq 1 10`;
-#do
-#  for j in `seq 1 6`;
-
-for i in `seq 1 1`;
+for i in `seq 20 20`;
 do
-  for j in `seq 1 1`;
+  for j in `seq 1 4`;
     do
-	../deadsimple_alarm/analyze_vs_groundtruth.ss run -param $i -noise $j
+    # FIRST RUN
+	../analyze_vs_groundtruth.ss run -param $i -noise $j \
+	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
+	    -w "../world.simworld"
+    # THEN ANALYZE CONCURRENTLY:
+#	(../analyze_vs_groundtruth.ss analyze \
+#	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
+#	    -o ./data/results_thresh"$i"_noise"$j".dat &)
   done 
 done 

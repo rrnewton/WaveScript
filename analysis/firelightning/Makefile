@@ -8,13 +8,17 @@
 #
 # It took 50 minutes to run 250 nodes for a virtual "hour".
 
-all: world.sim allruns
+all: world.simworld allruns #allanalyze
 
 
-world.sim:
-	./deadsimple_alarm/create_topology.ss world.sim
+world.simworld:
+	./create_topology.ss world.simworld
 
 allruns:
+	(cd ./paper_figures; ./runall)
+
+allanalyze:
+	(cd ./paper_figures; ./analyze_all)
 
 # This runs the simulation while also running the analysis.
 # NOTE: Have to make sure the logger is flushing each of its writes.
@@ -24,3 +28,5 @@ pipelined:
 	sleep 5
 	./analyze_deadsimple_vs_groundtruth.ss analyze
 
+clean:
+	$(RM) _genned_node_code.ss world.simworld

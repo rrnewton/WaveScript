@@ -321,3 +321,28 @@ Just got this error, but not from inside SWL:
 This time it must have been a stack overflow error, because I was
 loading a program that had a quasiquote with a cyclic structure inside
 it (even though it was unquoted! hmm!).
+
+[2006.03.03] {Further SWL problems}
+
+Ouch.  I'm getting a variety of bad behaviours from SWL.  I just wrote
+about this in the svn log also.  Right now when I run unit tests it
+crashes on test 69.  But it also spits out a bunch of #f's at the REPL
+prompt (other threads returning?).  And even though all the tests say
+"PASS", a large number of the same error print out repeatedly after it
+gets to test 69.  What's going on with threading?  (What happened to
+the "ps-all" "pps" commands that are listed within the manual?)  This
+is not worth debugging right now, but I really have no idea what's
+going on.
+
+Sample:
+
+69  (parameterize ((unique-name-counter 0) (simalpha-dbg-on #f) (simalp... -> Satisfy oracle? #<procedure>: default-unit-tester, got ERROR:
+  (#f "~?.  Some debugging context lost" "invalid memory reference" ())
+default-unit-tester, got ERROR:
+  (#f "~?.  Some debugging context lostdefault-unit-tester, got ERROR:
+  (#f "invalid command name \"0\"")
+
+FAIL: Expected result to satisfy procedure: #<procedure>
+
+      Received:
+error

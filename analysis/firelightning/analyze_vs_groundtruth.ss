@@ -25,6 +25,8 @@ exec regiment i --script "$0" ${1+"$@"};
 ;(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 (define curlogfile (format "./deadsimple.log.gz"))
 
+(define worldseed #f)
+
 (define (number->integer x) (inexact->exact (floor x)))
 
 (random-seed (current-time))
@@ -52,13 +54,17 @@ exec regiment i --script "$0" ${1+"$@"};
 	  (run-compiler 
 	 ))
 	  |# 
-	   	 
+
+	 (if worldseed (animate-world! worldseed))
 	 (progress-dots 
 	  (lambda ()
-	    (load-regiment (++ (REGIMENTD) "/demos/firelightning/deadsimple_alarm.rs")
-			   '[simulation-logger curlogfile]
-			   ;;'[sim-timeout 500000]
-			   ))
+	    (apply load-regiment 
+		   (append (if worldseed (list worldseed))
+			   (list (++ (REGIMENTD) "/demos/firelightning/deadsimple_alarm.rs")			   
+				 `[simulation-logger ,curlogfile]
+				 ;;'[sim-timeout 500000]
+				 'verbose
+				 ))))
 	  75000000 ;536870911
 	  (lambda () 
 	    (if (simalpha-current-simworld)
@@ -79,14 +85,16 @@ exec regiment i --script "$0" ${1+"$@"};
        (define logstream (begin (printf "\nOpenning log file as stream...\n")
 				(reg:read-log logport 'stream)))
        
+       ;; type: list of (id (x y))
        (define nodes (begin (printf "Analyzing performance vs. groundtruth...\n")
-			    (let loop ((s logstream))
+			    (map cdr 
+			      (let loop ((s logstream))
 			      (if (stream-empty? s)
 				  (error 'analyze_deadsimple_vs_groundtruth "no world description in log")
 				  (match (stream-car s)
 				    [(,t ,id NEWWORLD ,binds ...)
 				     (cadr (assq 'nodes binds))]
-				    [,else (loop (stream-cdr s))])))))
+				    [,else (loop (stream-cdr s))]))))))
 
        (define ground (stream-filter (lambda (x) (eq? 'GROUND-TRUTH (caddr x))) logstream))
        (define returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
@@ -96,7 +104,9 @@ exec regiment i --script "$0" ${1+"$@"};
 		(printf "Directing output to file: ~a\n" resultsfile)
 		(open-output-file resultsfile 'replace)))
 
+       ;; An estimate contains: confidence, time, position, node-ids reporting.
        (reg:define-struct (estimate conf t pos nodes))
+
        ;; This is the length of time that a datapoint is considered valid.
        ;; We lose data sometimes, so this number is relevent.
        (define point-life 5000) ; milliseconds
@@ -109,6 +119,7 @@ exec regiment i --script "$0" ${1+"$@"};
        (define identity-window 15000)
        
        (define (centroid pts)
+	 ;(if (list? (car pts)) (set! pts (map list->vector pts)))
 	 (let-match ([#(,accx ,accy ,sum)
 		      (foldl (match-lambda (#(,i ,_ ,t) #(,accx ,accy ,sum))
 			       (let ((pos (cadr (assq i nodes))))
@@ -118,9 +129,56 @@ exec regiment i --script "$0" ${1+"$@"};
 			#(0.0 0.0 0) pts)])
 	   (list (/ accx sum) (/ accy sum))))
 
+       (define (node-distances ids)
+	 (let loop ([nodes (map (lambda (id) (cadr (assq id nodes))) ids)]
+		    [acc ()])
+	   (if (null? nodes) acc
+	       (let ((n1 (car nodes)))
+		 (loop (cdr nodes)
+		       (append (map (lambda (n2) (posdist n1 n2))
+				 (cdr nodes))
+			       acc))))))
+
+       ;; This is supposed to cluster nodes into connected clumps the
+       ;; same way the in-network Regiment program will.
+       ;; Tested by looking at my GUI and it seems to work correctly.
+       ;; Takes a list of node-ids.  Returns a list of (id (x y)).
+       (define (cluster-nodes ids)
+	 (define (any-match? nds1 nds2)
+	   (let ([pos1* (map cadr nds1)]
+		 [pos2* (map cadr nds2)])
+	     (ormap (lambda (p1)
+		      (ormap (lambda (p2) (< (posdist p1 p2) 
+					     ;(simalpha-outer-radius)
+					     500
+					     ))
+			     pos2*))
+		    pos1*)))
+	 (let ([nodes (map (lambda (id) (assq id nodes)) ids)])
+	   (let outerloop ([clusters (map list nodes)])
+	     (if (null? clusters) '()
+		 ;; We take the first cluster, and run down the line
+		 ;; seeing who it clicks with. If no one, then we're done with it.
+		 (let* ([head (car clusters)]
+			[inserted? #f]
+			[newclusters 
+			 (let innerloop ([rest (cdr clusters)])
+			   (cond 
+			    [(null? rest) '()]
+			    [(any-match? head (car rest)) 
+			     (set! inserted? #t)
+			    ;; Merge these clusters
+			     (cons (append head (car rest)) (cdr rest))]
+			    [else (cons (car rest) (innerloop (cdr rest)))]
+			    ))])
+		   (if inserted?
+		       (outerloop newclusters)
+		       (cons head (outerloop newclusters))
+		       ))))))
+       
        (define (vectcar v) (vector-ref v 0))
 
-       (define estimates
+       (define protoestimates
 	 ;; TRACKS ONLY ONE FIRE CURRENTLY:
 	 ;; This produces a stream of estimates.
 	 (let predictloop ((rets returned) (points '()))
@@ -136,50 +194,110 @@ exec regiment i --script "$0" ${1+"$@"};
 					 (and (not (= i id))
 					      (not (> (- clock c) point-life))))
 				 points))])
+		    ;; Lookup function for newpoints:
+		    (define (id->datapoint id)
+		      (let loop ((ls newpoints))
+			(if (= id (vector-ref (car ls) 0))
+			    (car ls)
+			    (loop (cdr ls)))))
+
+;		    (printf "ACTIVE PTS: ~a \n" (length newpoints))
 
 		    (let ([definites (filter (match-lambda (#(,i ,c ,t)) (> t 150)) newpoints)])
 		      (if (not (null? definites))
 			  ;; We are one hundred percent confident in the existence of a 
 			  ;; fire once we have any newpoints over 150C.
-			  (stream-cons (make-estimate 100 clock (centroid definites) (map vectcar definites))
-				       (predictloop (stream-cdr rets) newpoints))
-			  
-			  ;; Check if there's a critical mass.
-					;		    (let ([clusters (clump 500 newpoints)])
-					;		      (let ([sums (map (lambda (clust) 
-					;					 (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) clust))
-					;				    clusters)])
-					;			(for-each (lambda (pts sum)
+			  (begin 			    
+			    (printf "~a: SURETY\n" clock )
+			    (stream-cons (make-estimate 100 clock (centroid definites) (map vectcar definites))
+					 (predictloop (stream-cdr rets) newpoints)))
 
-			  ;; SIMPLE SIMPLE for now:
-			  (let ([sum (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) 0 newpoints)])
+			  ;; Attempt to imitate the clustering that would happen in the in-network algorithm.
+			  (let ([sum-cluster 
+				 (lambda (clst)
+				   (foldl (match-lambda (#(,i ,c ,t) ,acc) (+ t acc)) 0 
+					  (map (lambda (nd) (id->datapoint (car nd))) clst)))])
 			    (stream-cons 
-			     (if (and ;(> (length newpoints) 1)
-				  (> sum 10))
-				 ;; Put in a random heuristic for confidence!
-				 (make-estimate (* .9 (- 100 (/ 100 (exp (/ (length newpoints) 2)))))
-						clock (centroid newpoints) (map vectcar newpoints))
-				 ;; Otherwise we estimate that there's no fire.
-				 (make-estimate 0 clock #f (map vectcar newpoints)))
+
+			     (let* (;; Quadratic in number of nodes.
+					;[dist-matrix (node-distances (map vectcar newpoints))]
+				    [clusters (cluster-nodes (map vectcar newpoints))]
+				    [cluster-sums (map sum-cluster clusters)]
+				    [maxsum (apply max cluster-sums)]
+				    [maxind (list-find-position maxsum cluster-sums)]
+				    [maxclust (list-ref clusters maxind)]
+				    )
+			       (printf "~a: ~a\n" clock 
+				       (sort (lambda (a b) (> (car a) (car b)))
+					     (map (lambda (c s) (cons s (length c))) clusters cluster-sums)))
+
+			       (if (> maxsum 10) ;; Our threshold.
+				   ;; The cluster must be sufficiently tight for us to count this as a detection.
+					;(if (< (average dist-matrix) 500)
+				   ;; Put in a random heuristic for the confidence value!
+				   (make-estimate (* .9 (- 100 (/ 100 (exp (/ (length maxclust) 2)))))
+						  clock (centroid (map id->datapoint (map car maxclust)))
+						  (map car maxclust))
+				   ;; Otherwise we estimate that there's no fire.
+				   (make-estimate 0 clock #f (map vectcar newpoints))
+				   ))
+
 			     (predictloop (stream-cdr rets) newpoints))))))]
 		 [,other (error 'predictloop "bad output from query: ~a" other)]))
 	   )) ; end estimates
+       
+       ;; Sampling detail.  The estimates are only based on
+       ;; time-points when we *received data* from the network.  We
+       ;; need to insert negative (no-fire) points in any large
+       ;; time-gaps here.
+       (define estimates
+	 (stream-cons (make-estimate 0 0 #f #f) ;; Insert an initial "off" point in the beginning.
+	  (let fillgaps ([last #f] [strm protoestimates])
+	    (cond
+	     [(stream-empty? strm) '()]
+	     [(and last 
+		   (> (- (estimate-t (stream-car strm)) (estimate-t last))
+		      5000 ;point-life
+		      ))
+	      (printf "INSERTING OFF: ~a \n" (+ (estimate-t last) 1))
+	      ;; Insert an "off" for this gap.
+	      (stream-cons (make-estimate 0 
+					  ;; Insert in midpoint??
+					  ;(quotient (+ (estimate-t last) (estimate-t (stream-car strm)))  2)
+					  (+ (estimate-t last) 1)
+					  #f #f)
+			   (stream-cons (stream-car strm)
+					(fillgaps (stream-car strm) (stream-cdr strm))))]
+	     [else (stream-cons (stream-car strm) (fillgaps (stream-car strm) (stream-cdr strm)))]))))
 
        ;; Now we transform the stream of estimates into a stream of discrete detections.
        ;; CURRENTLY WORKS FOR ONE FIRE AT A TIME:
        ;; TODO: Needs improvement:
        ;; TODO: use identity-window
        (define detected-events
-	 (let detectloop ((last #f) (estimates estimates))
+	 ;; last tracks the last estimate that was from an ON state.
+	 (let detectloop ((last #f) (state #f) (estimates estimates))
 	   (cond
 	    [(stream-empty? estimates) '()]
-	    [(estimate-pos (stream-car estimates))
-	     (let ((t (estimate-t (stream-car estimates))))
-	       (if (and last (< (- last t) 5000))
-		   (detectloop t (stream-cdr estimates))
-		   (stream-cons (stream-car estimates) 
-				(detectloop t (stream-cdr estimates)))))]
-	    [else (detectloop #f (stream-cdr estimates))])))
+	    ;; If there was a fire detected this might be an "up" edge.
+	    [(and (estimate-pos (stream-car estimates))
+		  ;(> (estimate-conf (stream-car estimates)) 10) ;; Minimum confidence.
+		  )
+	     (let ([head (stream-car estimates)])
+	       (if (and ;last 
+			;(< (- t (estimate-t last)) 5000) ;; If we already detected this one recently, don't fire again.
+			;(> (- conf 10) lastconf)		    
+		        state ;; We're already in ON mode, thus no UP-EDGE
+		    )
+		   (detectloop head #t (stream-cdr estimates))
+		   (begin
+		     ;(inspect head)
+		     (stream-cons head (detectloop head #t (stream-cdr estimates)))
+		     )
+		   ))]
+	    ;; Otherwise 
+	    [else (printf "                OFF STATE ~a\n" (estimate-t (stream-car estimates)))
+	     (detectloop last #f (stream-cdr estimates))])))
        
        ;; Threw in an extra delay here because otherwise it scrolls all the way forward to first ground event.
        (define real-events 
@@ -205,12 +323,12 @@ exec regiment i --script "$0" ${1+"$@"};
 
        ;; Analyze lag-till-detection.
        (printf "Computing lag times in detection.\n")
-       (fprintf resultslog "# This was data generated on ~a.\n" (date))
+       (fprintf resultslog "# This was data generated on ~a.\n" (date-and-time))
        (fprintf resultslog "# These are the time-lags for fire detection in this run.\n")
 
 ;       (fprintf resultslog "# Current Param Settings:\n")
 ;       (regiment-print-params "#  " resultslog)
-       (fprintf resultslog "\n# Data:  false-positives  estimation-lag  Estimated(0)-or-Definite(1)\n")
+       (fprintf resultslog "\n# Data:  false-positives  false-negatives  estimation-lag  Estimated(0)-or-Definite(1)\n")
        (flush-output-port resultslog)
 
        ;(printf "ACTUAL: ~a\n" (mvfirst (stream-take 3 real-events)))
@@ -225,7 +343,8 @@ exec regiment i --script "$0" ${1+"$@"};
        (let loop ([detects detected-events] 
 		  [actual real-events]
 		  )
-	   (if (> filepos newpos)
+	 (let ([newpos (file-position logport)])
+	   (if (> filepos newpos) ;; If old is greater than new:
 	       (set! fileposacc (+ fileposacc 2684354560)))
 	   (set! filepos newpos))
 
@@ -234,20 +353,50 @@ exec regiment i --script "$0" ${1+"$@"};
 	     (begin ;; No more fire events.
 	       ;; Close open files.
 	       (close-output-port resultslog))
-	     (begin 
+	     (begin ;; Consider the next actual event:
 	       (printf "  Actual event: ~a\n" (stream-car actual))
-	       (match (stream-car actual)
+
+
+	       ;; TODO: FIXME
+	       ;; REQUIRE GEOGRAPHIC PROXIMITY WITHIN THE DETECTION.
+
+	       ;; We need a fix on when the next actual fire is happening after this:
+	       ;; If there is no next fire we call it +inf.0.
+	       ;;
+	       ;; We currently enforce a boundary between fires.  There's only one at a 
+	       ;; time, and we're not allowed to detect the last fire after the new one 
+	       ;; has started.
+	       (let ([next-t (if (stream-empty? (stream-cdr actual)) +inf.0
+				 (caddr (stream-car (stream-cdr actual))))])
+	       (match (stream-car actual)		 
 		 [(,x ,y ,t ,r) 
 		  (let inner ((falsepos 0) (detects detects))
-		    (if (stream-empty? detects)
-			(begin (fprintf resultslog "-1\n")
-			       (flush-output-port resultslog))
+		    ;; If we hit the end without detecting anything, that's a false negative.
+		    (if (or (stream-empty? detects) ;; Either there's no next detection,
+			    ;; Or the detection has already missed the current fire.  It's onto the next.
+			    (>= (estimate-t (stream-car detects)) next-t))
+			;; This printed data point just communicates a false-negative, nothing else.
+			(begin (fprintf resultslog "~a ~a ~a ~a  # lag on top of t=~a\n" 
+					(pad-width 2 falsepos)
+					(pad-width 2 1)
+					(pad-width 10 -100000)
+					0
+					(comma-number (number->integer t)))
+			       (printf "Undetected fire at t = ~a\n" t)
+			       (flush-output-port resultslog)
+			       ;; With that false-negative recorded, we move on to the next fire.
+			       (loop detects (stream-cdr actual)))
 			(let ([head (stream-car detects)])
-			  (if (>= (estimate-t head) t)
+			  ;; If the detection happened after the fire, it might be valid.
+			  (if (and (>= (estimate-t head) t)
+				   ;; But if the fire's already died, we give the system 2 more seconds,
+				   ;; and then we say "No, you missed it" to any further detections.
+				   (not (> (- (estimate-t head) t) (+ 2000 fire-max-age))))
 			      (let ([lag (- (estimate-t head) t)])
 				(printf "  Estimated detection: ~a\n" head)
-				(fprintf resultslog "~a ~a ~a  # lag on top of t=~a\n" 
+				(fprintf resultslog "~a ~a ~a ~a # lag on top of t=~a\n" 
 					 (pad-width 2 falsepos)
+					 (pad-width 2 0)
 					 (pad-width 10 (number->integer lag))
 					 (if (= 100 (estimate-conf head))
 					     1 0)
@@ -258,8 +407,8 @@ exec regiment i --script "$0" ${1+"$@"};
 			      (begin 
 				(printf "    (Ignored detection: ~a)\n" head)
 				(inner (add1 falsepos) (stream-cdr detects)))
-			      ))))])))))
-     ] ;; End "analyze" implementation.
+			      ))))]))))))
+     )] ;; End "analyze" implementation.
     ))
 
 ;; Body of the script:
@@ -280,6 +429,8 @@ exec regiment i --script "$0" ${1+"$@"};
 
     [(-l ,file ,rest ...) (set! curlogfile (symbol->string file)) (loop rest)]
     [(-o ,file ,rest ...) (set! resultsfile (symbol->string file)) (loop rest)]    
+    [(-w ,file ,rest ...) (set! worldseed (car (file->slist (symbol->string file)))) (loop rest)]
+
     ;; Actions:
     [(,action ,rest ...) (guard (memq action '(run analyze)))
      (set! run-modes (snoc action run-modes)) (loop rest)]
