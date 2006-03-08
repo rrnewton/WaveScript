@@ -346,3 +346,15 @@ FAIL: Expected result to satisfy procedure: #<procedure>
 
       Received:
 error
+
+
+[2006.03.08]
+Wow, just ran my system under ubuntu on my macbook pro 1.83 ghz.  
+With revision 1150, (opt lvl 3, no debug) it completed my unit tests 
+faster than any other computer that I use.
+
+(time (tu))
+    1053 collections
+    9336 ms elapsed cpu time, including 2764 ms collecting
+    9412 ms elapsed real time, including 2747 ms collecting
+    903636344 bytes allocated, including 881799464 bytes reclaimed
