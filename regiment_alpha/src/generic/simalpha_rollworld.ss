@@ -287,13 +287,25 @@
 ;; just the layout of the nodes, or we want to flash-freeze the whole
 ;; world (even in-flight messages!).
 (define freeze-world
-  (case-lambda 
-    [(world) (freeze-world world 'topo-only)]
-    [(world mode)
-     (case mode
-       [(topo-only) (make-simworld (simworld-graph world) #f #f #f #f #f #f #f)]       
-       [(full) (error 'freeze-world "full - not implemented yet!\n")])]
-    ))
+  (let ()
+    (reg:define-struct (frozen-hash alist))
+    (case-lambda 
+      [(world) (freeze-world world 'topo-only)]
+      [(world mode)
+       (case mode
+	 [(topo-only) (make-simworld (simworld-graph world) #f #f #f #f #f #f #f)]       
+	 [(full) 
+	  ;; This is a hack, without being careful about what we're
+	  ;; touching, we just dive in and walk all over the simworld
+	  ;; structure.  Whenever we come across a hash, we freeze it.
+	  ;; Whenever we come across a procedure, we replace it with
+	  ;; dummy symbol.
+	  ;(error 'freeze-world "full - not implemented yet!\n")
+	  (reg:very-deep-map
+	   
+	   )
+	  ])]
+      )))
 
 ;; This takes a dessicated simworld and reanimates its lively state
 ;; from whatever dead-state remains.  The bare minimum is that the

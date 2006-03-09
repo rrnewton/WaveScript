@@ -16,7 +16,7 @@
 	  ;sense-fast-sine-wave
 
 	  unique-name unique-name-counter extract-suffix make-begin 
-	  deep-reg:struct->list 
+	  deep-reg:struct->list deep-reg:struct->list2 reg:very-deep-map
 	  strip-illegal deunique-name  reunique-names
 	  get-formals 
 

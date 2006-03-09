@@ -31,7 +31,7 @@
   (light-up
    (rfilter (lambda (tup) (> (gettemp tup) 7))
 	    data)))
-
+#|
 (define flat_locales
   (rrflatten
    (rmap (lambda (t) (khood (node->anchor (tupref 0 3 t)) 1))
@@ -56,7 +56,7 @@
       ;result
 	     sums
       )))
-
+|#
 ;(define alarm
 ;  (rwhen-any (lambda (tup) (> (tupref 1 2 tup) _threshold)) temps))
 
@@ -65,6 +65,9 @@
 ;flat_locales
 ;(light-up locale) ;maybe_hits)
 ;(rmap light-up locale)
-(rfold + 0 selected_readings)
+;(rfold + 0 selected_readings)
 ;(avg selected_readings)
+
+(rfold (lambda (#(n temp clk) acc) (+ temp acc))
+       0 maybe_hits)
 

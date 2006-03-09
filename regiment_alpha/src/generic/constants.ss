@@ -130,7 +130,8 @@
 ;;   string -- log to specified file 
 ;;   function -- use specified logger function
 ;; FIXME : Finish implementing these behaviors.
-(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+;(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+(define-regiment-parameter simulation-logger #t) ;; Set the default to #t in debug mode, #f otherwise.
 
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.
@@ -147,9 +148,13 @@
 ;;  #t - same log output, but fasl encoded
 ;;  <int> - In addition to fasling, also "batch" the output into vector-chunks
 ;;          This greatly reduces file size and also increases reading speed.
-(define-regiment-parameter simulation-logger-fasl-batched 500
+(define-regiment-parameter simulation-logger-fasl-batched #f
   (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x)))) 
 	  x))
+
+;; Controls whether a .log or .log.gz is produced.
+(define-regiment-parameter simulation-logger-gzip-output #f)
+
 
 ;; Just a counter for the simulation logger messages.  
 ;; If it's #f that means it's not set, but it can be 

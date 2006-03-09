@@ -428,10 +428,10 @@
        (values `(,prim ,rand* ...)
 	       (type-app prim (prim->type prim) t* exp tenv))]
 
-      [(,origrat ,[l -> rand* t*] ...)
+      ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
+      [(app ,origrat ,[l -> rand* t*] ...)
        (mvlet ([(rator t1) (l origrat)])
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	 (inspect (list origrat rator t1))
-	 (values `(,rator ,rand* ...)
+	 (values `(app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv)))]
       
       )))
