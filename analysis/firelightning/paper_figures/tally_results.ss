@@ -3,17 +3,20 @@
 exec regiment i --script "$0" ${1+"$@"};
 |#
 
+
+(define NOISELEVELS 6)
+
 (define out1s 
   (map (lambda (n) (open-output-file (format "data/averaged_noise~a.dat" n) 'replace))
-    (iota 1 6)))
+    (iota 1 NOISELEVELS)))
 ;  (open-output-file "data/averaged.dat" 'replace))
 ;; Also just dumping them all in one file for a scatterplot
 
 (define out2s 
   (map (lambda (n) (open-output-file (format "data/aggregated_noise~a.dat" n) 'replace))
-    (iota 1 6)))
+    (iota 1 NOISELEVELS)))
 
-(define DIVZERO -10000) ;; Signals div zero in the output for avgs/stdevs
+(define DIVZERO -20000) ;; Signals div zero in the output for avgs/stdevs
 
 (define avgdresults '())
 
@@ -38,10 +41,11 @@ exec regiment i --script "$0" ${1+"$@"};
 	    (fprintf out2 "# Columns: thresh, noise, falsepos, lag, no-pre-detection?\n"))
   out2s)
 
-(for i = 1 to 10
- (for j = 1 to 6
-      (let ([lst (filter (lambda (x) (= (length x) 4));(not (null? x)))
-		   (file->linelists (format "data/results_thresh~a_noise~a.dat" i j) #\#))])
+(for i = 1 to 20
+ (for j = 1 to NOISELEVELS
+      (let* ([fix (lambda (n) (if (integer? n) (inexact->exact n) n))]
+	     [lst (filter (lambda (x) (= (length x) 4));(not (null? x)))
+		   (file->linelists (format "data/results_thresh~a_noise~a.dat" i (fix (/ j 1.0))) #\#))])
 	(if (not (andmap (lambda (ls) (= (length ls) 4)) lst))
 	    (error 'tally_results "Not all entries were 4 numbers long: ~a\n" lst))
 	;(printf "LST: ~a\n" lst)
@@ -49,7 +53,7 @@ exec regiment i --script "$0" ${1+"$@"};
 
 	;; FIXME: This isn't right:
 	(for-each (match-lambda ((,fp ,falsenegs ,lag ,det))
-		    (fprintf (list-ref out2s (sub1 j))  "~a ~a ~a ~a ~a\n" i j fp lag det))
+		    (fprintf (list-ref out2s (sub1 j))  "~a ~a ~a ~a ~a\n" i (/ j 1.0) fp lag det))
 	  lst)
 
 	;; Accumulate averaged results:
@@ -67,7 +71,7 @@ exec regiment i --script "$0" ${1+"$@"};
 
 
 ;; Collect the average results for each noise level.
-(for j = 1 to 6
+(for j = 1 to NOISELEVELS
      (let ((lst (filter (match-lambda ((,t ,n ,fpos ,fneg ,av ,stddev)) (= n j)) avgdresults)))
        (unless (null? lst)
 	 ;(gnuplot (map (match-lambda ((,t ,n ,av)) `(,t ,av)) lst))

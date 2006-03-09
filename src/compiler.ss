@@ -507,9 +507,13 @@
 (define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))
 (define-id-syntax t6 (load-regiment "demos/regiment/tracking.rs"))
 
-(define-id-syntax t7 (load-regiment "demos/firelightning/simple_lightup.tm"))
-(define-id-syntax t8 (load-regiment "demos/firelightning/local_alarm.rs"))
+(define-id-syntax t7a (load-regiment "demos/firelightning/simple_lightup.tm"))
+(define-id-syntax t7b (load-regiment "demos/firelightning/lightup_video.tm"))
+(define-id-syntax t7 (load-regiment "demos/firelightning/manual_nbrhood.tm"))
+;(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm0.rs"))
+(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm1.rs"))
 (define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
+(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))
 
 (define-id-syntax d1 (load-regiment "demos/regiment/simple_fold.rs"))
 (define-id-syntax d2 (load-regiment "demos/regiment/average_temperature2.rs"))

@@ -8,7 +8,7 @@
 
 ;======================================================================
 
-(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list)
+(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list reg:list->struct)
   ;(import scheme)
 
   ; Defined using RECORDS:
@@ -57,6 +57,11 @@
        (map (lambda (name)
 	      ((#%record-field-accessor type name) x))
 	 (#%record-type-field-names type)))))
+  ;; This constructs a new record, given an instance of the record type.
+  (define (reg:list->struct template args)
+    (let ((type (record-type-descriptor template)))
+      (apply (record-constructor type)
+	     args)))
 
   ;; Defined using 
   ;;======================================================================

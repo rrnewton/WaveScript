@@ -17,7 +17,7 @@
 (define fire-max-age 180000) ;; Total life in milleseconds.
 (define fire-temp 200)  ;; Degrees in celcius.
 
-(define heat-noise-magnitude 0)
+(define heat-noise-magnitude 3)
 
 ;----------------------------------------------------------------------
 ;; This function maintains the global lightning state and also reads

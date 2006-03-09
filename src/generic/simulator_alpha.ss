@@ -993,7 +993,9 @@
 ;; This procedure is not exposed in the API, it's internal.
 (define start-alpha-sim 
   (lambda (node-code-fun . flags)
-    (define logfile "__temp.log.gz")
+    (define logfile (if (simulation-logger-gzip-output)
+			"__temp.log.gz"
+			"__temp.log"))
     (define (open-opts f) 
       (if (equal? (extract-file-extension f) "gz") 
 	  '(replace compressed) ; exclusive?

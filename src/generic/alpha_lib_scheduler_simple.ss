@@ -303,23 +303,24 @@
 		    )
 		  outgoing)
 
-	(let ((neighbors (graph-neighbors (simworld-object-graph sim) ob)))
-	  (logger 2 vtime (node-id (simobject-node ob))
-		  'Bcast `[token (map (lambda (m) (msg-object-token (simevt-msgobj m))) outgoing)])
-	  (for-each (lambda (nbr)
-	     (for-each (lambda (out-msg)
-	       ;; Here's where we simulate the channel and determine if the message goes through.
-	       ;; UCASTs have already been pre-screened, we don't need to put them through the rigamarole.
-	       (let ((is_ucast (msg-object-to (simevt-msgobj out-msg))))
-		 (if (or is_ucast   (attempt-message-transmission ob nbr))
-		     ;; The message beat the channel; add it appropriately:
-		     (if (or (not is_ucast) (= (node-id (simobject-node nbr)) is_ucast))
-			 (set-simobject-incoming-msg-buf! 
-			  nbr (cons out-msg (simobject-incoming-msg-buf nbr))))
-		     ;; Otherwise fizzle:
-		     (void))))
-	       outgoing))
-	     neighbors)
+	(let ([neighbors (graph-neighbors (simworld-object-graph sim) ob)])
+	  (for-each (lambda (out-msg)
+		      (let ([is_ucast (msg-object-to (simevt-msgobj out-msg))])
+			(logger 2 vtime (node-id (simobject-node ob))
+				(if is_ucast 'Ucast 'Bcast)
+				`[token ,(msg-object-token (simevt-msgobj out-msg))])
+			(for-each (lambda (nbr)
+				    ;; Here's where we simulate the channel and determine if the message goes through.
+				    ;; UCASTs have already been pre-screened, we don't need to put them through the rigamarole.
+				    (if (or is_ucast   (attempt-message-transmission ob nbr))
+					;; The message beat the channel; add it appropriately:
+					(if (or (not is_ucast) (= (node-id (simobject-node nbr)) is_ucast))
+					    (set-simobject-incoming-msg-buf! 
+					     nbr (cons out-msg (simobject-incoming-msg-buf nbr))))
+					;; Otherwise fizzle:
+					(void)))
+			  neighbors)))
+	    outgoing)
 	  ;; They're all delivered, so we clear our own outgoing buffer.
 	  (set-simobject-outgoing-msg-buf! ob '())))))
 

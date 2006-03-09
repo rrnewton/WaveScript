@@ -25,6 +25,8 @@ exec regiment i --script "$0" ${1+"$@"};
 ;(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 (define curlogfile (format "./deadsimple.log.gz"))
 
+(define THE_CLUSTER_THRESHOLD 10)
+
 (define worldseed #f)
 
 (define (number->integer x) (inexact->exact (floor x)))
@@ -89,12 +91,15 @@ exec regiment i --script "$0" ${1+"$@"};
        (define nodes (begin (printf "Analyzing performance vs. groundtruth...\n")
 			    (map cdr 
 			      (let loop ((s logstream))
-			      (if (stream-empty? s)
-				  (error 'analyze_deadsimple_vs_groundtruth "no world description in log")
-				  (match (stream-car s)
-				    [(,t ,id NEWWORLD ,binds ...)
-				     (cadr (assq 'nodes binds))]
-				    [,else (loop (stream-cdr s))]))))))
+				(if (stream-empty? s)
+				    (error 'analyze_deadsimple_vs_groundtruth "no world description in log")
+				    (match (stream-car s)
+				      [(,t ,id NEWWORLD ,binds ...)
+				       (cadr (assq 'nodes binds))]
+				      [,else (loop (stream-cdr s))]))))))
+
+       
+
 
        (define ground (stream-filter (lambda (x) (eq? 'GROUND-TRUTH (caddr x))) logstream))
        (define returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
@@ -178,6 +183,8 @@ exec regiment i --script "$0" ${1+"$@"};
        
        (define (vectcar v) (vector-ref v 0))
 
+       (define message-count 0)
+
        (define protoestimates
 	 ;; TRACKS ONLY ONE FIRE CURRENTLY:
 	 ;; This produces a stream of estimates.
@@ -231,7 +238,7 @@ exec regiment i --script "$0" ${1+"$@"};
 				       (sort (lambda (a b) (> (car a) (car b)))
 					     (map (lambda (c s) (cons s (length c))) clusters cluster-sums)))
 
-			       (if (> maxsum 10) ;; Our threshold.
+			       (if (> maxsum THE_CLUSTER_THRESHOLD) ;; Our threshold.
 				   ;; The cluster must be sufficiently tight for us to count this as a detection.
 					;(if (< (average dist-matrix) 500)
 				   ;; Put in a random heuristic for the confidence value!
@@ -424,8 +431,12 @@ exec regiment i --script "$0" ${1+"$@"};
 	 (void);(begin (main 'run) (main 'analyze))
 	 (for-each main run-modes))]
 
-    [(-param ,n ,rest ...) (varied-param (string->number (symbol->string n))) (loop rest)]
-    [(-noise ,n ,rest ...) (set! heat-noise-magnitude (string->number (symbol->string n))) (loop rest)]
+    [(-param ,n ,rest ...)
+     (printf "Setting varied-param to ~a\n" n)
+     (varied-param (string->number (symbol->string n))) (loop rest)]
+    [(-noise ,n ,rest ...) 
+     (printf "Setting temperature-noise to stddev ~a\n" n)
+     (set! heat-noise-magnitude (string->number (symbol->string n))) (loop rest)]
 
     [(-l ,file ,rest ...) (set! curlogfile (symbol->string file)) (loop rest)]
     [(-o ,file ,rest ...) (set! resultsfile (symbol->string file)) (loop rest)]    
