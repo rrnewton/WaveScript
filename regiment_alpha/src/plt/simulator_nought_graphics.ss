@@ -1,7 +1,9 @@
 
 (module simulator_nought_graphics mzscheme
   (require "iu-match.ss"
-           (lib "include.ss") (lib "compat.ss") (lib "pretty.ss"))
+           (lib "include.ss") 
+	   (lib "compat.ss") 
+	   (lib "pretty.ss"))
   
   (require "constants.ss"
            (all-except "helpers.ss" id flush-output-port)

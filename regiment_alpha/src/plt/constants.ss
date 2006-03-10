@@ -17,8 +17,12 @@
          
 	 define-regiment-parameter regiment-parameters
 	 regiment-verbose 
-	 simulation-logger simulation-logger-count
-	 simulation-logger-level simulation-logger-human-readable
+	 simulation-logger 
+	 simulation-logger-count
+	 simulation-logger-level
+	 simulation-logger-human-readable
+	 simulation-logger-fasl-batched
+	 simulation-logger-gzip-output
 	 reg:all-unit-tests
 	 reg:comment-code
 	 reg:define-struct

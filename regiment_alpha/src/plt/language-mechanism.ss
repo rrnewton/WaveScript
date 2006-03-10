@@ -2,7 +2,8 @@
 (module language-mechanism mzscheme  
   (require (lib "include.ss")           
 	   (lib "pretty.ss")
-           (all-except (lib "compat.ss") flush-output-port)
+  ;         (all-except (lib "compat.ss") flush-output-port)
+	   "chez_compat.ss"
            "iu-match.ss"
            "helpers.ss"
            (lib "27.s" "srfi") ;; Random numbers
@@ -21,6 +22,9 @@
   ;; This is lame, but I'm doing it for PLTs module system.
   ;(define base-language (eval 'base-language))
   
-  (provide (all-defined) (all-from (lib "compat.ss")))
+  (provide (all-defined) 
+	   ;(all-from (lib "compat.ss"))
+	   (all-from "chez_compat.ss")
+	   )
   )
 

@@ -10,7 +10,7 @@
 
 
 (module simulator_alpha_datatypes mzscheme
-    (require (all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct     
+    (require ;(all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct     
 	     (lib "include.ss")
 
 	     (all-except "../plt/constants.ss" test-this these-tests)

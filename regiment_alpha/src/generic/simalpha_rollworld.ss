@@ -301,7 +301,7 @@
 	  ;; Whenever we come across a procedure, we replace it with
 	  ;; dummy symbol.
 	  ;(error 'freeze-world "full - not implemented yet!\n")
-	  (reg:very-deep-map
+	  (;reg:very-deep-map
 	   
 	   )
 	  ])]
@@ -321,15 +321,15 @@
   (lambda (world)
     (let ([world (cond
 		  [(simworld? world) world]
-		  [(string? world) (animate-world (car (file->slist world)))]
-		  [(input-port? world) (animate-world (read world))]
-		  [else (error 'animate-world "bad input: ~a\n" world)])])
+		  [(string? world) (animate-world! (car (file->slist world)))]
+		  [(input-port? world) (animate-world! (read world))]
+		  [else (error 'animate-world! "bad input: ~a\n" world)])])
 
       ;; TODO, FIXME: One day need to use a real graph library for this!
       ;; (One that treats edges with due respect, and that uses hash tables.)
       (define graph
 	(or (simworld-graph world)
-	    (error 'animate-world "need to at least have the node-graph to start with!\n")))
+	    (error 'animate-world! "need to at least have the node-graph to start with!\n")))
 
       (define scheduler-queue '())
 

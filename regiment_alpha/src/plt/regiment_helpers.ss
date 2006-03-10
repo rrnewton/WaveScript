@@ -6,9 +6,10 @@
            (lib "date.ss")
            (lib "pretty.ss")
            ;(lib "process.ss")
-	   (lib "compat.ss")
+;	   (lib "compat.ss")
            (all-except (lib "list.ss") filter)
            "constants.ss"
+           "chez_compat.ss"
            "hashtab.ss"
            (all-except "helpers.ss" test-this these-tests)
            "engine.ss"
