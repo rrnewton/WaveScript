@@ -5,11 +5,12 @@
 
 	(provide 
          ;; Syntax:
+	 IFCHEZ
          IFDEBUG
          DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
          IF_GRAPHICS
          REGIMENT_DEBUG
-         chezimports ;; To make the common module facility work.
+         chezprovide chezimports ;; To make the common module facility work.
          
          REGIMENTD
          SCHEDULE_DELAY         
@@ -86,6 +87,9 @@
                   
          )
 
+	;; Pre-processor macro for switching between Chez/PLT versions.
+	(define-syntax IFCHEZ (syntax-rules () [(_ chez plt) plt]))
+
   ;; [2005.11.04] This is lame, but the only way I know of to check for MrED is
   ;; to try to require it -- if we get an error, it's not there.
 #;
@@ -122,6 +126,10 @@
 	  ))))
 
   (define-syntax chezimports
+    (syntax-rules ()
+      [(_ e ...) (begin)]))
+
+  (define-syntax chezprovide
     (syntax-rules ()
       [(_ e ...) (begin)]))
   

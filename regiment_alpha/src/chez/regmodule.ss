@@ -45,15 +45,21 @@
 
   ;; This is our compatability syntax for PLT/Chez portability.
   (define-syntax module
-    (let ()
+    (lambda (x)
       ;(import chez_module)
-      (syntax-rules (require provide chezimports)
-	[(_ name parent (require _ ...) (provide exports ...) (chezimports imp ...) exp ...)
-	 
-	 (chez:module name (exports ...)
-		      (import imp) ...
-		      exp ...)
-	 ])))
+      (syntax-case x (require provide chezprovide chezimports)
+	[(_ name parent (require __ ...) (provide exports ...) (chezimports imp ...) exp ...)	 
+	 #'(chez:module name (exports ...)
+	     (import imp) ...
+	     exp ...)]
+
+	;; In this variant we use chez-specific syntax for some exports.
+	[(_ name parent (require __ ...) (provide exports ...) (chezprovide chezexports ...) (chezimports imp ...) exp ...)
+	 #'(chez:module name (exports ... chezexports ...)
+	     (import imp) ...
+	     exp ...)
+	 ]
+)))
   )
 
 

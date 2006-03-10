@@ -35,7 +35,7 @@
    ;with-evaled-params
    
    ;; Other values 
-   id atom? gnuplot histogram date
+   id gnuplot histogram date
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  

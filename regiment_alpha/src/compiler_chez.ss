@@ -59,12 +59,13 @@
 	   ;; Otherwise we get unorder definitions, which breaks certain Regiment code.
 	   (if (top-level-bound? 'internal-defines-as-letrec*)
 	       (internal-defines-as-letrec* #t))
+
+           (define current_interpreter 'chezscheme)           
+
 	   )
 
 ;======================================================================
 ;;; Setup stuff.
-
-(define current_interpreter 'chezscheme)
 
 ;; Set some Chez scheme parameters.
 (print-graph #t)
@@ -127,6 +128,7 @@
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/constants.ss") 
+(include "generic/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
