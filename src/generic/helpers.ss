@@ -22,6 +22,10 @@
 (define (id x) x)
 (define (ignore x) (void))
 
+;; Leaf nodes in a data structure.  Things that contain no more subthings.
+(define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
+;; Should ports be included?
+
 (define symbol-append
   (lambda args
     (string->symbol (apply string-append (map symbol->string args)))))
@@ -132,68 +136,6 @@
 	(void)
 	(begin (f i (car ls))
 	       (foreachi-loop (add1 i) (cdr ls))))))
-
-;; [2005.10.29] In scheme order of evaluation of operands is not specified.
-;; This forces left-to-right evaluation.
-#;
-(define-syntax apply-ordered
-  (lambda (x)
-    (syntax-case x ()
-      [(_ f x ...)
-       (begin 
-	 (disp "Woot:" (map identifier? #'(x ...)))
-	 (let apply-ordered-loop ([args (reverse #'(x ...))] [newargs '()] [binds '()])
-	   (if (null? (args)
-	       (with-syntax ((b binds) (na newargs))
-		 #'(let*foo b (f . na)))
-	       (let ((tmp #'tmp))
-		 (apply-ordered-loop (cdr args)				     
-				     (cons tmp newargs)
-				     (with-syntax ((t tmp) (a (car args)))
-				       (cons ;#`(#,tmp #,(car args))
-					     #'(t a)
-					     newargs
-					     ))))))))])))
-
-(define-syntax apply-ordered
-  (lambda (x)
-    (syntax-case x ()
-      [(appord f x ...)
-       (with-syntax (((tmp ...) (map 
-				    (lambda (_) (datum->syntax-object #'appord (gensym "tmp")))
-				  (syntax-object->datum #'(x ...)))))
-	 #'(let* ((tmp x) ...) (f tmp ...)))])))
-
-;; '++' is a string-append shorthand
-#;(define-syntax ++
-  (lambda (x)
-    (syntax-case x ()
-		 [id (identifier? #'id) #'string-append]
-		 [(_ E ...) #'(string-append E ...)])))
-(define ++ string-append)  ;; Trust the inliner. [2006.03.02]
-
-;; This is used for defining convenient shorthands than need no parentheses!
-(define-syntax define-id-syntax  
-  (lambda (x)
-    (syntax-case 
-	x ()
-	[(_ v e)
-	 #'(define-syntax v 
-	     (lambda (x)
-	       (syntax-case x ()
-			    [id (identifier? #'id) #'e]
-			    [(id x (... ...)) (identifier? #'id)
-			     #'(e x (... ...))])))])))
-
-;; Evaluate subexpressions but suppress output.
-;; TODO: Shouldn't waste memory on storing the output.  Need to send it to /dev/null.
-(define-syntax silently 
-  (syntax-rules ()
-    [(_ e ...)
-     (let ((ret #f))
-       (with-output-to-string
-	 (lambda () (set! ret (begin e ...))))
-       ret)]))
 
 (define (with-evaled-params params th)
   (let loop ((ls params))
@@ -368,17 +310,6 @@
         [else (cons (car ls)
                     (list-set-loop (cdr ls) (sub1 pos)))]))))
 
-;===============================================================================
-
-;; Repeatedly execute an expression some number of times:
-(define-syntax rep
-  (syntax-rules ()
-    [(_ reps exp ...)
-     (let loop ([n reps])
-       (if (< n 1)
-           (void)
-           (begin exp ...
-                  (loop (sub1 n)))))]))
 
 (define (list-repeat! ls)
   (if (null? ls) (error 'list-repeat! "cannot create infinite list from null list."))
@@ -390,91 +321,8 @@
 (define (make-repeats ls numelems)
   (list-head (list-repeat! (list-copy ls)) numelems))
 
-;; [2005.10.16]  I hate 'do' syntax
-;; For now we only allow fixnum indices:
-(define-syntax for
-  (syntax-rules (= to)
-    [(_ v = start to end expr ...)
-     (let ((s start)
-	   (e end))
-       (do ([v s (fx+ v 1)])
-	   ((fx> v e))
-	 expr ...))]))
 
-(define-syntax ^
-  (lambda (x)
-    (syntax-case x ()
-		 [id (identifier? #'id) #'#%expt]
-		 [(_ a b)  #'(#%expt a b)])))
-
-
-;; [2005.10.23] Should have used these more before
-;; Only works for one argument functions currently:
-;; Need to use syntax-case I believe.
-(define-syntax match-lambda-helper
-  (lambda (x) 
-    (syntax-case x (unquote)
-      [(_ () (V ...) E ...)
-       #'(lambda (V ...) E ...)]
-      [(_ (P1 P ...) (V ...) E ...)
-       #'(match-lambda-helper (P ...) (V ... tmp) (let-match ((P1 tmp)) E ...))])))
-(define-syntax match-lambda 
-  (lambda (x)
-    (syntax-case x (unquote)
-      [(_ (Pat ...) Expr ...)
-       ;(printf "Woot: ~a\n" #'(Pat ...))
-       #'(match-lambda-helper (Pat ...) () Expr ...)
-       ])))
-;(expand '((match-lambda (x y) #t) 'x 'y))
-;(expand '(match-lambda (,x ,y) #t))
-;((match-lambda ((,x ,y) #(,z) ,w) (list x z w)) `(a b) #(3) 4)
-
-(define-syntax let-match
-  (lambda (x)
-    (syntax-case x (unquote)
-      [(_ () Body ...)
-       #'(begin Body ...)]
-      [(_ ([Pat Exp] Rest ...) Body ...)
-       #'(match Exp
-	   [Pat (let-match (Rest ...) Body ...)]
-	   [,other (error 'let-match "unmatched object: ~s" other)]
-	   )])))
-;(expand '(let-match () 3))
-;(expand '(let-match ([,x 3]) x))
-;(let-match ([(,x ,y ...) (list 3 4 5 6)] [,z 99]) (list y z))
-
-;; [2005.10.05]
-;; Evaluate expression and mask output by search string.  (Just does string match, not regexp.)
-(define-syntax grep
-  (syntax-rules ()
-    [(_ pat exp)
-     (let ([str (open-output-string)]
-	   [searchpat pat]
-	   [leftovers ""])
-       (let* ([guarded-display (lambda (s)
-				 (when (substring? searchpat s)
-				   (display s (console-output-port))
-				   (newline (console-output-port))))]
-	      [print (lambda ()		      
-		       (let ((chunks (string-split 
-				     (string-append leftovers (get-output-string str))
-				     #\newline)))
-;			(if (> (length chunks) 1)  (printf "\nGot chunks: ~s\n" chunks))
-			(cond 
-			 [(null? chunks) (void)]
-			 [else (for-each guarded-display (rdc chunks))
-			       (set! leftovers (rac chunks))])))]
-	      [eng (make-engine (lambda () 
-				  (parameterize ((current-output-port str)
-						 (console-output-port str))
-				    exp)))])
-	 (let loop ((eng eng))
-	   (eng 100
-		(lambda (ticks val) (print) val (guarded-display leftovers))
-		(lambda (neweng) 
-		  (print) 
-		  (loop neweng))))))]))
-
+;;----------------------------------------
 
 ;[2001.07.15]
 (define file->slist

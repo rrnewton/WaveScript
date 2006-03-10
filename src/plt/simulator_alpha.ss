@@ -1,7 +1,7 @@
 #cs ;; Case Sensitiviy
 (module simulator_alpha mzscheme
   (require 
-   (lib "compat.ss")
+   ;(lib "compat.ss")
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
@@ -9,6 +9,7 @@
       
    "hashtab.ss"
    "prim_defs.ss"
+   "logfiles.ss"
    (all-except "constants.ss" test-this these-tests)
    (all-except "helpers.ss" id flush-output-port test-this these-tests)
    (all-except "regiment_helpers.ss" id flush-output-port test-this these-tests)

@@ -10,6 +10,7 @@
   (require "../plt/iu-match.ss"
            (lib "include.ss")
            "../plt/constants.ss"
+	   "../plt/simulator_alpha_datatypes.ss"
            (all-except "../plt/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
            (all-except "../plt/simulator_alpha.ss" test-this these-tests id)

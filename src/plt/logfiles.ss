@@ -12,6 +12,7 @@
            )
 
   (provide     	
+   logger
    reg:read-log
    log-line->human-readable
    ) ;; End provide
