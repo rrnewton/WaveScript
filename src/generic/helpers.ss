@@ -22,10 +22,6 @@
 (define (id x) x)
 (define (ignore x) (void))
 
-;; Leaf nodes in a data structure.  Things that contain no more subthings.
-(define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
-;; Should ports be included?
-
 (define symbol-append
   (lambda args
     (string->symbol (apply string-append (map symbol->string args)))))

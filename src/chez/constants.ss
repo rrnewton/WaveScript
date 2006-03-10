@@ -8,8 +8,11 @@
 
 ;======================================================================
 
-(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list reg:list->struct)
+(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list reg:list->struct IFCHEZ)
   ;(import scheme)
+  
+  ;; Pre-processor macro for switching between Chez/PLT versions.
+  (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) chez]))
 
   ; Defined using RECORDS:
   ; ======================================================================

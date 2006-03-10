@@ -2,12 +2,6 @@
 (chez:module helpers   
 	;; Remember to update the plt equivalent when you update this:
 	(;; Syntax:
-	  for grep mvlet let-match (match-lambda match-lambda-helper)
-	  ++ ^ ;; Exponentiation
-	  define-id-syntax
-	  ;;reg:define-struct ;; Could be define-structure or define-record. ;; Moved to constants.ss
-	  apply-ordered
-	  silently
 	  
 	  ;; For plt compat:
 	  foldl
@@ -76,37 +70,14 @@
 	  )
 
 ;(import (except topsort-module test-this these-tests))
+;(import (except scheme atom?))
 (import scheme)
-
 
 ;; [2005.11.26] Moved reg:define-struct to chez/constants.ss
 
 ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
 ;; substitute.  That's the kind of thing I'd like my
 ;; scheme-meta-language/package-manager to do for me!!
-
-;;; multiple-value let
-(define-syntax mvlet
-  (lambda (x)
-    (define domvlet
-      (lambda (bindings ids tmps body)
-        (if (null? bindings)
-            `((,#'lambda ,ids ,@body) ,@tmps)
-            (syntax-case (car bindings) ()
-              [(*ids expr)
-               (with-syntax ([*tmps (generate-temporaries #'*ids)])
-                 (with-syntax ([body (domvlet (cdr bindings)
-                                              (append #'*ids ids)
-                                              (append #'*tmps tmps)
-                                              body)])
-                   #'(call-with-values
-                       (lambda () expr)
-                       (lambda *tmps body))))]))))
-    (syntax-case x ()
-      [(_ (((id ...) expr) ...) form ...)
-       (andmap (lambda (ls) (andmap identifier? ls))
-               #'((id ...) ...))
-       (domvlet #'(((id ...) expr) ...) '() '() #'(form ...))])))
 
 
 (define-syntax let/ec
