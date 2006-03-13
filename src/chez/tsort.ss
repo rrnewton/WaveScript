@@ -5,7 +5,7 @@
 	(import scheme)
 	(import (except helpers test-this these-tests))
 	
-	(include "generic/tsort.ss")
+	(include "../generic/tsort.ss")
 )
 
 ;(require tsort)

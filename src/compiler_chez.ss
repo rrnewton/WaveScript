@@ -32,7 +32,7 @@
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
 	   
-	   (optimize-level 3) ;0/1/2/3)
+	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -119,16 +119,17 @@
 ;======================================================================
 ;;; Begin loading files.
 
+(eval-when (compile eval) (cd "chez"))
 
-(include "chez/match.ss")      ;; Pattern matcher, dependency.
-(include "chez/regmodule.ss")  ;; Common module syntax.
+(include "match.ss")      ;; Pattern matcher, dependency.
+(include "regmodule.ss")  ;; Common module syntax.
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.
 (import reg:module)
 
  ;; Load this first.  Widely visible constants/parameters.
-(include "chez/constants.ss") 
-(include "generic/reg_macros.ss") (import reg_macros)
+(include "chez_constants.ss") 
+(include "../generic/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
@@ -137,19 +138,14 @@
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
 
-
-;; This in turn includes "../generic/helpers.ss" so we gotta load it from its dir.
-;; I used symbolic links to fix this up so it refers to "generic/helpers.ss", 
-;; therefore we don't need to change directories.
-;(eval-when (compile eval) (cd "chez"))
-(include "chez/hash.ss") (import hashfun) ;; TEMPORARY
-(include "chez/hashtab.ss") (import hashtab)
-(include "chez/helpers.ss") (import (except helpers test-this these-tests))
+(include "hash.ss") (import hashfun) ;; TEMPORARY
+(include "hashtab.ss") (import hashtab)
+(include "helpers.ss") (import (except helpers test-this these-tests))
 ;; Lists all the Regiment primitives and their types:
-(include "generic/prim_defs.ss") (import prim_defs)
-(include "chez/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
-(include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
-(include "chez/pregexp.ss") (import pregexp_module)
+(include "../generic/prim_defs.ss") (import prim_defs)
+(include "regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(include "tsort.ss") (import (except topsort-module test-this these-tests))
+(include "pregexp.ss") (import pregexp_module)
 
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
@@ -174,13 +170,13 @@
 (define current-time (seconds-since-1970))
 ;======================================================================
 
-(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+(include "simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
     (begin
-      (include "chez/basic_graphics.ss")
-      (include "chez/graphics_stub.ss")
+      (include "basic_graphics.ss")
+      (include "graphics_stub.ss")
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
@@ -189,101 +185,102 @@
 	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
-(include "chez/alpha_lib.ss") 
+(include "alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
-(include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
-;(include "generic/alpha_lib_scheduler.ss")
+(include "alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+;(include "../generic/alpha_lib_scheduler.ss")
 
-(include "chez/simulator_alpha.ss") 
+(include "simulator_alpha.ss") 
 (import simulator_alpha)
-(include "generic/firelightning_sim.ss")
-(include "generic/logfiles.ss") 
-(include "generic/tossim.ss")
-(include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
-(include "generic/grammar_checker.ss") (import grammar_checker)
+(include "../generic/firelightning_sim.ss")
+(include "../generic/logfiles.ss") 
+(include "../generic/tossim.ss")
+(include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+(include "../generic/grammar_checker.ss") (import grammar_checker)
 
 ;; Type inference is used by verify-regiment, below.
-(include "generic/hm_type_inference.ss")
-;(include "generic/prim_defs_OLD.ss")
+(include "../generic/hm_type_inference.ss")
+;(include "../generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
-(include "generic/language-mechanism.ss")
+(include "../generic/language-mechanism.ss")
 
-(include "generic/lang00.ss")
+(include "../generic/lang00.ss")
 
-(include "generic/lang06_uncover-free.ss")
-(include "generic/lang07_lift-letrec.ss")
+(include "../generic/lang06_uncover-free.ss")
+(include "../generic/lang07_lift-letrec.ss")
 
-(include "generic/lang11_classify-names.ss")
-(include "generic/lang12_heartbeats.ss")
-(include "generic/lang13_control-flow.ss")
-(include "generic/lang14_places.ss")
+(include "../generic/lang11_classify-names.ss")
+(include "../generic/lang12_heartbeats.ss")
+(include "../generic/lang13_control-flow.ss")
+(include "../generic/lang14_places.ss")
 
-(include "generic/lang20_deglobalize.ss") 
-(include "generic/lang30_haskellize-tokmac.ss") 
-(include "generic/lang32_emit-nesc.ss")
+(include "../generic/lang20_deglobalize.ss") 
+(include "../generic/lang30_haskellize-tokmac.ss") 
+(include "../generic/lang32_emit-nesc.ss")
 
-(include "generic/pass00_verify-regiment.ss")
-(include "generic/pass01_eta-primitives.ss")
-(include "generic/pass02_rename-vars.ss")
-(include "generic/pass03_remove-unquoted-constant.ss")
-(include "generic/pass04_static-elaborate.ss")
-(include "generic/pass05_reduce-primitives.ss")
+(include "../generic/pass00_verify-regiment.ss")
+(include "../generic/pass01_eta-primitives.ss")
+(include "../generic/pass02_rename-vars.ss")
+(include "../generic/pass03_remove-unquoted-constant.ss")
+(include "../generic/pass04_static-elaborate.ss")
+(include "../generic/pass05_reduce-primitives.ss")
 
-(include "generic/pass06_remove-complex-constant.ss")
+(include "../generic/pass06_remove-complex-constant.ss")
 ; pass07_verify-stage2.ss
-(include "generic/pass08_uncover-free.ss")
-(include "generic/pass09_lift-letrec.ss")
-(include "generic/pass10_lift-letrec-body.ss")
-(include "generic/pass11_remove-complex-opera.ss")
-(include "generic/pass12_verify-core.ss")
-(include "generic/pass13_classify-names.ss")
-;(include "generic/pass09_separate-graph")
+(include "../generic/pass08_uncover-free.ss")
+(include "../generic/pass09_lift-letrec.ss")
+(include "../generic/pass10_lift-letrec-body.ss")
+(include "../generic/pass11_remove-complex-opera.ss")
+(include "../generic/pass12_verify-core.ss")
+(include "../generic/pass13_classify-names.ss")
+;(include "../generic/pass09_separate-graph")
 
-(include "generic/pass14_add-heartbeats.ss")
-(include "generic/pass15_add-control-flow.ss")
-(include "generic/pass16_add-places.ss")
-(include "generic/pass17_analyze-places.ss")
-;(include "generic/pass18_add-routing.ss")
+(include "../generic/pass14_add-heartbeats.ss")
+(include "../generic/pass15_add-control-flow.ss")
+(include "../generic/pass16_add-places.ss")
+(include "../generic/pass17_analyze-places.ss")
+;(include "../generic/pass18_add-routing.ss")
 
-(include "chez/pass20_deglobalize.ss") (import deglobalize)
+(include "../generic/pass20_deglobalize.ss") 
+(import pass20_deglobalize)
 
 ;; This is used by the subsequent passes that process TML:
-(include "generic/tml_generic_traverse.ss")
+(include "../generic/tml_generic_traverse.ss")
 
-(include "generic/pass21_cleanup-token-machine.ss")
-;(include "generic/pass22_desugar-soc-return.ss")
+(include "../generic/pass21_cleanup-token-machine.ss")
+;(include "../generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/pass22_desugar-macros.ss")
-;(include "generic/pass26_desugar-macros.ss")
+(include "../generic/pass22_desugar-macros.ss")
+;(include "../generic/pass26_desugar-macros.ss")
 
-(include "generic/pass23a_find-emittoks.ss")
-;(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
-(include "generic/pass23_desugar-gradients.ss")
-(include "generic/pass23_desugar-gradients_verbose.ss")
-(include "generic/pass23_desugar-gradients_simple.ss")
-(include "generic/pass23_desugar-gradients_ETX.ss")
+(include "../generic/pass23a_find-emittoks.ss")
+;(include "../generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
+(include "../generic/pass23_desugar-gradients.ss")
+(include "../generic/pass23_desugar-gradients_verbose.ss")
+(include "../generic/pass23_desugar-gradients_simple.ss")
+(include "../generic/pass23_desugar-gradients_ETX.ss")
 
-(include "generic/pass24_desugar-let-stored.ss")
-(include "generic/pass25_rename-stored.ss")
+(include "../generic/pass24_desugar-let-stored.ss")
+(include "../generic/pass25_rename-stored.ss")
 
 
-;(include "generic/pass24_analyze-calls.ss")
-;(include "generic/pass25_inline.ss")
-;(include "generic/pass26_prune-returns.ss")
-(include "generic/pass26_cps-tokmac.ss")
-(include "generic/pass27_sever-cont-state.ss")
-;; (include "generic/pass27.2_add-kclosure.ss")
-(include "generic/pass28_closure-convert.ss")
+;(include "../generic/pass24_analyze-calls.ss")
+;(include "../generic/pass25_inline.ss")
+;(include "../generic/pass26_prune-returns.ss")
+(include "../generic/pass26_cps-tokmac.ss")
+(include "../generic/pass27_sever-cont-state.ss")
+;; (include "../generic/pass27.2_add-kclosure.ss")
+(include "../generic/pass28_closure-convert.ss")
 
-;;(include "generic/pass29_verify-token-machine.ss")
-(include "generic/pass30_haskellize-tokmac.ss")
+;;(include "../generic/pass29_verify-token-machine.ss")
+(include "../generic/pass30_haskellize-tokmac.ss")
 
-(include "generic/pass31_flatten-tokmac.ss")
-(include "generic/pass32_emit-nesc.ss")
+(include "../generic/pass31_flatten-tokmac.ss")
+(include "../generic/pass32_emit-nesc.ss")
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
@@ -291,8 +288,8 @@
 ;; Basic parallel computation (using engines):
 ;; [2006.02.28] These were used by simulator_nought, but are not used currently.
 (IF_GRAPHICS
-    (load "chez/swl_flat_threads.ss") ;; uses swl threads instead
-    (load "chez/flat_threads.ss"))
+    (load "swl_flat_threads.ss") ;; uses swl threads instead
+    (load "flat_threads.ss"))
 
 ;; LAME:
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
@@ -321,7 +318,7 @@
 ;; Disabled temporarily!:
 #; 
 (when (top-level-bound? 'SWL-ACTIVE)
-      (load "chez/demo_display.ss")
+      (load "demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
 ;(trace  explode-primitive process-expr process-letrec)
@@ -329,15 +326,15 @@
 (include "compiler.ss")
 
 ;; Driver depends on 'pass-names being defined.
-(include "generic/driver.ss")
+(include "../generic/driver.ss")
 ;  (game-eval (lambda args 'unspecified))
   (game-eval eval)
   (host-eval (lambda args 'unspecified))
-(include "generic/tests_noclosure.ss")
-(include "generic/tests.ss")
+(include "../generic/tests_noclosure.ss")
+(include "../generic/tests.ss")
 
 ;; Load the repl which depends on the whole compiler and simulator.
-(include "generic/repl.ss")
+(include "../generic/repl.ss")
 
 ;; DISABLED TEMPORARILY:
 #;
@@ -385,3 +382,6 @@
    0
    )
  )
+
+;; After loading is finished switch to the src/ directory:
+(cd (++ (REGIMENTD) "/src"))

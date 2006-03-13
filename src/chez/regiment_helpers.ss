@@ -83,7 +83,7 @@
   (define (reg:set-random-state! s) (random-seed s))
 
   
-  (include "generic/regiment_helpers.ss")
+  (include "../generic/regiment_helpers.ss")
 
 
 

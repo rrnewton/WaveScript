@@ -3,7 +3,7 @@
   (require (lib "include.ss")
            ;(lib "compat.ss")
            "helpers.ss"
-           "constants.ss"
+           "plt_constants.ss"
            (prefix plt: (lib "graphics.ss" "graphics")))
 ;  (provide init-graphics close-graphics	window-width window-height the-win)
   (provide (all-defined))

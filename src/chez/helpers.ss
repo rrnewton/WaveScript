@@ -136,7 +136,7 @@
 ;; We play nasty tricks with symbolic links here. 
 ;; It doesn't matter if we load this file from "src" or "src/chez"
 ;; because we've linked the "generic" subdir from both locations.
-(include "generic/helpers.ss")
+(include "../generic/helpers.ss")
 ; ======================================================================
 
 

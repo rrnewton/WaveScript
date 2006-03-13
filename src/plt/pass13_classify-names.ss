@@ -5,7 +5,7 @@
 	   (lib "trace.ss")
 	   "iu-match.ss"
 	   "prim_defs.ss"
-	   "constants.ss"
+	   "plt_constants.ss"
 	   (all-except "helpers.ss" test-this these-tests)
 	   (all-except "regiment_helpers.ss" test-this these-tests))
 

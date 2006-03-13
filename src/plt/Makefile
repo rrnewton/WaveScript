@@ -13,8 +13,10 @@ clean: clean_byte clean_native
 
 clean_byte:
 	rm -f compiled/*.zo  compiled/*.dep
+	rm -f ../generic/compiled/*.zo  ../generic/compiled/*.dep
 
 clean_native:
 	(cd compiled/native; $(MAKE) clean)
+	rm -rf ../generic/compiled/native/*
 
 #	rm -rf compiled/native/*

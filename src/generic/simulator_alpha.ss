@@ -49,7 +49,93 @@
 
 ;===============================================================================
 
+(module simulator_alpha mzscheme
 
+  (require 
+   ;(lib "compat.ss")
+   (lib "include.ss")
+   (lib "pretty.ss")
+   (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
+   "iu-match.ss" 
+      
+   "hashtab.ss"
+   "prim_defs.ss"
+   "logfiles.ss"
+   (all-except "constants.ss" test-this these-tests)
+   (all-except "helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "regiment_helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "tsort.ss" test-this these-tests)
+   (all-except "simulator_alpha_datatypes.ss")
+   (all-except "alpha_lib.ss" test-this these-tests)
+   ;(all-except "alpha_lib_scheduler_simple.ss")
+   (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
+   )
+
+  (provide 
+
+   run-simulator-alpha rerun-simulator-alpha clean-simworld!
+   compile-simulate-alpha csa ; shorthand
+   test-this these-tests
+   
+   simalpha-total-messages
+   print-stats print-node-stats 
+   print-connectivity plot-connectivity
+   fresh-simulation
+   simalpha-draw-world	 
+   
+   freeze-world
+   animate-world!
+   
+   testalpha 
+
+   )
+
+  (chezimports ;scheme
+	       chez_constants
+	       (except topsort-module test-this these-tests)
+	       regiment_helpers
+	       ;;simulator_alpha_datatypes
+	       alpha_lib_scheduler_simple)
+
+  (IFCHEZ
+   ;; [2005.11.05] This fills in the implementation-specific casing for the generated code:
+   ;; Could just be identity function, but wrapping in a module should give better performance.
+   (define (build-genned-code-module node-code)
+     `(begin	      
+	(chez:module genned-code (node-code) 
+	  (import scheme)
+	  (import simulator_alpha_datatypes)
+	  (import alpha_lib)
+	  (import alpha_lib_scheduler_simple)
+	  ,node-code)
+	(import genned-code)))
+   (define (build-genned-code-module node-code)
+     `(begin (module _genned_node_code mzscheme
+	       (provide node-code)
+	       (require "plt/constants.ss")
+	       (require "plt/hash.ss")
+	       (require "plt/hashtab.ss")
+	       (require (all-except "plt/helpers.ss" test-this these-tests))
+	       (require (all-except "plt/simulator_alpha_datatypes.ss" test-this these-tests))
+	       (require (all-except "plt/alpha_lib.ss" test-this these-tests))
+	       (require "plt/alpha_lib_scheduler_simple.ss")
+	       ,node-code)
+	     (require _genned_node_code))))
+
+  ;; We are loaded from the root directory, not the chez subdirectory.
+  ;;(include "generic/simulator_nought.examples.ss")
+;  (include (++ (REGIMENTD) "/src/generic/simalpha_ui.ss"))
+;  (include (++ (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
+;  (include (++ (REGIMENTD) "/src/generic/simulator_alpha.ss"))
+
+(include "../generic/simalpha_ui.ss")
+(include "../generic/simalpha_rollworld.ss")
+
+;(reg:include "generic" "simalpha_ui.ss")
+;(reg:include "generic" "simalpha_rollworld.ss")
+
+
+;======================================================================
 ;;; Helper functions.
 
 ;; Simple free variables function:
@@ -1187,3 +1273,5 @@
 (define testalpha test-this)
 
 (define csa compile-simulate-alpha) ;; shorthand
+
+) ;; End Module.

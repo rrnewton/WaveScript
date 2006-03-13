@@ -15,6 +15,6 @@
 
 ;; Lame directory switching
 (cd "generic")
-(include "simulator_nought_graphics.ss")
+(include "../simulator_nought_graphics.ss")
 (cd "..")
 

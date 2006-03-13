@@ -40,4 +40,4 @@
 ;	(eval-when (compile load eval)
 ;	  (optimize-level (IFDEBUG 2 2)))
 
-	(include "generic/alpha_lib.ss"))
+	(include "../generic/alpha_lib.ss"))

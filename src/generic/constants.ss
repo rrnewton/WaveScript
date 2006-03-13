@@ -19,7 +19,105 @@
 ;;;; I'm just going to settle for an ad-hoc strategy, anything that
 ;;;; needs to (or might need to) be used in more than one module will
 ;;;; get lifted up here. <br><br>
+
+(module constants mzscheme
+	(require 
+	 (lib "include.ss")
+	 "../plt/regmodule.ss"
+;	 "../plt/plt_constants.ss"
+	 )
+
+	;; Many exports:
+	(provide 
+         ;; Syntax:
+	 IFDEBUG
+         DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
+         REGIMENT_DEBUG
+         ;chezprovide chezimports ;; To make the common module facility work.
+         
+         REGIMENTD
+         SCHEDULE_DELAY         
+         RADIO_DELAY ;PROCESSING_TIME ;; Not used yet
+         
+	 define-regiment-parameter regiment-parameters
+	 regiment-verbose 
+	 simulation-logger 
+	 simulation-logger-count
+	 simulation-logger-level
+	 simulation-logger-human-readable
+	 simulation-logger-fasl-batched
+	 simulation-logger-gzip-output
+	 reg:all-unit-tests
+	 reg:comment-code
+         
+         pass-names
+         
+         default-slow-pulse default-fast-pulse
+         
+         deglobalize-markup-returns
+         
+         unknown-place noplace
+         
+	 TMNULL
+         KINIT_FLAG KCALL_FLAG NULLK
+	 DEFAULT_SUBTOK DEFAULT_SUBTOK_VAR
+         MAX_SUBTOK        
+
+	 desugar-gradients-mode 
+	 etx-retry-delay 
+	 etx-max-retries
+
+         window-width window-height
+         processor-screen-radius
+         world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
+         BASE_ID NULL_ID	 
+       	 return-window-size
+         
+         sim-num-nodes
+	 sim-startup-stagger
+	 sim-timeout
+
+         simalpha-output-port
+	 simalpha-outer-radius
+	 simalpha-inner-radius
+	 simalpha-placement-type
+	 simalpha-max-gridlike-perturbation
+	 simalpha-world-xbound
+	 simalpha-world-ybound
+	 simalpha-channel-model
+	 simalpha-failure-model
+	 simalpha-current-simworld 
+	 simalpha-realtime-mode
+	 simalpha-consec-ids
+	 simalpha-dbg-on
+	 simalpha-zeropad-args
+	 simalpha-stream-result 
+	 simalpha-sense-function
+	 simalpha-sense-function-constructor
+	 simalpha-graphics-on
+         simalpha-write-sims-to-disk
+	 simalpha-label-msgcounts 
+	 simalpha-label-sensorvals 
+	 simalpha-pause-hook
+
+	 varied-param
+	 dummy-param
+
+         make-rgb
+         rgb-red
+         rgb-green
+         rgb-blue
+
+	 default-unit-tester-retries
+
+         )
 	
+	;; Some bindings need to be explicitely exposed to syntax transformers:
+	(chezprovide (REGIMENT_DEBUG regiment-emit-debug))
+	
+	;; Import the platform specific constants.
+	(chezimports chez_constants)
+
 ;=======================================================================
 
 ;;; Regiment parameters.
@@ -546,5 +644,5 @@
 
 ; ======================================================================
 
-;) ;; End Module
+) ;; End Module
 ;(import constants)

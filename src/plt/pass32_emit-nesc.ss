@@ -6,7 +6,7 @@
   
 ;  (require (lib "trace.ss"))
 
-  (require "constants.ss"
+  (require "plt_constants.ss"
 	   "hashtab.ss"
 	   "prim_defs.ss"
            "cheztrace.ss"
