@@ -4,5 +4,5 @@
 	
 	(import-only scheme)
 
-	(include "generic/hash.ss")
+	(include "../generic/hash.ss")
 	)

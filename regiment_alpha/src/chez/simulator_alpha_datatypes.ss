@@ -6,5 +6,5 @@
 ;;;; Chez module yet, so here they are, listed out verbosely.
 
 
-(include "generic/simulator_alpha_datatypes.ss")
+(include "../generic/simulator_alpha_datatypes.ss")
 

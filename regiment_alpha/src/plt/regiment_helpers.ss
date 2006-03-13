@@ -8,7 +8,7 @@
            ;(lib "process.ss")
 ;	   (lib "compat.ss")
            (all-except (lib "list.ss") filter)
-           "constants.ss"
+           "plt_constants.ss"
            "chez_compat.ss"
            "hashtab.ss"
            (all-except "helpers.ss" test-this these-tests)

@@ -5,7 +5,7 @@
 	   (lib "compat.ss") 
 	   (lib "pretty.ss"))
   
-  (require "constants.ss"
+  (require "plt_constants.ss"
            (all-except "helpers.ss" id flush-output-port)
            (all-except "flat_threads.ss" test-this these-tests)
            (all-except "tsort.ss" test-this these-tests)            
@@ -33,7 +33,7 @@
   (include (build-path "generic" "simulator_nought_graphics.ss"))
 
   (provide (all-defined)
-           (all-from "constants.ss")
+           (all-from "plt_constants.ss")
            (all-from "flat_threads.ss")
            (all-from "helpers.ss")
            (all-from "basic_graphics.ss")

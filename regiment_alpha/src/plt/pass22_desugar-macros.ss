@@ -4,7 +4,7 @@
   (require (lib "include.ss"))
   (require "iu-match.ss")
   
-  (require "constants.ss"
+  (require "plt_constants.ss"
 	   "prim_defs.ss")
   (require (all-except "helpers.ss" test-this these-tests))
   (require (all-except "regiment_helpers.ss" test-this these-tests))

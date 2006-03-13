@@ -9,7 +9,7 @@
            (lib "compat.ss") ;; gives us reg:define-struct  
            )
   (require 
-   "constants.ss"
+   "plt_constants.ss"
    (all-except "helpers.ss" id flush-output-port)
    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
    ;           (lib "9.ss" "srfi")
@@ -21,7 +21,7 @@
   ;; This exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
   (provide (all-defined)
-           (all-from "constants.ss")
+           (all-from "plt_constants.ss")
 	   (all-from "helpers.ss")
 	   (all-from "flat_threads.ss") 
 	   ;; Some Extra stuff needed by our runtime eval of simulated programs.	   

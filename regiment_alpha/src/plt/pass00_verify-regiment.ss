@@ -7,7 +7,7 @@
            (all-except "helpers.ss" test-this these-tests)
            (all-except "regiment_helpers.ss" test-this these-tests)
            (all-except "hm_type_inference.ss" test-this these-tests) 
-	   "constants.ss")
+	   "plt_constants.ss")
   (include (build-path "generic" "pass00_verify-regiment.ss"))
   
   ;; Insure provision of verify-regiment:

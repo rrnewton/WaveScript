@@ -17,7 +17,7 @@
 	 "plt/hash.ss"
          (all-except "plt/grammar_checker.ss" these-tests test-this))
 
-(require "plt/constants.ss"
+(require "plt/plt_constants.ss"
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
           "plt/critical_section.ss")

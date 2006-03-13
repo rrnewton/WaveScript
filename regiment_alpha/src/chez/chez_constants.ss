@@ -8,11 +8,36 @@
 
 ;======================================================================
 
-(chez:module chez_constants (reg:define-struct reg:struct? reg:struct->list reg:list->struct IFCHEZ)
-  ;(import scheme)
+
+(chez:module chez_constants 
+    ;; Exports:
+    (reg:define-struct  reg:struct? reg:struct->list reg:list->struct 
+			IFCHEZ
+			reg:include
+			)
+  (import scheme)
   
   ;; Pre-processor macro for switching between Chez/PLT versions.
   (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) chez]))
+
+  ;; This is a common syntax for including other source files inline.
+  ;; I use it in both PLT and Chez.
+  (define-syntax reg:include
+    (lambda (x)
+      (syntax-case x (REGIMENTD)
+       [(_ str* ...)
+	(let ([lst (datum (str* ...))])
+	  (unless (andmap string? lst)
+	    (error 'reg:include "bad syntax, expects strings: ~a\n" lst))
+	  (with-syntax ([file (datum->syntax-object 
+			       #'_ 
+			       (apply string-append 
+				      (cons (getenv "REGIMENTD")
+					    (cons "/src"
+						  (map (lambda (str)
+							 (string-append "/" str))
+						    lst)))))])
+	    #'(include file)))])))
 
   ; Defined using RECORDS:
   ; ======================================================================
@@ -92,4 +117,5 @@
 
 (import chez_constants)
 
-(include "generic/constants.ss")
+(include "../generic/constants.ss")
+(import constants)

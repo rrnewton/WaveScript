@@ -15,7 +15,7 @@
 (module grammar_checker mzscheme
   (require (lib "include.ss")
 	   "../plt/iu-match.ss"
-	   "../plt/constants.ss" ;; For DEBUGMODE
+	   "../plt/plt_constants.ss" ;; For DEBUGMODE
            "../plt/prim_defs.ss"
 	   (all-except "../plt/helpers.ss" test-this these-tests)
 	   (all-except "../plt/regiment_helpers.ss" test-this these-tests))

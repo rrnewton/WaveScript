@@ -6,7 +6,7 @@
    (lib "pretty.ss")
    (lib "list.ss")
    "logfiles.ss"
-   "constants.ss"  
+   "plt_constants.ss"  
     "hashtab.ss"
     (all-except "helpers.ss" test-this these-tests filter)
     (all-except "regiment_helpers.ss" test-this these-tests filter)

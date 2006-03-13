@@ -3,7 +3,7 @@
 (module pass23a_find-emittoks mzscheme
   (require (lib "include.ss")
            (lib "trace.ss")
-           "constants.ss"
+           "plt_constants.ss"
 	   "prim_defs.ss"
            "iu-match.ss"
            (all-except "grammar_checker.ss" test-this these-tests)

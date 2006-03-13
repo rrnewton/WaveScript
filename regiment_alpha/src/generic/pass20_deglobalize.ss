@@ -37,30 +37,12 @@
 
 ;;; Output grammar = Input grammar to cleanup-token-machine = messy
 
-#;(define deglobalize_output_grammar
+#;
+(define deglobalize_output_grammar
    `([code (statement ...)]
      [statement basic_tml]
      [statement gexpr]
      ))
-
-;=========================================
-;; EXAMPLE:
-
-;; This program just returns 3.  It has a generic binding defining a
-;; single constant, it has no startup tokens (startups must be
-;; *tokens* not other bindings.)  It has no socpgm-exclusive bindings,
-;; and the socprogram merely returns the single value, then finishes.
-#;(program
-  (bindings (result '3))
-  (socpgm (bindings ) (soc-return result) (soc-finished))
-  (nodepgm (tokens ) (startup )))
-
-
-;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
-(define RMAP-NUM 'RMAP) ;39)  ;; [2005.10.20] Why numbers?  Jeez...
-(define ANCH-NUM 'ANCH) ;49)
-(define CIRC-NUM 'CIRC) ;59)
-
 
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
@@ -73,7 +55,53 @@
 
 ;; [2004.06.13] RRN: Moved functions for dealing with token names into helpers.ss
 
+
+;=========================================
+;; EXAMPLE:
+
+;; This program just returns 3.  It has a generic binding defining a
+;; single constant, it has no startup tokens (startups must be
+;; *tokens* not other bindings.)  It has no socpgm-exclusive bindings,
+;; and the socprogram merely returns the single value, then finishes.
+#;
+(program
+  (bindings (result '3))
+  (socpgm (bindings ) (soc-return result) (soc-finished))
+  (nodepgm (tokens ) (startup )))
+
+
+
 ;===============================================================================
+
+(module pass20_deglobalize mzscheme
+
+  (require (lib "include.ss")
+	   (lib "trace.ss")
+	   "plt_constants.ss"
+           "iu-match.ss"
+           "hashtab.ss"
+	   "prim_defs.ss"
+           (all-except "tsort.ss" test-this these-tests)
+           (all-except "tml_generic_traverse.ss" test-this these-tests)
+           (all-except "helpers.ss" test-this these-tests)
+           (all-except "regiment_helpers.ss" test-this these-tests))
+  
+;  (provide deglobalize
+;;	   test-this these-tests test12 tests12)
+#;  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize 
+           ;; Temporarily exposing.
+           delazy-bindings)
+
+  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize)
+
+  (chezimports )
+
+
+;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
+(define RMAP-NUM 'RMAP) ;39)  ;; [2005.10.20] Why numbers?  Jeez...
+(define ANCH-NUM 'ANCH) ;49)
+(define CIRC-NUM 'CIRC) ;59)
+
 
 (define proptable 'not-defined-yet)
 
@@ -1129,3 +1157,6 @@
     (if (< (locdiff (loc) tmp_1) 10.0)
 	(elect-leader m_token_tmp_3)))))
 
+
+
+) ;; End module

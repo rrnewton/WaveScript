@@ -11,18 +11,19 @@
   ;`[sim-timeout 2000]
   )
 
-(define _lightthreshold 20)
-(define _tempthreshold 40)
+(define _tempthreshold 20)
 
-;; All nodes over a light threshold:
-(define light-triggered
-  (rfilter (lambda (n) (> (sense 'light n) _lightthreshold))
+;; All nodes over a local temperature threshold.
+(define heat-events
+  (rfilter (lambda (n) (> (sense 'temp n) _lightthreshold))
 	   world))
 
-;; The neighborhoods around all light-triggered.
-(define area (rkhood light-triggered 2))
-(define locales (rrcluster area))
-;(define heads (rmap anchor-in locales))
+(define local-avgs 
+  (rfilter 
+   
+   area))
+
+TODO FINISH
 
 (define local-avgs
   (rmap (lambda (r) (average (rmap (lambda (n) (sense 'temp n)) r)))

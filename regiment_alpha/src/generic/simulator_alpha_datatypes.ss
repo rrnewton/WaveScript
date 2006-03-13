@@ -13,7 +13,7 @@
     (require ;(all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct     
 	     (lib "include.ss")
 
-	     (all-except "../plt/constants.ss" test-this these-tests)
+	     (all-except "../plt/plt_constants.ss" test-this these-tests)
 	     (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)  
 	     "../plt/iu-match.ss"	     
 	     "../plt/hash.ss"
