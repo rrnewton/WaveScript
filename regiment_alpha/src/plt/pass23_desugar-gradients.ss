@@ -3,7 +3,7 @@
 (module pass23_desugar-gradients mzscheme
   (require (lib "include.ss")
            (lib "trace.ss")
-           "plt_constants.ss"
+           "../generic/constants.ss"
 	   "prim_defs.ss"
            "iu-match.ss"
            (all-except "grammar_checker.ss" test-this these-tests)

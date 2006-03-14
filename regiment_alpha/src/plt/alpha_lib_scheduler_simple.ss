@@ -8,8 +8,8 @@
    (lib "include.ss")
    (lib "list.ss")
    "hashtab.ss"
-   "plt_constants.ss"  
-   "logfiles.ss"
+   "../generic/constants.ss"  
+   "../generic/logfiles.ss"
    (all-except "helpers.ss" test-this these-tests filter)
    (all-except "regiment_helpers.ss" test-this these-tests filter)
 ;   (all-except "basic_graphics.ss" test-this these-tests)

@@ -18,7 +18,7 @@
   
   (require 
    "../plt/iu-match.ss"
-   "../plt/constants.ss"
+   "../generic/constants.ss"
    "../plt/chez_compat.ss"
    )
 

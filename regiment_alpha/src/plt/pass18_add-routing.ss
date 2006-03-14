@@ -4,7 +4,7 @@
 
   (require (lib "include.ss")
 	   (lib "trace.ss")
-	   "plt_constants.ss"
+	   "../generic/constants.ss"
 	   "prim_defs.ss"
 	   "iu-match.ss"
 	   (all-except "helpers.ss" test-this these-tests)

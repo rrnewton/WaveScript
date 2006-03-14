@@ -12,12 +12,12 @@
  
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id rec) 
-         (all-except "plt/regiment_helpers.ss" )         
+         (all-except "plt/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/hash.ss"
          (all-except "plt/grammar_checker.ss" these-tests test-this))
 
-(require "plt/plt_constants.ss"
+(require "generic/constants.ss"
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
           "plt/critical_section.ss")
@@ -36,7 +36,7 @@
 (all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
 (all-except "plt/pass02_rename-vars.ss" these-tests test-this)
 (all-except "plt/pass03_remove-unquoted-constant.ss" these-tests test-this)
-(all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
+(all-except "generic/pass04_static-elaborate.ss" these-tests test-this)
 (all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)
 
 (all-except "plt/pass06_remove-complex-constant.ss" these-tests test-this)
@@ -98,13 +98,13 @@
 
 (require
 ; (all-except "plt/simulator_nought.ss" these-tests test-this)
- (all-except "plt/simulator_alpha.ss" these-tests test-this)
+ (all-except "generic/simulator_alpha.ss" these-tests test-this)
 ; (all-except "plt/alpha_lib_scheduler_simple.ss" these-tests test-this) 
  ;(all-except "plt/alpha_lib.ss" these-tests test-this)
  )
 
 (require (all-except "plt/source_loader.ss" these-tests test-this))
-(require (all-except "plt/logfiles.ss" these-tests test-this))
+(require (all-except "generic/logfiles.ss" these-tests test-this))
 
 ;  (require "plt/demo_display.ss")
 

@@ -2,7 +2,7 @@
 (module chez_compat mzscheme 
   (require 
    
-   "../plt/plt_constants.ss"
+   "../generic/constants.ss"
    "../plt/iu-match.ss"
    (lib "date.ss")
    (lib "pretty.ss")
@@ -12,7 +12,7 @@
 ;   "../generic/reg_macros.ss"
    ;          (all-except (lib "list.ss") filter)
    
-   ;           "plt_constants.ss"
+   ;           "../generic/constants.ss"
    ;           "hashtab.ss"
    ;           "engine.ss"
    (prefix swindle: (lib "misc.ss" "swindle"))

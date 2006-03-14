@@ -2,7 +2,7 @@
 (module pass11_remove-complex-opera mzscheme
 	(require (lib "include.ss")
                   "iu-match.ss"
-                  "plt_constants.ss"
+                  "../generic/constants.ss"
 		  "prim_defs.ss"
 		  (all-except "helpers.ss" test-this these-tests)
                   (all-except "regiment_helpers.ss" test-this these-tests)

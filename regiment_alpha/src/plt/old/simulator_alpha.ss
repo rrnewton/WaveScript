@@ -1,14 +1,16 @@
 #cs ;; Case Sensitiviy
 (module simulator_alpha mzscheme
 
-
   ;(require (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))           
 ;  (require "copy-struct.ss")
+
+  (require "../generic/constants.ss"
+           (lib "include.ss"))
   
-  (IF_GRAPHICS
-   (require (all-except "basic_graphics.ss" test-this these-tests)
-	    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
-	    ))
+;  (IF_GRAPHICS
+;   (require (all-except "basic_graphics.ss" test-this these-tests)
+;	    (all-except "graphics_stub.ss" test-this these-tests) ;; gives us clear-buffer
+;	    ))
   
   ;; tests exports a whole bunch, because the simulated programs need to access this 
   ;; stuff once they are "eval"ed.
@@ -17,14 +19,12 @@
   (provide (all-defined-except start-alpha-sim);run-alpha-simple-simulator)
 ;           (all-from (planet "copy-struct.ss" ("jacob" "copy-struct.plt" 1 0)))
 ;           (all-from "copy-struct.ss")
-;           (all-from "plt_constants.ss")
+;           (all-from "../generic/constants.ss")
 ;	   (all-from "helpers.ss")
            ;; Some Extra stuff needed by our runtime eval of simulated programs.	   
 ;	   yield-thread last
 ;           (all-from (lib "compat.ss")) ;; simulator needs flush-output-port
 	   )
-  
-  
   
   (include (build-path "generic" "simulator_nought.examples.ss"))
   (include (build-path "generic" "simalpha_rollworld.ss"))

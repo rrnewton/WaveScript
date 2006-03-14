@@ -4,19 +4,17 @@
 #cs ;; Case Sensitivity
 (module plt_constants mzscheme
 	(require (lib "include.ss")
-		 "../generic/constants.ss")
+		 )
 
 	(provide 
+
 	 IFCHEZ
 	 IF_GRAPHICS
 	 reg:define-struct
          reg:struct?
 	 reg:struct->list
-
-	 chezimports chezprovide
-	 
-	 (all-from "../generic/plt_constants.ss"))
-
+         reg:list->struct
+	 )
 	
   ;; Pre-processor macro for switching between Chez/PLT versions.
   (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) plt]))
@@ -53,12 +51,14 @@
     (let-values ([(strty _) (struct-info s)])
       (let-values ([(name initf autof access mutat immutlst super skipped?) (struct-type-info strty)])
 	(let ([stop (+ initf autof)])
-	  (cons (string-copy name)
+	  (cons (string-copy (format "~a" name))
 		(let loop ([i 0])
 		  (if (= i stop)
 		      '()
 		      (cons (access s i) (loop (add1 i))))))
 	  ))))
+  (define (reg:list->struct . args)
+    (error reg:list->struct "Not implemented in PLT yet!!"))
 
 )
 

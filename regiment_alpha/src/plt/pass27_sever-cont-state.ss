@@ -4,7 +4,7 @@
   (require (lib "list.ss"))
 ;  (require (lib "trace.ss"))
 
-  (require "plt_constants.ss"
+  (require "../generic/constants.ss"
 	   "hashtab.ss"
 	   "iu-match.ss"
 	   "prim_defs.ss")

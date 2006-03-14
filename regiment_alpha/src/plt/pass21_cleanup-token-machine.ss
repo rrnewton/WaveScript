@@ -3,7 +3,7 @@
 
   (require (lib "include.ss"))
   (require (lib "list.ss"))
-  (require "plt_constants.ss")
+  (require "../generic/constants.ss")
   (require "iu-match.ss"
 	   "prim_defs.ss")
   (require (all-except "helpers.ss" filter test-this these-tests))

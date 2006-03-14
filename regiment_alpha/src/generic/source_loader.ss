@@ -9,11 +9,11 @@
 (module source_loader mzscheme 
   (require "../plt/iu-match.ss"
            (lib "include.ss")
-           "../plt/plt_constants.ss"
+           "../generic/constants.ss"
 	   "../plt/simulator_alpha_datatypes.ss"
            (all-except "../plt/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-           (all-except "../plt/simulator_alpha.ss" test-this these-tests id)
+           (all-except "../generic/simulator_alpha.ss" test-this these-tests id)
            )
   (provide     	
    read-regiment-source-file

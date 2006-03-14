@@ -6,6 +6,13 @@
 
 
 
+;;;; NOTE: [2006.03.13] Most modules are structured such that the
+;;;; chez/ and plt/ versions include the generic version.  This module
+;;;; is the reverse.  The generic/ version is the parent, and it
+;;;; depends on chunks of functionality which are defined in the chez/
+;;;; and plt/ versions respectively.
+
+
 ;;;; NOTE: also see DEBUGMODE from helpers.ss.  It's a global syntax definition of interest. <br>
 ;;;; [2005.03.29] MOVING DEBUGMODE to this file. <br><br>
 
@@ -23,12 +30,22 @@
 (module constants mzscheme
 	(require 
 	 (lib "include.ss")
-	 "../plt/regmodule.ss"
-;	 "../plt/plt_constants.ss"
+;	 "../plt/regmodule.ss"
+	 "../plt/plt_constants.ss"
 	 )
 
 	;; Many exports:
 	(provide 
+
+	 ;; These are exported here, but only PLT uses them.  
+	 ;; They're stubs to make the common module syntax work.
+	 chezimports chezprovide
+
+	 ;; Chez/PLT specific (included from respective modules).
+	 reg:define-struct reg:struct? reg:struct->list reg:list->struct 
+	 IFCHEZ IF_GRAPHICS
+;	 reg:include	 
+
          ;; Syntax:
 	 IFDEBUG
          DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
@@ -118,6 +135,14 @@
 	;; Import the platform specific constants.
 	(chezimports chez_constants)
 
+	;; These stubs allow our common module syntax to work.
+	(define-syntax chezimports
+	  (syntax-rules ()
+	    [(_ e ...) (begin)]))
+	(define-syntax chezprovide
+	  (syntax-rules ()
+	    [(_ e ...) (begin)]))     
+	
 ;=======================================================================
 
 ;;; Regiment parameters.

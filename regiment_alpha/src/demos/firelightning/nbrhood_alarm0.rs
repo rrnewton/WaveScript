@@ -15,7 +15,7 @@
 
 ;; All nodes over a local temperature threshold.
 (define heat-events
-  (rfilter (lambda (n) (> (sense 'temp n) _lightthreshold))
+  (rfilter (lambda (n) (> (sense 'temp n) _tempthreshold))
 	   world))
 
 (define local-avgs 

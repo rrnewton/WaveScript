@@ -2,11 +2,11 @@
 
 (module pass30_haskellize-tokmac mzscheme
 
-;  (require-for-syntax "plt_constants.ss")
+;  (require-for-syntax "../generic/constants.ss")
 ;  (require constants)
 
   (require (lib "include.ss"))
-  (require "plt_constants.ss")
+  (require "../generic/constants.ss")
   (require "iu-match.ss"
 	   "prim_defs.ss")
   (require (all-except "helpers.ss" test-this these-tests))

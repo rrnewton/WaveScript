@@ -2,6 +2,7 @@
 
 ;;;; This contains the core compiler entry points. 
 ;;;; Loaded by both the Chez and PLT versions.
+;;;; (Expects to be loaded from the directory that contains it.)
 
 ;======================================  
 ;(display "Loading main compiler module.  RegionStreams Demo.")
@@ -394,7 +395,7 @@
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:
-    (include "../generic/system_tests.ss")
+    (include "generic/system_tests.ss")
 ;    ()
 ))
 
