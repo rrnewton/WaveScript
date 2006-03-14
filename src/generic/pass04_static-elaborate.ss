@@ -27,6 +27,26 @@
 ;;;  than it needs to be, a bit of control-flow analysis would allow
 ;;;  us to be more permissive.)
 
+
+(module pass04_static-elaborate mzscheme
+  (require (lib "include.ss")
+           ;(all-except (lib "compat.ss") flush-output-port)
+           "../generic/constants.ss"
+           "../plt/iu-match.ss"
+	   "../plt/prim_defs.ss"
+	   (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
+  
+  (provide 
+   ;(all-defined)
+   static-elaborate
+   test-this these-tests
+   )
+
+  (chezimports )
+
+;=======================================================================
+
 (define static-elaborate
   (let ()
 
@@ -312,3 +332,8 @@
 (define tests04 these-tests)
 (define test-static-elaborate test-this)
 (define tests-static-elaborate these-tests)
+
+) ;; End module.
+
+
+; (require pass04_static-elaborate)

@@ -21,7 +21,7 @@
 
 (module prim_defs mzscheme
   (require "../plt/iu-match.ss"
-           "../plt/plt_constants.ss"
+           "../generic/constants.ss"
            "../plt/helpers.ss"
            (lib "include.ss")
            )

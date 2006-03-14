@@ -17,7 +17,7 @@
            (lib "include.ss")
            (all-except "basic_graphics.ss")
 ;           (all-except "simulator_nought.ss" test-this these-tests) ;; For world-xbound, ybound
-           "plt_constants.ss" ;; For world-xbound, ybound
+           "../generic/constants.ss" ;; For world-xbound, ybound
            )
   ;; [2006.02.27] No longer have a common file here:
 ;  (include (build-path "generic" "graphics_stub.ss"))

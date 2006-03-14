@@ -84,20 +84,6 @@
 		 (apply default-break-handler args)
 		 (if (null? args) (void) (car args))))
 
-;; This preprocessor form is used like an #IFDEF, evaluate code only
-;; if we've got a GUI loaded.
-(define-syntax IF_GRAPHICS
-  (lambda (x)
-    (syntax-case x ()
-		 [(_ E1 E2)
-		  ;; The swl script sets this variable:
-		  ;; When we build through SWL, we link in the SWL code.  Otherwise not.
-		  (if (getenv "SWL_ROOT")
-		      #'E1
-		      #'E2)]
-		 [(_ E1)
-		  #'(IF_GRAPHICS E1 (void))])))
-
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
 (define stderr  
@@ -112,9 +98,6 @@
 	 (if (top-level-bound? 'regiment-origin)
 	     (format " (from ~a)" regiment-origin)
 	     ""))
-(IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
-	     (fprintf stderr "(No GUI available.)\n"))
-(flush-output-port stderr)
 
 ;======================================================================
 ;;; Begin loading files.
@@ -129,6 +112,10 @@
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez_constants.ss") 
+(IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
+	     (fprintf stderr "(No GUI available.)\n"))
+(flush-output-port stderr)
+
 (include "../generic/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
@@ -185,6 +172,8 @@
 	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
+(include "../generic/logfiles.ss") (import logfiles)
+
 (include "alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 (include "alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
@@ -193,7 +182,6 @@
 (include "simulator_alpha.ss") 
 (import simulator_alpha)
 (include "../generic/firelightning_sim.ss")
-(include "../generic/logfiles.ss") 
 (include "../generic/tossim.ss")
 (include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 (include "../generic/grammar_checker.ss") (import grammar_checker)
@@ -226,7 +214,7 @@
 (include "../generic/pass01_eta-primitives.ss")
 (include "../generic/pass02_rename-vars.ss")
 (include "../generic/pass03_remove-unquoted-constant.ss")
-(include "../generic/pass04_static-elaborate.ss")
+(include "../generic/pass04_static-elaborate.ss") (import pass04_static-elaborate)
 (include "../generic/pass05_reduce-primitives.ss")
 
 (include "../generic/pass06_remove-complex-constant.ss")
@@ -323,7 +311,9 @@
 
 ;(trace  explode-primitive process-expr process-letrec)
 
+(cd "..")
 (include "compiler.ss")
+(cd "chez")
 
 ;; Driver depends on 'pass-names being defined.
 (include "../generic/driver.ss")

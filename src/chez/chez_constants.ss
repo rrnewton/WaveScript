@@ -12,7 +12,7 @@
 (chez:module chez_constants 
     ;; Exports:
     (reg:define-struct  reg:struct? reg:struct->list reg:list->struct 
-			IFCHEZ
+			IFCHEZ IF_GRAPHICS
 			reg:include
 			)
   (import scheme)
@@ -20,8 +20,23 @@
   ;; Pre-processor macro for switching between Chez/PLT versions.
   (define-syntax IFCHEZ (syntax-rules () [(_ chez plt) chez]))
 
+  ;; This preprocessor form is used like an #IFDEF, evaluate code only
+  ;; if we've got a GUI loaded.
+  (define-syntax IF_GRAPHICS
+    (lambda (x)
+      (syntax-case x ()
+		   [(_ E1 E2)
+		    ;; The swl script sets this variable:
+		    ;; When we build through SWL, we link in the SWL code.  Otherwise not.
+		    (if (getenv "SWL_ROOT")
+			#'E1
+			#'E2)]
+		   [(_ E1)
+		    #'(IF_GRAPHICS E1 (void))])))
+
   ;; This is a common syntax for including other source files inline.
   ;; I use it in both PLT and Chez.
+  ;; DOESN'T WORK YET!!! (Not in PLT.  Sigh.) [2006.03.13]
   (define-syntax reg:include
     (lambda (x)
       (syntax-case x (REGIMENTD)
@@ -115,7 +130,7 @@
 
 ) ;; End module
 
-(import chez_constants)
+;(import chez_constants)
 
 (include "../generic/constants.ss")
 (import constants)

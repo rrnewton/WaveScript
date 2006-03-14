@@ -10,7 +10,7 @@
 	 ;  (all-except (lib "compat.ss") atom?)
            (all-except (lib "list.ss") filter)
 ;           (all-except "tsort.ss" test-this these-tests)
-           "plt_constants.ss"
+           "../generic/constants.ss"
            "hashtab.ss"
            "engine.ss"
            "chez_compat.ss"

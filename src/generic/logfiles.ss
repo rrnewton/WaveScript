@@ -6,6 +6,29 @@
 
 ;----------------------------------------------------------------------
 ;; This reads in a log file.  Either as a stream or all at once.
+
+
+
+(module logfiles mzscheme 
+  (require "../plt/iu-match.ss"
+           (lib "include.ss")
+           ;(all-except (lib "list.ss") filter)
+           "../generic/constants.ss"
+           ;"hashtab.ss"
+           (all-except "../plt/helpers.ss" test-this these-tests)
+           ;(all-except "regiment_helpers.ss" test-this these-tests)
+           )
+
+  (provide     	
+   logger
+   reg:read-log
+   log-line->human-readable
+   ) ;; End provide
+
+  (chezimports )
+
+; =======================================================================  
+
 ;;
 ;; I manually do the delays rather than using stream-cons/stream-append.
 ;; Streams are not currently an ADT, they're representation is transparent.
@@ -206,3 +229,5 @@
       (if (simulation-logger)
 	  (parameterize ([current-output-port (simulation-logger)])
 			exp ...))]))
+
+) ;; End module.

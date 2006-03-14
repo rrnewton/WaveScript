@@ -56,19 +56,19 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
-   "iu-match.ss" 
+   "../plt/iu-match.ss" 
       
-   "hashtab.ss"
-   "prim_defs.ss"
-   "logfiles.ss"
-   (all-except "constants.ss" test-this these-tests)
-   (all-except "helpers.ss" id flush-output-port test-this these-tests)
-   (all-except "regiment_helpers.ss" id flush-output-port test-this these-tests)
-   (all-except "tsort.ss" test-this these-tests)
-   (all-except "simulator_alpha_datatypes.ss")
-   (all-except "alpha_lib.ss" test-this these-tests)
-   ;(all-except "alpha_lib_scheduler_simple.ss")
-   (all-except "pass21_cleanup-token-machine.ss" test-this these-tests)
+   "../plt/hashtab.ss"
+   "../plt/prim_defs.ss"
+   "../generic/logfiles.ss"
+   (all-except "../generic/constants.ss" test-this these-tests)
+   (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../plt/regiment_helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../plt/tsort.ss" test-this these-tests)
+   (all-except "../plt/simulator_alpha_datatypes.ss")
+   (all-except "../plt/alpha_lib.ss" test-this these-tests)
+   (all-except "../plt/alpha_lib_scheduler_simple.ss")
+   (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
    )
 
   (provide 
@@ -92,6 +92,7 @@
 
   (chezimports ;scheme
 	       chez_constants
+	       logfiles
 	       (except topsort-module test-this these-tests)
 	       regiment_helpers
 	       ;;simulator_alpha_datatypes
@@ -104,6 +105,8 @@
      `(begin	      
 	(chez:module genned-code (node-code) 
 	  (import scheme)
+	  (import constants)
+	  (import logfiles)
 	  (import simulator_alpha_datatypes)
 	  (import alpha_lib)
 	  (import alpha_lib_scheduler_simple)
@@ -112,7 +115,8 @@
    (define (build-genned-code-module node-code)
      `(begin (module _genned_node_code mzscheme
 	       (provide node-code)
-	       (require "plt/constants.ss")
+	       (require "generic/constants.ss")
+	       (require "generic/logfiles.ss")
 	       (require "plt/hash.ss")
 	       (require "plt/hashtab.ss")
 	       (require (all-except "plt/helpers.ss" test-this these-tests))
@@ -1085,7 +1089,7 @@
     (define (open-opts f) 
       (if (equal? (extract-file-extension f) "gz") 
 	  '(replace compressed) ; exclusive?
-	  '(replace uncompressed)))
+	  'replace))
 
     ;; Only allow accepted flags:
     (DEBUGASSERT (subset? flags '(simple use-stale-world)))
