@@ -2,9 +2,9 @@
 
 # Normally 1-10 by 1-6
 
-for i in `seq 0.5 19.5`;
+for i in `seq 0 50`;
 do
-  for j in `seq 1 0.5 6`;
+  for j in `seq 0 0`;
      do
     # FIRST RUN
 	../analyze_vs_groundtruth.ss run -param $i -noise $j \

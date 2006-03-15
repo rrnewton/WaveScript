@@ -30,6 +30,29 @@
 
 ; =======================================================================
 
+
+(module tml_generic_traverse  mzscheme  
+  (require (lib "include.ss")  
+           "../generic/constants.ss"
+           "../plt/iu-match.ss"
+	   "../plt/prim_defs.ss"
+	   ;(lib "compat.ss")
+           (all-except "../plt/helpers.ss" test-this these-tests filter)
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
+           )
+  
+  ;; Insure provision of verify-regiment:
+  (provide tml-generic-traverse
+           tml-simple-pass
+           tml-free-vars
+	   tml-potential-escaped-tokens
+           test-this test-generic-traverse)
+
+  (chezimports prim_defs
+	       (except helpers test-this these-tests)
+	       ;regiment_helpers
+	       )
+
 ;; This is confusing, but there are so many small traversals of
 ;; the program tree in this pass that it is much easier to reuse this tree walk:
 ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
@@ -221,6 +244,7 @@
       [(pe ptb newlang) (def-pp ptb newlang)]
       )))
 
+
 ;; This is a generic free-vars which can be shared by different passes that have non-conflicting grammars.
 (define (tml-free-vars e)
   (tml-generic-traverse
@@ -242,7 +266,111 @@
    e))
 
 
+;; Returns those tokens referenced in (tok _ _) expressions which
+;; might escape.  That is, token "values" that are not immediately
+;; consumed by primitives.
+;; This is a conservative estimate.  It could get much better with some dataflow analysis.
+(define tml-potential-escaped-tokens
+  (let ()
+    (define (toks-escaped e)
+      (let ([allowed1
+	     (lambda (loop)
+	       (lambda (x)
+		 (match x 
+			[(tok ,t ,n) (guard (integer? x)) '()]
+			[(tok ,t ,[loop -> e]) e]
+			[,x (loop x)])))])
+	(tml-generic-traverse
+	 ;; driver, fuser, expression
+	 (lambda  (x loop)
+	   (define allowed (allowed1 loop))
 
+
+	   ;; CERTAIN primitives that take tokens as input are allowed (non-escaping).
+	   ;; Not all should be allowed, for example, if we had
+	   ;; cons, cons would not be allowed.  
+	   ;; 
+	   ;; token->subtokid IS allowed currently, but this is debatable.	   
+	   (define allowed-prims
+	     '(elect-leader 
+	       flood
+	       call call-fast timed-call subcall direct-subcall bcast ucast ucast-wack
+	       token-scheduled? token-deschedule token-present? evict evict-all
+	       token->subid))
+
+	   (define disallowed-prims
+	     '(
+	       ; token->subid
+	       ))
+
+
+	   ;; Handles (allowed, non-escaping) primitives that take token args.
+	   (define do-primargs-w-tokens
+	     (lambda (prim args)
+	       (map-prim-w-types 
+		(lambda (arg type)
+		  (match (cons type arg)
+		    [(Token . (tok ,tok ,e)) (allowed e)]
+		    [(,other . ,e)           (loop e)]))
+		prim args)))
+	   
+	   (match x
+;		  [,x (guard (begin (printf "~ntoks-escaped looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+
+	          ;; Refs and sets are not escapes, because the user can't store the token itself.
+		  [(ext-ref ,[allowed -> t] ,v) t]
+		  [(ext-set! ,[allowed -> t] ,v ,[e]) (append t e)]
+
+		  ;; Calls are certainly allowed.
+		  [(,call ,[allowed -> rator] ,[rands] ...)
+		   (guard (memq call '(bcast call call-fast)))
+		   (apply append rator rands)]
+		  [(timed-call ,t ,[allowed -> rator] ,[rands] ...)
+		   (guard (number? t))
+		   (apply append rator rands)]
+
+		  ;; Non-escaped token-accepting prims.
+		  [(,prim ,args* ...)
+		   (guard (and (memq prim allowed-prims)
+			       (token-machine-primitive? prim)
+			       ;(basic-primitive? prim)
+			       ))		  
+		   (apply append (do-primargs-w-tokens prim args*))]
+
+		  ;; Escaped token-accepting prims.
+		  [(,prim ,[args*] ...)
+		   (guard (and (memq prim disallowed-prims)
+			       (token-machine-primitive? prim)))
+		   (apply append args*)]
+
+		  ;; Non-(directly)-token processing primitives: always count as escapes.
+		  [(,prim ,[args*] ...)
+		   (guard (token-machine-primitive? prim))
+		   (if (memq 'Token (get-primitive-entry prim))
+		       (error 'tml-potential-escaped-tokens
+			      "This token-accepting primitive was not classified as escaping or non-escaping: ~a"
+			      prim))
+		   (apply append args*)]
+
+		  ;; Now anything left are token escapes!!
+		  [(tok ,t ,n) (guard (integer? n)) (list t)]
+		  [(tok ,t ,[e]) (cons t e)]
+
+		  [,x (loop x)]))
+       (lambda (ls _) (apply append ls))
+       e)))
+    ;; Main procedure body:
+    (lambda (prog)
+      (match prog
+	[(,lang '(program (bindings ,constbinds ...)
+		   (nodepgm (tokens ,nodetoks ...))))
+	 (let ([escapes (map (lambda (tb)
+			       (mvlet ([(tok id args stored constbinds body) (destructure-tokbind tb)])
+				 (toks-escaped body)))
+			  nodetoks)])
+	   (apply append escapes))]))))
+
+; ================================================================================
 
 (define these-tests
   `(	     
@@ -302,3 +430,7 @@
 		    these-tests))
 
 (define test-generic-traverse test-this)
+
+) ;; End module
+
+

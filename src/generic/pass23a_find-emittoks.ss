@@ -9,6 +9,7 @@
 
 ;;;; This pass finds all the tokens that might possibly be emitted in a
 ;;;; "gemit" statement.  This is necessarily a conservative estimate.
+;;;; (If any "dynamic emission" is performed, all escaped toks must suffer.)
 ;;;; These are the tokens that will later be augmented to carry gradient
 ;;;; information in their argument list.
 ;;;;   <br> <br>
@@ -55,7 +56,7 @@
 	   [(call (tok ,t ,[e]) ,[args*] ...) (apply append e args*)]
 	   ;; Anything more dynamic makes us think the operand is potentially emitted.
 
-	   ;; Tokens fed to primitives don't count as "escaped".
+	   ;; Tokens fed to primitives expecting a 'Token' don't count as escaped.
 	   [(,prim ,args* ...)
 	    (guard (or (token-machine-primitive? prim)
 		       (basic-primitive? prim)))

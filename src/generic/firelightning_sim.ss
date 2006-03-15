@@ -305,7 +305,6 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
-#;
   (begin 
     ;; Set the world size, square:
     ;; Set both of these binds for now, lame:
@@ -315,6 +314,7 @@
     (simalpha-world-ybound 5000)
     (sim-num-nodes 250))
 
+#;
   (begin 
     (set! world-xbound 1500)
     (set! world-ybound 1500)
