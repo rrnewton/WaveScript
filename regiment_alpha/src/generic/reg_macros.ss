@@ -23,7 +23,7 @@
    )
 
   (provide
-      for grep  
+      for grep rep
       let-match 
       mvlet
       match-lambda

@@ -336,6 +336,10 @@ See `run-hooks'."
 	       "module"	"chez:module"
 	       "reg:define-struct"  "define-record" "define-struct" "define-structure"
 
+	       ;; Some regiment syntax extensions:
+	       "IFDEBUG" "DEBUGMODE" "DEBUGASSERT" "ASSERT"
+	       "IFCHEZ" "IF_GRAPHICS"
+
 	       "begin" "call-with-current-continuation" "call/cc"
 	       "call-with-input-file" "call-with-output-file" "case" "cond"
 	       "do" "else" "for-each" "if" "lambda"

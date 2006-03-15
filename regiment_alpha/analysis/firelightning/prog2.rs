@@ -1,14 +1,26 @@
 
+
+
+
+
+
+
+
 (parameters 
   [dummy-param (install-firelightning)]
+  ;[simalpha-realtime-mode #t]
+  [simalpha-dbg-on #f]
 
-  [simalpha-realtime-mode #t]
-  [simalpha-channel-model 'lossless]
-  ;[simalpha-placement-type 'gridlike]
-  [simalpha-failure-model  'none]
-  ;[simalpha-sense-function sense-noisy-rising]
-  ;[simalpha-sense-function sense-random-1to100]
-  ;`[sim-timeout 2000]
+  [default-slow-pulse (* 5 60 1000)] ;; 5 min
+  [default-fast-pulse (*    3 1000)] ;; 3 sec
+
+  ;[sim-timeout 60000] ;; One minute
+  ;[sim-timeout 600000] ;; Ten minutes
+  [sim-timeout 3600000] ;; An hour.
+  ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
+
+  ;; Default value for the threshold. (Over-ridden by analysis script)
+  ;[varied-param 3] 
   )
 
 (define _tempthreshold 20)

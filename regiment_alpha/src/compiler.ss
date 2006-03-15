@@ -90,7 +90,7 @@
 
     ;; (12) Optimization: (unfinished) there's a bunch of low-hanging
     ;; fruit optimizations on Token Machines that we should be doing.
-    ;    inline-tokmac ???
+    inline-tokens
 
     ;; (*) OLD: The compiler back-end used to be in Haskell.  Thus we
     ;; would export the intermediate language to a haskell readable

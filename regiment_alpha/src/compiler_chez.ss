@@ -191,6 +191,8 @@
 ;(include "../generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
+;; This is used by the subsequent passes that process TML:
+(include "../generic/tml_generic_traverse.ss") (import tml_generic_traverse)
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
@@ -236,9 +238,6 @@
 (include "../generic/pass20_deglobalize.ss") 
 (import pass20_deglobalize)
 
-;; This is used by the subsequent passes that process TML:
-(include "../generic/tml_generic_traverse.ss")
-
 (include "../generic/pass21_cleanup-token-machine.ss")
 ;(include "../generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
@@ -264,7 +263,7 @@
 ;; (include "../generic/pass27.2_add-kclosure.ss")
 (include "../generic/pass28_closure-convert.ss")
 
-;;(include "../generic/pass29_verify-token-machine.ss")
+(include "../generic/pass29_inline-tokens.ss") (import pass29_inline-tokens)
 (include "../generic/pass30_haskellize-tokmac.ss")
 
 (include "../generic/pass31_flatten-tokmac.ss")
@@ -311,9 +310,9 @@
 
 ;(trace  explode-primitive process-expr process-letrec)
 
-(cd "..")
+(eval-when (compile load eval) (cd ".."))
 (include "compiler.ss")
-(cd "chez")
+(eval-when (compile load eval) (cd "chez"))
 
 ;; Driver depends on 'pass-names being defined.
 (include "../generic/driver.ss")
@@ -374,4 +373,4 @@
  )
 
 ;; After loading is finished switch to the src/ directory:
-(cd (++ (REGIMENTD) "/src"))
+;(cd (++ (REGIMENTD) "/src"))

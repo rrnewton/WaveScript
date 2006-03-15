@@ -271,12 +271,13 @@
 ;;  #t - same log output, but fasl encoded
 ;;  <int> - In addition to fasling, also "batch" the output into vector-chunks
 ;;          This greatly reduces file size and also increases reading speed.
+;;  [500 is good for running large simulations.]
 (define-regiment-parameter simulation-logger-fasl-batched #f
   (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x)))) 
 	  x))
 
 ;; Controls whether a .log or .log.gz is produced.
-(define-regiment-parameter simulation-logger-gzip-output #f)
+(define-regiment-parameter simulation-logger-gzip-output #t)
 
 
 ;; Just a counter for the simulation logger messages.  
@@ -569,7 +570,7 @@
 ;(define-regiment-parameter simalpha-draw-edges #t)
 
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
-(define-regiment-parameter simalpha-write-sims-to-disk #t)
+(define-regiment-parameter simalpha-write-sims-to-disk #f)
 
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)
@@ -666,6 +667,18 @@
 ;;; (1) simple and (2) must be scoped very broadly, thus justifying
 ;;; their inclusion in this file.
 
+
+; ======================================================================
+
+;;; Initialization code.
+;;;
+;;; PLT doesn't support compressed or fasl log writing currently.  We
+;;; make sure that's turned off if we're loading under PLT.
+
+(IFCHEZ (void)
+ (begin 
+   (simulation-logger-fasl-batched #f)
+   (simulation-logger-gzip-output #f)))
 
 ; ======================================================================
 

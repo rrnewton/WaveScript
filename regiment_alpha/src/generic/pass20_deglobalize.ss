@@ -1,41 +1,56 @@
-;;; TODO: Make it so that returning a distributed value actually
-;;; collects and returns all the values therein, rather than just
-;;; returning the corresponding membership token.
+;;;; TODO: Make it so that returning a distributed value actually
+;;;; collects and returns all the values therein, rather than just
+;;;; returning the corresponding membership token.
 
 
 ;; INCOMPLETE: this doesn't actually use the CFG right now.
 
-;;; Pass 16: deglobalize
-;;; April 2004
+;;;; Pass 16: deglobalize
+;;;; April 2004
 ;===============================================================================
 
-;;; This pass represents the biggest jump in the compiler.  It
-;;; transforms my simplified global language into a local program to
-;;; be run in each node in the sensor network.
+;;;; This pass represents the biggest jump in the compiler.  It
+;;;; transforms my simplified global language into a local program to
+;;;; be run in each node in the sensor network.
 
-;;; We introduce a simple imperative language for the token-handlers
-;;; within each node programs.  In this case, it's naturally a subset
-;;; of scheme, but it gets reduced further in the next pass 
-;;; (cleanup-token-machine).
+;;;; We introduce a simple imperative language for the token-handlers
+;;;; within each node programs.  In this case, it's naturally a subset
+;;;; of scheme, but it gets reduced further in the next pass 
+;;;; (cleanup-token-machine).
 
 ;; NOTE: To add code for a new primitive, the most important things to do are
 ;; to add an entry to explode-primitive and to primitive-return.
 
 
-;;; Input grammar:
+;;;; Input grammar:
 
-;;; <Pgm>  ::= <Let>
-;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= <Simple>
-;;;          | (if <Simple> <Simple> <Simple>)
-;;;          | (lambda <Formalexp> <Let>)
-;;;          | (<primitive> <Simple>*)
-;;; <Formalexp> ::= (<var>*)
-;;; <Simple> ::= (quote <Lit>) | <Var>
+;;;; <Pgm>  ::= <Let>
+;;;; <Let>  ::= (lazy-letrec ([<Var> <Type> <Exp>]*) <Var>)
+;;;; <Exp>  ::= <Simple>
+;;;;          | (if <Simple> <Simple> <Simple>)
+;;;;          | (lambda (<Var>*) (<Type>*) <Let>)
+;;;;          | (<primitive> <Simple>*)
+;;;; <Simple> ::= (quote <Lit>) | <Var>
 
 
-;;; Output grammar = Input grammar to cleanup-token-machine = messy
+;;;; Output grammar = Input grammar to cleanup-token-machine = messy
+
+;;;;<br><br> [2006.03.15] 
+;;;;
+;;;;  Each "edge" in the query circuit, that is, each name bound in
+;;;;  the program, will either have a "distributed" (monadic) or a
+;;;;  "local" type.  Currently, each distributed name has
+;;;;  corresponding membership/formation names.  It's operational
+;;;;  realization will be some firing of membership tokens by that
+;;;;  name. 
+;;;;
+;;;;  This is tricky with nested regions.  The type has two occurences
+;;;;  of "Region" in it, but the compiler can only give one name to
+;;;;  the thing (there would be no way to statically know how many
+;;;;  names to give it).  This is where token indices come in.  The
+;;;;  code generator here in deglobalize must cleverly index the
+;;;;  membership and formation tokens so as to not allow undesirable
+;;;;  collisions.
 
 #;
 (define deglobalize_output_grammar
@@ -502,6 +517,7 @@
 		 )
 	       )]
 
+
 	    [(khood)
 	     (let ([anch (car args)]
 		   [rad (cadr args)]
@@ -531,7 +547,8 @@
 
 		 ;; TEMP:
 		 [,spread id () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
-			  (if (< (ghopcount) ,rad) (timed-call 1000 (tok ,temp id)))]
+			  (if (< (ghopcount) ,rad) (timed-call ,(default-slow-pulse) (tok ,temp id)))]
+
 		 [,temp id () (grelay (tok ,spread id))]
 		 
 		 )
@@ -957,7 +974,7 @@
 				      ;; Pulse the global gradient at one hertz:
 				      [spread-global ()
 						     (gemit global-tree)
-						     (timed-call 1000 spread-global)]
+						     (timed-call ,(default-slow-pulse) spread-global)]
 				      [global-tree () (grelay)]
 				      ;[catcher (v) (soc-return v)]
 				      [reg-return (v)

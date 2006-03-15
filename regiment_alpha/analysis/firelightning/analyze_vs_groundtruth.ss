@@ -3,31 +3,37 @@
 exec regiment i --script "$0" ${1+"$@"};
 |#
 
+;; Uncomment this only to use Check Syntax in PLT on this file, not to run it:
+(begin 
+  (require "../../src/plt/iu-match.ss")
+  (require "../../src/generic/constants.ss")
+  (require "../../src/plt/helpers.ss"))
+
 ;;;; .title Analyze Dead-simple fire monitoring vs. groundtruth.
 
 ;;;; TODO: POSSIBLE OTHER CONTROLS: <gradient-mode> <retry-delay> <max-retries>
 
-;;;;<br>  Usage: ./<script-name> <mode> <options>
-;;;;<br>  Mode: 'run' or 'analyze'
+;;;;<br>  Usage: ./<script-name> <options>
 ;;;;<br>  Options: 
 ;;;;<br>     -l <logfile>
 ;;;;<br>     -o <resultsfile>
 ;;;;<br>     -param <n>   Set the value of 'varied-param'.  In this case it changes the local temp threshold.
 ;;;;<br>     -noise <n>   Set the level of heat-noise-magnitude, this is stddev in heat readings
 
-;;;; This script uses the deadsimple_alarm.rs query to read *all* the
-;;;; temperature readings in the network (over a threshold).  The
-;;;; script then takes...............
-
+;;;;<br><br> 
+;;;; This script processes logfiles produced by deadsimple_alarm.rs (or prog0.rs), and it uses 
+;;;; a heuristic algorithm of my devising to detect fire events from the temperature readings.
+;;;; It then compares these detections vs. ground truth and detects the lag.
 
 ;----------------------------------------
 
 ;(define curlogfile (format "./deadsimple_~a.log.gz" (current-time)))
 (define curlogfile (format "./deadsimple.log.gz"))
+(define resultsfile 'uninit)
+(define worldseed 'uninit)
 
 (define THE_CLUSTER_THRESHOLD 10)
 
-(define worldseed #f)
 
 (define (number->integer x) (inexact->exact (floor x)))
 
@@ -40,43 +46,6 @@ exec regiment i --script "$0" ${1+"$@"};
 ;; This is the main procedure, either run or analyze:
 (define (main flag)
   (case flag
-    [(run)
-     ;; Run the simulation.
-     ;; TODO: If we can, run it on a separate thread.  It's only executed for its
-     ;; writes to the logfile.     
-     (let ([devnull (open-output-file "/dev/null" 'append)]
-	   [real-console (console-output-port)])
-       (printf "Running Simulation in Regiment... (progress will show as vtimes)\n")
-       (parameterize ([current-output-port devnull]
-					;[console-output-port devnull]
-		      )
-#|
-	 
-	 (run-simulator-alpha
-	  (run-compiler 
-	 ))
-	  |# 
-
-	 (if worldseed (animate-world! worldseed))
-	 (progress-dots 
-	  (lambda ()
-	    (apply load-regiment 
-		   (append (if worldseed (list worldseed))
-			   (list (++ (REGIMENTD) "/demos/firelightning/deadsimple_alarm.rs")			   
-				 `[simulation-logger ,curlogfile]
-				 ;;'[sim-timeout 500000]
-				 'verbose
-				 ))))
-	  75000000 ;536870911
-	  (lambda () 
-	    (if (simalpha-current-simworld)
-		(fprintf real-console " ~a" (simworld-vtime (simalpha-current-simworld)))
-		(display #\. real-console))
-	    (flush-output-port real-console)))
- 
-	 (fprintf real-console "\nSimulation finished.\n")
-	 (close-output-port devnull)
-	 (collect 4)))]
 
     [(analyze)
      (let ()
@@ -105,7 +74,7 @@ exec regiment i --script "$0" ${1+"$@"};
        (define returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
        
        (define resultslog 
-	 (begin (printf "We build a very simple model based on the returned data.\n")
+ (begin (printf "We build a very simple model based on the returned data.\n")
 		(printf "Directing output to file: ~a\n" resultsfile)
 		(open-output-file resultsfile 'replace)))
 
@@ -375,7 +344,7 @@ exec regiment i --script "$0" ${1+"$@"};
 	       ;; has started.
 	       (let ([next-t (if (stream-empty? (stream-cdr actual)) +inf.0
 				 (caddr (stream-car (stream-cdr actual))))])
-	       (match (stream-car actual)		 
+                 (match (stream-car actual)		 
 		 [(,x ,y ,t ,r) 
 		  (let inner ((falsepos 0) (detects detects))
 		    ;; If we hit the end without detecting anything, that's a false negative.
@@ -447,7 +416,5 @@ exec regiment i --script "$0" ${1+"$@"};
      (set! run-modes (snoc action run-modes)) (loop rest)]
     [,other (error 'analyze_deadsimple_vs_groundtruth "bad arguments: ~s\n" other)]))))
 
-(define (go) (thescript (command-line-arguments)))
-(go)
 
-;(new-cafe)
+(thescript (command-line-arguments))
