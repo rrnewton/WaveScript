@@ -40,7 +40,7 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   
 	   ;; This configuration is for running extended simulation-experiments only:
-	   #;(begin (optimize-level 3)
+	   (begin (optimize-level 3)
 		  (compile-compressed #f)
 		  (generate-inspector-information #f)
 		  ;; Messing with this didn't seem to help performance.
@@ -102,7 +102,9 @@
 ;======================================================================
 ;;; Begin loading files.
 
-(eval-when (compile eval) (cd "chez"))
+;(define start-dir (eval-when (compile load eval) (cd)))
+(eval-when (compile load eval) 
+  (cd (string-append (getenv "REGIMENTD") "/src/chez")))
 
 (include "match.ss")      ;; Pattern matcher, dependency.
 (include "regmodule.ss")  ;; Common module syntax.
@@ -366,11 +368,10 @@
 ;; Open this up so we can read the global counters:
 (import simulator_alpha_datatypes)
 
-(IF_GRAPHICS 
- (define (load-world)
-   0
-   )
- )
 
 ;; After loading is finished switch to the src/ directory:
-;(cd (++ (REGIMENTD) "/src"))
+;; But if you do this, remember to switch back to "chez/" when using the interactive inspector:
+;(eval-when (compile load eval)
+;  (cd start-dir)
+(cd (string-append (REGIMENTD) "/src"))
+;  )

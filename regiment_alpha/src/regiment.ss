@@ -348,9 +348,10 @@
 		(let* ([in (in)]
 		       [c1 (read-char in)]
 		       [c2 (read-char in)])
+		  ;; TODO: THIS DOESN'T WORK!!! COULD HAVE COMMENTS AT THE BEGINNING OF THE FILE.
 		  (if (equal? "#@" (list->string (list c1 c2)))
 		      (printf "First expression in file is FASL encoded.  (Binary fast-loading format.)\n")
-		      (printf "First expression in file appears to be non-FASL plaintext~a.\n"
+		      (printf "First characters in file appears to be non-FASL plaintext~a.\n"
 			      (if (equal? (extract-file-extension file) "gz")
 				  " (except for being gzipped)" ""))
 		      )))]

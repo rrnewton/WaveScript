@@ -20,12 +20,12 @@
   ;[sim-timeout 86400000] ;; A full day. 86 Million milli's
 
   ;; Default value for the threshold. (Over-ridden by analysis script)
-  ;[varied-param 3] 
+  ;[varied-param 20]
   )
 
 ;; The varied parameter can be changed from outside the program source before load-time.
 `(define threshold ,(varied-param))
-;(define threshold 3)
+;(define threshold 20)
 
 ;; Main
 
@@ -34,4 +34,4 @@
 (define (filt #(_ _ temp)) (> temp threshold))
 
 ;(tuple test
- (rfilter filt (rmap read world))
+(light-up (rfilter filt (rmap read world)))

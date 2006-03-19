@@ -195,7 +195,10 @@
 		(if (simulation-logger-fasl-batched)
 		    (error 'logger "cannot have both human-readable and fasl mode turned on."))
 		(display (log-line->human-readable level ob args) port))
-	    (begin
+	    (parameterize ([print-graph #t]
+			   [print-length #f]
+			   [print-level #f]
+			   [pretty-maximum-lines #f])
 	      (if (null? args)
 		  (writer ob port)
 		  (writer (apply format ob args) port))

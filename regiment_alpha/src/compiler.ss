@@ -510,13 +510,16 @@
 
 (define-id-syntax t7a (load-regiment "demos/firelightning/simple_lightup.tm"))
 (define-id-syntax t7b (load-regiment "demos/firelightning/lightup_video.tm"))
-(define-id-syntax t7 (load-regiment "demos/firelightning/manual_nbrhood.tm"))
+;(define-id-syntax t7 (load-regiment "demos/firelightning/manual_nbrhood.tm"))
 ;(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm0.rs"))
 ;(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm1.rs"))
-(define-id-syntax t8 (load-regiment "demos/firelightning/prog2.rs"))
 
-(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
-(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))
+(define-id-syntax t7 (load-regiment "../analysis/firelightning/prog1.rs" 'verbose))
+(define-id-syntax t8 (load-regiment "../analysis/firelightning/prog2.rs" 'verbose))
+(define-id-syntax t9 (load-regiment "../analysis/firelightning/prog2_manual.tm" 'verbose))
+
+;(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
+;(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))
 
 (define-id-syntax d1 (load-regiment "demos/regiment/simple_fold.rs"))
 (define-id-syntax d2 (load-regiment "demos/regiment/average_temperature2.rs"))

@@ -2,17 +2,18 @@
 
 # Normally 1-10 by 1-6
 
-for i in `seq 0 50`;
-do
-  for j in `seq 0 0`;
-     do
+for j in `seq 6 6`;
+  do
+  for i in `seq 0 50`;
+    do
     # FIRST RUN
-	../analyze_vs_groundtruth.ss run -param $i -noise $j \
+	../run_querysim.ss -param $i -noise $j \
+	    -f "../prog2_manual.tm" \
 	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
 	    -w "../world.simworld"
     # THEN ANALYZE CONCURRENTLY:
-	(../analyze_vs_groundtruth.ss analyze \
-	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
-	    -o ./data/results_thresh"$i"_noise"$j".dat &)
+#	(../analyze_vs_groundtruth.ss \
+#	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
+#	    -o ./data/results_thresh"$i"_noise"$j".dat &)
   done 
-done 
+done

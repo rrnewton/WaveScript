@@ -1,3 +1,6 @@
+
+;;;; TODO: SHOULD THE SENSOR BE DETERMINISTIC?  IN THAT IF ITS READ TWICE IN THE SAME TIME-STEP, SAME ANSWER??
+
 ;;;; .title A Simple Lightning/Forest-fire Sim.
 ;;;; .author Ryan Newton
 
@@ -13,8 +16,11 @@
 	;[lightning-rate 0.5] ;; Probability per millisecond of lightning.
 (define fire-spread-rate .001) ;; Again, per millisecond.
 (define fire-width 3000) ;; The fire is a ring 500m thick.  It "burns out" in the center.
+
 ;(define fire-max-age 220000) ;; Total life in milleseconds.
-(define fire-max-age 180000) ;; Total life in milleseconds.
+;(define fire-max-age 180000) ;; Total life in milleseconds.
+(define fire-max-age 320000) ;; Total life in milleseconds.
+
 (define fire-temp 200)  ;; Degrees in celcius.
 
 (define heat-noise-magnitude 3)
@@ -304,6 +310,7 @@
 ;; dimensions of the world and the radio parameters correctly.
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
+
 
   (begin 
     ;; Set the world size, square:
