@@ -86,6 +86,7 @@
 
          window-width window-height
          processor-screen-radius
+	 set-procesor-screen-radius!
          world-xbound world-ybound radius numsimnodes SPECIAL_RETURN_TOKEN 
          BASE_ID NULL_ID	 
        	 return-window-size
@@ -125,7 +126,26 @@
          rgb-green
          rgb-blue
 
+	 Default-Drawing-Color
+	 Default-Window-Color 
+	 Default-Window-Text-Color
+	 Default-Background-Color 
+	 Default-Canvas-Text-Color
+	 Default-Supertext-Color  
+	 Default-Subtext-Color    
+	 Default-LED-Off-Color      
+	 Default-Node-Color       
+	 Default-Base-Border-Color
+	 Default-Edge-Full-Color  
+	 Default-Edge-Dead-Color  
+	 Default-Line-Highlight-Color
+	 Default-Mark-Color          
+	 Default-Proc-Border-Color   
+	 Default-Mouse-Highlight-Color 
+
 	 default-unit-tester-retries
+
+	 nodeid?
 
          )
 	
@@ -272,7 +292,7 @@
 ;;  <int> - In addition to fasling, also "batch" the output into vector-chunks
 ;;          This greatly reduces file size and also increases reading speed.
 ;;  [500 is good for running large simulations.]
-(define-regiment-parameter simulation-logger-fasl-batched #f
+(define-regiment-parameter simulation-logger-fasl-batched 500
   (lambda (x) (ASSERT (or (eq? x #f) (eq? x #t) (and (integer? x) (positive? x)))) 
 	  x))
 
@@ -570,7 +590,7 @@
 ;(define-regiment-parameter simalpha-draw-edges #t)
 
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
-(define-regiment-parameter simalpha-write-sims-to-disk #f)
+(define-regiment-parameter simalpha-write-sims-to-disk (IFDEBUG #t #f))
 
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)

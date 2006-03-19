@@ -8,7 +8,6 @@
 
 (module source_loader mzscheme 
   (require "../plt/iu-match.ss"
-           (lib "include.ss")
            "../generic/constants.ss"
 	   "../plt/simulator_alpha_datatypes.ss"
            (all-except "../plt/helpers.ss" test-this these-tests)
@@ -179,11 +178,11 @@
 	  (let ((entry (assq var subst)))
 	    (if entry (cadr entry) var))]          
     [(if ,[test] ,[conseq] ,[altern])
-     (guard (not (assq 'if env)))
+     (guard (not (memq 'if env)))
      `(if ,test ,conseq ,altern)]
     ;; Pre type checking!!
     [(lambda (,[break-pattern -> formal* binds* ] ...) ,expr)
-     (guard (not (assq 'lambda env)))     
+     (guard (not (memq 'lambda env)))     
      (let ([bod (loop expr
 		 (append formal* env)
 		 ;(append (apply append subst*) subst)
@@ -194,7 +193,7 @@
 	   `(lambda (,formal* ...)  ,bod)
 	   `(lambda (,formal* ...)  (letrec (,binds ...) ,bod))))]
     [(letrec ((,[break-pattern -> lhs* binds*] ,[rhs*]) ...) ,[bod])
-     (guard (not (assq 'letrec env)))
+     (guard (not (memq 'letrec env)))
      
      `(letrec ( [,lhs* ,rhs*] ...
 		,@(apply append binds*)

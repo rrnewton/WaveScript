@@ -19,4 +19,6 @@ exec regiment i --script "$0" ${1+"$@"};
 (define iced (freeze-world (simalpha-current-simworld)))
 
 ;(inspect (command-line-arguments))
+(print-level #f)
+(print-length #f)
 (write iced  (open-output-file (car (command-line-arguments)) 'replace))

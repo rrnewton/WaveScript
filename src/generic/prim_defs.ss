@@ -54,7 +54,7 @@
 (define regiment-type-aliases
   '([Region (Area Node)]
     [Anchor (Signal Node)]
-    ;[Dist   Float]
+    [NetDist   Float] ;; Network distance.  Depends on gradient implementation.
     ; [(Area 'a) (Signal (Space 'a))]
     ))
 

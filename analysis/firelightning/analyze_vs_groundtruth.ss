@@ -4,6 +4,7 @@ exec regiment i --script "$0" ${1+"$@"};
 |#
 
 ;; Uncomment this only to use Check Syntax in PLT on this file, not to run it:
+#;
 (begin 
   (require "../../src/plt/iu-match.ss")
   (require "../../src/generic/constants.ss")
@@ -43,12 +44,8 @@ exec regiment i --script "$0" ${1+"$@"};
   (syntax-rules ()
     [(_ e) (call-with-values (lambda () e) (lambda args (car args)))]))
 
-;; This is the main procedure, either run or analyze:
-(define (main flag)
-  (case flag
-
-    [(analyze)
-     (let ()
+;; This is the main procedure, do the analysis:
+(define (main) 
        (define logport (open-input-file 
 			curlogfile 
 			(if (equal? "gz" (extract-file-extension curlogfile))
@@ -74,7 +71,7 @@ exec regiment i --script "$0" ${1+"$@"};
        (define returned (stream-filter (lambda (x) (eq? 'SOCRETURN (caddr x))) logstream))
        
        (define resultslog 
- (begin (printf "We build a very simple model based on the returned data.\n")
+	 (begin (printf "We build a very simple model based on the returned data.\n")
 		(printf "Directing output to file: ~a\n" resultsfile)
 		(open-output-file resultsfile 'replace)))
 
@@ -383,9 +380,8 @@ exec regiment i --script "$0" ${1+"$@"};
 			      (begin 
 				(printf "    (Ignored detection: ~a)\n" head)
 				(inner (add1 falsepos) (stream-cdr detects)))
-			      ))))]))))))
-     )] ;; End "analyze" implementation.
-    ))
+			      ))))])))))
+     ))
 
 ;; Body of the script:
 
@@ -393,12 +389,7 @@ exec regiment i --script "$0" ${1+"$@"};
 (let ([run-modes '()])
 (let loop ((x (map string->symbol script-args)))
   (match x
-    [() ;(inspect (vector run-modes curlogfile))
-     ;(set! curlogfile (format "./logs/deadsimple_30n_1hr_thresh~a_noise~a.log.gz" 
-     ;(varied-param) heat-noise-magnitude))     
-     (if (null? run-modes)
-	 (void);(begin (main 'run) (main 'analyze))
-	 (for-each main run-modes))]
+    [() (main)]
 
     [(-param ,n ,rest ...)
      (printf "Setting varied-param to ~a\n" n)

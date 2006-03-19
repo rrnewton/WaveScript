@@ -264,8 +264,10 @@
      ;; Need to make this one have a higher probability of success.
      ;; [2006.02.27] Just failed with :
      ;; (read "~? at char ~a of ~a" "unexpected end-of-file reading ~a" ("list") 5775 "./_genned_node_code.ss")
+     ;; [2006.03.19] Just returned ((picked-child-w-qual: 10) FAIL).
+     ;;   Still need to make the probability of success higher.  But this is ok for now, allowing retry.
      ["Now test Ucast-wACK"
-      ;retry
+      retry
       , (tm-to-list
 	 '(tokens
 	    ;; First discover a neighbor.
@@ -989,7 +991,9 @@
 	 `(["This time I force a continutaion by using subcall.  Thus the c's are delayed."
 	   (parameterize ((pass-names '(cleanup-token-machine 
 				     desugar-let-stored  rename-stored
-				     cps-tokmac )))
+				     cps-tokmac ))
+			  ;; Turn off fasl writing because we can't write procedures (continuations):
+			  [simulation-logger-fasl-batched #f])
 	     ,common)
 	   ;(_ _ ab _ _ b c c) ;; [2005.10.31] Enabled call-fast for cps'd code:
 	   (_ c _ ab _ c _ b)
@@ -1339,7 +1343,9 @@
 	     [,_ #f]))]
 
      ["#2 Let's manually do some more tricky continuations and stress closure-convert."
-      (parameterize ([simalpha-zeropad-args 'warning]) ;; This has to be on because we're using closure-convert.
+      (parameterize ([simalpha-zeropad-args 'warning];; This has to be allowed  because we're using closure-convert.
+		     )
+	
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
@@ -1365,6 +1371,9 @@
      ;; problems I was having in my gradient/subcall generated code:
      ;; [2005.10.31] Changed to use call-fast!!!
      ["#3 Let's manually do some more tricky continuations and stress closure-convert."
+      (parameterize (
+		     [simulation-logger-fasl-batched #f] ;; Can't write continuations to log file in fasl mode.
+		     )
       (let ((prt (open-output-string)))
 	(display "(" prt)
 	(run-simulator-alpha
@@ -1407,7 +1416,7 @@
 	 )
 	(display ")" prt)
 	(read (open-input-string (get-output-string prt)))      
-	)
+	))
       ((sum 1000 0) (acc 0 to 1000) local-and-fire outif2
        (sum 13 1000) (acc 1000 to 1013) local-and-fire outif2
        (timeout 1013))]

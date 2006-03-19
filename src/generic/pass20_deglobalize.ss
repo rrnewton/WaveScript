@@ -338,7 +338,7 @@
 		    [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
 		    )
-	       ;(inspect region_tok)
+	       ;(inspect region_tok)	       
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent ,(if push? '(v) '()) 
@@ -547,7 +547,8 @@
 
 		 ;; TEMP:
 		 [,spread id () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
-			  (if (< (ghopcount) ,rad) (timed-call ,(default-slow-pulse) (tok ,temp id)))]
+			  (if (< (ghopcount) ,rad) (timed-call 1000 ;,(default-fast-pulse) 
+							       (tok ,temp id)))]
 
 		 [,temp id () (grelay (tok ,spread id))]
 		 
