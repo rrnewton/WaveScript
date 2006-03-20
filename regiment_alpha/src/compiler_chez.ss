@@ -40,6 +40,7 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   
 	   ;; This configuration is for running extended simulation-experiments only:
+#;
 	   (begin (optimize-level 3)
 		  (compile-compressed #f)
 		  (generate-inspector-information #f)
@@ -189,7 +190,7 @@
 (include "../generic/grammar_checker.ss") (import grammar_checker)
 
 ;; Type inference is used by verify-regiment, below.
-(include "../generic/hm_type_inference.ss")
+(include "../generic/hm_type_inference.ss") (import hm_type_inference)
 ;(include "../generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
