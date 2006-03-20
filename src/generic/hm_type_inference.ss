@@ -301,7 +301,7 @@
 ;;; The main type checker.
 
 (define (type-expression expr tenv)
-  (mvlet ([(_ typ) (annotate-expression expr tenv)])
+  (mvlet ([(_ typ) (annotate-expression expr tenv '())])
     typ))
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
@@ -348,7 +348,7 @@
 
 
 ;; Assign a type to a procedure application expression.
-(define (type-app rator rattyp rands exp tenv)
+(define (type-app rator rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
  ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
@@ -377,8 +377,13 @@
 ;; (letrec, lambda) with per-variable type information.  As such, this
 ;; is a bunch of duplicated code, and poses risks for bugs.
 ;; <br> <br>
-;; Note, doesn't handle lazy-letrec, or already annotated programs.
-(define (annotate-expression exp tenv)
+;;
+;; Note, doesn't necessarily handle already annotated programs.
+;;
+;; .param exp - expression
+;; .param tenv - type environment 
+;; .param nongeneric - list of type variables that appear in lambda-arguments.
+(define (annotate-expression exp tenv nongeneric)
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
@@ -405,28 +410,27 @@
 		 (types-equal! t newtypes exp)
 		 (vector-ref newtypes (qinteger->integer n))))]
       
-      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod tenv)]      
+      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod tenv nongeneric)]      
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      [(lambda (,v* ...) ,types ,bod)
-       ;; Optional type annotations uninterpreted currently!!.
-       (annotate-lambda v* bod tenv)]
+      ;; Optional type annotations uninterpreted currently!!.
+      [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod tenv nongeneric)]
       
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      [(letrec ([,id* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv)]      
-      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv)]
+      [(letrec ([,id* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]      
+      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]
 
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,rand* ...)
-	       (type-app prim (prim->type prim) t* exp tenv))]
+	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
       [(app ,origrat ,[l -> rand* t*] ...)
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(app ,rator ,rand* ...)
-		 (type-app origrat t1 t* exp tenv)))]
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...)  (l `(app ,rat ,rand* ...))]
       )))
@@ -438,10 +442,10 @@
 ;; .param tenv  The type environment.
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
-  (lambda (ids body tenv)
+  (lambda (ids body tenv nongeneric)
     ;; No optional type annotations currently.
     (let ([argtypes (map (lambda (_) (make-tcell)) ids)])
-      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes))])
+      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes) nongeneric)])
         (values `(lambda ,ids ,argtypes ,newbod)
                 `(,@argtypes -> ,bodtype))))))
 
@@ -458,25 +462,25 @@
                [else
                 (cons (f (car ls1) (car ls2)) 
                       (loop (cdr ls1) (cdr ls2) acc))])))])
-    (lambda (id* rhs* bod tenv) 
+    (lambda (id* rhs* bod tenv nongeneric) 
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
              [tenv (tenv-extend tenv id* rhs-types #t)])
         ;; Unify all these new type variables with the rhs expressions
         (let ([newrhs* 
                (map-ordered2 (lambda (type rhs)
-                               (mvlet ([(newrhs t) (annotate-expression rhs tenv)])
+                               (mvlet ([(newrhs t) (annotate-expression rhs tenv nongeneric)])
                                  (types-equal! type t rhs)
                                  (printf "LETREC: type ~a rhs ~a\n" (export-type t) rhs)
                                  newrhs))
                              rhs-types rhs*)])
-          (mvlet ([(bode bodt) (annotate-expression bod tenv)])
+          (mvlet ([(bode bodt) (annotate-expression bod tenv nongeneric)])
             (values `(letrec ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
   
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
 (define (annotate-program p)
-  (mvlet ([(e t) (annotate-expression p (empty-tenv))])
+  (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
     ;; Now strip mutable cells from annotated expression.
     (values 
      (match e
