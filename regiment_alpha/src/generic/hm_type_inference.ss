@@ -300,71 +300,6 @@
 
 ;;; The main type checker.
 
-;; If it's a let-bound function re-instantiate it for polymorphism:
-;(define (inject-polymorphism tenv v ty)
-
-;  (if (tenv-is-let-bound? tenv v)
-;      (instantiate-type entry)
-;      entry)
-
-;; [2006.03.19]
-;; PHASING THIS OUT.
-;; The only advantage this has over just using annotate-expression is efficiency,
-;; and that's just not worth duplicating code at this point.
-;; 
-;; Assign a type to an expression.
-#;
-(define (type-expression exp tenv)
-    (DEBUGASSERT (tenv? tenv))
-  (let l ((exp exp))
-    (match exp 
-      [,c (guard (constant? c)) (type-const c)]
-      [(quote ,c) (type-const c)]
-      [,prim (guard (symbol? prim) (regiment-primitive? prim))
-	     (prim->type prim)]
-      [,v (guard (symbol? v)) 
-	  (let ((entry (tenv-lookup tenv v)))
-	    (or entry
-		(error 'type-expression "no binding in type environment for var: ~a" v)))]
-      [(if ,te ,[l -> c] ,[l -> a])
-       (let ((tt (l te)))
-	 (types-equal! tt 'Bool te)
-	 (types-equal! c a exp)
-	 c)]
-      [(tuple ,[l -> arg*] ...)  (apply vector arg*)]
-      [(tupref ,n ,len ,[l -> t])
-       (unless (and (qinteger? n) (qinteger? len))
-	 (error 'type-expression 
-		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
-       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
-	 (types-equal! t newtypes exp)
-	 (vector-ref newtypes (qinteger->integer n)))]
-
-      [(lambda (,v* ...) ,bod) (type-lambda v* bod tenv)]
-      [(letrec ([,id* ,rhs*] ...) ,bod)
-       ;(guard (memq letrec '(lazy-letrec letrec)))
-       (type-letrec id* rhs* bod tenv)]
-
-      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      [(lambda (,v* ...) ,types ,bod)
-       ;; No optional type annotations currently.
-       (type-lambda v* bod tenv)]
-      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)
-       ;(guard (memq letrec '(lazy-letrec letrec)))
-       (type-letrec id* rhs* bod tenv)]
-
-      [(,prim ,[l -> rand*] ...)
-       (guard (regiment-primitive? prim))
-       (DEBUGASSERT (andmap type? rand*))
-       (type-app prim (prim->type prim) rand* exp tenv)]
-      [(,rator ,[l -> rand*] ...)
-       (DEBUGASSERT (andmap type? rand*))
-       (let ((rattyp (l rator)))
-	 (type-app rator rattyp rand* exp tenv))]
-
-      [,other (error 'type-expression "unknown expression: ~s" other)]
-      )))
-
 (define (type-expression expr tenv)
   (mvlet ([(_ typ) (annotate-expression expr tenv)])
     typ))
@@ -411,18 +346,6 @@
 	`(List ,t1)))]
    [else (error 'type-const "could not type: ~a" c)]))
 
-;; Assign a type to a procedure declaration.
-;; .param ids   The lambda formals.
-;; .param body  The lambda body.
-;; .param tenv  The type environment.
-#;
-(define type-lambda
-  (lambda (;texps 
-	   ids body tenv)
-    ;(let ((arg-types (expand-optional-type-expressions texps tenv)))
-    (let* ([argtypes (map (lambda (_) (make-tcell)) ids)]
-	   [result (type-expression body (tenv-extend tenv ids argtypes))])
-      `(,@argtypes -> ,result))))
 
 ;; Assign a type to a procedure application expression.
 (define (type-app rator rattyp rands exp tenv)
@@ -430,41 +353,20 @@
  ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
     (if (and (symbol? rator) 
-;#f
 	     (tenv-is-let-bound? tenv rator))
 	(begin 
 	  ;; First we must assert that it is an arrow type of appropriate arity:
-#;	  (let ([newtype `(,@(map (lambda (_) (make-tcell)) rands) ->
+#;	
+	  (let ([newtype `(,@(map (lambda (_) (make-tcell)) rands) ->
 			   ,(make-tcell))])
 	    (types-equal! rattyp newtype exp))
 	  ;; By instantiating a new type for the rator we allow let bound polymorphism.
 	  (types-equal! (instantiate-type rattyp) `(,@rands -> ,result) exp)
-  ;; BUT, any further restrictions to the ...................................................................................................................................................................................
 )
 	(types-equal! rattyp `(,@rands -> ,result) exp))
     ;(inspect (vector (export-type rator) rands result))
     result))
 
-;; Assign a type to a Regiment letrec form.
-; (define type-letrec
-;   (lambda (ids rands body tenv)
-;     (let ((tenv-for-rands
-;             (extend-tenv
-;               ids
-;               (types-of-expressions rands tenv)
-;               tenv)))
-;       (type-of-expression body tenv-for-rands))))
-
-#;
-(define (type-letrec id* rhs* bod tenv)
-  ;; Make new cells for all these types
-  (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	 [tenv (tenv-extend tenv id* rhs-types #t)]) ; Pass flag to indicate let-bound.
-    ;; Unify all these new type variables with the rhs expressions
-    (for-each (lambda (type rhs)
-		(types-equal! type (type-expression rhs tenv) rhs))
-      rhs-types rhs*)
-    (type-expression bod tenv)))
 
 ; ======================================================================
 
@@ -529,6 +431,12 @@
       [(,rat ,rand* ...)  (l `(app ,rat ,rand* ...))]
       )))
 
+
+;; Assign a type to a procedure declaration.
+;; .param ids   The lambda formals.
+;; .param body  The lambda body.
+;; .param tenv  The type environment.
+;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
   (lambda (ids body tenv)
     ;; No optional type annotations currently.
@@ -536,7 +444,8 @@
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes))])
         (values `(lambda ,ids ,argtypes ,newbod)
                 `(,@argtypes -> ,bodtype))))))
-  
+
+;; Assign a type to a Regiment letrec form.  
 (define annotate-letrec 
   (let ([map-ordered2 
          (lambda (f ls1 ls2)
