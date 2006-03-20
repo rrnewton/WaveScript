@@ -223,12 +223,23 @@
 
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
-(define (instantiate-type t)
-  (let* ((tenv (empty-tenv))
+(define instantiate-type 
+  (case-lambda 
+    [(t) (instantiate-type t '())]
+    [(t nongeneric)
+     (let* ((tenv (empty-tenv))
 	 (result 
 	  (let loop ((t t))
 	   (match t
 	     [,s (guard (symbol? s)) s]
+
+             ;; This type variable is non-generic, we do not copy it.
+	     [(quote ,cell)
+              (guard (pair? cell)
+		     (memq (car cell) nongeneric))
+              `(quote ,cell) ;; Don't reallocate the cell.
+              ]
+             
 	     ;; This type variable has a cell.  Replace it:
 	     [(quote (,n . ,v))
 	      (let ((entry (tenv-lookup tenv n)))
@@ -254,8 +265,8 @@
 	      `(,constructor ,args ...)]
 	     [,other (error 'instantiate-type "bad type: ~a" other)]
 	     ))))
-    (DEBUGASSERT (type? result))
-    result))
+       (DEBUGASSERT (type? result))
+       result)]))
 
 ;; This takes away the mutable cells, thereby converting to the
 ;; external representation.
@@ -350,23 +361,15 @@
 ;; Assign a type to a procedure application expression.
 (define (type-app rator rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
- ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
+  ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
     (if (and (symbol? rator) 
 	     (tenv-is-let-bound? tenv rator))
-	(begin 
-	  ;; First we must assert that it is an arrow type of appropriate arity:
-#;	
-	  (let ([newtype `(,@(map (lambda (_) (make-tcell)) rands) ->
-			   ,(make-tcell))])
-	    (types-equal! rattyp newtype exp))
-	  ;; By instantiating a new type for the rator we allow let bound polymorphism.
-	  (types-equal! (instantiate-type rattyp) `(,@rands -> ,result) exp)
-)
+	;; By instantiating a new type for the rator we allow let-bound polymorphism.
+	(types-equal! (instantiate-type rattyp non-generic-tvars) `(,@rands -> ,result) exp)
 	(types-equal! rattyp `(,@rands -> ,result) exp))
     ;(inspect (vector (export-type rator) rands result))
     result))
-
 
 ; ======================================================================
 
@@ -444,8 +447,10 @@
 (define annotate-lambda
   (lambda (ids body tenv nongeneric)
     ;; No optional type annotations currently.
-    (let ([argtypes (map (lambda (_) (make-tcell)) ids)])
-      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes) nongeneric)])
+    (let* ([argtypes (map (lambda (_) (make-tcell)) ids)]
+           [newnongen (map (match-lambda ('(,n . ,_)) n) argtypes)])
+      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
+                                                     (append newnongen nongeneric))])
         (values `(lambda ,ids ,argtypes ,newbod)
                 `(,@argtypes -> ,bodtype))))))
 
@@ -471,7 +476,6 @@
                (map-ordered2 (lambda (type rhs)
                                (mvlet ([(newrhs t) (annotate-expression rhs tenv nongeneric)])
                                  (types-equal! type t rhs)
-                                 (printf "LETREC: type ~a rhs ~a\n" (export-type t) rhs)
                                  newrhs))
                              rhs-types rhs*)])
           (mvlet ([(bode bodt) (annotate-expression bod tenv nongeneric)])
@@ -585,12 +589,13 @@
      ((List '(a . 99)) -> '(a . 99))]
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
     [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Integer]
-;    [(export-type (,type-lambda '(v) '(+ v v) (empty-tenv))) (Integer -> Integer)]
     [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-#;    [(export-type (,type-lambda '(v) 'v (empty-tenv)))
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) (empty-tenv) '())]) t)) (Integer -> Integer)]
+
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v (empty-tenv) '())]) t))
      ,(lambda (x)
 	(match x
 	  [(',a -> ',b) (eq? a b)]
@@ -621,25 +626,39 @@
      ;#(Integer String (Integer -> Integer))
      ]
   
-#;    ["Lambda bound arrow types are not polymorphic."
+  ["Lambda bound arrow types are not polymorphic."
      (export-type (,type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
 	  [((Integer -> ,v1) -> #(,v2 (Integer -> ,v3)))
-	   (guard (equal? v1 v2) (equal? v2 v3)) #t]
+	   (guard (equal? v1 v2) (equal? v2 v3)) 
+	   #t]
 	  [,else #f]))]
-
-#;    ["Non polymorphic funs cannot be applied differently."
-     (export-type (,type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
-     error]
-    
-    [(export-type (,type-expression 
-		   '(letrec ()
-		      (smap2
+  ["Non polymorphic funs cannot be applied differently."
+   (export-type (,type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
+   error]
+  
+  [(export-type (,type-expression 
+		 '(letrec ()
+		    (smap2
 		       (lambda (n1 n2) (tuple n1 n2))
-		      (anchor-at 50 10)
-		      (anchor-at 30 40))) (empty-tenv)))
-     (Signal #(Node Node))]
+		       (anchor-at 50 10)
+		       (anchor-at 30 40))) (empty-tenv)))
+   (Signal #(Node Node))]
+  ["This should not be allowed by the type system:" 
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f g])
+		      (tuple (f 3) (f #t))))
+		 (empty-tenv)))
+   error]
+  ["Whereas this is ok."
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f (lambda (x) x)])
+		      (tuple (f 3) (f #t))))
+		 (empty-tenv)))
+   unspecified]
 
 
     [(mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
@@ -652,24 +671,7 @@
     ;; This one doesn't actually verify shared structure:
     [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
      ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
-#;
-    ["This should not be allowed by the type system:" 
-     (export-type (,type-expression 
-		   '(lambda (g)
-		      (letrec ([f g])
-			(tuple (f 3) (f #t))))
-		   (empty-tenv)))
-     error]
-#;
-   ["Test type-app for a particular situation that arose."
-    (type-app 'myfun '#0='(k . #1='(_c  . #f)) '(#2='(h quote (j . Region)))
-		'(app myfun hood)
-		'((result '(l . #f) #t) (myfun #0# #t) (hood #2# #t) (n '(g . Node) #f)
-		  (_threshold '(f . #f) #t) (temp '(e . #f) #t) (abovethresh '(d . #f) #t)
-		  (count-nbrs #1# #t) (heat-events '(b . #f) #t)
-		  (local-results '(a . #f) #t)))
-    ????
-    ]
+
 
     ))
 
