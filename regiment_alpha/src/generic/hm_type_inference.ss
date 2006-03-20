@@ -454,6 +454,7 @@
 ;               (types-of-expressions rands tenv)
 ;               tenv)))
 ;       (type-of-expression body tenv-for-rands))))
+
 #;
 (define (type-letrec id* rhs* bod tenv)
   ;; Make new cells for all these types
@@ -468,7 +469,7 @@
 ; ======================================================================
 
 ;;; Annotate expressions/programs with types.
-
+  
 ;; This is an alternative version of type-expression above which
 ;; simultaneously infers types and annotates the binding forms
 ;; (letrec, lambda) with per-variable type information.  As such, this
@@ -476,16 +477,6 @@
 ;; <br> <br>
 ;; Note, doesn't handle lazy-letrec, or already annotated programs.
 (define (annotate-expression exp tenv)
-  (define (map-ordered2 f ls1 ls2)
-    (let loop ([ls1 ls1]
-	       [ls2 ls2]
-	       [acc '()])
-      (cond
-       [(and (null? ls1) (null? ls2)) (reverse! acc)]
-       [(or (null? ls1) (null? ls2)) (error 'map-ordered2 "lists are different lengths")]
-       [else
-	(cons (f (car ls1) (car ls2)) 
-	      (loop (cdr ls1) (cdr ls2) acc))])))
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
@@ -498,16 +489,10 @@
 		(values v entry)
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
-       (types-equal! tt 'Bool te)
+       (types-equal! tt 'Bool te) ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp)
        (values `(if ,te ,ce ,ae) ct)]
 
-      [(lambda (,v* ...) ,body)
-       ;; No optional type annotations currently.
-       (let ([argtypes (map (lambda (_) (make-tcell)) v*)])
-	 (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv v* argtypes))])
-	   (values `(lambda ,v* ,argtypes ,newbod)
-		   `(,@argtypes -> ,bodtype))))]
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
@@ -517,29 +502,26 @@
 	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
 		 (types-equal! t newtypes exp)
 		 (vector-ref newtypes (qinteger->integer n))))]
-
-      [(letrec ([,id* ,rhs*] ...) ,bod)
-       ;; Make new cells for all these types
-       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
-	      [tenv (tenv-extend tenv id* rhs-types #t)])
-	 ;; Unify all these new type variables with the rhs expressions
-	 (let ([newrhs* 
-		(map-ordered2 (lambda (type rhs)
-		       (mvlet ([(newrhs t) (annotate-expression rhs tenv)])
-			 (types-equal! type t rhs)
-			 (printf "LETREC: type ~a rhs ~a\n" (export-type t) rhs)
-			 newrhs))
-		  rhs-types rhs*)])
-	   (mvlet ([(bode bodt) (annotate-expression bod tenv)])
-	     (values `(letrec ([,id* ,rhs-types ,newrhs*] ...) ,bode) bodt))))]
+      
+      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod tenv)]      
+      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
+      [(lambda (,v* ...) ,types ,bod)
+       ;; Optional type annotations uninterpreted currently!!.
+       (annotate-lambda v* bod tenv)]
+      
+      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
+      [(letrec ([,id* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv)]      
+      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv)]
 
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
+       (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,rand* ...)
 	       (type-app prim (prim->type prim) t* exp tenv))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
       [(app ,origrat ,[l -> rand* t*] ...)
+       (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv)))]
@@ -547,6 +529,41 @@
       [(,rat ,rand* ...)  (l `(app ,rat ,rand* ...))]
       )))
 
+(define annotate-lambda
+  (lambda (ids body tenv)
+    ;; No optional type annotations currently.
+    (let ([argtypes (map (lambda (_) (make-tcell)) ids)])
+      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes))])
+        (values `(lambda ,ids ,argtypes ,newbod)
+                `(,@argtypes -> ,bodtype))))))
+  
+(define annotate-letrec 
+  (let ([map-ordered2 
+         (lambda (f ls1 ls2)
+           (let loop ([ls1 ls1]
+                      [ls2 ls2]
+                      [acc '()])
+             (cond
+               [(and (null? ls1) (null? ls2)) (reverse! acc)]
+               [(or (null? ls1) (null? ls2)) (error 'map-ordered2 "lists are different lengths")]
+               [else
+                (cons (f (car ls1) (car ls2)) 
+                      (loop (cdr ls1) (cdr ls2) acc))])))])
+    (lambda (id* rhs* bod tenv) 
+      ;; Make new cells for all these types
+      (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
+             [tenv (tenv-extend tenv id* rhs-types #t)])
+        ;; Unify all these new type variables with the rhs expressions
+        (let ([newrhs* 
+               (map-ordered2 (lambda (type rhs)
+                               (mvlet ([(newrhs t) (annotate-expression rhs tenv)])
+                                 (types-equal! type t rhs)
+                                 (printf "LETREC: type ~a rhs ~a\n" (export-type t) rhs)
+                                 newrhs))
+                             rhs-types rhs*)])
+          (mvlet ([(bode bodt) (annotate-expression bod tenv)])
+            (values `(letrec ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
+  
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
 (define (annotate-program p)
