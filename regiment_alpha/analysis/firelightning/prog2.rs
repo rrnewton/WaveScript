@@ -31,9 +31,8 @@
 
 (define (count-nbrs r) 
   (rfold + 0 
-	 (rmap (lambda (n) 
-		 (if (> (temp n) _threshold) 1 0))
-	       r)))
+	 (rmap (lambda (_) 1) ;; Just count them up
+	       (rfilter (lambda (n) (> (temp n) _threshold)) r))))
 #|
 do n <- r;
    t = sense Temp n;
@@ -41,6 +40,12 @@ do n <- r;
       then return 1 
       else return 0;
    rfold + 0; -- switch monads?
+
+do n <- r;
+   t = sense Temp n
+   rfilter (t > thresh)
+   return 1
+   rfold + 0
 |#
 
 
@@ -51,11 +56,17 @@ do n <- r;
 
 (define (local-results n)
   (letrec ((hood (khood (node->anchor n) 1))) ;; 1.5
-    (count-nbrs hood)))
+  
+    (letrec ([myfun count-nbrs])
+    (letrec ([result (myfun hood)])
+      result))))
+
 
 ;; Main query:
 
-(rfilter (lambda (c) (> c 1))
-	 (rmap local-results heat-events))
+;(rfilter (lambda (c) (> c 1))
+;	 (rmap local-results heat-events))
+
+local-results
 
 ;(count world)

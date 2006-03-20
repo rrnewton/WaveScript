@@ -40,14 +40,21 @@
 
 (define make-tvar-generator
   (lambda ()
-    (let ([vars '(a b c d e f g h i j k l m n o p q r s t u v w x y z 
-		    alpha beta gamma)])
+    (let* ([vars '(a b c d e f g h i j k l m n o p q r s t u v w x y z 
+		     ;;alpha beta gamma
+		     )]
+	   [len (length vars)]
+	   [count 0]
+	   )
       (lambda ()
-	(if (null? vars)
-	    (unique-name 'alpha)
-	    (let ((res (car vars)))
-	      (set! vars (cdr vars))
-	      res))))))
+	(let loop ([ind count] [acc '()])
+	  (cond
+	   [(< ind len)  
+	    (set! count (add1 count))
+	    (apply symbol-append (cons (list-ref vars ind) acc))]
+	   [else (loop (sub1 (quotient ind len))
+		       (cons (list-ref vars (remainder ind len)) acc))]))
+	))))
 
 ;; Makes a unique type variable.
 (define make-tvar (make-tvar-generator))
@@ -73,6 +80,7 @@
 ;; Predicate testing for type environments.
 (define (tenv? x)
   (match x
+    ;; Format: VAR, TYPE, Is-Let-Bound? FLAG
     [([,v* ,t* ,flag*] ...)
      (and (andmap symbol? v*)
 	  (andmap type? t*)
@@ -260,7 +268,7 @@
        ;(guard (memq letrec '(lazy-letrec letrec)))
        (type-letrec id* rhs* bod tenv)]
 
-      ;; TODO: Doesn't actually take optional types into account.
+      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       [(lambda (,v* ...) ,types ,bod)
        ;; No optional type annotations currently.
        (type-lambda v* bod tenv)]
@@ -339,13 +347,20 @@
   (DEBUGASSERT (tenv? tenv))
  ;;;;;;;;;;;;;;;  (printf "Rator: ~s ~s \n" rator (tenv-is-let-bound? tenv rator))
   (let ([result (make-tcell)])
-    ;(inspect (vector (export-type rator) rands result))
-    (if (and (symbol? rator)
+    (if (and (symbol? rator) 
+;#f
 	     (tenv-is-let-bound? tenv rator))
-	;; By instantiating a new type for the rator we allow let bound polymorphism.
-	(types-equal! (instantiate-type rattyp) `(,@rands -> ,result) exp)
+	(begin 
+	  ;; First we must assert that it is an arrow type of appropriate arity:
+#;	  (let ([newtype `(,@(map (lambda (_) (make-tcell)) rands) ->
+			   ,(make-tcell))])
+	    (types-equal! rattyp newtype exp))
+	  ;; By instantiating a new type for the rator we allow let bound polymorphism.
+	  (types-equal! (instantiate-type rattyp) `(,@rands -> ,result) exp)
+  ;; BUT, any further restrictions to the ...................................................................................................................................................................................
+)
 	(types-equal! rattyp `(,@rands -> ,result) exp))
-    ;(inspect (export-type rator))
+    ;(inspect (vector (export-type rator) rands result))
     result))
 
 ;; Assign a type to a Regiment letrec form.
@@ -378,6 +393,16 @@
 ;; <br> <br>
 ;; Note, doesn't handle lazy-letrec, or already annotated programs.
 (define (annotate-expression exp tenv)
+  (define (map-ordered2 f ls1 ls2)
+    (let loop ([ls1 ls1]
+	       [ls2 ls2]
+	       [acc '()])
+      (cond
+       [(and (null? ls1) (null? ls2)) (reverse! acc)]
+       [(or (null? ls1) (null? ls2)) (error 'map-ordered2 "lists are different lengths")]
+       [else
+	(cons (f (car ls1) (car ls2)) 
+	      (loop (cdr ls1) (cdr ls2) acc))])))
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
@@ -393,6 +418,7 @@
        (types-equal! tt 'Bool te)
        (types-equal! ct at exp)
        (values `(if ,te ,ce ,ae) ct)]
+
       [(lambda (,v* ...) ,body)
        ;; No optional type annotations currently.
        (let ([argtypes (map (lambda (_) (make-tcell)) v*)])
@@ -415,9 +441,10 @@
 	      [tenv (tenv-extend tenv id* rhs-types #t)])
 	 ;; Unify all these new type variables with the rhs expressions
 	 (let ([newrhs* 
-		(map (lambda (type rhs)
+		(map-ordered2 (lambda (type rhs)
 		       (mvlet ([(newrhs t) (annotate-expression rhs tenv)])
 			 (types-equal! type t rhs)
+			 (printf "LETREC: type ~a rhs ~a\n" (export-type t) rhs)
 			 newrhs))
 		  rhs-types rhs*)])
 	   (mvlet ([(bode bodt) (annotate-expression bod tenv)])
@@ -531,6 +558,7 @@
     [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor
     [#(,[t*] ...) #t]
 ;    [,other (inspect (vector other tvar))]
+    [,other (error 'no-occurrence! "malformed type: ~a" ty)]
     ))
 
 
@@ -608,8 +636,26 @@
 	  [,else #f]))]
 
     ;; This one doesn't actually verify shared structure:
-    [(instantiate-type '((#0='(a . #f) -> #1='(b . #f)) (Area #0#) -> (Area #1#)))
-     ((#2='(unspecified . #f) -> #3='(unspecified . #f)) (Area #2#) -> (Area #3#))]
+    [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
+     ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
+#;
+    ["This should not be allowed by the type system:" 
+     (export-type (type-expression 
+		   '(lambda (g)
+		      (letrec ([f g])
+			(tuple (f 3) (f #t))))
+		   (empty-tenv)))
+     error]
+#;
+   ["Test type-app for a particular situation that arose."
+    (type-app 'myfun '#0='(k . #1='(_c  . #f)) '(#2='(h quote (j . Region)))
+		'(app myfun hood)
+		'((result '(l . #f) #t) (myfun #0# #t) (hood #2# #t) (n '(g . Node) #f)
+		  (_threshold '(f . #f) #t) (temp '(e . #f) #t) (abovethresh '(d . #f) #t)
+		  (count-nbrs #1# #t) (heat-events '(b . #f) #t)
+		  (local-results '(a . #f) #t)))
+    ????
+    ]
 
     ))
 

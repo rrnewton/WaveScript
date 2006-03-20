@@ -12,7 +12,7 @@
 ;           (all-except "tsort.ss" test-this these-tests)
            "../generic/constants.ss"
            "hashtab.ss"
-           "engine.ss"
+;           "engine.ss"
            "chez_compat.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )

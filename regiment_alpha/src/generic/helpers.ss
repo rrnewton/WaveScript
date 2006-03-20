@@ -150,6 +150,7 @@
 
 ;; [2006.02]
 (define progress-dots 
+  (IFCHEZ
   (case-lambda 
     [(th)      (progress-dots th 50000000)]
     [(th fuel) (progress-dots th fuel 
@@ -159,7 +160,8 @@
        (progress)
        (engine fuel
 	       (lambda (time-remaining val) (newline) (flush-output-port) val)
-	       loop))]))
+	       loop))])
+  (lambda args (error 'progress-dots "not implemented in chez"))))
 
 ;; [2006.02.20] A simple utility for running a long-running expression for only N ticks.
 (define-syntax runN
