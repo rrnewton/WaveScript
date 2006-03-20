@@ -52,7 +52,9 @@
 
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
-  '([Region (Area Node)]
+  '(
+
+    [Region (Area Node)]
     [Anchor (Signal Node)]
     [NetDist   Float] ;; Network distance.  Depends on gradient implementation.
     ; [(Area 'a) (Signal (Space 'a))]

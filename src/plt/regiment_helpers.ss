@@ -12,7 +12,7 @@
            "chez_compat.ss"
            "hashtab.ss"
            (all-except "helpers.ss" test-this these-tests)
-           "engine.ss"
+;           "engine.ss"
            "prim_defs.ss"
            (prefix swindle: (lib "misc.ss" "swindle"))
            )
