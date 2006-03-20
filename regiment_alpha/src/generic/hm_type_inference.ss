@@ -58,12 +58,12 @@
 	   ;id
 	   ;inject-polymorphism
 	   
-           type-expression
+;           type-expression
 	   recover-type
 	   type-const
-	   type-lambda
+;	   type-lambda
 	   type-app
-	   type-letrec
+;	   type-letrec
            
 	   annotate-expression
 	   annotate-program
@@ -307,7 +307,13 @@
 ;      (instantiate-type entry)
 ;      entry)
 
+;; [2006.03.19]
+;; PHASING THIS OUT.
+;; The only advantage this has over just using annotate-expression is efficiency,
+;; and that's just not worth duplicating code at this point.
+;; 
 ;; Assign a type to an expression.
+#;
 (define (type-expression exp tenv)
     (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
@@ -359,6 +365,9 @@
       [,other (error 'type-expression "unknown expression: ~s" other)]
       )))
 
+(define (type-expression expr tenv)
+  (mvlet ([(_ typ) (annotate-expression expr tenv)])
+    typ))
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
 (define (recover-type exp tenv)
@@ -381,7 +390,8 @@
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
       ;; Since the program is already typed, we just use the arrow type of the rator:
       ;[(,[rat] ,rand ...) (rac rat)]
-      [,other (export-type (type-expression other (tenv-map instantiate-type tenv)))])))
+      [,other 
+       (export-type (type-expression other (tenv-map instantiate-type tenv)))   ])))
 
 ;; Assign a basic type to a constant.
 (define (type-const c)
@@ -405,6 +415,7 @@
 ;; .param ids   The lambda formals.
 ;; .param body  The lambda body.
 ;; .param tenv  The type environment.
+#;
 (define type-lambda
   (lambda (;texps 
 	   ids body tenv)
@@ -443,6 +454,7 @@
 ;               (types-of-expressions rands tenv)
 ;               tenv)))
 ;       (type-of-expression body tenv-for-rands))))
+#;
 (define (type-letrec id* rhs* bod tenv)
   ;; Make new cells for all these types
   (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
@@ -531,7 +543,8 @@
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv)))]
-      
+      ;; Allowing unlabeled applications for now:
+      [(,rat ,rand* ...)  (l `(app ,rat ,rand* ...))]
       )))
 
 ;; This annotates the program, and then exports all the types to their
@@ -640,37 +653,37 @@
 (define these-tests
   `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
-    [(type-expression '(if #t 1. 2.) (empty-tenv))         Float]
-    [(export-type (type-expression '(+ 1 1) (empty-tenv))) Integer]
-    [(export-type (type-lambda '(v) '(+ v v) (empty-tenv))) (Integer -> Integer)]
-    [(export-type (type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
-    [(export-type (type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
-    [(export-type (type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
+    [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
+    [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Integer]
+;    [(export-type (,type-lambda '(v) '(+ v v) (empty-tenv))) (Integer -> Integer)]
+    [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
+    [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
+    [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (type-lambda '(v) 'v (empty-tenv)))
+#;    [(export-type (,type-lambda '(v) 'v (empty-tenv)))
      ,(lambda (x)
 	(match x
 	  [(',a -> ',b) (eq? a b)]
 	  [,else #f]))]
 
-    [(export-type (type-expression '((lambda (v) v) 3) (empty-tenv))) Integer]
+    [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Integer]
      
-    [(export-type (type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
+    [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
      (Integer -> Integer)]
 
-    [(export-type (type-expression '(rmap (lambda (n) (sense 'light n)) world) (empty-tenv)))
+    [(export-type (,type-expression '(rmap (lambda (n) (sense 'light n)) world) (empty-tenv)))
      (Area Integer)]
     
-    [(export-type (type-expression '(tuple 1 2.0 3) (empty-tenv)))
+    [(export-type (,type-expression '(tuple 1 2.0 3) (empty-tenv)))
      #3(Integer Float Integer)]
 
-    [(export-type (type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
+    [(export-type (,type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
      ,(lambda (x)
 	(match x
 	  [(#(,v1 ,_ ,__) -> ,v2) (equal? v1 v2)]
 	  [,else #f]))]
 
-    [(export-type (type-expression 
+    [(export-type (,type-expression 
 		   '(letrec ([f (lambda (x) x)])
 		      (tuple (f 3) "foo" f))
 		  (empty-tenv)))
@@ -679,7 +692,7 @@
      ]
   
 #;    ["Lambda bound arrow types are not polymorphic."
-     (export-type (type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
+     (export-type (,type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
 	  [((Integer -> ,v1) -> #(,v2 (Integer -> ,v3)))
@@ -687,10 +700,10 @@
 	  [,else #f]))]
 
 #;    ["Non polymorphic funs cannot be applied differently."
-     (export-type (type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
+     (export-type (,type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
      error]
     
-    [(export-type (type-expression 
+    [(export-type (,type-expression 
 		   '(letrec ()
 		      (smap2
 		       (lambda (n1 n2) (tuple n1 n2))
@@ -711,7 +724,7 @@
      ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
 #;
     ["This should not be allowed by the type system:" 
-     (export-type (type-expression 
+     (export-type (,type-expression 
 		   '(lambda (g)
 		      (letrec ([f g])
 			(tuple (f 3) (f #t))))
