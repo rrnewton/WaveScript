@@ -100,36 +100,8 @@
 
 	    ;(if (not (null? fires)) (printf "    Number Fires: ~a\n" (length fires)))
 
-	    #; ;; TEMP TEMP FIXME:  This is a hack to make a constant fire schedule.
-	    (let ([strikes (let loop ()
-			     ;(printf "HEAD: ~a, last ~a cur ~a \n" (car constant_strikes) last-time t)
-			     (cond
-			      [(null? constant_strikes)
-			       (error 'firelightning-sensor "this hack wasn't done right")]
-			      [(< (car constant_strikes) last-time)
-			       ;; We've already missed this one, scroll forward.
-			       (set! constant_strikes (cdr constant_strikes))
-			       (loop)]
-			      [(< (car constant_strikes) t)
-			       (let ([x (car constant_strikes)])
-				 (set! constant_strikes (cdr constant_strikes))
-				 (cons x (loop)))]
-			      [else ()]))])
-	      (let ([strike-x (+ quartx (random (/ worldx 2)))]
-		    [strike-y (+ quarty (random (/ worldy 2)))])
-		(let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
-					  ;; The graphical object for this fire is a strange thing.  
-					  ;; Consing the center mark and the adjustable circle together.
-					  (IF_GRAPHICS (cons (draw-circle `(,strike-x ,strike-y) 0)
-							     (draw-mark (list strike-x strike-y)))
-						       '()))]
-		      [mark (IF_GRAPHICS  '())])
-		  (printf " New fire!: ~a\n" (list (fire-x newfire) (fire-y newfire) (fire-t newfire)))
-		  (set! fires (cons newfire fires))
-		  )))
-	    
-	     ;; TEMPORARILY DISABLING FOR MY CONSTANT SCHEDULE HACK
 	    ;; TEMP: FIXME:
+	    ;; TEMPORARILY DOING MY CONSTANT SCHEDULE HACK
 	    ;; Currently making it so there's one fire at a time for easy analysis.
 	    (when (null? fires)
 	    ;; See if there are new lightning strikes.
@@ -159,26 +131,33 @@
 		     ;;;(poisson-span last-time t lightning-rate)
 		     ;;;(fake-poisson last-time t lightning-rate)
 		     ;(poisson-span-optimized1 last-time t lightning-rate)		     
-		     (let loop ()
-		       ;(printf "HEAD: ~a, last ~a cur ~a \n" (car constant_strikes) last-time t)
-		       (cond
-			[(null? constant_strikes)
-			 (error 'firelightning-sensor "this hack wasn't done right")]
-			[(< (car constant_strikes) last-time)
-			 ;; We've already missed this one, scroll forward.
-			 (set! constant_strikes (cdr constant_strikes))
-			 (loop)]
-			[(< (car constant_strikes) t)
-			 (let ([x (car constant_strikes)])
-			   (set! constant_strikes (cdr constant_strikes))
-			   (cons x (loop)))]
-			[else ()]))
+
+		     ;; FIXME FIXME FIXME
+		     ;; THIS HACK FORCES A CONSTANT SCHEDULE.
+		     (HACK "Fix the fire schedule to be constant across runs."
+		      (let loop ()
+					;(printf "HEAD: ~a, last ~a cur ~a \n" (car constant_strikes) last-time t)
+			(cond
+			 [(null? constant_strikes)
+			  (error 'firelightning-sensor "this hack wasn't done right")]
+			 [(< (car constant_strikes) last-time)
+			  ;; We've already missed this one, scroll forward.
+			  (set! constant_strikes (cdr constant_strikes))
+			  (loop)]
+			 [(< (car constant_strikes) t)
+			  (let ([x (car constant_strikes)])
+			    (set! constant_strikes (cdr constant_strikes))
+			    (cons x (loop)))]
+			 [else ()])))
 		     ])
-		;; HACK: If we haven't had any strikes by 10 seconds, just throw one in. 
-		;; It's annoying for me to run simulations and wait for a strike.
-		;(if (and (>= t 10000) (null? fires) (null? strikes)) (list t) strikes)
-		strikes
-		))    
+		;; 
+		;; It's annoying for me to run simulations and wait for a strike, so...
+		;(HACK "If we haven't had any strikes by 10 seconds, just throw one in."
+		;(if (and (>= t 10000) (null? fires) (null? strikes)) (list t) strikes))
+		(if (null? strikes) ()
+		    (HACK "Since we're only allowing one fire at a time, take only the first in this span"
+			  (list (apply min strikes))))
+		))
 	    )
 	    (set! last-time t)
 	    ))
@@ -311,7 +290,7 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
-
+#;
   (begin 
     ;; Set the world size, square:
     ;; Set both of these binds for now, lame:
@@ -321,7 +300,7 @@
     (simalpha-world-ybound 5000)
     (sim-num-nodes 250))
 
-#;
+
   (begin 
     (set! world-xbound 1500)
     (set! world-ybound 1500)

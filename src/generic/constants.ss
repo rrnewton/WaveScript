@@ -49,7 +49,7 @@
          ;; Syntax:
 	 IFDEBUG
          DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
-         REGIMENT_DEBUG
+         REGIMENT_DEBUG HACK
          ;chezprovide chezimports ;; To make the common module facility work.
          
          REGIMENTD
@@ -264,6 +264,17 @@
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
+
+
+;; [2006.03.20] This enables me to explicitely label the nasty hacks in the system.
+;; May want to change this in the future to give throw warnings or whatnot.
+(define-syntax (HACK x)
+  (syntax-case x ()
+    [(_ str expr)
+     (if (not (string? (syntax-object->datum #'str)))
+	 (error 'HACK "bad syntax, should be string ~s" #'str))
+     #'expr]
+    [(_ expr) #'expr]))
 
 
 ;; This one toggles logging.  

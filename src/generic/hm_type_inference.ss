@@ -16,7 +16,6 @@
 
 (module hm_type_inference mzscheme
   (require "../plt/iu-match.ss"
-           (lib "include.ss")
            "../generic/constants.ss"
            ;"hashtab.ss"
            (all-except "../plt/helpers.ss" test-this these-tests)

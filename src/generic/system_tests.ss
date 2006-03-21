@@ -21,7 +21,10 @@
          
 
     ["Simalpha: Now we test running the Simulator Alpha on a very simple token machine."
-     (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
+     (parameterize ([unique-name-counter 0] 
+		    [simalpha-dbg-on #f]
+		    ;[simalpha-consec-ids #t]
+		    [sim-num-nodes 30])
      (let ((prt (open-output-string)))
        (display "(" prt)
        (run-simulator-alpha 
@@ -296,7 +299,7 @@
 	    (try_ucast (dest count)
 		       ;(printf "Trying...~a ~a\n" dest count)
 		       (if (= 0 count)
-			   (printf "FAIL")
+			   (printf "(FAIL)")
 			   (if (not (ucast-wack dest (tok yay 0) count))
 			       (call try_ucast dest (- count 1))
 			       (if (= count 10)
@@ -2320,6 +2323,32 @@
    (load-regiment (++ (REGIMENTD) "/demos/regiment/simple/events.rs")))
  ,(lambda (ls)
     (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
+
+["Demos: nested_regions.rs" 
+ (parameterize ([deglobalize-markup-returns #f]
+		[sim-num-nodes 30]
+		[simalpha-placement-type 'connected]
+		[simalpha-outer-radius 15]
+		[simalpha-inner-radius 10]
+		;; With no failure, this should return all neighbors:
+		[simalpha-failure-model 'none]
+		[desugar-gradients-mode 'etx]
+		[simalpha-channel-model 'lossless])
+   (sort < (list->set 
+	    (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions.rs")))
+	 ))
+ ,(lambda (set1)
+    (let ([sim (simalpha-current-simworld)])
+      ;; Should return the neighbors of 6 and 14 under perfect message conditions.
+      ;; If there are no neighbors this test was written wrong.
+      (define nbrs1 (nodeid->neighbors 6))
+      (define nbrs2 (nodeid->neighbors 14))
+      (define set2 (sort < (union '(6 14) nbrs1 nbrs2)))
+      ;(printf "\n  Actual neighbors: ~s \n" set2)
+      (ASSERT (not (null? set1)))
+      (ASSERT (set? nbrs1))
+      (ASSERT (set? nbrs2))
+      (equal? set1 set2)))]
 
 #;
 ["Demos: "
