@@ -1,6 +1,6 @@
 
 ;; run time functions for simulator code:
-(chez:module alpha_lib
+#;(chez:module alpha_lib
 	(
 
 	 get-connectivity get-node get-simobject ;; Utilities for coercion:
@@ -41,3 +41,6 @@
 ;	  (optimize-level (IFDEBUG 2 2)))
 
 	(include "../generic/alpha_lib.ss"))
+
+
+(include "../generic/alpha_lib.ss")

@@ -491,10 +491,13 @@
 (begin ;; Some convenient syntax shortcuts:
    (define (node id) ;; shorthand
      (simobject-node (hashtab-get (simworld-obj-hash (simalpha-current-simworld)) id)))
+   (define (nodeid->neighbors id)
+     (map node-id (cdr (assq (node id) (simworld-graph (simalpha-current-simworld))))))
    (define (dist id1 id2) ;; shorthand
-     (sim-locdiff (node-pos (simobject-node (node id1)))a
+     (sim-locdiff (node-pos (simobject-node (node id1)))
 		  (node-pos (simobject-node (node id2)))))
    (define-id-syntax world (simalpha-current-simworld)) ;; shorthand   
+;   (define (
 )
 
 (define-id-syntax t1 (begin (close-graphics) b2))
@@ -517,6 +520,7 @@
 (define-id-syntax t7 (load-regiment "../analysis/firelightning/prog1.rs" 'verbose))
 (define-id-syntax t8 (load-regiment "../analysis/firelightning/prog2.rs" 'verbose))
 (define-id-syntax t9 (load-regiment "../analysis/firelightning/prog2_manual.tm" 'verbose))
+(define-id-syntax t10 (load-regiment "../analysis/firelightning/test.tm" 'verbose))
 
 ;(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
 ;(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))

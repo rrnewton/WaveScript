@@ -1,11 +1,5 @@
 
 
-
-
-
-
-
-
 (parameters 
   [dummy-param (install-firelightning)]
   ;[simalpha-realtime-mode #t]
@@ -25,7 +19,8 @@
   ;[varied-param 3] 
   )
 
-`(define _threshold ,(varied-param)) ; 20)
+;`(define _threshold ,(varied-param)) 
+(define _threshold 20)
 (define (temp n) (sense 'temp n))
 (define (abovethresh n) (> (temp n) _threshold))
 
@@ -55,18 +50,20 @@ do n <- r;
 
 
 (define (local-results n)
-  (letrec ((hood (khood (node->anchor n) 1))) ;; 1.5
-  
-    (letrec ([myfun count-nbrs])
-    (letrec ([result (myfun hood)])
-      result))))
+;  (letrec ((hood (khood (node->anchor n) 1))) ;; 1.5
+  (tuple (nodeid n) (temp n))
+    ;(count-nbrs hood)
+    )
 
 
 ;; Main query:
 
 ;(rfilter (lambda (c) (> c 1))
-;	 (rmap local-results heat-events))
 
-local-results
+;(liftsig (rmap local-results heat-events))
+;(rmap local-results heat-events)
+;(rmap (lambda (n)   (tuple (nodeid n) (temp n))) heat-events)
 
 ;(count world)
+
+(light-up heat-events)

@@ -40,10 +40,11 @@
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   
 	   ;; This configuration is for running extended simulation-experiments only:
-#;
+	   ;; REMEMBER to also disable IFDEBUG in constants.ss
+
 	   (begin (optimize-level 3)
 		  (compile-compressed #f)
-		  (generate-inspector-information #f)
+		  (generate-inspector-information #f)		  
 		  ;; Messing with this didn't seem to help performance.
 		  #;(run-cp0
 		   (lambda (cp0 x)

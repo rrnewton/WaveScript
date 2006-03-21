@@ -7,6 +7,64 @@
 ; [2005.09.29] Moved start-alpha-sim and some other global bindings
 ; and helpers to simulator_alpha.ss
 
+(module alpha_lib mzscheme
+  (require 
+;   (lib "include.ss")
+;   (lib "pretty.ss")
+   (lib "list.ss")
+;   "../plt/iu-match.ss"
+   "../plt/logfiles.ss"
+   "../generic/constants.ss"  
+   "../plt/hashtab.ss"
+   (all-except "../plt/helpers.ss" test-this these-tests filter)
+   (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
+;   (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
+   ;; Would like to remove this dependency eventually:
+
+   (all-except "simulator_alpha_datatypes.ss") ;run-alpha-simple-scheduler)
+   )
+  
+  (provide 
+
+	 get-connectivity get-node get-simobject ;; Utilities for coercion:         
+         attempt-message-transmission
+
+   	 current-simobject
+
+	 retrieve-token
+	 add-token
+	 evict-token	 
+	 evict-all-tokens
+
+         
+	 neighbors
+	 sendmsg
+
+	 sim-print-queue
+	 sim-light-up
+         sim-highlight-edge
+	 sim-draw-mark
+	 sim-leds
+         sim-setlabel
+	 ;sim-dist
+	 sim-loc
+	 sim-locdiff         
+	 simulator-soc-return
+	 simulator-soc-finished
+	 check-store
+	 ;alpha-it ;; shorthand
+
+         
+	 test-this these-tests test-alphalib   
+;           (all-from "simulator_alpha.ss"))
+   )
+
+  (chezimports )
+  
+  (IFCHEZ (begin)
+	  (begin 
+	    (IF_GRAPHICS (require (all-except "basic_graphics.ss" test-this these-tests)))
+	    (IF_GRAPHICS (require (all-except "graphics_stub.ss" test-this these-tests)))))
 
 ; =======================================================================
 
@@ -15,7 +73,7 @@
 ;; global parameter correctly, so that the current simobject may be
 ;; accessed by the below library code. -[2005.10.16]
 ;; NOTE: this is not a "regiment-parameter" because it should not be user-adjustable.
-[define current-simobject (make-parameter 'current-simobject_uninitialized!)]
+(define current-simobject (make-parameter 'current-simobject_uninitialized!))
 
 ; =======================================================================
 ;;; Helpers for accessing global simulation data structures.
@@ -134,21 +192,26 @@
 			(if ls ls ())))))
 
 ;; MAKE SURE NOT TO INCLUDE OURSELVES:
-[define (neighbors obj sim)
-  (let ((entry (assq obj (simworld-object-graph sim))))
-    (if (null? entry)
-        (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
-               obj (simworld-object-graph sim))
-        (begin 
-          (if (memq obj (cdr entry))
-              (error 'neighbors "we're in our own neighbors list"))
-          (cdr entry))))]
+;;     SimOb,  [SimWorld] -> (SimOb ...)
+;; OR  NodeID, [SimWorld] -> (NodeID ...)
+(define (neighbors obj . sim)
+  (let ([sim (if (null? sim) (simalpha-current-simworld) (car sim))])
+    (if (simobject? obj)
+	(let ((entry (assq obj (simworld-object-graph sim))))
+	  (if (null? entry)
+	      (error 'neighbors "generated code.. .cannot find obj in graph: ~s ~n ~s"
+		     obj (simworld-object-graph sim))
+	      (begin 
+		(if (memq obj (cdr entry))
+		    (error 'neighbors "we're in our own neighbors list"))
+		(cdr entry))))
+	(error 'neighbors "expects simobject: ~s" obj))))
 
-[define sendmsg (lambda (data ob)
+(define sendmsg (lambda (data ob)
                   (set-simobject-incoming-msg-buf! ob
                                            (cons data (simobject-incoming-msg-buf ob)))
                   ;(set-simobject-redraw! ob #t)
-                  )]
+                  ))
 
 (define (sim-highlight-edge nbr . extra)
   (IF_GRAPHICS
@@ -365,4 +428,4 @@
 	      (start-alpha-sim node-code 10.0 'simple)
 	      (alpha-repl)))))
 
-  
+) ; End module.

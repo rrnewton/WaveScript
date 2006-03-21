@@ -24,8 +24,8 @@
   )
 
 ;; The varied parameter can be changed from outside the program source before load-time.
-`(define threshold ,(varied-param))
-;(define threshold 20)
+;`(define threshold ,(varied-param))
+(define threshold 20)
 
 ;; Main
 

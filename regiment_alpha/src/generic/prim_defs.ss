@@ -172,6 +172,9 @@
 
     ;; This lifts a node value into the Signal monad:
     (node->anchor   (Node) Anchor)
+    ;; This eliminates duplicate Signal types, by lifting out the inner one and canceling:
+    ;; Has no operational meaning.
+    (liftsig ((Area (Signal 'a))) (Area 'a))
 
     (rfilter         (('a -> Bool) (Area 'a)) (Area 'a))
     

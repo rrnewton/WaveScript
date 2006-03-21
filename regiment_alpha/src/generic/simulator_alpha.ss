@@ -1103,6 +1103,10 @@
 					[#t (open-output-file logfile (open-opts logfile))]
 					[,s (guard (string? s)) 
 					    (open-output-file s (open-opts s))]
+					;; [2006.03.20] For now if we don't understand the existing logger, we 
+					;; just assume #t start a new one.
+					[,other (open-output-file logfile (open-opts logfile))]
+					#;
 					[,other (error 'start-alpha-sim 
 						       "unsupported simulation-logger: ~a\n" other)])]
 		   [simulation-logger-count (IFDEBUG 0 #f)])

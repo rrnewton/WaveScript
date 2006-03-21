@@ -249,6 +249,14 @@
 				(call ,memb (subcall ,rator_tok this))
 				(timed-call ,heartbeat ,form)]))
 		   )))]
+	    
+	    ;; Liftsig doesn't mean anything operationally.
+	    ;; When the membership token gets called, we push out another call to our membership token.
+	    [(liftsig)
+	     (let* ([region_tok (car args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v) (call ,memb v)]
+		 [,form (v) (call ,memb v)]))]
 
 	    ;; This is always push.
 	    [(light-up)
@@ -811,7 +819,9 @@
 			      `(my-id))
 			 )])]
 
-      [(rmap light-up smap smap2 runion rrflatten rrcluster)
+      ;; For all these primitives, returning just means sending the
+      ;; argument of the membership token to the base-station.
+      [(rmap light-up smap smap2 runion rrflatten rrcluster liftsig)
        `([,tokname (v) (call reg-return 
 			     ,(if (deglobalize-markup-returns)
 				  `(list (list ',(symbol-uppercase prim) (my-id)) v)

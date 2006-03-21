@@ -121,7 +121,7 @@
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
 	  ;; Maps are more straightforward, they don't change extent.
-	  [(rrcluster rmap runion rrflatten)
+	  [(rrcluster rmap runion rrflatten liftsig)
 	   (let ([newp (list (new-place))])
 	     (values expr newp newp))]
 
