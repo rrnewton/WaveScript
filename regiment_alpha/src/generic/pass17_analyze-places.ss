@@ -25,6 +25,12 @@
 ;; X_3 == X_3
 ;; X_3 \in (X_3)
 
+(define (place? ob)
+  (match ob
+    [X? #t]
+    [,s (guard (symbol? s)) #t]
+    [(,s) (guard (symbol? s)) #t]  ;; Not allowing more than one sym in the list currently.
+    [,other #f]))
 
 ;; Input language: output of add-places
 ;; Output language: same.

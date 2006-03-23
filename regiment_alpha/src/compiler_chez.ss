@@ -41,7 +41,7 @@
 	   
 	   ;; This configuration is for running extended simulation-experiments only:
 	   ;; REMEMBER to also disable IFDEBUG in constants.ss
-
+#;
 	   (begin (optimize-level 3)
 		  (compile-compressed #f)
 		  (generate-inspector-information #f)		  
@@ -237,6 +237,8 @@
 (include "../generic/pass15_add-control-flow.ss")
 (include "../generic/pass16_add-places.ss")
 (include "../generic/pass17_analyze-places.ss")
+
+(include "../generic/pass17_add-data-flow.ss") (import pass17_add-data-flow)
 ;(include "../generic/pass18_add-routing.ss")
 
 (include "../generic/pass20_deglobalize.ss") 

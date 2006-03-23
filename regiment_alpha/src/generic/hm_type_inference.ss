@@ -146,27 +146,32 @@
 ;;; Type Environment ADT
 
 ;; Constructs an empty type environment.
-(define (empty-tenv) '())
+(define empty-tenv 
+  ;; Uses a unique identifier.
+  (let ([ident (gensym "tenv")])
+    (lambda () (list ident))))
+
 ;; Predicate testing for type environments.
 (define (tenv? x)
   (match x
     ;; Format: VAR, TYPE, Is-Let-Bound? FLAG
-    [([,v* ,t* ,flag*] ...)
-     (and (andmap symbol? v*)
+    [(,tenvsym [,v* ,t* ,flag*] ...)
+     (and (eq? tenvsym (car (empty-tenv)))
+	  (andmap symbol? v*)
 	  (andmap type? t*)
 	  (andmap boolean? flag*))]
     [,else #f]))
 ;; Retrieves a type if a binding exists for sym, otherwise #f.
 (define (tenv-lookup tenv sym)
   (DEBUGASSERT (tenv? tenv))
-  (let ([entry (assq sym tenv)])
+  (let ([entry (assq sym (cdr tenv))])
     (if entry (cadr entry) #f)))
 ;; This returns #t if the let-bound flag for a given binding is set.
 ;; If sym is lambda-bound or is unbound in the type environment, #f is
 ;; returned.
 (define (tenv-is-let-bound? tenv sym)
   (DEBUGASSERT (tenv? tenv))
-  (let ([entry (assq sym tenv)])
+  (let ([entry (assq sym (cdr tenv))])
     (if entry (caddr entry) #f)))
 ;; Extends a type environment.
 ;; .param tenv The type env to extend.
@@ -178,16 +183,20 @@
   (DEBUGASSERT (tenv? tenv))
   (DEBUGASSERT (andmap type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
-    (append (map (lambda (a b) (list a b flag)) syms types) tenv)))
+    (cons (car tenv)
+	  (append (map (lambda (a b) (list a b flag)) syms types)
+		  (cdr tenv))
+	  )))
 ;; Applies a function to all types in a type enviroment.
 (define (tenv-map f tenv)
   (DEBUGASSERT (tenv? tenv))
-  (map 
-      (lambda (x) 
-	(match x 
-	  [(,v ,t ,flag) `(,v ,(f t) ,flag)]
-	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
-    tenv))
+  (cons (car tenv)
+	(map 
+	    (lambda (x) 
+	      (match x 
+		[(,v ,t ,flag) `(,v ,(f t) ,flag)]
+		[,other (error 'recover-type "bad tenv entry: ~s" other)]))
+	  (cdr tenv))))
 
 ; ----------------------------------------
 #|
