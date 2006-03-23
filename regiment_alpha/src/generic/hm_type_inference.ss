@@ -48,6 +48,7 @@
 	   tenv-lookup
 	   tenv-is-let-bound?
 	   tenv-extend
+	   tenv-append
 	   tenv-map
 	   
            instantiate-type
@@ -187,6 +188,9 @@
 	  (append (map (lambda (a b) (list a b flag)) syms types)
 		  (cdr tenv))
 	  )))
+(define (tenv-append . tenvs)
+  (cons (car (empty-tenv)) 
+	(apply append (map cdr tenvs))))
 ;; Applies a function to all types in a type enviroment.
 (define (tenv-map f tenv)
   (DEBUGASSERT (tenv? tenv))

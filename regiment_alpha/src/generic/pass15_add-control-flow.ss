@@ -31,7 +31,7 @@
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 ;;; <Let>  ::= (lazy-letrec (<Decl>*) <var>)
-;;; <Decl> ::= (<var> <Exp>)
+;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
 ;;; <Exp>  ::= <Simple>
 ;;;          | (if <Simple> <Simple> <Simple>)
 ;;;          | (lambda <Formalexp> <Let>)
@@ -67,11 +67,12 @@
     ;; Returns control flow graph
     (define (process-let expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,type* ,heartbeat* ,[expr-dependencies -> deps*]] ...) ,expr)
-	   (apply append
-		  (map (lambda (lhs deps)
-			 (map (lambda (x) `(,x ,lhs)) deps))
-		       lhs* deps*)) ]
+	 [(lazy-letrec ([,lhs* ,type* ,annots* ,[expr-dependencies -> deps*]] ...) ,expr)
+	   (let ( )
+	     (apply append
+		    (map (lambda (lhs deps)
+			   (map (lambda (x) `(,x ,lhs)) deps))
+		      lhs* deps*)))]
 	 [,other (error 'add-control-flow:process-let "bad lazy-letrec expression: ~s" other)]))
 
     (define expr-dependencies

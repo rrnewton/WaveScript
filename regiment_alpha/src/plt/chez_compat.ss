@@ -1,9 +1,9 @@
 
 (module chez_compat mzscheme 
-  (require 
-   
-   "../generic/constants.ss"
+  (require   
+;   "../generic/constants.ss"
    "../plt/iu-match.ss"
+   "cheztrace.ss"
    (lib "date.ss")
    (lib "pretty.ss")
    (lib "list.ss")
@@ -19,6 +19,7 @@
    )
 
   (provide (all-defined)
+	   (all-from "cheztrace.ss")
            pretty-print remq sort flush-output-port
            real-time
            )
@@ -99,8 +100,7 @@
   (define (flonum? x) (inexact? x))
   (define (flonum->fixnum x) (inexact->exact (floor x)))
   (define (fixnum->flonum x) (exact->inexact x))
-  
-  
+    
   ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.
   ;(define (merge! a b) (merge a b))
   (define (merge! p a b) (swindle:merge! a b p))

@@ -50,8 +50,8 @@
     (define (process-let expr)
 ;      (disp "processing let" expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,type* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)
-	  `(lazy-letrec ([,lhs* ,type* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
+	 [ (lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,expr)
+	  `(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,expr)]
 	 [,other (error 'add-places:process-let "bad lazy-letrec expression: ~s" other)]))
     
     (define (new-place) (unique-name 'X))
@@ -127,7 +127,9 @@
 
     [(analyze-places '(add-places-language
 		       '(program (props) (control-flow)
-			       (lazy-letrec ([result _ 10 X? X? 3])
+			       (lazy-letrec ([result _ 
+						     ([heartbeat 10] [membplace X?] [formplace X?])
+						     3])
 					    result)
 			       notype)))
      unspecified]
