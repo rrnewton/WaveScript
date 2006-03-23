@@ -26,8 +26,9 @@
 ;; or positive infinity (+inf.0) expressing that the value is
 ;; available as fast as you might want it.
 
-;;; <Decl> ::= (<var> <Heartbeat> <Exp>) 
-;;; <Heartbeat> ::= <Float> | #f | +inf.0
+;;; <Decl> ::= (<var> (<Annotation>*) <Exp>)
+;;; <Annotation> ::= (heartbeat <Heartbeat>)
+;;; <Heartbeat>  ::= <Float> | #f | +inf.0
 
 (define add-heartbeats
   (let ()
@@ -161,8 +162,10 @@
 		  [newbinds (map (lambda (bind)
 				   (match bind
 					  [(,lhs ,type ,rhs)
-					   `[,lhs ,type ,(cdr (assq lhs freq-table)) ,rhs]]))
-				 binds)])	    
+					   `[,lhs ,type 
+						  ([heartbeat ,(cdr (assq lhs freq-table))])
+						  ,rhs]]))
+				 binds)])
 	     `(lazy-letrec ,newbinds ,fin))])))
 
     ;; Returns a list of the names of dependencies for an expression.  (Free vars)

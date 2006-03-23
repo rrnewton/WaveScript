@@ -53,6 +53,7 @@
     add-control-flow
     add-places
 ;    add-routing
+;    add-data-flow
     analyze-places
 
     ;; (7) Finally, the core of the Regiment compiler.  Convert a

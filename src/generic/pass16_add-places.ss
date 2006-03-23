@@ -84,7 +84,7 @@
     (define (process-let expr)
 ;      (disp "processing let" expr)
       (match expr
-	 [ (lazy-letrec ([,lhs* ,type* ,heartbeat* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
+	 [ (lazy-letrec ([,lhs* ,type* ,annots* ,[process-expr -> rhs* form* memb*]] ...) ,expr)	 
 
 ;	  (lazy-letrec ([,lhs* ,heartbeat* ,rhs*] ...) ,expr)
 
@@ -96,7 +96,10 @@
 ;	    (disp "got stuff" stuff)
 ;	    (disp "for rhs" rhs*)
 
-	  `(lazy-letrec ([,lhs* ,type* ,heartbeat* ,form* ,memb* ,rhs*] ...) ,expr)]
+	  `(lazy-letrec ([,lhs* ,type* 
+				,(map (lambda (ls f m) `([formplace ,f] [membplace ,m] . ,ls))
+				   annots* form* memb*)
+				,rhs*] ...) ,expr)]
 	 [,other (error 'add-places:process-let "bad lazy-letrec expression: ~s" other)]))
     
     (define (new-place) (unique-name 'X))

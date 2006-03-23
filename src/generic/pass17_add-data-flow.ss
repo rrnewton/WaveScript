@@ -9,17 +9,16 @@
 
 (module pass17_add-data-flow mzscheme
 
-   (require (lib "include.ss")
-	   (lib "trace.ss")
+   (require 
 	   "../generic/constants.ss"
+;           "../plt/chez_compat.ss"
            "../plt/iu-match.ss"
-           "../plt/hashtab.ss"
 	   "../plt/prim_defs.ss"
-           "../plt/grammar_checker.ss"
-           (all-except "../plt/tsort.ss" test-this these-tests)
-           (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
+           (all-except "../plt/hm_type_inference.ss"  test-this these-tests)
+           (all-except "../plt/grammar_checker.ss" test-this these-tests)
            (all-except "../plt/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
+;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+           )
 
 ;  (provide deglobalizeh 
 ;;	   test-this these-tests test12 tests12)
@@ -41,85 +40,116 @@
   (let ()
 
     (define process-primapp 0)
+    (define global-tenv 'uninitialized)
 
-    (trace-define (lookup s ls) (cadr (assq s ls)))
+    (define (lookup s ls) (cadr (assq s ls)))
 
     (define (letrec-extend-tenv tenv binds)      
       (tenv-extend tenv
 		   (map car binds) 
 		   (map cadr binds)))
 
-    (trace-define (get-tail expr)
+    ;; The easiest way to proceed is to suck out all the types from
+    ;; the whole program.  Names are unique, so this is all the info
+    ;; we need.
+    (define (extract-whole-tenv expr)
+;      (regiment-generic-traverse
+;       (lambda (x autoloop)
+;	 [(lambda ,v* ,ty* ,bod)
+;	  (tenv-extend (loop bod) v* ty*)
+;	  ])
+;       )
+      (match expr
+	[,atom (guard (atom? atom)) (empty-tenv)]
+	[(quote ,_)                 (empty-tenv)]
+	
+	[(if ,[t] ,[c] ,[a]) (tenv-append t c a)]
+	[(lambda ,v* ,ty* ,[bod]) (tenv-extend bod v* ty*)]
+	[(lazy-letrec ([,v* ,ty* ,annotations ... ,[rhs*]] ...) ,[bod])
+	 (apply tenv-append (tenv-extend bod v* ty* #t) rhs*)]
+	
+	[(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+	 (apply tenv-append rand*)]
+	[,other (error 'extract-whole-tenv "bad regiment expression: ~s" other)]
+	))
+
+    (trace-define (get-tail expr env)
       (let loop () 
 	(match expr
+	  [,var (guard (symbol? var)) 
+		(get-region-tail (lookup var env) env)]	      
 	  [(lazy-letrec ,binds ,var)
-	   (get-tail (cadr (assq var binds)))]
+	   ;; ERROR ERROR: Need to extend env.
+	   (get-tail (rac (assq var binds)) env)]
 	  ;; Can't go deeper:
 	  [(if ,test ,conseq ,altern)         expr]
 	  [,expr expr])))
 
     ;; This takes an expression of type Region 'a, and tries to return
     ;; the piece of code which generates an *element* of that region.
-    (trace-define (get-region-tail expr env tenv)
-	(DEBUGASSERT (tenv? tenv))
+    (trace-define (get-region-tail expr env)
       (let loop () 
 	;; If the type is Region, then the member elements are type
 	;; Node, and the only thing that generates that is the world itself.
-	(if (let ([ty (recover-type expr tenv)])
+	(if (let ([ty (recover-type expr global-tenv)])
 	      (or (equal? ty 'Region)
 		  (equal? ty '(Area Node))))
 	    worldsym
+
 	    (match expr
-
-	      ;; Khood just returns a region of nodes.
-					;[(khood ,_ ,__) worldsym]
-					;[world worldsym]
-
 	      [,var (guard (symbol? var)) 
-		    (get-region-tail (lookup var env) env tenv)]
+		    (get-region-tail (lookup var env) env)]
 	      [(lazy-letrec ,binds ,var)
-	       (get-region-tail (cadr (assq var binds))
-				env
-				(letrec-extend-tenv tenv binds))]
+	       (get-region-tail (last (assq var binds))
+				env)]
 
 	      [(rmap ,rat ,rand)
-	       (let ([newrand (process-expr rand env tenv)])
-		 (match (lookup rat env)
-		   [(lambda (,v) ,ty ,expr)
-		    (get-region-tail expr env tenv)]))]
+	       (if (regiment-primitive? rat)
+		   ;rat
+		   (error 'get-region-tail "non eta'd primitive as rmap operator: ~a" rat)
+		   (let ([newrand (process-expr rand env)])
+		     (match (or (and (symbol? rat) (lookup rat env))
+				rat)
+		       [(lambda (,v) ,ty ,expr)
+			(get-tail expr env)
+			;(get-region-tail expr env)
+			]))
+		   )]
 
-	      [,expr 'NOTHIN])
+	      [,expr `(NOTHIN ,expr)])
 	    )))
 
+    ;; This returns a list of [<Var> <Expr>] bindings from variables,
+    ;; to the primitive application expressions that generate them.
     (trace-define process-expr
-      (lambda (expr env tenv)
-	(DEBUGASSERT (tenv? tenv))
+      (lambda (expr env)
         (trace-match P-E expr
           [(quote ,const)             ()]
           [,var (guard (symbol? var)) ()]
 
 	  [(rmap ,rat ,rand)
-	   (let ([newbinds (process-expr rand env tenv)])
-	     (match (lookup rat env)
-	       [(lambda (,v) ,ty ,expr)
-		`([,v ,(get-region-tail rand (append newbinds env) tenv)])]))]
+	       (let ([newbinds (process-expr rand env)])
+		 (match (or (and (symbol? rat) (lookup rat env))
+				rat)
+		   [(lambda (,v) ,ty ,expr)
+		    `([,v ,(get-region-tail rand (append newbinds env))])]))
+	   ]
 
 	  ;; We accumulate "data flow" information as we go through the bindings.
 	  ;; NOTE NOTE:  This assumes that they're ordered and non-recursive.
 	  [(lazy-letrec ,binds ,tail)
-	   (let ([newtenv (letrec-extend-tenv tenv binds)])
-	   ;; The lack of free variables within lambdas makes this easy.
+           ;; The lack of free variables within lambdas makes this easy.
 	   ;; We scan down the whole list of bindings before we go into the lambdas in the RHSs.
 	   (append 
 
 	    (trace-let loop ([binds binds] [newenv ()])
 	      (match binds
 		[()  newenv]
-		[([,lhs ,ty ,rhs] . ,rest)
+		[([,lhs ,ty #|,annots ...|# ,rhs] . ,rest)
 		 
 		 (loop rest 
 		       (append `([,lhs ,rhs])
-			       (process-expr rhs (append newenv env) newtenv)
+			       (process-expr rhs (append newenv env))
 			       newenv))]))
 	    #;	 
 	    (let loop ([binds binds] [env ()])
@@ -128,21 +158,18 @@
 		[([,lhs ,ty ,rhs] . ,rest)
 		 (loop rest (append (process-expr rhs env) env))]))
 	    env
-	    )
-	   )]
+	    )]
 
 	  [(lambda ,v* ,ty* ,expr)
-	   (append (process-expr expr env 
-				 (tenv-extend tenv v* ty*))
-		   env)]
+	   (append (process-expr expr env) env)]
 
 #;
           [(if ,test ,conseq ,altern)
 	   (values `(if ,test ,conseq ,altern) unknown-place unknown-place)]
-#;
-          [(,prim ,rand* ...)	   
+
+          [(,prim ,[rand*] ...)	   
            (guard (regiment-primitive? prim))
-	   (process-primapp prim rand*)]
+	   (apply append rand*)]
 
           [,unmatched
 	   (error 'add-data-flow "invalid syntax ~s" unmatched)])))
@@ -153,9 +180,13 @@
 				   (control-flow ,cfg ...)
 				   ,letexpr
 				   ,type)))
-	 (process-expr letexpr () (empty-tenv))
+	 
+	 (set! global-tenv (extract-whole-tenv letexpr))
+;	 (inspect global-tenv)
+	 (process-expr letexpr ())
 
 	 ])))))
+
 (define test-this
   (default-unit-tester 
     "Pass 17: Add data flow"
@@ -172,6 +203,25 @@
 		   _)))
 	((v (rmap f world)) (x ,worldsym) (f (lambda (x) (_) x)))]
 
+      ["Now let's look at nested regions."
+       (assq 'r2
+	     (add-data-flow 
+	      `(lang '(program (props )
+			(control-flow )	   
+			(lazy-letrec
+			 ([h (Area Region)
+			     (rmap (lambda (n) (Node) (khood (node->anchor n) 2)) world)]
+			  [h2 (Area (Area Integer))
+			      (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
+			  [getid (Node -> Integer)
+				 (lambda (nd) (Node) (nodeid nd))]
+			  [v (Area Integer)
+			     (rmap (lambda (r2) ((Area Integer)) 
+					   (rfold + 0 r2)) h2)]
+			  )
+			 v)
+			(Area Integer)))))
+       (r2 (rmap getid r1))]
 
       )))
 

@@ -249,7 +249,7 @@
 				(call ,memb (subcall ,rator_tok this))
 				(timed-call ,heartbeat ,form)]))
 		   )))]
-	    
+
 	    ;; Liftsig doesn't mean anything operationally.
 	    ;; When the membership token gets called, we push out another call to our membership token.
 	    [(liftsig)
@@ -258,7 +258,7 @@
 	       `([,parent (v) (call ,memb v)]
 		 [,form (v) (call ,memb v)]))]
 
-	    ;; This is always push.
+	    ;; This is always pushed by the parent operator.
 	    [(light-up)
 	     (let* ([region_tok (car args)]
 		    [parent (get-membership-name region_tok)])
@@ -597,7 +597,10 @@
 (define process-letrec
       (lambda (expr)
         (match expr
-	       [(lazy-letrec ([,lhs* ,type* ,heartbeat* ,formplace ,membplace ,rhs*] ...) ,body)
+	       [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
+		(let ([heartbeat* (map (lambda (ls) (cadr (assq 'heartbeat ls) )) annots*)] 
+		      [formplace* (map (lambda (ls) (cadr (assq 'formplace ls) )) annots*)] 
+		      [membplace* (map (lambda (ls) (cadr (assq 'membplace ls) )) annots*)])
 		(if (symbol? body)
 		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))
@@ -628,7 +631,7 @@
 				 (loop (cdr lhs*) (cdr heartbeat*) (cdr rhs*)
 				       (append cbinds cacc) 
 				       (append tbinds tacc)))))
-		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
+		    (error 'deglobalize "Body of letrec should be just a symbol at this point.")))]
 	  )))
 
 ; ======================================================================
@@ -1026,7 +1029,7 @@
      (deglobalize '(lang '(program 
 			   (props [result_1 final local])
 			   (control-flow )
-			   (lazy-letrec ((result_1 _ #f _ _ '3)) result_1)
+			   (lazy-letrec ((result_1 _ ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
 			   notype
 			   )))
      unspecified]
@@ -1040,10 +1043,10 @@
 				  )
 			   (control-flow soc anch circ)
 			   (lazy-letrec
-			    ((b _ #f _ _ (cons '2 '()))
-			     (a _ #f _ _ (cons '1 b))
-			     (anch _ 0.5 _ _ (anchor-at a))
-			     (circ _ 1.0 _ _ (circle anch '50)))
+			    ((b _ ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
+			     (a _ ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
+			     (anch _ ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
+			     (circ _ ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
 			    circ)
 			   notype)))
      unspecified]
