@@ -320,7 +320,7 @@
 (include "compiler.ss")
 (eval-when (compile load eval) (cd "chez"))
 
-;; Driver depends on 'pass-names being defined.
+;; Driver depends on 'pass-list being defined.
 (include "../generic/driver.ss")
 ;  (game-eval (lambda args 'unspecified))
   (game-eval eval)
