@@ -795,11 +795,11 @@
 		  (display ")" prt)
 		  (read (open-input-string (get-output-string prt))))))])
 	 `(["Add two subcalls (only through cps-tokmac)"
-	    (parameterize ((pass-names '(cleanup-token-machine cps-tokmac )))
+	    (parameterize ((pass-list '(cleanup-token-machine cps-tokmac )))
 	      ,commontest)
 	    (result 2007)]
 	   ["Same test but now with closure-convert"
-	    (parameterize ((pass-names '(cleanup-token-machine cps-tokmac closure-convert cleanup-token-machine)))
+	    (parameterize ((pass-list '(cleanup-token-machine cps-tokmac closure-convert cleanup-token-machine)))
 	      ,commontest)
 	    (result 2007)]))
 
@@ -947,13 +947,13 @@
 		  (display ")" prt)
 		  (read (open-input-string (get-output-string prt))))))))	
 	 `(["Now use let-stored:"
-	    (parameterize ((pass-names '(cleanup-token-machine 
+	    (parameterize ((pass-list '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
 				      cps-tokmac      )))
 	      ,common)	   
 	    (c ab c b)]
 	   ["Same test but with closure-convert."
-	    (parameterize ((pass-names '(cleanup-token-machine 
+	    (parameterize ((pass-list '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
 				      cps-tokmac sever-cont-state closure-convert   
 				      )))
@@ -992,7 +992,7 @@
 		  (display ")" prt)
 		  (read (open-input-string (get-output-string prt))))))))
 	 `(["This time I force a continutaion by using subcall.  Thus the c's are delayed."
-	   (parameterize ((pass-names '(cleanup-token-machine 
+	   (parameterize ((pass-list '(cleanup-token-machine 
 				     desugar-let-stored  rename-stored
 				     cps-tokmac ))
 			  ;; Turn off fasl writing because we can't write procedures (continuations):
@@ -1002,7 +1002,7 @@
 	   (_ c _ ab _ c _ b)
 	   ]
 	   ["And one last time using subcall and closure convert."
-	    (parameterize ((pass-names '(cleanup-token-machine 
+	    (parameterize ((pass-list '(cleanup-token-machine 
 				      desugar-let-stored  rename-stored
 				      cps-tokmac sever-cont-state closure-convert cleanup-token-machine)))
 	      ,common)
@@ -1147,7 +1147,7 @@
       (parameterize ([unique-name-counter 0]
 		     [desugar-gradients-mode 'inlined] ;; Only works for this mode.
 		     [simalpha-dbg-on #f])
-      (parameterize ([pass-names
+      (parameterize ([pass-list
 		   '(cleanup-token-machine  find-emittoks desugar-gradients
 		     cleanup-token-machine desugar-let-stored
 		     ;rename-stored         
@@ -1669,7 +1669,7 @@
      ["Test soc-return (#1).  Try it w/out desugar-soc-return."
       (parameterize ([unique-name-counter 0] 
 		     [simalpha-dbg-on #f])
-      (parameterize ([pass-names (rdc (list-remove-after 'desugar-soc-return (pass-names)))])
+      (parameterize ([pass-list (rdc (list-remove-after 'desugar-soc-return (pass-list)))])
 	(let ([prog (run-compiler 399)])
 	  (run-simulator-alpha prog))))
       (399)]
@@ -1677,7 +1677,7 @@
      ["Test soc-return (#2).  Try it WITH desugar-soc-return, but still on base station."
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
       ;; Go all the way through desugar-gradients and the subsequent cleanup-token-machine
-      (parameterize ([pass-names (rdc (list-remove-after 'cps-tokmac (pass-names)))])
+      (parameterize ([pass-list (rdc (list-remove-after 'cps-tokmac (pass-list)))])
 	(let ([prog (run-compiler 399)])
 	  (run-simulator-alpha prog))))
       (399)]
@@ -2389,7 +2389,7 @@
 #; 
     ["Finish assembly of a simple rfold over a rmap"
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #t])
-      (parameterize ([pass-names (list-remove-before 'deglobalize (pass-names))])
+      (parameterize ([pass-list (list-remove-before 'deglobalize (pass-list))])
 	(let ((prog
 	       (run-compiler
 		'(add-places-language

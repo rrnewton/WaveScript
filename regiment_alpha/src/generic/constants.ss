@@ -67,7 +67,7 @@
 	 reg:all-unit-tests
 	 reg:comment-code
          
-         pass-names
+         pass-list
          
          default-slow-pulse default-fast-pulse
          
@@ -328,7 +328,7 @@
 ; ----------------------------------------
 
 ;; This stores the list of all passes (well, pass names) that get run by default.
-(define-regiment-parameter pass-names '())
+(define-regiment-parameter pass-list '())
 
 ;; This parameter accumulates all the unit tests from the system as they are defined.
 (define reg:all-unit-tests (make-parameter '()))

@@ -129,7 +129,7 @@
 (include "compiler.ss")
 ;============================================================
 
-;(disp "BOUT TO LOAD DRIVER" pass-names)
+;(disp "BOUT TO LOAD DRIVER" pass-list)
 
 (load/use-compiled "plt/driver.ss")
 ;; Can't get langs to work.  Just abandon evaluation:

@@ -139,9 +139,9 @@
 		     (set! extension ".sim.alpha") (loop rest)]
 
 		    [(-l5 ,rest ...)
-		     (pass-names 
+		     (pass-list 
 		      (snoc 'emit-nesc (snoc 'flatten-tokmac
-			     (remq 'flatten-tokmac (remq 'emit-nesc (pass-names))))))
+			     (remq 'flatten-tokmac (remq 'emit-nesc (pass-list))))))
 		     ;(set! makesimcode #t)
 		     (set! extension ".sim.nesc") (loop rest)]
 
@@ -191,11 +191,11 @@
 		     [(equal? type "rs") (void)]
 		     [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
 		    ;; ----------------------------------------
-		    (parameterize ([pass-names
+		    (parameterize ([pass-list
 				 (cond
-				  [(equal? type "rs") (pass-names)]
+				  [(equal? type "rs") (pass-list)]
 				  [(equal? type "tm") (list-remove-before 'cleanup-token-machine
-									  (pass-names))]
+									  (pass-list))]
 				  [else (error 'regiment "unknown input file extension: ~s" type)]
 				  )])
 		      (set! out_file (string-append (remove-file-extension fn) extension))

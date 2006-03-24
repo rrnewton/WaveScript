@@ -1,5 +1,5 @@
 
-;; This should depend on 'pass-names' being defined, but I don't know
+;; This should depend on 'pass-list' being defined, but I don't know
 ;; how to do this correctly.
 
 ;; I've ended up giving up on the Mzscheme module compilation system
@@ -11,9 +11,9 @@
 	 (lib "pretty.ss")
          ;           "iu-match.ss"
          "helpers.ss"
-         ;;	   pass-names)
+         ;;	   pass-list)
          
-;         pass-names
+;         pass-list
 	   )
 
   (define error-handler error-display-handler)
@@ -23,7 +23,7 @@
 ;  (provide test-one test-all
 ;;; These are in the interface, but aren't used yet for this project:
 ;	   tracer game-eval analyze-all test-all-but 
-;;	   print-file remaining-pass-names
+;;	   print-file remaining-pass-list
 ;	   )
 ;  )
 

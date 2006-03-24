@@ -9,7 +9,7 @@
 ;;; their paces.
 
 ;;; In order to use the driver, the p423 compiler must define the
-;;; variable pass-names to be a list of the pass names in the order
+;;; variable pass-list to be a list of the pass names in the order
 ;;; in which they should be applied.
 
 ;;; NOTE RRN: ALSO, it expects reset-name-count! to be exposed to 
@@ -90,7 +90,7 @@
 ;;;    (tracer '())
 ;;;      don't trace anything
 ;;;
-;;;    (tracer (memq '<pass-name> pass-names))
+;;;    (tracer (memq '<pass-name> pass-list))
 ;;;      trace everything from the specified pass on
 ;;;
 ;;;  (game-eval)
@@ -114,15 +114,15 @@
 ;;;    Prints the contents of the file specified by <pathname> to the
 ;;;    current output port.
 ;;;
-;;;  (remaining-pass-names)
-;;;  (remaining-pass-names <pass-names>)
+;;;  (remaining-pass-list)
+;;;  (remaining-pass-list <pass-list>)
 ;;;    Without arguments, returns the list of remaining pass names.
-;;;    Otherwise, sets the list of remaining pass names to <pass-names>.
+;;;    Otherwise, sets the list of remaining pass names to <pass-list>.
 ;;;    This may be used to iterate one or more passes.
 
 
 ;(module (tracer game-eval analyze-all test-all test-all-but test-all-toplvl
-;                test-one print-file remaining-pass-names)
+;                test-one print-file remaining-pass-list)
         
 (define test-ordinal #f)
 
@@ -133,19 +133,19 @@
       [(x)
        (set! trace-list
              (cond
-               [(eq? x #t) (pass-names)]
-               [(and (symbol? x) (memq x (pass-names))) (list x)]
-               [(and (list? x) (andmap (lambda (x) (memq x (pass-names))) x)) x]
+               [(eq? x #t) (pass-list)]
+               [(and (symbol? x) (memq x (pass-list))) (list x)]
+               [(and (list? x) (andmap (lambda (x) (memq x (pass-list))) x)) x]
                [else (error 'tracer "invalid argument ~s" x)]))])))
 
 (define tracer
   (make-parameter '()
      (lambda (ls)
        (cond
-	[(eq? ls #t) (pass-names)]
+	[(eq? ls #t) (pass-list)]
 	[(eq? ls #f) '()]
-	[(and (symbol? ls) (memq x (pass-names))) (list x)]
-	[(and (list? ls) (andmap (lambda (x) (memq x (pass-names))) ls)) ls]
+	[(and (symbol? ls) (memq x (pass-list))) (list x)]
+	[(and (list? ls) (andmap (lambda (x) (memq x (pass-list))) ls)) ls]
 	[else (error 'tracer "invalid parameter value ~s" ls)]))))
 
 (define game-eval
@@ -223,7 +223,7 @@
     [(expr emit? verbose?) ($test-one expr emit? verbose? #t)]
     ))
 
-(define remaining-pass-names (make-parameter '()))
+(define remaining-pass-list (make-parameter '()))
 
 (define $test-one
   (lambda (original-input-expr emit? verbose? ordinal)
@@ -309,11 +309,11 @@
                        t answer))))))
       (define run
         (lambda (input-expr)
-          (unless (null? (remaining-pass-names))
-            (let ([pass-name (car (remaining-pass-names))])
+          (unless (null? (remaining-pass-list))
+            (let ([pass-name (car (remaining-pass-list))])
 	      ;; This is such a lame hack.
 	      (if (eq? pass-name 'deglobalize) (set! pre-deglobalize #f))
-              (remaining-pass-names (cdr (remaining-pass-names)))
+              (remaining-pass-list (cdr (remaining-pass-list)))
               (when (memq pass-name (tracer))
                 (printf "~%;=======================================~a~%"
                         "========================================")
@@ -336,7 +336,7 @@
 		    (run output-expr))
 		  ))))))
       (unique-name-counter 0)
-      (parameterize ([remaining-pass-names (pass-names)])
+      (parameterize ([remaining-pass-list (pass-list)])
         (run original-input-expr)))))
 
 (define pretty-asm-print

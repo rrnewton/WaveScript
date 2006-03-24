@@ -16,7 +16,7 @@
 
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
-(pass-names
+(pass-list
   '(
     ;; (1) Type checking comes first, but that happens before these passes
     ;; are run.  Maybe should make it one of the "passes".
@@ -51,7 +51,7 @@
     classify-names
     add-heartbeats
     add-control-flow
-    add-places
+     add-places
 ;    add-routing
 ;    add-data-flow
     analyze-places
@@ -127,7 +127,7 @@
 (define (run-compiler p . args )
   ;(disp "RUN COMP:" p)
   (let ([filename #f]
-	[passes (pass-names)]
+	[passes (pass-list)]
 	[verbose #f]
 	;; If there are still values that need to be evaluated and filled in in the TM, do it.
 	[p (match p
@@ -138,23 +138,23 @@
                   [(string? arg) ;; It's an output filename.
                    (set! filename arg)]
 		  [(eq? arg 'verbose) (set! verbose #t)]
-		  ;; The pass-names may have already been restricted to be just the TML passes:
+		  ;; The pass-list may have already been restricted to be just the TML passes:
                   [(eq? arg 'barely-tokens)
                    (set! passes (list-remove-first 'cleanup-token-machine
-				  (list-remove-after 'cleanup-token-machine (pass-names))))]
+				  (list-remove-after 'cleanup-token-machine (pass-list))))]
                   [(eq? arg 'almost-tokens)
                    (set! passes (list-remove-first 'deglobalize ;; <- might fizzle
 				  (list-remove-first 'cleanup-token-machine
-                                     (list-remove-after 'cleanup-token-machine (pass-names)))))]
+                                     (list-remove-after 'cleanup-token-machine (pass-list)))))]
                   [(eq? arg 'almost-haskell)
-                   (set! passes (remq 'haskellize-tokmac (pass-names)))]
+                   (set! passes (remq 'haskellize-tokmac (pass-list)))]
                   [(eq? arg 'haskell-tokens) (void)]
 		  ;; Otherwise... do nothing.
 		  ;[else (warning 'run-compiler "ignored flag: ~s" arg)]
 		  ))   
 	      args)
     (when verbose
-	  (printf "Running compiler with pass-names: \n")
+	  (printf "Running compiler with pass-list: \n")
 	  (pretty-print passes))
     (let ((funs (map eval passes)))
       (let loop ([p p] [funs funs] [names passes])
@@ -194,10 +194,10 @@
 	      [else 'deglobalize])]
 	   [,else 'deglobalize])
 	 ])
-  (let ((passes (cdr (list-remove-before starting-place (pass-names)))))
+  (let ((passes (cdr (list-remove-before starting-place (pass-list)))))
     (disp "Assembling tokmac with passes: " passes)
 ;    (lambda (tm)
-      (parameterize ([pass-names passes])
+      (parameterize ([pass-list passes])
 	(apply run-compiler tm args)))))
 
 
@@ -218,10 +218,10 @@
 	    (case-lambda 
 	     [(pass x)
 	      (let ((prog  x))
-		(parameterize ((pass-names (list-remove-after pass (pass-names)))
+		(parameterize ((pass-list (list-remove-after pass (pass-list)))
 				 (tracer #t))
 		  (test-one prog #f #f)))]
-	     [(x) (loop (rac (pass-names)) x)])))
+	     [(x) (loop (rac (pass-list)) x)])))
     loop))
 
 (define at assemble-tokmac) ;; shorthand
@@ -238,7 +238,7 @@
     (parameterize ((tracer #t)
 		   (game-eval (lambda args 'unspecified))
 		   (host-eval (lambda args 'unspecified)))
-      (parameterize ((pass-names (cdr (list-remove-before 'deglobalize (pass-names)))))
+      (parameterize ((pass-list (cdr (list-remove-before 'deglobalize (pass-list)))))
 	(test-one prog)))))
 
 ; temp:
@@ -407,7 +407,7 @@
 
 
 '
-(parameterize ([pass-names
+(parameterize ([pass-list
              '(cleanup-token-machine
                 desugar-gradients
                 cleanup-token-machine
@@ -432,7 +432,7 @@
 
 '
       (parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
-      (parameterize ([pass-names
+      (parameterize ([pass-list
 		   '(cleanup-token-machine  desugar-gradients
 		     cleanup-token-machine desugar-let-stored
 		     rename-stored          cps-tokmac
