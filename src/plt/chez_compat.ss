@@ -135,7 +135,7 @@
 
   ;; Chez's system for warnings -- same as error.
   (define (warning sym . args)
-    (fprintf (current-error-port) "Warning ~s: ~a " sym (apply format args)))
+    (fprintf (current-error-port) "Warning ~s: ~a \n" sym (apply format args)))
   (define (with-warning-handler fun th)
     (fluid-let ((warning fun))
       (th)))

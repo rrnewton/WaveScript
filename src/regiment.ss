@@ -140,8 +140,8 @@
 
 		    [(-l5 ,rest ...)
 		     (pass-list 
-		      (snoc 'emit-nesc (snoc 'flatten-tokmac
-			     (remq 'flatten-tokmac (remq 'emit-nesc (pass-list))))))
+		      (snoc emit-nesc (snoc flatten-tokmac
+			     (remq flatten-tokmac (remq emit-nesc (pass-list))))))
 		     ;(set! makesimcode #t)
 		     (set! extension ".sim.nesc") (loop rest)]
 
@@ -194,7 +194,7 @@
 		    (parameterize ([pass-list
 				 (cond
 				  [(equal? type "rs") (pass-list)]
-				  [(equal? type "tm") (list-remove-before 'cleanup-token-machine
+				  [(equal? type "tm") (list-remove-before cleanup-token-machine
 									  (pass-list))]
 				  [else (error 'regiment "unknown input file extension: ~s" type)]
 				  )])

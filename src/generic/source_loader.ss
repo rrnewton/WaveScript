@@ -10,6 +10,7 @@
   (require "../plt/iu-match.ss"
            "../generic/constants.ss"
 	   "../plt/simulator_alpha_datatypes.ss"
+           (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
            (all-except "../plt/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
            (all-except "../generic/simulator_alpha.ss" test-this these-tests id)
@@ -108,7 +109,7 @@
 		      (case type
 			[(rs) (values prg params (pass-list))]
 			[(tm) (values prg params 
-				      (list-remove-before 'cleanup-token-machine (pass-list)))]
+				      (list-remove-before cleanup-token-machine (pass-list)))]
 			[(sim alpha) (values prg params ())]
 			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 			)))])
@@ -259,7 +260,7 @@
 		    (parameterize ([pass-list
 				 (cond
 				  [(equal? type "rs") (pass-list)]
-				  [(equal? type "tm") (list-remove-before 'cleanup-token-machine
+				  [(equal? type "tm") (list-remove-before cleanup-token-machine
 									  (pass-list))]
 				  [else (error 'regiment "unknown input file extension: ~s" type)]
 				  )])

@@ -82,7 +82,7 @@
     (repl-builder (lambda () (init-world) (init-graphics))
                   cleanse-world
                   (lambda (x)
-                    (parameterize ([pass-list (list-remove-after 'deglobalize (pass-list))])
+                    (parameterize ([pass-list (list-remove-after deglobalize (pass-list))])
                       (match x
                         [(precomp ,exp) `(unknown-lang (quote ,exp))]
                         [,other (run-compiler other)])))
@@ -91,7 +91,7 @@
     (repl-builder (lambda () (init-world) (init-graphics))
                   cleanse-world
                   (lambda (x)
-                    (parameterize ([pass-list '(cleanup-token-machine)])
+                    (parameterize ([pass-list (cleanup-token-machine)])
                       (match x
                         [(precomp ,exp) `(unknown-lang (quote ,exp))]
                         [,other (run-compiler other)])))
