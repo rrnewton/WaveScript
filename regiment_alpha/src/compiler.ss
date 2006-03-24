@@ -17,7 +17,7 @@
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
 (pass-list
-  '(
+  (list
     ;; (1) Type checking comes first, but that happens before these passes
     ;; are run.  Maybe should make it one of the "passes".
     
@@ -140,18 +140,18 @@
 		  [(eq? arg 'verbose) (set! verbose #t)]
 		  ;; The pass-list may have already been restricted to be just the TML passes:
                   [(eq? arg 'barely-tokens)
-                   (set! passes (list-remove-first 'cleanup-token-machine
-				  (list-remove-after 'cleanup-token-machine (pass-list))))]
+                   (set! passes (list-remove-first cleanup-token-machine
+				  (list-remove-after cleanup-token-machine (pass-list))))]
                   [(eq? arg 'almost-tokens)
-                   (set! passes (list-remove-first 'deglobalize ;; <- might fizzle
-				  (list-remove-first 'cleanup-token-machine
-                                     (list-remove-after 'cleanup-token-machine (pass-list)))))]
+                   (set! passes (list-remove-first deglobalize ;; <- might fizzle
+				  (list-remove-first cleanup-token-machine
+                                     (list-remove-after cleanup-token-machine (pass-list)))))]
                   [(eq? arg 'almost-haskell)
-                   (set! passes (remq 'haskellize-tokmac (pass-list)))]
+                   (set! passes (remq haskellize-tokmac (pass-list)))]
                   [(eq? arg 'haskell-tokens) (void)]
 		  ;; Otherwise... do nothing.
 		  ;[else (warning 'run-compiler "ignored flag: ~s" arg)]
-		  ))   
+		  ))
 	      args)
     (when verbose
 	  (printf "Running compiler with pass-list: \n")
@@ -185,14 +185,14 @@
 	 (match tm
 	   [(,lang ,prog ...)
 	    (case lang
-	      [(add-places-language) 'analyze-places] ;; Not strictly correct.
-	      [(deglobalize-lang) 'deglobalize]
-	      [(cleanup-token-machine-lang) 'cleanup-token-machine]
-	      [(cps-tokmac-lang) 'cps-tokmac]
+	      [(add-places-language) analyze-places] ;; Not strictly correct.
+	      [(deglobalize-lang) deglobalize]
+	      [(cleanup-token-machine-lang) cleanup-token-machine]
+	      [(cps-tokmac-lang) cps-tokmac]
 	      
 					;[(haskellize-tokmac-lang) (error...
-	      [else 'deglobalize])]
-	   [,else 'deglobalize])
+	      [else deglobalize])]
+	   [,else deglobalize])
 	 ])
   (let ((passes (cdr (list-remove-before starting-place (pass-list)))))
     (disp "Assembling tokmac with passes: " passes)
@@ -218,7 +218,7 @@
 	    (case-lambda 
 	     [(pass x)
 	      (let ((prog  x))
-		(parameterize ((pass-list (list-remove-after pass (pass-list)))
+		(parameterize ((pass-list (list-remove-after (eval pass) (pass-list)))
 				 (tracer #t))
 		  (test-one prog #f #f)))]
 	     [(x) (loop (rac (pass-list)) x)])))

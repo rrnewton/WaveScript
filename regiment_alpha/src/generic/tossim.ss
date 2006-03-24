@@ -33,7 +33,7 @@
 	(parameterize ([(caar params) (cadar params)])
 	  (loop (cdr params)))
 	(parameterize ((pass-list
-		     (append (remq 'flatten-tokmac (remq 'emit-nesc (pass-list)))
+		     (append (remq flatten-tokmac (remq emit-nesc (pass-list)))
 			     '(flatten-tokmac emit-nesc))))
 	  (match (apply assemble-tokmac tm opts)
 	    [(emit-nesc-language ,p)

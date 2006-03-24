@@ -126,28 +126,6 @@
         
 (define test-ordinal #f)
 
-#;(define tracer
-  (let ([trace-list '()])
-    (case-lambda
-      [() trace-list]
-      [(x)
-       (set! trace-list
-             (cond
-               [(eq? x #t) (pass-list)]
-               [(and (symbol? x) (memq x (pass-list))) (list x)]
-               [(and (list? x) (andmap (lambda (x) (memq x (pass-list))) x)) x]
-               [else (error 'tracer "invalid argument ~s" x)]))])))
-
-(define tracer
-  (make-parameter '()
-     (lambda (ls)
-       (cond
-	[(eq? ls #t) (pass-list)]
-	[(eq? ls #f) '()]
-	[(and (symbol? ls) (memq x (pass-list))) (list x)]
-	[(and (list? ls) (andmap (lambda (x) (memq x (pass-list))) ls)) ls]
-	[else (error 'tracer "invalid parameter value ~s" ls)]))))
-
 (define game-eval
   (make-parameter eval ;interpret
                   (lambda (x)
@@ -318,7 +296,8 @@
                 (printf "~%;=======================================~a~%"
                         "========================================")
                 (printf "~s:~%" pass-name))
-              (let ([pass (eval pass-name)])
+              (let ([pass pass-name ;(eval pass-name)
+			  ])
                 (let ([output-expr
                         (on-error
                           (begin
