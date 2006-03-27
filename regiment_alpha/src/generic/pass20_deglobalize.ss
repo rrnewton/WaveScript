@@ -101,12 +101,6 @@
            (all-except "helpers.ss" test-this these-tests)
            (all-except "regiment_helpers.ss" test-this these-tests))
   
-;  (provide deglobalize
-;;	   test-this these-tests test12 tests12)
-#;  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize 
-           ;; Temporarily exposing.
-           delazy-bindings)
-
   (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize)
 
   (chezimports )
@@ -131,63 +125,11 @@
 	       "This should not happen!  ~nName ~s has no entry in ~s."
 	       s proptable))))
 
-    (define (simple? x) 
-      (match x
-          [(quote ,imm) #t]
-          [,var (guard (symbol? var)) #t]
-	  [,otherwise #f]))
-
-;    (define symbol-append
-;      (lambda args
-;	(string->symbol (apply string-append (map symbol->string args)))))
-
-(define activate-prim-code
-  (lambda (prim memb args parent)
-    (case prim
-      [(rfold)
-       (match args
-	      [(,rator_tok ,seed_val)	       
-	       `((greturn this              ;; Value
-			 (to ,memb) ;; To
-			 (via ,parent)           ;; Via
-			 (seed ,seed_val)       ;; With seed
-			 (aggr ,rator_tok))     ;; and aggregator
-		 )])])))
-
-(define push-prim-code
-  (lambda (prim formal memb args parent)
-    (case prim
-      [(rfold)
-       (match args
-	      [(,rator_tok ,seed_val)
-	       `((greturn ,formal              ;; Value
-			  (to ,memb) ;; To
-			  (via ,parent)           ;; Via
-			  (seed ,seed_val)       ;; With seed
-			  (aggr ,rator_tok))     ;; and aggregator
-		  )])])))
-
-
-;; [2004.07.28] This is a new version I'm making, which takes pre-classified
-#;(define emit-primitive-handlers
-  (lambda (classified-primapp form memb heartbeat)
-    (match classified-primapp
-	   [(push-comp ,prim ,args ...) 
-	    (let ([parent (get-membership-name region_tok)])
-	      `([,parent (v) (call ,form v)]
-		[,form (v) ,@(push-prim-code prim 'v memb args parent)]))]
-	   [(activate-comp ,prim ,region_tok ,args ...)
-	    (let ([parent (get-membership-name region_tok)])
-	      `([,parent (v) (activate ,form v)]
-		[,form () 
-		       ,@(activate-prim-code prim memb args parent)  
-		       (timed-call ,(/ 1000 heartbeat) ,form)]))]
-	   [,other (error 'emit-primitive-handlers
-			 "unknown primitive classification: ~s" other)])))
-
-;  (push-comp prim args)
-;  (activate-comp prim args)
-
+(define (simple? x) 
+  (match x
+    [(quote ,imm) #t]
+    [,var (guard (symbol? var)) #t]
+    [,otherwise #f]))
 
 ;; This produces a list of token bindings.
 ;; It generates code for one node in the dataflow graph.  It uses
