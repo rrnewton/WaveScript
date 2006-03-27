@@ -949,9 +949,11 @@
 ;      (pretty-print prog) (newline)
       (match prog
         [(,lang ;add-places-language 
-	  (quote (program (props ,table ...) (control-flow ,cfg ...)
-			  (lazy-letrec ,binds ,fin)
-			  ,type)))
+	  (quote (program (props ,table ...)
+		   (control-flow ,cfg ...)
+		   (data-flow ,dfg ...)
+		   (lazy-letrec ,binds ,fin)
+		   ,type)))
 	 ;; This is essentially a global constant for the duration of compilation:
 	 (set! proptable table)
 	 	 
@@ -1029,6 +1031,7 @@
      (deglobalize '(lang '(program 
 			   (props [result_1 final local])
 			   (control-flow )
+			   (data-flow )
 			   (lazy-letrec ((result_1 _ ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
 			   notype
 			   )))
@@ -1042,6 +1045,7 @@
 				  [circ distributed final region]
 				  )
 			   (control-flow soc anch circ)
+			   (data-flow )
 			   (lazy-letrec
 			    ((b _ ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
 			     (a _ ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
