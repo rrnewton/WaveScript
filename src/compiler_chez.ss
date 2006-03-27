@@ -41,6 +41,7 @@
 	   
 	   ;; This configuration is for running extended simulation-experiments only:
 	   ;; REMEMBER to also disable IFDEBUG in constants.ss
+
 #;
 	   (begin (optimize-level 3)
 		  (compile-compressed #f)

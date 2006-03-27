@@ -93,13 +93,13 @@
   (require (lib "include.ss")
 	   (lib "trace.ss")
 	   "../generic/constants.ss"
-           "iu-match.ss"
-           "hashtab.ss"
-	   "prim_defs.ss"
-           (all-except "tsort.ss" test-this these-tests)
-           (all-except "tml_generic_traverse.ss" test-this these-tests)
-           (all-except "helpers.ss" test-this these-tests)
-           (all-except "regiment_helpers.ss" test-this these-tests))
+           "../plt/iu-match.ss"
+           "../plt/hashtab.ss"
+	   "../plt/prim_defs.ss"
+           (all-except "../plt/tsort.ss" test-this these-tests)
+           (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
+           (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   
   (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize)
 
@@ -144,7 +144,9 @@
 ;;   args - the arguments to the primitive (they're simple: names/constants)
 ;;   heartbeat - the rate at which this primitive beats, if any.
 ;; Output: TokenBinds
-  (lambda (form memb prim args heartbeat)
+  (lambda (form memb prim args annots)
+    (define heartbeat (cadr (ASSERT (assq 'heartbeat annots))))
+    
 ;	(disp "Explode primitive" name prim args)
 	  (case prim
 	    [(sparsify) (void)]
@@ -287,6 +289,10 @@
 		    [seed_val (cadr args)]
 		    [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
+                    ;; The tree goes with the membership name for the khood expression.
+                    ;; But we also need to worry about getting the correct subtok id.
+                    ;; So this won't work right now.
+                    [tree (get-membership-name (cadr (ASSERT (assq 'tree annots))))]
 		    )
 	       ;(inspect region_tok)	       
 	       (let ([parent (get-membership-name region_tok)]     
@@ -301,6 +307,8 @@
 			     (to ,memb)             ;; To
 ;			     (via ,parent)          ;; Via
 			     (via global-tree)          ;; Via
+;                             (via ,tree)
+
 			     (seed ,seed_val)       ;; With seed
 			     (aggr ,rator_tok))     ;; and aggregator
 			  ,@(if push? '()
@@ -540,11 +548,8 @@
       (lambda (expr)
         (match expr
 	       [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
-		(let ([heartbeat* (map (lambda (ls) (cadr (assq 'heartbeat ls) )) annots*)] 
-		      [formplace* (map (lambda (ls) (cadr (assq 'formplace ls) )) annots*)] 
-		      [membplace* (map (lambda (ls) (cadr (assq 'membplace ls) )) annots*)])
-		(if (symbol? body)
-		    (let loop ((lhs* lhs*) (heartbeat* heartbeat*) (rhs* rhs*)
+		  (if (symbol? body)
+		    (let loop ((lhs* lhs*) (annots* annots*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))
 		      (if (null? lhs*)
 
@@ -568,12 +573,12 @@
 				   tacc))
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
-			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car heartbeat*) (car rhs*))])
+			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car annots*) (car rhs*))])
 ;				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
-				 (loop (cdr lhs*) (cdr heartbeat*) (cdr rhs*)
+				 (loop (cdr lhs*) (cdr annots*) (cdr rhs*)
 				       (append cbinds cacc) 
 				       (append tbinds tacc)))))
-		    (error 'deglobalize "Body of letrec should be just a symbol at this point.")))]
+		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
 	  )))
 
 ; ======================================================================
@@ -791,7 +796,7 @@
    ;; This processes an expression and returns both its constant
    ;; bindings, and it's token bindings.
     (define process-expr
-      (lambda (name heartbeat expr)	
+      (lambda (name annots expr)	
 	(let ((finalname (check-prop 'final name)))
         (match expr
 
@@ -871,7 +876,7 @@
 	   (mvlet ([(form memb) (token-names name)])
 		  (values '() 
 			  (append 
-			   (explode-primitive form memb prim rand* heartbeat)
+			   (explode-primitive form memb prim rand* annots)
 			   (if finalname
 			       (primitive-return prim memb)
 			       '()))

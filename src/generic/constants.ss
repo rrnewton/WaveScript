@@ -233,7 +233,7 @@
   (lambda (x)
     (syntax-case x ()
       [(_ expr) 
-       #'(if expr #t (error 'ASSERT "failed: ~s" #'expr))])))
+       #'(or expr (error 'ASSERT "failed: ~s" #'expr))])))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))
