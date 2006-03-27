@@ -1,3 +1,4 @@
+
 ;; Ryan Newton
 ;; Started 2004.03.26
 ;; Here is the main file for my compiler.
@@ -30,7 +31,7 @@
 
 (require 
 
- (all-except "plt/hm_type_inference.ss" these-tests test-this)
+(all-except "plt/hm_type_inference.ss" these-tests test-this)
  
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
@@ -52,6 +53,7 @@
 (all-except "plt/pass14_add-heartbeats.ss" these-tests test-this)
 (all-except "plt/pass15_add-control-flow.ss" these-tests test-this)
 (all-except "plt/pass16_add-places.ss" these-tests test-this)
+(all-except "plt/pass17_add-data-flow.ss" these-tests test-this)
 (all-except "plt/pass17_analyze-places.ss" these-tests test-this)
 ;(all-except "plt/pass18_add-routing.ss" these-tests test-this
 

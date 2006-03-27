@@ -315,12 +315,7 @@
 (define these-tests 
   `(
 
-    [(analyze-places '(add-places-language
-		       '(program (props) (control-flow)
-				 (lazy-letrec ([result _ '([heartbeat 10] [formplace X?] [membplace X?]) 3])
-					      result)
-				 notype)))
-     unspecified]
+
 
   ))
 

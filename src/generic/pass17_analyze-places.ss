@@ -38,10 +38,11 @@
 (define analyze-places
   (lambda (expr)
     (match expr
-	   [(,input-language (quote (program (props ,proptable ...) 
-					     (control-flow ,cfg ...)
-					     ,letexpr
-					     ,type)))
+      [(,input-language (quote (program (props ,proptable ...) 
+				 (control-flow ,cfg ...)
+				 (data-flow ,dfg ...)
+				 ,letexpr
+				 ,type)))
 
     ;; Constants defined in constants.ss
     ;(define unknown-place '?) ;'X?)
@@ -112,9 +113,10 @@
 	   (process-primapp prim rand*)]
           [,unmatched
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
-    
+
     `(add-places-language (quote (program (props ,proptable ...)
-					  (control-flow ,cfg ...)
+					  (control-flow . ,cfg)
+					  (data-flow . ,dfg)
 					  ,(process-let letexpr)
 					  ,type)))])))
 
@@ -126,7 +128,9 @@
   `(
 
     [(analyze-places '(add-places-language
-		       '(program (props) (control-flow)
+		       '(program (props) 
+			  (control-flow)
+			  (data-flow)
 			       (lazy-letrec ([result _ 
 						     ([heartbeat 10] [membplace X?] [formplace X?])
 						     3])

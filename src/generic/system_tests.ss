@@ -2330,6 +2330,7 @@
 ["Demos: nested_regions.rs" 
  (parameterize ([deglobalize-markup-returns #f]
 		[sim-num-nodes 30]
+		[simalpha-realtime-mode #f]
 		[simalpha-placement-type 'connected]
 		[simalpha-outer-radius 15]
 		[simalpha-inner-radius 10]
