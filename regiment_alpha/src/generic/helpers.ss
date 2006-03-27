@@ -574,10 +574,13 @@
 
 (define difference
   (lambda (set1 set2)
+    (let loop ([set1 set1]
+	       [set2 set2])
     (cond
-      ((null? set1) '())
-      ((memq (car set1) set2) (difference (cdr set1) set2))
-      (else (cons (car set1) (difference (cdr set1) set2))))))
+     ((null? set1) '())
+     ((memq (car set1) set2) (loop (cdr set1) set2))
+     (else (cons (car set1)  (loop (cdr set1) set2)))))
+    ))
 
 (define generalized-member?
   (lambda (pred?)

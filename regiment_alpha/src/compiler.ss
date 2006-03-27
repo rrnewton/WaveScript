@@ -538,6 +538,24 @@
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
 
 (define-id-syntax t  ;; uber shorthand
-  (time (begin (time (test-units)) 
-	       (printf "\nAfter thorough collection:\n")
-	       (collect (collect-maximum-generation)))))
+  (let ([start (begin (collect (collect-maximum-generation))
+		      (statistics))]
+	[startobs (oblist)])
+    (time (test-units))
+    (collect (collect-maximum-generation))
+    (let ([end (statistics)]
+	  [endobs (oblist)])
+      (let ([before (- (sstats-bytes start) (sstats-gc-bytes start))]
+	    [after (- (sstats-bytes end) (sstats-gc-bytes end))])
+	(printf "\nAfter a thorough collection:\n")
+	(printf "   ~:d additional allocated bytes are left over (~:d before ~:d after).\n"
+		(- after before) before after)
+	(let ([len1 (length startobs)]
+	      [len2 (length endobs)]
+	      [diff (difference endobs startobs)])
+	  (printf "   ~s syms in oblist before, ~s syms after, diff ~s\n" len1 len2 (- len2 len1))
+	  (parameterize ([print-length 20])
+	    (printf "Difference: ~s\n" diff))
+	  (printf "  Difference with top-level bindings: ~s\n\n" (filter top-level-bound? diff))
+	)))))
+

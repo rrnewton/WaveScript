@@ -8,7 +8,6 @@
 	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
 
-
     ["resolve-trees:  Verify that an rfold over a khood gets the correct tree"
      (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
        (run-compiler '(rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))))

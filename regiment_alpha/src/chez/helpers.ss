@@ -84,7 +84,8 @@
   (syntax-rules ()
     [(_ v exp ...)
      (call/1cc (lambda (v) exp ...))]))
-(alias call/ec call/1cc)
+;(alias call/ec call/1cc)
+(define call/ec call/1cc)
 
 ;(define-syntax define-values
 ;  (syntax-rules ()
