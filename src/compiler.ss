@@ -51,9 +51,10 @@
     classify-names
     add-heartbeats
     add-control-flow
-    add-places
-;    add-routing
     add-data-flow
+    resolve-fold-trees
+    add-places      ;; UNNECESSARY CURRENTLY
+;    add-routing
     analyze-places
 
     ;; (7) Finally, the core of the Regiment compiler.  Convert a
@@ -536,4 +537,7 @@
 
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
 
-(define-id-syntax t (time (test-units))) ;; uber shorthand
+(define-id-syntax t  ;; uber shorthand
+  (time (begin (time (test-units)) 
+	       (printf "\nAfter thorough collection:\n")
+	       (collect (collect-maximum-generation)))))

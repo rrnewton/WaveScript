@@ -8,7 +8,61 @@
 	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
 
+
+    ["resolve-trees:  Verify that an rfold over a khood gets the correct tree"
+     (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
+       (run-compiler '(rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))))
+     ;; The result had better put a khood in for the "tree" property.
+     ,(lambda (prog)
+	(let ([name (deep-assq 'tree prog)]
+	      [dfg (cdr (deep-assq 'data-flow prog))])
+	  (match name
+	    [(tree ,s)
+	     (match (assq s dfg)
+	       [(,s (khood . ,_)) #t]
+	       [,else #f])]
+	    [,else #f])
+	  ))]
      
+    ["resolve-trees: Verify that nested regions program uses the khood's tree"
+     (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
+       (run-compiler 
+	'(letrec ([nodes (light-up
+			(rfilter
+			 (lambda (n) (or (= (nodeid n) 6) (= (nodeid n) 14)))
+                    world))]
+		[twohop (lambda (n) (khood (node->anchor n) 2))]
+		[nbrhoods (rmap twohop nodes)]
+		[ids (rmap (lambda (r) (rmap nodeid r)) nbrhoods)]
+		[sums (rmap (lambda (r) (rfold + 0 r)) ids)]
+		)
+	 ;(rrflatten nbrhoods)
+	   sums
+	 )))
+     ;; The result had better put a khood in for the "tree" property.
+     ,(lambda (prog)
+	(let ([name (deep-assq 'tree prog)]
+	      [dfg (cdr (deep-assq 'data-flow prog))])
+	  (match name
+	    [(tree ,s)
+	     (match (assq s dfg)
+	       [(,s (khood . ,_)) #t]
+	       [,else #f])]
+	    [,else #f])
+	  ))]
+
+    ["resolve-trees:  An unresolvable fold gets #f for the tree"
+     (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
+       (deep-assq 'tree
+		  (run-compiler '(rmap (lambda (n)
+			      (rfold + 0 
+				     (rmap nodeid 
+					   (if (even? (nodeid n))
+					       (khood (anchor-at 50 10) 2)
+					       (khood (anchor-at 10 30) 2)))))
+				       world))))
+     (tree #f)]
+
      ["Testing simple combinations of passes: generate a continuation." 
       (let ((toks (cdr (deep-assq 'tokens 
 		 (closure-convert 

@@ -64,7 +64,8 @@
 (define (getplaces p)
   (match p
 	 [(,input-language (quote (program (props ,proptable ...) 
-					   (control-flow ,cfg ...)
+;					   (control-flow ,cfg ...)
+				    ,program-annots ...
 					   (lazy-letrec ,binds ,expr)
 					   ,type)))
 	  (map (lambda (x) (list-head x 4)) binds)]))
@@ -73,7 +74,8 @@
   (lambda (expr)
     (match expr
 	   [(,input-language (quote (program (props ,proptable ...) 
-					     (control-flow ,cfg ...)
+;					     (control-flow ,cfg ...)
+				      ,program-annots ...
 					     ,letexpr
 					     ,type)))
 
@@ -213,6 +215,6 @@
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
 
     `(add-places-language (quote (program (props ,proptable ...)
-					  (control-flow ,cfg ...)
-					  ,(process-let letexpr)
-					  ,type)))])))
+				   ,program-annots ...
+				   ,(process-let letexpr)
+				   ,type)))])))

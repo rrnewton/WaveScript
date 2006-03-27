@@ -110,10 +110,11 @@
 	       (get-region-tail (last (assq var binds))
 				env)]
 
+
 	      [(rmap ,rat ,rand)
 	       (if (regiment-primitive? rat)
 		   ;rat
-		   (error 'get-region-tail "non eta'd primitive as rmap operator: ~a" rat)
+		   (error 'get-region-tail "non-eta'd primitive as rmap operator: ~a" rat)
 		   (let ([newrand (process-expr rand env)])
 		     (match (or (and (symbol? rat) (lookup rat env))
 				rat)
@@ -123,6 +124,10 @@
 			]))
 		   )]
 
+	      ;; An rfilter doesn't change the value-producing program point.
+	      [(rfilter ,rat ,rand)  (get-region-tail rand env)]
+	      
+	      [,expr (error 'get-region-tail "unhandled expression: ~s\n" expr)]
 	      [,expr `(NOTHIN ,expr)])
 	    )))
 
@@ -134,13 +139,16 @@
           [(quote ,const)             ()]
           [,var (guard (symbol? var)) ()]
 
-	  [(rmap ,rat ,rand)
-	       (let ([newbinds (process-expr rand env)])
-		 (match (or (and (symbol? rat) (lookup rat env))
-				rat)
-		   [(lambda (,v) ,ty ,expr)
-		    `([,v ,(get-region-tail rand (append newbinds env))])]))
-	   ]
+
+	  ;; TODO: FIXME: HANDLE SMAP AS WELL:
+
+	  [(,mapfun ,rat ,rand)
+	   (guard (memq mapfun '(rmap rfilter)))
+	   (let ([newbinds (process-expr rand env)])
+	     (match (or (and (symbol? rat) (lookup rat env))
+			rat)
+	       [(lambda (,v) ,ty ,expr)
+		`([,v ,(get-region-tail rand (append newbinds env))])]))]
 
 	  ;; We accumulate "data flow" information as we go through the bindings.
 	  ;; NOTE NOTE:  This assumes that they're ordered and non-recursive.

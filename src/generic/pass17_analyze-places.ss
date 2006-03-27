@@ -1,3 +1,5 @@
+;; [2006.03.27]
+;; DISABLING.  This was never finished.
 
 ;; Pass: Analyze Places
 ; =======================================================================
@@ -39,6 +41,7 @@
   (lambda (expr)
     (match expr
       [(,input-language (quote (program (props ,proptable ...) 
+;				 ,program-annots ...
 				 (control-flow ,cfg ...)
 				 (data-flow ,dfg ...)
 				 ,letexpr
@@ -115,6 +118,7 @@
 	   (error 'add-places:process-let "invalid syntax ~s" unmatched)])))
 
     `(add-places-language (quote (program (props ,proptable ...)
+;				   ,program-annots ...
 					  (control-flow . ,cfg)
 					  (data-flow . ,dfg)
 					  ,(process-let letexpr)
