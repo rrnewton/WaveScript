@@ -380,3 +380,59 @@
 ;  (cd start-dir)
 (cd (string-append (REGIMENTD) "/src"))
 ;  )
+
+
+;; This is an (attempted) hack for maintaining clean seperation between repeated loads.
+;;
+;; [2006.03.27] This doesn't work yet, repeated loads still allocate more memory. 
+;; Chez garbage collects compiled code, right?
+;; Ahh, Chez doesn't collect space used by environments.
+;; So I WOULD need that part that tries to wipe all the bindings.
+(define wipe ;; shorthand
+  (let ([diff difference])
+    (lambda () 
+  (time 
+   (begin 
+     (collect (collect-maximum-generation))
+
+     (let ([stats (statistics)]
+	   [loader bl2])
+       (printf "Pre-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
+     (eval '(import scheme))
+
+     ;; This is a simple version:
+     (for-each (lambda (s)
+		 (when (and (top-level-bound? s) 
+			    (not (memq s '(wipe bl2 bln __UTILSDIR __utilsdir)))) ;; Don't kill my little loading mechanism
+		   ;(printf "Killing ~s\n" s)
+		   (set-top-level-value! s #f)))
+       (diff (environment-symbols (interaction-environment))
+	     (environment-symbols (scheme-environment))))
+
+#;
+     (let ([newenv (copy-environment ;(interaction-environment)
+				     (scheme-environment) 
+				     #t
+				     (cons 'b (environment-symbols (scheme-environment))))])
+       ;; First we anihilate our existing environment.  Possibly unnecessary.
+       ;; This doesn't work because I keep running into read-only
+       ;; bindings, even if I avoid the (import scheme) above....
+       (let ([tlb? top-level-bound?]
+	     [stlv! set-top-level-value!]
+	     [evl eval])
+	 (for-each (lambda (s)
+		     (when (tlb? s)
+		       (printf "Killing ~s\n" s)
+		       ;; Not mutable for some reason:
+		       (stlv! s #f)
+		       ;(evl `(set! ,s #f))
+		       ))
+	   (environment-symbols (interaction-environment))))
+       (interaction-environment  newenv))
+     
+     (collect (collect-maximum-generation))
+     (let ([stats (statistics)]) 
+       (printf "Post-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
+
+     ))
+  )))
