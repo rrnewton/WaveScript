@@ -180,9 +180,7 @@
 		   (if (not (check-prop 'region region_tok)) ; Is it pushed by the parent?
 		       ;; In this case membership in the parent drives the rmap.
 		       `([,parent (v t) (call ,form v t)]
-			 [,form (v t)
-				(call ,memb
-				      (subcall ,rator_tok v))])
+			 [,form (v t) (call ,memb (subcall ,rator_tok v) t)])
 		       ;; In this case rmap must run it's own heartbeat to keep it alive.
 		       (begin 
 			 (warning 'explode-primitive ;fprintf (current-error-port)
@@ -193,7 +191,7 @@
 				    (activate ,form v t)]
 			   ;; Value should be NULL_ID
 			   [,form (v t) "rmap with heartbeat"				  
-				  (call ,memb (subcall ,rator_tok this))
+				  (call ,memb (subcall ,rator_tok this) t)
 				  (timed-call ,heartbeat ,form)])))
 		   )))]
 
@@ -244,7 +242,7 @@
 	       `([,parent (v t) 
 			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
 			  (call ,form v t)]
-		 [,form (v t) (call ,memb (subcall ,rator_tok v))]))]
+		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
 
 	    ;; [2005.11.27] smap2 is more tricky. 
 	    ;; For now I'm just joining signals at the base-station.
@@ -276,7 +274,7 @@
 				   (set! right (vector-ref vec 1))
 				   (error ',catcher "smap2 catcher got a bad flag: ~s" (vector-ref vec 0))))
 			   ;; Update the membership whenever we get a new left or new right:
-			   (call ,memb (subcall ,rator_tok left right))
+			   (call ,memb (subcall ,rator_tok left right) ,NOTREE)
 			   ]
 		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
 
@@ -298,6 +296,7 @@
                     ;; The tree goes with the membership name for the khood expression.
                     ;; But we also need to worry about getting the correct subtok id.
                     ;; So this won't work right now.
+		    [tempmemb (new-token-name 'returntotemp)]
                     [tree (get-membership-name (cadr (ASSERT (assq 'tree annots))))]
 		    )
 	       ;(inspect region_tok)	       
@@ -307,10 +306,12 @@
 			    ,(if push? 
 				 `(call ,form v t)
 				 `(activate ,form v t))]
+		   ;; Just inserts the extra argument.
+		   [,tempmemb (v) (call ,memb v ,NOTREE)]
 		   [,form (v t)
 			  (greturn
 			     ,(if push? 'v THISOB)                     ;; Value
-			     (to ,memb)             ;; To
+			     (to ,tempmemb)             ;; To
 ;			     (via ,parent)          ;; Via
 			     (via global-tree)          ;; Via
 ;                             (via ,tree)
@@ -826,7 +827,8 @@
 			 `([,(get-formation-name name) () 
 			    (call ,(get-membership-name name)
 				  ,THISOB ,WORLDTREE)]
-			   [spark-world () (call ,(get-membership-name name) ;,TMNULL
+			   [spark-world () (call ,(get-membership-name name) 
+						 ,THISOB ,NOTREE
 						 )]))]
 
           ;; The possibility that the final value is local is

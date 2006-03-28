@@ -440,3 +440,5 @@
 
      ))
   )))
+
+(define-id-syntax bw  (begin (wipe) b)) ;; shorthand
