@@ -32,7 +32,7 @@
 
 ;; Main query:
 
-(rrflatten nbrhoods)
+(rmap nodeid (rrflatten nbrhoods))
 
 #;(liftsig (rmap (lambda (r) (rfold append '() 
 			 (rmap (lambda (n) (cons (nodeid n) '()))
