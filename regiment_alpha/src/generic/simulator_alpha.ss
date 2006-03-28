@@ -102,16 +102,15 @@
    ;; [2005.11.05] This fills in the implementation-specific casing for the generated code:
    ;; Could just be identity function, but wrapping in a module should give better performance.
    (define (build-genned-code-module node-code)
-     `(begin	      
-	(chez:module genned-code (node-code) 
-	  (import scheme)
-	  (import constants)
-	  (import logfiles)
-	  (import simulator_alpha_datatypes)
-	  (import alpha_lib)
-	  (import alpha_lib_scheduler_simple)
-	  ,node-code)
-	(import genned-code)))
+     (if (simalpha-generate-modules)
+	 `(begin	      
+	    (chez:module genned-code (node-code) 
+	      (import scheme)      (import constants)
+	      (import logfiles)    (import simulator_alpha_datatypes)
+	      (import alpha_lib)   (import alpha_lib_scheduler_simple)
+	      ,node-code)
+	    (import genned-code))
+	 node-code))
    (define (build-genned-code-module node-code)
      `(begin (module _genned_node_code mzscheme
 	       (provide node-code)
@@ -1017,6 +1016,7 @@
 		      ;; When we get to the end of the params we start it up:
 		      [() 
 		       (if (simalpha-write-sims-to-disk)
+			   ;; Loading this binds "node-code" at top-level:
 			   (load "_genned_node_code.ss")
 			   (eval THEPROG))
                        ;; We have to do this because of the module system:

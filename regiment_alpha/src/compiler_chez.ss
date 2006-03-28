@@ -32,22 +32,33 @@
 				     (string-append (getenv "REGIMENTD") "/src/chez")
 				     (string-append (getenv "REGIMENTD") "/src/generic")))
 	   
-	   (optimize-level 0) ;0/1/2/3)
+	   (optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
 	   ;; 3: 25488 ms elapsed cpu time, including 8571 ms collecting
 	   ;; 3 with no debug mode! 13993 ms elapsed cpu time, including 3844 ms collecting	   
 	   
+
+	   ;; This makes our modules work properly in newer versions of Chez:
+	   ;; Otherwise we get unorder definitions, which breaks certain Regiment code.
+	   (if (top-level-bound? 'internal-defines-as-letrec*)
+	       (internal-defines-as-letrec* #t))
+
+           (define current_interpreter 'chezscheme)           
+	   (define-top-level-value 'simulator-batch-mode #f)
+
 	   ;; This configuration is for running extended simulation-experiments only:
 	   ;; REMEMBER to also disable IFDEBUG in constants.ss
 
-#;
-	   (begin (optimize-level 3)
-		  (compile-compressed #f)
-		  (generate-inspector-information #f)		  
-		  ;; Messing with this didn't seem to help performance.
-		  #;(run-cp0
+#;	   (begin 
+	     (define-top-level-value 'simulator-batch-mode #t)
+	     (optimize-level 3)
+	     (compile-compressed #f)
+	     (generate-inspector-information #f)
+	     ;; Messing with this didn't seem to help performance.
+	     #;
+		  (run-cp0
 		   (lambda (cp0 x)
 		     (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
 				    [cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
@@ -57,14 +68,6 @@
 					(cp0-effort-limit 0)
 					)
 			   (cp0 x)))))))
-
-	   ;; This makes our modules work properly in newer versions of Chez:
-	   ;; Otherwise we get unorder definitions, which breaks certain Regiment code.
-	   (if (top-level-bound? 'internal-defines-as-letrec*)
-	       (internal-defines-as-letrec* #t))
-
-           (define current_interpreter 'chezscheme)           
-
 	   )
 
 ;======================================================================

@@ -114,6 +114,7 @@
 	 simalpha-sense-function-constructor
 	 simalpha-graphics-on
          simalpha-write-sims-to-disk
+	 simalpha-generate-modules
 	 simalpha-label-msgcounts 
 	 simalpha-label-sensorvals 
 	 simalpha-pause-hook
@@ -194,8 +195,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -325,6 +326,7 @@
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other
 (define-regiment-parameter reg:comment-code #f)
+
 ; ----------------------------------------
 
 ;; This stores the list of all passes (well, pass names) that get run by default.
@@ -602,6 +604,16 @@
 
 ;; When this is #t the simulator writes all simulations to disk and loads them.  Better for debugging!
 (define-regiment-parameter simalpha-write-sims-to-disk (IFDEBUG #t #f))
+
+;; This parameter controls whether or not the generated (simulator)
+;; code will be wrapped in "module" declarations.  This makes
+;; execution faster, but has the drawback that the code will not be
+;; garbage collectable.  (Top level modules cannot be garbage
+;; collected in Chez Scheme.)
+(define-regiment-parameter simalpha-generate-modules 
+  ;; If we're running long simulations in batch mode, we want to turn this on:
+  ;; We just refer to the top-level environment for this: (dodging module-system/load-order issues)
+  (eval 'simulator-batch-mode))
 
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)
