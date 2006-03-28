@@ -8,6 +8,7 @@
 
 ;; [2004.06.16] This should have been done already, but just for good measure...
 (define current_interpreter 'mzscheme)
+(define simulator-batch-mode #f)
 
 ;(module compiler_plt mzscheme
  
