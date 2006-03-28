@@ -2380,7 +2380,9 @@
  ,(lambda (ls)
     (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
 
-["Demos: nested_regions.rs" 
+["Demos: nested_regions.rs"
+ ;; Expects the nested_regions.rs program to return all node-ids of
+ ;; nodes that are neighbors of nodes 6 and 14.
  (parameterize ([deglobalize-markup-returns #f]
 		[sim-num-nodes 30]
 		[simalpha-realtime-mode #f]

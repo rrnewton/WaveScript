@@ -541,9 +541,10 @@
   (let ([start (begin (collect (collect-maximum-generation))
 		      (statistics))]
 	[startobs (oblist)])
-    (time (test-units))
-    (collect (collect-maximum-generation))
-    (let ([end (statistics)]
+    (and 
+     (time (test-units))
+     (collect (collect-maximum-generation))
+     (let ([end (statistics)]
 	  [endobs (oblist)])
       (let ([before (- (sstats-bytes start) (sstats-gc-bytes start))]
 	    [after (- (sstats-bytes end) (sstats-gc-bytes end))])
@@ -557,5 +558,10 @@
 	  (parameterize ([print-length 20])
 	    (printf "Difference: ~s\n" diff))
 	  (printf "  Difference with top-level bindings: ~s\n\n" (filter top-level-bound? diff))
-	)))))
+	))))))
 
+
+(define-id-syntax mem  ;; shorthand
+  (begin (collect (collect-maximum-generation))
+	 (let ([stats (statistics)])
+	   (printf "Approx dynamic mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))))

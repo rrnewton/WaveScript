@@ -111,6 +111,9 @@
 (define ANCH-NUM 'ANCH) ;49)
 (define CIRC-NUM 'CIRC) ;59)
 
+(define THISOB ''THISNODE)
+(define NOTREE ''NO-TREE)
+(define WORLDTREE ''WORLD-TREE)
 
 (define proptable 'not-defined-yet)
 
@@ -151,13 +154,6 @@
 	  (case prim
 	    [(sparsify) (void)]
 	    
-	    ;; -=<TODO>=- UNSURE OF THIS
-	    ;; SEEMS PRETTY USELESS!
-	    ;[(sense)
-	    ;`([,form () (sync-sense)]
-					;;[,memb () ]
-	    ;)]
-
 	    [(rmap) 
 	     (let* ([rator_tok (car args)]   ; The function
 		    [region_tok (cadr args)] ; The region
@@ -177,21 +173,28 @@
 		   (let ((form_child (get-formation-name (cadr rettype)))
 			 (memb_child (get-membership-name (cadr rettype))))
 		     ; We wire our control-flow parent directly to our child's formation token:
-		     `([,parent (v) (call ,form_child v)]
-		       [,memb_child (v) (call ,memb v)]))
+		     `([,parent (v t) (call ,form_child v t)]
+		       [,memb_child (v t) (call ,memb v t)]))
 
 		   ;; Second case: it's a local function, we simply subcall to it.
-		   (if (not (check-prop 'region region_tok)) ; Is it push?
+		   (if (not (check-prop 'region region_tok)) ; Is it pushed by the parent?
 		       ;; In this case membership in the parent drives the rmap.
-		       `([,parent (v) (call ,form v)]
-			 [,form (v)
+		       `([,parent (v t) (call ,form v t)]
+			 [,form (v t)
 				(call ,memb
 				      (subcall ,rator_tok v))])
 		       ;; In this case rmap must run it's own heartbeat to keep it alive.
-		       `([,parent () (activate ,form)]
-			 [,form () "rmap with heartbeat"
-				(call ,memb (subcall ,rator_tok this))
-				(timed-call ,heartbeat ,form)]))
+		       (begin 
+			 (warning 'explode-primitive ;fprintf (current-error-port)
+				  "Note: rmap with own heartbeat: ~s\n" memb)
+			 `([,parent (v t) 
+;				    (if (not (eq? v ,THISOB))
+;					(error 'rmap-with-heartbeat "didn't get THISOB in value position, instead: ~s" v))
+				    (activate ,form v t)]
+			   ;; Value should be NULL_ID
+			   [,form (v t) "rmap with heartbeat"				  
+				  (call ,memb (subcall ,rator_tok this))
+				  (timed-call ,heartbeat ,form)])))
 		   )))]
 
 	    ;; Liftsig doesn't mean anything operationally.
@@ -199,17 +202,18 @@
 	    [(liftsig)
 	     (let* ([region_tok (car args)]
 		    [parent (get-membership-name region_tok)])
-	       `([,parent (v) (call ,memb v)]
-		 [,form (v) (call ,memb v)]))]
+	       `([,parent (v t) (call ,memb v t)]
+		 
+		 [,form (v t) (call ,memb v t)]))]
 
 	    ;; This is always pushed by the parent operator.
 	    [(light-up)
 	     (let* ([region_tok (car args)]
 		    [parent (get-membership-name region_tok)])
-	       `([,parent (v) (call ,form v)]
-		 [,form (v)
+	       `([,parent (v t) (call ,form v t)]
+		 [,form (v t)
 			(leds on green)
-			(call ,memb v)]))]
+			(call ,memb v t)]))]
 
 	    [(rwhen-any)
 	     (let* ([rator_tok (car args)]
@@ -218,14 +222,14 @@
 		    ;[push? (not (check-prop 'region region_tok))]
 		    )
 	       ;; When we are a member of the input region, we locally try to detect the event:
-	       `([,parent (v)
+	       `([,parent (v t)
 		   ;; If the predicate holds:
 		   (if (subcall ,rator_tok v)
 		       ;; Then we fire an event:
 		       (begin 
 			 ;(printf "Node ~s detected event ~s at time ~s!\n" (my-id) v (my-clock))
-			 (call ,memb v)))]
-		 [,form (v) (void)] ;; The formation token does nothing!
+			 (call ,memb v t)))]
+		 [,form (v t) (void)] ;; The formation token does nothing!
 		 ))]
 
 	    ;; [2005.10.20] We might want to think about doing some routing here.
@@ -237,8 +241,10 @@
 	     (let* ([rator_tok (car args)]
 		    [region_tok (cadr args)]
 		    [parent (get-membership-name region_tok)])
-	       `([,parent (v) (call ,form v)]
-		 [,form (v) (call ,memb (subcall ,rator_tok v))]))]
+	       `([,parent (v t) 
+			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
+			  (call ,form v t)]
+		 [,form (v t) (call ,memb (subcall ,rator_tok v))]))]
 
 	    ;; [2005.11.27] smap2 is more tricky. 
 	    ;; For now I'm just joining signals at the base-station.
@@ -254,10 +260,10 @@
 	       ;; Both parents return values to the base station:
 	       `(
 		 ; No binding for formation token!
-		 [,parent1 (v) 
+		 [,parent1 (v t) 
 			   ;(printf "PARENT1: ~s\n" v)
 			   (greturn (vector 1 v) (to ,catcher) (via global-tree))]
-		 [,parent2 (v) 
+		 [,parent2 (v t) 
 			   ;(printf "PARENT2: ~s\n" v)
 			   (greturn (vector 2 v) (to ,catcher) (via global-tree))]
 		 ;; This catcher receives both values, right now it does a lame merge where on every update it outputs a both.
@@ -272,7 +278,7 @@
 			   ;; Update the membership whenever we get a new left or new right:
 			   (call ,memb (subcall ,rator_tok left right))
 			   ]
-		 [,form (v) (call ,memb (subcall ,rator_tok v))]))]
+		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
 
 	    ;; [2004.06.28] This may or may not take an argument, and
 	    ;; that depends on the *type* that it's specialized too,
@@ -297,13 +303,13 @@
 	       ;(inspect region_tok)	       
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
-		 `([,parent ,(if push? '(v) '()) 
+		 `([,parent (v t)
 			    ,(if push? 
-				 `(call ,form v)
-				 `(activate ,form v))]
-		   [,form ,(if push? '(v) '())
+				 `(call ,form v t)
+				 `(activate ,form v t))]
+		   [,form (v t)
 			  (greturn
-			     ,(if push? 'v 'this)                     ;; Value
+			     ,(if push? 'v THISOB)                     ;; Value
 			     (to ,memb)             ;; To
 ;			     (via ,parent)          ;; Via
 			     (via global-tree)          ;; Via
@@ -311,6 +317,8 @@
 
 			     (seed ,seed_val)       ;; With seed
 			     (aggr ,rator_tok))     ;; and aggregator
+
+			  ;; If it's not driven by the parent, then we need to beat our heart:
 			  ,@(if push? '()
 				`((timed-call ,(/ 1000 heartbeat) ,form)))]
 ;		 [,memb (v) ] ;; This occurs at the fold-point
@@ -328,8 +336,8 @@
 		 
 		 ;; <TODO> <FIXME> ALLOW VARIABLE ARGUMENTS FOR TOKENS!!!
 		 `(	    
-		   [,parent (v) (call ,form v)]
-		   [,form (v)
+		   [,parent (v t) (call ,form v t)]
+		   [,form (v t)
 			  (stored [heldval #f])
 			  ;; Freeze the value until we've formed the clusters
 			  (set! heldval v)
@@ -344,8 +352,8 @@
 		   [,leader-tok (ldr val)
 				(printf "WOOT: Cluster formed: index ~a, membership: \n" ldr )
 				;; Unfreeze the value and declare membership
-				;; NOTE: Currently no way that the spanning tree is revealed.
-				(call (tok ,memb ldr) (ext-ref ,form heldval))]
+				;; NOTE: Currently no way that the spanning tree is revealed. FIXME FIXME
+				(call (tok ,memb ldr) (ext-ref ,form heldval) ,NOTREE)]
 		   )))]
 
 	    
@@ -353,9 +361,9 @@
 	     (match args
 	       [(,pred_tok ,region_tok)
 		(let ([parent (get-membership-name region_tok)])
-		  `( [,parent (v) (call ,form v)] ;; member of that area
-		     [,form (v) (if (subcall ,pred_tok v)
-				    (call ,memb v))] ))])]
+		  `( [,parent (v t) (call ,form v t)] ;; member of that area
+		     [,form (v t) (if (subcall ,pred_tok v)
+				    (call ,memb v t))] ))])]
 
             ;; Does this work with flickering?
 	    ;; Ignores timing properties and just considers any
@@ -363,11 +371,12 @@
 	    [(runion)
 	     (let ([mem_a (get-membership-name (car args))]
 		   [mem_b (get-membership-name (cadr args))])	       
-	       `([,mem_a (v) (call ,memb v)]
-		 [,mem_b (v) (call ,memb v)]
+	       `([,mem_a (v t) (call ,memb v ,NOTREE)]
+		 [,mem_b (v t) (call ,memb v ,NOTREE)]
 		 ))]
 	    ;; UNFINISHED:
 	    [(rintersect)
+	     (error 'explode-primitive "unfinished prim: rintersect")
 	     (let ([mem_a (get-membership-name (car args))]
 		   [mem_b (get-membership-name (cadr args))])	       
 	       `([,form (v) (if (and (token-present? ,mem_a)
@@ -379,8 +388,14 @@
 		 ))]
 	    
 	    [(rrflatten)
+	     ;; The result of flattening no longer has a single spanning tree.
+	     ;;
+	     ;; If we were cool we would maybe lace together the roots
+	     ;; of the individual clusters as a shortcut to making a
+	     ;; spanning tree.  But that's a complex optimization that
+	     ;; is absolutely not worth it (and may perform worse).
 	     (let ([parent (get-membership-name (car args))])	       
-	       `([,parent (v) (call ,memb v)]))]
+	       `([,parent (v t) (call ,memb v ,NOTREE)]))]
 			 
 	    ;; This is not a region. It's a signal.  
 	    ;; The value on its membership token is the node-id of the leader.
@@ -403,13 +418,15 @@
 		 [,calcdist ()
 ;			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
 			    (-. 0. (locdiff (loc) ,target))]
+
+		 ;; Extra visualization code:
 		 [,form () 
 			(draw-mark ,target) ;,(IF_GRAPHICS `(draw-mark ,target) '(void))
 			(leds on blue)
 			]
 		 ;; DEBUGGING
 		 ;; This just lights up the node when it becomes anchor, for visualization:
-		 [,amwinner (ldr val) 
+		 [,amwinner (ldr val)
 			;; Note that we are an anchor.
 ;;			(set-simobject-homepage! 
 ;;			 this (cons 'anchor (simobject-homepage this)))
@@ -418,9 +435,9 @@
 			    (begin (leds on red)
 				   (call ,memb ldr)))
 			]
-		 [,memb (v) 
+		 [,memb (v t)  ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
 			;(if simalpha-visualize-anchors
-			(leds on green) 
+			(leds on green)
 			(printf "Anchor-at WINNER! ~a\n" (my-id))
 			]
 		 ))]
@@ -452,26 +469,31 @@
 	    ;; [2005.11.23] This does essentially nothing.  It's
 	    ;; formed at a node, it's membership is that node.
 	    [(node->anchor)
-	     `([,form (v) (call ,memb)])]
+	     ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
+	     `([,form (v t) (call ,memb)])]
 
 	    [(circle)
+	     (warning 'explode-primitive "circle not correctly implemented currently")
 	     (let ([anch (car args)]
 		   [rad (cadr args)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
-		 [,(get-membership-name anch) () (call ,form)]
-;		 [,form () (gemit ,memb this)]
-		 [,form (v) (gemit ,memb)]
+		 [,(get-membership-name anch) () (call ,form ,THISOB ,NOTREE)]
+
+		 ;; FIXME: Unnecessary argument passing through the network:
+		 [,form (v t) (gemit ,memb v t)]
 		 ;; Display stuff:
-;		 [,form () (draw-circle (loc) 20)]
-		 [,memb ()
+		 [,memb (v t)
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
 			(begin 
 			  ;(light-node 0 100 100)
 			  )]
-		 [,memb () (if (< (gdist) ,rad) (grelay))]
+ 
+		 ;; [2006.03.27] This isn't right:  We need the euclidean dist.
+		 ;; I might have used gdist for this at some point, but no longer.
+		 [,memb (v t) (if (< (gdist) ,rad) (grelay))]
 		 )
 	       )]
 
@@ -488,10 +510,9 @@
 
 		 ;; Khood's are distinguished by their origin ID.
 		 ;; TODO: FIXME: This is not sufficiently general.
-		 [,form (v) (gemit (tok ,spread (my-id)))]
-		 ;; Display stuff:
-;		 [,form () (draw-circle (loc) 20)]
-		 [,memb ()
+		 [,form (v t) (gemit (tok ,spread (my-id)))]
+
+		 [,memb (v t)
 			;; Note that we are inside a "hood".
 ;			(set-simobject-homepage! 
 ;			 this (cons 'circle (simobject-homepage this)))
@@ -500,18 +521,13 @@
 			(void)
 			]
 
-
-;		 [,memb () (if (< (ghopcount) ,rad) (grelay))]
-
-		 ;; TEMP:
-		 [,spread id () (call ,memb (my-id)) ;; The "value" caried in this area is node-id.
+		 ;; The "value" caried in this area is the node itself.
+		 [,spread id () (call ,memb ,THISOB (tok ,spread id))
 			  (if (< (ghopcount) ,rad) (timed-call 1000 ;,(default-fast-pulse) 
-							       (tok ,temp id)))]
-
+							       (tok ,temp id)))]		 
+		 ;; This is the continuation of spread, it just keeps on spreadin'
 		 [,temp id () (grelay (tok ,spread id))]
-		 
-		 )
-	       )]
+		 ))]
 
 
 #;	    
@@ -528,11 +544,13 @@
 		    [region_tok (cadr args)]
 		    [mem_reg (get-membership-name region_tok)])
 	       ;; If we pass, fire that event!
-	       `([,mem_reg (v) (if (subcall ,rator_tok v)
-				   (call ,memb v))]))]
+	       `([,mem_reg (v t) (if (subcall ,rator_tok v)
+				     (call ,memb v t))]))]
 
-	    [else `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])])))
-
+	    [else 
+	     (error 'explode-primitive "unhandled prim: ~s\n" prim)
+	     `([UNHANDLED-EXPLODE-PRIM (,prim) (void)])
+	     ])))
 
 ;  ======================================================================
 ;; LetrecExpr -> (Entry, Cbinds, TokenBinds)
@@ -736,7 +754,7 @@
       [(circle circle-at)     
        `([,tokname 
 	  ; FIXME FIXME FIXME: This matches by coincidence only with the other names..
-	  ()
+	  (v t)
 	  ;; At each formation click, we output this circle: 
 	  ;;   For now this just lists the tokname, this should be the
 	  ;; membership tokname for the circle.  Later we'll put some
@@ -746,7 +764,7 @@
 	  ])]
 
       [(rfilter)     
-       `([,tokname (v)
+       `([,tokname (v t)
 		   ,(if (deglobalize-markup-returns)
 			`(call reg-return (list (list 'FILTRATION ',tokname (my-id)) v))
 			`(call reg-return v))
@@ -755,13 +773,13 @@
       ;; The membership for a fold means we're at the single point
       ;; that aggregates data.
       [(rfold)
-       `([,tokname (v) ;; This value is a sample in the stream
+       `([,tokname (v t) ;; This value is a sample in the stream
 		   ,(if (deglobalize-markup-returns)
 			`(call reg-return (list (list 'RFOLD ',tokname (my-id)) v))
 			`(call reg-return v))])]
       
       [(khood khood-at)
-       `([,tokname () 
+       `([,tokname (v t)
 		   (leds on red)
 		   (call reg-return 
 			 ,(if (deglobalize-markup-returns)
@@ -772,16 +790,17 @@
       ;; For all these primitives, returning just means sending the
       ;; argument of the membership token to the base-station.
       [(rmap light-up smap smap2 runion rrflatten rrcluster liftsig)
-       `([,tokname (v) (call reg-return 
-			     ,(if (deglobalize-markup-returns)
-				  `(list (list ',(symbol-uppercase prim) (my-id)) v)
-				  'v)
-			     )])]
+       `([,tokname (v t) 
+		   (call reg-return 
+			 ,(if (deglobalize-markup-returns)
+			      `(list (list ',(symbol-uppercase prim) (my-id)) v)
+			      'v)
+			 )])]
 
       ;; When the membership token has fired, the event has fired!
       ;; TODO: Need to implement greturn with retries!!
       [(rwhen-any)
-       `([,tokname (v) ;; Event value		
+       `([,tokname (v t) ;; Event value		
 		   ,(if (deglobalize-markup-returns)
 			`(call reg-return (list (list 'EVENT (my-id)) v))
 			'(call reg-return v))
@@ -804,8 +823,9 @@
           ;; spark to whatever value-name this is, and wires the
           ;; formation token straight to the membership.
           [world (values '() 
-			 `([,(get-formation-name name) () (call ,(get-membership-name name) ;,TMNULL
-								)]
+			 `([,(get-formation-name name) () 
+			    (call ,(get-membership-name name)
+				  ,THISOB ,WORLDTREE)]
 			   [spark-world () (call ,(get-membership-name name) ;,TMNULL
 						 )]))]
 
