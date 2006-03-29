@@ -103,13 +103,15 @@
    ;; Could just be identity function, but wrapping in a module should give better performance.
    (define (build-genned-code-module node-code)
      (if (simalpha-generate-modules)
-	 `(begin	      
+	 `(let ()
 	    (chez:module genned-code (node-code) 
 	      (import scheme)      (import constants)
 	      (import logfiles)    (import simulator_alpha_datatypes)
 	      (import alpha_lib)   (import alpha_lib_scheduler_simple)
 	      ,node-code)
-	    (import genned-code))
+	    (import genned-code)
+	    (set-top-level-value! 'node-code node-code)
+	    )
 	 node-code))
    (define (build-genned-code-module node-code)
      `(begin (module _genned_node_code mzscheme

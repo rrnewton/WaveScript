@@ -251,7 +251,10 @@
 		    `(quote ,const)]
 	    [(quote ,const) `(quote ,const)]
 	    
-	    [,t (guard (symbol? t) (memq t tokens))
+	    ;; This expands a token name in plain form (shorthand) into its full form:
+	    [,t (guard (symbol? t) 
+		       (or (memq t tokens) (eq? t 'SOC-return-handler)))
+		;(printf "EXPANDING TOKEN NAME ~s\n" t)
 		`(tok ,t ,DEFAULT_SUBTOK)]
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
@@ -430,7 +433,7 @@
 		      (to ,memb)         ;; To
 		      (via ,parent)      ;; Via
 		      (seed ,[seed_vals] ...) ;; With seed
-		      (aggr ,rator_toks ...)) ;; Aggregator 	      
+		      (aggr ,rator_toks ...)) ;; Aggregator
 	      (check-tok 'return-to memb)
 	      (check-tok 'return-via parent)
 
@@ -439,18 +442,22 @@
 		    (aggr (if (null? rator_toks) #f
 			      (car rator_toks))))
 
+;; [2006.03.28] Not doing it this way anymore, looping instead
+#;
 		(define (fix-token t)
 		  (match t
-			 [,s (guard (symbol? s)) `(tok ,s 0)]
+			 [,s (guard (symbol? s)) 
+			     (error 'cleanup-token-machine "No good. ~s" s)
+			     `(tok ,s 0)]
 			 [(tok ,t) `(tok ,t 0)]
 			 [(tok ,t ,[loop -> n]) `(tok ,t ,n)]))
 
 		(if aggr (check-tok 'return-aggr aggr))
 		`(greturn ,expr 
-			 (to ,(fix-token memb)) 
-			 (via ,(fix-token parent))
+			 (to ,(loop memb)) 
+			 (via ,(loop parent))
 			 (seed ,seed) 
-			 (aggr ,(if aggr (fix-token aggr) aggr))))]
+			 (aggr ,(if aggr (loop aggr) aggr))))]
 
 	     ;; Catch eroneous forms:
 	     [(greturn ,a (to ,b ...) (via ,c ...) (seed ,d ...) (aggr ,e ...))

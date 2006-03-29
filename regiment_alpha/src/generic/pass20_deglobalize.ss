@@ -111,7 +111,7 @@
 (define ANCH-NUM 'ANCH) ;49)
 (define CIRC-NUM 'CIRC) ;59)
 
-(define THISOB ''THISNODE)
+(define THISOB ''(THISNODE))
 (define NOTREE ''NO-TREE)
 (define WORLDTREE ''WORLD-TREE)
 
@@ -289,17 +289,22 @@
 	    ;; or maybe we'll go for polymorphism on the part of this
 	    ;; formation token....
 	    [(rfold) ;; CHECK
-	     (let  ([rator_tok (car args)]
-		    [seed_val (cadr args)]
-		    [region_tok (caddr args)]
+	     (let*  ([rator_tok (car args)]
+		     [seed_val (cadr args)]
+		     [region_tok (caddr args)]
 ;		    [return_handler (new-token-name 'rethand-tok)]
                     ;; The tree goes with the membership name for the khood expression.
                     ;; But we also need to worry about getting the correct subtok id.
                     ;; So this won't work right now.
-		    [tempmemb (new-token-name 'returntotemp)]
-                    [tree (get-membership-name (cadr (ASSERT (assq 'tree annots))))]
+		     [tempmemb (new-token-name 'returntotemp)]
+		     [tree (cadr (ASSERT (assq 'tree annots)))]
+		     [treespreadsym (symbol-append (get-membership-name tree) '_gradspread)]
 		    )
-	       ;(inspect region_tok)	       
+
+;	       (if (eq? tree 'world) ;WORLDTREE)
+;		   (inspect tree))
+	       ;(inspect (vector tree treespreadsym))
+
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent (v t)
@@ -308,21 +313,33 @@
 				 `(activate ,form v t))]
 		   ;; Just inserts the extra argument.
 		   [,tempmemb (v) (call ,memb v ,NOTREE)]
+
+
+		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
+
 		   [,form (v t)
-			  (greturn
+			  
+			  (printf "FORMING fold... ~s ~s  parent ~s\n" v t ,parent)
+;			  "This is a strange compromise for now."
+;			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
+			  
+ 			  (greturn
 			     ,(if push? 'v THISOB)                     ;; Value
 			     (to ,tempmemb)             ;; To
-;			     (via ,parent)          ;; Via
-			     (via global-tree)          ;; Via
-;                             (via ,tree)
+			     (via ;; Via
+			      ;; If we know statically that it's the global-tree, just do that:
+	 		      ,(if (eq? tree 'world);WORLDTREE)
+		 		   'global-tree
+			 	   `(tok ,treespreadsym (token->subid t))
+				   ;'t
+				   ))
 
-			     (seed ,seed_val)       ;; With seed
+ 			     (seed ,seed_val)       ;; With seed
 			     (aggr ,rator_tok))     ;; and aggregator
 
 			  ;; If it's not driven by the parent, then we need to beat our heart:
 			  ,@(if push? '()
 				`((timed-call ,(/ 1000 heartbeat) ,form)))]
-;		 [,memb (v) ] ;; This occurs at the fold-point
 		 )))]
 
 	    ;; <TODO>: FIXME
@@ -502,7 +519,7 @@
 	    [(khood)
 	     (let ([anch (car args)]
 		   [rad (cadr args)]
-		   [spread (new-token-name 'spread-khood)]
+		   [spread (symbol-append memb '_gradspread)]  ;(new-token-name 'spread-khood)]
 		   [temp (new-token-name 'delay)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:

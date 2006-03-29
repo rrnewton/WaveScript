@@ -88,7 +88,7 @@
     (lambda (t)
       (lambda (type id x y)
 	(sqrt (+ (expt x 2) (expt y 2)))))))
-    
+
 (define sense-sine-wave
   (lambda ()
     (lambda (t)    

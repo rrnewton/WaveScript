@@ -2409,6 +2409,27 @@
       (ASSERT (set? nbrs2))
       (equal? set1 set2)))]
 
+
+["Demos: nested_regions.rs"
+ ;; Expects the nested_regions.rs program to return all node-ids of
+ ;; nodes that are neighbors of nodes 6 and 14.
+ (parameterize ([deglobalize-markup-returns #f]
+		[sim-num-nodes 30]
+		[simalpha-realtime-mode #f]
+		[simalpha-placement-type 'connected]
+		[simalpha-outer-radius 15]
+		[simalpha-inner-radius 10]
+		;; With no failure, this should return all neighbors:
+		[simalpha-failure-model 'none]
+		[desugar-gradients-mode 'etx]
+		[simalpha-channel-model 'lossless])
+   (sort < (list->set 
+	    (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions_folded.rs")))
+	 ))
+
+ unspecified]
+
+
 #;
 ["Demos: "
  (load-regiment (++ (REGIMENTD) "/demos/regiment/"))
