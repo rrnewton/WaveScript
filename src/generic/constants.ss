@@ -613,7 +613,8 @@
 (define-regiment-parameter simalpha-generate-modules 
   ;; If we're running long simulations in batch mode, we want to turn this on:
   ;; We just refer to the top-level environment for this: (dodging module-system/load-order issues)
-  (eval 'simulator-batch-mode))
+  ;(eval 'simulator-batch-mode))
+  #t)
 
 ;; This is a little feature that will print message counts to the GUI:
 (define-regiment-parameter simalpha-label-msgcounts #f)
