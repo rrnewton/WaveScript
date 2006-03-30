@@ -1,4 +1,4 @@
-;;;; TODO: Make it so that returning a distributed value actually
+ ;;;; TODO: Make it so that returning a distributed value actually
 ;;;; collects and returns all the values therein, rather than just
 ;;;; returning the corresponding membership token.
 
@@ -174,6 +174,8 @@
 			 (memb_child (get-membership-name (cadr rettype))))
 		     ; We wire our control-flow parent directly to our child's formation token:
 		     `([,parent (v t) (call ,form_child v t)]
+			 [,memb (v t)
+				(printf "Member of RMAP ~s: v:~s t:~s\n" ,memb v t)]
 		       [,memb_child (v t) (call ,memb v t)]))
 
 		   ;; Second case: it's a local function, we simply subcall to it.
@@ -190,9 +192,13 @@
 ;					(error 'rmap-with-heartbeat "didn't get THISOB in value position, instead: ~s" v))
 				    (activate ,form v t)]
 			   ;; Value should be NULL_ID
+			   ;; FIXME: Should do a check against the type.  This should only work for REGION types.
+			   ;; FIXME: THIS CODE SHOULD REALLY GO UNDER KHOOD:
 			   [,form (v t) "rmap with heartbeat"				  
-				  (call ,memb (subcall ,rator_tok this) t)
-				  (timed-call ,heartbeat ,form)])))
+				  (call ,memb (subcall ,rator_tok ,THISOB) t)
+				  (timed-call ,heartbeat ,form)]
+			   			  
+			   )))
 		   )))]
 
 	    ;; Liftsig doesn't mean anything operationally.
@@ -308,6 +314,9 @@
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent (v t)
+			    (printf "Fold parent value... v:~s t:~s \n" v t )
+			    ;(break)
+
 			    ,(if push? 
 				 `(call ,form v t)
 				 `(activate ,form v t))]
@@ -315,11 +324,11 @@
 		   [,tempmemb (v) (call ,memb v ,NOTREE)]
 
 
-		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
-
+ 		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
+ 
 		   [,form (v t)
 			  
-			  (printf "FORMING fold... ~s ~s  parent ~s\n" v t ,parent)
+			  (printf "FORMING fold... v:~s t:~s  parent ~s\n" v t ,parent)
 ;			  "This is a strange compromise for now."
 ;			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
 			  
@@ -841,12 +850,15 @@
           ;; spark to whatever value-name this is, and wires the
           ;; formation token straight to the membership.
           [world (values '() 
+			 ;; This wires the formation token for this name to its membership token.
 			 `([,(get-formation-name name) () 
-			    (call ,(get-membership-name name)
-				  ,THISOB ,WORLDTREE)]
-			   [spark-world () (call ,(get-membership-name name) 
-						 ,THISOB ,NOTREE
-						 )]))]
+			    (warning 'world-prim "formation token called: ~s " ',name)
+			    (call ,(get-membership-name name) ,THISOB ,WORLDTREE)]
+			   ;; [2006.03.30] This was pattently wrong.
+			   ;; This along with the above binding can double-stimulate the membership token.
+			   ;; Passes unit tests without this:
+			   ;[spark-world () (call ,(get-membership-name name) ,THISOB ,WORLDTREE)]
+			   ))]
 
           ;; The possibility that the final value is local is
 	  ;; handled in 'deglobalize' so we don't worry about it here:
@@ -996,9 +1008,13 @@
 			    `(startup )
 			    ;; Here I should really only prime the world_tok if the
 			    ;; world prim is used in the program:
-			    `(startup ,@leaftoks ,@(if (assq 'spark-world tokenbinds)
-						       (list 'spark-world)
-						       '()))))
+			    `(startup ,@leaftoks 
+				      ;; [2006.03.30] Killing spark-world, leaf-pulsar handles all.
+				      ;; Might need to think about this more with programs with trickier control flow.
+				      ;,@(if (assq 'spark-world tokenbinds)
+					;    (list 'spark-world)
+					;    '())
+				      )))
 		     ))))
 	 ]))))
 

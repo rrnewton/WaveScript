@@ -2410,7 +2410,7 @@
       (equal? set1 set2)))]
 
 
-["Demos: nested_regions.rs"
+["Demos: nested_regions_folded.rs -- now with folds"
  ;; Expects the nested_regions.rs program to return all node-ids of
  ;; nodes that are neighbors of nodes 6 and 14.
  (parameterize ([deglobalize-markup-returns #f]
