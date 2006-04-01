@@ -524,6 +524,8 @@
 (define-id-syntax t9 (load-regiment "../analysis/firelightning/prog2_manual.tm" 'verbose))
 (define-id-syntax t10 (load-regiment "../analysis/firelightning/test.tm" 'verbose))
 
+(define-id-syntax tb (load-regiment "demos/regiment/bug.tm" 'verbose))
+
 ;(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
 ;(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))
 
