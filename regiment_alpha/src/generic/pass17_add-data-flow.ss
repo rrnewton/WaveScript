@@ -127,6 +127,10 @@
 	      ;; An rfilter doesn't change the value-producing program point.
 	      [(rfilter ,rat ,rand)  (get-region-tail rand env)]
 	      
+
+	      [(liftsig ,areasig) (get-region-tail areasig env)]
+
+
 	      [,expr (error 'get-region-tail "unhandled expression: ~s\n" expr)]
 	      [,expr `(NOTHIN ,expr)])
 	    )))
