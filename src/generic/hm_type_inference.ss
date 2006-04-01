@@ -334,7 +334,10 @@
     (match exp 
       [(lambda ,formals ,types ,body)
        `(,types ... -> ,(recover-type body (tenv-extend tenv formals types)))]
-      [(,letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+      ;; Being lenient and accepting potential annotations in the
+      ;; letrec binds.  This is necessary for running "recover type"
+      ;; on the intermediate forms of the later compiler passes.
+      [(,letrec ([,lhs* ,type* ,optional_annots ... ,rhs*] ...) ,body)
        (guard (memq letrec '(letrec lazy-letrec)))
        (recover-type body (tenv-extend tenv lhs* type*))]
 
@@ -447,7 +450,10 @@
 	 (values `(app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; Allowing unlabeled applications for now:
-      [(,rat ,rand* ...)  (l `(app ,rat ,rand* ...))]
+      [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
+       (l `(app ,rat ,rand* ...))]
+
+      [,other (error 'annotate-program "could not type, unrecognized expression: ~s" other)]
       )))
 
 

@@ -590,9 +590,10 @@
 ;; first attempt to reprocess the lazy-letrec bindings into a
 ;; valid let* binding using delazy-bindings.
 (define process-letrec
-      (lambda (expr)
+      (lambda (expr tenv)
         (match expr
 	       [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
+		(let ([tenv (tenv-extend tenv lhs* type* #t)])
 		  (if (symbol? body)
 		    (let loop ((lhs* lhs*) (annots* annots*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))
@@ -604,8 +605,7 @@
 			  ; membership token to observe the value of the distributed prim (if you're 
 			  ; in the right place!).
 			  (values (if (check-prop 'distributed body)
-				      (mvlet (((form memb) (token-names body)))
-					     memb)
+				      (mvlet (((form memb) (token-names body))) memb)
 				      body)
 				  (delazy-bindings cacc (list body))
 				  ; Because we're returning the name of the member, 
@@ -618,12 +618,14 @@
 				   tacc))
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
-			  (mvlet ([(cbinds tbinds) (process-expr (car lhs*) (car annots*) (car rhs*))])
+			  (mvlet ([(cbinds tbinds) 
+				   (process-expr (car lhs*) (car annots*) (car rhs*) tenv)])
 ;				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
 				 (loop (cdr lhs*) (cdr annots*) (cdr rhs*)
 				       (append cbinds cacc) 
 				       (append tbinds tacc)))))
-		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))]
+		    (error 'deglobalize "Body of letrec should be just a symbol at this point."))
+		  )]
 	  )))
 
 ; ======================================================================
@@ -842,7 +844,7 @@
    ;; This processes an expression and returns both its constant
    ;; bindings, and it's token bindings.
     (define process-expr
-      (lambda (name annots expr)	
+      (lambda (name annots expr tenv)	
 	(let ((finalname (check-prop 'final name)))
         (match expr
 
@@ -875,17 +877,23 @@
 ;	   (values (append test-binds conseq-binds altern-binds)
 ;		   (append test-toks conseq-toks altern-toks))]
 
-
   	 ;; Don't need to make a new token name, the name of this
   	 ;; function is already unique:
-	  [(lambda ,formalexp ,types ,[process-letrec -> entry primbinds tokenbinds])
+	  [(lambda ,formals ,types ,body)
+	   (let ([newenv (tenv-extend tenv formals types #f)])
+	     (mvlet ([(entry primbinds tokenbinds) (process-letrec body newenv)])
+	       (define returntype (recover-type body newenv))
+;	       (fprintf (current-error-port) "RETTY: ~s\n" returntype)
 ;	   (if (not (null? tokenbinds))
 ;	       (error 'deglobalize 
 ;		      "Should not get any tokens from internal letrec right now!: ~s"
-;		      tokenbinds))	   
+;		      tokenbinds))	
+	   ;; WARNING: This can't generate meaningful code for a distributed lambda.
 	   (values '() 
-		   (cons `[,name ,formalexp (let* ,primbinds ,entry)];(call ,entry))]
-			 tokenbinds))]
+		   (cons `[,name ,formals (let* ,primbinds ,entry)];(call ,entry))]
+					;`[,name ,formals (error 'deglobalize "cannot generate good code for this lambda.")]
+			 tokenbinds))))
+]
 
 
 	  ;; FIXME FIXME... this is lame.
@@ -961,7 +969,7 @@
 	 (let* ([leaves (map car (filter (lambda (ls) (memq 'leaf (cdr ls))) table))]
 		[leaftoks (map (lambda (name) (symbol-append 'leaf-pulsar_ name)) leaves)])
 
-	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin))])
+	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin) (empty-tenv))])
 		
    ;	       (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
 		;; This pass uses the same language as the prior pass, lift-letrec
