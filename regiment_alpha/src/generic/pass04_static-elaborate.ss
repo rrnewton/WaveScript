@@ -141,11 +141,14 @@
 
     (define not-available (unique-name "NotAvailable"))
 
+    ;; [2006.03.30] Looks like this is no longer true:
+    ;;----------------------------------------
     ;; This does a walk down the program and, instead of doing beta
     ;; reductions, it converts direct apps to let's and then inlines
     ;; any lets than only have one reference. 
     ;; (Later when new let's get introduced for them, they will
     ;; hopefully be at a smaller scope.)
+    ;;----------------------------------------
 
     ;;   The "env" argument binds names to *code*.  Or if the code is
     ;; unavailable, to *void*.
@@ -230,6 +233,7 @@
 		  [newbinds (filter id
 				    (map 
 				     (lambda (lhs type rhs refs)
+				       ;; Here we eliminate dead code:
 				       (and (> refs 0)
 					    `(,lhs ,type ,rhs)))
 				     lhs* type* newrhs* occurs))])
