@@ -315,7 +315,8 @@
 		     [push? (not (check-prop 'region region_tok))])
 		 `([,parent (v t)
 			    (printf "Fold parent value... v:~s t:~s \n" v t )
-			    ;(break)
+
+;			    ,@(REGIMENT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
 
 			    ,(if push? 
 				 `(call ,form v t)
@@ -329,9 +330,17 @@
 		   [,form (v t)
 			  
 			  (printf "FORMING fold... v:~s t:~s  parent ~s\n" v t ,parent)
-;			  "This is a strange compromise for now."
-;			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
+			  "This is a strange compromise for now."
+			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
 			  
+			  (fprintf (current-error-port) "Tree: ~s\n" t)
+
+#;
+			  (if (and (not (eq? t ,WORLDTREE))
+				   (not (token-present? (tok ,treespreadsym (token->subid t)))))
+			      (warning 'rfold "via token is not present at node ~s: ~s" 
+				     (my-id) (tok ,treespreadsym (token->subid t))))
+
  			  (greturn
 			     ,(if push? 'v THISOB)                     ;; Value
 			     (to ,tempmemb)             ;; To
@@ -339,7 +348,13 @@
 			      ;; If we know statically that it's the global-tree, just do that:
 	 		      ,(if (eq? tree 'world);WORLDTREE)
 		 		   'global-tree
-			 	   `(tok ,treespreadsym (token->subid t))
+				   (begin 
+				     (ASSERT (symbol? tree))
+				     (ASSERT (not (eq? tree 'WORLD-TREE))) ;; Might have a "type" error.
+				     (ASSERT (not (eq? tree ''WORLD-TREE))) ;; Might have a "type" error.
+				     `(begin 
+					;(inspect t)
+					`(tok ,treespreadsym (token->subid t))))
 				   ;'t
 				   ))
 
@@ -890,10 +905,11 @@
 ;		      tokenbinds))	
 	   ;; WARNING: This can't generate meaningful code for a distributed lambda.
 	   (values '() 
-		   (cons `[,name ,formals (let* ,primbinds ,entry)];(call ,entry))]
-					;`[,name ,formals (error 'deglobalize "cannot generate good code for this lambda.")]
-			 tokenbinds))))
-]
+		   (cons (if (distributed-type? returntype)
+			     `[,name ,formals (error 'process-expr "cannot generate good code for this lambda.")]
+			     `[,name ,formals (let* ,primbinds ,entry)];(call ,entry))]
+			     )
+			 tokenbinds))))]
 
 
 	  ;; FIXME FIXME... this is lame.
