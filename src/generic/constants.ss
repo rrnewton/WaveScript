@@ -589,7 +589,7 @@
 ;; filled in as ZERO.  It may be set to:
 ;; #t/#f turn padding on/off
 ;; warning: turn padding on, but issue a warning when it is used.
-(define-regiment-parameter simalpha-zeropad-args #t) ;'warning)
+(define-regiment-parameter simalpha-zeropad-args #f) ;'warning)
 
 ;; When this parameter is turned on, the simulator returns a stream of
 ;; soc-return values rather than waiting for the sim to end
