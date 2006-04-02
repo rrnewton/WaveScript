@@ -36,7 +36,7 @@
 (define worldsym 'THEWORLD)
 
 (define add-data-flow
-  (build-compiler-pass ;; This wraps the main function with extra debugging
+  (build-compiler-pass ;; This wraps the main function with extra debugging machinery
    'add-data-flow
    `(input)
    `(output )

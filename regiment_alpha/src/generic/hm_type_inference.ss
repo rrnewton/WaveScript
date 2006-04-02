@@ -55,6 +55,7 @@
 	   export-type
 	   prim->type
 	   type?
+	   distributed-type?
 	   ;id
 	   ;inject-polymorphism
 	   
@@ -315,6 +316,27 @@
     ['(,v . #f) (guard (symbol? v)) #t]
     ['(,v . ,[t]) (guard (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+    [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+    [#(,[t] ...) (andmap id t)]
+    [,else #f]))
+
+;; Does it contain the monad?
+(define (distributed-type? t)
+  (define (id x) x)
+  (match t
+    [Region #t]
+    [(Area ,_) #t]
+    [(Signal ,_) #t]
+    
+    [,s (guard (symbol? s)) #f]
+    [',v (guard (symbol? v)) #f]
+
+    ['(,v . #f) (guard (symbol? v)) 
+     (warning 'distributed-type? "got type var with no info: ~s" v)
+     #t] ;; This COULD be.
+    ['(,v . ,[t]) (guard (symbol? v)) t]
+
+    [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]
     [,else #f]))
