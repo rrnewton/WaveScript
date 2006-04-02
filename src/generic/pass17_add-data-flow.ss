@@ -15,6 +15,7 @@
 	   "../plt/prim_defs.ss"
            ;"../plt/cheztrace.ss"  ;; HUH?!  Shouldn't have to include this with helpers.ss included, but I do.
            ;(all-except "../plt/helpers.ss" test-this these-tests trace-define trace-let trace-lambda)
+           (all-except "../plt/pass20_deglobalize.ss" test-this these-tests)
            (all-except "../plt/helpers.ss" test-this these-tests)
            (all-except "../plt/hm_type_inference.ss"  test-this these-tests)
            (all-except "../plt/grammar_checker.ss" test-this these-tests)
@@ -51,6 +52,8 @@
 	[,unmatched
 	 (error 'expr->allvars "invalid syntax ~s" unmatched)]
 	))
+
+(define these-tests '())
 
 (define add-data-flow
   (build-compiler-pass ;; This wraps the main function with extra debugging machinery
@@ -185,22 +188,30 @@
 	  ;; We accumulate "data flow" information as we go through the bindings.
 	  ;; NOTE NOTE:  This assumes that they're ordered and non-recursive.
 	  [(lazy-letrec ,binds ,tail)
+	   (DEBUGASSERT (symbol? tail))
+
            ;; The lack of free variables within lambdas makes this easy.
 	   ;; We scan down the whole list of bindings before we go into the lambdas in the RHSs.
-	   (let* ([letrecbinds (map list (map car binds) (map rac binds))]
-                  [newenv (append letrecbinds env)])
-	     (append 
-
-	      (let loop ([binds binds] 
-			 [newbinds ()])
-		(match binds
-		  [()  newbinds]
-		  [([,lhs ,ty ,annots ,rhs] . ,rest)		 
-		   (loop rest 
-                         ;; This RHS can only depend on dataflow information INSIDE bindings that come before it:
-			 (append (process-expr rhs (append newbinds newenv))
-				 newbinds))]))
-	      letrecbinds))]
+	   (let* (;[letrecbinds (map list (map car binds) (map rac binds))]
+                  ;[newenv (append letrecbinds env)]
+		  [innerbinds 
+		   (trace-let declloop ([binds (delazy-bindings binds (list tail))]
+					[newbinds ()])
+			      (if (null? binds) newbinds
+				  (match (car binds)
+				    [[,lhs ,ty ,annots ,rhs]
+				     ;; This RHS can only depend on dataflow information 
+				     ;; INSIDE bindings that come before it:
+				     (let ([innards (process-expr rhs (append newbinds env))])
+				       (declloop (cdr binds)
+						 (append `([,lhs ,rhs])						  
+							 innards newbinds)))])))])
+	     ;; This should not happen:
+	     ;(DEBUGASSERT (null? (intersection (map car innerbinds) (map car letrecbinds))))
+	     ;(inspect (vector (map car innerbinds) (map car letrecbinds)))
+	     ;(append innerbinds letrecbinds)
+	     innerbinds
+	     )]
 
 	  [(lambda ,v* ,ty* ,[bod]) bod]
           [(if ,[t] ,[c] ,[a]) (append t c a)]
@@ -220,6 +231,42 @@
 	  
 	  result)))
 
+    ;; Doing some internal testing here:
+    ;--------------------------------------------------------
+    (set! these-tests
+	  (append `(["Just a letrec"
+		     (,process-expr 
+		      '(lazy-letrec
+			((resultofanonlambda_8 Integer ((heartbeat #f)) '389))
+			resultofanonlambda_8)
+		      '())
+		     ,(lambda (x)
+			(set-equal? x '((resultofanonlambda_8 '389))))]
+		    ["Nested letrec on rhs"
+		     (map car (,process-expr 
+		      '(lazy-letrec
+			((resultofanonlambda_8 Integer ()
+					       (lazy-letrec ((var_2 Integer () '389))
+							    var_2)))
+			resultofanonlambda_8)
+		      '()))
+		     ,(lambda (x)
+			(set-eq? x '(var_2 resultofanonlambda_8)))]
+		    ["Two bindings, one nested letrec"
+		     (map car (,process-expr 
+		      '(lazy-letrec ([resultofanonlambda_8 Integer () '89]
+				     [var_2 Integer () 
+					    (lazy-letrec ([foo Integer () '100]
+							  [res1 Integer () (+ foo '389)])
+						    res1)]
+				     [res2 Integer () (+ resultofanonlambda_8 var_2)])
+				    res2)
+		      '()))
+		     ,(lambda (x)
+			(set-eq? x '(foo res1 resultofanonlambda_8 var_2 res2)))]
+		    )
+		  these-tests))
+    ;--------------------------------------------------------
     
     (lambda (expr)
       (match expr
@@ -231,7 +278,7 @@
 
 	 (let ([dfg (process-expr letexpr ())])
 	   
-	   ;; Make sure we got all the bindings and only the bindings.
+	   ;; INVARIANT: Make sure we got all the bindings and only the bindings.
 	   (DEBUGMODE (let ([allvars (expr->allvars letexpr)])
 			(DEBUGASSERT (= (length allvars) (length dfg)))
 			(DEBUGASSERT (set-equal? allvars (map car dfg)))))
@@ -244,11 +291,13 @@
 				      ,type))))
 	 ])))))
 
+;================================================================================
+
 (define test-this
   (default-unit-tester 
     "Pass 17: Add data flow"
+    (append these-tests
     `(
-
       ["Does it produce the right bindings on a simple example?"
        (,deep-assq 'data-flow
 	(add-data-flow 
@@ -275,11 +324,12 @@
 				   (control-flow )	   
 				   (lazy-letrec
 				    ([h (Area Region) ()
+
 					(rmap (lambda (n) (Node) (khood (node->anchor n) '2)) world)]
-				     [h2 (Area (Area Integer)) ()
-					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
 				     [getid (Node -> Integer) ()
 					    (lambda (nd) (Node) (nodeid nd))]
+				     [h2 (Area (Area Integer)) ()
+					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
 				     [v (Area Integer) ()
 					(rmap (lambda (r2) ((Area Integer)) 
 						      (rfold + '0 r2)) h2)]
@@ -299,10 +349,10 @@
 					(rmap (lambda (n) (Node) 
 						(lazy-letrec ([ret Region () (khood (node->anchor n) '2)])
                                                              ret)) world)]
-				     [h2 (Area (Area Integer)) ()
-					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
 				     [getid (Node -> Integer) ()
 					    (lambda (nd) (Node) (nodeid nd))]
+				     [h2 (Area (Area Integer)) ()
+					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
 				     [v (Area Integer) ()
 					(rmap (lambda (r2) ((Area Integer)) 
 						      (rfold + '0 r2)) h2)]
@@ -311,8 +361,7 @@
 				   (Area Integer)))))))
        ,(lambda (x)
          (set-equal? x '(r2 nd r1 n h h2 getid v ret)))]
-       
-      )))
+      ))))
 
 
 (define test17b test-this)

@@ -243,12 +243,14 @@
 (include "../generic/pass16_add-places.ss")
 (include "../generic/pass17_analyze-places.ss")
 
-(include "../generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
 (include "../generic/pass17_resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
 ;(include "../generic/pass18_add-routing.ss")
 
 (include "../generic/pass20_deglobalize.ss") 
 (import pass20_deglobalize)
+
+;; Uses delazy-bindings:
+(include "../generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
 
 (include "../generic/pass21_cleanup-token-machine.ss")
 ;(include "../generic/pass22_desugar-soc-return.ss")
