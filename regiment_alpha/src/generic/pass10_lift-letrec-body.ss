@@ -28,7 +28,9 @@
           [(lazy-letrec ([,lhs* ,type* ,rhs*] ...) ,body)
 	   (let* ([newenv (tenv-extend tenv lhs* type*)]
 		  [rhs* (map (process-expr newenv) rhs* lhs*)]
-		  [body ((process-expr newenv) body (symbol-append 'body_of namehint))])
+		  [body ((process-expr newenv) body 
+			 #f ;(symbol-append 'body_of namehint)
+			 )])
 ;; NOW we lift it even if it is simple.
 ;;	   (if (simple? body)
            (if (and (symbol? body) (not (regiment-constant? body)))
@@ -42,7 +44,7 @@
 
     (define process-expr
       (lambda (tenv)
-      (lambda (expr namehint)
+      (lambda (expr namehint)	
         (match expr
 	  [,x (guard (simple? x)) x]
           [(if ,[test] ,[conseq] ,[altern])
@@ -50,7 +52,9 @@
 	  [(lambda ,formalexp ,types ,body)
 	   ;; Assumes that formals is just a list.  No optional arguments allowed currently.
 	   (let ((newenv (tenv-extend tenv formalexp types)))
-	     `(lambda ,formalexp ,types ,((process-letrec newenv namehint) body)))]
+	     `(lambda ,formalexp ,types ,((process-letrec newenv 
+							  (or namehint 'anonlambda)
+							  ) body)))]
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched

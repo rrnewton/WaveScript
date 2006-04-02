@@ -102,7 +102,9 @@
            (all-except "../plt/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   
-  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize)
+  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize
+           delazy-bindings ;; [2006.04.02] Exposing this for use in pass17, should make its own pass if its going to stick around.        
+           )
 
   (chezimports )
 
@@ -646,6 +648,9 @@
 ; ======================================================================
 ;; Takes a set of lazy-letrec bindings and orders it (verifying that
 ;; there are no cycles) so that it will work with eager evaluation.
+;; .param origbindings  A list of lazy-letrec declarations.
+;; .param otherrefs  A list of symbols, these are external references to the list of bindings.  
+;; Used for reference counting.
 (define delazy-bindings
   (lambda (origbindings otherrefs)
     ;; Takes a list of (,name ,const), (,name ,name), (,name (,prim ,args ...)), or (,name (if ,x ,y ,z))
@@ -662,7 +667,7 @@
 		    ;; Make sure there's an entry for every bound symbol:
 		    (if (not (hashtab-get hash (car b))) (hashtab-set! hash (car b) 0))
 
-		    (let-match ([(,name ,rhs) b])
+		    (let ([name (car b)] [rhs (rac b)] [extras (rdc (cdr b))])
 		      (match rhs
 				   [,sym (guard (symbol? sym))
 					 (let ((entry (hashtab-get hash sym)))
@@ -687,7 +692,9 @@
 	(begin ;(hashtab-for-each (lambda (k c) (printf "  Got count: ~s ~s\n" k c)) firstcounts)
 	(let loop ((curbinds origbindings))
 	  (if (null? curbinds) '()
-	      (let-match ([(,name ,rhs) (car curbinds)])
+	      ;; [2006.04.02] Having problems with this usage of ... currently:
+;	      (let-match ([(,name ,extras ... ,rhs) (car curbinds)])
+	      (let* ([b (car curbinds)] [name (car b)] [rhs (rac b)] [extras (rdc (cdr b))])
 		;; This inlines varrefs and creates a new rhs:
 		(let ((newrhs (let inner ((xp rhs))
 					 (match xp
@@ -709,7 +716,7 @@
 					   [,other (error 'deglobalize:delazy-bindings 
 							  "trying to inline, bad rhs subexpr: ~s" other)]
 					   ))))
-		  (cons `(,name ,newrhs) 
+		  (cons `(,name ,@extras ,newrhs) 
 			(loop (cdr curbinds)))))))))
 
     (define newcounts (ref-counts substituted-binds))
