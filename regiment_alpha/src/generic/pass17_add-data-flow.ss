@@ -192,25 +192,26 @@
 
            ;; The lack of free variables within lambdas makes this easy.
 	   ;; We scan down the whole list of bindings before we go into the lambdas in the RHSs.
-	   (let* (;[letrecbinds (map list (map car binds) (map rac binds))]
-                  ;[newenv (append letrecbinds env)]
+	   (let* ([letrecbinds (map list (map car binds) (map rac binds))]
+                  [newenv (append letrecbinds env)]
 		  [innerbinds 
-		   (trace-let declloop ([binds (delazy-bindings binds (list tail))]
+		   (let declloop ([binds binds] ;(delazy-bindings binds (list tail))]
 					[newbinds ()])
 			      (if (null? binds) newbinds
 				  (match (car binds)
 				    [[,lhs ,ty ,annots ,rhs]
 				     ;; This RHS can only depend on dataflow information 
 				     ;; INSIDE bindings that come before it:
-				     (let ([innards (process-expr rhs (append newbinds env))])
+				     (let ([innards (process-expr rhs (append newbinds newenv))])
 				       (declloop (cdr binds)
-						 (append `([,lhs ,rhs])						  
+						 (append ;`([,lhs ,rhs])						  
 							 innards newbinds)))])))])
 	     ;; This should not happen:
 	     ;(DEBUGASSERT (null? (intersection (map car innerbinds) (map car letrecbinds))))
 	     ;(inspect (vector (map car innerbinds) (map car letrecbinds)))
-	     ;(append innerbinds letrecbinds)
-	     innerbinds
+	     (append innerbinds letrecbinds)
+	     ;(list->set (append innerbinds letrecbinds))
+	     ;innerbinds
 	     )]
 
 	  [(lambda ,v* ,ty* ,[bod]) bod]
@@ -225,6 +226,9 @@
 	  ;; Invariant: The result that we return should not overlap
 	  ;; with the environment that we take from above.  Otherwise
 	  ;; we'd produce duplicates.
+;; TEMP:: DISABLING THIS CHECK:
+;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+#;
 	  (DEBUGMODE 
 	   (let ([overlap (intersection (map car env) (map car result))])
 	     (ASSERT (null? overlap))))
@@ -279,6 +283,10 @@
 	 (let ([dfg (process-expr letexpr ())])
 	   
 	   ;; INVARIANT: Make sure we got all the bindings and only the bindings.
+
+;; TEMP:: DISABLING THIS CHECK:
+;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+#;
 	   (DEBUGMODE (let ([allvars (expr->allvars letexpr)])
 			(DEBUGASSERT (= (length allvars) (length dfg)))
 			(DEBUGASSERT (set-equal? allvars (map car dfg)))))
