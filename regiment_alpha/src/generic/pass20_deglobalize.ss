@@ -196,7 +196,8 @@
 			   ;; FIXME: THIS CODE SHOULD REALLY GO UNDER KHOOD:
 			   [,form (v t) "rmap with heartbeat"				  
 				  (call ,memb (subcall ,rator_tok ,THISOB) t)
-				  (timed-call ,heartbeat ,form)]
+				  ;; [2006.04.01] Just keep that same stale value!
+				  (timed-call ,heartbeat ,form v t)]
 			   			  
 			   )))
 		   )))]
@@ -264,10 +265,11 @@
 	       ;; Both parents return values to the base station:
 	       `(
 		 ; No binding for formation token!
-		 [,parent1 (v t) 
+		 [,parent1 (v t) ;,@(assert-tree 't)
+
 			   ;(printf "PARENT1: ~s\n" v)
 			   (greturn (vector 1 v) (to ,catcher) (via global-tree))]
-		 [,parent2 (v t) 
+		 [,parent2 (v t) ;,@(assert-tree 't)
 			   ;(printf "PARENT2: ~s\n" v)
 			   (greturn (vector 2 v) (to ,catcher) (via global-tree))]
 		 ;; This catcher receives both values, right now it does a lame merge where on every update it outputs a both.
@@ -313,7 +315,11 @@
 
 	       (let ([parent (get-membership-name region_tok)]     
 		     [push? (not (check-prop 'region region_tok))])
-		 `([,parent (v t)
+		 `(
+
+;		   ,(generate-edge parent form push?)
+
+		   [,parent (v t)
 			    (printf "Fold parent value... v:~s t:~s \n" v t )
 
 ;			    ,@(REGIMENT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
@@ -323,10 +329,7 @@
 				 `(activate ,form v t))]
 		   ;; Just inserts the extra argument.
 		   [,tempmemb (v) (call ,memb v ,NOTREE)]
-
-
  		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
- 
 		   [,form (v t)
 			  
 			  (printf "FORMING fold... v:~s t:~s  parent ~s\n" v t ,parent)
@@ -475,7 +478,7 @@
 			;(light-up 0 255 255)
 			(if (= ldr (my-id))
 			    (begin (leds on red)
-				   (call ,memb ldr)))
+				   (call ,memb ldr ,NOTREE))) ;; FIXME: THIS SHOULD GET A VALID TREE.
 			]
 		 [,memb (v t)  ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
 			;(if simalpha-visualize-anchors
@@ -488,11 +491,14 @@
 	    [(anchor-maximizing)
 	     (let-match ([(,fun_tok ,refresh_rate) args])
 	       (let ([consider (new-token-name 'cons-tok)]	     
+		     [tmpfun (new-token-name 'tmpfun)]
 		     [leader (new-token-name 'leader-tok)])
 		 
-	     `([,form () (elect-leader ,consider ,fun_tok)] ;(flood ,consider)]
+	     `([,form () (elect-leader ,consider ,tmpfun)] ;(flood ,consider)]
 ;	       [,consider () (elect-leader ,memb ,fun_tok)]
 
+	       ;; This is a wrapped that has zero arity.
+	       [,tmpfun () (subcall ,fun_tok ,THISOB)]
 
 ;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING

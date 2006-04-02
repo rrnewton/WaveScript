@@ -330,16 +330,24 @@
 	    ;; Repeat many times to overcome bad connections.
 	    (SOC-start () (call downloop 100))
 	    (downloop (n) (if (not (= 0 n))
-			      (begin (bcast down (my-id))
-				     (call downloop (- n 1)))))
-	    (down (base) 
-		  ;; We only respond if it's a sub-par connection:
-		  (if (< (linkqual-from base) 100)
-		      (call uploop base 100)))
-	    (uploop (base n) (if (not (= 0 n))
-				 (begin
-				   (ucast base back (my-id))
-				   (call uploop (- n 1)))))
+			      (begin (bcast (tok down) (my-id))
+				     (call (tok downloop) (- n 1)))))
+	    (down (baseid) 
+		  (stored [first_heard #t])
+		  ;; We only respond if it's a sub-par connection, and
+		  ;; if we haven't already gone into an up-loop.
+		  (if (and first_heard 
+			   (< (linkqual-from baseid) 90))
+		      (begin 
+			(set! first_heard #f)
+			(call (tok uploop) baseid 100))))
+	    ;; When we do respond over our less-than-perfect
+	    ;; connection, we do it several times.
+	    (uploop (base n)
+		    (if (not (= 0 n))
+			(begin
+			  (ucast base (tok back) (my-id))
+			  (call (tok uploop) base (- n 1)))))
 	    (back (num) 
 		  (stored [first_heard #t])
 		  ;(printf "(Back ~a) " num)
@@ -362,11 +370,15 @@
 				   )
 			       )))
 	    (yay (n) (printf "(SUCCEED ~a)" n)))
+	 '[sim-num-nodes 30]
 	 '[simalpha-placement-type 'gridlike]
 	 '[simalpha-channel-model 'linear-disc]
-	 '[simalpha-inner-radius 0])
+	 '[simalpha-inner-radius 0]
+	 '[simalpha-outer-radius 15]
+	 '(simalpha-world-xbound 60)
+	 '(simalpha-world-ybound 60))
 	,(lambda (ls)
-	   ;; Did we get something below 10:
+	   ;; Did we get something below 10, some try that took more than one try.
 	   (not (null?
 		 (filter (lambda (n) (not (= n 10)))
 		   (map cadr
@@ -2352,9 +2364,9 @@
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
-	  '(anchor-maximizing (lambda (n) (sense 'temp n)) 0)
+	  '(anchor-maximizing (lambda (a_node) (sense 'temp a_node)) 0)
 	  ;'(anchor-at 30 40)
-	  'verbose
+	  ;'verbose
 	  )))
 
       unspecified
