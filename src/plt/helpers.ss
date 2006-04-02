@@ -27,7 +27,7 @@
    
    ;; Values:
    ;; For chez compatibility:
-  (all-from "chez_compat.ss")
+  (all-from "chez_compat.ss")  
   (all-from "../generic/reg_macros.ss")
   
    ;; Meet in the middle with chez:
@@ -90,7 +90,7 @@
    ) ;; End provide
            
 ; =======================================================================  
-
+  
   (include (build-path "generic" "helpers.ss"))
 
 ; =======================================================================

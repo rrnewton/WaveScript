@@ -458,6 +458,8 @@
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       [(letrec ([,id* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]      
       [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]
+      ;; Allowing annotations, but ignoring them.
+      [(lazy-letrec ([,id* ,type* ,annots* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]
 
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))

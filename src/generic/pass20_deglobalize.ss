@@ -96,6 +96,7 @@
            "../plt/iu-match.ss"
            "../plt/hashtab.ss"
 	   "../plt/prim_defs.ss"
+           (all-except "../plt/hm_type_inference.ss" test-this these-tests)
            (all-except "../plt/tsort.ss" test-this these-tests)
            (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
            (all-except "../plt/helpers.ss" test-this these-tests)

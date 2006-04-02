@@ -27,13 +27,30 @@
            ;; Temporarily exposing.
            delazy-bindings)
 
-(provide add-data-flow test-this test17b test-add-data-flow)
+(provide add-data-flow test-this test17b test-add-data-flow expr->allvars)
 
 (chezimports )
 
 ;  (require "../plt/cheztrace.ss")
   
 (define worldsym 'THEWORLD)
+
+    ;; This is just used for debugging below.
+    (define (expr->allvars e)
+      (match e
+	[(quote ,const)             ()]
+	[,var (guard (symbol? var)) ()]
+	[(if ,[t] ,[c] ,[a]) (append t c a)]
+	[(lambda ,v* ,ty* ,[bod]) (append v* bod)]
+	[(lazy-letrec ,binds ,tail)
+	 (apply append (map car binds)
+		(map expr->allvars (map last binds)))]
+	[(,prim ,[rand*] ...)	   
+	 (guard (regiment-primitive? prim))
+	 (apply append rand*)]
+	[,unmatched
+	 (error 'expr->allvars "invalid syntax ~s" unmatched)]
+	))
 
 (define add-data-flow
   (build-compiler-pass ;; This wraps the main function with extra debugging machinery
@@ -86,6 +103,7 @@
 	  [,var (guard (symbol? var)) 
 		(get-region-tail (lookup var env) env)]	      
 	  [(lazy-letrec ,binds ,var)
+           (ASSERT (symbol? var)) ;; The letrec body must already be lifted.
 	   ;; ERROR ERROR: Need to extend env.
 	   (get-tail (rac (assq var binds)) env)]
 	  ;; Can't go deeper:
@@ -109,7 +127,6 @@
 	      [(lazy-letrec ,binds ,var)
 	       (get-region-tail (last (assq var binds))
 				env)]
-
 
 	      [(rmap ,rat ,rand)
 	       (if (regiment-primitive? rat)
@@ -135,43 +152,55 @@
 	      [,expr `(NOTHIN ,expr)])
 	    )))
 
-    ;; This returns a list of [<Var> <Expr>] bindings from variables,
+    ;; This returns a list of [<Var> <Expr>] bindings associating variables
     ;; to the primitive application expressions that generate them.
+    ;; .param expr The expression to process.
+    ;; .param env  The data-flow bindings established thus far.
     (define process-expr
       (lambda (expr env)
-        (match expr
+        (let ([result (match expr
           [(quote ,const)             ()]
           [,var (guard (symbol? var)) ()]
-
 
 	  ;; TODO: FIXME: HANDLE SMAP AS WELL:
 
 	  [(,mapfun ,rat ,rand)
 	   (guard (memq mapfun '(rmap rfilter)))
-	   (let ([newbinds (process-expr rand env)])
+	   (let ([randbinds (process-expr rand env)])
+             ;(if (not (null? newbinds)) (inspect newbinds))
 	     (match (or (and (symbol? rat) (lookup rat env))
 			rat)
-	       [(lambda (,v) ,ty ,expr)
-		`([,v ,(get-region-tail rand (append newbinds env))])]))]
+	       [(lambda (,v) ,ty ,bod)
+                ;; First, produce a data-flow binding for the lambda's argument.
+                (let* ([lambind `[,v ,(get-region-tail rand (append randbinds env))]]
+                       [newbinds (cons lambind randbinds)])
+                  ;; Now, produce bindings for the body of the lambda.
+
+                  (append (process-expr bod (cons lambind env))
+			  newbinds)
+                  )]
+               [,other (error 'add-data-flow:process-expr "could not find code for rator: ~s" rat)]
+               ))]
 
 	  ;; We accumulate "data flow" information as we go through the bindings.
 	  ;; NOTE NOTE:  This assumes that they're ordered and non-recursive.
 	  [(lazy-letrec ,binds ,tail)
            ;; The lack of free variables within lambdas makes this easy.
 	   ;; We scan down the whole list of bindings before we go into the lambdas in the RHSs.
-	   (let ([env (append (map list (map car binds) (map rac binds))
-			      env)])
+	   (let* ([letrecbinds (map list (map car binds) (map rac binds))]
+                  [newenv (append letrecbinds env)])
 	     (append 
 
 	      (let loop ([binds binds] 
-			       [newenv ()])
-			 (match binds
-			   [()  newenv]
-			   [([,lhs ,ty ,annots ,rhs] . ,rest)		 
-			    (loop rest 
-				  (append (process-expr rhs (append newenv env))
-					  newenv))]))
-	      env))]
+			 [newbinds ()])
+		(match binds
+		  [()  newbinds]
+		  [([,lhs ,ty ,annots ,rhs] . ,rest)		 
+		   (loop rest 
+                         ;; This RHS can only depend on dataflow information INSIDE bindings that come before it:
+			 (append (process-expr rhs (append newbinds newenv))
+				 newbinds))]))
+	      letrecbinds))]
 
 	  [(lambda ,v* ,ty* ,[bod]) bod]
           [(if ,[t] ,[c] ,[a]) (append t c a)]
@@ -180,7 +209,17 @@
 	   (apply append rand*)]
 
           [,unmatched
-	   (error 'add-data-flow "invalid syntax ~s" unmatched)])))
+	   (error 'add-data-flow "invalid syntax ~s" unmatched)])])
+	  
+	  ;; Invariant: The result that we return should not overlap
+	  ;; with the environment that we take from above.  Otherwise
+	  ;; we'd produce duplicates.
+	  (DEBUGMODE 
+	   (let ([overlap (intersection (map car env) (map car result))])
+	     (ASSERT (null? overlap))))
+	  
+	  result)))
+
     
     (lambda (expr)
       (match expr
@@ -190,14 +229,19 @@
 				   ,type)))
 	 (set! global-tenv (extract-whole-tenv letexpr))
 
-	 ;(inspect global-tenv)
+	 (let ([dfg (process-expr letexpr ())])
+	   
+	   ;; Make sure we got all the bindings and only the bindings.
+	   (DEBUGMODE (let ([allvars (expr->allvars letexpr)])
+			(DEBUGASSERT (= (length allvars) (length dfg)))
+			(DEBUGASSERT (set-equal? allvars (map car dfg)))))
 
-	 `(,input-language (quote (program (props ,proptable ...) 
-				    (control-flow ,cfg ...)
-				    (data-flow ,@(process-expr letexpr ()))
-				    ,letexpr
-				    ,type)))
-
+	   ;;(inspect global-tenv)
+	   `(,input-language (quote (program (props ,proptable ...) 
+				      (control-flow ,cfg ...)
+				      (data-flow ,@dfg)
+				      ,letexpr
+				      ,type))))
 	 ])))))
 
 (define test-this
@@ -206,7 +250,7 @@
     `(
 
       ["Does it produce the right bindings on a simple example?"
-       (deep-assq 'data-flow
+       (,deep-assq 'data-flow
 	(add-data-flow 
 	 `(lang '(program (props )
 		   (control-flow )
@@ -225,25 +269,49 @@
 
       ["Now let's look at nested regions."
        (assq 'r2
-	     (cdr (deep-assq 'data-flow
+	     (cdr (,deep-assq 'data-flow
 			(add-data-flow 
 			 `(lang '(program (props )
 				   (control-flow )	   
 				   (lazy-letrec
 				    ([h (Area Region) ()
-					(rmap (lambda (n) (Node) (khood (node->anchor n) 2)) world)]
+					(rmap (lambda (n) (Node) (khood (node->anchor n) '2)) world)]
 				     [h2 (Area (Area Integer)) ()
 					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
 				     [getid (Node -> Integer) ()
 					    (lambda (nd) (Node) (nodeid nd))]
 				     [v (Area Integer) ()
 					(rmap (lambda (r2) ((Area Integer)) 
-						      (rfold + 0 r2)) h2)]
+						      (rfold + '0 r2)) h2)]
 				     )
 				    v)
 				   (Area Integer)))))))
        (r2 (rmap getid r1))]
 
+      ["Make sure it generates all the bindings it should."
+       (map car
+            (cdr (deep-assq 'data-flow
+			(add-data-flow 
+			 `(lang '(program (props )
+				   (control-flow )	   
+				   (lazy-letrec
+				    ([h (Area Region) ()
+					(rmap (lambda (n) (Node) 
+						(lazy-letrec ([ret Region () (khood (node->anchor n) '2)])
+                                                             ret)) world)]
+				     [h2 (Area (Area Integer)) ()
+					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
+				     [getid (Node -> Integer) ()
+					    (lambda (nd) (Node) (nodeid nd))]
+				     [v (Area Integer) ()
+					(rmap (lambda (r2) ((Area Integer)) 
+						      (rfold + '0 r2)) h2)]
+				     )
+				    v)
+				   (Area Integer)))))))
+       ,(lambda (x)
+         (set-equal? x '(r2 nd r1 n h h2 getid v ret)))]
+       
       )))
 
 
@@ -252,11 +320,5 @@
 
 ) ;; End module
 
-#| 
-
-
-
-
-...
-
-|#
+;(require pass17_add-data-flow)
+;(test17b)

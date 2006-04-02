@@ -6,8 +6,13 @@
 ;           (lib "stacktrace.ss" "errortrace"))
   (require (lib "trace.ss"))
   
-  (provide trace-lambda trace-define trace-let)
+  (provide trace-lambda trace-define trace-let inspect break)
 
+  ;; Just stubs.
+  (define (inspect x) (void))
+  (define (break x) x)
+  
+  
   #;
   (define-syntax trace-lambda
     (lambda (x)
