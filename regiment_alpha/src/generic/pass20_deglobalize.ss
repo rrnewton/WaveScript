@@ -111,9 +111,9 @@
 (define ANCH-NUM 'ANCH) ;49)
 (define CIRC-NUM 'CIRC) ;59)
 
-(define THISOB ''(THISNODE))
-(define NOTREE ''NO-TREE)
-(define WORLDTREE ''WORLD-TREE)
+(define THISOB '(THISNODE))
+(define NOTREE 'NO-TREE)
+(define WORLDTREE 'WORLD-TREE)
 
 (define proptable 'not-defined-yet)
 
@@ -188,14 +188,14 @@
 			 (warning 'explode-primitive ;fprintf (current-error-port)
 				  "Note: rmap with own heartbeat: ~s\n" memb)
 			 `([,parent (v t) 
-;				    (if (not (eq? v ,THISOB))
+;				    (if (not (equal? v ',THISOB))
 ;					(error 'rmap-with-heartbeat "didn't get THISOB in value position, instead: ~s" v))
 				    (activate ,form v t)]
 			   ;; Value should be NULL_ID
 			   ;; FIXME: Should do a check against the type.  This should only work for REGION types.
 			   ;; FIXME: THIS CODE SHOULD REALLY GO UNDER KHOOD:
 			   [,form (v t) "rmap with heartbeat"				  
-				  (call ,memb (subcall ,rator_tok ,THISOB) t)
+				  (call ,memb (subcall ,rator_tok ',THISOB) t)
 				  ;; [2006.04.01] Just keep that same stale value!
 				  (timed-call ,heartbeat ,form v t)]
 			   			  
@@ -282,7 +282,7 @@
 				   (set! right (vector-ref vec 1))
 				   (error ',catcher "smap2 catcher got a bad flag: ~s" (vector-ref vec 0))))
 			   ;; Update the membership whenever we get a new left or new right:
-			   (call ,memb (subcall ,rator_tok left right) ,NOTREE)
+			   (call ,memb (subcall ,rator_tok left right) ',NOTREE)
 			   ]
 		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
 
@@ -328,7 +328,7 @@
 				 `(call ,form v t)
 				 `(activate ,form v t))]
 		   ;; Just inserts the extra argument.
-		   [,tempmemb (v) (call ,memb v ,NOTREE)]
+		   [,tempmemb (v) (call ,memb v ',NOTREE)]
  		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
 		   [,form (v t)
 			  
@@ -336,33 +336,26 @@
 			  "This is a strange compromise for now."
 			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
 			  
-			  (fprintf (current-error-port) "Tree: ~s\n" t)
+;			  (fprintf (current-error-port) "Tree: ~s\n" t)
 
 #;
-			  (if (and (not (eq? t ,WORLDTREE))
+			  (if (and (not (eq? t ',WORLDTREE))
 				   (not (token-present? (tok ,treespreadsym (token->subid t)))))
 			      (warning 'rfold "via token is not present at node ~s: ~s" 
 				     (my-id) (tok ,treespreadsym (token->subid t))))
 
  			  (greturn
-			     ,(if push? 'v THISOB)                     ;; Value
+			     ,(if push? 'v `(quote ,THISOB))                     ;; Value
 			     (to ,tempmemb)             ;; To
 			     (via ;; Via
 			      ;; If we know statically that it's the global-tree, just do that:
 	 		      ,(if (eq? tree 'world);WORLDTREE)
-		 		   'global-tree
-				   (begin 
-				     (ASSERT (symbol? tree))
-				     (ASSERT (not (eq? tree 'WORLD-TREE))) ;; Might have a "type" error.
-				     (ASSERT (not (eq? tree ''WORLD-TREE))) ;; Might have a "type" error.
-				     `(begin 
-					;(inspect t)
-					`(tok ,treespreadsym (token->subid t))))
-				   ;'t
-				   ))
+		 		   'global-tree				   
+				   `(tok ,treespreadsym (token->subid t)))
+			      )
 
- 			     (seed ,seed_val)       ;; With seed
-			     (aggr ,rator_tok))     ;; and aggregator
+			  (seed ,seed_val)       ;; With seed
+			  (aggr ,rator_tok))     ;; and aggregator
 
 			  ;; If it's not driven by the parent, then we need to beat our heart:
 			  ,@(if push? '()
@@ -398,7 +391,7 @@
 				(printf "WOOT: Cluster formed: index ~a, membership: \n" ldr )
 				;; Unfreeze the value and declare membership
 				;; NOTE: Currently no way that the spanning tree is revealed. FIXME FIXME
-				(call (tok ,memb ldr) (ext-ref ,form heldval) ,NOTREE)]
+				(call (tok ,memb ldr) (ext-ref ,form heldval) ',NOTREE)]
 		   )))]
 
 	    
@@ -416,8 +409,8 @@
 	    [(runion)
 	     (let ([mem_a (get-membership-name (car args))]
 		   [mem_b (get-membership-name (cadr args))])	       
-	       `([,mem_a (v t) (call ,memb v ,NOTREE)]
-		 [,mem_b (v t) (call ,memb v ,NOTREE)]
+	       `([,mem_a (v t) (call ,memb v ',NOTREE)]
+		 [,mem_b (v t) (call ,memb v ',NOTREE)]
 		 ))]
 	    ;; UNFINISHED:
 	    [(rintersect)
@@ -440,7 +433,7 @@
 	     ;; spanning tree.  But that's a complex optimization that
 	     ;; is absolutely not worth it (and may perform worse).
 	     (let ([parent (get-membership-name (car args))])	       
-	       `([,parent (v t) (call ,memb v ,NOTREE)]))]
+	       `([,parent (v t) (call ,memb v ',NOTREE)]))]
 			 
 	    ;; This is not a region. It's a signal.  
 	    ;; The value on its membership token is the node-id of the leader.
@@ -478,7 +471,7 @@
 			;(light-up 0 255 255)
 			(if (= ldr (my-id))
 			    (begin (leds on red)
-				   (call ,memb ldr ,NOTREE))) ;; FIXME: THIS SHOULD GET A VALID TREE.
+				   (call ,memb ldr ',NOTREE))) ;; FIXME: THIS SHOULD GET A VALID TREE.
 			]
 		 [,memb (v t)  ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
 			;(if simalpha-visualize-anchors
@@ -498,7 +491,7 @@
 ;	       [,consider () (elect-leader ,memb ,fun_tok)]
 
 	       ;; This is a wrapped that has zero arity.
-	       [,tmpfun () (subcall ,fun_tok ,THISOB)]
+	       [,tmpfun () (subcall ,fun_tok ',THISOB)]
 
 ;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING
@@ -526,7 +519,7 @@
 		   [rad (cadr args)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
-		 [,(get-membership-name anch) () (call ,form ,THISOB ,NOTREE)]
+		 [,(get-membership-name anch) () (call ,form ',THISOB ',NOTREE)]
 
 		 ;; FIXME: Unnecessary argument passing through the network:
 		 [,form (v t) (gemit ,memb v t)]
@@ -570,7 +563,7 @@
 			]
 
 		 ;; The "value" caried in this area is the node itself.
-		 [,spread id () (call ,memb ,THISOB (tok ,spread id))
+		 [,spread id () (call ,memb ',THISOB (tok ,spread id))
 			  (if (< (ghopcount) ,rad) (timed-call 1000 ;,(default-fast-pulse) 
 							       (tok ,temp id)))]		 
 		 ;; This is the continuation of spread, it just keeps on spreadin'
@@ -876,11 +869,11 @@
 			 ;; This wires the formation token for this name to its membership token.
 			 `([,(get-formation-name name) () 
 			    (warning 'world-prim "formation token called: ~s " ',name)
-			    (call ,(get-membership-name name) ,THISOB ,WORLDTREE)]
+			    (call ,(get-membership-name name) ',THISOB ',WORLDTREE)]
 			   ;; [2006.03.30] This was pattently wrong.
 			   ;; This along with the above binding can double-stimulate the membership token.
 			   ;; Passes unit tests without this:
-			   ;[spark-world () (call ,(get-membership-name name) ,THISOB ,WORLDTREE)]
+			   ;[spark-world () (call ,(get-membership-name name) ',THISOB ',WORLDTREE)]
 			   ))]
 
           ;; The possibility that the final value is local is
