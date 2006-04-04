@@ -61,19 +61,19 @@
 	       [,unmatched
 		(error 'resolve-fold-trees "invalid syntax ~s" unmatched)])	
 	     ))
-
+	 
 	 (define find-khood 
 	   (lambda (name)
 	     (let loop ([x name])
 	       (DEBUGASSERT (symbol? x)) ;; Had better be a variable.
 	       (if (eq? x 'world)
 		   'world
-		   (match (assq x dfg) ;; Look up in the data-flow graph
+		   (match (assq x dfg) 
 		     [#f (error 'find-khood "name not in data-flow graph: ~s \ndfg: ~s" x dfg)]
-		     [(,_ (khood . ,__))          x]
-		     [(,_ (rmap ,f ,r))           (loop r)]
-		     [(,_ (rfilter ,f ,r))        (loop r)]
-		     [(,_ ,v) (guard (symbol? v)) (loop v)]
+		     [(,_ [,name ,ty ,annots (khood . ,__)])          x]
+		     [(,_ [,__  ,___ ,____ (rmap ,f ,r)])           (loop r)]
+		     [(,_ [,__  ,___ ,____ (rfilter ,f ,r)])        (loop r)]
+		     [(,_ [,__  ,___ ,____ ,v]) (guard (symbol? v)) (loop v)]
 
 		     [,other #f] ;; Failure, for example, a conditional.
 

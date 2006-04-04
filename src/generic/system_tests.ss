@@ -17,8 +17,8 @@
 	      [dfg (cdr (deep-assq 'data-flow prog))])
 	  (match name
 	    [(tree ,s)
-	     (match (assq s dfg)
-	       [(,s (khood . ,_)) #t]
+	     (match (rac (cadr (assq s dfg)))
+	       [(khood . ,_) #t]
 	       [,else #f])]
 	    [,else #f])
 	  ))]
@@ -28,12 +28,12 @@
        (run-compiler 
 	'(letrec ([nodes (light-up
 			(rfilter
-			 (lambda (n) (or (= (nodeid n) 6) (= (nodeid n) 14)))
+			 (lambda (n) (or (= (nodeid n) '6) (= (nodeid n) '14)))
                     world))]
-		[twohop (lambda (n) (khood (node->anchor n) 2))]
+		[twohop (lambda (n) (khood (node->anchor n) '2))]
 		[nbrhoods (rmap twohop nodes)]
 		[ids (rmap (lambda (r) (rmap nodeid r)) nbrhoods)]
-		[sums (rmap (lambda (r) (rfold + 0 r)) ids)]
+		[sums (rmap (lambda (r) (rfold + '0 r)) ids)]
 		)
 	 ;(rrflatten nbrhoods)
 	   sums
@@ -44,8 +44,8 @@
 	      [dfg (cdr (deep-assq 'data-flow prog))])
 	  (match name
 	    [(tree ,s)
-	     (match (assq s dfg)
-	       [(,s (khood . ,_)) #t]
+	     (match (rac (cadr (assq s dfg)))
+	       [(khood . ,_) #t]
 	       [,else #f])]
 	    [,else #f])
 	  ))]

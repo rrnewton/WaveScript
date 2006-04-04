@@ -890,6 +890,8 @@
 	      (values `([,name ,expr]) ;`([,name (begin (return ,x))])
 		      '())  ]
 	  
+	  ;; NOTE: FIXME FIXME:
+	  ;; This won't work if we're inside a signal monad (or shouldn't!).
           ;; All args are simple:
           [(if ,test ,conseq  ,altern)
 	   (values `([,name ,expr]) '())]
