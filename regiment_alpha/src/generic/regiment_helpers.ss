@@ -306,6 +306,12 @@
   (lambda (x)
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
+(define (simple-expr? x)
+  (match x
+    [(quote ,imm) #t]
+    [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
+    [,otherwise #f]))
+
 ;; Test for constants, which can all occur unquoted. <br>
 ;; Note that symbol constants may not occur unquoted.  Otherwise
 ;; they'd be variables!  Thus in a lot of places you will see: <br>

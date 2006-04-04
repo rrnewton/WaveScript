@@ -1,7 +1,20 @@
 
+[2006.04.03]
+
+1) Add type checking to TMs.
+2) Add type checking between all passes of the compiler.
+3) Add more custom grammar checks.
+4) (Maybe fix the system for grammar check errors, it's fundamentally
+   broken and a hack.)
+5) Rework type system.
+6) Add and use generic traverse for Regiment as well as TML.
+7) Lift out certain Regiment utilities from individual passes into common files.
+
 [2005.10.19]
 
-Make the chez version use records.  Better safety that way.  Can't remember why I didn't originally.
+<Done> 
+Make the chez version use records.  Better safety that way.
+Can't remember why I didn't originally.
 
 
 [2004.05.25]  I'm making a note of things I need to do when I cool this code base down:

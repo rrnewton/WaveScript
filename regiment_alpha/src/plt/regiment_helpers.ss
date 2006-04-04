@@ -31,6 +31,7 @@
    ;immediate? 
    constant? datum? qinteger? qinteger->integer
    formalexp? cast-formals fit-formals-to-args
+   simple-expr?
 
 ;   regiment-primitives regiment-primitive? 
 ;;   token-machine-primitives token-machine-primitive? 
@@ -39,7 +40,7 @@
 ;   get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
 ;   get-primitive-return-type
 ;   map-prim-w-types
-     
+        
    ;; Token names:
    token-name? new-token-name token-names get-names get-formation-name get-membership-name
    token->name token->subtok

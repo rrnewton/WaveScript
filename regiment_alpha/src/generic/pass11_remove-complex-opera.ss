@@ -108,14 +108,8 @@
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp-nonprim]))
 
-    (define (simple? x)
-      (match x
-          [(quote ,imm) #t]
-          [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
-	  [,otherwise #f]))
-
     (define (make-simple x tenv)
-      (if (simple? x) 
+      (if (simple-expr? x)
 	  (values x '())
 	  (mvlet ([(res binds) (process-expr x tenv)]
 		  [(type) (recover-type x tenv)]
@@ -127,7 +121,7 @@
       (lambda (expr tenv)
 	(DEBUGASSERT (tenv? tenv))
         (match expr
-	  [,x (guard (simple? x)) (values x '())]
+	  [,x (guard (simple-expr? x)) (values x '())]
           [(if ,a ,b ,c)
 	   (mvlet ([(test test-decls) (make-simple a tenv)]
 		   [(conseq conseq-decls) (make-simple b tenv)]

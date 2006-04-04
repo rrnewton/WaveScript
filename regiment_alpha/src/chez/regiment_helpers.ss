@@ -25,7 +25,7 @@
 	  ;immediate? 
 	  constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
-
+	  simple-expr?
 
 ;	  token-machine-primitives token-machine-primitive? 
 ;	  token-machine? token-machine->program token-machine-keyword?
