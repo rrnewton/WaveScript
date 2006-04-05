@@ -19,9 +19,9 @@
 
 ;; This is a very error prone pass, I'm optionally including a bunch of debugging print statements.
 ;; For now coupling it to global "REGIMENT_DEBUG"
-(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG expr ...)]))
+;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (REGIMENT_DEBUG expr ...)]))
 ;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) (list expr ...)])) ;; ON
-;(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
+(define-syntax DEBUG_GRADIENTS (syntax-rules () [(_ expr ...) ()]))              ;; OFF
 
 ;; Further, this is a shorthand for including comments in the generated code.
 (define-syntax COMMENT 

@@ -153,7 +153,10 @@
 
     ;; This is the identity function on regions.  
     ;; However it also lights an LED.
+    ;; [2006.04.04] MODIFIED it to also produce debug messages.
     (light-up ((Area 'a)) (Area 'a))
+    ;; [2006.04.04] This is a similar thing for signals.
+    (slight-up ((Signal 'a)) (Signal 'a))
 
     (anchor-at      (Integer Integer) Anchor)
     (anchor-dist    (Anchor Anchor) Float)

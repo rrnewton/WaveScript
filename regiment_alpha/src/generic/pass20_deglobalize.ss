@@ -104,6 +104,8 @@
   
   (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize
            delazy-bindings ;; [2006.04.02] Exposing this for use in pass17, should make its own pass if its going to stick around.        
+
+	   lambda->heads
            )
 
   (chezimports )
@@ -114,9 +116,17 @@
 (define ANCH-NUM 'ANCH) ;49)
 (define CIRC-NUM 'CIRC) ;59)
 
-(define THISOB '(THISNODE))
 (define NOTREE 'NO-TREE)
 (define WORLDTREE 'WORLD-TREE)
+
+
+
+
+;; THISOB is a piece of TML code that generates a representation of the current object.
+;; Must be deterministic when run multiple times on the same node.
+;(define THISOB ''(THISNODE))
+;(define THISOB ''THISNODE)
+(define THISOB '(cons 'THISNODE (cons (my-id) '())))
 
 (define proptable 'not-defined-yet)
 
@@ -137,6 +147,54 @@
     [,var (guard (symbol? var)) #t]
     [,otherwise #f]))
 
+;; This takes a lambda expression and returns all its heads.
+;; (All subexpressions of its body in head position.)
+;; Then the membership token will be wired to the formation tokens of
+;; each of these heads.
+;;   Lambda's have no free variables, so there shouldn't be a problem here.
+(define (lambda->heads expr)
+  (match expr
+    [(lambda ,v* ,ty* (lazy-letrec ,binds ,tail))
+     (ASSERT (symbol? tail))
+     (let ([types (append (map list v* ty*)
+			  (map list (map car binds) (map cadr binds)))])
+       ;; TODO: Should refer to the control flow graph here!!
+       (let loop ([current (list (ASSERT (assq tail binds)))])
+	 (match current
+	   [() '()]
+	   [([,name ,ty ,ants  (,prim ,rands ...)] . ,rest)
+	    (guard (regiment-primitive? prim))
+	    (if (not (distributed-type? ty))
+	       (loop rest) ;; Local value computations needn't be "heads" in this sense.
+	       (let ([deps (filter (lambda (v) 
+				     (and (symbol? v)
+					  (distributed-type? (cadr (ASSERT (assq v types))))
+					  ;; Don't count the function arguments to rmap/rfold/etc!
+					  (not (arrow-type? (cadr (ASSERT (assq v types)))))))
+			     rands)])
+		 ;; Do we have any dependencies on distributed values (parents)?
+		 (match deps 
+		   ;; This must be world or anchor. 
+		   [() (cons (car current) (loop rest))] 		   
+
+		   ;; This depends only on the input value, return it as a head.
+		   [(,v) (guard (memq v v*))
+		    (cons (car current) (loop rest))]
+
+		   ;; This depends on another parent in the list.  Recur on that parent.
+		   [(,v) (guard (assq v binds))
+		    ;; Better not be cycles!
+		    (loop (cons (assq v binds) rest))]
+
+		   [,ls (error 'lambda->heads 
+			       "Not handling prims with multiple distributed deps right now: ~s, deps ~s" 
+			       `(prim ,@rands) ls)]
+		   )))]
+	  [,other (error 'lambda->heads "bad bind: ~s" other)]
+	  )))]
+    [,else (error 'lambda->heads "bad input:" )]))
+
+
 ;; This produces a list of token bindings.
 ;; It generates code for one node in the dataflow graph.  It uses
 ;; get_membership_name to figure out from where control flow will come
@@ -144,13 +202,14 @@
 ;; Below, "parent" won't be available if we don't have the full stream-graph...
 (define explode-primitive
 ;; Inputs:
-;;   form - the name of the formation token that sparks this node
-;;   memb - the name of the membership token to which our output flows
-;;   prim - the name of the distributed primitive (rmap, etc)
-;;   args - the arguments to the primitive (they're simple: names/constants)
-;;   heartbeat - the rate at which this primitive beats, if any.
+;; .param  form - the name of the formation token that sparks this node
+;; .param  memb - the name of the membership token to which our output flows
+;; .param  prim - the name of the distributed primitive (rmap, etc)
+;; .param  args - the arguments to the primitive (they're simple: names/constants)
+;; .param  heartbeat - the rate at which this primitive beats, if any.
+;; .param  tenv - the type environment
 ;; Output: TokenBinds
-  (lambda (form memb prim args annots)
+  (lambda (form memb prim args annots tenv dfg)
     (define heartbeat (cadr (ASSERT (assq 'heartbeat annots))))
     
 ;	(disp "Explode primitive" name prim args)
@@ -162,24 +221,59 @@
 		    [region_tok (cadr args)] ; The region
 		    [parent (get-membership-name region_tok)])
 
+	       ;; TODO FIXME:  DO ALL THIS STUFF BASED ON TYPE. [2006.04.04]
+	       ;; STOP USING THE PROP LIST ENTIRELY!!
+
 	     ;; We must check the type of the return value of our function.
 	     (let ((rettype (check-prop 'returns rator_tok)))
 	       (if (not rettype)
 		   (error 'deglobalize:explode-primitive 
-			  "rmap: Could not find the return value/type of function: ~s" region_tok))	       
+			  "rmap: Could not find the return value/type of function: ~s" region_tok))
 	       (if (check-prop 'distributed (cadr rettype))
 		   ;; First case: we're dealing with a function that returns a distributed value.
 
+		   ;; NESTED REGIONS:
 		   ;; All we can do here is trigger the formation token and wire the "return" (membership token)
 		   ;; to our return.
 		   ;; TODO: FIXME: HAVE WE MADE THE CLOSURE NON-REENTRANT?
 		   (let ((form_child (get-formation-name (cadr rettype)))
 			 (memb_child (get-membership-name (cadr rettype))))
+		     ;; [2006.04.04] NOTE: it looks like this form_child invocation
+		     ;; will ONLY work if the lambda's code has been set up to be PULL based.
+
+;		     (error 'explode-exploded "this part doesn't work: ~s" memb)
+
+		     ;; [2006.04.05] The thought back when this code was written was that the code
+		     ;; for the lambda would be generated in a pull style.  So that we'd just pull the 
+		     ;; result of the lambda and wait for it to manifest.
 		     ; We wire our control-flow parent directly to our child's formation token:
-		     `([,parent (v t) (call ,form_child v t)]
-			 [,memb (v t)
-				(printf "Member of RMAP ~s: v:~s t:~s\n" ,memb v t)]
-		       [,memb_child (v t) (call ,memb v t)]))
+; 		     `([,parent (v t) (call ,form_child v t)]
+; 		       [,memb (v t)
+; 			      (printf "Member of RMAP ~s: v:~s t:~s\n" ,memb v t)]
+; 		       [,memb_child (v t) (call ,memb v t)])
+
+		     (printf "Here's lambda:\n")
+		     (pretty-print (cadr (assq rator_tok dfg)))
+		     ;(inspect (assq rator_tok dfg))
+
+		     (match (cadr (ASSERT (assq rator_tok dfg)))
+		       [[,name ,ty ,ants (lambda ,v* ,vty* ,bod)]
+			(let ([heads (lambda->heads `(lambda ,v* ,vty* ,bod))])
+			  ;; For now we assume there is exactly one expression in head position.
+			  (ASSERT (= 1 (length heads)))
+			  `(;; We wire our parent to start up the lambda:
+			    [,parent (v t) 
+				     (dbg "~s: Wired ~s into start of lambda ~s!!" 
+					     (my-id) ',parent ',(get-formation-name (caar heads)))
+				     (call ,(get-formation-name (caar heads)) v t)]
+			    ;; We wire the return pointer from that lambda to our own membership tok.
+			    [,memb_child (v t) 
+					 (dbg "~s: RETURNED from lambda tail ~s: v:~s t:~s" (my-id) ',memb_child v t)
+					 (call ,memb v t)]
+			    ))]
+		       [,other (error 'explode-primitive "rmap couldn't find lambda arg in dfg: ~s" other)]
+		       )
+		     )
 
 		   ;; Second case: it's a local function, we simply subcall to it.
 		   (if (not (check-prop 'region region_tok)) ; Is it pushed by the parent?
@@ -190,15 +284,20 @@
 		       (begin 
 			 (warning 'explode-primitive ;fprintf (current-error-port)
 				  "Note: rmap with own heartbeat: ~s\n" memb)
+			 ;; This code only works for Region types,
+			 ;; that's the only place where an rmap can
+			 ;; drive itself with no outside input.
+			 (ASSERT (equal? (recover-type region_tok tenv) 'Region))
+			 
 			 `([,parent (v t) 
-;				    (if (not (equal? v ',THISOB))
+;				    (if (not (equal? v ,THISOB))
 ;					(error 'rmap-with-heartbeat "didn't get THISOB in value position, instead: ~s" v))
 				    (activate ,form v t)]
 			   ;; Value should be NULL_ID
-			   ;; FIXME: Should do a check against the type.  This should only work for REGION types.
-			   ;; FIXME: THIS CODE SHOULD REALLY GO UNDER KHOOD:
-			   [,form (v t) "rmap with heartbeat"				  
-				  (call ,memb (subcall ,rator_tok ',THISOB) t)
+			   [,form (v t) "rmap with heartbeat"  
+				  ;; Effectively ise the "stale" value (which is the node 
+				  ;; itself in this case )when calling the membership:
+				  (call ,memb (subcall ,rator_tok ,THISOB) t)
 				  ;; [2006.04.01] Just keep that same stale value!
 				  (timed-call ,heartbeat ,form v t)]
 			   			  
@@ -221,7 +320,18 @@
 	       `([,parent (v t) (call ,form v t)]
 		 [,form (v t)
 			(leds on green)
+			(dbg "~s: LightUP: v:~s t:~s" (my-id) v t)
 			(call ,memb v t)]))]
+	    ;; Similar, but for signals:
+	    [(slight-up)
+	     (let* ([region_tok (car args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v t) (call ,form v t)]
+		 [,form (v t)
+			(leds on green)
+			(dbg "~s: SigLightUP: v:~s t:~s" (my-id) v t)
+			(call ,memb v t)]))]
+
 
 	    [(rwhen-any)
 	     (let* ([rator_tok (car args)]
@@ -308,25 +418,35 @@
                     ;; But we also need to worry about getting the correct subtok id.
                     ;; So this won't work right now.
 		     [tempmemb (new-token-name 'returntotemp)]
-		     [tree (cadr (ASSERT (assq 'tree annots)))]
+		     ;; If we fail to find a tree, we use the global tree:
+		     ;; [2006.04.04] TEMP FIXME: FOR NOW I INSIST THAT A TREE BE RESOLVED.
+		     [tree (or (ASSERT (cadr (ASSERT (assq 'tree annots))))
+			       'world)]
 		     [treespreadsym (symbol-append (get-membership-name tree) '_gradspread)]
 		    )
-
+	       
 ;	       (if (eq? tree 'world) ;WORLDTREE)
 ;		   (inspect tree))
-	       ;(inspect (vector tree treespreadsym))
+;	       (inspect (vector tree treespreadsym))
 
 	       (let ([parent (get-membership-name region_tok)]     
-		     [push? (not (check-prop 'region region_tok))])
+		     [push? 
+		      (not (check-prop 'region region_tok))
+		      ;(not (eq? (recover-type region_tok tenv) 'Region))
+		      ])
+		 ;; FIXME: NEED TO FACTOR OUT THIS CODE WITH EXPLICIT HEARTBEAT OPS:
+		 ;; Self driving should only be allowed for (Area Node) aka Region
+		 (unless push? 
+		   (let ([type (recover-type region_tok tenv)])
+		     (ASSERT (eq? 'Region type))))
+		 
 		 `(
 
 ;		   ,(generate-edge parent form push?)
 
 		   [,parent (v t)
 			    (printf "Fold parent value... v:~s t:~s \n" v t )
-
 ;			    ,@(REGIMENT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
-
 			    ,(if push? 
 				 `(call ,form v t)
 				 `(activate ,form v t))]
@@ -334,8 +454,8 @@
 		   [,tempmemb (v) (call ,memb v ',NOTREE)]
  		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
 		   [,form (v t)
-			  
-			  (printf "FORMING fold... v:~s t:~s  parent ~s\n" v t ,parent)
+
+			  (printf "FORMING fold... v:~s t:~s  parent ~s PUSH: ~s\n" v t ,parent ,push?)
 			  "This is a strange compromise for now."
 			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
 			  
@@ -348,7 +468,7 @@
 				     (my-id) (tok ,treespreadsym (token->subid t))))
 
  			  (greturn
-			     ,(if push? 'v `(quote ,THISOB))                     ;; Value
+			     ,(if push? 'v THISOB)                     ;; Value
 			     (to ,tempmemb)             ;; To
 			     (via ;; Via
 			      ;; If we know statically that it's the global-tree, just do that:
@@ -362,7 +482,7 @@
 
 			  ;; If it's not driven by the parent, then we need to beat our heart:
 			  ,@(if push? '()
-				`((timed-call ,(/ 1000 heartbeat) ,form)))]
+				`((timed-call ,(/ 1000 heartbeat) ,form ,THISOB t)))]
 		 )))]
 
 	    ;; <TODO>: FIXME
@@ -471,7 +591,6 @@
 			;; Note that we are an anchor.
 ;;			(set-simobject-homepage! 
 ;;			 this (cons 'anchor (simobject-homepage this)))
-			;(light-up 0 255 255)
 			(if (= ldr (my-id))
 			    (begin (leds on red)
 				   (call ,memb ldr ',NOTREE))) ;; FIXME: THIS SHOULD GET A VALID TREE.
@@ -494,7 +613,7 @@
 ;	       [,consider () (elect-leader ,memb ,fun_tok)]
 
 	       ;; This is a wrapped that has zero arity.
-	       [,tmpfun () (subcall ,fun_tok ',THISOB)]
+	       [,tmpfun () (subcall ,fun_tok ,THISOB)]
 
 ;	       [,form () (draw-mark ,target (make-rgb 0 100 100))]
 	       ;; DEBUGGING
@@ -512,9 +631,7 @@
 
 	    ;; [2005.11.23] This does essentially nothing.  It's
 	    ;; formed at a node, it's membership is that node.
-	    [(node->anchor)
-	     ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
-	     `([,form (v t) (call ,memb)])]
+	    [(node->anchor) `([,form (v t) (call ,memb v t)])]
 
 	    [(circle)
 	     (warning 'explode-primitive "circle not correctly implemented currently")
@@ -522,7 +639,7 @@
 		   [rad (cadr args)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
-		 [,(get-membership-name anch) () (call ,form ',THISOB ',NOTREE)]
+		 [,(get-membership-name anch) () (call ,form ,THISOB ',NOTREE)]
 
 		 ;; FIXME: Unnecessary argument passing through the network:
 		 [,form (v t) (gemit ,memb v t)]
@@ -549,7 +666,7 @@
 		   [temp (new-token-name 'delay)])
 ;		   (arg (unique-name 'arg)))
 	       `(;; Anchor membership carries no arguments:
-		 [,(get-membership-name anch) () (call ,form)]
+		 [,(get-membership-name anch) (v t) (call ,form v t)]
 ;		 [,form () (emit ,memb this)]
 
 		 ;; Khood's are distinguished by their origin ID.
@@ -566,7 +683,7 @@
 			]
 
 		 ;; The "value" caried in this area is the node itself.
-		 [,spread id () (call ,memb ',THISOB (tok ,spread id))
+		 [,spread id () (call ,memb ,THISOB (tok ,spread id))
 			  (if (< (ghopcount) ,rad) (timed-call 1000 ;,(default-fast-pulse) 
 							       (tok ,temp id)))]		 
 		 ;; This is the continuation of spread, it just keeps on spreadin'
@@ -607,7 +724,7 @@
 ;; first attempt to reprocess the lazy-letrec bindings into a
 ;; valid let* binding using delazy-bindings.
 (define process-letrec
-      (lambda (expr tenv)
+      (lambda (expr tenv dfg)
         (match expr
 	       [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
 		(let ([tenv (tenv-extend tenv lhs* type* #t)])
@@ -636,7 +753,7 @@
 			  ;; UHH TODO: membership or formation?
 					;(map get-formation-name lhs*) 
 			  (mvlet ([(cbinds tbinds) 
-				   (process-expr (car lhs*) (car annots*) (car rhs*) tenv)])
+				   (process-expr (car lhs*) (car annots*) (car rhs*) tenv dfg)])
 ;				 (disp "GOT CBINDS TBINDS:" cbinds tbinds)
 				 (loop (cdr lhs*) (cdr annots*) (cdr rhs*)
 				       (append cbinds cacc) 
@@ -840,7 +957,7 @@
 
       ;; For all these primitives, returning just means sending the
       ;; argument of the membership token to the base-station.
-      [(rmap light-up smap smap2 runion rrflatten rrcluster liftsig)
+      [(rmap light-up slight-up smap smap2 runion rrflatten rrcluster liftsig)
        `([,tokname (v t) 
 		   (call reg-return 
 			 ,(if (deglobalize-markup-returns)
@@ -866,7 +983,7 @@
    ;; This processes an expression and returns both its constant
    ;; bindings, and it's token bindings.
     (define process-expr
-      (lambda (name annots expr tenv)	
+      (lambda (name annots expr tenv dfg)	
 	(let ((finalname (check-prop 'final name)))
         (match expr
 
@@ -877,18 +994,18 @@
 			 ;; This wires the formation token for this name to its membership token.
 			 `([,(get-formation-name name) () 
 			    (warning 'world-prim "formation token called: ~s " ',name)
-			    (call ,(get-membership-name name) ',THISOB ',WORLDTREE)]
+			    (call ,(get-membership-name name) ,THISOB ',WORLDTREE)]
 			   ;; [2006.03.30] This was pattently wrong.
 			   ;; This along with the above binding can double-stimulate the membership token.
 			   ;; Passes unit tests without this:
-			   ;[spark-world () (call ,(get-membership-name name) ',THISOB ',WORLDTREE)]
+			   ;[spark-world () (call ,(get-membership-name name) ,THISOB ',WORLDTREE)]
 			   ))]
 
           ;; The possibility that the final value is local is
 	  ;; handled in 'deglobalize' so we don't worry about it here:
 	  [,x (guard (simple? x))      
 	      (values `([,name ,expr]) ;`([,name (begin (return ,x))])
-		      '())  ]
+		      '())]
 	  
 	  ;; NOTE: FIXME FIXME:
 	  ;; This won't work if we're inside a signal monad (or shouldn't!).
@@ -905,7 +1022,7 @@
   	 ;; function is already unique:
 	  [(lambda ,formals ,types ,body)
 	   (let ([newenv (tenv-extend tenv formals types #f)])
-	     (mvlet ([(entry primbinds tokenbinds) (process-letrec body newenv)])
+	     (mvlet ([(entry primbinds tokenbinds) (process-letrec body newenv dfg)])
 	       (define returntype (recover-type body newenv))
 ;	       (fprintf (current-error-port) "RETTY: ~s\n" returntype)
 ;	   (if (not (null? tokenbinds))
@@ -915,6 +1032,7 @@
 	   ;; WARNING: This can't generate meaningful code for a distributed lambda.
 	   (values '() 
 		   (cons (if (distributed-type? returntype)
+			     ;; Distributed lambda's aren't *called* dynamically.  They must be *wired*.
 			     `[,name ,formals (error 'process-expr "cannot generate good code for this lambda.")]
 			     `[,name ,formals (let* ,primbinds ,entry)];(call ,entry))]
 			     )
@@ -960,7 +1078,7 @@
 	   (mvlet ([(form memb) (token-names name)])
 		  (values '() 
 			  (append 
-			   (explode-primitive form memb prim rand* annots)
+			   (explode-primitive form memb prim rand* annots tenv dfg)
 			   (if finalname
 			       (primitive-return prim memb)
 			       '()))
@@ -994,7 +1112,8 @@
 	 (let* ([leaves (map car (filter (lambda (ls) (memq 'leaf (cdr ls))) table))]
 		[leaftoks (map (lambda (name) (symbol-append 'leaf-pulsar_ name)) leaves)])
 
-	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin) (empty-tenv))])
+	   (mvlet ([(entry constbinds tokenbinds) (process-letrec `(lazy-letrec ,binds ,fin) 
+								  (empty-tenv) dfg)])
 		
    ;	       (disp "Got the stuff " entry constbinds tokenbinds (assq entry constbinds))
 		;; This pass uses the same language as the prior pass, lift-letrec
@@ -1125,6 +1244,22 @@
      ((result_7 (+ a_5 b_4)))]
 
 
+    ["Lambda->heads"
+     (caar (lambda->heads
+     '(lambda (n_354)
+	(Node)
+	(lazy-letrec
+	 ((resultofonehop_356
+           Region
+           ((heartbeat 1000))
+           (khood tmpnodeanchor_361 '1))
+	  (tmpnodeanchor_361
+	   Anchor
+	   ((heartbeat 1000))
+	   (node->anchor n_354)))
+	 resultofonehop_356))))
+     tmpnodeanchor_361]
+
 ;[2004.08.03] Eliminating for now... might bring it back later...
 
     ;; Rfold should generate two handlers.  One of one arg and one of two.
@@ -1229,4 +1364,8 @@
 
 
 
+
 ) ;; End module
+
+;(require pass20_deglobalize)
+

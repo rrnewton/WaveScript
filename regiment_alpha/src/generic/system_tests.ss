@@ -8,7 +8,7 @@
 	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
 
-    ["resolve-trees:  Verify that an rfold over a khood gets the correct tree"
+    ["resolve-trees:  Verify that an rfold over a khood gets the khood tree"
      (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
        (run-compiler '(rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))))
      ;; The result had better put a khood in for the "tree" property.
@@ -22,7 +22,16 @@
 	       [,else #f])]
 	    [,else #f])
 	  ))]
-     
+
+    ["resolve-trees:  Verify that an rfold over a khood gets the CORRECT tree"
+     (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
+       (deunique-name (cadr (deep-assq 'tree
+		  (run-compiler 
+		   '(rfold + 0 
+			   (letrec ([myhood (khood (anchor-at 50 10) 2)])
+			     (rmap nodeid myhood))))))))
+     myhood]
+
     ["resolve-trees: Verify that nested regions program uses the khood's tree"
      (parameterize ([pass-list (list-remove-after resolve-fold-trees (pass-list))])
        (run-compiler 
@@ -2435,6 +2444,8 @@
 		[simalpha-failure-model 'none]
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
+   (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions_folded.rs"))
+#;
    (sort < (list->set 
 	    (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions_folded.rs")))
 	 ))
