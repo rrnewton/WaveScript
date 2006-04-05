@@ -70,7 +70,7 @@
 		   'world
 		   (match (assq x dfg) 
 		     [#f (error 'find-khood "name not in data-flow graph: ~s \ndfg: ~s" x dfg)]
-		     [(,_ [,name ,ty ,annots (khood . ,__)])          x]
+		     [(,_ [,name ,ty ,annots (khood . ,__)])          name]
 		     [(,_ [,__  ,___ ,____ (rmap ,f ,r)])           (loop r)]
 		     [(,_ [,__  ,___ ,____ (rfilter ,f ,r)])        (loop r)]
 		     [(,_ [,__  ,___ ,____ ,v]) (guard (symbol? v)) (loop v)]

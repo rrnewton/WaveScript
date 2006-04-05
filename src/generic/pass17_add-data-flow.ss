@@ -157,9 +157,16 @@
     (define (get-tail expr currentloc env)
       (DEBUGASSERT (or currentloc (symbol? expr) (and (list? expr) (eq? 'lazy-letrec (car expr)))))
       (match expr
+          [,const (guard (regiment-constant? const)) currentloc]
 	  [,var (guard (symbol? var)) 
 		(let ([cl (lookup var env)])		  
 		  (get-region-tail (codeloc->expr cl) env))]
+
+	  ;; Redirect right through light-up.
+	  [(light-up ,rand) 
+;	   (inspect `(LU-tail ,rand))
+	   (get-tail rand #f env)]
+
 	  [(lazy-letrec ,binds ,var)
            (ASSERT (symbol? var)) ;; The letrec body must already be lifted.
 	   ;; ERROR ERROR: Need to extend env.
@@ -168,6 +175,7 @@
 	   (let ([cl (assq var binds)])
 	     (get-tail (codeloc->expr cl) cl 
 		       (extend-dfg env (map car binds) binds)))]
+
 	  ;; Can't go deeper:
 	  [(if ,test ,conseq ,altern)  currentloc]
 	  [,expr                       currentloc]))
@@ -213,8 +221,11 @@
 
 	      ;; An rfilter doesn't change the value-producing program point.
 	      [(rfilter ,rat ,rand)  (get-region-tail rand env)]
-	      
 
+	      ;; The dataflow should go right through light-up, it's the identity function:
+	      [(light-up ,rand) 
+;	       (inspect `(LU ,rand))
+	       (get-region-tail rand env)]
 	      [(liftsig ,areasig) (get-region-tail areasig env)]
 
 	      [,expr (error 'get-region-tail "unhandled expression: ~s\n" expr)]
@@ -256,17 +267,31 @@
                [,other (error 'add-data-flow:process-expr "could not find code for rator: ~s" rat)]
                ))]
 
+	  ;; This is just the identity function, cut right through it:
+	  ;[(light-up 
+
 	  ;; We accumulate "data flow" information as we go through the bindings.
 	  ;; NOTE NOTE:  This assumes that they're ordered and non-recursive.
 	  [(lazy-letrec ,binds ,tail)
 	   (DEBUGASSERT (symbol? tail))
 
+;	   (set! binds (delazy-bindings binds (list tail)))
+
            ;; The lack of free variables within lambdas makes this easy.
 	   ;; We scan down the whole list of bindings before we go into the lambdas in the RHSs.
 	   (let* ([letrecbinds (map list (map car binds) binds)]
-                  [newenv (extend-dfg env (map car binds) binds)]
+                  [newenv (extend-dfg env (map car binds) 
+				      ;; For each binding, we bind to its tail expression.
+				      ;; DISABLING, not ready for this yet:
+				      binds
+				      #;
+				      (map (lambda (b)
+					     ; FIXME FIXME FIXME 
+					     ;; Uh-oh, we should use newenv here!
+					     (get-tail (codeloc->expr b) b env))
+					binds))]
 		  [innerbinds 
-		   (let declloop ([binds binds] ;(delazy-bindings binds (list tail))]
+		   (let declloop ([binds binds] 
 				  [newbinds ()])
 			      (if (null? binds) newbinds
 				  (match (car binds)

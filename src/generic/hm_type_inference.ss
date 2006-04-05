@@ -56,6 +56,7 @@
 	   prim->type
 	   type?
 	   distributed-type?
+	   arrow-type?
 	   ;id
 	   ;inject-polymorphism
 	   
@@ -324,7 +325,9 @@
 (define (distributed-type? t)
   (define (id x) x)
   (match t
+    ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [Region #t]
+    [Anchor #t]
     [(Area ,_) #t]
     [(Signal ,_) #t]
     
@@ -339,6 +342,11 @@
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]
+    [,else #f]))
+
+(define (arrow-type? t)
+  (match t
+    [(,t1 ... -> ,t2) #t]
     [,else #f]))
 
 ; ======================================================================

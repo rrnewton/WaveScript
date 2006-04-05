@@ -152,7 +152,7 @@
 	     (values expr newp1 newp2))]
 
 	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
-	  [(smap) 	   
+	  [(smap slight-up)
 	   (let ([newp (new-place)])
 	     (values expr newp newp))]
 	  ;; Now an smap2 is more unpredictable.  It needs to be routed.
