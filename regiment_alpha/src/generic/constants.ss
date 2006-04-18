@@ -195,8 +195,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -321,7 +321,7 @@
 ;; [2006.02.22] <br>
 ;; This is used by various demo programs to externally control a
 ;; parameter that needs to be varied for testing/analysis purposes.
-(define-regiment-parameter varied-param 3)
+(define-regiment-parameter varied-param 20)
 
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other

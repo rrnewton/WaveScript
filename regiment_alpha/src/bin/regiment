@@ -3,8 +3,6 @@
 #scheme -h regimentc.1.heap $*
 #chez -h regimentc.1.heap $*
 
-MT=`echo '(display (machine-type))' | petite -q`
-
 # Use my default location if it is not set.
 if ! [ $REGIMENTD ]; then 
     if [ -d $HOME/regiment_alpha ];
@@ -13,6 +11,10 @@ if ! [ $REGIMENTD ]; then
     then REGIMENTD=$HOME/macroprogramming/regiment_alpha/; 
     fi;
 fi
+
+MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
+
+echo RUNNING ON MACHINE TYPE: $MT
 
 # If we can we use the stored heap, otherwise we run it as a script.
 if [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];

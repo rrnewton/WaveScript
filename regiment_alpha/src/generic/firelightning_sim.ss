@@ -19,7 +19,8 @@
 
 ;(define fire-max-age 220000) ;; Total life in milleseconds.
 ;(define fire-max-age 180000) ;; Total life in milleseconds.
-(define fire-max-age 320000) ;; Total life in milleseconds.
+;(define fire-max-age 320000) ;; Total life in milleseconds.
+(define fire-max-age 500000) ;; Total life in milleseconds.
 
 (define fire-temp 200)  ;; Degrees in celcius.
 
@@ -114,8 +115,10 @@
 			  ;; I just set the RNG here to get a fixed strike-x/strike-y.
 			  (parameterize ((random-seed strike-time))
 
-			(let ([strike-x (+ quartx (random (/ worldx 2)))]
-			      [strike-y (+ quarty (random (/ worldy 2)))])
+			    ;; [2006.04.05] HACK: FIXME
+			    ;; PUTTING THEM IN THE CENTER OF THE NETWORK:
+			(let ([strike-x 2600];(/ worldx 2)]  ;(+ quartx (random (/ worldx 2)))]
+			      [strike-y 2400]);(/ worldy 2)]) ;(+ quarty (random (/ worldy 2)))]
 			  ;(printf "  LIGHTNING!! ~a of ~a ~a\n" i numstrikes strike-time)
 			  (let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
 						    ;; The graphical object for this fire is a strange thing.  
@@ -290,7 +293,6 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
-#;
   (begin 
     ;; Set the world size, square:
     ;; Set both of these binds for now, lame:
@@ -300,7 +302,7 @@
     (simalpha-world-ybound 5000)
     (sim-num-nodes 250))
 
-
+#;
   (begin 
     (set! world-xbound 1500)
     (set! world-ybound 1500)
@@ -337,6 +339,22 @@
 
 
 ;; [2006.03.02] Hack, just allocating this fixed schedule for now.
+;; [2006.04.05] Hacking 
+(define CONSTANT_STRIKES
+  '(1000000 
+    2000000
+    3000000
+    4000000
+    5000000
+    6000000
+    7000000
+    8000000
+    9000000
+    10000000
+    11000000
+    12000000
+    ))
+#;
 (define CONSTANT_STRIKES
 '(10243 21589 43736 58078 114326 149726 181964 215430 256309
  281683 424553 468013 481352 500276 500533 514676 545114

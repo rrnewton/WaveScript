@@ -1090,6 +1090,7 @@
 			"__temp.log"))
     (define (open-opts f) 
       (if (equal? (extract-file-extension f) "gz") 
+	  ;; Note: replacing logfiles is dangerous when we're running experiments.
 	  '(replace compressed) ; exclusive?
 	  'replace))
 

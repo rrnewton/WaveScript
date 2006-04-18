@@ -522,7 +522,8 @@
 (define-id-syntax t7 (load-regiment "../analysis/firelightning/prog1.rs" 'verbose))
 (define-id-syntax t8 (load-regiment "../analysis/firelightning/prog2.rs" 'verbose))
 (define-id-syntax t9 (load-regiment "../analysis/firelightning/prog2_manual.tm" 'verbose))
-(define-id-syntax t10 (load-regiment "../analysis/firelightning/test.tm" 'verbose))
+(define-id-syntax t10 (load-regiment "../analysis/firelightning/prog2_manual_batchopt.tm" 'verbose))
+(define-id-syntax t11 (load-regiment "../analysis/firelightning/test.tm" 'verbose))
 
 (define-id-syntax tb (load-regiment "demos/regiment/bug.tm" ))
 

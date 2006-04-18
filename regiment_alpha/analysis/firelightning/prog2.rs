@@ -28,6 +28,35 @@
   (rfold + 0 
 	 (rmap (lambda (_) 1) ;; Just count them up
 	       (rfilter (lambda (n) (> (temp n) _threshold)) r))))
+
+;; All nodes over a local temperature threshold.
+
+(define heat-events (rfilter abovethresh world))
+
+(define (local-results n)
+  (letrec ((hood (khood (node->anchor n) 1))) ;; 1.5, ideally
+;    (smap (lambda (n) (+ 0 n))
+	  (count-nbrs hood);)
+    ;(tuple (nodeid n) (temp n))
+    ))
+
+;; Main query:
+
+;(rfilter (lambda (c) (> c 1))
+
+;; [2006.04.05] TYPE SYSTEM PROBLEM HERE:
+;(liftsig (rmap local-results heat-events))
+(rmap local-results heat-events)
+
+
+;(rmap (lambda (n)   (tuple (nodeid n) (temp n))) heat-events)
+
+;(count world)
+
+;(light-up heat-events)
+
+
+
 #|
 do n <- r;
    t = sense Temp n;
@@ -43,27 +72,3 @@ do n <- r;
    rfold + 0
 |#
 
-
-;; All nodes over a local temperature threshold.
-
-(define heat-events (rfilter abovethresh world))
-
-
-(define (local-results n)
-;  (letrec ((hood (khood (node->anchor n) 1))) ;; 1.5
-  (tuple (nodeid n) (temp n))
-    ;(count-nbrs hood)
-    )
-
-
-;; Main query:
-
-;(rfilter (lambda (c) (> c 1))
-
-;(liftsig (rmap local-results heat-events))
-;(rmap local-results heat-events)
-;(rmap (lambda (n)   (tuple (nodeid n) (temp n))) heat-events)
-
-;(count world)
-
-(light-up heat-events)
