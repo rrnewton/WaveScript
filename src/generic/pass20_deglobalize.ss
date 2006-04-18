@@ -993,7 +993,7 @@
           [world (values '() 
 			 ;; This wires the formation token for this name to its membership token.
 			 `([,(get-formation-name name) () 
-			    (warning 'world-prim "formation token called: ~s " ',name)
+;			    (warning 'world-prim "formation token called: ~s " ',name)
 			    (call ,(get-membership-name name) ,THISOB ',WORLDTREE)]
 			   ;; [2006.03.30] This was pattently wrong.
 			   ;; This along with the above binding can double-stimulate the membership token.

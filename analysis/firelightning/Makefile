@@ -18,19 +18,35 @@ all: world.simworld allruns #allanalyze
 
 prog1:
 	for i in `seq 0 50`; do \
+	if  -d "./logs/prog1/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" ]; then \
 	./run_querysim.ss -param $$i -noise $(NOISE) \
 	    -f "prog1.rs" \
-	    -l "./logs/prog1/deadsimple_thresh"$$i"_noise"$NOISE".log.gz" \
+	    -l "./logs/prog1/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" \
 	    -w "world.simworld"; \
-	done
+	fi; done
 
 prog2:
 	for i in `seq 0 50`; do \
+	if  -d "./logs/prog2/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" ]; then \
 	./run_querysim.ss -param $$i -noise $(NOISE) \
 	    -f "prog2.rs" \
-	    -l "./logs/prog1/deadsimple_thresh"$$i"_noise"$NOISE".log.gz" \
+	    -l "./logs/prog2/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" \
 	    -w "world.simworld"; \
-	done
+	fi; done
+
+prog2_manual:
+	for i in `seq 0 50`; do \
+	if test -d foo \ #"./logs/prog2/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" ; \
+	then @echo "Log already exists! Noise:"$(NOISE)" and Thresh:"$$i; \
+	else echo "RUNNING IT -- Noise:"$(NOISE)" and Thresh:"$$i; \
+	fi; done
+
+
+#	./run_querysim.ss -param $$i -noise $(NOISE) \
+#	    -f "prog2_manual.tm" \
+#	    -l "./logs/prog2/deadsimple_thresh"$$i"_noise"$(NOISE)".log.gz" \
+#	    -w "world.simworld"; \
+
 
 world.simworld:
 	./create_topology.ss world.simworld
