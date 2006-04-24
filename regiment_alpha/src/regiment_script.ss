@@ -11,7 +11,7 @@ fi
 ; /usr/bin/scheme --script
 
 ; (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
-; (load "compiler_chez.ss")
+; (load "main_chez.ss")
 
 ;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])

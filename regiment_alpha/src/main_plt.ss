@@ -10,7 +10,7 @@
 (define current_interpreter 'mzscheme)
 (define simulator-batch-mode #f)
 
-;(module compiler_plt mzscheme
+;(module main_plt mzscheme
  
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id rec) 
@@ -130,8 +130,8 @@
 ;; INLINE THE MAIN COMPILER CODE
 ;(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
 ;(disp "Testing" (eval 'default-unit-tester))
-;(load/use-compiled "compiler.ss")
-(include "compiler.ss")
+;(load/use-compiled "main.ss")
+(include "main.ss")
 ;============================================================
 
 ;(disp "BOUT TO LOAD DRIVER" pass-list)
