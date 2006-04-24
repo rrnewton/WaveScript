@@ -132,12 +132,12 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
-(include "../generic/compiler_tools.ss")
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
 (include "helpers.ss") (import (except helpers test-this these-tests))
 ;; Lists all the Regiment primitives and their types:
 (include "../generic/prim_defs.ss") (import prim_defs)
+
 (include "regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "tsort.ss") (import (except topsort-module test-this these-tests))
 (include "pregexp.ss") (import pregexp_module)
@@ -325,6 +325,7 @@
       (load "chez/simulator_nought_graphics.ss"))
 
 ;(trace  explode-primitive process-expr process-letrec)
+
 
 (eval-when (compile load eval) (cd ".."))
 (include "main.ss")

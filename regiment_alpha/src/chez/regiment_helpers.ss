@@ -39,6 +39,8 @@
 	  token->name token->subtok
 	  destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
 
+	  build-compiler-pass
+
 	  regiment-print-params
 
 	  test-regiment_helpers
