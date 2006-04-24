@@ -123,6 +123,44 @@
 ;(include "prim_defs_OLD.ss")
 
 ;======================================================================
+;; This is the constructor for compiler passes.  It takes the main
+;; function that does the real work of the compiler, and then wraps it
+;; with some extra debugging code.
+;; <br><br>
+;; Todo, add invariant-procedures as well as grammars:
+(define (build-compiler-pass name input-spec output-spec transform)  
+  (match (list input-spec output-spec)
+    [((input ,instuff ...) (output ,outstuff ...))
+     (lambda (prog)
+       (let ([ingram (assq 'grammar instuff)]
+	     [outgram (assq 'grammar outstuff)])
+	 ;; Check input grammar:
+	 (DEBUGMODE ;; When we're not in debugmode we don't waste cycles on this.
+	  (match ingram
+	   [#f (void)]
+	   ;; The optional initial production may or may not be supplied:
+	   [(grammar ,gram ,optional_initialprod ...)
+	    (or (apply check-grammar prog gram optional_initialprod)
+		(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]))
+	 (let ((result (transform prog)))
+	   (DEBUGMODE
+	    (if (regiment-verbose) 
+		(printf "~a: Got result, checking output grammar...\n" name))
+	    ;; Check output grammar:	   
+	    (match outgram
+	     [#f (void)]
+	     ;; The optional initial production may or may not be supplied:
+	     [(grammar ,gram ,optional_initialprod ...)
+	      (or (apply check-grammar result gram optional_initialprod)
+		  (begin (pretty-print result) #f)
+		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
+			 name prog))])
+	    (if (regiment-verbose)
+		(printf "~a: Output grammar passed.\n" name)))
+	   result
+	   )))]))
+
+;======================================================================
 
 ;; There are different syntactic ways to write down token handler bindings.
 ;; (Thanks to optional forms in the syntax.)  This parses tokbinds.
