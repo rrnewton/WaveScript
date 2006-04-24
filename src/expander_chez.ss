@@ -10,7 +10,7 @@
 
 
 
-(define exprs (file->slist "compiler_chez.ss"))
+(define exprs (file->slist "main_chez.ss"))
 
 ;; Don't use map because it doesn't guarantee order:
 (define (map-serial f ls)
@@ -20,5 +20,5 @@
 
 (define expanded (map-serial expand exprs))
 
-(slist->file expanded "compiler_chez_EXPANDED.ss")
+(slist->file expanded "main_chez_EXPANDED.ss")
 (display "File written.")(newline)

@@ -5,7 +5,7 @@ exec mred -r "$0" ${1+"$@"}
 
 ; /usr/bin/scheme --script
 
-(load/use-compiled "compiler_plt.ss")
+(load/use-compiled "main_plt.ss")
 
 ;(load/use-compiled "regiment.ss")
 

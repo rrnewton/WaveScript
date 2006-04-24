@@ -1,4 +1,4 @@
-;; compiler_chez.ss
+;; main_chez.ss
 ;; Loads the regiment compiler in Chez Scheme.
 
 ;; NOTE: This file uses (include ...) rather than (load ...) 
@@ -100,7 +100,7 @@
 
 ;======================================================================
 
-(fprintf stderr "Loading compiler in chezscheme~a...\n"
+(fprintf stderr "Regiment: Loading compiler in chezscheme~a...\n"
 	 (if (top-level-bound? 'regiment-origin)
 	     (format " (from ~a)" regiment-origin)
 	     ""))
@@ -132,7 +132,7 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
 
-
+(include "../generic/compiler_tools.ss")
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
 (include "helpers.ss") (import (except helpers test-this these-tests))
@@ -217,6 +217,7 @@
 (include "../generic/lang14_places.ss")
 
 (include "../generic/lang20_deglobalize.ss") 
+
 (include "../generic/lang30_haskellize-tokmac.ss") 
 (include "../generic/lang32_emit-nesc.ss")
 
@@ -247,6 +248,8 @@
 
 (include "../generic/pass20_deglobalize.ss") 
 (import pass20_deglobalize)
+(include "../generic/pass20_deglobalize2.ss")
+(include "../generic/pass20b_tmgen.ss")
 
 ;; Uses delazy-bindings:
 (include "../generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
@@ -324,9 +327,13 @@
 ;(trace  explode-primitive process-expr process-letrec)
 
 (eval-when (compile load eval) (cd ".."))
-(include "compiler.ss")
+(include "main.ss")
 (eval-when (compile load eval) (cd "chez"))
 
+;; [2006.04.18] This testing system isn't doing much for us currently
+;; other than exercising our static elaborator.
+;; TODO: Fold it into the unit tests.
+;;
 ;; Driver depends on 'pass-list being defined.
 (include "../generic/driver.ss")
 ;  (game-eval (lambda args 'unspecified))
@@ -335,6 +342,7 @@
 (include "../generic/tests_noclosure.ss")
 (include "../generic/tests.ss")
 
+;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "../generic/repl.ss")
 

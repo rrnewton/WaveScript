@@ -1,3 +1,4 @@
+;;;; .title Testing functions.
 
 (define make-standalone-test
   (lambda (tests)
@@ -38,43 +39,6 @@
 ;	  (rrcluster (rfilter even? (rmap nodeid world))))
 
     ))
-
-;===============================================================================
-
-'(define tests_new
-  `( ,@tests_new_misc
-     ,@tests_derived-prims
-     ;,@tests_callcc
-     ))
-
-'(define tests_old
-  `( ,@tests_noclosure  ;67
-     ,@tests_quick      ;93
-     ,@tests_medium     ;31
-     ,@tests_slow       ; 9
-     ))
-  
-;===============================================================================
-
-(define tests_noexec
-  `( ))
-
-;===============================================================================
-
-'(define large-test
-  `(vector
-     ,@tests_noclosure))
-
-'(define huge-test
-  `(vector
-     ,@tests_noclosure
-     ,@tests_quick))
-
-'(define giant-test
-  `(vector ,@tests_old))
-
-'(define colossal-test
-  `(vector ,@tests))
 
 ;===============================================================================
 
@@ -236,7 +200,7 @@
 	     (test-it) (newline)))]
       [(mzscheme)
 
-       (load/use-compiled "compiler_plt.ss") (test-it) (newline)
+       (load/use-compiled "main_plt.ss") (test-it) (newline)
        
        (test00) (newline)
        ;  (load "pass01_rename-var.ss") (test-it) (newline)

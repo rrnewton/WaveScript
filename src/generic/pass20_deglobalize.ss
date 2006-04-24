@@ -5,7 +5,7 @@
 
 ;; INCOMPLETE: this doesn't actually use the CFG right now.
 
-;;;; Pass 16: deglobalize
+;;;; Pass 20: deglobalize
 ;;;; April 2004
 ;===============================================================================
 

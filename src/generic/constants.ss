@@ -233,8 +233,12 @@
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
-      [(_ expr) 
-       #'(or expr (error 'ASSERT "failed: ~s" #'expr))])))
+      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" #'expr))]
+      ;; This form is (ASSERT integer? x) returning the value of x.
+      [(_ fun val) #'(let ([v val])
+		       (if (fun v) v			   
+			   (error 'ASSERT "failed: ~s" #'expr)))]
+      )))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
 ; ; ;(define Regiment-Log-File (string-append (current-directory) "/Regiment.log.ss"))

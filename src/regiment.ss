@@ -23,13 +23,13 @@
 
 ;; If the compiled version is there, use that:
 (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
-  (if (file-exists? (format "./build/~a/compiler_chez.so" (machine-type)))
+  (if (file-exists? (format "./build/~a/main_chez.so" (machine-type)))
       (begin 
 	(set! regiment-origin "compiled .so")
-	(load (format "./build/~a/compiler_chez.so" (machine-type))))
+	(load (format "./build/~a/main_chez.so" (machine-type))))
       (begin (fprintf stderr "Loading Regiment from source...\n")
 	     (set! regiment-origin "source")
-	     (load "./compiler_chez.ss"))))
+	     (load "./main_chez.ss"))))
 
 ; =======================================================================
 

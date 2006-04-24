@@ -1,4 +1,4 @@
-;;;; .title Compiler Core (compiler.ss)
+;;;; .title Compiler Core (main.ss)
 
 ;;;; This contains the core compiler entry points. 
 ;;;; Loaded by both the Chez and PLT versions.

@@ -70,6 +70,8 @@
 	   annotate-expression
 	   annotate-program
 
+	   types-compat?
+
 ;	   types-equal!
 ;	   tvar-equal-type!
 ;	   no-occurrence!
@@ -551,6 +553,21 @@
 ; ======================================================================
 
 ;;; The unifier.
+
+;; This is a front-end to the unifier which uses it to tell you if two
+;; types are compatible.
+(define (types-compat? t1 t2)
+  (call/cc 
+   (lambda (k) 
+     (with-error-handlers
+      (lambda args (void)) ;; display
+      (lambda () (k #f))   ;; escape
+      (lambda () 
+	(types-equal! (instantiate-type t1)
+		      (instantiate-type t2)
+		      (void))
+	(k #t))
+      ))))
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
