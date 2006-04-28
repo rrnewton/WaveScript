@@ -13,7 +13,7 @@
   [default-fast-pulse 100]
   [default-slow-pulse 1000]
 
-  [simalpha-dbg-on #t]
+  [simalpha-dbg-on #f] 
 
   [sim-num-nodes 4]
   [simalpha-outer-radius 8]

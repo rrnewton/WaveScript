@@ -2436,6 +2436,7 @@
  ;; nodes that are neighbors of nodes 6 and 14.
  (parameterize ([deglobalize-markup-returns #f]
 		[sim-num-nodes 30]
+		[simalpha-dbg-on #f]
 		[simalpha-realtime-mode #f]
 		[simalpha-placement-type 'connected]
 		[simalpha-outer-radius 15]

@@ -109,10 +109,13 @@
 (define-syntax match-lambda-helper
   (lambda (x) 
     (syntax-case x (unquote)
-      [(_ () (V ...) E ...)
-       #'(lambda (V ...) E ...)]
+      ; When we've no patterns to match, produce a real lambda:		 
+      [(_ () (V ...) E ...) #'(lambda (V ...) E ...)]
       [(_ (P1 P ...) (V ...) E ...)
-       #'(match-lambda-helper (P ...) (V ... tmp) (let-match ((P1 tmp)) E ...))])))
+       #'(match-lambda-helper (P ...) (V ... tmp)
+	   (match tmp
+             [P1 (begin E ...)]
+	     [,other (error 'match-lambda "unmatched object ~s for pattern ~s" other #'P1)]))])))
 (define-syntax match-lambda 
   (lambda (x)
     (syntax-case x (unquote)
@@ -131,10 +134,11 @@
     (syntax-case x (unquote)
       [(_ () Body ...)
        #'(begin Body ...)]
-      [(_ ([Pat Exp] Rest ...) Body ...)
+      [(lm ([Pat Exp] Rest ...) Body ...)
        #'(match Exp
 	   [Pat (let-match (Rest ...) Body ...)]
-	   [,other (error 'let-match "unmatched object: ~s" other)]
+	   [,other (error 'let-match "unmatched object: ~s at syntax location ~s" 
+			  other #'lm)]
 	   )])))
 ;(expand '(let-match () 3))
 ;(expand '(let-match ([,x 3]) x))
@@ -243,3 +247,4 @@
 ) ;; End module.
 
 ;(require reg_macros)
+

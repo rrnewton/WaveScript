@@ -74,7 +74,7 @@
 ;;; Setup stuff.
 
 ;; Set some Chez scheme parameters.
-(print-graph #t)
+(print-graph #f )
 (print-gensym #f)
 ;(print-level 8)
 (print-level 20)
@@ -137,8 +137,8 @@
 (include "helpers.ss") (import (except helpers test-this these-tests))
 ;; Lists all the Regiment primitives and their types:
 (include "../generic/prim_defs.ss") (import prim_defs)
-
-(include "regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(include "../generic/grammar_checker.ss") (import grammar_checker)
+(include "../generic/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "tsort.ss") (import (except topsort-module test-this these-tests))
 (include "pregexp.ss") (import pregexp_module)
 
@@ -192,7 +192,6 @@
 (include "../generic/firelightning_sim.ss")
 (include "../generic/tossim.ss")
 (include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
-(include "../generic/grammar_checker.ss") (import grammar_checker)
 
 ;; Type inference is used by verify-regiment, below.
 (include "../generic/hm_type_inference.ss") (import hm_type_inference)
@@ -248,7 +247,9 @@
 
 (include "../generic/pass20_deglobalize.ss") 
 (import pass20_deglobalize)
+
 (include "../generic/pass20_deglobalize2.ss")
+(import pass20_deglobalize2)
 (include "../generic/pass20b_tmgen.ss")
 
 ;; Uses delazy-bindings:

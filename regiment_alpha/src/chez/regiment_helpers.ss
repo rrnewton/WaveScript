@@ -27,6 +27,8 @@
 	  formalexp? cast-formals fit-formals-to-args
 	  simple-expr?
 
+	  regiment-free-vars
+
 ;	  token-machine-primitives token-machine-primitive? 
 ;	  token-machine? token-machine->program token-machine-keyword?
 ;	  basic-primitive? distributed-primitive?
@@ -142,6 +144,7 @@
 ;  (deep-reg:struct->list2 (let ((x (make-node 1 (make-node 3 4)))) (set-node-id! x x) x))
 
 ;; DOESN'T WORK YET:
+#;
 (define (deep-reg:struct->list2 ob)
   (reg:very-deep-map
    (let ([touched (make-default-hash-table)])
