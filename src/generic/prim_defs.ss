@@ -167,6 +167,9 @@
     ;; If no refresh rate is zero, the election only happens once.
     (anchor-maximizing ((Node -> Integer) Integer) Anchor)
 
+    ;; This one takes an Area, and elects the leader within there.
+    (anchor-maximizing-within ((Node -> Integer) (Area 'a)) Anchor)
+
     (circle         (Anchor Float)   Region)
     (circle-at      (Integer Integer Float) Region)
     (k-neighborhood (Anchor Integer) Region)

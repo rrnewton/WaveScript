@@ -14,6 +14,9 @@
 ;; See the primitive type definitions in prim_defs.ss
 
 
+;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
+;; type aliases.  This will remove most of the need for types-compat?
+
 (module hm_type_inference mzscheme
   (require "../plt/iu-match.ss"
            "../generic/constants.ss"
@@ -555,7 +558,8 @@
 ;;; The unifier.
 
 ;; This is a front-end to the unifier which uses it to tell you if two
-;; types are compatible.
+;; types are compatible.  This is inefficient, but is necessitated by
+;; the way I wrote the unifier.  (It throws an error on failed unification.)
 (define (types-compat? t1 t2)
   (call/cc 
    (lambda (k) 
@@ -563,11 +567,11 @@
       (lambda args (void)) ;; display
       (lambda () (k #f))   ;; escape
       (lambda () 
-	(types-equal! (instantiate-type t1)
-		      (instantiate-type t2)
-		      (void))
-	(k #t))
-      ))))
+	(let ([inst1 (instantiate-type t1)]
+	      [inst2 (instantiate-type t2)])
+	  (types-equal! inst1 inst2 (void))
+	  (k (export-type inst1))
+      ))))))
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.

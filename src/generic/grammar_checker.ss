@@ -18,7 +18,8 @@
 	   "../generic/constants.ss" ;; For DEBUGMODE
            "../plt/prim_defs.ss"
 	   (all-except "../plt/helpers.ss" test-this these-tests)
-	   (all-except "../plt/regiment_helpers.ss" test-this these-tests))
+;	   (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+           )
   (provide 
          check-grammar
 	 analyze-grammar-failure 
@@ -37,7 +38,7 @@
 
   (chezimports ;constants
                (except helpers   test-this these-tests)
-	       (except regiment_helpers   test-this these-tests)
+;	       (except regiment_helpers   test-this these-tests)
 	       )
 ; ======================================================================
 

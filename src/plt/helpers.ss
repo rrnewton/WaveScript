@@ -58,7 +58,8 @@
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc last 
    list-find-position list-remove-before
-
+   foldl
+   
    insert-between iota disp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists

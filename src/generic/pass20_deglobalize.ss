@@ -795,6 +795,7 @@
 				   ;; This is node-local code now, check against TML prims:
 				   [(,prim ,[args] ...)
 				    (guard (or (token-machine-primitive? prim)
+					       ;(regiment-primitive? prim)
 					       (basic-primitive? prim)))
 				    (void)]
 				   [(if ,[x] ,[y] ,[z]) (void)]
@@ -1209,6 +1210,8 @@
 			   notype)))
      unspecified]
 
+
+    ["Test delazy-bindings #0" (delazy-bindings '() '()) ()]
 
     ["Test delazy-bindings #1"
      (,delazy-bindings '((fooobo '3985) (barbar fooobo)) '(barbar))
