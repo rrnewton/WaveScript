@@ -38,8 +38,21 @@
 		`(circle (anchor-at ,loc) ,rad)]
 	       [(khood-at ,loc ,rad)
 		`(khood (anchor-at ,loc) ,rad)]
-	       [(k-neighborhood ,args ...)
-		`(khood ,args ...)]
+;	       [(k-neighborhood ,args ...) `(khood ,args ...)]
+
+;	       [(anchor-maximizing ,f ,r) `(anchor-maximizing-within ,f ,r world)]
+	       
+	       ;; This builds a function to optimize distance from an x,y position.
+	       [(anchor-at ,x ,y) 
+		(let ([xvar (unique-name 'xpos)]
+		      [yvar (unique-name 'ypos)])
+		  `(anchor-maximizing 
+;		    (letrec ([,xvar Integer ,x]
+;			     [,yvar Integer ,y])
+		      (lambda (n) (Node) (- '0 (+ (^ (- (sense 'xpos n) ,x) '2) 
+						  (^ (- (sense 'ypos n) ,y) '2))))
+		    world))]
+
 	       [,orig orig])))
 
     (lambda (expr)

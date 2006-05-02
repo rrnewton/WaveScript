@@ -50,6 +50,11 @@
 			    [(rfold ,fun ,seed ,reg)
 			     `[,lhs ,ty ((tree ,(find-khood reg)) . ,annots)
 				    ,(process-expr rhs)]]
+			    ;; rdump works basically the same as rfold
+			    [(rdump ,reg)
+			     `[,lhs ,ty ((tree ,(find-khood reg)) . ,annots)
+				    ,(process-expr rhs)]]
+
 			    [,rhs `[,lhs ,ty ,annots ,(process-expr rhs)]]))
 		     binds)
 		  ,tail)]

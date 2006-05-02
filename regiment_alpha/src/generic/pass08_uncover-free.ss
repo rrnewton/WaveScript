@@ -45,7 +45,6 @@
 
 ;;; The implementation requires difference, extended-scheme-primitive?,
 ;;; union, and get-formals from helpers.ss.
-
 (define uncover-free
   (let ()
 
@@ -56,7 +55,6 @@
             (values
 	     `(,formalexp ,types (free ,free* ,body))
 	     free*)))))
-    
     (define process-expr
       (lambda (expr)
         (match expr
@@ -101,4 +99,35 @@
 		`(uncover-free-language ;uncover-free-language
 		  '(program ,body ,type)))]))))
 
-
+#;
+;; [2006.05.02] Rewriting this to use the common free-vars routine.
+(define uncover-free
+  (let ()
+    
+    (define process-expr
+      (lambda (expr)
+        (match expr
+          [(quote ,datum)  `(quote ,datum)]
+          [,var (guard (symbol? var)) var]
+          [(if ,[test] ,[conseq] ,[altern])
+	   `(if ,test ,conseq ,altern)]
+          [(lambda ,formals ,types ,body)
+	   `(lambda ,formals ,types 
+		    (free ,(regiment-free-vars `(lambda ,formals ,types ,body))
+			  ,(process-expr body)))]
+          [(letrec ([,lhs* ,type* ,[rhs*]] ...) ,[body])
+	   `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)]
+          [(,prim ,[rand*] ...)
+           (guard (regiment-primitive? prim))
+           `(,prim ,rand* ...)]
+	  ;; Shouldn't happen post-elaboration:
+;	  [(app ,[rator] ,[rand*] ...) `(app ,rator ,rand* ...)]
+          [,unmatched
+            (error 'reduce-primitives "invalid expression: ~s"
+                   unmatched)])))
+    
+    (lambda (prog)
+      (match prog
+        [(base-language (quote (program ,body ,type)))
+	 `(uncover-free-language ;uncover-free-language
+	   '(program ,(process-expr body) ,type))]))))

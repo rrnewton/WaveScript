@@ -139,9 +139,10 @@
 	  ;; example we might fold up on the global tree, in which
 	  ;; case the final "place" is the SOC.  
 
+	  ;; FIXME:  THIS IS OUT OF DATE.  SCRATCH THIS PASS: 
 	  ;; FOR NOW, we're just going to assume all folds go to the SOC.
 	  [(rfold) (values expr (list (new-place)) 'SOC)]
-	  
+	  [(rdump) (values expr (list (new-place)) 'SOC)]   
 
 	  ;; Rfilter outputs a region which is a subset of the original.
 	  ;; Can't express this right now, so just make a new set of places.
