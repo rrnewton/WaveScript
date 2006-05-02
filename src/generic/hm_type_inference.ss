@@ -560,6 +560,8 @@
 ;; This is a front-end to the unifier which uses it to tell you if two
 ;; types are compatible.  This is inefficient, but is necessitated by
 ;; the way I wrote the unifier.  (It throws an error on failed unification.)
+;; 
+;; types-compat? returns its second arguments post-unified form.
 (define (types-compat? t1 t2)
   (call/cc 
    (lambda (k) 
@@ -570,7 +572,8 @@
 	(let ([inst1 (instantiate-type t1)]
 	      [inst2 (instantiate-type t2)])
 	  (types-equal! inst1 inst2 (void))
-	  (k (export-type inst1))
+	  ;(k (export-type inst1))
+	  (k (export-type inst2))
       ))))))
 
 ;; This asserts that two types are equal.  Mutates the type variables

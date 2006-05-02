@@ -65,8 +65,10 @@
 	  destructure-tokbind handler->tokname handler->formals handler->body handler->subtokid handler->stored
 
 	  build-compiler-pass
+	  ;regiment-pass-name-table
+	  regiment-pass->name
 
-	  regiment-print-params
+	  regiment-print-params	 
 
 	  test-regiment_helpers
 
@@ -337,34 +339,53 @@
 (define (build-compiler-pass name input-spec output-spec transform)  
   (match (list input-spec output-spec)
     [((input ,instuff ...) (output ,outstuff ...))
-     (lambda (prog)
-       (let ([ingram (assq 'grammar instuff)]
-	     [outgram (assq 'grammar outstuff)])
-	 ;; Check input grammar:
-	 (DEBUGMODE ;; When we're not in debugmode we don't waste cycles on this.
-	  (match ingram
-	   [#f (void)]
-	   ;; The optional initial production may or may not be supplied:
-	   [(grammar ,gram ,optional_initialprod ...)
-	    (or (apply check-grammar prog gram optional_initialprod)
-		(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]))
-	 (let ((result (transform prog)))
-	   (DEBUGMODE
-	    (if (regiment-verbose) 
-		(printf "~a: Got result, checking output grammar...\n" name))
-	    ;; Check output grammar:	   
-	    (match outgram
-	     [#f (void)]
-	     ;; The optional initial production may or may not be supplied:
-	     [(grammar ,gram ,optional_initialprod ...)
-	      (or (apply check-grammar result gram optional_initialprod)
-		  (begin (pretty-print result) #f)
-		  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
-			 name prog))])
-	    (if (regiment-verbose)
-		(printf "~a: Output grammar passed.\n" name)))
-	   result
-	   )))]))
+     (let ([closure 
+	    (lambda (prog)
+	      (let ([ingram (assq 'grammar instuff)]
+		    [outgram (assq 'grammar outstuff)])
+		;; Check input grammar:
+		(DEBUGMODE ;; When we're not in debugmode we don't waste cycles on this.
+		 (match ingram
+		   [#f (void)]
+		   ;; The optional initial production may or may not be supplied:
+		   [(grammar ,gram ,optional_initialprod ...)
+		    (or (apply check-grammar prog gram optional_initialprod)
+			(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]))
+		(let ((result (transform prog)))
+		  (DEBUGMODE
+		   (if (regiment-verbose) 
+		       (printf "~a: Got result, checking output grammar...\n" name))
+		   ;; Check output grammar:	   
+		   (match outgram
+		     [#f (void)]
+		     ;; The optional initial production may or may not be supplied:
+		     [(grammar ,gram ,optional_initialprod ...)
+		      (or (apply check-grammar result gram optional_initialprod)
+			  (begin (pretty-print result) #f)
+			  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
+				 name prog))])
+		   (if (regiment-verbose)
+		       (printf "~a: Output grammar passed.\n" name)))
+		  result
+		  )))])
+       (set! regiment-pass-name-table
+	     (cons `[,closure ,name] regiment-pass-name-table))
+       closure
+       )]))
+
+;; This is a hidden table (association list) that maps closures to pass names.
+;; When build-compiler-pass is used to construct a pass, it's added to
+;; this table so that it's name can be retreived in the future.
+;; (If the passes were objects, I'd simply have them support a get-name method.)
+(define regiment-pass-name-table '())
+
+;; This exposed function does a lookup in the table.
+(define (regiment-pass->name pass)
+  (ASSERT (procedure? pass))
+  (cond
+   [(assq pass regiment-pass-name-table) => cadr]
+   ;; Otherwise, the best we can do is print the procedure to a string:
+   [else (format "~s" pass)]))
 
 ;======================================================================
 
@@ -935,7 +956,6 @@
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
        
-
 ;; TODO: TEST THIS
 (define (regiment-free-vars expr)
   (list->set 
@@ -952,9 +972,15 @@
 
        [(lambda ,v* ,expr) (loop (append v* env) expr)]
        [(lambda ,v* ,ty* ,expr)
-	;(DEBUGASSERT (andmap type? ty*))
+	;;(DEBUGASSERT (andmap type? ty*))
 	(loop (append v* env) expr)]
+       
+       [(,letrec ([,lhs* ,extras ... ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
 
+#|
        [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
 	(let ([newenv (append lhs* env)])
 	  (apply append (loop newenv expr)
@@ -963,10 +989,14 @@
 	(let ([newenv (append lhs* env)])
 	  (apply append (loop newenv expr)
 		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+       [(,letrec ,junk ...) (memq letrec '(letrec lazy-letrec))
+	(error 'regiment-free-vars "badly formed letrec: ~s" `(,letrec ,junk))]
+|#
+
+
        [(app ,[opera*] ...)
 	(apply append opera*)]
        [,else (error 'regiment-free-vars "not simple expression: ~s" expr)]))))
-
 
 ; ======================================================================
 

@@ -1049,9 +1049,12 @@
     (lambda args 
     (call/cc
      (lambda (return)
-         (if (or (memq 'get-tests args) (memq 'get args))
-	     (return entries))
-	 (when (or (memq 'print-tests args) (memq 'print args))
+       (match (memq 'get args)
+	 [#f (void)]
+	 [(get ,n ,_ ...) (guard (integer? n))
+	  (return (list-ref entries n))]
+	 [,else (return entries)])
+       (when (or (memq 'print-tests args) (memq 'print args))
 	   (for-eachi (lambda (i test)
 			(if (string? (car test))
 			    (printf "~a: ~a\n" i (car test))))
@@ -1208,7 +1211,7 @@
     testerproc))))
 
 (define (reg:counttests) ;;shorthand
-  (apply + (map (lambda (x) (length ((cadr x) 'get-tests))) (reg:all-unit-tests))))
+  (apply + (map (lambda (x) (length ((cadr x) 'get))) (reg:all-unit-tests))))
 
 
 ; =======================================================================

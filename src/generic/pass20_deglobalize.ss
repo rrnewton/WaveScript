@@ -116,6 +116,7 @@
 (define ANCH-NUM 'ANCH) ;49)
 (define CIRC-NUM 'CIRC) ;59)
 
+;; NOTREE is an object identifying that this region or signal has no routing tree.
 (define NOTREE 'NO-TREE)
 (define WORLDTREE 'WORLD-TREE)
 
@@ -604,12 +605,18 @@
 
 	    ;; This is not a region; it carries no value on its membership token!
 	    [(anchor-maximizing)
-	     (let-match ([(,fun_tok ,refresh_rate) args])
+	     (let-match ([(,fun_tok ,parent_region) args])
 	       (let ([consider (new-token-name 'cons-tok)]	     
 		     [tmpfun (new-token-name 'tmpfun)]
-		     [leader (new-token-name 'leader-tok)])
+		     [leader (new-token-name 'leader-tok)]
+		     [parent-memb (get-membership-name parent_region)])
 		 
-	     `([,form () (elect-leader ,consider ,tmpfun)] ;(flood ,consider)]
+	     `(
+	       ;; TODO: FIXME:
+	       ;; The leader election is currently not bounded, so it will flood the whole network.
+	       [,parent-memb (v t) (call ,form v t)]
+
+	       [,form (v t) (elect-leader ,consider ,tmpfun)] ;(flood ,consider)]
 ;	       [,consider () (elect-leader ,memb ,fun_tok)]
 
 	       ;; This is a wrapped that has zero arity.
@@ -626,7 +633,7 @@
 			      (begin
 				(leds on red)
 				(light-node 0 255 255)
-				(call ,memb)))]
+				(call ,memb ,THISOB ',NOTREE)))]
 	       )))]
 
 	    ;; [2005.11.23] This does essentially nothing.  It's
@@ -913,7 +920,7 @@
     (case prim
       [(anchor-at anchor-maximizing node->anchor)
        ;; Node->anchor actually takes zero args.  But that should be fine.
-       `([,tokname ()
+       `([,tokname (v t)
 		   ;; At each formation click, we output this node [id].
 		   ,(if (deglobalize-markup-returns)
 			`(call reg-return (list 'ANCH (my-id)))

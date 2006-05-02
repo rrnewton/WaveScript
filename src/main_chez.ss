@@ -74,7 +74,7 @@
 ;;; Setup stuff.
 
 ;; Set some Chez scheme parameters.
-(print-graph #f )
+(print-graph #t )
 (print-gensym #f)
 ;(print-level 8)
 (print-level 20)

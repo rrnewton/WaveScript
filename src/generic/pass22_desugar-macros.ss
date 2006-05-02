@@ -80,14 +80,19 @@
 
 	     ;; Elect leader form: 
 	     ;;   (elect-leader target-token [criterion-evaluator] [criterion-comparator] [bounding-function])
-	     ;; Currently [2005.12.02] bounding functionality is not implemented.
+	     ;; .param target-token: A token to fire when the leader is determined.
+	     ;; .param criterion-evaluator:  A function to score each node.
+	     ;; .param criterion-comparator:  A function for comparing scores, by default picks greater.
+	     ;; .param bounding-function: A function for detecting when we fall over the boundary.
+	     ;;    Currently [2005.12.02] bounding functionality is not implemented.
+ 	     ;;   
+	     ;; The target-token is called on all nodes participating,
+	     ;; it's passed the ID of the leader as argument.  If the
+	     ;; ID matches your ID, you win!
+
 	     [(elect-leader ,t) (process-expr `(elect-leader ,t #f #f #f))]
 	     [(elect-leader ,t ,c) (process-expr `(elect-leader ,t ,c #f #f))]
 	     [(elect-leader ,t ,c ,comp) (process-expr `(elect-leader ,t ,c ,comp #f))]
-
-	     ;; elect-leader: The first argument is a token to fire when the leader is determined.
-	     ;; The token is called on all nodes participating, it's passed the ID of the leader as argument.
-	     ;; If the ID matches your ID, you win!
 
 	     ;; TODO: Make this work better for constrained regions.
 	     ;; The token part has to be totally static.

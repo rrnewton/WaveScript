@@ -78,6 +78,7 @@
     (- (Integer Integer) Integer) 
     (* (Integer Integer) Integer) 
     (/ (Integer Integer) Integer) 
+    (^ (Integer Integer) Integer) ;; exponentiation
 
     (+. (Float Float) Float)
     (-. (Float Float) Float)
@@ -146,6 +147,10 @@
     (rmap           (('a -> 'b) (Area 'a)) (Area 'b))
 
     (rfold          (('a 'b -> 'b) 'b (Area 'a)) (Signal 'b))
+    ;; This is similar to rfold, but simply streams out all the
+    ;; contents of the region in no particular order:
+    (rdump          ((Area 'a)) (Signal 'a))
+
     (smap           (('a -> 'b) (Signal 'a)) (Signal 'b))
     
     ;; This joins two signals in the network.
@@ -163,12 +168,8 @@
 
     ;(anchor-optimizing ((Node -> Integer) Region) Anchor)
 
-    ;; Takes a function to optimize, and an optional refresh rate to re-elect at:
-    ;; If no refresh rate is zero, the election only happens once.
-    (anchor-maximizing ((Node -> Integer) Integer) Anchor)
-
-    ;; This one takes an Area, and elects the leader within there.
-    (anchor-maximizing-within ((Node -> Integer) (Area 'a)) Anchor)
+    ;; Takes a function to optimize, and an Area within which to 
+    (anchor-maximizing ((Node -> Integer) (Area 'a)) Anchor)
 
     (circle         (Anchor Float)   Region)
     (circle-at      (Integer Integer Float) Region)

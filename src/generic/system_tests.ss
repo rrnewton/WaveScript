@@ -81,6 +81,38 @@
 	  (length x)))
       1]
          
+     ;; These test deglobalize2
+     ,@(let () 	
+	 ;; Irrespective
+	 (define (test-deglob2 p) 
+	   (parameterize ([pass-list
+			   (snoc deglobalize2 (rdc 
+		  (list-remove-after deglobalize
+				     (list-remove-after deglobalize2
+							(pass-list)))))])
+	     (run-compiler p 'verbose)))
+	 `(
+	   ["deglobalize2: Do a dump over world"
+	    (,test-deglob2 '(rdump (rmap nodeid world)))
+	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))
+	       (and (equal? (map car decls) '(DUMP))
+		    (eq? 'world (cadr (deep-assq 'VIA decls)))
+		    
+		    ))]
+	   
+	   ["deglobalize2: Aggreate nodeids over a single khood"
+	    (,test-deglob2 
+	     '(rfold + 0 (rmap nodeid (khood (anchor-maximizing nodeid world) 2))))
+	    unspecified
+	    ]
+
+	   )
+	 )
+
+
+
+     
+     ;;================================================================================
 
     ["Simalpha: Now we test running the Simulator Alpha on a very simple token machine."
      (parameterize ([unique-name-counter 0] 
@@ -2373,7 +2405,7 @@
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
-	  '(anchor-maximizing (lambda (a_node) (sense 'temp a_node)) 0)
+	  '(anchor-maximizing (lambda (a_node) (sense 'temp a_node)) world)
 	  ;'(anchor-at 30 40)
 	  ;'verbose
 	  )))
@@ -2391,8 +2423,8 @@
  ,(lambda (x) 
     (match (map cadr x)
       ;; Receive one or the other first:
-      [(#(#f ,b1) #(,a2 ,b2) . ,rest) (guard (= b1 b2)) #t]
-      [(#(,a1 #f) #(,a2 ,b2) . ,rest) (guard (= a1 a2)) #t]
+      [(#(#f ,b1) #(,a2 ,b2) . ,rest) (guard (equal? b1 b2)) #t]
+      [(#(,a1 #f) #(,a2 ,b2) . ,rest) (guard (equal? a1 a2)) #t]
       [,else #f]))]
 
 ["Demos: simple/events.rs" retry

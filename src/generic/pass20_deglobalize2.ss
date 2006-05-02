@@ -34,6 +34,8 @@
            (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   
   (provide deglobalize2
+	   test-this
+	   test-deglobalize2
 ;	   process-expr
 	   process-letrec
 
@@ -48,9 +50,9 @@
       (let tt ((ty ty))
       (cond
        [(eq? 'Node ty) #()] ;; This becomes unit.
-       [(types-compat? '(Area 'a) ty) => (match-lambda ((Area ,a))
+       [(types-compat? ty '(Area 'a)) => (match-lambda ((Area ,a))
 					   `(Signal ,(transform-type a)))]
-       [(types-compat? '(Signal 'a) ty) => (match-lambda ((Signal ,a))
+       [(types-compat? ty '(Signal 'a)) => (match-lambda ((Signal ,a))
 					   `(Signal ,(transform-type a)))]
        [else (match ty
 	       [(,[tt -> in*] ... -> ,[tt -> out]) `(,in* ... -> ,out)]
@@ -61,9 +63,20 @@
 
   (define process-letrec
     (lambda (expr tenv dfg)
+
+      ;; Recursively pull out all the bindings (including inside lambdas)
+      (define (get-all-binds exp)
+	(match exp
+	  [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
+	   (map get-all-binds rhs*)
+
+	   ]
+	  )
+	
+	)
       
     ;; The primitives that *necessarily* incur network communication.
-    (define comm-prims '(rfold 
+    (define comm-prims '(rfold rdump
 			 khood 
 			 anchor-at 
 			 anchor-maximizing
@@ -100,6 +113,7 @@
 	 (define (get-segment var)
 	   (define (loop var)
 	     (define bnd (assq var binds))
+;	     (unless bnd (inspect (assq var dfg)))
 	     (unless bnd (error 'get-segment "var '~a' not in binds: ~s" var binds))
 	     (match bnd 
 	       [(,lhs ,ty ,annots ,rhs)
@@ -137,7 +151,11 @@
 	   (let ([entry (assq x comm-outputs)]) 
 	     (cond 
 	      [(not entry) x]
-	      [(types-compat? (cadr entry) '(Area 'a)) `(REGEVT ,x)]
+	      [(types-compat? (cadr entry) '(Area 'a)) =>
+	       (match-lambda ((Area ,a))
+		 (if (distributed-type? a)
+		     `(REGEVT ,x RID)
+		     `(REGEVT ,x)))]
 	      [(types-compat? (cadr entry) '(Signal 'a)) `(SIGEVT ,x)]
 	      [else (error 'get-segment "bad entry in comm-outputs table: ~s" entry)]
 	      )))
@@ -150,28 +168,31 @@
 	 ;; procedures rather than projections from Nodes in a "world"
 	 ;; region.
 	 (define (transform-expr expr)
-	   (define (Bind lhs ty annots rhs)
-	     `[,lhs ,(transform-type ty)
-	       ,(match rhs
-		  [world `(Timer ,(cadr (ASSERT (assq 'heartbeat annots))))]
-		  [,[Expr -> other] other])])
+	   (define (Bind bind)
+	     (match bind
+	       [[,lhs ,ty ,annots ,rhs]
+		`[,lhs ,(transform-type ty)
+		       ,(match rhs
+			  [world `(Timer ,(cadr (ASSERT (assq 'heartbeat annots))))]
+			  [,[Expr -> other] other])]]
+	       [,other (error 'transform-expr "bad binding: ~s" other)]))
 	   (define (Expr exp)
 	     (match exp
 	       [,x (guard (symbol? x) (not (regiment-constant? x)))
 		   (transform-varref x)]
-	      
 	       [(quote ,v) `(quote ,v)]
 	       [(lambda ,v* (,[transform-type -> ty*] ...) ,[body])
 		`(lambda ,v* ,ty* ,body)]
 	       [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-	       [(lazy-letrec ,bnds ,[bod])
-		(inspect bnds)
+	       [(lazy-letrec (,(Bind -> bnds) ...) ,[bod])
 	       ;; If there's just one binding we get rid of the letrec.	
 ;		(if (and (= 1 (length bnds)) (eq? bod (caar bnds)))
 	;	    (last (apply Bind (car bnds)))
-		`(lazy-letrec ,(map (lambda (b) (apply Bind b)) bnds) ,bod)]
+		`(lazy-letrec ,bnds ,bod)]
 
 	       [(rmap ,[fun] ,[reg]) `(smap ,fun ,reg)]
+	       [(nodeid ,_) `(my-id)]
+
 	       [(,p ,[x*] ...) (guard (regiment-primitive? p))
 		`(,p ,x* ...)]
 	       [,other (error 'transform-expr "unmatched: ~s" other)]
@@ -194,10 +215,11 @@
 	 (ASSERT (symbol? body))
 
 	 ;; Generate communication constructs for each of the communicating operations.
-	 (foldl 
+	 (let scanbinds ([binds binds])
+	   (foldl
 	     (match-lambda ([,lhs ,ty ,annots ,rhs] ,acc)
 	       ;; This is structured so as to insure we handle all comm-prims:
-	       (match rhs 
+	       (trace-match COMM? rhs 
 		 [(,commprim ,args ...) (guard (regiment-primitive? commprim)
 					       (memq commprim comm-prims))
 		  (match rhs
@@ -207,7 +229,7 @@
 		      (ASSERT (symbol? fun)) (ASSERT (symbol? reg))
 		      (cons 
 		       ;; Construct a top-level communication construct.
-		       `(TREEAGGR (OUTPUT ,lhs)
+		       `(AGGR (OUTPUT ,lhs)
 			      (VIA ,(cadr (ASSERT (assq 'tree annots))))
 			      (SEED ,(transform-expr seed))
 			      (FUN ,(transform-bind (assq fun binds)))
@@ -215,22 +237,30 @@
 		       ;; Continue the rest of the computation with this signal name.
 		       acc)]
 
+		    [(rdump ,reg)
+		     (ASSERT (symbol? reg))
+		     (cons
+		      `(DUMP (OUTPUT ,lhs)
+			     (VIA ,(cadr (ASSERT (assq 'tree annots))))
+			     (INPUT ,(transform-expr (get-segment reg))))
+		      acc)]
+
 		    ;; A khood becomes an "EMIT" -- tree formation.
 		    ;; For the time being this only works for constant radii:
 		    [(khood ,a (quote ,n))
-		      (ASSERT (symbol? a))
-		      (cons 
-		       `(TREEEMIT (OUTPUT ,lhs)
-			      (HOPS ,(ASSERT integer? n))
-			      (INPUT ,(transform-expr (get-segment a))))
-		       acc)]
+		     (ASSERT (symbol? a))
+		     (cons 
+		      `(EMIT (OUTPUT (REGEVT ,lhs (my-id)))
+			     (HOPS ,(ASSERT integer? n))
+			     (INPUT ,(transform-expr (get-segment a))))
+		      acc)]
 
 		     ;; These probably should have been desugared into an anchor-maximizing...
 		     ;[(anchor-at (quote ))		      ]
 
 		     ;; This should take a Region to restrict to....
 		     ;; Otherwise, what's it's cadence?
-		     [(anchor-maximizing-within ,fun ,reg)
+		     [(anchor-maximizing ,fun ,reg)
 		      (ASSERT (symbol? fun))
 		      (cons 
 		       `(ELECT (OUTPUT ,lhs)
@@ -240,12 +270,21 @@
 		       ;; Continue the rest of the computation with this signal name.
 		       acc)]
 
-		     [,other (error 'deglobalize "unmatched application of communicating primitive: ~s" other)]
-		     )]
-		 ;; Non comm-prim expressions do nothing:
+		     [,other (error 'deglobalize "unmatched application of communicating primitive: ~s" other)])]
+
+		 ;; Keep looking for communicating primitives inside lambdas: 
+		 [(lambda ,v* ,ty* (lazy-letrec ,binds ,bod))
+		  (ASSERT (symbol? bod))
+		  (append (scanbinds binds)
+			  acc)]
+		 [(lambda ,other ...)
+		  (error 'scanbinds "bad lambda form: ~s" `(lambda ,other ...))]
+
+		 ;; Other non-comm-prim expressions do nothing:
 		 [,else acc]))
-	   () binds)
-	 )])))
+	   () 
+	   binds
+	   )))])))
 
   ;; This is the main procedure for the pass itself.
   (define deglobalize2
@@ -274,9 +313,66 @@
   
   (define these-tests 
     `(
-      [(,transform-type 'Anchor) '(Signal #())]
+      [(,transform-type 'Anchor) (Signal #())]
+
+      ["A rfold a single anchor."
+       (process-letrec 
+	`(lazy-letrec (;[a Anchor () (anchor-at '30 '40)]
+		       [theworld Region ([heartbeat 300000]) world]
+		       [nid (Node -> Integer) () (lambda (n) (Node) (lazy-letrec ([res0 Integer () (nodeid n)]) res0))]
+		       [ank Anchor ([heartbeat 10000]) (anchor-maximizing nid theworld)]
+		       [tmp Region () (khood ank '2)]
+		       [read (Node -> Integer) ()
+			     (lambda (n) (Node) 
+				    (lazy-letrec ([res1 Integer () (sense 'temp n)]) res1))]
+		       [f (Integer Integer -> Integer) ()
+			  (lambda (a b) (Integer Integer) 
+				  (lazy-letrec ([res2 Integer () (+ a b)]) res2))]
+		       [v1 (Area Integer) () (rmap read tmp)]
+		       [v2 (Signal Integer) ([tree tmp]) (rfold f '39 v1)]
+		       )
+		      v2)
+	(empty-tenv) ())
+       unspecified
+       ]
+
+      ;; This doesn't work yet, need to manually write in the DFG.
+      #;
+      [" Rfold a region of regions."
+       (process-letrec 
+	`(lazy-letrec (
+		       [nid (Node -> Integer) () (lambda (nod) (Node) (lazy-letrec ([x0 Integer () (nodeid nod)]) x0))]
+		       [promote (Node -> Anchor) () (lambda (nod2) (Node) (lazy-letrec ([x1 Anchor () (node->anchor nod2)]) x1))]
+		       [nbrhood (Anchor -> Region) ()
+				(lambda (anc) (Anchor) (lazy-letrec ([thehood Region () (khood anc '2)]) thehood))]
+		       [plus (Integer Integer -> Integer) () 
+			     (lambda (a b) (Integer Integer) (lazy-letrec ([x2 Integer () (+ a b)]) x2))]
+
+		       [mapnid (Region -> (Area Integer)) () 
+			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Integer) () (rmap nid r)]) x3))]
+		       [foldplus ((Area Integer) -> (Signal Integer)) () 
+				 (lambda (r) (Area Integer) (lazy-letrec ([thefold (Signal Integer) () (rfold plus '0 r)]) 
+									 thefold))]
+
+		       [theworld Region ([heartbeat 300000]) world]
+		       [clusters (Area Region) () (rmap nbrhood theworld)]
+		       [ids (Area (Area Integer)) () (rmap mapnid clusters)]
+		       [sums (Area Integer) () (rmap foldplus ids)]
+		       [result (Signal Integer) ([tree thehood]) (rdump sums)]
+		       )
+		      result)
+	(empty-tenv) ())
+       unspecified]
+      
       ))
-  
+
+  (define test-this (default-unit-tester 
+		      "Deglobalize2: transform Regiment into node-level stream-processing and communication constructs."
+		      these-tests
+		      ))
+  (define test-deglobalize2 test-this)
+
+
   ;;======================================================================
 
 
@@ -295,24 +391,13 @@
  ()
 )
 
+
+
 #;
-(process-letrec 
- `(lazy-letrec (;[a Anchor () (anchor-at '30 '40)]
-		[theworld Region ([heartbeat 300000]) world]
-		[nid (Node -> Integer) () (lambda (n) (Node) (nodeid n))]
-		[ank Anchor ([heartbeat 10000]) (anchor-maximizing-within nid theworld)]
-		[tmp Region () (khood ank '2)]
-		[read (Node -> Integer) ()
-		      (lambda (n) (Node) (sense 'temp n))]
-		[f (Integer Integer -> Integer) ()
-		   (lambda (a b) (Integer Integer) (+ a b))]
-		[v1 (Area Integer) () (rmap read tmp)]
-		[v2 (Signal Integer) ([tree tmp]) (rfold f '39 v1)]
-		)
-	       v2)
- (empty-tenv)
- ()
-)
+(rdump (rmap (rfold + 0)
+	     (rmap (rmap nodeid)
+		   (rmap (lambda (n) (khood (node->anchor n) 2))
+			 world))))
 
 
 
@@ -346,6 +431,79 @@
 
 
 ; ======================================================================
+
+; ==============================================================================
+
+
+) ;; End module
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#|	     
+	     (define  (loop var)
+	       (define bnd (assq var binds))
+	       (unless bnd (error 'get-segment "var '~a' not in binds: ~s" var binds))
+	       (match bnd
+		 [(,lhs ,ty ,annots ,rhs)
+		  (match rhs ;; No match-recursion here.
+		    ;;		[,v (guard (regiment-constant? v)) ]
+
+		    ;; Variable references are either "local" or references to 
+		    ;; the output of other communication expressions.		    
+		    [,x (guard (symbol? x))   
+			(list `[,lhs ,ty ,(process-varref x)])]
+
+		    ;; This gets imported whole-hog into the segment
+		    [(lambda ,v* ,ty* ,body)  (list `[,lhs ,ty ,rhs])]
+
+		    [(rmap ,fun ,reg)
+		     (ASSERT (symbol? fun))
+		     (let ([newty (match ty
+				    [Region (Signal #())] ; Sig Unit
+				    [(Area ,alpha) `(Signal ,alpha)] ; Areas become local signals.
+				    [,other (error 'get-segment "bad type for rmap output: ~s" other)])])
+		       (append  `([,lhs ,ty (smap ,fun ,(process-varref reg))]) 
+				;; Gather all the code that goes into fun and the Area.
+				(loop fun) (loop reg)))]
+
+		    [(smap ,fun ,sig)      
+		     (ASSERT (symbol? fun))
+		     (append `([,lhs ,ty (smap ,fun ,(process-varref sig))]) 
+			     (loop fun) (loop sig))]
+
+		    ;; This breaks the segment.
+		    [(,commprim ,args ...) (guard (regiment-primitive? commprim)
+						  (memq commprim comm-prims))
+		     ()]
+		    
+		    [,other (error 'get-segment "bad rhs: ~s" other)]
+		    )]
+		 [#f '????]))
+	   (let ([binds (reverse (loop var))])
+	     (if (null? binds) 
+		 (process-varref var)		 
+		 `(let* ,binds ,(process-varref var)))))
+
+|#
+
+
+
+
+
 
 #;
 (process-expr
@@ -402,7 +560,6 @@
 				       (tenv-extend tenv (list lhs) (list ty))
 				       (lambda (y) 
 					 `(let* ([,lhs ,ty ,x]) ,y)))))]
-	
 #|
 	;; Don't need to make a new token name, the name of this
 	;; function is already unique:
@@ -477,70 +634,3 @@
 		unmatched)])
       ))
 
-; ==============================================================================
-
-
-) ;; End module
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#|	     
-	     (define  (loop var)
-	       (define bnd (assq var binds))
-	       (unless bnd (error 'get-segment "var '~a' not in binds: ~s" var binds))
-	       (match bnd
-		 [(,lhs ,ty ,annots ,rhs)
-		  (match rhs ;; No match-recursion here.
-		    ;;		[,v (guard (regiment-constant? v)) ]
-
-		    ;; Variable references are either "local" or references to 
-		    ;; the output of other communication expressions.		    
-		    [,x (guard (symbol? x))   
-			(list `[,lhs ,ty ,(process-varref x)])]
-
-		    ;; This gets imported whole-hog into the segment
-		    [(lambda ,v* ,ty* ,body)  (list `[,lhs ,ty ,rhs])]
-
-		    [(rmap ,fun ,reg)
-		     (ASSERT (symbol? fun))
-		     (let ([newty (match ty
-				    [Region (Signal #())] ; Sig Unit
-				    [(Area ,alpha) `(Signal ,alpha)] ; Areas become local signals.
-				    [,other (error 'get-segment "bad type for rmap output: ~s" other)])])
-		       (append  `([,lhs ,ty (smap ,fun ,(process-varref reg))]) 
-				;; Gather all the code that goes into fun and the Area.
-				(loop fun) (loop reg)))]
-
-		    [(smap ,fun ,sig)      
-		     (ASSERT (symbol? fun))
-		     (append `([,lhs ,ty (smap ,fun ,(process-varref sig))]) 
-			     (loop fun) (loop sig))]
-
-		    ;; This breaks the segment.
-		    [(,commprim ,args ...) (guard (regiment-primitive? commprim)
-						  (memq commprim comm-prims))
-		     ()]
-		    
-		    [,other (error 'get-segment "bad rhs: ~s" other)]
-		    )]
-		 [#f '????]))
-	   (let ([binds (reverse (loop var))])
-	     (if (null? binds) 
-		 (process-varref var)		 
-		 `(let* ,binds ,(process-varref var)))))
-
-|#
