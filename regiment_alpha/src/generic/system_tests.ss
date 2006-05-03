@@ -99,13 +99,56 @@
 		    (eq? 'world (cadr (deep-assq 'VIA decls)))
 		    
 		    ))]
-	   
+
 	   ["deglobalize2: Aggreate nodeids over a single khood"
 	    (,test-deglob2 
 	     '(rfold + 0 (rmap nodeid (khood (anchor-maximizing nodeid world) 2))))
-	    unspecified
+	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))
+	       (and (set-eq? (map car decls) '(ELECT EMIT AGGR))
+		    ;; Do we aggregate using the local tree?
+		    (substring? "khood" (symbol->string (cadr (deep-assq 'VIA (deep-assq 'AGGR decls)))))
+		    ;; Elect plugs into the Emit:
+#;
+		    (inspect (list (cadr (deep-assq 'OUTPUT (deep-assq 'ELECT decls)))
+				   (cadr (deep-assq 'INPUT (deep-assq 'EMIT decls)))))
+		    #;
+		    (equal? (cadr (deep-assq 'OUTPUT (deep-assq 'ELECT decls)))
+			    (cadr (deep-assq 'INPUT (deep-assq 'EMIT decls))))
+		    ;; And EMIT plugs into the Aggregation:
+		    (match (list (cadr (deep-assq 'OUTPUT (deep-assq 'ELECT decls)))
+				 (deep-assq 'REGEVT (deep-assq 'INPUT (deep-assq 'EMIT decls))))
+		      [((REGEVT ,rn1 ,e) (REGEVT ,rn2 ,id))
+		       (and (symbol? id) (symbol? rn1) (symbol? rn2)
+			    (eq? rn1 rn2)
+			    )
+		       ]
+		      [,other 
+		       (void)
+		       ;(inspect other)
+		       ])
+		    ))]
+#;
+	   ["deglobalize2: Now aggregate over a locally formed nested regions"
+	    (,test-deglob2 
+	     '(rdump (rmap (lambda (r) (rfold + 0 r))
+			   (rmap (lambda (r) (rmap nodeid r))
+				 (rmap (lambda (n) (khood (node->anchor n) 2))
+				       (rfilter (lambda (n) (= (nodeid n) 22))				  
+						world))))))
+	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))
+	       (inspect decls)
+	       
+	       )
 	    ]
 
+#; ;; Curried version.
+'(rdump (rmap (rfold + 0)
+			   (rmap (rmap nodeid)
+				 (rmap (lambda (n) (khood (node->anchor n) 2))
+				       (rfilter (lambda (n) (= (nodeid n) 22))				  
+						world)))))
+
+	  
 	   )
 	 )
 

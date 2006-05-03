@@ -393,13 +393,6 @@
 
 
 
-#;
-(rdump (rmap (rfold + 0)
-	     (rmap (rmap nodeid)
-		   (rmap (lambda (n) (khood (node->anchor n) 2))
-			 world))))
-
-
 
 #;
 (rc '(rfold + 0 (rmap (lambda (n) (sense 'temp n)) world)) 'verbose)

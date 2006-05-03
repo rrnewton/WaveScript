@@ -335,39 +335,64 @@
 ;; function that does the real work of the compiler, and then wraps it
 ;; with some extra debugging code.
 ;; <br><br>
-;; Todo, add invariant-procedures as well as grammars:
+;;
+;; Both the input and output specifiers can contain grammars that
+;; constrain the input/output language, or predicate procedures
+;; (assertions) which are gateways that the input and output must pass.
+;;
+;; .param input-spec must be of the form: <br>
+;;   (input <(grammar <gram> <start>) | (assert <proc>)> ...)
+;;
+;; .param output-spec must be of the (similar) form:<br>
+;;   (output <(grammar <gram> <start>) | (assert <proc>)> ...)
 (define (build-compiler-pass name input-spec output-spec transform)  
   (match (list input-spec output-spec)
     [((input ,instuff ...) (output ,outstuff ...))
      (let ([closure 
 	    (lambda (prog)
-	      (let ([ingram (assq 'grammar instuff)]
-		    [outgram (assq 'grammar outstuff)])
-		;; Check input grammar:
-		(DEBUGMODE ;; When we're not in debugmode we don't waste cycles on this.
-		 (match ingram
-		   [#f (void)]
-		   ;; The optional initial production may or may not be supplied:
-		   [(grammar ,gram ,optional_initialprod ...)
-		    (or (apply check-grammar prog gram optional_initialprod)
-			(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]))
-		(let ((result (transform prog)))
-		  (DEBUGMODE
-		   (if (regiment-verbose) 
-		       (printf "~a: Got result, checking output grammar...\n" name))
-		   ;; Check output grammar:	   
-		   (match outgram
-		     [#f (void)]
-		     ;; The optional initial production may or may not be supplied:
-		     [(grammar ,gram ,optional_initialprod ...)
-		      (or (apply check-grammar result gram optional_initialprod)
-			  (begin (pretty-print result) #f)
-			  (error 'build-compiler-pass "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
-				 name prog))])
-		   (if (regiment-verbose)
-		       (printf "~a: Output grammar passed.\n" name)))
-		  result
-		  )))])
+	      ;; Only in DEBUGMODE do we add extra checks.
+	      (DEBUGMODE 
+	       (for-each (lambda (inspec)
+			   (match inspec
+			     ;; The optional initial production may or may not be supplied:
+			     [(grammar ,g ,initialprod ...)
+			      (unless (apply check-grammar prog gram optional_initialprod)
+				(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]
+			     [(assert ,f)
+			      (unless (f prog)
+				(set-top-level-value! 'failed-pass-input prog)
+				(error 'build-compiler-pass 
+				       "pass ~s failed input-invariant ~s, failed input stored in 'failed-pass-input" name f))]
+			     [,other (error 'build-compiler-pass "bad input spec: ~s" other)]
+			     ))
+		 instuff))	     
+	      ;; Now execute the pass itself:
+	      (let ((result (transform prog)))
+		(DEBUGMODE
+		 (for-each (lambda (outspec)
+			     (match outspec
+			       ;; Check output grammar:	   
+			       [(grammar ,gram ,optional_initialprod ...)
+				(if (regiment-verbose) 
+				    (printf "~a: Got result, checking output grammar...\n" name))
+				(or (apply check-grammar result gram optional_initialprod)
+				    (begin (pretty-print result) #f)
+				    (error 'build-compiler-pass 
+					   "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 
+					   name prog))
+				(if (regiment-verbose)
+				    (printf "~a: Output grammar passed.\n" name))]
+			       [(assert ,f)
+				(unless (f prog)
+				  (set-top-level-value! 'failed-pass-output prog)
+				  (error 'build-compiler-pass 
+					 "pass ~s failed output-invariant ~s pass output stored in 'failed-pass-output" name f))]
+			       [,other (error 'build-compiler-pass "bad output spec: ~s" other)]
+			       ))
+		   outstuff))
+		;; Return final result:
+		result))])
+       ;; Add pass to global pass-table and return:
        (set! regiment-pass-name-table
 	     (cons `[,closure ,name] regiment-pass-name-table))
        closure
@@ -997,6 +1022,24 @@
        [(app ,[opera*] ...)
 	(apply append opera*)]
        [,else (error 'regiment-free-vars "not simple expression: ~s" expr)]))))
+
+
+;; This returns ALL symbols used by the program.  The result is a list that may contain duplicates.
+(define (regiment-all-vars expr)
+  (list->set 
+   (let loop ((env ()) (expr expr))
+     (match expr	 
+       [,var (guard (symbol? var)) (list var)]
+       [(quote ,x) '()]
+       [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+	(apply append rand*)]
+       [(lambda ,v* ,[bod]) (append v* bod)]
+       [(lambda ,v* ,ty* ,[bod]) (append v* bod)]
+       [(,letrec ([,lhs* ,extras ... ,[rhs*]] ...) ,[bod]) (memq letrec '(letrec lazy-letrec))
+	(apply append lhs* bod rhs*)]
+       [(app ,[opera*] ...) (apply append opera*)]
+       [,else (error 'regiment-all-vars "unhandled expression: ~s" expr)]))))
+
 
 ; ======================================================================
 
