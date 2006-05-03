@@ -263,6 +263,8 @@
     (- (Integer Integer) Integer) 
     (* (Integer Integer) Integer) 
     (/ (Integer Integer) Integer) 
+    (^ (Integer Integer) Integer)
+
     (max (Number Number) Number)
     (min (Number Number) Number)
     (abs (Number) Number)

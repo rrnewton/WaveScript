@@ -107,7 +107,7 @@
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'cleanup-token-machine
    `(input)
-   `(output );;; (grammar ,full_but_clean_tml PassInput)) ;; [2006.01.18] Temporarily disabled.
+   `(output (grammar ,full_but_clean_tml PassInput)) ;; [2006.01.18] Temporarily disabled.
   (let ()
 
     ;; Uses constants DEFAULT_SUBTOK and DEFAULT_SUBTOK_VAR
@@ -259,7 +259,7 @@
 
 	     ;; Cleanup does not verify that this is a valid stored-reference.
 	     ;; That's done elsewhere:
-	     ;; Further this even allows numeric as well as symbolic indices.
+	     ;; Further this even allows numeric as well as symbolic indices. (!!)
 	     [(ext-ref ,t ,v) `(ext-ref ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v)]
 	     [(ext-set! ,t ,v ,[x]) `(ext-set! ,(if (tokname? t) `(tok ,t ,DEFAULT_SUBTOK) (loop t)) ,v ,x)]
 

@@ -127,6 +127,7 @@
 		       ;(inspect other)
 		       ])
 		    ))]
+
 #;
 	   ["deglobalize2: Now aggregate over a locally formed nested regions"
 	    (,test-deglob2 
@@ -1987,8 +1988,8 @@
 	   [SOC-start () (leds on green) (gemit tree)]
 	   [tree () (grelay)]
 	   [node-start () (elect-leader tok1 crit comp)]
-	   [crit () (vector (float->int (locdiff '(0 30) (loc)))
-			    (float->int (locdiff '(60 30) (loc))))]
+	   [crit () (vector (float->int (locdiff (cons '0 (cons '30 '())) (loc)))
+			    (float->int (locdiff (cons '60 (cons '30 '())) (loc))))]
 	   [comp (a b)
 #;		   (if (and (> (vector-ref a 0) (vector-ref b 0))
 			    (> (vector-ref a 1) (vector-ref b 1)))
