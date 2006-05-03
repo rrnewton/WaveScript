@@ -23,3 +23,7 @@ Export useful things from helpers.ss to my generic utility files, including:
   default-unit-tester
   display-constrained
 
+[2006.05.02]
+
+ *) Unit tests for deglobalize2
+ *) 
