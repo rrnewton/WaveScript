@@ -39,11 +39,36 @@
 ;	   process-expr
 	   process-letrec
 
+	   deglobalize2-grammar
+
 	   ;; TEMP:
 	   transform-type
            )
 
   (chezimports (except hm_type_inference test-this these-tests))
+
+  
+  (define deglobalize2-grammar
+    (let ([newbinds 	   
+	   `(
+	     [Comm ('AGGR ('OUTPUT ('SIG Var))
+			  ('VIA (REG Var Expr))
+			  ('SEED Expr)
+			  ('FUN Decl) 
+			  ('INPUT ))]
+	     
+	     [Comm ('EMIT   
+		    `(EMIT (OUTPUT (REGEVT ,lhs (my-id)))
+			     (HOPS ,(ASSERT integer? n))
+			     (INPUT ,(transform-expr (get-segment a))))
+
+		    )]
+	     
+	     [Comm ('ELECT 
+		    )])])
+      newbinds
+      ))
+  
 
   ;; This transforms Regions and removes Nodes.
   (define (transform-type ty)

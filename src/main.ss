@@ -165,7 +165,7 @@
 	      (if verbose
 		  (begin
 		    (printf ";===============================================================================\n")
-		    (printf "~a:\n\n" (car names))))
+		    (printf "~a:\n\n" (regiment-pass->name (car names)))))
 	      (let ((result ((car funs) p)))
 		(when verbose
 		  (pretty-print result) (newline))
