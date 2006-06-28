@@ -48,8 +48,11 @@
 ;=======================================================================
 
 (define static-elaborate
-  (let ()
-
+  (build-compiler-pass 'static-elaborate
+   `(input )
+   `(output 
+     )
+   (let ()
     (define computable-prims 
       '(+ - * / car cons cdr
 	  = < <= > >= 
@@ -91,7 +94,8 @@
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
     ;; TODO FINISH:
-    #;(define count-app-refs
+    #;
+    (define count-app-refs
       (lambda (v expr)
         (match expr
           [(quote ,datum) 0]
@@ -152,7 +156,7 @@
 
     ;;   The "env" argument binds names to *code*.  Or if the code is
     ;; unavailable, to *void*.
-    (define process-expr
+    (define process-expr           
       (lambda (expr env)
 	;(printf "ENV: ~a ~a\n" expr env)
 	(letrec ([available? ;; Is this value available at compile time.
@@ -274,7 +278,7 @@
 	   (if (equal? oldbody body)	   
 	       `(,input-language '(program ,body ,type))
 	       (loop body (process-expr body '()))))]
-	))))
+	)))))
 
 
 (define these-tests 

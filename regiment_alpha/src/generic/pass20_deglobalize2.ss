@@ -46,29 +46,44 @@
            )
 
   (chezimports (except hm_type_inference test-this these-tests))
-
   
+  ;; UNFINISHED:
   (define deglobalize2-grammar
     (let ([newbinds 	   
 	   `(
+	     ;; Expressions may now contain inputs from streams.
+	     [Expr ('SIG_in Var)]  ;; Has type Signal 'a
+	     [Expr ('REG_in Var Var)] ;; Has type Signal Integer -- the integers represent the dynamic Region IDs.
+	     [Program ('program ('commdecls Comm ...))]
+
+	     ;; TODO! Need some extra types in this grammar:
 	     [Comm ('AGGR ('OUTPUT ('SIG Var))
 			  ('VIA (REG Var Expr))
 			  ('SEED Expr)
-			  ('FUN Decl) 
-			  ('INPUT ))]
-	     
-	     [Comm ('EMIT   
-		    `(EMIT (OUTPUT (REGEVT ,lhs (my-id)))
-			     (HOPS ,(ASSERT integer? n))
-			     (INPUT ,(transform-expr (get-segment a))))
+			  ('FUN [Var Type Expr])
+			  ('INPUT Expr))]
+	     [Comm ('EMIT ('OUTPUT (REG Var Expr))
+			  ('HOPS Num) ;; Should allow Expr!
+			  ('INPUT Expr))]
+	     [Comm ('ELECT ('OUTPUT (REG Var Expr))
+			   ('SCOREFUN [Var Type Expr])
+			   ('INPUT Expr))]
+	     )]
+	  ;; Prune down the regiment grammar.
+	  [pruned 
+	   (filter (lambda (prod)
+		     (match prod
+		       [(Prim (quote ,p)) 
+			;; The only "distributed" primitives allowed after this pass 
+			;; are smap and sfilter.
+			(or (memq p '(smap sfilter))	
+			    (not (distributed-primitive? p)))]
+		       ;; Also take off the Program production
+		       [(Program ,_ ...) #f]
+		       [,else #t]))
+	     initial_regiment_grammar)])
+      (append newbinds pruned)))
 
-		    )]
-	     
-	     [Comm ('ELECT 
-		    )])])
-      newbinds
-      ))
-  
 
   ;; This transforms Regions and removes Nodes.
   (define (transform-type ty)
