@@ -223,7 +223,8 @@
 	     [(pass x)
 	      (let ((prog  x))
 		(parameterize ((pass-list (list-remove-after (eval pass) (pass-list)))
-				 (tracer #t))
+			       ;(tracer #t)
+			       )
 		  (test-one prog #f #f)))]
 	     [(x) (loop (rac (pass-list)) x)])))
     loop))
@@ -239,7 +240,7 @@
 ;; Token and later compiler:
 (define (tr x)  ;; shorthand
   (let ((prog  x))
-    (parameterize ((tracer #t)
+    (parameterize (;(tracer #t)
 		   (game-eval (lambda args 'unspecified))
 		   (host-eval (lambda args 'unspecified)))
       (parameterize ((pass-list (cdr (list-remove-before 'deglobalize (pass-list)))))

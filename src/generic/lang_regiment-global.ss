@@ -1,6 +1,7 @@
 
 ;; UNDER CONSTRUCTION:
 
+;; NOTE: For now I'm usisng 'base-language in language-mechanism.ss
 
 ;; [2006.04.24] TODO:
 ;; Define a new global-simulation that uses the actual sensor stubs to populate the streams.

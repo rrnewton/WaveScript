@@ -356,7 +356,7 @@
 			   (match inspec
 			     ;; The optional initial production may or may not be supplied:
 			     [(grammar ,g ,initialprod ...)
-			      (unless (apply check-grammar prog gram optional_initialprod)
+			      (unless (apply check-grammar prog g initialprod)
 				(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]
 			     [(assert ,f)
 			      (unless (f prog)

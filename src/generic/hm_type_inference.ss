@@ -13,6 +13,10 @@
 
 ;; See the primitive type definitions in prim_defs.ss
 
+;; Primary ENTRY POINTS are:
+;;  type-expression
+;;  annotate-expression
+
 
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
 ;; type aliases.  This will remove most of the need for types-compat?
@@ -72,6 +76,8 @@
            
 	   annotate-expression
 	   annotate-program
+	   
+	   print-var-types
 
 	   types-compat?
 
@@ -435,7 +441,8 @@
 ;;
 ;; .param exp - expression
 ;; .param tenv - type environment 
-;; .param nongeneric - list of type variables that appear in lambda-arguments.
+;; .param nongeneric - list of type variables that appear in lambda-arguments. (as opposed to lets)
+;; .returns 2 values - annotated expression and expression's type
 (define (annotate-expression exp tenv nongeneric)
   (let l ((exp exp))
     (match exp 
@@ -452,6 +459,13 @@
        (types-equal! tt 'Bool te) ;; This returns the error message with the annotated expression, oh well.
        (types-equal! ct at exp)
        (values `(if ,te ,ce ,ae) ct)]
+      
+      ;; Wavescope: this could be a set! to a state{} bound variable, not s
+      [(set! ,v ,[l -> e et])  (values `(set! ,v ,e) #())]
+      [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
+       (let ([expr `(for [,i ,start ,end] ,bod)])
+	 (unless (types-compat? st et) (raise-type-mismatch start end expr))
+	 (values expr #()))]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
@@ -468,12 +482,29 @@
       ;; Optional type annotations uninterpreted currently!!.
       [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod tenv nongeneric)]
       
-      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      [(letrec ([,id* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]      
-      [(lazy-letrec ([,id* ,type* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]
-      ;; Allowing annotations, but ignoring them.
-      [(lazy-letrec ([,id* ,type* ,annots* ,rhs*] ...) ,bod)   (annotate-letrec id* rhs* bod tenv nongeneric)]
+      [(let ([,id* ,ty?ignored!! ... ,rhs*] ...) ,bod)
+       (annotate-let id* rhs* bod tenv nongeneric)]
+      [(begin ,[l -> exp* ty*] ...)
+       (values `(begin ,@exp*) (last ty*))]
+      [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
+       ;; For now assume i is an integer...
+       (types-equal! ty1 'Integer exp)
+       (types-equal! ty2 'Integer exp)
+       (let ([tenv (tenv-extend tenv (list i) '(Integer) #f)])
+	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
+	   (values `(for (,i ,start ,end) ,bod) ty)))]
 
+      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
+      ;; Allowing annotations, but ignoring them.
+      [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
+       (annotate-letrec id* rhs* bod tenv nongeneric)]
+;       [(,letrec ([,id* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
+;        (annotate-letrec id* rhs* bod tenv nongeneric)]
+;       [(,letrec ([,id* ,type* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
+;                                                  (annotate-letrec id* rhs* bod tenv nongeneric)]
+;       [(,letrec ([,id* ,type* ,annots* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
+;                                                           (annotate-letrec id* rhs* bod tenv nongeneric)]
+      
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
@@ -488,6 +519,7 @@
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
+       (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,rand* ...))]
 
       [,other (error 'annotate-program "could not type, unrecognized expression: ~s" other)]
@@ -509,7 +541,18 @@
         (values `(lambda ,ids ,argtypes ,newbod)
                 `(,@argtypes -> ,bodtype))))))
 
+;; [2006.07.18] WS: This is for plain-old lets.  No recursion.
+(define annotate-let
+  (lambda (id* rhs* bod tenv nongeneric)
+    (define (f e) (annotate-expression e tenv nongeneric))
+    (match rhs*
+      [(,[f -> newrhs* rhsty*] ...)
+       (let ([tenv (tenv-extend tenv id* rhsty* #t)])
+	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
+	   (values `(let ([,id* ,rhsty* ,newrhs*] ...) ,bod) bodty)))])))
+
 ;; Assign a type to a Regiment letrec form.  
+;; .returns 2 values: annoted expression and type
 (define annotate-letrec 
   (let ([map-ordered2 
          (lambda (f ls1 ls2)
@@ -542,15 +585,32 @@
   (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
     ;; Now strip mutable cells from annotated expression.
     (values 
-     (match e
+     (match e ;; match-expr
+       [,c (guard (constant? c)) c]
+       [(quote ,c)       `(quote ,c)]
+       [,prim (guard (symbol? prim) (regiment-primitive? prim))
+	      prim]
        [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
        [(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
        [(tuple ,[e*] ...) `(tuple ,e* ...)]
        [(tupref ,n ,[e]) `(tupref ,n ,e)]
+       [(set! ,v ,[e]) `(set! ,v ,e)]
+       [(begin ,[e] ...) `(begin ,e ...)]
+       [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+       [(let ([,id* ,t* ,[rhs*]] ...) ,[bod])
+	`(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
        [(letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
 	`(letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
-       [(,[rat] ,[rand*] ...) `(,rat ,rand* ...)]
-       [,other other])   ; don't need to do anything here...
+       [(app ,[rat] ,[rand*] ...) `(,rat ,rand* ...)]
+
+      [(,prim ,[rand*] ...)
+       (guard (regiment-primitive? prim))
+       `(,prim ,rand* ...)]
+
+       ;; We cheat for nums, vars, prims:
+       [,other other]; don't need to do anything here...
+;       [,other (error 'annotate-program "bad expression: ~a" other)]
+       )
      (export-type t))))
       
 ; ======================================================================
@@ -618,7 +678,8 @@
 	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp))
 	  xargs yargs)
 	(types-equal! x y exp)]
-       [,other (error "procedure type ~a does not match: "
+       [,other (error 'types-equal!
+		      "procedure type ~a does not match: ~a"
 		      `(,@yargs -> ,y) other)])]
     [,otherwise (raise-type-mismatch t1 t2 exp)]))
 		   
@@ -652,6 +713,59 @@
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
     ))
+
+
+; ======================================================================
+;; Printing the type-signatures inside a large expressions:
+
+#|
+magnitude : foo -> bar
+  x : int
+  y : int
+  anon (v: int, w: z -> ...)
+
+
+  flub : foo -> baz
+    z : float
+    b : queue
+|#
+
+;; Prints a type in an ML-ish way rather than the raw sexp.
+(define (print-type t)
+  00
+  )
+
+(define (print-var-types exp . p)
+  (let ([port (if (null? p) (current-output-port) (car p))])
+    
+    (define (get-var-types exp)
+      (match exp ;; match-expr
+       [,c (guard (constant? c)) '()]
+       [,var (guard (symbol? var))  `()]       
+       [(quote ,c)       '()]
+       [(set! ,v ,[e]) e]
+       [(if ,[t] ,[c] ,[a]) (append t c a)]
+       [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
+	(guard (memq let '(let letrec lazy-letrec)))
+	(apply append 
+	       (map (lambda (id t rhsls)
+		      `([type ,id t ,rhsls]))
+		 id* t* rhs*))]
+       [(lambda ,v* ,t* ,[bodls])   bodls]
+       [(tuple ,[e*] ...) (apply append e*)]
+       [(tupref ,n ,[e]) e]
+	[(begin ,[e*] ...) (apply append e*)]
+	[(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Integer ()] bodls)]
+	[(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
+	[(,prim ,[rand*] ...)
+	 (guard (regiment-primitive? prim))
+	 (apply append rand*)]
+	[,other (error 'print-var-types "bad expression: ~a" other)]))
+
+    ;(get-var-types
+    (inspect (get-var-types exp))
+    
+      ))
 
 
 ; ======================================================================

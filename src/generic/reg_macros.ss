@@ -94,7 +94,8 @@
 	   (e end))
        (do ([v s (fx+ v 1)])
 	   ((fx> v e))
-	 expr ...))]))
+	 (let ()
+	   expr ...)))]))
 
 (define-syntax ^
   (lambda (x)

@@ -1,5 +1,6 @@
 
-;;; language definition mechanism:
+;; language definition mechanism:
+;; Binds a top-level procedure to either eval, print, return, or use the mini lanugage bindings.
 (define define-language
   (lambda (name def)
     (define-top-level-value

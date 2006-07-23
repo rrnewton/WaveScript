@@ -84,9 +84,26 @@
     (-. (Float Float) Float)
     (*. (Float Float) Float)
     (/. (Float Float) Float)
+
+    (+: (Complex Complex) Complex)
+    (-: (Complex Complex) Complex) 
+    (*: (Complex Complex) Complex) 
+    (/: (Complex Complex) Complex)
+    
+    (int_to_float (Integer) Float)
+
+    (realpart (Complex) Float)
+    (imagpart (Complex) Float)
+
     (max ('a 'a) 'a)
     (min ('a 'a) 'a)
     (abs (Integer Integer) Integer)
+
+    (cos (Float) Float)
+    (sin (Float) Float)
+
+    (sqrt (Float) Float)
+    (sqr (Float) Float)
 
     ;(vector ('a ...) (Array 'a))
     ;(make-vector (Object Integer) Array)
@@ -138,6 +155,13 @@
   '(
     (world          Region)
     (anchor         Anchor)
+
+    (pi             Float)
+
+    ;; Adding Wavescope-related primitives:
+    (nullseg        (Sigseg 'a))
+    (nullarr        (Array 'a))  ;; This is weird... ML doesn't have it.
+    
     ))
 
 ;; These are the distributed primitives.  The real Regiment combinators.
@@ -213,6 +237,50 @@
     (rwhen-any        (('a -> Bool) (Area 'a))       (Event #())) ; Could carry the winning value.
     (swhen-any        (('a -> Bool) (Signal 'a))     (Event #()))
     (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
+
+    ;; ========================================
+    ;; Adding Wavescope-related primitives:   
+
+    ;; This doesn't carry a time value, it just "fires" every 
+    (timer            (Integer) (Signal #()))
+
+    ;; Takes channel, window size, overlap:
+    (audio            (Integer Integer Integer) (Signal (Sigseg Integer)))
+    (fft              ((Array Integer))  (Array Integer))
+
+    ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
+    (break            () #())
+    (emit             ('a) #())
+    (error            (String) 'a)
+
+    (newarr           (Integer 'a) (Array 'a))
+    (arr-get          ((Array 'a) Integer) 'a)
+    (arr-set!         ((Array 'a) Integer 'a) #())
+    (length           ((Array 'a)) Integer)
+
+    ;; Only one-to-one output for now (Don't have a Maybe type!).
+;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
+;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+    (iterate        (('in -> 'out) (Signal 'in))           (Signal 'out))
+    (deep-iterate   (('in -> 'out) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+
+    ;; Creates a windowed (segmented) signal from a raw signal:
+    (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
+
+    (to_array         ((Sigseg 'a))  (Array 'a))
+    
+    ;; Can only append two subrefs that are part of the same physical timeseries.
+    (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
+    (subseg          ((Sigseg 'a) Integer Integer) Integer)
+    ;; Uses 0-N access, don't need to know seg-start:
+    (seg-get          ((Sigseg 'a) Integer) 'a)
+    (width        ((Sigseg 'a)) Integer)
+    
+    ;; Returns absolute sample indexes.
+    (start        ((Sigseg 'a)) Integer)
+    (end          ((Sigseg 'a)) Integer)
+    ;; Returns timebase:
+    (seg-timebase     ((Sigseg 'a)) Timebase)
 
 ;     neighbors 
 ;    time-of

@@ -1,0 +1,465 @@
+;; An interactive calculator inspired by the calculator example in the bison manual.
+
+;; Import the parser and lexer generators.
+(require (lib "yacc.ss" "parser-tools")
+         (lib "lex.ss" "parser-tools")
+         (lib "pretty.ss")
+         "plt/iu-match.ss"
+         "plt/helpers.ss"
+         ;"plt/prim_defs.ss"
+         (prefix : (lib "lex-sre.ss" "parser-tools")))
+
+(define-empty-tokens op-tokens 
+   (LeftParen RightParen
+    LeftBrace RightBrace
+    LeftAngleBrk RightAngleBrk 
+    LeftSqrBrk RightSqrBrk
+   
+    + - * / ^ : := -> = == != >= <= < > <-
+    +. -. *. /. ^. 
+    NEG APP SEMI COMMA DOT DOTBRK BAR BANG
+    fun for to emit deep_iterate iterate state map in if then else true false break ; Keywords 
+    ;SLASHSLASH NEWLINE 
+    EOF ))
+(define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR CHAR STRING))
+
+(define-lex-abbrevs (lower-letter (:/ "a" "z"))
+                    (upper-letter (:/ #\A #\Z))
+  ;; (:/ 0 9) would not work because the lexer does not understand numbers.  (:/ #\0 #\9) is ok too.
+                    (digit (:/ "0" "9"))
+                    (variable (:seq (:or lower-letter upper-letter "_")
+                                    (:* (:or lower-letter upper-letter "_" digit)))))
+
+(define ws-lex
+  (lexer-src-pos
+   [(eof) 'EOF]
+   ;; Ignore all whitespace:
+   [(:or #\tab #\space #\newline) (return-without-pos (ws-lex input-port))]
+   ;; Throw out the rest of the line:
+   ;["//" 'SLASHSLASH]
+   
+   ;; WARNING: These recursive calls produce NESTED position tokens... only the inner one is valid!!
+   ["//" (begin (read-line input-port) (return-without-pos (ws-lex input-port)))]
+   ["/*" (begin (read-balanced "/*" "*/" input-port 1) (return-without-pos (ws-lex input-port)))]
+;   ["(*" (begin (read-balanced "(*" "*)" input-port 1) (return-without-pos (ws-lex input-port)))]
+   
+   ;; Since (token-=) returns '=, just return the symbol directly
+   [(:or "=" "+" "-" "*" "/" "^" "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
+         "+." "-." "*." "/." "^.")
+    (string->symbol lexeme)]
+   ;; Keywords: 
+   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state" "map" "in" "if" "then" "else" "true" "false" )
+    (string->symbol lexeme)]
+   
+   [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
+   [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
+   [(:seq "\"" (:* (:- any-char "\"")) "\"") (token-STRING (substring lexeme 1 (sub1 (string-length lexeme))))]
+   
+   ;; Delimiters:
+   [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
+   ["|" 'BAR] ["!" 'BANG]
+   ["(" 'LeftParen]  [")" 'RightParen]
+   ["{" 'LeftBrace]  ["}" 'RightBrace]
+   ["[" 'LeftSqrBrk] ["]" 'RightSqrBrk]
+   ["<" 'LeftAngleBrk] [">" 'RightAngleBrk]
+;   ["sin" (token-FNCT sin)]
+
+   ;; Variables:
+   [variable (token-VAR (string->symbol lexeme))]
+
+   ;; Dot-syntax:
+;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
+   ["." 'DOT]
+   
+   [(:+ digit) (token-NUM (string->number lexeme))]
+
+   [(:: (:+ digit) #\. (:* digit)) (token-NUM (string->number lexeme))]))
+
+(define (read-balanced startstr endstr port balance)  
+  (define start (string->list startstr))
+  (define end (string->list endstr))
+  (define len (length start))
+  (unless (= len (length end))
+    (error read-balanced "start and end must be the same length"))
+  (unless (zero? balance)
+    (let loop ([peek (let ([ls '()])
+                       (do ([i 0 (add1 i)])
+                         ((= i len) (reverse ls))
+                         (set! ls (cons (read-char port) ls))))]
+               [balance balance])
+      (define (scroll) (reverse (cons (read-char port)
+                                      (reverse (cdr peek)))))
+      ;(printf "PEEK: ~s  start/end ~s ~s\n" peek startstr endstr)
+      (cond
+        [(zero? balance) (void)]
+        [(equal? peek start) (loop (scroll) (add1 balance))]
+        [(equal? peek end)   (loop (scroll) (sub1 balance))]
+        [else                (loop (scroll) balance)]))))
+
+(define (format-pos pos)
+  (if (position-line pos)
+      (format "line ~a:~a" (position-line pos) (position-col pos))
+      (format "char ~a" (position-offset pos))))
+      
+;; Can get rid of this now that I'm using match...
+(define make-begin
+  (lambda  (ls)
+    (let ((flattened 
+           (let loop ([ls ls])
+             (cond [(null? ls) '()]
+                   [(and (pair? (car ls)) (eq? 'begin (caar ls)))
+                    (append (loop (car ls)) (loop (cdr ls)))]
+                   [else (cons (car ls) (loop (cdr ls)))]))))
+      (cond [(null? flattened) '(tuple)] ;; Unit.
+            [(null? (cdr flattened)) (car flattened)]
+            [else (cons 'begin flattened)]))))
+
+(define consify
+  (lambda (ls)
+    (if (null? ls) ''()
+	`(cons ,(car ls) ,(consify (cdr ls))))))
+
+(define ws-parse
+  ;; Returns a function that takes a lexer thunk producing a token on each invocation:
+  (parser
+   
+   (src-pos)
+   (start start)
+   (end EOF)
+   
+   (tokens value-tokens op-tokens)
+   (error (lambda (a b c start end) 
+            (printf "PARSE ERROR: after ~a token, ~a~a.\n" 
+                    (if a "valid" "invalid") b 
+                    (if c (format " carrying value ~s" c) ""))
+            (printf "  Located between ~a and ~a.\n"
+                    (format-pos start) (format-pos end))))
+   ;; Precedence:
+   (precs (right = := ->)
+          (right then else)
+          (left - + +. -.)
+          (left * / *. /.)
+          (left < > <= >= == !=)
+
+;          (left LeftSqrBrk)
+;          (left DOTBRK) 
+;	  (right BAR)
+          (left NEG APP DOT COMMA)
+          (right ^ ^. )
+	  )
+   
+   (debug "_parser.log")
+
+   (grammar
+    (start [() #f]
+           ;; If there is an error, ignore everything before the error
+           ;; and try to start over right after the error
+           ;[(error start) $2]
+           [(decls) (cons 'program $1)])
+
+
+    (type [(type -> type) `(,$1 -> ,$3)]
+          ;; A type constructor, make it right-associative.
+          [(VAR type) (prec APP) (list $1 $2)]
+          [(VAR) $1]
+          [(TYPEVAR) `(quote ,$1)]
+          ;; No one-tuples!!
+          [(LeftParen type RightParen) $2]
+          ;; Tuple types:
+          [(LeftParen type COMMA typeargs RightParen) (apply vector (cons $2 $4))]
+          )
+    (typeargs [(type) (list $1)]
+              [(type COMMA args) (cons $1 $3)]
+              )
+
+    
+    (decls ;; Top level variable binding
+           [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
+           [(VAR = exp SEMI maybedecls) `((define ,$1 ,$3) ,@$5)]
+           ;; Returning streams to the base station or other "ports"
+           [(VAR <- exp SEMI maybedecls) `((<- ,$1 ,$3) ,@$5)]
+           
+           ;; Fundef is shorthand for a variable binding to a function.
+           [(fundef maybedecls) (cons $1 $2)]
+           )
+    (maybedecls [() '()] [(decls) $1])
+
+    (fundef [(fun VAR LeftParen args RightParen exp) ;LeftBrace stmts RightBrace) 
+             `(define ,$2 (lambda ,$4 ,$6))]
+#;            [(VAR : type SEMI fun VAR LeftParen args RightParen exp)
+             (let ([v1 $1] [v2 $6])
+               (unless (eq? v1 v2) 
+                 (error "Parse Error: top-level type spec must precede function of same name, got ~a ~a, positions ~a ~a\n"
+                        v1 v2 (format-pos $1-start-pos) (format-pos $6-start-pos)))
+               `(define ,$1 ,$3 (lambda ,$8 ,$10)))]
+            )
+
+    
+    (stmts ;[(exp SEMI) (list $1)]
+           [() '()]
+           [(exp) (list $1)]
+;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]
+           [(emit exp SEMI stmts)   (cons `(emit ,$2) $4)]
+           [(VAR = exp SEMI stmts) `((let ([,$1 ,$3]) ,(make-begin $5)))]
+           [(VAR : type = exp SEMI stmts) `((let ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
+           [(fundef SEMI stmts) 
+            (match $1
+              [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $3)))]
+              [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $3)))])]
+            
+           [(exp SEMI stmts) (cons $1 $3)]
+           )
+
+
+    (args [() '()]
+          [(args+) $1])
+    (args+ [(exp) (list $1)]
+	   [(exp COMMA args) (cons $1 $3)])
+
+    ;; Kinda redundant, used only for state {} blocks.
+    (binds [() ()]
+           [(VAR = exp) (list $1 $3)]
+           [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
+    (iter [(iterate) 'iterate]
+          [(deep_iterate) 'deep-iterate])
+
+    (tuple [(LeftParen exp COMMA args+ RightParen) `(tuple ,$2 ,@$4)])
+
+    ;; Hack to enable my syntax for sigseg refs!!
+    (exp 
+	  ;; Lists:
+	  [(LeftSqrBrk args RightSqrBrk) (consify $2)]
+	  [(notlist) $1])
+    
+    (notlist
+         [(NUM) $1]  
+         [(VAR) $1]
+         [(CHAR) $1]
+         [(STRING) $1]
+         [(true) #t] [(false) #f]
+#;         [(DOTVARS) 
+           (let loop ([ls (cdr $1)] [acc (car $1)])
+             (if (null? ls) acc
+                 (loop (cdr ls)
+                       `(app ,(car ls) ,acc))))]
+         [(tuple) $1]
+
+         
+;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]
+         [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
+;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
+
+         [(exp DOT exp) `(app ,$3 ,$1)]
+                  
+         [(VAR := exp) `(set! ,$1 ,$3)]
+         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]
+
+         [(VAR LeftParen args RightParen) `(app ,$1 ,@$3)]
+         [(LeftParen exp RightParen LeftParen args RightParen) `(app ,$2 ,@$5)]
+
+         [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(arr-get ,$1 ,$3)]
+         [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(vector-get ,$2 ,$5)]
+         
+         ;; Expression with user type annotation:
+;         [(LeftParen exp : type RightParen) $1]
+         
+
+         ;; Begin/end:
+         [(LeftBrace stmts RightBrace) (make-begin $2)]
+
+	 
+         
+         ;; Anonymous functions:
+         [(fun LeftParen args RightParen exp) (prec else) `(lambda ,$3 ,$5)]
+         
+         [(iter LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) 
+              `(,$1 (lambda (,$3) ,(make-begin $8)) ,$5)]
+         [(iter LeftParen VAR in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
+          `(,$1 (let ,$10 (lambda (,$3) ,(make-begin $12))) ,$5)]         
+         
+         [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
+         [(break) '(break)]
+         
+         [(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
+
+;         [(if LeftParen exp RightParen LeftBrace stmts RightBrace else LeftBrace stmts RightBrace) 
+;          `(if ,$3 ,$6 ,$10)]
+;         [(if LeftParen exp RightParen exp else LeftBrace stmts RightBrace) 
+;          `(if ,$3 ,$5 ,$8)]
+;         [(if exp LeftBrace exp RightBrace else LeftBrace stmts RightBrace) 
+;          'IF]
+
+         [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
+         
+         
+;         [(iterate LeftParen VAR in exp RightParen exp) 
+              ;`(iterate (lambda (,$3) ,$8) ,$5)]
+;              `(iterate (,$3 in ,$5) ,@$8)         
+;         [(iter) $1]
+;;         [(map LeftParen VAR in exp RightParen exp) `(map ($3, in ,$5) ,$$7)]
+
+
+;         [(exp binop exp) (prec +) `(,$2 ,$1 ,$3)]
+         
+         ;; Using binary prims as values: (without eta-expanding!)
+         [(LeftParen binop RightParen) $2]
+         
+         [(exp + exp) `(+ ,$1 ,$3)]
+         [(exp - exp) `(- ,$1 ,$3)]
+         [(exp * exp) `(* ,$1 ,$3)]
+         [(exp / exp) `(/ ,$1 ,$3)]
+         [(exp ^ exp) `(expt ,$1 ,$3)]
+         
+         [(exp +. exp) `(+. ,$1 ,$3)]
+         [(exp -. exp) `(-. ,$1 ,$3)]
+         [(exp *. exp) `(*. ,$1 ,$3)]
+         [(exp /. exp) `(/. ,$1 ,$3)]
+         [(exp ^. exp) `(expt. ,$1 ,$3)]
+
+         [(exp < exp) `(< ,$1 ,$3)]
+         [(exp > exp) `(> ,$1 ,$3)]
+         [(exp <= exp) `(<= ,$1 ,$3)]
+         [(exp >= exp) `(>= ,$1 ,$3)]
+         [(exp == exp) `(= ,$1 ,$3)]
+         [(exp != exp) `(not (= ,$1 ,$3))]
+         
+         [(- exp) (prec NEG) `(- ,$2)]
+
+
+         ;; Parentheses for precedence:
+         [(LeftParen exp RightParen) $2]
+         [(LeftParen exp : type RightParen) $2]
+
+         ;; Causes 5 shift-reduce conflicts:
+;         [(return exp) $2]
+         )
+    
+    (binop [(+) '+]
+           [(-) '-]
+           [(*) '*]
+           [(/) '/]           
+           [(^) 'expt]
+
+           [(+.) '+.]
+           [(-.) '-.]
+           [(*.) '*.]
+           [(/.) '/.]
+           [(^.) 'expt.]
+           
+           [(<) '<]
+           [(>) '>]
+           [(<=) '<=]
+           [(>=) '>=]
+           [(==) '=]
+           [(!=) '(lambda (x y) (not (= x y)))]
+           )
+
+    )))
+           
+;; run the calculator on the given input-port       
+(define (ws-parse-port ip)
+  (port-count-lines! ip)
+  (cdr (ws-parse (lambda () (flatten (ws-lex ip)))))
+  #;(let loop ()        
+        (let ((result (ws-parse (lambda () (flatten (ws-lex ip))))))
+          (if result
+              (cons result (loop))
+              '()))))
+
+(define (reg-parse-file f) 
+  (let ([p (open-input-file f)])    
+    (let ([res (ws-parse-port p)])
+      (close-input-port p)
+      res)))
+
+#|
+;(calc (open-input-string "(1 + 2 * 3) - (1+2)*3"))
+
+(define str "fun foo (x) {
+  return  3;
+}")
+
+(define thelist
+  (let ((port (open-input-string str)))
+    (let loop ((tok (lex port)))
+      (printf "~a  ~a  ~a\n" tok (token-name tok)  (token-value tok))
+      (cons tok 
+            (if (eq? tok 'EOF)  '()
+                (loop (lex port)))))))
+
+(printf "THELIST: ~s\n" thelist)
+
+(define feeder
+  (let ([ls thelist])
+    (lambda () (let ((x ls)) (if (null? x) 'EOF
+                                 (begin (set! ls (cdr ls)) (car x)))))))
+
+(define (go) (parse feeder))
+
+(parse-port (open-input-string str))
+;(parse-port (open-input-string "3; 4; 5;"))
+;(parse-port (open-input-string "3;"))
+|#
+
+#;#;
+(define thelist
+  (let ((port (open-input-file   "demos/wavescope/test.ws")))
+    (let loop ((tok (reg-lex port)))
+;      (printf "~a  ~a  ~a\n" tok (token-name tok)  (token-value tok))
+#;      (printf "tok: ~a \n" (list (position-token-token tok)
+                                 (position-token-start-pos tok)  (position-token-end-pos tok)
+                                 (position-offset (position-token-start-pos tok)) 
+                                 (position-offset (position-token-end-pos tok))))
+      (cons tok 
+            (if (eq? (position-token-token tok) 'EOF)  '()
+                (loop (reg-lex port)))))))
+(printf "THELIST: ~s\n" ;(map token-name 
+        (map position-token-token thelist))
+
+
+(define (flatten pt)
+  ;(printf " ")
+  (let loop ((x pt))
+        (if (position-token? (position-token-token x))
+            (begin (error 'flatten "No nested position-tokens!")
+              (loop (position-token-token x)))
+            x)))
+
+(define (ws-postprocess ws)
+  (let ([types (map cdr (filter (lambda (x) (eq? (car x) ':)) ws))]
+        [defs (map cdr (filter (lambda (x) (eq? (car x) 'define)) ws))]
+        [routes (map cdr (filter (lambda (x) (eq? (car x) '<-)) ws))])
+    (let ([typevs (map car types)]
+          [defvs (map car defs)])
+      (unless (= 1 (length routes))
+        (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes))
+      (unless (eq? 'BASE (caar routes))
+        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
+      (unless (subset? typevs defvs)
+        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
+      
+      `(letrec ,(map (lambda (def)
+                       (match def
+                         [(,v ,e) (if (memq v typevs)
+                                             `[,v ,(cadr (assq v types)) ,e]
+                                             `[,v ,e])]))
+                     defs)
+         ,(cadar routes)))))
+  
+
+;(reg-parse-file "demos/wavescope/test.ws")
+
+(define parsed (reg-parse-file "demos/wavescope/bird_detector.ws"))
+;(define parsed (reg-parse-file "demos/wavescope/simple.ws"))
+;(pretty-print parsed)
+
+(define processed (ws-postprocess parsed))
+;(pretty-print processed)
+
+(require "plt/hm_type_inference.ss")
+
+(mvlet ([[a b] (annotate-program processed)])
+  (pretty-print a)
+  ;(pretty-print (print-var-types a))
+       )
+

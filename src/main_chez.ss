@@ -24,13 +24,21 @@
 	   (case-sensitive #t)
 
 	   ;; For now let's just error if we have no dir:
-	   (if (not (getenv "REGIMENTD"))
-	       (error 'regiment "environment variable REGIMENTD was not set"))
+;	   (if (not (getenv "REGIMENTD"))
+;	       (error 'regiment "environment variable REGIMENTD was not set"))
+	   
+	   ;; This is a bit weird, ultimately the global param
+	   ;; REGIMENTD is the thing to look at, but we have some
+	   ;; issues with the order of evaluation/loading/binding
+	   ;; here, so first we bind this:
+	   (define-syntax default-regimentd
+	     (syntax-rules ()
+	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
 	   (source-directories (list "."
-				     (string-append (getenv "REGIMENTD") "/src")
-				     (string-append (getenv "REGIMENTD") "/src/chez")
-				     (string-append (getenv "REGIMENTD") "/src/generic")))
+				     (string-append (default-regimentd) "/src")
+				     (string-append (default-regimentd) "/src/chez")
+				     (string-append (default-regimentd) "/src/generic")))
 	   
 	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
@@ -110,7 +118,7 @@
 
 ;(define start-dir (eval-when (compile load eval) (cd)))
 (eval-when (compile load eval) 
-  (cd (string-append (getenv "REGIMENTD") "/src/chez")))
+  (cd (string-append (default-regimentd) "/src/chez")))
 
 (include "match.ss")      ;; Pattern matcher, dependency.
 (include "regmodule.ss")  ;; Common module syntax.
@@ -130,7 +138,7 @@
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
 ;; This uses the kinder behavior -- try the current directory.
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
-(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory)))
+(REGIMENTD (default-regimentd))
 
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
@@ -204,6 +212,7 @@
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "../generic/language-mechanism.ss")
+(include "../generic/lang_wavescript.ss")
 
 (include "../generic/lang00.ss")
 
