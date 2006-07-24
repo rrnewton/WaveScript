@@ -1,0 +1,221 @@
+# custom/Mf-install
+# Copyright (C) 1994, 1998 Cadence Research Systems
+
+# Usage: included in custom/Mf-<machine-type>
+
+# The following variables determine where the executable shell script,
+# executable image, heap files, example programs, and manual pages are
+# installed.
+
+# InstallPrefix is the final destination base and will be reflected
+# in the generated manual page
+InstallPrefix=/usr
+
+# installation owner
+InstallOwner=root
+
+# installation group (${group} is defined in Mf-$m)
+InstallGroup=${group}
+
+# executable directory
+InstallBin=${InstallPrefix}/bin
+
+# library directory
+InstallLib=${InstallPrefix}/lib/csv7.0a
+
+# example program directory
+InstallLibLib=${InstallLib}/lib
+
+# base executable and heap file directory
+InstallLibBin=${InstallLib}/$m
+
+# man page directory
+InstallMan=${InstallPrefix}/man/man1
+
+# executable names
+InstallPetiteName=petite
+InstallSchemeName=scheme
+
+# Files are actually installed at ${TempRoot}${InstallPrefix}
+# This useful for testing the install process and for building
+# installation scripts
+TempRoot=
+
+###############################################################################
+#                 no changes should be needed below this point                #
+###############################################################################
+
+Bin=${TempRoot}${InstallBin}
+Lib=${TempRoot}${InstallLib}
+LibLib=${TempRoot}${InstallLibLib}
+LibBin=${TempRoot}${InstallLibBin}
+Man=${TempRoot}${InstallMan}
+PetitePath=${Bin}/${InstallPetiteName}
+SchemePath=${Bin}/${InstallSchemeName}
+
+install:
+	@if [ -f ${SchemeBoot} ] ; then \
+           ${MAKE} m=$m schemeinstall\
+              InstallPrefix=${InstallPrefix}\
+              InstallOwner=${InstallOwner}\
+              InstallGroup=${InstallGroup}\
+              InstallBin=${InstallBin}\
+              InstallLib=${InstallLib}\
+              InstallLibLib=${InstallLibLib}\
+              InstallLibBin=${InstallLibBin}\
+              InstallMan=${InstallMan}\
+              InstallPetiteName=${InstallPetiteName}\
+              InstallSchemeName=${InstallSchemeName}\
+              TempRoot=${TempRoot} ;\
+         fi
+	@${MAKE} m=$m petiteinstall\
+            InstallPrefix=${InstallPrefix}\
+            InstallOwner=${InstallOwner}\
+            InstallGroup=${InstallGroup}\
+            InstallBin=${InstallBin}\
+            InstallLib=${InstallLib}\
+            InstallLibLib=${InstallLibLib}\
+            InstallLibBin=${InstallLibBin}\
+            InstallMan=${InstallMan}\
+            InstallPetiteName=${InstallPetiteName}\
+            InstallSchemeName=${InstallSchemeName}\
+            TempRoot=${TempRoot}
+
+schemeinstall: buildscheme
+	@${MAKE} m=$m schemebininstall schemelibbininstall schememaninstall liblibinstall\
+            InstallPrefix=${InstallPrefix}\
+            InstallOwner=${InstallOwner}\
+            InstallGroup=${InstallGroup}\
+            InstallBin=${InstallBin}\
+            InstallLib=${InstallLib}\
+            InstallLibLib=${InstallLibLib}\
+            InstallLibBin=${InstallLibBin}\
+            InstallMan=${InstallMan}\
+            InstallPetiteName=${InstallPetiteName}\
+            InstallSchemeName=${InstallSchemeName}\
+            TempRoot=${TempRoot}
+
+petiteinstall: buildpetite
+	@${MAKE} m=$m petitebininstall petitelibbininstall petitemaninstall liblibinstall\
+            InstallPrefix=${InstallPrefix}\
+            InstallOwner=${InstallOwner}\
+            InstallGroup=${InstallGroup}\
+            InstallBin=${InstallBin}\
+            InstallLib=${InstallLib}\
+            InstallLibLib=${InstallLibLib}\
+            InstallLibBin=${InstallLibBin}\
+            InstallMan=${InstallMan}\
+            InstallPetiteName=${InstallPetiteName}\
+            InstallSchemeName=${InstallSchemeName}\
+            TempRoot=${TempRoot}
+
+uninstall:
+	@echo To uninstall all machine types:
+	@echo rm -rf ${Lib}
+	@echo rm -rf ${PetitePath}
+	@echo rm -rf ${SchemePath}
+	@echo rm -rf ${Man}/${InstallPetiteName}.1
+	@echo rm -rf ${Man}/${InstallSchemeName}.1
+	@echo ""
+	@echo To uninstall just machine-type $m
+	@echo rm -rf ${Lib}/$m
+	@echo rm -rf ${PetitePath}
+	@echo rm -rf ${SchemePath}
+
+scheme.1 petite.1: scheme.1.in
+	sed -e "s;{InstallBin};${InstallBin};g" \
+            -e "s;{InstallLib};${InstallLib};g" \
+            -e "s;{InstallLibLib};${InstallLibLib};g" \
+            -e "s;{InstallLibBin};${InstallLibBin};g" \
+            -e "s;{InstallPetiteName};${InstallPetiteName};g" \
+            -e "s;{InstallSchemeName};${InstallSchemeName};g" \
+            scheme.1.in > $@
+
+###############################################################################
+#                  no useful external targets below this line                 #
+###############################################################################
+
+
+I=./installsh -o ${InstallOwner} -g ${InstallGroup}
+
+petitelibbininstall: ${LibBin}
+	$I -m 444 ${PetiteBoot} ${LibBin}/petite.boot
+	if [ "${InstallPetiteName}" != "petite" ]; then\
+          /bin/rm -f ${LibBin}/${InstallPetiteName}.boot;\
+          ln -f ${LibBin}/petite.boot ${LibBin}/${InstallPetiteName}.boot;\
+        fi
+	if [ -f ${PetiteHeap} ]; then\
+          $I -m 444 ${PetiteHeap} ${LibBin}/petite.heap;\
+          if [ "${InstallPetiteName}" != "petite" ]; then\
+            /bin/rm -f ${LibBin}/${InstallPetiteName}.heap;\
+            ln -f ${LibBin}/petite.heap ${LibBin}/${InstallPetiteName}.heap;\
+          fi;\
+        fi
+	$I -m 444 ${Include}/scheme.h ${LibBin}
+
+petitebininstall: ${Bin}
+	if test -f ${SchemePath} && `cmp -s ${Petite} ${SchemePath}`; then\
+          /bin/rm -f ${PetitePath};\
+          ln -f ${SchemePath} ${PetitePath};\
+        else\
+          $I -m 511 ${Petite} ${PetitePath};\
+        fi
+
+petitemaninstall: petite.1 ${Man}
+	$I -m 444 petite.1 ${Man}/${InstallPetiteName}.1
+
+schemelibbininstall: ${LibBin}
+	$I -m 444 ${PetiteBoot} ${LibBin}/petite.boot
+	if [ "${InstallPetiteName}" != "petite" ]; then\
+          /bin/rm -f ${LibBin}/${InstallPetiteName}.boot;\
+          ln -f ${LibBin}/petite.boot ${LibBin}/${InstallPetiteName}.boot;\
+        fi
+	$I -m 444 ${SchemeBoot} ${LibBin}/scheme.boot;\
+	if [ "${InstallSchemeName}" != "scheme" ]; then\
+          /bin/rm -f ${LibBin}/${InstallSchemeName}.boot;\
+          ln -f ${LibBin}/scheme.boot ${LibBin}/${InstallSchemeName}.boot;\
+        fi
+	if [ -f ${PetiteHeap} ]; then\
+          $I -m 444 ${PetiteHeap} ${LibBin}/petite.heap;\
+          if [ "${InstallPetiteName}" != "petite" ]; then\
+            /bin/rm -f ${LibBin}/${InstallPetiteName}.heap;\
+            ln -f ${LibBin}/petite.heap ${LibBin}/${InstallPetiteName}.heap;\
+          fi;\
+        fi
+	if [ -f ${SchemeHeap} ]; then\
+          $I -m 444 ${SchemeHeap} ${LibBin}/scheme.heap;\
+          if [ "${InstallSchemeName}" != "scheme" ]; then\
+            /bin/rm -f ${LibBin}/${InstallSchemeName}.heap;\
+            ln -f ${LibBin}/scheme.heap ${LibBin}/${InstallSchemeName}.heap;\
+          fi;\
+        fi
+	$I -m 444 ${Include}/scheme.h ${LibBin}
+
+schemebininstall: ${Bin}
+	if test -f ${PetitePath} && `cmp -s ${Scheme} ${PetitePath}`; then\
+          /bin/rm -f ${SchemePath};\
+          ln -f ${PetitePath} ${SchemePath};\
+        else\
+          $I -m 511 ${Scheme} ${SchemePath};\
+        fi
+
+schememaninstall: scheme.1 ${Man}
+	$I -m 444 scheme.1 ${Man}/${InstallSchemeName}.1
+
+liblibinstall: ${LibLib}
+	$I -m 444 ../examples/* ${LibLib}
+
+${Lib}:
+	$I -d -m 755 ${Lib}
+
+${LibBin}: ${Lib}
+	$I -d -m 755 ${LibBin}
+
+${LibLib}: ${Lib}
+	$I -d -m 755 ${LibLib}
+
+${Bin}:
+	$I -d -m 755 ${Bin}
+
+${Man}:
+	$I -d -m 755 ${Man}

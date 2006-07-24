@@ -1,0 +1,13 @@
+# custom/Mf-none
+# Copyright (C) 1994 Cadence Research Systems
+
+# Usage: included in custom/Makefile
+# used to generate error message when no machine is specified to make
+
+targets=build install petiteinstall schemeinstall uninstall petite.1 scheme.1
+
+${targets}: error
+
+error:
+	@-echo 'Please run ./configure or specify machine type with "m=<machine type>".'
+	@exit 1
