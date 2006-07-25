@@ -132,7 +132,7 @@
 	 [(_ x ...) (letrec* x ...)]))
      (define-syntax for
        (syntax-rules ()
-	 [(for (i start end) bod ...)
+	 [(for (v start end) bod ...)
 	  ;; TODO: IMPLEMENT BREAK:
 	  (let ((s start) (e end))
 	    (do ([v s (fx+ v 1)])

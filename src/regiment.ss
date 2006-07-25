@@ -386,6 +386,7 @@
 	   (printf "     <enter>      same as '1'\n")
 	   (printf "     print        print current stream element (in full), don't advance\n")
 	   (printf "     skip <n>     advance the stream, but don't print\n")
+	   (printf "     code         print the query that is executing\n")
 	   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
 	   (printf "     exit         exit\n\n")
 	   (flush-output-port)
@@ -417,6 +418,14 @@
 		    (mvlet ([(_ strm) (stream-take n stream)])
 		      (set! stream strm)
 		      (loop (+ pos n)))]
+
+		   [(,code) (guard (memq code '(c co cod code)))
+		    (parameterize ([print-graph #f]
+				   [print-level 10]
+				   [print-length 200])
+		      (newline)(pretty-print prog)(newline))
+		    (loop pos)]
+
 		   [(,dump ,file) (guard (memq dump '(d du dum dump)))
 		    (let ([port (open-output-file (format "~a" file) 'replace)])
 		      (time 
