@@ -4,4 +4,5 @@ TMP=/tmp/wavescript_parsed.tmp
 
 wsparse $1 > $TMP
 wsint $TMP
+rm -f $TMP
 
