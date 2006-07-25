@@ -3,18 +3,32 @@
 #scheme -h regimentc.1.heap $*
 #chez -h regimentc.1.heap $*
 
-# Use my default location if it is not set.
+# Use a default location if it is not set.
 if ! [ $REGIMENTD ]; then 
     if [ -d $HOME/regiment_alpha ];
     then REGIMENTD=$HOME/regiment_alpha/; 
     elif [ -d $HOME/macroprogramming/regiment_alpha ];
     then REGIMENTD=$HOME/macroprogramming/regiment_alpha/; 
+
+    elif [ -d /usr/regiment/ ];
+    then REGIMENTD=/usr/regiment/; 
+    elif [ -d /usr/local/regiment/ ];
+    then REGIMENTD=/usr/local/regiment/; 
     fi;
 fi
 
-MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
+#MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
+MACHINE=`uname`
+if [ $MACHINE == "Linux" ];
+then MT=i3le;
+elif [ $MACHINE == "Darwin" ];
+then MT=ppcosx;
+elif [ $MACHINE == "Windows" ];
+then MT=i3nt;
+else echo Unknown platform: $MACHINE
+fi
 
-echo RUNNING ON MACHINE TYPE: $MT
+# echo RUNNING ON MACHINE TYPE: $MT
 
 # If we can we use the stored heap, otherwise we run it as a script.
 if [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];

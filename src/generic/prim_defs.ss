@@ -245,12 +245,12 @@
     (timer            (Integer) (Signal #()))
 
     ;; Takes channel, window size, overlap:
-    (audio            (Integer Integer Integer) (Signal (Sigseg Integer)))
-    (fft              ((Array Integer))  (Array Integer))
+    (audio            (Integer Integer Integer) (Signal (Sigseg Complex))) ;; For now making COMPLEX!
+    (fft              ((Array Complex))  (Array Complex))
 
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-    (break            () #())
-    (emit             ('a) #())
+    (break            () 'a)
+
     (error            (String) 'a)
 
     (newarr           (Integer 'a) (Array 'a))
@@ -261,8 +261,13 @@
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
 ;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
-    (iterate        (('in -> 'out) (Signal 'in))           (Signal 'out))
-    (deep-iterate   (('in -> 'out) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+;    (emit             ('a) #())
+
+    ;; I just use a virtual "Queue" to make the type-checking work for emits:
+    (emit           ((VQueue 'a) 'a) #())
+    (virtqueue      () (VQueue 'a))
+    (iterate        (('in -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
+    (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
 
     ;; Creates a windowed (segmented) signal from a raw signal:
     (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))

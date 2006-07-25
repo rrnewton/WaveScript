@@ -1,5 +1,7 @@
 ;; An interactive calculator inspired by the calculator example in the bison manual.
 
+(module reg_grammar mzscheme  
+  
 ;; Import the parser and lexer generators.
 (require (lib "yacc.ss" "parser-tools")
          (lib "lex.ss" "parser-tools")
@@ -9,6 +11,12 @@
          ;"plt/prim_defs.ss"
          (prefix : (lib "lex-sre.ss" "parser-tools")))
 
+  (provide (all-defined))
+
+;; RESERVED name!
+;; This is lame, I should do my emit hack later in the compiler... [2006.07.25]
+(define VIRTQUEUE '___VIRTQUEUE___)
+  
 (define-empty-tokens op-tokens 
    (LeftParen RightParen
     LeftBrace RightBrace
@@ -119,9 +127,12 @@
     (if (null? ls) ''()
 	`(cons ,(car ls) ,(consify (cdr ls))))))
 
-(define ws-parse
-  ;; Returns a function that takes a lexer thunk producing a token on each invocation:
-  (parser
+(define (ws-parse . args)
+  (if (file-exists? "_parser.log")
+      (delete-file "_parser.log"))
+  (apply 
+   ;; Returns a function that takes a lexer thunk producing a token on each invocation:
+   (parser
    
    (src-pos)
    (start start)
@@ -199,9 +210,9 @@
            [() '()]
            [(exp) (list $1)]
 ;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]
-           [(emit exp SEMI stmts)   (cons `(emit ,$2) $4)]
-           [(VAR = exp SEMI stmts) `((let ([,$1 ,$3]) ,(make-begin $5)))]
-           [(VAR : type = exp SEMI stmts) `((let ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
+           [(emit exp SEMI stmts)   (cons `(emit ,VIRTQUEUE ,$2) $4)]
+           [(VAR = exp SEMI stmts) `((letrec ([,$1 ,$3]) ,(make-begin $5)))]
+           [(VAR : type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
            [(fundef SEMI stmts) 
             (match $1
               [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $3)))]
@@ -273,9 +284,11 @@
          [(fun LeftParen args RightParen exp) (prec else) `(lambda ,$3 ,$5)]
          
          [(iter LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) 
-              `(,$1 (lambda (,$3) ,(make-begin $8)) ,$5)]
+              `(,$1 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
+				    ,(make-begin (append $8 (list VIRTQUEUE))))) ,$5)]
          [(iter LeftParen VAR in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (let ,$10 (lambda (,$3) ,(make-begin $12))) ,$5)]         
+          `(,$1 (let ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
+					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          
          [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
          [(break) '(break)]
@@ -353,8 +366,8 @@
            [(==) '=]
            [(!=) '(lambda (x y) (not (= x y)))]
            )
-
-    )))
+    )) 
+   args))
            
 ;; run the calculator on the given input-port       
 (define (ws-parse-port ip)
@@ -447,19 +460,24 @@
          ,(cadar routes)))))
   
 
+
 ;(reg-parse-file "demos/wavescope/test.ws")
 
-(define parsed (reg-parse-file "demos/wavescope/bird_detector.ws"))
-;(define parsed (reg-parse-file "demos/wavescope/simple.ws"))
-;(pretty-print parsed)
+#;
+(define parsed (reg-parse-file "demos/wavescope/test2.ws"))
+;;(define parsed (reg-parse-file "demos/wavescope/bird_detector.ws"))
+;;(define parsed (reg-parse-file "demos/wavescope/simple.ws"))
+;;(pretty-print parsed)
 
-(define processed (ws-postprocess parsed))
+  
+;(define processed (ws-postprocess parsed))
 ;(pretty-print processed)
 
-(require "plt/hm_type_inference.ss")
-
+;(require "plt/hm_type_inference.ss")
+#;
 (mvlet ([[a b] (annotate-program processed)])
-  (pretty-print a)
-  ;(pretty-print (print-var-types a))
+       (pretty-print a)
+       ;(pretty-print (print-var-types a))
        )
 
+)

@@ -40,7 +40,9 @@
 
 	  insert-between iota disp crit-printf
 	  extract-file-extension remove-file-extension
-	  file->string string->file file->slist slist->file file->linelists
+	  file->string string->file file->slist port->slist slist->file file->linelists
+	  read-line
+
 	  pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
 	  graph-map graph-get-connected-component graph-neighbors graph-label-dists ;cyclic? 
 	  graph:simple->vertical graph:vertical->simple
@@ -48,6 +50,7 @@
 	   unfold-list average median stddev clump
 	  partition partition-equal split-before
 	  myequal?
+
 	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
 	  stream-map stream-filter stream-take stream-take-all 
 	  counter-stream stream-append ;random-stream 

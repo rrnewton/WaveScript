@@ -201,6 +201,8 @@
 (include "../generic/tossim.ss")
 (include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 
+;(include "../reg_grammar.ss")
+
 ;; Type inference is used by verify-regiment, below.
 (include "../generic/hm_type_inference.ss") (import hm_type_inference)
 ;(include "../generic/prim_defs_OLD.ss")

@@ -459,6 +459,7 @@
     `(
       [Type 'Integer]
       [Type 'Float]
+      [Type 'Complex]
       [Type 'Bool]
       
       [Type 'Node]
@@ -467,6 +468,11 @@
       [Type ('Signal Type)]
       [Type ('Area Type)]
       [Type ('Event Type)]
+
+      ;; TODO: NEED TO ALLOW FOR USER DEFINED TYPE CONSTRUCTORS
+      [Type ('Array Type)]
+      [Type ('VQueue Type)]
+      [Type ('Sigseg Type)]
       
       [Type ('List Type)]
       [Type #(Type ...)] ;; Tuples

@@ -76,6 +76,7 @@
            
 	   annotate-expression
 	   annotate-program
+	   strip-types
 	   
 	   print-var-types
 
@@ -612,6 +613,33 @@
 ;       [,other (error 'annotate-program "bad expression: ~a" other)]
        )
      (export-type t))))
+
+;; This simply removes all the type annotations from an expression.
+;; This would  be a great candidate for a generic traversal:
+(define (strip-types p)
+  (match p ;; match-expr    
+    [(lambda ,v* ,optionaltypes ... ,[bod]) `(lambda ,v* ,bod)]
+    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let letrec lazy-letrec)))     
+     `(,let ([,id* ,rhs*] ...) ,bod)]
+
+    [,c (guard (constant? c)) c]
+    [(quote ,c)       `(quote ,c)]
+    [,var (guard (symbol? var)) var]
+    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+    [(tuple ,[e*] ...) `(tuple ,e* ...)]
+    [(tupref ,n ,[e]) `(tupref ,n ,e)]
+    [(set! ,v ,[e]) `(set! ,v ,e)]
+    [(begin ,[e] ...) `(begin ,e ...)]
+    [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+    [(app ,[rat] ,[rand*] ...) `(,rat ,rand* ...)]
+    
+    [(,prim ,[rand*] ...)
+     (guard (regiment-primitive? prim))
+     `(,prim ,rand* ...)]
+    
+    [,other (error 'strip-types "bad expression: ~a" other)]
+    ))
+    
       
 ; ======================================================================
 
@@ -731,40 +759,69 @@ magnitude : foo -> bar
 |#
 
 ;; Prints a type in an ML-ish way rather than the raw sexp.
-(define (print-type t)
-  00
-  )
+(define (print-type t . p)
+  (let ([port (if (null? p) (current-output-port) (car p))])
+   (display 
+    (let loop ([t t])
+      (match t
+	[(,[a] -> ,[b]) (++ a" -> "b)]
+	[#(,[x*] ...)
+	 (++ "(" (apply string-append (insert-between ", " x*)) ")")]
+	[(,[tc] ,[arg])
+	 (++ tc" "arg)]
+	[,sym (guard (symbol? sym))
+	      (symbol->string sym)]))
+    port)))
 
+;; Expects a fully typed expression
 (define (print-var-types exp . p)
   (let ([port (if (null? p) (current-output-port) (car p))])
     
     (define (get-var-types exp)
       (match exp ;; match-expr
+
+	[(,lang '(program ,[body] ,ty)) 
+	 (append body `((type BASE ,ty ())))]
+
        [,c (guard (constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
        [(quote ,c)       '()]
        [(set! ,v ,[e]) e]
+       [(begin ,[e*] ...) (apply append e*)]
+       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Integer ()] bodls)]
+
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
 	(guard (memq let '(let letrec lazy-letrec)))
-	(apply append 
-	       (map (lambda (id t rhsls)
-		      `([type ,id t ,rhsls]))
-		 id* t* rhs*))]
+	(append (apply append 
+		       (map (lambda (id t rhsls)
+			      `([type ,id ,t ,rhsls]))
+			 id* t* rhs*))
+		bod)]
        [(lambda ,v* ,t* ,[bodls])   bodls]
        [(tuple ,[e*] ...) (apply append e*)]
        [(tupref ,n ,[e]) e]
-	[(begin ,[e*] ...) (apply append e*)]
-	[(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Integer ()] bodls)]
-	[(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
+       [(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
 	 (apply append rand*)]
 	[,other (error 'print-var-types "bad expression: ~a" other)]))
 
-    ;(get-var-types
-    (inspect (get-var-types exp))
-    
+   
+    ;(inspect (get-var-types exp))
+    (let loop ([x (get-var-types exp)] [indent " "])
+      (match x
+	[() (void)]
+	[(type ,v ,t ,subvars)
+	 ;; HACK: 
+	 (unless (eq? v '___VIRTQUEUE___)
+	   (fprintf port "~a~a : " indent v)
+	   (print-type t port) (newline port))
+	 (loop subvars (++ indent "  "))]
+	[,ls (guard (list? ls))
+	     (for-each (lambda (x) (loop x indent))
+	       ls)]
+	[,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))
       ))
 
 

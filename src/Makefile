@@ -3,8 +3,8 @@
 #*    Objects and sources                                              */
 #*---------------------------------------------------------------------*/
 
-CHEZ_MAIN_FILE = compiler_chez.ss
-PLT_MAIN_FILE = compiler_plt.ss
+CHEZ_MAIN_FILE = main_chez.ss
+PLT_MAIN_FILE = main_plt.ss
 
 #*---------------------------------------------------------------------*/
 #*    Commands                                                         */
@@ -23,12 +23,15 @@ all: reg
 	(cd plt; $(MAKE) nc)
 	(cd haskell; $(MAKE))
 
-MT = `echo '(display (machine-type))' | chez -q`
+MT = `echo '(display (machine-type))' | petite -q`
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
 
+# Two back-ends, PLT or Chez.
+
+#----------------------------------------
 plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
@@ -40,17 +43,26 @@ native: mzscheme_native
 mzscheme_native: 
 	(cd plt; $(MAKE) nc)
 
-# I don't use a saved heap anymore because it doesn't work right on Mac OS
+# only works in PLT right now:
+wsparse: 
+	mzc --exe bin/wsparse wsparse.ss
+
+#----------------------------------------
+
+# This compiles the source into loadable object files
 chez: chez_native
 chez_native:
-	echo '(compile-file "compiler_chez.ss" (format "build/~a/compiler_chez.so" (machine-type)))' | chez
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | chez
 
+# Saved heap images start up very fast, but don't work right on all platforms.
+# (doesn't work right on Mac OS or fedora core)
 heap: 
-	petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
+	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 	$(RM) -f build/regiment.0.heap 
 #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
+# A fullheap includes the Chez compiler as well as the petite heap.
 fullheap:
 	scheme -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
@@ -113,7 +125,7 @@ package: clean
 	mkdir $(PKGDIR)/depends
 	(cd $(REGIMENTD)/; cp -pr depends/* $(PKGDIR)/depends/)
 	(cd $(PKGDIR); tar cjf regiment_depends.tbz depends)
-	(cd $(REGIMENTD)/; tar cvjf $(PKGDIR)/regiment_object.tbz compiler_chez.so)
+	(cd $(REGIMENTD)/; tar cvjf $(PKGDIR)/regiment_object.tbz main_chez.so)
 
 
 #/*--------------------------------------------------------------------*/
@@ -132,6 +144,7 @@ clean:
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
+	$(RM) bin/wsparse
 
 #	find -name "*.zo" | xargs rm # This is excessive...
 #	(cd compiled; $(MAKE) clean)

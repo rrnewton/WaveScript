@@ -327,11 +327,15 @@
   (lambda (filename . opts)
     (let ([p (if (input-port? filename) filename
 		 (apply open-input-file filename opts))])
-      (let loop ([exp (read p)] [acc '()])
+      (port->slist p))))
+(define port->slist
+  (lambda (p)
+    (let porttoslistloop ([exp (read p)] [acc '()])
         (if (eof-object? exp)
             (begin (close-input-port p)
                    (reverse! acc))
-            (loop (read p) (cons exp acc)))))))
+            (porttoslistloop (read p) (cons exp acc))))))
+
 ;; prints each expression to file.
 (define slist->file
   (case-lambda 

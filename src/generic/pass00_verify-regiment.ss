@@ -110,7 +110,7 @@
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
           
-	  [(letrec ([,lhs* ,rhs*] ...) ,expr)
+	  [(letrec ([,lhs* ,optional ... ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
@@ -118,7 +118,15 @@
 		  [rands (map (lambda (r) 
 				(process-expr r newenv '())) rhs*)]
 		  [body  (process-expr expr newenv '())])
-	     `(letrec ([,lhs* ,rands] ...) ,body))]
+	     `(letrec ([,lhs* ,optional ... ,rands] ...) ,body))]
+
+	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
+	  [(begin ,[e] ...) `(begin ,e ...)]
+	  [(set! ,v ,[e]) (guard (symbol? v)) `(set! ,v ,e)]
+	  [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
+	   `(for (,v ,e1 ,e2) 
+		,(process-expr expr (cons v env)
+			       type-env))]
 
           [(,prim ,[rand*] ...)
            (guard 
@@ -142,9 +150,8 @@
 	  ;;
 	  ;; Even though this is just a VERIFY pass, I do a teensy weensy bit of normalization 
 	  ;; here -- add "app".  This makes grammar-checking sane.
-	  [(,[rator] ,[rand*] ...)
-	   ;; Don't do any type inference for now.
-	   `(app ,rator ,rand* ...)]
+	  [(app ,[rator] ,[rand*] ...)	`(app ,rator ,rand* ...)]
+	  [(,[rator] ,[rand*] ...)      `(app ,rator ,rand* ...)]
 
           [,unmatched
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
