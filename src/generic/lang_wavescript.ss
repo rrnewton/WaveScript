@@ -74,7 +74,12 @@
 
 ;; Takes 3.3 seconds.
 (define (baseline-read-all)
-   (let ((p (open-input-file "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")))
+  (define file 
+    (if (file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+	"/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"
+	"~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"))
+
+   (let ((p (open-input-file file)))
      (time 
       (let loop ()
 	(let ((c (#3%read-char p)))
