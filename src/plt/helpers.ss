@@ -73,7 +73,7 @@
    
    stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
    stream-map stream-filter stream-take stream-take-all 
-   counter-stream stream-append ;random-stream 
+   iota-stream stream-append browse-stream ;random-stream 
    
    display-constrained
    symbol-append 

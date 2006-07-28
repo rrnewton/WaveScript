@@ -1,0 +1,17 @@
+#! /bin/bash
+
+# Use a default location if it is not set.
+if ! [ $REGIMENTD ]; then 
+    if [ -d $HOME/regiment_alpha ];
+    then REGIMENTD=$HOME/regiment_alpha/; 
+    elif [ -d $HOME/macroprogramming/regiment_alpha ];
+    then REGIMENTD=$HOME/macroprogramming/regiment_alpha/; 
+
+    elif [ -d /usr/regiment/ ];
+    then REGIMENTD=/usr/regiment/; 
+    elif [ -d /usr/local/regiment/ ];
+    then REGIMENTD=/usr/local/regiment/; 
+    fi;
+fi
+
+$REGIMENTD/src/regiment_script.threaded.ss $*;

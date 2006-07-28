@@ -46,6 +46,8 @@
             (interlace (rfft front w) (rfft back w)))))))
   (rfft x (w-powers (length x))))
 
+;;======================================================================
+
 ;; Takes 35 seconds using stupid approach (read-char).
 (define (read-all)
   (wavescript-language)
@@ -369,6 +371,9 @@
      (define (end w) (vector-length (sigseg-end w)))
      (define (seg-timebase w) (vector-length (sigseg-timebase w)))
      (define to_array sigseg-vec)
+     
+     (define (parmap f s) (stream-parmap f s))
+     (define smap stream-map)
 
      ;(define emission (make-parameter '()))
      (define (iterate f s)

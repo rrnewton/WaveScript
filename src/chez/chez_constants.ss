@@ -11,10 +11,10 @@
 
 (chez:module chez_constants 
     ;; Exports:
-    (reg:define-struct  reg:struct? reg:struct->list reg:list->struct 
-			IFCHEZ IF_GRAPHICS
-			reg:include
-			)
+    ( reg:struct? reg:struct->list reg:list->struct reg:define-struct 
+		  reg:include
+		  IFCHEZ IF_GRAPHICS IF_THREADS
+		  )
   (import scheme)
   
   ;; Pre-processor macro for switching between Chez/PLT versions.
@@ -34,6 +34,14 @@
 		   [(_ E1)
 		    #'(IF_GRAPHICS E1 (void))])))
 
+  (define-syntax IF_THREADS
+    (lambda (x)
+      (syntax-case x ()
+	[(_ E1 E2)
+	 (if (top-level-bound? 'fork-thread)
+	     #'E1 #'E2)]
+	[(_ E1) #'(IF_THREADS E1 (void))])))
+  
   ;; This is a common syntax for including other source files inline.
   ;; I use it in both PLT and Chez.
   ;; DOESN'T WORK YET!!! (Not in PLT.  Sigh.) [2006.03.13]
@@ -133,4 +141,5 @@
 ;(import chez_constants)
 
 (include "../generic/constants.ss")
-(import constants)
+(import constants) ;; Certain bindings are re-exported through the generic module.
+;(import chez_constants)

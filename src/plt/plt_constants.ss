@@ -9,7 +9,8 @@
 	(provide 
 
 	 IFCHEZ
-	 IF_GRAPHICS
+	 IF_GRAPHICS 
+	 IF_THREADS
 	 reg:define-struct
          reg:struct?
 	 reg:struct->list
@@ -37,7 +38,14 @@
    (define-syntax IF_GRAPHICS
      (syntax-rules ()
        [(_ t f) f]
-       [(_ t)   (void)]))  
+       [(_ t)   (void)]))
+
+   ;; [2006.07.28] Not supporting THREADS under PLT currently (but this would be easy).
+   (define-syntax IF_THREADS
+     (syntax-rules ()
+       [(_ t f) f]
+       [(_ t)   (void)]))
+
 
    (define-syntax reg:define-struct
      (syntax-rules ()

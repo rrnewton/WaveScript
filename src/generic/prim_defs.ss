@@ -269,6 +269,10 @@
     (iterate        (('in -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
     (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
 
+
+    ;; This is for testing only... it's a multithreaded version:
+    (parmap         (('in -> 'out) (Signal 'in))           (Signal 'out))
+
     ;; Creates a windowed (segmented) signal from a raw signal:
     (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
 

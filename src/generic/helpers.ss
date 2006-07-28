@@ -1686,6 +1686,7 @@
 
 ;; Is the object potentially a stream?  Can't tell for sure because
 ;; promises are opaque.
+;; [2006.07.28] TODO: this quadratic definition looks unnecessary!  FIXME: 
 (define (stream? s)
   (or (list? s)   ;; Is it a proper list?
       ;; Or an improper list that's still being computed?
@@ -1700,8 +1701,6 @@
      [(null? s) #t]
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
-;; This constructs streams where both branches are delayed, not just the tail.
-;; [2006.02.20] Just double-delaying.  It's inefficient but seems safest.
 (define-syntax stream-cons
   (syntax-rules ()
     [(_ a b) (cons a (delay b))]))
@@ -1709,8 +1708,6 @@
 (define-syntax stream-append
   (syntax-rules ()
     [(_ args ... tail) (delay (append args ... (delay tail)))]))
-;; Appends a finite-stream to a potentially infinite one:
-;(define stream-append append)
 (define stream-car
   (lambda (s)
     (let scloop ((s s))
@@ -1772,10 +1769,85 @@
 		(cons first (stream-filter-loop rest))
 		(if (stream-empty? rest) '()
 		    (filter-scan-next (stream-car rest) (stream-cdr rest)))))))))
+
 ;; A stream of non-negative integers:
-(define counter-stream
+(define iota-stream
   (let loop ((i 0))
     (delay (cons i (loop (add1 i))))))
+
+(define (browse-stream stream)
+  ;; Now that we've got a stream we provide a little command
+  ;; prompt and ask the user what we should do with it:
+  (printf "\nQuery processed.")
+  (printf "\nYou can now control the output stream, commands are:\n")
+  (printf "     <n>          print n stream element, advance position\n")
+  (printf "     <enter>      same as '1'\n")
+  (printf "     print        print current stream element (in full), don't advance\n")
+  (printf "     skip <n>     advance the stream, but don't print\n")
+;  (printf "     code         print the query that is executing\n")
+  (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+  (printf "     exit         exit\n\n")
+  (flush-output-port)
+
+  (parameterize ([print-length 100]
+		 [print-graph #t]
+		 [print-level 5])
+    (let loop ([pos 0])
+      (printf "pos#~a: " pos)
+      (let ((line (read-line)))
+	(when line 
+	  (match (port->slist (open-input-string line))
+	    [() (printf "  ") (pretty-print (stream-car stream))
+	     (set! stream (stream-cdr stream)) (loop (add1 pos))]
+	    [(,n) (guard (integer? n))
+	     (mvlet ([(ls strm) (stream-take n stream)])
+	       (for-each (lambda (x)
+			   (printf "     POS#~a = " pos)
+			   (pretty-print x)
+			   (set! pos (add1 pos)))
+		 ls)
+	       (set! stream strm)
+	       (loop pos))]
+	    [(,print) (guard (memq print '(p pr pri prin print)))
+	     (parameterize ([print-length 10000]
+			    [print-level 200])
+	       (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
+	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
+	     (time 
+	      (mvlet ([(_ strm) (stream-take n stream)])
+		(set! stream strm)))
+	      (loop (+ pos n))]
+
+#;	    [(,code) (guard (memq code '(c co cod code)))
+	     (parameterize ([print-graph #f]
+			    [print-level 10]
+			    [print-length 200])
+	       (newline)(pretty-print prog)(newline))
+	     (loop pos)]
+
+	    [(,dump ,file) (guard (memq dump '(d du dum dump)))
+	     (let ([port (open-output-file (format "~a" file) 'replace)])
+	       (time 
+		(progress-dots
+		 (lambda ()
+		   (let loop ()
+		     (if (stream-empty? stream)
+			 (printf "Finished, dumped ~a stream elements.\n" pos)
+			 (begin 
+			   (write (stream-car stream) port)(newline port)
+			   (set! pos (add1 pos))
+			   (set! stream (stream-cdr stream))
+			   (loop)
+			   ))))
+		 50000000 
+		 (lambda ()
+		   (printf "  POS# ~a dumped...\n" pos)))))]
+
+	    [(exit) (void)]
+	    [,other 
+	     (printf "Bad input.\n") (loop pos)]
+	    )))
+      )))
 
 
 ;===============================
@@ -1835,12 +1907,12 @@
        (get-output-string s))
      "test  abcdefg... again  abcdefghijklm...abcdefghijklmnop"]
 
-    [(mvlet ([(x _) (stream-take 5 counter-stream)]) x)
+    [(mvlet ([(x _) (stream-take 5 iota-stream)]) x)
      (0 1 2 3 4)]
     [(mvlet ([(x _) (stream-take 3 `(1 2 . ,(delay '(3))))]) x)
      (1 2 3)]
 
-    [(mvlet ([(x _) (stream-take 10 (stream-filter even? counter-stream))]) x)
+    [(mvlet ([(x _) (stream-take 10 (stream-filter even? iota-stream))]) x)
      (0 2 4 6 8 10 12 14 16 18)]
     
 ;; Having problems with errors in drscheme.

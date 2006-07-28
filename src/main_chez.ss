@@ -58,7 +58,7 @@
 
 	   ;; This configuration is for running extended simulation-experiments only:
 	   ;; REMEMBER to also disable IFDEBUG in constants.ss
-#;
+
 	   (begin 
 	     (define-top-level-value 'simulator-batch-mode #t)
 	     (optimize-level 3)
@@ -126,8 +126,10 @@
 ;; 'module' will become my chez/plt portable regiment modules.
 (import reg:module)
 
+
  ;; Load this first.  Widely visible constants/parameters.
-(include "chez_constants.ss") 
+(include "chez_constants.ss")
+
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
@@ -143,6 +145,10 @@
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
 (include "helpers.ss") (import (except helpers test-this these-tests))
+
+;; These provide some more utility code related to threads:
+(IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
+
 ;; Lists all the Regiment primitives and their types:
 (include "../generic/prim_defs.ss") (import prim_defs)
 (include "../generic/grammar_checker.ss") (import grammar_checker)
@@ -155,7 +161,7 @@
 ;; This tries to dynamically load the shared object the first time the function is called:
 (define (sleep t)
   (IF_GRAPHICS
-   (thread-sleep t)
+   (thread-sleep t) ;; This uses the SWL thread library.  (Not real OS threads.)
    (begin
     ;(printf "Dynamically loading usleep from shared library...\n")(flush-output-port)
      (parameterize ((current-directory (string-append (REGIMENTD) "/src/")))

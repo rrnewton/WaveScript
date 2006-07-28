@@ -376,79 +376,11 @@
 	   (define typed (verify-regiment prog))
 	   (define stream (wavescript-language prog))
 
+	   (printf "Evaluating program: \n\n")(pretty-print prog)
+
 	   (printf "\nTypecheck complete, program types:\n\n")
 	   (print-var-types typed)(flush-output-port)
-	   
-	   ;; Now that we've got a stream we provide a little command
-	   ;; prompt and ask the user what we should do with it:
-	   (printf "\nQuery processed.\nYou can now control the output stream, commands are:\n")
-	   (printf "     <n>          print n stream element, advance position\n")
-	   (printf "     <enter>      same as '1'\n")
-	   (printf "     print        print current stream element (in full), don't advance\n")
-	   (printf "     skip <n>     advance the stream, but don't print\n")
-	   (printf "     code         print the query that is executing\n")
-	   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
-	   (printf "     exit         exit\n\n")
-	   (flush-output-port)
-
-	   (parameterize ([print-length 100]
-			  [print-graph #t]
-			  [print-level 5])
-	   (let loop ([pos 0])
-	     (printf "pos#~a: " pos)
-	     (let ((line (read-line)))
-	       (when line 
-		 (match (port->slist (open-input-string line))
-		   [() (printf "  ") (pretty-print (stream-car stream))
-		    (set! stream (stream-cdr stream)) (loop (add1 pos))]
-		   [(,n) (guard (integer? n))
-		    (mvlet ([(ls strm) (stream-take n stream)])
-		      (for-each (lambda (x)
-				  (printf "     POS#~a = " pos)
-				  (pretty-print x)
-				  (set! pos (add1 pos)))
-			ls)
-		      (set! stream strm)
-		      (loop pos))]
-		   [(,print) (guard (memq print '(p pr pri prin print)))
-		    (parameterize ([print-length 10000]
-				   [print-level 200])
-		      (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
-		   [(,skip ,n) (guard (memq skip '(s sk ski skip)))
-		    (mvlet ([(_ strm) (stream-take n stream)])
-		      (set! stream strm)
-		      (loop (+ pos n)))]
-
-		   [(,code) (guard (memq code '(c co cod code)))
-		    (parameterize ([print-graph #f]
-				   [print-level 10]
-				   [print-length 200])
-		      (newline)(pretty-print prog)(newline))
-		    (loop pos)]
-
-		   [(,dump ,file) (guard (memq dump '(d du dum dump)))
-		    (let ([port (open-output-file (format "~a" file) 'replace)])
-		      (time 
-		       (progress-dots
-			(lambda ()
-			  (let loop ()
-			    (if (stream-empty? stream)
-				(printf "Finished, dumped ~a stream elements.\n" pos)
-				(begin 
-				  (write (stream-car stream) port)(newline port)
-				  (set! pos (add1 pos))
-				  (set! stream (stream-cdr stream))
-				  (loop)
-				  ))))
-			50000000 
-			(lambda ()
-			  (printf "  POS# ~a dumped...\n" pos)))))]
-
-		   [(exit) (void)]
-		   [,other 
-		    (printf "Bad input.\n") (loop pos)]
-		   )))
-	     )))]
+	   (browse-stream stream))]
 	  
 	  )))))))
   

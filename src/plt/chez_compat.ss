@@ -103,8 +103,8 @@
     
   ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.
   ;(define (merge! a b) (merge a b))
-  (define (merge! p a b) (swindle:merge! a b p))
-  (define (sort! p l)    (swindle:sort! l p))
+  ;(define (merge! p a b) (swindle:merge! a b p))
+  ;(define (sort! p l)    (swindle:sort! l p)) ;; Now already defined in v352
   (define (list-copy l) (reverse! (reverse l))) ;; Reverse had better be tail-recursive!
    #;(define (remq x ls)
     (cond 
