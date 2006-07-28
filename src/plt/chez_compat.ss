@@ -6,7 +6,7 @@
    "cheztrace.ss"
    (lib "date.ss")
    (lib "pretty.ss")
-   (lib "list.ss")
+   (all-except (lib "list.ss"))
    (prefix plt: (lib "process.ss"))
    (all-except (lib "compat.ss") atom?)
 ;   "../generic/reg_macros.ss"

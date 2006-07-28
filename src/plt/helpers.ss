@@ -8,7 +8,7 @@
            (lib "pretty.ss")
            (prefix plt: (lib "process.ss"))
 	 ;  (all-except (lib "compat.ss") atom?)
-           (all-except (lib "list.ss") filter)
+           (all-except (lib "list.ss") filter sort!)
 ;           (all-except "tsort.ss" test-this these-tests)
            "../generic/constants.ss"
            "hashtab.ss"

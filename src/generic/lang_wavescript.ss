@@ -74,14 +74,18 @@
 	      )))))
 
 
+(define (marmotfile)
+    (cond
+     [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+      "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+     [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+      "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+     [else (error 'marmotfile "couldn't find marmot data")]))
+
 ;; Takes 3.3 seconds.
 (define (baseline-read-all)
-  (define file 
-    (if (file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-	"/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"
-	"~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"))
 
-   (let ((p (open-input-file file)))
+  (let ((p (marmotfile)))
      (time 
       (let loop ()
 	(let ((c (#3%read-char p)))
@@ -101,7 +105,7 @@
 ;;   65536 - 180-250 ms
 (define (baseline-read-all-block)
   (define chunk 8000)
-   (let ((p (open-input-file "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"))
+   (let ((p (open-input-file (marmotfile)))
 	 (s (make-string chunk #\_)))
      (time 
       (let loop ()
@@ -149,7 +153,7 @@
      ;; This is a hack to load specific audio files:
      (define (audio chan len overlap)
        (define chunksize 32768)
-       (define infile (open-input-file "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"))
+       (define infile (open-input-file (marmotfile)))
 ;       (define infile (open-input-file "/archive/4/marmots/test.raw"))
        (define buffer1 (make-string chunksize #\_))
        (define count1 0)
