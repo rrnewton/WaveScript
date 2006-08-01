@@ -49,7 +49,7 @@
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
   (printf "  log      (l)  simulator trace manipulation mode~n")
-  (printf "  log      (wsint) WaveScript interpreter mode~n")
+  (printf "  wsint    (wsint) WaveScript interpreter mode~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -371,7 +371,7 @@
 			  ;; If there's no file given read from stdout
 			  [() (console-input-port)]
 			  [(,fn) (open-input-file fn)]
-			  [,else (error )]))
+			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (define prog (strip-types (read port)))
 	   (define typed (verify-regiment prog))
 	   (define stream (wavescript-language prog))
