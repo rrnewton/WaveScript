@@ -31,11 +31,12 @@ Step 3: try typing 'regiment' and see if you get the help output.
 
 If you did that means the free copy of Petite Chez Scheme was able to
 run and successfully load all of the Regiment source.  Or it means
-that you acquired a compiled heap image in
-$REGIMENTD/build/regiment.0.heap, which Petite loaded from (this is
-much faster).
+that you acquired a compiled heap image and placed it in
+$REGIMENTD/build/regiment.0.heap, which Petite then loaded (this would 
+result in a much faster startup time).
 
-Either way, try "regiment t" to run all the unit tests.
+
+With either method, try "regiment t" to run all the unit tests.
   ([2005.11.14] For me this takes 48 seconds with petite, and 18 with a
    saved heap when all debugging is turned on.)
 
@@ -45,7 +46,7 @@ Either way, try "regiment t" to run all the unit tests.
 <Running Regiment>
 ======================================================================
 
-Running regiment from the command-line will enable you to.
+Running regiment from the command-line will enable you to:
 
  *) Compile Regiment source.  "regiment c"
     Compile (.rs) to Token Machines (.tm) and .tm to simulator files
@@ -64,7 +65,7 @@ Start SWL from the $REGIMENTD/src directory, or start SWL and switch to it with
    (cd (getenv "REGIMENTD")) 
    (cd "src")
 
-Type (load "compiler_chez.ss").
+Type (load "main_chez.ss").
 
 Now you should be able to load Regiment source files (or Token Machine
 source files) and run them/interact with them through the GUI.

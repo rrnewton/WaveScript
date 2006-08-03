@@ -52,8 +52,9 @@
 		      (if (> (length f) 3)
 			  (if (not (string= (substring f 0 1) "_"))
 			      (if (or (string= (substring f -3) ".ss")
-				      (string= (substring f -3) ".rs")
+				      (string= (substring f -3) ".rs") ;; Regiment source (sexp)
 				      (string= (substring f -3) ".tm")
+				      (string= (substring f -3) ".ws") ;; Wavescript source
 				      (and (> (length f) 6)
 					   (string= (substring f -3) ".tests")))
 					;(insert (concat dir f "\n"))
