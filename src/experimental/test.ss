@@ -55,25 +55,18 @@
 
 
 
-
-
-
-
-
-
-
-
+;; [2006.08.03] This method seems to pass the obvious memory leak tests that I can think of.
 
 (load-shared-object (format "i3le/test.o"))
 
 (define test (foreign-procedure "test" (fixnum) fixnum))
-
 (define test2 (foreign-procedure "test2" (scheme-object) scheme-object))
-
 (define query (foreign-procedure "query_type" (scheme-object) void))
-
 (define print_exact (foreign-procedure "print_exact" (scheme-object) void))
 (define print_inexact (foreign-procedure "print_inexact" (scheme-object) void))
+;(print_exact 1+1i)
+;(print_inexact 15+64i)
+
 
 (define (explode-complex-vector v)
   (let* ([out (make-vector (fx* 2 (vector-length v)))])
@@ -91,56 +84,61 @@
 			  (vector-ref v (fx* 2 i))
 			  (vector-ref v (fx+ 1 (fx* 2 i))))))))
 
-;(print_exact 1+1i)
 
-;(print_inexact 15+64i)
-
-
-;fftw_plan_dft_1d
-
-(define set-dft-plan   (foreign-procedure "set_fftw_plan_dft_1d" (fixnum) void))
-(define clear-dft-plan (foreign-procedure "clear_fftw_plan_dft_1d" () void))
+;(define set-dft-plan   (foreign-procedure "set_fftw_plan_dft_1d" (fixnum) void))
+;(define clear-dft-plan (foreign-procedure "clear_fftw_plan_dft_1d" () void))
 
 
-(define make-dft-plan   (foreign-procedure "make_fftw_plan_dft_1d" (integer-32) integer-32))
-(define free-dft-plan (foreign-procedure "free_fftw_plan_dft_1d" (integer-32) void))
+;; Based on the example from the chez scheme users guide:
+(define make-dft-plan 
+  (let ([malloc-guardian (make-guardian)]
+	[do-malloc (foreign-procedure "make_fftw_plan_dft_1d" (integer-32) integer-32)]
+	[do-free (foreign-procedure "free_fftw_plan_dft_1d" (integer-32) void)])
+    (define foobar (lambda ()
+       ;; first, invoke the collector
+       (collect)
+       ;; then free any storage that has been dropped
+       (let f ()
+	 (let ((x (malloc-guardian)))
+	   (when x
+	     ;(printf "Killing fftw plan! ~a\n" x)(flush-output-port)
+	     (do-free (unbox x))
+	     (f))))))
+    (collect-request-handler
+     foobar)
+    (lambda (size)
+      ;; allocate and register the new storage
+      (let ([x (box (do-malloc size))]) ;; A boxed int.
+        (malloc-guardian x)
+        x))))
 
 (define dft-1d
-  (let (;[initplan (foreign-procedure "s_fftw_plan_dft_1d" (fixnum) void)]
-	[execplan (foreign-procedure "s_fftw_execute" (scheme-object) void)])
-;    (lambda (N)
-      (let ();[plan (initplan N)])
-	(lambda (v)
-	  (let ([vec (explode-complex-vector v)])
-	    (execplan vec)
-	    (implode-complex-vector vec))
-	  ))))
-
-;(define vec #(1. 2. 3. 4. 5. 6. 7. 8.))
-;(define vec (list->vector (map exact->inexact (iota 1024))))
-(define vec (list->vector (map exact->inexact (iota 262144))))
-
-(define plan (make-dft-plan 1024))
-(printf "Made plan: ~a\n" plan)
-(free-dft-plan plan)
-(printf "Killed plan!\n")
+  (let ([execplan (foreign-procedure "s_fftw_execute" (scheme-object integer-32) scheme-object)])
+    (lambda (v planbox)
+      (let ([vec (explode-complex-vector v)])
+	(execplan vec (unbox planbox))
+	(implode-complex-vector vec))
+      )))
 
 
-#|
-(set-dft-plan 262144)
+(define (compare-ffts)
+  (printf "\n======================\n" )
+  (printf "Test #1: One big array\n" )
+  (let* ([vec (list->vector (map exact->inexact (iota 262144)))]
+	 [plan (make-dft-plan (vector-length vec))])
+    (printf "Made plan: ~a\n" plan)
+    (let* ([a (time (dft2 vec))]
+	   [b (time (dft-1d vec plan))])      
+      (printf "\nBiggest Elementwise Diff between results: ~a\n\n" 
+	      (apply max 
+		     (map cfl-magnitude-squared 
+		       (map - (vector->list a) (vector->list b)))))))
+  (printf "\n==============================\n" )
+  (printf "Test #2: Many size 1024 arrays\n" )
+  (let* ([vec (list->vector (map exact->inexact (iota 1024)))]
+	 [plan (make-dft-plan (vector-length vec))])
+    (printf "Made plan: ~a\n" plan)
+    (time (rep 1000 (dft2 vec)))
+    (time (rep 1000 (dft-1d vec plan)))))
 
-(define a (time (dft2 vec)))
-(define b (time (dft-1d vec)))
-(printf "\nBiggest Diff: ~a\n\n" 
-	(apply max 
-	       (map cfl-magnitude-squared 
-		 (map - (vector->list a) (vector->list b)))))
-
-(set-dft-plan 1024)
-
-(define vec (list->vector (map exact->inexact (iota 1024))))
-(define a (time (rep 1000 (dft2 vec))))
-(define b (time (rep 1000 (dft-1d vec))))
-
-;(printf "Result: ~a\n" (dft-1d vec))
-|#
+(compare-ffts)

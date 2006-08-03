@@ -5,116 +5,91 @@
 
 #include <scheme.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+// [2006.08.03] This method seems to pass the obvious memory leak tests that I can think of.
 
+// IS THIS LIBRARY THREAD SAFE??
 
-// NOT THREADSAFE!
-fftw_plan the_plan = 0;
-fftw_complex* the_vec = 0;
-int the_vec_len = 0;
-
-void set_fftw_plan_dft_1d (int N) {
-  printf("Setting plan! %i  %i  %i\n", the_plan, the_vec, N);
-  
-  if (the_plan != 0) {
-    printf("Wiping before setting...\n");
-    fftw_destroy_plan(the_plan);
-    fftw_free(the_vec);
-    the_vec_len = 0;
-  }
-  the_vec = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);  
-  the_vec_len = N;
-  the_plan = fftw_plan_dft_1d(N, the_vec, the_vec, FFTW_FORWARD, FFTW_ESTIMATE);  
-  printf("Plan set..\n");
-}
-void clear_fftw_plan_dft_1d () {
-  if (the_plan != 0) {
-    fftw_destroy_plan(the_plan);
-    fftw_free(the_vec);
-    the_vec_len = 0;
-  }
-}
+typedef struct Plan_t {
+  fftw_plan plan;
+  fftw_complex* vec;
+  int vec_len;
+} plan_t;
 
 int make_fftw_plan_dft_1d (int N) {
-  printf("Creating plan! %i\n", N);
-
-  fftw_plan plan;
-  fftw_complex* vec = 0;
-  int vec_len = 0;
-  
-  vec = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);  
-  vec_len = N;
-  plan = fftw_plan_dft_1d(N, vec, vec, FFTW_FORWARD, FFTW_ESTIMATE);
-  
-  return (int)plan;
+  // Heap allocate a struct.
+  plan_t* p = malloc(sizeof(plan_t));
+  p->vec_len = N;
+  p->vec = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+  if (N > 10000)
+    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_ESTIMATE);
+  else if (N > 5000)
+    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_MEASURE);
+  else 
+    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_PATIENT);
+  return (int)p;
 }
 
-void free_fftw_plan_dft_1d (int plan) {
-
-  fftw_destroy_plan((fftw_plan)plan);
-  //fftw_free(the_vec);
-  //the_vec_len = 0;
+void free_fftw_plan_dft_1d (int ptr) {
+  plan_t* p = (plan_t*)ptr;
+  fftw_destroy_plan(p->plan);
+  fftw_free(p->vec);
+  p->vec_len = 0;
+  p->vec = 0;
+  p->plan = 0;
+  printf(".");
 }
 
 
-
-
-void s_fftw_execute (ptr vec) {
+// This returns #t if successful, or a number (the correct length) if there was a mismatched length.
+ptr s_fftw_execute (ptr vec, int plan) {
   int i;
   int len = Svector_length(vec);
   int N = len / 2;  
   clock_t start, end;
+  plan_t* p = (plan_t*) plan;
+
+  /*printf("Executing!! len %i  incoming len %i\n", p->vec_len, Svector_length(vec));
+  for (i=0; i<10; i++)
+    printf("  Got element %i %lf\n", i, ((double*)p->vec)[i]);
+  printf("  Got element %i %lf\n", 262000, ((double*)p->vec)[262000]);
+  printf("  Got element %i %lf\n", 524000, ((double*)p->vec)[524000]);*/
 
   // TODO: CHECK THAT LENGTH IS RIGHT!
-  if (N != the_vec_len)
-    printf("Mismatched lengths! %i %i\n", N, the_vec_len);
+  if (N != p->vec_len) {
+    printf("Mismatched lengths! %i %i\n", N, p->vec_len);
+    return(Sfixnum(p->vec_len));
+  }
 
-  //fftw_complex *in, *out;
-  //fftw_plan p;
-  //in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
-  //out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
-  //out = in;
- 
   //printf("Measuring... ");  fflush( 0 );
   //start = clock();
-  //  p = fftw_plan_dft_1d(N, in, in, FFTW_FORWARD, FFTW_ESTIMATE);
-  //p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_MEASURE);
-  //p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_PATIENT);
   //end = clock();
   //printf("Done. (time used %i)\n", end - start);  fflush( 0 );
 
-  //printf("Filling... current vals: %i %i %i\n", the_plan, the_vec, the_vec_len);  fflush( 0 );  
+  //printf("Filling... \n");  fflush( 0 );
   for(i=0; i<len; i+=2) {
     /*printf("Loading: real %lf, imag %lf\n",
 	   Sflonum_value(Svector_ref(vec, i)),
 	   Sflonum_value(Svector_ref(vec, i+1)));*/
-
-    ((double*)the_vec)[i]   = Sflonum_value(Svector_ref(vec, i));
-    ((double*)the_vec)[i+1] = Sflonum_value(Svector_ref(vec, i+1));
+    ((double*)p->vec)[i]   = Sflonum_value(Svector_ref(vec, i));
+    ((double*)p->vec)[i+1] = Sflonum_value(Svector_ref(vec, i+1));
   }
-  //printf("Done.\n");  fflush( 0 );
+  //printf("Done\n");
  
   //printf("Executing... ");  fflush( 0 );
   //start = clock();
-  fftw_execute(the_plan); /* repeat as needed */
+  fftw_execute(p->plan); 
   //end = clock();
   //printf("Done. (time used %i)\n", end - start);  fflush( 0 );
-  
   //printf("Clocks per sec... %i\n", CLOCKS_PER_SEC);
-
-  //fftw_destroy_plan(p);
   
   // Fill the output back into the vector:
   for(i=0; i<len; i++) {
     //printf("Unloading: %lf\n", ((double*)out)[i]);
-    Svector_set(vec, i, Sflonum(((double*)the_vec)[i]));
+    Svector_set(vec, i, Sflonum(((double*)p->vec)[i]));
   }
-  
-  //fftw_free(in); 
-  //  fftw_free(out);
 }
-
-
 
 
 
