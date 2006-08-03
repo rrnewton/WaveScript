@@ -473,6 +473,7 @@
 (define-id-syntax bw  (begin (wipe) b)) ;; shorthand
 
 
+#|
 (import reg:module)
 ;(include "fft_test.ss")
 (optimize-level 2)
@@ -480,3 +481,4 @@
 (import fft_test)
 ;(testfft-bigger)
 (testfft-more)
+|#
