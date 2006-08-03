@@ -57,7 +57,7 @@
 
 ;; [2006.08.03] This method seems to pass the obvious memory leak tests that I can think of.
 
-(load-shared-object (format "i3le/test.o"))
+(load-shared-object (format "i3le/fftw.o"))
 
 (define test (foreign-procedure "test" (fixnum) fixnum))
 (define test2 (foreign-procedure "test2" (scheme-object) scheme-object))
