@@ -1,4 +1,7 @@
 
+;;;; .title A simple consensus interface to discrete 1d complex FFTs.
+;;;; .author Ryan Newton
+
 
 ;; This exposes a SIMPLE 1d discrete fourier transform.
 

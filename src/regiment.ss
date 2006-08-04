@@ -377,6 +377,11 @@
 	   (define stream (wavescript-language prog))
 
 	   (printf "Evaluating program: \n\n")(pretty-print prog)
+	   
+	   ;; TEMP
+	   (printf "doing eta-prims: \n")
+	   (set! typed (eta-primitives typed))
+	   (pretty-print typed)
 
 	   (printf "\nTypecheck complete, program types:\n\n")
 	   (print-var-types typed)(flush-output-port)

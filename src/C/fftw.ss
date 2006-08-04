@@ -1,5 +1,8 @@
 
-;; [2006.08.03] This method seems to pass the obvious memory leak tests that I can think of.
+;;;; .title FFTW wrapper for Chez Scheme
+;;;; .author Ryan Newton
+
+;;;; [2006.08.03] This method seems to pass the obvious memory leak tests that I can think of.
 
 ;(chez:module fftw (make-dft-plan dft-1d compare-ffts)
 

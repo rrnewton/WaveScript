@@ -2,7 +2,7 @@
 ## The big problem is that schemedoc doesn't work with #;
 
 FILES = \
-  compiler.ss \
+  main.ss \
   regiment.ss \
 
 

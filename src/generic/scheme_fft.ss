@@ -1,4 +1,7 @@
 
+;;;; .title A Scheme implementation of FFT taken from the Chez Scheme Users Guide
+;;;; Works in Chez or PLT.
+
 (module scheme_fft mzscheme
 
   (require  "constants.ss"
