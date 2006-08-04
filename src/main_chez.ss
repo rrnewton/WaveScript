@@ -145,6 +145,8 @@
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
 (include "helpers.ss") (import (except helpers test-this these-tests))
+(include "../generic/scheme_fft.ss")
+(include "../generic/fft.ss") (import fft)
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
@@ -168,7 +170,7 @@
        (if (not (file-exists? (format "build/~a/usleep_libc.so" (machine-type))))
 	   ;; This even resorts to calling make to build the sleep object!!
 	   ;; This is kinda silly, and will cause a bunch of text to dump to stdout/err.
-	   (system "(cd chez/usleep; make)"))
+	   (system "(cd C; make usleep_libc)"))
        (if (file-exists? (format "build/~a/usleep_libc.so" (machine-type)))
 					;(parameterize ((current-directory (format "chez/usleep/~a" (machine-type))))
 	   (load (format "build/~a/usleep_libc.so" (machine-type)))

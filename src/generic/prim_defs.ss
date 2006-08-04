@@ -251,7 +251,7 @@
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
 
-    (error            (String) 'a)
+    (regerror         (String) 'a)
 
     (newarr           (Integer 'a) (Array 'a))
     (arr-get          ((Array 'a) Integer) 'a)

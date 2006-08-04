@@ -2458,7 +2458,7 @@
       ]
 
 ;; [2006.02.18] Now we test using some of the demo programs.  This is
-;; to better our regression testing; we don't want the demo programs
+;; to better our regression testing -- we don't want the demo programs
 ;; to stop working without us knowing!!
 
 ["Demos: smap2_two_anchors.rs"

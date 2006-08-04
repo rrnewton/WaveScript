@@ -56,6 +56,8 @@ chez_native:
 
 # Saved heap images start up very fast, but don't work right on all platforms.
 # (doesn't work right on Mac OS or fedora core)
+
+# Run "make chez" before this to compile the code before grabbing a Petite heap:
 heap: 
 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
@@ -64,11 +66,15 @@ heap:
 
 # A fullheap includes the Chez compiler as well as the petite heap.
 fullheap:
-	scheme -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
-#	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-	$(RM) -f build/regiment.0.heap 
-#	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+	@if [ `which chez` ]; \
+	then echo "chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
+	     chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
+	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
+	fi
 
+#	$(RM) -f build/regiment.0.heap 
+##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+##	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
 
 test: clean chez
@@ -136,7 +142,7 @@ package: clean
 clean:
 	(cd plt; $(MAKE) clean)
 	(cd haskell; $(MAKE) clean)
-	(cd chez/usleep; $(MAKE) clean)
+	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~

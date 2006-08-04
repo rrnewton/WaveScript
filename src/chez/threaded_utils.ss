@@ -1,4 +1,8 @@
 
+;; [2006.07] This contains some miscellaneous stuff related to
+;; threads.  Only relevent to the pthread-based version of Chez
+;; Scheme.
+
 (chez:module threaded_utils
 
     (stream-parmap 

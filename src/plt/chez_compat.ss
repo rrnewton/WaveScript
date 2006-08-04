@@ -88,6 +88,9 @@
   (define-syntax fl> (syntax-rules () [(_ e ...) (> e ...)]))
   (define-syntax fl<= (syntax-rules () [(_ e ...) (<= e ...)]))
   (define-syntax fl>= (syntax-rules () [(_ e ...) (>= e ...)]))
+  (define (fxsrl n bits) (quotient n (expt 2 bits)))
+  (define (fxsll n bits) (* n (expt 2 bits)))
+  
   ;; [2005.11.03] This is lame but apparently PLT doesn't have any such thing.
   ;; Further, this might be dangerous.  Chez promises that fixnum's are eq?
   ;; but I haven't found a place in the PLT documentation where they guarantee that.

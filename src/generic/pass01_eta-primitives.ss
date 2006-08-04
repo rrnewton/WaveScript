@@ -35,8 +35,7 @@
 			   ; Primitive types:
 			   ,(rdc (rdc (prim->type var)))
 			   (,var ,@formals)))))]
-          [,var (guard (symbol? var))
-		var]
+          [,var (guard (symbol? var))  var]
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
            `(if ,test ,conseq ,altern)]

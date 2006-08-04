@@ -8,6 +8,6 @@
   (let ((cproc (foreign-procedure "usleep" (integer-32) void)))
     (lambda (x) (cproc (* 1000 x)))))
 
-;(printf "woot1\n")
+;(printf "now sleep\n")
 ;(sleep 1000)
-;(printf "woot2\n")
+;(printf "awake!\n")

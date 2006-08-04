@@ -3,50 +3,22 @@
 ;; This language definition implements WaveScript, with its Sigsegs and all.
 ;; Uses the stream-processing prims from helpers.ss
 
-;; Discrete Fourier Transform:
-(define (dft x)
-  (define (w-powers n)
-    (let ((pi (* (acos 0.0) 2)))
-      (let ((delta (/ (* -2.0i pi) n)))
-        (let f ((n n) (x 0.0))
-          (if (= n 0)
-              '()
-              (cons (exp x) (f (- n 2) (+ x delta))))))))
-  (define (evens w)
-    (if (null? w)
-        '()
-        (cons (car w) (evens (cddr w)))))
-  (define (interlace x y)
-    (if (null? x)
-        '()
-        (cons (car x) (cons (car y) (interlace (cdr x) (cdr y))))))
-  (define (split ls)
-    (let split ((fast ls) (slow ls))
-      (if (null? fast)
-          (values '() slow)
-          (call-with-values
-            (lambda () (split (cddr fast) (cdr slow)))
-            (lambda (front back)
-              (values (cons (car slow) front) back))))))
-  (define (butterfly x w)
-    (call-with-values
-      (lambda () (split x))
-      (lambda (front back)
-        (values
-          (map + front back)
-          (map * (map - front back) w)))))
-  (define (rfft x w)
-    (if (null? (cddr x))
-      (let ((x0 (car x)) (x1 (cadr x)))
-        (list (+ x0 x1) (- x0 x1)))
-      (call-with-values
-        (lambda () (butterfly x w))
-        (lambda (front back)
-          (let ((w (evens w)))
-            (interlace (rfft front w) (rfft back w)))))))
-  (rfft x (w-powers (length x))))
+;; TODO: Make the core language bindings into a module which is
+;; imported when eval happens.  This way even petite with a limited
+;; heap will still get performance.
 
 ;;======================================================================
+
+;; Testing file IO on marmot audio traces:
+
+;; This just checks some hard coded locations for the marmot file.
+(define (marmotfile)
+    (cond
+     [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+      "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+     [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+      "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+     [else (error 'marmotfile "couldn't find marmot data")]))
 
 ;; Takes 35 seconds using stupid approach (read-char).
 (define (read-all)
@@ -60,7 +32,6 @@
     (if (stream-empty? s) 'DONE
 	(loop (stream-cdr s) ;(add1 n)
 	      )))))
-
 (define (read-n n)
   (wavescript-language)
   (time 
@@ -73,18 +44,8 @@
 	(loop (stream-cdr s) (fx- n 1)
 	      )))))
 
-
-(define (marmotfile)
-    (cond
-     [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-      "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-     [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-      "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-     [else (error 'marmotfile "couldn't find marmot data")]))
-
 ;; Takes 3.3 seconds.
 (define (baseline-read-all)
-
   (let ((p (marmotfile)))
      (time 
       (let loop ()
@@ -168,21 +129,15 @@
 ; 	   (set! count2 tc)))       
        (define winsize (* 8 len))
        (define remainder #f) ;; The unprocessed left-over from a batch.
-       (define (to-int16 str ind)	 
-#;
-	 (let ([s str] [i1 ind])
-	   (let ([unsigned (fx+ (fx* 256 (char->integer (string-ref s i1)))
-				(char->integer (string-ref s (fx+ 1 i1))))])
-	     (if (fx< unsigned 32768)
-		 unsigned
-		 (fx- unsigned 65536))))
+
+       ;; Read two bytes from a string and build an int16:
+       (define (to-int16 str ind)
 	 ;; This seems to do about the same, maybe slightly better.
 	 (let ([unsigned (fx+ (fxsll (char->integer (string-ref str ind)) 8)
 			      (char->integer (string-ref str (fx+ 1 ind))))])
 	   (if (fxzero? (fxlogand unsigned 32768))
 	       unsigned
-	       (fx- unsigned 65536))
-	 ))
+	       (fx- unsigned 65536))))
        (define (read-sample str index)
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
@@ -196,8 +151,45 @@
 		   (to-int16 s (fx+ 4 ind))
 		   (to-int16 s (fx+ 6 ind)))
 	   ))
-	   
-       ;; UNFINISHED: Doing this with different sized grab-chunk and window-size is very annoying:
+
+       ;; This version is simpler than my previous attempt and just
+       ;; reads at the granularity of the window-size.  However it has
+       ;; a CORRECTNESS problem.  It depends on block-read getting all
+       ;; the data every read.  
+       ;; TODO: FIX THIS.
+       ;;
+       ;; This version takes 750 ms (opt lvl 3) with no alloc or fill.
+       ;; 1.6 s with alloc, 2.0 s with alloc & constant fill.
+       ;; And 22 seconds with alloc, fill, and sample parsing!
+       ;; Tried forcing read-sample/to-int16 to inline, but that bumped it to 35s!
+       ;; (Oops.  Got it back down to 24.8s by linearizing the pattern var usages.)
+       ;;   Inlining only to-int16 makes it 26s... not helping...       
+       ;;
+       ;; NOTE: Performance got vastly better when I only did one
+       ;; channel at a time instead of every sample being a 4-vector.
+       (define (read-window)
+	 (set! count1 (block-read infile buffer1 winsize))
+	 (cond
+	  [(eof-object? count1)     #f]
+	  ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
+	  [(fx< count1  winsize)
+	     (warning 'read-window 
+		      "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
+		      count1 winsize)
+	     ;(warning 'read-window "this version depends on block-read always getting all the chars, got ~a, wanted ~a"	count1 winsize)
+	     ;(printf "Better get eof next... THE PROBLEM OF LEFTOVERS!\n")
+	     (ASSERT (eof-object? (block-read infile buffer1 winsize)))
+	     #f]
+	  [else
+	   (let ([win (make-vector len)])
+	     (for (i 0 (fx- len 1))
+		  (vector-set! win i (read-sample buffer1 (fx* i 8)))
+		  ;(vector-set! win i 99)
+		  (void)
+		  )
+	     win)]))
+
+       ;; UNFINISHED VERSION: Doing this with different sized grab-chunk and window-size is very annoying:
 #;
        (define (read-window)
 	 (let ([win (make-vector len)])	       
@@ -239,41 +231,7 @@
 		   #f (loop))
 	       ]
 	      ))))
-
-       ;; This version is simpler and just reads at the granularity of
-       ;; the window-size.  However it has a CORRECTNESS problem.  It
-       ;; depends on block-read getting all the data every read.
-       ;; TODO: FIX THIS.
-       ;;
-       ;; This version takes 750 ms (opt lvl 3) with no alloc or fill.
-       ;; 1.6 s with alloc, 2.0 s with alloc & constant fill.
-       ;; And 22 seconds with alloc, fill, and sample parsing!
-       ;; Tried forcing read-sample/to-int16 to inline, but that bumped it to 35s!
-       ;; (Oops.  Got it back down to 24.8s by linearizing the pattern var usages.)
-       ;;   Inlining only to-int16 makes it 26s... not helping...       
-       ;;
-       ;; NOTE: Performance got vastly better when I only did one
-       ;; channel at a time instead of every sample being a 4-vector.
-       (define (read-window)
-	 (set! count1 (block-read infile buffer1 winsize))
-	 (cond
-	  [(eof-object? count1)     #f]
-	  ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
-	  [(fx< count1  winsize)
-	     (warning 'read-window "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" count1 winsize)
-	     ;(warning 'read-window "this version depends on block-read always getting all the chars, got ~a, wanted ~a"	count1 winsize)
-	     ;(printf "Better get eof next... THE PROBLEM OF LEFTOVERS!\n")
-	     (ASSERT (eof-object? (block-read infile buffer1 winsize)))
-	     #f]
-	  [else
-	   (let ([win (make-vector len)])
-	     (for (i 0 (fx- len 1))
-		  (vector-set! win i (read-sample buffer1 (fx* i 8)))
-		  ;(vector-set! win i 99)
-		  (void)
-		  )
-	     win)]))
-
+       
        ;; This returns the stream representing the audio channel (read in from disk):
        ;; TODO: HANDLE OVERLAP:
        (ASSERT (zero? overlap))
@@ -302,12 +260,12 @@
      (define * fx*)
      (define / fx/)
      
-     ;(define (realpart x) (if (cflonum? x) (cfl-real-part x) x))
-     ;(define (imagpart x) (if (cflonum? x) (cfl-imag-part x) 0))
-     (define realpart cfl-real-part)
-     (define imagpart cfl-imag-part)
+     (define (realpart x) (if (cflonum? x) (cfl-real-part x) x))
+     (define (imagpart x) (if (cflonum? x) (cfl-imag-part x) 0))
+     ;(define realpart cfl-real-part)
+     ;(define imagpart cfl-imag-part)
 
-     (define fft (lambda (v) (list->vector (dft (vector->list v)))))
+     (define fft (lambda (v) (dft v)))
      
      ; break
      ; error

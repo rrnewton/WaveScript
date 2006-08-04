@@ -24,10 +24,10 @@ int make_fftw_plan_dft_1d (int N) {
   p->vec = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
   if (N > 10000)
     p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_ESTIMATE);
-  else if (N > 5000)
+  else //if (N > 5000)
     p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_MEASURE);
-  else 
-    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_PATIENT);
+//  else 
+//    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_PATIENT);
   return (int)p;
 }
 

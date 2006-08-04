@@ -2,7 +2,7 @@
 
 ;;;; [2005.11.28] <br>
 ;;;; This simple demo uses smap2 to perform a join in the network
-;;;; between two signals, in this case two anchors. a
+;;;; between two signals, in this case two anchors. 
 
 (parameters 
   [simalpha-channel-model 'lossless]
