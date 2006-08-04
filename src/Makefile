@@ -19,7 +19,12 @@ CHEZ = chez
 SWL = swl
 DEST = a.out
 
-all: reg
+all: 
+	(cd C; $(MAKE))
+	$(MAKE) fullheap
+	$(MAKE) wsparse
+
+old_all: reg
 	(cd plt; $(MAKE) nc)
 	(cd haskell; $(MAKE))
 
