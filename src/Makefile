@@ -36,6 +36,9 @@ MT=`echo '(display (machine-type))' | ../depends/petite -q`
 
 # Two back-ends, PLT or Chez.
 
+c: 
+	(cd C; $(MAKE))
+
 #----------------------------------------
 plt: pltbc
 pltbc: mzscheme
