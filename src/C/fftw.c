@@ -17,7 +17,7 @@ typedef struct Plan_t {
   int vec_len;
 } plan_t;
 
-int make_fftw_plan_dft_1d (int N) {
+uptr make_fftw_plan_dft_1d (int N) {
   // Heap allocate a struct.
   plan_t* p = malloc(sizeof(plan_t));
   p->vec_len = N;
@@ -28,10 +28,10 @@ int make_fftw_plan_dft_1d (int N) {
     p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_MEASURE);
 //  else 
 //    p->plan = fftw_plan_dft_1d(N, p->vec, p->vec, FFTW_FORWARD, FFTW_PATIENT);
-  return (int)p;
+  return (uptr)p;
 }
 
-void free_fftw_plan_dft_1d (int ptr) {
+void free_fftw_plan_dft_1d (uptr ptr) {
   plan_t* p = (plan_t*)ptr;
   fftw_destroy_plan(p->plan);
   fftw_free(p->vec);
@@ -43,7 +43,7 @@ void free_fftw_plan_dft_1d (int ptr) {
 
 
 // This returns #t if successful, or a number (the correct length) if there was a mismatched length.
-ptr s_fftw_execute (ptr vec, int plan) {
+ptr s_fftw_execute (ptr vec, uptr plan) {
   int i;
   int len = Svector_length(vec);
   int N = len / 2;  
@@ -59,7 +59,7 @@ ptr s_fftw_execute (ptr vec, int plan) {
   // TODO: CHECK THAT LENGTH IS RIGHT!
   if (N != p->vec_len) {
     printf("Mismatched lengths! %i %i\n", N, p->vec_len);
-    return(Sfixnum(p->vec_len));
+    return(Sfixnum((uptr)p->vec_len));
   }
 
   //printf("Measuring... ");  fflush( 0 );

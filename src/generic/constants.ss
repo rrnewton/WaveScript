@@ -289,8 +289,8 @@
 ;;   string -- log to specified file 
 ;;   function -- use specified logger function
 ;; FIXME : Finish implementing these behaviors.
-;(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
-(define-regiment-parameter simulation-logger #t) ;; Set the default to #t in debug mode, #f otherwise.
+(define-regiment-parameter simulation-logger (IFDEBUG #t #f)) ;; Set the default to #t in debug mode, #f otherwise.
+;(define-regiment-parameter simulation-logger #t) ;; Set the default to #t in debug mode, #f otherwise.
 
 ;; This sets the level at which we log messages.  All logger calls with less/eq this go through.
 (define-regiment-parameter simulation-logger-level 5)  ;; Very inclusive at first.

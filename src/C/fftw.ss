@@ -4,7 +4,7 @@
 ;(chez:module fftw (make-dft-plan dft-1d compare-ffts)
 
 ;(define _ 
-(load-shared-object (format "~a/src/build/~a/fftw.o" (getenv "REGIMENTD") (machine-type)))
+(load-shared-object (format "~a/build/~a/fftw.o" (getenv "REGIMENTD") (machine-type)))
 
 ;(load-shared-object (format "~a/fftw.o" (machine-type)))
 
@@ -39,8 +39,8 @@
 ;; Based on the example from the chez scheme users guide:
 (define fftw:make-dft-plan 
   (let ([malloc-guardian (make-guardian)]
-	[do-malloc (foreign-procedure "make_fftw_plan_dft_1d" (integer-32) integer-32)]
-	[do-free (foreign-procedure "free_fftw_plan_dft_1d" (integer-32) void)])
+	[do-malloc (foreign-procedure "make_fftw_plan_dft_1d" (integer-32) uptr)]
+	[do-free (foreign-procedure "free_fftw_plan_dft_1d" (uptr) void)])
     (define foobar (lambda ()
        ;; first, invoke the collector
        (collect)
@@ -60,7 +60,7 @@
         x))))
 
 (define fftw:dft-1d
-  (let ([execplan (foreign-procedure "s_fftw_execute" (scheme-object integer-32) scheme-object)])
+  (let ([execplan (foreign-procedure "s_fftw_execute" (scheme-object uptr) scheme-object)])
     (lambda (v planbox)
       (let ([vec (explode-complex-vector v)])
 	(execplan vec (unbox planbox))

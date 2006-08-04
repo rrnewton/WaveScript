@@ -148,14 +148,17 @@ package: clean
 #*---------------------------------------------------------------------*/
 #.PHONY: clean
 
-clean:
+cleanheap:
+	$(RM) build/regiment.0.heap
+	$(RM) build/i3nt/regiment.0.heap build/i3le/regiment.0.heap build/ppcosx/regiment.0.heap
+
+clean: cleanheap
 	(cd plt; $(MAKE) clean)
 	(cd haskell; $(MAKE) clean)
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~
-	$(RM) build/*.heap
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
