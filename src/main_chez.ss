@@ -10,7 +10,7 @@
 ; =======================================================================
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.
-;; [2006.02.28] Without this we get killed by our redifining "module".
+;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
 (if (top-level-bound? 'REGIMENTD) (eval '(import scheme)))
 
 ;;; Compile-time configuration.

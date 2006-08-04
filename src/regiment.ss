@@ -404,6 +404,9 @@
 ;; Set the invocation directory to whatever the current directory is:
 (scheme-start (lambda args (set! start-dir (cd)) 
 		      ;(random-seed (current-time))
+		      ;; We also need to make sure that we reset the REGIMENTD parameter:
+		      ;; It might not be the same on the system loading the heap as the one compiling it!
+		      (REGIMENTD (default-regimentd))
 		      (apply main args)))
 
 ;; If we're running from the heap and we're running in script mode,
