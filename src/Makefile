@@ -23,7 +23,7 @@ all: reg
 	(cd plt; $(MAKE) nc)
 	(cd haskell; $(MAKE))
 
-MT = `echo '(display (machine-type))' | petite -q`
+MT=`echo '(display (machine-type))' | ../depends/petite -q`
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
@@ -61,7 +61,7 @@ chez_native:
 heap: 
 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-	$(RM) -f build/regiment.0.heap 
+#	$(RM) -f build/regiment.0.heap 
 #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
 # A fullheap includes the Chez compiler as well as the petite heap.
@@ -69,12 +69,13 @@ fullheap:
 	@if [ `which chez` ]; \
 	then echo "chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
 	     chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
+#	     $(RM) -f build/regiment.0.heap; \
+#	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
 	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
 	fi
 
-#	$(RM) -f build/regiment.0.heap 
 ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
-##	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
+
 
 
 test: clean chez
