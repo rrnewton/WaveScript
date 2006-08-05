@@ -70,7 +70,10 @@
 
 	      ;; Syntax quotation
 	      [(#\# #\')
-	       (write-char #\' out)
+	       (display "NOTE!SYNTAX_QUOTATION_REMOVED" out)
+	       ;; Read and discard the expression
+	       (read in) 
+	       ;(write-char #\' out)
 	       (apply-ordered loop (read-char in) (read-char in))]
 
 	      ;; Raw Primitive references:

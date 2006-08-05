@@ -31,7 +31,7 @@ GENERICFILES = \
 
 
 CHEZFILES = \
-  chez/constants.ss \
+  chez/chez_constants.ss \
   chez/helpers.ss \
   chez/regmodule.ss \
 
@@ -45,9 +45,12 @@ SRCFILES = $(FILES) $(GENERICFILES) $(CHEZFILES) $(PLTFILES) $(ANALYSIS_FILES)
 DUPSRC   = $(SRCFILES:%=html/%)
 OBJFILES = $(DUPSRC:%=%.html)
 
+# Here's a bit of a trick, we just use regiment for the scheme system,
+# and let it worry about finding the right scheme to call.
 #SCHEME = chez
 #SCHEME = scheme
 SCHEME = regiment i
+PETITE = ../depends/petite
 
 #SCRATCHFILE=.__scratch_makefile_junk
 
@@ -109,7 +112,7 @@ $(OBJFILES): html/%.html: html/%
 #$(<:html/%=%)
 
 $(DUPSRC): html/%.ss: ../src/%.ss
-	petite --script scrub_source.ss $< $@	
+	$(PETITE) --script scrub_source.ss $< $@	
 
 
 install: installreadme

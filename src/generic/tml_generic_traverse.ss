@@ -54,7 +54,7 @@
 	       )
 
 ;; This is confusing, but there are so many small traversals of
-;; the program tree in this pass that it is much easier to reuse this tree walk:
+;; the program tree that it is much easier to reuse this tree walk:
 ;; It's complex, but saves a lot of boilerplate. (See peyton jones "boilerplate" papers.)
 ;;
 ;;
