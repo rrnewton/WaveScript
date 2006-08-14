@@ -85,9 +85,9 @@
 
 ;; [2004.06.11] This runs compiler tests for the whole system, then
 ;; runs all the unit tests.
+;;
 ;; [2005.02.26] Changing it so that it assumes the files under test
 ;; are already loaded, and just calls their unit testers by name.
-
 (define (test-units . args)
   (printf "~n;; Performing all unit tests:~n~n")
   (if (andmap (lambda (pr) (newline) (newline) (apply (cadr pr) args))
