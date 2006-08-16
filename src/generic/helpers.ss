@@ -904,19 +904,17 @@
     (reverse! ls)))
 
 ;; inefficient
-(define string-split
-  (lambda (str char)
-    (let ((ls (string->list str)))
-      (map list->string
-	   (let loop ((ls ls) (acc1 '()) (acc2 '()))
-	     (cond
-	      [(null? ls) 
-	       ;(if (null? acc1)
-		;   (reverse! acc2)
-		   (reverse! (cons (reverse! acc1) acc2))]
-	      [(eq? char (car ls))
-	       (loop (cdr ls) '() (cons (reverse! acc1) acc2))]
-	      [else (loop (cdr ls) (cons (car ls) acc1) acc2)]))))))
+;; [2006.08.16] More efficient:
+(define (string-split str char)
+  (let loop ([start 0] [i 0] [acc '()])
+    (cond
+     [(= i (string-length str)) 
+      (reverse! (cons (substring str start i) acc))]
+     [(eq? (string-ref str i) char)
+      (loop (fx+ 1 i) (fx+ 1 i)
+	    (cons (substring str start i) acc))]
+     [else (loop start (fx+ 1 i) acc)])))
+
 
 ;; inefficient
 (define substring?
@@ -1898,6 +1896,11 @@
 
     [(deep-member? 3 '(9 (4 ((3 9 a ) 4))))   #t]
     [(deep-member? 3 '(9 (4 ((9 a ) 4))))     #f]
+
+    [(string-split "abc def qet foo faz " #\space)
+     ("abc" "def" "qet" "foo" "faz" "")]
+    [(string-split "abc def qet foo   faz" #\space)
+     ("abc" "def" "qet" "foo" "" "" "faz")]
 
     [(let ((s (open-output-string)))
        (parameterize ((current-output-port s))
