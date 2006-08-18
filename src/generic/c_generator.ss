@@ -248,7 +248,7 @@
 	     ,boilerplate_premain
 	     ;"// " ,(Type typ) " toplevel;\n"
 	     ,(indent body "  ")
-	     ,(boilerplate_postmain (Var return-name))
+	     ,(boilerplate_postmain (Var return-name) typ)
 	     "}\n\n"
 	     )
 	   )]
@@ -294,6 +294,26 @@ class WSPrim {
 
   static const vector<complex> fft( const vector<complex> input) {
     printf(\"FFT.\\n\");
+//     int i;
+//     complex *fft_buf = new complex[input.length()];
+//     for (i=0; i<input->length(); i++)
+//       fft_buf[i] = input[i];
+
+//     float *fft_flt = (float *)fft_buf;    
+
+//     /* copy input over to output buffer */
+//     float *cbuf = casted->getDirect();
+//     memmove(fft_flt, cbuf, sizeof(float)*input->length());
+
+//     /* do the fft */
+//     realft(fft_flt-1, casted->length(), +1);    
+
+//     /* copy back over to an STL vec */
+//     vector<complex> output = new vector<complex>(input->length());
+//     for (i=0; i<input->length(); i++)
+//       output[i] = [i];
+
+//     return output;
     return input;
   }
 
@@ -311,10 +331,13 @@ int main(int argc, char ** argv)
 
 ")
 
-(define (boilerplate_postmain return_name) `("
+(define (boilerplate_postmain return_name return_type) `(
+,@(if (equal? return_type '(Signal (Sigseg Float)))
+      `("
   /* dump output specgram to file */
   AsciiFileSink<float> fs = AsciiFileSink<float>(\"/tmp/specgram.out\");
   fs.connect(&",return_name");
+") '()) "
 
   /* now, run */
   WSSource::StartThreads();
