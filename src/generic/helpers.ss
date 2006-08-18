@@ -376,7 +376,8 @@
 (define string->file
   (lambda (str fn)
     (let ([p (open-output-file fn 'replace)])
-      (fprintf p str)
+      ;(fprintf p str)
+      (display str p)
       (close-output-port p))))
 
 ;; [2006.02.22] <br>
@@ -903,7 +904,6 @@
 		      h)
     (reverse! ls)))
 
-;; inefficient
 ;; [2006.08.16] More efficient:
 (define (string-split str char)
   (let loop ([start 0] [i 0] [acc '()])
@@ -914,7 +914,6 @@
       (loop (fx+ 1 i) (fx+ 1 i)
 	    (cons (substring str start i) acc))]
      [else (loop start (fx+ 1 i) acc)])))
-
 
 ;; inefficient
 (define substring?
@@ -927,8 +926,6 @@
 	      #f
 	      (or (equal? s1 (substring s2 i (+ i l1)))
 		  (loop (add1 i)))))))))
-
-
 
 ;; I thought the primitive equal? did this by default?  This is just a
 ;; version that accepts any number of arguments.  Just a throw-away helper function.

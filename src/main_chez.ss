@@ -35,10 +35,12 @@
 	     (syntax-rules ()
 	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
-	   (source-directories (list "."
+	   (source-directories (list 
+				     "."
+				     (string-append (default-regimentd) "/src/generic")
 				     (string-append (default-regimentd) "/src")
 				     (string-append (default-regimentd) "/src/chez")
-				     (string-append (default-regimentd) "/src/generic")))
+				     ))
 	   
 	   (optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
@@ -145,8 +147,6 @@
 (include "hash.ss") (import hashfun) ;; TEMPORARY
 (include "hashtab.ss") (import hashtab)
 (include "helpers.ss") (import (except helpers test-this these-tests))
-(include "../generic/scheme_fft.ss")
-(include "../generic/fft.ss") (import fft)
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
@@ -157,6 +157,10 @@
 (include "../generic/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "tsort.ss") (import (except topsort-module test-this these-tests))
 (include "pregexp.ss") (import pregexp_module)
+
+(include "../generic/c_generator.ss") (import c_generator)
+(include "../generic/scheme_fft.ss")
+(include "../generic/fft.ss") (import fft)
 
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
