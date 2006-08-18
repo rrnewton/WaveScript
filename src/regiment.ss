@@ -379,13 +379,48 @@
 	   (printf "Evaluating program: \n\n")(pretty-print prog)
 	   
 	   ;; TEMP
-	   (printf "doing eta-prims: \n")
-	   (set! typed (eta-primitives typed))
-	   (pretty-print typed)
+	   ;(printf "doing eta-prims: \n")
+	   ;(set! typed (eta-primitives typed))
+	   ;(pretty-print typed)
 
 	   (printf "\nTypecheck complete, program types:\n\n")
 	   (print-var-types typed)(flush-output-port)
 	   (browse-stream stream))]
+
+	  [(wscomp)
+	   (let ()
+	   (define port (match filenames
+			  ;; If there's no file given read from stdout
+			  [() (console-input-port)]
+			  [(,fn) (open-input-file fn)]
+			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
+#;	   (define outfile (match filenames
+			  ;; If there's no file given read from stdout
+			  [() "query.cpp"]
+			  [(,fn) (format "~a.query.cpp" fn)]))
+	  (define outfile "./query.cpp")
+
+	   (define prog (strip-types (read port)))
+	   (define typed (verify-regiment prog))
+
+	   (printf "Compiling program: \n\n")(pretty-print prog)
+	   
+	   ;; TEMP
+	   ;(printf "doing eta-prims: \n")
+	   ;(set! typed (eta-primitives typed))
+	   ;(pretty-print typed)
+
+	   (printf "\nTypecheck complete, program types:\n\n")
+	   (print-var-types typed)(flush-output-port)
+	   
+	   (printf "\nGenerated C++ output to ~s.\n" outfile)
+	   (string->file 
+	    (text->string 
+	     (wsquery->text
+	      typed))
+	    outfile)
+	   )]
+
 	  
 	  )))))))
   

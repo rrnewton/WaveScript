@@ -1,0 +1,7 @@
+#!/bin/sh
+
+TMP=/tmp/wavescript_parsed.tmp.ss
+
+wsparse $1 > $TMP
+regiment wscomp $TMP
+rm -f $TMP

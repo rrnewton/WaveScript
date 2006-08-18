@@ -25,7 +25,7 @@
 	   testtext
 
 	   indent block WSBox 
-	   wscode->text
+	   wscode->text wsquery->text
 
 	   testme	   testme2
 	   testme0
@@ -186,7 +186,7 @@
     ;; .param name   A string naming the variable that stores the current result.
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
-    (trace-define (Query name typ x)
+    (define (Query name typ x)
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
       (match x
@@ -345,8 +345,8 @@ int main(int argc, char ** argv)
       (format "WSFunLib::~a" var))
       ;(symbol->string var))
 
-    (trace-define (Stmt st)
-      (trace-match STM st
+    (define (Stmt st)
+      (match st
 	;; Must distinguish expression from statement context.
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("if (" ,test ") {\n"
@@ -389,7 +389,7 @@ int main(int argc, char ** argv)
 	[,[Expr -> exp] `(,exp ";\n")]
 	))
 	
-    (trace-define (Expr exp)
+    (define (Expr exp)
       (match exp
 	[,c (guard (constant? c)) (Expr `(quote ,c))]
 	[(quote ,datum)
