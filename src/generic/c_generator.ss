@@ -266,8 +266,13 @@
                   "void *input = inputQueue->dequeue();\n"
 		  ,typ " " ,input " = *((",typ"*)input);\n"
 		  ,@body
-		  ;; TODO FIXME!!!
-		  "return TRUE;\n"
+
+		  ;; This is a quirky feature.  The bool returns
+		  ;; indicates whether the scheduler should NOT
+		  ;; reschedule this box further (even if there is
+		  ;; input left in its queue.)  For all the iterate
+		  ;; operators, this will be FALSE.
+		  "return FALSE;\n"
 		))]
 	[,other (error 'wscode->text "Cannot process: ~s" other)]
 	))
@@ -615,11 +620,13 @@ int main(int argc, char ** argv)
     [(,text->string "foo") "foo"]
     [(,text->string '("foo" "bar")) "foobar"]
     
-    [(wscode->text ''35) "35"]
-    [(text->string (wscode->text '(+ '1 (if '#t '35 '36))))
+    [(text->string (wscode->text '(lambda (x) (Integer) '35) "noname"))
+     ;; Requires helpers.ss
+     ;; Not very tight:
+     ,(lambda (s) (substring? "35" s))]
+    [(text->string (wscode->text '(lambda (x) (Integer) (+ '1 (if '#t '35 '36))) "noname"))
      ;"TRUE ? 35 : 36"]
-     "1 + (TRUE ? 35 : 36);\n"]
-    
+     ,(lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s))]
 
     ))
 (define test-this (default-unit-tester "c_generator.ss: generating C code." these-tests))
