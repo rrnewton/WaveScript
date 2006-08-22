@@ -159,6 +159,7 @@
 (include "pregexp.ss") (import pregexp_module)
 
 (include "../generic/c_generator.ss") (import c_generator)
+(include "../generic/wavescript_emit-c.ss") (import wavescript_emit-c)
 (include "../generic/scheme_fft.ss")
 (include "../generic/fft.ss") (import fft)
 
