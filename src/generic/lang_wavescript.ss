@@ -265,7 +265,11 @@
      ;(define realpart cfl-real-part)
      ;(define imagpart cfl-imag-part)
 
-     (define fft (lambda (v) (dft v)))
+     ;; [2006.08.23] Lifting ffts over sigsegs:     
+     (define fft (lambda (ss) (make-sigseg (sigseg-start ss)
+					   (sigseg-end ss)
+					   (dft (sigseg-vec ss))
+					   (sigseg-timebase ss))))
      
      ; break
      ; error

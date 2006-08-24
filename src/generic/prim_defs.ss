@@ -246,7 +246,7 @@
 
     ;; Takes channel, window size, overlap:
     (audio            (Integer Integer Integer) (Signal (Sigseg Complex))) ;; For now making COMPLEX!
-    (fft              ((Array Complex))  (Array Complex))
+    (fft              ((Sigseg Float))  (Sigseg Complex))
 
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)

@@ -10,8 +10,10 @@
   (require "c_generator.ss" "helpers.ss"2)
   (provide ;WSBox wscode->text
 	   wsquery->text
-	   test-this 
-	   test-wavescript_emit-c)
+	   
+	   testme	   testme2	   testme0
+
+	   test-this  test-wavescript_emit-c)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
   
@@ -161,29 +163,27 @@
 
 class WSPrim {
 
-  static const vector<complex> fft( const vector<complex> input) {
-    printf(\"FFT.\\n\");
-//     int i;
-//     complex *fft_buf = new complex[input.length()];
-//     for (i=0; i<input->length(); i++)
-//       fft_buf[i] = input[i];
+  static SigSeg<complex> fft(SigSeg<float> *casted) {
+      /* Currently we just use the unitless timebase: */ 
+      Timebase _freq = Unitless;
+      
+      /* alloc buffer for FFT */
+      Signal<complex> s = Signal<complex>(_freq);
+      complex *fft_buf = s.getBuffer(casted->length()/2);
+      float *fft_flt = (float *)fft_buf;
 
-//     float *fft_flt = (float *)fft_buf;    
+      /* copy input over to output buffer */
+      float *cbuf = casted->getDirect();
+      memmove(fft_flt, cbuf, sizeof(float)*casted->length());
+      casted->release(cbuf);
+      
+      /* do the fft */
+      FFT::realft(fft_flt-1, casted->length(), +1);
 
-//     /* copy input over to output buffer */
-//     float *cbuf = casted->getDirect();
-//     memmove(fft_flt, cbuf, sizeof(float)*input->length());
-
-//     /* do the fft */
-//     realft(fft_flt-1, casted->length(), +1);    
-
-//     /* copy back over to an STL vec */
-//     vector<complex> output = new vector<complex>(input->length());
-//     for (i=0; i<input->length(); i++)
-//       output[i] = [i];
-
-//     return output;
-    return input;
+      /* return the sigseg */
+      SigSeg<complex> output = s.commit(casted->length()/2);
+      delete casted;
+      return(output);
   }
 
 };
@@ -427,31 +427,6 @@ int main(int argc, char ** argv)
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp"))
   )
-
-#;
-
-(wscode->text
- '(lambda (w)
-    (letrec ((___VIRTQUEUE___ (virtqueue)))
-      (begin
-	(emit ___VIRTQUEUE___ (app fft (app fft (app to_array w))))
-	___VIRTQUEUE___))))
-
-#;
-(display (text->string (wscode->text
-  '(lambda (w)
-     ((Sigseg Complex))
-     (letrec ([___VIRTQUEUE___ (VQueue
-				(Array
-				 Complex)) (virtqueue)])
-       (begin
-	 (emit
-	  ___VIRTQUEUE___
-	  (fft (fft (to_array
-		     w))))
-	 ___VIRTQUEUE___))))))
-  
-
 
 
 (define these-tests

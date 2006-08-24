@@ -16,22 +16,12 @@
 (module c_generator mzscheme   
   (require )  
   (provide test-cgenerator
-
-	   wrap text->string append-text 
-	   text->lines 
-
-	   ;; TEMP
-	   ;graft! 
-	   testtext
-
+	   wrap append-text 
 	   indent block 
-	   ;WSBox  wscode->text wsquery->text
-;	   testme	   testme2
-;	   testme0
-
-	   )   
-  (chezprovide )  
-  (chezimports ) ;regiment_helpers
+	   text->lines text->string	   
+	   )
+  (chezprovide )
+  (chezimports )
 
 ;;======================================================================
 ;;; "Text" ADT implementation:

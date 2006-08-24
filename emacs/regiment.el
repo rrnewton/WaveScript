@@ -50,7 +50,8 @@
   (mapcar (lambda (dir)
 	    (mapcar (lambda (f)
 		      (if (> (length f) 3)
-			  (if (not (string= (substring f 0 1) "_"))
+			  (if (and (not (string= (substring f 0 1) "_"))
+				   (not (string= (substring f 0 2) ".#")))
 			      (if (or (string= (substring f -3) ".ss")
 				      (string= (substring f -3) ".rs") ;; Regiment source (sexp)
 				      (string= (substring f -3) ".tm")
@@ -58,7 +59,9 @@
 				      (and (> (length f) 6)
 					   (string= (substring f -3) ".tests")))
 					;(insert (concat dir f "\n"))
-				  (find-file-noselect (concat dir f))
+				  (progn
+				    (print (concat "Loading " f))
+				    (find-file-noselect (concat dir f)))
 				))))
 		    (directory-files (concat regd dir))))
 	  '("generic/" "" "chez/" "plt/" "C/" 
@@ -68,6 +71,43 @@
   ;(setq find-file-wildcards t)
   ;(find-file "~/cur/*.ss")
   ))
+
+
+(defvar wsd (concat (cap-dir "~/WaveScope") "code/v1/"))
+
+;; [2006.08.24]
+(defun load-wavescope-all-source ()
+  "Load all the source code for the WaveScope engine."
+  (interactive)
+  ;; Hardcoded location for now:
+  (let ((wsd (concat (cap-dir "~/WaveScope") "code/v1/")))
+    ;; Sometimes it doesn't work if I don't do this first:
+    (cd wsd)
+    (mapcar (lambda (dir)
+	    (mapcar (lambda (f)
+		      (if (> (length f) 3)
+			  (if (and (not (string= (substring f 0 1) "_")) ;; Ignore files starting with "_"
+				   (not (string= (substring f 0 2) ".#"))
+				   )
+			      (if (or (string= (substring f -4) ".hpp")
+				      (string= (substring f -4) ".cpp")
+				      (string= f "Makefile")		      
+				      )
+				  (progn 
+				    (print (concat "Loading " f))
+				    (find-file-noselect (concat wsd dir f))
+				)))))
+		    (directory-files (concat wsd dir))))
+	  '("" "include/" "Library/" "Sources/" "Storage/" "Misc/" 
+	    "Timebases/" "Engine/" "FFI/" 
+	    ))
+	  ;'("~/cur/generic/"))
+  ;(setq find-file-wildcards t)
+  ;(find-file "~/cur/*.ss")
+  ))
+
+
+
 
 (defun revert-scheme-source ()
   "Revert all buffers ending in .ss"
