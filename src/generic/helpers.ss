@@ -182,7 +182,6 @@
 			    [() (origfun)]
 			    [(v) (origfun v) (hook v)]))))
 
-
 (define list-index
   (lambda (pred ls)
     (cond
@@ -192,11 +191,9 @@
               (if (number? list-index-r)
                   (+ list-index-r 1)
                   #f))))))
-
 (define list-find-position
   (lambda (sym los)
     (list-index (lambda (sym1) (eqv? sym1 sym)) los)))
-
 ;; This removes all!  Not just first.
 (define (assq-remove-all x ls)
   (let loop ((ls ls))
@@ -220,7 +217,6 @@
        [(null? ls) (reverse acc)]
        [(equal? x (car ls)) (reverse (cons (car ls) acc))]
        [else (loop (cdr ls) (cons (car ls) acc))]))))
-
 (define list-remove-before
   (lambda (x ls)
     (let loop ([ls ls])
@@ -228,21 +224,37 @@
        [(null? ls) '()]
        [(equal? x (car ls)) ls]
        [else (loop (cdr ls))]))))
-
 (define list-remove-first
   (lambda (x lst)
     (cond
       [(null? lst) '()]
       [(equal? x (car lst)) (cdr lst)]
       [else (cons (car lst) (list-remove-first x (cdr lst)))])))
-
-
 (define list-remove-all
   (lambda (x lst)
     (cond
       [(null? lst) '()]
       [(equal? x (car lst)) (list-remove-all x (cdr lst))]
       [else (cons (car lst) (list-remove-all x (cdr lst)))])))
+
+(define vector-for-each
+  (lambda (f! v)
+    (let ([len (vector-length v)])
+      (do ([i 0 (add1 i)])
+          ((= i len) (void))
+          (f! (vector-ref v i))))))
+(define vector-map!
+  (lambda (f v)
+    (do ([i (sub1 (vector-length v)) (sub1 i)])
+        ((= -1 i) v)
+        (vector-set! v i (f (vector-ref v i))))))
+(define vector-map
+  (lambda (f v)
+    (let ([newv (make-vector (vector-length v))])
+      (do ([i (sub1 (vector-length v)) (sub1 i)])
+          ((= -1 i) newv)
+          (vector-set! newv i (f (vector-ref v i)))))))
+
 
 #;
 (define timeeval
@@ -287,7 +299,6 @@
         '()
         (let ([rst (mapleft f (cdr ls))])
           (cons (f (car ls)) rst)))))
-
 (define mapright
   (lambda (f ls)
     (if (null? ls)

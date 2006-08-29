@@ -37,6 +37,8 @@
 	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
 	  filter list-index snoc rac rdc last 
 	  list-find-position list-remove-before
+	  vector-for-each vector-map vector-map!
+
 
 	  insert-between iota disp crit-printf
 	  extract-file-extension remove-file-extension

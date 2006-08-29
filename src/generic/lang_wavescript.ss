@@ -132,6 +132,33 @@
 	 (list->string (list (integer->char highbyte)
 			     (integer->char lowbyte)))))
 
+     (trace-define (dump-binfile file stream pos)
+       (let ([port (open-output-file file 'replace)])
+	 (time 
+	  (progress-dots
+	   (lambda () 
+	     (let loop ()
+	       (if (stream-empty? stream)
+		   (printf "Finished, dumped ~a stream elements.\n" pos)
+		   (let process ([elem (stream-car stream)])		 
+		     (cond
+		      [(integer? elem)
+		       (display (uint16->string elem) port)]
+		      [(sigseg? elem)	
+		       (vector-for-each (lambda (x) (display (uint16->string x) port))
+					(sigseg-vec elem))]
+		      ;; This is a lame hack to circumvent generativity of records:
+		      [(reg:struct? elem) (process (apply make-sigseg (cdr (reg:struct->list elem))))]
+
+		      [else (error 'dump-binfile "Cannot handle stream element: ~s" elem)])
+
+		       (set! pos (add1 pos))
+		       (set! stream (stream-cdr stream))
+		       (loop)
+		       ))))
+	     5000000
+	     (lambda () (printf "  POS# ~a dumped...\n" pos))))))
+
      ;; Read a stream of Uint16's.
      (define (audioFile file len overlap)
        (read-file-stream file 
@@ -204,7 +231,8 @@
 
        ;; This returns the stream representing the audio channel (read in from disk):
        ;; TODO: HANDLE OVERLAP:
-       (ASSERT (zero? overlap))
+       (unless (zero? overlap)
+	 (error 'read-file-stream "currently does not support overlaps, use rewindow"))
        (delay 
 	 (let loop ([pos 0]) 
 	   (let ([win (read-window)])

@@ -123,6 +123,7 @@
   (printf "     skip <n>     advance the stream, but don't print\n")
 ;  (printf "     code         print the query that is executing\n")
   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+  (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
   (printf "     exit         exit\n\n")
   (flush-output-port)
 
@@ -157,34 +158,46 @@
 		(set! stream strm)))
 	      (loop (+ pos n))]
 
-#;	    [(,code) (guard (memq code '(c co cod code)))
+#|	    [(,code) (guard (memq code '(c co cod code)))
 	     (parameterize ([print-graph #f]
 			    [print-level 10]
 			    [print-length 200])
 	       (newline)(pretty-print prog)(newline))
 	     (loop pos)]
+|#
 
-	    [(,dump ,file) (guard (memq dump '(d du dum dump)))
+	  [(,dump ,file) (guard (memq dump '(d du dum dump)))
 	     (let ([port (open-output-file (format "~a" file) 'replace)])
-	       (time 
-		(progress-dots
-		 (lambda ()
-		   (let loop ()
-		     (if (stream-empty? stream)
-			 (printf "Finished, dumped ~a stream elements.\n" pos)
-			 (begin 
-			   (write (stream-car stream) port)(newline port)
-			   (set! pos (add1 pos))
-			   (set! stream (stream-cdr stream))
-			   (loop)
-			   ))))
+	       (parameterize ([print-length #f]
+			      [print-level #f]
+			      [print-graph #f]
+			      )		 
+		 (time 
+	      (progress-dots
+	       (lambda ()
+		 (let loop ()
+		   (if (stream-empty? stream)
+		       (printf "Finished, dumped ~a stream elements.\n" pos)
+		       (begin 
+			 (write (stream-car stream) port)(newline port)
+			 (set! pos (add1 pos))
+			 (set! stream (stream-cdr stream))
+			 (loop)
+			 ))))
 		 50000000 
 		 (lambda ()
-		   (printf "  POS# ~a dumped...\n" pos)))))]
+		   (printf "  POS# ~a dumped...\n" pos))))
+		 ))]
 
-	    [(exit) (void)]
-	    [,other 
-	     (printf "Bad input.\n") (loop pos)]
-	    )))
+	  ;; Wavescope-specific.
+	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))
+	   (let ([filename (format "~a" file)])
+	     (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
+	   ]
+	  
+	  [(exit) (void)]
+	  [,other 
+	   (printf "Bad input.\n") (loop pos)]
+	  )))
       )))
 

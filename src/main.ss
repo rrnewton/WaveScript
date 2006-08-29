@@ -125,7 +125,7 @@
 
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
-(define (run-compiler p . args )
+(define (run-compiler p . args )                              ;; Entrypoint.
   ;(disp "RUN COMP:" p)
   (let ([filename #f]
 	[passes (pass-list)]
@@ -174,23 +174,27 @@
 
 
 ;; [2006.08.27] This version executes the alternate, WaveScript compiler.
-(define (run-ws-compiler p)
+(define (run-ws-compiler p)                                   ;; Entrypoint.
   (set! p (verify-regiment p))
+  (printf "Program verified.\n")
   ;(set! p (eta-primitives p))
+  ;(printf "Primitives Eta-expanded.\n")
+  
   (set! p (nominalize-types p))
+  (printf "Types nominalized.\n")
   ;(set! p (text->string (wsquery->text p)))
   p)
 
 
 ;; This one just stops after deglobalize:
-(define (compile-to-tokens p . args)
+(define (compile-to-tokens p . args)                          ;; Entrypoint.
   (apply run-compiler p 'barely-tokens args))
-(define (compile-almost-to-tokens p . args)
+(define (compile-almost-to-tokens p . args)                   ;; Entrypoint.
   (apply run-compiler p 'almost-tokens args))
 
 ;; This finishes off the compilation of scheme-format token machine.
 ;; It's just a front-end to run-compiler that restricts the passes we run over.
-(define (assemble-tokmac tm . args)
+(define (assemble-tokmac tm . args)                           ;; Entrypoint.
   (printf "assem tokmac...\n" )
   (let ([starting-place 
 	 (match tm
@@ -210,16 +214,6 @@
 ;    (lambda (tm)
       (parameterize ([pass-list passes])
 	(apply run-compiler tm args)))))
-
-
-(define test
-  (lambda (set)
-    (fluid-let ([tests 
-		 (map (lambda (p) 
-			`(base-language '(program ,p)))
-		      set)])
-      (test-all))))
-
 
 
 
@@ -280,36 +274,6 @@
 ; =============================================================
 ;;; Temporary junk:
 
-;; This is my big target program!!
-'(define theprog
-  '(let* ((R (circle-at 50 '(30 40)))
-	 (f (lambda (tot next)
-	      (cons (+ (car tot) (sense next))
-		    (+ (cdr tot) 1))))
-	 (g (lambda (tot) (/ (car tot) (cdr tot))))
-	 (avg (smap g (rfold f (cons 0 0) R))))
-    (until (pred (lambda (x) (> x 15.3)) avg)
-	   R
-	   (circle-at 100 '(0 0)))))
-
-(define prog
-  '(program
-     (bindings (tmp_3 (cons '40 '())) (tmp_1 (cons '30 tmp_3)))
-     (socpgm (bindings) (call f_token_result_2))
-     (nodepgm
-       (tokens
-         (f_token_result_2 () (flood token_4))
-         (token_4
-           ()           
-           (if (< (locdiff (loc) tmp_1) 10.0)
-               (begin
-                 (disp "PROG: blah blah calling elect leader")
-                 (elect-leader m_token_result_2))
-               '#f))
-         (m_token_result_2 ()
-                           (disp "PROG: Bang, election finished, got result..")
-                           (soc-return (list 'anch this))))
-       (startup))))
 
 ;; HOW TO RUN:
 ;; ----------------------------------------
@@ -326,22 +290,6 @@
 ;; Sigh, first class tokens:
 ;(r '(rmap (lambda (x) (rmap (lambda (y) y) world)) world)) 
   
-;======================================================================
-;; RUNNING THROUGH NESC
-
-;; See tossim.ss
-
-;======================================================================
-;; RUNNING THROUGH SIMALPHA
-
-;; I'm binding all these little random letter combinations!  Bah!
-(define mp;;myprog ;; shorthand
-;  '(rfold + 0 (rmap sense (circle-at '(30 40) 10))))
-  '(rfold + 0 (rmap sense (khood-at '(30 40) 10))))
-
-;; [2005.09.29] Moved run-simulator-alpha to simulator_alpha.ss
-	    
-
 ;======================================================================
 
 [define tm-to-list ;; This is boilerplate, many of these tests just run the following:
