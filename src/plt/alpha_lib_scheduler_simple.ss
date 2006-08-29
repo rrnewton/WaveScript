@@ -18,6 +18,7 @@
    ;; Would like to remove this dependency eventually:
 ;   (all-except "simulator_alpha.ss") ;run-alpha-simple-scheduler)
 ;   (all-except "alpha_lib_scheduler_simple.ss")
+   "../plt/chez_compat.ss"
    "simulator_alpha_datatypes.ss"
    "alpha_lib.ss"
    )

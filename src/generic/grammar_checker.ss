@@ -17,6 +17,7 @@
 	   "../plt/iu-match.ss"
 	   "../generic/constants.ss" ;; For DEBUGMODE
            "../plt/prim_defs.ss"
+           "../plt/chez_compat.ss"
 	   (all-except "../plt/helpers.ss" test-this these-tests)
 ;	   (all-except "../plt/regiment_helpers.ss" test-this these-tests)
            )
@@ -450,7 +451,7 @@
 
 
 ;; This contains actual grammar definitions (used in unit tests below).
-(include "grammars.ss")
+(include "../generic/grammars.ss")
 
 ; =======================================================================
 ;;; Unit tests.

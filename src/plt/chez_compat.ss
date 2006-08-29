@@ -22,6 +22,7 @@
 	   (all-from "cheztrace.ss")
            pretty-print remq sort flush-output-port
            real-time
+           sort! 
            )
 
   ;; Here we include the SLIB initialization directly.  This is the only 
@@ -30,7 +31,7 @@
 ;  (include "/usr/local/plt/collects/slibinit/init.ss")  
 
   ;;; Chez Compatability
-    
+      
   (define cd current-directory) ;; shorthand
 
 ;; Leaf nodes in a data structure.  Things that contain no more subthings.
@@ -104,10 +105,6 @@
   (define (flonum->fixnum x) (inexact->exact (floor x)))
   (define (fixnum->flonum x) (exact->inexact x))
     
-  ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.
-  ;(define (merge! a b) (merge a b))
-  ;(define (merge! p a b) (swindle:merge! a b p))
-  ;(define (sort! p l)    (swindle:sort! l p)) ;; Now already defined in v352
   (define (list-copy l) (reverse! (reverse l))) ;; Reverse had better be tail-recursive!
    #;(define (remq x ls)
     (cond 
@@ -181,24 +178,10 @@
         [(null? lst) (error 'list-head "list is not long enough: ~s ~s"
                             lst n)]
         [else (cons (car lst) (list-head (cdr lst) (sub1 n)))])))
-  ;; RRN: Non-tail recursive version
-  '(define (merge f l1 l2)
-     ;(let loop ((acc '()) (l1 l1) (l2 l2))
-     (cond
-       [(null? l1) l2]
-       [(null? l2) l1]
-       [(f (car l1) (car l2))
-        ;(loop (cons (car l1) acc)
-    (cons (car l1)
-	  (merge f (cdr l1) l2))]
-       ;; This gives us stability:
-   [(f (car l1) (car l2))
-    (cons (car l2)
-	  (merge f l1 (cdr l2)))]
-   ;; If they're equal, l1 goes first:
-   [else 
-    (cons (car l1)
-	  (merge f (cdr l1) l2))]))
+
+  ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.  
+  ;(define (merge! p a b) (swindle:merge! a b p))
+  ;(define (sort! p l)    (swindle:sort! l p)) ;; Now already defined in v352
 
 ;; From Swindle:
 ;;>> (merge less? a b)
@@ -230,6 +213,8 @@
          (cons (car l2) (merge pred? l1 (cdr l2))))
         (else (cons (car l1) (merge pred? (cdr l1) l2))))))
 
+  (define merge! merge)
+  
   ;; More Chez compat:
   (define (block-read inp str count)
     (read-bytes-avail! str inp 0 count))

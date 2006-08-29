@@ -1,5 +1,7 @@
 ;;;; Tree Grammars for Regiment and TML
 
+;;;; Currently 'include'd into grammar_checker.ss
+
 ; =======================================================================
 ;;; Regiment Grammars.
 

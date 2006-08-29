@@ -1,0 +1,190 @@
+;;;; This implements a straightforward stream datatype -- tail-delayed pairs.
+
+;;;; Currently 'include'd by helpers.ss
+
+;=======================================================================
+;;; Stream functions.
+;;;
+;;; [2004.06.17] These functions deal with streams that are represented
+;;; as a list, promise, or improper list with a promise as its final
+;;; cdr-pointer.  That is:                         <br><br>
+;;;  Stream  := (item*)                            <br>
+;;;           | (item* . promise)                  <br>
+;;;           | promise                            <br><br>
+;;;
+;;; [2005.10.16] Just switched this from head-strict to not.
+;;; I should probably switch over to using the standard SRFI-40 stream
+;;; implementation at some point. <br><br>
+;;;
+;;; [2006.02.19] NOTE: Streams are not currently an ADT. They're
+;;; representation is transparent.  The user is free to construct
+;;; their own tail-delayed lists with whatever strictness pattern
+;;; they wish.
+
+;; Is the object potentially a stream?  Can't tell for sure because
+;; promises are opaque.
+;; [2006.07.28] TODO: this quadratic definition looks unnecessary!  FIXME: 
+(define (stream? s)
+  (or (list? s)   ;; Is it a proper list?
+      ;; Or an improper list that's still being computed?
+      (live-stream? s)))
+;; A live stream is one not all of whom's values have been computed yet.
+(define (live-stream? s)
+  (or (promise? s)
+      (and (pair? s) (stream? (cdr s)))))
+(define stream-empty? 
+  (lambda (s)
+    (cond 
+     [(null? s) #t]
+     [(promise? s) (stream-empty? (force s))]
+     [else #f])))
+(define-syntax stream-cons
+  (syntax-rules ()
+    [(_ a b) (cons a (delay b))]))
+;; NOTE: Double delay for append:
+(define-syntax stream-append
+  (syntax-rules ()
+    [(_ args ... tail) (delay (append args ... (delay tail)))]))
+(define stream-car
+  (lambda (s)
+    (let scloop ((s s))
+      (cond
+       [(promise? s)
+	;; We have no way of mutating the prior cell, so just return this:
+	(scloop (force s))]
+       [(pair? s) (car s)]
+       [(null? s) (error 'stream-car "Stream is null!")]
+       [else (error 'stream-car "invalid stream: ~s" s)]))))
+(define (stream-cdr s)
+  (cond
+   [(promise? s)      
+    ;; Again, this one isn't structured as a pair, so we can't mutate and extend.
+    ;; We just have to leave the promises in place.
+    (stream-cdr (force s))]
+   [(null? s) (error 'stream-cdr "Stream is null!")]
+   [(pair? s)
+; [2006.02.19] Why was I forcing this!?
+;      (if (promise? (cdr s))
+;	  (begin (set-cdr! s (force (cdr s)))
+;		 ;; Might need to keep going, a promise may return a promise:
+;		 (stream-cdr s))
+	  (cdr s)]
+   [else (error 'stream-cdr "invalid stream: ~s" s)]))
+;; Take N elements from a stream
+;; [2006.02.19] Modified to return two values, the second being the
+;; remainder of the stream.
+(define stream-take 
+  (lambda (n s)
+    (let stloop ((n n) (s s) (acc '()))
+      (cond
+       [(fx= 0 n) (values (reverse! acc) s)]
+       [(stream-empty? s)
+	(error 'stream-take "Stream ran out of elements before the end!")]
+       [else 
+	(stloop (fx- n 1) (stream-cdr s)
+		(cons (stream-car s) acc))]))))
+;; Read the stream until it runs dry.  Had better be finite.
+(define (stream-take-all s)
+  (let stloop ((s s) (acc '()))
+    (if (stream-empty? s) (reverse! acc)
+	(stloop (stream-cdr s) (cons (stream-car s) acc)))))
+;; Layer on those closures!
+(define (stream-map f s)
+  (let stream-map-loop ((s s))
+    (if (stream-empty? s) '()
+	(stream-cons (f (stream-car s))
+		     (stream-map-loop (stream-cdr s))))))
+(define (stream-filter f s) 
+  (let stream-filter-loop ((s s))
+    ;; This is a promise, that, when popped will scroll the stream
+    ;; forward to the next element that matches.
+    (delay 
+      (if (stream-empty? s) '()
+	  (let filter-scan-next ([first (stream-car s)] [rest (stream-cdr s)])
+	    (if (f first)
+		;; As we find matches, we build our new stream.
+		(cons first (stream-filter-loop rest))
+		(if (stream-empty? rest) '()
+		    (filter-scan-next (stream-car rest) (stream-cdr rest)))))))))
+
+;; A stream of non-negative integers:
+(define iota-stream
+  (let loop ((i 0))
+    (delay (cons i (loop (add1 i))))))
+
+(define (browse-stream stream)
+  ;; Now that we've got a stream we provide a little command
+  ;; prompt and ask the user what we should do with it:
+  (printf "\nQuery processed.")
+  (printf "\nYou can now control the output stream, commands are:\n")
+  (printf "     <n>          print n stream element, advance position\n")
+  (printf "     <enter>      same as '1'\n")
+  (printf "     print        print current stream element (in full), don't advance\n")
+  (printf "     skip <n>     advance the stream, but don't print\n")
+;  (printf "     code         print the query that is executing\n")
+  (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+  (printf "     exit         exit\n\n")
+  (flush-output-port)
+
+  (parameterize ([print-length 100]
+		 [print-graph #t]
+		 [print-level 5])
+    (let loop ([pos 0])
+      (printf "pos#~a: " pos)
+      (let ((line (read-line)))
+	(when line 
+	  (match (port->slist (open-input-string line))
+	    [() (guard (stream-empty? stream)) 
+	     (printf "\nReached end of stream.\n")]
+	    [() (printf "  ") (pretty-print (stream-car stream))
+	     (set! stream (stream-cdr stream)) (loop (add1 pos))]
+	    [(,n) (guard (integer? n))
+	     (mvlet ([(ls strm) (stream-take n stream)])
+	       (for-each (lambda (x)
+			   (printf "     POS#~a = " pos)
+			   (pretty-print x)
+			   (set! pos (add1 pos)))
+		 ls)
+	       (set! stream strm)
+	       (loop pos))]
+	    [(,print) (guard (memq print '(p pr pri prin print)))
+	     (parameterize ([print-length 10000]
+			    [print-level 200])
+	       (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
+	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
+	     (time 
+	      (mvlet ([(_ strm) (stream-take n stream)])
+		(set! stream strm)))
+	      (loop (+ pos n))]
+
+#;	    [(,code) (guard (memq code '(c co cod code)))
+	     (parameterize ([print-graph #f]
+			    [print-level 10]
+			    [print-length 200])
+	       (newline)(pretty-print prog)(newline))
+	     (loop pos)]
+
+	    [(,dump ,file) (guard (memq dump '(d du dum dump)))
+	     (let ([port (open-output-file (format "~a" file) 'replace)])
+	       (time 
+		(progress-dots
+		 (lambda ()
+		   (let loop ()
+		     (if (stream-empty? stream)
+			 (printf "Finished, dumped ~a stream elements.\n" pos)
+			 (begin 
+			   (write (stream-car stream) port)(newline port)
+			   (set! pos (add1 pos))
+			   (set! stream (stream-cdr stream))
+			   (loop)
+			   ))))
+		 50000000 
+		 (lambda ()
+		   (printf "  POS# ~a dumped...\n" pos)))))]
+
+	    [(exit) (void)]
+	    [,other 
+	     (printf "Bad input.\n") (loop pos)]
+	    )))
+      )))
+

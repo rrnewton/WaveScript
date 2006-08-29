@@ -111,11 +111,14 @@
 		((fx> v e) #());; Retun unit.
 	      (let () bod ...)))]))
 
-     ;; Read two bytes from a string and build an int16.
-     (define (to-int16 str ind)  ;; Internal helper function.
-       ;; This seems to do about the same, maybe slightly better performance.
-       (let ([unsigned (fx+ (fxsll (char->integer (string-ref str ind)) 8)
-			    (char->integer (string-ref str (fx+ 1 ind))))])
+     ;; Read two bytes from a string and build a uint16.
+     (define (to-uint16 str ind)  ;; Internal helper function.
+       (fx+ (fx* (char->integer (string-ref str ind)) 256)
+	    (char->integer (string-ref str (fx+ 1 ind)))))
+
+     ;; The signed version
+     (define (to-int16 str ind) 
+       (let ([unsigned (to-uint16 str ind)])
 	 (if (fxzero? (fxlogand unsigned 32768))
 	     unsigned
 	     (fx- unsigned 65536))))
@@ -133,7 +136,7 @@
      (define (audioFile file len overlap)
        (read-file-stream file 
 			 2 ;; Read just 2 bytes at a time.
-			 to-int16
+			 to-uint16
 			 len overlap))
 
      ;; This is a hack to load specific audio files:
