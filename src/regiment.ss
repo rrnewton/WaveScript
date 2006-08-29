@@ -373,6 +373,8 @@
 			  [() (console-input-port)]
 			  [(,fn) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
+
+	  
 	   (define prog (strip-types (read port)))
 	   (define typed (verify-regiment prog))
 	   (define stream (wavescript-language prog))
@@ -401,10 +403,10 @@
 			  [(,fn) (format "~a.query.cpp" fn)]))
 	  (define outfile "./query.cpp")
 
-	   (define prog (strip-types (read port)))
-	   (define typed (verify-regiment prog))
+	  (define prog (strip-types (read port)))
+	  (define typed (verify-regiment prog))
 
-	   (printf "Compiling program: \n\n")(pretty-print prog)
+	  (printf "Compiling program: \n\n")(pretty-print prog)
 	   
 	   ;; TEMP
 	   ;(printf "doing eta-prims: \n")
@@ -412,14 +414,15 @@
 	   ;(pretty-print typed)
 
 	   (printf "\nTypecheck complete, program types:\n\n")
-	   (print-var-types typed)(flush-output-port)
-	   
-	   (printf "\nGenerated C++ output to ~s.\n" outfile)
+	   (print-var-types typed)(flush-output-port)	  
+
 	   (string->file 
 	    (text->string 
 	     (wsquery->text
-	      typed))
+	      (run-ws-compiler prog)))
 	    outfile)
+
+	   (printf "\nGenerated C++ output to ~s.\n" outfile)
 	   )]
 
 	  

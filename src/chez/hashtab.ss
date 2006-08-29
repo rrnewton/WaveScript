@@ -28,6 +28,7 @@
 	
 	;; [2005.10.18]
 	;; Switching this to chez's native hash tables rather than slib's:
+	;; NOTE: Chez does *not* support 'equal?' style indexing.
 	(begin
 	  (define make-default-hash-table #%make-hash-table)
 	  (define hashtab-remove! #%remove-hash-table!)

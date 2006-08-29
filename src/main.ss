@@ -172,6 +172,16 @@
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names)))))))))
 
+
+;; [2006.08.27] This version executes the alternate, WaveScript compiler.
+(define (run-ws-compiler p)
+  (set! p (verify-regiment p))
+  ;(set! p (eta-primitives p))
+  (set! p (nominalize-types p))
+  ;(set! p (text->string (wsquery->text p)))
+  p)
+
+
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)
   (apply run-compiler p 'barely-tokens args))

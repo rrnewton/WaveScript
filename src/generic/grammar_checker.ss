@@ -494,6 +494,7 @@
     [Expr Var]
     [Expr Int]   
     [Expr Float] 
+    [Expr String] 
     [Expr ('quote Datum)]
     [Expr ('if Expr Expr Expr)]
     [Expr ('letrec ([Var Type Expr] ...) Expr)]
@@ -507,6 +508,8 @@
 
     [Int ,integer?]
     [Float ,flonum?]
+    [String ,string?]
+
     [Var ,is-var?]
     ;[QuotedDatum ,atom?]
     ;[QuotedDatum ,list?]

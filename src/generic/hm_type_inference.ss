@@ -370,6 +370,8 @@
     typ))
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
+;; .param exp - Expression
+;; .param tenv - Type Environment
 (define (recover-type exp tenv)
   (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))

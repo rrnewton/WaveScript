@@ -111,46 +111,57 @@
 		((fx> v e) #());; Retun unit.
 	      (let () bod ...)))]))
 
-     ;; This is a hack to load specific audio files:
-     (define (audio chan len overlap)
-       (define chunksize 32768)
-       (define infile (open-input-file (marmotfile)))
-;       (define infile (open-input-file "/archive/4/marmots/test.raw"))
-       (define buffer1 (make-string chunksize #\_))
-       (define count1 0)
-       (define ind1 0)
-;       (define buffer2 (make-string chunksize #\_))
-;       (define count2 0)
-;        (define (swap)
-; 	 (let ([tb buffer1] [tc count1])
-; 	   (set! buffer1 buffer2)
-; 	   (set! count1 count2)
-; 	   (set! buffer2 tb)
-; 	   (set! count2 tc)))       
-       (define winsize (* 8 len))
-       (define remainder #f) ;; The unprocessed left-over from a batch.
+     ;; Read two bytes from a string and build an int16.
+     (define (to-int16 str ind)  ;; Internal helper function.
+       ;; This seems to do about the same, maybe slightly better performance.
+       (let ([unsigned (fx+ (fxsll (char->integer (string-ref str ind)) 8)
+			    (char->integer (string-ref str (fx+ 1 ind))))])
+	 (if (fxzero? (fxlogand unsigned 32768))
+	     unsigned
+	     (fx- unsigned 65536))))
 
-       ;; Read two bytes from a string and build an int16:
-       (define (to-int16 str ind)
-	 ;; This seems to do about the same, maybe slightly better.
-	 (let ([unsigned (fx+ (fxsll (char->integer (string-ref str ind)) 8)
-			      (char->integer (string-ref str (fx+ 1 ind))))])
-	   (if (fxzero? (fxlogand unsigned 32768))
-	       unsigned
-	       (fx- unsigned 65536))))
+     ;; Currently unused.
+     (define (uint16->string n)
+       (if (>= n 65536)
+	   (error 'uint16->string "input is too large: ~s" n))
+       (let* ([lowbyte (fxmodulo n 256)]
+	      [highbyte (fx/ (fx- n lowbyte) 256)])
+	 (list->string (list (integer->char highbyte)
+			     (integer->char lowbyte)))))
+
+     ;; Read a stream of Uint16's.
+     (define (audioFile file len overlap)
+       (read-file-stream file 
+			 2 ;; Read just 2 bytes at a time.
+			 to-int16
+			 len overlap))
+
+     ;; This is a hack to load specific audio files:
+     ;; It simulates the four channels of marmot data.
+     (define (audio chan len overlap)
        (define (read-sample str index)
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
 	   (to-int16 s (fx+ ind (fx* chan 2)))
-
 	   ;; All 4 channels:
-	   ;; This allocation of little vectors is really painful performance wise:
+	   ;; NIXING: This allocation of little vectors is really painful performance wise.
 	   #;
 	   (vector (to-int16 s ind)
 		   (to-int16 s (fx+ 2 ind))
 		   (to-int16 s (fx+ 4 ind))
 		   (to-int16 s (fx+ 6 ind)))
 	   ))
+       (read-file-stream (marmotfile) 8 read-sample len overlap))
+
+  ;; Internal helper.
+  (define (read-file-stream file wordsize sample-extractor len overlap)
+       (define chunksize 32768) ;; How much to read from file at a time.
+       (define infile (open-input-file file))
+       (define buffer1 (make-string chunksize #\_))
+       (define count1 0)
+       (define ind1 0)
+       (define winsize (* wordsize len))
+       (define remainder #f) ;; The unprocessed left-over from a batch.
 
        ;; This version is simpler than my previous attempt and just
        ;; reads at the granularity of the window-size.  However it has
@@ -183,55 +194,11 @@
 	  [else
 	   (let ([win (make-vector len)])
 	     (for (i 0 (fx- len 1))
-		  (vector-set! win i (read-sample buffer1 (fx* i 8)))
-		  ;(vector-set! win i 99)
+		  (vector-set! win i (sample-extractor buffer1 (fx* i wordsize)))
 		  (void)
 		  )
 	     win)]))
 
-       ;; UNFINISHED VERSION: Doing this with different sized grab-chunk and window-size is very annoying:
-#;
-       (define (read-window)
-	 (let ([win (make-vector len)])	       
-	   (let loop ()
-	      (cond
-	      [remainder 
-	       (ASSERT (fxzero? ind1))
-	       (if (fx>= (fx+ (string-length remainder) count1) winsize)
-		   (begin
-		     ;; TODO FINISH:
-		     'notdone
-		     )
-		   (error 'read-window "dammit, block-read just didn't read enough"))
-	       ]
-
-	      ;; We're chugging through buffer1 and there's still enough left:
-	      [(fx>= (fx- count1 ind1) winsize)
-	       (for (i 0 (fx- len 1))
-		   (vector-set! win i (read-sample buffer1 (fx+ ind1 (fx* i 8)))))
-	       (set! ind1 (fx+ ind1 winsize))
-	       win]
-
-	      ;; There's some left, but not enough.
-	      [(fx< ind1 count1)
-	       ;; Push this leftover to the remainder:
-	       (printf "Leftover! ~a\n" (- count1 ind1))
-	       (set! remainder (substring buffer1 ind1 count1))
-	       ;; Load up some new input:
-	       (set! count1 (block-read infile buffer1 chunksize))
-	       (set! ind1 0)
- 	       (if (eof-object? count1)
-		   #f (loop))]
-
-	      ;; We precisely used up everything, reload and loop.
-	      [(fx= ind1 count1)
-	       (set! count1 (block-read infile buffer1 chunksize))
-	       (set! ind1 0)
-	       (if (eof-object? count1)
-		   #f (loop))
-	       ]
-	      ))))
-       
        ;; This returns the stream representing the audio channel (read in from disk):
        ;; TODO: HANDLE OVERLAP:
        (ASSERT (zero? overlap))
@@ -242,8 +209,7 @@
 		 (let ((newpos (+ len pos)))
 		   (stream-cons (make-sigseg pos newpos win 'nulltimebase)
 				(loop newpos)))
-		 ()))))
-       )
+		 ())))))
 
      ;; TODO:
      ;(define timer )
@@ -259,20 +225,23 @@
      (define - fx-)
      (define * fx*)
      (define / fx/)
+
+     (define int->float fixnum->flonum)
      
      (define (realpart x) (if (cflonum? x) (cfl-real-part x) x))
      (define (imagpart x) (if (cflonum? x) (cfl-imag-part x) 0))
      ;(define realpart cfl-real-part)
      ;(define imagpart cfl-imag-part)
 
-     ;; [2006.08.23] Lifting ffts over sigsegs:     
+     ;; [2006.08.23] Lifting ffts over sigsegs: 
+     ;; Would be nice to use copy-struct for a functional update.
      (define fft (lambda (ss) (make-sigseg (sigseg-start ss)
 					   (sigseg-end ss)
 					   (dft (sigseg-vec ss))
 					   (sigseg-timebase ss))))
      
-     ; break
-     ; error
+     ; TODO: break
+     ; TODO: error
 
      (define tuple vector)
 
@@ -420,3 +389,50 @@
 
 (define test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
 (define test-ws test-this)
+
+; ======================================================================
+;; SCRATCH
+
+;; UNFINISHED VERSION: Doing this with different sized grab-chunk and window-size is very annoying:
+#|
+       (define (read-window)
+	 (let ([win (make-vector len)])	       
+	   (let loop ()
+	      (cond
+	      [remainder 
+	       (ASSERT (fxzero? ind1))
+	       (if (fx>= (fx+ (string-length remainder) count1) winsize)
+		   (begin
+		     ;; TODO FINISH:
+		     'notdone
+		     )
+		   (error 'read-window "dammit, block-read just didn't read enough"))
+	       ]
+
+	      ;; We're chugging through buffer1 and there's still enough left:
+	      [(fx>= (fx- count1 ind1) winsize)
+	       (for (i 0 (fx- len 1))
+		   (vector-set! win i (read-sample buffer1 (fx+ ind1 (fx* i 8)))))
+	       (set! ind1 (fx+ ind1 winsize))
+	       win]
+
+	      ;; There's some left, but not enough.
+	      [(fx< ind1 count1)
+	       ;; Push this leftover to the remainder:
+	       (printf "Leftover! ~a\n" (- count1 ind1))
+	       (set! remainder (substring buffer1 ind1 count1))
+	       ;; Load up some new input:
+	       (set! count1 (block-read infile buffer1 chunksize))
+	       (set! ind1 0)
+ 	       (if (eof-object? count1)
+		   #f (loop))]
+
+	      ;; We precisely used up everything, reload and loop.
+	      [(fx= ind1 count1)
+	       (set! count1 (block-read infile buffer1 chunksize))
+	       (set! ind1 0)
+	       (if (eof-object? count1)
+		   #f (loop))
+	       ]
+	      ))))
+|#

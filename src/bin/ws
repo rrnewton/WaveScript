@@ -2,6 +2,11 @@
 
 TMP=/tmp/wavescript_parsed.tmp
 
+if [ ! `which wsparse` ]
+then echo \"wsparse\" command not found.  Compile it!
+     exit 1;
+fi
+
 wsparse $1 > $TMP
 wsint $TMP
 rm -f $TMP

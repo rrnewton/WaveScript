@@ -1,0 +1,211 @@
+
+;;;; .title Generic Tree Walker for Regiment CORE.
+
+;;;; [2006.08.27] This is (will be) used by several passes which
+;;;; operate on Regiment Core language.  I've used such a mechanism
+;;;; for TML for a long time, but am only now porting my Regiment
+;;;; passes over to this method.
+
+;;;; Hopefully this will be wide enough to treat WaveScope and Regiment.
+
+;;;; See tml_generic_traverse.ss for more description.
+
+;;;; NOTE: Must run AFTER alpha-renaming, assumes keyword names are
+;;;; not used as variables.
+
+; =======================================================================
+; Notes:
+
+; [2006.08.27] Writing wavescript_nominalize-types.ss to use this.
+
+
+; =======================================================================
+
+
+(module reg_core_generic_traverse  mzscheme
+  (require (lib "include.ss")  
+           "../generic/constants.ss"
+           "../plt/iu-match.ss"
+	   "../plt/prim_defs.ss"
+	   ;(lib "compat.ss")
+           (all-except "../plt/helpers.ss" test-this these-tests filter)
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
+           )
+  
+  ;; Insure provision of verify-regiment:
+  (provide core-generic-traverse
+	   core-generic-traverse/types
+           test-this test-core-generic-traverse)
+
+  (chezimports prim_defs
+	       (except helpers test-this these-tests)
+	       ;regiment_helpers
+	       )
+
+;; Generic traversal over Regiment Expressions.
+(define core-generic-traverse 
+  ;; .param driver driver
+  ;; .param fuser  fuser
+  ;; .param expr   expression
+  ;;
+  ;; The "driver" takes the first shot at an expression, transforms the
+  ;; subcases that it wants to, and then hands the rest on to its
+  ;; continuation to do the automated traversal. The automated
+  ;; traversal, in turn, uses the "fuse" function to glue back together
+  ;; the parts of the tree.  The fuse function is passed a list of child
+  ;; exprss and another continuation representing the "default fuser" which
+  ;; just puts the expression back together like it was before (given the child terms).
+  ;;       <br><br>
+  ;; Types:    <br>
+  ;;   driver : expr, (expr -> 'intermediate) -> 'result)                <br>
+  ;;   fuse : 'intermediate list, (expr list -> expr) -> 'intermediate)  <br>
+  ;;   e : expr                                                          <br>
+  ;; Return value: 'result                                               <br>
+  (let ()
+    (define (build-traverser driver fuse e)
+      (let loop ((e e))	
+	(driver e 
+          (lambda (expression)       
+          (match expression
+	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+
+	  [,const (guard (constant? const)) (fuse () (lambda () const))]
+	  [,num (guard (number? num)) (error 'core-generic-traverse "unquoted literal: ~s" num)]
+
+          ;; This is for debugging, we just don't touch it:
+	  ;[(BLACKBOX ,expr ...)             (fuse () (lambda () `(BLACKBOX ,expr ...)))]
+	  ;[(dbg ,[loop -> rand*] ...)  (fuse rand* (lambda rand* `(dbg ,rand* ...)))]
+
+	  ;; We don't put any restrictions (HERE) on what can be in a quoted constant:
+	  [(quote ,const)                (fuse ()      (lambda () `(quote ,const)))]
+	  [,var (guard (symbol? var))    (fuse ()      (lambda () var))]
+
+	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
+	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
+
+	  ;; No looping on types.  This could be changed:
+	  [(letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
+	   ;; By convention, you get the body first:
+	   (fuse (cons bod rhs*)
+		 (lambda (x . y*) `(let ([,lhs* ,typ* ,y*] ...) ,x)))]
+
+	  ;; Letrec's are big and hairy enough that we try to give slightly better error messages.
+	  [(letrec ([,lhs* ,rhs*] ...) ,bod)
+	   (warning 'core-generic-traverse "letrec does not have types:\n ~s\n\n" 
+		  `(letrec ([,lhs* ,rhs*] ...) ,bod))
+	   (inspect `(letrec ([,lhs* ,rhs*] ...) ,bod))
+	   (error 'core-generic-traverse "")]
+	  [(letrec ,other ...)
+	   (warning 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
+		    `(letrec  ,other ...))
+	   (inspect `(letrec ,other ...))
+	   (error 'core-generic-traverse "")]
+
+	  ;; Again, no looping on types.  This is an expression traversal only.
+	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
+	   (fuse (list e) (lambda (x) `(lambda (,v* ...) (,t* ...) ,x)))]
+	  [(lambda (,v* ...) ,e)
+	   (warning 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
+		    `(lambda (,v* ...) ,e))
+	   (inspect `(lambda (,v* ...) ,e))
+	   (error 'core-generic-traverse "")]
+	  [(lambda ,other ...)
+	   (warning 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
+		    `(lambda  ,other ...))
+	   (inspect `(lambda ,other ...))
+	   (error 'core-generic-traverse "")]
+	  
+	  ; WAVESCRIPT
+	  ; ========================================
+	  ; Because of WaveScript we have effects and other stuff:
+	  ; At least we have effects in the object language.
+	  ; Should enforce a barrier.  (For the time being, syntactic.)
+
+	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
+
+	  ;; Always run make-begin, hope this is safe:
+	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
+
+	  ; ========================================
+
+	  ;; Applications must be tagged explicitely.
+	  [(app ,[loop -> rator] ,[loop -> rands] ...)
+	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
+
+	  [(,prim ,[loop -> rands] ...)
+	   (guard (or (regiment-primitive? prim)
+		      (basic-primitive? prim)))
+	   (fuse rands (lambda ls `(,prim ,ls ...)))]
+
+	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
+		      (inspect otherwise)
+		      (error 'core-generic-traverse "")]
+	  )))))
+
+  ;; Main body of core-generic-traverse:
+  (case-lambda 
+    [(d f e) (build-traverser d f e)]
+    [(d f) (lambda (e) (build-traverser d f e))])
+  ))
+
+
+;; This version carries around the type environment and always presents it to the user driver.
+(define core-generic-traverse/types
+  (let ()
+    (define (traverser drive fuse initial-tenv)
+      (let loop ([tenv initial-tenv])
+	;; We wrap the user's driver:
+	(define (newdriver x autoloop)
+	   ;; We dispatch to the user first, if they touch
+	   ;; letrec/lambda they'd better handle the tenv themselves.
+	  (drive x tenv
+		 ;; Here we wrap the autoloop function to be type-aware
+		 (lambda (x tenv)
+		   (DEBUGASSERT (tenv? tenv))
+		   (match x 
+		     ;; We overload the two cases that require modifying the tenv.
+		     [(lambda (,v* ...) (,ty* ...) ,bod)
+		      (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
+			    (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
+		     [(letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
+		      (let ([newtenv (tenv-extend tenv lhs* ty*)])
+			(fuse (cons ((loop newtenv) bod) rhs*)
+			      (lambda (x . y*) `(let ([,lhs* ,ty* ,y*] ...) ,x))))]
+		     ;; If it's not one of these we use the old generic-traverse autoloop.
+		     ;; This will in turn call newdriver again from the top.
+		     [,other (autoloop other)]))))
+	;; Now we call the original generic-traverse
+	(core-generic-traverse newdriver fuse)))
+    (case-lambda
+      [(d f)   (lambda (e) ((traverser d f (empty-tenv)) e))]
+      [(d f e)             ((traverser d f (empty-tenv)) e)]
+      [(d f e tenv)        ((traverser d f tenv) e)])))
+
+; ================================================================================
+
+(define these-tests
+  `(	     
+    ["Simple generic traversal with type environment"
+     (core-generic-traverse/types 
+      (lambda (x tenv loop) (loop x tenv))
+      (lambda (ls k) (apply k ls))
+      '(+ '3 '4))
+     (+ '3 '4)]
+
+    [(core-generic-traverse/types 
+      (lambda (x tenv loop) (loop x tenv))
+      (lambda (ls k) (apply k ls))
+      '(lambda (x) (Integer) (+ '3 '4)))
+     (lambda (x) (Integer) (+ '3 '4))]
+
+    ))
+
+(define test-this (default-unit-tester
+		    "Regiment Core Generic-Traverse: abstracts tree-walks over intermediate code."
+		    these-tests))
+
+(define test-core-generic-traverse test-this)
+
+) ;; End module
+
+

@@ -7,7 +7,7 @@
 ;;;; conventions, that is, a ".wsc" file.
 
 (module wavescript_emit-c mzscheme 
-  (require "c_generator.ss" "helpers.ss"2)
+  (require "c_generator.ss" "helpers.ss")
   (provide ;WSBox wscode->text
 	   wsquery->text
 	   
@@ -104,7 +104,7 @@
 
     (lambda (prog)
       (match prog
-	[(,lang (quote (program (letrec ,binds ,body) ,typ)))
+	[(,lang (quote (program (letrec ,binds ,body) ,struct-defs ,typ)))
 	 (mvlet ([(return-name) body]
 		 [(body funs) (Query "toplevel" typ `(letrec ,binds ,body))])
 	   (ASSERT (symbol? return-name))
@@ -118,7 +118,10 @@
 	     "}\n\n"
 	     )
 	   )]
-	[,other (error 'wsquery->text "bad top level WS program: ~s" other)]))))
+	[,other 
+	 (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
+	 (inspect other)
+	 (error 'wsquery->text "")]))))
 
 ;; Takes the *inside* of an iterate box and turns it to C text.
 (define wscode->text
@@ -163,9 +166,11 @@
 
 class WSPrim {
 
-  static SigSeg<complex> fft(SigSeg<float> *casted) {
+  public:
+  static SigSeg<complex> fft(SigSeg<float> input) {
       /* Currently we just use the unitless timebase: */ 
       Timebase _freq = Unitless;
+      SigSeg<float>* casted = &input;
       
       /* alloc buffer for FFT */
       Signal<complex> s = Signal<complex>(_freq);
@@ -240,7 +245,7 @@ int main(int argc, char ** argv)
     (define (Stmt st)
       (match st
 	;; Must distinguish expression from statement context.
-	[(if ,[test] ,[conseq] ,[altern])
+	[(if ,[Expr -> test] ,[conseq] ,[altern])
 	 `("if (" ,test ") {\n"
 	   ,(indent conseq "  ")
 	   "} else {\n"
@@ -295,20 +300,27 @@ int main(int argc, char ** argv)
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("(",test " ? " ,conseq " : " ,altern")")]
 	
+	; ============================================================
+	;; Here we handle "open coded" primitives:
+
 	;; TODO: tupref
 	[(,infix_prim ,[left] ,[right])
-	 (guard (memq infix_prim '(+ - * / < > <= >= ==				     
+	 (guard (memq infix_prim '(+ - * / < > <= >= =
 				     +. -. *. /. )))
 	 (let ([cname (case infix_prim
-			[(+ * - / < > <= >= ==) infix_prim]
+			[(=) "=="]
+			[(+ * - / < > <= >=) infix_prim]
 			[(+. *. -. /.) ;; Chop off the period:
 			 (substring (symbol->string infix_prim) 0 1)])])
 	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
 
+	[(realpart ,[v]) `("(" ,v ".real)")]
+	[(imagpart ,[v]) `("(" ,v ".imag)")]
+
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
 	[(seg-get ,[seg] ,[ind])	 
-	 `("(" ,seg "->getDirect())[" ,ind  "]")]
+	 `("(" ,seg ".getDirect())[" ,ind  "]")]
 	
 	;; Need to use type environment to find out what alpha is.
 	[(newarr ,[int] ,[alpha]) "newarr_UNFINISHED"]
@@ -320,10 +332,17 @@ int main(int argc, char ** argv)
 	[(begin ,stmts ...)
 	 (error 'wscode->text "begin in expression context: ~s" `(begin ,stmts ...))]
 
+	;; Forming tuples.
+	[(tuple ,[arg*] ...)
+	 ;; Here we need to produce a new typedef for the struct type.
+	 FINISH-TUPLES
+	 ]
+
+	; ============================================================
 	;; Other prims fall through:
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
-	 `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")")]	
+	 `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")")]
 	[(app ,rator ,[rand*] ...)
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
@@ -335,6 +354,7 @@ int main(int argc, char ** argv)
 	[,simple (guard (memq simple '(Complex Float)))
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
 	[,v (guard (symbol? v)) (symbol->string v)]
+	;; Went back and forth on whether this should be a pointer:
 	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
 	[(Signal ,[t]) `("Signal<" ,t ">")]
 	[(Array ,[t]) `(,t "[]")]

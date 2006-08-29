@@ -94,11 +94,15 @@
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.
-(if (not (top-level-bound? 'default-break-handler))
+#|(if (not (top-level-bound? 'default-break-handler))
     (define-top-level-value 'default-break-handler (break-handler)))
 (break-handler (lambda args 
 		 (apply default-break-handler args)
 		 (if (null? args) (void) (car args))))
+|#
+;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
+(define (inspect/continue x) (inspect x) x)
+
 
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
@@ -159,7 +163,6 @@
 (include "pregexp.ss") (import pregexp_module)
 
 (include "../generic/c_generator.ss") (import c_generator)
-(include "../generic/wavescript_emit-c.ss") (import wavescript_emit-c)
 (include "../generic/scheme_fft.ss")
 (include "../generic/fft.ss") (import fft)
 
@@ -223,6 +226,7 @@
 
 ;; This is used by the subsequent passes that process TML:
 (include "../generic/tml_generic_traverse.ss") (import tml_generic_traverse)
+(include "../generic/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
@@ -309,6 +313,11 @@
 
 (include "../generic/pass31_flatten-tokmac.ss")
 (include "../generic/pass32_emit-nesc.ss")
+
+;; [2006.08.27] Now for the passes in the WaveScript branch:
+(include "../generic/wavescript_emit-c.ss") (import wavescript_emit-c)
+(include "../generic/wavescript_nominalize-types.ss") (import wavescript_nominalize-types)
+
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

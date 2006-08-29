@@ -3,23 +3,24 @@
 
 // [2006.07.24] Takes 163 seconds to process the 40,000 windows of data in a 315mb raw file.
 
-s1 : Stream (Sigseg complex);
+s1 : Stream (Sigseg float);
 s1 = audio(0, 1024, 0);
 
-s2 : Stream (Array complex);
+s2 : Stream (Sigseg complex);
 s2 = iterate (w in s1) {
-  emit fft (fft (to_array(w)));
+  emit fft(w);
 };
 
 s3 : Stream float;
-s3 = iterate (arr0 in s2) {
+s3 = iterate (win in s2) {
   x : int = 3;
-  arr = fft(fft(arr0));
 
-  if arr[100].realpart > 224192.0
-  then { emit 0.0; emit arr[100].imagpart; }
+  y = (4 == 4);
+
+  if win[[100]].realpart > 224192.0
+  //if 3 == 3
+  then { emit 0.0; emit win[[100]].imagpart; }
   else { }
-//  emit arr[100].realpart;
 };
 
 

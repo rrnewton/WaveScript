@@ -50,6 +50,7 @@
 	 IFDEBUG
          DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
          REGIMENT_DEBUG HACK
+	 IFWAVESCOPE 
          ;chezprovide chezimports ;; To make the common module facility work.
          
          REGIMENTD
@@ -269,6 +270,13 @@
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
+
+;; [2006.08.28] This is the "#define" for building WAVESCOPE related code.
+;; When turned off, the system should build Regiment without WaveScope extensions.
+(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) on] [(_ on) on]))  ;; ON
+;(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) off] [(_ on) (void)])) ;; OFF
+
+;(define-syntax WAVESCOPE (syntax-rules () [(_ expr ...) (IFWAVESCOPE (list expr ...) ())]))
 
 
 ;; [2006.03.20] This enables me to explicitely label the nasty hacks in the system.

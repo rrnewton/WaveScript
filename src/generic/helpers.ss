@@ -1792,6 +1792,8 @@
       (let ((line (read-line)))
 	(when line 
 	  (match (port->slist (open-input-string line))
+	    [() (guard (stream-empty? stream)) 
+	     (printf "\nReached end of stream.\n")]
 	    [() (printf "  ") (pretty-print (stream-car stream))
 	     (set! stream (stream-cdr stream)) (loop (add1 pos))]
 	    [(,n) (guard (integer? n))

@@ -90,7 +90,7 @@
     (*: (Complex Complex) Complex) 
     (/: (Complex Complex) Complex)
     
-    (int_to_float (Integer) Float)
+    (int->float (Integer) Float)
 
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
@@ -164,9 +164,75 @@
     
     ))
 
+(IFWAVESCOPE
+;; Adding Wavescope-related primitives:   
+(define wavescript-primitives
+  '( 
+    ;; Sources:
+    ;; This doesn't carry a time value, it just "fires" every 
+    (timer            (Integer) (Signal #()))
+    ;; Takes channel, window size, overlap:
+    (audio            (Integer Integer Integer) (Signal (Sigseg Float)))
+
+    ;; Takes a file to read from, window size, overlap:
+    (audioFile        (String Integer Integer)  (Signal (Sigseg Integer)))
+
+    (fft              ((Sigseg Float))  (Sigseg Complex))
+
+    ;; Signals an error, has any return type:
+    (regerror         (String) 'a)
+
+    ;; I just use a virtual "Queue" to make the type-checking work for emits:
+    (emit           ((VQueue 'a) 'a) #())
+
+    ;; Array handling:
+    (newarr           (Integer 'a) (Array 'a))
+    (arr-get          ((Array 'a) Integer) 'a)
+    (arr-set!         ((Array 'a) Integer 'a) #())
+    (length           ((Array 'a)) Integer)
+
+    ;; Only one-to-one output for now (Don't have a Maybe type!).
+;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
+;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+;    (emit             ('a) #())
+
+    (iterate        (('in -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
+    (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+    (window-iterate (('in -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
+
+    ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
+    (break            () 'a)
+
+    ;; Creates a windowed (segmented) signal from a raw signal:
+    (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
+
+    (to_array         ((Sigseg 'a))  (Array 'a))
+    
+    ;; Can only append two subrefs that are part of the same physical timeseries.
+    (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
+    (subseg          ((Sigseg 'a) Integer Integer) Integer)
+    ;; Uses 0-N access, don't need to know seg-start:
+    (seg-get          ((Sigseg 'a) Integer) 'a)
+    (width        ((Sigseg 'a)) Integer)
+    
+    ;; Returns absolute sample indexes.
+    (start        ((Sigseg 'a)) Integer)
+    (end          ((Sigseg 'a)) Integer)
+    ;; Returns timebase:
+    (seg-timebase     ((Sigseg 'a)) Timebase)
+
+    ;; Internal use only:
+    ;========================================
+    (virtqueue      () (VQueue 'a))
+
+    ;; This is for testing only... it's a multithreaded version:
+    (parmap         (('in -> 'out) (Signal 'in))           (Signal 'out))
+
+)))
+
 ;; These are the distributed primitives.  The real Regiment combinators.
 (define regiment-distributed-primitives 
-  '(
+  `(
     
     (rmap           (('a -> 'b) (Area 'a)) (Area 'b))
 
@@ -238,58 +304,7 @@
     (swhen-any        (('a -> Bool) (Signal 'a))     (Event #()))
     (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
 
-    ;; ========================================
-    ;; Adding Wavescope-related primitives:   
-
-    ;; This doesn't carry a time value, it just "fires" every 
-    (timer            (Integer) (Signal #()))
-
-    ;; Takes channel, window size, overlap:
-    (audio            (Integer Integer Integer) (Signal (Sigseg Complex))) ;; For now making COMPLEX!
-    (fft              ((Sigseg Float))  (Sigseg Complex))
-
-    ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-    (break            () 'a)
-
-    (regerror         (String) 'a)
-
-    (newarr           (Integer 'a) (Array 'a))
-    (arr-get          ((Array 'a) Integer) 'a)
-    (arr-set!         ((Array 'a) Integer 'a) #())
-    (length           ((Array 'a)) Integer)
-
-    ;; Only one-to-one output for now (Don't have a Maybe type!).
-;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
-;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
-;    (emit             ('a) #())
-
-    ;; I just use a virtual "Queue" to make the type-checking work for emits:
-    (emit           ((VQueue 'a) 'a) #())
-    (virtqueue      () (VQueue 'a))
-    (iterate        (('in -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
-    (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
-
-
-    ;; This is for testing only... it's a multithreaded version:
-    (parmap         (('in -> 'out) (Signal 'in))           (Signal 'out))
-
-    ;; Creates a windowed (segmented) signal from a raw signal:
-    (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
-
-    (to_array         ((Sigseg 'a))  (Array 'a))
-    
-    ;; Can only append two subrefs that are part of the same physical timeseries.
-    (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
-    (subseg          ((Sigseg 'a) Integer Integer) Integer)
-    ;; Uses 0-N access, don't need to know seg-start:
-    (seg-get          ((Sigseg 'a) Integer) 'a)
-    (width        ((Sigseg 'a)) Integer)
-    
-    ;; Returns absolute sample indexes.
-    (start        ((Sigseg 'a)) Integer)
-    (end          ((Sigseg 'a)) Integer)
-    ;; Returns timebase:
-    (seg-timebase     ((Sigseg 'a)) Timebase)
+    ,@(IFWAVESCOPE wavescript-primitives ()) 
 
 ;     neighbors 
 ;    time-of

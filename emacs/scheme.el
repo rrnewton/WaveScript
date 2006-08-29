@@ -229,7 +229,8 @@ if that value is non-nil."
 (defun scheme-mode-initialize ()
   (use-local-map scheme-mode-map)
   (setq major-mode 'scheme-mode)
-  (setq mode-name "Scheme"))
+  (setq mode-name "Scheme")
+  )
 
 (defgroup scheme nil
   "Editing Scheme code"
@@ -619,3 +620,5 @@ that variable's value is a string."
 (provide 'scheme)
 
 ;;; scheme.el ends here
+
+
