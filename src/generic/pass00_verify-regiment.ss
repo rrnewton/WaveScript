@@ -77,7 +77,7 @@
      
      (define process-expr
        (lambda (expr env type-env)
-	 (match expr
+	 (trace-match PE expr
 	   [,const (guard (constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
@@ -125,8 +125,10 @@
 	  [(set! ,v ,[e]) (guard (symbol? v)) `(set! ,v ,e)]
 	  [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
 	   `(for (,v ,e1 ,e2) 
-		,(process-expr expr (cons v env)
+		,(process-expr e3 (cons v env)
 			       type-env))]
+	  ;; ========================================
+	  
 
           [(,prim ,[rand*] ...)
            (guard 
@@ -156,7 +158,7 @@
           [,unmatched
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
     
-    (lambda (expr)
+     (lambda (expr)
       (match expr	    
 	;; The input is already wrapped with the metadata:
         [(,input-language (quote (program ,body)))

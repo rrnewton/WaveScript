@@ -203,6 +203,8 @@
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
 
+    (print            ('a) #())
+
     ;; Creates a windowed (segmented) signal from a raw signal:
     (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
 

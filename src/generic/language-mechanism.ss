@@ -3,6 +3,20 @@
 ;; Binds a top-level procedure to either eval, print, return, or use the mini lanugage bindings.
 (define define-language
   (lambda (name def)
+    ;; [2006.08.30] Changing things so that we load from file in debug mode.  
+    ;; Gives us source locations.
+    (define (runprog p)
+      (IFDEBUG
+       (let* ([tmpfile "__lang_running.tmp.ss"]
+	      [out (open-output-file tmpfile 'replace)])
+	 (parameterize ([print-length #f]
+			[print-level #f]
+			[print-graph #t])
+	   (pretty-print p out)
+	   (close-output-port out)
+	   (load tmpfile)
+	   (delete-file tmpfile)))
+       (eval p)))
     (define-top-level-value
       name
       (case-lambda
@@ -13,8 +27,8 @@
            [return def]
            ;; Ignores any amount of inserted stuff:
            [(program ,stuff ... ,body)
-            (eval `(let () ,def ,body))]
-           [,body (eval `(let () ,def ,body))])]))))
+            (runprog `(let () ,def ,body))]
+           [,body (runprog `(let () ,def ,body))])]))))
 
 (define subtract-bindings
   (lambda (names bindings)

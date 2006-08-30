@@ -88,10 +88,15 @@
 (define-language
   'wavescript-language
   '(begin
-
+     
      ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
      (reg:define-struct (sigseg start end vec timebase))
      ;(define-record timeseries (timebase))
+     
+     (define (valid-sigseg? w)
+       (or (eq? w nullseg)
+	   (and (sigseg? w)
+		(<= (sigseg-start w) (sigseg-end  w)))))
      
      (define-syntax app
        (syntax-rules ()
@@ -132,7 +137,7 @@
 	 (list->string (list (integer->char highbyte)
 			     (integer->char lowbyte)))))
 
-     (trace-define (dump-binfile file stream pos)
+     (define (dump-binfile file stream pos)
        (let ([port (open-output-file file 'replace)])
 	 (time 
 	  (progress-dots
@@ -245,8 +250,8 @@
      ;; TODO:
      ;(define timer )
 
-     (define nullseg #())
-     (define nullarr #())
+     (define nullseg (gensym "nullseg"))
+     (define nullarr (gensym "nullarr"))
     
      (define +. fl+)
      (define -. fl-)
@@ -266,10 +271,12 @@
 
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
-     (define fft (lambda (ss) (make-sigseg (sigseg-start ss)
-					   (sigseg-end ss)
-					   (dft (sigseg-vec ss))
-					   (sigseg-timebase ss))))
+     (define fft (lambda (ss) 
+		   (DEBUGASSERT (valid-sigseg? ss))
+		   (make-sigseg (sigseg-start ss)
+				(sigseg-end ss)
+				(dft (sigseg-vec ss))
+				(sigseg-timebase ss))))
      
      ; TODO: break
      ; TODO: error
@@ -281,55 +288,80 @@
      (define arr-set! vector-set!)
      (define length   vector-length)
 
+     (define (print x) 
+       (if (string? x) (display x)	   
+	   (parameterize ([print-length 50]
+			  [print-level 5]
+			  [print-graph #t])
+	     (pretty-print x))))
+
      ;; This is a bit silly.  Since we don't use an actual time-series
      ;; implementation, this just makes sure the overlap is EQUAL.
      (define (joinsegs w1 w2)
-       (let ([a (sigseg-start w1)]
-	     [b (sigseg-end w1)]
-	     [x (sigseg-start w2)]
-	     [y (sigseg-end w2)])
-	 (cond
-	  [(not (eq? (sigseg-timebase w1) (sigseg-timebase w2)))
-	   `(DifferentTBs)]
+       (DEBUGASSERT (valid-sigseg? w1))
+       (DEBUGASSERT (valid-sigseg? w2))
+       (inspect (cons w1 w2))
+       (inspect/continue 
+	(cond 
+	[(eq? w1 nullseg) w2]
+	[(eq? w2 nullseg) w1]
+	[else 
+	 (let ([a (sigseg-start w1)]
+	       [b (sigseg-end w1)]
+	       [x (sigseg-start w2)]
+	       [y (sigseg-end w2)])
+	   (cond
+	    [(not (eq? (sigseg-timebase w1) (sigseg-timebase w2)))
+	     `(DifferentTBs)]
 
-	  ;; In this case the head of w2 is lodged in w1:
-	  [(and (<= a x) (<= x b))
-	   (let ([new (make-vector (add1 (- (max b y) a)))])
-	     (for (i a (max b y))
-		  (define (first) (vector-ref (sigseg-vec w1) (- i a)))
-		  (define (second) (vector-ref (sigseg-vec w2) (- i x)))
-;		  (printf "i ~a\n" i)
-		  (vector-set! new (- i a)
-			       (cond
-				;; Still in the first window:
-				[(< i x) (first)]
-				;; We're in the overlap:
-				[(and (<= i b) (<= x i) (<= i y))
-				   (if (eq? (first) (second))
-				       (first)
-				       (error 'joinsegs "overlapping segs had different values: ~s vs. ~s at seq# ~a"
-					      (first) (second) i))]
-				;; We're past w2, but still in w1.
-				[(and (< y i) (<= i b)) (first)]
-				;; Past the first window, therefore still in w2:
-				[(> i b) (second)]
-				[else (error 'joinsegs "hmm... broken")])))
-	     ;`(Success ,(make-sigseg a (max b y) new (sigseg-timebase w1)))
-	     (make-sigseg a (max b y) new (sigseg-timebase w1))
-	     )]
+	    ;; In this case the head of w2 is lodged in w1:
+	    [(and (<= a x) (<= x b))
 
-	  ;; In this case there is a gap!
-	  [(< b (sub1 x)) '(Gap)]
-	  )))
+	     (printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
+	     
+	     (let ([new (make-vector (add1 (- (max b y) a)))])
+	       (for (i a (max b y))
+		   (define (first) (vector-ref (sigseg-vec w1) (- i a)))
+		 (define (second) (vector-ref (sigseg-vec w2) (- i x)))
+					;		  (printf "i ~a\n" i)
+		 (vector-set! new (- i a)
+			      (cond
+			       ;; Still in the first window:
+			       [(< i x) (first)]
+			       ;; We're in the overlap:
+			       [(and (<= i b) (<= x i) (<= i y))
+				(if (eq? (first) (second))
+				    (first)
+				    (error 'joinsegs "overlapping segs had different values: ~s vs. ~s at seq# ~a"
+					   (first) (second) i))]
+			       ;; We're past w2, but still in w1.
+			       [(and (< y i) (<= i b)) (first)]
+			       ;; Past the first window, therefore still in w2:
+			       [(> i b) (second)]
+			       [else (error 'joinsegs "hmm... broken")])))
+					;`(Success ,(make-sigseg a (max b y) new (sigseg-timebase w1)))
+	       (make-sigseg a (max b y) new (sigseg-timebase w1))
+	       )]
+
+	    ;; In this case there is a gap!
+	    [(< b (sub1 x)) 
+	     ;'(Gap)
+	     (error 'joinsegs "there's a gap between these sigsegs: sample range ~a:~a and ~a:~a\n"
+		    (sigseg-start w1) (sigseg-end w1)
+		    (sigseg-start w2) (sigseg-end w2))
+	     ]
+	    ))])))
 
      (define (subseg w start end)
+       ;(inspect `(subseg ,w ,start ,end))
+       (DEBUGASSERT (valid-sigseg? w))
        (if (or (< start (sigseg-start w))
 	       (> end (sigseg-end w)))
-	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" start end w))
-       (let ([vec (make-vector (add1 (- end start)))])
-	 (for (i 0 (fx- (vector-length vec) 1))
-	      (vector-set! vec i (vector-ref (sigseg-vec w) (+ i (- start (sigseg-start w))))))
-	 (make-sigseg start end vec (sigseg-timebase w))))
+	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" start end w)
+	   (let ([vec (make-vector (add1 (- end start)))])
+	     (for (i 0 (fx- (vector-length vec) 1))
+		 (vector-set! vec i (vector-ref (sigseg-vec w) (+ i (- start (sigseg-start w))))))
+	     (make-sigseg start end vec (sigseg-timebase w)))))
 
      (define (seg-get w i) (vector-ref (sigseg-vec w) i))
      (define (width w) (vector-length (sigseg-vec w)))
@@ -391,7 +423,6 @@
 		   (stream-cons copy (towinloop (stream-cdr s))))
 		 (towinloop (stream-cdr s)))))))
      
-
      ))
 
 

@@ -54,6 +54,10 @@
     [Expr ('tupref Int Int Expr)]
     [Expr (Prim Expr ...)]
 
+    ;; Adding side-effects for WaveScript.
+    [Expr ('begin Expr ...)]
+    [Expr ('set! Var Expr)]
+
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:
 	regiment-primitives)

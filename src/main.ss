@@ -173,6 +173,7 @@
 		(loop result (cdr funs) (cdr names)))))))))
 
 
+
 ;; [2006.08.27] This version executes the alternate, WaveScript compiler.
 (define (run-ws-compiler p)                                   ;; Entrypoint.
   (set! p (verify-regiment p))
@@ -184,6 +185,38 @@
   (printf "Types nominalized.\n")
   ;(set! p (text->string (wsquery->text p)))
   p)
+
+;; The WaveScript "interpreter".  (Really a wavescript embedding.)
+(define (wsint x)                                             ;; Entrypoint.     
+  (define (parse-it f)
+    (car (process (++ "wsparse " f))))
+  (define prog
+    (strip-types
+     (cond  [(input-port? x) (read x)]
+	    [(string? x) (let* ((port (parse-it x))
+				(exp (read port)))
+			   (close-input-port port)
+			   exp)]
+	    [(list? x)   x]
+	    [else (error 'wsint "bad input: ~s" x)])))
+
+  (define _ (begin (printf "Evaluating program: \n\n") (pretty-print prog)))
+  (define typed (verify-regiment prog))  
+  (define __ (printf "Program verified."))
+
+  ;(define ___ (inspect typed))
+
+  (define stream (wavescript-language prog))
+  
+  ;; TEMP
+  ;;(printf "doing eta-prims: \n")
+  ;;(set! typed (eta-primitives typed))
+  ;;(pretty-print typed)
+
+  (printf "\nTypecheck complete, program types:\n\n")
+  (print-var-types typed)(flush-output-port)
+  (browse-stream stream))
+
 
 
 ;; This one just stops after deglobalize:
@@ -530,3 +563,8 @@
   (begin (collect (collect-maximum-generation))
 	 (let ([stats (statistics)])
 	   (printf "Approx dynamic mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))))
+
+
+(define-id-syntax cur  ;; shorthand, current test
+  (begin (cd "~/wavescript/src/demos/wavescope/")
+	 (wsint "demo4_rewindow.ws")))

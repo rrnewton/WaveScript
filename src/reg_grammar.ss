@@ -38,6 +38,9 @@
                     (variable (:seq (:or lower-letter upper-letter "_")
                                     (:* (:or lower-letter upper-letter "_" digit)))))
 
+(define (unescape-chars str)
+  (read (open-input-string (string-append "\"" str "\""))))
+
 (define ws-lex
   (lexer-src-pos
    [(eof) 'EOF]
@@ -61,7 +64,8 @@
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
-   [(:seq "\"" (:* (:- any-char "\"")) "\"") (token-STRING (substring lexeme 1 (sub1 (string-length lexeme))))]
+   [(:seq "\"" (:* (:- any-char "\"")) "\"") 
+    (token-STRING (unescape-chars (substring lexeme 1 (sub1 (string-length lexeme)))))]
    
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
@@ -229,7 +233,7 @@
 
     ;; Kinda redundant, used only for state {} blocks.
     (binds [() ()]
-           [(VAR = exp) (list $1 $3)]
+           [(VAR = exp) (list (list $1 $3))]
            [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
@@ -287,7 +291,7 @@
               `(,$1 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 				    ,(make-begin (append $8 (list VIRTQUEUE))))) ,$5)]
          [(iter LeftParen VAR in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (let ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
+          `(,$1 (letrec ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          
          [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]

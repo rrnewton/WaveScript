@@ -369,26 +369,12 @@
 	  [(wsint)
 	   (let ()
 	   (define port (match filenames
-			  ;; If there's no file given read from stdout
+			  ;; If there's no file given read from stdin
 			  [() (console-input-port)]
 			  [(,fn) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
-
-	  
-	   (define prog (strip-types (read port)))
-	   (define typed (verify-regiment prog))
-	   (define stream (wavescript-language prog))
-
-	   (printf "Evaluating program: \n\n")(pretty-print prog)
 	   
-	   ;; TEMP
-	   ;(printf "doing eta-prims: \n")
-	   ;(set! typed (eta-primitives typed))
-	   ;(pretty-print typed)
-
-	   (printf "\nTypecheck complete, program types:\n\n")
-	   (print-var-types typed)(flush-output-port)
-	   (browse-stream stream))]
+	   (wsint port))]	 
 
 	  [(wscomp)
 	   (let ()

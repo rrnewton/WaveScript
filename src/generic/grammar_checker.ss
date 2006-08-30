@@ -304,10 +304,13 @@
   (define (fail x p k)
     (set-top-level-value! 'grammar-context (k 'FAIL))
     (set-top-level-value! 'grammar-original origexpr)
-    (error 'check-grammar
+    (warning 'check-grammar
 	   (++ "could not parse expr ~s with production/pattern ~s\n  "
 	       "Context stored in 'grammar-context', look at the location of FAIL, original expression in 'grammar-original'")
-	   x p))
+	   x p)
+    (new-cafe)
+    (error 'check-grammar "")
+    )
   
   ;; This matches an expression against a variant name (e.g. Expr, Var, etc)
   (define (match-variant expr variantname k)
