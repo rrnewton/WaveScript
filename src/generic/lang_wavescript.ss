@@ -300,8 +300,8 @@
      (define (joinsegs w1 w2)
        (DEBUGASSERT (valid-sigseg? w1))
        (DEBUGASSERT (valid-sigseg? w2))
-       (inspect (cons w1 w2))
-       (inspect/continue 
+       ;(inspect (cons w1 w2))
+       (id ;inspect/continue 
 	(cond 
 	[(eq? w1 nullseg) w2]
 	[(eq? w2 nullseg) w1]
@@ -355,20 +355,32 @@
      (define (subseg w start end)
        ;(inspect `(subseg ,w ,start ,end))
        (DEBUGASSERT (valid-sigseg? w))
-       (if (or (< start (sigseg-start w))
+       (id ;inspect/continue
+	(if (or (< start (sigseg-start w))
 	       (> end (sigseg-end w)))
 	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" start end w)
 	   (let ([vec (make-vector (add1 (- end start)))])
 	     (for (i 0 (fx- (vector-length vec) 1))
 		 (vector-set! vec i (vector-ref (sigseg-vec w) (+ i (- start (sigseg-start w))))))
-	     (make-sigseg start end vec (sigseg-timebase w)))))
+	     (make-sigseg start end vec (sigseg-timebase w))))))
 
-     (define (seg-get w i) (vector-ref (sigseg-vec w) i))
-     (define (width w) (vector-length (sigseg-vec w)))
-     (define (start w) (vector-length (sigseg-start w)))
-     (define (end w) (vector-length (sigseg-end w)))
-     (define (seg-timebase w) (vector-length (sigseg-timebase w)))
-     (define to_array sigseg-vec)
+     (define (seg-get w i) 
+       (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
+       (vector-ref (sigseg-vec w) i))
+     (define (width w) (if (eq? w nullseg) 0
+			   (vector-length (sigseg-vec w))))
+     (define (start w) 
+       (if (eq? w nullseg) (error 'start "cannot get start index from nullseg!"))
+       (vector-length (sigseg-start w)))
+     (define (end w) 
+       (if (eq? w nullseg) (error 'end "cannot get end index from nullseg!"))
+       (vector-length (sigseg-end w)))
+     (define (seg-timebase w) 
+       ;; Is this true?  Or does each signal have its own nullseg?? That could be very tricky...
+       ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
+       (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
+       (sigseg-timebase w))
+     (define (to_array w) (if (eq? w nullseg) #() (sigseg-vec w)))
      
      (define (parmap f s) (stream-parmap f s))
      (define smap stream-map)

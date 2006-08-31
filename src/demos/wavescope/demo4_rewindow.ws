@@ -8,7 +8,8 @@ newwidth = 1024;
 step = 512;
 
 s2 = iterate (w in s1) {
-   state { acc = nullseg; }
+   state { acc = nullseg; 
+         }
 
    print("\nCurrent ACC, width ");
    print(acc.width);
@@ -28,8 +29,9 @@ s2 = iterate (w in s1) {
 /*    } */
   
    if acc.width > newwidth
-   then {emit subseg(acc, 0, newwidth);
-         acc := subseg(acc, step, acc.width - step) }
+   then {emit subseg(acc, acc.start, acc.start + newwidth);
+         acc := subseg(acc, acc.start + step, acc.width)
+	}
    else {};
 };
 

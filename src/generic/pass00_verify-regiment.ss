@@ -74,6 +74,13 @@
    `(input)
    `(output (grammar ,initial_regiment_grammar PassInput))
    (let ()
+
+     (define (assert-valid-name! v)
+       (IFWAVESCOPE 
+	(if (regiment-primitive? v)
+	    (error 'verify-regiment 
+		   "for the time being you cannot bind variables that use the same names as primitives: '~s'" v))
+	))
      
      (define process-expr
        (lambda (expr env type-env)
@@ -102,6 +109,7 @@
 		  (andmap symbol? formalexp)
 		  (set? formalexp)
                   (not (memq 'lambda env)))
+	   (for-each assert-valid-name! formalexp)
 	   `(lambda ,formalexp 
 	      ,(process-expr expr (union formalexp env)
 			     type-env))]
@@ -114,6 +122,7 @@
 	   (guard (not (memq 'letrec env))
                   (andmap symbol? lhs*)
                   (set? lhs*))
+	   (for-each assert-valid-name! lhs*)
 	   (let* ([newenv (union lhs* env)]
 		  [rands (map (lambda (r) 
 				(process-expr r newenv '())) rhs*)]
@@ -124,6 +133,7 @@
 	  [(begin ,[e] ...) `(begin ,e ...)]
 	  [(set! ,v ,[e]) (guard (symbol? v)) `(set! ,v ,e)]
 	  [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
+	   (assert-valid-name! v)
 	   `(for (,v ,e1 ,e2) 
 		,(process-expr e3 (cons v env)
 			       type-env))]

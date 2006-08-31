@@ -113,6 +113,7 @@
     (delay (cons i (loop (add1 i))))))
 
 (define (browse-stream stream)
+  (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
   ;; prompt and ask the user what we should do with it:
   (printf "\nQuery processed.")
@@ -131,6 +132,8 @@
 		 [print-graph #t]
 		 [print-level 5])
     (let loop ([pos 0])
+      (DEBUGASSERT (stream? stream))
+      
       (printf "pos#~a: " pos)
       (let ((line (read-line)))
 	(when line 

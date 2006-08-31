@@ -212,6 +212,8 @@
     
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
+    ;; Takes a start (inclusive) and end (exclusive) index, must fall within the range.
+    ;; Can produce nullseg if start=end.
     (subseg          ((Sigseg 'a) Integer Integer) Integer)
     ;; Uses 0-N access, don't need to know seg-start:
     (seg-get          ((Sigseg 'a) Integer) 'a)
