@@ -95,7 +95,6 @@
 		 nullseg nullarr nulltimebase
 		 +. -. *. /. + - * /
 		 int->float realpart imagpart
-		 fft hanning 
 		 tuple tupref
 		 newarr arr-get arr-set! length print 
 		 joinsegs subseg seg-get width start end seg-timebase
@@ -103,6 +102,8 @@
 		 emit virtqueue
 		 smap parmap
 		 iterate break deep-iterate
+		 unionList
+		 fft hanning 
 		 )
 
   ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
@@ -317,12 +318,29 @@
 
      ;; TODO: fix this:
      (define (hanning w) w)
+
+     ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
+     (trace-define (unionList ls)
+       ;; There are all kinds of weird things we could do here.
+       ;; We could pull all the streams in parallel (with engines or threads) 
+       ;; and nondeterministically interleave.
+	 
+       ;; TEMP: this strategy just assumes they're all the same rate and round-robins them:
+       (trace-let loop ([streams (mapi vector ls)])
+	 (if (null? streams) '()
+	     (let ([batch (map (lambda (v) (vector (vector-ref v 0) (stream-car (vector-ref v 1))))
+			    streams)])
+	       (stream-append batch
+			      (loop (filter (lambda (v) (not (stream-empty? (vector-ref v 1))))
+				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
+					streams)))))))
+       )
      
      ; TODO: error
 
      (define tuple vector)
      (define (tupref ind _ v)
-       (DEBUGASSERT vector? v)
+       (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
 
      (define newarr   make-vector)

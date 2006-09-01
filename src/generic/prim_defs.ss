@@ -165,6 +165,21 @@
     
     ))
 
+;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
+;; 
+;; This list of primitives determines which library routines are
+;; implemented in "native code" (C++).  Any primitives in this list
+;; will NOT have their wavescript library definitions inlined, rather
+;; they will link against their native versions.
+;;   IF this is enabled, we will lose the simplicity of the query
+;; graph (not just iterates/unions).
+(IFWAVESCOPE 
+ (define wavescript-native-primitives
+   '(
+     ;sync4
+     
+     )))
+
 (IFWAVESCOPE
 ;; Adding Wavescope-related primitives:   
 (define wavescript-primitives
@@ -180,6 +195,10 @@
 
     (fft              ((Sigseg Float))  (Sigseg Complex))
     (hanning          ((Sigseg Float))  (Sigseg Float))
+
+    ;; This unions N streams of the same type, it returns a sample and
+    ;; the index (in the original list) of the stream that produced it.
+    (unionList        ((List (Signal (Sigseg 'a)))) (Signal #(Integer (Sigseg 'a))))
 
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)

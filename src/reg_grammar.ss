@@ -24,7 +24,7 @@
     LeftSqrBrk RightSqrBrk
    
     + - * / ^ : := -> = == != >= <= < > <-
-    +. -. *. /. ^. 
+    +. -. *. /. ^. :: 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
     fun for to emit deep_iterate iterate state map in if then else true false break let ; Keywords 
     ;SLASHSLASH NEWLINE 
@@ -56,7 +56,7 @@
    
    ;; Since (token-=) returns '=, just return the symbol directly
    [(:or "=" "+" "-" "*" "/" "^" "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
-         "+." "-." "*." "/." "^.")
+         "+." "-." "*." "/." "^." "::")
     (string->symbol lexeme)]
    ;; Keywords: 
    [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state" "map" "in" "if" "then" "else" "true" "false" "let")
@@ -85,7 +85,8 @@
    
    [(:+ digit) (token-NUM (string->number lexeme))]
 
-   [(:: (:+ digit) #\. (:* digit)) (token-NUM (string->number lexeme))]))
+   [(:: (:+ digit) #\. (:* digit)) (token-NUM (string->number lexeme))]
+   ))
 
 (define (read-balanced startstr endstr port balance)  
   (define start (string->list startstr))
@@ -151,7 +152,7 @@
             (printf "  Located between ~a and ~a.\n"
                     (format-pos start) (format-pos end))))
    ;; Precedence:
-   (precs (right = := ->)
+   (precs (right = := -> ::)
           (right then else)
           (left - + +. -.)
           (left * / *. /.)
@@ -340,6 +341,8 @@
          ;; Using binary prims as values: (without eta-expanding!)
          [(LeftParen binop RightParen) $2]
          
+         [(exp :: exp) `(cons ,$1 ,$3)]
+
          [(exp + exp) `(+ ,$1 ,$3)]
          [(exp - exp) `(- ,$1 ,$3)]
          [(exp * exp) `(* ,$1 ,$3)]

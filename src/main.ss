@@ -570,4 +570,4 @@
 
 (define-id-syntax cur  ;; shorthand, current test
   (begin (cd "~/wavescript/src/demos/wavescope/")
-	 (wsint "demo4_rewindow.ws")))
+	 (wsint "demo6_sync.ws")))
