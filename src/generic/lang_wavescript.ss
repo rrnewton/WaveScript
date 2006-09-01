@@ -95,7 +95,9 @@
 		 nullseg nullarr nulltimebase
 		 +. -. *. /. + - * /
 		 int->float realpart imagpart
-		 fft tuple newarr arr-get arr-set! length print 
+		 fft hanning 
+		 tuple tupref
+		 newarr arr-get arr-set! length print 
 		 joinsegs subseg seg-get width start end seg-timebase
 		 to_array to-windowed 
 		 emit virtqueue
@@ -312,11 +314,16 @@
 				(sigseg-end ss)
 				(dft (sigseg-vec ss))
 				(sigseg-timebase ss))))
+
+     ;; TODO: fix this:
+     (define (hanning w) w)
      
-     ; TODO: break
      ; TODO: error
 
      (define tuple vector)
+     (define (tupref ind _ v)
+       (DEBUGASSERT vector? v)
+       (vector-ref v ind))
 
      (define newarr   make-vector)
      (define arr-get  vector-ref)

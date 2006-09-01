@@ -39,3 +39,7 @@ Export useful things from helpers.ss to my generic utility files, including:
 
  *) How much work would it be to track source locations?
 
+[2006.09.01]
+
+I have NEVER taken advantage of the "test-this" convention, I should do away with it.
+

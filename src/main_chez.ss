@@ -215,7 +215,6 @@
 (import simulator_alpha)
 (include "../generic/firelightning_sim.ss")
 (include "../generic/tossim.ss")
-(include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 
 ;(include "../reg_grammar.ss")
 
@@ -249,6 +248,10 @@
 (include "../generic/lang32_emit-nesc.ss")
 
 (include "../generic/pass00_verify-regiment.ss")
+(include "../generic/pass000_desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
+(include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+
+
 (include "../generic/pass01_eta-primitives.ss")
 (include "../generic/pass02_rename-vars.ss")
 (include "../generic/pass03_remove-unquoted-constant.ss")

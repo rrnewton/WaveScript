@@ -84,7 +84,7 @@
      
      (define process-expr
        (lambda (expr env type-env)
-	 (trace-match PE expr
+	 (match expr
 	   [,const (guard (constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
@@ -157,12 +157,17 @@
 	       ))
 
 	   `(,prim ,rand* ...)]
+
+	  ;; We take away spurious "app" syntax for primitive applications.
+	  #;[(app ,prim ,rand* ...)
+           (guard (not (memq prim env)) (regiment-primitive? prim))
+	   (process-expr `(,prim ,@rand*) env type-env)]
           
 	  ;; Allowing normal applications because the static elaborator will get rid of them.
 	  ;;
 	  ;; Even though this is just a VERIFY pass, I do a teensy weensy bit of normalization 
 	  ;; here -- add "app".  This makes grammar-checking sane.
-	  [(app ,[rator] ,[rand*] ...)	`(app ,rator ,rand* ...)]
+	  [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
 	  [(,[rator] ,[rand*] ...)      `(app ,rator ,rand* ...)]
 
           [,unmatched

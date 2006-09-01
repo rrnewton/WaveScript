@@ -201,12 +201,15 @@
 	    [else (error 'wsint "bad input: ~s" x)])))
 
   (define _ (begin (printf "Evaluating program: \n\n") (pretty-print prog)))
-  (define typed (verify-regiment prog))  
-  (define __ (printf "Program verified."))
+
+  (define desugared (desugar-pattern-matching prog))
+
+  (define typed (verify-regiment desugared))  
+  (define __ (printf "Program verified."))  
 
   ;(define ___ (inspect typed))
 
-  (define stream (wavescript-language prog))
+  (define stream (wavescript-language desugared))
   
   ;; TEMP
   ;;(printf "doing eta-prims: \n")

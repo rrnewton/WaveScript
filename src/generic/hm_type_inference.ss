@@ -463,7 +463,7 @@
        (types-equal! ct at exp)
        (values `(if ,te ,ce ,ae) ct)]
       
-      ;; Wavescope: this could be a set! to a state{} bound variable, not s
+      ;; Wavescope: this could be a set! to a state{} bound variable:
       [(set! ,v ,[l -> e et])  (values `(set! ,v ,e) #())]
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
@@ -520,6 +520,7 @@
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
+
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
@@ -604,7 +605,7 @@
 	`(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
        [(letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
 	`(letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
-       [(app ,[rat] ,[rand*] ...) `(,rat ,rand* ...)]
+       [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
 
       [(,prim ,[rand*] ...)
        (guard (regiment-primitive? prim))
@@ -633,7 +634,7 @@
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
-    [(app ,[rat] ,[rand*] ...) `(,rat ,rand* ...)]
+    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
     
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
@@ -766,13 +767,16 @@ magnitude : foo -> bar
    (display 
     (let loop ([t t])
       (match t
-	[(,[a] -> ,[b]) (++ a" -> "b)]
+	[(quote ,[var]) (++ "'" var)]
+	[(,[arg*] ... -> ,[b]) (++ (apply string-append (insert-between ", " arg*))
+				   " -> "b)]
 	[#(,[x*] ...)
 	 (++ "(" (apply string-append (insert-between ", " x*)) ")")]
 	[(,[tc] ,[arg])
 	 (++ tc" "arg)]
 	[,sym (guard (symbol? sym))
-	      (symbol->string sym)]))
+	      (symbol->string sym)]
+	[,other (error 'print-type "bad type: ~s" other)]))
     port)))
 
 ;; Expects a fully typed expression
@@ -815,8 +819,7 @@ magnitude : foo -> bar
       (match x
 	[() (void)]
 	[(type ,v ,t ,subvars)
-	 ;; HACK: 
-	 (unless (eq? v '___VIRTQUEUE___)
+	 (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
 	   (fprintf port "~a~a : " indent v)
 	   (print-type t port) (newline port))
 	 (loop subvars (++ indent "  "))]

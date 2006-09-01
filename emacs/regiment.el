@@ -144,3 +144,53 @@
 	  (buffer-list)))
 
 ; ======================================================================
+
+;; These are some hacks to the c-mode to make WaveScript code look nicer.
+
+(defun ryan-fontify-wavescript-keywords ()
+  "Color WaveScript keywords."
+  (interactive)  
+  (save-excursion
+    ;(beginning-of-line)
+    (goto-char (point-min))
+
+    (rrn-applyface-regexp "let " 'font-lock-comment-face)
+    (rrn-applyface-regexp "iterate" 'font-lock-comment-face)
+    (rrn-applyface-regexp "deep_iterate" 'font-lock-comment-face)
+    )
+  )
+
+
+(defun rrn-color-regexp (rexp thecolor)
+  "colors matching regexps"
+  (rrn-process-regexp rexp #'(lambda () (facemenu-set-foreground thecolor))))
+
+(defun rrn-applyface-regexp (rexp inputface)
+  "colors matching regexps"
+  (rrn-process-regexp 
+   rexp #'(lambda () 
+	   (progn 
+	     (put-text-property (mark) (point) 'face inputface))
+	   )))
+
+(defun rrn-process-regexp (rexp thunk)
+  "selects a regexp, executes thunk"
+  ;(interactive)
+  (let ((res (search-forward-regexp rexp nil t)))
+    (if (eq res nil)
+	'done
+      (let ()
+	(set-mark (match-beginning 0))
+	(funcall thunk)
+	(rrn-process-regexp rexp thunk)))))
+
+; (goto-char (point-min)) (rrn-color-regexp "\\\".*\\\"" "salmon3")
+;(add-hook 'c-mode-hook 'turn-on-font-lock)
+
+;(font-lock-add-keywords 'c-mode '(("\\<\\(FIXME\\):" 1 font-lock-warning-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(iterate\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(let\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(smap\\)" 1 font-lock-keyword-face t)))
+;(font-lock-add-keywords 'c-mode '(("\\<\\( = \\)" 1 font-lock-keyword-face t)))
+
+

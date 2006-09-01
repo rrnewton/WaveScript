@@ -114,6 +114,7 @@
     ;; primitives rather than special forms.  (Just for the purpose of
     ;; eliminating repetitive code.) However, they don't have valid
     ;; types under our type system. 
+    ;; TODO: [2006.09.01] I should probably take these out:
     (tuple Object Tuple)
     (tupref Integer Integer Object)
 
@@ -178,9 +179,10 @@
     (audioFile        (String Integer Integer)  (Signal (Sigseg Integer)))
 
     (fft              ((Sigseg Float))  (Sigseg Complex))
+    (hanning          ((Sigseg Float))  (Sigseg Float))
 
     ;; Signals an error, has any return type:
-    (regerror         (String) 'a)
+    (wserror         (String) 'a)
 
     ;; I just use a virtual "Queue" to make the type-checking work for emits:
     (emit           ((VQueue 'a) 'a) #())
@@ -215,7 +217,7 @@
 
     ;; Takes a start sample # and a Length to copy.
     ;; Can produce nullseg if len=0.
-    (subseg          ((Sigseg 'a) Integer Integer) Integer)
+    (subseg          ((Sigseg 'a) Integer Integer) (Sigseg 'a))
 
     ;; CHANGED to use sample numbers.
     (seg-get      ((Sigseg 'a) Integer) 'a)

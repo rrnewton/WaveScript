@@ -26,7 +26,7 @@
     + - * / ^ : := -> = == != >= <= < > <-
     +. -. *. /. ^. 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
-    fun for to emit deep_iterate iterate state map in if then else true false break ; Keywords 
+    fun for to emit deep_iterate iterate state map in if then else true false break let ; Keywords 
     ;SLASHSLASH NEWLINE 
     EOF ))
 (define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR CHAR STRING))
@@ -59,7 +59,7 @@
          "+." "-." "*." "/." "^.")
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state" "map" "in" "if" "then" "else" "true" "false" )
+   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state" "map" "in" "if" "then" "else" "true" "false" "let")
     (string->symbol lexeme)]
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
@@ -184,7 +184,7 @@
           [(LeftParen type COMMA typeargs RightParen) (apply vector (cons $2 $4))]
           )
     (typeargs [(type) (list $1)]
-              [(type COMMA args) (cons $1 $3)]
+              [(type COMMA typeargs) (cons $1 $3)]
               )
 
     
@@ -199,23 +199,40 @@
            )
     (maybedecls [() '()] [(decls) $1])
 
-    (fundef [(fun VAR LeftParen args RightParen exp) ;LeftBrace stmts RightBrace) 
+    (fundef [(fun VAR LeftParen formals RightParen exp) ;LeftBrace stmts RightBrace) 
              `(define ,$2 (lambda ,$4 ,$6))]
-#;            [(VAR : type SEMI fun VAR LeftParen args RightParen exp)
+#;            [(VAR : type SEMI fun VAR LeftParen formals RightParen exp)
              (let ([v1 $1] [v2 $6])
                (unless (eq? v1 v2) 
                  (error "Parse Error: top-level type spec must precede function of same name, got ~a ~a, positions ~a ~a\n"
                         v1 v2 (format-pos $1-start-pos) (format-pos $6-start-pos)))
                `(define ,$1 ,$3 (lambda ,$8 ,$10)))]
             )
+   (formals [() '()]
+	    [(formals+) $1]
+	    )
+   (formals+ [(pattern) (list $1)]
+	     [(pattern COMMA formals) (cons $1 $3)])
 
-    
-    (stmts ;[(exp SEMI) (list $1)]
+
+   ;; [2006.09.01] For now patterns are just tuples.
+   (pattern [(VAR) $1]
+	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
+	    )
+   (pat+ [(pattern) (list $1)]
+	 [(pattern COMMA pat+) (cons $1 $3)])
+
+
+   (stmts ;[(exp SEMI) (list $1)]
            [() '()]
            [(exp) (list $1)]
 ;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]
            [(emit exp SEMI stmts)   (cons `(emit ,VIRTQUEUE ,$2) $4)]
+	   
+	   ;; LAME: We require let only when you're going to use a pattern.
+           [(let pattern = exp SEMI stmts) `((letrec ([,$2 ,$4]) ,(make-begin $6)))]
            [(VAR = exp SEMI stmts) `((letrec ([,$1 ,$3]) ,(make-begin $5)))]
+
            [(VAR : type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
            [(fundef SEMI stmts) 
             (match $1
@@ -226,11 +243,6 @@
            )
 
 
-    (args [() '()]
-          [(args+) $1])
-    (args+ [(exp) (list $1)]
-	   [(exp COMMA args) (cons $1 $3)])
-
     ;; Kinda redundant, used only for state {} blocks.
     (binds [() ()]
            [(VAR = exp) (list (list $1 $3))]
@@ -238,20 +250,26 @@
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
 
-    (tuple [(LeftParen exp COMMA args+ RightParen) `(tuple ,$2 ,@$4)])
+    (tuple [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)])
 
     ;; Hack to enable my syntax for sigseg refs!!
     (exp 
 	  ;; Lists:
-	  [(LeftSqrBrk args RightSqrBrk) (consify $2)]
+	  [(LeftSqrBrk expls RightSqrBrk) (consify $2)]
 	  [(notlist) $1])
+    (expls [() '()]
+	   [(expls+) $1])
+    (expls+ [(exp) (list $1)]
+	    [(exp COMMA expls) (cons $1 $3)])
+
     
     (notlist
          [(NUM) $1]  
          [(VAR) $1]
          [(CHAR) $1]
          [(STRING) $1]
-         [(true) #t] [(false) #f]
+         [(true) ''#t] 
+	 [(false) ''#f]
 #;         [(DOTVARS) 
            (let loop ([ls (cdr $1)] [acc (car $1)])
              (if (null? ls) acc
@@ -269,8 +287,8 @@
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]
 
-         [(VAR LeftParen args RightParen) `(app ,$1 ,@$3)]
-         [(LeftParen exp RightParen LeftParen args RightParen) `(app ,$2 ,@$5)]
+         [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]
+         [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(arr-get ,$1 ,$3)]
          [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(vector-get ,$2 ,$5)]
@@ -281,11 +299,9 @@
 
          ;; Begin/end:
          [(LeftBrace stmts RightBrace) (make-begin $2)]
-
-	 
-         
+	         
          ;; Anonymous functions:
-         [(fun LeftParen args RightParen exp) (prec else) `(lambda ,$3 ,$5)]
+         [(fun LeftParen formals RightParen exp) (prec else) `(lambda ,$3 ,$5)]
          
          [(iter LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) 
               `(,$1 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
@@ -371,7 +387,7 @@
            [(!=) '(lambda (x y) (not (= x y)))]
            )
     )) 
-   args))
+   ))
            
 ;; run the calculator on the given input-port       
 (define (ws-parse-port ip)
