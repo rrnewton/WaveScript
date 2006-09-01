@@ -8,7 +8,6 @@ fun sync2 (ctrl, s1, s2) {
   // Now it's homogenously typed.
   slist = [ _ctrl, _s1 , _s2];
   
-
   iterate((ind, tup) in unionList(slist)) {
     state {
       acc1 = nullseg;
@@ -24,8 +23,8 @@ fun sync2 (ctrl, s1, s2) {
     then acc1 := joinsegs(acc1, seg)
     else acc2 := joinsegs(acc2, seg);
     
-    if (acc1 != nullseg) then  print("Acc1: " ++ show(acc1.start) ++ ":" ++ show(acc1.end) ++ "\n");
-    if (acc2 != nullseg) then  print("Acc2: " ++ show(acc2.start) ++ ":" ++ show(acc2.end) ++ "\n");
+    if (acc1 != nullseg) then  print("  Acc1: " ++ show(acc1.start) ++ ":" ++ show(acc1.end) ++ "\n");
+    if (acc2 != nullseg) then  print("  Acc2: " ++ show(acc2.start) ++ ":" ++ show(acc2.end) ++ "\n");
     
     // Now we see if we can process the next request.     
     if requests == []
@@ -36,7 +35,7 @@ fun sync2 (ctrl, s1, s2) {
 	  acc1.start <= st && 	  acc2.start <= st && 
 	  acc1.end >= en &&	  acc2.end >= en)
 	then {
-	print("Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	size = en - st + 1; // Start/end is inclusive.
 	emit (subseg(acc1, st, size),
 	      subseg(acc2, st, size));
@@ -54,22 +53,69 @@ fun sync2 (ctrl, s1, s2) {
 
 // Unfinished:
 fun syncN (strms, ctrl) {
-  _ctrl = iterate((b,s,e) in ctrl) { emit (true, b,s,e, nullseg); };
-  f = fun(s) { iterate(win in s) { emit (false, false,0,0, win); }; };
-  _strms = map(f, strms);
+  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
+  let f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
+  let _strms = map(f, strms);
 
-  slist = _ctrl :: _strms;
+  let slist = _ctrl :: _strms;
   
   print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");
 
-  iterate((ind, tup) in unionList(strms)) {
+  iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeList(slist.listLength, nullseg);
+      accs = makeArray(slist.listLength, nullseg);
+      requests = [];
     }
     print("Current ACCS: " ++ show(accs) ++ "\n");
-    emit (ind,tup);    
+
+    let (flag, strt, en, seg) = tup;
+
+    // Process the new data:
+    if ind == 0 // It's the ctrl signal.
+    then requests := append(requests, [(flag,strt,en)])
+    else if (ind == 1)
+      then accs[0] := joinsegs(accs[0], seg)
+     else {}; //accs[1] := joinsegs(accs[1], seg);
+	  
+    
+/*     // Now we see if we can process the next request.      */
+/*     if requests == [] */
+/*     then {} // Can't do anything yet... */
+/*     else { */
+/*       let (fl, st, en) = requests.head; */
+/*       let allready = true; */
+/*       for i = 0 to accs.length - 1 { */
+/* 	if (accs[i] == nullseg || */
+/* 	    accs[i].start > st || */
+/* 	    accs[i].end < en) */
+/* 	then allready := false; */
+/*       }; */
+     	
+/*       if allready */
+/* 	then { */
+/* 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n"); */
+/* 	size = en - st + 1; // Start/end is inclusive. */
+
+/* 	output = []; */
+/* 	for i = 0 to accs.length - 1 { */
+/* 	  output := subseg(accs[i], st, size) :: output; */
+/* 	}; */
+/* 	//emit(reverse(output)); */
+	
+ 	emit 3.0; 
+
+/* 	// Destroy the output portions and remove the serviced request: */
+/* 	for i = 0 to accs.length - 1 { */
+/* 	  //accs[i] := subseg(accs[i], st + size, accs[i].width - size); */
+/* 	}; */
+/* 	requests := requests.tail; */
+/*       }       */
+/*     } */
+
+
   }
 }
+
 
 //======================================================================
 // QUERY:
@@ -89,8 +135,8 @@ ctrl = iterate(w in ch1) {
   pos := pos + outwidth;
 };
 
-//BASE <- syncN([ch1, ch2], ctrl);
-BASE <- sync2(ctrl, ch1, ch2);
+BASE <- syncN([ch1, ch2], ctrl);
+//BASE <- sync2(ctrl, ch1, ch2);
 
 
 
