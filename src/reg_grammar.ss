@@ -306,10 +306,10 @@
          ;; Anonymous functions:
          [(fun LeftParen formals RightParen exp) (prec else) `(lambda ,$3 ,$5)]
          
-         [(iter LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) 
+         [(iter LeftParen pattern in exp RightParen LeftBrace stmts RightBrace) 
               `(,$1 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 				    ,(make-begin (append $8 (list VIRTQUEUE))))) ,$5)]
-         [(iter LeftParen VAR in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
+         [(iter LeftParen pattern in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
           `(,$1 (letrec ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          

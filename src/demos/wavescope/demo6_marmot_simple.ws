@@ -34,9 +34,9 @@ wscores = iterate (w in freq) {
 };
 
 detections = 
-  iterate (pr in wscores) {
-    let (x,y) = pr;
-    emit(true, x, x);
+  iterate ((x,y) in wscores) {
+    //let (x,y) = pr;
+    emit(true, x);
   };
 
 //synced = sync4( 
