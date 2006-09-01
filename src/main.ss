@@ -209,15 +209,19 @@
 
   ;(define ___ (inspect typed))
 
-  (define stream (wavescript-language desugared))
+  (define stream (delay (wavescript-language desugared)))
   
   ;; TEMP
   ;;(printf "doing eta-prims: \n")
   ;;(set! typed (eta-primitives typed))
   ;;(pretty-print typed)
 
-  (printf "\nTypecheck complete, program types:\n\n")
+  (printf "\nTypecheck complete, program types: (also dumped to \".__types.txt\")\n\n")
   (print-var-types typed)(flush-output-port)
+  (with-output-to-file ".__types.txt"
+    (lambda () (print-var-types typed)(flush-output-port))
+    'replace)
+
   (browse-stream stream))
 
 

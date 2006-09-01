@@ -699,8 +699,11 @@ and `wavescope-xemacs-w3-manual' (XEmacs only)."
 	(progn 
 	  (put-text-property (point) (+ 10 (point)) 'face
 			     'font-lock-comment-face)
-	  (print "WOOT"))
-      (print "FLUB")))
+	  ;(print "WOOT")
+	  )
+      (progn ;(print "FLUB")
+	)
+      ))
   )
 ;	(re-search-forward "\\(\\.<\\|(\\|\\[[<|]?\\|{<?\\)[ \t]*")
     

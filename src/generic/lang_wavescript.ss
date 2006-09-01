@@ -89,16 +89,23 @@
     (make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
 		 app letrec (for for-loop-stack)
-		 to-uint16 to-int16 uint16->string
+
 		 dump-binfile audioFile audio
 		 ; read-file-stream
-		 nullseg nullarr nulltimebase
+		 print show
+
+		 to-uint16 to-int16 uint16->string
 		 +. -. *. /. + - * /
 		 int->float realpart imagpart
+
+		 nullseg nullarr nulltimebase
 		 tuple tupref
-		 newarr arr-get arr-set! length print 
+		 newarr arr-get arr-set! length
+		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end seg-timebase
 		 to_array to-windowed 
+		 
+		 wserror inspect
 		 emit virtqueue
 		 smap parmap
 		 iterate break deep-iterate
@@ -320,13 +327,13 @@
      (define (hanning w) w)
 
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
-     (trace-define (unionList ls)
+     (define (unionList ls)
        ;; There are all kinds of weird things we could do here.
        ;; We could pull all the streams in parallel (with engines or threads) 
        ;; and nondeterministically interleave.
 	 
        ;; TEMP: this strategy just assumes they're all the same rate and round-robins them:
-       (trace-let loop ([streams (mapi vector ls)])
+       (let loop ([streams (mapi vector ls)])
 	 (if (null? streams) '()
 	     (let ([batch (map (lambda (v) (vector (vector-ref v 0) (stream-car (vector-ref v 1))))
 			    streams)])
@@ -336,12 +343,18 @@
 					streams)))))))
        )
      
-     ; TODO: error
+     (define (wserror str) (error 'wserror str))
+     (define inspect inspect/continue)
 
      (define tuple vector)
      (define (tupref ind _ v)
        (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
+
+     (define listLength #%length)
+     (define makeList make-list)
+     (define head car)
+     (define tail cdr)
 
      (define newarr   make-vector)
      (define arr-get  vector-ref)
@@ -354,6 +367,8 @@
 			  [print-level 5]
 			  [print-graph #t])
 	     (pretty-print x))))
+     (define (show x) (format "~s" x))
+
 
      ;; This is a bit silly.  Since we don't use an actual time-series
      ;; implementation, this just makes sure the overlap is EQUAL.
@@ -421,7 +436,8 @@
        (ASSERT valid-sigseg?
 	(cond
 	 [(eq? w nullseg) (error 'subseg "cannot subseg nullseg: ind:~s len:~s" startind len)]
-	 [(<= len 0) (error 'subseg "length of subseg must be greater than zero, not: ~s" len)]
+	 [(< len 0) (error 'subseg "length of subseg cannot be negative!: ~s" len)]
+	 [(= len 0) nullseg]
 	 [(or (< startind (sigseg-start w))
 		(> (+ startind len -1) (sigseg-end w)))
 	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" startind (+ startind len -1) w)]

@@ -65,7 +65,7 @@
 				))))
 		    (directory-files (concat regd dir))))
 	  '("generic/" "" "chez/" "plt/" "C/" 
-	    "demos/regiment/" "demos/token_machs/" "demos/firelightning/" 
+	    "demos/regiment/" "demos/token_machs/" "demos/firelightning/" "demos/wavescope/" 
 	    "linked_lib/"))
 	  ;'("~/cur/generic/"))
   ;(setq find-file-wildcards t)
@@ -191,6 +191,9 @@
 (font-lock-add-keywords 'c-mode '(("\\<\\(iterate\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(let\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(smap\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(then\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(emit\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(fun\\)" 1 font-lock-keyword-face t)))
 ;(font-lock-add-keywords 'c-mode '(("\\<\\( = \\)" 1 font-lock-keyword-face t)))
 
 

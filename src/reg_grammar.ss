@@ -24,9 +24,10 @@
     LeftSqrBrk RightSqrBrk
    
     + - * / ^ : := -> = == != >= <= < > <-
-    +. -. *. /. ^. :: 
+    +. -. *. /. ^. :: ++ 
+    AND OR 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
-    fun for to emit deep_iterate iterate state map in if then else true false break let ; Keywords 
+    fun for to emit deep_iterate iterate state in if then else true false break let ; Keywords 
     ;SLASHSLASH NEWLINE 
     EOF ))
 (define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR CHAR STRING))
@@ -55,17 +56,20 @@
 ;   ["(*" (begin (read-balanced "(*" "*)" input-port 1) (return-without-pos (ws-lex input-port)))]
    
    ;; Since (token-=) returns '=, just return the symbol directly
-   [(:or "=" "+" "-" "*" "/" "^" "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
-         "+." "-." "*." "/." "^." "::")
+   [(:or "::" "++" 
+	 "=" "+" "-" "*" "/" "^" "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
+         "+." "-." "*." "/." "^." )
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state" "map" "in" "if" "then" "else" "true" "false" "let")
+   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state"  "in" "if" "then" "else" "true" "false" "let")
     (string->symbol lexeme)]
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    [(:seq "\"" (:* (:- any-char "\"")) "\"") 
     (token-STRING (unescape-chars (substring lexeme 1 (sub1 (string-length lexeme)))))]
+
+   ["&&" 'AND] ["||" 'OR]
    
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
@@ -152,11 +156,12 @@
             (printf "  Located between ~a and ~a.\n"
                     (format-pos start) (format-pos end))))
    ;; Precedence:
-   (precs (right = := -> ::)
-          (right then else)
+   (precs (right = := -> )
+	  (right AND OR then else)
+	  (right ++ ::)
+          (left < > <= >= == !=)
           (left - + +. -.)
           (left * / *. /.)
-          (left < > <= >= == !=)
 
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
@@ -317,7 +322,7 @@
          [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
          [(break) '(break)]
          
-         [(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
+         ;[(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
 
 ;         [(if LeftParen exp RightParen LeftBrace stmts RightBrace else LeftBrace stmts RightBrace) 
 ;          `(if ,$3 ,$6 ,$10)]
@@ -326,7 +331,9 @@
 ;         [(if exp LeftBrace exp RightBrace else LeftBrace stmts RightBrace) 
 ;          'IF]
 
-         [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
+
+         [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
+         [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]	 
          
          
 ;         [(iterate LeftParen VAR in exp RightParen exp) 
@@ -339,8 +346,12 @@
 ;         [(exp binop exp) (prec +) `(,$2 ,$1 ,$3)]
          
          ;; Using binary prims as values: (without eta-expanding!)
-         [(LeftParen binop RightParen) $2]
-         
+         [(LeftParen binop RightParen) $2]         
+
+         [(exp AND exp) `(and ,$1 ,$3)]
+         [(exp OR exp) `(or ,$1 ,$3)]
+
+         [(exp ++ exp) `(string-append ,$1 ,$3)]
          [(exp :: exp) `(cons ,$1 ,$3)]
 
          [(exp + exp) `(+ ,$1 ,$3)]
@@ -359,8 +370,10 @@
          [(exp > exp) `(> ,$1 ,$3)]
          [(exp <= exp) `(<= ,$1 ,$3)]
          [(exp >= exp) `(>= ,$1 ,$3)]
-         [(exp == exp) `(= ,$1 ,$3)]
-         [(exp != exp) `(not (= ,$1 ,$3))]
+
+         ;[(exp === exp) `(eq? ,$1 ,$3)] ; Do we want to do this?
+         [(exp == exp) `(equal? ,$1 ,$3)]
+         [(exp != exp) `(not (equal? ,$1 ,$3))]
          
          [(- exp) (prec NEG) `(- ,$2)]
 

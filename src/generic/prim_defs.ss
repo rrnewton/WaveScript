@@ -65,9 +65,18 @@
 (define regiment-basic-primitives 
     ; value primitives
   '((cons ('a (List 'a)) (List 'a))
-    (cdr ((List 'a)) (List 'a))
     (car ((List 'a)) 'a)
+    (cdr ((List 'a)) (List 'a))
+
+    ;; Should remove car/cdr at some point.
+    (head ((List 'a)) 'a)
+    (tail ((List 'a)) (List 'a))
+
     (append ((List 'a) (List 'a)) (List 'a))
+    (makeList   (Integer 'a) (List 'a))
+    (listLength ((List 'a)) Integer)
+    (map (('a -> 'b) (List 'a)) (List 'b))
+
 ;    (list ('a ...) (List 'a))
 ;    (cons (Object List) List) 
 ;    (cdr (List) List)
@@ -198,10 +207,11 @@
 
     ;; This unions N streams of the same type, it returns a sample and
     ;; the index (in the original list) of the stream that produced it.
-    (unionList        ((List (Signal (Sigseg 'a)))) (Signal #(Integer (Sigseg 'a))))
+    (unionList        ((List (Signal 'a))) (Signal #(Integer 'a)))
 
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)
+    (inspect         ('a) 'a)
 
     ;; I just use a virtual "Queue" to make the type-checking work for emits:
     (emit           ((VQueue 'a) 'a) #())
@@ -225,6 +235,8 @@
     (break            () 'a)
 
     (print            ('a) #())
+    (show             ('a) String)
+    (string-append    (String String) String)
 
     ;; Creates a windowed (segmented) signal from a raw signal:
     (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
