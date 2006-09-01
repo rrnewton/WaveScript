@@ -75,6 +75,7 @@
     (append ((List 'a) (List 'a)) (List 'a))
     (makeList   (Integer 'a) (List 'a))
     (listLength ((List 'a)) Integer)
+    (reverse ((List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
 
 ;    (list ('a ...) (List 'a))
@@ -217,7 +218,7 @@
     (emit           ((VQueue 'a) 'a) #())
 
     ;; Array handling:
-    (newarr           (Integer 'a) (Array 'a))
+    (makeArray        (Integer 'a) (Array 'a))
     (arr-get          ((Array 'a) Integer) 'a)
     (arr-set!         ((Array 'a) Integer 'a) #())
     (length           ((Array 'a)) Integer)

@@ -107,7 +107,7 @@
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-mismatch t1 t2 exp)
   (error 'type-checker
-	 "Type mismatch: ~s doesn't match ~s in ~s~%"
+	 "Type mismatch: ~a doesn't match ~a in ~s~%"
 	 (safe-export-type t1) (safe-export-type t2) exp))
 ;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)

@@ -103,6 +103,32 @@
 ;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
 (define (inspect/continue x) (inspect x) x)
 
+;; Because I run from command line, it helps to make a new cafe after an error.
+#|(if (not (top-level-bound? 'default-error-handler))
+    (define-top-level-value 'default-error-handler (break-handler)))
+(error-handler (lambda args 		 
+		 (dynamic-wind 
+		     (lambda () (void))
+		     (lambda () (apply default-error-handler args))
+		     (lambda () (void)
+		       ;(debug)
+		       ;(new-cafe)
+		       )
+		     )
+		 ;(printf "TTTTTTTTTTTTTTEEEEEEEEEEEESSSSSSSSSSSTTTTTTTTT.\n")		
+		 ))
+|#
+(error-handler
+ (lambda (who msg . args)
+   (fprintf (console-output-port)
+             "~%Error~a: ~a.~%"
+             (if who (format " in ~s" who) "")
+             (parameterize ([print-level 3] [print-length 6])
+	       (apply format msg args)))
+   (fprintf (console-output-port)
+	    "Entering debugger to inspect current continuation, type 'q' to exit.\n")
+   (call/cc inspect)))
+
 
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
