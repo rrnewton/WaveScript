@@ -137,7 +137,7 @@
   (apply 
    ;; Returns a function that takes a lexer thunk producing a token on each invocation:
    (parser
-   
+    
    (src-pos)
    (start start)
    (end EOF)
@@ -201,7 +201,8 @@
 
     (fundef [(fun VAR LeftParen formals RightParen exp) ;LeftBrace stmts RightBrace) 
              `(define ,$2 (lambda ,$4 ,$6))]
-#;            [(VAR : type SEMI fun VAR LeftParen formals RightParen exp)
+#;
+            [(VAR : type SEMI fun VAR LeftParen formals RightParen exp)
              (let ([v1 $1] [v2 $6])
                (unless (eq? v1 v2) 
                  (error "Parse Error: top-level type spec must precede function of same name, got ~a ~a, positions ~a ~a\n"
@@ -270,7 +271,8 @@
          [(STRING) $1]
          [(true) ''#t] 
 	 [(false) ''#f]
-#;         [(DOTVARS) 
+#;
+         [(DOTVARS) 
            (let loop ([ls (cdr $1)] [acc (car $1)])
              (if (null? ls) acc
                  (loop (cdr ls)
@@ -385,15 +387,15 @@
            [(>=) '>=]
            [(==) '=]
            [(!=) '(lambda (x y) (not (= x y)))]
-           )
-    )) 
-   ))
+           )))
+   args))
            
 ;; run the calculator on the given input-port       
 (define (ws-parse-port ip)
   (port-count-lines! ip)
   (cdr (ws-parse (lambda () (flatten (ws-lex ip)))))
-  #;(let loop ()        
+  #;
+  (let loop ()        
         (let ((result (ws-parse (lambda () (flatten (ws-lex ip))))))
           (if result
               (cons result (loop))
@@ -481,7 +483,7 @@
   
 
 
-;(reg-parse-file "demos/wavescope/test.ws")
+
 
 #;
 (define parsed (reg-parse-file "demos/wavescope/test2.ws"))
@@ -500,4 +502,7 @@
        ;(pretty-print (print-var-types a))
        )
 
-)
+) ;; End module.
+
+;(require reg_grammar)
+;(reg-parse-file "demos/wavescope/demo0_audio.ws")
