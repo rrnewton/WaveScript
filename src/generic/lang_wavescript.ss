@@ -85,18 +85,34 @@
        (syntax-rules ()
 	 [(_ x ...) e ...]))]))
 
-(define-language
-  'wavescript-language
-  '(begin
-     
-     ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
-     (reg:define-struct (sigseg start end vec timebase))
+(chez:module wavescript-language-module 
+    (make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
+		 valid-sigseg?
+		 app letrec (for for-loop-stack)
+		 to-uint16 to-int16 uint16->string
+		 dump-binfile audioFile audio
+		 ; read-file-stream
+		 nullseg nullarr nulltimebase
+		 +. -. *. /. + - * /
+		 int->float realpart imagpart
+		 fft tuple newarr arr-get arr-set! length print 
+		 joinsegs subseg seg-get width start end seg-timebase
+		 to_array to-windowed 
+		 emit virtqueue
+		 smap parmap
+		 iterate break deep-iterate
+		 )
+
+  ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
+  (reg:define-struct (sigseg start end vec timebase))
      ;(define-record timeseries (timebase))
      
-     (define (valid-sigseg? w)
-       (or (eq? w nullseg)
-	   (and (sigseg? w)
-		(<= (sigseg-start w) (sigseg-end  w)))))
+  (define (valid-sigseg? w)
+    (or (eq? w nullseg)
+	(and (sigseg? w)
+	     (<= (sigseg-start w) (sigseg-end  w)))))
+
+
      
      (define-syntax app
        (syntax-rules ()
@@ -107,14 +123,28 @@
        (syntax-rules ()
 	 ;; We assume type info has already been stripped.
 	 [(_ x ...) (letrec* x ...)]))
+#;
      (define-syntax for
        (syntax-rules ()
-	 [(for (v start end) bod ...)
+	 [(for (v _start _end) bod ...)
 	  ;; TODO: IMPLEMENT BREAK:
-	  (let ((s start) (e end))
+	  (let ((s _start) (e _end))
 	    (do ([v s (fx+ v 1)])
 		((fx> v e) #());; Retun unit.
 	      (let () bod ...)))]))
+
+     (define for-loop-stack '())
+     (define-syntax for
+       (syntax-rules ()
+	 [(_ (i st en) bod ...)
+	  (call/1cc (lambda (escape)
+		     (fluid-let ([for-loop-stack (cons escape for-loop-stack)])
+		       (let ([endpoint en])
+			 (let loop ([i st])
+			   (unless (> i endpoint)
+			     (let ()
+			       bod ...
+			       (loop (add1 i)))))))))]))
 
      ;; Read two bytes from a string and build a uint16.
      (define (to-uint16 str ind)  ;; Internal helper function.
@@ -188,8 +218,8 @@
 	   ))
        (read-file-stream (marmotfile) 8 read-sample len overlap))
 
-  ;; Internal helper.
-  (define (read-file-stream file wordsize sample-extractor len overlap)
+     ;; Internal helper.
+     (define (read-file-stream file wordsize sample-extractor len overlap)
        (define chunksize 32768) ;; How much to read from file at a time.
        (define infile (open-input-file file))
        (define buffer1 (make-string chunksize #\_))
@@ -242,16 +272,21 @@
 	 (let loop ([pos 0]) 
 	   (let ([win (read-window)])
 	     (if win
-		 (let ((newpos (+ len pos)))
-		   (stream-cons (make-sigseg pos newpos win 'nulltimebase)
-				(loop newpos)))
+		 (let ((newpos (+ len pos -1)))
+		   (stream-cons (make-sigseg pos newpos win nulltimebase)
+				(loop (+ 1 newpos))))
 		 ())))))
 
      ;; TODO:
      ;(define timer )
 
-     (define nullseg (gensym "nullseg"))
-     (define nullarr (gensym "nullarr"))
+;      (define nullseg (gensym "nullseg"))
+;      (define nullarr (gensym "nullarr"))
+;      (define nulltimebase (gensym "nulltimebase"))
+     (define nullseg 'nullseg)
+     (define nullarr 'nullarr)
+     (define nulltimebase 'nulltimebase)
+
     
      (define +. fl+)
      (define -. fl-)
@@ -272,7 +307,7 @@
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
      (define fft (lambda (ss) 
-		   (DEBUGASSERT (valid-sigseg? ss))
+		   (DEBUGASSERT (sigseg? ss))
 		   (make-sigseg (sigseg-start ss)
 				(sigseg-end ss)
 				(dft (sigseg-vec ss))
@@ -300,8 +335,7 @@
      (define (joinsegs w1 w2)
        (DEBUGASSERT (valid-sigseg? w1))
        (DEBUGASSERT (valid-sigseg? w2))
-       ;(inspect (cons w1 w2))
-       (id ;inspect/continue 
+       (ASSERT valid-sigseg?
 	(cond 
 	[(eq? w1 nullseg) w2]
 	[(eq? w2 nullseg) w1]
@@ -316,7 +350,8 @@
 
 	    ;; In this case the head of w2 is lodged in w1:
 	    [(and (<= a x) (<= x b))
-
+	     (DEBUGASSERT (sigseg? w1))
+	     (DEBUGASSERT (sigseg? w2))
 	     (printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
 	     
 	     (let ([new (make-vector (add1 (- (max b y) a)))])
@@ -352,30 +387,46 @@
 	     ]
 	    ))])))
 
-     (define (subseg w start end)
-       ;(inspect `(subseg ,w ,start ,end))
+     ;; start must be a *sample number* (inclusive), len is the length of the returned seg
+     (define (subseg w startind len)
+       ;(inspect `(subseg ,w ,startind ,len))
        (DEBUGASSERT (valid-sigseg? w))
-       (id ;inspect/continue
-	(if (or (< start (sigseg-start w))
-	       (> end (sigseg-end w)))
-	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" start end w)
-	   (let ([vec (make-vector (add1 (- end start)))])
-	     (for (i 0 (fx- (vector-length vec) 1))
-		 (vector-set! vec i (vector-ref (sigseg-vec w) (+ i (- start (sigseg-start w))))))
-	     (make-sigseg start end vec (sigseg-timebase w))))))
+       (ASSERT valid-sigseg?
+	(cond
+	 [(eq? w nullseg) (error 'subseg "cannot subseg nullseg: ind:~s len:~s" startind len)]
+	 [(<= len 0) (error 'subseg "length of subseg must be greater than zero, not: ~s" len)]
+	 [(or (< startind (sigseg-start w))
+		(> (+ startind len -1) (sigseg-end w)))
+	   (error 'subseg "cannot take subseg ~a:~a from sigseg ~s" startind (+ startind len -1) w)]
+	 [else 
+	  (let ([vec (make-vector len)])
+	    (for (i 0 (fx- len 1))
+		(vector-set! vec i 
+			     (vector-ref (sigseg-vec w) 
+					 (+ i (- startind (sigseg-start w))))))
+	    (make-sigseg startind (+ startind len -1) vec (sigseg-timebase w)))])))
 
-     (define (seg-get w i) 
+
+     ;; Changing this to take an absolute sample number:
+     (define (seg-get w ind) 
+       (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
-       (vector-ref (sigseg-vec w) i))
-     (define (width w) (if (eq? w nullseg) 0
-			   (vector-length (sigseg-vec w))))
+       (DEBUGMODE (if (or (< ind (sigseg-start w)) (> ind (sigseg-end w)))
+		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
+       (vector-ref (sigseg-vec w) (fx- ind (sigseg-start w))))
+     (define (width w) 
+       (DEBUGASSERT (valid-sigseg? w))
+       (if (eq? w nullseg) 0 (vector-length (sigseg-vec w))))
      (define (start w) 
+       (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'start "cannot get start index from nullseg!"))
-       (vector-length (sigseg-start w)))
+       (sigseg-start w))
      (define (end w) 
+       (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'end "cannot get end index from nullseg!"))
-       (vector-length (sigseg-end w)))
+       (sigseg-end w))
      (define (seg-timebase w) 
+       (DEBUGASSERT (valid-sigseg? w))
        ;; Is this true?  Or does each signal have its own nullseg?? That could be very tricky...
        ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
        (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
@@ -391,7 +442,8 @@
        (let loop ((s s))
 	 (if (stream-empty? s) 
 	     '()
-	     (let ([vals (reverse! (unbox (f (stream-car s))))])
+	     ;; Note, vals are reversed:
+	     (let ([vals (unbox (f (stream-car s)))])
 	       (cond
 		[(null? vals) (loop (stream-cdr s))]
 		[(null? (cdr vals)) (stream-cons (car vals) (loop (stream-cdr s)))]
@@ -434,28 +486,153 @@
 		 (let ([copy (vector-copy win)])
 		   (stream-cons copy (towinloop (stream-cdr s))))
 		 (towinloop (stream-cdr s)))))))
+
+     ;; We just call the continuation, the fluid let worries about popping the stack.
+     (define (break)
+       ((car for-loop-stack) (void)))
+  
+  )
+
+;; ======================================================================
+
+(define-language
+  'wavescript-language
+  `(begin
+     
+     (import wavescript-language-module)
+
+     ;; A safety mechanism:
+
+#;
+     ,@(IFDEBUG
+       '((let ([rawconstructor make-sigseg])	   
+	   (set! make-sigseg (lambda (start end vec timebase)
+			       (ASSERT (integer? start))
+			       (ASSERT (integer? end))
+			       (ASSERT (vector? vec))
+			       (ASSERT (eq? timebase nulltimebase))
+			       (rawconstructor start end vec timebase)))
+	   ))
+       '())
      
      ))
 
 
 ;; This uses a convoluted evaluation order.  But it allows us to eval
 ;; the wavescope defs ONCE at load time, and have them visible to all
-;; the unit tests.
+;; the unit tests
 (define these-tests
   (eval `(let ()
 	   ,(wavescript-language 'return)
+	   ;(define nulltimebase 'nulltimebase)
 	   (list 
 	    `["Joinsegs" 
 	      (,(lambda ()
 		  (reg:struct->list
-		   (joinsegs (make-sigseg 10 19 (list->vector (iota 10)) 'foo)
-			     (make-sigseg 15 24 (list->vector (map (lambda (x) (+ x 5)) (iota 10))) 'foo)))))
-	      ("sigseg" 10 24 #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14) foo)]
+		   (joinsegs (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase)
+			     (make-sigseg 15 24 (list->vector (map (lambda (x) (+ x 5)) (iota 10))) nulltimebase)))))
+	      ("sigseg" 10 24 #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14) ,nulltimebase)]
+
 	    `["Subseg"
 	      (,(lambda ()
 		  (reg:struct->list
-		   (subseg (make-sigseg 10 19 (list->vector (iota 10)) 'foo) 11 15))))
-	      ("sigseg" 11 15 #(1 2 3 4 5) foo)]
+		   (subseg (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 11 5))))
+	      ("sigseg" 11 15 #(1 2 3 4 5) ,nulltimebase)]
+
+	    `["seg-get"
+	      (,(lambda ()	
+		  (seg-get (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 12)))
+	      2]
+
+	    `["width/start/end"
+	      (,(lambda ()	
+		  (let ([seg (make-sigseg 11 20 (list->vector (iota 10)) nulltimebase)])
+		    (list (width seg) (start seg) (end seg)))))
+	      (10 11 20)]
+
+	    `["audioFile"
+	      (,(lambda ()	
+		  (let* ([stream (audioFile (string-append (REGIMENTD) "/demos/wavescope/countup.raw")
+					    1024 0)]
+			 [first (stream-car stream)]
+			 [second (stream-car (stream-cdr stream))])
+		    (list (width first) (start first) (end first)
+			  (width second) (start second) (end second)))))
+	      (1024 0 1023
+	       1024 1024 2047)]
+
+	    `["for loop"
+	      (,(lambda ()
+		  (let ([sum 0])
+		    ;; This outer loop goes 10 times.
+		    (for (i 1 20)
+			(set! sum (+ sum (* 1000 i)))
+		      ;; This inner loop goes 10 times for each outer iteration (100 total)
+		      (for (i 21 40)
+			  (set! sum (+ sum 1))
+			(if (= i 30) (break))
+			)
+		      (if (= i 10) (break)))
+		    sum)
+		  ))
+	      55100]
+
+	    
+	    ))))
+
+#;
+(define these-tests
+  (eval `(let ()
+	   ,(wavescript-language 'return)
+	   ;(define nulltimebase 'nulltimebase)
+	   (list 
+	    `["Joinsegs" 
+	      (,(lambda ()
+		  (reg:struct->list
+		   (joinsegs (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase)
+			     (make-sigseg 15 24 (list->vector (map (lambda (x) (+ x 5)) (iota 10))) nulltimebase)))))
+	      ("sigseg" 10 24 #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14) ,nulltimebase)]
+	    `["Subseg"
+	      (,(lambda ()
+		  (reg:struct->list
+		   (subseg (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 11 5))))
+	      ("sigseg" 11 15 #(1 2 3 4 5) ,nulltimebase)]
+
+	    `["seg-get"
+	      (,(lambda ()	
+		  (seg-get (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 12)))
+	      2]
+
+	    `["width/start/end"
+	      (,(lambda ()	
+		  (let ([seg (make-sigseg 11 20 (list->vector (iota 10)) nulltimebase)])
+		    (list (width seg) (start seg) (end seg)))))
+	      (10 11 20)]
+
+	    `["audioFile"
+	      (,(lambda ()	
+		  (let* ([stream (audioFile (string-append (REGIMENTD) "/demos/wavescope/countup.raw")
+					    1024 0)]
+			 [first (stream-car stream)]
+			 [second (stream-car (stream-cdr stream))])
+		    (list (width first) (start first) (end first)
+			  (width second) (start second) (end second)))))
+	      (1024 0 1023
+	       1024 1024 2047)]
+
+	    `["for loop"
+	      (let ([sum 0])
+		;; This outer loop goes 10 times.
+		(for (i 1 20)
+		    (set! sum (+ sum (* 1000 i)))
+		  ;; This inner loop goes 10 times for each outer iteration (100 total)
+		  (for (i 21 40)
+		      (set! sum (+ sum 1))
+		    (if (= i 30) (break))
+		    )
+		  (if (= i 10) (break)))
+		sum)
+	      55100]
 	    
 	    ))))
 

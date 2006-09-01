@@ -17,8 +17,8 @@ s3 = iterate (win in s2) {
   x : int = 3;
   y = (4 == 4);
 
-  if win[[100]].realpart > 224192.0
-  then { emit 0.0; emit win[[100]].imagpart; }
+  if win[[win.start + 100]].realpart > 224192.0
+  then { emit 0.0; emit win[[win.start + 100]].imagpart; }
   else { }
 };
 

@@ -15,7 +15,7 @@
 	   (pretty-print `(define LANG_LOADED_OUTPUT_VALUE ,p) out)
 	   (close-output-port out)
 	   (load tmpfile)
-	   (delete-file tmpfile)
+;	   (delete-file tmpfile)
 	   (let ((result LANG_LOADED_OUTPUT_VALUE))
 	     (set-top-level-value! 'LANG_LOADED_OUTPUT_VALUE (void))
 	     result)))

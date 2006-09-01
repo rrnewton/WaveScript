@@ -21,18 +21,23 @@ s2 = iterate (w in s1) {
    // We do this entirely with index numbers, no abstract Time objects are used.
    // w.width is an upper bound on how many windows we can produce.
 
-/*    for i = 1 to w.width { */
-/*      if acc.width > newwidth */
-/*      then {emit subseg(acc, 0, newwidth); */
-/* 	   acc := subseg(acc, step, acc.width - step)} */
-/*      else break; */
-/*    } */
+   for i = 1 to w.width {
+     print("Iterating, acc.width ");
+     print(acc.width);
+     print("\n ");
+
+     if acc.width > newwidth
+     then {emit subseg(acc, acc.start, newwidth);
+	   acc := subseg(acc, acc.start + step, acc.width - step)}
+     else break;
+   }
   
-   if acc.width > newwidth
-   then {emit subseg(acc, acc.start, acc.start + newwidth);
-         acc := subseg(acc, acc.start + step, acc.width)
-	}
-   else {};
+/*    if acc.width > newwidth */
+/*    then {emit subseg(acc, acc.start, newwidth); */
+/*          acc := subseg(acc, acc.start + step, acc.width - step) */
+/* 	} */
+/*    else {}; */
+
 };
 
 BASE <- s2;

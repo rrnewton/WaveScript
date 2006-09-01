@@ -238,7 +238,7 @@
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(let ([v val])
 		       (if (fun v) v			   
-			   (error 'ASSERT "failed: ~s" #'expr)))]
+			   (error 'ASSERT "failed: ~s" #'val)))]
       )))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
