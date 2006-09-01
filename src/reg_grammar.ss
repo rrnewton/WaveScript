@@ -134,9 +134,10 @@
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
       (delete-file "_parser.log"))
-  (apply 
-   ;; Returns a function that takes a lexer thunk producing a token on each invocation:
-   (parser
+  (let ()
+   ;; Returns a function that takes a lexer thunk producing a token on each invocation:a
+    (define theparser
+      (parser
     
    (src-pos)
    (start start)
@@ -387,8 +388,10 @@
            [(>=) '>=]
            [(==) '=]
            [(!=) '(lambda (x y) (not (= x y)))]
-           )))
-   args))
+           ))))
+    ;; Invoke the parser:
+    (apply theparser  args)
+  ))
            
 ;; run the calculator on the given input-port       
 (define (ws-parse-port ip)
