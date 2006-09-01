@@ -335,25 +335,26 @@
      (define (joinsegs w1 w2)
        (DEBUGASSERT (valid-sigseg? w1))
        (DEBUGASSERT (valid-sigseg? w2))
-       (ASSERT valid-sigseg?
+       (DEBUGASSERT valid-sigseg?
 	(cond 
-	[(eq? w1 nullseg) w2]
-	[(eq? w2 nullseg) w1]
-	[else 
-	 (let ([a (sigseg-start w1)]
-	       [b (sigseg-end w1)]
-	       [x (sigseg-start w2)]
-	       [y (sigseg-end w2)])
+	 [(eq? w1 nullseg) w2]
+	 [(eq? w2 nullseg) w1]
+	 [else 
+	  (let ([a (sigseg-start w1)]
+		[b (sigseg-end w1)]
+		[x (sigseg-start w2)]
+		[y (sigseg-end w2)])
 	   (cond
 	    [(not (eq? (sigseg-timebase w1) (sigseg-timebase w2)))
-	     `(DifferentTBs)]
+	     (error 'joinsegs "Cannot handle different TimeBases!")]
 
 	    ;; In this case the head of w2 is lodged in w1:
-	    [(and (<= a x) (<= x b))
+	    ;; OR they line up precisely.
+	    [(and (<= a x) (<= x (+ b 1)))
 	     (DEBUGASSERT (sigseg? w1))
 	     (DEBUGASSERT (sigseg? w2))
 	     (printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
-	     
+	     	     
 	     (let ([new (make-vector (add1 (- (max b y) a)))])
 	       (for (i a (max b y))
 		   (define (first) (vector-ref (sigseg-vec w1) (- i a)))
@@ -383,8 +384,9 @@
 	     ;'(Gap)
 	     (error 'joinsegs "there's a gap between these sigsegs: sample range ~a:~a and ~a:~a\n"
 		    (sigseg-start w1) (sigseg-end w1)
-		    (sigseg-start w2) (sigseg-end w2))
-	     ]
+		    (sigseg-start w2) (sigseg-end w2))]
+	    
+	    [else (error 'joinsegs "bug in code, this error should not happen.")]
 	    ))])))
 
      ;; start must be a *sample number* (inclusive), len is the length of the returned seg

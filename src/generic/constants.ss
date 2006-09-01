@@ -226,11 +226,16 @@
       [(_ expr) 
        #'(DEBUGMODE
 	  (if expr #t 
-	      (error 'DEBUGASSERT "failed: ~s" 
-		     #'expr
-					;(quote expr)
-		     )))]
-      )))
+	      (error 'DEBUGASSERT "failed: ~s" #'expr )))]
+      ;; This form is (ASSERT integer? x) returning the value of x.
+      [(_ fun val) #'(IFDEBUG 
+		      (let ([v val])
+		       (if (fun v) v			   
+			   (error 'DEBUGASSERT 
+				  "failed: ~s\n Value which did not satisfy above predicate: ~s" 
+				  #'fun v)))
+		      val)])))
+
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
@@ -238,7 +243,8 @@
       ;; This form is (ASSERT integer? x) returning the value of x.
       [(_ fun val) #'(let ([v val])
 		       (if (fun v) v			   
-			   (error 'ASSERT "failed: ~s" #'val)))]
+			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" #'fun 
+				  v)))]
       )))
 
 ;(define Regiment-Log-File "~/tmp/Regiment.log.ss")
