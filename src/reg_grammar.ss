@@ -197,12 +197,12 @@
     
     (decls ;; Top level variable binding
            [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
-           [(VAR = exp SEMI maybedecls) `((define ,$1 ,$3) ,@$5)]
+           [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            ;; Returning streams to the base station or other "ports"
-           [(VAR <- exp SEMI maybedecls) `((<- ,$1 ,$3) ,@$5)]
+           [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
            
            ;; Fundef is shorthand for a variable binding to a function.
-           [(fundef maybedecls) (cons $1 $2)]
+           [(fundef optionalsemi maybedecls) (cons $1 $3)]
            )
     (maybedecls [() '()] [(decls) $1])
 
@@ -230,32 +230,43 @@
    (pat+ [(pattern) (list $1)]
 	 [(pattern COMMA pat+) (cons $1 $3)])
 
+   ;; Single statements.  These make sense outside of the context of other statements
+   (stmt [(exp) $1]
+	 ;; [2006.09.03] Demoting these to statements:
+	 ;; Making semi-colon optional after for loop.
 
-   (stmts ;[(exp SEMI) (list $1)]
-           [() '()]
-           [(exp) (list $1)]
-;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]
-           [(emit exp SEMI stmts)   (cons `(emit ,VIRTQUEUE ,$2) $4)]
-	   
+	 [(break) '(break)]
+	 ;;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]	   
+	 
+	 [(emit exp )   `(emit ,VIRTQUEUE ,$2)]
+	 [(selfterminated) $1]
+	 )
+   ;; Blocks of statements.
+   (stmts  [() '()]
 	   ;; LAME: We require let only when you're going to use a pattern.
            [(let pattern = exp SEMI stmts) `((letrec ([,$2 ,$4]) ,(make-begin $6)))]
            [(VAR = exp SEMI stmts) `((letrec ([,$1 ,$3]) ,(make-begin $5)))]
-
            [(VAR : type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
-           [(fundef SEMI stmts) 
+	   
+           [(fundef morestmts)
             (match $1
-              [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $3)))]
-              [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $3)))])]
+              [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $2)))]
+              [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $2)))])]
 
-	   ;; [2006.09.03] Promoting these to statements, don't know why they were expressions:
-	   ;; Making semi-colon optional after for loop.
-	   [(for VAR = exp to exp LeftBrace stmts RightBrace SEMI stmts) `((for (,$2 ,$4 ,$6) ,(make-begin $8)) ,@$11)]
-	   [(for VAR = exp to exp LeftBrace stmts RightBrace stmts) `((for (,$2 ,$4 ,$6) ,(make-begin $8)) ,@$10)]
-	   [(break) '(break)]
-            
-           [(exp SEMI stmts) (cons $1 $3)]
+	   ;; One-armed statement conditional:
+	   ;; Return unit:
+	   [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
+
+	   ;; This avoids conflicts:
+	   [(selfterminated stmt morestmts) (cons $1 (cons $2 $3))]
+           [(stmt morestmts) (cons $1 $2)]
            )
-
+   (optionalsemi [() 'OPTIONALSEMI] [(SEMI) 'OPTIONALSEMI])
+   (morestmts [() '()] [(SEMI stmts) $2])
+   ;; These have a syntax that allows us to know where they terminate and optionally omit SEMI:
+   (selfterminated 
+    [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
+    )
 
     ;; Kinda redundant, used only for state {} blocks.
     (binds [() ()]
@@ -325,20 +336,14 @@
           `(,$1 (letrec ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          
+	 ;; Expression conditional:
+	 [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
+	 ;; LAME: Allowing optional semi-colon:
+	 [(if exp then exp SEMI else exp)  `(if ,$2 ,$4 ,$7)]
+	 
          
          ;[(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
 
-;         [(if LeftParen exp RightParen LeftBrace stmts RightBrace else LeftBrace stmts RightBrace) 
-;          `(if ,$3 ,$6 ,$10)]
-;         [(if LeftParen exp RightParen exp else LeftBrace stmts RightBrace) 
-;          `(if ,$3 ,$5 ,$8)]
-;         [(if exp LeftBrace exp RightBrace else LeftBrace stmts RightBrace) 
-;          'IF]
-
-
-         [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
-         [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]	 
-         
          
 ;         [(iterate LeftParen VAR in exp RightParen exp) 
               ;`(iterate (lambda (,$3) ,$8) ,$5)]
@@ -401,6 +406,9 @@
            [(*.) '*.]
            [(/.) '/.]
            [(^.) 'expt.]
+
+	   [(::) 'cons]
+	   [(++) 'string-append]
            
            [(<) '<]
            [(>) '>]

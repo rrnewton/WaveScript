@@ -41,11 +41,20 @@ fun foo() {
       //for k = 1 to 2 {3};
   
   //3 // Return
-};
+}
+
+x = 39
+y = 40 
 
 fun id(x) 
   if true 
   then x 
+  else x
+
+fun id2(x) 
+  if true 
+  then x 
   else x;
+
 
 BASE <- audio(0,100,0);
