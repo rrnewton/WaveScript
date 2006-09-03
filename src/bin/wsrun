@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo CURRENTLY UNIMPLEMENTED:
+
+echo This script should take a query.cpp file, copy it to the right place, build WaveScope, and run it!
+

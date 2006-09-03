@@ -246,6 +246,12 @@
             (match $1
               [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $3)))]
               [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $3)))])]
+
+	   ;; [2006.09.03] Promoting these to statements, don't know why they were expressions:
+	   ;; Making semi-colon optional after for loop.
+	   [(for VAR = exp to exp LeftBrace stmts RightBrace SEMI stmts) `((for (,$2 ,$4 ,$6) ,(make-begin $8)) ,@$11)]
+	   [(for VAR = exp to exp LeftBrace stmts RightBrace stmts) `((for (,$2 ,$4 ,$6) ,(make-begin $8)) ,@$10)]
+	   [(break) '(break)]
             
            [(exp SEMI stmts) (cons $1 $3)]
            )
@@ -319,8 +325,6 @@
           `(,$1 (letrec ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
 					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          
-         [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
-         [(break) '(break)]
          
          ;[(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
 
