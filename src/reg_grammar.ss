@@ -253,7 +253,7 @@
 	 [(if exp then stmt)  `(if ,$2 ,$4 (tuple))]
 	 
 	 ;; Statement conditional:
-	 ;;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
+	 [(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
 	 ;; LAME: Allowing optional semi-colon:
 	 ;[(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
 	 
