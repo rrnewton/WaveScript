@@ -43,3 +43,6 @@ Export useful things from helpers.ss to my generic utility files, including:
 
 I have NEVER taken advantage of the "test-this" convention, I should do away with it.
 
+[2006.09.03]
+
+Do not desugar one-armed if in the parser!!!
