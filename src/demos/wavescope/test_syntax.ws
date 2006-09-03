@@ -24,9 +24,6 @@ fun foo() {
     if false
     then bar()
     else baz();
-    if false
-    then bar();
-    else baz();
     34;
   }
   for j = 3 to 4 {
@@ -42,7 +39,7 @@ fun foo() {
 
   // This should parse as a one-armed if followed by a two armed if:
   if 1 then 2;
-  if 3 then 4;
+  if 3 then 4
   else 5;
   
   //3 // Return

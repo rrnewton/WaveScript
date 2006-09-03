@@ -28,6 +28,8 @@
     AND OR 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
     fun for to emit deep_iterate iterate state in if then else true false break let ; Keywords 
+    ;; Fake tokens:
+    EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
     EOF ))
 (define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR CHAR STRING))
@@ -165,6 +167,10 @@
 	  (right if)
 	  (right then else )
 
+	  (nonassoc EXPIF)
+	  (nonassoc STMTIF)
+	  (nonassoc ONEARMEDIF)
+
 	  (right ++ ::)
           (left < > <= >= == !=)
           (left - + +. -.)
@@ -207,12 +213,12 @@
 
     (decls ;; Top level variable binding
            [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
-           [(VAR = exp SEMI maybedecls) `((define ,$1 ,$3) ,@$5)]
+           [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            ;; Returning streams to the base station or other "ports"
-           [(VAR <- exp SEMI maybedecls) `((<- ,$1 ,$3) ,@$5)]
+           [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
            
            ;; Fundef is shorthand for a variable binding to a function.
-           [(fundef SEMI maybedecls) (cons $1 $3)]
+           [(fundef optionalsemi maybedecls) (cons $1 $3)]
            )
     (maybedecls [() '()] [(decls) $1])
 
@@ -245,19 +251,21 @@
 	 ;; [2006.09.03] Demoting these to statements:
 	 ;; Making semi-colon optional after for loop.
 
-	 [(break) '(break)]
+	 ;[(break) '(break)]
+	 ;[(emit exp )   `(emit ,VIRTQUEUE ,$2)]
+
+
 	 ;;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]	   
 
 	 ;; One-armed statement conditional:
 	 ;; Return unit:
-	 [(if exp then stmt)  `(if ,$2 ,$4 (tuple))]
+	 ;[(if exp then stmt) (prec ONEARMEDIF) `(if ,$2 ,$4 (tuple))]
 	 
 	 ;; Statement conditional:
-	 [(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
+	 ;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
 	 ;; LAME: Allowing optional semi-colon:
-	 ;[(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
-	 
-	 [(emit exp )   `(emit ,VIRTQUEUE ,$2)]
+	 ;[(if exp then stmt SEMI else stmt) (prec STMTIF) `(if ,$2 ,$4 ,$7)]
+	 	
 	 [(selfterminated) $1]
 	 )
    ;; Blocks of statements.
@@ -302,7 +310,8 @@
     (expls+ [(exp) (list $1)]
 	    [(exp COMMA expls) (cons $1 $3)])
 
-    
+    ;(innernotlist [(notlist) $1])    
+
     (notlist
          [(NUM) $1]  
          [(VAR) $1]
@@ -352,9 +361,25 @@
 					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
          
 	 ;; Expression conditional:
+;	 [(if exp then exp else exp) (prec EXPIF) `(if ,$2 ,$4 ,$6)]
+;	 [(if exp then exp) (prec ONEARMEDIF) `(if ,$2 ,$4)]
+
+	 ;; SUPERHACK: I've INLINED the "stmt" grammar here:
+
+	 [(if exp then exp)           `(if ,$2 ,$4)]
+	 [(if exp then selfterminated) `(if ,$2 ,$4 (tuple))]
+
 	 [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
+	 [(if exp then selfterminated else selfterminated) `(if ,$2 ,$4 ,$6)]
+	 ;[(if exp then exp SEMI else exp)  `(if ,$2 ,$4 ,$7)]
+	 ;[(if exp then selfterminated SEMI else selfterminated) (prec EXPIF) `(if ,$2 ,$4 ,$7)]
+
+	 [(break) '(break)]
+	 [(emit exp) `(emit ,VIRTQUEUE ,$2)]
+
+
 	 ;; HACK: This allows STMTs!!!
-	 ;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
+	 ;[(if exp then stmt else stmt) (prec EXPIF) `(if ,$2 ,$4 ,$6)]
 	 ;; LAME: Allowing optional semi-colon:
 ;	 [(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
 	 
