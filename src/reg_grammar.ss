@@ -162,7 +162,8 @@
           (right = := -> )
 	  (right AND OR )
 
-	  (nonassoc then else )
+	  (right if)
+	  (right then else )
 
 	  (right ++ ::)
           (left < > <= >= == !=)
@@ -254,7 +255,7 @@
 	 ;; Statement conditional:
 	 ;;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
 	 ;; LAME: Allowing optional semi-colon:
-	 [(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
+	 ;[(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
 	 
 	 [(emit exp )   `(emit ,VIRTQUEUE ,$2)]
 	 [(selfterminated) $1]
