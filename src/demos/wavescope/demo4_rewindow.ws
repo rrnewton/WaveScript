@@ -29,7 +29,8 @@ s2 = iterate (w in s1) {
      if acc.width > newwidth
      then {emit subseg(acc, acc.start, newwidth);
 	   acc := subseg(acc, acc.start + step, acc.width - step)}
-     else break;
+     else { break; }
+     //{for i = 1 to 1 {};}
    }
   
 /*    if acc.width > newwidth */

@@ -39,6 +39,11 @@ fun foo() {
       flurp();
       //{ for k = 1 to 2 {3} }
       //for k = 1 to 2 {3};
+
+  // This should parse as a one-armed if followed by a two armed if:
+  if 1 then 2;
+  if 3 then 4;
+  else 5;
   
   //3 // Return
 }

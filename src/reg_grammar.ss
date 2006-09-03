@@ -156,8 +156,14 @@
             (printf "  Located between ~a and ~a.\n"
                     (format-pos start) (format-pos end))))
    ;; Precedence:
-   (precs (right = := -> )
-	  (right AND OR then else)
+   (precs 
+;    	  (nonassoc SEMI)
+
+          (right = := -> )
+	  (right AND OR )
+
+	  (nonassoc then else )
+
 	  (right ++ ::)
           (left < > <= >= == !=)
           (left - + +. -.)
@@ -168,8 +174,12 @@
 ;	  (right BAR)
           (left NEG APP DOT COMMA)
           (right ^ ^. )
+
+
+
 	  )
-   
+
+
    (debug "_parser.log")
 
    (grammar
@@ -194,15 +204,14 @@
               [(type COMMA typeargs) (cons $1 $3)]
               )
 
-    
     (decls ;; Top level variable binding
            [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
-           [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
+           [(VAR = exp SEMI maybedecls) `((define ,$1 ,$3) ,@$5)]
            ;; Returning streams to the base station or other "ports"
-           [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
+           [(VAR <- exp SEMI maybedecls) `((<- ,$1 ,$3) ,@$5)]
            
            ;; Fundef is shorthand for a variable binding to a function.
-           [(fundef optionalsemi maybedecls) (cons $1 $3)]
+           [(fundef SEMI maybedecls) (cons $1 $3)]
            )
     (maybedecls [() '()] [(decls) $1])
 
@@ -237,6 +246,15 @@
 
 	 [(break) '(break)]
 	 ;;           [(return exp SEMI stmts) (cons `(return ,$2) $4)]	   
+
+	 ;; One-armed statement conditional:
+	 ;; Return unit:
+	 [(if exp then stmt)  `(if ,$2 ,$4 (tuple))]
+	 
+	 ;; Statement conditional:
+	 ;;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
+	 ;; LAME: Allowing optional semi-colon:
+	 [(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
 	 
 	 [(emit exp )   `(emit ,VIRTQUEUE ,$2)]
 	 [(selfterminated) $1]
@@ -252,10 +270,6 @@
             (match $1
               [(define ,v ,e) `((letrec ([,v ,e]) ,(make-begin $2)))]
               [(define ,v ,t ,e) `((letrec ([,v ,t ,e]) ,(make-begin $2)))])]
-
-	   ;; One-armed statement conditional:
-	   ;; Return unit:
-	   [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
 
 	   ;; This avoids conflicts:
 	   [(selfterminated stmt morestmts) (cons $1 (cons $2 $3))]
@@ -338,8 +352,10 @@
          
 	 ;; Expression conditional:
 	 [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
+	 ;; HACK: This allows STMTs!!!
+	 ;[(if exp then stmt else stmt)  `(if ,$2 ,$4 ,$6)]
 	 ;; LAME: Allowing optional semi-colon:
-	 [(if exp then exp SEMI else exp)  `(if ,$2 ,$4 ,$7)]
+;	 [(if exp then stmt SEMI else stmt)  `(if ,$2 ,$4 ,$7)]
 	 
          
          ;[(map LeftParen VAR in exp RightParen LeftBrace stmts RightBrace) `(map (,$3 in ,$5) ,$8)]
