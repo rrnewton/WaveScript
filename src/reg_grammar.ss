@@ -160,6 +160,8 @@
    ;; Precedence:
    (precs 
 ;    	  (nonassoc SEMI)
+    
+          (left emit) ; return
 
           (right = := -> )
 	  (right AND OR )
