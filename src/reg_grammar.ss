@@ -367,7 +367,7 @@
 
 	 ;; SUPERHACK: I've INLINED the "stmt" grammar here:
 
-	 [(if exp then exp)  `(if ,$2 ,$4)]
+	 [(if exp then exp)  `(if ,$2 ,$4 (tuple))]
 	 [(if exp then selfterminated)  `(if ,$2 ,$4 (tuple))]
 
 	 [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
