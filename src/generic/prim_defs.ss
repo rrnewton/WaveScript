@@ -94,16 +94,26 @@
     (-. (Float Float) Float)
     (*. (Float Float) Float)
     (/. (Float Float) Float)
+    (^. (Float Float) Float) ;; exponentiation
 
     (+: (Complex Complex) Complex)
     (-: (Complex Complex) Complex) 
     (*: (Complex Complex) Complex) 
     (/: (Complex Complex) Complex)
+    (^: (Complex Complex) Complex)
+
+    (sqrtf (Float) Float)
+    (sqrtc (Complex) Complex)    
+    (sqrti (Integer) Integer)
     
-    (int->float (Integer) Float)
+    (int_to_float (Integer) Float)
+    (float_to_int (Float) Integer)
 
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
+
+    ;; Takes the complex norm of scalar    
+    (cnorm (Complex) Float)
 
     (max ('a 'a) 'a)
     (min ('a 'a) 'a)
@@ -397,6 +407,15 @@
     (/ (Integer Integer) Integer) 
     (^ (Integer Integer) Integer)
 
+    (+. (Float Float) Float) 
+    (-. (Float Float) Float) 
+    (*. (Float Float) Float) 
+    (/. (Float Float) Float) 
+    (^. (Float Float) Float) 
+
+    (int->float (Integer) Float)
+    (float->int (Float) Integer)
+
     (max (Number Number) Number)
     (min (Number Number) Number)
     (abs (Number) Number)
@@ -406,13 +425,6 @@
     (acos (Float) Float)
     (asin (Float) Float)
     (atan (Float) Float)
-
-    (+. (Float Float) Float) 
-    (-. (Float Float) Float) 
-    (*. (Float Float) Float) 
-    (/. (Float Float) Float) 
-    (int->float (Integer) Float)
-    (float->int (Float) Integer)
 
     (not (Bool) Bool)
     ; predicates

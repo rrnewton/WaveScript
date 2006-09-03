@@ -79,7 +79,7 @@
        (IFWAVESCOPE 
 	(if (regiment-primitive? v)
 	    (error 'verify-regiment 
-		   "for the time being you cannot bind variables that use the same names as primitives: '~s'" v))
+		   "for the time being you cannot bind/mutate variables that use the same names as primitives: '~s'" v))
 	))
      
      (define process-expr
@@ -131,7 +131,12 @@
 
 	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
 	  [(begin ,[e] ...) `(begin ,e ...)]
-	  [(set! ,v ,[e]) (guard (symbol? v)) `(set! ,v ,e)]
+	  [(set! ,v ,[e]) (guard (symbol? v)) 
+	   (if (and (not (memq v env))
+		    (not (regiment-primitive? v)))
+	       (error 'verify-regiment (format "set! unbound variable: ~a~n" v)))
+	   (assert-valid-name! v)
+	   `(set! ,v ,e)]
 	  [(for (,v ,[e1] ,[e2]) ,e3) (guard (symbol? v))
 	   (assert-valid-name! v)
 	   `(for (,v ,e1 ,e2) 

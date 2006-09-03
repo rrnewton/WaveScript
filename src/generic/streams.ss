@@ -192,10 +192,12 @@
 		   (printf "  POS# ~a dumped...\n" pos))))
 		 ))]
 
-	  ;; Wavescope-specific.
+	  ;; Wavescope-specific.	  
 	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))
-	   (let ([filename (format "~a" file)])
-	     (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
+	   (IFCHEZ 
+	    (let ([failename (format "~a" file)])
+	      (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
+	    (error 'bindump "unimplemented in plt"))
 	   ]
 	  
 	  [(exit) (void)]

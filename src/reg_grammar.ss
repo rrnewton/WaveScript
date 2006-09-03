@@ -23,8 +23,11 @@
     LeftAngleBrk RightAngleBrk 
     LeftSqrBrk RightSqrBrk
    
-    + - * / ^ : := -> = == != >= <= < > <-
-    +. -. *. /. ^. :: ++ 
+    : := -> = == != >= <= < > <-
+    + - * / ^ 
+    +. -. *. /. ^. 
+    +: -: *: /: ^: 
+    :: ++ 
     AND OR 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
     fun for to emit deep_iterate iterate state in if then else true false break let ; Keywords 
@@ -59,8 +62,11 @@
    
    ;; Since (token-=) returns '=, just return the symbol directly
    [(:or "::" "++" 
-	 "=" "+" "-" "*" "/" "^" "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
-         "+." "-." "*." "/." "^." )
+	 "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
+	 "=" "+" "-" "*" "/" "^" 
+         "+." "-." "*." "/." "^."
+         "+:" "-:" "*:" "/:" "^:"
+	 )
     (string->symbol lexeme)]
    ;; Keywords: 
    [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state"  "in" "if" "then" "else" "true" "false" "let")
@@ -174,16 +180,14 @@
 
 	  (right ++ ::)
           (left < > <= >= == !=)
-          (left - + +. -.)
-          (left * / *. /.)
+          (left - + +. -.  +: -:)
+          (left * / *. /.  *: /:)
 
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
           (left NEG APP DOT COMMA)
-          (right ^ ^. )
-
-
+          (right ^ ^. ^:)
 
 	  )
 
@@ -410,13 +414,19 @@
          [(exp - exp) `(- ,$1 ,$3)]
          [(exp * exp) `(* ,$1 ,$3)]
          [(exp / exp) `(/ ,$1 ,$3)]
-         [(exp ^ exp) `(expt ,$1 ,$3)]
+         [(exp ^ exp) `(^ ,$1 ,$3)]
          
          [(exp +. exp) `(+. ,$1 ,$3)]
          [(exp -. exp) `(-. ,$1 ,$3)]
          [(exp *. exp) `(*. ,$1 ,$3)]
          [(exp /. exp) `(/. ,$1 ,$3)]
-         [(exp ^. exp) `(expt. ,$1 ,$3)]
+         [(exp ^. exp) `(^. ,$1 ,$3)]
+
+         [(exp +: exp) `(+: ,$1 ,$3)]
+         [(exp -: exp) `(-: ,$1 ,$3)]
+         [(exp *: exp) `(*: ,$1 ,$3)]
+         [(exp /: exp) `(/: ,$1 ,$3)]
+         [(exp ^: exp) `(^: ,$1 ,$3)]
 
          [(exp < exp) `(< ,$1 ,$3)]
          [(exp > exp) `(> ,$1 ,$3)]
@@ -442,13 +452,19 @@
            [(-) '-]
            [(*) '*]
            [(/) '/]           
-           [(^) 'expt]
+           [(^) '^]
 
            [(+.) '+.]
            [(-.) '-.]
            [(*.) '*.]
            [(/.) '/.]
-           [(^.) 'expt.]
+           [(^.) '^.]
+
+           [(+:) '+:]
+           [(-:) '-:]
+           [(*:) '*:]
+           [(/:) '/:]
+           [(^:) '^:]
 
 	   [(::) 'cons]
 	   [(++) 'string-append]

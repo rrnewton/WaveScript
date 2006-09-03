@@ -95,8 +95,12 @@
 		 print show
 
 		 to-uint16 to-int16 uint16->string
-		 +. -. *. /. + - * /
-		 int->float realpart imagpart
+		 + - * / ^
+		 +. -. *. /. ^.
+		 +: -: *: /: ^:
+		 sqrtf sqrtc sqrti
+		 int_to_float float_to_int
+		 realpart imagpart cnorm
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
@@ -297,22 +301,49 @@
      (define nullarr 'nullarr)
      (define nulltimebase 'nulltimebase)
 
+     (define + fx+)
+     (define - fx-)
+     (define * fx*)
+     (define / fx/)
     
      (define +. fl+)
      (define -. fl-)
      (define *. fl*)
      (define /. fl/)
-     (define + fx+)
-     (define - fx-)
-     (define * fx*)
-     (define / fx/)
 
-     (define int->float fixnum->flonum)
+     (define +: cfl+)
+     (define -: cfl-)
+     (define *: cfl*)
+     (define /: cfl/)
+
+     (define ^ expt)
+     (define ^. expt)
+     (define ^: expt)
+
+     (define (sqrti n) (flonum->fixnum (sqrt n)))
+     (define sqrtf sqrt)
+     (define sqrtc sqrt)
+
+     (define int_to_float fixnum->flonum)
+     (define float_to_int flonum->fixnum)
      
      (define (realpart x) (if (cflonum? x) (cfl-real-part x) x))
      (define (imagpart x) (if (cflonum? x) (cfl-imag-part x) 0))
      ;(define realpart cfl-real-part)
      ;(define imagpart cfl-imag-part)
+
+     (define (cnorm c)
+       (let ([real (realpart c)]
+	     [imag (imagpart c)])
+	 (import scheme) ;; Reset those numeric bindings to default!
+	 (cond
+	  [(zero? real) imag]
+	  [(zero? imag) real]
+	  [(>= (flabs real) (flabs imag))
+	   (* (abs real) (sqrt (+ 1.0 (/ (* imag imag) (* real real)))))]
+	  [else 
+	   (* (abs imag) (sqrt (+ 1.0 (/ (* real real) (* imag imag)))))] )
+	 ))
 
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
