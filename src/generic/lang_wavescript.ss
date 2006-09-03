@@ -100,7 +100,7 @@
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
-		 newarr arr-get arr-set! length
+		 makeArray arr-get arr-set! length
 		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end seg-timebase
 		 to_array to-windowed 
@@ -356,7 +356,7 @@
      (define head car)
      (define tail cdr)
 
-     (define newarr   make-vector)
+     (define makeArray make-vector)
      (define arr-get  vector-ref)
      (define arr-set! vector-set!)
      (define length   vector-length)

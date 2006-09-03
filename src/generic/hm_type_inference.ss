@@ -732,6 +732,34 @@
 ;; .returns #t if there are no loops, or throws an error otherwise.
 (define (no-occurrence! tvar ty exp)
   (DEBUGASSERT (type? ty))
+
+  (if (match ty
+	['(,tyvar . ,_) (guard (eq? tyvar tvar)) #t]
+	['(,tyvar . ,[tyt]) tyt]
+	[,else #f])
+
+      ;; HACK: VERIFY CORRECTNESS::
+      ;; Ok, this is recursive, but it's A=B=A, not some more complex
+      ;; recursive type constraint.
+      (begin 
+	(warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty)
+	(match ty
+	  [(quote ,tvarpair)
+	   ;; Ouch, mutating in the guard... Nasty.
+	   (guard  (match tvarpair
+		     [(,outer . '(,inner . ,targettyp)) (guard (eq? inner tvar))
+		      ;; Short circuit the equivalence, this doesn't destroy
+		      ;; information that's not already encoded.
+		      (set-cdr! tvarpair targettyp)
+		      (printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp)
+		      ]
+		     [(,outer . ',[deeper]) (void)]
+		     [else (error 'no-occurrence! "this is an implementation bug.")]))
+	   ;; Guard already did the work:
+	   (void)]	  	 
+	  [,else (error 'no-occurrence! "there's a bug in this implementation.")])
+	)
+      
   (match ty
     [#f #t]
     [,s (guard (symbol? s)) #t]
@@ -743,7 +771,8 @@
     [#(,[t*] ...) #t]
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
-    ))
+    )
+   ))
 
 
 ; ======================================================================
@@ -768,6 +797,7 @@ magnitude : foo -> bar
     (let loop ([t t])
       (match t
 	[(quote ,[var]) (++ "'" var)]
+	[(-> ,[b]) (++ "() -> " b)]
 	[(,[arg*] ... -> ,[b]) (++ (apply string-append (insert-between ", " arg*))
 				   " -> "b)]
 	[#(,[x*] ...)

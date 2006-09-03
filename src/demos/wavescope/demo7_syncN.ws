@@ -13,55 +13,55 @@ fun syncN (strms, ctrl) {
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.listLength, nullseg);
+      accs = makeArray(slist.listLength - 1, nullseg);
       requests = [];
     }
-    print("Current ACCS: " ++ show(accs) ++ "\n");
+    print("  Current ACCS: ");
+    for i = 0 to accs.length - 1 {
+      if accs[i] == nullseg
+      then print("null  ")
+      else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
+    };
+    print("\n");
 
     let (flag, strt, en, seg) = tup;
 
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
     then requests := append(requests, [(flag,strt,en)])
-    else if (ind == 1)
-      then accs[0] := joinsegs(accs[0], seg)
-     else {}; //accs[1] := joinsegs(accs[1], seg);
-	  
-    
-/*     // Now we see if we can process the next request.      */
-/*     if requests == [] */
-/*     then {} // Can't do anything yet... */
-/*     else { */
-/*       let (fl, st, en) = requests.head; */
-/*       let allready = true; */
-/*       for i = 0 to accs.length - 1 { */
-/* 	if (accs[i] == nullseg || */
-/* 	    accs[i].start > st || */
-/* 	    accs[i].end < en) */
-/* 	then allready := false; */
-/*       }; */
+    else accs[ind-1] := joinsegs(accs[ind-1], seg);
+        
+    // Now we see if we can process the next request.
+    if requests == []
+    then {} // Can't do anything yet...
+    else {
+      let (fl, st, en) = requests.head;
+      let allready = true;
+      for i = 0 to accs.length - 1 {
+	if (accs[i] == nullseg ||
+	    accs[i].start > st ||
+	    accs[i].end < en)
+	then allready := false;
+      };
      	
-/*       if allready */
-/* 	then { */
-/* 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n"); */
-/* 	size = en - st + 1; // Start/end is inclusive. */
+      if allready then 
+      {
+	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	size = en - st + 1; // Start/end is inclusive.
 
-/* 	output = []; */
-/* 	for i = 0 to accs.length - 1 { */
-/* 	  output := subseg(accs[i], st, size) :: output; */
-/* 	}; */
-/* 	//emit(reverse(output)); */
-	
- 	emit 3.0; 
+	output = [];
+	for i = 0 to accs.length - 1 {
+	  output := subseg(accs[i], st, size) :: output;
+	};
+	emit(reverse(output));
 
-/* 	// Destroy the output portions and remove the serviced request: */
-/* 	for i = 0 to accs.length - 1 { */
-/* 	  //accs[i] := subseg(accs[i], st + size, accs[i].width - size); */
-/* 	}; */
-/* 	requests := requests.tail; */
-/*       }       */
-/*     } */
-
+	// Destroy the output portions and remove the serviced request:
+	for j = 0 to accs.length - 1 {
+	  accs[j] := subseg(accs[j], st + size, accs[j].width - size);
+	};
+	requests := requests.tail;
+      }
+    }
   }
 }
 

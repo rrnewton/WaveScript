@@ -29,6 +29,7 @@
       [Type ('List Type)]
       [Type #(Type ...)] ;; Tuples
       [Type (Type ... '-> Type)]
+      [Type ('-> Type)]
 
       ;; Also type vars:
       [Type ('quote ,symbol?)]
