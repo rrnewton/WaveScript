@@ -41,6 +41,10 @@ fun foo() {
   if 1 then 2;
   if 3 then 4
   else 5;
+
+
+  if 3 then 4
+  else 5;
   
   //3 // Return
 }

@@ -159,19 +159,18 @@
                     (format-pos start) (format-pos end))))
    ;; Precedence:
    (precs 
-;    	  (nonassoc SEMI)
     
           (left emit) ; return
 
           (right = := -> )
 	  (right AND OR )
 
-	  (right if)
+	  ;(right)
 	  (right then else )
 
-	  (nonassoc EXPIF)
-	  (nonassoc STMTIF)
-	  (nonassoc ONEARMEDIF)
+    	  (nonassoc SEMI)
+	  ;;(nonassoc ONEARMEDIF)
+	  (nonassoc EXPIF if STMTIF)
 
 	  (right ++ ::)
           (left < > <= >= == !=)
@@ -368,8 +367,8 @@
 
 	 ;; SUPERHACK: I've INLINED the "stmt" grammar here:
 
-	 [(if exp then exp)           `(if ,$2 ,$4)]
-	 [(if exp then selfterminated) `(if ,$2 ,$4 (tuple))]
+	 [(if exp then exp)  `(if ,$2 ,$4)]
+	 [(if exp then selfterminated)  `(if ,$2 ,$4 (tuple))]
 
 	 [(if exp then exp else exp)  `(if ,$2 ,$4 ,$6)]
 	 [(if exp then selfterminated else selfterminated) `(if ,$2 ,$4 ,$6)]
