@@ -1,7 +1,6 @@
 
 //======================================================================
 
-// Unfinished:
 fun syncN (strms, ctrl) {
   let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   let f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };

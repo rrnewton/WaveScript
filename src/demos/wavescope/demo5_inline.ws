@@ -1,5 +1,6 @@
 
 
+// TODO: Enhance this version of rewindow so that it can handle gaps in the output stream.
 fun rewindow(sig, newwidth, step) {
   if step >= newwidth
   then wserror("rewindow won't allow the creation of non-contiguous output streams")
