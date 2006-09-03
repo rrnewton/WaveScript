@@ -1,6 +1,6 @@
 
 //======================================================================
-// "Library" functions:
+// "Library" routines:
 
 fun syncN (ctrl, strms) {
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
