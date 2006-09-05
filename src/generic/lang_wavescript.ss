@@ -168,15 +168,18 @@
 
      ;; Read two bytes from a string and build a uint16.
      (define (to-uint16 str ind)  ;; Internal helper function.
-       (fx+ (fx* (char->integer (string-ref str ind)) 256)
-	    (char->integer (string-ref str (fx+ 1 ind)))))
+       (fx+ (fx* (char->integer (string-ref str (fx+ 1 ind))) 256)
+	    (char->integer (string-ref str (fx+ 0 ind)))
+	    ))
 
      ;; The signed version
      (define (to-int16 str ind) 
        (let ([unsigned (to-uint16 str ind)])
 	 (if (fxzero? (fxlogand unsigned 32768))
 	     unsigned
-	     (fx- unsigned 65536))))
+	     (begin 
+	       ;(inspect unsigned)
+	       (fx- unsigned 65536)))))
 
      ;; Currently unused.
      (define (uint16->string n)
@@ -228,7 +231,7 @@
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
 	   (fixnum->flonum ;; For now this returns float.
-	    (to-uint16 s (fx+ ind (fx* chan 2))))
+	    (to-int16 s (fx+ ind (fx* chan 2))))
 	   ;; All 4 channels:
 	   ;; NIXING: This allocation of little vectors is really painful performance wise.
 	   #;
