@@ -125,7 +125,7 @@
 ;  (printf "     code         print the query that is executing\n")
   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
   (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
-  (printf "     until <schemefun>  scrolls forward until an element is found satisfying the input predicate\n")
+  (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
   (printf "     exit         exit\n\n")
   (flush-output-port)
 

@@ -44,28 +44,16 @@ fun syncN (strms, ctrl) {
       };
      	
       if allready then {
-
-
-      if fl // Output the segment:
-      then { 
-	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-	size = en - st + 1; // Start/end is inclusive.
-
-	output = [];
-	for i = 0 to accs.length - 1 {
-	  output := subseg(accs[i], st, size) :: output;
-	}
-	emit(reverse(output));
-
-	// Destroy the output portions and remove the serviced request:
-	for j = 0 to accs.length - 1 {
-	  accs[j] := subseg(accs[j], st + size, accs[j].width - size);
-	};
-	requests := requests.tail;
-      } 
-      else { // otherwise discard the segment:
-
-	print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	if fl then {
+	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	  size = en - st + 1; // Start,end are inclusive.
+	  output = [];
+	  for i = 0 to accs.length - 1 {
+	    output := subseg(accs[i], st, size) :: output;
+	  }
+	  emit(reverse(output));
+	} else 
+	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 
 	// Destroy the discarded portions and remove the serviced request:
 	for j = 0 to accs.length - 1 {
@@ -73,8 +61,6 @@ fun syncN (strms, ctrl) {
 	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
 	};
 	requests := requests.tail;
-      }
-
       }
     }
   }

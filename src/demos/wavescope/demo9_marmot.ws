@@ -1,6 +1,5 @@
 
-DEBUG = false
-
+DEBUG = true
 DEBUGSYNC = DEBUG 
 
 //======================================================================
@@ -51,18 +50,24 @@ fun syncN (ctrl, strms) {
 	    accs[i].end < en)
 	then allready := false;
       }
-      if allready then 
-      {
-	size = en - st + 1; // Start/end is inclusive.
-	output = [];
-	for i = 0 to accs.length - 1 {
-	  output := subseg(accs[i], st, size) :: output;
-	}
-	emit(reverse(output));
-	// Destroy the output portions and remove the serviced request:
+      if allready then {
+	if fl then {
+	  if DEBUGSYNC 
+	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	  size = en - st + 1; // Start,end are inclusive.
+	  output = [];
+	  for i = 0 to accs.length - 1 {
+	    output := subseg(accs[i], st, size) :: output;
+	  }
+	  emit(reverse(output));
+	} else if DEBUGSYNC then
+	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+
+	// Destroy the discarded portions and remove the serviced request:
 	for j = 0 to accs.length - 1 {
-	  accs[j] := subseg(accs[j], st + size, accs[j].width - size);
-	}
+	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
+	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
+	};
 	requests := requests.tail;
       }
     }
@@ -271,8 +276,6 @@ fun detect(scorestrm) {
   }
 }
 
-
-
 //========================================
 // Main query:
 
@@ -280,6 +283,17 @@ ch1 = audio(0, 4096, 0);
 ch2 = audio(1, 4096, 0);
 ch3 = audio(2, 4096, 0);
 ch4 = audio(3, 4096, 0);
+
+outwidth=100;
+dummydetections = iterate(w in ch1) {
+  state { 
+    pos = 0; 
+    flag = false; 
+  }
+  emit(flag, pos, pos + outwidth - 1);
+  pos := pos + outwidth;
+  flag := if flag then false else true;
+};
 
 // 96 samples are ignored between each 32 used:
 rw1 = rewindow(ch1, 32, 96); 
@@ -294,20 +308,10 @@ wscores = iterate (w in freq) { emit(marmotscore(w), w); }
 
 detections = detect(wscores);
 
-synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+//synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
-// Currently the output is CRUDE, and incomplete.  It basically just
-// gives you synced windows so that you know syncN is working.  The
-// detector's not implemented, marmotscore is not implemented, and
-// hanning windows are not currently implemented either.
-
-//BASE <- detections;
-BASE <- synced;
-
-
-
-
-
-
-
-
+// [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
+// If you try to do the real syncN, it will process the whole without outputing anything.
+BASE <- detections;
+//BASE <- synced;

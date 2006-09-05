@@ -428,7 +428,7 @@
 	    [(and (<= a x) (<= x (+ b 1)))
 	     (DEBUGASSERT (sigseg? w1))
 	     (DEBUGASSERT (sigseg? w2))
-	     (printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
+	     ;(printf "JOINING: ~a:~a and ~a:~a\n" (sigseg-start w1) (sigseg-end w1) (sigseg-start w2) (sigseg-end w2))
 	     	     
 	     (let ([new (make-vector (add1 (- (max b y) a)))])
 	       (for (i a (max b y))
