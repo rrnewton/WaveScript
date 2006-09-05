@@ -1,6 +1,11 @@
 
+DEBUG = true;
+
 //======================================================================
 // "Library" routines:
+
+// Constant:
+M_PI = 3.141592653589793;
 
 fun syncN (ctrl, strms) {
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
@@ -48,18 +53,81 @@ fun syncN (ctrl, strms) {
   }
 }
 
-fun rewindow(sig, newwidth, step) {
-  if step > newwidth
-  then wserror("rewindow won't allow the creation of non-contiguous output streams")
-  else iterate (w in sig) {
-    state { acc = nullseg; }
-    acc := joinsegs(acc, w);
-    for i = 1 to w.width {
-      if acc.width > newwidth
-      then {emit subseg(acc, acc.start, newwidth);
-	    acc := subseg(acc, acc.start + step, acc.width - step)}
-      else break;
+// This version is enhanced to allow large steps that result in gaps in the output streams.
+//   GAP is the space *between* sampled strips, negative for overlap!
+fun rewindow(sig, newwidth, gap) {
+  feed = newwidth + gap;
+
+  if (gap <= (0 - newwidth))
+    then wserror("rewindow cannot step backwards: width "++ show(newwidth) ++" gap "++show(gap))
+    else 
+     
+   iterate (win in sig) {
+    state { 
+      acc = nullseg; 
+      // This bool helps to handle an output streams with gaps.
+      // We have to states, true means we're to "output" a gap next,
+      // false means we're to output a sigseg next.
+      need_feed = false;
     }
+
+    acc := joinsegs(acc, win);
+    //print("Acc "++show(acc.start)++":"++show(acc.end)++" need_feed "++show(need_feed)++"\n");
+
+    for i = 1 to win.width {
+      if need_feed then {
+	if acc.width > gap // here we discard a segment:
+	then {acc := subseg(acc, acc.start + gap, acc.width - gap);
+	      need_feed := false; }
+	else break;
+      } else {
+	if acc.width > newwidth
+	then {emit subseg(acc, acc.start, newwidth);
+	      if gap > 0 
+	      then { 
+		acc := subseg(acc, acc.start + newwidth, acc.width - newwidth);
+		need_feed := true; 
+	      } else acc := subseg(acc, acc.start + feed, acc.width - feed);
+	} else break;	
+      }
+    }
+  }
+}
+
+
+// RRN: This has the problem that the hanning coefficient is ZERO at
+// the first and last element in the window.  These represent wasted samples.
+// myhanning : Sigseg Float -> Sigseg Float;
+fun myhanning (strm) {
+  iterate(win in strm) {
+    state{ 
+      _lastLen = 0;
+      _hanning = nullarr;
+    }
+
+    if _lastLen != win.width then {
+      _lastLen := win.width;
+      _hanning := makeArray(_lastLen, 0.0);
+      // Refil the hanning window:
+      for i = 0 to _lastLen - 1 {
+	//print("LASTLEN: "++show(int_to_float(_lastLen-1))++"\n");
+	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i) /. int_to_float(_lastLen-1)));
+	// RRN: This would fix the zeroed fenceposts:
+	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i+1) /. int_to_float(_lastLen+1)));
+      }
+    };
+
+    /* alloc buffer */
+    buf = makeArray(_lastLen, 0.0);
+    for i = 0 to _lastLen - 1 {
+      buf[i] := _hanning[i] *. win[[win.start + i]];
+    }
+    
+    //print("\nWIN: "++ show(win)++"\n");
+    //print("\nHAN: "++ show(_hanning)++"\n");
+    //print("\nBUF: "++ show(buf)++"\n");
+
+    emit to_sigseg(buf, win.start, win.end, win.timebase);
   }
 }
 
@@ -68,23 +136,32 @@ fun rewindow(sig, newwidth, step) {
 // Takes Sigseg Complex
 fun marmotscore(freqs) { 
   st = freqs.start;
-  cnorm(freqs[[st + 4]] +: 
-	freqs[[st + 5]] +:
-	freqs[[st + 6]] +:
-	freqs[[st + 7]]);
+  result = 
+    cnorm(freqs[[st + 4]] +: 
+	  freqs[[st + 5]] +:
+	  freqs[[st + 6]] +:
+	  freqs[[st + 7]]);
+  if DEBUG then 
+   print("\nMarmot Score: "++show(result)++", \nBased on values "
+	++ show(freqs[[st + 4]]) ++ " "
+	++ show(freqs[[st + 5]]) ++ " "
+	++ show(freqs[[st + 6]]) ++ " "
+	++ show(freqs[[st + 7]]) ++ " \n");
+  result
 }
 
 /* expects Zip2<SigSeg<float>,float>::Output */
 fun detect(scorestrm) {
+  // Constants:
+  alpha = 0.999;
+  hi_thresh = 8;
+  startup_init = 300;
+  refract_interval = 40;
+  max_run_length = 48000;
+  samples_padding = 2400;
+
   iterate((score,win) in scorestrm) {
     state {
-      alpha = 0.999;
-      hi_thresh = 8;
-      startup_init = 300;
-      refract_interval = 40;
-      max_run_length = 48000;
-      samples_padding = 2400;
-
       thresh_value = 0.0;
       trigger = false;
       smoothed_mean = 0.0;
@@ -108,11 +185,14 @@ fun detect(scorestrm) {
       startup := startup_init;
       refract := 0;
     };
+
+    if DEBUG then 
+    print("Detector state: thresh_value " ++show(thresh_value)++ " trigger " ++show(trigger)++ 
+	  " smoothed_mean " ++show(smoothed_mean)++ " smoothed_var " ++show(smoothed_var)++ "\n" ++
+	  "        _start " ++show(_start)++ " trigger_value " ++show(trigger_value)++ 
+	  " startup " ++show(startup)++ " refract " ++show(refract)++ " noise_lock " ++show(noise_lock)++"\n"
+	  );
     
-    // float, float, float -> float
-    //    fun UpdateEWMA( new_value, *state, alpha) {
-    //      return *state = new_value * (1.0-alpha) + *state * alpha;
-    //    }    
     
     /* if we are triggering.. */
     if trigger then {      
@@ -146,8 +226,12 @@ fun detect(scorestrm) {
       /* compute thresh */
       let thresh = int_to_float(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
 
+      if DEBUG then 
+        print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
+
       /* over thresh and not in startup period (noise est period) */
       if startup == 0 && score > thresh then {
+	if DEBUG then print("Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
@@ -155,61 +239,22 @@ fun detect(scorestrm) {
 	trigger_value := score;
       }	else {
 	/* otherwise, update the smoothing filters */
-	// TODO: 
-	//UpdateEWMA(score, &(smoothed_mean), alpha);
-	//UpdateEWMA(sqrf(score-smoothed_mean), &(smoothed_var), alpha);
+	smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
+	delt = score -. smoothed_mean;
+	smoothed_var := (delt *. delt) *. (1.0 -. alpha) +. smoothed_var *. alpha;
       };
 	
       /* count down the startup phase */
       if startup > 0 then startup := startup - 1;
       
       /* ok, we can free from sync */
-      // TODO:
-      //emit(sync_ctrl(Time(), casted->_first.endTime() - samples_padding, false));
-      //emit(false, ??, win.end - samples_padding);
+      /* rrn: here we lamely clear from the beginning of time. */
+      /* but this seems to assume that the sample numbers start at zero?? */
+      emit(false, 0, max(0, win.end - samples_padding));
     }
   }
 }
 
-/*
-
-    
-      /* if we are not triggering... */
-      else {
-
-	/* compute thresh */
-	float thresh = hi_thresh*sqrtf(smoothed_var) + smoothed_mean;
-
-	/* over thresh and not in startup period (noise est period) */
-	if ((startup == 0) && score > thresh) {
-	  trigger = 1;
-	  refract = refract_interval;
-	  thresh_value = thresh;
-	  start = casted->_first.start();
-	  trigger_value = score;
-	}
-	
-	/* otherwise, update the smoothing filters */
-	else {
-	  UpdateEWMA(score, &(smoothed_mean), alpha);
-	  UpdateEWMA(sqrf(score-smoothed_mean), &(smoothed_var), alpha);
-	}
-	
-	/* count down the startup phase */
-	if (startup) startup--;    
-
-	/* ok, we can free from sync */
-	emit(sync_ctrl(Time(), casted->_first.endTime() - samples_padding, false));
-      }
-      
-    done:
-      delete casted;
-    }
-    
-    return false;
-  }
-};
-*/
 
 
 //========================================
@@ -221,7 +266,8 @@ ch3 = audio(2, 128, 0);
 ch4 = audio(3, 128, 0);
 
 rw1 = rewindow(ch1, 32, 32);
-hn = smap(hanning, rw1);
+//hn = smap(hanning, rw1);
+hn = myhanning(rw1);
 freq = smap(fft, hn);
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
@@ -247,7 +293,7 @@ detections = detect(wscores);
 // gives you synced windows so that you know syncN is working.  The
 // detector's not implemented, marmotscore is not implemented, and
 // hanning windows are not currently implemented either.
-BASE <- wscores;
+BASE <- detections;
 
 
 

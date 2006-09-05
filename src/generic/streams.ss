@@ -125,6 +125,7 @@
 ;  (printf "     code         print the query that is executing\n")
   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
   (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
+  (printf "     until <schemefun>  scrolls forward until an element is found satisfying the input predicate\n")
   (printf "     exit         exit\n\n")
   (flush-output-port)
 
@@ -199,6 +200,28 @@
 	      (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
 	    (error 'bindump "unimplemented in plt"))
 	   ]
+
+	  [(,until ,predtext) (guard (memq until '(u un unt unti until)))
+	   (let ([pred (eval predtext)])
+	     (unless (procedure? pred)
+	       (error 'browse-stream "until must take a procedure: ~s" pred))
+	     (let scrollloop ()
+	       (if (stream-empty? stream)
+		   (error 'browse-stream::until 
+			  "reached end of stream before finding element satisfying predicate ~s" pred)
+		   (let ([elem (stream-car stream)])
+		     (if (pred elem)
+			 (begin    
+			   (printf " Found element satisfying predicate ~s:\n\n" pred)
+			   (printf "     POS#~a = " pos)
+			   (pretty-print elem)
+			   (newline)
+			   (loop pos))
+			 (begin 
+			   (set! pos (add1 pos))
+			   (set! stream (stream-cdr stream))
+			   (scrollloop))
+			 )))))]
 	  
 	  [(exit) (void)]
 	  [,other 

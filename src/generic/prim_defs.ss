@@ -121,6 +121,11 @@
 
     (cos (Float) Float)
     (sin (Float) Float)
+    (tan (Float) Float)
+    (acos (Float) Float)
+    (asin (Float) Float)
+    (atan (Float) Float)
+
 
     (sqrt (Float) Float)
     (sqr (Float) Float)
@@ -214,6 +219,10 @@
     (audioFile        (String Integer Integer)  (Signal (Sigseg Integer)))
 
     (fft              ((Sigseg Float))  (Sigseg Complex))
+
+    (fftarr           ((Array Complex))  (Array Complex))
+    (fftseg           ((Sigseg Complex)) (Sigseg Complex))
+
     (hanning          ((Sigseg Float))  (Sigseg Float))
 
     ;; This unions N streams of the same type, it returns a sample and
@@ -253,7 +262,8 @@
     (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
 
     (to_array         ((Sigseg 'a))  (Array 'a))
-    
+    (to_sigseg        ((Array 'a) Integer Integer Timebase)  (Sigseg 'a))
+
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
 
@@ -269,7 +279,7 @@
     (start        ((Sigseg 'a)) Integer)
     (end          ((Sigseg 'a)) Integer)
     ;; Returns timebase:
-    (seg-timebase     ((Sigseg 'a)) Timebase)
+    (timebase     ((Sigseg 'a)) Timebase)
 
     ;; Internal use only:
     ;========================================

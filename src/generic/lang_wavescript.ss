@@ -56,6 +56,7 @@
      (close-input-port p)))
 
 ;; Takes 350-430 ms (depending on optimize-level) to load 315mb on faith.
+;; (That must be using some disk caching, eh?)
 ;; Note: changing block size:
 ;;   10 - 17 sec
 ;;   100 - 2 sec
@@ -106,8 +107,8 @@
 		 tuple tupref
 		 makeArray arr-get arr-set! length
 		 listLength makeList head tail
-		 joinsegs subseg seg-get width start end seg-timebase
-		 to_array to-windowed 
+		 joinsegs subseg seg-get width start end timebase
+		 to_array to_sigseg to-windowed 
 		 
 		 wserror inspect
 		 emit virtqueue
@@ -124,13 +125,18 @@
   (define (valid-sigseg? w)
     (or (eq? w nullseg)
 	(and (sigseg? w)
-	     (<= (sigseg-start w) (sigseg-end  w)))))
+	     (<= (sigseg-start w) (sigseg-end  w))
+	     (equal? (vector-length (sigseg-vec w))
+		     (+ (sigseg-end w) (- (sigseg-start  w)) 1))
+	     )))
 
-
+  (define (valid-timebase? tb)
+    ;; This is the only implemented timebase right now ;)
+    (eq? tb nulltimebase))
      
-     (define-syntax app
-       (syntax-rules ()
-	 [(_ f args ...) (f args ...)]))
+  (define-syntax app
+    (syntax-rules ()
+      [(_ f args ...) (f args ...)]))
 
      ;; For these programs, need letrec*.
      (define-syntax letrec
@@ -221,7 +227,8 @@
        (define (read-sample str index)
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
-	   (to-int16 s (fx+ ind (fx* chan 2)))
+	   (fixnum->flonum ;; For now this returns float.
+	    (to-uint16 s (fx+ ind (fx* chan 2))))
 	   ;; All 4 channels:
 	   ;; NIXING: This allocation of little vectors is really painful performance wise.
 	   #;
@@ -298,23 +305,12 @@
 ;      (define nullarr (gensym "nullarr"))
 ;      (define nulltimebase (gensym "nulltimebase"))
      (define nullseg 'nullseg)
-     (define nullarr 'nullarr)
+     (define nullarr #())
      (define nulltimebase 'nulltimebase)
 
-     (define + fx+)
-     (define - fx-)
-     (define * fx*)
-     (define / fx/)
-    
-     (define +. fl+)
-     (define -. fl-)
-     (define *. fl*)
-     (define /. fl/)
-
-     (define +: cfl+)
-     (define -: cfl-)
-     (define *: cfl*)
-     (define /: cfl/)
+     (define + fx+)     (define - fx-)     (define * fx*)     (define / fx/)    
+     (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
+     (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
 
      (define ^ expt)
      (define ^. expt)
@@ -347,12 +343,20 @@
 
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
-     (define fft (lambda (ss) 
-		   (DEBUGASSERT (sigseg? ss))
-		   (make-sigseg (sigseg-start ss)
-				(sigseg-end ss)
-				(dft (sigseg-vec ss))
-				(sigseg-timebase ss))))
+     (define (fft ss)
+       (import scheme) ;; Use normal arithmetic.
+       (define (log2 n) (/ (log n) (log 2)))
+       (DEBUGASSERT (valid-sigseg? ss))
+       (DEBUGMODE 
+	(if (eq? ss nullseg) (error 'fft "cannot take fft of nullseg"))
+	(if (or (= 0 (vector-length (sigseg-vec ss)))
+		(not (integer? (log2 (vector-length (sigseg-vec ss))))))
+	    (error 'fft "only window sizes that are powers of two are supported: length ~s" 
+		   (vector-length (sigseg-vec ss)))))
+       (make-sigseg (sigseg-start ss)
+		    (sigseg-end ss)
+		    (dft (sigseg-vec ss))
+		    (sigseg-timebase ss)))
 
      ;; TODO: fix this:
      (define (hanning w) w)
@@ -499,13 +503,22 @@
        (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'end "cannot get end index from nullseg!"))
        (sigseg-end w))
-     (define (seg-timebase w) 
+     (define (timebase w) 
        (DEBUGASSERT (valid-sigseg? w))
        ;; Is this true?  Or does each signal have its own nullseg?? That could be very tricky...
        ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
        (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
      (define (to_array w) (if (eq? w nullseg) #() (sigseg-vec w)))
+     (define (to_sigseg ar st en tb)
+       (DEBUGASSERT (or (eq? ar nullarr) (vector? ar)))
+       (DEBUGASSERT integer? st)
+       (DEBUGASSERT integer? en)
+       (DEBUGASSERT valid-timebase? tb)
+       (if (not (= (vector-length ar) (+ en (- st) 1)))
+	   (error 'to_sigseg "vector's size did not match start/end tags: ~s:~s ~s" st en ar))
+       (DEBUGASSERT valid-sigseg?
+		    (make-sigseg st en ar tb)))
      
      (define (parmap f s) (stream-parmap f s))
      (define smap stream-map)

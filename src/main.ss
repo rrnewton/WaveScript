@@ -205,7 +205,7 @@
   (define desugared (desugar-pattern-matching prog))
 
   (define typed (verify-regiment desugared))  
-  (define __ (printf "Program verified."))  
+  (define __ (printf "Program verified. (Also dumped to \".__parsed.txt\".)"))
 
   ;(define ___ (inspect typed))
 
@@ -221,7 +221,11 @@
   (with-output-to-file ".__types.txt"
     (lambda () (print-var-types typed)(flush-output-port))
     'replace)
-
+  (parameterize ([pretty-line-length 150]
+		 [pretty-one-line-limit 100])
+    (with-output-to-file ".__parsed.txt"
+      (lambda () (pretty-print prog)(flush-output-port))
+      'replace))
   (browse-stream stream))
 
 
