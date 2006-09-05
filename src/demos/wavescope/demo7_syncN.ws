@@ -43,15 +43,18 @@ fun syncN (strms, ctrl) {
 	then allready := false;
       };
      	
-      if allready then 
-      {
+      if allready then {
+
+
+      if fl // Output the segment:
+      then { 
 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	size = en - st + 1; // Start/end is inclusive.
 
 	output = [];
 	for i = 0 to accs.length - 1 {
 	  output := subseg(accs[i], st, size) :: output;
-	};
+	}
 	emit(reverse(output));
 
 	// Destroy the output portions and remove the serviced request:
@@ -59,6 +62,19 @@ fun syncN (strms, ctrl) {
 	  accs[j] := subseg(accs[j], st + size, accs[j].width - size);
 	};
 	requests := requests.tail;
+      } 
+      else { // otherwise discard the segment:
+
+	print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+
+	// Destroy the discarded portions and remove the serviced request:
+	for j = 0 to accs.length - 1 {
+	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
+	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
+	};
+	requests := requests.tail;
+      }
+
       }
     }
   }
@@ -78,9 +94,13 @@ ch2 = audio(1,128,0);
 outwidth = 100;
 
 ctrl = iterate(w in ch1) {
-  state { pos = 0; }    
-  emit(true, pos, pos + outwidth - 1);
+  state { 
+    pos = 0; 
+    flag = false; 
+  }
+  emit(flag, pos, pos + outwidth - 1);
   pos := pos + outwidth;
+  flag := if flag then false else true;
 };
 
 BASE <- syncN([ch1, ch2], ctrl);
