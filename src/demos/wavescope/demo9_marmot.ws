@@ -1,5 +1,5 @@
 
-DEBUG = true
+DEBUG = false
 DEBUGSYNC = DEBUG 
 
 //======================================================================
@@ -240,6 +240,10 @@ fun detect(scorestrm) {
 	emit (true,                       // yes, snapshot
 	      _start - samples_padding,     // start sample
 	      win.end + samples_padding); // end sample
+	if DEBUG then
+	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
+	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
       }
@@ -271,7 +275,11 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit(false, 0, max(0, win.end - samples_padding));
+      emit (false, 0, max(0, win.end - samples_padding));
+      if DEBUG then 
+      print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
+	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+      
     }
   }
 }
@@ -304,12 +312,12 @@ hn = myhanning(rw1);
 freq = smap(fft, hn);
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate (w in freq) { emit(marmotscore(w), w); }
+wscores = iterate (w in freq) { emit (marmotscore(w), w); }
 
 detections = detect(wscores);
 
 //synced = syncN(detections, [ch1, ch2, ch3, ch4]);
-synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
+//synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.

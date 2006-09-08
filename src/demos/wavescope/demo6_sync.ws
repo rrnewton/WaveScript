@@ -1,4 +1,18 @@
 
+/*
+type Maybe a = None | Some a
+type Union3 (a, b, c) = Firstof3  a 
+                      | Secondof3 b
+                      | Thirdof3  c
+
+iterate (x in S) {
+  case x of
+    | Firstof3 n -> f(n)
+    | other -> other
+}
+
+*/
+
 
 fun sync2 (ctrl, s1, s2) {
   // A lame sort of manual union type.  Pad all streams out with all fields:

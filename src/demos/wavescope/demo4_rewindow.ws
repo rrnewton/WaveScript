@@ -7,12 +7,12 @@ s1 = audioFile("./countup.raw", 4096, 0);
 newwidth = 1024;
 step = 512;
 
+
 s2 = iterate (w in s1) {
    state { acc = nullseg; 
          }
 
-   print("\nCurrent ACC, width ");
-   print(acc.width);
+   print("\nCurrent ACC, width "++ show(acc.width));
    print(": ");
    print(acc);
    print("\n");
@@ -32,12 +32,6 @@ s2 = iterate (w in s1) {
      else { break; }
      //{for i = 1 to 1 {};}
    }
-  
-/*    if acc.width > newwidth */
-/*    then {emit subseg(acc, acc.start, newwidth); */
-/*          acc := subseg(acc, acc.start + step, acc.width - step) */
-/* 	} */
-/*    else {}; */
 
 };
 

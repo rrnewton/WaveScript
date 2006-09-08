@@ -126,6 +126,8 @@
   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
   (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
   (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
+  (printf "     profile      dump the profile to /tmp/pdump \n")
+
   (printf "     exit         exit\n\n")
   (flush-output-port)
 
@@ -171,11 +173,15 @@
 |#
 
 	  [(,dump ,file) (guard (memq dump '(d du dum dump)))
-	     (let ([port (open-output-file (format "~a" file) 'replace)])
+	     (let ([port (open-output-file (format "~a" file) 'append)])
 	       (parameterize ([print-length #f]
 			      [print-level #f]
 			      [print-graph #f]
-			      )		 
+			      )
+		 
+		 (optimize-level 3)
+		 (run-cp0 (lambda (x cp0) x))
+
 		 (time 
 	      (progress-dots
 	       (lambda ()
@@ -192,6 +198,15 @@
 		 (lambda ()
 		   (printf "  POS# ~a dumped...\n" pos))))
 		 ))]
+
+	  [(profile) 	   
+	   (with-output-to-file "/tmp/pdump"
+	     (lambda () 
+	       (parameterize ([print-level #f]
+			      [print-length #f]
+			      [print-graph #t])
+		 (write (profile-dump))))
+	     'replace)]
 
 	  ;; Wavescope-specific.	  
 	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))

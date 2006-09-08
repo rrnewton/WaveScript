@@ -21,6 +21,8 @@
 ;;; The Regiment compiler expects case-sensitive treatment of symbols:
 ;;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
+  (compile-profile #t)
+
 	   (case-sensitive #t)
 
 	   ;; For now let's just error if we have no dir:
@@ -42,7 +44,7 @@
 				     (string-append (default-regimentd) "/src/chez")
 				     ))
 	   
-	   (optimize-level 0) ;0/1/2/3)
+	   (optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -58,9 +60,16 @@
            (define current_interpreter 'chezscheme)           
 	   (define-top-level-value 'simulator-batch-mode #f)
 
+	   ;; Disable source optimization altogether.
+	   #;
+	   (begin
+	     (optimize-level 0)
+	     (run-cp0 (lambda (cp0 x) x))
+	     )
+
 	   ;; This configuration is for running extended simulation-experiments only:
 	   ;; REMEMBER to also disable IFDEBUG in constants.ss
-#;
+
 	   (begin 
 	     (define-top-level-value 'simulator-batch-mode #t)
 	     (optimize-level 3)
