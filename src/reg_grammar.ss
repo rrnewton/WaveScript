@@ -30,7 +30,7 @@
     :: ++ 
     AND OR 
     NEG APP SEMI COMMA DOT DOTBRK BAR BANG
-    fun for to emit deep_iterate iterate state in if then else true false break let ; Keywords 
+    fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
@@ -69,7 +69,7 @@
 	 )
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "break" "to" "emit" "deep_iterate" "iterate" "state"  "in" "if" "then" "else" "true" "false" "let")
+   [(:or "fun" "for" "break" "to" "emit" "include" "deep_iterate" "iterate" "state"  "in" "if" "then" "else" "true" "false" "let")
     (string->symbol lexeme)]
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
@@ -219,6 +219,10 @@
     (decls ;; Top level variable binding
            [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
+	   
+	   ;; 
+	   [(include exp SEMI maybedecls) `()]
+
            ;; Returning streams to the base station or other "ports"
            [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
            
