@@ -177,10 +177,9 @@
 	       (parameterize ([print-length #f]
 			      [print-level #f]
 			      [print-graph #f]
-			      )
-		 
-		 (optimize-level 3)
-		 (run-cp0 (lambda (x cp0) x))
+			      )		 
+					
+		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
 
 		 (time 
 	      (progress-dots
@@ -199,14 +198,16 @@
 		   (printf "  POS# ~a dumped...\n" pos))))
 		 ))]
 
-	  [(profile) 	   
-	   (with-output-to-file "/tmp/pdump"
-	     (lambda () 
-	       (parameterize ([print-level #f]
-			      [print-length #f]
-			      [print-graph #t])
-		 (write (profile-dump))))
-	     'replace)]
+	  [(profile)  
+	   (IFCHEZ
+	    (with-output-to-file "/tmp/pdump"
+	      (lambda () 
+		(parameterize ([print-level #f]
+			       [print-length #f]
+			       [print-graph #t])
+		  (write (profile-dump))))
+	      'replace)
+	    (error 'browse-stream "can't dump profile in PLT."))]
 
 	  ;; Wavescope-specific.	  
 	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))

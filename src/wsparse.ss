@@ -15,5 +15,6 @@
 
 ;; Now just write it to stdout:
 ;(display (ws-postprocess (reg-parse-file filename)))(newline)
-(pretty-print (ws-postprocess (reg-parse-file filename)))
+;(pretty-print (ws-postprocess (reg-parse-file filename)))
+(pretty-print (reg-parse-file filename))
 )

@@ -21,6 +21,8 @@
 ;;; The Regiment compiler expects case-sensitive treatment of symbols:
 ;;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval) 
+  (include "config.ss")
+  
   (compile-profile #t)
 
 	   (case-sensitive #t)
@@ -44,7 +46,7 @@
 				     (string-append (default-regimentd) "/src/chez")
 				     ))
 	   
-	   (optimize-level 2) ;0/1/2/3)
+	   ;(optimize-level 2) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -60,33 +62,34 @@
            (define current_interpreter 'chezscheme)           
 	   (define-top-level-value 'simulator-batch-mode #f)
 
-	   ;; Disable source optimization altogether.
-	   #;
-	   (begin
-	     (optimize-level 0)
-	     (run-cp0 (lambda (cp0 x) x))
-	     )
 
-	   ;; This configuration is for running extended simulation-experiments only:
-	   ;; REMEMBER to also disable IFDEBUG in constants.ss
-
-	   (begin 
-	     (define-top-level-value 'simulator-batch-mode #t)
-	     (optimize-level 3)
-	     (compile-compressed #f)
-	     (generate-inspector-information #f)
-	     ;; Messing with this didn't seem to help performance.
-	     #;
-		  (run-cp0
-		   (lambda (cp0 x)
-		     (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
-				    [cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
-				    [cp0-outer-unroll-limit 3]) ;; inline recursive?
-		       (let ((x (cp0 x)))
-			 (parameterize (
-					(cp0-effort-limit 0)
-					)
-			   (cp0 x)))))))
+	   (case REGOPTLVL
+	     [(0)
+	      ;; Disable source optimization altogether.
+	      (optimize-level 0)
+	      (run-cp0 (lambda (cp0 x) x))]
+	     [(2) (optimize-level 2)]
+	     [(3)
+	      (printf "Configuring compiler for \n")
+	      ;; This configuration is for running extended simulation-experiments only:
+	      ;; REMEMBER to also disable IFDEBUG in constants.ss
+	      (define-top-level-value 'simulator-batch-mode #t)
+	      (optimize-level 3)
+	      (compile-compressed #f)
+	      (generate-inspector-information #f)
+	      ;; Messing with this didn't seem to help performance.
+	      #;
+	      (run-cp0
+	       (lambda (cp0 x)
+		 (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
+				[cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
+				[cp0-outer-unroll-limit 3]) ;; inline recursive?
+		   (let ((x (cp0 x)))
+		     (parameterize (
+				    (cp0-effort-limit 0)
+				    )
+		       (cp0 x))))))]
+	     [else (error 'regiment-compiler "bad setting for REGOPTLVL: ~s" REGOPTLVL)])
 	   )
 
 ;======================================================================

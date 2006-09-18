@@ -9,8 +9,8 @@ MACHINETYPE=`uname -s`-`uname -m | sed 's/ /_/'`
 all: usleep_default fftw
 
 fftw: fftw.c
-	@echo "\n\n======================================================================"
 	@echo "Building FFTW..."
+	@echo;echo "------------------------------------------------------------"
 	$(RM) -rf $(DIR)
 	mkdir $(DIR)
 	gcc -fPIC -shared -o $(DIR)/fftw.o fftw.c -I$(HOME)/bin/$(MACHINETYPE)/csv7.0a/boot/$(DIR) -lfftw3
@@ -23,8 +23,8 @@ usleep_default: usleep_libc
 
 ## I'm just lifting it from libc, this is easier:
 usleep_libc: usleep_libc.ss
-	@echo "\n\n======================================================================"
 	@echo Building USLEEP_LIBC:
+	@echo;echo "------------------------------------------------------------"
 	$(RM) -rf $(DIR)
 	mkdir $(DIR)
 	(cd $(DIR); echo '(compile-file "../usleep_libc.ss" "usleep_libc.so")' | chez)

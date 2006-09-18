@@ -20,9 +20,15 @@ SWL = swl
 DEST = a.out
 
 all: 
-	(cd C; $(MAKE))
-	$(MAKE) fullheap
+	@echo; echo BUILDING PARSER
+	@echo "======================================================================"
 	$(MAKE) wsparse
+	@echo; echo; echo BUILDING C-code
+	@echo "======================================================================"
+	(cd C; $(MAKE))
+	@echo; echo; echo Precompiling Regiment Scheme Source
+	@echo "======================================================================"
+	$(MAKE) fullheap
 
 old_all: reg
 	(cd plt; $(MAKE) nc)

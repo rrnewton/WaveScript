@@ -1,8 +1,9 @@
 ;#! /usr/bin/scheme --script
 ;#!/usr/bin/chez --script
 
-;; Regiment.ss
-;; This file is a script that drives the regiment compiler/simulator.
+;;;; Regiment.ss
+;;;; This file is a script that drives the regiment compiler/simulator.
+;;;; It loads the Regiment system from source or from a compiled .so file.
 
 
 ;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))

@@ -8,6 +8,9 @@ else exec petite --script "$0" `pwd` ${1+"$@"};
 fi 
 |#
 
+;;;; This script is just an executable wrapper script to regiment.ss
+;;;; (which also switches to the correct directory).
+
 ; /usr/bin/scheme --script
 
 ; (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  

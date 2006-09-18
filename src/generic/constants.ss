@@ -46,10 +46,11 @@
 	 IFCHEZ IF_GRAPHICS IF_THREADS
 ;	 reg:include	 
 
+
          ;; Syntax:
 	 IFDEBUG
-         DEBUGMODE UBERDEBUGMODE DEBUGPRINT DEBUGPRINT2 DEBUGASSERT ASSERT
-         REGIMENT_DEBUG HACK
+         DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
+         REGIMENT_DEBUG HACK 
 	 IFWAVESCOPE 
          ;chezprovide chezimports ;; To make the common module facility work.
          
@@ -186,18 +187,19 @@
 ;; This is set when the system loads.
 (define-regiment-parameter REGIMENTD "./")
 
+
+;=======================================================================;;
+;; [2006.09.11] Factored some config parameters that the user will want to change.
+(include "../config.ss")
+;=======================================================================;;
+
+
+
 ;=======================================================================;;
 ;;                       <<< DEBUG TOGGLES >>>                          ;;
 ;=======================================================================;;
 ;;; Debug Toggles
 
-;; The IFDEBUG/DEBUGMODE toggles are like a #define that toggles debug code for the whole compiler.
-;; This is not a very appropriate place for this definition, but it's the most convenient
-;; so that it can be seen from everywhere.
-;; <br><br>
-;; Uncomment one line for debug mode, the other to deactivate it.
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 ;; DEBUGMODE is just syntactic sugar on top of IFDEBUG.  It contains
 ;; any number of subexpressions and executes them only when IFDEBUG is activated.
@@ -254,14 +256,6 @@
 ;(if (file-exists? Regiment-Log-File)
 ;    (delete-file Regiment-Log-File))
 
-; THESE ARE ONLY USED BY SIMULATOR_NOUGHT PRESENTLY. [2005.03.18]
-; This one prints nothing at all:
-;(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (begin expr ...)]))
-(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (void)]))
-; This is a SECOND print channel for even lamer information:
-(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (void)]))            ; ON
-;(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (begin expr ...)]))  ; OFF
-
 ;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
 
@@ -276,13 +270,6 @@
 (define-syntax REGIMENT_DEBUG
   (syntax-rules ()
     [(_ expr ...) (if (regiment-emit-debug) (list expr ...) ())]))
-
-;; [2006.08.28] This is the "#define" for building WAVESCOPE related code.
-;; When turned off, the system should build Regiment without WaveScope extensions.
-(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) on] [(_ on) on]))  ;; ON
-;(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) off] [(_ on) (void)])) ;; OFF
-
-;(define-syntax WAVESCOPE (syntax-rules () [(_ expr ...) (IFWAVESCOPE (list expr ...) ())]))
 
 
 ;; [2006.03.20] This enables me to explicitely label the nasty hacks in the system.

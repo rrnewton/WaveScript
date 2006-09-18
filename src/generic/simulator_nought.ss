@@ -103,6 +103,16 @@
 ;===============================================================================
 ;; GLOBAL VARIABLES AND TYPES:
 
+
+; This one prints nothing at all:
+;(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (begin expr ...)]))
+(define-syntax DEBUGPRINT (syntax-rules () [(_ expr ...) (void)]))
+; This is a SECOND print channel for even lamer information:
+(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (void)]))            ; ON
+;(define-syntax DEBUGPRINT2 (syntax-rules () [(_ expr ...) (begin expr ...)]))  ; OFF
+
+
+
 ;; The main global variables are graph, object-graph, and all-objs
 
 ;; NOTE!  The simulator dynamically defines top level variables:

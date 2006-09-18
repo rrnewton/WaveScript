@@ -187,6 +187,8 @@
   p)
 
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
+;; It loads, compiles, and evaluates a wavescript query.
+;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.     
   (define (parse-it f)
     (car (process (++ "wsparse " f))))

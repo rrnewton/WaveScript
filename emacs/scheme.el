@@ -328,7 +328,7 @@ See `run-hooks'."
 	       "match" "match+" "trace-match" "trace-match+" "match-lambda" "let-match" 
 	       "eval-when" "let-stored" 
 	       "parameterize" "parameters" "tokens" "token" "stored" "tok" "program" "nodepgm" "socpgm" "mvlet" "let-values"
-	       "fluid-let" "trace-define" "trace-lambda" "trace-let" "trace-define-syntax"
+	       "fluid-let" "define-inlined" "trace-define" "trace-lambda" "trace-let" "trace-define-syntax"
 	       "when" "unless" "for"
 	       "syntax-case" "define-syntax" "with-syntax" "with-mutex" "fork-thread"
 	       "foldl" "filter" "for-eachi" "mapi"
@@ -541,6 +541,7 @@ that variable's value is a string."
 (put 'chez:module 'scheme-indent-function 2)
 (put 'trace-define-syntax 'scheme-indent-function 2)
 (put 'trace-define 'scheme-indent-function 2)
+(put 'define-inlined 'scheme-indent-function 2)
 (put 'parameters 'scheme-indent-function 0)
 
 

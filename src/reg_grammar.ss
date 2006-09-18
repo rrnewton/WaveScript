@@ -221,7 +221,8 @@
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
 	   
 	   ;; 
-	   [(include exp SEMI maybedecls) `()]
+	   [(include exp SEMI maybedecls) 
+	    `((include ,$2) ,@$4)]
 
            ;; Returning streams to the base station or other "ports"
            [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
@@ -495,11 +496,94 @@
               (cons result (loop))
               '()))))
 
-(define (reg-parse-file f) 
+(define (flatten pt)
+  ;(printf " ")
+  (let loop ((x pt))
+        (if (position-token? (position-token-token x))
+            (begin (error 'flatten "No nested position-tokens!")
+              (loop (position-token-token x)))
+            x)))
+
+(define (ws-postprocess ws)
+  (define (f1 x) (eq? (car x) ':))
+  (define (f2 x) (eq? (car x) 'define))
+  (define (f3 x) (eq? (car x) '<-))
+  (let ([types (map cdr (filter f1 ws))]
+        [defs (map cdr (filter f2 ws))]
+        [routes (map cdr (filter f3 ws))])
+
+    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)))) ws))
+    (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
+
+    (let ([typevs (map car types)]
+          [defvs (map car defs)])
+      ;(pretty-print ws)
+      (unless (= 1 (length routes))
+        (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes))
+      (unless (eq? 'BASE (caar routes))
+        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
+      (unless (subset? typevs defvs)
+        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
+      
+      `(letrec ,(map (lambda (def)
+                       (match def
+                         [(,v ,e) (if (memq v typevs)
+                                             `[,v ,(cadr (assq v types)) ,e]
+                                             `[,v ,e])]))
+                     defs)
+         ,(cadar routes)))))
+  
+
+(define (reg-parse-file-raw f) 
   (let ([p (open-input-file f)])    
     (let ([res (ws-parse-port p)])
       (close-input-port p)
       res)))
+
+;; This parses the file and does post-processing:
+(define (reg-parse-file fn)
+  (define raw (reg-parse-file-raw fn))
+  (ws-postprocess raw) 
+  )
+
+
+#;
+(define parsed (reg-parse-file "demos/wavescope/test2.ws"))
+;;(define parsed (reg-parse-file "demos/wavescope/bird_detector.ws"))
+;;(define parsed (reg-parse-file "demos/wavescope/simple.ws"))
+;;(pretty-print parsed)
+
+  
+;(define processed (ws-postprocess parsed))
+;(pretty-print processed)
+
+;(require "plt/hm_type_inference.ss")
+#;
+(mvlet ([[a b] (annotate-program processed)])
+       (pretty-print a)
+       ;(pretty-print (print-var-types a))
+       )
+
+) ;; End module.
+
+;(require reg_grammar)
+;(reg-parse-file "demos/wavescope/demo0_audio.ws")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;================================================================================
+; SCRATCH
 
 #|
 ;(calc (open-input-string "(1 + 2 * 3) - (1+2)*3"))
@@ -545,58 +629,3 @@
 (printf "THELIST: ~s\n" ;(map token-name 
         (map position-token-token thelist))
 
-
-(define (flatten pt)
-  ;(printf " ")
-  (let loop ((x pt))
-        (if (position-token? (position-token-token x))
-            (begin (error 'flatten "No nested position-tokens!")
-              (loop (position-token-token x)))
-            x)))
-
-(define (ws-postprocess ws)
-  (let ([types (map cdr (filter (lambda (x) (eq? (car x) ':)) ws))]
-        [defs (map cdr (filter (lambda (x) (eq? (car x) 'define)) ws))]
-        [routes (map cdr (filter (lambda (x) (eq? (car x) '<-)) ws))])
-    (let ([typevs (map car types)]
-          [defvs (map car defs)])
-      (unless (= 1 (length routes))
-        (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes))
-      (unless (eq? 'BASE (caar routes))
-        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
-      (unless (subset? typevs defvs)
-        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      
-      `(letrec ,(map (lambda (def)
-                       (match def
-                         [(,v ,e) (if (memq v typevs)
-                                             `[,v ,(cadr (assq v types)) ,e]
-                                             `[,v ,e])]))
-                     defs)
-         ,(cadar routes)))))
-  
-
-
-
-
-#;
-(define parsed (reg-parse-file "demos/wavescope/test2.ws"))
-;;(define parsed (reg-parse-file "demos/wavescope/bird_detector.ws"))
-;;(define parsed (reg-parse-file "demos/wavescope/simple.ws"))
-;;(pretty-print parsed)
-
-  
-;(define processed (ws-postprocess parsed))
-;(pretty-print processed)
-
-;(require "plt/hm_type_inference.ss")
-#;
-(mvlet ([[a b] (annotate-program processed)])
-       (pretty-print a)
-       ;(pretty-print (print-var-types a))
-       )
-
-) ;; End module.
-
-;(require reg_grammar)
-;(reg-parse-file "demos/wavescope/demo0_audio.ws")
