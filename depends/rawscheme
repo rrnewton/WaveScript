@@ -1,6 +1,7 @@
 #!/bin/sh
 
 MACHINE=`uname`
+VER=7.1
 
 if [ $MACHINE == "Linux" ];
 then DIR=i3le;
@@ -11,6 +12,4 @@ then DIR=i3nt;
 else echo Unknown platform: $MACHINE
 fi
 
-#$REGIMENTD/depends/petite_chez_scheme7.0/bin/$DIR/scheme $*
-
-$REGIMENTD/depends/petite_chez_scheme7.0a/bin/$DIR/scheme $*
+$REGIMENTD/depends/petite_chez_scheme7.1/bin/$DIR/scheme $*
