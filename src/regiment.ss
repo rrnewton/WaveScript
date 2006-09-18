@@ -50,7 +50,7 @@
   (printf "  interact (i)  start up Scheme REPL with Regiment loaded~n")
   (printf "  test     (t)  run all regiment tests~n")
   (printf "  log      (l)  simulator trace manipulation mode~n")
-  (printf "  wsint    (wsint)  WaveScript interpreter mode~n")
+  (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
   (printf "  wscomp   (wscomp) WaveScript compiler mode~n")
   (printf "~n")
   (printf "General Options:  ~n")
@@ -375,7 +375,7 @@
 			  [(,fn) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   
-	   (wsint port))]	 
+	   (browse-stream (wsint port)))]
 
 	  [(wscomp)
 	   (let ()

@@ -191,6 +191,9 @@
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.     
   (define (parse-it f)
+    ;; HACK: WON'T WORK IN WINDOWS:
+    (unless (zero? (system "which wsparse")) 
+      (error 'wsint "couldn't find wsparse executable"))
     (car (process (++ "wsparse " f))))
   (define prog
     (strip-types
@@ -228,7 +231,7 @@
     (with-output-to-file ".__parsed.txt"
       (lambda () (pretty-print prog)(flush-output-port))
       'replace))
-  (browse-stream stream))
+  stream)
 
 
 
@@ -580,4 +583,4 @@
 
 (define-id-syntax cur  ;; shorthand, current test
   (begin (cd "~/wavescript/src/demos/wavescope/")
-	 (wsint "demo6_sync.ws")))
+	 (browse-stream (wsint "demo6_sync.ws"))))

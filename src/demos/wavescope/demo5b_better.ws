@@ -1,4 +1,6 @@
 
+// UNFINISHED
+
 BASE <- rewindow(audioFile("./countup.raw", 4096, 0), 10, 100);
 
 
