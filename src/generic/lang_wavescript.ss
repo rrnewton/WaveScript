@@ -540,8 +540,11 @@
 		[else 
 		 (append! (reverse! vals) 
 			  (delay (loop (stream-cdr s))))])))))
-       
+
+     ;; Very simple queue:
+     ;; TODO: Could copy sigsegs on output here and see what the impact is.
      (define (emit q v) (set-box! q (cons v (unbox q))))
+
      ;;(emission (cons v (emission))))
      (define (virtqueue) (box '()))
 
