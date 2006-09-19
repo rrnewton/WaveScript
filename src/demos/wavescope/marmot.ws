@@ -2,7 +2,7 @@
 DEBUG = false
 DEBUGSYNC = DEBUG 
 
-  include "stdlib.ws";
+include "stdlib.ws"
 
 
 //======================================================================
