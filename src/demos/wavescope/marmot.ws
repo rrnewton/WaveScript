@@ -340,10 +340,6 @@ fun onesf(size) {
   makeArray(size, 1.0);
 }
 
-// these length-1s are annoying 
-//  ... iterator over seg?
-// want structs
-
 fun matrix(rows, cols, init) {
   a = makeArray(rows, makeArray(cols, init));
   for i = 1 to rows {
@@ -403,6 +399,33 @@ fun array_iterate_index(a,f) {
 }
 
 
+fun MMult(m1,m2) {
+  m3 = matrix(m1.length, m2[0].length, mget(m1,0,0));
+  for i = 0 to m1.length-1 {
+    for j = 0 to m2[0].length-1 {
+      // need to know type :( .. what if not float?
+      sum = 0.0;
+      for k = 0 to m2.length-1 {
+	sum := sum +. (mget(m1,i,k) *. mget(m2,k,j));
+      };
+      mset(m3,i,j,sum)
+    }
+  };
+  m3
+}
+
+
+fun MTrans(m) {
+  m2 = matrix(m[0].length, m.length, mget(m,0,0));
+  for i = 0 to m.length {
+    for j = 0 to m[0].length {
+      mset(m2,j,i,mget(m,i,j))
+    }
+  };
+  m2
+}
+
+
 // NEED:
 // qsort
 // ComplexI
@@ -412,13 +435,11 @@ fun array_iterate_index(a,f) {
 
 fun FarFieldDOA(synced) 
 {	
-  S_COUNT = 4;
-  R = 3;
-  THETA = 4;
+  Nsens = 4;
 
-  sensors = matrix(S_COUNT, 3, 0.0);
-  r = makeArray(S_COUNT, 0.0);
-  theta = makeArray(S_COUNT, 0.0);
+  sensors = matrix(Nsens, 3, 0.0);
+  r = makeArray(Nsens, 0.0);
+  theta = makeArray(Nsens, 0.0);
   
   mset(sensors, 0, 0,  0.4);
   mset(sensors, 0, 1, -0.4);
@@ -487,7 +508,7 @@ fun FarFieldDOA(synced)
     Tbefore = zeroesf(NSrc);
 
     // phase delays for each source
-    delay = matrix(S_COUNT, NSrc, 0.0);
+    delay = matrix(Nsens, NSrc, 0.0);
 
     // steering matrix
     D = matrix(NSrc, N_SENSORS, 0.0);
@@ -505,7 +526,7 @@ fun FarFieldDOA(synced)
 	// compute delay for other sources
 	for L = 1 to NSrc {
 	  if L != Q then {
-	    for P = 1 to S_COUNT-1 {
+	    for P = 1 to Nsens-1 {
 	      mset(delay,P,L,doDelay(P, T[L]));
 	    }
 	  }
@@ -514,7 +535,7 @@ fun FarFieldDOA(synced)
 	for I = 0 to Ngrd-1 {
 	  
 	  // compute delay for this direction
-	  for P = 1 to S_COUNT-1 {
+	  for P = 1 to Nsens-1 {
 	    mset(delay,P,Q,doDelay(P,I));
 	  };
 
@@ -525,7 +546,7 @@ fun FarFieldDOA(synced)
 	    for L = 0 to NSrc-1 {
 	      if (iter > 1 || L <= Q) then {
 		mset(D,0,L,1.0);
-		for P = 1 to S_COUNT-1 {
+		for P = 1 to Nsens-1 {
 		  /*		  mset(D,P,L, expc(-ComplexI *: 2 *: PI *:
 		    sel[[K]][1] *: mget(delay,P,L) /: Ndat));  */
 		}
