@@ -285,13 +285,19 @@ fun amap(f) {
   }
 }
 
+fun amap_nd(f) {
+  fun (arr) {
+    narr = makeArray(arr.length, arr[0]);
+    for i = 0 to arr.length - 1 {
+      narr[i] := f(arr[i]);
+    };
+    narr
+  }
+}
+
 fun ssmap(f) {
   fun (seg) {
-    // hmm, what will this do ?
-    for i = 0 to seg.width - 1 {
-      seg[[i]] := f(seg[[i]]);
-    };
-    seg
+    to_sigseg((amap(f))(to_array(seg)), seg.start, seg.end, seg.timebase)
   }
 }
 
@@ -317,27 +323,20 @@ fun afold(f) {
 
 fun ssmap2(f) {
   fun (seg1, seg2) {
-    for i = 0 to seg.width - 1 {
-      seg1[[i]] := f(seg1[[i]], seg2[[i]]);
-    }
-  };
-  seg1
+    a = makeArray(seg1.width, seg1[[0]]);
+    for i = 0 to seg1.width - 1 {
+      a[i] := f(seg1[[i]], seg2[[i]]);
+    };
+    to_sigseg(a, seg1.start, seg1.end, seg1.timebase)
+  }
 }
 
-fun zeroesf(clone)
-{
-  for i = 0 to clone.width - 1 {
-    // thoughts:
-    //  * writing this way makes it easier to do inplace opt?
-    //  * iterators!
-    clone[[i]] := 0.0;
-  };
-  clone
+fun zeroesf(size) {
+  makeArray(size, 0.0)
 }
 
 // this version returns an array
-fun onesf(size)
-{
+fun onesf(size) {
   makeArray(size, 1.0);
 }
 
@@ -345,20 +344,71 @@ fun onesf(size)
 //  ... iterator over seg?
 // want structs
 
+fun matrix(rows, cols, init) {
+  a = makeArray(rows, makeArray(cols, init));
+  for i = 1 to rows {
+    a[i] := makeArray(cols, init);
+  };
+  a
+}
+
+fun mset(matrix, row, col, val) {
+  row = matrix[row];
+  row[col] := val;
+  val
+}
+
+fun mget(matrix, row, col) {
+  row = matrix[row];
+  row[col]
+}
+
 fun sortseg(seg) {
   // really want a struct here!! value and index
-  ival = makeArray(seg.width, makeArray(2, 0.0));
+  ival = matrix(seg.width, 2, 0.0);
   for i = 0 to seg.width - 1 {
-    ival[i][0] := seg[[i]];
-    ival[i][1] := i;
+    mset(ival, i, 0, seg[[i]]);
+    mset(ival, i, 1, i);
   }
-  qsort(ival, fun (i,j) (ival[i][0] < ival[j][0]));
-  clone_sigseg(seg, ival);
+  //qsort(ival, fun (i,j) (ival[i][0] < ival[j][0]));
+  to_sigseg(ival, seg.start, seg.end, seg.timebase);
 }
 
 fun sqrf(x) { x *. x; }
 
-// need to define atan2 primitive
+fun Vmax(v) {
+  max = 0.0;
+  ind = -1;
+  for i = 0 to v.length {
+    if (ind < 0 || max < v[i]) then {
+      ind := i;
+      max := v[i];
+    }
+  };
+  (max,ind)
+}
+
+fun MRowEval(m,row,f) {
+  for i = 0 to row-1 {
+    mset(m,Q,i,f(i));
+  }
+}
+
+fun array_iterate_index(a,f) {
+  new_a = makeArray(a.length, a[0]);
+  for i = 0 to a.length-1 {
+    new_a[i] := f(a[i],i);
+  };
+  new_a
+}
+
+
+// NEED:
+// qsort
+// ComplexI
+// expc
+// atan2
+// MMult, MInv, MTrans
 
 fun FarFieldDOA(synced) 
 {	
@@ -366,33 +416,33 @@ fun FarFieldDOA(synced)
   R = 3;
   THETA = 4;
 
-  sensors = makeArray(S_COUNT, makeArray(5, 0.0));
+  sensors = matrix(S_COUNT, 3, 0.0);
+  r = makeArray(S_COUNT, 0.0);
+  theta = makeArray(S_COUNT, 0.0);
+  
+  mset(sensors, 0, 0,  0.4);
+  mset(sensors, 0, 1, -0.4);
+  mset(sensors, 0, 2, -0.4);
 
-  sensors[0][0] := +.04;
-  sensors[0][1] := -.04;
-  sensors[0][2] := -.04;
+  mset(sensors, 1, 0,  0.4);
+  mset(sensors, 1, 1,  0.4);
+  mset(sensors, 1, 2,  0.4);
 
-  sensors[1][0] := +.04;
-  sensors[1][1] := +.04;
-  sensors[1][2] := +.04;
+  mset(sensors, 2, 0, -0.4);
+  mset(sensors, 2, 1,  0.4);
+  mset(sensors, 2, 2, -0.4);
 
-  sensors[2][0] := -.04;
-  sensors[2][1] := +.04;
-  sensors[2][2] := -.04;
-
-  sensors[3][0] := -.04;
-  sensors[3][1] := -.04;
-  sensors[3][2] := +.04;
+  mset(sensors, 3, 0, -0.4);
+  mset(sensors, 3, 1, -0.4);
+  mset(sensors, 3, 2,  0.4);
 
   /* compute r and theta for each sensor relative to sensor 0 as origin */
-  int i;
   for i = 1 to 3 {
-    sensors[i][R] = sqrtf(sqrf(sensors[i][0]-sensors[0][0]) +
-			  sqrf(sensors[i][1]-sensors[0][1]) +
-			  sqrf(sensors[i][2]-sensors[0][2]));
-    sensors[i][THETA] = atan2(sensors[i][1]-sensors[0][1],
-			      sensors[i][0]-sensors[0][0]);    
-  }
+    r[i] := sqrtf(sqrf(mget(sensors,i,0) -. mget(sensors,0,0)) +.
+		  sqrf(mget(sensors,i,0) -. mget(sensors,0,1)) +.
+		  sqrf(mget(sensors,i,2) -. mget(sensors,0,2)));
+    //theta[i] := atan2(mget(sensors,i,1) -. mget(sensors,0,1), mget(sensors,i,0) -. mget(sensors,0,0));
+  };
 
   // fft the sync'd 
   ffts = smap(amap(fft), synced);
@@ -401,18 +451,15 @@ fun FarFieldDOA(synced)
   psds = smap(amap(ssmap(cnorm)), ffts);
 
   // compute norms
-  norms = smap(amap(ssfold(+.)), psds);
+  norms = smap(amap(ssfold((+.))), psds);
   
   // normalize
   nffts = iterate ((f,n) in (zip2(ffts,norms))) {
-    for i = 0 to f.width {
-      f[[i]] := f[[i]] /: n[[i]];
-    }
-    emit(f);
-  }
+    emit((ssmap2((/:)))(f,n))
+  };
   
   // sum powers 
-  power = smap(afold(ssmap2(+.)), psds);
+  power = smap(afold(ssmap2((+.))), psds);
 
   // sort
   sorted = smap(sortseg, power);
@@ -423,6 +470,9 @@ fun FarFieldDOA(synced)
     Ngrd = 360;
     NSrc = 5;
     Ndat = sorted.width;
+    MaxIter = 5;
+    
+    if (NSrc == 1) then { MaxIter := 1; };
 
     // gridmap maps polar grid entry to radians
     gridmap = makeArray(Ngrd, 0);
@@ -430,22 +480,24 @@ fun FarFieldDOA(synced)
       gridmap[i] := (i * 360.0 /. Ngrd) * PI / 180.0; 
     };
 
+    Jmet = matrix(NSrc,Ngrd,0.0);
+
     // T is the maximum direction grid value
     T = onesf(NSrc);
+    Tbefore = zeroesf(NSrc);
 
     // phase delays for each source
-    delay = makeArray(S_COUNT, makeArray(NSrc, 0.0));
+    delay = matrix(S_COUNT, NSrc, 0.0);
 
     // steering matrix
-    D = makeArray(NSrc, makeArray(N_SENSORS, 0.0));
-
+    D = matrix(NSrc, N_SENSORS, 0.0);
+    
     fun doDelay(P, grid) {
-      - sensors[P][R] * 
-	cos(gridmap[grid] - sensors[P][THETA]);
+      - r[P] * cos(gridmap[grid] - theta[P])
     };
 
     // 5 iterations
-    for iter = 1 to 5 {
+    for iter = 1 to MaxIter {
       for Q = 1 to NSrc {
 	
 	J = makeArray(Ngrd, 0.0);
@@ -454,7 +506,7 @@ fun FarFieldDOA(synced)
 	for L = 1 to NSrc {
 	  if L != Q then {
 	    for P = 1 to S_COUNT-1 {
-	      delay[P][L] := doDelay(P, T[L]);
+	      mset(delay,P,L,doDelay(P, T[L]));
 	    }
 	  }
 	};
@@ -463,7 +515,7 @@ fun FarFieldDOA(synced)
 	  
 	  // compute delay for this direction
 	  for P = 1 to S_COUNT-1 {
-	    delay[P][Q] := doDelay(P,I);
+	    mset(delay,P,Q,doDelay(P,I));
 	  };
 
 	  // Sum over highest power frequecies
@@ -472,35 +524,42 @@ fun FarFieldDOA(synced)
 	    // calculate the steering matrix
 	    for L = 0 to NSrc-1 {
 	      if (iter > 1 || L <= Q) then {
-		D[0][L] := 1.0;
+		mset(D,0,L,1.0);
 		for P = 1 to S_COUNT-1 {
-		  D[P][L] = expc(-ComplexI *: 2 *: PI *:
-				 sel[[K]][1] *: delay[P][L] /: Ndat);
+		  /*		  mset(D,P,L, expc(-ComplexI *: 2 *: PI *:
+		    sel[[K]][1] *: mget(delay,P,L) /: Ndat));  */
 		}
 	      }
-	    }
+	    };
 
-	    // 
-	    X = makeArray(S_COUNT, 0:);
-	    for P = 0 to S_COUNT-1 { 
-	      X[P] = f[P][[sel[[K]][1]]];
-	    }
+	    // get col vector from matrix, except its an array of sigseg :(
+	    X = (amap_nd(fun(elt){tmp = sel[[K]]; elt[[tmp[1]]]}), f);
+
 	    Post = MMult(D, MInv(D));
-	    J[I] = J[I] + real(MMult(MTrans(X), MMult(P, X)));
+	    J[I] := J[I] + real(MMult(MTrans(X), MMult(P, X)));
 	  }
 	};
 
-	[maxJ,T(Q)] = max(J);
-        Trad(Q) = (T(Q)-1)*2*pi/Ngrd; % convert angle to radian
-        Jmet(Q,:) = J/maxJ;
- 
+	let (maxJ, maxJind) = Vmax(J);
+	T[Q] := maxJind;
+        MRowEval(Jmet,Q,(fun(i)(J[i] /. maxJ)));
       };
 
       // stopping condition, break out of loop?
-      // ???
+      max_change = (afold(max), array_iterate_index(T, (fun(val,i){abs(Tbefore[i] -. gridmap[val])})));
+      //or, in matlab... max(abs(Tbefore-Trad)) 
+      
+      if (max_change < 0.001) then {
+        break;
+      };
+
+      for i = 0 to Tbefore.length - 1 {
+	Tbefore[i] := gridmap[T[i]] 
+      }
     }
-  }
-  
+  };
+
+  doa  
 }
 
 //========================================
