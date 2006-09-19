@@ -2,7 +2,7 @@
 DEBUG = false
 DEBUGSYNC = DEBUG 
 
-include "stdlib.ws"
+  include "stdlib.ws";
 
 
 //======================================================================
@@ -400,8 +400,9 @@ fun FarFieldDOA(synced)
 	      if (iter > 1 || L <= Q) then {
 		mset(D,0,L,1.0);
 		for P = 1 to Nsens-1 {
+		  tmp = sel[[K]];
 		  mset(D,P,L, expc(-ComplexI *: 2 *: M_PI *:
-				   sel[[K]][1] *: mget(delay,P,L) /: Ndat));
+				   tmp[1] *: mget(delay,P,L) /: Ndat));
 		}
 	      }
 	    };
