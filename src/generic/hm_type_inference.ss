@@ -14,8 +14,9 @@
 ;; See the primitive type definitions in prim_defs.ss
 
 ;; Primary ENTRY POINTS are:
-;;  type-expression
+;;  type-expression (obsolete)
 ;;  annotate-expression
+;;  annotate-program
 
 
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
@@ -622,7 +623,7 @@
 (define (strip-types p)
   (match p ;; match-expr    
     [(lambda ,v* ,optionaltypes ... ,[bod]) `(lambda ,v* ,bod)]
-    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let letrec lazy-letrec)))     
+    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let let* letrec lazy-letrec)))     
      `(,let ([,id* ,rhs*] ...) ,bod)]
 
     [,c (guard (constant? c)) c]
@@ -960,3 +961,27 @@ magnitude : foo -> bar
 (define test-inferencer test-this)
 
 ) ; End module. 
+
+
+
+(define bug 
+  '(letrec ([matrix (lambda (rows cols init)
+                   (letrec ([arr (app makeArray rows nullarr)])
+                     (begin
+                       (for (i 0 (- rows 1))
+                            (arr-set! arr i (app makeArray cols init)))
+                       arr)))]
+         [m_get (lambda (mat row col)
+                  (letrec ([r (arr-get mat row)]) (arr-get r col)))]
+         [m_set (lambda (mat row col val)
+                  (letrec ([r (arr-get mat row)])
+                    (begin (arr-set! r col val) (tuple))))]
+         [m_mult (lambda (m1 m2)
+                   (letrec ([m3 (app matrix
+                                     (app length m1)
+                                     (app length (arr-get m2 0))
+                                     (app m_get m1 0 0))])
+                     m3))])
+  (app matrix 3 4 5.0))
+
+  )

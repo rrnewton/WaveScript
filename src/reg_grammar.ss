@@ -225,8 +225,9 @@
     (decls ;; Top level variable binding
            [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
+           [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
 	   
-	   ;; 
+	   ;; b
 	   [(include exp SEMI maybedecls) 
 	    `((include ,$2) ,@$4)]
 
@@ -543,12 +544,13 @@
         (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
       (unless (subset? typevs defvs)
         (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      `(letrec ,(map (lambda (def)
-                       (match def
-                         [(,v ,e) (if (memq v typevs)
-                                             `[,v ,(cadr (assq v types)) ,e]
-                                             `[,v ,e])]))
-                     defs)
+      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
+      `(let* ,(map (lambda (def)
+		     (match def
+		       [(,v ,e) (if (memq v typevs)
+				    `[,v ,(cadr (assq v types)) ,e]
+				    `[,v ,e])]))
+		defs)
          ,(cadar routes))))))
   
 

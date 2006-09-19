@@ -117,6 +117,15 @@
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
+
+	  ;; [2006.09.19] Desugar let* at this point:
+	  [(let* ,binds ,expr)
+	   (process-expr 
+	    (match  binds
+	      [() expr]
+	      [(,bind . ,[rest])
+	       `(letrec (,bind) ,rest)])
+	    env  type-env)]
           
 	  [(letrec ([,lhs* ,optional ... ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env))

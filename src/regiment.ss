@@ -374,8 +374,12 @@
 			  [() (console-input-port)]
 			  [(,fn) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
-	   
-	   (browse-stream (wsint port)))]
+	   (let loop ([return (wsint port)])
+	     (if (procedure? return) (loop (force return))
+		 (if (stream? return)
+		     (browse-stream return)
+		     (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))
+	   )]
 
 	  [(wscomp)
 	   (let ()
