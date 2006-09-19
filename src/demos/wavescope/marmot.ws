@@ -315,7 +315,7 @@ fun FarFieldDOA(synced)
     r[i] := sqrtf(sqrf(mget(sensors,i,0) -. mget(sensors,0,0)) +.
 		  sqrf(mget(sensors,i,0) -. mget(sensors,0,1)) +.
 		  sqrf(mget(sensors,i,2) -. mget(sensors,0,2)));
-    //theta[i] := atan2(mget(sensors,i,1) -. mget(sensors,0,1), mget(sensors,i,0) -. mget(sensors,0,0));
+    theta[i] := atan2(mget(sensors,i,1) -. mget(sensors,0,1), mget(sensors,i,0) -. mget(sensors,0,0));
   };
 
   // fft the sync'd 
