@@ -516,6 +516,8 @@
               (map (lambda (form)
 		   (match form
 		     [(include ,file)
+		      (unless (file-exists? file)
+			(error "Include file not found: ~s\n" file))
 		      (match (ws-parse-file file)
 			[(letrec ,binds ,ignored)
 			 `((define . ,binds) ...)])]
