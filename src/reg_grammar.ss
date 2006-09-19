@@ -1,5 +1,11 @@
 ;; An interactive calculator inspired by the calculator example in the bison manual.
 
+;; TODO:
+
+;; *) Handle complex constants.
+;; *) Handle arr[3][4]
+
+
 (module reg_grammar mzscheme  
   
 ;; Import the parser and lexer generators.
@@ -505,44 +511,54 @@
             x)))
 
 (define (ws-postprocess ws)
+  ;; First we expand includes:
+  (let ([ws (apply append 
+              (map (lambda (form)
+		   (match form
+		     [(include ,file)
+		      (match (ws-parse-file file)
+			[(letrec ,binds ,ignored)
+			 `((define . ,binds) ...)])]
+		     [,other (list other)]))
+	      ws))])
   (define (f1 x) (eq? (car x) ':))
   (define (f2 x) (eq? (car x) 'define))
   (define (f3 x) (eq? (car x) '<-))
   (let ([types (map cdr (filter f1 ws))]
         [defs (map cdr (filter f2 ws))]
         [routes (map cdr (filter f3 ws))])
-
     (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)))) ws))
     (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
-
     (let ([typevs (map car types)]
           [defvs (map car defs)])
       ;(pretty-print ws)
       (unless (= 1 (length routes))
-        (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes))
+        (if (zero? (length routes))
+	    (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- ()\"")
+		   (set! routes `((BASE (tuple)))))
+	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
       (unless (eq? 'BASE (caar routes))
         (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
       (unless (subset? typevs defvs)
         (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      
       `(letrec ,(map (lambda (def)
                        (match def
                          [(,v ,e) (if (memq v typevs)
                                              `[,v ,(cadr (assq v types)) ,e]
                                              `[,v ,e])]))
                      defs)
-         ,(cadar routes)))))
+         ,(cadar routes))))))
   
 
-(define (reg-parse-file-raw f) 
+(define (ws-parse-file-raw f) 
   (let ([p (open-input-file f)])    
     (let ([res (ws-parse-port p)])
       (close-input-port p)
       res)))
 
 ;; This parses the file and does post-processing:
-(define (reg-parse-file fn)
-  (define raw (reg-parse-file-raw fn))
+(define (ws-parse-file fn)
+  (define raw (ws-parse-file-raw fn))
   (ws-postprocess raw) 
   )
 
@@ -625,7 +641,7 @@
                                  (position-offset (position-token-end-pos tok))))
       (cons tok 
             (if (eq? (position-token-token tok) 'EOF)  '()
-                (loop (reg-lex port)))))))
+                (loop (reg-lex port)))))) )
 (printf "THELIST: ~s\n" ;(map token-name 
         (map position-token-token thelist))
 

@@ -31,5 +31,3 @@ exec regiment i --script "$0" ${1+"$@"};
     "demo9_marmot.ws"
     ))
 
-
-
