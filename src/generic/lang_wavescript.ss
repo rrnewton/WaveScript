@@ -11,6 +11,55 @@
 
 ;; Testing file IO on marmot audio traces:
 
+
+;; [2006.09.22] This is a chunk of code I pulled off the web.
+(define matpak (lambda (zero zer? one fa fs fm fi) (letrec (
+   (tf (lambda (x zp) (if (null? x) (zp (list one))
+     (if (zer? (caar x)) (let ((z (tf (cdr x) zp)))
+     (cons (car z) (cons (car x) (cdr z)))) x))))
+   (tr (trnxx zero zer?))
+   (sm (lambda (s a)(map (lambda (w) (fm s w)) a)))
+   (fms (lambda (a s b) (if (null? a) (sm (fs zero s) b) (if (null? b) a
+     (cons (fs (car a) (fm s (car b))) (fms (cdr a) s (cdr b)))))))
+   (deter (lambda (a) (letrec ((p #f)
+     (tf (lambda (x) (if (null? x) (list one)
+     (if (zer? (caar x)) (let ((z (tf (cdr x) zp)))
+     (set! p (not p))
+     (cons (car z) (cons (car x) (cdr z)))) x)))))
+     (let inx ((d one)(a a))
+          (if (null? a) (if p (fs zero d) d) (let* (
+            (A (tf a))
+            (i (fi (caar A)))
+            (b (map (lambda (z) (fm z i)) (cdar A))))
+         (inx (fm (caar A) d) (map (lambda (x w) (fms x w b))
+          (map cdr (cdr A)) (map car (cdr A))))))))))
+   (inv (lambda (a nxp) (let ol ((ut (let inx (
+      (a (let pad ((x a)(e (list one)))
+         (if (null? x) '() (cons (let ap ((z (car x))(ln a))
+           (if (null? ln) e (if (null? z) (cons zero (ap z (cdr ln)))
+             (cons (car z)(ap (cdr z)(cdr ln))))))
+          (pad (cdr x) (cons zero e))))))
+      (np nxp))
+          (if (null? a) '() (let* (
+            (A (tf a np))
+            (i (fi (caar A)))
+            (b (map (lambda (z) (fm z i)) (cdar A))))
+         (cons b (inx (map (lambda (x w) (fms x w b))
+          (map cdr (cdr A)) (map car (cdr A)))
+          (lambda (w) (np (cons (fs zero (ip w b)) w))))))))))
+      (if (null? ut) '() (cons
+        (let eg ((top (car ut))(bod (cdr ut))) (if (null? bod) top
+          (eg (fms (cdr top) (car top) (car bod))(cdr bod))))
+      (ol (cdr ut)))))))
+   (ip (lambda (x y)(if (or (null? x) (null? y)) zero (fa (fm (car x)(car y))
+        (ip (cdr x)(cdr y))))))
+   (mp (lambda (a b)(let ((b (tr b)))
+       (map (lambda(x) (map (lambda (y) (ip x y)) b)) a)))))
+  (list mp inv ip tr deter))))
+
+
+
+
 ;; This just checks some hard coded locations for the marmot file.
 (define (marmotfile)
     (cond

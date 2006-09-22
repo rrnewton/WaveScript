@@ -12,7 +12,8 @@ PLT_MAIN_FILE = main_plt.ss
 MZC = mzc
 MZSCHEME = mzscheme
 
-CHEZ = chez
+CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
+
 #CHEZ = petite
 #CHEZ = fullpetite
 
@@ -40,10 +41,10 @@ MT=`echo '(display (machine-type))' | ../depends/petite -q`
 #*   Compiling.                                                        */
 #*---------------------------------------------------------------------*/
 
-# Two back-ends, PLT or Chez.
-
 c: 
 	(cd C; $(MAKE))
+
+# Two scheme back-ends, PLT or Chez.
 
 #----------------------------------------
 plt: pltbc
@@ -66,7 +67,7 @@ wsparse:
 # This compiles the source into loadable object files
 chez: chez_native
 chez_native:
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | chez
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | $(CHEZ)
 
 # Saved heap images start up very fast, but don't work right on all platforms.
 # (doesn't work right on Mac OS or fedora core)
@@ -80,13 +81,14 @@ heap:
 
 # A fullheap includes the Chez compiler as well as the petite heap.
 fullheap:
-	@if [ `which chez` ]; \
-	then echo "chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
-	     chez -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
+	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
+#	@if [ `which chez` ]; \
+#	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
+#	     $(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./; \
 #	     $(RM) -f build/regiment.0.heap; \
 #	     ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap; \
-	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
-	fi
+#	else echo "Cannot build fullheap without full Chez Scheme (put 'chez' in path)"; \
+#	fi
 
 ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 

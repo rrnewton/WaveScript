@@ -5,10 +5,9 @@
 
 Quick Start:
 
-You probably already checked out the code like this.
-  svn co http://macroprogramming.ffh.us/repos/trunk ~/macroprogramming
-
-Now switch to macroprogramming/regiment_alpha/src and run this script.
+After the code is checked out into a directory (let's say
+~/wavescript) simply run this script:
+   cd ~/wavescript/src
   ./install_environment_vars
 
 NOW, if you're lucky (and this only currently works out of the box on
@@ -77,18 +76,42 @@ You will now have three windows open.  The Scheme interaction window
 you press "Print Stats" for example, the output goes here.)
 
 
+<Basic Summary of Folders>
+======================================================================
+
+src/
+  There are only a few files in this directory.  Entry points to the
+  system, configuration code, a Makefile, and this README.
+
+src/generic/
+src/chez/
+src/plt/
+
+src/C/
+
+
+
+
+
+
 <Basic Summary of Files>
 ======================================================================
 This doesn't cover everything.
 
-compiler_chez.ss/compiler_plt.ss:
+main_chez.ss & main_plt.ss:
   Entry point.  Load all the compiler files into Chez/PLT Scheme.
 
-compiler.ss:
+main.ss:
   This defines the compiler as a composition of the individual
   passes.  It contains run-compiler for invoking the system.  (It
   also, in spite of the name, contains a front-end to the simulator.
   Really, it's the "main" file.)
+
+config.ss:
+
+
+regiment.ss & regiment_script.ss:
+  A system for invoking regiment from the command line.
 
 generic/pass??_*:
   These files are the compilers primary transformations.

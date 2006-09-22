@@ -51,15 +51,47 @@ fun m_trans(m) {
 }
 
 
+
+
 // This one is implemented directly in scheme.
-//fun m_invert(m) { ... }
 
-BASE <- iterate (x in audio(0,1000,0)) {
-  m = matrix(3, 4, 5.0);
-
-  emit m;
-  emit m_trans(m);
-  emit m_mult(m,m);
+fun m_invert(m) {
+  det = m_determ(m);
+  rank = mat.length;
+  if det == 0 
+  then matrix(0,0, (m[0])[0])
+  eles matrix(0,0, (m[0])[0])
 }
 
-//BASE <- matrix(3, 4, 5.0);
+
+/* (define (matrix:inverse matrix) */
+/*   (let* ((mat (matrix->lists matrix)) */
+/*   	   (det (determinant mat)) */
+/* 	   (rank (length mat))) */
+/*     (and (not (zero? det)) */
+/* 	 (do ((i rank (+ -1 i)) */
+/* 	      (inv '() (cons */
+/* 			(do ((j rank (+ -1 j)) */
+/* 			     (row '() */
+/* 				  (cons (/ (matrix:cofactor mat j i) det) row))) */
+/* 			    ((<= j 0) row)) */
+/* 			inv))) */
+/* 	     ((<= i 0) */
+/* 	      (coerce-like-arg inv matrix)))))) */
+
+
+
+BASE <- iterate (x in audio(0,1000,0)) {
+  state { first = True }
+  
+  if first then {
+    m = matrix(3, 4, 5.0);
+    
+    // These are some unit tests.
+    
+    emit m;
+    emit m_trans(m);
+    emit m_mult(m,m);
+
+  } else emit matrix(0, 0, 0.0);
+}

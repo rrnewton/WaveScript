@@ -3,6 +3,9 @@
 //   M_PI
 //   syncN, rewindow, myhanning
 
+// NEED:
+// qsort, Complexl, expc, atan2, MInv...
+
 
 // Constant:
 M_PI = 3.141592653589793;

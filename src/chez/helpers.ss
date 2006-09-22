@@ -6,6 +6,7 @@
 	  ;; For plt compat:
 	  foldl
 	  let/ec call/ec
+	  define-values
 
 	  make-n-list 
 
@@ -185,6 +186,33 @@
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
 
+;; Lifted from schemewiki:
+#;(define-syntax define-values 
+   (syntax-rules () 
+     ((define-values () exp) 
+      (call-with-values (lambda () exp) (lambda () 'unspecified))) 
+     ((define-values (var . vars) exp) 
+      (begin  
+        (define var (call-with-values (lambda () exp) list)) 
+        (define-values vars (apply values (cdr var))) 
+        (define var (car var)))) 
+     ((define-values var exp) 
+      (define var (call-with-values (lambda () exp) list)))))
+;; My version for chez:
+(define-syntax define-values 
+  (lambda (x)
+    (define iota 
+      (case-lambda [(n) (iota 0 n)]
+		   [(i n) (if (= n 0) '() (cons i (iota (+ i 1) (- n 1))))]))
+    (syntax-case x ()  
+     [(define-values (vars ...) exp)
+      (with-syntax ([(nums ...) (datum->syntax-object  
+				 #'define-values 
+				 (iota (length (datum (vars ...)))))])
+	#'(begin  
+	    (define newtempvar (call-with-values (lambda () exp) vector))
+	    (define vars (vector-ref newtempvar nums))
+	    ...))])))
 
 
 ;; [2005.11.14] This is like chez's system command, except it routes

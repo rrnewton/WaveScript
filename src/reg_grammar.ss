@@ -357,6 +357,7 @@
          [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 
+	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(arr-get ,$1 ,$3)]
          [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(vector-get ,$2 ,$5)]
          

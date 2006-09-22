@@ -1,6 +1,10 @@
 #!/bin/sh
 
-TMP=/tmp/wavescript_parsed.tmp
+TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+if [ ! -d /tmp/`whoami` ]; 
+then mkdir /tmp/`whoami`;
+fi
 
 if [ ! `which wsparse` ]
 then echo \"wsparse\" command not found.  Compile it!
