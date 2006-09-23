@@ -359,7 +359,7 @@
 
 	 ;; Array references/assignments:
          [(VAR LeftSqrBrk notlist RightSqrBrk) (prec APP) `(arr-get ,$1 ,$3)]
-         [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(vector-get ,$2 ,$5)]
+         [(LeftParen exp RightParen LeftSqrBrk notlist RightSqrBrk) `(arr-get ,$2 ,$5)]
          
          ;; Expression with user type annotation:
 ;         [(LeftParen exp : type RightParen) $1]

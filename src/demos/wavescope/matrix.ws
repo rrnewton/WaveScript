@@ -3,7 +3,6 @@
 // A library of matrix routines.
 // Author:  Lewis Girod & Ryan Newton 
 
-
 fun matrix(rows, cols, init) {
   arr = makeArray(rows, nullarr);
   for i = 0 to rows-1 {
@@ -12,10 +11,7 @@ fun matrix(rows, cols, init) {
   arr
 }
 
-fun m_get(mat, row, col) {
-  r = mat[row];
-  r[col]
-}
+fun m_get(mat, row, col) (mat[row])[col]
 
 fun m_set(mat, row, col, val) {
   r = mat[row];
@@ -50,25 +46,52 @@ fun m_trans(m) {
   m2
 }
 
+/* (define (matrix:cofactor matrix i j) */
+/*   (define mat (matrix->lists matrix)) */
+/*   (define (butnth n lst) */
+/*     (if (<= n 1) (cdr lst) (cons (car lst) (butnth (+ -1 n) (cdr lst))))) */
+/*   (define (minor matrix i j) */
+/*     (map (lambda (x) (butnth j x)) (butnth i mat))) */
+/*   (coerce-like-arg */
+/*    (* (if (odd? (+ i j)) -1 1) (determinant (minor mat i j))) */
+/*    matrix)) */
 
+/* (define (determinant matrix) */
+/*   (define mat (matrix->lists matrix)) */
+/*   (let ((n (length mat))) */
+/*     (if (eqv? 1 n) (caar mat) */
+/* 	(do ((j n (+ -1 j)) */
+/* 	     (ans 0 (+ ans (* (list-ref (car mat) (+ -1 j)) */
+/* 			      (matrix:cofactor mat 1 j))))) */
+/* 	    ((<= j 0) ans))))) */
 
+/* fun m_determ(m) { */
+/*   333 */
+/* } */
+/* fun m_invert(m) { */
+/*   det = m_determ(m); */
+/*   rank = m.length; */
+/*   if det == 0 */
+/*   then matrix(0,0, (m[0])[0]) // Should return an option type. */
+/*   else  */
+/*     wserror("sigh") */
+/*       /\* */
+/*   out = matrix(...); */
+/*   for i = rank downto 0 {  */
+/*     for j = rank downto 0 {  */
+/*       (out[])[] := cofactor(m, j, i); */
+/*     } */
+/*   } */
+/*       *\/ */
+/* } */
 
-// This one is implemented directly in scheme.
-
-fun m_invert(m) {
-  det = m_determ(m);
-  rank = mat.length;
-  if det == 0 
-  then matrix(0,0, (m[0])[0])
-  eles matrix(0,0, (m[0])[0])
-}
-
-
+/* // I should do inverse directly in scheme. */
 /* (define (matrix:inverse matrix) */
 /*   (let* ((mat (matrix->lists matrix)) */
 /*   	   (det (determinant mat)) */
 /* 	   (rank (length mat))) */
 /*     (and (not (zero? det)) */
+
 /* 	 (do ((i rank (+ -1 i)) */
 /* 	      (inv '() (cons */
 /* 			(do ((j rank (+ -1 j)) */
@@ -82,7 +105,7 @@ fun m_invert(m) {
 
 
 BASE <- iterate (x in audio(0,1000,0)) {
-  state { first = True }
+  state { first = true }
   
   if first then {
     m = matrix(3, 4, 5.0);
@@ -93,5 +116,10 @@ BASE <- iterate (x in audio(0,1000,0)) {
     emit m_trans(m);
     emit m_mult(m,m);
 
+    m2 = matrix(5, 5, 3.0);
+
+    
+
+    first := false;
   } else emit matrix(0, 0, 0.0);
 }
