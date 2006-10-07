@@ -14,6 +14,7 @@ exec regiment i --script "$0" ${1+"$@"};
   (printf "\nDemo: ~a \n"  fn)
   (printf "======================================================================\n")
   (printf "\nFirst element: ~s\n" (stream-car (wsint fn)))
+  (printf "Second element: ~s\n" (stream-car (stream-cdr (wsint fn))))
   )
 
 (for-eachi go 

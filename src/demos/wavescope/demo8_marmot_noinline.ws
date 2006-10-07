@@ -25,7 +25,9 @@ rw1 = iterate (w in ch1) {
     else break;
   }};
 
-hn = smap(hanning, rw1);
+// TODO: Insert hanning code here:
+//hn = hanning(rw1);
+hn = rw1;
 
 freq = smap(fft, hn);
 

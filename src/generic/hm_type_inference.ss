@@ -964,6 +964,7 @@ magnitude : foo -> bar
 
 
 
+#;
 (define bug 
   '(letrec ([matrix (lambda (rows cols init)
                    (letrec ([arr (app makeArray rows nullarr)])

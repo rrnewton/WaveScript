@@ -6,26 +6,40 @@
 ;; primitives, hereafter primitive-names will only occur in operator
 ;; context.  This is just a simple, regularizing pass.
 
+; (module pass01_eta-primitives mzscheme
+; 	(require (lib "include.ss")
+;                   "iu-match.ss"
+;                   "prim_defs.ss"
+; 		  (all-except "helpers.ss" test-this these-tests)
+; 		  (all-except "regiment_helpers.ss" test-this these-tests)
+;                   "grammar_checker.ss"
+;                   (all-except "hm_type_inference.ss" test-this these-tests)                  
+;                   )
+
+; 	(provide eta-primitives 
+; 		 ;test-this ;test000
+; 		 )
+
 ;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
 
+;; [2006.10.06] Rewriting to use generic-traversal:
 (define eta-primitives
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'eta-primitives
    `(input)
    ;; This insures (among other things) that any new lambda's we generate have types attached:
    `(output) ;(grammar ,eta_prim_gramar PassInput))
-  (let ()
-    (define process-expr*
-      (lambda (expr* env)
-        (map (lambda (expr) (process-expr expr env)) expr*)))
-    (define process-expr
-      (lambda (expr env)
-        (match expr
-          [,const (guard (constant? const)) const]
-          [(quote ,datum)
-           (guard (not (memq 'quote env)))
-	   `(quote ,datum)]                                       
-          [,var (guard (symbol? var) (regiment-primitive? var))
+   (let ()
+     (define process-expr*
+       (lambda (expr* env)
+	 (map (lambda (expr) (process-expr expr env)) expr*)))
+     (define (process-expr expr env)
+       (core-generic-traverse
+	;; Driver
+	(lambda (x fallthrough) 
+	  (match x
+	    ;; Variable References to primitives are rewritten:
+	    [,var (guard (symbol? var) (regiment-primitive? var))
 		(let* ([possible-formals '(a b c d e f g h i j)]
 		       [args (cadr (get-primitive-entry var))])
 		  (if (regiment-constant? var)
@@ -35,20 +49,6 @@
 			   ; Primitive types:
 			   ,(rdc (rdc (prim->type var)))
 			   (,var ,@formals)))))]
-          [,var (guard (symbol? var))  var]
-          [(if ,[test] ,[conseq] ,[altern])
-           (guard (not (memq 'if env)))
-           `(if ,test ,conseq ,altern)]
-          [(lambda ,formals ,types ,expr)
-           (guard (not (memq 'lambda env)))
-	   `(lambda ,formals ,types
-	      ,(process-expr expr (append formals env)))]
-          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-           (guard (not (memq 'letrec env)))
-	   (let ([env (append lhs* env)])
-	     (let ([rhs* (process-expr* rhs* env)]
-		   [expr (process-expr expr env)])
-	       `(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)))]
 
 	  ;; A bit of sugar.
           ;; This just expands "lists" into a bunch of cons cells.
@@ -68,21 +68,52 @@
 			   [() ''#t]
 			   [(,a . ,[b]) `(if ,a ,b '#f)])
 			 env)]
+
+	  ;; I have mixed feelings about this (makes intermediate programs hard to read)
+	  [(let ([,x ,t ,[y]] ...) ,[body])
+	   `((lambda ,x ,t ,body) ,y ...)
+	   ]
+
+	  ;; Yucky, internal:
 	  ;; Even more sugar.  This is convenient for doubletons:
 	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
 	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
-
-
-          [(,prim ,[rand*] ...)
-           (guard (not (memq prim env)) (regiment-primitive? prim))
-           `(,prim ,rand* ...)]
-
-	  ;; Adding normal applications because the static elaborator will get rid of them.
-	  [(app ,[rator] ,[rand*] ...) `(app ,rator ,rand* ...)]
-          [,unmatched (error 'eta-primitives "invalid syntax ~s" unmatched)])))
+	  
+	  [,other (fallthrough other)]))
+	;; Fuser
+	(lambda (ls k) (apply k ls))
+	;; Expression:
+	expr))
+     ;; Main pass body:
     (lambda (expr)
       (match expr
 	     [(,input-language (quote (program ,body ,type)))
 	      (let ([body (process-expr body '())])
 		`(,input-language '(program ,body ,type)))])))))
+
+
+(define test-this 
+  (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
+    `(
+      ["Simple test of eta-primitives"
+       (eta-primitives '(base-language
+			 '(program
+			      (rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
+			    (Signal Integer))))
+       (base-language
+	'(program
+	     (rfold
+	      (lambda (a b) (Integer Integer) (+ a b))
+	      0
+	      (rmap
+	       (lambda (a) (Node) (nodeid a))
+	       (khood (anchor-at 50 10) 2)))
+	   (Signal Integer)))]
+
+      )))
+
+(define test01 test-this)
+;)
+
+
 

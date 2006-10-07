@@ -210,16 +210,18 @@
   (define desugared (desugar-pattern-matching prog))
 
   (define typed (verify-regiment desugared))  
+
   (define __ (printf "Program verified. (Also dumped to \".__parsed.txt\".)"))
 
   ;(define ___ (inspect typed))
-
-  (define stream (delay (wavescript-language desugared)))
   
   ;; TEMP
   ;;(printf "doing eta-prims: \n")
   ;;(set! typed (eta-primitives typed))
   ;;(pretty-print typed)
+  ;; other desugaring...
+
+  (define stream (delay (wavescript-language desugared)))
 
   (printf "\nTypecheck complete, program types: (also dumped to \".__types.txt\")\n\n")
   (print-var-types typed)(flush-output-port)

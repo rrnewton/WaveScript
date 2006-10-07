@@ -120,7 +120,6 @@
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion:
-		 ;hanning 
 		 )
 
   ;; [2006.09.22] Ripped from slib:
@@ -402,9 +401,6 @@
 		    (sigseg-end ss)
 		    (dft (sigseg-vec ss))
 		    (sigseg-timebase ss)))
-
-     ;; TODO: fix this:
-     (define (hanning w) w)
 
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      (define (unionList ls)

@@ -93,6 +93,7 @@
 		  ,types 
 		  ,expr)))]
 
+
           [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
            (guard (not (assq 'letrec env)))
            (let ([new-lhs* (map unique-name lhs*)])

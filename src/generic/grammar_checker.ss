@@ -308,7 +308,7 @@
 	   (++ "could not parse expr ~s with production/pattern ~s\n  "
 	       "Context stored in 'grammar-context', look at the location of FAIL, original expression in 'grammar-original'")
 	   x p)
-    (new-cafe)
+    (IFCHEZ (new-cafe) (void))
     (error 'check-grammar "")
     )
   

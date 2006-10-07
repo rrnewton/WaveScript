@@ -67,7 +67,7 @@
 	(driver e 
           (lambda (expression)       
           (match expression
-	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
+;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
 	  [,num (guard (number? num)) (error 'core-generic-traverse "unquoted literal: ~s" num)]
@@ -87,7 +87,7 @@
 	  [(letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
 	   ;; By convention, you get the body first:
 	   (fuse (cons bod rhs*)
-		 (lambda (x . y*) `(let ([,lhs* ,typ* ,y*] ...) ,x)))]
+		 (lambda (x . y*) `(letrec ([,lhs* ,typ* ,y*] ...) ,x)))]
 
 	  ;; Letrec's are big and hairy enough that we try to give slightly better error messages.
 	  [(letrec ([,lhs* ,rhs*] ...) ,bod)
@@ -118,7 +118,7 @@
 	  ; WAVESCRIPT
 	  ; ========================================
 	  ; Because of WaveScript we have effects and other stuff:
-	  ; At least we have effects in the object language.
+	  ; (Well, at least we have effects in the object language.)
 	  ; Should enforce a barrier.  (For the time being, syntactic.)
 
 	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
@@ -132,10 +132,21 @@
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
 
+#;
+	  [(,prim ,rands ...)
+	   (guard (or (regiment-primitive? prim)
+		      (basic-primitive? prim)))
+	   ;(error 'WTF "~a ~a" prim rands)
+	   (define-top-level-value 'rands rands)
+	   (define-top-level-value 'loop loop)
+	   (break)
+	   (fuse rands (lambda ls `(,prim ,ls ...)))
+	   ]
+
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)
 		      (basic-primitive? prim)))
-	   (fuse rands (lambda ls `(,prim ,ls ...)))]
+	   (fuse rands (lambda ls `(,prim . ,ls)))]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)
@@ -191,6 +202,15 @@
       (lambda (ls k) (apply k ls))
       '(+ '3 '4))
      (+ '3 '4)]
+    
+    [(core-generic-traverse/types 
+      (lambda (x tenv loop) (loop x tenv))
+      (lambda (ls k) (apply k ls))          
+      '(rfold + 0
+	      (letrec ([myhood Region (khood (anchor-at 50 10) 2)])
+		(rmap nodeid myhood))))
+     (rfold + 0 (let ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
+
 
     [(core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
