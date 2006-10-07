@@ -35,8 +35,7 @@
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'rename-var
    `(input)
-   ;; This insures (among other things) that any new lambda's we generate have types attached:
-   `(output) ;(grammar ,eta_prim_gramar PassInput))
+   `(output)
    (let ()
      (define (process-expr expr var-table)
        (define (driver x fallthrough)

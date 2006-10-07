@@ -29,29 +29,28 @@
 ;;; that the input does not contain them either.
 
 (define remove-unquoted-constant
-  (let ()
-    (define process-expr
-      (lambda (expr)
-        (match expr
-          [,const
-            (guard (constant? const))
-            `(quote ,const)]
-          [(quote ,datum) `(quote ,datum)]
-          [,var (guard (symbol? var)) var]
-          [(if ,[test] ,[conseq] ,[altern]) `(if ,test ,conseq ,altern)]
-          [(lambda ,formals ,types ,[body])  `(lambda ,formals ,types ,body)]
-          [(letrec ([,lhs* ,type* ,[rhs*]] ...) ,[body]) `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)]
-          [(,prim ,[rand*] ...)
-           (guard (regiment-primitive? prim))
-           `(,prim ,rand* ...)]
-	  ;; Adding normal applications because the static elaborator will get rid of them.
-	  [(app ,[rator] ,[rand*] ...) `(app ,rator ,rand* ...)]
-          [,unmatched
-            (error 'remove-unquoted-constant "invalid expression: ~s"
-                   unmatched)])))
-    (lambda (expr)
-      (match expr
-	[(,input-language (quote (program ,body ,type)))
-	 (let ([body (process-expr body)])
-	   `(,input-language '(program  ,body ,type)))]))))
+  (build-compiler-pass ;; This wraps the main function with extra debugging
+   'rename-var
+   `(input)
+   `(output) 
+   (let ()
+     (define process-expr
+       (lambda (expr)
+	 (core-generic-traverse
+	  (lambda (expr fallthrough)
+	    (match expr
+	      [,const (guard (constant? const))
+		      `(quote ,const)]	      
+	      [,other (fallthrough other)]))
+	  (lambda (ls k) (apply k ls)) ;; fuser
+	  expr)))
+     ;; Main pass body:
+     (lambda (expr)
+       (unique-name-counter 0)
+       (match expr
+	 [(,input-language (quote (program ,body ,type)))
+	  (let ([body (process-expr body)])
+	    `(,input-language '(program ,body ,type)))])))))
+
+
 

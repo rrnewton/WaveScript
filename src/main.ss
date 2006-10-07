@@ -209,7 +209,8 @@
 
   (define desugared (desugar-pattern-matching prog))
 
-  (define typed (rename-var (eta-primitives (verify-regiment desugared))))
+  (define typed (remove-unquoted-constant 
+		 (rename-var (eta-primitives (verify-regiment desugared)))))
 
   (define __ (printf "Program verified. (Also dumped to \".__parsed.txt\".)"))
 
