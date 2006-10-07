@@ -60,6 +60,9 @@
      `(letrec ([,var ,x]
 	       ,binds ...)
 	  ,rhs)]    
+
+    ;; This is extremely dangerous... just looping down all constructs...
+    ;; This means for-loops, etc, are just treated as applications.
     [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
     )))))
 

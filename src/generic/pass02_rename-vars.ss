@@ -30,7 +30,47 @@
 ;;; let, and letrec expressions and consulted for variable
 ;;; references and assignments.
 
+;; [2006.10.07] Rewrote to use generic-traverse.
+(define rename-var
+  (build-compiler-pass ;; This wraps the main function with extra debugging
+   'rename-var
+   `(input)
+   ;; This insures (among other things) that any new lambda's we generate have types attached:
+   `(output) ;(grammar ,eta_prim_gramar PassInput))
+   (let ()
+     (define (process-expr expr var-table)
+       (define (driver x fallthrough)
+	 (match x
+	   [,var (guard (symbol? var))
+		 (cond
+		  [(regiment-constant? var) var]
+		  [(assq var var-table) (cdr (assq var var-table))]
+		  [else (error 'rename-var "variable was not bound, how can this happen?: ~a ~a"
+			       var bound)])]
+	   [(lambda (,v* ...) (,t* ...) ,expr)
+	    (guard (not (assq 'lambda var-table)))
+	    (let* ([new-v* (map unique-name v*)]
+		   [new-table (append (map cons v* new-v*) var-table)])					       
+	      (let ([expr (process-expr expr new-table)])
+		`(lambda ,new-v* ,t* ,expr)))]
+          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
+           (guard (not (assq 'letrec var-table)))
+           (let* ([new-lhs* (map unique-name lhs*)]
+		  [var-table (append (map cons lhs* new-lhs*) var-table)])
+	     (let ([rhs* (map (lambda (x) (process-expr x var-table)) rhs*)]
+		   [expr (process-expr expr var-table)])
+	       `(letrec ([,new-lhs* ,type* ,rhs*] ...) ,expr)))]
+	  [,other (fallthrough other)]))
+       (core-generic-traverse driver (lambda (ls k) (apply k ls)) expr))
+     ;; Main pass body:
+     (lambda (expr)
+       (unique-name-counter 0)
+       (match expr
+	 [(,input-language (quote (program ,body ,type)))
+	  (let ([body (process-expr body '())])
+	    `(,input-language '(program ,body ,type)))])))))
 
+#;
 (define rename-var
   (let ()
 
@@ -131,17 +171,27 @@
 ;==============================================================================
 
 (define these-tests
-  (map
-   (lambda (x)
-     (let ((prog (car x)) (res (cadr x)))	
-       `[(rename-var '(some-lang '(program ,prog notype)))
-	 (some-lang '(program ,res notype))]))
-   '(
-     [3 3]    
-     [(letrec ((x notype 1)) x) unspecified]
-     )
-   )
-  )
+  (append (map
+	      (lambda (x)
+		(let ((prog (car x)) (res (cadr x)))
+		  `[(rename-var '(some-lang '(program ,prog notype)))
+		    (some-lang '(program ,res notype))]))
+	    `([3 3]    
+	      [(letrec ((x notype 1)) x) (letrec ([x_1 notype 1]) x_1)]          
+	      ))
+     `(
+       [(rename-var '(some-lang '(program (letrec ((x notype 1)) 
+					    (+ (app (lambda (x) (notype) x) 3) x)) notype)))
+	,(lambda (p)
+	   (match p
+	     [(some-lang 
+	       '(program
+		    (letrec ([,x_1 notype 1])
+		      (+ (app (lambda (,x_2) (notype) ,x_2b) 3) ,x_1b))
+		  notype))
+	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
+	     [,else #f]))]
+       )))
 
 (define test-this
   (default-unit-tester 
