@@ -126,6 +126,10 @@
 	  ;; Always run make-begin, hope this is safe:
 	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
 
+	  [(for (,i ,start ,end) ,body)
+	   (fuse (list start end body)
+		 (lambda (st en bod) `(for (,i ,st ,en) ,bod)))]
+
 	  ; ========================================
 
 	  ;; Applications must be tagged explicitely.

@@ -209,7 +209,7 @@
 
   (define desugared (desugar-pattern-matching prog))
 
-  (define typed (verify-regiment desugared))  
+  (define typed (eta-primitives (verify-regiment desugared)))
 
   (define __ (printf "Program verified. (Also dumped to \".__parsed.txt\".)"))
 
