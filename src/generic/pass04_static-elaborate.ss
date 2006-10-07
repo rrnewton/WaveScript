@@ -11,6 +11,7 @@
 ;;;          | <var>
 ;;;          | (if <Exp> <Exp> <Exp>)
 ;;;          | (lambda <Formalexp> <Exp>)
+;;; TODO + for, begin, set!
 ;;;          | (letrec (<Decl>*) <Exp>)
 ;;;          | (<primitive> <Exp>*)
 ;;; <Formalexp> ::= (<var>*)

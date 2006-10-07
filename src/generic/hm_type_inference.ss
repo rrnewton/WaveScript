@@ -622,7 +622,8 @@
 ;; This would  be a great candidate for a generic traversal:
 (define (strip-types p)
   (match p ;; match-expr    
-    [(lambda ,v* ,optionaltypes ... ,[bod]) `(lambda ,v* ,bod)]
+    [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
+    [(lambda ,v* ,[bod])                `(lambda ,v* ,bod)]
     [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let let* letrec lazy-letrec)))     
      `(,let ([,id* ,rhs*] ...) ,bod)]
 
@@ -632,10 +633,13 @@
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(tuple ,[e*] ...) `(tuple ,e* ...)]
     [(tupref ,n ,[e]) `(tupref ,n ,e)]
+
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
-    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
+    [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
+
+    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]    
     
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
