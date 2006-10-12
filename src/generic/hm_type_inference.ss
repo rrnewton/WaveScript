@@ -217,35 +217,7 @@
 		[,other (error 'recover-type "bad tenv entry: ~s" other)]))
 	  (cdr tenv))))
 
-; ----------------------------------------
-#|
-(define (tenv-lookup tenv sym)
-  (DEBUGASSERT (tenv? tenv))
-  (set! tenv (vector->list tenv))
-  (let ([entry (assq sym tenv)])
-    (if entry (cadr entry) #f)))
-(define (tenv-extend tenv syms vals)
-  (DEBUGASSERT (tenv? tenv))
-  (set! tenv (vector->list tenv))
-  (list->vector (append (map list syms vals) tenv)))
-(define (tenv-map f tenv)
-  (DEBUGASSERT (tenv? tenv))
-  (set! tenv (vector->list tenv))
-  (list->vector 
-   (map 
-      (lambda (x) 
-	(match x 
-	  [(,v ,t) `(,v ,(f t))]
-	  [,other (error 'recover-type "bad tenv entry: ~s" other)]))
-    tenv)))
-(define (empty-tenv) (vector))
-(define (tenv? x)
-  (match x
-    [#([,v* ,t*] ...)
-     (and (andmap symbol? v*)
-	  (andmap type? t*))]
-    [,else #f]))
-|#
+
 ; ----------------------------------------
 
 ;; This associates new mutable cells with all tvars.
@@ -621,7 +593,8 @@
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
 (define (strip-types p)
-  (match p ;; match-expr    
+  (define (process-expression e)
+    (match e
     [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
     [(lambda ,v* ,[bod])                `(lambda ,v* ,bod)]
     [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let let* letrec lazy-letrec)))     
@@ -647,7 +620,12 @@
     
     [,other (error 'strip-types "bad expression: ~a" other)]
     ))
-    
+  (match p 
+    [(,lang '(program ,expr ,_ ...)) 
+     `(,lang '(program ,(process-expression expr) ,_ ...))]
+    [,expr (process-expression expr)]
+    ;[,other (error 'strip-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
+    ))
       
 ; ======================================================================
 

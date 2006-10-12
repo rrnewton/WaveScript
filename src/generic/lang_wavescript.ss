@@ -184,15 +184,6 @@
        (syntax-rules ()
 	 ;; We assume type info has already been stripped.
 	 [(_ x ...) (letrec* x ...)]))
-#;
-     (define-syntax for
-       (syntax-rules ()
-	 [(for (v _start _end) bod ...)
-	  ;; TODO: IMPLEMENT BREAK:
-	  (let ((s _start) (e _end))
-	    (do ([v s (fx+ v 1)])
-		((fx> v e) #());; Retun unit.
-	      (let () bod ...)))]))
 
      (define for-loop-stack '())
      (define-syntax for
@@ -633,7 +624,6 @@
      (import wavescript-language-module)
 
      ;; A safety mechanism:
-
 #;
      ,@(IFDEBUG
        '((let ([rawconstructor make-sigseg])	   

@@ -1,89 +1,25 @@
+;;;; Pass: Merge Iterates
+;;;; .author RRN & MIC
+;;;; 
 
+(module pass_merge-iterates mzscheme
 
+  (require 
+; 	   "../generic/constants.ss"
+;            "../plt/iu-match.ss"
+;            "../plt/hashtab.ss"
+; 	   "../plt/prim_defs.ss"
+;            (all-except "../plt/hm_type_inference.ss" test-this these-tests)
+;            (all-except "../plt/tsort.ss" test-this these-tests)
+;            (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
+;            (all-except "../plt/helpers.ss" test-this these-tests)
+;            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+	   )
+  
+  (provide merge-iterates
+           )
 
-(define testprog
-  '(base-language
-    '(program
-	(letrec ([s1 (Signal (Sigseg Integer)) (app audioFile
-						    "./countup.raw"
-						    10
-						    0)])
-	  (letrec ([s2 (Signal Integer) (iterate
-					 (lambda (sigseg)
-					   ((Sigseg Integer))
-					   (letrec ([___VIRTQUEUE___ (VQueue
-								      Integer) (virtqueue)])
-					     (begin
-					       (emit
-						___VIRTQUEUE___
-						(seg-get
-                                                 sigseg
-                                                 (app start sigseg)))
-					       ___VIRTQUEUE___)))
-					 s1)])
-	    (letrec ([s3 (Signal Integer) (iterate
-					   (lambda (x)
-					     (Integer)
-					     (letrec ([___VIRTQUEUE___ (VQueue
-									Integer) (virtqueue)])
-					       (begin
-						 (emit
-						  ___VIRTQUEUE___
-						  (* x 2))
-						 ___VIRTQUEUE___)))
-					   (iterate
-					    (lambda (x)
-					      (Integer)
-					      (letrec ([___VIRTQUEUE___ (VQueue
-                                                                         Integer) (virtqueue)])
-						(begin
-						  (emit
-                                                   ___VIRTQUEUE___
-                                                   (+ x 1))
-						  ___VIRTQUEUE___)))
-					    s2))])
-	      s3)))
-      (Signal Integer))))
-
-
-(define testresult 
-  (strip-types '(letrec ([s1 (Signal (Sigseg Integer)) (app audioFile
-                                                 "./countup.raw"
-                                                 10
-                                                 0)])
-       (letrec ([s2 (Signal Integer) (iterate
-                                       (lambda (sigseg)
-                                         ((Sigseg Integer))
-                                         (letrec ([___VIRTQUEUE___ (VQueue
-                                                                     Integer) (virtqueue)])
-                                           (begin
-                                             (emit
-                                               ___VIRTQUEUE___
-                                               (seg-get
-                                                 sigseg
-                                                 (app start sigseg)))
-                                             ___VIRTQUEUE___)))
-                                       s1)])
-         (letrec ([s3 (Signal Integer) (iterate
-                                         (lambda (x)
-                                           (Integer)
-                                           (letrec ([___VIRTQUEUE___ (VQueue
-                                                                       Integer) (virtqueue)])
-                                             (letrec ([f_5 (Integer
-                                                             ->
-                                                             Integer) (lambda (x)
-                                                                        (Integer)
-                                                                        (begin
-                                                                          (emit
-                                                                            ___VIRTQUEUE___
-                                                                            (* x
-                                                                               2))
-                                                                          ___VIRTQUEUE___))])
-                                               (begin
-                                                 (app f_5 (+ x 1))
-                                                 ___VIRTQUEUE___))))
-                                         s2)])
-           s3)))))
+  (chezimports )
 
 
 (define merge-iterates
@@ -135,3 +71,45 @@
 
 
 
+#;
+(define testresult 
+  (strip-types '(letrec ([s1 (Signal (Sigseg Integer)) (app audioFile
+                                                 "./countup.raw"
+                                                 10
+                                                 0)])
+       (letrec ([s2 (Signal Integer) (iterate
+                                       (lambda (sigseg)
+                                         ((Sigseg Integer))
+                                         (letrec ([___VIRTQUEUE___ (VQueue
+                                                                     Integer) (virtqueue)])
+                                           (begin
+                                             (emit
+                                               ___VIRTQUEUE___
+                                               (seg-get
+                                                 sigseg
+                                                 (app start sigseg)))
+                                             ___VIRTQUEUE___)))
+                                       s1)])
+         (letrec ([s3 (Signal Integer) (iterate
+                                         (lambda (x)
+                                           (Integer)
+                                           (letrec ([___VIRTQUEUE___ (VQueue
+                                                                       Integer) (virtqueue)])
+                                             (letrec ([f_5 (Integer
+                                                             ->
+                                                             Integer) (lambda (x)
+                                                                        (Integer)
+                                                                        (begin
+                                                                          (emit
+                                                                            ___VIRTQUEUE___
+                                                                            (* x
+                                                                               2))
+                                                                          ___VIRTQUEUE___))])
+                                               (begin
+                                                 (app f_5 (+ x 1))
+                                                 ___VIRTQUEUE___))))
+                                         s2)])
+           s3)))))
+
+
+) ;; End module

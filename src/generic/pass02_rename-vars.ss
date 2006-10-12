@@ -131,7 +131,11 @@
 	       `(lambda ,(cast-formals new-formal* formalexp)
 		  ,types 
 		  ,expr)))]
-
+	  
+	  [(for (,i ,[st] ,[en]) ,body)
+	   (guard (not (assq 'for env)))
+	   
+	   ]
 
           [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
            (guard (not (assq 'letrec env)))
@@ -190,6 +194,10 @@
 		  notype))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
+       [(rename-var '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) notype)))
+	(some-lang
+	 '(program (lambda (f_2 woot_1) (_ _) (for (i 1 (app f woot_1)) 0))
+	    notype))]
        )))
 
 (define test-this
