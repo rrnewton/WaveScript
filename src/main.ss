@@ -39,7 +39,9 @@
     ;; produce the core query language, then we verify that core.
     reduce-primitives    
     remove-complex-constant  
+
     uncover-free             
+
     lift-letrec              
     lift-letrec-body         
     remove-complex-opera*
@@ -189,7 +191,7 @@
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
-(define (wsint x)                                             ;; Entrypoint.     
+(define (wsint x)                                             ;; Entrypoint.
   (define (parse-it f)
     ;; HACK: WON'T WORK IN WINDOWS:
     (unless (zero? (system "which wsparse")) 
@@ -205,14 +207,37 @@
 	    [(list? x)   x]
 	    [else (error 'wsint "bad input: ~s" x)])))
 
-  (define _ (begin (printf "Evaluating program: \n\n") (pretty-print prog)))
+  (define _ (begin (printf "Evaluating program: \n\n") 
+		   (parameterize ([pretty-line-length 180]
+				  [pretty-maximum-lines 1000]
+				  [print-level 20]
+				  [print-length 10])
+		     (pretty-print prog))))
 
   (define desugared (desugar-pattern-matching prog))
 
-  (define typed (remove-unquoted-constant 
-		 (rename-var (eta-primitives (verify-regiment desugared)))))
+#;
+  (define (optional-stop x)
+    (IFDEBUG
+     (begin (parameterize ([pretty-line-length 150]
+			   [print-length 10]
+			   [print-level 20])
+	      (pretty-print x))
+	    (printf "================================================================================\n\n")
+	    (read-line)
+	    x)
+     x))
 
-  (define __ (printf "Program verified. (Also dumped to \".__parsed.txt\".)"))
+  (define (optional-stop x) x)
+
+  (define typed 
+    (optional-stop (id;merge-iterates
+     (optional-stop (id ;remove-unquoted-constant 
+       (optional-stop (eta-primitives 
+      (optional-stop (rename-var 
+	(optional-stop (verify-regiment desugared)))))))))))
+
+  (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
 
   ;(define ___ (inspect typed))
   
@@ -222,9 +247,14 @@
   ;;(pretty-print typed)
   ;; other desugaring...
 
-  (define stream (delay (wavescript-language desugared)))
+  (define stream (delay (wavescript-language 
+			 (match (strip-types typed)
+			   [(,lang '(program ,body ,_ ...)) body]))))
+;  (define stream (wavescript-language desugared))
 
-  (printf "\nTypecheck complete, program types: (also dumped to \".__types.txt\")\n\n")
+;  (inspect typed)
+  
+  (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
   (print-var-types typed)(flush-output-port)
   (with-output-to-file ".__types.txt"
     (lambda () (print-var-types typed)(flush-output-port))

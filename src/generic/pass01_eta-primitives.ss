@@ -78,6 +78,11 @@
 	  ;; Even more sugar.  This is convenient for doubletons:
 	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
 	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
+
+	  ;; Primitives that are applied with "app" have it taken away:
+	  [(app ,prim ,[rands] ...)
+	   (guard (regiment-primitive? prim))
+	   `(,prim ,rands ...)]
 	  
 	  [,other (fallthrough other)]))
 	;; Fuser

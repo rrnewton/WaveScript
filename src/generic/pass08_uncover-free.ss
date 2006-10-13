@@ -94,7 +94,7 @@
    
     (lambda (prog)
       (match prog
-        [(base-language (quote (program ,body ,type)))
+        [(,input-language (quote (program ,body ,type)))
 	 (mvlet ([(body body-free*) (process-expr body)])
 		`(uncover-free-language ;uncover-free-language
 		  '(program ,body ,type)))]))))
@@ -128,6 +128,6 @@
     
     (lambda (prog)
       (match prog
-        [(base-language (quote (program ,body ,type)))
+        [(,input-language (quote (program ,body ,type)))
 	 `(uncover-free-language ;uncover-free-language
 	   '(program ,(process-expr body) ,type))]))))

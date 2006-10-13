@@ -42,17 +42,26 @@
 	 (match x
 	   [,var (guard (symbol? var))
 		 (cond
-		  [(regiment-constant? var) var]
 		  [(assq var var-table) (cdr (assq var var-table))]
+		  [(regiment-primitive? var) var]
 		  [else (error 'rename-var "variable was not bound, how can this happen?: ~a ~a"
-			       var bound)])]
+			       var var-table)])]
 	   [(lambda (,v* ...) (,t* ...) ,expr)
 	    (guard (not (assq 'lambda var-table)))
 	    (let* ([new-v* (map unique-name v*)]
 		   [new-table (append (map cons v* new-v*) var-table)])					       
 	      (let ([expr (process-expr expr new-table)])
 		`(lambda ,new-v* ,t* ,expr)))]
-          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
+	   [(for (,i ,[st] ,[en]) ,body)
+	    (guard (not (assq 'for var-table)))
+	    (let* ([newi (unique-name i)]
+		   [var-table `((,i . ,newi) . ,var-table)])
+	      `(for (,newi ,st ,en) 
+		   ,(process-expr body var-table)))]
+	   ;; The automatic traversal won't do the variable (it's not an expression):
+	   [(set! ,[v] ,[rhs]) `(set! ,v ,rhs)]
+	   
+	   [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
            (guard (not (assq 'letrec var-table)))
            (let* ([new-lhs* (map unique-name lhs*)]
 		  [var-table (append (map cons lhs* new-lhs*) var-table)])
@@ -67,109 +76,8 @@
        (match expr
 	 [(,input-language (quote (program ,body ,type)))
 	  (let ([body (process-expr body '())])
-	    `(,input-language '(program ,body ,type)))])))))
+	    `(rename-var-language '(program ,body ,type)))])))))
 
-#;
-(define rename-var
-  (let ()
-
-    (define process-var
-      (lambda (var bound)
-	(cond
-	 [(regiment-constant? var) var]
-	 [(assq var bound) (cdr (assq var bound))]
-	 [else (begin
-		 (error 'rename-var/process-var
-			"variable was not bound, how can this happen?: ~a ~a"
-			var bound)
-		 var)])))
-
-    ;; This recurs over complex constants:
-#;    (define mangle-datum
-      (lambda (datum)
-        (cond
-          [(symbol? datum) datum] ;(mangle-name datum)]
-          [(pair? datum)
-           (cons (mangle-datum (car datum))
-                 (mangle-datum (cdr datum)))]
-          [(vector? datum)
-           (let ([v (make-vector (vector-length datum))])
-             (do ([i 0 (add1 i)])
-                 ([= i (vector-length datum)])
-                 (vector-set! v i (mangle-datum (vector-ref datum i))))
-             v)]
-          ;; Other datums (numbers null etc) get left alone:
-          [else datum])))
-
-    (define process-expr*
-      (lambda (expr* env)
-        (map (lambda (expr) (process-expr expr env)) expr*)))
-
-    (define process-expr
-      (lambda (expr env)
-        (match expr
-          [,const (guard (constant? const)) const]
-          [(quote ,datum)
-           (guard (not (assq 'quote env)))
-	   `(quote ,datum)]
-					;           `(quote ,(mangle-datum datum))]
-                                       
-          [,var (guard (symbol? var))
-            (process-var var env)]
-          
-          [(if ,[test] ,[conseq] ,[altern])
-           (guard (not (assq 'if env)))
-           `(if ,test ,conseq ,altern)]
-
-          [(lambda ,formalexp ,types ,expr)
-           (guard (not (assq 'lambda env)))
-	   (let* ([formal* formalexp] ;(get-formals formalexp)]
-		  [new-formal* (map unique-name formal*)]
-		  [env (append (map cons formal* new-formal*) env)])
-;	     (inspect env)
-	     (let ([expr (process-expr expr env)])
-	       `(lambda ,(cast-formals new-formal* formalexp)
-		  ,types 
-		  ,expr)))]
-	  
-	  [(for (,i ,[st] ,[en]) ,body)
-	   (guard (not (assq 'for env)))
-	   
-	   ]
-
-          [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr ,expr* ...)
-           (guard (not (assq 'letrec env)))
-           (let ([new-lhs* (map unique-name lhs*)])
-             (let ([env (append (map cons lhs* new-lhs*) env)])
-               (let ([rhs* (process-expr* rhs* env)]
-                     [expr (process-expr expr env)]
-                     [expr* (process-expr* expr* env)])
-                 `(letrec ([,new-lhs* ,type* 
-				      ,rhs*] ...) ,expr ,expr* ...))))]
-          
-          [(,prim ,[rand*] ...)
-           (guard (not (assq prim env)) (regiment-primitive? prim))
-           `(,prim ,rand* ...)]          
-
-	  ;; Adding normal applications because the static elaborator will get rid of them.
-	  [(app ,[rator] ,[rand*] ...) `(app ,rator ,rand* ...)]
-
-          [,unmatched (error 'rename-var "invalid syntax ~s" unmatched)])))
-
-    (lambda (expr . optional)
-      (let ((run (lambda (expr)
-		   (match expr
-			  [(,input-language (quote (program ,body ,type)))
-			   (let ([body (process-expr body '())])
-			     `(,input-language '(program ,body ,type)))]))))
-	(match optional
-	       [(count ,n) 
-		(unique-name-counter n)
-		(let ((res (run expr)))
-		  (unique-name-counter n)
-		  res)]
-	       [,else (run expr)])))
-    ))
 	
 ;==============================================================================
 
@@ -178,7 +86,7 @@
 	      (lambda (x)
 		(let ((prog (car x)) (res (cadr x)))
 		  `[(rename-var '(some-lang '(program ,prog notype)))
-		    (some-lang '(program ,res notype))]))
+		    (rename-var-language '(program ,res notype))]))
 	    `([3 3]    
 	      [(letrec ((x notype 1)) x) (letrec ([x_1 notype 1]) x_1)]          
 	      ))
@@ -187,17 +95,26 @@
 					    (+ (app (lambda (x) (notype) x) 3) x)) notype)))
 	,(lambda (p)
 	   (match p
-	     [(some-lang 
+	     [(rename-var-language
 	       '(program
 		    (letrec ([,x_1 notype 1])
 		      (+ (app (lambda (,x_2) (notype) ,x_2b) 3) ,x_1b))
 		  notype))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
-       [(rename-var '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) notype)))
-	(some-lang
-	 '(program (lambda (f_2 woot_1) (_ _) (for (i 1 (app f woot_1)) 0))
-	    notype))]
+       
+       ;; Might not be portable, assumes particular numbering:
+       ["check on for loops"
+	(rename-var '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) notype)))
+	(rename-var-language '(program (lambda (f_2 woot_1) (_ _) (for (i_3 1 (app f_2 woot_1)) 0)) notype))]
+       ["check on set!" 
+	(rename-var '(some-lang '(program (letrec ([v Integer 3]) 
+					    (set! v 39)) notype)))
+	(rename-var-language
+	 '(program (letrec ([v_1 Integer 3]) (set! v_1 39)) notype))]
+       
+
+       
        )))
 
 (define test-this

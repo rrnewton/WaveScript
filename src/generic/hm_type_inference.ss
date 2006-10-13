@@ -18,6 +18,8 @@
 ;;  annotate-expression
 ;;  annotate-program
 
+;;  validate-types [2006.10.12] TODO: check the existing types, should be less expensive
+
 
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
 ;; type aliases.  This will remove most of the need for types-compat?
@@ -473,7 +475,17 @@
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       ;; Allowing annotations, but ignoring them.
       [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
-       (annotate-letrec id* rhs* bod tenv nongeneric)]
+       (annotate-letrec id* 
+			(map (lambda (existing-type)
+			       (case (length existing-type)
+				 [(0) #f]
+				 [(1) (car existing-type)]
+				 ;; We assume the first one is a type, and the rest are extra metadata:
+				 [else 
+				  (ASSERT (type? (car existing-type)))
+				  (car existing-type)])
+			       ) optional)
+			rhs* bod tenv nongeneric)]
 ;       [(,letrec ([,id* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
 ;        (annotate-letrec id* rhs* bod tenv nongeneric)]
 ;       [(,letrec ([,id* ,type* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
@@ -499,7 +511,7 @@
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,rand* ...))]
 
-      [,other (error 'annotate-program "could not type, unrecognized expression: ~s" other)]
+      [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       )))
 
 
@@ -542,7 +554,7 @@
                [else
                 (cons (f (car ls1) (car ls2)) 
                       (loop (cdr ls1) (cdr ls2) acc))])))])
-    (lambda (id* rhs* bod tenv nongeneric) 
+    (lambda (id* existing-types rhs* bod tenv nongeneric) 
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
              [tenv (tenv-extend tenv id* rhs-types #t)])
@@ -571,20 +583,23 @@
        [(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
        [(tuple ,[e*] ...) `(tuple ,e* ...)]
        [(tupref ,n ,[e]) `(tupref ,n ,e)]
+
        [(set! ,v ,[e]) `(set! ,v ,e)]
        [(begin ,[e] ...) `(begin ,e ...)]
        [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+
        [(let ([,id* ,t* ,[rhs*]] ...) ,[bod])
 	`(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
        [(letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
 	`(letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
        [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
 
-      [(,prim ,[rand*] ...)
-       (guard (regiment-primitive? prim))
-       `(,prim ,rand* ...)]
+       [(,prim ,[rand*] ...)
+	(guard (regiment-primitive? prim))
+	`(,prim ,rand* ...)]
 
-       ;; We cheat for nums, vars, prims:
+       ;; HACK HACK HACK: Fix this:
+       ;; We cheat for nums, vars, prims: 
        [,other other]; don't need to do anything here...
 ;       [,other (error 'annotate-program "bad expression: ~a" other)]
        )
@@ -924,17 +939,23 @@ magnitude : foo -> bar
    unspecified]
 
 
-    [(mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
-     ,(lambda (x)
-	(match x
-	  [(letrec ([f (,v1 -> ,v2) (lambda (x) (,v3) x)]) 3)
-	   (guard (equal? v1 v2) (equal? v2 v3)) #t]
-	  [,else #f]))]
+  [(mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
+   ,(lambda (x)
+      (match x
+	[(letrec ([f (,v1 -> ,v2) (lambda (x) (,v3) x)]) 3)
+	 (guard (equal? v1 v2) (equal? v2 v3)) #t]
+	[,else #f]))]
 
-    ;; This one doesn't actually verify shared structure:
-    [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
-     ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
+  ;; This one doesn't actually verify shared structure:
+  [(instantiate-type '((#5='(a . #f) -> #6='(b . #f)) (Area #5#) -> (Area #6#)))
+   ((#7='(unspecified . #f) -> #8='(unspecified . #f)) (Area #7#) -> (Area #8#))]
 
+  ;; Now let's see about partially annotated programs.
+  ["Partially (erroneously) annotated letrec"
+   (mvlet ([(p t) (annotate-program '(letrec ([i String 3]) (+ i 59)))]) p)
+   ;error
+   unspecified
+   ]
 
     ))
 

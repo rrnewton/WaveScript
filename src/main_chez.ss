@@ -102,7 +102,8 @@
 (print-level #f) ;20)
 (print-length #f) ;80)
 (print-vector-length #f)
-(pretty-maximum-lines 700)
+;(pretty-maximum-lines 700)
+(pretty-maximum-lines #f)
 
 ;; Storing and then modifying the default break handler.
 ;; This is just a little hack to let us break "on" a value and then continue.
@@ -295,6 +296,8 @@
 (include "../generic/pass03_remove-unquoted-constant.ss")
 (include "../generic/pass04_static-elaborate.ss") (import pass04_static-elaborate)
 (include "../generic/pass05_reduce-primitives.ss")
+
+(include "../generic/pass_merge-iterates.ss") (import pass_merge-iterates)
 
 (include "../generic/pass06_remove-complex-constant.ss")
 ; pass07_verify-stage2.ss

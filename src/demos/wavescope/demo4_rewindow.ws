@@ -7,22 +7,25 @@ s1 = audioFile("./countup.raw", 4096, 0);
 newwidth = 1024;
 step = 512;
 
-wind = 395
-
-s2 = iterate (wind in s1) {
+s2 = iterate (win in s1) {
    state { acc = nullseg; 
          }
 
-   print("\nCurrent ACC, width "++ show(acc.width));
+   print("\nIncoming width "++show(win.width)++" Current ACC/width "++ show(acc.width));
    print(": ");
    print(acc);
    print("\n");
 
-   acc := joinsegs(acc, wind);
+   acc := joinsegs(acc, win);
    // We do this entirely with index numbers, no abstract Time objects are used.
-   // wind.width is an upper bound on how many windows we can produce.
+   // win.width is an upper bound on how many windows we can produce.
 
-   for i = 1 to wind.width {
+   print("JOINED Current ACC/width "++ show(acc.width));
+   print(": ");
+   print(acc);
+   print("\n");
+
+   for i = 1 to win.width {
      print("Iterating, acc.width ");
      print(acc.width);
      print("\n ");
