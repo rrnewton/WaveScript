@@ -67,6 +67,9 @@
                   (not (memq 'lambda env)))
 	   (process-let expr (union formalexp env))]
 
+	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+	  [(tuple ,[args] ...) `(tuple ,args ...)]
+
           [(if ,test ,conseq ,altern)
            (guard (not (memq 'if env)))	   	  	
 	   ;; This is very restrictive.... 

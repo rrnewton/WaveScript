@@ -152,7 +152,7 @@
       [,else (error 'classify-names:reconcile-type "invalid type: ~s" type)])))
 
   
-  ;; TODO: FIXME: Replace, this should be out-date by the new type system.
+  ;; TODO: FIXME: Replace, this should be out-dated by the new type system.
   ;; This is a cheap (and definitely non-polymorphic) kind of type
   ;; inference for variables used as arguments to primitive functions.
   (define (type-inference-primapp prim args)
@@ -165,7 +165,7 @@
 		      ;(disp "VAR: " var type)
 		      (reconcile-type type var)]
 		[,other (error 'classify-names:type-inference-primapp
-			       "primitive ~s should take only simple arguments: ~s" prim args)]))
+			       "primitive ~s should take only simple arguments: ~s" prim other)]))
        args (fit-formals-to-args (cadr entry) args))))
 
   (define (process-let name expr env)
@@ -221,6 +221,16 @@
 	   (add-props! name '(area region leaf))]
           [anchor 
 	   (add-props! name '(area leaf))]
+
+	  ;; Does nothing:
+#;	  [(tuple ,args ...)
+	   (add-dependency! name (apply union (map free-vars args)))]
+	  [(tupref ,n ,m ,x)
+	   (add-dependency! name (free-vars x))
+	   (type-inference-primapp 'tupref (list `(quote ,n) `(quote ,m) x))
+	   (reconcile-type 
+	    (get-primitive-return-type 'tupref)
+	    name)]
 
           [(,prim ,rand* ...)
            (guard (regiment-primitive? prim))

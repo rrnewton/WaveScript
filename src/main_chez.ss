@@ -46,7 +46,7 @@
 				     (string-append (default-regimentd) "/src/chez")
 				     ))
 	   
-	   ;(optimize-level 2) ;0/1/2/3)
+	   ;(optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
 	   ;; 1: 29046 ms elapsed cpu time, including 9314 ms collecting
 	   ;; 2: 29365 ms elapsed cpu time, including 7988 ms collecting
@@ -116,33 +116,6 @@
 ;; [2006.08.28] Nixing that hack.  It's much better to just have our own inspect function:
 (define (inspect/continue x) (inspect x) x)
 
-;; Because I run from command line, it helps to make a new cafe after an error.
-#|(if (not (top-level-bound? 'default-error-handler))
-    (define-top-level-value 'default-error-handler (break-handler)))
-(error-handler (lambda args 		 
-		 (dynamic-wind 
-		     (lambda () (void))
-		     (lambda () (apply default-error-handler args))
-		     (lambda () (void)
-		       ;(debug)
-		       ;(new-cafe)
-		       )
-		     )
-		 ;(printf "TTTTTTTTTTTTTTEEEEEEEEEEEESSSSSSSSSSSTTTTTTTTT.\n")		
-		 ))
-|#
-(error-handler
- (lambda (who msg . args)
-   (fprintf (console-output-port)
-             "~%Error~a: ~a.~%"
-             (if who (format " in ~s" who) "")
-             (parameterize ([print-level 3] [print-length 6])
-	       (apply format msg args)))
-   (fprintf (console-output-port)
-	    "Entering debugger to inspect current continuation, type 'q' to exit.\n")
-   (call/cc inspect)))
-
-
 ;; This forces the output to standard error in spite the Scheme
 ;; parameters console-output-port and current-output-port.
 (define stderr  
@@ -174,6 +147,24 @@
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez_constants.ss")
+
+;; Because I run from command line, it helps to enter the inspector after an error.
+(unless (top-level-bound? 'default-error-handler)
+  (define-top-level-value 'default-error-handler (error-handler)))
+(error-handler
+ (lambda (who msg . args)
+   (call/cc (lambda (k) 	     
+	      (parameterize ([error-handler default-error-handler]
+			     [current-directory (string-append (REGIMENTD) "/src/generic")])
+		(fprintf (console-output-port)
+			 "~%Error~a: ~a.~%"
+			 (if who (format " in ~s" who) "")
+			 (parameterize ([print-level 3] [print-length 6])
+			   (apply format msg args)))
+		(fprintf (console-output-port)
+			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
+		;; Set the current directory so that the inspector can find line numbers:
+		(inspect k))))))
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))

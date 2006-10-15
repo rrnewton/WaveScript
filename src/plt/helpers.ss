@@ -60,7 +60,7 @@
    list-find-position list-remove-before
    foldl
    
-   insert-between iota disp
+   insert-between iota compose compose/values disp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase

@@ -10,6 +10,7 @@
 (define reduce-primitives
   (let ()
     
+#;
     (define process-expr
       (lambda (expr)
         (match expr
@@ -29,6 +30,16 @@
           [,unmatched
             (error 'reduce-primitives "invalid expression: ~s"
                    unmatched)])))
+
+    (define process-expr 
+      (core-generic-traverse 
+       (lambda (x fallthrough)	 
+	 (match x
+	   [(,prim ,[rand*] ...)
+	    (guard (regiment-primitive? prim))
+	    (process-primapp prim rand*)]
+	   [,other (fallthrough other)]))
+       (lambda (ls k) (apply k ls))))
 
     (define process-primapp
       (lambda (prim args)

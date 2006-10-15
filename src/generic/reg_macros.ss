@@ -138,7 +138,7 @@
       [(lm ([Pat Exp] Rest ...) Body ...)
        #'(match Exp
 	   [Pat (let-match (Rest ...) Body ...)]
-	   [,other (error 'let-match "unmatched object: ~s at syntax location ~s" 
+	   [,other (error 'let-match "unmatched object.\n  Datum: ~s\n  Syntax-location ~s\n" 
 			  other #'lm)]
 	   )])))
 ;(expand '(let-match () 3))

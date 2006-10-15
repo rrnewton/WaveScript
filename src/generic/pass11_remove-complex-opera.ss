@@ -111,45 +111,102 @@
     (define (make-simple x tenv)
       (if (simple-expr? x)
 	  (values x '())
-	  (mvlet ([(res binds) (process-expr x tenv)]
-		  [(type) (recover-type x tenv)]
-		  [(name) (unique-name (meaningful-name x))])
-		 (values name
-			 (cons (list name type res) binds)))))
+	  (let-match ([#(,res ,binds) (process-expr x tenv)])
+	    (mvlet (
+		    [(type) (recover-type x tenv)]
+		    [(name) (unique-name (meaningful-name x))])
+	      (values name
+		      (cons (list name type res) binds))))))
 
-    (define process-expr
-      (lambda (expr tenv)
-	(DEBUGASSERT (tenv? tenv))
-        (match expr
-	  [,x (guard (simple-expr? x)) (values x '())]
-          [(if ,a ,b ,c)
-	   (mvlet ([(test test-decls) (make-simple a tenv)]
-		   [(conseq conseq-decls) (make-simple b tenv)]
-		   [(altern altern-decls) (make-simple c tenv)])
-	     (values `(if ,test ,conseq ,altern)
-		     (append test-decls conseq-decls altern-decls)))]
-	  [(lambda ,formals ,types ,body)
-	   (let ([body (process-letrec body (tenv-extend tenv formals types))])
-	     (values `(lambda ,formals ,types ,body) '()))]
+    (define (make-simples ls tenv)
+      (let ((intermediate
+	     (map (lambda (rand) 
+		    (mvlet ([(res binds) (make-simple rand tenv)])
+		      (cons res binds)))
+	       ls)))
+	(values (map car intermediate)
+		(apply append (map cdr intermediate)))))
 
-	  ;;; Constants:
-	  [,prim (guard (regiment-primitive? prim))
-		 (values prim '())
-;		 (let ((intermediate (unique-name (meaningful-name prim))))
-;		   (values intermediate
-;			   `([,intermediate ,prim])))
-		 ]
-          [(,prim ,rand* ...) (guard (regiment-primitive? prim))	   
-	   (let ((intermediate
-		  (map (lambda (rand) 
-			 (mvlet ([(res binds) (make-simple rand tenv)])
-				(list res binds)))
-		       rand*)))
-	     (values (cons prim (map car intermediate))
-		     (apply append (map cadr intermediate))))]
-          [,unmatched
-	   (error 'lift-letrec "invalid expression: ~s"
-		  unmatched)])))
+    (define (process-expr expr tenv)
+      (core-generic-traverse/types 
+       (lambda (expr tenv fallthrough)
+	 (match expr
+	   [,x (guard (simple-expr? x)) (vector x '())]
+
+	   ;; Todo: could put all this work in the fuser.
+
+	   [(if ,a ,b ,c)
+	    (mvlet ([(test test-decls)     (make-simple a tenv)]
+		    [(conseq conseq-decls) (make-simple b tenv)]
+		    [(altern altern-decls) (make-simple c tenv)])
+	      (vector `(if ,test ,conseq ,altern)
+		      (append test-decls conseq-decls altern-decls)))]	   
+
+	   [(lambda ,formals ,types ,body)
+	    (let ([body (process-letrec body (tenv-extend tenv formals types))])
+	      (vector `(lambda ,formals ,types ,body) '()))]
+
+	   [(tupref ,n ,m ,x)
+	    (mvlet ([(res binds) (make-simple x tenv)])
+	      (vector `(tupref ,n ,m ,res) binds)
+	      )]
+	   [(tuple ,args ...)
+	    (mvlet ([(args binds) (make-simples args tenv)])
+	      (vector `(tuple ,args ...) binds))]
+
+	   ;; Constants:
+	   [,prim (guard (regiment-primitive? prim))
+		  (vector prim '())
+					;		 (let ((intermediate (unique-name (meaningful-name prim))))
+					;		   (vector intermediate
+					;			   `([,intermediate ,prim])))
+		  ]
+	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	    (mvlet ([(args binds) (make-simples rand* tenv)])
+	      (vector `(,prim ,args ...) binds))]
+
+	   [,other (fallthrough other tenv)]
+	   ))
+       (lambda (results reconstr)
+	 (match results
+	   [(#(,exps ,decls) ...)
+	    (vector (apply reconstr exps) 
+		    (apply append decls))]))
+       expr tenv))
+
+;       (lambda (expr tenv)
+; 	(DEBUGASSERT (tenv? tenv))
+; 	 (match expr
+; 	   [,x (guard (simple-expr? x)) (values x '())]
+; 	   [(if ,a ,b ,c)
+; 	    (mvlet ([(test test-decls) (make-simple a tenv)]
+; 		    [(conseq conseq-decls) (make-simple b tenv)]
+; 		    [(altern altern-decls) (make-simple c tenv)])
+; 	      (values `(if ,test ,conseq ,altern)
+; 		      (append test-decls conseq-decls altern-decls)))]
+; 	   [(lambda ,formals ,types ,body)
+; 	    (let ([body (process-letrec body (tenv-extend tenv formals types))])
+; 	      (values `(lambda ,formals ,types ,body) '()))]
+
+; 	   ;; Constants:
+; 	   [,prim (guard (regiment-primitive? prim))
+; 		  (values prim '())
+; 					;		 (let ((intermediate (unique-name (meaningful-name prim))))
+; 					;		   (values intermediate
+; 					;			   `([,intermediate ,prim])))
+; 		  ]
+; 	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))	   
+; 	    (let ((intermediate
+; 		   (map (lambda (rand) 
+; 			  (mvlet ([(res binds) (make-simple rand tenv)])
+; 			    (list res binds)))
+; 		     rand*)))
+; 	      (values (cons prim (map car intermediate))
+; 		      (apply append (map cadr intermediate))))]
+;	   [,unmatched
+;	    (error 'remove-complex-opera "invalid expression: ~s"
+;		   unmatched)]
+;         ))
     
     ;===========================================================================
     ;; LetrecExpr -> LetrecExpr
@@ -162,7 +219,7 @@
 	     (mvlet (((rhs* rhs-decls*) ; This is an awkward way to loop across rhs*:
 		      (let loop ((ls rhs*) (acc ()) (declacc ()))
 			(if (null? ls) (values (reverse! acc) (reverse! declacc))
-			    (mvlet ([(r rd) (process-expr (car ls) newenv)])
+			    (let-match ([#(,r ,rd) (process-expr (car ls) newenv)])
 			      (loop (cdr ls) (cons r acc) (cons rd declacc)))))))
 	       `(lazy-letrec ,(append (map list lhs* type* rhs*)
 				      (apply append rhs-decls*)) ,simple)))]

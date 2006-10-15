@@ -78,6 +78,35 @@
 	  (let ([body (process-expr body '())])
 	    `(rename-var-language '(program ,body ,type)))])))))
 
+
+;; Ideally: 
+#;
+(super-pass-maker
+ [VarBind (lambda (v k) (k (unique-name v)))])
+#;
+(magic-pass
+ [InputGrammar foobar]
+ [OutputGrammar foobar]
+ [Bindings (lambda (vars types exprs reconstruct loop)
+	     (let* ([newvars (map unique-name vars)]
+		    [dosubst (lambda (x) (core-subst vars newvars))])
+	       (reconstruct vars types (map loop (map dosubst exprs)))
+	))]
+ )
+
+#;
+(magic-pass/extraarg
+ [Bindings (lambda (TABLE vars types exprs reconstruct loop)
+	     (let* ([newvars (map unique-name vars)]
+		    [newtable (append (map cons vars newvars) TABLE)])
+	       (reconstruct vars types (map (lambda (x) (loop newtable x)) exprs))
+	       ))]
+ [Expr (lambda (TABLE e loop)
+	 (if (symbol? e)
+	     (let ([entry (assq e TABLE)])
+	       (if entry (cdr entry) e))
+	     e))])
+
 	
 ;==============================================================================
 

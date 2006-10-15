@@ -41,7 +41,7 @@
 	  vector-for-each vector-map vector-map!
 
 
-	  insert-between iota disp crit-printf
+	  insert-between iota compose compose/values disp crit-printf
 	  extract-file-extension remove-file-extension
 	  file->string string->file file->slist port->slist slist->file file->linelists
 	  read-line

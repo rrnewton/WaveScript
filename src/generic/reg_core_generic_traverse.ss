@@ -83,6 +83,14 @@
 	  [(if ,[loop -> a] ,[loop -> b] ,[loop -> c])
 	   (fuse (list a b c) (lambda (x y z) `(if ,x ,y ,z)))]
 
+	  ;; These are special syntax:
+	  [(tupref ,n ,m ,[loop -> exp])
+	   (DEBUGASSERT fixnum? n)
+	   (DEBUGASSERT fixnum? m)
+	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
+	  [(tuple ,[loop -> args] ...)
+	   (fuse args (lambda args `(tuple ,args ...)))]
+
 	  ;; No looping on types.  This could be changed:
 	  [(letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
 	   ;; By convention, you get the body first:
@@ -125,8 +133,7 @@
 
 	  ;; Always run make-begin, hope this is safe:
 	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
-
-	  [(for (,i ,start ,end) ,body)
+	  [(for (,i ,[loop -> start] ,[loop -> end]) ,[loop -> body])
 	   (fuse (list start end body)
 		 (lambda (st en bod) `(for (,i ,st ,en) ,bod)))]
 
@@ -160,7 +167,9 @@
   ;; Main body of core-generic-traverse:
   (case-lambda 
     [(d f e) (build-traverser d f e)]
-    [(d f) (lambda (e) (build-traverser d f e))])
+    [(d f) (lambda (e) (build-traverser d f e))]
+    [(d) (lambda (e) (build-traverser d (lambda (ls k) (apply k ls)) e))]
+    )
   ))
 
 
@@ -175,23 +184,28 @@
 	   ;; letrec/lambda they'd better handle the tenv themselves.
 	  (drive x tenv
 		 ;; Here we wrap the autoloop function to be type-aware
-		 (lambda (x tenv)
-		   (DEBUGASSERT (tenv? tenv))
-		   (match x 
-		     ;; We overload the two cases that require modifying the tenv.
-		     [(lambda (,v* ...) (,ty* ...) ,bod)
-		      (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
-			    (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
-		     [(letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
-		      (let ([newtenv (tenv-extend tenv lhs* ty*)])
-			(fuse (cons ((loop newtenv) bod) rhs*)
-			      (lambda (x . y*) `(let ([,lhs* ,ty* ,y*] ...) ,x))))]
-		     ;; If it's not one of these we use the old generic-traverse autoloop.
+		 (case-lambda 
+		   [(x tenv)
+		    (DEBUGASSERT (tenv? tenv))
+		    (match x 
+		      ;; We overload the two cases that require modifying the tenv.
+		      [(lambda (,v* ...) (,ty* ...) ,bod)
+		       (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
+			     (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
+		      [(letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
+		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
+			 (fuse (cons ((loop newtenv) bod) rhs*)
+			       (lambda (x . y*) `(let ([,lhs* ,ty* ,y*] ...) ,x))))]
+		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
-		     [,other (autoloop other)]))))
+		      [,other (autoloop other)])]
+		   [other (error 'core-generic-traverse/types
+			       "user driver function called fallthrough function (autolooper) with wrong number of args:\n~s"
+			       other)])))
 	;; Now we call the original generic-traverse
 	(core-generic-traverse newdriver fuse)))
     (case-lambda
+      [(d)     (lambda (e) ((traverser d (lambda (ls k) (apply k ls)) (empty-tenv)) e))]
       [(d f)   (lambda (e) ((traverser d f (empty-tenv)) e))]
       [(d f e)             ((traverser d f (empty-tenv)) e)]
       [(d f e tenv)        ((traverser d f tenv) e)])))

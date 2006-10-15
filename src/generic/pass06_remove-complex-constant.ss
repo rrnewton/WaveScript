@@ -59,6 +59,48 @@
           [(number? datum) (process-expr `(quote ,(- datum)))]
           [else (error 'remove-complex-constant.negate-datum
                        "cannot negate non-numeric datum: ~s" datum)])))
+
+    (define process-expr
+      (core-generic-traverse
+       ;; Driver:
+       (lambda (x fallthrough)
+	 (match x 
+          [(quote ,datum)
+           (guard (constant? datum)) ;; Not required to be immediate?
+           (vector `(quote ,datum) '())]
+	  ;; [2006.10.14] Umm we shouldn't be supporting symbols:
+          [(quote ,datum)
+           (guard (symbol? datum))
+           (vector `(quote ,datum) '())]
+          [(quote ,datum)
+           (let* ([tmp (unique-name 'tmp)]
+		  [exp (datum->code datum)]
+		  ;; Null tenv is ok, it's just a constant:
+		  [type (recover-type exp (empty-tenv))]
+		  )
+             (vector tmp `((,tmp ,type ,exp))))]
+
+          [(lambda ,formals ,types ,[result])
+	   (match result
+	     [#(,body ,body-b*) 
+	      ;;(vector `(lambda ,formals ,body) body-b*)
+	      ;; [2005.12.08] Modifying this so it doesn't (yet) lift them all the way up to the top.
+	      (vector `(lambda ,formals ,types (letrec ,body-b* ,body)) ())]
+	     )]
+
+	  [,other (fallthrough other)])
+	  )
+       ;; Fuser:
+       ;(match-lambda (#(,exps ,binds) ,k)
+       ;(vector (apply k exps) (apply append binds)))
+       (lambda (results k)
+	 (match results
+	   [(#(,exps ,binds) ...) (vector (apply k exps) (apply append binds))]
+	   [,other (error 'remove-complex-constant:process-expr 
+			  "bad intermediate result: ~s" other)]))
+      ))
+
+#;
     (define process-expr
       (lambda (expr)
         (match expr
@@ -119,7 +161,7 @@
     (lambda (expr)
       (match expr
         [(,input-language (quote (program ,body ,type)))
-           (mvlet ([(body body-b*) (process-expr body)])
+           (let-match ([#(,body ,body-b*) (process-expr body)])
              (if (null? body-b*)
                  `(,input-language ;remove-complex-constant-language
 		   '(program ,body ,type))

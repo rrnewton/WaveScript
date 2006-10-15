@@ -55,6 +55,10 @@
 	     `(lambda ,formalexp ,types ,((process-letrec newenv 
 							  (or namehint 'anonlambda)
 							  ) body)))]
+	  [(tuple ,[args] ...) `(tuple ,args ...)]
+	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+	  
+
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           [,unmatched

@@ -33,11 +33,12 @@
 	(lambda (expr fallthrough)
 	  (match expr
 	    [(emit ,vqueue ,x) `(app ,fun ,x)]
-	    [(iterate ,_ ...)
+	    [(iterate . ,_)
 	     (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
 	    [,other (fallthrough other)]))
 	(lambda (ls k) (apply k ls))
 	body))
+
      (define process-expr
        (lambda (expr)
 	 (core-generic-traverse
@@ -58,16 +59,16 @@
 						   (lambda (,y) (,ty) ,body)])
 					,(subst-emits bodx f))))
 			    ,inputstream)))]
-
 	      [,other (fallthrough other)]))
 	  (lambda (ls k) (apply k ls)) ;; fuser
 	  expr)))
+
      ;; Main pass body:
      (lambda (expr)
        (match expr
 	 [(,input-language (quote (program ,body ,type)))
 	  (let ([body (process-expr body)])
-	    `(,input-language '(program ,body ,type)))])))))
+	    `(merge-iterates-language '(program ,body ,type)))])))))
 
 
 

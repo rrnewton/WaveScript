@@ -47,7 +47,7 @@
 		      (let ([formals (list-head possible-formals (length args))])
 			`(lambda ,formals 
 			   ; Primitive types:
-			   ,(rdc (rdc (prim->type var)))
+			   ,(map export-type (rdc (rdc (prim->type var))))
 			   (,var ,@formals)))))]
 
 	  ;; A bit of sugar.
@@ -94,7 +94,7 @@
       (match expr
 	     [(,input-language (quote (program ,body ,type)))
 	      (let ([body (process-expr body '())])
-		`(,input-language '(program ,body ,type)))])))))
+		`(eta-primitives-language '(program ,body ,type)))])))))
 
 
 (define test-this 
@@ -105,7 +105,7 @@
 			 '(program
 			      (rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
 			    (Signal Integer))))
-       (base-language
+       (eta-primitives-language
 	'(program
 	     (rfold
 	      (lambda (a b) (Integer Integer) (+ a b))

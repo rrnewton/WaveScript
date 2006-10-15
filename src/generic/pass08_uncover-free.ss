@@ -74,6 +74,11 @@
              `(if ,test ,conseq ,altern)
              (union test-free* (union conseq-free* altern-free*)))]
 
+	  [(tuple ,[args args-free] ...)
+	   (values `(tuple ,args ...)
+		   (apply append args-free))]
+	  [(tupref ,n ,m ,[x free]) (values `(tupref ,n ,m ,x) free)]
+
           [(letrec ([,lhs* ,type* ,[rhs* rhs-free*]] ...) ,[body body-free*])
            (values
              `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)

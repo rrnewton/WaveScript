@@ -60,6 +60,10 @@
 		  ,tail)]
 	       [(lambda ,v* ,ty* ,[bod]) `(lambda ,v* ,ty* ,bod)]
 	       [(if ,[t] ,[c] ,[a])      `(if ,t ,c ,a)]
+
+	       [(tuple ,[args] ...) `(tuple ,args ...)]
+	       [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+
 	       [(,prim ,[rand*] ...)
 		(guard (regiment-primitive? prim))
 		`(,prim ,rand* ...)]

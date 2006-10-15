@@ -631,6 +631,17 @@
          '()
          (cons i (iota (+ i 1) (- n 1))))]))
 
+;; For one-argument functions:
+(define (compose f g) (lambda (x) (f (g x))))
+
+;; Works for multiple arguments/return values:
+(define compose/values
+  (lambda (f g)
+    (lambda args
+      (call-with-values 
+	  (lambda () (apply g args))
+	  f))))
+
 ;;RRN [01.09.17] :
 (define make-code
   (lambda (expr*)

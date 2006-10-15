@@ -627,6 +627,9 @@
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
 
+    [(tuple ,[args] ...) `(tuple ,args ...)]
+    [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]    
     
     [(,prim ,[rand*] ...)
@@ -825,6 +828,9 @@ magnitude : foo -> bar
        [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Integer ()] bodls)]
 
        [(if ,[t] ,[c] ,[a]) (append t c a)]
+       [(tuple ,[args] ...) (apply append args)]
+       [(tupref ,n ,m ,[x]) x]
+
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
 	(guard (memq let '(let letrec lazy-letrec)))
 	(append (apply append 
@@ -834,7 +840,8 @@ magnitude : foo -> bar
 		bod)]
        [(lambda ,v* ,t* ,[bodls])   bodls]
        [(tuple ,[e*] ...) (apply append e*)]
-       [(tupref ,n ,[e]) e]
+       [(tupref ,n ,m ,[e]) e]
+
        [(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))

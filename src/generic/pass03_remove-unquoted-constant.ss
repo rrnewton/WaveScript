@@ -28,11 +28,15 @@
 ;;; we can't introduce any new nested begin expressions and assume
 ;;; that the input does not contain them either.
 
+
+(define remove-unquoted-constant-grammar
+  initial_regiment_grammar)
+
 (define remove-unquoted-constant
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'rename-var
    `(input)
-   `(output) 
+   `(output (grammar ,remove-unquoted-constant-grammar PassInput))
    (let ()
      (define process-expr
        (lambda (expr)
@@ -41,6 +45,13 @@
 	    (match expr
 	      [,const (guard (constant? const))
 		      `(quote ,const)]	      
+
+	      ;; TEMP TEMP TEMP:
+	      ;[(tupref ,[n] ,[m] ,[x]) `(tupref ,n ,m ,x)]
+
+	      ;; TEMP: TESTING!
+;	      [(quote ,c) c]
+
 	      [,other (fallthrough other)]))
 	  (lambda (ls k) (apply k ls)) ;; fuser
 	  expr)))
@@ -50,7 +61,7 @@
        (match expr
 	 [(,input-language (quote (program ,body ,type)))
 	  (let ([body (process-expr body)])
-	    `(,input-language '(program ,body ,type)))])))))
+	    `(remove-unquoted-constant-language '(program ,body ,type)))])))))
 
 
 

@@ -86,6 +86,11 @@
              `(if ,test ,conseq ,altern)
              (append test-decl* conseq-decl* altern-decl*))]
 
+	  [(tuple ,[args args-decls] ...)
+	   (values `(tuple ,args ...)
+		   (apply append args-decls))]
+	  [(tupref ,n ,m ,[x decls]) (values `(tupref ,n ,m ,x) decls)]
+
 	  [(lambda ,formalexp ,types (free ,free ,[body body-decl]))
 	   (if (not (null? free)) 
 	       (error 'lift-letrec "free was supposed to be null for now! ~a" free))
@@ -101,6 +106,7 @@
 		   (append (apply append rhs-decl*)
 			   body-decl
 			   (map list lhs* type* rhs*)))]
+
 
           [(,prim ,[rand* rand-decl*] ...)
            (guard (regiment-primitive? prim))

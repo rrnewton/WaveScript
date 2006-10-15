@@ -806,7 +806,11 @@
 					       (basic-primitive? prim)))
 				    (void)]
 				   [(if ,[x] ,[y] ,[z]) (void)]
-				   [,other (error 'deglobalize:delazy-bindings "trying to refcount, bad rhs subexpr: ~s" other)])))
+				   ;[(tupref ,n ,m ,[x]) (void)]
+				   ;[(tuple ,[args] ...) (void)]
+
+				   [,other (error 'deglobalize:delazy-bindings
+						  "trying to refcount, bad rhs subexpr: ~s" other)])))
 	  binds)
 	hash))
 
@@ -1078,7 +1082,7 @@
 	   (values `([,name ,(match `(,prim . ,rand*)
 			       [(nodeid ,_) `(my-id)]
 			       [(tuple ,x* ...) `(vector ,x* ...)]
-			       [(tupref ,a ,b ,x) `(vector-ref ,x ,a)]
+			       [(tupref ,a ,b ,x) `(vector-ref ,x ' ,a)]
 			       [,else expr])])
 		   '())]
 

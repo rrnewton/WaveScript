@@ -51,7 +51,7 @@
     ;; annotate it with various information which may be used in
     ;; "deglobalize" further down the road.  Currently, most of these
     ;; analyses are underdeveloped; more work is warranted.
-    classify-names
+    classify-names ;; Remove this pass..
     add-heartbeats
     add-control-flow
     add-data-flow
@@ -84,6 +84,7 @@
     rename-stored
 
     ;; (11) CPS: we CPS the program to get rid of all non-tail calls.
+
     ;; This is because Token handlers may only schedule more tokens,
     ;; not wait for "child" handlers to return!  This is also the
     ;; trick we use to implement synchronous sensor reading, which is
@@ -127,6 +128,7 @@
 
 ;; This dumps to file only when provided the optional string filename argument:
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
+;; Also: use 'verbose to print the output of every pass.
 (define (run-compiler p . args )                              ;; Entrypoint.
   ;(disp "RUN COMP:" p)
   (let ([filename #f]
@@ -207,35 +209,45 @@
 	    [(list? x)   x]
 	    [else (error 'wsint "bad input: ~s" x)])))
 
-  (define _ (begin (printf "Evaluating program: \n\n") 
+  (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 
 		   (parameterize ([pretty-line-length 180]
 				  [pretty-maximum-lines 1000]
 				  [print-level 20]
 				  [print-length 10])
-		     (pretty-print prog))))
+		     (pretty-print prog))
+		   (with-output-to-file ".__inputprog.txt"
+		     (lambda () 
+		       (parameterize ([pretty-line-length 200]
+				      [pretty-maximum-lines #f]
+				      [print-level #f]
+				      [print-length #f]
+				      [print-graph #f])
+			 (pretty-print prog))
+		       (flush-output-port))
+		     'replace)
+		   ))
 
   (define desugared (desugar-pattern-matching prog))
-
 #;
   (define (optional-stop x)
     (IFDEBUG
      (begin (parameterize ([pretty-line-length 150]
-			   [print-length 10]
+			   [print-length 20]
 			   [print-level 20])
 	      (pretty-print x))
 	    (printf "================================================================================\n\n")
 	    (read-line)
 	    x)
      x))
-
   (define (optional-stop x) x)
 
   (define typed 
-    (optional-stop (id;merge-iterates
-     (optional-stop (id ;remove-unquoted-constant 
+    (optional-stop (merge-iterates
+    (optional-stop (static-elaborate
+     (optional-stop (remove-unquoted-constant 
        (optional-stop (eta-primitives 
       (optional-stop (rename-var 
-	(optional-stop (verify-regiment desugared)))))))))))
+	(optional-stop (verify-regiment desugared)))))))))))))
 
   (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
 

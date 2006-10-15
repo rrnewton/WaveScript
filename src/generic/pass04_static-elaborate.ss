@@ -89,8 +89,24 @@
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
-;	  [(,prim ,[rands] ...)	   
-	  [(,[rator] ,[rands] ...) (+ rator (apply + rands))]
+          
+          [(begin ,(stmt) ...) (apply + stmt)]
+          [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
+          [(iterate ,(fun) ,(bod)) (+ fun bod)]
+          [(set! ,lhs ,(rhs))
+           (if (eq? v lhs) 
+	       (error 'static-elaborate:count-refs
+		      "Hmm... shouldn't be counting references to iterator-state: ~s" v))
+           rhs]
+
+	  [(tupref ,n ,m ,[x]) x]
+	  [(tuple ,[args] ...) (apply + args)]
+
+          
+	  [(,prim ,[rands] ...)
+	   (guard (regiment-primitive? prim))
+           (apply fx+ rands)]           
+	  [(app ,[rator] ,[rands] ...) (+ rator (apply + rands))]
           [,unmatched
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
@@ -129,6 +145,20 @@
 			  (not (memq (car x) formals)))
 			mapping)
 		expr))]
+	  [(for (,i ,[st] ,[en]) ,bod)
+	   `(for (,i ,st ,en)		
+		,(substitute
+		  (filter (lambda (x) (not (eq? (car x) i))) mapping)
+		  bod))]
+	  [(begin ,[arg] ...) `(begin ,arg ...)]
+	  [(set! ,v ,[rhs])
+	   (if (memq v (map car mapping))
+	       (error 'static-elaborate:substitute "shouldn't be substituting against a mutated var: ~s" v))
+	   `(set! ,v ,rhs)]
+
+	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
+	  [(tuple ,[args] ...) `(tuple ,args ...)]
+
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
@@ -156,7 +186,7 @@
     ;;----------------------------------------
 
     ;;   The "env" argument binds names to *code*.  Or if the code is
-    ;; unavailable, to *void*.
+    ;; unavailable, to not-available.
     (define process-expr           
       (lambda (expr env)
 	;(printf "ENV: ~a ~a\n" expr env)
@@ -166,6 +196,9 @@
 			(match x
 			   [(quote ,datum) #t]
 			   [(lambda ,vs ,tys ,bod) #t]
+			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
+			   ;; A tuple is available even if all its components aren't.
+			   [(tuple ,args ...) #t]
 			   [,var (guard (symbol? var)) 
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
@@ -175,6 +208,7 @@
 		    (match x
 			   [(quote ,datum) datum]
 			   [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
+			   [(tuple ,args ...) `(tuple ,args ...)]
 			   [,var (guard (symbol? var))
 				 (getval (cadr (assq var env)))]
 			   [,else (error 'static-elaborate "getval bad input: ~a" x)]))])
@@ -191,15 +225,17 @@
 ;`		   (printf "REFCOUNT1: ~a\n" var)
 ;		   x]
 		  ;; Inline constants:
-		  [(,_ (quote ,d) ,__) `(quote ,d)]
+		  [(,_ (quote ,d) ,__) 
+		   (guard (atom? d)) ; Don't inline constants requiring allocation.
+		   `(quote ,d)]
 		  [(,_ ,not-available ,__) var]
+		  ;; Resolve aliases:
 		  [(,_ ,v ,__) (guard (symbol? v))
 		       (process-expr v env)]
 		  ;; Otherwise, nothing we can do with it.
 		  [,else var])
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
-		;var
 		]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
@@ -209,7 +245,12 @@
 					  ;; The "reference count" for each var 
 					  (make-list (length formals) -1)) 
 				     env)))]
-
+          
+          ;; Don't go inside iterates for now:
+          [(iterate ,fun ,[strm]) `(iterate ,fun ,strm)]
+          [(begin ,(args) ...) `(begin ,args ...)]
+          [(set! ,v ,(rhs)) `(set! ,v ,rhs)]
+	  
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
@@ -220,7 +261,7 @@
 	       ;; Inefficient ref-counting.
 	   (let* ([newenv (append (map list lhs* rhs* 
 				       (map (lambda (lhs)
-					      ;; TEMP [2006.02.18]: Disabling ref-counting.
+					      ;; TEMP [2006.02.18]: Disabling ref-counting here:
 					      9999
 					      ;(count-refs lhs (cons expr rhs*))
 					      )
@@ -230,6 +271,7 @@
 ;		  [_ 	   (break)]
 		  [newbod (process-expr expr newenv)]
 ;		  [__ 	   (break)]
+                  ;; How much does each bound variable get referenced:
 		  [occurs (map (lambda (v myrhs) 
 				 (apply + (count-refs v newbod)
 					(map (lambda (x) (count-refs v x)) 
@@ -250,6 +292,19 @@
 	       (if (getval test)
 		   conseq  altern)
 	       `(if ,test ,conseq ,altern))]
+	  
+	  [(tupref ,ind ,len ,[tup])
+	   (if (available? tup)
+	       (match (getval tup)
+		 [(tuple ,args ...)
+		  (unless (eq? (length args) len)
+		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
+			   len vec))
+		  (list-ref args ind)]
+		 [,else (error 'static-elaborate:process-expr "implementation error, tupref case")])
+	       `(tupref ,ind ,len ,tup))]
+	  [(tuple ,[args] ...) `(tuple ,args ...)]
+
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim rand* (map available? rand*))
 	   (if (and (memq prim computable-prims)
@@ -293,13 +348,18 @@
 	      (letrec ([f _ (lambda (x) (_) '#t)])
 		(app f '3939)) notype)))
      (foo '(program '#t notype))]
-
-    [(static-elaborate '(foo '(program 
+   
+    ["Reduce away fact of 6." 
+     (static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
 			       (if (= '0 n) '1 (* n (app fact (- n '1)))))])
 	(app fact '6))
       notype)))
      (foo '(program '720 notype))]
+    
+    ["Reduce a tuple reference."
+     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+ '100 (tupref 0 2 x))) notype)))
+     (foo '(program '103 notype))]
 
     ["Reduce a primop underneath a lambda."
      (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+ '3 '4) x)) notype)))

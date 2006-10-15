@@ -113,12 +113,17 @@
   (lambda (x)
     (syntax-case x ()
       ((_ Template Cata Obj ThreadedIds)
-       #'(error 'match "Unmatched datum: ~s" Obj))
+       ;(inspect `(HRM ,(datum Template) ,(datum Cata) ,(datum Obj) ,(datum ThreadedIds)))
+       ;(inspect #'Template)
+       #'(error 'match "Unmatched datum.\n  Datum: ~s\n  Source-Location: ~s\n" Obj #'Template))
+
       ((_ Template Cata Obj ThreadedIds (Pat B0 B ...) Rest ...)
        #'(convert-pat Pat
            (match-help1 Template Cata Obj ThreadedIds 
              (B0 B ...)
-             Rest ...))))))
+             Rest ...)))
+
+      )))
 
 (define-syntax match-help1
   (syntax-rules (guard)

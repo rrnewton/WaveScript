@@ -142,6 +142,9 @@
 	[(quote ,_)                 (empty-tenv)]
 	
 	[(if ,[t] ,[c] ,[a]) (tenv-append t c a)]
+
+	[(tupref ,n ,m ,[x]) x]
+
 	[(lambda ,v* ,ty* ,[bod]) (tenv-extend bod v* ty*)]
 	[(lazy-letrec ([,v* ,ty* ,annots* ,[rhs*]] ...) ,[bod])
 	 (apply tenv-append (tenv-extend bod v* ty* #t) rhs*)]
@@ -179,6 +182,9 @@
 
 	  ;; Can't go deeper:
 	  [(if ,test ,conseq ,altern)  currentloc]
+	  
+	  [(tupref ,n ,m ,x) currentloc]
+
 	  [,expr                       currentloc]))
 
     ;; This takes an expression of type Region 'a, and tries to return
@@ -313,12 +319,15 @@
 
 	  [(lambda ,v* ,ty* ,[bod]) bod]
           [(if ,[t] ,[c] ,[a]) (append t c a)]
+	  [(tupref ,n ,m ,[x]) x]
+	  [(tuple ,[args] ...) (apply append args)]
+
           [(,prim ,[rand*] ...)	   
            (guard (regiment-primitive? prim))
 	   (apply append rand*)]
 
           [,unmatched
-	   (error 'add-data-flow "invalid syntax ~s" unmatched)])])
+	   (error 'add-data-flow:process-expr "invalid syntax ~s" unmatched)])])
 	  
 	  ;; Invariant: The result that we return should not overlap
 	  ;; with the environment that we take from above.  Otherwise
