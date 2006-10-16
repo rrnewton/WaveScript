@@ -49,7 +49,7 @@
 	   [(lambda (,v* ...) (,t* ...) ,expr)
 	    (guard (not (assq 'lambda var-table)))
 	    (let* ([new-v* (map unique-name v*)]
-		   [new-table (append (map cons v* new-v*) var-table)])					       
+		   [new-table (append (map cons v* new-v*) var-table)])
 	      (let ([expr (process-expr expr new-table)])
 		`(lambda ,new-v* ,t* ,expr)))]
 	   [(for (,i ,[st] ,[en]) ,body)

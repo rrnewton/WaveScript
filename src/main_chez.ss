@@ -256,6 +256,7 @@
 ;; This is used by the subsequent passes that process TML:
 (include "../generic/tml_generic_traverse.ss") (import tml_generic_traverse)
 (include "../generic/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
+(include "../generic/passes/pass-mechanism.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.

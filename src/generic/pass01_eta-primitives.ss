@@ -22,6 +22,65 @@
 
 ;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
 
+;; Rewrote again to use define-pass:
+;; [2006.10.06] Rewriting to use generic-traversal:
+(define-pass eta-primitives
+  ;[OutputGrammar eta_prim_gramar]
+  [Expr 
+   (letrec ([processExpr 
+	     (lambda (x fallthrough)
+	  (match x
+	    ;; Variable References to primitives are rewritten:
+	    [,var (guard (symbol? var) (regiment-primitive? var))
+		(let* ([possible-formals '(a b c d e f g h i j)]
+		       [args (cadr (get-primitive-entry var))])
+		  (if (regiment-constant? var)
+		      var
+		      (let ([formals (list-head possible-formals (length args))])
+			`(lambda ,formals 
+			   ; Primitive types:
+			   ,(map export-type (rdc (rdc (prim->type var))))
+			   (,var ,@formals)))))]
+
+	  ;; A bit of sugar.
+          ;; This just expands "lists" into a bunch of cons cells.
+	  [(list ,[rands] ...)
+	   (processExpr (match rands
+			   [() ''()]
+			   [(,a . ,[b]) `(cons ,a ,b)])
+			 fallthrough)]
+	  ;; More sugar.
+	  [(or ,[rands] ...)
+	   (processExpr (match rands
+			   [() ''#f]
+			   [(,a . ,[b]) `(if ,a '#t ,b)])
+			 fallthrough)]
+	  [(and ,[rands] ...)
+	   (processExpr (match rands
+			   [() ''#t]
+			   [(,a . ,[b]) `(if ,a ,b '#f)])
+			 fallthrough)]
+
+	  ;; I have mixed feelings about this (makes intermediate programs hard to read)
+	  [(let ([,x ,t ,[y]] ...) ,[body])
+	   `((lambda ,x ,t ,body) ,y ...)
+	   ]
+
+	  ;; Yucky, internal:
+	  ;; Even more sugar.  This is convenient for doubletons:
+	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
+	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
+
+	  ;; Primitives that are applied with "app" have it taken away:
+	  [(app ,prim ,[rands] ...)
+	   (guard (regiment-primitive? prim))
+	   `(,prim ,rands ...)]
+	  
+	  [,other (fallthrough other)]
+	  ))])
+     processExpr)])
+
+#;
 ;; [2006.10.06] Rewriting to use generic-traversal:
 (define eta-primitives
   (build-compiler-pass ;; This wraps the main function with extra debugging
@@ -95,6 +154,8 @@
 	     [(,input-language (quote (program ,body ,type)))
 	      (let ([body (process-expr body '())])
 		`(eta-primitives-language '(program ,body ,type)))])))))
+
+
 
 
 (define test-this 
