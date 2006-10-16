@@ -32,6 +32,22 @@
 (define remove-unquoted-constant-grammar
   initial_regiment_grammar)
 
+
+(define-pass remove-unquoted-constant
+  [OutputGrammar remove-unquoted-constant-grammar]
+  [Expr (lambda (x fallthrough)
+	  (match x
+	    [,const (guard (constant? const))
+		    `(quote ,const)]	      
+	    [,other (fallthrough other)]))]
+  [Program (lambda (prog Expr)
+	     (unique-name-counter 0)
+	     (match prog
+	       [(,input-language (quote (program ,body ,type)))
+		`(remove-unquoted-constant-language 
+		  '(program ,(Expr body) ,type))]))])
+
+#;
 (define remove-unquoted-constant
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'rename-var

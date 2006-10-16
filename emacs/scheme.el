@@ -329,6 +329,7 @@ See `run-hooks'."
 	       "eval-when" "let-stored" 
 	       "parameterize" "parameters" "tokens" "token" "stored" "tok" "program" "nodepgm" "socpgm" "mvlet" "let-values"
 	       "fluid-let" "define-inlined" "trace-define" "trace-lambda" "trace-let" "trace-define-syntax"
+	       "define-pass"
 	       "when" "unless" "for"
 	       "syntax-case" "define-syntax" "with-syntax" "with-mutex" "fork-thread"
 	       "foldl" "filter" "for-eachi" "mapi"
@@ -540,6 +541,7 @@ that variable's value is a string."
 (put 'module 'scheme-indent-function 2)
 (put 'chez:module 'scheme-indent-function 2)
 (put 'trace-define-syntax 'scheme-indent-function 2)
+(put 'define-pass 'scheme-indent-function 2)
 (put 'trace-define 'scheme-indent-function 2)
 (put 'define-inlined 'scheme-indent-function 2)
 (put 'parameters 'scheme-indent-function 0)
