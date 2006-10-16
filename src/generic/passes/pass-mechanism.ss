@@ -3,13 +3,12 @@
 ;;(datum->syntax-object  #'_  (list ingram outgram bnds expr prog))
 ;;(list ingram outgram bnds expr prog)
 
-
 (define-syntax define-pass
   (lambda (x)
     (syntax-case x ()
       [(_ name clauses ...)
        (let ([gen-code 
-	      (lambda (ingram outgram bnds expr prog fuser)
+	      (lambda (ingram outgram bnds expr prog fuser extra-defs)
 		(define output-language 
 		  (datum->syntax-object #'name
 		   (string->symbol 
@@ -30,12 +29,11 @@
 				   ))))
 		(unless fuser
 		  (set! fuser (lambda (ls k) (apply k ls))))
-
 		(unless expr 
 		  (set! expr (lambda (x fallthrough) (fallthrough x))))
 
 		(if bnds 
-		  (set! expr
+		    (set! expr
 		    (with-syntax ([expr expr])
 		      #`(lambda (x fallthrough)
 			  (expr x 
@@ -65,27 +63,28 @@
 				      [,other (fallthrough other)]
 				      ))))))))
 
-		(with-syntax ([(i o b e p f inspec outspec) 
+		(with-syntax ([(i o b e p f inspec outspec (extra-defs ...))
 			       (list ingram outgram bnds expr prog fuser
-				     inspec outspec)])
+				     inspec outspec extra-defs)])
 		  ;; Now we plug in defaults:
 		  #;
 		  (if (and prog (or bnds expr))
 		      (error 'define-pass "cannot define both Program and Bindings/Expr: ~s" 
 			     #'_))
 
-
 		  #`(define name 
-		      ;; Jeez, this is lame but just so the compiler associates the name with the closure:
-		      (letrec* ([name (lambda (prog) (tmp prog))]
-				[process-expr (core-generic-traverse e f)]
-				[tmp (build-compiler-pass 
-				      'name 
-				      inspec 
-				      outspec 
-				      (lambda (x) (p x process-expr)))])
-			name
-			))
+		      (let () 
+			extra-defs ...
+			;; Jeez, this is lame but just so the compiler associates the name with the closure:
+			(letrec* ([name (lambda (prog) (tmp prog))]
+				  [process-expr (core-generic-traverse e f)]
+				  [tmp (build-compiler-pass 
+					'name 
+					inspec 
+					outspec 
+					(lambda (x) (p x process-expr)))])
+				 name
+				 )))
 
 		))])
 	 ;; Here are all the default values for these components:
@@ -95,16 +94,19 @@
 		    [bnds #f]
 		    [expr #f]
 		    [prog #f]
-		    [fuser #f])
+		    [fuser #f]
+		    [extras '()])
 	   (if (null? cl)
-	       (gen-code ingram outgram bnds expr prog fuser)
+	       (gen-code ingram outgram bnds expr prog fuser (reverse extras))
 	       (syntax-case (car cl) (InputGrammar OutputGrammar Bindings Expr Program)
-			    [(InputGrammar g)  (loop (cdr cl) #'g    outgram bnds expr prog fuser)]
-			    [(OutputGrammar g) (loop (cdr cl) ingram #'g     bnds expr prog fuser)]
-			    [(Bindings f)      (loop (cdr cl) ingram outgram #'f  expr prog fuser)]
-			    [(Expr f)          (loop (cdr cl) ingram outgram bnds #'f  prog fuser)]
-			    [(Program f)       (loop (cdr cl) ingram outgram bnds expr #'f  fuser)]
-			    [(Fuser f)         (loop (cdr cl) ingram outgram bnds expr prog #'f )]
+			    [(InputGrammar g)  (loop (cdr cl) #'g    outgram bnds expr prog fuser extras)]
+			    [(OutputGrammar g) (loop (cdr cl) ingram #'g     bnds expr prog fuser extras)]
+			    [(Bindings f)      (loop (cdr cl) ingram outgram #'f  expr prog fuser extras)]
+			    [(Expr f)          (loop (cdr cl) ingram outgram bnds #'f  prog fuser extras)]
+			    [(Program f)       (loop (cdr cl) ingram outgram bnds expr #'f  fuser extras)]
+			    [(Fuser f)         (loop (cdr cl) ingram outgram bnds expr prog #'f   extras)]
+			    [else (loop (cdr cl) ingram outgram bnds expr prog fuser 
+					(cons (car cl) extras))]
 			    ))))
        ])))
 
