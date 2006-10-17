@@ -133,8 +133,8 @@
 ;  (include (++ (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
 ;  (include (++ (REGIMENTD) "/src/generic/simulator_alpha.ss"))
 
-(include "../generic/simalpha_ui.ss")
-(include "../generic/simalpha_rollworld.ss")
+(include "generic/sim/simalpha_ui.ss")
+(include "generic/sim/simalpha_rollworld.ss")
 
 ;(reg:include "generic" "simalpha_ui.ss")
 ;(reg:include "generic" "simalpha_rollworld.ss")
