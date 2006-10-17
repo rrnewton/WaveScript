@@ -62,7 +62,6 @@
            (define current_interpreter 'chezscheme)           
 	   (define-top-level-value 'simulator-batch-mode #f)
 
-
 	   (case REGOPTLVL
 	     [(0)
 	      ;; Disable source optimization altogether.

@@ -64,7 +64,12 @@
 				    (find-file-noselect (concat dir f)))
 				))))
 		    (directory-files (concat regd dir))))
-	  '("generic/" "" "chez/" "plt/" "C/" 
+	  '("generic/" "generic/passes" "generic/passes/normalize_source/" 
+	    "generic/passes/normalize_query" "generic/passes/analyze_query/" 
+	    "generic/passes/deglobalize/" "generic/passes/tokmac_bkend/" 
+	    "generic/passes/wavescope_bkend" "generic/passes/nesc_bkend/" 
+
+	    "" "chez/" "plt/" "C/" 
 	    "demos/regiment/" "demos/token_machs/" "demos/firelightning/" "demos/wavescope/" 
 	    "linked_lib/"))
 	  ;'("~/cur/generic/"))

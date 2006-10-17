@@ -585,7 +585,7 @@
 			       )))]
 		[(printf (quote ,str) ,[args] ...)
 		 (let ((massaged (massage-str str)))
-		   `(printf ,massaged ,@args))]
+		   `(sim-print ,massaged ,@args))]
 		[(setlabel (quote ,str) ,[args] ...)
 		 `(sim-setlabel (format ,str ,@args))]
 		; =================================================================================
@@ -1019,7 +1019,8 @@
 		      [() 
 		       (if (simalpha-write-sims-to-disk)
 			   ;; Loading this binds "node-code" at top-level:
-			   (load "_genned_node_code.ss")
+			   (parameterize ([source-directories '(".")])
+			     (load "_genned_node_code.ss"))
 			   (eval THEPROG))
                        ;; We have to do this because of the module system:
                        (let ((node-code (top-level-value 'node-code)))

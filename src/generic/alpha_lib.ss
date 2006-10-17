@@ -54,7 +54,8 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 
-         
+         sim-print
+
 	 test-this these-tests test-alphalib   
 ;           (all-from "simulator_alpha.ss"))
    )
@@ -335,8 +336,13 @@
    ;)
    ]
 
+[define (sim-print . args) 
+  (apply printf args)]
+[define (sim-dbg . args) (apply printf args)]
+
 [define (simulator-soc-return x)
   (let ([vtime (simworld-vtime (simobject-worldptr (current-simobject)))])
+    ;(fprintf (current-error-port) "~n  SOCRETURN(t=~s) ~s ~n" vtime x)
     (printf "~n  SOCRETURN(t=~s) ~s ~n" vtime x)
     (logger 0 vtime '_ 'SOCRETURN `[val ,x]))
   (soc-return-buffer (cons x (soc-return-buffer)))]

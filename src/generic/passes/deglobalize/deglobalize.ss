@@ -346,7 +346,7 @@
 		   (if (subcall ,rator_tok v)
 		       ;; Then we fire an event:
 		       (begin 
-			 ;(printf "Node ~s detected event ~s at time ~s!\n" (my-id) v (my-clock))
+			 ;( printf "Node ~s detected event ~s at time ~s!\n" (my-id) v (my-clock))
 			 (call ,memb v t)))]
 		 [,form (v t) (void)] ;; The formation token does nothing!
 		 ))]
@@ -381,15 +381,15 @@
 		 ; No binding for formation token!
 		 [,parent1 (v t) ;,@(assert-tree 't)
 
-			   ;(printf "PARENT1: ~s\n" v)
+			   ;( printf "PARENT1: ~s\n" v)
 			   (greturn (vector 1 v) (to ,catcher) (via global-tree))]
 		 [,parent2 (v t) ;,@(assert-tree 't)
-			   ;(printf "PARENT2: ~s\n" v)
+			   ;( printf "PARENT2: ~s\n" v)
 			   (greturn (vector 2 v) (to ,catcher) (via global-tree))]
 		 ;; This catcher receives both values, right now it does a lame merge where on every update it outputs a both.
 		 [,catcher (vec)
 			   (stored [left #f] [right #f])
-			   (printf "~a: SMAP2: left:~s right:~s\n" (my-id) left right)
+			   (dbg "~a: SMAP2: left:~s right:~s\n" (my-id) left right)
 			   (if (= 1 (vector-ref vec 0))
 			       (set! left (vector-ref vec 1))
 			       (if (= 2 (vector-ref vec 0))
@@ -446,17 +446,17 @@
 ;		   ,(generate-edge parent form push?)
 
 		   [,parent (v t)
-			    (printf "Fold parent value... v:~s t:~s \n" v t )
+			    (dbg "Fold parent value... v:~s t:~s \n" v t )
 ;			    ,@(REGIMENT_DEBUG (ASSERT (or (eq? t WORLDTREE))))
 			    ,(if push? 
 				 `(call ,form v t)
 				 `(activate ,form v t))]
 		   ;; Just inserts the extra argument.
 		   [,tempmemb (v) (call ,memb v ',NOTREE)]
- 		   [,memb (v t) (printf "Member of fold result! ~s ~s\n" v t)]
+ 		   [,memb (v t) (dbg "Member of fold result! ~s ~s\n" v t)]
 		   [,form (v t)
 
-			  (printf "FORMING fold... v:~s t:~s  parent ~s PUSH: ~s\n" v t ,parent ,push?)
+			  (dbg "FORMING fold... v:~s t:~s  parent ~s PUSH: ~s\n" v t ,parent ,push?)
 			  "This is a strange compromise for now."
 			  "I statically compute which VIA token to use, but dynamically pass the subtok ind."
 			  
@@ -512,7 +512,7 @@
 			      )]
 		   ;; Use the ID of the leader node to index this sub-region:
 		   [,leader-tok (ldr val)
-				(printf "WOOT: Cluster formed: index ~a, membership: \n" ldr )
+				(dbg "WOO: Cluster formed: index ~a, membership: \n" ldr )
 				;; Unfreeze the value and declare membership
 				;; NOTE: Currently no way that the spanning tree is revealed. FIXME FIXME
 				(call (tok ,memb ldr) (ext-ref ,form heldval) ',NOTREE)]
@@ -578,7 +578,7 @@
 ;			    ]
 		 ;; Returns our score:
 		 [,calcdist ()
-;			    (printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
+;			    ( printf "\nOurscore: ~a\n" (-. 0. (locdiff (loc) ,target)))
 			    (-. 0. (locdiff (loc) ,target))]
 
 		 ;; Extra visualization code:
@@ -599,7 +599,7 @@
 		 [,memb (v t)  ;; FIXME : DETERMINE WHAT THIS TREE VALUE SHOULD BE.
 			;(if simalpha-visualize-anchors
 			(leds on green)
-			(printf "Anchor-at WINNER! ~a\n" (my-id))
+			(dbg "Anchor-at WINNER! ~a\n" (my-id))
 			]
 		 ))]
 
@@ -818,7 +818,7 @@
 
     ;; Simply inline everything that has only one reference:
     (define substituted-binds
-	(begin ;(hashtab-for-each (lambda (k c) (printf "  Got count: ~s ~s\n" k c)) firstcounts)
+	(begin ;(hashtab-for-each (lambda (k c) ( printf "  Got count: ~s ~s\n" k c)) firstcounts)
 	(let loop ((curbinds origbindings))
 	  (if (null? curbinds) '()
 	      ;; [2006.04.02] Having problems with this usage of ... currently:
@@ -828,7 +828,7 @@
 		(let ((newrhs (let inner ((xp rhs))
 					 (match xp
 					   [,sym (guard (symbol? sym))
-						 ;(printf "Doing it to ~s... ~s ~s\n" sym (hashtab-get firstcounts sym) (assq sym origbindings))
+						 ;( printf "Doing it to ~s... ~s ~s\n" sym (hashtab-get firstcounts sym) (assq sym origbindings))
 						 (if (eq? 1 (hashtab-get firstcounts sym)) ;; Could be #f
 						     (let ((entry (assq sym origbindings)))
 						       (if entry
@@ -852,7 +852,7 @@
     
     ;; Now recount the refs and remove anything that is unreferenced.
     (define pruned-binds
-      (begin ;(hashtab-for-each (lambda (k c) (printf "Got new counts: ~s ~s\n" k c)) newcounts)
+      (begin ;(hashtab-for-each (lambda (k c) ( printf "Got new counts: ~s ~s\n" k c)) newcounts)
       (filter (match-lambda ((,name ,rhs))
 		;; HACK: FIXME..
 		;; We don't nix it unless WE made it unreferenced via our inlining.
