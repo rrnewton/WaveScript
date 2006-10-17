@@ -43,6 +43,66 @@
 ;;; <Formalexp> ::= (<var>*)
 
 
+#;
+(define-pass uncover-free
+  (define process-lambdaclause
+      (lambda (formalexp types body)
+        (mvlet ([(body body-free*) (process-expr body)])
+          (let ((free* (difference body-free* (get-formals formalexp))))
+            (values
+	     `(,formalexp ,types (free ,free* ,body))
+	     free*)))))
+
+  [Expr 
+   (lambda (expr fallthrough)
+     (match expr
+       
+       [(quote ,imm) (values `(quote ,imm) '())]
+       [,var (guard (symbol? var) (not (regiment-constant? var)))
+	     (values var (list var))]
+       
+       [(lambda ,formalexp ,types ,body) 
+	(mvlet ([(clause free*) (process-lambdaclause formalexp types body)])
+	     ;;;; TODO: TEMPORARY RESTRICTION:
+	  (if (not (null? free*))
+	      (error 'uncover-free
+		     "No free variables in lambda's allowed right now! ~a were free in:\n ~a" free* expr))
+	  (values `(lambda ,@clause) free*))]
+
+       [(tuple ,[args args-free] ...)
+	(values `(tuple ,args ...)
+		(apply append args-free))]
+       [(tupref ,n ,m ,[x free]) (values `(tupref ,n ,m ,x) free)]
+
+       [(letrec ([,lhs* ,type* ,[rhs* rhs-free*]] ...) ,[body body-free*])
+	(values
+	 `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
+	 (difference (union (apply union rhs-free*) body-free*) lhs*))]
+
+       [(letrec ,foo ,boo)
+	(error 'bad-letrec "~a" foo)]
+       
+       
+       [(,prim ,[rand* rand-free*] ...)
+	(guard (regiment-primitive? prim)) ;; Used to be extended-scheme-primitive?
+	(values
+	 `(,prim ,rand* ...)
+	 (apply union rand-free*))]
+
+       [,other (fallthrough other)]
+       ))]
+
+  [Program 
+   (lambda (prog process-expr)
+     (match prog
+       [(,input-language (quote (program ,body ,type)))
+	(let-match ([#(,body ,body-free*) (process-expr body)])
+	  `(uncover-free-language ;uncover-free-language
+	    '(program ,body ,type)))]))]
+  )
+
+
+
 ;;; The implementation requires difference, extended-scheme-primitive?,
 ;;; union, and get-formals from helpers.ss.
 (define uncover-free

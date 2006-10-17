@@ -22,6 +22,6 @@
 ;; [2006.09.11] This configures the scheme compiler when loading regiment.
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
-;;   3 -- unsafe optimizations, used for long running simulations.
+;;   3 -- unsafe optimizations, may be used for long running simulations.
 (define REGOPTLVL 0)
 ;; Note that this is separate from IFDEBUG above.

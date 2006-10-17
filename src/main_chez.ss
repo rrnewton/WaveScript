@@ -40,11 +40,11 @@
 	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
 	   (source-directories (list 
-				     "."
-				     (string-append (default-regimentd) "/src/generic")
-				     (string-append (default-regimentd) "/src")
-				     (string-append (default-regimentd) "/src/chez")
-				     ))
+				;"."
+;				(string-append (default-regimentd) "/src/chez")
+;				(string-append (default-regimentd) "/src/generic")
+				(string-append (default-regimentd) "/src")
+				))
 	   
 	   ;(optimize-level 0) ;0/1/2/3)
 	   ;; Currently [2005.10.20] optimize levels result in these times on unit tests:
@@ -138,15 +138,15 @@
 (eval-when (compile load eval) 
   (cd (string-append (default-regimentd) "/src/chez")))
 
-(include "match.ss")      ;; Pattern matcher, dependency.
-(include "regmodule.ss")  ;; Common module syntax.
+(include "chez/match.ss")      ;; Pattern matcher, dependency.
+(include "chez/regmodule.ss")  ;; Common module syntax.
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.
 (import reg:module)
 
 
  ;; Load this first.  Widely visible constants/parameters.
-(include "chez_constants.ss")
+(include "chez/chez_constants.ss")
 
 ;; Because I run from command line, it helps to enter the inspector after an error.
 (unless (top-level-bound? 'default-error-handler)
@@ -155,7 +155,8 @@
  (lambda (who msg . args)
    (call/cc (lambda (k) 	     
 	      (parameterize ([error-handler default-error-handler]
-			     [current-directory (string-append (REGIMENTD) "/src/generic")])
+			     ;[current-directory (string-append (REGIMENTD) "/src/generic")]
+			     )
 		(fprintf (console-output-port)
 			 "~%Error~a: ~a.~%"
 			 (if who (format " in ~s" who) "")
@@ -170,7 +171,7 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
-(include "../generic/reg_macros.ss") (import reg_macros)
+(include "generic/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
@@ -178,23 +179,23 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (default-regimentd))
 
-(include "hash.ss") (import hashfun) ;; TEMPORARY
-(include "hashtab.ss") (import hashtab)
-(include "helpers.ss") (import (except helpers test-this these-tests))
+(include "chez/hash.ss") (import hashfun) ;; TEMPORARY
+(include "chez/hashtab.ss") (import hashtab)
+(include "chez/helpers.ss") (import (except helpers test-this these-tests))
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
 
 ;; Lists all the Regiment primitives and their types:
-(include "../generic/prim_defs.ss") (import prim_defs)
-(include "../generic/grammar_checker.ss") (import grammar_checker)
-(include "../generic/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
-(include "tsort.ss") (import (except topsort-module test-this these-tests))
-(include "pregexp.ss") (import pregexp_module)
+(include "generic/prim_defs.ss") (import prim_defs)
+(include "generic/grammar_checker.ss") (import grammar_checker)
+(include "generic/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
+(include "chez/pregexp.ss") (import pregexp_module)
 
-(include "../generic/c_generator.ss") (import c_generator)
-(include "../generic/scheme_fft.ss")
-(include "../generic/fft.ss") (import fft)
+(include "generic/c_generator.ss") (import c_generator)
+(include "generic/scheme_fft.ss")
+(include "generic/fft.ss") (import fft)
 
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
@@ -219,13 +220,13 @@
 (define current-time (seconds-since-1970))
 ;======================================================================
 
-(include "simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
     (begin
-      (include "basic_graphics.ss")
-      (include "graphics_stub.ss")
+      (include "chez/basic_graphics.ss")
+      (include "chez/graphics_stub.ss")
       (import basic_graphics)
       (import graphics_stub))
     ;; Otherwise, throw in some stubs that are invoked by the generated code:
@@ -234,125 +235,125 @@
 	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
-(include "../generic/logfiles.ss") (import logfiles)
+(include "generic/logfiles.ss") (import logfiles)
 
-(include "alpha_lib.ss") 
+(include "chez/alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
-(include "alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
-;(include "../generic/alpha_lib_scheduler.ss")
+(include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+;(include "generic/alpha_lib_scheduler.ss")
 
-(include "simulator_alpha.ss") 
+(include "chez/simulator_alpha.ss") 
 (import simulator_alpha)
-(include "../generic/firelightning_sim.ss")
-(include "../generic/tossim.ss")
+(include "generic/firelightning_sim.ss")
+(include "generic/tossim.ss")
 
 ;(include "../reg_grammar.ss")
 
 ;; Type inference is used by verify-regiment, below.
-(include "../generic/hm_type_inference.ss") (import hm_type_inference)
-;(include "../generic/prim_defs_OLD.ss")
+(include "generic/hm_type_inference.ss") (import hm_type_inference)
+;(include "generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
 ;; This is used by the subsequent passes that process TML:
-(include "../generic/tml_generic_traverse.ss") (import tml_generic_traverse)
-(include "../generic/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
-(include "../generic/passes/pass-mechanism.ss")
+(include "generic/tml_generic_traverse.ss") (import tml_generic_traverse)
+(include "generic/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
+(include "generic/passes/pass-mechanism.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
-(include "../generic/language-mechanism.ss")
-(include "../generic/lang_wavescript.ss")
+(include "generic/language-mechanism.ss")
+(include "generic/lang_wavescript.ss")
 
-(include "../generic/lang00.ss")
+(include "generic/lang00.ss")
 
-(include "../generic/lang06_uncover-free.ss")
-(include "../generic/lang07_lift-letrec.ss")
+(include "generic/lang06_uncover-free.ss")
+(include "generic/lang07_lift-letrec.ss")
 
-(include "../generic/lang11_classify-names.ss")
-(include "../generic/lang12_heartbeats.ss")
-(include "../generic/lang13_control-flow.ss")
-(include "../generic/lang14_places.ss")
+(include "generic/lang11_classify-names.ss")
+(include "generic/lang12_heartbeats.ss")
+(include "generic/lang13_control-flow.ss")
+(include "generic/lang14_places.ss")
 
-(include "../generic/lang20_deglobalize.ss") 
+(include "generic/lang20_deglobalize.ss") 
 
-(include "../generic/lang30_haskellize-tokmac.ss") 
-(include "../generic/lang32_emit-nesc.ss")
+(include "generic/lang30_haskellize-tokmac.ss") 
+(include "generic/lang32_emit-nesc.ss")
 
-(include "../generic/pass00_verify-regiment.ss")
-(include "../generic/pass000_desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
-(include "../generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+(include "generic/pass00_verify-regiment.ss")
+(include "generic/pass000_desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
+(include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
 
 
-(include "../generic/pass01_eta-primitives.ss")
-(include "../generic/pass02_rename-vars.ss")
-(include "../generic/pass03_remove-unquoted-constant.ss")
-(include "../generic/pass04_static-elaborate.ss") (import pass04_static-elaborate)
-(include "../generic/pass05_reduce-primitives.ss")
+(include "generic/pass01_eta-primitives.ss")
+(include "generic/pass02_rename-vars.ss")
+(include "generic/pass03_remove-unquoted-constant.ss")
+(include "generic/pass04_static-elaborate.ss") (import pass04_static-elaborate)
+(include "generic/pass05_reduce-primitives.ss")
 
-(include "../generic/pass_merge-iterates.ss") (import pass_merge-iterates)
+(include "generic/pass_merge-iterates.ss") (import pass_merge-iterates)
 
-(include "../generic/pass06_remove-complex-constant.ss")
+(include "generic/pass06_remove-complex-constant.ss")
 ; pass07_verify-stage2.ss
-(include "../generic/pass08_uncover-free.ss")
-(include "../generic/pass09_lift-letrec.ss")
-(include "../generic/pass10_lift-letrec-body.ss")
-(include "../generic/pass11_remove-complex-opera.ss")
-(include "../generic/pass12_verify-core.ss")
-(include "../generic/pass13_classify-names.ss")
-;(include "../generic/pass09_separate-graph")
+(include "generic/pass08_uncover-free.ss")
+(include "generic/pass09_lift-letrec.ss")
+(include "generic/pass10_lift-letrec-body.ss")
+(include "generic/pass11_remove-complex-opera.ss")
+(include "generic/pass12_verify-core.ss")
+(include "generic/pass13_classify-names.ss")
+;(include "generic/pass09_separate-graph")
 
-(include "../generic/pass14_add-heartbeats.ss")
-(include "../generic/pass15_add-control-flow.ss")
-(include "../generic/pass16_add-places.ss")
-(include "../generic/pass17_analyze-places.ss")
+(include "generic/pass14_add-heartbeats.ss")
+(include "generic/pass15_add-control-flow.ss")
+(include "generic/pass16_add-places.ss")
+(include "generic/pass17_analyze-places.ss")
 
-(include "../generic/pass17_resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
-;(include "../generic/pass18_add-routing.ss")
+(include "generic/pass17_resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
+;(include "generic/pass18_add-routing.ss")
 
-(include "../generic/pass20_deglobalize.ss") 
+(include "generic/pass20_deglobalize.ss") 
 (import pass20_deglobalize)
 
-(include "../generic/pass20_deglobalize2.ss")
+(include "generic/pass20_deglobalize2.ss")
 (import pass20_deglobalize2)
-(include "../generic/pass20b_tmgen.ss")
+(include "generic/pass20b_tmgen.ss")
 
 ;; Uses delazy-bindings:
-(include "../generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
+(include "generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
 
-(include "../generic/pass21_cleanup-token-machine.ss")
-;(include "../generic/pass22_desugar-soc-return.ss")
+(include "generic/pass21_cleanup-token-machine.ss")
+;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "../generic/pass22_desugar-macros.ss")
-;(include "../generic/pass26_desugar-macros.ss")
+(include "generic/pass22_desugar-macros.ss")
+;(include "generic/pass26_desugar-macros.ss")
 
-(include "../generic/pass23a_find-emittoks.ss")
-;(include "../generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
-(include "../generic/pass23_desugar-gradients.ss")
-(include "../generic/pass23_desugar-gradients_verbose.ss")
-(include "../generic/pass23_desugar-gradients_simple.ss")
-(include "../generic/pass23_desugar-gradients_ETX.ss")
+(include "generic/pass23a_find-emittoks.ss")
+;(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
+(include "generic/pass23_desugar-gradients.ss")
+(include "generic/pass23_desugar-gradients_verbose.ss")
+(include "generic/pass23_desugar-gradients_simple.ss")
+(include "generic/pass23_desugar-gradients_ETX.ss")
 
-(include "../generic/pass24_desugar-let-stored.ss")
-(include "../generic/pass25_rename-stored.ss")
+(include "generic/pass24_desugar-let-stored.ss")
+(include "generic/pass25_rename-stored.ss")
 
 
-;(include "../generic/pass24_analyze-calls.ss")
-;(include "../generic/pass25_inline.ss")
-;(include "../generic/pass26_prune-returns.ss")
-(include "../generic/pass26_cps-tokmac.ss")
-(include "../generic/pass27_sever-cont-state.ss")
-;; (include "../generic/pass27.2_add-kclosure.ss")
-(include "../generic/pass28_closure-convert.ss")
+;(include "generic/pass24_analyze-calls.ss")
+;(include "generic/pass25_inline.ss")
+;(include "generic/pass26_prune-returns.ss")
+(include "generic/pass26_cps-tokmac.ss")
+(include "generic/pass27_sever-cont-state.ss")
+;; (include "generic/pass27.2_add-kclosure.ss")
+(include "generic/pass28_closure-convert.ss")
 
-(include "../generic/pass29_inline-tokens.ss") (import pass29_inline-tokens)
-(include "../generic/pass30_haskellize-tokmac.ss")
+(include "generic/pass29_inline-tokens.ss") (import pass29_inline-tokens)
+(include "generic/pass30_haskellize-tokmac.ss")
 
-(include "../generic/pass31_flatten-tokmac.ss")
-(include "../generic/pass32_emit-nesc.ss")
+(include "generic/pass31_flatten-tokmac.ss")
+(include "generic/pass32_emit-nesc.ss")
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
-(include "../generic/wavescript_emit-c.ss") (import wavescript_emit-c)
-(include "../generic/wavescript_nominalize-types.ss") (import wavescript_nominalize-types)
+(include "generic/wavescript_emit-c.ss") (import wavescript_emit-c)
+(include "generic/wavescript_nominalize-types.ss") (import wavescript_nominalize-types)
 
 
 ;(load "../depends/slib/chez.init")
@@ -361,8 +362,8 @@
 ;; Basic parallel computation (using engines):
 ;; [2006.02.28] These were used by simulator_nought, but are not used currently.
 (IF_GRAPHICS
-    (load "swl_flat_threads.ss") ;; uses swl threads instead
-    (load "flat_threads.ss"))
+    (load "chez/swl_flat_threads.ss") ;; uses swl threads instead
+    (load "chez/flat_threads.ss"))
 
 ;; LAME:
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
@@ -406,16 +407,16 @@
 ;; TODO: Fold it into the unit tests.
 ;;
 ;; Driver depends on 'pass-list being defined.
-(include "../generic/driver.ss")
+(include "generic/driver.ss")
 ;  (game-eval (lambda args 'unspecified))
   (game-eval eval)
   (host-eval (lambda args 'unspecified))
-(include "../generic/tests_noclosure.ss")
-(include "../generic/tests.ss")
+(include "generic/tests_noclosure.ss")
+(include "generic/tests.ss")
 
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
-(include "../generic/repl.ss")
+(include "generic/repl.ss")
 
 ;; DISABLED TEMPORARILY:
 #;
