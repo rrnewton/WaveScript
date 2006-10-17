@@ -243,8 +243,8 @@
 
 (include "chez/simulator_alpha.ss") 
 (import simulator_alpha)
-(include "generic/firelightning_sim.ss")
-(include "generic/tossim.ss")
+(include "generic/sim/firelightning_sim.ss")
+(include "generic/passes/nesc_bkend/tossim.ss")
 
 ;(include "../reg_grammar.ss")
 
