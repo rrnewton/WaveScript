@@ -14,5 +14,5 @@
 ;	(eval-when (compile load eval)
 ;	  (optimize-level (IFDEBUG 2 2)))
 	
-	(include "../generic/alpha_lib_scheduler_simple.ss")
+	(include "generic/sim/alpha_lib_scheduler_simple.ss")
 )

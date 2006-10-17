@@ -1,3 +1,4 @@
+;; [2006.10.17] This is seriously dead code.
 
 ;; [2004.06.03]
 ;; This has been separated from the generic version because chez and
