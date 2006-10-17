@@ -279,81 +279,77 @@
 (include "generic/lang30_haskellize-tokmac.ss") 
 (include "generic/lang32_emit-nesc.ss")
 
-(include "generic/pass00_verify-regiment.ss")
-(include "generic/pass000_desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
+(include "generic/passes/normalize_source/verify-regiment.ss")
+(include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
 (include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+(include "generic/passes/normalize_source/eta-primitives.ss")
+(include "generic/passes/normalize_source/rename-vars.ss")
+(include "generic/passes/normalize_source/remove-unquoted-constant.ss")
 
+(include "generic/passes/static-elaborate.ss") (import pass04_static-elaborate)
 
-(include "generic/pass01_eta-primitives.ss")
-(include "generic/pass02_rename-vars.ss")
-(include "generic/pass03_remove-unquoted-constant.ss")
-(include "generic/pass04_static-elaborate.ss") (import pass04_static-elaborate)
-(include "generic/pass05_reduce-primitives.ss")
+(include "generic/passes/normalize_query/reduce-primitives.ss")
 
-(include "generic/pass_merge-iterates.ss") (import pass_merge-iterates)
+(include "generic/passes/wavescope_bkend/merge-iterates.ss") (import pass_merge-iterates)
 
-(include "generic/pass06_remove-complex-constant.ss")
+(include "generic/passes/normalize_query/remove-complex-constant.ss")
 ; pass07_verify-stage2.ss
-(include "generic/pass08_uncover-free.ss")
-(include "generic/pass09_lift-letrec.ss")
-(include "generic/pass10_lift-letrec-body.ss")
-(include "generic/pass11_remove-complex-opera.ss")
-(include "generic/pass12_verify-core.ss")
-(include "generic/pass13_classify-names.ss")
-;(include "generic/pass09_separate-graph")
+(include "generic/passes/normalize_query/uncover-free.ss")
+(include "generic/passes/normalize_query/lift-letrec.ss")
+(include "generic/passes/normalize_query/lift-letrec-body.ss")
+(include "generic/passes/normalize_query/remove-complex-opera.ss")
+(include "generic/passes/normalize_query/verify-core.ss")
 
-(include "generic/pass14_add-heartbeats.ss")
-(include "generic/pass15_add-control-flow.ss")
-(include "generic/pass16_add-places.ss")
-(include "generic/pass17_analyze-places.ss")
+(include "generic/passes/analyze_query/classify-names.ss")
+(include "generic/passes/analyze_query/add-heartbeats.ss")
+(include "generic/passes/analyze_query/add-control-flow.ss")
+(include "generic/passes/analyze_query/add-places.ss")
+(include "generic/passes/analyze_query/analyze-places.ss")
 
-(include "generic/pass17_resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
+(include "generic/passes/analyze_query/resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
 ;(include "generic/pass18_add-routing.ss")
 
-(include "generic/pass20_deglobalize.ss") 
-(import pass20_deglobalize)
+(include "generic/passes/deglobalize/deglobalize.ss") (import pass20_deglobalize)
 
-(include "generic/pass20_deglobalize2.ss")
-(import pass20_deglobalize2)
-(include "generic/pass20b_tmgen.ss")
+(include "generic/passes/deglobalize/deglobalize2.ss") (import pass20_deglobalize2)
+(include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
 
 ;; Uses delazy-bindings:
-(include "generic/pass17_add-data-flow.ss")      (import pass17_add-data-flow)
+(include "generic/passes/analyze_query/add-data-flow.ss")      (import pass17_add-data-flow)
 
-(include "generic/pass21_cleanup-token-machine.ss")
+(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss")
 ;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/pass22_desugar-macros.ss")
+(include "generic/passes/tokmac_bkend/desugar-macros.ss")
 ;(include "generic/pass26_desugar-macros.ss")
 
-(include "generic/pass23a_find-emittoks.ss")
+(include "generic/passes/tokmac_bkend/find-emittoks.ss")
 ;(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
-(include "generic/pass23_desugar-gradients.ss")
-(include "generic/pass23_desugar-gradients_verbose.ss")
-(include "generic/pass23_desugar-gradients_simple.ss")
-(include "generic/pass23_desugar-gradients_ETX.ss")
+(include "generic/passes/tokmac_bkend/desugar-gradients.ss")
+(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
+(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
 
-(include "generic/pass24_desugar-let-stored.ss")
-(include "generic/pass25_rename-stored.ss")
-
+(include "generic/passes/tokmac_bkend/desugar-let-stored.ss")
+(include "generic/passes/tokmac_bkend/rename-stored.ss")
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")
-(include "generic/pass26_cps-tokmac.ss")
-(include "generic/pass27_sever-cont-state.ss")
+(include "generic/passes/tokmac_bkend/cps-tokmac.ss")
+(include "generic/passes/tokmac_bkend/sever-cont-state.ss")
 ;; (include "generic/pass27.2_add-kclosure.ss")
-(include "generic/pass28_closure-convert.ss")
+(include "generic/passes/tokmac_bkend/closure-convert.ss")
 
-(include "generic/pass29_inline-tokens.ss") (import pass29_inline-tokens)
-(include "generic/pass30_haskellize-tokmac.ss")
+(include "generic/passes/tokmac_bkend/inline-tokens.ss") (import pass29_inline-tokens)
+(include "generic/scrap/pass30_haskellize-tokmac.ss")
 
-(include "generic/pass31_flatten-tokmac.ss")
-(include "generic/pass32_emit-nesc.ss")
+(include "generic/passes/nesc_bkend/flatten-tokmac.ss")
+(include "generic/passes/nesc_bkend/emit-nesc.ss")
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
-(include "generic/wavescript_emit-c.ss") (import wavescript_emit-c)
-(include "generic/wavescript_nominalize-types.ss") (import wavescript_nominalize-types)
+(include "generic/passes/wavescope_bkend/emit-c.ss") (import wavescript_emit-c)
+(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import wavescript_nominalize-types)
 
 
 ;(load "../depends/slib/chez.init")
