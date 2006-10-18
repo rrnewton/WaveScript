@@ -17,12 +17,17 @@
 (module reg_macros mzscheme 
   
   (require 
-   "../plt/iu-match.ss"
-   "../generic/constants.ss"
-   "../plt/chez_compat.ss"
+   (lib "include.ss")
+   "../../plt/iu-match.ss"
+;   (require-for-syntax "../../generic/constants.ss")
+   "../../generic/constants.ss"
+   "../../plt/chez_compat.ss"
+   "../../generic/constants.ss"
    )
 
   (provide
+      reg-include
+   
       for grep rep
       let-match 
       mvlet
@@ -69,7 +74,14 @@
      (syntax-rules ()
        [(mvlet stuff ...) (let-values stuff ...)])))
 
-
+  (IFCHEZ
+   (define-syntax reg-include
+     (syntax-rules ()
+       [(_ fn) (include fn)]))
+   (define-syntax reg-include
+     (syntax-rules ()
+       [(_ fn) (include (build-path "../../" fn))])))
+  
   (define-syntax rec
     (syntax-rules ()
       ((_ x e) (letrec ((x e)) x))))

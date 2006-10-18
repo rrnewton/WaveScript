@@ -134,7 +134,7 @@
 		   (get-output-string s))))
 
 (define these-tests 
-  (append (include "generic/flat_threads.tests")
+  (append (include "generic/testing/flat_threads.tests")
 
     ;; This one depends on particular ordering/timing, only valid for
     ;; this implementation:

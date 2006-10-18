@@ -1682,7 +1682,10 @@
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
-(include "../generic/streams.ss")
+;(include "generic/util/streams.ss")
+;(include (build-path (REGIMENTD) "generic/util/streams.ss"))
+(IFCHEZ (include "generic/util/streams.ss")
+	(include (build-path "~/wavescript/src" "generic/util/streams.ss")))
 
 ;===============================
 

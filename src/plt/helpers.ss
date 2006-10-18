@@ -2,7 +2,7 @@
 #cs ;; Case Sensitivity
 (module helpers mzscheme 
   (require "iu-match.ss"
-           "../generic/reg_macros.ss"
+           "../generic/util/reg_macros.ss"
            (lib "include.ss")
            (lib "date.ss")
            (lib "pretty.ss")
@@ -28,7 +28,7 @@
    ;; Values:
    ;; For chez compatibility:
   (all-from "chez_compat.ss")  
-  (all-from "../generic/reg_macros.ss")
+  (all-from "../generic/util/reg_macros.ss")
   
    ;; Meet in the middle with chez:
    ;system/echoed system-to-str 
@@ -92,7 +92,7 @@
            
 ; =======================================================================  
   
-  (include (build-path "generic" "helpers.ss"))
+  (include (build-path "generic" "util" "helpers.ss"))
 
 ; =======================================================================
    

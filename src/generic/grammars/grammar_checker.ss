@@ -454,7 +454,7 @@
 
 
 ;; This contains actual grammar definitions (used in unit tests below).
-(include "../generic/grammars.ss")
+(include "generic/grammars/grammars.ss")
 
 ; =======================================================================
 ;;; Unit tests.

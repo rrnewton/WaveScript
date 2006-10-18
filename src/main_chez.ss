@@ -170,7 +170,7 @@
 	     (fprintf stderr "(No GUI available.)\n"))
 (flush-output-port stderr)
 
-(include "generic/reg_macros.ss") (import reg_macros)
+(include "generic/util/reg_macros.ss") (import reg_macros)
 
 ;; A global parameter that is the equivalent of the eponymous
 ;; environment var.  Now that constants.ss is loaded we can set this. <br>
@@ -186,15 +186,15 @@
 (IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
 
 ;; Lists all the Regiment primitives and their types:
-(include "generic/prim_defs.ss") (import prim_defs)
-(include "generic/grammar_checker.ss") (import grammar_checker)
-(include "generic/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
+(include "generic/compiler_components/prim_defs.ss") (import prim_defs)
+(include "generic/grammars/grammar_checker.ss") (import grammar_checker)
+(include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
 
-(include "generic/c_generator.ss") (import c_generator)
-(include "generic/scheme_fft.ss")
-(include "generic/fft.ss") (import fft)
+(include "generic/compiler_components/c_generator.ss") (import c_generator)
+(include "generic/util/scheme_fft.ss")
+(include "generic/util/fft.ss") (import fft)
 
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
@@ -234,7 +234,7 @@
 	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
-(include "generic/logfiles.ss") (import logfiles)
+(include "generic/compiler_components/logfiles.ss") (import logfiles)
 
 (include "chez/alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
@@ -249,38 +249,40 @@
 ;(include "../reg_grammar.ss")
 
 ;; Type inference is used by verify-regiment, below.
-(include "generic/hm_type_inference.ss") (import hm_type_inference)
+(include "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
 ;(include "generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
 ;; This is used by the subsequent passes that process TML:
-(include "generic/tml_generic_traverse.ss") (import tml_generic_traverse)
-(include "generic/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
+(include "generic/compiler_components/tml_generic_traverse.ss") (import tml_generic_traverse)
+(include "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
 (include "generic/passes/pass-mechanism.ss")
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
-(include "generic/language-mechanism.ss")
-(include "generic/lang_wavescript.ss")
+(include "generic/langs/language-mechanism.ss")
+(include "generic/langs/lang_wavescript.ss")
 
-(include "generic/lang00.ss")
+(include "generic/langs/lang00.ss")
 
-(include "generic/lang06_uncover-free.ss")
-(include "generic/lang07_lift-letrec.ss")
+(include "generic/langs/lang06_uncover-free.ss")
+(include "generic/langs/lang07_lift-letrec.ss")
 
-(include "generic/lang11_classify-names.ss")
-(include "generic/lang12_heartbeats.ss")
-(include "generic/lang13_control-flow.ss")
-(include "generic/lang14_places.ss")
+(include "generic/langs/lang11_classify-names.ss")
+(include "generic/langs/lang12_heartbeats.ss")
+(include "generic/langs/lang13_control-flow.ss")
+(include "generic/langs/lang14_places.ss")
 
-(include "generic/lang20_deglobalize.ss") 
+(include "generic/langs/lang20_deglobalize.ss") 
 
-(include "generic/lang30_haskellize-tokmac.ss") 
-(include "generic/lang32_emit-nesc.ss")
+(include "generic/langs/lang30_haskellize-tokmac.ss") 
+(include "generic/langs/lang32_emit-nesc.ss")
 
 (include "generic/passes/normalize_source/verify-regiment.ss")
 (include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
-(include "generic/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+
+(include "generic/compiler_components/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+
 (include "generic/passes/normalize_source/eta-primitives.ss")
 (include "generic/passes/normalize_source/rename-vars.ss")
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss")
@@ -390,28 +392,25 @@
       (load "demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
-;(trace  explode-primitive process-expr process-letrec)
-
-
-(eval-when (compile load eval) (cd ".."))
+;(eval-when (compile load eval) (cd ".."))
 (include "main.ss")
-(eval-when (compile load eval) (cd "chez"))
+;(eval-when (compile load eval) (cd "chez"))
 
 ;; [2006.04.18] This testing system isn't doing much for us currently
 ;; other than exercising our static elaborator.
 ;; TODO: Fold it into the unit tests.
 ;;
 ;; Driver depends on 'pass-list being defined.
-(include "generic/driver.ss")
+(include "generic/testing/driver.ss")
 ;  (game-eval (lambda args 'unspecified))
   (game-eval eval)
   (host-eval (lambda args 'unspecified))
-(include "generic/tests_noclosure.ss")
-(include "generic/tests.ss")
+(include "generic/testing/tests_noclosure.ss")
+(include "generic/testing/tests.ss")
 
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
-(include "generic/repl.ss")
+(include "generic/util/repl.ss")
 
 ;; DISABLED TEMPORARILY:
 #;

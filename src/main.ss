@@ -453,8 +453,7 @@
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:
-    (include "generic/system_tests.ss")
-;    ()
+    (include "generic/testing/system_tests.ss")
 ))
 
 (define test-this (default-unit-tester "Main compiler units + system tests." these-tests))
