@@ -1,1 +1,1 @@
-../generic/prim_defs.ss
+../generic/compiler_components/prim_defs.ss

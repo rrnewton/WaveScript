@@ -1,1 +1,1 @@
-../generic/logfiles.ss
+../generic/compiler_components/logfiles.ss

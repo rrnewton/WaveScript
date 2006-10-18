@@ -1,1 +1,1 @@
-../generic/simulator_alpha.ss
+../generic/sim/simulator_alpha.ss

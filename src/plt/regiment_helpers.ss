@@ -1,1 +1,1 @@
-../generic/regiment_helpers.ss
+../generic/compiler_components/regiment_helpers.ss

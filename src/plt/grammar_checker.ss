@@ -1,1 +1,1 @@
-../generic/grammar_checker.ss
+../generic/grammars/grammar_checker.ss
