@@ -24,7 +24,7 @@
 
 (define merge-iterates
   (build-compiler-pass ;; This wraps the main function with extra debugging
-   'rename-var
+   'merge-iterates
    `(input)
    `(output) 
    (let ()

@@ -36,9 +36,10 @@
 
 (all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
 
+;(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-(all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
-(all-except "plt/pass02_rename-vars.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/rename-vars.ss" these-tests test-this)
 (all-except "plt/pass03_remove-unquoted-constant.ss" these-tests test-this)
 (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
 (all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)

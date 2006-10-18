@@ -27,7 +27,7 @@
 
     ;; (3) Then we do a little massaging/normalization.
     eta-primitives
-    rename-var
+    rename-vars
     remove-unquoted-constant 
 
     ;; (4) Then -- here comes the metaprogramming -- we evaluate as much

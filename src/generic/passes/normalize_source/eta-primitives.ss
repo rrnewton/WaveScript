@@ -1,25 +1,16 @@
 
-;; Pass: eta-primitives
-;; [2004.06.24]
+;;;; Pass: Eta-Primitives
+;;;; [2004.06.24]
 
-;; This simple pass eta expands all operand-context references to
-;; primitives, hereafter primitive-names will only occur in operator
-;; context.  This is just a simple, regularizing pass.
+;;;; This simple pass eta expands all operand-context references to
+;;;; primitives, hereafter primitive-names will only occur in operator
+;;;; context.  This is just a simple, regularizing pass.
 
-; (module pass01_eta-primitives mzscheme
-; 	(require (lib "include.ss")
-;                   "iu-match.ss"
-;                   "prim_defs.ss"
-; 		  (all-except "helpers.ss" test-this these-tests)
-; 		  (all-except "regiment_helpers.ss" test-this these-tests)
-;                   "grammar_checker.ss"
-;                   (all-except "hm_type_inference.ss" test-this these-tests)                  
-;                   )
-
-; 	(provide eta-primitives 
-; 		 ;test-this ;test000
-; 		 )
-
+(module eta-primitives mzscheme
+  (require "../../../plt/common.ss")
+  (provide eta-primitives test-this test01)
+  (chezimports)
+  
 ;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
 
 ;; Rewrote again to use define-pass:
@@ -156,8 +147,6 @@
 		`(eta-primitives-language '(program ,body ,type)))])))))
 
 
-
-
 (define test-this 
   (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
     `(
@@ -175,11 +164,8 @@
 	       (lambda (a) (Node) (nodeid a))
 	       (khood (anchor-at 50 10) 2)))
 	   (Signal Integer)))]
-
       )))
 
 (define test01 test-this)
-;)
 
-
-
+) ;; End module

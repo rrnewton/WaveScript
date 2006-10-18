@@ -136,7 +136,7 @@
 
 		))])
 	 ;; Here are all the default values for these components:
-	 (let loop ([cl #'(clauses ...)]
+	 (let loop ([cl (syntax->list #'(clauses ...))]
 		    [ingram #f]
 		    [outgram #f]
 		    [bnds #f]

@@ -47,9 +47,8 @@
   (let ((regd (concat (cap-dir (getenv "REGIMENTD")) "src/")))
     ;; Sometimes it doesn't work if I don't do this first:
     (cd regd)
-  (mapcar (lambda (dir)
-	    (mapcar (lambda (f)
-		      (if (> (length f) 3)
+    (mapcar (lambda (f)
+			(if (> (length f) 3)
 			  (if (and (not (string= (substring f 0 1) "_"))
 				   (not (string= (substring f 0 2) ".#")))
 			      (if (or (string= (substring f -3) ".ss")
@@ -61,21 +60,64 @@
 					;(insert (concat dir f "\n"))
 				  (progn
 				    (print (concat "Loading " f))
-				    (find-file-noselect (concat dir f)))
+				    (find-file-noselect f))
 				))))
-		    (directory-files (concat regd dir))))
-	  '("generic/" "generic/passes" "generic/passes/normalize_source/" 
-	    "generic/passes/normalize_query" "generic/passes/analyze_query/" 
-	    "generic/passes/deglobalize/" "generic/passes/tokmac_bkend/" 
-	    "generic/passes/wavescope_bkend" "generic/passes/nesc_bkend/" 
-
-	    "" "chez/" "plt/" "C/" 
-	    "demos/regiment/" "demos/token_machs/" "demos/firelightning/" "demos/wavescope/" 
-	    "linked_lib/"))
+	      (all-contained-files regd))
 	  ;'("~/cur/generic/"))
   ;(setq find-file-wildcards t)
   ;(find-file "~/cur/*.ss")
   ))
+
+      
+;;       (mapcar (lambda (dir)
+;; 	)
+;; 	  '("generic/" "generic/passes" "generic/passes/normalize_source/" 
+;; 	    "generic/passes/normalize_query" "generic/passes/analyze_query/" 
+;; 	    "generic/passes/deglobalize/" "generic/passes/tokmac_bkend/" 
+;; 	    "generic/passes/wavescope_bkend" "generic/passes/nesc_bkend/" 
+	    
+;; 	    "" "chez/" "plt/" "C/" 
+;; 	    "demos/regiment/" "demos/token_machs/" "demos/firelightning/" "demos/wavescope/" 
+;; 	    "linked_lib/"))
+
+(defun all-contained-files (dir)
+  "return a list of all subdirectories under a given path"
+  (interactive)
+    (apply #'append 
+	   (mapcar (lambda (fatt)
+		     ;(insert "Foo: ")(insert (car fatt))(insert "\n")
+		     (if (or (equal "." (nth 0 fatt)) 
+			     (equal ".." (nth 0 fatt))
+			     (equal ".svn" (nth 0 fatt)))
+			 '()
+		       (if (equal t (nth 1 fatt))
+			   (all-contained-files (concat dir "/" (nth 0 fatt)))
+			 (list ;(nth 0 fatt)
+
+			       (concat dir "/" (nth 0 fatt))
+			       ))))
+		   (directory-files-and-attributes dir))))
+
+(all-contained-files "~/wavescript/src/generic/passes")
+
+
+;;  0. t for directory, string (name linked to) for symbolic link, or nil.
+;;  1. Number of links to file.
+;;  2. File uid.
+;;  3. File gid.
+;;  4. Last access time, as a list of two integers.
+;;   First integer has high-order 16 bits of time, second has low 16 bits.
+;;  5. Last modification time, likewise.
+;;  6. Last status change time, likewise.
+;;  7. Size in bytes.
+;;   This is a floating point number if the size is too large for an integer.
+;;  8. File modes, as a string of ten letters or dashes as in ls -l.
+;;  9. t iff file's gid would change if file were deleted and recreated.
+;; 10. inode number.  If inode number is larger than the Emacs integer,
+;;   this is a cons cell containing two integers: first the high part,
+;;   then the low 16 bits.
+;; 11. Device number.  If it is larger than the Emacs integer, this is
+;;   a cons cell, similar to the inode number.
 
 
 (defvar wsd (concat (cap-dir "~/WaveScope") "code/v1/"))
