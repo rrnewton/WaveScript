@@ -34,7 +34,8 @@
 
 (all-except "plt/hm_type_inference.ss" these-tests test-this)
 
-(all-except "plt/pass000_desugar-pattern-matching.ss" these-tests test-this)
+(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
+
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass01_eta-primitives.ss" these-tests test-this)
 (all-except "plt/pass02_rename-vars.ss" these-tests test-this)

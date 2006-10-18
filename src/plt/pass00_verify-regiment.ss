@@ -1,6 +1,8 @@
 
 (module pass00_verify-regiment  mzscheme  
-  (require (lib "include.ss")           
+  (require "common.ss")
+  
+  #;(require (lib "include.ss")           
            "iu-match.ss"
            "prim_defs.ss"
            (all-except "grammar_checker.ss" test-this these-tests)
@@ -8,7 +10,7 @@
            (all-except "regiment_helpers.ss" test-this these-tests)
            (all-except "hm_type_inference.ss" test-this these-tests) 
 	   "../generic/constants.ss")
-  (include (build-path "generic" "pass00_verify-regiment.ss"))
+  (include (build-path "generic" "passes" "normalize_source" "verify-regiment.ss"))
   
   ;; Insure provision of verify-regiment:
   (provide verify-regiment 

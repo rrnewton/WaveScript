@@ -256,7 +256,7 @@
 ;; This is used by the subsequent passes that process TML:
 (include "generic/compiler_components/tml_generic_traverse.ss") (import tml_generic_traverse)
 (include "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
-(include "generic/passes/pass-mechanism.ss")
+(include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
@@ -279,9 +279,10 @@
 (include "generic/langs/lang32_emit-nesc.ss")
 
 (include "generic/passes/normalize_source/verify-regiment.ss")
-(include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import pass000_desugar-pattern-matching)
+(include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
-(include "generic/compiler_components/source_loader.ss") (import source_loader) ;; For loading regiment sources.
+;;  For loading regiment source.  Depends on desugar-pattern-matching:
+(include "generic/compiler_components/source_loader.ss") (import source_loader) 
 
 (include "generic/passes/normalize_source/eta-primitives.ss")
 (include "generic/passes/normalize_source/rename-vars.ss")
@@ -351,7 +352,6 @@
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (include "generic/passes/wavescope_bkend/emit-c.ss") (import wavescript_emit-c)
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import wavescript_nominalize-types)
-
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

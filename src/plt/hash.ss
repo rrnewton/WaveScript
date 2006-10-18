@@ -4,7 +4,7 @@
   (provide hash)
   (require (lib "include.ss"))
   
-  (include (build-path "generic" "hash.ss"))
+  (include (build-path "generic" "util" "hash.ss"))
   
   )
 

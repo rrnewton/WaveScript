@@ -2,14 +2,13 @@
 
 
 (module desugar-pattern-matching mzscheme
-  (require )
-  (provide desugar-pattern-matching
-	   test_desugar-patterns)  
+  (require "../../../plt/common.ss")  
+  (provide pass_desugar-pattern-matching test_desugar-patterns)
   (chezimports)
 
 ;; Desugar pattern matching within lambda's, letrecs, and "match" statements. <br>
 ;; TODO: This should really not go in the source_loader.
-(define desugar-pattern-matching 
+(define pass_desugar-pattern-matching 
   (let ([break-pattern 
 	 (lambda (pat)
 	   (match pat
@@ -72,7 +71,7 @@
 
 (define these-tests
   `(["Run a basic test of the pattern match expander."
-     (reunique-names (,desugar-pattern-matching '(lambda (#(foo #(bar baz)) x) foo)))
+     (reunique-names (,pass_desugar-pattern-matching '(lambda (#(foo #(bar baz)) x) foo)))
      (lambda (pattmp x)
        (letrec ([foo (tupref 0 2 pattmp)]
 		[pattmp_1 (tupref 1 2 pattmp)]
@@ -80,7 +79,7 @@
 		[baz (tupref 1 2 pattmp_1)])
 	 foo))]
 
-    [(,desugar-pattern-matching '(match 3 [x x]))
+    [(,pass_desugar-pattern-matching '(match 3 [x x]))
      (letrec ([x 3]) x)]
 
     ))

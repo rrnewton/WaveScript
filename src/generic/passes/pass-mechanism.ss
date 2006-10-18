@@ -1,8 +1,56 @@
+;;;; .title Pass Mechanism
+;;;; .author Ryan Newton
+;;;; 
+;;;; This file declares "define-pass" which is a super-sweet syntactic
+;;;; sugar for concisely defining pass-transformations.  It lets you
+;;;; optionally provide only the cases you need.
 
+(module pass-mechanism mzscheme 
+  (require "../../plt/iu-match.ss"
+           "../../plt/chez_compat.ss"
+           (only "../constants.ss" chezimports ASSERT))
+  (provide define-pass)
+  (chezimports)
 
-;;(datum->syntax-object  #'_  (list ingram outgram bnds expr prog))
-;;(list ingram outgram bnds expr prog)
-
+;; Usage:
+;;   (define-syntax <pass-name> <clauses and defs> ...)
+;; Clauses can be:
+;;   [InputGrammar <g>]
+;;   [OutputGrammar <g>]
+;;      These define input/output grammars for the pass in the style of grammar_checker.ss.
+;;      These grammars are checked only in debugmode. See the obsoleted build-pass function.
+;;
+;;   [Program <fun: prog, ExprFun -> pass-result>]
+;;      This form takes a user procedure to handle the top-level input to the pass, the "program".
+;;
+;;   [Expr <fun: expr, FallthroughFun -> intermediate>]
+;;      This form takes an expression-handling procedure in the style of core-generic-traverse.
+;;
+;;   [Fuser <fun: [intermediate ...], <fun: [intermediate ...] -> expr> -> intermediate>]
+;;      This form takes a result-fusing procedure in the style of core-generic-traverse.
+;;
+;;   [Bindings <fun: vars types exprs reconstr exprfun fallthroughfun -> intermediate>]
+;;      UNFINISHED:
+;;
+;;      This has a complex interface, but allows abstraction over
+;;      *all* variable binding forms in the Regiment/Wavescript
+;;      language.  The user function is stuck *between* the "Expr"
+;;      function and the auto-traversal function provided by
+;;      core-generic-traverse.  That is, for a given expression, the
+;;      "Expr" function gets the first shot at it.  If it passes the
+;;      expression on to its "continuation", then the "Bindings"
+;;      function gets a shot.  (The bindings function will catch any
+;;      binding form.)  And finally, if the expression is not a
+;;      binding form it falls through to the auto-traversal function.
+;;
+;;      The user function provided takes six arguments:
+;;         vars:  The variables bound within this scope.
+;;         types: The types of those variables.
+;;         exprs: The expressions within the scope.
+;;         reconstr:       Function to reconstruct a binding expression from vars, types, exprs.
+;;         exprfun:        Entrypoint to the complete expression-handling procedure.  (For use on subexpressions.)
+;;         fallthroughfun: Function to continue processing the expression in question with the auto-traverser.
+;;
 (define-syntax define-pass
   (lambda (x)
     (syntax-case x ()
@@ -12,7 +60,7 @@
 		(define output-language 
 		  (datum->syntax-object #'name
 		   (string->symbol 
-		    (string-append (symbol->string (datum name)) "-language"))))
+		    (string-append (symbol->string (syntax-object->datum #'name)) "-language"))))
 		(define inspec (if ingram 
 				   (with-syntax ([ig ingram]) #'`(input (grammar ,ig PassInput)))
 				   #''(input)))
@@ -111,13 +159,4 @@
        ])))
 
 
-
-#;
-
-(let () 
-  (define-pass foo 
-    [Bindings (lambda (vars types exprs reconst loop)
-		(inspect vars))]
-    )
-  
-  )
+) ;; End module.

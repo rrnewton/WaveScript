@@ -25,10 +25,10 @@
                (except helpers           test-this these-tests)
 	       (except regiment_helpers  test-this these-tests)
 	       (except simulator_alpha   test-this these-tests)
-               (except pass000_desugar-pattern-matching test-this these-tests)
+	       ;; FIXME: Why doesn't this work: [2006.10.18]
+	       (except desugar-pattern-matching test-this these-tests)
 	       )
 ; ================================================================================
-
 
 ;; Read the file from disk, desugar the concrete syntax appropriately.
 ;; .returns Two values: desugared program, and parameters.
@@ -71,7 +71,7 @@
 	     [(tokens . ,others)
 	      `(tokens ,(desugar-token stuff) ,@others)])]
 	  [((define ,x* ,y*) ... ,main)
-	   `(letrec (,(map desugar-define x* y*) ...) ,(desugar-pattern-matching main))]
+	   `(letrec (,(map desugar-define x* y*) ...) ,(pass_desugar-pattern-matching main))]
 
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file
@@ -147,9 +147,9 @@
 (define (desugar-define lhs rhs)  
   (match lhs
     [,s (guard (symbol? s))
-	`[,s ,(desugar-pattern-matching rhs)]]
+	`[,s ,(pass_desugar-pattern-matching rhs)]]
     [(,f ,x* ...) (guard (symbol? f))
-     `[,f ,(desugar-pattern-matching `(lambda ,x* ,rhs))]]
+     `[,f ,(pass_desugar-pattern-matching `(lambda ,x* ,rhs))]]
     [,_  (error 'source_loader:desugar-define
 		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
 

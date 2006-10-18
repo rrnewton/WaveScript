@@ -227,7 +227,7 @@
 		     'replace)
 		   ))
 
-  (define desugared (desugar-pattern-matching prog))
+  (define desugared (pass_desugar-pattern-matching prog))
 #;
   (define (optional-stop x)
     (IFDEBUG

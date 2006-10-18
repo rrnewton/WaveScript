@@ -9,7 +9,7 @@
                   (all-except "hm_type_inference.ss" test-this these-tests)                  
                   )
 
-	(include (build-path "generic" "pass01_eta-primitives.ss"))
+	(include (build-path "generic" "passes" "normalize_source" "eta-primitives.ss"))
 
 	(provide eta-primitives)
 ;		 test-this these-tests test01 tests01)
