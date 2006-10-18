@@ -1,6 +1,7 @@
 
 
-(module pass000_desugar-pattern-matching mzscheme
+
+(module desugar-pattern-matching mzscheme
   (require )
   (provide desugar-pattern-matching
 	   test_desugar-patterns)  
