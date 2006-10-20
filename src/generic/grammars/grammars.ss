@@ -2,6 +2,11 @@
 
 ;;;; Currently 'include'd into grammar_checker.ss
 
+
+;;;; WARNING.  Do not refactor these grammars without being VERY
+;;;; careful.  The grammars for subsequent passes depend on
+;;;; programmatically modifying these basic grammars.
+
 ; =======================================================================
 ;;; Regiment Grammars.
 
@@ -45,10 +50,14 @@
     [Program ('program Expr Type)]
 
     [Expr Var]
-    [Expr Int]   
-    [Expr Float] 
-    [Expr String] 
-    [Expr ('quote Datum)]
+
+    [Expr Const]
+    [Const Int]
+    [Const Float]
+    [Const String]
+    [Const ('quote Datum)]
+;    [Const ()]
+
     [Expr ('if Expr Expr Expr)]
     [Expr ('letrec ([Var Type Expr] ...) Expr)]
     [Expr ('tuple Expr ...)]
@@ -58,7 +67,9 @@
     ;; Adding side-effects for WaveScript.
     [Expr ('begin Expr ...)]
     [Expr ('set! Var Expr)]
+    ;[Expr ('for (Var Expr Expr) Expr)]
 
+    ;; Include an entry for each primitive.
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:
 	regiment-primitives)
@@ -81,26 +92,10 @@
   `( ,@base_regiment_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
      [Expr ('lambda (Var ...) (Type ...) Expr)]
-     [Expr (Expr ...)]  ;; Application.  Should make this labeled.
+     [Expr ('app Expr ...)]  ;; Application.  Should make this labeled.
     ))
+;; The rest of the grammars are defined in the individual pass files.
 
-;; This is the grammar for the output of static-elaborate
-;; UNFINISHED:
-(define elaborated_regiment_grammar
-  ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
-  (lambda (subcheck)
-    `( ,@base_regiment_forms
-       [Expr ('lambda . ValidLambda)]
-       ;; Lambda's are no longer allowed to have free-vars.
-       [ValidLambda ,(lambda (ls)
-		       (match ls
-			 [((,v* ...) (,t* ...) ,e)
-			  (and (subcheck e 'Expr)
-			       (= (length v*) (length t*))
-			       ;; No free vars allowed!!
-			       (subset? ('TODOfree-vars e) v*))]
-			 [,else #f]))]
-       )))
 		  
 ; =======================================================================
 

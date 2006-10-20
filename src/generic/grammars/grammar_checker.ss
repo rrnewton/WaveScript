@@ -344,7 +344,7 @@
       [(,x ,p) (guard (symbol? p) (memq p allvariants))
        (matchhead-any? x (cut-grammar p))]
       [(,_ ,p) ;(guard (symbol? p))
-       (error 'check-grammar:matchhead? "This pattern is not handled: ~a" p)]
+       (error 'check-grammar:matchhead? "This pattern is not handled, no production for symbol: ~a" p)]
       ))
 
   ;; Does its match any of these productions?

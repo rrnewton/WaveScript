@@ -41,7 +41,8 @@
     (build-compiler-pass ;; This wraps the main function with extra debugging
      'rename-vars
      `(input)
-     `(output)
+     ;`(output (grammar ,initial_regiment_grammar PassInput))
+     '(output)
      (let ()
        (define (process-expr expr var-table)
 	 (define (driver x fallthrough)
@@ -91,33 +92,33 @@
   (append (map
 	      (lambda (x)
 		(let ((prog (car x)) (res (cadr x)))
-		  `[(,rename-vars '(some-lang '(program ,prog notype)))
-		    (rename-var-language '(program ,res notype))]))
+		  `[(,rename-vars '(some-lang '(program ,prog Integer)))
+		    (rename-var-language '(program ,res Integer))]))
 	    `([3 3]    
-	      [(letrec ((x notype 1)) x) (letrec ([x_1 notype 1]) x_1)]          
+	      [(letrec ((x Integer 1)) x) (letrec ([x_1 Integer 1]) x_1)]          
 	      ))
      `(
-       [(,rename-vars '(some-lang '(program (letrec ((x notype 1)) 
-					    (+ (app (lambda (x) (notype) x) 3) x)) notype)))
+       [(,rename-vars '(some-lang '(program (letrec ((x Integer 1)) 
+					    (+ (app (lambda (x) (Integer) x) 3) x)) Integer)))
 	,(lambda (p)
 	   (match p
 	     [(rename-var-language
 	       '(program
-		    (letrec ([,x_1 notype 1])
-		      (+ (app (lambda (,x_2) (notype) ,x_2b) 3) ,x_1b))
-		  notype))
+		    (letrec ([,x_1 Integer 1])
+		      (+ (app (lambda (,x_2) (Integer) ,x_2b) 3) ,x_1b))
+		  Integer))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
        
        ;; Might not be portable, assumes particular numbering:
        ["check on for loops"
-	(,rename-vars '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) notype)))
-	(rename-var-language '(program (lambda (f_2 woot_1) (_ _) (for (i_3 1 (app f_2 woot_1)) 0)) notype))]
+	(,rename-vars '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) Integer)))
+	(rename-var-language '(program (lambda (f_2 woot_1) (_ _) (for (i_3 1 (app f_2 woot_1)) 0)) Integer))]
        ["check on set!" 
 	(,rename-vars '(some-lang '(program (letrec ([v Integer 3]) 
-					    (set! v 39)) notype)))
+					    (set! v 39)) Integer)))
 	(rename-var-language
-	 '(program (letrec ([v_1 Integer 3]) (set! v_1 39)) notype))]
+	 '(program (letrec ([v_1 Integer 3]) (set! v_1 39)) Integer))]
        
 
        

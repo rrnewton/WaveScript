@@ -2276,18 +2276,18 @@
 		    [simalpha-sense-function-constructor sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) (cons 1 ())))
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) (cons 1 '())))
 				   world)]
 		   [aggr (lambda (x y)
 			   (cons (+ (car x)
 				    (car y))
 				 (cons (+ (car (cdr x))
 					  (car (cdr y)))
-				       ())))]
+				       '())))]
 		   [div (lambda (v) 
 			  (if (= (car (cdr v)) 0) 0 ;; Just return zero if there are no samples to avg.
 			      (/ (car v) (car (cdr v)))))]
-		   [sums (rfold aggr (cons 0 (cons 0 ())) readings)]
+		   [sums (rfold aggr (cons 0 (cons 0 '())) readings)]
 		   [result (smap div sums)])
 	    result)
 	 ;'verbose
@@ -2410,7 +2410,7 @@
 		     [sim-timeout 2000])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(rfold append () 
+	 '(rfold append '() 
 		 (rmap (lambda (n) (cons (nodeid n) '())) world))))))
       ;; Make sure we heard from everyone by the end there:
       , (lambda (ls)

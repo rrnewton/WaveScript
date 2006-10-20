@@ -178,17 +178,41 @@
 
 
 
-;; [2006.08.27] This version executes the alternate, WaveScript compiler.
+;; [2006.08.27] This version executes the alternate WaveScript compiler.
+;; It takes it from (parsed) source down as far as the WaveScript commpiler 
+;; can go right now.  But it does not invoke the simulator or the c_generator.
 (define (run-ws-compiler p)                                   ;; Entrypoint.
-  (set! p (verify-regiment p))
+  (define optional-stop 
+    (lambda (x)      
+      (if (regiment-verbose)
+	  (IFDEBUG
+	   (begin (parameterize ([pretty-line-length 150]
+				 [print-length 20]
+				 [print-level 20])
+		    (newline)
+		    (pretty-print x))
+		  (printf "================================================================================\n\n")
+		  (read-line)
+		  x)
+	   x)
+	  x)))
+
+  (set! p (optional-stop (pass_desugar-pattern-matching p)))
+  (set! p (optional-stop (verify-regiment p)))
   (printf "Program verified.\n")
-  ;(set! p (eta-primitives p))
-  ;(printf "Primitives Eta-expanded.\n")
   
-  (set! p (nominalize-types p))
-  (printf "Types nominalized.\n")
-  ;(set! p (text->string (wsquery->text p)))
+  (set! p (optional-stop (rename-vars p)))
+  (set! p (optional-stop (eta-primitives p)))
+  (set! p (optional-stop (remove-unquoted-constant p)))
+  (set! p (optional-stop (static-elaborate p)))
+
+  (set! p (optional-stop (reduce-primitives p)))
+
+  (set! p (optional-stop (merge-iterates p)))
+  ;(set! p (optional-stop (nominalize-types p)))
+
   p)
+
 
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
@@ -227,30 +251,7 @@
 		     'replace)
 		   ))
 
-  (define desugared (pass_desugar-pattern-matching prog))
-
-  (define optional-stop 
-    (lambda (x)      
-      (if (regiment-verbose)
-	  (IFDEBUG
-	   (begin (parameterize ([pretty-line-length 150]
-				 [print-length 20]
-				 [print-level 20])
-		    (newline)
-		    (pretty-print x))
-		  (printf "================================================================================\n\n")
-		  (read-line)
-		  x)
-	   x)
-	  x)))
-
-  (define typed 
-    (optional-stop (merge-iterates
-    (optional-stop (static-elaborate
-     (optional-stop (remove-unquoted-constant 
-       (optional-stop (eta-primitives 
-      (optional-stop (rename-vars
-	(optional-stop (verify-regiment desugared)))))))))))))
+  (define typed (run-ws-compiler prog))
 
   (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
 

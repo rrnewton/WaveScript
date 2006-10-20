@@ -39,7 +39,7 @@
 (define (sumhood reg) 
   (letrec ([thevals (rmap (lambda (n) (cons (nodeid n) '()))
 			  reg)])
-    (rfold append () thevals)))
+    (rfold append '() thevals)))
 
 ;; Main query:
 

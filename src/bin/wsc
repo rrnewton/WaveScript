@@ -1,7 +1,23 @@
 #!/bin/sh
 
-TMP=/tmp/wavescript_parsed.tmp.ss
+TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+if [ ! -f "$1" ];
+then echo Usage: "wsc <file> <options ...>";
+     echo   File \"$1\" does not exist.
+     exit;
+fi
+
+if [ ! -d /tmp/`whoami` ]; 
+then mkdir /tmp/`whoami`;
+fi
+
+
+if [ ! `which wsparse` ]
+then echo \"wsparse\" command not found.  Compile it!
+     exit 1;
+fi
 
 wsparse $1 > $TMP
-regiment wscomp $TMP
+regiment wscomp $TMP ${1+"$@"}; 
 rm -f $TMP

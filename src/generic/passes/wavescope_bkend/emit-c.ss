@@ -104,7 +104,7 @@
 
     (lambda (prog)
       (match prog
-	[(,lang (quote (program (letrec ,binds ,body) ,struct-defs ,typ)))
+	[(,lang (quote (program (let ,binds ,body) ,struct-defs ,typ)))
 	 (mvlet ([(return-name) body]
 		 [(body funs) (Query "toplevel" typ `(letrec ,binds ,body))])
 	   (ASSERT (symbol? return-name))

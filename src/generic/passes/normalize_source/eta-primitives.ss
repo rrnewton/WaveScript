@@ -8,15 +8,28 @@
 
 (module eta-primitives mzscheme
   (require "../../../plt/common.ss")
-  (provide eta-primitives test-this test01)
+  (provide eta-primitives eta-primitives-grammar test-this test01)
   (chezimports)
-  
+
+ (define eta-primitives-grammar
+   (let* ([varclause (assq 'Var initial_regiment_grammar)]
+	  [newgram (remq varclause initial_regiment_grammar)]
+	  [new-is-var? 
+	   (lambda (x)
+	     (and (symbol? x)
+		  (not (token-machine-keyword? x))
+		  (or (regiment-constant? x) 
+		      (not (regiment-primitive? x)))))])
+     (ASSERT varclause)
+     (cons `[Var ,new-is-var?]
+	   newgram)))
+
 ;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
 
 ;; Rewrote again to use define-pass:
 ;; [2006.10.06] Rewriting to use generic-traversal:
 (define-pass eta-primitives
-  ;[OutputGrammar eta_prim_gramar]
+  [OutputGrammar eta-primitives-grammar]
   [Expr 
    (letrec ([processExpr 
 	     (lambda (x fallthrough)

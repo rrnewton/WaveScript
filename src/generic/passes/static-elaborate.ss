@@ -41,18 +41,38 @@
   (provide 
    ;(all-defined)
    static-elaborate
+   static-elaborate-grammar
    test-this these-tests
    )
 
   (chezimports )
+
+
+;; This is the grammar for the output of static-elaborate
+;; UNFINISHED:
+(define static-elaborate-grammar
+  ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
+  (lambda (subcheck)
+    `( ,@base_regiment_forms
+       [Expr ('lambda . ValidLambda)]
+       ;; Lambda's are no longer allowed to have free-vars.
+       [ValidLambda ,(lambda (ls)
+		       (match ls
+			 [((,v* ...) (,t* ...) ,e)
+			  (and (subcheck e 'Expr)
+			       (= (length v*) (length t*))
+			       ;; No free vars allowed!!
+			       (subset? ('TODOfree-vars e) v*))]
+			 [,else #f]))]
+       )))
+
 
 ;=======================================================================
 
 (define static-elaborate
   (build-compiler-pass 'static-elaborate
    `(input )
-   `(output 
-     )
+   `(output) ;(grammar ,static-elaborate-grammar))
    (let ()
     (define computable-prims 
       '(+ - * / car cons cdr
