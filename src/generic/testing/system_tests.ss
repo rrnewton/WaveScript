@@ -2240,7 +2240,7 @@
 		    )
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (sense 'temp n)) world)]
+	 '(letrec ([readings (rmap (lambda (n) (sense "temp" n)) world)]
 		   [sum (rfold + 0 readings)])
 	    sum)
 	 )
@@ -2276,7 +2276,7 @@
 		    [simalpha-sense-function-constructor sense-sine-wave])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (cons (sense 'temp n) (cons 1 ())))
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) (cons 1 ())))
 				   world)]
 		   [aggr (lambda (x y)
 			   (cons (+ (car x)
@@ -2319,7 +2319,7 @@
 		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (cons (sense 'temp n) 1))
+	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) 1))
 				   world)]
 		   [aggr (lambda (x y)
 			   (cons (+ (car x)
@@ -2340,7 +2340,7 @@
 		    [simalpha-failure-model  'none])
        (run-simulator-alpha 
 	(run-compiler 
-	 '(letrec ([readings (rmap (lambda (n) (vector (sense 'temp n) 1))
+	 '(letrec ([readings (rmap (lambda (n) (vector (sense "temp" n) 1))
 				   world)]
 		   [aggr (lambda (x y)
 			   (vector (+ (vector-ref x 0)
@@ -2433,7 +2433,7 @@
 	(run-simulator-alpha 
 	 (run-compiler 
 	  '(rwhen-any (lambda (pr) (> (car (cdr pr)) 99))
-		      (rmap (lambda (n) (cons (nodeid n) (cons (sense 'temp n) '())))
+		      (rmap (lambda (n) (cons (nodeid n) (cons (sense "temp" n) '())))
 			    world)))
 	 ))
       ,(lambda (ls) (not (null? ls)))]
@@ -2449,7 +2449,7 @@
 		     [sim-timeout 2000])
 	(run-simulator-alpha 
 	 (run-compiler 
-	  '(anchor-maximizing (lambda (a_node) (sense 'temp a_node)) world)
+	  '(anchor-maximizing (lambda (a_node) (sense "temp" a_node)) world)
 	  ;'(anchor-at 30 40)
 	  ;'verbose
 	  )))

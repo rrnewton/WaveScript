@@ -514,13 +514,13 @@
 
 		  [(,senseprim)
 		   (guard (memq senseprim '(async-sense sync-sense)))
-		   (process-expr `(,senseprim 'default))]
+		   (process-expr `(,senseprim '"default"))]
 		  [(,senseprim (quote ,type))
 		   (guard (memq senseprim '(async-sense sync-sense)))
-		   (unless (symbol? type) (error 'senseprim "invalid sensor type specifier: ~a" type))
+		   (unless (string? type) (error 'senseprim "invalid sensor type specifier: ~s" type))
 		   ;; Feed time, then type, id, x, y to sensor function:
 		   `(((simalpha-sense-function) ,(process-expr '(my-clock)))
-		     ',type                        ;; sensor-type
+		     ',(string->symbol type)       ;; sensor-type
 		     ,(process-expr '(my-id))      ;; node-id
 		     (car ,(process-expr '(loc)))  ;; x-coord
 		     (cadr ,(process-expr '(loc))) ;; y-coord
@@ -623,7 +623,7 @@
 		[(lambda (,v ...) ,[bod]) `(lambda (,v ...) ;(printf "cont invoked...\n")
 						   ,bod)]
 		
-		[(,rator ,[rand*] ...)
+		[(app ,rator ,[rand*] ...)
 		 ;; This is an arbitrary scheme application. Where would these come from?
 		 ;; Don't want to be too lenient tho:
 		   (guard (not (token-machine-primitive? rator))

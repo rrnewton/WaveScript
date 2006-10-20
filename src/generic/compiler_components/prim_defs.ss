@@ -168,8 +168,8 @@
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
-    (sense         (Symbol Node) Integer)
-;    (sense         (String Node) Integer)
+;    (sense         (Symbol Node) Integer)
+    (sense         (String Node) Integer)
     
     (nodeid        (Node) Integer)
 
@@ -511,7 +511,8 @@
      (this () Object)
      ;; TODO: add different kinds of sensors.
      ;; This desugars into (subcall (tok SenseTok 0)):
-     (sync-sense Symbol Number)
+;     (sync-sense Symbol Number)
+     (sync-sense String Number)
      (soc-return (Number) Void)
      (soc-return-finished (Number) Void)
      

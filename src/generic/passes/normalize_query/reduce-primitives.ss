@@ -28,8 +28,8 @@
 	   `(anchor-maximizing 
 					;		    (letrec ([,xvar Integer ,x]
 					;			     [,yvar Integer ,y])
-	     (lambda (n) (Node) (- '0 (+ (^ (- (sense 'xpos n) ,x) '2) 
-					 (^ (- (sense 'ypos n) ,y) '2))))
+	     (lambda (n) (Node) (- '0 (+ (^ (- (sense '"xpos" n) ,x) '2) 
+					 (^ (- (sense '"ypos" n) ,y) '2))))
 	     world))]
 
 	[(node_to_anchor ,n) `(node->anchor ,n)]

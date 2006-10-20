@@ -40,7 +40,7 @@
       nbrhoods))
 
 #;(liftsig (rmap (lambda (r) (rfold + 0
-				  (rmap (lambda (n) (sense 'default n))
+				  (rmap (lambda (n) (sense "default" n))
 					r)))
 	       nbrhoods))
 

@@ -48,7 +48,7 @@
        (letrec ((a (anchor-at 30 40)))
        (letrec ((r (circle a 50.))
 		(f (lambda (next tot)
-		     (cons (+ (car tot) (sense 'temperature next))
+		     (cons (+ (car tot) (sense "temperature" next))
 			   (cons (+ (car (cdr tot)) 1)
 				 '()))))
 		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
@@ -58,7 +58,7 @@
      [(verify-regiment '(some-lang '(program
        (letrec ((R (circle-at 30 40 50.))
 	      (f (lambda (next tot)
-		   (cons (+ (car tot) (sense 'temperature next))
+		   (cons (+ (car tot) (sense "temperature" next))
 			 (cons (+ (car (cdr tot)) 1)
 			       '()))))
 	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))

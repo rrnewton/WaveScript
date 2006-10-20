@@ -19,7 +19,7 @@
   (if (> n 0)
       (begin 
 	;(printf "Yay ~a <<<~a>>>\n" (my-clock) (sync-sense 'temp))
-	(let ((temp (sync-sense 'temp)))
+	(let ((temp (sync-sense "temp")))
 	  (if (> temp 10)
 	      (leds on red)
 	      (leds off red))

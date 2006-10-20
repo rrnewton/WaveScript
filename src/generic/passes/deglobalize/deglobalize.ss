@@ -1059,11 +1059,11 @@
 	  [(sense 'clock ,node) (values `([,name (my-clock)]) '())]
 
 	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.  Doesn't use node...
-	   (guard (symbol? type))
+	   (guard (string? type))
 	   (values `([,name (sync-sense (quote ,type))]) '())]	  
 
 	  [(sense . ,other)
-	   (error 'deglobalize "invalid sense syntax: ~a" `(sense . ,other))]
+	   (error 'deglobalize "invalid sense syntax: ~s" `(sense . ,other))]
 
 	  ;; These are primapps that depend on distributed components.  They're tricky.
 	  ;; What does it mean ultimately to return a signal within a cons-cell for example?

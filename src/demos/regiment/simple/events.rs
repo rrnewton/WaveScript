@@ -22,5 +22,5 @@
 (rwhen-any 
  (lambda (#(_ t)) (> t 90))
  ;(lambda (v) (> (tupref 1 2 v) 99))
- (rmap (lambda (n) (tuple (nodeid n) (sense 'default n))) world)
+ (rmap (lambda (n) (tuple (nodeid n) (sense "default" n))) world)
 	   )
