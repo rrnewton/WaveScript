@@ -111,7 +111,7 @@
     (when (null? args) (print-help) (regiment-exit 0))
     
 ;    (printf "regimentc: compile regiment programs!~n")
-    (let ([opts '()]
+    (let ([opts '()] ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
 	  [extension ".sim"])
       ;; Loop goes through the arguments, processing them accordingly:
       (letrec ([loop 
@@ -165,7 +165,7 @@
 		    [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]
 		    ))])
 
-      ;; I keep disjoint options for the two modes so I use the same option-processor (loop)
+      ;; I keep disjoint options for the modes so I use the same option-processor (loop)
 	(let ([symargs (map string->symbol args)])
 	  (let runloop ([mode (car symargs)] [filenames (loop (cdr symargs))])
 	(case mode
@@ -372,7 +372,7 @@
 	   (define port (match filenames
 			  ;; If there's no file given read from stdin
 			  [() (console-input-port)]
-			  [(,fn) (open-input-file fn)]
+			  [(,fn ,rest ...) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (let loop ([return (wsint port)])
 	     (if (procedure? return) (loop (force return))

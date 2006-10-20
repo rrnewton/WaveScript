@@ -228,25 +228,28 @@
 		   ))
 
   (define desugared (pass_desugar-pattern-matching prog))
-#;
-  (define (optional-stop x)
-    (IFDEBUG
-     (begin (parameterize ([pretty-line-length 150]
-			   [print-length 20]
-			   [print-level 20])
-	      (pretty-print x))
-	    (printf "================================================================================\n\n")
-	    (read-line)
-	    x)
-     x))
-  (define (optional-stop x) x)
+
+  (define optional-stop 
+    (lambda (x)      
+      (if (regiment-verbose)
+	  (IFDEBUG
+	   (begin (parameterize ([pretty-line-length 150]
+				 [print-length 20]
+				 [print-level 20])
+		    (newline)
+		    (pretty-print x))
+		  (printf "================================================================================\n\n")
+		  (read-line)
+		  x)
+	   x)
+	  x)))
 
   (define typed 
     (optional-stop (merge-iterates
     (optional-stop (static-elaborate
      (optional-stop (remove-unquoted-constant 
        (optional-stop (eta-primitives 
-      (optional-stop (rename-var 
+      (optional-stop (rename-vars
 	(optional-stop (verify-regiment desugared)))))))))))))
 
   (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))

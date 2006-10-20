@@ -124,7 +124,7 @@
 		      (let () 
 			extra-defs ...
 			;; Jeez, this is lame but just so the compiler associates the name with the closure:
-			(letrec* ([name (lambda (prog) (tmp prog))]
+			(letrec ([name (lambda (prog) (tmp prog))]
 				  [process-expr (core-generic-traverse e f)]
 				  [tmp (build-compiler-pass 
 					'name 

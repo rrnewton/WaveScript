@@ -2,9 +2,16 @@
 
 TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
+if [ ! -f "$1" ];
+then echo Usage: "ws <file> <options ...>";
+     echo   File \"$1\" does not exist.
+     exit;
+fi
+
 if [ ! -d /tmp/`whoami` ]; 
 then mkdir /tmp/`whoami`;
 fi
+
 
 if [ ! `which wsparse` ]
 then echo \"wsparse\" command not found.  Compile it!
@@ -12,6 +19,6 @@ then echo \"wsparse\" command not found.  Compile it!
 fi
 
 wsparse $1 > $TMP
-wsint $TMP
+wsint $TMP ${1+"$@"}; 
 rm -f $TMP
 

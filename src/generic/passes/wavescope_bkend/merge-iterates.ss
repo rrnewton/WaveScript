@@ -22,6 +22,46 @@
   (chezimports )
 
 
+(define-pass merge-iterates
+    (define (subst-emits body fun)
+      (core-generic-traverse
+       (lambda (expr fallthrough)
+	 (match expr
+	   [(emit ,vqueue ,x) `(app ,fun ,x)]
+	   [(iterate . ,_)
+	    (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
+	   [,other (fallthrough other)]))
+       (lambda (ls k) (apply k ls))
+       body))
+  
+  (define (do-expr expr fallthrough)
+    (match expr
+      [(iterate (lambda (,y) (,ty) 
+			(letrec ([,VQY (VQueue ,outy) (virtqueue)])
+			  ,body))
+		(iterate (lambda (,x) (,tx) 
+				 (letrec ([,VQX (VQueue ,outx) (virtqueue)])
+				   ,bodx))
+			 ,inputstream))
+       (let ([f (unique-name 'f)])
+	 (do-expr
+	  `(iterate (lambda (,x) (,tx)
+			    (letrec ([,VQY (VQueue ,outy) (virtqueue)])
+			      (letrec ([,f (,ty -> ,outy)
+					   (lambda (,y) (,ty) ,body)])
+				,(subst-emits bodx f))))
+		    ,inputstream)
+	  fallthrough))]
+
+      [(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___))
+       (error 'merge-iterates "implementation problem, should have matched this but didn't: \n~s" 
+	      `(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___)))]
+      [,other (fallthrough other)]))
+
+  [Expr do-expr]
+  )
+
+#;
 (define merge-iterates
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'merge-iterates

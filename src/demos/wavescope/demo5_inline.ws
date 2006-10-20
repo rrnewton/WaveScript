@@ -17,5 +17,4 @@ fun rewindow(sig, newwidth, step)
 
 
 
-
 BASE <- rewindow(audioFile("./countup.raw", 4096, 0), 1024, 512);

@@ -332,7 +332,7 @@
          (let loop ([oldbody body]
 		    [body (process-expr body '())])
 	   (if (equal? oldbody body)	   
-	       `(,input-language '(program ,body ,type))
+	       `(static-elaborate-language '(program ,body ,type))
 	       (loop body (process-expr body '()))))]
 	)))))
 
@@ -341,13 +341,13 @@
   `( 
 
     [(static-elaborate '(foo '(program (+ '3 '4) notype)))
-     (foo '(program '7 notype))]
+     (static-elaborate-language '(program '7 notype))]
 
     [(static-elaborate
       '(foo '(program
 	      (letrec ([f _ (lambda (x) (_) '#t)])
 		(app f '3939)) notype)))
-     (foo '(program '#t notype))]
+     (static-elaborate-language '(program '#t notype))]
    
     ["Reduce away fact of 6." 
      (static-elaborate '(foo '(program 
@@ -355,15 +355,15 @@
 			       (if (= '0 n) '1 (* n (app fact (- n '1)))))])
 	(app fact '6))
       notype)))
-     (foo '(program '720 notype))]
+     (static-elaborate-language '(program '720 notype))]
     
     ["Reduce a tuple reference."
      (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+ '100 (tupref 0 2 x))) notype)))
-     (foo '(program '103 notype))]
+     (static-elaborate-language '(program '103 notype))]
 
     ["Reduce a primop underneath a lambda."
      (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+ '3 '4) x)) notype)))
-     (foolang '(program (lambda (x) (_) (cons '7 x)) notype))]
+     (static-elaborate-language '(program (lambda (x) (_) (cons '7 x)) notype))]
 
     [(static-elaborate '(foo '(program 
 			       (letrec ([f _ (lambda (x) (_) '#t)])
@@ -373,8 +373,7 @@
 							      (rfilter f (app loop (- n '1)))))])
 				   (app loop '5)))
 			       notype)))
-     ;unspecified]
-     (foo '(program
+     (static-elaborate-language '(program
 	    (letrec ([f _ (lambda (x) (_) '#t)])
 	      (rfilter
 	       f
@@ -383,10 +382,10 @@
 
     ["Simple test to make sure we keep the quotes on:" 
      (static-elaborate '(foolang '(program (cons (+ '3 '4) world) notype)))
-     (foolang '(program (cons (quote 7) world)
+     (static-elaborate-language '(program (cons (quote 7) world)
 		 notype))]
 
-    ,(let ([prog '(foolang '(program (cons (khood-at '30 '40 '50) world) notype))])
+    ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) notype))])
        `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])

@@ -169,6 +169,8 @@
     ;; Shouldn't this be local??
     ;; I'm not sure...
     (sense         (Symbol Node) Integer)
+;    (sense         (String Node) Integer)
+    
     (nodeid        (Node) Integer)
 
     ))
@@ -330,6 +332,8 @@
 
     ;; This lifts a node value into the Signal monad:
     (node->anchor   (Node) Anchor)
+    (node_to_anchor (Node) Anchor) ;; Wavescript syntax.
+
     ;; This eliminates duplicate Signal types, by lifting out the inner one and canceling:
     ;; Has no operational meaning.
     (liftsig ((Area (Signal 'a))) (Area 'a))

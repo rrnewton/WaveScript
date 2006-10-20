@@ -1,0 +1,27 @@
+
+
+
+s1 = audioFile("./countup.raw", 10, 0);
+
+s2 = iterate (sigseg in s1) { emit sigseg[[sigseg.start]]; }
+
+s3 = iterate (y in iterate (x in s2) {  
+                      emit x + 1;
+                   }
+             )
+{
+  emit y * 2;
+}
+
+//s3 = iterate (x in s2) {
+//  emit (x+1)*(x+1);
+//}
+
+BASE <- s3;
+
+
+// x -> [ a of x ] -> [ b of y ] -> ??? ... 
+
+// x -> [ b(a) ] -> ... (replace varrefs)
+// x -> [ a(b) ] -> ... (replace emits)
+
