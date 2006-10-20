@@ -1,28 +1,7 @@
-;;; Pass 2: rename-vars
+;;;; Pass 2: rename-vars
 
-;;; This pass renames each variable to insure that each variable has
-;;; a unique name. 
-
-;;; The input language is the same as the input and output languages
-;;; of Pass 1.  The output language differs in that all variable
-;;; bindings are uniquely named.
-
-;;; OUTPUT LANG:
-
-;;; <Pgm>  ::= (<language-name> (quote (program <Exp>)))
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= 
-;;;            (quote <datum>)
-;;;          | <constant>
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> <Exp>)
-;;;          | (letrec (<Decl>*) <Exp>)
-;;;          | (<primitive> <Exp>*)
-;;; <Formalexp> ::= (<var>*)
-
-;;; The implementation requires constant?, scheme-primitive?, unique-name,
-;;; get-formals, and cast-formals from helpers.ss.
+;;;; This pass renames each variable to insure that each variable has
+;;;; a unique name. 
 
 ;;; In addition to the current expression, this pass carries along
 ;;; an environment (association list) mapping variable names to
@@ -41,8 +20,8 @@
     (build-compiler-pass ;; This wraps the main function with extra debugging
      'rename-vars
      `(input)
-     ;`(output (grammar ,initial_regiment_grammar PassInput))
-     '(output)
+     `(output (grammar ,initial_regiment_grammar PassInput))  ;; No grammar change.
+
      (let ()
        (define (process-expr expr var-table)
 	 (define (driver x fallthrough)
@@ -112,8 +91,10 @@
        
        ;; Might not be portable, assumes particular numbering:
        ["check on for loops"
-	(,rename-vars '(some-lang '(program (lambda (f woot) (_ _) (for (i 1 (app f woot)) 0)) Integer)))
-	(rename-var-language '(program (lambda (f_2 woot_1) (_ _) (for (i_3 1 (app f_2 woot_1)) 0)) Integer))]
+	(,rename-vars '(some-lang '(program (lambda (f woot) ((Integer -> Integer) Integer)
+						    (for (i 1 (app f woot)) 0)) Integer)))
+	(rename-var-language '(program (lambda (f_2 woot_1) ((Integer -> Integer) Integer)
+					       (for (i_3 1 (app f_2 woot_1)) 0)) Integer))]
        ["check on set!" 
 	(,rename-vars '(some-lang '(program (letrec ([v Integer 3]) 
 					    (set! v 39)) Integer)))

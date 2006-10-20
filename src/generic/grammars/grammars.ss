@@ -67,7 +67,7 @@
     ;; Adding side-effects for WaveScript.
     [Expr ('begin Expr ...)]
     [Expr ('set! Var Expr)]
-    ;[Expr ('for (Var Expr Expr) Expr)]
+    [Expr ('for (Var Expr Expr) Expr)]
 
     ;; Include an entry for each primitive.
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])

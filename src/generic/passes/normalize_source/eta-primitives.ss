@@ -11,8 +11,9 @@
   (provide eta-primitives eta-primitives-grammar test-this test01)
   (chezimports)
 
- (define eta-primitives-grammar
-   (let* ([varclause (assq 'Var initial_regiment_grammar)]
+  ;; In the output grammar varrefs are no longer allowed to refer to primitives.
+  (define eta-primitives-grammar
+    (let* ([varclause (assq 'Var initial_regiment_grammar)]
 	  [newgram (remq varclause initial_regiment_grammar)]
 	  [new-is-var? 
 	   (lambda (x)
