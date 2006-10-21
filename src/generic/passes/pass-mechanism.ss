@@ -59,7 +59,8 @@
     (syntax-case x ()
       [(_ name clauses ...)
        (let ([gen-code 
-	      (lambda (ingram outgram bnds expr prog fuser extra-defs)
+	      (lambda (ingram outgram bnds expr/types expr prog fuser extra-defs)
+
 		(define output-language 
 		  (datum->syntax-object #'name
 		   (string->symbol 
@@ -70,7 +71,17 @@
 		(define outspec (if outgram 
 				    (with-syntax ([og outgram]) #'`(output (grammar ,og PassInput)))
 				    #''(output)))
+		(define gentrav
+		  (begin 
+		    (if (and expr expr/types)
+			(syntax-error (format "Cannot have both Expr and Expr/Types clause in define-pass:\n ~s" #'_)))
+		    (if expr/types
+			#'core-generic-traverse/types
+			#'core-generic-traverse)))
+
 		;; Fill in some defaults:
+		(set! expr (or expr expr/types (lambda (x fallthrough) (fallthrough x))))
+		(set! fuser (or fuser (lambda (ls k) (apply k ls))))
 		(unless prog 
 		  (set! prog (with-syntax ([ol output-language])
 			       #'(lambda (pr Expr) 
@@ -78,11 +89,6 @@
 				     [(,input-language (quote (program ,body ,type)))
 				      `(ol '(program ,(Expr body) ,type))])
 				   ))))
-		(unless fuser
-		  (set! fuser (lambda (ls k) (apply k ls))))
-		(unless expr 
-		  (set! expr (lambda (x fallthrough) (fallthrough x))))
-
 		(if bnds 
 		    (set! expr
 		    (with-syntax ([expr expr])
@@ -114,9 +120,9 @@
 				      [,other (fallthrough other)]
 				      ))))))))
 
-		(with-syntax ([(i o b e p f inspec outspec (extra-defs ...))
+		(with-syntax ([(i o b e p f inspec outspec (extra-defs ...) gentrav)
 			       (list ingram outgram bnds expr prog fuser
-				     inspec outspec extra-defs)])
+				     inspec outspec extra-defs gentrav)])
 		  ;; Now we plug in defaults:
 		  #;
 		  (if (and prog (or bnds expr))
@@ -128,10 +134,11 @@
 			extra-defs ...
 			;; Jeez, this is lame but just so the compiler associates the name with the closure:
 			(letrec ([name (lambda (prog) (tmp prog))]
-				  [process-expr (core-generic-traverse e f)]
+				  [process-expr (gentrav e f)]
 				  [tmp (build-compiler-pass 
 					'name 
 					inspec 
+
 					outspec 
 					(lambda (x) (p x process-expr)))])
 				 name
@@ -143,20 +150,29 @@
 		    [ingram #f]
 		    [outgram #f]
 		    [bnds #f]
+		    [expr/types #f]
 		    [expr #f]
 		    [prog #f]
 		    [fuser #f]
 		    [extras '()])
+	   #|
+	   (let ([tf (lambda (x) (if x #t #f))])
+	     (printf "loop ~s ~s ~s ~s e/t:~s e:~s ~s ~s ~s\n"
+		     (length cl)
+		     (tf ingram) (tf outgram) (tf  bnds) (tf expr/types) (tf expr) (tf prog) (tf fuser) (tf  extras)))
+	   |#
+
 	   (if (null? cl)
-	       (gen-code ingram outgram bnds expr prog fuser (reverse extras))
-	       (syntax-case (car cl) (InputGrammar OutputGrammar Bindings Expr Program)
-			    [(InputGrammar g)  (loop (cdr cl) #'g    outgram bnds expr prog fuser extras)]
-			    [(OutputGrammar g) (loop (cdr cl) ingram #'g     bnds expr prog fuser extras)]
-			    [(Bindings f)      (loop (cdr cl) ingram outgram #'f  expr prog fuser extras)]
-			    [(Expr f)          (loop (cdr cl) ingram outgram bnds #'f  prog fuser extras)]
-			    [(Program f)       (loop (cdr cl) ingram outgram bnds expr #'f  fuser extras)]
-			    [(Fuser f)         (loop (cdr cl) ingram outgram bnds expr prog #'f   extras)]
-			    [else (loop (cdr cl) ingram outgram bnds expr prog fuser 
+	       (gen-code ingram outgram bnds expr/types expr prog fuser (reverse extras))
+	       (syntax-case (car cl) (InputGrammar OutputGrammar Bindings Expr/Types Expr Program Fuser)
+			    [(InputGrammar g)  (loop (cdr cl) #'g    outgram bnds expr/types expr prog fuser extras)]
+			    [(OutputGrammar g) (loop (cdr cl) ingram #'g     bnds expr/types expr prog fuser extras)]
+			    [(Bindings f)      (loop (cdr cl) ingram outgram #'f  expr/types expr prog fuser extras)]
+			    [(Expr/Types f)    (loop (cdr cl) ingram outgram bnds #'f        expr prog fuser extras)]
+			    [(Expr f)          (loop (cdr cl) ingram outgram bnds expr/types #'f  prog fuser extras)]
+			    [(Program f)       (loop (cdr cl) ingram outgram bnds expr/types expr #'f  fuser extras)]
+			    [(Fuser f)         (loop (cdr cl) ingram outgram bnds expr/types expr prog #'f   extras)]
+			    [else (loop (cdr cl) ingram outgram bnds expr/types expr prog fuser 
 					(cons (car cl) extras))]
 			    ))))
        ])))

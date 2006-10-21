@@ -28,17 +28,21 @@
     ;; (3) Then we do a little massaging/normalization.
     eta-primitives
     rename-vars
-    remove-unquoted-constant 
+    remove-unquoted-constant
+    retypecheck
 
     ;; (4) Then -- here comes the metaprogramming -- we evaluate as much
     ;; of the program as can be evaluated.  The residual had better follow our
     ;; restrictions on implementable Regiment programs.
     static-elaborate
+    verify-elaborated
+    retypecheck
 
     ;; (5) Now we normalize the residual in a number of ways to
     ;; produce the core query language, then we verify that core.
     reduce-primitives    
     remove-complex-constant  
+    retypecheck
 
     uncover-free             
 
@@ -46,6 +50,7 @@
     lift-letrec-body         
     remove-complex-opera*
     verify-core
+    retypecheck
 
     ;; (6) Analysis: these passes analyze the query circuit and
     ;; annotate it with various information which may be used in

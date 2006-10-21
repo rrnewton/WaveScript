@@ -17,6 +17,7 @@
 ;;  type-expression (obsolete)
 ;;  annotate-expression
 ;;  annotate-program
+;;  types-compat?
 
 ;;  validate-types [2006.10.12] TODO: check the existing types, should be less expensive
 
@@ -296,6 +297,7 @@
       [(,name ,args ,ret)
        (instantiate-type `(,@args -> ,ret))])))
 
+;; This isn't a very safe datatype, but this predicate tries to give some assurance.
 (define (type? t)
   (define (id x) x)
   (match t
@@ -485,7 +487,7 @@
 				  (ASSERT (type? (car existing-type)))
 				  (car existing-type)])
 			       ) optional)
-			rhs* bod tenv nongeneric)]
+			rhs* bod tenv nongeneric letrec)]
 ;       [(,letrec ([,id* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
 ;        (annotate-letrec id* rhs* bod tenv nongeneric)]
 ;       [(,letrec ([,id* ,type* ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
@@ -554,7 +556,7 @@
                [else
                 (cons (f (car ls1) (car ls2)) 
                       (loop (cdr ls1) (cdr ls2) acc))])))])
-    (lambda (id* existing-types rhs* bod tenv nongeneric) 
+    (lambda (id* existing-types rhs* bod tenv nongeneric letrecconstruct) 
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
              [tenv (tenv-extend tenv id* rhs-types #t)])
@@ -566,44 +568,57 @@
                                  newrhs))
                              rhs-types rhs*)])
           (mvlet ([(bode bodt) (annotate-expression bod tenv nongeneric)])
-            (values `(letrec ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
+            (values `(,letrecconstruct ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
   
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
 (define (annotate-program p)
-  (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
-    ;; Now strip mutable cells from annotated expression.
-    (values 
-     (match e ;; match-expr
-       [,c (guard (constant? c)) c]
-       [(quote ,c)       `(quote ,c)]
-       [,prim (guard (symbol? prim) (regiment-primitive? prim))
-	      prim]
-       [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-       [(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
-       [(tuple ,[e*] ...) `(tuple ,e* ...)]
-       [(tupref ,n ,[e]) `(tupref ,n ,e)]
+  (let ([Expr 
+	 (lambda (p)
+	   (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
+	     ;; Now strip mutable cells from annotated expression.
+	     (values 
+	      (match e ;; match-expr
+		[,c (guard (constant? c)) c]
+		[,v (guard (symbol? v)) v]
+		[(quote ,c)       `(quote ,c)]
+		[,prim (guard (symbol? prim) (regiment-primitive? prim))
+		       prim]
+		[(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+		[(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
+		[(tuple ,[e*] ...) `(tuple ,e* ...)]
+		[(tupref ,n ,[e]) `(tupref ,n ,e)]
 
-       [(set! ,v ,[e]) `(set! ,v ,e)]
-       [(begin ,[e] ...) `(begin ,e ...)]
-       [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+		[(set! ,v ,[e]) `(set! ,v ,e)]
+		[(begin ,[e] ...) `(begin ,e ...)]
+		[(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
 
-       [(let ([,id* ,t* ,[rhs*]] ...) ,[bod])
-	`(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
-       [(letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
-	`(letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
-       [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
+		[(let ([,id* ,t* ,[rhs*]] ...) ,[bod])
+		 `(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
+		[(,letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
+		 (guard (memq letrec '(letrec lazy-letrec)))
+		 `(,letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
+		[(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
 
-       [(,prim ,[rand*] ...)
-	(guard (regiment-primitive? prim))
-	`(,prim ,rand* ...)]
+		[(,prim ,[rand*] ...)
+		 (guard (regiment-primitive? prim))
+		 `(,prim ,rand* ...)]
+		
+		
 
-       ;; HACK HACK HACK: Fix this:
-       ;; We cheat for nums, vars, prims: 
-       [,other other]; don't need to do anything here...
-;       [,other (error 'annotate-program "bad expression: ~a" other)]
-       )
-     (export-type t))))
+		;; HACK HACK HACK: Fix this:
+		;; We cheat for nums, vars, prims: 
+		;[,other other]; don't need to do anything here...
+					;       [,other (error 'annotate-program "bad expression: ~a" other)]
+		)
+	      (export-type t)))
+	   )])
+    ;; Accepts either with-boilerplate or without.
+    (match p
+      [(,lang '(program ,[Expr -> e t] ,type))
+       (ASSERT (type? type))
+       `(,lang '(program ,e ,t))]
+      [,other (Expr other)])))
 
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:

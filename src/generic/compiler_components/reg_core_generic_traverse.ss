@@ -92,10 +92,11 @@
 	   (fuse args (lambda args `(tuple ,args ...)))]
 
 	  ;; No looping on types.  This could be changed:
-	  [(letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
+	  [(,letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
+	   (guard (memq letrec '(letrec lazy-letrec)))
 	   ;; By convention, you get the body first:
 	   (fuse (cons bod rhs*)
-		 (lambda (x . y*) `(letrec ([,lhs* ,typ* ,y*] ...) ,x)))]
+		 (lambda (x . y*) `(,letrec ([,lhs* ,typ* ,y*] ...) ,x)))]
 
 	  ;; Letrec's are big and hairy enough that we try to give slightly better error messages.
 	  [(letrec ([,lhs* ,rhs*] ...) ,bod)
@@ -192,15 +193,16 @@
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
 		       (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
 			     (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
-		      [(letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
+		      [(,letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
+		       (guard (memq letrec '(letrec lazy-letrec)))
 		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
 			 (fuse (cons ((loop newtenv) bod) rhs*)
-			       (lambda (x . y*) `(let ([,lhs* ,ty* ,y*] ...) ,x))))]
+			       (lambda (x . y*) `(,letrec ([,lhs* ,ty* ,y*] ...) ,x))))]
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
 		      [,other (autoloop other)])]
 		   [other (error 'core-generic-traverse/types
-			       "user driver function called fallthrough function (autolooper) with wrong number of args:\n~s"
+			       "user driver function called fallthrough function (autolooper) with wrong number of args, expected expr & tenv:\n~s"
 			       other)])))
 	;; Now we call the original generic-traverse
 	(core-generic-traverse newdriver fuse)))
@@ -221,16 +223,17 @@
       '(+ '3 '4))
      (+ '3 '4)]
     
-    [(core-generic-traverse/types 
+    ["run traversal over rfold & letrec"
+     (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))          
       '(rfold + 0
 	      (letrec ([myhood Region (khood (anchor-at 50 10) 2)])
 		(rmap nodeid myhood))))
-     (rfold + 0 (let ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
+     (rfold + 0 (letrec ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
 
-
-    [(core-generic-traverse/types 
+    ["run traversal over lambda"
+     (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
       '(lambda (x) (Integer) (+ '3 '4)))

@@ -288,7 +288,7 @@
 			 ;; This code only works for Region types,
 			 ;; that's the only place where an rmap can
 			 ;; drive itself with no outside input.
-			 (ASSERT (equal? (recover-type region_tok tenv) 'Region))
+			 (ASSERT (types-compat? (recover-type region_tok tenv) 'Region))
 			 
 			 `([,parent (v t) 
 ;				    (if (not (equal? v ,THISOB))

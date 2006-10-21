@@ -175,7 +175,8 @@
 	   `(,prim ,rand* ...)]
 
 	  ;; We take away spurious "app" syntax for primitive applications.
-	  #;[(app ,prim ,rand* ...)
+	  #;
+	  [(app ,prim ,rand* ...)
            (guard (not (memq prim env)) (regiment-primitive? prim))
 	   (process-expr `(,prim ,@rand*) env type-env)]
           
@@ -203,6 +204,54 @@
 	   (mvlet ([(newprog t) (annotate-program body)])
 	     `(base-language '(program ,newprog ,t))))]
 	)))))
+
+
+
+;; This is simply used between subsequent passes to verify the intermediate programs.
+(define-pass retypecheck
+    [Program (lambda (prog _)
+	       ;; Only actually do it in debugmode:	      
+	       (IFDEBUG (annotate-program prog)
+			prog))])
+
+
+#;
+(retypecheck '(lift-letrec-language
+  '(program
+     (lazy-letrec
+       ((resultoftoplevel_2 (Signal Integer) (rdump tmprmap_5))
+         (tmprmap_5 (Area Integer) (rmap tmpnonprim_4 tmpworld_3))
+         (tmpnonprim_4
+           (Node -> Integer)
+           (lambda (a_1)
+             (Node)
+             (lazy-letrec
+               ((resultofanonlambda_1 Integer (nodeid a_1)))
+               resultofanonlambda_1)))
+         (tmpworld_3 Region world))
+       resultoftoplevel_2)
+     (Signal Integer))))
+
+#;
+(lift-letrec-language
+  '(program
+     (lazy-letrec
+       ((resultoftoplevel_2
+          '(cwp quote
+                (cwr Signal #0='(cwq . #1='(cww quote (cwx . Integer)))))
+          (rdump tmprmap_5))
+         (tmprmap_5 '(cwo Area #0#) (rmap tmpnonprim_4 tmpworld_3))
+         (tmpnonprim_4
+           '(cwn #2='(cwt . #3='(cwv . Node)) -> '(cws . #0#))
+           (lambda (a_1)
+             (#3#)
+             (lazy-letrec
+               ((resultofanonlambda_1 #1# (nodeid a_1)))
+               resultofanonlambda_1)))
+         (tmpworld_3 '(cwm Area #2#) world))
+       resultoftoplevel_2)
+     (Signal Integer)))
+
 
 ;==============================================================================
      

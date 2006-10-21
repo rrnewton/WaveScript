@@ -288,7 +288,8 @@
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss")
 
-(include "generic/passes/static-elaborate.ss") (import pass04_static-elaborate)
+(include "generic/passes/static_elaborate/static-elaborate.ss") (import pass04_static-elaborate)
+(include "generic/passes/static_elaborate/verify-elaborated.ss")
 
 (include "generic/passes/normalize_query/reduce-primitives.ss")
 
