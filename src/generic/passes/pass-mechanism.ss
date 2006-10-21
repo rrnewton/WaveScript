@@ -13,7 +13,7 @@
   (chezimports)
 
 ;; Usage:
-;;   (define-syntax <pass-name> <clauses and defs> ...)
+;;   (define-pass <pass-name> <clauses and defs> ...)
 ;; Clauses can be:
 ;;   [InputGrammar <g>]
 ;;   [OutputGrammar <g>]
@@ -25,6 +25,9 @@
 ;;
 ;;   [Expr <fun: expr, FallthroughFun -> intermediate>]
 ;;      This form takes an expression-handling procedure in the style of core-generic-traverse.
+;;   [Expr/Types <fun: expr, FallthroughFun -> intermediate>]
+;;      This form takes an expression-handling procedure in the style of core-generic-traverse/types.
+;;      Cannot be used with Expr, or Bindings.
 ;;
 ;;   [Fuser <fun: [intermediate ...], <fun: [intermediate ...] -> expr> -> intermediate>]
 ;;      This form takes a result-fusing procedure in the style of core-generic-traverse.

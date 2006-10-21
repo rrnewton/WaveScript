@@ -25,13 +25,13 @@
 (define-pass merge-iterates
     (define (subst-emits body fun)
       (core-generic-traverse
-       (lambda (expr fallthrough)
+       (lambda (expr fallthrough)  ;; driver
 	 (match expr
-	   [(emit ,vqueue ,x) `(app ,fun ,x)]
+	   [(emit ,vqueue ,[x]) `(app ,fun ,x)]
 	   [(iterate . ,_)
 	    (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
 	   [,other (fallthrough other)]))
-       (lambda (ls k) (apply k ls))
+       (lambda (ls k) (apply k ls)) ;; fuser
        body))
   
   (define (do-expr expr fallthrough)
@@ -60,6 +60,14 @@
 
   [Expr do-expr]
   )
+
+
+;;; -> [X] -> [Y] ->
+;;; -> [X(Y)] -> 
+
+
+
+
 
 #;
 (define merge-iterates

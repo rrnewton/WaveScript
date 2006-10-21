@@ -117,10 +117,15 @@
 		 iterate break deep-iterate
 		 unionList
 		 fft 
+
+		 foobar
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion:
 		 )
+
+  (define (foobar n m)
+    (+ n (* 3 m)))
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -612,8 +617,10 @@
      ;; We just call the continuation, the fluid let worries about popping the stack.
      (define (break)
        ((car for-loop-stack) (void)))
+
+     
   
-  )
+  ) ;; End module.
 
 ;; ======================================================================
 

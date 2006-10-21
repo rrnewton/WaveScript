@@ -273,6 +273,8 @@
     ;; Can produce nullseg if len=0.
     (subseg          ((Sigseg 'a) Integer Integer) (Sigseg 'a))
 
+    (foobar (Integer Integer) Integer)
+
     ;; CHANGED to use sample numbers.
     (seg-get      ((Sigseg 'a) Integer) 'a)
     (width        ((Sigseg 'a)) Integer)

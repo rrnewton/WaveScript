@@ -72,7 +72,9 @@
 (define static-elaborate
   (build-compiler-pass 'static-elaborate
    `(input )
-   `(output) ;(grammar ,static-elaborate-grammar))
+;   `(output (grammar ,static-elaborate-grammar PassInput))
+;   `(output (grammar ,remove-unquoted-constant-grammar PassInput))
+   '(output)
    (let ()
     (define computable-prims 
       '(+ - * / car cons cdr
