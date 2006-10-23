@@ -279,6 +279,7 @@
 (include "generic/langs/lang32_emit-nesc.ss")
 
 (include "generic/passes/normalize_source/verify-regiment.ss")
+(include "generic/passes/normalize_source/typecheck.ss")
 (include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:

@@ -74,7 +74,6 @@
 	   ;id
 	   ;inject-polymorphism
 	   
-;           type-expression
 	   recover-type
 	   type-const
 ;	   type-lambda
@@ -95,6 +94,7 @@
 
 ;; These should be hidden:
 	   types-equal!
+           type-expression
 ;	   tvar-equal-type!
 ;	   no-occurrence!
 ;	   safe-export-type
@@ -349,6 +349,8 @@
 
 (define (arrow-type? t)
   (match t
+    [(quote (,v . #f)) #f]
+    [(quote (,v . ,[rhs])) rhs]
     [(,t1 ... -> ,t2) #t]
     [,else #f]))
 
@@ -444,9 +446,14 @@
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
 		;; Let-bound polymorphism:
-		(if (tenv-is-let-bound? tenv v)
+		(if (and (tenv-is-let-bound? tenv v)
+		    ;; TEMP: HACK:
+		    ;; Until we fix lazy-letrec to work for the now-strict language...
+		    ;; We can only polymorphically instantiate arrow types!!
+			 (arrow-type? entry)
+			 )
 		    (begin 
-		      ;(printf "Let-bound var! ~s with type ~a\n" v entry)
+		      ;(printf "Let-bound var! ~s with (arrow ~s) type ~a\n" v (arrow-type? entry) entry)
 		      (values v (instantiate-type entry nongeneric)))
 		    (values v entry))
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
@@ -947,7 +954,7 @@
 
     [(export-type (,type-expression 
 		   '(letrec ([f (lambda (x) x)])
-		      (tuple (f 3) "foo" f))
+		      (tuple (app f 3) "foo" f))
 		  (empty-tenv)))
      #(Integer String ('unspecified -> 'unspecified))
      ;#(Integer String (Integer -> Integer))
@@ -1032,7 +1039,59 @@
    unspecified
    ]
 
-    ))
+
+  ["An example function from nested_regions_folded.ss"
+   (mvlet ([(p t) (annotate-program '(letrec ([sumhood (lambda (reg) 
+					  (letrec ([thevals (rmap (lambda (n) (cons (nodeid n) '()))
+								  reg)])
+					    (rfold append '() thevals)))])
+				       sumhood))])
+     t)
+   ((Area Node) -> (Signal (List Integer)))]
+
+  ["Here's the captured bug, letrec problem."
+   (mvlet ([(p t) (annotate-program '(lambda (n_7)  (Node)
+					     (letrec ([resultofthevals_1 (List 'aay) 
+									 (cons tmpbasic_12 '())]
+						      [tmpbasic_12 Integer (nodeid n_7)])
+					       resultofthevals_1)))])
+     t)
+   (Node -> (List Integer))]
+
+  ["This compiled version of the same fun gets too general a type"
+   (mvlet ([(p t) (annotate-program ' (lambda (reg_5)
+			 ((Area Node))
+                    (letrec
+                      ((thevals_6
+                         (Area (List Integer))
+                         (rmap tmpnonprim_13 reg_5))
+                        (resultofsumhood_3
+                          (Signal (List Integer))
+                          (rfold tmpnonprim_14 '() thevals_6))
+                        (tmpnonprim_13
+                          (Node -> (List Integer))
+                          (lambda (n_7)
+                            (Node)
+                            (lazy-letrec
+                              ((resultofthevals_1
+                                 (List Integer)
+                                 (cons tmpbasic_12 '()))
+                                (tmpbasic_12 Integer (nodeid n_7)))
+                              resultofthevals_1)))
+                        (tmpnonprim_14
+                          ((List Integer) (List Integer) -> (List Integer))
+                          (lambda (a_9 b_8)
+                            ((List Integer) (List Integer))
+                            (lazy-letrec
+                              ((resultofanonlambda_2
+                                 (List Integer)
+                                 (append a_9 b_8)))
+                              resultofanonlambda_2))))
+                      resultofsumhood_3)))]) t)
+   ((Area Node) -> (Signal (List Integer)))]
+
+
+  ))
 
 (define test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
 ;; Unit tester.
