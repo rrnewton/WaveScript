@@ -17,6 +17,9 @@ Things I'm working on now --Ryan:
  *) Bringing PLT version back online.
  *) Porting over to common module system.
 
+ *) Fixing let, letrec, lazy-letrec.
+    *) Make "let" not desugar... (for consistency with typing rules)
+    *) Make letrec strict throughout the compiler.
 
 ================================================================================
 

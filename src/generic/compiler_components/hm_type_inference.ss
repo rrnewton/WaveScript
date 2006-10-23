@@ -319,6 +319,10 @@
     [',v (guard (symbol? v)) (valid-typevar-symbol? v)]
     ['(,v . #f) (guard (symbol? v)) #t]
     ['(,v . ,[t]) (guard (symbol? v)) t]
+
+    ;; A var of num subkind.
+    ;[(NUM ,v) ]
+
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]
@@ -544,14 +548,14 @@
   (lambda (ids body inittypes tenv nongeneric)
     ;; No optional type annotations currently.
     (let* ([argtypes  (map (lambda (_) (make-tcell)) ids)]
-           [newnongen (map (lambda (x)  
-			     (match x 
-			       ['(,n . ,_) n]
-			       ))
-			argtypes)])
+           [newnongen (map (lambda (x) (match x ['(,n . ,_) n])) argtypes)])
       ;; Now unify the new type vars with the existing annotations.
-;      (map (lambda (new old)
-;	     ))
+      (map (lambda (new old)
+	     (types-equal! new (instantiate-type old) 
+			   `(lambda ,ids ,inittypes ,body)))
+	argtypes inittypes)
+
+      ;(inspect argtypes)
 
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
                                                      (append newnongen nongeneric))])
@@ -695,7 +699,7 @@
 ;; the way I wrote the unifier.  (It throws an error on failed unification.)
 ;; 
 ;; types-compat? returns its second arguments post-unified form.
-(trace-define (types-compat? t1 t2)
+(define (types-compat? t1 t2)
   (call/1cc 
    (lambda (k) 
      (fluid-let ([type-error (lambda args (k #f))])
