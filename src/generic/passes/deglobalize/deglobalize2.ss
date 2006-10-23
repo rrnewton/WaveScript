@@ -85,15 +85,17 @@
       (append newbinds pruned)))
 
 
-  ;; This transforms Regions and removes Nodes.
+  ;; This transforms Regions into just local Signals and removes Nodes.
   (define (transform-type ty)
       (let tt ((ty ty))
       (cond
+       ;; Type variables stay the same:
+       [(and (pair? ty) (eq? 'quote (car ty))) ty]
        [(eq? 'Node ty) #()] ;; This becomes unit.
-       [(types-compat? ty '(Area 'a)) => (match-lambda ((Area ,a))
-					   `(Signal ,(transform-type a)))]
-       [(types-compat? ty '(Signal 'a)) => (match-lambda ((Signal ,a))
-					   `(Signal ,(transform-type a)))]
+       [(types-compat? ty '(Area 'a)) => (match-lambda ((Area ,t))
+					   `(Signal ,(transform-type t)))]
+       [(types-compat? ty '(Signal 'a)) => (match-lambda ((Signal ,t))
+					   `(Signal ,(transform-type t)))]
        [else (match ty
 	       [(,[tt -> in*] ... -> ,[tt -> out]) `(,in* ... -> ,out)]
 	       [#(,[tt -> t*] ...)   (apply vector t*)]

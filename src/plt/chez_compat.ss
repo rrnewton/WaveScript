@@ -31,7 +31,9 @@
 ;  (include "/usr/local/plt/collects/slibinit/init.ss")  
 
   ;;; Chez Compatability
-      
+
+  (define call/1cc call/ec)
+  
   (define cd current-directory) ;; shorthand
 
 ;; Leaf nodes in a data structure.  Things that contain no more subthings.
