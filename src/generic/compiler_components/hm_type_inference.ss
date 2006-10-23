@@ -440,6 +440,16 @@
 ;; .param nongeneric - list of type variables that appear in lambda-arguments. (as opposed to lets)
 ;; .returns 2 values - annotated expression and expression's type
 (define (annotate-expression exp tenv nongeneric)
+  (define (extract-optional optional)
+    (map (lambda (existing-type)
+	   (case (length existing-type)
+	     [(0) #f]
+	     [(1) (car existing-type)]
+	     ;; We assume the first one is a type, and the rest are extra metadata:
+	     [else (ASSERT (type? (car existing-type)))
+		   (car existing-type)]))
+      optional))
+  ;; Here's the main loop:
   (let l ((exp exp))
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
@@ -483,15 +493,6 @@
 		 (types-equal! t newtypes exp)
 		 (vector-ref newtypes (qinteger->integer n))))]
       
-      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
-						(map (lambda (_) `(quote ,(make-tvar))) v*)
-						tenv nongeneric)]
-      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      ;; Optional type annotations uninterpreted currently!!.
-      [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
-      
-      [(let ([,id* ,ty* ,rhs*] ...) ,bod)
-       (annotate-let id* rhs* bod ty* tenv nongeneric)]
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
       [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
@@ -502,20 +503,20 @@
 	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
 	   (values `(for (,i ,start ,end) ,bod) ty)))]
 
+
+      
+      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
+						(map (lambda (_) `(quote ,(make-tvar))) v*)
+						tenv nongeneric)]
+      [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
+
+      [(let ([,id* ,optional ... ,rhs*] ...) ,bod)
+       (annotate-let id* rhs* bod (extract-optional optional) tenv nongeneric)]
+
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       ;; Allowing annotations, but ignoring them.
       [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
-       (annotate-letrec id* 
-			(map (lambda (existing-type)
-			       (case (length existing-type)
-				 [(0) #f]
-				 [(1) (car existing-type)]
-				 ;; We assume the first one is a type, and the rest are extra metadata:
-				 [else 
-				  (ASSERT (type? (car existing-type)))
-				  (car existing-type)])
-			       ) optional)
-			rhs* bod tenv nongeneric letrec)]
+       (annotate-letrec id* (extract-optional optional) rhs* bod tenv nongeneric letrec)]
       
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
@@ -551,8 +552,8 @@
            [newnongen (map (lambda (x) (match x ['(,n . ,_) n])) argtypes)])
       ;; Now unify the new type vars with the existing annotations.
       (map (lambda (new old)
-	     (types-equal! new (instantiate-type old) 
-			   `(lambda ,ids ,inittypes ,body)))
+	     (if old (types-equal! new (instantiate-type old) 
+			   `(lambda ,ids ,inittypes ,body))))
 	argtypes inittypes)
 
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
@@ -569,8 +570,8 @@
        (printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
 
        (let* ([newtypes (map (lambda (new old) 
-			      (types-equal! new (instantiate-type old) 
-					    `(let ([,id* ,inittypes ,rhs*] ...) ,bod))
+			       (if old (types-equal! new (instantiate-type old) 
+					    `(let ([,id* ,inittypes ,rhs*] ...) ,bod)))
 			      new)
 			  rhsty* inittypes)]
 	      [tenv (tenv-extend tenv id* newtypes #t)])
@@ -594,6 +595,12 @@
     (lambda (id* existing-types rhs* bod tenv nongeneric letrecconstruct) 
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
+	     ;; Unify rhs-types with pre-existing types.
+	     [_ (map (lambda (new old) 
+		       (if old 
+			   (types-equal! new (instantiate-type old) 
+					 `(letrec (,'... [,new ,old] ,'...) ,'...))))
+		  rhs-types existing-types)]
              [tenv (tenv-extend tenv id* rhs-types #t)])
         ;; Unify all these new type variables with the rhs expressions
         (let ([newrhs* 
@@ -1049,10 +1056,7 @@
   ;; Now let's see about partially annotated programs.
   ["Partially (erroneously) annotated letrec"
    (mvlet ([(p t) (annotate-program '(letrec ([i String 3]) (+ i 59)))]) p)
-   ;error
-   unspecified
-   ]
-
+   error]
 
   ["An example function from nested_regions_folded.ss"
    (mvlet ([(p t) (annotate-program '(letrec ([sumhood (lambda (reg) 
