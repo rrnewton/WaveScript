@@ -490,8 +490,8 @@
       ;; Optional type annotations uninterpreted currently!!.
       [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
       
-      [(let ([,id* ,ty?ignored!! ... ,rhs*] ...) ,bod)
-       (annotate-let id* rhs* bod tenv nongeneric)]
+      [(let ([,id* ,ty* ,rhs*] ...) ,bod)
+       (annotate-let id* rhs* bod ty* tenv nongeneric)]
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
       [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
@@ -562,13 +562,20 @@
 
 ;; [2006.07.18] WS: This is for plain-old lets.  No recursion.
 (define annotate-let
-  (lambda (id* rhs* bod tenv nongeneric)
+  (lambda (id* rhs* bod inittypes tenv nongeneric)
     (define (f e) (annotate-expression e tenv nongeneric))
     (match rhs*
       [(,[f -> newrhs* rhsty*] ...)
-       (let ([tenv (tenv-extend tenv id* rhsty* #t)])
+       (printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
+
+       (let* ([newtypes (map (lambda (new old) 
+			      (types-equal! new (instantiate-type old) 
+					    `(let ([,id* ,inittypes ,rhs*] ...) ,bod))
+			      new)
+			  rhsty* inittypes)]
+	      [tenv (tenv-extend tenv id* newtypes #t)])
 	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
-	   (values `(let ([,id* ,rhsty* ,newrhs*] ...) ,bod) bodty)))])))
+	   (values `(let ([,id* ,newtypes ,newrhs*] ...) ,bod) bodty)))])))
 
 ;; Assign a type to a Regiment letrec form.  
 ;; .returns 2 values: annoted expression and type
@@ -928,6 +935,12 @@
 
     ["Invalid explicitly annotated type"
      (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(String) (empty-tenv) '())]) t))
+     error]
+
+    ["Explicitly typed let narrowing identity function's signature"
+     (mvlet ([(_ t) (annotate-program '(let ([f (Integer -> Integer) (lambda (x) x)]) f))]) t)
+     (Integer -> Integer)]
+    [(mvlet ([(_ t) (annotate-program '(let ([f (Integer -> Integer) (lambda (x) x)]) (app f "h")))]) t)
      error]
 
     [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v '('alpha) (empty-tenv) '())]) t))
