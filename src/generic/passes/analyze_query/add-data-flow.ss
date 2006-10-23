@@ -376,8 +376,8 @@
 
 		    ["Data flow graph?"
 		     (,dfg? '((x ,worldsym)
-			      (f (f _ () (lambda (x) (_) x)))
-			      (v (v _ () (rmap f world)))))
+			      (f (f ('a -> 'a) () (lambda (x) ('b) x)))
+			      (v (v Region () (rmap f world)))))
 		     #t]
 
 		    )
@@ -450,10 +450,10 @@
 	 `(lang '(program (props )
 		   (control-flow )
 		   (lazy-letrec
-		    ([f _ () (lambda (x) (_) x)]
-		     [v _ () (rmap f world)])
+		    ([f ('a -> 'a) () (lambda (x) ('b) x)]
+		     [v Region () (rmap f world)])
 		    v)
-		   _))))
+		   Region))))
        ,(lambda (x) 
 	  (and (pair? x) (not (null? x))
 	       (set-equal? 
@@ -469,8 +469,8 @@
 
 		(cdr x)
 		`((x ,worldsym)
-		  (f (f _ () (lambda (x) (_) x)))
-		  (v (v _ () (rmap f world))))
+		  (f (f ('a -> 'a) () (lambda (x) ('b) x)))
+		  (v (v Region () (rmap f world))))
 		)))]
 
       ["Now let's look at nested regions."

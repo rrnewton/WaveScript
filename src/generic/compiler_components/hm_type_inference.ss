@@ -225,6 +225,10 @@
 
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
+;; The "nongeneric" vars are ones that do not receive new mutable cells.
+
+;; This is because, when instantiating a rator for application
+;; let-bound type variables are reinstantiated, whereas lambda-bound ones are not.
 (define instantiate-type 
   (case-lambda 
     [(t) (instantiate-type t '())]
@@ -300,9 +304,17 @@
 ;; This isn't a very safe datatype, but this predicate tries to give some assurance.
 (define (type? t)
   (define (id x) x)
+  (define (valid-type-symbol? s)
+    (let ([str (symbol->string s)])
+      (and (> (string-length str) 0)
+	   (char-upper-case? (string-ref str 0)))))
+  (define (valid-typevar-symbol? s)
+    (let ([str (symbol->string s)])
+      (and (> (string-length str) 0)
+	   (char-lower-case? (string-ref str 0)))))
   (match t
-    [,s (guard (symbol? s)) #t]
-    [',v (guard (symbol? v)) #t]
+    [,s (guard (symbol? s)) (valid-type-symbol? s)]
+    [',v (guard (symbol? v)) (valid-typevar-symbol? v)]
     ['(,v . #f) (guard (symbol? v)) #t]
     ['(,v . ,[t]) (guard (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
@@ -401,7 +413,7 @@
   (let ([result (make-tcell)])
     (if (and (symbol? rator) 
 	     (tenv-is-let-bound? tenv rator))
-	;; By instantiating a new type for the rator we allow let-bound polymorphism.
+	;; By instantiating a new type for the rator  allow let-bound polymorphism.
 	(types-equal! (instantiate-type rattyp non-generic-tvars) `(,@rands -> ,result) exp)
 	(types-equal! rattyp `(,@rands -> ,result) exp))
     ;(inspect (vector (export-type rator) rands result))
@@ -457,10 +469,12 @@
 		 (types-equal! t newtypes exp)
 		 (vector-ref newtypes (qinteger->integer n))))]
       
-      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod tenv nongeneric)]      
+      [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
+						(map (lambda (_) `(quote ,(make-tvar))) v*)
+						tenv nongeneric)]
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       ;; Optional type annotations uninterpreted currently!!.
-      [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod tenv nongeneric)]
+      [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
       
       [(let ([,id* ,ty?ignored!! ... ,rhs*] ...) ,bod)
        (annotate-let id* rhs* bod tenv nongeneric)]
@@ -523,10 +537,15 @@
 ;; .param tenv  The type environment.
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
-  (lambda (ids body tenv nongeneric)
+  (lambda (ids body inittypes tenv nongeneric)
     ;; No optional type annotations currently.
-    (let* ([argtypes (map (lambda (_) (make-tcell)) ids)]
-           [newnongen (map (match-lambda ('(,n . ,_)) n) argtypes)])
+    (let* ([argtypes ;(map instantiate-type inittypes)]
+	             (map (lambda (_) (make-tcell)) inittypes)]
+           [newnongen (map (lambda (x)  
+			     (match x 
+			       ['(,n . ,_) n]
+			       ))
+			argtypes)])
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
                                                      (append newnongen nongeneric))])
         (values `(lambda ,ids ,argtypes ,newbod)
@@ -893,9 +912,17 @@ magnitude : foo -> bar
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) (empty-tenv) '())]) t)) (Integer -> Integer)]
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(Integer) (empty-tenv) '())]) t))
+     (Integer -> Integer)]
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '('alpha) (empty-tenv) '())]) t))
+     (Integer -> Integer)]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v (empty-tenv) '())]) t))
+    #;
+    ["Invalid explicitly annotated type"
+     (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(String) (empty-tenv) '())]) t))
+     error]
+
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v '('alpha) (empty-tenv) '())]) t))
      ,(lambda (x)
 	(match x
 	  [(',a -> ',b) (eq? a b)]
@@ -1011,3 +1038,16 @@ magnitude : foo -> bar
   (app matrix 3 4 5.0))
 
   )
+
+
+
+
+;> (instantiate-type '(#0='(j . #f) -> #0#))
+;(#0='(k . #f) -> #0#)
+;> (instantiate-type '(#0='(j . #f) -> #0#) '(j))
+;('#0=(j . #f) -> '#0#)
+
+; let f = ref (fun x -> x) in (!f 3, !f 3.0);;  -- ERR
+; let f = [fun x -> x] in (hd f 3, hd f 3.0);;  
+
+; fun f -> (f 3, f 4.0)  -- ERR 

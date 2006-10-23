@@ -246,7 +246,7 @@
        `[(remove-complex-opera* '(some-lang '(program ,prog notype)))
 	 (some-lang '(program ,res notype))])) 
    '(
-     [(lazy-letrec ([x _ (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
+     [(lazy-letrec ([x (List Integer) (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
      )
    )
   ) 

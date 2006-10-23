@@ -1198,7 +1198,7 @@
 			   (props [result_1 final local])
 			   (control-flow )
 			   (data-flow )
-			   (lazy-letrec ((result_1 _ ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
+			   (lazy-letrec ((result_1 Integer ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
 			   notype
 			   )))
      unspecified]
@@ -1213,10 +1213,10 @@
 			   (control-flow soc anch circ)
 			   (data-flow )
 			   (lazy-letrec
-			    ((b _ ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
-			     (a _ ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
-			     (anch _ ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
-			     (circ _ ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
+			    ((b (List Integer) ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
+			     (a (List Integer) ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
+			     (anch Anchor ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
+			     (circ Region ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
 			    circ)
 			   notype)))
      unspecified]
@@ -1263,12 +1263,10 @@
      '(lambda (n_354)
 	(Node)
 	(lazy-letrec
-	 ((resultofonehop_356
-           Region
+	 ((resultofonehop_356           Region
            ((heartbeat 1000))
            (khood tmpnodeanchor_361 '1))
-	  (tmpnodeanchor_361
-	   Anchor
+	  (tmpnodeanchor_361	   Anchor
 	   ((heartbeat 1000))
 	   (node->anchor n_354)))
 	 resultofonehop_356))))
