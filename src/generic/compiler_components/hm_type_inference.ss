@@ -555,8 +555,6 @@
 			   `(lambda ,ids ,inittypes ,body)))
 	argtypes inittypes)
 
-      ;(inspect argtypes)
-
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
                                                      (append newnongen nongeneric))])
         (values `(lambda ,ids ,argtypes ,newbod)
@@ -928,7 +926,6 @@
      (let ([x ''(a . #f)] [y ''(b . #f)]) (types-equal! x y (empty-tenv)) x)
      '(a . '(b . #f))]
 
-#;
     ["Invalid explicitly annotated type"
      (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(String) (empty-tenv) '())]) t))
      error]
