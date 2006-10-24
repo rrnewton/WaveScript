@@ -43,11 +43,7 @@
            )
 
   (provide 
-;           regiment-type-aliases
-;	   regiment-basic-primitives
-;	   local-node-primitives
-;	   regiment-constants
-;	   regiment-distributed-primitives
+           num-types
 
 	   make-tvar-generator
 	   make-tvar
@@ -105,6 +101,9 @@
 	   )
 
   (chezimports constants)
+
+;; Added a subkind for numbers, here are the types in that subkind.
+(define num-types '(Integer Float Complex))
 
 ; ======================================================================
 ;;; Helpers
@@ -167,7 +166,7 @@
 
 (define (tcell->name x)
   (match x
-    [(quote (,n . ,t)) (DEBUGASSERT (symbol? n))    n]
+    [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
 ; ----------------------------------------
@@ -250,15 +249,17 @@
 	     [,s (guard (symbol? s)) s]
 
              ;; This type variable is non-generic, we do not copy it.
-	     [(quote ,cell) (guard (pair? cell) (memq (car cell) nongeneric))
-              `(quote ,cell)] ;; Don't reallocate the cell (or touch its RHS)
-
+	     [(,qt ,cell) 
+	      (guard (memq qt '(quote NUM)) (pair? cell) (memq (car cell) nongeneric))
+              `(,qt ,cell)] ;; Don't reallocate the cell (or touch its RHS)
 	     ;; Otherwise make/lookup the new cell and attach it.
-	     [(quote ,x) (guard (or (symbol? x) (pair? x)))
+	     [(,qt ,x) 
+	      (guard (memq qt '(quote NUM))
+		     (or (symbol? x) (pair? x)))
 	      (let* ([var (if (symbol? x) x (car x))]
 		     [entry (tenv-lookup tenv var)])
 		(or entry
-		    (let ((newtype `(quote ,(cons (make-tvar) 
+		    (let ((newtype `(,qt ,(cons (make-tvar) 
 						  (if (pair? x) (loop (cdr x)) #f)))))
 		      ;; After that loop var should still not occur in the env!
 		      (DEBUGASSERT (not (tenv-lookup tenv var)))
@@ -282,7 +283,9 @@
   (match t
     [,s (guard (symbol? s)) s]
     ['(,n . ,v) (if v (export-type v) `(quote ,n))]
-    [',n `(quote ,n)]
+    [',n `(quote ,n)]    
+    [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
+    [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
     [(,[arg*] ... -> ,[res])
      `(,arg* ... -> ,res)]
     [(,s ,[t] ...) (guard (symbol? s))
@@ -316,13 +319,10 @@
 	   (char-lower-case? (string-ref str 0)))))
   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
-    [',v (guard (symbol? v)) (valid-typevar-symbol? v)]
-    ['(,v . #f) (guard (symbol? v)) #t]
-    ['(,v . ,[t]) (guard (symbol? v)) t]
-
-    ;; A var of num subkind.
-    ;[(NUM ,v) ]
-
+    [(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) 
+     (valid-typevar-symbol? v)]
+    [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
+    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]
@@ -336,16 +336,13 @@
     [Region #t]
     [Anchor #t]
     [(Area ,_) #t]
-    [(Signal ,_) #t]
-    
+    [(Signal ,_) #t]    
     [,s (guard (symbol? s)) #f]
-    [',v (guard (symbol? v)) #f]
-
-    ['(,v . #f) (guard (symbol? v)) 
+    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
+    [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
      (warning 'distributed-type? "got type var with no info: ~s" v)
      #t] ;; This COULD be.
-    ['(,v . ,[t]) (guard (symbol? v)) t]
-
+    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]
@@ -355,6 +352,7 @@
   (match t
     [(quote (,v . #f)) #f]
     [(quote (,v . ,[rhs])) rhs]
+    [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [,else #f]))
 
@@ -567,8 +565,7 @@
     (define (f e) (annotate-expression e tenv nongeneric))
     (match rhs*
       [(,[f -> newrhs* rhsty*] ...)
-       (printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
-
+       ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
        (let* ([newtypes (map (lambda (new old) 
 			       (if old (types-equal! new (instantiate-type old) 
 					    `(let ([,id* ,inittypes ,rhs*] ...) ,bod)))
@@ -739,6 +736,12 @@
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch x y exp)]
 
+    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! tv1 `(NUM ,tv2) exp)]
+    [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
+     (tvar-equal-type! t1 numty exp)]
+    [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
+     (tvar-equal-type! t2 numty exp)]
+
     ;; If one of them is a symbol, it might be a type alias.
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
      (let ([sym    (if (symbol? x) x y)]
@@ -782,7 +785,7 @@
 (define (tvar-equal-type! tvar ty exp)
   (DEBUGASSERT (type? ty))
   (match tvar ;; Type variable should be a quoted pair.
-    [',pr 
+    [(,qt ,pr) (guard (memq qt '(NUM quote)))
      (if (not (pair? pr))
 	 (error 'tvar-equal-type! "bad tvar here, no cell: ~a" tvar))
      (if (cdr pr)
@@ -797,9 +800,10 @@
 (define (no-occurrence! tvar ty exp)
   (DEBUGASSERT (type? ty))
 
+  ;; This is a lame hack to repair certain cycles.
   (if (match ty
-	['(,tyvar . ,_) (guard (eq? tyvar tvar)) #t]
-	['(,tyvar . ,[tyt]) tyt]
+	[(,qt (,tyvar . ,_)) (guard (memq qt '(NUM quote)) (eq? tyvar tvar)) #t]
+	[(,qt (,tyvar . ,[tyt])) (guard (memq qt '(NUM quote))) tyt]
 	[,else #f])
 
       ;; HACK: VERIFY CORRECTNESS::
@@ -811,13 +815,14 @@
 	  [(quote ,tvarpair)
 	   ;; Ouch, mutating in the guard... Nasty.
 	   (guard  (match tvarpair
-		     [(,outer . '(,inner . ,targettyp)) (guard (eq? inner tvar))
+		     [(,outer . (,qt (,inner . ,targettyp))) 
+		      (guard (memq qt '(NUM quote)) (eq? inner tvar))
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
 		      (printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp)
 		      ]
-		     [(,outer . ',[deeper]) (void)]
+		     [(,outer . (,qt ,[deeper])) (guard (memq qt '(NUM quote))) (void)]
 		     [else (error 'no-occurrence! "this is an implementation bug.")]))
 	   ;; Guard already did the work:
 	   (void)]	  	 
@@ -827,7 +832,7 @@
   (match ty
     [#f #t]
     [,s (guard (symbol? s)) #t]
-    ['(,tyvar . ,[tyt])
+    [(,qt (,tyvar . ,[tyt])) (guard (memq qt '(NUM quote)))
      (if (equal? tyvar tvar)
 	 (raise-occurrence-check tvar ty exp))]
     [(,[arg*] ... -> ,[res]) res]
@@ -835,8 +840,7 @@
     [#(,[t*] ...) #t]
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
-    )
-   ))
+    )))
 
 
 ; ======================================================================
@@ -923,8 +927,12 @@
 (define these-tests
   `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
-    [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
 
+    ["NUM must have vars attached" (type? #((NUM Integer) (NUM Float))) #f]
+    [(type? '(NUM a)) #t]
+
+    [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
+    
     [(export-type ''(f . Integer)) Integer]
     [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Integer]
     [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
@@ -939,7 +947,7 @@
     ["types-equal!: make sure that (by convention) the first argument is mutated"
      (let ([x ''(a . #f)] [y ''(b . #f)]) (types-equal! x y (empty-tenv)) x)
      '(a . '(b . #f))]
-
+   
     ["Invalid explicitly annotated type"
      (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(String) (empty-tenv) '())]) t))
      error]
@@ -990,7 +998,8 @@
   [(types-compat? '(Signal Node) 'Anchor) Anchor]
   [(types-compat? 'Anchor 'Anchor) Anchor]
   [(types-compat? 'Anchor '(Area Integer)) #f]
-  [(types-compat? 'Region '(Area 'a)) (Area Node)]
+  [(types-compat? 'Region '(Area 'a)) (Area Node)]  
+  [(types-compat? '(NUM g) 'Float) Float]
 
   ["Lambda bound arrow types are not polymorphic."
      (export-type (,type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
@@ -1108,6 +1117,20 @@
                       resultofsumhood_3)))]) t)
    ((Area Node) -> (Signal (List Integer)))]
 
+
+  ["Now let's test the NUM subkind."
+   (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
+				       (tuple (app f 3) (app f 4.0) f)))])
+     t)
+   #(Integer Float ((NUM unspecified) -> (NUM unspecified)))]
+
+  ["Now let's test something outside the bounds of the NUM subkind" 
+   (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
+				       (tuple (app f 3) (app f 4.0) (app f "et") f)))])
+     t)
+   error]
+
+  
 
   ))
 

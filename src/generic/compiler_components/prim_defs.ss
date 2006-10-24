@@ -84,6 +84,12 @@
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
+;     (+ ((NUM a) (NUM a)) (NUM a))
+;     (- ((NUM a) (NUM a)) (NUM a)) 
+;     (* ((NUM a) (NUM a)) (NUM a)) 
+;     (/ ((NUM a) (NUM a)) (NUM a)) 
+;     (^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
+
     (+ (Integer Integer) Integer)
     (- (Integer Integer) Integer) 
     (* (Integer Integer) Integer) 
