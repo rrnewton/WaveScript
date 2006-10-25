@@ -222,20 +222,15 @@
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
-(define (wsint x)                                             ;; Entrypoint.
-  (define (parse-it f)
-    ;; HACK: WON'T WORK IN WINDOWS:
-    (unless (zero? (system "which wsparse")) 
-      (error 'wsint "couldn't find wsparse executable"))
-    (car (process (++ "wsparse " f))))
+(define (wsint x)                                             ;; Entrypoint.  
   (define prog
-    (strip-types
-     (cond  [(input-port? x) (read x)]
-	    [(string? x) (let* ((port (parse-it x))
-				(exp (read port)))
-			   (close-input-port port)
-			   exp)]
-	    [(list? x)   x]
+    (strip-types ;; <- TODO REMOVE!!!
+     (cond  [(input-port? x) (printf "WSINT: Loading WS source from port: ~s\n" x) 
+	     ;; We assume this is parsed but not post-processed:
+	     (ws-postprocess (read x))]
+	    [(string? x) (printf "WSINT: Loading WS source from file: ~s\n" x)
+	     (read-wavescript-source-file x)]
+	    [(list? x)   (printf "WSINT: Evaluating WS source.\n" x)  x]
 	    [else (error 'wsint "bad input: ~s" x)])))
 
   (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 

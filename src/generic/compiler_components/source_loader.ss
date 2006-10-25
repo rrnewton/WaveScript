@@ -6,6 +6,10 @@
 
 ; [2006.02.27] Refactored to use new common module syntax.
 
+; [2006.10.25] This now contains some of the code to parse&load ".ws" files as well.
+; Note, .rs files have a mechanism for including simulator parameter settings in the file.
+; .ws files have nothing comparable at the moment.
+
 (module source_loader mzscheme 
   (require "../plt/iu-match.ss"
            "../generic/constants.ss"
@@ -15,9 +19,16 @@
            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
            (all-except "../generic/simulator_alpha.ss" test-this these-tests id)
            )
+  ;; Module exports:
   (provide     	
-   read-regiment-source-file
-   load-regiment reg:load
+   read-regiment-source-file ;; Read a file to SEXP syntax
+   load-regiment reg:load    ;; Read and execute a file using simulator.
+
+   expand-include            ;; Expand an include statement into a set of definitions.
+
+   read-wavescript-source-file ;; Read a WS file, invoking "wsparse", also doing post-processing
+   ws-postprocess              ;; Take parsed decls and turn into a single top level expression.
+
    ;test_sourceloader
    ) ;; End provide
 
@@ -31,6 +42,7 @@
 ; ================================================================================
 
 ;; Read the file from disk, desugar the concrete syntax appropriately.
+;; .param fn File name.
 ;; .returns Two values: desugared program, and parameters.
 (define read-regiment-source-file
   (lambda (fn)
@@ -140,9 +152,10 @@
 (define reg:load load-regiment) ;; shorthand
 
 
-; ================================================================================
+;----------------------------------------
 ;;; Some syntactic sugar.
 
+;; Private helper:
 ;; Desugar define statements found within files into letrec statements.
 (define (desugar-define lhs rhs)  
   (match lhs
@@ -154,6 +167,69 @@
 		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
 
 
+;================================================================================
+
+;; Do all the post-processing to turn a set of bindings into a single valid expression.
+(define (ws-postprocess ws)
+  ;; First we expand includes:
+  (let ([ws (apply append 
+              (map (lambda (form)
+		   (match form
+		     [(include ,file) (expand-include file)]
+		     [,other (list other)]))
+	      ws))])
+  (define (f1 x) (eq? (car x) ':))
+  (define (f2 x) (eq? (car x) 'define))
+  (define (f3 x) (eq? (car x) '<-))
+  (let ([types (map cdr (filter f1 ws))]
+        [defs (map cdr (filter f2 ws))]
+        [routes (map cdr (filter f3 ws))])
+    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)))) ws))
+    (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
+    (let ([typevs (map car types)]
+          [defvs (map car defs)])
+      ;(pretty-print ws)
+      (unless (= 1 (length routes))
+        (if (zero? (length routes))
+	    (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- ()\"")
+		   (set! routes `((BASE (tuple)))))
+	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
+      (unless (eq? 'BASE (caar routes))
+        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
+      (unless (subset? typevs defvs)
+        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
+      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
+      `(let* ,(map (lambda (def)
+		     (match def
+		       [(,v ,e) (if (memq v typevs)
+				    `[,v ,(cadr (assq v types)) ,e]
+				    `[,v ,e])]))
+		defs)
+         ,(cadar routes))))))
+
+;; Expand an include statement into a set of definitions.
+(define (expand-include fn)
+  (unless (file-exists? file)
+    (error 'parser "Included file not found: ~s\n" file))
+  (match (ws-parse-file file)
+    [(letrec ,binds ,ignored)
+     `((define . ,binds) ...)])
+  )
+
+(define (read-wavescript-source-file fn)
+  (ASSERT (string? fn))
+  (unless (equal? (extract-file-extension fn) "ws")
+    (error 'read-wavescript-source-file 
+	   "should only be used on a .ws file, not: ~s" fn))
+
+  ;; HACK: WON'T WORK IN WINDOWS:)
+  (unless (zero? (system "which wsparse")) 
+    (error 'wsint "couldn't find wsparse executable"))
+  (let* ([port (car (process (++ "wsparse " fn)))]
+	 [decls (read port)])
+    (close-input-port port)
+    (printf "POSTPROCESSING: ~s\n" decls)
+    (ws-postprocess decls)))
 
 ) ;; End Module.
 

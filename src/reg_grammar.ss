@@ -512,6 +512,9 @@
               (loop (position-token-token x)))
             x)))
 
+
+;; MOVED TO SOURCE_LOADER.ss
+#;
 (define (ws-postprocess ws)
   ;; First we expand includes:
   (let ([ws (apply append 
@@ -564,7 +567,8 @@
 ;; This parses the file and does post-processing:
 (define (ws-parse-file fn)
   (define raw (ws-parse-file-raw fn))
-  (ws-postprocess raw) 
+  ;(ws-postprocess raw) 
+  raw
   )
 
 
