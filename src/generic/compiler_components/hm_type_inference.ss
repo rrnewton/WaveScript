@@ -538,6 +538,10 @@
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       )))
 
+;; Internal helper.
+(define (valid-user-type! t)
+  (unless (or (not t) (type? t))
+    (error 'type-checker "invalid explicit type annotation: ~s" t)))
 
 ;; Assign a type to a procedure declaration.
 ;; .param ids   The lambda formals.
@@ -546,6 +550,7 @@
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
   (lambda (ids body inittypes tenv nongeneric)
+    (for-each valid-user-type! inittypes)
     ;; No optional type annotations currently.
     (let* ([argtypes  (map (lambda (_) (make-tcell)) ids)]
            [newnongen (map (lambda (x) (match x ['(,n . ,_) n])) argtypes)])
@@ -564,6 +569,7 @@
 (define annotate-let
   (lambda (id* rhs* bod inittypes tenv nongeneric)
     (define (f e) (annotate-expression e tenv nongeneric))
+    (for-each  valid-user-type! inittypes)
     (match rhs*
       [(,[f -> newrhs* rhsty*] ...)
        ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
@@ -591,6 +597,7 @@
                 (cons (f (car ls1) (car ls2)) 
                       (loop (cdr ls1) (cdr ls2) acc))])))])
     (lambda (id* existing-types rhs* bod tenv nongeneric letrecconstruct) 
+      (for-each  valid-user-type! existing-types)
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
 	     ;; Unify rhs-types with pre-existing types.

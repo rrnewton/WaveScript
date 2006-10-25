@@ -224,14 +224,13 @@
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
   (define prog
-    (strip-types ;; <- TODO REMOVE!!!
-     (cond  [(input-port? x) (printf "WSINT: Loading WS source from port: ~s\n" x) 
+    (cond  [(input-port? x) (printf "WSINT: Loading WS source from port: ~s\n" x) 
 	     ;; We assume this is parsed but not post-processed:
 	     (ws-postprocess (read x))]
 	    [(string? x) (printf "WSINT: Loading WS source from file: ~s\n" x)
 	     (read-wavescript-source-file x)]
 	    [(list? x)   (printf "WSINT: Evaluating WS source.\n" x)  x]
-	    [else (error 'wsint "bad input: ~s" x)])))
+	    [else (error 'wsint "bad input: ~s" x)]))
 
   (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 
 		   (parameterize ([pretty-line-length 180]
