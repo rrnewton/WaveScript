@@ -102,6 +102,7 @@
 
   (chezimports constants)
 
+
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Integer Float Complex))
 
@@ -127,8 +128,9 @@
 ;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (type-error 'type-checker
-	 "Different numbers of arguments ~s and ~s in ~s\n"
-	 (safe-export-type t1) (safe-export-type t2) exp))
+	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n in ~s\n"
+	 (- (length t1) 2) (safe-export-type t1) 
+	 (- (length t2) 2) (safe-export-type t2) exp))
 
 ; ----------------------------------------
 
@@ -319,8 +321,7 @@
 	   (char-lower-case? (string-ref str 0)))))
   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
-    [(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) 
-     (valid-typevar-symbol? v)]
+    [(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
@@ -736,7 +737,7 @@
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch x y exp)]
 
-    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! tv1 `(NUM ,tv2) exp)]
+    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
      (tvar-equal-type! t1 numty exp)]
     [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
@@ -930,8 +931,12 @@
 
     ["NUM must have vars attached" (type? #((NUM Integer) (NUM Float))) #f]
     [(type? '(NUM a)) #t]
+    [(type? '(Integer -> (NUM a))) #t]
 
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
+    [(mvlet ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
+     ((NUM unspecified) -> (NUM unspecified))]
+
     
     [(export-type ''(f . Integer)) Integer]
     [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Integer]
@@ -942,6 +947,7 @@
     [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(Integer) (empty-tenv) '())]) t))
      (Integer -> Integer)]
     [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '('alpha) (empty-tenv) '())]) t))
+     ;((NUM unspecified) -> (NUM unspecified))
      (Integer -> Integer)]
     
     ["types-equal!: make sure that (by convention) the first argument is mutated"
@@ -1137,6 +1143,22 @@
 (define test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
 ;; Unit tester.
 (define test-inferencer test-this)
+
+;; We should make sure that all the prim_defs actually have valid types!
+(DEBUGMODE
+ (for-each (lambda (primdef)
+	     (match primdef
+	       ;; Some lame exceptions for tuples and tuprefs:
+	       ;; TODO: FIXME:
+	       [(tuple ,_ ...) (void)]
+	       [(tupref ,_ ...) (void)]
+
+	       [(,p ,t) (guard (symbol? p)) (DEBUGASSERT(type? t))]
+	       [(,p ,args ,ret) (guard (symbol? p))
+		(DEBUGASSERT (type? ret))
+		(DEBUGASSERT (andmap type? args))]
+	       [,else (error 'hm_type_inferencer "bad entry in primitive table: ~s" else)]))
+   regiment-primitives))
 
 ) ; End module. 
 

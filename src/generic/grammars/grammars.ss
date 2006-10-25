@@ -13,6 +13,10 @@
 ;; This is the type grammar supported by the Regiment source language.
 (define type_grammar
   (let ()
+    (define (valid-typevar-symbol? s)
+      (let ([str (symbol->string s)])
+	(and (> (string-length str) 0)
+	     (char-lower-case? (string-ref str 0)))))
     `(
       [Type 'Integer]
       [Type 'Float]
@@ -37,7 +41,9 @@
       [Type ('-> Type)]
 
       ;; Also type vars:
-      [Type ('quote ,symbol?)]
+      [Type ('quote ,valid-typevar-symbol?)]
+      ;; And NUM variables:
+      [Type ('NUM ,valid-typevar-symbol?)]
       )))
 
 (define base_regiment_forms

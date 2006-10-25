@@ -215,6 +215,7 @@
 	   (add-dependency! name (union (free-vars test)
 					(free-vars conseq)
 					(free-vars altern)))]
+
 	  
 	  ;; BETTER HANDLE ALL CONSTANTS HERE
           [world 

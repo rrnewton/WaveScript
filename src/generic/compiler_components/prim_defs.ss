@@ -51,6 +51,11 @@
 
 ;=============================================================
 
+
+;;; The lists of primitives here have entries of the form:
+;;;   [PrimName Type]                   -- For constants
+;;;   [PrimName ArgTypess ReturnType]   -- For functions
+
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
   '(
@@ -67,7 +72,7 @@
   '((cons ('a (List 'a)) (List 'a))
     (car ((List 'a)) 'a)
     (cdr ((List 'a)) (List 'a))
-
+    
     ;; Should remove car/cdr at some point.
     (head ((List 'a)) 'a)
     (tail ((List 'a)) (List 'a))
@@ -84,11 +89,13 @@
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
-;     (+ ((NUM a) (NUM a)) (NUM a))
-;     (- ((NUM a) (NUM a)) (NUM a)) 
-;     (* ((NUM a) (NUM a)) (NUM a)) 
-;     (/ ((NUM a) (NUM a)) (NUM a)) 
-;     (^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
+    (gint (Integer) (NUM a))
+
+    (g+ ((NUM a) (NUM a)) (NUM a))
+    (g- ((NUM a) (NUM a)) (NUM a)) 
+    (g* ((NUM a) (NUM a)) (NUM a)) 
+    (g/ ((NUM a) (NUM a)) (NUM a)) 
+    (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
 
     (+ (Integer Integer) Integer)
     (- (Integer Integer) Integer) 
@@ -354,12 +361,27 @@
 
     ;; This one returns a region of regions:
     (rrcluster        ((Area 'a)) (Area (Area 'a)))
+    
+    ;;======================================================================
+    ;; EXPERIMENTAL:
+
     ;; These don't a lot of sense yet:
     (sparsify       ((Area 'a)) (Area 'a))
     (border         ((Area 'a)) (Area 'a))
 
 ;    (planarize      (Area) Area)
 ;    (treeize        (Area) Area)
+
+    ;; A "transpose" operations for looking at regions as local streams--from the "node's perspective"
+    (rmap_localstreams (((Signal (Node 'a)) -> (Signal 'b)) (Area 'a)) (Area 'b))
+    ;; This version currently uses a default time-out for when to
+    ;; consider a node having "left" the Region.  (When that occurs,
+    ;; any state having to do with the signal transformer is
+    ;; discarded, it will start up afresh if the node re-joins the
+    ;; region.)
+
+    ;; A communication primitive that gossips local values using broadcast:
+    (gossip ((Area 'a)) (Area 'a))
 
     ;; Prolly not the right type:
     ;; Currently this ignores the value carried on the event:

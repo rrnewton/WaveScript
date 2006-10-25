@@ -1,0 +1,1 @@
+../demos/wavescope/stdlib.ws
