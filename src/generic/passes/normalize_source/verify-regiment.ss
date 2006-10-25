@@ -36,13 +36,13 @@
 ; simple type system listed in helpers.ss .  (No algebraic/arrow tyeps)
 
 ;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;   Function, Number, Integer, Float, Bool, Object  List
+;   Function, Number, Int, Float, Bool, Object  List
 
 ;  ----------------------------------------
 
 (define these-tests
   '( [(verify-regiment '(some-lang '(program 3)))
-      (some-lang (quote (program 3 Integer)))]
+      (some-lang (quote (program 3 Int)))]
       
      [(verify-regiment '(some-lang '(program
        (letrec ((a (anchor-at 30 40)))

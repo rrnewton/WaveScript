@@ -8,7 +8,7 @@
 ;; Ok, redoing primitive listings with type information:
 ;; The types I'm using right now are:
 ;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;   Function, Number, Integer, Float, Bool, Object, Void
+;;   Function, Number, Int, Float, Bool, Object, Void
 ;;   List, Array
 
 ;; Since I'm going to go statically typed eventually, Object is just
@@ -62,10 +62,10 @@
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
-    (+ (Integer Integer) Integer) 
-    (- (Integer Integer) Integer) 
-    (* (Integer Integer) Integer) 
-    (/ (Integer Integer) Integer) 
+    (+ (Int Int) Int) 
+    (- (Int Int) Int) 
+    (* (Int Int) Int) 
+    (/ (Int Int) Int) 
 
     (+. (Float Float) Float) 
     (-. (Float Float) Float) 
@@ -76,12 +76,12 @@
     (abs (Number) Number)
 
     (vector Object Array)
-    ;(make-vector (Object Integer) Array)
-    (vector-ref (Array Integer) Object)
-    ;(vector-set! (Array Integer Object) Void)
+    ;(make-vector (Object Int) Array)
+    (vector-ref (Array Int) Object)
+    ;(vector-set! (Array Int Object) Void)
 
     (tuple Object Tuple)
-    (tupref Integer Integer Object)
+    (tupref Int Int Object)
 
     (locdiff (Location Location) Float)
 
@@ -103,14 +103,14 @@
     ;; These are dynamically typed primitives: 
     (pair? (Object) Bool)
     (number? (Object) Bool)
-    (even? (Integer) Bool)
-    (odd? (Integer) Bool)
+    (even? (Int) Bool)
+    (odd? (Int) Bool)
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
     (sense         (Symbol Node)  Float)  ;; Takes either (Node) or (Symbol Node)
-    (nodeid        (Node) Integer)
-    ;(nodeclock     (Node) Integer)        ;; Could just make this a sensor reading...
+    (nodeid        (Node) Int)
+    ;(nodeclock     (Node) Int)        ;; Could just make this a sensor reading...
 
     ))
 
@@ -119,11 +119,11 @@
 (define local-node-primitives 
   '(
     (my-id () NodeID)
-    ;(gdist (Token) Integer) ;; Phase this out "dist" is wrong.
-    ;(ghopcount (Token) Integer)
+    ;(gdist (Token) Int) ;; Phase this out "dist" is wrong.
+    ;(ghopcount (Token) Int)
     ;(gparent (Token) NodeID)
     ;(gorigin (Token) NodeID)
-    ;(gversion (Token) Integer)
+    ;(gversion (Token) Int)
     
     (check-tok (Token) Bool)
     ;; Gotta have a way to remove tokens also!
@@ -275,10 +275,10 @@
 ;; <br>[2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
     ; Arithmetic prims:
-  '((+ (Integer Integer) Integer) 
-    (- (Integer Integer) Integer) 
-    (* (Integer Integer) Integer) 
-    (/ (Integer Integer) Integer) 
+  '((+ (Int Int) Int) 
+    (- (Int Int) Int) 
+    (* (Int Int) Int) 
+    (/ (Int Int) Int) 
     (max (Number Number) Number)
     (min (Number Number) Number)
     (abs (Number) Number)
@@ -293,8 +293,8 @@
     (-. (Float Float) Float) 
     (*. (Float Float) Float) 
     (/. (Float Float) Float) 
-    (int->float (Integer) Float)
-    (float->int (Float) Integer)
+    (int->float (Int) Float)
+    (float->int (Float) Int)
 
     (not (Bool) Bool)
     ; predicates
@@ -306,9 +306,9 @@
 ;    (eq? (Object Object) Bool)
     (equal? (Object Object) Bool)
     (eq? (Object Object) Bool)
-    (even? (Integer) Bool)
-    (odd? (Integer) Bool)
-    (random (Integer) Integer)
+    (even? (Int) Bool)
+    (odd? (Int) Bool)
+    (random (Int) Int)
     
     ;; Takes an optional second argument, that's the fun to optimize.
     (elect-leader Token . Token)
@@ -321,13 +321,13 @@
 ;     (timed-call)
 ;     (activate)
 ;     (dist) 
-     (light-node (Integer Integer Integer) Void)
+     (light-node (Int Int Int) Void)
 ;     (sense)
-     (my-id  () Integer)
-     (my-clock () Integer)
+     (my-id  () Int)
+     (my-clock () Int)
 
-     (linkqual-from (Integer) Integer) ;; Approximate percentage 0-100.
-     (linkqual-to   (Integer) Integer) ;; Approximate percentage 0-100.
+     (linkqual-from (Int) Int) ;; Approximate percentage 0-100.
+     (linkqual-to   (Int) Int) ;; Approximate percentage 0-100.
 
      (loc () List) ;(loc () Location)
      (locdiff (List List) Float) ;(locdiff (Location Location) Float)
@@ -337,7 +337,7 @@
      (call (Token . Object) Void)
      ;; This is a rough attempt at a "high priority" scheduling.
      (call-fast (Token . Object) Void)
-     (timed-call (Integer Token . Object) Void)
+     (timed-call (Int Token . Object) Void)
 
      (subcall (Token . Object) Object)
      ;; This one happens immediately, possibly by inlining, but in any
@@ -346,9 +346,9 @@
 
      (bcast (Token . Object) Void)
      ;; This takes a node ID:
-     (ucast (Integer Token . Object) Void)
+     (ucast (Int Token . Object) Void)
      ;; This is a synchronous command that returns the success or failure of the ucast.
-     (ucast-wack (Integer Token . Object) Bool)
+     (ucast-wack (Int Token . Object) Bool)
 
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
@@ -360,7 +360,7 @@
      ;; This one ignores subid and evicts all instances sharing the token name.
      (evict-all (Token) Void)
 
-     (token->subid (Token) Integer)
+     (token->subid (Token) Int)
 
      (void () Object)
 
@@ -381,10 +381,10 @@
      (append List List)
     
      (vector Object Array)
-     (make-vector (Integer Object) Array)
-     (vector-ref (Array Integer) Object)
-     (vector-set! (Array Integer Object) Void)
-     (vector-length (Array) Integer)
+     (make-vector (Int Object) Array)
+     (vector-ref (Array Int) Object)
+     (vector-set! (Array Int Object) Void)
+     (vector-length (Array) Int)
 
      ;; For debugging only:
      (sim-print-queue Number Void)
@@ -396,10 +396,10 @@
 
      ;; This just displays text by a nodes' icon.
      (setlabel (String . Object) Void)
-     (highlight-edge (Integer) Void)
+     (highlight-edge (Int) Void)
      ; [2005.04.30] Disabling these for now, will get them back up later.
      (draw-mark (List) Void)
-     (rgb (Integer Integer Integer) Object)
+     (rgb (Int Int Int) Object)
      ))
 
 ;; Keywords allowed in the restricted token machine language.

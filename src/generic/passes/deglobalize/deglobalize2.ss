@@ -53,7 +53,7 @@
 	   `(
 	     ;; Expressions may now contain inputs from streams.
 	     [Expr ('SIG_in Var)]  ;; Has type Signal 'a
-	     [Expr ('REG_in Var Var)] ;; Has type Signal Integer -- the integers represent the dynamic Region IDs.
+	     [Expr ('REG_in Var Var)] ;; Has type Signal Int -- the integers represent the dynamic Region IDs.
 	     [Program ('program ('commdecls Comm ...))]
 
 	     ;; TODO! Need some extra types in this grammar:
@@ -361,17 +361,17 @@
        (process-letrec 
 	`(lazy-letrec (;[a Anchor () (anchor-at '30 '40)]
 		       [theworld Region ([heartbeat 300000]) world]
-		       [nid (Node -> Integer) () (lambda (n) (Node) (lazy-letrec ([res0 Integer () (nodeid n)]) res0))]
+		       [nid (Node -> Int) () (lambda (n) (Node) (lazy-letrec ([res0 Int () (nodeid n)]) res0))]
 		       [ank Anchor ([heartbeat 10000]) (anchor-maximizing nid theworld)]
 		       [tmp Region () (khood ank '2)]
-		       [read (Node -> Integer) ()
+		       [read (Node -> Int) ()
 			     (lambda (n) (Node) 
-				    (lazy-letrec ([res1 Integer () (sense 'temp n)]) res1))]
-		       [f (Integer Integer -> Integer) ()
-			  (lambda (a b) (Integer Integer) 
-				  (lazy-letrec ([res2 Integer () (+ a b)]) res2))]
-		       [v1 (Area Integer) () (rmap read tmp)]
-		       [v2 (Signal Integer) ([tree tmp]) (rfold f '39 v1)]
+				    (lazy-letrec ([res1 Int () (sense 'temp n)]) res1))]
+		       [f (Int Int -> Int) ()
+			  (lambda (a b) (Int Int) 
+				  (lazy-letrec ([res2 Int () (+ a b)]) res2))]
+		       [v1 (Area Int) () (rmap read tmp)]
+		       [v2 (Signal Int) ([tree tmp]) (rfold f '39 v1)]
 		       )
 		      v2)
 	(empty-tenv) ())
@@ -383,24 +383,24 @@
       [" Rfold a region of regions."
        (process-letrec 
 	`(lazy-letrec (
-		       [nid (Node -> Integer) () (lambda (nod) (Node) (lazy-letrec ([x0 Integer () (nodeid nod)]) x0))]
+		       [nid (Node -> Int) () (lambda (nod) (Node) (lazy-letrec ([x0 Int () (nodeid nod)]) x0))]
 		       [promote (Node -> Anchor) () (lambda (nod2) (Node) (lazy-letrec ([x1 Anchor () (node->anchor nod2)]) x1))]
 		       [nbrhood (Anchor -> Region) ()
 				(lambda (anc) (Anchor) (lazy-letrec ([thehood Region () (khood anc '2)]) thehood))]
-		       [plus (Integer Integer -> Integer) () 
-			     (lambda (a b) (Integer Integer) (lazy-letrec ([x2 Integer () (+ a b)]) x2))]
+		       [plus (Int Int -> Int) () 
+			     (lambda (a b) (Int Int) (lazy-letrec ([x2 Int () (+ a b)]) x2))]
 
-		       [mapnid (Region -> (Area Integer)) () 
-			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Integer) () (rmap nid r)]) x3))]
-		       [foldplus ((Area Integer) -> (Signal Integer)) () 
-				 (lambda (r) (Area Integer) (lazy-letrec ([thefold (Signal Integer) () (rfold plus '0 r)]) 
+		       [mapnid (Region -> (Area Int)) () 
+			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Int) () (rmap nid r)]) x3))]
+		       [foldplus ((Area Int) -> (Signal Int)) () 
+				 (lambda (r) (Area Int) (lazy-letrec ([thefold (Signal Int) () (rfold plus '0 r)]) 
 									 thefold))]
 
 		       [theworld Region ([heartbeat 300000]) world]
 		       [clusters (Area Region) () (rmap nbrhood theworld)]
-		       [ids (Area (Area Integer)) () (rmap mapnid clusters)]
-		       [sums (Area Integer) () (rmap foldplus ids)]
-		       [result (Signal Integer) ([tree thehood]) (rdump sums)]
+		       [ids (Area (Area Int)) () (rmap mapnid clusters)]
+		       [sums (Area Int) () (rmap foldplus ids)]
+		       [result (Signal Int) ([tree thehood]) (rdump sums)]
 		       )
 		      result)
 	(empty-tenv) ())
@@ -421,12 +421,12 @@
 #;
 (process-letrec 
  `(lazy-letrec ([tmp Region () world]
-		[read (Node -> Integer) () 
+		[read (Node -> Int) () 
 		      (lambda (n) (Node) (sense 'temp n))]
-		[f (Integer Integer -> Integer) ()
-		   (lambda (a b) (Integer Integer) (+ a b))]
-		[v1 (Area Integer) () (rmap read tmp)]
-		[v2 (Signal Integer) () (rfold f u v1)]
+		[f (Int Int -> Int) ()
+		   (lambda (a b) (Int Int) (+ a b))]
+		[v1 (Area Int) () (rmap read tmp)]
+		[v2 (Signal Int) () (rfold f u v1)]
 		)
 	       v2)
  (empty-tenv)
@@ -443,26 +443,26 @@
 (lift-letrec-language
   '(program
      (lazy-letrec
-       ((resultoftoplevel_10      (Signal Integer)
+       ((resultoftoplevel_10      (Signal Int)
           (rfold tmpnonprim_14 '0 tmprmap_13))
          (tmpnonprim_14
-           (Integer Integer -> Integer)
+           (Int Int -> Int)
            (lambda (a_7 b_6)
-             (Integer Integer)
+             (Int Int)
              (lazy-letrec
-               ((resultofanonlambda_9 Integer (+ a_7 b_6)))
+               ((resultofanonlambda_9 Int (+ a_7 b_6)))
                resultofanonlambda_9)))
-         (tmprmap_13 (Area Integer) (rmap tmpnonprim_12 tmpworld_11))
+         (tmprmap_13 (Area Int) (rmap tmpnonprim_12 tmpworld_11))
          (tmpnonprim_12
-           (Node -> Integer)
+           (Node -> Int)
            (lambda (n_5)
              (Node)
              (lazy-letrec
-               ((resultofanonlambda_8 Integer (sense 'temp n_5)))
+               ((resultofanonlambda_8 Int (sense 'temp n_5)))
                resultofanonlambda_8)))
          (tmpworld_11 Region world))
        resultoftoplevel_10)
-     (Signal Integer)))
+     (Signal Int)))
 
 
 ; ======================================================================

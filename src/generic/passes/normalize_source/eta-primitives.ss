@@ -168,16 +168,16 @@
        (eta-primitives '(base-language
 			 '(program
 			      (rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
-			    (Signal Integer))))
+			    (Signal Int))))
        (eta-primitives-language
 	'(program
 	     (rfold
-	      (lambda (a b) (Integer Integer) (+ a b))
+	      (lambda (a b) (Int Int) (+ a b))
 	      0
 	      (rmap
 	       (lambda (a) (Node) (nodeid a))
 	       (khood (anchor-at 50 10) 2)))
-	   (Signal Integer)))]
+	   (Signal Int)))]
       )))
 
 (define test01 test-this)

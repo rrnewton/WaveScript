@@ -18,7 +18,7 @@
 	(and (> (string-length str) 0)
 	     (char-lower-case? (string-ref str 0)))))
     `(
-      [Type 'Integer]
+      [Type 'Int]
       [Type 'Float]
       [Type 'Complex]
       [Type 'Bool]

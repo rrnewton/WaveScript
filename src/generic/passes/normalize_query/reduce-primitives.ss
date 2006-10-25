@@ -26,8 +26,8 @@
 	 (let ([xvar (unique-name 'xpos)]
 	       [yvar (unique-name 'ypos)])
 	   `(anchor-maximizing 
-					;		    (letrec ([,xvar Integer ,x]
-					;			     [,yvar Integer ,y])
+					;		    (letrec ([,xvar Int ,x]
+					;			     [,yvar Int ,y])
 	     (lambda (n) (Node) (- '0 (+ (^ (- (sense '"xpos" n) ,x) '2) 
 					 (^ (- (sense '"ypos" n) ,y) '2))))
 	     world))]

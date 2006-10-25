@@ -350,7 +350,7 @@ int main(int argc, char ** argv)
 
     (define (Type t)
       (match t
-	[Integer "int"]
+	[Int "int"]
 	[,simple (guard (memq simple '(Complex Float)))
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
 	[,v (guard (symbol? v)) (symbol->string v)]
@@ -425,7 +425,7 @@ int main(int argc, char ** argv)
                                      (letrec ([___VIRTQUEUE___ (VQueue
                                                                  Float) (virtqueue)])
                                        (begin
-                                         (letrec ([x Integer 3])
+                                         (letrec ([x Int 3])
                                            (letrec ([arr (Array Complex) (fft (fft arr0))])
                                              (if (> (realpart
                                                       (arr-get arr 100))
@@ -451,11 +451,11 @@ int main(int argc, char ** argv)
 
 (define these-tests
   `(
-    [(,text->string (,wscode->text '(lambda (x) (Integer) '35) "noname"))
+    [(,text->string (,wscode->text '(lambda (x) (Int) '35) "noname"))
      ;; Requires helpers.ss
      ;; Not very tight:
      ,(lambda (s) (substring? "35" s))]
-    [(,text->string (,wscode->text '(lambda (x) (Integer) (+ '1 (if '#t '35 '36))) "noname"))
+    [(,text->string (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname"))
      ;"TRUE ? 35 : 36"]
      ,(let ([substring? substring?])
 	(lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]

@@ -236,8 +236,8 @@
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
-      '(lambda (x) (Integer) (+ '3 '4)))
-     (lambda (x) (Integer) (+ '3 '4))]
+      '(lambda (x) (Int) (+ '3 '4)))
+     (lambda (x) (Int) (+ '3 '4))]
 
     ))
 

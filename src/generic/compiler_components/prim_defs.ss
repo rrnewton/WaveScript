@@ -12,7 +12,7 @@
 ;;; Ok, redoing primitive listings with type information:
 ;;; The types I'm using right now are:
 ;;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
-;;;   Number, Integer, Float, Bool, Void
+;;;   Number, Int, Float, Bool, Void
 ;;;   List, Array, Tuple
 ;;;
 ;;; Then some types that are used only in the local language are:
@@ -78,8 +78,8 @@
     (tail ((List 'a)) (List 'a))
 
     (append ((List 'a) (List 'a)) (List 'a))
-    (makeList   (Integer 'a) (List 'a))
-    (listLength ((List 'a)) Integer)
+    (makeList   (Int 'a) (List 'a))
+    (listLength ((List 'a)) Int)
     (reverse ((List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
     
@@ -92,7 +92,7 @@
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
-    (gint (Integer) (NUM a))
+    (gint (Int) (NUM a))
 
     (g+ ((NUM a) (NUM a)) (NUM a))
     (g- ((NUM a) (NUM a)) (NUM a)) 
@@ -100,11 +100,11 @@
     (g/ ((NUM a) (NUM a)) (NUM a)) 
     (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
 
-    (+ (Integer Integer) Integer)
-    (- (Integer Integer) Integer) 
-    (* (Integer Integer) Integer) 
-    (/ (Integer Integer) Integer) 
-    (^ (Integer Integer) Integer) ;; exponentiation
+    (+ (Int Int) Int)
+    (- (Int Int) Int) 
+    (* (Int Int) Int) 
+    (/ (Int Int) Int) 
+    (^ (Int Int) Int) ;; exponentiation
 
     (+. (Float Float) Float)
     (-. (Float Float) Float)
@@ -120,10 +120,10 @@
 
     (sqrtf (Float) Float)
     (sqrtc (Complex) Complex)    
-    (sqrti (Integer) Integer)
+    (sqrti (Int) Int)
     
-    (int_to_float (Integer) Float)
-    (float_to_int (Float) Integer)
+    (int_to_float (Int) Float)
+    (float_to_int (Float) Int)
 
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
@@ -133,7 +133,7 @@
 
     (max ('a 'a) 'a)
     (min ('a 'a) 'a)
-    (abs (Integer Integer) Integer)
+    (abs (Int Int) Int)
 
     (cos (Float) Float)
     (sin (Float) Float)
@@ -147,9 +147,9 @@
     (sqr (Float) Float)
 
     ;(vector ('a ...) (Array 'a))
-    ;(make-vector (Object Integer) Array)
-    ;(vector-ref ((Array 'a) Integer) 'a)
-    ;(vector-set! (Array Integer Object) Void)
+    ;(make-vector (Object Int) Array)
+    ;(vector-ref ((Array 'a) Int) 'a)
+    ;(vector-set! (Array Int Object) Void)
     
     ;; These are in here so that various passes can treat them as
     ;; primitives rather than special forms.  (Just for the purpose of
@@ -157,7 +157,7 @@
     ;; types under our type system. 
     ;; TODO: [2006.09.01] I should probably take these out:
     (tuple Object Tuple)
-    (tupref Integer Integer Object)
+    (tupref Int Int Object)
 
     (locdiff (Location Location) Float)
 
@@ -179,15 +179,15 @@
     ;; These are dynamically typed primitives: 
     ;(pair? (Object) Bool)
     ;(number? (Object) Bool)
-    (even? (Integer) Bool)
-    (odd? (Integer) Bool)
+    (even? (Int) Bool)
+    (odd? (Int) Bool)
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
-;    (sense         (Symbol Node) Integer)
-    (sense         (String Node) Integer)
+;    (sense         (Symbol Node) Int)
+    (sense         (String Node) Int)
     
-    (nodeid        (Node) Integer)
+    (nodeid        (Node) Int)
 
     ))
 
@@ -230,11 +230,11 @@
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.
-    (timer            (Integer) (Signal #()))
+    (timer            (Int) (Signal #()))
     ;; Takes channel, window size, overlap:
-    (audio            (Integer Integer Integer) (Signal (Sigseg Float)))
+    (audio            (Int Int Int) (Signal (Sigseg Float)))
     ;; Takes a file to read from, window size, overlap:
-    (audioFile        (String Integer Integer)  (Signal (Sigseg Integer)))
+    (audioFile        (String Int Int)  (Signal (Sigseg Int)))
 
 
 
@@ -247,7 +247,7 @@
 
     ;; This unions N streams of the same type, it returns a sample and
     ;; the index (in the original list) of the stream that produced it.
-    (unionList        ((List (Signal 'a))) (Signal #(Integer 'a)))
+    (unionList        ((List (Signal 'a))) (Signal #(Int 'a)))
 
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)
@@ -257,10 +257,10 @@
     (emit           ((VQueue 'a) 'a) #())
 
     ;; Array handling:
-    (makeArray        (Integer 'a) (Array 'a))
-    (arr-get          ((Array 'a) Integer) 'a)
-    (arr-set!         ((Array 'a) Integer 'a) #())
-    (length           ((Array 'a)) Integer)
+    (makeArray        (Int 'a) (Array 'a))
+    (arr-get          ((Array 'a) Int) 'a)
+    (arr-set!         ((Array 'a) Int 'a) #())
+    (length           ((Array 'a)) Int)
 
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
@@ -279,27 +279,27 @@
     (string-append    (String String) String)
 
     ;; Creates a windowed (segmented) signal from a raw signal:
-    (to-windowed      ((Signal 'a) Integer Integer) (Signal (Sigseg 'a)))
+    (to-windowed      ((Signal 'a) Int Int) (Signal (Sigseg 'a)))
 
     (to_array         ((Sigseg 'a))  (Array 'a))
-    (to_sigseg        ((Array 'a) Integer Integer Timebase)  (Sigseg 'a))
+    (to_sigseg        ((Array 'a) Int Int Timebase)  (Sigseg 'a))
 
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))
 
     ;; Takes a start sample # and a Length to copy.
     ;; Can produce nullseg if len=0.
-    (subseg          ((Sigseg 'a) Integer Integer) (Sigseg 'a))
+    (subseg          ((Sigseg 'a) Int Int) (Sigseg 'a))
 
-    (foobar (Integer Integer) Integer)
+    (foobar (Int Int) Int)
 
     ;; CHANGED to use sample numbers.
-    (seg-get      ((Sigseg 'a) Integer) 'a)
-    (width        ((Sigseg 'a)) Integer)
+    (seg-get      ((Sigseg 'a) Int) 'a)
+    (width        ((Sigseg 'a)) Int)
     
     ;; Returns absolute sample indexes.
-    (start        ((Sigseg 'a)) Integer)
-    (end          ((Sigseg 'a)) Integer)
+    (start        ((Sigseg 'a)) Int)
+    (end          ((Sigseg 'a)) Int)
     ;; Returns timebase:
     (timebase     ((Sigseg 'a)) Timebase)
 
@@ -335,20 +335,20 @@
     ;; [2006.04.04] This is a similar thing for signals.
     (slight-up ((Signal 'a)) (Signal 'a))
 
-    (anchor-at      (Integer Integer) Anchor)
+    (anchor-at      (Int Int) Anchor)
     (anchor-dist    (Anchor Anchor) Float)
 
-    ;(anchor-optimizing ((Node -> Integer) Region) Anchor)
+    ;(anchor-optimizing ((Node -> Int) Region) Anchor)
 
     ;; Takes a function to optimize, and an Area within which to 
-    (anchor-maximizing ((Node -> Integer) (Area 'a)) Anchor)
+    (anchor-maximizing ((Node -> Int) (Area 'a)) Anchor)
 
     (circle         (Anchor Float)   Region)
-    (circle-at      (Integer Integer Float) Region)
-    (k-neighborhood (Anchor Integer) Region)
+    (circle-at      (Int Int Float) Region)
+    (k-neighborhood (Anchor Int) Region)
     ;; Shorthand: 
-    (khood          (Anchor Integer) Region)
-    (khood-at       (Float Float Integer) Region)
+    (khood          (Anchor Int) Region)
+    (khood-at       (Float Float Int) Region)
 
     ;; This lifts a node value into the Signal monad:
     (node->anchor   (Node) Anchor)
@@ -424,11 +424,11 @@
 (define local-node-primitives 
   '(
     (my-id () NodeID)
-    ;(gdist (Token) Integer) ;; Phase this out "dist" is wrong.
-    ;(ghopcount (Token) Integer)
+    ;(gdist (Token) Int) ;; Phase this out "dist" is wrong.
+    ;(ghopcount (Token) Int)
     ;(gparent (Token) NodeID)
     ;(gorigin (Token) NodeID)
-    ;(gversion (Token) Integer)
+    ;(gversion (Token) Int)
     
     ;; An internal primitive for sanity-checking.
     (check-tok (Token) Bool) 
@@ -450,11 +450,11 @@
 ;; <br>[2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
     ; Arithmetic prims:
-  '((+ (Integer Integer) Integer) 
-    (- (Integer Integer) Integer) 
-    (* (Integer Integer) Integer) 
-    (/ (Integer Integer) Integer) 
-    (^ (Integer Integer) Integer)
+  '((+ (Int Int) Int) 
+    (- (Int Int) Int) 
+    (* (Int Int) Int) 
+    (/ (Int Int) Int) 
+    (^ (Int Int) Int)
 
     (+. (Float Float) Float) 
     (-. (Float Float) Float) 
@@ -462,8 +462,8 @@
     (/. (Float Float) Float) 
     (^. (Float Float) Float) 
 
-    (int->float (Integer) Float)
-    (float->int (Float) Integer)
+    (int->float (Int) Float)
+    (float->int (Float) Int)
 
     (max (Number Number) Number)
     (min (Number Number) Number)
@@ -485,9 +485,9 @@
 ;    (eq? (Object Object) Bool)
     (equal? (Object Object) Bool)
     (eq? (Object Object) Bool)
-    (even? (Integer) Bool)
-    (odd? (Integer) Bool)
-    (random (Integer) Integer)
+    (even? (Int) Bool)
+    (odd? (Int) Bool)
+    (random (Int) Int)
     
     ;; Takes an optional second argument, that's the fun to optimize.
     (elect-leader Token . Token)
@@ -500,13 +500,13 @@
 ;     (timed-call)
 ;     (activate)
 ;     (dist) 
-     (light-node (Integer Integer Integer) Void)
+     (light-node (Int Int Int) Void)
 ;     (sense)
-     (my-id  () Integer)
-     (my-clock () Integer)
+     (my-id  () Int)
+     (my-clock () Int)
 
-     (linkqual-from (Integer) Integer) ;; Approximate percentage 0-100.
-     (linkqual-to   (Integer) Integer) ;; Approximate percentage 0-100.
+     (linkqual-from (Int) Int) ;; Approximate percentage 0-100.
+     (linkqual-to   (Int) Int) ;; Approximate percentage 0-100.
 
      (loc () List) ;(loc () Location)
      (locdiff (List List) Float) ;(locdiff (Location Location) Float)
@@ -516,7 +516,7 @@
      (call (Token . Object) Void)
      ;; This is a rough attempt at a "high priority" scheduling.
      (call-fast (Token . Object) Void)
-     (timed-call (Integer Token . Object) Void)
+     (timed-call (Int Token . Object) Void)
 
      (subcall (Token . Object) Object)
      ;; This one happens immediately, possibly by inlining, but in any
@@ -525,9 +525,9 @@
 
      (bcast (Token . Object) Void)
      ;; This takes a node ID:
-     (ucast (Integer Token . Object) Void)
+     (ucast (Int Token . Object) Void)
      ;; This is a synchronous command that returns the success or failure of the ucast.
-     (ucast-wack (Integer Token . Object) Bool)
+     (ucast-wack (Int Token . Object) Bool)
 
      (return (Object) Void)
      ;(greturn (Object) Void) ;; This is a syntax, not a primitive.
@@ -539,7 +539,7 @@
      ;; This one ignores subid and evicts all instances sharing the token name.
      (evict-all (Token) Void)
 
-     (token->subid (Token) Integer)
+     (token->subid (Token) Int)
 
      (void () Object)
 
@@ -561,10 +561,10 @@
      (append List List)
     
      (vector Object Array)
-     (make-vector (Integer Object) Array)
-     (vector-ref (Array Integer) Object)
-     (vector-set! (Array Integer Object) Void)
-     (vector-length (Array) Integer)
+     (make-vector (Int Object) Array)
+     (vector-ref (Array Int) Object)
+     (vector-set! (Array Int Object) Void)
+     (vector-length (Array) Int)
 
      ;; For debugging only:
      (sim-print-queue Number Void)
@@ -576,10 +576,10 @@
 
      ;; This just displays text by a nodes' icon.
      (setlabel (String . Object) Void)
-     (highlight-edge (Integer) Void)
+     (highlight-edge (Int) Void)
      ; [2005.04.30] Disabling these for now, will get them back up later.
      (draw-mark (List) Void)
-     (rgb (Integer Integer Integer) Object)
+     (rgb (Int Int Int) Object)
      ))
 
 ;======================================================================

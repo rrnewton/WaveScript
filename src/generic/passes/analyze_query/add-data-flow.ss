@@ -347,15 +347,15 @@
 	  (append `(["Just a letrec"
 		     (map car (,process-expr 
 		      '(lazy-letrec
-			((resultofanonlambda_8 Integer ((heartbeat #f)) '389))
+			((resultofanonlambda_8 Int ((heartbeat #f)) '389))
 			resultofanonlambda_8)
 		      (,empty-dfg)))
 		     (resultofanonlambda_8)]
 		    ["Nested letrec on rhs"
 		     (map car (,process-expr 
 		      '(lazy-letrec
-			((resultofanonlambda_8 Integer ()
-					       (lazy-letrec ((var_2 Integer () '389))
+			((resultofanonlambda_8 Int ()
+					       (lazy-letrec ((var_2 Int () '389))
 							    var_2)))
 			resultofanonlambda_8)
 		      (,empty-dfg)))
@@ -363,12 +363,12 @@
 			(set-eq? x '(var_2 resultofanonlambda_8)))]
 		    ["Two bindings, one nested letrec"
 		     (map car (,process-expr 
-		      '(lazy-letrec ([resultofanonlambda_8 Integer () '89]
-				     [var_2 Integer () 
-					    (lazy-letrec ([foo Integer () '100]
-							  [res1 Integer () (+ foo '389)])
+		      '(lazy-letrec ([resultofanonlambda_8 Int () '89]
+				     [var_2 Int () 
+					    (lazy-letrec ([foo Int () '100]
+							  [res1 Int () (+ foo '389)])
 						    res1)]
-				     [res2 Integer () (+ resultofanonlambda_8 var_2)])
+				     [res2 Int () (+ resultofanonlambda_8 var_2)])
 				    res2)
 		      (,empty-dfg)))
 		     ,(lambda (x)
@@ -424,20 +424,20 @@
 					     [kh Region () (khood a '2)])
 					    kh))
 		       w)]
-	      [getid (Node -> Integer) ()
+	      [getid (Node -> Int) ()
 		     (lambda (nd) (Node) (nodeid nd))]
-	      [h2 (Area (Area Integer)) ()
+	      [h2 (Area (Area Int)) ()
 		  (rmap (lambda (r1) (Region) 
-				(lazy-letrec ([res_r1 (Area Integer) ()
+				(lazy-letrec ([res_r1 (Area Int) ()
 						      (rmap getid r1)])
 					     res_r1))
 			h)]
-	      [v (Area Integer) ()
-		 (rmap (lambda (r2) ((Area Integer)) 
+	      [v (Area Int) ()
+		 (rmap (lambda (r2) ((Area Int)) 
 			       (rfold + '0 r2)) h2)]
 	      )
 	     v)
-	    (Area Integer))))
+	    (Area Int))))
 
 (define test-this
   (default-unit-tester 
@@ -479,7 +479,7 @@
 			      (add-data-flow ',nested_testprog))))
        ;(r2 (rmap getid r1))
        ;; [2006.04.04] Now it's bound to the code location with the canonical name:
-       (r2 [res_r1 (Area Integer) () (rmap getid r1)])
+       (r2 [res_r1 (Area Int) () (rmap getid r1)])
        ]
 
       ["Make sure it generates all the bindings it should."

@@ -104,7 +104,7 @@
 
 
 ;; Added a subkind for numbers, here are the types in that subkind.
-(define num-types '(Integer Float Complex))
+(define num-types '(Int Float Complex))
 
 ; ======================================================================
 ;;; Helpers
@@ -400,7 +400,7 @@
 (define (type-const c)
   (cond
    [(and (number? c) (inexact? c)) 'Float]
-   [(integer? c) 'Integer]
+   [(integer? c) 'Int]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
    ;; Temp, not sure if we're going to support symbols or not in the final language:
@@ -496,9 +496,9 @@
        (values `(begin ,@exp*) (last ty*))]
       [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
        ;; For now assume i is an integer...
-       (types-equal! ty1 'Integer exp)
-       (types-equal! ty2 'Integer exp)
-       (let ([tenv (tenv-extend tenv (list i) '(Integer) #f)])
+       (types-equal! ty1 'Int exp)
+       (types-equal! ty2 'Int exp)
+       (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
 	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
 	   (values `(for (,i ,start ,end) ,bod) ty)))]
 
@@ -888,7 +888,7 @@
        [(quote ,c)       '()]
        [(set! ,v ,[e]) e]
        [(begin ,[e*] ...) (apply append e*)]
-       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Integer ()] bodls)]
+       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] bodls)]
 
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(tuple ,[args] ...) (apply append args)]
@@ -936,26 +936,26 @@
   `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
 
-    ["NUM must have vars attached" (type? #((NUM Integer) (NUM Float))) #f]
+    ["NUM must have vars attached" (type? #((NUM Int) (NUM Float))) #f]
     [(type? '(NUM a)) #t]
-    [(type? '(Integer -> (NUM a))) #t]
+    [(type? '(Int -> (NUM a))) #t]
 
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
     [(mvlet ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
      ((NUM unspecified) -> (NUM unspecified))]
 
     
-    [(export-type ''(f . Integer)) Integer]
-    [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Integer]
-    [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Integer)]
-    [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Integer)]
+    [(export-type ''(f . Int)) Int]
+    [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Int]
+    [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Int)]
+    [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(Integer) (empty-tenv) '())]) t))
-     (Integer -> Integer)]
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(Int) (empty-tenv) '())]) t))
+     (Int -> Int)]
     [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '('alpha) (empty-tenv) '())]) t))
      ;((NUM unspecified) -> (NUM unspecified))
-     (Integer -> Integer)]
+     (Int -> Int)]
     
     ["types-equal!: make sure that (by convention) the first argument is mutated"
      (let ([x ''(a . #f)] [y ''(b . #f)]) (types-equal! x y (empty-tenv)) x)
@@ -966,9 +966,9 @@
      error]
 
     ["Explicitly typed let narrowing identity function's signature"
-     (mvlet ([(_ t) (annotate-program '(let ([f (Integer -> Integer) (lambda (x) x)]) f))]) t)
-     (Integer -> Integer)]
-    [(mvlet ([(_ t) (annotate-program '(let ([f (Integer -> Integer) (lambda (x) x)]) (app f "h")))]) t)
+     (mvlet ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) f))]) t)
+     (Int -> Int)]
+    [(mvlet ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) (app f "h")))]) t)
      error]
 
     [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v '('alpha) (empty-tenv) '())]) t))
@@ -977,16 +977,16 @@
 	  [(',a -> ',b) (eq? a b)]
 	  [,else #f]))]
 
-    [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Integer]
+    [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Int]
      
     [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
-     (Integer -> Integer)]
+     (Int -> Int)]
 
     [(export-type (,type-expression '(rmap (lambda (n) (sense "light" n)) world) (empty-tenv)))
-     (Area Integer)]
+     (Area Int)]
     
     [(export-type (,type-expression '(tuple 1 2.0 3) (empty-tenv)))
-     #3(Integer Float Integer)]
+     #3(Int Float Int)]
 
     [(export-type (,type-expression '(lambda (x) (tupref 0 3 x)) (empty-tenv)))
      ,(lambda (x)
@@ -998,8 +998,8 @@
 		   '(letrec ([f (lambda (x) x)])
 		      (tuple (app f 3) "foo" f))
 		  (empty-tenv)))
-     #(Integer String ('unspecified -> 'unspecified))
-     ;#(Integer String (Integer -> Integer))
+     #(Int String ('unspecified -> 'unspecified))
+     ;#(Int String (Int -> Int))
      ]
   
 
@@ -1010,7 +1010,7 @@
   ;; This is kind of lame:
   [(types-compat? '(Signal Node) 'Anchor) Anchor]
   [(types-compat? 'Anchor 'Anchor) Anchor]
-  [(types-compat? 'Anchor '(Area Integer)) #f]
+  [(types-compat? 'Anchor '(Area Int)) #f]
   [(types-compat? 'Region '(Area 'a)) (Area Node)]  
   [(types-compat? '(NUM g) 'Float) Float]
 
@@ -1018,7 +1018,7 @@
      (export-type (,type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
-	  [((Integer -> ,v1) -> #(,v2 (Integer -> ,v3)))
+	  [((Int -> ,v1) -> #(,v2 (Int -> ,v3)))
 	   (guard (equal? v1 v2) (equal? v2 v3)) 
 	   #t]
 	  [,else #f]))]
@@ -1087,55 +1087,55 @@
 					    (rfold append '() thevals)))])
 				       sumhood))])
      t)
-   ((Area Node) -> (Signal (List Integer)))]
+   ((Area Node) -> (Signal (List Int)))]
 
   ["Here's the captured bug, letrec problem."
    (mvlet ([(p t) (annotate-program '(lambda (n_7)  (Node)
 					     (letrec ([resultofthevals_1 (List 'aay) 
 									 (cons tmpbasic_12 '())]
-						      [tmpbasic_12 Integer (nodeid n_7)])
+						      [tmpbasic_12 Int (nodeid n_7)])
 					       resultofthevals_1)))])
      t)
-   (Node -> (List Integer))]
+   (Node -> (List Int))]
 
   ["This compiled version of the same fun gets too general a type"
    (mvlet ([(p t) (annotate-program ' (lambda (reg_5)
 			 ((Area Node))
                     (letrec
                       ((thevals_6
-                         (Area (List Integer))
+                         (Area (List Int))
                          (rmap tmpnonprim_13 reg_5))
                         (resultofsumhood_3
-                          (Signal (List Integer))
+                          (Signal (List Int))
                           (rfold tmpnonprim_14 '() thevals_6))
                         (tmpnonprim_13
-                          (Node -> (List Integer))
+                          (Node -> (List Int))
                           (lambda (n_7)
                             (Node)
                             (lazy-letrec
                               ((resultofthevals_1
-                                 (List Integer)
+                                 (List Int)
                                  (cons tmpbasic_12 '()))
-                                (tmpbasic_12 Integer (nodeid n_7)))
+                                (tmpbasic_12 Int (nodeid n_7)))
                               resultofthevals_1)))
                         (tmpnonprim_14
-                          ((List Integer) (List Integer) -> (List Integer))
+                          ((List Int) (List Int) -> (List Int))
                           (lambda (a_9 b_8)
-                            ((List Integer) (List Integer))
+                            ((List Int) (List Int))
                             (lazy-letrec
                               ((resultofanonlambda_2
-                                 (List Integer)
+                                 (List Int)
                                  (append a_9 b_8)))
                               resultofanonlambda_2))))
                       resultofsumhood_3)))]) t)
-   ((Area Node) -> (Signal (List Integer)))]
+   ((Area Node) -> (Signal (List Int)))]
 
 
   ["Now let's test the NUM subkind."
    (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
 				       (tuple (app f 3) (app f 4.0) f)))])
      t)
-   #(Integer Float ((NUM unspecified) -> (NUM unspecified)))]
+   #(Int Float ((NUM unspecified) -> (NUM unspecified)))]
 
   ["Now let's test something outside the bounds of the NUM subkind" 
    (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])

@@ -40,7 +40,7 @@ detections = detect(wscores);
 //========================================
 // Now go to the net for the first time:
 
-//netdetects : Signal (Integer, (Bool, Integer, Integer));
+//netdetects : Signal (Int, (Bool, Int, Int));
 netdetects = broadcast(detections);
 
 // Then we sync:

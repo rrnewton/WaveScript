@@ -122,15 +122,15 @@
 
 #;
 (define testresult 
-  (strip-types '(letrec ([s1 (Signal (Sigseg Integer)) (app audioFile
+  (strip-types '(letrec ([s1 (Signal (Sigseg Int)) (app audioFile
                                                  "./countup.raw"
                                                  10
                                                  0)])
-       (letrec ([s2 (Signal Integer) (iterate
+       (letrec ([s2 (Signal Int) (iterate
                                        (lambda (sigseg)
-                                         ((Sigseg Integer))
+                                         ((Sigseg Int))
                                          (letrec ([___VIRTQUEUE___ (VQueue
-                                                                     Integer) (virtqueue)])
+                                                                     Int) (virtqueue)])
                                            (begin
                                              (emit
                                                ___VIRTQUEUE___
@@ -139,15 +139,15 @@
                                                  (app start sigseg)))
                                              ___VIRTQUEUE___)))
                                        s1)])
-         (letrec ([s3 (Signal Integer) (iterate
+         (letrec ([s3 (Signal Int) (iterate
                                          (lambda (x)
-                                           (Integer)
+                                           (Int)
                                            (letrec ([___VIRTQUEUE___ (VQueue
-                                                                       Integer) (virtqueue)])
-                                             (letrec ([f_5 (Integer
+                                                                       Int) (virtqueue)])
+                                             (letrec ([f_5 (Int
                                                              ->
-                                                             Integer) (lambda (x)
-                                                                        (Integer)
+                                                             Int) (lambda (x)
+                                                                        (Int)
                                                                         (begin
                                                                           (emit
                                                                             ___VIRTQUEUE___

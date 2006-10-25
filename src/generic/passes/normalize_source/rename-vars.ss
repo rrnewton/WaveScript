@@ -71,35 +71,35 @@
   (append (map
 	      (lambda (x)
 		(let ((prog (car x)) (res (cadr x)))
-		  `[(,rename-vars '(some-lang '(program ,prog Integer)))
-		    (rename-var-language '(program ,res Integer))]))
+		  `[(,rename-vars '(some-lang '(program ,prog Int)))
+		    (rename-var-language '(program ,res Int))]))
 	    `([3 3]    
-	      [(letrec ((x Integer 1)) x) (letrec ([x_1 Integer 1]) x_1)]          
+	      [(letrec ((x Int 1)) x) (letrec ([x_1 Int 1]) x_1)]          
 	      ))
      `(
-       [(,rename-vars '(some-lang '(program (letrec ((x Integer 1)) 
-					    (+ (app (lambda (x) (Integer) x) 3) x)) Integer)))
+       [(,rename-vars '(some-lang '(program (letrec ((x Int 1)) 
+					    (+ (app (lambda (x) (Int) x) 3) x)) Int)))
 	,(lambda (p)
 	   (match p
 	     [(rename-var-language
 	       '(program
-		    (letrec ([,x_1 Integer 1])
-		      (+ (app (lambda (,x_2) (Integer) ,x_2b) 3) ,x_1b))
-		  Integer))
+		    (letrec ([,x_1 Int 1])
+		      (+ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
+		  Int))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
        
        ;; Might not be portable, assumes particular numbering:
        ["check on for loops"
-	(,rename-vars '(some-lang '(program (lambda (f woot) ((Integer -> Integer) Integer)
-						    (for (i 1 (app f woot)) 0)) Integer)))
-	(rename-var-language '(program (lambda (f_2 woot_1) ((Integer -> Integer) Integer)
-					       (for (i_3 1 (app f_2 woot_1)) 0)) Integer))]
+	(,rename-vars '(some-lang '(program (lambda (f woot) ((Int -> Int) Int)
+						    (for (i 1 (app f woot)) 0)) Int)))
+	(rename-var-language '(program (lambda (f_2 woot_1) ((Int -> Int) Int)
+					       (for (i_3 1 (app f_2 woot_1)) 0)) Int))]
        ["check on set!" 
-	(,rename-vars '(some-lang '(program (letrec ([v Integer 3]) 
-					    (set! v 39)) Integer)))
+	(,rename-vars '(some-lang '(program (letrec ([v Int 3]) 
+					    (set! v 39)) Int)))
 	(rename-var-language
-	 '(program (letrec ([v_1 Integer 3]) (set! v_1 39)) Integer))]
+	 '(program (letrec ([v_1 Int 3]) (set! v_1 39)) Int))]
        
 
        

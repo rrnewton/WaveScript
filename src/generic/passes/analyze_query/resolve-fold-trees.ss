@@ -124,16 +124,16 @@
 				   (lazy-letrec
 				    ([h (Area Region) ()
 					(rmap (lambda (n) (Node) (khood (node->anchor n) 2)) world)]
-				     [h2 (Area (Area Integer)) ()
+				     [h2 (Area (Area Int)) ()
 					 (rmap (lambda (r1) (Region) (rmap getid r1)) h)]
-				     [getid (Node -> Integer) ()
+				     [getid (Node -> Int) ()
 					    (lambda (nd) (Node) (nodeid nd))]
-				     [v (Area Integer) ()
-					(rmap (lambda (r2) ((Area Integer)) 
+				     [v (Area Int) ()
+					(rmap (lambda (r2) ((Area Int)) 
 						      (rfold + 0 r2)) h2)]
 				     )
 				    v)
-				   (Area Integer)))))))
+				   (Area Int)))))))
        (r2 (rmap getid r1))]
 
       )))

@@ -1198,7 +1198,7 @@
 			   (props [result_1 final local])
 			   (control-flow )
 			   (data-flow )
-			   (lazy-letrec ((result_1 Integer ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
+			   (lazy-letrec ((result_1 Int ([heartbeat #f] [formplace _] [membplace _]) '3)) result_1)
 			   notype
 			   )))
      unspecified]
@@ -1213,8 +1213,8 @@
 			   (control-flow soc anch circ)
 			   (data-flow )
 			   (lazy-letrec
-			    ((b (List Integer) ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
-			     (a (List Integer) ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
+			    ((b (List Int) ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
+			     (a (List Int) ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
 			     (anch Anchor ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
 			     (circ Region ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
 			    circ)

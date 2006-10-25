@@ -132,7 +132,7 @@
        (add-props! name '(distributed anchor))]
 
       ;; Does Node belong here?
-      [,t (guard (memq t '(Location Reading Number Integer Float Bool Node Tuple)))
+      [,t (guard (memq t '(Location Reading Number Int Float Bool Node Tuple)))
 	  (add-props! name '(local))]
 
       ;; TEMP:
