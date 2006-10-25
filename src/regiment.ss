@@ -375,10 +375,10 @@
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (let loop ([return (wsint port)])
-	     (if (procedure? return) (loop (force return))
+	     ;(if (procedure? return) (loop (force return))
 		 (if (stream? return)
 		     (browse-stream return)
-		     (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))
+		     (printf "\nWS query returned a non-stream value:\n  ~s\n" return)))
 	   )]
 	  
 	  [(wscomp)
@@ -406,7 +406,7 @@
 	   ;(pretty-print typed)
 
 	   (printf "\nTypecheck complete, program types:\n\n")
-	   (print-var-types typed)(flush-output-port)	  
+	   (print-var-types typed)(flush-output-port)	   
 
 	   (set! prog (run-ws-compiler prog))
 	   (REGIMENT_DEBUG 

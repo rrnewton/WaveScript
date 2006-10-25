@@ -82,6 +82,9 @@
     (listLength ((List 'a)) Integer)
     (reverse ((List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
+    
+    
+
 
 ;    (list ('a ...) (List 'a))
 ;    (cons (Object List) List) 
@@ -224,14 +227,16 @@
 ;; Adding Wavescope-related primitives:   
 (define wavescript-primitives
   '( 
-    ;; Sources:
-    ;; This doesn't carry a time value, it just "fires" every 
+    ;; Stream Sources:
+
+    ;; This doesn't carry a time value, it just "fires" every so often.
     (timer            (Integer) (Signal #()))
     ;; Takes channel, window size, overlap:
     (audio            (Integer Integer Integer) (Signal (Sigseg Float)))
-
     ;; Takes a file to read from, window size, overlap:
     (audioFile        (String Integer Integer)  (Signal (Sigseg Integer)))
+
+
 
     (fft              ((Sigseg Float))  (Sigseg Complex))
 

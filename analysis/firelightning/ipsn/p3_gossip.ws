@@ -1,4 +1,7 @@
 
+// include "stdlib.ws"
+// include "lists.ws"
+
 // Update an entry in an association list.
 // Not tail-recursive.
 fun alist_update(ls, ind, new) {

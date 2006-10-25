@@ -208,13 +208,18 @@
          ,(cadar routes))))))
 
 ;; Expand an include statement into a set of definitions.
-(define (expand-include fn)
-  (unless (file-exists? file)
-    (error 'parser "Included file not found: ~s\n" file))
-  (match (ws-parse-file file)
-    [(letrec ,binds ,ignored)
-     `((define . ,binds) ...)])
-  )
+;; Optionally takes the absolute path of the file in which the
+;; (include _) statement is located.
+(define expand-include
+  (case-lambda
+    [(fn) (expand-include fn #f)]
+    [(inclfile fromfile)
+     (unless (file-exists? inclfile)
+       (error 'parser "Included file not found: ~s\n" inclfile))
+     (match (ws-parse-file inclfile)
+       [(letrec ,binds ,ignored)
+	`((define . ,binds) ...)])]))
+
 
 (define (read-wavescript-source-file fn)
   (ASSERT (string? fn))

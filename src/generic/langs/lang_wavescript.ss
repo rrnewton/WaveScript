@@ -92,7 +92,7 @@
 		 valid-sigseg?
 		 app letrec (for for-loop-stack)
 
-		 dump-binfile audioFile audio
+		 dump-binfile audioFile audio timer
 		 ; read-file-stream
 		 print show
 
@@ -117,15 +117,25 @@
 		 iterate break deep-iterate
 		 unionList
 		 fft 
-
-		 foobar
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion:
+
+		 ;; We reexport these *module names* so that they can be imported subsequently.
+		 mod_scheme  mod_helpers  mod_constants
+		 ;; And import itself--this is so we can use import-only:
+		 import
 		 )
 
-  (define (foobar n m)
-    (+ n (* 3 m)))
+  ;; Import this for the module "scheme".
+  ;(import (except scheme break length + - * / ^ inspect letrec))
+  (import (only scheme scheme import))
+  (import constants)
+  (import helpers)
+
+  (alias mod_helpers helpers)
+  (alias mod_scheme scheme)
+  (alias mod_constants constants)  
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -338,8 +348,9 @@
 				(loop (+ 1 newpos))))
 		 ())))))
 
-     ;; TODO:
-     ;(define timer )
+     ;; This is meaningless in a pull model:
+     (define (timer freq)
+       (let loop () (stream-cons #() (loop))))
 
 ;      (define nullseg (gensym "nullseg"))
 ;      (define nullarr (gensym "nullarr"))
@@ -627,8 +638,17 @@
 (define-language
   'wavescript-language
   `(begin
-     
-     (import wavescript-language-module)
+     ;; We only import these basic bindings to keep us honest.
+     (import-only wavescript-language-module)
+     ;; Then we import some "sub-modules" exported by the language-module.
+     ;; This is everything but the overriden bindings from default scheme language:
+     (import (except mod_scheme break length + - * / ^ inspect letrec import))
+     (import mod_constants)
+     (import mod_helpers)
+ 
+     ;(eval-when (compile eval load) (printf "TRYING..\n"))
+;     (printf "TRYING..\n")
+;     (inspect list)
 
      ;; A safety mechanism:
 #;

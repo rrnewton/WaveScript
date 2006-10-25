@@ -251,27 +251,18 @@
 		     'replace)
 		   ))
 
-  (define typed (run-ws-compiler prog))
+  (define compiled (run-ws-compiler prog))
+  (define typed (verify-regiment (pass_desugar-pattern-matching prog)))
 
   (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
 
-  ;(define ___ (inspect typed))
-  
-  ;; TEMP
-  ;;(printf "doing eta-prims: \n")
-  ;;(set! typed (eta-primitives typed))
-  ;;(pretty-print typed)
-  ;; other desugaring...
-
   (define stream (delay (wavescript-language 
-			 (match (strip-types typed)
+			 (match (strip-types compiled)
 			   [(,lang '(program ,body ,_ ...)) body]))))
-;  (define stream (wavescript-language desugared))
-
-;  (inspect typed)
   
   (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-  (print-var-types typed)(flush-output-port)
+  (print-var-types typed)
+  (flush-output-port)
   (with-output-to-file ".__types.txt"
     (lambda () (print-var-types typed)(flush-output-port))
     'replace)
