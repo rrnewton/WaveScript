@@ -36,7 +36,7 @@
      (guard (not (memq 'if env)))
      `(if ,test ,conseq ,altern)]
     ;; Pre type checking!!
-    [(lambda (,[break-pattern -> formal* binds* ] ...) ,expr)
+    [(lambda (,[break-pattern -> formal* binds* ] ...) ,optionaltypes ... ,expr)
      (guard (not (memq 'lambda env)))     
      (let ([bod (loop expr
 		 (append formal* env)
@@ -45,8 +45,9 @@
 		 )]
 	   [binds (apply append binds*)])
        (if (null? binds)
-	   `(lambda (,formal* ...)  ,bod)
-	   `(lambda (,formal* ...)  (letrec (,binds ...) ,bod))))]
+	   `(lambda (,formal* ...) ,optionaltypes ... ,bod)
+	   `(lambda (,formal* ...) ,optionaltypes ...  (letrec (,binds ...) ,bod))))]
+
     [(letrec ((,[break-pattern -> lhs* binds*] ,[rhs*]) ...) ,[bod])
      (guard (not (memq 'letrec env)))
      
@@ -54,6 +55,7 @@
 		,@(apply append binds*)
 	       )
 	,bod)]
+
     ;; Only handles one-armed matches right now:
 ;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
     [(match ,[x] (,[break-pattern -> var binds] ,[rhs]))
@@ -63,7 +65,7 @@
 
     ;; This is extremely dangerous... just looping down all constructs...
     ;; This means for-loops, etc, are just treated as applications.
-    [(,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
+    [( ,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
     )))))
 
 

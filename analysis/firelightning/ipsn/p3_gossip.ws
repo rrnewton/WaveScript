@@ -2,32 +2,7 @@
 // include "stdlib.ws"
 // include "lists.ws"
 
-// Update an entry in an association list.
-// Not tail-recursive.
-fun alist_update(ls, ind, new) {
-  let (x,y) = ls.head;
-  if x == ind
-  then (x,new) :: ls.tail
-  else (x,y) :: alist_update(ls.tail, ind, new)
-}
-
-fun alist_lookup(ind, ls) {
-  let (x,y) = ls.head;
-  if x == ind
-  then (x,y)
-  else alist_lookup(ind, ls.tail)
-}
-
-fun fold(f, zero, ls) {
-  fun loop(acc, ls) {
-    if ls == []
-    then acc
-    else loop( f(acc, ls.head), ls.tail)
-  };
-  loop(zero,ls)
-}
-
-update = alist_update
+//update = alist_update
 
 //----------------------------------------------------------------------
 
@@ -50,12 +25,13 @@ fun accum(strm) {
   iterate((this, (id,tm,temp)) in strm) {
     state { table = [] }
     //    table[id] := (tm, temp);
-    table := update(table, id, (tm,temp));
+    table := alist_update(table, id, (tm,temp));
     emit (this, table);
   }
 }
 // This allows us to map over the local *streams*.
 // The result is a region of changing tables.
+tables : Area (Node, (Int, Int, Int));
 tables = rmap_localstreams( accum, strms);
 
 // Now we determine which results need to be sent back to the base station.

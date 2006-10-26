@@ -104,7 +104,10 @@
 
 
 ;; Added a subkind for numbers, here are the types in that subkind.
-(define num-types '(Int Float Complex))
+(define num-types '(Int Float Complex 
+			;; Eventually:
+			; Int8 Int16 Int64 Float32 
+			))
 
 ; ======================================================================
 ;;; Helpers

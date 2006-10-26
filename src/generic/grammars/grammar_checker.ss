@@ -27,6 +27,7 @@
 	 analyze-grammar-failure 
          
          ;; Predifined Grammars
+	 sugared_regiment_grammar
 	 initial_regiment_grammar
 	 ; elaborated_regiment_grammar
          basic_tml_grammar

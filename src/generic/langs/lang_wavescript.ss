@@ -439,6 +439,27 @@
      (define head car)
      (define tail cdr)
 
+     ;; These should really be defined in the language.  They aren't
+     ;; currently [2006.10.26] because the elaborator isn't ready to
+     ;; *not* inline their recursive definitions.
+     (define (fold f zero ls)
+       (let loop ([acc zero] [ls ls])
+	 (if (null? ls) acc
+	     (loop (f acc (car ls)) (cdr ls)))))
+     (define (alist_lookup ls x)
+       (let loop ([ls ls])
+	 (cond
+	  [(null? ls) '()]
+	  [(equal? (vector-ref (car ls) 0) x) ls]
+	  [else (loop (cdr ls))])))
+     (define (alist_update origls x y)
+       (let loop ([ls origls] [acc '()])
+	 (cond
+	  [(null? ls) (cons (vector x y) origls)]
+	  [(equal? (vector-ref (car ls) 0) x)
+	   (append (reverse! acc) (cons (vector x y) (cdr ls)))]
+	  [else (loop (cdr ls) (cons (car ls) acc))])))
+
      (define makeArray make-vector)
      (define arr-get  vector-ref)
      (define arr-set! vector-set!)

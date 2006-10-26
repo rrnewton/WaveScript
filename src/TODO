@@ -21,6 +21,8 @@ Things I'm working on now --Ryan:
     *) Make "let" not desugar... (for consistency with typing rules)
     *) Make letrec strict throughout the compiler.
 
+ *) Would like to get the LAML Schemedoc stuff working again.
+
 ================================================================================
 
 [2006.09.03]

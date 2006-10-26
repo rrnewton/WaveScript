@@ -24,8 +24,9 @@
     
     ;; (2) Next we verify our input language.
     verify-regiment
-
+    
     ;; (3) Then we do a little massaging/normalization.
+    desugar-misc
     eta-primitives
     rename-vars
     remove-unquoted-constant

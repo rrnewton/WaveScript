@@ -8,178 +8,71 @@
 
 (module eta-primitives mzscheme
   (require "../../../plt/common.ss")
-  (provide eta-primitives eta-primitives-grammar test-this test01)
+  (provide eta-primitives eta-primitives-grammar test-eta-primitives)
   (chezimports)
 
   ;; In the output grammar varrefs are no longer allowed to refer to primitives.
   (define eta-primitives-grammar
-    (let* ([varclause (assq 'Var initial_regiment_grammar)]
-	  [newgram (remq varclause initial_regiment_grammar)]
-	  [new-is-var? 
-	   (lambda (x)
-	     (and (symbol? x)
-		  (not (token-machine-keyword? x))
-		  (or (regiment-constant? x) 
-		      (not (regiment-primitive? x)))))])
+    (let* ([varclause (assq 'Var desugar-misc-grammar)]
+	   [newgram (remq varclause desugar-misc-grammar)]
+	   [new_is-var? 
+	    (lambda (x)
+	      (and (symbol? x)
+		   (not (token-machine-keyword? x))
+		   (or (regiment-constant? x) 
+		       (not (regiment-primitive? x)))))])
      (ASSERT varclause)
-     (cons `[Var ,new-is-var?]
-	   newgram)))
+     (cons `[Var ,new_is-var?]  newgram)))
 
-;; DEPENDS: list-head, get-primitive-entry, regiment-primitive?
+  ;; [2006.10] Rewrote again to use define-pass:
+  ;; [2006.10.06] Rewriting to use generic-traversal:
+  (define-pass eta-primitives
+      [OutputGrammar eta-primitives-grammar]
+    [Expr 
+     (letrec ([processExpr 
+	       (lambda (x fallthrough)
+		 (match x
+		   ;; Variable References to primitives are rewritten:
+		   [,var (guard (symbol? var) (regiment-primitive? var))
+			 (let* ([possible-formals '(a b c d e f g h i j)]
+				[args (cadr (get-primitive-entry var))])
+			   (if (regiment-constant? var)
+			       var
+			       (let ([formals (list-head possible-formals (length args))])
+				 `(lambda ,formals 
+					; Primitive types:
+				    ,(map export-type (rdc (rdc (prim->type var))))
+				    (,var ,@formals)))))]
 
-;; Rewrote again to use define-pass:
-;; [2006.10.06] Rewriting to use generic-traversal:
-(define-pass eta-primitives
-  [OutputGrammar eta-primitives-grammar]
-  [Expr 
-   (letrec ([processExpr 
-	     (lambda (x fallthrough)
-	  (match x
-	    ;; Variable References to primitives are rewritten:
-	    [,var (guard (symbol? var) (regiment-primitive? var))
-		(let* ([possible-formals '(a b c d e f g h i j)]
-		       [args (cadr (get-primitive-entry var))])
-		  (if (regiment-constant? var)
-		      var
-		      (let ([formals (list-head possible-formals (length args))])
-			`(lambda ,formals 
-			   ; Primitive types:
-			   ,(map export-type (rdc (rdc (prim->type var))))
-			   (,var ,@formals)))))]
-
-	  ;; A bit of sugar.
-          ;; This just expands "lists" into a bunch of cons cells.
-	  [(list ,[rands] ...)
-	   (processExpr (match rands
-			   [() ''()]
-			   [(,a . ,[b]) `(cons ,a ,b)])
-			 fallthrough)]
-	  ;; More sugar.
-	  [(or ,[rands] ...)
-	   (processExpr (match rands
-			   [() ''#f]
-			   [(,a . ,[b]) `(if ,a '#t ,b)])
-			 fallthrough)]
-	  [(and ,[rands] ...)
-	   (processExpr (match rands
-			   [() ''#t]
-			   [(,a . ,[b]) `(if ,a ,b '#f)])
-			 fallthrough)]
-
-	  ;; I have mixed feelings about this (makes intermediate programs hard to read)
-	  [(let ([,x ,t ,[y]] ...) ,[body])
-	   `((lambda ,x ,t ,body) ,y ...)
-	   ]
-
-	  ;; Yucky, internal:
-	  ;; Even more sugar.  This is convenient for doubletons:
-	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
-	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
-
-	  ;; Primitives that are applied with "app" have it taken away:
-	  [(app ,prim ,[rands] ...)
-	   (guard (regiment-primitive? prim))
-	   `(,prim ,rands ...)]
-	  
-	  [,other (fallthrough other)]
-	  ))])
-     processExpr)])
-
-#;
-;; [2006.10.06] Rewriting to use generic-traversal:
-(define eta-primitives
-  (build-compiler-pass ;; This wraps the main function with extra debugging
-   'eta-primitives
-   `(input)
-   ;; This insures (among other things) that any new lambda's we generate have types attached:
-   `(output) ;(grammar ,eta_prim_gramar PassInput))
-   (let ()
-     (define process-expr*
-       (lambda (expr* env)
-	 (map (lambda (expr) (process-expr expr env)) expr*)))
-     (define (process-expr expr env)
-       (core-generic-traverse
-	;; Driver
-	(lambda (x fallthrough) 
-	  (match x
-	    ;; Variable References to primitives are rewritten:
-	    [,var (guard (symbol? var) (regiment-primitive? var))
-		(let* ([possible-formals '(a b c d e f g h i j)]
-		       [args (cadr (get-primitive-entry var))])
-		  (if (regiment-constant? var)
-		      var
-		      (let ([formals (list-head possible-formals (length args))])
-			`(lambda ,formals 
-			   ; Primitive types:
-			   ,(map export-type (rdc (rdc (prim->type var))))
-			   (,var ,@formals)))))]
-
-	  ;; A bit of sugar.
-          ;; This just expands "lists" into a bunch of cons cells.
-	  [(list ,[rands] ...)
-	   (process-expr (match rands
-			   [() ''()]
-			   [(,a . ,[b]) `(cons ,a ,b)])
-			 env)]
-	  ;; More sugar.
-	  [(or ,[rands] ...)
-	   (process-expr (match rands
-			   [() ''#f]
-			   [(,a . ,[b]) `(if ,a '#t ,b)])
-			 env)]
-	  [(and ,[rands] ...)
-	   (process-expr (match rands
-			   [() ''#t]
-			   [(,a . ,[b]) `(if ,a ,b '#f)])
-			 env)]
-
-	  ;; I have mixed feelings about this (makes intermediate programs hard to read)
-	  [(let ([,x ,t ,[y]] ...) ,[body])
-	   `((lambda ,x ,t ,body) ,y ...)
-	   ]
-
-	  ;; Yucky, internal:
-	  ;; Even more sugar.  This is convenient for doubletons:
-	  [(tcar ,[v]) `(tupref '0 '2 ,v)]
-	  [(tcdr ,[v]) `(tupref '1 '2 ,v)]
-
-	  ;; Primitives that are applied with "app" have it taken away:
-	  [(app ,prim ,[rands] ...)
-	   (guard (regiment-primitive? prim))
-	   `(,prim ,rands ...)]
-	  
-	  [,other (fallthrough other)]))
-	;; Fuser
-	(lambda (ls k) (apply k ls))
-	;; Expression:
-	expr))
-     ;; Main pass body:
-    (lambda (expr)
-      (match expr
-	     [(,input-language (quote (program ,body ,type)))
-	      (let ([body (process-expr body '())])
-		`(eta-primitives-language '(program ,body ,type)))])))))
+		   ;; Primitives that are applied with "app" have it taken away:
+		   [(app ,prim ,[rands] ...)
+		    (guard (regiment-primitive? prim))
+		    `(,prim ,rands ...)]
+		   
+		   [,other (fallthrough other)]
+		   ))])
+       processExpr)])
 
 
-(define test-this 
-  (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
-    `(
-      ["Simple test of eta-primitives"
-       (eta-primitives '(base-language
-			 '(program
-			      (rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
-			    (Signal Int))))
-       (eta-primitives-language
-	'(program
-	     (rfold
-	      (lambda (a b) (Int Int) (+ a b))
-	      0
-	      (rmap
-	       (lambda (a) (Node) (nodeid a))
-	       (khood (anchor-at 50 10) 2)))
-	   (Signal Int)))]
-      )))
+  (define test-this 
+    (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
+      `(
+	["Simple test of eta-primitives"
+	 (eta-primitives '(base-language
+			   '(program
+				(rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
+			      (Signal Int))))
+	 (eta-primitives-language
+	  '(program
+	       (rfold
+		(lambda (a b) (Int Int) (+ a b))
+		0
+		(rmap
+		 (lambda (a) (Node) (nodeid a))
+		 (khood (anchor-at 50 10) 2)))
+	     (Signal Int)))]
+	)))
 
-(define test01 test-this)
+  (define test-eta-primitives test-this)
 
 ) ;; End module

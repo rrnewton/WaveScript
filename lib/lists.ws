@@ -1,4 +1,7 @@
 
+// [2006.10.26]
+e// Elaborator isn't yet ready for the recursive definitions below.
+
 fun const_strm(x) {
   iterate (_ in timer(3000)) {
     emit x;
@@ -36,11 +39,11 @@ fun fold(f, zero, ls) {
 fun test_lists() {
   print("Testing list module.\n");
   print([1,2,3]);
-  //  print(fold((+), 0, [1,2,3]));
+  // Infinite loop currently:
+  print(fold((+), 0, [1,2,3]));
   
   //  98
 }
 
 
 BASE <- const_strm(test_lists());
-

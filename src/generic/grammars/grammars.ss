@@ -66,6 +66,7 @@
 
     [Expr ('if Expr Expr Expr)]
     [Expr ('letrec ([Var Type Expr] ...) Expr)]
+    [Expr ('let ([Var Type Expr] ...) Expr)]
     [Expr ('tuple Expr ...)]
     [Expr ('tupref Int Int Expr)]
     [Expr (Prim Expr ...)]
@@ -93,7 +94,7 @@
     ,@type_grammar
     )))
 
-;; This is the grammar output from verify-regiment.
+;; This is the main grammar (minus a few sugars, see below)
 (define initial_regiment_grammar
   `( ,@base_regiment_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
@@ -102,6 +103,14 @@
     ))
 ;; The rest of the grammars are defined in the individual pass files.
 
+;; This is the grammar consumed by verify-regiment
+(define sugared_regiment_grammar
+  `(,@ initial_regiment_grammar
+       [Expr ('let* ([Var Type Expr] ...) Expr)]
+       [Expr ('or Expr ...)]
+       [Expr ('and Expr ...)]
+       )
+  )
 		  
 ; =======================================================================
 
