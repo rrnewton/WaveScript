@@ -75,15 +75,16 @@
 
 	  ;; Multiple expression file:
 	  ;==================================================
-	  ;; These two are the "multiple construct" style, in which
+	  ;; These two are in the more natural style, in which
 	  ;; many seperate "define" or "token" clauses are allowed.
 	  [((token ,stuff ...) . ,rest)
 	   (match (desugar rest)
 	     [() `(tokens ,(desugar-token stuff))]
 	     [(tokens . ,others)
 	      `(tokens ,(desugar-token stuff) ,@others)])]
+
 	  [((define ,x* ,y*) ... ,main)
-	   `(letrec (,(map desugar-define x* y*) ...) ,(pass_desugar-pattern-matching main))]
+	   `(letrec (,(map desugar-define x* y*) ...) ,main)]
 
 	  [(,other ,rest ...)
 	   (error 'read-regiment-source-file
@@ -160,9 +161,9 @@
 (define (desugar-define lhs rhs)  
   (match lhs
     [,s (guard (symbol? s))
-	`[,s ,(pass_desugar-pattern-matching rhs)]]
+	`[,s ,rhs]]
     [(,f ,x* ...) (guard (symbol? f))
-     `[,f ,(pass_desugar-pattern-matching `(lambda ,x* ,rhs))]]
+     `[,f (lambda ,x* ,rhs)]]
     [,_  (error 'source_loader:desugar-define
 		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
 

@@ -67,20 +67,3 @@ Can't remember why I didn't originally.
 <Done> [2006.10] Reorganizing files into a deeper hierarchy. [2006.10.17]
 
 
-
-grep: alpha_lib.ss: No such file or directory
-grep: grammar_checker.ss: No such file or directory
-grep: hm_type_inference.ss: No such file or directory
-grep: logfiles.ss: No such file or directory
-grep: pass000_desugar-pattern-matching.ss: No such file or directory
-grep: pass04_static-elaborate.ss: No such file or directory
-grep: pass17_add-data-flow.ss: No such file or directory
-grep: pass17_resolve-fold-trees.ss: No such file or directory
-grep: pass20_deglobalize.ss: No such file or directory
-grep: pass29_inline-tokens.ss: No such file or directory
-grep: prim_defs.ss: No such file or directory
-grep: regiment_helpers.ss: No such file or directory
-grep: simulator_alpha.ss: No such file or directory
-grep: simulator_alpha_datatypes.ss: No such file or directory
-grep: source_loader.ss: No such file or directory
-grep: tml_generic_traverse.ss: No such file or directory

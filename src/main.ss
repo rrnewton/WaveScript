@@ -23,6 +23,7 @@
     ;; are run.  Maybe should make it one of the "passes".
     
     ;; (2) Next we verify our input language.
+    pass_desugar-pattern-matching
     verify-regiment
     
     ;; (3) Then we do a little massaging/normalization.
