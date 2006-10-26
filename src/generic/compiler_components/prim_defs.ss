@@ -274,6 +274,9 @@
     (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
     (window-iterate (('in -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
 
+    ;; Here's the pure version.
+    (integrate      (('in 'state -> #((List 'out) 'state)) (Signal 'in))  (Signal 'out))
+
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
 

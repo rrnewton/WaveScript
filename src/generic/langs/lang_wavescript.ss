@@ -607,6 +607,16 @@
 		 (append! (reverse! vals) 
 			  (delay (loop (stream-cdr s))))])))))
 
+     (define (integrate f zero s)
+       (stream-map (let ([state zero])
+		     (lambda (x)
+		       (let ([vec (f x state)])
+			 ;; Mutate state:
+			 (set! state (vector-ref vec 1))
+			 ;; Return value.
+			 (vector-ref vec 0))))
+		   s))
+
      ;; Very simple queue:
      ;; TODO: Could copy sigsegs on output here and see what the impact is.
      (define (emit q v) (set-box! q (cons v (unbox q))))

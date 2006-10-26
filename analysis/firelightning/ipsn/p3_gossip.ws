@@ -21,14 +21,24 @@ heat_events = rfilter(abovethresh, temps);
 strms = gossip(heat_events);
 
 // We accumulate the messages receieved at each node.
+/* fun accum(strm) { */
+/*   iterate((this, (id,tm,temp)) in strm) { */
+/*     state { table = [] } */
+/*     //    table[id] := (tm, temp); */
+/*     table := alist_update(table, id, (tm,temp)); */
+/*     emit (this, table); */
+/*   } */
+/* } */
+
+// Pure version:
 fun accum(strm) {
-  iterate((this, (id,tm,temp)) in strm) {
-    state { table = [] }
-    //    table[id] := (tm, temp);
-    table := alist_update(table, id, (tm,temp));
-    emit (this, table);
-  }
+  integrate(fun ((this, (id,tm,temp)), table)
+	        ([(this, table)],                     // Return value
+		 alist_update(table, id, (tm,temp))), // New table 
+	    [],    // Starting state
+	    strm); // Input stream
 }
+
 // This allows us to map over the local *streams*.
 // The result is a region of changing tables.
 tables : Area (Node, (Int, Int, Int));

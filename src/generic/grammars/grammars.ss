@@ -65,8 +65,8 @@
 ;    [Const ()]
 
     [Expr ('if Expr Expr Expr)]
-    [Expr ('letrec ([Var Type Expr] ...) Expr)]
-    [Expr ('let ([Var Type Expr] ...) Expr)]
+    [Expr ('letrec ([LHS Type Expr] ...) Expr)]
+    [Expr ('let ([LHS Type Expr] ...) Expr)]
     [Expr ('tuple Expr ...)]
     [Expr ('tupref Int Int Expr)]
     [Expr (Prim Expr ...)]
@@ -91,6 +91,11 @@
     [Datum ,atom?]
     [Datum (Datum ...)] ;; Quite flexible here, any sort of thing is a const.
 
+    ;; At first LHS can be any pattern:
+    [LHS Pattern]
+    [Pattern Var]
+    [Pattern #(Pattern ...)]
+
     ,@type_grammar
     )))
 
@@ -98,8 +103,8 @@
 (define initial_regiment_grammar
   `( ,@base_regiment_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
-     [Expr ('lambda (Var ...) (Type ...) Expr)]
-     [Expr ('app Expr ...)]  ;; Application.  Should make this labeled.
+     [Expr ('lambda (LHS ...) (Type ...) Expr)]
+     [Expr ('app Expr ...)]  ;; Application.  Should make this labeled.     
     ))
 ;; The rest of the grammars are defined in the individual pass files.
 
