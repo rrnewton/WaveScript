@@ -1,15 +1,4 @@
 
-// include "stdlib.ws"
-// include "lists.ws"
-
-//update = alist_update
-
-//----------------------------------------------------------------------
-
-//type Time = Int
-//type Id = Int
-//type Table =  (List (Id, (Time, Float)))
-
 thresh = 20;
 
 // Return a tuple of relevent information:
@@ -26,30 +15,9 @@ heat_events = rfilter(abovethresh, temps);
 strms :: Area (Int, Int, Int);
 strms = gossip(heat_events);
 
-// We accumulate the messages receieved at each node.
-/* fun form_table(strm) { */
-/*   iterate((this, (id,tm,temp)) in strm) { */
-/*     state { table = [] } */
-/*     //    table[id] := (tm, temp); */
-/*     table := alist_update(table, id, (tm,temp)); */
-/*     emit (this, table); */
-/*   } */
-/* } */
-
-// Pure version:
-/* fun form_table(strm) { */
-/*   integrate(fun ((this, (id,tm,temp)), table) */
-/* 	        ([(this, table)],                     // Return value */
-/* 		 alist_update(table, id, (tm,temp))), // New table */
-/* 	    [],    // Starting state */
-/* 	    strm); // Input stream */
-/* } */
-
-
-// This allows us to map over the local *streams*.
+// This allows us to integrate local *streams* over a whole region.
 // The result is a region of changing tables.
 tables :: Area (Int, (List (Int, (Int, Int))));
-//tables = rmap_localstreams( form_table, strms);
 tables =
   rintegrate(fun (this, (id,tm,temp), table)
 	         ((this.nodeid, table),           // Return value
@@ -73,20 +41,3 @@ fun table_filt((thisid, table)) {
 
 BASE <- rmap(fun((_,tbl)) tbl,
 	     rfilter(table_filt, tables))
-
-
-// Here we gossip our temp values:
-// This returns a region of streams
-
-/* fun local_results(n) { */
-/*   hood = khood(node_to_anchor(n), 1); */
-/*   //smap(fun(n) n, count_nbrs(hood)); */
-/*   count_nbrs(hood) */
-/* } */
-
-
-/* fun count_nbrs(r) { */
-/*   rfold( (+), 0,  */
-/* 	 rmap(fun (_) 1,  */
-/* 	      rfilter(fun (n) temp(n)>thresh, r))) */
-/* } */

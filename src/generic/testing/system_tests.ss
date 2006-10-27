@@ -2504,6 +2504,45 @@
 	 (= (car ls) 1000)
 	 (> (car (reverse ls)) 1000)))]
 
+#;
+["rmap_localstreams: do a node-perspective smap of a stream."
+ (parameterize ([simalpha-channel-model 'lossless]
+		[simalpha-placement-type 'connected]
+		[simalpha-failure-model  'none]
+		[simalpha-sense-function-constructor sense-dist-from-origin]
+		[sim-num-nodes 1]
+		[simalpha-consec-ids #t]
+		[simalpha-graphics-on #t]
+		[sim-timeout 100000])
+   (run-simulator-alpha 
+    (run-compiler 
+     '(rmap_localstreams (lambda (strm)
+			   (smap (lambda (#(node x))
+				   (+ x 1))
+				 strm))
+			 (rmap nodeid world)))))
+??]
+
+["rintegrate: now integrate over all nodes in a region."
+ (parameterize ([simalpha-channel-model 'lossless]
+		[simalpha-placement-type 'connected]
+		[simalpha-failure-model  'none]
+		[simalpha-sense-function-constructor sense-dist-from-origin]
+		[sim-num-nodes 3]
+		[simalpha-consec-ids #t]
+		[simalpha-graphics-on #t]
+		[sim-timeout 20000])
+   (sort < 
+	 (list->set     
+	  (run-simulator-alpha 
+	   (run-compiler 
+	    '(rintegrate (lambda (x state) (tuple (+ x 1000) state))
+			 99
+			 (rmap nodeid world)))))))
+ (1000 1001 1002)]
+
+
+
 
 ;; [2006.02.18] Now we test using some of the demo programs.  This is
 ;; to better our regression testing -- we don't want the demo programs

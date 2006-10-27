@@ -378,7 +378,8 @@
 	    
 	    
 	    ;; [2006.10.27]
-	    [(integrate)
+	    ;; Note : rintegrate has the same implementation as integrate.
+	    [(integrate rintegrate)
 	     (let* ([rator_tok (car args)]
 		    [init_state (cadr args)]
 		    [region_tok (caddr args)]
@@ -999,7 +1000,7 @@
 
       ;; For all these primitives, returning just means sending the
       ;; argument of the membership token to the base-station.
-      [(rmap light-up slight-up smap smap2 runion rrflatten rrcluster liftsig gossip integrate)
+      [(rmap light-up slight-up smap smap2 runion rrflatten rrcluster liftsig gossip integrate rintegrate)
        `([,tokname (v t) 
 		   (call reg-return 
 			 ,(if (deglobalize-markup-returns)

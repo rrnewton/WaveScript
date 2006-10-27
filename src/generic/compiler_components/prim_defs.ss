@@ -392,6 +392,10 @@
     ;; any state having to do with the signal transformer is
     ;; discarded, it will start up afresh if the node re-joins the
     ;; region.)
+    ;;
+    ;; This is an alternative that implements an integrate over a region:
+    ;; The function also takes the Node that it's running on:
+    (rintegrate      ((Node 'in 'state -> #('out 'state)) 'state (Area 'in))  (Area 'out))
 
     ;; A communication primitive that gossips local values using broadcast:
     (gossip ((Area 'a)) (Area 'a))
