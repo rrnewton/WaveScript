@@ -2461,6 +2461,50 @@
       unspecified
       ]
 
+
+["Gossip: Test new gossip primitive" retry
+ (parameterize ([simalpha-channel-model 'lossless]
+		[simalpha-placement-type 'connected]
+		[simalpha-failure-model  'none]
+		[simalpha-sense-function-constructor sense-dist-from-origin]
+		[sim-num-nodes 30]
+		[simalpha-consec-ids #t]
+		[simalpha-graphics-on #t]
+		[sim-timeout 9000])
+   (run-simulator-alpha 
+    (run-compiler 
+     '(gossip 
+       (rfilter (lambda (id) (= id 13))
+		(rmap nodeid world))))))
+ ,(lambda (ls)
+    (and (> (length ls) 1)
+	 (all-equal? (cons 13 ls))))]
+
+
+["Integrate: now try integrating a signal."
+ (parameterize ([simalpha-channel-model 'lossless]
+		[simalpha-placement-type 'connected]
+		[simalpha-failure-model  'none]
+		[simalpha-sense-function-constructor sense-dist-from-origin]
+		[sim-num-nodes 30]
+		[simalpha-consec-ids #t]
+		[simalpha-graphics-on #t]
+		[sim-timeout 100000])
+   (run-simulator-alpha 
+    (run-compiler 
+     '(integrate (lambda (x acc) (tuple acc (+ acc x)))
+		1000
+		(rfold + 0 
+		       (rfilter (lambda (id) (= id 10))
+				(rmap nodeid world))
+		       ))
+     )))
+ ,(lambda (ls)
+    (and (> (length ls) 2)
+	 (= (car ls) 1000)
+	 (> (car (reverse ls)) 1000)))]
+
+
 ;; [2006.02.18] Now we test using some of the demo programs.  This is
 ;; to better our regression testing -- we don't want the demo programs
 ;; to stop working without us knowing!!
@@ -2532,6 +2576,16 @@
 	 ))
 
  unspecified]
+
+
+
+
+
+
+
+
+
+
 
 
 #;

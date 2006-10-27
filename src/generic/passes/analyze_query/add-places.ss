@@ -118,10 +118,10 @@
 	  [(node->anchor) (let ((p (new-place))) (values expr p p))]
 
 	  ;; Both of these start in the center and spread to some extent.
-	  [(circle khood) (values expr (new-place) (list (new-place)))]
-
-	  ;; TEMP:
-	  [(circle-at khood) (values expr (new-place) (list (new-place)))]
+	  [(circle circle-at khood) (values expr (new-place) (list (new-place)))]
+	  	 
+	  ;; Could theoretically express subset relationship:
+	  [(gossip) (values expr (list (new-place)) (list (new-place)))]
 
 	  ;; Can we say something about cluster?  Disregarding the
 	  ;; *type* cluster does not change the physical extent...
@@ -129,6 +129,8 @@
 	  [(rrcluster rmap runion rrflatten liftsig)
 	   (let ([newp (list (new-place))])
 	     (values expr newp newp))]
+	  
+
 
 	  ;; This is a real challenge.  The simplest rfold uses a tree
 	  ;; that brings all the data to a leader node within the
@@ -153,7 +155,7 @@
 	     (values expr newp1 newp2))]
 
 	  ;; A signal lives at one place... an smap keeps that place the same (for now). 
-	  [(smap slight-up)
+	  [(smap slight-up integrate)
 	   (let ([newp (new-place)])
 	     (values expr newp newp))]
 	  ;; Now an smap2 is more unpredictable.  It needs to be routed.

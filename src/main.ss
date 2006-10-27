@@ -71,6 +71,8 @@
     ;; Regiment query into a (albeit high level) node-level
     ;; Token Machine program.
     deglobalize
+    ;; Alternatively:
+    ;; flatten-comm deglobalize2 streams-to-tm
 
     ;; (8) There's a large gap from the high-level (human readable) TM
     ;; language and the low-level (actually implemented) TM language.
@@ -183,7 +185,12 @@
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names)))))))))
 
-
+;; This is the second version of the compiler, uses deglobalize2
+(define (run-compiler2 p . args)                              ;; Entrypoint.
+  (parameterize ([pass-list (snoc deglobalize2 
+				  (rdc(list-remove-after deglobalize (pass-list))))])
+    (apply run-compiler p args)
+    ))
 
 ;; [2006.08.27] This version executes the alternate WaveScript compiler.
 ;; It takes it from (parsed) source down as far as the WaveScript commpiler 

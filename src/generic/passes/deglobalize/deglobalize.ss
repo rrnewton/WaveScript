@@ -323,6 +323,17 @@
 			(leds on green)
 			(dbg "~s: LightUP: v:~s t:~s" (my-id) v t)
 			(call ,memb v t)]))]
+
+	    ;; [2006.10.27] Hack, really, I should do this within deglobalize2:
+	    ;; Just trying this out for a little test:
+	    [(gossip)
+	     (let* ([region_tok (car args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v t) (call ,form v t)]
+		 ;; Just bounce it onward with the same value & tree... (dunno about tree)
+		 [,form (v t) (bcast ,memb v t)]))
+	     ]
+
 	    ;; Similar, but for signals:
 	    [(slight-up)
 	     (let* ([region_tok (car args)]
@@ -364,6 +375,25 @@
 			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
 			  (call ,form v t)]
 		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
+	    
+	    
+	    ;; [2006.10.27]
+	    [(integrate)
+	     (let* ([rator_tok (car args)]
+		    [init_state (cadr args)]
+		    [region_tok (caddr args)]
+		    [parent (get-membership-name region_tok)])
+	       `([,parent (v t) 
+			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
+			  (call ,form v t)]
+		 [,form (v t) 
+			(stored [state ,init_state])
+			(let ([vec (subcall ,rator_tok v state)])
+			  (printf "INTEGRATE: old:~s  new:~s  emitted:~s\n" 
+				  state (vector-ref vec 1) (vector-ref vec 0))
+			  (set! state (vector-ref vec 1))
+			  (call ,memb (vector-ref vec 0) t)
+			  )]))]
 
 	    ;; [2005.11.27] smap2 is more tricky. 
 	    ;; For now I'm just joining signals at the base-station.
@@ -969,7 +999,7 @@
 
       ;; For all these primitives, returning just means sending the
       ;; argument of the membership token to the base-station.
-      [(rmap light-up slight-up smap smap2 runion rrflatten rrcluster liftsig)
+      [(rmap light-up slight-up smap smap2 runion rrflatten rrcluster liftsig gossip integrate)
        `([,tokname (v t) 
 		   (call reg-return 
 			 ,(if (deglobalize-markup-returns)
