@@ -384,7 +384,7 @@
 ;    (treeize        (Area) Area)
 
     ;; A "transpose" operations for looking at regions as local streams--from the "node's perspective"
-    (rmap_localstreams (((Signal (Node 'a)) -> (Signal 'b)) (Area 'a)) (Area 'b))
+    (rmap_localstreams (((Signal #(Node 'a)) -> (Signal 'b)) (Area 'a)) (Area 'b))
     ;; This version currently uses a default time-out for when to
     ;; consider a node having "left" the Region.  (When that occurs,
     ;; any state having to do with the signal transformer is

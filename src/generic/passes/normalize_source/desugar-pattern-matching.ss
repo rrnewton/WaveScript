@@ -90,10 +90,8 @@
     [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
      (desugar-pattern-matching-language
       '(program (letrec ([x Int 3]) x) Int))]
-
     ))
 
 (define test-this (default-unit-tester "desugar-pattern-matching.ss: For reading regiment source files." these-tests))
 (define test_desugar-patterns test-this)
-
 )

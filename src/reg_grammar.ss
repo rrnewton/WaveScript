@@ -150,6 +150,11 @@
     (if (null? ls) ''()
 	`(cons ,(car ls) ,(consify (cdr ls))))))
 
+(define (lower-case? s)
+  (char-lower-case? 
+   (string-ref 
+    (symbol->string s) 0)))
+
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
       (delete-file "_parser.log"))
@@ -184,7 +189,7 @@
 	  ;;(nonassoc ONEARMEDIF)
 	  (nonassoc EXPIF if STMTIF)
 
-	  (right ++ ::)
+	  (right ++ :)
           (left < > <= >= == !=)
           (left - + +. -.  +: -:)
           (left * / *. /.  *: /:)
@@ -211,7 +216,9 @@
     (type [(type -> type) `(,$1 -> ,$3)]
           ;; A type constructor, make it right-associative.
           [(VAR type) (prec APP) (list $1 $2)]
-          [(VAR) $1]
+
+	  ;; Hmm: can't make up my mind whether we should single-quote typevars:
+          [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
           [(TYPEVAR) `(quote ,$1)]
           ;; No one-tuples!!
           [(LeftParen type RightParen) $2]
@@ -223,7 +230,7 @@
               )
 
     (decls ;; Top level variable binding
-           [(VAR : type SEMI maybedecls) `((: ,$1 ,$3) ,@$5)] 
+           [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
 	   
@@ -421,7 +428,7 @@
          [(exp OR exp) `(or ,$1 ,$3)]
 
          [(exp ++ exp) `(string-append ,$1 ,$3)]
-         [(exp :: exp) `(cons ,$1 ,$3)]
+         [(exp : exp) `(cons ,$1 ,$3)]
 
          [(exp + exp) `(+ ,$1 ,$3)]
          [(exp - exp) `(- ,$1 ,$3)]
@@ -455,7 +462,8 @@
 
          ;; Parentheses for precedence:
          [(LeftParen exp RightParen) $2]
-         [(LeftParen exp : type RightParen) $2]
+	 ;; Throw out type annotations for now:  FIXME FIXME
+         [(LeftParen exp :: type RightParen) $2]
 
          ;; Causes 5 shift-reduce conflicts:
 ;         [(return exp) $2]
@@ -479,7 +487,7 @@
            [(/:) '/:]
            [(^:) '^:]
 
-	   [(::) 'cons]
+	   [(:) 'cons]
 	   [(++) 'string-append]
            
            [(<) '<]
@@ -512,52 +520,7 @@
               (loop (position-token-token x)))
             x)))
 
-
-;; MOVED TO SOURCE_LOADER.ss
-#;
-(define (ws-postprocess ws)
-  ;; First we expand includes:
-  (let ([ws (apply append 
-              (map (lambda (form)
-		   (match form
-		     [(include ,file)
-		      (unless (file-exists? file)
-			(error 'parser "Included file not found: ~s\n" file))
-		      (match (ws-parse-file file)
-			[(letrec ,binds ,ignored)
-			 `((define . ,binds) ...)])]
-		     [,other (list other)]))
-	      ws))])
-  (define (f1 x) (eq? (car x) ':))
-  (define (f2 x) (eq? (car x) 'define))
-  (define (f3 x) (eq? (car x) '<-))
-  (let ([types (map cdr (filter f1 ws))]
-        [defs (map cdr (filter f2 ws))]
-        [routes (map cdr (filter f3 ws))])
-    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)))) ws))
-    (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
-    (let ([typevs (map car types)]
-          [defvs (map car defs)])
-      ;(pretty-print ws)
-      (unless (= 1 (length routes))
-        (if (zero? (length routes))
-	    (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- ()\"")
-		   (set! routes `((BASE (tuple)))))
-	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
-      (unless (eq? 'BASE (caar routes))
-        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
-      (unless (subset? typevs defvs)
-        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
-      `(let* ,(map (lambda (def)
-		     (match def
-		       [(,v ,e) (if (memq v typevs)
-				    `[,v ,(cadr (assq v types)) ,e]
-				    `[,v ,e])]))
-		defs)
-         ,(cadar routes))))))
   
-
 (define (ws-parse-file-raw f) 
   (let ([p (open-input-file f)])    
     (let ([res (ws-parse-port p)])

@@ -179,7 +179,7 @@
 		     [(include ,file) (expand-include file)]
 		     [,other (list other)]))
 	      ws))])
-  (define (f1 x) (eq? (car x) ':))
+  (define (f1 x) (eq? (car x) '::))
   (define (f2 x) (eq? (car x) 'define))
   (define (f3 x) (eq? (car x) '<-))
   (let ([types (map cdr (filter f1 ws))]

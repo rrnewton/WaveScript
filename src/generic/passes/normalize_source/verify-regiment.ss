@@ -38,12 +38,13 @@
 
      (define (pattern->vars p)
        (match p
+	 [_  '()] ;; Don't return "ignored" slots.
 	 [,v (guard (symbol? v))  (list v)]
 	 [#(,[v*] ...) (apply append v*)]
 	 ))
 
      (define (blank-type) `(quote ,(unique-name 'type)))
-     
+
      ;; .param env is just a list of symbols in scope.
      ;; (Really this is outdated because the type-checker will catch problems
      ;; with unbound variables.)
@@ -65,7 +66,7 @@
 	   (unless (qinteger? n) (error 'verify-regiment "bad index to tupref: ~a" n))
 	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" len))
 	   `(tupref ,n ,len ,e)]
-          
+ 
           [(lambda (,v* ...) ,optionaltypes ...,expr)
            (guard (not (memq 'lambda env)))
 	   (for-each pattern! v*)	   
@@ -73,13 +74,13 @@
 			  [() (map (lambda (_) (blank-type)) v*)]
 			  [((,t* ...)) t*])]
 		 [vars (apply append (map pattern->vars v*))])	     
-	     (ASSERT (set? vars))	   
+	     (ASSERT (set? vars))
 	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
-          
+
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
-          
+
 	  [(letrec ([,lhs* ,optional ... ,rhs*] ...) ,expr)
 	   (guard (not (memq 'letrec env)))
 	   (for-each pattern! lhs*)
