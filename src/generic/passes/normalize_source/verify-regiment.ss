@@ -3,7 +3,13 @@
 ;;;; This pass verifies that the input is in the regiment lanuguage.
 ;;;; It also wraps the program in the boilerplate '(<lang> '(program <Exp>)) form.
 
-;;;; No variable capture is allowed at this point.
+;;;; It's not *just* a verification pass though.  It does one teensy
+;;;; bit of normalization.  It includes "blank" types ('a) where there
+;;;; are no user type annotations.  This removes the annoying types/notypes
+;;;; ambiguity in lambda/let/letrec/etc.
+
+;;;; Really this is pretty unnecessary now because the type checker
+;;;; should catch most of these problems.
 
 (define verify-regiment
   (build-compiler-pass ;; This wraps the main function with extra debugging
@@ -21,6 +27,22 @@
 	    (error 'verify-regiment 
 		   "for the time being you cannot bind/mutate variables that use the same names as keywords: '~s'" v))
 	))
+
+     (define (pattern! p)
+       (match p
+	 [,v (guard (symbol? v))  (assert-valid-name! v)]
+	 ;; Currently only tuple patterns:
+	 [#(,p* ...) (for-each pattern! p*)]
+	 [,other (error 'verify-regiment "bad binding pattern: ~s" other)]
+	 ))
+
+     (define (pattern->vars p)
+       (match p
+	 [,v (guard (symbol? v))  (list v)]
+	 [#(,[v*] ...) (apply append v*)]
+	 ))
+
+     (define (blank-type) `(quote ,(unique-name 'type)))
      
      ;; .param env is just a list of symbols in scope.
      ;; (Really this is outdated because the type-checker will catch problems
@@ -44,50 +66,62 @@
 	   (unless (qinteger? len) (error 'verify-regiment "bad length argument to tupref: ~a" len))
 	   `(tupref ,n ,len ,e)]
           
-          [(lambda ,formalexp ,expr)
-           (guard (list? formalexp) 
-		  (andmap symbol? formalexp)
-		  (set? formalexp)
-                  (not (memq 'lambda env)))
-	   (for-each assert-valid-name! formalexp)
-	   `(lambda ,formalexp 
-	      ,(process-expr expr (union formalexp env)))]	  
+          [(lambda (,v* ...) ,optionaltypes ...,expr)
+           (guard (not (memq 'lambda env)))
+	   (for-each pattern! v*)	   
+	   (let ([types (match optionaltypes 
+			  [() (map (lambda (_) (blank-type)) v*)]
+			  [((,t* ...)) t*])]
+		 [vars (apply append (map pattern->vars v*))])	     
+	     (ASSERT (set? vars))	   
+	     `(lambda ,v* ,types ,(process-expr expr (union vars env))))]
           
           [(if ,[test] ,[conseq] ,[altern])
            (guard (not (memq 'if env)))
 	   `(if ,test ,conseq ,altern)]
           
 	  [(letrec ([,lhs* ,optional ... ,rhs*] ...) ,expr)
-	   (guard (not (memq 'letrec env))
-                  (andmap symbol? lhs*)
-                  (set? lhs*))
-	   (for-each assert-valid-name! lhs*)
-	   (let* ([newenv (union lhs* env)]
+	   (guard (not (memq 'letrec env)))
+	   (for-each pattern! lhs*)
+	   (let* ([vars (apply append (map pattern->vars lhs*))]
+		  [newenv (union vars env)]
 		  [rands (map (lambda (r) (process-expr r newenv)) rhs*)]
-		  [body  (process-expr expr newenv)])
-	     `(letrec ([,lhs* ,optional ... ,rands] ...) ,body))]
+		  [body  (process-expr expr newenv)]
+		  [types (map (lambda (opt)
+				(match opt
+				  [() (blank-type)]
+				  [(,t) t]))
+			   optional)])
+	     (ASSERT (set? vars))
+	     `(letrec ([,lhs* ,types ,rands] ...) ,body))]
 	  
 	  ;; This is long-winded, handling all these let-variants:
-	  [(let* ([,lhs* ,optional ... ,rhs*] ...) ,expr)
-	   (guard (not (memq 'let* env))
-                  (andmap symbol? lhs*)
-                  (set? lhs*))
-	   (for-each assert-valid-name! lhs*)
-	   (let loop ([env env] [lhs* lhs*] [rhs* rhs*] [acc '()])
+	  [(let* ([,lhs* ,optional ... ,rhs*] ...) ,body)
+	   (guard (not (memq 'let* env)))
+	   (for-each pattern! lhs*)
+	   (let loop ([env env] [lhs* lhs*] [rhs* rhs*] [opt optional] [acc '()])
 	     (if (null? lhs*)
 		 `(let* ,(reverse acc) ,(process-expr body env))
-		 (let* ([rhsnew (process-expr (car rhs*) env)]
-			[newenv (union (car lhs*) env)])
-		   (loop newenv (cdr lhs*) (cdr rhs*)
-			 (cons (list (car lhs*) rhsnew) acc)
+		 (let* ([vars (pattern->vars (car lhs*))]
+			[rhsnew (process-expr (car rhs*) env)]
+			[newenv (union vars env)]
+			[type (match (car opt) [() (blank-type)] [(,t) t])])
+		   (ASSERT (set? vars))
+		   (loop newenv (cdr lhs*) (cdr rhs*) (cdr opt)
+			 `([,(car lhs*) ,type ,rhsnew] . ,acc)
 			 ))))]
-	  [(let ([,lhs* ,optional ... ,[rhs*]] ...) ,expr)
-	   (guard (not (memq 'let env))
-                  (andmap symbol? lhs*)
-                  (set? lhs*))
-	   (for-each assert-valid-name! lhs*)
-	   `(let ([,lhs* ,optional ... ,rands] ...) 
-	      ,(process-expr body (union lhs* env)))]
+	 [(let ([,lhs* ,optional ... ,[rhs*]] ...) ,body)
+	  (guard (not (memq 'let env)))	  
+	  (for-each pattern! lhs*)
+	  (let ([vars (apply append (map pattern->vars lhs*))]
+		[types (map (lambda (opt)
+			      (match opt
+				[() (blank-type)]
+				[(,t) t]))
+			 optional)])
+	    (ASSERT (set? vars))
+	    `(let ([,lhs* ,types ,rands] ...) 
+	       ,(process-expr body (union lhs* env))))]
 
 	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
 	  [(begin ,[e] ...) `(begin ,e ...)]
@@ -104,45 +138,27 @@
 	  ;; ========================================
 	 
           [(,prim ,[rand*] ...)
-           (guard 
-            (not (memq prim env))
-            (regiment-primitive? prim))
-	   (let ([entry (get-primitive-entry prim)])
-	     ;; Make sure the infered for each argument matches the expected type:
-;	     (if (not (= (length rand*) (length (cadr entry))))
-;		 (error 'verify-regiment "wrong number of arguments to prim: ~a, expected ~a, got ~a" 
-;			prim (cadr entry) rand*))
-	     (let ((types (fit-formals-to-args (cadr entry) rand*)))	       
-	       (void)
-	       ))
+           (guard (not (memq prim env))
+		  (regiment-primitive? prim))
 	   `(,prim ,rand* ...)]
           
-	  ;; Allowing normal applications because the static elaborator will get rid of them.
-	  ;;
-	  ;; Even though this is just a VERIFY pass, I do a teensy weensy bit of normalization 
-	  ;; here -- add "app".  This makes grammar-checking sane.
 	  [(app ,[rator] ,[rand*] ...)  `(app ,rator ,rand* ...)]
-	  [(,[rator] ,[rand*] ...)      
-	   (warning 'verify-regiment "unlabeled app form allowed: ~s" `(,rator ,rand* ...))
-	   `(app ,rator ,rand* ...)]
 
           [,unmatched
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
-    
-     (lambda (expr)
-      (match expr	    
-	;; The input is already wrapped with the metadata:
-        [(,input-language (quote (program ,body)))
-         (let ([body (process-expr body '())]) 
-           ;; Changes input language only by annotating types:
-	   (mvlet ([(newprog t) (annotate-program body)])
-	     `(,input-language '(program ,newprog ,t))))]
-	;; Nope?  Well wrap that metadata:
-        [,body
-         (let ([body (process-expr body '())])
-	   (mvlet ([(newprog t) (annotate-program body)])
-	     `(base-language '(program ,newprog ,t))))]
-	)))))
+
+     (define (process-program prog)
+       (match prog
+	 ;; The input is already wrapped with the metadata:
+	 [(,input-language (quote (program ,body)))
+	  `(verify-regiment-language '(program ,(process-expr body '()) 'toptype))]
+	 ;; Nope?  Well wrap that metadata:
+	 [,body (process-program `(base-language '(program ,body)))]
+	 ))
+
+     ;; Main body:
+     process-program
+     )))
 
 
 ;==============================================================================
@@ -150,7 +166,7 @@
 
 (define these-tests
   '( [(verify-regiment '(some-lang '(program 3)))
-      (some-lang (quote (program 3 Int)))]
+      (verify-regiment-language (quote (program 3 'toptype)))]
       
      [(verify-regiment '(some-lang '(program
        (letrec ((a (anchor-at 30 40)))

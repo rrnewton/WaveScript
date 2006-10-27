@@ -23,6 +23,9 @@ Things I'm working on now --Ryan:
 
  *) Would like to get the LAML Schemedoc stuff working again.
 
+ *) I am going to need to add a pass to annotate the type of rators.
+    Will need this to make the elaborator work right.
+
 ================================================================================
 
 [2006.09.03]

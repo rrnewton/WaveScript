@@ -794,6 +794,9 @@
 			       (cons first (loop (cdr ls))))]
 	 [(list? (car ls)) (let ((first (loop (car ls))))
 			     (cons first (loop (cdr ls))))]
+	 [(vector? (car ls)) 
+	  (cons (list->vector (loop (vector->list (car ls))))
+		(loop (cdr ls)))]
 	 [else (error 'reunique-names "bad subexpression: ~s" (car ls))]))))
 
 ;; unique-name produces a unique name derived the input name by

@@ -553,6 +553,7 @@
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
   (lambda (ids body inittypes tenv nongeneric)
+    (ASSERT (andmap symbol? ids)) ;; For now, no patterns.
     (for-each valid-user-type! inittypes)
     ;; No optional type annotations currently.
     (let* ([argtypes  (map (lambda (_) (make-tcell)) ids)]
@@ -572,6 +573,7 @@
 (define annotate-let
   (lambda (id* rhs* bod inittypes tenv nongeneric)
     (define (f e) (annotate-expression e tenv nongeneric))
+    (ASSERT (andmap symbol? id*)) ;; For now, no patterns.
     (for-each  valid-user-type! inittypes)
     (match rhs*
       [(,[f -> newrhs* rhsty*] ...)
@@ -600,6 +602,8 @@
                 (cons (f (car ls1) (car ls2)) 
                       (loop (cdr ls1) (cdr ls2) acc))])))])
     (lambda (id* existing-types rhs* bod tenv nongeneric letrecconstruct) 
+      (ASSERT (andmap symbol? id*)) ;; For now, no patterns.
+
       (for-each  valid-user-type! existing-types)
       ;; Make new cells for all these types
       (let* ([rhs-types (map (lambda (_) (make-tcell)) id*)]
@@ -1146,7 +1150,12 @@
      t)
    error]
 
-  
+
+  #;
+  ;; Should we type-check with patterns in there?
+  [(mvlet ([(p t) (annotate-program '(lambda (#(_ t)) (> t 90)))]) t)
+   ??
+   ]
 
   ))
 

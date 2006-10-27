@@ -25,9 +25,17 @@
 ;;
 ;;   [Expr <fun: expr, FallthroughFun -> intermediate>]
 ;;      This form takes an expression-handling procedure in the style of core-generic-traverse.
-;;   [Expr/Types <fun: expr, FallthroughFun -> intermediate>]
+;;   [Expr/Types <fun: expr, type-env, FallthroughFun -> intermediate>]
 ;;      This form takes an expression-handling procedure in the style of core-generic-traverse/types.
 ;;      Cannot be used with Expr, or Bindings.
+;;
+;;   [Expr/ExtraArg <init-extraarg-val> <fun: expr, extra, FallthroughFun -> intermediate>]
+;;      UNFINISHED:
+;;      This form takes an expression-handling procedure that also threads through an extra argument
+;;      as it walks down the structure.  Note that, like the Expr/Types form the fallthrough function
+;;      will now take an extra argument as well.
+;;      UPDATE: I now think this would be better done by making the fallthrough function accept an optional
+;;      argument -- a new driver (potentially reflecting updated state).
 ;;
 ;;   [Fuser <fun: [intermediate ...], <fun: [intermediate ...] -> expr> -> intermediate>]
 ;;      This form takes a result-fusing procedure in the style of core-generic-traverse.
@@ -87,7 +95,8 @@
 			       #'(lambda (pr Expr) 
 				   (match pr
 				     [(,input-language (quote (program ,body ,type)))
-				      `(ol '(program ,(Expr body) ,type))])
+				      `(ol '(program ,(Expr body) ,type))]
+				     [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
 				   ))))
 		(if bnds 
 		    (set! expr

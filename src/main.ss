@@ -23,10 +23,10 @@
     ;; are run.  Maybe should make it one of the "passes".
     
     ;; (2) Next we verify our input language.
-    pass_desugar-pattern-matching
     verify-regiment
     
     ;; (3) Then we do a little massaging/normalization.
+    pass_desugar-pattern-matching
     desugar-misc
     eta-primitives
     rename-vars
@@ -204,8 +204,8 @@
 	   x)
 	  x)))
 
-  (set! p (optional-stop (pass_desugar-pattern-matching p)))
   (set! p (optional-stop (verify-regiment p)))
+  (set! p (optional-stop (pass_desugar-pattern-matching p)))
   (printf "Program verified.\n")
   
   (set! p (optional-stop (rename-vars p)))
@@ -253,7 +253,7 @@
 		   ))
 
   (define compiled (run-ws-compiler prog))
-  (define typed (verify-regiment (pass_desugar-pattern-matching prog)))
+  (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
 
   (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
 

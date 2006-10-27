@@ -46,15 +46,6 @@
 	  [(let ([,x ,t ,[y]] ...) ,[body])
 	   `(app (lambda ,x ,t ,body) ,y ...)
 	   ]
-
-	  ;; [2006.09.19] Desugar let* at this point:
-	  [(let* ,binds ,expr)
-	   (process-expr 
-	    (match  binds
-	      [() expr]
-	      [(,bind . ,[rest])
-	       `(letrec (,bind) ,rest)])
-	    env  type-env)]
 	  
 	  [,other (fallthrough other)]
 	  ))])

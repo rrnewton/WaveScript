@@ -65,8 +65,12 @@
     (define (build-traverser driver fuse e)
       (let loop ((e e))	
 	(driver e 
-          (lambda (expression)       
-          (match expression
+	  ;; This is the fallthrough/autolooper function that is passed to the driver.
+          (case-lambda 
+	    ;; In this case we have a change to the driver function as we go down.
+	    [(expr newdriver) (build-traverser newdriver fuse e)]
+	    [(expression)       	      
+	     (match expression
 ;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
@@ -163,7 +167,7 @@
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
 		      (inspect otherwise)
 		      (error 'core-generic-traverse "")]
-	  )))))
+	  )]	    ))))
 
   ;; Main body of core-generic-traverse:
   (case-lambda 

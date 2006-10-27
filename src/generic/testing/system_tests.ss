@@ -9,7 +9,7 @@
      ()]
 
     ["Test a simple application"
-     (compile-to-tokens '(letrec ([f (lambda (x) x)]) (f 3)))
+     (compile-to-tokens '(letrec ([f (lambda (x) x)]) (app f 3)))
      unspecified]
 
     ["resolve-trees:  Verify that an rfold over a khood gets the khood tree"
