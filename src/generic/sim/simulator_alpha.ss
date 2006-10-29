@@ -243,6 +243,7 @@
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]
       [random reg:random-int]
+
       ))
   
   (let ([allstored (apply append (map cadr stored))])
@@ -335,7 +336,8 @@
 
 		  [(begin) '(void)]
 		  [(begin ,[x] ...) `(begin ,x ...)]
-		  
+
+		  ;; Subcall may or may-not have been eliminated by CPS at this point:
 		  ;; TODO: Implement subcall directly:
 		  [(,subcall ,[rator] ,[rand*] ...)		  
 		   (guard (memq subcall '(subcall direct-subcall)))
@@ -347,6 +349,34 @@
 			    current-vtime))]
 		  [(return ,[x]) x]
 
+		  ;; [2006.10.27]
+		  ;; This is yet another thing that probably shouldn't be allowed at the TM level:
+		  [(map ,[rator] ,[rand])
+		   `(let ([rat ,rator]
+			  [rnd ,rand])
+		      (let ([f (lambda (x) 
+				((simobject-meta-handler this)
+				 ;; HACK: CHEATING AND PUTTING IN GRADIENT ARGS:
+				 (bare-msg-object rat (list 0 0 'nongrad-invoke 0 x) current-vtime)
+				 current-vtime))])			
+			(inspect (cons 'map rnd))
+			(inspect (cons 'mapresult (map f rnd)))
+			(map f rnd)))]
+		  ;; And this:
+		  [(fold ,[rator] ,[zero] ,[rand])
+		   `(let ([rat ,rator]
+			  [zer ,zero]
+			  [rnd ,rand])
+		      (let ([f (lambda (stt x)				 
+				 ((simobject-meta-handler this)
+				  ;; HACK: CHEATING AND PUTTING IN GRADIENT ARGS:
+					;          (g_parent g_origin g_hopcount g_version a_31 b_30)
+				  (bare-msg-object rat (list 0 0 'nongrad-invoke 0 stt x) current-vtime)
+				  current-vtime))])
+			(inspect (cons 'fold rnd))
+			(foldl f zer rnd)))]
+
+		  
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,[rator] ,[rand*] ...)
 		   (let ((rands (unique-name 'rands)))

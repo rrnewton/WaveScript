@@ -277,7 +277,7 @@
     ;; Here's the pure version.
     ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Signal 'in))  (Signal 'out))
     ;; Restricting to have only one output per firing:
-    (integrate      (('in 'state -> #('out 'state)) 'state (Signal 'in))  (Signal 'out))
+    (integrate      ((Node 'in 'state -> #('out 'state)) 'state (Signal 'in))  (Signal 'out))
 
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
@@ -572,6 +572,11 @@
      (list Object List)
      (append List List)
     
+     (map (Function List) List)
+     (fold (Function Object List) Object)
+     (alist_lookup (List Object) List)
+     (alist_update (List Object Object) List)
+
      (vector Object Array)
      (make-vector (Int Object) Array)
      (vector-ref (Array Int) Object)

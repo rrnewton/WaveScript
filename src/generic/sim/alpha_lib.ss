@@ -54,6 +54,9 @@
 	 check-store
 	 ;alpha-it ;; shorthand
 
+	 alist_update
+	 alist_lookup
+
          sim-print
 
 	 test-this these-tests test-alphalib   
@@ -335,6 +338,21 @@
 	     (expt (- (cadr a) (cadr b)) 2))))
    ;)
    ]
+
+
+(define (alist_lookup ls x)
+  (let loop ([ls ls])
+    (cond
+     [(null? ls) '()]
+     [(equal? (vector-ref (car ls) 0) x) ls]
+     [else (loop (cdr ls))])))
+(define (alist_update origls x y)
+  (let loop ([ls origls] [acc '()])
+    (cond
+     [(null? ls) (cons (vector x y) origls)]
+     [(equal? (vector-ref (car ls) 0) x)
+      (append (reverse! acc) (cons (vector x y) (cdr ls)))]
+     [else (loop (cdr ls) (cons (car ls) acc))])))
 
 [define (sim-print . args) 
   (apply printf args)]

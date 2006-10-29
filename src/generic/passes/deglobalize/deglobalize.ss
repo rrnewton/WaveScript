@@ -389,7 +389,9 @@
 			  (call ,form v t)]
 		 [,form (v t) 
 			(stored [state ,init_state])
-			(let ([vec (subcall ,rator_tok v state)])
+			;; Arguments to function are <This> <Elem> <State>
+			;; This == Null value.
+			(let ([vec (subcall ,rator_tok '#() v state)])
 			  (printf "INTEGRATE: old:~s  new:~s  emitted:~s\n" 
 				  state (vector-ref vec 1) (vector-ref vec 0))
 			  (set! state (vector-ref vec 1))

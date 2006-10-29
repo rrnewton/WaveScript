@@ -226,6 +226,18 @@
 		       [(lambda (,v) ,ty ,expr)
 			(get-tail expr #f env)])))]
 
+	      ;; HACK: 
+	      ;; [2006.10.27]
+	      [(rintegrate ,rat ,zero ,strm)
+	       (let ([newrand (process-expr strm env)])
+		 (match (or (and (symbol? rat) (codeloc->expr (lookup rat env)))
+			    rat)
+		   [(lambda (,node ,x ,st) ,ty ,expr)
+		    ;; Not quite right:
+		    (get-tail expr #f env)]))
+	       ]
+	      
+
 	      ;; An rfilter doesn't change the value-producing program point.
 	      [(rfilter ,rat ,rand)  (get-region-tail rand env)]
 

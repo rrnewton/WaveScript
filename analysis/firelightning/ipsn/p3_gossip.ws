@@ -64,11 +64,11 @@ fun table_filt((thisid, table)) {
   ids : (List Int) = map(fun((id,_)) id, table);
 
   // Confirm that there are enough nodes.
-  table.listLength >= 2 &&
+  //table.listLength >= 2 &&
   // Confirm that the summed temp is large enough
-  fold( (+), 0, temps) > 60 &&
+  fold( (+), 0, temps) > 60 
   // Confirm that we are the leader and hence can return the result:
-  thisid == fold( max, 0, ids)
+  //thisid == fold( max, 0, ids)
 }
 
 BASE <- rmap(fun((_,tbl)) tbl,

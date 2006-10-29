@@ -2492,7 +2492,7 @@
 		[sim-timeout 100000])
    (run-simulator-alpha 
     (run-compiler 
-     '(integrate (lambda (x acc) (tuple acc (+ acc x)))
+     '(integrate (lambda (node x acc) (tuple acc (+ acc x)))
 		1000
 		(rfold + 0 
 		       (rfilter (lambda (id) (= id 10))
@@ -2536,11 +2536,54 @@
 	 (list->set     
 	  (run-simulator-alpha 
 	   (run-compiler 
-	    '(rintegrate (lambda (x state) (tuple (+ x 1000) state))
+	    '(rintegrate (lambda (node x state) (tuple (+ x 1000) state))
 			 99
 			 (rmap nodeid world)))))))
  (1000 1001 1002)]
 
+;; Currently gets an error with void arguments at the TM level.
+;; Wish the damn TMs were typechecked also.
+#;
+["Now let's try p3 itself."
+ (parameterize ([simalpha-channel-model 'lossless]
+		[simalpha-placement-type 'connected]
+		[simalpha-failure-model  'none]
+		[simalpha-sense-function-constructor sense-dist-from-origin]
+		[sim-num-nodes 3]
+		[simalpha-consec-ids #t]
+		[simalpha-graphics-on #t]
+		[sim-timeout 20000])
+   (run-simulator-alpha 
+    (run-compiler
+       '(let* ([thresh 20]
+       [read (lambda (n)
+               (tuple
+                 (app nodeid n)
+                 (app sense "time" n)
+                 (app sense "temp" n)))]
+       [abovethresh (lambda (#(id t temp)) (> temp thresh))]
+       [temps (app rmap read world)]
+       [heat_events (app rfilter abovethresh temps)]
+       [strms (Area #(Int Int Int)) (app gossip heat_events)]
+       [tables (Area #(Int (List #(Int #(Int Int))))) (app rintegrate
+                                                           (lambda (this #(id tm temp) table)
+                                                             (tuple
+                                                               (tuple (app nodeid this) table)
+                                                               (app alist_update table id (tuple tm temp))))
+                                                           '()
+                                                           strms)]
+       [table_filt (#(Int (List #(Int #('a Int)))) -> Bool) (lambda (#(thisid
+                                                                       table))
+                                                              (letrec ([temps (app map (lambda (#(_ #(_ z))) z) table)])
+                                                                (letrec ([ids (List Int) (app map
+                                                                                              (lambda (#(id _)) id)
+                                                                                              table)])
+                                                                  (> (app fold + 0 temps) 60))))])
+	  (app rmap
+	       (lambda (#(_ tbl)) tbl)
+	       (app rfilter table_filt tables)))
+     )))
+ ???????]
 
 
 
