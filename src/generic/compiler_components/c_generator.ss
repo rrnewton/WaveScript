@@ -3,15 +3,15 @@
 ;;;; .author Ryan Newton
 
 ;;;; I already have pass32_emit-nesc.ss, but I'm looking to make a more
-;;;; generically useful C-generation library.  This should be very simple.
+;;;; generally useful C-generation library.  This should be very simple.
 
-;;;; The representation used here is that of a list of strings.  This
-;;;; list is manipulated extensively, but the strings should only be
-;;;; appended once -- at the end.
+;;;; The representation used here is that of a list of strings (nested
+;;;; arbitrarily).  This list is manipulated extensively, but the
+;;;; strings should only be appended once -- at the end.
 
 ;;;; For added flexibility these procedures can take straight strings
 ;;;; and wrap them as lists.  That is:
-;;;;  type Text = String | List of String
+;;;;  type Text = String | List of Text
 
 (module c_generator mzscheme   
   (require )  
