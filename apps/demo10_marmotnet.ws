@@ -1,3 +1,6 @@
+// This is experimental.  Playing around with what it would mean to
+// have a distributed version of the marmot detector.
+
 
 // Standard library included by default.
 //   Used: syncN, rewindow

@@ -1,4 +1,8 @@
 
+// This is a hacked up version of the first phase of the marmot app.
+// The marmot app proper is separate from this and is going in the apps/ 
+// folder.
+
 DEBUG = false
 DEBUGSYNC = DEBUG 
 
