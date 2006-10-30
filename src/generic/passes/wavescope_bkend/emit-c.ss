@@ -52,6 +52,7 @@
     ;; .param name   A string naming the variable that stores the current result.
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
+    ;; .returns A new expression and a set of declarations.
     (define (Query name typ x)
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
@@ -77,10 +78,9 @@
 	[(audio ,[Expr -> channel] ,[Expr -> size] ,[Expr -> skip])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
-	 (values `("RawFileSource ",name 
-		   " = RawFileSource(\"/tmp/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw\", \n"
-		   "                       " ,channel ", 4, 48000*30, WSSched::findcpuspeed());\n")
-		 '())]
+	 (values `("RawFileSource " ,name " = RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, 24000*100);\n")
+		 '())
+	 ]
 	
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -101,15 +101,16 @@
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	))
-
+    
     (lambda (prog)
       (match prog
-	[(,lang (quote (program (let ,binds ,body) ,struct-defs ,typ)))
+	[(,lang (quote (program (letrec ,binds ,body) ,struct-defs ,typ)))
 	 (mvlet ([(return-name) body]
 		 [(body funs) (Query "toplevel" typ `(letrec ,binds ,body))])
 	   (ASSERT (symbol? return-name))
 
 	   `(,boilerplate_headers 
+	     ,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
 	     ,funs
 	     ,boilerplate_premain
 	     ;"// " ,(Type typ) " toplevel;\n"
@@ -151,7 +152,8 @@
 ;======================================================================
 ;;; Bits of boilerplate.
 
-(define boilerplate_headers "
+(define boilerplate_headers 
+"
 #include <WaveScope.h>
 #include <Heartbeat.hpp>
 #include <PrintBox.hpp>
@@ -164,58 +166,30 @@
 #define TRUE 1
 #define FALSE 0
 
-class WSPrim {
-
-  public:
-  static SigSeg<complex> fft(SigSeg<float> input) {
-      /* Currently we just use the unitless timebase: */ 
-      Timebase _freq = Unitless;
-      SigSeg<float>* casted = &input;
-      
-      /* alloc buffer for FFT */
-      Signal<complex> s = Signal<complex>(_freq);
-      complex *fft_buf = s.getBuffer(casted->length()/2);
-      float *fft_flt = (float *)fft_buf;
-
-      /* copy input over to output buffer */
-      float *cbuf = casted->getDirect();
-      memmove(fft_flt, cbuf, sizeof(float)*casted->length());
-      casted->release(cbuf);
-      
-      /* do the fft */
-      FFT::realft(fft_flt-1, casted->length(), +1);
-
-      /* return the sigseg */
-      SigSeg<complex> output = s.commit(casted->length()/2);
-      delete casted;
-      return(output);
-  }
-
-};
-
 ")
 
 (define boilerplate_premain "
 
 int main(int argc, char ** argv)
 {
-  /* initialize subsystems */
-  MiscLogInit(&argc, argv);
-  TimebaseMgrInit(&argc, argv);
+  /* initialize subsystems */ 
+  WSInit(&argc, argv);
 
 ")
 
-(define (boilerplate_postmain return_name return_type) `(
-,@(if (equal? return_type '(Signal (Sigseg Float)))
-      `("
-  /* dump output specgram to file */
-  AsciiFileSink<float> fs = AsciiFileSink<float>(\"/tmp/specgram.out\");
-  fs.connect(&",return_name");
-") '()) "
 
+(define (boilerplate_postmain return_name return_type) 
+  (printf "Generating code for returning stream of type ~s\n" return_type)
+  `(
+,@(if (equal? return_type '(Signal (Sigseg Float))) `("
+  /* dump output to file */
+  AsciiFileSink<float> fs = AsciiFileSink<float>(\"/tmp/wavescript_query.out\");
+  fs.connect(&",return_name");
+
+")      '())
+"
   /* now, run */
-  WSSource::StartThreads();
-  WSSched::run();
+  WSRun();
 
   return 0;
 "))

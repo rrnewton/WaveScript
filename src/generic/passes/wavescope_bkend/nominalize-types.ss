@@ -58,7 +58,8 @@
 	   (pretty-print body)
 
 	   ;; Running the type-checker/inferencer isn't going to work on this output any longer:
-	   `(,lang '(program ,(result-expr body) 
+	   `(nominalize-types-language
+	     '(program ,(result-expr body) 
 		      ;; We stick the type definitions here:
 		      (struct-defs ,@(result-tydefs body)) ,type))]
 	  ))))

@@ -282,6 +282,38 @@
   stream)
 
 
+(define (wscomp port . flags)                                 ;; Entrypoint.  
+  
+  (define outfile "./query.cpp")
+  (define prog (ws-postprocess (read port)))
+  (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
+
+  (ASSERT (andmap symbol? flags))
+
+  (printf "Compiling program: \n\n")(pretty-print prog)
+  
+  (printf "\nTypecheck complete, program types:\n\n")
+  (print-var-types typed)(flush-output-port)
+  
+  (set! prog (run-ws-compiler prog))
+  (REGIMENT_DEBUG 
+   (printf "================================================================================\n")
+   (printf "\nNow nominalizing types.\n"))
+  (set! prog (nominalize-types prog))
+  (REGIMENT_DEBUG (pretty-print prog))
+  (REGIMENT_DEBUG 
+   (printf "================================================================================\n")
+   (printf "\nNow emitting C code:\n"))
+  
+  (string->file 
+   (text->string 
+    (wsquery->text
+     prog))
+   outfile)
+  
+  (printf "\nGenerated C++ output to ~s.\n" outfile)
+  )
+
 
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)                          ;; Entrypoint.

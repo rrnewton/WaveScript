@@ -6,7 +6,7 @@ fun syncN (strms, ctrl) {
   let f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   let _strms = map(f, strms);
 
-  let slist = _ctrl :: _strms;
+  let slist = _ctrl : _strms;
   
   print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");
 
@@ -49,7 +49,7 @@ fun syncN (strms, ctrl) {
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
 	  for i = 0 to accs.length - 1 {
-	    output := subseg(accs[i], st, size) :: output;
+	    output := subseg(accs[i], st, size) : output;
 	  }
 	  emit(reverse(output));
 	} else 

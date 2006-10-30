@@ -519,7 +519,6 @@
             (begin (error 'flatten "No nested position-tokens!")
               (loop (position-token-token x)))
             x)))
-
   
 (define (ws-parse-file-raw f) 
   (let ([p (open-input-file f)])    

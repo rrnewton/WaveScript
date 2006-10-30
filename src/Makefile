@@ -162,7 +162,6 @@ cleanheap:
 
 clean: cleanheap
 	(cd plt; $(MAKE) clean)
-	(cd haskell; $(MAKE) clean)
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)

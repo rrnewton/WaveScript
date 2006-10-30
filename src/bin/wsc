@@ -4,6 +4,8 @@ TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 if [ ! -f "$1" ];
 then echo Usage: "wsc <file> <options ...>";
+#     echo   (Options: -b  Build cpp file.)
+     echo 
      echo   File \"$1\" does not exist.
      exit;
 fi
@@ -19,5 +21,31 @@ then echo \"wsparse\" command not found.  Compile it!
 fi
 
 wsparse $1 > $TMP
-regiment wscomp $TMP ${1+"$@"}; 
+if regiment wscomp $TMP ${1+"$@"} ;
+then echo
+else rm -f $TMP; 
+    echo Compilation aborted: \"regiment wscomp\" exited with error code.
+    exit -1;
+fi
 rm -f $TMP
+
+# If this flag is set, we stop here.
+# HACK: accepts the argument only in this position:
+if [ "$2" == "-c0" ]; 
+then exit 0
+fi
+
+if [ ! -d "$WAVESCOPED" ]; 
+then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
+     exit -1;
+fi
+
+export WAVESCRIPTQUERYFILE=`pwd`/query.cpp
+echo
+echo
+(cd $WAVESCOPED; make WaveScriptQuery)
+
+echo Writing scipt \"run_query\" to invoke the compiled query.
+echo '#!/bin/sh' > run_query
+echo '(cd $WAVESCOPED; ./run_WaveScriptQuery)' >> run_query
+chmod +x run_query

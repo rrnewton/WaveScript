@@ -164,7 +164,9 @@
 		(fprintf (console-output-port)
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
 		;; Set the current directory so that the inspector can find line numbers:
-		(inspect k))))))
+		(inspect k))))
+   (exit -1)
+   ))
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")
 	     (fprintf stderr "(No GUI available.)\n"))
