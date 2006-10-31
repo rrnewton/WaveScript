@@ -196,7 +196,7 @@
 		   (set! routes `((BASE (tuple)))))
 	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
       (unless (eq? 'BASE (caar routes))
-        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!" (car routes)))
+        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
       (unless (subset? typevs defvs)
         (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
       ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.

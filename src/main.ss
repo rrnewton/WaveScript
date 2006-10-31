@@ -238,7 +238,7 @@
 	     (ws-postprocess (read x))]
 	    [(string? x) (printf "WSINT: Loading WS source from file: ~s\n" x)
 	     (read-wavescript-source-file x)]
-	    [(list? x)   (printf "WSINT: Evaluating WS source.\n" x)  x]
+	    [(list? x)   (printf "WSINT: Evaluating WS source: \n ~a\n" x)  x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 
   (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 

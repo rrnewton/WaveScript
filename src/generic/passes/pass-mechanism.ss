@@ -80,8 +80,8 @@
 			#'core-generic-traverse)))
 
 		;; Fill in some defaults:
-		(set! expr (or expr expr/types (lambda (x fallthrough) (fallthrough x))))
-		(set! fuser (or fuser (lambda (ls k) (apply k ls))))
+		(set! expr (or expr expr/types #'(lambda (x fallthrough) (fallthrough x))))
+		(set! fuser (or fuser #'(lambda (ls k) (apply k ls))))
 		(unless prog 
 		  (set! prog (with-syntax ([ol output-language])
 			       #'(lambda (pr Expr) 

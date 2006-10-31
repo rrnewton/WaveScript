@@ -20,7 +20,8 @@
 ;;;
 ;;; The Regiment compiler expects case-sensitive treatment of symbols:
 ;;; (But hopefully it should work either way, as long as its consistent.
-(eval-when (compile load eval) 
+(eval-when (compile load eval)
+
   (include "config.ss")
   
   (compile-profile #t)
@@ -94,6 +95,13 @@
 ;======================================================================
 ;;; Setup stuff.
 
+;  (source-directories (list "./"))
+;(cd (car (source-directories)))
+;  (inspect (list (source-directories) (cd)))
+
+(include "./config.ss")
+
+
 ;; Set some Chez scheme parameters.
 (print-graph #t )
 (print-gensym #f)
@@ -143,7 +151,6 @@
 ;; 'module' will become my chez/plt portable regiment modules.
 (import reg:module)
 
-
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
 
@@ -165,7 +172,7 @@
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))
-   (exit -1)
+   ;(exit -1) ;; Should only do this if we're running as a script.
    ))
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")

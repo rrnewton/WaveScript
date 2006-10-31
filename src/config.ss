@@ -7,9 +7,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 
 ;; [2006.08.28] This is the "#define" for building WAVESCOPE related code.
@@ -23,6 +22,6 @@
 ;; [2006.09.11] This configures the scheme compiler when loading regiment.
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
-;;   3 -- unsafe optimizations, may be used for long running simulations.
-(define REGOPTLVL 0)
+;;   3 -- unsafe optimizations, used for long running simulations.
+(define REGOPTLVL 2)
 ;; Note that this is separate from IFDEBUG above.
