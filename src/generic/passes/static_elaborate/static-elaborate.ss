@@ -50,6 +50,7 @@
 
 ;; This is the grammar for the output of static-elaborate
 ;; UNFINISHED:
+#;
 (define static-elaborate-grammar
   ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
   (lambda (subcheck)
@@ -65,6 +66,9 @@
 			       (subset? ('TODOfree-vars e) v*))]
 			 [,else #f]))]
        )))
+;; TEMPORARY:
+(define static-elaborate-grammar
+  remove-unquoted-constant-grammar)
 
 
 ;=======================================================================

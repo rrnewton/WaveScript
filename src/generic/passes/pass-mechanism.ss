@@ -79,6 +79,8 @@
 			#'core-generic-traverse/types
 			#'core-generic-traverse)))
 
+		(define dso datum->syntax-object)
+
 		;; Fill in some defaults:
 		(set! expr (or expr expr/types #'(lambda (x fallthrough) (fallthrough x))))
 		(set! fuser (or fuser #'(lambda (ls k) (apply k ls))))
@@ -90,6 +92,9 @@
 				      `(ol '(program ,(Expr body) ,type))]
 				     [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
 				   ))))
+
+		;; If the user provides a function for variable bindings, we
+		;; paste that together with the "Expr" function.
 		(if bnds 
 		    (set! expr
 		    (with-syntax ([expr expr])
@@ -105,14 +110,41 @@
 					    ;; Reconstruct function:
 					    (lambda (vars types exprs)
 					      `(lambda ,vars ,types ,(car exprs)))
+					    ;; Expression function:
 					    process-expr
+					    ;; Fallthrough:???
+					    
 					    )]
-#;
-				      [(letrec ([,vars ,types ,rhss] ...) ,body)
-				       (fun vars types (cons body rhss)
-					    (lambda (vars types exprs)
-					      `(letrec ([,vars ,types ,rhss] ...) ,body))
-					    process-expr)]
+
+				      [(letrec ,binds ,body)
+				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
+				       (let ([vars (map car binds)]
+					     [types (map cadr binds)]
+					     [rhs*  (map caddr binds)])
+					 (fun vars types (cons body rhs*)
+					      (lambda (vars types exprs)
+						`(letrec ,(map list vars types (cdr exprs))
+						   ,(car exprs)))
+					      process-expr))]
+				      
+				      [(let ,binds ,body)
+				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
+				       (let ([vars (map car binds)]
+					     [types (map cadr binds)]
+					     ;; We do the RHSs because the user doesn't get them:
+					     [rhs*  (map fallthrough (map caddr binds))])
+					 (fun vars types (list body)
+					      (lambda (vars types exprs)
+						`(letrec ,(map list vars types rhs*)
+						   ,(car exprs)))
+					      process-expr))]
+				      
+				      ;; To catch errors:
+				      [(,head ,other #,(dso #'_ '... ))
+				       (guard (memq head '(for letrec let let* lazy-letrec lambda)))
+				       (error 'pass-mechanism:Bindings 
+					      "unhandled or badly formed binding syntax: ~s" 
+					      (cons head other))]
 
 				      ;; TODO: for, ... anything else?
 				      

@@ -70,7 +70,7 @@
 ;;; The implementation requires extended-scheme-primitive? from helpers.ss.
 ;;--------------------------------------------------------------------
 
-
+;(define lift-letrec-grammar ...)
 
 (define lift-letrec
   (let ()
@@ -92,7 +92,7 @@
 	  [(tupref ,n ,m ,[x decls]) (values `(tupref ,n ,m ,x) decls)]
 
 	  [(lambda ,formalexp ,types (free ,free ,[body body-decl]))
-	   (if (not (null? free)) 
+	   (if (not (null? (difference free formalexp)))
 	       (error 'lift-letrec "free was supposed to be null for now! ~a" free))
 
 	   ;; This version lifts to the top of each lambda:
@@ -100,6 +100,8 @@
 	   ;; This version lifts all the way to the top.
 	   ;(values `(lambda ,formalexp ,types (lazy-letrec () ,body)) body-decl)
 	   ]
+
+	  [(free ,_ ,[e decls]) (values e decls)]
 	   
 	  [(letrec ([,lhs* ,type* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
 	   (values body

@@ -36,6 +36,9 @@
 ;;; the rewritten expression and a list of bindings for temporary
 ;;; variables to constant-creation expressions.
 
+;; TODO: FILL THIS IN:
+(define remove-complex-constant-grammar reduce-primitives-grammar)
+
 (define-pass remove-complex-constant
   [Expr (lambda (x fallthrough)
 	  (match x 

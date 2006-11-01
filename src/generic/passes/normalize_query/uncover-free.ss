@@ -43,68 +43,61 @@
 ;;; <Formalexp> ::= (<var>*)
 
 
-#;
-(define-pass uncover-free
-  (define process-lambdaclause
-      (lambda (formalexp types body)
-        (mvlet ([(body body-free*) (process-expr body)])
-          (let ((free* (difference body-free* (get-formals formalexp))))
-            (values
-	     `(,formalexp ,types (free ,free* ,body))
-	     free*)))))
+;; There may be multiple versions of uncover-free with different
+;; input/output grammars.  Factoring out the transformer functions here.
+;; This gets the first shot at the expression.
+(define (uncover-free-Expr x fallthrough)
+  (match x
+    [,v (guard (symbol? v) (not (regiment-constant? v)))
+	(vector v `(,v))]
+    ;; Now all the binding forms:
+    [,other (fallthrough other)]  
+    ))
+  ;; This catches all binding forms.
+(define (uncover-free-Bindings vars types exprs   ;; PLUS ANNOTS?
+		 reconstr exprfun ;fallthrough
+		 )
+     (let* ([results (map exprfun exprs)]
+	    [rhs* (map (lambda (v)
+			 `(free ,(vector-ref v 1)
+				,(vector-ref v 0)))
+		    results)]
+	    [free* (map (lambda (v) (vector-ref v 1)) results)]
+	    [free (apply union free*)])
+       (vector (reconstr vars types rhs*) ;; PLUS ANNOTS?
+	       (difference free vars)))     )
+(define (uncover-free-Fuser ls k)
+  (match ls
+    [(#(,expr* ,free*) ...)
+     (vector (apply k expr*)
+	     (apply union free*)	       
+	     )]))
+(define (uncover-free-Program p Expr)
+  (match p 
+    [(,lang '(program ,[Expr -> result] ,type))
+     (match result 
+       [#(,bod ,free)
+	(ASSERT null? free)
+	`(uncover-free-language 
+	  '(program ,bod ,type))])]))
 
-  [Expr 
-   (lambda (expr fallthrough)
-     (match expr
-       
-       [(quote ,imm) (values `(quote ,imm) '())]
-       [,var (guard (symbol? var) (not (regiment-constant? var)))
-	     (values var (list var))]
-       
-       [(lambda ,formalexp ,types ,body) 
-	(mvlet ([(clause free*) (process-lambdaclause formalexp types body)])
-	     ;;;; TODO: TEMPORARY RESTRICTION:
-	  (if (not (null? free*))
-	      (error 'uncover-free
-		     "No free variables in lambda's allowed right now! ~a were free in:\n ~a" free* expr))
-	  (values `(lambda ,@clause) free*))]
+;; This first version of uncover free is ran directly after
+;; remove-complex-constant and before lift-letrec.
+(define uncover-free-grammar1
+  (cons `[Expr ('free (Var ...) Expr)]
+	remove-complex-constant-grammar))
 
-       [(tuple ,[args args-free] ...)
-	(values `(tuple ,args ...)
-		(apply append args-free))]
-       [(tupref ,n ,m ,[x free]) (values `(tupref ,n ,m ,x) free)]
-
-       [(letrec ([,lhs* ,type* ,[rhs* rhs-free*]] ...) ,[body body-free*])
-	(values
-	 `(letrec ([,lhs* ,type* ,rhs*] ...) ,body)
-	 (difference (union (apply union rhs-free*) body-free*) lhs*))]
-
-       [(letrec ,foo ,boo)
-	(error 'bad-letrec "~a" foo)]
-       
-       
-       [(,prim ,[rand* rand-free*] ...)
-	(guard (regiment-primitive? prim)) ;; Used to be extended-scheme-primitive?
-	(values
-	 `(,prim ,rand* ...)
-	 (apply union rand-free*))]
-
-       [,other (fallthrough other)]
-       ))]
-
-  [Program 
-   (lambda (prog process-expr)
-     (match prog
-       [(,input-language (quote (program ,body ,type)))
-	(let-match ([#(,body ,body-free*) (process-expr body)])
-	  `(uncover-free-language ;uncover-free-language
-	    '(program ,body ,type)))]))]
+;; [2006.10.31] rewriting with define-pass
+;; Assumes variable names are unique.
+(define-pass uncover-free    
+  [OutputGrammar uncover-free-grammar1]
+  [Expr     uncover-free-Expr]
+  [Bindings uncover-free-Bindings]
+  [Fuser    uncover-free-Fuser]
+  [Program  uncover-free-Program]
   )
 
-
-
-;;; The implementation requires difference, extended-scheme-primitive?,
-;;; union, and get-formals from helpers.ss.
+#;
 (define uncover-free
   (let ()
 
