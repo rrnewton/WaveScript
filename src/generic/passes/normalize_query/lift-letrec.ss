@@ -15,12 +15,12 @@
 ;;;;   The pass outputs *lazy-letrec* instead of letrec, because now
 ;;;;   things have been scrambled and the lazy semantics of my language
 ;;;;   can no longer be ignored.  (Other passes should have this
-;;;;   too.. I'm just being really, umm, lazy right now, is my test
+;;;;   too.. I'm just being really, umm, lazy right now, as my test
 ;;;;   programs don't depend on argument evaluation model... )   <br>
 
 
 ;;;; Output Language                                             <br><br>
-
+;;; OLD OLD OLD:
 ;;; <Pgm>  ::= (<language-name> (quote (program <Let>)))        <br>
 ;;; <Let>  ::= (lazy-letrec (<Decl>*) <Exp>)                    <br> 
 ;;; <Decl> ::= (<var> <Exp>)                                    <br> 
@@ -34,47 +34,12 @@
 
 
 
-;;--------------------------------------------------------------------
-;;; OLD COMMENTS
-
-;;; This pass makes all lambda bindings global, i.e., places them into
-;;; a single top-level letrec expression that contains the remainder of
-;;; the transformed program.  This transformation is possible since the
-;;; lambda expressions no longer have free variables.
-
-;;; The input language is the same as the output language of Pass 12.
-
-;;; The output language differs in that letrec is found only at the
-;;; top level of the program.
-
-
-;;; <Input> ::= (<language-name> <Program>)
-;;; <Program> ::= (program (<var>*) (<pkg>*) <class-def>* <Letrec>)
-;;; <Letrec> ::= (letrec ((<var> <Lambda>)*) <Exp>)
-;;; <Lambda> ::= (lambda <Formalexp> (bind-free (<var> <var>*) <Exp>))
-;;; <Exp>  ::= (quote <imm>)
-;;;          | (label <var>)
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (begin <Exp> <Exp>*)
-;;;          | (let ((<var> <Exp>)*) <Exp>)
-;;;          | (closures ([<var> <Exp> <var>*] ...) <Exp>)
-;;;          | (<primitive> <Exp>*)
-;;;          | (<Exp> <Exp>*)
-;;;          | (toplvl-varref <var>)
-;;;          | (toplvl-varassign! <var> <Exp>)
-;;; <Formalexp> ::= <var>
-;;;               | (<var*>)
-;;;               | (<var*> . <var>)
-
-;;; The implementation requires extended-scheme-primitive? from helpers.ss.
-;;--------------------------------------------------------------------
-
 ;(define lift-letrec-grammar ...)
 
 (define lift-letrec
   (let ()
 
+    ;; .returns expression & bindings
     (define process-expr
       (lambda (expr)
         (match expr
@@ -102,6 +67,10 @@
 	   ]
 
 	  [(free ,_ ,[e decls]) (values e decls)]
+	  [(begin ,[e* decls*] ...) (values `(begin ,e* ...) (apply append decls*))]
+	  [(for (,i ,[s sdecl] ,[e edecl]) ,[bod bdecl])
+	   (values `(for (,i ,s ,e) ,bod) (append sdecl edecl bdecl))]
+	  [(set! ,v ,[e decls]) (values `(set! ,v ,e) decls)]
 	   
 	  [(letrec ([,lhs* ,type* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
 	   (values body

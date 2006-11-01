@@ -172,7 +172,8 @@
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))
-   ;(exit -1) ;; Should only do this if we're running as a script.
+   (unless (top-level-bound? 'REGIMENT-INTERACTIVE-MODE)
+     (exit -1)) ;; Should only do this if we're running as a script.
    ))
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")

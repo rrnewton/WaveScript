@@ -16,6 +16,7 @@
 (define orig-scheme-script (scheme-script))
 
 (define regiment-origin "unknown") ;; This tracks how the system was loaded.
+
 (define stderr
   (let ((buffer-size 1))
     (let ((p (make-output-port 2 (make-string buffer-size))))
@@ -291,6 +292,8 @@
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
 	   (optimize-level 0)
+	   (define-top-level-value 'REGIMENT-INTERACTIVE-MODE 'interactive)
+
 	   (cond
 	    [(null? (cdr args)) (new-cafe)]
 	    ;; --script must be the first argument after "regiment i"
@@ -444,7 +447,7 @@
 		 ;(apply main `(,(cadr args) "--script" ,@(cddr args)))
 		 (command-line (cons fn (cdr args)))
 		 (command-line-arguments (cdr args))
-		 (load fn) ;; We don't call main, we already know it's interact mode.
+		 (load fn) ;; We don't call main, we already know it's interact mode.		 
 		 ))
 
 ;(random-seed (current-time))

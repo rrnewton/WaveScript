@@ -56,6 +56,8 @@
 ;; be transformed into a complete query file.
 (define wsquery->text
   (let ()
+
+    ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
@@ -64,11 +66,20 @@
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
       (match x
+
+	[,v (guard (symbol? v)) 
+	    ;; UH, not an expression:
+	    (values `( ,name " = " ,(symbol->string v) ";\n")
+		    ())
+	    ]
+
 	;; Forbidding recursion for now (even though this says 'letrec').
-	[(letrec ,binds ,body)
-	 (ASSERT (symbol? body))
+	[(letrec ,binds ,[stmt2 decls2])
+	 ;(ASSERT (symbol? body))
 	 (ASSERT (no-recursion! binds))
-	 (match binds [([,[Var -> lhs*] ,ty* ,rhs*] ...)
+	 (mvlet ([(stmt1 decls1) 
+		  (match binds 
+		    [([,[Var -> lhs*] ,ty* ,rhs*] ...)
 		       (let loop ([lhs* lhs*] [ty* ty*] [rhs* rhs*]
 				  [stmtacc '()] [declacc '()])
 			 ;; Should really use the Text ADT here:
@@ -76,11 +87,10 @@
 			     (values (reverse! stmtacc) (reverse! declacc))
 			     (mvlet ([(stmt decl) (Query (car lhs*) (car ty*) (car rhs*))])
 			       (loop (cdr lhs*) (cdr ty*) (cdr rhs*)
-				     (cons stmt stmtacc) (cons decl declacc)))))]
-		       
-;		       `((,ty*" ",lhs*" = ",(map Query lhs* rhs*)";\n") ...
-;			 ,(Var body))]
-		[,other (error 'wsquery->text "Bad letrec binds: ~s" other)])]
+				     (cons stmt stmtacc) (cons decl declacc)))))]		       
+		    [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])])
+	   (values (list stmt1 stmt2)
+		   (append decls1 decls2)))]
 		       
 	[(audio ,[Expr -> channel] ,[Expr -> size] ,[Expr -> skip])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
@@ -88,26 +98,42 @@
 	 (values 
 	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
 	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, 24000*100);\n"
-	    "  ",name"->connect(tmp); }"
+	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())
 	 ]
-	
+
+	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
+	[(audioFile ,[Expr -> file] ,[Expr -> size] ,[Expr -> overlap])
+	 ;; HMM, size seems to be FIXED:  FIXME	  
+	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
+	 (values 
+	  ;; CODE DUPLICATION:
+	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size" - ",overlap ");\n" 
+	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
+	    "  ",name"->connect(tmp); }\n"
+	    )
+	  '())
+	 ]
+
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))
 	  
 	 (let ([class_name `("Iter_" ,name)])
 	   ;; First we produce a line of text to construct the box:
-	   (values `(  ,class_name" ",name" = ",class_name "(" ");\n" 
-			      ,name".connect(" ,(Var sig) ");\n")
+	   (values `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
+			      ,name"->connect(" ,(Var sig) ");\n")
 		   ;; Then we produce the declaration for the box itself:
-		   (list (WSBox class_name 
+		   (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name)])
+		     (list (WSBox class_name 
 				(match typ
 				  [(Signal ,t) (Type t)]
 				  [,other (error 'Query "expected iterate to have signal output type! ~s" other)])
+				;; Constructor:
+				(block `(,class_name "()")  stateinit)
 				;; This produces a function declaration for iterate:				
-				(wscode->text let-or-lambda name))))
+				iterator+vars))))
 	   )]
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
@@ -115,18 +141,15 @@
     
     (lambda (prog)
       (match prog
-	[(,lang (quote (program (letrec ,binds ,body) ,struct-defs ,typ)))
-	 (mvlet ([(return-name) body]
-		 [(body funs) (Query "toplevel" typ `(letrec ,binds ,body))])
-	   (ASSERT (symbol? return-name))
-
+	[(,lang (quote (program ,expr ,struct-defs ,typ)))
+	 (mvlet ([(body funs) (Query "toplevel" typ expr)])
 	   `(,boilerplate_headers 
 	     ,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
 	     ,funs
 	     ,boilerplate_premain
 	     ;"// " ,(Type typ) " toplevel;\n"
 	     ,(indent body "  ")
-	     ,(boilerplate_postmain (Var return-name) typ)
+	     ,(boilerplate_postmain (Var 'toplevel) typ)
 	     "}\n\n"
 	     )
 	   )]
@@ -136,25 +159,37 @@
 	 (error 'wsquery->text "")]))))
 
 ;; Takes the *inside* of an iterate box and turns it to C text.
-(define wscode->text
-  (let () 
+(trace-define wscode->text
+    (let () 
     ;; Entry point
-    (lambda (exp name)
-      (match exp 
-	[(lambda (,[Var -> input]) (,[Type -> typ]) ,[Stmt -> body])
-	 (block "bool iterate(WSQueue *inputQueue)"
-		`("printf(\"Execute iterate for ",name"\\n\");"
-                  "void *input = inputQueue->dequeue();\n"
-		  ,typ " " ,input " = *((",typ"*)input);\n"
-		  ,@body
-
-		  ;; This is a quirky feature.  The bool returns
-		  ;; indicates whether the scheduler should NOT
-		  ;; reschedule this box further (even if there is
-		  ;; input left in its queue.)  For all the iterate
-		  ;; operators, this will be FALSE.
-		  "return FALSE;\n"
-		))]
+      (lambda (exp name)
+	(match exp 
+	  [(lambda (,[Var -> input]) (,T) ,[Stmt -> body])
+	   (let ([typ (Type T)])	     
+	     (values `(,(format "/* WaveScript type of input: ~s */\n" T)
+		       ,(block "bool iterate(WSQueue *inputQueue)"
+			       `("printf(\"Execute iterate for ",name"\\n\");\n"
+				 "void *input = inputQueue->dequeue();\n"
+				 ,typ " " ,input " = *((",typ"*)input);\n"
+				 ,@body
+				 
+				 ;; This is a quirky feature.  The bool returns
+				 ;; indicates whether the scheduler should NOT
+				 ;; reschedule this box further (even if there is
+				 ;; input left in its queue.)  For all the iterate
+				 ;; operators, this will be FALSE.
+				 "return FALSE;\n"
+				 )))
+		     '()))]
+	  
+	;; Iterator state:
+	[(letrec ([,[Var -> lhs*] ,ty* ,[Expr -> rhs*]] ...) ,[body inits])
+	 (let ([decls (map (lambda (l t orig) `(,t " " ,l ,(format "; // WS type: ~s\n" orig)))
+			lhs* (map Type ty*) ty*)]
+	       [inits2 (map (lambda (l r) `(,l " = " ,r ";\n")) lhs* rhs*)]
+	       )
+	   (values `(,decls "\n" ,body) `(,inits ,inits2)))]
+	
 	[,other (error 'wscode->text "Cannot process: ~s" other)]
 	))
     ))
@@ -186,18 +221,42 @@ int main(int argc, char ** argv)
   /* initialize subsystems */ 
   WSInit(&argc, argv);
 
+  /* declare variable to hold final result */
+  WSBox* toplevel;
+
+  /* begin constructing operator graph */
 ")
 
 
-(define (boilerplate_postmain return_name return_type) 
+(define (boilerplate_postmain return_name return_type)   
   (printf "Generating code for returning stream of type ~s\n" return_type)
   `(
-,@(if (equal? return_type '(Signal (Sigseg Float))) `("
-  /* dump output to file */
-  AsciiFileSink<float> fs = AsciiFileSink<float>(\"/tmp/wavescript_query.out\");
+
+;; For now just using printbox:
+#;
+,@(match return_type 
+    [(Signal (Sigseg ,[Type -> typ]))
+     `(,(format "
+  /* dump output to file, for WaveScript type ~s */
+  AsciiFileSink<" return_type)
+       ,typ"> fs = AsciiFileSink<",typ">(\"/tmp/wavescript_query.out\");
   fs.connect(",return_name");
 
-")      '())
+")    ]
+    [,_ (list (format "\n  /* !! Don't know how to produce sink for type ~s */\n" 
+		      return_type)
+	      ;"  cout << " return_name " << endl;"
+	      )]
+    )
+
+,(match return_type
+   [(Signal ,[Type -> typ])
+    `("
+  /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
+  PrintBox< ",typ" > out = PrintBox< ",typ" >(\"WSOUT\");
+  out.connect(",return_name");
+")])
+
 "
   /* now, run */
   WSRun();
@@ -206,10 +265,11 @@ int main(int argc, char ** argv)
 "))
 
 ;; Boilerplate for producing a WSBox class:
-(define (WSBox name outtype body)
-  `(,(block (wrap `("class " ,name " : public WSBox"))
+(define (WSBox name outtype constructor body)
+  `(,(block (wrap `("\nclass " ,name " : public WSBox"))
 	    `("public:\n"
-	      "DEFINE_OUTPUT_TYPE(" ,outtype ");\n"
+	      "DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
+	      ,constructor
 	      "\nprivate:\n"
 	      ,body)) ";\n"))
 
@@ -227,8 +287,10 @@ int main(int argc, char ** argv)
       (format "WSFunLib::~a" var))
       ;(symbol->string var))
 
-    (define (Stmt st)
+    (trace-define (Stmt st)
       (match st
+	[,v (guard (symbol? v)) ""]
+
 	;; Must distinguish expression from statement context.
 	[(if ,[Expr -> test] ,[conseq] ,[altern])
 	 `("if (" ,test ") {\n"
@@ -258,6 +320,8 @@ int main(int argc, char ** argv)
 
 	[(emit ,vqueue ,[Expr -> val])
 	 `("emit(" ,val ");\n")]
+
+	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
 	[(begin ,[stmts] ...) stmts]
 
 	[(arr-set! ,[Expr -> arr] ,[Expr -> ind] ,[Expr -> val])
@@ -271,7 +335,7 @@ int main(int argc, char ** argv)
 	[,[Expr -> exp] `(,exp ";\n")]
 	))
 	
-    (define (Expr exp)
+    (trace-define (Expr exp)
       (match exp
 	[,c (guard (constant? c)) (Expr `(quote ,c))]
 	[(quote ,datum)
@@ -280,7 +344,8 @@ int main(int argc, char ** argv)
 	  [(eq? datum #t) "TRUE"]
 	  [(eq? datum #f) "FALSE"]	  
 	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
-	  [else (error 'wscode->text "not a C-compatible literal: ~s" datum)])]
+	  [(string? datum) (format "~s" datum)]
+	  [else (error 'Expr "not a C-compatible literal: ~s" datum)])]
 	[,v (guard (symbol? v)) (Var v)]	
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("(",test " ? " ,conseq " : " ,altern")")]
@@ -313,9 +378,12 @@ int main(int argc, char ** argv)
 	[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
 	[(length ,arr) "array_length_UNFINISHED"]
 	[(arr-set! ,x ...)
-	 (error 'wscode->text "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
+	 (error 'Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
 	[(begin ,stmts ...)
-	 (error 'wscode->text "begin in expression context: ~s" `(begin ,stmts ...))]
+	 (error 'Expr "begin in expression context: ~s" `(begin ,stmts ...))]
+
+	;; Later we'll clean it up so contexts are normalized:
+	[(set! ,[Var -> v] ,[Expr -> rhs]) `(,v " = " ,rhs ";\n")]
 
 	;; Forming tuples.
 	[(tuple ,[arg*] ...)
@@ -436,11 +504,15 @@ int main(int argc, char ** argv)
 
 (define these-tests
   `(
-    [(,text->string (,wscode->text '(lambda (x) (Int) '35) "noname"))
+    [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) '35) "noname")])
+       (,text->string txt))
+
      ;; Requires helpers.ss
      ;; Not very tight:
      ,(lambda (s) (substring? "35" s))]
-    [(,text->string (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname"))
+    
+    [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname")])
+       (,text->string txt))
      ;"TRUE ? 35 : 36"]
      ,(let ([substring? substring?])
 	(lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]

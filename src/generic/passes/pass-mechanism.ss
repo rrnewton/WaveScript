@@ -97,8 +97,9 @@
 		;; paste that together with the "Expr" function.
 		(if bnds 
 		    (set! expr
-		    (with-syntax ([expr expr])
+		    (with-syntax ([expr expr] [fuser fuser])
 		      #`(lambda (x fallthrough)
+			  (define fuse fuser)
 			  (expr x 
 				;; We stick the varbinds handling between the user code and the automatic looping.
 				(lambda (x)
@@ -132,13 +133,25 @@
 				       (let ([vars (map car binds)]
 					     [types (map cadr binds)]
 					     ;; We do the RHSs because the user doesn't get them:
-					     [rhs*  (map fallthrough (map caddr binds))])
+					     [rhs*  (map process-expr (map caddr binds))])
 					 (fun vars types (list body)
-					      (lambda (vars types exprs)
-						`(letrec ,(map list vars types rhs*)
-						   ,(car exprs)))
+					      (lambda (vars types results)
+						(DEBUGASSERT (= 1 (length results)))
+						(fuser (append results rhs*)
+						       (lambda exprs
+							 (DEBUGASSERT (= (length exprs) (fx+ (length rhs*) 1)))
+							 `(let ,(map list vars types (cdr exprs))
+							    ,(car exprs)))))
 					      process-expr))]
-				      
+
+				      [(for (,i ,[process-expr -> st] ,[process-expr -> en]) ,bod)
+				       (fun (list i) '(Int) (list bod)
+					    (lambda (vars types results)
+					      (fuser (list st en (car results))
+						     (lambda (st en bod) 
+						       `(for (,(car vars) ,st ,en) ,(car exprs)))))
+					    process-expr)]
+
 				      ;; To catch errors:
 				      [(,head ,other #,(dso #'_ '... ))
 				       (guard (memq head '(for letrec let let* lazy-letrec lambda)))

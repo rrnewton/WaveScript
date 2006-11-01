@@ -138,6 +138,7 @@
   (map (lambda (line) (cons str (wrap line)))
     (text->lines text)))
 
+;; This wraps lines in curly braces:
 (define (block header contents . footer)
   `(,header " {\n"
     ,@(indent contents "  ")

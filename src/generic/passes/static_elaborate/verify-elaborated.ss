@@ -18,8 +18,8 @@
 	  (let ([type (recover-type rator tenv)])
 	    (if ;(or (deep-assq 'Signal type) (deep-assq 'Region type))
 	     ;(distributed-type? type)
-	     ;; Harshest version: no functions at all:
-	     #t
+	
+	     #t ;; <-- Harshest version: no functions at all.
 	     (error 'verify-elaborated
 		    "post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
 		    type rator))

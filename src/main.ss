@@ -192,6 +192,22 @@
     (apply run-compiler p args)
     ))
 
+
+;; This needs to be replaced with something real.
+(define-pass remove-lazy-letrec
+    [Expr (lambda (x fallthru)
+	    (match (fallthru x)
+	      [(lazy-letrec ,rest ...) `(letrec ,rest ...)]
+	      [,other other]))])
+(define-pass introduce-lazy-letrec
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(free ,_ ,[e]) e]
+	      [,other 
+	       (match (fallthru other)
+		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
+		 [,other other]) ]))])
+
 ;; [2006.08.27] This version executes the alternate WaveScript compiler.
 ;; It takes it from (parsed) source down as far as the WaveScript commpiler 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
@@ -233,11 +249,17 @@
   (set! p (optional-stop (remove-complex-constant p)))
   (set! p (optional-stop (retypecheck p)))
 
-;  (set! p (optional-stop (uncover-free              p)))
+  (set! p (optional-stop (uncover-free              p)))
+
+  (set! p (optional-stop (introduce-lazy-letrec     p)))
 
 ;  (set! p (optional-stop (lift-letrec               p)))
 ;  (set! p (optional-stop (lift-letrec-body          p)))
-;  (set! p (optional-stop (remove-complex-opera* p)))
+  (set! p (optional-stop (remove-complex-opera* p)))
+
+  (set! p (optional-stop (remove-lazy-letrec p)))
+
+  
 ;  (set! p (optional-stop (verify-core p)))
 ;  (set! p (optional-stop (retypecheck p)))
 
