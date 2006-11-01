@@ -197,7 +197,7 @@
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
 (define (run-ws-compiler p)                                   ;; Entrypoint.
   (define optional-stop 
-    (lambda (x)      
+    (lambda (x)
       (if (regiment-verbose)
 	  (IFDEBUG
 	   (begin (parameterize ([pretty-line-length 150]
@@ -223,6 +223,24 @@
   (set! p (optional-stop (reduce-primitives p)))
 
   (set! p (optional-stop (merge-iterates p)))
+  
+  (set! p (optional-stop (verify-elaborated p)))
+  (set! p (optional-stop (retypecheck p)))
+
+  ;; (5) Now we normalize the residual in a number of ways to
+  ;; produce the core query language, then we verify that core.
+  (set! p (optional-stop (reduce-primitives p)))
+  (set! p (optional-stop (remove-complex-constant p)))
+  (set! p (optional-stop (retypecheck p)))
+
+  (set! p (optional-stop (uncover-free              p)))
+
+  (set! p (optional-stop (lift-letrec               p)))
+  (set! p (optional-stop (lift-letrec-body          p)))
+  (set! p (optional-stop (remove-complex-opera* p)))
+  (set! p (optional-stop (verify-core p)))
+  (set! p (optional-stop (retypecheck p)))
+
   ;(set! p (optional-stop (nominalize-types p)))
 
   p)

@@ -173,6 +173,7 @@
 
       ;; I keep disjoint options for the modes so I use the same option-processor (loop)
 	(let ([symargs (map string->symbol args)])
+	  (unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
 	  (let runloop ([mode (car symargs)] [filenames (loop (cdr symargs))])
 	(case mode
 	  ;; Unit Test mode:
