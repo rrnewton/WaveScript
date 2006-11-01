@@ -6,6 +6,13 @@
 ;;;; provides procedures for producing a C-file following WaveScript
 ;;;; conventions, that is, a ".wsc" file.
 
+;;;; A note on type conversions:
+;;;; These are roughly the correspondences:
+;;;;   Stream 'a -> WSBox* 
+;;;;   Sigseg t -> Sigseg<t>
+;;;; 
+
+
 (module wavescript_emit-c mzscheme 
   (require "c_generator.ss" "helpers.ss")
   (provide ;WSBox wscode->text
@@ -78,8 +85,12 @@
 	[(audio ,[Expr -> channel] ,[Expr -> size] ,[Expr -> skip])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
-	 (values `("RawFileSource " ,name " = RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, 24000*100);\n")
-		 '())
+	 (values 
+	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
+	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, 24000*100);\n"
+	    "  ",name"->connect(tmp); }"
+	    )
+	  '())
 	 ]
 	
 	[(iterate ,let-or-lambda ,sig)
@@ -89,7 +100,7 @@
 	 (let ([class_name `("Iter_" ,name)])
 	   ;; First we produce a line of text to construct the box:
 	   (values `(  ,class_name" ",name" = ",class_name "(" ");\n" 
-			      ,name".connect(&" ,(Var sig) ");\n")
+			      ,name".connect(" ,(Var sig) ");\n")
 		   ;; Then we produce the declaration for the box itself:
 		   (list (WSBox class_name 
 				(match typ
@@ -184,7 +195,7 @@ int main(int argc, char ** argv)
 ,@(if (equal? return_type '(Signal (Sigseg Float))) `("
   /* dump output to file */
   AsciiFileSink<float> fs = AsciiFileSink<float>(\"/tmp/wavescript_query.out\");
-  fs.connect(&",return_name");
+  fs.connect(",return_name");
 
 ")      '())
 "
