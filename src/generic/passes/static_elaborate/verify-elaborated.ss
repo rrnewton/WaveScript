@@ -17,10 +17,12 @@
 	 [(app ,[rator] ,[rand*] ...)		     
 	  (let ([type (recover-type rator tenv)])
 	    (if ;(or (deep-assq 'Signal type) (deep-assq 'Region type))
-	        #t ; (distributed-type? type)
-		(error 'verify-elaborated
-		       "post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
-		       type rator))
+	     ;(distributed-type? type)
+	     ;; Harshest version: no functions at all:
+	     #t
+	     (error 'verify-elaborated
+		    "post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
+		    type rator))
 	    `(app ,rator ,rand* ...))]
 	 [,other (fallthrough other tenv)]))]
   )

@@ -224,7 +224,7 @@
 
   (set! p (optional-stop (merge-iterates p)))
   
-  (set! p (optional-stop (verify-elaborated p)))
+;  (set! p (optional-stop (verify-elaborated p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -233,13 +233,13 @@
   (set! p (optional-stop (remove-complex-constant p)))
   (set! p (optional-stop (retypecheck p)))
 
-  (set! p (optional-stop (uncover-free              p)))
+;  (set! p (optional-stop (uncover-free              p)))
 
-  (set! p (optional-stop (lift-letrec               p)))
-  (set! p (optional-stop (lift-letrec-body          p)))
-  (set! p (optional-stop (remove-complex-opera* p)))
-  (set! p (optional-stop (verify-core p)))
-  (set! p (optional-stop (retypecheck p)))
+;  (set! p (optional-stop (lift-letrec               p)))
+;  (set! p (optional-stop (lift-letrec-body          p)))
+;  (set! p (optional-stop (remove-complex-opera* p)))
+;  (set! p (optional-stop (verify-core p)))
+;  (set! p (optional-stop (retypecheck p)))
 
   ;(set! p (optional-stop (nominalize-types p)))
 
