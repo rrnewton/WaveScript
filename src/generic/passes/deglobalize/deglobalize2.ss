@@ -46,7 +46,16 @@
            )
 
   (chezimports (except hm_type_inference test-this these-tests))
-  
+
+  (define new-prims
+    `(
+      [timer (Int) (Stream #())]
+      [emit  (Int (Stream #(RID 'a))) (Stream #(RID #()))]
+      [aggr  (('a 'b -> 'b) 'b (Stream #(RID 'a)))  (Stream #(RID 'b))]
+      ;[sensor (#()) Int]
+      ;[worldRID (#()) RID]
+      ))
+
   ;; UNFINISHED:
   (define deglobalize2-grammar
     (let ([newbinds 	   
@@ -107,6 +116,7 @@
     (lambda (expr tenv dfg)
 
       ;; Recursively pull out all the bindings (including inside lambdas)
+#;
       (define (get-all-binds exp)
 	(match exp
 	  [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)

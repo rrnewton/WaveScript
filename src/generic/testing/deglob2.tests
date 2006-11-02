@@ -5,11 +5,21 @@
     (define (test-deglob2 p) 
 	   (parameterize ([pass-list
 			   (snoc deglobalize2 (rdc 
-		  (list-remove-after deglobalize
+			      (list-remove-after deglobalize
 				     (list-remove-after deglobalize2
 							(pass-list)))))])
 	     (run-compiler p 'verbose)))
 	 `(
+	   
+
+	   ["deglobalize2: Do a dump over world"
+	    (run-compiler2 '(rdump (rmap nodeid world)))
+	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))
+	       (and (equal? (map car decls) '(DUMP))
+		    (eq? 'world (cadr (deep-assq 'VIA decls)))
+		    
+		    ))]
+
 	   ["deglobalize2: Do a dump over world"
 	    (,test-deglob2 '(rdump (rmap nodeid world)))
 	    ,(match-lambda ((deglobalize2-lang '(program (commdecls . ,decls))))

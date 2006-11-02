@@ -58,6 +58,7 @@
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
   (printf "~n")
   (printf "Compiler Options: ~n")
+  (printf "  -d2  use new compiler: deglobalize2 ~n")
   (printf "  -lt  type check only, print typed program to stdout           ~n")
   (printf "  -ltt type check only, print *only* top level types to stdout  ~n")
   (printf "  -l0  stop compilation just before deglobalize          (.sexp)~n")
@@ -134,6 +135,8 @@
 		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
 		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
 
+		    [(-d2 ,rest ...) (set! opts (cons 'deglobalize2 opts)) (loop rest)]
+
 		    [(-lt ,rest ...) (set! opts (cons 'type-only-verbose opts)) (loop rest)]
 		    [(-ltt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
 
@@ -205,11 +208,14 @@
 					     (error 'regiment_command_line_compiler
 						    "Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
 		     [(equal? type "rs") (void)]
+		     [(equal? type "ws") (void)]
 		     [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
 		    ;; ----------------------------------------
 		    (parameterize ([pass-list
 				 (cond
 				  [(equal? type "rs") (pass-list)]
+				  ;; We treat these as normal regiment files:
+				  [(equal? type "ws") (pass-list)]
 				  [(equal? type "tm") (list-remove-before cleanup-token-machine
 									  (pass-list))]
 				  [else (error 'regiment "unknown input file extension: ~s" type)]
@@ -254,12 +260,11 @@
 			 (car filenames))))
 	     ;; If it's not simulatable yet, we switch to compile-mode and compiler it first:
 	     (let ([type (extract-file-extension fn)])
-	       (if (equal? type "rs")
+	       (if (member type '("rs" "tm" "ws"))
 		   (begin (runloop 'compile (list fn))
 			  (set! fn out_file))
-		   (if (equal? type "tm")
-		       (begin (runloop 'compile (list fn))
-			      (set! fn out_file)))))
+		   (error 'regiment:simulate "can't take file with this extension: ~s" fn)))
+	  
 	     (printf "Running simulation from file: ~a\n" fn)
 	     (let ((result
 		    ;; Be careful to watch for parameterization:	     

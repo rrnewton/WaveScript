@@ -1,15 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 
 MACHINE=`uname`
 VER=7.1
 
-if [ $MACHINE == "Linux" ];
+if [ "$MACHINE" == "Linux" ];
 then DIR=i3le;
-elif [ $MACHINE == "Darwin" ];
+elif [ "$MACHINE" == "Darwin" ];
 then DIR=ppcosx;
-elif [ $MACHINE == "Windows" ];
+elif [ "$MACHINE" == "Windows" ];
 then DIR=i3nt;
-else echo Unknown platform: $MACHINE
+else echo rawscheme script: Unknown platform: "$MACHINE"
 fi
 
 $REGIMENTD/depends/petite_chez_scheme7.1/bin/$DIR/scheme $*

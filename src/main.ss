@@ -139,7 +139,9 @@
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
 ;; Also: use 'verbose to print the output of every pass.
 (define (run-compiler p . args )                              ;; Entrypoint.
-  ;(disp "RUN COMP:" p)
+  (if (memq 'deglobalize2 args)
+      (apply run-compiler2 p (remq 'deglobalize2 args))
+
   (let ([filename #f]
 	[passes (pass-list)]
 	[verbose #f]
@@ -183,7 +185,8 @@
 	      (let ((result ((car funs) p)))
 		(when verbose
 		  (pretty-print result) (newline))
-		(loop result (cdr funs) (cdr names)))))))))
+		(loop result (cdr funs) (cdr names))))))))
+      ))
 
 ;; This is the second version of the compiler, uses deglobalize2
 (define (run-compiler2 p . args)                              ;; Entrypoint.

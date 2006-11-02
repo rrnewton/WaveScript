@@ -90,11 +90,22 @@
 	   (error 'read-regiment-source-file
 		  "invalid expression in definition context: ~s" `(,other ,rest ...))])))
 
-    (match (file->slist fn)
-      [((parameters ,p ...) ,exps ...)
-       (values (desugar exps) p)]
-      [(,prog ...) 
-       (values (desugar prog) ())])))
+    (if (equal? "ws" (extract-file-extension fn))
+	(begin 
+	  (unless (zero? (system "which wsparse")) 
+	    (error 'wsint "couldn't find wsparse executable"))
+	  (let* ([port (car (process (++ "wsparse " fn)))]
+		 [decls (read port)])
+	    (close-input-port port)
+	    (printf "POSTPROCESSING: ~s\n" decls)
+	    (match (ws-postprocess decls)
+	      [(let* ,decls ,bod)
+	       (values `(base-lang '(program (letrec ,decls ,bod))) ())])))
+	(match (file->slist fn)
+	  [((parameters ,p ...) ,exps ...)
+	   (values (desugar exps) p)]
+	  [(,prog ...) 
+	   (values (desugar prog) ())]))))
 
 ;; This loads (e.g. reads, compiles, and simulates) a regiment program:  <br><br>
 ;;

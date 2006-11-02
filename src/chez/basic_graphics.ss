@@ -18,7 +18,7 @@
 (chez:module basic_graphics (
 			init-graphics close-graphics  
 			rec->rgb ;; This converts rgb records into system specific (SWL) rgb values.
-;			make-rgb rgb? rgb-red rgb-green rgb-blue
+			make-rgb rgb? rgb-red rgb-green rgb-blue
 			the-win 
 			;; current-drawing-color 
 			;; current-filling-color
@@ -58,6 +58,7 @@
 (define screen-buffer '())
 
 ; ======================================================================
+
 
 #;
 (define (flash ob ms)
@@ -242,6 +243,7 @@
        ))
 
 
+
   ;; We set up a single additional thread for evaluation.  It receives
   ;; expressions via this queue.
 ;  (define eval-queue (thread-make-msg-queue 'graphics-eval-queue))
@@ -256,7 +258,8 @@
 			      (flash-text "Simulation Finished." 900)
 			      (thread-kill)))))
 
-;  (printf "Running graphical interface to simple simulator.~n")
+  
+;;  (printf "Running graphical interface to simple simulator.~n")
   (if the-win 
       (printf "Graphics already open!!~n")
       (let ([pause-queue (thread-make-msg-queue 'pause-queue)]
@@ -586,7 +589,8 @@
 	(set! the-winframe #f))
       (printf "Graphics already closed!~n")))
 
-#;(define (clear-buffer)
+#;
+(define (clear-buffer)
   (for-each destroy object-buffer)
   (set! object-buffer '())
   )
@@ -628,7 +632,6 @@
 ;; This changes the screen radius 
 (add-parameter-hook 'sim-num-nodes
 		    (lambda (_) (set-procesor-screen-radius!)))
-
 
 
 );; End module

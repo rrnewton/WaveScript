@@ -25,7 +25,7 @@ elif [ $MACHINE == "Darwin" ];
 then MT=ppcosx;
 elif [ $MACHINE == "Windows" ];
 then MT=i3nt;
-else echo Unknown platform: $MACHINE
+else echo Unknown platform for scheme system: $MACHINE
 fi
 
 # echo RUNNING ON MACHINE TYPE: $MT
