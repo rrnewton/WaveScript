@@ -28,6 +28,12 @@ Things I'm working on now --Ryan:
 
 ================================================================================
 
+[2006.11.01]
+  Should include optional Intermediate? check for define-pass to
+verify that a user function produces a valid intermediate record.
+It's very easy to accidentally return an expression where you were
+supposed to return an intermediate record.
+
 [2006.09.03]
   Do not desugar one-armed if in the parser!!!
 

@@ -95,79 +95,7 @@
 
 		;; If the user provides a function for variable bindings, we
 		;; paste that together with the "Expr" function.
-#|
-		(if bnds 
-		    (set! expr
-		    (with-syntax ([expr expr] [fuser fuser])
-		      #`(lambda (x fallthrough)
-			  (define fuse fuser)
-			  (expr x 
-				;; We stick the varbinds handling between the user code and the automatic looping.
-				(lambda (x)
-				  ;; Now we set up the varbinds and give them to the userfun.
-				  (let ([fun #,bnds])
-				    (match x
-				      [(lambda ,vars ,types ,bod)
-				       (fun vars types (list bod) 
-					    ;; Reconstruct function:
-					    (lambda (vars types exprs)
-					      `(lambda ,vars ,types ,(car exprs)))
-					    ;; Expression function:
-					    process-expr
-					    ;; Fallthrough:???
-					    
-					    )]
-
-				      [(letrec ,binds ,body)
-				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
-				       (let ([vars (map car binds)]
-					     [types (map cadr binds)]
-					     [rhs*  (map caddr binds)])
-					 (fun vars types (cons body rhs*)
-					      (lambda (vars types exprs)
-						`(letrec ,(map list vars types (cdr exprs))
-						   ,(car exprs)))
-					      process-expr))]
-				      
-				      [(let ,binds ,body)
-				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
-				       (let ([vars (map car binds)]
-					     [types (map cadr binds)]
-					     ;; We do the RHSs because the user doesn't get them:
-					     [rhs*  (map process-expr (map caddr binds))])
-					 (fun vars types (list body)
-					      (lambda (vars types results)
-						(DEBUGASSERT (= 1 (length results)))
-						(fuser (append results rhs*)
-						       (lambda exprs
-							 (DEBUGASSERT (= (length exprs) (fx+ (length rhs*) 1)))
-							 `(let ,(map list vars types (cdr exprs))
-							    ,(car exprs)))))
-					      process-expr))]
-
-				      [(for (,i ,[process-expr -> st] ,[process-expr -> en]) ,bod)
-				       (fun (list i) '(Int) (list bod)
-					    (lambda (vars types results)
-					      (fuser (list st en (car results))
-						     (lambda (st en bod) 
-						       `(for (,(car vars) ,st ,en) ,(car exprs)))))
-					    process-expr)]
-
-				      ;; To catch errors:
-				      [(,head ,other #,(dso #'_ '... ))
-				       (guard (memq head '(for letrec let let* lazy-letrec lambda)))
-				       (error 'pass-mechanism:Bindings 
-					      "unhandled or badly formed binding syntax: ~s" 
-					      (cons head other))]
-
-				      ;; TODO: for, ... anything else?
-				      
-				      ;; If it's not a variable-binding construct, we just let it 
-				      ;; go through to the final, auto-looping fallthrough:
-				      [,other (fallthrough other)]
-				      ))))))))
-|#
-
+		;; [2006.11.01] Changed this to not use quasisyntax
 		(if bnds 
 		    (set! expr
 		    (with-syntax ([expr expr] 
@@ -183,16 +111,17 @@
 				  ;; Now we set up the varbinds and give them to the userfun.
 				  (let ([fun funbody])
 				    (match x
+
 				      [(lambda ,vars ,types ,bod)
 				       (fun vars types (list bod) 
 					    ;; Reconstruct function:
-					    (lambda (vars types exprs)
-					      `(lambda ,vars ,types ,(car exprs)))
+					    (lambda (vars types results)
+					      (fuser results
+						     (lambda (bod)			
+						       `(lambda ,vars ,types ,bod)
+						       )))
 					    ;; Expression function:
-					    process-expr
-					    ;; Fallthrough:???
-					    
-					    )]
+					    process-expr)]
 
 				      [(letrec ,binds ,body)
 				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
@@ -201,10 +130,12 @@
 					     [rhs*  (map caddr binds)])
 					 (fun vars types (cons body rhs*)
 					      (lambda (vars types exprs)
-						`(letrec ,(map list vars types (cdr exprs))
-						   ,(car exprs)))
+						(fuser exprs
+						       (lambda (bod . rhs*)
+							 `(letrec ,(map list vars types rhs*) ,bod)
+							 )))
 					      process-expr))]
-				      
+
 				      [(let ,binds ,body)
 				       (guard (andmap (lambda (ls) (= (length ls) 3)) binds))
 				       (let ([vars (map car binds)]
@@ -215,10 +146,10 @@
 					      (lambda (vars types results)
 						(DEBUGASSERT (= 1 (length results)))
 						(fuser (append results rhs*)
-						       (lambda exprs
-							 (DEBUGASSERT (= (length exprs) (fx+ (length rhs*) 1)))
-							 `(let ,(map list vars types (cdr exprs))
-							    ,(car exprs)))))
+						       (lambda (bod . newrhs*)
+							 (DEBUGASSERT (= (length newrhs*) (length rhs*)))
+							 `(let ,(map list vars types newrhs*)
+							    ,bod))))
 					      process-expr))]
 
 				      [(for (,i ,[process-expr -> st] ,[process-expr -> en]) ,bod)

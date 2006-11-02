@@ -58,17 +58,23 @@
 		 reconstr exprfun ;fallthrough
 		 )
      (let* ([results (map exprfun exprs)]
-	    [rhs* (map (lambda (v)
-			 `(free ,(vector-ref v 1)
-				,(vector-ref v 0)))
-		    results)]
+	    [newresults (map (match-lambda (#(,expr ,free))
+			       (vector `(free ,free ,expr)
+				       (difference free vars)))
+			  results)]
 	    [free* (map (lambda (v) (vector-ref v 1)) results)]
 	    [free (apply union free*)])
-       (vector (reconstr vars types rhs*) ;; PLUS ANNOTS?
-	       (difference free vars)))     )
+
+       (reconstr vars types newresults)
+#;       
+       (vector (reconstr vars types newresults) ;; PLUS ANNOTS?
+	       (difference free vars))
+
+       ))
 (define (uncover-free-Fuser ls k)
   (match ls
     [(#(,expr* ,free*) ...)
+;     (pretty-print `(fusing ,expr* ,free*))
      (vector (apply k expr*)
 	     (apply union free*)	       
 	     )]))
