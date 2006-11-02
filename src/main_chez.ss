@@ -1,11 +1,13 @@
-;; main_chez.ss
-;; Loads the regiment compiler in Chez Scheme.
+;;;; main_chez.ss
+;;;; Loads the regiment compiler in Chez Scheme.
 
-;; NOTE: This file uses (include ...) rather than (load ...) 
-;; This basically inlines all the code in question into this file at compile time.
-;; Thus, making a compiled copy of this file makes a compiled copy of the whole system.
-;; HOWEVER: I broke this rule for things that depend on whether or not SWL is loaded.
-;; TODO FIXME: I can also make this happen at compile time, via macros.
+;;;; NOTE: This file uses (include ...) rather than (load ...) 
+;;;; This basically inlines all the code in question into this file at compile time.
+;;;; Thus, making a compiled copy of this file makes a compiled copy of the whole system.
+;;;; HOWEVER: I broke this rule for things that depend on whether or not SWL is loaded.
+;;;; TODO FIXME: I can also make this happen at compile time, via macros.
+
+
 
 ; =======================================================================
 
@@ -99,7 +101,8 @@
 ;(cd (car (source-directories)))
 ;  (inspect (list (source-directories) (cd)))
 
-(include "./config.ss")
+;(include "./config.ss") ;; Need to do this for windows... haven't got a good system yet.
+(include "config.ss")
 
 
 ;; Set some Chez scheme parameters.
@@ -235,6 +238,12 @@
 ;; Load this before the simulator.
 (IF_GRAPHICS
     (begin
+      ;; Only for swl1.0+.  Gives us define-class, etc.
+      (import swl:oop) 
+      ;(import swl:generics) (import swl:macros)
+      (import swl:option)
+      (import swl:threads)
+
       (include "chez/basic_graphics.ss")
       (include "chez/graphics_stub.ss")
       (import basic_graphics)
@@ -252,8 +261,7 @@
 (include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 
-(include "chez/simulator_alpha.ss") 
-(import simulator_alpha)
+(include "chez/simulator_alpha.ss") (import simulator_alpha)
 (include "generic/sim/firelightning_sim.ss")
 (include "generic/passes/nesc_bkend/tossim.ss")
 
@@ -379,26 +387,6 @@
 ;; LAME:
 ;(if (top-level-bound? 'SWL-ACTIVE) (eval '(import flat_threads)))
 
-
-;; Basic simulator for the nodal language:
-;(load "chez/simulator_nought.ss")
-(chez:module simulator_nought
-	(;run-simulation
-	 ;run-simulation-stream
-	 ;compile-simulate-nought 
-	 ;build-simulation
-	 ;;;process-statement-nought
-	 ;init-world
-	 ;cleanse-world
-	 ;testsim
-	 ;testssim
-	 )
-;	(include "chez/simulator_nought.ss")
-)
-;(import simulator_nought)
-
-
-
 ;; If we're in SWL then load the GRAPHICS portion:
 ;; Disabled temporarily!:
 #; 
@@ -406,9 +394,15 @@
       (load "demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
-;(eval-when (compile load eval) (cd ".."))
+
+
+;;; NOW INCLUDE THE (GENERIC) MAIN FILE:
+;===============================================================================
 (include "main.ss")
-;(eval-when (compile load eval) (cd "chez"))
+
+
+;;; TESTING FILES:
+;===============================================================================
 
 ;; [2006.04.18] This testing system isn't doing much for us currently
 ;; other than exercising our static elaborator.
@@ -425,6 +419,8 @@
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
 (include "generic/util/repl.ss")
+
+(include "generic/shortcuts.ss")
 
 ;; DISABLED TEMPORARILY:
 #;
@@ -462,19 +458,8 @@
       ))
 
 
-;(r '(letrec ((x (rmap sense world)) [y world] [z (lambda (n) (+ (- n 3) n))]) x))
-
 ;; Open this up so we can read the global counters:
 (import simulator_alpha_datatypes)
-
-
-;; After loading is finished switch to the src/ directory:
-;; But if you do this, remember to switch back to "chez/" when using the interactive inspector:
-;(eval-when (compile load eval)
-;  (cd start-dir)
-(cd (string-append (REGIMENTD) "/src"))
-;  )
-
 
 ;; This is an (attempted) hack for maintaining clean seperation between repeated loads.
 ;;
@@ -489,15 +474,17 @@
    (begin 
      (collect (collect-maximum-generation))
 
-     (let ([stats (statistics)]
-	   [loader bl2])
+     (let ([stats (statistics)])
        (printf "Pre-wipe mem usage: ~:d\n" (- (sstats-bytes stats) (sstats-gc-bytes stats))))
      (eval '(import scheme))
 
      ;; This is a simple version:
      (for-each (lambda (s)
 		 (when (and (top-level-bound? s) 
-			    (not (memq s '(wipe bl2 bln __UTILSDIR __utilsdir)))) ;; Don't kill my little loading mechanism
+			    (not (memq s '(wipe 
+					   ;; Don't kill my little loading mechanism:
+					   ;bl2 bln __UTILSDIR __utilsdir
+					   ))))
 		   ;(printf "Killing ~s\n" s)
 		   (set-top-level-value! s #f)))
        (diff (environment-symbols (interaction-environment))
@@ -531,17 +518,9 @@
      ))
   )))
 
-(define-id-syntax bw  (begin (wipe) b)) ;; shorthand
-
-
-#|
-(import reg:module)
-;(include "fft_test.ss")
-(optimize-level 2)
-(load "fft_test.ss")
-(import fft_test)
-;(testfft-bigger)
-(testfft-more)
-|#
+;; This wipes bindings and reloads.
+(define (reload) 
+  (define main (++ (REGIMENTD) "/src/main_chez.ss"))
+  (wipe) (load main))
 
 

@@ -570,12 +570,21 @@
      (cadr (List) Object)
      (null? (List) Bool)
      (list Object List)
+     (listLength ((List 'a)) Int)
      (append List List)
-    
+     (reverse (List) List)
      (map (Function List) List)
+     (filter (Function List) List)
      (fold (Function Object List) Object)
      (alist_lookup (List Object) List)
      (alist_update (List Object Object) List)
+    
+    ;; These should be defined IN the language, but they're not right now:
+    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+    ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
+    (alist_lookup ((List #('a 'b)) 'a) (List #('a 'b))) 
+    (alist_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))
+
 
      (vector Object Array)
      (make-vector (Int Object) Array)

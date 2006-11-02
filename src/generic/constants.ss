@@ -124,10 +124,7 @@
 	 varied-param
 	 dummy-param
 
-         make-rgb
-         rgb-red
-         rgb-green
-         rgb-blue
+         make-rgb rgb?   rgb-red    rgb-green  rgb-blue
 
 	 Default-Drawing-Color
 	 Default-Window-Color 

@@ -28,7 +28,9 @@
 			flash-text ;thread-eval
 			)
 
+
   (import constants)
+
 
  ;; This global variable points to the drawing surface itself.
 (define the-win #f) 
