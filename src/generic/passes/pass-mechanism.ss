@@ -157,7 +157,7 @@
 					    (lambda (vars types results)
 					      (fuser (list st en (car results))
 						     (lambda (st en bod) 
-						       `(for (,(car vars) ,st ,en) ,(car exprs)))))
+						       `(for (,(car vars) ,st ,en) ,bod))))
 					    process-expr)]
 
 				      ;; To catch errors:

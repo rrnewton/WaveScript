@@ -19,6 +19,7 @@
 	   wrap append-text 
 	   indent block 
 	   text->lines text->string	   
+	   mangle-name ;; Mangle a name so it's a C-name.  Could cause collisions.
 	   )
   (chezprovide )
   (chezimports )
@@ -27,6 +28,17 @@
 ;;; "Text" ADT implementation:
 ;;; A more efficient implementation would probably make line structure explicit.
 (begin 
+
+    
+  (define acceptable_chars 
+    '(#\_ 
+      #\a #\b #\c #\d #\e #\f #\g #\h #\i #\j #\k #\l #\m #\n #\o #\p #\q #\r #\s #\t #\u #\v #\w #\x #\y #\z 
+      #\A #\B #\C #\D #\E #\F #\G #\H #\I #\J #\K #\L #\M #\N #\O #\P #\Q #\R #\S #\T #\U #\V #\W #\X #\Y #\Z
+      #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
+  ;; String -> String
+  (define (mangle-name str)
+    (list->string (filter (lambda (c) (memq c acceptable_chars)) 
+		    (string->list str))))
 
   ;; This takes a Text or a string and returns a Text.
   (define (wrap x)

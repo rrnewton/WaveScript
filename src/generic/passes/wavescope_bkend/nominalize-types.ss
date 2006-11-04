@@ -29,7 +29,7 @@
 	 ;; Driver
 	 (lambda (expr tenv loop)
 	   (define (default x) (loop x tenv))
-	   (trace-match USERDRVR expr
+	   (match expr
 
 	     ;; Tuple statements HAVE to be type annotated now.
 	     [(tuple ,[default -> arg*] ...)
@@ -44,7 +44,7 @@
 	     ))
 	 ;; Fuser
 	 (lambda (ls k)
-	   (printf "FUSING: ~s\n\n" ls)
+	   ;(printf "FUSING: ~s\n\n" ls)
 	   (make-result (apply k (map result-expr ls))
 			(apply append (map result-tydefs ls))))
 	 ))

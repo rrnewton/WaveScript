@@ -175,7 +175,6 @@
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))
-   #;
    (unless (top-level-bound? 'REGIMENT-INTERACTIVE-MODE)
      (exit -1)) ;; Should only do this if we're running as a script.
    ))
@@ -240,7 +239,7 @@
     (begin
       ;; Only for swl1.0+.  Gives us define-class, etc.
       (import swl:oop) 
-      ;(import swl:generics) (import swl:macros)
+      (import swl:generics) ;(import swl:macros)
       (import swl:option)
       (import swl:threads)
 

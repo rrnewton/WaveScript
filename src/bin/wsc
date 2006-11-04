@@ -29,11 +29,12 @@ else rm -f $TMP;
 fi
 rm -f $TMP
 
+
 # If this flag is set, we stop here.
 # HACK: accepts the argument only in this position:
-if [ "$2" == "-c0" ]; 
-then exit 0
-fi
+#if test "$2" == "-c0" ; 
+#then exit 0
+#fi
 
 if [ ! -d "$WAVESCOPED" ]; 
 then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
