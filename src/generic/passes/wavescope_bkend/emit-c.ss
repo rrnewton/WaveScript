@@ -163,6 +163,31 @@
 	 (inspect other)
 	 (error 'wsquery->text "")]))))
 
+
+
+(define (immediate-type? t)
+  (or (memq t num-types)
+      (memq t '(Char))))
+
+;; This converts data from the form it's on "in the wire" (queues
+;; between nodes) into the form that's expected for the body of the
+;; iterate.
+(define (naturalize inname outname type)
+  (define tstr (Type type))
+  `("/* Naturalize input type to meet expectations of the iterate-body. */\n"
+    ,(match type
+    ;; The input is passed into the body as a reference.
+    ;; All other sigseg variables in the body are by value.
+    [(Sigseg ,t) 
+     `(,tstr "& " ,outname " = *(",tstr"*) ",inname";\n")]
+    ;; Immediates are passed by value.
+    [,imm (guard (immediate-type? imm))
+	  `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
+	  
+    ;; TODO ARRAYS:    
+    [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]
+  )))
+
 ;; Takes the *inside* of an iterate box and turns it to C text.
 (trace-define wscode->text
     (let () 
@@ -173,19 +198,23 @@
 	   (let ([body ((Stmt (tenv-extend tenv `(,input) `(,T))) bod)]
 		 [typ (Type T)])
 	     (values `(,(format "/* WaveScript type of input: ~s */\n" T)
-		       ,(block "bool iterate(WSQueue *inputQueue)"
-			       `(;"printf(\"Execute iterate for ",name"\\n\");\n"
-				 "void *input = inputQueue->dequeue();\n"
-				 ,typ " " ,(Var input) " = *((",typ"*)input);\n"
-				 ,@body
-				 
-				 ;; This is a quirky feature.  The bool returns
-				 ;; indicates whether the scheduler should NOT
-				 ;; reschedule this box further (even if there is
-				 ;; input left in its queue.)  For all the iterate
-				 ;; operators, this will be FALSE.
-				 "return FALSE;\n"
-				 )))
+		       ,(block 
+			 ;"bool iterate(WSQueue *inputQueue)"
+			 "bool iterate(uint32_t portnum, void* datum)"
+			 `(;"printf(\"Execute iterate for ",name"\\n\");\n"
+			   ;"void *input = inputQueue->dequeue();\n"
+			   ;,typ " " ,(Var input) " = *((",typ"*)input);\n"
+			   ,(naturalize "datum" (Var input) T)
+			   
+			   ,@body
+			   
+			   ;; This is a quirky feature.  The bool returns
+			   ;; indicates whether the scheduler should NOT
+			   ;; reschedule this box further (even if there is
+			   ;; input left in its queue.)  For all the iterate
+			   ;; operators, this will be FALSE.
+			   "return FALSE;\n"
+			   )))
 		     '()))]
 
 	;; Iterator state:
@@ -194,7 +223,7 @@
 		[myExpr (Expr newenv)]
 		[lhs* (map Var lhs*)]
 		[rhs* (map myExpr rhs*)])
-	   ;; Now do the body with the new tenv:
+	   ;; KNow do the body with the new tenv:
 	   (mvlet ([(body inits) (wscode->text bod name newenv)])
 	     (let ([decls (map (lambda (l t orig) `(,t " " ,l ,(format "; // WS type: ~s\n" orig)))
 			    lhs* (map Type ty*) ty*)]
@@ -267,7 +296,7 @@ int main(int argc, char ** argv)
 (define (WSBox name outtype constructor body)
   `(,(block (wrap `("\nclass " ,name " : public WSBox"))
 	    `("public:\n"
-	      "DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
+	      "WS_DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
 	      ,constructor
 	      "\nprivate:\n"
 	      ,body)) ";\n"))
@@ -290,9 +319,11 @@ int main(int argc, char ** argv)
       (lambda (st)
 	(define myExpr (Expr tenv))
       (match st
+
 	;; These immediates generate no code in Stmt position.
-;	[,v (guard (symbol? v)) ""]
-;	[(quote ,c) ""]
+	[,v (guard (symbol? v)) ""]
+	[(quote ,c) ""]
+
 
 	;; Must distinguish expression from statement context.
 	[(if ,[myExpr -> test] ,[conseq] ,[altern])
@@ -354,6 +385,12 @@ int main(int argc, char ** argv)
 (define (Expr tenv)
       (lambda (exp)
 	(match exp
+
+         ;; Special Constants:
+;	[nullseg "WSPrim::nullseg"]
+	[nullseg "WSNULL"]
+	[nullarr "WSNULL"]
+
 	[,c (guard (constant? c)) (Expr `(quote ,c))]
 	[(quote ,datum)
 	 ;; Should also make sure it's 32 bit or whatnot:
@@ -363,11 +400,7 @@ int main(int argc, char ** argv)
 	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
 	  [(string? datum) (format "~s" datum)]
 	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
-	[,v (guard (symbol? v)) (Var v)]
-	
-	;; Special Constants:
-	[nullseg "null"]
-	[nullarr "null"]
+	[,v (guard (symbol? v)) (Var v)]	
 
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("(",test " ? " ,conseq " : " ,altern")")]
@@ -440,7 +473,7 @@ int main(int argc, char ** argv)
 	[,v (guard (symbol? v)) (symbol->string v)]
 	;; Went back and forth on whether this should be a pointer:
 	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
-	[(Signal ,[t]) `("Signal<" ,t ">")]
+;	[(Signal ,[t]) `("Signal<" ,t ">*")]
 	[(Array ,[t]) `(,t "[]")]
 	;[,other (format "~a" other)]
 	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
@@ -550,8 +583,8 @@ int main(int argc, char ** argv)
      ;; Requires helpers.ss
      ;; Not very tight:
      ;; Doesn't generate any code for this now.
-     ;,(lambda (s) (not (substring? "35" s)))]
-     ,(lambda (s) (substring? "35" s))]
+     ,(lambda (s) (not (substring? "35" s)))]
+;     ,(lambda (s) (substring? "35" s))]
     
     [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname" (empty-tenv))])
        (,text->string txt))

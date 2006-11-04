@@ -4,6 +4,9 @@
  class WSPrim {
 
    public:
+
+   SigSeg<void*> nullseg;
+
 //   static SigSeg<complex> fft(SigSeg<float> input) {
 //       /* Currently we just use the unitless timebase: */ 
 //       Timebase _freq = Unitless;
