@@ -29,22 +29,31 @@
 //       return(output);
 //   }
 
-   wsint_t width(const RawSeg& w) {
-     return 0;
+
+
+   static wsint_t width(const RawSeg& w) {
+     return (wsint_t)w.length();
+   }
+   static wsint_t start(const RawSeg& w) {
+     return (wsint_t)w.start();
+   }
+   static wsint_t end(const RawSeg& w) {
+     return (wsint_t)w.end();
    }
 
-   
-
-   // Hmm should use STL strings... UNFINISHED
-   wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
+   static RawSeg joinsegs(const RawSeg& a, const RawSeg& b) {
+     return RawSeg::append(a,b);
+   }
+   // Currently takes start sample number (inclusive) and length.
+   // TODO: Need to take SeqNo for start!
+   static RawSeg subseg(const RawSeg& ss, wsint_t start, wsint_t len) {
+     uint32_t offset = (uint32_t)((SeqNo)start - ss.start());
+     //return ss.subseg(offset, offset+len);
+     return RawSeg::subseg(ss, offset, len); // INCONSISTENT DOCUMENTATION! FIXME!
+   }
+      
+   static wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
      return A+B;
    }
-
-/*
-
-joinsegs 
-subseg
-
-*/
-
 };
+

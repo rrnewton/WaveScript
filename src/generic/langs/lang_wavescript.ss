@@ -465,6 +465,11 @@
      (define arr-set! vector-set!)
      (define length   vector-length)
 
+     (define (print x)
+       (if (string? x)
+	   (display x)
+	   (display-constrained (list x 300))))
+#;
      (define (print x) 
        (if (string? x) (display x)	   
 	   (parameterize ([print-length 50]

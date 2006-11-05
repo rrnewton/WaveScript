@@ -23,7 +23,7 @@ using namespace std;
 #define FALSE 0
 
 #define WSNULL 0
-#define WSNULLSEG RawSeg::nullseg
+#define WSNULLSEG (RawSeg::NullRef)
 
 typedef int wsint_t;
 typedef float wsfloat_t;

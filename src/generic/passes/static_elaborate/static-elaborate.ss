@@ -259,7 +259,7 @@
 		  [(,_ ,v ,__) (guard (symbol? v))
 		       (process-expr v env)]
 		  ;; Otherwise, nothing we can do with it.
-		  [,else var])
+		  [,else   var])
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
 		]

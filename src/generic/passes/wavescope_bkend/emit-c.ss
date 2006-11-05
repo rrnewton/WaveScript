@@ -63,17 +63,22 @@
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
     ;; .returns A new expression and a set of declarations.
-    (trace-define (Query name typ x tenv)
+    (define (Query name typ x tenv)
 	(define myExpr (Expr tenv))
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
       (match x
 
-	[,e (guard (or (not (distributed-type? typ))
-		       (symbol? e)))
+	;; A constant, make global:
+	[,e (guard (not (distributed-type? typ))) 
+	    (values ""
+		    `(("\n" ,(Type (recover-type e tenv))
+		       " ",name " = " ,(myExpr e) ";\n")))]
+	
+	;; An alias:
+	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
-;	    (values `( ,name " = " ,(symbol->string v) ";\n") ())]
-	    (values `( ,name " = " ,(myExpr e) ";\n") ())]
+	    (values `( ,name " = " ,(symbol->string e) ";\n") ())]
 
 	;; Forbidding recursion for now (even though this says 'letrec').
 	[(letrec ,binds ,bod)
@@ -153,6 +158,7 @@
 	     ,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
 	     ,funs 
 	     ,(make-output-printer typ) 
+
 	     ,boilerplate_premain
 	     ;"// " ,(Type typ) " toplevel;\n"
 	     ,(indent body "  ")
@@ -205,7 +211,7 @@
 		   `(,T " *element = (",T" *)input;\n"
 			;"cout << _name << \": \" << *element << endl;\n"
 			"printf(\"WSOUT: \");\n"
-			,(EmitShow "(*element)" typ) ";\n"
+			,(EmitPrint "(*element)" typ) ";\n"
 			"printf(\"\\n\");\n"
 			"delete element;\n"  
 			"return false;\n"
@@ -213,7 +219,7 @@
 	 ";\n\n"))]))
 
 ;; Takes the *inside* of an iterate box and turns it to C text.
-(trace-define wscode->text
+(define wscode->text
     (let () 
     ;; Entry point
       (lambda (exp name tenv)
@@ -357,7 +363,7 @@ int main(int argc, char ** argv)
 	[(emit ,vqueue ,[myExpr -> val])
 	 `("emit(" ,val ");\n")]
 
-	[(print ,[myExpr -> str])	 `("printf(",str");\n")]
+	[(print ,e) (EmitPrint (myExpr e) (recover-type e tenv))]
 
 	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
 	[(begin ,[stmts] ...) stmts]
@@ -366,11 +372,12 @@ int main(int argc, char ** argv)
 	 `(,arr "[" ,ind "] = " ,val ";\n")]
 
 	[(set! ,[Var -> v] ,[myExpr -> e])
-	 `(,v " = " ,e "\n;")]
+	 `(,v " = " ,e ";\n")]
 	
-	[(for (,[Var -> i] ,[myExpr -> st] ,[myExpr -> en]) ,bod)
-	 (block `("for (int ",i" = ",st"; i <= ",en"; i++)")
-		((Stmt (tenv-extend tenv (list i) '(Int))) bod))]
+	[(for (,i ,[myExpr -> st] ,[myExpr -> en]) ,bod)
+	 (let ([istr (Var i)])	   
+	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+		  ((Stmt (tenv-extend tenv (list i) '(Int))) bod)))]
 	[(break) "break;\n"]
 
 	;; This becomes nothing:
@@ -425,7 +432,7 @@ int main(int argc, char ** argv)
 	[(imagpart ,[v]) `("(" ,v ".imag)")]
 
 	;; TYPE??
-	[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
+	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
 
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
@@ -448,7 +455,7 @@ int main(int argc, char ** argv)
 	 (error 'emitC:Expr "begin in expression context: ~s" `(begin ,stmts ...))]
 
 	;; Later we'll clean it up so contexts are normalized:
-	[(set! ,[Var -> v] ,[(Expr tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+	;[(set! ,[Var -> v] ,[(Expr tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
 
 	;; Forming tuples.
 	[(tuple ,[arg*] ...)
@@ -469,7 +476,8 @@ int main(int argc, char ** argv)
 
     (define (Type t)
       (match t
-	[Int "int"]
+	[Int "wsint_t"]
+	[Float "wsfloat_t"]
 	[,simple (guard (memq simple '(Complex Float)))
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
 	[,v (guard (symbol? v)) (symbol->string v)]
@@ -485,14 +493,15 @@ int main(int argc, char ** argv)
 ;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
 ;; This implements our polymorphic show function.
 ;; It prints something or other for any type.
-(define (EmitShow e typ)
+(define (EmitPrint e typ)
   (match typ
-    [Int `("printf(\"%d\", ",e")")]
-    [Float `("printf(\"%f\", ",e")")]
+    [Int `("printf(\"%d\", ",e");\n")]
+    [Float `("printf(\"%f\", ",e");\n")]
+    [String `("printf(",e");\n")]
     ;; TEMP: Have to wrap the sigseg to get the << method.
     ;; This should be fixed in the C++.
-    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");")]
-    [,other `("printf(\"<object of type ",(format "~a" typ)">\")")]
+    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
+    [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
     ))
 
 ;;================================================================================

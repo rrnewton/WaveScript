@@ -54,8 +54,8 @@
 	(match prog 
 	  [(,lang '(program ,[Expr -> body] ,type))
 	   
-	   (printf "Here's annotation:\n" )
-	   (pretty-print body)
+;	   (printf "Here's annotation:\n" )
+;	   (pretty-print body)
 
 	   ;; Running the type-checker/inferencer isn't going to work on this output any longer:
 	   `(nominalize-types-language

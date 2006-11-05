@@ -11,7 +11,10 @@ s2 = iterate (win in s1) {
    state { acc = nullseg; 
          }
 
-   print("\nIncoming width "++show(win.width)++" Current ACC/width "++ show(acc.width));
+   print("\nIncoming width ");
+   print(win.width);
+   print(" Current ACC/width ");
+   print(acc.width);
    print(": ");
    print(acc);
    print("\n");
@@ -20,7 +23,8 @@ s2 = iterate (win in s1) {
    // We do this entirely with index numbers, no abstract Time objects are used.
    // win.width is an upper bound on how many windows we can produce.
 
-   print("JOINED Current ACC/width "++ show(acc.width));
+   print("JOINED Current ACC/width ");
+   print(acc.width);
    print(": ");
    print(acc);
    print("\n");

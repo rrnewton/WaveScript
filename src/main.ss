@@ -289,7 +289,9 @@
 				  [pretty-maximum-lines 1000]
 				  [print-level 20]
 				  [print-length 10])
-		     (pretty-print prog))
+		     (void)
+		     ;(pretty-print prog)
+		     )
 		   (with-output-to-file ".__inputprog.txt"
 		     (lambda () 
 		       (parameterize ([pretty-line-length 200]
@@ -333,7 +335,8 @@
 
   (ASSERT (andmap symbol? flags))
 
-  (printf "Compiling program: \n\n")(pretty-print prog)
+  (printf "Compiling program. \n\n")
+  ;(pretty-print prog)
   
   (printf "\nTypecheck complete, program types:\n\n")
   (print-var-types typed)(flush-output-port)
@@ -343,9 +346,9 @@
    (printf "================================================================================\n")
    (printf "\nNow nominalizing types.\n"))
   (set! prog (nominalize-types prog))
-  (REGIMENT_DEBUG (pretty-print prog))
+;  (REGIMENT_DEBUG (pretty-print prog))
   (REGIMENT_DEBUG 
-   (printf "================================================================================\n")
+;   (printf "================================================================================\n")
    (printf "\nNow emitting C code:\n"))
   
   (string->file 

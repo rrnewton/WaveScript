@@ -28,6 +28,10 @@ Things I'm working on now --Ryan:
 
 ================================================================================
 
+[2006.11.04]
+  Make remove-complex-opera work for wavescript so that show() can be
+implemented properly.
+
 [2006.11.01]
   Should include optional Intermediate? check for define-pass to
 verify that a user function produces a valid intermediate record.
