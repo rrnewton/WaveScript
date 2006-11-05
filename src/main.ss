@@ -252,15 +252,13 @@
   (set! p (optional-stop (remove-complex-constant p)))
   (set! p (optional-stop (retypecheck p)))
 
-  (set! p (optional-stop (uncover-free              p)))
+;  (set! p (optional-stop (uncover-free              p)))
 
-  (set! p (optional-stop (introduce-lazy-letrec     p)))
-
+;  (set! p (optional-stop (introduce-lazy-letrec     p)))
 ;  (set! p (optional-stop (lift-letrec               p)))
 ;  (set! p (optional-stop (lift-letrec-body          p)))
-  (set! p (optional-stop (remove-complex-opera* p)))
-
-  (set! p (optional-stop (remove-lazy-letrec p)))
+;  (set! p (optional-stop (remove-complex-opera* p)))
+;  (set! p (optional-stop (remove-lazy-letrec p)))
 
   
 ;  (set! p (optional-stop (verify-core p)))
@@ -346,7 +344,7 @@
    (printf "================================================================================\n")
    (printf "\nNow nominalizing types.\n"))
   (set! prog (nominalize-types prog))
-;  (REGIMENT_DEBUG (pretty-print prog))
+  (REGIMENT_DEBUG (pretty-print prog))
   (REGIMENT_DEBUG 
 ;   (printf "================================================================================\n")
    (printf "\nNow emitting C code:\n"))

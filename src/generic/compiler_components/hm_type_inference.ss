@@ -67,6 +67,7 @@
 	   type?
 	   distributed-type?
 	   arrow-type?
+	   polymorphic-type?
 	   ;id
 	   ;inject-polymorphism
 	   
@@ -348,9 +349,27 @@
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
-    [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
-    [#(,[t] ...) (andmap id t)]
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
+    [#(,[t] ...) (ormap id t)]
     [,else #f]))
+
+;; Does it contain any type-vars?
+(define (polymorphic-type? t)
+  (define (id x) x)
+  (match t
+    ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
+    [,s (guard (symbol? s)) #f]
+    [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
+    [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
+     (warning 'polymorphic-type? "got type var with no info: ~s" v)
+     #t] ;; This COULD be.
+    [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+
+    [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
+    [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
+    [#(,[t] ...) (ormap id t)]
+    [,else #f]))
+
 
 (define (arrow-type? t)
   (match t

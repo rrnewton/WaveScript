@@ -55,7 +55,7 @@
 
 ;; This is the only entry point to the file.  A complete query can
 ;; be transformed into a complete query file.
-(define wsquery->text
+(trace-define wsquery->text
   (let ()
 
     ;; This processes an expression along the stream-processing "spine".
@@ -503,6 +503,10 @@ int main(int argc, char ** argv)
     [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
     [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
     ))
+
+(define (StructDef name types)
+  000000
+  )
 
 ;;================================================================================
 
