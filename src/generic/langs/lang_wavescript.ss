@@ -110,6 +110,8 @@
 		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
 		 to_array to_sigseg to-windowed 
+
+		 assert-type
 		 
 		 wserror inspect
 		 emit virtqueue
@@ -193,6 +195,9 @@
   (define-syntax app
     (syntax-rules ()
       [(_ f args ...) (f args ...)]))
+  (define-syntax assert-type
+    (syntax-rules ()
+      [(_ t e) e]))
 
      ;; For these programs, need letrec*.
      (define-syntax letrec

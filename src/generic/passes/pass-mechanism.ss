@@ -155,6 +155,7 @@
 				      [(for (,i ,[process-expr -> st] ,[process-expr -> en]) ,bod)
 				       (fun (list i) '(Int) (list bod)
 					    (lambda (vars types results)
+					      (ASSERT (equal? types '(Int)))
 					      (fuser (list st en (car results))
 						     (lambda (st en bod) 
 						       `(for (,(car vars) ,st ,en) ,bod))))

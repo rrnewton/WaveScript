@@ -208,9 +208,10 @@
 
 	;; Print is required to be pre-annotated with a type.
 	;; (We can no longer do recover-type.)
-	[(print (type ,t ,e))
+	[(print (assert-type ,t ,e))
 	 ;(EmitPrint (myExpr e) (recover-type e tenv))
 	 (EmitPrint (myExpr e) t)]
+	[(print ,_) (error 'emit-c:Stmt "print should have a type-assertion around its argument: ~s" _)]
 
 	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
 	[(begin ,[stmts] ...) stmts]

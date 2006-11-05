@@ -705,14 +705,14 @@
     [(lambda ,v* ,[bod])                `(lambda ,v* ,bod)]
     [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let let* letrec lazy-letrec)))     
      `(,let ([,id* ,rhs*] ...) ,bod)]
-
+   
     [,c (guard (constant? c)) c]
     [(quote ,c)       `(quote ,c)]
     [,var (guard (symbol? var)) var]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(tuple ,[e*] ...) `(tuple ,e* ...)]
     [(tupref ,n ,[e]) `(tupref ,n ,e)]
-
+    
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
@@ -721,6 +721,7 @@
     [(tuple ,[args] ...) `(tuple ,args ...)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
+    [(assert-type ,t ,e) e]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]    
     
     [(,prim ,[rand*] ...)

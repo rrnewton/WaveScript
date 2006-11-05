@@ -28,6 +28,10 @@ Things I'm working on now --Ryan:
 
 ================================================================================
 
+[2006.11.05]
+ *) Change inliner to allow "lib" functions that don't inline (of
+    appropriate type).
+
 [2006.11.04]
   Make remove-complex-opera work for wavescript so that show() can be
 implemented properly.

@@ -16,10 +16,10 @@ fun syncN (strms, ctrl) {
       requests = [];
     }
     print("  Current ACCS: ");
-    for i = 0 to accs.length - 1 {
-      if accs[i] == nullseg
+    for ii = 0 to accs.length - 1 {
+      if accs[ii] == nullseg
       then print("null  ")
-      else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
+      else print(show(accs[ii].start) ++ ":" ++ show(accs[ii].end) ++ "  ");
     };
     print("\n");
 

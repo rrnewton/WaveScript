@@ -211,6 +211,16 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
+(define-pass type-print/show
+    (define (process-expr x tenv fallthru)
+      (match x
+	[(print ,e) 
+	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	[(show ,e) 
+	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	[,other (fallthru other tenv)]))
+  [Expr/Types process-expr])
+
 ;; [2006.08.27] This version executes the alternate WaveScript compiler.
 ;; It takes it from (parsed) source down as far as the WaveScript commpiler 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
@@ -243,7 +253,7 @@
 
   (set! p (optional-stop (merge-iterates p)))
   
-;  (set! p (optional-stop (verify-elaborated p)))
+  (set! p (optional-stop (verify-elaborated p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -263,6 +273,8 @@
   
 ;  (set! p (optional-stop (verify-core p)))
 ;  (set! p (optional-stop (retypecheck p)))
+
+  (set! p (optional-stop (type-print/show p)))
 
   ;(set! p (optional-stop (nominalize-types p)))
 

@@ -35,12 +35,19 @@
   ;; Insure provision of verify-regiment:
   (provide core-generic-traverse
 	   core-generic-traverse/types
-           test-this test-core-generic-traverse)
+           test-this test-core-generic-traverse
+	   binding-form?)
 
   (chezimports prim_defs
 	       (except helpers test-this these-tests)
 	       ;regiment_helpers
 	       )
+
+;; This is for double-checking our work below.
+(define (binding-form? x)
+  (and (pair? x)
+       (memq (car x) '(for let let* letrec lazy-letrec lambda))
+       ))
 
 ;; Generic traversal over Regiment Expressions.
 (define core-generic-traverse 
@@ -155,6 +162,8 @@
 	  ;; Applications must be tagged explicitely.
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
+	  [(assert-type ,t ,[loop -> e])
+	   (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
 
 #;
 	  [(,prim ,rands ...)
@@ -208,9 +217,23 @@
 		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
 			 (fuse (cons ((loop newtenv) bod) rhs*)
 			       (lambda (x . y*) `(,letrec ([,lhs* ,ty* ,y*] ...) ,x))))]
+
+		      [(for (,i ,[st] ,[en]) ,bod)
+		       (let ([newtenv (tenv-extend tenv (list i) '(Int))])
+			 (fuse (list st en ((loop newtenv) bod))
+			       (lambda (st en bod) `(for (,i ,st ,en) ,bod))))]
+		      
+		      [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
+		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
+			 (fuse (cons ((loop newtenv) bod) rhs*)
+			       (lambda (bod . rhs*) `(let ([,lhs* ,ty* ,rhs*] ...) ,bod))))
+		       ]
+
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
-		      [,other (autoloop other)])]
+		      [,other 
+		       (DEBUGASSERT (not (binding-form? other)))
+		       (autoloop other)])]
 		   [other (error 'core-generic-traverse/types
 			       "user driver function called fallthrough function (autolooper) with wrong number of args, expected expr & tenv:\n~s"
 			       other)])))
