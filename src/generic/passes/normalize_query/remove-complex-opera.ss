@@ -232,7 +232,7 @@
     (lambda (program)
       (match program
              [(,input-lang '(program ,letexp ,type))
-	      `(remove-complex-opera-language '(program ,(process-letrec letexp (empty-tenv)) ,type))]
+	      `(remove-complex-opera*-language '(program ,(process-letrec letexp (empty-tenv)) ,type))]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))
@@ -244,7 +244,7 @@
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
        `[(remove-complex-opera* '(some-lang '(program ,prog notype)))
-	 (some-lang '(program ,res notype))])) 
+	 (remove-complex-opera*-language '(program ,res notype))]))
    '(
      [(lazy-letrec ([x (List Int) (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
      )
