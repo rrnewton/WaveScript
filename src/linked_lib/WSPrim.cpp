@@ -4,9 +4,7 @@
  class WSPrim {
 
    public:
-
-   SigSeg<void*> nullseg;
-
+   
 //   static SigSeg<complex> fft(SigSeg<float> input) {
 //       /* Currently we just use the unitless timebase: */ 
 //       Timebase _freq = Unitless;
@@ -31,10 +29,15 @@
 //       return(output);
 //   }
 
+   wsint_t width(const RawSeg& w) {
+     return 0;
+   }
+
+   
 
    // Hmm should use STL strings... UNFINISHED
-   char* stringappend(char* A, char* B) {
-     return A;
+   wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
+     return A+B;
    }
 
 /*

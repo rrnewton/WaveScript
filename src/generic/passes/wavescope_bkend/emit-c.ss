@@ -151,7 +151,8 @@
 	 (mvlet ([(body funs) (Query "toplevel" typ expr (empty-tenv))])
 	   `(,(file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
 	     ,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
-	     ,funs
+	     ,funs 
+	     ,(make-output-printer typ) 
 	     ,boilerplate_premain
 	     ;"// " ,(Type typ) " toplevel;\n"
 	     ,(indent body "  ")
@@ -179,7 +180,8 @@
     ;; The input is passed into the body as a reference.
     ;; All other sigseg variables in the body are by value.
     [(Sigseg ,t) 
-     `(,tstr "& " ,outname " = *(",tstr"*) ",inname";\n")]
+     `("/* Sigseg input.  This is a bit of a trick, uses ref rather than value: */\n"
+       ,tstr "& " ,outname " = *(",tstr"*) ",inname";\n")]
     ;; Immediates are passed by value.
     [,imm (guard (immediate-type? imm))
 	  `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
@@ -187,6 +189,28 @@
     ;; TODO ARRAYS:    
     [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]
   )))
+
+
+(define (make-output-printer typ)
+  (match typ
+    [(Signal ,typ)
+     (let ([T (Type typ)])
+       `("\n\n"
+	 ,(block "class PrintQueryOutput : public WSBox"
+	 `("public:\n"
+	   "PrintQueryOutput(const char *name) : WSBox(\"PrintQueryOutput\") {}\n\n"
+	   "private:\n"
+	   "DEFINE_NO_OUTPUT_TYPE;\n\n"
+	   ,(block "bool iterate(uint32_t port, void *input)"
+		   `(,T " *element = (",T" *)input;\n"
+			;"cout << _name << \": \" << *element << endl;\n"
+			"printf(\"WSOUT: \");\n"
+			,(EmitShow "(*element)" typ) ";\n"
+			"printf(\"\\n\");\n"
+			"delete element;\n"  
+			"return false;\n"
+			))))
+	 ";\n\n"))]))
 
 ;; Takes the *inside* of an iterate box and turns it to C text.
 (trace-define wscode->text
@@ -197,7 +221,7 @@
 	  [(lambda (,input) (,T) ,bod)	  	   
 	   (let ([body ((Stmt (tenv-extend tenv `(,input) `(,T))) bod)]
 		 [typ (Type T)])
-	     (values `(,(format "/* WaveScript type of input: ~s */\n" T)
+	     (values `(,(format "/* WaveScript input type: ~s */\n" T)
 		       ,(block 
 			 ;"bool iterate(WSQueue *inputQueue)"
 			 "bool iterate(uint32_t portnum, void* datum)"
@@ -258,34 +282,11 @@ int main(int argc, char ** argv)
 
 (define (boilerplate_postmain return_name return_type)   
   (printf "Generating code for returning stream of type ~s\n" return_type)
-  `(
-
-;; For now just using printbox:
-#;
-,@(match return_type 
-    [(Signal (Sigseg ,[Type -> typ]))
-     `(,(format "
-  /* dump output to file, for WaveScript type ~s */
-  AsciiFileSink<" return_type)
-       ,typ"> fs = AsciiFileSink<",typ">(\"/tmp/wavescript_query.out\");
-  fs.connect(",return_name");
-
-")    ]
-    [,_ (list (format "\n  /* !! Don't know how to produce sink for type ~s */\n" 
-		      return_type)
-	      ;"  cout << " return_name " << endl;"
-	      )]
-    )
-
-,(match return_type
-   [(Signal ,[Type -> typ])
-    `("
+  `("
   /* dump output of query -- WaveScript type = ",(format "~s" return_type)" */
-  PrintBox< ",typ" > out = PrintBox< ",typ" >(\"WSOUT\");
+  PrintQueryOutput out = PrintQueryOutput(\"WSOUT\");
   out.connect(",return_name");
-")])
 
-"
   /* now, run */
   WSRun();
 
@@ -388,7 +389,8 @@ int main(int argc, char ** argv)
 
          ;; Special Constants:
 ;	[nullseg "WSPrim::nullseg"]
-	[nullseg "WSNULL"]
+;	[nullseg "WSNULL"]
+	[nullseg "WSNULLSEG"]
 	[nullarr "WSNULL"]
 
 	[,c (guard (constant? c)) (Expr `(quote ,c))]
@@ -472,18 +474,24 @@ int main(int argc, char ** argv)
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
 	[,v (guard (symbol? v)) (symbol->string v)]
 	;; Went back and forth on whether this should be a pointer:
-	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
+	[(Sigseg ,[t]) `("RawSeg")]
+;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
 ;	[(Signal ,[t]) `("Signal<" ,t ">*")]
 	[(Array ,[t]) `(,t "[]")]
 	;[,other (format "~a" other)]
 	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
 
+
+;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
 ;; This implements our polymorphic show function.
-;; It prints something or over for any type.
+;; It prints something or other for any type.
 (define (EmitShow e typ)
   (match typ
     [Int `("printf(\"%d\", ",e")")]
     [Float `("printf(\"%f\", ",e")")]
+    ;; TEMP: Have to wrap the sigseg to get the << method.
+    ;; This should be fixed in the C++.
+    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");")]
     [,other `("printf(\"<object of type ",(format "~a" typ)">\")")]
     ))
 

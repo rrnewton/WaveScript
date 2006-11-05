@@ -232,7 +232,7 @@
     (lambda (program)
       (match program
              [(,input-lang '(program ,letexp ,type))
-	      `(,input-lang '(program ,(process-letrec letexp (empty-tenv)) ,type))]
+	      `(remove-complex-opera-language '(program ,(process-letrec letexp (empty-tenv)) ,type))]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))

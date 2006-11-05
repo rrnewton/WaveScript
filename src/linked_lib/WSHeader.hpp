@@ -8,14 +8,26 @@
 #include <AsciiFileSink.hpp>
 #include <Boxes.hpp>
 
+/* for boost smart pointers */
+//#include <boost/shared_ptr.hpp>
+//#include <boost/enable_shared_from_this.hpp>
+
 #include <stdio.h>
 #include <list>
 #include <vector>
+#include <string>
+
+using namespace std;
 
 #define TRUE 1
 #define FALSE 0
 
 #define WSNULL 0
+#define WSNULLSEG RawSeg::nullseg
+
+typedef int wsint_t;
+typedef float wsfloat_t;
+typedef string wsstring_t;
 
 #define WS_DEFINE_OUTPUT_TYPE(type)                \
   inline void emit(const type &tuple) {         \
