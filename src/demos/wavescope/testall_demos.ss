@@ -22,6 +22,7 @@ exec regiment i --script "$0" ${1+"$@"};
     "demo1_audiofile.ws"
     "demo2_iterate.ws"
     "demo2b_iterateState.ws"
+    "demo3a_tuples.ws"
     "demo3_fft.ws"
     "demo4_rewindow.ws"
     "demo5_inline.ws"

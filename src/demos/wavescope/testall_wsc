@@ -1,0 +1,42 @@
+#!/bin/sh
+
+COMP=.__wscMessages.txt
+RUN=.__runquery_output.txt
+
+echo > $COMP
+echo > $RUN
+
+function go () {
+    wsc $1
+    echo >> $RUN
+    echo $1 : >> $RUN
+    ./run_query | head -20 >> $RUN
+}
+
+
+
+# wsc demo0_audio.ws 
+# echo >> $RUN
+# echo DEMO0: >> $RUN
+# ./run_query | head -20 >> $RUN
+
+
+# echo >> $RUN
+# echo DEMO1: >> $RUN
+# ./run_query | head -20 >> $RUN
+
+go demo0_audio.ws
+go "demo1_audiofile.ws"
+go "demo2_iterate.ws"
+go "demo2b_iterateState.ws"
+go "demo3a_tuples.ws"
+#     "demo3_fft.ws"
+go "demo4_rewindow.ws"
+
+
+#     "demo5_inline.ws"
+# ;    "demo5b_better.ws"
+#     "demo6_sync.ws"
+#     "demo7_syncN.ws"
+#     "demo8_marmot_noinline.ws"
+#     "demo9_marmot.ws"
