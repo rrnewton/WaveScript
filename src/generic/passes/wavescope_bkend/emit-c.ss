@@ -74,7 +74,7 @@
 	;; A constant, make global:
 	[,e (guard (not (distributed-type? typ))) 
 	    (values ""
-		    `(("\n" ,typ ;(Type (recover-type e tenv))
+		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
 		       " ",name " = " ,(myExpr e) ";\n")))]
 
 	;; An alias:
