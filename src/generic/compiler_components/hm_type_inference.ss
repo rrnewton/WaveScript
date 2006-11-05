@@ -329,8 +329,9 @@
     [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+    [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
-    [#(,[t] ...) (andmap id t)]
+    [#(,[t] ...) (andmap id t)]   
     [,else #f]))
 
 ;; Does it contain the monad?
@@ -349,6 +350,7 @@
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
+    [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [#(,[t] ...) (ormap id t)]
     [,else #f]))
@@ -366,11 +368,12 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
 
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
+    [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [#(,[t] ...) (ormap id t)]
     [,else #f]))
 
-
+;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
   (match t
     [(quote (,v . #f)) #f]

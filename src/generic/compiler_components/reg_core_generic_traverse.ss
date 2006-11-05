@@ -95,6 +95,14 @@
 	  [(tuple ,[loop -> args] ...)
 	   (fuse args (lambda args `(tuple ,args ...)))]
 
+	  ;; Adding this special syntax as well (output of nominalize-types)
+	  [(make-struct ,name  ,[loop -> args] ...)
+	   (guard (symbol? name))
+	   (fuse args (lambda args `(make-struct ,name . ,args)))]
+	  [(struct-ref ,[loop -> expr] ,fldname)
+	   (guard (symbol? fldname))
+	   (fuse (list expr) (lambda (expr) `(struct-ref ,expr ,fldname)))]
+
 	  ;; No looping on types.  This could be changed:
 	  [(,letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
 	   (guard (memq letrec '(letrec lazy-letrec)))
@@ -174,9 +182,7 @@
     [(d f e) (build-traverser d f e)]
     [(d f) (lambda (e) (build-traverser d f e))]
     [(d) (lambda (e) (build-traverser d (lambda (ls k) (apply k ls)) e))]
-    )
-  ))
-
+    )))
 
 ;; This version carries around the type environment and always presents it to the user driver.
 (define core-generic-traverse/types

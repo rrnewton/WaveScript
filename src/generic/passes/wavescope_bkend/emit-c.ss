@@ -55,9 +55,11 @@
 
 ;; This is the only entry point to the file.  A complete query can
 ;; be transformed into a complete query file.
-(trace-define wsquery->text
-  (let ()
-
+(define wsquery->text
+  (lambda (prog)
+    (match prog
+      [(,lang (quote (program ,expr (struct-defs . ,struct-defs) ,typ)))
+       
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.
     ;; .param type   Type of current result.
@@ -72,9 +74,9 @@
 	;; A constant, make global:
 	[,e (guard (not (distributed-type? typ))) 
 	    (values ""
-		    `(("\n" ,(Type (recover-type e tenv))
+		    `(("\n" ,typ ;(Type (recover-type e tenv))
 		       " ",name " = " ,(myExpr e) ";\n")))]
-	
+
 	;; An alias:
 	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
@@ -124,8 +126,7 @@
 	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
-	  '())
-	 ]
+	  '())]
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -148,33 +149,252 @@
 	   )]
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
+	)) ;; End Query
+
+; ======================================================================
+;;; Helper functions for handling different program contexts:
+        
+    (define (Var var)
+      (ASSERT (symbol? var))
+      ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
+      (symbol->string var))
+    (define (PrimName var)
+      (format "WSPrim::~a" (mangle-name (symbol->string var))))
+      ;(symbol->string var))
+    (define (FunName var)
+      (format "WSFunLib::~a" var))
+      ;(symbol->string var))
+
+    (define (Stmt tenv)
+      (lambda (st)
+	(define myExpr (Expr tenv))
+      (match st
+
+	;; These immediates generate no code in Stmt position.
+	[,v (guard (symbol? v)) ""]
+	[(quote ,c) ""]
+
+
+	;; Must distinguish expression from statement context.
+	[(if ,[myExpr -> test] ,[conseq] ,[altern])
+	 `("if (" ,test ") {\n"
+	   ,(indent conseq "  ")
+	   "} else {\n"
+	   ,(indent altern "  ")
+	   "}\n")]
+	;; Not allowed in expression position currently:
+	[(let ([,[Var -> v] ,[Type -> t] ,[myExpr -> rhs]]) ,[body])
+	 `(,t " " ,v " = " ,rhs ";\n" ,body)]
+
+	;; This is a boilerplate that we can now remove:
+	[(letrec ([,v ,t (virtqueue)] ,rest ...) ,body)
+	 (let ([newenv (tenv-extend tenv (list v) (list t))])
+	   ((Stmt newenv) `(letrec ,rest ,body)))]
+
+	;; TEMP:
+	[(letrec () ,body) 
+;	 (inspect `(HMM ,body))
+;	 `("toplevel = " ,(Var body))]
+	 ((Stmt tenv) body)]
+
+	;; No recursion!
+	[(letrec ,binds ,body)
+	 (ASSERT (no-recursion! binds))
+	 ((Stmt tenv) `(let (,(car binds))
+			 (letrec ,(cdr binds) ,body)))]
+
+	[(emit ,vqueue ,[myExpr -> val])
+	 `("emit(" ,val ");\n")]
+
+	;; Print is required to be pre-annotated with a type.
+	;; (We can no longer do recover-type.)
+	[(print (type ,t ,e))
+	 ;(EmitPrint (myExpr e) (recover-type e tenv))
+	 (EmitPrint (myExpr e) t)]
+
+	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
+	[(begin ,[stmts] ...) stmts]
+
+	[(arr-set! ,[myExpr -> arr] ,[myExpr -> ind] ,[myExpr -> val])
+	 `(,arr "[" ,ind "] = " ,val ";\n")]
+
+	[(set! ,[Var -> v] ,[myExpr -> e])
+	 `(,v " = " ,e ";\n")]
+	
+	[(for (,i ,[myExpr -> st] ,[myExpr -> en]) ,bod)
+	 (let ([istr (Var i)])	   
+	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+		  ((Stmt (tenv-extend tenv (list i) '(Int))) bod)))]
+	[(break) "break;\n"]
+
+	;; This becomes nothing:
+	[___VIRTQUEUE___ ""]
+
+	;; Otherwise it's just an expression.
+	;; TEMP: HACK: Need to normalize contexts.
+	;; TODO: Not all expressions make valid statements.
+	[,[myExpr -> exp] `(,exp ";\n")]
+	[,unmatched (error 'emitC:Stmt "unhandled form ~s" unmatched)]
+	)))
+	
+    (define (Expr tenv)
+      (lambda (exp)
+	(match exp
+
+         ;; Special Constants:
+;	[nullseg "WSPrim::nullseg"]
+;	[nullseg "WSNULL"]
+	[nullseg "WSNULLSEG"]
+	[nullarr "WSNULL"]
+
+	[,c (guard (constant? c)) (Expr `(quote ,c))]
+	[(quote ,datum)
+	 ;; Should also make sure it's 32 bit or whatnot:
+	 (cond
+	  [(eq? datum #t) "TRUE"]
+	  [(eq? datum #f) "FALSE"]	  
+	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
+	  [(string? datum) (format "~s" datum)]
+	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
+	[,v (guard (symbol? v)) (Var v)]	
+
+	[(if ,[test] ,[conseq] ,[altern])
+	 `("(",test " ? " ,conseq " : " ,altern")")]
+	
+	; ============================================================
+	;; Here we handle "open coded" primitives:
+
+	;; TODO: tupref
+	[(,infix_prim ,[left] ,[right])
+	 (guard (memq infix_prim '(+ - * / < > <= >= =
+				     +. -. *. /. )))
+	 (let ([cname (case infix_prim
+			[(=) "=="]
+			[(+ * - / < > <= >=) infix_prim]
+			[(+. *. -. /.) ;; Chop off the period:
+			 (substring (symbol->string infix_prim) 0 1)])])
+	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
+
+	[(realpart ,[v]) `("(" ,v ".real)")]
+	[(imagpart ,[v]) `("(" ,v ".imag)")]
+
+	;; TYPE??
+	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
+
+	;; This is inefficient.  Only want to call getDirect once!
+	;; Can't trust the C-compiler to know it's effect free and do CSE.
+	[(seg-get ,[seg] ,[ind])	 
+	 `("(" ,seg ".getDirect())[" ,ind  "]")]
+	
+	;; Need to use type environment to find out what alpha is.
+	;; We store the length in the first element.
+	[(newarr ,[int] ,alpha)
+	 ;(recover-type )
+	 "newarr_UNFINISHED"]
+	
+	[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	[(length ,arr) "array_length_UNFINISHED"]
+
+
+	[(arr-set! ,x ...)
+	 (error 'emitC:Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
+	[(begin ,stmts ...)
+	 (error 'emitC:Expr "begin in expression context: ~s" `(begin ,stmts ...))]
+
+	;; Later we'll clean it up so contexts are normalized:
+	;[(set! ,[Var -> v] ,[(Expr tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+
+	;; Forming tuples.
+	[(make-struct ,name ,[arg*] ...)
+	 `(,(symbol->string name)"(",(insert-between ", " arg*)")")]
+	;; Referencing tuples.
+	[(struct-ref ,[x] ,fld)
+	 `("(",x "." ,(symbol->string fld)")")]
+
+	; ============================================================
+	;; Other prims fall through:
+	[(,prim ,[rand*] ...)
+	 (guard (regiment-primitive? prim))
+	 `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")")]
+	[(app ,rator ,[rand*] ...)
+	 (ASSERT (symbol? rator))				       
+	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
+	[,unmatched (error 'emitC:Expr "unhandled form ~s" unmatched)])
 	))
+
+    (define (Type t)
+      (match t
+	[Int "wsint_t"]
+	[Float "wsfloat_t"]
+	[,simple (guard (memq simple '(Complex Float)))
+		 (list->string (map char-downcase (string->list (symbol->string simple))))]
+	[,v (guard (symbol? v)) (symbol->string v)]
+	;; Went back and forth on whether this should be a pointer:
+	[(Sigseg ,[t]) `("RawSeg")]
+;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
+;	[(Signal ,[t]) `("Signal<" ,t ">*")]
+
+	[(Array ,[t]) `(,t "[]")]
+	[(Struct ,name) (symbol->string name)]
+	
+	;[,other (format "~a" other)]
+	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
+
+;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
+;; This implements our polymorphic show function.
+;; It prints something or other for any type.
+(define (EmitPrint e typ)
+  (match typ
+    [Int `("printf(\"%d\", ",e");\n")]
+    [Float `("printf(\"%f\", ",e");\n")]
+    [String `("printf(",e");\n")]
+    ;; TEMP: Have to wrap the sigseg to get the << method.
+    ;; This should be fixed in the C++.
+    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
+
+    ;; Make a print routine for this struct.
+    [(Struct ,name)
+     (match (assq name struct-defs)
+       [(,name [,fld* ,typ*] ...)
+	`("{ " ,(symbol->string name) " tmp = ",e";\n"
+	  "  cout << \"{\";\n"
+	  ,(insert-between "  cout << \"; \";\n"
+			   (map (lambda (fld typ)
+				  (EmitPrint (format "tmp.~a" fld) typ)
+				  )
+			     fld* typ*
+			     ))
+	  "  cout << \"}\"; }\n")
+	])]
     
-    (lambda (prog)
-      (match prog
-	[(,lang (quote (program ,expr ,struct-defs ,typ)))
-	 (mvlet ([(body funs) (Query "toplevel" typ expr (empty-tenv))])
-	   `(,(file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
-	     ,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
-	     ,funs 
-	     ,(make-output-printer typ) 
+    [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
+    ))
 
-	     ,boilerplate_premain
-	     ;"// " ,(Type typ) " toplevel;\n"
-	     ,(indent body "  ")
-	     ,(boilerplate_postmain (Var 'toplevel) typ)
-	     "}\n\n"
-	     ))]
-	[,other 
-	 (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
-	 (inspect other)
-	 (error 'wsquery->text "")]))))
+   (define (StructDef entry)
+     (match entry
+       [(,(symbol->string -> name) (,[symbol->string -> fld*] ,[Type -> typ*]) ...)
+	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)])
+	  `(,(block `("struct ",name)
+		    `([,typ* " " ,fld* ";\n"] ...
+		      ,(block `(,name"(",(insert-between 
+					  ", " `([,typ* " ",tmpargs] ...)
+					  )")")
+			      (map (lambda (fld arg)
+				     `(,fld " = " ,arg ";\n"))
+				fld* tmpargs)
+			      )))
+	    ";\n\n"))]))
 
+  ;============================================================
+  ;;; Other helpers:
 
-
-(define (immediate-type? t)
-  (or (memq t num-types)
-      (memq t '(Char))))
+  ;; Value types.
+  (define (immediate-type? t)
+    (match t
+      [,nt (guard (memq nt num-types)) #t]
+      [Char #t]
+      [(Struct ,name) #t]
+      ))
 
 ;; This converts data from the form it's on "in the wire" (queues
 ;; between nodes) into the form that's expected for the body of the
@@ -266,6 +486,32 @@
 	))
     ))
 
+  ;============================================================
+  ;;; Set unit tests
+
+  ;============================================================
+  ;; Main body:
+  ;; Here we stitch together the file out of its composit bits.
+    (mvlet ([(body funs) (Query "toplevel" typ expr (empty-tenv))])
+      `(,(file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
+	,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
+	"/* These structs represent tuples in the WS program. */\n"
+	,(map StructDef struct-defs)
+	,funs 
+	,(make-output-printer typ) 
+	
+	,boilerplate_premain
+					;"// " ,(Type typ) " toplevel;\n"
+	,(indent body "  ")
+	,(boilerplate_postmain (Var 'toplevel) typ)
+	"}\n\n"
+	))]
+  [,other ;; Otherwise it's an invalid program.
+   (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
+   (inspect other)
+   (error 'wsquery->text "")])))
+
+
 
 ;======================================================================
 ;;; Bits of boilerplate.
@@ -308,205 +554,7 @@ int main(int argc, char ** argv)
 	      "\nprivate:\n"
 	      ,body)) ";\n"))
 
-; ======================================================================
-;;; Helper functions for handling different program contexts:
-        
-    (define (Var var)
-      (ASSERT (symbol? var))
-      ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
-      (symbol->string var))
-    (define (PrimName var)
-      (format "WSPrim::~a" (mangle-name (symbol->string var))))
-      ;(symbol->string var))
-    (define (FunName var)
-      (format "WSFunLib::~a" var))
-      ;(symbol->string var))
 
-    (define (Stmt tenv)
-      (lambda (st)
-	(define myExpr (Expr tenv))
-      (match st
-
-	;; These immediates generate no code in Stmt position.
-	[,v (guard (symbol? v)) ""]
-	[(quote ,c) ""]
-
-
-	;; Must distinguish expression from statement context.
-	[(if ,[myExpr -> test] ,[conseq] ,[altern])
-	 `("if (" ,test ") {\n"
-	   ,(indent conseq "  ")
-	   "} else {\n"
-	   ,(indent altern "  ")
-	   "}\n")]
-	;; Not allowed in expression position currently:
-	[(let ([,[Var -> v] ,[Type -> t] ,[rhs]]) ,[body])
-	 `(,t " " ,v ";\n" ,body)]
-
-	;; This is a boilerplate that we can now remove:
-	[(letrec ([,v ,t (virtqueue)] ,rest ...) ,body)
-	 (let ([newenv (tenv-extend tenv (list v) (list t))])
-	   ((Stmt newenv) `(letrec ,rest ,body)))]
-
-	;; TEMP:
-	[(letrec () ,body) 
-;	 (inspect `(HMM ,body))
-;	 `("toplevel = " ,(Var body))]
-	 ((Stmt tenv) body)]
-
-	;; No recursion!
-	[(letrec ,binds ,body)
-	 (ASSERT (no-recursion! binds))
-	 ((Stmt tenv) `(let (,(car binds))
-			 (letrec ,(cdr binds) ,body)))]
-
-	[(emit ,vqueue ,[myExpr -> val])
-	 `("emit(" ,val ");\n")]
-
-	[(print ,e) (EmitPrint (myExpr e) (recover-type e tenv))]
-
-	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
-	[(begin ,[stmts] ...) stmts]
-
-	[(arr-set! ,[myExpr -> arr] ,[myExpr -> ind] ,[myExpr -> val])
-	 `(,arr "[" ,ind "] = " ,val ";\n")]
-
-	[(set! ,[Var -> v] ,[myExpr -> e])
-	 `(,v " = " ,e ";\n")]
-	
-	[(for (,i ,[myExpr -> st] ,[myExpr -> en]) ,bod)
-	 (let ([istr (Var i)])	   
-	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		  ((Stmt (tenv-extend tenv (list i) '(Int))) bod)))]
-	[(break) "break;\n"]
-
-	;; This becomes nothing:
-	[___VIRTQUEUE___ ""]
-
-	;; Otherwise it's just an expression.
-	;; TEMP: HACK: Need to normalize contexts.
-	;; TODO: Not all expressions make valid statements.
-	[,[myExpr -> exp] `(,exp ";\n")]
-	[,unmatched (error 'emitC:Stmt "unhandled form ~s" unmatched)]
-	)))
-	
-(define (Expr tenv)
-      (lambda (exp)
-	(match exp
-
-         ;; Special Constants:
-;	[nullseg "WSPrim::nullseg"]
-;	[nullseg "WSNULL"]
-	[nullseg "WSNULLSEG"]
-	[nullarr "WSNULL"]
-
-	[,c (guard (constant? c)) (Expr `(quote ,c))]
-	[(quote ,datum)
-	 ;; Should also make sure it's 32 bit or whatnot:
-	 (cond
-	  [(eq? datum #t) "TRUE"]
-	  [(eq? datum #f) "FALSE"]	  
-	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
-	  [(string? datum) (format "~s" datum)]
-	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
-	[,v (guard (symbol? v)) (Var v)]	
-
-	[(if ,[test] ,[conseq] ,[altern])
-	 `("(",test " ? " ,conseq " : " ,altern")")]
-	
-	; ============================================================
-	;; Here we handle "open coded" primitives:
-
-	;; TODO: tupref
-	[(,infix_prim ,[left] ,[right])
-	 (guard (memq infix_prim '(+ - * / < > <= >= =
-				     +. -. *. /. )))
-	 (let ([cname (case infix_prim
-			[(=) "=="]
-			[(+ * - / < > <= >=) infix_prim]
-			[(+. *. -. /.) ;; Chop off the period:
-			 (substring (symbol->string infix_prim) 0 1)])])
-	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
-
-	[(realpart ,[v]) `("(" ,v ".real)")]
-	[(imagpart ,[v]) `("(" ,v ".imag)")]
-
-	;; TYPE??
-	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
-
-	;; This is inefficient.  Only want to call getDirect once!
-	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get ,[seg] ,[ind])	 
-	 `("(" ,seg ".getDirect())[" ,ind  "]")]
-	
-	;; Need to use type environment to find out what alpha is.
-	;; We store the length in the first element.
-	[(newarr ,[int] ,alpha)
-	 ;(recover-type )
-	 "newarr_UNFINISHED"]
-	
-	[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(length ,arr) "array_length_UNFINISHED"]
-
-
-	[(arr-set! ,x ...)
-	 (error 'emitC:Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
-	[(begin ,stmts ...)
-	 (error 'emitC:Expr "begin in expression context: ~s" `(begin ,stmts ...))]
-
-	;; Later we'll clean it up so contexts are normalized:
-	;[(set! ,[Var -> v] ,[(Expr tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
-
-	;; Forming tuples.
-	[(tuple ,[arg*] ...)
-	 ;; Here we need to produce a new typedef for the struct type.
-	 FINISH-TUPLES
-	 ]
-
-	; ============================================================
-	;; Other prims fall through:
-	[(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
-	 `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")")]
-	[(app ,rator ,[rand*] ...)
-	 (ASSERT (symbol? rator))				       
-	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
-	[,unmatched (error 'emitC:Expr "unhandled form ~s" unmatched)])
-	))
-
-    (define (Type t)
-      (match t
-	[Int "wsint_t"]
-	[Float "wsfloat_t"]
-	[,simple (guard (memq simple '(Complex Float)))
-		 (list->string (map char-downcase (string->list (symbol->string simple))))]
-	[,v (guard (symbol? v)) (symbol->string v)]
-	;; Went back and forth on whether this should be a pointer:
-	[(Sigseg ,[t]) `("RawSeg")]
-;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
-;	[(Signal ,[t]) `("Signal<" ,t ">*")]
-	[(Array ,[t]) `(,t "[]")]
-	;[,other (format "~a" other)]
-	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
-
-
-;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
-;; This implements our polymorphic show function.
-;; It prints something or other for any type.
-(define (EmitPrint e typ)
-  (match typ
-    [Int `("printf(\"%d\", ",e");\n")]
-    [Float `("printf(\"%f\", ",e");\n")]
-    [String `("printf(",e");\n")]
-    ;; TEMP: Have to wrap the sigseg to get the << method.
-    ;; This should be fixed in the C++.
-    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
-    [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
-    ))
-
-(define (StructDef name types)
-  000000
-  )
 
 ;;================================================================================
 
@@ -595,24 +643,26 @@ int main(int argc, char ** argv)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp"))
   )
 
+;; Disabled because this code can't get to wscode->text right now.
+  (define these-tests
+    `(
+#;
+      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (begin '35)) "noname" (empty-tenv))])
+	 (,text->string txt))
+       
+       ;; Requires helpers.ss
+       ;; Not very tight:
+       ;; Doesn't generate any code for this now.
+       ,(lambda (s) (not (substring? "35" s)))]
+					;     ,(lambda (s) (substring? "35" s))]
 
-(define these-tests
-  `(
-    [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (begin '35)) "noname" (empty-tenv))])
-       (,text->string txt))
-
-     ;; Requires helpers.ss
-     ;; Not very tight:
-     ;; Doesn't generate any code for this now.
-     ,(lambda (s) (not (substring? "35" s)))]
-;     ,(lambda (s) (substring? "35" s))]
-    
-    [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname" (empty-tenv))])
-       (,text->string txt))
-     ;"TRUE ? 35 : 36"]
-     ,(let ([substring? substring?])
-	(lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
-    ))
+#;      
+      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname" (empty-tenv))])
+	 (,text->string txt))
+					;"TRUE ? 35 : 36"]
+       ,(let ([substring? substring?])
+	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
+      ))
 
 (define test-this (default-unit-tester "wavescript_emit-c.ss: generating WaveScript C code." these-tests))
 (define test-wavescript_emit-c test-this)

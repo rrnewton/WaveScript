@@ -31,7 +31,7 @@
 
       ;; The fixed names of fields.
       (define field-names 
-	(map (lambda (n) (string->symbol (format "fld~s" n)))
+	(map (lambda (n) (string->symbol (format "fld~s" (fx+ 1 n))))
 	  (iota MAX_TUPLE_SIZE)))
 
       ;; An association list accumulating new struct types.
@@ -39,7 +39,7 @@
       (define struct-table '())
            
       ;; We avoid the boilerplate by defining this as a "generic traversal"
-      (define collect-tupdefs
+      (define (collect-tupdefs expr tenv)
 	(core-generic-traverse/types
 	 ;; Driver
 	 (lambda (expr tenv loop)
@@ -49,14 +49,14 @@
 	      (printf "TUPLE!! ~s\n" arg*)	 
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)]
 		    [newtype (unique-name 'tuptyp)])
-		(if (polymorphic-type? argtypes)
+		(if (polymorphic-type? type)
 		    (error 'nominalize-types
 			   "there should not remain polymorphic tuples after static-elab: ~s" type))
 		(match type
 		  [#(,argtypes ...)
 		   (let* ([results (map (lambda (x) (collect-tupdefs x tenv)) arg*) ]
 			  [args (map result-expr results)]
-			  [tydefs (apply append (map result-tydefs args))])
+			  [tydefs (apply append (map result-tydefs results))])
 		     (make-result 
 		      `(make-struct ,newtype ,args ...)
 		      `((,(map (lambda (arg) (recover-type arg tenv)) arg*)
@@ -69,15 +69,16 @@
 	     ;; tuprefs are simple:
 	     [(tupref ,i ,len ,[result])
 	      (make-result `(struct-ref ,(result-expr result) ,(list-ref field-names i))
-			   (result-tydefs))]
+			   (result-tydefs result))]
 
 	     [,other (loop other tenv)]
 	     ))
 	 ;; Fuser
 	 (lambda (ls k)
-	   (printf "FUSING: ~s\n\n" ls)
+;	   (printf "FUSING: ~s\n\n" ls)
 	   (make-result (apply k (map result-expr ls))
 			(apply append (map result-tydefs ls))))
+	 expr tenv
 	 ))
 
       ;; TODO: REMOVE DUPLICATE STRUCT DEFS THAT HAVE THE SAME TYPES
@@ -88,7 +89,7 @@
       (lambda (prog) 
 	(match prog 
 	  [(,lang '(program ,body ,type))
-	   (let* ([result (collect-tupdefs body)]
+	   (let* ([result (collect-tupdefs body (empty-tenv))]
 		  [newbod (result-expr result)]
 		  [tupdefs (remove-redundant (result-tydefs result))])
 	    
@@ -107,15 +108,13 @@
 		  (match (assoc t* tupdefs)
 		    [#f (error 'nominalize-types:convert-type
 			       "cannot find tuple type ~s in tuple defs:\n ~s" (list->vector t*) tupdefs)]
-		    [(,types ,flds ,structname) structname])]
+		    [(,types ,flds ,structname) `(Struct ,structname)])]
 		 [,else (error 'nominalize-types:convert-type "unmatched type: ~s" else)]))
 
 	     (define (do-bindings vars types exprs reconstr exprfun) 
 	       (reconstr vars (map convert-type types) (map exprfun exprs)))
 
 	     (set! bindings-fun do-bindings)
-
-	     (inspect tupdefs)
 	     
 	     (match (convert-types `(,lang '(program ,newbod ,type)))
 	       [(,lang '(program ,body ,type))
@@ -123,10 +122,10 @@
 		`(nominalize-types-language
 		  '(program ,body		       
 		     ;; We stick the type definitions here:
-		     (struct-defs ,@(map (match-lambda (,types ,flds ,name)
-					   `(,name (map list flds types)))
+		     (struct-defs ,@(map (match-lambda ((,types ,flds ,name))
+					   `(,name ,@(map list flds types)))
 				      tupdefs))
-		     ,type))])
+		     ,(convert-type type)))])
 	     )]))))
 
   (define these-tests  `())

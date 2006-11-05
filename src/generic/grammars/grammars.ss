@@ -71,6 +71,9 @@
     [Expr ('tupref Int Int Expr)]
     [Expr (Prim Expr ...)]
 
+    ;; This is a type assertion that constrains the type of an expression:
+    [Expr ('type Type Expr)]
+
     ;; Adding side-effects for WaveScript.
     [Expr ('begin Expr ...)]
     [Expr ('set! Var Expr)]
