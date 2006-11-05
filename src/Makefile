@@ -73,14 +73,14 @@ chez_native:
 # (doesn't work right on Mac OS or fedora core)
 
 # Run "make chez" before this to compile the code before grabbing a Petite heap:
-heap: 
+heap: builddir
 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 #	$(RM) -f build/regiment.0.heap 
 #	ln -s build/$(MT)/regiment.0.heap build/regiment.0.heap
 
 # A fullheap includes the Chez compiler as well as the petite heap.
-fullheap:
+fullheap: builddir
 	$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./;
 #	@if [ `which chez` ]; \
 #	echo "$(CHEZ) -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./"; \
@@ -92,7 +92,8 @@ fullheap:
 
 ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 
-
+builddir:
+	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
 
 test: clean chez
 	./regiment_script.ss test
