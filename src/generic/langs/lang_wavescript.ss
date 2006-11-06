@@ -115,7 +115,7 @@
 		 
 		 wserror inspect
 		 emit virtqueue
-		 smap parmap
+		 smap parmap sfilter
 		 iterate break deep-iterate
 		 unionList
 		 fft 
@@ -601,6 +601,7 @@
      
      (define (parmap f s) (stream-parmap f s))
      (define smap stream-map)
+     (define sfilter stream-filter)
 
      ;(define emission (make-parameter '()))
      (define (iterate f s)

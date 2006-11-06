@@ -332,6 +332,8 @@
     (rdump          ((Area 'a)) (Signal 'a))
 
     (smap           (('a -> 'b) (Signal 'a)) (Signal 'b))
+    ;; Well, this is the nail in the coffin in any idea of a continuous signal model:
+    (sfilter        (('a -> Bool) (Signal 'a)) (Signal 'a))
     
     ;; This joins two signals in the network.
     (smap2          (('a 'b -> 'c) (Signal 'a) (Signal 'b)) (Signal 'c))

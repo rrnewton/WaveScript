@@ -230,8 +230,8 @@
       (if (regiment-verbose)
 	  (IFDEBUG
 	   (begin (parameterize ([pretty-line-length 150]
-				 [print-length 20]
-				 [print-level 20])
+				 [print-length 30]
+				 [print-level 30])
 		    (newline)
 		    (pretty-print x))
 		  (printf "================================================================================\n\n")
@@ -243,7 +243,7 @@
   (set! p (optional-stop (verify-regiment p)))
   (set! p (optional-stop (pass_desugar-pattern-matching p)))
   (printf "Program verified.\n")
-  
+
   (set! p (optional-stop (rename-vars p)))
   (set! p (optional-stop (eta-primitives p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
@@ -252,7 +252,7 @@
   (set! p (optional-stop (reduce-primitives p)))
 
   (set! p (optional-stop (merge-iterates p)))
-  
+
   (set! p (optional-stop (verify-elaborated p)))
   (set! p (optional-stop (retypecheck p)))
 
@@ -330,9 +330,15 @@
     (lambda () (print-var-types typed)(flush-output-port))
     'replace)
   (parameterize ([pretty-line-length 150]
-		 [pretty-one-line-limit 100])
+		 [pretty-one-line-limit 100]
+		 [print-level #f]
+		 [print-length #f]
+		 [print-graph #f])
     (with-output-to-file ".__parsed.txt"
       (lambda () (pretty-print prog)(flush-output-port))
+      'replace)
+    (with-output-to-file ".__compiledprog.txt"
+      (lambda () (pretty-print compiled)(flush-output-port))
       'replace))
   stream)
 

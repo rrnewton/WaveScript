@@ -30,11 +30,11 @@ go "demo1_audiofile.ws"
 go "demo2_iterate.ws"
 go "demo2b_iterateState.ws"
 go "demo3a_tuples.ws"
+go "demo3b_inlining.ws"
 #     "demo3_fft.ws"
 go "demo4_rewindow.ws"
 
-
-#     "demo5_inline.ws"
+#     "demo5_rewindow_inlined.ws"
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"
 #     "demo7_syncN.ws"

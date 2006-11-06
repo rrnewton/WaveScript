@@ -29,6 +29,8 @@
 ;;;  us to be more permissive.)
 
 
+;;;; TODO: MAKE MUTABLE VARS SAFE!
+
 (module pass04_static-elaborate mzscheme
   (require (lib "include.ss")
            ;(all-except (lib "compat.ss") flush-output-port)
@@ -80,22 +82,31 @@
 ;   `(output (grammar ,remove-unquoted-constant-grammar PassInput))
    '(output)
    (let ()
+
+     ;; A table binding computable prims to an expression that evals
+     ;; to a function which will carry out the primitive.
     (define computable-prims 
-      '(+ - * / car cons cdr
-	  = < <= > >= 
-	  equal? null? pair? number? even? odd? not))
+      '((+ +) (- -) (* *) (/ /) 
+	(+. +) (-. -) (*. *) (/. /) 
+	(+: +) (-: -) (*: *) (/: /)
+	(= =) (< <) (<= <=) (> >) (>= >=)
+	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
+	(equal? equal?) (null? null?) (pair? pair?) ;number? 
+	(even? even?) (odd? odd?) (not not)))
 
     (define (do-prim prim args)
+      (disp "DOING PRIM: " prim args)
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
-      (if (memq prim computable-prims)
-	  `(quote ,(eval `(,prim ,@(map (lambda (a) `(quote ,a)) args))))
-	  (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
-		 `(,prim ,@args))))
+      (let ([entry (assq prim computable-prims)])
+	(if entry
+	 `(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args))))
+	 (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
+		`(,prim ,@args)))))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-;      (disp "INLINGING " rator rands)
+      (disp "INLINING " rator)
       (match rator
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
@@ -121,9 +132,12 @@
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
           [(set! ,lhs ,(rhs))
            (if (eq? v lhs) 
+	       9988
+	       #;
 	       (error 'static-elaborate:count-refs
-		      "Hmm... shouldn't be counting references to iterator-state: ~s" v))
-           rhs]
+		      "Hmm... shouldn't be counting references to mutable-var: ~s" v)
+	       rhs
+	       )]
 
 	  [(tupref ,n ,m ,[x]) x]
 	  [(tuple ,[args] ...) (apply + args)]
@@ -135,6 +149,18 @@
 	  [(app ,[rator] ,[rands] ...) (+ rator (apply + rands))]
           [,unmatched
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
+
+    
+    (define get-mutable
+      (core-generic-traverse 
+       (lambda (x fallthru)
+	 (match x
+	   [(set! ,v ,[e]) (cons v e)]
+	   [,other (fallthru other)]))
+       (lambda (ls k) (apply append ls))))
+
+    ;; TEMP: (ironic) HACK:
+    (define mutable-vars 'uninit)
 
     ;; TODO FINISH:
     #;
@@ -215,7 +241,7 @@
     ;; unavailable, to not-available.
     (define process-expr           
       (lambda (expr env)
-	;(printf "ENV: ~a ~a\n" expr env)
+	;(printf "ENV: ~a\n" (map car env))
 	(letrec ([available? ;; Is this value available at compile time.
 		  (lambda (x)
 		    (if (eq? x not-available) #f
@@ -225,7 +251,8 @@
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
 			   ;; A tuple is available even if all its components aren't.
 			   [(tuple ,args ...) #t]
-			   [,var (guard (symbol? var)) 
+			   [,var (guard (symbol? var)
+					(not (memq var mutable-vars)))
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
 			   [,else #f])))]
@@ -243,7 +270,8 @@
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
 	  [,prim (guard (regiment-primitive? prim)) prim]
-          [,var (guard (symbol? var))		
+          [,var (guard (symbol? var) (memq var mutable-vars)) var]
+          [,var (guard (symbol? var))	  
 		(match (assq var env)
 		  [#f (error 'static-elaborate "variable not in scope: ~a" var)]
 		  ;; Anything let-bound with a reference count of 1 gets inlined:
@@ -254,10 +282,10 @@
 		  [(,_ (quote ,d) ,__) 
 		   (guard (atom? d)) ; Don't inline constants requiring allocation.
 		   `(quote ,d)]
+		  ;; FIXME: BUG: SHOULD THIS HAVE A COMMA?:
 		  [(,_ ,not-available ,__) var]
 		  ;; Resolve aliases:
-		  [(,_ ,v ,__) (guard (symbol? v))
-		       (process-expr v env)]
+		  [(,_ ,v ,__) (guard (symbol? v)) (process-expr v env)]
 		  ;; Otherwise, nothing we can do with it.
 		  [,else   var])
 		;; This appears to disable the system here:
@@ -273,13 +301,28 @@
 				     env)))]
           
           ;; Don't go inside iterates for now:
-          [(iterate ,fun ,[strm]) `(iterate ,fun ,strm)]
+	  ;; I'm not confident that we've updated the inliner to deal with side-effects.
+	  ;; [2006.11.05] DANGER, ENABLING NOW BUT AM STILL NOT CONFIDENT:
+
+	  ;; We can't inline teh iterator state however, don't try for now.
+	  ;; [2006.11.05] Currently this exposes a bug while executing demo7
+	  [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
+	   (let ([newenv (append (map (lambda (v) (list v 99999)) lhs*) env)])
+	     `(iterate (letrec ([,lhs* ,ty* ,rhs*] ...) ,(process-expr bod newenv)) ,strm))]
+          [(iterate ,[fun] ,[strm])  `(iterate ,fun ,strm)]
+	  ;; This is altogether a hack, we need to purify these iterates.
+
+          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
+	  
+	  ;; Don't go inside for loops for now:
+	  [(for (,i ,[st] ,[en]) ,bod)  `(for (,i ,st ,en) ,bod)]
           [(begin ,(args) ...) `(begin ,args ...)]
           [(set! ,v ,(rhs)) `(set! ,v ,rhs)]
 	  
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
+	   ;(printf "BINDING: ~s\n" lhs*)
 	   (if (null? lhs*)
 	       (process-expr expr env)
 	       ;; TODO: FIXME: NASTY COMPLEXITY:
@@ -313,11 +356,14 @@
 	     `(letrec ,newbinds ,newbod)))]
          
 	  ;; Here we do computation if the arguments are available:
-          [(if ,[test] ,[conseq] ,[altern])
-	   (if (available? test)
-	       (if (getval test)
-		   conseq  altern)
-	       `(if ,test ,conseq ,altern))]
+          [(if ,test ,[conseq] ,[altern])
+	   ;(disp "CONDITIONAL: " test)
+	   (let ([newtest (process-expr test env)])
+	     (if (available? newtest)  
+		 (begin 
+		   (if (getval newtest) conseq  altern))		 
+		 `(if ,newtest ,conseq ,altern))
+	     )]
 	  
 	  [(tupref ,ind ,len ,[tup])
 	   (if (available? tup)
@@ -333,7 +379,7 @@
 
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim rand* (map available? rand*))
-	   (if (and (memq prim computable-prims)
+	   (if (and (assq prim computable-prims)
 		    (andmap available? rand*))
 	       (do-prim prim (map getval rand*))
 	       `(,prim ,rand* ...))]
@@ -345,7 +391,12 @@
 	  [(app ,[rator] ,[rands] ...)
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
-	       (inline (getval rator) rands)
+	       (let ([code (getval rator)])
+		 (if (not (null? (intersection mutable-vars (core-free-vars rator))))
+		     (error 'static-elaborate 
+			    "can't currently inline rator with free mutable vars!: ~s"
+			    code)
+		     (inline code rands)))
 	       `(app ,rator ,rands ...))]
 
           [,unmatched
@@ -354,6 +405,7 @@
     (lambda (expr)
       (match expr	    
         [(,input-language (quote (program ,body ,type)))
+	 (set! mutable-vars (get-mutable body))
 	 ;; Run until we reach a fixed point.
          (let loop ([oldbody body]
 		    [body (process-expr body '())])
@@ -366,7 +418,8 @@
 (define these-tests 
   `( 
 
-    [(static-elaborate '(foo '(program (+ '3 '4) notype)))
+    ["Make sure it folds some simple constants." 
+     (static-elaborate '(foo '(program (+ '3 '4) notype)))
      (static-elaborate-language '(program '7 notype))]
 
     [(static-elaborate
@@ -416,6 +469,17 @@
 	 (static-elaborate ',prog)
 	 ,prog])
 
+    ,(let ([prog '(iterate (lambda (x) (Int)
+				   (letrec ([___VIRTQUEUE___ (VQueue Int) (virtqueue)])
+				     (letrec ([y Bool '#t])
+				       (begin (for (i '1 '10) (set! y '#f))
+					      (if y (emit ___VIRTQUEUE___ '77)
+						  (emit ___VIRTQUEUE___ '100))
+					      ___VIRTQUEUE___)
+				       ))))])
+       `["(non-persistent) Mutable variable inside iterate.  This was a bug with conditional-reduction."
+	 (static-elaborate '(foolang '(program ,prog (Signal Int))))
+	 (static-elaborate-language '(program ,prog (Signal Int)))])
     ))
 
 (define test-this (default-unit-tester

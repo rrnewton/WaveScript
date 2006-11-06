@@ -36,18 +36,58 @@
   (provide core-generic-traverse
 	   core-generic-traverse/types
            test-this test-core-generic-traverse
-	   binding-form?)
+	   binding-form? 
+	   binding-form->other-exprs binding-form->scoped-exprs binding-form->vars
+	   core-free-vars
+	   )
 
   (chezimports prim_defs
 	       (except helpers test-this these-tests)
 	       ;regiment_helpers
 	       )
 
+;; Here is a simple procedural interface.
+
+;; TODO: CONSOLIDATE: Rewrite the define-pass [Bindings ...] clause to use these helpers:
+
 ;; This is for double-checking our work below.
 (define (binding-form? x)
+  ;; This doesn't verify the *validity* of the form:
   (and (pair? x)
        (memq (car x) '(for let let* letrec lazy-letrec lambda))
        ))
+;; Returns in-scope expressions froma a binding form.
+(define (binding-form->scoped-exprs x)
+  (match x
+    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (cons bod rhs*)]
+    [(lambda ,vars ,types ,bod) (list bod)]
+    [(let ,_ ,bod) (list bod)]
+    [(for (,i ,st ,en) ,bod) (list bod)]
+    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    ))
+;; Returns not-in-scope expressions from a binding form.
+(define (binding-form->other-exprs x)
+  (match x
+    [(letrec . ,_) '()]
+    [(lambda . ,_) '()]
+    [(let ([,lhs* ,ty* ,rhs*] ...) ,bod) rhs*]
+    [(for (,i ,st ,en) ,bod) (list st en)]
+    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    ))
+;; Returns bound-vars from a binding form.
+(define (binding-form->vars x)
+  (match x
+    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) lhs*]
+    [(lambda (,vars ...) ,types ,bod)       vars]
+    [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    lhs*]
+    [(for (,i ,st ,en) ,bod)            (list i)]
+    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    ))
+
+;================================================================================
 
 ;; Generic traversal over Regiment Expressions.
 (define core-generic-traverse 
@@ -244,6 +284,25 @@
       [(d f)   (lambda (e) ((traverser d f (empty-tenv)) e))]
       [(d f e)             ((traverser d f (empty-tenv)) e)]
       [(d f e tenv)        ((traverser d f tenv) e)])))
+
+; ================================================================================
+;;; Derived utilities.
+
+;; This should be a general-purpose free-vars utility for the core lang.
+(define core-free-vars 
+  (core-generic-traverse
+   (lambda (x fallthru)
+     (match x        
+       [,v (guard (symbol? v)) (list v)]
+       [,form (guard (binding-form? form))
+	      (union  
+	       (difference (apply append (map free-vars (binding-form->scoped-exprs form)))
+			   (binding-form->vars form))
+	       (apply append (map free-vars (binding-form->other-exprs form)))
+	       )]
+       [,x (fallthru x)]))
+   (lambda (ls k) (union append ls))
+   ))
 
 ; ================================================================================
 

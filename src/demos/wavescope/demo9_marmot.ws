@@ -225,7 +225,7 @@ fun detect(scorestrm) {
       /* check for 'noise lock' */
       if win.end - _start > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
-	      ++", re-estimating noise");
+	      ++", re-estimating noise\n");
 	
 	noise_lock := noise_lock + 1;
 	reset();
@@ -320,10 +320,15 @@ wscores = iterate (w in freq) { emit (marmotscore(w), w); }
 
 detections = detect(wscores);
 
+
+positives = sfilter(fun((b,_,_)) b, detections)
+		   
+
 //synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 //synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
-BASE <- detections;
+BASE <- positives;
+//BASE <- detections;
 //BASE <- synced;

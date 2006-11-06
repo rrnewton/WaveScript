@@ -1,5 +1,4 @@
 
-fun marmotscore(w) { 3.8 }
 
 // This does a simple marmot detection with no inlining.
 
@@ -31,8 +30,11 @@ hn = rw1;
 
 freq = smap(fft, hn);
 
+//fun marmotscore(w) { 3.8 }
+
 wscores = iterate (w in freq) {
-  emit(marmotscore(w), w);
+  //emit(marmotscore(w), w);
+  emit (3.8, w); 
 };
 
 detections = 
