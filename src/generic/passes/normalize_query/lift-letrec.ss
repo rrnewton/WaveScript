@@ -36,6 +36,9 @@
 
 ;(define lift-letrec-grammar ...)
 
+;; NOTE: DEPENDS ON LAZINESS.
+;; WILL LIFT AN EXPRESSION OUT OF A CONDITIONAL!
+
 (define lift-letrec
   (let ()
 

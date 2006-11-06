@@ -127,6 +127,7 @@
 	(values (map car intermediate)
 		(apply append (map cdr intermediate)))))
 
+    ;; .returns An expression and a list of new decls.
     (define (process-expr expr tenv)
       (core-generic-traverse/types 
        (lambda (expr tenv fallthrough)
@@ -143,8 +144,24 @@
 		      (append test-decls conseq-decls altern-decls)))]	   
 
 	   [(lambda ,formals ,types ,body)
-	    (let ([body (process-letrec body (tenv-extend tenv formals types))])
-	      (vector `(lambda ,formals ,types ,body) '()))]
+	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])	      
+	      (vector `(lambda ,formals ,types 
+			     ,(if (not (null? decls))
+				  `(lazy-letrec ,decls ,body)
+				  body))
+		    '()))]
+
+	   ;; For now don't lift out an iterate's lambda!
+	   [(iterate ,[fun] ,[source])
+	    (let-match ([#(,f ,decl1) fun]
+			[#(,s ,decl2) source])
+	      (vector `(iterate ,f ,s)
+		      (append decl1 decl2))
+	      )]
+
+	   [(lazy-letrec . ,rest)
+	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
+		    '())]
 
 	   [(tupref ,n ,m ,x)
 	    (mvlet ([(res binds) (make-simple x tenv)])
@@ -231,8 +248,13 @@
     ;===========================================================================
     (lambda (program)
       (match program
-             [(,input-lang '(program ,letexp ,type))
-	      `(remove-complex-opera*-language '(program ,(process-letrec letexp (empty-tenv)) ,type))]
+             [(,input-lang '(program ,exp ,type))
+	      (let-match ([#(,newbod ,bnds) (process-expr exp (empty-tenv))])
+		`(remove-complex-opera*-language 
+		  '(program ,(if (null? bnds) newbod	
+				 `(lazy-letrec ,bnds ,newbod)
+				 ) ,type))
+		)]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))
