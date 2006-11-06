@@ -136,12 +136,16 @@
 
 	   ;; Todo: could put all this work in the fuser.
 
+	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
+	   ;; DEPENDS ON LAZINESS/PURITY:
 	   [(if ,a ,b ,c)
 	    (mvlet ([(test test-decls)     (make-simple a tenv)]
 		    [(conseq conseq-decls) (make-simple b tenv)]
 		    [(altern altern-decls) (make-simple c tenv)])
+	      ;(if (WAVESCRIPT_INVOCATION) ...)
 	      (vector `(if ,test ,conseq ,altern)
-		      (append test-decls conseq-decls altern-decls)))]	   
+		      (append test-decls conseq-decls altern-decls))
+	      )]
 
 	   [(lambda ,formals ,types ,body)
 	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])	      
@@ -152,13 +156,13 @@
 		    '()))]
 
 	   ;; For now don't lift out an iterate's lambda!
-	   [(iterate ,[fun] ,[source])
-	    (let-match ([#(,f ,decl1) fun]
-			[#(,s ,decl2) source])
-	      (vector `(iterate ,f ,s)
-		      (append decl1 decl2))
+	   [(iterate ,[fun] ,source)
+	    (let-match ([#(,f ,decl1) fun])
+	      (mvlet ([(s decl2) (make-simple source tenv)])		
+		(vector `(iterate ,f ,s)
+			(append decl1 decl2)))
 	      )]
-
+	   
 	   [(lazy-letrec . ,rest)
 	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
 		    '())]

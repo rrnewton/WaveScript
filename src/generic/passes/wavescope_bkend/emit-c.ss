@@ -80,7 +80,7 @@
 	;; An alias:
 	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
-	    (values `( ,name " = " ,(symbol->string e) ";\n") ())]
+	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n") ())]
 
 	;; Forbidding recursion for now (even though this says 'letrec').
 	[(letrec ,binds ,bod)
@@ -336,7 +336,7 @@
 	;; Went back and forth on whether this should be a pointer:
 	[(Sigseg ,[t]) `("RawSeg")]
 ;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
-;	[(Signal ,[t]) `("Signal<" ,t ">*")]
+	[(Signal ,[t]) `("WSBox*")]
 
 	[(Array ,[t]) `(,t "[]")]
 	[(Struct ,name) (symbol->string name)]
@@ -505,7 +505,7 @@
 	,(make-output-printer typ) 
 	
 	,boilerplate_premain
-					;"// " ,(Type typ) " toplevel;\n"
+	;;"// " ,(Type typ) " toplevel;\n"
 	,(indent body "  ")
 	,(boilerplate_postmain (Var 'toplevel) typ)
 	"}\n\n"
@@ -530,7 +530,7 @@ int main(int argc, char ** argv)
   WSInit(&argc, argv);
 
   /* declare variable to hold final result */
-  WSBox* toplevel;
+  //WSBox* toplevel;
 
   /* begin constructing operator graph */
 ")
