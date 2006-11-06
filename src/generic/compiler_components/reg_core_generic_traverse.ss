@@ -252,10 +252,11 @@
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
 		       (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
 			     (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
-		      [(,letrec ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
+		      [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
 		       (guard (memq letrec '(letrec lazy-letrec)))
-		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
-			 (fuse (cons ((loop newtenv) bod) rhs*)
+		       (let* ([newtenv (tenv-extend tenv lhs* ty*)]
+			      [f (loop newtenv)])
+			 (fuse (cons (f bod) (map f rhs*))
 			       (lambda (x . y*) `(,letrec ([,lhs* ,ty* ,y*] ...) ,x))))]
 
 		      [(for (,i ,[st] ,[en]) ,bod)

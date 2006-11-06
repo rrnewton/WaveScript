@@ -130,22 +130,25 @@
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
-	 (ASSERT (symbol? sig))
-	  
-	 (let ([class_name `("Iter_" ,name)])
-	   ;; First we produce a line of text to construct the box:
-	   (values `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
-			      ,name"->connect(" ,(Var sig) ");\n")
-		   ;; Then we produce the declaration for the box itself:
-		   (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
-		     (list (WSBox class_name 
+	 (ASSERT (symbol? sig))	  
+	 (let* ([parent sig] ;(if (symbol? sig) sig (unique-name 'sig))]
+		[class_name `("Iter_" ,name)]
+		;; First we produce a line of text to construct the box:
+		[ourstmts `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
+			      ,name"->connect(" ,(Var parent) ");\n")]
+		;; Then we produce the declaration for the box itself:
+		[ourdecls 
+		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
+		   (list (WSBox class_name 
 				(match typ
 				  [(Signal ,t) (Type t)]
 				  [,other (error 'emitC:Query "expected iterate to have signal output type! ~s" other)])
 				;; Constructor:
 				(block `(,class_name "()")  stateinit)
 				;; This produces a function declaration for iterate:				
-				iterator+vars))))
+				iterator+vars)))]) 
+	   ;(if (symbol? sig) 
+	       (values ourstmts ourdecls)
 	   )]
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]

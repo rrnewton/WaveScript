@@ -57,8 +57,8 @@
 	  [(tupref ,n ,m ,[x decls]) (values `(tupref ,n ,m ,x) decls)]
 
 	  [(lambda ,formalexp ,types (free ,free ,[body body-decl]))
-	   (if (not (null? (difference free formalexp)))
-	       (error 'lift-letrec "free was supposed to be null for now! ~a" free))
+;	   (if (not (null? (difference free formalexp)))
+;	       (error 'lift-letrec "free was supposed to be null for now! ~a" free))
 
 	   ;; This version lifts to the top of each lambda:
 	   (values `(lambda ,formalexp ,types (lazy-letrec ,body-decl ,body)) '())
@@ -75,8 +75,8 @@
 	  [(letrec ([,lhs* ,type* ,[rhs* rhs-decl*]] ...)  ,[body body-decl])
 	   (values body
 		   (append (apply append rhs-decl*)
-			   body-decl
-			   (map list lhs* type* rhs*)))]
+			   (map list lhs* type* rhs*)
+			   body-decl))]
 
 
           [(,prim ,[rand* rand-decl*] ...)
