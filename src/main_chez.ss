@@ -175,7 +175,7 @@
 			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))
-   (unless (top-level-bound? 'REGIMENT-INTERACTIVE-MODE)
+   (when (top-level-bound? 'REGIMENT-SCRIPT-MODE)
      (exit -1)) ;; Should only do this if we're running as a script.
    ))
 
@@ -209,6 +209,28 @@
 (include "generic/util/scheme_fft.ss")
 (include "generic/util/fft.ss") (import fft)
 
+(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+
+;; Load this before the simulator.
+(IF_GRAPHICS
+    (begin
+      ;; Only for swl1.0+.  Gives us define-class, etc.
+      (import swl:oop) 
+      (import swl:generics) 
+      (import (except swl:macros mvlet))
+      (import swl:option)
+      (import swl:threads)
+
+      (include "chez/basic_graphics.ss")
+      (include "chez/graphics_stub.ss")
+      (import basic_graphics)
+      (import graphics_stub))
+    ;; Otherwise, throw in some stubs that are invoked by the generated code:
+    (begin ;; [2006.03.01] Nixing these.  Instead we should be disciplined about not generating any such calls.
+           ;(define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
+	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
+	   ))
+
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
 ;; This tries to dynamically load the shared object the first time the function is called:
@@ -232,26 +254,6 @@
 (define current-time (seconds-since-1970))
 ;======================================================================
 
-(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
-
-;; Load this before the simulator.
-(IF_GRAPHICS
-    (begin
-      ;; Only for swl1.0+.  Gives us define-class, etc.
-      (import swl:oop) 
-      (import swl:generics) ;(import swl:macros)
-      (import swl:option)
-      (import swl:threads)
-
-      (include "chez/basic_graphics.ss")
-      (include "chez/graphics_stub.ss")
-      (import basic_graphics)
-      (import graphics_stub))
-    ;; Otherwise, throw in some stubs that are invoked by the generated code:
-    (begin ;; [2006.03.01] Nixing these.  Instead we should be disciplined about not generating any such calls.
-           ;(define-syntax draw-mark (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
-	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
-	   ))
 
 (include "generic/compiler_components/logfiles.ss") (import logfiles)
 

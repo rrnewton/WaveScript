@@ -70,6 +70,7 @@
    (define-id-syntax ig (identifier-syntax (init-graphics))) ;; shorthand
 
    (define-id-syntax cg (identifier-syntax (close-graphics))) ;; shorthand
+   (define-id-syntax cw (identifier-syntax (close-graphics))) ;; shorthand
 
 ;   (define-syntax g  (identifier-syntax (simalpha-draw-world (fresh-simulation))))
 
@@ -228,7 +229,7 @@
 (define-id-syntax t9 (load-regiment "../analysis/firelightning/sensys/prog2_manual.tm" 'verbose))
 (define-id-syntax t10 (load-regiment "../analysis/firelightning/sensys/prog2_manual_batchopt.tm" 'verbose))
 (define-id-syntax t11 (load-regiment "../analysis/firelightning/sensys/test.tm" 'verbose))
-(define-id-syntax t12 (load-regiment "../analysis/firelightning/ipsn/hand.tm" 'verbose))
+(define-id-syntax t12 (load-regiment (++ (REGIMENTD) "/analysis/firelightning/ipsn/p3/hand.tm") 'verbose))
 
 (define-id-syntax tb (load-regiment "demos/regiment/bug.tm" ))
 

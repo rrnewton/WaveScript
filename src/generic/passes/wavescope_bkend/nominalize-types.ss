@@ -23,6 +23,28 @@
   (chezimports (except helpers test-this these-tests)
 	       (except reg_core_generic_traverse test-this these-tests))
 
+  ;; Does this type have a known size?
+  ;; Matters for making tuples into structs.
+  (define (known-size? t)
+    (define (id x) x)
+    (match t
+      [,simple (guard (symbol? simple)) #t]
+      ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
+      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
+      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+      ;; This shouldn't be in a tuple anyway:
+      [(,[arg] ... -> ,[ret]) #f]
+
+      [(Struct ,name)         #t]
+      ;; These are pointers, doesn't matter what the type inside is.
+      [(Sigseg ,_)            #t]
+      [(Array  ,_)            #t]
+      [(List   ,_)            #t]
+      [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+      [#(,[t] ...) (andmap id t)]
+      [,else #f]))
+
+
   (define nominalize-types
     (let ()
       ;; The generic traversal returns an intermediate value of type
@@ -49,11 +71,12 @@
 	      (printf "TUPLE!! ~s\n" arg*)	 
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)]
 		    [newtype (unique-name 'tuptyp)])
-		(if (polymorphic-type? type)
-		    (error 'nominalize-types
-			   "there should not remain polymorphic tuples after static-elab: ~s" type))
 		(match type
 		  [#(,argtypes ...)
+		   (unless (andmap known-size? argtypes)
+		     (error 'nominalize-types
+			    "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
+			    type))
 		   (let* ([results (map (lambda (x) (collect-tupdefs x tenv)) arg*) ]
 			  [args (map result-expr results)]
 			  [tydefs (apply append (map result-tydefs results))])
@@ -65,6 +88,23 @@
 			 )
 			. ,tydefs))
 		     )]))]
+
+	     [(unionList ,ls)
+	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
+		    [newstruct (unique-name 'unionlst_tuptyp)])
+		(match tupletype
+		  [(Signal #(Int ,argtype))
+		   (unless (known-size? argtype)
+		     (error 'nominalize-types
+			    "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
+			    tupletype))
+		   (let ([result (collect-tupdefs ls tenv)])
+		     (make-result 
+		      ;; Annotate the primapp with the struct-type.
+		      `(unionList ,newstruct ,(result-expr result))
+		      (cons `((Int ,argtype) ,(list-head field-names 2) ,newstruct)
+			    (result-tydefs result))
+		      ))]))]
 
 	     ;; tuprefs are simple:
 	     [(tupref ,i ,len ,[result])

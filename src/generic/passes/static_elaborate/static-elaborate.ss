@@ -92,7 +92,10 @@
 	(= =) (< <) (<= <=) (> >) (>= >=)
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
-	(even? even?) (odd? odd?) (not not)))
+	(even? even?) (odd? odd?) (not not)
+	(map map)
+	(filter filter)
+	))
 
     (define (do-prim prim args)
       (disp "DOING PRIM: " prim args)
@@ -250,22 +253,40 @@
 			   [(lambda ,vs ,tys ,bod) #t]
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
 			   ;; A tuple is available even if all its components aren't.
-			   [(tuple ,args ...) #t]
+			   ;[(tuple ,[args] ...) (andmap id args)]
 			   [,var (guard (symbol? var)
 					(not (memq var mutable-vars)))
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
 			   [,else #f])))]
+		 
+		 ;; Is it, not completely available, but a container that's available?
+		 [container-available? 
+		  (lambda (x)
+		    (if (eq? x not-available) #f
+			(match x 
+			  [(quote ,datum) #t]
+			  [(cons ,x ,y) #t]
+			  [(tuple ,args ...) #t]
+			  [,var (guard (symbol? var)
+				       (not (memq var mutable-vars)))
+				(let ((entry (assq var env)))
+				  (and entry (container-available? (cadr entry))))]
+			  [,else #f]
+			  )
+		    ))]
+
 		 [getval ;; If available, follow aliases until you have a real value expression:
 		  (lambda (x)
 		    (match x
-			   [(quote ,datum) datum]
-			   [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
-			   [(tuple ,args ...) `(tuple ,args ...)]
-			   [,var (guard (symbol? var))
-				 (getval (cadr (assq var env)))]
-			   [,else (error 'static-elaborate "getval bad input: ~a" x)]))])
-
+		      [(quote ,datum) datum]
+		      [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
+		      [(tuple ,args ...) x]
+		      [(cons ,a ,b) x]
+		      [,var (guard (symbol? var))
+			    (getval (cadr (assq var env)))]
+		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))])
+	  
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
@@ -282,6 +303,12 @@
 		  [(,_ (quote ,d) ,__) 
 		   (guard (atom? d)) ; Don't inline constants requiring allocation.
 		   `(quote ,d)]
+
+		  ;; Inline lambda expressions as long as they don't capture mutables.
+;		  [(,_ (lambda ,vars ,types ,bod) ,__)
+;		   (guard (null? (intersection (core-free-vars bod) mutable-vars)))
+;		   `(lambda ,vars ,types bod)]
+
 		  ;; FIXME: BUG: SHOULD THIS HAVE A COMMA?:
 		  [(,_ ,not-available ,__) var]
 		  ;; Resolve aliases:
@@ -353,6 +380,7 @@
 				       (and (> refs 0)
 					    `(,lhs ,type ,rhs)))
 				     lhs* type* newrhs* occurs))])
+	     ;(disp "OCCURS: " lhs* occurs)
 	     `(letrec ,newbinds ,newbod)))]
          
 	  ;; Here we do computation if the arguments are available:
@@ -364,9 +392,13 @@
 		   (if (getval newtest) conseq  altern))		 
 		 `(if ,newtest ,conseq ,altern))
 	     )]
-	  
+
+	  [(tuple ,[args] ...) `(tuple ,args ...)]
+	 
+
+	  ;; First we handle primitives that work on container types: 
 	  [(tupref ,ind ,len ,[tup])
-	   (if (available? tup)
+	   (if (container-available? tup)
 	       (match (getval tup)
 		 [(tuple ,args ...)
 		  (unless (eq? (length args) len)
@@ -375,10 +407,33 @@
 		  (list-ref args ind)]
 		 [,else (error 'static-elaborate:process-expr "implementation error, tupref case")])
 	       `(tupref ,ind ,len ,tup))]
-	  [(tuple ,[args] ...) `(tuple ,args ...)]
-
+	  [(car ,[x]) 
+	   (if (container-available? x)
+	       (match (getval x)
+		 [(cons ,a ,b) a]
+		 [,ls (guard (list? ls)) `(quote ,(car ls))]
+		 [,x (error 'static-elaborate:process-expr "implementation error, car case: ~s" x)])
+	       `(car ,x))]
+	  [(cdr ,[x]) 
+	   (if (container-available? x)
+	       (match (getval x)
+		 [(cons ,a ,b) b]
+		 [,ls (guard (list? ls)) `(quote ,(cdr ls))]
+		 [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
+	       `(cdr ,x))]
+	  [(map ,[f] ,[ls])
+	   (if (container-available? ls)
+	       (match (getval ls) 
+		 [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(map ,f ,b) env))]		 
+		 [,ls (guard (list? ls))
+		  (match ls
+		    [() ''()]
+		    [(,h . ,[t]) `(cons (app ,f ,h) ,t)])]
+		 [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)])
+	       `(map ,f ,ls))]
+	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-	   ;(disp "PRIM: " prim rand* (map available? rand*))
+	   ;(disp "PRIM: " prim (map available? rand*) rand* )
 	   (if (and (assq prim computable-prims)
 		    (andmap available? rand*))
 	       (do-prim prim (map getval rand*))
@@ -397,7 +452,9 @@
 			    "can't currently inline rator with free mutable vars!: ~s"
 			    code)
 		     (inline code rands)))
-	       `(app ,rator ,rands ...))]
+	       (begin 
+		 (disp "CANT inline: ~s" rator)
+		 `(app ,rator ,rands ...)))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))))

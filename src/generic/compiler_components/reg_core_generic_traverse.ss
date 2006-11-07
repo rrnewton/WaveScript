@@ -37,7 +37,8 @@
 	   core-generic-traverse/types
            test-this test-core-generic-traverse
 	   binding-form? 
-	   binding-form->other-exprs binding-form->scoped-exprs binding-form->vars
+	   binding-form->other-exprs binding-form->scoped-exprs
+	   binding-form->vars binding-form->types
 	   core-free-vars
 	   )
 
@@ -63,8 +64,8 @@
     [(lambda ,vars ,types ,bod) (list bod)]
     [(let ,_ ,bod) (list bod)]
     [(for (,i ,st ,en) ,bod) (list bod)]
-    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
-    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    [(let* . ,_) (error 'binding-form->scoped-exprs "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->scoped-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns not-in-scope expressions from a binding form.
 (define (binding-form->other-exprs x)
@@ -83,8 +84,18 @@
     [(lambda (,vars ...) ,types ,bod)       vars]
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    lhs*]
     [(for (,i ,st ,en) ,bod)            (list i)]
-    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
-    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    [(let* . ,_) (error 'binding-form->vars "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->vars "not a binding form: ~s" x)]
+    ))
+;; Returns types from a binding form.
+(define (binding-form->types x)
+  (match x
+    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) ty*]
+    [(lambda (,vars ...) (,types ...) ,bod) types]
+    [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    ty*]
+    [(for (,i ,st ,en) ,bod)                '(Int)]
+    [(let* . ,_) (error 'binding-form->types "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->types "not a binding form: ~s" x)]
     ))
 
 ;================================================================================

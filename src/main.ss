@@ -248,12 +248,16 @@
   (set! p (optional-stop (eta-primitives p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
-
-  (set! p (optional-stop (reduce-primitives p)))
-
-  (set! p (optional-stop (merge-iterates p)))
+  
+  ;; We typecheck before verify-elaborated.
+  ;; This might kill lingering polymorphic types ;)
+  (set! p (optional-stop (retypecheck p)))
+  (printf "Post elaboration types: \n")
+  (print-var-types p)
 
   (set! p (optional-stop (verify-elaborated p)))
+  
+  (set! p (optional-stop (merge-iterates p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -313,21 +317,24 @@
 		     'replace)
 		   ))
 
-  (define compiled (run-ws-compiler prog))
   (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
 
-  (define __ (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)"))
+  (define __ 
+    (begin 
+      (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)")
+      (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
+      (print-var-types typed)
+      (flush-output-port)
+      (with-output-to-file ".__types.txt"
+	(lambda () (print-var-types typed)(flush-output-port))
+	'replace))
+    )
 
+  (define compiled (run-ws-compiler prog))  
   (define stream (delay (wavescript-language 
 			 (match (strip-types compiled)
 			   [(,lang '(program ,body ,_ ...)) body]))))
   
-  (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-  (print-var-types typed)
-  (flush-output-port)
-  (with-output-to-file ".__types.txt"
-    (lambda () (print-var-types typed)(flush-output-port))
-    'replace)
   (parameterize ([pretty-line-length 150]
 		 [pretty-one-line-limit 100]
 		 [print-level #f]

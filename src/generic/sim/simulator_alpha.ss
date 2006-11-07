@@ -243,6 +243,8 @@
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]
       [random reg:random-int]
+      [listLength length]
+      [length vector-length]
 
       ))
   

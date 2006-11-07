@@ -23,9 +23,9 @@
   (lambda (n)
     (if (= 0 n)
 	(rmap nodeid world)
-	(rmap incr (loop (- n 1))))))
+	(rmap incr (app loop (- n 1))))))
 
-(loop 10)
+(app loop 10)
 
 ; ======================================================================
 ; These are some commands for invoking this file from the interactive REPL:

@@ -12,4 +12,6 @@ if ! [ $REGIMENTD ]; then REGIMENTD=$HOME/regiment_alpha; fi
 #else $REGIMENTD/regiment_script.ss $*;
 #fi
 
+SWL_ROOT=$HOME/bin/Linux-i686/swl1.0a/lib/
+
 swl_bare --script $REGIMENTD/src/regiment.ss ./ $*

@@ -15,6 +15,23 @@
 ;; Also verifies that there are no disallowed applications.
 (define-pass verify-elaborated
 ;    [OutputGrammar annotate-app-types-grammar]
+
+    ;; UNFINISHED:
+    #;    (define (verify-type t) #t)
+    (define (verify-type t)
+      (define (id x) x)
+      (match t
+	;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
+	[,s (guard (symbol? s)) #t]
+	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
+	[(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+	[(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+	[(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+	[#(,t* ...) (and (andmap verify-type t*)
+			 (not (polymorphic-type? (list->vector t*)))
+			 )]
+	[,else #f]))
+
     [Expr/Types 
      (lambda (expr tenv fallthrough)
        (match expr
@@ -27,6 +44,16 @@
 		    "post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
 		    type rator))
 	    `(app ,rator ,rand* ...))]
+
+	 ;; Run verification on the types:
+	 [,form (guard (binding-form? form))
+		(for-each (lambda (t)
+			    (unless (verify-type t)
+			      (error 'verify-elaborated 
+				     "type is not valid post-elaboration: ~s" t)))
+		  (binding-form->types form))
+		(fallthrough form tenv)]
+
 	 [,other (fallthrough other tenv)]))]
   
   ;; TODO: FIXME VERIFY THAT THERE ARE *NO* POLYMORPHIC TYPES LEFT:

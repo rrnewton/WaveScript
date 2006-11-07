@@ -188,6 +188,7 @@
 
 	  ;; Compile mode:
 	  [(c compile)
+	   (define-top-level-value 'REGIMENT-SCRIPT-MODE 'script)
 	   (if (null? filenames)
 	       (begin
 		 (printf "No input file.  Type top-level Regiment expression.~n")
@@ -264,7 +265,10 @@
 		   (begin (runloop 'compile (list fn))
 			  (set! fn out_file))
 		   (error 'regiment:simulate "can't take file with this extension: ~s" fn)))
-	  
+	     
+	     ;; Run swl:startup
+	     (IF_GRAPHICS (orig-scheme-start) (void))
+
 	     (printf "Running simulation from file: ~a\n" fn)
 	     (let ((result
 		    ;; Be careful to watch for parameterization:	     
@@ -279,6 +283,7 @@
 	       (print-stats)
 	       (if plot (gnuplot result))
 	       (if simrepl (new-cafe))
+	       	       
 	       result))]
 
 	  ;; Interactive mode.  A Scheme REPL.
@@ -297,7 +302,6 @@
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
 	   (optimize-level 0)
-	   (define-top-level-value 'REGIMENT-INTERACTIVE-MODE 'interactive)
 
 	   (cond
 	    [(null? (cdr args)) (new-cafe)]
@@ -397,6 +401,7 @@
 	   )]
 	  
 	  [(wscomp)
+	   (define-top-level-value 'REGIMENT-SCRIPT-MODE 'script)
 	   (let ()
 	     (define port (match filenames
 			  ;; If there's no file given read from stdout

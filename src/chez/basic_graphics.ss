@@ -30,7 +30,12 @@
 
 
   (import constants)
-
+  ;; Only for swl1.0+.  Gives us define-class, etc.
+  (import swl:oop)
+  (import (except swl:generics rgb-red rgb-green rgb-blue))
+  (import (except swl:macros mvlet))
+  (import swl:option)
+  (import swl:threads)
 
  ;; This global variable points to the drawing surface itself.
 (define the-win #f) 
@@ -512,11 +517,12 @@
 					'(let ((vtime (simworld-vtime (simalpha-current-simworld))))
 					   (for-each 
 					       (lambda (ob)
-						 (let ((reading ((simalpha-sense-function)
+						 (let ((reading (((simalpha-sense-function) vtime)
+								 'default
 								 (node-id (simobject-node ob))
 								 (car (node-pos (simobject-node ob)))
 								 (cadr (node-pos (simobject-node ob)))
-								 vtime)))
+								 )))
 						   (sim-setlabel 
 						    (if (number? reading)							
 							(number->string (round-to 2 reading))

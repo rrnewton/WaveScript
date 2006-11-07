@@ -234,9 +234,14 @@
 
     ;; This doesn't carry a time value, it just "fires" every so often.
     (timer            (Int) (Signal #()))
+
     ;; Takes channel, window size, overlap:
+    ;; This reads a hard-wired file of marmot-data.
+    ;; The format is four interleaved channels of 16-bit signed ints.
     (audio            (Int Int Int) (Signal (Sigseg Float)))
+
     ;; Takes a file to read from, window size, overlap:
+    ;; Reads a stream of Uint16's from the file.
     (audioFile        (String Int Int)  (Signal (Sigseg Int)))
 
 

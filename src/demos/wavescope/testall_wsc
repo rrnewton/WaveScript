@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 COMP=.__wscMessages.txt
 RUN=.__runquery_output.txt
@@ -13,8 +13,6 @@ function go () {
     ./run_query | head -20 >> $RUN
 }
 
-
-
 # wsc demo0_audio.ws 
 # echo >> $RUN
 # echo DEMO0: >> $RUN
@@ -25,7 +23,7 @@ function go () {
 # echo DEMO1: >> $RUN
 # ./run_query | head -20 >> $RUN
 
-go demo0_audio.ws
+go "demo0_audio.ws"
 go "demo1_audiofile.ws"
 go "demo2_iterate.ws"
 go "demo2b_iterateState.ws"

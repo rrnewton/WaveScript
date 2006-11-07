@@ -638,7 +638,9 @@
 ;; Cannot set it right now because no sensor stubs have been defined yet here in constants.ss .  
 ;; When sensor stubs are defined, this shoud be set to some default value.
 (define-regiment-parameter simalpha-sense-function-constructor 'unset)
-;; This parameter on the hand is bound by the simulator to the constructed sensor-functions.
+;; This parameter is bound by the simulator to the constructed sensor-functions.
+;; Shouldn't be modified directly.
+;; Should have type:  () -> VTime -> SensorTypeString, NodeID, Xcoord, Ycoord -> SensedValue
 (define-regiment-parameter simalpha-sense-function #f)
 ;(define simalpha-sense-function (make-parameter #f (lambda (x) 
 ;						     (inspect `(sensor! . ,x))

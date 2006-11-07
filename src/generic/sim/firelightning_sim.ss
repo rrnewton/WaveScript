@@ -170,7 +170,8 @@
       ;; ACTUAL SENSING KERNEL:  Supports 'temp and 'light sensors.
       (lambda (type id x y)
 	(case type
-	  [(temp) 
+	  ;; Default sensor is temp:
+	  [(temp default)
 	   (let ((temp 0))
 	     (for-each (lambda (f)
 			 ;; Measure distance from us to the center of the fire.
@@ -340,6 +341,7 @@
 
 ;; [2006.03.02] Hack, just allocating this fixed schedule for now.
 ;; [2006.04.05] Hacking 
+
 (define CONSTANT_STRIKES
   '(1000000 
     2000000

@@ -14,13 +14,17 @@
 
 ;; This just checks some hard coded locations for the marmot file.
 (define (marmotfile)
-    (cond
-     [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-      "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-     [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-      "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-     [else (error 'marmotfile "couldn't find marmot data")]))
-
+  (let ([file (cond
+	       [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+		"/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+	       [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
+		"~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
+	       [(file-exists? "/tmp/100.raw")
+		"/tmp/100.raw"]
+	       [else (error 'marmotfile "couldn't find marmot data")])])
+    (printf "Reading marmot datafile: ~s\n" file)
+    file))
+	
 ;; Takes 35 seconds using stupid approach (read-char).
 (define (read-all)
   (wavescript-language)

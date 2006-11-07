@@ -234,6 +234,7 @@
 	;; This becomes nothing:
 	[___VIRTQUEUE___ ""]
 
+
 	;; Otherwise it's just an expression.
 	;; TEMP: HACK: Need to normalize contexts.
 	;; TODO: Not all expressions make valid statements.
@@ -314,6 +315,10 @@
 	;; Referencing tuples.
 	[(struct-ref ,[x] ,fld)
 	 `("(",x "." ,(symbol->string fld)")")]
+
+	[(unionList ,structtype ,ls)
+	 (error 'emit-C "unionList not implemented yet: ~s" 
+		`(unionList ,structtype ,ls))]
 
 	; ============================================================
 	;; Other prims fall through:
