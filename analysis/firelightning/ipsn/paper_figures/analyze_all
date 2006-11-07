@@ -1,0 +1,13 @@
+#!/bin/bash
+
+
+for i in `seq 10 10`;
+do
+  for j in `seq 1 1`;
+    do
+	../analyze_vs_groundtruth.ss analyze \
+	    -l "./logs/30n_1hr_fixednetwork_FASL/deadsimple_thresh"$i"_noise"$j".log.gz" \
+	    -o ./TEMP.dat
+#	    -o ./data/results_thresh"$i"_noise"$j".dat
+  done 
+done 

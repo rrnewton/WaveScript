@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Normally 1-10 by 1-6
+
+# INHERITED ENVIRONMENT VARS: 
+#     LOGFILENAME, INPUTFILE
+#     LOWER, STEP, UPPER, NOISE, 
+# Then NODES (=30/100/200) is read by the underlying run_querysim.ss
+
+#LOGFILENAME=deadsimple_thresh
+#LOGFILENAME=table_thresh
+#NOISE=6
+
+# for i in `seq 0 10 40`;
+#   do
+#     # FIRST RUN
+#     echo test -f "./logs/prog1/deadsimple_thresh"$i"_noise"$NOISE".log.gz" ; 
+#     if test -f "./logs/prog1/deadsimple_thresh"$i"_noise"$NOISE".log.gz" ; 
+#     then echo "Log already exists! Noise:"$NOISE" and Thresh:"$i; 
+#     else 
+# 	echo "P1: RUNNING IT -- Noise:"$NOISE" and Thresh:"$i;
+# 	../run_querysim.ss -param $i -noise $NOISE \
+# 	    -f "../prog1.rs" \
+# 	    -l "./logs/prog1/deadsimple_thresh"$i"_noise"$j".log.gz" \
+# 	    -w "../world.simworld";
+#     fi 
+#     # THEN ANALYZE CONCURRENTLY:
+# #	(../analyze_vs_groundtruth.ss \
+# #	    -l "./logs/deadsimple_thresh"$i"_noise"$j".log.gz" \
+# #	    -o ./data/results_thresh"$i"_noise"$j".dat &)
+#   done 
+
+echo Doing Runs.  Params ln:$LOGFILENAME infile:$INPUTFILE low:$LOWER step:$STEP hi:$UPPER noise:$NOISE
+
+for i in `seq $LOWER $STEP $UPPER`; do 
+    echo test -f "./logs/""$LOGFILENAME"_thresh$i"_noise"$NOISE".log.gz" ; 
+    if test -f "./logs/""$LOGFILENAME"_thresh$i"_noise"$NOISE".log.gz" ; 
+    then echo "Log already exists! Noise:"$NOISE" and Thresh:"$i; 
+    else 
+	echo "RUNNING $INPUTFILE -- Noise:"$NOISE" and Thresh:"$i;
+	../analyze_vs_groundtruth.ss -param $i -noise $NOISE \
+	    -f "../$INPUTFILE"  \
+	    -l "../logs/""$LOGFILENAME"_thresh$i"_noise"$NOISE".log.gz" \
+	    -w "../world.simworld"; 
+    fi; 
+done
+
+# ../run_querysim.ss -param 0 -noise $NOISE \
+#     -f "../prog0.rs"  \
+#     -l "../logs/prog0.log.gz"  \
+#     -w "../world.simworld"; 
