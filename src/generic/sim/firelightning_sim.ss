@@ -122,7 +122,6 @@
 			      [strike-x (/ worldx 2)]
 			      [strike-y (/ worldy 2)]
 			      )
-			  (inspect strike-x)
 			  ;(printf "  LIGHTNING!! ~a of ~a ~a\n" i numstrikes strike-time)
 			  (let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
 						    ;; The graphical object for this fire is a strange thing.  

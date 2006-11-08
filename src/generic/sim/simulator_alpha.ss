@@ -361,8 +361,8 @@
 				 ;; HACK: CHEATING AND PUTTING IN GRADIENT ARGS:
 				 (bare-msg-object rat (list 0 0 'nongrad-invoke 0 x) current-vtime)
 				 current-vtime))])			
-			(inspect (cons 'map rnd))
-			(inspect (cons 'mapresult (map f rnd)))
+			;(inspect (cons 'map rnd))
+			;(inspect (cons 'mapresult (map f rnd)))
 			(map f rnd)))]
 		  ;; And this:
 		  [(fold ,[rator] ,[zero] ,[rand])
@@ -375,7 +375,7 @@
 					;          (g_parent g_origin g_hopcount g_version a_31 b_30)
 				  (bare-msg-object rat (list 0 0 'nongrad-invoke 0 stt x) current-vtime)
 				  current-vtime))])
-			(inspect (cons 'fold rnd))
+			;(inspect (cons 'fold rnd))
 			(foldl f zer rnd)))]
 
 		  
