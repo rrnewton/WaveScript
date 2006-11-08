@@ -28,6 +28,10 @@ Things I'm working on now --Ryan:
 
 ================================================================================
 
+[2006.11.08]
+ *) Move more into the simworld structure.  In particular, world
+    xbound/ybound.  Maybe connectivity model also.
+
 [2006.11.05]
  *) Change inliner to allow "lib" functions that don't inline (of
     appropriate type).

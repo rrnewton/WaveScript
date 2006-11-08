@@ -116,6 +116,10 @@
 ;;
 ;; [2006.03.02] To make the argument conventions even more confusing,
 ;; I just added the option to include a simworld argument before the file-name.
+;;
+;; [2006.11.08] It looks like there are two conditions in which a
+;; stale world is used.  Either when 'use-stale-world is passed
+;; explicitely, or when (simalpha-current-simworld) is non-false.
 (define (load-regiment . args)
   (match args    
     [(,world ,fn . ,opts) (guard (simworld? world) (string? fn))

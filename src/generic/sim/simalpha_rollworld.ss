@@ -70,7 +70,7 @@
 ;; (There are more topologies in "network_topologies.ss")
 ;;
 ;;   .returns A 'simworld' record.
-(define (fresh-simulation)    
+(define (fresh-simulation)
 
   (define connectivity-fun (build-connectivity-fun))
 
@@ -238,6 +238,9 @@
             (list->set ;; eq? based list->set
              (apply append
                     (map (lambda (simob)
+			   (unless (simobject-gobj simob)
+			     (error 'clean-simworld!
+				    "Here's a simobject with no associated gobj: ~s\n" simob))
                            (map cadr (gobject-edgelist (simobject-gobj simob))))
                          (simworld-all-objs sim))))))
        (for-each unhighlight-edge lines)))
@@ -293,7 +296,10 @@
       [(world) (freeze-world world 'topo-only)]
       [(world mode)
        (case mode
-	 [(topo-only) (make-simworld (simworld-graph world) #f #f #f #f #f #f #f)]       
+	 [(topo-only) 
+	  (make-simworld (simworld-graph world) 
+			 #f #f #f #f #f #f #f
+			 )]
 	 [(full) 
 	  ;; This is a hack, without being careful about what we're
 	  ;; touching, we just dive in and walk all over the simworld

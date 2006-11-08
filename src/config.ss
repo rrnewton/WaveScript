@@ -13,8 +13,8 @@
 
 ;; [2006.08.28] This is the "#define" for building WAVESCOPE related code.
 ;; When turned off, the system should build Regiment without WaveScope extensions.
-(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) on] [(_ on) on]))  ;; ON
-;(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) off] [(_ on) (void)])) ;; OFF
+;(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) on] [(_ on) on]))  ;; ON
+(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) off] [(_ on) (void)])) ;; OFF
 
 ;(define-syntax WAVESCOPE (syntax-rules () [(_ expr ...) (IFWAVESCOPE (list expr ...) ())]))
 
@@ -23,5 +23,5 @@
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
 ;;   3 -- unsafe optimizations, used for long running simulations.
-(define REGOPTLVL 3)
+(define REGOPTLVL 0)
 ;; Note that this is separate from IFDEBUG above.

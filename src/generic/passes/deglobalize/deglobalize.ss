@@ -1088,12 +1088,13 @@
 	  [(sense ,node) ;; Transforms into a local sense.
 	   (values `([,name (sync-sense)]) '())]
 
-	  ;; [2006.02.15] For now we have a cheater clock provided for us by the simulator:
-	  [(sense 'clock ,node) (values `([,name (my-clock)]) '())]
-
 	  [(sense (quote ,type) ,node) ;; Transforms into a local sense.  Doesn't use node...
 	   (guard (string? type))
-	   (values `([,name (sync-sense (quote ,type))]) '())]	  
+	   (if (equal? type "clock")
+	       ;; [2006.02.15] For now we have a cheater clock provided for us by the simulator:
+	       (values `([,name (my-clock)]) '())
+	       (values `([,name (sync-sense (quote ,type))]) '())
+	       )]
 
 	  [(sense . ,other)
 	   (error 'deglobalize "invalid sense syntax: ~s" `(sense . ,other))]

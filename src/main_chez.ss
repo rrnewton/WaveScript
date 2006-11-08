@@ -72,7 +72,7 @@
 	      (run-cp0 (lambda (cp0 x) x))]
 	     [(2) (optimize-level 2)]
 	     [(3)
-	      (printf "Configuring compiler for \n")
+	      (printf "Configuring compiler for full optimize mode. (unsafe)\n")
 	      ;; This configuration is for running extended simulation-experiments only:
 	      ;; REMEMBER to also disable IFDEBUG in constants.ss
 	      (define-top-level-value 'simulator-batch-mode #t)

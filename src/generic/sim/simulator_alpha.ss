@@ -981,6 +981,7 @@
   (lambda args
     (define THEPROG 'uninitialized)
     ;; First this loop runs, to get the token machine ready; stores it in THEPROG.
+    ;; It makes a tail-call to read-params to finish up and do the actual invocation.
     (define prep-token-machine
 	    (lambda args
 	      (match args
@@ -1044,6 +1045,8 @@
     ;; This deals with the many options that run-simulator-alpha can handle:
     (define read-params
 	     (lambda (params) 
+	       ;; Flags that can be passed through to start-sim-alpha
+	       (define valid-pass-through-flags '(use-stale-world))
 	       (match params
 ;		      [,x (guard (disp "read params" params) #f) 3]
 
@@ -1093,8 +1096,8 @@
 		       ]
 		      ;; Pass these flags on to start-alpha-sim
 		      [(,pass-through . ,rest)
-		       (guard (memq pass-through '(use-stale-world)))
-		       (set! flags (cons 'use-stale-world flags))
+		       (guard (memq pass-through valid-pass-through-flags))
+		       (set! flags (cons pass-through flags))
 		       (read-params rest)]
 		      ;; These flags are recognized, but ignored.
 		      [(,ignored . ,rest)
@@ -1126,9 +1129,9 @@
 	  ;; Note: replacing logfiles is dangerous when we're running experiments.
 	  '(replace compressed) ; exclusive?
 	  'replace))
-
+    
     ;; Only allow accepted flags:
-    (DEBUGASSERT (subset? flags '(simple use-stale-world)))
+    (ASSERT (subset? flags '(simple use-stale-world)))
 
     ;; Now to really run it, but first we instantiate the sensor-stubs for the program to read:
     (printf "Starting alpha-sim, initializing sensor-stub...\n")
@@ -1172,7 +1175,10 @@
 	   [sim (if (memq 'use-stale-world flags)
 		    ; We reuse the stale world, but we freshen it at least:
 		    (begin 
-		      (printf "Starting alpha sim based on the existing \"stale\" simworld.\n")
+		      (fprintf (current-error-port)
+			       "Starting alpha sim based on the existing \"stale\" simworld. (~s nodes)\n"
+			       (length (simworld-all-objs (simalpha-current-simworld)))
+			       )
 		      (clean-simalpha-counters!)
 		      (clean-simworld! (simalpha-current-simworld)))
 		    (fresh-simulation))])
@@ -1226,6 +1232,7 @@
   			 ;; Just to be safe I'm resetting this here.  Don't want to freeze on any print statements! -[2005.10.26] 
   			 [print-graph #t]
   			 )
+
     	    (if simple-scheduler
   		(run-alpha-simple-scheduler sim node-code-fun stopping-time? old-output-port)
   		; [2005.09.30] Disabling for now, not loading the full scheduler:

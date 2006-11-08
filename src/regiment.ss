@@ -80,6 +80,7 @@
   (printf "  -print    <file>    print any log-file in human readable format~n")
   (printf "  -examine  <file>    describe the chunking format of an existing logfile~n")
   (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
+  (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world~n")
   (printf "~n")
   (printf "WSINT options: ~n")
   (printf "WSCOMP options: ~n")
@@ -266,25 +267,31 @@
 			  (set! fn out_file))
 		   (error 'regiment:simulate "can't take file with this extension: ~s" fn)))
 	     
-	     ;; Run swl:startup
-	     (IF_GRAPHICS (orig-scheme-start) (void))
-
-	     (printf "Running simulation from file: ~a\n" fn)
-	     (let ((result
-		    ;; Be careful to watch for parameterization:	     
-		    (mvlet (([prog params] (read-regiment-source-file fn)))
+	     (define-top-level-value 'go-sim
+	       (lambda ()
+		 (printf "Running simulation from file: ~a\n" fn)
+		 (let ((result
+			;; Be careful to watch for parameterization:	     
+			(mvlet (([prog params] (read-regiment-source-file fn)))
 					;(inspect params)
-		      (with-evaled-params params
-					  (lambda () 
-					    (apply run-simulator-alpha prog 
-						   'srand (current-time)
-						   opts))))))
-	       ;; Print simalpha stats:
-	       (print-stats)
-	       (if plot (gnuplot result))
-	       (if simrepl (new-cafe))
-	       	       
-	       result))]
+			  (with-evaled-params params
+					      (lambda () 
+						(apply run-simulator-alpha prog 
+						       'srand (current-time)
+						       opts))))))
+		   ;; Print simalpha stats:
+		   (print-stats)
+		   (if plot (gnuplot result))
+		   (if simrepl (new-cafe))
+		   result)))
+
+	     (IF_GRAPHICS 
+	      ;; This starts swl then evals the expression.
+	      (bounce-to-swl '(go-sim))	      
+	      (begin (printf "WOOT\n")
+		     (go-sim)
+		     ))
+	     )]
 
 	  ;; Interactive mode.  A Scheme REPL.
 	  #;[(i interact)
@@ -376,13 +383,42 @@
 		  ;; TODO: THIS DOESN'T WORK!!! COULD HAVE COMMENTS AT THE BEGINNING OF THE FILE.
 		  (if (equal? "#@" (list->string (list c1 c2)))
 		      (printf "First expression in file is FASL encoded.  (Binary fast-loading format.)\n")
-		      (printf "First characters in file appears to be non-FASL plaintext~a.\n"
+		      (printf "First characters in file appears to be non-FASL plaintext (might be wrong) ~a.\n"
 			      (if (equal? (extract-file-extension file) "gz")
 				  " (except for being gzipped)" ""))
 		      )))]
 	     [(-examine ,_ ...)
 	      (error 'regiment:log:examine "-examine expects exactly one file name argument: ~a" args)]
-	     [,other (error 'regiment:log "unsupported options: ~a" other)]
+
+	     [(-vw ,worldfile)
+	      (let ([file (symbol->string worldfile)])
+		(IF_GRAPHICS 			     
+		 (begin 
+		   (unless (file-exists? file)
+		     (error 'regiment:log:view-world "this worldfile doesn't exist: ~s" file)
+		     (exit -1))
+		   ;; Read only the first entry, set up as global world.
+		   (simalpha-current-simworld (read (open-input-file file)))
+		   (animate-world! (simalpha-current-simworld))
+		   (printf "Animated world from world file ~s.\n" file)
+		   ;(clean-simalpha-counters!)
+		   ;(inspect (simalpha-current-simworld))
+		   (bounce-to-swl '(begin 
+				     ;(clean-simworld! (simalpha-current-simworld))
+				     (init-graphics)
+				     (simalpha-draw-world (simalpha-current-simworld))
+					;(printf "HMM: ~s\n" (simalpha-current-simworld))
+				     ;; Run a stupidly simple query just to initialize things. 
+					;(run-simulator-alpha (run-compiler '3) 'use-stale-world)
+				     )
+				  )
+		   )
+		 (begin (printf "view-world (-vw) mode doesn't really make sense without GUI loaded!")
+			(exit -1)))
+		)]
+
+	     [,other (warning 'regiment:log "unsupported options or missing arguments: ~a" other)
+		     (exit -1)]
 	     )]
 
 	  ;; Interpreting (preparsed) wavescript code.
@@ -422,6 +458,16 @@
       (unless (null? s)
 	(display (log-line->human-readable 0 (stream-car s) ()))
 	(loop (stream-cdr s))))))
+
+(IF_GRAPHICS
+ ;; This starts swl and evaluates the expression afterwards.
+ (define (bounce-to-swl exp)
+   (printf "Going into SWL system.\n")
+   (with-output-to-file "/tmp/swl_tmp_loading.ss"
+     (lambda () (pretty-print exp)) 'replace)
+   (printf "Temporary file written to contain post-swl-load instructions.\n")
+   (orig-scheme-start "/tmp/swl_tmp_loading.ss")
+   ))
 
 (define (regiment-exit code)
   ;; In case we're building a heap, we set this before we exit.

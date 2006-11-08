@@ -233,8 +233,10 @@
 	       ;; Look up the current value of the parameter in the list we just created.
 	       (let ((entry (assq (param) buttons)))
 		 (if (not entry)
-		     (warning '<radio-param-selector>
-			      "Parameter ~a has unknown current value: ~a" name (param))
+		     (IFDEBUG 
+		      (warning '<radio-param-selector>
+			       "Parameter ~a has unknown current value: ~a" name (param))
+		      (void))
 		     ;; Otherwise select the correct button:
 		     (send (cadr entry) select))))
 	     ]))
@@ -477,11 +479,25 @@
 					  (action: (lambda (_) 
 						     ;; This runs asynchronously:
 						     (eval '(print-stats)))))]
+
 	       [printconn-button (create <button> the-panel with (title: "Print Connectivity")
 					  (action: (lambda (_) 
 						     ;; This runs asynchronously:
 						     (eval '(print-connectivity (simalpha-current-simworld))))))]
 
+	       [savetopo-button (create <button> the-panel with (title: "Save Topology")
+					  (action: (lambda (_) 						     
+						     ;; This runs asynchronously: 
+						     ;; Could have problems with concurrent modification of simalpha-current-simworld.
+						     (eval 
+						      '(with-output-to-file (swl:file-dialog "Save Topology" 'save)
+							 (lambda ()
+							   (parameterize ([print-level #f]
+									  [print-length #f]
+									  [print-graph #t])
+							     (write (freeze-world (simalpha-current-simworld)))
+							     ))
+							 'replace)))))]
 	       )
 
 	  ;; This is the thread that periodically updates the view by polling various state.
@@ -500,7 +516,10 @@
 
 				   ; Draw the clock in the corner of the screen.
 				   (set-title! clock-readout 
-					       (format "t = ~s" (simworld-vtime (simalpha-current-simworld))))
+					       (format "t = ~s" 
+						       (if (simalpha-current-simworld)
+							   (simworld-vtime (simalpha-current-simworld))
+							   '??)))
 				   (show clock-readout)
 
 				   ; This updates all the message labels.
@@ -564,6 +583,7 @@
 	  (pack rerun-button      (side: 'left))
 	  (pack printstats-button (side: 'left))
 	  (pack printconn-button  (side: 'left))
+	  (pack savetopo-button   (side: 'left))
 
 	  (pack sensor-widget)
 
@@ -586,6 +606,9 @@
 	  (pack group      (side: 'left))
 	  (pack the-panel2 (side: 'right))
 	  
+	  ;; By convention, returns a thunk that will pause/unpause.
+	  ;(get-action pause-button)
+	  ;pause-button
 	))))
 
 (define (close-graphics)

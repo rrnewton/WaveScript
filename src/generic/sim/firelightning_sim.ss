@@ -117,8 +117,12 @@
 
 			    ;; [2006.04.05] HACK: FIXME
 			    ;; PUTTING THEM IN THE CENTER OF THE NETWORK:
-			(let ([strike-x 2600];(/ worldx 2)]  ;(+ quartx (random (/ worldx 2)))]
-			      [strike-y 2400]);(/ worldy 2)]) ;(+ quarty (random (/ worldy 2)))]
+			(let (;[strike-x 2600];(/ worldx 2)]  ;(+ quartx (random (/ worldx 2)))]
+			      ;[strike-y 2400];(/ worldy 2)]) ;(+ quarty (random (/ worldy 2)))]
+			      [strike-x (/ worldx 2)]
+			      [strike-y (/ worldy 2)]
+			      )
+			  (inspect strike-x)
 			  ;(printf "  LIGHTNING!! ~a of ~a ~a\n" i numstrikes strike-time)
 			  (let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
 						    ;; The graphical object for this fire is a strange thing.  
@@ -189,7 +193,7 @@
 	     )]
 	  [(light) 9999] ;; TODO
 	  [else (error 'firelightning-sensor
-		       "unsupported sensor type: ~a" type)])))))
+		       "unsupported sensor type: ~s" type)])))))
 
 
 (define (compute-fire-heat dist radius)

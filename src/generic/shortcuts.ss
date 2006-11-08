@@ -209,41 +209,39 @@
 
 (define-id-syntax t1 (begin (close-graphics) b2))
 ;(define (t2) (parameterize ((simalpha-realtime-mode #f)) (eval (caddr (list-ref (maintest 'get) 60)))))
-(define-id-syntax t2 (load-regiment "demos/regiment/nested_regions.rs"))
-(define-id-syntax t3 (load-regiment "demos/regiment/simple/events.rs"))
-(define-id-syntax t3b (load-regiment "demos/regiment/simple/union.rs"))
+(define-id-syntax t2 (load-regiment (++ (REGIMENTD) "demos/regiment/nested_regions.rs")))
+(define-id-syntax t3 (load-regiment (++ (REGIMENTD) "demos/regiment/simple/events.rs")))
+(define-id-syntax t3b (load-regiment (++ (REGIMENTD) "demos/regiment/simple/union.rs")))
 
-(define-id-syntax t4 (load-regiment "demos/regiment/static_elab.rs"))
-(define-id-syntax t5 (load-regiment "demos/regiment/anchor_free_localization.rs"))
-(define-id-syntax t5b (load-regiment "demos/token_machs/anchor_free_localization.tm"))
-(define-id-syntax t6 (load-regiment "demos/regiment/tracking.rs"))
+(define-id-syntax t4 (load-regiment (++ (REGIMENTD) "demos/regiment/static_elab.rs")))
+(define-id-syntax t5 (load-regiment (++ (REGIMENTD) "demos/regiment/anchor_free_localization.rs")))
+(define-id-syntax t5b (load-regiment (++ (REGIMENTD) "demos/token_machs/anchor_free_localization.tm")))
+(define-id-syntax t6 (load-regiment (++ (REGIMENTD) "demos/regiment/tracking.rs")))
 
-(define-id-syntax t7a (load-regiment "demos/firelightning/simple_lightup.tm"))
-(define-id-syntax t7b (load-regiment "demos/firelightning/lightup_video.tm"))
+(define-id-syntax t7a (load-regiment (++ (REGIMENTD) "demos/firelightning/simple_lightup.tm")))
+(define-id-syntax t7b (load-regiment (++ (REGIMENTD) "demos/firelightning/lightup_video.tm")))
 ;(define-id-syntax t7 (load-regiment "demos/firelightning/manual_nbrhood.tm"))
 ;(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm0.rs"))
 ;(define-id-syntax t8 (load-regiment "demos/firelightning/nbrhood_alarm1.rs"))
 
-(define-id-syntax t7 (load-regiment "../analysis/firelightning/sensys/prog1.rs" 'verbose))
-(define-id-syntax t8 (load-regiment "../analysis/firelightning/sensys/prog2.rs" 'verbose))
-(define-id-syntax t9 (load-regiment "../analysis/firelightning/sensys/prog2_manual.tm" 'verbose))
-(define-id-syntax t10 (load-regiment "../analysis/firelightning/sensys/prog2_manual_batchopt.tm" 'verbose))
-(define-id-syntax t11 (load-regiment "../analysis/firelightning/sensys/test.tm" 'verbose))
-(define-id-syntax t12 (load-regiment (++ (REGIMENTD) "/analysis/firelightning/ipsn/p3/hand.tm") 'verbose))
+(define-id-syntax t7 (load-regiment (++ (getenv "HOME") "/firelightning/prog1.rs") 'verbose))
+(define-id-syntax t8 (load-regiment (++ (getenv "HOME") "/firelightning/p2/prog2.rs") 'verbose))
+(define-id-syntax t9 (load-regiment (++ (getenv "HOME") "/firelightning/p2/prog2_manual.tm") 'verbose))
+(define-id-syntax t10 (load-regiment (++ (getenv "HOME") "/firelightning/p2/prog2_manual_batchopt.tm") 'verbose))
+(define-id-syntax t11 (load-regiment (++ (getenv "HOME") "/firelightning/test.tm") 'verbose))
+(define-id-syntax t12 (load-regiment (++ (getenv "HOME") "/firelightning/p3/p3_hand.tm") 'verbose))
 
-(define-id-syntax tb (load-regiment "demos/regiment/bug.tm" ))
+(define-id-syntax tb (load-regiment (++ (REGIMENTD) "demos/regiment/bug.tm")))
 
 ;(define-id-syntax t9 (load-regiment "demos/firelightning/deadsimple_alarm.rs"))
 ;(define-id-syntax t9b (load-regiment "demos/firelightning/deadsimple_alarm.tm"))
 
-(define-id-syntax d1 (load-regiment "demos/regiment/simple_fold.rs"))
-(define-id-syntax d2 (load-regiment "demos/regiment/average_temperature2.rs"))
-(define-id-syntax d3 (load-regiment "demos/regiment/simple_events.rs"))
-(define-id-syntax d4 (load-regiment "demos/regiment/smap2_two_anchors.rs"))
-(define-id-syntax d5 (load-regiment "demos/regiment/nested_regions.rs"))
-(define-id-syntax d6 (load-regiment "demos/regiment/static_elab.rs"))
-
-
+(define-id-syntax d1 (load-regiment (++ (REGIMENTD) "demos/regiment/simple_fold.rs")))
+(define-id-syntax d2 (load-regiment (++ (REGIMENTD) "demos/regiment/average_temperature2.rs")))
+(define-id-syntax d3 (load-regiment (++ (REGIMENTD) "demos/regiment/simple_events.rs")))
+(define-id-syntax d4 (load-regiment (++ (REGIMENTD) "demos/regiment/smap2_two_anchors.rs")))
+(define-id-syntax d5 (load-regiment (++ (REGIMENTD) "demos/regiment/nested_regions.rs")))
+(define-id-syntax d6 (load-regiment (++ (REGIMENTD) "demos/regiment/static_elab.rs")))
 
 
 (define p3 

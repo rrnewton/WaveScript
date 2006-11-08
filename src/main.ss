@@ -37,8 +37,9 @@
     ;; of the program as can be evaluated.  The residual had better follow our
     ;; restrictions on implementable Regiment programs.
     static-elaborate
-    verify-elaborated
     retypecheck
+
+;    verify-elaborated
 
     ;; (5) Now we normalize the residual in a number of ways to
     ;; produce the core query language, then we verify that core.

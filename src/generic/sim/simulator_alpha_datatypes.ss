@@ -159,7 +159,11 @@
 ;; (Well, that's a bit of a lie, because the simulator also requires a
 ;; number of global parameters to be set appropropriately.)
 (reg:define-struct 
- (simworld graph object-graph all-objs 
+ (simworld ;; Hard state:
+           graph 
+
+	   ;; Soft state:
+	   object-graph all-objs 
 	   ;; obj-hash maps node-ids onto simobjects:
 	   obj-hash 
 	   ;; This is a pointer to the queue used by the scheduler.

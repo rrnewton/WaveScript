@@ -270,25 +270,23 @@
          )
 ;    (disp (node-id (simobject-node ob))
 ;	  "sim-leds " what which (hashtab->list state-table)) (flush-output-port)
-    (let ((string (format "~s: (time ~s) (Leds: ~s ~s ~s)~n" 	
-                          (node-id (simobject-node ob)) (cpu-time) which what
-                          (case what
+    (let ([extra (case what
                             [(on) 
                              (set! led-toggle-state (list->set (cons which led-toggle-state)))
-                             "" ]
+                             '()]
                             [(off)
                              (set! led-toggle-state (remq which led-toggle-state))
-                             "" ]
+                             '()]
                             [(toggle)
                              (if (memq which led-toggle-state)
                                  (begin 
                                    (set! led-toggle-state (remq which led-toggle-state))
-                                   "off")
+                                   '(off))
                                  (begin 
                                    (set! led-toggle-state (list->set (cons which led-toggle-state)))
-                                   "on")
+                                   '(on))
                                  )]
-                            [else (error 'sim-leds "bad action: ~s" what)]))))
+                            [else (error 'sim-leds "bad action: ~s" what)])])
       ;; Now color the actual leds:
       (IF_GRAPHICS
        (let ((g (simobject-gobj ob)))
@@ -308,8 +306,9 @@
       ; Finally, commit changes back to the global table of led-states:
       (hashtab-set! state-table nodeid led-toggle-state)
 
-      ;((sim-debug-logger) string)
-      (logger string)
+      (logger 5 (simworld-vtime (simobject-worldptr (current-simobject)))
+	      _ nodeid 'Leds `(,which ,what ,@extra))
+
       ))]
 
 #;
