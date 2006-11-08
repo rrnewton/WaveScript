@@ -307,7 +307,7 @@
       (hashtab-set! state-table nodeid led-toggle-state)
 
       (logger 5 (simworld-vtime (simobject-worldptr (current-simobject)))
-	      _ nodeid 'Leds `(,which ,what ,@extra))
+	      nodeid 'Leds `(,which ,what ,@extra))
 
       ))]
 
