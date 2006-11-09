@@ -297,6 +297,7 @@
 (define (install-firelightning)
   (simalpha-sense-function-constructor firelightning-sensor)
 
+#;
   (begin 
     ;; Set the world size, square:
     ;; Set both of these binds for now, lame:
@@ -306,12 +307,11 @@
     (simalpha-world-ybound 5000)
     (sim-num-nodes 250))
 
-#;
   (begin 
-    (set! world-xbound 1500)
-    (set! world-ybound 1500)
-    (simalpha-world-xbound 1500)
-    (simalpha-world-ybound 1500)
+    (set! world-xbound 1700)
+    (set! world-ybound 1700)
+    (simalpha-world-xbound 1700)
+    (simalpha-world-ybound 1700)
     (sim-num-nodes 30))
 
   ;; Inner/Outer Radius for radios is 300/500 meters:

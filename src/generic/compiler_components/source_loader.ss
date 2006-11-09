@@ -131,7 +131,7 @@
      ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
      ;; Flags get passed to run-compiler and compile-simulate-alpha.
      (let ([flags (filter (lambda (x) (not (list? x))) opts)]
-	     [userparams (filter list? opts)])
+	   [userparams (filter list? opts)])
 	 (mvlet ([(prog codeparams passes)
 		  (let ([type (string->symbol (extract-file-extension fn))])
 		    (mvlet (((prg params) (read-regiment-source-file fn)))
@@ -143,7 +143,7 @@
 			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 			)))])
 	   
-	   ;; User params override those set in the code:
+	   ;; Prioriy: User params override those set in the file:
 	   (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
 	     ;; Set all the params before running things:
 	     (for-each eval params) ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.

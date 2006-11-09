@@ -109,6 +109,7 @@
 	 simalpha-channel-model
 	 simalpha-failure-model
 	 simalpha-current-simworld 
+	 simalpha-preset-topology
 	 simalpha-realtime-mode
 	 simalpha-consec-ids
 	 simalpha-dbg-on
@@ -536,6 +537,10 @@
 				  x
 				  (error 'simalpha-current-simworld 
 					 "invalid val for param: ~a" x)))))
+
+;; This parameter is a way for .rs files to set their own topologies.
+;; If it's set to a filename, that topology is used rather than rolling a new one.
+(define-regiment-parameter simalpha-preset-topology #f)
 
 ;; This is the null pointer representation for Token names.  Probably just Zero.
 (define TMNULL ''0)

@@ -1181,7 +1181,18 @@
 			       )
 		      (clean-simalpha-counters!)
 		      (clean-simworld! (simalpha-current-simworld)))
-		    (fresh-simulation))])
+		    ;; If we're not set to use the stale world, then
+		    ;; we still might be set to use a topology from a file:
+		    (if (simalpha-preset-topology)
+			(begin 
+			  (simalpha-current-simworld (read (open-input-file (simalpha-preset-topology))))
+			  (animate-world! (simalpha-current-simworld))
+			  (clean-simalpha-counters!)
+			  ;(clean-simworld! (simalpha-current-simworld))
+			  (simalpha-current-simworld)
+			  )
+			(fresh-simulation))
+		    )])
 
       (DEBUGASSERT (simworld? sim))
       
