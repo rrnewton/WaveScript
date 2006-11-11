@@ -99,23 +99,26 @@
 	      (column-width 3 level)
 	      ))
     (lambda (level ob args)
-      (when (<= level (simulation-logger-level))
-	(print-header level)
-	(cond
-	 [(list? ob) 
-	  (string-append
-	   (apply string-append 
-		  (format "~a ~a ~a ~a -- " (pad-width 6 (car ob))
-			  (pad-width 3 (cadr ob))
-			  (make-string (fx* 2 (inexact->exact (floor level))) #\space)
-			  (caddr ob))
-		  (insert-between ", "
-				  (map (lambda (pr)
-					 (format "~a: ~a" (car pr) (cadr pr)))
-				    (cdddr ob))))
-	   "\n")]
-	 [(null? args) (format "~a\n" ob)]
-	 [else (apply format ob args)])
+      (if (<= level (simulation-logger-level))
+	  (begin 
+	    (print-header level)
+	    (cond
+	     [(list? ob) 
+	      (string-append
+	       (apply string-append 
+		      (format "~a ~a ~a ~a -- " (pad-width 6 (car ob))
+			      (pad-width 3 (cadr ob))
+			      (make-string (fx* 2 (inexact->exact (floor level))) #\space)
+			      (caddr ob))
+		      (insert-between ", "
+				      (map (lambda (pr)
+					     (format "~a: ~a" (car pr) (cadr pr)))
+					(cdddr ob))))
+	       "\n")]
+	     [(null? args) (format "~a\n" ob)]
+	     [else (apply format ob args)]))
+	  ;; Otherwise return null string:
+	  ""
 	))))
 
 

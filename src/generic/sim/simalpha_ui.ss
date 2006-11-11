@@ -125,6 +125,9 @@
 	(printf "  Total messages broadcast: ~a (per-node ~a)\n" 
 		(pad-width 5 total-messages)
 		(round-to 2 (exact->inexact (/ total-messages (sim-num-nodes)))))
+	(printf "  Max sent / Max received : ~a / ~a\n"
+		(foldl max 0 (map simobject-local-sent-messages obs))
+		(foldl max 0 (map simobject-local-recv-messages obs)))
 	(printf "  Msg distribution (sorted based on hops from base):\n")
 	
 	(printf "sent: ~a\n" 

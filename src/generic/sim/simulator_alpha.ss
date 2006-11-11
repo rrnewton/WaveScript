@@ -245,6 +245,7 @@
       [random reg:random-int]
       [listLength length]
       [length vector-length]
+      [fold foldl]
 
       ))
   
@@ -353,16 +354,17 @@
 
 		  ;; [2006.10.27]
 		  ;; This is yet another thing that probably shouldn't be allowed at the TM level:
-		  [(map ,[rator] ,[rand])
+		  ;; It maps a token-handler over a list with subcall (essentially).
+		  [(tokmap ,[rator] ,[rand])
 		   `(let ([rat ,rator]
 			  [rnd ,rand])
 		      (let ([f (lambda (x) 
-				((simobject-meta-handler this)
-				 ;; HACK: CHEATING AND PUTTING IN GRADIENT ARGS:
-				 (bare-msg-object rat (list 0 0 'nongrad-invoke 0 x) current-vtime)
-				 current-vtime))])			
-			;(inspect (cons 'map rnd))
-			;(inspect (cons 'mapresult (map f rnd)))
+				 ((simobject-meta-handler this)
+				  ;; HACK: CHEATING AND PUTTING IN GRADIENT ARGS:
+				  (bare-msg-object rat (list 0 0 'nongrad-invoke 0 x) current-vtime)
+				  current-vtime))])			
+					;(inspect (cons 'map rnd))
+					;(inspect (cons 'mapresult (map f rnd)))
 			(map f rnd)))]
 		  ;; And this:
 		  [(fold ,[rator] ,[zero] ,[rand])

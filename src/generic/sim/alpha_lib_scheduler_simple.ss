@@ -168,7 +168,7 @@
     (unless (and (null? (simobject-local-msg-buf ob))
 		 (null? (simobject-timed-token-buf ob))
 		 (null? (simobject-incoming-msg-buf ob)))
-      (logger 1.5 vtime (node-id (simobject-node ob))
+      (logger 1 vtime (node-id (simobject-node ob))
 	      'ReceivingMessages
 	      `[local ,(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-local-msg-buf ob))]
 	      `[timed ,(map (lambda (x) (msg-object-token (simevt-msgobj x))) (simobject-timed-token-buf ob))] 
@@ -306,7 +306,7 @@
 	(let ([neighbors (graph-neighbors (simworld-object-graph sim) ob)])
 	  (for-each (lambda (out-msg)
 		      (let ([is_ucast (msg-object-to (simevt-msgobj out-msg))])
-			(logger 2 vtime (node-id (simobject-node ob))
+			(logger 1 vtime (node-id (simobject-node ob))
 				(if is_ucast 'Ucast 'Bcast)
 				`[token ,(msg-object-token (simevt-msgobj out-msg))])
 			(for-each (lambda (nbr)

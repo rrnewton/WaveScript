@@ -137,7 +137,7 @@
     [,other (error 'dump-tokenmachine-to-file "invalid input: ~S" prog)]))
 
 ;; This dumps to file only when provided the optional string filename argument:
-;; The symbolic options are:  'barely-tokens 'almost-tokens 'almost-haskell 'haskell-tokens
+;; The symbolic options are:  'barely-tokens 'almost-tokens 'full-tokens
 ;; Also: use 'verbose to print the output of every pass.
 (define (run-compiler p . args )                              ;; Entrypoint.
   (if (memq 'deglobalize2 args)
@@ -156,18 +156,18 @@
                    (set! filename arg)]
 		  [(eq? arg 'verbose) (set! verbose #t)]
 		  ;; The pass-list may have already been restricted to be just the TML passes:
-                  [(eq? arg 'barely-tokens)
-                   (set! passes (list-remove-first cleanup-token-machine
-				  (list-remove-after cleanup-token-machine (pass-list))))]
                   [(eq? arg 'almost-tokens)
                    (set! passes (list-remove-first deglobalize ;; <- might fizzle
 				  (list-remove-first cleanup-token-machine
                                      (list-remove-after cleanup-token-machine (pass-list)))))]
-                  [(eq? arg 'almost-haskell)
+                  [(eq? arg 'barely-tokens)
+                   (set! passes (list-remove-first cleanup-token-machine
+				  (list-remove-after cleanup-token-machine (pass-list))))]
+                  [(eq? arg 'full-tokens)
                    (set! passes (remq haskellize-tokmac (pass-list)))]
-                  [(eq? arg 'haskell-tokens) (void)]
+                  ;[(eq? arg 'haskell-tokens) (void)]
 		  ;; Otherwise... do nothing.
-		  ;[else (warning 'run-compiler "ignored flag: ~s" arg)]
+		  [else (warning 'run-compiler "ignored flag: ~s" arg)]
 		  ))
 	      args)
     (when verbose
@@ -188,6 +188,90 @@
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names))))))))
       ))
+
+
+
+;; This is a front-end to run-compiler that reads source from a file.
+;; Either returns compiled program or writes it to a file.
+;; Flags:
+;;  'write-file : write output to file.
+;; 
+;;  'to-typed
+;;  'almost-tokens
+;;  'barely-tokens
+;;  'full-tokens 
+;;  'to-simcode
+(define regiment-compile-file
+  (let ()
+    (define compile-target-flags '(to-typed almost-tokens barely-tokens full-tokens to-simcode))
+    (define (do-the-compilation fn flags)
+      (let ([type (extract-file-extension fn)])
+	;; Do a little sanity checking between our options and our input file:
+	(cond
+	 [(equal? type "tm") (if (or (memq '-l0 symargs) (memq '-l1 symargs))
+				 (error 'regiment_command_line_compiler
+					"Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
+	 [(equal? type "rs") (void)]
+	 [(equal? type "ws") (void)]
+	 [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
+	;; ----------------------------------------
+	(parameterize ([pass-list
+			(cond
+			 [(equal? type "rs") (pass-list)]
+			 ;; We treat these as normal regiment files:
+			 [(equal? type "ws") (pass-list)]
+			 [(equal? type "tm") (list-remove-before cleanup-token-machine
+								 (pass-list))]
+			 [else (error 'regiment "unknown input file extension: ~s" type)]
+			 )])
+
+	  (mvlet ([(prog params) 
+		   (parameterize ([current-directory start-dir])
+		     (read-regiment-source-file fn))])
+	    (let ((comped 
+		   (if (memq 'to-simcode flags)
+		       ;; This goes all the way to a sim-file and bakes the parameters right in:
+		       (let ([comped1 (apply run-compiler prog flags)])
+			 (apply compile-simulate-alpha comped1 params))
+		       (apply run-compiler prog flags))))
+	      (values comped params)
+	      )))))
+    ;----------------------------------------
+    (lambda (fn . flags)      
+      (ASSERT (andmap symbol? flags))
+      (ASSERT (= 1 (length (intersection flags compile-target-flags))))
+      (mvlet ([(comped params) (do-the-compilation fn flags)])
+	(let ([compile-target (car (intersection flags compile-target-flags))]	    )
+	  (if (not (memq 'write-file flags))
+	      comped
+	      (let* ([extension (case compile-target 
+				  [(to-typed) ".sexp0"]
+				  [(almost-tokens) ".sexp"]
+				  [(barely-tokens) ".tm0"]
+				  [(full-tokens) ".tm"]
+				  [(to-simcode) ".sim.alpha"]
+				  )]
+		     [out_file (string-append (remove-file-extension fn) extension)])
+		;; Don't overwrite our own input file!
+		(if (equal? fn out_file) (set! out_file (string-append "out." extension)))
+		(printf "~n  Writing compilation-result to: ~s ~n" out_file)
+		(delete-file out_file)		
+		(parameterize ([print-graph #t] 
+			       [print-level #f] 
+			       [print-length #f]
+			       [pretty-maximum-lines #f])
+		  (with-output-to-file out_file
+		    (lambda ()
+		      ;; Otherwise we need to propogate the params to the output file:
+		      (if (memq 'to-simcode flags)
+			  (pretty-print `(parameters ,@params)))
+		      (pretty-print comped))))
+		;'compiled-result-written-to-file
+		;; Return the name of the output file:
+		out_file
+		)))
+	))))
+
 
 ;; This is the second version of the compiler, uses deglobalize2
 (define (run-compiler2 p . args)                              ;; Entrypoint.

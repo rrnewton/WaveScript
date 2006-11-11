@@ -38,7 +38,7 @@
 			  (DEBUGMODE 
 			   (if (and (simevt-vtime next)
 				    (< (simevt-vtime next) private-vtime))
-			       (logger 0 
+			       (logger -1 
 				       "~a~a: WARNING: token event ~a has time in the past (~a) relative to current local clock (~a)~n"
 				       (pad-width 5 current-vtime)
 				       (node-id (simobject-node ob))
@@ -75,7 +75,7 @@
 
 	    [(advance-time ,increment)
 	     (if (< increment 0)
-		 (logger 2 "~a: WARNING, attempted negative time advance by ~a~n"
+		 (logger 0 "~a: WARNING, attempted negative time advance by ~a~n"
 			 (node-id (simobject-node ob))
 			 increment))
 	     ;; Here we update the schedule to deal with the new local clock.

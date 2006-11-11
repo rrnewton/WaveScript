@@ -55,11 +55,11 @@ exec mred -r "$0" ${1+"$@"}
 		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts)) 
                                      (set! extension ".sexp") (loop rest)]
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
-		                     (set! extension ".tm")  (loop rest)]
-		    [(-l2 ,rest ...) (set! opts (cons 'almost-haskell opts)) 
+		                     (set! extension ".tm0")  (loop rest)]
+		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts)) 
                                      (set! extension ".tm") (loop rest)]
-		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
-                                     (set! extension ".tmh") (loop rest)]
+;		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
+;                                     (set! extension ".tmh") (loop rest)]
 
 		    ;; otherwise a file to compile that we add to the list
 		    [(,fn ,rest ...)

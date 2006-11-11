@@ -19,8 +19,8 @@
 
 ;(define fire-max-age 220000) ;; Total life in milleseconds.
 ;(define fire-max-age 180000) ;; Total life in milleseconds.
-;(define fire-max-age 320000) ;; Total life in milleseconds.
-(define fire-max-age 500000) ;; Total life in milleseconds.
+(define fire-max-age 320000) ;; Total life in milleseconds.
+;(define fire-max-age 500000) ;; Total life in milleseconds. <-- Sensys paper.
 
 (define fire-temp 200)  ;; Degrees in celcius.
 
@@ -96,7 +96,7 @@
 			      #t)))
 		    fires))
 	    (unless (null? fires)
-	      (logger 1 t '_ 'GROUND-TRUTH 
+	      (logger 0 t '_ 'GROUND-TRUTH 
 		      `[fires ,(map (lambda (f) (list (fire-x f) (fire-y f) (fire-t f) (fire-rad f))) fires)]))
 
 	    ;(if (not (null? fires)) (printf "    Number Fires: ~a\n" (length fires)))

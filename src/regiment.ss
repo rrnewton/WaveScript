@@ -62,9 +62,8 @@
   (printf "  -lt  type check only, print typed program to stdout           ~n")
   (printf "  -ltt type check only, print *only* top level types to stdout  ~n")
   (printf "  -l0  stop compilation just before deglobalize          (.sexp)~n")
-  (printf "  -l1  compile barely to tokens (just after deglobalize) (.tm)~n")
-  (printf "  -l2  compile to just before haskellize-tokmac          (.sim)~n")
-  (printf "  -l3  output haskell style external format (deprecated) (.tmh)~n")
+  (printf "  -l1  compile barely to tokens (just after deglobalize) (.tm0)~n")
+  (printf "  -l2  compile to just tokens (maximally lowered)        (.tm)~n")
   (printf "  -l4  output generated simulator-alpha code             (.sim.alpha)~n")
   (printf "  -l5  output generated NesC/Tossim code                 (.sim.nesc) ~n")
   (printf "~n")
@@ -119,7 +118,7 @@
     
 ;    (printf "regimentc: compile regiment programs!~n")
     (let ([opts '()] ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
-	  [extension ".sim"])
+	  )
       ;; Loop goes through the arguments, processing them accordingly:
       (letrec ([loop 
 	      (lambda (args)
@@ -141,26 +140,21 @@
 		    [(-lt ,rest ...) (set! opts (cons 'type-only-verbose opts)) (loop rest)]
 		    [(-ltt ,rest ...) (set! opts (cons 'type-only opts)) (loop rest)]
 
-		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))
-                                     (set! extension ".sexp") (loop rest)]
-		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts)) 
-		                     (set! extension ".tm")  (loop rest)]
-		    [(-l2 ,rest ...) (set! opts (cons 'almost-haskell opts)) 
-                                     (set! extension ".sim") (loop rest)]
-		    [(-l3 ,rest ...) (set! opts (cons 'haskell-tokens opts))
-                                     (set! extension ".tmh") (loop rest)]
+		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))   (loop rest)]
+		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts))   (loop rest)]
+		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
 
 		    [(-l4 ,rest ...) 
 		     (set! makesimcode #t)
-		     (set! opts (cons 'almost-haskell opts))
-		     (set! extension ".sim.alpha") (loop rest)]
+		     (set! opts (cons 'to-simcode opts)) (loop rest)]
 
 		    [(-l5 ,rest ...)
+		     ;; [2006.11.11] Not handled right now:
+		     (set! opts (cons 'to-nesc opts))
 		     (pass-list 
 		      (snoc emit-nesc (snoc flatten-tokmac
 			     (remq flatten-tokmac (remq emit-nesc (pass-list))))))
-		     ;(set! makesimcode #t)
-		     (set! extension ".sim.nesc") (loop rest)]
+		     (loop rest)]
 
 		    [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
 
@@ -198,84 +192,58 @@
 		   (printf "~n Using default output file: out.tm...~n")		
 		   (apply run-compiler expr "out.tm" opts)))
 	       (begin 
-					;(disp "MODE: " mode "OPTS: " opts)
 		 (if (> (length filenames) 1)
-		     (error 'regiment_command_line_compiler "can't handle more than one filename at a time currently: ~s" filenames))
-		 
-		 (let* ([fn (car filenames)]
-			[type (extract-file-extension fn)])
-		   ;; Do a little sanity checking between our options and our input file:
-		    (cond
-		     [(equal? type "tm") (if (or (memq '-l0 symargs) (memq '-l1 symargs))
-					     (error 'regiment_command_line_compiler
-						    "Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
-		     [(equal? type "rs") (void)]
-		     [(equal? type "ws") (void)]
-		     [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
-		    ;; ----------------------------------------
-		    (parameterize ([pass-list
-				 (cond
-				  [(equal? type "rs") (pass-list)]
-				  ;; We treat these as normal regiment files:
-				  [(equal? type "ws") (pass-list)]
-				  [(equal? type "tm") (list-remove-before cleanup-token-machine
-									  (pass-list))]
-				  [else (error 'regiment "unknown input file extension: ~s" type)]
-				  )])
-		      (set! out_file (string-append (remove-file-extension fn) extension))
-		      ;; Don't overwrite one of our own input files!
-		      (if (member out_file filenames) (set! out (string-append "out." extension)))
-		      (mvlet ([(prog params) 
-			       (parameterize ([current-directory start-dir])
-				 (read-regiment-source-file fn))])
-			;; If we're in type-check mode we print types and exit here:
-			(if (memq 'type-only-verbose opts)
-			    (print-types-and-exit prog 'verbose))
-			(if (memq 'type-only opts)
-			    (print-types-and-exit prog))
-			    
-			(printf "~n  Writing token machine to: ~s ~n" out_file)
-			(delete-file out_file)
-			(let ((comped 
-			       (if makesimcode 
-				   ;; This bakes the parameters right into the sim code:
-				   (apply compile-simulate-alpha
-					  (apply run-compiler prog opts)
-					  params)
-				   (apply run-compiler prog opts))))			  
-			  (parameterize ([print-graph #t] 
-					 [print-level #f] 
-					 [print-length #f]
-					 [pretty-maximum-lines #f])
-			    (with-output-to-file out_file
-			      (lambda ()
-				;; Otherwise we need to propogate the params to the output file:
-				(if (not makesimcode)
-				    (pretty-print `(parameters ,@params)))
-				(pretty-print comped))))))
-		      ))))]
+		     (error 'regiment_command_line_compiler 
+			    "can't handle more than one filename at a time currently: ~s" filenames))
+		 ;; Otherwise we're good to go.
+		 (cond 
+		  [(memq 'type-only-verbose opts)
+		   (print-types-and-exit 
+		    (apply regiment-compile-file (car filenames) 'to-typed opts)
+		    'verbose)]
+		  [(memq 'type-only opts)
+		   (print-types-and-exit 
+		    (apply regiment-compile-file (car filenames) 'to-typed opts))]
+		  [else 
+		   (apply regiment-compile-file (car filenames) 'write-file opts)])
+		 ))]
 
 	  ;; Simulation mode (also may invoke compiler):
 	  [(s simulate)
+
+	   (parameterize ([simulation-logger-level 1]
+			  );; Only get send/receive, groundtruth, and newworld msgs.
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
 			 (car filenames))))
-	     ;; If it's not simulatable yet, we switch to compile-mode and compiler it first:
+	     ;; If it's not simulatable yet, we switch to compile-mode and compile it first:
+#;
 	     (let ([type (extract-file-extension fn)])
 	       (if (member type '("rs" "tm" "ws"))
-		   (begin (runloop 'compile (list fn))
-			  (set! fn out_file))
+		   (begin 
+		     (set! opts (cons 'full-tokens opts))
+		     (set! fn (runloop 'compile (list fn))) ;; Note: doesn't apply options to compilation!
+		     (set! opts (remq 'full-tokens opts))
+		     (ASSERT string? fn)
+		     )
 		   (error 'regiment:simulate "can't take file with this extension: ~s" fn)))
 	     
 	     (define-top-level-value 'go-sim
 	       (lambda ()
 		 (printf "Running simulation from file: ~a\n" fn)
 		 (let ((result
+;			(apply load-regiment fn 'ignore-file-params opts)
+			;; UH!!! DESPERATE HACK!! EVALING PARAMS TWICE!
+;			(with-evaled-params (filter list? opts)
+;					    (lambda ()
+;					      (apply load-regiment fn opts)) )
+		       (apply load-regiment fn opts)
+#;
 			;; Be careful to watch for parameterization:	     
 			(mvlet (([prog params] (read-regiment-source-file fn)))
-					;(inspect params)
 			  (with-evaled-params params
 					      (lambda () 
+						(inspect prog)
 						(apply run-simulator-alpha prog 
 						       'srand (current-time)
 						       opts))))))
@@ -291,7 +259,7 @@
 	      (begin (printf "WOOT\n")
 		     (go-sim)
 		     ))
-	     )]
+	     ))]
 
 	  ;; Interactive mode.  A Scheme REPL.
 	  #;[(i interact)

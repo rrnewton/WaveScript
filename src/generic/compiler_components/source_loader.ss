@@ -128,11 +128,15 @@
      (simalpha-current-simworld world)
      (apply load-regiment fn 'use-stale-world opts)]
     [(,fn . ,opts) (guard (string? fn))
+     (ASSERT (list? opts))
      ;; Flags are things like 'verbose, params are '[sim-timeout 1000]
      ;; Flags get passed to run-compiler and compile-simulate-alpha.
      (let ([flags (filter (lambda (x) (not (list? x))) opts)]
 	   [userparams (filter list? opts)])
-	 (mvlet ([(prog codeparams passes)
+       (ASSERT (andmap symbol? flags))
+       (ASSERT (andmap (lambda (l) (= 2 (length l))) userparams))
+       (ASSERT (andmap symbol? (map car userparams)))
+       (mvlet ([(prog codeparams passes)
 		  (let ([type (string->symbol (extract-file-extension fn))])
 		    (mvlet (((prg params) (read-regiment-source-file fn)))
 		      (case type
@@ -142,27 +146,30 @@
 			[(sim alpha) (values prg params ())]
 			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 			)))])
-	   
-	   ;; Prioriy: User params override those set in the file:
-	   (let ((params (append userparams (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams))))
-	     ;; Set all the params before running things:
-	     (for-each eval params) ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
-	     (let ((result ;(with-evaled-params params
-					;  (lambda ()
-		    (parameterize ([pass-list passes])
-		      (apply run-simulator-alpha
-
-			     ;; [2005.11.28] Changing this to let run-simulator-alpha apply compile-simulate-alpha for us.
-			     (apply (top-level-value 'run-compiler) prog flags)
-					;			       (apply compile-simulate-alpha
-					;				      (apply run-compiler prog flags)
-					;				      (append flags params))
-
-			     flags
+	 
+	 (define compiled (apply (top-level-value 'run-compiler) prog flags))
+	 
+	 ;; Prioriy: User params override those set in the file:
+	 (let ((params 
+		(if (memq 'ignore-file-params flags) 
+		    (begin (set! flags (remq 'ignore-file-params flags))
+			   userparams)
+		    (append (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams) userparams)
+		    )))
+	   ;; Set all the params before running things:
+	   ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
+	   ;(for-each eval params)
+;	     (inspect (vector flags params))
+	     
+	   (let ((result 
+		  (with-evaled-params params
+		      (lambda ()
+			(parameterize ([pass-list passes])
+			  (apply run-simulator-alpha compiled  flags
 					;'srand (current-time)
-			     ))))
-	       (print-stats)
-	       result))))]
+				 ))))))
+	     (print-stats)
+	     result))))]
     [,other (error 'load-regiment "bad arguments: ~s\n" other)]))
 
 (define reg:load load-regiment) ;; shorthand

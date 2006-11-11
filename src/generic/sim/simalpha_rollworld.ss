@@ -90,7 +90,8 @@
 	      ;; Is BASE_ID in this 1-n span?  If so have to ensure no dups.
 	      (if (and (>= BASE_ID 1) (< BASE_ID (sim-num-nodes)))
 		  (remq BASE_ID (cdr (iota (add1 (sim-num-nodes)))))
-		  (cdr (iota (sim-num-nodes))))
+		  (map (lambda (x) (+ 1000 x))
+		    (cdr (iota (sim-num-nodes)))))
 	      (let loop ((n (sub1 (sim-num-nodes))) (acc ()))
 		(if (zero? n) acc
 		    (let ([x (reg:random-int 1000)])
