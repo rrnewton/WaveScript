@@ -192,24 +192,28 @@
 		  (values lvl (cons time (cons nodeid (cons sym pairs))) '())]
 		 [,else (error 'logger "invalid arguments: ~a" input)]
 		 )])
-	(let ([port (simulation-logger)])
-	  (if (simulation-logger-human-readable)
-	      (begin 
-		(if (simulation-logger-fasl-batched)
-		    (error 'logger "cannot have both human-readable and fasl mode turned on."))
-		(display (log-line->human-readable level ob args) port))
-	    (parameterize ([print-graph #t]
-			   [print-length #f]
-			   [print-level #f]
-			   [pretty-maximum-lines #f])
-	      (if (null? args)
-		  (writer ob port)
-		  (writer (apply format ob args) port))
-	      (if (not (simulation-logger-fasl-batched))
-		  (newline port))
-	      ;; TEMP TEMP TEMP FIXME:
-	      ;(flush-output-port port)
-	      )))))
+	;; Only proceed if the priority level is at or bellow logger level.
+	;; (Smaller is higher priority.)
+	(when (<= level (simulation-logger-level))
+	  (let ([port (simulation-logger)])
+	    (if (simulation-logger-human-readable)
+		(begin 
+		  (if (simulation-logger-fasl-batched)
+		      (error 'logger "cannot have both human-readable and fasl mode turned on."))
+		  (display (log-line->human-readable level ob args) port))
+		(parameterize ([print-graph #t]
+			       [print-length #f]
+			       [print-level #f]
+			       [pretty-maximum-lines #f])
+		  (if (null? args)
+		      (writer ob port)
+		      (writer (apply format ob args) port))
+		  (if (not (simulation-logger-fasl-batched))
+		      (newline port))
+		  ;; TEMP TEMP TEMP FIXME:
+					;(flush-output-port port)
+		  )))
+	  )))
 
     ;; Body of logger:
     (case-lambda 

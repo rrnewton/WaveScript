@@ -243,7 +243,6 @@
 			(mvlet (([prog params] (read-regiment-source-file fn)))
 			  (with-evaled-params params
 					      (lambda () 
-						(inspect prog)
 						(apply run-simulator-alpha prog 
 						       'srand (current-time)
 						       opts))))))

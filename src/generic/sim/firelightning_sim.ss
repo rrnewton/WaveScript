@@ -214,6 +214,12 @@
 	     ;; over the larger spherical shell.      
 	     ;  (fl/ (fl* radius radius)  (fl* dist dist))
 
+	     ;; This one is just falls off as a line.
+;	     (let ([dist-from-edge (- dist radius)])
+;	       (if (fl> dist-from-edge 200.) 0.
+;		   (fl- 1.0 (fl/ dist-from-edge 200.))))
+
+
 	     ;; No, let's try an exponential decay instead:
 	     ;  (^ .95 (- dist radius))
 
@@ -223,6 +229,10 @@
 	     ;; Ok, also trying just a 1/n falloff:
 	     (if (> (- dist radius) 350) 0.
 		 (min 1.0 (fl/ 1.  (+ 1.0 (fl* 0.5 (- dist radius))))))
+
+	     ;; This drops off, but with a different coefficient.
+;	     (if (> (- dist radius) 350) 0.
+;		 (min 1.0 (fl/ 1.  (+ 1.0 (fl* 0.25 (- dist radius))))))
 	     
 	     )
 	  ))))
@@ -326,7 +336,7 @@
 
 ;================================================================================
 
-;;; Test fire drop-off. 
+;;; Test fire drop-off.  Graphs a histogram.
 
 ;; This is just a visual test.  Check by eye that it looks like what you want.
 (define (test-fire-heat)

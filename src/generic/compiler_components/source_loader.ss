@@ -147,7 +147,9 @@
 			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 			)))])
 	 
-	 (define compiled (apply (top-level-value 'run-compiler) prog flags))
+	 (define compiled 
+	   (parameterize ([pass-list passes])
+	     (apply (top-level-value 'run-compiler) prog flags)))
 	 
 	 ;; Prioriy: User params override those set in the file:
 	 (let ((params 
@@ -158,16 +160,17 @@
 		    )))
 	   ;; Set all the params before running things:
 	   ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
-	   ;(for-each eval params)
-;	     (inspect (vector flags params))
-	     
+	   (HACK (for-each eval params))
+	   ;;; [2006.11.11] HACK HACK -- loading params twice for now!!!
+;	   (inspect compiled)
+;	   (inspect params)
+	   
 	   (let ((result 
 		  (with-evaled-params params
 		      (lambda ()
-			(parameterize ([pass-list passes])
-			  (apply run-simulator-alpha compiled  flags
+			(apply run-simulator-alpha compiled  flags
 					;'srand (current-time)
-				 ))))))
+			       )))))
 	     (print-stats)
 	     result))))]
     [,other (error 'load-regiment "bad arguments: ~s\n" other)]))
