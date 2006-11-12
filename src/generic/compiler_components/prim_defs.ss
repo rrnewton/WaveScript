@@ -582,6 +582,7 @@
      (reverse (List) List)
      (map (Function List) List)
      (filter (Function List) List)
+     (foldl (Function Object List) Object)
      (fold (Function Object List) Object)
      (alist_lookup (List Object) List)
      (alist_update (List Object Object) List)

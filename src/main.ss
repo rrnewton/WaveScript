@@ -13,7 +13,9 @@
 
 (define-regiment-parameter svn-revision
   (and (zero? (system "which svn > /dev/null"))
-       (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))))
+       (parameterize ([current-directory (REGIMENTD)])
+	 (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
+	 )))
 
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
