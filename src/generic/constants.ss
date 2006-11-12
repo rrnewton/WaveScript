@@ -327,7 +327,7 @@
 ;; This is used by various demo programs to externally control a
 ;; parameter that needs to be varied for testing/analysis purposes.
 ;(define-regiment-parameter varied-param 'unset-varied-param)
-(define-regiment-parameter varied-param (begin (warning  'varied-param "HACK LOADED") 190))
+(define-regiment-parameter varied-param (begin (warning  'varied-param "HACK LOADED") 12))
 
 ;; This parameter determines whether comments will be inserted in generated code.
 ;; Does not effect execution one way or the other

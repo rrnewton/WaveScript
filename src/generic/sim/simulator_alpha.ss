@@ -1201,7 +1201,12 @@
       ;; Now that the new world is generated, we write its essential info to the logfile.
       ;; For now that's the nodes.
       ;; [2006.02.20] Lame.  For now I'm having problems with writing records to disk.
-      (logger 0 -1 '_ 'NEWWORLD `[nodes ,(map reg:struct->list (map car (simworld-graph sim)))])
+      (logger 0 -1 '_ 'NEWWORLD 
+	      `[nodes ,(map reg:struct->list (map car (simworld-graph sim)))]
+	      `[graph ,(map (lambda (entry) (map node-id entry))
+			 (simworld-graph sim)
+			 )]
+	      )
   
     ; Here, we also leave our simworld behind after we finish for anyone who wants to look at it.
     (simalpha-current-simworld sim)
