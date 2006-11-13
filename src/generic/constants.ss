@@ -359,7 +359,7 @@
 ;====================================================
 
 ;; The slow-pulse is used for region formation.
-(define-regiment-parameter default-slow-pulse 60000) ;; MILLISECONDS
+(define-regiment-parameter default-slow-pulse (* 10 60000)) ;; MILLISECONDS
 
 ;; The fast-pulse is used for folding.
 (define-regiment-parameter default-fast-pulse 5000)  ;; MILLISECONDS

@@ -119,8 +119,13 @@
 			    ;; PUTTING THEM IN THE CENTER OF THE NETWORK:
 			(let (;[strike-x 2600];(/ worldx 2)]  ;(+ quartx (random (/ worldx 2)))]
 			      ;[strike-y 2400];(/ worldy 2)]) ;(+ quarty (random (/ worldy 2)))]
-			      [strike-x (/ worldx 2)]
-			      [strike-y (/ worldy 2)]
+			      [strike-x (if (= worldx 5000)
+					    2420
+					    (/ worldx 2)
+					    )]
+			      [strike-y (if (= worldy 5000)
+					    2420
+					    (/ worldy 2))]
 			      )
 			  ;(printf "  LIGHTNING!! ~a of ~a ~a\n" i numstrikes strike-time)
 			  (let ([newfire (make-fire strike-x strike-y strike-time 0  ;; Initial radius zero
@@ -356,7 +361,8 @@
 ;; [2006.04.05] Hacking 
 
 (define CONSTANT_STRIKES
-  '(1000000 
+  '(
+    1000000 
     2000000
     3000000
     4000000

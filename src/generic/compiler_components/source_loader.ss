@@ -120,6 +120,9 @@
 ;; [2006.11.08] It looks like there are two conditions in which a
 ;; stale world is used.  Either when 'use-stale-world is passed
 ;; explicitely, or when (simalpha-current-simworld) is non-false.
+;
+;; [2006.11.13] Adding params to compile phase as well.  Compiler
+;; reads default-slow-pulse, for example.
 (define (load-regiment . args)
   (match args    
     [(,world ,fn . ,opts) (guard (simworld? world) (string? fn))
@@ -146,18 +149,22 @@
 			[(sim alpha) (values prg params ())]
 			[else (error 'load-regiment "can't handle file with this extension: ~s" fn)]
 			)))])
-	 
+
+	 ;; Prioriy: User params override those set in the file:	 
+	 (define params 
+	   (if (memq 'ignore-file-params flags) 
+	       (begin (set! flags (remq 'ignore-file-params flags))
+		      userparams)
+	       (append (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams) userparams)
+	       ))
+
 	 (define compiled 
-	   (parameterize ([pass-list passes])
-	     (apply (top-level-value 'run-compiler) prog flags)))
-	 
-	 ;; Prioriy: User params override those set in the file:
-	 (let ((params 
-		(if (memq 'ignore-file-params flags) 
-		    (begin (set! flags (remq 'ignore-file-params flags))
-			   userparams)
-		    (append (filter (lambda (pr) (not (assq (car pr) userparams))) codeparams) userparams)
-		    )))
+	   (with-evaled-params params
+	       (lambda ()
+		 (parameterize ([pass-list passes])
+		   (apply (top-level-value 'run-compiler) prog flags))))	   
+	   )
+
 	   ;; Set all the params before running things:
 	   ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
 	   (HACK (for-each eval params))
@@ -172,7 +179,7 @@
 					;'srand (current-time)
 			       )))))
 	     (print-stats)
-	     result))))]
+	     result)))]
     [,other (error 'load-regiment "bad arguments: ~s\n" other)]))
 
 (define reg:load load-regiment) ;; shorthand
