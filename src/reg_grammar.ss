@@ -100,6 +100,8 @@
    ;; Dot-syntax:
 ;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
    ["." 'DOT]
+   ;; Dot-stream
+   ;[".<" 'DOT-STREAM-OPEN]
    
    [(:+ digit) (token-NUM (string->number lexeme))]
 
