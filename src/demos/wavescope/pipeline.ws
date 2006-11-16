@@ -22,6 +22,7 @@ fun rewindow(sig, newwidth, step)
 }
 
 
+source :: Signal (Sigseg Float);
 //source = doubleFile("./pipeline1.data", 600, 0);
 source = audio(0, 600, 0);
 
