@@ -11,7 +11,7 @@
 ;;;; Really this is pretty unnecessary now because the type checker
 ;;;; should catch most of these problems.
 
-(trace-define verify-regiment
+(define verify-regiment
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'verify-regiment
    `(input)

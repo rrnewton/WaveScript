@@ -39,6 +39,7 @@
     ;; of the program as can be evaluated.  The residual had better follow our
     ;; restrictions on implementable Regiment programs.
     static-elaborate
+    rename-vars ;; We run again after elaborator.
     retypecheck
 
 ;    verify-elaborated
@@ -342,12 +343,12 @@
   ;; We typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
   (set! p (optional-stop (retypecheck p)))
-  (printf "Post elaboration types: \n")
-  (print-var-types p)
+;  (printf "Post elaboration types: \n")
+;  (print-var-types p)
 
   (set! p (optional-stop (verify-elaborated p)))
   
-;  (set! p (optional-stop (merge-iterates p)))
+  (set! p (optional-stop (merge-iterates p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to
