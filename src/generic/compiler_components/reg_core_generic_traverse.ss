@@ -52,13 +52,13 @@
 ;; TODO: CONSOLIDATE: Rewrite the define-pass [Bindings ...] clause to use these helpers:
 
 ;; This is for double-checking our work below.
-(trace-define (binding-form? x)
+(define (binding-form? x)
   ;; This doesn't verify the *validity* of the form:
   (and (pair? x)
        (memq (car x) '(for let let* letrec lazy-letrec lambda))
        ))
 ;; Returns in-scope expressions froma a binding form.
-(trace-define (binding-form->scoped-exprs x)
+(define (binding-form->scoped-exprs x)
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
      (cons bod rhs*)]
@@ -69,7 +69,7 @@
     [,other (error 'binding-form->scoped-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns not-in-scope expressions from a binding form.
-(trace-define (binding-form->other-exprs x)
+(define (binding-form->other-exprs x)
   (match x
     [(,letrec . ,_) (guard (memq letrec '(letrec lazy-letrec))) '()]
     [(lambda . ,_) '()]
@@ -79,7 +79,7 @@
     [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns bound-vars from a binding form.
-(trace-define (binding-form->vars x)
+(define (binding-form->vars x)
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec))) 
      lhs*]
@@ -90,7 +90,7 @@
     [,other (error 'binding-form->vars "not a binding form: ~s" x)]
     ))
 ;; Returns types from a binding form.
-(trace-define (binding-form->types x)
+(define (binding-form->types x)
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
      ty*]
@@ -304,7 +304,7 @@
 ;;; Derived utilities.
 
 ;; This should be a general-purpose free-vars utility for the core lang.
-(trace-define (core-free-vars exp) 
+(define (core-free-vars exp) 
   (core-generic-traverse
    (lambda (x fallthru)
      (match x        

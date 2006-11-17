@@ -98,7 +98,8 @@
 	))
 
     (define (do-prim prim args)
-      (disp "DOING PRIM: " prim args)
+      (when (regiment-verbose)
+	(display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -109,7 +110,8 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (disp "INLINING " rator)
+      (when (regiment-verbose)
+	(display-constrained "INLINING " `[,rator 40] "\n"))
       (match rator
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
