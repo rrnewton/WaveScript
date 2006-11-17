@@ -323,6 +323,7 @@
 (include "generic/passes/normalize_query/lift-letrec.ss")
 (include "generic/passes/normalize_query/lift-letrec-body.ss")
 (include "generic/passes/normalize_query/remove-complex-opera.ss")
+(include "generic/passes/normalize_query/remove-lazy-letrec.ss")
 (include "generic/passes/normalize_query/verify-core.ss")
 
 (include "generic/passes/analyze_query/classify-names.ss")

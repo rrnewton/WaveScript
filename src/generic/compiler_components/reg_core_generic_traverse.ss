@@ -52,15 +52,16 @@
 ;; TODO: CONSOLIDATE: Rewrite the define-pass [Bindings ...] clause to use these helpers:
 
 ;; This is for double-checking our work below.
-(define (binding-form? x)
+(trace-define (binding-form? x)
   ;; This doesn't verify the *validity* of the form:
   (and (pair? x)
        (memq (car x) '(for let let* letrec lazy-letrec lambda))
        ))
 ;; Returns in-scope expressions froma a binding form.
-(define (binding-form->scoped-exprs x)
+(trace-define (binding-form->scoped-exprs x)
   (match x
-    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (cons bod rhs*)]
+    [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
+     (cons bod rhs*)]
     [(lambda ,vars ,types ,bod) (list bod)]
     [(let ,_ ,bod) (list bod)]
     [(for (,i ,st ,en) ,bod) (list bod)]
@@ -68,9 +69,9 @@
     [,other (error 'binding-form->scoped-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns not-in-scope expressions from a binding form.
-(define (binding-form->other-exprs x)
+(trace-define (binding-form->other-exprs x)
   (match x
-    [(letrec . ,_) '()]
+    [(,letrec . ,_) (guard (memq letrec '(letrec lazy-letrec))) '()]
     [(lambda . ,_) '()]
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod) rhs*]
     [(for (,i ,st ,en) ,bod) (list st en)]
@@ -78,9 +79,10 @@
     [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns bound-vars from a binding form.
-(define (binding-form->vars x)
+(trace-define (binding-form->vars x)
   (match x
-    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) lhs*]
+    [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec))) 
+     lhs*]
     [(lambda (,vars ...) ,types ,bod)       vars]
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    lhs*]
     [(for (,i ,st ,en) ,bod)            (list i)]
@@ -88,9 +90,10 @@
     [,other (error 'binding-form->vars "not a binding form: ~s" x)]
     ))
 ;; Returns types from a binding form.
-(define (binding-form->types x)
+(trace-define (binding-form->types x)
   (match x
-    [(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) ty*]
+    [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
+     ty*]
     [(lambda (,vars ...) (,types ...) ,bod) types]
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    ty*]
     [(for (,i ,st ,en) ,bod)                '(Int)]
@@ -301,19 +304,29 @@
 ;;; Derived utilities.
 
 ;; This should be a general-purpose free-vars utility for the core lang.
-(define core-free-vars 
+(trace-define (core-free-vars exp) 
   (core-generic-traverse
    (lambda (x fallthru)
      (match x        
        [,v (guard (symbol? v)) (list v)]
        [,form (guard (binding-form? form))
+
+	      (let ([scoped (binding-form->scoped-exprs form)]
+		    [vars (binding-form->vars form)]
+		    [others (binding-form->other-exprs form)]
+		    )			      
+;	      (inspect `([scoped ,scoped] [vars ,vars] [others ,others] ))
+
 	      (union  
-	       (difference (apply append (map free-vars (binding-form->scoped-exprs form)))
-			   (binding-form->vars form))
-	       (apply append (map free-vars (binding-form->other-exprs form)))
-	       )]
+	       (difference (apply append (map core-free-vars scoped))
+			   vars)
+	       (apply append (map core-free-vars others))
+	       )
+
+		)]
        [,x (fallthru x)]))
-   (lambda (ls k) (union append ls))
+   (lambda (ls k) (apply union ls))
+   exp
    ))
 
 ; ================================================================================
@@ -342,6 +355,10 @@
       (lambda (ls k) (apply k ls))
       '(lambda (x) (Int) (+ '3 '4)))
      (lambda (x) (Int) (+ '3 '4))]
+    
+    ["core-free-vars "
+     (core-free-vars '(audioFile '"countup.raw" '2 x))
+     (x)]
 
     ))
 

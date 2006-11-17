@@ -284,6 +284,7 @@
 
 
 ;; This needs to be replaced with something real.
+#;
 (define-pass remove-lazy-letrec
     [Expr (lambda (x fallthru)
 	    (match (fallthru x)
@@ -315,8 +316,8 @@
   (define optional-stop 
     (lambda (x)
       (if (regiment-verbose)
-	  (IFDEBUG
-	   (begin (parameterize ([pretty-line-length 150]
+	  (if #t ;IFDEBUG
+	      (begin (parameterize ([pretty-line-length 150]
 				 [print-length 30]
 				 [print-level 30])
 		    (newline)
@@ -327,6 +328,8 @@
 	   x)
 	  x)))
 
+  (optional-stop p)
+  
   (set! p (optional-stop (verify-regiment p)))
   (set! p (optional-stop (pass_desugar-pattern-matching p)))
   (printf "Program verified.\n")
@@ -344,7 +347,7 @@
 
   (set! p (optional-stop (verify-elaborated p)))
   
-  (set! p (optional-stop (merge-iterates p)))
+;  (set! p (optional-stop (merge-iterates p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to

@@ -35,7 +35,7 @@
     +: -: *: /: ^: 
     :: ++ 
     AND OR 
-    NEG APP SEMI COMMA DOT DOTBRK BAR BANG
+    NEG APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
     fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -100,8 +100,8 @@
    ;; Dot-syntax:
 ;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
    ["." 'DOT]
-   ;; Dot-stream
-   ;[".<" 'DOT-STREAM-OPEN]
+   ;; Dot/stream-projection
+   [".<" 'DOTSTREAM]
    
    [(:+ digit) (token-NUM (string->number lexeme))]
 
@@ -320,6 +320,11 @@
     ;; Kinda redundant, used only for state {} blocks.
     (binds [() ()]
            [(VAR = exp) (list (list $1 $3))]
+	   ;; Special stream-binding syntax:
+;           [(VAR < formals+ > = exp) (list 
+;				      (list $1 $3)
+;				      )]
+
            [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
@@ -358,7 +363,10 @@
          [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
 ;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
 
+	 ;; Basic dot syntax:
          [(exp DOT exp) `(app ,$3 ,$1)]
+	 ;; Special stream-projection dot syntax.
+	 [(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]

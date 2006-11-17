@@ -231,14 +231,28 @@
         (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
       (unless (subset? typevs defvs)
         (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
-      `(let* ,(map (lambda (def)
+      (let ([binds (map (lambda (def)
 		     (match def
 		       [(,v ,e) (if (memq v typevs)
 				    `[,v ,(cadr (assq v types)) ,e]
 				    `[,v ,e])]))
-		defs)
-         ,(cadar routes))))))
+		defs)]
+	    [body (cadar routes)])
+	;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
+
+	;; [2006.11.16] Ok, well now we need recursion.  Going back to
+	;; letrec.  Problem was (I think) that we didn't have
+	;; letrec*... I'm just making nested letrecs for now.
+
+	;;`(let* ,binds ,body)
+	;;`(letrec ,binds ,body)
+	(let loop ([binds binds])
+	  (if (null? binds) body
+	      `(letrec (,(car binds))
+		 ,(loop (cdr binds))
+		 )))
+	
+	)))))
 
 ;; Expand an include statement into a set of definitions.
 ;; Optionally takes the absolute path of the file in which the

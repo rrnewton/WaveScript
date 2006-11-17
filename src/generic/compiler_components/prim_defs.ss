@@ -208,7 +208,8 @@
     ;; Adding Wavescope-related primitives:
     (nullseg        (Sigseg 'a))
     (nullarr        (Array 'a))  ;; This is weird... ML doesn't have it.
-    
+
+    (nulltimebase  Timebase)    
     ))
 
 ;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
