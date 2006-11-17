@@ -21,9 +21,16 @@ fun zip(s1, s2) {
 	   buf2 := [];
     }
   }
-}
+};
 
-s1 = audioFile("countup.raw",32,0);
-s2 = audioFile("countup.raw",32,0);
+countup = iterate(_ in timer(3000)) {
+  state{ cnt = 0 }
+  cnt := cnt+1;
+  emit cnt;
+};
+
+
+s1 = countup;
+s2 = smap(fun(x) x+1, countup);
 
 BASE <- zip(s1,s2);
