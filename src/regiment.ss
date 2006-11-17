@@ -399,7 +399,8 @@
 	   (let loop ([return (wsint port)])
 	     ;(if (procedure? return) (loop (force return))
 		 (if (stream? return)
-		     (browse-stream return)
+		     (parameterize ([print-vector-length #t])
+		       (browse-stream return))
 		     (printf "\nWS query returned a non-stream value:\n  ~s\n" return)))
 	   )]
 	  

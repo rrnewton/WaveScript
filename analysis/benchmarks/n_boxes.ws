@@ -79,6 +79,31 @@ BASE <- loop(3);
      (Signal Int)))
 
 
+
+(merge-iterates-language
+  '(program
+     (iterate
+       (lambda (w_5)
+         ((Sigseg Int))
+         (letrec ([VIRTQUEUE_4 (VQueue Int) (virtqueue)])
+           (letrec ([f_3 (Int -> Int) (lambda (x_3)
+                                        (Int)
+                                        (letrec ([f_2 (Int -> Int) (lambda (x_3)
+                                                                     (Int)
+                                                                     (letrec ([f_1 (Int -> Int) (lambda (x_3)
+                                                                                                  (Int)
+                                                                                                  (begin
+                                                                                                    (emit VIRTQUEUE_4 (- (+ x_3 x_3) x_3))
+                                                                                                    VIRTQUEUE_4))])
+                                                                       (begin (app f_1 (- (+ x_3 x_3) x_3)) VIRTQUEUE_4)))])
+                                          (begin (app f_2 (- (+ x_3 x_3) x_3)) VIRTQUEUE_4)))])
+             (begin (app f_3 (seg-get w_5 (start w_5))) VIRTQUEUE_6))))
+       (audioFile '"countup.raw" '2 '0))
+     (Signal Int)))
+
+
+
+
+
+
 */
-
-

@@ -501,7 +501,12 @@
        (values `(if ,te ,ce ,ae) ct)]
       
       ;; Wavescope: this could be a set! to a state{} bound variable:
-      [(set! ,v ,[l -> e et])  (values `(set! ,v ,e) #())]
+      [(set! ,v ,[l -> e et])  
+       (let ([newexp `(set! ,v ,e)])
+	 (types-equal! (ASSERT (tenv-lookup tenv v))
+		       et newexp)
+	 ;; returns unit type:
+	 (values newexp #()))]
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
 	 (unless (types-compat? st et) (raise-type-mismatch start end expr))
