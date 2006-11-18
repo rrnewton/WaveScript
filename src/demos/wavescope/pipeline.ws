@@ -8,6 +8,9 @@ E          = 2.7182818284590452354;
 // ASK: array of array syntax; timebase stuff; is there an apply?; are there lambdas?;
 //      args to subseg?
 
+/*
+ *
+ */
 fun rewindow(sig, newwidth, step)
 {
   if step > newwidth
@@ -28,6 +31,42 @@ fun rewindow(sig, newwidth, step)
 /*
  *
  */
+fun zip(s1, s2)
+{
+   let slist = [s1, s2];
+   iterate ((i, x) in unionList(slist))
+   {
+      state {
+         buf1 = []; // using list for poor-man's Maybe type.
+         buf2 = [];
+      }
+
+      if (i == 0) then
+      {
+         buf1 := [x]; // Might throw out elemnt.
+      }
+      else if (i == 1) then
+      {
+         buf2 := [x];
+      }
+      else
+      {
+         wserror("implementation error");
+      };
+
+      if (buf1.listLength == 1 && buf2.listLength == 1) then
+      {
+         emit (buf1.head, buf2.head);
+         buf1 := [];
+         buf2 := [];
+      };
+   };
+}
+
+
+/*
+ *
+ */
 fun haar_calc(values, outputLevel)
 {
    
@@ -35,7 +74,7 @@ fun haar_calc(values, outputLevel)
    valArrs[0] := values;
    currLen = values.length;
    
-   for i=1 to outputLevel-1
+   for i=1 to outputLevel-2
    {
       currLen := currLen / 2;
       valArr_i   = makeArray(currLen, 0.0);
@@ -46,11 +85,11 @@ fun haar_calc(values, outputLevel)
       };
       valArrs[i] := valArr_i;
    };
-   last = outputLevel-1;
+   last = outputLevel-2;
+   currLen := currLen / 2;
    
-
    outCoefs = makeArray(currLen, 0.0);
-   valArr_last = valArrs[outputLevel-1];
+   valArr_last = valArrs[last];
    for j=0 to currLen-1
    {
       outCoefs[j] := (valArr_last[j*2] -. valArr_last[j*2+1]) /. 2.0;
@@ -63,21 +102,34 @@ fun haar_calc(values, outputLevel)
 /*
  *
  */
-//trimpeak : Sigseg Double, (Double, Double -> Bool) -> (Int, 'es)
-fun trimpeak(w, comp)
+fun trimpeak(stream, comp)
 {
-   supVal = w[[w.start]];
-   supInd = w.start;
-   for i=w.start+1 to w.end
+   iterate (w in stream)
    {
-      if comp(w[[i]], supVal) then
+      supVal = w[[w.start]];
+      supInd = w.start;
+      for i=w.start+1 to w.end
       {
-         supVal := w[[i]];
-         supInd := i;
+         if comp(w[[i]], supVal) then
+         {
+            supVal := w[[i]];
+            supInd := i;
+         };
       };
-   };
 
-   (supInd, supVal);
+      emit (supVal, subseg(w, supInd, w.end - supInd));
+   };
+}
+
+
+/*
+ * FIXME: probaly just temporary; in lieu of a built-in absf
+ */
+absf :: Float -> Float;
+fun absf(x)
+{
+   if (x < 0.0) then 0.0 -. x
+   else                     x;
 }
 
 
@@ -111,73 +163,63 @@ wlt = iterate (w in rw)
 {
    // FIXME: do wavelet(outputLevel=4, doScaling=true)
    // scalingFactor = doScaling ? sqrt(pow(2.0, (int)outputLevel)) : 1;
-   scalingFactor : Float = 4.0;
+   scalingFactor = 4.0;
 
-   outBuf = haar_calc(to_array(w), 4);
+   outBuf = haar_calc(to_array(w), 4); // FIXME: move this to_array() into haar_calc() !!!
    for i=0 to outBuf.length-1
    {
       outBuf[i] := outBuf[i] *. scalingFactor;
    };
-   emit to_sigseg(outBuf, w.start, w.end, w.timebase);
+
+
+   emit to_sigseg(outBuf, 0, outBuf.length-1, w.timebase);
 }
 
+tpk1 :: Signal (Float, Sigseg Float);
+tpk1 = trimpeak(wlt, fun(a,b) { a < b });
 
-tpk1 = iterate (w in wlt)
-{
-   // FIXME: do Trimpeak(MIN)
-   let (minInd, minVal) = trimpeak(w, fun(a,b) { a < b });
-   emit (minVal, subseg(w, minInd, w.end - minInd));
-}
-
-/*
 filter1 = iterate ((m,w) in tpk1)
 {
    // FIXME: do PeakTrimFilter()
    emit w;
 }
 
+tpk2 = trimpeak(filter1, fun(a,b) { a > b });
 
-tpk2 = iterate (w in filter1)
-{
-   maxInd = trimpeak(w, fun(a,b) { a > b });
-   emit subseg(w, maxInd, w.end - maxInd); // FIXME: is this right?
-}
 
-filter2 = iterate (w in tpk2)
+filter2 = iterate ((m,w) in tpk2)
 {
    // FIXME: do PeakTrimFilter()
-   // FIXME: does this really do nothing?
    emit w;
 }
 
 
-tpk3 = iterate (w in filter2)
-{
-   // FIXME: do Trimpeak(MIN)
-   minInd = trimpeak(w, fun(a,b) { a < b });
-   emit subseg(w, minInd, w.end - minInd); // FIXME: is this right?
-}
+tpk3 = trimpeak(filter2, fun(a,b) { a < b });
 
-filter3 = iterate (w in tpk3)
+filter3 = iterate ((m,w) in tpk3)
 {
    // FIXME: do PeakTrimFilter()
-   // FIXME: does this really do nothing?
    emit w;
 }
 
-tpk4 = iterate (w in filter3)
-{
-   // FIXME: do Trimpeak(MAX)
-   maxInd = trimpeak(w, fun(a,b) { a > b });
-   emit subseg(w, maxInd, w.end - maxInd); // FIXME: is this right?
-}
+
+tpk4 = trimpeak(filter3, fun(a,b) { a > b });
 
 
-detect = iterate(w in zip2(tpk1, tpk4))
+//blah = unionList([tpk1, tpk4]);
+
+//detect = iterate(((m1,w1), (m2,w2)) in unionList([tpk1, tpk4]))
+detect = iterate(((m1,w1), (m2,w2)) in zip(tpk1, tpk4))
 {
    // FIXME: do LeakDetect(NORMALMEAN, NORMALSTD, LEAKMEAN, LEAKSTD)
-   emit w;
+   peakRatio = m1 /. m2;
+
+   print("peakRatio: " ++ show(peakRatio));
+
+   emit(absf(peakRatio) < 0.32);
 }
+
+/*
 
 iterate (w in detect)
 {
@@ -186,6 +228,5 @@ iterate (w in detect)
 */
 
 
-//BASE <- detect;
-BASE <- rw;
-
+BASE <- tpk1;
+//BASE <- wlt;
