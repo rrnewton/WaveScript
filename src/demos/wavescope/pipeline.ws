@@ -117,7 +117,7 @@ fun trimpeak(stream, comp)
          };
       };
 
-      emit (supVal, subseg(w, supInd, w.end - supInd));
+      emit (supVal, subseg(w, w.start + supInd, w.end - supInd));
    };
 }
 
