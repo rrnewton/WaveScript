@@ -346,6 +346,17 @@
 ;  (printf "Post elaboration types: \n")
 ;  (print-var-types p)
 
+  (with-output-to-file ".__elaborated.txt"
+    (lambda () 
+      (parameterize ([pretty-line-length 200]
+		     [pretty-maximum-lines #f]
+		     [print-level #f]
+		     [print-length #f]
+		     [print-graph #f])
+	(pretty-print p))
+      (flush-output-port))
+    'replace)
+
   (set! p (optional-stop (verify-elaborated p)))
   
   (set! p (optional-stop (merge-iterates p)))

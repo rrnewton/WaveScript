@@ -344,7 +344,10 @@
           [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
 	  
 	  ;; Don't go inside for loops for now:
-	  [(for (,i ,[st] ,[en]) ,bod)  `(for (,i ,st ,en) ,bod)]
+	  [(for (,i ,[st] ,[en]) ,bod)
+	   (let ([newenv (cons `(,i not-available 99999) env)])	     
+	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
+	  
           [(begin ,(args) ...) `(begin ,args ...)]
           [(set! ,v ,(rhs)) `(set! ,v ,rhs)]
 	  
