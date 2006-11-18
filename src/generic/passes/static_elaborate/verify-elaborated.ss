@@ -41,7 +41,8 @@
 	     ;(distributed-type? type)	
 	     #t ;; <-- Harshest version: no functions at all.
 	     (error 'verify-elaborated
-		    "post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
+		    ;"post-elaboration expression should not contain arrow types containing monads.\n  Type: ~s\n  Rator: ~s\n"
+		    "post-elaboration expression should (currently) not contain function applications at all.\n  Type: ~s\n  Rator: ~s\n"
 		    type rator))
 	    `(app ,rator ,rand* ...))]
 
