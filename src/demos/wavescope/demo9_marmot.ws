@@ -201,12 +201,12 @@ fun detect(scorestrm) {
     }
 
     fun reset() {
-      thresh_value := 0;
+      thresh_value := 0.0;
       trigger := false;
       smoothed_mean := 0.0; // 0; // TYPE INFERENC ERROR -- CHECK SET! CASE FIXME!!!!
       smoothed_var := 0.0;
       _start := 0;
-      trigger_value := 0;
+      trigger_value := 0.0;
       startup := startup_init;
       refract := 0;
     };
@@ -240,7 +240,7 @@ fun detect(scorestrm) {
 	refract := refract - 1;
       }	else {
 	/* untriggering! */
-	trigger := 0;
+	trigger := false;
 	emit (true,                       // yes, snapshot
 	      _start - samples_padding,     // start sample
 	      win.end + samples_padding); // end sample
