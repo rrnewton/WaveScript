@@ -117,7 +117,30 @@ fun trimpeak(stream, comp)
          };
       };
 
-      emit (supVal, subseg(w, w.start + supInd, w.end - supInd));
+      emit (supVal, subseg(w, supInd, w.width - (supInd-w.start)));
+   };
+}
+
+/*
+ *
+ */
+fun trimpeakEmpty(stream, comp)
+{
+   iterate (w in stream)
+   {
+      supVal = w[[w.start]];
+      supInd = w.start;
+      for i=w.start+1 to w.end
+      {
+         if comp(w[[i]], supVal) then
+         {
+            supVal := w[[i]];
+            supInd := i;
+         };
+      };
+
+      //emit (supVal, subseg(w, supInd, w.width - (supInd-w.start)));
+      emit (w.start,supInd,w.end);
    };
 }
 
@@ -159,6 +182,7 @@ pbox = iterate (w in rw)
 }
 
 
+wlt :: Signal Sigseg Float;
 wlt = iterate (w in rw)
 {
    // FIXME: do wavelet(outputLevel=4, doScaling=true)
@@ -178,6 +202,7 @@ wlt = iterate (w in rw)
 tpk1 :: Signal (Float, Sigseg Float);
 tpk1 = trimpeak(wlt, fun(a,b) { a < b });
 
+filter1 :: Signal Sigseg Float;
 filter1 = iterate ((m,w) in tpk1)
 {
    // FIXME: do PeakTrimFilter()
@@ -218,6 +243,7 @@ detect = iterate(((m1,w1), (m2,w2)) in zip(tpk1, tpk4))
 
    emit(absf(peakRatio) < 0.32);
 }
+/**/
 
 /*
 
@@ -228,5 +254,6 @@ iterate (w in detect)
 */
 
 
-BASE <- tpk1;
+BASE <- detect;
+//BASE <- wlt;
 //BASE <- wlt;
