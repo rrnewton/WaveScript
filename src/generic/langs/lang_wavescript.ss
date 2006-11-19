@@ -273,6 +273,15 @@
 	     5000000
 	     (lambda () (printf "  POS# ~a dumped...\n" pos))))))
 
+
+     ;; [2006.11.18] TODO:
+     ;; Michael, maybe you could fill this in?
+     (define (doubleFile file len overlap)
+       
+       'DOUBLEFILE-UNFINISHED
+       )
+
+
      ;; Read a stream of Uint16's.
      (define (audioFile file len overlap)
        (read-file-stream file 

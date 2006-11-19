@@ -339,10 +339,12 @@
   (set! p (optional-stop (eta-primitives p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
-  
+
   ;; We typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
   (set! p (optional-stop (retypecheck p)))
+  (set! p (optional-stop (rename-vars p)))
+
 ;  (printf "Post elaboration types: \n")
 ;  (print-var-types p)
 
@@ -359,7 +361,7 @@
 
   (set! p (optional-stop (verify-elaborated p)))
   
-  (set! p (optional-stop (merge-iterates p)))
+;  (set! p (optional-stop (merge-iterates p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -474,6 +476,17 @@
   (REGIMENT_DEBUG 
 ;   (printf "================================================================================\n")
    (printf "\nNow emitting C code:\n"))
+
+  (with-output-to-file ".__almostC.ss"
+    (lambda () 
+      (parameterize ([pretty-line-length 200]
+		     [pretty-maximum-lines #f]
+		     [print-level #f]
+		     [print-length #f]
+		     [print-graph #f])
+	(pretty-print prog))
+      (flush-output-port))
+    'replace)
   
   (string->file 
    (text->string 

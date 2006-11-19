@@ -128,6 +128,17 @@
 	    )
 	  '())]
 
+	;; [2006.11.18] This is for readng pipeline data currently.
+	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
+	 ;; CODE DUPLICATION:
+	 `("WSBox* ",name";\n"
+	   "{ size = ",size";\n"
+	   "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
+	   "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
+	   "  ",name"->connect(tmp); }\n"
+	   )
+	 ]
+
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))	  
