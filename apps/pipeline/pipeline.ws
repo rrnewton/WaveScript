@@ -256,6 +256,6 @@ iterate (w in detect)
 */
 
 
-BASE <- source;
-//BASE <- wlt;
+//BASE <- source;
+BASE <- rw;
 //BASE <- wlt;

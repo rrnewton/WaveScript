@@ -11,7 +11,6 @@
 
 ;; Testing file IO on marmot audio traces:
 
-
 ;; This just checks some hard coded locations for the marmot file.
 (define (marmotfile)
   (let ([file (cond
@@ -189,7 +188,7 @@
 	(and (sigseg? w)
 	     (<= (sigseg-start w) (sigseg-end  w))
 	     (equal? (vector-length (sigseg-vec w))
-		     (+ (sigseg-end w) (- (sigseg-start  w)) 1))
+		     (+  (- (sigseg-end w) (sigseg-start  w)) 1))
 	     )))
 
   (define (valid-timebase? tb)
@@ -277,16 +276,27 @@
      ;; FIXME: this is inefficient; keeping a ptr to the tail of the stream
      ;;        and modifying that would be better
      (define (doubleFile file len overlap)
-       (let ((infile (open-input-file file)))
-         (let loop ((t 0))
-           (let ((n (read infile)))
-             (if (eof-object? n)
-                 ()
-                 (let ((v (make-vector 1)))
-                   (vector-set! v 0 n)
-                   (stream-cons (make-sigseg t (+ t 1) v nulltimebase)
-                                (loop (+ t 1)))))))))
-
+       ;; Ignoring overlap for now!!
+       (unless (zero? overlap)
+	 (error 'doubleFile "does not currently support overlaps, use rewindow!"))
+       (delay 
+	 (let ((infile (open-input-file file)))
+         (let strmloop ([t 0])
+	   (let ([vec (make-vector len)])
+	     (let inner ([cnt 0])
+	       (if (fx= cnt len)
+		   ;; Vector is full.
+		   (stream-cons (make-sigseg t (+ t len -1) vec nulltimebase)
+				(strmloop (+ t len))) ;; time could overflow fixnum		 
+		   (let ((n (read infile))) ;; would read-line be faster?
+		     (if (eof-object? n)
+			 ;; Do we make a partial sigseg?  Nah.  Throw it out.
+			 '()
+			 (begin 
+			   (vector-set! vec cnt n)
+			   (inner (fx+ 1 cnt))
+			   )
+			 )))))))))
 
      ;; Read a stream of Uint16's.
      (define (audioFile file len overlap)

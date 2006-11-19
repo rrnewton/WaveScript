@@ -315,8 +315,8 @@
     (width        ((Sigseg 'a)) Int)
     
     ;; Returns absolute sample indexes.
-    (start        ((Sigseg 'a)) Int)
-    (end          ((Sigseg 'a)) Int)
+    (start        ((Sigseg 'a)) Int)  ;; inclusive start of range
+    (end          ((Sigseg 'a)) Int)  ;; inclusive end of range
     ;; Returns timebase:
     (timebase     ((Sigseg 'a)) Timebase)
 
