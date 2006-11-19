@@ -1,4 +1,6 @@
 
+// TODO: fix up time bases and we're done!!!!!!!
+
 NORMALMEAN = 0.329;
 NORMALSTD  = 0.1;
 LEAKMEAN   = 0.215;
@@ -169,8 +171,8 @@ fun gaussian_likelihood(mean, stddev, peakRatio)
 
 
 source :: Signal (Sigseg Float);
-//source = doubleFile("./pipeline1.data", 600, 0);
-source = audio(0, 600, 0);
+source = doubleFile("./pipeline1.data", 600, 0);
+//source = audio(0, 600, 0);
 
 rw :: Signal (Sigseg Float);
 rw = rewindow(source, 8192, 500);
@@ -254,6 +256,6 @@ iterate (w in detect)
 */
 
 
-BASE <- detect;
+BASE <- source;
 //BASE <- wlt;
 //BASE <- wlt;
