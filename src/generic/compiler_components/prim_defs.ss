@@ -248,7 +248,7 @@
     ;; This version is to read a file containing doubles.
     ;; HACK: Currently it expects a text file rather than a binary file for the 
     ;; interpreted version of the system.
-    (doubleFile        (String Int Int)  (Signal (Sigseg Int)))
+    (doubleFile        (String Int Int)  (Signal (Sigseg Float)))
 
     (fft              ((Sigseg Float))  (Sigseg Complex))
 

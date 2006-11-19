@@ -96,7 +96,7 @@
 		 valid-sigseg?
 		 app letrec (for for-loop-stack)
 
-		 dump-binfile audioFile audio timer
+		 dump-binfile doubleFile audioFile audio timer
 		 ; read-file-stream
 		 print show
 
@@ -274,12 +274,18 @@
 	     (lambda () (printf "  POS# ~a dumped...\n" pos))))))
 
 
-     ;; [2006.11.18] TODO:
-     ;; Michael, maybe you could fill this in?
+     ;; FIXME: this is inefficient; keeping a ptr to the tail of the stream
+     ;;        and modifying that would be better
      (define (doubleFile file len overlap)
-       
-       'DOUBLEFILE-UNFINISHED
-       )
+       (let ((infile (open-input-file file)))
+         (let loop ((t 0))
+           (let ((n (read infile)))
+             (if (eof-object? n)
+                 ()
+                 (let ((v (make-vector 1)))
+                   (vector-set! v 0 n)
+                   (stream-cons (make-sigseg t (+ t 1) v nulltimebase)
+                                (loop (+ t 1)))))))))
 
 
      ;; Read a stream of Uint16's.

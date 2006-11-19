@@ -1685,8 +1685,8 @@
 ;(include "generic/util/streams.ss")
 ;(include (build-path (REGIMENTD) "generic/util/streams.ss"))
 (IFCHEZ (include "generic/util/streams.ss")
-	(include (build-path "~/wavescript/src" "generic/util/streams.ss")))
-
+	;(include (build-path "~/wavescript/src" "generic/util/streams.ss")))
+         (include "streams.ss"))
 ;===============================
 
 ;; [2004.06.18] This displays the changes in a piece of state only
