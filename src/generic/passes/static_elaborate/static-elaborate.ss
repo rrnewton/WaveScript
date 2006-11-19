@@ -335,13 +335,13 @@
 
 	  ;; We can't inline teh iterator state however, don't try for now.
 	  ;; [2006.11.05] Currently this exposes a bug while executing demo7
-	  [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
-	   (let ([newenv (append (map (lambda (v) (list v 99999)) lhs*) env)])
-	     `(iterate (letrec ([,lhs* ,ty* ,rhs*] ...) ,(process-expr bod newenv)) ,strm))]
+;	  [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
+;	   (let ([newenv (append (map (lambda (v rhs) (list v rhs 99999)) lhs* rhs*) env)])
+;	     `(iterate (letrec ([,lhs* ,ty* ,rhs*] ...) ,(process-expr bod newenv)) ,strm))]
           [(iterate ,[fun] ,[strm])  `(iterate ,fun ,strm)]
 	  ;; This is altogether a hack, we need to purify these iterates.
 
-          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
+;          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
 	  
 	  ;; Don't go inside for loops for now:
 	  [(for (,i ,[st] ,[en]) ,bod)

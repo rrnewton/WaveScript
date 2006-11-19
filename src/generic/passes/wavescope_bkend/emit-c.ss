@@ -83,7 +83,7 @@
 	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n") ())]
 
 	;; Forbidding recursion for now (even though this says 'letrec').
-	[(letrec ,binds ,bod)
+	[(,letsym ,binds ,bod) (guard (memq letsym '(let letrec)))
 	 ;(ASSERT (symbol? body))
 	 (ASSERT (no-recursion! binds))
 	 (mvlet ([(stmts decls)
@@ -182,7 +182,8 @@
     (define (Stmt tenv)
       (lambda (st)
 	(define myExpr (Expr tenv))
-      (match st
+	(define result 
+	  (match st
 
 	;; These immediates generate no code in Stmt position.
 	[,v (guard (symbol? v)) ""]
@@ -196,17 +197,21 @@
 	   "} else {\n"
 	   ,(indent altern "  ")
 	   "}\n")]
+
+
+	;; FIXME FIXME FIXME: Gross hack:
+	;; This is a boilerplate that we can now remove:
+	[(,letsym ([,v ,t (virtqueue)] ,rest ...) ,body)
+	 (guard (memq letsym '(let letrec)))
+	 (let ([newenv (tenv-extend tenv (list v) (list t))])
+	   ((Stmt newenv) `(letrec ,rest ,body)))]
+
 	;; Not allowed in expression position currently:
 	[(let ([,[Var -> v] ,[Type -> t] ,[myExpr -> rhs]]) ,[body])
 	 `(,t " " ,v " = " ,rhs ";\n" ,body)]
 
-	;; This is a boilerplate that we can now remove:
-	[(letrec ([,v ,t (virtqueue)] ,rest ...) ,body)
-	 (let ([newenv (tenv-extend tenv (list v) (list t))])
-	   ((Stmt newenv) `(letrec ,rest ,body)))]
-
 	;; TEMP:
-	[(letrec () ,body) 
+	[(,letsym () ,body)  (guard (memq letsym '(let letrec)))
 ;	 (inspect `(HMM ,body))
 ;	 `("toplevel = " ,(Var body))]
 	 ((Stmt tenv) body)]
@@ -216,6 +221,10 @@
 	 (ASSERT (no-recursion! binds))
 	 ((Stmt tenv) `(let (,(car binds))
 			 (letrec ,(cdr binds) ,body)))]
+	[(let ,binds ,body)
+	 ((Stmt tenv) `(let (,(car binds))
+			 (let ,(cdr binds) ,body)))]
+	
 
 	[(emit ,vqueue ,[myExpr -> val])
 	 `("emit(" ,val ");\n")]
@@ -249,9 +258,14 @@
 	;; Otherwise it's just an expression.
 	;; TEMP: HACK: Need to normalize contexts.
 	;; TODO: Not all expressions make valid statements.
-	[,[myExpr -> exp] `(,exp ";\n")]
+	[,[myExpr -> exp] 
+	 (ASSERT (compose not procedure?) exp)
+	 `(,exp ";\n")]
 	[,unmatched (error 'emitC:Stmt "unhandled form ~s" unmatched)]
-	)))
+	))
+	(DEBUGASSERT text? result)
+	result
+	))
 	
     (define (Expr tenv)
       (lambda (exp)
@@ -330,6 +344,9 @@
 	[(unionList ,structtype ,ls)
 	 (error 'emit-C "unionList not implemented yet: ~s" 
 		`(unionList ,structtype ,ls))]
+
+	[(tupref . ,_) (error 'emit-c:Expr "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
+	[(tuple . ,_) (error 'emit-c:Expr "tuple should have been eliminated: ~s" `(tuple . ,_))]
 
 	; ============================================================
 	;; Other prims fall through:
@@ -488,7 +505,7 @@
 		     '()))]
 
 	;; Iterator state:
-	[(letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
+	[(,letsym ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letsym '(let letrec)))
 	 (let* ([newenv (tenv-extend tenv lhs* ty*)]
 		[myExpr (Expr newenv)]
 		[lhs* (map Var lhs*)]

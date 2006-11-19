@@ -124,6 +124,7 @@
   ;; Return value: 'result                                               <br>
   (let ()
     (define (build-traverser driver fuse e)
+;      (call/cc inspect)
       (let loop ((e e))	
 	(driver e 
 	  ;; This is the fallthrough/autolooper function that is passed to the driver.
@@ -131,7 +132,7 @@
 	    ;; In this case we have a change to the driver function as we go down.
 	    [(expr newdriver) (build-traverser newdriver fuse e)]
 	    [(expression)       	      
-	     (match expression
+	     (match  expression
 ;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
 	  [,const (guard (constant? const)) (fuse () (lambda () const))]
@@ -152,7 +153,9 @@
 	  [(tupref ,n ,m ,[loop -> exp])
 	   (DEBUGASSERT fixnum? n)
 	   (DEBUGASSERT fixnum? m)
+	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
+
 	  [(tuple ,[loop -> args] ...)
 	   (fuse args (lambda args `(tuple ,args ...)))]
 
@@ -164,7 +167,7 @@
 	   (guard (symbol? fldname))
 	   (fuse (list expr) (lambda (expr) `(struct-ref ,expr ,fldname)))]
 
-	  ;; No looping on types.  This could be changed:
+	  ;; No looping on types.
 	  [(,letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
 	   (guard (memq letrec '(letrec lazy-letrec)))
 	   ;; By convention, you get the body first:
@@ -182,6 +185,8 @@
 		    `(letrec  ,other ...))
 	   (inspect `(letrec ,other ...))
 	   (error 'core-generic-traverse "")]
+
+	  [(let . ,_) (error 'core-generic-traverse "unfinished: doesn't handle 'let': ~s" `(let . ,_))]
 
 	  ;; Again, no looping on types.  This is an expression traversal only.
 	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
@@ -255,7 +260,7 @@
 	;; We wrap the user's driver:
 	(define (newdriver x autoloop)
 	   ;; We dispatch to the user first, if they touch
-	   ;; letrec/lambda they'd better handle the tenv themselves.
+	   ;; letrec/lambda/etc they'd better handle the tenv themselves.
 	  (drive x tenv
 		 ;; Here we wrap the autoloop function to be type-aware
 		 (case-lambda 
@@ -273,12 +278,12 @@
 			 (fuse (cons (f bod) (map f rhs*))
 			       (lambda (x . y*) `(,letrec ([,lhs* ,ty* ,y*] ...) ,x))))]
 
-		      [(for (,i ,[st] ,[en]) ,bod)
+		      [(for (,i ,[(loop tenv) -> st] ,[(loop tenv) -> en]) ,bod)
 		       (let ([newtenv (tenv-extend tenv (list i) '(Int))])
 			 (fuse (list st en ((loop newtenv) bod))
 			       (lambda (st en bod) `(for (,i ,st ,en) ,bod))))]
 		      
-		      [(let ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
+		      [(let ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
 		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
 			 (fuse (cons ((loop newtenv) bod) rhs*)
 			       (lambda (bod . rhs*) `(let ([,lhs* ,ty* ,rhs*] ...) ,bod))))
@@ -287,7 +292,7 @@
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
 		     ;; This will in turn call newdriver again from the top.
 		      [,other 
-		       (DEBUGASSERT (not (binding-form? other)))
+		       (DEBUGASSERT (compose not binding-form?) other)
 		       (autoloop other)])]
 		   [other (error 'core-generic-traverse/types
 			       "user driver function called fallthrough function (autolooper) with wrong number of args, expected expr & tenv:\n~s"
@@ -359,6 +364,12 @@
     ["core-free-vars "
      (core-free-vars '(audioFile '"countup.raw" '2 x))
      (x)]
+
+    ;; TODO: To test this mechanism we should have some really big
+    ;; source files that we read in, and run a generic traversal where
+    ;; we convert all variables/numbers to strings.  Then, any
+    ;; non-keyword symbols left in the program mean the generic traversal is
+    ;; broken.
 
     ))
 

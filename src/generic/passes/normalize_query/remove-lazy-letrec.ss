@@ -5,7 +5,8 @@
 
 ;;;; This is relatively nasty hack.  We reorder a lazy-letrec's
 ;;;; bindings to respect its dependencies.  Thereafter it can be
-;;;; implemented withnested letrecs.  This disallows mutual recursion.
+;;;; implemented with letrecs.  This disallows mutual recursion.
+;;;; (or currently with LET, which disallows all recursion)
 
 ;;;; Since this *is* a hack, it doesn't really implement *lazy*
 ;;;; letrec.  It would have to thunk everything.
@@ -14,19 +15,18 @@
     [Expr (lambda (x fallthru)
 	    (match (fallthru x)
 	      ;; Don't bother for zero or one binding.
-	      [(lazy-letrec () ,[body])
-	       `(letrec () ,body)]
-	      [(lazy-letrec ([,lhs ,ty ,[rhs]]) ,[body])
-	       `(letrec ([,lhs ,ty ,rhs]) ,body)]
-
 	      [(lazy-letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[body])
-	       `(letrec ,(reorder-bindings (map list lhs* ty* rhs*))
-		  ,body)]
+	       (match (reorder-bindings (map list lhs* ty* rhs*))
+		 [() body]
+		 [(,bind . ,[rest]) `(let (,bind) ,rest)])
+	       
+;	       `(letrec ,(reorder-bindings (map list lhs* ty* rhs*)) ,body)
+	       ]
 	      [,other other]))]
   )
 
 ;; This uses free-vars to find dependencies, then does a topological sort.
-(trace-define reorder-bindings
+(define reorder-bindings
   (lambda (binds)
     (match binds
       [([,lhs* ,ty* ,rhs*] ...)
@@ -38,7 +38,7 @@
 					fv*)))
 		       lhs* fv**)]
 	      )
-
+	 ;; NOTE: this currently doesn't allow even self-recursive functions.
 	 (if (cyclic? edges)
 	     (error 'remove-lazy-letrec:reorder-bindings
 		    "Not allowed to have cycles in lazy-letrec bindings: \n~s"

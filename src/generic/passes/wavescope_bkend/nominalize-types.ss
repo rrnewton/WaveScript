@@ -5,6 +5,9 @@
 ;;;; This pass replaces the ML-like algebraic types and replaces them with suitable C-types.
 
 
+;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
+
+
 
   ;; This gets set later in a different scope.
   (define bindings-fun 'uninit)
@@ -12,8 +15,7 @@
   ;; This looks up a variable's tuple type in the tupdef bindings.
   ;; I can't push it down deeper because currently the define-pass
   ;; macro only works at top level.
-  (define-pass convert-types [Bindings bindings-fun])
-
+  (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])
 
 
 (module wavescript_nominalize-types  mzscheme 
@@ -65,7 +67,9 @@
 	(core-generic-traverse/types
 	 ;; Driver
 	 (lambda (expr tenv loop)
-	   (match expr
+	   ;; Everything returned must be an intermediate result.
+	   (ASSERT result?
+	    (match expr
 	     ;; Tuple statements HAVE to be type annotated now.
 	     [(tuple ,arg* ...)
 	      (printf "TUPLE!! ~s\n" arg*)	 
@@ -110,9 +114,12 @@
 	     [(tupref ,i ,len ,[result])
 	      (make-result `(struct-ref ,(result-expr result) ,(list-ref field-names i))
 			   (result-tydefs result))]
+	     
+	     
 
 	     [,other (loop other tenv)]
-	     ))
+	     )
+		   ))
 	 ;; Fuser
 	 (lambda (ls k)
 ;	   (printf "FUSING: ~s\n\n" ls)
@@ -123,6 +130,7 @@
 
       ;; TODO: REMOVE DUPLICATE STRUCT DEFS THAT HAVE THE SAME TYPES
       (define (remove-redundant tupdefs)
+	;; FIXME FIXME FIXME 
 	tupdefs)
 
       ;; Main body:
@@ -168,7 +176,40 @@
 		     ,(convert-type type)))])
 	     )]))))
 
-  (define these-tests  `())
+  (define these-tests  
+    `(
+      ["remove all those tuprefs"
+       (deep-assq 'tupref
+		  (nominalize-types '(type-print/show-language
+			   '(program
+				(let ([s1_1 (Signal (Sigseg Int))
+					    (audioFile '"./countup.raw" '4096 '0)])
+				  (let ([s2_2 (Signal #(Int Int))
+					      (iterate
+					       (lambda (w_3)
+						 ((Sigseg Int))
+						 (let ([VIRTQUEUE_4 (VQueue #(Int Int)) (virtqueue)])
+						   (begin
+						     (emit VIRTQUEUE_4 (tuple (width w_3) (start w_3)))
+						     VIRTQUEUE_4)))
+					       s1_1)])
+				    (let ([s3_5 (Signal #(Int Int Float))
+						(iterate
+						 (lambda (pattmp_6)
+						   (#(Int Int))
+						   (let ([x_7 Int (tupref 0 2 pattmp_6)])
+						     (let ([y_8 Int (tupref 1 2 pattmp_6)])
+						       (let ([VIRTQUEUE_9 (VQueue #(Int Int Float)) (virtqueue)])
+							 (begin
+							   (emit VIRTQUEUE_9 (tuple y_8 x_7 '3.0))
+							   VIRTQUEUE_9)))))
+						 s2_2)])
+				      s3_5)))
+			      (Signal #(Int Int Float))))))
+       #f]
+      
+
+      ))
   (define test-this (default-unit-tester "" these-tests))
   (define test-nominalize-types test-this)
 

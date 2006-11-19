@@ -348,7 +348,7 @@
 ;  (printf "Post elaboration types: \n")
 ;  (print-var-types p)
 
-  (with-output-to-file ".__elaborated.txt"
+  (with-output-to-file ".__elaborated.ss"
     (lambda () 
       (parameterize ([pretty-line-length 200]
 		     [pretty-maximum-lines #f]
@@ -375,7 +375,21 @@
   (set! p (optional-stop (introduce-lazy-letrec     p)))
 ;  (set! p (optional-stop (lift-letrec               p)))
 ;  (set! p (optional-stop (lift-letrec-body          p)))
-  (set! p (optional-stop (remove-complex-opera* p)))
+  ;(set! p (optional-stop (remove-complex-opera* p)))
+  ;; Replacing remove-complex-opera* with a simpler pass:
+  (set! p (optional-stop (flatten-iterate-spine p)))
+
+  (with-output-to-file ".__nocomplexopera.ss"
+    (lambda () 
+      (parameterize ([pretty-line-length 200]
+		     [pretty-maximum-lines #f]
+		     [print-level #f]
+		     [print-length #f]
+		     [print-graph #f])
+	(pretty-print p))
+      (flush-output-port))
+    'replace)
+
   (set! p (optional-stop (remove-lazy-letrec p)))
   
 ;  (set! p (optional-stop (verify-core p)))
@@ -409,7 +423,7 @@
 		     (void)
 		     ;(pretty-print prog)
 		     )
-		   (with-output-to-file ".__inputprog.txt"
+		   (with-output-to-file ".__inputprog.ss"
 		     (lambda () 
 		       (parameterize ([pretty-line-length 200]
 				      [pretty-maximum-lines #f]
@@ -425,7 +439,7 @@
 
   (define __ 
     (begin 
-      (printf "Program verified, type-checked. (Also dumped to \".__parsed.txt\".)")
+      (printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
       (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
       (print-var-types typed)
       (flush-output-port)
@@ -444,10 +458,10 @@
 		 [print-level #f]
 		 [print-length #f]
 		 [print-graph #f])
-    (with-output-to-file ".__parsed.txt"
+    (with-output-to-file ".__parsed.ss"
       (lambda () (pretty-print prog)(flush-output-port))
       'replace)
-    (with-output-to-file ".__compiledprog.txt"
+    (with-output-to-file ".__compiledprog.ss"
       (lambda () (pretty-print compiled)(flush-output-port))
       'replace))
   stream)

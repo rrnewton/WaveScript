@@ -18,7 +18,7 @@
   (provide test-cgenerator
 	   wrap append-text 
 	   indent block 
-	   text->lines text->string	   
+	   text? text->lines text->string	   
 	   mangle-name ;; Mangle a name so it's a C-name.  Could cause collisions.
 	   )
   (chezprovide )
@@ -82,6 +82,16 @@
 		  (set-car! cell (cons (my-append (caar lines2) (caar cell)) (cdar cell))))]
 	       [else (error 'text->lines "internal error, bad line: ~s" (car cell))])
 	     lines1]))
+
+
+  (define (text? x) 
+    (cond
+      [(string? x) #t]
+      [(and (pair? x)
+	    (text? (car x))
+	    (text? (cdr x))) #t]
+      [(null? x) #t]
+      [else #f]))
 
 ;; Takes a Text and returns a list of Text.
 ;; NOTE: ADDS A TRAILING NEWLINE.

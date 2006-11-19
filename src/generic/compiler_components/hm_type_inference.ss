@@ -853,7 +853,8 @@
       ;; Ok, this is recursive, but it's A=B=A, not some more complex
       ;; recursive type constraint.
       (begin 
-	(warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty)
+	(when (regiment-verbose)
+	  (warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty))
 	(match ty
 	  [(quote ,tvarpair)
 	   ;; Ouch, mutating in the guard... Nasty.
@@ -863,7 +864,8 @@
 		      ;; Short circuit the equivalence, this doesn't destroy
 		      ;; information that's not already encoded.
 		      (set-cdr! tvarpair targettyp)
-		      (printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp)
+		      (when (regiment-verbose)
+			(printf "  SHORT CIRCUITED: ~s to ~s\n" outer targettyp))
 		      ]
 		     [(,outer . (,qt ,[deeper])) (guard (memq qt '(NUM quote))) (void)]
 		     [else (error 'no-occurrence! "this is an implementation bug.")]))
