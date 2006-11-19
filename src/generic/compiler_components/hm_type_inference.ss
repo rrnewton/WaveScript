@@ -507,6 +507,15 @@
 		       et newexp)
 	 ;; returns unit type:
 	 (values newexp #()))]
+
+      ;; Incorporate type assertions.
+      [(assert-type ,ty ,[l -> e et])
+       (let ([newexp `(assert-type ,ty ,e)])	 
+	 (types-equal! ty et newexp)
+	 (values `(assert-type ,ty ,e)
+		 et))
+       ]
+
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
 	 (unless (types-compat? st et) (raise-type-mismatch start end expr))

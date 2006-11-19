@@ -36,7 +36,9 @@
 	     world))]
 
 	[(node_to_anchor ,n) `(node->anchor ,n)]
-	
+
+	[(head ,ls) `(car ,ls)]
+	[(tail ,ls) `(cdr ,ls)]	
 
 	[,orig orig])))
   )

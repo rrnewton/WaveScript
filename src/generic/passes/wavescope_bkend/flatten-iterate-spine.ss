@@ -11,7 +11,31 @@
 	       (values name
 		       `((,name ,type ,x))))))       
        (match x
+
+#;	 
+	 [,x (guard (begin 
+		      (if (pair? x) (printf "FIS: ~s\n" (car x)))
+		      #f)) 00]
+
+	 ;; DEBUGGING:
+	 #;
+	 [(iterate ,f (unionList . ,_))
+	  (printf "YAY\n")
+	  (printf "YAY\n")
+	  (printf "YAY\n")
+	  (exit 0)
+	  ]
+
+	 #;
+	 [(iterate ,f ,s)
+	  (printf "HRM\n")
+	  (exit 0)
+	  ]
+
 	 [(iterate ,fun ,[make-simple-shallow -> src binds])
+	  ;; This had better be a symbol for now.
+	  (ASSERT symbol? src)
+	  
 	  (if (null? binds)
 	      `(iterate ,fun ,src)
 	      `(lazy-letrec ,binds (iterate ,fun ,src)))]
@@ -19,3 +43,71 @@
 	 [,other (fallthru other tenv)]
 	 ))]
   )
+
+
+
+#|
+
+
+
+
+
+(flatten-iterate-spine 
+ '(foolang
+   '(program       
+	(lazy-letrec
+      ((slist_58
+	(List (Signal #(Float (Sigseg Float))))
+	(cons tpk1_21 (cons tpk4_51 '()))))
+      (iterate
+       (lazy-letrec
+	((buf1_60 (List #(Float (Sigseg Float))) '())
+	 (buf2_59 (List #(Float (Sigseg Float))) '()))
+	(lambda (pattmp_61)
+	  (#(Int #(Float (Sigseg Float))))
+	  (lazy-letrec
+	   ()
+	   (lazy-letrec
+	    ((i_62 Int (tupref 0 2 pattmp_61)))
+	    (lazy-letrec
+	     ((x_63
+	       #(Float (Sigseg Float))
+	       (tupref 1 2 pattmp_61)))
+	     (lazy-letrec
+	      ((VIRTQUEUE_64
+		(VQueue
+		 #(#(Float (Sigseg Float))
+		   #(Float (Sigseg Float))))
+		(virtqueue)))
+	      (begin
+		(if (equal? i_62 '0)
+		    (set! buf1_60 (cons x_63 '()))
+		    (if (equal? i_62 '1)
+			(set! buf2_59 (cons x_63 '()))
+			(wserror '"implementation error")))
+		(if (and (equal? (listLength buf1_60) '1)
+			 (equal? (listLength buf2_59) '1))
+		    (begin
+
+		      (emit
+		       VIRTQUEUE_64
+		       (tuple (head buf1_60) (head buf2_59)))
+		      (set! buf1_60 '())
+		      (set! buf2_59 '()))
+		    (tuple))
+		VIRTQUEUE_64)))))))
+       (unionList slist_58))) 
+      SOmeTYPe))
+ 
+)
+
+
+
+
+
+
+
+
+
+
+|#

@@ -238,6 +238,11 @@
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)
 		      (basic-primitive? prim)))
+#;
+	   (and (eq? prim 'iterate)
+		(pair? (last rands))
+		(eq? (car (last rands)) 'unionList)
+		(inspect rands))
 	   (fuse rands (lambda ls `(,prim . ,ls)))]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)
@@ -267,7 +272,7 @@
 		   [(x tenv)
 		    (DEBUGASSERT (tenv? tenv))
 		    (match x 
-		      ;; We overload the two cases that require modifying the tenv.
+		      ;; We overload the cases that require modifying the tenv.
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
 		       (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
 			     (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
@@ -281,7 +286,8 @@
 		      [(for (,i ,[(loop tenv) -> st] ,[(loop tenv) -> en]) ,bod)
 		       (let ([newtenv (tenv-extend tenv (list i) '(Int))])
 			 (fuse (list st en ((loop newtenv) bod))
-			       (lambda (st en bod) `(for (,i ,st ,en) ,bod))))]
+			       (lambda (st en bod) `(for (,i ,st ,en) ,bod)))
+			 )]
 		      
 		      [(let ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
 		       (let ([newtenv (tenv-extend tenv lhs* ty*)])

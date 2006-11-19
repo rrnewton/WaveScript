@@ -279,7 +279,7 @@
        ;; Ignoring overlap for now!!
        (unless (zero? overlap)
 	 (error 'doubleFile "does not currently support overlaps, use rewindow!"))
-       (delay 
+       (delay ;; Don't read file till we get a pull.
 	 (let ((infile (open-input-file file)))
          (let strmloop ([t 0])
 	   (let ([vec (make-vector len)])

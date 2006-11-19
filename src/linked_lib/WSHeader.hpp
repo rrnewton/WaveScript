@@ -9,14 +9,15 @@
 #include <Boxes.hpp>
 
 /* for boost smart pointers */
-//#include <boost/shared_ptr.hpp>
-//#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include <stdio.h>
 #include <list>
 #include <vector>
 #include <string>
 
+using boost::enable_shared_from_this;
 using namespace std;
 
 #define TRUE 1
@@ -52,3 +53,22 @@ typedef string wsstring_t;
   delete tuplePtr; \
   } 
 */
+
+
+/******** LISTS ********/
+template <class T>
+class cons {
+public: 
+  typedef boost::shared_ptr< cons<T> > ptr;
+  cons(T a, ptr b) {
+    car = a;
+    cdr = b;
+  }
+  T car;
+  ptr cdr;
+
+  //  static ptr null;  //    = ptr((cons<T>*)0);
+};
+
+// We construct a single null object which we cast to what we need.
+cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);

@@ -282,11 +282,17 @@
 	 ;; Should also make sure it's 32 bit or whatnot:
 	 (cond
 	  [(eq? datum #t) "TRUE"]
-	  [(eq? datum #f) "FALSE"]	  
+	  [(eq? datum #f) "FALSE"]
+	  
+	  [(eq? datum ()) "NULL_LIST"]
+
 	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
 	  [(string? datum) (format "~s" datum)]
 	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
 	[,v (guard (symbol? v)) (Var v)]	
+
+	;; TODO: Could make this into a cast statement for a sanity check??
+	[(assert-type ,t ,[e]) e]
 
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("(",test " ? " ,conseq " : " ,altern")")]
@@ -341,6 +347,22 @@
 	[(struct-ref ,[x] ,fld)
 	 `("(",x "." ,(symbol->string fld)")")]
 
+	
+	;; Lists:
+	[(cons (assert-type ,[Type -> tya] ,[a])
+	       (assert-type ,[Type -> tyb] ,[b]))
+	 ;`("cons< ",tyb" >::ptr(new cons< ",tyb" >(",a", (cons< ",tyb" >::ptr)",b"))")]
+	 `("cons< ",tya" >::ptr(new cons< ",tya" >(",a", (cons< ",tya" >::ptr)",b"))")]
+
+	[(car (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->car")]
+	[(cdr (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->cdr")]
+;; Don't have types for nulls yet:
+;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
+
+	[(,lp . ,_) (guard (memq lp '(cons car cdr)))
+	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
+	 ]
+
 	[(unionList ,structtype ,ls)
 	 (error 'emit-C "unionList not implemented yet: ~s" 
 		`(unionList ,structtype ,ls))]
@@ -373,6 +395,12 @@
 
 	[(Array ,[t]) `(,t "[]")]
 	[(Struct ,name) (symbol->string name)]
+	
+	;; HACK HACK FIXME:
+	;; This is for null lists.
+	[(List ',_) `("cons<int>::ptr")]
+	;; Boosted cons cells:
+	[(List ,[t]) `("cons< ",t" >::ptr")]
 	
 	;[,other (format "~a" other)]
 	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
@@ -431,6 +459,11 @@
       [,nt (guard (memq nt num-types)) #t]
       [Char #t]
       [(Struct ,name) #t]
+
+      ;; FIXME: Not sure about this:
+      ;[(List ,t) ]
+
+      [,_ #f]
       ))
 
 ;; This converts data from the form it's on "in the wire" (queues
@@ -448,6 +481,10 @@
     ;; Immediates are passed by value.
     [,imm (guard (immediate-type? imm))
 	  `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
+    
+    ;; Currently let's just not let you pass sigsegs in lists!
+    [(List ,t)
+     `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
 	  
     ;; TODO ARRAYS:    
     [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]

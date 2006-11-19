@@ -115,7 +115,16 @@
 	      (make-result `(struct-ref ,(result-expr result) ,(list-ref field-names i))
 			   (result-tydefs result))]
 	     
-	     
+	     ;; DEBUGGING
+	     [(iterate ,f ,s)
+	      (let ([result (loop `(iterate ,f ,s) tenv)])
+		(match (result-expr result)
+		  [(iterate ,f ,s) 
+			 (printf "SOURCE: ~s\n" s)
+			 
+			 ])
+		result)
+	      ]
 
 	     [,other (loop other tenv)]
 	     )

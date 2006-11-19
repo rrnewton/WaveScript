@@ -300,13 +300,24 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-(define-pass type-print/show
+;; Adds types to various primitives for code generation.
+(define-pass type-annotate-misc
     (define (process-expr x tenv fallthru)
       (match x
 	[(print ,e) 
 	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
 	[(show ,e) 
 	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+
+	[(car ,e)
+	 `(car (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	[(cdr ,e)
+	 `(cdr (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	[(cons ,a ,b)
+	 `(cons (assert-type ,(recover-type a tenv) ,(process-expr a tenv fallthru))
+		(assert-type ,(recover-type b tenv) ,(process-expr b tenv fallthru)))]
+	;['()	 ]
+
 	[,other (fallthru other tenv)]))
   [Expr/Types process-expr])
 
@@ -378,7 +389,10 @@
   ;(set! p (optional-stop (remove-complex-opera* p)))
   ;; Replacing remove-complex-opera* with a simpler pass:
   (set! p (optional-stop (flatten-iterate-spine p)))
-
+  (set! p (optional-stop (flatten-iterate-spine p))) ;; BEYOND HACKISH!! FIXME PLZ!!
+  
+;  (inspect p)
+  
   (with-output-to-file ".__nocomplexopera.ss"
     (lambda () 
       (parameterize ([pretty-line-length 200]
@@ -395,7 +409,7 @@
 ;  (set! p (optional-stop (verify-core p)))
 ;  (set! p (optional-stop (retypecheck p)))
 
-  (set! p (optional-stop (type-print/show p)))
+  (set! p (optional-stop (type-annotate-misc p)))
 
   ;(set! p (optional-stop (nominalize-types p)))
 
