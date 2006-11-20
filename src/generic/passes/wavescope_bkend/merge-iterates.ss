@@ -41,15 +41,24 @@
 			  ,body))
 		(iterate (lambda (,x) (,tx) 
 				 (letrec ([,VQX (VQueue ,outx) (virtqueue)])
-				   ,bodx))
+				   
+               ;,bodx
+               (begin ,real-bodx . (,VQX-again)) ; FIXME: why does it break if we stick in ,VQX here instead of ,VQX-again?
+
+               ))
 			 ,inputstream))
+
        (let ([f (unique-name 'f)])
 	 (do-expr
 	  `(iterate (lambda (,x) (,tx)
 			    (letrec ([,VQY (VQueue ,outy) (virtqueue)])
-			      (letrec ([,f (,ty -> ,outy)
+			      ;(letrec ([,f (,ty -> ,outy)
+               (letrec ([,f (,ty -> (VQueue ,outy))
 					   (lambda (,y) (,ty) ,body)])
-				,(subst-emits bodx f))))
+
+                 ;,(subst-emits bodx f))))
+                 ,(subst-emits `(begin ,real-bodx ,VQY) f))))
+
 		    ,inputstream)
 	  fallthrough))]
 
