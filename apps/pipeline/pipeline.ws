@@ -31,39 +31,39 @@ fun rewindow(sig, newwidth, step)
 
 
 /*
- *
+ * Using PRIMITIVE version for now:
  */
-fun zip(s1, s2)
-{
-   let slist = [s1, s2];
-   iterate ((i, x) in unionList(slist))
-   {
-      state {
-         buf1 = []; // using list for poor-man's Maybe type.
-         buf2 = [];
-      }
+/* fun zip(s1, s2) */
+/* { */
+/*    let slist = [s1, s2]; */
+/*    iterate ((i, x) in unionList(slist)) */
+/*    { */
+/*       state { */
+/*          buf1 = []; // using list for poor-man's Maybe type. */
+/*          buf2 = []; */
+/*       } */
 
-      if (i == 0) then
-      {
-         buf1 := [x]; // Might throw out elemnt.
-      }
-      else if (i == 1) then
-      {
-         buf2 := [x];
-      }
-      else
-      {
-         wserror("implementation error");
-      };
+/*       if (i == 0) then */
+/*       { */
+/*          buf1 := [x]; // Might throw out elemnt. */
+/*       } */
+/*       else if (i == 1) then */
+/*       { */
+/*          buf2 := [x]; */
+/*       } */
+/*       else */
+/*       { */
+/*          wserror("implementation error"); */
+/*       }; */
 
-      if (buf1.listLength == 1 && buf2.listLength == 1) then
-      {
-         emit (buf1.head, buf2.head);
-         buf1 := [];
-         buf2 := [];
-      };
-   };
-}
+/*       if (buf1.listLength == 1 && buf2.listLength == 1) then */
+/*       { */
+/*          emit (buf1.head, buf2.head); */
+/*          buf1 := []; */
+/*          buf2 := []; */
+/*       }; */
+/*    }; */
+/* } */
 
 
 /*
@@ -236,7 +236,7 @@ tpk4 = trimpeak(filter3, fun(a,b) { a > b });
 //blah = unionList([tpk1, tpk4]);
 
 //detect = iterate(((m1,w1), (m2,w2)) in unionList([tpk1, tpk4]))
-detect = iterate(((m1,w1), (m2,w2)) in zip(tpk1, tpk4))
+detect = iterate(((m1,w1), (m2,w2)) in zip2(tpk1, tpk4))
 {
    // FIXME: do LeakDetect(NORMALMEAN, NORMALSTD, LEAKMEAN, LEAKSTD)
    peakRatio = m1 /. m2;

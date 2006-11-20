@@ -120,7 +120,7 @@
 		 emit virtqueue
 		 smap parmap sfilter
 		 iterate break deep-iterate
-		 unionList
+		 unionList zip2
 		 fft 
 		 
 		 ;; Misc, ad-hoc, and Temporary
@@ -460,6 +460,18 @@
 					streams)))))))
        )
      
+
+     (define (zip2 s1 s2)
+       (delay 	 
+	 (let loop ([s1 s1] [s2 s2])
+	   (cond
+	    [(stream-empty? s1) '()]
+	    [(stream-empty? s2) '()]
+	    [else (stream-cons (vector (stream-car s1) (stream-car s2))
+			       (loop (stream-cdr s1) (stream-cdr s2))
+			       )]
+	    ))))
+
      (define (wserror str) (error 'wserror str))
      (define inspect inspect/continue)
 

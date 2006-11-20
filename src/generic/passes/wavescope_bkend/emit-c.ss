@@ -161,6 +161,13 @@
 	   ;(if (symbol? sig) 
 	       (values ourstmts ourdecls)
 	   )]
+
+	[(unionList ,structtype ,ls)
+	 
+	 (error 'emit-C "unionList not implemented yet: ~s" 
+		`(unionList ,structtype ,ls))
+	 ]
+
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
@@ -368,10 +375,6 @@
 	[(,lp . ,_) (guard (memq lp '(cons car cdr)))
 	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
 	 ]
-
-	[(unionList ,structtype ,ls)
-	 (error 'emit-C "unionList not implemented yet: ~s" 
-		`(unionList ,structtype ,ls))]
 
 	[(tupref . ,_) (error 'emit-c:Expr "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
 	[(tuple . ,_) (error 'emit-c:Expr "tuple should have been eliminated: ~s" `(tuple . ,_))]

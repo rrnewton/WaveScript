@@ -67,6 +67,8 @@
       (define (convert-type ty tupdefs)
 	(match ty
 	  [,s (guard (symbol? s)) s]
+	  ;; Allowing polymorphic types for list... damn null lists.
+	  [(List ',_) `(List ',_)]
 	  [(,qt ,v) (guard (memq qt '(quote NUM)))
 	   (error 'nominalize-types:convert-type
 		  "should not have polymorphic type: ~s" ty)]
@@ -103,6 +105,9 @@
 	(core-generic-traverse
 	 (lambda (x fallthru)
 	   (match x
+	     [(assert-type ,t ,[e])
+	      `(assert-type ,(convert-type t tupdefs) ,e)
+	      ]
 	     [(make-struct ,ty* ,[args] ...)
 	      `(make-struct ,(last (assoc ty* tupdefs)) ,@args)]
 	     [,oth (fallthru oth)])

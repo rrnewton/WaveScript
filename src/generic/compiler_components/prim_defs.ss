@@ -261,6 +261,9 @@
     ;; the index (in the original list) of the stream that produced it.
     (unionList        ((List (Signal 'a))) (Signal #(Int 'a)))
 
+    ;; This synchronously joins two signals.
+    (zip2           ((Signal 'a) (Signal 'b)) (Signal #('a 'b)))
+
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)
     (inspect         ('a) 'a)
