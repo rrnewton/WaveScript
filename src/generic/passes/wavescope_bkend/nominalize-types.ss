@@ -18,6 +18,7 @@
   (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])
 
 
+
 (module wavescript_nominalize-types  mzscheme 
   (require "helpers.ss")
   (provide nominalize-types test-this test-nominalize-types)
@@ -98,6 +99,17 @@
 			    (apply append-tydefs (cdr args)))
 	    ))
 
+      (define (insert-struct-names expr tupdefs)
+	(core-generic-traverse
+	 (lambda (x fallthru)
+	   (match x
+	     [(make-struct ,ty* ,[args] ...)
+	      `(make-struct ,(last (assoc ty* tupdefs)) ,@args)]
+	     [,oth (fallthru oth)])
+	   )
+	 (lambda (ls k) (apply k ls))
+	 expr))
+
       ;; We avoid the boilerplate by defining this as a "generic traversal"
       (define (collect-tupdefs expr tenv)
 	(core-generic-traverse/types
@@ -119,16 +131,22 @@
 			    type))
 		   (let* ([results (map (lambda (x) (collect-tupdefs x tenv)) arg*) ]
 			  [args (map result-expr results)]
-			  [tydefs (apply append (map result-tydefs results))])
+			  [tydefs (apply append-tydefs (map result-tydefs results))]
+			  [mytypes (map (lambda (arg) (recover-type arg tenv)) arg*)]
+			  [newdefs (add-new-tydef
+				    (list mytypes
+					  (list-head field-names (length arg*))
+					  newtype)
+				    tydefs)]
+			  ;; Get the name back out... might not be the one we put in.
+			  ;[type-name (last (ASSERT (assoc mytypes newdefs)))]
+			  )		    
 		     (make-result 
-		      `(make-struct ,newtype ,args ...)
+		      ;; We replace mytypse with an actual name in a second pass:
+		      `(make-struct ,mytypes ,args ...)
 		      ;; Append a new typedef to the existing.
 		      ;; Don't convert types for this entry:
-		      (add-new-tydef
-		       (list (map (lambda (arg) (recover-type arg tenv)) arg*)
-			     (list-head field-names (length arg*))
-			     newtype)
-		       tydefs))
+		      newdefs)
 		     )]))]
 	     
 	     [(unionList ,ls)
@@ -182,16 +200,41 @@
 	;; FIXME FIXME FIXME 
 	tupdefs)
 
+
+      ;; What structs are used within a type?
+      (define (type->structs t)
+	(match t
+	  [,s (guard (symbol? s)) '()]
+	  [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) '()]
+	  [(,qt (,v . ,[ls])) (guard (memq qt '(quote NUM)) (symbol? v)) ls]
+	  [(,[arg*] ... -> ,[ret]) (apply append ret arg*)]
+	  [(Struct ,name) (list name)]
+	  [(,C ,[ls*] ...) (guard (symbol? C)) (apply append ls*)]
+	  [#(,ls* ...) (error 'type->structs "shouldn't be any tuple types left! ~s" 
+			      (list->vector ls*))]
+	  [,oth (error 'type->structs "unrecognized type: ~s" oth)]))
+      
       ;; Topological sort on struct-defs
-      ;(define (sort-defs ls)  )
+      (trace-define (sort-defs defs)	
+	(let ([edges (map (lambda (def)
+			    (match def
+			      [(,name [,fld* ,ty*] ...)
+			       (cons name (apply append (map type->structs ty*)))
+			       ]))
+		       defs)])
+	  (map (lambda (name)
+		 (assq name defs))
+	    (reverse (tsort edges)))))
 
       ;; Main body:
       (lambda (prog) 
 	(match prog 
 	  [(,lang '(program ,body ,type))
 	   (let* ([result (collect-tupdefs body (empty-tenv))]
-		  [newbod (result-expr result)]
-		  [tupdefs (remove-redundant (result-tydefs result))])
+		  ;[newbod (result-expr result)]
+		  [tupdefs (remove-redundant (result-tydefs result))]
+		  [newbod (insert-struct-names (result-expr result) tupdefs)]
+		  )
 	     
 	     (define (do-bindings vars types exprs reconstr exprfun) 
 	       (reconstr vars (map (lambda (t) (convert-type t tupdefs)) types) 
@@ -206,7 +249,7 @@
 		  '(program ,body		       
 		     ;; We stick the type definitions here:
 		     (struct-defs 
-		      ,@(id;sort-defs
+		      ,@(sort-defs
 			 (map (match-lambda ((,types ,flds ,name))
 				`(,name ,@(map list flds 
 					       (map (lambda (t) (convert-type t tupdefs)) 

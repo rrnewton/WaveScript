@@ -168,8 +168,9 @@
 	   (fuse (list expr) (lambda (expr) `(struct-ref ,expr ,fldname)))]
 
 	  ;; No looping on types.
+	  ;; Let is treated same as letrec because we're not maintaining environment.
 	  [(,letrec ([,lhs* ,typ* ,[loop -> rhs*]] ...) ,[loop -> bod])
-	   (guard (memq letrec '(letrec lazy-letrec)))
+	   (guard (memq letrec '(letrec lazy-letrec let)))
 	   ;; By convention, you get the body first:
 	   (fuse (cons bod rhs*)
 		 (lambda (x . y*) `(,letrec ([,lhs* ,typ* ,y*] ...) ,x)))]
@@ -185,8 +186,6 @@
 		    `(letrec  ,other ...))
 	   (inspect `(letrec ,other ...))
 	   (error 'core-generic-traverse "")]
-
-	  [(let . ,_) (error 'core-generic-traverse "unfinished: doesn't handle 'let': ~s" `(let . ,_))]
 
 	  ;; Again, no looping on types.  This is an expression traversal only.
 	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
