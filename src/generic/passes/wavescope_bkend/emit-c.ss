@@ -225,9 +225,15 @@
 	 ((Stmt tenv) `(let (,(car binds))
 			 (let ,(cdr binds) ,body)))]
 	
+;	[(emit ,vqueue (assert-type ,ty ,[myExpr -> val]))
+;	 `("emit((",(Type ty)")" ,val ");\n")]
 
+	;; HACK: cast to output type. FIXME FIXME
 	[(emit ,vqueue ,[myExpr -> val])
-	 `("emit(" ,val ");\n")]
+	 (match (recover-type vqueue tenv)
+	   [(VQueue ,ty)
+	    `("emit((",(Type ty)")" ,val ");\n")
+	    ])]
 
 	;; Print is required to be pre-annotated with a type.
 	;; (We can no longer do recover-type.)
@@ -421,15 +427,16 @@
     [(Struct ,name)
      (match (assq name struct-defs)
        [(,name [,fld* ,typ*] ...)
-	`("{ " ,(symbol->string name) " tmp = ",e";\n"
-	  "  cout << \"{\";\n"
-	  ,(insert-between "  cout << \"; \";\n"
-			   (map (lambda (fld typ)
-				  (EmitPrint (format "tmp.~a" fld) typ)
-				  )
-			     fld* typ*
-			     ))
-	  "  cout << \"}\"; }\n")
+	(let ([tmp (symbol->string (unique-name 'tmp))])
+	  `("{ " ,(symbol->string name) " ",tmp" = ",e";\n"
+	    "  cout << \"{\";\n"
+	    ,(insert-between "  cout << \"; \";\n"
+			     (map (lambda (fld typ)
+				    (EmitPrint (format "~a.~a" tmp fld) typ)
+				    )
+			       fld* typ*
+			       ))
+	    "  cout << \"}\"; }\n"))
 	])]
     
     [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
@@ -441,13 +448,14 @@
 	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)])
 	  `(,(block `("struct ",name)
 		    `([,typ* " " ,fld* ";\n"] ...
-		      ,(block `(,name"(",(insert-between 
-					  ", " `([,typ* " ",tmpargs] ...)
-					  )")")
+		      ((,name"(",(insert-between 
+				  ", " `([,typ* " ",tmpargs] ...)
+				  )")") " :\n"					   
+			   ,@(insert-between ", \n"
 			      (map (lambda (fld arg)
-				     `(,fld " = " ,arg ";\n"))
-				fld* tmpargs)
-			      )))
+				     `("  ",fld "(" ,arg ")"))
+				fld* tmpargs)) " {}\n"
+				)))
 	    ";\n\n"))]))
 
   ;============================================================

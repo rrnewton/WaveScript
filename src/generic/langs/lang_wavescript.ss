@@ -202,11 +202,11 @@
     (syntax-rules ()
       [(_ t e) e]))
 
-     ;; For these programs, need letrec*.
-     (define-syntax letrec
-       (syntax-rules ()
-	 ;; We assume type info has already been stripped.
-	 [(_ x ...) (letrec* x ...)]))
+  ;; For these programs, need letrec*.
+  (define-syntax letrec
+    (syntax-rules ()
+      ;; We assume type info has already been stripped.
+      [(_ x ...) (letrec* x ...)]))
 
      (define for-loop-stack '())
      (define-syntax for

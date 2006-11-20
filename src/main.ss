@@ -308,6 +308,9 @@
 	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
 	[(show ,e) 
 	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	
+;	[(emit ,vq ,v)
+;	 `(car (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
 
 	[(car ,e)
 	 `(car (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
@@ -389,7 +392,7 @@
   ;(set! p (optional-stop (remove-complex-opera* p)))
   ;; Replacing remove-complex-opera* with a simpler pass:
   (set! p (optional-stop (flatten-iterate-spine p)))
-  (set! p (optional-stop (flatten-iterate-spine p))) ;; BEYOND HACKISH!! FIXME PLZ!!
+;  (set! p (optional-stop (flatten-iterate-spine p))) ;; BEYOND HACKISH!! FIXME PLZ!!
   
 ;  (inspect p)
   

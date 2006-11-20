@@ -61,7 +61,43 @@
       ;; An association list accumulating new struct types.
       ;; 
       (define struct-table '())
+      
+      ;; Must be an exported type.
+      (define (convert-type ty tupdefs)
+	(match ty
+	  [,s (guard (symbol? s)) s]
+	  [(,qt ,v) (guard (memq qt '(quote NUM)))
+	   (error 'nominalize-types:convert-type
+		  "should not have polymorphic type: ~s" ty)]
+	  [(,[arg] ... -> ,[ret]) `(,@arg -> ,ret)]
+	  [(,C ,[t] ...) (guard (symbol? C)) `(,C ,@t)]
+	  [#(,t* ...)
+	   ;; Do the lookup on the *pre*converted type:
+	   ;; It's ok if there are duplicates in the tupdefs, this will get the first.
+	   (match (assoc t* tupdefs)
+	     [#f (error 'nominalize-types:convert-type
+			"cannot find tuple type ~s in tuple defs:\n ~s" (list->vector t*) tupdefs)]
+	     [(,types ,flds ,structname) `(Struct ,structname)])]
+	  [,else (error 'nominalize-types:convert-type "unmatched type: ~s" else)]))
+      
            
+      (define (add-new-tydef def lst)
+	(let ([ty* (car def)])
+	  (DEBUGASSERT (andmap type? ty*))
+	  (if (assoc ty* lst)
+	      lst
+	      (cons def lst)
+	      )))      
+      (define (append-tydefs2 defs1 defs2)
+	(if (null? defs1) defs2
+	    (add-new-tydef (car defs1)
+			   (append-tydefs (cdr defs1) defs2))))
+      (define (append-tydefs . args)
+	(if (null? args) '()
+	    (append-tydefs2 (car args)
+			    (apply append-tydefs (cdr args)))
+	    ))
+
       ;; We avoid the boilerplate by defining this as a "generic traversal"
       (define (collect-tupdefs expr tenv)
 	(core-generic-traverse/types
@@ -86,13 +122,15 @@
 			  [tydefs (apply append (map result-tydefs results))])
 		     (make-result 
 		      `(make-struct ,newtype ,args ...)
-		      `((,(map (lambda (arg) (recover-type arg tenv)) arg*)
-			 ,(list-head field-names (length arg*))
-			 ,newtype
-			 )
-			. ,tydefs))
+		      ;; Append a new typedef to the existing.
+		      ;; Don't convert types for this entry:
+		      (add-new-tydef
+		       (list (map (lambda (arg) (recover-type arg tenv)) arg*)
+			     (list-head field-names (length arg*))
+			     newtype)
+		       tydefs))
 		     )]))]
-
+	     
 	     [(unionList ,ls)
 	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
 		    [newstruct (unique-name 'unionlst_tuptyp)])
@@ -106,8 +144,9 @@
 		     (make-result 
 		      ;; Annotate the primapp with the struct-type.
 		      `(unionList ,newstruct ,(result-expr result))
-		      (cons `((Int ,argtype) ,(list-head field-names 2) ,newstruct)
-			    (result-tydefs result))
+		      (add-new-tydef
+		       `((Int ,argtype) ,(list-head field-names 2) ,newstruct)
+		       (result-tydefs result))
 		      ))]))]
 
 	     ;; tuprefs are simple:
@@ -116,6 +155,7 @@
 			   (result-tydefs result))]
 	     
 	     ;; DEBUGGING
+	     #;
 	     [(iterate ,f ,s)
 	      (let ([result (loop `(iterate ,f ,s) tenv)])
 		(match (result-expr result)
@@ -133,7 +173,7 @@
 	 (lambda (ls k)
 ;	   (printf "FUSING: ~s\n\n" ls)
 	   (make-result (apply k (map result-expr ls))
-			(apply append (map result-tydefs ls))))
+			(apply append-tydefs (map result-tydefs ls))))
 	 expr tenv
 	 ))
 
@@ -142,6 +182,9 @@
 	;; FIXME FIXME FIXME 
 	tupdefs)
 
+      ;; Topological sort on struct-defs
+      ;(define (sort-defs ls)  )
+
       ;; Main body:
       (lambda (prog) 
 	(match prog 
@@ -149,27 +192,10 @@
 	   (let* ([result (collect-tupdefs body (empty-tenv))]
 		  [newbod (result-expr result)]
 		  [tupdefs (remove-redundant (result-tydefs result))])
-	    
-	     ;; Must be an exported type.
-	     (define (convert-type ty)
-	       (match ty
-		 [,s (guard (symbol? s)) s]
-		 [(,qt ,v) (guard (memq qt '(quote NUM)))
-		  (error 'nominalize-types:convert-type
-			 "should not have polymorphic type: ~s" ty)]
-		 [(,[arg] ... -> ,[ret]) `(,@arg -> ,ret)]
-		 [(,C ,[t] ...) (guard (symbol? C)) `(,C ,@t)]
-		 [#(,t* ...)
-		  ;; Do the lookup on the *pre*converted type:
-		  ;; It's ok if there are duplicates in the tupdefs, this will get the first.
-		  (match (assoc t* tupdefs)
-		    [#f (error 'nominalize-types:convert-type
-			       "cannot find tuple type ~s in tuple defs:\n ~s" (list->vector t*) tupdefs)]
-		    [(,types ,flds ,structname) `(Struct ,structname)])]
-		 [,else (error 'nominalize-types:convert-type "unmatched type: ~s" else)]))
-
+	     
 	     (define (do-bindings vars types exprs reconstr exprfun) 
-	       (reconstr vars (map convert-type types) (map exprfun exprs)))
+	       (reconstr vars (map (lambda (t) (convert-type t tupdefs)) types) 
+			 (map exprfun exprs)))
 
 	     (set! bindings-fun do-bindings)
 	     
@@ -179,10 +205,14 @@
 		`(nominalize-types-language
 		  '(program ,body		       
 		     ;; We stick the type definitions here:
-		     (struct-defs ,@(map (match-lambda ((,types ,flds ,name))
-					   `(,name ,@(map list flds types)))
-				      tupdefs))
-		     ,(convert-type type)))])
+		     (struct-defs 
+		      ,@(id;sort-defs
+			 (map (match-lambda ((,types ,flds ,name))
+				`(,name ,@(map list flds 
+					       (map (lambda (t) (convert-type t tupdefs)) 
+						 types))))
+			   tupdefs)))
+		     ,(convert-type type tupdefs)))])
 	     )]))))
 
   (define these-tests  
@@ -216,6 +246,20 @@
 				      s3_5)))
 			      (Signal #(Int Int Float))))))
        #f]
+
+      ["tuples of tuples"
+       (nominalize-types '(type-print/show-language
+			   '(program
+				(tuple 1 (tuple 2 3))
+			      (Signal #(Int #(Int Int))))))
+       (nominalize-types-language
+	'(program
+	     (make-struct tuptyp_5 1 (make-struct tuptyp_6 2 3))
+	   (struct-defs
+	    (tuptyp_5 (fld1 Int) (fld2 (Struct tuptyp_6)))
+	    (tuptyp_6 (fld1 Int) (fld2 Int)))
+	   (Signal (Struct tuptyp_5))))
+       ]
       
 
       ))

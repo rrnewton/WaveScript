@@ -724,8 +724,6 @@
     [(quote ,c)       `(quote ,c)]
     [,var (guard (symbol? var)) var]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-    [(tuple ,[e*] ...) `(tuple ,e* ...)]
-    [(tupref ,n ,[e]) `(tupref ,n ,e)]
     
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
@@ -736,7 +734,7 @@
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     [(assert-type ,t ,e) e]
-    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]    
+    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
     
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))

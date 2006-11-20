@@ -25,6 +25,7 @@ exec regiment i --script "$0" ${1+"$@"};
     "demo3a_tuples.ws"
     "demo3b_inlining.ws"
     "demo3c_lists.ws"
+    "demo3d_tuples_of_tuples.ws"
     "demo3_fft.ws"
     "demo4_rewindow.ws"
     "demo5_rewindow_inlined.ws"

@@ -1,15 +1,15 @@
 
 (define-pass flatten-iterate-spine
+    (define (make-simple-shallow x tenv)
+      (if (simple-expr? x) 
+	  (values x '())	  
+	  (mvlet ([(type) (recover-type x tenv)]
+		  [(name) (unique-name 'tmp)])	    
+	    (values name
+		    `((,name ,type ,x))))))
   [Expr/Types
      (lambda (x tenv fallthru)
-       ;; Coerces an expression to be simple, producing new bindings.
-       (define (make-simple-shallow x)
-	 (if (simple-expr? x)
-	     (values x '())	  
-	     (mvlet ([(type) (recover-type x tenv)]
-		     [(name) (unique-name 'tmp)])	    
-	       (values name
-		       `((,name ,type ,x))))))       
+       ;; Coerces an expression to be simple, producing new bindings.              
        (match x
 
 #;	 
@@ -32,13 +32,15 @@
 	  (exit 0)
 	  ]
 
-	 [(iterate ,fun ,[make-simple-shallow -> src binds])
-	  ;; This had better be a symbol for now.
-	  (ASSERT symbol? src)
-	  
-	  (if (null? binds)
-	      `(iterate ,fun ,src)
-	      `(lazy-letrec ,binds (iterate ,fun ,src)))]
+	 [(iterate ,fun ,[src])
+	  (mvlet ([(src binds) (make-simple-shallow src tenv)])
+	    ;; This had better be a symbol for now.
+	    (ASSERT symbol? src)
+	    
+	    (if (null? binds)
+		`(iterate ,fun ,src)
+		`(lazy-letrec ,binds (iterate ,fun ,src)))
+	    )]
 	 
 	 [,other (fallthru other tenv)]
 	 ))]
