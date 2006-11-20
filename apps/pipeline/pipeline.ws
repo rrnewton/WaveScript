@@ -76,7 +76,7 @@ fun haar_calc(values, outputLevel)
    valArrs[0] := values;
    currLen = values.length;
    
-   for i=1 to outputLevel-2
+   for i=1 to outputLevel-1
    {
       currLen := currLen / 2;
       valArr_i   = makeArray(currLen, 0.0);
@@ -87,7 +87,7 @@ fun haar_calc(values, outputLevel)
       };
       valArrs[i] := valArr_i;
    };
-   last = outputLevel-2;
+   last = outputLevel-1;
    currLen := currLen / 2;
    
    outCoefs = makeArray(currLen, 0.0);
@@ -180,7 +180,7 @@ rw = rewindow(source, 8192, 500);
 
 pbox = iterate (w in rw)
 {
-   print("Rewindow : " ++ show(w) ++ "\n");
+   print("Rewindow : " ++ show(w.start) ++ " to " ++ show(w.end) ++ "\n");
 }
 
 
@@ -197,7 +197,6 @@ wlt = iterate (w in rw)
       outBuf[i] := outBuf[i] *. scalingFactor;
    };
 
-
    emit to_sigseg(outBuf, 0, outBuf.length-1, w.timebase);
 }
 
@@ -208,6 +207,7 @@ filter1 :: Signal Sigseg Float;
 filter1 = iterate ((m,w) in tpk1)
 {
    // FIXME: do PeakTrimFilter()
+   //print("peakValue is " ++ show(m));
    emit w;
 }
 
@@ -217,6 +217,8 @@ tpk2 = trimpeak(filter1, fun(a,b) { a > b });
 filter2 = iterate ((m,w) in tpk2)
 {
    // FIXME: do PeakTrimFilter()
+   //print("peakValue is " ++ show(m));
+
    emit w;
 }
 
@@ -226,6 +228,8 @@ tpk3 = trimpeak(filter2, fun(a,b) { a < b });
 filter3 = iterate ((m,w) in tpk3)
 {
    // FIXME: do PeakTrimFilter()
+   //print("peakValue is " ++ show(m));
+
    emit w;
 }
 
@@ -239,9 +243,7 @@ tpk4 = trimpeak(filter3, fun(a,b) { a > b });
 detect = iterate(((m1,w1), (m2,w2)) in zip2(tpk1, tpk4))
 {
    // FIXME: do LeakDetect(NORMALMEAN, NORMALSTD, LEAKMEAN, LEAKSTD)
-   peakRatio = m1 /. m2;
-
-   print("peakRatio: " ++ show(peakRatio));
+   peakRatio = m2 /. m1;
 
    emit(absf(peakRatio) < 0.32);
 }
