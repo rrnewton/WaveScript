@@ -17,7 +17,7 @@
 
   [sim-num-nodes 4]
   [simalpha-outer-radius 8]
-  [simalpha-consec-ids #t]
+  [simalpha-consec-ids 1]
   [sim-timeout 10000])
 
 

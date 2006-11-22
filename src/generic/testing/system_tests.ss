@@ -96,19 +96,22 @@
     ["Simalpha: Now we test running the Simulator Alpha on a very simple token machine."
      (parameterize ([unique-name-counter 0] 
 		    [simalpha-dbg-on #f]
-		    ;[simalpha-consec-ids #t]
+		    [simalpha-consec-ids 2000]
 		    [sim-num-nodes 30])
-     (let ((prt (open-output-string)))
-       (display "(" prt)
-       (run-simulator-alpha 
-	(cleanup-token-machine 
-	 '(tokens (node-start () (display " ") (display (my-id)))))
-	'outport prt)
-       (display ")" prt)
-       (read (open-input-string (get-output-string prt)))))
+       (list (let ((prt (open-output-string)))
+		 (display "(" prt)
+		 (run-simulator-alpha 
+		  (cleanup-token-machine 
+		   '(tokens (node-start () (display " ") (display (my-id)))))
+		  'outport prt)
+		 (display ")" prt)
+		 (read (open-input-string (get-output-string prt))))
+	       (cons BASE_ID (iota 2000 29))
+	       )
+       )
      ,(lambda (ls) 	
-	(set-equal? (list->set ls)
-		    (list->set (cons BASE_ID (cdr (iota 30))))))]
+	(set-equal? (list->set (car ls))
+		    (list->set (cadr ls))))]
 
 
     ["Simalpha: run a simple program that floods lights."
@@ -1113,7 +1116,7 @@
 		   '[simalpha-failure-model  'none]
 		   '[simalpha-placement-type 'connected]
 		   '[sim-num-nodes 20]
-		   '[simalpha-consec-ids #t]
+		   '[simalpha-consec-ids 2000]
 		   '[simalpha-graphics-on #t])
 		 ))
 	(let ((base (cdr (assq BASE_ID lst)))
@@ -1152,7 +1155,7 @@
 ;		    '[simalpha-placement-type 'connected]
 		    '[simalpha-failure-model  'none]
 		    '[sim-num-nodes 30]
-		    '[simalpha-consec-ids #t]
+		    '[simalpha-consec-ids 2000]
 		    '[simalpha-graphics-on #t]
 		    )))
 ;	(inspect lst)
@@ -1192,7 +1195,7 @@
 	 '[simalpha-placement-type 'gridlike] ;'connected]
 	 '[simalpha-failure-model  'none]
 	 '[sim-num-nodes 30]
-	 '[simalpha-consec-ids #t]
+	 '[simalpha-consec-ids 2000]
 	 '[simalpha-graphics-on #t])
 	unspecified]
 
@@ -1344,7 +1347,7 @@
 		  (tok2 () (grelay) (greturn (my-id) (to catcher)))
 		  )
 		'[sim-timeout 30000]
-		'[simalpha-consec-ids #t]
+		'[simalpha-consec-ids 2000]
 		'[simalpha-placement-type 'connected]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-failure-model 'none])
@@ -1388,7 +1391,7 @@
 			))
 		  )
 		'[sim-timeout 30000]
-		'[simalpha-consec-ids #t]
+		'[simalpha-consec-ids 2000]
 		'[simalpha-placement-type 'gridlike]
 		'[simalpha-channel-model 'lossless]
 		'[simalpha-failure-model 'none]
@@ -1603,7 +1606,7 @@
 	'[regiment-verbose #f]
 	'[sim-timeout 10.0]
 	'[simalpha-placement-type 'connected]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-failure-model 'none]
 	'[simalpha-channel-model 'lossless]
 	'[sim-num-nodes 10]
@@ -1621,7 +1624,7 @@
      ["Gradients: Now look at clock-skew."
       (map (lambda (ls) (and (not (null? ls))
 			     (- (apply max ls) (apply min ls))))
-      , (tm-to-list
+	, (tm-to-list
 	'(tokens 
 	  (SOC-start () (call tok1 '10))
 	  (tok1 (reps)
@@ -1657,12 +1660,12 @@
 			     (printf "(\"After a period of time, dists at base are:\" ~a ~a ~a)"
 				     (gdist a) (gdist b) (gdist c)))
 		  (a () (grelay)
-		        (if (= (my-id) 15)
+		        (if (= (my-id) 2015)
 			    (begin 
 			      (printf "(~a ~a ~a \"B launching\")\n" (my-clock) (my-id) (gdist a))
 			      (gemit b))))
 		  (b () (grelay)
-		        (if (= (my-id) 20)
+		        (if (= (my-id) 2020)
 			    (begin
 			      (printf "(~a ~a ~a ~a \"C launching\")\n" (my-clock) (my-id) (gdist a) (gdist b))
 			      (gemit c))))
@@ -1675,11 +1678,14 @@
 		  )
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
-		'[simalpha-consec-ids #t]
+		'[simalpha-consec-ids 2000]
 		'[sim-num-nodes 30])
       ,(lambda (ls)
 	 ;; Received all messages:
 	 (= (length ls) 5))]
+
+
+
 
      ["Gradients: return value through three nested gradients. (NONDETERMINISTIC)"
       ;retry ;; Must retry, network might not be connected
@@ -1721,7 +1727,7 @@
 		'[simalpha-placement-type 'connected]
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
-		'[simalpha-consec-ids #t]
+		'[simalpha-consec-ids 1]
 		'[sim-num-nodes 30]))
 
       ;((A-launch 1 0) (B-launch 64 15 2) (C-launch 158 20 1 3) (C-hit-home 190 0 0 2 1) 
@@ -1745,7 +1751,7 @@
 			     (printf "(~a ~a ~a ~a)\n" (gorigin) (gparent) (my-id) (gdist))))
 		'[simalpha-failure-model 'none]
 		'[simalpha-channel-model 'lossless]
-		'[simalpha-consec-ids #t]
+		'[simalpha-consec-ids 2000]
 		'[sim-num-nodes 30])
       ;; FIXME : Finish
       unspecified]
@@ -1875,7 +1881,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	)
        ;; This requires that you get actual minimum:
@@ -1912,7 +1918,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	))
     1] ;; Get one leader only
@@ -1953,7 +1959,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	))
     1]
@@ -1984,7 +1990,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	))
     1]        ;; We should only get one leader:
@@ -2009,7 +2015,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	)
        ;; This requires that you get actual minimum:
@@ -2046,7 +2052,7 @@
 	'[simalpha-placement-type 'gridlike] ;'connected]
 	'[simalpha-failure-model  'none]
 	'[sim-num-nodes 30]
-	'[simalpha-consec-ids #t]
+	'[simalpha-consec-ids 2000]
 	'[simalpha-graphics-on #t]
 	)
        ;; This requires that you get actual minimum:
@@ -2097,7 +2103,7 @@
        '[simalpha-placement-type 'gridlike] ;'connected]
        '[simalpha-failure-model  'none]
        '[sim-num-nodes 30]
-       '[simalpha-consec-ids #t]
+       '[simalpha-consec-ids 2000]
        '[simalpha-graphics-on #t])
       ((ANCH ,(min 1 BASE_ID)))]
 
@@ -2150,8 +2156,10 @@
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
 		    [deglobalize-markup-returns #f]
+		    [simalpha-consec-ids 1]
 		    [default-slow-pulse '1000]
 		    [default-fast-pulse '100]
+		    [sim-num-nodes 30]
 		    [sim-timeout 400])
        (run-simulator-alpha (run-compiler '(rmap nodeid world))))
      ,(lambda (ls)
@@ -2161,7 +2169,7 @@
 	;; UNLESS, RADIO_DELAY is set really large:
 	(and (> (length ls) (* 2 (sim-num-nodes)))
 	     (equal?
-	      (sort < (cons BASE_ID (cdr (iota (sim-num-nodes)))))
+	      (sort < (cons BASE_ID (iota 1 29)))
 	      (sort < (list->set ls)))))]
 
     ;; [2005.11.14] Huh, just started getting some errors on this when running from command line.
@@ -2342,6 +2350,7 @@
 		     [default-slow-pulse '1000]
 		     [default-fast-pulse '100]
 		     [sim-num-nodes 10]
+		     [simalpha-consec-ids 200]
 		     [sim-timeout 2000])
        (run-simulator-alpha 
 	(run-compiler 
@@ -2352,8 +2361,8 @@
 	  (let ((ls (list-head (reverse ls) 2)))
 	    (and (apply equal? ls)
 		 (equal? (car ls) 
-			 (sort < (cons BASE_ID (cdr (iota 10)))))
-		 )))] 
+			 (sort < (cons BASE_ID (iota 200 9))))
+		 )))]
 
      ["Regiment: Fire a simple event when a threshold is crossed."
       (parameterize ([simalpha-channel-model 'lossless]
@@ -2399,17 +2408,17 @@
 		[simalpha-failure-model  'none]
 		[simalpha-sense-function-constructor sense-dist-from-origin]
 		[sim-num-nodes 30]
-		[simalpha-consec-ids #t]
+		[simalpha-consec-ids 2000]
 		[simalpha-graphics-on #t]
 		[sim-timeout 9000])
    (run-simulator-alpha 
     (run-compiler 
      '(gossip 
-       (rfilter (lambda (id) (= id 13))
+       (rfilter (lambda (id) (= id 2013))
 		(rmap nodeid world))))))
  ,(lambda (ls)
     (and (> (length ls) 1)
-	 (all-equal? (cons 13 ls))))]
+	 (all-equal? (cons 2013 ls))))]
 
 
 ["Integrate: now try integrating a signal."
@@ -2418,7 +2427,7 @@
 		[simalpha-failure-model  'none]
 		[simalpha-sense-function-constructor sense-dist-from-origin]
 		[sim-num-nodes 30]
-		[simalpha-consec-ids #t]
+		[simalpha-consec-ids 2000]
 		[simalpha-graphics-on #t]
 		[sim-timeout 100000])
    (run-simulator-alpha 
@@ -2426,7 +2435,7 @@
      '(integrate (lambda (node x acc) (tuple acc (+ acc x)))
 		1000
 		(rfold + 0 
-		       (rfilter (lambda (id) (= id 10))
+		       (rfilter (lambda (id) (= id 2010))
 				(rmap nodeid world))
 		       ))
      )))
@@ -2442,7 +2451,7 @@
 		[simalpha-failure-model  'none]
 		[simalpha-sense-function-constructor sense-dist-from-origin]
 		[sim-num-nodes 1]
-		[simalpha-consec-ids #t]
+		[simalpha-consec-ids 2000]
 		[simalpha-graphics-on #t]
 		[sim-timeout 100000])
    (run-simulator-alpha 
@@ -2460,7 +2469,7 @@
 		[simalpha-failure-model  'none]
 		[simalpha-sense-function-constructor sense-dist-from-origin]
 		[sim-num-nodes 3]
-		[simalpha-consec-ids #t]
+		[simalpha-consec-ids 1000]
 		[simalpha-graphics-on #t]
 		[sim-timeout 20000])
    (sort < 
@@ -2470,7 +2479,7 @@
 	    '(rintegrate (lambda (node x state) (tuple (+ x 1000) state))
 			 99
 			 (rmap nodeid world)))))))
- (1000 1001 1002)]
+ (1000 2000 2001)]
 
 ;; Currently gets an error with void arguments at the TM level.
 ;; Wish the damn TMs were typechecked also.
@@ -2481,7 +2490,7 @@
 		[simalpha-failure-model  'none]
 		[simalpha-sense-function-constructor sense-dist-from-origin]
 		[sim-num-nodes 3]
-		[simalpha-consec-ids #t]
+		[simalpha-consec-ids 2000]
 		[simalpha-graphics-on #t]
 		[sim-timeout 20000])
    (run-simulator-alpha 

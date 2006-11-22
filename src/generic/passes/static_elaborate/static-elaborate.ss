@@ -51,7 +51,7 @@
 
 
 ;; This is the grammar for the output of static-elaborate
-;; UNFINISHED:
+;; UNFINISHED: FIXME TODO FIXME
 #;
 (define static-elaborate-grammar
   ;; TODO, make check-grammar optionally take a procedure which is given a sub-checker.
@@ -70,8 +70,16 @@
        )))
 ;; TEMPORARY:
 (define static-elaborate-grammar
-  remove-unquoted-constant-grammar)
-
+  (cons 
+   ;; After elaboration we have unionN:
+   '[Expr ('unionN Expr ...)]  
+   ;; And we should not have unionList.
+   (filter (lambda (prod)
+	     (match prod
+	       [(Prim 'unionList) #f]
+	       [,_ #t]))
+     remove-unquoted-constant-grammar)
+   ))
 
 ;=======================================================================
 
@@ -146,7 +154,7 @@
 
 	  [(tupref ,n ,m ,[x]) x]
 	  [(tuple ,[args] ...) (apply + args)]
-
+	  [(unionN ,[args] ...) (apply + args)]
           
 	  [(,prim ,[rands] ...)
 	   (guard (regiment-primitive? prim))
@@ -287,7 +295,17 @@
 		      [(cons ,a ,b) x]
 		      [,var (guard (symbol? var))
 			    (getval (cadr (assq var env)))]
-		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))])
+		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))]
+
+		 [getlist ;; Get values until you have the whole list.
+		  (trace-lambda getlist (x)
+		    (if (container-available? x)
+			(match (getval x)
+			  [(cons ,a ,b) (cons a (getlist b))]
+			  [() '()]
+			  [,other (error 'getlist "not a list-constructor: ~s" other)])
+			#f))]
+		 )
 	  
         (match expr
           [(quote ,datum) `(quote ,datum)]
@@ -398,8 +416,9 @@
 		 `(if ,newtest ,conseq ,altern))
 	     )]
 
+
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
-	 
+	  [(unionN ,[args] ...) `(unionN ,args ...)]
 
 	  ;; First we handle primitives that work on container types: 
 	  [(tupref ,ind ,len ,[tup])
@@ -426,6 +445,23 @@
 		 [,ls (guard (list? ls)) `(quote ,(cdr ls))]
 		 [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
 	       `(cdr ,x))]
+
+	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
+	  [(unionList ,[x])
+	   (if (container-available? x)
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     `(unionN ,@ls)
+		     (begin 
+		       (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s"
+				ls)
+		       `(unionList ,x))
+		     ))
+	       (begin (error 'static-elaborate "couldn't elaborate unionList, value unavailable:~s"
+			     `(unionList ,x))
+		      `(unionList ,x))
+			       )]
+
 	  [(map ,[f] ,[ls])
 	   (if (container-available? ls)
 	       (match (getval ls) 

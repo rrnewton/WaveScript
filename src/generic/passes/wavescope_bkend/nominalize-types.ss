@@ -125,7 +125,7 @@
 	    (match expr
 	     ;; Tuple statements HAVE to be type annotated now.
 	     [(tuple ,arg* ...)
-	      (printf "TUPLE!! ~s\n" arg*)	 
+	      (printf "TUPLE!! ~s\n" arg*)
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)]
 		    [newtype (unique-name 'tuptyp)])
 		(match type
@@ -153,6 +153,24 @@
 		      ;; Don't convert types for this entry:
 		      newdefs)
 		     )]))]
+
+	     ;; DAMMIT: special case for zip2 because it currently uses its own tuple type.
+	     [(zip2 ,[res1] ,[res2])
+	      (let ([defs (append-tydefs (result-tydefs res1) (result-tydefs res2))]
+		    [ty1 (match (recover-type (result-expr res1) tenv)
+			   [(Signal ,t) t])]
+		    [ty2 (match (recover-type (result-expr res2) tenv)
+			   [(Signal ,t) t])]
+		    )
+		(printf "SO SPECIAL: ~s"   `((,ty1 ,ty2) (_first _second) (EXT Zip2)))
+		
+		(make-result
+		 `(zip2 ,(result-expr res1) ,(result-expr res2))		 
+		 (add-new-tydef
+		  ;; Special tuple for zip.
+		  `((,ty1 ,ty2) (_first _second) (EXT Zip2)) ;; Special NAME field.		  
+		  defs)
+		 ))]
 	     
 	     [(unionList ,ls)
 	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
@@ -241,9 +259,12 @@
 		  [newbod (insert-struct-names (result-expr result) tupdefs)]
 		  )
 	     
+
 	     (define (do-bindings vars types exprs reconstr exprfun) 
 	       (reconstr vars (map (lambda (t) (convert-type t tupdefs)) types) 
 			 (map exprfun exprs)))
+
+;	     (inspect tupdefs)
 
 	     (set! bindings-fun do-bindings)
 	     
@@ -296,17 +317,18 @@
        #f]
 
       ["tuples of tuples"
-       (nominalize-types '(type-print/show-language
+       (reunique-names ;; This kinda thing makes me wish I used de Bruijin indices.
+	(nominalize-types '(type-print/show-language
 			   '(program
 				(tuple 1 (tuple 2 3))
-			      (Signal #(Int #(Int Int))))))
+			      (Signal #(Int #(Int Int)))))))
        (nominalize-types-language
 	'(program
-	     (make-struct tuptyp_5 1 (make-struct tuptyp_6 2 3))
+	     (make-struct tuptyp 1 (make-struct tuptyp_1 2 3))
 	   (struct-defs
-	    (tuptyp_5 (fld1 Int) (fld2 (Struct tuptyp_6)))
-	    (tuptyp_6 (fld1 Int) (fld2 Int)))
-	   (Signal (Struct tuptyp_5))))
+	    (tuptyp_1 (fld1 Int) (fld2 Int))
+	    (tuptyp (fld1 Int) (fld2 (Struct tuptyp_1))))
+	   (Signal (Struct tuptyp))))
        ]
       
 

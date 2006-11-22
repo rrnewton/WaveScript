@@ -15,13 +15,23 @@
   (provide rename-vars test-this these-tests test01 tests01)
   (chezimports)
 
+  ;; This is a bit of a hack... really should split rename-var into
+  ;; two separate passes for the two places it's used.
+  (define rename-vars-grammar
+    (cons 
+     ;; This is really compiler-internal.  Introduced after static-elaborate.
+     ;; Including here only because rename-vars is used in multiple places.
+     '[Expr ('unionN Expr ...)]
+     initial_regiment_grammar))
+
   ;; [2006.10.07] Rewrote to use generic-traverse.
   (define rename-vars
     (build-compiler-pass ;; This wraps the main function with extra debugging
      'rename-vars
      `(input)
-     `(output (grammar ,initial_regiment_grammar PassInput))  ;; No grammar change.
+     `(output (grammar ,rename-vars-grammar PassInput))  ;; No grammar change.
 
+     ;; TODO: Rewrite to use define-pass with the Bindings clause.
      (let ()
        (define (process-expr expr var-table)
 	 (define (driver x fallthrough)

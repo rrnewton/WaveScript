@@ -2,46 +2,9 @@
 
 ;;; [2004.04.24] NOTE this pass has been resurrected for my new
 ;;; compiler.  Right now I'm allowing *no* free
-;;; variables. *Simplicity* is the essence.
+;;; variables in lambda. *Simplicity* is the essence.
 
 ;;;------------------------------
-
-;;; This pass wraps the body of each lambda expression in a free form
-;;; that lists the free variables of the lambda expression.  For
-;;; example:
-;;;
-;;; (let ([x.2 '3] [y.1 '4])
-;;;   (letrec ([f.3 (lambda (z.5) (* y.1 z.5))])
-;;;     (letrec ([g.4 (lambda () (f.3 (+ x.2 y.1)))])
-;;;       (g.4))))
-;;;
-;;; becomes
-;;;
-;;; (let ([x.2 '3] [y.1 '4])
-;;;   (letrec ([f.3 (lambda (z.5) (free (y.1) (* y.1 z.5)))])
-;;;     (letrec ([g.4 (lambda ()
-;;;                     (free (f.3 x.2 y.1)
-;;;                       (f.3 (+ x.2 y.1))))])
-;;;       (g.4))))
-
-;;; The input language is the same as the output language of Pass 10.
-
-;;; The output language differs in that each lambda body is wrapped
-;;; in a free form.
-
-;;; NOTE: NO FREE VARS YOU MIGHT NOTICE!
-
-;;; <Pgm>  ::= (<language-name> (quote (program <Exp>)))
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= 
-;;;            (quote <imm>)
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> (free () <Exp>))  
-;;;          | (letrec (<Decl>*) <Exp>)
-;;;          | (<primitive> <Exp>*)
-;;; <Formalexp> ::= (<var>*)
-
 
 ;; There may be multiple versions of uncover-free with different
 ;; input/output grammars.  Factoring out the transformer functions here.

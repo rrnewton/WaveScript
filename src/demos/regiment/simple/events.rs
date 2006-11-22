@@ -9,7 +9,7 @@
   ;[simalpha-sense-function-constructor sense-noisy-rising]
   [simalpha-sense-function-constructor sense-random-1to100]
   [sim-num-nodes 30]
-  [simalpha-consec-ids #t]
+  [simalpha-consec-ids 1]
   [default-slow-pulse 1000]
   [default-fast-pulse 100]
   [sim-timeout 7000])

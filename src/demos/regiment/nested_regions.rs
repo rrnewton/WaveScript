@@ -11,6 +11,8 @@
   [default-fast-pulse 100]
   [default-slow-pulse 1000]
 
+  [simalpha-consec-ids 1]
+
   [sim-num-nodes 100]
   [simalpha-outer-radius 8]
   [sim-timeout 2000])

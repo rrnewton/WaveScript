@@ -564,10 +564,13 @@
 ;; If it can't match real time, will have undefined behavior.
 (define-regiment-parameter simalpha-realtime-mode #f)
 
-;; This is used by the simulator, 
-;; if true then the node ids are small consecutive numbers rather than
-;; large random ones.
-(define-regiment-parameter simalpha-consec-ids #t)
+;; This is used by the simulator.  Values:
+;;   #f: Node IDs are large and random.
+;; <int>: This number serves as the *start* of nodeIDs.  I usually use
+;;        zero for BASE, and I like to use 2000 or so for this.  If
+;;        nodeids are too small it's easy to mix them up with other
+;;        numbers floating around.
+(define-regiment-parameter simalpha-consec-ids 2000)
 
 ;; This controls where the simulator writes its output.
 ;; If this is false, default is stdout.  Otherwise it must be set to an output port.

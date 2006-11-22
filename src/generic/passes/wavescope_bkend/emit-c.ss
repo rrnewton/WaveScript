@@ -162,12 +162,42 @@
 	       (values ourstmts ourdecls)
 	   )]
 
-	[(unionList ,structtype ,ls)
-	 
+	
+	;; This is purely hackish... should use the zip library function.	
+	[(zip2 ,s1 ,s2)
+	 (ASSERT symbol? s1)
+	 (ASSERT symbol? s2)
+	 (let* ([t1 (recover-type s1 tenv)]
+		[t2 (recover-type s2 tenv)]
+		[ty (format " ~a, ~a " (Type t1) (Type t2))])
+	   `(" Zip2<",ty"> ",name" = Zip2<",ty">();"
+	     " ",name".connect(",(symbol->string s1)"); "
+	     " ",name".connect(",(symbol->string s2)"); " )	   
+	   )
+					;  /* zip2 */
+					;  Zip2<SigSeg<float>,float> z=Zip2<SigSeg<float>,float>();
+					;  z.connect(&rw1);
+					;  z.connect(&ms);	 
+	 ]
+
+
+	;; This WON'T be implemented.  Doesn't really make sense.
+	[(unionList ,structtype ,ls)	 
 	 (error 'emit-C "unionList not implemented yet: ~s" 
 		`(unionList ,structtype ,ls))
 	 ]
 
+	;; UNOPTIMIZED: should combine with the downstream iterate.
+	;; Wire these all to our iterate.
+	[(unionN ,inputs ...)
+	 (ASSERT (not (null? inputs)))
+	 (ASSERT (andmap symbol? inputs))
+	 (let ([ty (recover-type (car inputs) tenv)])	   
+	   `(" WSBuiltins::UnionN<",ty"> ",name" = WSBuiltins::UnionN<",ty">();"
+	     ,(map (lambda (in)
+		     `(" ",name".connect(",(symbol->string in)"); "))
+		inputs)
+	     ))]	
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query

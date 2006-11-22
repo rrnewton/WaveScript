@@ -120,7 +120,9 @@
 		 emit virtqueue
 		 smap parmap sfilter
 		 iterate break deep-iterate
-		 unionList zip2
+		 ;; TODO: nix unionList.
+		 unionN unionList zip2
+		 ; union2 union3 union4 union5
 		 fft 
 		 
 		 ;; Misc, ad-hoc, and Temporary
@@ -459,7 +461,8 @@
 				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
 					streams)))))))
        )
-     
+
+     (define (unionN . args) (unionList args))
 
      (define (zip2 s1 s2)
        (delay 	 

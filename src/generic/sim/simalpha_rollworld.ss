@@ -87,11 +87,14 @@
     ;; Now we just SET the first node to have the BASE_ID and serve as the SOC.
     (cons BASE_ID 
 	  (if (simalpha-consec-ids)
-	      ;; Is BASE_ID in this 1-n span?  If so have to ensure no dups.
-	      (if (and (>= BASE_ID 1) (< BASE_ID (sim-num-nodes)))
-		  (remq BASE_ID (cdr (iota (add1 (sim-num-nodes)))))
-		  (map (lambda (x) (+ 1000 x))
-		    (cdr (iota (sim-num-nodes)))))
+	      (begin 
+		(ASSERT (integer? (simalpha-consec-ids)))
+		;; Is BASE_ID in this 1-n span?  If so have to ensure no dups.
+		(let ([ids (map (lambda (x) (+ (simalpha-consec-ids) x))
+			     (iota (sub1 (sim-num-nodes))))])
+		  (ASSERT (not (and (>= BASE_ID (simalpha-consec-ids))
+				    (< BASE_ID (+ (sim-num-nodes) (simalpha-consec-ids))))))
+		  ids))
 	      (let loop ((n (sub1 (sim-num-nodes))) (acc ()))
 		(if (zero? n) acc
 		    (let ([x (reg:random-int 1000)])

@@ -416,6 +416,14 @@
 
       [(tuple ,[t*] ...) (list->vector t*)]
       [(tupref ,n ,len ,[t]) (vector-ref t (qinteger->integer n))]
+      [(unionN ,[t*] ...) 
+       (ASSERT (not (null? t*)))
+       (ASSERT all-equal?  t*)
+       (match (types-compat? '(Signal 'a) (car t*))
+	 [(Signal ,t) `(Signal #(Int ,t))]
+	 )
+       ]
+
       ;; Since the program is already typed, we just use the arrow type of the rator:
       ;[(,[rat] ,rand ...) (rac rat)]
       [,other 
@@ -520,6 +528,17 @@
        (let ([expr `(for [,i ,start ,end] ,bod)])
 	 (unless (types-compat? st et) (raise-type-mismatch start end expr))
 	 (values expr #()))]
+
+      [(unionN ,[l -> e* t*] ...)
+       (ASSERT (not (null? t*)))
+       (let ([exp `(unionN ,e* ...)])
+	 ;; Make sure they're all equal:
+	 (foldl (lambda (a b) (types-equal! a b exp))
+	   (car t*) (cdr t*))
+	 (values exp
+		 (match (types-compat? '(Signal 'a) (car t*))
+		   [(Signal ,t) `(Signal #(Int ,t))]))
+	 )]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
@@ -678,6 +697,7 @@
 		[(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
 		[(tuple ,[e*] ...) `(tuple ,e* ...)]
 		[(tupref ,n ,[e]) `(tupref ,n ,e)]
+		[(unionN ,[e*] ...) `(unionN ,e* ...)]
 
 		[(set! ,v ,[e]) `(set! ,v ,e)]
 		[(begin ,[e] ...) `(begin ,e ...)]
@@ -730,6 +750,7 @@
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
 
+    [(unionN ,[args] ...) `(unionN ,args ...)]
     [(tuple ,[args] ...) `(tuple ,args ...)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
@@ -937,6 +958,7 @@
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(tuple ,[args] ...) (apply append args)]
        [(tupref ,n ,m ,[x]) x]
+       [(unionN ,[args] ...) (apply append args)]
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
 	(guard (memq let '(let letrec lazy-letrec)))
@@ -946,9 +968,6 @@
 			 id* t* rhs*))
 		bod)]
        [(lambda ,v* ,t* ,[bodls])   bodls]
-       [(tuple ,[e*] ...) (apply append e*)]
-       [(tupref ,n ,m ,[e]) e]
-
        [(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
 	[(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))

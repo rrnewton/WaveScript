@@ -41,6 +41,31 @@
 		`(iterate ,fun ,src)
 		`(lazy-letrec ,binds (iterate ,fun ,src)))
 	    )]
+
+	 [(zip2 ,[s1] ,[s2])
+	  (mvlet ([(s1 binds1) (make-simple-shallow s1 tenv)]
+		  [(s2 binds2) (make-simple-shallow s2 tenv)]
+		  )
+	    (define binds (append binds1 binds2))
+	    (ASSERT symbol? s1)
+	    (ASSERT symbol? s2)	    
+	    (if (null? binds)
+		`(zip2 ,s1 ,s2)
+		`(lazy-letrec ,binds (zip2 ,s1 ,s2)))
+	    )]
+
+	 [(unionN ,[s1] ,[s2])
+	  (mvlet ([(s1 binds1) (make-simple-shallow s1 tenv)]
+		  [(s2 binds2) (make-simple-shallow s2 tenv)]
+		  )
+	    (define binds (append binds1 binds2))
+	    (ASSERT symbol? s1)
+	    (ASSERT symbol? s2)	    
+	    (if (null? binds)
+		`(zip2 ,s1 ,s2)
+		`(lazy-letrec ,binds (zip2 ,s1 ,s2)))
+	    )]
+
 	 
 	 [,other (fallthru other tenv)]
 	 ))]

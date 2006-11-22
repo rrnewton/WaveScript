@@ -156,8 +156,9 @@
 	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
 
-	  [(tuple ,[loop -> args] ...)
-	   (fuse args (lambda args `(tuple ,args ...)))]
+	  [(,varargkeyword ,[loop -> args] ...)
+	   (guard (memq varargkeyword '(unionN tuple)))
+	   (fuse args (lambda args `(,varargkeyword ,args ...)))]
 
 	  ;; Adding this special syntax as well (output of nominalize-types)
 	  [(make-struct ,name  ,[loop -> args] ...)
