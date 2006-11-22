@@ -62,8 +62,8 @@
 	    (ASSERT symbol? s1)
 	    (ASSERT symbol? s2)	    
 	    (if (null? binds)
-		`(zip2 ,s1 ,s2)
-		`(lazy-letrec ,binds (zip2 ,s1 ,s2)))
+		`(unionN ,s1 ,s2)
+		`(lazy-letrec ,binds (unionN ,s1 ,s2)))
 	    )]
 
 	 

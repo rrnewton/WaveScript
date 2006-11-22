@@ -13,7 +13,7 @@ fun zip(s1, s2) {
     then buf1 := [x] // Might throw out element.
     else if ind == 1 
     then buf2 := [x]
-    else wserror("implementation error");
+    else wserror("implementation error: got ind "++ show(ind));
 
     if buf1.listLength == 1  && buf2.listLength == 1
     then { emit (buf1.head, buf2.head);

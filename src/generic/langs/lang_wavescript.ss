@@ -123,7 +123,7 @@
 		 smap parmap sfilter
 		 iterate break deep-iterate
 		 ;; TODO: nix unionList.
-		 unionN unionList zip2
+		 unionN unionList ;zip2
 		 ; union2 union3 union4 union5
 		 fft 
 		 
@@ -133,6 +133,7 @@
 		 ;; We reexport these *module names* so that they can be imported subsequently.
 		 mod_scheme  mod_helpers  mod_constants
 		 ;; And we reexport some standard scheme bindings:
+		 let 
 ;		 quasiquote unquote lambda
 		 ;; Including import itself--this is so we can use import-only:
 		 import
@@ -150,7 +151,7 @@
 ;  (alias quasiquote quasiquote)  
 ;  (alias unquote unquote) 
 ;  (alias lambda lambda)  
-;  (alias let let)  
+  (alias let let)  
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -454,6 +455,7 @@
 		    (sigseg-timebase ss)))
 
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
+     ;; USES ZERO-BASED INDICES.
      (define (unionList ls)
        ;; There are all kinds of weird things we could do here.
        ;; We could pull all the streams in parallel (with engines or threads) 
@@ -470,8 +472,10 @@
 					streams)))))))
        )
 
-     (define (unionN . args) (unionList args))
+     (define (unionN . args) 
+	 (unionList args))
 
+#;
      (define (zip2 s1 s2)
        (delay 	 
 	 (let loop ([s1 s1] [s2 s2])
@@ -736,7 +740,7 @@
      (import-only wavescript-language-module)
      ;; Then we import some "sub-modules" exported by the language-module.
      ;; This is everything but the overriden bindings from default scheme language:
-     (import (except mod_scheme break length + - * / ^ inspect letrec import))
+     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
      (import mod_constants)
      (import mod_helpers)
  
