@@ -42,7 +42,7 @@
 	     (syntax-rules ()
 	       [(_) (if (getenv "REGIMENTD") (getenv "REGIMENTD") (current-directory))]))
 
-	   (source-directories (list 
+	   (source-directories (#%list 
 				;"."
 ;				(string-append (default-regimentd) "/src/chez")
 ;				(string-append (default-regimentd) "/src/generic")

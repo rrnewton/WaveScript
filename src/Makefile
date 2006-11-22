@@ -20,16 +20,19 @@ CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; 
 SWL = swl
 DEST = a.out
 
+# This builds the .so.  Run "make heap/fullheap" separately.
 all: 
 	@echo; echo BUILDING PARSER
 	@echo "======================================================================"
 	$(MAKE) wsparse
-	@echo; echo; echo BUILDING C-code
+	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
-	(cd C; $(MAKE))
-	@echo; echo; echo Precompiling Regiment Scheme Source
+	$(MAKE) chez
+	@echo; echo; echo BUILDING C-code extensions.
 	@echo "======================================================================"
-	$(MAKE) fullheap
+	@echo "Don't worry if this step fails, it's optional!"
+	@echo "======================================================================"
+	$(MAKE) c
 
 old_all: reg
 	(cd plt; $(MAKE) nc)

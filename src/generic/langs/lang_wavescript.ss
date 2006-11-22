@@ -7,6 +7,8 @@
 ;; imported when eval happens.  This way even petite with a limited
 ;; heap will still get performance.
 
+;; This has become *terribly* non-portable.
+
 ;;======================================================================
 
 ;; Testing file IO on marmot audio traces:
@@ -130,7 +132,9 @@
 
 		 ;; We reexport these *module names* so that they can be imported subsequently.
 		 mod_scheme  mod_helpers  mod_constants
-		 ;; And import itself--this is so we can use import-only:
+		 ;; And we reexport some standard scheme bindings:
+;		 quasiquote unquote lambda
+		 ;; Including import itself--this is so we can use import-only:
 		 import
 		 )
 
@@ -143,6 +147,10 @@
   (alias mod_helpers helpers)
   (alias mod_scheme scheme)
   (alias mod_constants constants)  
+;  (alias quasiquote quasiquote)  
+;  (alias unquote unquote) 
+;  (alias lambda lambda)  
+;  (alias let let)  
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -756,35 +764,40 @@
 ;; the wavescope defs ONCE at load time, and have them visible to all
 ;; the unit tests
 (define these-tests
-  (eval `(let ()
-	   ,(wavescript-language 'return)
-	   ;(define nulltimebase 'nulltimebase)
-	   (list 
-	    `["Joinsegs" 
+  (eval `(let ([listprim list])
+	   ;,(wavescript-language 'return)
+	   ;(import-only wavescript-language-module)
+	   (import wavescript-language-module)
+	   ;(import (except mod_scheme break length + - * / ^ inspect letrec import))
+	   ;(import mod_constants)
+	   ;(import mod_helpers)
+	   ;;(define nulltimebase 'nulltimebase)
+	   `(
+	    ["Joinsegs" 
 	      (,(lambda ()
 		  (reg:struct->list
 		   (joinsegs (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase)
 			     (make-sigseg 15 24 (list->vector (map (lambda (x) (+ x 5)) (iota 10))) nulltimebase)))))
 	      ("sigseg" 10 24 #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14) ,nulltimebase)]
 
-	    `["Subseg"
+	    ["Subseg"
 	      (,(lambda ()
 		  (reg:struct->list
 		   (subseg (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 11 5))))
 	      ("sigseg" 11 15 #(1 2 3 4 5) ,nulltimebase)]
 
-	    `["seg-get"
+	    ["seg-get"
 	      (,(lambda ()	
 		  (seg-get (make-sigseg 10 19 (list->vector (iota 10)) nulltimebase) 12)))
 	      2]
 
-	    `["width/start/end"
+	    ["width/start/end"
 	      (,(lambda ()	
 		  (let ([seg (make-sigseg 11 20 (list->vector (iota 10)) nulltimebase)])
 		    (list (width seg) (start seg) (end seg)))))
 	      (10 11 20)]
 
-	    `["audioFile"
+	    ["audioFile"
 	      (,(lambda ()	
 		  (let* ([stream (audioFile (string-append (REGIMENTD) "/demos/wavescope/countup.raw")
 					    1024 0)]
@@ -795,7 +808,7 @@
 	      (1024 0 1023
 	       1024 1024 2047)]
 
-	    `["for loop"
+	    ["for loop"
 	      (,(lambda ()
 		  (let ([sum 0])
 		    ;; This outer loop goes 10 times.
@@ -819,6 +832,7 @@
   (eval `(let ()
 	   ,(wavescript-language 'return)
 	   ;(define nulltimebase 'nulltimebase)
+	   
 	   (list 
 	    `["Joinsegs" 
 	      (,(lambda ()
