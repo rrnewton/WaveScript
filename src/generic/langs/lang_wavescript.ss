@@ -454,6 +454,7 @@
 		    (dft (sigseg-vec ss))
 		    (sigseg-timebase ss)))
 
+#;
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      ;; USES ZERO-BASED INDICES.
      (define (unionList ls)
@@ -472,10 +473,48 @@
 					streams)))))))
        )
 
-     (define (unionN . args) 
-	 (unionList args))
 
-#;
+     ;; [2006.11.23] Experimenting with engine based version:
+     (define (unionList ls)
+       (let* ([output #f] ;; Mutable var for output.
+	      [engs (mapi (lambda (ind strm)
+			  (make-engine 
+			   (lambda ()
+			     (let strmloop ([strm strm])
+			       (when (stream-empty? strm)
+				 (engine-return '()))
+			       (set! output (vector ind (stream-car strm)))
+			       (engine-block) ;; Don't return more than one value.
+			       (strmloop (stream-cdr strm))
+			       ))))
+			  ls)])
+	 ;; Now we need to do the equivalent of a "select".
+	 ;; We run each engine until we get a value.
+	 (let loop ([engs engs] [acc '()])
+	   ;; Process output, if there was any in the last run.
+	   (cond
+	    [output
+	     (cons output 
+		   (delay (begin (set! output #f) (loop engs acc))))]
+	    [(null? engs)
+	     (if (null? acc) ;; All streams finished.
+		 '()
+		 (loop (reverse! acc) '()))]
+	    [else
+	     ;; RUN engine:
+	     ((car engs) 100
+	      (lambda (ticks val)
+		;; This stream is finished, continue with rest.
+		(loop (reverse! acc) '())
+		)
+	      (lambda (neweng)		  
+		;; Put us at the end of the queue.
+		(loop (cdr engs) (cons neweng acc))
+		))]
+	    ))))
+
+     (define (unionN . args)  (unionList args))
+
      (define (zip2 s1 s2)
        (delay 	 
 	 (let loop ([s1 s1] [s2 s2])
