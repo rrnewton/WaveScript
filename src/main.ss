@@ -354,14 +354,6 @@
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
 
-  ;; We typecheck before verify-elaborated.
-  ;; This might kill lingering polymorphic types ;)
-  (set! p (optional-stop (retypecheck p)))
-  (set! p (optional-stop (rename-vars p)))
-
-;  (printf "Post elaboration types: \n")
-;  (print-var-types p)
-
   (with-output-to-file ".__elaborated.ss"
     (lambda () 
       (parameterize ([pretty-line-length 200]
@@ -372,6 +364,14 @@
 	(pretty-print p))
       (flush-output-port))
     'replace)
+
+  ;; We typecheck before verify-elaborated.
+  ;; This might kill lingering polymorphic types ;)
+  (set! p (optional-stop (retypecheck p)))
+  (set! p (optional-stop (rename-vars p)))
+
+;  (printf "Post elaboration types: \n")
+;  (print-var-types p)
 
   (set! p (optional-stop (verify-elaborated p)))
   
@@ -433,6 +433,14 @@
 	    [else (error 'wsint "bad input: ~s" x)]))
 
   (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 
+		   
+		   ;; Delete these files so that we don't get mixed up.
+		   (delete-file ".__types.txt")
+		   (delete-file ".__inputprog.ss")
+		   (delete-file ".__compiledprog.ss")
+		   (delete-file ".__elaborated.ss")
+		   (delete-file ".__nocomplexopera.ss")
+
 		   (parameterize ([pretty-line-length 180]
 				  [pretty-maximum-lines 1000]
 				  [print-level 20]

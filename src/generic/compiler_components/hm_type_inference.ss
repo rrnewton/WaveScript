@@ -533,7 +533,7 @@
        (ASSERT (not (null? t*)))
        (let ([exp `(unionN ,e* ...)])
 	 ;; Make sure they're all equal:
-	 (foldl (lambda (a b) (types-equal! a b exp))
+	 (foldl (lambda (a b) (types-equal! a b exp) a)
 	   (car t*) (cdr t*))
 	 (values exp
 		 (match (types-compat? '(Signal 'a) (car t*))
