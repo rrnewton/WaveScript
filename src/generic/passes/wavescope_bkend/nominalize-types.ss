@@ -194,18 +194,6 @@
 	     [(tupref ,i ,len ,[result])
 	      (make-result `(struct-ref ,(result-expr result) ,(list-ref field-names i))
 			   (result-tydefs result))]
-	     
-	     ;; DEBUGGING
-	     #;
-	     [(iterate ,f ,s)
-	      (let ([result (loop `(iterate ,f ,s) tenv)])
-		(match (result-expr result)
-		  [(iterate ,f ,s) 
-			 (printf "SOURCE: ~s\n" s)
-			 
-			 ])
-		result)
-	      ]
 
 	     [,other (loop other tenv)]
 	     )
@@ -294,23 +282,21 @@
 					    (audioFile '"./countup.raw" '4096 '0)])
 				  (let ([s2_2 (Signal #(Int Int))
 					      (iterate
-					       (lambda (w_3)
-						 ((Sigseg Int))
-						 (let ([VIRTQUEUE_4 (VQueue #(Int Int)) (virtqueue)])
-						   (begin
-						     (emit VIRTQUEUE_4 (tuple (width w_3) (start w_3)))
-						     VIRTQUEUE_4)))
+					       (lambda (w_3 VIRTQUEUE_4)
+						 ((Sigseg Int) (VQueue #(Int Int)))
+						 (begin
+						   (emit VIRTQUEUE_4 (tuple (width w_3) (start w_3)))
+						   VIRTQUEUE_4))
 					       s1_1)])
 				    (let ([s3_5 (Signal #(Int Int Float))
 						(iterate
-						 (lambda (pattmp_6)
-						   (#(Int Int))
+						 (lambda (pattmp_6 VIRTQUEUE_9)
+						   (#(Int Int) (VQueue #(Int Int Float)))
 						   (let ([x_7 Int (tupref 0 2 pattmp_6)])
 						     (let ([y_8 Int (tupref 1 2 pattmp_6)])
-						       (let ([VIRTQUEUE_9 (VQueue #(Int Int Float)) (virtqueue)])
-							 (begin
-							   (emit VIRTQUEUE_9 (tuple y_8 x_7 '3.0))
-							   VIRTQUEUE_9)))))
+						       (begin
+							 (emit VIRTQUEUE_9 (tuple y_8 x_7 '3.0))
+							 VIRTQUEUE_9))))
 						 s2_2)])
 				      s3_5)))
 			      (Signal #(Int Int Float))))))

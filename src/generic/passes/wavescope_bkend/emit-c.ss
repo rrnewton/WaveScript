@@ -235,14 +235,6 @@
 	   ,(indent altern "  ")
 	   "}\n")]
 
-
-	;; FIXME FIXME FIXME: Gross hack:
-	;; This is a boilerplate that we can now remove:
-	[(,letsym ([,v ,t (virtqueue)] ,rest ...) ,body)
-	 (guard (memq letsym '(let letrec)))
-	 (let ([newenv (tenv-extend tenv (list v) (list t))])
-	   ((Stmt newenv) `(letrec ,rest ,body)))]
-
 	;; Not allowed in expression position currently:
 	[(let ([,[Var -> v] ,[Type -> t] ,[myExpr -> rhs]]) ,[body])
 	 `(,t " " ,v " = " ,rhs ";\n" ,body)]
@@ -294,9 +286,7 @@
 		  ((Stmt (tenv-extend tenv (list i) '(Int))) bod)))]
 	[(break) "break;\n"]
 
-	;; This becomes nothing:
-	[___VIRTQUEUE___ ""]
-
+;	[___VIRTQUEUE___ ""] ;; [2006.11.24] Should this still be here?
 
 	;; Otherwise it's just an expression.
 	;; TEMP: HACK: Need to normalize contexts.
@@ -559,8 +549,8 @@
     ;; Entry point
       (lambda (exp name tenv)
 	(match exp 
-	  [(lambda (,input) (,T) ,bod)	  	   
-	   (let ([body ((Stmt (tenv-extend tenv `(,input) `(,T))) bod)]
+	  [(lambda (,input ,vq) (,T ,vqT) ,bod)
+	   (let ([body ((Stmt (tenv-extend tenv `(,input ,vq) `(,T ,vqT))) bod)]
 		 [typ (Type T)])
 	     (values `(,(format "/* WaveScript input type: ~s */\n" T)
 		       ,(block 
@@ -680,16 +670,15 @@ int main(int argc, char ** argv)
   '(program
      (letrec ([s1 (Signal (Sigseg Complex)) (audio 1 4096 0)]
               [s2 (Signal (Sigseg Complex)) (iterate
-                                              (lambda (w)
-                                                ((Sigseg Complex))
-                                                (letrec ([___VIRTQUEUE___ (VQueue
-                                                                            (Sigseg
-                                                                              Complex)) (virtqueue)])
-                                                  (begin
+                                              (lambda (w ___VIRTQUEUE___)
+                                                ((Sigseg Complex) (VQueue
+								   (Sigseg
+								    Complex)))
+						(begin
                                                     (emit
                                                       ___VIRTQUEUE___
                                                       w)
-                                                    ___VIRTQUEUE___)))
+                                                    ___VIRTQUEUE___))
                                               s1)])
        s2)
      (Signal (Sigseg Complex)))))))
@@ -717,23 +706,20 @@ int main(int argc, char ** argv)
   '(program
      (letrec ([s1 (Signal (Sigseg Complex)) (audio 0 1024 0)]
               [s2 (Signal (Array Complex)) (iterate
-                                             (lambda (w)
-                                               ((Sigseg Complex))
-                                               (letrec ([___VIRTQUEUE___ (VQueue
-                                                                           (Array
-                                                                             Complex)) (virtqueue)])
-                                                 (begin
-                                                   (emit
-                                                     ___VIRTQUEUE___
-                                                     (fft (fft (to_array
-                                                                 w))))
-                                                   ___VIRTQUEUE___)))
+                                             (lambda (w ___VIRTQUEUE___)
+                                               ((Sigseg Complex) (VQueue
+								  (Array
+								   Complex)))
+					       (begin
+						 (emit
+						  ___VIRTQUEUE___
+						  (fft (fft (to_array
+							     w))))
+						 ___VIRTQUEUE___))
                                              s1)]
               [s3 (Signal Float) (iterate
-                                   (lambda (arr0)
-                                     ((Array Complex))
-                                     (letrec ([___VIRTQUEUE___ (VQueue
-                                                                 Float) (virtqueue)])
+				  (lambda (arr0 ___VIRTQUEUE___)
+                                     ((Array Complex) (VQueue  Float))
                                        (begin
                                          (letrec ([x Int 3])
                                            (letrec ([arr (Array Complex) (fft (fft arr0))])
@@ -749,7 +735,7 @@ int main(int argc, char ** argv)
                                                      (imagpart
                                                        (arr-get arr 100))))
                                                  (tuple))))
-                                         ___VIRTQUEUE___)))
+                                         ___VIRTQUEUE___))
                                    s2)])
        s3)
      (Signal Float))))))
