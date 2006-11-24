@@ -120,6 +120,7 @@
     (let ([opts '()] ;; This is a bit sketchy.  The same flags are sent to run-compiler and run-simulator-alpha.
 	  )
       ;; Loop goes through the arguments, processing them accordingly:
+      ;; Anything not matched by this is presumed to be a file name.
       (letrec ([loop 
 	      (lambda (args)
 		(match args
@@ -143,6 +144,8 @@
 		    [(-l0 ,rest ...) (set! opts (cons 'almost-tokens opts))   (loop rest)]
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts))   (loop rest)]
 		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
+
+;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 
 		    [(-l4 ,rest ...) 
 		     (set! makesimcode #t)
@@ -173,7 +176,7 @@
       ;; I keep disjoint options for the modes so I use the same option-processor (loop)
 	(let ([symargs (map string->symbol args)])
 	  (unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
-	  (let runloop ([mode (car symargs)] [filenames (loop (cdr symargs))])
+	  (let ([mode (car symargs)] [filenames (loop (cdr symargs))])
 	(case mode
 	  ;; Unit Test mode:
 	  [(t test)
@@ -216,28 +219,12 @@
 	   (let ((fn (if (null? filenames)
 			 "out.sim"
 			 (car filenames))))
-	     ;; If it's not simulatable yet, we switch to compile-mode and compile it first:
-#;
-	     (let ([type (extract-file-extension fn)])
-	       (if (member type '("rs" "tm" "ws"))
-		   (begin 
-		     (set! opts (cons 'full-tokens opts))
-		     (set! fn (runloop 'compile (list fn))) ;; Note: doesn't apply options to compilation!
-		     (set! opts (remq 'full-tokens opts))
-		     (ASSERT string? fn)
-		     )
-		   (error 'regiment:simulate "can't take file with this extension: ~s" fn)))
 	     
 	     (define-top-level-value 'go-sim
 	       (lambda ()
 		 (printf "Running simulation from file: ~a\n" fn)
 		 (let ((result
-;			(apply load-regiment fn 'ignore-file-params opts)
-			;; UH!!! DESPERATE HACK!! EVALING PARAMS TWICE!
-;			(with-evaled-params (filter list? opts)
-;					    (lambda ()
-;					      (apply load-regiment fn opts)) )
-		       (apply load-regiment fn opts)
+			(apply load-regiment fn opts)
 #;
 			;; Be careful to watch for parameterization:	     
 			(mvlet (([prog params] (read-regiment-source-file fn)))
@@ -261,14 +248,6 @@
 	     ))]
 
 	  ;; Interactive mode.  A Scheme REPL.
-	  #;[(i interact)
-	   (for-each (lambda (arg)
-		       (and (not (equal? arg "i"))
-			    (not (equal? arg "interact"))
-			    (load arg)))
-	     args)
-	   (new-cafe)]
-	  ;; Interactive mode.  A Scheme REPL.
 	  ;; [2006.02.21] This is a better way of exposing the normal scheme startup behavior:
 	  [(i interact)
 	   (printf "Exposing Regiment through interactive read-eval-print loop:\n")
@@ -278,12 +257,14 @@
 	   (optimize-level 0)
 
 	   (cond
-	    [(null? (cdr args)) (new-cafe)]
+	    [(null? filenames) (new-cafe)]
 	    ;; --script must be the first argument after "regiment i"
 	    ;;
 	    ;; This won't occur, chez grabs the --script parameter
 	    ;; directly.  This code should go in the scheme-script
-	    ;; parameter.
+	    ;; parameter.  
+	    ;; Note, if we're doing it this way we pass the raw
+	    ;; arguments, not those processed by "loop" above.
 	    [(equal? (cadr args) "--script")
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")

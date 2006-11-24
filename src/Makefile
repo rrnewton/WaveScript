@@ -164,13 +164,17 @@ cleanheap:
 	$(RM) build/regiment.0.heap
 	$(RM) build/i3nt/regiment.0.heap build/i3le/regiment.0.heap build/ppcosx/regiment.0.heap
 
-clean: cleanheap
+# Clean the compiler stuff but not wsparse.
+cleanchez: cleancomp
+cleancomp:
+	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
+
+clean: cleanchez
 	(cd plt; $(MAKE) clean)
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~
-	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse

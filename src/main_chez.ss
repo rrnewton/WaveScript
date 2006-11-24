@@ -97,6 +97,9 @@
 ;======================================================================
 ;;; Setup stuff.
 
+;; [2006.11.24] This is just a temporary thing so I can watch how fast things load.
+(define VERBOSE-LOAD #t)
+
 ;  (source-directories (list "./"))
 ;(cd (car (source-directories)))
 ;  (inspect (list (source-directories) (cd)))
@@ -156,6 +159,8 @@
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
+
+(if VERBOSE-LOAD (printf "  Starting load...\n"))
 
 ;; Because I run from command line, it helps to enter the inspector after an error.
 (unless (top-level-bound? 'default-error-handler)
@@ -298,6 +303,8 @@
 (include "generic/langs/lang30_haskellize-tokmac.ss") 
 (include "generic/langs/lang32_emit-nesc.ss")
 
+(if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
+
 (include "generic/passes/normalize_source/verify-regiment.ss")
 (include "generic/passes/normalize_source/typecheck.ss")
 (include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
@@ -397,12 +404,13 @@
       (load "demo_display.ss")
       (load "chez/simulator_nought_graphics.ss"))
 
-
+(if VERBOSE-LOAD (printf "  Now for main file.\n"))
 
 ;;; NOW INCLUDE THE (GENERIC) MAIN FILE:
 ;===============================================================================
 (include "main.ss")
 
+(if VERBOSE-LOAD (printf "  Finished init routines in main file..\n"))
 
 ;;; TESTING FILES:
 ;===============================================================================
@@ -526,4 +534,4 @@
   (define main (++ (REGIMENTD) "/src/main_chez.ss"))
   (wipe) (load main))
 
-
+(if VERBOSE-LOAD (printf "  Finished loading... \n"))
