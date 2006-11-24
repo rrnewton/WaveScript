@@ -224,25 +224,9 @@
 	  [(assert-type ,t ,[loop -> e])
 	   (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
 
-#;
-	  [(,prim ,rands ...)
-	   (guard (or (regiment-primitive? prim)
-		      (basic-primitive? prim)))
-	   ;(error 'WTF "~a ~a" prim rands)
-	   (define-top-level-value 'rands rands)
-	   (define-top-level-value 'loop loop)
-	   (break)
-	   (fuse rands (lambda ls `(,prim ,ls ...)))
-	   ]
-
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)
 		      (basic-primitive? prim)))
-#;
-	   (and (eq? prim 'iterate)
-		(pair? (last rands))
-		(eq? (car (last rands)) 'unionList)
-		(inspect rands))
 	   (fuse rands (lambda ls `(,prim . ,ls)))]
 
 	  [,otherwise (warning 'core-generic-traverse "bad expression: ~s" otherwise)

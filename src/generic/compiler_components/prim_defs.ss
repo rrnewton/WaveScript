@@ -290,9 +290,9 @@
 ;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
 ;    (emit             ('a) #())
 
-    (iterate        (('in -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
-    (deep-iterate   (('in -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
-    (window-iterate (('in -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
+    (iterate        (('in (VQueue 'out) -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
+    (deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+    (window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
 
     ;; Here's the pure version.
     ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Signal 'in))  (Signal 'out))

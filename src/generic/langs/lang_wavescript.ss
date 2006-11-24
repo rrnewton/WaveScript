@@ -119,7 +119,7 @@
 		 assert-type
 		 
 		 wserror inspect
-		 emit virtqueue
+		 emit 
 		 smap parmap sfilter
 		 iterate break deep-iterate
 		 ;; TODO: nix unionList.
@@ -704,7 +704,7 @@
 	 (if (stream-empty? s) 
 	     '()
 	     ;; Note, vals are reversed:
-	     (let ([vals (unbox (f (stream-car s)))])
+	     (let ([vals (unbox (f (stream-car s) (virtqueue)))])
 	       (cond
 		[(null? vals) (loop (stream-cdr s))]
 		[(null? (cdr vals)) (stream-cons (car vals) (loop (stream-cdr s)))]
@@ -712,6 +712,7 @@
 		 (append! (reverse! vals) 
 			  (delay (loop (stream-cdr s))))])))))
 
+     ;; This is the functional version of iterate.
      (define (integrate f zero s)
        (stream-map (let ([state zero])
 		     (lambda (x)
@@ -739,7 +740,7 @@
 			 (sigseg-end w)
 			 ;; The function for deep-iterate had better be one-to-one.  I.e. it's really a map!
 			 (vector-map (lambda (x) 
-				       (let ([ls (unbox (f x))])
+				       (let ([ls (unbox (f x (virtqueue)))])
 					 (unless (and (not (null? ls)) (null? (cdr ls)))
 					   ;; Wish I could give source location:
 					   (error 'deep-iterate 

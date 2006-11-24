@@ -21,6 +21,7 @@
 
 ;; RESERVED name!
 ;; This is lame, I should do my emit hack later in the compiler... [2006.07.25]
+;; Here in the parser we don't have access to unique-name generation:
 (define VIRTQUEUE '___VIRTQUEUE___)
   
 (define-empty-tokens op-tokens 
@@ -389,11 +390,9 @@
          [(fun LeftParen formals RightParen exp) (prec else) `(lambda ,$3 ,$5)]
          
          [(iter LeftParen pattern in exp RightParen LeftBrace stmts RightBrace) 
-              `(,$1 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
-				    ,(make-begin (append $8 (list VIRTQUEUE))))) ,$5)]
+              `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE)))) ,$5)]
          [(iter LeftParen pattern in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (letrec ,$10 (lambda (,$3) (letrec ([,VIRTQUEUE (virtqueue)]) 
-					  ,(make-begin (append $12 (list VIRTQUEUE)))))) ,$5)]
+          `(,$1 (letrec ,$10 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $12 (list VIRTQUEUE))))) ,$5)]
          
 	 ;; Expression conditional:
 ;	 [(if exp then exp else exp) (prec EXPIF) `(if ,$2 ,$4 ,$6)]

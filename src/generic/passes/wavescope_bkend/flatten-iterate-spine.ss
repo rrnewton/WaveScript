@@ -17,21 +17,6 @@
 		      (if (pair? x) (printf "FIS: ~s\n" (car x)))
 		      #f)) 00]
 
-	 ;; DEBUGGING:
-	 #;
-	 [(iterate ,f (unionList . ,_))
-	  (printf "YAY\n")
-	  (printf "YAY\n")
-	  (printf "YAY\n")
-	  (exit 0)
-	  ]
-
-	 #;
-	 [(iterate ,f ,s)
-	  (printf "HRM\n")
-	  (exit 0)
-	  ]
-
 	 [(iterate ,fun ,[src])
 	  (mvlet ([(src binds) (make-simple-shallow src tenv)])
 	    ;; This had better be a symbol for now.
