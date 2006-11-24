@@ -95,7 +95,7 @@
 (chez:module wavescript-language-module 
     (make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app letrec (for for-loop-stack)
+		 app letrec let (for for-loop-stack)
 
 		 dump-binfile doubleFile audioFile audio timer
 		 ; read-file-stream
@@ -132,10 +132,8 @@
 
 		 ;; We reexport these *module names* so that they can be imported subsequently.
 		 mod_scheme  mod_helpers  mod_constants
-		 ;; And we reexport some standard scheme bindings:
-		 let 
 ;		 quasiquote unquote lambda
-		 ;; Including import itself--this is so we can use import-only:
+		 ;; import itself--this is so we can use import-only:
 		 import
 		 )
 
@@ -151,7 +149,7 @@
 ;  (alias quasiquote quasiquote)  
 ;  (alias unquote unquote) 
 ;  (alias lambda lambda)  
-  (alias let let)  
+  (alias let let) ;; We assume type info has been stripped.
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -218,6 +216,7 @@
     (syntax-rules ()
       ;; We assume type info has already been stripped.
       [(_ x ...) (letrec* x ...)]))
+
 
      (define for-loop-stack '())
      (define-syntax for

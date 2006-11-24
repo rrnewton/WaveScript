@@ -737,7 +737,8 @@
     (match e
     [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
     [(lambda ,v* ,[bod])                `(lambda ,v* ,bod)]
-    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])      (guard (memq let '(let let* letrec lazy-letrec)))     
+    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])    
+     (guard (memq let '(let let* letrec lazy-letrec)))
      `(,let ([,id* ,rhs*] ...) ,bod)]
    
     [,c (guard (constant? c)) c]
@@ -754,7 +755,7 @@
     [(tuple ,[args] ...) `(tuple ,args ...)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
-    [(assert-type ,t ,e) e]
+    [(assert-type ,t ,[e]) e]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
     
     [(,prim ,[rand*] ...)
@@ -1228,7 +1229,7 @@
 	       [(tuple ,_ ...) (void)]
 	       [(tupref ,_ ...) (void)]
 
-	       [(,p ,t) (guard (symbol? p)) (DEBUGASSERT(type? t))]
+	       [(,p ,t) (guard (symbol? p)) (DEBUGASSERT (type? t))]
 	       [(,p ,args ,ret) (guard (symbol? p))
 		(DEBUGASSERT (type? ret))
 		(DEBUGASSERT (andmap type? args))]

@@ -434,20 +434,14 @@
 
   (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 
 		   
+		   
 		   ;; Delete these files so that we don't get mixed up.
 		   (delete-file ".__types.txt")
 		   (delete-file ".__inputprog.ss")
 		   (delete-file ".__compiledprog.ss")
 		   (delete-file ".__elaborated.ss")
 		   (delete-file ".__nocomplexopera.ss")
-
-		   (parameterize ([pretty-line-length 180]
-				  [pretty-maximum-lines 1000]
-				  [print-level 20]
-				  [print-length 10])
-		     (void)
-		     ;(pretty-print prog)
-		     )
+		   
 		   (with-output-to-file ".__inputprog.ss"
 		     (lambda () 
 		       (parameterize ([pretty-line-length 200]
@@ -473,22 +467,25 @@
 	'replace))
     )
 
-  (define compiled (run-ws-compiler prog))  
-  (define stream (delay (wavescript-language 
-			 (match (strip-types compiled)
-			   [(,lang '(program ,body ,_ ...)) body]))))
-  
-  (parameterize ([pretty-line-length 150]
-		 [pretty-one-line-limit 100]
-		 [print-level #f]
-		 [print-length #f]
-		 [print-graph #f])
-    (with-output-to-file ".__parsed.ss"
-      (lambda () (pretty-print prog)(flush-output-port))
-      'replace)
-    (with-output-to-file ".__compiledprog.ss"
-      (lambda () (pretty-print compiled)(flush-output-port))
-      'replace))
+  (define compiled (let ([x (run-ws-compiler prog)])
+		     (parameterize ([pretty-line-length 150]
+				    [pretty-one-line-limit 100]
+				    [print-level #f]
+				    [print-length #f]
+				    [print-graph #f])
+		       (with-output-to-file ".__compiledprog.ss"
+			 (lambda () (pretty-print x)(flush-output-port))
+			 'replace))
+		     x))
+  (define stripped (strip-types compiled))
+  (define stream 
+    (begin 
+      ;; If strip-types worked there shouldn't be any VQueue symbols!
+      (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
+      (delay (wavescript-language 
+	      (match stripped
+		[(,lang '(program ,body ,_ ...)) body])))))  
+
   stream)
 
 

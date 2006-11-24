@@ -277,6 +277,14 @@
     (arr-set!         ((Array 'a) Int 'a) #())
     (length           ((Array 'a)) Int)
 
+    (hashtable () (HashTable 'a))
+    (hash ('a) Int) ; With our data-model, we can do this.
+    (hashget ((HashTable 'a) 'b) 'a)
+    ;; This is the *pure* version, to be useful at all need to use the
+    ;; destructive version.
+    (hashupdate ((HashTable 'a) 'b 'a) (HashTable 'a))
+    
+
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
 ;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
