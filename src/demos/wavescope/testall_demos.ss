@@ -34,5 +34,7 @@ exec regiment i --script "$0" ${1+"$@"};
     "demo7_syncN.ws"
     "demo8_marmot_noinline.ws"
     "demo9_marmot.ws"
+
+    "demo11_simple_merge.ws"
     ))
 

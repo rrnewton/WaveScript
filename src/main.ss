@@ -375,8 +375,7 @@
 
   (set! p (optional-stop (verify-elaborated p)))
 
-;; TEMP:  
-;;;;;;;;;;;;;;;;  (set! p (optional-stop (merge-iterates p)))
+  (set! p (optional-stop (merge-iterates p)))
   (set! p (optional-stop (retypecheck p)))
 
   ;; (5) Now we normalize the residual in a number of ways to

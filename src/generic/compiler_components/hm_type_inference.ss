@@ -608,6 +608,7 @@
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
   (lambda (ids body inittypes tenv nongeneric)
+    (DEBUGASSERT (= (length ids) (length inittypes)))
     (ASSERT (andmap symbol? ids)) ;; For now, no patterns.
     (for-each valid-user-type! inittypes)
     ;; No optional type annotations currently.

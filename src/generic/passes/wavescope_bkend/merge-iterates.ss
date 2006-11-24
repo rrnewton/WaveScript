@@ -17,62 +17,91 @@
 	   )
   
   (provide merge-iterates
+	   test-merge-iterates	   
            )
 
   (chezimports )
 
 
-(define-pass merge-iterates
-    (define (subst-emits body fun)
-      (core-generic-traverse
-       (lambda (expr fallthrough)  ;; driver
-	 (match expr
-	   [(emit ,vqueue ,[x]) `(app ,fun ,x)]
-	   [(iterate . ,_)
-	    (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
-	   [,other (fallthrough other)]))
-       (lambda (ls k) (apply k ls)) ;; fuser
-       body))
+   ;; -> [X] -> [Y] ->
+   ;; -> [X(Y)] -> 
   
+  (define (subst-emits body fun vq)
+    (core-generic-traverse
+     (lambda (expr fallthrough)  ;; driver
+       (match expr
+	 [(emit ,vqueue ,[x]) `(app ,fun ,x ,vq)]
+	 [(iterate . ,_)
+	  (error 'merge-iterates:subst-emits "shouldn't have nested iterates! ~a" expr)]
+	 [,other (fallthrough other)]))
+     (lambda (ls k) (apply k ls)) ;; fuser
+     body))  
+
   (define (do-expr expr fallthrough)
     (match expr
-      [(iterate (lambda (,y) (,ty) 
-			(letrec ([,VQY (VQueue ,outy) (virtqueue)])
-			  ,body))
-		(iterate (lambda (,x) (,tx) 
-				 (letrec ([,VQX (VQueue ,outx) (virtqueue)])
-				   
-               ;,bodx
-               (begin ,real-bodx . (,VQX-again)) ; FIXME: why does it break if we stick in ,VQX here instead of ,VQX-again?
+      ;; [2006.11.24] rrn, NOTE: There seem to be some bugs in the pattern matcher 
+      ;; related to (,foo ... ,last) patterns.  Avoiding them for now.
 
-               ))
+      ;; Modifying to not create free-variables in the introduced lambda abstraction.
+      [(iterate (lambda (,y ,VQY) (,ty (VQueue ,outy)) ,body)
+		(iterate (lambda (,x ,VQX) (,tx (VQueue ,outx)) 
+				 ;; By convention the return-value is the vqueue:
+				 (begin ,bodx-exprs ...)
+				 )
 			 ,inputstream))
-
+       (let ([return-val (rac bodx-exprs)]
+	     [exprs (rdc bodx-exprs)])
+       (ASSERT (eq? return-val VQX))       
        (let ([f (unique-name 'f)])
 	 (do-expr
-	  `(iterate (lambda (,x) (,tx)
-			    (letrec ([,VQY (VQueue ,outy) (virtqueue)])
-			      ;(letrec ([,f (,ty -> ,outy)
-               (letrec ([,f (,ty -> (VQueue ,outy))
-					   (lambda (,y) (,ty) ,body)])
-
-                 ;,(subst-emits bodx f))))
-                 ,(subst-emits `(begin ,real-bodx ,VQY) f))))
-
+	  `(iterate (lambda (,x ,VQX) (,tx (VQueue ,outy))
+			    (letrec ([,f (,ty (VQueue ,outy) -> #())
+					 (lambda (,y ,VQY) (,ty (VQueue ,outy))
+						 (begin ,body (tuple)))])
+			      ,(subst-emits `(begin ,@exprs ,VQX) f VQX)))
 		    ,inputstream)
-	  fallthrough))]
+	  fallthrough)))]
 
       [(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___))
        (error 'merge-iterates "implementation problem, should have matched this but didn't: \n~s" 
 	      `(iterate (lambda ,_ ...) (iterate (lambda ,__ ...) ,___)))]
       [,other (fallthrough other)]))
 
-  [Expr do-expr]
-  )
+(define-pass merge-iterates [Expr do-expr])
 
 
-;;; -> [X] -> [Y] ->
-;;; -> [X(Y)] -> 
+(define these-tests 
+  `(
+    ["Peform basic iterate merging."
+     (length (deep-assq-all 'iterate
+	       (merge-iterates 
+		'(foolang 
+		  '(program (iterate (lambda (x vq1) (Int (VQueue Int))
+					     (begin (emit vq1 (+ x 1)) 
+						    (emit vq1 (+ x 100))
+						    vq1))
+				     (iterate (lambda (y vq2) (Int (VQueue Int))
+						      (begin (emit vq2 (* y 2))
+							     (emit vq2 (* y 3))
+							     vq2))
+					      SOMESTREAM))
+		     T)))))
+     ;; Simply verify that it reduces two iterates to one.
+     1]
+    ))
+
+(define test-merge-iterates 
+  (default-unit-tester "Merge-Iterates: collapse adjacent iterates"  these-tests))
+
+
+
+
+
+
+
+
+
+
 
 
 
