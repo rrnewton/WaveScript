@@ -63,7 +63,7 @@
 
 // These are built-in WSBoxes. 
 // Most of these are intended to go away at some point.
-static class WSBuiltins {
+class WSBuiltins {
    
    /* Zip2 operator: takes 2 input streams of types T1 and T2 and emits zipped
       tuples, each containing exactly one element from each input stream. */

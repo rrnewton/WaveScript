@@ -10,7 +10,8 @@ function go () {
     wsc $1
     echo >> $RUN
     echo $1 : >> $RUN
-    ./run_query | head -20 >> $RUN
+#    ./run_query | head -20 >> $RUN
+    ./run_query >> $RUN
 }
 
 # wsc demo0_audio.ws 
