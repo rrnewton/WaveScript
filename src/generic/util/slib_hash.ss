@@ -1,3 +1,5 @@
+;; This is lifted from SLIB:
+
 
 ; "hash.scm", hashing functions for Scheme.
 ; Copyright (c) 1992, 1993, 1995, 2003 Aubrey Jaffer

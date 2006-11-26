@@ -98,6 +98,7 @@
 		 app letrec let (for for-loop-stack)
 
 		 dump-binfile doubleFile audioFile audio timer
+		 stockStream
 		 ; read-file-stream
 		 print show
 
@@ -112,6 +113,7 @@
 		 nullseg nullarr nulltimebase
 		 tuple tupref
 		 makeArray arr-get arr-set! length
+		 hashtable hashget hashset hashset_BANG ;hashrem hashrem_BANG
 		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
 		 to_array to_sigseg to-windowed 
@@ -314,6 +316,25 @@
 			 2 ;; Read just 2 bytes at a time.
 			 to-uint16
 			 len overlap))
+
+     ;; This makes an infinite stream of fake tick/split info:
+     ;; Tuple is of one of two forms:
+     ;;  Tick:  #(sym,t,vol,price)
+     ;;  Split: #(sym,t,-1,factor)
+     (define (stockStream)
+       (define (random-sym) 
+	 (vector-get-random 
+	  #("IBM" "AKAM" "MS" "GOOG" "AMAZ" "YHOO" "ORAC" 
+		)))
+       (let loop ([t (random 100.0)])
+	 (stream-cons 
+	  (if (fx= (random 500) 0)
+	      ;; A split:
+	      (vector (random-sym) t -1 (random 2.0))
+	      ;; A tick:
+	      (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))	      
+	      )
+	  (loop (fl+ t (random 10.0))))))
 
      ;; This is a hack to load specific audio files:
      ;; It simulates the four channels of marmot data.
@@ -563,6 +584,50 @@
      (define arr-get  vector-ref)
      (define arr-set! vector-set!)
      (define length   vector-length)
+
+#;
+     (begin
+       ;; If we cared we could use some kind of balanced tree for functional maps.
+       (define (copy-hash-table ht)
+	 ;; This is terrible, we don't know how big it is.
+	 (let ([newtab (make-hash-table 100)])
+	   (hash-table-for-each ht
+	    (lambda (k v) (put-hash-table! newtab k v)))
+	   newtab))
+       (define hashtable #%make-hash-table)
+       (define (hashget ht k) (#%get-hash-table ht k #f))
+       ;; Pretty useless nondestructive version:
+       (define (hashset ht k v)
+	 (define new (copy-hash-table ht))
+	 (put-hash-table! new k v)
+	 new)
+       (define (hashset_BANG ht k v)
+	 (#%put-hash-table! ht k v)
+	 ht)
+       ;(define hashrem )
+       ;(define hashrem_BANG )
+       )
+     
+     (begin
+       ;; If we cared we could use some kind of balanced tree for functional maps.
+       (define (copy-hash-table ht)
+	 ;; This is terrible, we don't know how big it is.
+	 (let ([newtab (slib:make-hash-table (vector-length ht))])
+	   (slib:hash-for-each ht
+	    (lambda (k v) (put-hash-table! newtab k v)))
+	   newtab))
+
+       (define hashtable slib:make-hash-table)
+       (define hashget (slib:hash-inquirer equal?))
+       ;; Pretty useless nondestructive version:
+       (define (hashset ht k v)
+	 (define new (copy-hash-table ht))
+	 (hashset_BANG new k v)
+	 new)
+       (define hashset_BANG (slib:hash-associator equal?))
+       ;(define hashrem )
+       ;(define hashrem_BANG )
+       )
 
      (define (print x)
        (if (string? x)

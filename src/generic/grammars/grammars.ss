@@ -22,6 +22,7 @@
       [Type 'Float]
       [Type 'Complex]
       [Type 'Bool]
+      [Type 'String]
       
       [Type 'Node]
       [Type 'Anchor]
@@ -35,6 +36,7 @@
       [Type ('VQueue Type)]
       [Type ('Sigseg Type)]
       
+      [Type ('HashTable Type)]
       [Type ('List Type)]
       [Type #(Type ...)] ;; Tuples
       [Type (Type ... '-> Type)]

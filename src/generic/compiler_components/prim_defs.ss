@@ -245,6 +245,12 @@
     ;; Reads a stream of Uint16's from the file.
     (audioFile        (String Int Int)  (Signal (Sigseg Int)))
 
+    ;; Fabricates stock ticks and splits.  For benchmark.
+    ;; Tuple is of one of two forms:
+    ;;   Tick:  #(sym,t,vol,price)
+    ;;   Split: #(sym,t,-1,factor)
+    (stockStream      ()  (Signal #(String Float Int Float)))
+
     ;; This version is to read a file containing doubles.
     ;; HACK: Currently it expects a text file rather than a binary file for the 
     ;; interpreted version of the system.
@@ -277,13 +283,36 @@
     (arr-set!         ((Array 'a) Int 'a) #())
     (length           ((Array 'a)) Int)
 
-    (hashtable () (HashTable 'a))
-    (hash ('a) Int) ; With our data-model, we can do this.
-    (hashget ((HashTable 'a) 'b) 'a)
+;     (hashtable () (HashTable 'a))
+;     (hash ('a) Int) ; With our data-model, we can do this.
+;     (hashget ((HashTable 'a) 'b) 'a)
+;     ;; This is the *pure* version, to be useful at all need to use the
+;     ;; destructive version.
+;     (hashupdate ((HashTable 'a) 'b 'a) (HashTable 'a))
+
+
+;     (hashtable (Int) (HashTable 'key 'val))
+;     ;(hash ('a) Int) ; With our data-model, we can do this.
+;     (hashget ((HashTable 'key 'val) 'key) 'val)
+;     ;; This is the *pure* version, to be useful at all need to use the
+;     ;; destructive version.
+;     (hashset ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
+;     (hashrem ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
+
+;     (hashset_BANG ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
+;     (hashrem_BANG ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
+
+
+    (hashtable (Int) (HashTable #('key 'val)))
+    ;(hash ('a) Int) ; With our data-model, we can do this.
+    (hashget ((HashTable #('key 'val)) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
-    (hashupdate ((HashTable 'a) 'b 'a) (HashTable 'a))
-    
+    (hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
+    (hashrem ((HashTable #('key 'val)) 'key) (HashTable #('key 'val)))
+
+    (hashset_BANG ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
+    (hashrem_BANG ((HashTable #('key 'val)) 'key) (HashTable #('key 'val)))
 
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))

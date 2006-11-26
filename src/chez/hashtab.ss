@@ -1,3 +1,5 @@
+;; This implements a common hashtable interface used by Regiment.
+;; As usual, this is used to paper over the difference between PLT and Chez.
 
 (chez:module hashtab (make-default-hash-table (hashtab-get immediate?) (hashtab-set! immediate?) hashtab-for-each hashtab-remove!)
 	
@@ -48,5 +50,5 @@
 	   (begin 
 	     (define (hashtab-get ht k) (#%get-hash-table ht k #f))
 	     (define hashtab-set! #%put-hash-table!)))
-	  )	      
+	  )
 	)

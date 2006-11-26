@@ -29,7 +29,7 @@
     (provide   
 
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
-	  randomize-list randomize-vector! list-get-random
+	  randomize-list randomize-vector! list-get-random vector-get-random
 
 	  sense-spatial-sine-wave
 	  sense-dist-from-origin 
@@ -232,6 +232,14 @@
   (lambda (ls)
     (let* ([vec (list->vector ls)])
       (vector->list (randomize-vector! vec)))))
+
+(define vector-get-random
+  (lambda (vec)
+    (let ([len (vector-length vec)])
+      (if (fxzero? len)
+	  (error 'list-get-random "cannot get random element from empty vector.")
+	  (vector-ref vec (reg:random-int len))
+	  ))))
 (define (randomize-vector! vec)
   (let ([len (vector-length vec)])
     (let ([swap (lambda (i j)
