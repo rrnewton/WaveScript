@@ -379,8 +379,8 @@
 	;; Referencing tuples.
 	[(struct-ref ,[x] ,fld)
 	 `("(",x "." ,(symbol->string fld)")")]
-
-	
+       
+	;; ----------------------------------------
 	;; Lists:
 	[(cons (assert-type ,[Type -> tya] ,[a])
 	       (assert-type ,[Type -> tyb] ,[b]))
@@ -391,6 +391,16 @@
 	[(cdr (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->cdr")]
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
+
+	;; ----------------------------------------
+	;; Hash tables:
+	;; UNFINISHED.
+	[(assert-type (hashtable ,n)) ??]
+	[(hashget ,[ht] ,[key]) `(,ht "[",key"]")]
+	;; This is difficult, it needs to occur in expression context
+	;; but perform a side-effect.
+	[(hashset ,[ht] ,[key] ,[val]) `(,ht "[",key"] = ",val";")]
+	
 
 	[(,lp . ,_) (guard (memq lp '(cons car cdr)))
 	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
