@@ -36,7 +36,8 @@
     +: -: *: /: ^: 
     :: ++ 
     AND OR 
-    NEG APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
+    ;NEG 
+    APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
     fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -104,9 +105,15 @@
    ;; Dot/stream-projection
    [".<" 'DOTSTREAM]
    
-   [(:+ digit) (token-NUM (string->number lexeme))]
-
-   [(:: (:+ digit) #\. (:* digit)) (token-NUM (string->number lexeme))]
+   [(:seq (:or "-" "") (:+ digit)) (token-NUM (string->number lexeme))]
+   [(:seq (:or "-" "") (:: (:+ digit) #\. (:* digit))) (token-NUM (string->number lexeme))]   
+   ;; Complex:
+   [(:seq (:or "-" "") 
+	  (:or (:+ digit) (:: (:+ digit) #\. (:* digit))) "+"
+	  (:or (:+ digit) (:: (:+ digit) #\. (:* digit))) "i")
+    ;; All complex nums are inexact currently:
+    (token-NUM (exact->inexact (string->number lexeme)))]
+   
    ))
 
 (define (read-balanced startstr endstr port balance)  
@@ -200,7 +207,8 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
-          (left NEG APP DOT COMMA)
+          (left ;NEG 
+		APP DOT COMMA)
           (right ^ ^. ^:)
 
 	  )
@@ -433,6 +441,8 @@
          ;; Using binary prims as values: (without eta-expanding!)
          [(LeftParen binop RightParen) $2]         
 
+         ;[(- exp) (prec NEG) `(- ,$2)]
+
          [(exp AND exp) `(and ,$1 ,$3)]
          [(exp OR exp) `(or ,$1 ,$3)]
 
@@ -466,9 +476,6 @@
          [(exp == exp) `(equal? ,$1 ,$3)]
          [(exp != exp) `(not (equal? ,$1 ,$3))]
          
-         [(- exp) (prec NEG) `(- ,$2)]
-
-
          ;; Parentheses for precedence:
          [(LeftParen exp RightParen) $2]
 	 ;; Throw out type annotations for now:  FIXME FIXME
