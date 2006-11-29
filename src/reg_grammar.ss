@@ -35,8 +35,7 @@
     +. -. *. /. ^. 
     +: -: *: /: ^: 
     :: ++ 
-    AND OR 
-    ;NEG 
+    AND OR NEG 
     APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
     fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
     ;; Fake tokens:
@@ -105,10 +104,12 @@
    ;; Dot/stream-projection
    [".<" 'DOTSTREAM]
    
-   [(:seq (:or "-" "") (:+ digit)) (token-NUM (string->number lexeme))]
-   [(:seq (:or "-" "") (:: (:+ digit) #\. (:* digit))) (token-NUM (string->number lexeme))]   
+   [(:seq ;(:or "-" "")
+	  (:+ digit)) (token-NUM (string->number lexeme))]
+   [(:seq ;(:or "-" "") 
+	  (:: (:+ digit) #\. (:* digit))) (token-NUM (string->number lexeme))]   
    ;; Complex:
-   [(:seq (:or "-" "") 
+   [(:seq ;(:or "-" "") 
 	  (:or (:+ digit) (:: (:+ digit) #\. (:* digit))) "+"
 	  (:or (:+ digit) (:: (:+ digit) #\. (:* digit))) "i")
     ;; All complex nums are inexact currently:
@@ -116,7 +117,7 @@
    
    ))
 
-(define (read-balanced startstr endstr port balance)  
+(define (read-balanced startstr endstr port balance)
   (define start (string->list startstr))
   (define end (string->list endstr))
   (define len (length start))
@@ -207,8 +208,7 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
-          (left ;NEG 
-		APP DOT COMMA)
+          (left NEG APP DOT COMMA)
           (right ^ ^. ^:)
 
 	  )
@@ -441,7 +441,8 @@
          ;; Using binary prims as values: (without eta-expanding!)
          [(LeftParen binop RightParen) $2]         
 
-         ;[(- exp) (prec NEG) `(- ,$2)]
+	 ;; Negative numbers.
+	 [(- NUM) (prec NEG) (- $2)]
 
          [(exp AND exp) `(and ,$1 ,$3)]
          [(exp OR exp) `(or ,$1 ,$3)]
