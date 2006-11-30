@@ -60,8 +60,10 @@
     [Expr Var]
 
     [Expr Const]
+
     [Const Int]
     [Const Float]
+    [Const Complex]
     [Const String]
     [Const ('quote Datum)]
 ;    [Const ()]
@@ -89,6 +91,8 @@
 
     [Int ,integer?]
     [Float ,flonum?]
+    [Complex ,cflonum?]
+
     [String ,string?]
 
     [Var ,is-var?]

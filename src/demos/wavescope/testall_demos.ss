@@ -20,20 +20,26 @@ exec regiment i --script "$0" ${1+"$@"};
 (for-eachi go 
   '("demo0_audio.ws"
     "demo1_audiofile.ws"
-    "demo2_iterate.ws"
+
+    "demo2a_iterate.ws"
     "demo2b_iterateState.ws"
+
     "demo3a_tuples.ws"
     "demo3b_inlining.ws"
     "demo3c_lists.ws"
     "demo3d_tuples_of_tuples.ws"
-    "demo3_fft.ws"
-    "demo4_rewindow.ws"
-    "demo5_rewindow_inlined.ws"
-;    "demo5b_better.ws"
-    "demo6_sync.ws"
-    "demo7_syncN.ws"
-    "demo8_marmot_noinline.ws"
-    "demo9_marmot.ws"
+
+    "demo4_fft.ws"
+
+    "demo5a_rewindow.ws"
+    "demo5b_rewindow_inlined.ws"
+;    "demo5c_better.ws"
+
+    "demo6a_sync.ws"
+    "demo6b_syncN.ws"
+
+    "demo7a_marmot_noinline.ws"
+    "demo7b_marmot_phase1.ws"
 
     "demo11_simple_merge.ws"
     ))

@@ -1,14 +1,22 @@
 
 ;===============================================================================
-;;   ---- Pass Remove Complex Opera* ---- 
-;This pass guarantees that each subexpression (operator or operand) of a call
-;or primitive call is either a lexical variable or a constant. When an
-;expression is complex (neither a lexical variable nor a constant), this pass
-;replaces it with a new lexical variable and binds the variable to the
-;expression's value in an enclosing let expression. When more than one
-;subexpression is complex, the new variables are bound in parallel by a single
-;let expression.
-;   Ryan Newton
+;;;;                ---- Pass Remove Complex Opera* ---- 
+;;;;
+;;;; This pass guarantees that each subexpression of the following
+;;;; constructs is either a lexical variable or a constant.
+;;;;
+;;;;  *) function applications (primitive or otherwise)
+;;;;  *) conditional test expression (and conseq/altern for Regiment but not WS)
+;;;;  *) the right-hand-side expressions of a let/letrec
+;;;;
+;;;; When an expression is complex (neither a lexical variable nor a
+;;;; constant), this pass replaces it with a new lexical variable and
+;;;; binds the variable to the expression's value in an enclosing let
+;;;; expression. When more than one subexpression is complex, the new
+;;;; variables are bound in parallel by a single let expression.
+;;;;
+;;;; .author Ryan Newton
+
 ;===============================================================================
 
 (define remove-complex-opera*
@@ -18,7 +26,6 @@
     ;; to give things reasonable names based on what kinds of values
     ;; they carry.
     (define (meaningful-name exp)
-;      (disp "meaningful" exp)
       (match exp
 	     [,prim
 	      (guard (regiment-primitive? prim))
@@ -28,7 +35,8 @@
 	       (if (basic-primitive? prim)
 		   'tmp_basic
 		   (symbol-append 'tmp_ prim))
-		   #;(case prim
+		   #;
+	           (case prim
 		     [(circle circle-at) 'tmp-circ]
 		     [(khood khood-at) 'tmp-khood]
 		     [(anchor anchor-at) 'tmp-anch]
@@ -39,9 +47,15 @@
 		   ]
 	     [(lambda ,form ,bod) 'tmp-func]
 	     ;; Will this happen??!: [2004.06.28]
-	     [,otherwise 'tmp-nonprim]))
+	     [,otherwise 'tmp]))
+
+    (define  (make-letrec decls body)
+      (if (null? decls) body
+	  `(lazy-letrec ,decls ,body)
+	  ))
 
     ;; Coerces an expression to be simple, producing new bindings.
+    ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
       (if (simple-expr? x)
 	  (values x '())
@@ -52,6 +66,8 @@
 	      (values name
 		      (cons (list name type res) binds))))))
 
+    ;; Same thing but for a list of expressions.
+    ;; Returns a list of *all* the bindings appended together.
     (define (make-simples ls tenv)
       (let ((intermediate
 	     (map (lambda (rand) 
@@ -61,68 +77,83 @@
 	(values (map car intermediate)
 		(apply append (map cdr intermediate)))))
 
-    ;; .returns An expression and a list of new decls.
+    ;; .returns A vector containing an expression and a list of new decls.
     (define (process-expr expr tenv)
       (core-generic-traverse/types 
        (lambda (expr tenv fallthrough)
 	 (match expr
-	   [,x (guard (simple-expr? x)) (vector x '())]
-
-	   ;; Todo: could put all this work in the fuser.
-
-	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
-	   ;; DEPENDS ON LAZINESS/PURITY:
-	   [(if ,a ,b ,c)
-	    (mvlet ([(test test-decls)     (make-simple a tenv)]
-		    [(conseq conseq-decls) (make-simple b tenv)]
-		    [(altern altern-decls) (make-simple c tenv)])
-	      ;(if (WAVESCRIPT_INVOCATION) ...)
-	      (vector `(if ,test ,conseq ,altern)
-		      (append test-decls conseq-decls altern-decls))
-	      )]
+;	   [,x (guard (simple-expr? x)) (vector x '())]
 
 	   [(lambda ,formals ,types ,body)
 	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])	      
 	      ;; Decls don't get lifted up past the lambda:
 	      (vector `(lambda ,formals ,types 
 			     ,(if (not (null? decls))
-				  `(lazy-letrec ,decls ,body)
+				  (make-letrec decls body)
 				  body))
 		    '()))]
+	   ;; Also bindings are not listed past a letrec... that's odd.
+	   [(lazy-letrec . ,rest)
+	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
+		    '())]
+
+	   ;; Todo: could put all this work in the fuser.
+
+	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
+	   ;; DEPENDS ON LAZINESS/PURITY:
+	   [(if ,a ,b ,c)
+	    (if (wavescope-invocation)
+		(mvlet ([(test test-decls)     (make-simple a tenv)])
+		  (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
+			      [#(,altern ,altern-decls) (process-expr c tenv)])
+		    (vector `(if ,test 
+				 ,(make-letrec conseq-decls conseq) 
+				 ,(make-letrec altern-decls altern))
+			    test-decls)
+		    ))
+	     (mvlet ([(test test-decls)     (make-simple a tenv)]
+		     [(conseq conseq-decls) (make-simple b tenv)]
+		     [(altern altern-decls) (make-simple c tenv)])
+	       (vector `(if ,test ,conseq ,altern)
+		       (append test-decls conseq-decls altern-decls))
+	       ))]
 
 	   ;; For now don't lift out an iterate's lambda!
 	   [(iterate ,[fun] ,source)
 	    (let-match ([#(,f ,decl1) fun])
 	      (mvlet ([(s decl2) (make-simple source tenv)])
 		(display-constrained "simple iterate source: " `[,s 100] "\n")
-		(vector `(iterate ,f ,s)
-			(append decl1 decl2)))
+		(vector `(iterate ,(make-letrec decl1 f) ,s)
+			;(append decl1 decl2)
+			decl2
+			))
 	      )]
 	   [(iterate . ,_) (error 'remove-complex-opera* "bad iterate: ~s" _)]
 
-	   ;; FIXME FIXME FIXME FIXME FIXME FIXME FIXME:	   
-	   ;; SIGH, side effects... really need to fix this:
+	   ;; SIGH, side effects...  Here we lift bindings up to the
+	   ;; top of each subexpression but no further.  Don't want to
+	   ;; reorder side effects.
 	   [(begin ,[e*] ...)
-	    (vector `(begin ,@(map (match-lambda (#(,e ,decls)) `(lazy-letrec ,decls ,e))
+	    (vector `(begin ,@(map (match-lambda (#(,e ,decls)) 
+				     (make-letrec decls e))
 				e*))
-		    '())
-	    ]
-	   ;[(set! ,v ,e)]
+		    '())]
+
+	   ;; Make set!'s rhs simple:
+	   [(set! ,v ,e)
+	    (mvlet ([(e2 decls) (make-simple e tenv)])
+	      (vector `(set! ,v ,e2) decls))]
+
+	   ;; Make start and end simple.
 	   [(for (,i ,st ,en) ,bod)
 	    (mvlet ([(st stdecls) (make-simple st tenv)]
 		    [(en endecls) (make-simple en tenv)])
 	      (let ([newenv (tenv-extend tenv (list i) '(Int))])
 		(let-match ([#(,body ,decls) (process-expr bod newenv)])
 		  (vector `(for (,i ,st ,en)
-			       (lazy-letrec ,decls ,body))
+			       ,(make-letrec decls body))
 			  (append stdecls endecls))
-		  )))]
-   
-	   
-	   ;; Also bindings are not listed past a letrec... that's odd.
-	   [(lazy-letrec . ,rest)
-	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
-		    '())]
+		  )))]   	   
 
 	   [(tupref ,n ,m ,x)
 	    (mvlet ([(res binds) (make-simple x tenv)])
@@ -164,13 +195,14 @@
 		     [(rhs* rhs-decls*) ; This is an awkward way to loop across rhs*:
 		      (let loop ((ls rhs*) (acc ()) (declacc ()))			
 			(if (null? ls) (values (reverse! acc) (reverse! declacc))
+;			(if (null? ls) (values acc declacc)
 			    (let-match ([#(,r ,rd) (process-expr (car ls) newenv)])
 			      ;(display-constrained "Looping.. " `[,(car ls) 50] "\n")
 			      (loop (cdr ls) (cons r acc) (cons rd declacc)))))])
-	       `(lazy-letrec ,(append (map list lhs* type* rhs*)
-				      (apply append rhs-decls*)
-				      boddecls)
-			     ,bod)))]
+	       (make-letrec (append (map list lhs* type* rhs*)
+				    (apply append rhs-decls*)
+				    boddecls)
+			    bod)))]
 	  [,else (error
 		  'remove-complex-opera*
 		  "lazy-letrec expression is incorrectly formatted:\n~s"

@@ -325,6 +325,7 @@
 (include "generic/passes/normalize_query/reduce-primitives.ss")
 
 (include "generic/passes/wavescope_bkend/merge-iterates.ss") (import pass_merge-iterates)
+(include "generic/passes/wavescope_bkend/purify-iterate.ss")
 (include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss")
 
 (include "generic/passes/normalize_query/remove-complex-constant.ss")

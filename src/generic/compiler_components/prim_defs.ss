@@ -81,6 +81,7 @@
     (makeList   (Int 'a) (List 'a))
     (listLength ((List 'a)) Int)
     (reverse ((List 'a)) (List 'a))
+    ;(reverse_BANG ((List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
     
     ;; These should be defined IN the language, but they're not right now:
@@ -304,15 +305,18 @@
 
 
     (hashtable (Int) (HashTable #('key 'val)))
-    ;(hash ('a) Int) ; With our data-model, we can do this.
+    ;;(hash ('a) Int) ; With our data-model, we can do this.
+    (hashcontains ((HashTable #('key 'val)) 'key) Bool)
     (hashget ((HashTable #('key 'val)) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
+    ;(hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
     (hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
     (hashrem ((HashTable #('key 'val)) 'key) (HashTable #('key 'val)))
 
-    (hashset_BANG ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
-    (hashrem_BANG ((HashTable #('key 'val)) 'key) (HashTable #('key 'val)))
+    ;; [2006.11.28] Giving these void types.
+    (hashset_BANG ((HashTable #('key 'val)) 'key 'val) #())
+    (hashrem_BANG ((HashTable #('key 'val)) 'key) #())
 
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
@@ -621,7 +625,7 @@
      (cadr (List) Object)
      (null? (List) Bool)
      (list Object List)
-     (listLength ((List 'a)) Int)
+     (listLength (List) Int)
      (append List List)
      (reverse (List) List)
      (map (Function List) List)

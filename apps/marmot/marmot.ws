@@ -1,8 +1,8 @@
 
-DEBUG = false
-DEBUGSYNC = DEBUG 
+DEBUG = false;
+DEBUGSYNC = DEBUG;
 
-include "stdlib.ws"
+include "stdlib.ws";
 
 
 //======================================================================
@@ -227,7 +227,7 @@ fun sqrf(x) { x *. x; }
 
 fun Vmax(v) {
   max = 0.0;
-  ind = -1;
+  ind = (0-1);
   for i = 0 to v.length {
     if (ind < 0 || max < v[i]) then {
       ind := i;

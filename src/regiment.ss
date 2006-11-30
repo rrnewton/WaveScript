@@ -27,7 +27,7 @@
 ;; somehow load the regiment system.  If, however, this script is
 ;; compiled, we take that as an indication that the system will be
 ;; loaded by other means.
-(eval-when (eval)
+(eval-when (eval) ; but not load/compile!
   (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
     (if (file-exists? (format "./build/~a/main_chez.so" (machine-type)))
 	;; If the compiled version is there, use that:

@@ -28,6 +28,10 @@ Things I'm working on now --Ryan:
 
 ================================================================================
 
+[2006.11.29]
+ *) For distribution compile a separate regiment.opt for simulations.
+    (The default checkout should be opt-level 2, DEBUG on.)
+
 [2006.11.08]
  *) Move more into the simworld structure.  In particular, world
     xbound/ybound.  Maybe connectivity model also.
@@ -47,7 +51,7 @@ It's very easy to accidentally return an expression where you were
 supposed to return an intermediate record.
 
 [2006.09.03]
-  Do not desugar one-armed if in the parser!!!
+  X) Do not desugar one-armed if in the parser!!!
 
 [2006.09.01]
   I have NEVER taken advantage of the "test-this" convention, I should do away with it.

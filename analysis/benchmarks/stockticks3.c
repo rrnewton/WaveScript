@@ -1,9 +1,10 @@
 // This one doesn't do random generation.
 // Takes only 1.46 seconds.
-
 // 34 million ticks per second.
 
-// Faith can execute 7.4 million ticks per second:
+// If we de-randomize the splits also, that gets us down to 1.14s (43 mtick/s)
+// But then we can't do O3!! because it figures out that it doesn't
+// have to do any work!
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,18 +20,22 @@ typedef struct {
 //hash_map<int,double> table;
 double table[5000];
 
+int counter = 0;
+
 // Generate them.
 void generate(tuple* buf) {
   buf->sym = 3539;
-  if (0 == (rand() % 1000)) {
+  if (counter == 1000) {
     // A Split
     buf->vol = -1;
     buf->price = 1.5;
+    counter = 0;
   } else {
     // A Tick
     buf->vol = 153;
     buf->price = 153.0;
   }
+  counter++;
 }
 
 // Process them.
@@ -38,6 +43,7 @@ void process(tuple* in) {
   if (in->vol == -1) {
     // Price field is really a factor:
     table[in->sym] *= in->price;
+    //    printf("Split: %f\n", in->price);
   } else {
     // Output is stored in the same tuple:
     in->price *= table[in->sym];

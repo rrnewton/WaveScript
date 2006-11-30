@@ -51,7 +51,7 @@
 	 IFDEBUG
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
          REGIMENT_DEBUG HACK 
-	 IFWAVESCOPE 
+	 IFWAVESCOPE ;; Load WS extensions or no?
          ;chezprovide chezimports ;; To make the common module facility work.
          
          REGIMENTD
@@ -59,7 +59,10 @@
          RADIO_DELAY ;PROCESSING_TIME ;; Not used yet
          
 	 define-regiment-parameter regiment-parameters
+
+	 wavescope-invocation 
 	 regiment-verbose 
+
 	 simulation-logger 
 	 simulation-logger-count
 	 simulation-logger-level
@@ -258,6 +261,9 @@
 
 ;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
+
+;; Is this run of the compiler a WS run?
+(define-regiment-parameter wavescope-invocation #f)
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.

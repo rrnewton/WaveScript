@@ -113,7 +113,7 @@
 		 nullseg nullarr nulltimebase
 		 tuple tupref
 		 makeArray arr-get arr-set! length
-		 hashtable hashget hashset hashset_BANG ;hashrem hashrem_BANG
+		 hashtable hashcontains hashget hashset hashset_BANG ;hashrem hashrem_BANG
 		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
 		 to_array to_sigseg to-windowed 
@@ -125,7 +125,7 @@
 		 smap parmap sfilter
 		 iterate break deep-iterate
 		 ;; TODO: nix unionList.
-		 unionN unionList ;zip2
+		 unionN unionList zip2
 		 ; union2 union3 union4 union5
 		 fft 
 		 
@@ -585,6 +585,8 @@
      (define arr-set! vector-set!)
      (define length   vector-length)
 
+
+     ;; EQ? based hash tables:
 #;
      (begin
        ;; If we cared we could use some kind of balanced tree for functional maps.
@@ -595,6 +597,7 @@
 	    (lambda (k v) (put-hash-table! newtab k v)))
 	   newtab))
        (define hashtable #%make-hash-table)
+       (define (hashcontains ht k) (#%get-hash-table ht k #f))
        (define (hashget ht k) (#%get-hash-table ht k #f))
        ;; Pretty useless nondestructive version:
        (define (hashset ht k v)
@@ -607,7 +610,8 @@
        ;(define hashrem )
        ;(define hashrem_BANG )
        )
-     
+
+     ;; EQUAL? based hash tables:
      (begin
        ;; If we cared we could use some kind of balanced tree for functional maps.
        (define (copy-hash-table ht)
@@ -618,7 +622,17 @@
 	   newtab))
 
        (define hashtable slib:make-hash-table)
-       (define hashget (slib:hash-inquirer equal?))
+       (define hashcontains 
+	 (let ([getfun (slib:hash-inquirer equal?)])
+	   (lambda (ht k) (if (getfun ht k) #t #f))))       
+       (define hashget 
+	 (let ([getfun (slib:hash-inquirer equal?)])
+	   (lambda (ht k)
+	     (let ([result (getfun ht k)])
+	       (unless result
+		 (error 'hashget "couldn't find key: ~s" k))
+	       result
+	       ))))
        ;; Pretty useless nondestructive version:
        (define (hashset ht k v)
 	 (define new (copy-hash-table ht))

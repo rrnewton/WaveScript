@@ -342,7 +342,9 @@
 		  x)
 	   x)
 	  x)))
-
+  ;; This MUST be set to cause the compiler to behave correctly:
+  (parameterize ([wavescope-invocation #t])
+    
   (optional-stop p)
   
   (set! p (optional-stop (verify-regiment p)))
@@ -350,6 +352,7 @@
   (printf "Program verified.\n")
 
   (set! p (optional-stop (rename-vars p)))
+  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
   (set! p (optional-stop (eta-primitives p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
@@ -365,24 +368,24 @@
       (flush-output-port))
     'replace)
 
-  ;; We typecheck before verify-elaborated.
+  ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
   (set! p (optional-stop (retypecheck p)))
   (set! p (optional-stop (rename-vars p)))
 
-;  (printf "Post elaboration types: \n")
-;  (print-var-types p)
+  (printf "Post elaboration types: \n")
+  (print-var-types p)
 
   (set! p (optional-stop (verify-elaborated p)))
 
   (set! p (optional-stop (merge-iterates p)))
-  (set! p (optional-stop (retypecheck p)))
+  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
   (set! p (optional-stop (reduce-primitives p)))
   (set! p (optional-stop (remove-complex-constant p)))
-  (set! p (optional-stop (retypecheck p)))
+  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
 
   (set! p (optional-stop (uncover-free              p)))
 
@@ -390,7 +393,7 @@
 ;  (set! p (optional-stop (lift-letrec               p)))
 ;  (set! p (optional-stop (lift-letrec-body          p)))
 
-  (set! p (optional-stop (remove-complex-opera* p)))
+;  (set! p (optional-stop (remove-complex-opera* p)))
   ;; Replacing remove-complex-opera* with a simpler pass:
   (set! p (optional-stop (flatten-iterate-spine p)))
   
@@ -417,6 +420,7 @@
   ;(set! p (optional-stop (nominalize-types p)))
 
   p)
+)
 
 
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
