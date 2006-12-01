@@ -274,12 +274,13 @@
 	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
 	[(begin ,[stmts] ...) stmts]
 
-	[(arr-set! ,[myExpr -> arr] ,[myExpr -> ind] ,[myExpr -> val])
-	 `(,arr "[" ,ind "] = " ,val ";\n")]
+	[(,containerset! ,[myExpr -> container] ,[myExpr -> ind] ,[myExpr -> val])
+	 (guard (memq containerset! '(arr-set! hashset)))
+	 `(,container "[" ,ind "] = " ,val ";\n")]
 
 	[(set! ,[Var -> v] ,[myExpr -> e])
-	 `(,v " = " ,e ";\n")]
-	
+	 `(,v " = " ,e ";\n")]       
+
 	[(for (,i ,[myExpr -> st] ,[myExpr -> en]) ,bod)
 	 (let ([istr (Var i)])	   
 	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
@@ -364,7 +365,6 @@
 	[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
 	[(length ,arr) "array_length_UNFINISHED"]
 
-
 	[(arr-set! ,x ...)
 	 (error 'emitC:Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
 	[(begin ,stmts ...)
@@ -394,14 +394,11 @@
 
 	;; ----------------------------------------
 	;; Hash tables:
-	;; UNFINISHED.
-	[(assert-type (hashtable ,n)) ??]
-	[(hashget ,[ht] ,[key]) `(,ht "[",key"]")]
-	;; This is difficult, it needs to occur in expression context
-	;; but perform a side-effect.
-	[(hashset ,[ht] ,[key] ,[val]) `(,ht "[",key"] = ",val";")]
-	
 
+	;[(assert-type (hashtable ,n)) ??]
+	[(hashget ,[ht] ,[key]) `(,ht "[",key"]")]
+	[(hashcontains ,[ht] ,[key]) `(,ht "[",key"]")]
+	
 	[(,lp . ,_) (guard (memq lp '(cons car cdr)))
 	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
 	 ]
@@ -440,6 +437,10 @@
 	[(List ',_) `("cons<int>::ptr")]
 	;; Boosted cons cells:
 	[(List ,[t]) `("cons< ",t" >::ptr")]
+
+	[(Hashset ',_ ,__) (error 'emitC "hash table with typevar" )]
+	[(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
+	[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
 	
 	;[,other (format "~a" other)]
 	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))

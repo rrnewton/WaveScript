@@ -284,39 +284,20 @@
     (arr-set!         ((Array 'a) Int 'a) #())
     (length           ((Array 'a)) Int)
 
-;     (hashtable () (HashTable 'a))
-;     (hash ('a) Int) ; With our data-model, we can do this.
-;     (hashget ((HashTable 'a) 'b) 'a)
-;     ;; This is the *pure* version, to be useful at all need to use the
-;     ;; destructive version.
-;     (hashupdate ((HashTable 'a) 'b 'a) (HashTable 'a))
 
-
-;     (hashtable (Int) (HashTable 'key 'val))
-;     ;(hash ('a) Int) ; With our data-model, we can do this.
-;     (hashget ((HashTable 'key 'val) 'key) 'val)
-;     ;; This is the *pure* version, to be useful at all need to use the
-;     ;; destructive version.
-;     (hashset ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
-;     (hashrem ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
-
-;     (hashset_BANG ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
-;     (hashrem_BANG ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
-
-
-    (hashtable (Int) (HashTable #('key 'val)))
+    (hashtable (Int) (HashTable 'key 'val))
     ;;(hash ('a) Int) ; With our data-model, we can do this.
-    (hashcontains ((HashTable #('key 'val)) 'key) Bool)
-    (hashget ((HashTable #('key 'val)) 'key) 'val)
+    (hashcontains ((HashTable 'key 'val) 'key) Bool)
+    (hashget ((HashTable 'key 'val) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
     ;(hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
-    (hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
-    (hashrem ((HashTable #('key 'val)) 'key) (HashTable #('key 'val)))
+    (hashset ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
+    (hashrem ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
 
     ;; [2006.11.28] Giving these void types.
-    (hashset_BANG ((HashTable #('key 'val)) 'key 'val) #())
-    (hashrem_BANG ((HashTable #('key 'val)) 'key) #())
+    (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
+    (hashrem_BANG ((HashTable 'key 'val) 'key) #())
 
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))

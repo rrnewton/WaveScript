@@ -73,7 +73,9 @@
 	   (error 'nominalize-types:convert-type
 		  "should not have polymorphic type: ~s" ty)]
 	  [(,[arg] ... -> ,[ret]) `(,@arg -> ,ret)]
+
 	  [(,C ,[t] ...) (guard (symbol? C)) `(,C ,@t)]
+
 	  [#(,t* ...)
 	   ;; Do the lookup on the *pre*converted type:
 	   ;; It's ok if there are duplicates in the tupdefs, this will get the first.

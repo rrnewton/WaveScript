@@ -924,8 +924,7 @@
 ;; Prints a type in an ML-ish way rather than the raw sexp.
 (define (print-type t . p)
   (let ([port (if (null? p) (current-output-port) (car p))])
-   (display 
-    (let loop ([t t])
+    (define (loop t) 
       (match t
 	[(quote ,[var]) (++ "'" var)]
 	[(-> ,[b]) (++ "() -> " b)]
@@ -933,12 +932,20 @@
 				   " -> "b)]
 	[#(,[x*] ...)
 	 (++ "(" (apply string-append (insert-between ", " x*)) ")")]
-	[(,[tc] ,[arg])
-	 (++ tc" "arg)]
+	;; [2006.12.01] Removing assumption that TC's have only one arg:
+	[(,[tc] ,[arg*] ...)
+					;	 (++ tc "(" (apply string-append (insert-between ", " arg*)) ")")]
+	 (++ "(" tc " " (apply string-append (insert-between " " arg*)) ")")]
 	[,sym (guard (symbol? sym))
 	      (symbol->string sym)]
 	[,other (error 'print-type "bad type: ~s" other)]))
-    port)))
+    (display 
+     ;; Prettification: we drop the outer parens:
+     (match t 
+       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc))
+	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
+       [,t (loop t)])
+     port)))
 
 ;; Expects a fully typed expression
 (define (print-var-types exp . p)
