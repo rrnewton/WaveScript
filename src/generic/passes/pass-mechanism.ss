@@ -16,8 +16,7 @@
   (provide define-pass)
   (chezimports)
   (require-for-syntax "../../plt/chez_compat.ss"
-                      "../compiler_components/reg_core_generic_traverse.ss"
-                      )
+                      "../compiler_components/reg_core_generic_traverse.ss")
 
 ;; Usage:
 ;;   (define-pass <pass-name> <clauses and defs> ...)

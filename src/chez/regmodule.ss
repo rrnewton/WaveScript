@@ -36,7 +36,7 @@
 ;;;; kill the module binding in my preprocessor...
 
 ;; Common module syntax.
-(module reg:module (chez:module module)
+(module reg:module (chez:module module require-for-syntax)
   
   ;; Bind chez:module to be the *real* thing.
   (module (chez:module)
@@ -54,12 +54,16 @@
 	     exp ...)]
 
 	;; In this variant we use chez-specific syntax for some exports.
-	[(_ name parent (require __ ...) (provide exports ...) (chezprovide chezexports ...) (chezimports imp ...) exp ...)
+	[(_ name parent (require __ ...) (provide exports ...) 
+	    (chezprovide chezexports ...) (chezimports imp ...) exp ...)
 	 #'(chez:module name (exports ... chezexports ...)
 	     (import imp) ...
-	     exp ...)
-	 ]
-)))
+	     exp ...)]
+	)))
+
+  (define-syntax require-for-syntax
+    (syntax-rules ()
+      [(rfs _ ...) (begin)]))
   )
 
 
