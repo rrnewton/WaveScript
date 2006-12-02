@@ -20,10 +20,10 @@
 
 
 (module prim_defs mzscheme
-  (require "../plt/iu-match.ss"
-           "../generic/constants.ss"
-           "../plt/helpers.ss"
-           (lib "include.ss")
+  (require (lib "include.ss")
+;           "../../plt/iu-match.ss"
+           "../constants.ss"
+           "../../plt/helpers.ss"
            )
   (provide 
            regiment-type-aliases

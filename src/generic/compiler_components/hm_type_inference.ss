@@ -27,19 +27,18 @@
 
 (module hm_type_inference mzscheme
   (require ;`"../../plt/common.ss"
+           "prim_defs.ss"
            "../../plt/iu-match.ss"
            "../../plt/chez_compat.ss"
            "../constants.ss"
-           ;"hashtab.ss"
-           (all-except "../../plt/helpers.ss" test-this these-tests)
-	   (all-except "../../plt/regiment_helpers.ss" test-this these-tests 
+           "../../plt/helpers.ss"
+	   (all-except "../compiler_components/regiment_helpers.ss"
                        regiment-type-aliases
                        regiment-basic-primitives
                        local-node-primitives
                        regiment-constants
                        regiment-distributed-primitives
                        )
-           "../../plt/prim_defs.ss"
            )
 
   (provide 
@@ -85,8 +84,6 @@
 
 	   types-compat?
            
-	   these-tests
-	   test-this
 	   test-inferencer
 
 ;; These should be hidden:
@@ -1250,40 +1247,3 @@
 
 ) ; End module. 
 
-
-
-#;
-(define bug 
-  '(letrec ([matrix (lambda (rows cols init)
-                   (letrec ([arr (app makeArray rows nullarr)])
-                     (begin
-                       (for (i 0 (- rows 1))
-                            (arr-set! arr i (app makeArray cols init)))
-                       arr)))]
-         [m_get (lambda (mat row col)
-                  (letrec ([r (arr-get mat row)]) (arr-get r col)))]
-         [m_set (lambda (mat row col val)
-                  (letrec ([r (arr-get mat row)])
-                    (begin (arr-set! r col val) (tuple))))]
-         [m_mult (lambda (m1 m2)
-                   (letrec ([m3 (app matrix
-                                     (app length m1)
-                                     (app length (arr-get m2 0))
-                                     (app m_get m1 0 0))])
-                     m3))])
-  (app matrix 3 4 5.0))
-
-  )
-
-
-
-
-;> (instantiate-type '(#0='(j . #f) -> #0#))
-;(#0='(k . #f) -> #0#)
-;> (instantiate-type '(#0='(j . #f) -> #0#) '(j))
-;('#0=(j . #f) -> '#0#)
-
-; let f = ref (fun x -> x) in (!f 3, !f 3.0);;  -- ERR
-; let f = [fun x -> x] in (hd f 3, hd f 3.0);;  
-
-; fun f -> (f 3, f 4.0)  -- ERR 

@@ -12,18 +12,18 @@
   
     (require 
 	    (lib "include.ss")
-	     (lib "date.ss")
-	     (lib "pretty.ss")
-	     (prefix swindle: (lib "misc.ss" "swindle"))
-	     (all-except (lib "list.ss") filter)	     
+            (lib "date.ss")
+            (lib "pretty.ss")
+            (prefix swindle: (lib "misc.ss" "swindle"))
+            (all-except (lib "list.ss") filter)	     
 
-	     "../plt/iu-match.ss"
-	     "../generic/constants.ss"
-	     "../plt/hashtab.ss"
+            "prim_defs.ss"
+	     "../../plt/iu-match.ss"
+	     "../constants.ss"
+	     "../../plt/hashtab.ss"
              
-	     (all-except "../plt/helpers.ss" test-this these-tests)
-             (all-except "../plt/grammar_checker.ss" test-this these-tests)
-	     "../plt/prim_defs.ss"
+             "../../plt/helpers.ss"
+             "../grammars/grammar_checker.ss"
 	     )
 
     (provide   
@@ -75,7 +75,7 @@
 	  )
 
   (chezimports prim_defs grammar_checker)
-  
+
   ;;; Regiment Random Number Interface. <br>
   ;;;
   ;;;   These provide a simple random number generator interface for use

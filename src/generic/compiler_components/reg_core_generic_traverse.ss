@@ -24,12 +24,13 @@
 
 (module reg_core_generic_traverse  mzscheme
   (require (lib "include.ss")  
-           "../generic/constants.ss"
-           "../plt/iu-match.ss"
-	   "../plt/prim_defs.ss"
+           "../constants.ss"
+           "../../plt/iu-match.ss"
+	   "prim_defs.ss"
 	   ;(lib "compat.ss")
-           (all-except "../plt/helpers.ss" test-this these-tests filter)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
+           (all-except "../../plt/helpers.ss" filter)
+           (all-except "../compiler_components/regiment_helpers.ss" filter)
+           "../compiler_components/hm_type_inference.ss"
            )
   
   ;; Insure provision of verify-regiment:

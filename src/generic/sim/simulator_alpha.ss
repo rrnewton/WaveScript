@@ -59,7 +59,7 @@
    "../plt/iu-match.ss" 
       
    "../plt/hashtab.ss"
-   "../plt/prim_defs.ss"
+   "../compiler_components/prim_defs.ss"
    "../generic/logfiles.ss"
    (all-except "../generic/constants.ss" test-this these-tests)
    (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)

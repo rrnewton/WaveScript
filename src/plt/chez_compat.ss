@@ -71,6 +71,7 @@
 
   ;; We don't have fixnum/flonum arithmetic in PLT:
   ;; Tried to make a generic "alias", but that didn't work, so here are a bunch of defines.
+  (define-syntax fxzero? (syntax-rules () [(_ e ...) (zero? e ...)]))
   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))
   (define-syntax fx- (syntax-rules () [(_ e ...) (- e ...)]))
   (define-syntax fx* (syntax-rules () [(_ e ...) (* e ...)]))
@@ -93,6 +94,8 @@
   (define-syntax fl>= (syntax-rules () [(_ e ...) (>= e ...)]))
   (define (fxsrl n bits) (quotient n (expt 2 bits)))
   (define (fxsll n bits) (* n (expt 2 bits)))
+  
+  (define (cflonum? n) (and (complex? n) (not (rational? n))))
   
   (define-syntax datum
     (syntax-rules ()
@@ -145,6 +148,9 @@
   (define (with-warning-handler fun th)
     (fluid-let ((warning fun))
       (th)))
+  
+  (define (syntax-error obj . strings)
+    (raise-syntax-error #f (apply string-append strings) obj))
 
   ;; Make this return a fake error code to act like the Chez version.
   (define system plt:system/exit-code)

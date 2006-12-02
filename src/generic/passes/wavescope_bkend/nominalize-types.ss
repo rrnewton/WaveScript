@@ -2,7 +2,7 @@
 ;;;; .title WaveScript Nominalize Types
 ;;;; .author Ryan Newton
 
-;;;; This pass replaces the ML-like algebraic types and replaces them with suitable C-types.
+;;;; This pass replaces the ML-like algebraic types with suitable C-types (structs).
 
 
 ;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
@@ -20,7 +20,8 @@
 
 
 (module wavescript_nominalize-types  mzscheme 
-  (require "helpers.ss")
+  (require "../../../plt/helpers.ss")
+;  (require "../../util/helpers.ss")
   (provide nominalize-types test-this test-nominalize-types)
   (chezprovide )
   (chezimports (except helpers test-this these-tests)
@@ -117,6 +118,17 @@
 	 (lambda (ls k) (apply k ls))
 	 expr))
 
+      
+      (define (make-new-typedef argtypes)
+	(unless (andmap known-size? argtypes)
+	  (error 'nominalize-types
+		 "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
+		 type))
+	;; Return a new typedef:
+	(list argtypes
+	      (list-head field-names (length argtypes))
+	      (unique-name 'tuptyp)))
+
       ;; We avoid the boilerplate by defining this as a "generic traversal"
       (define (collect-tupdefs expr tenv)
 	(core-generic-traverse/types
@@ -126,35 +138,20 @@
 	   (ASSERT result?
 	    (match expr
 	     ;; Tuple statements HAVE to be type annotated now.
-	     [(tuple ,arg* ...)
-	      (printf "TUPLE!! ~s\n" arg*)
-	      (let ([type (recover-type `(tuple . ,arg*) tenv)]
-		    [newtype (unique-name 'tuptyp)])
+	     [(tuple ,arg* ...)	      
+	      (let ([type (recover-type `(tuple . ,arg*) tenv)])
 		(match type
 		  [#(,argtypes ...)
-		   (unless (andmap known-size? argtypes)
-		     (error 'nominalize-types
-			    "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
-			    type))
 		   (let* ([results (map (lambda (x) (collect-tupdefs x tenv)) arg*) ]
 			  [args (map result-expr results)]
-			  [tydefs (apply append-tydefs (map result-tydefs results))]
-			  [mytypes (map (lambda (arg) (recover-type arg tenv)) arg*)]
-			  [newdefs (add-new-tydef
-				    (list mytypes
-					  (list-head field-names (length arg*))
-					  newtype)
-				    tydefs)]
-			  ;; Get the name back out... might not be the one we put in.
-			  ;[type-name (last (ASSERT (assoc mytypes newdefs)))]
-			  )		    
+			  [tydefs (apply append-tydefs (map result-tydefs results))])
 		     (make-result 
-		      ;; We replace mytypse with an actual name in a second pass:
-		      `(make-struct ,mytypes ,args ...)
+		      ;; We replace argtypes with an actual name in a second pass:
+		      `(make-struct ,argtypes ,args ...)
 		      ;; Append a new typedef to the existing.
 		      ;; Don't convert types for this entry:
-		      newdefs)
-		     )]))]
+		      (add-new-tydef (make-new-typedef argtypes)
+				     tydefs)))]))]
 
 	     ;; DAMMIT: special case for zip2 because it currently uses its own tuple type.
 	     [(zip2 ,[res1] ,[res2])
@@ -164,7 +161,7 @@
 		    [ty2 (match (recover-type (result-expr res2) tenv)
 			   [(Signal ,t) t])]
 		    )
-		(printf "SO SPECIAL: ~s"   `((,ty1 ,ty2) (_first _second) (EXT Zip2)))
+		(printf "SPECIAL CASE ZIP2: ~s"   `((,ty1 ,ty2) (_first _second) (EXT Zip2)))
 		
 		(make-result
 		 `(zip2 ,(result-expr res1) ,(result-expr res2))		 
@@ -174,6 +171,19 @@
 		  defs)
 		 ))]
 	     
+	     ;; We have to add a new tuple type for the tuples produced by dataFile:
+	     [(assert-type (Signal ,t) (___dataFile ,[file] ,[mode] ,[ls]))	      
+	      (let* ([newdefs (add-new-tydef
+			       (make-new-typedef (vector->list t))
+			       (apply append
+				      (map result-tydefs (list file mode ls))))]
+		     [newt (convert-type t newdefs)])
+		(make-result 		 
+		 `(assert-type (Signal ,newt)
+			       (__dataFile ,(result-expr file) ,(result-expr mode)
+					   ,(result-expr ls)))
+		 newdefs))]
+
 	     [(unionList ,ls)
 	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
 		    [newstruct (unique-name 'unionlst_tuptyp)])

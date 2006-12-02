@@ -14,12 +14,11 @@
 
 (module grammar_checker mzscheme
   (require (lib "include.ss")
-	   "../plt/iu-match.ss"
-	   "../generic/constants.ss" ;; For DEBUGMODE
-           "../plt/prim_defs.ss"
-           "../plt/chez_compat.ss"
-	   (all-except "../plt/helpers.ss" test-this these-tests)
-;	   (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+	   "../../plt/iu-match.ss"
+	   "../constants.ss" ;; For DEBUGMODE
+           "../compiler_components/prim_defs.ss"
+           "../../plt/chez_compat.ss"
+	   (all-except "../../plt/helpers.ss" test-this these-tests)
            )
   (provide 
          check-grammar/backtrack
@@ -35,7 +34,6 @@
 ;         tml_letstored_grammar
          full_but_clean_tml
          
-;         these-tests test-this
          test-grammar tests-grammar
          )
 
@@ -455,7 +453,9 @@
 
 
 ;; This contains actual grammar definitions (used in unit tests below).
-(include "generic/grammars/grammars.ss")
+(IFCHEZ 
+ (include "generic/grammars/grammars.ss")
+ (include "grammars.ss"))
 
 ; =======================================================================
 ;;; Unit tests.
