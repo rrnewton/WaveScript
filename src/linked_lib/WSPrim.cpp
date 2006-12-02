@@ -104,5 +104,13 @@ class WSBuiltins {
      }
    };
 
+
+
+  // TEMP:
+  // This is a source for the stock tick application.
+  
+
+
+
   
 };

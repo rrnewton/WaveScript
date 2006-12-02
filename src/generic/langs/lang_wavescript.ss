@@ -97,7 +97,7 @@
 		 valid-sigseg?
 		 app letrec let (for for-loop-stack)
 
-		 dump-binfile doubleFile audioFile audio timer
+		 dump-binfile doubleFile audioFile __dataFile audio timer
 		 stockStream
 		 ; read-file-stream
 		 print show
@@ -317,6 +317,34 @@
 			 to-uint16
 			 len overlap))
 
+     (define (__dataFile file mode repeat types)
+       ;; TODO: In debug mode this should check the types of what it gets.       
+       (define len (listLength types))
+       (define inp (open-input-file file))
+       (define tyvec (list->vector types))
+       (define (parse-line str)
+	 (define p (open-input-string str))
+	 (define tup (make-vector len))
+	 (let loop ([i 0])
+	   (if (fx= i len)
+	       tup
+	       (begin 
+		 (vector-set! tup i 
+  		   (case (vector-ref tyvec i)
+		     [(String) (symbol->string (read p))]
+		     [else (read p)]))
+		 (loop (fx+ 1 i))))))
+       (cond 
+	[(equal? mode "text")
+	 (let loop ([x (read-line inp)])
+	   (if (eof-object? x)
+	       '()
+	       (stream-cons (parse-line x)
+			    (loop (read-line inp)))
+	       ))]
+	[else (error 'dataFile "this mode is not supported yet: ~s" mode)]	)
+       )
+
      ;; This makes an infinite stream of fake tick/split info:
      ;; Tuple is of one of two forms:
      ;;  Tick:  #(sym,t,vol,price)
@@ -332,7 +360,7 @@
 	      ;; A split:
 	      (vector (random-sym) t -1 (random 2.0))
 	      ;; A tick:
-	      (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))	      
+	      (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))
 	      )
 	  (loop (fl+ t (random 10.0))))))
 

@@ -694,8 +694,10 @@
 		[(quote ,c)       `(quote ,c)]
 		[,prim (guard (symbol? prim) (regiment-primitive? prim))
 		       prim]
+
+		[(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
 		[(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-		[(lambda ,v* ,t* ,[bod]) `(lambda ,v* ,(map export-type t*) ,bod)]
+		[(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
 		[(tuple ,[e*] ...) `(tuple ,e* ...)]
 		[(tupref ,n ,[e]) `(tupref ,n ,e)]
 		[(unionN ,[e*] ...) `(unionN ,e* ...)]
@@ -704,11 +706,12 @@
 		[(begin ,[e] ...) `(begin ,e ...)]
 		[(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
 
-		[(let ([,id* ,t* ,[rhs*]] ...) ,[bod])
-		 `(let ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
-		[(,letrec ([,id* ,t* ,[rhs*]] ...) ,[bod])
+		[(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
+		 `(let ([,id* ,t* ,rhs*] ...) ,bod)]
+
+		[(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
 		 (guard (memq letrec '(letrec lazy-letrec)))
-		 `(,letrec ([,id* ,(map export-type t*) ,rhs*] ...) ,bod)]
+		 `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
 		[(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
 
 		[(,prim ,[rand*] ...)
@@ -960,6 +963,7 @@
        [,c (guard (constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
        [(quote ,c)       '()]
+       [(assert-type ,t ,[e]) e]
        [(set! ,v ,[e]) e]
        [(begin ,[e*] ...) (apply append e*)]
        [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] bodls)]

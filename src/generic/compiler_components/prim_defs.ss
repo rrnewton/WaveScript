@@ -246,6 +246,18 @@
     ;; Reads a stream of Uint16's from the file.
     (audioFile        (String Int Int)  (Signal (Sigseg Int)))
 
+    ;; Generic data-file reader.
+    ;; Usage: datafile(fileName, mode, repeats)
+    ;;  Where mode is "text" "text-comma" or "binary".
+    ;;  "text" has whitespace-separated values.
+    ;;  Repeats is an integer representing the number of times to
+    ;;  repeat the files data.  -1 encodes "indefinitely"
+    ;; 
+    ;; dataFile must occur directly within a ( :: T) construct.
+    (dataFile (String String Int) (Signal 'a))
+    ;; Compiler internal primitive that includes the list of types.
+    (__dataFile (String String Int (List Symbol)) (Signal 'a))
+
     ;; Fabricates stock ticks and splits.  For benchmark.
     ;; Tuple is of one of two forms:
     ;;   Tick:  #(sym,t,vol,price)

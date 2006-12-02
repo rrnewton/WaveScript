@@ -13,7 +13,7 @@
 
   ;; In the output grammar varrefs are no longer allowed to refer to primitives.
   (define eta-primitives-grammar
-    (let* ([varclause (assq 'Var desugar-misc-grammar)]
+    (let* ([varclause (assq 'Var initial_regiment_grammar)]
 	   [newgram (remq varclause desugar-misc-grammar)]
 	   [new_is-var? 
 	    (lambda (x)

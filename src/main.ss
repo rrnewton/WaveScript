@@ -29,8 +29,8 @@
     
     ;; (3) Then we do a little massaging/normalization.
     pass_desugar-pattern-matching
-    desugar-misc
     eta-primitives
+    desugar-misc
     rename-vars
     remove-unquoted-constant
     retypecheck
@@ -354,6 +354,7 @@
   (set! p (optional-stop (rename-vars p)))
   (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
   (set! p (optional-stop (eta-primitives p)))
+  (set! p (optional-stop (desugar-misc p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
 

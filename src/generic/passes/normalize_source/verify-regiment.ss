@@ -60,6 +60,9 @@
 			  (not (regiment-primitive? var)))
 		     (error 'verify-regiment (format "unbound variable: ~a~n" var))
 		     var)]
+	   
+	   ;; TODO: should check the types for validity also.
+	   [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
 
 	  [(tuple ,[e] ...) `(tuple ,e ...)]
 	  [(tupref ,n ,len ,[e])

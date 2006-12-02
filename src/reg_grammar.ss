@@ -479,8 +479,8 @@
          
          ;; Parentheses for precedence:
          [(LeftParen exp RightParen) $2]
-	 ;; Throw out type annotations for now:  FIXME FIXME
-         [(LeftParen exp :: type RightParen) $2]
+         [(LeftParen exp :: type RightParen)
+	  `(assert-type ,$4 ,$2)]
 
          ;; Causes 5 shift-reduce conflicts:
 ;         [(return exp) $2]

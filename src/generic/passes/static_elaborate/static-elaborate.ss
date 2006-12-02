@@ -268,6 +268,7 @@
 					(not (memq var mutable-vars)))
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
+			   [(assert-type ,t ,[e]) e]
 			   [,else #f])))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -282,6 +283,7 @@
 				       (not (memq var mutable-vars)))
 				(let ((entry (assq var env)))
 				  (and entry (container-available? (cadr entry))))]
+			  [(assert-type ,t ,[e]) e]
 			  [,else #f]
 			  )
 		    ))]
@@ -295,6 +297,7 @@
 		      [(cons ,a ,b) x]
 		      [,var (guard (symbol? var))
 			    (getval (cadr (assq var env)))]
+		      [(assert-type ,t ,[e]) e]
 		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))]
 
 		 [getlist ;; Get values until you have the whole list.
@@ -338,6 +341,7 @@
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
 		]
+          [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(process-expr expr 
@@ -366,8 +370,8 @@
 	   (let ([newenv (cons `(,i not-available 99999) env)])	     
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
 	  
-          [(begin ,(args) ...) `(begin ,args ...)]
-          [(set! ,v ,(rhs)) `(set! ,v ,rhs)]
+          [(begin ,[args] ...) `(begin ,args ...)]
+          [(set! ,v ,[rhs]) `(set! ,v ,rhs)]
 	  
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".

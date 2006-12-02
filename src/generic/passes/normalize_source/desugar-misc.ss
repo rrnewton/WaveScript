@@ -1,7 +1,7 @@
 
 ;;;; .title       Desugar-Misc: Desugar miscellaneous syntactic sugars.
 ;;;; .author      Ryan Newton
-;;;; This takes away let*, list, and some other sugars.
+;;;; This takes away and, or, list, and some other sugars.
 
 
 (module desugar-misc mzscheme
@@ -9,7 +9,19 @@
   (provide desugar-misc desugar-misc-grammar test-desugar-misc)
   (chezimports)
 
-  (define desugar-misc-grammar initial_regiment_grammar)
+  ;; Like remove primitive but throws an error if not found.
+  (define (myremove x ls)
+    (cond
+     [(null? ls) (error 'myremove "element not found: ~s" x)]
+     [(equal? x (car ls)) (cdr ls)]
+     [else (cons (car ls) (myremove x (cdr ls)))]
+     ))
+
+  (define desugar-misc-grammar 
+    (myremove '(Prim 'dataFile)
+    (myremove '(Prim 'and) 
+    (myremove '(Prim 'or) 
+	    initial_regiment_grammar))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
@@ -25,6 +37,20 @@
 			   [() ''()]
 			   [(,a . ,[b]) `(cons ,a ,b)])
 			 fallthrough)]
+
+	  [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
+	   (let ([Type (lambda (t)
+			 (if (memq t '(String Int Float Char))
+			     t;(symbol->string t)
+			     (error 'desugar-misc "this is not a type that can be read with dataFile: ~s"
+				    t)))])
+	     `(assert-type (Signal ,t)
+  	       ,(match t
+		 [#(,[Type -> t*] ...)  `(__dataFile ,file ,mode ,repeats ',t*)]
+		 [,t          `(__dataFile ,file ,mode ,repeats (list ',(Type t)))])
+	       ))]
+	  [(dataFile ,_ ...)
+	   (error 'desugar-misc "bad use of dataFile: ~s" `(dataFile ,_ ...))]
 
 	  ;; More sugar.
 	  ;; Don't really have a syntax for this in WaveScript:
@@ -42,10 +68,10 @@
 	  ;; THIS IS INVALID FOR OUR TYPE SYSTEM:
 	  ;; It might work if the program were already typed, but future retype-checking will break:
 	  
+	  ;; TODO: should remove:
 	  ;; I have mixed feelings about this (makes intermediate programs hard to read)
 	  [(let ([,x ,t ,[y]] ...) ,[body])
-	   `(app (lambda ,x ,t ,body) ,y ...)
-	   ]
+	   `(app (lambda ,x ,t ,body) ,y ...)]
 	  
 	  [,other (fallthrough other)]
 	  ))])
