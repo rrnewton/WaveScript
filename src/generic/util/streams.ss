@@ -98,6 +98,7 @@
 ;; Take N elements from a stream
 ;; [2006.02.19] Modified to return two values, the second being the
 ;; remainder of the stream.
+;; Tail recursive.
 (define stream-take 
   (lambda (n s)
     (let stloop ((n n) (s s) (acc '()))
@@ -109,6 +110,16 @@
 	(stloop (fx- n 1) (stream-cdr s)
 		(cons (stream-car s) acc))]))))
 
+;; Drop N elements from a stream.
+(define stream-drop
+  (lambda (n s)
+    (let stloop ((n n) (s s))
+      (cond
+       [(fx= 0 n) s]
+       [(stream-empty? s)
+	(error 'stream-take "Stream ran out of elements before the end!")]
+       [else 
+	(stloop (fx- n 1) (stream-cdr s))]))))
 
 ;============================================================
 ;;; Stream transformers.
@@ -119,12 +130,20 @@
     (if (stream-empty? s) (reverse! acc)
 	(stloop (stream-cdr s) (cons (stream-car s) acc)))))
 
-;; Layer on those closures!
 (define (stream-map f s)
+  ;; Don't make the output stream any lazier than the input:
   (let stream-map-loop ((s s))
-    (if (stream-empty? s) '()
-	(stream-cons (f (stream-car s))
-		     (stream-map-loop (stream-cdr s))))))
+    (cond 
+     [(null? s) '()]
+     [(pair? s)
+      ;; Note, this is not tail recursive, but for streams the space between
+      ;; promises should not be that large! (Or it's not a stream.)
+      (cons (f (car s))
+	    (stream-map-loop (cdr s)))]
+     ;; Don't break a promise (yet):
+     [else (delay (stream-map-loop (force s))
+		  )])))
+
 
 (define (stream-filter f s) 
   (let stream-filter-loop ((s s))
@@ -198,7 +217,7 @@
 	       (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
 	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
 	     (time 
-	      (mvlet ([(_ strm) (stream-take n stream)])
+	      (mvlet ([(strm) (stream-drop n stream)])
 		(set! stream strm)))
 	      (loop (+ pos n))]
 

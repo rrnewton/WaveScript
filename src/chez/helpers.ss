@@ -55,7 +55,7 @@
 	  myequal?
 
 	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
-	  stream-map stream-filter stream-take stream-take-all 
+	  stream-map stream-filter stream-take stream-drop stream-take-all 
 	  iota-stream stream-append-list stream-append browse-stream ;random-stream 
 	  display-constrained
 	  symbol-append 

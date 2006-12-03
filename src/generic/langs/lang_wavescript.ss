@@ -824,19 +824,20 @@
      (define sfilter stream-filter)
 
      ;(define emission (make-parameter '()))
+     ;; Doesn't use stream-map because iterate may produce variable output.
      (define (iterate f s)
-       ;(delay
-       (let loop ((s s))
-	 (if (stream-empty? s) 
-	     '()
-	     ;; Note, vals are reversed:
-	     (let ([vals (unbox (f (stream-car s) (virtqueue)))])
-	       (cond
-		[(null? vals) (loop (stream-cdr s))]
-		[(null? (cdr vals)) (stream-cons (car vals) (loop (stream-cdr s)))]
-		[else 
-		 (append! (reverse! vals) 
-			  (delay (loop (stream-cdr s))))])))))
+       ;; Don't make the output stream any lazier than the input:
+       (let stream-loop ((s s))
+	 (cond 
+	  [(null? s) '()]
+	  [(pair? s)
+	   ;; Note, vals are reversed:
+	   (let ([vals (unbox (f (stream-car s) (virtqueue)))])
+	     (cond
+	      [(null? vals) (stream-loop (cdr s))] 	     
+	      [else (append! (reverse! vals) (stream-loop (cdr s)))]))]
+	  ;; Don't break a promise (yet):
+	  [else (delay (stream-loop (force s)))])))
 
      ;; This is the functional version of iterate.
      (define (integrate f zero s)
