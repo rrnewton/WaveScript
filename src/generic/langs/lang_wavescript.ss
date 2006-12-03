@@ -317,14 +317,12 @@
 			 to-uint16
 			 len overlap))
 
-     (define (stream-append s1 s2)
-       (delay 
-	 (let loop ([s1 s1])
-	   (if (stream-empty? s1) s2
-	       (stream-cons (stream-car s1) 
-			    (loop (stream-cdr s1)))))))
+     ;; We read in "blocks" to reduce the overhead of all those thunks!
+     ;; (Actually, this didn't speed things up much, just a little.)
+     (define DATAFILE_BATCH_SIZE 500)
 
      ;; This is not a fast implementation.  Uses read.
+     ;; Interestingly, it's currently [2006.12.03] running better in opt-level 2 than 3!
      (define (__dataFile file mode repeat types)
        ;; This is one iteration of the file:
        (define thestream
@@ -347,18 +345,21 @@
 		     (loop (fx+ 1 i))))))
 	   (cond 
 	    [(equal? mode "text")
-	     (let loop ([x (read-line inp)])
-	       (if x 
-		   (stream-cons (parse-line x)
-				(loop (read-line inp)))
-		   '()
-		   ))]
+	     (let loop ([x (read-line inp)] [batch DATAFILE_BATCH_SIZE])
+	       (cond
+		[(not x) '()]
+		;; Insert a delay:
+		[(fxzero? batch) 		 
+		 (stream-cons (parse-line x) (loop (read-line inp) DATAFILE_BATCH_SIZE))]
+		[else   (cons (parse-line x) (loop (read-line inp) (fx- batch 1)))]))]
 	    [else (error 'dataFile "this mode is not supported yet: ~s" mode)]	)))
+       ;(inspect thestream)
        (case repeat
 	 [(0) thestream]
 	 [(-1) (letrec ([fix (stream-append thestream (delay fix))]) fix)]
 	 [else (ASSERT (> repeat 0))
-	       (foldr stream-append '()
+	       ;; Foldl and foldr have about the same (bad) performance here.
+	       (foldl stream-append '()
 		      (make-list repeat thestream))])
        )
 

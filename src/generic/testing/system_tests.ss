@@ -1932,7 +1932,8 @@
 	   [crit () (vector (float->int (locdiff (cons '0 (cons '30 '())) (loc)))
 			    (float->int (locdiff (cons '60 (cons '30 '())) (loc))))]
 	   [comp (a b)
-#;		   (if (and (> (vector-ref a 0) (vector-ref b 0))
+#;
+		   (if (and (> (vector-ref a 0) (vector-ref b 0))
 			    (> (vector-ref a 1) (vector-ref b 1)))
 		       1
 		       (if (and (> (vector-ref b 0) (vector-ref a 0))
@@ -2601,7 +2602,14 @@
 
 
 
-
+["WSINT: tuples of tuples"
+ (mvlet ([(ls _)
+   (stream-take 10 
+      (wsint '(let* ([s1 (timer 3000)]
+		     [s2 (iterate (lambda (x vq) (begin (emit vq (tuple 3 4)) vq)) s1)]
+		     [s3 (iterate (lambda (tup vq) (begin (emit vq (tuple tup 9)) vq)) s2)])
+		s3)))]) ls)
+ ,(make-list 10 #(#(3 4) 9))]
 
 
 

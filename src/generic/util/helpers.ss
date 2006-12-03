@@ -1756,6 +1756,7 @@
 
     [(mvlet ([(x _) (stream-take 10 (stream-filter even? iota-stream))]) x)
      (0 2 4 6 8 10 12 14 16 18)]
+     
     
 ;; Having problems with errors in drscheme.
 ;    [(stream-take 5 `(1 2 . ,(delay '(3))))      error]
@@ -1763,6 +1764,19 @@
 ;    [(stream-cdr (delay 1)) error]
     [(stream-cdr (delay '(1))) ()]
     [(stream-car (delay '(1))) 1]
+
+    ["stream-append: Shouldn't hit the error."
+     (stream-car 
+      (stream-cdr 
+       (stream-append (delay (append '(1 2) (delay (error 'test ""))))
+		      '(3 4 5))))
+     2]
+    ["stream-append: Should hit the error."
+     (stream-car 
+      (stream-cdr 
+       (stream-append (delay (cons 1 (delay (error 'test ""))))
+		      '(3 4 5))))
+     error]
 
 ; This doesn't make schemedoc happy, eliminating:
 ;    [(unfold-list '(a b c d))

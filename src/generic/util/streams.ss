@@ -2,6 +2,10 @@
 
 ;;;; Currently 'include'd by helpers.ss
 
+;;;; TODO: Could consider an implementation that mutates into a list
+;;;; as the promises are evaluated.  Good for streams that are
+;;;; processed multiple times.
+
 ;=======================================================================
 ;;; Stream functions.
 ;;;
@@ -16,10 +20,11 @@
 ;;; I should probably switch over to using the standard SRFI-40 stream
 ;;; implementation at some point. <br><br>
 ;;;
-;;; [2006.02.19] NOTE: Streams are not currently an ADT. They're
+;;; [2006.02.19] NOTE: Streams are not currently an ADT. Their
 ;;; representation is transparent.  The user is free to construct
 ;;; their own tail-delayed lists with whatever strictness pattern
 ;;; they wish.
+
 
 ;; Is the object potentially a stream?  Can't tell for sure because
 ;; promises are opaque.
@@ -38,15 +43,31 @@
      [(null? s) #t]
      [(promise? s) (stream-empty? (force s))]
      [else #f])))
+
 (define-syntax stream-cons
   (syntax-rules ()
     [(_ a b) (cons a (delay b))]))
+
 ;; NOTE: Double delay for append:
 ;; Appends list to stream... not stream to stream!
 (define-syntax stream-append-list
   (syntax-rules ()
     [(_ args ... tail) (delay (append args ... (delay tail)))]))
 
+;; Append a stream (which should be finite) to another stream.
+(define (stream-append s1 s2)
+  (delay 
+    (let loop ([s1 s1])
+      (cond
+       [(stream-empty? s1) s2]
+       ;; Optimization: don't lazify something that's already there.
+       [(pair? s1) (cons (car s1) 
+			 ;; Keep going with it if we can.
+			 (if (pair? (cdr s1)) (loop (cdr s1))
+			     (delay (loop (cdr s1)))))]
+       [else 
+	(stream-cons (stream-car s1) 
+		     (loop (stream-cdr s1)))]))))
 (define stream-car
   (lambda (s)
     (let scloop ((s s))
@@ -57,6 +78,7 @@
        [(pair? s) (car s)]
        [(null? s) (error 'stream-car "Stream is null!")]
        [else (error 'stream-car "invalid stream: ~s" s)]))))
+
 (define (stream-cdr s)
   (cond
    [(promise? s)      
@@ -72,6 +94,7 @@
 ;		 (stream-cdr s))
 	  (cdr s)]
    [else (error 'stream-cdr "invalid stream: ~s" s)]))
+
 ;; Take N elements from a stream
 ;; [2006.02.19] Modified to return two values, the second being the
 ;; remainder of the stream.
@@ -85,17 +108,24 @@
        [else 
 	(stloop (fx- n 1) (stream-cdr s)
 		(cons (stream-car s) acc))]))))
+
+
+;============================================================
+;;; Stream transformers.
+
 ;; Read the stream until it runs dry.  Had better be finite.
 (define (stream-take-all s)
   (let stloop ((s s) (acc '()))
     (if (stream-empty? s) (reverse! acc)
 	(stloop (stream-cdr s) (cons (stream-car s) acc)))))
+
 ;; Layer on those closures!
 (define (stream-map f s)
   (let stream-map-loop ((s s))
     (if (stream-empty? s) '()
 	(stream-cons (f (stream-car s))
 		     (stream-map-loop (stream-cdr s))))))
+
 (define (stream-filter f s) 
   (let stream-filter-loop ((s s))
     ;; This is a promise, that, when popped will scroll the stream
@@ -109,10 +139,16 @@
 		(if (stream-empty? rest) '()
 		    (filter-scan-next (stream-car rest) (stream-cdr rest)))))))))
 
+;============================================================
+;;; Stream constructors.
+
 ;; A stream of non-negative integers:
 (define iota-stream
   (let loop ((i 0))
     (delay (cons i (loop (add1 i))))))
+
+;============================================================
+;;; Stream browsing.
 
 (define (browse-stream stream)
   (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
