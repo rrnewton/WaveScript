@@ -130,7 +130,7 @@
 	      (list-head standard-struct-field-names (length argtypes))
 	      (unique-name 'tuptyp)))
       
-      ;; A first pass to collect tuple type defs.
+      ;; A first pass to collect tuple type defs & convert tuple/tupref terms.
       ;; Doesn't process the type of every term, but processes all the
       ;; places it needs to observe all used tuple types.
       (define (collect-tupdefs expr tenv)
@@ -154,19 +154,7 @@
 		      ;; Append a new typedef to the existing.
 		      ;; Don't convert types for this entry:
 		      (add-new-tydef (make-new-typedef argtypes)
-				     tydefs)))]))
-
-	      ;; New version, nixed for now:
-#;
-	      (let (
-		    [orig `(tuple ,@(map result-expr arg*))]
-		    [type (recover-type orig tenv)]
-		    [new  `(make-struct ,argtypes ,@(map result-expr arg*))])
-		(make-result new
-			     (apply append-tydefs
-				    (collect-from-type type)
-				    (map result-tydefs arg*))))
-	      ]
+				     tydefs)))]))]
 
 	     ;; DAMMIT: special case for zip2 because it currently uses its own tuple type.
 	     [(zip2 ,[res1] ,[res2])
@@ -186,30 +174,12 @@
 		  defs)
 		 ))]
 
-;; THIS IS ALL UNNECESSARY, HANDLED BY ASSERT-TYPE CASE:
-#|
-	     ;; We have to add a new tuple type for the tuples produced by dataFile:
-	     [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
-	      (let* ([newdefs (add-new-tydef
-			       (make-new-typedef (vector->list t))
-			       (apply append
-				      (map result-tydefs (list file mode repeats))))])
-		(make-result 		 
-		 `(assert-type (Signal ,t)
-			       (dataFile ,(result-expr file) ,(result-expr mode)
-					 ,(result-expr repeats)))
-		 newdefs))]
-	     [(assert-type ,t (dataFile . ,_)) 
-	      (error 'nominalize-types "bad dataFile form: ~s" `(assert-type ,t (__dataFile . ,_)))]
-	     [(__dataFile . ,_) (error 'nominalize-types "bad dataFile form: ~s" `(__dataFile . ,_))]
-|#
-;; TODO: DO THIS IN GENERAL CASE:
-
 	     [(assert-type ,t ,[e])
 	      (make-result `(assert-type ,t ,(result-expr e))
 			   (append-tydefs (collect-from-type t)
 					  (result-tydefs e)))]
 
+	     ;; TODO: THIS SHOULD JUST USE collect-from-type:
 	     ;; This produces new tuples.
 	     [(unionList ,ls)
 	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
