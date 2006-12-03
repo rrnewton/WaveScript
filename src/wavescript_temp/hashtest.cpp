@@ -158,6 +158,8 @@ int main()
    cout << "This should miss:: " << manual[&s] << endl;
    
    int status = scanf("%d %d", &(s.x), &(s.y));
+   //scanf("%d", &(s.x));
+   //scanf("%d", &(s.y));
    printf("SCANNED: %d, %d\n", s.x, s.y);
 }
 

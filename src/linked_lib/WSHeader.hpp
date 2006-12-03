@@ -27,7 +27,7 @@ using namespace std;
 #define WSNULLSEG (RawSeg::NullRef)
 
 typedef int wsint_t;
-typedef float wsfloat_t;
+typedef double wsfloat_t;
 typedef string wsstring_t;
 
 #define WS_DEFINE_OUTPUT_TYPE(type)                \

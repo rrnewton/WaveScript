@@ -136,15 +136,20 @@
 				  ,[myExpr -> repeats] ;,[myExpr -> types]
 				  ;,types
 				  ))
-	 (let* ([name (symbol->string (unique-name 'WSDataFileSource))]
+	 (let* ([classname (symbol->string (unique-name 'WSDataFileSource))]
 		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
+		[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 		[maintext 
-		(block (list "class " name)
+		 (list
+		  (block (list "class " classname " : public WSSource")
 		 (list "public:\n"
-	       (block (list name "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
+	       (block (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
 		 `("_f = fopen(path.c_str(), \"r\");\n"
-		   "if (_f == NULL) { chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path); abort(); }"
-		   "Launch();")
+		   "if (_f == NULL) {\n"
+		   "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
+		   "  abort();\n"
+		   "}\n"
+		   "Launch();\n")
 		)
 	       "\n  DEFINE_SOURCE_TYPE(struct "(symbol->string structname)");\n"
 	       "\nprivate:\n"
@@ -153,6 +158,9 @@
 	       (list		
 		(block "while (!Shutdown())"
 		  `("struct ",(symbol->string structname)" tup;\n"
+		    "// Cap of a 100 on length of read strings:\n"
+		    ,(map (lambda (i) (format "char str~a[100];\n" i))
+		          (iota 1 numstrings))
 		    "int status = fscanf(_f, \""
 		    ,(insert-between " "
 		      (map (lambda (ty)
@@ -164,29 +172,32 @@
 			types))
 		    "\", "
 		    ,(insert-between ", "
-		      (map (lambda (fld ty)
-			    (define f (symbol->string fld))
-			    (match ty
-			      [Float  `("&(tup.",f")")]
-			      [Int    `("&(tup.",f")")]
-			      ;; UNFINISHED: NEED TO DO SOMETHING NASTY FOR STRINGS:
-			      [String `("(tup.",f")")]
-			      ))
-		       (list-head standard-struct-field-names (length types))
-		       types))
+		      (let loop ([n 1]
+				 [flds (map symbol->string
+					 (list-head standard-struct-field-names (length types)))]
+				 [types types])
+			(if (null? types) '()
+			    (match (car types)
+			      [Float  (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+			      [Int    (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+			      [String (cons (format "str~a" n)        (loop (add1 n) (cdr flds) (cdr types)))]
+			      )
+			    )
+			))
+
 		    ");\n"
 		    ,(block `("if (status != ",(number->string (length types))")")
-		      '("chatter(LOG_WARNING, \"Tick EOF encountered (status=%d).\", status);\n"
+		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (status=%d).\", status);\n"
 			"WSSched::stop();\n"
 			"return NULL;\n"))
 		    ;"t.time = (uint64_t)(time*1000000);\n"
-		    "source_emit(t);\n"
+		    "source_emit(tup);\n"
 		    ))
 		"return NULL;")
-	       )))])
+	       ))) ";")])
 	   (DEBUGASSERT text? maintext)
 	 (values 
-	  `("WSSource* name = new ",name"(",file", ",mode", ",repeats");\n"
+	  `("WSSource* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
 	    ;; Literal array:
 	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
 	    )
@@ -546,7 +557,10 @@
        [(,(symbol->string -> name) (,[symbol->string -> fld*] ,[Type -> typ*]) ...)
 	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)])
 	  `(,(block `("struct ",name)
+		    ;; Fields:
 		    `([,typ* " " ,fld* ";\n"] ...
+		      ;; Constructor:
+#;
 		      ((,name"(",(insert-between 
 				  ", " `([,typ* " ",tmpargs] ...)
 				  )")") " :\n"					   
