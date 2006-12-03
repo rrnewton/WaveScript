@@ -156,13 +156,6 @@
 	   (DEBUGASSERT fixnum? m)
 	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
-	  
-	  ;; This is lame, but I'm making this internal primitive
-	  ;; syntax also so that passes don't touch it's last
-	  ;; argument.  Would be nicer to post this data to the "info"
-	  ;; list for each term, if we had such a thing.
-	  [(__dataFile ,[loop -> file] ,[loop -> mode] ,[loop -> repeats] ,ls)
-	   `(__dataFile ,file ,mode ,repeats ,ls)]
 
 	  [(,varargkeyword ,[loop -> args] ...)
 	   (guard (memq varargkeyword '(unionN tuple)))

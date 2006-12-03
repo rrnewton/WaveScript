@@ -385,8 +385,8 @@
 (include "generic/passes/nesc_bkend/emit-nesc.ss")
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
-(include "generic/passes/wavescope_bkend/emit-c.ss") (import wavescript_emit-c)
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import wavescript_nominalize-types)
+(include "generic/passes/wavescope_bkend/emit-c.ss") (import wavescript_emit-c)
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

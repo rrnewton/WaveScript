@@ -140,6 +140,17 @@
 	   `(for (,v ,e1 ,e2) 
 		,(process-expr e3 (cons v env)))]
 	  ;; ========================================
+
+	  [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
+	   (let ([Type (lambda (t)
+			 (unless (memq t '(String Int Float Char))
+			   (error 'verify-regiment
+				  "this is not a type that can be read with dataFile: ~s" t))
+			 t)])
+	     (match t
+	       [#(,t* ...) (for-each Type t*)]
+	       [,t (Type t)])
+	     `(assert-type (Signal ,t)  `(dataFile ,file ,mode ,repeats)))]
 	 
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env))

@@ -38,20 +38,6 @@
 			   [(,a . ,[b]) `(cons ,a ,b)])
 			 fallthrough)]
 
-	  [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
-	   (let ([Type (lambda (t)
-			 (if (memq t '(String Int Float Char))
-			     (symbol->string t)
-			     (error 'desugar-misc "this is not a type that can be read with dataFile: ~s"
-				    t)))])
-	     `(assert-type (Signal ,t)
-  	       ,(match t
-		 [#(,[Type -> t*] ...)  `(__dataFile ,file ,mode ,repeats ',t*)]
-		 [,t          `(__dataFile ,file ,mode ,repeats (list ',(Type t)))])
-	       ))]
-	  [(dataFile ,_ ...)
-	   (error 'desugar-misc "bad use of dataFile: ~s" `(dataFile ,_ ...))]
-
 	  ;; More sugar.
 	  ;; Don't really have a syntax for this in WaveScript:
 	  [(or ,[rands] ...)

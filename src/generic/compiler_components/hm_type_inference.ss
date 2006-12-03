@@ -593,13 +593,8 @@
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
-    ;; HACK: We treat __dataFile as a primitive for typechecking:
-    (HACK   
-     (fluid-let ([regiment-primitives 
-		  (cons '(__dataFile (String String Int (List String)) (Signal 'a))
-			regiment-primitives)])
-       (l exp)
-       ))))
+    ;; Initiate main loop:
+    (l exp)))
 
 ;; Internal helper.
 (define (valid-user-type! t)
@@ -706,7 +701,6 @@
 		[(tuple ,[e*] ...) `(tuple ,e* ...)]
 		[(tupref ,n ,[e]) `(tupref ,n ,e)]
 		[(unionN ,[e*] ...) `(unionN ,e* ...)]
-		[(__dataFile ,[f] ,[m] ,[r] ,ls) `(__dataFile ,f ,m ,r ,ls)]
 
 		[(set! ,v ,[e]) `(set! ,v ,e)]
 		[(begin ,[e] ...) `(begin ,e ...)]
@@ -978,7 +972,6 @@
        [(tuple ,[args] ...) (apply append args)]
        [(tupref ,n ,m ,[x]) x]
        [(unionN ,[args] ...) (apply append args)]
-       [(__dataFile ,[f] ,[m] ,[r] ,ls) (append args)]
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
 	(guard (memq let '(let letrec lazy-letrec)))

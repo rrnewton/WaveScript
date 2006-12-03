@@ -23,7 +23,8 @@
 
 	   test-this  test-wavescript_emit-c)
   (chezprovide )  
-  (chezimports (except helpers test-this these-tests))
+  (chezimports (except helpers test-this these-tests)
+	       )
   
 ;======================================================================
 ;;                       <WaveScript C generation>
@@ -131,53 +132,50 @@
 
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Signal (Struct ,structname))
-		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
+		      (dataFile ,[myExpr -> file] ,[myExpr -> mode]
 				  ,[myExpr -> repeats] ;,[myExpr -> types]
-				  ,types
+				  ;,types
 				  ))
-	 (let ([name (symbol->string (unique-name 'WSDataFileSource))])
-	 (values 
-	  `("WSSource* name = new ",name"(",file", ",mode", ",repeats", ",types");\n"
-	    ;; Literal array:
-	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
-	    )
-	  (list
-	   (block (list "class " name)
-	      (list "public:\n"
+	 (let* ([name (symbol->string (unique-name 'WSDataFileSource))]
+		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
+		[maintext 
+		(block (list "class " name)
+		 (list "public:\n"
 	       (block (list name "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
 		 `("_f = fopen(path.c_str(), \"r\");\n"
 		   "if (_f == NULL) { chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path); abort(); }"
 		   "Launch();")
 		)
-	       "\n  DEFINE_SOURCE_TYPE(struct "structname");\n"
+	       "\n  DEFINE_SOURCE_TYPE(struct "(symbol->string structname)");\n"
 	       "\nprivate:\n"
 	       "  FILE* _f;\n"
  	       (block "void *run_thread()"
 	       (list		
 		(block "while (!Shutdown())"
-		  `("struct ",structname" tup;\n"
+		  `("struct ",(symbol->string structname)" tup;\n"
 		    "int status = fscanf(_f, \""
 		    ,(insert-between " "
 		      (map (lambda (ty)
 			     (match ty
-			      ["Float" "%lf"]
-			      ["Int" "%d"]
-			      ["String" "%s"]
+			      [Float  "%lf"]
+			      [Int    "%d"]
+			      [String "%s"]
 			      ))
 			types))
 		    "\", "
 		    ,(insert-between ", "
 		      (map (lambda (fld ty)
+			    (define f (symbol->string fld))
 			    (match ty
-			      ["Float"  `("&(tup.",fld")")]
-			      ["Int"    `("&(tup.",fld")")]
+			      [Float  `("&(tup.",f")")]
+			      [Int    `("&(tup.",f")")]
 			      ;; UNFINISHED: NEED TO DO SOMETHING NASTY FOR STRINGS:
-			      ["String" `("(tup.",fld")")]
+			      [String `("(tup.",f")")]
 			      ))
 		       (list-head standard-struct-field-names (length types))
 		       types))
 		    ");\n"
-		    ,(block `("if (status != ",(length types)")")
+		    ,(block `("if (status != ",(number->string (length types))")")
 		      '("chatter(LOG_WARNING, \"Tick EOF encountered (status=%d).\", status);\n"
 			"WSSched::stop();\n"
 			"return NULL;\n"))
@@ -185,8 +183,14 @@
 		    "source_emit(t);\n"
 		    ))
 		"return NULL;")
-	       )))))
-	   )]
+	       )))])
+	   (DEBUGASSERT text? maintext)
+	 (values 
+	  `("WSSource* name = new ",name"(",file", ",mode", ",repeats");\n"
+	    ;; Literal array:
+	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
+	    )
+	  (list maintext)))]
 
 	;; [2006.11.18] This is for readng pipeline data currently.
 	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
