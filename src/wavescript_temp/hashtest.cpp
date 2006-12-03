@@ -36,18 +36,18 @@ static size_t myhash(unsigned char* ptr, int size) {
   return hash;
 }
 
-struct test
+class test
 {
   int x,y;
 };
 struct hashtest {
-  size_t operator()(struct test tup) {
+  size_t operator()(test tup) {
     //return myhash((unsigned char*)&tup, sizeof(struct test));
     return 0;
   }
 };
 struct eqtest {
-  bool operator()(struct test tup1, struct test tup2) {
+  bool operator()(test tup1, test tup2) {
     //myhash((unsigned char*)&tup, sizeof(struct test));
     return 1;
   }
@@ -102,9 +102,6 @@ int main()
   cout << "lookup  -> " << (*boosted)["foo"] << endl;
   cout << "lookup2  -> " << (*boosted)["baz"] << endl;
   cout << "lookup3  -> " << (*boosted)["bar"] << endl;
-
-  boost::shared_ptr< hash_map<struct test, int> > 
-    foo(new hash_map<struct test, int> ); 
   
   test s;  
   s.x = 99;
@@ -125,9 +122,6 @@ int main()
   cout << "Now decrement again: " << (*boosted)[(const char*)&s] << endl;
 
 
-  boost::shared_ptr< hash_map<struct test, int> > 
-    foo2(new hash_map<struct test, int> ); 
-
   boost::hash<int> inthash;
   boost::hash<struct test> testhash;
   boost::hash< boost::tuple<int,char> > tuphash;
@@ -145,7 +139,7 @@ int main()
 
   // Ok, now doing manually:
   //hash_map<struct test, int, hashtest, eqtest > manual;
-  hash_map<struct test, int, hashtest, eqtest > manual;
+  hash_map<test, int, hashtest, eqtest > manual;
   manual[s] = 3295;
 
   //hash_map<int, int, hash<int>, equal_to<int> > manual;
