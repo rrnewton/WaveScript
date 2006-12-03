@@ -255,6 +255,8 @@
     ;; 
     ;; dataFile must occur directly within a ( :: T) construct.
     (dataFile (String String Int) (Signal 'a))
+    ;; Internal compiler construct:
+    (__dataFile (String String Int (List Symbol)) (Signal 'a))
 
     ;; Fabricates stock ticks and splits.  For benchmark.
     ;; Tuple is of one of two forms:

@@ -16,9 +16,11 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <ext/hash_map>
 
 using boost::enable_shared_from_this;
 using namespace std;
+using namespace __gnu_cxx;
 
 #define TRUE 1
 #define FALSE 0
@@ -28,6 +30,7 @@ using namespace std;
 
 typedef int wsint_t;
 typedef double wsfloat_t;
+typedef bool wsbool_t;
 typedef string wsstring_t;
 
 #define WS_DEFINE_OUTPUT_TYPE(type)                \

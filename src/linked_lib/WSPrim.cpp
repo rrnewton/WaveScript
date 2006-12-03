@@ -32,6 +32,9 @@
 //   }
 
 
+   inline static wsbool_t wsnot(wsbool_t b) {
+     return (wsbool_t)!b;
+   }
 
    static wsint_t width(const RawSeg& w) {
      return (wsint_t)w.length();
@@ -58,6 +61,10 @@
      return A+B;
    }
 
+   // How to do this?  Need to annotate the type properly.
+   //   static hash_map<int,int> hashtable(int size) {     
+   //   }
+
    // Simple hash function, treat everything as a block of bits.
    static size_t hash(unsigned char* ptr, int size) {
      size_t hash = 5381;
@@ -65,8 +72,8 @@
      for(int i=0; i<size; i++) 
        hash = ((hash << 5) + hash) + ptr[i]; /* hash * 33 + c */	 	 
      return hash;
-   }
-
+   }   
+   
    // Optimized version, unfinished.
    /*
    static unsigned long hash(unsigned char* ptr, int size) {

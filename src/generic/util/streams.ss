@@ -42,7 +42,8 @@
   (syntax-rules ()
     [(_ a b) (cons a (delay b))]))
 ;; NOTE: Double delay for append:
-(define-syntax stream-append
+;; Appends list to stream... not stream to stream!
+(define-syntax stream-append-list
   (syntax-rules ()
     [(_ args ... tail) (delay (append args ... (delay tail)))]))
 (define stream-car

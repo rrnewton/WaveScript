@@ -38,8 +38,9 @@
 	   core-generic-traverse/types
            test-this test-core-generic-traverse
 	   binding-form? 
-	   binding-form->other-exprs binding-form->scoped-exprs
+	   binding-form->unscoped-exprs binding-form->scoped-exprs
 	   binding-form->vars binding-form->types
+	   binding-form-visit-knowncode
 	   core-free-vars
 	   )
 
@@ -48,9 +49,17 @@
 	       ;regiment_helpers
 	       )
 
+;;============================================================
 ;; Here is a simple procedural interface.
 
 ;; TODO: CONSOLIDATE: Rewrite the define-pass [Bindings ...] clause to use these helpers:
+
+;; Note: There are two relevent ways to partition the subexpressions
+;; contained in a binding form.  You can separate out the expressions
+;; that are in the scope of the bound variables, vs. those that are
+;; not.  Or you can separate out the variable bindings for which we
+;; have code (let-style) vs. those we do not (lambda).
+;;   Here we provide methods for both.
 
 ;; This is for double-checking our work below.
 (define (binding-form? x)
@@ -70,14 +79,14 @@
     [,other (error 'binding-form->scoped-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns not-in-scope expressions from a binding form.
-(define (binding-form->other-exprs x)
+(define (binding-form->unscoped-exprs x)
   (match x
     [(,letrec . ,_) (guard (memq letrec '(letrec lazy-letrec))) '()]
     [(lambda . ,_) '()]
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod) rhs*]
     [(for (,i ,st ,en) ,bod) (list st en)]
-    [(let* . ,_) (error 'binding-form->other-exprs "doesn't really make sense with let*: ~s" x)]
-    [,other (error 'binding-form->other-exprs "not a binding form: ~s" x)]
+    [(let* . ,_) (error 'binding-form->unscoped-exprs "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->unscoped-exprs "not a binding form: ~s" x)]
     ))
 ;; Returns bound-vars from a binding form.
 (define (binding-form->vars x)
@@ -99,6 +108,48 @@
     [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    ty*]
     [(for (,i ,st ,en) ,bod)                '(Int)]
     [(let* . ,_) (error 'binding-form->types "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->types "not a binding form: ~s" x)]
+    ))
+
+;; Extracts a many-holed context for rebuilding the form.
+#;
+(define (binding-form->k x)
+  (match x
+    [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
+     (lambda (lhs* ty* rhs* other ))
+     ty*]
+    [(lambda (,vars ...) (,types ...) ,bod) types]
+    [(let ([,lhs* ,ty* ,rhs*] ...) ,bod)    ty*]
+    [(for (,i ,st ,en) ,bod)                '(Int)]
+    [(let* . ,_) (error 'binding-form->types "doesn't really make sense with let*: ~s" x)]
+    [,other (error 'binding-form->types "not a binding form: ~s" x)]
+    ))
+
+;; Some of the bindings we have the code for (e.g. let).  This returns
+;; those bindings along with a way to reconstruct the original form.
+;;   For bindings we don't have the code for, the rhs is "#f".
+;;   ORTHOGONAL to ->scoped vs. ->unscoped above.
+;; .returns 5 values: vars types knownrhs otherexpr reconstructor
+(define (binding-form-visit-knowncode x)
+  (match x
+    [(,lett ([,lhs* ,ty* ,rhs*] ...) ,bod) 
+     (guard (memq lett '(letrec lazy-letrec let let*)))
+     (values lhs* ty* rhs* (list bod)
+	     (lambda (lhs* ty* rhs* other) 
+	       (DEBUGASSERT (and (list? other) (fx= 1 (length other))))
+	       `(,lett ([,lhs* ,ty* ,rhs*] ...) ,(car other))))]
+    [(lambda (,vars ...) (,types ...) ,bod) 
+     (values vars types (make-list (length types) #f) (list bod)
+	     (lambda (lhs* ty* rhs* other)
+	       (DEBUGASSERT (and (list? other) (fx= 1 (length other))))
+	       (DEBUGASSERT (eq? #f (ormap id rhs*)))
+	       `(lambda ,lhs* ,ty* ,(car other))))]
+    ;; This is a weird case.  I guess i is bound to start.
+    [(for (,i ,st ,en) ,bod)
+     (values (list i) '(Int) (list st) (list en bod)
+	     (lambda (lhs* ty* rhs* other)
+	       `(for (,(car lhs*) ,(car rhs*) ,(car other))
+		    ,(cadr other))))]
     [,other (error 'binding-form->types "not a binding form: ~s" x)]
     ))
 
@@ -309,7 +360,7 @@
 
 	      (let ([scoped (binding-form->scoped-exprs form)]
 		    [vars (binding-form->vars form)]
-		    [others (binding-form->other-exprs form)]
+		    [others (binding-form->unscoped-exprs form)]
 		    )			      
 ;	      (inspect `([scoped ,scoped] [vars ,vars] [others ,others] ))
 

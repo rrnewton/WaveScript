@@ -178,7 +178,9 @@
 				      
 				      ;; If it's not a variable-binding construct, we just let it 
 				      ;; go through to the final, auto-looping fallthrough:
-				      [,other (fallthrough other)]
+				      [,other 
+				       (ASSERT (compose not binding-form?) other)
+				       (fallthrough other)]
 				      ))))))))
 
 

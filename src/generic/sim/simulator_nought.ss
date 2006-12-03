@@ -1457,7 +1457,7 @@
 	     (set! so-far (reverse return-vals)) ;; Gather the results of computation thusfar.
 	     (set! return-vals '()))             ;; CLEAR buffer.
 	    ;; Now return the appropriate stream.
-	    (stream-append so-far (delay (promiseloop next))))]
+	    (stream-append-list so-far (delay (promiseloop next))))]
 	 
 	 [else (error 'generate-simulator "invalid return value from threadrunner: ~a" result)]))
 

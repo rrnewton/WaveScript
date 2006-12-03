@@ -44,6 +44,7 @@
   (define (wrap x)
   ;; If it's a string, then we just wrap it.
   (or (and (string? x) (list x))
+      (and (null? x) ())
       (IFDEBUG 
        ;; We do this more defensively in debug mode
        (and (list? x)

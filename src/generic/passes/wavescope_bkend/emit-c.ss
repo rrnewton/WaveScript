@@ -132,9 +132,9 @@
 
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Signal (Struct ,structname))
-		      (dataFile ,[myExpr -> file] ,[myExpr -> mode]
-				  ,[myExpr -> repeats] ;,[myExpr -> types]
-				  ;,types
+		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
+				  ,[myExpr -> repeats] 
+				  ,_ignored
 				  ))
 	 (let* ([classname (symbol->string (unique-name 'WSDataFileSource))]
 		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
@@ -294,11 +294,19 @@
       ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
       (symbol->string var))
     (define (PrimName var)
-      (format "WSPrim::~a" (mangle-name (symbol->string var))))
+      ;; Handle special cases here.
+      (define (special v)
+	(case v
+	  [(not) 'wsnot] ; The name "not" makes g++ unhappy.
+	  [else v]))
+      (format "WSPrim::~a" (mangle-name (symbol->string (special var)))))
       ;(symbol->string var))
     (define (FunName var)
       (format "WSFunLib::~a" var))
       ;(symbol->string var))
+
+; ======================================================================
+;; Statements.
 
     (define (Stmt tenv)
       (lambda (st)
@@ -359,8 +367,8 @@
 	[(begin ,[stmts] ...) stmts]
 
 	[(,containerset! ,[myExpr -> container] ,[myExpr -> ind] ,[myExpr -> val])
-	 (guard (memq containerset! '(arr-set! hashset)))
-	 `(,container "[" ,ind "] = " ,val ";\n")]
+	 (guard (memq containerset! '(arr-set! hashset_BANG)))
+	 `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
 	[(set! ,[Var -> v] ,[myExpr -> e])
 	 `(,v " = " ,e ";\n")]       
@@ -384,6 +392,9 @@
 	(DEBUGASSERT text? result)
 	result
 	))
+
+; ======================================================================
+;; Expressions.
 	
     (define (Expr tenv)
       (lambda (exp)
@@ -408,9 +419,6 @@
 	  [(string? datum) (format "~s" datum)]
 	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
 	[,v (guard (symbol? v)) (Var v)]	
-
-	;; TODO: Could make this into a cast statement for a sanity check??
-	[(assert-type ,t ,[e]) e]
 
 	[(if ,[test] ,[conseq] ,[altern])
 	 `("(",test " ? " ,conseq " : " ,altern")")]
@@ -475,20 +483,29 @@
 	[(cdr (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->cdr")]
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
+	[(,lp . ,_) (guard (memq lp '(cons car cdr))) ;; Safety net.
+	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
+	 ]
 
 	;; ----------------------------------------
 	;; Hash tables:
 
-	;[(assert-type (hashtable ,n)) ??]
-	[(hashget ,[ht] ,[key]) `(,ht "[",key"]")]
-	[(hashcontains ,[ht] ,[key]) `(,ht "[",key"]")]
-	
-	[(,lp . ,_) (guard (memq lp '(cons car cdr)))
-	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
-	 ]
+	;; We should have the proper type assertion on there after flattening the program.
+	;; (Remove-complex-opera*)
+	[(assert-type (HashTable ,[Type -> k] ,[Type -> v]) (hashtable ,[n]))
+	 `("boost::shared_ptr< hash_map< ",k", ",v" > >("
+	   "new hash_map< ",k", ",v" >(",n"))")]
+	[(hashtable ,_) (error 'emitC:Expr "hashtable not wrapped in proper assert-type: ~s"
+			       `(hashtable ,_))]
+	[(hashget ,[ht] ,[key]) `("(*",ht ")[",key"]")]
+	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
+	[(hashcontains ,[ht] ,[key]) `("(*",ht ")[",key"]")]
 
 	[(tupref . ,_) (error 'emit-c:Expr "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
 	[(tuple . ,_) (error 'emit-c:Expr "tuple should have been eliminated: ~s" `(tuple . ,_))]
+
+	;; TODO: Could make this into a cast statement for a sanity check??
+	[(assert-type ,t ,[e]) e]
 
 	; ============================================================
 	;; Other prims fall through:

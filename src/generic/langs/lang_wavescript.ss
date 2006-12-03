@@ -515,7 +515,7 @@
 	 (if (null? streams) '()
 	     (let ([batch (map (lambda (v) (vector (vector-ref v 0) (stream-car (vector-ref v 1))))
 			    streams)])
-	       (stream-append batch
+	       (stream-append-list batch
 			      (loop (filter (lambda (v) (not (stream-empty? (vector-ref v 1))))
 				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
 					streams)))))))
