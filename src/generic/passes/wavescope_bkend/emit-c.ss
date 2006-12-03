@@ -184,8 +184,17 @@
 			      )
 			    )
 			))
-
 		    ");\n"
+		    ;; Now with that nasty scanf finished we still
+		    ;; have to put the strings into the right fields:
+		    ,(map (lambda (n fld ty)
+			    (if (eq? ty 'String)
+				(format "tup.~a = str~a;\n" fld n)
+				'()))
+		       (iota 1 (length types))
+		       (list-head standard-struct-field-names (length types))
+		       types)
+
 		    ,(block `("if (status != ",(number->string (length types))")")
 		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (status=%d).\", status);\n"
 			"WSSched::stop();\n"

@@ -48,5 +48,6 @@ echo
 
 echo Writing scipt \"run_query\".  Use it to invoke the compiled query.
 echo '#!/bin/sh' > run_query
-echo '(cd $WAVESCOPED; ./run_WaveScriptQuery)' >> run_query
+#echo '(cd $WAVESCOPED; ./run_WaveScriptQuery)' >> run_query
+echo '$WAVESCOPED/run_WaveScriptQuery $*' >> run_query
 chmod +x run_query
