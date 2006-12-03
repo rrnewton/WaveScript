@@ -36,22 +36,27 @@ static size_t myhash(unsigned char* ptr, int size) {
   return hash;
 }
 
-class test
+typedef const struct test* thistest;
+
+struct test
 {
   int x,y;
 };
 struct hashtest {
-  size_t operator()(test tup) {
-    //return myhash((unsigned char*)&tup, sizeof(struct test));
-    return 0;
+  size_t operator()(thistest tup) const 
+  {
+    return myhash((unsigned char*)tup, sizeof(struct test));   
+    //return 33;
   }
 };
 struct eqtest {
-  bool operator()(test tup1, test tup2) {
-    //myhash((unsigned char*)&tup, sizeof(struct test));
-    return 1;
+  bool operator()(thistest tup1, thistest tup2) {
+    return (tup1->x == tup2->x && 
+	    tup1->y == tup2->y );
+    //return 0;
   }
 };
+
 
 
 //template <class Tk, cl>
@@ -126,9 +131,11 @@ int main()
   boost::hash<struct test> testhash;
   boost::hash< boost::tuple<int,char> > tuphash;
   
+  //hash_map<tuple<int,char>, int, hash<tuple<int,char> >, equal_to<tuple<int,char> > > manual;
+  //hash_map< boost::tuple<int,char>, int> tuplemap;
   boost::tuple<int,char> mytup(1,'a');
-
   cout << "Here's a tup: " << mytup << endl;
+  //tuplemap[mytup] = 39;
 
   // This doesn't work.  Big template related error.
   //  (*foo)[s] = 12345;
@@ -139,12 +146,19 @@ int main()
 
   // Ok, now doing manually:
   //hash_map<struct test, int, hashtest, eqtest > manual;
-  hash_map<test, int, hashtest, eqtest > manual;
-  manual[s] = 3295;
+  //hash_map<test, int, hashtest, equal_to<test> > manual;
+  hash_map<thistest, int, hashtest, eqtest > manual;
+  manual[&s] = 3295;
+  cout << "Victory: " << manual[&s] << endl;
 
-  //hash_map<int, int, hash<int>, equal_to<int> > manual;
-  //manual[s.x] = 3295;
-  
+   s.x++;
+   cout << "This should miss:: " << manual[&s] << endl;
+   s.x--;
+   s.y++;
+   cout << "This should miss:: " << manual[&s] << endl;
+   
+   int status = scanf("%d %d", &(s.x), &(s.y));
+   printf("SCANNED: %d, %d\n", s.x, s.y);
 }
 
 

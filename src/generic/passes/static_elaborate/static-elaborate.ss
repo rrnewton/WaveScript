@@ -38,8 +38,7 @@
            "../plt/iu-match.ss"
 	   "../plt/prim_defs.ss"
 	   (all-except "../plt/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
-  
+           (all-except "../plt/regiment_helpers.ss" test-this these-tests))  
   (provide 
    ;(all-defined)
    static-elaborate
@@ -155,6 +154,7 @@
 	  [(tupref ,n ,m ,[x]) x]
 	  [(tuple ,[args] ...) (apply + args)]
 	  [(unionN ,[args] ...) (apply + args)]
+	  [(__dataFile ,[file] ,[mode] ,[repeats] ,ls) (+ file mode repeats)]
           
 	  [(,prim ,[rands] ...)
 	   (guard (regiment-primitive? prim))
@@ -423,6 +423,8 @@
 
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
+	  [(__dataFile ,[file] ,[mode] ,[repeats] ,ls) 
+	   `(__dataFile ,file ,mode ,repeats ,ls)]
 
 	  ;; First we handle primitives that work on container types: 
 	  [(tupref ,ind ,len ,[tup])

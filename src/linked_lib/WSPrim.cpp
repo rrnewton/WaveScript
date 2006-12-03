@@ -57,6 +57,33 @@
    static wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
      return A+B;
    }
+
+   // Simple hash function, treat everything as a block of bits.
+   static size_t hash(unsigned char* ptr, int size) {
+     size_t hash = 5381;
+     int c;
+     for(int i=0; i<size; i++) 
+       hash = ((hash << 5) + hash) + ptr[i]; /* hash * 33 + c */	 	 
+     return hash;
+   }
+
+   // Optimized version, unfinished.
+   /*
+   static unsigned long hash(unsigned char* ptr, int size) {
+     int stride = sizeof(unsigned long);
+     unsigned long hash = 5381;
+     unsigned long* chunked = (unsigned long*)ptr;
+     int rem = size % stride;
+     for (int i=0; i < size/stride; i++) {
+       hash = ((hash << 5) + hash) + chunked[i];
+     }
+     for (int i=0; i < rem; i++) {
+       //FINISH
+     }
+     return hash;
+   }
+   */
+
 };
 
 
@@ -104,13 +131,42 @@ class WSBuiltins {
      }
    };
 
-
-
-  // TEMP:
-  // This is a source for the stock tick application.
   
+//   class WSDataFileSource : public WSSource {
+//   public:
+//     WSDataFileSource(wsstring_t path, wsstring_t mode, wsint_t repeats) {
+//       _f = fopen(path.c_str(), "r");
+//       if (_f == NULL) { chatter(LOG_CRIT, "Unable to open data file %s: %m", path); abort(); }
+//       Launch();
+//     }
 
+//     DEFINE_SOURCE_TYPE(TimeTuple<struct tick>);
 
+//   private:
+//     FILE* _f;
+//     void *run_thread() {
+//       double time;
+//       char symb[7];
+//       float price;
+//       int volume;
 
+//       while (!Shutdown()) {
+// 	int status = fscanf(_f, "%lf %s %f %d\n", &time, symb, &price, &volume);
+// 	if (status != 4) {
+// 	  chatter(LOG_WARNING, "Tick EOF encountered (status=%d).", status);
+// 	  WSSched::stop();
+// 	  return NULL;
+// 	}
+
+// 	TimeTuple <struct tick> t;
+// 	t.time = (uint64_t)(time*1000000);
+// 	strcpy(t.tuple.symb, symb);
+// 	t.tuple.price = price;
+// 	t.tuple.volume = volume;
+// 	source_emit(t);
+//       }
+//       return NULL;
+//     }
+//   };
   
 };

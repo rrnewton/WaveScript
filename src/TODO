@@ -59,6 +59,11 @@ supposed to return an intermediate record.
 [2006.08.29]
 
  *) How much work would it be to track source locations?
+  [2006.12.03]
+  So what I would like to do is add a general association list of "info" to each term.
+  This is analogous to the to a parameterized "expr 'a" type in ML.
+  THEN I can remove hackish things like __dataFile being not a primitive.
+
 
 [2006.08.02]
 

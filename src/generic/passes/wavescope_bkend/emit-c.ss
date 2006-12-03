@@ -121,12 +121,72 @@
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (values 
-	  ;; CODE DUPLICATION:
-	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size" - ",overlap ");\n" 
-	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
+	  `("WSBox* ",name";\n"
+	    "{ size = ",size";\n"
+	    "  name =  new Rewindow<float>(size, size - ",overlap ");\n" 
+	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())]
+
+	;; Produces an instance of a generic dataFile reader.
+	[(assert-type (Signal (Struct ,structname))
+		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
+				  ,[myExpr -> repeats] ;,[myExpr -> types]
+				  ,types
+				  ))
+	 (let ([name (symbol->string (unique-name 'WSDataFileSource))])
+	 (values 
+	  `("WSSource* name = new ",name"(",file", ",mode", ",repeats", ",types");\n"
+	    ;; Literal array:
+	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
+	    )
+	  (list
+	   (block (list "class " name)
+	      (list "public:\n"
+	       (block (list name "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
+		 `("_f = fopen(path.c_str(), \"r\");\n"
+		   "if (_f == NULL) { chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path); abort(); }"
+		   "Launch();")
+		)
+	       "\n  DEFINE_SOURCE_TYPE(struct "structname");\n"
+	       "\nprivate:\n"
+	       "  FILE* _f;\n"
+ 	       (block "void *run_thread()"
+	       (list		
+		(block "while (!Shutdown())"
+		  `("struct ",structname" tup;\n"
+		    "int status = fscanf(_f, \""
+		    ,(insert-between " "
+		      (map (lambda (ty)
+			     (match ty
+			      ["Float" "%lf"]
+			      ["Int" "%d"]
+			      ["String" "%s"]
+			      ))
+			types))
+		    "\", "
+		    ,(insert-between ", "
+		      (map (lambda (fld ty)
+			    (match ty
+			      ["Float"  `("&(tup.",fld")")]
+			      ["Int"    `("&(tup.",fld")")]
+			      ;; UNFINISHED: NEED TO DO SOMETHING NASTY FOR STRINGS:
+			      ["String" `("(tup.",fld")")]
+			      ))
+		       (list-head standard-struct-field-names (length types))
+		       types))
+		    ");\n"
+		    ,(block `("if (status != ",(length types)")")
+		      '("chatter(LOG_WARNING, \"Tick EOF encountered (status=%d).\", status);\n"
+			"WSSched::stop();\n"
+			"return NULL;\n"))
+		    ;"t.time = (uint64_t)(time*1000000);\n"
+		    "source_emit(t);\n"
+		    ))
+		"return NULL;")
+	       )))))
+	   )]
 
 	;; [2006.11.18] This is for readng pipeline data currently.
 	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
@@ -138,19 +198,6 @@
 	   "  ",name"->connect(tmp); }\n"
 	   )
 	 ]
-
-	;; This is for reading in stock ticks.
-	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
-	 ;; CODE DUPLICATION:
-	 `("WSBox* ",name";\n"
-	   "{ size = ",size";\n"
-	   "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	   "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
-	   "  ",name"->connect(tmp); }\n"
-	   )
-	 ]
-
-
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -436,7 +483,8 @@
 	[Float "wsfloat_t"]
 	[,simple (guard (memq simple '(Complex Float)))
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
-	[,v (guard (symbol? v)) (symbol->string v)]
+	[String "wsstring_t"] ;; Not boosted.
+	;[,v (guard (symbol? v)) (symbol->string v)]
 	;; Went back and forth on whether this should be a pointer:
 	[(Sigseg ,[t]) `("RawSeg")]
 ;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
@@ -465,7 +513,7 @@
   (match typ
     [Int `("printf(\"%d\", ",e");\n")]
     [Float `("printf(\"%f\", ",e");\n")]
-    [String `("printf(",e");\n")]
+    [String `("printf(",e".c_str());\n")] ;; Get the char* out.
     ;; TEMP: Have to wrap the sigseg to get the << method.
     ;; This should be fixed in the C++.
     [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
@@ -504,6 +552,21 @@
 				fld* tmpargs)) " {}\n"
 				)))
 	    ";\n\n"))]))
+;; TODO: Add these:
+; struct hashtest {
+;   size_t operator()(thistest tup) const 
+;   {
+;     return myhash((unsigned char*)tup, sizeof(struct test));   
+;   }
+; };
+; struct eqtest {
+;   bool operator()(thistest tup1, thistest tup2) {
+;     return (tup1->x == tup2->x && 
+; 	    tup1->y == tup2->y );
+;   }
+; };
+
+
 
   ;============================================================
   ;;; Other helpers:

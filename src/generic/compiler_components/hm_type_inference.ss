@@ -298,9 +298,10 @@
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
 (define (prim->type p)
-  (let ((entry (or (assq p regiment-basic-primitives)
-		   (assq p regiment-constants)
-		   (assq p regiment-distributed-primitives)
+  (let ((entry (or ;(assq p regiment-basic-primitives)
+		   ;(assq p regiment-constants)
+		   ;(assq p regiment-distributed-primitives)
+		   (assq p regiment-primitives)
 		   )))
     (unless entry
       (error 'prim->type "primitive was not found: ~a" p))
@@ -479,7 +480,7 @@
 		   (car existing-type)]))
       optional))
   ;; Here's the main loop:
-  (let l ((exp exp))
+  (letrec ([l (lambda (exp)
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
@@ -591,7 +592,14 @@
        (l `(app ,rat ,rand* ...))]
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
-      )))
+      ))]) ;; End main-loop "l"    
+    ;; HACK: We treat __dataFile as a primitive for typechecking:
+    (HACK   
+     (fluid-let ([regiment-primitives 
+		  (cons '(__dataFile (String String Int (List String)) (Signal 'a))
+			regiment-primitives)])
+       (l exp)
+       ))))
 
 ;; Internal helper.
 (define (valid-user-type! t)
@@ -698,6 +706,7 @@
 		[(tuple ,[e*] ...) `(tuple ,e* ...)]
 		[(tupref ,n ,[e]) `(tupref ,n ,e)]
 		[(unionN ,[e*] ...) `(unionN ,e* ...)]
+		[(__dataFile ,[f] ,[m] ,[r] ,ls) `(__dataFile ,f ,m ,r ,ls)]
 
 		[(set! ,v ,[e]) `(set! ,v ,e)]
 		[(begin ,[e] ...) `(begin ,e ...)]
@@ -969,6 +978,7 @@
        [(tuple ,[args] ...) (apply append args)]
        [(tupref ,n ,m ,[x]) x]
        [(unionN ,[args] ...) (apply append args)]
+       [(__dataFile ,[f] ,[m] ,[r] ,ls) (append args)]
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
 	(guard (memq let '(let letrec lazy-letrec)))

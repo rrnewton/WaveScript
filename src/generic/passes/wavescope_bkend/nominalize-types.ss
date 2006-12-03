@@ -7,25 +7,28 @@
 
 ;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
 
-
-
   ;; This gets set later in a different scope.
   (define bindings-fun 'uninit)
 
   ;; This looks up a variable's tuple type in the tupdef bindings.
   ;; I can't push it down deeper because currently the define-pass
   ;; macro only works at top level.
-  (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])
-
+  (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])  
 
 
 (module wavescript_nominalize-types  mzscheme 
   (require "../../../plt/helpers.ss")
 ;  (require "../../util/helpers.ss")
-  (provide nominalize-types test-this test-nominalize-types)
+  (provide nominalize-types test-this test-nominalize-types standard-struct-field-names)
   (chezprovide )
   (chezimports (except helpers test-this these-tests)
 	       (except reg_core_generic_traverse test-this these-tests))
+
+
+  ;; The fixed names of fields.
+  (define standard-struct-field-names 
+    (map (lambda (n) (string->symbol (format "fld~s" (fx+ 1 n))))
+      (iota MAX_TUPLE_SIZE)))
 
   ;; Does this type have a known size?
   ;; Matters for making tuples into structs.
@@ -54,11 +57,6 @@
       ;; The generic traversal returns an intermediate value of type
       ;; #(Expr TypeDefs) where TypeDefs is list of [Name [StructFieldType ...]] pairs.
       (reg:define-struct (result expr tydefs))
-
-      ;; The fixed names of fields.
-      (define field-names 
-	(map (lambda (n) (string->symbol (format "fld~s" (fx+ 1 n))))
-	  (iota MAX_TUPLE_SIZE)))
 
       ;; An association list accumulating new struct types.
       ;; 
@@ -103,21 +101,6 @@
 	    (append-tydefs2 (car args)
 			    (apply append-tydefs (cdr args)))
 	    ))
-
-      (define (insert-struct-names expr tupdefs)
-	(core-generic-traverse
-	 (lambda (x fallthru)
-	   (match x
-	     [(assert-type ,t ,[e])
-	      `(assert-type ,(convert-type t tupdefs) ,e)
-	      ]
-	     [(make-struct ,ty* ,[args] ...)
-	      `(make-struct ,(last (assoc ty* tupdefs)) ,@args)]
-	     [,oth (fallthru oth)])
-	   )
-	 (lambda (ls k) (apply k ls))
-	 expr))
-
       
       (define (make-new-typedef argtypes)
 	(unless (andmap known-size? argtypes)
@@ -126,11 +109,12 @@
 		 type))
 	;; Return a new typedef:
 	(list argtypes
-	      (list-head field-names (length argtypes))
+	      (list-head standard-struct-field-names (length argtypes))
 	      (unique-name 'tuptyp)))
-
-      ;; We avoid the boilerplate by defining this as a "generic traversal"
+      
+      ;; A first pass to collect tuple type defs.
       (define (collect-tupdefs expr tenv)
+	;; We avoid the boilerplate by defining this as a "generic traversal"
 	(core-generic-traverse/types
 	 ;; Driver
 	 (lambda (expr tenv loop)
@@ -170,19 +154,38 @@
 		  `((,ty1 ,ty2) (_first _second) (EXT Zip2)) ;; Special NAME field.		  
 		  defs)
 		 ))]
-	     
+
+;; THIS IS ALL UNNECESSARY, HANDLED BY ASSERT-TYPE CASE:
+
 	     ;; We have to add a new tuple type for the tuples produced by dataFile:
-	     [(assert-type (Signal ,t) (___dataFile ,[file] ,[mode] ,[ls]))	      
+	     [(assert-type (Signal ,t) (__dataFile ,[file] ,[mode] ,[repeats] ,[ls]))
 	      (let* ([newdefs (add-new-tydef
 			       (make-new-typedef (vector->list t))
 			       (apply append
-				      (map result-tydefs (list file mode ls))))]
+				      (map result-tydefs (list file mode repeats ls))))])
+		(make-result 		 
+		 `(assert-type (Signal ,t)
+			       (__dataFile ,(result-expr file) ,(result-expr mode)
+					   ,(result-expr repeats) ,(result-expr ls)))
+		 newdefs))]
+	     [(assert-type ,t (__dataFile . ,_)) 
+	      (error 'nominalize-types "bad dataFile form: ~s" `(assert-type ,t (__dataFile . ,_)))]
+	     [(__dataFile . ,_) (error 'nominalize-types "bad dataFile form: ~s" `(__dataFile . ,_))]
+
+;; TODO: DO THIS IN GENERAL CASE:
+#;
+	     [(assert-type ,t ,[e])
+	      (let* ([newdefs (add-new-tydef
+			       (make-new-typedef (vector->list t))
+			       (apply append
+				      (map result-tydefs (list file mode repeats ls))))]
 		     [newt (convert-type t newdefs)])
 		(make-result 		 
-		 `(assert-type (Signal ,newt)
+		 `(assert-type (Signal ,t)
 			       (__dataFile ,(result-expr file) ,(result-expr mode)
-					   ,(result-expr ls)))
+					   ,(result-expr repeats) ,(result-expr ls)))
 		 newdefs))]
+
 
 	     [(unionList ,ls)
 	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
@@ -198,13 +201,13 @@
 		      ;; Annotate the primapp with the struct-type.
 		      `(unionList ,newstruct ,(result-expr result))
 		      (add-new-tydef
-		       `((Int ,argtype) ,(list-head field-names 2) ,newstruct)
+		       `((Int ,argtype) ,(list-head standard-struct-field-names 2) ,newstruct)
 		       (result-tydefs result))
 		      ))]))]
 
 	     ;; tuprefs are simple:
 	     [(tupref ,i ,len ,[result])
-	      (make-result `(struct-ref ,(result-expr result) ,(list-ref field-names i))
+	      (make-result `(struct-ref ,(result-expr result) ,(list-ref standard-struct-field-names i))
 			   (result-tydefs result))]
 
 	     [,other (loop other tenv)]
@@ -217,6 +220,22 @@
 			(apply append-tydefs (map result-tydefs ls))))
 	 expr tenv
 	 ))
+
+      ;; This is a second pass that actually rewrites the types to their nominalized counterparts.
+      (define (insert-struct-names expr tupdefs)
+	(core-generic-traverse
+	 (lambda (x fallthru)
+	   (match x
+	     [(assert-type ,t ,[e])
+	      `(assert-type ,(convert-type t tupdefs) ,e)
+	      ]
+	     [(make-struct ,ty* ,[args] ...)
+	      `(make-struct ,(last (assoc ty* tupdefs)) ,@args)]
+	     [,oth (fallthru oth)])
+	   )
+	 (lambda (ls k) (apply k ls))
+	 expr))
+
 
       ;; TODO: REMOVE DUPLICATE STRUCT DEFS THAT HAVE THE SAME TYPES
       (define (remove-redundant tupdefs)

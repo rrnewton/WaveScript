@@ -41,7 +41,7 @@
 	  [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
 	   (let ([Type (lambda (t)
 			 (if (memq t '(String Int Float Char))
-			     t;(symbol->string t)
+			     (symbol->string t)
 			     (error 'desugar-misc "this is not a type that can be read with dataFile: ~s"
 				    t)))])
 	     `(assert-type (Signal ,t)
