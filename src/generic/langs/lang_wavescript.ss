@@ -317,32 +317,49 @@
 			 to-uint16
 			 len overlap))
 
+     (define (stream-append s1 s2)
+       (delay 
+	 (let loop ([s1 s1])
+	   (if (stream-empty? s1) s2
+	       (stream-cons (stream-car s1) 
+			    (loop (stream-cdr s1)))))))
+
+     ;; This is not a fast implementation.  Uses read.
      (define (__dataFile file mode repeat types)
-       ;; TODO: In debug mode this should check the types of what it gets.       
-       (define len (listLength types))
-       (define inp (open-input-file file))
-       (define tyvec (list->vector types))
-       (define (parse-line str)
-	 (define p (open-input-string str))
-	 (define tup (make-vector len))
-	 (let loop ([i 0])
-	   (if (fx= i len)
-	       tup
-	       (begin 
-		 (vector-set! tup i 
-  		   (case (vector-ref tyvec i)
-		     [(String) (symbol->string (read p))]
-		     [else (read p)]))
-		 (loop (fx+ 1 i))))))
-       (cond 
-	[(equal? mode "text")
-	 (let loop ([x (read-line inp)])
-	   (if (eof-object? x)
-	       '()
-	       (stream-cons (parse-line x)
-			    (loop (read-line inp)))
-	       ))]
-	[else (error 'dataFile "this mode is not supported yet: ~s" mode)]	)
+       ;; This is one iteration of the file:
+       (define thestream
+	 (let ()
+	   ;; TODO: In debug mode this should check the types of what it gets.       
+	   (define len (listLength types))
+	   (define inp (open-input-file file))
+	   (define tyvec (list->vector types))
+	   (define (parse-line str)
+	     (define p (open-input-string str))
+	     (define tup (make-vector len))
+	     (let loop ([i 0])
+	       (if (fx= i len)
+		   tup
+		   (begin 
+		     (vector-set! tup i 
+				  (case (vector-ref tyvec i)
+				    [(String) (symbol->string (read p))]
+				    [else (read p)]))
+		     (loop (fx+ 1 i))))))
+	   (cond 
+	    [(equal? mode "text")
+	     (let loop ([x (read-line inp)])
+	       (if x 
+		   (stream-cons (parse-line x)
+				(loop (read-line inp)))
+		   '()
+		   ))]
+	    [else (error 'dataFile "this mode is not supported yet: ~s" mode)]	)))
+       (case repeat
+	 [(0) thestream]
+	 [(-1) (letrec ([fix (stream-append thestream (delay fix))]) fix)]
+	 [else (ASSERT (> repeat 0))
+	       (foldr stream-append '()
+		      (make-list repeat thestream))])
        )
 
      ;; This makes an infinite stream of fake tick/split info:
@@ -363,6 +380,7 @@
 	      (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))
 	      )
 	  (loop (fl+ t (random 10.0))))))
+
 
      ;; This is a hack to load specific audio files:
      ;; It simulates the four channels of marmot data.

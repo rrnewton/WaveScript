@@ -4,7 +4,7 @@
 	(;; Syntax:
 	  
 	  ;; For plt compat:
-	  foldl
+	  foldl foldr
 	  let/ec call/ec
 	  define-values
 
@@ -162,7 +162,7 @@
 
 
 ;; From PLT's list.ss
-  (define foldl
+(define foldl
      (letrec ((fold-one
                (lambda (f init l)
                  (letrec ((helper
@@ -185,6 +185,30 @@
        (case-lambda
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
+
+;; Also from PLT's list.ss
+(define foldr
+  (letrec ((fold-one
+	    (lambda (f init l)
+	      (letrec ((helper
+			(lambda (init l)
+			  (cond
+			   [(null? l) init]
+			   [else (f (car l) (helper init (cdr l)))]))))
+		(helper init l))))
+	   (fold-n
+	    (lambda (f init l)
+	      (cond
+	       [(ormap null? l)
+		(if (andmap null? l)
+		    init
+		    (error 'foldr "received non-equal length input lists"))]
+	       [else (apply f
+			    (mapadd car l
+				    (fold-n f init (map cdr l))))]))))
+    (case-lambda
+      [(f init l) (fold-one f init l)]
+      [(f init l . ls) (fold-n f init (cons l ls))])))
 
 ;; Lifted from schemewiki:
 #;(define-syntax define-values 

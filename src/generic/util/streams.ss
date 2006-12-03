@@ -46,6 +46,7 @@
 (define-syntax stream-append-list
   (syntax-rules ()
     [(_ args ... tail) (delay (append args ... (delay tail)))]))
+
 (define stream-car
   (lambda (s)
     (let scloop ((s s))

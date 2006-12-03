@@ -334,6 +334,7 @@
 	 (error 'type-annotate-misc "was supposed to catch this prim at a binding site: ~s"
 		`(,annprim . ,e*))]
 
+;; TODO: Remove these, should be unnecessary:
 #|
 	[(print ,e) 
 	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
