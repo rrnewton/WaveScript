@@ -133,7 +133,7 @@
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Signal (Struct ,structname))
 		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
-				  ,[myExpr -> repeats] 
+				  ,[myExpr -> repeats] ;,[myExpr -> types]
 				  ,_ignored
 				  ))
 	 (let* ([classname (symbol->string (unique-name 'WSDataFileSource))]
@@ -474,13 +474,12 @@
        
 	;; ----------------------------------------
 	;; Lists:
-	[(cons (assert-type ,[Type -> tya] ,[a])
-	       (assert-type ,[Type -> tyb] ,[b]))
-	 ;`("cons< ",tyb" >::ptr(new cons< ",tyb" >(",a", (cons< ",tyb" >::ptr)",b"))")]
-	 `("cons< ",tya" >::ptr(new cons< ",tya" >(",a", (cons< ",tya" >::ptr)",b"))")]
+	[(assert-type (List ,[Type -> ty]) (cons ,[a] ,[b]))
+	 `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")]
+	[(car ,[ls]) `("(",ls")->car")]
+	[(cdr ,[ls]) `("(",ls")->cdr")]
+	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
-	[(car (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->car")]
-	[(cdr (assert-type ,[Type -> ty] ,[ls])) `("(",ls")->cdr")]
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
 	[(,lp . ,_) (guard (memq lp '(cons car cdr))) ;; Safety net.

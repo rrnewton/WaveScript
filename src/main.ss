@@ -302,7 +302,7 @@
 
 ;; Adds types to various primitives for code generation.
 (define-pass type-annotate-misc
-    (define annotated-prims '(print show car cdr cons hashtable))
+    (define annotated-prims '(print show cons hashtable))
     (define (process-expr x tenv fallthru)
       (match x
 	;; Catch them where they're bound and just use the pre-computed type:
@@ -329,29 +329,21 @@
 
 	;; Anything already in assert form is covered.
 	[(assert-type ,t ,e) `(assert-type ,t ,(fallthru e tenv))]
+
+;; TODO: Remove these, should be unnecessary:
+;; BUT SINCE WE HAVEN'T RUN REMOVE-COMPLEX-OPERA* WE NEED THESE
+
+	[(print ,e) 
+	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
+	[(show ,e) 
+	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]	
+	[(cons ,[a] ,[b])
+	 `(assert-type (List ,(recover-type a tenv)) (cons ,a ,b))]
+
 	;; For now it's an error for this stuff to occur otherwise.
 	[(,annprim ,e* ...) (guard (memq annprim annotated-prims))
 	 (error 'type-annotate-misc "was supposed to catch this prim at a binding site: ~s"
 		`(,annprim . ,e*))]
-
-;; TODO: Remove these, should be unnecessary:
-#|
-	[(print ,e) 
-	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-	[(show ,e) 
-	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-	
-;	[(emit ,vq ,v)
-;	 `(car (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-
-	[(car ,e)
-	 `(car (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-	[(cdr ,e)
-	 `(cdr (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-	[(cons ,a ,b)
-	 `(cons (assert-type ,(recover-type a tenv) ,(process-expr a tenv fallthru))
-		(assert-type ,(recover-type b tenv) ,(process-expr b tenv fallthru)))]
-|#
 
 	[,other (fallthru other tenv)]))
   [Expr/Types process-expr])
