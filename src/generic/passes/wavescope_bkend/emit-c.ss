@@ -305,6 +305,21 @@
       (format "WSFunLib::~a" var))
       ;(symbol->string var))
 
+    ;; If the type needs a specialized hashfun, returns its name,
+    ;; otherwise returns #f.
+    (define (HashType k v)
+      (define hashfun
+	(match k
+	  [,s (guard (symbol? s) (memq s '(Int Float))) #f]
+	  [String "boost::hash<string>"]
+	  [(Struct ,name)	`("hash",name)]       
+	  [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" t)]
+	  ))
+      `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >")
+      )
+
+    (define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
+
 ; ======================================================================
 ;; Statements.
 
@@ -491,9 +506,12 @@
 
 	;; We should have the proper type assertion on there after flattening the program.
 	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,[Type -> k] ,[Type -> v]) (hashtable ,[n]))
-	 `("boost::shared_ptr< hash_map< ",k", ",v" > >("
-	   "new hash_map< ",k", ",v" >(",n"))")]
+	[(assert-type (HashTable ,k ,v) (hashtable ,[n]))
+	 (let ([hashtype (HashType k v)]
+	       ;[eqfun ]
+	       [k (Type k)]
+	       [v (Type v)])
+	   `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))"))]
 	[(hashtable ,_) (error 'emitC:Expr "hashtable not wrapped in proper assert-type: ~s"
 			       `(hashtable ,_))]
 	[(hashget ,[ht] ,[key]) `("(*",ht ")[",key"]")]
@@ -506,6 +524,18 @@
 	;; TODO: Could make this into a cast statement for a sanity check??
 	[(assert-type ,t ,[e]) e]
 
+	;; Generate equality comparison:
+	[(equal? (assert-type ,t ,[a]) ,[b])
+	 (match t
+	   ;; string class defines comparison operator:
+	   [,s (guard (memq s '(Int Float String)))
+	       `(,a" == ",b)]
+	   ;; We have generated a comparison op for each struct.
+	   ;; UNFINISHED:
+	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
+	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
+	 ]
+	
 	; ============================================================
 	;; Other prims fall through:
 	[(,prim ,[rand*] ...)
@@ -541,7 +571,8 @@
 
 	[(Hashset ',_ ,__) (error 'emitC "hash table with typevar" )]
 	[(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
-	[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
+	;[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
+	[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
 	
 	;[,other (format "~a" other)]
 	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
@@ -584,16 +615,19 @@
 	  `(,(block `("struct ",name)
 		    ;; Fields:
 		    `([,typ* " " ,fld* ";\n"] ...
-		      ;; Constructor:
-#;
-		      ((,name"(",(insert-between 
-				  ", " `([,typ* " ",tmpargs] ...)
-				  )")") " :\n"					   
-			   ,@(insert-between ", \n"
+		      
+		      ;; Constructors, first nullary:
+		      (,name"() {}\n")
+		      ;; Full constructor:
+		      ,(if (null? fld*) ""
+			   `((,name"(",(insert-between 
+				      ", " `([,typ* " ",tmpargs] ...)
+				      )")") " :\n"					   
+			    ,@(insert-between ", \n"
 			      (map (lambda (fld arg)
 				     `("  ",fld "(" ,arg ")"))
 				fld* tmpargs)) " {}\n"
-				)))
+				))))
 	    ";\n\n"))]))
 ;; TODO: Add these:
 ; struct hashtest {

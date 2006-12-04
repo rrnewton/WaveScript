@@ -61,12 +61,8 @@
      return A+B;
    }
 
-   // How to do this?  Need to annotate the type properly.
-   //   static hash_map<int,int> hashtable(int size) {     
-   //   }
-
    // Simple hash function, treat everything as a block of bits.
-   static size_t hash(unsigned char* ptr, int size) {
+   static size_t generic_hash(unsigned char* ptr, int size) {
      size_t hash = 5381;
      int c;
      for(int i=0; i<size; i++) 

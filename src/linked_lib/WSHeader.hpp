@@ -12,6 +12,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
+#include <boost/functional/hash.hpp>
+
 #include <stdio.h>
 #include <list>
 #include <vector>

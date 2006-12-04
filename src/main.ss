@@ -339,6 +339,8 @@
 	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]	
 	[(cons ,[a] ,[b])
 	 `(assert-type (List ,(recover-type a tenv)) (cons ,a ,b))]
+	[(equal? ,[a] ,[b])
+	 `(equal? (assert-type ,(recover-type a tenv) ,a) ,b)]
 
 	;; For now it's an error for this stuff to occur otherwise.
 	[(,annprim ,e* ...) (guard (memq annprim annotated-prims))

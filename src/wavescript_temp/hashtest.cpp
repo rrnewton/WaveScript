@@ -157,10 +157,16 @@ int main()
    s.y++;
    cout << "This should miss:: " << manual[&s] << endl;
    
-   int status = scanf("%d %d", &(s.x), &(s.y));
+   //   int status = scanf("%d %d", &(s.x), &(s.y));
    //scanf("%d", &(s.x));
    //scanf("%d", &(s.y));
-   printf("SCANNED: %d, %d\n", s.x, s.y);
+   //   printf("SCANNED: %d, %d\n", s.x, s.y);
+
+   printf("Testing string-indexed hashes.\n");
+   string str = "foob";
+   boost::hash< string > strhash;
+   //hash_map<thistest, int, hashtest, eqtest > str;
+   printf("Hashed string: %d\n", strhash(str));
 }
 
 
