@@ -1764,6 +1764,17 @@
 ;    [(stream-cdr (delay 1)) error]
     [(stream-cdr (delay '(1))) ()]
     [(stream-car (delay '(1))) 1]
+    ["stream-map"
+     (mvlet ([(ls _) (stream-take 3 (stream-map add1 '(1 2 3)))]) ls)
+     (2 3 4)]
+    ["stream-map"
+     (mvlet ([(ls _) (stream-take 3 (stream-map add1 
+		        (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))]) ls)
+     (2 3 4)]
+    ["stream-filter" 
+     (stream-take-all (stream-filter odd?
+       (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))
+     (1 3)]
 
     ["stream-append: Shouldn't hit the error."
      (stream-car 

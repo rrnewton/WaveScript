@@ -117,9 +117,8 @@
       (cond
        [(fx= 0 n) s]
        [(stream-empty? s)
-	(error 'stream-take "Stream ran out of elements before the end!")]
-       [else 
-	(stloop (fx- n 1) (stream-cdr s))]))))
+	(error 'stream-drop "Stream ran out of elements before the end!")]
+       [else (stloop (fx- n 1) (stream-cdr s))]))))
 
 ;============================================================
 ;;; Stream transformers.
@@ -144,19 +143,20 @@
      [else (delay (stream-map-loop (force s))
 		  )])))
 
+(define (stream-filter f s)
+  ;; Don't make the output stream any lazier than the input:
+  (let stream-filt-loop ((s s))
+    (cond 
+     [(null? s) '()]
+     [(pair? s)
+      ;; Note, this is not tail recursive, but for streams the space between
+      ;; promises should not be that large! (Or it's not a stream.)
+      (if (f (car s))
+	  (cons (car s) (stream-filt-loop (cdr s)))
+	  (stream-filt-loop (cdr s)))]
+     ;; Don't break a promise (yet):
+     [else (delay (stream-filt-loop (force s)))])))
 
-(define (stream-filter f s) 
-  (let stream-filter-loop ((s s))
-    ;; This is a promise, that, when popped will scroll the stream
-    ;; forward to the next element that matches.
-    (delay 
-      (if (stream-empty? s) '()
-	  (let filter-scan-next ([first (stream-car s)] [rest (stream-cdr s)])
-	    (if (f first)
-		;; As we find matches, we build our new stream.
-		(cons first (stream-filter-loop rest))
-		(if (stream-empty? rest) '()
-		    (filter-scan-next (stream-car rest) (stream-cdr rest)))))))))
 
 ;============================================================
 ;;; Stream constructors.
@@ -217,8 +217,12 @@
 	       (printf "  ") (pretty-print (stream-car stream)) (loop pos))]
 	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
 	     (time 
-	      (mvlet ([(strm) (stream-drop n stream)])
-		(set! stream strm)))
+
+	      (set! stream (stream-drop n stream))
+#;	      
+	      (mvlet ([(_ strm) (stream-take n stream)])
+		(set! stream strm))
+	      )
 	      (loop (+ pos n))]
 
 #|	    [(,code) (guard (memq code '(c co cod code)))
