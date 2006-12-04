@@ -11,13 +11,9 @@
 
 //merged = stockStream();
 
-//merged = dataFile("ticks_splits.input", "String","Float","Int","Float");
-//merged :: Signal (String,Float,Int,Float);
 //merged = dataFile("ticks_splits.input","text",True);
 //merged = (dataFile("ticks_splits.input", "text", 250) :: Signal (String,Float,Int,Float))
 merged = (dataFile("ticks_splits.input", "text", -1) :: Signal (String,Float,Int,Float))
-
-//merged = (dataFile("ticks_splits.input", "text", 2500) :: Signal (String,Float,Int,Float))
 
 
 s = iterate ((sym,t,vol,price) in merged) {
@@ -36,10 +32,6 @@ s = iterate ((sym,t,vol,price) in merged) {
   else {
     emit (sym,t,vol,price *. hashget(ht,sym));
   };
-
-  //  then (if hashcontains(ht, sym)
-  //	then hashset_BANG(ht, sym, hashget(ht,sym) *. price)
-  //	else hashset_BANG(ht, sym, price))
 };
 
 BASE <- s;
