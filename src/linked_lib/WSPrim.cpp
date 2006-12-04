@@ -134,42 +134,5 @@ class WSBuiltins {
      }
    };
 
-  
-//   class WSDataFileSource : public WSSource {
-//   public:
-//     WSDataFileSource(wsstring_t path, wsstring_t mode, wsint_t repeats) {
-//       _f = fopen(path.c_str(), "r");
-//       if (_f == NULL) { chatter(LOG_CRIT, "Unable to open data file %s: %m", path); abort(); }
-//       Launch();
-//     }
 
-//     DEFINE_SOURCE_TYPE(TimeTuple<struct tick>);
-
-//   private:
-//     FILE* _f;
-//     void *run_thread() {
-//       double time;
-//       char symb[7];
-//       float price;
-//       int volume;
-
-//       while (!Shutdown()) {
-// 	int status = fscanf(_f, "%lf %s %f %d\n", &time, symb, &price, &volume);
-// 	if (status != 4) {
-// 	  chatter(LOG_WARNING, "Tick EOF encountered (status=%d).", status);
-// 	  WSSched::stop();
-// 	  return NULL;
-// 	}
-
-// 	TimeTuple <struct tick> t;
-// 	t.time = (uint64_t)(time*1000000);
-// 	strcpy(t.tuple.symb, symb);
-// 	t.tuple.price = price;
-// 	t.tuple.volume = volume;
-// 	source_emit(t);
-//       }
-//       return NULL;
-//     }
-//   };
-  
 };
