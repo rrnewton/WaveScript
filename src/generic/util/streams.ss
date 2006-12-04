@@ -219,7 +219,7 @@
 	     (time 
 
 	      (set! stream (stream-drop n stream))
-#;	      
+	      #;	      
 	      (mvlet ([(_ strm) (stream-take n stream)])
 		(set! stream strm))
 	      )
