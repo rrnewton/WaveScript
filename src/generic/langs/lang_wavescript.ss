@@ -634,7 +634,7 @@
 
 
      ;; EQ? based hash tables:
-#;
+
      (begin
        ;; If we cared we could use some kind of balanced tree for functional maps.
        (define (copy-hash-table ht)
@@ -658,6 +658,7 @@
        ;(define hashrem_BANG )
        )
 
+#;
      ;; EQUAL? based hash tables:
      (begin
        ;; If we cared we could use some kind of balanced tree for functional maps.
