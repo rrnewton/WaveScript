@@ -24,5 +24,5 @@
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
 ;;   3 -- unsafe optimizations, used for long running simulations.
-(define REGOPTLVL 3)
+(define REGOPTLVL 2)
 ;; Note that this is separate from IFDEBUG above.
