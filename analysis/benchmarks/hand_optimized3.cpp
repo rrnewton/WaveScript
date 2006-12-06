@@ -8,8 +8,10 @@
 // With -O3 this is back up to 4.25
 // Got it down to 3.6 by manually "interning" the string.
 
-// I also changed the output 
+// I also changed the output of the box to just a float (not another
+// tuple) and that still didn't help at all.
 
+// Note: it takes .3 seconds to spool the data out if we just run the datasource.
 
 //----------------------------------------
 
@@ -302,6 +304,7 @@ class Iter_s_2 : public WSBox {
     // EXPERIMENT: assume the hash *IS* the key (no collisions): (interned)
     boost::hash< wsstring_t > hshfun;
     size_t hsh = hshfun(sym_6);
+    // Super DEGENERATE hash!
 
     wsfloat_t entry = (ht_3)[hsh];
     wsint_t vol_8 = (casted->fld3);
@@ -364,9 +367,9 @@ int main(int argc, char ** argv)
 
   /* begin constructing operator graph */
   WSSource* merged_1 = new WSDataFileSource_13("ticks_splits.input", "text", -1);
+
   WSBox* s_2 = new Iter_s_2();
-  s_2->connect(merged_1);
-  WSBox* toplevel = s_2;
+  s_2->connect(merged_1); 
 
   /* dump output of query -- WaveScript type = (Signal (Struct tuptyp_10)) */
   //PrintQueryOutput out = PrintQueryOutput("WSOUT");
