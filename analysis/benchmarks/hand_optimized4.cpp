@@ -1,17 +1,25 @@
-// Got 8.27 seconds for 5 million tuples. (with FIFO)
-// Got 7.359 on justice w/depthfirst
-
-// Weird 4.6s on faith after changing vector to plain array... and the machine's under load!
-// 5.4s on justice...
-
-// Removed the tuple copy and got down to 3.87 on faith (fifo). (still one processor loaded)
-// With -O3 this is back up to 4.25
-// Got it down to 3.6 by manually "interning" the string.
-
-// I also changed the output of the box to just a float (not another
-// tuple) and that still didn't help at all.
+// VER 4:
+// Ok this is getting degenerate, but I just want an upper bound.
 
 // Note: it takes .3 seconds to spool the data out if we just run the datasource.
+
+// Let's try using const char* rather than string objects.
+
+// GREAT! By if both processors are free it runs HORRIBLY.  I need to
+// run an infinite loop on one processor to time it.
+
+// Got 3.57s that way with char[] rather than string.
+// 3.29s...
+
+// trying char* rather than char[6]... 3.4  3.7  3.8... that made it slower.
+// No wait, now it's slower the other way too... inconsistent.
+
+// HMM... even replacing the hash table with an ARRAY (just to test)
+// only brought us down to 3.33 seconds...  Where's the time going?
+
+// Well DUH, even removing the body of the iterate entirely, and just
+// spitting out emit(3.0) still clocks in at the same.  The time is in
+// the communication between boxes.
 
 //----------------------------------------
 
@@ -127,9 +135,7 @@ cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
      return RawSeg::subseg(ss, offset, len); // INCONSISTENT DOCUMENTATION! FIXME!
    }
       
-   static wsstring_t stringappend(const wsstring_t& A, const wsstring_t& B) {
-     return A+B;
-   }
+
 
    // Simple hash function, treat everything as a block of bits.
    static size_t generic_hash(unsigned char* ptr, int size) {
@@ -213,16 +219,17 @@ struct tuptyp_12 {
 ;
 
 struct tuptyp_10 {
-  wsstring_t fld1;
+  char fld1[6];
+  //char* fld1;
   wsfloat_t fld2;
   wsint_t fld3;
   wsfloat_t fld4;
-  tuptyp_10() {}
-  tuptyp_10(wsstring_t tmp_17, wsfloat_t tmp_16, wsint_t tmp_15, wsfloat_t tmp_14) :
-    fld1(tmp_17), 
-    fld2(tmp_16), 
-    fld3(tmp_15), 
-    fld4(tmp_14) {}
+  //  tuptyp_10() {}
+//   tuptyp_10(const char tmp_17, wsfloat_t tmp_16, wsint_t tmp_15, wsfloat_t tmp_14) :
+//     fld1(tmp_17), 
+//     fld2(tmp_16), 
+//     fld3(tmp_15), 
+//     fld4(tmp_14) {}
 } 
 ;
 
@@ -250,12 +257,12 @@ class WSDataFileSource_13 : public WSSource {
 
   void *run_thread() {
     while (!Shutdown()) {
-      struct tuptyp_10 tup;
-      
+      struct tuptyp_10 tup;     
+
       // Cap of a 100 on length of read strings:
-      char str1[100];
-      int status = fscanf(_f, "%s %lf %d %lf", str1, &(tup.fld2), &(tup.fld3), &(tup.fld4));
-      tup.fld1 = str1;
+      //tup.fld1 = new char[6];
+      int status = fscanf(_f, "%s %lf %d %lf", (tup.fld1), &(tup.fld2), &(tup.fld3), &(tup.fld4));
+
       if (status != 4) {
         chatter(LOG_WARNING, "dataFile EOF encountered (status=%d).", status);
 	//printf("\n\nACCUMULATED SIZE: %d\n\n", acc.size());
@@ -287,43 +294,54 @@ class Iter_s_2 : public WSBox {
   
   Iter_s_2() {
     //ht_3 = hash_map< wsstring_t, wsfloat_t, boost::hash<string> >(300);
-    ht_3 = hash_map< size_t, wsfloat_t >(300);
+    //ht_3 = hash_map< size_t, wsfloat_t >(300);
   }
   
   private:
-  hash_map< size_t, wsfloat_t > ht_3;
   //hash_map< wsstring_t, wsfloat_t, boost::hash<string> > ht_3;
+  //hash_map< size_t, wsfloat_t > ht_3;
+  wsfloat_t ht_3[1000];
+
   
   /* WaveScript input type: (Struct tuptyp_10) */
   bool iterate(uint32_t portnum, void* datum) {
     /* Naturalize input type to meet expectations of the iterate-body. */
     //tuptyp_10 pattmp_5 = *((tuptyp_10*) datum);
-    tuptyp_10* casted = ((tuptyp_10*) datum);
-    wsstring_t sym_6 = (casted->fld1);
+//     tuptyp_10* casted = ((tuptyp_10*) datum);
+//     const char* sym_6 = (casted->fld1);
+
+//     //printf("Sym: %s\n", sym_6);
     
-    // EXPERIMENT: assume the hash *IS* the key (no collisions): (interned)
-    //boost::hash< wsstring_t > hshfun;
-    //size_t hsh = hshfun(sym_6);
-    // Super DEGENERATE hash!
-    size_t hsh = (size_t)sym_6[0];
+//     // EXPERIMENT: assume the hash *IS* the key (no collisions): (interned)
+//     boost::hash< const char* > hshfun;
+//     //size_t hsh = hshfun(sym_6);
+//     // Super DEGENERATE hash!
+//     //size_t hsh = *(size_t*)sym_6;
 
-    wsfloat_t entry = (ht_3)[hsh];
-    wsint_t vol_8 = (casted->fld3);
-    wsfloat_t price_9 = (casted->fld4);
+//     // UBER DEGENERATE TEST FOR UPPER BOUND:
+//     size_t hsh = (*(size_t*)sym_6)%1000;
 
-    if (!(entry)) {
-      (ht_3)[hsh] = 1.0;
-      entry = 1.0;
-    }
-    if (vol_8 == -1) {
-      (ht_3)[hsh] = (entry * price_9);
-    } else {
-      wsfloat_t t_7 = (casted->fld2);
-      //emit((tuptyp_10)tuptyp_10(sym_6, t_7, vol_8, (price_9 * entry)));
-      emit(price_9 * entry);
-    }
+//     wsfloat_t entry = (ht_3)[hsh];
+//     wsint_t vol_8 = (casted->fld3);
+//     wsfloat_t price_9 = (casted->fld4);
+
+//     if (!(entry)) {
+//       (ht_3)[hsh] = 1.0;
+//       entry = 1.0;
+//     }
+//     if (vol_8 == -1) {
+//       (ht_3)[hsh] = (entry * price_9);
+//     } else {
+//       wsfloat_t t_7 = (casted->fld2);
+//       //emit((tuptyp_10)tuptyp_10(sym_6, t_7, vol_8, (price_9 * entry)));
+//       emit(price_9 * entry);
+//     }
+
+    emit(3.0);
+
     return FALSE;
   }
+
 } 
 ;
 
@@ -340,7 +358,8 @@ class PrintQueryOutput : public WSBox {
     printf("WSOUT: ");
     { tuptyp_10 tmp_18 = (*element);
       cout << "{";
-    printf(tmp_18.fld1.c_str());
+      //printf(tmp_18.fld1.c_str());
+      printf(tmp_18.fld1);
       cout << "; ";
     printf("%f", tmp_18.fld2);
       cout << "; ";

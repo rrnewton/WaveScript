@@ -1,3 +1,10 @@
+// Made the data source loop N times.
+
+// Un-boosted the hash_map.
+// Made the hash_map indexed by char* instead of string.
+
+
+//----------------------------------------
 
 // These are the headers & #defines that occur at the beginning of all
 // wavescript-generated header files.
