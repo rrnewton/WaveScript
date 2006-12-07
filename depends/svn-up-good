@@ -44,7 +44,8 @@ exit 0;
 	      (or (equal? s1 (substring s2 i (+ i l1)))
 		  (loop (add1 i)))))))))
 
-(match log
+(let loop ([log log])
+  (match log
   [(*top* (*pi* ,_ ...) (log . ,[entries])) entries]
   
   [((logentry (@ (revision ,rev)) ,_ ,__ (msg . ,msg)) . ,rest)
@@ -56,6 +57,6 @@ exit 0;
 	 (system (format "svn up -r ~a" rev))))]
   
   [() (error 'svn-up-good "Did not find a good revision!")]
-  )
+  ))
 
 (printf "Finished.\n")

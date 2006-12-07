@@ -257,31 +257,41 @@
 ;; Expand an include statement into a set of definitions.
 ;; Optionally takes the absolute path of the file in which the
 ;; (include _) statement is located.
-(define expand-include
+(trace-define expand-include
   (case-lambda
     [(fn) (expand-include fn #f)]
     [(inclfile fromfile)
      (unless (file-exists? inclfile)
        (error 'parser "Included file not found: ~s\n" inclfile))
-     (match (ws-parse-file inclfile)
-       [(letrec ,binds ,ignored)
-	`((define . ,binds) ...)])]))
+     (ws-parse-file inclfile)
+     #;(match (ws-parse-file inclfile)
+       [(letrec ,binds ,ignored)  `((define . ,binds) ...)]
+       )]))
 
-
-(define (read-wavescript-source-file fn)
-  (ASSERT (string? fn))
-  (unless (equal? (extract-file-extension fn) "ws")
-    (error 'read-wavescript-source-file 
-	   "should only be used on a .ws file, not: ~s" fn))
-
+;; Chez can't run the parser right now, so I include this.
+(define (ws-parse-file fn) 
   ;; HACK: WON'T WORK IN WINDOWS:)
   (unless (zero? (system "which wsparse")) 
     (error 'wsint "couldn't find wsparse executable"))
   (let* ([port (car (process (++ "wsparse " fn)))]
 	 [decls (read port)])
     (close-input-port port)
-    (printf "POSTPROCESSING: ~s\n" decls)
-    (ws-postprocess decls)))
+    ;; This is very hackish:
+    (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	(error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+    ;(printf "POSTPROCESSING: ~s\n" decls)
+    ;(ws-postprocess decls)
+    decls
+    ))
+
+(define (read-wavescript-source-file fn)
+  (ASSERT (string? fn))
+  (unless (equal? (extract-file-extension fn) "ws")
+    (error 'read-wavescript-source-file 
+	   "should only be used on a .ws file, not: ~s" fn))
+  (ws-postprocess (ws-parse-file fn))
+  ;(ws-parse-file fn)
+  )
 
 ) ;; End Module.
 

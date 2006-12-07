@@ -274,7 +274,7 @@
     (fftarr           ((Array Complex))  (Array Complex))
     (fftseg           ((Sigseg Complex)) (Sigseg Complex))
 
-    (hanning          ((Sigseg Float))  (Sigseg Float))
+;    (hanning          ((Sigseg Float))  (Sigseg Float))
 
     ;; This unions N streams of the same type, it returns a sample and
     ;; the index (in the original list) of the stream that produced it.
