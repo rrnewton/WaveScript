@@ -57,6 +57,7 @@ exit 0;
 	 (system (format "svn up -r ~a" rev))))]
   
   [() (error 'svn-up-good "Did not find a good revision!")]
-  ))
+  )) 
 
 (printf "Finished.\n")
+ 
