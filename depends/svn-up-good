@@ -6,8 +6,8 @@ petite --script `basename "$0"` "$DIR" ${1+"$@"};)
 exit 0;
 |#
 
-;(printf "IN SCHEME\n")
-;(pretty-print (command-line-arguments))
+(unless (= (length (command-line-arguments)) 1)
+  (error 'svn-up-good "wrong number of command line arguments"))
 
 (load "xml-parser.ss")
 (load "../src/chez/match.ss")
@@ -16,28 +16,21 @@ exit 0;
 
 (define tmpfile (format "/tmp/svn-up-good_tmp~a" (random 10000)))
 
-
 ;; There might be a better way to do this by controlling the args to "svn log".
 ;; But currently I just update to the latest version and then rewind.
 
-(unless (= (length (command-line-arguments)))
-  (error 'svn-up-good "wrong number of command line arguments"))
-
 (define thedir (car (command-line-arguments)))
-(current-directory thedir)
+(current-directory thedir) ;; Switch to that dir before running svn up.
 
 (system "svn up")
 (printf "Now rewinding to last good revision.\n")
 
 ;(system (format "svn log --xml --limit 20 -r PREV:HEAD > ~a" tmpfile))
-
 (system (format "svn log --xml --limit 20 > ~a" tmpfile))
 
 (define log (ssax:xml->sxml (open-input-file tmpfile) '()))
 
 (delete-file tmpfile)
-
-;(pretty-print log)
 
 ;; Inefficient.
 (define substring?
