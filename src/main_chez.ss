@@ -203,7 +203,7 @@
 (include "chez/helpers.ss") (import (except helpers test-this these-tests))
 
 ;; These provide some more utility code related to threads:
-(IF_THREADS (begin (include "threaded_utils.ss") (import threaded_utils)))
+(IF_THREADS (begin (include "chez/threaded_utils.ss") (import threaded_utils)))
 
 ;; Lists all the Regiment primitives and their types:
 (include "generic/compiler_components/prim_defs.ss") (import prim_defs)
