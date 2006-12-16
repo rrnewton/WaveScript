@@ -62,9 +62,12 @@
   (define-syntax exec-body
     (syntax-rules ()
       [(_ Bod ()) Bod]
-      [(_ Bod (Var Vars ...))
-       (let ([Var (Var)])
-	 (exec-body Bod (Vars ...)))]))
+      [(_ Bod ((fun Var ...) CataSets ...))
+       (call-with-values
+	   (lambda () (fun))
+	 (lambda (Var ...)
+	   (exec-body Bod (CataSets ...))
+	   ))]))
 
   (define (test)
     (list 
@@ -78,6 +81,8 @@
      (match '(1 2) [(3 ,y) (* 1000 y)] [(1 ,y) (* 100 y)])
 
      (match '(1 2) [(,[x] ,[y]) (list x y)] [1 3] [2 4])
+
+     (match '(1 2) [(,[x y] ,[z w]) (list x y z w)] [1 (values 3 4)] [2 (values 5 6)])
 
      ))
 
@@ -97,11 +102,12 @@
 	       (NextClause)))]
 
 	;; Unquote, Cata: recursively match
-	[(_ (unquote (V)) Bod Cata NextClause (CataVars ...))
-	(lambda (value)
-	   (let ([V (lambda () (Cata value))])
-	     (exec-body Bod (V CataVars ...))))]
-
+	[(_ (unquote (V ...)) Bod Cata NextClause (CataVars ...))
+	(lambda (value)	  
+	  (let ([cataset (lambda () (Cata value))])
+	    (exec-body Bod ((cataset V ...) CataVars ...))	   
+	    ))]
+	
 	;; Unquote: bind a pattern variable:
 	[(_ (unquote V) Bod Cata NextClause (CataVars ...))
 	 (lambda (value)
