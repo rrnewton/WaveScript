@@ -92,7 +92,7 @@
 ;; Convert a pattern into a function that will test for a match.
 ;;
 ;; This takes several arguments:
-;;   Stack -- Objs&Patterns left to match.  Objs should be just vars.
+;;   Stack -- Objs&Patterns left to match.  Objs should be just vars. 2
 ;;   Bod -- the expression to execute if the pattern matches
 ;;   Cata -- the name of the function that will reinvoke this match
 ;;   Nextclause -- abort this clause and go to the next.
