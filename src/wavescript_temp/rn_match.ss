@@ -84,6 +84,8 @@
 
      (match '(1 2) [(,[x y] ,[z w]) (list x y z w)] [1 (values 3 4)] [2 (values 5 6)])
 
+     (match '(1 . 2) [(,x . ,y) y])
+
      ))
 
 
@@ -105,6 +107,9 @@
 	[(_ () Bod Cata NextClause (CataVars ...))
 	 (exec-body Bod (CataVars ...))]
 
+	;; Cata redirect: 
+	;; todo
+
 	;; Unquote Pattern, Cata: recursively match
 	[(_ ([Obj (unquote (V ...))] Stack ...) Bod Cata NextClause (CataVars ...))
 	 (let ([cataset (lambda () (Cata Obj))])
@@ -115,20 +120,14 @@
 	[(_ ([Obj (unquote V)] Stack ...) Bod Cata NextClause CataVars)
 	 (let ([V Obj])
 	   (convert-pat (Stack ...) Bod Cata NextClause CataVars))]
-
-	;; Cata redirect: 
-	;; todo
-
-	;; Cata 
-	;; todo
 	
-	;; List pattern:
-	[(_ ([Obj (P0 P ...)] Stack ...) Bod Cata NextClause CataVars)
+	;; Pair pattern:
+	[(_ ([Obj (P0 . P1)] Stack ...) Bod Cata NextClause CataVars)
 	 ;; Do car, push cdr onto stack.
-	 (if (pair? Obj )
+	 (if (pair? Obj)
 	     (let ([head (car Obj)]
 		   [tail (cdr Obj)])
-	       (convert-pat ([head P0] [tail (P ...)] Stack ...)
+	       (convert-pat ([head P0] [tail P1] Stack ...)
 			    Bod Cata NextClause CataVars))
 	     (NextClause)
 	     )]
@@ -150,7 +149,6 @@
 	))
 
   (printf "TESTING: ~a\n" (test))
-
 )
 
 
