@@ -31,7 +31,7 @@
     [(_ Template Cata Obj (Pat Bod) Rest ...)
      (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
        ;; convert-pat returns a function that we apply to the value.
-       ((convert-pat Pat Bod Cata next ()) Obj)
+       (convert-pat ((Obj Pat)) Bod Cata next ())
        )]))
 
 #;
@@ -87,32 +87,34 @@
      ))
 
 
-    ;; Convert a pattern into a function that will test for a match.
-    ;; If match, the body is evaluated, otherwise "nextclause" is called.
-    ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
-    (define-syntax convert-pat
+;; Convert a pattern into a function that will test for a match.
+;;
+;; This takes several arguments:
+;;   Stack -- Objs&Patterns left to match.  Objs should be just vars.
+;;   Bod -- the expression to execute if the pattern matches
+;;   Cata -- the name of the function that will reinvoke this match
+;;   Nextclause -- abort this clause and go to the next.
+;;   CataVars -- Sets of vars that will result from catas (if pattern) matches
+;;
+;; If match, the body is evaluated, otherwise "nextclause" is called.
+;; All pattern variables are lazy "thunked" so as to defer any Cata's.
+(define-syntax convert-pat
       (syntax-rules (unquote)
 
-	;; Null list, termination condition:
+	;; Termination condition:
 	[(_ () Bod Cata NextClause (CataVars ...))
-	 (lambda (value)       
-	   (if (equal? value '())
-	       ;; It's a match, execute body:2
-	       (exec-body Bod (CataVars ...))
-	       (NextClause)))]
+	 (exec-body Bod (CataVars ...))]
 
-	;; Unquote, Cata: recursively match
-	[(_ (unquote (V ...)) Bod Cata NextClause (CataVars ...))
-	(lambda (value)	  
-	  (let ([cataset (lambda () (Cata value))])
-	    (exec-body Bod ((cataset V ...) CataVars ...))	   
-	    ))]
+	;; Unquote Pattern, Cata: recursively match
+	[(_ ([Obj (unquote (V ...))] Stack ...) Bod Cata NextClause (CataVars ...))
+	 (let ([cataset (lambda () (Cata Obj))])
+	   (convert-pat (Stack ...) Bod Cata 
+			NextClause ((cataset V ...) CataVars ...)))]
 	
-	;; Unquote: bind a pattern variable:
-	[(_ (unquote V) Bod Cata NextClause (CataVars ...))
-	 (lambda (value)
-	   (let ([V  value])
-	     (exec-body Bod (CataVars ...))))]
+	;; Unquote Pattern: bind a pattern variable:
+	[(_ ([Obj (unquote V)] Stack ...) Bod Cata NextClause CataVars)
+	 (let ([V Obj])
+	   (convert-pat (Stack ...) Bod Cata NextClause CataVars))]
 
 	;; Cata redirect: 
 	;; todo
@@ -121,32 +123,30 @@
 	;; todo
 	
 	;; List pattern:
-	[(_ (P0 P ...) Bod Cata NextClause (CataVars ...))
-	 (lambda (value)
-	   (if (pair? value)
-	       ((convert-pat P0 
-			     ((convert-pat (P ...) Bod Cata NextClause (CataVars ...))
-			      (cdr value))
-			     Cata NextClause (CataVars ...))
-		(car value))
-	       (NextClause)
-	       ))]
+	[(_ ([Obj (P0 P ...)] Stack ...) Bod Cata NextClause CataVars)
+	 ;; Do car, push cdr onto stack.
+	 (if (pair? Obj )
+	     (let ([head (car Obj)]
+		   [tail (cdr Obj)])
+	       (convert-pat ([head P0] [tail (P ...)] Stack ...)
+			    Bod Cata NextClause CataVars))
+	     (NextClause)
+	     )]
 	
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ LIT Bod Cata NextClause (CataVars ...))
+	[(_ ([Obj LIT] Stack ...) Bod Cata NextClause CataVars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 	   (ASSERT (or (symbol? LIT)
+		       (null? LIT)
 		       (string? LIT)
 		       (number? LIT)))
-	   (lambda (value)	     
-	     (if (equal? value LIT)
-		 (exec-body Bod (CataVars ...))
-		 (NextClause))))]
+	   (if (equal? Obj LIT)
+	       (convert-pat (Stack ...) Bod Cata NextClause CataVars)	       
+	       (NextClause)))]
 
 	;; Otherwise, syntax error.
-        ;[(_ __ ___ ____ _____)  (error 'bad syntax)  ]   
 	))
 
   (printf "TESTING: ~a\n" (test))
