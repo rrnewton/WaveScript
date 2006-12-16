@@ -31,7 +31,7 @@
     [(_ Template Cata Obj (Pat Bod) Rest ...)
      (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
        ;; convert-pat returns a function that we apply to the value.
-       ((convert-pat Pat Bod next ()) Obj)
+       ((convert-pat Pat Bod Cata next ()) Obj)
        )]))
 
 #;
@@ -76,6 +76,9 @@
      (match '(1 2) [(,x ,y ,z) (+ x x y)] [,v v])
 
      (match '(1 2) [(3 ,y) (* 1000 y)] [(1 ,y) (* 100 y)])
+
+     (match '(1 2) [(,[x] ,[y]) (list x y)] [1 3] [2 4])
+
      ))
 
 
@@ -86,17 +89,23 @@
       (syntax-rules (unquote)
 
 	;; Null list, termination condition:
-	[(_ () Bod NextClause (CataVars ...))
+	[(_ () Bod Cata NextClause (CataVars ...))
 	 (lambda (value)       
 	   (if (equal? value '())
 	       ;; It's a match, execute body:2
 	       (exec-body Bod (CataVars ...))
 	       (NextClause)))]
 
+	;; Unquote, Cata: recursively match
+	[(_ (unquote (V)) Bod Cata NextClause (CataVars ...))
+	(lambda (value)
+	   (let ([V (lambda () (Cata value))])
+	     (exec-body Bod (V CataVars ...))))]
+
 	;; Unquote: bind a pattern variable:
-	[(_ (unquote V) Bod NextClause (CataVars ...))
+	[(_ (unquote V) Bod Cata NextClause (CataVars ...))
 	 (lambda (value)
-	   (let ([V value])
+	   (let ([V  value])
 	     (exec-body Bod (CataVars ...))))]
 
 	;; Cata redirect: 
@@ -106,20 +115,20 @@
 	;; todo
 	
 	;; List pattern:
-	[(_ (P0 P ...) Bod NextClause (CataVars ...))
+	[(_ (P0 P ...) Bod Cata NextClause (CataVars ...))
 	 (lambda (value)
 	   (if (pair? value)
-	       ((convert-pat P0
-			     ((convert-pat (P ...) Bod NextClause (CataVars ...))
+	       ((convert-pat P0 
+			     ((convert-pat (P ...) Bod Cata NextClause (CataVars ...))
 			      (cdr value))
-			     NextClause (CataVars ...))
+			     Cata NextClause (CataVars ...))
 		(car value))
 	       (NextClause)
 	       ))]
 	
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ LIT Bod NextClause (CataVars ...))
+	[(_ LIT Bod Cata NextClause (CataVars ...))
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 	   (ASSERT (or (symbol? LIT)
