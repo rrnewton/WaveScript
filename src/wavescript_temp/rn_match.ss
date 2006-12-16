@@ -86,18 +86,18 @@
       (syntax-rules (unquote)
 
 	;; Null list, termination condition:
-	[(_ () Bod NextClause (Vars ...))
+	[(_ () Bod NextClause (CataVars ...))
 	 (lambda (value)       
 	   (if (equal? value '())
-	       ;; It's a match, execute body:
-	       (exec-body Bod (Vars ...))
+	       ;; It's a match, execute body:2
+	       (exec-body Bod (CataVars ...))
 	       (NextClause)))]
 
 	;; Unquote: bind a pattern variable:
-	[(_ (unquote V) Bod NextClause (Vars ...))
+	[(_ (unquote V) Bod NextClause (CataVars ...))
 	 (lambda (value)
-	   (let ([V (lambda () value)])
-	     (exec-body Bod (V Vars ...))))]
+	   (let ([V value])
+	     (exec-body Bod (CataVars ...))))]
 
 	;; Cata redirect: 
 	;; todo
@@ -106,20 +106,20 @@
 	;; todo
 	
 	;; List pattern:
-	[(_ (P0 P ...) Bod NextClause (Vars ...))
+	[(_ (P0 P ...) Bod NextClause (CataVars ...))
 	 (lambda (value)
 	   (if (pair? value)
 	       ((convert-pat P0
-			     ((convert-pat (P ...) Bod NextClause (Vars ...))
+			     ((convert-pat (P ...) Bod NextClause (CataVars ...))
 			      (cdr value))
-			     NextClause (Vars ...))
+			     NextClause (CataVars ...))
 		(car value))
 	       (NextClause)
 	       ))]
 	
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ LIT Bod NextClause (Vars ...))
+	[(_ LIT Bod NextClause (CataVars ...))
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 	   (ASSERT (or (symbol? LIT)
@@ -127,7 +127,7 @@
 		       (number? LIT)))
 	   (lambda (value)	     
 	     (if (equal? value LIT)
-		 (exec-body Bod (Vars ...))
+		 (exec-body Bod (CataVars ...))
 		 (NextClause))))]
 
 	;; Otherwise, syntax error.
