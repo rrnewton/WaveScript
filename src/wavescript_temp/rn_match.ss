@@ -59,16 +59,18 @@
              ls/false)
            (match-help Template Cata Obj ThreadedIds Rest ...))))))
 
-  (define-syntax exec-body
-    (syntax-rules ()
-      [(_ Bod ()) Bod]
-      [(_ Bod ((fun Var ...) CataSets ...))
-       (call-with-values
-	   (lambda () (fun))
-	 (lambda (Var ...)
-	   (exec-body Bod (CataSets ...))
-	   ))]))
+(define-syntax exec-body
+  (syntax-rules ()
+    [(_ Bod ()) Bod]
+    [(_ Bod ((fun Var ...) CataSets ...))
+     (call-with-values
+	 (lambda () (fun))
+       (lambda (Var ...)
+	 (exec-body Bod (CataSets ...))
+	 ))]))
 
+
+#;
 (define-syntax build-list 
   (syntax-rules ()
     [(_ b ()) ()]
@@ -76,12 +78,12 @@
      (append (list V* ...) (build-list b (CataSets ...)))
      ]))
 
-#;
 (define-syntax build-list-binder
   (syntax-rules ()
-    [(_ ) ???]
-    )
-  )
+    [(_ (Bod Rotated) (Var ...)) 
+     (matchfoo Rotated
+	       [((unquote Var) ...) Bod]
+	       )]))
 
   (define (test)
     (list 
@@ -241,11 +243,11 @@
 	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause CataVars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
-	   (ASSERT (or (symbol? LIT)
-		       (null? LIT)
-		       (string? LIT)
-		       (number? LIT)))
-	   (if (equal? Obj LIT)
+;	   (ASSERT (or (symbol? (quote LIT))
+;		       (null? (quote LIT))
+;		       (string? (quote LIT))
+;		       (number? (quote LIT))))
+	   (if (equal? Obj (quote LIT))
 	       (convert-pat Stack Exec Bod Cata NextClause CataVars)	       
 	       (NextClause)))]
 
