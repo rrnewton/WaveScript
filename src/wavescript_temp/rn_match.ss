@@ -38,13 +38,13 @@
      (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
        ;; convert-pat returns a function that we apply to the value.
        (convert-pat ((Obj Pat)) 
-		    #;
+		    exec-body 		   
+		    Bod 
+#;
 		    (lambda (collect-vars Pat) 
-		      (lambda (collect-cata-vars Pat) 
-			;; Exec catas...
-			Bod))
-		    exec-body 
-		    Bod Cata next () ())
+		      (lambda (collect-cata-vars Pat)
+			(exec-body Bod (collect-cata-sets Pat))))
+		    Cata next () ())
        )]))
 
 ;(define exec (lambda catavars (lambda vars Body)))
@@ -58,7 +58,6 @@
        (lambda (Var ...)
 	 (exec-body Bod (CataSets ...) __)
 	 ))]))
-
 
 #;
 (define-syntax build-list 
@@ -192,6 +191,20 @@
      (collect-cata-vars Acc  P0 P* . Rest)]
     [(_ Acc  LIT . Rest) 
      (collect-cata-vars Acc  . Rest)]))
+#;
+(define-syntax collect-cata-sets
+  (syntax-rules (unquote -> )
+    [(_ Cata Acc ) Acc]
+    [(_ Cata Acc  (unquote (f -> V0 V* ...)) . Rest)
+     (collect-cata-sets Cata ((f V0 V* ...) . Acc)  . Rest)]
+    [(_ Cata Acc  (unquote (V0 V* ...)) . Rest)
+     (collect-cata-sets Cata ((Cata V0 V* ...) . Acc)  . Rest)]
+    [(_ Cata Acc  () . Rest)
+     (collect-cata-sets Cata Acc  . Rest)]
+    [(_ Cata Acc  (P0 . P*) . Rest)
+     (collect-cata-sets Cata Acc  P0 P* . Rest)]
+    [(_ Cata Acc  LIT . Rest) 
+     (collect-cata-sets Cata Acc  . Rest)]))
 
 
 
@@ -210,10 +223,11 @@
     (syntax-rules (unquote .... )
 
 	;; Termination condition:
-	[(_ () Exec Bod Cata NextClause CataVars Vars)
-	 (Exec Bod CataVars Vars)
-	 ]
-
+      [(_ () Exec Bod Cata NextClause CataVars Vars)
+       (Exec Bod CataVars Vars)
+       ;Bod
+       ]
+      
 	;; Cata redirect: 
 	;; todo
 
