@@ -10,7 +10,8 @@
 
 (module (match match-help convert-pat exec-body test ASSERT
 	       list-up-all-vars list-vars-helper traverse-vars
-	       list-up-vars list-up-cata-vars
+	       list-up-vars list-up-cata-vars 
+	       collect-vars collect-cata-vars
 	       build-list-binder)
 
 (define-syntax ASSERT
@@ -39,7 +40,7 @@
        (convert-pat ((Obj Pat)) 
 		    #;
 		    (lambda (collect-vars Pat) 
-		      (lambda (collect-catavars Pat) 
+		      (lambda (collect-cata-vars Pat) 
 			;; Exec catas...
 			Bod))
 		    exec-body 
@@ -117,13 +118,14 @@
 ;(expand '(syntax-flatten () (1) (2 (3 ((8))))))
 
 
+
+;; Attemp at abstracting this a bit:
 (define-syntax list-up-all-vars
   (syntax-rules ()
     [(_ P) (traverse-vars () P list-vars-helper)]))
 (define-syntax list-vars-helper
   (syntax-rules ()
     [(_ (Acc ...)) (list Acc ...)]))
-
 (define-syntax traverse-vars
   (syntax-rules (unquote )
     [(_ Acc Exec) (Exec Acc)]
@@ -137,6 +139,8 @@
      (traverse-vars Acc Exec . Rest)]
     ))
 
+;; Highly redundant, might be some good way to combine, but I ran into
+;; trouble the first time I tried.
 (define-syntax list-up-vars
   (syntax-rules (unquote )
     [(_ Acc ) (list . Acc)]
@@ -149,7 +153,6 @@
     [(_ Acc  LIT . Rest) 
      (list-up-vars Acc  . Rest)]
     ))
-
 (define-syntax list-up-cata-vars
   (syntax-rules (unquote -> )
     [(_ Acc ) (list . Acc)]
@@ -164,6 +167,32 @@
     [(_ Acc  LIT . Rest) 
      (list-up-cata-vars Acc  . Rest)]
     ))
+(define-syntax collect-vars
+  (syntax-rules (unquote )
+    [(_ Acc ) Acc]
+    [(_ Acc  (unquote V) . Rest)
+     (collect-vars (V . Acc)  . Rest)]
+    [(_ Acc  () . Rest)
+     (collect-vars Acc  . Rest)]
+    [(_ Acc  (P0 . P*) . Rest)
+     (collect-vars Acc  P0 P* . Rest)]
+    [(_ Acc  LIT . Rest) 
+     (collect-vars Acc  . Rest)]
+    ))
+(define-syntax collect-cata-vars
+  (syntax-rules (unquote -> )
+    [(_ Acc ) Acc]
+    [(_ Acc  (unquote (f -> V* ...)) . Rest)
+     (collect-cata-vars (V* ... . Acc)  . Rest)]
+    [(_ Acc  (unquote (V* ...)) . Rest)
+     (collect-cata-vars (V* ... . Acc)  . Rest)]
+    [(_ Acc  () . Rest)
+     (collect-cata-vars Acc  . Rest)]
+    [(_ Acc  (P0 . P*) . Rest)
+     (collect-cata-vars Acc  P0 P* . Rest)]
+    [(_ Acc  LIT . Rest) 
+     (collect-cata-vars Acc  . Rest)]))
+
 
 
 ;; Convert a pattern into a function that will test for a match.
