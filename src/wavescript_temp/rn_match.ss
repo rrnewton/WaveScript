@@ -6,7 +6,8 @@
 ;; let-match
 ;; trace-match... etc.
 
-;(module (match match-help convert-pat exec-body test ASSERT)
+(module (match match-help convert-pat exec-body test ASSERT
+	       list-up-all-vars build-list-binder)
 
 (define-syntax ASSERT
   (lambda (x)
@@ -25,15 +26,6 @@
      (let f ((x Exp))
        (match-help _ f x Clause ...))]))
 
-(define-syntax match-help
-  (syntax-rules ()
-    [(_ Template Cata Obj )  (error 'match "no next clause")]
-    [(_ Template Cata Obj (Pat Bod) Rest ...)
-     (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
-       ;; convert-pat returns a function that we apply to the value.
-       (convert-pat ((Obj Pat)) exec-body Bod Cata next () ())
-       )]))
-
 
 (define-syntax exec-body
   (syntax-rules ()
@@ -44,6 +36,15 @@
        (lambda (Var ...)
 	 (exec-body Bod (CataSets ...))
 	 ))]))
+
+(define-syntax match-help
+  (syntax-rules (exec-body)
+    [(_ Template Cata Obj )  (error 'match "no next clause")]
+    [(_ Template Cata Obj (Pat Bod) Rest ...)
+     (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
+       ;; convert-pat returns a function that we apply to the value.
+       (convert-pat ((Obj Pat)) exec-body Bod Cata next () ())
+       )]))
 
 #;
 (define-syntax build-list 
@@ -219,7 +220,8 @@
 	))
 
   (printf "TESTING: ~a\n" (test))
-;)
+;; End module:
+)
 
 
 
