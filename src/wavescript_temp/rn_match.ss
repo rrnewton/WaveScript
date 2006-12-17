@@ -26,6 +26,23 @@
      (let f ((x Exp))
        (match-help _ f x Clause ...))]))
 
+(define-syntax match-help
+  (syntax-rules ()
+    [(_ Template Cata Obj )  (error 'match "no next clause")]
+    [(_ Template Cata Obj (Pat Bod) Rest ...)
+     (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
+       ;; convert-pat returns a function that we apply to the value.
+       (convert-pat ((Obj Pat)) 
+		    #;
+		    (lambda (collect-vars Pat) 
+		      (lambda (collect-catavars Pat) 
+			;; Exec catas...
+			Bod))
+		    exec-body 
+		    Bod Cata next () ())
+       )]))
+
+;(define exec (lambda catavars (lambda vars Body)))
 
 (define-syntax exec-body
   (syntax-rules ()
@@ -37,14 +54,6 @@
 	 (exec-body Bod (CataSets ...))
 	 ))]))
 
-(define-syntax match-help
-  (syntax-rules (exec-body)
-    [(_ Template Cata Obj )  (error 'match "no next clause")]
-    [(_ Template Cata Obj (Pat Bod) Rest ...)
-     (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
-       ;; convert-pat returns a function that we apply to the value.
-       (convert-pat ((Obj Pat)) exec-body Bod Cata next () ())
-       )]))
 
 #;
 (define-syntax build-list 
@@ -56,9 +65,9 @@
 
 (define-syntax build-list-binder
   (syntax-rules ()
-    [(_ (Bod Rotated) (Var ...)) 
+    [(_ (Bod Rotated) (CataVar ...))
      (matchfoo Rotated
-	       [((unquote Var) ...) Bod]
+	       [((unquote CataVar) ... ) Bod]
 	       )]))
 
   (define (test)
@@ -142,7 +151,8 @@
 
 	;; Termination condition:
 	[(_ () Exec Bod Cata NextClause CataVars Vars)
-	 (Exec Bod CataVars)]
+	 (Exec Bod CataVars)
+	 ]
 
 	;; Cata redirect: 
 	;; todo
@@ -156,7 +166,7 @@
 	;; Unquote Pattern: bind a pattern variable:
 	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (let ([V Obj])
-	   (convert-pat Stack Exec Bod Cata NextClause CataVars Vars))]
+	   (convert-pat Stack Exec Bod Cata NextClause CataVars (V . Vars)))]
 
 	;; Ellipses:
 	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars Vars)
