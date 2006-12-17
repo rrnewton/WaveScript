@@ -12,6 +12,7 @@
 	       list-up-all-vars list-vars-helper traverse-vars
 	       list-up-vars list-up-cata-vars 
 	       collect-vars collect-cata-vars
+	       bind-cata
 	       build-list-binder)
 
 (define-syntax ASSERT
@@ -44,7 +45,7 @@
 		    (lambda (collect-vars Pat) 
 		      (lambda (collect-cata-vars Pat)
 			(exec-body Bod (collect-cata-sets Pat))))
-		    Cata next () ())
+		    Cata next ())
        )]))
 
 ;(define exec (lambda catavars (lambda vars Body)))
@@ -69,13 +70,12 @@
 ;; Obsoleted:
 (define-syntax build-list-binder
   (syntax-rules ()
-    [(_ (Bod Rotated) (CataVar ...) (Vars ...))
-     ;(inspect Rotated)
-     (apply (lambda (CataVar ... Vars ...) Bod)
+    [(_ (Bod Rotated) (Var ...))
+     (apply (lambda (Var ...) Bod)
 	    Rotated)
      ]))
 
-  (define (test)
+(define (test)
     (list 
 
      (match '(1 2) [(,x ,y) (+ x y)])
@@ -212,7 +212,7 @@
     [(_ Bod Promise Args ())  Bod]
     [(_ Bod Promise Args (V0 . V*))
      (let ([V0 (lambda ()
-		 (call-with-values promise
+		 (call-with-values Promise
 		   (lambda Args V0)))])
        (bind-cata Bod Promise Args V*))]))
 
@@ -336,7 +336,7 @@
 	;; Otherwise, syntax error.
 	))
 
-  (printf "TESTING: ~a\n" (test))
+;  (printf "TESTING: ~a\n" (test))
 ;; End module:
 )
 
