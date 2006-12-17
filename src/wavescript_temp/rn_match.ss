@@ -6,6 +6,8 @@
 ;; let-match
 ;; trace-match... etc.
 
+(module (match match-help convert-pat exec-body test ASSERT)
+
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
@@ -16,8 +18,6 @@
 			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" #'fun 
 				  v)))]
       )))
-
-(module (match match-help convert-pat exec-body test) 
 
 (define-syntax match
   (syntax-rules ()
@@ -130,9 +130,19 @@
      (list-up-all-vars Acc Rest ...)]
     ))
 
-(define-syntax mymacro
-  (syntax-rules ()
-      [(_ acc foo) (quote (acc foo))]))
+(define-syntax collect-vars
+  (syntax-rules (unquote )
+    [(_ Acc) (list . Acc)]
+    [(_ Acc (unquote V) . Rest)
+     (collect-vars (V . Acc) . Rest)]
+    [(_ Acc () . Rest)
+     (collect-vars Acc . Rest)]
+    [(_ Acc (P0 . P*) . Rest)
+     (collect-vars Acc P0 P* . Rest)]
+    [(_ Acc LIT . Rest) 
+     (collect-vars Acc . Rest)]
+    ))
+
 
 ;; Convert a pattern into a function that will test for a match.
 ;;
@@ -178,12 +188,23 @@
 		   [project (lambda (VAL)
 			      ;; When the pattern matches, build a list of the vars:
 			      ;(mymacro () P0)
-			      (mymacro 3 4)
-			      #;
 			      (convert-pat ([VAL P0]) Exec
-					;  (quote P0)
-					   ;(quote (list-up-all-vars () P0))
-					   (mymacro () P0)
+					   (let-syntax ([list-up-all-vars
+							 (syntax-rules (unquote )
+							   [(_ acc foo) (quote (acc foo))]
+#|
+							   [(_ Acc) (list . Acc)]
+							   [(_ Acc (unquote V) . Rest)
+							    (list-up-all-vars (V . Acc) . Rest)]
+							   [(_ Acc () . Rest)
+							    (list-up-all-vars Acc . Rest)]
+							   [(_ Acc (P0 . P*) . Rest)
+							    (list-up-all-vars Acc P0 P* . Rest)]
+							   [(_ Acc LIT . Rest) 
+							    (list-up-all-vars Acc . Rest)]
+|#
+							   )])
+					     (list-up-all-vars () P0))
 					   Cata failed CataVars)
 			      )]
 		   )
