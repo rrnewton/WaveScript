@@ -69,6 +69,20 @@
 	   (exec-body Bod (CataSets ...))
 	   ))]))
 
+(define-syntax build-list 
+  (syntax-rules ()
+    [(_ b ()) ()]
+    [(_ b ((__ V* ...) CataSets ...))
+     (append (list V* ...) (build-list b (CataSets ...)))
+     ]))
+
+#;
+(define-syntax build-list-binder
+  (syntax-rules ()
+    [(_ ) ???]
+    )
+  )
+
   (define (test)
     (list 
 
@@ -86,8 +100,39 @@
 
      (match '(1 . 2) [(,x . ,y) y])
 
+     (expand '  (match '(1 2 3) [(,x* ....) x*]))
+
      ))
 
+
+(define-syntax syntax-flatten
+  (syntax-rules ()
+    [(_ Acc) Acc]
+    [(_ Acc () Rest ...) 
+     (syntax-flatten Acc Rest ...)]
+    [(_ Acc (F . More) Rest ...)
+     (syntax-flatten Acc F More Rest ...)]
+    [(_ (Acc ...) F Rest ...)
+     (syntax-flatten (Acc ... F) Rest ...)]
+    ))
+;(expand '(syntax-flatten () (1) (2 (3 ((8))))))
+
+(define-syntax list-up-all-vars
+  (syntax-rules (unquote )
+    [(_ (Acc ...)) (list Acc ...)]
+    [(_ (Acc ...) (unquote V) Rest ...)
+     (list-up-all-vars (Acc ... V) Rest ...)]
+    [(_ Acc () Rest ...)
+     (list-up-all-vars Acc Rest ...)]
+    [(_ Acc (P0 . P*) Rest ...)
+     (list-up-all-vars Acc P0 P* Rest ...)]
+    [(_ Acc LIT Rest ...) 
+     (list-up-all-vars Acc Rest ...)]
+    ))
+
+(define-syntax mymacro
+  (syntax-rules ()
+      [(_ acc foo) (quote (acc foo))]))
 
 ;; Convert a pattern into a function that will test for a match.
 ;;
@@ -101,7 +146,7 @@
 ;; If match, the body is evaluated, otherwise "nextclause" is called.
 ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
 (define-syntax convert-pat
-      (syntax-rules (unquote ....)
+    (syntax-rules (unquote .... )
 
 	;; Termination condition:
 	[(_ () Exec Bod Cata NextClause CataVars)
@@ -120,26 +165,48 @@
 	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause CataVars)
 	 (let ([V Obj])
 	   (convert-pat Stack Exec Bod Cata NextClause CataVars))]
-	
-	;; Pair pattern:
-	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause CataVars)
-	 ;; Do car, push cdr onto stack.
-	 (if (pair? Obj)
-	     (let ([head (car Obj)]
-		   [tail (cdr Obj)])
-	       (convert-pat ([head P0] [tail P1] . Stack)
-			    Exec Bod Cata NextClause CataVars))
-	     (NextClause)
-	     )]
-	
-	;; Ellipses:
-#;
-	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars)
-	 ;; Bind a pattern-matcher for one element of the list.	
-	 (lambda (VAL)
-	   (convert-pat ([VAL P0]) ))
 
-	 ;; Do car, push cdr onto stack.
+	;; Ellipses:
+	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars)
+	 (call/1cc 
+	  (lambda (escape)	    
+	    (let* ([failed (lambda () (escape (NextClause)))]
+		   ;; Bind a pattern-matcher for one element of the list.	
+		   #;
+		   [project (lambda (VAL)
+			      (convert-pat ([VAL P0]) build-list IGNORED Cata failed CataVars))]
+		   [project (lambda (VAL)
+			      ;; When the pattern matches, build a list of the vars:
+			      ;(mymacro () P0)
+			      (mymacro 3 4)
+			      #;
+			      (convert-pat ([VAL P0]) Exec
+					;  (quote P0)
+					   ;(quote (list-up-all-vars () P0))
+					   (mymacro () P0)
+					   Cata failed CataVars)
+			      )]
+		   )
+	      
+	      (let loop ([ls Obj] [acc '()])
+		(cond
+		 ;; Damn, how do we bind them to null?
+		 #;
+		 [(null? ls) 
+		  (build-list-binder )
+		  ]
+		 [(null? (cdr ls))
+		  (let* ([final (cons (project (car ls)) acc)]
+			 [rotated (apply map list (reverse! final))])
+		    (convert-pat ([VAL P0]) build-list-binder (Bod rotated) Cata NextClause ())
+		    )]
+
+		 [else (loop (cdr ls) 
+			     (cons (project (car ls)) acc))]
+		 )))))]
+	
+	;; Pair pattern:  Do car, push cdr onto stack.
+	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause CataVars)
 	 (if (pair? Obj)
 	     (let ([head (car Obj)]
 		   [tail (cdr Obj)])
@@ -147,7 +214,7 @@
 			    Exec Bod Cata NextClause CataVars))
 	     (NextClause)
 	     )]
-	
+		
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
 	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause CataVars)
@@ -166,6 +233,8 @@
 
   (printf "TESTING: ~a\n" (test))
 )
+
+
 
 
 #;
