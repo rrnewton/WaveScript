@@ -9,7 +9,9 @@
 (eval-when (compile eval load) (case-sensitive #t))
 
 (module (match match-help convert-pat exec-body test ASSERT
-	       list-up-all-vars build-list-binder)
+	       list-up-all-vars list-vars-helper traverse-vars
+	       list-up-vars list-up-cata-vars
+	       build-list-binder)
 
 (define-syntax ASSERT
   (lambda (x)
@@ -90,14 +92,14 @@
 
      (match '(1 . 2) [(,x . ,y) y])
 
-;      (print-graph #f)
-;      (print-gensym #f)
-;      (pretty-print
-;       (expand '(match '(1 2 3) [(,x* ....) x*])))
+      (print-graph #f)
+      (print-gensym #f)
+      (pretty-print
+       (expand '(match '(1 2 3) [(,x* ....) x*])))
 
-     (match '(1 2 3) [(1 ,x* ....) x*])
+      (match '(1 2 3) [(1 ,x* ....) x*])
 
-     (match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
+;     (match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
 
      ))
 
@@ -114,33 +116,53 @@
     ))
 ;(expand '(syntax-flatten () (1) (2 (3 ((8))))))
 
+
 (define-syntax list-up-all-vars
+  (syntax-rules ()
+    [(_ P) (traverse-vars () P list-vars-helper)]))
+(define-syntax list-vars-helper
+  (syntax-rules ()
+    [(_ (Acc ...)) (list Acc ...)]))
+
+(define-syntax traverse-vars
   (syntax-rules (unquote )
-    [(_ (Acc ...)) (list Acc ...)]
-;    [(_ (Acc ...) (unquote V) Rest ...)
-;     (list-up-all-vars (Acc ... V) Rest ...)]
-    [(_ (Acc ...) (unquote V) Rest ...)
-     (list-up-all-vars (Acc ... V) Rest ...)]
-    [(_ Acc () Rest ...)
-     (list-up-all-vars Acc Rest ...)]
-    [(_ Acc (P0 . P*) Rest ...)
-     (list-up-all-vars Acc P0 P* Rest ...)]
-    [(_ Acc LIT Rest ...) 
-     (list-up-all-vars Acc Rest ...)]
+    [(_ Acc Exec) (Exec Acc)]
+    [(_ Acc Exec (unquote V) . Rest)
+     (traverse-vars (V . Acc) Exec . Rest)]
+    [(_ Acc Exec () . Rest)
+     (traverse-vars Acc Exec . Rest)]
+    [(_ Acc Exec (P0 . P*) . Rest)
+     (traverse-vars Acc Exec P0 P* . Rest)]
+    [(_ Acc Exec LIT . Rest) 
+     (traverse-vars Acc Exec . Rest)]
     ))
 
-#;
-(define-syntax collect-vars
+(define-syntax list-up-vars
   (syntax-rules (unquote )
-    [(_ Acc) (list . Acc)]
-    [(_ Acc (unquote V) . Rest)
-     (collect-vars (V . Acc) . Rest)]
-    [(_ Acc () . Rest)
-     (collect-vars Acc . Rest)]
-    [(_ Acc (P0 . P*) . Rest)
-     (collect-vars Acc P0 P* . Rest)]
-    [(_ Acc LIT . Rest) 
-     (collect-vars Acc . Rest)]
+    [(_ Acc ) (list . Acc)]
+    [(_ Acc  (unquote V) . Rest)
+     (list-up-vars (V . Acc)  . Rest)]
+    [(_ Acc  () . Rest)
+     (list-up-vars Acc  . Rest)]
+    [(_ Acc  (P0 . P*) . Rest)
+     (list-up-vars Acc  P0 P* . Rest)]
+    [(_ Acc  LIT . Rest) 
+     (list-up-vars Acc  . Rest)]
+    ))
+
+(define-syntax list-up-cata-vars
+  (syntax-rules (unquote -> )
+    [(_ Acc ) (list . Acc)]
+    [(_ Acc  (unquote (f -> V* ...)) . Rest)
+     (list-up-cata-vars (V* ... . Acc)  . Rest)]
+    [(_ Acc  (unquote (V* ...)) . Rest)
+     (list-up-cata-vars (V* ... . Acc)  . Rest)]
+    [(_ Acc  () . Rest)
+     (list-up-cata-vars Acc  . Rest)]
+    [(_ Acc  (P0 . P*) . Rest)
+     (list-up-cata-vars Acc  P0 P* . Rest)]
+    [(_ Acc  LIT . Rest) 
+     (list-up-cata-vars Acc  . Rest)]
     ))
 
 
@@ -190,7 +212,7 @@
 			      ;; When the pattern matches, build a list of the vars:
 			      ;(mymacro () P0)
 			      (convert-pat ([VAL P0]) Exec
-					   (list-up-all-vars () P0)
+					   (list-up-vars () P0)
 					   Cata failed CataVars Vars)
 			      )]
 		   )
