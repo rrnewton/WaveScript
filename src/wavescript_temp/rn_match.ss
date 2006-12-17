@@ -93,7 +93,7 @@
       (print-graph #f)
       (print-gensym #f)
 
-      (pretty-print  (expand '(match '(1 2 3) [(,x* ....) x*])))
+;      (pretty-print  (expand '(match '(1 2 3) [(,x* ....) x*])))
 
       (expand '(collect-vars () (a b) (d ,e f (,g))))
 
@@ -102,6 +102,10 @@
      (match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
 
      (match '((a 1) (b 2) (c 3 4)) [([,x* ,y*] ....) (vector x* y*)] [,_ 'yay])
+
+     (match '(1 2 3) [(1 ,[add1 -> x] ,[add1 -> y]) (list x y)])
+
+;     (match '(1 2 3) [(1 ,[add1 -> x*] ....) x*])
 
      ))
 
@@ -277,15 +281,22 @@
 ;; If match, the body is evaluated, otherwise "nextclause" is called.
 ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
 (define-syntax convert-pat
-    (syntax-rules (unquote .... )
+    (syntax-rules (unquote .... ->)
 
 	;; Termination condition:
       [(_ () Exec Bod Cata NextClause Vars)
        (Exec Bod Vars)]
       
-	;; Cata redirect: 
-	;; todo
-
+      ;; Cata redirect: 
+      [(_ ([Obj (unquote (f -> V0 V* ...))] . Stack) Exec Bod Cata NextClause (Vars ...))
+       (let ([promise (delay (f Obj))])
+	 (inspect f)
+	 (bind-cata 
+	  (convert-pat Stack Exec Bod Cata
+		       NextClause (V0 V* ... Vars ...))
+	  promise
+	  (V0 V* ...) (V0 V* ...)))]
+      
 	;; Unquote Pattern, Cata: recursively match
 	[(_ ([Obj (unquote (V0 V* ...))] . Stack) Exec Bod Cata NextClause (Vars ...))
 	 (let ([promise (delay (Cata Obj))])
@@ -443,7 +454,7 @@
         ((if ,[t] ,[c] ,[a])
          (values symbol-env `(if ,t ,c ,a)))
         ((,[op] ,[arg] ...)
-         (values symbol-env `(,op ,arg ...)))))))
+         (values symbol-env `(,op ,@arg)))))))
 
 ;;; the grammar for this one is just if-exprs and everything else
 
@@ -464,7 +475,8 @@
     (match datum
       (() `'())
       ((,[X] . ,[Y])`(cons ,X ,Y))
-      (#(,[X] ...) `(vector ,X ...))
+;      (#(,[X] ...) `(vector ,X ...))
+#;
       (,thing
 	(guard (symbol? thing))
 	`',thing)
