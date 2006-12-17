@@ -6,6 +6,8 @@
 ;; let-match
 ;; trace-match... etc.
 
+(eval-when (compile eval load) (case-sensitive #t))
+
 (module (match match-help convert-pat exec-body test ASSERT
 	       list-up-all-vars build-list-binder)
 
@@ -46,12 +48,12 @@
 
 (define-syntax exec-body
   (syntax-rules ()
-    [(_ Bod ()) Bod]
-    [(_ Bod ((fun Var ...) CataSets ...))
+    [(_ Bod () __) Bod]
+    [(_ Bod ((fun Var ...) CataSets ...) __)
      (call-with-values
 	 (lambda () (fun))
        (lambda (Var ...)
-	 (exec-body Bod (CataSets ...))
+	 (exec-body Bod (CataSets ...) __)
 	 ))]))
 
 
@@ -65,10 +67,11 @@
 
 (define-syntax build-list-binder
   (syntax-rules ()
-    [(_ (Bod Rotated) (CataVar ...))
-     (matchfoo Rotated
-	       [((unquote CataVar) ... ) Bod]
-	       )]))
+    [(_ (Bod Rotated) (CataVar ...) (Vars ...))
+     ;(inspect Rotated)
+     (apply (lambda (CataVar ... Vars ...) Bod)
+	    Rotated)
+     ]))
 
   (define (test)
     (list 
@@ -87,10 +90,12 @@
 
      (match '(1 . 2) [(,x . ,y) y])
 
-     (print-graph #f)
-     (print-gensym #f)
-     (pretty-print
-      (expand '(match '(1 2 3) [(,x* ....) x*])))
+;      (print-graph #f)
+;      (print-gensym #f)
+;      (pretty-print
+;       (expand '(match '(1 2 3) [(,x* ....) x*])))
+
+     (match '(1 2 3) [(1 ,x* ....) x*])
 
      ))
 
@@ -110,6 +115,8 @@
 (define-syntax list-up-all-vars
   (syntax-rules (unquote )
     [(_ (Acc ...)) (list Acc ...)]
+;    [(_ (Acc ...) (unquote V) Rest ...)
+;     (list-up-all-vars (Acc ... V) Rest ...)]
     [(_ (Acc ...) (unquote V) Rest ...)
      (list-up-all-vars (Acc ... V) Rest ...)]
     [(_ Acc () Rest ...)
@@ -151,7 +158,7 @@
 
 	;; Termination condition:
 	[(_ () Exec Bod Cata NextClause CataVars Vars)
-	 (Exec Bod CataVars)
+	 (Exec Bod CataVars Vars)
 	 ]
 
 	;; Cata redirect: 
@@ -196,7 +203,7 @@
 		 [(null? (cdr ls))
 		  (let* ([final (cons (project (car ls)) acc)]
 			 [rotated (apply map list (reverse! final))])
-		    (convert-pat ([VAL P0]) build-list-binder (Bod rotated) Cata NextClause () ())
+		    (convert-pat ([Obj P0]) build-list-binder (Bod rotated) Cata NextClause () ())
 		    )]
 
 		 [else (loop (cdr ls) 
