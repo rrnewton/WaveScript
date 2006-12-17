@@ -104,37 +104,48 @@
       (syntax-rules (unquote)
 
 	;; Termination condition:
-	[(_ () Bod Cata NextClause (CataVars ...))
-	 (exec-body Bod (CataVars ...))]
+	[(_ () Bod Cata NextClause CataVars)
+	 (exec-body Bod CataVars)]
 
 	;; Cata redirect: 
 	;; todo
 
 	;; Unquote Pattern, Cata: recursively match
-	[(_ ([Obj (unquote (V ...))] Stack ...) Bod Cata NextClause (CataVars ...))
+	[(_ ([Obj (unquote (V0 . V*))] . Stack) Bod Cata NextClause CataVars)
 	 (let ([cataset (lambda () (Cata Obj))])
-	   (convert-pat (Stack ...) Bod Cata 
-			NextClause ((cataset V ...) CataVars ...)))]
+	   (convert-pat Stack Bod Cata 
+			NextClause ((cataset V0 . V*) . CataVars)))]
 	
 	;; Unquote Pattern: bind a pattern variable:
-	[(_ ([Obj (unquote V)] Stack ...) Bod Cata NextClause CataVars)
+	[(_ ([Obj (unquote V)] . Stack) Bod Cata NextClause CataVars)
 	 (let ([V Obj])
-	   (convert-pat (Stack ...) Bod Cata NextClause CataVars))]
+	   (convert-pat Stack Bod Cata NextClause CataVars))]
 	
 	;; Pair pattern:
-	[(_ ([Obj (P0 . P1)] Stack ...) Bod Cata NextClause CataVars)
+	[(_ ([Obj (P0 . P1)] . Stack) Bod Cata NextClause CataVars)
 	 ;; Do car, push cdr onto stack.
 	 (if (pair? Obj)
 	     (let ([head (car Obj)]
 		   [tail (cdr Obj)])
-	       (convert-pat ([head P0] [tail P1] Stack ...)
+	       (convert-pat ([head P0] [tail P1] . Stack)
+			    Bod Cata NextClause CataVars))
+	     (NextClause)
+	     )]
+	
+	;; Ellipses:
+	[(_ ([Obj (P0 ellipses)] . Stack) Bod Cata NextClause CataVars)
+	 ;; Do car, push cdr onto stack.
+	 (if (pair? Obj)
+	     (let ([head (car Obj)]
+		   [tail (cdr Obj)])
+	       (convert-pat ([head P0] [tail P1] . Stack)
 			    Bod Cata NextClause CataVars))
 	     (NextClause)
 	     )]
 	
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ ([Obj LIT] Stack ...) Bod Cata NextClause CataVars)
+	[(_ ([Obj LIT] . Stack) Bod Cata NextClause CataVars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 	   (ASSERT (or (symbol? LIT)
@@ -142,7 +153,7 @@
 		       (string? LIT)
 		       (number? LIT)))
 	   (if (equal? Obj LIT)
-	       (convert-pat (Stack ...) Bod Cata NextClause CataVars)	       
+	       (convert-pat Stack Bod Cata NextClause CataVars)	       
 	       (NextClause)))]
 
 	;; Otherwise, syntax error.
@@ -190,7 +201,9 @@
       (lambda (symbol-decls exp)
         (match symbol-decls
           (((,symbol-name . ,symbol-var) ...)
-           `(let ((,symbol-var (quote ,symbol-name)) ...) ,exp)))))))
+           ;`(let ((,symbol-var (quote ,symbol-name)) ...) ,exp)
+	   `(let ,(map list symbol-var (map (lambda (x) `(quote ,symbol-name)))) ,exp)
+	   ))))))
 (define collect-symbols-help
   (lambda (exp)
     (let ((symbol-env '()))
