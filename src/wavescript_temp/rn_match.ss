@@ -6,7 +6,7 @@
 ;; let-match
 ;; trace-match... etc.
 
-(module (match match-help convert-pat exec-body test ASSERT)
+;(module (match match-help convert-pat exec-body test ASSERT)
 
 (define-syntax ASSERT
   (lambda (x)
@@ -31,33 +31,9 @@
     [(_ Template Cata Obj (Pat Bod) Rest ...)
      (let ([next (lambda () (match-help Template Cata Obj Rest ...))])
        ;; convert-pat returns a function that we apply to the value.
-       (convert-pat ((Obj Pat)) exec-body Bod Cata next ())
+       (convert-pat ((Obj Pat)) exec-body Bod Cata next () ())
        )]))
 
-#;
-(define-syntax match-help1
-  (syntax-rules (guard)
-    ((_ PatLit Vars Cdecls Template Cata Obj ThreadedIds
-       ((guard G ...) B0 B ...) Rest ...)
-     (let ((ls/false (sexp-dispatch Obj PatLit)))
-       (if (and ls/false (apply (lambda Vars
-                                  (guard-body Cdecls
-                                    (extend-backquote Template (and G ...))))
-                           ls/false))
-           (apply (lambda Vars
-                    (clause-body Cata Cdecls ThreadedIds
-                      (extend-backquote Template B0 B ...)))
-             ls/false)
-           (match-help Template Cata Obj ThreadedIds Rest ...))))
-    ((_ PatLit Vars Cdecls Template Cata Obj ThreadedIds
-       (B0 B ...) Rest ...)
-     (let ((ls/false (sexp-dispatch Obj PatLit)))
-       (if ls/false
-           (apply (lambda Vars
-                    (clause-body Cata Cdecls ThreadedIds
-                      (extend-backquote Template B0 B ...)))
-             ls/false)
-           (match-help Template Cata Obj ThreadedIds Rest ...))))))
 
 (define-syntax exec-body
   (syntax-rules ()
@@ -68,7 +44,6 @@
        (lambda (Var ...)
 	 (exec-body Bod (CataSets ...))
 	 ))]))
-
 
 #;
 (define-syntax build-list 
@@ -102,7 +77,10 @@
 
      (match '(1 . 2) [(,x . ,y) y])
 
-     (expand '  (match '(1 2 3) [(,x* ....) x*]))
+     (print-graph #f)
+     (print-gensym #f)
+     (pretty-print
+      (expand '(match '(1 2 3) [(,x* ....) x*])))
 
      ))
 
@@ -132,6 +110,7 @@
      (list-up-all-vars Acc Rest ...)]
     ))
 
+#;
 (define-syntax collect-vars
   (syntax-rules (unquote )
     [(_ Acc) (list . Acc)]
@@ -161,53 +140,38 @@
     (syntax-rules (unquote .... )
 
 	;; Termination condition:
-	[(_ () Exec Bod Cata NextClause CataVars)
+	[(_ () Exec Bod Cata NextClause CataVars Vars)
 	 (Exec Bod CataVars)]
 
 	;; Cata redirect: 
 	;; todo
 
 	;; Unquote Pattern, Cata: recursively match
-	[(_ ([Obj (unquote (V0 . V*))] . Stack) Exec Bod Cata NextClause CataVars)
+	[(_ ([Obj (unquote (V0 . V*))] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (let ([cataset (lambda () (Cata Obj))])
 	   (convert-pat Stack Exec Bod Cata 
-			NextClause ((cataset V0 . V*) . CataVars)))]
+			NextClause ((cataset V0 . V*) . CataVars) Vars))]
 	
 	;; Unquote Pattern: bind a pattern variable:
-	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause CataVars)
+	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (let ([V Obj])
-	   (convert-pat Stack Exec Bod Cata NextClause CataVars))]
+	   (convert-pat Stack Exec Bod Cata NextClause CataVars Vars))]
 
 	;; Ellipses:
-	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars)
+	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (call/1cc 
 	  (lambda (escape)	    
 	    (let* ([failed (lambda () (escape (NextClause)))]
 		   ;; Bind a pattern-matcher for one element of the list.	
 		   #;
 		   [project (lambda (VAL)
-			      (convert-pat ([VAL P0]) build-list IGNORED Cata failed CataVars))]
+			      (convert-pat ([VAL P0]) build-list IGNORED Cata failed CataVars Vars))]
 		   [project (lambda (VAL)
 			      ;; When the pattern matches, build a list of the vars:
 			      ;(mymacro () P0)
 			      (convert-pat ([VAL P0]) Exec
-					   (let-syntax ([list-up-all-vars
-							 (syntax-rules (unquote )
-							   [(_ acc foo) (quote (acc foo))]
-#|
-							   [(_ Acc) (list . Acc)]
-							   [(_ Acc (unquote V) . Rest)
-							    (list-up-all-vars (V . Acc) . Rest)]
-							   [(_ Acc () . Rest)
-							    (list-up-all-vars Acc . Rest)]
-							   [(_ Acc (P0 . P*) . Rest)
-							    (list-up-all-vars Acc P0 P* . Rest)]
-							   [(_ Acc LIT . Rest) 
-							    (list-up-all-vars Acc . Rest)]
-|#
-							   )])
-					     (list-up-all-vars () P0))
-					   Cata failed CataVars)
+					   (list-up-all-vars () P0)
+					   Cata failed CataVars Vars)
 			      )]
 		   )
 	      
@@ -221,7 +185,7 @@
 		 [(null? (cdr ls))
 		  (let* ([final (cons (project (car ls)) acc)]
 			 [rotated (apply map list (reverse! final))])
-		    (convert-pat ([VAL P0]) build-list-binder (Bod rotated) Cata NextClause ())
+		    (convert-pat ([VAL P0]) build-list-binder (Bod rotated) Cata NextClause () ())
 		    )]
 
 		 [else (loop (cdr ls) 
@@ -229,18 +193,18 @@
 		 )))))]
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
-	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause CataVars)
+	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (if (pair? Obj)
 	     (let ([head (car Obj)]
 		   [tail (cdr Obj)])
 	       (convert-pat ([head P0] [tail P1] . Stack)
-			    Exec Bod Cata NextClause CataVars))
+			    Exec Bod Cata NextClause CataVars Vars))
 	     (NextClause)
 	     )]
 		
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause CataVars)
+	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 ;	   (ASSERT (or (symbol? (quote LIT))
@@ -248,15 +212,14 @@
 ;		       (string? (quote LIT))
 ;		       (number? (quote LIT))))
 	   (if (equal? Obj (quote LIT))
-	       (convert-pat Stack Exec Bod Cata NextClause CataVars)	       
+	       (convert-pat Stack Exec Bod Cata NextClause CataVars Vars)
 	       (NextClause)))]
 
 	;; Otherwise, syntax error.
 	))
 
   (printf "TESTING: ~a\n" (test))
-)
-
+;)
 
 
 
@@ -277,8 +240,7 @@
              (B0 B ...)
              Rest ...)))
 
-      )))
-
+      ))
 
 
 
