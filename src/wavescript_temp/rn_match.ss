@@ -51,22 +51,22 @@
 
 (define-syntax exec-body
   (syntax-rules ()
-    [(_ Bod () __) Bod]
-    [(_ Bod ((fun Var ...) CataSets ...) __)
-     (call-with-values
-	 (lambda () (fun))
-       (lambda (Var ...)
-	 (exec-body Bod (CataSets ...) __)
-	 ))]))
+    [(_ Bod ()) Bod]
+    [(_ Bod (V0 . V*))
+     (let ([V0 (V0)])
+       (exec-body Bod V*))]))
 
-#;
+;; Like exec-body but just builds a list of all the vars
+;; Put Cata vars before normal Vars:
 (define-syntax build-list 
   (syntax-rules ()
     [(_ b ()) ()]
-    [(_ b ((__ V* ...) CataSets ...))
-     (append (list V* ...) (build-list b (CataSets ...)))
-     ]))
+    [(_ b ((__ V* ...) CataSets ...) Vars)
+     (append (list V* ...) (build-list b (CataSets ...)))]
+    [(_ b () (V . Vars)) 
+     (cons V (build-list b () Vars))]    ))
 
+;; Obsoleted:
 (define-syntax build-list-binder
   (syntax-rules ()
     [(_ (Bod Rotated) (CataVar ...) (Vars ...))
@@ -94,10 +94,10 @@
 
       (print-graph #f)
       (print-gensym #f)
-      (pretty-print
-       (expand '(match '(1 2 3) [(,x* ....) x*])))
 
-      (match '(1 2 3) [(1 ,x* ....) x*])
+;      (pretty-print  (expand '(match '(1 2 3) [(,x* ....) x*])))
+
+;      (match '(1 2 3) [(1 ,x* ....) x*])
 
 ;     (match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
 
@@ -207,6 +207,14 @@
      (collect-cata-sets Cata Acc  . Rest)]))
 
 
+(define-syntax bind-cata 
+  (syntax-rules ()
+    [(_ Bod Promise Args ())  Bod]
+    [(_ Bod Promise Args (V0 . V*))
+     (let ([V0 (lambda ()
+		 (call-with-values promise
+		   (lambda Args V0)))])
+       (bind-cata Bod Promise Args V*))]))
 
 ;; Convert a pattern into a function that will test for a match.
 ;;
@@ -223,8 +231,8 @@
     (syntax-rules (unquote .... )
 
 	;; Termination condition:
-      [(_ () Exec Bod Cata NextClause CataVars Vars)
-       (Exec Bod CataVars Vars)
+      [(_ () Exec Bod Cata NextClause Vars)
+       (Exec Bod Vars)
        ;Bod
        ]
       
@@ -232,41 +240,66 @@
 	;; todo
 
 	;; Unquote Pattern, Cata: recursively match
-	[(_ ([Obj (unquote (V0 . V*))] . Stack) Exec Bod Cata NextClause CataVars Vars)
-	 (let ([cataset (lambda () (Cata Obj))])
-	   (convert-pat Stack Exec Bod Cata 
-			NextClause ((cataset V0 . V*) . CataVars) Vars))]
+	[(_ ([Obj (unquote (V0 V* ...))] . Stack) Exec Bod Cata NextClause (Vars ...))
+	 (let ([promise (delay (Cata Obj))])
+	   (bind-cata 
+	    (convert-pat Stack Exec Bod Cata
+			 NextClause (V0 V* ... Vars ...))
+	    promise
+	    (V0 V* ...) (V0 V* ...)))]
 	
 	;; Unquote Pattern: bind a pattern variable:
-	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause CataVars Vars)
-	 (let ([V Obj])
-	   (convert-pat Stack Exec Bod Cata NextClause CataVars (V . Vars)))]
+	[(_ ([Obj (unquote V)] . Stack) Exec Bod Cata NextClause Vars)
+	 (let ([V (lambda () Obj)])
+	   (convert-pat Stack Exec Bod Cata NextClause (V . Vars)))]
 
 	;; Ellipses:
-	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars Vars)
+#;	[(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause CataVars Vars)
 	 (call/1cc 
 	  (lambda (escape)	    
 	    (let* ([failed (lambda () (escape (NextClause)))]
 		   ;; Bind a pattern-matcher for one element of the list.	
-		   #;
 		   [project (lambda (VAL)
 			      (convert-pat ([VAL P0]) build-list IGNORED Cata failed CataVars Vars))]
+#;
 		   [project (lambda (VAL)
-			      ;; When the pattern matches, build a list of the vars:
-			      ;(mymacro () P0)
+			      ;; When the pattern matches, build a list of the vars:				
 			      (convert-pat ([VAL P0]) Exec
-					   (list-up-vars () P0)
+					   (list-up-all-vars () P0)
 					   Cata failed CataVars Vars)
 			      )]
 		   )
-	      
-	      (let loop ([ls Obj] [acc '()])
+
+
+	      #;
+	      [(null? ls) 
+		  (bind-vars-null (collect-vars P0)
+				  (bind-cata-null (collect-cata-vars P0)
+						  Bod))]
+
+	      (let loop ([ls Obj] [acc '()] [cataacc '()])
 		(cond
-		 ;; Damn, how do we bind them to null?
-		 #;
-		 [(null? ls) 
-		  (build-list-binder )
-		  ]
+		 
+		 [(null? ls)
+		  (let* ([rotated_vars (apply map list (reverse! acc))]
+			 [rotated_catavars (apply map list (reverse! cataacc))])
+		    
+		    (apply (lambda (collect-vars P0)
+			     (apply (lambda (collect-cata-vars P0)
+				      (convert-pat Stack exec-body Bod Cata NextClause 				 
+						   CataVars
+						   ((collect-vars P0) Vars ... )))
+				    rotated_catavars))
+			   rotated_vars)
+
+		    #;
+		    ((Bod (collect-cata-sets P0))
+		     (collect-vars P0))
+
+					;(convert-pat ([Obj P0]) build-list-binder (Bod rotated) Cata NextClause () ())
+		    )]
+
+#;
 		 [(null? (cdr ls))
 		  (let* ([final (cons (project (car ls)) acc)]
 			 [rotated (apply map list (reverse! final))])
@@ -278,18 +311,18 @@
 		 )))))]
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
-	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause CataVars Vars)
+	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause Vars)
 	 (if (pair? Obj)
 	     (let ([head (car Obj)]
 		   [tail (cdr Obj)])
 	       (convert-pat ([head P0] [tail P1] . Stack)
-			    Exec Bod Cata NextClause CataVars Vars))
+			    Exec Bod Cata NextClause Vars))
 	     (NextClause)
 	     )]
 		
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
-	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause CataVars Vars)
+	[(_ ([Obj LIT] . Stack) Exec Bod Cata NextClause Vars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
 ;	   (ASSERT (or (symbol? (quote LIT))
@@ -297,7 +330,7 @@
 ;		       (string? (quote LIT))
 ;		       (number? (quote LIT))))
 	   (if (equal? Obj (quote LIT))
-	       (convert-pat Stack Exec Bod Cata NextClause CataVars Vars)
+	       (convert-pat Stack Exec Bod Cata NextClause Vars)
 	       (NextClause)))]
 
 	;; Otherwise, syntax error.
