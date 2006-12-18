@@ -15,15 +15,8 @@
 	       )
 
 (define-syntax ASSERT
-  (lambda (x)
-    (syntax-case x ()
-      [(_ expr) #'(or expr (error 'ASSERT "failed: ~s" #'expr))]
-      ;; This form is (ASSERT integer? x) returning the value of x.
-      [(_ fun val) #'(let ([v val])
-		       (if (fun v) v			   
-			   (error 'ASSERT "failed: ~s\n Value which did not satisfy above predicate: ~s" #'fun 
-				  v)))]
-      )))
+  (syntax-rules ()
+    [(_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr))]))
 
 (define-syntax match
   (syntax-rules ()
@@ -214,11 +207,11 @@
 	[(_ ([Obj LIT] . Stack) Exec Bod Guard Cata NextClause Vars CataVars)
 	 (begin 
 	   ;; Hopefully this happens at compile-time:
-;	   (ASSERT (or (symbol? (quote LIT))
-;		       (null? (quote LIT))
-;		       (boolean? (quote LIT))
-;		       (string? (quote LIT))
-;		       (number? (quote LIT))))
+	   (ASSERT (or (symbol? (quote LIT))
+		       (null? (quote LIT))
+		       (boolean? (quote LIT))
+		       (string? (quote LIT))
+		       (number? (quote LIT))))
 	   (if (equal? Obj (quote LIT))
 	       (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
 	       (NextClause)))]
