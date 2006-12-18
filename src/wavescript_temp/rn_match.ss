@@ -1,25 +1,18 @@
 
-;; How far can we get doing match with syntax-rules.
+;; How far can we get doing match with syntax-rules?
 
 ;; Portability:
 ;; Chez -- ok
 ;; PLT -- ok
-;; MIT seems to work but eval doesn't.
-;; bigloo -- some kind of call-with-values error
+
+;; MIT -- works on some tests (eval doesn't, though)
+
+;; bigloo -- some kind of call-with-values error on the multiple value test
+;; larceny -- gets a wrong number of arguments error on the same test as bigloo
+
 ;; gambit -- doesn't have define-syntax
 ;; scm -- doesn't have syntax-rules
-
-;; match-lambda
-;; let-match
-;; trace-match... etc.
-
-; (eval-when (compile eval load) (case-sensitive #t))
-
-; (module (match match-help convert-pat  test ASSERT
-; 	       bind-popped-vars ellipses-helper build-lambda
-; 	       bind-dummy-vars bind-cata
-; 	       exec-body build-list
-; 	       )
+;; guile -- doesn't have define-syntax
 
 (define-syntax ASSERT
   (syntax-rules ()
@@ -226,12 +219,12 @@
 	))
 
 (define (add1 x) (+ x 1))
-
 (define (test)
   (for-each 
       (lambda (pr)
 	(display "   Test: ") (display (car pr)) (newline)
-	(if (equal? (eval (car pr)) (cadr pr))
+	(if (equal? (eval (car pr) (interaction-environment)) ;(scheme-report-environment 5)
+		    (cadr pr))
 	    (begin (display "-- Passed." ) (newline))
 	    (begin (display "-- FAILED." ) (newline))
 	    ))
@@ -253,17 +246,17 @@
 
       ((match '(1 . 2) ((,x . ,y) y)) 2)
 
-;      ((expand '(collect-vars () (a b) (d ,e f (,g)))) (g e a b))
-      
       ((match '(1 2 3) ((1 ,x* ....) x*)) (2 3))
       ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*))) #((a b c) (1 2 3)))
       ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay)) yay)
       
       ((match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y))) (3 4))
-;      ((match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4))
 
       ;; Basic guard:
       ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
+
+      ;; Redirect and ellipses.
+;      ((match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4))
 
 ;       ;; Make sure we keep those bindings straight.
 ;       ((match '((a 2 9) (b 2 99) (c 2 999))
@@ -274,106 +267,24 @@
 
       )))
 
-(define (test2)
-  (list
-   (match 3 (,x x))
-   (match '(1 2) ((,x ,y) (+ x y)))
-   (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
-   (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
-   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
-   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
-   (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
-   (match '(1 . 2) ((,x . ,y) y))
-   (match '(1 2 3) ((1 ,x* ....) x*))
-   (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))
-   (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))
-   (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
-   (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
-   ))
+;; This is just a version that doesn't use eval.
+; (define (test2)
+;   (list
+;    (match 3 (,x x))
+;    (match '(1 2) ((,x ,y) (+ x y)))
+;    (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
+;    (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
+;    (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+;    (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+;    (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
+;    (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
+;    (match '(1 . 2) ((,x . ,y) y))
+;    (match '(1 2 3) ((1 ,x* ....) x*))
+;    (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))
+;    (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))
+;    (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
+;    (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
+;    ))
 
-
-;  (printf "TESTING: ~a\n" (test))
-;; End module:
-;)
-
-
-; #!eof
-
-
-; ;; here's something that takes apart quoted stuff. 
-
-; (define destruct
-;   (lambda (datum)
-;     (match datum
-;       (() `'())
-;       ((,(X) . ,(Y))`(cons ,X ,Y))
-; ;      (#(,(X) ...) `(vector ,X ...))
-; #;
-;       (,thing
-; 	(guard (symbol? thing))
-; 	`',thing)
-;       (,thing
-; 	thing))))
-
-; ;; examples using explicit Catas
-
-; (define sumsquares
-;   (lambda (ls)
-;     (define square 
-;       (lambda (x)
-;         (* x x)))
-;     (match ls 
-;       ((,(a*) ...) (apply + a*))
-;       (,(square -> n) n))))
-
-; (define sumsquares
-;   (lambda (ls)
-;     (define square 
-;       (lambda (x)
-;         (* x x)))
-;     (let ((acc 0))
-;       (match+ (acc) ls 
-;         ((,() ...) acc)
-;         (,((lambda (acc x) (+ acc (square x))) ->) acc)))))
-
-; ;;; The following uses explicit Catas to parse programs in the
-; ;;; simple language defined by the grammar below
-
-; ;;; <Prog> -> (program <Stmt>* <Expr>)
-; ;;; <Stmt> -> (if <Expr> <Stmt> <Stmt>)
-; ;;;         | (set! <var> <Expr>)
-; ;;; <Expr> -> <var>
-; ;;;         | <integer>
-; ;;;         | (if <Expr> <Expr> <Expr>)
-; ;;;         | (<Expr> <Expr*>)
-
-
-; (define parse
-;   (lambda (x)
-;     (define Prog
-;       (lambda (x)
-;         (match x
-;           ((program ,(Stmt -> s*) ... ,(Expr -> e))
-;            `(begin ,s* ... ,e))
-;           (,other (error 'parse "invalid program ~s" other)))))
-;     (define Stmt
-;       (lambda (x)
-;         (match x
-;           ((if ,(Expr -> e) ,(Stmt -> s1) ,(Stmt -> s2))
-;            `(if ,e ,s1 ,s2))
-;           ((set! ,v ,(Expr -> e))
-;            (guard (symbol? v))
-;            `(set! ,v ,e))
-;           (,other (error 'parse "invalid statement ~s" other)))))
-;     (define Expr
-;       (lambda (x)
-;         (match x
-;           (,v (guard (symbol? v)) v)
-;           (,n (guard (integer? n)) n)
-;           ((if ,(e1) ,(e2) ,(e3))
-;            `(if ,e1 ,e2 ,e3))
-;           ((,(rator) ,(rand*) ...) `(,rator ,rand* ...))
-;           (,other (error 'parse "invalid expression ~s" other)))))
-;     (Prog x)))
-; ;;; (parse '(program (set! x 3) (+ x 4)))) => (begin (set! x 3) (+ x 4))
+(display "TESTING: ") (newline) (test)
 
