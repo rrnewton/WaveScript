@@ -171,11 +171,10 @@
 			    (convert-pat ((VAL P0)) build-list IGNORED Guard Cata failed (Vars ...) (CataVars ...)))))
 	    
 	    ;; TODO, HANDLE NULL CASE:
-	    #;
-	    (if (null? Obj) 
-		(bind-vars-null (collect-vars () P0 ())
-				(bind-cata-null (collect-cata-vars P0)
-						Bod Guard)))
+; 	    (if (null? Obj) 
+; 		(bind-vars-null (collect-vars () P0 ())
+; 				(bind-cata-null (collect-cata-vars P0)
+; 						Bod Guard)))
 
 	    (let loop ((ls Obj) (acc '()))
 	      (cond
@@ -258,12 +257,11 @@
       ;; Basic guard:
       ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
 
-#;
-      ;; Make sure we keep those bindings straight.
-      ((match '((a 2 9) (b 2 99) (c 2 999))
-	 (((,x 2 ,(y)) ....) (vector x y))
-	 (,n (add1 n)))
-       )
+;       ;; Make sure we keep those bindings straight.
+;       ((match '((a 2 9) (b 2 99) (c 2 999))
+; 	 (((,x 2 ,(y)) ....) (vector x y))
+; 	 (,n (add1 n)))
+;        )
 
 
       )))
