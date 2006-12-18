@@ -54,13 +54,23 @@
 
 (define-syntax exec-body
   (syntax-rules ()
-    [(_ Bod () ()) Bod]
+    [(_  Vars CataVars) (exec-body-helper Vars CataVars CataVars)]))
+
+(define-syntax exec-body-helper
+  (syntax-rules ()
+    [(_ Bod () () ())  Bod]
+    ;; First bind normal pattern variables:
+    [(_ Bod (V0 . V*) CataVars1 CataVars2)
+     (let ([V0 (V0)])
+       (exec-body Bod V* ()))]
+    ;; Then bind 
+
     [(_ Bod Vars (V0 . V*))
      (let ([V0 (V0)])
        (exec-body Bod Vars V*))]
-    [(_ Bod (V0 . V*) ())
-     (let ([V0 (V0)])
-       (exec-body Bod V* ()))]))
+    
+    ))
+
 
 ;; Like exec-body but just builds a list of all the vars.
 ;; This puts CataVars first in the list.
