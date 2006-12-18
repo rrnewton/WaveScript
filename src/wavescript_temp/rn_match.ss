@@ -223,9 +223,10 @@
 (define (test)
   (for-each 
       (lambda (pr)
+	(printf "   Test: ~a\n" (car pr))
 	(if (equal? (eval (car pr)) (cadr pr))
-	    (printf "Passed test: ~a\n" (car pr))
-	    (printf "FAILED test: ~a\n" (car pr))
+	    (printf "-- Passed.\n" )
+	    (printf "-- FAILED.\n" )
 	    ))
     '(   
       [(match 3 [,x x]) 3]
