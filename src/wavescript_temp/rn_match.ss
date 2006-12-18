@@ -9,12 +9,12 @@
 (eval-when (compile eval load) (case-sensitive #t))
 
 (module (match match-help convert-pat exec-body test ASSERT
-	       list-up-all-vars list-vars-helper traverse-vars
-	       list-up-vars list-up-cata-vars 
-	       collect-vars collect-cata-vars
+	       ;list-up-all-vars list-vars-helper traverse-vars
+	       ;list-up-vars list-up-cata-vars 
+	       ;collect-vars collect-cata-vars
 	       bind-cata ellipses-helper build-lambda
 	       build-list
-	       build-list-binder)
+	       )
 
 (define-syntax ASSERT
   (lambda (x)
@@ -49,8 +49,6 @@
 		    Cata next ())
        )]))
 
-;(define exec (lambda catavars (lambda vars Body)))
-
 (define-syntax exec-body
   (syntax-rules ()
     [(_ Bod ()) Bod]
@@ -65,170 +63,43 @@
     [(_ b (V . Vars))
      (cons V (build-list b Vars))]))
 
-;; Obsoleted:
-(define-syntax build-list-binder
-  (syntax-rules ()
-    [(_ (Bod Rotated) (Var ...))
-     (apply (lambda (Var ...) Bod)
-	    Rotated)
-     ]))
-
 (define (test)
-    (list 
+  (for-each 
+      (lambda (pr)
+	(if (equal? (eval (car pr)) (cadr pr))
+	    (printf "Passed test: ~a\n" (car pr))
+	    (printf "FAILED test: ~a\n" (car pr))
+	    ))
+    '(   
+      [(match '(1 2) [(,x ,y) (+ x y)]) 3]
+      
+      [(match '(1 2) [(,x ,y ,z) (+ x x y)] [(,x ,y) (* 100 y)]) 200]
+      
+      [(match '(1 2) [(,x ,y ,z) (+ x x y)] [,v v]) (1 2)]
 
-     (match '(1 2) [(,x ,y) (+ x y)])
-     
-     (match '(1 2) [(,x ,y ,z) (+ x x y)] [(,x ,y) (* 100 y)])
-          
-     (match '(1 2) [(,x ,y ,z) (+ x x y)] [,v v])
+      [(match '(1 2) [(3 ,y) (* 1000 y)] [(1 ,y) (* 100 y)]) 200]
 
-     (match '(1 2) [(3 ,y) (* 1000 y)] [(1 ,y) (* 100 y)])
+      [(match '(1 2) [(,[x] ,[y]) (list x y)] [1 3] [2 4]) (3 4)]
 
-     (match '(1 2) [(,[x] ,[y]) (list x y)] [1 3] [2 4])
+      [(match '(1 2) [(,[x y] ,[z w]) (list x y z w)] [1 (values 3 4)] [2 (values 5 6)])
+       (3 4 5 6)]
 
-     (match '(1 2) [(,[x y] ,[z w]) (list x y z w)] [1 (values 3 4)] [2 (values 5 6)])
+      [(match '(1 . 2) [(,x . ,y) y]) 2]
 
-     (match '(1 . 2) [(,x . ,y) y])
+;      [(expand '(collect-vars () (a b) (d ,e f (,g)))) (g e a b)]
+      
+      [(match '(1 2 3) [(1 ,x* ....) x*]) (2 3)]
 
-      (print-graph #f)
-      (print-gensym #f)
+      [(match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
+       #((a b c) (1 2 3))]
 
-;      (pretty-print  (expand '(match '(1 2 3) [(,x* ....) x*])))
+      [(match '((a 1) (b 2) (c 3 4)) [([,x* ,y*] ....) (vector x* y*)] [,_ 'yay]) yay]
 
-      (expand '(collect-vars () (a b) (d ,e f (,g))))
+      [(match '(1 2 3) [(1 ,[add1 -> x] ,[add1 -> y]) (list x y)]) (3 4)]
+      
+					;     (match '(1 2 3) [(1 ,[add1 -> x*] ....) x*])
 
-      (match '(1 2 3) [(1 ,x* ....) x*])
-
-     (match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)])
-
-     (match '((a 1) (b 2) (c 3 4)) [([,x* ,y*] ....) (vector x* y*)] [,_ 'yay])
-
-     (match '(1 2 3) [(1 ,[add1 -> x] ,[add1 -> y]) (list x y)])
-
-;     (match '(1 2 3) [(1 ,[add1 -> x*] ....) x*])
-
-     ))
-
-
-(define-syntax syntax-flatten
-  (syntax-rules ()
-    [(_ Acc) Acc]
-    [(_ Acc () Rest ...) 
-     (syntax-flatten Acc Rest ...)]
-    [(_ Acc (F . More) Rest ...)
-     (syntax-flatten Acc F More Rest ...)]
-    [(_ (Acc ...) F Rest ...)
-     (syntax-flatten (Acc ... F) Rest ...)]
-    ))
-;(expand '(syntax-flatten () (1) (2 (3 ((8))))))
-
-
-
-;; Attemp at abstracting this a bit:
-(define-syntax list-up-all-vars
-  (syntax-rules ()
-    [(_ P) (traverse-vars () P list-vars-helper)]))
-(define-syntax list-vars-helper
-  (syntax-rules ()
-    [(_ (Acc ...)) (list Acc ...)]))
-(define-syntax traverse-vars
-  (syntax-rules (unquote )
-    [(_ Acc Exec) (Exec Acc)]
-    [(_ Acc Exec (unquote V) . Rest)
-     (traverse-vars (V . Acc) Exec . Rest)]
-    [(_ Acc Exec () . Rest)
-     (traverse-vars Acc Exec . Rest)]
-    [(_ Acc Exec (P0 . P*) . Rest)
-     (traverse-vars Acc Exec P0 P* . Rest)]
-    [(_ Acc Exec LIT . Rest) 
-     (traverse-vars Acc Exec . Rest)]
-    ))
-
-;; Highly redundant, might be some good way to combine, but I ran into
-;; trouble the first time I tried.
-(define-syntax list-up-vars
-  (syntax-rules (unquote )
-    [(_ Acc ) (list . Acc)]
-    [(_ Acc  (unquote V) . Rest)
-     (list-up-vars (V . Acc)  . Rest)]
-    [(_ Acc  () . Rest)
-     (list-up-vars Acc  . Rest)]
-    [(_ Acc  (P0 . P*) . Rest)
-     (list-up-vars Acc  P0 P* . Rest)]
-    [(_ Acc  LIT . Rest) 
-     (list-up-vars Acc  . Rest)]
-    ))
-(define-syntax list-up-cata-vars
-  (syntax-rules (unquote -> )
-    [(_ Acc ) (list . Acc)]
-    [(_ Acc  (unquote (f -> V* ...)) . Rest)
-     (list-up-cata-vars (V* ... . Acc)  . Rest)]
-    [(_ Acc  (unquote (V* ...)) . Rest)
-     (list-up-cata-vars (V* ... . Acc)  . Rest)]
-    [(_ Acc  () . Rest)
-     (list-up-cata-vars Acc  . Rest)]
-    [(_ Acc  (P0 . P*) . Rest)
-     (list-up-cata-vars Acc  P0 P* . Rest)]
-    [(_ Acc  LIT . Rest) 
-     (list-up-cata-vars Acc  . Rest)]
-    ))
-
-;; Might should be reversed.
-(define-syntax collect-vars
-  (syntax-rules (unquote )
-    [(_ (Acc ...) (Seed ...)) (Acc ... Seed ...)]
-    [(_ Acc Seed (unquote V) . Rest)
-     (collect-vars (V . Acc) Seed  . Rest)]
-    [(_ Acc Seed  () . Rest)
-     (collect-vars Acc Seed  . Rest)]
-    [(_ Acc Seed  (P0 . P*) . Rest)
-     (collect-vars Acc Seed  P0 P* . Rest)]
-    [(_ Acc Seed  LIT . Rest) 
-     (collect-vars Acc Seed  . Rest)]
-    ))
-
-(define-syntax collect-vars-k
-  (syntax-rules (unquote )
-    [(_ (Acc ...) (Seed ...)) (Acc ... Seed ...)]
-    [(_ Acc Seed (unquote V) . Rest)
-     (collect-vars (V . Acc) Seed  . Rest)]
-    [(_ Acc Seed  () . Rest)
-     (collect-vars Acc Seed  . Rest)]
-    [(_ Acc Seed  (P0 . P*) . Rest)
-     (collect-vars Acc Seed  P0 P* . Rest)]
-    [(_ Acc Seed  LIT . Rest) 
-     (collect-vars Acc Seed  . Rest)]
-    ))
-
-
-
-(define-syntax collect-cata-vars
-  (syntax-rules (unquote -> )
-    [(_ Acc ) Acc]
-    [(_ Acc  (unquote (f -> V* ...)) . Rest)
-     (collect-cata-vars (V* ... . Acc)  . Rest)]
-    [(_ Acc  (unquote (V* ...)) . Rest)
-     (collect-cata-vars (V* ... . Acc)  . Rest)]
-    [(_ Acc  () . Rest)
-     (collect-cata-vars Acc  . Rest)]
-    [(_ Acc  (P0 . P*) . Rest)
-     (collect-cata-vars Acc  P0 P* . Rest)]
-    [(_ Acc  LIT . Rest) 
-     (collect-cata-vars Acc  . Rest)]))
-#;
-(define-syntax collect-cata-sets
-  (syntax-rules (unquote -> )
-    [(_ Cata Acc ) Acc]
-    [(_ Cata Acc  (unquote (f -> V0 V* ...)) . Rest)
-     (collect-cata-sets Cata ((f V0 V* ...) . Acc)  . Rest)]
-    [(_ Cata Acc  (unquote (V0 V* ...)) . Rest)
-     (collect-cata-sets Cata ((Cata V0 V* ...) . Acc)  . Rest)]
-    [(_ Cata Acc  () . Rest)
-     (collect-cata-sets Cata Acc  . Rest)]
-    [(_ Cata Acc  (P0 . P*) . Rest)
-     (collect-cata-sets Cata Acc  P0 P* . Rest)]
-    [(_ Cata Acc  LIT . Rest) 
-     (collect-cata-sets Cata Acc  . Rest)]))
+      )))
 
 
 (define-syntax bind-cata 
@@ -241,42 +112,39 @@
        (bind-cata Bod Promise Args V*))]))
 
 
-#;
 (define-syntax ellipses-helper
-  (syntax-rules ()
-    [(_ Args Stack Exec Bod Cata Next AllVars)
-     ((build-lam) Args
-       (convert-pat Stack Exec Bod Cata NextClause AllVars))     
-     ]))
-
-(define-syntax ellipses-helper
-  (syntax-rules (unquote )
+  (syntax-rules (unquote ->)
     [(_ (Acc ...) (StartVars ...) (Bod ...))
      (lambda (Acc ...)
        (Bod ... (Acc ... StartVars ...)))]          
+    [(_ (Acc ...) StartVars Bod (unquote (FUN -> V* ...)) . Rest)
+     (ellipses-helper (V* ... Acc ...) StartVars Bod  . Rest)]
+    [(_ (Acc ...) StartVars Bod (unquote (V* ...)) . Rest)
+     (ellipses-helper (V* ... Acc ...) StartVars Bod  . Rest)]
     [(_ Acc StartVars Bod (unquote V) . Rest)
      (ellipses-helper (V . Acc) StartVars Bod  . Rest)]
+    
     [(_ Acc StartVars Bod () . Rest)
      (ellipses-helper Acc StartVars Bod  . Rest)]
-        [(_ Acc StartVars Bod (P0 . P*) . Rest)
+    
+    [(_ Acc StartVars Bod (P0 . P*) . Rest)
      (ellipses-helper Acc StartVars Bod P0 P* . Rest)]
     ;; Otherwise just assume its a literal:
     [(_ Acc StartVars Bod LIT . Rest)
      (ellipses-helper Acc StartVars Bod . Rest)]
     ))
 
-(define-syntax build-lambda
-  (syntax-rules ()
-    [(_) lambda]))
+(define-syntax build-lambda (syntax-rules () [(_) lambda]))
 
 ;; Convert a pattern into a function that will test for a match.
 ;;
 ;; This takes several arguments:
-;;   Stack -- Objs&Patterns left to match.  Objs should be just vars. 2
+;;   Stack -- Objs&Patterns left to match.  Objs should be just vars.
+;;   Exec -- Rator to apply to Bod and Vars when we reach a termination point.
 ;;   Bod -- the expression to execute if the pattern matches
 ;;   Cata -- the name of the function that will reinvoke this match
 ;;   Nextclause -- abort this clause and go to the next.
-;;   CataVars -- Sets of vars that will result from catas (if pattern) matches
+;;   Vars -- Accumulator for vars bound by the pattern.
 ;;
 ;; If match, the body is evaluated, otherwise "nextclause" is called.
 ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
@@ -290,7 +158,7 @@
       ;; Cata redirect: 
       [(_ ([Obj (unquote (f -> V0 V* ...))] . Stack) Exec Bod Cata NextClause (Vars ...))
        (let ([promise (delay (f Obj))])
-	 (inspect f)
+	 ;(inspect f)
 	 (bind-cata 
 	  (convert-pat Stack Exec Bod Cata
 		       NextClause (V0 V* ... Vars ...))
@@ -322,6 +190,7 @@
 		   [project (lambda (VAL)
 			      (convert-pat ([VAL P0]) build-list IGNORED Cata failed Vars))])
 	      
+	      ;; TODO, HANDLE NULL CASE:
 	      #;
 	      (if (null? Obj) 
 		  (bind-vars-null (collect-vars () P0 ())
@@ -332,27 +201,11 @@
 		(cond
 		 
 		 [(null? ls)
-		  (let* ([rotated (apply map list (reverse! acc))]
-			 ;[thunk (lambda (v) (lambda () v))]
-			 )
-		    ;(inspect rotated)
+		  (let* ([rotated (apply map list (reverse! acc))])
 		    (apply 
-		     
 		     (ellipses-helper () Vars
 				      (convert-pat Stack exec-body Bod Cata NextClause)
 				      P0)
-
-		     #;(ellipses-helper 
-		      (collect-vars () P0 ())
-		      Stack exec-body Bod Cata NextClause 
-		      ;(foo bar baz) 
-		      (collect-vars () P0 Vars)
-		      )
-		     #;
-		     (lambda (collect-vars P0 ())
-		       (convert-pat Stack exec-body Bod Cata NextClause
-				    (collect-vars P0 Vars)))
-		     ;(map thunk rotated)
 		     ;; When we pop the cata-var we pop the whole list.
 		     (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
 		       rotated)
