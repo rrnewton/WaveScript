@@ -64,24 +64,27 @@
 
 (define-syntax exec-body
   (syntax-rules ()
-    [(_  Bod Guard Vars CataVars)
+    [(_  Bod Guard NextClause Vars CataVars)
      (bind-popped-vars Vars
-         (if (bind-dummy-vars CataVars (if #t #t #t)) ;; TODO: GUARD.
+         (if (bind-dummy-vars CataVars Guard)
 	     (bind-popped-vars CataVars Bod)
 	     (NextClause)
-	     ))
-     ]))
+	     ))]))
 
 ;; Like exec-body but just builds a list of all the vars.
 ;; This puts CataVars first in the list.
 (define-syntax build-list 
   (syntax-rules ()
-    [(_ b g () ()) ()]
-    [(_ b g (V . Vars) CataVars)
-     (cons V (build-list b g Vars CataVars))]
-    [(_ b g () (V . CataVars))
-     (cons V (build-list b g () CataVars))]
-    ))
+    [(_ __ #t #f () ())   ()]
+    [(_ __ #t #f (V . Vars) CataVars)
+     (cons V (build-list __ #t #f Vars CataVars))]
+    [(_ __ #t #f () (V . CataVars))
+     (cons V (build-list __ #t #f () CataVars))]
+    [(_ __ Guard NextClause Vars CataVars)
+     (if (bind-popped-vars Vars
+          (bind-popped-vars CataVars Guard))
+	 (build-list __ #t #f Vars CataVars)
+	 (NextClause))]))
 
 (define-syntax bind-cata
   (syntax-rules ()
@@ -139,7 +142,7 @@
       ;; Termination condition:
       ;; Now check the guard and (possibly) execute the body.
       [(_ () Exec Bod Guard Cata NextClause Vars CataVars)
-       (Exec Bod Guard Vars CataVars)]
+       (Exec Bod Guard NextClause Vars CataVars)]
       
       ;; Cata redirect: 
       [(_ ([Obj (unquote (f -> V0 V* ...))] . Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
@@ -258,6 +261,8 @@
       [(match '(1 2 3) [(1 ,[add1 -> x] ,[add1 -> y]) (list x y)]) (3 4)]
 ;      [(match '(1 2 3) [(1 ,[add1 -> x*] ....) x*]) (3 4)]
 
+      ;; Basic guard:
+      [(match 3 [,x (guard (even? x)) 44] [,y (guard (< y 40) (odd? y)) 33]) 33]
 
 #;
       ;; Make sure we keep those bindings straight.
