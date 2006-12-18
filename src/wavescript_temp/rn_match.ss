@@ -62,14 +62,15 @@
      (let ([V0 (V0)])
        (exec-body Bod V* ()))]))
 
-;; Like exec-body but just builds a list of all the vars
+;; Like exec-body but just builds a list of all the vars.
+;; This puts CataVars first in the list.
 (define-syntax build-list 
   (syntax-rules ()
     [(_ b () ()) ()]
     [(_ b (V . Vars) CataVars)
      (cons V (build-list b Vars CataVars))]
     [(_ b () (V . CataVars))
-     (cons V (build-list b CataVars))]
+     (cons V (build-list b () CataVars))]
     ))
 
 (define-syntax bind-cata 
@@ -81,27 +82,29 @@
 		   (lambda Args V0)))])
        (bind-cata Bod Promise Args V*))]))
 
-;; add catavors
+;; This does the job of "collect-vars", but it also carries a
+;; continuation (of a sort) with it.
 (define-syntax ellipses-helper
   (syntax-rules (unquote ->)
-    [(_ (Acc ...) (StartVars ...) (Bod ...))
-     (lambda (Acc ...)
-       (Bod ... (Acc ... StartVars ...)))]          
-    [(_ (Acc ...) StartVars Bod (unquote (FUN -> V* ...)) . Rest)
-     (ellipses-helper (V* ... Acc ...) StartVars Bod  . Rest)]
-    [(_ (Acc ...) StartVars Bod (unquote (V* ...)) . Rest)
-     (ellipses-helper (V* ... Acc ...) StartVars Bod  . Rest)]
-    [(_ Acc StartVars Bod (unquote V) . Rest)
-     (ellipses-helper (V . Acc) StartVars Bod  . Rest)]
+    [(_ (Vars ...) (CataVars ...) (Bod ...))
+     (lambda (CataVars ... Vars ...)
+       (Bod ... (Vars ...) (CataVars ...)))]
     
-    [(_ Acc StartVars Bod () . Rest)
-     (ellipses-helper Acc StartVars Bod  . Rest)]
+    [(_ Vars (CataVars ...) Bod (unquote (FUN -> V* ...)) . Rest)
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest)]
+    [(_ Vars (CataVars ...) Bod (unquote (V* ...)) . Rest)
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest)]
+    [(_ Vars CataVars Bod (unquote V) . Rest)
+     (ellipses-helper (V . Vars) CataVars Bod  . Rest)]
     
-    [(_ Acc StartVars Bod (P0 . P*) . Rest)
-     (ellipses-helper Acc StartVars Bod P0 P* . Rest)]
+    [(_ Vars CataVars Bod () . Rest)
+     (ellipses-helper Vars CataVars Bod  . Rest)]
+    
+    [(_ Vars CataVars Bod (P0 . P*) . Rest)
+     (ellipses-helper Vars CataVars Bod P0 P* . Rest)]
     ;; Otherwise just assume its a literal:
-    [(_ Acc StartVars Bod LIT . Rest)
-     (ellipses-helper Acc StartVars Bod . Rest)]
+    [(_ Vars CataVars Bod LIT . Rest)
+     (ellipses-helper Vars CataVars Bod . Rest)]
     ))
 
 (define-syntax build-lambda (syntax-rules () [(_) lambda]))
@@ -150,10 +153,8 @@
        (let ([V (lambda () Obj)])
 	 (convert-pat Stack Exec Bod Cata NextClause (V . Vars) CataVars))]
 
-#;
       ;; Ellipses:
-      [(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause Vars CataVars)
-       
+      [(_ ([Obj (P0 ....)] . Stack) Exec Bod Cata NextClause (Vars ...) (CataVars ...))
        (call/1cc 
 	(lambda (escape)
 	  (let* ([failed (lambda () (escape (NextClause)))]
@@ -170,21 +171,18 @@
 
 	    (let loop ([ls Obj] [acc '()])
 	      (cond
-	       
 	       [(null? ls)
 		(let* ([rotated (apply map list (reverse! acc))])
 		  (apply 
-		   (ellipses-helper () (Vars ...) (CataVars ...)
+		   (ellipses-helper (Vars ...) (CataVars ...)
 				    (convert-pat Stack exec-body Bod Cata NextClause)
 				    P0)
 		   ;; When we pop the cata-var we pop the whole list.
 		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
 		     rotated)
 		   ))]
-	       
 	       [else (loop (cdr ls) 
-			   (cons (project (car ls)) acc))]
-	       )))))]
+			   (cons (project (car ls)) acc))])))))]
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	[(_ ([Obj (P0 . P1)] . Stack) Exec Bod Cata NextClause Vars CataVars)
@@ -239,13 +237,20 @@
 
 ;      [(expand '(collect-vars () (a b) (d ,e f (,g)))) (g e a b)]
       
-;      [(match '(1 2 3) [(1 ,x* ....) x*]) (2 3)]
-;      [(match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)]) #((a b c) (1 2 3))]
-;      [(match '((a 1) (b 2) (c 3 4)) [([,x* ,y*] ....) (vector x* y*)] [,_ 'yay]) yay]
+      [(match '(1 2 3) [(1 ,x* ....) x*]) (2 3)]
+      [(match '((a 1) (b 2) (c 3)) [([,x* ,y*] ....) (vector x* y*)]) #((a b c) (1 2 3))]
+      [(match '((a 1) (b 2) (c 3 4)) [([,x* ,y*] ....) (vector x* y*)] [,_ 'yay]) yay]
       
       [(match '(1 2 3) [(1 ,[add1 -> x] ,[add1 -> y]) (list x y)]) (3 4)]
 ;      [(match '(1 2 3) [(1 ,[add1 -> x*] ....) x*]) (3 4)]
 
+
+#;
+      ;; Make sure we keep those bindings straight.
+      [(match '((a 2 9) (b 2 99) (c 2 999))
+	 [([,x 2 ,[y]] ....) (vector x y)]
+	 [,n (add1 n)])
+       ]
 
 
       )))
