@@ -1,18 +1,26 @@
 
 ;; How far can we get doing match with syntax-rules.
 
+;; Portability:
+;; Chez -- ok
+;; PLT -- ok
+;; MIT seems to work but eval doesn't.
+;; bigloo -- 
+;; gambit -- doesn't have define-syntax
+;; scm --
+
 
 ;; match-lambda
 ;; let-match
 ;; trace-match... etc.
 
-(eval-when (compile eval load) (case-sensitive #t))
+; (eval-when (compile eval load) (case-sensitive #t))
 
-(module (match match-help convert-pat  test ASSERT
-	       bind-popped-vars ellipses-helper build-lambda
-	       bind-dummy-vars bind-cata
-	       exec-body build-list
-	       )
+; (module (match match-help convert-pat  test ASSERT
+; 	       bind-popped-vars ellipses-helper build-lambda
+; 	       bind-dummy-vars bind-cata
+; 	       exec-body build-list
+; 	       )
 
 (define-syntax ASSERT
   (syntax-rules ()
@@ -163,7 +171,7 @@
 
       ;; Ellipses:
       ((_ ((Obj (P0 ....)) . Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
-       (call/cc 
+       (call-with-current-continuation
 	(lambda (escape)
 	  (let* ((failed (lambda () (escape (NextClause))))
 		 ;; Bind a pattern-matcher for one element of the list.	
@@ -179,7 +187,7 @@
 	    (let loop ((ls Obj) (acc '()))
 	      (cond
 	       ((null? ls)
-		(let* ((rotated (apply map list (reverse! acc))))
+		(let* ((rotated (apply map list (reverse acc))))
 		  (apply 
 		   (ellipses-helper (Vars ...) (CataVars ...)
 				    (convert-pat Stack exec-body Bod Guard Cata NextClause)
@@ -218,6 +226,7 @@
 	;; Otherwise, syntax error.
 	))
 
+(define (add1 x) (+ x 1))
 
 (define (test)
   (for-each 
@@ -266,88 +275,88 @@
 
       )))
 
-  (printf "TESTING: ~a\n" (test))
+;  (printf "TESTING: ~a\n" (test))
 ;; End module:
-)
+;)
 
 
-#!eof
+; #!eof
 
 
-;; here's something that takes apart quoted stuff. 
+; ;; here's something that takes apart quoted stuff. 
 
-(define destruct
-  (lambda (datum)
-    (match datum
-      (() `'())
-      ((,(X) . ,(Y))`(cons ,X ,Y))
-;      (#(,(X) ...) `(vector ,X ...))
-#;
-      (,thing
-	(guard (symbol? thing))
-	`',thing)
-      (,thing
-	thing))))
+; (define destruct
+;   (lambda (datum)
+;     (match datum
+;       (() `'())
+;       ((,(X) . ,(Y))`(cons ,X ,Y))
+; ;      (#(,(X) ...) `(vector ,X ...))
+; #;
+;       (,thing
+; 	(guard (symbol? thing))
+; 	`',thing)
+;       (,thing
+; 	thing))))
 
-;; examples using explicit Catas
+; ;; examples using explicit Catas
 
-(define sumsquares
-  (lambda (ls)
-    (define square 
-      (lambda (x)
-        (* x x)))
-    (match ls 
-      ((,(a*) ...) (apply + a*))
-      (,(square -> n) n))))
+; (define sumsquares
+;   (lambda (ls)
+;     (define square 
+;       (lambda (x)
+;         (* x x)))
+;     (match ls 
+;       ((,(a*) ...) (apply + a*))
+;       (,(square -> n) n))))
 
-(define sumsquares
-  (lambda (ls)
-    (define square 
-      (lambda (x)
-        (* x x)))
-    (let ((acc 0))
-      (match+ (acc) ls 
-        ((,() ...) acc)
-        (,((lambda (acc x) (+ acc (square x))) ->) acc)))))
+; (define sumsquares
+;   (lambda (ls)
+;     (define square 
+;       (lambda (x)
+;         (* x x)))
+;     (let ((acc 0))
+;       (match+ (acc) ls 
+;         ((,() ...) acc)
+;         (,((lambda (acc x) (+ acc (square x))) ->) acc)))))
 
-;;; The following uses explicit Catas to parse programs in the
-;;; simple language defined by the grammar below
+; ;;; The following uses explicit Catas to parse programs in the
+; ;;; simple language defined by the grammar below
 
-;;; <Prog> -> (program <Stmt>* <Expr>)
-;;; <Stmt> -> (if <Expr> <Stmt> <Stmt>)
-;;;         | (set! <var> <Expr>)
-;;; <Expr> -> <var>
-;;;         | <integer>
-;;;         | (if <Expr> <Expr> <Expr>)
-;;;         | (<Expr> <Expr*>)
+; ;;; <Prog> -> (program <Stmt>* <Expr>)
+; ;;; <Stmt> -> (if <Expr> <Stmt> <Stmt>)
+; ;;;         | (set! <var> <Expr>)
+; ;;; <Expr> -> <var>
+; ;;;         | <integer>
+; ;;;         | (if <Expr> <Expr> <Expr>)
+; ;;;         | (<Expr> <Expr*>)
 
 
-(define parse
-  (lambda (x)
-    (define Prog
-      (lambda (x)
-        (match x
-          ((program ,(Stmt -> s*) ... ,(Expr -> e))
-           `(begin ,s* ... ,e))
-          (,other (error 'parse "invalid program ~s" other)))))
-    (define Stmt
-      (lambda (x)
-        (match x
-          ((if ,(Expr -> e) ,(Stmt -> s1) ,(Stmt -> s2))
-           `(if ,e ,s1 ,s2))
-          ((set! ,v ,(Expr -> e))
-           (guard (symbol? v))
-           `(set! ,v ,e))
-          (,other (error 'parse "invalid statement ~s" other)))))
-    (define Expr
-      (lambda (x)
-        (match x
-          (,v (guard (symbol? v)) v)
-          (,n (guard (integer? n)) n)
-          ((if ,(e1) ,(e2) ,(e3))
-           `(if ,e1 ,e2 ,e3))
-          ((,(rator) ,(rand*) ...) `(,rator ,rand* ...))
-          (,other (error 'parse "invalid expression ~s" other)))))
-    (Prog x)))
-;;; (parse '(program (set! x 3) (+ x 4)))) => (begin (set! x 3) (+ x 4))
+; (define parse
+;   (lambda (x)
+;     (define Prog
+;       (lambda (x)
+;         (match x
+;           ((program ,(Stmt -> s*) ... ,(Expr -> e))
+;            `(begin ,s* ... ,e))
+;           (,other (error 'parse "invalid program ~s" other)))))
+;     (define Stmt
+;       (lambda (x)
+;         (match x
+;           ((if ,(Expr -> e) ,(Stmt -> s1) ,(Stmt -> s2))
+;            `(if ,e ,s1 ,s2))
+;           ((set! ,v ,(Expr -> e))
+;            (guard (symbol? v))
+;            `(set! ,v ,e))
+;           (,other (error 'parse "invalid statement ~s" other)))))
+;     (define Expr
+;       (lambda (x)
+;         (match x
+;           (,v (guard (symbol? v)) v)
+;           (,n (guard (integer? n)) n)
+;           ((if ,(e1) ,(e2) ,(e3))
+;            `(if ,e1 ,e2 ,e3))
+;           ((,(rator) ,(rand*) ...) `(,rator ,rand* ...))
+;           (,other (error 'parse "invalid expression ~s" other)))))
+;     (Prog x)))
+; ;;; (parse '(program (set! x 3) (+ x 4)))) => (begin (set! x 3) (+ x 4))
 
