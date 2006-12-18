@@ -8,12 +8,10 @@
 
 (eval-when (compile eval load) (case-sensitive #t))
 
-(module (match match-help convert-pat exec-body test ASSERT
-	       ;list-up-all-vars list-vars-helper traverse-vars
-	       ;list-up-vars list-up-cata-vars 
-	       ;collect-vars collect-cata-vars
-	       bind-cata ellipses-helper build-lambda
-	       build-list
+(module (match match-help convert-pat  test ASSERT
+	       bind-popped-vars ellipses-helper build-lambda
+	       bind-dummy-vars
+	       exec-body exec-body-helper build-list
 	       )
 
 (define-syntax ASSERT
@@ -45,16 +43,27 @@
        (convert-pat ((Obj Pat)) 
 		    exec-body 		   
 		    (begin B0 Bod ...)
-#;
-		    (lambda (collect-vars Pat ()) 
-		      (lambda (collect-cata-vars Pat)
-			(exec-body Bod (collect-cata-sets Pat))))
 		    Cata next () ())
        )]))
 
+
+(define bind-popped-vars
+  (syntax-rules ()
+    [(_ Bod ())  Bod]
+    [(_ Bod (V0 . V*))
+     (let ([V0 (V0)])
+       (bind-popped-vars Bod V*))]))
+
+(define bind-dummy-vars
+  (syntax-rules ()
+    [(_ Bod ())  Bod]
+    [(_ Bod (V0 . V*))
+     (let ([V0 'match-error-cannot-use-cata-var-in-guard])
+       (bind-popped-vars Bod V*))]))
+
 (define-syntax exec-body
   (syntax-rules ()
-    [(_  Vars CataVars) (exec-body-helper Vars CataVars CataVars)]))
+    [(_  Bod Vars CataVars) Bod]))
 
 (define-syntax exec-body-helper
   (syntax-rules ()
@@ -62,15 +71,28 @@
     ;; First bind normal pattern variables:
     [(_ Bod (V0 . V*) CataVars1 CataVars2)
      (let ([V0 (V0)])
-       (exec-body Bod V* ()))]
-    ;; Then bind 
+       (exec-body-helper Bod V* CataVars1 CataVars2))]
 
-    [(_ Bod Vars (V0 . V*))
+    ;; Here's where cata's actually happen:
+    [(_ Bod () () (V0 . V*))
      (let ([V0 (V0)])
-       (exec-body Bod Vars V*))]
+       (exec-body-helper Bod () () V*))]
+    
+    ;; Otherwise bind the cata-vars to dummy values and do the guard.
+    [(_ Bod () CataVars1 CataVars2)
+     (do-guard CataVars1 (if #t #t #t))
+     
+     ]
     
     ))
 
+(define-syntax do-guard
+  (syntax-rules ()
+    [(_ () Guard Bod) Bod]
+    [(_ (V0 . V*) Guard Bod)
+     (let ([V0 'match-error-cannot-use-cata-var-in-guard])
+       (bind-dummy-catas V* Bod))
+     ]))
 
 ;; Like exec-body but just builds a list of all the vars.
 ;; This puts CataVars first in the list.
@@ -83,7 +105,7 @@
      (cons V (build-list b () CataVars))]
     ))
 
-(define-syntax bind-cata 
+(define-syntax bind-cata
   (syntax-rules ()
     [(_ Bod Promise Args ())  Bod]
     [(_ Bod Promise Args (V0 . V*))
@@ -135,9 +157,14 @@
 (define-syntax convert-pat
     (syntax-rules (unquote .... ->)
 
-	;; Termination condition:
+      ;; Termination condition:
+      ;; Now check the guard and (possibly) execute the body.
       [(_ () Exec Bod Cata NextClause Vars CataVars)
-       (Exec Bod Vars CataVars)]
+       (bind-popped-vars Vars
+         (if (bind-dummy-vars CataVars (if #t #t #t)) ;; TODO: GUARD.
+	     (bind-popped-vars CataVars (Exec Bod Vars CataVars))
+	     (NextClause)
+	     ))]
       
       ;; Cata redirect: 
       [(_ ([Obj (unquote (f -> V0 V* ...))] . Stack) Exec Bod Cata NextClause Vars (CataVars ...))
@@ -230,6 +257,8 @@
 	    (printf "FAILED test: ~a\n" (car pr))
 	    ))
     '(   
+      [(match 3 [,x x]) 3]
+
       [(match '(1 2) [(,x ,y) (+ x y)]) 3]
       
       [(match '(1 2) [(,x ,y ,z) (+ x x y)] [(,x ,y) (* 100 y)]) 200]
