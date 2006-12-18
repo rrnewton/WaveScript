@@ -84,7 +84,7 @@
     [(_ Bod Promise Args ())  Bod]
     [(_ Bod Promise Args (V0 . V*))
      (let ([V0 (lambda ()
-		 (call-with-values Promise
+		 (call-with-values (lambda () (force Promise))
 		   (lambda Args V0)))])
        (bind-cata Bod Promise Args V*))]))
 
@@ -163,7 +163,7 @@
 
       ;; Ellipses:
       [(_ ([Obj (P0 ....)] . Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
-       (call/1cc 
+       (call/cc 
 	(lambda (escape)
 	  (let* ([failed (lambda () (escape (NextClause)))]
 		 ;; Bind a pattern-matcher for one element of the list.	
