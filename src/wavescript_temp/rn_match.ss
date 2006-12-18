@@ -10,7 +10,7 @@
 
 (module (match match-help convert-pat  test ASSERT
 	       bind-popped-vars ellipses-helper build-lambda
-	       bind-dummy-vars
+	       bind-dummy-vars bind-cata
 	       exec-body exec-body-helper build-list
 	       )
 
@@ -47,23 +47,29 @@
        )]))
 
 
-(define bind-popped-vars
+(define-syntax bind-popped-vars
   (syntax-rules ()
-    [(_ Bod ())  Bod]
-    [(_ Bod (V0 . V*))
+    [(_ () Bod)  Bod]
+    [(_ (V0 . V*) Bod)
      (let ([V0 (V0)])
-       (bind-popped-vars Bod V*))]))
+       (bind-popped-vars V* Bod))]))
 
-(define bind-dummy-vars
+(define-syntax bind-dummy-vars
   (syntax-rules ()
-    [(_ Bod ())  Bod]
-    [(_ Bod (V0 . V*))
+    [(_ () Bod)  Bod]
+    [(_ (V0 . V*) Bod)
      (let ([V0 'match-error-cannot-use-cata-var-in-guard])
-       (bind-popped-vars Bod V*))]))
+       (bind-popped-vars V* Bod))]))
 
 (define-syntax exec-body
   (syntax-rules ()
-    [(_  Bod Vars CataVars) Bod]))
+    [(_  Bod Vars CataVars)
+     (bind-popped-vars Vars
+         (if (bind-dummy-vars CataVars (if #t #t #t)) ;; TODO: GUARD.
+	     (bind-popped-vars CataVars Bod)
+	     (NextClause)
+	     ))
+     ]))
 
 (define-syntax exec-body-helper
   (syntax-rules ()
@@ -85,14 +91,6 @@
      ]
     
     ))
-
-(define-syntax do-guard
-  (syntax-rules ()
-    [(_ () Guard Bod) Bod]
-    [(_ (V0 . V*) Guard Bod)
-     (let ([V0 'match-error-cannot-use-cata-var-in-guard])
-       (bind-dummy-catas V* Bod))
-     ]))
 
 ;; Like exec-body but just builds a list of all the vars.
 ;; This puts CataVars first in the list.
@@ -160,11 +158,7 @@
       ;; Termination condition:
       ;; Now check the guard and (possibly) execute the body.
       [(_ () Exec Bod Cata NextClause Vars CataVars)
-       (bind-popped-vars Vars
-         (if (bind-dummy-vars CataVars (if #t #t #t)) ;; TODO: GUARD.
-	     (bind-popped-vars CataVars (Exec Bod Vars CataVars))
-	     (NextClause)
-	     ))]
+       (Exec Bod Vars CataVars)]
       
       ;; Cata redirect: 
       [(_ ([Obj (unquote (f -> V0 V* ...))] . Stack) Exec Bod Cata NextClause Vars (CataVars ...))
@@ -294,7 +288,7 @@
 
       )))
 
-;  (printf "TESTING: ~a\n" (test))
+  (printf "TESTING: ~a\n" (test))
 ;; End module:
 )
 
