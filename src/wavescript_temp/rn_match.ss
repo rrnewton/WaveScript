@@ -4,6 +4,7 @@
 ;; Portability:
 ;; Chez -- ok
 ;; PLT -- ok
+;; SCM -- ok (remember to run with -r 5)
 
 ;; MIT -- works on some tests (eval doesn't, though)
 
@@ -11,7 +12,6 @@
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 
 ;; gambit -- doesn't have define-syntax
-;; scm -- doesn't have syntax-rules
 ;; guile -- doesn't have define-syntax
 
 (define-syntax ASSERT
