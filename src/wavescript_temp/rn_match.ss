@@ -5,14 +5,14 @@
 ;; Chez -- ok
 ;; PLT -- ok
 ;; SCM -- ok (remember to run with -r 5)
+;; gambit -- ok, load "syntax-case.scm"
 
 ;; MIT -- works on some tests (eval doesn't, though)
 
 ;; bigloo -- some kind of call-with-values error on the multiple value test
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 
-;; gambit -- If you load "syntax-case.scm" it will work up until the ellipses test.
-;;           There it gets "*** ERROR IN map -- invalid syntax ()"
+
 ;; guile -- doesn't have define-syntax
 
 (define-syntax ASSERT
