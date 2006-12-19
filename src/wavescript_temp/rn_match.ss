@@ -11,7 +11,8 @@
 ;; bigloo -- some kind of call-with-values error on the multiple value test
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 
-;; gambit -- doesn't have define-syntax
+;; gambit -- If you load "syntax-case.scm" it will work up until the ellipses test.
+;;           There it gets "*** ERROR IN map -- invalid syntax ()"
 ;; guile -- doesn't have define-syntax
 
 (define-syntax ASSERT
@@ -68,7 +69,7 @@
 ;; This puts CataVars first in the list.
 (define-syntax build-list 
   (syntax-rules ()
-    ((_ __ #t #f () ())   ())
+    ((_ __ #t #f () ())   '())
     ((_ __ #t #f (V . Vars) CataVars)
      (cons V (build-list __ #t #f Vars CataVars)))
     ((_ __ #t #f () (V . CataVars))
@@ -222,7 +223,7 @@
 (define (test)
   (for-each 
       (lambda (pr)
-	(display "   Test: ") (display (car pr)) (newline)
+	(display "   Test: ") (write (car pr)) (newline)
 	(if (equal? (eval (car pr) (interaction-environment)) ;(scheme-report-environment 5)
 		    (cadr pr))
 	    (begin (display "-- Passed." ) (newline))
