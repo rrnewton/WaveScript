@@ -6,14 +6,15 @@
 ;; PLT -- ok
 ;; SCM -- ok (remember to run with -r 5)
 ;; gambit -- ok, load "syntax-case.scm"
+;; guile -- ok "(use-syntax (ice-9 syncase))"
 
 ;; MIT -- works on some tests (eval doesn't, though)
+;;        Breaks down on the first "->" test.
+;;        Some weird thing wherein it tries to *apply* the results of the cata.
 
 ;; bigloo -- some kind of call-with-values error on the multiple value test
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 
-
-;; guile -- doesn't have define-syntax
 
 (define-syntax ASSERT
   (syntax-rules ()
@@ -269,23 +270,23 @@
       )))
 
 ;; This is just a version that doesn't use eval.
-; (define (test2)
-;   (list
-;    (match 3 (,x x))
-;    (match '(1 2) ((,x ,y) (+ x y)))
-;    (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
-;    (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
-;    (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
-;    (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
-;    (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
-;    (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
-;    (match '(1 . 2) ((,x . ,y) y))
-;    (match '(1 2 3) ((1 ,x* ....) x*))
-;    (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))
-;    (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))
-;    (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
-;    (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
-;    ))
+'(define (test2)
+  (list
+   (match 3 (,x x))
+   (match '(1 2) ((,x ,y) (+ x y)))
+   (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
+   (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
+   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
+   (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
+   (match '(1 . 2) ((,x . ,y) y))
+   (match '(1 2 3) ((1 ,x* ....) x*))
+   (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))
+   (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))
+   (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
+   (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
+   ))
 
 (display "TESTING: ") (newline) (test)
 
