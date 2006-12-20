@@ -3,11 +3,12 @@
 
 (package* match v1.0.0
  (provide:
+  (define* (test))
   )
  (require: _syntax-rules)
  )
 
-;  (define* (test))
+
   ;(define-macro* (match e . clauses))
 
 (cond-expand
@@ -242,7 +243,7 @@
 
 (define (add1 x) (+ x 1))
 
-(define (test)
+(define* (test)
   (for-each 
       (lambda (pr)
 	(display "   Test: ") (write (car pr)) (newline)
