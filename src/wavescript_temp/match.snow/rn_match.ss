@@ -1,0 +1,292 @@
+
+;; How far can we get doing match with syntax-rules?
+
+;; Portability:
+;; Chez -- ok
+;; PLT -- ok
+;; SCM -- ok (remember to run with -r 5)
+;; gambit -- ok, load "syntax-case.scm"
+;; guile -- ok "(use-syntax (ice-9 syncase))"
+
+;; MIT -- works on some tests (eval doesn't, though)
+;;        Breaks down on the first "->" test.
+;;        Some weird thing wherein it tries to *apply* the results of the cata.
+
+;; bigloo -- some kind of call-with-values error on the multiple value test
+;; larceny -- gets a wrong number of arguments error on the same test as bigloo
+
+
+(define-syntax ASSERT
+  (syntax-rules ()
+    ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
+
+(define-syntax match
+  (syntax-rules ()
+    ((_ Exp Clause ...)
+     (let f ((x Exp))
+       (match-help _ f x Clause ...)))))
+
+(define-syntax match-help
+  (syntax-rules (guard)
+    ((_ Template Cata Obj )  (error 'match "no next clause"))
+    ((_ Template Cata Obj (Pat (guard G ...) B0 Bod ...) Rest ...)
+     (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
+       (convert-pat ((Obj Pat))
+		    exec-body 	   
+		    (begin B0 Bod ...) (and G ...)
+		    Cata next () ())))
+    ((_ Template Cata Obj (Pat B0 Bod ...) Rest ...)
+     (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
+       (convert-pat ((Obj Pat)) 
+		    exec-body 		   
+		    (begin B0 Bod ...) #t
+		    Cata next () ())
+       ))))
+
+(define-syntax bind-popped-vars
+  (syntax-rules ()
+    ((_ () Bod)  Bod)
+    ((_ (V0 . V*) Bod)
+     (let ((V0 (V0)))
+       (bind-popped-vars V* Bod)))))
+
+(define-syntax bind-dummy-vars
+  (syntax-rules ()
+    ((_ () Bod)  Bod)
+    ((_ (V0 . V*) Bod)
+     (let ((V0 'match-error-cannot-use-cata-var-in-guard))
+       (bind-popped-vars V* Bod)))))
+
+(define-syntax exec-body
+  (syntax-rules ()
+    ((_  Bod Guard NextClause Vars CataVars)
+     (bind-popped-vars Vars
+         (if (bind-dummy-vars CataVars Guard)
+	     (bind-popped-vars CataVars Bod)
+	     (NextClause)
+	     )))))
+
+;; Like exec-body but just builds a list of all the vars.
+;; This puts CataVars first in the list.
+(define-syntax build-list 
+  (syntax-rules ()
+    ((_ __ #t #f () ())   '())
+    ((_ __ #t #f (V . Vars) CataVars)
+     (cons V (build-list __ #t #f Vars CataVars)))
+    ((_ __ #t #f () (V . CataVars))
+     (cons V (build-list __ #t #f () CataVars)))
+    ((_ __ Guard NextClause Vars CataVars)
+     (if (bind-popped-vars Vars
+          (bind-popped-vars CataVars Guard))
+	 (build-list __ #t #f Vars CataVars)
+	 (NextClause)))))
+
+(define-syntax bind-cata
+  (syntax-rules ()
+    ((_ Bod Promise Args ())  Bod)
+    ((_ Bod Promise Args (V0 . V*))
+     (let ((V0 (lambda ()
+		 (call-with-values (lambda () (force Promise))
+		   (lambda Args V0)))))
+       (bind-cata Bod Promise Args V*)))))
+
+;; This does the job of "collect-vars", but it also carries a
+;; continuation (of a sort) with it.
+(define-syntax ellipses-helper
+  (syntax-rules (unquote ->)
+    ((_ (Vars ...) (CataVars ...) (Bod ...))
+     (lambda (CataVars ... Vars ...)
+       (Bod ... (Vars ...) (CataVars ...))))
+    
+    ((_ Vars (CataVars ...) Bod (unquote (FUN -> V* ...)) . Rest)
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
+    ((_ Vars (CataVars ...) Bod (unquote (V* ...)) . Rest)
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
+    ((_ Vars CataVars Bod (unquote V) . Rest)
+     (ellipses-helper (V . Vars) CataVars Bod  . Rest))
+    
+    ((_ Vars CataVars Bod () . Rest)
+     (ellipses-helper Vars CataVars Bod  . Rest))
+    
+    ((_ Vars CataVars Bod (P0 . P*) . Rest)
+     (ellipses-helper Vars CataVars Bod P0 P* . Rest))
+    ;; Otherwise just assume its a literal:
+    ((_ Vars CataVars Bod LIT . Rest)
+     (ellipses-helper Vars CataVars Bod . Rest))
+    ))
+
+(define-syntax build-lambda (syntax-rules () ((_) lambda)))
+
+;; Convert a pattern into a function that will test for a match.
+;;
+;; This takes several arguments:
+;;   Stack -- Objs&Patterns left to match.  Objs should be just vars.
+;;   Exec -- Rator to apply to Bod and Vars when we reach a termination point.
+;;   Bod -- the expression to execute if the pattern matches
+;;   Guard -- guard expression (NOT FINISHED)
+;;   Cata -- the name of the function that will reinvoke this match
+;;   Nextclause -- abort this clause and go to the next.
+;;   Vars -- Accumulator for vars bound by the pattern.
+;;   CataVars -- Accumulator for vars bound by the pattern, with transformers applied.
+;;
+;; If match, the body is evaluated, otherwise "nextclause" is called.
+;; All pattern variables are lazy "thunked" so as to defer any Cata's.
+(define-syntax convert-pat
+    (syntax-rules (unquote .... ->)
+
+      ;; Termination condition:
+      ;; Now check the guard and (possibly) execute the body.
+      ((_ () Exec Bod Guard Cata NextClause Vars CataVars)
+       (Exec Bod Guard NextClause Vars CataVars))
+      
+      ;; Cata redirect: 
+      ((_ ((Obj (unquote (f -> V0 V* ...))) . Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
+       (let ((promise (delay (f Obj))))
+	 ;(inspect f)
+	 (bind-cata 
+	  (convert-pat Stack Exec Bod Guard Cata
+		       NextClause Vars (V0 V* ... CataVars ...))
+	  promise
+	  (V0 V* ...) (V0 V* ...))))
+      
+      ;; Unquote Pattern, Cata: recursively match
+      ((_ ((Obj (unquote (V0 V* ...))) . Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
+       (let ((promise (delay (Cata Obj))))
+	 (bind-cata 
+	  (convert-pat Stack Exec Bod Guard Cata
+		       NextClause Vars (V0 V* ... CataVars ...))
+	  promise
+	  (V0 V* ...) (V0 V* ...))))
+	
+      ;; Unquote Pattern: bind a pattern variable:
+      ((_ ((Obj (unquote V)) . Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+       (let ((V (lambda () Obj)))
+	 (convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
+
+      ;; Ellipses:
+      ((_ ((Obj (P0 ....)) . Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
+       (call-with-current-continuation
+	(lambda (escape)
+	  (let* ((failed (lambda () (escape (NextClause))))
+		 ;; Bind a pattern-matcher for one element of the list.	
+		 (project (lambda (VAL)
+			    (convert-pat ((VAL P0)) build-list IGNORED Guard Cata failed (Vars ...) (CataVars ...)))))
+	    
+	    ;; TODO, HANDLE NULL CASE:
+; 	    (if (null? Obj) 
+; 		(bind-vars-null (collect-vars () P0 ())
+; 				(bind-cata-null (collect-cata-vars P0)
+; 						Bod Guard)))
+
+	    (let loop ((ls Obj) (acc '()))
+	      (cond
+	       ((null? ls)
+		(let* ((rotated (apply map list (reverse acc))))
+		  (apply 
+		   (ellipses-helper (Vars ...) (CataVars ...)
+				    (convert-pat Stack exec-body Bod Guard Cata NextClause)
+				    P0)
+		   ;; When we pop the cata-var we pop the whole list.
+		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
+		     rotated)
+		   )))
+	       (else (loop (cdr ls) 
+			   (cons (project (car ls)) acc)))))))))
+	
+	;; Pair pattern:  Do car, push cdr onto stack.
+	((_ ((Obj (P0 . P1)) . Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+	 (if (pair? Obj)
+	     (let ((head (car Obj))
+		   (tail (cdr Obj)))
+	       (convert-pat ((head P0) (tail P1) . Stack)
+			    Exec Bod Guard Cata NextClause Vars CataVars))
+	     (NextClause)
+	     ))
+		
+	;; Literal pattern.
+	;; Since we're using syntax-rules here we can't tell much.
+	((_ ((Obj LIT) . Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+	 (begin 
+	   ;; Hopefully this happens at compile-time:
+	   (ASSERT (or (symbol? (quote LIT))
+		       (null? (quote LIT))
+		       (boolean? (quote LIT))
+		       (string? (quote LIT))
+		       (number? (quote LIT))))
+	   (if (equal? Obj (quote LIT))
+	       (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
+	       (NextClause))))
+
+	;; Otherwise, syntax error.
+	))
+
+(define (add1 x) (+ x 1))
+(define (test)
+  (for-each 
+      (lambda (pr)
+	(display "   Test: ") (write (car pr)) (newline)
+	(if (equal? (eval (car pr) (interaction-environment)) ;(scheme-report-environment 5)
+		    (cadr pr))
+	    (begin (display "-- Passed." ) (newline))
+	    (begin (display "-- FAILED." ) (newline))
+	    ))
+    '(   
+      ((match 3 (,x x)) 3)
+
+      ((match '(1 2) ((,x ,y) (+ x y))) 3)
+      
+      ((match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y))) 200)
+      
+      ((match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v)) (1 2))
+
+      ((match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y))) 200)
+
+      ((match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4)) (3 4))
+
+      ((match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
+       (3 4 5 6))
+
+      ((match '(1 . 2) ((,x . ,y) y)) 2)
+
+      ((match '(1 2 3) ((1 ,x* ....) x*)) (2 3))
+      ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*))) #((a b c) (1 2 3)))
+      ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay)) yay)
+      
+      ((match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y))) (3 4))
+
+      ;; Basic guard:
+      ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
+
+      ;; Redirect and ellipses.
+;      ((match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4))
+
+;       ;; Make sure we keep those bindings straight.
+;       ((match '((a 2 9) (b 2 99) (c 2 999))
+; 	 (((,x 2 ,(y)) ....) (vector x y))
+; 	 (,n (add1 n)))
+;        )
+
+
+      )))
+
+;; This is just a version that doesn't use eval.
+'(define (test2)
+  (list
+   (match 3 (,x x))
+   (match '(1 2) ((,x ,y) (+ x y)))
+   (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
+   (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
+   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
+   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
+   (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
+   (match '(1 . 2) ((,x . ,y) y))
+   (match '(1 2 3) ((1 ,x* ....) x*))
+   (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))
+   (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))
+   (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
+   (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
+   ))
+
+(display "TESTING: ") (newline) (test)
+
