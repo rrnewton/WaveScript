@@ -2,9 +2,11 @@
 #|
 if (which chez > /dev/null); 
 then exec chez --script "$0" `pwd` ${1+"$@"};
+elif (which petite > /dev/null); 
+then exec petite --script "$0" `pwd` ${1+"$@"}; 
 elif [ -f $REGIMENTD/depends/petite ]; 
 then exec $REGIMENTD/depends/petite --script "$0" `pwd` ${1+"$@"};
-else exec petite --script "$0" `pwd` ${1+"$@"}; 
+else echo CHEZ SCHEME not found.; exit -1 
 fi 
 |#
 
@@ -26,3 +28,6 @@ fi
 ; (when (top-level-bound? 'command-line-arguments)
 ;       (apply main (command-line-arguments))
 ;       (disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments)))
+
+
+; (subset-mode 'system) \#scheme-version
