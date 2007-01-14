@@ -1,14 +1,453 @@
-
-
 ;;;; .title Utility Function Library (helpers.ss)
 ;;;; RRN: this file needs some serious cleaning-out.  It still has a bunch
 ;;;; of old junk in it that's not used by the Regiment system.
 
+;==============================================================================;
+;;;; <br> REQUIRES: On chez/plt primitive open-output-string.
+;;;; <br> REQUIRES: (On other chez/plt features which I'm not aware of...)
 
 ;==============================================================================;
 
-;;;; <br> REQUIRES/DEPENDS: On chez/plt primitive open-output-string.
-;;;; <br> REQUIRES/DEPENDS: (On other chez/plt features which I'm not aware of...)
+(module helpers mzscheme
+    (require )
+  
+    ;; Remember to update the plt equivalent when you update this:
+    (provide 
+	  
+	 ;; Syntax:
+
+	  ;; For plt compat:
+	  foldl foldr
+	  let/ec call/ec
+	  define-values
+
+	  make-n-list 
+
+	  with-error-handlers with-warning-handler
+	  current-error-port 
+
+	  system/echoed system-to-str with-evaled-params add-parameter-hook
+	  chomp shell-expand-string seconds-since-1970
+
+	  ;; Values:	    
+	  id ignore gnuplot histogram grep-oblist comma-number
+	  display-progress-meter progress-dots runN count-nodes
+	  string-split periodic-display all-equal?
+	  
+	  set->hashtab hashtab->list
+
+
+	  default-unit-tester tester-eq?
+	  ;default-unit-tester-retries
+	  substring?
+	  gobj? 
+
+	  gaussian
+	  
+	  list-repeat! make-repeats
+	  mapi for-eachi diff
+	  set? subset? set-equal? list->set set-cons union intersection difference
+	  setq? subsetq? set-eq?
+	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
+	  filter list-index snoc rac rdc last 
+	  list-find-position list-remove-before
+	  vector-for-each vector-map vector-map!
+
+
+	  insert-between iota compose compose/values disp crit-printf
+	  extract-file-extension remove-file-extension
+	  file->string string->file file->slist port->slist slist->file file->linelists
+	  read-line
+
+	  pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
+	  graph-map graph-get-connected-component graph-neighbors graph-label-dists ;cyclic? 
+	  graph:simple->vertical graph:vertical->simple
+	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
+	   unfold-list average median stddev clump
+	  partition partition-equal split-before
+	  myequal?
+
+	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+	  stream-map stream-filter stream-take stream-drop stream-take-all 
+	  iota-stream stream-append-list stream-append browse-stream ;random-stream 
+	  display-constrained
+	  symbol-append 
+
+	  testhelpers testshelpers test-this these-tests
+
+					;reg:all-unit-tests 
+	  
+					;   (all-except (lib "rutils_generic.ss")
+					;               list->set union intersection difference set?
+					;               list-head filter list-index snoc rac rdc 
+					;               insert-between iota disp)
+					;   (all-from (lib "rutils_generic.ss") )
+					;   (all-from-except (lib "rutils_generic.ss") 
+					;                    list->set union intersection difference set?) 
+
+
+	  )
+    
+    (chezprovide )    
+    (chezimports )
+
+;(import (except topsort-module test-this these-tests))
+;(import (except scheme atom?))
+(import scheme)
+
+
+;; [2005.11.26] Moved reg:define-struct to chez/constants.ss
+
+(IFCHEZ 
+ (begin 
+;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
+;; substitute.  That's the kind of thing I'd like my
+;; scheme-meta-language/package-manager to do for me!!
+(define-syntax let/ec
+  (syntax-rules ()
+    [(_ v exp ...)
+     (call/1cc (lambda (v) exp ...))]))
+;(alias call/ec call/1cc)
+(define call/ec call/1cc)
+
+;(define-syntax define-values
+;  (syntax-rules ()
+;    [(_ (v ...) exp)
+;     (begin 
+;       (call-with-values
+		
+
+ ;; [2004.06.13] Matches the function defined in plt, provides
+ ;; functionality used by the generic code.
+ ;; The escape handler had *better* escape.
+ (define (with-error-handlers display escape th)
+   (parameterize ([#%error-handler (lambda args 
+				   (apply display args)
+				   (escape))])
+		 (th)))
+(define (with-warning-handler fun th)
+  (parameterize ([#%warning-handler fun])
+    (th)))
+
+
+;; This is too lenient, but there's no other option.
+(define promise? procedure?)
+
+
+;; This is a hack, it's not safe because it can report false
+;; positives.  This is used to tell when something is a graphics
+;; screen object as constructed with SWL's (make <foo> ...):
+(define gobj?
+  (lambda (x)
+    (and (vector? x)
+	 (> (vector-length x) 2)
+	 (procedure? (vector-ref x 0))
+	 (vector? (vector-ref x 1))
+	 (> (vector-length (vector-ref x 1)) 1)
+	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
+
+(define current-error-port (make-parameter stderr))
+
+) (void)) ; End IFCHEZ
+
+
+;; Moved include!
+; ======================================================================
+;; We play nasty tricks with symbolic links here. 
+;; It doesn't matter if we load this file from "src" or "src/chez"
+;; because we've linked the "generic" subdir from both locations.
+
+; ======================================================================
+; ======================================================================
+; ======================================================================
+
+
+;; Note: becuase of recursive dependencies, this file is included into
+;; helpers.ss rather than being its own module.
+
+;;[2004.06.13] Making this not allow an error to match against unspecified!
+(define (lenient-compare? o1 o2)
+  (or (eq? o1 o2)
+      ;; Strings are not deep structures according to eq-deep,
+      ;; So we compare them with equal?
+      (and (string? o1) (equal? o1 o2))
+      (and (eq? o1 'unspecified) (not (eq? o2 'error)))
+      (and (eq? o2 'unspecified) (not (eq? o1 'error)))))
+
+;; This provides a weird sort of interface to a deep equal.  It walks
+;; down the tree, applying the input comparator at every intermediate
+;; node, only proceeding downward on negative comparisons.
+;; [2004.07.21] - Fixed it's behaviour against dotted pairs.
+(define eq-deep 
+  (lambda (eq)
+    (lambda (obj1 obj2)
+      (let loop ((o1 obj1) (o2 obj2))
+	(cond
+	 [(eq o1 o2) #t]
+	 [(and (list? o1) (list? o2))
+	  (if (= (length o1) (length o2))
+	      (andmap loop o1 o2)
+	      #f)]
+	 [(and (pair? o1) (pair? o2)) ;; Kinda silly to have both these.
+	  (and (loop (car o1) (car o2)) ;; the above should save stack space though..
+	       (loop (cdr o1) (cdr o2)))]
+	 [(and (vector? o1) (vector? o2))
+	  ; Treat same as lists:
+	  (loop (vector->list o1) (vector->list o2))]
+	 [else #f])))))
+
+(define tester-eq? (eq-deep lenient-compare?))
+(define tester-equal? (eq-deep lenient-compare?))
+
+
+;; [2004.04.21] I've started using the (ad-hoc) convention that every
+;; file should define "these-tests" and "test-this" for unit testing.
+;; This is inspired by the drscheme philosophy of every file being an
+;; executable unit...  But it *was* unbearable to duplicate this
+;; little tester code across every file 
+;; 
+;; [2004.05.24] Replacing the default tester with a better one.
+;; [2004.06.03] Adding optional preprocessor function
+;; [2004.07.21] Added a 'quiet flag.  
+;; [2005.02.06] Made the quiet flag also suppress warnings.
+;; [2005.09.24] Making failed tests retry optionally, run with flag 'retry
+;;              This is for nondeterministic tests that merely have a high 
+;;              probability of success.  'retry can be specified either at 
+;;              tester-construction time or test-time.
+;; [2005.09.25] Modifying the tester to return true or false based on 
+;;              whether all tests pass.
+;; Forms:
+;;  (default-unit-tester message these-tests)
+;;  (default-unit-tester message these-tests equalfun)
+;;  (default-unit-tester message these-tests equalfun preprocessor)
+
+;; [2005.02.24] Working around weird PLT bug:
+(define voidproc (lambda args (void)))
+
+  
+(define default-unit-tester
+  (lambda (message these-tests . extras)
+
+    ;; Print widths:
+    ;; TODO: I should make these adjustable parameters.
+    (define TESTWIDTH 70)
+    (define ORACLEWIDTH 30)
+    (define INTENDEDWIDTH 20)
+
+    ;; Default values of tester-construction time parameters:
+    (let ([teq? tester-equal?]
+	  [preprocessor (lambda (x) x)]
+	  [retry-failures #f]
+	  [enabled #t])
+    ;; Go through tester-construction time additional arguments: 
+    (let arg-loop ([ls extras] [procsseen 0])
+      (cond
+       [(null? ls) (void)]
+       ;; This is a little lame, first proc is equality function, second is preprocessor:
+       [(procedure? (car ls))
+	(if (= 0 procsseen)
+	    (set! teq? (car ls))
+	    (if (= 1 procsseen)
+		(set! preprocessor (car ls))
+		(error 'default-unit-tester "Too many proc arguments!: ~a" (car ls))))
+	(arg-loop (cdr ls) (add1 procsseen))]
+       [(memq (car ls) '(disable disabled))
+	(set! enabled #f)
+	(arg-loop (cdr ls) procsseen)]
+       [(eq? (car ls) 'retry) 
+	(set! retry-failures #t)
+	(arg-loop (cdr ls) procsseen)]
+       [else (error 'default-unit-tester "Unknown argument or flag: ~a" (car ls))]))
+	
+    ;; Now we construct the actual tester procedure:
+    (let ((testerproc 
+      (let ([entries
+	      ;; This canonicalizes them so that they're all four-long:
+	   (map 
+	    (lambda (entry)
+	      (match entry 
+		     [(,test ,result)      `(#f   () ,test ,result)]
+		     [(,msg ,test ,result) `(,msg () ,test ,result)]
+		     [(,msg ,moreargs ... ,test ,result)
+		      `(,msg ,moreargs ,test ,result)]
+		     [else (error 'default-unit-tester 
+				  " This is a bad test-case entry!: ~s~n" entry)]))
+	       these-tests)])
+    (lambda args 
+    (call/cc
+     (lambda (return)
+       (match (memq 'get args)
+	 [#f (void)]
+	 [(get ,n ,_ ...) (guard (integer? n))
+	  (return (list-ref entries n))]
+	 [,else (return entries)])
+       (when (or (memq 'print-tests args) (memq 'print args))
+	   (for-eachi (lambda (i test)
+			(if (string? (car test))
+			    (printf "~a: ~a\n" i (car test))))
+		      entries)
+	   (return (void)))
+
+	 (let (;; Flag to suppress test output.  This had better be passed
+	       ;; *after* any comparison or preprocessor arguments.
+	       [quiet (or (memq 'quiet args)
+			  (memq 'silent args)
+			  (memq 'q args)
+			  (not (or (memq 'verbose args)
+				   (memq 'v args))))]
+	       ;; Flag to print test descriptions as well as code/output.
+	       [titles (not (or (memq 'silent args)
+				(memq 'nodescrips args)))]
+	       [retry-failures (or retry-failures ;; If already set above, or..
+				   (memq 'retry args))]
+;	       [descriptions (map car entries)]
+;	       [tests (map caddr entries)]
+;	       [intended (map cadddr entries)]
+	       [success #t]
+	       [tests-to-run (filter number? args)]
+	       [suppressed-test-output (open-output-string)]
+	       )
+
+	   ;; This (long) sub-procedure executes a single test:
+	   (let ([execute-one-test
+	       (lambda (num entry)
+;		 (IFCHEZ (collect) ;; [2006.02.18] Let's do a bit of collection between tests to reduce pauses.
+		 (match entry
+		   [(,descr ,extraflags ,expr ,intended)
+		    ;(printf "extraflags! ~a\n"  extraflags)
+		    (fluid-let ([retry-failures (or retry-failures (memq 'retry extraflags))])
+		    
+		 (let retryloop ((try 0))
+		   (flush-output-port)
+	       ;; This prints a name, or description for the test:
+	       (if (and titles descr) (printf "   ~s~n" descr))
+
+	       (display-constrained `(,num 10) "  " `(,expr ,TESTWIDTH)
+				    " -> ")
+	       (if (procedure? intended)
+		   (display-constrained "Satisfy oracle? " 
+					`(,intended ,ORACLEWIDTH) ": ")
+		   (display-constrained `(,intended ,INTENDEDWIDTH) ": "))
+	       
+	       (flush-output-port)
+	       (let ([result 
+		      (let/ec escape-eval
+			 ;; Clear output cache for each new test:
+			 (set! suppressed-test-output (open-output-string))
+			 (with-error-handlers (lambda args 						
+						;; Should format the output, but don't want to cause *another* error
+						;; and thereby go into an infinite loop.
+						;; Could reparameterize the error-handler... TODO
+						(printf "default-unit-tester, got ERROR: ~n  ~s~n"
+							args)
+						;(if (car args) (printf "~s: " (car args)))
+						;(printf "~a~n" (apply format (cdr args)))
+						)
+					      (lambda () (escape-eval 'error))
+					      (lambda () 
+						(if quiet						    
+						      (with-warning-handler 
+						       (lambda (who str . args) 
+							 (fprintf suppressed-test-output "Warning in ~a: ~a\n" 
+								  who (apply format str args)))
+						       (lambda ()
+							 (parameterize ([current-output-port suppressed-test-output])
+						    ;;========================================
+						    ;; RUN THE TEST:
+							   (eval (preprocessor expr)))))
+						      (eval (preprocessor expr)))
+						    ;;========================================
+						)))])
+;	       (newline)
+		(if (or (and (procedure? intended) ;; This means its an oracle
+			     ;; If we get an error result, don't run the oracle proc!
+			     ;; Oracle proc might not be ready to handle 'error result:
+			     (and (not (eq? result 'error)))
+			    (intended result))
+			(teq? intended result)) ;; Otherwise its an expected answer
+		   ;; This test was a success:
+		   (begin
+		     (printf "PASS~n"))
+		   ;; This test was a failure:
+		   (if (and retry-failures ;; But if we're in retry mode try again...
+			    (< try (default-unit-tester-retries))
+			    (not (eq? result 'error))) ;; We don't retry an error!
+		       (begin (printf "fail:  But retrying... Retry #~a\n" try)
+			      (retryloop (add1 try)))
+		       ;; Otherwise just print a notification of the failure and bind it to a global var:
+		       (begin 
+			  (set! success #f)
+			  (newline)
+			  (if (procedure? intended)
+			      (printf "FAIL: Expected result to satisfy procedure: ~s~n" intended)
+			      (begin 
+				(printf "FAIL: Expected: ~n")			  
+				(pretty-print intended)))
+			  (printf "~n      Received: ~n")
+			  (write result)
+;			  (display-constrained `(,intended 40) " got instead " `(,result 40))  
+			  (printf "~n~nFor Test: ~n")
+			  (pretty-print expr)
+			  (newline)
+			  ;(eval `(define failed-unit-test ',expr))
+			  (define-top-level-value 'unit-test-received result)
+			  (define-top-level-value 'unit-test-expected intended)
+			  (define-top-level-value 'failed-unit-test expr)
+			  (define-top-level-value 'default-unit-tester-output (get-output-string suppressed-test-output))
+
+			  (printf "Violating test bound to global-variable, try (eval failed-unit-test)\n")
+			  (printf "Expected and received also bound to globals, consider: ")
+			  (printf "(diff unit-test-expected unit-test-received)\n")
+			  (printf "If test output was suppressed, you may wish to inspect it: ")
+			  (printf "(display default-unit-tester-output)\n")
+			  ;; I decided to make this crash after all:
+;			  (return (void))
+			  (return #f)
+;			  (error 'default-unit-tester "failed test")
+			  ))))))]))]) ;; end execute-one-test
+
+	   ;; Main body of tester:
+	  (if titles 
+	      (begin (printf ";; Testing module: ~s~n" message)
+		     (if quiet (printf ";; (with test output suppressed)~n"))
+		     ))
+	  (flush-output-port)
+	  (let* ((len (length entries))
+		 ;; If we have out of range indices, we ignore them:
+		 (tests-to-run (filter (lambda (i) (< i len)) tests-to-run))
+		 (entries 
+		  (if (null? tests-to-run) entries
+		      (map (lambda (i) (list-ref entries i)) tests-to-run)))
+		 (indices (if (null? tests-to-run)
+			     (iota len)
+			     tests-to-run)))
+	    (for-each execute-one-test
+		      indices
+		      entries))
+	  ;; If we made it this far, we've passed all the tests, return #t:
+	  #t
+	  ))))))
+    )) ;; End testerproc let binding
+
+    ;; Regiment specific:
+    (if enabled
+	;; Add this unit-tester to the global list:     
+	(reg:all-unit-tests (cons (list message testerproc) (reg:all-unit-tests))))	  
+	  
+    ;; Finally, return the test-executor procedure:  
+    testerproc))))
+
+(define (reg:counttests) ;;shorthand
+  (apply + (map (lambda (x) (length ((cadr x) 'get))) (reg:all-unit-tests))))
+
+
+
+
+; ======================================================================
+;;;  BEGIN Generic core of helpers.ss:
+; ======================================================================
+
+
 
 ;==============================================================================;
 
@@ -262,7 +701,6 @@
     (let ([start (real-time)])
       (eval x)
       (- (real-time) start))))
-
 #;
 (define cpueval
   (lambda (x)
@@ -541,7 +979,8 @@
 	(reverse! 
 	 (set-cons(car ls) (list->set (cdr ls)))))))
 ;; [2006.01.23] Added version that uses equal?  For structure based equivalence.
-#;(define list->set_equal
+#;
+(define list->set_equal
   (lambda (ls)
     (let loop ((ls ls))
       (if (null? ls) '()
@@ -1407,6 +1846,7 @@
 ; =======================================================================
 
 
+
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
@@ -1597,14 +2037,208 @@
 (define testhelpers test-this)
 (define testshelpers these-tests)
 
-;(call/cc (lambda (out)
-#;
-	   (with-error-handlers (lambda args (disp "error disp:" args))
-				(lambda args (disp "error escape:" args) 999)
-				(lambda () (disp "handlers: " 
-						 (error-display-handler)
-						 (error-escape-handler) )
-					(error 'foo "bar")
-					3 ))
+; ======================================================================
+;;;  END Generic core of helpers.ss:
+; ======================================================================
 
+
+(IFCHEZ (begin
+	  
+(define (crit-printf . args)
+  (critical-section (apply printf args)))
+
+(define make-n-list
+  (lambda (n func)
+    (letrec ((loop (lambda (n acc)
+                     (if (zero? n)
+                         acc
+                         (loop (sub1 n) (cons (func n) acc))))))
+      (loop n '()))))
+
+;; From PLT's list.ss
+(define foldl
+     (letrec ((fold-one
+               (lambda (f init l)
+                 (letrec ((helper
+                           (lambda (init l)
+                             (cond
+			       [(null? l) init]
+			       [else (helper (f (car l) init) (cdr l))]))))
+                   (helper init l))))
+              (fold-n
+               (lambda (f init  l)
+                 (cond
+		   [(ormap null? l)
+		    (if (andmap null? l) 
+			init
+			(error 'foldl "received non-equal length input lists"))]
+		   [else (fold-n
+			  f
+			  (apply f (mapadd car l init))
+			  (map cdr l))]))))
+       (case-lambda
+        [(f init l) (fold-one f init l)]
+        [(f init l . ls) (fold-n f init (cons l ls))])))
+
+;; Also from PLT's list.ss
+(define foldr
+  (letrec ((fold-one
+	    (lambda (f init l)
+	      (letrec ((helper
+			(lambda (init l)
+			  (cond
+			   [(null? l) init]
+			   [else (f (car l) (helper init (cdr l)))]))))
+		(helper init l))))
+	   (fold-n
+	    (lambda (f init l)
+	      (cond
+	       [(ormap null? l)
+		(if (andmap null? l)
+		    init
+		    (error 'foldr "received non-equal length input lists"))]
+	       [else (apply f
+			    (mapadd car l
+				    (fold-n f init (map cdr l))))]))))
+    (case-lambda
+      [(f init l) (fold-one f init l)]
+      [(f init l . ls) (fold-n f init (cons l ls))])))
+
+;; Lifted from schemewiki:
+#;
+(define-syntax define-values 
+   (syntax-rules () 
+     ((define-values () exp) 
+      (call-with-values (lambda () exp) (lambda () 'unspecified))) 
+     ((define-values (var . vars) exp) 
+      (begin  
+        (define var (call-with-values (lambda () exp) list)) 
+        (define-values vars (apply values (cdr var))) 
+        (define var (car var)))) 
+     ((define-values var exp) 
+      (define var (call-with-values (lambda () exp) list)))))
+;; My version for chez:
+(define-syntax define-values 
+  (lambda (x)
+    (define iota 
+      (case-lambda [(n) (iota 0 n)]
+		   [(i n) (if (= n 0) '() (cons i (iota (+ i 1) (- n 1))))]))
+    (syntax-case x ()  
+     [(define-values (vars ...) exp)
+      (with-syntax ([(nums ...) (datum->syntax-object  
+				 #'define-values 
+				 (iota (length (datum (vars ...)))))])
+	#'(begin  
+	    (define newtempvar (call-with-values (lambda () exp) vector))
+	    (define vars (vector-ref newtempvar nums))
+	    ...))])))
+
+
+;; [2005.11.14] This is like chez's system command, except it routes
+;; the output through the standard scheme output port.  This way it
+;; can be captured/redirected by the normal means.
+(define (system/echoed str)
+  (let-match ([(,in ,out ,id) (process str)])
+    (let loop ((line (read-line in)))
+      (unless (or (not line) (eof-object? line))
+	(display line)(newline)
+	(loop (read-line in))))
+    ;; Alas, I don't know how to get the error-code through "process",
+    ;; so we must assume there was no error:
+    0))
+;; Example: compare (with-output-to-string (lambda () (system "ls")))
+;;               to (with-output-to-string (lambda () (system/echoed "ls")))
+
+;; [2005.11.17] This one is similar 
+(define (system-to-str str)
+  (let-match ([(,in ,out ,id) (process str)])
+    (let ((p (open-output-string)))
+    (let loop ((c (read-char in)))
+      (if (eof-object? c)	  
+	  (begin 
+	    (close-input-port in)
+	    (close-output-port out)
+	    (get-output-string p))
+	  (begin (display c p)
+		 (loop (read-char in))))))))
+
+
+;; [2006.02.20] Copying here from my other utility files.
+;; This is a very useful little utility that allows you to search
+;; through all the currently bound top-level symbols.
+(define grep-oblist
+  ;; Only for unixy-machines
+  (lambda (str)
+    (let* ([name "___temp___.txt"]
+;           [out (open-output-file name 'replace)])
+           [out (open-output-file name )])
+      (for-each (lambda (o) (display o out) (newline out))
+                (oblist))
+      (system (format "cat \"~a\" | grep \"~a\"" name str))
+      (close-port out)
+      (delete-file name)
+      (void))))
+
+;; [2005.11.17] This is reminescent of the perl command "chomp" 
+(define (chomp s)
+  (cond
+   [(string? s)
+    (let ((ind (sub1 (string-length s))))
+      (if (eq? #\newline (string-ref s ind))
+	  (substring s 0 ind)
+	  s))]
+   [(null? s) '()]
+   [(pair? s) (cons (chomp (car s)) (chomp (cdr s)))]
+   [else (error 'chomp "bad input: ~s" s)]))
+
+
+
+;; Simply reads a line of text.  Embarassing that this isn't in r5rs.
+;; Man, they need a standardized set of libraries.
+;; .parameter port (optional) Port to read from.
+;;
+;This read-line will handle line delimination either by #\newline
+;or by a consecutive #\return #\newline
+;JEEZ, this has some problems right now [01.06.08], Chez for windows
+;seems to be totally screwy regarding char-ready?.
+(define read-line ;returns false if the port is empty
+  (lambda args
+    (let ([port (if (null? args)
+                    (current-input-port)
+                    (car args))])
+      (letrec ([loop
+                 (lambda (c)
+                   (cond
+                     [(or (eof-object? c)
+                          (eq? c #\newline)) '()]
+                     [(or (eq? c #\linefeed)
+                          (eq? c #\return))
+                      (when (and (char-ready? port)
+                                 (eq? (peek-char port) #\newline))
+                            (read-char) '())]
+                     [else (cons c (loop (read-char port)))]))])
+        (let ([c (read-char port)])
+          (if (eof-object? c) #f
+              
+              ((lambda (x) x)
+               (list->string (loop c)))
+              ))))))
+;; TODO: write a more efficient version with block-read!!! [2006.02.22]
+
+;; Used for expanding strings with environment variables in them.
+(define (shell-expand-string s)
+  (chomp (system-to-str (string-append "exec echo " s))))
+
+;; Return the current time in seconds since 1970:
+(define seconds-since-1970
+  (lambda ()
+    (let ((absolute (string->number (chomp (system-to-str "date +%s"))))
+	  (syncpoint (quotient (real-time) 1000)))
+      (lambda () 
+	(+ (- (quotient (real-time) 1000) syncpoint)
+	   absolute)))))
+
+	  ) (void))  ;; End IFCHEZ
+
+)
 
