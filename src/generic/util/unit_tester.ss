@@ -1,7 +1,8 @@
+;; Note: becuase of recursive dependencies, this file is included into
+;; helpers.ss rather than being its own module.
 
-(module unit_tester mzscheme
-
-(require "../../plt/iu-match.ss")
+;(module unit_tester mzscheme
+;  (require "../../plt/iu-match.ss" "../../plt/chez_compat.ss")
  
 ;;[2004.06.13] Making this not allow an error to match against unspecified!
 (define (lenient-compare? o1 o2)
@@ -61,21 +62,6 @@
 
 ;; [2005.02.24] Working around weird PLT bug:
 (define voidproc (lambda args (void)))
-
-;; Duplicated code from helpers.ss
-(define (for-eachi f ls)
-  (let foreachi-loop ((i 0) (ls ls))
-    (if (null? ls)
-	(void)
-	(begin (f i (car ls))
-	       (foreachi-loop (add1 i) (cdr ls))))))
-;; Duplicated code from helpers.ss
-(define filter
-  (lambda (pred lst)
-    (cond
-      [(null? lst) '()]
-      [(pred (car lst)) (cons (car lst) (filter pred (cdr lst)))]
-      [else (filter pred (cdr lst))])))
 
   
 (define default-unit-tester
@@ -293,5 +279,5 @@
 (define (reg:counttests) ;;shorthand
   (apply + (map (lambda (x) (length ((cadr x) 'get))) (reg:all-unit-tests))))
 
-) ;; End Module
+;) ;; End Module
 
