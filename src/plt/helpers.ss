@@ -3,6 +3,7 @@
 (module helpers mzscheme 
   (require "iu-match.ss"
            "../generic/util/reg_macros.ss"
+           "../generic/util/unit_tester.ss"
            (lib "include.ss")
            (lib "date.ss")
            (lib "pretty.ss")
@@ -128,6 +129,5 @@
 
   )
 
-;(require helpers)
-;(time (testhelpers))
+(require helpers) (time (testhelpers))
 

@@ -1,5 +1,18 @@
 #! /bin/sh
 #|
+exec mzscheme -qu "$0" ${1+"$@"}
+|#
+(module regiment_pltscript mzscheme
+  
+  (for-each (lambda (arg)
+              (display arg)
+              (newline))
+            (vector->list (current-command-line-arguments))))
+
+#|
+
+#! /bin/sh
+#|
 exec mred -r "$0" ${1+"$@"}
 |#
 
@@ -95,3 +108,4 @@ exec mred -r "$0" ${1+"$@"}
 
 ;(parameterize ([current-directory (car (command-line-arguments))])
 ;  (load (string-append (getenv "REGIMENTD") "/src/regiment.ss")))
+|#

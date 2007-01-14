@@ -1250,3 +1250,4 @@
 
 ) ; End module. 
 
+(require hm_type_inference) (test-inferencer)

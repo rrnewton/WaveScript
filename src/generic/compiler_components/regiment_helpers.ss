@@ -26,8 +26,8 @@
              "../grammars/grammar_checker.ss"
 	     )
 
-    (provide   
-
+  (provide   
+     
 	  reg:random-int reg:random-real reg:get-random-state reg:set-random-state!
 	  randomize-list randomize-vector! list-get-random vector-get-random
 

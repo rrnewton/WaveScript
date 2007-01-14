@@ -6,6 +6,9 @@ VER=7.1
 if [ $MACHINE == "Linux" ];
 then DIR=i3le;
      SCHEME=scheme;
+elif test $MACHINE == "Darwin" && test `uname -p` == "i386" ;
+then DIR=i3osx;
+     SCHEME=scheme;
 elif [ $MACHINE == "Darwin" ];
 then DIR=ppcosx;
      SCHEME=scheme;

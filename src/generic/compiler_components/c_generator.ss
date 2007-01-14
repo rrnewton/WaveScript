@@ -14,13 +14,17 @@
 ;;;;  type Text = String | List of Text
 
 (module c_generator mzscheme   
-  (require )  
+  (require "../constants.ss"
+           "../../plt/helpers.ss"
+           "../../plt/chez_compat.ss"
+           )
   (provide test-cgenerator
 	   wrap append-text 
 	   indent block 
 	   text? text->lines text->string	   
 	   mangle-name ;; Mangle a name so it's a C-name.  Could cause collisions.
 	   )
+  
   (chezprovide )
   (chezimports )
 
@@ -81,7 +85,7 @@
 		(let ([cell (last-cell lines1)])
 		  (set-cdr! cell (cdr lines2))
 		  (set-car! cell (cons (my-append (caar lines2) (caar cell)) (cdar cell))))]
-	       [else (error 'text->lines "internal error, bad line: ~s" (car cell))])
+	       [else (error 'text->lines "internal error, bad line: ~s" (car lines2))])
 	     lines1]))
 
 
@@ -181,10 +185,10 @@
     ,@(IFDEBUG `([(,wrap '("foo" "bar" 39)) error])
 	       '())    
 
-    [(apply ,graft! (map list-copy '((("a" "\n") ("b" "\n")) (("x" "\n") ("y" "\n")))))
+    [(apply ,graft! (map ,list-copy '((("a" "\n") ("b" "\n")) (("x" "\n") ("y" "\n")))))
      (("a" "\n") ("b" "\n") ("x" "\n") ("y" "\n"))]
     ["graft! with an incomplete line."
-     (apply ,graft! (map list-copy '((("a" "\n") ("b" "\n")) (("x") ("y" "\n")))))
+     (apply ,graft! (map ,list-copy '((("a" "\n") ("b" "\n")) (("x") ("y" "\n")))))
      (("a" "\n") ("xb" "\n") ("y" "\n"))]
 
     [(text->lines '( "one\ntwo" "too\nthree"))
@@ -206,3 +210,5 @@
 (define test-cgenerator test-this)
 
 ) ;; End module
+
+;(require c_generator) (test-cgenerator)

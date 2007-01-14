@@ -14,10 +14,10 @@
  
 (require (lib "include.ss")
          (all-except "plt/helpers.ss" id rec) 
-         (all-except "plt/regiment_helpers.ss")         
+         (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/hash.ss"
-         (all-except "plt/grammar_checker.ss" these-tests test-this))
+         (all-except "generic/grammars/grammar_checker.ss" these-tests test-this))
 
 (require "generic/constants.ss"
          "plt/iu-match.ss"

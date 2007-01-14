@@ -540,3 +540,5 @@
 (define tests-grammar these-tests)
 
 ) ;; End module.
+
+; (require grammar_checker) (test-grammar)

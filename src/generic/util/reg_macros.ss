@@ -37,6 +37,8 @@
       rec 
       ;;reg:define-struct ;; Moved to constants.ss 
       apply-ordered
+      
+    ;  test-reg_macros
    )
   
   ;; These provide extra information for Chez:
@@ -255,9 +257,27 @@
        (with-output-to-string
 	 (lambda () (set! ret (begin e ...))))
        ret)]))
-
+;
+;(define these-tests 
+;  `(
+;    
+;;     reg-include
+;;   
+;;      for grep rep
+;;      let-match 
+;;      mvlet
+;;      match-lambda
+;;      ++ ^ ;; Exponentiation
+;;      define-id-syntax
+;;      rec 
+;;      ;;reg:define-struct ;; Moved to constants.ss 
+;;      apply-ordered
+;    ))
+;  
+;(define test-reg_macros
+;  (default-unit-tester "reg_macros: various utility macros for the system" these-tests))
 
 ) ;; End module.
 
-;(require reg_macros)
+;(require reg_macros) (test-reg_macros)
 
