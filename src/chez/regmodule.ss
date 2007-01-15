@@ -36,7 +36,9 @@
 ;;;; kill the module binding in my preprocessor...
 
 ;; Common module syntax.
-(module reg:module (chez:module module require-for-syntax)
+(module reg:module (chez:module 
+		       module
+		       require-for-syntax)
   
   ;; Bind chez:module to be the *real* thing.
   (module (chez:module)
@@ -48,7 +50,7 @@
     (lambda (x)
       ;(import chez_module)
       (syntax-case x (require provide chezprovide chezimports)
-	[(_ name parent (require __ ...) (provide exports ...) (chezimports imp ...) exp ...)	 
+	[(_ name parent (require __ ...) (provide exports ...) (chezimports imp ...) exp ...)
 	 #'(chez:module name (exports ...)
 	     (import imp) ...
 	     exp ...)]
@@ -59,6 +61,12 @@
 	 #'(chez:module name (exports ... chezexports ...)
 	     (import imp) ...
 	     exp ...)]
+	
+	[(_ name  (require __ ...) (provide exports ...) exp ...)
+	 (error 'module 
+		"syntax error: looks like you forgot the base language, e.g. 'mzscheme'\n Code location:\n  ~a\n\n" 
+		#'_)]
+	
 	)))
 
   (define-syntax require-for-syntax

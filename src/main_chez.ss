@@ -200,7 +200,9 @@
 ;; Including full slib hash tables also... need equal?-based hashtabs sometime.
 (include "generic/util/slib_hashtab.ss") (import (add-prefix slib:hashtab slib:))
 (include "chez/hashtab.ss") (import hashtab)
-(include "chez/helpers.ss") (import (except helpers test-this these-tests))
+;(include "chez/helpers.ss") (import (except helpers test-this these-tests))
+
+(include "generic/helpers.ss") (import (except helpers test-this these-tests))
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "chez/threaded_utils.ss") (import threaded_utils)))

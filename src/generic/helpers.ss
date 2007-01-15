@@ -1,6 +1,12 @@
 ;;;; .title Utility Function Library (helpers.ss)
+
 ;;;; RRN: this file needs some serious cleaning-out.  It still has a bunch
 ;;;; of old junk in it that's not used by the Regiment system.
+
+;;;; Another gronky aspect of this file is that it makes dirty use of
+;;;; the CHEZ/PLT switches.  This module exports a different interface
+;;;; for Chez vs. PLT.  Some functions only work in Chez.  Others are
+;;;; builtin in one....
 
 ;==============================================================================;
 ;;;; <br> REQUIRES: On chez/plt primitive open-output-string.
@@ -9,100 +15,148 @@
 ;==============================================================================;
 
 (module helpers mzscheme
-    (require )
+  (require "../plt/iu-match.ss"
+           "../generic/util/reg_macros.ss"
+           (lib "include.ss")
+           (lib "date.ss")
+           (lib "pretty.ss")
+           (prefix plt: (lib "process.ss"))
+	 ;  (all-except (lib "compat.ss") atom?)
+           (all-except (lib "list.ss") filter sort!)
+;           (all-except "tsort.ss" test-this these-tests)
+           "../generic/constants.ss"
+           "../plt/hashtab.ss"
+;           "engine.ss"
+           "../plt/chez_compat.ss"
+           (prefix swindle: (lib "misc.ss" "swindle"))
+           )
+
+  ;; ONLY IN PLT:
+;   (all-from "chez_compat.ss")
+;   (all-from "../generic/util/reg_macros.ss")
+;   date
+
+  ;; ONLY IN CHEZ:
+;   (foldr let/ec call/ec define-values make-n-list
+; 	 with-error-handlers with-warning-handler current-error-port
+; 	 system/echoed system-to-str with-evaled-params
+; 	 add-parameter-hook chomp shell-expand-string
+; 	 seconds-since-1970 ignore grep-oblist comma-number runN
+; 	 gobj? vector-for-each vector-map vector-map! crit-printf
+; 	 port->slist read-line median stddev stream-drop
+; 	 stream-append-list test-this these-tests)
+
+  ;; Most of those are in chez_compat, remaining:
+  ;; No not MOST, that seems to leave:
   
-    ;; Remember to update the plt equivalent when you update this:
-    (provide 
+  ;; CHEZ ONLY:
+  ;current-error-port ;shell-expand-string
+
+ (provide     	
+  
+  ;; Syntax:
+   
+   ;; Values:
+  
+   ;; Meet in the middle with chez:
+   ;system/echoed system-to-str 
+   ;with-evaled-params
+   
+   ;; Other values 
+   id gnuplot histogram ; date
+   display-progress-meter progress-dots count-nodes
+   string-split periodic-display all-equal?   
 	  
-	 ;; Syntax:
+   set->hashtab hashtab->list
+   
+   ;; Hmm, not sure what meaning immediate has here...
+   ;immediate? 
+;   constant? datum? 
+;   formalexp? cast-formals fit-formals-to-args
+   default-unit-tester tester-eq?
+   ;default-unit-tester-retries ;; This is in constants.
+   substring?
+     
+   gaussian
 
-	  ;; For plt compat:
-	  foldl foldr
-	  let/ec call/ec
-	  define-values
+   list-repeat! make-repeats
+   mapi for-eachi diff
+   set? subset? set-equal? list->set set-cons union intersection difference
+   setq? subsetq? set-eq?
+   remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
+   filter list-index snoc rac rdc last 
+   list-find-position list-remove-before
+   foldl
+   
+   insert-between iota compose compose/values disp
+   extract-file-extension remove-file-extension 
+   file->string string->file file->slist slist->file file->linelists
+   pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
+   graph-map graph-get-connected-component graph-neighbors graph-label-dists 
+   graph:simple->vertical graph:vertical->simple
+   deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
+   unfold-list average clump
+    partition partition-equal split-before
+   myequal?
+   
+   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+   stream-map stream-filter stream-take stream-take-all 
+   iota-stream stream-append browse-stream ;random-stream 
+   
+   display-constrained
+   symbol-append 
 
-	  make-n-list 
+   testhelpers testshelpers 
+   )
+ 
+    ;; These are provided ONLY for Chez... need to look into these periodically.
+    (chezprovide 
+     foldr let/ec call/ec define-values make-n-list
+     with-error-handlers with-warning-handler current-error-port
+     system/echoed system-to-str with-evaled-params
+     add-parameter-hook chomp shell-expand-string
+     seconds-since-1970 ignore grep-oblist comma-number runN
+     gobj? vector-for-each vector-map vector-map! crit-printf
+     port->slist read-line median stddev stream-drop
+     stream-append-list test-this these-tests
 
-	  with-error-handlers with-warning-handler
-	  current-error-port 
+;      foldr let/ec call/ec define-values make-n-list
+;      current-error-port with-evaled-params add-parameter-hook
+;      chomp shell-expand-string seconds-since-1970 ignore
+;      grep-oblist comma-number runN gobj? vector-for-each
+;      vector-map vector-map! port->slist read-line median stddev
+;      stream-drop stream-append-list test-this these-tests
+)
 
-	  system/echoed system-to-str with-evaled-params add-parameter-hook
-	  chomp shell-expand-string seconds-since-1970
-
-	  ;; Values:	    
-	  id ignore gnuplot histogram grep-oblist comma-number
-	  display-progress-meter progress-dots runN count-nodes
-	  string-split periodic-display all-equal?
-	  
-	  set->hashtab hashtab->list
-
-
-	  default-unit-tester tester-eq?
-	  ;default-unit-tester-retries
-	  substring?
-	  gobj? 
-
-	  gaussian
-	  
-	  list-repeat! make-repeats
-	  mapi for-eachi diff
-	  set? subset? set-equal? list->set set-cons union intersection difference
-	  setq? subsetq? set-eq?
-	  remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
-	  filter list-index snoc rac rdc last 
-	  list-find-position list-remove-before
-	  vector-for-each vector-map vector-map!
-
-
-	  insert-between iota compose compose/values disp crit-printf
-	  extract-file-extension remove-file-extension
-	  file->string string->file file->slist port->slist slist->file file->linelists
-	  read-line
-
-	  pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
-	  graph-map graph-get-connected-component graph-neighbors graph-label-dists ;cyclic? 
-	  graph:simple->vertical graph:vertical->simple
-	  deep-assq deep-assq-all deep-member? deep-all-matches deep-filter
-	   unfold-list average median stddev clump
-	  partition partition-equal split-before
-	  myequal?
-
-	  stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
-	  stream-map stream-filter stream-take stream-drop stream-take-all 
-	  iota-stream stream-append-list stream-append browse-stream ;random-stream 
-	  display-constrained
-	  symbol-append 
-
-	  testhelpers testshelpers test-this these-tests
-
-					;reg:all-unit-tests 
-	  
-					;   (all-except (lib "rutils_generic.ss")
-					;               list->set union intersection difference set?
-					;               list-head filter list-index snoc rac rdc 
-					;               insert-between iota disp)
-					;   (all-from (lib "rutils_generic.ss") )
-					;   (all-from-except (lib "rutils_generic.ss") 
-					;                    list->set union intersection difference set?) 
-
-
-	  )
-    
-    (chezprovide )    
     (chezimports )
-
-;(import (except topsort-module test-this these-tests))
-;(import (except scheme atom?))
-(import scheme)
-
 
 ;; [2005.11.26] Moved reg:define-struct to chez/constants.ss
 
+;; Extra import/export:
+(IFCHEZ
+ (begin   
+  ;(import (except topsort-module test-this these-tests))
+  ;(import (except scheme atom?))
+  (import scheme))
+
+ (provide  ;; For chez compatibility:
+  (all-from "../plt/chez_compat.ss")  
+  (all-from "../generic/util/reg_macros.ss"))  
+;   (all-except (lib "rutils_generic.ss")
+;               list->set union intersection difference set?
+;               list-head filter list-index snoc rac rdc 
+;               insert-between iota disp)
+;   (all-from (lib "rutils_generic.ss") )
+   ;   (all-from-except (lib "rutils_generic.ss") 
+   ;                    list->set union intersection difference set?)  
+ )
+
 (IFCHEZ 
  (begin 
-;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
-;; substitute.  That's the kind of thing I'd like my
-;; scheme-meta-language/package-manager to do for me!!
+   
+   ;; This doesn't seem to work in PLT.  Besides, let-values is a perfect
+   ;; substitute.  That's the kind of thing I'd like my
+   ;; scheme-meta-language/package-manager to do for me!!
 (define-syntax let/ec
   (syntax-rules ()
     [(_ v exp ...)
@@ -1854,7 +1908,7 @@
 ;(include (build-path (REGIMENTD) "generic/util/streams.ss"))
 (IFCHEZ (include "generic/util/streams.ss")
 	;(include (build-path "~/wavescript/src" "generic/util/streams.ss")))
-         (include "streams.ss"))
+         (include "../generic/util/streams.ss"))
 ;===============================
 
 ;; [2004.06.18] This displays the changes in a piece of state only

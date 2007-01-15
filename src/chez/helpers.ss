@@ -143,6 +143,7 @@
 ;; We play nasty tricks with symbolic links here. 
 ;; It doesn't matter if we load this file from "src" or "src/chez"
 ;; because we've linked the "generic" subdir from both locations.
+(include "generic/util/unit_tester.ss")
 (include "generic/util/helpers.ss")
 ; ======================================================================
 
