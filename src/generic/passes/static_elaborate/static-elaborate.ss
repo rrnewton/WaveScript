@@ -34,11 +34,14 @@
 (module static-elaborate mzscheme
   (require (lib "include.ss")
            ;(all-except (lib "compat.ss") flush-output-port)
-           "../generic/constants.ss"
-           "../plt/iu-match.ss"
-	   "../plt/prim_defs.ss"
-	   (all-except "../../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))  
+;           "../generic/constants.ss"
+;           "../plt/iu-match.ss"
+;	   "../plt/prim_defs.ss"
+;	   (all-except "../../util/helpers.ss" test-this these-tests)
+;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
+	   "../../../plt/common.ss"
+	   "../normalize_source/remove-unquoted-constant.ss"
+	   )
   (provide 
    ;(all-defined)
    static-elaborate
@@ -430,7 +433,7 @@
 		 [(tuple ,args ...)
 		  (unless (eq? (length args) len)
 		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
-			   len vec))
+			   len `(tuple ,@args)))
 		  (list-ref args ind)]
 		 [,else (error 'static-elaborate:process-expr "implementation error, tupref case")])
 	       `(tupref ,ind ,len ,tup))]

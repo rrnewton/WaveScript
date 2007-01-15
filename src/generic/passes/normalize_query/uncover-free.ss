@@ -6,6 +6,13 @@
 
 ;;;------------------------------
 
+(module uncover-free mzscheme
+  (require "../../../plt/common.ss"
+           "../normalize_query/remove-complex-constant.ss")
+  (require-for-syntax "../../constants.ss")
+  (provide uncover-free uncover-free-grammar1)
+  (chezimports)
+  
 ;; There may be multiple versions of uncover-free with different
 ;; input/output grammars.  Factoring out the transformer functions here.
 ;; This gets the first shot at the expression.
@@ -66,3 +73,4 @@
   [Program  uncover-free-Program]
   )
 
+) ; End module

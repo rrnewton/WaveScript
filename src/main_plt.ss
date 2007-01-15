@@ -42,15 +42,15 @@
 (all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/rename-vars.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/remove-unquoted-constant.ss" these-tests test-this)
-(all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
-;(all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)
 
-)#|
+(all-except "generic/passes/static_elaborate/static-elaborate.ss" these-tests test-this)
 
+(all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
 
-(all-except "plt/pass06_remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
-(all-except "plt/pass08_uncover-free.ss" these-tests test-this)
+(all-except "generic/pass08_uncover-free.ss" these-tests test-this)
+)#|
 (all-except "plt/pass09_lift-letrec.ss" these-tests test-this)
 (all-except "plt/pass10_lift-letrec-body.ss" these-tests test-this)
 (all-except "plt/pass11_remove-complex-opera.ss" these-tests test-this)

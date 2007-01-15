@@ -8,7 +8,8 @@
 
 
 (module remove-unquoted-constant mzscheme
-  (require "../../../plt/common.ss")
+  (require "../../../plt/common.ss"
+	   "eta-primitives.ss")
     
   (provide remove-unquoted-constant
            remove-unquoted-constant-grammar)

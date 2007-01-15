@@ -6,9 +6,14 @@
 ;;; PRIMITIVES ELIMINATED:
 ;;;   circle-at
 
+(module reduce-primitives mzscheme
+  (require "../../../plt/common.ss"
+           "../static_elaborate/static-elaborate.ss")
+  (provide reduce-primitives reduce-primitives-grammar)
+  (chezimports)
 
-;; TODO: FILL THIS IN:
-(define reduce-primitives-grammar static-elaborate-grammar)
+  ;; TODO: FILL THIS IN:
+  (define reduce-primitives-grammar static-elaborate-grammar)
 
 (define-pass reduce-primitives
   [Expr (lambda (x fallthrough)	 
@@ -42,3 +47,5 @@
 
 	[,orig orig])))
   )
+
+) ; End Module

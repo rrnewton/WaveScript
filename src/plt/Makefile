@@ -17,6 +17,7 @@ clean_byte:
 
 clean_native:
 	(cd compiled/native; $(MAKE) clean)
-	rm -rf ../generic/compiled/native/*
+	rm -rf ../generic/compiled/native/* .__*
+
 
 #	rm -rf compiled/native/*

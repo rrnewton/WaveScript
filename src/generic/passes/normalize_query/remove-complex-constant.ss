@@ -36,6 +36,12 @@
 ;;; the rewritten expression and a list of bindings for temporary
 ;;; variables to constant-creation expressions.
 
+(module remove-complex-constant mzscheme  
+  (require "../../../plt/common.ss"
+           "reduce-primitives.ss")
+  (provide remove-complex-constant remove-complex-constant-grammar) 
+  (chezimports)
+  
 ;; TODO: FILL THIS IN:
 (define remove-complex-constant-grammar reduce-primitives-grammar)
 
@@ -97,6 +103,7 @@
 	  `(cons ,(datum->code (car x))
 		 ,(datum->code (cdr x)))]
 	 [else `(quote ,x)]))))
+#;
   (define negate-datum
     (lambda (datum)
         (cond
@@ -106,3 +113,4 @@
   )
 
 
+) ; End module
