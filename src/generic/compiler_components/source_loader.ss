@@ -15,7 +15,7 @@
            "../generic/constants.ss"
 	   "../plt/simulator_alpha_datatypes.ss"
            (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
-           (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../util/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests)
            (all-except "../generic/simulator_alpha.ss" test-this these-tests id)
            )

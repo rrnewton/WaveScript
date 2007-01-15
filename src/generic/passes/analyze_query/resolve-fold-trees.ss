@@ -18,8 +18,8 @@
        "../plt/iu-match.ss"
        "../plt/prim_defs.ss"
            ;"../plt/cheztrace.ss"  ;; HUH?!  Shouldn't have to include this with helpers.ss included, but I do.
-           ;(all-except "../plt/helpers.ss" test-this these-tests trace-define trace-let trace-lambda)
-       (all-except "../plt/helpers.ss" test-this these-tests)
+           ;(all-except "../../util//helpers.ss" test-this these-tests trace-define trace-let trace-lambda)
+       (all-except "../../util/helpers.ss" test-this these-tests)
 ;       (all-except "../plt/hm_type_inference.ss"  test-this these-tests)
 ;       (all-except "../plt/grammar_checker.ss" test-this these-tests)
        ;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)

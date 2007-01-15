@@ -9,7 +9,7 @@
           "../generic/constants.ss"
 ;          (file "$REGIMENTD/src/plt/iu-match.ss")
 	  "chez_compat.ss"
-	  "helpers.ss"
+	  "../generic/util/helpers.ss"
           "../generic/compiler_components/prim_defs.ss"
           "../generic/compiler_components/regiment_helpers.ss"
           "../generic/compiler_components/hm_type_inference.ss"
@@ -23,10 +23,11 @@
            (all-from "../generic/constants.ss")
            (all-from "iu-match.ss")
            (all-from "chez_compat.ss")
-           (all-from "helpers.ss")
+           (all-from "../generic/util/helpers.ss")
            (all-from "../generic/compiler_components/prim_defs.ss")
            (all-from "../generic/compiler_components/regiment_helpers.ss")
            (all-from "../generic/compiler_components/hm_type_inference.ss")
+           (all-from-except "../generic/compiler_components/reg_core_generic_traverse.ss" test-this)
            (all-from "../generic/grammars/grammar_checker.ss")
            (all-from "../generic/passes/pass-mechanism.ss"))
   )

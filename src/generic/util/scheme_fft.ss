@@ -5,7 +5,7 @@
 (module scheme_fft mzscheme
 
   (require  "constants.ss"
-	    "../plt/helpers.ss")
+	    "helpers.ss")
   
   ; dft-vector
   (provide dft-list testfft-bigger testfft-more)

@@ -37,7 +37,7 @@
            "../plt/iu-match.ss"
 	   "../plt/prim_defs.ss"
 	   ;(lib "compat.ss")
-           (all-except "../plt/helpers.ss" test-this these-tests filter)
+           (all-except "../util/helpers.ss" test-this these-tests filter)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
            )
   

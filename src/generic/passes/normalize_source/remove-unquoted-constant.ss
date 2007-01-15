@@ -1,13 +1,20 @@
-;;; Pass 2: remove-unquoted-constant
+;;;; Pass 2: remove-unquoted-constant
 
-;;; This pass replaces unquoted constants with equivalent quoted
-;;; expressions, e.g., 17 => '17 and #t => '#t.
+;;;; This pass replaces unquoted constants with equivalent quoted
+;;;; expressions, e.g., 17 => '17 and #t => '#t.
+
+;;;; Output from this pass is in the same language, except that
+;;;; there are no unquoted constants:
 
 
-;;; Output from this pass is in the same language, except that
-;;; there are no unquoted constants:
+(module remove-unquoted-constant mzscheme
+  (require "../../../plt/common.ss")
+    
+  (provide remove-unquoted-constant
+           remove-unquoted-constant-grammar)
+  (chezimports)
 
-;;; OUTPUT LANG:
+;; OUTPUT LANG:
 (define remove-unquoted-constant-grammar
   (let ([gram (filter (lambda (prod) (not (eq? (car prod) 'Const))) eta-primitives-grammar)])
     (ASSERT (< (length gram) (length eta-primitives-grammar)))
@@ -27,3 +34,5 @@
 	       [(,input-language (quote (program ,body ,type)))
 		`(remove-unquoted-constant-language 
 		  '(program ,(Expr body) ,type))]))])
+
+) ; End Module

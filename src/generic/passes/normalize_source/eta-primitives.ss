@@ -7,7 +7,8 @@
 ;;;; context.  This is just a simple, regularizing pass.
 
 (module eta-primitives mzscheme
-  (require "../../../plt/common.ss")
+  (require "../../../plt/common.ss"
+           "desugar-misc.ss")
   (provide eta-primitives eta-primitives-grammar test-eta-primitives)
   (chezimports)
 

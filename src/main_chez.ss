@@ -317,9 +317,9 @@
 (include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
 (include "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
-(include "generic/passes/normalize_source/remove-unquoted-constant.ss")
-
-(include "generic/passes/static_elaborate/static-elaborate.ss") (import pass04_static-elaborate)
+(include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
+act
+(include "generic/passes/static_elaborate/static-elaborate.ss") (import static-elaborate)
 (include "generic/passes/static_elaborate/verify-elaborated.ss")
 
 (include "generic/passes/normalize_query/reduce-primitives.ss")

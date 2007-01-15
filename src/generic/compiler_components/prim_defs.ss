@@ -23,7 +23,7 @@
   (require (lib "include.ss")
 ;           "../../plt/iu-match.ss"
            "../constants.ss"
-           "../../plt/helpers.ss"
+           "../util/helpers.ss"
            )
   (provide 
            regiment-type-aliases

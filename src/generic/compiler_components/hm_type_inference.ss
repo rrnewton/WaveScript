@@ -31,7 +31,7 @@
            "../../plt/iu-match.ss"
            "../../plt/chez_compat.ss"
            "../constants.ss"
-           "../../plt/helpers.ss"
+           "../util/helpers.ss"
 	   (all-except "../compiler_components/regiment_helpers.ss"
                        regiment-type-aliases
                        regiment-basic-primitives

@@ -20,7 +20,7 @@
    (lib "date.ss")
    (lib "pretty.ss")
    (prefix plt: (lib "process.ss"))
-					;  (all-except (lib "compat.ss") atom?)
+   ;  (all-except (lib "compat.ss") atom?)
    (all-except (lib "list.ss") filter sort!)
 ;           (all-except "tsort.ss" test-this these-tests)
    (prefix swindle: (lib "misc.ss" "swindle"))

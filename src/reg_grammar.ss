@@ -13,7 +13,7 @@
          (lib "lex.ss" "parser-tools")
          (lib "pretty.ss")
          "plt/iu-match.ss"
-         "plt/helpers.ss"
+         "generic/util/helpers.ss"
          ;"plt/prim_defs.ss"
          (prefix : (lib "lex-sre.ss" "parser-tools")))
 

@@ -62,10 +62,17 @@
 	     (import imp) ...
 	     exp ...)]
 	
+	[(_ name parent (require __ ...) (provide exports ...)  exp ...)
+	 (error 'module 
+		"syntax error: missing/incorrect 'chezimports' clause.\n Code location:\n  ~a\n\n" 
+		#'_)]
+
 	[(_ name  (require __ ...) (provide exports ...) exp ...)
 	 (error 'module 
 		"syntax error: looks like you forgot the base language, e.g. 'mzscheme'\n Code location:\n  ~a\n\n" 
 		#'_)]
+
+	
 	
 	)))
 

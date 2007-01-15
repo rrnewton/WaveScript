@@ -62,16 +62,17 @@
 	 ;; Each field-name gets bound to a projection function.
 	 `(let ([,v ,rhs])
 	    (let ([,fldname* 
-		   (map (lambda (i) `(lambda (x) (tupref ,i ,len ,v)))
-		     (iota len))])
+                    ,(map (lambda (i) `(lambda (x) (tupref ,i ,len ,v)))
+                          (iota len))])
 	      ,body))
 	    )]
 	;; This is let-as's counterpart for projecting out stream values.
 	[(dot-project ,[v] (,[flds] ...))
 	 ;(guard (symbol? v) (andmap symbol? flds))
-	 `(smap (lambda (,tmp) 
+	 (let ([tmp (unique-name 'tmp)])
+           `(smap (lambda (,tmp) 
 		  (tuple ,@(map (lambda (fld) `(app ,fld ,tmp)) flds)))
-		,v)]
+		,v))]
 	
 	[,other (fallthrough other)])))
 

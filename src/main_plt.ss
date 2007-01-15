@@ -13,7 +13,7 @@
 ;(module main_plt mzscheme
  
 (require (lib "include.ss")
-         (all-except "plt/helpers.ss" id rec) 
+         (all-except "generic/util/helpers.ss" id rec)
          (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
 	 "plt/hash.ss"
@@ -22,7 +22,7 @@
 (require "generic/constants.ss"
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
-          "plt/critical_section.ss")
+         "plt/critical_section.ss")
 
 ;; Set parameter:
 (REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") 
@@ -32,17 +32,21 @@
 
 (require 
 
-(all-except "plt/hm_type_inference.ss" these-tests test-this)
+(all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
-(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
+;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
 ;(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/rename-vars.ss" these-tests test-this)
-(all-except "plt/pass03_remove-unquoted-constant.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/remove-unquoted-constant.ss" these-tests test-this)
 (all-except "plt/pass04_static-elaborate.ss" these-tests test-this)
-(all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)
+;(all-except "plt/pass05_reduce-primitives.ss" these-tests test-this)
+
+)#|
+
 
 (all-except "plt/pass06_remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
@@ -353,3 +357,4 @@
 
 
 ;(test-units)
+|#

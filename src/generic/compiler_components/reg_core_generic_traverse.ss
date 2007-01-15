@@ -28,7 +28,7 @@
            "../../plt/iu-match.ss"
 	   "prim_defs.ss"
 	   ;(lib "compat.ss")
-           (all-except "../../plt/helpers.ss" filter)
+           (all-except "../util/helpers.ss" filter)
            (all-except "../compiler_components/regiment_helpers.ss" filter)
            "../compiler_components/hm_type_inference.ss"
            )

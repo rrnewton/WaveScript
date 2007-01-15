@@ -30,7 +30,7 @@
            (all-except "../plt/hm_type_inference.ss" test-this these-tests)
            (all-except "../plt/tsort.ss" test-this these-tests)
            (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
-           (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../../util/helpers.ss" test-this these-tests)
            (all-except "../plt/regiment_helpers.ss" test-this these-tests))
   
   (provide deglobalize2

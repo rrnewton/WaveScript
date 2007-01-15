@@ -18,7 +18,7 @@
 	   "../constants.ss" ;; For DEBUGMODE
            "../compiler_components/prim_defs.ss"
            "../../plt/chez_compat.ss"
-	   (all-except "../../plt/helpers.ss" test-this these-tests)
+	   (all-except "../util/helpers.ss" test-this these-tests)
            )
   (provide 
          check-grammar/backtrack

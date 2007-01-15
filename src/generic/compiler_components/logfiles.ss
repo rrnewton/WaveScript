@@ -15,7 +15,7 @@
            ;(all-except (lib "list.ss") filter)
            "../generic/constants.ss"
            ;"hashtab.ss"
-           (all-except "../plt/helpers.ss" test-this these-tests)
+           (all-except "../util/helpers.ss" test-this these-tests)
            ;(all-except "regiment_helpers.ss" test-this these-tests)
            )
 

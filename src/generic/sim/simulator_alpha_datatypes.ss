@@ -14,7 +14,7 @@
 	     (lib "include.ss")
 
 	     (all-except "../generic/constants.ss" test-this these-tests)
-	     (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)  
+	     (all-except "../generic/util/helpers.ss" id flush-output-port test-this these-tests)  
 	     "../plt/iu-match.ss"	     
 	     "../plt/hash.ss"
 	     "../plt/hashtab.ss"

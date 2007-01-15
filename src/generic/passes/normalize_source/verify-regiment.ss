@@ -124,7 +124,7 @@
 				[(,t) t]))
 			 optional)])
 	    (ASSERT (set? vars))
-	    `(let ([,lhs* ,types ,rands] ...) 
+	    `(let ([,lhs* ,types ,rhs*] ...) 
 	       ,(process-expr body (union lhs* env))))]
 
 	  ;; [2006.07.25] Adding effectful constructs for WaveScope:

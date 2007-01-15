@@ -15,14 +15,14 @@
             (lib "date.ss")
             (lib "pretty.ss")
             (prefix swindle: (lib "misc.ss" "swindle"))
-            (all-except (lib "list.ss") filter)	     
+            (all-except (lib "list.ss") filter)
 
             "prim_defs.ss"
 	     "../../plt/iu-match.ss"
 	     "../constants.ss"
 	     "../../plt/hashtab.ss"
              
-             "../../plt/helpers.ss"
+             "../util/helpers.ss"
              "../grammars/grammar_checker.ss"
 	     )
 

@@ -17,7 +17,7 @@
 
 
 (module wavescript_nominalize-types  mzscheme 
-  (require "../../../plt/helpers.ss")
+  (require "../../../../util/helpers.ss")
 ;  (require "../../util/helpers.ss")
   (provide nominalize-types test-this test-nominalize-types standard-struct-field-names)
   (chezprovide )

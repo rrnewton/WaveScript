@@ -15,7 +15,7 @@
 
 (module c_generator mzscheme   
   (require "../constants.ss"
-           "../../plt/helpers.ss"
+           "../util/helpers.ss"
            "../../plt/chez_compat.ss"
            )
   (provide test-cgenerator

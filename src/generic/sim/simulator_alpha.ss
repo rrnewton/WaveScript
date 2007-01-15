@@ -62,7 +62,7 @@
    "../compiler_components/prim_defs.ss"
    "../generic/logfiles.ss"
    (all-except "../generic/constants.ss" test-this these-tests)
-   (all-except "../plt/helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../generic/util/helpers.ss" id flush-output-port test-this these-tests)
    (all-except "../plt/regiment_helpers.ss" id flush-output-port test-this these-tests)
    (all-except "../plt/tsort.ss" test-this these-tests)
    (all-except "../plt/simulator_alpha_datatypes.ss")
@@ -120,7 +120,7 @@
 	       (require "generic/logfiles.ss")
 	       (require "plt/hash.ss")
 	       (require "plt/hashtab.ss")
-	       (require (all-except "plt/helpers.ss" test-this these-tests))
+	       (require (all-except "generic/util/helpers.ss" test-this these-tests))
 	       (require (all-except "plt/simulator_alpha_datatypes.ss" test-this these-tests))
 	       (require (all-except "plt/alpha_lib.ss" test-this these-tests))
 	       (require "plt/alpha_lib_scheduler_simple.ss")
