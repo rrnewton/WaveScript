@@ -15,21 +15,24 @@
 ;==============================================================================;
 
 (module helpers mzscheme
-  (require "../plt/iu-match.ss"
-           "../generic/util/reg_macros.ss"
-           (lib "include.ss")
-           (lib "date.ss")
-           (lib "pretty.ss")
-           (prefix plt: (lib "process.ss"))
-	 ;  (all-except (lib "compat.ss") atom?)
-           (all-except (lib "list.ss") filter sort!)
+  (require 
+   (lib "include.ss")
+   (lib "date.ss")
+   (lib "pretty.ss")
+   (prefix plt: (lib "process.ss"))
+					;  (all-except (lib "compat.ss") atom?)
+   (all-except (lib "list.ss") filter sort!)
 ;           (all-except "tsort.ss" test-this these-tests)
-           "../generic/constants.ss"
-           "../plt/hashtab.ss"
+   (prefix swindle: (lib "misc.ss" "swindle"))
+
+   "../../plt/iu-match.ss"
+   "../../plt/hashtab.ss"
+   "../../plt/chez_compat.ss"
 ;           "engine.ss"
-           "../plt/chez_compat.ss"
-           (prefix swindle: (lib "misc.ss" "swindle"))
-           )
+
+   "../constants.ss"
+   "reg_macros.ss"
+   )
 
   ;; ONLY IN PLT:
 ;   (all-from "chez_compat.ss")
@@ -140,8 +143,8 @@
   (import scheme))
 
  (provide  ;; For chez compatibility:
-  (all-from "../plt/chez_compat.ss")  
-  (all-from "../generic/util/reg_macros.ss"))  
+  (all-from "../../plt/chez_compat.ss")  
+  (all-from "reg_macros.ss"))  
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
@@ -1904,11 +1907,10 @@
 ;; <TODO> <TOIMPLEMENT> Ryan, write a function that changes the direction of links:
 ;(define graph-flip...
 
-;(include "generic/util/streams.ss")
-;(include (build-path (REGIMENTD) "generic/util/streams.ss"))
+
 (IFCHEZ (include "generic/util/streams.ss")
-	;(include (build-path "~/wavescript/src" "generic/util/streams.ss")))
-         (include "../generic/util/streams.ss"))
+	(include "streams.ss"))
+
 ;===============================
 
 ;; [2004.06.18] This displays the changes in a piece of state only
