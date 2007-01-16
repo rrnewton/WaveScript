@@ -388,7 +388,7 @@
 ;;   which node-ids they came from.
 (define-regiment-parameter deglobalize-markup-returns #f)
 
-;;; Used primarily by pass21_cleanup-token-machine
+;;; Used primarily by the pass cleanup-token-machine
 ;====================================================
 
 ;; This is the subtok ID that's implicitly inserted when a user omits

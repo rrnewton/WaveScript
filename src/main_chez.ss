@@ -207,6 +207,7 @@
 
 ;; Lists all the Regiment primitives and their types:
 (include "generic/compiler_components/prim_defs.ss") (import prim_defs)
+
 (include "generic/grammars/grammar_checker.ss") (import grammar_checker)
 (include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
 (include "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
@@ -286,6 +287,9 @@
 (include "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
 (include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
 
+;; Load this pass early because it's used in a couple places.
+(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)
+
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/langs/language-mechanism.ss")
@@ -357,7 +361,6 @@
 
 ;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)
 (include "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
 (include "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
 (include "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
