@@ -198,7 +198,7 @@
 
 (include "chez/hash.ss") (import hashfun) ;; TEMPORARY, used for "hash" function from slib.
 ;; Including full slib hash tables also... need equal?-based hashtabs sometime.
-(include "generic/util/slib_hashtab.ss") (import (add-prefix slib:hashtab slib:))
+(include "chez/slib_hashtab.ss") (import (add-prefix slib:hashtab slib:))
 (include "chez/hashtab.ss") (import hashtab)
 (include "generic/util/helpers.ss") (import (except helpers test-this these-tests))
 
