@@ -32,14 +32,7 @@
 ;;;; TODO: MAKE MUTABLE VARS SAFE!
 
 (module static-elaborate mzscheme
-  (require (lib "include.ss")
-           ;(all-except (lib "compat.ss") flush-output-port)
-;           "../generic/constants.ss"
-;           "../plt/iu-match.ss"
-;	   "../plt/prim_defs.ss"
-;	   (all-except "../../util/helpers.ss" test-this these-tests)
-;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-	   "../../../plt/common.ss"
+  (require "../../../plt/common.ss"
 	   "../normalize_source/remove-unquoted-constant.ss"
 	   )
   (provide 

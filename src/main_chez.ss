@@ -209,7 +209,7 @@
 (include "generic/compiler_components/prim_defs.ss") (import prim_defs)
 (include "generic/grammars/grammar_checker.ss") (import grammar_checker)
 (include "generic/compiler_components/regiment_helpers.ss") (import (except regiment_helpers test-this these-tests))
-(include "chez/tsort.ss") (import (except topsort-module test-this these-tests))
+(include "generic/util/tsort.ss") ;(import (except tsort test-this these-tests))
 (include "chez/pregexp.ss") (import pregexp_module)
 
 (include "generic/compiler_components/c_generator.ss") (import c_generator)
@@ -318,43 +318,43 @@
 (include "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
-act
-(include "generic/passes/static_elaborate/static-elaborate.ss") (import static-elaborate)
-(include "generic/passes/static_elaborate/verify-elaborated.ss")
+(include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+(include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
-(include "generic/passes/normalize_query/reduce-primitives.ss")
+(include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
 
 (include "generic/passes/wavescope_bkend/merge-iterates.ss") (import pass_merge-iterates)
-(include "generic/passes/wavescope_bkend/purify-iterate.ss")
+(include "generic/passes/wavescope_bkend/purify-iterate.ss") ;(import purify-iterate)
 (include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss")
 
-(include "generic/passes/normalize_query/remove-complex-constant.ss")
+(include "generic/passes/normalize_query/remove-complex-constant.ss") (import remove-complex-constant)
 ; pass07_verify-stage2.ss
-(include "generic/passes/normalize_query/uncover-free.ss")
-(include "generic/passes/normalize_query/lift-letrec.ss")
-(include "generic/passes/normalize_query/lift-letrec-body.ss")
-(include "generic/passes/normalize_query/remove-complex-opera.ss")
-(include "generic/passes/normalize_query/remove-lazy-letrec.ss")
-(include "generic/passes/normalize_query/verify-core.ss")
+(include "generic/passes/normalize_query/uncover-free.ss") (import uncover-free)
 
-(include "generic/passes/analyze_query/classify-names.ss")
-(include "generic/passes/analyze_query/add-heartbeats.ss")
-(include "generic/passes/analyze_query/add-control-flow.ss")
-(include "generic/passes/analyze_query/add-places.ss")
-(include "generic/passes/analyze_query/analyze-places.ss")
+(include "generic/passes/normalize_query/lift-letrec.ss")          (import lift-letrec)
+(include "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
+(include "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
+(include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
+(include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
 
-(include "generic/passes/analyze_query/resolve-fold-trees.ss") (import pass17_resolve-fold-trees)
+(include "generic/passes/analyze_query/classify-names.ss")   (import classify-names)
+(include "generic/passes/analyze_query/add-heartbeats.ss")   (import add-heartbeats)
+(include "generic/passes/analyze_query/add-control-flow.ss") (import add-control-flow)
+(include "generic/passes/analyze_query/add-places.ss")       (import add-places)
+(include "generic/passes/analyze_query/analyze-places.ss")   (import analyze-places)
+
+(include "generic/passes/analyze_query/resolve-fold-trees.ss") (import resolve-fold-trees)
 ;(include "generic/pass18_add-routing.ss")
 
-(include "generic/passes/deglobalize/deglobalize.ss") (import pass20_deglobalize)
+(include "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
 
 (include "generic/passes/deglobalize/deglobalize2.ss") (import pass20_deglobalize2)
 (include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
 
 ;; Uses delazy-bindings:
-(include "generic/passes/analyze_query/add-data-flow.ss")      (import pass17_add-data-flow)
+(include "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
 
-(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss")
+(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") 
 ;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
 (include "generic/passes/tokmac_bkend/desugar-macros.ss")
@@ -538,3 +538,4 @@ act
   (wipe) (load main))
 
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
+

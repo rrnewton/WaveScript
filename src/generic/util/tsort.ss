@@ -6,7 +6,7 @@
            (all-except "../../plt/hashtab.ss" test-this these-tests))
   (provide tsort topological-sort  cyclic?
 	   test-this these-tests test-tsort)
-
+  (chezimports)
 
 (define (tsort dag )
   (if (null? dag)

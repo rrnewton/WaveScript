@@ -11,6 +11,13 @@
 ;;;; Since this *is* a hack, it doesn't really implement *lazy*
 ;;;; letrec.  It would have to thunk everything.
 
+
+(module remove-lazy-letrec mzscheme
+  (require "../../../plt/common.ss"
+	   "../../util/tsort.ss")
+  (provide remove-lazy-letrec)
+  (chezimports tsort)
+
 (define-pass remove-lazy-letrec
     [Expr (lambda (x fallthru)
 	    (match (fallthru x)
@@ -182,3 +189,5 @@
 	(reverse! (tsort edges))))
 ;    pruned-binds
     ))
+
+) ; End module

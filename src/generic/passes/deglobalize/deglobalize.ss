@@ -85,28 +85,13 @@
            "../../../plt/hashtab.ss"
            (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
            (all-except "../../util/tsort.ss" test-this these-tests)
-	   )
-
-#;
-  (require (lib "include.ss")
-	   (lib "trace.ss")
-	   "../generic/constants.ss"
-           "../plt/iu-match.ss"
-           "../plt/hashtab.ss"
-	   "../plt/prim_defs.ss"
-           (all-except "../plt/hm_type_inference.ss" test-this these-tests)
-           (all-except "../plt/tsort.ss" test-this these-tests)
-           (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
-           (all-except "../../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
-  
+	   )  
   (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize
            delazy-bindings ;; [2006.04.02] Exposing this for use in pass17, should make its own pass if its going to stick around.        
 
 	   lambda->heads
            )
-
-  (chezimports )
+  (chezimports (except tsort test-this these-tests))
 
 #;
 (define deglobalize_output_grammar

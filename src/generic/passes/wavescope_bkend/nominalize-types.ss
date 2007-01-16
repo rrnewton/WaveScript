@@ -16,13 +16,16 @@
   (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])  
 
 
+;============================================================
+
 (module wavescript_nominalize-types  mzscheme 
   (require "../../../../util/helpers.ss")
 ;  (require "../../util/helpers.ss")
   (provide nominalize-types test-this test-nominalize-types standard-struct-field-names)
   (chezprovide )
-  (chezimports (except helpers test-this these-tests)
-	       (except reg_core_generic_traverse test-this these-tests))
+  (chezimports (except helpers                   test-this these-tests)
+	       (except reg_core_generic_traverse test-this these-tests)
+	       (except tsort                     test-this these-tests))
 
 
   ;; The fixed names of fields.

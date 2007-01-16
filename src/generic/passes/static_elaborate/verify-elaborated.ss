@@ -1,5 +1,12 @@
 
 
+(module verify-elaborated mzscheme
+  (require "../../../plt/common.ss"
+	   "../normalize_source/remove-unquoted-constant.ss"
+	   )
+  (provide verify-elaborated)
+  (chezimports )
+
 ;;;; This pass just explicitely annotates the types of application expressions.
 #;
 (define annotate-app-types-grammar
@@ -61,3 +68,5 @@
   ;[Bindings ]
 
   )
+
+) ; End module

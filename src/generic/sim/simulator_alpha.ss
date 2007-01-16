@@ -93,7 +93,7 @@
   (chezimports ;scheme
 	       chez_constants
 	       logfiles
-	       (except topsort-module test-this these-tests)
+	       (except tsort test-this these-tests)
 	       regiment_helpers
 	       ;;simulator_alpha_datatypes
 	       alpha_lib_scheduler_simple)

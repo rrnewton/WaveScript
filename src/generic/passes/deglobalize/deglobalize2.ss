@@ -45,7 +45,8 @@
 	   transform-type
            )
 
-  (chezimports (except hm_type_inference test-this these-tests))
+  (chezimports (except hm_type_inference test-this these-tests)
+	       (except tsort test-this these-tests))
 
   (define new-prims
     `(
