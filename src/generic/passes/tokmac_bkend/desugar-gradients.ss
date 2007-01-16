@@ -13,6 +13,21 @@
 ;;;; factored out (TODO).  (For example, how to process a gemit statement is
 ;;;; the same in all.)
 
+(module desugar-gradients mzscheme
+  (require (lib "include.ss")
+	   "../../../plt/common.ss"
+	   "../../compiler_components/source_loader.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))
+  (provide desugar-gradients
+	   test-desugar-gradients
+	   
+	   ;; Export these constants as well:
+	   DEBUG_GRADIENTS
+	   DEFAULT_RHSEND
+	   RHLOCAL RHREMOTE RHINIT RHSEND	   
+	   NO_PARENT
+	   )
+  (chezimports )
 
 ; ----------------------------------------------------------------------
 ;;; Constants shared by gradient implementations.
@@ -61,7 +76,6 @@
 ;; We can't hold buffered values forever...
 (define DEFAULT_RHSEND 1000)
 
-
 ; ----------------------------------------------------------------------
 ;;; Global helpers - again, shared.
 
@@ -84,6 +98,21 @@
 	 [hops    (caddr last4)]
 	 [version (cadddr last4)])
     (values parent origin hops version)))
+
+
+; ----------------------------------------------------------------------
+;; Include the other variants of desugar-gradients:
+(IFCHEZ
+ (begin 
+   (include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+   (include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
+   (include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
+   )
+ (begin 
+   (include "desugar-gradients_verbose.ss")
+   (include "desugar-gradients_simple.ss")
+   (include "desugar-gradients_ETX.ss")
+   ))
 
 ; ----------------------------------------------------------------------
 ;;; Main procedure.
@@ -188,4 +217,4 @@
 (define test-desugar-gradients test-this)
 (define tests-desugar-gradients these-tests)
 
- 
+) ; End module

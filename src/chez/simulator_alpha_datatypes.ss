@@ -1,1 +1,0 @@
-../generic/sim/simulator_alpha_datatypes.ss

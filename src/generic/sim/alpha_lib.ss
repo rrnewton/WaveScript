@@ -9,18 +9,14 @@
 
 (module alpha_lib mzscheme
   (require 
-;   (lib "include.ss")
-;   (lib "pretty.ss")
    (lib "list.ss")
-;   "../plt/iu-match.ss"
-   "../plt/logfiles.ss"
-   "../generic/constants.ss"  
-   "../plt/hashtab.ss"
-   (all-except "../generic/util/helpers.ss" test-this these-tests filter)
-   (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
-;   (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
-   ;; Would like to remove this dependency eventually:
+   "../constants.ss"  
+   "../compiler_components/logfiles.ss"
+   "../../plt/hashtab.ss"
+   (all-except "../util/helpers.ss" test-this these-tests filter)
+   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests filter)
 
+   ;; Would like to remove this dependency eventually:
    (all-except "simulator_alpha_datatypes.ss") ;run-alpha-simple-scheduler)
    )
   

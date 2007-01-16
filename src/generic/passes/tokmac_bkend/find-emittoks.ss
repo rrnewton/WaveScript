@@ -19,7 +19,12 @@
 ;;;; Output language:  <br>
 ;;;; - Contains an extra form storing the tainted "emittoks".
 
-
+(module find-emittoks mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+	   )
+  (provide find-emittoks)
+  (chezimports )
 
 ;; This is the compiler pass.
 (define find-emittoks  
@@ -99,3 +104,5 @@
 		  (emittoks ,tainted ...))
 	     ))]))
     ))
+
+) ; End module

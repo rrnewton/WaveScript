@@ -13,12 +13,12 @@
     (require ;(all-except (lib "compat.ss") reg:define-struct) ;; gives us reg:define-struct     
 	     (lib "include.ss")
 
-	     (all-except "../generic/constants.ss" test-this these-tests)
-	     (all-except "../generic/util/helpers.ss" id flush-output-port test-this these-tests)  
-	     "../plt/iu-match.ss"	     
-	     "../plt/hash.ss"
-	     "../plt/hashtab.ss"
-	     "../generic/logfiles.ss"
+	     (all-except "../constants.ss" test-this these-tests)
+	     (all-except "../util/helpers.ss" id flush-output-port test-this these-tests)  
+	     "../../plt/iu-match.ss"	     
+	     "../../plt/hash.ss"
+	     "../../plt/hashtab.ss"
+	     "../compiler_components/logfiles.ss"
 	     )
     (provide 
 ;	 simalpha-total-messages

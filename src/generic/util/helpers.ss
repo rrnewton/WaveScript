@@ -42,7 +42,7 @@
   ;; ONLY IN CHEZ:
 ;   (foldr let/ec call/ec define-values make-n-list
 ; 	 with-error-handlers with-warning-handler current-error-port
-; 	 system/echoed system-to-str with-evaled-params
+; 	 system/echoed system-to-str 
 ; 	 add-parameter-hook chomp shell-expand-string
 ; 	 seconds-since-1970 ignore grep-oblist comma-number runN
 ; 	 gobj? vector-for-each vector-map vector-map! crit-printf
@@ -106,6 +106,7 @@
    stream-map stream-filter stream-take stream-take-all 
    iota-stream stream-append browse-stream ;random-stream 
    
+   with-evaled-params
    display-constrained
    symbol-append 
 

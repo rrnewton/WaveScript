@@ -64,22 +64,19 @@
 
 (all-except "generic/passes/deglobalize/deglobalize.ss" these-tests test-this)
 
+(all-except "generic/passes/tokmac_bkend/cleanup-token-machine.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/desugar-macros.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/find-emittoks.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/desugar-gradients.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/desugar-let-stored.ss" these-tests test-this)
+
+; (all-except "plt/pass25_rename-stored.ss" these-tests test-this)
+
+;;(all-except "plt/pass09_separate-graph" these-tests test-this)
+;;(all-except "plt/pass18_add-routing.ss" these-tests test-this
+
+
 )#|
-
-
-;(all-except "plt/pass09_separate-graph" these-tests test-this)
-
-
-;(all-except "plt/pass18_add-routing.ss" these-tests test-this
-
-
-
-(all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
-(all-except "plt/pass22_desugar-macros.ss" these-tests test-this)
-(all-except "plt/pass23a_find-emittoks.ss" these-tests test-this)
-(all-except "plt/pass23_desugar-gradients.ss" these-tests test-this)
-(all-except "plt/pass24_desugar-let-stored.ss" these-tests test-this)
-(all-except "plt/pass25_rename-stored.ss" these-tests test-this)
 
 ;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
 ;(all-except "plt/pass25_inline.ss" these-tests test-this)

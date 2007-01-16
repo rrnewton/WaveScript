@@ -9,6 +9,16 @@
 
 ;; basic_tml_grammar, as verified below:
 
+
+(module desugar-let-stored mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+	   (all-except "../../sim/simulator_alpha.ss" test-this these-tests))
+  (provide desugar-let-stored
+	   test-desugar-let-stored)
+  (chezimports )
+
+
 (define desugar-let-stored
   (build-compiler-pass
    'desugar-gradientsa
@@ -196,3 +206,4 @@
 (define test-desugar-let-stored  test-this)
 (define tests-desugar-let-stored these-tests)
 
+) ; End module

@@ -22,6 +22,13 @@
 
 ;;; Main procedure.
 
+(module desugar-macros mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))
+  (provide desugar-macros
+	   test-desugar-macros)
+  (chezimports )
+
 ;; This is the compiler pass.
 (define desugar-macros
   (let ()
@@ -299,3 +306,6 @@
 ;; The usual unit tester.
 (define test22 test-this)
 (define tests22 these-tests)
+(define test-desugar-macros test-this)
+
+) ; End module

@@ -10,13 +10,10 @@
 
 
 (module logfiles mzscheme 
-  (require "../plt/iu-match.ss"
-           (lib "include.ss")
-           ;(all-except (lib "list.ss") filter)
-           "../generic/constants.ss"
-           ;"hashtab.ss"
+  (require (lib "include.ss")           
+           "../../plt/iu-match.ss"
+           "../constants.ss"
            (all-except "../util/helpers.ss" test-this these-tests)
-           ;(all-except "regiment_helpers.ss" test-this these-tests)
            )
 
   (provide     	

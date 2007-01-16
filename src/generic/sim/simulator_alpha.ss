@@ -56,19 +56,21 @@
    (lib "include.ss")
    (lib "pretty.ss")
    (prefix srfi1. (lib "1.ss" "srfi")) ; make-list
-   "../plt/iu-match.ss" 
-      
-   "../plt/hashtab.ss"
+   
+   "../../plt/iu-match.ss"       
+   "../../plt/hashtab.ss"   
    "../compiler_components/prim_defs.ss"
-   "../generic/logfiles.ss"
-   (all-except "../generic/constants.ss" test-this these-tests)
-   (all-except "../generic/util/helpers.ss" id flush-output-port test-this these-tests)
-   (all-except "../plt/regiment_helpers.ss" id flush-output-port test-this these-tests)
-   (all-except "../plt/tsort.ss" test-this these-tests)
-   (all-except "../plt/simulator_alpha_datatypes.ss")
-   (all-except "../plt/alpha_lib.ss" test-this these-tests)
-   (all-except "../plt/alpha_lib_scheduler_simple.ss")
-   (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
+   "../compiler_components/logfiles.ss"
+
+   (all-except "simulator_alpha_datatypes.ss")
+   (all-except "../constants.ss" test-this these-tests)
+   (all-except "../util/helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../util/tsort.ss" test-this these-tests)      
+   (all-except "../compiler_components/regiment_helpers.ss" id flush-output-port test-this these-tests)
+   (all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)
+   
+   (all-except "alpha_lib.ss" test-this these-tests)
+   (all-except "alpha_lib_scheduler_simple.ss")
    )
 
   (provide 
@@ -133,8 +135,14 @@
 ;  (include (++ (REGIMENTD) "/src/generic/simalpha_rollworld.ss"))
 ;  (include (++ (REGIMENTD) "/src/generic/simulator_alpha.ss"))
 
-(include "generic/sim/simalpha_ui.ss")
-(include "generic/sim/simalpha_rollworld.ss")
+  
+(IFCHEZ
+ (begin 
+   (include "generic/sim/simalpha_ui.ss")
+   (include "generic/sim/simalpha_rollworld.ss"))
+ (begin
+   (include "simalpha_ui.ss")
+   (include "simalpha_rollworld.ss")))
 
 ;(reg:include "generic" "simalpha_ui.ss")
 ;(reg:include "generic" "simalpha_rollworld.ss")
@@ -1055,9 +1063,12 @@
 		      ;; When we get to the end of the params we start it up:
 		      [() 
 		       (if (simalpha-write-sims-to-disk)
+                           ;; In this case we assume the simulation is already written to disk:
 			   ;; Loading this binds "node-code" at top-level:
-			   (parameterize ([source-directories '(".")])
-			     (load "_genned_node_code.ss"))
+			   (IFCHEZ
+                            (parameterize ([source-directories '(".")])
+                              (load "_genned_node_code.ss"))
+                            (load "_genned_node_code.ss"))
 			   (eval THEPROG))
                        ;; We have to do this because of the module system:
                        (let ((node-code (top-level-value 'node-code)))

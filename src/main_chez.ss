@@ -216,7 +216,7 @@
 (include "generic/util/scheme_fft.ss")
 (include "generic/util/fft.ss") (import fft)
 
-(include "chez/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+(include "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
@@ -264,12 +264,13 @@
 
 (include "generic/compiler_components/logfiles.ss") (import logfiles)
 
-(include "chez/alpha_lib.ss") 
+(include "generic/sim/alpha_lib.ss") 
 (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
-(include "chez/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+
+(include "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
 ;(include "generic/alpha_lib_scheduler.ss")
 
-(include "chez/simulator_alpha.ss") (import simulator_alpha)
+(include "generic/sim/simulator_alpha.ss") (import simulator_alpha)
 (include "generic/sim/firelightning_sim.ss")
 (include "generic/passes/nesc_bkend/tossim.ss")
 
@@ -354,21 +355,18 @@
 ;; Uses delazy-bindings:
 (include "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
 
-(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") 
 ;(include "generic/pass22_desugar-soc-return.ss")
 ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/passes/tokmac_bkend/desugar-macros.ss")
-;(include "generic/pass26_desugar-macros.ss")
+(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)
+(include "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
+(include "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
+(include "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
+;(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+;(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
+;(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
 
-(include "generic/passes/tokmac_bkend/find-emittoks.ss")
-;(include "generic/pass23_desugar-gradients_shared.ss")  ;; "header" file
-(include "generic/passes/tokmac_bkend/desugar-gradients.ss")
-(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
-(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
-(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
-
-(include "generic/passes/tokmac_bkend/desugar-let-stored.ss")
-(include "generic/passes/tokmac_bkend/rename-stored.ss")
+(include "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
+(include "generic/passes/tokmac_bkend/rename-stored.ss")      ;(import rename-stored)
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")

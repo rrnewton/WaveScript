@@ -95,7 +95,13 @@
 ;;;           | is_scheduled | deschedule | is_present | evict
 
 
-
+(module cleanup-token-machine mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))
+  (provide cleanup-token-machine
+	   test-cleanup-token-machine)
+  (chezimports )
+  
 ;===============================================================================
 
 ;;; [2004.10.22]  Now this also will expand out flood/elect-leader.
@@ -859,3 +865,7 @@
 	     ))])
 
 	main-loop))
+
+
+
+) ; End module

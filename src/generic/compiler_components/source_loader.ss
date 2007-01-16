@@ -11,14 +11,15 @@
 ; .ws files have nothing comparable at the moment.
 
 (module source_loader mzscheme 
-  (require "../plt/iu-match.ss"
-           "../generic/constants.ss"
-	   "../plt/simulator_alpha_datatypes.ss"
-           (all-except "../plt/pass21_cleanup-token-machine.ss" test-this these-tests)
-           (all-except "../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-           (all-except "../generic/simulator_alpha.ss" test-this these-tests id)
-           )
+  (require 
+   (all-except "regiment_helpers.ss" test-this these-tests)
+   "../constants.ss"
+   "../../plt/iu-match.ss"   
+   (all-except "../util/helpers.ss" test-this these-tests)
+   (all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)   
+   "../sim/simulator_alpha_datatypes.ss"
+   (all-except "../sim/simulator_alpha.ss" test-this these-tests id)
+   )
   ;; Module exports:
   (provide     	
    read-regiment-source-file ;; Read a file to SEXP syntax
@@ -91,16 +92,11 @@
 		  "invalid expression in definition context: ~s" `(,other ,rest ...))])))
 
     (if (equal? "ws" (extract-file-extension fn))
-	(begin 
-	  (unless (zero? (system "which wsparse")) 
-	    (error 'wsint "couldn't find wsparse executable"))
-	  (let* ([port (car (process (++ "wsparse " fn)))]
-		 [decls (read port)])
-	    (close-input-port port)
-	    (printf "POSTPROCESSING: ~s\n" decls)
-	    (match (ws-postprocess decls)
-	      [(let* ,decls ,bod)
-	       (values `(base-lang '(program (letrec ,decls ,bod))) ())])))
+	(let ([decls (ws-parse-file fn)])
+	  (printf "POSTPROCESSING: ~s\n" decls)
+	  (match (ws-postprocess decls)
+	    [(let* ,decls ,bod)
+	     (values `(base-lang '(program (letrec ,decls ,bod))) ())]))
 	(match (file->slist fn)
 	  [((parameters ,p ...) ,exps ...)
 	   (values (desugar exps) p)]
@@ -268,21 +264,26 @@
        [(letrec ,binds ,ignored)  `((define . ,binds) ...)]
        )]))
 
-;; Chez can't run the parser right now, so I include this.
-(define (ws-parse-file fn) 
-  ;; HACK: WON'T WORK IN WINDOWS:)
-  (unless (zero? (system "which wsparse")) 
-    (error 'wsint "couldn't find wsparse executable"))
-  (let* ([port (car (process (++ "wsparse " fn)))]
-	 [decls (read port)])
-    (close-input-port port)
-    ;; This is very hackish:
-    (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
-	(error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
-    ;(printf "POSTPROCESSING: ~s\n" decls)
-    ;(ws-postprocess decls)
-    decls
-    ))
+(IFCHEZ
+ ;; Chez can't run the parser right now, so we call a separate executable.
+ (define (ws-parse-file fn) 
+   ;; HACK: WON'T WORK IN WINDOWS:)
+   (unless (zero? (system "which wsparse")) 
+     (error 'wsint "couldn't find wsparse executable"))
+   (let* ([port (car (process (++ "wsparse " fn)))]
+	  [decls (read port)])
+     (close-input-port port)
+     ;; This is very hackish:
+     (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	 (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+					;(printf "POSTPROCESSING: ~s\n" decls)
+					;(ws-postprocess decls)
+     decls
+     ))
+ ;; PLT version:  This version can call the code directly.
+ (define (ws-parse-file fn)
+   (error 'ws-parse-file "needs to be implemented... "))
+ )
 
 (define (read-wavescript-source-file fn)
   (ASSERT (string? fn))

@@ -2,9 +2,10 @@
 (module tsort mzscheme
   (require (lib "pretty.ss")
 	   (lib "include.ss")
+	   "../constants.ss"
            (all-except "helpers.ss" test-this these-tests)
            (all-except "../../plt/hashtab.ss" test-this these-tests))
-  (provide tsort topological-sort  cyclic?
+  (provide tsort topological-sort cyclic?
 	   test-this these-tests test-tsort)
   (chezimports)
 
@@ -42,8 +43,6 @@
 	sorted)))
 
 (define topological-sort tsort)
-
-
 
 ;; Tells whether or not a graph is cyclic.  
 ;; Requires canonical form where each node has exactly one entry.
@@ -84,8 +83,6 @@
 	    #f
 	    cycles)))))
 
-
-
 (define these-tests  
   `([(,tsort '((shirt tie belt)
 	     (tie jacket)
@@ -104,7 +101,7 @@
   [(and (,cyclic? '((a b) (b a))) #t)  #t]
   [(and (,cyclic? '((a a))) #t)        #t]
   [(,cyclic? '((a b) (b c)))  #f]
-)
+  )
   )
 
 (define test-this (default-unit-tester "Topological Sort" these-tests))
