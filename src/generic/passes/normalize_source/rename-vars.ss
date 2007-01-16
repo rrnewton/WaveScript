@@ -12,7 +12,9 @@
 
 (module rename-vars mzscheme
   (require "../../../plt/common.ss")
-  (provide rename-vars test-this these-tests test01 tests01)
+  (provide rename-vars 
+           test-this these-tests test01 tests01
+           test-rename-vars)
   (chezimports)
 
   ;; This is a bit of a hack... really should split rename-var into
@@ -103,8 +105,14 @@
        ["check on for loops"
 	(,rename-vars '(some-lang '(program (lambda (f woot) ((Int -> Int) Int)
 						    (for (i 1 (app f woot)) 0)) Int)))
-	(rename-var-language '(program (lambda (f_2 woot_1) ((Int -> Int) Int)
-					       (for (i_3 1 (app f_2 woot_1)) 0)) Int))]
+        ,(lambda (v)
+           (match v
+             ((rename-var-language '(program (lambda (,F1 ,W1) ((Int -> Int) Int)
+					       (for (,I 1 (app ,F2 ,W2)) 0)) Int))
+              (and (not (eqv? I 'i))
+                   (eqv? F1 F2)
+                   (eqv? W1 W2)))
+             (,else #f)))]
        ["check on set!" 
 	(,rename-vars '(some-lang '(program (letrec ([v Int 3]) 
 					    (set! v 39)) Int)))
@@ -129,3 +137,6 @@
 ;==============================================================================
 
 ) ;; End module
+
+;(require rename-vars) (test-rename-vars)
+
