@@ -24,9 +24,9 @@
 	     [(x) (loop (rac (pass-list)) x)])))
     loop))
 
-(define at assemble-tokmac) ;; shorthand
+(define-syntax at (identifier-syntax assemble-tokmac)) ;; shorthand
 
-(define rc run-compiler) ;; shorthand
+(define-syntax rc (identifier-syntax run-compiler)) ;; shorthand
 
 (define ct compile-to-tokens) ;; shorthand
 
@@ -106,28 +106,32 @@
 
 (define-id-syntax tn (begin (simalpha-realtime-mode #t) (rerun-simulator-alpha 'use-stale-world)))
 
-(define-id-syntax t  ;; uber shorthand
-  (let ([start (begin (collect (collect-maximum-generation))
-		      (statistics))]
-	[startobs (oblist)])
-    (and 
-     (time (test-units))
-     (collect (collect-maximum-generation))
-     (let ([end (statistics)]
-	  [endobs (oblist)])
-      (let ([before (- (sstats-bytes start) (sstats-gc-bytes start))]
-	    [after (- (sstats-bytes end) (sstats-gc-bytes end))])
-	(printf "\nAfter a thorough collection:\n")
-	(printf "   ~:d additional allocated bytes are left over (~:d before ~:d after).\n"
-		(- after before) before after)
-	(let ([len1 (length startobs)]
-	      [len2 (length endobs)]
-	      [diff (difference endobs startobs)])
-	  (printf "   ~s syms in oblist before, ~s syms after, diff ~s\n" len1 len2 (- len2 len1))
-	  (parameterize ([print-length 20])
-	    (printf "Difference: ~s\n" diff))
-	  (printf "  Difference with top-level bindings: ~s\n\n" (filter top-level-bound? diff))
-	))))))
+(IFCHEZ
+ (define-id-syntax t  ;; uber shorthand
+   (let ([start 
+	  (begin (collect (collect-maximum-generation))
+		 (statistics))]
+	 [startobs (oblist)])
+     (and 
+      (time (test-units))
+      (collect (collect-maximum-generation))
+      (let ([end (statistics)]
+	    [endobs (oblist)])
+	(let ([before (- (sstats-bytes start) (sstats-gc-bytes start))]
+	      [after (- (sstats-bytes end) (sstats-gc-bytes end))])
+	  (printf "\nAfter a thorough collection:\n")
+	  (printf "   ~:d additional allocated bytes are left over (~:d before ~:d after).\n"
+		  (- after before) before after)
+	  (let ([len1 (length startobs)]
+		[len2 (length endobs)]
+		[diff (difference endobs startobs)])
+	    (printf "   ~s syms in oblist before, ~s syms after, diff ~s\n" len1 len2 (- len2 len1))
+	    (parameterize ([print-length 20])
+	      (printf "Difference: ~s\n" diff))
+	    (printf "  Difference with top-level bindings: ~s\n\n" (filter top-level-bound? diff))
+	    ))))))
+ (define-id-syntax t (time (test-units)))
+)
 
 
 (define-id-syntax mem  ;; shorthand

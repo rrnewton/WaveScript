@@ -19,16 +19,20 @@
 	 "generic/util/hash.ss"
          (all-except "generic/grammars/grammar_checker.ss" these-tests test-this))
 
+(require-for-syntax "plt/identifier-syntax.ss")
+
 (require "generic/constants.ss"
          "plt/iu-match.ss"
           ;; [2004.12.06] I think I had this working:
          "plt/critical_section.ss")
 
 ;; Set parameter:
-(REGIMENTD (if (getenv "REGIMENTD") (getenv "REGIMENTD") 
-               ;(path->string (current-directory))
-               "~/regiment_alpha/"
-               ))
+(REGIMENTD (cond             
+             [(getenv "REGIMENTD") (getenv "REGIMENTD")]
+             [else 
+              (string-append (path->string (current-directory)) "../")
+              ;"~/regiment_alpha/"
+               ]))
 
 (require 
 
@@ -114,6 +118,8 @@
 
 (include "main.ss")
 ;============================================================
+
+(include "generic/shortcuts.ss")
 
 (define error-handler error-display-handler)
 (load/use-compiled "generic/testing/driver.ss")

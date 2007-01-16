@@ -521,14 +521,14 @@ enum {
     [(let ((f (,token-numberer))) (apply-ordered list (f 'foo) (f 'bar) (f 'foo) (f 'foo) (f 'bar) (f 'baz)))
      (0 1 0 0 1 2)]
 
-    [((,Expr "" id ()) '(+ '1 x))
+    [((,Expr "" (lambda (x) x) ()) '(+ '1 x))
      ("(1 + x);\n")]
-    [((,Expr "" id ()) '(set! v (if '#t (begin '3) (begin '4))))
+    [((,Expr "" (lambda (x) x) ()) '(set! v (if '#t (begin '3) (begin '4))))
      ("if (1) {\n" "  v = 3;\n" "} else {\n" "  v = 4;\n" "}\n")]
-    [(rac ((,Expr "" id ()) '(call (tok f 0) '3)))
+    [(rac ((,Expr "" (lambda (x) x) ()) '(call (tok f 0) '3)))
      "call token_f(3);\n"]
 
-    [((,Expr "<>" id ()) '(printf '"test!\n"))
+    [((,Expr "<>" (lambda (x) x) ()) '(printf '"test!\n"))
      ("<>dbg(DBG_USR1, \"TMPRNT: test!\\n\");\n")]
 
     [(,ConstBind '(v '3)) "uint16_t v = 3;\n"]

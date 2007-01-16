@@ -117,7 +117,9 @@
 	 node-code))
    ;; This PLT version uses require to make sure the support code is loaded.
    (define (build-genned-code-module node-code)
-     `(begin (module _genned_node_code mzscheme
+     `(begin 	       
+        (current-directory (string-append (REGIMENTD) "/src/"))
+        (module _genned_node_code mzscheme
 	       ;(provide node-code)	       
 	       (require "generic/constants.ss")
 	       (require "generic/compiler_components/logfiles.ss")

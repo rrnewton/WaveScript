@@ -4,6 +4,7 @@
 ;   "../generic/constants.ss"
    "../plt/iu-match.ss"
    "cheztrace.ss"
+   "identifier-syntax.ss"
    (lib "date.ss")
    (lib "pretty.ss")
    (prefix plt: (lib "list.ss"))
@@ -25,6 +26,7 @@
            pretty-print flush-output-port
            real-time
            (rename plt:remq remq)
+           identifier-syntax
            )
 
   ;; Here we include the SLIB initialization directly.  This is the only 

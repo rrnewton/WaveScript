@@ -16,7 +16,7 @@
 	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
 	   (all-except "../../sim/simulator_alpha.ss" test-this these-tests))
   (provide desugar-let-stored
-	   test-desugar-let-stored)
+	   test-desugar-let-stored test-this)
   (chezimports )
 
 
@@ -157,7 +157,7 @@
     ["Now start to test let-stored in a basic way."
      (,sim-to-string
       (desugar-let-stored 
-       (cleanup-token-machine 
+       (,cleanup-token-machine 
 	'(tokens
 	  (SOC-start () (call foo) (call foo))
 	  (foo () (let-stored ((x1 #t))
@@ -168,7 +168,7 @@
     ["Now seeing if it only initializes at the right time."
      (,sim-to-string
       (desugar-let-stored 
-       (cleanup-token-machine 
+       (,cleanup-token-machine 
 	'(tokens
 	  (SOC-start () (call foo 1) (call foo 2) (call foo 2) (call foo 1))
 	  (foo (v) (if (= v 2)
@@ -187,7 +187,7 @@
       ;; Got to include the renaming to make absolutely sure the x's don't collide:
       ;(rename-stored ;; No longer true.. fixed it so it renames let-stored vars [2005.09.24]
        (desugar-let-stored 
-	(cleanup-token-machine 
+	(,cleanup-token-machine 
 	 '(tokens
 	   (SOC-start () (call bar 1))
 	   (bar (x)

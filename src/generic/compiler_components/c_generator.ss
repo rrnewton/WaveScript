@@ -191,15 +191,15 @@
      (apply ,graft! (map ,list-copy '((("a" "\n") ("b" "\n")) (("x") ("y" "\n")))))
      (("a" "\n") ("xb" "\n") ("y" "\n"))]
 
-    [(text->lines '( "one\ntwo" "too\nthree"))
+    [(,text->lines '( "one\ntwo" "too\nthree"))
      (("one" "\n") ("twotoo" "\n") ("three"))]
-    [(text->lines (text->lines '("one\ntwo" "too\nthree")))
+    [(,text->lines (,text->lines '("one\ntwo" "too\nthree")))
      (("one" "\n") ("twotoo" "\n") ("three"))]
-    [(text->lines '((("one" "\n") ("two")) (("too" "\n") ("three"))))
+    [(,text->lines '((("one" "\n") ("two")) (("too" "\n") ("three"))))
      (("one" "\n") ("twotoo" "\n") ("three"))]
 
     ;; This one is overly strict.  text->lines needn't actually flatten to this extent.
-    [(text->lines '((("one" "\n") ("two")) (("too" "\n") (("three" ((("f\nour\n"))))))))
+    [(,text->lines '((("one" "\n") ("two")) (("too" "\n") (("three" ((("f\nour\n"))))))))
      (("one" #0="\n") ("twotoo" #0#) ("threef" #0#) ("our" "\n"))]
 
     [(,text->string "foo") "foo"]
