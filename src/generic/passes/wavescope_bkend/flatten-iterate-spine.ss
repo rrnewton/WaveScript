@@ -1,4 +1,10 @@
 
+(module flatten-iterate-spine mzscheme
+  (require "../../../plt/common.ss")
+  (provide flatten-iterate-spine)
+  (chezimports)
+  
+
 (define-pass flatten-iterate-spine
     (define (make-simple-shallow x tenv)
       (if (simple-expr? x) 
@@ -55,6 +61,10 @@
 	 [,other (fallthru other tenv)]
 	 ))]
   )
+
+) ; End module
+
+
 
 
 

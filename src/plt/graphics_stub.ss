@@ -11,7 +11,7 @@
 	   clear-buffer
            )
   
-  (require (all-except "helpers.ss" test-this these-tests)
+  (require (all-except "../generic/util/helpers.ss" test-this these-tests)
 	   "iu-match.ss"
            (prefix plt: (lib "graphics.ss" "graphics"))
            (lib "include.ss")

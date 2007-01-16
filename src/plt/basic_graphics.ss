@@ -1,10 +1,10 @@
 
 (module basic_graphics mzscheme
   (require (lib "include.ss")
-           ;(lib "compat.ss")
-           "helpers.ss"
+           "../generic/util/helpers.ss"
            "../generic/constants.ss"
            (prefix plt: (lib "graphics.ss" "graphics")))
+
 ;  (provide init-graphics close-graphics	window-width window-height the-win)
   (provide (all-defined))
   

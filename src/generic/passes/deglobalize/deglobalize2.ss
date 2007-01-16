@@ -19,20 +19,14 @@
 
 ;  ======================================================================
 
-(module pass20_deglobalize2 mzscheme
-
+(module deglobalize2 mzscheme
   (require (lib "include.ss")
 	   (lib "trace.ss")
-	   "../generic/constants.ss"
-           "../plt/iu-match.ss"
-           "../plt/hashtab.ss"
-	   "../plt/prim_defs.ss"
-           (all-except "../plt/hm_type_inference.ss" test-this these-tests)
-           (all-except "../plt/tsort.ss" test-this these-tests)
-           (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
-           (all-except "../../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
-  
+           "../../../plt/common.ss"          
+           (all-except "../../../plt/hashtab.ss" test-this these-tests)
+           (all-except "../../util/tsort.ss" test-this these-tests)                      
+           (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+           )
   (provide deglobalize2
 	   test-this
 	   test-deglobalize2
@@ -44,7 +38,6 @@
 	   ;; TEMP:
 	   transform-type
            )
-
   (chezimports (except hm_type_inference test-this these-tests)
 	       (except tsort test-this these-tests))
 

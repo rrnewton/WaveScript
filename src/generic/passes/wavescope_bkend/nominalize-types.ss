@@ -7,6 +7,18 @@
 
 ;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
 
+;============================================================
+
+(module nominalize-types  mzscheme 
+  (require "../../../plt/common.ss"
+	   (all-except "../../util/tsort.ss" test-this these-tests))
+  (provide nominalize-types test-this test-nominalize-types standard-struct-field-names
+	   bindings-fun convert-types)
+  (chezprovide )
+  (chezimports (except helpers                   test-this these-tests)
+	       (except reg_core_generic_traverse test-this these-tests)
+	       (except tsort                     test-this these-tests))
+
   ;; This gets set later in a different scope.
   (define bindings-fun 'uninit)
 
@@ -14,18 +26,6 @@
   ;; I can't push it down deeper because currently the define-pass
   ;; macro only works at top level.
   (define-pass convert-types [Bindings (lambda args (apply bindings-fun args))])  
-
-
-;============================================================
-
-(module wavescript_nominalize-types  mzscheme 
-  (require "../../../../util/helpers.ss")
-;  (require "../../util/helpers.ss")
-  (provide nominalize-types test-this test-nominalize-types standard-struct-field-names)
-  (chezprovide )
-  (chezimports (except helpers                   test-this these-tests)
-	       (except reg_core_generic_traverse test-this these-tests)
-	       (except tsort                     test-this these-tests))
 
 
   ;; The fixed names of fields.
@@ -127,7 +127,7 @@
 	(unless (andmap known-size? argtypes)
 	  (error 'nominalize-types
 		 "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
-		 type))
+		 argtypes))
 	;; Return a new typedef:
 	(list argtypes
 	      (list-head standard-struct-field-names (length argtypes))

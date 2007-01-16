@@ -312,7 +312,7 @@
 
 (if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
 
-(include "generic/passes/normalize_source/verify-regiment.ss")
+(include "generic/passes/normalize_source/verify-regiment.ss")          (import verify-regiment)
 (include "generic/passes/normalize_source/typecheck.ss")                (import typecheck)
 (include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
@@ -328,9 +328,9 @@
 
 (include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)
 
-(include "generic/passes/wavescope_bkend/merge-iterates.ss") (import pass_merge-iterates)
-(include "generic/passes/wavescope_bkend/purify-iterate.ss") ;(import purify-iterate)
-(include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss")
+(include "generic/passes/wavescope_bkend/merge-iterates.ss") (import merge-iterates)
+(include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
+(include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss") (import flatten-iterate-spine)
 
 (include "generic/passes/normalize_query/remove-complex-constant.ss") (import remove-complex-constant)
 ; pass07_verify-stage2.ss
@@ -353,7 +353,7 @@
 
 (include "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
 
-(include "generic/passes/deglobalize/deglobalize2.ss") (import pass20_deglobalize2)
+(include "generic/passes/deglobalize/deglobalize2.ss") (import deglobalize2)
 (include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
 
 ;; Uses delazy-bindings:
@@ -387,8 +387,8 @@
 (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
-(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import wavescript_nominalize-types)
-(include "generic/passes/wavescope_bkend/emit-c.ss") (import wavescript_emit-c)
+(include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
+(include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 

@@ -4,7 +4,8 @@
   (define name "PLT Regiment - Generic Code")
 
   ;; These are all the files that SHOULD NOT be compiled as part of the package.
-  (define compile-omit-files '("shortcuts.ss"))
+  (define compile-omit-files '("shortcuts.ss"
+			       ))
   (define compile-subcollections  '(("util")
 				    ("grammars")
 				    ("sim")

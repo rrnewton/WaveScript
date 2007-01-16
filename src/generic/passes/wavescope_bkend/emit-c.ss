@@ -14,13 +14,14 @@
 ;;;; 
 
 
-(module wavescript_emit-c mzscheme 
-  (require "c_generator.ss" "helpers.ss")
+(module emit-c mzscheme 
+  (require  "../../../plt/common.ss"
+	    (all-except "nominalize-types.ss" test-this these-tests)
+	    "../../compiler_components/c_generator.ss" )
   (provide ;WSBox wscode->text
 	   wsquery->text
 	   
 	   testme	   testme2	   testme0
-
 	   test-this  test-wavescript_emit-c)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests)
@@ -313,7 +314,7 @@
 	  [,s (guard (symbol? s) (memq s '(Int Float))) #f]
 	  [String "boost::hash<string>"]
 	  [(Struct ,name)	`("hash",name)]       
-	  [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" t)]
+	  [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
 	  ))
       `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >")
       )

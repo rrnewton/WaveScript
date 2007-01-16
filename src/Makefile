@@ -49,17 +49,22 @@ c:
 
 # Two scheme back-ends, PLT or Chez.
 
+# PLT: 
 #----------------------------------------
+bc: plt
 plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
-	(cd plt; $(MAKE))
+	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos plt) 
+	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos generic)
 
+nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
-	(cd plt; $(MAKE) nc)
+	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension plt)
+	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension generic)
 
 # only works in PLT right now:
 wsparse: 
@@ -169,8 +174,26 @@ cleanchez: cleancomp
 cleancomp:
 	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
 
-clean: cleanchez
-	(cd plt; $(MAKE) clean)
+
+cleanplt:
+	rm -rf ./compiled
+	rm -rf ./plt/compiled
+	rm -rf ./generic/compiled
+	rm -rf ./generic/compiler_components/compiled
+	rm -rf ./generic/grammars/compiled
+	rm -rf ./generic/passes/compiled
+	rm -rf ./generic/passes/deglobalize/compiled
+	rm -rf ./generic/passes/nesc_bkend/compiled
+	rm -rf ./generic/passes/normalize_query/compiled
+	rm -rf ./generic/passes/normalize_source/compiled
+	rm -rf ./generic/passes/static_elaborate/compiled
+	rm -rf ./generic/passes/tokmac_bkend/compiled
+	rm -rf ./generic/passes/wavescope_bkend/compiled
+	rm -rf ./generic/sim/compiled
+	rm -rf ./generic/util/compiled
+	find -name *.zo | xargs -i rm {}  ## <- Just to be sure
+
+clean: cleanchez cleanplt
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
@@ -178,6 +201,8 @@ clean: cleanchez
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
+	find -name ".__*" | xargs -i $(RM) {}  ## Remove these temp files
+
 
 #	find -name "*.zo" | xargs rm # This is excessive...
 #	(cd compiled; $(MAKE) clean)

@@ -1,7 +1,7 @@
 
 (module flat_threads mzscheme
   (require (lib "include.ss")
-           (prefix rn: "helpers.ss"))
+           (prefix rn: "../generic/util/helpers.ss"))
   (provide run-flat-threads yield-thread
            test-this these-tests)
   
@@ -70,7 +70,7 @@
              'Threads_Timed_Out)
            )))
   
-  (define these-tests  (include (build-path "generic" "flat_threads.tests")))
+  (define these-tests  (include (build-path up "generic" "testing" "flat_threads.tests")))
   
   (define test-this (rn:default-unit-tester 
                      "flat_threads.ss: simple parallel computation system for PLT"

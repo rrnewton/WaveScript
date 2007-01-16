@@ -11,6 +11,15 @@
 ;;;; Really this is pretty unnecessary now because the type checker
 ;;;; should catch most of these problems.
 
+(module verify-regiment  mzscheme  
+  (require "../../../plt/common.ss")  
+  (provide verify-regiment 
+	   these-tests test-this test00 tests00)  
+  (chezimports)
+
+; ----------------------------------------
+
+
 (define verify-regiment
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'verify-regiment
@@ -239,3 +248,5 @@
 
 ;==============================================================================
 
+
+) ; End module

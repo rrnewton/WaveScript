@@ -37,9 +37,7 @@
 ;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
-;(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
-(all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
-
+(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/typecheck.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/desugar-misc.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
