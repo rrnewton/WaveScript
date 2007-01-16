@@ -16,7 +16,7 @@
          (all-except "generic/util/helpers.ss" id rec)
          (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
-	 "plt/hash.ss"
+	 "generic/util/hash.ss"
          (all-except "generic/grammars/grammar_checker.ss" these-tests test-this))
 
 (require "generic/constants.ss"

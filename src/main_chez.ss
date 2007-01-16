@@ -196,8 +196,8 @@
 ;; (However, that's a bit irrelevent if an error was already signaled above.)
 (REGIMENTD (default-regimentd))
 
-(include "chez/hash.ss") (import hashfun) ;; TEMPORARY, used for "hash" function from slib.
-;; Including full slib hash tables also... need equal?-based hashtabs sometime.
+(include "generic/util/hash.ss") (import hash) ;; TEMPORARY, used for "hash" function from slib.
+;; Including full slib hash tables also... nesed equal?-based hashtabs sometime.
 (include "chez/slib_hashtab.ss") (import (add-prefix slib:hashtab slib:))
 (include "chez/hashtab.ss") (import hashtab)
 (include "generic/util/helpers.ss") (import (except helpers test-this these-tests))

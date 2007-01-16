@@ -120,7 +120,7 @@
 	       (provide node-code)
 	       (require "generic/constants.ss")
 	       (require "generic/logfiles.ss")
-	       (require "plt/hash.ss")
+	       (require "generic/util/hash.ss")
 	       (require "plt/hashtab.ss")
 	       (require (all-except "generic/util/helpers.ss" test-this these-tests))
 	       (require (all-except "plt/simulator_alpha_datatypes.ss" test-this these-tests))

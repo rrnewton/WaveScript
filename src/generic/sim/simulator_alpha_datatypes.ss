@@ -16,7 +16,7 @@
 	     (all-except "../constants.ss" test-this these-tests)
 	     (all-except "../util/helpers.ss" id flush-output-port test-this these-tests)  
 	     "../../plt/iu-match.ss"	     
-	     "../../plt/hash.ss"
+	     "../util/hash.ss"
 	     "../../plt/hashtab.ss"
 	     "../compiler_components/logfiles.ss"
 	     )

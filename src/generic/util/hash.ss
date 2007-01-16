@@ -1,5 +1,13 @@
-;; This is lifted from SLIB:
+;;; RRN: Lifted this code from slib:
 
+(module hash mzscheme
+  (require "../constants.ss")
+  (provide hash)
+  (chezimports)
+
+(IFCHEZ (import-only scheme) (void))	
+	
+;; This is lifted from SLIB:
 
 ; "hash.scm", hashing functions for Scheme.
 ; Copyright (c) 1992, 1993, 1995, 2003 Aubrey Jaffer
@@ -139,3 +147,6 @@
 ; 	(hash:hash obj k)))
 ;   )
 ; (define hashq hashv)
+
+
+) ; End module 
