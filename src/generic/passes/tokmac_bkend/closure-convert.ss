@@ -36,6 +36,20 @@
 
 
 
+(module closure-convert mzscheme
+  (require (lib "include.ss")
+	   (lib "list.ss")
+	   (lib "trace.ss")
+	   (all-except "../../../plt/common.ss" filter)
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)	   
+	   )
+  (provide closure-convert test28 tests28 test-this these-tests
+           test-closure-convert tests-closure-convert
+           )
+  (chezimports)
+
+; ----------------------------------------
+
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
@@ -454,6 +468,8 @@
       
 
 ;; Now test the whole module:
+;; BETTER HAVE LETREC* SEMANTICS for these module-internal defines:
+(define _ 
 (set! these-tests
   (append these-tests
     `(
@@ -541,7 +557,8 @@
        ,(lambda (x) #t)]
       
 
-      )))
+      ))))
+
 	       
 
 (define test-this (default-unit-tester
@@ -557,7 +574,8 @@
 
 
 
-#;		[(,free-vars 
+#;
+		[(,free-vars 
 		  '(let ([kind_19 (if '3
 				      (let ([new '3]) (begin new new))
 				      '4)])
@@ -565,7 +583,8 @@
 		 ()]
 		 
 
-#;		[(,free-vars 
+#;
+		[(,free-vars 
 		  '(let ([kind_19
 			  (if (token-present?
 			       (tok K_18 0))
@@ -587,7 +606,8 @@
                    
 		 (subtok_ind fv0 flag)]
 
-#;		[(,free-vars 
+#;
+		[(,free-vars 
 		  '(if (eq? flag '11)
                    (if (= subtok_ind '0) (void) (begin))
                    (begin (call (tok tok1 0)
@@ -619,3 +639,5 @@
                                 '3)
                           (evict (tok K_20 subtok_ind)))))
 		 (subtok_ind fv0 flag)]
+
+) ; End module

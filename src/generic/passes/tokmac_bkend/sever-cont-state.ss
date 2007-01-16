@@ -2,6 +2,17 @@
 ;; Pass: Sever Continuation State
 
 
+(module sever-cont-state mzscheme
+  (require (lib "include.ss")
+	    "../../../plt/common.ss"
+	    "../../../plt/hashtab.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+	   )
+  (provide sever-cont-state )
+  (chezimports)
+
+;----------------------------------------
+
 (define sever-cont-state
   (let ()    
 
@@ -40,6 +51,7 @@
     ))
 
 
+;; Unfinished:
 (define these-tests
   `(
 
@@ -81,3 +93,6 @@
 	       (tok1 subtok_ind (k) (stored) (kcall k 'foo))))))]
 
     ))
+
+
+  ) ; End module

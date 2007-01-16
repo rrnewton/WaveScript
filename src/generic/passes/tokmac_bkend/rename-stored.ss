@@ -1,6 +1,15 @@
 ;; Pass: Rename Stored
 ; =======================================================================
 
+
+(module rename-stored mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))
+  (provide rename-stored )
+  (chezimports )
+
+; ----------------------------------------
+
 ;; Renames all stored variables so that they are globally unique rather than per-handler unique.
 
 (define rename-stored
@@ -97,3 +106,5 @@
 		   (nodepgm (tokens 
 			     ,@(map (lambda (tb) (process-tokbind subst tb)) toks))))))])
 )))
+
+) ; End module

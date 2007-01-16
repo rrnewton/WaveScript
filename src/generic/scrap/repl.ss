@@ -1,10 +1,23 @@
 ;; repl.ss
 
+;; THIS IS OUT OF DATE.
+
 ;; Darn, this would be a great place for OOP, in particular, inheritance.
 
 ;; [2004.06.11] This module represents a simple read-eval-print
 ;; interface into the compiler and simulator.
 
+(module repl mzscheme
+  (require (lib "pretty.ss")
+	   "../constants.ss"
+	   "../compiler_components/regiment_helpers.ss"
+	   ;"helpers.ss"
+	   )
+  (provide repl-stream-depth
+	   repl-builder)
+  (chezimports)
+
+; ----------------------------------------
 
 ;; "run" had better take a stream.
 
@@ -66,3 +79,5 @@
 		      )))
 	      (loop)))))))
 
+
+) ; End module

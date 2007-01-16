@@ -65,6 +65,17 @@
 ;; NOTE: Everiwhere that "OPTIMIZE" occurs is a (potentially
 ;; dangerous) optimization that could be turned off.
 
+
+(module cps-tokmac mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))  
+  (provide cps-tokmac 
+	   ;test-cps-tokmac testcps-expr
+           ;mvlet 
+	   ;destructure-tokbind 
+	   )
+  (chezimports)
+
 ; --------------------------------------------------------------------------------
 
 ;; I accumulate tests through mutation throughout this file.
@@ -508,7 +519,8 @@
 
 
 ;; Maybe use in next pass:     
-#;	     ["Test expand-subcalls"
+#;
+	     ["Test expand-subcalls"
 	      (call-with-values 
 		  (lambda () (,expand-subcalls '(begin '1 (subcall (tok t 0) '2) '3)))
 		(lambda (expr) ;ktbs)
@@ -623,6 +635,8 @@
 	 [,expr
 	  (cps-tokmac `(foolang '(program (bindings) (nodepgm (tokens (toknought subtokid () (stored) ,expr))))))]))
 
+(define _
+
 ;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
 (set! these-tests
   (append these-tests
@@ -658,7 +672,8 @@
 	  (tok2 subtok_ind (k x) (stored) (kcall k (* '2 x)))))))]
      
 ;; Maybe move to the next pass in some fashion:
-#;    ["Now test with two tokens and one subcall."
+#; 
+   ["Now test with two tokens and one subcall."
      (cps-tokmac '(foolang
 		   '(program
 		     (bindings)
@@ -838,7 +853,7 @@
 
     
          
-   )))
+   ))))
 
 
 (define test-this (default-unit-tester
@@ -849,46 +864,6 @@
 (define tests27 these-tests)
 (define test-cps-tokmac test-this)
 (define tests-cps-tokmac these-tests)
-
-
-;(cps-tokmac '(toheu '(program (bindings) (nodepgm (tokens (tok1 () (begin '1 (subcall tok2 '9) '3)) (tok2 (x) x))))))
-
-'(cps-tokmac '(toheu 
-	      '(program (bindings) 
-			(nodepgm (tokens 
-				  (tok1 () (begin '1 (subcall tok2 '9) '3)) 
-				  (tok2 (x) x)
-				  (tok3 () (dbg "woot %d\n" (subcall tok1)))
-				  )))))
-
-(define x 
-  '(foolang
-  '(program
-     (bindings)
-     (nodepgm
-       (tokens
-         (SOC-start
-           subtok_ind
-           ()
-           (stored)
-           (let ([kind_21
-                  (if (token-present? (tok K_22 0))
-                      (let ([new (+ '1 (ext-ref (tok K_22 0) kcounter))])
-                        (begin (ext-set! (tok K_22 0) kcounter new) new))
-                      (begin (call (tok K_22 0) '0) '1))])
-             (begin (call (tok K_22 kind_21) '0)
-                    (call (tok tok2 0) (tok K_22 kind_21) '2))))
-         (K_22 subtok_ind
-               (flag fv0)
-               (stored (kcounter 0))
-               (if (= flag '0)
-                   (if (= subtok_ind '0) (void) (begin))
-                   (begin (dbg '"foo %d\n" (+ '1 fv0))
-                          (evict (tok K_22 subtok_ind)))))
-         (tok2 subtok_ind (k_20 x) (stored) (call k_20 (* '2 x)))))))
-)
-
-
 
 
 ;; FIXME: BUG
@@ -978,3 +953,5 @@
            (greturn (my-id) (to (tok SOC-return-handler 0))
              (via (tok tree 0)) (seed '#f) (aggr #f)))
          (fun subtok_ind () (stored) (my-id))))))
+
+) ; End module

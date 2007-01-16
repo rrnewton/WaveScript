@@ -13,20 +13,18 @@
 ;; We simply consider tok1 an alias for tok2.
 
 
-(module pass29_inline-tokens mzscheme
-
-  (require (only "../generic/constants.ss" chezimports ASSERT)
-           "../plt/iu-match.ss"
-	   "../plt/prim_defs.ss"
-           (all-except "../plt/tml_generic_traverse.ss" test-this these-tests)
+(module inline-tokens mzscheme
+  (require (only "../../constants.ss" chezimports ASSERT)
+           "../../../plt/iu-match.ss"
+	   "../../compiler_components/prim_defs.ss"
+           (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+           (all-except "../../compiler_components/regiment_helpers.ss" test-this these-tests)
            (all-except "../../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests))
-  
+	   )
   (provide inline-tokens test29 test-inline )
-
   (chezimports )
 
-; =================================================================================
+; ----------------------------------------
 
 (define inline-tokens
   (let ()

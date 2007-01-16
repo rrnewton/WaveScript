@@ -10,8 +10,14 @@
 ;; I want to consolidate things into Scheme since the haskell port never happened.
 
 
+(module flatten-tokmac mzscheme
+  (require "../../../plt/common.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+	   )
+  (provide flatten-tokmac)
+  (chezimports )
 
-
+; ----------------------------------------
 
 (define flatten-tokmac
   (build-compiler-pass ;; This wraps the main function with extra debugging
@@ -157,3 +163,5 @@
      
      ;; This fills in some more boilerplate.
      (tml-simple-pass Value Tokbind 'flatten-tokmac-lang))))
+
+) ; End module

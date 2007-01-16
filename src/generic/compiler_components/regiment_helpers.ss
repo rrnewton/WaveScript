@@ -53,7 +53,7 @@
 	  regiment-free-vars
 
 ;	  token-machine-primitives token-machine-primitive? 
-;	  token-machine? token-machine->program token-machine-keyword?
+	  token-machine? token-machine->program token-machine-keyword?
 ;	  basic-primitive? distributed-primitive?
 ;	  get-primitive-entry regiment-constants regiment-constant? ;get-primitive-arity
 ;	  get-primitive-return-type

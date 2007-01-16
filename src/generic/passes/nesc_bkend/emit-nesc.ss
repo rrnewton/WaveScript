@@ -4,6 +4,17 @@
 
 ;; Also see tossim.ss.  Run (test-nesc) for an example.
 
+
+(module emit-nesc mzscheme
+  (require "../../../plt/common.ss"
+	   "../../../plt/hashtab.ss"
+	               "../../compiler_components/c_generator.ss"
+	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests))
+  (provide emit-nesc test-this test-emit-nesc)
+  (chezimports)
+
+; --------------------------------------------------------------------------------
+
 (define these-tests '())
 
 (define emit-nesc-modname "TestMachine")
@@ -542,3 +553,6 @@ enum {
 
 (define test-this (default-unit-tester "Pass32: Emit NesC code." these-tests))
 (define test32 test-this)
+(define test-emit-nesc test-this)
+
+) ; End module

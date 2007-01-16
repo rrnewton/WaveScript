@@ -39,6 +39,9 @@
 
 ;(all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
 (all-except "plt/pass00_verify-regiment.ss" these-tests test-this)
+
+(all-except "generic/passes/normalize_source/typecheck.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/desugar-misc.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/rename-vars.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/remove-unquoted-constant.ss" these-tests test-this)
@@ -69,32 +72,23 @@
 (all-except "generic/passes/tokmac_bkend/find-emittoks.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/desugar-gradients.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/desugar-let-stored.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/rename-stored.ss" these-tests test-this)
 
-; (all-except "plt/pass25_rename-stored.ss" these-tests test-this)
+;;;(all-except "plt/pass09_separate-graph" these-tests test-this)
+;;;(all-except "plt/pass18_add-routing.ss" these-tests test-this
+;;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
+;;(all-except "plt/pass25_inline.ss" these-tests test-this)
+;;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
 
-;;(all-except "plt/pass09_separate-graph" these-tests test-this)
-;;(all-except "plt/pass18_add-routing.ss" these-tests test-this
+(all-except "generic/passes/tokmac_bkend/cps-tokmac.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/sever-cont-state.ss" these-tests test-this)
+(all-except "generic/passes/tokmac_bkend/closure-convert.ss" these-tests test-this)
+            "generic/passes/tokmac_bkend/inline-tokens.ss"
 
-
-)#|
-
-;(all-except "plt/pass24_analyze-calls.ss" these-tests test-this)
-;(all-except "plt/pass25_inline.ss" these-tests test-this)
-;(all-except "plt/pass26_prune-returns.ss" these-tests test-this)
-
-(all-except "plt/pass26_cps-tokmac.ss" these-tests test-this)
-(all-except "plt/pass27_sever-cont-state.ss" these-tests test-this)
-(all-except "plt/pass28_closure-convert.ss" these-tests test-this)
-
-"plt/pass29_inline-tokens.ss"
-(all-except "plt/pass30_haskellize-tokmac.ss" these-tests test-this)
-
-(all-except "plt/pass31_flatten-tokmac.ss" these-tests test-this)
-(all-except "plt/pass32_emit-nesc.ss" these-tests test-this)
-         
-;    (all-except "plt/pass14_cleanup-token-machine.ss" ); these-tests test-this)
-        ;          "plt/pass09_separate-graph.ss"
+(all-except "generic/passes/nesc_bkend/flatten-tokmac.ss" these-tests test-this)
+(all-except "generic/passes/nesc_bkend/emit-nesc.ss" these-tests test-this)         
 )
+
 
 (IF_GRAPHICS
  (require
@@ -102,51 +96,32 @@
 ;; (all-except "plt/simulator_nought_graphics.ss" these-tests test-this wrap-def-simulate)
   (all-except "plt/graphics_stub.ss" these-test test-this)))
 
+;; Import these for the benefit of the unit tests below:
+(require "generic/sim/simulator_alpha_datatypes.ss")
+(require "generic/sim/alpha_lib.ss")
+(require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
 
-;; [2005.11.05]  We need to load these, but not necessarily to import the modules.
-;; Ideall these are only imported by the genned simulation code itself.
-;(load/use-compiled "plt/simulator_alpha_datatypes.ss")
-;(load/use-compiled "plt/alpha_lib.ss") 
-;; No, instead import these for the benefit of the unit tests below:
-(require "plt/alpha_lib.ss")
-(require "plt/simulator_alpha_datatypes.ss")
+(require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
+(require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
 
-(require
-; (all-except "plt/simulator_nought.ss" these-tests test-this)
- (all-except "plt/simulator_alpha.ss" these-tests test-this)
-; (all-except "plt/alpha_lib_scheduler_simple.ss" these-tests test-this) 
- ;(all-except "plt/alpha_lib.ss" these-tests test-this)
- )
-
-(require (all-except "plt/source_loader.ss" these-tests test-this))
-(require (all-except "plt/logfiles.ss" these-tests test-this))
-
-;  (require "plt/demo_display.ss")
-
-;; Get those module bound identifiers out in the open!
-(load/use-compiled "plt/tests.ss") ;(require tests)
-;(define tests tests)
-
-;(define test00 test00)
-;(define test01 test01)
-;(define test07 test07)
-
-;(define tests00 tests00)
-;(define tests01 tests01)
-;(define tests07 tests07)
-
+(include "generic/testing/tests_noclosure.ss")
+(include "generic/testing/tests.ss")
 
 ;============================================================
 ;; INLINE THE MAIN COMPILER CODE
-;(disp "BOUT TO LOAD COMPLIRE" default-unit-tester)
-;(disp "Testing" (eval 'default-unit-tester))
-;(load/use-compiled "main.ss")
+
+;; Bring these into top-level for some of the mini-passes defined in main.ss.
+(require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
+(require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
+
 (include "main.ss")
 ;============================================================
 
-;(disp "BOUT TO LOAD DRIVER" pass-list)
+(define error-handler error-display-handler)
+(load/use-compiled "generic/testing/driver.ss")
 
-(load/use-compiled "plt/driver.ss")
+#|
+
 ;; Can't get langs to work.  Just abandon evaluation:
 (game-eval (lambda args 'unspecified))
 (host-eval (lambda args 'unspecified))
@@ -156,36 +131,7 @@
 ;(load/use-compiled "generic/lang00.ss")
 ;(load/use-compiled "generic/lang05.ss")
 
-;(require (lib "trace.ss"))
-;(trace  explode-primitive process-expr process-letrec)
-
-#;(define (test-this)
-  (parameterize ((tracer #t))
-    (test-one
-     '(letrec ((a (anchor-at '(30 40)))
-               (r (circle-at 50 a))
-               (f (lambda (tot next)
-                    (cons (+ (car tot) (sense next))
-                          (+ (cdr tot) 1))))
-               (g (lambda (tot) (/ (car tot) (cdr tot))))
-               (avg (smap g (rfold f (cons 0 0) r))))
-        avg))))
-
-;(require "plt/simulator_nought.ss")
-
-
-(define (g) 
-  ;  (define prog (rc '(anchor-at '(30 40))))
-  (init-world)
-  (let ((res (run-simulation 
-              (build-simulation
-               (compile-simulate-nought prog)) 10.0)))
-    (disp "EXEC FINISHED, HERE WAS PROG:")
-    (pretty-print prog)
-    res))
-;(g)
-
-(load/use-compiled "generic/repl.ss")
+(load/use-compiled "generic/util/repl.ss")
 
 (define-syntax lazy-letrec
   (syntax-rules ()

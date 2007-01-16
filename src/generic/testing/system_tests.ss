@@ -89,7 +89,9 @@
       1]
          
      ;; These test deglobalize2
-     ,@(include "generic/testing/deglob2.tests")
+     ,@(IFCHEZ 
+        (include "generic/testing/deglob2.tests")
+        (include "deglob2.tests"))
      
      ;;================================================================================
 

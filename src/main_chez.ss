@@ -307,13 +307,13 @@
 
 (include "generic/langs/lang20_deglobalize.ss") 
 
-(include "generic/langs/lang30_haskellize-tokmac.ss") 
+(include "generic/scrap/lang30_haskellize-tokmac.ss") 
 (include "generic/langs/lang32_emit-nesc.ss")
 
 (if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
 
 (include "generic/passes/normalize_source/verify-regiment.ss")
-(include "generic/passes/normalize_source/typecheck.ss")
+(include "generic/passes/normalize_source/typecheck.ss")                (import typecheck)
 (include "generic/passes/normalize_source/desugar-pattern-matching.ss") (import desugar-pattern-matching)
 
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
@@ -369,21 +369,22 @@
 ;(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
 
 (include "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
-(include "generic/passes/tokmac_bkend/rename-stored.ss")      ;(import rename-stored)
+(include "generic/passes/tokmac_bkend/rename-stored.ss")      (import rename-stored)
 
 ;(include "generic/pass24_analyze-calls.ss")
 ;(include "generic/pass25_inline.ss")
 ;(include "generic/pass26_prune-returns.ss")
-(include "generic/passes/tokmac_bkend/cps-tokmac.ss")
-(include "generic/passes/tokmac_bkend/sever-cont-state.ss")
+(include "generic/passes/tokmac_bkend/cps-tokmac.ss")       (import cps-tokmac) 
+(include "generic/passes/tokmac_bkend/sever-cont-state.ss") (import sever-cont-state)
 ;; (include "generic/pass27.2_add-kclosure.ss")
-(include "generic/passes/tokmac_bkend/closure-convert.ss")
+(include "generic/passes/tokmac_bkend/closure-convert.ss")  (import closure-convert)
+(include "generic/passes/tokmac_bkend/inline-tokens.ss")    (import inline-tokens)
 
-(include "generic/passes/tokmac_bkend/inline-tokens.ss") (import pass29_inline-tokens)
+;; This is out of use, but not deleted yet:
 (include "generic/scrap/pass30_haskellize-tokmac.ss")
 
-(include "generic/passes/nesc_bkend/flatten-tokmac.ss")
-(include "generic/passes/nesc_bkend/emit-nesc.ss")
+(include "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
+(include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import wavescript_nominalize-types)
@@ -433,7 +434,7 @@
 
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
-(include "generic/util/repl.ss")
+(include "generic/scrap/repl.ss")
 
 (include "generic/shortcuts.ss")
 
