@@ -59,6 +59,10 @@
 ;;; happens at the SOC, that it doesn't matter where it happens?  I
 ;;; don't know if this is a meaningful symbol...
 
+(module add-places mzscheme
+  (require "../../../plt/common.ss")
+  (provide add-places)
+  (chezimports)
 
 ;;; This is just a helper function that shows the places for an annotated program:
 (define (getplaces p)
@@ -221,3 +225,5 @@
 				   ,program-annots ...
 				   ,(process-let letexpr)
 				   ,type)))])))
+
+) ; End module

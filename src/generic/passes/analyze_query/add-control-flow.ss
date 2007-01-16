@@ -48,7 +48,12 @@
 ;; [2004.12.06] Right now the control flow still isn't used by
 ;; anything downstream.  It's just a simple dependency graph for the
 ;; program.  
-	      
+
+(module add-control-flow mzscheme
+  (require "../../../plt/common.ss")
+  (provide add-control-flow)
+  (chezimports)
+
 (define add-control-flow
   (let () 
           
@@ -119,3 +124,5 @@
 		       (props (result_1 local final))
 		       (lazy-letrec ((result_1 #f '3)) result_1)
 		       )))
+
+) ; End module

@@ -11,6 +11,12 @@
 ;;; <Program> ::= (program ) <Letrec>)                                <br>
 ;;; <Letrec>  ::= (letrec ((<var> <Type> <Expr>)*) <var>)             <br>
 
+(module lift-letrec-body mzscheme
+  (require "../../../plt/common.ss"
+           )
+  (provide lift-letrec-body) 
+  (chezimports)
+  
 (define lift-letrec-body
   (let ()
     (define (simple? x) 
@@ -70,3 +76,6 @@
         [(,input-language (quote (program ,[(process-letrec (empty-tenv) 'toplevel) -> body] ,type)))
 	 ;; This pass uses the same language as the prior pass, lift-letrec
 	 `(,input-language '(program ,body ,type))]))))
+
+
+) ; End module

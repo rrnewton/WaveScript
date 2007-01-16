@@ -19,6 +19,12 @@
 
 ;===============================================================================
 
+(module remove-complex-opera mzscheme
+  (require "../../../plt/common.ss")
+  (provide remove-complex-opera*
+           test-remove-complex-opera)
+  (chezimports)
+
 (define remove-complex-opera*
   (let ()
     
@@ -249,3 +255,4 @@
 
 ;==============================================================================
 
+) ; End module

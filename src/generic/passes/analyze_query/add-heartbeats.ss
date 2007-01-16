@@ -30,6 +30,12 @@
 ;;; <Annotation> ::= (heartbeat <Heartbeat>)
 ;;; <Heartbeat>  ::= <Float> | #f | +inf.0
 
+
+(module add-heartbeats mzscheme
+  (require "../../../plt/common.ss")
+  (provide add-heartbeats)
+  (chezimports)
+
 (define add-heartbeats
   (let ()
     
@@ -209,3 +215,5 @@
       (quote (program (props ,proptable ...)
 		      ,(process-let letexpr)
 		      ,type))))]))))
+
+) ; End module

@@ -47,27 +47,33 @@
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
-
 ; pass07_verify-stage2.ss
-(all-except "generic/pass08_uncover-free.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/uncover-free.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/lift-letrec.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/lift-letrec-body.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/remove-complex-opera.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/verify-core.ss" these-tests test-this)
+
+(all-except "generic/passes/analyze_query/classify-names.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/add-heartbeats.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/add-control-flow.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/add-places.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/analyze-places.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/add-data-flow.ss" these-tests test-this)
+(all-except "generic/passes/analyze_query/resolve-fold-trees.ss" these-tests test-this)
+
+(all-except "generic/passes/deglobalize/deglobalize.ss" these-tests test-this)
+
 )#|
-(all-except "plt/pass09_lift-letrec.ss" these-tests test-this)
-(all-except "plt/pass10_lift-letrec-body.ss" these-tests test-this)
-(all-except "plt/pass11_remove-complex-opera.ss" these-tests test-this)
-(all-except "plt/pass12_verify-core.ss" these-tests test-this)
-(all-except "plt/pass13_classify-names.ss" these-tests test-this)
+
+
 ;(all-except "plt/pass09_separate-graph" these-tests test-this)
 
-(all-except "plt/pass14_add-heartbeats.ss" these-tests test-this)
-(all-except "plt/pass15_add-control-flow.ss" these-tests test-this)
-(all-except "plt/pass16_add-places.ss" these-tests test-this)
-(all-except "plt/pass17_analyze-places.ss" these-tests test-this)
-(all-except "plt/pass17_add-data-flow.ss" these-tests test-this)
-(all-except "plt/pass17_resolve-fold-trees.ss" these-tests test-this)
+
 ;(all-except "plt/pass18_add-routing.ss" these-tests test-this
 
 
-(all-except "plt/pass20_deglobalize.ss" these-tests test-this)
+
 (all-except "plt/pass21_cleanup-token-machine.ss" these-tests test-this)
 (all-except "plt/pass22_desugar-macros.ss" these-tests test-this)
 (all-except "plt/pass23a_find-emittoks.ss" these-tests test-this)

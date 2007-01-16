@@ -1,4 +1,12 @@
 
+(module tsort mzscheme
+  (require (lib "pretty.ss")
+	   (lib "include.ss")
+           (all-except "helpers.ss" test-this these-tests)
+           (all-except "../../plt/hashtab.ss" test-this these-tests))
+  (provide tsort topological-sort  cyclic?
+	   test-this these-tests test-tsort)
+
 
 (define (tsort dag )
   (if (null? dag)
@@ -101,3 +109,5 @@
 
 (define test-this (default-unit-tester "Topological Sort" these-tests))
 (define test-tsort test-this)
+
+) ; End module

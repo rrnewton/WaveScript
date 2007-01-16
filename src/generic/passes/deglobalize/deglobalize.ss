@@ -52,13 +52,6 @@
 ;;;;  membership and formation tokens so as to not allow undesirable
 ;;;;  collisions.
 
-#;
-(define deglobalize_output_grammar
-   `([code (statement ...)]
-     [statement basic_tml]
-     [statement gexpr]
-     ))
-
 ;===============================================================================
 ;; Some CHANGES (not keeping a complete log):
 
@@ -85,11 +78,16 @@
   (nodepgm (tokens ) (startup )))
 
 
-
 ;===============================================================================
 
-(module pass20_deglobalize mzscheme
+(module deglobalize mzscheme
+  (require "../../../plt/common.ss"
+           "../../../plt/hashtab.ss"
+           (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
+           (all-except "../../util/tsort.ss" test-this these-tests)
+	   )
 
+#;
   (require (lib "include.ss")
 	   (lib "trace.ss")
 	   "../generic/constants.ss"
@@ -109,6 +107,13 @@
            )
 
   (chezimports )
+
+#;
+(define deglobalize_output_grammar
+   `([code (statement ...)]
+     [statement basic_tml]
+     [statement gexpr]
+     ))
 
 
 ;; THESE ARE TEMPORARY... using numbers to signify return values that are regions..
@@ -1329,10 +1334,11 @@
 
 ;==============================================================================
 
+) ;; End module
 
 
-
-'(t '(letrec ((a (anchor-at '(30 40)))
+#;
+(t '(letrec ((a (anchor-at '(30 40)))
 		(r (circle-at 50 a))
 		(f (lambda (tot next)
 		     (cons (+ (car tot) (sense next))
@@ -1342,7 +1348,8 @@
 		)
 	 3))
 
-'(deglobalize-lang
+#;
+(deglobalize-lang
   '(program
      (socpgm (call result_12))
      (nodepgm
@@ -1374,9 +1381,8 @@
 
 
 
-
-
-'(program ;;result???
+#;
+(program ;;result???
 	 (binds [target '(30 40)])
 	 (tokens [form_a () (flood consider)] 
 		 [consider () (if (< (locdiff (loc) (target)) 10.0)
@@ -1396,7 +1402,8 @@
 		 )
 	 )
 
-'(f_token_result_2
+#;
+(f_token_result_2
   ((m_token_tmp_3 () (call f_token_result_2))
    (f_token_result_2 () (gemit m_token_result_2))
    (m_token_result_2
@@ -1409,9 +1416,6 @@
 	(elect-leader m_token_tmp_3)))))
 
 
-
-
-) ;; End module
 
 ;(require pass20_deglobalize)
 

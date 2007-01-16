@@ -22,6 +22,11 @@
 ;; (type-based) restrictions that we have considered, since the types
 ;; are now fully available.
 
+(module verify-core mzscheme
+  (require "../../../plt/common.ss")
+  (provide verify-core test-verify-core)
+  (chezimports)
+  
 (define verify-core 
   (let ()
 
@@ -183,3 +188,4 @@
 
 ;==============================================================================
 
+) ; End module

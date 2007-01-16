@@ -41,6 +41,11 @@
 ;;; <CatEntry>* ::= [<Name> <Prop>*]
 ;;; <Prop> ::= region | anchor | local | distributed | final | leaf
 
+(module classify-names mzscheme
+  (require "../../../plt/common.ss")
+  (provide classify-names test-classify-names)
+  (chezimports)
+
 (define (classify-names expr)
   
   ;; This table accumulates all the properties which become attached to names:
@@ -338,3 +343,5 @@
 (define tests13 these-tests)
 (define test-classify-names test-this)
 (define tests-classify-names these-tests)
+
+) ; End module

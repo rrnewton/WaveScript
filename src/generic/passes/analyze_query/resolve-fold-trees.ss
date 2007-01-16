@@ -11,23 +11,10 @@
 
 ;;;; This annotation is used by deglobalize to choose aggregation trees.
 
-(module pass17_resolve-fold-trees mzscheme
-
-  (require 
-       "../generic/constants.ss"
-       "../plt/iu-match.ss"
-       "../plt/prim_defs.ss"
-           ;"../plt/cheztrace.ss"  ;; HUH?!  Shouldn't have to include this with helpers.ss included, but I do.
-           ;(all-except "../../util//helpers.ss" test-this these-tests trace-define trace-let trace-lambda)
-       (all-except "../../util/helpers.ss" test-this these-tests)
-;       (all-except "../plt/hm_type_inference.ss"  test-this these-tests)
-;       (all-except "../plt/grammar_checker.ss" test-this these-tests)
-       ;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-       )
-
-(provide resolve-fold-trees test17c test-resolve-fold-trees)
-
-(chezimports )
+(module resolve-fold-trees mzscheme
+  (require "../../../plt/common.ss")  
+  (provide resolve-fold-trees test17c test-resolve-fold-trees)
+  (chezimports )
 
 (define resolve-fold-trees
   (lambda (prog)

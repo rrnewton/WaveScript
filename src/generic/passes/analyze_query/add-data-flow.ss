@@ -7,36 +7,13 @@
 ;;;; It explicitely attaches a table to the output program which binds
 ;;;; variable names to the expression that generates that data value.
 
-(module pass17_add-data-flow mzscheme
-
-  (require 
-	   "../generic/constants.ss"
-           "../plt/iu-match.ss"
-	   "../plt/prim_defs.ss"
-           ;"../plt/cheztrace.ss"  ;; HUH?!  Shouldn't have to include this with helpers.ss included, but I do.
-           ;(all-except "../../util/helpers.ss" test-this these-tests trace-define trace-let trace-lambda)
-           (all-except "../plt/pass20_deglobalize.ss" test-this these-tests)
-           (all-except "../../util/helpers.ss" test-this these-tests)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-           (all-except "../plt/hm_type_inference.ss"  test-this these-tests)
-           (all-except "../plt/grammar_checker.ss" test-this these-tests)
-;           (all-except "../plt/regiment_helpers.ss" test-this these-tests)
-           )
-
-;  (provide deglobalizeh 
-;;	   test-this these-tests test12 tests12)
-#;  (provide deglobalize test20 tests20 test-deglobalize tests-deglobalize 
-           ;; Temporarily exposing.
-           delazy-bindings)
-
-(provide add-data-flow test-this test17b test-add-data-flow expr->allvars
-
+(module add-data-flow mzscheme
+  (require "../../../plt/common.ss")
+  (provide add-data-flow test-this test17b test-add-data-flow expr->allvars
 	 ;; TEMP:
 	 dfg? extend-dfg empty-dfg
-	 
-	 )
-
-(chezimports )
+	 	 )
+  (chezimports )
 
 ;  (require "../plt/cheztrace.ss")
   

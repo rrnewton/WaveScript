@@ -27,6 +27,11 @@
 ;; X_3 == X_3
 ;; X_3 \in (X_3)
 
+(module analyze-places mzscheme
+  (require "../../../plt/common.ss")
+  (provide analyze-places test-analyze-places)
+  (chezimports)
+
 (define (place? ob)
   (match ob
     [X? #t]
@@ -152,3 +157,5 @@
 (define tests17 these-tests)
 (define test-analyze-places test-this)
 (define tests-analyze-places these-tests)
+
+) ; End module

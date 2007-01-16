@@ -33,12 +33,12 @@
 
 (module tml_generic_traverse  mzscheme  
   (require (lib "include.ss")  
-           "../generic/constants.ss"
-           "../plt/iu-match.ss"
-	   "../plt/prim_defs.ss"
+           "../constants.ss"
+           "../../plt/iu-match.ss"
+	   "prim_defs.ss"
 	   ;(lib "compat.ss")
            (all-except "../util/helpers.ss" test-this these-tests filter)
-           (all-except "../plt/regiment_helpers.ss" test-this these-tests filter)
+           (all-except "regiment_helpers.ss" test-this these-tests filter)
            )
   
   ;; Insure provision of verify-regiment:

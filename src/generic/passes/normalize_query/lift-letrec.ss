@@ -32,8 +32,12 @@
 ;;;          | (<primitive> <Exp>*)                             <br> 
 ;;; <Formalexp> ::= (<var>*)                                    <br> 
 
-
-
+(module lift-letrec mzscheme
+  (require "../../../plt/common.ss"
+           )
+  (provide lift-letrec)
+  (chezimports)
+  
 ;(define lift-letrec-grammar ...)
 
 ;; NOTE: DEPENDS ON LAZINESS.
@@ -100,3 +104,5 @@
 		       '(program (lazy-letrec ,body-fn ,body) ,type)
 		       ))]))
     ))
+  
+) ; End module
