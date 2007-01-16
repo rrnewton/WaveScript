@@ -21,7 +21,7 @@
    (lib "pretty.ss")
    (prefix plt: (lib "process.ss"))
    ;  (all-except (lib "compat.ss") atom?)
-   (all-except (lib "list.ss") filter sort!)
+   (all-except (lib "list.ss") filter sort sort!)
 ;           (all-except "tsort.ss" test-this these-tests)
    (prefix swindle: (lib "misc.ss" "swindle"))
 
@@ -144,7 +144,7 @@
   (import scheme))
 
  (provide  ;; For chez compatibility:
-  (all-from "../../plt/chez_compat.ss")  
+  (all-from "../../plt/chez_compat.ss")
   (all-from "reg_macros.ss"))  
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?

@@ -6,7 +6,7 @@
    "cheztrace.ss"
    (lib "date.ss")
    (lib "pretty.ss")
-   (all-except (lib "list.ss"))
+   (prefix plt: (lib "list.ss"))
    (prefix plt: (lib "process.ss"))
    (all-except (lib "compat.ss") atom?)
 ;   "../generic/reg_macros.ss"
@@ -22,9 +22,9 @@
 
   (provide (all-defined)
 	   (all-from "cheztrace.ss")
-           pretty-print remq sort flush-output-port
+           pretty-print flush-output-port
            real-time
-           sort! 
+           (rename plt:remq remq)
            )
 
   ;; Here we include the SLIB initialization directly.  This is the only 
@@ -218,8 +218,11 @@
 
   ;; [2005.11.03] This will work for our purposes, but should stick in an actual definition here at some point.  
   ;(define (merge! p a b) (swindle:merge! a b p))
-  ;(define (sort! p l)    (swindle:sort! l p)) ;; Now already defined in v352
 
+  ;; The list.ss version is reversed from the Chez version:
+  (define (sort fun ls) (plt:sort ls fun))
+  (define (sort! fun ls) (plt:sort! ls fun))
+  
 ;; From Swindle:
 ;;>> (merge less? a b)
 ;;>   Takes two lists `a' and `b' such that both (sorted? a less?) and

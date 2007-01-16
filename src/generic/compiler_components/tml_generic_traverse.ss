@@ -37,8 +37,8 @@
            "../../plt/iu-match.ss"
 	   "prim_defs.ss"
 	   ;(lib "compat.ss")
-           (all-except "../util/helpers.ss" test-this these-tests filter)
-           (all-except "regiment_helpers.ss" test-this these-tests filter)
+           (all-except "../util/helpers.ss" test-this these-tests)
+           (all-except "regiment_helpers.ss" test-this these-tests)
            )
   
   ;; Insure provision of verify-regiment:
@@ -390,12 +390,12 @@
 
     ["Test the gradient forms a bit because they're confusing:"
      (,sort <
-     (,tml-generic-traverse
+       (,tml-generic-traverse
       (lambda (x k) 
 	(if (and (list? x) (= 2 (length x)) (eq? 'quote (car x)))
 	    (list (cadr x))
 	    (k x)))
-      (lambda (ls k) (filter number? (apply append ls)))
+      (lambda (ls k) (,filter number? (apply append ls)))
       '(begin
 	 (grelay (tok t 1))
 	 (grelay (tok t '2))
@@ -433,4 +433,5 @@
 
 ) ;; End module
 
+;(require tml_generic_traverse) (test-this)
 

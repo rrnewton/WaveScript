@@ -115,18 +115,23 @@
 	    (set-top-level-value! 'node-code node-code)
 	    )
 	 node-code))
+   ;; This PLT version uses require to make sure the support code is loaded.
    (define (build-genned-code-module node-code)
      `(begin (module _genned_node_code mzscheme
-	       (provide node-code)
+	       ;(provide node-code)	       
 	       (require "generic/constants.ss")
-	       (require "generic/logfiles.ss")
+	       (require "generic/compiler_components/logfiles.ss")
 	       (require "generic/util/hash.ss")
 	       (require "plt/hashtab.ss")
 	       (require (all-except "generic/util/helpers.ss" test-this these-tests))
-	       (require (all-except "plt/simulator_alpha_datatypes.ss" test-this these-tests))
-	       (require (all-except "plt/alpha_lib.ss" test-this these-tests))
-	       (require "plt/alpha_lib_scheduler_simple.ss")
-	       ,node-code)
+	       (require (all-except "generic/sim/simulator_alpha_datatypes.ss" test-this these-tests))
+	       (require (all-except "generic/sim/alpha_lib.ss" test-this these-tests))
+	       (require "generic/sim/alpha_lib_scheduler_simple.ss")
+	       ;; Bind at top level:
+	       (let ()
+		 ,node-code
+		 (eval `(define node-code ,node-code)))
+	       )
 	     (require _genned_node_code))))
 
   ;; We are loaded from the root directory, not the chez subdirectory.

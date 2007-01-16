@@ -9,11 +9,10 @@
 
 (module alpha_lib mzscheme
   (require 
-   (lib "list.ss")
    "../constants.ss"  
    "../compiler_components/logfiles.ss"
    "../../plt/hashtab.ss"
-   (all-except "../util/helpers.ss" test-this these-tests filter)
+   (all-except "../util/helpers.ss" test-this these-tests)
    (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests filter)
 
    ;; Would like to remove this dependency eventually:

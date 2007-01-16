@@ -15,7 +15,6 @@
             (lib "date.ss")
             (lib "pretty.ss")
             (prefix swindle: (lib "misc.ss" "swindle"))
-            (all-except (lib "list.ss") filter)
 
             "prim_defs.ss"
 	     "../../plt/iu-match.ss"

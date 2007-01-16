@@ -38,9 +38,8 @@
 
 (module closure-convert mzscheme
   (require (lib "include.ss")
-	   (lib "list.ss")
 	   (lib "trace.ss")
-	   (all-except "../../../plt/common.ss" filter)
+	   (all-except "../../../plt/common.ss" )
 	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)	   
 	   )
   (provide closure-convert test28 tests28 test-this these-tests

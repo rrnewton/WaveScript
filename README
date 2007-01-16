@@ -1,4 +1,6 @@
 
+
+
 <INSTALLATION>
 ======================================================================
 
@@ -84,12 +86,16 @@ src/
   system, configuration code, a Makefile, and this README.
 
 src/generic/
+  The vast majority of the code, used by both PLT and Chez ports of
+  the system.
+
 src/chez/
+  Pieces of code that are Chez-only.
+
 src/plt/
+  Pieces of code that are PLT-only.
 
 src/C/
-
-
 
 
 
@@ -113,34 +119,34 @@ config.ss:
 regiment.ss & regiment_script.ss:
   A system for invoking regiment from the command line.
 
-generic/pass??_*:
+generic/passes/*:
   These files are the compilers primary transformations.
 
-generic/lang??_*:
+generic/langs/*:
   These files define executable simulations of the between-pass
   languages.  We do have a simple, non-node-level, simulation that can
   be run even before the token machine simulator.  But these lang files
   are not used extensively and will be phased out.
 
-generic/system_tests.ss:
+generic/testing/system_tests.ss:
   The primary system tests.
 
 generic/constants.ss:
   Widely used constants and tunable parameters for the system.
 
-generic/helpers.ss:
+generic/util/helpers.ss:
   Library code.  This has a bunch of unused stuff in it.
 
-generic/regiment_helpers.ss:
+generic/compiler_components/regiment_helpers.ss:
   Various helper routines specifically for working with Regiment/TML code.
   
-generic/hm_type_inference.ss:
+generic/compiler_components/hm_type_inference.ss:
   The type checker.
     
-generic/simulator_alpha.ss:
-generic/simulator_alpha_datatypes.ss:
-generic/alpha_lib.ss:
-generic/alpha_lib_scheduler_simple.ss:
+generic/sim/simulator_alpha.ss:
+generic/sim/simulator_alpha_datatypes.ss:
+generic/sim/alpha_lib.ss:
+generic/sim/alpha_lib_scheduler_simple.ss:
   The newest token machine simulator.
 
 <URGENT note on code: Things in transition.>
@@ -238,6 +244,8 @@ directories specific to each.  Sometimes within the shared code I
 might use the "current_interpreter" variable to switch the behavior
 based on which backend we're using.
 
+[- Addendum: Now I use the macro IFCHEZ primarily to switch back and
+forth, also there's a common module syntax.  See src/chez/regmodule.ss -]
 
 [2005.02.13]
 
@@ -245,5 +253,4 @@ I have tagged all my little shorthand commands for invoking the system with a
 ";; shorthand" comment.  By searching for this I should be able to find all the 
 shorthands.  These are esoteric, and will make the system confusing to
 others, but you should just be able to ignore them.
-
 

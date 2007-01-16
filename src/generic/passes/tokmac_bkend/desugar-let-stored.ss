@@ -12,6 +12,7 @@
 
 (module desugar-let-stored mzscheme
   (require "../../../plt/common.ss"
+           (all-except "cleanup-token-machine.ss" test-this these-tests)
 	   (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
 	   (all-except "../../sim/simulator_alpha.ss" test-this these-tests))
   (provide desugar-let-stored
@@ -139,7 +140,7 @@
 	;(import simulator_alpha_datatypes)
 	(parameterize ([unique-name-counter 0] [simalpha-dbg-on #f])
 		      (let ((prt (open-output-string)))
-			(run-simulator-alpha prog 'outport prt)
+			(run-simulator-alpha prog 'outport prt) 
 			(get-output-string prt)))))
   
     (define simulate-and-compare
@@ -150,7 +151,7 @@
 	  (list result1 result2))))
   `(  
     ["Run simulator on empty TMs" 
-     (,simulate-and-compare desugar-let-stored (cleanup-token-machine '()))
+     (,simulate-and-compare desugar-let-stored (,cleanup-token-machine '()))
      ("" "")]
 
     ["Now start to test let-stored in a basic way."
@@ -207,3 +208,5 @@
 (define tests-desugar-let-stored these-tests)
 
 ) ; End module
+
+;(require desugar-let-stored) (test-desugar-let-stored)

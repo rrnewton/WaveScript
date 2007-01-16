@@ -56,15 +56,15 @@ plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
-	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos plt) 
-	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos generic)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos plt) 
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos generic)
 
 nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
-	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension plt)
-	(PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension generic)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension plt)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension generic)
 
 # only works in PLT right now:
 wsparse: 

@@ -1,4 +1,3 @@
-
 ;; alpha_lib_scheduler_simple.ss
 ;; This file contains a single function (the scheduler) used by alpha_lib.ss
 
@@ -19,14 +18,13 @@
   (require 
 ;   "iu-match.ss"
    (lib "include.ss")
-   (lib "list.ss")
    "alpha_lib.ss"
    "simulator_alpha_datatypes.ss"
    "../constants.ss"  
    "../compiler_components/logfiles.ss"
    "../../plt/chez_compat.ss"
    "../../plt/hashtab.ss"
-   (all-except "../util/helpers.ss" test-this these-tests filter)
+   (all-except "../util/helpers.ss" test-this these-tests)
    (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests filter)
    )
   (provide 
