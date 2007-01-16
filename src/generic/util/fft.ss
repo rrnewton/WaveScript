@@ -11,8 +11,8 @@
 ;; including plan-creation.)
 
 (module fft mzscheme
-
-  (require "../generic/scheme_fft.ss"
+  (require "../constants.ss"
+	   "scheme_fft.ss"
 	   "helpers.ss")
   (provide ;make-dft-plan 
            dft)

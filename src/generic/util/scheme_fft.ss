@@ -3,13 +3,10 @@
 ;;;; Works in Chez or PLT.
 
 (module scheme_fft mzscheme
-
-  (require  "constants.ss"
-	    "helpers.ss")
-  
+  (require  "../constants.ss" 
+	    "helpers.ss")  
   ; dft-vector
-  (provide dft-list testfft-bigger testfft-more)
-  
+  (provide dft-list testfft-bigger testfft-more)  
   (chezimports )
 
   ;; This is the list-based recursive DFT from the chez scheme users guide:
