@@ -144,12 +144,14 @@
       ;; We assume type info has already been stripped.
       [(_ x ...) (letrec* x ...)]))
 
-  (define for-loop-stack '())
+  ;(define-for-syntax for-loop-stack (make-parameter '()))
+  (define for-loop-stack (make-parameter '()))  
+  
   (define-syntax for
        (syntax-rules ()
 	 [(_ (i st en) bod ...)
 	  (call/1cc (lambda (escape)
-		     (fluid-let ([for-loop-stack (cons escape for-loop-stack)])
+                      (parameterize ([for-loop-stack (cons escape (for-loop-stack))])
 		       (let ([endpoint en])
 			 (let loop ([i st])
 			   (unless (> i endpoint)
@@ -818,9 +820,9 @@
 		   (stream-cons copy (towinloop (stream-cdr s))))
 		 (towinloop (stream-cdr s)))))))
 
-     ;; We just call the continuation, the fluid let worries about popping the stack.
+     ;; We just call the continuation, the fluid-let worries about popping the stack.
      (define (break)
-       ((car for-loop-stack) (void)))
+       ((car (for-loop-stack)) (void)))
 
      ;; Export these, they override the default scheme bindings.
      ;; ----------------------------------------
@@ -837,7 +839,9 @@
 	     (provide (rename ws+ +) (rename ws- -) (rename ws* *) (rename ws/ /) (rename ws^ ^)
 		      (rename ws-letrec letrec)
 		      (rename ws-length length)
-		      (rename ws-print print)))
+		      (rename ws-print print)                      
+                      for ;for-loop-stack
+                      ))
 
 
 

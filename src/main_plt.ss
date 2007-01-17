@@ -29,9 +29,11 @@
 ;; Set parameter:
 (REGIMENTD (cond             
              [(getenv "REGIMENTD") (getenv "REGIMENTD")]
+             [(directory-exists? "~/wavescript") "~/wavescript/"]
+             [(directory-exists? "~/WaveScope/src/wavescript") "~/WaveScope/src/wavescript/"]
+             [(directory-exists? "~/regiment_alpha") "~/regiment_alpha/"]
              [else 
-              (string-append (path->string (current-directory)) "../")
-              ;"~/regiment_alpha/"
+              (string-append (path->string (current-directory)) "../")              
                ]))
 
 (require 
@@ -110,6 +112,9 @@
 (require "generic/sim/simulator_alpha_datatypes.ss")
 (require "generic/sim/alpha_lib.ss")
 (require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
+
+;(require (all-except "generic/sim/wavescript_sim_library.ss" these-tests test-this))
+(require (all-except "generic/langs/lang_wavescript.ss" these-tests test-this))
 
 (require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
@@ -320,3 +325,4 @@
 
 ;(test-units)
 |#
+

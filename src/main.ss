@@ -505,7 +505,7 @@
     (begin 
       ;; If strip-types worked there shouldn't be any VQueue symbols!
       (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
-      (delay (wavescript-language 
+      (delay (wavescript-language
 	      (match stripped
 		[(,lang '(program ,body ,_ ...)) body])))))  
 

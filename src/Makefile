@@ -56,14 +56,14 @@ plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
-	find -name .__*.ss | xargs -i rm {}  ## So they don't break our compilation.
+	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos .)
 
 nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
-	find -name .__*.ss | xargs -i rm {}  ## So they don't break our compilation.
+	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension .)
 
 # building to native code with a collection isn't working:

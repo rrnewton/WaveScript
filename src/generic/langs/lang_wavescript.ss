@@ -11,8 +11,11 @@
 
 (module lang_wavescript mzscheme
   (require "../../plt/common.ss")
-  (provide default-marmotfile)
+  (provide default-marmotfile )
   (chezimports )
+  
+  ;; Provide for PLT only, in Chez it goes to top-level.
+  (IFCHEZ (begin) (provide wavescript-language))
   
 ;;======================================================================
 
@@ -104,10 +107,16 @@
 ;; This uses a convoluted evaluation order.  But it allows us to eval
 ;; the wavescope defs ONCE at load time, and have them visible to all
 ;; the unit tests
+#;
 (define these-tests
-  (eval `(let ([listprim list])
+  (let ([inlanguage (lambda (e)
+                      (IFCHEZ (eval `(let () (import wavescript_sim_library) ,e))
+                              (eval `(module temp-module mzscheme 
+                                       (require "../sim/wavescript_sim_library.ss")  
+                                       ,e))))])
+    (inlanguage '(let ([listprim list])
 	   ;,(wavescript-language 'return)
-	   (import wavescript_sim_library)
+	   ;(import wavescript_sim_library)
 	   ;(import (except mod_scheme break length + - * / ^ inspect letrec import))
 	   ;(import mod_constants)
 	   ;(import mod_helpers)
@@ -165,7 +174,7 @@
 	      55100]
 
 	    
-	    ))))
+	    )))))
 
 #;
 (define these-tests
@@ -224,12 +233,8 @@
 	    
 	    ))))
 
-
-
-(define test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
-(define test-ws test-this)
-
-(IFCHEZ 
+  (IFCHEZ 
+ ;; For CHEZ this becomes a top-level binding:
  (define-language
    'wavescript-language
    `(begin
@@ -262,19 +267,27 @@
 
 ;; PLT Version:
 (define (wavescript-language expr)
-  (eval '(begin 
+  (eval `(begin 
 	   (current-directory (REGIMENTD))
 	   (current-directory "src/")
+#;
 	   (module temp mzscheme
 	     (require "generic/sim/wavescript_sim_library.ss")
-	     
-	     )))
+	     ,expr
+	     )
+           ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
+           ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
+           (require "generic/sim/wavescript_sim_library.ss")
+           (define THISWSVAL ,expr)
+           (require mzscheme)
+           THISWSVAL
+           ))
   )
 )
 
 ) ; End module.
 
-
+;(require lang_wavescript)
 
 ; ======================================================================
 ;; SCRATCH
@@ -322,5 +335,4 @@
 	       ]
 	      ))))
 |#
-
 

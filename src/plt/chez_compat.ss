@@ -276,8 +276,35 @@
   (define merge! merge)
   
   ;; More Chez compat:
-  (define (block-read inp str count)
-    (read-bytes-avail! str inp 0 count))
+
+  ;; This is TERRIBLY inefficient.  It has to convert to thy byte-string representation.
+  (define block-read
+    (let ([bytes (make-bytes 100)])
+      (lambda (inp str count)
+	(if (> (string-length str) (bytes-length bytes))
+	    (set! bytes (make-bytes (string-length str))))
+	(let ([rd (read-bytes-avail! bytes inp 0 count)])
+	  (printf "LENGTH: str:~a bytes:~a rd:~a\n" (string-length str) (bytes-length bytes) rd)
+	  (cond
+	   [(and (number? rd) (> rd (string-length str)))
+	    (error 'block-read "buffer not big enough")]
+	   [(eof-object? rd) rd]
+	   [else ;; Now copy back to the string:
+	    (do ([i 0 (+ i 1)])
+		((= i rd) rd)
+	      ;(printf "  i:~a\n" i)
+	      (string-set! str i (integer->char (bytes-ref bytes i)))
+
+	      #;
+	      (let ([byt (bytes-utf-8-ref bytes i)])		
+		(if byt 
+		    (string-set! str i byt)
+		    (error 'block-read 
+			   "went off the end of the buffer at position: ~a, buflen:~a contents:~a\n" 
+			   i (bytes-length bytes) (bytes-ref bytes i)))))]
+	   )))))
+
+
   (define (block-write outp str count)
     (write-bytes str outp 0 count))
   (define collect collect-garbage)

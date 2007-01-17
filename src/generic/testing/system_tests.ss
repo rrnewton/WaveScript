@@ -2617,10 +2617,6 @@
 
 
 
-
-
-
-
 #;
 ["Demos: "
  (load-regiment (++ (REGIMENTD) "/demos/regiment/"))
