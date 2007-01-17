@@ -293,6 +293,8 @@
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/langs/language-mechanism.ss")
+
+(include "generic/sim/wavescript_sim_library.ss")
 (include "generic/langs/lang_wavescript.ss")
 
 (include "generic/langs/lang00.ss")
