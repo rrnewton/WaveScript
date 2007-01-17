@@ -17,12 +17,14 @@
    ;           "hashtab.ss"
    ;           "engine.ss"
    (prefix swindle: (lib "misc.ss" "swindle"))
+   (only (lib "43.ss" "srfi") vector-copy)
    )
 
   (require-for-syntax "identifier-syntax.ss")
 
   (provide (all-defined)
 	   (all-from "cheztrace.ss")
+           vector-copy
            pretty-print flush-output-port
            real-time
            (rename plt:remq remq)
@@ -40,9 +42,9 @@
   
   (define cd current-directory) ;; shorthand
 
-;; Leaf nodes in a data structure.  Things that contain no more subthings.
-(define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
-;; Should ports be included?
+  ;; Leaf nodes in a data structure.  Things that contain no more subthings.
+  (define (atom? x) (or (symbol? x) (number? x) (null? x) (boolean? x) (char? x) (string? x)))
+  ;; Should ports be included?
 
 ;  (define real-time current-milliseconds)
 
@@ -87,6 +89,7 @@
   (define-syntax fx>= (identifier-syntax >=))
   (define-syntax fxmin (identifier-syntax min))
   (define-syntax fxmax (identifier-syntax max))
+
   (define-syntax fl+ (identifier-syntax +))
   (define-syntax fl- (identifier-syntax -))
   (define-syntax fl* (identifier-syntax *))
@@ -96,6 +99,21 @@
   (define-syntax fl> (identifier-syntax >))
   (define-syntax fl<= (identifier-syntax <=))
   (define-syntax fl>= (identifier-syntax >=))
+  (define-syntax flabs (identifier-syntax abs))
+
+  (define-syntax cfl+ (identifier-syntax +))
+  (define-syntax cfl- (identifier-syntax -))
+  (define-syntax cfl* (identifier-syntax *))
+  (define-syntax cfl/ (identifier-syntax /))
+  (define-syntax cfl= (identifier-syntax =))
+  (define-syntax cfl< (identifier-syntax <))
+  (define-syntax cfl> (identifier-syntax >))
+  (define-syntax cfl<= (identifier-syntax <=))
+  (define-syntax cfl>= (identifier-syntax >=))
+  
+  (define-syntax fxlogand (identifier-syntax bitwise-and))
+  (define-syntax fxlogor (identifier-syntax bitwise-or))
+  (define-syntax fxmodulo (identifier-syntax modulo))
 
 ;   (define-syntax fxzero? (syntax-rules () [(_ e ...) (zero? e ...)]))
 ;   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))

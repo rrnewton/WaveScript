@@ -1,11 +1,14 @@
 ;; This was ripped from SLIB:
 
-(module slib:hashtab mzscheme
-  (require)
-  (provide make-hash-table predicate->hash-asso 
+(module slib_hashtab mzscheme
+  (require "../constants.ss"
+           "hash.ss"
+           ;"../generic/util/helpers.ss"
+           )
+  (provide  predicate->hash-asso 
 	   hash-inquirer hash-associator hash-remover
 	   hash-map hash-for-each hash-rehasher)
-  (chezprovide)
+  (chezprovide make-hash-table)
   (chezimports)
 
 
@@ -173,14 +176,16 @@
 	((eq? pred char-ci=?) hashv)
 	((eq? pred string=?) hash)
 	((eq? pred string-ci=?) hash)
-	(else (slib:error "unknown predicate for hash" pred))))
+	(else (error 'predicate-hash "unknown predicate for hash" pred))))
 
 ;;@noindent
 ;;A hash table is a vector of association lists.
 
 ;;@body
 ;;Returns a vector of @var{k} empty (association) lists.
-(define (make-hash-table k) (make-vector k '()))
+(define (tmp:make-hash-table k) (make-vector k '()))
+(IFCHEZ (define make-hash-table tmp:make-hash-table)
+        (provide (rename tmp:make-hash-table make-hash-table)))
 
 ;;@noindent
 ;;Hash table functions provide utilities for an associative database.

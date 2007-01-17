@@ -9,12 +9,17 @@
 
 ;; This has become *terribly* non-portable.
 
+(module lang_wavescript mzscheme
+  (require "../../plt/common.ss")
+  (provide default-marmotfile)
+  (chezimports )
+  
 ;;======================================================================
 
 ;; Testing file IO on marmot audio traces:
 
 ;; This just checks some hard coded locations for the marmot file.
-(define (marmotfile)
+(define (default-marmotfile)
   (let ([file (cond
 	       [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
 		"/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
@@ -22,10 +27,14 @@
 		"~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
 	       [(file-exists? "/tmp/100.raw")
 		"/tmp/100.raw"]
-	       [else (error 'marmotfile "couldn't find marmot data")])])
+	       [else (error 'default-marmotfile "couldn't find marmot data")])])
     (printf "Reading marmot datafile: ~s\n" file)
     file))
-	
+
+;;; Some TESTS of the reader:	
+;;; Commenting out because the PLT-reader can't handle the hash syntax:
+;------------------------------------------------------------
+#|
 ;; Takes 35 seconds using stupid approach (read-char).
 (define (read-all)
   (wavescript-language)
@@ -49,10 +58,9 @@
     (if (fxzero? n) 'DONE
 	(loop (stream-cdr s) (fx- n 1)
 	      )))))
-
 ;; Takes 3.3 seconds.
 (define (baseline-read-all)
-  (let ((p (marmotfile)))
+  (let ((p (default-marmotfile)))
      (time 
       (let loop ()
 	(let ((c (#3%read-char p)))
@@ -60,7 +68,6 @@
 	      'alldone
 	      (loop)))))
      (close-input-port p)))
-
 ;; Takes 350-430 ms (depending on optimize-level) to load 315mb on faith.
 ;; (That must be using some disk caching, eh?)
 ;; Note: changing block size:
@@ -73,7 +80,7 @@
 ;;   65536 - 180-250 ms
 (define (baseline-read-all-block)
   (define chunk 8000)
-   (let ((p (open-input-file (marmotfile)))
+   (let ((p (open-input-file (default-marmotfile)))
 	 (s (make-string chunk #\_)))
      (time 
       (let loop ()
@@ -82,8 +89,8 @@
 	  (if (#3%eof-object? n)
 	      'alldone ;(printf "done: ~a\n" s)
 	      (loop)))))
-     (close-input-port p)))
-
+     (close-input-port p)))|#
+;------------------------------------------------------------
 
 (define-syntax define-inlined
   (syntax-rules ()
@@ -92,40 +99,7 @@
        (syntax-rules ()
 	 [(_ x ...) e ...]))]))
 
-
-
 ;; ======================================================================
-
-(define-language
-  'wavescript-language
-  `(begin
-     ;; We only import these basic bindings to keep us honest.
-     (import-only wavescript_sim_library)
-     ;; Then we import some "sub-modules" exported by the language-module.
-     ;; This is everything but the overriden bindings from default scheme language:
-     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
-     (import mod_constants)
-     (import mod_helpers)
- 
-     ;(eval-when (compile eval load) (printf "TRYING..\n"))
-;     (printf "TRYING..\n")
-;     (inspect list)
-
-     ;; A safety mechanism:
-#;
-     ,@(IFDEBUG
-       '((let ([rawconstructor make-sigseg])	   
-	   (set! make-sigseg (lambda (start end vec timebase)
-			       (ASSERT (integer? start))
-			       (ASSERT (integer? end))
-			       (ASSERT (vector? vec))
-			       (ASSERT (eq? timebase nulltimebase))
-			       (rawconstructor start end vec timebase)))
-	   ))
-       '())
-     
-     ))
-
 
 ;; This uses a convoluted evaluation order.  But it allows us to eval
 ;; the wavescope defs ONCE at load time, and have them visible to all
@@ -255,6 +229,53 @@
 (define test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
 (define test-ws test-this)
 
+(IFCHEZ 
+ (define-language
+   'wavescript-language
+   `(begin
+     ;; We only import these basic bindings to keep us honest.
+     (import-only wavescript_sim_library)
+     ;; Then we import some "sub-modules" exported by the language-module.
+     ;; This is everything but the overriden bindings from default scheme language:
+     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
+     (import mod_constants)
+     (import mod_helpers)
+ 
+     ;(eval-when (compile eval load) (printf "TRYING..\n"))
+;     (printf "TRYING..\n")
+;     (inspect list)
+
+     ;; A safety mechanism:
+#;
+     ,@(IFDEBUG
+       '((let ([rawconstructor make-sigseg])	   
+	   (set! make-sigseg (lambda (start end vec timebase)
+			       (ASSERT (integer? start))
+			       (ASSERT (integer? end))
+			       (ASSERT (vector? vec))
+			       (ASSERT (eq? timebase nulltimebase))
+			       (rawconstructor start end vec timebase)))
+	   ))
+       '())
+     
+     ))
+
+;; PLT Version:
+(define (wavescript-language expr)
+  (eval '(begin 
+	   (current-directory (REGIMENTD))
+	   (current-directory "src/")
+	   (module temp mzscheme
+	     (require "generic/sim/wavescript_sim_library.ss")
+	     
+	     )))
+  )
+)
+
+) ; End module.
+
+
+
 ; ======================================================================
 ;; SCRATCH
 
@@ -301,3 +322,5 @@
 	       ]
 	      ))))
 |#
+
+

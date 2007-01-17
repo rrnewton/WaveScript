@@ -2,8 +2,8 @@
 
 (module hash mzscheme
   (require "../constants.ss")
-  (provide hash)
-  (chezimports)
+  (provide hash hashq hashv)
+  (chezimports chez_constants)
 
 (IFCHEZ (import-only scheme) (void))	
 	
@@ -140,13 +140,16 @@
 ;;; vectors, and records.  This also allows us to use it for both
 ;;; hashq and hashv.
 
-; (define hashv
-;   (lambda (obj k)
-;     (if (or (string? obj) (pair? obj) (vector? obj) (record? obj))
-; 	(modulo (object-hash obj) k)
-; 	(hash:hash obj k)))
-;   )
-; (define hashq hashv)
+ (define hashv
+   (lambda (obj k)
+     (if (or (string? obj) (pair? obj) (vector? obj) 
+             ;(IFCHEZ (record? obj) (struct? obj))
+	     )
+         ;(modulo (object-hash obj) k)
+         (modulo (hash obj) k)
+ 	(hash:hash obj k)))
+   )
+ (define hashq hashv)
 
 
 ) ; End module 

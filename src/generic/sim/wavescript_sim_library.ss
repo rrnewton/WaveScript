@@ -1,18 +1,25 @@
 
 (module wavescript_sim_library mzscheme
-    (require)
-    (provide
+  (require 
+           "../constants.ss"
+           "../util/fft.ss"
+           "../langs/lang_wavescript.ss"
+           (prefix slib: "../util/slib_hashtab.ss")
+	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
+	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)	   
+	   )
+  (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app letrec let (for for-loop-stack)
+		 app let 
 
 		 dump-binfile doubleFile audioFile __dataFile audio timer
 		 stockStream
 		 ; read-file-stream
-		 print show
+		 show
 
 		 to-uint16 to-int16 uint16->string
-		 + - * / ^
+
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
 		 sqrtf sqrtc sqrti
@@ -21,7 +28,7 @@
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
-		 makeArray arr-get arr-set! length
+		 makeArray arr-get arr-set! 
 		 hashtable hashcontains hashget hashset hashset_BANG ;hashrem hashrem_BANG
 		 listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
@@ -31,7 +38,7 @@
 		 
 		 wserror inspect
 		 emit 
-		 smap parmap sfilter
+		 smap sfilter
 		 iterate break deep-iterate
 		 ;; TODO: nix unionList.
 		 unionN unionList zip2
@@ -40,27 +47,36 @@
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion:
-
+		 )
+    (chezprovide (for for-loop-stack)
+		 letrec length print
+		 + - * / ^
+                                 
+                 parmap
+                 
 		 ;; We reexport these *module names* so that they can be imported subsequently.
 		 mod_scheme  mod_helpers  mod_constants
 ;		 quasiquote unquote lambda
 		 ;; import itself--this is so we can use import-only:
 		 import
 		 )
-    (chezimports (only scheme scheme import))
+    (chezimports (only scheme scheme import)
+		 constants
+		 helpers)
 
-  ;; Import this for the module "scheme".
-  ;(import (except scheme break length + - * / ^ inspect letrec))
-  (import constants)
-  (import helpers)
+    (IFCHEZ
+     (begin 
+       (alias mod_helpers helpers)
+       (alias mod_scheme scheme)
+       (alias mod_constants constants)  
+       ;  (alias quasiquote quasiquote)  
+       ;;  (alias unquote unquote) 
+       ;; (alias lambda lambda)  
+       (alias let let) ;; We assume type info has been stripped.
 
-  (alias mod_helpers helpers)
-  (alias mod_scheme scheme)
-  (alias mod_constants constants)  
-;  (alias quasiquote quasiquote)  
-;  (alias unquote unquote) 
-;  (alias lambda lambda)  
-  (alias let let) ;; We assume type info has been stripped.
+       (define orig-length #%length)
+       )
+     (begin (define orig-length length)))
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -75,7 +91,7 @@
 	  (map (lambda (x) (butnth j x)) (butnth i matrix)))
 	(* (if (odd? (+ i j)) -1 1) (determinant (minor mat i j))))
       (define (determinant mat)
-	(let ((n (#%length mat)))
+	(let ((n (orig-length mat)))
 	  (if (eqv? 1 n) (caar mat)
 	      (do ((j n (+ -1 j))
 		   (ans 0 (+ ans (* (list-ref (car mat) (+ -1 j))
@@ -83,7 +99,7 @@
 		  ((<= j 0) ans)))))
       (define (matrix:inverse mat)
 	(let* ((det (determinant mat))
-	       (rank (#%length mat)))
+	       (rank (orig-length mat)))
 	  (and (not (zero? det))
 	       (do ((i rank (+ -1 i))
 		    (inv '() (cons
@@ -123,14 +139,13 @@
       [(_ t e) e]))
 
   ;; For these programs, need letrec*.
-  (define-syntax letrec
+  (define-syntax ws-letrec
     (syntax-rules ()
       ;; We assume type info has already been stripped.
       [(_ x ...) (letrec* x ...)]))
 
-
-     (define for-loop-stack '())
-     (define-syntax for
+  (define for-loop-stack '())
+  (define-syntax for
        (syntax-rules ()
 	 [(_ (i st en) bod ...)
 	  (call/1cc (lambda (escape)
@@ -308,7 +323,7 @@
 		   (to-int16 s (fx+ 4 ind))
 		   (to-int16 s (fx+ 6 ind)))
 	   ))
-       (read-file-stream (marmotfile) 8 read-sample len overlap))
+       (read-file-stream (default-marmotfile) 8 read-sample len overlap))
 
      ;; Internal helper.
      (define (read-file-stream file wordsize sample-extractor len overlap)
@@ -380,11 +395,14 @@
      (define nullarr #())
      (define nulltimebase 'nulltimebase)
 
-     (define + fx+)     (define - fx-)     (define * fx*)     (define / fx/)    
+     (define ws+ fx+)
+     (define ws- fx-)   
+     (define ws* fx*)   
+     (define ws/ fx/)
      (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
      (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
 
-     (define ^ expt)
+     (define ws^ expt)
      (define ^. expt)
      (define ^: expt)
 
@@ -395,15 +413,19 @@
      (define int_to_float fixnum->flonum)
      (define float_to_int flonum->fixnum)
      
-     (define (realpart x) (if (cflonum? x) (cfl-real-part x) x))
-     (define (imagpart x) (if (cflonum? x) (cfl-imag-part x) 0))
+  (IFCHEZ
+      (begin (define realpart cfl-real-part)
+             (define imagpart cfl-imag-part))
+      (begin (define realpart real-part)
+             (define imagpart imag-part)))
+      
      ;(define realpart cfl-real-part)
      ;(define imagpart cfl-imag-part)
 
      (define (cnorm c)
        (let ([real (realpart c)]
 	     [imag (imagpart c)])
-	 (import scheme) ;; Reset those numeric bindings to default!
+	 ;(import scheme) ;; Reset those numeric bindings to default!
 	 (cond
 	  [(zero? real) imag]
 	  [(zero? imag) real]
@@ -416,7 +438,7 @@
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
      (define (fft ss)
-       (import scheme) ;; Use normal arithmetic.
+       ;(import scheme) ;; Use normal arithmetic.
        (define (log2 n) (/ (log n) (log 2)))
        (DEBUGASSERT (valid-sigseg? ss))
        (DEBUGMODE 
@@ -430,7 +452,7 @@
 		    (dft (sigseg-vec ss))
 		    (sigseg-timebase ss)))
 
-#;
+
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      ;; USES ZERO-BASED INDICES.
      (define (unionList ls)
@@ -449,9 +471,9 @@
 					streams)))))))
        )
 
-
      ;; [2006.11.23] Experimenting with engine based version:
-     (define (unionList ls)
+#;
+  (define (unionList ls)
        (let* ([output #f] ;; Mutable var for output.
 	      [engs (mapi (lambda (ind strm)
 			  (make-engine 
@@ -488,7 +510,8 @@
 		(loop (cdr engs) (cons neweng acc))
 		))]
 	    ))))
-
+  
+  
      (define (unionN . args)  (unionList args))
 
      (define (zip2 s1 s2)
@@ -503,14 +526,16 @@
 	    ))))
 
      (define (wserror str) (error 'wserror str))
-     (define inspect inspect/continue)
+     (IFCHEZ (define inspect inspect/continue)
+             ;; Don't know of an interactive object inspector in PLT:
+             (define (inspect x) x))             
 
      (define tuple vector)
      (define (tupref ind _ v)
        (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
 
-     (define listLength #%length)
+     (define listLength orig-length)
      (define makeList make-list)
      (define head car)
      (define tail cdr)
@@ -539,11 +564,10 @@
      (define makeArray make-vector)
      (define arr-get  vector-ref)
      (define arr-set! vector-set!)
-     (define length   vector-length)
-
+     (define ws-length   vector-length)
 
      ;; EQ? based hash tables:
-
+#;
      (begin
        ;; If we cared we could use some kind of balanced tree for functional maps.
        (define (copy-hash-table ht)
@@ -567,15 +591,15 @@
        ;(define hashrem_BANG )
        )
 
-#;
      ;; EQUAL? based hash tables:
      (begin
-       ;; If we cared we could use some kind of balanced tree for functional maps.
+       (define hashset_BANG (slib:hash-associator equal?))
+       
        (define (copy-hash-table ht)
 	 ;; This is terrible, we don't know how big it is.
 	 (let ([newtab (slib:make-hash-table (vector-length ht))])
 	   (slib:hash-for-each ht
-	    (lambda (k v) (put-hash-table! newtab k v)))
+	    (lambda (k v) (hashset_BANG newtab k v)))
 	   newtab))
 
        (define hashtable slib:make-hash-table)
@@ -591,28 +615,21 @@
 	       result
 	       ))))
        ;; Pretty useless nondestructive version:
+       ;; If we cared we could use some kind of balanced tree for functional maps.
        (define (hashset ht k v)
 	 (define new (copy-hash-table ht))
 	 (hashset_BANG new k v)
 	 new)
-       (define hashset_BANG (slib:hash-associator equal?))
        ;(define hashrem )
        ;(define hashrem_BANG )
        )
 
-     (define (print x)
+     (define (ws-print x)
        (if (string? x)
 	   (display x)
 	   (display-constrained (list x 300))))
-#;
-     (define (print x) 
-       (if (string? x) (display x)	   
-	   (parameterize ([print-length 50]
-			  [print-level 5]
-			  [print-graph #t])
-	     (pretty-print x))))
-     (define (show x) (format "~s" x))
 
+     (define (show x) (format "~s" x))
 
      ;; This is a bit silly.  Since we don't use an actual time-series
      ;; implementation, this just makes sure the overlap is EQUAL.
@@ -729,7 +746,9 @@
        (DEBUGASSERT valid-sigseg?
 		    (make-sigseg st en ar tb)))
      
-     (define (parmap f s) (stream-parmap f s))
+     (IFCHEZ (define (parmap f s) (stream-parmap f s))
+             (begin))
+  
      (define smap stream-map)
      (define sfilter stream-filter)
 
@@ -802,6 +821,25 @@
      ;; We just call the continuation, the fluid let worries about popping the stack.
      (define (break)
        ((car for-loop-stack) (void)))
+
+     ;; Export these, they override the default scheme bindings.
+     ;; ----------------------------------------
+     (IFCHEZ (begin (define + ws+)
+		    (define - ws-) 
+		    (define * ws*) 
+		    (define / ws/)
+		    (define ^ ws^) 
+		    ;(define-syntax letrec (identifier-syntax ws-letrec))
+		    (define-id-syntax letrec  ws-letrec)
+		    (define length ws-length)
+		    (define-id-syntax print ws-print)
+		    )
+	     (provide (rename ws+ +) (rename ws- -) (rename ws* *) (rename ws/ /) (rename ws^ ^)
+		      (rename ws-letrec letrec)
+		      (rename ws-length length)
+		      (rename ws-print print)))
+
+
 
 ) ; End module.
 

@@ -91,6 +91,8 @@
    list-find-position list-remove-before
    foldl
    
+   vector-for-each vector-map vector-map!
+
    insert-between iota compose compose/values disp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
@@ -105,6 +107,7 @@
    stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
    stream-map stream-filter stream-take stream-take-all 
    iota-stream stream-append browse-stream ;random-stream 
+   stream-append-list
    
    with-evaled-params
    display-constrained
@@ -120,9 +123,9 @@
      system/echoed system-to-str with-evaled-params
      add-parameter-hook chomp shell-expand-string
      seconds-since-1970 ignore grep-oblist comma-number runN
-     gobj? vector-for-each vector-map vector-map! crit-printf
+     gobj?  crit-printf
      port->slist read-line median stddev stream-drop
-     stream-append-list test-this these-tests
+     test-this these-tests
 
 ;      foldr let/ec call/ec define-values make-n-list
 ;      current-error-port with-evaled-params add-parameter-hook
