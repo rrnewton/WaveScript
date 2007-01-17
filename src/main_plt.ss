@@ -68,6 +68,7 @@
 (all-except "generic/passes/analyze_query/resolve-fold-trees.ss" these-tests test-this)
 
 (all-except "generic/passes/deglobalize/deglobalize.ss" these-tests test-this)
+(all-except "generic/passes/deglobalize/deglobalize2.ss" these-tests test-this)
 
 (all-except "generic/passes/tokmac_bkend/cleanup-token-machine.ss" these-tests test-this)
 (all-except "generic/passes/tokmac_bkend/desugar-macros.ss" these-tests test-this)
