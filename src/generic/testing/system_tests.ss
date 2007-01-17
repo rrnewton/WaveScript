@@ -1468,6 +1468,7 @@
 		     [simulation-logger-fasl-batched #f] ;; Can't write continuations to log file in fasl mode.
 		     )
       (let ((prt (open-output-string)))
+	(define (id x) x)
 	(display "(" prt)
 	(run-simulator-alpha
 	 (cleanup-token-machine

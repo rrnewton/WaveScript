@@ -71,7 +71,7 @@ nc2:
 
 # only works in PLT right now:
 wsparse: 
-	mzc --exe bin/wsparse wsparse.ss
+	mzc --exe bin/wsparse plt/wsparse.ss
 
 #----------------------------------------
 

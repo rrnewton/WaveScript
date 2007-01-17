@@ -5,18 +5,17 @@
 ;; *) Handle complex constants.
 ;; *) Handle arr[3][4]
 
-
-(module reg_grammar mzscheme  
-  
-;; Import the parser and lexer generators.
-(require (lib "yacc.ss" "parser-tools")
-         (lib "lex.ss" "parser-tools")
-         (lib "pretty.ss")
-         "plt/iu-match.ss"
-         "generic/util/helpers.ss"
-         ;"plt/prim_defs.ss"
-         (prefix : (lib "lex-sre.ss" "parser-tools")))
-
+(module regiment_grammar mzscheme  
+  ;; Import the parser and lexer generators.
+  (require (lib "yacc.ss" "parser-tools")
+	   (lib "lex.ss" "parser-tools")
+	   (prefix : (lib "lex-sre.ss" "parser-tools"))
+	   (lib "pretty.ss")
+	   
+	   "iu-match.ss"
+	   "../generic/util/helpers.ss"
+	   ;;"plt/prim_defs.ss"
+	   )
   (provide (all-defined))
 
 ;; RESERVED name!

@@ -5,8 +5,18 @@
 
   ;; These are all the files that SHOULD NOT be compiled as part of the package.
   (define compile-omit-files '(
+			       "config.ss"
 			       "main.ss"
 			       "main_chez.ss"
+			       "main_plt.ss"
+			       "match_larceny.ss"
+			       "regiment.ss"
+			       "regiment_script.ss"
+			       "regiment_script.threaded.ss"
+			       "reg_grammar.ss"
+			       "scrap.ss"
+			       "wsparse.ss"
+			       "tests.ss"
 			       ))
   (define compile-subcollections  '(				    
 				    ("plt")

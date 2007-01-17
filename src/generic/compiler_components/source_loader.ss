@@ -19,6 +19,9 @@
    (all-except "../passes/tokmac_bkend/cleanup-token-machine.ss" test-this these-tests)   
    "../sim/simulator_alpha_datatypes.ss"
    (all-except "../sim/simulator_alpha.ss" test-this these-tests id)
+
+   ;; Defines ws-parse-file:
+   "../../plt/regiment_parser.ss"
    )
   ;; Module exports:
   (provide     	
