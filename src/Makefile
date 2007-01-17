@@ -66,6 +66,7 @@ mzscheme_native:
 
 # building to native code with a collection isn't working:
 nc2:
+	export PLTCOLLECTS=`pwd`:$(PLTLIB)
 	cat .temp_plt-source-files  | xargs -n1 mzc --auto-dir
 
 # only works in PLT right now:
