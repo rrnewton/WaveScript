@@ -3,7 +3,7 @@
 
 (module wsparse mzscheme 
 
-(require "regiment_parner.ss")
+(require "regiment_parser.ss")
 (require (lib "pretty.ss"))
 
 (if (not (= 1 (vector-length (current-command-line-arguments))))

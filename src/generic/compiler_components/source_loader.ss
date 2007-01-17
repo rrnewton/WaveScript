@@ -20,8 +20,7 @@
    "../sim/simulator_alpha_datatypes.ss"
    (all-except "../sim/simulator_alpha.ss" test-this these-tests id)
 
-   ;; Defines ws-parse-file:
-   "../../plt/regiment_parser.ss"
+   (only "../../plt/regiment_parser.ss" ws-parse-file)
    )
   ;; Module exports:
   (provide     	
@@ -283,9 +282,8 @@
 					;(ws-postprocess decls)
      decls
      ))
- ;; PLT version:  This version can call the code directly.
- (define (ws-parse-file fn)
-   (error 'ws-parse-file "needs to be implemented... "))
+ ;; The PLT version is imported above: (from regiment_parser.ss)
+ (begin)
  )
 
 (define (read-wavescript-source-file fn)

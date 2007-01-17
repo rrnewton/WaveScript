@@ -5,7 +5,7 @@
 ;; *) Handle complex constants.
 ;; *) Handle arr[3][4]
 
-(module regiment_grammar mzscheme  
+(module regiment_parser mzscheme  
   ;; Import the parser and lexer generators.
   (require (lib "yacc.ss" "parser-tools")
 	   (lib "lex.ss" "parser-tools")

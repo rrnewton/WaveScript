@@ -283,14 +283,6 @@
     (apply run-compiler p args)
     ))
 
-
-;; This needs to be replaced with something real.
-#;
-(define-pass remove-lazy-letrec
-    [Expr (lambda (x fallthru)
-	    (match (fallthru x)
-	      [(lazy-letrec ,rest ...) `(letrec ,rest ...)]
-	      [,other other]))])
 (define-pass introduce-lazy-letrec
     [Expr (lambda (x fallthru)
 	    (match x
@@ -463,15 +455,15 @@
 	    [(list? x)   (printf "WSINT: Evaluating WS source: \n ~a\n" x)  x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 
-  (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 
-		   
-		   
-		   ;; Delete these files so that we don't get mixed up.
-		   (delete-file ".__types.txt")
-		   (delete-file ".__inputprog.ss")
-		   (delete-file ".__compiledprog.ss")
-		   (delete-file ".__elaborated.ss")
-		   (delete-file ".__nocomplexopera.ss")
+  (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 		   
+		   (let ([please-delete-file 
+			  (lambda (f) (if (file-exists? f) (delete-file f)))])
+		     ;; Delete these files so that we don't get mixed up.		  
+		     (please-delete-file ".__types.txt")
+		     (please-delete-file ".__inputprog.ss")
+		     (please-delete-file ".__compiledprog.ss")
+		     (please-delete-file ".__elaborated.ss")
+		     (please-delete-file ".__nocomplexopera.ss"))
 		   
 		   (with-output-to-file ".__inputprog.ss"
 		     (lambda () 
@@ -499,11 +491,11 @@
     )
 
   (define compiled (let ([x (run-ws-compiler prog)])
-		     (parameterize ([pretty-line-length 150]
-				    [pretty-one-line-limit 100]
-				    [print-level #f]
-				    [print-length #f]
-				    [print-graph #f])
+		     (parameterize-IFCHEZ ([pretty-line-length 150]
+					   [pretty-one-line-limit 100]
+					   [print-level #f]
+					   [print-length #f]
+					   [print-graph #f])
 		       (with-output-to-file ".__compiledprog.ss"
 			 (lambda () (pretty-print x)(flush-output-port))
 			 'replace))

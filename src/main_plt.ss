@@ -49,14 +49,21 @@
 (all-except "generic/passes/normalize_source/remove-unquoted-constant.ss" these-tests test-this)
 
 (all-except "generic/passes/static_elaborate/static-elaborate.ss" these-tests test-this)
+(all-except "generic/passes/static_elaborate/verify-elaborated.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
+
+(all-except "generic/passes/wavescope_bkend/merge-iterates.ss" these-tests test-this)
+;(all-except "generic/passes/wavescope_bkend/purify-iterate.ss" these-tests test-this)
+(all-except "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" these-tests test-this)
+
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
 (all-except "generic/passes/normalize_query/uncover-free.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/lift-letrec.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/lift-letrec-body.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/remove-complex-opera.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/remove-lazy-letrec.ss" these-tests test-this) 
 (all-except "generic/passes/normalize_query/verify-core.ss" these-tests test-this)
 
 (all-except "generic/passes/analyze_query/classify-names.ss" these-tests test-this)
@@ -120,10 +127,12 @@
 (include "main.ss")
 ;============================================================
 
-(include "generic/shortcuts.ss")
-
 (define error-handler error-display-handler)
 (load/use-compiled "generic/testing/driver.ss")
+
+;; Bring these into the top-level for our REPL convenience.
+(include "generic/shortcuts.ss")
+(require "generic/util/reg_macros.ss")
 
 #|
 

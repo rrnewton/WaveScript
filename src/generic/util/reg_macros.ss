@@ -37,7 +37,8 @@
       rec 
       ;;reg:define-struct ;; Moved to constants.ss 
       apply-ordered
-      
+
+      parameterize-IFCHEZ      
     ;  test-reg_macros
    )
   
@@ -257,7 +258,16 @@
        (with-output-to-string
 	 (lambda () (set! ret (begin e ...))))
        ret)]))
-;
+
+
+;; This is sometimes useful.  It's awkward to do manually.
+(define-syntax parameterize-IFCHEZ
+  (syntax-rules ()
+    [(_ ([lhs rhs] ...) bod ...)
+     ;; Don't worry about code duplication, only one branch will survive.
+     (IFCHEZ (parameterize ([lhs rhs] ...) bod ...)
+	     (let () bod ...))]))
+
 ;(define these-tests 
 ;  `(
 ;    
