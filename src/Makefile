@@ -56,15 +56,17 @@ plt: pltbc
 pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos plt) 
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos generic)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos .)
 
 nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension plt)
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension generic)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension .)
+
+# building to native code with a collection isn't working:
+nc2:
+	cat .temp_plt-source-files  | xargs -n1 mzc --auto-dir
 
 # only works in PLT right now:
 wsparse: 
