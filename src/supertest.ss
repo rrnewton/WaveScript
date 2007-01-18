@@ -47,7 +47,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (exit 1)))
 ; ----------------------------------------
 
-(ASSERT (system "source ../install_environment_vars"))
+;(ASSERT (system "source ../install_environment_vars"))
 
 (define svn-revision
   (begin 

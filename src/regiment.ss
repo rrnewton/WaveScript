@@ -5,11 +5,7 @@
 ;;;; This file is a script that drives the regiment compiler/simulator.
 ;;;; It loads the Regiment system from source or from a compiled .so file.
 
-
-;(load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))
-
 (define start-dir (current-directory))
-;(printf "STARTING: ~s\n" start-dir)
 
 ;; Capture these because they are overwritten.
 (define orig-scheme-start (scheme-start))
