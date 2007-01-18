@@ -62,7 +62,8 @@
 		 )
     (chezimports (only scheme scheme import)
 		 constants
-		 helpers)
+		 helpers
+		 (only lang_wavescript default-marmotfile))
 
     (IFCHEZ
      (begin 
@@ -834,7 +835,8 @@
 		    ;(define-syntax letrec (identifier-syntax ws-letrec))
 		    (define-id-syntax letrec  ws-letrec)
 		    (define length ws-length)
-		    (define-id-syntax print ws-print)
+		    ;(define-id-syntax print ws-print)
+		    (define print ws-print)
 		    )
 	     (provide (rename ws+ +) (rename ws- -) (rename ws* *) (rename ws/ /) (rename ws^ ^)
 		      (rename ws-letrec letrec)

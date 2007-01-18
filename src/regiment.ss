@@ -264,15 +264,16 @@
 	    ;; --script must be the first argument after "regiment i"
 	    ;;
 	    ;; This won't occur, chez grabs the --script parameter
-	    ;; directly.  This code should go in the scheme-script
-	    ;; parameter.  
+	    ;; directly.  Code should go in the scheme-script parameter.
+	    ;;
 	    ;; Note, if we're doing it this way we pass the raw
 	    ;; arguments, not those processed by "loop" above.
 	    [(equal? (cadr args) "--script")
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
-	     ;(inspect (command-line-arguments))
-	     (error '--script "this case wasn't supposed to occur\n")
+
+	     ;; --script implies --exit-error:
+	     (loop '(--exit-error))
 	     (apply orig-scheme-script (cddr args))]
 	    [else 
 	     ;(inspect (list->vector args))

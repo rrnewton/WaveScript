@@ -76,8 +76,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fprintf log "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
 
 (begin (define runpetite (system/exit-code "echo | ../depends/petite"))
-       (fprintf log "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite))
-       )
+       (fprintf log "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
 
 (begin (define testpetite
 	 (system/exit-code 
@@ -115,7 +114,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define loadedso (system/exit-code "grep 'compiled .so' temp.out"))       
        (fprintf log "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
        (delete-file "temp.out")
-
 ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
 ;; FIXME:
 
@@ -123,11 +121,33 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fprintf log "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
+;; Now clean again:
+(ASSERT (system "make clean"))
+
 (begin (newline)
-       (printf "Third: building bytecode in PLT\n")
+       (printf "Third: building Wscript bytecode in PLT\n")
        (printf "============================================================\n")
-       (define pltbc (system/exit-code "make pltbc"))
-       (fprintf log "plt: Building bytecode in PLT:                ~a\n" (code->msg! pltbc)))
+       (define wsparse (system/exit-code "make wsparse"))
+       (fprintf log "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
+       )
+
+(begin (define pltbc (system/exit-code "make pltbc"))
+       (fprintf log "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
+
+(begin (newline)
+       (printf "Fourth: Running tests in PLT\n")
+       (printf "============================================================\n")
+       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss"))
+       (fprintf log "plt: Running tests in PLT:                ~a\n" (code->msg! plttests)))
+
+(begin (newline)
+       (printf "Fifth: Running WaveScript Demos\n")
+       (printf "============================================================\n")
+       (current-directory "../demos/wavescope")
+       (define wsdemos (system/exit-code "./testall_demos.ss"))
+       (current-directory "../../src")
+       (fprintf log "\nchez: Running WaveScript Demos:         ~a\n" (code->msg! wsdemos)))
+
 
 ;; TODO: Run tests from PLT:
 

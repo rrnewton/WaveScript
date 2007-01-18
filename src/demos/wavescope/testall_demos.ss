@@ -11,10 +11,11 @@ exec regiment i --script "$0" ${1+"$@"};
 (print-graph #t)
 
 (define (go i fn)
-  (printf "\nDemo: ~a \n"  fn)
+  (printf "\n\nDemo: ~a \n"  fn)
   (printf "======================================================================\n")
-  (printf "\nFirst element: ~s\n" (stream-car (wsint fn)))
-  (printf "Second element: ~s\n" (stream-car (stream-cdr (wsint fn))))
+  (let ([strm (wsint fn)])
+    (printf "\nFirst element: ~s\n" (stream-car strm))
+    (printf "Second element: ~s\n" (stream-car (stream-cdr strm))))   
   )
 
 (for-eachi go 
@@ -43,4 +44,3 @@ exec regiment i --script "$0" ${1+"$@"};
 
     "demo11_simple_merge.ws"
     ))
-
