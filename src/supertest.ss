@@ -135,8 +135,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TODO: Checkout and run WaveScope engine.
 
-(fprintf log "\nTotal time spent testing: ~a\n" 
-	 (/ (- (current-inexact-milliseconds) start-time) 1000))
+(fprintf log "\nTotal time spent testing: ~a minutes\n" 
+	 (/ (round (* 10 
+		      (/ (- (current-inexact-milliseconds) start-time) 1000. 60.)))
+	    10))
 (close-output-port log)
 
 (mail ;"ws@nms.csail.mit.edu" 
