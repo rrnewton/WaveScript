@@ -138,7 +138,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
        (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss"))
-       (fprintf log "plt: Running tests in PLT:                ~a\n" (code->msg! plttests)))
+       (fprintf log "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
@@ -146,7 +146,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory "../demos/wavescope")
        (define wsdemos (system/exit-code "./testall_demos.ss"))
        (current-directory "../../src")
-       (fprintf log "\nchez: Running WaveScript Demos:         ~a\n" (code->msg! wsdemos)))
+       (fprintf log "\nchez: Running WaveScript Demos:             ~a\n" (code->msg! wsdemos)))
 
 ;; TODO: Run tests from PLT:
 

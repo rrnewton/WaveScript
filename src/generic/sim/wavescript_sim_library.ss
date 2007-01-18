@@ -76,8 +76,10 @@
        (alias let let) ;; We assume type info has been stripped.
 
        (define orig-length #%length)
+       (import (add-prefix scheme s:))
        )
-     (begin (define orig-length length)))
+     (begin (define orig-length length)
+	    (prefix s: mzscheme)))
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
@@ -87,29 +89,29 @@
     (let () 
       (define (matrix:cofactor mat i j)
 	(define (butnth n lst)
-	  (if (<= n 1) (cdr lst) (cons (car lst) (butnth (+ -1 n) (cdr lst)))))
+	  (if (s:<= n 1) (cdr lst) (cons (car lst) (butnth (s:+ -1 n) (cdr lst)))))
 	(define (minor matrix i j)
 	  (map (lambda (x) (butnth j x)) (butnth i matrix)))
-	(* (if (odd? (+ i j)) -1 1) (determinant (minor mat i j))))
+	(s:* (if (odd? (s:+ i j)) -1 1) (determinant (minor mat i j))))
       (define (determinant mat)
 	(let ((n (orig-length mat)))
 	  (if (eqv? 1 n) (caar mat)
-	      (do ((j n (+ -1 j))
-		   (ans 0 (+ ans (* (list-ref (car mat) (+ -1 j))
+	      (do ((j n (s:+ -1 j))
+		   (ans 0 (s:+ ans (s:* (list-ref (car mat) (s:+ -1 j))
 				    (matrix:cofactor mat 1 j)))))
-		  ((<= j 0) ans)))))
+		  ((s:<= j 0) ans)))))
       (define (matrix:inverse mat)
 	(let* ((det (determinant mat))
 	       (rank (orig-length mat)))
 	  (and (not (zero? det))
-	       (do ((i rank (+ -1 i))
+	       (do ((i rank (s:+ -1 i))
 		    (inv '() (cons
-			      (do ((j rank (+ -1 j))
+			      (do ((j rank (s:+ -1 j))
 				   (row '()
-					(cons (/ (matrix:cofactor mat j i) det) row)))
-				  ((<= j 0) row))
+					(cons (s:/ (matrix:cofactor mat j i) det) row)))
+				  ((s:<= j 0) row))
 			      inv)))
-		   ((<= i 0) inv)))))
+		   ((s:<= i 0) inv)))))
       ;; Here's the matrix-invert for wavescript:
       (lambda (mat)
 	(list->vector 
@@ -433,9 +435,9 @@
 	  [(zero? real) imag]
 	  [(zero? imag) real]
 	  [(>= (flabs real) (flabs imag))
-	   (* (abs real) (sqrt (+ 1.0 (/ (* imag imag) (* real real)))))]
+	   (s:* (s:abs real) (s:sqrt (s:+ 1.0 (s:/ (s:* imag imag) (s:* real real)))))]
 	  [else 
-	   (* (abs imag) (sqrt (+ 1.0 (/ (* real real) (* imag imag)))))] )
+	   (s:* (s:abs imag) (s:sqrt (s:+ 1.0 (s:/ (s:* real real) (s:* imag imag)))))] )
 	 ))
 
      ;; [2006.08.23] Lifting ffts over sigsegs: 
