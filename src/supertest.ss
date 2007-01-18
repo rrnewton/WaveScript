@@ -68,48 +68,65 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
-;; This begins the tests:
+;; Here we begin running tests:
 
 (begin (printf "============================================================\n")
        (define cleaned (system/exit-code "make clean"))
-       (fprintf log "Build directory cleaned:                 ~a\n" (code->msg! cleaned)))
+       (fprintf log "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
 
-;; install environment vars...
+(begin (define runpetite (system/exit-code "echo | ../depends/petite"))
+       (fprintf log "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite))
+       )
+
+(begin (define testpetite
+	 (system/exit-code 
+	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss"))
+       (fprintf log "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite))
+       )
+
+(begin (define fullchez (system/exit-code "which chez > /dev/null"))
+       (fprintf log "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez))
+       )
 
 (begin (newline)
        (printf "============================================================\n")
        (define loaded (system/exit-code "./regiment_script.ss"))
-       (fprintf log "chez: System loads from source:          ~a\n" (code->msg! loaded)))
+       (fprintf log "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
+
+(begin (newline)
+       (printf "============================================================\n")
+       (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
+       (fprintf log "chez: WScript has access to the compiler:     ~a\n" (code->msg! compilerworks)))
 
 (begin (newline)
        (printf "First: from source\n")
        (printf "============================================================\n")
        (define frmsrc (system/exit-code "./regiment_script.ss test"))
-       (fprintf log "chez: Unit tests, loaded from source:    ~a\n" (code->msg! frmsrc)))
+       (fprintf log "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc)))
 
 (begin (newline)
        (printf "Second: building Chez shared object\n")
        (printf "============================================================\n")
        (define buildso (system/exit-code "make chez"))
-       (fprintf log "chez: Build .so file:                    ~a\n" (code->msg! buildso))
+       (fprintf log "chez: Build .so file:                         ~a\n" (code->msg! buildso))
 
        (ASSERT (system "./regiment_script.ss 2> temp.out"))
        (define loadedso (system/exit-code "grep 'compiled .so' temp.out"))       
-       (fprintf log "chez: System loads from .so file:        ~a\n" (code->msg! loadedso))
+       (fprintf log "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
        (delete-file "temp.out")
 
 ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
 ;; FIXME:
 
 ;       (define runso (system/exit-code "./regiment_script.ss test"))
-;       (fprintf log "chez: Unit tests, loaded from .so file:  ~a\n" (code->msg! runso))
+;       (fprintf log "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
 (begin (newline)
        (printf "Third: building bytecode in PLT\n")
        (printf "============================================================\n")
        (define pltbc (system/exit-code "make pltbc"))
-       (fprintf log "plt: Building bytecode in PLT:           ~a\n" (code->msg! pltbc)))
+       (fprintf log "plt: Building bytecode in PLT:                ~a\n" (code->msg! pltbc)))
 
 ;; TODO: Run tests from PLT:
 
