@@ -93,7 +93,7 @@
   (if (andmap (lambda (pr) (newline) (newline) (apply (cadr pr) args))
 	      (reverse (reg:all-unit-tests)))
       (begin (printf "\n PASSED ALL TESTS.\n") #t)
-      (if (top-level-bound? REGIMENT-BATCH-MODE)
+      (if (top-level-bound? 'REGIMENT-BATCH-MODE)
 	  (exit 1)
 	  #f)))
 
