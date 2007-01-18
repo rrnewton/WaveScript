@@ -87,7 +87,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define fullchez (system/exit-code "which chez > /dev/null"))
        (fprintf log "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez))
        )
-
+#|
 (begin (newline)
        (printf "============================================================\n")
        (define loaded (system/exit-code "./regiment_script.ss"))
@@ -147,7 +147,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define wsdemos (system/exit-code "./testall_demos.ss"))
        (current-directory "../../src")
        (fprintf log "\nchez: Running WaveScript Demos:         ~a\n" (code->msg! wsdemos)))
-
+|#
 
 ;; TODO: Run tests from PLT:
 
