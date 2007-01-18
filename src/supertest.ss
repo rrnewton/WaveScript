@@ -9,6 +9,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (require (lib "process.ss") (lib "date.ss"))
 
 ; ----------------------------------------
+(define start-time (current-inexact-milliseconds))
 (define failed #f)
 (define (code->msg! m) (if (zero? m) "passed" 
 			  (begin (set! failed #t) "-FAILED-")))
@@ -134,6 +135,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TODO: Checkout and run WaveScope engine.
 
+(fprintf log "\nTotal time spent testing: ~a\n" 
+	 (/ (- (current-inexact-milliseconds) start-time) 1000))
 (close-output-port log)
 
 (mail ;"ws@nms.csail.mit.edu" 
