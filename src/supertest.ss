@@ -106,7 +106,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (close-output-port log)
 
-(mail "rrnewton@gmail.com" 
+(mail "ws@nms.csail.mit.edu" ;"rrnewton@gmail.com" 
       (if failed 
 	  (format "WaveScript rev ~a FAILED nightly regression tests" svn-revision)
 	  (format "WaveScript rev ~a passed nightly regression tests" svn-revision))
@@ -114,7 +114,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;(printf "CLEANED: ~a  FRMSRC:~a\n" clean frmsrc)
 
-(exit 96)
+;(exit 0)
 
 #|
 	@echo Testing different build methods.
