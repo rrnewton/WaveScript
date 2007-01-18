@@ -8,6 +8,49 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (require (lib "process.ss") (lib "date.ss"))
 
+; ----------------------------------------
+(define failed #f)
+(define (code->msg! m) (if (zero? m) "passed" 
+			  (begin (set! failed #t) "-FAILED-")))
+(define (file->string filename)
+    (let ([p (open-input-file filename)])
+      (let loop ([c (read-char p)]
+                 [acc '()])
+        (if (eof-object? c)
+            (begin (close-input-port p)
+                   (list->string (reverse acc)))
+            (loop (read-char p) (cons c acc))))))
+(define (string->file str fn)
+    (let ([p (open-output-file fn 'replace)])
+      (display str p)
+      (close-output-port p)))
+
+(define (mail to subj msg)
+  (string->file msg "temp.msg")
+  (system (format "mail ~a -s '~a' < temp.msg" to subj))
+  (delete-file "temp.msg")
+  (printf "Mail Sent.\n"))
+(define-syntax ASSERT
+  (lambda (x)
+    (syntax-case x ()
+      [(_ expr) 
+       #'(or expr 
+	     (begin (mail "ryan.newton@alum.mit.edu" 
+			  "Failure of supertest.ss"
+			  (format "ASSERT failed: ~s" #'expr))
+		    (exit 1)))])))
+; ----------------------------------------
+;;; Main Script:
+
+;; Catch any errors encountered below and send an email:
+(current-exception-handler
+ (lambda (exn)
+   (define msg
+     (format "ERROR during script execution:\n   ~a\n\nException: ~s\n" 
+	     (exn-message exn) exn))
+   (mail "ryan.newton@alum.mit.edu" "Failure of supertest.ss" msg)
+   (exit 1)))
+
 (define date 
   (let ((d (seconds->date (current-seconds))))
     (format "~a-~a-~a_~a:~a:~a" 
@@ -15,37 +58,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (date-hour d) (date-minute d) (date-second d))))
 (define logfile (format "supertest_~a.log" date))
 (define log (open-output-file logfile))
-
-; ----------------------------------------
-(define failed #f)
-(define (code->msg! m) (if (zero? m) "passed" 
-			  (begin (set! failed #t) "-FAILED-")))
-(define file->string
-  (lambda (filename)
-    (let ([p (open-input-file filename)])
-      (let loop ([c (read-char p)]
-                 [acc '()])
-        (if (eof-object? c)
-            (begin (close-input-port p)
-                   (list->string (reverse acc)))
-            (loop (read-char p) (cons c acc)))))))
-(define string->file
-  (lambda (str fn)
-    (let ([p (open-output-file fn 'replace)])
-      (display str p)
-      (close-output-port p))))
-
-(define (mail to subj msg)
-  (string->file msg "temp.msg")
-  (system (format "mail ~a -s '~a' < temp.msg" to subj))
-  (delete-file "temp.msg")
-  (printf "Mail Sent.\n"))
-(define (ASSERT b) 
-  (unless b 
-    (mail "ryan.newton@alum.mit.edu" 
-	  "Failure of supertest.ss" "Unexpected failed ASSERT in the test system.")
-    (exit 1)))
-; ----------------------------------------
 
 ;(ASSERT (system "source ../install_environment_vars"))
 
@@ -106,28 +118,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (close-output-port log)
 
-(mail "ws@nms.csail.mit.edu" ;"rrnewton@gmail.com" 
+(mail ;"ws@nms.csail.mit.edu" 
+      "rrnewton@gmail.com" 
       (if failed 
 	  (format "WaveScript rev ~a FAILED nightly regression tests" svn-revision)
 	  (format "WaveScript rev ~a passed nightly regression tests" svn-revision))
       (file->string logfile))
 
-;(printf "CLEANED: ~a  FRMSRC:~a\n" clean frmsrc)
-
-;(exit 0)
-
-#|
-	@echo Testing different build methods.
-	@echo
-	@echo ======================================================================
-	$(MAKE) clean 
-	@echo
-	@echo First from source:
-	@echo ======================================================================
-	./regiment_script.ss test
-	echo 'ntohue' | regiment i --exit-error
-	echo HMM $?
-	@echo
-	@echo Second from compiled shared-object:
-	@echo ======================================================================
-|#
