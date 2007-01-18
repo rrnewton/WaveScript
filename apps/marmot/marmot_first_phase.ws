@@ -4,7 +4,7 @@
 // folder.
 
 DEBUG = false
-DEBUGSYNC = DEBUG 
+DEBUGSYNC = DEBUG
 
 //======================================================================
 // "Library" routines:
@@ -15,8 +15,8 @@ M_PI = 3.141592653589793;
 fun syncN (ctrl, strms) {
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
-  _strms = map(f, strms);  
-  slist = _ctrl : _strms;  
+  _strms = map(f, strms);
+  slist = _ctrl : _strms;
 
   if DEBUGSYNC 
     then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
@@ -320,15 +320,14 @@ wscores = iterate (w in freq) { emit (marmotscore(w), w); }
 
 detections = detect(wscores);
 
-
 positives = sfilter(fun((b,_,_)) b, detections)
 		   
-
-//synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 //synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
-BASE <- positives;
+
+//BASE <- positives;
 //BASE <- detections;
-//BASE <- synced;
+BASE <- synced;

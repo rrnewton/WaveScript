@@ -33,7 +33,6 @@ fi
 # If we can we use the stored heap, otherwise we run it as a script.
 if [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
 then #echo Running regiment from saved heap...;
-    $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
-else $REGIMENTD/src/regiment_script.ss $*;
+    exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
+else exec $REGIMENTD/src/regiment_script.ss $*;
 fi
-

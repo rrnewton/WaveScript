@@ -165,6 +165,7 @@
 ;; Because I run from command line, it helps to enter the inspector after an error.
 (unless (top-level-bound? 'default-error-handler)
   (define-top-level-value 'default-error-handler (error-handler)))
+
 (error-handler
  (lambda (who msg . args)
    (call/cc (lambda (k) 	     
@@ -176,12 +177,14 @@
 			 (if who (format " in ~s" who) "")
 			 (parameterize ([print-level 3] [print-length 6])
 			   (apply format msg args)))
+
+		(when (top-level-bound? 'REGIMENT-BATCH-MODE)
+		  (exit 1)) ;; Should only do this if we're running as a script.
+
 		(fprintf (console-output-port)
-			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")
+			 "Entering debugger to inspect current continuation, type 'q' to exit.\n")		
 		;; Set the current directory so that the inspector can find line numbers:
 		(inspect k))))
-   (when (top-level-bound? 'REGIMENT-SCRIPT-MODE)
-     (exit -1)) ;; Should only do this if we're running as a script.
    ))
 
 (IF_GRAPHICS (fprintf stderr "(Linking GUI code using SWL.)\n")

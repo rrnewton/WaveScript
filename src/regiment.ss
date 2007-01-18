@@ -74,6 +74,7 @@
   (printf "~n")
   (printf "Interactive Options: ~n")
   (printf "  --script  <file>    run a scheme file as a script~n")
+  (printf "  --exit-error        exit process w/ nonzero error code on a scheme error~n")
   (printf "~n")
   (printf "Log-manipulation Options: ~n")
   (printf "  -print    <file>    print any log-file in human readable format~n")
@@ -104,7 +105,7 @@
        [,p (pretty-print p)])
      ;(printf "\n;; Regiment program return type: ~a\n" t)
      (printf "  : ~a\n" t)
-     (exit)]
+     (exit 0)]
     [,other (error 'print-types-and-exit "bad output from verify-regiment: ~s" other)])))
 
 (define main 
@@ -146,6 +147,10 @@
 		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
 
 ;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
+		    [(--exit-error ,rest ...)
+		     (printf "SETTING BATCH MODE\n")
+		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+		     (loop rest)]
 
 		    [(-l4 ,rest ...) 
 		     (set! makesimcode #t)
@@ -173,20 +178,22 @@
 		    [,_ (error "Bad command line arguments to regimentc: ~a~n" args)]
 		    ))])
 
-      ;; I keep disjoint options for the modes so I use the same option-processor (loop)
+        ;; I keep disjoint options for the modes so I use the same option-processor for all modes (loop)
 	(let ([symargs (map string->symbol args)])
 	  (unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
 	  (let ([mode (car symargs)] [filenames (loop (cdr symargs))])
+	;; AFTER, those options are processed we switch on the mode flag.
 	(case mode
 	  ;; Unit Test mode:
 	  [(t test)
+	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (test-units)
 	   ;(test-everything)
 	   ]
 
 	  ;; Compile mode:
 	  [(c compile)
-	   (define-top-level-value 'REGIMENT-SCRIPT-MODE 'script)
+	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (if (null? filenames)
 	       (begin
 		 (printf "No input file.  Type top-level Regiment expression.~n")
@@ -257,7 +264,7 @@
 	   (optimize-level 0)
 
 	   (cond
-	    [(null? filenames) (new-cafe)]
+	    [(null? filenames) (call-with-values new-cafe (lambda ls (apply exit ls)))]
 	    ;; --script must be the first argument after "regiment i"
 	    ;;
 	    ;; This won't occur, chez grabs the --script parameter
@@ -269,6 +276,7 @@
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
 	     ;(inspect (command-line-arguments))
+	     (error '--script "this case wasn't supposed to occur\n")
 	     (apply orig-scheme-script (cddr args))]
 	    [else 
 	     ;(inspect (list->vector args))
@@ -386,7 +394,7 @@
 	   )]
 	  
 	  [(wscomp)
-	   (define-top-level-value 'REGIMENT-SCRIPT-MODE 'script)
+	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (let ()
 	     (define port (match filenames
 			  ;; If there's no file given read from stdout

@@ -11,23 +11,8 @@ fi
 |#
 
 ;;;; This script is just an executable wrapper script to regiment.ss
-;;;; (which also switches to the correct directory).
-
-; /usr/bin/scheme --script
-
-; (load (string-append (getenv "HOME") "/scheme/chez/full_chez.ss"))  
-; (load "main_chez.ss")
 
 ;; First argument is the directory
 ;(parameterize ([current-directory "~/cur"])
 (parameterize ([current-directory (car (command-line-arguments))])
   (load (string-append (getenv "REGIMENTD") "/src/regiment.ss")))
-  
-; (suppress-greeting #t)
-; (scheme-start main)
-; (when (top-level-bound? 'command-line-arguments)
-;       (apply main (command-line-arguments))
-;       (disp "SCRIPT FINISHED" (scheme-script) (command-line-arguments)))
-
-
-; (subset-mode 'system) \#scheme-version
