@@ -15,7 +15,7 @@
 			       "regiment_script.threaded.ss"
 			       "reg_grammar.ss"
 			       "scrap.ss"
-			       "wsparse.ss"
+			       "supertest.ss"
 			       "tests.ss"
 			       ))
   (define compile-subcollections  '(				    

@@ -47,6 +47,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (exit 1)))
 ; ----------------------------------------
 
+(ASSERT (system "source ../install_environment_vars"))
+
 (define svn-revision
   (begin 
     (ASSERT (eqv? 0 (system/exit-code "which svn > /dev/null")))
@@ -54,8 +56,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (read (open-input-file "svn_rev.txt"))))
 
 ;; This begins the tests:
-
-(printf "SVN REV: ~a\n" svn-revision)
 
 (begin (printf "============================================================\n")
        (define cleaned (system/exit-code "make clean"))
@@ -88,6 +88,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define runso (system/exit-code "./regiment_script.ss test"))
        (fprintf log "chez: Unit tests, loaded from .so file:  ~a\n" (code->msg! runso))
        )
+
+(begin (newline)
+       (printf "Third: building bytecode in PLT\n")
+       (printf "============================================================\n")
+       (define pltbc (system/exit-code "make pltbc"))
+       (fprintf log "chez: Building bytecode in PLT:          ~a\n" (code->msg! pltbc)))
 
 (close-output-port log)
 

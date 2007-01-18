@@ -80,6 +80,8 @@ wsparse:
 # This compiles the source into loadable object files
 chez: chez_native
 chez_native:
+	MT=`echo '(machine-type)' | petite`
+	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | $(CHEZ)
 
 # Saved heap images start up very fast, but don't work right on all platforms.
