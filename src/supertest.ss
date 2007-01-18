@@ -37,7 +37,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        #'(or expr 
 	     (begin (mail "ryan.newton@alum.mit.edu" 
 			  "Failure of supertest.ss"
-			  (format "ASSERT failed: ~s" #'expr))
+			  (format "ASSERT failed: ~s\n\nCurrent Directory: ~s\n" 
+				  #'expr (current-directory)))
 		    (exit 1)))])))
 ; ----------------------------------------
 ;;; Main Script:
