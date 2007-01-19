@@ -11,6 +11,8 @@
 	     (cdr (deep-assq 'tokens (compile-to-tokens '3))))
      ()]
 
+    [3 4]
+
     ["Test a simple application"
      (compile-to-tokens '(letrec ([f (lambda (x) x)]) (app f 3)))
      unspecified]

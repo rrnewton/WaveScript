@@ -61,7 +61,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (date-hour d) (date-minute d) (date-second d))))
 (define logfile (format "supertest_~a.log" date))
 (define log (open-output-file logfile))
-(define scriptoutput (open-output-file "SUPERTEST_FULL_OUTPUT.txt"))
+(define scriptoutput (open-output-file "SUPERTEST_FULL_OUTPUT.log"))
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
@@ -84,7 +84,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (define testpetite
 	 (system/exit-code 
-	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss"))
+	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> 0_PETITE_UNIT_TESTS.log"))
        (fprintf log "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite))
        )
 
@@ -138,6 +138,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define pltbc (system/exit-code "make pltbc &> 5_BUILD_PLT_BYTECODE.log"))
        (fprintf log "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
+;; THIS DOESN'T WORK YET: Doesn't return the proper error code.
+#;
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
