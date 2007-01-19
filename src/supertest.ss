@@ -31,7 +31,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (string->file msg tmpfile)
   (system (format "mail ~a -s '~a' < ~a" to subj tmpfile))
   (delete-file tmpfile)
-  (printf "Mail Sent.\n"))
+  (printf "Mail Sent, subj: ~a\n" subj))
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
@@ -60,8 +60,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (date-year d) (date-month d) (date-day d)
 	    (date-hour d) (date-minute d) (date-second d))))
 (define logfile (format "supertest_~a.log" date))
-(define log (open-output-file logfile))
-(define scriptoutput (open-output-file "SUPERTEST_FULL_OUTPUT.log"))
+(define log (open-output-file logfile 'replace))
+(define scriptoutput (open-output-file "SUPERTEST_FULL_OUTPUT.log" 'replace))
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
@@ -77,46 +77,54 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (printf "============================================================\n")
        (define cleaned (system/exit-code "make clean"))
-       (fprintf log "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
+       (fprintf log "Build directory cleaned:                      ~a\n" (code->msg! cleaned))
+       (flush-output log))
 
 (begin (define runpetite (system/exit-code "echo | ../depends/petite"))
-       (fprintf log "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
+       (fprintf log "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite))
+       (flush-output log))
 
 (begin (define testpetite
 	 (system/exit-code 
 	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> 0_PETITE_UNIT_TESTS.log"))
        (fprintf log "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite))
-       )
+       (flush-output log))
 
 (begin (define fullchez (system/exit-code "which chez > /dev/null"))
        (fprintf log "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez))
+       (flush-output log)
        )
 
 (begin (newline)
        (printf "============================================================\n")
        (define loaded (system/exit-code "./regiment_script.ss &> 1_SCRIPT_LOAD.log"))
-       (fprintf log "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
+       (fprintf log "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded))
+       (flush-output log))
 
 (begin (newline)
        (printf "============================================================\n")
        (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
-       (fprintf log "chez: WScript has access to the compiler:     ~a\n" (code->msg! compilerworks)))
+       (fprintf log "chez: WScript has access to the compiler:     ~a\n" (code->msg! compilerworks))
+       (flush-output log))
 
 (begin (newline)
        (printf "First: from source\n")
        (printf "============================================================\n")
        (define frmsrc (system/exit-code "./regiment_script.ss test &> 2_UNIT_TESTS.log"))
-       (fprintf log "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc)))
+       (fprintf log "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc))
+       (flush-output log))
 
 (begin (newline)
        (printf "Second: building Chez shared object\n")
        (printf "============================================================\n")
        (define buildso (system/exit-code "make chez &> 3_BUILD_SO.log"))
        (fprintf log "chez: Build .so file:                         ~a\n" (code->msg! buildso))
+       (flush-output log)
 
        (ASSERT (system "./regiment_script.ss 2> temp.out"))
        (define loadedso (system/exit-code "grep 'compiled .so' temp.out"))       
        (fprintf log "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
+       (flush-output log)
        (delete-file "temp.out")
 ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
 ;; FIXME:
@@ -133,10 +141,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (define wsparse (system/exit-code "make wsparse &> 4_BUILD_WSPARSE.log"))
        (fprintf log "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
+       (flush-output log)
        )
 
 (begin (define pltbc (system/exit-code "make pltbc &> 5_BUILD_PLT_BYTECODE.log"))
-       (fprintf log "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
+       (fprintf log "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc))
+       (flush-output log))
 
 ;; THIS DOESN'T WORK YET: Doesn't return the proper error code.
 #;
@@ -144,7 +154,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
        (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss &> 6_PLT_UNIT_TESTS.log"))
-       (fprintf log "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
+       (fprintf log "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests))
+       (flush-output log))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
@@ -152,7 +163,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory "../demos/wavescope")
        (define wsdemos (system/exit-code "./testall_demos.ss &> 7_WS_DEMOS.log"))
        (current-directory "../../src")
-       (fprintf log "\nchez: Running WaveScript Demos:             ~a\n" (code->msg! wsdemos)))
+       (fprintf log "\nchez: Running WaveScript Demos:             ~a\n" (code->msg! wsdemos))
+       (flush-output log))
 
 ;; TODO: Run tests from PLT:
 
@@ -166,8 +178,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    10))
 (close-output-port log)
 
-(mail ;"ws@nms.csail.mit.edu" 
-      "rrnewton@gmail.com" 
+(mail "ws@nms.csail.mit.edu" 
+      ;"rrnewton@gmail.com" 
       (if failed 
 	  (format "WaveScript rev ~a FAILED nightly regression tests" svn-revision)
 	  (format "WaveScript rev ~a passed nightly regression tests" svn-revision))
