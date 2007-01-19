@@ -79,7 +79,7 @@
        (import (add-prefix scheme s:))
        )
      (begin (define orig-length length)
-	    (prefix s: mzscheme)))
+	    (require (prefix s: mzscheme))))
 
   ;; [2006.09.22] Ripped from slib:
   ;;@1 must be a square matrix.
