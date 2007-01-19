@@ -25,14 +25,16 @@ function go () {
 # ./run_query | head -20 >> $RUN
 
 go "demo0_audio.ws"
-go "demo1_audiofile.ws"
-go "demo2_iterate.ws"
-go "demo2b_iterateState.ws"
-go "demo3a_tuples.ws"
-go "demo3b_inlining.ws"
-#     "demo3_fft.ws"
-go "demo4_rewindow.ws"
-go "demo5_rewindow_inlined.ws"
+
+# go "demo1_audiofile.ws"
+# go "demo2_iterate.ws"
+# go "demo2b_iterateState.ws"
+# go "demo3a_tuples.ws"
+# go "demo3b_inlining.ws"
+# #     "demo3_fft.ws"
+# go "demo4_rewindow.ws"
+# go "demo5_rewindow_inlined.ws"
+
 
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"

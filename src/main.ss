@@ -342,8 +342,8 @@
 	[,other (fallthru other tenv)]))
   [Expr/Types process-expr])
 
-;; [2006.08.27] This version executes the alternate WaveScript compiler.
-;; It takes it from (parsed) source down as far as the WaveScript commpiler 
+;; [2006.08.27] This version executes the WaveScript version of the compiler.
+;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
 (define (run-ws-compiler p)                                   ;; Entrypoint.
   (define optional-stop 
@@ -511,7 +511,7 @@
 
   stream)
 
-
+;; WaveScript Compiler Entrypoint:
 (define (wscomp port . flags)                                 ;; Entrypoint.  
   
   (define outfile "./query.cpp")

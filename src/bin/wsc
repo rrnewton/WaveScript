@@ -25,7 +25,7 @@ if regiment wscomp $TMP ${1+"$@"} ;
 then echo
 else rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.
-    exit -1;
+    exit 1;
 fi
 rm -f $TMP
 

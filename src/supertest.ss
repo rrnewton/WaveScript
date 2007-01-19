@@ -27,9 +27,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
       (close-output-port p)))
 
 (define (mail to subj msg)
-  (string->file msg "temp.msg")
-  (system (format "mail ~a -s '~a' < temp.msg" to subj))
-  (delete-file "temp.msg")
+  (define tmpfile (format "/tmp/temp~a.msg" (current-milliseconds)))
+  (string->file msg tmpfile)
+  (system (format "mail ~a -s '~a' < ~a" to subj tmpfile))
+  (delete-file tmpfile)
   (printf "Mail Sent.\n"))
 (define-syntax ASSERT
   (lambda (x)
