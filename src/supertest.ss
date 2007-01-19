@@ -61,6 +61,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	    (date-hour d) (date-minute d) (date-second d))))
 (define logfile (format "supertest_~a.log" date))
 (define log (open-output-file logfile))
+(define scriptoutput (open-output-file "SUPERTEST_FULL_OUTPUT.txt"))
+(current-output-port scriptoutput)
+(current-error-port scriptoutput)
 
 ;(ASSERT (system "source ../install_environment_vars"))
 
@@ -91,7 +94,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin (newline)
        (printf "============================================================\n")
-       (define loaded (system/exit-code "./regiment_script.ss"))
+       (define loaded (system/exit-code "./regiment_script.ss &> 1_SCRIPT_LOAD.log"))
        (fprintf log "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
 
 (begin (newline)
@@ -102,13 +105,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (printf "First: from source\n")
        (printf "============================================================\n")
-       (define frmsrc (system/exit-code "./regiment_script.ss test"))
+       (define frmsrc (system/exit-code "./regiment_script.ss test &> 2_UNIT_TESTS.log"))
        (fprintf log "chez: Unit tests, loaded from source:         ~a\n" (code->msg! frmsrc)))
 
 (begin (newline)
        (printf "Second: building Chez shared object\n")
        (printf "============================================================\n")
-       (define buildso (system/exit-code "make chez"))
+       (define buildso (system/exit-code "make chez &> 3_BUILD_SO.log"))
        (fprintf log "chez: Build .so file:                         ~a\n" (code->msg! buildso))
 
        (ASSERT (system "./regiment_script.ss 2> temp.out"))
@@ -128,24 +131,24 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (printf "Third: building Wscript bytecode in PLT\n")
        (printf "============================================================\n")
-       (define wsparse (system/exit-code "make wsparse"))
+       (define wsparse (system/exit-code "make wsparse &> 4_BUILD_WSPARSE.log"))
        (fprintf log "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
        )
 
-(begin (define pltbc (system/exit-code "make pltbc"))
+(begin (define pltbc (system/exit-code "make pltbc &> 5_BUILD_PLT_BYTECODE.log"))
        (fprintf log "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss"))
+       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss &> 6_PLT_UNIT_TESTS.log"))
        (fprintf log "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
        (current-directory "../demos/wavescope")
-       (define wsdemos (system/exit-code "./testall_demos.ss"))
+       (define wsdemos (system/exit-code "./testall_demos.ss &> 7_WS_DEMOS.log"))
        (current-directory "../../src")
        (fprintf log "\nchez: Running WaveScript Demos:             ~a\n" (code->msg! wsdemos)))
 
