@@ -31,7 +31,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (string->file msg tmpfile)
   (system (format "mail ~a -s '~a' < ~a" to subj tmpfile))
   (delete-file tmpfile)
-  (printf "Mail Sent, subj: ~a\n" subj))
+  (printf "Mail Sent, to:~a subj: ~a\n" to subj)
+  (printf "Body:\n~a\n" msg)
+  )
 (define-syntax ASSERT
   (lambda (x)
     (syntax-case x ()
