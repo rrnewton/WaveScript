@@ -171,10 +171,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	10))
 (close-output-port log)
 
-(mail "ws@nms.csail.mit.edu" 
-      ;ryan-email
-      (if failed 
-	  (format "WaveScript rev ~a FAILED nightly regression tests" svn-revision)
-	  (format "WaveScript rev ~a passed nightly regression tests" svn-revision))
-      (file->string logfile))
+(define thesubj 
+  (if failed 
+      (format "[Regression] WaveScript rev ~a FAILED nightly tests" svn-revision)
+      (format "[Regression] WaveScript rev ~a passed nightly tests" svn-revision)))
+(define themsg  (file->string logfile))
 
+(mail ryan-email thesubj themsg)
+(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
