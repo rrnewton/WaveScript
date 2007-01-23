@@ -148,7 +148,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        )
 
 (begin (define c-build (system/exit-code "make c &> 4_BUILD_C_EXTENSIONS.log"))
-       (fpf "chez: Build C extensions:                         ~a\n" (code->msg! c-build)))
+       (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
 ;; Now clean again:
 (ASSERT (system "make clean"))
@@ -175,12 +175,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory (format "~a/demos/wavescope" test-directory))
        (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
        (current-directory test-directory)
-       (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
+       (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
-(define engine-dir "~/WS_test_engine")
+(define engine-dir (format "~a/WS_test_engine" (getenv "HOME")))
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
 (ASSERT (system 
 	 (format 
@@ -224,7 +224,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 ;; Now test WSC:
 
-#;
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (fpf "\n")
@@ -273,8 +272,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (when (directory-exists? "/var/www/regression")  
   (fprintf orig-console "Copying log to website.\n")
   (let* ([d (seconds->date (current-seconds))]
-	 [webfile (format "/var/www/regression/~a-~a-~a_~a"
+	 [webfile (format "/var/www/regression/~a-~a-~a:~a:~a_~a"
 			  (date-year d) (date-month d) (date-day d)
+			  (date-hour d) (date-minute d)
 			  (if failed "FAILED" "passed"))])
     (if (file-exists? webfile) (delete-file webfile))
     (copy-file logfile webfile)
