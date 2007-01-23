@@ -15,7 +15,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define start-time (current-inexact-milliseconds))
 (define failed #f)
 (define (code->msg! m) (if (zero? m) "passed" 
-			  (begin (set! failed #t) "-FAILED-")))
+			  (begin (set! failed #t) 
+				 (format "-FAILED- (code ~a)" m))))
 (define (file->string filename)
     (let ([p (open-input-file filename)])
       (let loop ([c (read-char p)]
