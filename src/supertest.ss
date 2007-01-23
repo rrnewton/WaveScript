@@ -83,6 +83,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Here we begin running tests:
 
+(fpf "WaveScript:\n")
+(fpf "========================================\n")
+
 (begin (printf "============================================================\n")
        (define cleaned (system/exit-code "make clean"))
        (fpf "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
@@ -156,12 +159,15 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
        (current-directory "~/WS_test_copy/demos/wavescope")
-       (define wsdemos (system/exit-code "./testall_demos.ss &> 7_WS_DEMOS.log"))
+       (define wsdemos (system/exit-code "./testall_demos.ss &> ~/WS_test_copy/src/7_WS_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
-       (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
+       (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
+
+(fpf "\nWaveScope Engine:\n")
+(fpf "========================================\n")
 
 (define engine-dir "~/WS_test_engine")
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
@@ -176,6 +182,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
+(ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
+
 (begin (define engine-cleaned (system/exit-code "make clean"))
        (fpf "Engine directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
 
@@ -189,6 +197,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory "~/WS_test_copy/src/") (ASSERT (system "make chez"))
+       (fpf "\n")
        (current-directory "~/WS_test_copy/demos/wavescope")
        (define wsc-demos (system/exit-code "./testall_wsc &> ~/WS_test_copy/src/9_WSC_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
