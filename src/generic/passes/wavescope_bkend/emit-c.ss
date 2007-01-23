@@ -124,8 +124,8 @@
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (values 
 	  `("WSBox* ",name";\n"
-	    "{ size = ",size";\n"
-	    "  name =  new Rewindow<float>(size, size - ",overlap ");\n" 
+	    "{ int size = ",size";\n"
+	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
 	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
@@ -313,7 +313,7 @@
 	(match k
 	  [,s (guard (symbol? s) (memq s '(Int Float))) #f]
 	  [String "boost::hash<string>"]
-	  [(Struct ,name)	`("hash",name)]       
+	  [(Struct ,name)	`("hash",(symbol->string name))]
 	  [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
 	  ))
       `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >")
@@ -703,7 +703,8 @@
 			"printf(\"WSOUT: \");\n"
 			,(EmitPrint "(*element)" typ) ";\n"
 			"printf(\"\\n\");\n"
-			"delete element;\n"  
+; [2007.01.22] Don't need to do this, it happens automatically:
+;			"delete element;\n"  
 			"return false;\n"
 			))))
 	 ";\n\n"))]))

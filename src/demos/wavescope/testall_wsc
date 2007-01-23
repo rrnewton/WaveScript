@@ -7,11 +7,12 @@ echo > $COMP
 echo > $RUN
 
 function go () {
-    wsc $1
+    if ! wsc $1 ; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
 #    ./run_query | head -20 >> $RUN
-    ./run_query >> $RUN
+    if ! ./run_query >> $RUN;
+    then exit 1; fi
 }
 
 # wsc demo0_audio.ws 
@@ -25,16 +26,20 @@ function go () {
 # ./run_query | head -20 >> $RUN
 
 go "demo0_audio.ws"
+go "demo1_audiofile.ws"
+go "demo2a_iterate.ws"
+go "demo2b_iterateState.ws"
+go "demo3a_tuples.ws"
+go "demo3b_inlining.ws"
+go "demo3c_lists.ws"
+go "demo3d_tuples_of_tuples.ws"
 
-# go "demo1_audiofile.ws"
-# go "demo2_iterate.ws"
-# go "demo2b_iterateState.ws"
-# go "demo3a_tuples.ws"
-# go "demo3b_inlining.ws"
-# #     "demo3_fft.ws"
-# go "demo4_rewindow.ws"
-# go "demo5_rewindow_inlined.ws"
+# go "demo3e_hashtables.ws"
+#go "demo4_fft.ws"
 
+#go "demo5a_rewindow.ws"
+go "demo5b_rewindow_inlined.ws"
+#go "demo5c_better.ws"
 
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"

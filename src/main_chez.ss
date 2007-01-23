@@ -178,7 +178,8 @@
 			 (parameterize ([print-level 3] [print-length 6])
 			   (apply format msg args)))
 
-		(when (top-level-bound? 'REGIMENT-BATCH-MODE)
+		(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
+			   (top-level-value 'REGIMENT-BATCH-MODE))
 		  (exit 1)) ;; Should only do this if we're running as a script.
 
 		(fprintf (console-output-port)

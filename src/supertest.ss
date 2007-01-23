@@ -9,6 +9,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (require (lib "process.ss") (lib "date.ss"))
 
 ; ----------------------------------------
+
 (define ryan-email "rrnewton@gmail.com")
 ;(define ryan-email "ryan.newton@alum.mit.edu")
 (define start-time (current-inexact-milliseconds))
@@ -157,13 +158,42 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory "~/WS_test_copy/demos/wavescope")
        (define wsdemos (system/exit-code "./testall_demos.ss &> 7_WS_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
-       (fpf "\nchez: Running WaveScript Demos:             ~a\n" (code->msg! wsdemos)))
+       (fpf "\nws: Running WaveScript Demos:               ~a\n" (code->msg! wsdemos)))
 
-;; TODO: Run tests from PLT:
+;;================================================================================
+;; WAVESCOPE ENGINE:
 
-;; TODO: Run testall_demos 
+(define engine-dir "~/WS_test_engine")
+(ASSERT (system (format "rm -rf ~a" engine-dir)))
+(ASSERT (system 
+	 (format 
+	  "svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
+	  engine-dir)))
+(ASSERT (system (format "export WAVESCOPED=~a" engine-dir)))
+(current-directory engine-dir)
+(define engine-svn-revision
+  (begin 
+    (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
+    (read (open-input-file "svn_rev.txt"))))
 
-;; TODO: Checkout and run WaveScope engine.
+(begin (define engine-cleaned (system/exit-code "make clean"))
+       (fpf "Engine directory cleaned:                      ~a\n" (code->msg! engine-cleaned)))
+
+(begin (define engine-make (system/exit-code "make all $> 8_ENGINE_MAKE_ALL.log"))
+       (fpf "Engine 'make all':                             ~a\n" (code->msg! engine-make)))
+
+
+;;================================================================================
+;; Now test WSC:
+
+(begin ;; This runs faster if we load Regiment pre-compiled:
+       ;(current-directory "~/WS_test_copy/src/") (ASSERT (system "make chez"))
+       (current-directory "~/WS_test_copy/demos/wavescope")
+       (define wsc-demos (system/exit-code "./testall_wsc &> 9_WSC_DEMOS.log"))
+       (current-directory "~/WS_test_copy/src")
+       (fpf "\wsc: Running WaveScript Demos with WSC:      ~a\n" (code->msg! wsc-demos)))
+
+;;================================================================================
 
 (fpf "\nTotal time spent testing: ~a minutes\n" 
      (/ (round (* 10 
@@ -173,8 +203,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (define thesubj 
   (if failed 
-      (format "[Regression] WaveScript rev ~a FAILED nightly tests" svn-revision)
-      (format "[Regression] WaveScript rev ~a passed nightly tests" svn-revision)))
+      (format "[Regression] WaveScript/Scope rev ~a/~a FAILED nightly tests" svn-revision engine-svn-revision)
+      (format "[Regression] WaveScript/Scope rev ~a/~a passed nightly tests" svn-revision engine-svn-revision)))
 (define themsg  (file->string logfile))
 
 (mail ryan-email thesubj themsg)

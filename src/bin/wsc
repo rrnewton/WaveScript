@@ -7,7 +7,7 @@ then echo Usage: "wsc <file> <options ...>";
 #     echo   (Options: -b  Build cpp file.)
      echo 
      echo   File \"$1\" does not exist.
-     exit;
+     exit 1;
 fi
 
 if [ ! -d /tmp/`whoami` ]; 
@@ -20,6 +20,13 @@ then echo \"wsparse\" command not found.  Compile it!
      exit 1;
 fi
 
+# Make sure we don't get polluted by any out of date files.
+export WAVESCRIPTQUERYFILE=`pwd`/query.cpp
+rm -f $WAVESCRIPTQUERYFILE
+rm -f $WAVESCOPED/WaveScriptQuery.cpp
+rm -f $WAVESCOPED/WaveScriptQuery-*
+
+# Now do the parsing and compilation.
 wsparse $1 > $TMP
 if regiment wscomp $TMP ${1+"$@"} ;
 then echo
@@ -38,10 +45,9 @@ rm -f $TMP
 
 if [ ! -d "$WAVESCOPED" ]; 
 then echo WAVESCOPED directory, \"$WAVESCOPED\", does not exist.  Can\'t execute query.; 
-     exit -1;
+     exit 1;
 fi
 
-export WAVESCRIPTQUERYFILE=`pwd`/query.cpp
 echo
 echo
 (cd $WAVESCOPED; make WaveScriptQuery)

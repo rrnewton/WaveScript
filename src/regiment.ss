@@ -62,6 +62,7 @@
   (printf "  -l2  compile to just tokens (maximally lowered)        (.tm)~n")
   (printf "  -l4  output generated simulator-alpha code             (.sim.alpha)~n")
   (printf "  -l5  output generated NesC/Tossim code                 (.sim.nesc) ~n")
+  (printf "  --debug       print extra info, inspect errors ~n")
   (printf "~n")
   (printf "Simulator Options: ~n")
   (printf "  -timeout <n>  timeout after n clock ticks\n")
@@ -142,12 +143,6 @@
 		    [(-l1 ,rest ...) (set! opts (cons 'barely-tokens opts))   (loop rest)]
 		    [(-l2 ,rest ...) (set! opts (cons 'full-tokens opts))  (loop rest)]
 
-;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
-		    [(--exit-error ,rest ...)
-		     (printf "SETTING BATCH MODE\n")
-		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
-		     (loop rest)]
-
 		    [(-l4 ,rest ...) 
 		     (set! makesimcode #t)
 		     (set! opts (cons 'to-simcode opts)) (loop rest)]
@@ -158,6 +153,17 @@
 		     (pass-list 
 		      (snoc emit-nesc (snoc flatten-tokmac
 			     (remq flatten-tokmac (remq emit-nesc (pass-list))))))
+		     (loop rest)]
+
+		    [(--exit-error ,rest ...)
+		     (printf "SETTING BATCH MODE\n")
+		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+		     (loop rest)]
+
+;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
+		    [(--debug ,rest ...)		     
+		     (define-top-level-value 'REGIMENT-BATCH-MODE #f)
+		     (regiment-emit-debug #t)
 		     (loop rest)]
 
 		    [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
