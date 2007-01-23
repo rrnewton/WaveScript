@@ -158,7 +158,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory "~/WS_test_copy/demos/wavescope")
        (define wsdemos (system/exit-code "./testall_demos.ss &> 7_WS_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
-       (fpf "\nws: Running WaveScript Demos:               ~a\n" (code->msg! wsdemos)))
+       (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
@@ -177,10 +177,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (read (open-input-file "svn_rev.txt"))))
 
 (begin (define engine-cleaned (system/exit-code "make clean"))
-       (fpf "Engine directory cleaned:                      ~a\n" (code->msg! engine-cleaned)))
+       (fpf "Engine directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
 
-(begin (define engine-make (system/exit-code "make all $> 8_ENGINE_MAKE_ALL.log"))
-       (fpf "Engine 'make all':                             ~a\n" (code->msg! engine-make)))
+(begin (current-directory engine-dir)
+       (define engine-make (system/exit-code "make all $> ~/WS_test_copy/src/8_ENGINE_MAKE_ALL.log"))
+       (fpf "Engine 'make all':                            ~a\n" (code->msg! engine-make)))
 
 
 ;;================================================================================
@@ -189,9 +190,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin ;; This runs faster if we load Regiment pre-compiled:
        ;(current-directory "~/WS_test_copy/src/") (ASSERT (system "make chez"))
        (current-directory "~/WS_test_copy/demos/wavescope")
-       (define wsc-demos (system/exit-code "./testall_wsc &> 9_WSC_DEMOS.log"))
+       (define wsc-demos (system/exit-code "./testall_wsc &> ~/WS_test_copy/src/9_WSC_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
-       (fpf "wsc: Running WaveScript Demos with WSC:      ~a\n" (code->msg! wsc-demos)))
+       (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
 ;;================================================================================
 
@@ -208,4 +209,4 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define themsg  (file->string logfile))
 
 (mail ryan-email thesubj themsg)
-(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
+;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
