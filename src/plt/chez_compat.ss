@@ -174,10 +174,11 @@
 ;; Temporary! < FIXME>:
   (define crit-printf printf) ;; Thread safe, critical section printf.
 
-  ;; This isn't working right now.
+  ;; [2007.01.23] Changing this to catch all exceptions.
   (define (with-error-handlers displayproc escape th)
     (let/ec out
-      (parameterize ([error-display-handler 
+      (parameterize (;[current-exception-handler (initial-exception-handler)]
+		     [error-display-handler 
                       ;(lambda (ob s) (printf "Error ~s in context ~s\n" s ob))
                       displayproc]
                      [error-escape-handler 
@@ -185,7 +186,8 @@
 		      (let ((result (apply escape args)))
 			;; If the escape procedure is not called, we must destroy the continuation:
 			(out result)))])
-        (th))))
+        (th)))
+    )
 
   ;; Chez's system for warnings -- same as error.
   (define (warning sym . args)

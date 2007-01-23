@@ -166,7 +166,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss &> 8_PLT_UNIT_TESTS.log"))
+       (define plttests (system/exit-code 
+			 (format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log"
+				 test-directory)))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
