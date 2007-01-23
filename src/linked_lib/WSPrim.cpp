@@ -7,6 +7,8 @@
 
    public:
    
+
+  // TODO, replace with FFTW:
 //   static SigSeg<complex> fft(SigSeg<float> input) {
 //       /* Currently we just use the unitless timebase: */ 
 //       Timebase _freq = Unitless;
@@ -14,7 +16,8 @@
       
 //       /* alloc buffer for FFT */
 //       Signal<complex> s = Signal<complex>(_freq);
-//       complex *fft_buf = s.getBuffer(casted->length()/2);
+//       //complex *fft_buf = s.getBuffer(casted->length()/2);
+//       complex *fft_buf = s.getBuffer(casted->length());
 //       float *fft_flt = (float *)fft_buf;
 
 //       /* copy input over to output buffer */
@@ -30,6 +33,60 @@
 //       delete casted;
 //       return(output);
 //   }
+
+
+//    //  We should keep a hash table of common plans.
+//    static SigSeg<complex> fft(SigSeg<double> input) {
+     
+//      // Heap allocate a struct.
+//      int len = input.length();
+
+//      double *in_buf = input.getDirect();
+
+//      Timebase _freq = Unitless;
+//      Signal<complex> output = Signal<complex>(_freq);
+//      complex *out_buf = output.getBuffer(len);
+
+//      plan_t p;
+//      p.vec_len = len;
+//      p.vec = out_buf;
+//      p.plan = fftw_plan_dft_1d(N, in_buf, out_buf, FFTW_FORWARD, FFTW_ESTIMATE);
+     
+
+//   clock_t start, end;
+//   plan_t* p = (plan_t*) plan;
+
+//   /*printf("Executing!! len %i  incoming len %i\n", p->vec_len, Svector_length(vec));
+//   for (i=0; i<10; i++)
+//     printf("  Got element %i %lf\n", i, ((double*)p->vec)[i]);
+//   printf("  Got element %i %lf\n", 262000, ((double*)p->vec)[262000]);
+//   printf("  Got element %i %lf\n", 524000, ((double*)p->vec)[524000]);*/
+
+//   // TODO: CHECK THAT LENGTH IS RIGHT!
+//   if (N != p->vec_len) {
+//     printf("Mismatched lengths! %i %i\n", N, p->vec_len);
+//     return(Sfixnum((uptr)p->vec_len));
+//   }
+
+
+//   for(i=0; i<len; i+=2) {
+//     ((double*)p->vec)[i]   = Sflonum_value(Svector_ref(vec, i));
+//     ((double*)p->vec)[i+1] = Sflonum_value(Svector_ref(vec, i+1));
+//   }
+
+//   fftw_execute(p->plan); 
+  
+
+
+
+//   plan_t* p = (plan_t*)ptr;
+//   fftw_destroy_plan(p->plan);
+//   fftw_free(p->vec);
+//   p->vec_len = 0;
+//   p->vec = 0;
+//   p->plan = 0;
+//   printf(".");     
+//    }
 
 
    inline static wsbool_t wsnot(wsbool_t b) {

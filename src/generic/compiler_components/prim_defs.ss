@@ -268,6 +268,7 @@
     ;; interpreted version of the system.
     (doubleFile        (String Int Int)  (Signal (Sigseg Float)))
 
+    ;; We need to expose more variants of FFT than this:
     (fft              ((Sigseg Float))  (Sigseg Complex))
 
     (fftarr           ((Array Complex))  (Array Complex))

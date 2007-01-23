@@ -213,14 +213,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (current-directory engine-dir)
        (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/11_testSignal.log" test-directory)))
        ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
-       (fpf "Engine: testSignal-SMSegList                  ?????\n") (code->msg! testSignal)
+       (code->msg! testSignal)
+       (fpf "Engine: testSignal-SMSegList                  ~a\n"
+	    (if (zero? testSignal) "?maybe passed?" "-FAILED-"))
        )
 
 ;; TODO: This probably doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define testSignal (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/12_PipeMemory.log" 
+       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/12_PipeMemory.log" 
 						    test-directory)))
-       (fpf "Engine: PipeMemory-SMSegList                  ~a\n" (code->msg! testSignal))
+       (code->msg! pipeMemory)
+       (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
+	    (if (zero? pipeMemory) "?maybe passed?" "-FAILED-"))
        )
 
 ;;================================================================================
@@ -265,7 +269,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define themsg  (file->string logfile))
 
 (mail ryan-email thesubj themsg)
-;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
+(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
 
 

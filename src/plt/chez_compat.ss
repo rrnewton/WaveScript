@@ -177,7 +177,7 @@
   ;; [2007.01.23] Changing this to catch all exceptions.
   (define (with-error-handlers displayproc escape th)
     (let/ec out
-      (parameterize (;[current-exception-handler (initial-exception-handler)]
+      (parameterize ([current-exception-handler (initial-exception-handler)]
 		     [error-display-handler 
                       ;(lambda (ob s) (printf "Error ~s in context ~s\n" s ob))
                       displayproc]
