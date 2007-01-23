@@ -139,6 +139,35 @@
 (include "generic/shortcuts.ss")
 (require "generic/util/reg_macros.ss")
 
+
+
+;; [2007.01.23] For now we exit on error:
+(current-exception-handler
+ (lambda (exn)
+   (printf "ERROR:\n   ~a\n\nException: ~s\n" (exn-message exn) exn)
+   (exit 1)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #|
 
 ;; Can't get langs to work.  Just abandon evaluation:

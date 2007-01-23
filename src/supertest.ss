@@ -8,6 +8,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (require (lib "process.ss") (lib "date.ss"))
 
+
 ; ----------------------------------------
 
 (define ryan-email "rrnewton@gmail.com")
@@ -54,6 +55,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ; ----------------------------------------
 ;;; Main Script:
 
+;; This should be run from this directory, but to make sure...
+;(define test-directory (current-directory))
+(define test-root (format "~a/WS_test_copy" (getenv "HOME")))
+(define test-directory (format "~a/src" test-root))
+(current-directory test-directory)
+
+(ASSERT (putenv "REGIMENTD" test-root))
+;(ASSERT (putenv "PATH" (format "~a/bin:~a" test-root (getenv "PATH"))))
+;(ASSERT (putenv "PATH" (format "~a/depends:~a" test-root (getenv "PATH"))))
+
+(ASSERT (system "echo Environment established: REGIMENTD:$REGIMENTD"))
+
 ;; Catch any errors encountered below and send an email:
 (current-exception-handler
  (lambda (exn)
@@ -71,10 +84,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
 (define log (open-output-file logfile 'replace))
 (define scriptoutput (open-output-file "SUPERTEST_SCRIPT_OUTPUT.log" 'replace))
+(define orig-console (current-output-port))
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
-
-;(ASSERT (system "source ../install_environment_vars"))
 
 (define svn-revision
   (begin 
@@ -84,15 +96,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; Here we begin running tests:
 
-(fpf "WaveScript:\n")
+(fpf "WaveScript (rev ~a):\n" svn-revision)
 (fpf "========================================\n")
 
 (begin (printf "============================================================\n")
        (define cleaned (system/exit-code "make clean"))
        (fpf "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
 
-(begin (define runpetite (system/exit-code "echo | ../depends/petite"))
+(begin (define runpetite (system/exit-code (format "echo | ~a/depends/petite" test-root)))
        (fpf "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
+
 
 (begin (define testpetite
 	 (system/exit-code 
@@ -124,10 +137,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define buildso (system/exit-code "make chez &> 3_BUILD_SO.log"))
        (fpf "chez: Build .so file:                         ~a\n" (code->msg! buildso))
 
-       (ASSERT (system "./regiment_script.ss 2> temp.out"))
-       (define loadedso (system/exit-code "grep 'compiled .so' temp.out"))       
+       (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
+       (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
-       (delete-file "temp.out")
 ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
 ;; FIXME:
 
@@ -135,40 +147,38 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
+(begin (define c-build (system/exit-code "make c &> 4_BUILD_C_EXTENSIONS.log"))
+       (fpf "chez: Build C extensions:                         ~a\n" (code->msg! c-build)))
+
 ;; Now clean again:
 (ASSERT (system "make clean"))
 
-(begin (newline)
+(begin (newline) (fpf "\n")
        (printf "Third: building Wscript bytecode in PLT\n")
        (printf "============================================================\n")
-       (define wsparse (system/exit-code "make wsparse &> 4_BUILD_WSPARSE.log"))
+       (define wsparse (system/exit-code "make wsparse &> 6_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
        )
 
-(begin (define pltbc (system/exit-code "make pltbc &> 5_BUILD_PLT_BYTECODE.log"))
+(begin (define pltbc (system/exit-code "make pltbc &> 7_BUILD_PLT_BYTECODE.log"))
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
-;; THIS DOESN'T WORK YET: Doesn't return the proper error code.
-#;
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss &> 6_PLT_UNIT_TESTS.log"))
+       (define plttests (system/exit-code "echo '(test-units)' | mzscheme -f main_plt.ss &> 8_PLT_UNIT_TESTS.log"))
        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")
        (printf "============================================================\n")
-       (current-directory "~/WS_test_copy/demos/wavescope")
-       (define wsdemos (system/exit-code "./testall_demos.ss &> ~/WS_test_copy/src/7_WS_DEMOS.log"))
-       (current-directory "~/WS_test_copy/src")
+       (current-directory (format "~a/demos/wavescope" test-directory))
+       (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
+       (current-directory test-directory)
        (fpf "ws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
-
-(fpf "\nWaveScope Engine:\n")
-(fpf "========================================\n")
 
 (define engine-dir "~/WS_test_engine")
 (ASSERT (system (format "rm -rf ~a" engine-dir)))
@@ -176,33 +186,53 @@ exec mzscheme -qr "$0" ${1+"$@"}
 	 (format 
 	  "svn co svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1 ~a" 
 	  engine-dir)))
-(ASSERT (system (format "export WAVESCOPED=~a" engine-dir)))
+
+(ASSERT (putenv "WAVESCOPED" engine-dir))
+(ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
 (current-directory engine-dir)
+
 (define engine-svn-revision
   (begin 
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
 
-(ASSERT (system "echo WaveScope ENV var set: $WAVESCOPED"))
+(fpf "\nWaveScope Engine (rev ~a):\n" engine-svn-revision)
+(fpf "========================================\n")
 
 (begin (define engine-cleaned (system/exit-code "make clean"))
        (fpf "Engine directory cleaned:                     ~a\n" (code->msg! engine-cleaned)))
 
+
 (begin (current-directory engine-dir)
-       (define engine-make (system/exit-code "make all $> ~/WS_test_copy/src/8_ENGINE_MAKE_ALL.log"))
+       (define engine-make (system/exit-code (format "make all &> ~a/10_ENGINE_MAKE_ALL.log" test-directory)))
        (fpf "Engine 'make all':                            ~a\n" (code->msg! engine-make)))
 
+;; TODO: This doesn't return ERROR code:
+(begin (current-directory engine-dir)
+       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/11_testSignal.log" test-directory)))
+       ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
+       (fpf "Engine: testSignal-SMSegList                  ?????\n") (code->msg! testSignal)
+       )
+
+;; TODO: This probably doesn't return ERROR code:
+(begin (current-directory engine-dir)
+       (define testSignal (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/12_PipeMemory.log" 
+						    test-directory)))
+       (fpf "Engine: PipeMemory-SMSegList                  ~a\n" (code->msg! testSignal))
+       )
 
 ;;================================================================================
 ;; Now test WSC:
 
+#;
 (begin ;; This runs faster if we load Regiment pre-compiled:
-       ;(current-directory "~/WS_test_copy/src/") (ASSERT (system "make chez"))
+       ;(current-directory test-directory) (ASSERT (system "make chez"))
        (fpf "\n")
-       (current-directory "~/WS_test_copy/demos/wavescope")
-       (define wsc-demos (system/exit-code "./testall_wsc &> ~/WS_test_copy/src/9_WSC_DEMOS.log"))
-       (current-directory "~/WS_test_copy/src")
+       (current-directory (format "~a/demos/wavescope" test-directory))
+       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/13_WSC_DEMOS.log" test-directory)))
+       (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
+
 
 ;;================================================================================
 
@@ -210,8 +240,23 @@ exec mzscheme -qr "$0" ${1+"$@"}
      (/ (round (* 10 
 		  (/ (- (current-inexact-milliseconds) start-time) 1000. 60.)))
 	10))
-(close-output-port log)
 
+;(fpf "\n\nWaveScript Rev: ~a\n" svn-revision)
+;(fpf "WaveScope Engine Rev: ~a\n" engine-svn-revision)
+
+(fpf "\nMachine:\n   ")
+(system (format "uname -a &> temp.log"))
+(fpf (file->string "temp.log"))
+
+(fpf "G++ version:\n   ")
+(system (format "g++ --version | head -1 &> temp.log"))
+(fpf (file->string "temp.log"))
+
+(fpf "mzscheme version:\n   ")
+(system (format "mzscheme --version &> temp.log"))
+(fpf (file->string "temp.log"))
+
+(close-output-port log)
 (define thesubj 
   (if failed 
       (format "[Regression] WaveScript/Scope rev ~a/~a FAILED nightly tests" svn-revision engine-svn-revision)
@@ -220,3 +265,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 (mail ryan-email thesubj themsg)
 ;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
+
+
+
+;; As icing on the cake let's post this on the web too:
+;; This should run on faith:
+(when (directory-exists? "/var/www/regression")  
+  (fprintf orig-console "Copying log to website.\n")
+  (let* ([d (seconds->date (current-seconds))]
+	 [webfile (format "/var/www/regression/~a-~a-~a_~a"
+			  (date-year d) (date-month d) (date-day d)
+			  (if failed "FAILED" "passed"))])
+    (if (file-exists? webfile) (delete-file webfile))
+    (copy-file logfile webfile)
+    (ASSERT (system (format "chgrp www-data ~a" webfile)))
+    (ASSERT (system (format "chmod g+r ~a" webfile)))
+    ))
