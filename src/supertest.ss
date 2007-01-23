@@ -191,7 +191,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory "~/WS_test_copy/demos/wavescope")
        (define wsc-demos (system/exit-code "./testall_wsc &> 9_WSC_DEMOS.log"))
        (current-directory "~/WS_test_copy/src")
-       (fpf "\wsc: Running WaveScript Demos with WSC:      ~a\n" (code->msg! wsc-demos)))
+       (fpf "wsc: Running WaveScript Demos with WSC:      ~a\n" (code->msg! wsc-demos)))
 
 ;;================================================================================
 
