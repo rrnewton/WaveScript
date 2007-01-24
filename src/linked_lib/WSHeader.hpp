@@ -20,6 +20,11 @@
 #include <string>
 #include <ext/hash_map>
 
+
+#include <fftw3.h>
+#include <complex>
+//#include <time.h>
+
 using boost::enable_shared_from_this;
 using namespace std;
 using namespace __gnu_cxx;
@@ -31,9 +36,12 @@ using namespace __gnu_cxx;
 #define WSNULLSEG (RawSeg::NullRef)
 
 typedef int wsint_t;
-typedef double wsfloat_t;
+//typedef double wsfloat_t;
+typedef float wsfloat_t; 
 typedef bool wsbool_t;
 typedef string wsstring_t;
+//typedef fftw_complex wscomplex_t;
+typedef _Complex double wscomplex_t;
 
 #define WS_DEFINE_OUTPUT_TYPE(type)                \
   inline void emit(const type &tuple) {         \

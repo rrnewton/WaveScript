@@ -453,16 +453,22 @@
 			 (substring (symbol->string infix_prim) 0 1)])])
 	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
 
-	[(realpart ,[v]) `("(" ,v ".real)")]
-	[(imagpart ,[v]) `("(" ,v ".imag)")]
+	;[(realpart ,[v]) `("(" ,v ".real)")]
+	;[(imagpart ,[v]) `("(" ,v ".imag)")]
+	[(realpart ,[v]) `("__real__ " ,v)]
+	[(imagpart ,[v]) `("__imag__ " ,v)]
 
 	;; TYPE??
 	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
 
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get ,[seg] ,[ind])	 
-	 `("(" ,seg ".getDirect())[" ,ind  "]")]
+	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[seg]) ,[ind])
+	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
+	 `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))")]
+	[(seg-get ,foo ...)
+	 (error 'emit-c "seg-get without type annotation: ~s" 
+		`(seg-get ,@foo))]
 	
 	;; Need to use type environment to find out what alpha is.
 	;; We store the length in the first element.
@@ -552,6 +558,8 @@
       (match t
 	[Int "wsint_t"]
 	[Float "wsfloat_t"]
+	[Complex "wscomplex_t"]
+
 	[,simple (guard (memq simple '(Complex Float)))
 		 (list->string (map char-downcase (string->list (symbol->string simple))))]
 	[String "wsstring_t"] ;; Not boosted.

@@ -57,6 +57,8 @@
 
 (all-except "generic/passes/wavescope_bkend/merge-iterates.ss" these-tests test-this)
 ;(all-except "generic/passes/wavescope_bkend/purify-iterate.ss" these-tests test-this)
+(all-except "generic/passes/wavescope_bkend/nominalize-types.ss" these-tests test-this)
+(all-except "generic/passes/wavescope_bkend/type-annotate-misc.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)

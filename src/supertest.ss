@@ -14,10 +14,19 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define ryan-email "rrnewton@gmail.com")
 ;(define ryan-email "ryan.newton@alum.mit.edu")
 (define start-time (current-inexact-milliseconds))
+(define last-test-timer start-time)
 (define failed #f)
-(define (code->msg! m) (if (zero? m) "passed" 
-			  (begin (set! failed #t) 
-				 (format "-FAILED- (code ~a)" m))))
+
+(define (reset-timer!) (set! last-test-timer (current-inexact-milliseconds)))
+(define (milli->minute t) (/ (round (* 10 (/ t 1000. 60.))) 10))
+(define (code->msg! m) 
+  (let ([val (if (zero? m) 
+		 (format "passed (~a min)" 
+			 (milli->minute (- (current-inexact-milliseconds) last-test-timer)))
+		 (begin (set! failed #t) 
+			(format "-FAILED- (code ~a)" m)))])
+    (reset-timer!)
+    val))
 (define (file->string filename)
     (let ([p (open-input-file filename)])
       (let loop ([c (read-char p)]
@@ -99,7 +108,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (fpf "WaveScript (rev ~a):\n" svn-revision)
 (fpf "========================================\n")
 
-(begin (printf "============================================================\n")
+(begin (reset-timer!)
        (define cleaned (system/exit-code "make clean"))
        (fpf "Build directory cleaned:                      ~a\n" (code->msg! cleaned)))
 
@@ -115,14 +124,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define fullchez (system/exit-code "which chez > /dev/null"))
        (fpf "chez: Full Chez Scheme on the test system:    ~a\n" (code->msg! fullchez)))
 
-(begin (newline)
-       (printf "============================================================\n")
-       (define loaded (system/exit-code "./regiment_script.ss &> 1_SCRIPT_LOAD.log"))
+(begin (define loaded (system/exit-code "./regiment_script.ss &> 1_SCRIPT_LOAD.log"))
        (fpf "chez: WScript loads from source (via script): ~a\n" (code->msg! loaded)))
 
-(begin (newline)
-       (printf "============================================================\n")
-       (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
+(begin (define compilerworks (system/exit-code "echo '(compile 3)' | ./regiment_script.ss i --exit-error"))
        (fpf "chez: WScript has access to the compiler:     ~a\n" (code->msg! compilerworks)))
 
 (begin (newline)
@@ -242,9 +247,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;================================================================================
 
 (fpf "\nTotal time spent testing: ~a minutes\n" 
-     (/ (round (* 10 
-		  (/ (- (current-inexact-milliseconds) start-time) 1000. 60.)))
-	10))
+     (milli->minute (- (current-inexact-milliseconds) start-time)))
 
 ;(fpf "\n\nWaveScript Rev: ~a\n" svn-revision)
 ;(fpf "WaveScope Engine Rev: ~a\n" engine-svn-revision)
@@ -261,6 +264,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system (format "mzscheme --version &> temp.log"))
 (fpf (file->string "temp.log"))
 
+(fpf "full Chez Scheme version:  ")
+(system (format "chez --version &> temp.log"))
+(fpf (file->string "temp.log"))
+
+(fpf "repository's Petite Chez Scheme version:  ")
+(system (format "~a/depends/petite --version &> temp.log" test-root))
+(fpf (file->string "temp.log"))
+
 (close-output-port log)
 (define thesubj 
   (if failed 
@@ -269,7 +280,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (define themsg  (file->string logfile))
 
 (mail ryan-email thesubj themsg)
-(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
+;(if failed (mail "ws@nms.csail.mit.edu" thesubj themsg))
 
 
 

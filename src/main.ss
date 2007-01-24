@@ -292,55 +292,6 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-;; Adds types to various primitives for code generation.
-(define-pass type-annotate-misc
-    (define annotated-prims '(print show cons hashtable))
-    (define (process-expr x tenv fallthru)
-      (match x
-	;; Catch them where they're bound and just use the pre-computed type:
-	[,frm (guard (binding-form? frm))	      
-	 ;; After we're all done we run the fallthru function to complete processing.
-	 (fallthru 
-	  (mvlet ([(vars types rhs* other k) (binding-form-visit-knowncode frm)])	    
-	    (k vars types 
-	      (map (lambda (type rhs) ;rhs may be #f for 'unavailable'
-		    (if (and (pair? rhs) (memq (car rhs) annotated-prims))
-			`(assert-type ,type ,rhs)
-			rhs))
-	       types rhs*)
-	     other)
-	    )
-	  tenv ;(tenv-extend tenv vars types)
-	  )]
-
-	;; This needs an explicit annotation to run with wsint.
-	[(assert-type (Signal ,t) (dataFile ,f ,m ,r))
-	 (match t
-	   [#(,t* ...)  `(assert-type (Signal ,t) (__dataFile ,f ,m ,r ',t*))]
-	   [,t   	`(assert-type (Signal ,t) (__dataFile ,f ,m ,r ',(list t)))])]
-
-	;; Anything already in assert form is covered.
-	[(assert-type ,t ,e) `(assert-type ,t ,(fallthru e tenv))]
-
-;; TODO: Remove these, should be unnecessary:
-;; BUT SINCE WE HAVEN'T RUN REMOVE-COMPLEX-OPERA* WE NEED THESE
-
-	[(print ,e) 
-	 `(print (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]
-	[(show ,e) 
-	 `(show (assert-type ,(recover-type e tenv) ,(process-expr e tenv fallthru)))]	
-	[(cons ,[a] ,[b])
-	 `(assert-type (List ,(recover-type a tenv)) (cons ,a ,b))]
-	[(equal? ,[a] ,[b])
-	 `(equal? (assert-type ,(recover-type a tenv) ,a) ,b)]
-
-	;; For now it's an error for this stuff to occur otherwise.
-	[(,annprim ,e* ...) (guard (memq annprim annotated-prims))
-	 (error 'type-annotate-misc "was supposed to catch this prim at a binding site: ~s"
-		`(,annprim . ,e*))]
-
-	[,other (fallthru other tenv)]))
-  [Expr/Types process-expr])
 
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 

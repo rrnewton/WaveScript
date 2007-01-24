@@ -394,6 +394,7 @@
 (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
+(include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 

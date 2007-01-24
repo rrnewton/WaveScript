@@ -35,58 +35,45 @@
 //   }
 
 
-//    //  We should keep a hash table of common plans.
-//    static SigSeg<complex> fft(SigSeg<double> input) {
-     
-//      // Heap allocate a struct.
-//      int len = input.length();
+   //  We should keep a hash table of common plans.
+   //static int fft(SigSeg<double> input) {
+   static RawSeg fft(RawSeg input) {
 
-//      double *in_buf = input.getDirect();
+// Doesn't work for fftw_complex even though it is supposed to.
+//       wscomplex_t i;
+//       i = i + i;
+//       printf("%f leet\n", real(i));
+//       i = i * 2;
+//       i = i + 1;
 
-//      Timebase _freq = Unitless;
-//      Signal<complex> output = Signal<complex>(_freq);
-//      complex *out_buf = output.getBuffer(len);
+      int len = input.length();
+      //double* in_buf = input.getDirect();
 
-//      plan_t p;
-//      p.vec_len = len;
-//      p.vec = out_buf;
-//      p.plan = fftw_plan_dft_1d(N, in_buf, out_buf, FFTW_FORWARD, FFTW_ESTIMATE);
-     
+      Byte* temp;
+      input.getDirect(0, input.length(), temp);
+      double* in_buf = (double*)temp;
 
-//   clock_t start, end;
-//   plan_t* p = (plan_t*) plan;
+      Timebase _freq = Unitless;
+      //Signal<wscomplex_t> out_sig = Signal<wscomplex_t>(_freq);
+      RawSignal out_sig = RawSignal(_freq);
 
-//   /*printf("Executing!! len %i  incoming len %i\n", p->vec_len, Svector_length(vec));
-//   for (i=0; i<10; i++)
-//     printf("  Got element %i %lf\n", i, ((double*)p->vec)[i]);
-//   printf("  Got element %i %lf\n", 262000, ((double*)p->vec)[262000]);
-//   printf("  Got element %i %lf\n", 524000, ((double*)p->vec)[524000]);*/
+      wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(sizeof(wscomplex_t) * len);
 
-//   // TODO: CHECK THAT LENGTH IS RIGHT!
-//   if (N != p->vec_len) {
-//     printf("Mismatched lengths! %i %i\n", N, p->vec_len);
-//     return(Sfixnum((uptr)p->vec_len));
-//   }
+      // Real to complex:
+      //fftw_plan plan = fftw_plan_dft_1d(len, in_buf, out_buf, FFTW_FORWARD, FFTW_ESTIMATE);
+      fftw_plan plan = fftw_plan_dft_r2c_1d(len, in_buf, 
+					    (fftw_complex*)out_buf, 
+					    FFTW_ESTIMATE);
+      fftw_execute(plan);
+      fftw_destroy_plan(plan);
+      //fftw_free(p->vec);
 
-
-//   for(i=0; i<len; i+=2) {
-//     ((double*)p->vec)[i]   = Sflonum_value(Svector_ref(vec, i));
-//     ((double*)p->vec)[i+1] = Sflonum_value(Svector_ref(vec, i+1));
-//   }
-
-//   fftw_execute(p->plan); 
-  
-
-
-
-//   plan_t* p = (plan_t*)ptr;
-//   fftw_destroy_plan(p->plan);
-//   fftw_free(p->vec);
-//   p->vec_len = 0;
-//   p->vec = 0;
-//   p->plan = 0;
-//   printf(".");     
-//    }
+      /* return the sigseg */
+      return(out_sig.commit(len));
+      
+      //return SigSeg<double>();
+      //return *((SigSeg<wscomplex_t>*)0);
+   }
 
 
    inline static wsbool_t wsnot(wsbool_t b) {
