@@ -5,7 +5,8 @@
 
 
 (module desugar-misc mzscheme
-  (require "../../../plt/common.ss")
+  (require "../../../plt/common.ss"
+	   "eta-primitives.ss")
   (provide desugar-misc desugar-misc-grammar test-desugar-misc)
   (chezimports)
 
@@ -21,7 +22,7 @@
     (myremove '(Prim 'dataFile)
     (myremove '(Prim 'and) 
     (myremove '(Prim 'or) 
-	    initial_regiment_grammar))))
+	      eta-primitives-grammar))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]

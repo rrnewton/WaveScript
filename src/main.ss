@@ -348,6 +348,8 @@
 
   (set! p (optional-stop (verify-elaborated p)))
 
+;  (set! p (optional-stop (type-polymorphic-constants p)))
+
   (set! p (optional-stop (merge-iterates p)))
   (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
 
@@ -612,3 +614,442 @@
 (define test-this (default-unit-tester "Main compiler units + system tests." these-tests))
 (define maintests these-tests)
 (define maintest test-this)
+
+
+
+
+(define bugprog
+  '(letrec ([sync2 (lambda (ctrl s1 s2)
+                  (letrec ([_ctrl (iterate
+                                    (lambda (#(b s e) ___VIRTQUEUE___)
+                                      (begin
+                                        (emit
+                                          ___VIRTQUEUE___
+                                          (tuple b s e nullseg))
+                                        ___VIRTQUEUE___))
+                                    ctrl)])
+                    (letrec ([_s1 (iterate
+                                    (lambda (win ___VIRTQUEUE___)
+                                      (begin
+                                        (emit
+                                          ___VIRTQUEUE___
+                                          (tuple '#f 0 0 win))
+                                        ___VIRTQUEUE___))
+                                    s1)])
+                      (letrec ([_s2 (iterate
+                                      (lambda (win ___VIRTQUEUE___)
+                                        (begin
+                                          (emit
+                                            ___VIRTQUEUE___
+                                            (tuple '#f 0 0 win))
+                                          ___VIRTQUEUE___))
+                                      s2)])
+                        (letrec ([slist (cons
+                                          _ctrl
+                                          (cons _s1 (cons _s2 '())))])
+                          (iterate
+                            (letrec ([acc1 nullseg]
+                                     [acc2 nullseg]
+                                     [requests '()])
+                              (lambda (#(ind tup) ___VIRTQUEUE___)
+                                (begin
+                                  (letrec ([#(flag strt en seg) tup])
+                                    (begin
+                                      (if (equal? ind 0)
+                                          (set! requests
+                                            (app append
+                                                 requests
+                                                 (cons
+                                                   (tuple flag strt en)
+                                                   '())))
+                                          (if (equal? ind 1)
+                                              (set! acc1
+                                                (app joinsegs acc1 seg))
+                                              (set! acc2
+                                                (app joinsegs acc2 seg))))
+                                      (if (not (equal? acc1 nullseg))
+                                          (app print
+                                               (string-append
+                                                 "  Acc1: "
+                                                 (string-append
+                                                   (app show
+                                                        (app start acc1))
+                                                   (string-append
+                                                     ":"
+                                                     (string-append
+                                                       (app show
+                                                            (app end acc1))
+                                                       "\n")))))
+                                          .
+                                          #0=((tuple)))
+                                      (if (not (equal? acc2 nullseg))
+                                          (app print
+                                               (string-append
+                                                 "  Acc2: "
+                                                 (string-append
+                                                   (app show
+                                                        (app start acc2))
+                                                   (string-append
+                                                     ":"
+                                                     (string-append
+                                                       (app show
+                                                            (app end acc2))
+                                                       "\n")))))
+                                          .
+                                          #0#)
+                                      (if (equal? requests '())
+                                          (tuple)
+                                          (letrec ([#(fl st en) (app head
+                                                                     requests)])
+                                            (if (and (not (equal?
+                                                            acc1
+                                                            nullseg))
+                                                     (and (not (equal?
+                                                                 acc2
+                                                                 nullseg))
+                                                          (and (<= (app start
+                                                                        acc1)
+                                                                   st)
+                                                               (and (<= (app start
+                                                                             acc2)
+                                                                        st)
+                                                                    (and (>= (app end
+                                                                                  acc1)
+                                                                             en)
+                                                                         (>= (app end
+                                                                                  acc2)
+                                                                             en))))))
+                                                (begin
+                                                  (app print
+                                                       (string-append
+                                                         "  Spit out segment!! "
+                                                         (string-append
+                                                           (app show st)
+                                                           (string-append
+                                                             ":"
+                                                             (string-append
+                                                               (app show
+                                                                    en)
+                                                               "\n")))))
+                                                  (letrec ([size (+ (- en
+                                                                       st)
+                                                                    1)])
+                                                    (begin
+                                                      (emit
+                                                        ___VIRTQUEUE___
+                                                        (tuple
+                                                          (app subseg
+                                                               acc1
+                                                               st
+                                                               size)
+                                                          (app subseg
+                                                               acc2
+                                                               st
+                                                               size)))
+                                                      (set! acc1
+                                                        (app subseg
+                                                             acc1
+                                                             (+ st size)
+                                                             (- (app width
+                                                                     acc1)
+                                                                size)))
+                                                      (set! acc2
+                                                        (app subseg
+                                                             acc2
+                                                             (+ st size)
+                                                             (- (app width
+                                                                     acc2)
+                                                                size)))
+                                                      (set! requests
+                                                        (app tail
+                                                             requests)))))
+                                                .
+                                                #0#)))))
+                                  ___VIRTQUEUE___)))
+                            (app unionList slist)))))))])
+  (letrec ([ch1 (app audio 0 128 0)])
+    (letrec ([ch2 (app audio 1 128 0)])
+      (letrec ([outwidth 100])
+        (letrec ([ctrl (iterate
+                         (letrec ([pos 0])
+                           (lambda (w ___VIRTQUEUE___)
+                             (begin
+                               (emit
+                                 ___VIRTQUEUE___
+                                 (tuple '#t pos (- (+ pos outwidth) 1)))
+                               (set! pos (+ pos outwidth))
+                               ___VIRTQUEUE___)))
+                         ch1)])
+          (app sync2 ctrl ch1 ch2)))))))
+
+
+(define final
+  '(type-annotate-misc-language
+  '(program
+     (let ([ch1_1 (Signal (Sigseg Float)) (audio '0 '128 '0)])
+       (let ([ch2_2 (Signal (Sigseg Float)) (audio '1 '128 '0)])
+         (let ([ctrl_3 (Signal #(Bool Int Int))
+                 (iterate
+                   (let ([pos_4 Int '0])
+                     (lambda (w_6 VIRTQUEUE_5)
+                       ((Sigseg Float) (VQueue #(Bool Int Int)))
+                       (begin
+                         (emit
+                           VIRTQUEUE_5
+                           (tuple '#t pos_4 (- (+ pos_4 '100) '1)))
+                         (set! pos_4 (+ pos_4 '100))
+                         VIRTQUEUE_5)))
+                   ch1_1)])
+           (let ([ctrl_7 (Signal #(Bool Int Int (Sigseg Float)))
+                   (iterate
+                     (lambda (pattmp_9 VIRTQUEUE_8)
+                       (#(Bool Int Int)
+                         (VQueue #(Bool Int Int (Sigseg Float))))
+                       (let ([b_10 Bool (tupref 0 3 pattmp_9)])
+                         (let ([s_11 Int (tupref 1 3 pattmp_9)])
+                           (let ([e_12 Int (tupref 2 3 pattmp_9)])
+                             (begin
+                               (emit
+                                 VIRTQUEUE_8
+                                 (tuple b_10 s_11 e_12 nullseg))
+                               VIRTQUEUE_8)))))
+                     ctrl_3)])
+             (let ([s1_13 (Signal #(Bool Int Int (Sigseg Float)))
+                     (iterate
+                       (lambda (win_15 VIRTQUEUE_14)
+                         ((Sigseg Float)
+                           (VQueue #(Bool Int Int (Sigseg Float))))
+                         (begin
+                           (emit VIRTQUEUE_14 (tuple '#f '0 '0 win_15))
+                           VIRTQUEUE_14))
+                       ch1_1)])
+               (let ([s2_16 (Signal #(Bool Int Int (Sigseg Float)))
+                       (iterate
+                         (lambda (win_18 VIRTQUEUE_17)
+                           ((Sigseg Float)
+                             (VQueue #(Bool Int Int (Sigseg Float))))
+                           (begin
+                             (emit VIRTQUEUE_17 (tuple '#f '0 '0 win_18))
+                             VIRTQUEUE_17))
+                         ch2_2)])
+                 (let ([tmp_35 (Signal
+                                 #(Int #(Bool Int Int (Sigseg Float))))
+                         (unionN ctrl_7 s1_13 s2_16)])
+                   (iterate
+                     (let ([acc1_21 (Sigseg Float) nullseg])
+                       (let ([acc2_20 (Sigseg Float) nullseg])
+                         (let ([requests_19 (List #(Bool Int Int)) '()])
+                           (lambda (pattmp_23 VIRTQUEUE_22)
+                             (#(Int #(Bool Int Int (Sigseg Float)))
+                               (VQueue #((Sigseg Float) (Sigseg Float))))
+                             (let ([ind_24 Int (tupref 0 2 pattmp_23)])
+                               (let ([tup_25 #(Bool Int Int (Sigseg Float))
+                                       (tupref 1 2 pattmp_23)])
+                                 (begin
+                                   (let ([pattmp_26 #(Bool Int Int
+                                                      (Sigseg Float))
+                                           tup_25])
+                                     (let ([flag_27 Bool
+                                             (tupref 0 4 pattmp_26)])
+                                       (let ([strt_28 Int
+                                               (tupref 1 4 pattmp_26)])
+                                         (let ([en_29 Int
+                                                 (tupref 2 4 pattmp_26)])
+                                           (let ([seg_30 (Sigseg Float)
+                                                   (tupref 3 4 pattmp_26)])
+                                             (begin
+                                               (if (equal?
+                                                     (assert-type
+                                                       Int
+                                                       ind_24)
+                                                     '0)
+                                                   (set! requests_19
+                                                     (append
+                                                       requests_19
+                                                       (assert-type
+                                                         (List
+                                                           #(Bool Int Int))
+                                                         (cons
+                                                           (tuple
+                                                             flag_27
+                                                             strt_28
+                                                             en_29)
+                                                           '()))))
+                                                   (if (equal?
+                                                         (assert-type
+                                                           Int
+                                                           ind_24)
+                                                         '1)
+                                                       (set! acc1_21
+                                                         (joinsegs
+                                                           acc1_21
+                                                           seg_30))
+                                                       (set! acc2_20
+                                                         (joinsegs
+                                                           acc2_20
+                                                           seg_30))))
+                                               (if (not (equal?
+                                                          (assert-type
+                                                            (Sigseg Float)
+                                                            acc1_21)
+                                                          nullseg))
+                                                   (print
+                                                     (assert-type
+                                                       String
+                                                       (string-append
+                                                         '"  Acc1: "
+                                                         (string-append
+                                                           (show
+                                                             (assert-type
+                                                               Int
+                                                               (start
+                                                                 acc1_21)))
+                                                           (string-append
+                                                             '":"
+                                                             (string-append
+                                                               (show
+                                                                 (assert-type
+                                                                   Int
+                                                                   (end acc1_21)))
+                                                               '"\n"))))))
+                                                   (tuple))
+                                               (if (not (equal?
+                                                          (assert-type
+                                                            (Sigseg Float)
+                                                            acc2_20)
+                                                          nullseg))
+                                                   (print
+                                                     (assert-type
+                                                       String
+                                                       (string-append
+                                                         '"  Acc2: "
+                                                         (string-append
+                                                           (show
+                                                             (assert-type
+                                                               Int
+                                                               (start
+                                                                 acc2_20)))
+                                                           (string-append
+                                                             '":"
+                                                             (string-append
+                                                               (show
+                                                                 (assert-type
+                                                                   Int
+                                                                   (end acc2_20)))
+                                                               '"\n"))))))
+                                                   (tuple))
+                                               (if (equal?
+                                                     (assert-type
+                                                       (List
+                                                         #(Bool Int Int))
+                                                       requests_19)
+                                                     '())
+                                                   (tuple)
+                                                   (let ([pattmp_31 #(Bool
+                                                                      Int
+                                                                      Int)
+                                                           (car requests_19)])
+                                                     (let ([st_32 Int
+                                                             (tupref
+                                                               1
+                                                               3
+                                                               pattmp_31)])
+                                                       (let ([en_33 Int
+                                                               (tupref
+                                                                 2
+                                                                 3
+                                                                 pattmp_31)])
+                                                         (if (if (not (equal?
+                                                                        (assert-type
+                                                                          (Sigseg
+                                                                            Float)
+                                                                          acc1_21)
+                                                                        nullseg))
+                                                                 (if (if (not (equal?
+                                                                                (assert-type
+                                                                                  (Sigseg
+                                                                                    Float)
+                                                                                  acc2_20)
+                                                                                nullseg))
+                                                                         (if (if (<= (start
+                                                                                       acc1_21)
+                                                                                     st_32)
+                                                                                 (if (if (<= (start
+                                                                                               acc2_20)
+                                                                                             st_32)
+                                                                                         (if (if (>= (end acc1_21)
+                                                                                                     en_33)
+                                                                                                 (if (>= (end acc2_20)
+                                                                                                         en_33)
+                                                                                                     '#t
+                                                                                                     '#f)
+                                                                                                 '#f)
+                                                                                             '#t
+                                                                                             '#f)
+                                                                                         '#f)
+                                                                                     '#t
+                                                                                     '#f)
+                                                                                 '#f)
+                                                                             '#t
+                                                                             '#f)
+                                                                         '#f)
+                                                                     '#t
+                                                                     '#f)
+                                                                 '#f)
+                                                             (begin
+                                                               (print
+                                                                 (assert-type
+                                                                   String
+                                                                   (string-append
+                                                                     '"  Spit out segment!! "
+                                                                     (string-append
+                                                                       (show
+                                                                         (assert-type
+                                                                           Int
+                                                                           st_32))
+                                                                       (string-append
+                                                                         '":"
+                                                                         (string-append
+                                                                           (show
+                                                                             (assert-type
+                                                                               Int
+                                                                               en_33))
+                                                                           '"\n"))))))
+                                                               (let ([size_34 Int
+                                                                       (+ (- en_33
+                                                                             st_32)
+                                                                          '1)])
+                                                                 (begin
+                                                                   (emit
+                                                                     VIRTQUEUE_22
+                                                                     (tuple
+                                                                       (subseg
+                                                                         acc1_21
+                                                                         st_32
+                                                                         size_34)
+                                                                       (subseg
+                                                                         acc2_20
+                                                                         st_32
+                                                                         size_34)))
+                                                                   (set! acc1_21
+                                                                     (subseg
+                                                                       acc1_21
+                                                                       (+ st_32
+                                                                          size_34)
+                                                                       (- (width
+                                                                            acc1_21)
+                                                                          size_34)))
+                                                                   (set! acc2_20
+                                                                     (subseg
+                                                                       acc2_20
+                                                                       (+ st_32
+                                                                          size_34)
+                                                                       (- (width
+                                                                            acc2_20)
+                                                                          size_34)))
+                                                                   (set! requests_19
+                                                                     (cdr requests_19)))))
+                                                             (tuple))))))))))))
+                                   VIRTQUEUE_22)))))))
+                     tmp_35))))))))
+     (Signal #((Sigseg Float) (Sigseg Float))))))

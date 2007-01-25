@@ -4,6 +4,16 @@
 
 ;;;; This pass replaces the ML-like algebraic types with suitable C-types (structs).
 
+;;;; It COULD simply follow the methodology of coining a new tuple
+;;;; type whenever there is demand for one.  
+;;;;
+;;;; But that seems sloppy.  *Instead* we take the approach where we
+;;;; first collect tuple types from all the places they 
+;;;; *originate*.  (Tuple expressions and certain primitives.)
+;;;;   Because of the closed-world property that we get from
+;;;; whole-program compilation, these should be the only places
+;;;; tuples can come from.
+
 
 ;;;; TODO: Make grammar enforcing no tuprefs.  ESPECIALLY since there is no typechecking after this.
 
@@ -64,9 +74,10 @@
       ;; An association list accumulating new struct types.
       ;; 
       (define struct-table '())
-      
+
+      ;; This goes through and replaces tuples with Struct types.
       ;; Must be an exported type.
-      (define (convert-type ty tupdefs)
+      (trace-define (convert-type ty tupdefs)
 	(match ty
 	  [,s (guard (symbol? s)) s]
 	  ;; Allowing polymorphic types for list... damn null lists.
@@ -87,7 +98,7 @@
 	     [(,types ,flds ,structname) `(Struct ,structname)])]
 	  [,else (error 'nominalize-types:convert-type "unmatched type: ~s" else)]))
 
-      ;; Collect from type all tuples:
+      ;; Collect from type all its contained tuples:
       (define (collect-from-type ty)
 	(match ty
 	  [,s (guard (symbol? s)) '()]
@@ -122,17 +133,24 @@
 	    (append-tydefs2 (car args)
 			    (apply append-tydefs (cdr args)))
 	    ))
-      
+
       (define (make-new-typedef argtypes)
 	(unless (andmap known-size? argtypes)
 	  (error 'nominalize-types
 		 "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
 		 argtypes))
+	(DEBUGASSERT (andmap (lambda (t) (not (polymorphic-type? t))) argtypes))
+	
 	;; Return a new typedef:
 	(list argtypes
 	      (list-head standard-struct-field-names (length argtypes))
 	      (unique-name 'tuptyp)))
       
+      (define (collect-tupdefs-List exprList tenv)
+	(let ([results (map (lambda (x) (collect-tupdefs x tenv)) exprList)])
+	  (values (map result-expr results)
+		  (apply append-tydefs (map result-tydefs results)))))
+
       ;; A first pass to collect tuple type defs & convert tuple/tupref terms.
       ;; Doesn't process the type of every term, but processes all the
       ;; places it needs to observe all used tuple types.
@@ -148,9 +166,7 @@
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)])
 		(match type
 		  [#(,argtypes ...)
-		   (let* ([results (map (lambda (x) (collect-tupdefs x tenv)) arg*) ]
-			  [args (map result-expr results)]
-			  [tydefs (apply append-tydefs (map result-tydefs results))])
+		   (mvlet ([(args tydefs) (collect-tupdefs-List arg* tenv)])
 		     (make-result 
 		      ;; We replace argtypes with an actual name in a second pass:
 		      `(make-struct ,argtypes ,args ...)
@@ -184,23 +200,12 @@
 
 	     ;; TODO: THIS SHOULD JUST USE collect-from-type:
 	     ;; This produces new tuples.
-	     [(unionList ,ls)
-	      (let ([tupletype (recover-type `(unionList ,ls) tenv)]
-		    [newstruct (unique-name 'unionlst_tuptyp)])
-		(match tupletype
-		  [(Signal #(Int ,argtype))
-		   (unless (known-size? argtype)
-		     (error 'nominalize-types
-			    "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
-			    tupletype))
-		   (let ([result (collect-tupdefs ls tenv)])
-		     (make-result 
-		      ;; Annotate the primapp with the struct-type.
-		      `(unionList ,newstruct ,(result-expr result))
-		      (add-new-tydef
-		       `((Int ,argtype) ,(list-head standard-struct-field-names 2) ,newstruct)
-		       (result-tydefs result))
-		      ))]))]
+	     [(unionN ,e* ...)
+	      (let ([type (recover-type `(unionN ,e* ...) tenv)])
+		(mvlet ([(args tydefs) (collect-tupdefs-List e* tenv)])		 
+		  (make-result
+		   `(unionN ,@args)
+		   (append-tydefs (collect-from-type type) tydefs))))]
 
 	     ;; tuprefs are simple:
 	     [(tupref ,i ,len ,[result])

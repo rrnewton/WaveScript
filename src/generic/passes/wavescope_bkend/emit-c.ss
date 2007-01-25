@@ -53,6 +53,35 @@
   ;; TODO FINISHME!!! FIXME!
   #t)
 
+;; This should give you an idea of the mapping between types:
+(define (Type t)
+  (match t
+    [Int     "wsint_t"]
+    [Float   "wsfloat_t"]
+    [Complex "wscomplex_t"]
+
+    [String "wsstring_t"] ;; Not boosted.
+
+    ;; Went back and forth on whether this should be a pointer:
+    [(Sigseg ,[t]) `("RawSeg")]
+    [(Signal ,[t]) `("WSBox*")]
+
+    [(Array ,[t]) `(,t "[]")]
+    [(Struct ,name) (symbol->string name)]
+    
+    ;; HACK HACK FIXME:
+    ;; This is for null lists.
+    [(List ',_) `("cons<int>::ptr")]
+    ;; Boosted cons cells:
+    [(List ,[t]) `("cons< ",t" >::ptr")]
+
+    [(Hashset ',_ ,__) (error 'emitC "hash table with typevar" )]
+    [(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
+					;[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
+    [(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
+    
+    [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
+
 ;======================================================================
 
 ;; This is the only entry point to the file.  A complete query can
@@ -321,6 +350,21 @@
 
     (define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
 
+
+    (define (Const datum)
+      ;; Should also make sure it's 32 bit or whatnot:
+      (cond
+       [(eq? datum #t) "TRUE"]
+       [(eq? datum #f) "FALSE"]       
+       [(eq? datum ()) "NULL_LIST"]
+
+       [(eq? datum 'nullseg) "WSNULLSEG"]
+       [(eq? datum 'nullarr) "WSNULL"]
+
+       [(string? datum) (format "string(~s)" datum)]
+       [(or (integer? datum) (flonum? datum))  (number->string datum)]
+       [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)]))
+
 ; ======================================================================
 ;; Statements.
 
@@ -416,29 +460,17 @@
       (lambda (exp)
 	(match exp
 
-         ;; Special Constants:
-;	[nullseg "WSPrim::nullseg"]
-;	[nullseg "WSNULL"]
-	[nullseg "WSNULLSEG"]
-	[nullarr "WSNULL"]
+	  ;; Special Constants:
+	  [nullseg (Const 'nullseg)]
+	  [nullarr (Const 'nullarr)]
+	  [,c (guard (constant? c)) (Const c)]
+	  [(quote ,datum) (Const datum)]
 
-	[,c (guard (constant? c)) (Expr `(quote ,c))]
-	[(quote ,datum)
-	 ;; Should also make sure it's 32 bit or whatnot:
-	 (cond
-	  [(eq? datum #t) "TRUE"]
-	  [(eq? datum #f) "FALSE"]
+	  [,v (guard (symbol? v)) (Var v)]	
+
+	  [(if ,[test] ,[conseq] ,[altern])
+	   `("(",test " ? " ,conseq " : " ,altern")")]
 	  
-	  [(eq? datum ()) "NULL_LIST"]
-
-	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
-	  [(string? datum) (format "~s" datum)]
-	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
-	[,v (guard (symbol? v)) (Var v)]	
-
-	[(if ,[test] ,[conseq] ,[altern])
-	 `("(",test " ? " ,conseq " : " ,altern")")]
-	
 	; ============================================================
 	;; Here we handle "open coded" primitives:
 
@@ -554,37 +586,6 @@
 	[,unmatched (error 'emitC:Expr "unhandled form ~s" unmatched)])
 	))
 
-    (define (Type t)
-      (match t
-	[Int "wsint_t"]
-	[Float "wsfloat_t"]
-	[Complex "wscomplex_t"]
-
-	[,simple (guard (memq simple '(Complex Float)))
-		 (list->string (map char-downcase (string->list (symbol->string simple))))]
-	[String "wsstring_t"] ;; Not boosted.
-	;[,v (guard (symbol? v)) (symbol->string v)]
-	;; Went back and forth on whether this should be a pointer:
-	[(Sigseg ,[t]) `("RawSeg")]
-;	[(Sigseg ,[t]) `("SigSeg<" ,t ">")]
-	[(Signal ,[t]) `("WSBox*")]
-
-	[(Array ,[t]) `(,t "[]")]
-	[(Struct ,name) (symbol->string name)]
-	
-	;; HACK HACK FIXME:
-	;; This is for null lists.
-	[(List ',_) `("cons<int>::ptr")]
-	;; Boosted cons cells:
-	[(List ,[t]) `("cons< ",t" >::ptr")]
-
-	[(Hashset ',_ ,__) (error 'emitC "hash table with typevar" )]
-	[(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
-	;[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
-	[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-	
-	;[,other (format "~a" other)]
-	[,other (error 'emitC:Type "Not handled yet.. ~s" other)]))
 
 ;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
 ;; This implements our polymorphic show function.

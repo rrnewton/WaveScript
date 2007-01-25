@@ -326,8 +326,8 @@
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
 (include "generic/compiler_components/source_loader.ss") (import source_loader) 
 
-(include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
 (include "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
+(include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)

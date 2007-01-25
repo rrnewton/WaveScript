@@ -35,11 +35,11 @@ go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
 
 # go "demo3e_hashtables.ws"
+
 #go "demo4_fft.ws"
 
-#go "demo5a_rewindow.ws"
+go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
-#go "demo5c_better.ws"
 
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"

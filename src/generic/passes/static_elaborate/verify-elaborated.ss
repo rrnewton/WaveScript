@@ -1,5 +1,9 @@
 
 
+;;;; This is a pass to verify that the elaborated program has the
+;;;; right structure.  Mainly it checks for the absense of certain
+;;;; not-allowed things.  (Like applications of user functions.)
+
 (module verify-elaborated mzscheme
   (require "../../../plt/common.ss"
 	   "../normalize_source/remove-unquoted-constant.ss"
@@ -7,24 +11,17 @@
   (provide verify-elaborated)
   (chezimports )
 
-;;;; This pass just explicitely annotates the types of application expressions.
-#;
-(define annotate-app-types-grammar
-  (let ([newg (remq (car (member '(Expr ('app Expr ...)) remove-unquoted-constant-grammar))
-		    remove-unquoted-constant-grammar)])
-    (ASSERT (< (length newg) (length remove-unquoted-constant-grammar)))
-    (cons '[Expr ('typed-app Type Expr ...)] newg)))
-
-
-
-
 ;; Verifies that there are no polymorphic types left on the programs variable bindings.
 ;; Also verifies that there are no disallowed applications.
 (define-pass verify-elaborated
 ;    [OutputGrammar annotate-app-types-grammar]
 
+    ;; [2007.01.25] Changing this to be stricter: no remaining
+    ;; polymorphism in these types:
+    (define (verify-type t) (not (polymorphic-type? t)))
+#;
     ;; UNFINISHED:
-    #;    (define (verify-type t) #t)
+    ;; This verifies that tuple types are not polymorphic.
     (define (verify-type t)
       (define (id x) x)
       (match t

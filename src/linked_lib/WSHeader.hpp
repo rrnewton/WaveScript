@@ -41,7 +41,8 @@ typedef float wsfloat_t;
 typedef bool wsbool_t;
 typedef string wsstring_t;
 //typedef fftw_complex wscomplex_t;
-typedef _Complex double wscomplex_t;
+//typedef _Complex double wscomplex_t;
+typedef _Complex float wscomplex_t;
 
 #define WS_DEFINE_OUTPUT_TYPE(type)                \
   inline void emit(const type &tuple) {         \
@@ -85,3 +86,4 @@ public:
 
 // We construct a single null object which we cast to what we need.
 cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
+

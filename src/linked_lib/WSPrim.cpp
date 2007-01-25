@@ -5,76 +5,45 @@
 // the WaveScript compiler depends upon.
  class WSPrim {
 
-   public:
-   
-
-  // TODO, replace with FFTW:
-//   static SigSeg<complex> fft(SigSeg<float> input) {
-//       /* Currently we just use the unitless timebase: */ 
-//       Timebase _freq = Unitless;
-//       SigSeg<float>* casted = &input;
-      
-//       /* alloc buffer for FFT */
-//       Signal<complex> s = Signal<complex>(_freq);
-//       //complex *fft_buf = s.getBuffer(casted->length()/2);
-//       complex *fft_buf = s.getBuffer(casted->length());
-//       float *fft_flt = (float *)fft_buf;
-
-//       /* copy input over to output buffer */
-//       float *cbuf = casted->getDirect();
-//       memmove(fft_flt, cbuf, sizeof(float)*casted->length());
-//       casted->release(cbuf);
-      
-//       /* do the fft */
-//       FFT::realft(fft_flt-1, casted->length(), +1);
-
-//       /* return the sigseg */
-//       SigSeg<complex> output = s.commit(casted->length()/2);
-//       delete casted;
-//       return(output);
-//   }
-
+   public:   
 
    //  We should keep a hash table of common plans.
    //static int fft(SigSeg<double> input) {
    static RawSeg fft(RawSeg input) {
 
-// Doesn't work for fftw_complex even though it is supposed to.
-//       wscomplex_t i;
-//       i = i + i;
-//       printf("%f leet\n", real(i));
-//       i = i * 2;
-//       i = i + 1;
-
       int len = input.length();
-      //double* in_buf = input.getDirect();
+      int len_out = (len / 2) + 1;
 
+      RawSignal out_sig = RawSignal(sizeof(wscomplex_t));
+      //wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(sizeof(wscomplex_t) * len_out);
+      wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(len_out);
+
+      // Can't get the padding we need from getDirect!!
       Byte* temp;
       input.getDirect(0, input.length(), temp);
-      double* in_buf = (double*)temp;
-
-      Timebase _freq = Unitless;
-      //Signal<wscomplex_t> out_sig = Signal<wscomplex_t>(_freq);
-      RawSignal out_sig = RawSignal(_freq);
-
-      wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(sizeof(wscomplex_t) * len);
+      float* in_buf = (float*)temp;
 
       // Real to complex:
-      //fftw_plan plan = fftw_plan_dft_1d(len, in_buf, out_buf, FFTW_FORWARD, FFTW_ESTIMATE);
-      fftw_plan plan = fftw_plan_dft_r2c_1d(len, in_buf, 
-					    (fftw_complex*)out_buf, 
-					    FFTW_ESTIMATE);
-      fftw_execute(plan);
-      fftw_destroy_plan(plan);
+      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);
+      
+      for(int i=0; i<len; i++) in_buf[i] = 93.9;
+      for(int i=0; i<len_out; i++) out_buf[i] = out_buf[i];      
+
+      //      fftwf_execute(plan);
+//       fftwf_destroy_plan(plan);
+      
       //fftw_free(p->vec);
 
       /* return the sigseg */
-      return(out_sig.commit(len));
+      printf("About to do a commit.\n");
+      // This causes a bad_weak_ptr exception:
+      RawSeg out = out_sig.commit(len_out);
+      printf("Finished commit.\n");
       
+      return RawSeg();
       //return SigSeg<double>();
       //return *((SigSeg<wscomplex_t>*)0);
    }
-
 
    inline static wsbool_t wsnot(wsbool_t b) {
      return (wsbool_t)!b;
