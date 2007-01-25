@@ -293,6 +293,35 @@
 		 [,other other]) ]))])
 
 
+(define-pass lift-polymorphic-constant
+    [Expr (lambda (x fallthru)
+	    (define (f x) 
+	      (let ([tmp (unique-name 'tmp)]
+		    [t   (unique-name 'alpha)])
+		`(let ([,tmp (quote ,t) ,x]) ,tmp)))
+	    (match x
+	      [nullseg (f x)]
+	      [nullarr (f x)]
+	      ['()     (f x)]
+	      [,other (fallthru other)]))])
+
+(define-pass unlift-polymorphic-constant
+    (define (pconst? x) 
+      (match x
+	[nullseg #t]
+	[nullarr #t]
+	['()     #t]
+	[,else   #f]))
+  [Expr (lambda (x fallthru)
+	  (match x
+	    [(let ([,v1 ,t ,c]) ,v2)
+	       (guard (eq? v1 v2) (pconst? c))
+	       (ASSERT (not (polymorphic-type? t)))
+	       `(assert-type ,t ,c)]
+	    [,c (guard (pconst? c)) 
+		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
+	    [,other (fallthru other)]))])
+
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
@@ -347,6 +376,11 @@
   (print-var-types p)
 
   (set! p (optional-stop (verify-elaborated p)))
+
+  ;; This three-step process is inefficient, but easy:
+  (set! p (optional-stop (lift-polymorphic-constant p)))
+  (set! p (optional-stop (retypecheck p)))
+  (set! p (optional-stop (unlift-polymorphic-constant p)))
 
 ;  (set! p (optional-stop (type-polymorphic-constants p)))
 

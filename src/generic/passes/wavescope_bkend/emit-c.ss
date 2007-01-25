@@ -351,19 +351,26 @@
     (define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
 
 
-    (define (Const datum)
-      ;; Should also make sure it's 32 bit or whatnot:
-      (cond
-       [(eq? datum #t) "TRUE"]
-       [(eq? datum #f) "FALSE"]       
-       [(eq? datum ()) "NULL_LIST"]
-
-       [(eq? datum 'nullseg) "WSNULLSEG"]
-       [(eq? datum 'nullarr) "WSNULL"]
-
-       [(string? datum) (format "string(~s)" datum)]
-       [(or (integer? datum) (flonum? datum))  (number->string datum)]
-       [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)]))
+    (define Const
+      (case-lambda
+	[(datum) 
+	 ;; Should also make sure it's 32 bit or whatnot:
+	 (cond
+	  [(eq? datum #t) "TRUE"]
+	  [(eq? datum #f) "FALSE"]       
+	  [(string? datum) (format "string(~s)" datum)]
+	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
+	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
+	[(datum ty)
+	 (match (vector datum ty)
+	   [#(() (List ,t)) 	   
+	    "NULL_LIST"
+	    ;`("(cons<",(Type t)">::ptr)NULL_LIST")
+	    ;`("(cons<",(Type t)">::null)")
+	    ]
+	   [#(nullseg ,t) "WSNULLSEG"]
+	   [#(nullarr ,t) "WSNULL"]
+	   )]))
 
 ; ======================================================================
 ;; Statements.
@@ -461,9 +468,10 @@
 	(match exp
 
 	  ;; Special Constants:
-	  [nullseg (Const 'nullseg)]
-	  [nullarr (Const 'nullarr)]
-	  [,c (guard (constant? c)) (Const c)]
+	  [(assert-type ,t nullseg) (Const 'nullseg t)]
+	  [(assert-type ,t nullarr) (Const 'nullarr t)]
+	  [(assert-type ,t '())     (Const '() t)]
+	  ;[,c (guard (constant? c)) (Const c)]
 	  [(quote ,datum) (Const datum)]
 
 	  [,v (guard (symbol? v)) (Var v)]	
@@ -565,14 +573,26 @@
 
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[a]) ,[b])
-	 (match t
-	   ;; string class defines comparison operator:
-	   [,s (guard (memq s '(Int Float String)))
-	       `(,a" == ",b)]
-	   ;; We have generated a comparison op for each struct.
-	   ;; UNFINISHED:
+	 (let ([simple `(,a" == ",b)])
+	   (match t
+	     [Int          simple]
+	     [Float        simple]
+	     [String       simple]
+	     ;; This is effectively physical equality:
+	     ;; Requires that they have the same parents.
+	     ;; Won't read the contents of two different Sigsegs...
+	     ;; FIXME: Should consider fixing this.
+	     [(Sigseg ,t)  simple]
+	     
+	     [(List ,t)    simple]
+	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
+	     
+	     ;; We have generated a comparison op for each struct.
+	     ;; UNFINISHED:
 	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
+	   )
+	 
 	 ]
 	
 	; ============================================================

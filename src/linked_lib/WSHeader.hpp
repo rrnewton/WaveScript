@@ -74,6 +74,7 @@ template <class T>
 class cons {
 public: 
   typedef boost::shared_ptr< cons<T> > ptr;
+
   cons(T a, ptr b) {
     car = a;
     cdr = b;
@@ -81,9 +82,28 @@ public:
   T car;
   ptr cdr;
 
+  // Didn't work:
   //  static ptr null;  //    = ptr((cons<T>*)0);
+  //static ptr null = ptr((cons<T>*)0);
+  static ptr null;
+
+  // Recursive for now... should change.
+  //bool lsEqual(const ptr &null, const ptr & x, const ptr &y) {
+  friend bool operator ==(const ptr & x, const ptr &y) {
+    if (x == NULL) {
+      if (y == NULL) 
+	return TRUE;
+      else return FALSE;
+    } else if (y == NULL) 
+      return FALSE;
+    else 
+      if (x->car == y->car)
+	return x->cdr == y->cdr;
+      else return FALSE;
+  }
+
 };
 
 // We construct a single null object which we cast to what we need.
 cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
-
+//#define NULL_LIST NULL
