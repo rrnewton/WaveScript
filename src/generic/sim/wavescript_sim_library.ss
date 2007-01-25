@@ -17,6 +17,7 @@
 		 stockStream
 		 ; read-file-stream
 		 show
+		 window
 
 		 to-uint16 to-int16 uint16->string
 
@@ -635,6 +636,24 @@
 	   (display-constrained (list x 300))))
 
      (define (show x) (format "~s" x))
+
+     (define (window sig winsize)
+       (let loop ([sig sig]
+		  [start 0]
+		  [samp  0]
+		  [i     0]
+		  [vec (make-vector winsize)])
+	 (cond
+	  [(stream-empty? sig) '()]
+	  [(= i winsize)
+	   (stream-cons (make-sigseg start (sub1 samp) vec nulltimebase)
+			(loop sig samp samp 0 (make-vector winsize)))]
+	  [else 
+	   (vector-set! vec i (stream-car sig))
+	   (loop (stream-cdr sig) start
+		 (add1 samp)
+		 (fx+ 1 i)
+		 vec)])))
 
      ;; This is a bit silly.  Since we don't use an actual time-series
      ;; implementation, this just makes sure the overlap is EQUAL.

@@ -18,8 +18,8 @@
 
     ;; [2007.01.25] Changing this to be stricter: no remaining
     ;; polymorphism in these types:
-    (define (verify-type t) (not (polymorphic-type? t)))
-#;
+#;    (define (verify-type t) (not (polymorphic-type? t)))
+
     ;; UNFINISHED:
     ;; This verifies that tuple types are not polymorphic.
     (define (verify-type t)

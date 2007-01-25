@@ -236,6 +236,8 @@
     ;; This doesn't carry a time value, it just "fires" every so often.
     (timer            (Int) (Signal #()))
 
+    (window           ((Signal 'a) Int) (Signal (Sigseg 'a)))
+
     ;; Takes channel, window size, overlap:
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.

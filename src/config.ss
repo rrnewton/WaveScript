@@ -7,8 +7,8 @@
 ;; so that it can be seen from everywhere.
 ;; <br><br>
 ;; Uncomment one line for debug mode, the other to deactivate it.
-(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
-;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
+;(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) debon]))  ;; ON
+(define-syntax IFDEBUG (syntax-rules () [(_ debon deboff) deboff])) ;; OFF
 
 
 

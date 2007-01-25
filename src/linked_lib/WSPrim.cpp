@@ -147,5 +147,38 @@ class WSBuiltins {
      }
    };
 
+  /* This takes Signal(T) to Signal(SigSeg(T)) */
+  class Window : public WSBox{    
+    public:
+    Window(int winsize, size_t bitsize) : WSBox("Window"),      
+					  out_sig(new RawSignal(bitsize)),
+					  ind(0),
+					  window_size(winsize),
+					  elem_size(bitsize)
+    {      
+      current_buf = out_sig->getBuffer(bitsize * winsize);
+    }
+    ~Window() {
+      delete out_sig;
+      delete current_buf;
+    }
 
+    private:
+    DEFINE_OUTPUT_TYPE(RawSeg);
+    
+    int window_size;
+    size_t elem_size;
+    RawSignal* out_sig;
+    void* current_buf;
+    int ind;
+    
+    bool iterate(uint32_t port, void *item)
+    {
+      if (ind == window_size) {
+	
+      }
+      return true;
+    }
+  };
+  
 };

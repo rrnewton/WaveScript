@@ -53,6 +53,21 @@
   ;; TODO FINISHME!!! FIXME!
   #t)
 
+
+;; If the type needs a specialized hashfun, returns its name,
+;; otherwise returns #f.
+(define (HashType k v)
+  (define hashfun
+    (match k
+      [,s (guard (symbol? s) (memq s '(Int Float))) #f]
+      [String "boost::hash<string>"]
+      [(Struct ,name)	`("hash",(symbol->string name))]
+      [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
+      ))
+  `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >"))
+
+(define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
+
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
@@ -195,7 +210,7 @@
 		    ,(insert-between " "
 		      (map (lambda (ty)
 			     (match ty
-			      [Float  "%lf"]
+			      [Float  "%f"] ;; Single precision floats
 			      [Int    "%d"]
 			      [String "%s"]
 			      ))
@@ -334,22 +349,6 @@
     (define (FunName var)
       (format "WSFunLib::~a" var))
       ;(symbol->string var))
-
-    ;; If the type needs a specialized hashfun, returns its name,
-    ;; otherwise returns #f.
-    (define (HashType k v)
-      (define hashfun
-	(match k
-	  [,s (guard (symbol? s) (memq s '(Int Float))) #f]
-	  [String "boost::hash<string>"]
-	  [(Struct ,name)	`("hash",(symbol->string name))]
-	  [,_ (error 'emitC:make-hashfun "don't know how to hash type: ~s" k)]
-	  ))
-      `("hash_map< ",(Type k)", ",(Type v),(if hashfun `(", ",hashfun) '())" >")
-      )
-
-    (define (SharedPtrType t) `("boost::shared_ptr< ",t" >"))
-
 
     (define Const
       (case-lambda
