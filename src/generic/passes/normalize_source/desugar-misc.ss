@@ -26,9 +26,9 @@
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
-    [Expr 
+    [Expr/Types
      (letrec ([processExpr 
-	     (lambda (x fallthrough)
+	     (lambda (x tenv fallthrough)
 	       (match x
 
 	  ;; A bit of sugar.
@@ -37,7 +37,8 @@
 	   (processExpr (match rands
 			   [() ''()]
 			   [(,a . ,[b]) `(cons ,a ,b)])
-			 fallthrough)]
+			tenv
+			fallthrough)]
 
 	  ;; More sugar.
 	  ;; Don't really have a syntax for this in WaveScript:
@@ -45,15 +46,24 @@
 	   (processExpr (match rands
 			   [() ''#f]
 			   [(,a . ,[b]) `(if ,a '#t ,b)])
+			tenv
 			 fallthrough)]
 	  [(and ,[rands] ...)
 	   (processExpr (match rands
 			   [() ''#t]
 			   [(,a . ,[b]) `(if ,a ,b '#f)])
-			 fallthrough)]
+			tenv
+			fallthrough)]
 
-	  
-	  
+	  ;; For now we just expand this into the forloop.
+	  ;; Might want to do something else later.
+	  [(sigseg_foreach ,[f] ,[s])
+	   (let ([i (unique-name 'i)]
+		 [tmp (unique-name 'tmp)])
+	     `(letrec ([,tmp ,(recover-type s tenv) ,s])
+		(for (,i 0 (- (width ,tmp) 1))
+		    (app ,f (seg-get ,tmp ,i))
+		  )))]
 
 	  ;; THIS IS INVALID FOR OUR TYPE SYSTEM:
 	  ;; It might work if the program were already typed, but future retype-checking will break:
@@ -63,7 +73,7 @@
 	  [(let ([,x ,t ,[y]] ...) ,[body])
 	   `(app (lambda ,x ,t ,body) ,y ...)]
 	  
-	  [,other (fallthrough other)]
+	  [,other (fallthrough other tenv)]
 	  ))])
      processExpr)])
 

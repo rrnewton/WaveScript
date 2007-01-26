@@ -323,6 +323,8 @@
     (deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
     (window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
 
+    (sigseg_foreach (('a -> 'b) (Sigseg 'a)) #())
+
     ;; Here's the pure version.
     ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Signal 'in))  (Signal 'out))
     ;; Restricting to have only one output per firing:
