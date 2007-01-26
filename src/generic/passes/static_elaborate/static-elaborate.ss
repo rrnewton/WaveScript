@@ -135,6 +135,7 @@
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
           
+	  [(assert-type ,t ,[e]) e]
           [(begin ,(stmt) ...) (apply + stmt)]
           [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
@@ -156,7 +157,7 @@
            (apply fx+ rands)]           
 	  [(app ,[rator] ,[rands] ...) (+ rator (apply + rands))]
           [,unmatched
-            (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
+            (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
     
     (define get-mutable
@@ -493,7 +494,7 @@
 			    code)
 		     (inline code rands)))
 	       (begin 
-		 (disp "CANT inline: ~s" rator)
+		 (printf "  Can't inline rator: ~s\n" rator)
 		 `(app ,rator ,rands ...)))]
 
           [,unmatched

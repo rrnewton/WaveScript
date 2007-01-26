@@ -262,7 +262,7 @@
      (cond 
       [(file-exists? inclfile) (void)]
       ;; Also search the $REGIMENTD/lib/ directory.
-      [(file-exists? (format "~a/lib/~a" (REGIMENTD) inclfile)) 
+      [(file-exists? (format "~a/lib/~a" (REGIMENTD) inclfile))
        (set! inclfile (format "~a/lib/~a" (REGIMENTD) inclfile))]
       [else (error 'parser "Included file not found: ~s\n" inclfile)])
      (ws-parse-file inclfile)]))

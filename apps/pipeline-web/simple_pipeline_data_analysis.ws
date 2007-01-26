@@ -1,4 +1,6 @@
 
+include "stdlib.ws";
+
 data = (dataFile("data.txt", "text", 0) :: Signal (Int, Float));
 
 wins = window(data, 10);
