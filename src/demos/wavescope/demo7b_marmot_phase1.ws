@@ -153,7 +153,7 @@ fun myhanning (strm) {
     //print("\nHAN: "++ show(_hanning)++"\n");
     //print("\nBUF: "++ show(buf)++"\n");
 
-    emit to_sigseg(buf, win.start, win.end, win.timebase);
+    emit toSigseg(buf, win.start, win.end, win.timebase);
   }
 }
 

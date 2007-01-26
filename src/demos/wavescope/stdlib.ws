@@ -153,7 +153,7 @@ fun myhanning (strm) {
     //print("\nHAN: "++ show(_hanning)++"\n");
     //print("\nBUF: "++ show(buf)++"\n");
 
-    emit to_sigseg(buf, win.start, win.end, win.timebase);
+    emit toSigseg(buf, win.start, win.end, win.timebase);
   }
 }
 
@@ -178,28 +178,36 @@ fun myhanning (strm) {
 /*   } */
 /* } */
 
-/*   deep_stream_map(f,sss); */
+
+// This doesn't create a shared structure:
+fun deep_stream_map(f,sss) {
+  iterate(ss in sss) {    
+    first = f(ss[[0]]);
+    output = makeArray(ss.width, first);
+    for i = 1 to ss.width - 1 {
+      output[i] := f(ss[[i]]);
+    }
+    emit toSigseg(output, ss.start, ss.end, ss.timebase);
+  }
+}
 
 // Assumes in-order but possibly overlapping
-/* fun deep_stream_map(f,sss) { */
-/*   iterate(ss in sss) { */
-/*     state {  */
-/*       pos = 0; */
-/*       lastout = nullseg; */
-/*     } */
-/*     first = f(ss[[0]]); */
-/*     output = makeArray(ss.width, first); */
-/*     if pos > ss.start then */
-/*       for i = 0 to pos - ss.start - 1 { */
-/* 	// Copy old result: */
-/* 	lastout[[]] */
-/*       } */
-	     
-/*     ss.start  */
-    
-/*   } */
-/*   strm = rewindow(sss,100,0); */
-/* } */
+fun deep_stream_map2(f,sss) {
+  iterate(ss in sss) {
+    state { 
+      pos = 0;
+      lastout = nullseg;
+    }
+    first = f(ss[[0]]);
+    output = makeArray(ss.width, first);
+    if pos > ss.start then
+      for i = 0 to pos - ss.start - 1 {
+	// Copy old result:
+	output[i] := lastout[[i + (ss.start - lastout.start)]];
+      }	     
+  };
+  strm = rewindow(sss,100,0);
+}
 
 
 fun stream_map(f,s) {
@@ -226,9 +234,11 @@ fun stream_iterate(f,z,s) {
   }
 }
 
-test1 = stream_map(fun(w) w[[0]], audio(0,1024,0));
-test2 = stream_filter(fun (n) n > 300.0, test1);
-test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0),
-		       0.0, test2);
-BASE <- test3;
+/* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
+/* test2 = stream_filter(fun (n) n > 300.0, test1); */
+/* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */
+/* 		       0.0, test2); */
+
+/* test4 = deep_stream_map(fun(x) x /. 100.0, audio(0,10,0)) */
+/* BASE <- test4; */
 

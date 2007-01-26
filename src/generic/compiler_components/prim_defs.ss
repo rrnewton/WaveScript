@@ -335,11 +335,9 @@
     (show             ('a) String)
     (string-append    (String String) String)
 
-    ;; Creates a windowed (segmented) signal from a raw signal:
-    (to-windowed      ((Signal 'a) Int Int) (Signal (Sigseg 'a)))
-
     (to_array         ((Sigseg 'a))  (Array 'a))
-    (to_sigseg        ((Array 'a) Int Int Timebase)  (Sigseg 'a))
+    ;; TODO: This needs to take Int64's....
+    (toSigseg        ((Array 'a) Int Int Timebase)  (Sigseg 'a))
 
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))

@@ -149,7 +149,7 @@ fun amap_nd(f) {
 
 fun ssmap(f) {
   fun (seg) {
-    to_sigseg((amap(f))(to_array(seg)), seg.start, seg.end, seg.timebase)
+    toSigseg((amap(f))(to_array(seg)), seg.start, seg.end, seg.timebase)
   }
 }
 
@@ -179,7 +179,7 @@ fun ssmap2(f) {
     for i = 0 to seg1.width - 1 {
       a[i] := f(seg1[[i]], seg2[[i]]);
     };
-    to_sigseg(a, seg1.start, seg1.end, seg1.timebase)
+    toSigseg(a, seg1.start, seg1.end, seg1.timebase)
   }
 }
 
@@ -219,7 +219,7 @@ fun sortseg(seg) {
     mset(ival, i, 1, i);
   }
   qsort(ival, (fun (i,j) {mget(ival,i,0) < mget(ival,j,0)}));
-  to_sigseg(ival, seg.start, seg.end, seg.timebase);
+  toSigseg(ival, seg.start, seg.end, seg.timebase);
 }
 
 fun sqrf(x) { x *. x; }

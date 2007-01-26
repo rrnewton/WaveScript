@@ -33,7 +33,7 @@
 		 hashtable hashcontains hashget hashset hashset_BANG ;hashrem hashrem_BANG
 		 listRef listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
-		 to_array to_sigseg to-windowed 
+		 to_array toSigseg 
 
 		 assert-type
 		 
@@ -762,13 +762,13 @@
        (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
      (define (to_array w) (if (eq? w nullseg) #() (sigseg-vec w)))
-     (define (to_sigseg ar st en tb)
+     (define (toSigseg ar st en tb)
        (DEBUGASSERT (or (eq? ar nullarr) (vector? ar)))
        (DEBUGASSERT integer? st)
        (DEBUGASSERT integer? en)
        (DEBUGASSERT valid-timebase? tb)
        (if (not (= (vector-length ar) (+ en (- st) 1)))
-	   (error 'to_sigseg "vector's size did not match start/end tags: ~s:~s ~s" st en ar))
+	   (error 'toSigseg "vector's size did not match start/end tags: ~s:~s ~s" st en ar))
        (DEBUGASSERT valid-sigseg?
 		    (make-sigseg st en ar tb)))
      
@@ -832,17 +832,6 @@
 				     (sigseg-vec w))
 			 (sigseg-timebase w)))))
 
-     (define (to-windowed s len overlap)
-       (let ([win (make-vector len)]
-	     [count 0])
-	 (let towinloop ([s s])
-	   (let ([x (stream-car s)])
-	     (vector-set! win count x)
-	     (set! count (add1 count))
-	     (if (= count len)
-		 (let ([copy (vector-copy win)])
-		   (stream-cons copy (towinloop (stream-cdr s))))
-		 (towinloop (stream-cdr s)))))))
 
      ;; We just call the continuation, the fluid-let worries about popping the stack.
      (define (break)
