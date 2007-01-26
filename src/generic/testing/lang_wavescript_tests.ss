@@ -24,7 +24,7 @@
         
         ["seg-get"
          (,(lambda ()	
-             (ws:seg-get (ws:make-sigseg 10 19 (list->vector (iota 10)) ws:nulltimebase) 12)))
+             (ws:seg-get (ws:make-sigseg 10 19 (list->vector (iota 10)) ws:nulltimebase) 2)))
          2]
         
         ["width/start/end"

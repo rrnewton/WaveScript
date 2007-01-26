@@ -255,16 +255,17 @@
 ;; Expand an include statement into a set of definitions.
 ;; Optionally takes the absolute path of the file in which the
 ;; (include _) statement is located.
-(trace-define expand-include
+(define expand-include
   (case-lambda
     [(fn) (expand-include fn #f)]
     [(inclfile fromfile)
-     (unless (file-exists? inclfile)
-       (error 'parser "Included file not found: ~s\n" inclfile))
-     (ws-parse-file inclfile)
-     #;(match (ws-parse-file inclfile)
-       [(letrec ,binds ,ignored)  `((define . ,binds) ...)]
-       )]))
+     (cond 
+      [(file-exists? inclfile) (void)]
+      ;; Also search the $REGIMENTD/lib/ directory.
+      [(file-exists? (format "~a/lib/~a" (REGIMENTD) inclfile)) 
+       (set! inclfile (format "~a/lib/~a" (REGIMENTD) inclfile))]
+      [else (error 'parser "Included file not found: ~s\n" inclfile)])
+     (ws-parse-file inclfile)]))
 
 (IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.

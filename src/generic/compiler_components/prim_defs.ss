@@ -346,8 +346,6 @@
     ;; Can produce nullseg if len=0.
     (subseg          ((Sigseg 'a) Int Int) (Sigseg 'a))
 
-    (foobar (Int Int) Int)
-
     ;; This is now zero indexed:
     (seg-get      ((Sigseg 'a) Int) 'a)
     (width        ((Sigseg 'a)) Int)
