@@ -4,7 +4,7 @@
 
 s1 = audioFile("./countup.raw", 10, 0);
 
-s2 = iterate (sigseg in s1) { emit sigseg[[sigseg.start]]; }
+s2 = iterate (sigseg in s1) { emit sigseg[[0]]; }
 
 s3 = iterate (y in iterate (x in s2) {  
                       emit x + 1;

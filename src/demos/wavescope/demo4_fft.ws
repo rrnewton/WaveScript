@@ -17,8 +17,8 @@ s3 = iterate (win in s2) {
   x : Int = 3;  // Explicit type annotation on local var.
   y = (4 == 4);
 
-  if win[[win.start + 100]].realpart > 224.0
-  then { emit 0.0; emit win[[win.start + 100]].imagpart; }
+  if win[[100]].realpart > 224.0
+  then { emit 0.0; emit win[[100]].imagpart; }
   else { }
 };
 

@@ -15,10 +15,11 @@ avgs = iterate (w in wins) {
 /*   print("\n"); */
   sum = 0.0; 
   for i = 0 to w.width-1  {
+  //for i = w.start to w.end  {
     let (n,f) = w[[i]];
     sum := sum +. int_to_float(n);
   };  
-  print("SUM: "); print(sum); print("\n");
+  //print("SUM: "); print(sum); print("\n");
   emit sum /. int_to_float(w.width);
 };
 

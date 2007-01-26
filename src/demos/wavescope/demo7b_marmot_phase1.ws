@@ -124,6 +124,7 @@ fun rewindow(sig, newwidth, gap) {
 // the first and last element in the window.  These represent wasted samples.
 // myhanning : Sigseg Float -> Sigseg Float;
 fun myhanning (strm) {
+  
   iterate(win in strm) {
     state{ 
       _lastLen = 0;
@@ -145,7 +146,7 @@ fun myhanning (strm) {
     /* alloc buffer */
     buf = makeArray(_lastLen, 0.0);
     for i = 0 to _lastLen - 1 {
-      buf[i] := _hanning[i] *. win[[win.start + i]];
+      buf[i] := _hanning[i] *. win[[i]];
     }
     
     //print("\nWIN: "++ show(win)++"\n");
@@ -160,18 +161,17 @@ fun myhanning (strm) {
 
 // Takes Sigseg Complex
 fun marmotscore(freqs) { 
-  st = freqs.start;
   result = 
-    cnorm(freqs[[st + 4]] +: 
-	  freqs[[st + 5]] +:
-	  freqs[[st + 6]] +:
-	  freqs[[st + 7]]);
+    cnorm(freqs[[4]] +: 
+	  freqs[[5]] +:
+	  freqs[[6]] +:
+	  freqs[[7]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
-	++ show(freqs[[st + 4]]) ++ " "
-	++ show(freqs[[st + 5]]) ++ " "
-	++ show(freqs[[st + 6]]) ++ " "
-	++ show(freqs[[st + 7]]) ++ " \n");
+	++ show(freqs[[4]]) ++ " "
+	++ show(freqs[[5]]) ++ " "
+	++ show(freqs[[6]]) ++ " "
+	++ show(freqs[[7]]) ++ " \n");
   result
 }
 

@@ -6,19 +6,18 @@
 // NEED:
 // qsort, Complexl, expc, atan2, MInv...
 
-
 // Constant:
 PI = 3.141592653589793;
 
 //======================================================================
-// "Library" routines:
+// "Library" stream constructors:
 
-
+DEBUGSYNC = false;
 fun syncN (ctrl, strms) {
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   _strms = map(f, strms);  
-  slist = _ctrl :: _strms;  
+  slist = _ctrl : _strms;  
 
   if DEBUGSYNC 
     then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
@@ -63,7 +62,7 @@ fun syncN (ctrl, strms) {
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
 	  for i = 0 to accs.length - 1 {
-	    output := subseg(accs[i], st, size) :: output;
+	    output := subseg(accs[i], st, size) : output;
 	  }
 	  emit(reverse(output));
 	} else if DEBUGSYNC then
@@ -138,7 +137,7 @@ fun myhanning (strm) {
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
 	//print("LASTLEN: "++show(int_to_float(_lastLen-1))++"\n");
-	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i) /. int_to_float(_lastLen-1)));
+	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. PI *. int_to_float(i) /. int_to_float(_lastLen-1)));
 	// RRN: This would fix the zeroed fenceposts:
 	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i+1) /. int_to_float(_lastLen+1)));
       }
@@ -147,7 +146,7 @@ fun myhanning (strm) {
     /* alloc buffer */
     buf = makeArray(_lastLen, 0.0);
     for i = 0 to _lastLen - 1 {
-      buf[i] := _hanning[i] *. win[[win.start + i]];
+      buf[i] := _hanning[i] *. win[[i]];
     }
     
     //print("\nWIN: "++ show(win)++"\n");
@@ -157,3 +156,79 @@ fun myhanning (strm) {
     emit to_sigseg(buf, win.start, win.end, win.timebase);
   }
 }
+
+
+//======================================================================
+// Higher order routines which should have built-in support at some point.
+
+
+
+
+/*   sigseg_foreach(f,ss)  */
+/*   foreachi ((i,x) in ss) { } */
+
+/* fun sigseg_foreach(f,ss) { */
+/*   for i = 0 to ss.width-1 { */
+/*     f(ss[[i]]); */
+/*   } */
+/* } */
+/* fun sigseg_foreachi(f,ss) { */
+/*   for i = 0 to ss.width-1 { */
+/*     f(i, ss[[i]]); */
+/*   } */
+/* } */
+
+/*   deep_stream_map(f,sss); */
+
+// Assumes in-order but possibly overlapping
+/* fun deep_stream_map(f,sss) { */
+/*   iterate(ss in sss) { */
+/*     state {  */
+/*       pos = 0; */
+/*       lastout = nullseg; */
+/*     } */
+/*     first = f(ss[[0]]); */
+/*     output = makeArray(ss.width, first); */
+/*     if pos > ss.start then */
+/*       for i = 0 to pos - ss.start - 1 { */
+/* 	// Copy old result: */
+/* 	lastout[[]] */
+/*       } */
+	     
+/*     ss.start  */
+    
+/*   } */
+/*   strm = rewindow(sss,100,0); */
+/* } */
+
+
+fun stream_map(f,s) {
+  iterate (x in s) {
+    emit f(x);
+  }
+}
+
+fun stream_filter(f,s) {
+  iterate (x in s) {
+    if f(x) then emit x
+  }
+}
+
+fun stream_iterate(f,z,s) {
+  iterate (x in s) {
+    state { sigma = z }
+    let (ls,sig2) = f(x,sigma);
+    sigma := sig2;
+    // list_foreach(fun(t) emit t, ls);
+    for i = 0 to ls.listLength-1 {
+      emit listRef(ls,i);
+    }
+  }
+}
+
+test1 = stream_map(fun(w) w[[0]], audio(0,1024,0));
+test2 = stream_filter(fun (n) n > 300.0, test1);
+test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0),
+		       0.0, test2);
+BASE <- test3;
+

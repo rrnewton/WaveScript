@@ -31,7 +31,7 @@
 		 tuple tupref
 		 makeArray arr-get arr-set! 
 		 hashtable hashcontains hashget hashset hashset_BANG ;hashrem hashrem_BANG
-		 listLength makeList head tail
+		 listRef listLength makeList head tail
 		 joinsegs subseg seg-get width start end timebase
 		 to_array to_sigseg to-windowed 
 
@@ -542,6 +542,8 @@
        (vector-ref v ind))
 
      (define listLength orig-length)
+     (define listRef list-ref)
+
      (define makeList make-list)
      (define head car)
      (define tail cdr)
@@ -735,13 +737,13 @@
 	    (make-sigseg startind (+ startind len -1) vec (sigseg-timebase w)))])))
 
 
-     ;; Changing this to take an absolute sample number:
+     ;; [2007.01.26] Changing this back to be zero-based.
      (define (seg-get w ind) 
        (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
-       (DEBUGMODE (if (or (< ind (sigseg-start w)) (> ind (sigseg-end w)))
+       (DEBUGMODE (if (or (< ind 0) (>= ind (sigseg-width w)))
 		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
-       (vector-ref (sigseg-vec w) (fx- ind (sigseg-start w))))
+       (vector-ref (sigseg-vec w) ind))
      (define (width w) 
        (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) 0 (vector-length (sigseg-vec w))))

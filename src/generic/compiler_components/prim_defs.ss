@@ -75,6 +75,7 @@
     ;; Should remove car/cdr at some point.
     (head ((List 'a)) 'a)
     (tail ((List 'a)) (List 'a))
+    (listRef ((List 'a) Int) 'a)
 
     (append ((List 'a) (List 'a)) (List 'a))
     (makeList   (Int 'a) (List 'a))
@@ -349,7 +350,7 @@
 
     (foobar (Int Int) Int)
 
-    ;; This is zero indexed:
+    ;; This is now zero indexed:
     (seg-get      ((Sigseg 'a) Int) 'a)
     (width        ((Sigseg 'a)) Int)
     

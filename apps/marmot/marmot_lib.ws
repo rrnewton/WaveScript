@@ -7,18 +7,17 @@ DEBUG = false
 
 // Takes Sigseg Complex
 fun marmotscore(freqs) { 
-  st = freqs.start;
   result = 
-    cnorm(freqs[[st + 4]] +: 
-	  freqs[[st + 5]] +:
-	  freqs[[st + 6]] +:
-	  freqs[[st + 7]]);
+    cnorm(freqs[[4]] +: 
+	  freqs[[5]] +:
+	  freqs[[6]] +:
+	  freqs[[7]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
-	++ show(freqs[[st + 4]]) ++ " "
-	++ show(freqs[[st + 5]]) ++ " "
-	++ show(freqs[[st + 6]]) ++ " "
-	++ show(freqs[[st + 7]]) ++ " \n");
+	++ show(freqs[[4]]) ++ " "
+	++ show(freqs[[5]]) ++ " "
+	++ show(freqs[[6]]) ++ " "
+	++ show(freqs[[7]]) ++ " \n");
   result
 }
 
