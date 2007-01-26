@@ -1,0 +1,81 @@
+
+%\documentstyle[refman.sty]{article}
+\documentstyle{report}
+
+% page size commands
+
+\title{WaveScript 0.1 Users Manual}
+
+\begin{document}
+
+\maketitle
+
+% title page commads
+
+\pagenumbering{arabic}
+\tableofcontents
+\clearpage
+
+\chapter{Introduction}
+
+\~/wavescript
+
+\section{Using WaveScript}
+
+See the README for install instructions.  Once the system is installed
+you should be able to execute {\tt ws} or {\tt wsc} on any WaveScript
+source files ({\tt .ws}).
+
+\subsection*{Develop Incrementally}
+
+WaveScript is still very much a prototype.  It doesn't offer the same
+level of support that you can expect from production-quality
+compilers.  For example, the compiler doesn't track code locations.
+It will often print the surrounding context of an error (in abstract
+syntax), but nothing more.
+
+Thus it helps to build your program bit by bit.  Compile often to make
+sure that the pieces of your program type-check.
+
+{\tt \bf wsparse:}
+If you want the full error message for a stubborn parser error, run
+{\tt wsparse} directly on the ws file.  It will either print the AST
+(abstract syntax tree) for the file, or will give you an error message
+that includes line and character numbers.
+
+
+\section{Syntax}
+
+Please make liberal use of ~/wavescript/demos/wavescope
+
+\section{Naming conventions}
+
+
+\chapter{Basic Datatypes}
+
+\section{Tuples}
+
+\section{Numbers}
+
+int, uint16, uint8, float, double, complex 
+
+% Could just have NUMBER in the FIRST type check..
+% Then type check again AFTER elaboration.
+% (It would be really nice to keep source info....)
+
+
+
+\section{Streams}
+
+\section{Sigsegs}
+
+\chapter{Signal Processing Libraries}
+
+
+
+\chapter{WaveScript Evaluation Model}
+
+
+
+
+\end{document}

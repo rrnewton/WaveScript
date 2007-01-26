@@ -350,22 +350,23 @@
   (printf "Program verified.\n")
 
   (set! p (optional-stop (rename-vars p)))
-  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
+  (DEBUGMODE (set! p (optional-stop (retypecheck p))) (void))
   (set! p (optional-stop (eta-primitives p)))
   (set! p (optional-stop (desugar-misc p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
 
-  (with-output-to-file ".__elaborated.ss"
-    (lambda () 
-      (parameterize ([pretty-line-length 200]
-		     [pretty-maximum-lines #f]
-		     [print-level #f]
-		     [print-length #f]
-		     [print-graph #f])
-	(pretty-print p))
-      (flush-output-port))
-    'replace)
+  (DEBUGMODE
+   (with-output-to-file ".__elaborated.ss"
+     (lambda () 
+       (parameterize ([pretty-line-length 200]
+		      [pretty-maximum-lines #f]
+		      [print-level #f]
+		      [print-length #f]
+		      [print-graph #f])
+	 (pretty-print p))
+       (flush-output-port))
+     'replace))
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
@@ -405,16 +406,17 @@
   
 ;  (inspect p)
   
-  (with-output-to-file ".__nocomplexopera.ss"
-    (lambda () 
-      (parameterize ([pretty-line-length 200]
-		     [pretty-maximum-lines #f]
-		     [print-level #f]
-		     [print-length #f]
-		     [print-graph #f])
-	(pretty-print p))
-      (flush-output-port))
-    'replace)
+  (DEBUGMODE
+   (with-output-to-file ".__nocomplexopera.ss"
+     (lambda () 
+       (parameterize ([pretty-line-length 200]
+		      [pretty-maximum-lines #f]
+		      [print-level #f]
+		      [print-length #f]
+		      [print-graph #f])
+	 (pretty-print p))
+       (flush-output-port))
+     'replace))
 
   (set! p (optional-stop (remove-lazy-letrec p)))
   
@@ -425,8 +427,7 @@
 
   ;(set! p (optional-stop (nominalize-types p)))
 
-  p)
-)
+  p))
 
 
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
@@ -442,18 +443,19 @@
 	    [(list? x)   (printf "WSINT: Evaluating WS source: \n ~a\n" x)  x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 
-  (define _ (begin (printf "Evaluating program: (original program stored in .__inputprog.ss)\n\n") 		   
-		   (let ([please-delete-file 
-			  (lambda (f) (if (file-exists? f) (delete-file f)))])
-		     ;; Delete these files so that we don't get mixed up.		  
-		     (please-delete-file ".__types.txt")
-		     (please-delete-file ".__inputprog.ss")
-		     (please-delete-file ".__compiledprog.ss")
-		     (please-delete-file ".__elaborated.ss")
-		     (please-delete-file ".__nocomplexopera.ss"))
-		   
-		   (with-output-to-file ".__inputprog.ss"
-		     (lambda () 
+  (define _ (begin (printf "Evaluating program: ~a\n\n"
+			   (IFDEBUG "(original program stored in .__inputprog.ss)" ""))
+		   (DEBUGMODE 
+		    (let ([please-delete-file 
+			   (lambda (f) (if (file-exists? f) (delete-file f)))])
+		      ;; Delete these files so that we don't get mixed up.		  
+		      (please-delete-file ".__types.txt")
+		      (please-delete-file ".__inputprog.ss")
+		      (please-delete-file ".__compiledprog.ss")
+		      (please-delete-file ".__elaborated.ss")
+		      (please-delete-file ".__nocomplexopera.ss"))
+		    (with-output-to-file ".__inputprog.ss"
+		      (lambda () 
 		       (parameterize ([pretty-line-length 200]
 				      [pretty-maximum-lines #f]
 				      [print-level #f]
@@ -461,8 +463,7 @@
 				      [print-graph #f])
 			 (pretty-print prog))
 		       (flush-output-port))
-		     'replace)
-		   ))
+		     'replace))))
 
   (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
 
@@ -523,7 +524,8 @@
 ;   (printf "================================================================================\n")
    (printf "\nNow emitting C code:\n"))
 
-  (with-output-to-file ".__almostC.ss"
+  (DEBUGASSERT
+   (with-output-to-file ".__almostC.ss"
     (lambda () 
       (parameterize ([pretty-line-length 200]
 		     [pretty-maximum-lines #f]
@@ -532,7 +534,7 @@
 		     [print-graph #f])
 	(pretty-print prog))
       (flush-output-port))
-    'replace)
+    'replace))
   
   (string->file 
    (text->string 

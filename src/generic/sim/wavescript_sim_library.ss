@@ -633,9 +633,10 @@
        )
 
      (define (ws-print x)
-       (if (string? x)
-	   (display x)
-	   (display-constrained (list x 300))))
+       (parameterize ([current-output-port (ws-print-output-port)])
+	 (if (string? x)
+	     (display x)
+	     (display-constrained (list x 300)))))
 
      (define (show x) (format "~s" x))
 

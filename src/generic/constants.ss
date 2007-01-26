@@ -127,6 +127,8 @@
 	 simalpha-label-sensorvals 
 	 simalpha-pause-hook
 
+         ws-print-output-port ;; For the WS simulator.
+
 	 varied-param
 	 dummy-param
 
@@ -264,6 +266,9 @@
 
 ;; Is this run of the compiler a WS run?
 (define-regiment-parameter wavescope-invocation #f)
+
+;; When 
+(define-regiment-parameter ws-print-output-port (current-output-port))
 
 ;; This parameter adds extra debug/assertion code to the generated code.
 ;; Currently we just set it based on whether the whole system is in debug mode.

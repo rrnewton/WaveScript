@@ -7,7 +7,7 @@ wins = window(data, 10);
 //wins = rewindow(wins, 10, 5)
 
 avgs = iterate (w in wins) {
-  //print("...ITERATING: "++ show(w.start) ++"\n");
+  print("...ITERATING: "++ show(w.start) ++"\n");
 /*   print("...ITERATING: ");  */
 /*   print(w.start);  */
 /*   print(" "); */
@@ -22,7 +22,8 @@ avgs = iterate (w in wins) {
     sum := sum +. int_to_float(n);
   };  
   //print("SUM: "); print(sum); print("\n");
-  emit sum /. int_to_float(w.width);
+  //emit sum /. int_to_float(w.width);
+  emit ();
 };
 
 BASE <- avgs;

@@ -169,6 +169,7 @@
 ;============================================================
 ;;; Stream browsing.
 
+;; By convention this doesn't print the unit value #() in dump mode.
 (define (browse-stream stream)
   (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
@@ -181,6 +182,7 @@
   (printf "     skip <n>     advance the stream, but don't print\n")
 ;  (printf "     code         print the query that is executing\n")
   (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+  (printf "     dump <fn> <n>   dump up to this many elements\n")
   (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
   (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
   (printf "     profile      dump the profile to /tmp/pdump \n")
@@ -225,35 +227,30 @@
 	      )
 	      (loop (+ pos n))]
 
-#|	    [(,code) (guard (memq code '(c co cod code)))
-	     (parameterize ([print-graph #f]
-			    [print-level 10]
-			    [print-length 200])
-	       (newline)(pretty-print prog)(newline))
-	     (loop pos)]
-|#
+          [(,dump ,file ,limit) 
+	   (error 'browse-stream "limited dump not implemented")]
 
 	  [(,dump ,file) (guard (memq dump '(d du dum dump)))
 	     (let ([port (open-output-file (format "~a" file) 'append)])
 	       (parameterize ([print-length #f]
 			      [print-level #f]
 			      [print-graph #f]
-			      )		 
-					
+			      [ws-print-output-port port]
+			      )
 		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
-
 		 (time 
-	      (progress-dots
-	       (lambda ()
-		 (let loop ()
-		   (if (stream-empty? stream)
-		       (printf "Finished, dumped ~a stream elements.\n" pos)
-		       (begin 
-			 (write (stream-car stream) port)(newline port)
-			 (set! pos (add1 pos))
-			 (set! stream (stream-cdr stream))
-			 (loop)
-			 ))))
+		  (progress-dots
+		   (lambda ()
+		     (let loop ()
+		       (if (stream-empty? stream)
+			   (printf "Finished, dumped ~a stream elements.\n" pos)
+			   (let ([elem (stream-car stream)])
+			     (unless (equal? elem #())
+			       (write elem port)(newline port))
+			     (set! pos (add1 pos))
+			     (set! stream (stream-cdr stream))
+			     (loop)
+			     ))))
 		 50000000 
 		 (lambda ()
 		   (printf "  POS# ~a dumped...\n" pos))))
@@ -305,4 +302,3 @@
 	   (printf "Bad input.\n") (loop pos)]
 	  )))
       )))
-

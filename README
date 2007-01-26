@@ -137,6 +137,9 @@ generic/constants.ss:
 generic/util/helpers.ss:
   Library code.  This has a bunch of unused stuff in it.
 
+generic/compiler_components/prim_defs.ss:
+  The specification for every primitive in the Regiment/WaveScript systems.
+
 generic/compiler_components/regiment_helpers.ss:
   Various helper routines specifically for working with Regiment/TML code.
   

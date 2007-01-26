@@ -77,10 +77,10 @@
     (tail ((List 'a)) (List 'a))
     (listRef ((List 'a) Int) 'a)
 
-    (append ((List 'a) (List 'a)) (List 'a))
+    (append     ((List 'a) (List 'a)) (List 'a))
     (makeList   (Int 'a) (List 'a))
     (listLength ((List 'a)) Int)
-    (reverse ((List 'a)) (List 'a))
+    (reverse    ((List 'a)) (List 'a))
     ;(reverse_BANG ((List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
     

@@ -230,6 +230,8 @@
 	  ;; Hmm: can't make up my mind whether we should single-quote typevars:
           [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
           [(TYPEVAR) `(quote ,$1)]
+
+	  [(LeftParen RightParen) (vector)]
           ;; No one-tuples!!
           [(LeftParen type RightParen) $2]
           ;; Tuple types:
@@ -336,8 +338,10 @@
            [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
-
-    (tuple [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)])
+    
+    (tuple 
+     [(LeftParen RightParen)  `(tuple)]
+     [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)])
 
     ;; Hack to enable my syntax for sigseg refs!!
     (exp 
