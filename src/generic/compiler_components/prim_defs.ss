@@ -349,7 +349,7 @@
 
     (foobar (Int Int) Int)
 
-    ;; CHANGED to use sample numbers.
+    ;; This is zero indexed:
     (seg-get      ((Sigseg 'a) Int) 'a)
     (width        ((Sigseg 'a)) Int)
     

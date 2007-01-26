@@ -77,7 +77,7 @@
 
       ;; This goes through and replaces tuples with Struct types.
       ;; Must be an exported type.
-      (trace-define (convert-type ty tupdefs)
+      (define (convert-type ty tupdefs)
 	(match ty
 	  [,s (guard (symbol? s)) s]
 	  ;; Allowing polymorphic types for list... damn null lists.
@@ -259,7 +259,7 @@
 	  [,oth (error 'type->structs "unrecognized type: ~s" oth)]))
       
       ;; Topological sort on struct-defs
-      (trace-define (sort-defs defs)	
+      (define (sort-defs defs)	
 	(let ([edges (map (lambda (def)
 			    (match def
 			      [(,name [,fld* ,ty*] ...)

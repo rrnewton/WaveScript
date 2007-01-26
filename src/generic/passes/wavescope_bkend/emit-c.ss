@@ -151,6 +151,13 @@
 
 	   (values stmts decls))]
 		       
+	[(assert-type (Signal (Sigseg ,[Type -> ty])) 
+		      (window ,sig ,[myExpr -> size]))
+	 (ASSERT symbol? sig)
+	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
+		   ,name"->connect(",(symbol->string sig)");\n")
+		 '())]
+
 	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
@@ -496,6 +503,8 @@
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
 	[(realpart ,[v]) `("__real__ " ,v)]
 	[(imagpart ,[v]) `("__imag__ " ,v)]
+
+	[(int_to_float ,[e]) `("(wsfloat_t)",e)]
 
 	;; TYPE??
 	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]

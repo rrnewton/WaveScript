@@ -108,6 +108,8 @@
 // Most of these are intended to go away at some point.
 class WSBuiltins {
    
+public:
+
    /* Zip2 operator: takes 2 input streams of types T1 and T2 and emits zipped
       tuples, each containing exactly one element from each input stream. */
    template <class T1, class T2> class Zip2: public WSBox {
@@ -147,20 +149,25 @@ class WSBuiltins {
      }
    };
 
+
+
   /* This takes Signal(T) to Signal(SigSeg(T)) */
+
+  // THIS GETS THE SAME BAD_WEAK_PTR EXCEPTION AS ABOVE:
+/* 
   class Window : public WSBox{    
     public:
     Window(int winsize, size_t bitsize) : WSBox("Window"),      
-					  out_sig(new RawSignal(bitsize)),
-					  ind(0),
-					  window_size(winsize),
-					  elem_size(bitsize)
+					  out_sig(new RawSignal(bitsize))
     {      
+      window_size = winsize;
+      elem_size = bitsize;
+      ind = 0;
       current_buf = out_sig->getBuffer(bitsize * winsize);
     }
     ~Window() {
       delete out_sig;
-      delete current_buf;
+      //delete current_buf;
     }
 
     private:
@@ -169,16 +176,72 @@ class WSBuiltins {
     int window_size;
     size_t elem_size;
     RawSignal* out_sig;
+
     void* current_buf;
     int ind;
     
     bool iterate(uint32_t port, void *item)
     {
+      memcpy(((unsigned char*)current_buf + (ind*elem_size)), 
+	     item, 
+	     elem_size);
+      ind++;
       if (ind == window_size) {
-	
+	emit(out_sig->commit(window_size));
+	ind = 0;
+	//current_buf = out_sig->getBuffer(window_size * elem_size);
+	current_buf = out_sig->getBuffer(window_size);
       }
       return true;
     }
   };
+*/
+
+  class Window : public WSBox{    
+   
+    public:
+    Window(int winsize, size_t bitsize) : WSBox("Window"),
+      //rs(new RawSeg(RawSignalPtr(new RawSignal(0)),(SeqNo)0,winsize))
+      rs(new RawSeg((SeqNo)0,winsize,DataSeg,0,bitsize,Unitless,true))      
+      //RawSeg(const RawSignalPtr parent, SeqNo start, uint32_t length, GapType isGap = DataSeg);
+    {      
+      window_size = winsize;
+      elem_size = bitsize;
+      ind = 0;      
+      sampnum = 0;      
+      assert(rs->getDirect(0,winsize,current_buf));
+    }
+
+    private:
+    DEFINE_OUTPUT_TYPE(RawSeg);
+    
+    int window_size;
+    size_t elem_size;
+
+    SeqNo sampnum;
+    RawSeg* rs;
+    Byte* current_buf;
+    int ind;
+        
+    bool iterate(uint32_t port, void *item)
+    {
+      memcpy((current_buf + (ind*elem_size)),
+	     item,
+	     elem_size);
+      ind++;
+      sampnum++;
+      if (ind == window_size) {
+	rs->release(current_buf);
+	emit(*rs);
+	ind = 0;
+	rs = new RawSeg(sampnum,window_size,DataSeg,0,elem_size,Unitless,true);
+	//rs = new RawSeg(RawSignalPtr(new RawSignal(0)), sampnum, window_size);
+	assert(rs->getDirect(0,window_size,current_buf));
+      }
+      return true;
+    }
+  };
+
+
   
 };

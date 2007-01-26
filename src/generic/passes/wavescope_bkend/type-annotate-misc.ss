@@ -11,7 +11,7 @@
 (define-pass type-annotate-misc
 
     ;(define annotated-prims '(print show cons hashtable seg-get))
-    (define annotate-outside-prims '(hashtable ))
+    (define annotate-outside-prims '(hashtable window))
 
     (define (process-expr x tenv fallthru)
 ;      (printf "PE: \n")
