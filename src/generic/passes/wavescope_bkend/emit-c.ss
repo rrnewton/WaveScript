@@ -227,9 +227,9 @@
 		    ,(insert-between " "
 		      (map (lambda (ty)
 			     (match ty
-			      [Float  "%f"] ;; Single precision floats
-			      [Int    "%d"]
-			      [String "%s"]
+                               [Float  "%f"] ;; Single precision floats
+                               [Int    "%d"]
+                               [String "%s"]
 			      ))
 			types))
 		    "\", "
@@ -626,84 +626,72 @@
 	))
 
 
-;; TEMP: HACK: THIS NEEDS TO RETURN A STRING:
-;; This implements our polymorphic show function.
+
+;; This implements our polymorphic print/show functions.
 ;; It prints something or other for any type.
+(define (Emit-Print/Show-Helper e typ printf stream)
+  (match typ
+    [Int            (printf "%d" e)]
+    [Float          (printf "%f" e)]
+    [String         (printf "%s" `(,e".c_str()"))]
+    [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
+    [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
+    [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
+
+;; This emits code for a print.
 (define (EmitPrint e typ)
-  (match typ
-    [Int `("printf(\"%d\", ",e");\n")]
-    [Float `("printf(\"%f\", ",e");\n")]
-    [String `("printf(",e".c_str());\n")] ;; Get the char* out.
-    ;; TEMP: Have to wrap the sigseg to get the << method.
-    ;; This should be fixed in the C++.
-    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");\n")]
-
-    ;; Make a print routine for this struct.
-    [(Struct ,name)
-     (match (assq name struct-defs)
-       [(,name [,fld* ,typ*] ...)
-	(let ([tmp (symbol->string (unique-name 'tmp))])
-	  `("{ " ,(symbol->string name) " ",tmp" = ",e";\n"
-	    "  cout << \"{\";\n"
-	    ,(insert-between "  cout << \"; \";\n"
-			     (map (lambda (fld typ)
-				    (EmitPrint (format "~a.~a" tmp fld) typ)
-				    )
-			       fld* typ*
-			       ))
-	    "  cout << \"}\"; }\n"))
-	])]
-    
-    [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
-    ))
-
+  (Emit-Print/Show-Helper 
+   e typ
+   (lambda (s e) `("printf(\"",s"\", ",e");\n"))
+   (lambda (e)   `("cout << " ,e ";\n"))))
+                         
+;; This emits code for a show.
 (define (EmitShow e typ)
-  (match typ
-    [Int `("WSPrim::show_helper(sprintf(global_show_buffer, \"%d\", ",e"))\n")]
-    [Float `("WSPrim::show_helper(sprintf(global_show_buffer, \"%f\", ",e"))\n")]
-    [String `("WSPrim::show_helper(sprintf(global_show_buffer, \"%s\", ",e".c_str()))\n")] ;; Get the char* out.
-    [(Sigseg ,t) `("WSPrim::show_helper2(global_show_stream << SigSeg<",(Type t)">(",e"))\n")]
-#|
-    ;; Make a print routine for this struct.
-    [(Struct ,name)
-     (match (assq name struct-defs)
-       [(,name [,fld* ,typ*] ...)
-	(let ([tmp (symbol->string (unique-name 'tmp))])
-	  `("{ " ,(symbol->string name) " ",tmp" = ",e";\n"
-	    "  cout << \"{\";\n"
-	    ,(insert-between "  cout << \"; \";\n"
-			     (map (lambda (fld typ)
-				    (EmitPrint (format "~a.~a" tmp fld) typ)
-				    )
-			       fld* typ*
-			       ))
-	    "  cout << \"}\"; }\n"))
-	])]
-  |#  
-    [,other `("string(\"<object of type ",(format "~a" typ)">\");\n")]
-    ))
+  (Emit-Print/Show-Helper 
+   e typ
+   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e"))"))
+   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e ")"))))
 
+;; This produces a struct definition as well as a printer function for the struct.
 (define (StructDef entry)
      (match entry
-       [(,(symbol->string -> name) (,[symbol->string -> fld*] ,[Type -> typ*]) ...)
-	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)])
+       [(,(symbol->string -> name) (,[symbol->string -> fld*] ,typ*) ...)
+	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)]
+	      [ctype* (map Type typ*)])
 	  `(,(block `("struct ",name)
 		    ;; Fields:
-		    `([,typ* " " ,fld* ";\n"] ...
+		    `([,ctype* " " ,fld* ";\n"] ...
 		      
 		      ;; Constructors, first nullary:
 		      (,name"() {}\n")
 		      ;; Full constructor:
 		      ,(if (null? fld*) ""
 			   `((,name"(",(insert-between 
-				      ", " `([,typ* " ",tmpargs] ...)
+				      ", " `([,ctype* " ",tmpargs] ...)
 				      )")") " :\n"					   
 			    ,@(insert-between ", \n"
 			      (map (lambda (fld arg)
 				     `("  ",fld "(" ,arg ")"))
 				fld* tmpargs)) " {}\n"
 				))))
-	    ";\n\n"))]))
+	    ";\n\n"
+            
+            ;; This produces a printing function.  We could save space
+            ;; by not generating this for structure types that are
+            ;; never printed.  (Dead code elimination.)
+	    "string show_" ,name "(",name" rec) {\n" 
+	    "  ostringstream oss(ostringstream::out);"
+	    "  oss << \"(\";\n"
+	    ,(insert-between "  oss << \", \";\n"
+			     (map (lambda (fld typ)
+				    `("  oss << "
+				      ,(EmitShow (format "rec.~a" fld) typ)
+				      ";\n"))
+			       fld* typ*))
+	    "  oss << \")\";\n"
+	    "  return oss.str();"
+	    "}\n\n"
+            ))]))
 ;; TODO: Add these:
 ; struct hashtest {
 ;   size_t operator()(thistest tup) const 
@@ -773,10 +761,17 @@
 	   "DEFINE_NO_OUTPUT_TYPE;\n\n"
 	   ,(block "bool iterate(uint32_t port, void *input)"
 		   `(,T " *element = (",T" *)input;\n"
-			;"cout << _name << \": \" << *element << endl;\n"
-			"printf(\"WSOUT: \");\n"
-			,(EmitPrint "(*element)" typ) ";\n"
-			"printf(\"\\n\");\n"
+
+			,(match typ
+			   [(Struct ,name)
+			    (guard (null? (cdr (ASSERT (assq name struct-defs)))))
+			    ;; If it's a unit return type, we don't print anything:
+			    '()]
+			   [,else 
+			    `("if(WSOUTPUT_PREFIX) printf(\"WSOUT: \");\n"
+			      ,(EmitPrint "(*element)" typ) ";\n"
+			      "printf(\"\\n\");\n")])
+
 ; [2007.01.22] Don't need to do this, it happens automatically:
 ;			"delete element;\n"  
 			"return false;\n"
@@ -846,7 +841,7 @@
     (mvlet ([(body funs) (Query "toplevel" typ expr (empty-tenv))])
       `(,(file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
 	,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
-	"/* These structs represent tuples in the WS program. */\n"
+	"\n/* These structs represent tuples in the WS program. */\n"
 	,(map StructDef struct-defs)
 	,funs
 	,(make-output-printer typ)
@@ -873,6 +868,11 @@
 
 int main(int argc, char ** argv)
 {
+  /* set global variable(s) */
+  if (misc_parse_out_switch(&argc, argv, \"no_prefix\", 0))
+    WSOUTPUT_PREFIX = FALSE;
+  else WSOUTPUT_PREFIX = TRUE;
+
   /* initialize subsystems */ 
   WSInit(&argc, argv);
 

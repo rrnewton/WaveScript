@@ -13,7 +13,8 @@ PI = 3.141592653589793;
 // Library POD (plain old data) functions:
 
 fun println(s) {
-  print(s ++ "\n");
+  print(s);
+  print("\n");
 }
 
 //======================================================================

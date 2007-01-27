@@ -108,3 +108,6 @@ public:
 // We construct a single null object which we cast to what we need.
 cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
 //#define NULL_LIST NULL
+
+// Global setting:
+bool WSOUTPUT_PREFIX = TRUE;

@@ -1,4 +1,5 @@
 
+
 // This is a lame work-around:
 static char global_show_buffer[500];
 static ostringstream global_show_stream(ostringstream::out);
