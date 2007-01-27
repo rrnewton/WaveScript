@@ -22,8 +22,8 @@ avgs = iterate (w in wins) {
     sum := sum +. int_to_float(n);
   };  
   //print("SUM: "); print(sum); print("\n");
-  //emit sum /. int_to_float(w.width);
-  emit ();
+  emit sum /. int_to_float(w.width);
+  //emit ();
 };
 
 BASE <- avgs;

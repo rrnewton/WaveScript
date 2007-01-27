@@ -101,8 +101,18 @@
 
 ;; This is the only entry point to the file.  A complete query can
 ;; be transformed into a complete query file.
+;; .param prog  The wsquery to process.
+;; .param mode (Optional) 'static or 'dynamic, indicating whether to
+;;             produce a main() function, or code for a .so & .wsq.
+;;             Default is 'static.
 (define wsquery->text
-  (lambda (prog)
+  (lambda (prog . mode)
+    (define static-linkage 
+      (match mode 
+	[()        #t]	
+	[(static)  #t]
+	[(dynamic) #f]
+	[,else (error 'wsquery->text "bad additional arguments: ~s" mode)]))
     (match prog
       [(,lang (quote (program ,expr (struct-defs . ,struct-defs) ,typ)))
        
@@ -432,7 +442,6 @@
 	;; Print is required to be pre-annotated with a type.
 	;; (We can no longer do recover-type.)
 	[(print (assert-type ,t ,e))
-	 ;(EmitPrint (myExpr e) (recover-type e tenv))
 	 (EmitPrint (myExpr e) t)]
 	[(print ,_) (error 'emit-c:Stmt "print should have a type-assertion around its argument: ~s" _)]
 
@@ -505,6 +514,11 @@
 	[(imagpart ,[v]) `("__imag__ " ,v)]
 
 	[(int_to_float ,[e]) `("(wsfloat_t)",e)]
+
+
+	[(show (assert-type ,t ,e))
+	 (EmitShow ((Expr tenv) e) t)]
+	[(show ,_) (error 'emit-c:Stmt "show should have a type-assertion around its argument: ~s" _)]
 
 	;; TYPE??
 	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
@@ -646,7 +660,36 @@
     [,other `("printf(\"<object of type ",(format "~a" typ)">\");\n")]
     ))
 
-   (define (StructDef entry)
+(define (EmitShow e typ)
+  (match typ
+    [Int `("WSPrim::show_helper(sprintf(global_show_buffer, \"%d\", ",e"))\n")]
+
+#|    [Float `("printf(\"%f\", ",e");\n")]
+    [String `("printf(",e".c_str());\n")] ;; Get the char* out.
+    ;; TEMP: Have to wrap the sigseg to get the << method.
+    ;; This should be fixed in the C++.
+    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
+
+    ;; Make a print routine for this struct.
+    [(Struct ,name)
+     (match (assq name struct-defs)
+       [(,name [,fld* ,typ*] ...)
+	(let ([tmp (symbol->string (unique-name 'tmp))])
+	  `("{ " ,(symbol->string name) " ",tmp" = ",e";\n"
+	    "  cout << \"{\";\n"
+	    ,(insert-between "  cout << \"; \";\n"
+			     (map (lambda (fld typ)
+				    (EmitPrint (format "~a.~a" tmp fld) typ)
+				    )
+			       fld* typ*
+			       ))
+	    "  cout << \"}\"; }\n"))
+	])]
+  |#  
+    [,other `("string(\"<object of type ",(format "~a" typ)">\");\n")]
+    ))
+
+(define (StructDef entry)
      (match entry
        [(,(symbol->string -> name) (,[symbol->string -> fld*] ,[Type -> typ*]) ...)
 	(let ([tmpargs (map (lambda (_) (symbol->string (unique-name 'tmp))) fld*)])
@@ -794,6 +837,12 @@
 	))
     ))
 
+  (define (build-main body)
+    `(,boilerplate_premain
+      ;;"// " ,(Type typ) " toplevel;\n"
+      ,(indent body "  ")
+      ,(boilerplate_postmain (Var 'toplevel) typ)))
+
   ;============================================================
   ;;; Set unit tests
 
@@ -805,19 +854,19 @@
 	,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
 	"/* These structs represent tuples in the WS program. */\n"
 	,(map StructDef struct-defs)
-	,funs 
-	,(make-output-printer typ) 
+	,funs
+	,(make-output-printer typ)
 	
-	,boilerplate_premain
-	;;"// " ,(Type typ) " toplevel;\n"
-	,(indent body "  ")
-	,(boilerplate_postmain (Var 'toplevel) typ)
-	"}\n\n"
+	,@(if static-linkage
+	      (build-main body)
+	      '())
 	))]
+
   [,other ;; Otherwise it's an invalid program.
    (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
    (inspect other)
-   (error 'wsquery->text "")])))
+   (error 'wsquery->text "")]))
+) ; End wsquery->text
 
 
 
@@ -839,7 +888,6 @@ int main(int argc, char ** argv)
   /* begin constructing operator graph */
 ")
 
-
 (define (boilerplate_postmain return_name return_type)   
   (printf "Generating code for returning stream of type ~s\n" return_type)
   `("
@@ -851,6 +899,8 @@ int main(int argc, char ** argv)
   WSRun();
 
   return 0;
+}
+
 "))
 
 ;; Boilerplate for producing a WSBox class:
