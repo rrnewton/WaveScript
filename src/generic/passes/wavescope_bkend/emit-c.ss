@@ -520,9 +520,6 @@
 	 (EmitShow ((Expr tenv) e) t)]
 	[(show ,_) (error 'emit-c:Stmt "show should have a type-assertion around its argument: ~s" _)]
 
-	;; TYPE??
-	;[(show ,e) (EmitShow [(Expr tenv) e] (recover-type e tenv))]
-
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
 	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[seg]) ,[ind])
@@ -639,7 +636,7 @@
     [String `("printf(",e".c_str());\n")] ;; Get the char* out.
     ;; TEMP: Have to wrap the sigseg to get the << method.
     ;; This should be fixed in the C++.
-    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
+    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");\n")]
 
     ;; Make a print routine for this struct.
     [(Struct ,name)
@@ -663,13 +660,10 @@
 (define (EmitShow e typ)
   (match typ
     [Int `("WSPrim::show_helper(sprintf(global_show_buffer, \"%d\", ",e"))\n")]
-
-#|    [Float `("printf(\"%f\", ",e");\n")]
-    [String `("printf(",e".c_str());\n")] ;; Get the char* out.
-    ;; TEMP: Have to wrap the sigseg to get the << method.
-    ;; This should be fixed in the C++.
-    [(Sigseg ,t) `("cout << SigSeg<",(Type t)">(",e");;\n")]
-
+    [Float `("WSPrim::show_helper(sprintf(global_show_buffer, \"%f\", ",e"))\n")]
+    [String `("WSPrim::show_helper(sprintf(global_show_buffer, \"%s\", ",e".c_str()))\n")] ;; Get the char* out.
+    [(Sigseg ,t) `("WSPrim::show_helper2(global_show_stream << SigSeg<",(Type t)">(",e"))\n")]
+#|
     ;; Make a print routine for this struct.
     [(Struct ,name)
      (match (assq name struct-defs)

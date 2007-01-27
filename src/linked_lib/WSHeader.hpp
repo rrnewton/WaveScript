@@ -18,6 +18,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <iostream>
 #include <ext/hash_map>
 
 

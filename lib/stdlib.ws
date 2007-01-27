@@ -10,10 +10,18 @@
 PI = 3.141592653589793;
 
 //======================================================================
+// Library POD (plain old data) functions:
+
+fun println(s) {
+  print(s ++ "\n");
+}
+
+//======================================================================
 // "Library" stream constructors:
 
-DEBUGSYNC = false;
 fun syncN (ctrl, strms) {
+  DEBUGSYNC = false;
+
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   _strms = map(f, strms);  
@@ -162,8 +170,6 @@ fun myhanning (strm) {
 // Higher order routines which should have built-in support at some point.
 
 
-
-
 /*   sigseg_foreach(f,ss)  */
 /*   foreachi ((i,x) in ss) { } */
 
@@ -234,11 +240,10 @@ fun stream_iterate(f,z,s) {
   }
 }
 
+
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
 /* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */
 /* 		       0.0, test2); */
-
 /* test4 = deep_stream_map(fun(x) x /. 100.0, audio(0,10,0)) */
 /* BASE <- test4; */
-
