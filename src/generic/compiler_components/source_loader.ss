@@ -273,7 +273,7 @@
    ;; HACK: WON'T WORK IN WINDOWS:)
    (unless (zero? (system "which wsparse")) 
      (error 'wsint "couldn't find wsparse executable"))
-   (let* ([port (car (process (++ "wsparse " fn)))]
+   (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
 	  [decls (read port)])
      (close-input-port port)
      ;; This is very hackish:

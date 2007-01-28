@@ -1,4 +1,12 @@
 
+// You can explicitely use the generic arith ops by prefixing them with 'g'.
+//   Integer ops use +_
+//   Float   ops use +.
+//   Complex ops use +:
+
+// Currently [2007.01.28] the plain form "+" is an alias for the
+// integer ops, but eventually it will default to the generic ops
+// instead.
 
 fun f(x) { x g+ gint(3) }
 fun g(x, y) { x g+ y }

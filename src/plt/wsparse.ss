@@ -6,6 +6,7 @@
 (require "regiment_parser.ss")
 (require (lib "pretty.ss"))
 
+#;
 (if (not (= 1 (vector-length (current-command-line-arguments))))
     (error 'wsparse "Takes only one argument: name of file to parse. Given: ~s" 
 	   (current-command-line-arguments)))
@@ -16,5 +17,9 @@
 ;; Now just write it to stdout:
 ;(display (ws-postprocess (reg-parse-file filename)))(newline)
 ;(pretty-print (ws-postprocess (reg-parse-file filename)))
-(pretty-print (ws-parse-file filename))
+
+(if (member "--nopretty" (vector->list (current-command-line-arguments)))
+    (write (ws-parse-file filename))
+    (pretty-print (ws-parse-file filename)))
+
 )
