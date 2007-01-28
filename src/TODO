@@ -3,21 +3,15 @@
 ================================================================================
 Things I'm working on now --Ryan:
 
- *) Completing static-elaboration for effectful 
- *) Inserting grammars between passes.
- *) Inserting type-checking between passes.
-   ~) De-primitive-izing tuple, tupref [2006.10]
+ *) Completing static-elaboration for effectful constructs
+
+ *) Inserting grammars between passes. [Significant progress]
 
  ~~) Moving to generic-traversal for early passes. [2006.10]
 
- *) Updating type checker to handle partially annotated programs.
 
  *) Add matrix WS operations
-
- *) Bringing PLT version back online.
-   *) Move chez/alpha_lib to generic
-
- *) Porting over to common module system.
+ *) Also add more FFT ops (maybe stream-lifted version too) 
 
  *) Fixing let, letrec, lazy-letrec.
     *) Make "let" not desugar... (for consistency with typing rules)
@@ -25,12 +19,20 @@ Things I'm working on now --Ryan:
 
  *) Would like to get the LAML Schemedoc stuff working again.
 
- *) I am going to need to add a pass to annotate the type of rators.
-    Will need this to make the elaborator work right.
+
+================================================================================
 
 
 
 ================================================================================
+
+[2007.01.27]
+
+ *) Build .boot file.
+ *) Finish implementing equality
+ *) Push generic arith system to the front end.
+ 
+
 
 [2006.11.29]
  *) For distribution compile a separate regiment.opt for simulations.
@@ -100,4 +102,18 @@ FINISHED:
 Can't remember why I didn't originally.
 <Done> [2006.10] Reorganizing files into a deeper hierarchy. [2006.10.17]
 
+ X) I am going to need to add a pass to annotate the type of rators.
+    Will need this to make the elaborator work right.
+
+ X) Bringing PLT version back online.
+   *) Move chez/alpha_lib to generic
+
+ X) Porting over to common module system.
+
+ X) sigseg_foreach (but no efficient support yet)
+
+ X) Inserting type-checking between passes.
+   ~) De-primitive-izing tuple, tupref [2006.10]
+
+ X) Updating type checker to handle partially annotated programs.
 

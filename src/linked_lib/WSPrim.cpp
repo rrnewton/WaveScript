@@ -13,40 +13,22 @@ static ostringstream global_show_stream(ostringstream::out);
    //  We should keep a hash table of common plans.
    //static int fft(SigSeg<double> input) {
    static RawSeg fft(RawSeg input) {
-
       int len = input.length();
       int len_out = (len / 2) + 1;
 
-      RawSignal out_sig = RawSignal(sizeof(wscomplex_t));
-      //wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(sizeof(wscomplex_t) * len_out);
-      wscomplex_t* out_buf = (wscomplex_t*)out_sig.getBuffer(len_out);
-
-      // Can't get the padding we need from getDirect!!
       Byte* temp;
+      RawSeg rs(0, len_out, DataSeg, 0, sizeof(wscomplex_t), Unitless,true);
+      rs.getDirect(0, len_out, temp);
+      wscomplex_t* out_buf = (wscomplex_t*)temp;
       input.getDirect(0, input.length(), temp);
-      float* in_buf = (float*)temp;
+      wsfloat_t* in_buf = (wsfloat_t*)temp;
 
       // Real to complex:
-      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);
-      
-      for(int i=0; i<len; i++) in_buf[i] = 93.9;
-      for(int i=0; i<len_out; i++) out_buf[i] = out_buf[i];
-
-//      fftwf_execute(plan);
-//       fftwf_destroy_plan(plan);
-      
-      //fftw_free(p->vec);
-
-      /* return the sigseg */
-      printf("About to do a commit.\n");
-      // This causes a bad_weak_ptr exception:
-      RawSeg out = out_sig.commit(len_out);
-      printf("Finished commit.\n");
-      
-      return RawSeg();
-      //return SigSeg<double>();
-      //return *((SigSeg<wscomplex_t>*)0);
-   }      
+      fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);      
+      fftwf_execute(plan);
+      fftwf_destroy_plan(plan);           
+      return rs;
+   }
   
    // This is a work-around to the fact that we can't have stmt blocks
    // {...} in expression position.
@@ -166,53 +148,7 @@ public:
    };
 
 
-
   /* This takes Signal(T) to Signal(SigSeg(T)) */
-
-  // THIS GETS THE SAME BAD_WEAK_PTR EXCEPTION AS ABOVE:
-/* 
-  class Window : public WSBox{    
-    public:
-    Window(int winsize, size_t bitsize) : WSBox("Window"),      
-					  out_sig(new RawSignal(bitsize))
-    {      
-      window_size = winsize;
-      elem_size = bitsize;
-      ind = 0;
-      current_buf = out_sig->getBuffer(bitsize * winsize);
-    }
-    ~Window() {
-      delete out_sig;
-      //delete current_buf;
-    }
-
-    private:
-    DEFINE_OUTPUT_TYPE(RawSeg);
-    
-    int window_size;
-    size_t elem_size;
-    RawSignal* out_sig;
-
-    void* current_buf;
-    int ind;
-    
-    bool iterate(uint32_t port, void *item)
-    {
-      memcpy(((unsigned char*)current_buf + (ind*elem_size)), 
-	     item, 
-	     elem_size);
-      ind++;
-      if (ind == window_size) {
-	emit(out_sig->commit(window_size));
-	ind = 0;
-	//current_buf = out_sig->getBuffer(window_size * elem_size);
-	current_buf = out_sig->getBuffer(window_size);
-      }
-      return true;
-    }
-  };
-*/
-
   class Window : public WSBox{    
    
     public:
