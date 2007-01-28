@@ -5,8 +5,12 @@
 (module degeneralize-arithmetic mzscheme
   (require "../../../plt/common.ss"
            "../normalize_source/typecheck.ss")
-  (provide degeneralize-arithmetic)
+  (provide)
+  (chezprovide (degeneralize-arithmetic
+		degeneralize
+		lift-generics))
   (chezimports)
+  (IFCHEZ (begin) (provide degeneralize-arithmetic))
 
   (define genops '(g+ g- g* g/ g^ gint))
 
@@ -52,6 +56,5 @@
     (degeneralize 
      (retypecheck
       (lift-generics p))))
-  
 )
 
