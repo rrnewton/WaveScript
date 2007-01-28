@@ -108,9 +108,9 @@ hanning : int -> array float;
 // Multiplies a window by the hanning function:
 fun hanning(numpoints) {
   out = newarr(numpoints, 0.0);
-  np = int_to_float(numpoints-1);
+  np = intToFloat(numpoints-1);
   for i = 0 to numpoints - 1 {
-    f = int_to_float(i);
+    f = intToFloat(i);
     out[i] := 0.5 *. (1. -. cos(2. *. pi *. f /. np));
   };
   out;

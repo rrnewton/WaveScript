@@ -104,11 +104,36 @@
     (g/ ((NUM a) (NUM a)) (NUM a)) 
     (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
 
+    ; Here are some "upcasts".
+    ; Throws an error if you try to downcast:
+    (toInt (NUM a) Int)
+    (toFloat (NUM a) Float)
+    (toComplex (NUM a) Complex)
+
+    ; Downcasts must be explicit.
+    ; Thus you know exactly what you're throwing away.
+    ; (floatToInt (Float) Int)
+    ; (complexToFloat (Complex) Float)
+    ; (complexToInt   (Complex) Int)
+
+    ;; Hierarchy:
+    ; Int8
+    ; Int16
+    ; Int    Float
+    ; Int64  Double  Complex32
+    ;                Complex64
+
     (+ (Int Int) Int)
     (- (Int Int) Int) 
     (* (Int Int) Int) 
     (/ (Int Int) Int) 
     (^ (Int Int) Int) ;; exponentiation
+
+    (+_ (Int Int) Int)
+    (-_ (Int Int) Int) 
+    (*_ (Int Int) Int) 
+    (/_ (Int Int) Int) 
+    (^_ (Int Int) Int) ;; exponentiation
 
     (+. (Float Float) Float)
     (-. (Float Float) Float)
@@ -126,8 +151,8 @@
     (sqrtc (Complex) Complex)    
     (sqrti (Int) Int)
     
-    (int_to_float (Int) Float)
-    (float_to_int (Float) Int)
+    (intToFloat (Int) Float)
+    (floatToInt (Float) Int)
 
     (realpart (Complex) Float)
     (imagpart (Complex) Float)

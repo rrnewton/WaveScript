@@ -21,10 +21,15 @@
 
 		 to-uint16 to-int16 uint16->string
 
+		 gint
+		 g+ g- g* g/ g^
+		 +_ -_ *_ /_ ^_
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
 		 sqrtf sqrtc sqrti
-		 int_to_float float_to_int
+
+		 intToFloat floatToInt
+
 		 realpart imagpart cnorm
 
 		 nullseg nullarr nulltimebase
@@ -401,14 +406,19 @@
      (define nullarr #())
      (define nulltimebase 'nulltimebase)
 
-     (define ws+ fx+)
-     (define ws- fx-)   
-     (define ws* fx*)   
-     (define ws/ fx/)
+     (define (gint x) x)
+
+     (define g+ s:+) (define g- s:-) (define g* s:*) (define g/ s:/)
+
+     (define ws+ fx+) (define ws- fx-) (define ws* fx*) (define ws/ fx/)
+     (define +_ fx+) (define -_ fx-) (define *_ fx*) (define /_ fx/)
+
      (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
      (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
 
      (define ws^ expt)
+     (define g^ expt)
+     (define ^_ expt)
      (define ^. expt)
      (define ^: expt)
 
@@ -416,8 +426,8 @@
      (define sqrtf sqrt)
      (define sqrtc sqrt)
 
-     (define int_to_float fixnum->flonum)
-     (define float_to_int flonum->fixnum)
+     (define intToFloat fixnum->flonum)
+     (define floatToInt flonum->fixnum)
      
   (IFCHEZ
       (begin (define realpart cfl-real-part)

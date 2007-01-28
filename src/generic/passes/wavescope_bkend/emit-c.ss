@@ -513,7 +513,7 @@
 	[(realpart ,[v]) `("__real__ " ,v)]
 	[(imagpart ,[v]) `("__imag__ " ,v)]
 
-	[(int_to_float ,[e]) `("(wsfloat_t)",e)]
+	[(intToFloat ,[e]) `("(wsfloat_t)",e)]
 
 
 	[(show (assert-type ,t ,e))

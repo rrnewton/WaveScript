@@ -331,6 +331,7 @@
 (include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+(include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 
 (include "generic/passes/normalize_query/reduce-primitives.ss") (import reduce-primitives)

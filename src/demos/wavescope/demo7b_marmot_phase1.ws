@@ -136,10 +136,10 @@ fun myhanning (strm) {
       _hanning := makeArray(_lastLen, 0.0);
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
-	//print("LASTLEN: "++show(int_to_float(_lastLen-1))++"\n");
-	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i) /. int_to_float(_lastLen-1)));
+	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
+	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. intToFloat(i) /. intToFloat(_lastLen-1)));
 	// RRN: This would fix the zeroed fenceposts:
-	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i+1) /. int_to_float(_lastLen+1)));
+	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. intToFloat(i+1) /. intToFloat(_lastLen+1)));
       }
     };
 
@@ -253,7 +253,7 @@ fun detect(scorestrm) {
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = int_to_float(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
+      let thresh = intToFloat(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
