@@ -355,6 +355,7 @@
   (set! p (optional-stop (desugar-misc p)))
   (set! p (optional-stop (remove-unquoted-constant p)))
   (set! p (optional-stop (static-elaborate p)))
+  (set! p (optional-stop (degeneralize-arithmetic p)))
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"

@@ -29,6 +29,12 @@
   (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.]))
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:]))
 
+;; Should remove the generic ops from the grammar.
+#;  
+  (define degeneralize-grammar
+    ...
+    static-elaborate-grammar)
+
   (define-pass degeneralize
       [Expr (lambda (x fallthru)
 	      (match x
@@ -43,9 +49,9 @@
 				    "gint did not have expected type/form post-elaboration: ~s"
 				    (cons 'gint args))])
 		     (case t
-		       [(Int)     `(,(int genop) . ,args)]
-		       [(Float)   `(,(int genop) . ,args)]
-		       [(Complex) `(,(int genop) . ,args)]
+		       [(Int)     `(,(int     genop) . ,args)]
+		       [(Float)   `(,(float   genop) . ,args)]
+		       [(Complex) `(,(complex genop) . ,args)]
 		       [else (error 'degeneralize-arithmetic
 				    "generic operation did not have concrete numeric type after elaboration: ~s"
 				    (cons genop args))]

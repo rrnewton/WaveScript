@@ -104,7 +104,7 @@
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
 			;; Eventually:
-			; Int8 Int16 Int64 Float32 
+			; Int8 Int16 Int64 Double Complex64
 			))
 
 ; ======================================================================
@@ -430,7 +430,8 @@
 ;; Assign a basic type to a constant.
 (define (type-const c)
   (cond
-   [(and (number? c) (inexact? c)) 'Float]
+   [(flonum? c) 'Float]
+   [(cflonum? c) 'Complex]
    [(integer? c) 'Int]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
