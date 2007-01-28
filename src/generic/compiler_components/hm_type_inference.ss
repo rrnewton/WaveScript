@@ -518,7 +518,7 @@
       ;; Incorporate type assertions.
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
-	 (types-equal! ty et newexp)
+	 (types-equal! (instantiate-type ty) et newexp)
 	 (values `(assert-type ,ty ,e)
 		 et))
        ]

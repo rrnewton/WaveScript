@@ -5,6 +5,9 @@
 ;;;; This desugars pattern matching in binding forms.
 ;;;; Once that's done, it can run the type inferencer for the first time.
 
+;;;; NOTE: this pass also desugars type assertions within the formals
+;;;; list.  It pulls these outside the lambda.
+
 (module desugar-pattern-matching mzscheme
   (require "../../../plt/common.ss")
   (provide pass_desugar-pattern-matching test_desugar-patterns)
@@ -15,8 +18,9 @@
 (define-pass pass_desugar-pattern-matching     
     (define (break-pattern pat)
       (match pat
+	[(assert-type ,typ ,[form binds _]) (values form binds typ)]
 	[,s (guard (symbol? s)) 
-	    (values s '())]
+	    (values s '() #f)]
 	[#(,[pv* binds*] ...)
 	 (let ([v (unique-name 'pattmp)]
 	       [len (length pv*)])
@@ -25,23 +29,33 @@
 	     (values v
 		     `( ,@(filter (lambda (b) (not (eq? (car b) '_))) newbinds)
 			,@(apply append binds*)
-			))))]))
+			)
+		     #f)))]))
 
   (define (make-let* binds bod)
     (match  binds
       [() bod]
       [(,bind . ,[rest]) `(letrec (,bind) ,rest)]))
 
+  (define (build-assert t*)
+    `(,@(map (lambda (t) (or t `(quote ,(unique-name 'alpha)))) t*)
+      -> ',(unique-name 'beta)))
+
   (define process-expr
     (lambda (expr fallthrough)
       (match expr 
-	[(lambda (,[break-pattern -> formal* binds* ] ...) ,types ,[bod])
-	 (if (null? binds*)
-	     `(lambda (,formal* ...) ,types ,bod)
-	     `(lambda (,formal* ...) ,types 
-		      ,(make-let* (apply append binds*) bod)))]
-	[(,let ((,[break-pattern -> lhs* binds*] ,type* ,[rhs*]) ...) ,[bod])
+	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])
+	 (let ([lam (if (null? binds*)
+			`(lambda (,formal* ...) ,types ,bod)
+			`(lambda (,formal* ...) ,types 
+				 ,(make-let* (apply append binds*) bod)))])
+	   (if (ormap id type-assertion*)
+	       `(assert-type ,(build-assert type-assertion*) ,lam)
+	       lam))]
+	[(,let ((,[break-pattern -> lhs* binds* type-assertion*] ,type* ,[rhs*]) ...) ,[bod])
 	 (guard (memq let '(let letrec)))
+	 ;; Shouldn't have assertions on the variable names here:
+	 (ASSERT (not (ormap id type-assertion*)))
 	 `(,let ([,lhs* ,type* ,rhs*] ...  )
 	    ,(make-let* (apply append binds*) bod))]
 
@@ -51,7 +65,9 @@
 
 	;; Only handles one-armed matches right now:
 	;;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
-	[(match ,[x] (,[break-pattern -> var binds] ,[rhs]))
+	[(match ,[x] (,[break-pattern -> var binds type-assertion*] ,[rhs]))
+	 ;; Shouldn't have assertions on the variable names here for now:
+	 (ASSERT (not (ormap id type-assertion*)))
 	 `(letrec ([,var 'notypeyet ,x] ,binds ...)
 	    ,rhs)]
 

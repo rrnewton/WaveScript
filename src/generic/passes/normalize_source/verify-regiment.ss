@@ -40,6 +40,7 @@
      (define (pattern! p)
        (match p
 	 [,v (guard (symbol? v))  (assert-valid-name! v)]
+	 [(assert-type ,t ,[v]) (guard (type? t)) (void)]
 	 ;; Currently only tuple patterns:
 	 [#(,p* ...) (for-each pattern! p*)]
 	 [,other (error 'verify-regiment "bad binding pattern: ~s" other)]
@@ -48,6 +49,7 @@
      (define (pattern->vars p)
        (match p
 	 [_  '()] ;; Don't return "ignored" slots.
+	 [(assert-type ,_ ,[p]) p]
 	 [,v (guard (symbol? v))  (list v)]
 	 [#(,[v*] ...) (apply append v*)]
 	 ))

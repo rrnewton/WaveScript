@@ -265,7 +265,7 @@
     (fundef [(fun VAR LeftParen formals RightParen exp) ;LeftBrace stmts RightBrace) 
              `(define ,$2 (lambda ,$4 ,$6))]
 #;
-            [(VAR : type SEMI fun VAR LeftParen formals RightParen exp)
+            [(VAR :: type SEMI fun VAR LeftParen formals RightParen exp)
              (let ([v1 $1] [v2 $6])
                (unless (eq? v1 v2) 
                  (error "Parse Error: top-level type spec must precede function of same name, got ~a ~a, positions ~a ~a\n"
@@ -276,6 +276,7 @@
 	    [(formals+) $1]
 	    )
    (formals+ [(pattern) (list $1)]
+	     [(pattern :: type) (list `(assert-type ,$3 ,$1))]
 	     [(pattern COMMA formals) (cons $1 $3)])
 
 

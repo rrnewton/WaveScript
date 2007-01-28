@@ -106,9 +106,14 @@
 
     ; Here are some "upcasts".
     ; Throws an error if you try to downcast:
-    (toInt (NUM a) Int)
-    (toFloat (NUM a) Float)
-    (toComplex (NUM a) Complex)
+    (toInt     ((NUM a)) Int)
+    (toFloat   ((NUM a)) Float)
+    (toComplex ((NUM a)) Complex)
+
+    ;; These should be defined in the standard library.
+    (intToFloat   (Int) Float)
+    (intToComplex (Int) Complex)
+    (floatToComplex (Float) Complex)    
 
     ; Downcasts must be explicit.
     ; Thus you know exactly what you're throwing away.
@@ -151,9 +156,6 @@
     (sqrtc (Complex) Complex)    
     (sqrti (Int) Int)
     
-    (intToFloat (Int) Float)
-    (floatToInt (Float) Int)
-
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
 

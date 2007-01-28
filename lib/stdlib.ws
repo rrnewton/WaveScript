@@ -18,12 +18,13 @@ fun println(s) {
 }
 
 // For completeness we include these restrictions of their generic counterparts:
-//fun intToFloat(i::Int) { toFloat(f) }
-//fun intToComplex(i::Int) { toComplex(f) }
+//fun intToFloat     (i::Int)   toFloat(i) 
+fun intToComplex   (i::Int)   toComplex(i) 
+fun floatToComplex (f::Float) toComplex(f) 
 
 //======================================================================
 // "Library" stream constructors:
-
+/*
 fun syncN (ctrl, strms) {
   DEBUGSYNC = false;
 
@@ -246,9 +247,13 @@ fun stream_iterate(f,z,s) {
 }
 
 
-/* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
-/* test2 = stream_filter(fun (n) n > 300.0, test1); */
-/* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */
-/* 		       0.0, test2); */
-/* test4 = deep_stream_map(fun(x) x /. 100.0, audio(0,10,0)) */
-/* BASE <- test4; */
+test1 = stream_map(fun(w) w[[0]], audio(0,1024,0));
+test2 = stream_filter(fun (n) n > 300.0, test1);
+test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0),
+		       0.0, test2);
+test4 = deep_stream_map(fun(x) x /. 100.0, audio(0,10,0))
+BASE <- test4;
+
+*/
+
+BASE <- 3;

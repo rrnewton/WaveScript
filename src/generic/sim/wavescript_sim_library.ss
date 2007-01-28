@@ -29,6 +29,7 @@
 		 sqrtf sqrtc sqrti
 
 		 intToFloat floatToInt
+		 toComplex toFloat
 
 		 realpart imagpart cnorm
 
@@ -428,6 +429,15 @@
 
      (define intToFloat fixnum->flonum)
      (define floatToInt flonum->fixnum)
+     (define (toFloat n)
+       (cond
+	[(fixnum? n) (fixnum->flonum n)]
+	[(flonum? n) n]
+	[else (error 'toFloat "may only be used for upcast, given: ~s" n)]))
+     (define (toComplex n) (s:+ n 0.0+0.0i))
+
+
+
      
   (IFCHEZ
       (begin (define realpart cfl-real-part)
