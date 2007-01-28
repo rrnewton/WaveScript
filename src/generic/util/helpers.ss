@@ -58,7 +58,8 @@
  (provide     	
   
   ;; Syntax:
-   
+  values->list
+ 
    ;; Values:
   
    ;; Meet in the middle with chez:
@@ -225,6 +226,10 @@
 ;;;  BEGIN Generic core of helpers.ss:
 ; ======================================================================
 
+;; For evaluating a multiple-valued expression.
+(define-syntax values->list 
+  (syntax-rules ()
+    [(_ e) (call-with-values (lambda () e) list)]))
 
 ;==============================================================================;
 

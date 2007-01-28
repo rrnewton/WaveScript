@@ -499,13 +499,22 @@
 
 	;; TODO: tupref
 	[(,infix_prim ,[left] ,[right])
-	 (guard (memq infix_prim '(+ - * / < > <= >= =
-				     +. -. *. /. )))
+	 (guard (memq infix_prim '(;+ - * /
+				   +. -. *. /. 
+				   +_ *_ -_ /_
+				   +: *: -: /:
+				   < > <= >= =
+				   )))
 	 (let ([cname (case infix_prim
 			[(=) "=="]
-			[(+ * - / < > <= >=) infix_prim]
-			[(+. *. -. /.) ;; Chop off the period:
-			 (substring (symbol->string infix_prim) 0 1)])])
+			[(;+ * - / 
+			  < > <= >=) infix_prim]
+			[(+. *. -. /.
+			  +_ *_ -_ /_
+			  +: *: -: /:
+			  ) ;; Chop off the period:
+			 (substring (symbol->string infix_prim) 0 1)]
+			)])
 	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]

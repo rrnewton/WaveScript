@@ -66,12 +66,12 @@
 	       (merge-iterates 
 		'(foolang 
 		  '(program (iterate (lambda (x vq1) (Int (VQueue Int))
-					     (begin (emit vq1 (+ x 1)) 
-						    (emit vq1 (+ x 100))
+					     (begin (emit vq1 (+_ x 1)) 
+						    (emit vq1 (+_ x 100))
 						    vq1))
 				     (iterate (lambda (y vq2) (Int (VQueue Int))
-						      (begin (emit vq2 (* y 2))
-							     (emit vq2 (* y 3))
+						      (begin (emit vq2 (*_ y 2))
+							     (emit vq2 (*_ y 3))
 							     vq2))
 					      SOMESTREAM))
 		     T)))))
@@ -178,7 +178,7 @@
                                                                         (begin
                                                                           (emit
                                                                             ___VIRTQUEUE___
-                                                                            (* x
+                                                                            (*_ x
                                                                                2))
                                                                           ___VIRTQUEUE___))])
                                                (begin

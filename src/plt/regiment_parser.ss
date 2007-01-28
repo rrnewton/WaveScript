@@ -459,11 +459,11 @@
          [(exp : exp) `(cons ,$1 ,$3)]
 
 	 ;; Currently these parse as integer ops:
-         [(exp + exp) `(+_ ,$1 ,$3)]
-         [(exp - exp) `(-_ ,$1 ,$3)]
-         [(exp * exp) `(*_ ,$1 ,$3)]
-         [(exp / exp) `(/_ ,$1 ,$3)]
-         [(exp ^ exp) `(^_ ,$1 ,$3)]
+         [(exp + exp) `(app + ,$1 ,$3)]
+         [(exp - exp) `(app - ,$1 ,$3)]
+         [(exp * exp) `(app * ,$1 ,$3)]
+         [(exp / exp) `(app / ,$1 ,$3)]
+         [(exp ^ exp) `(app ^ ,$1 ,$3)]
 
          [(exp g+ exp) `(g+ ,$1 ,$3)]
          [(exp g- exp) `(g- ,$1 ,$3)]
@@ -507,11 +507,11 @@
 ;         [(return exp) $2]
          )
     
-    (binop [(+) '+_]
-           [(-) '-_]
-           [(*) '*_]
-           [(/) '/_]           
-           [(^) '^_]
+    (binop [(+) '+]
+           [(-) '-]
+           [(*) '*]
+           [(/) '/]           
+           [(^) '^]
 
 	   [(g+) 'g+]
            [(g-) 'g-]

@@ -9,7 +9,9 @@
 // instead.
 
 fun f(x) { x g+ gint(3) }
-fun g(x, y) { x g+ y }
+
+// Now we use normal +, which is an alias for g+.
+fun g(x, y) { x + y }
 
 s1 = audio(1, 4096, 0);
 

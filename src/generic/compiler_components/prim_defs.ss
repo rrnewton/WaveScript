@@ -128,11 +128,12 @@
     ; Int64  Double  Complex32
     ;                Complex64
 
-    (+ (Int Int) Int)
-    (- (Int Int) Int) 
-    (* (Int Int) Int) 
-    (/ (Int Int) Int) 
-    (^ (Int Int) Int) ;; exponentiation
+    ;; Phasing these out.  The *parser* will these symbols resolve to g+ or +_.
+;    (+ (Int Int) Int)
+;    (- (Int Int) Int) 
+;    (* (Int Int) Int) 
+;    (/ (Int Int) Int) 
+;    (^ (Int Int) Int) ;; exponentiation
 
     (+_ (Int Int) Int)
     (-_ (Int Int) Int) 

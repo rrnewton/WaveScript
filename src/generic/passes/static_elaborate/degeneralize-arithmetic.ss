@@ -25,7 +25,7 @@
 		      ,tmp))]
 		[,other (fallthru other)]))])
 
-  (define (int x)     (match x [g+ '+]  [g- '-]  [g* '*]  [g/ '/]  [g/ '/]))
+  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_]))
   (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.]))
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:]))
 

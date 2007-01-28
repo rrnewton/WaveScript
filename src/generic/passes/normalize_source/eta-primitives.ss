@@ -62,12 +62,12 @@
 	["Simple test of eta-primitives"
 	 (eta-primitives '(base-language
 			   '(program
-				(rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
+				(rfold +_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
 			      (Signal Int))))
 	 (eta-primitives-language
 	  '(program
 	       (rfold
-		(lambda (a b) (Int Int) (+ a b))
+		(lambda (a b) (Int Int) (+_ a b))
 		0
 		(rmap
 		 (lambda (a) (Node) (nodeid a))

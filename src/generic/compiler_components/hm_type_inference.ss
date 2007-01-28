@@ -890,9 +890,10 @@
 	(when (regiment-verbose)
 	  (warning 'no-occurrence! "encountered A=B=A type constraint: ~s" ty))
 	(match ty
-	  [(quote ,tvarpair)
+	  [(,qt ,tvarpair)	   
 	   ;; Ouch, mutating in the guard... Nasty.
-	   (guard  (match tvarpair
+	   (guard  (memq qt '(quote NUM))
+		   (match tvarpair
 		     [(,outer . (,qt (,inner . ,targettyp))) 
 		      (guard (memq qt '(NUM quote)) (eq? inner tvar))
 		      ;; Short circuit the equivalence, this doesn't destroy
@@ -905,7 +906,7 @@
 		     [else (error 'no-occurrence! "this is an implementation bug.")]))
 	   ;; Guard already did the work:
 	   (void)]	  	 
-	  [,else (error 'no-occurrence! "there's a bug in this implementation.")])
+	  [,other (error 'no-occurrence! "there's a bug in this implementation. Unhandled: ~s" other)])
 	)
       
   (match ty
@@ -1023,14 +1024,14 @@
 
     
     [(export-type ''(f . Int)) Int]
-    [(export-type (,type-expression '(+ 1 1) (empty-tenv))) Int]
+    [(export-type (,type-expression '(+_ 1 1) (empty-tenv))) Int]
     [(export-type (,type-expression '(cons 3 (cons 4 '())) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(Int) (empty-tenv) '())]) t))
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(Int) (empty-tenv) '())]) t))
      (Int -> Int)]
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '('alpha) (empty-tenv) '())]) t))
+    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '('alpha) (empty-tenv) '())]) t))
      ;((NUM unspecified) -> (NUM unspecified))
      (Int -> Int)]
     
@@ -1039,7 +1040,7 @@
      '(a . '(b . #f))]
    
     ["Invalid explicitly annotated type"
-     (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+ v v) '(String) (empty-tenv) '())]) t))
+     (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(String) (empty-tenv) '())]) t))
      error]
 
     ["Explicitly typed let narrowing identity function's signature"
@@ -1056,7 +1057,7 @@
 
     [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Int]
      
-    [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+ x 4))) (empty-tenv)))
+    [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+_ x 4))) (empty-tenv)))
      (Int -> Int)]
 
     [(export-type (,type-expression '(rmap (lambda (n) (sense "light" n)) world) (empty-tenv)))
@@ -1154,7 +1155,7 @@
   
   ;; Now let's see about partially annotated programs.
   ["Partially (erroneously) annotated letrec"
-   (mvlet ([(p t) (annotate-program '(letrec ([i String 3]) (+ i 59)))]) p)
+   (mvlet ([(p t) (annotate-program '(letrec ([i String 3]) (+_ i 59)))]) p)
    error]
 
   ["An example function from nested_regions_folded.ss"

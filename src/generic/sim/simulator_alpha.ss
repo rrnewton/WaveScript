@@ -253,8 +253,12 @@
   ;; Right now I'm tightening up my numeric ops, getting it more ready for static typing. -[2005.10.20] 
   ;; TODO: Make this PLT compatible.
   (define prim-substs
-    '([+ fx+] [- fx-] [* fx*] [/ fx/]
+    '(;; [2007.01.28] Should phase these plain versions out:
+      [+ fx+] [- fx-] [* fx*] [/ fx/]
+      [+_ fx+] [-_ fx-] [*_ fx*] [/_ fx/]
       [+. fl+] [-. fl-] [*. fl*] [/. fl/]
+      [+: cfl+] [-: cfl-] [*: cfl*] [/: cfl/]
+      [^ expt] [^_ expt] [^. expt] [^: expt]
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]
       [random reg:random-int]

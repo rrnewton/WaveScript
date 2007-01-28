@@ -58,6 +58,12 @@
 				     "type is not valid post-elaboration: ~s" t)))
 		  (binding-form->types form))
 		(fallthrough form tenv)]
+	 
+	 [(,genop ,args ...)
+	  (guard (memq genop '(g+ g- g* g/ g^ gint)))
+	  (error 'verify-elaborated 
+		 "shouldn't have generic arithmetic after static-elaborate: ~s"
+		 `(,genop . ,args))]
 
 	 [,other (fallthrough other tenv)]))]
   

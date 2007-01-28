@@ -38,11 +38,12 @@
     ;; (4) Then -- here comes the metaprogramming -- we evaluate as much
     ;; of the program as can be evaluated.  The residual had better follow our
     ;; restrictions on implementable Regiment programs.
-    static-elaborate
+    static-elaborate    
+    degeneralize-arithmetic
     rename-vars ;; We run again after elaborator.
     retypecheck
 
-;    verify-elaborated
+    verify-elaborated
 
     ;; (5) Now we normalize the residual in a number of ways to
     ;; produce the core query language, then we verify that core.

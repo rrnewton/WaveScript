@@ -89,10 +89,13 @@
      ;; A table binding computable prims to an expression that evals
      ;; to a function which will carry out the primitive.
     (define computable-prims 
-      '((+ +) (- -) (* *) (/ /) 
-	(+. +) (-. -) (*. *) (/. /) 
-	(+: +) (-: -) (*: *) (/: /)
+      '((+ +) (- -) (* *) (/ /) (^ expt) 
+	(g+ +) (g- -) (g* *) (g/ /) (g^ expt) 
+	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
+	(+. +) (-. -) (*. *) (/. /) (^. expt) 
+	(+: +) (-: -) (*: *) (/: /) (^: expt) 
 	(= =) (< <) (<= <=) (> >) (>= >=)
+	(gint (lambda (x) x))
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
@@ -517,7 +520,7 @@
   `( 
 
     ["Make sure it folds some simple constants." 
-     (static-elaborate '(foo '(program (+ '3 '4) notype)))
+     (static-elaborate '(foo '(program (+_ '3 '4) notype)))
      (static-elaborate-language '(program '7 notype))]
 
     [(static-elaborate
@@ -529,17 +532,17 @@
     ["Reduce away fact of 6." 
      (static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
-			       (if (= '0 n) '1 (* n (app fact (- n '1)))))])
+			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6))
       notype)))
      (static-elaborate-language '(program '720 notype))]
     
     ["Reduce a tuple reference."
-     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+ '100 (tupref 0 2 x))) notype)))
+     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+_ '100 (tupref 0 2 x))) notype)))
      (static-elaborate-language '(program '103 notype))]
 
     ["Reduce a primop underneath a lambda."
-     (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+ '3 '4) x)) notype)))
+     (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+_ '3 '4) x)) notype)))
      (static-elaborate-language '(program (lambda (x) (_) (cons '7 x)) notype))]
 
     [(static-elaborate '(foo '(program 
@@ -547,7 +550,7 @@
 				 (letrec ([loop _ (lambda (n) (_)
 							  (if (= '0 n)
 							      world
-							      (rfilter f (app loop (- n '1)))))])
+							      (rfilter f (app loop (-_ n '1)))))])
 				   (app loop '5)))
 			       notype)))
      (static-elaborate-language '(program
@@ -558,7 +561,7 @@
 	    notype))]
 
     ["Simple test to make sure we keep the quotes on:" 
-     (static-elaborate '(foolang '(program (cons (+ '3 '4) world) notype)))
+     (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) notype)))
      (static-elaborate-language '(program (cons (quote 7) world)
 		 notype))]
 

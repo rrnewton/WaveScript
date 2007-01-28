@@ -90,13 +90,13 @@
 	      ))
      `(
        [(,rename-vars '(some-lang '(program (letrec ((x Int 1)) 
-					    (+ (app (lambda (x) (Int) x) 3) x)) Int)))
+					    (+_ (app (lambda (x) (Int) x) 3) x)) Int)))
 	,(lambda (p)
 	   (match p
 	     [(rename-var-language
 	       '(program
 		    (letrec ([,x_1 Int 1])
-		      (+ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
+		      (+_ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
 		  Int))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]

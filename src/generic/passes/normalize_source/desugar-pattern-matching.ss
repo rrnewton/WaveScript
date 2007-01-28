@@ -8,20 +8,23 @@
 ;;;; NOTE: this pass also desugars type assertions within the formals
 ;;;; list.  It pulls these outside the lambda.
 
+;;;; NOTE: This is messier than I would like, but this pass also
+;;;; desugars + into g+.  The earlier this happens, the better, and
+;;;; this was about as early as it could happen.
+
 (module desugar-pattern-matching mzscheme
   (require "../../../plt/common.ss")
   (provide pass_desugar-pattern-matching test_desugar-patterns)
   (chezimports)
 
-;; Desugar pattern matching within lambda's, letrecs, and "match" statements. <br>
-;; TODO: This should really not go in the source_loader.
-(define-pass pass_desugar-pattern-matching     
-    (define (break-pattern pat)
+  (define (break-pattern pat)
       (match pat
 	[(assert-type ,typ ,[form binds _]) (values form binds typ)]
 	[,s (guard (symbol? s)) 
 	    (values s '() #f)]
-	[#(,[pv* binds*] ...)
+	[#(,[pv* binds* type-assertion*] ...)
+	 ;; Not currently allowed to make assertions on sub-parts of the pattern.
+	 (ASSERT (not (ormap id type-assertion*)))
 	 (let ([v (unique-name 'pattmp)]
 	       [len (length pv*)])
 	   (let ([newbinds 
@@ -44,6 +47,21 @@
   (define process-expr
     (lambda (expr fallthrough)
       (match expr 
+
+; 	[+ 'g+] [- 'g-] [* 'g*] [/ 'g/] [^ 'g^]	
+; 	[(+ ,[a] ,[b]) `(g+ ,a ,b)]
+; 	[(- ,[a] ,[b]) `(g- ,a ,b)]
+; 	[(* ,[a] ,[b]) `(g* ,a ,b)]
+; 	[(/ ,[a] ,[b]) `(g/ ,a ,b)]
+; 	[(^ ,[a] ,[b]) `(g^ ,a ,b)]
+
+	[+ '+_] [- '-_] [* '*_] [/ '/_] [^ '^_]	
+	[(+ ,[a] ,[b]) `(+_ ,a ,b)]
+	[(- ,[a] ,[b]) `(-_ ,a ,b)]
+	[(* ,[a] ,[b]) `(*_ ,a ,b)]
+	[(/ ,[a] ,[b]) `(/_ ,a ,b)]
+	[(^ ,[a] ,[b]) `(^_ ,a ,b)]
+	
 	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])
 	 (let ([lam (if (null? binds*)
 			`(lambda (,formal* ...) ,types ,bod)
@@ -65,9 +83,9 @@
 
 	;; Only handles one-armed matches right now:
 	;;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
-	[(match ,[x] (,[break-pattern -> var binds type-assertion*] ,[rhs]))
+	[(match ,[x] (,[break-pattern -> var binds type-assertion] ,[rhs]))
 	 ;; Shouldn't have assertions on the variable names here for now:
-	 (ASSERT (not (ormap id type-assertion*)))
+	 (ASSERT (not type-assertion))
 	 `(letrec ([,var 'notypeyet ,x] ,binds ...)
 	    ,rhs)]
 
@@ -92,11 +110,15 @@
 	
 	[,other (fallthrough other)])))
 
+;; Desugar pattern matching within lambda's, letrecs, and "match" statements. <br>
+;; TODO: This should really not go in the source_loader.
+(define-pass pass_desugar-pattern-matching     
+
 ;; TODO: When it works, could redo this with Expr/ExtraArg
   [Expr process-expr]
   
   ;; After desugaring pattern matching, then we can typecheck the prog for the first time:
-  [Program (lambda (prog Expr)
+  [Program (lambda (prog Expr)	  
 	  (match prog
 	    [(,inputlang '(program ,bod ,type))
 ;	     (inspect (Expr bod))
@@ -121,6 +143,12 @@
 	   (letrec ([bar (tupref 0 2 pattmp_1)])
 	     (letrec ([baz (tupref 1 2 pattmp_1)]) 
 	       foo)))))]
+
+    [(,reunique-names (values->list (,break-pattern #(x y))))
+     (pattmp
+      ((x 'type (tupref 0 2 pattmp))
+       (y 'type (tupref 1 2 pattmp)))
+      #f)]
 
     [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
      (desugar-pattern-matching-language

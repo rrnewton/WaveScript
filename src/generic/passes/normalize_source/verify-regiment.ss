@@ -61,7 +61,7 @@
      ;; with unbound variables.)
      (define process-expr
        (lambda (expr env)
-	 (match expr
+(match expr
 	   [,const (guard (constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
@@ -162,7 +162,7 @@
 		   [#(,t* ...) (for-each Type t*)]
 		   [,t (Type t)])
 		 `(assert-type (Signal ,t)  `(dataFile ,file ,mode ,repeats)))]
-	 
+	  	 
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env))
 		  (regiment-primitive? prim))
@@ -174,13 +174,25 @@
             (error 'verify-regiment "invalid syntax ~s" unmatched)])))
 
      (define (process-program prog)
-       (match prog
-	 ;; The input is already wrapped with the metadata:
-	 [(,input-language (quote (program ,body)))
-	  `(verify-regiment-language '(program ,(process-expr body '()) 'toptype))]
-	 ;; Nope?  Well wrap that metadata:
-	 [,body (process-program `(base-language '(program ,body)))]
-	 ))
+
+	 ;; This is ugly, but for this very first pass, we pretend
+	 ;; that these are primitives.  They are desugared in the next pass.
+	 (fluid-let ([regiment-primitives
+		      (append 
+		       '((+ (Int Int) Int)
+			 (- (Int Int) Int) 
+			 (* (Int Int) Int) 
+			 (/ (Int Int) Int) 
+			 (^ (Int Int) Int))
+		       regiment-primitives)])
+           (match prog
+	     ;; The input is already wrapped with the metadata:
+	     [(,input-language (quote (program ,body)))
+	      `(verify-regiment-language '(program ,(process-expr body '()) 'toptype))]
+	     ;; Nope?  Well wrap that metadata:
+	     [,body (process-program `(base-language '(program ,body)))]
+	     )
+	   ))
 
      ;; Main body:
      process-program
@@ -198,20 +210,20 @@
        (letrec ((a (anchor-at 30 40)))
        (letrec ((r (circle a 50.))
 		(f (lambda (next tot)
-		     (cons (+ (car tot) (sense "temperature" next))
-			   (cons (+ (car (cdr tot)) 1)
+		     (cons (+_ (car tot) (sense "temperature" next))
+			   (cons (+_ (car (cdr tot)) 1)
 				 '()))))
-		(g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+		(g (lambda (tot) (/_ (car tot) (car (cdr tot))))))
 	 (smap g (rfold f '(0 0) r)))))))
       unspecified]
       
      [(verify-regiment '(some-lang '(program
        (letrec ((R (circle-at 30 40 50.))
 	      (f (lambda (next tot)
-		   (cons (+ (car tot) (sense "temperature" next))
-			 (cons (+ (car (cdr tot)) 1)
+		   (cons (+_ (car tot) (sense "temperature" next))
+			 (cons (+_ (car (cdr tot)) 1)
 			       '()))))
-	      (g (lambda (tot) (/ (car tot) (car (cdr tot))))))
+	      (g (lambda (tot) (/_ (car tot) (car (cdr tot))))))
        (letrec ((avg (smap g (rfold f (cons 0 (cons 0 '())) R))))
 	 (runtil (swhen-any (lambda (x) (> x 15)) avg)
 		 R

@@ -78,22 +78,8 @@
      processExpr)])
 
 (define test-desugar-misc
-  (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
+  (default-unit-tester " 1: Desugar-misc: remove miscellaneous syntactic sugar"
     `(
-      ["Simple test of eta-primitives"
-       (eta-primitives '(base-language
-			 '(program
-			      (rfold + 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
-			    (Signal Int))))
-       (eta-primitives-language
-	'(program
-	     (rfold
-	      (lambda (a b) (Int Int) (+ a b))
-	      0
-	      (rmap
-	       (lambda (a) (Node) (nodeid a))
-	       (khood (anchor-at 50 10) 2)))
-	   (Signal Int)))]
       )))
 
 ) ; End module

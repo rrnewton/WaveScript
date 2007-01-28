@@ -373,7 +373,7 @@
 				    (lazy-letrec ([res1 Int () (sense 'temp n)]) res1))]
 		       [f (Int Int -> Int) ()
 			  (lambda (a b) (Int Int) 
-				  (lazy-letrec ([res2 Int () (+ a b)]) res2))]
+				  (lazy-letrec ([res2 Int () (+_ a b)]) res2))]
 		       [v1 (Area Int) () (rmap read tmp)]
 		       [v2 (Signal Int) ([tree tmp]) (rfold f '39 v1)]
 		       )
@@ -392,7 +392,7 @@
 		       [nbrhood (Anchor -> Region) ()
 				(lambda (anc) (Anchor) (lazy-letrec ([thehood Region () (khood anc '2)]) thehood))]
 		       [plus (Int Int -> Int) () 
-			     (lambda (a b) (Int Int) (lazy-letrec ([x2 Int () (+ a b)]) x2))]
+			     (lambda (a b) (Int Int) (lazy-letrec ([x2 Int () (+_ a b)]) x2))]
 
 		       [mapnid (Region -> (Area Int)) () 
 			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Int) () (rmap nid r)]) x3))]
@@ -428,7 +428,7 @@
 		[read (Node -> Int) () 
 		      (lambda (n) (Node) (sense 'temp n))]
 		[f (Int Int -> Int) ()
-		   (lambda (a b) (Int Int) (+ a b))]
+		   (lambda (a b) (Int Int) (+_ a b))]
 		[v1 (Area Int) () (rmap read tmp)]
 		[v2 (Signal Int) () (rfold f u v1)]
 		)
@@ -441,7 +441,7 @@
 
 
 #;
-(rc '(rfold + 0 (rmap (lambda (n) (sense 'temp n)) world)) 'verbose)
+(rc '(rfold +_ 0 (rmap (lambda (n) (sense 'temp n)) world)) 'verbose)
 
 #;
 (lift-letrec-language
@@ -454,7 +454,7 @@
            (lambda (a_7 b_6)
              (Int Int)
              (lazy-letrec
-               ((resultofanonlambda_9 Int (+ a_7 b_6)))
+               ((resultofanonlambda_9 Int (+_ a_7 b_6)))
                resultofanonlambda_9)))
          (tmprmap_13 (Area Int) (rmap tmpnonprim_12 tmpworld_11))
          (tmpnonprim_12
@@ -546,7 +546,7 @@
 
 #;
 (process-expr
- '(smap add1 (rfold + 0 (rmap sense world)))
+ '(smap add1 (rfold +_ 0 (rmap sense world)))
  (empty-tenv)
  (lambda (x) x))
 

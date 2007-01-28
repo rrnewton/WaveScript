@@ -384,24 +384,24 @@
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
-      '(+ '3 '4))
-     (+ '3 '4)]
+      '(+_ '3 '4))
+     (+_ '3 '4)]
     
     ["run traversal over rfold & letrec"
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))          
-      '(rfold + 0
+      '(rfold +_ 0
 	      (letrec ([myhood Region (khood (anchor-at 50 10) 2)])
 		(rmap nodeid myhood))))
-     (rfold + 0 (letrec ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
+     (rfold +_ 0 (letrec ((myhood Region (khood (anchor-at 50 10) 2))) (rmap nodeid myhood)))]
 
     ["run traversal over lambda"
      (core-generic-traverse/types 
       (lambda (x tenv loop) (loop x tenv))
       (lambda (ls k) (apply k ls))
-      '(lambda (x) (Int) (+ '3 '4)))
-     (lambda (x) (Int) (+ '3 '4))]
+      '(lambda (x) (Int) (+_ '3 '4)))
+     (lambda (x) (Int) (+_ '3 '4))]
     
     ["core-free-vars "
      (core-free-vars '(audioFile '"countup.raw" '2 x))
