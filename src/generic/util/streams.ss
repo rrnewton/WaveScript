@@ -238,23 +238,30 @@
 			      [ws-print-output-port port]
 			      )
 		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
-		 (time 
-		  (progress-dots
-		   (lambda ()
-		     (let loop ()
-		       (if (stream-empty? stream)
-			   (printf "Finished, dumped ~a stream elements.\n" pos)
-			   (let ([elem (stream-car stream)])
-			     (unless (equal? elem #())
-			       (write elem port)(newline port))
-			     (set! pos (add1 pos))
-			     (set! stream (stream-cdr stream))
-			     (loop)
-			     ))))
-		 50000000 
-		 (lambda ()
-		   (printf "  POS# ~a dumped...\n" pos))))
-		 ))]
+		 (let ([go
+			(lambda ()
+			  (progress-dots
+			   (lambda ()
+			     (let loop ()
+			       (if (stream-empty? stream)
+				   (unless (regiment-quiet)
+				     (printf "Finished, dumped ~a stream elements.\n" pos))
+				   (let ([elem (stream-car stream)])
+				     (unless (equal? elem #())
+				       (write elem port)(newline port))
+				     (set! pos (add1 pos))
+				     (set! stream (stream-cdr stream))
+				     (loop)
+				     ))))
+			   50000000 
+			   (lambda ()
+			     (unless (regiment-quiet)
+			       (printf "  POS# ~a dumped...\n" pos))
+			     )))])
+		   (if (regiment-quiet)		       
+		       (go)
+		       (time (go))
+		       ))))]
 
 	  [(profile)  
 	   (IFCHEZ

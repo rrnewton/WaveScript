@@ -32,7 +32,7 @@ Things I'm working on now --Ryan:
  *) Finish implementing equality
  X) Push generic arith system to the front end.
  *) Make printed representations consistent between WS and WSC. 
-
+ *) add ws.opt and wsc.opt targets for when performance is critical.
 
 [2006.11.29]
  *) For distribution compile a separate regiment.opt for simulations.

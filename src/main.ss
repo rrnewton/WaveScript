@@ -348,7 +348,7 @@
   
   (set! p (optional-stop (verify-regiment p)))
   (set! p (optional-stop (pass_desugar-pattern-matching p)))
-  (printf "Program verified.\n")
+  (unless (regiment-quiet) (printf "Program verified.\n"))
 
   (set! p (optional-stop (rename-vars p)))
   (DEBUGMODE (set! p (optional-stop (retypecheck p))) (void))
@@ -375,8 +375,9 @@
   (set! p (optional-stop (retypecheck p)))
   (set! p (optional-stop (rename-vars p)))
 
-  (printf "Post elaboration types: \n")
-  (print-var-types p)
+  (unless (regiment-quiet)
+    (printf "Post elaboration types: \n")
+    (print-var-types p))
 
   (set! p (optional-stop (verify-elaborated p)))
 
