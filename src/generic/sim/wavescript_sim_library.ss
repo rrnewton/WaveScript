@@ -465,7 +465,7 @@
      ;; Would be nice to use copy-struct for a functional update.
      (define (fft ss)
        ;(import scheme) ;; Use normal arithmetic.
-       (define (log2 n) (/ (log n) (log 2)))
+       (define (log2 n) (s:/ (log n) (log 2)))
        (DEBUGASSERT (valid-sigseg? ss))
        (DEBUGMODE 
 	(if (eq? ss nullseg) (error 'fft "cannot take fft of nullseg"))
@@ -762,7 +762,7 @@
      (define (seg-get w ind) 
        (DEBUGASSERT (valid-sigseg? w))
        (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
-       (DEBUGMODE (if (or (< ind 0) (>= ind (sigseg-width w)))
+       (DEBUGMODE (if (or (< ind 0) (>= ind (width w)))
 		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
        (vector-ref (sigseg-vec w) ind))
      (define (width w) 

@@ -539,11 +539,19 @@
 ;; <br>[2005.05] I revoked that.  Basically everything is a prim now.
 (define token-machine-primitives
     ; Arithmetic prims:
-  '((+ (Int Int) Int) 
+  '(
+    ;; Phase these out:
+    (+ (Int Int) Int) 
     (- (Int Int) Int) 
     (* (Int Int) Int) 
     (/ (Int Int) Int) 
     (^ (Int Int) Int)
+
+    (+_ (Int Int) Int) 
+    (-_ (Int Int) Int) 
+    (*_ (Int Int) Int) 
+    (/_ (Int Int) Int) 
+    (^_ (Int Int) Int)
 
     (+. (Float Float) Float) 
     (-. (Float Float) Float) 

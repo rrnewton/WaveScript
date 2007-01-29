@@ -124,8 +124,14 @@
        [Expr ('let* ([Var Type Expr] ...) Expr)]
        [Expr ('or Expr ...)]
        [Expr ('and Expr ...)]
-       )
-  )
+
+       ;; This includes these basic arith prims, which are just sugar for the generic ops:
+       [Prim '+]
+       [Prim '-]
+       [Prim '*]
+       [Prim '/]
+       [Prim '^]
+       ))
 		  
 ; =======================================================================
 

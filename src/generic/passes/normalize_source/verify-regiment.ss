@@ -19,7 +19,6 @@
 
 ; ----------------------------------------
 
-
 (define verify-regiment
   (build-compiler-pass ;; This wraps the main function with extra debugging
    'verify-regiment
