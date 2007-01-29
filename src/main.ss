@@ -824,9 +824,9 @@
 (define final
   '(type-annotate-misc-language
   '(program
-     (let ([ch1_1 (Signal (Sigseg Float)) (audio '0 '128 '0)])
-       (let ([ch2_2 (Signal (Sigseg Float)) (audio '1 '128 '0)])
-         (let ([ctrl_3 (Signal #(Bool Int Int))
+     (let ([ch1_1 (Stream (Sigseg Float)) (audio '0 '128 '0)])
+       (let ([ch2_2 (Stream (Sigseg Float)) (audio '1 '128 '0)])
+         (let ([ctrl_3 (Stream #(Bool Int Int))
                  (iterate
                    (let ([pos_4 Int '0])
                      (lambda (w_6 VIRTQUEUE_5)
@@ -838,7 +838,7 @@
                          (set! pos_4 (+ pos_4 '100))
                          VIRTQUEUE_5)))
                    ch1_1)])
-           (let ([ctrl_7 (Signal #(Bool Int Int (Sigseg Float)))
+           (let ([ctrl_7 (Stream #(Bool Int Int (Sigseg Float)))
                    (iterate
                      (lambda (pattmp_9 VIRTQUEUE_8)
                        (#(Bool Int Int)
@@ -852,7 +852,7 @@
                                  (tuple b_10 s_11 e_12 nullseg))
                                VIRTQUEUE_8)))))
                      ctrl_3)])
-             (let ([s1_13 (Signal #(Bool Int Int (Sigseg Float)))
+             (let ([s1_13 (Stream #(Bool Int Int (Sigseg Float)))
                      (iterate
                        (lambda (win_15 VIRTQUEUE_14)
                          ((Sigseg Float)
@@ -861,7 +861,7 @@
                            (emit VIRTQUEUE_14 (tuple '#f '0 '0 win_15))
                            VIRTQUEUE_14))
                        ch1_1)])
-               (let ([s2_16 (Signal #(Bool Int Int (Sigseg Float)))
+               (let ([s2_16 (Stream #(Bool Int Int (Sigseg Float)))
                        (iterate
                          (lambda (win_18 VIRTQUEUE_17)
                            ((Sigseg Float)
@@ -870,7 +870,7 @@
                              (emit VIRTQUEUE_17 (tuple '#f '0 '0 win_18))
                              VIRTQUEUE_17))
                          ch2_2)])
-                 (let ([tmp_35 (Signal
+                 (let ([tmp_35 (Stream
                                  #(Int #(Bool Int Int (Sigseg Float))))
                          (unionN ctrl_7 s1_13 s2_16)])
                    (iterate
@@ -1090,4 +1090,4 @@
                                                              (tuple))))))))))))
                                    VIRTQUEUE_22)))))))
                      tmp_35))))))))
-     (Signal #((Sigseg Float) (Sigseg Float))))))
+     (Stream #((Sigseg Float) (Sigseg Float))))))

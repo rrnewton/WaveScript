@@ -55,8 +55,8 @@
     (let ([newbinds 	   
 	   `(
 	     ;; Expressions may now contain inputs from streams.
-	     [Expr ('SIG_in Var)]  ;; Has type Signal 'a
-	     [Expr ('REG_in Var Var)] ;; Has type Signal Int -- the integers represent the dynamic Region IDs.
+	     [Expr ('SIG_in Var)]  ;; Has type Stream 'a
+	     [Expr ('REG_in Var Var)] ;; Has type Stream Int -- the integers represent the dynamic Region IDs.
 	     [Program ('program ('commdecls Comm ...))]
 
 	     ;; TODO! Need some extra types in this grammar:
@@ -88,7 +88,7 @@
       (append newbinds pruned)))
 
 
-  ;; This transforms Regions into just local Signals and removes Nodes.
+  ;; This transforms Regions into just local Streams and removes Nodes.
   (define (transform-type ty)
       (let tt ((ty ty))
       (cond
@@ -96,9 +96,9 @@
        [(and (pair? ty) (eq? 'quote (car ty))) ty]
        [(eq? 'Node ty) #()] ;; This becomes unit.
        [(types-compat? ty '(Area 'a)) => (match-lambda ((Area ,t))
-					   `(Signal ,(transform-type t)))]
-       [(types-compat? ty '(Signal 'a)) => (match-lambda ((Signal ,t))
-					   `(Signal ,(transform-type t)))]
+					   `(Stream ,(transform-type t)))]
+       [(types-compat? ty '(Stream 'a)) => (match-lambda ((Stream ,t))
+					   `(Stream ,(transform-type t)))]
        [else (match ty
 	       [(,[tt -> in*] ... -> ,[tt -> out]) `(,in* ... -> ,out)]
 	       [#(,[tt -> t*] ...)   (apply vector t*)]
@@ -202,7 +202,7 @@
 		 (if (distributed-type? a)
 		     `(REGEVT ,x RID)
 		     `(REGEVT ,x)))]
-	      [(types-compat? (cadr entry) '(Signal 'a)) `(SIGEVT ,x)]
+	      [(types-compat? (cadr entry) '(Stream 'a)) `(SIGEVT ,x)]
 	      [else (error 'get-segment "bad entry in comm-outputs table: ~s" entry)]
 	      )))
 
@@ -359,7 +359,7 @@
   
   (define these-tests 
     `(
-      [(,transform-type 'Anchor) (Signal #())]
+      [(,transform-type 'Anchor) (Stream #())]
 
       ["A rfold a single anchor."
        (process-letrec 
@@ -375,7 +375,7 @@
 			  (lambda (a b) (Int Int) 
 				  (lazy-letrec ([res2 Int () (+_ a b)]) res2))]
 		       [v1 (Area Int) () (rmap read tmp)]
-		       [v2 (Signal Int) ([tree tmp]) (rfold f '39 v1)]
+		       [v2 (Stream Int) ([tree tmp]) (rfold f '39 v1)]
 		       )
 		      v2)
 	(empty-tenv) ())
@@ -396,15 +396,15 @@
 
 		       [mapnid (Region -> (Area Int)) () 
 			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Int) () (rmap nid r)]) x3))]
-		       [foldplus ((Area Int) -> (Signal Int)) () 
-				 (lambda (r) (Area Int) (lazy-letrec ([thefold (Signal Int) () (rfold plus '0 r)]) 
+		       [foldplus ((Area Int) -> (Stream Int)) () 
+				 (lambda (r) (Area Int) (lazy-letrec ([thefold (Stream Int) () (rfold plus '0 r)]) 
 									 thefold))]
 
 		       [theworld Region ([heartbeat 300000]) world]
 		       [clusters (Area Region) () (rmap nbrhood theworld)]
 		       [ids (Area (Area Int)) () (rmap mapnid clusters)]
 		       [sums (Area Int) () (rmap foldplus ids)]
-		       [result (Signal Int) ([tree thehood]) (rdump sums)]
+		       [result (Stream Int) ([tree thehood]) (rdump sums)]
 		       )
 		      result)
 	(empty-tenv) ())
@@ -430,7 +430,7 @@
 		[f (Int Int -> Int) ()
 		   (lambda (a b) (Int Int) (+_ a b))]
 		[v1 (Area Int) () (rmap read tmp)]
-		[v2 (Signal Int) () (rfold f u v1)]
+		[v2 (Stream Int) () (rfold f u v1)]
 		)
 	       v2)
  (empty-tenv)
@@ -447,7 +447,7 @@
 (lift-letrec-language
   '(program
      (lazy-letrec
-       ((resultoftoplevel_10      (Signal Int)
+       ((resultoftoplevel_10      (Stream Int)
           (rfold tmpnonprim_14 '0 tmprmap_13))
          (tmpnonprim_14
            (Int Int -> Int)
@@ -466,7 +466,7 @@
                resultofanonlambda_8)))
          (tmpworld_11 Region world))
        resultoftoplevel_10)
-     (Signal Int)))
+     (Stream Int)))
 
 
 ; ======================================================================
@@ -512,8 +512,8 @@
 		    [(rmap ,fun ,reg)
 		     (ASSERT (symbol? fun))
 		     (let ([newty (match ty
-				    [Region (Signal #())] ; Sig Unit
-				    [(Area ,alpha) `(Signal ,alpha)] ; Areas become local signals.
+				    [Region (Stream #())] ; Sig Unit
+				    [(Area ,alpha) `(Stream ,alpha)] ; Areas become local signals.
 				    [,other (error 'get-segment "bad type for rmap output: ~s" other)])])
 		       (append  `([,lhs ,ty (smap ,fun ,(process-varref reg))]) 
 				;; Gather all the code that goes into fun and the Area.

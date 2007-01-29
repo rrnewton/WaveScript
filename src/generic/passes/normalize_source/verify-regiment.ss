@@ -152,7 +152,7 @@
 		,(process-expr e3 (cons v env)))]
 	  ;; ========================================
 
-	  [(assert-type (Signal ,t) (dataFile ,[file] ,[mode] ,[repeats]))
+	  [(assert-type (Stream ,t) (dataFile ,[file] ,[mode] ,[repeats]))
 	       (let ([Type (lambda (t)
 			     (unless (memq t '(String Int Float Char))
 			       (error 'verify-regiment
@@ -161,7 +161,7 @@
 		 (match t
 		   [#(,t* ...) (for-each Type t*)]
 		   [,t (Type t)])
-		 `(assert-type (Signal ,t)  `(dataFile ,file ,mode ,repeats)))]
+		 `(assert-type (Stream ,t)  `(dataFile ,file ,mode ,repeats)))]
 	  	 
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env))

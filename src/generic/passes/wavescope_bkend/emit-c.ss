@@ -79,7 +79,7 @@
 
     ;; Went back and forth on whether this should be a pointer:
     [(Sigseg ,[t]) `("RawSeg")]
-    [(Signal ,[t]) `("WSBox*")]
+    [(Stream ,[t]) `("WSBox*")]
 
     [(Array ,[t]) `(,t "[]")]
     [(Struct ,name) (symbol->string name)]
@@ -161,7 +161,7 @@
 
 	   (values stmts decls))]
 		       
-	[(assert-type (Signal (Sigseg ,[Type -> ty])) 
+	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
 		      (window ,sig ,[myExpr -> size]))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
@@ -193,7 +193,7 @@
 	  '())]
 
 	;; Produces an instance of a generic dataFile reader.
-	[(assert-type (Signal (Struct ,structname))
+	[(assert-type (Stream (Struct ,structname))
 		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
 				  ,[myExpr -> repeats] ;,[myExpr -> types]
 				  ,_ignored
@@ -298,7 +298,7 @@
 		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
 		   (list (WSBox class_name 
 				(match typ
-				  [(Signal ,t) (Type t)]
+				  [(Stream ,t) (Type t)]
 				  [,other (error 'emitC:Query "expected iterate to have signal output type! ~s" other)])
 				;; Constructor:
 				(block `(,class_name "()")  stateinit)
@@ -760,7 +760,7 @@
 
 (define (make-output-printer typ)
   (match typ
-    [(Signal ,typ)
+    [(Stream ,typ)
      (let ([T (Type typ)])
        `("\n\n"
 	 ,(block "class PrintQueryOutput : public WSBox"
@@ -924,8 +924,8 @@ int main(int argc, char ** argv)
     (text->string (wsquery->text
 		   '(base-language
   '(program
-     (letrec ([s1 (Signal (Sigseg Complex)) (audio 1 4096 0)]
-              [s2 (Signal (Sigseg Complex)) (iterate
+     (letrec ([s1 (Stream (Sigseg Complex)) (audio 1 4096 0)]
+              [s2 (Stream (Sigseg Complex)) (iterate
                                               (lambda (w ___VIRTQUEUE___)
                                                 ((Sigseg Complex) (VQueue
 								   (Sigseg
@@ -937,7 +937,7 @@ int main(int argc, char ** argv)
                                                     ___VIRTQUEUE___))
                                               s1)])
        s2)
-     (Signal (Sigseg Complex)))))))
+     (Stream (Sigseg Complex)))))))
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp")))
 
@@ -947,9 +947,9 @@ int main(int argc, char ** argv)
     (text->string (wsquery->text
 		   '(base-language
   '(program
-     (letrec ([s1 (Signal (Sigseg Complex)) (audio 1 4096 0)])
+     (letrec ([s1 (Stream (Sigseg Complex)) (audio 1 4096 0)])
        s1)
-     (Signal (Sigseg Complex))))
+     (Stream (Sigseg Complex))))
 		   )))
   (display str)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp")))
@@ -960,8 +960,8 @@ int main(int argc, char ** argv)
     (text->string (wsquery->text
   '(base-language
   '(program
-     (letrec ([s1 (Signal (Sigseg Complex)) (audio 0 1024 0)]
-              [s2 (Signal (Array Complex)) (iterate
+     (letrec ([s1 (Stream (Sigseg Complex)) (audio 0 1024 0)]
+              [s2 (Stream (Array Complex)) (iterate
                                              (lambda (w ___VIRTQUEUE___)
                                                ((Sigseg Complex) (VQueue
 								  (Array
@@ -973,7 +973,7 @@ int main(int argc, char ** argv)
 							     w))))
 						 ___VIRTQUEUE___))
                                              s1)]
-              [s3 (Signal Float) (iterate
+              [s3 (Stream Float) (iterate
 				  (lambda (arr0 ___VIRTQUEUE___)
                                      ((Array Complex) (VQueue  Float))
                                        (begin

@@ -340,7 +340,7 @@
     [Region #t]
     [Anchor #t]
     [(Area ,_) #t]
-    [(Signal ,_) #t]    
+    [(Stream ,_) #t]    
     [,s (guard (symbol? s)) #f]
     [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
     [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
@@ -417,8 +417,8 @@
       [(unionN ,[t*] ...) 
        (ASSERT (not (null? t*)))
        (ASSERT all-equal?  t*)
-       (match (types-compat? '(Signal 'a) (car t*))
-	 [(Signal ,t) `(Signal #(Int ,t))]
+       (match (types-compat? '(Stream 'a) (car t*))
+	 [(Stream ,t) `(Stream #(Int ,t))]
 	 )
        ]
 
@@ -535,8 +535,8 @@
 	 (foldl (lambda (a b) (types-equal! a b exp) a)
 	   (car t*) (cdr t*))
 	 (values exp
-		 (match (types-compat? '(Signal 'a) (car t*))
-		   [(Signal ,t) `(Signal #(Int ,t))]))
+		 (match (types-compat? '(Stream 'a) (car t*))
+		   [(Stream ,t) `(Stream #(Int ,t))]))
 	 )]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
@@ -1086,11 +1086,11 @@
   
 
   ["Types-compat?"
-   (types-compat? 'Anchor '(Signal 'a) )
-   (Signal Node)]
-  [(types-compat? 'Anchor '(Signal Node)) (Signal Node)]
+   (types-compat? 'Anchor '(Stream 'a) )
+   (Stream Node)]
+  [(types-compat? 'Anchor '(Stream Node)) (Stream Node)]
   ;; This is kind of lame:
-  [(types-compat? '(Signal Node) 'Anchor) Anchor]
+  [(types-compat? '(Stream Node) 'Anchor) Anchor]
   [(types-compat? 'Anchor 'Anchor) Anchor]
   [(types-compat? 'Anchor '(Area Int)) #f]
   [(types-compat? 'Region '(Area 'a)) (Area Node)]  
@@ -1114,7 +1114,7 @@
 		       (lambda (n1 n2) (tuple n1 n2))
 		       (anchor-at 50 10)
 		       (anchor-at 30 40))) (empty-tenv)))
-   (Signal #(Node Node))]
+   (Stream #(Node Node))]
   ["This should not be allowed by the type system:" 
    (export-type (,type-expression 
 		 '(lambda (g)
@@ -1169,7 +1169,7 @@
 					    (rfold append '() thevals)))])
 				       sumhood))])
      t)
-   ((Area Node) -> (Signal (List Int)))]
+   ((Area Node) -> (Stream (List Int)))]
 
   ["Here's the captured bug, letrec problem."
    (mvlet ([(p t) (annotate-program '(lambda (n_7)  (Node)
@@ -1188,7 +1188,7 @@
                          (Area (List Int))
                          (rmap tmpnonprim_13 reg_5))
                         (resultofsumhood_3
-                          (Signal (List Int))
+                          (Stream (List Int))
                           (rfold tmpnonprim_14 '() thevals_6))
                         (tmpnonprim_13
                           (Node -> (List Int))
@@ -1210,7 +1210,7 @@
                                  (append a_9 b_8)))
                               resultofanonlambda_2))))
                       resultofsumhood_3)))]) t)
-   ((Area Node) -> (Signal (List Int)))]
+   ((Area Node) -> (Stream (List Int)))]
 
 
   ["Now let's test the NUM subkind."

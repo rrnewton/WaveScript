@@ -25,8 +25,8 @@ fun println(s) {
 //======================================================================
 // "Library" stream constructors:
 
-syncN :: (Signal (Bool * Int * Int),  List (Signal (Sigseg t))) 
-         -> Signal (List (Sigseg t));
+syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
+         -> Stream (List (Sigseg t));
 fun syncN (ctrl, strms) {
   DEBUGSYNC = false;
 
@@ -97,7 +97,7 @@ fun syncN (ctrl, strms) {
 
 // This version is enhanced to allow large steps that result in gaps in the output streams.
 //   GAP is the space *between* sampled strips, negative for overlap!
-rewindow :: (Signal(Sigseg t), Int, Int) -> Signal(Sigseg t);
+rewindow :: (Stream(Sigseg t), Int, Int) -> Stream(Sigseg t);
 fun rewindow(sig, newwidth, gap) {
   feed = newwidth + gap;
 
@@ -140,7 +140,7 @@ fun rewindow(sig, newwidth, gap) {
 // RRN: This has the problem that the hanning coefficient is ZERO at
 // the first and last element in the window.  These represent wasted samples.
 // myhanning : Sigseg Float -> Sigseg Float;
-myhanning :: Signal (Sigseg Float) -> Signal (Sigseg Float);
+myhanning :: Stream (Sigseg Float) -> Stream (Sigseg Float);
 fun myhanning (strm) {
   iterate(win in strm) {
     state{ 
@@ -195,7 +195,7 @@ fun myhanning (strm) {
 
 
 // This doesn't create a shared structure:
-deep_stream_map :: ((a -> b), Signal (Sigseg a)) -> Signal (Sigseg b);
+deep_stream_map :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
 fun deep_stream_map(f,sss) {
   iterate(ss in sss) {    
     first = f(ss[[0]]);
@@ -209,7 +209,7 @@ fun deep_stream_map(f,sss) {
 
 // UNFINISHED:
 // Assumes in-order but possibly overlapping
-//deep_stream_map2 :: ((a -> b), Signal (Sigseg a)) -> Signal (Sigseg b);
+//deep_stream_map2 :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
 fun deep_stream_map2(f,sss) {
   iterate(ss in sss) {
     state { 
@@ -227,21 +227,21 @@ fun deep_stream_map2(f,sss) {
   strm = rewindow(sss,100,0);
 }
 
-stream_map :: (a -> b, Signal a) -> Signal b;
+stream_map :: (a -> b, Stream a) -> Stream b;
 fun stream_map(f,s) {
   iterate (x in s) {
     emit f(x);
   }
 }
 
-stream_filter :: (t -> Bool, Signal t) -> Signal t;
+stream_filter :: (t -> Bool, Stream t) -> Stream t;
 fun stream_filter(f,s) {
   iterate (x in s) {
     if f(x) then emit x
   }
 }
 
-stream_iterate :: ((inp, st) -> (List out * st), st, Signal inp) -> Signal out;
+stream_iterate :: ((inp, st) -> (List out * st), st, Stream inp) -> Stream out;
 fun stream_iterate(f,z,s) {
   iterate (x in s) {
     state { sigma = z }

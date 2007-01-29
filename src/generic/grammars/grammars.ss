@@ -27,7 +27,7 @@
       [Type 'Node]
       [Type 'Anchor]
       [Type 'Region]
-      [Type ('Signal Type)]
+      [Type ('Stream Type)]
       [Type ('Area Type)]
       [Type ('Event Type)]
 

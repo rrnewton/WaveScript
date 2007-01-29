@@ -63,7 +63,7 @@
 	 (eta-primitives '(base-language
 			   '(program
 				(rfold +_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
-			      (Signal Int))))
+			      (Stream Int))))
 	 (eta-primitives-language
 	  '(program
 	       (rfold
@@ -72,7 +72,7 @@
 		(rmap
 		 (lambda (a) (Node) (nodeid a))
 		 (khood (anchor-at 50 10) 2)))
-	     (Signal Int)))]
+	     (Stream Int)))]
 	)))
 
   (define test-eta-primitives test-this)

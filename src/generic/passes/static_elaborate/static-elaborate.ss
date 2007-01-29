@@ -578,8 +578,8 @@
 					    ___VIRTQUEUE___)
 				     )))])
        `["(non-persistent) Mutable variable inside iterate.  This was a bug with conditional-reduction."
-	 (static-elaborate '(foolang '(program ,prog (Signal Int))))
-	 (static-elaborate-language '(program ,prog (Signal Int)))])
+	 (static-elaborate '(foolang '(program ,prog (Stream Int))))
+	 (static-elaborate-language '(program ,prog (Stream Int)))])
     ))
 
 (define test-this (default-unit-tester

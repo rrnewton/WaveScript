@@ -53,8 +53,8 @@ flmult = gen_mult(( *.));
 
 //========================================
 
-rewindow : (Signal 'a, int, int) -> Signal 'a;
-// rewindow takes a Signal of Sigsegs, a new window-width, and a new step/feed/slide:
+rewindow : (Stream 'a, int, int) -> Stream 'a;
+// rewindow takes a Stream of Sigsegs, a new window-width, and a new step/feed/slide:
 fun rewindow(s, newwidth, step) {
   if step >= newwidth
   then error("rewindow won't allow the creation of non-contiguous output streams")

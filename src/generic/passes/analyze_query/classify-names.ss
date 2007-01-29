@@ -130,7 +130,7 @@
       [(Area ,a)
        (add-props! name '(distributed area))]
 
-      [(Signal ,a)
+      [(Stream ,a)
        (add-props! name '(distributed signal))]
       
       [Anchor
@@ -259,7 +259,7 @@
 	       (add-props! name '(area region))]
 	      [(eq? 'Area (get-primitive-return-type prim))
 	       (add-props! name '(area))]
-	      [(eq? 'Signal (get-primitive-return-type prim))
+	      [(eq? 'Stream (get-primitive-return-type prim))
 	       (add-props! name '(signal))]
 	      [(eq? 'Anchor (get-primitive-return-type prim))
 	       (add-props! name '(anchor))])]

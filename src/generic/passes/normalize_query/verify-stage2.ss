@@ -33,7 +33,7 @@
 ;; I added a kinda lame-o type inferencer/checker.  It uses a really
 ;; simple type system listed in helpers.ss .  (No algebraic/arrow tyeps)
 
-;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
+;;   Anchor, Area, Region, Stream, Event, Node, Location, Reading
 ;;   Function, Number, Int, Float, Bool, Object  List
 
 

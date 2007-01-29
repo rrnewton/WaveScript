@@ -79,7 +79,7 @@
    '(program       
 	(lazy-letrec
       ((slist_58
-	(List (Signal #(Float (Sigseg Float))))
+	(List (Stream #(Float (Sigseg Float))))
 	(cons tpk1_21 (cons tpk4_51 '()))))
       (iterate
        (lazy-letrec

@@ -179,9 +179,9 @@
 	     [(zip2 ,[res1] ,[res2])
 	      (let ([defs (append-tydefs (result-tydefs res1) (result-tydefs res2))]
 		    [ty1 (match (recover-type (result-expr res1) tenv)
-			   [(Signal ,t) t])]
+			   [(Stream ,t) t])]
 		    [ty2 (match (recover-type (result-expr res2) tenv)
-			   [(Signal ,t) t])]
+			   [(Stream ,t) t])]
 		    )
 		(printf "SPECIAL CASE ZIP2: ~s"   `((,ty1 ,ty2) (_first _second) (EXT Zip2)))
 		
@@ -311,9 +311,9 @@
        (deep-assq 'tupref
 		  (nominalize-types '(type-print/show-language
 			   '(program
-				(let ([s1_1 (Signal (Sigseg Int))
+				(let ([s1_1 (Stream (Sigseg Int))
 					    (audioFile '"./countup.raw" '4096 '0)])
-				  (let ([s2_2 (Signal #(Int Int))
+				  (let ([s2_2 (Stream #(Int Int))
 					      (iterate
 					       (lambda (w_3 VIRTQUEUE_4)
 						 ((Sigseg Int) (VQueue #(Int Int)))
@@ -321,7 +321,7 @@
 						   (emit VIRTQUEUE_4 (tuple (width w_3) (start w_3)))
 						   VIRTQUEUE_4))
 					       s1_1)])
-				    (let ([s3_5 (Signal #(Int Int Float))
+				    (let ([s3_5 (Stream #(Int Int Float))
 						(iterate
 						 (lambda (pattmp_6 VIRTQUEUE_9)
 						   (#(Int Int) (VQueue #(Int Int Float)))
@@ -332,7 +332,7 @@
 							 VIRTQUEUE_9))))
 						 s2_2)])
 				      s3_5)))
-			      (Signal #(Int Int Float))))))
+			      (Stream #(Int Int Float))))))
        #f]
 
       ["tuples of tuples"
@@ -340,14 +340,14 @@
 	(nominalize-types '(type-print/show-language
 			   '(program
 				(tuple 1 (tuple 2 3))
-			      (Signal #(Int #(Int Int)))))))
+			      (Stream #(Int #(Int Int)))))))
        (nominalize-types-language
 	'(program
 	     (make-struct tuptyp 1 (make-struct tuptyp_1 2 3))
 	   (struct-defs
 	    (tuptyp_1 (fld1 Int) (fld2 Int))
 	    (tuptyp (fld1 Int) (fld2 (Struct tuptyp_1))))
-	   (Signal (Struct tuptyp))))
+	   (Stream (Struct tuptyp))))
        ]
       
 

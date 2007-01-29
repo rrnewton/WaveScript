@@ -149,11 +149,11 @@
 
 #;
 (define testresult 
-  (strip-types '(letrec ([s1 (Signal (Sigseg Int)) (app audioFile
+  (strip-types '(letrec ([s1 (Stream (Sigseg Int)) (app audioFile
                                                  "./countup.raw"
                                                  10
                                                  0)])
-       (letrec ([s2 (Signal Int) (iterate
+       (letrec ([s2 (Stream Int) (iterate
                                        (lambda (sigseg)
                                          ((Sigseg Int))
                                          (letrec ([___VIRTQUEUE___ (VQueue
@@ -166,7 +166,7 @@
                                                  (app start sigseg)))
                                              ___VIRTQUEUE___)))
                                        s1)])
-         (letrec ([s3 (Signal Int) (iterate
+         (letrec ([s3 (Stream Int) (iterate
                                          (lambda (x)
                                            (Int)
                                            (letrec ([___VIRTQUEUE___ (VQueue

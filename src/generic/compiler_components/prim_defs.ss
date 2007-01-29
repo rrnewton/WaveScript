@@ -11,7 +11,7 @@
 ;;; [2004.07.28] Introducing 'Area'.  Note that a Region is also an Area.
 ;;; Ok, redoing primitive listings with type information:
 ;;; The types I'm using right now are:
-;;;   Anchor, Area, Region, Signal, Event, Node, Location, Reading
+;;;   Anchor, Area, Region, Stream, Event, Node, Location, Reading
 ;;;   Number, Int, Float, Bool, Void
 ;;;   List, Array, Tuple
 ;;;
@@ -60,9 +60,9 @@
   '(
 
     [Region (Area Node)]
-    [Anchor (Signal Node)]
+    [Anchor (Stream Node)]
     [NetDist   Float] ;; Network distance.  Depends on gradient implementation.
-    ; [(Area 'a) (Signal (Space 'a))]
+    ; [(Area 'a) (Stream (Space 'a))]
     ))
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
@@ -263,18 +263,18 @@
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.
-    (timer            (Int) (Signal #()))
+    (timer            (Int) (Stream #()))
 
-    (window           ((Signal 'a) Int) (Signal (Sigseg 'a)))
+    (window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
     ;; Takes channel, window size, overlap:
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.
-    (audio            (Int Int Int) (Signal (Sigseg Float)))
+    (audio            (Int Int Int) (Stream (Sigseg Float)))
 
     ;; Takes a file to read from, window size, overlap:
     ;; Reads a stream of Uint16's from the file.
-    (audioFile        (String Int Int)  (Signal (Sigseg Int)))
+    (audioFile        (String Int Int)  (Stream (Sigseg Int)))
 
     ;; Generic data-file reader.
     ;; Usage: datafile(fileName, mode, repeats)
@@ -284,20 +284,20 @@
     ;;  repeat the files data.  -1 encodes "indefinitely"
     ;; 
     ;; dataFile must occur directly within a ( :: T) construct.
-    (dataFile (String String Int) (Signal 'a))
+    (dataFile (String String Int) (Stream 'a))
     ;; Internal compiler construct:
-    (__dataFile (String String Int (List Symbol)) (Signal 'a))
+    (__dataFile (String String Int (List Symbol)) (Stream 'a))
 
     ;; Fabricates stock ticks and splits.  For benchmark.
     ;; Tuple is of one of two forms:
     ;;   Tick:  #(sym,t,vol,price)
     ;;   Split: #(sym,t,-1,factor)
-    (stockStream      ()  (Signal #(String Float Int Float)))
+    (stockStream      ()  (Stream #(String Float Int Float)))
 
     ;; This version is to read a file containing doubles.
     ;; HACK: Currently it expects a text file rather than a binary file for the 
     ;; interpreted version of the system.
-    (doubleFile        (String Int Int)  (Signal (Sigseg Float)))
+    (doubleFile        (String Int Int)  (Stream (Sigseg Float)))
 
     ;; We need to expose more variants of FFT than this:
     (fft              ((Sigseg Float))  (Sigseg Complex))
@@ -309,10 +309,10 @@
 
     ;; This unions N streams of the same type, it returns a sample and
     ;; the index (in the original list) of the stream that produced it.
-    (unionList        ((List (Signal 'a))) (Signal #(Int 'a)))
+    (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))
 
     ;; This synchronously joins two signals.
-    (zip2           ((Signal 'a) (Signal 'b)) (Signal #('a 'b)))
+    (zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))
 
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)
@@ -343,20 +343,20 @@
     (hashrem_BANG ((HashTable 'key 'val) 'key) #())
 
     ;; Only one-to-one output for now (Don't have a Maybe type!).
-;    (iterate        (('in 'state -> #('out 'state)) 'state (Signal 'in)) (Signal 'out))
-;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+;    (iterate        (('in 'state -> #('out 'state)) 'state (Stream 'in)) (Stream 'out))
+;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
 ;    (emit             ('a) #())
 
-    (iterate        (('in (VQueue 'out) -> (VQueue 'out)) (Signal 'in))           (Signal 'out))
-    (deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Signal (Sigseg 'in)))  (Signal (Sigseg 'out)))
+    (iterate        (('in (VQueue 'out) -> (VQueue 'out)) (Stream 'in))           (Stream 'out))
+    (deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
     (window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
 
     (sigseg_foreach (('a -> 'b) (Sigseg 'a)) #())
 
     ;; Here's the pure version.
-    ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Signal 'in))  (Signal 'out))
+    ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Stream 'in))  (Stream 'out))
     ;; Restricting to have only one output per firing:
-    (integrate      ((Node 'in 'state -> #('out 'state)) 'state (Signal 'in))  (Signal 'out))
+    (integrate      ((Node 'in 'state -> #('out 'state)) 'state (Stream 'in))  (Stream 'out))
 
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
@@ -391,7 +391,7 @@
     (virtqueue      () (VQueue 'a))
 
     ;; This is for testing only... it's a multithreaded version:
-    (parmap         (('in -> 'out) (Signal 'in))           (Signal 'out))
+    (parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
 
 )))
 
@@ -401,24 +401,24 @@
     
     (rmap           (('a -> 'b) (Area 'a)) (Area 'b))
 
-    (rfold          (('a 'b -> 'b) 'b (Area 'a)) (Signal 'b))
+    (rfold          (('a 'b -> 'b) 'b (Area 'a)) (Stream 'b))
     ;; This is similar to rfold, but simply streams out all the
     ;; contents of the region in no particular order:
-    (rdump          ((Area 'a)) (Signal 'a))
+    (rdump          ((Area 'a)) (Stream 'a))
 
-    (smap           (('a -> 'b) (Signal 'a)) (Signal 'b))
+    (smap           (('a -> 'b) (Stream 'a)) (Stream 'b))
     ;; Well, this is the nail in the coffin in any idea of a continuous signal model:
-    (sfilter        (('a -> Bool) (Signal 'a)) (Signal 'a))
+    (sfilter        (('a -> Bool) (Stream 'a)) (Stream 'a))
     
     ;; This joins two signals in the network.
-    (smap2          (('a 'b -> 'c) (Signal 'a) (Signal 'b)) (Signal 'c))
+    (smap2          (('a 'b -> 'c) (Stream 'a) (Stream 'b)) (Stream 'c))
 
     ;; This is the identity function on regions.  
     ;; However it also lights an LED.
     ;; [2006.04.04] MODIFIED it to also produce debug messages.
     (light-up ((Area 'a)) (Area 'a))
     ;; [2006.04.04] This is a similar thing for signals.
-    (slight-up ((Signal 'a)) (Signal 'a))
+    (slight-up ((Stream 'a)) (Stream 'a))
 
     (anchor-at      (Int Int) Anchor)
     (anchor-dist    (Anchor Anchor) Float)
@@ -435,13 +435,13 @@
     (khood          (Anchor Int) Region)
     (khood-at       (Float Float Int) Region)
 
-    ;; This lifts a node value into the Signal monad:
+    ;; This lifts a node value into the Stream monad:
     (node->anchor   (Node) Anchor)
     (node_to_anchor (Node) Anchor) ;; Wavescript syntax.
 
-    ;; This eliminates duplicate Signal types, by lifting out the inner one and canceling:
+    ;; This eliminates duplicate Stream types, by lifting out the inner one and canceling:
     ;; Has no operational meaning.
-    (liftsig ((Area (Signal 'a))) (Area 'a))
+    (liftsig ((Area (Stream 'a))) (Area 'a))
 
     (rfilter         (('a -> Bool) (Area 'a)) (Area 'a))
     
@@ -463,7 +463,7 @@
 ;    (treeize        (Area) Area)
 
     ;; A "transpose" operations for looking at regions as local streams--from the "node's perspective"
-    (rmap_localstreams (((Signal #(Node 'a)) -> (Signal 'b)) (Area 'a)) (Area 'b))
+    (rmap_localstreams (((Stream #(Node 'a)) -> (Stream 'b)) (Area 'a)) (Area 'b))
     ;; This version currently uses a default time-out for when to
     ;; consider a node having "left" the Region.  (When that occurs,
     ;; any state having to do with the signal transformer is
@@ -479,7 +479,7 @@
 
     ;; Prolly not the right type:
     ;; Currently this ignores the value carried on the event:
-    (until          ((Event 'a) (Signal 'b) (Signal 'b)) (Signal 'b))
+    (until          ((Event 'a) (Stream 'b) (Stream 'b)) (Stream 'b))
     (runtil         ((Event 'a) (Area 'b) (Area 'b)) (Area 'b))
     (areaWhen       ((Event 'a) (Area 'b)) (Area 'b))
 
@@ -487,9 +487,9 @@
     ;(constEvent     ('a Float) (Event 'a))
 
     ;; What was this one supposed to do and what was it's type?
-;    (when           (Event Signal) Signal)
+;    (when           (Event Stream) Stream)
     (rwhen-any        (('a -> Bool) (Area 'a))       (Event #())) ; Could carry the winning value.
-    (swhen-any        (('a -> Bool) (Signal 'a))     (Event #()))
+    (swhen-any        (('a -> Bool) (Stream 'a))     (Event #()))
     (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
 
     ,@(IFWAVESCOPE wavescript-primitives ()) 
@@ -528,7 +528,7 @@
     (list ('a ...) (List 'a))
     (append List List)
 
-    (rfoldwith (Token ('a 'b -> 'a) 'b (Area 'a)) (Signal 'b))
+    (rfoldwith (Token ('a 'b -> 'a) 'b (Area 'a)) (Stream 'b))
     ))
 
 

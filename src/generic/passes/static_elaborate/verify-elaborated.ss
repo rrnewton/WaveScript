@@ -41,7 +41,7 @@
        (match expr
 	 [(app ,[rator] ,[rand*] ...)		     
 	  (let ([type (recover-type rator tenv)])
-	    (if ;(or (deep-assq 'Signal type) (deep-assq 'Region type))
+	    (if ;(or (deep-assq 'Stream type) (deep-assq 'Region type))
 	     ;(distributed-type? type)	
 	     #t ;; <-- Harshest version: no functions at all.
 	     (error 'verify-elaborated

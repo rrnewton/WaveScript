@@ -362,7 +362,7 @@
 		    [region_tok (cadr args)]
 		    [parent (get-membership-name region_tok)])
 	       `([,parent (v t) 
-			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
+			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A STREAM FIXME FIXME FIXME
 			  (call ,form v t)]
 		 [,form (v t) (call ,memb (subcall ,rator_tok v) t)]))]
 	    
@@ -375,7 +375,7 @@
 		    [region_tok (caddr args)]
 		    [parent (get-membership-name region_tok)])
 	       `([,parent (v t) 
-			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A SIGNAL FIXME FIXME FIXME
+			  ;; TODO: ASSERT: TREE SHOULD BE NULL FOR A STREAM FIXME FIXME FIXME
 			  (call ,form v t)]
 		 [,form (v t) 
 			(stored [state ,init_state])
