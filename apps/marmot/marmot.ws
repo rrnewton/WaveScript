@@ -3,25 +3,22 @@ DEBUG = false;
 DEBUGSYNC = DEBUG;
 
 include "stdlib.ws";
-
+include "matrix.ws";
 
 //======================================================================
 
 // Takes Sigseg Complex
-fun marmotscore(freqs) { 
+fun marmotscore2(freqs) { 
   result = 
-    cnorm(freqs[[4]] +: 
-	  freqs[[5]] +:
-	  freqs[[6]] +:
-	  freqs[[7]]);
+    cnorm(freqs[[3]] +: 
+	  freqs[[4]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
-	++ show(freqs[[4]]) ++ " "
-	++ show(freqs[[5]]) ++ " "
-	++ show(freqs[[6]]) ++ " "
-	++ show(freqs[[7]]) ++ " \n");
+	++ show(freqs[[3]]) ++ " "
+	++ show(freqs[[4]]) ++ " \n");
   result
 }
+
 
 /* expects Zip2<SigSeg<float>,float>::Output */
 fun detect(scorestrm) {
@@ -39,7 +36,7 @@ fun detect(scorestrm) {
       trigger = false;
       smoothed_mean = 0.0;
       smoothed_var = 0.0;
-      _start = 0; //start = ??? // SeqNo
+      _start = 0; 
       trigger_value = 0.0;
       startup = 300;
       refract = 0;                 
@@ -49,12 +46,12 @@ fun detect(scorestrm) {
     }
 
     fun reset() {
-      thresh_value := 0;
+      thresh_value := 0.0;
       trigger := false;
-      smoothed_mean := 0.0; // 0; // TYPE INFERENC ERROR -- CHECK SET! CASE FIXME!!!!
+      smoothed_mean := 0.0;
       smoothed_var := 0.0;
       _start := 0;
-      trigger_value := 0;
+      trigger_value := 0.0;
       startup := startup_init;
       refract := 0;
     };
@@ -88,16 +85,20 @@ fun detect(scorestrm) {
 	refract := refract - 1;
       }	else {
 	/* untriggering! */
-	trigger := 0;
+	trigger := false;
 	emit (true,                       // yes, snapshot
 	      _start - samples_padding,     // start sample
 	      win.end + samples_padding); // end sample
+	if DEBUG then
+	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
+	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = int_to_float(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
+      let thresh = intToFloat(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
@@ -123,11 +124,17 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit(false, 0, max(0, win.end - samples_padding));
+      emit (false, 0, max(0, win.end - samples_padding));
+      if DEBUG then 
+      print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
+	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+      
     }
   }
 }
 
+
+/*
 
 fun amap(f) {
   fun (arr) {
@@ -248,33 +255,6 @@ fun array_iterate_index(a,f) {
     new_a[i] := f(a[i],i);
   };
   new_a
-}
-
-
-fun MMult(m1,m2) {
-  m3 = matrix(m1.length, m2[0].length, mget(m1,0,0));
-  for i = 0 to m1.length-1 {
-    for j = 0 to m2[0].length-1 {
-      // need to know type :( .. what if not float?
-      sum = 0.0;
-      for k = 0 to m2.length-1 {
-	sum := sum +. (mget(m1,i,k) *. mget(m2,k,j));
-      };
-      mset(m3,i,j,sum)
-    }
-  };
-  m3
-}
-
-
-fun MTrans(m) {
-  m2 = matrix(m[0].length, m.length, mget(m,0,0));
-  for i = 0 to m.length {
-    for j = 0 to m[0].length {
-      mset(m2,j,i,mget(m,i,j))
-    }
-  };
-  m2
 }
 
 
@@ -436,6 +416,9 @@ fun FarFieldDOA(synced)
   doa  
 }
 
+*/
+
+
 //========================================
 // Main query:
 
@@ -450,15 +433,13 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = smap(fft, hn);
-
-//wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate (w in freq) { emit(marmotscore(w), w); }
+freq = stream_map(fft, hn);
+wscores = iterate (w in freq) { emit(marmotscore2(w), w); }
 
 detections = detect(wscores);
 
 synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 
-doas = FarFieldDOA(synced);
+//doas = FarFieldDOA(synced);
 
 BASE <- synced;
