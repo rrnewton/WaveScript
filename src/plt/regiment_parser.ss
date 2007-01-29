@@ -36,14 +36,14 @@
     +. -. *. /. ^. 
     +: -: *: /: ^: 
     :: ++ 
-    AND OR NEG 
+    AND OR NEG HASH 
     APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
     fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
     EOF ))
-(define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR CHAR STRING))
+(define-tokens value-tokens (NUM VAR DOTVARS TYPEVAR NUMVAR CHAR STRING))
 
 (define-lex-abbrevs (lower-letter (:/ "a" "z"))
                     (upper-letter (:/ #\A #\Z))
@@ -84,9 +84,11 @@
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
-   [(:seq "\"" (:* (:- any-char "\"")) "\"") 
+   [(:seq "\"" (:* (:- any-char "\"")) "\"")
     (token-STRING (unescape-chars (substring lexeme 1 (sub1 (string-length lexeme)))))]
 
+   ;["#"  'HASH]
+   [(:seq "#" (:+ lower-letter)) (token-NUMVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
    ["&&" 'AND] ["||" 'OR]
    
    ;; Delimiters:
@@ -244,6 +246,8 @@
 	  ;; Hmm: can't make up my mind whether we should single-quote typevars:
           [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
           [(TYPEVAR) `(quote ,$1)]
+          ;[(HASH TYPEVAR) `(NUM ,$2)]
+	  [(NUMVAR) `(NUM ,$1)]
 
           ;; Tuple types:
 	  [(LeftParen RightParen) (vector)]

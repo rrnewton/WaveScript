@@ -95,7 +95,7 @@
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
 	(= =) (< <) (<= <=) (> >) (>= >=)
-	(gint (lambda (x) x))
+	;(gint (lambda (x) x))
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
