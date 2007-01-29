@@ -935,6 +935,7 @@
     (define (loop t) 
       (match t
 	[(quote ,[var]) (++ "'" var)]
+	[(NUM ,[var]) (++ "#" var)]
 	[(-> ,[b]) (++ "() -> " b)]
 	[(,[left] -> ,[right]) (++ left " -> " right)]
 	[(,[arg*] ... -> ,[b]) (++ "(" (apply string-append (insert-between ", " arg*)) ")"

@@ -3,6 +3,9 @@
 // A library of matrix routines.
 // Author:  Lewis Girod & Ryan Newton 
 
+// NOTE: In the future we will have type aliases (shorthands) like this:
+// type Matrix t = Array (Array t);
+
 matrix :: (Int, Int, t) -> Array (Array t);
 fun matrix(rows, cols, init) {
   arr = makeArray(rows, nullarr);
@@ -22,7 +25,7 @@ fun m_set(mat, row, col, val) {
   {}; // mutators should return nothing!
 }
 
-m_mult :: (Array (Array Float), Array (Array Float)) -> Array (Array Float);
+m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
   // TODO: could be more defensive here, check for nullarr:
   m3 = matrix(m1.length, m2[0].length, m_get(m1,0,0));
@@ -31,8 +34,7 @@ fun m_mult(m1,m2) {
       // need to know type :( .. what if not float?
       sum = gint(0);
       for k = 0 to m2.length-1 {
-	sum := sum + (m_get(m1,i,k) *. m_get(m2,k,j));
-	//sum := sum + sum;
+	sum := sum + (m_get(m1,i,k) * m_get(m2,k,j));
       };
       m_set(m3,i,j,sum)
     }
@@ -40,6 +42,7 @@ fun m_mult(m1,m2) {
   m3 // Return.
 }
 
+m_trans :: Array (Array t) -> Array (Array t);
 fun m_trans(m) {
   m2 = matrix(m[0].length, m.length, m_get(m,0,0));
   for i = 0 to m.length-1 {
