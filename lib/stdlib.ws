@@ -19,11 +19,27 @@ fun println(s) {
 
 // For completeness we include these restrictions of their generic counterparts:
 //fun intToFloat     (i::Int)   toFloat(i) 
-fun intToComplex   (i::Int)   toComplex(i) 
-fun floatToComplex (f::Float) toComplex(f) 
+//fun intToComplex   (i::Int)   toComplex(i) 
+//fun floatToComplex (f::Float) toComplex(f) 
+
+//foo :: ((Int, Int) -> Int);
+//foo :: Int Int -> Int;
+//foo :: Sigseg (Sigseg Int)
+//foo :: Stream (Sigseg (Int))  Float  ->  Int
+
+/* foo :: Int Int -> Float */
+/* foo :: (Int -> Float) */
+/* foo :: (Int, Int -> Float) */
+/* foo :: (Int -> (Int -> Float)); */
+/* foo :: Int -> Int -> Float */
+
+foo :: (Int, Int -> Int);
+fun foo(x,y) { x +_ y };
 
 //======================================================================
 // "Library" stream constructors:
+
+//syncN :: (Signal (Bool, Int, Int)), (List (Signal (Sigseg t))) -> (Signal (List (Sigseg t)));
 /*
 fun syncN (ctrl, strms) {
   DEBUGSYNC = false;
@@ -256,4 +272,5 @@ BASE <- test4;
 
 */
 
-BASE <- 3;
+
+BASE <- audio(0,10,0);

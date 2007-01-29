@@ -227,7 +227,10 @@
            [(decls) (cons 'program $1)])
 
 
-    (type [(type -> type) `(,$1 -> ,$3)]
+    (type [(LeftParen type -> type RightParen) `(,$2 -> ,$4)]
+	  [(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
+	  ;[(LeftParen type COMMA typeargs RightParen -> type) `(,$2 ,@$4 -> ,$7)]
+	  
           ;; A type constructor, make it right-associative.
           [(VAR type) (prec APP) (list $1 $2)]
 
