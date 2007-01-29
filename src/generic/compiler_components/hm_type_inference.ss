@@ -854,8 +854,11 @@
 	  xargs yargs)
 	(types-equal! x y exp)]
        [,other (type-error 'types-equal!
-		      "procedure type ~a does not match: ~a"
-		      `(,@yargs -> ,y) other)])]
+		      "procedure type ~aDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
+		      (export-type `(,@yargs -> ,y))
+		      (export-type other)
+		      `(,@yargs -> ,y)
+		      other)])]
     [,otherwise (raise-type-mismatch t1 t2 exp)]))
 		   
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
@@ -926,17 +929,18 @@
 ; ======================================================================
 ;; Printing the type-signatures inside a large expressions:
 
-;; Prints a type in an ML-ish way rather than the raw sexp.
+;; Prints a type in a WaveScript format way rather than the raw sexp.
 (define (print-type t . p)
   (let ([port (if (null? p) (current-output-port) (car p))])
     (define (loop t) 
       (match t
 	[(quote ,[var]) (++ "'" var)]
 	[(-> ,[b]) (++ "() -> " b)]
-	[(,[arg*] ... -> ,[b]) (++ (apply string-append (insert-between ", " arg*))
+	[(,[left] -> ,[right]) (++ left " -> " right)]
+	[(,[arg*] ... -> ,[b]) (++ "(" (apply string-append (insert-between ", " arg*)) ")"
 				   " -> "b)]
 	[#(,[x*] ...)
-	 (++ "(" (apply string-append (insert-between ", " x*)) ")")]
+	 (++ "(" (apply string-append (insert-between " * " x*)) ")")]
 	;; [2006.12.01] Removing assumption that TC's have only one arg:
 	[(,[tc] ,[arg*] ...)
 					;	 (++ tc "(" (apply string-append (insert-between ", " arg*)) ")")]
@@ -996,7 +1000,7 @@
 	[() (void)]
 	[(type ,v ,t ,subvars)
 	 (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-	   (fprintf port "~a~a : " indent v)
+	   (fprintf port "~a~a :: " indent v)
 	   (print-type t port) (newline port))
 	 (loop subvars (++ indent "  "))]
 	[,ls (guard (list? ls))

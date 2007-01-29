@@ -226,11 +226,18 @@
            ;[(error start) $2]
            [(decls) (cons 'program $1)])
 
+    (type 
+	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
+          [(LeftParen type COMMA typeargs RightParen -> type) `(,$2 ,@$4 -> ,$7)]
+	  [(type -> type) `(,$1 -> ,$3)]
+     
+          ;[(typeargs -> type) `(,@$1 -> ,$3)]
+          
+	  ;[(type COMMA type -> type) `(,$1 ,$3 -> ,$5)]
+	  ;[(type COMMA typeargs -> type) `(,$1 ,@$3 -> ,$5)]
+	  ;[(type -> type)  `(,$1 -> ,$3)]
+	  ; Ambiguous: a, b -> c, d -> e
 
-    (type [(LeftParen type -> type RightParen) `(,$2 -> ,$4)]
-	  [(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
-	  ;[(LeftParen type COMMA typeargs RightParen -> type) `(,$2 ,@$4 -> ,$7)]
-	  
           ;; A type constructor, make it right-associative.
           [(VAR type) (prec APP) (list $1 $2)]
 
@@ -238,14 +245,23 @@
           [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
           [(TYPEVAR) `(quote ,$1)]
 
+          ;; Tuple types:
 	  [(LeftParen RightParen) (vector)]
           ;; No one-tuples!!
-          [(LeftParen type RightParen) $2]
-          ;; Tuple types:
-          [(LeftParen type COMMA typeargs RightParen) (apply vector (cons $2 $4))]
+	  [(LeftParen type RightParen) $2]
+
+          [(LeftParen type * typetuple RightParen) (apply vector (cons $2 $4))]
+	  
+	  ;[(type * typetuple) (list->vector $1)]
+	  ;[(type * type * type) (vector $1 $3 $5)]
+	  ;[(type * type) (vector $1 $3)]
+	  ;[(typetuple) (list->vector $1)]
           )
+
+    (typetuple [(type) (list $1)]
+	       [(type * typetuple) (cons $1 $3)])
     (typeargs [(type) (list $1)]
-              [(type COMMA typeargs) (cons $1 $3)]
+              [(type COMMA typeargs) (prec COMMA) (cons $1 $3)]
               )
 
     (decls ;; Top level variable binding
