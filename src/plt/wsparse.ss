@@ -23,3 +23,5 @@
     (pretty-print (ws-parse-file filename)))
 
 )
+
+;(require wsparse)

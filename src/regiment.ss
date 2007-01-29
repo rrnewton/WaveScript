@@ -52,6 +52,7 @@
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
+  (printf "  -q   suppress banners and other nonessential output~n")
   (printf "~n")
   (printf "Compiler Options: ~n")
   (printf "  -d2  use new compiler: deglobalize2 ~n")
@@ -65,18 +66,18 @@
   (printf "  --debug       print extra info, inspect errors ~n")
   (printf "~n")
   (printf "Simulator Options: ~n")
-  (printf "  -timeout <n>  timeout after n clock ticks\n")
-  (printf "  -plot         when simulation finishes, gnuplot output\n")
-  (printf "  -repl         when simulation finishes, run interactive REPL\n")
+  (printf "  --timeout <n>  timeout after n clock ticks\n")
+  (printf "  --plot         when simulation finishes, gnuplot output\n")
+  (printf "  --repl         when simulation finishes, run interactive REPL\n")
   (printf "~n")
   (printf "Interactive Options: ~n")
   (printf "  --script  <file>    run a scheme file as a script~n")
   (printf "  --exit-error        exit process w/ nonzero error code on a scheme error~n")
   (printf "~n")
   (printf "Log-manipulation Options: ~n")
-  (printf "  -print    <file>    print any log-file in human readable format~n")
-  (printf "  -examine  <file>    describe the chunking format of an existing logfile~n")
-  (printf "  -reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
+  (printf "  --print    <file>    print any log-file in human readable format~n")
+  (printf "  --examine  <file>    describe the chunking format of an existing logfile~n")
+  (printf "  --reencode <f1> <f2> reencode a logfile in a compressed but fast-loading way~n")
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world~n")
   (printf "~n")
   (printf "WSINT options: ~n")
@@ -105,7 +106,7 @@
      (exit 0)]
     [,other (error 'print-types-and-exit "bad output from verify-regiment: ~s" other)])))
 
-(define main 
+(trace-define main 
   (lambda args    
     (define makesimcode #f)
     (define outfile #f)
@@ -120,7 +121,7 @@
       ;; Loop goes through the arguments, processing them accordingly:
       ;; Anything not matched by this is presumed to be a file name.
       (letrec ([loop 
-	      (lambda (args)
+	      (trace-lambda ARGLOOP (args)
 		(match args
 		    [() '()]
 
@@ -131,8 +132,8 @@
 		     ]
 		    [(.h ,rest ...) (print-help) (regiment-exit 0)]
 
-		    [(-plot ,rest ...) (set! plot #t) (loop rest)]
-		    [(-repl ,rest ...) (set! simrepl #t) (loop rest)]
+		    [(--plot ,rest ...) (set! plot #t) (loop rest)]
+		    [(--repl ,rest ...) (set! simrepl #t) (loop rest)]
 
 		    [(-d2 ,rest ...) (set! opts (cons 'deglobalize2 opts)) (loop rest)]
 
@@ -159,16 +160,20 @@
 		     (printf "SETTING BATCH MODE\n")
 		     (define-top-level-value 'REGIMENT-BATCH-MODE #t)
 		     (loop rest)]
-
+		    
 ;		    [(--script ,rest ...) (set! opts (cons 'script opts))  (loop rest)]
 		    [(--debug ,rest ...)		     
 		     (define-top-level-value 'REGIMENT-BATCH-MODE #f)
 		     (regiment-emit-debug #t)
 		     (loop rest)]
 
+		    [(--quiet ,rest ...)
+		     (regiment-quiet #t)
+		     (loop rest)]
+
 		    [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
 
-		    [(-timeout ,n ,rest ...)
+		    [(--timeout ,n ,rest ...)
 		     (let ((n (read (open-input-string (format "~a" n)))))
 		     (set! opts (cons 'timeout (cons n opts))))]
 
@@ -291,13 +296,13 @@
 	     [() (if (file-exists? "__temp.log") (reg:printlog "__temp.log")
 		     (if (file-exists? "__temp.log.gz") (reg:printlog "__temp.log.gz")
 			 (error 'regiment:log:print "no log file supplied or found")))]
-	     [(-print ,file) 
+	     [(--print ,file) 
 	      (let loop ([s (reg:read-log (symbol->string file) 'stream)])
 		(unless (stream-empty? s) 
 		  (printf "~a\n" (stream-car s))
 		  (loop (stream-cdr s))))]
-	     [(-print ,_ ...) (error 'regiment:log:print "only can print exactly one logfile at a time: ~a" args)]
-	     [(-reencode ,in ,out)
+	     [(--print ,_ ...) (error 'regiment:log:print "only can print exactly one logfile at a time: ~a" args)]
+	     [(--reencode ,in ,out)
 	      ;; Do not replace output file if it's there:
 	      (let ((out (open-output-file (symbol->string out) '(compressed)))
 		    (block-size 1000)  ;; 1000 lines of log chunked at a time.
@@ -317,10 +322,10 @@
 		       (set! count (add1 count))
 		       (loop (stream-cdr in) (fx- n 1) (cons (stream-car in) acc))]))
 		   )))]
-	     [(-reencode ,_ ...)
+	     [(--reencode ,_ ...)
 	      (error 'regiment:log:reencode 
 		     "bad arguments for log reencoding, expects input and output file: ~a" args)]
-	     [(-examine ,file)
+	     [(--examine ,file)
 	      (newline)
 	      (let* ([file (symbol->string file)]
 		     [in (lambda ()
@@ -346,8 +351,8 @@
 			      (if (equal? (extract-file-extension file) "gz")
 				  " (except for being gzipped)" ""))
 		      )))]
-	     [(-examine ,_ ...)
-	      (error 'regiment:log:examine "-examine expects exactly one file name argument: ~a" args)]
+	     [(--examine ,_ ...)
+	      (error 'regiment:log:examine "--examine expects exactly one file name argument: ~a" args)]
 
 	     [(-vw ,worldfile)
 	      (let ([file (symbol->string worldfile)])
@@ -388,8 +393,7 @@
 			  [() (console-input-port)]
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
-	   (let loop ([return (wsint port)])
-	     ;(if (procedure? return) (loop (force return))
+	   (let ([return (wsint port)])
 		 (if (stream? return)
 		     (parameterize ([print-vector-length #t])
 		       (browse-stream return))

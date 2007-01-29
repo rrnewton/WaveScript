@@ -437,16 +437,21 @@
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
   (define prog
-    (cond  [(input-port? x) (printf "WSINT: Loading WS source from port: ~s\n" x) 
+    (cond  [(input-port? x) 
+	    (unless (regiment-quiet) (printf "WSINT: Loading WS source from port: ~s\n" x))
 	     ;; We assume this is parsed but not post-processed:
 	     (ws-postprocess (read x))]
-	    [(string? x) (printf "WSINT: Loading WS source from file: ~s\n" x)
+	    [(string? x) 
+	     (unless (regiment-quiet) (printf "WSINT: Loading WS source from file: ~s\n" x))
 	     (read-wavescript-source-file x)]
-	    [(list? x)   (printf "WSINT: Evaluating WS source: \n ~a\n" x)  x]
+	    [(list? x)   
+	     (unless (regiment-quiet) (printf "WSINT: Evaluating WS source: \n ~a\n" x))
+	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 
-  (define _ (begin (printf "Evaluating program: ~a\n\n"
-			   (IFDEBUG "(original program stored in .__inputprog.ss)" ""))
+  (define _ (begin (unless (regiment-quiet)
+		     (printf "Evaluating program: ~a\n\n"
+			     (IFDEBUG "(original program stored in .__inputprog.ss)" "")))
 		   (DEBUGMODE 
 		    (let ([please-delete-file 
 			   (lambda (f) (if (file-exists? f) (delete-file f)))])
@@ -471,14 +476,15 @@
 
   (define __ 
     (begin 
-      (printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
-      (printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-      (print-var-types typed)
-      (flush-output-port)
-      (with-output-to-file ".__types.txt"
+      (unless (regiment-quiet)
+	(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
+	(printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
+	(print-var-types typed)
+	(flush-output-port))
+      (DEBUGMODE
+       (with-output-to-file ".__types.txt"
 	(lambda () (print-var-types typed)(flush-output-port))
-	'replace))
-    )
+	'replace))))
 
   (define compiled (let ([x (run-ws-compiler prog)])
 		     (parameterize-IFCHEZ ([pretty-line-length 150]

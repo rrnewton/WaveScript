@@ -262,4 +262,4 @@ fun stream_iterate(f,z,s) {
 /* test4 = deep_stream_map(fun(x) x /. 100.0, audio(0,10,0)) */
 /* BASE <- test4; */
 
-BASE <- audio(0,10,0);
+//BASE <- audio(0,10,0);

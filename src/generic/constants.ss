@@ -61,7 +61,7 @@
 	 define-regiment-parameter regiment-parameters
 
 	 wavescope-invocation 
-	 regiment-verbose 
+	 regiment-verbose regiment-quiet
 
 	 simulation-logger 
 	 simulation-logger-count
@@ -261,8 +261,11 @@
 ;(if (file-exists? Regiment-Log-File)
 ;    (delete-file Regiment-Log-File))
 
-;; This parameter determines whether the compiler should print extra (debugging related) info during compilation.
+;; This parameter determines whether the compiler should print EXTRA (debugging related) info during compilation.
 (define-regiment-parameter regiment-verbose #f)
+
+;; This is the opposite, it is used to suppress ALL banners and nonessential output for batch execution.
+(define-regiment-parameter regiment-quiet #f)
 
 ;; Is this run of the compiler a WS run?
 (define-regiment-parameter wavescope-invocation #f)

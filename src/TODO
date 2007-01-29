@@ -31,7 +31,7 @@ Things I'm working on now --Ryan:
  *) Build .boot file.
  *) Finish implementing equality
  X) Push generic arith system to the front end.
- 
+ *) Make printed representations consistent between WS and WSC. 
 
 
 [2006.11.29]

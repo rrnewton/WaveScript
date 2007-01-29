@@ -174,21 +174,21 @@
   (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
   ;; Now that we've got a stream we provide a little command
   ;; prompt and ask the user what we should do with it:
-  (printf "\nQuery processed.")
-  (printf "\nYou can now control the output stream, commands are:\n")
-  (printf "     <n>          print n stream element, advance position\n")
-  (printf "     <enter>      same as '1'\n")
-  (printf "     print        print current stream element (in full), don't advance\n")
-  (printf "     skip <n>     advance the stream, but don't print\n")
-;  (printf "     code         print the query that is executing\n")
-  (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
-  (printf "     dump <fn> <n>   dump up to this many elements\n")
-  (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
-  (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
-  (printf "     profile      dump the profile to /tmp/pdump \n")
-
-  (printf "     exit         exit\n\n")
-  (flush-output-port)
+  (unless (regiment-quiet)
+    (printf "\nQuery processed.")
+    (printf "\nYou can now control the output stream, commands are:\n")
+    (printf "     <n>          print n stream element, advance position\n")
+    (printf "     <enter>      same as '1'\n")
+    (printf "     print        print current stream element (in full), don't advance\n")
+    (printf "     skip <n>     advance the stream, but don't print\n")
+					;  (printf "     code         print the query that is executing\n")
+    (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+    (printf "     dump <fn> <n>   dump up to this many elements\n")
+    (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
+    (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
+    (printf "     profile      dump the profile to /tmp/pdump \n")
+    (printf "     exit         exit\n\n")
+    (flush-output-port))
 
   (parameterize ([print-length 100]
 		 [print-graph #t]

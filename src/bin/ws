@@ -18,7 +18,7 @@ then echo \"wsparse\" command not found.  Compile it!
      exit 1;
 fi
 
-wsparse $1 > $TMP
+wsparse $1 --nopretty > $TMP
 wsint $TMP ${1+"$@"}; 
 rm -f $TMP
 

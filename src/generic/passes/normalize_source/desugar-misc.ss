@@ -19,10 +19,10 @@
      ))
 
   (define desugar-misc-grammar 
-    (myremove '(Prim 'dataFile)
+    ;(myremove '(Prim 'dataFile)
     (myremove '(Prim 'and) 
     (myremove '(Prim 'or) 
-	      eta-primitives-grammar))))
+	      eta-primitives-grammar)))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]

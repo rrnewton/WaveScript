@@ -1,8 +1,7 @@
+// This version shows how to use an array to manually keep the state
+// of the moving average.
 
-
-
-
-data = (dataFile("data.txt", "text", 0) :: Signal (Int, Float));
+data = (dataFile("data.txt", "text", 0) :: Stream (Int * Float));
 
 avgs = iterate ((n,f) in data) {
   state {
@@ -15,7 +14,7 @@ avgs = iterate ((n,f) in data) {
   if ind == 10 then ind := 0;
   sum := 0.0; 
   for i = 0 to 9 {
-    sum := sum +. int_to_float(buffer[i]);
+    sum := sum +. intToFloat(buffer[i]);
   };  
   emit sum /. 10.0;
 };
