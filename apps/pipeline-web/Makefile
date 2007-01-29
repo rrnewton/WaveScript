@@ -6,4 +6,5 @@ data.txt:
 	gunzip data.txt.gz
 
 clean:
-	rm -f .__* run_query
+	rm -f .__* run_query query.cpp *~
+

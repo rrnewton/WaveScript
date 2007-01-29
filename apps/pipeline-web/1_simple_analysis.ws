@@ -1,7 +1,7 @@
 
 include "stdlib.ws";
 
-data = (dataFile("data.txt", "text", 0) :: Signal (Int, Float));
+data = (dataFile("data.txt", "text", 0) :: Stream (Int * Float));
 
 wins = window(data, 10);
 //wins = rewindow(wins, 10, 5)
@@ -19,10 +19,10 @@ avgs = iterate (w in wins) {
   for i = 0 to w.width-1  {
   //for i = w.start to w.end  {
     let (n,f) = w[[i]];
-    sum := sum +. int_to_float(n);
+    sum := sum +. intToFloat(n);
   };  
   //print("SUM: "); print(sum); print("\n");
-  emit sum /. int_to_float(w.width);
+  emit sum /. intToFloat(w.width);
   //emit ();
 };
 
