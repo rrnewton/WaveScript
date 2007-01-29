@@ -110,9 +110,20 @@ fullheap: builddir
 builddir:
 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi
 
+# This runs various tests but tries not to be fairly quick.
+# This is in contrast to supertest.ss, which is supposed to be as
+# exhaustive as possible.
 t: test
 test: 
+	$(MAKE) clean 
+	$(MAKE) wsparse
 	regiment test
+	(cd ../apps/pipeline-web/; $(MAKE) test)
+	(cd demos/wavescope; ./testall_demos.ss)
+	echo exit | ws lib/stdlib.ws;
+	echo exit | ws lib/matrix.ws;
+	$(MAKE) chez
+	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 
 
