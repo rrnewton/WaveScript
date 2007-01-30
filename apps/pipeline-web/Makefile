@@ -1,6 +1,6 @@
 
 all: data.txt
-	wsc simple_pipeline_data_analysis.ws
+	wsc 1_simple_moving_average.ws
 
 data.txt: 
 	gunzip data.txt.gz
