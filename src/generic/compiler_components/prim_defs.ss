@@ -509,10 +509,12 @@
      ))
   
 ; [2004.03.31]
+;; [2007.01.30] Upgrading this to a parameter. (A box might have better performance.)
 (define regiment-primitives
-  (append regiment-basic-primitives
-	  regiment-distributed-primitives
-	  regiment-constants))
+  (make-parameter   
+   (append regiment-basic-primitives
+	   regiment-distributed-primitives
+	   regiment-constants)))
 
 ;======================================================================
 ;;; Primitive type definitions, TML/Node-local.
@@ -715,7 +717,7 @@
 ;; [2004.06.24]<br> This is for the regiment primitives:
 (define get-primitive-entry
   (lambda (prim)
-    (or (assq prim regiment-primitives)
+    (or (assq prim (regiment-primitives))
 	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
@@ -748,7 +750,7 @@
 
 ;; Is it a regiment primitive?
 (define (regiment-primitive? x)
-  (if (assq x regiment-primitives) #t #f))
+  (if (assq x (regiment-primitives)) #t #f))
 
 ;; Is it a regiment constant?
 (define (regiment-constant? x)

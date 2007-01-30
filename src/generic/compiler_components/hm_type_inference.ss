@@ -301,7 +301,7 @@
   (let ((entry (or ;(assq p regiment-basic-primitives)
 		   ;(assq p regiment-constants)
 		   ;(assq p regiment-distributed-primitives)
-		   (assq p regiment-primitives)
+		   (assq p (regiment-primitives))
 		   )))
     (unless entry
       (error 'prim->type "primitive was not found: ~a" p))
@@ -1253,7 +1253,7 @@
 		(DEBUGASSERT (type? ret))
 		(DEBUGASSERT (andmap type? args))]
 	       [,else (error 'hm_type_inferencer "bad entry in primitive table: ~s" else)]))
-   regiment-primitives))
+   (regiment-primitives)))
 
 ) ; End module. 
 

@@ -89,6 +89,7 @@
   (define-syntax fx>= (identifier-syntax >=))
   (define-syntax fxmin (identifier-syntax min))
   (define-syntax fxmax (identifier-syntax max))
+  (define-syntax fxabs (identifier-syntax abs))
 
   (define-syntax fl+ (identifier-syntax +))
   (define-syntax fl- (identifier-syntax -))

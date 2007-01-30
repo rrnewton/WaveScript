@@ -176,14 +176,14 @@
 
 	 ;; This is ugly, but for this very first pass, we pretend
 	 ;; that these are primitives.  They are desugared in the next pass.
-	 (fluid-let ([regiment-primitives
-		      (append 
-		       '((+ (Int Int) Int)
-			 (- (Int Int) Int) 
-			 (* (Int Int) Int) 
-			 (/ (Int Int) Int) 
-			 (^ (Int Int) Int))
-		       regiment-primitives)])
+	 (parameterize ([regiment-primitives
+			 (append 
+			  '((+ (Int Int) Int)
+			    (- (Int Int) Int) 
+			    (* (Int Int) Int) 
+			    (/ (Int Int) Int) 
+			    (^ (Int Int) Int))
+			  (regiment-primitives))])
            (match prog
 	     ;; The input is already wrapped with the metadata:
 	     [(,input-language (quote (program ,body)))

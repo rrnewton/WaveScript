@@ -87,7 +87,7 @@
     ;; Include an entry for each primitive.
     ,@(map (lambda (entry) `[Prim (quote ,(car entry))])
 	   ;; Remove dbg from the list... we handle that special:
-	regiment-primitives)
+	(regiment-primitives))
 
     [Int ,integer?]
     [Float ,flonum?]

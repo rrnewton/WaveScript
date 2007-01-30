@@ -268,6 +268,7 @@ clean: cleanchez cleanplt
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
 	find -name ".__*" | xargs -i $(RM) {}  ## Remove these temp files
+	find -name "__lang_running.tmp.ss" | xargs -i $(RM) {}  ## Remove these temp files
 
 
 #	find -name "*.zo" | xargs rm # This is excessive...
