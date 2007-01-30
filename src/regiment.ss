@@ -29,7 +29,14 @@
 	;; If the compiled version is there, use that:
 	(begin 
 	  (set! regiment-origin "compiled .so")
-	  (load (format "./build/~a/main_chez.so" (machine-type))))
+	  (load (format "./build/~a/main_chez.so" (machine-type)))
+	  ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
+	  ;; (But currently I can't get the system to work when loaded from .so)
+	  ;; SHOULD ONLY DO THIS WHEN WE'RE LOADING FROM .SO:
+	  (eval '(import scheme))
+	  (load (string-append (getenv "REGIMENTD") "/src/chez/regmodule.ss"))
+	  (eval '(import reg:module))
+	  )
 	(begin (fprintf stderr "Loading Regiment from source...\n")
 	       (set! regiment-origin "source")
 	       (load "./main_chez.ss")))))

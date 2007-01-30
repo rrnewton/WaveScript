@@ -109,13 +109,24 @@
  (define-language
    'wavescript-language
    `(begin
-     ;; We only import these basic bindings to keep us honest.
-     (import-only wavescript_sim_library)
-     ;; Then we import some "sub-modules" exported by the language-module.
-     ;; This is everything but the overriden bindings from default scheme language:
-     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
-     (import mod_constants)
-     (import mod_helpers)
+
+      ;; [2007.01.29] ACK, this is another thing that's mysteriously broken when loading from .so:
+      ,(if (or (not (top-level-bound? 'regiment-origin))
+	       (not (equal? regiment-origin "compiled .so")))
+	   '(begin 
+	     ;; We only import these basic bindings to keep us honest.
+	     (import-only wavescript_sim_library)
+	     ;; Then we import some "sub-modules" exported by the language-module.
+	     ;; This is everything but the overriden bindings from default scheme language:
+	     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
+	     (import mod_constants)
+	     (import mod_helpers))
+	   '(begin
+	     (import wavescript_sim_library))
+	     ;;(import (except scheme break length + - * / ^ inspect letrec import let))
+	     ;;(import constants) 
+   	     ;;(import helpers)
+	   )
  
      ;(eval-when (compile eval load) (printf "TRYING..\n"))
 ;     (printf "TRYING..\n")
@@ -141,11 +152,6 @@
   (eval `(begin 
 	   (current-directory (REGIMENTD))
 	   (current-directory "src/")
-#;
-	   (module temp mzscheme
-	     (require "generic/sim/wavescript_sim_library.ss")
-	     ,expr
-	     )
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
            (require "generic/sim/wavescript_sim_library.ss")

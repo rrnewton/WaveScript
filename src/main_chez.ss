@@ -13,7 +13,9 @@
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
-(if (top-level-bound? 'REGIMENTD) (eval '(import scheme)))
+(when (top-level-bound? 'REGIMENTD) 
+  (printf "WIPING previous bindings before reloading Regiment system.\n")
+  (eval '(import scheme)))
 
 ;;; Compile-time configuration.
 ;;;
@@ -152,10 +154,13 @@
   (cd (string-append (default-regimentd) "/src/chez")))
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
-(include "chez/regmodule.ss")  ;; Common module syntax.
+
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.
-(import reg:module)
+(eval-when (load eval)
+  (include "chez/regmodule.ss")  ;; Common module syntax.
+  (import reg:module)  
+  )
 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
