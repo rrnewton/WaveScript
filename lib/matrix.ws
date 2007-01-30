@@ -110,7 +110,7 @@ fun m_trans(m) {
 /* 	      (coerce-like-arg inv matrix)))))) */
 
 
-
+/*
 BASE <- iterate (x in audio(0,1000,0)) {
   state { first = true }
   
@@ -130,3 +130,4 @@ BASE <- iterate (x in audio(0,1000,0)) {
     first := false;
   } else emit matrix(0, 0, 0.0);
 }
+*/
