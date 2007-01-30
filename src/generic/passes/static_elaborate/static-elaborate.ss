@@ -94,6 +94,7 @@
 	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
+	(abs abs) (absI fxabs) (absF flabs) (absC abs)
 	(= =) (< <) (<= <=) (> >) (>= >=)
 	;(gint (lambda (x) x))
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.

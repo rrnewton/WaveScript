@@ -162,10 +162,10 @@ fun myhanning (strm) {
 // Takes Sigseg Complex
 fun marmotscore(freqs) { 
   result = 
-    cnorm(freqs[[4]] +: 
-	  freqs[[5]] +:
-	  freqs[[6]] +:
-	  freqs[[7]]);
+    absC(freqs[[4]] +: 
+	 freqs[[5]] +:
+	 freqs[[6]] +:
+	 freqs[[7]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
 	++ show(freqs[[4]]) ++ " "

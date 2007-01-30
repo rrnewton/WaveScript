@@ -161,11 +161,19 @@
     (imagpart (Complex) Float)
 
     ;; Takes the complex norm of scalar    
-    (cnorm (Complex) Float)
+    ;(cnorm (Complex) Float)
 
+    ;; Int -> Int
+    ;; Float -> Float
+    ;; Complex -> Float
+    ;(abs ((NUM a)) (NUM a)) ;; This subsumes cnorm.
+    (absI (Int) Int)
+    (absF (Float) Float)
+    (absC (Complex) Float)
+    
+    ;; These should take NUM inputs too, as should < <= etc.
     (max ('a 'a) 'a)
     (min ('a 'a) 'a)
-    (abs (Int Int) Int)
 
     (cos (Float) Float)
     (sin (Float) Float)

@@ -25,9 +25,9 @@
 		      ,tmp))]
 		[,other (fallthru other)]))])
 
-  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_]))
-  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.]))
-  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:]))
+  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_] [abs 'abs_]))
+  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.] [abs 'abs.]))
+  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:] [abs 'abs:]))
 
 ;; Should remove the generic ops from the grammar.
 #;  
@@ -48,6 +48,9 @@
 		       [,else (error 'degeneralize-arithmetic
 				    "gint did not have expected type/form post-elaboration: ~s"
 				    (cons 'gint args))])
+;; NOTE: THIS WON'T WORK FOR ABS YET...
+;; IT WORKS BASED ON THE RETURN TYPE, WHICH IS AMBIGUOUS FOR ABS.
+
 		     (case t
 		       [(Int)     `(,(int     genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]

@@ -31,7 +31,9 @@
 		 intToFloat floatToInt
 		 toComplex toFloat
 
-		 realpart imagpart cnorm
+		 realpart imagpart 
+		 ;cnorm
+		 absI absF absC
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
@@ -439,28 +441,16 @@
 
 
      
-  (IFCHEZ
+     (IFCHEZ
       (begin (define realpart cfl-real-part)
              (define imagpart cfl-imag-part))
       (begin (define realpart real-part)
              (define imagpart imag-part)))
       
-     ;(define realpart cfl-real-part)
-     ;(define imagpart cfl-imag-part)
-
-     (define (cnorm c)
-       (let ([real (realpart c)]
-	     [imag (imagpart c)])
-	 ;(import scheme) ;; Reset those numeric bindings to default!
-	 (cond
-	  [(zero? real) imag]
-	  [(zero? imag) real]
-	  [(>= (flabs real) (flabs imag))
-	   (s:* (s:abs real) (s:sqrt (s:+ 1.0 (s:/ (s:* imag imag) (s:* real real)))))]
-	  [else 
-	   (s:* (s:abs imag) (s:sqrt (s:+ 1.0 (s:/ (s:* real real) (s:* imag imag)))))] )
-	 ))
-
+     (define absI fxabs)
+     (define absF flabs)
+     (define absC s:abs)
+    
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
      (define (fft ss)
