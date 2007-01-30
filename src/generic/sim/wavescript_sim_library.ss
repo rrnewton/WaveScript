@@ -466,7 +466,7 @@
      (define (complexToInt c) (flonum->fixnum (realpart c)))
      (define complexToFloat realpart)
     
-     (define (roundF f) (flonum->fixnum (flround f)))
+     (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
@@ -659,7 +659,7 @@
        (define hashrem_BANG (slib:hash-remover equal?))
        (define (hashrem ht k) 
 	 (define new (copy-hash-table ht))
-	 (hashset_BANG new k v)
+	 (hashrem_BANG new ht k)
 	 new)
        )
 

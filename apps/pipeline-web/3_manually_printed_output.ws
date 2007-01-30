@@ -1,3 +1,5 @@
+// This shows how to manually print the output to get it in the desired format.
+// It also demonstrates how to include a library file (found in $REGIMENTD/lib/).
 
 include "stdlib.ws";
 
@@ -5,7 +7,7 @@ data = (dataFile("data.txt", "text", 0) :: Stream (Int * Float));
 
 wins = window(data, 10);
 
-// Use rewindow to get them overlapping sums.
+// Use rewindow (from stdlib) to get overlapping windows:
 wins2 = rewindow(wins, 100, -50);
 
 avgs = iterate (w in wins2) {

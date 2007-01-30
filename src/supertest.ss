@@ -184,6 +184,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
+(begin 
+  (current-directory (format "~a/lib/" test-root))
+  (define stdlib (system/exit-code (format "echo exit | ws lib/stdlib.ws")))
+  (fpf "\nws: Loading stdlib.ws:                             ~a\n" (code->msg! stdlib))
+  (define matrix (system/exit-code (format "echo exit | ws lib/matrix.ws")))
+  (fpf "\nws: Loading matrix.ws:                             ~a\n" (code->msg! matrix))
+  (current-directory test-directory))
+
+(begin 
+  (current-directory (format "~a/apps/pipeline-web" test-root))
+  (define pipeline-web (system/exit-code (format "make test")))
+  (fpf "\nws: Running pipeline-web app:                      ~a\n" (code->msg! pipeline-web))
+  (current-directory test-directory))
+
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
