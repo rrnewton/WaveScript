@@ -10,8 +10,8 @@ include "matrix.ws";
 // Takes Sigseg Complex
 fun marmotscore2(freqs) { 
   result = 
-    cnorm(freqs[[3]] +: 
-	  freqs[[4]]);
+    absC(freqs[[3]] +: 
+	 freqs[[4]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
 	++ show(freqs[[3]]) ++ " "
@@ -24,7 +24,7 @@ fun marmotscore2(freqs) {
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.999;
-  hi_thresh = 8;
+  hi_thresh = 16;
   startup_init = 300;
   refract_interval = 40;
   max_run_length = 48000;
@@ -98,7 +98,7 @@ fun detect(scorestrm) {
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = intToFloat(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
+      let thresh = intToFloat(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
