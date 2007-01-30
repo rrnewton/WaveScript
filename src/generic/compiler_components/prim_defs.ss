@@ -32,6 +32,7 @@
 	   regiment-constants
 	   regiment-distributed-primitives
 	   regiment-primitives
+	   wavescript-primitives
 	   token-machine-primitives
 
 	   regiment-keyword?

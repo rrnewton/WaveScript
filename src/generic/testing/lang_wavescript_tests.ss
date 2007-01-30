@@ -61,7 +61,14 @@
                sum)
              ))
          55100]
-        
+
+	,@(map
+	      (lambda (prim)
+		(list (format "Testing that wavescript implements all primitives: ~a" (car prim))
+		      `(wavescript-language (quote ,(car prim)))
+		      'unspecified))
+	    (append regiment-basic-primitives
+		    wavescript-primitives))        
 	    
         )))
   
