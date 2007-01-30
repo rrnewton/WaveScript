@@ -3,22 +3,6 @@
 ================================================================================
 Things I'm working on now --Ryan:
 
- *) Completing static-elaboration for effectful constructs
-
- *) Inserting grammars between passes. [Significant progress]
-
- ~~) Moving to generic-traversal for early passes. [2006.10]
-
-
- *) Add matrix WS operations
- *) Also add more FFT ops (maybe stream-lifted version too) 
-
- *) Fixing let, letrec, lazy-letrec.
-    *) Make "let" not desugar... (for consistency with typing rules)
-    *) Make letrec strict throughout the compiler.
-
- *) Would like to get the LAML Schemedoc stuff working again.
-
 
 ================================================================================
 
@@ -30,12 +14,12 @@ Things I'm working on now --Ryan:
 
  *) Build .boot file.
  *) Finish implementing equality
- X) Push generic arith system to the front end.
  *) Make printed representations consistent between WS and WSC. 
- *) add ws.opt and wsc.opt targets for when performance is critical.
+ X) Push generic arith system to the front end.
+ X) add ws.opt and wsc.opt targets for when performance is critical.
 
 [2006.11.29]
- *) For distribution compile a separate regiment.opt for simulations.
+ X) For distribution compile a separate regiment.opt for simulations.
     (The default checkout should be opt-level 2, DEBUG on.)
 
 [2006.11.08]
@@ -44,11 +28,7 @@ Things I'm working on now --Ryan:
 
 [2006.11.05]
  *) Change inliner to allow "lib" functions that don't inline (of
-    appropriate type).
-
-[2006.11.04]
-  Make remove-complex-opera work for wavescript so that show() can be
-implemented properly.
+    appropriate type). [Did a weird hack for this instead.]
 
 [2006.11.01]
   Should include optional Intermediate? check for define-pass to
@@ -56,11 +36,25 @@ verify that a user function produces a valid intermediate record.
 It's very easy to accidentally return an expression where you were
 supposed to return an intermediate record.
 
+[2006.10.17~]
+
+ *) Completing static-elaboration for effectful constructs
+ ~~) Inserting grammars between passes. [Significant progress]
+ ~~) Moving to generic-traversal for early passes. [2006.10]
+ *) Fixing let, letrec, lazy-letrec.
+    *) Make "let" not desugar... (for consistency with typing rules)
+    *) Make letrec strict throughout the compiler.
+ *) Would like to get the LAML Schemedoc stuff working again.
+
+ ~~) Add matrix WS operations
+   *) Also add more FFT ops (maybe stream-lifted version too) 
+
+
 [2006.09.03]
   X) Do not desugar one-armed if in the parser!!!
 
 [2006.09.01]
-  I have NEVER taken advantage of the "test-this" convention, I should do away with it.
+ *) I have NEVER taken advantage of the "test-this" convention, I should do away with it.
 
 [2006.08.29]
 
@@ -75,7 +69,7 @@ supposed to return an intermediate record.
 
  *) Encapsulate thread related things into a threads.ss
  *) Is there any way to get "languages" working in PLT?
- *) Finish porting modules to common module format.
+ X) Finish porting modules to common module format.
 
 
 [2006.05.02]
@@ -86,12 +80,12 @@ supposed to return an intermediate record.
 [2006.04.03]
 
   *) Add type checking to TMs.
-  *) Add type checking between all passes of the compiler.
-  *) Add more custom grammar checks.
-  *) (Maybe fix the system for grammar check errors, it's fundamentally
+  X) Add type checking between all passes of the compiler.
+  X) Add more custom grammar checks.
+  X) (Maybe fix the system for grammar check errors, it's fundamentally
      broken and a hack.)
-  x) Rework type system.
-  x) Add and use generic traverse for Regiment as well as TML.
+  X) Rework type system.
+  X) Add and use generic traverse for Regiment as well as TML.
   *) Lift out certain Regiment utilities from individual passes into common files.
 
 
