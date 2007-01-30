@@ -61,8 +61,8 @@ fun syncN (ctrl, strms) {
     };
 
     //if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
-
-    if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
+    //if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
+    if DEBUGSYNC then { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("\n") };
 
     let (flag, strt, en, seg) = tup;
     // Process the new data:
