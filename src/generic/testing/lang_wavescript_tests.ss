@@ -62,15 +62,21 @@
              ))
          55100]
 
-; 	,@(map
-; 	      (lambda (prim)
-; 		(list (format "Testing that wavescript implements all primitives: ~a" (car prim))
-; 		      `(wavescript-language (quote ,(car prim)))
-; 		      'unspecified))
-; 	    (append regiment-basic-primitives
-; 		    wavescript-primitives))        
-	    
-        )))
+	,@(map
+	      (lambda (prim)
+		(list (format "Testing that wavescript implements all primitives: ~a" prim)
+		      `(wavescript-language (quote ,prim))
+		      'unspecified))
+	    (difference
+	     (map car (append regiment-basic-primitives
+			      wavescript-primitives))
+	     ;; Make some exceptions for things that are in Regiment but not WaveScript.
+	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
+	     (append '(eq? locdiff nodeid sense even? odd? or and tuple tupref dataFile)
+		     generic-arith-primitives)
+	     ))
+
+	)))
   
   (define test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
   (define test-ws test-this)

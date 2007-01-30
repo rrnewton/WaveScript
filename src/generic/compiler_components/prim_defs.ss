@@ -33,6 +33,7 @@
 	   regiment-distributed-primitives
 	   regiment-primitives
 	   wavescript-primitives
+	   generic-arith-primitives
 	   token-machine-primitives
 
 	   regiment-keyword?
@@ -66,10 +67,44 @@
     ; [(Area 'a) (Stream (Space 'a))]
     ))
 
+
+;; Hierarchy:
+;; Int8
+;; Int16
+;; Int    Float
+;; Int64  Double  Complex32
+;;                Complex64
+(define generic-arith-primitives
+  '(
+    (gint (Int) (NUM a))
+
+    (g+ ((NUM a) (NUM a)) (NUM a))
+    (g- ((NUM a) (NUM a)) (NUM a)) 
+    (g* ((NUM a) (NUM a)) (NUM a)) 
+    (g/ ((NUM a) (NUM a)) (NUM a)) 
+    (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
+
+    ;; TODO: Add more generic operations.  UNFINISHED:
+    
+    ; Here are some "upcasts".
+    ; Throws an error if you try to downcast??
+    ; (The error behavior is not decided yet.)
+    ;(toInt     ((NUM a)) Int)
+    ;(toFloat   ((NUM a)) Float)
+    ;(toComplex ((NUM a)) Complex)
+
+    ;;  Int -> Int
+    ;;  Float -> Float
+    ;;  Complex -> Float
+    ;(abs ((NUM a)) (NUM a)) ;; This subsumes cnorm.
+
+    ;(sqrt ((NUM a)) (NUM a)) 
+))
+
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
     ; value primitives
-  '((cons ('a (List 'a)) (List 'a))
+  `((cons ('a (List 'a)) (List 'a))
     (car ((List 'a)) 'a)
     (cdr ((List 'a)) (List 'a))
     
@@ -97,44 +132,21 @@
 ;    (car (List) Object)
 ;; [2005.10.20] Allowing improper lists for the moment ^^^
 
-    (gint (Int) (NUM a))
-
-    (g+ ((NUM a) (NUM a)) (NUM a))
-    (g- ((NUM a) (NUM a)) (NUM a)) 
-    (g* ((NUM a) (NUM a)) (NUM a)) 
-    (g/ ((NUM a) (NUM a)) (NUM a)) 
-    (g^ ((NUM a) (NUM a)) (NUM a)) ;; exponentiation
-
-    ; Here are some "upcasts".
-    ; Throws an error if you try to downcast:
-    (toInt     ((NUM a)) Int)
-    (toFloat   ((NUM a)) Float)
-    (toComplex ((NUM a)) Complex)
-
+    ,@generic-arith-primitives
+    
     ;; These should be defined in the standard library.
-    (intToFloat   (Int) Float)
-    (intToComplex (Int) Complex)
+    (intToFloat     (Int)   Float)
+    (intToComplex   (Int)   Complex)
     (floatToComplex (Float) Complex)    
 
-    ; Downcasts must be explicit.
+    ; Downcasts must be explicit??
     ; Thus you know exactly what you're throwing away.
-    ; (floatToInt (Float) Int)
-    ; (complexToFloat (Complex) Float)
-    ; (complexToInt   (Complex) Int)
+    (floatToInt     (Float)   Int)
+    (complexToInt   (Complex) Int)
+    (complexToFloat (Complex) Float)
 
-    ;; Hierarchy:
-    ; Int8
-    ; Int16
-    ; Int    Float
-    ; Int64  Double  Complex32
-    ;                Complex64
-
-    ;; Phasing these out.  The *parser* will these symbols resolve to g+ or +_.
-;    (+ (Int Int) Int)
-;    (- (Int Int) Int) 
-;    (* (Int Int) Int) 
-;    (/ (Int Int) Int) 
-;    (^ (Int Int) Int) ;; exponentiation
+    ;; Rounding instead of truncation:    
+    (roundF         (Float)   Int)
 
     (+_ (Int Int) Int)
     (-_ (Int Int) Int) 
@@ -154,28 +166,17 @@
     (/: (Complex Complex) Complex)
     (^: (Complex Complex) Complex)
 
-    (sqrtf (Float) Float)
-    (sqrtc (Complex) Complex)    
-    (sqrti (Int) Int)
-    
     (realpart (Complex) Float)
     (imagpart (Complex) Float)
 
-    ;; Takes the complex norm of scalar    
-    ;(cnorm (Complex) Float)
-
-    ;; Int -> Int
-    ;; Float -> Float
-    ;; Complex -> Float
-    ;(abs ((NUM a)) (NUM a)) ;; This subsumes cnorm.
+    (sqrtI (Int)     Int)
+    (sqrtF (Float)   Float)
+    (sqrtC (Complex) Complex)    
+    
     (absI (Int) Int)
     (absF (Float) Float)
     (absC (Complex) Float)
     
-    ;; These should take NUM inputs too, as should < <= etc.
-    (max ('a 'a) 'a)
-    (min ('a 'a) 'a)
-
     (cos (Float) Float)
     (sin (Float) Float)
     (tan (Float) Float)
@@ -183,14 +184,28 @@
     (asin (Float) Float)
     (atan (Float) Float)
 
+;    (sqr (Float) Float)
 
-    (sqrt (Float) Float)
-    (sqr (Float) Float)
+    ;; These should take NUM inputs too, as should < <= etc.
+    (max ('a 'a) 'a)
+    (min ('a 'a) 'a)
 
-    ;(vector ('a ...) (Array 'a))
-    ;(make-vector (Object Int) Array)
-    ;(vector-ref ((Array 'a) Int) 'a)
-    ;(vector-set! (Array Int Object) Void)
+    ; predicates
+    (=  ('a 'a) Bool)
+    (<  ('a 'a) Bool)
+    (>  ('a 'a) Bool)
+    (<=  ('a 'a) Bool)
+    (>=  ('a 'a) Bool)
+
+;    (eq? (Object Object) Bool)
+    (equal? ('a 'a) Bool)
+    (eq? ('a 'a) Bool)  ;; This should just be '=' when it comes down to it.
+    (null? ((List 'a)) Bool)
+
+    ;; Written &&, ||, and not(b).
+    (not (Bool) Bool)
+    (or  (Bool Bool) Bool)
+    (and (Bool Bool) Bool)
     
     ;; These are in here so that various passes can treat them as
     ;; primitives rather than special forms.  (Just for the purpose of
@@ -200,28 +215,8 @@
     (tuple Object Tuple)
     (tupref Int Int Object)
 
+
     (locdiff (Location Location) Float)
-
-    (not (Bool) Bool)
-    (or (Bool Bool) Bool)
-    (and (Bool Bool) Bool)
-
-    ; predicates
-    (=  ('a 'a) Bool)
-    (<  ('a 'a) Bool)
-    (>  ('a 'a) Bool)
-    (<=  ('a 'a) Bool)
-    (>=  ('a 'a) Bool)
-;    (eq? (Object Object) Bool)
-    (equal? ('a 'a) Bool)
-    (eq? ('a 'a) Bool)  ;; This should just be = when it comes down to it.
-    (null? ((List 'a)) Bool)
-
-    ;; These are dynamically typed primitives: 
-    ;(pair? (Object) Bool)
-    ;(number? (Object) Bool)
-    (even? (Int) Bool)
-    (odd? (Int) Bool)
 
     ;; Shouldn't this be local??
     ;; I'm not sure...
@@ -230,6 +225,9 @@
     
     (nodeid        (Node) Int)
 
+    ;; [2007.01.30] These can't currently be used from WS... no '?' character.
+    (even? (Int) Bool)
+    (odd?  (Int) Bool)
     ))
 
 
@@ -308,11 +306,13 @@
     ;; interpreted version of the system.
     (doubleFile        (String Int Int)  (Stream (Sigseg Float)))
 
+
     ;; We need to expose more variants of FFT than this:
     (fft              ((Sigseg Float))  (Sigseg Complex))
 
-    (fftarr           ((Array Complex))  (Array Complex))
-    (fftseg           ((Sigseg Complex)) (Sigseg Complex))
+    ;(fftarr           ((Array Complex))  (Array Complex))
+    ;(fftseg           ((Sigseg Complex)) (Sigseg Complex))
+
 
 ;    (hanning          ((Sigseg Float))  (Sigseg Float))
 
@@ -351,21 +351,22 @@
     (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
     (hashrem_BANG ((HashTable 'key 'val) 'key) #())
 
+    ;----------------------------------------------------------------------
+
+    ;; I'm moving some of these higher order ops to "stdlib.ws" for now:
+
     ;; Only one-to-one output for now (Don't have a Maybe type!).
 ;    (iterate        (('in 'state -> #('out 'state)) 'state (Stream 'in)) (Stream 'out))
 ;    (deep-iterate   (('in 'state -> #('out 'state)) 'state (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
 ;    (emit             ('a) #())
 
     (iterate        (('in (VQueue 'out) -> (VQueue 'out)) (Stream 'in))           (Stream 'out))
-    (deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
-    (window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
+    ;(deep-iterate   (('in (VQueue 'out) -> (VQUeue 'out)) (Stream (Sigseg 'in)))  (Stream (Sigseg 'out)))
+    ;(window-iterate (('in (VQueue 'out) -> (VQUeue 'out)) (Sigseg 'in))           (Sigseg 'out))
+    
+    ;(sigseg_foreach (('a -> 'b) (Sigseg 'a)) #())
 
-    (sigseg_foreach (('a -> 'b) (Sigseg 'a)) #())
-
-    ;; Here's the pure version.
-    ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Stream 'in))  (Stream 'out))
-    ;; Restricting to have only one output per firing:
-    (integrate      ((Node 'in 'state -> #('out 'state)) 'state (Stream 'in))  (Stream 'out))
+    ;----------------------------------------------------------------------
 
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
@@ -394,10 +395,6 @@
     (end          ((Sigseg 'a)) Int)  ;; inclusive end of range
     ;; Returns timebase:
     (timebase     ((Sigseg 'a)) Timebase)
-
-    ;; Internal use only:
-    ;========================================
-    (virtqueue      () (VQueue 'a))
 
     ;; This is for testing only... it's a multithreaded version:
     (parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
@@ -482,6 +479,11 @@
     ;; This is an alternative that implements an integrate over a region:
     ;; The function also takes the Node that it's running on:
     (rintegrate      ((Node 'in 'state -> #('out 'state)) 'state (Area 'in))  (Area 'out))
+
+    ;; Here's the pure version.
+    ;(integrate      (('in 'state -> #((List 'out) 'state)) 'state (Stream 'in))  (Stream 'out))
+    ;; Restricting to have only one output per firing:
+    (integrate      ((Node 'in 'state -> #('out 'state)) 'state (Stream 'in))  (Stream 'out))
 
     ;; A communication primitive that gossips local values using broadcast:
     (gossip ((Area 'a)) (Area 'a))

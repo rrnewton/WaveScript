@@ -26,10 +26,16 @@
 		 +_ -_ *_ /_ ^_
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
-		 sqrtf sqrtc sqrti
+		 sqrtF sqrtC sqrtI
+		 roundF		 
 
 		 intToFloat floatToInt
-		 toComplex toFloat
+		 floatToComplex complexToFloat
+		 intToComplex complexToInt
+
+		 ;toComplex toFloat  ;; Generic versions
+		 ;toInt ;; Truncate
+		 ;roundToInt
 
 		 realpart imagpart 
 		 ;cnorm
@@ -38,8 +44,11 @@
 		 nullseg nullarr nulltimebase
 		 tuple tupref
 		 makeArray arr-get arr-set! 
-		 hashtable hashcontains hashget hashset hashset_BANG ;hashrem hashrem_BANG
+		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
+
 		 listRef listLength makeList head tail
+		 fold alist_lookup alist_update
+
 		 joinsegs subseg seg-get width start end timebase
 		 to_array toSigseg 
 
@@ -425,21 +434,17 @@
      (define ^. expt)
      (define ^: expt)
 
-     (define (sqrti n) (flonum->fixnum (sqrt n)))
-     (define sqrtf sqrt)
-     (define sqrtc sqrt)
-
-     (define intToFloat fixnum->flonum)
-     (define floatToInt flonum->fixnum)
-     (define (toFloat n)
-       (cond
-	[(fixnum? n) (fixnum->flonum n)]
-	[(flonum? n) n]
-	[else (error 'toFloat "may only be used for upcast, given: ~s" n)]))
-     (define (toComplex n) (s:+ n 0.0+0.0i))
-
-
-
+     (define (sqrtI n) (flonum->fixnum (sqrt n)))
+     (define sqrtF sqrt)
+     (define sqrtC sqrt)
+     
+     ;; These shouldn't be implemented because they should be desugared earlier!
+     ; (define (toFloat n)
+;        (cond
+; 	[(fixnum? n) (fixnum->flonum n)]
+; 	[(flonum? n) n]
+; 	[else (error 'toFloat "may only be used for upcast, given: ~s" n)]))
+;      (define (toComplex n) (s:+ n 0.0+0.0i))
      
      (IFCHEZ
       (begin (define realpart cfl-real-part)
@@ -450,7 +455,19 @@
      (define absI fxabs)
      (define absF flabs)
      (define absC s:abs)
+
+     (define intToFloat fixnum->flonum)
+     (define floatToInt flonum->fixnum)
+
+     (define (intToComplex n) (s:+ n 0.0+0.0i))
+     (define (floatToComplex f) 
+       (IFCHEZ (s:fl-make-rectangular f 0.0)
+	       (s:+ f 0.0+0.0i)))
+     (define (complexToInt c) (flonum->fixnum (realpart c)))
+     (define complexToFloat realpart)
     
+     (define (roundF f) (flonum->fixnum (flround f)))
+
      ;; [2006.08.23] Lifting ffts over sigsegs: 
      ;; Would be nice to use copy-struct for a functional update.
      (define (fft ss)
@@ -638,8 +655,12 @@
 	 (define new (copy-hash-table ht))
 	 (hashset_BANG new k v)
 	 new)
-       ;(define hashrem )
-       ;(define hashrem_BANG )
+
+       (define hashrem_BANG (slib:hash-remover equal?))
+       (define (hashrem ht k) 
+	 (define new (copy-hash-table ht))
+	 (hashset_BANG new k v)
+	 new)
        )
 
      (define (ws-print x)

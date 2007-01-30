@@ -254,6 +254,15 @@ fun stream_iterate(f,z,s) {
   }
 }
 
+//======================================================================
+// Useful aliases:
+
+i2f = intToFloat;
+i2c = intToComplex;
+f2i = floatToInt;
+f2c = floatToComplex;
+c2i = complexToInt;
+c2f = complexToFloat;
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */

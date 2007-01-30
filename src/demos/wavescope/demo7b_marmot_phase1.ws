@@ -253,7 +253,7 @@ fun detect(scorestrm) {
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = intToFloat(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
+      let thresh = intToFloat(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
