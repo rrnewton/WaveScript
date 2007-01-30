@@ -44,6 +44,7 @@ fun syncN (ctrl, strms) {
       requests = [];
     }
     
+    // Debugging helper functions:
     fun printaccs() {
       for i = 0 to accs.length - 1 {
 	if accs[i] == nullseg
@@ -51,8 +52,17 @@ fun syncN (ctrl, strms) {
 	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
       }
     };
+    fun printwidths(){
+      for i = 0 to accs.length - 1 {
+	if accs[i] == nullseg
+	then print("0   ")
+	else print(show(accs[i].width) ++ " ");
+      }
+    };
 
-    if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
+    //if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
+
+    if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
 
     let (flag, strt, en, seg) = tup;
     // Process the new data:
