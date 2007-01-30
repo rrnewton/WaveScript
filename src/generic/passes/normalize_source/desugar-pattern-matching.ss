@@ -153,6 +153,49 @@
     [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
      (desugar-pattern-matching-language
       '(program (letrec ([x Int 3]) x) Int))]
+
+    ;; [2007.01.30] BUG: Different behavior in petite and chez.
+    [(cadr (deep-assq 'aggr
+		(pass_desugar-pattern-matching 
+		 '(verify-regiment-language
+		   '(program
+			(letrec ([readings 'type_13 (rmap
+						     (lambda (n)
+						       ('type_8)
+						       (cons (sense "temp" n) (cons 1 '())))
+						     world)]
+				 [aggr 'type_12 (lambda (x y)
+						  ('type_7 'type_6)
+						  (cons
+						   (g+ (car x) (car y))
+						   (cons
+						    (g+ (car (cdr x)) (car (cdr y)))
+						    '())))]
+				 [div 'type_11 (lambda (v)
+						 ('type_5)
+						 (if (= (car (cdr v)) 0)
+						     0
+						     (/ (car v) (car (cdr v)))))]
+				 [sums 'type_10 (rfold aggr (cons 0 (cons 0 '())) readings)]
+				 [result 'type_9 (smap div sums)])
+			  result)
+		      'toptype)))))
+     ,(lambda (x)
+	(match x 
+	  [((List (NUM ,v)) (List (NUM ,v2)) -> (List (NUM ,v3))) #t]
+	  [,else #f]))]
+
+#;
+(lang '(program (letrec ([test 'typefoo (lambda (x y)
+                               ('type_7 'type_6)
+                               (cons
+                                 (g+ (car x) (car y))
+                                 (cons
+                                   (g+ (car (cdr x)) (car (cdr y)))
+                                   '())))])
+		  (app test 3))
+	 'toptype))
+
     ))
 
 (define test-this (default-unit-tester "desugar-pattern-matching.ss: For reading regiment source files." these-tests))

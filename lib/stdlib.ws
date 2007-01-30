@@ -28,7 +28,7 @@ fun println(s) {
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
 fun syncN (ctrl, strms) {
-  DEBUGSYNC = false;
+  DEBUGSYNC = true;
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
@@ -43,16 +43,16 @@ fun syncN (ctrl, strms) {
       accs = makeArray(slist.listLength - 1, nullseg);
       requests = [];
     }
-
-    if DEBUGSYNC then {
-      print("SyncN  Current ACCS: ");
+    
+    fun printaccs() {
       for i = 0 to accs.length - 1 {
 	if accs[i] == nullseg
 	then print("null  ")
 	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
-      };
-      print("\n");
+      }
     };
+
+    if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
 
     let (flag, strt, en, seg) = tup;
     // Process the new data:
@@ -67,10 +67,18 @@ fun syncN (ctrl, strms) {
       allready = true;
       for i = 0 to accs.length - 1 {
 	if (accs[i] == nullseg ||
-	    accs[i].start > st ||
+	    (fl && accs[i].start > st) || // This only matters if we're retaining it.
 	    accs[i].end < en)
-	then allready := false;
+	then { 
+	  allready := false;
+	  if DEBUGSYNC 
+	  then print("  Not all ready: "
+		     ++ show(accs[i] == nullseg) ++ " "
+		     ++ show(fl && accs[i].start > st) ++ " "
+		     ++ show(accs[i].end < en) ++ "\n");
+	}
       }
+      // The data is ready on all buffers, now it's time to either discard or output it.
       if allready then {
 	if fl then {
 	  if DEBUGSYNC 
@@ -81,10 +89,11 @@ fun syncN (ctrl, strms) {
 	    output := subseg(accs[i], st, size) : output;
 	  }
 	  emit(reverse(output));
-	} else if DEBUGSYNC then
+	} else {
+	  if DEBUGSYNC then
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-
-	// Destroy the discarded portions and remove the serviced request:
+	};
+	// In either case, destroy the finished portions and remove the serviced request:
 	for j = 0 to accs.length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
 	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);

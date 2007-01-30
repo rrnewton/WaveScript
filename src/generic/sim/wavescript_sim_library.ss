@@ -488,6 +488,7 @@
 
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      ;; USES ZERO-BASED INDICES.
+#;
      (define (unionList ls)
        ;; There are all kinds of weird things we could do here.
        ;; We could pull all the streams in parallel (with engines or threads) 
@@ -505,8 +506,7 @@
        )
 
      ;; [2006.11.23] Experimenting with engine based version:
-#;
-  (define (unionList ls)
+     (define (unionList ls)
        (let* ([output #f] ;; Mutable var for output.
 	      [engs (mapi (lambda (ind strm)
 			  (make-engine 
