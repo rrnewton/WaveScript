@@ -184,19 +184,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
-(begin 
-  (current-directory (format "~a/lib/" test-root))
-  (define stdlib (system/exit-code (format "echo exit | ws lib/stdlib.ws")))
-  (fpf "\nws: Loading stdlib.ws:                             ~a\n" (code->msg! stdlib))
-  (define matrix (system/exit-code (format "echo exit | ws lib/matrix.ws")))
-  (fpf "\nws: Loading matrix.ws:                             ~a\n" (code->msg! matrix))
-  (current-directory test-directory))
+(begin (current-directory (format "~a/lib/" test-root))
+       (define stdlib (system/exit-code (format "echo exit | ws lib/stdlib.ws &> ~a/10_stdlib.log" test-directory)))
+       (fpf "ws: Loading stdlib.ws:                        ~a\n" (code->msg! stdlib))
+       (define matrix (system/exit-code (format "echo exit | ws lib/matrix.ws &> ~a/11_matrix.log" test-directory)))
+       (fpf "ws: Loading matrix.ws:                        ~a\n" (code->msg! matrix))
+       (current-directory test-directory))
 
-(begin 
-  (current-directory (format "~a/apps/pipeline-web" test-root))
-  (define pipeline-web (system/exit-code (format "make test")))
-  (fpf "\nws: Running pipeline-web app:                      ~a\n" (code->msg! pipeline-web))
-  (current-directory test-directory))
+(begin (current-directory (format "~a/apps/pipeline-web" test-root))
+       (define pipeline-web (system/exit-code (format "make test &> ~a/11_pipeline-web.log" test-directory)))
+       (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
+       (current-directory test-directory))
 
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
@@ -225,12 +223,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 (begin (current-directory engine-dir)
-       (define engine-make (system/exit-code (format "make all &> ~a/10_ENGINE_MAKE_ALL.log" test-directory)))
+       (define engine-make (system/exit-code (format "make all &> ~a/11_ENGINE_MAKE_ALL.log" test-directory)))
        (fpf "Engine 'make all':                            ~a\n" (code->msg! engine-make)))
 
 ;; TODO: This doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/11_testSignal.log" test-directory)))
+       (define testSignal (system/exit-code (format "./testSignal-SMSegList &> ~a/12_testSignal.log" test-directory)))
        ;(fpf "Engine: testSignal-SMSegList                  ~a\n" (code->msg! testSignal))
        (code->msg! testSignal)
        (fpf "Engine: testSignal-SMSegList                  ~a\n"
@@ -239,7 +237,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; TODO: This probably doesn't return ERROR code:
 (begin (current-directory engine-dir)
-       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/12_PipeMemory.log" 
+       (define pipeMemory (system/exit-code (format "./PipeMemory-SMSegList --at_once --push_batch 10 &> ~a/13_PipeMemory.log" 
 						    test-directory)))
        (code->msg! pipeMemory)
        (fpf "Engine: PipeMemory-SMSegList                  ~a\n" 
@@ -253,7 +251,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;(current-directory test-directory) (ASSERT (system "make chez"))
        (fpf "\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
-       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/13_WSC_DEMOS.log" test-directory)))
+       (define wsc-demos (system/exit-code (format "./testall_wsc &> ~a/14_WSC_DEMOS.log" test-directory)))
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 

@@ -54,10 +54,10 @@
   (define (set-top-level-value! sym obj) ;; ditto
     (eval `(set! ,sym ',obj)))
   (define (top-level-value sym) (eval sym)) ;; ditto
-  (define (top-level-bound? sym) ;; ditto
-    (error 'top-level-bound?
-	   "This is a chez function which can't ~a"
-	     "be emulated right now in Plt. -RRN"))
+  (define (top-level-bound? sym)
+    (call/ec (lambda (out)
+	       (namespace-variable-value sym #f (lambda () (out #f)))
+	       #t)))
   
 ;  (define record? struct?)
   ;(define flush-output-port flush-output)
