@@ -418,7 +418,6 @@ fun FarFieldDOA(synced)
 
 */
 
-
 //========================================
 // Main query:
 
@@ -438,7 +437,14 @@ wscores = iterate (w in freq) { emit(marmotscore2(w), w); }
 
 detections = detect(wscores);
 
-synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+d2 = iterate (d in detections) { 
+  let (flag,_,_) = d;
+  //if flag then 
+    print("detected at "++show(d)++"\n"); 
+  emit(d); 
+};
+
+synced = syncN(d2, [ch1, ch2, ch3, ch4]);
 
 //doas = FarFieldDOA(synced);
 
