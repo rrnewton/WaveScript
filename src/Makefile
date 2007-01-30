@@ -1,4 +1,20 @@
 
+
+#*---------------------------------------------------------------------*/
+#*    Primary Compile Targets                                          */
+#*---------------------------------------------------------------------*/
+
+# There are three ways to run Regiment/WaveScript.
+#  (*) From source
+#  (*) From compiled shared object (.so) file.
+#  (*) From saved memory heap. (Fast but not portable.)
+
+# make wsparse  -- build parser
+# make chez     -- build regiment .so file
+# make          -- build wsparse and .so file
+# make heap     -- build regiment heap file
+# make fullheap -- build regiment heap file with compiler
+
 #*---------------------------------------------------------------------*/
 #*    Objects and sources                                              */
 #*---------------------------------------------------------------------*/
