@@ -25,11 +25,19 @@
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
   (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
-    (if (file-exists? (format "./build/~a/main_chez.so" (machine-type)))
+    (define OPTMODE (equal? (getenv "REGOPTLVL")  "3"))
+
+    (if (if OPTMODE
+	    (file-exists? (format "./build/~a/main_chez_OPT.so" (machine-type)))
+	    (file-exists? (format "./build/~a/main_chez.so" (machine-type))))
 	;; If the compiled version is there, use that:
 	(begin 
 	  (set! regiment-origin "compiled .so")
-	  (load (format "./build/~a/main_chez.so" (machine-type)))
+
+	  (if OPTMODE
+	      (load (format "./build/~a/main_chez_OPT.so" (machine-type)))
+	      (load (format "./build/~a/main_chez.so" (machine-type))))
+	  
 	  ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
 	  ;; (But currently I can't get the system to work when loaded from .so)
 	  ;; SHOULD ONLY DO THIS WHEN WE'RE LOADING FROM .SO:

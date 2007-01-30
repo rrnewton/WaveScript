@@ -44,11 +44,14 @@ all:
 	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
 	$(MAKE) chez
-	@echo; echo; echo BUILDING C-code extensions.
+	@echo; echo; echo [OPT] Compiling Regiment Scheme Source
 	@echo "======================================================================"
-	@echo "Don't worry if this step fails, it's optional!"
-	@echo "======================================================================"
-	$(MAKE) c
+	$(MAKE) opt
+# 	@echo; echo; echo BUILDING C-code extensions.
+# 	@echo "======================================================================"
+# 	@echo "Don't worry if this step fails, it's optional!"
+# 	@echo "======================================================================"
+# 	$(MAKE) c
 
 old_all: reg
 	(cd plt; $(MAKE) nc)
@@ -99,6 +102,14 @@ chez_native:
 	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | $(CHEZ)
+
+ws.opt: opt
+opt:
+	MT=`echo '(machine-type)' | petite`
+	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
+	export REGOPTLVL=3; 
+	export REGDEBUGMODE=OFF;
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | $(CHEZ)
 
 # Saved heap images start up very fast, but don't work right on all platforms.
 # (doesn't work right on Mac OS or fedora core)

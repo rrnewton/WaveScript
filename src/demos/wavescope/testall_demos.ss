@@ -1,6 +1,6 @@
 #!/bin/sh 
 #|
-exec regiment i --script "$0" ${1+"$@"};
+exec regiment.opt i --script "$0" ${1+"$@"};
 |#
 
 ;; This doesn't verify much, but it does verify that all the demos,
