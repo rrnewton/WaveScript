@@ -25,9 +25,9 @@
 		      ,tmp))]
 		[,other (fallthru other)]))])
 
-  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_] [abs 'abs_]))
-  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.] [abs 'abs.]))
-  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:] [abs 'abs:]))
+  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_] [abs 'absI]))
+  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.] [abs 'absF]))
+  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:] [abs 'absC]))
 
 ;; Should remove the generic ops from the grammar.
 #;  
