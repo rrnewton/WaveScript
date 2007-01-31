@@ -15,6 +15,16 @@ fun matrix(rows, cols, init) {
   arr
 }
 
+
+fun m_rows(m) {
+  m.width
+}
+
+fun m_cols(m) {
+  m[0].width
+}
+
+
 m_get :: (Array (Array t), Int, Int) -> t;
 fun m_get(mat, row, col) (mat[row])[col]
 
@@ -24,6 +34,27 @@ fun m_set(mat, row, col, val) {
   r[col] := val;
   {}; // mutators should return nothing!
 }
+
+
+// again need the init value for type check... 
+fun list_to_matrix(list) {
+
+  rows = listLength(list);
+  cols = listLength(list.head);
+  init = list.head.head;
+
+  arr = makeArray(rows, nullarr);
+
+  for i = 0 to rows-1 {
+    row = listRef(list, i);
+    arr[i] := makeArray(cols, init);
+    for j = 0 to cols-1 {
+      m_set(arr,i,j,listRef(row, j));
+    }
+  }
+  arr
+}
+
 
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {

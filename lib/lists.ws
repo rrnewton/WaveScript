@@ -1,6 +1,6 @@
 
 // [2006.10.26]
-e// Elaborator isn't yet ready for the recursive definitions below.
+// Elaborator isn't yet ready for the recursive definitions below.
 
 fun const_strm(x) {
   iterate (_ in timer(3000)) {
@@ -35,6 +35,20 @@ fun fold(f, zero, ls) {
   loop(zero,ls)
 }
 
+/*
+fun l_length(ls) {
+  fun inc(x) { x+1 };
+  fold(inc, 0, ls);
+}
+
+fun l_index(ls, i, init) {
+  if ls == [] then init
+  else {
+    if i > 0 then l_index(ls.tail, i-1, init);
+    else ls.head;
+  }
+}
+*/
 
 fun test_lists() {
   print("Testing list module.\n");

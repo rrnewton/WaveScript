@@ -2,6 +2,7 @@
 DEBUG = false;
 DEBUGSYNC = DEBUG;
 
+
 include "stdlib.ws";
 include "matrix.ws";
 
@@ -257,6 +258,7 @@ fun array_iterate_index(a,f) {
   new_a
 }
 
+*/
 
 // NEED:
 // qsort
@@ -267,27 +269,19 @@ fun array_iterate_index(a,f) {
 
 fun FarFieldDOA(synced) 
 {	
-  Nsens = 4;
+  sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
+			    [ 0.4, 0.4, 0.4],
+			    [-0.4, 0.4,-0.4],
+			    [-0.4,-0.4, 0.4]]);
+  Nsens = m_rows(sensors);
 
+synced;
+/*
   sensors = matrix(Nsens, 3, 0.0);
+
   r = makeArray(Nsens, 0.0);
   theta = makeArray(Nsens, 0.0);
   
-  mset(sensors, 0, 0,  0.4);
-  mset(sensors, 0, 1, -0.4);
-  mset(sensors, 0, 2, -0.4);
-
-  mset(sensors, 1, 0,  0.4);
-  mset(sensors, 1, 1,  0.4);
-  mset(sensors, 1, 2,  0.4);
-
-  mset(sensors, 2, 0, -0.4);
-  mset(sensors, 2, 1,  0.4);
-  mset(sensors, 2, 2, -0.4);
-
-  mset(sensors, 3, 0, -0.4);
-  mset(sensors, 3, 1, -0.4);
-  mset(sensors, 3, 2,  0.4);
 
   /* compute r and theta for each sensor relative to sensor 0 as origin */
   for i = 1 to 3 {
@@ -414,9 +408,10 @@ fun FarFieldDOA(synced)
   };
 
   doa  
+*/
 }
 
-*/
+
 
 //========================================
 // Main query:
@@ -439,13 +434,13 @@ detections = detect(wscores);
 
 d2 = iterate (d in detections) { 
   let (flag,_,_) = d;
-  //if flag then 
+  if flag then 
     print("detected at "++show(d)++"\n"); 
   emit(d); 
 };
 
 synced = syncN(d2, [ch1, ch2, ch3, ch4]);
 
-//doas = FarFieldDOA(synced);
+doas = FarFieldDOA(synced);
 
-BASE <- synced;
+BASE <- doas;
