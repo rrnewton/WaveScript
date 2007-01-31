@@ -35,7 +35,7 @@ It will often print the surrounding context of an error (in abstract
 syntax), but nothing more.
 
 Thus it helps to build your program bit by bit.  Compile often to make
-sure that the pieces of your program type-check.
+sure that the pieces of your program parse and type-check.
 
 {\tt \bf wsparse:}
 If you want the full error message for a stubborn parser error, run
@@ -43,15 +43,32 @@ If you want the full error message for a stubborn parser error, run
 (abstract syntax tree) for the file, or will give you an error message
 that includes line and character numbers.
 
-\subsection*{The WaveScript Emulator}
+\subsection{The WaveScript Emulator: {\tt \bf ws} }
 
 Running {\tt ws} on a WaveScript file will simulate the functionality
-of the query without actually compiling the query to C++ code.
+of the query without actually compiling the query to C++ code.  The
+query is converted to a Scheme program which is compiled to native
+code and executed on the fly.  
 
-\subsubsection*{Consider {\tt ws.opt}}
+\subsubsection*{Consider {\tt \bf ws.opt} for high-performance emulation}
 
-Runnig {\tt ws.opt} in place of {\tt ws} may improve execution time
-ofor a query that you are emulating.
+The first thing to do to improve the performance of {\tt ws} is make
+sure that you have the full version of Chez Scheme.  This version
+includes the incremental native code compiler.  If you are using the
+free, Petite Chez Scheme interpreter, your {\tt .ws} query files will
+be converted to {\em interpreted} Scheme code, which runs considerably
+slower.  The executable, {\tt chez}, should be in your path.
+
+To go further, you might consider runnig {\tt ws.opt} in place of {\tt
+ws}.  First, {\tt ws.opt} has debugging assertions disabled. 
+Second, {\tt ws.opt} is compiled in the highest Chez Scheme optimize
+level, and also compiles your query in this higher optimize level.
+However, this optimize level is dangerous in that it omits various
+checks necessary to maintaining type safety.  Thus the process can
+crash if there's an error, or memory can become corrupted (just like
+C/C++).  Therefore, debug your code using {\tt ws} first.
+
+\subsection{The WaveScript Compiler: {\tt \bf wsc}}
 
 
 \section{Syntax}
@@ -116,6 +133,10 @@ a function that takes a 2-tuple as its second argument:
 
 
 \chapter{Signal Processing Libraries}
+
+\section{Fourier Transforms}
+
+\section{Matrix Operations}
 
 
 
