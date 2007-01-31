@@ -57,17 +57,52 @@ Please make liberal use of ~/wavescript/demos/wavescope
 
 \section{Numbers}
 
-int, uint16, uint8, float, double, complex 
+% int, uint16, uint8, float, double, complex 
 
 % Could just have NUMBER in the FIRST type check..
 % Then type check again AFTER elaboration.
 % (It would be really nice to keep source info....)
 
-
-
 \section{Streams}
 
 \section{Sigsegs}
+
+\section{Functions}
+
+\subsection*{Patterns}
+
+In any variable-binding position it is valid to use a pattern rather
+than a variable name.  This includes the arguments to a function, a
+local variable binding, or the variable binding within an {\tt
+  iterate} construct.  Currently, patterns are just used to bind names
+to the interior parts of tuples.  In the future, we will support list
+patterns, array patterns, and tagged union patterns.  Let's look at an example.
+
+We saw above how to bind variables in WaveScript:
+\begin{center}
+{\tt \bf{z} = (1,2);}
+\end{center}
+This binds {\tt t} to a tuple containing two elements.  
+Now I will share with you that this is actually a shorthand for the
+more verbose syntax:
+\begin{center}
+{\tt let \bf{z} = (1,2);}
+\end{center}
+Now we are ready to bind the individual components of the tuple by using
+a pattern in place of the variable {\tt 'z'}:
+\begin{center}
+{\tt let \bf{(x,y)} = (1,2);}
+\end{center}
+Note: an unfortunate limitation of the parser is that {\tt 'let'} cannot be
+omitted if we a pattern is used in place of a simple identifier.
+
+Similarly, we may use patterns within a function's arguments.  Here's
+a function that takes a 2-tuple as its second argument:
+
+\begin{center}
+{\tt {\bf fun} foo (x,\bf{(y,z)}) \{ \dots \}}
+\end{center}
+
 
 \chapter{Signal Processing Libraries}
 
