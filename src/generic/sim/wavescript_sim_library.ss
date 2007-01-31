@@ -486,9 +486,37 @@
 		    (sigseg-timebase ss)))
 
 
+#;
+     ;; Making this a primitive for the emulator.
+     (define (syncN ctrl strms)
+       ;; The policy here is that we read from the ctrl stream.
+       ;; Then we read what data we need from the data streams to meet the request.
+       
+       (let outer ([ctrl ctrl]
+		   [accs (map (lambda (s) (vector s nullseg)) strms)])
+	 (if (stream-empty? ctrl) '()
+	     (let-match ([#(,flag ,st ,en) (stream-car ctrl)])
+	       (let inner ([accs accs])
+		 (let* ([all-good #t]
+			[newaccs 
+			 (map (match-lambda (#(,strm ,seg))
+				(if (isgood? seg)
+				    (vector strm seg)
+				    (begin 
+				      (set! all-good #f)
+				      (read dat -> acc)))
+				)
+			   data accs)])		   
+		   (if all-good
+		       (cons (doit) 
+			     (delay (outer (stream-cdr ctrl) rest??)))
+		       (inner newaccs)
+		       )
+		   ))))))
+
+
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      ;; USES ZERO-BASED INDICES.
-#;
      (define (unionList ls)
        ;; There are all kinds of weird things we could do here.
        ;; We could pull all the streams in parallel (with engines or threads) 
@@ -504,6 +532,7 @@
 				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
 					streams)))))))
        )
+
 
      ;; [2006.11.23] Experimenting with engine based version:
      (define (unionList ls)
@@ -543,7 +572,62 @@
 		(loop (cdr engs) (cons neweng acc))
 		))]
 	    ))))
-  
+
+#;
+     ;; [2007.01.30]  This is a hacky little experiment.  Prioritizes the first stream in the list.
+     (define (unionList ls)
+       (let* ([output #f] ;; Mutable var for output.
+	      [engs (mapi (lambda (ind strm)
+			  (make-engine 
+			   (lambda ()
+			     (let strmloop ([strm strm])
+			       (when (stream-empty? strm)
+				 (engine-return '()))
+			       (set! output (vector ind (stream-car strm)))
+			       (engine-block) ;; Don't return more than one value.
+			       (strmloop (stream-cdr strm))
+			       ))))
+			  ls)])
+	 ;; Now we need to do the equivalent of a "select".
+	 ;; We run each engine until we get a value.
+	 (let loop ([special (car engs)] [engs (cdr engs)] [acc '()])	   	   
+	   ;; Process output, if there was any in the last run.
+	   (cond
+	    [output
+	     (cons output 
+		   (delay (begin (set! output #f) (loop special engs acc))))]
+	    [(null? engs)
+	     (if (null? acc) ;; All (other) streams finished.
+		 (if special 
+		     (loop #f (list special) '())
+		     '())
+		 (if special 
+		     ;; Now we run the special engine.		     
+		     (special 100
+			      (lambda (ticks val)
+				(loop #f (reverse! acc) '())
+				)
+			      (lambda (neweng)
+				(if output 
+				    (loop neweng '() acc)
+				    ;; Only after the special one putters do we get back to the others.
+				    (loop neweng (reverse! acc) '())
+				    )))
+		     ;; Otherwise just keep going with these other engines.
+		     (loop #f (reverse! acc) '())
+		     ))]
+	    [else
+	     ;; RUN engine:
+	     ((car engs) 100
+	      (lambda (ticks val)
+		;; This stream is finished, continue with rest.
+		(loop special (reverse! acc) '())
+		)
+	      (lambda (neweng)		  
+		;; Put us at the end of the queue.
+		(loop special (cdr engs) (cons neweng acc))
+		))]
+	    ))))
   
      (define (unionN . args)  (unionList args))
 

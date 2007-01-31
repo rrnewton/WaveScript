@@ -123,7 +123,7 @@
     ;; These should be defined IN the language, but they're not right now:
     (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
-    (alist_lookup ((List #('a 'b)) 'a) (List #('a 'b))) 
+    (alist_lookup ((List #('a 'b)) 'a) (List #('a 'b)))
     (alist_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))
 
 ;    (list ('a ...) (List 'a))
