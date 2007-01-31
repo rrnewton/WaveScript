@@ -490,6 +490,80 @@
 
 
      ;; Making this a primitive for the emulator.
+     (define __syncN
+       (let ()
+         
+         ;; The policy here is that we read from the ctrl stream.
+         ;; Then we read what data we need from the data streams to meet the request.
+         (define (outer ctrl accs) 
+	   ;(if (zero? (random 10000)) (call/cc inspect))	  
+	   ;(call/cc inspect)
+	   (if (zero? (random 10000))
+	       (printf "  OUTER LOOP ~s\n" 
+		       (map (lambda (vec) (width (vector-ref vec 1)))
+			 accs)))
+           (call/1cc
+            (lambda (exit-this)
+              (if (stream-empty? ctrl) '()
+                  (let-match ([#(,flag ,st ,en) (stream-car ctrl)])               
+                    
+		    (define (isgood? ss) 
+		      (and (not (equal? ss nullseg))
+			   (or (<= (start ss) st) (not flag))
+			   (>= (end ss) en)))
+		    ;; When we have data on all accs, proceed:
+		    (define (doit accs)
+		      (when flag (printf "DATA READY: ~s\n" (map (lambda (v) (list (start (vector-ref v 1)) (end (vector-ref v 1)))) accs)))
+		      (match accs
+			[(#(,strm* ,seg*) ...)
+			 (let ([newctrl (stream-cdr ctrl)]
+			       [newaccs (map (lambda (strm seg)
+					; 						(printf "NOW EXTRACTING: ~s ~s ~s\n"
+					; 							(add1 en)
+					; 							(s:- (width seg) (s:- (add1 en) (start seg)))
+					; 							(s:+ 1 (s:- (end seg) (add1 en))))
+						     (vector strm
+							     (subseg seg (add1 en) 
+								     (s:+ 1 (s:- (end seg) (add1 en))))))
+						strm* seg*)])
+			   (if flag
+			       (begin
+				 ;; (printf "YEAH POSITIVE FLAG\n");
+				 (cons (list->vector (map (lambda (ss) (subseg ss st (- en st -1))) seg*))
+				       (delay (outer newctrl newaccs))))
+			       (outer newctrl newaccs)))]))
+		    (define (readit strm seg) 
+		      (if (stream-empty? strm)
+			  (exit-this '()) ;; We're done, can't go any further.
+			  (vector (stream-cdr strm)
+				  (joinsegs seg (stream-car strm)))
+			  ))
+
+		    ;; Keep pulling on those input streams until we're ready to proceed.
+		    (define (inner remaining ready)
+					;	 (printf "    INNER ~s ~s\n" (s:length remaining) (s:length ready))
+		      (match remaining
+			[() (doit ready)]
+			[(#(,strm ,seg) . ,rest)
+			 (if (isgood? seg) 
+			     ;; This input channel is ready, check the next.
+			     (inner rest (cons (car remaining) ready))
+			     ;; Otherwise we read ours & go to the end of the line.
+			     (inner (snoc (readit strm seg) rest)
+				    ready))]))
+
+		    (when flag (printf "PROCESSING REQUEST: ~s\n" (stream-car ctrl)))
+                    (inner accs '())
+                    )))))
+
+	 (lambda (ctrl strms)
+	   (outer ctrl (map (lambda (s) (vector s nullseg)) strms))
+	   ;(inspect 3)
+	   ;'(900 901 902)
+	   )))
+
+#;
+     ;; Making this a primitive for the emulator.
      (define (__syncN ctrl strms)
        ;; The policy here is that we read from the ctrl stream.
        ;; Then we read what data we need from the data streams to meet the request.
@@ -549,7 +623,8 @@
 			(inner (snoc (readit strm seg) rest)
 			       ready))]))))))))
 
-#;
+
+
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
      ;; USES ZERO-BASED INDICES.
      (define (unionList ls)
@@ -568,7 +643,7 @@
 					streams)))))))
        )
 
-
+#;
      ;; [2006.11.23] Experimenting with engine based version:
      (define (unionList ls)
        (let* ([output #f] ;; Mutable var for output.
