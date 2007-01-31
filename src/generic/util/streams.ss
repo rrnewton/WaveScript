@@ -192,7 +192,8 @@
 
   (parameterize ([print-length 100]
 		 [print-graph #t]
-		 [print-level 5])
+		 [print-level 5]
+		 [print-vector-length #f])
     (let loop ([pos 0])
       (DEBUGASSERT (stream? stream))
       

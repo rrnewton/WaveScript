@@ -2,6 +2,7 @@
 (module wavescript_sim_library mzscheme
   (require 
            "../constants.ss"
+           "../../plt/iu-match.ss"
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            (prefix slib: "../util/slib_hashtab.ss")
@@ -13,7 +14,9 @@
 		 valid-sigseg?
 		 app let 
 
-		 dump-binfile doubleFile audioFile __dataFile audio timer
+		 __dataFile __syncN
+
+		 dump-binfile doubleFile audioFile  audio timer
 		 stockStream
 		 ; read-file-stream
 		 show
@@ -486,33 +489,65 @@
 		    (sigseg-timebase ss)))
 
 
-#;
      ;; Making this a primitive for the emulator.
-     (define (syncN ctrl strms)
+     (define (__syncN ctrl strms)
        ;; The policy here is that we read from the ctrl stream.
        ;; Then we read what data we need from the data streams to meet the request.
-       
        (let outer ([ctrl ctrl]
-		   [accs (map (lambda (s) (vector s nullseg)) strms)])
-	 (if (stream-empty? ctrl) '()
+		   [accs (map (lambda (s) (vector s nullseg)) strms)]) 
+	 (printf "  OUTER ~s\n" 
+		 (map (lambda (vec) (width (vector-ref vec 1)))
+		   accs))
+	 (call/1cc
+	  (lambda (exit-this)
+	    (if (stream-empty? ctrl) '()
 	     (let-match ([#(,flag ,st ,en) (stream-car ctrl)])
-	       (let inner ([accs accs])
-		 (let* ([all-good #t]
-			[newaccs 
-			 (map (match-lambda (#(,strm ,seg))
-				(if (isgood? seg)
-				    (vector strm seg)
-				    (begin 
-				      (set! all-good #f)
-				      (read dat -> acc)))
-				)
-			   data accs)])		   
-		   (if all-good
-		       (cons (doit) 
-			     (delay (outer (stream-cdr ctrl) rest??)))
-		       (inner newaccs)
-		       )
-		   ))))))
+	       (define (isgood? ss) 
+		 (and (not (equal? ss nullseg))
+		      (or (<= (start ss) st) (not flag))
+		      (>= (end ss) en)))
+	       ;; When we have data on all accs, proceed:
+	       (define (doit accs)
+;		 (printf "READY: ~s\n" (map (lambda (v) (list (start (vector-ref v 1)) (end (vector-ref v 1)))) accs))
+                 (match accs
+		   [(#(,strm* ,seg*) ...)
+                    ;; Whether keeping or discarding, the tail is the same:
+                    (let ([tail 
+                           (delay (outer (stream-cdr ctrl)
+                                         (map (lambda (strm seg)
+; 						(printf "NOW EXTRACTING: ~s ~s ~s\n"
+; 							(add1 en)
+; 							(s:- (width seg) (s:- (add1 en) (start seg)))
+; 							(s:+ 1 (s:- (end seg) (add1 en))))
+                                                (vector strm
+                                                        (subseg seg (add1 en) 
+								(s:+ 1 (s:- (end seg) (add1 en))))))
+					      strm* seg*)))])
+                      (if flag
+                          (begin
+			    ;(printf "YEAH POSITIVE FLAG\n");
+			    (cons (list->vector (map (lambda (ss) (subseg ss st (- en st -1))) seg*))
+				  tail))
+                          tail))]))
+	       (define (readit strm seg) 
+		 (if (stream-empty? strm)
+		     (exit-this '()) ;; We're done, can't go any further.
+		     (vector (stream-cdr strm)
+			     (joinsegs seg (stream-car strm)))
+		     ))
+	       ;(printf "PROCESSING REQUEST: ~s\n" (stream-car ctrl))
+	       ;; Keep pulling on those input streams until we're ready to proceed.
+	       (let inner ([remaining accs] [ready '()])
+		 ;(printf "    INNER ~s ~s\n" (s:length remaining) (s:length ready))
+		 (match remaining
+		   [() (doit ready)]
+		   [(#(,strm ,seg) . ,rest)
+		    (if (isgood? seg) 
+			;; This input channel is ready, check the next.
+			(inner rest (cons (car remaining) ready))
+			;; Otherwise we read ours & go to the end of the line.
+			(inner (snoc (readit strm seg) rest)
+			       ready))]))))))))
 
 #;
      ;; [2006.09.01] Crap, how do we do this in a pull model, eh?

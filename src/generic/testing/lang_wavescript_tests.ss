@@ -72,7 +72,8 @@
 			      wavescript-primitives))
 	     ;; Make some exceptions for things that are in Regiment but not WaveScript.
 	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
-	     (append '(eq? locdiff nodeid sense even? odd? or and tuple tupref dataFile)
+	     (append '(eq? locdiff nodeid sense even? odd? or and tuple tupref dataFile
+			   IS_SIM GETENV)
 		     generic-arith-primitives)
 	     ))
 

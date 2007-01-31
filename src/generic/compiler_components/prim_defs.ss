@@ -228,6 +228,8 @@
     ;; [2007.01.30] These can't currently be used from WS... no '?' character.
     (even? (Int) Bool)
     (odd?  (Int) Bool)
+
+    (GETENV (String) String) ; Returns "" if the env var is unbound.
     ))
 
 
@@ -240,6 +242,8 @@
     (anchor         Anchor)
 
     (pi             Float)
+
+    (IS_SIM         Bool)
 
     ;; Adding Wavescope-related primitives:
     (nullseg        (Sigseg 'a))
@@ -294,6 +298,9 @@
     (dataFile (String String Int) (Stream 'a))
     ;; Internal compiler construct:
     (__dataFile (String String Int (List Symbol)) (Stream 'a))
+
+    ;; This internal version works only in the emulator.
+    (__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))
 
     ;; Fabricates stock ticks and splits.  For benchmark.
     ;; Tuple is of one of two forms:

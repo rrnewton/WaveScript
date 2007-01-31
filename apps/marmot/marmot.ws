@@ -124,7 +124,7 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 1, max(0, win.end - samples_padding));
+      emit (false, 0, max(0, win.end - samples_padding));
       if DEBUG then 
       print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
 	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");

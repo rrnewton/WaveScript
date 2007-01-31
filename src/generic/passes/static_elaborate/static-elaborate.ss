@@ -102,7 +102,15 @@
 	(even? even?) (odd? odd?) (not not)
 	(map map)
 	(filter filter)
+	(GETENV (lambda (v) 
+		  (match v
+		    [(quote ,str) (guard (string? str))
+		     (let ([x (getenv str)])
+		       (if str str ""))]
+		    [,else (error 'static-elaborate:GETENV "bad input: ~s" v)])))
 	))
+
+    (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args)
       (when (regiment-verbose)
@@ -114,6 +122,11 @@
 	 `(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args))))
 	 (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
 		`(,prim ,@args)))))
+    
+    (define (do-constant prim)
+      (ASSERT (eq? prim 'IS_SIM))
+      (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
+	  ''#t ''#f))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
@@ -313,7 +326,10 @@
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
-	  [,prim (guard (regiment-primitive? prim)) prim]
+	  [,prim (guard (regiment-primitive? prim))
+		 (if (memq prim computable-constants)
+		     (do-constant prim)
+		     prim)]
           [,var (guard (symbol? var) (memq var mutable-vars)) var]
           [,var (guard (symbol? var))	  
 		(match (assq var env)

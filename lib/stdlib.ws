@@ -27,8 +27,9 @@ fun println(s) {
 
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
-fun syncN (ctrl, strms) {
-  DEBUGSYNC = true;
+syncN = if IS_SIM then __syncN else
+ fun (ctrl, strms) {
+   DEBUGSYNC = true; // Activate to debug the below code:
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
@@ -291,3 +292,4 @@ c2f = complexToFloat;
 /* BASE <- test4; */
 
 //BASE <- audio(0,10,0);
+

@@ -153,7 +153,7 @@
     [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
      (desugar-pattern-matching-language
       '(program (letrec ([x Int 3]) x) Int))]
-
+#;
     ;; [2007.01.30] BUG: Different behavior in petite and chez.
     [(cadr (deep-assq 'aggr
 		(pass_desugar-pattern-matching 

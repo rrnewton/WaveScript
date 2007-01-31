@@ -108,7 +108,7 @@
 	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
 	   ;; DEPENDS ON LAZINESS/PURITY:
 	   [(if ,a ,b ,c)
-	    (if (wavescope-invocation)
+	    (if (memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler))
 		(mvlet ([(test test-decls)     (make-simple a tenv)])
 		  (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
 			      [#(,altern ,altern-decls) (process-expr c tenv)])

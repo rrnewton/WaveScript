@@ -60,7 +60,7 @@
          
 	 define-regiment-parameter regiment-parameters
 
-	 wavescope-invocation 
+	 compiler-invocation-mode 
 	 regiment-verbose regiment-quiet
 
 	 simulation-logger 
@@ -268,7 +268,11 @@
 (define-regiment-parameter regiment-quiet #f)
 
 ;; Is this run of the compiler a WS run?
-(define-regiment-parameter wavescope-invocation #f)
+;; Should be set to:
+;;   'wavescript-simulator
+;;   'wavescript-compiler
+;;   'regiment-simulator
+(define-regiment-parameter compiler-invocation-mode #f)
 
 ;; When 
 (define-regiment-parameter ws-print-output-port (current-output-port))

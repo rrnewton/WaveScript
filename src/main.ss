@@ -144,8 +144,9 @@
 ;; The symbolic options are:  'barely-tokens 'almost-tokens 'full-tokens
 ;; Also: use 'verbose to print the output of every pass.
 (define (run-compiler p . args )                              ;; Entrypoint.
-  (if (memq 'deglobalize2 args)
-      (apply run-compiler2 p (remq 'deglobalize2 args))
+  (parameterize ([compiler-invocation-mode 'regiment-simulator])
+    (if (memq 'deglobalize2 args)
+        (apply run-compiler2 p (remq 'deglobalize2 args))
 
   (let ([filename #f]
 	[passes (pass-list)]
@@ -191,7 +192,7 @@
 		(when verbose
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names))))))))
-      ))
+      )))
 
 
 
@@ -341,8 +342,8 @@
 		  x)
 	   x)
 	  x)))
-  ;; This MUST be set to cause the compiler to behave correctly:
-  (parameterize ([wavescope-invocation #t])
+  (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
+  (parameterize ()
     
   (optional-stop p)
   
@@ -437,7 +438,8 @@
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
-  (define prog
+  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
+    (define prog
     (cond  [(input-port? x) 
 	    (unless (regiment-quiet) (printf "WSINT: Loading WS source from port: ~s\n" x))
 	     ;; We assume this is parsed but not post-processed:
@@ -507,52 +509,53 @@
 		[(,lang '(program ,body ,_ ...)) body])))))  
 
   stream)
+  ) ; End wsint
 
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp port . flags)                                 ;; Entrypoint.  
-  
-  (define outfile "./query.cpp")
-  (define prog (ws-postprocess (read port)))
-  (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler])
+   (define outfile "./query.cpp")
+   (define prog (ws-postprocess (read port)))
+   (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
 
-  (ASSERT (andmap symbol? flags))
+   (ASSERT (andmap symbol? flags))
 
-  (printf "Compiling program. \n\n")
-  ;(pretty-print prog)
-  
-  (printf "\nTypecheck complete, program types:\n\n")
-  (print-var-types typed)(flush-output-port)
-  
-  (set! prog (run-ws-compiler prog))
-  (REGIMENT_DEBUG 
-   (printf "================================================================================\n")
-   (printf "\nNow nominalizing types.\n"))
-  (set! prog (nominalize-types prog))
-  (REGIMENT_DEBUG (pretty-print prog))
-  (REGIMENT_DEBUG 
-;   (printf "================================================================================\n")
-   (printf "\nNow emitting C code:\n"))
+   (printf "Compiling program. \n\n")
+   ;;(pretty-print prog)
+   
+   (printf "\nTypecheck complete, program types:\n\n")
+   (print-var-types typed)(flush-output-port)
+   
+   (set! prog (run-ws-compiler prog))
+   (REGIMENT_DEBUG 
+    (printf "================================================================================\n")
+    (printf "\nNow nominalizing types.\n"))
+   (set! prog (nominalize-types prog))
+   (REGIMENT_DEBUG (pretty-print prog))
+   (REGIMENT_DEBUG 
+    ;;   (printf "================================================================================\n")
+    (printf "\nNow emitting C code:\n"))
 
-  (DEBUGASSERT
-   (with-output-to-file ".__almostC.ss"
-    (lambda () 
-      (parameterize ([pretty-line-length 200]
-		     [pretty-maximum-lines #f]
-		     [print-level #f]
-		     [print-length #f]
-		     [print-graph #f])
-	(pretty-print prog))
-      (flush-output-port))
-    'replace))
-  
-  (string->file 
-   (text->string 
-    (wsquery->text
-     prog))
-   outfile)
-  
-  (printf "\nGenerated C++ output to ~s.\n" outfile)
-  )
+   (DEBUGASSERT
+    (with-output-to-file ".__almostC.ss"
+      (lambda () 
+	(parameterize ([pretty-line-length 200]
+		       [pretty-maximum-lines #f]
+		       [print-level #f]
+		       [print-length #f]
+		       [print-graph #f])
+	  (pretty-print prog))
+	(flush-output-port))
+      'replace))
+   
+   (string->file 
+    (text->string 
+     (wsquery->text
+      prog))
+    outfile)
+   
+   (printf "\nGenerated C++ output to ~s.\n" outfile))
+ ) ; End wscomp
 
 
 ;; This one just stops after deglobalize:
