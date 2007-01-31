@@ -276,16 +276,19 @@ fun FarFieldDOA(synced, sensors)
     r[i] := sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
 		  sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
 		  sqr(m_get(sensors,i,2) - m_get(sensors,0,2)));
-//    theta[i] := atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
-	//	      m_get(sensors,i,0) - m_get(sensors,0,0));
+    theta[i] := atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
+		      m_get(sensors,i,0) - m_get(sensors,0,0));
   };
+
+  // 
+
+  // fft the sync'd 
+  //ffts = smap(amap(fft), synced);
 
 
 synced;
 /*
 
-  // fft the sync'd 
-  ffts = smap(amap(fft), synced);
 
   // compute psds
   psds = smap(amap(ssmap(cnorm)), ffts);

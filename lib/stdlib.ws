@@ -7,8 +7,9 @@
 // qsort, Complexl, expc, atan2, MInv...
 
 // Constant:
-PI = 3.141592653589793;
-
+PI   = 3.141592653589793;
+PIO2 = PI/2.0;
+ 
 //======================================================================
 // Library POD (plain old data) functions:
 
@@ -284,7 +285,24 @@ f2c = floatToComplex;
 c2i = complexToInt;
 c2f = complexToFloat;
 
+/* Some additional math functions */
+
 fun sqr(x) { x*x }
+
+fun atan2(arg1,arg2) {
+  if (arg1+arg2) == arg1 then {
+    if arg1 >= 0.0 then PIO2
+    else -1.0*PIO2
+  }
+  else {
+    tmp = atan(arg1/arg2);
+    if arg2 < 0.0 then {
+      if tmp <= 0.0 then (tmp + PI)
+      else (tmp - PI)
+    }
+    else tmp
+  }
+}
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
