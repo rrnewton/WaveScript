@@ -230,8 +230,6 @@ fun sortseg(seg) {
   toSigseg(ival, seg.start, seg.end, seg.timebase);
 }
 
-fun sqrf(x) { x *. x; }
-
 fun Vmax(v) {
   max = 0.0;
   ind = (0-1);
@@ -267,29 +265,24 @@ fun array_iterate_index(a,f) {
 // atan2
 // MInv
 
-fun FarFieldDOA(synced) 
+fun FarFieldDOA(synced, sensors) 
 {	
-  sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
-			    [ 0.4, 0.4, 0.4],
-			    [-0.4, 0.4,-0.4],
-			    [-0.4,-0.4, 0.4]]);
   Nsens = m_rows(sensors);
-
-synced;
-/*
-  sensors = matrix(Nsens, 3, 0.0);
-
   r = makeArray(Nsens, 0.0);
   theta = makeArray(Nsens, 0.0);
   
-
   /* compute r and theta for each sensor relative to sensor 0 as origin */
-  for i = 1 to 3 {
-    r[i] := sqrtf(sqrf(mget(sensors,i,0) -. mget(sensors,0,0)) +.
-		  sqrf(mget(sensors,i,0) -. mget(sensors,0,1)) +.
-		  sqrf(mget(sensors,i,2) -. mget(sensors,0,2)));
-    theta[i] := atan2(mget(sensors,i,1) -. mget(sensors,0,1), mget(sensors,i,0) -. mget(sensors,0,0));
+  for i = 1 to Nsens {
+    r[i] := sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
+		  sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
+		  sqr(m_get(sensors,i,2) - m_get(sensors,0,2)));
+//    theta[i] := atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
+	//	      m_get(sensors,i,0) - m_get(sensors,0,0));
   };
+
+
+synced;
+/*
 
   // fft the sync'd 
   ffts = smap(amap(fft), synced);
@@ -441,6 +434,12 @@ d2 = iterate (d in detections) {
 
 synced = syncN(d2, [ch1, ch2, ch3, ch4]);
 
-doas = FarFieldDOA(synced);
+/* define array geometry */
+sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
+			  [ 0.4, 0.4, 0.4],
+			  [-0.4, 0.4,-0.4],
+			  [-0.4,-0.4, 0.4]]);
+
+doas = FarFieldDOA(synced, sensors);
 
 BASE <- doas;

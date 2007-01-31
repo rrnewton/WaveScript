@@ -284,6 +284,8 @@ f2c = floatToComplex;
 c2i = complexToInt;
 c2f = complexToFloat;
 
+fun sqr(x) { x*x }
+
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
 /* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */

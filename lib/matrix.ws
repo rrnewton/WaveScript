@@ -17,11 +17,11 @@ fun matrix(rows, cols, init) {
 
 
 fun m_rows(m) {
-  m.width
+  m.length
 }
 
 fun m_cols(m) {
-  m[0].width
+  m[0].length
 }
 
 
