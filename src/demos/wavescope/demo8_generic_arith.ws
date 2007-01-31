@@ -20,9 +20,15 @@ s2 = iterate (w in s1) {
   emit (99, g(2.0, 1.0)); 
 
   print("Test: " ++ show(g(2.0+3.5i, 1.0+0.5i)) ++ "\n");
-  print("Test2: "++ show(toComplex(3))  ++"\n");
-  print("Test3: "++ show(toFloat(3.4)) ++" "++ show(toFloat(3))  ++"\n");
+  //print("Test2: "++ show(toComplex(3))  ++"\n");
+  //print("Test3: "++ show(toFloat(3.4)) ++" "++ show(toFloat(3))  ++"\n");
   //print(toFloat(3.5+3.5i));  // <- Error
+
+  arr = makeArray(10, gint(3));
+  print("Test4: " ++ show(arr[3] + 4.0) ++"\n");
+
+  // print(gint(3)); // <- Error
+
 }
 
 BASE <- s2;
