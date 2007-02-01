@@ -93,6 +93,16 @@ fun m_rowmap_scalar(f, m) {
   newm
 }
 
+fun m_pairmult(m1,m2) {
+  nm = matrix(m_rows(m1),m_cols(m1),m_get(m1,0,0));
+  for i = 0 to m_rows(m1) - 1 {
+    for j = 0 to m_cols(m1) - 1 {
+      m_set(nm,i,j,m_get(m1,i,j)*m_get(m2,i,j))
+    }
+  }
+  nm
+}
+
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
   // TODO: could be more defensive here, check for nullarr:

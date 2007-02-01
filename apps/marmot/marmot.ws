@@ -283,7 +283,7 @@ fun FarFieldDOA(synced, sensors)
 
     // compute norms
     norms = m_rowmap_scalar(asum, psds);
-     emit norms;
+    emit norms;
 
 /*
     // normalize

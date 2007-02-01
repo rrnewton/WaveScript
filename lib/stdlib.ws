@@ -335,6 +335,22 @@ fun asum(arr) {
   afold((+), gint(0), arr)
 }
 
+fun adot(arr1,arr2) {
+  lhs = gint(0);
+  for i = 0 to arr1.length-1 {
+    lhs := lhs + arr1[i]*arr2[i];
+  }
+  lhs
+}
+
+fun apairmult(arr1,arr2) {
+  narr = makeArray(arr1.length, arr1[0]);
+  for i = 0 to arr1.length - 1 {
+    narr[i] := arr1[i] * arr2[i];
+  };
+  narr
+}
+
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
 /* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */
