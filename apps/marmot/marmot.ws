@@ -253,7 +253,9 @@ fun fftArray(arr) {
   to_array(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
 }
 
-fun FarFieldDOA(synced, sensors) 
+
+FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array t)); 
+fun FarFieldDOA(synced, sensors)
 {	
   Nsens = m_rows(sensors);
   r = makeArray(Nsens, 0.0);
@@ -432,7 +434,7 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = smap(fft, hn);
+freq = stream_map(fft, hn);
 wscores = iterate (w in freq) { emit(marmotscore2(w), w); }
 
 detections = detect(wscores);

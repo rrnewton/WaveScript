@@ -306,23 +306,21 @@ fun atan2(arg1,arg2) {
 
 /* array operations */
 
-fun amap_inplace(f) {
-  fun (arr) {
+amap_inplace :: (a -> b, Array a) -> Array b;
+fun amap_inplace(f, arr) {
     for i = 0 to arr.length - 1 {
       arr[i] := f(arr[i]);
     }
     arr
-  }
 }
 
-fun amap(f) {
-  fun (arr) {
-    narr = makeArray(arr.length, f(arr[0]));
-    for i = 1 to arr.length - 1 {
-      narr[i] := f(arr[i]);
-    };
-    narr
-  }
+amap :: (a -> b) -> Array a -> Array b;
+fun amap(f, arr) {
+  narr = makeArray(arr.length, f(arr[0]));
+  for i = 1 to arr.length - 1 {
+    narr[i] := f(arr[i]);
+  };
+  narr
 }
 
 fun afold(f, zero) {
@@ -332,7 +330,7 @@ fun afold(f, zero) {
       lhs := f(lhs, arr[i])
     }
     lhs
-  }    
+  }
 }
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
