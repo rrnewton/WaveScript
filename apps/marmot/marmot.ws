@@ -276,16 +276,16 @@ fun FarFieldDOA(synced, sensors)
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
     //fft the sync'd data 
-    ffts = amap(fftArray, m_in);
-    emit(ffts);   
+    ffts = m_rowmap(fftArray, m_in);
 
-/*
     // compute psds
-    psds = amap(amap(absC), ffts);
+    psds = m_map(absC, ffts);
 
     // compute norms
-    norms = amap(afold((+), 0), psds);
+    norms = m_rowmap_scalar(asum, psds);
+     emit norms;
 
+/*
     // normalize
     nffts = ffts;
     for i = 0 to nffts.length - 1 {

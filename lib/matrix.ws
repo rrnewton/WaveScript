@@ -77,6 +77,22 @@ fun m_map(f, m) {
   newm
 }
 
+fun m_rowmap(f, m) {
+  newm = makeArray(m_rows(m), nullarr);
+  for i = 0 to m_rows(m) {
+    newm[i] := f(m[i])
+  }
+  newm
+}
+
+fun m_rowmap_scalar(f, m) {
+  newm = makeArray(m_rows(m), gint(0));
+  for i = 0 to m_rows(m) {
+    newm[i] := f(m[i])
+  }
+  newm
+}
+
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
   // TODO: could be more defensive here, check for nullarr:
