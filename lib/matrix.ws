@@ -77,6 +77,13 @@ fun m_map(f, m) {
   newm
 }
 
+fun m_map_inplace(f, m) {
+  for i = 0 to m_rows(m) {
+    amap_inplace(f, m[i])
+  }
+  m
+}
+
 fun m_rowmap(f, m) {
   newm = makeArray(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
@@ -101,6 +108,16 @@ fun m_pairmult(m1,m2) {
     }
   }
   nm
+}
+
+fun m_mult_scalar(m,s) {
+  fun mm(x) {s*x};
+  m_map(mm,m)
+}
+
+fun m_mult_scalar_inplace(m,s) {
+  fun mm(x) {s*x};
+  m_map_inplace(mm,m)
 }
 
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);

@@ -254,7 +254,7 @@ fun fftArray(arr) {
 }
 
 
-FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array t)); 
+//FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array t)); 
 fun FarFieldDOA(synced, sensors)
 {	
   Nsens = m_rows(sensors);
