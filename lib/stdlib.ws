@@ -304,6 +304,28 @@ fun atan2(arg1,arg2) {
   }
 }
 
+/* array operations */
+
+fun amap_inplace(f) {
+  fun (arr) {
+    for i = 0 to arr.length - 1 {
+      arr[i] := f(arr[i]);
+    }
+    arr
+  }
+}
+
+fun amap(f) {
+  fun (arr) {
+    narr = makeArray(arr.length, f(arr[0]));
+    for i = 1 to arr.length - 1 {
+      narr[i] := f(arr[i]);
+    };
+    narr
+  }
+}
+
+
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
 /* test3 = stream_iterate(fun (x,st) ([x +. st, 5.0, 6.0], st +. 100.0), */

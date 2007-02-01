@@ -56,6 +56,16 @@ fun list_to_matrix(list) {
 }
 
 
+fun list_of_segs_to_matrix(ls) {
+  len = listLength(ls);
+  arr = makeArray(len, nullarr);
+  for i = 0 to len-1 {
+    arr[i] := to_array(listRef(ls, i))
+  }
+  arr
+}
+
+
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
   // TODO: could be more defensive here, check for nullarr:

@@ -137,24 +137,6 @@ fun detect(scorestrm) {
 
 /*
 
-fun amap(f) {
-  fun (arr) {
-    for i = 0 to arr.length - 1 {
-      arr[i] := f(arr[i]);
-    }
-  }
-}
-
-fun amap_nd(f) {
-  fun (arr) {
-    narr = makeArray(arr.length, arr[0]);
-    for i = 0 to arr.length - 1 {
-      narr[i] := f(arr[i]);
-    };
-    narr
-  }
-}
-
 fun ssmap(f) {
   fun (seg) {
     toSigseg((amap(f))(to_array(seg)), seg.start, seg.end, seg.timebase)
@@ -265,6 +247,11 @@ fun array_iterate_index(a,f) {
 // atan2
 // MInv
 
+
+fun fftArray(arr) {
+  to_array(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
+}
+
 fun FarFieldDOA(synced, sensors) 
 {	
   Nsens = m_rows(sensors);
@@ -280,13 +267,17 @@ fun FarFieldDOA(synced, sensors)
 		      m_get(sensors,i,0) - m_get(sensors,0,0));
   };
 
-  // 
+  // convert the output of sync to a matrix.. yes this kind of sucks 
+  matrix_in = smap(list_of_segs_to_matrix, synced);
 
-  // fft the sync'd 
-  //ffts = smap(amap(fft), synced);
-
-
-synced;
+  // ok, i guess we do one big iterate.. 
+  result = iterate (m_in in matrix_in) {
+    //fft the sync'd data 
+//    ffts = amap(fftArray, m_in);
+//    emit(ffts);
+emit(m_in);
+  };
+  result
 /*
 
 
@@ -423,7 +414,7 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = stream_map(fft, hn);
+freq = smap(fft, hn);
 wscores = iterate (w in freq) { emit(marmotscore2(w), w); }
 
 detections = detect(wscores);
