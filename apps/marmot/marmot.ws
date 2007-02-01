@@ -269,14 +269,31 @@ fun FarFieldDOA(synced, sensors)
   };
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
-  matrix_in = smap(list_of_segs_to_matrix, synced);
+  matrix_in = stream_map(list_of_segs_to_matrix, synced);
 
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
     //fft the sync'd data 
-//    ffts = amap(fftArray, m_in);
-//    emit(ffts);
-emit(m_in);
+    ffts = amap(fftArray, m_in);
+
+emit(ffts);   
+/*
+    // compute psds
+    psds = amap(amap(absC), ffts);
+
+    // compute norms
+    norms = amap(afold((+), 0), psds);
+emit(norms);
+*/
+
+/*  
+    // normalize
+    nffts = ffts;
+    for i = 0 to nffts.length - 1 {
+      amap_inplace ((f,n) in (zip2(ffts,norms))) {
+    emit((ssmap2((/:)))(f,n))
+*/
+
   };
   result
 /*

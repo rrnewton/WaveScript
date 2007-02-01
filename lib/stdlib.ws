@@ -325,6 +325,15 @@ fun amap(f) {
   }
 }
 
+fun afold(f, zero) {
+  fun (arr) {
+    lhs = zero;
+    for i = 0 to arr.length-1 {
+      lhs := f(lhs, arr[i])
+    }
+    lhs
+  }    
+}
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */
