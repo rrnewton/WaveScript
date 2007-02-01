@@ -285,14 +285,13 @@ emit(ffts);
 
     // compute norms
     norms = amap(afold((+), 0), psds);
-emit(norms);
-*/
 
-/*  
     // normalize
     nffts = ffts;
     for i = 0 to nffts.length - 1 {
-      amap_inplace ((f,n) in (zip2(ffts,norms))) {
+      for j = 0 to nffts[i].length - 1 {
+        nffts[i]
+amap_inplace ((f,n) in (zip2(ffts,norms))) {
     emit((ssmap2((/:)))(f,n))
 */
 

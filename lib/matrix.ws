@@ -65,6 +65,17 @@ fun list_of_segs_to_matrix(ls) {
   arr
 }
 
+fun m_row(m,i) {
+  m[i]
+}
+
+fun m_map(f, m) {
+  newm = makeArray(m_rows(m), nullarr);
+  for i = 0 to m_rows(m) {
+    newm[i] = amap(f, m[i])
+  }
+  newm
+}
 
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
