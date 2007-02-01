@@ -72,7 +72,7 @@ fun m_row(m,i) {
 fun m_map(f, m) {
   newm = makeArray(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
-    newm[i] = amap(f, m[i])
+    newm[i] := amap(f, m[i])
   }
   newm
 }

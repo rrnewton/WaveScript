@@ -277,8 +277,8 @@ fun FarFieldDOA(synced, sensors)
   result = iterate (m_in in matrix_in) {
     //fft the sync'd data 
     ffts = amap(fftArray, m_in);
+    emit(ffts);   
 
-emit(ffts);   
 /*
     // compute psds
     psds = amap(amap(absC), ffts);
