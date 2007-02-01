@@ -248,6 +248,7 @@ fun array_iterate_index(a,f) {
 // MInv
 
 
+fftArray :: Array Float -> Array Complex;
 fun fftArray(arr) {
   to_array(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
 }
