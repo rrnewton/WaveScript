@@ -92,10 +92,20 @@ fun m_rowmap(f, m) {
   newm
 }
 
+/* a very special rowmap that returns a vector */
 fun m_rowmap_scalar(f, m) {
   newm = makeArray(m_rows(m), gint(0));
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
+  }
+  newm
+}
+
+/* rowmap that takes a function of row and index */
+fun m_rowmap_index(f, m) {
+  newm = makeArray(m_rows(m), nullarr);
+  for i = 0 to m_rows(m) {
+    newm[i] := f(m[i],i)
   }
   newm
 }

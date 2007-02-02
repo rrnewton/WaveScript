@@ -262,7 +262,7 @@ fun FarFieldDOA(synced, sensors)
   theta = makeArray(Nsens, 0.0);
   
   /* compute r and theta for each sensor relative to sensor 0 as origin */
-  for i = 1 to Nsens {
+  for i = 1 to Nsens-1 {
     r[i] := sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
 		  sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
 		  sqr(m_get(sensors,i,2) - m_get(sensors,0,2)));
@@ -283,17 +283,12 @@ fun FarFieldDOA(synced, sensors)
 
     // compute norms
     norms = m_rowmap_scalar(asum, psds);
-    emit norms;
 
-/*
     // normalize
-    nffts = ffts;
-    for i = 0 to nffts.length - 1 {
-      for j = 0 to nffts[i].length - 1 {
-        nffts[i]
-amap_inplace ((f,n) in (zip2(ffts,norms))) {
-    emit((ssmap2((/:)))(f,n))
-*/
+    fun normalize(row,i) { amult_scalar(row,gint(0)/floatToComplex(norms[i])) };
+    nffts = m_rowmap_index(normalize, ffts);
+    
+emit(nffts);
 
   };
   result

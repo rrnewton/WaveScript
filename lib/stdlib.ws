@@ -335,6 +335,16 @@ fun asum(arr) {
   afold((+), gint(0), arr)
 }
 
+fun amult_scalar(arr,s) {
+  fun ms(a) { a*s };
+  amap(ms, arr)
+}
+
+fun amult_scalar_inplace(arr,s) {
+  fun ms(a) { a*s };
+  amap_inplace(ms, arr)
+}
+
 fun adot(arr1,arr2) {
   lhs = gint(0);
   for i = 0 to arr1.length-1 {
