@@ -29,11 +29,24 @@
 ;; Is the object potentially a stream?  Can't tell for sure because
 ;; promises are opaque.
 ;; [2006.07.28] TODO: this quadratic definition looks unnecessary!  FIXME: 
-(define (stream? s) (or (procedure? s) (null? s)))
+(define (stream? s)
+  (or (list? s)   ;; Is it a proper list?
+      ;; Or an improper list that's still being computed?
+      (live-stream? s)))
+;; A live stream is one not all of whom's values have been computed yet.
+(define (live-stream? s)
+  (or (promise? s)
+      (and (pair? s) (stream? (cdr s)))))
+(define stream-empty? 
+  (lambda (s)
+    (cond 
+     [(null? s) #t]
+     [(promise? s) (stream-empty? (force s))]
+     [else #f])))
 
 (define-syntax stream-cons
   (syntax-rules ()
-    [(_ a b) (lambda () (values a b))]))
+    [(_ a b) (cons a (delay b))]))
 
 ;; NOTE: Double delay for append:
 ;; Appends list to stream... not stream to stream!
