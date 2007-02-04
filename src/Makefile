@@ -263,7 +263,7 @@ clean: cleanchez cleanplt
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
-	$(RM) *.zo *.so _SIM_* *~
+	$(RM) *.zo *.so _SIM_* *~ *.log
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
