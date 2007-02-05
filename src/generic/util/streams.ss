@@ -1,3 +1,20 @@
+(module streams mzscheme
+  (require "../constants.ss"
+	   "helpers.ss"
+	   "reg_macros.ss"
+	   ;"../../plt/chez_compat.ss"
+	   "../../plt/iu-match.ss"
+	   )
+  (provide 
+   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+   stream-map stream-filter stream-take stream-take-all 
+   iota-stream stream-append browse-stream ;random-stream 
+   stream-append-list
+
+   test-streams
+   )
+  (chezimports)
+
 ;;;; This implements a straightforward stream datatype -- tail-delayed pairs.
 
 ;;;; Currently 'include'd by helpers.ss
@@ -25,6 +42,8 @@
 ;;; their own tail-delayed lists with whatever strictness pattern
 ;;; they wish.
 
+;; This is too lenient, but there's no other option.
+(IFCHEZ (define promise? procedure?) (void))
 
 ;; Is the object potentially a stream?  Can't tell for sure because
 ;; promises are opaque.
@@ -310,3 +329,55 @@
 	   (printf "Bad input.\n") (loop pos)]
 	  )))
       )))
+
+
+(define these-tests
+  `(
+        [(mvlet ([(x _) (stream-take 5 iota-stream)]) x)
+     (0 1 2 3 4)]
+    [(mvlet ([(x _) (stream-take 3 `(1 2 . ,(delay '(3))))]) x)
+     (1 2 3)]
+
+    [(mvlet ([(x _) (stream-take 10 (stream-filter even? iota-stream))]) x)
+     (0 2 4 6 8 10 12 14 16 18)]
+     
+    
+;; Having problems with errors in drscheme.
+;    [(stream-take 5 `(1 2 . ,(delay '(3))))      error]
+;    [(stream-cdr '()) error]
+;    [(stream-cdr (delay 1)) error]
+    [(stream-cdr (delay '(1))) ()]
+    [(stream-car (delay '(1))) 1]
+    ["stream-map"
+     (mvlet ([(ls _) (stream-take 3 (stream-map add1 '(1 2 3)))]) ls)
+     (2 3 4)]
+    ["stream-map"
+     (mvlet ([(ls _) (stream-take 3 (stream-map add1 
+		        (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))]) ls)
+     (2 3 4)]
+    ["stream-filter" 
+     (stream-take-all (stream-filter odd?
+       (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))
+     (1 3)]
+
+    ["stream-append: Shouldn't hit the error."
+     (stream-car 
+      (stream-cdr 
+       (stream-append (delay (append '(1 2) (delay (error 'test ""))))
+		      '(3 4 5))))
+     2]
+    ["stream-append: Should hit the error."
+     (stream-car 
+      (stream-cdr 
+       (stream-append (delay (cons 1 (delay (error 'test ""))))
+		      '(3 4 5))))
+     error]
+
+    ))
+
+(define test-streams (default-unit-tester "streams.ss: Implementation of streams as lazy lists." these-tests))
+
+
+) ; End module
+  
+  

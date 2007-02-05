@@ -1,34 +1,23 @@
-;;;; This implements a straightforward stream datatype -- tail-delayed pairs.
+;;;; This implements a straightforward stream datatype -- thunks called repeatedly.
 
-;;;; Currently 'include'd by helpers.ss
+(module imperative_streams mzscheme
+  (require "../constants.ss"
+	   "helpers.ss"
+	   "reg_macros.ss"
+	   ;"../../plt/chez_compat.ss"
+	   "../../plt/iu-match.ss"
+	   )
+  (provide 
+   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+   stream-map stream-filter stream-take stream-take-all 
+   iota-stream stream-append browse-stream ;random-stream 
+   stream-append-list
 
-;;;; TODO: Could consider an implementation that mutates into a list
-;;;; as the promises are evaluated.  Good for streams that are
-;;;; processed multiple times.
-
-;=======================================================================
-;;; Stream functions.
-;;;
-;;; [2004.06.17] These functions deal with streams that are represented
-;;; as a list, promise, or improper list with a promise as its final
-;;; cdr-pointer.  That is:                         <br><br>
-;;;  Stream  := (item*)                            <br>
-;;;           | (item* . promise)                  <br>
-;;;           | promise                            <br><br>
-;;;
-;;; [2005.10.16] Just switched this from head-strict to not.
-;;; I should probably switch over to using the standard SRFI-40 stream
-;;; implementation at some point. <br><br>
-;;;
-;;; [2006.02.19] NOTE: Streams are not currently an ADT. Their
-;;; representation is transparent.  The user is free to construct
-;;; their own tail-delayed lists with whatever strictness pattern
-;;; they wish.
+   test-streams
+   )
+  (chezimports)
 
 
-;; Is the object potentially a stream?  Can't tell for sure because
-;; promises are opaque.
-;; [2006.07.28] TODO: this quadratic definition looks unnecessary!  FIXME: 
 (define (stream? s) (or (procedure? s) (null? s)))
 
 (define-syntax stream-cons
@@ -114,3 +103,5 @@
 
 ;(stream-take 10 (stream-map add1 (stream-filter odd? (iota-stream))))
 ;(2 4 6 8 10 12 14 16 18 20)
+
+) ; End module

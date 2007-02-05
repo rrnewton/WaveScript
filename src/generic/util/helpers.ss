@@ -32,6 +32,7 @@
 
    "../constants.ss"
    "reg_macros.ss"
+   ;"streams.ss"
    )
 
   ;; ONLY IN PLT:
@@ -104,15 +105,12 @@
    unfold-list average clump
     partition partition-equal split-before
    myequal?
-   
-   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
-   stream-map stream-filter stream-take stream-take-all 
-   iota-stream stream-append browse-stream ;random-stream 
-   stream-append-list
-   
+      
    with-evaled-params
    display-constrained
    symbol-append 
+
+   port->slist
 
    testhelpers testshelpers 
    )
@@ -125,7 +123,7 @@
      add-parameter-hook chomp shell-expand-string
      seconds-since-1970 ignore grep-oblist comma-number runN
      gobj?  crit-printf
-     port->slist read-line median stddev stream-drop
+     read-line median stddev 
      test-this these-tests
 
 ;      foldr let/ec call/ec define-values make-n-list
@@ -149,7 +147,9 @@
 
  (provide  ;; For chez compatibility:
   (all-from "../../plt/chez_compat.ss")
-  (all-from "reg_macros.ss"))  
+  (all-from "reg_macros.ss")
+  ;(all-from "streams.ss")
+  )
 ;   (all-except (lib "rutils_generic.ss")
 ;               list->set union intersection difference set?
 ;               list-head filter list-index snoc rac rdc 
@@ -190,10 +190,6 @@
 (define (with-warning-handler fun th)
   (parameterize ([#%warning-handler fun])
     (th)))
-
-
-;; This is too lenient, but there's no other option.
-(define promise? procedure?)
 
 
 ;; This is a hack, it's not safe because it can report false
@@ -1461,9 +1457,12 @@
 			   data)))
 	  (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
       (for-eachi plot-one data)]
+
+#;
      [(stream? data)
       (error 'to-implement "FIXME not implemented yet!!")
       ]
+
      [else (error 'gnuplot "unknown input type, bad dataset: ~s" data)])
 ;    (for i = 1 to 20
 ;	 (fprintf dat "~a ~a\n" i (* i 2)))
@@ -1633,8 +1632,8 @@
 ;(define graph-flip...
 
 
-(IFCHEZ (include "generic/util/streams.ss")
-	(include "streams.ss"))
+;(IFCHEZ (include "generic/util/streams.ss")
+;	(include "streams.ss"))
 
 ;===============================
 
@@ -1697,46 +1696,6 @@
 					  '(abcdefghijklmnop 17)))
        (get-output-string s))
      "test  abcdefg... again  abcdefghijklm...abcdefghijklmnop"]
-
-    [(mvlet ([(x _) (stream-take 5 iota-stream)]) x)
-     (0 1 2 3 4)]
-    [(mvlet ([(x _) (stream-take 3 `(1 2 . ,(delay '(3))))]) x)
-     (1 2 3)]
-
-    [(mvlet ([(x _) (stream-take 10 (stream-filter even? iota-stream))]) x)
-     (0 2 4 6 8 10 12 14 16 18)]
-     
-    
-;; Having problems with errors in drscheme.
-;    [(stream-take 5 `(1 2 . ,(delay '(3))))      error]
-;    [(stream-cdr '()) error]
-;    [(stream-cdr (delay 1)) error]
-    [(stream-cdr (delay '(1))) ()]
-    [(stream-car (delay '(1))) 1]
-    ["stream-map"
-     (mvlet ([(ls _) (stream-take 3 (stream-map add1 '(1 2 3)))]) ls)
-     (2 3 4)]
-    ["stream-map"
-     (mvlet ([(ls _) (stream-take 3 (stream-map add1 
-		        (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))]) ls)
-     (2 3 4)]
-    ["stream-filter" 
-     (stream-take-all (stream-filter odd?
-       (stream-cons 1 (stream-cons 2 (stream-cons 3 (delay '()))))))
-     (1 3)]
-
-    ["stream-append: Shouldn't hit the error."
-     (stream-car 
-      (stream-cdr 
-       (stream-append (delay (append '(1 2) (delay (error 'test ""))))
-		      '(3 4 5))))
-     2]
-    ["stream-append: Should hit the error."
-     (stream-car 
-      (stream-cdr 
-       (stream-append (delay (cons 1 (delay (error 'test ""))))
-		      '(3 4 5))))
-     error]
 
 ; This doesn't make schemedoc happy, eliminating:
 ;    [(unfold-list '(a b c d))
