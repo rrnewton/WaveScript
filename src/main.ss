@@ -511,10 +511,13 @@
 		[(,lang '(program ,body ,_ ...)) body])))
 
       ;; New Streams:
+      ;; [2007.02.06] Now we wrap it with a little extra to run the query:
       (wavescript-language
        (match stripped
-	 [(,lang '(program ,body ,_ ...)) body]))
-
+	 [(,lang '(program ,body ,_ ...))
+	  `(begin (reset-state!) 
+		  (run-stream-query ,body))
+	  ]))
       ))
 
   stream)

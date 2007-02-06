@@ -410,8 +410,8 @@
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (let ([return (wsint port)])
-	     ;(import streams)
-	     (import imperative_streams)
+	     (import streams)
+	     ;(import imperative_streams)
 	     (if (stream? return)
 		 (parameterize ([print-vector-length #t])
 		   (browse-stream return))

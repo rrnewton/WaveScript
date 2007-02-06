@@ -308,6 +308,7 @@
 (include "generic/langs/lang_wavescript.ss")
 (include "generic/sim/wavescript_sim_library.ss")
 (include "generic/sim/wavescript_sim_library_NEW.ss")
+(include "generic/sim/wavescript_sim_library_push.ss")
 (include "generic/testing/lang_wavescript_tests.ss")
 
 (include "generic/langs/lang00.ss")

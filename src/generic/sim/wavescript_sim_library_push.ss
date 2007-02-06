@@ -2,7 +2,7 @@
 ;; streams.  Streams are just thunks, called repeatedly.  Less risk of
 ;; memory leak.
 
-(module wavescript_sim_library_NEW mzscheme
+(module wavescript_sim_library_push mzscheme
   (require 
            "../constants.ss"
            ;"../../plt/iu-match.ss"
@@ -19,11 +19,13 @@
 		 valid-sigseg?
 		 app let 
 
+		 run-stream-query reset-state!
+
 		 __dataFile ;__syncN
 
 		 ;dump-binfile 
-		 audio audioFile timer doubleFile
-		 stockStream read-file-stream
+		 audio audioFile timer 
+		 read-file-stream
 		 show
 		 window
 
@@ -67,7 +69,7 @@
 		 ;smap sfilter
 		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
-		 unionN unionList 
+		 ;unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
 		 fft 
@@ -77,7 +79,7 @@
 		 )
     (chezprovide (for for-loop-stack)
 		 letrec length print
-		 + - * / ^
+		 ;+ - * / ^
                                  
                  ;parmap
                  
@@ -90,11 +92,8 @@
     (chezimports (only scheme scheme import)
 		 constants
 		 helpers
-		 (except imperative_streams test-this)
+		 (except streams test-this)
 		 (only lang_wavescript default-marmotfile))
-
-
-
 
 
     
@@ -118,7 +117,109 @@
   ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
   (reg:define-struct (sigseg start end vec timebase))
   (reg:define-struct (wsbox outports))
-     
+
+  ;(reg:define-struct (wsevent time source))
+
+  ;; This structure represents a simulation.
+  ;(reg:define-struct (wssim current-vtime data-sources))
+    
+
+  ;; Global queue of input events in virtual time.
+  ;; Currently pairs of (time . source)
+  (define event-queue)    
+  (define current-vtime)
+  (define data-sources)   ;; A list of all data sources in the query graph
+  (define output-queue)   ;; Outputs from the query graph
+  
+  ;; Reset the global state.
+  (define (reset-state!)
+    (set! event-queue '())
+    (set! current-vtime 0)
+    (set! data-sources '())
+    (set! output-queue '())
+    )
+
+  (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
+
+  (trace-define (run-stream-query prog)     
+    (prog output-sink) ;; Register data sources, connect to output sink.
+    
+    (set! global-eng 
+	  (make-engine
+	   (lambda ()
+	     (define (compose-fork f g) (lambda (x y) (f (g x) (g y))))
+	     (define cmpr-entry (compose-fork < car))
+
+	     (printf "DATA-SRCS: ~s\n" data-sources)
+	     ;; Seed the event queue:
+	     (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
+	     
+	     (let global-loop ()	       
+	       (printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
+	       (if (null? event-queue)
+		   (engine-return '())
+
+		 (let* ([next (car event-queue)]
+			[src (cdr next)])
+		   (set! event-queue (cdr event-queue))
+		   (set! current-vtime (car next))
+		   ;; Fire one more element from this data source.
+		   (src 'pop)
+		   ;; Add the next event for this source to the queue.
+		   (let ([newentry (cons (src 'peek) src)])
+		     (if (car newentry)
+			 (set! event-queue (merge! cmpr-entry (list newentry) event-queue)))
+		     (global-loop)
+		     ))))
+	     )))
+    
+    ;; Return a stream:
+    (delay
+      (let loop ()
+	(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
+	(if (null? output-queue)
+	    ;; Run the query some more.
+	    (if (not (turn-crank! 100))
+		'()
+		(loop))
+	    (let-values ([(x rest) (rac&rdc! output-queue)])
+	      (set! output-queue rest)
+	      (cons x (delay (loop)))
+	      )))))
+
+  ;; Run the engine for a bit.
+  (trace-define (turn-crank! ticks)      
+    (global-eng 100 
+	 (lambda (val ticks) #f)
+	 (lambda (neweng) 
+	   (set! global-eng neweng)
+	   )))
+
+
+  ;; ================================================================================
+  ;; Stream processing primitives:
+
+  (define (timer freq) 
+    ;; milliseconds:
+    (define timestep (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
+    (define our-sinks '())
+    (define src (let ([t 0])
+		  (lambda (msg . args)
+		    (case msg
+		      ;; Returns the next time we run.
+		      [(peek) t]
+		      [(pop) 
+		       ;; Release one stream element.
+		       (set! t (s:+ t timestep))
+		       (for-each (lambda (f) (f #())) our-sinks)
+		       ]))))
+    ;; Register ourselves globally as a leaf node:
+    (set! data-sources (cons src data-sources))
+    (printf "  INITIALIZE TIMER: ~s\n" data-sources)
+    (lambda (sink)
+      ;; Register the sink to receive this output:
+      (set! our-sinks (cons sink our-sinks))))
+
   
   ;; Read a stream of Uint16's.
   (define (audioFile file len overlap)
@@ -131,7 +232,8 @@
   ;; (Actually, this didn't speed things up much, just a little.)
   (define DATAFILE_BATCH_SIZE 500)
 
-  (define (__dataFile file mode repeat types)
+  ;; Should have batched data file...
+  (define (__dataFile file mode repeat rate types)
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -216,27 +318,6 @@
 	    (repeat-stream repeat)])
     )
 
-     ;; This makes an infinite stream of fake tick/split info:
-     ;; Tuple is of one of two forms:
-     ;;  Tick:  #(sym,t,vol,price)
-     ;;  Split: #(sym,t,-1,factor)
-     (define (stockStream)
-       (define (random-sym) 
-	 (vector-get-random 
-	  #("IBM" "AKAM" "MS" "GOOG" "AMAZ" "YHOO" "ORAC" 
-		)))
-       (define t (random 100.0))
-       (lambda ()
-	 (let ([result (if (fx= (random 500) 0)
-			   ;; A split:
-			   (vector (random-sym) t -1 (random 2.0))
-			   ;; A tick:
-			   (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))
-			   )])
-
-	   (set! t (fl+ t (random 10.0)))
-	   result
-	   )))
 
      ;; This is a hack to load specific audio files:
      ;; It simulates the four channels of marmot data.
@@ -318,83 +399,6 @@
 		   result)
 		 stream-empty-token)))))
 
-     ;; This is meaningless in a pull model:
-     (define (timer freq) (lambda () #()))
-
-
-#;
-     ;; Making this a primitive for the emulator.
-     (define __syncN
-       (let ()
-         
-         ;; The policy here is that we read from the ctrl stream.
-         ;; Then we read what data we need from the data streams to meet the request.
-         (define (outer ctrl accs) 
-	   ;(if (zero? (random 10000)) (call/cc inspect))	  
-	   ;(call/cc inspect)
-	   (if (zero? (random 10000))
-	       (printf "  OUTER LOOP ~s\n" 
-		       (map (lambda (vec) (width (vector-ref vec 1)))
-			 accs)))
-           (call/1cc
-            (lambda (exit-this)
-              (if (stream-empty? ctrl) '()
-                  (let-match ([#(,flag ,st ,en) (stream-car ctrl)])               
-                    
-		    (define (isgood? ss) 
-		      (and (not (equal? ss nullseg))
-			   (or (<= (start ss) st) (not flag))
-			   (>= (end ss) en)))
-		    ;; When we have data on all accs, proceed:
-		    (define (doit accs)
-		      (when flag (printf "DATA READY: ~s\n" (map (lambda (v) (list (start (vector-ref v 1)) (end (vector-ref v 1)))) accs)))
-		      (match accs
-			[(#(,strm* ,seg*) ...)
-			 (let ([newctrl (stream-cdr ctrl)]
-			       [newaccs (map (lambda (strm seg)
-					; 						(printf "NOW EXTRACTING: ~s ~s ~s\n"
-					; 							(add1 en)
-					; 							(s:- (width seg) (s:- (add1 en) (start seg)))
-					; 							(s:+ 1 (s:- (end seg) (add1 en))))
-						     (vector strm
-							     (subseg seg (add1 en) 
-								     (s:+ 1 (s:- (end seg) (add1 en))))))
-						strm* seg*)])
-			   (if flag
-			       (begin
-				 ;; (printf "YEAH POSITIVE FLAG\n");
-				 (cons (list->vector (map (lambda (ss) (subseg ss st (- en st -1))) seg*))
-				       (delay (outer newctrl newaccs))))
-			       (outer newctrl newaccs)))]))
-		    (define (readit strm seg) 
-		      (if (stream-empty? strm)
-			  (exit-this '()) ;; We're done, can't go any further.
-			  (vector (stream-cdr strm)
-				  (joinsegs seg (stream-car strm)))
-			  ))
-
-		    ;; Keep pulling on those input streams until we're ready to proceed.
-		    (define (inner remaining ready)
-					;	 (printf "    INNER ~s ~s\n" (s:length remaining) (s:length ready))
-		      (match remaining
-			[() (doit ready)]
-			[(#(,strm ,seg) . ,rest)
-			 (if (isgood? seg) 
-			     ;; This input channel is ready, check the next.
-			     (inner rest (cons (car remaining) ready))
-			     ;; Otherwise we read ours & go to the end of the line.
-			     (inner (snoc (readit strm seg) rest)
-				    ready))]))
-
-		    (when flag (printf "PROCESSING REQUEST: ~s\n" (stream-car ctrl)))
-                    (inner accs '())
-                    )))))
-
-	 (lambda (ctrl strms)
-	   (outer ctrl (map (lambda (s) (vector s nullseg)) strms))
-	   ;(inspect 3)
-	   ;'(900 901 902)
-	   )))
 
 #;
      ;; This is just for testing.  IT LEAKS.
