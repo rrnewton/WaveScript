@@ -4,7 +4,7 @@
 
 (module engine mzscheme
   (require (lib "thread.ss"))
-  (provide make-engine)
+  (provide make-engine engine-return engine-block)
 
   ;; Warning, this is not fully compatible. 
   (define (make-engine th)
@@ -23,6 +23,10 @@
                       (coroutine-result co))
                 ;; Return a new closure that will allow you to run it one more iteration:
                 (fail (loop #f))))))))
+  
+  (define (engine-return . args) (error 'engine-return "not implemented in PLT"))
+  (define (engine-block . args) (error 'engine-block "not implemented in PLT"))
+  
   )
 
 ;(require engine)

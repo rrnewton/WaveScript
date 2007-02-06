@@ -410,11 +410,12 @@
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (let ([return (wsint port)])
-		 (if (stream? return)
-		     (parameterize ([print-vector-length #t])
-		       (browse-stream return))
-		     (printf "\nWS query returned a non-stream value:\n  ~s\n" return)))
-	   )]
+	     ;(import streams)
+	     (import imperative_streams)
+	     (if (stream? return)
+		 (parameterize ([print-vector-length #t])
+		   (browse-stream return))
+		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
 	  
 	  [(wscomp)
 	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
@@ -425,10 +426,8 @@
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
 			  ))
-
 	     (apply wscomp port opts)
 	   )]
-
 	  
 	  )))))))
   

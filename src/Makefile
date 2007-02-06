@@ -76,6 +76,7 @@ pltbc: mzscheme
 mzc: mzscheme
 mzscheme: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
+	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos .)
 
 nc: pltnc

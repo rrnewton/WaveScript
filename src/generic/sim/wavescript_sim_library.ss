@@ -85,6 +85,7 @@
     (chezimports (only scheme scheme import)
 		 constants
 		 helpers
+		 streams
 		 (only lang_wavescript default-marmotfile))
 
     (IFCHEZ
@@ -643,7 +644,6 @@
 				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
 					streams)))))))
        )
-
 #;
      ;; [2006.11.23] Experimenting with engine based version:
      (define (unionList ls)

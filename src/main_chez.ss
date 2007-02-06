@@ -210,8 +210,8 @@
 (include "generic/util/slib_hashtab.ss") (import (add-prefix slib_hashtab slib:))
 (include "chez/hashtab.ss")      (import hashtab)
 (include "generic/util/helpers.ss") (import (except helpers test-this these-tests))
-;(include "generic/util/streams.ss") (import (except streams test-this these-tests))
-(include "generic/util/imperative_streams.ss") (import (except imperative_streams test-this these-tests))
+(include "generic/util/streams.ss") ;(import (except streams test-this these-tests))
+(include "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "chez/threaded_utils.ss") (import threaded_utils)))
@@ -306,7 +306,7 @@
 (include "generic/langs/language-mechanism.ss")
 
 (include "generic/langs/lang_wavescript.ss")
-;(include "generic/sim/wavescript_sim_library.ss")
+(include "generic/sim/wavescript_sim_library.ss")
 (include "generic/sim/wavescript_sim_library_NEW.ss")
 (include "generic/testing/lang_wavescript_tests.ss")
 

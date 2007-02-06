@@ -5,26 +5,25 @@
 (module wavescript_sim_library_NEW mzscheme
   (require 
            "../constants.ss"
-           "../../plt/iu-match.ss"
+           ;"../../plt/iu-match.ss"
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
+           "../../plt/engine.ss"
            (prefix slib: "../util/slib_hashtab.ss")
 	   (all-except "../util/imperative_streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
-	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)	   
+	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)           
 	   )
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
 		 app let 
 
-		 ;__dataFile 
-		 ;__syncN
+		 __dataFile ;__syncN
 
 		 ;dump-binfile 
-		 audio ;doubleFile audioFile timer
-		 stockStream
-		 ; read-file-stream
+		 audio audioFile timer doubleFile
+		 stockStream read-file-stream
 		 show
 		 window
 
@@ -68,7 +67,7 @@
 		 ;smap sfilter
 		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
-		 ;unionN unionList 
+		 unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
 		 fft 
@@ -91,6 +90,7 @@
     (chezimports (only scheme scheme import)
 		 constants
 		 helpers
+		 (except imperative_streams test-this)
 		 (only lang_wavescript default-marmotfile))
 
     (IFCHEZ
@@ -207,31 +207,32 @@
 	     (lambda () (printf "  POS# ~a dumped...\n" pos))))))
 
 
-#;
      ;; FIXME: this is inefficient; keeping a ptr to the tail of the stream
      ;;        and modifying that would be better
      (define (doubleFile file len overlap)
        ;; Ignoring overlap for now!!
        (unless (zero? overlap)
 	 (error 'doubleFile "does not currently support overlaps, use rewindow!"))
-       (delay ;; Don't read file till we get a pull.
-	 (let ((infile (open-input-file file)))
-         (let strmloop ([t 0])
-	   (let ([vec (make-vector len)])
+       (let ((infile #f))
+         (lambda () 
+           ;; Delay the actual file opening.
+           (unless infile (set! infile (open-input-file file)))
+	   (let ([vec (make-vector len)] [t 0])
 	     (let inner ([cnt 0])
 	       (if (fx= cnt len)
 		   ;; Vector is full.
-		   (stream-cons (make-sigseg t (+ t len -1) vec nulltimebase)
-				(strmloop (+ t len))) ;; time could overflow fixnum		 
+                   (let ([result (make-sigseg t (+ t len -1) vec nulltimebase)])
+                     (set! vec (make-vector len))
+                     (set! t (+ t len))  ;; time could overflow fixnum
+                     result)                   
 		   (let ((n (read infile))) ;; would read-line be faster?
 		     (if (eof-object? n)
 			 ;; Do we make a partial sigseg?  Nah.  Throw it out.
-			 '()
+			 stream-empty-token
 			 (begin 
 			   (vector-set! vec cnt n)
 			   (inner (fx+ 1 cnt))
-			   )
-			 )))))))))
+                           )))))))))
 
      ;; Read a stream of Uint16's.
      (define (audioFile file len overlap)
@@ -244,46 +245,89 @@
      ;; (Actually, this didn't speed things up much, just a little.)
      (define DATAFILE_BATCH_SIZE 500)
 
-     ;; This is not a fast implementation.  Uses read.
-     ;; Interestingly, it's currently [2006.12.03] running better in opt-level 2 than 3!
      (define (__dataFile file mode repeat types)
+
+       ;; This implements the text-mode reader.
+       ;; This is not a fast implementation.  Uses read.
+       ;; Interestingly, it's currently [2006.12.03] running better in opt-level 2 than 3!
        ;; This is one playback of the file:
+       (define (textstream)
+         ;; TODO: In debug mode this should check the types of what it gets.       
+         (define len (listLength types))
+         (define inp (open-input-file file))
+         (define tyvec (list->vector types))
+         (define (parse-line str)
+           (define p (open-input-string str))
+           (define tup (make-vector len))
+           (let loop ([i 0])
+             (if (fx= i len)
+                 tup
+                 (begin 
+                   ;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
+                   (vector-set! tup i 
+                                (case (vector-ref tyvec i)
+                                  [(String) (symbol->string (read p))]
+                                  [else (read p)]))
+                   (loop (fx+ 1 i))))))
+         (define (get-batch)
+           (let loop ([x (read-line inp)] [batch DATAFILE_BATCH_SIZE] [acc '()])
+             (if (or (not x) (fxzero? batch))
+                 (reverse! acc)
+                 (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
+         (let ([buf '()])
+           (lambda ()
+             (let loop ()
+               (if (null? buf)
+                   (begin (set! buf (get-batch)) 
+                          (loop))
+                   (let ([x (car buf)])
+                     (set! buf (cdr buf))
+                     x))))))
+
+       ;; Read a binary stream with a particular tuple format.
+       (define (binstream)
+         '?????????
+         )
+       
        (define thestream
-	 (let ()
-	   ;; TODO: In debug mode this should check the types of what it gets.       
-	   (define len (listLength types))
-	   (define inp (open-input-file file))
-	   (define tyvec (list->vector types))
-	   (define (parse-line str)
-	     (define p (open-input-string str))
-	     (define tup (make-vector len))
-	     (let loop ([i 0])
-	       (if (fx= i len)
-		   tup
-		   (begin 
-		     (vector-set! tup i 
-				  (case (vector-ref tyvec i)
-				    [(String) (symbol->string (read p))]
-				    [else (read p)]))
-		     (loop (fx+ 1 i))))))
-	   (cond 
-	    [(equal? mode "text")
-	     (let loop ([x (read-line inp)] [batch DATAFILE_BATCH_SIZE])
-	       (cond
-		[(not x) '()]
-		;; Insert a delay:
-		[(fxzero? batch) 		 
-		 (stream-cons (parse-line x) (loop (read-line inp) DATAFILE_BATCH_SIZE))]
-		[else   (cons (parse-line x) (loop (read-line inp) (fx- batch 1)))]))]
-	    [else (error 'dataFile "this mode is not supported yet: ~s" mode)]	)))
-       ;(inspect thestream)
+         (cond 
+           [(equal? mode "text") (textstream)]
+           [else (error 'dataFile "this mode is not supported yet: ~s" mode)]))
+
+       ;; This records the stream the first time through then keeps repeating it.
+       (define (repeat-stream repeats)
+         (let ([whole-stream #f] [buf '()] [first-run? #t])
+           (define (loop)
+             (cond
+               [first-run? 
+                (let ([x (thestream)])
+                  (if (eq? x stream-empty-token)
+                      (begin 
+                        (set! buf (reverse! buf))
+                        (set! whole-stream buf)
+                        (set! first-run? #f)
+                        (set! thestream #f)
+                        (loop))
+                      (begin (set! buf (cons x buf))
+                             x)))]
+               [(null? buf)
+                (if (= 0 repeats)
+                    stream-empty-token
+                    (begin (set! buf whole-stream)
+                           (set! repeats (- repeats 1))
+                           (loop)))]
+               [else
+                (let ([x (car buf)])
+                  (set! buf (cdr buf))
+                  x)]))
+           loop))
+       
+       ;; __dataFile body:
        (case repeat
 	 [(0) thestream]
-	 [(-1) (letrec ([fix (stream-append thestream (delay fix))]) fix)]
+	 [(-1) (repeat-stream -1)]                                  
 	 [else (ASSERT (> repeat 0))
-	       ;; Foldl and foldr have about the same (bad) performance here.
-	       (foldl stream-append '()
-		      (make-list repeat thestream))])
+               (repeat-stream repeat)])
        )
 
      ;; This makes an infinite stream of fake tick/split info:
@@ -389,8 +433,7 @@
 		 stream-empty-token)))))
 
      ;; This is meaningless in a pull model:
-     (define (timer freq)
-       (let loop () (stream-cons #() (loop))))
+     (define (timer freq) (lambda () #()))
 
 ;      (define nullseg (gensym "nullseg"))
 ;      (define nullarr (gensym "nullarr"))
@@ -541,66 +584,65 @@
 	   ;'(900 901 902)
 	   )))
 
-
-;; FINISH
 #;
-     ;; [2006.09.01] Crap, how do we do this in a pull model, eh?
-     ;; USES ZERO-BASED INDICES.
+     ;; This is just for testing.  IT LEAKS.
      (define (unionList ls)
-       ;; There are all kinds of weird things we could do here.
-       ;; We could pull all the streams in parallel (with engines or threads) 
-       ;; and nondeterministically interleave.
-	 
        ;; TEMP: this strategy just assumes they're all the same rate and round-robins them:
-       (let loop ([streams (mapi vector ls)])
-	 (if (null? streams) '()
-	     (let ([batch (map (lambda (v) (vector (vector-ref v 0) (stream-car (vector-ref v 1))))
-			    streams)])
-	       (stream-append-list batch
-			      (loop (filter (lambda (v) (not (stream-empty? (vector-ref v 1))))
-				      (map (lambda (v) (vector (vector-ref v 0) (stream-cdr (vector-ref v 1))))
-					streams)))))))
-       )
-
-#;
+         (let loop ([streams (mapi vector ls)])
+           (lambda ()
+             (if (null? streams) 
+                 stream-empty-token
+                 (trace-let BAT ([batch (map (lambda (v) (vector (vector-ref v 0) ((vector-ref v 1))))
+                                   streams)])
+                   (stream-append-list 
+                    (filter (lambda (x) (not (eq? x stream-empty-token))) batch)                    
+                    (loop (map cdr 
+                               (filter (lambda (pr) (not (eq? stream-empty-token (car pr))))
+                                       (map cons batch streams))))
+                  ))))))
+  
      ;; [2006.11.23] Experimenting with engine based version:
      (define (unionList ls)
        (let* ([output #f] ;; Mutable var for output.
 	      [engs (mapi (lambda (ind strm)
 			  (make-engine 
 			   (lambda ()
-			     (let strmloop ([strm strm])
-			       (when (stream-empty? strm)
-				 (engine-return '()))
-			       (set! output (vector ind (stream-car strm)))
+			     (let strmloop ([x (strm)])
+			       (when (eq? x stream-empty-token) (engine-return '()))
+			       (set! output (vector ind x))
 			       (engine-block) ;; Don't return more than one value.
-			       (strmloop (stream-cdr strm))
+			       (strmloop (strm))
 			       ))))
 			  ls)])
 	 ;; Now we need to do the equivalent of a "select".
 	 ;; We run each engine until we get a value.
-	 (let loop ([engs engs] [acc '()])
-	   ;; Process output, if there was any in the last run.
-	   (cond
-	    [output
-	     (cons output 
-		   (delay (begin (set! output #f) (loop engs acc))))]
-	    [(null? engs)
-	     (if (null? acc) ;; All streams finished.
-		 '()
-		 (loop (reverse! acc) '()))]
-	    [else
-	     ;; RUN engine:
-	     ((car engs) 100
-	      (lambda (ticks val)
-		;; This stream is finished, continue with rest.
-		(loop (reverse! acc) '())
-		)
-	      (lambda (neweng)		  
-		;; Put us at the end of the queue.
-		(loop (cdr engs) (cons neweng acc))
-		))]
-	    ))))
+	 (let ([engs engs] [acc '()])
+           (define (loop)
+             (cond
+               [output (let ([x output])
+                         (set! output #f)
+                         x)]
+               [(null? engs)                                
+                (if (null? acc) ;; All streams finished.
+                    stream-empty-token
+                    (begin (set! engs (reverse! acc))
+                           (set! acc '())
+                           (loop)))]
+               [else
+                ;; RUN engine:
+                ((car engs) 100
+                            (lambda (ticks val)
+                              ;; This stream is finished, continue with rest.
+                              (set! engs (reverse! acc))
+                              (set! acc '())
+                              (loop))
+                            (lambda (neweng)
+                              ;; Put us at the end of the queue.
+                              (set! engs (cdr engs))
+                              (set! acc (cons neweng acc))
+                              (loop)))]
+               ))
+           loop)))
 
 #;
      ;; [2007.01.30]  This is a hacky little experiment.  Prioritizes the first stream in the list.
@@ -658,7 +700,6 @@
 		))]
 	    ))))
 
-#;  
      (define (unionN . args)  (unionList args))
 
 #;
@@ -933,8 +974,8 @@
      (define (iterate f s)
        (let* ([outputs '()]
 	      [produce! (lambda () 
-			  (let ([next (rac outputs)])
-			    (set! outputs (rdc! outputs))
+			  (let-values ([(next rest) (rac&rdc! outputs)])
+                            (set! outputs rest)
 			    next))])
 	 (lambda ()
 	   (let iter-loop ()
@@ -944,8 +985,8 @@
 		       stream-empty-token
 		       (begin 
 			 (set! outputs 
-			       (append! (unbox (f (stream-car s) (virtqueue))) outputs))
-			 (produce!))))
+			       (append! (unbox (f x (virtqueue))) outputs))			 
+			 (iter-loop))))
 		 (produce!))))))
 
      ;; This is the functional version of iterate.

@@ -89,7 +89,7 @@
    set? subset? set-equal? list->set set-cons union intersection difference
    setq? subsetq? set-eq?
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
-   filter list-index snoc rac rdc last 
+   filter list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
    foldl
    
@@ -508,6 +508,31 @@
           (if (null? (cdr lst))
               '()
               (cons (car lst) (rdc-loop (cdr lst))))))))
+  
+(define rdc!
+  (lambda (ls)
+    (cond 
+      [(null? ls)
+       (error 'rdc "cannot take the rdc of the empty-list")]
+      [(null? (cdr ls)) '()]
+      [else (let loop ([first ls] [second (cdr ls)])
+              (if (null? (cdr second))
+                  (set-cdr! first '())
+                  (loop (cdr first) (cdr second))))
+            ls])))
+  
+(define rac&rdc!
+  (lambda (ls)
+    (cond 
+      [(null? ls)
+       (error 'rac&rdc "cannot take the rdc of the empty-list")]
+      [(null? (cdr ls)) (values (car ls) '())]
+      [else (values (let loop ([first ls] [second (cdr ls)])
+                      (if (null? (cdr second))
+                          (begin (set-cdr! first '())
+                                 (car second))
+                          (loop (cdr first) (cdr second))))
+                    ls)])))
 
 (define mapleft
   (lambda (f ls)

@@ -10,9 +10,9 @@
   (provide 
    stream? stream-empty-token list->stream
    stream-map stream-filter stream-take! stream-take-all!
-   iota-stream stream-append browse-stream 
+   iota-stream browse-stream 
 					
-   ;stream-append-list
+   stream-append stream-append-list
 
    test-imperative_streams test-this
    )
@@ -49,6 +49,15 @@
 	    (if (eq? x stream-empty-token)
 		(begin (set! switch #t) (s2))
 		x))))))
+  
+(define (stream-append-list ls s2)
+  (let ([switch ls])
+    (lambda ()
+      (if (null? ls)
+	  (s2)          
+	  (let ([x (car ls)])
+            (set! ls (cdr ls))
+            x)))))
 
 ;; Take N elements from a stream
 ;; Tail recursive.
