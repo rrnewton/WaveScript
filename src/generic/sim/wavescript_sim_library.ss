@@ -6,6 +6,7 @@
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            (prefix slib: "../util/slib_hashtab.ss")
+	   (all-except "../util/streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
 	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)	   
 	   )

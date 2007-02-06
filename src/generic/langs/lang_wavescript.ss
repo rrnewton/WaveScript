@@ -115,14 +115,14 @@
 	       (not (equal? regiment-origin "compiled .so")))
 	   '(begin 
 	     ;; We only import these basic bindings to keep us honest.
-	     (import-only wavescript_sim_library)
+	     (import-only wavescript_sim_library_NEW)
 	     ;; Then we import some "sub-modules" exported by the language-module.
 	     ;; This is everything but the overriden bindings from default scheme language:
 	     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
 	     (import mod_constants)
 	     (import mod_helpers))
 	   '(begin
-	     (import wavescript_sim_library))
+	     (import wavescript_sim_library_NEW))
 	     ;;(import (except scheme break length + - * / ^ inspect letrec import let))
 	     ;;(import constants) 
    	     ;;(import helpers)
@@ -154,7 +154,7 @@
 	   (current-directory "src/")
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
-           (require "generic/sim/wavescript_sim_library.ss")
+           (require "generic/sim/wavescript_sim_library_NEW.ss")
            (define THISWSVAL ,expr)
            (require mzscheme)
            THISWSVAL

@@ -2,13 +2,14 @@
 ;; streams.  Streams are just thunks, called repeatedly.  Less risk of
 ;; memory leak.
 
-(module wavescript_sim_library mzscheme
+(module wavescript_sim_library_NEW mzscheme
   (require 
            "../constants.ss"
            "../../plt/iu-match.ss"
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            (prefix slib: "../util/slib_hashtab.ss")
+	   (all-except "../util/imperative_streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
 	   (all-except "../compiler_components/regiment_helpers.ss" test-this these-tests for inspect break)	   
 	   )
@@ -17,9 +18,11 @@
 		 valid-sigseg?
 		 app let 
 
-		 __dataFile __syncN
+		 ;__dataFile 
+		 ;__syncN
 
-		 dump-binfile doubleFile audioFile  audio timer
+		 ;dump-binfile 
+		 ;doubleFile audioFile  audio timer
 		 stockStream
 		 ; read-file-stream
 		 show
@@ -62,21 +65,22 @@
 		 
 		 wserror inspect
 		 emit 
-		 smap sfilter
-		 iterate break deep-iterate
+		 ;smap sfilter
+		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
-		 unionN unionList zip2
+		 ;unionN unionList 
+		 ;zip2
 		 ; union2 union3 union4 union5
 		 fft 
 		 
 		 ;; Misc, ad-hoc, and Temporary
-		 m_invert ;; A matrix inversion:
+		 ;m_invert ;; A matrix inversion:
 		 )
     (chezprovide (for for-loop-stack)
 		 letrec length print
 		 + - * / ^
                                  
-                 parmap
+                 ;parmap
                  
 		 ;; We reexport these *module names* so that they can be imported subsequently.
 		 mod_scheme  mod_helpers  mod_constants
@@ -174,6 +178,7 @@
 	 (list->string (list (integer->char highbyte)
 			     (integer->char lowbyte)))))
 
+#;
      (define (dump-binfile file stream pos)
        (let ([port (open-output-file file 'replace)])
 	 (time 
@@ -202,6 +207,7 @@
 	     (lambda () (printf "  POS# ~a dumped...\n" pos))))))
 
 
+#;
      ;; FIXME: this is inefficient; keeping a ptr to the tail of the stream
      ;;        and modifying that would be better
      (define (doubleFile file len overlap)
@@ -289,16 +295,18 @@
 	 (vector-get-random 
 	  #("IBM" "AKAM" "MS" "GOOG" "AMAZ" "YHOO" "ORAC" 
 		)))
-       (let loop ([t (random 100.0)])
-	 (stream-cons 
-	  (if (fx= (random 500) 0)
-	      ;; A split:
-	      (vector (random-sym) t -1 (random 2.0))
-	      ;; A tick:
-	      (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))
-	      )
-	  (loop (fl+ t (random 10.0))))))
+       (define t (random 100.0))
+       (lambda ()
+	 (let ([result (if (fx= (random 500) 0)
+			   ;; A split:
+			   (vector (random-sym) t -1 (random 2.0))
+			   ;; A tick:
+			   (vector (random-sym) t (fx+ 1 (random 100)) (random 300.0))
+			   )])
 
+	   (set! t (fl+ t (random 10.0)))
+	   result
+	   )))
 
      ;; This is a hack to load specific audio files:
      ;; It simulates the four channels of marmot data.
@@ -368,6 +376,8 @@
        ;; TODO: HANDLE OVERLAP:
        (unless (zero? overlap)
 	 (error 'read-file-stream "currently does not support overlaps, use rewindow"))
+
+       
        (delay 
 	 (let loop ([pos 0]) 
 	   (let ([win (read-window)])
@@ -375,7 +385,18 @@
 		 (let ((newpos (+ len pos -1)))
 		   (stream-cons (make-sigseg pos newpos win nulltimebase)
 				(loop (+ 1 newpos))))
-		 ())))))
+		 ()))))
+
+#;       
+       (delay 
+	 (let loop ([pos 0]) 
+	   (let ([win (read-window)])
+	     (if win
+		 (let ((newpos (+ len pos -1)))
+		   (stream-cons (make-sigseg pos newpos win nulltimebase)
+				(loop (+ 1 newpos))))
+		 ()))))
+       )
 
      ;; This is meaningless in a pull model:
      (define (timer freq)
@@ -456,6 +477,7 @@
 		    (sigseg-timebase ss)))
 
 
+#;
      ;; Making this a primitive for the emulator.
      (define __syncN
        (let ()
@@ -645,9 +667,11 @@
 		(loop special (cdr engs) (cons neweng acc))
 		))]
 	    ))))
-  
+
+#;  
      (define (unionN . args)  (unionList args))
 
+#;
      (define (zip2 s1 s2)
        (delay 	 
 	 (let loop ([s1 s1] [s2 s2])

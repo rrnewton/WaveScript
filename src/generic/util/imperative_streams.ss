@@ -8,12 +8,13 @@
 	   "../../plt/iu-match.ss"
 	   )
   (provide 
-   stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
+   stream? stream-empty-token list->stream
    stream-map stream-filter stream-take stream-take-all 
-   iota-stream stream-append browse-stream ;random-stream 
-   stream-append-list
+   iota-stream stream-append ;browse-stream 
+					
+   ;stream-append-list
 
-   test-streams
+   test-imperative_streams test-this
    )
   (chezimports)
 
@@ -34,6 +35,14 @@
 ; (define-syntax stream-append-list
 ;   (syntax-rules ()
 ;     [(_ args ... tail) (delay (append args ... (delay tail)))]))
+
+(define (list->stream ls)  
+  (lambda ()
+    (if (null? ls)
+	stream-empty-token
+	(let ([x (car ls)])
+	  (set! ls (cdr ls))
+	  x))))
 
 ;; Append a stream (which should be finite) to another stream.
 (define (stream-append s1 s2)
@@ -82,8 +91,12 @@
 (define (stream-filter f s)
   (lambda () 
     (let loop ([x (s)])
-      (if (f x) x
-	  (loop (s))))))
+      (cond 
+       [(eq? x stream-empty-token)
+	stream-empty-token]
+       [(f x) x]
+       [else (loop (s))]
+       ))))
 
 (define stream-empty-token (gensym "End-Of-Stream"))
 
@@ -103,5 +116,29 @@
 
 ;(stream-take 10 (stream-map add1 (stream-filter odd? (iota-stream))))
 ;(2 4 6 8 10 12 14 16 18 20)
+
+(define these-tests
+  `(
+    [(stream-take 5 (iota-stream))
+     (0 1 2 3 4)]
+    [(stream-take 10 (stream-filter even? (iota-stream)))
+     (0 2 4 6 8 10 12 14 16 18)]
+
+    ["stream-map"
+     (stream-take 3 (stream-map add1 (list->stream '(1 2 3))))
+     (2 3 4)]
+
+    ["stream-filter" 
+     (stream-take-all 
+      (stream-filter odd?
+		     (list->stream '(1 2 3))))
+     (1 3)]
+
+    ))
+
+(define test-this
+  (default-unit-tester "imperative_streams.ss: Implementation of streams as thunks" these-tests))
+
+(define test-imperative_streams test-this)
 
 ) ; End module

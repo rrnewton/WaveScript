@@ -2,9 +2,9 @@
 (module lang_wavescript_tests mzscheme
   (require "../constants.ss"
            "../util/helpers.ss"
-           (prefix ws: "../sim/wavescript_sim_library.ss"))
+           (prefix ws: "../sim/wavescript_sim_library_NEW.ss"))
   (provide test-ws test-lang_wavescript)
-  (chezimports (add-prefix wavescript_sim_library ws:))
+  (chezimports (add-prefix wavescript_sim_library_NEW ws:))
  
   (define these-tests
     (let ()      
