@@ -504,9 +504,18 @@
     (begin 
       ;; If strip-types worked there shouldn't be any VQueue symbols!
       (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
+
+#;
       (delay (wavescript-language
 	      (match stripped
-		[(,lang '(program ,body ,_ ...)) body])))))  
+		[(,lang '(program ,body ,_ ...)) body])))
+
+      ;; New Streams:
+      (wavescript-language
+       (match stripped
+	 [(,lang '(program ,body ,_ ...)) body]))
+
+      ))
 
   stream)
   ) ; End wsint

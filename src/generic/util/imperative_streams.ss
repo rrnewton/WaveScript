@@ -9,8 +9,8 @@
 	   )
   (provide 
    stream? stream-empty-token list->stream
-   stream-map stream-filter stream-take stream-take-all 
-   iota-stream stream-append ;browse-stream 
+   stream-map stream-filter stream-take! stream-take-all!
+   iota-stream stream-append browse-stream 
 					
    ;stream-append-list
 
@@ -21,6 +21,7 @@
 
 (define (stream? s) (or (procedure? s) (null? s)))
 
+#;
 (define-syntax stream-cons
   (syntax-rules ()
     [(_ a b) (let ([fired #f]) 
@@ -28,13 +29,7 @@
 		 (if fired (b) 
 		     (begin (set! fired #t) a))))]))
 
-;;a====================================================================================================
-
-;; NOTE: Double delay for append:
-;; Appends list to stream... not stream to stream!
-; (define-syntax stream-append-list
-;   (syntax-rules ()
-;     [(_ args ... tail) (delay (append args ... (delay tail)))]))
+;;====================================================================================================
 
 (define (list->stream ls)  
   (lambda ()
@@ -57,12 +52,12 @@
 
 ;; Take N elements from a stream
 ;; Tail recursive.
-(define stream-take 
+(define stream-take! 
   (lambda (n s)
     (let stloop ([n (fx- n 1)] [x (s)] [acc '()])
       (cond
        [(eq? x stream-empty-token)
-	(error 'stream-take "Stream ran out of elements before the end!")]
+	(error 'stream-take! "Stream ran out of elements before the end!")]
        [(fx= 0 n) (reverse! (cons x acc))]
        [else (stloop (fx- n 1) (s) (cons x acc))]))))
 
@@ -80,7 +75,7 @@
 ;;; Stream transformers.
 
 ;; Read the stream until it runs dry.  Had better be finite.
-(define (stream-take-all s)
+(define (stream-take-all! s)
   (let stloop ([x (s)] [acc '()])
     (if (eq? x stream-empty-token)
 	(reverse! acc)
@@ -114,22 +109,165 @@
 ;============================================================
 ;;; Stream browsing.
 
+(define (browse-stream stream)
+  (unless (stream? stream) (error 'browse-stream "This is not a stream: ~s" stream))
+  ;; Now that we've got a stream we provide a little command
+  ;; prompt and ask the user what we should do with it:
+  (unless (regiment-quiet)
+    (printf "\nQuery processed.")
+    (printf "\nYou can now control the output stream, commands are:\n")
+    (printf "     <n>          print n stream element, advance position\n")
+    (printf "     <enter>      same as '1'\n")
+;    (printf "     print        print current stream element (in full), don't advance\n")
+    (printf "     skip <n>     advance the stream, but don't print\n")
+					;  (printf "     code         print the query that is executing\n")
+    (printf "     dump <file>  dump whole stream to file (better not be infinite!)\n")
+    (printf "     dump <fn> <n>   dump up to this many elements\n")
+    (printf "     bindump <file>  assumes uint16s, if SigSegs, better be non-overlapping\n")
+    (printf "     until <fun>  scrolls forward until an element satisfies the predicate\n")
+    (printf "     profile      dump the profile to /tmp/pdump \n")
+    (printf "     exit         exit\n\n")
+    (flush-output-port))
+
+  (parameterize ([print-length 100]
+		 [print-graph #t]
+		 [print-level 5]
+		 [print-vector-length #f])
+    (let loop ([pos 0])
+      (DEBUGASSERT (stream? stream))
+      
+      (printf "pos#~a: " pos)
+      (let ((line (read-line)))
+	(when line 
+	  (match (port->slist (open-input-string line))
+	    [() (guard (eq? stream stream-empty-token))
+	     (printf "\nReached end of stream.\n")]
+	    [() (printf "  ") 
+	     (pretty-print (stream))	     
+	     ;(inspect (stream))
+	     (loop (add1 pos))]
+	    [(,n) (guard (integer? n))
+	     (let ([ls (stream-take! n stream)])
+	       (for-each (lambda (x)
+			   (printf "     POS#~a = " pos)
+			   (pretty-print x)
+			   (set! pos (add1 pos)))
+		 ls)	       
+	       (loop pos))]
+#;
+	    [(,print) (guard (memq print '(p pr pri prin print)))
+	     (parameterize ([print-length 10000]
+			    [print-level 200])
+	       (printf "  ") (pretty-print (stream)) (loop pos))]
+
+	    [(,skip ,n) (guard (memq skip '(s sk ski skip)))
+	     (time (stream-take! n stream))
+	      (loop (+ pos n))]
+
+	    [(,dump ,file ,limit) 
+	     (error 'browse-stream "limited dump not implemented")]
+#;
+	    [(,dump ,file) (guard (memq dump '(d du dum dump)))
+	     (let ([port (open-output-file (format "~a" file) 'append)])
+	       (parameterize ([print-length #f]
+			      [print-level #f]
+			      [print-graph #f]
+			      [ws-print-output-port port]
+			      )
+		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
+		 (let ([go
+			(lambda ()
+			  (progress-dots
+			   (lambda ()
+			     (let loop ()
+			       (if (stream-empty? stream)
+				   (unless (regiment-quiet)
+				     (printf "Finished, dumped ~a stream elements.\n" pos))
+				   (let ([elem (stream-car stream)])
+				     (unless (equal? elem #())
+				       (write elem port)(newline port))
+				     (set! pos (add1 pos))
+				     (set! stream (stream-cdr stream))
+				     (loop)
+				     ))))
+			   50000000 
+			   (lambda ()
+			     (unless (regiment-quiet)
+			       (printf "  POS# ~a dumped...\n" pos))
+			     )))])
+		   (if (regiment-quiet)		       
+		       (go)
+		       (time (go))
+		       ))))]
+#;
+	  [(profile)  
+	   (IFCHEZ
+	    (with-output-to-file "/tmp/pdump"
+	      (lambda () 
+		(parameterize ([print-level #f]
+			       [print-length #f]
+			       [print-graph #t])
+		  (write (profile-dump))))
+	      'replace)
+	    (error 'browse-stream "can't dump profile in PLT."))]
+
+#;
+	  ;; Wavescope-specific.	  
+	  [(,bindump ,file) (guard (memq bindump '(b bi bin bind bindu bindum bindump)))
+	   (IFCHEZ 
+	    (let ([failename (format "~a" file)])
+	      (wavescript-language `(dump-binfile ,filename ,stream ,pos)))
+	    (error 'bindump "unimplemented in plt"))
+	   ]
+
+	  [(,until ,predtext) (guard (memq until '(u un unt unti until)))
+	   (let ([pred (eval predtext)])
+	     (unless (procedure? pred)
+	       (error 'browse-stream "until must take a procedure: ~s" pred))
+	     (let scrollloop ()
+	       (if (eq? stream stream-empty-token)
+		   (error 'browse-stream::until 
+			  "reached end of stream before finding element satisfying predicate ~s" pred)
+		   (let ([elem (stream)])
+		     (when (eq? stream stream-empty-token)
+		       (error 'browse-stream::until 
+			      "reached end of stream before finding element satisfying predicate ~s" pred))
+		     (if (pred elem)
+			 (begin    
+			   (printf " Found element satisfying predicate ~s:\n\n" pred)
+			   (printf "     POS#~a = " pos)
+			   (pretty-print elem)
+			   (newline)
+			   (loop pos))
+			 (begin 
+			   (set! pos (add1 pos))			  
+			   (scrollloop))
+			 )))))]
+	  
+	  [(exit) (void)]
+	  [,other 
+	   (printf "Bad input.\n") (loop pos)]
+	  )))
+      )))
+
+
+
 ;(stream-take 10 (stream-map add1 (stream-filter odd? (iota-stream))))
 ;(2 4 6 8 10 12 14 16 18 20)
 
 (define these-tests
   `(
-    [(stream-take 5 (iota-stream))
+    [(stream-take! 5 (iota-stream))
      (0 1 2 3 4)]
-    [(stream-take 10 (stream-filter even? (iota-stream)))
+    [(stream-take! 10 (stream-filter even? (iota-stream)))
      (0 2 4 6 8 10 12 14 16 18)]
 
     ["stream-map"
-     (stream-take 3 (stream-map add1 (list->stream '(1 2 3))))
+     (stream-take! 3 (stream-map add1 (list->stream '(1 2 3))))
      (2 3 4)]
 
     ["stream-filter" 
-     (stream-take-all 
+     (stream-take-all!
       (stream-filter odd?
 		     (list->stream '(1 2 3))))
      (1 3)]

@@ -22,7 +22,7 @@
 		 ;__syncN
 
 		 ;dump-binfile 
-		 ;doubleFile audioFile  audio timer
+		 audio ;doubleFile audioFile timer
 		 stockStream
 		 ; read-file-stream
 		 show
@@ -377,26 +377,16 @@
        (unless (zero? overlap)
 	 (error 'read-file-stream "currently does not support overlaps, use rewindow"))
 
-       
-       (delay 
-	 (let loop ([pos 0]) 
+       (printf "FORMING STREAM\n")
+       (let ([pos 0])
+	 (lambda ()
 	   (let ([win (read-window)])
 	     (if win
-		 (let ((newpos (+ len pos -1)))
-		   (stream-cons (make-sigseg pos newpos win nulltimebase)
-				(loop (+ 1 newpos))))
-		 ()))))
-
-#;       
-       (delay 
-	 (let loop ([pos 0]) 
-	   (let ([win (read-window)])
-	     (if win
-		 (let ((newpos (+ len pos -1)))
-		   (stream-cons (make-sigseg pos newpos win nulltimebase)
-				(loop (+ 1 newpos))))
-		 ()))))
-       )
+		 (let* ([newpos (+ len pos -1)]
+			[result (make-sigseg pos newpos win nulltimebase)])
+		   (set! pos (+ 1 newpos))
+		   result)
+		 stream-empty-token)))))
 
      ;; This is meaningless in a pull model:
      (define (timer freq)
