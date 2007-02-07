@@ -139,6 +139,8 @@
     (intToComplex   (Int)   Complex)
     (floatToComplex (Float) Complex)    
 
+    ;(int16ToFloat   (Int16)   Float)
+
     ; Downcasts must be explicit??
     ; Thus you know exactly what you're throwing away.
     (floatToInt     (Float)   Int)
@@ -282,7 +284,8 @@
     ;;
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.
-    (audio            (Int Int Int Int) (Stream (Sigseg Float)))
+    ;(ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Float)))
+    (audio      (Int Int Int Int) (Stream (Sigseg Float)))
 
     ;; Takes a file to read from, window size, overlap, sampling rate:
     ;; Reads a stream of Uint16's from the file.
@@ -512,7 +515,7 @@
     (swhen-any        (('a -> Bool) (Stream 'a))     (Event #()))
     (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
 
-    ,@(IFWAVESCOPE wavescript-primitives ())
+;    ,@(IFWAVESCOPE wavescript-primitives ())
 
 ;     neighbors 
 ;    time-of
@@ -525,6 +528,7 @@
   (make-parameter   
    (append regiment-basic-primitives
 	   regiment-distributed-primitives
+	   wavescript-primitives
 	   regiment-constants)))
 
 ;======================================================================

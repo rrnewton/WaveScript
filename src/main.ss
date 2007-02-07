@@ -438,7 +438,10 @@
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
 (define (wsint x)                                             ;; Entrypoint.  
-  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
+  (parameterize ([compiler-invocation-mode 'wavescript-simulator]
+		 [regiment-primitives
+		  ;; Remove those regiment-only primitives.
+		  (difference (regiment-primitives) regiment-distributed-primitives)])
     (define prog
     (cond  [(input-port? x) 
 	    (unless (regiment-quiet) (printf "WSINT: Loading WS source from port: ~s\n" x))
@@ -525,7 +528,10 @@
 
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp port . flags)                                 ;; Entrypoint.  
- (parameterize ([compiler-invocation-mode 'wavescript-compiler])
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler]
+		[regiment-primitives
+		 ;; Remove those regiment-only primitives.
+		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define outfile "./query.cpp")
    (define prog (ws-postprocess (read port)))
    (define typed (pass_desugar-pattern-matching (verify-regiment prog)))

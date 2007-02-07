@@ -287,8 +287,8 @@ c2i = complexToInt;
 c2f = complexToFloat;
 
 // These are the "advanced" versions.  They're curried.
-//smap = fun(f) fun(x) stream_map(f,x);
-//sfilter = 
+smap = fun(f) fun(x) stream_map(f,x);
+sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
 

@@ -102,12 +102,12 @@
 	(even? even?) (odd? odd?) (not not)
 	(map map)
 	(filter filter)
-	(GETENV (lambda (v) 
-		  (match v
-		    [(quote ,str) (guard (string? str))
-		     (let ([x (getenv str)])
-		       (if str str ""))]
-		    [,else (error 'static-elaborate:GETENV "bad input: ~s" v)])))
+	(GETENV (lambda (v)
+		  (if (string? v)
+		      (let ([x (getenv v)])
+			(if x x ""))
+		      (error 'static-elaborate:GETENV "bad input: ~s" v)
+		      )))
 	))
 
     (define computable-constants '(IS_SIM))
