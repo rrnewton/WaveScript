@@ -280,7 +280,7 @@
 
      ;; Very simple queue:
      ;; TODO: Could copy sigsegs on output here and see what the impact is.
-     (define (emit q v) (set-box! q (cons v (unbox q))))
+     (define (emit vq x) (set-box! vq (cons x (unbox vq))))
      ;;(emission (cons v (emission))))
      (define (virtqueue) (box '()))
 
@@ -395,10 +395,13 @@
     
     ;; Read a binary stream with a particular tuple format.
     (define (binstream)
-      ; read-file-stream
-      '?????????
-      )
-    
+      (iterate 
+       ;; Strip that sigseg:
+       (lambda (x vq) (seg-get (emit vq x) 0))
+       (read-binary-file-stream file 
+				(types->width types) ;; Read just 2 bytes at a time.
+				(types->reader types)
+				1 0 rate)))
     (define thestream
       (cond 
        [(equal? mode "text") (textsource)]
@@ -640,6 +643,34 @@
 	  (begin 
 					;(inspect unsigned)
 	    (fx- unsigned 65536)))))
+
+
+  (define (type->width t)
+    (match t
+      [Int 16] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+      ;;[Float 32]
+      ;;[Complex ]    
+      [,other (error 'type->width "can't support binary reading of ~s yet." other)]
+      ))
+  (define (types->width types)
+    (apply + (map (type->width types))))
+  (define (types->reader types)
+     (define (type->reader t)
+       (match t
+	 [Int to-uint16]
+	;[Float ]
+	;[Complex ]
+	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))
+     (define readers (list->vector (map type->reader types)))
+     (define widths (list->vector (map type->width types)))
+     (define len (length types))
+     (trace-lambda READ (str ind)
+       (let ([vec (make-vector len)])
+	 (do ([i 0 (fx+ 1 i)])
+	     ((= i len) vec)
+	   (vector-set! vec i ((vector-ref readers i) str ind))a
+	   (set! ind (fx+ ind (vector-ref widths i)))
+	   ))))
 
   ;; Currently unused.
   (define (uint16->string n)
