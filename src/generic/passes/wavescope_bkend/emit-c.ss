@@ -174,7 +174,7 @@
 	 (values 
 	  ;; Rate was hardcoded at 24000*100
 	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
-	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate");\n"
+	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())
@@ -188,7 +188,7 @@
 	  `("WSBox* ",name";\n"
 	    "{ int size = ",size";\n"
 	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, ",rate");\n"
+	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())]
