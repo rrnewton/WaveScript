@@ -13,8 +13,8 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 ================================================================================
 
 [2007.02.07]
- *) Remove distributed Regiment primitives from wavescope compiles.
- *) Add general binary reader!
+ X) Remove distributed Regiment primitives from wavescope compiles.
+ ~~) Add general binary reader!
  *) Don't forget my syntax for binding stream-projectors.
 
 [2007.01.27]

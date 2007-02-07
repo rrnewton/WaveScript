@@ -168,26 +168,27 @@
 		   ,name"->connect(",(symbol->string sig)");\n")
 		 '())]
 
-	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip])
+	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (values 
+	  ;; Rate was hardcoded at 24000*100
 	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
-	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, 24000*100);\n"
+	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate");\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())
 	 ]
 
 	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
-	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
+	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (values 
 	  `("WSBox* ",name";\n"
 	    "{ int size = ",size";\n"
 	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, 24000*100);\n"
+	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, ",rate");\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
 	  '())]
