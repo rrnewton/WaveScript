@@ -141,7 +141,7 @@
 
   (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
 
-  (trace-define (run-stream-query prog)     
+  (define (run-stream-query prog)     
     (prog output-sink) ;; Register data sources, connect to output sink.
     
     (set! global-eng 
@@ -150,12 +150,11 @@
 	     (define (compose-fork f g) (lambda (x y) (f (g x) (g y))))
 	     (define cmpr-entry (compose-fork < car))
 
-	     (printf "DATA-SRCS: ~s\n" data-sources)
 	     ;; Seed the event queue:
 	     (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
 	     
 	     (let global-loop ()	       
-	       (printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
+	       ;(printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
 	       (if (null? event-queue)
 		   (engine-return '())
 
@@ -176,7 +175,7 @@
     ;; Return a stream:
     (delay
       (let loop ()
-	(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
+	;(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
 	(if (null? output-queue)
 	    ;; Run the query some more.
 	    (if (not (turn-crank! 100))
@@ -188,7 +187,7 @@
 	      )))))
 
   ;; Run the engine for a bit.
-  (trace-define (turn-crank! ticks)      
+  (define (turn-crank! ticks)      
     (global-eng 100 
 	 (lambda (val ticks) #f)
 	 (lambda (neweng) 
@@ -204,7 +203,7 @@
     (define timestep (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
     (define our-sinks '())
     (define src (let ([t 0])
-		  (lambda (msg . args)
+		  (lambda (msg)
 		    (case msg
 		      ;; Returns the next time we run.
 		      [(peek) t]
@@ -215,10 +214,89 @@
 		       ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
-    (printf "  INITIALIZE TIMER: ~s\n" data-sources)
     (lambda (sink)
       ;; Register the sink to receive this output:
       (set! our-sinks (cons sink our-sinks))))
+
+  ;;(define smap stream-map)
+  ;;(define sfilter stream-filter)
+  
+  (define (iterate fun src)
+    (define our-sinks '())
+    (define wsbox
+      (lambda (msg)
+	(let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
+	  ;(inspect outputs)
+	  (for-each (lambda (elem)
+		      (for-each (lambda (f) (f elem))
+			our-sinks))
+	    outputs))))
+    ;; Register ourselves with our source:
+    (src wsbox)
+    (lambda (sink)
+      (set! our-sinks (cons sink our-sinks))))
+
+     ;; This is the functional version of iterate.
+     (define (integrate f zero s)
+       (stream-map (let ([state zero])
+		     (lambda (x)
+		       (let ([vec (f x state)])
+			 ;; Mutate state:
+			 (set! state (vector-ref vec 1))
+			 ;; Return value.
+			 (vector-ref vec 0))))
+		   s))
+
+     ;; Very simple queue:
+     ;; TODO: Could copy sigsegs on output here and see what the impact is.
+     (define (emit q v) (set-box! q (cons v (unbox q))))
+     ;;(emission (cons v (emission))))
+     (define (virtqueue) (box '()))
+
+     (define (window sig winsize)
+       (let (
+	     [start 0]
+	     [samp  0]
+	     [i     0]
+	     [vec (make-vector winsize)])
+	 (lambda ()
+	   (let window-loop ([x (sig)])
+	     (cond 
+	      [(eq? x stream-empty-token) stream-empty-token]
+	      [(= i winsize)
+	       (let ([result (make-sigseg start (sub1 samp) vec nulltimebase)])
+		 (set! start samp)
+		 (set! samp samp)
+		 (set! i 0)
+		 (set! vec (make-vector winsize))
+		 result)]
+	      [else 
+	       (vector-set! vec i x)
+	       (set! samp (add1 samp))
+	       (set! i (fx+ 1 i))
+	       (window-loop (sig))]
+	      )))))
+
+     ;; This current version will run the function multiple times for overlapping areas.
+#;
+     (define (deep-iterate f s)
+       (stream-map 
+;	(let ([start 0] ;; Record the range covered thusfar.
+;	      [end 0])
+	  (lambda (w)
+	    (make-sigseg (sigseg-start w)
+			 (sigseg-end w)
+			 ;; The function for deep-iterate had better be one-to-one.  I.e. it's really a map!
+			 (vector-map (lambda (x) 
+				       (let ([ls (unbox (f x (virtqueue)))])
+					 (unless (and (not (null? ls)) (null? (cdr ls)))
+					   ;; Wish I could give source location:
+					   (error 'deep-iterate 
+						  "for now deep-iterate only allows one-to-one functions to be applied, got result: ~a"
+						  ls))
+					 (car ls)))
+				     (sigseg-vec w))
+			 (sigseg-timebase w)))))
 
   
   ;; Read a stream of Uint16's.
@@ -434,91 +512,6 @@
 
 
 
-
-     ;(define smap stream-map)
-     (define sfilter stream-filter)
-
-     ;(define emission (make-parameter '()))
-     ;; Doesn't use stream-map because iterate may produce variable output.
-     (define (iterate f s)
-       (let* ([outputs '()]
-	      [produce! (lambda () 
-			  (let-values ([(next rest) (rac&rdc! outputs)])
-                            (set! outputs rest)
-			    next))])
-	 (lambda ()
-	   (let iter-loop ()
-	     (if (null? outputs)		     
-		 (let ([x (s)])
-		   (if (eq? x stream-empty-token)
-		       stream-empty-token
-		       (begin 
-			 (set! outputs 
-			       (append! (unbox (f x (virtqueue))) outputs))			 
-			 (iter-loop))))
-		 (produce!))))))
-
-     ;; This is the functional version of iterate.
-     (define (integrate f zero s)
-       (stream-map (let ([state zero])
-		     (lambda (x)
-		       (let ([vec (f x state)])
-			 ;; Mutate state:
-			 (set! state (vector-ref vec 1))
-			 ;; Return value.
-			 (vector-ref vec 0))))
-		   s))
-
-     ;; Very simple queue:
-     ;; TODO: Could copy sigsegs on output here and see what the impact is.
-     (define (emit q v) (set-box! q (cons v (unbox q))))
-     ;;(emission (cons v (emission))))
-     (define (virtqueue) (box '()))
-
-     (define (window sig winsize)
-       (let (
-	     [start 0]
-	     [samp  0]
-	     [i     0]
-	     [vec (make-vector winsize)])
-	 (lambda ()
-	   (let window-loop ([x (sig)])
-	     (cond 
-	      [(eq? x stream-empty-token) stream-empty-token]
-	      [(= i winsize)
-	       (let ([result (make-sigseg start (sub1 samp) vec nulltimebase)])
-		 (set! start samp)
-		 (set! samp samp)
-		 (set! i 0)
-		 (set! vec (make-vector winsize))
-		 result)]
-	      [else 
-	       (vector-set! vec i x)
-	       (set! samp (add1 samp))
-	       (set! i (fx+ 1 i))
-	       (window-loop (sig))]
-	      )))))
-
-     ;; This current version will run the function multiple times for overlapping areas.
-#;
-     (define (deep-iterate f s)
-       (stream-map 
-;	(let ([start 0] ;; Record the range covered thusfar.
-;	      [end 0])
-	  (lambda (w)
-	    (make-sigseg (sigseg-start w)
-			 (sigseg-end w)
-			 ;; The function for deep-iterate had better be one-to-one.  I.e. it's really a map!
-			 (vector-map (lambda (x) 
-				       (let ([ls (unbox (f x (virtqueue)))])
-					 (unless (and (not (null? ls)) (null? (cdr ls)))
-					   ;; Wish I could give source location:
-					   (error 'deep-iterate 
-						  "for now deep-iterate only allows one-to-one functions to be applied, got result: ~a"
-						  ls))
-					 (car ls)))
-				     (sigseg-vec w))
-			 (sigseg-timebase w)))))
 
 
 

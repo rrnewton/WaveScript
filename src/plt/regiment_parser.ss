@@ -304,6 +304,7 @@
 
    ;; [2006.09.01] For now patterns are just tuples.
    (pattern [(VAR) $1]
+	    [(LeftParen RightParen) #()]
 	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
 	    )
    (pat+ [(pattern) (list $1)]
