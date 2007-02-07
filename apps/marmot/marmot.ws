@@ -419,7 +419,10 @@ emit(nffts);
 
 
 flag = GETENV("WSARCH") == "ENSBox";
-chans = (dataFile("/archive/4/marmots/brief.raw", "binary", 44000, 0)
+//flag = true;
+//marmotfile = "/archive/4/marmots/brief.raw";
+marmotfile = "/archive/4/marmots/real_100.raw";
+chans = (dataFile(marmotfile, "binary", 44000, 0)
 	 :: Stream (Int * Int * Int * Int));
 sm = stream_map;
 

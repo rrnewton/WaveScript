@@ -7,7 +7,7 @@ fun smap_(f,s) {
 
 
 flag = GETENV("WSARCH") == "ENSBox";
-chans = (dataFile("foo", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
+chans = (dataFile("/archive/4/marmots/brief.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
 ch1 = if flag then audio(0,4096,0,44000) else window(smap_(fun((a,_,_,_)) intToFloat(a), chans), 4096);
 ch2 = if flag then audio(1,4096,0,44000) else window(smap_(fun((_,b,_,_)) intToFloat(b), chans), 4096);
 ch3 = if flag then audio(2,4096,0,44000) else window(smap_(fun((_,_,c,_)) intToFloat(c), chans), 4096);

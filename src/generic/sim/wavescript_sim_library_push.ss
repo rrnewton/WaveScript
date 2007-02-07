@@ -394,10 +394,10 @@
 	 (set! our-sinks (cons sink our-sinks))))
     
     ;; Read a binary stream with a particular tuple format.
-    (define (binstream)
+    (define (binsource)
       (iterate 
        ;; Strip that sigseg:
-       (lambda (x vq) (seg-get (emit vq x) 0))
+       (lambda (x vq) (emit vq (seg-get x 0)) vq)
        (read-binary-file-stream file 
 				(types->width types) ;; Read just 2 bytes at a time.
 				(types->reader types)
@@ -405,6 +405,7 @@
     (define thestream
       (cond 
        [(equal? mode "text") (textsource)]
+       [(equal? mode "binary") (binsource)]
        [else (error 'dataFile "this mode is not supported yet: ~s" mode)]))
     ;; This records the stream the first time through then keeps repeating it.
     (define (repeat-stream repeats)
@@ -473,6 +474,10 @@
     (define winsize (* wordsize len))
     (define remainder #f) ;; The unprocessed left-over from a batch.
 
+    (define counter 0)
+    (define total 0)
+    (define print-every 500000)
+
        ;; This version is simpler than my previous attempt and just
        ;; reads at the granularity of the window-size.  However it has
        ;; a CORRECTNESS problem.  It depends on block-read getting all
@@ -514,7 +519,7 @@
 	 ;; This returns the stream representing the audio channel (read in from disk):
 	 ;; TODO: HANDLE OVERLAP:
 	 (unless (zero? overlap)
-	   (error 'read-file-stream "currently does not support overlaps, use rewindow")))
+	   (error 'read-binary-file-stream "currently does not support overlaps, use rewindow")))
 
        (define our-sinks '())  
        (define timestep (rate->timestep rate))
@@ -530,12 +535,22 @@
 	      (if win
 		  (let* ([newpos (+ len pos -1)]
 			 [result (make-sigseg pos newpos win nulltimebase)])
+		    
+		    (unless (regiment-quiet)
+		      (set! counter (fx+ counter len))
+		      (when (fx>= counter print-every)
+			(set! counter (fx- counter print-every))
+			(set! total (+ total print-every))
+			(printf "Read ~a tuples from file ~a.\n"
+				(+ total counter)
+				file)))
+
 		    (set! pos (+ 1 newpos))
                     (fire! result our-sinks)
 		    )
 		  (begin 		    
 #;
-		    (error 'read-file-stream
+		    (error 'read-binary-file-stream
 			   "don't know how to handle eof right now.")
 		    (set! t #f))))
 	    ]))
@@ -629,6 +644,11 @@
   ;; We just call the continuation, the fluid-let worries about popping the stack.
   (define (break) ((car (for-loop-stack)) (void)))
 
+
+
+  ;; ================================================================================
+  ;; Reading binary data:
+
   ;; Read two bytes from a string and build a uint16.
   (define (to-uint16 str ind)  ;; Internal helper function.
     (fx+ (fx* (char->integer (string-ref str (fx+ 1 ind))) 256)
@@ -644,7 +664,6 @@
 					;(inspect unsigned)
 	    (fx- unsigned 65536)))))
 
-
   (define (type->width t)
     (match t
       [Int 16] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
@@ -652,9 +671,9 @@
       ;;[Complex ]    
       [,other (error 'type->width "can't support binary reading of ~s yet." other)]
       ))
-  (define (types->width types)
-    (apply + (map (type->width types))))
-  (define (types->reader types)
+  (trace-define (types->width types)
+    (apply + (map type->width  types)))
+  (trace-define (types->reader types)
      (define (type->reader t)
        (match t
 	 [Int to-uint16]
@@ -663,12 +682,12 @@
 	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))
      (define readers (list->vector (map type->reader types)))
      (define widths (list->vector (map type->width types)))
-     (define len (length types))
-     (trace-lambda READ (str ind)
+     (define len (s:length types))
+     (lambda (str ind)
        (let ([vec (make-vector len)])
 	 (do ([i 0 (fx+ 1 i)])
 	     ((= i len) vec)
-	   (vector-set! vec i ((vector-ref readers i) str ind))a
+	   (vector-set! vec i ((vector-ref readers i) str ind))
 	   (set! ind (fx+ ind (vector-ref widths i)))
 	   ))))
 
@@ -681,6 +700,9 @@
       (list->string (list (integer->char highbyte)
 			  (integer->char lowbyte)))))
 
+
+
+  ;; ================================================================================
 
 ;      (define nullseg (gensym "nullseg"))
 ;      (define nullarr (gensym "nullarr"))
@@ -957,7 +979,7 @@
 
      ;; [2007.01.26] Changing this back to be zero-based.
      (define (seg-get w ind) 
-       (DEBUGASSERT (valid-sigseg? w))
+       (DEBUGASSERT valid-sigseg? w)
        (if (eq? w nullseg) (error 'seg-get "cannot get element from nullseg!"))
        (DEBUGMODE (if (or (< ind 0) (>= ind (width w)))
 		      (error 'seg-get "index ~a is out of bounds for sigseg:\n~s" ind w)))
