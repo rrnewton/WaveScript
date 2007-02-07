@@ -136,6 +136,8 @@
 
   ;; ================================================================================    
 
+  (define end-token (gensym "wavescript_stream_END"))
+
   ;; Global queue of input events in virtual time.
   ;; Currently pairs of (time . source)
   (define event-queue)    
@@ -167,7 +169,7 @@
 	     (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
 	     
 	     (let global-loop ()	       
-	       ;(printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
+	       (printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
 	       (if (null? event-queue)
 		   (engine-return '())
 
@@ -204,6 +206,7 @@
     (global-eng 100 
 	 (lambda (val ticks) #f)
 	 (lambda (neweng) 
+	   (printf "\n¢Queued ~s outputs\n" (s:length output-queue))
 	   (set! global-eng neweng)
 	   )))
 
@@ -329,13 +332,13 @@
   (define DATAFILE_BATCH_SIZE 500)
 
   ;; Should have batched data file...
-  (define (__dataFile file mode repeat rate types)
+  (define (__dataFile file mode repeat types)
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
     ;; Interestingly, it's currently [2006.12.03] running better in opt-level 2 than 3!
     ;; This is one playback of the file:
-    (define (textstream)
+    (define (textsource)
       ;; TODO: In debug mode this should check the types of what it gets.       
       (define len (listLength types))
       (define inp (open-input-file file))
@@ -358,24 +361,41 @@
 	  (if (or (not x) (fxzero? batch))
 	      (reverse! acc)
 	      (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
-      (let ([buf '()])
-	(lambda ()
-	  (let loop ()
-	    (if (null? buf)
-		(begin (set! buf (get-batch)) 
-		       (loop))
-		(let ([x (car buf)])
-		  (set! buf (cdr buf))
-		  x))))))
+
+       (define our-sinks '())  
+       (define timestep 500000)
+       (define t 0)
+       (define pos 0)
+       (define (src msg)
+	 (case msg
+	   [(peek) t]
+	   [(pop) 
+	    (set! t (s:+ t timestep))
+	    (let ([batch (get-batch)])
+	      (if (null? batch)
+		  ;(engine-return end-token)		  
+		  (set! t #f)
+		  (for-each (lambda (elem) 					
+				(for-each (lambda (f) (f elem)) 
+				  our-sinks))
+		      batch)))
+	    ]))
+
+       ;; Register data source globally:
+       (set! data-sources (cons src data-sources))
+       (lambda (sink)
+	 ;; Register the sink to receive this output:
+	 (set! our-sinks (cons sink our-sinks))))
 
     ;; Read a binary stream with a particular tuple format.
     (define (binstream)
+      ; read-file-stream
       '?????????
       )
     
     (define thestream
       (cond 
-       [(equal? mode "text") (textstream)]
+       [(equal? mode "text") (textsource)]
        [else (error 'dataFile "this mode is not supported yet: ~s" mode)]))
 
     ;; This records the stream the first time through then keeps repeating it.
@@ -405,6 +425,8 @@
 	      (set! buf (cdr buf))
 	      x)]))
 	loop))
+
+
     
     ;; __dataFile body:
     (case repeat
@@ -412,7 +434,8 @@
       [(-1) (repeat-stream -1)]                                  
       [else (ASSERT (> repeat 0))
 	    (repeat-stream repeat)])
-    )
+
+    ) ; End __dataFile
 
 
      ;; This is a hack to load specific audio files:

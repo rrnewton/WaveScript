@@ -13,6 +13,7 @@ exec regiment i --script "$0" ${1+"$@"};
 (print-graph #t)
 
 (define (go i x)
+  (import streams)
   (match x 
     [(,fn ,oracle)
      (printf "\n\nDemo: ~a \n"  fn)
@@ -29,14 +30,14 @@ exec regiment i --script "$0" ${1+"$@"};
 
 (for-eachi go 
   `(["demo0_audio.ws"             ,(lambda (a b) 
-				     (import wavescript_sim_library_NEW)
+				     (import wavescript_sim_library_push)
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 4095 (end   a)))
 				     (ASSERT (= 4096 (start b)))
 				     (ASSERT (= 8191 (end   b)))
 				     )]
     ["demo1_audiofile.ws"         ,(lambda (a b) 
-				     (import wavescript_sim_library_NEW)
+				     (import wavescript_sim_library_push)
 				     (ASSERT (= 0  (start a)))
 				     (ASSERT (= 9  (end   a)))
 				     (ASSERT (= 10 (start b)))
@@ -55,7 +56,7 @@ exec regiment i --script "$0" ${1+"$@"};
 
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
-				     (import wavescript_sim_library_NEW)
+				     (import wavescript_sim_library_push)
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 39   (end   a)))
 				     (ASSERT (= 40   (start b)))
