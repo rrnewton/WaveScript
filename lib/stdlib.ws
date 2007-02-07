@@ -28,9 +28,10 @@ fun println(s) {
 
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
-syncN = if IS_SIM then __syncN else
+syncN = 
+ //if IS_SIM then __syncN else
  fun (ctrl, strms) {
-   DEBUGSYNC = true; // Activate to debug the below code:
+   DEBUGSYNC = false; // Activate to debug the below code:
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
@@ -285,6 +286,13 @@ f2c = floatToComplex;
 c2i = complexToInt;
 c2f = complexToFloat;
 
+// These are the "advanced" versions.  They're curried.
+//smap = fun(f) fun(x) stream_map(f,x);
+//sfilter = 
+//amap = 
+
+
+//======================================================================
 /* Some additional math functions */
 
 fun sqr(x) { x*x }

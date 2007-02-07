@@ -510,7 +510,7 @@
     (swhen-any        (('a -> Bool) (Stream 'a))     (Event #()))
     (when-percentage  (Float ('a -> Bool) (Area 'a)) (Event #()))
 
-    ,@(IFWAVESCOPE wavescript-primitives ()) 
+    ,@(IFWAVESCOPE wavescript-primitives ())
 
 ;     neighbors 
 ;    time-of

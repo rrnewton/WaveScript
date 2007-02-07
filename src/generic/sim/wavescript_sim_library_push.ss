@@ -1,6 +1,5 @@
-;; [2007.02.03] Updating this version to use a new representation of
-;; streams.  Streams are just thunks, called repeatedly.  Less risk of
-;; memory leak.
+
+;;;; TODO: Replace output-queue with real queue!! 
 
 (module wavescript_sim_library_push mzscheme
   (require 
@@ -69,7 +68,7 @@
 		 ;smap sfilter
 		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
-		 ;unionN unionList 
+		 unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
 		 fft 
@@ -140,10 +139,11 @@
 
   ;; Global queue of input events in virtual time.
   ;; Currently pairs of (time . source)
-  (define event-queue)    
-  (define current-vtime)
-  (define data-sources)   ;; A list of all data sources in the query graph
-  (define output-queue)   ;; Outputs from the query graph
+  (define event-queue   'wslp-uninit1)    
+  (define current-vtime 'wslp-uninit2)
+  (define data-sources  'wslp-uninit3)   ;; A list of all data sources in the query graph
+  (define output-queue  'wslp-uninit4)   ;; Outputs from the query graph
+  (define global-eng    'wslp-uninit5)   ;; Engine for running stream graph. 
   
   ;; Reset the global state.
   (define (reset-state!)
@@ -155,6 +155,11 @@
 
   (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
 
+  ;; Launch a stream element to all sinks.
+  (define-syntax fire!
+    (syntax-rules ()
+      ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
+  
   ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
     (prog output-sink) ;; Register data sources, connect to output sink.
@@ -169,9 +174,9 @@
 	     (set! event-queue (map (lambda (s) (cons (s 'peek) s)) data-sources))
 	     
 	     (let global-loop ()	       
-	       (printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
+	       ;(printf "ENG LOOP: time:~s out:~s  evts:~s\n" current-vtime output-queue event-queue)
 	       (if (null? event-queue)
-		   (engine-return '())
+		   '();(engine-return '())
 
 		 (let* ([next (car event-queue)]
 			[src (cdr next)])
@@ -193,22 +198,25 @@
 	;(printf "STREAM LOOP: out:~s  evts:~s\n" output-queue event-queue)
 	(if (null? output-queue)
 	    ;; Run the query some more.
-	    (if (not (turn-crank! 100))
-		'()
-		(loop))
+	    (if global-eng
+		(begin (turn-crank! 100000)
+		       (loop))
+		;; Otherwise, all done:
+		'())
 	    (let-values ([(x rest) (rac&rdc! output-queue)])
 	      (set! output-queue rest)
 	      (cons x (delay (loop)))
 	      )))))
 
   ;; Run the engine for a bit.
-  (define (turn-crank! ticks)      
-    (global-eng 100 
-	 (lambda (val ticks) #f)
+  (define (turn-crank! ticks)
+    (global-eng ticks
+	 (lambda (val ticks) (set! global-eng #f))
 	 (lambda (neweng) 
-	   (printf "\n¢Queued ~s outputs\n" (s:length output-queue))
+	   ;(printf "   Queued ~s outputs\n" (s:length output-queue))
 	   (set! global-eng neweng)
 	   )))
+
 
 
   ;; ================================================================================
@@ -226,7 +234,7 @@
 		      [(pop) 
 		       ;; Release one stream element.
 		       (set! t (s:+ t timestep))
-		       (for-each (lambda (f) (f #())) our-sinks)
+                       (fire! #() our-sinks)
 		       ]))))
     ;; Register ourselves globally as a leaf node:
     (set! data-sources (cons src data-sources))
@@ -244,8 +252,7 @@
 	(let ([outputs (reverse! (unbox (fun msg (virtqueue))))])
 	  ;(inspect outputs)
 	  (for-each (lambda (elem)
-		      (for-each (lambda (f) (f elem))
-			our-sinks))
+                      (fire! elem our-sinks))
 	    outputs))))
     ;; Register ourselves with our source:
     (src wsbox)
@@ -261,8 +268,8 @@
       (lambda (msg)
 	(let ([vec (reverse! (unbox (fun msg state)))])
 	  (set! state (vector-ref vec 1))
-	  (for-each (lambda (f) (f (vector-ref vec 0)))
-	    our-sinks))))
+          (let ([v (vector-ref vec 0)]) 
+            (fire! v our-sinks)))))
     ;; Register ourselves with our source:
     (src wsbox)
     (lambda (sink)
@@ -376,17 +383,15 @@
 		  ;(engine-return end-token)		  
 		  (set! t #f)
 		  (for-each (lambda (elem) 					
-				(for-each (lambda (f) (f elem)) 
-				  our-sinks))
+                              (fire! elem our-sinks))
 		      batch)))
 	    ]))
-
        ;; Register data source globally:
        (set! data-sources (cons src data-sources))
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
-
+    
     ;; Read a binary stream with a particular tuple format.
     (define (binstream)
       ; read-file-stream
@@ -397,7 +402,6 @@
       (cond 
        [(equal? mode "text") (textsource)]
        [else (error 'dataFile "this mode is not supported yet: ~s" mode)]))
-
     ;; This records the stream the first time through then keeps repeating it.
     (define (repeat-stream repeats)
       (let ([whole-stream #f] [buf '()] [first-run? #t])
@@ -425,23 +429,21 @@
 	      (set! buf (cdr buf))
 	      x)]))
 	loop))
-
-
-    
     ;; __dataFile body:
     (case repeat
       [(0) thestream]
-      [(-1) (repeat-stream -1)]                                  
-      [else (ASSERT (> repeat 0))
-	    (repeat-stream repeat)])
+      [else (error 'datafile "no repeats yet")]
+      ;[(-1) (repeat-stream -1)]                                  
+      ;[else (ASSERT (> repeat 0)) (repeat-stream repeat)]
+      )
 
     ) ; End __dataFile
 
 
-     ;; This is a hack to load specific audio files:
-     ;; It simulates the four channels of marmot data.
-     (define (audio chan len overlap)
-       (define (read-sample str index)
+  ;; This is a hack to load specific audio files:
+  ;; It simulates the four channels of marmot data.
+  (define (audio chan len overlap)
+    (define (read-sample str index)
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
 	   (fixnum->flonum ;; For now this returns float.
@@ -456,15 +458,15 @@
 	   ))
        (read-file-stream (default-marmotfile) 8 read-sample len overlap))
 
-     ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
-     (define (read-file-stream file wordsize sample-extractor len overlap)
-       (define chunksize 32768) ;; How much to read from file at a time.
-       (define infile (open-input-file file))
-       (define buffer1 (make-string chunksize #\_))
-       (define count1 0)
-       (define ind1 0)
-       (define winsize (* wordsize len))
-       (define remainder #f) ;; The unprocessed left-over from a batch.
+  ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
+  (define (read-file-stream file wordsize sample-extractor len overlap)
+    (define chunksize 32768) ;; How much to read from file at a time.
+    (define infile (open-input-file file))
+    (define buffer1 (make-string chunksize #\_))
+    (define count1 0)
+    (define ind1 0)
+    (define winsize (* wordsize len))
+    (define remainder #f) ;; The unprocessed left-over from a batch.
 
        ;; This version is simpler than my previous attempt and just
        ;; reads at the granularity of the window-size.  However it has
@@ -524,13 +526,13 @@
 		  (let* ([newpos (+ len pos -1)]
 			 [result (make-sigseg pos newpos win nulltimebase)])
 		    (set! pos (+ 1 newpos))
-		    (for-each (lambda (f) (f result)) our-sinks)
+                    (fire! result our-sinks)
 		    )
-
-		  (error 'read-file-stream
-			 "don't know how to handle eof right now.")
-		  #;
-		  (set! t #f)))
+		  (begin 		    
+#;
+		    (error 'read-file-stream
+			   "don't know how to handle eof right now.")
+		    (set! t #f))))
 	    ]))
 
        ;; Register data source globally:
@@ -540,22 +542,16 @@
 	 (set! our-sinks (cons sink our-sinks))))
      
 
-#;
      ;; This is just for testing.  IT LEAKS.
      (define (unionList ls)
-       ;; TEMP: this strategy just assumes they're all the same rate and round-robins them:
-         (let loop ([streams (mapi vector ls)])
-           (lambda ()
-             (if (null? streams) 
-                 stream-empty-token
-                 (trace-let BAT ([batch (map (lambda (v) (vector (vector-ref v 0) ((vector-ref v 1))))
-                                   streams)])
-                   (stream-append-list 
-                    (filter (lambda (x) (not (eq? x stream-empty-token))) batch)                    
-                    (loop (map cdr 
-                               (filter (lambda (pr) (not (eq? stream-empty-token (car pr))))
-                                       (map cons batch streams))))
-                  ))))))
+       (define our-sinks '())
+       ;; Register a receiver for each source:       
+       (for-eachi (lambda (i src)
+                      (src (lambda (x)
+                             (fire! (vector i x) our-sinks))))
+                  ls)
+       (lambda (sink)
+         (set! our-sinks (cons sink our-sinks))))
 
      (define (unionN . args)  (unionList args))
 

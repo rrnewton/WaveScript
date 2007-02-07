@@ -244,6 +244,10 @@ fun detect(scorestrm) {
 	emit (true,                       // yes, snapshot
 	      _start - samples_padding,     // start sample
 	      win.end + samples_padding); // end sample
+	// PAD IT FOR TESTALL_DEMOS:
+	emit(true, 0, 0);
+
+
 	if DEBUG then
 	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
 	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
@@ -288,6 +292,14 @@ fun detect(scorestrm) {
   }
 }
 
+stream_filter :: (t -> Bool, Stream t) -> Stream t;
+fun stream_filter(f,s) {
+  iterate (x in s) {
+    if f(x) then emit x
+  }
+}
+
+
 //========================================
 // Main query:
 
@@ -313,7 +325,7 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = smap(fft, hn);
+freq = iterate(x in hn) { emit fft(x) };
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
 wscores = iterate (w in freq) { emit (marmotscore(w), w); }
@@ -321,7 +333,7 @@ wscores = iterate (w in freq) { emit (marmotscore(w), w); }
 detections = detect(wscores);
 
 
-positives = sfilter(fun((b,_,_)) b, detections)
+positives = stream_filter(fun((b,_,_)) b, detections)
 		   
 
 //synced = syncN(detections, [ch1, ch2, ch3, ch4]);

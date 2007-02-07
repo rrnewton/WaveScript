@@ -28,7 +28,7 @@ rw1 = iterate (w in ch1) {
 //hn = hanning(rw1);
 hn = rw1;
 
-freq = smap(fft, hn);
+freq = iterate(x in hn) { emit fft(x) };
 
 //fun marmotscore(w) { 3.8 }
 
@@ -40,6 +40,9 @@ wscores = iterate (w in freq) {
 detections = 
   iterate (pr in wscores) {
     let (sc,w) = pr;
+
+    // PAD IT FOR TESTALL_DEMOS:
+    emit(false, 0.0);
     emit(true, sc);
   };
 
