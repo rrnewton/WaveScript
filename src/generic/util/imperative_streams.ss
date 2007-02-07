@@ -266,19 +266,19 @@
 
 (define these-tests
   `(
-    [(stream-take! 5 (iota-stream))
+    [(,stream-take! 5 (,iota-stream))
      (0 1 2 3 4)]
-    [(stream-take! 10 (stream-filter even? (iota-stream)))
+    [(,stream-take! 10 (,stream-filter even? (,iota-stream)))
      (0 2 4 6 8 10 12 14 16 18)]
 
     ["stream-map"
-     (stream-take! 3 (stream-map add1 (list->stream '(1 2 3))))
+     (,stream-take! 3 (,stream-map add1 (,list->stream '(1 2 3))))
      (2 3 4)]
 
     ["stream-filter" 
-     (stream-take-all!
-      (stream-filter odd?
-		     (list->stream '(1 2 3))))
+     (,stream-take-all!
+      (,stream-filter odd?
+	(,list->stream '(1 2 3))))
      (1 3)]
 
     ))

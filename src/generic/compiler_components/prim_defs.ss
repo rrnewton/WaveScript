@@ -300,18 +300,18 @@
     (__dataFile (String String Int (List Symbol)) (Stream 'a))
 
     ;; This internal version works only in the emulator.
-    (__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))
+    ;(__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))
 
     ;; Fabricates stock ticks and splits.  For benchmark.
     ;; Tuple is of one of two forms:
     ;;   Tick:  #(sym,t,vol,price)
     ;;   Split: #(sym,t,-1,factor)
-    (stockStream      ()  (Stream #(String Float Int Float)))
+    ;(stockStream      ()  (Stream #(String Float Int Float)))
 
     ;; This version is to read a file containing doubles.
     ;; HACK: Currently it expects a text file rather than a binary file for the 
     ;; interpreted version of the system.
-    (doubleFile        (String Int Int)  (Stream (Sigseg Float)))
+    ;(doubleFile        (String Int Int)  (Stream (Sigseg Float)))
 
 
     ;; We need to expose more variants of FFT than this:
@@ -328,7 +328,7 @@
     (unionList        ((List (Stream 'a))) (Stream #(Int 'a)))
 
     ;; This synchronously joins two signals.
-    (zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))
+    ;(zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))
 
     ;; Signals an error, has any return type:
     (wserror         (String) 'a)
@@ -404,7 +404,7 @@
     (timebase     ((Sigseg 'a)) Timebase)
 
     ;; This is for testing only... it's a multithreaded version:
-    (parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
+    ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
 
 )))
 
