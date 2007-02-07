@@ -24,7 +24,6 @@
 
 		 ;dump-binfile 
 		 audio audioFile timer 
-		 read-file-stream
 		 show
 		 window
 
@@ -159,6 +158,10 @@
   (define-syntax fire!
     (syntax-rules ()
       ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
+
+  (define (rate->timestep freq)
+    (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
+    (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
   
   ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
@@ -224,7 +227,7 @@
 
   (define (timer freq) 
     ;; milliseconds:
-    (define timestep (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))
+    (define timestep (rate->timestep freq))
     (define our-sinks '())
     (define src (let ([t 0])
 		  (lambda (msg)
@@ -281,29 +284,27 @@
      ;;(emission (cons v (emission))))
      (define (virtqueue) (box '()))
 
-     (define (window sig winsize)
-       (let (
-	     [start 0]
+     (define (window src winsize)
+       (let ([start 0]
 	     [samp  0]
 	     [i     0]
-	     [vec (make-vector winsize)])
-	 (lambda ()
-	   (let window-loop ([x (sig)])
-	     (cond 
-	      [(eq? x stream-empty-token) stream-empty-token]
-	      [(= i winsize)
+	     [vec (make-vector winsize)]
+	     [our-sinks '()])
+	 (define wsbox
+	   (lambda (tup)
+	     (vector-set! vec i tup)
+	     (set! samp (add1 samp))
+	     (set! i (fx+ 1 i))	     	     
+	     (when (= i winsize)
 	       (let ([result (make-sigseg start (sub1 samp) vec nulltimebase)])
 		 (set! start samp)
-		 (set! samp samp)
 		 (set! i 0)
 		 (set! vec (make-vector winsize))
-		 result)]
-	      [else 
-	       (vector-set! vec i x)
-	       (set! samp (add1 samp))
-	       (set! i (fx+ 1 i))
-	       (window-loop (sig))]
-	      )))))
+		 (fire! result our-sinks)))))
+	 ;; Register ourselves with our source:
+	 (src wsbox)
+	 (lambda (sink)
+	   (set! our-sinks (cons sink our-sinks)))))
 
      ;; This current version will run the function multiple times for overlapping areas.
 #;
@@ -328,18 +329,18 @@
 
   
   ;; Read a stream of Uint16's.
-  (define (audioFile file len overlap)
-    (read-file-stream file 
+  (define (audioFile file len overlap rate)
+    (read-binary-file-stream file 
 		      2 ;; Read just 2 bytes at a time.
 		      to-uint16
-		      len overlap))
+		      len overlap rate))
 
   ;; We read in "blocks" to reduce the overhead of all those thunks!
   ;; (Actually, this didn't speed things up much, just a little.)
   (define DATAFILE_BATCH_SIZE 500)
 
   ;; Should have batched data file...
-  (define (__dataFile file mode repeat types)
+  (define (__dataFile file mode rate repeat types)
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -370,7 +371,7 @@
 	      (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
 
        (define our-sinks '())  
-       (define timestep 500000)
+       (define timestep (rate->timestep rate))
        (define t 0)
        (define pos 0)
        (define (src msg)
@@ -442,24 +443,25 @@
 
   ;; This is a hack to load specific audio files:
   ;; It simulates the four channels of marmot data.
-  (define (audio chan len overlap)
+  (define (audio chan len overlap rate)
     (define (read-sample str index)
 	 (let ([s str] [ind index])
 	   ;; Just the requested channel:
+
 	   (fixnum->flonum ;; For now this returns float.
 	    (to-int16 s (fx+ ind (fx* chan 2))))
 	   ;; All 4 channels:
 	   ;; NIXING: This allocation of little vectors is really painful performance wise.
-	   #;
-	   (vector (to-int16 s ind)
+
+#;	   (vector (to-int16 s ind)
 		   (to-int16 s (fx+ 2 ind))
 		   (to-int16 s (fx+ 4 ind))
 		   (to-int16 s (fx+ 6 ind)))
 	   ))
-       (read-file-stream (default-marmotfile) 8 read-sample len overlap))
+       (read-binary-file-stream (default-marmotfile) 8 read-sample len overlap rate))
 
   ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
-  (define (read-file-stream file wordsize sample-extractor len overlap)
+  (define (read-binary-file-stream file wordsize sample-extractor len overlap rate)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
     (define buffer1 (make-string chunksize #\_))
@@ -512,7 +514,7 @@
 	   (error 'read-file-stream "currently does not support overlaps, use rewindow")))
 
        (define our-sinks '())  
-       (define timestep 500000)
+       (define timestep (rate->timestep rate))
        (define t 0)
        (define pos 0)
        (define (src msg)

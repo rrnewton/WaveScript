@@ -1,7 +1,7 @@
 // This version shows how to use an array to manually keep the state
 // of the moving average.
 
-data = (dataFile("data.txt", "text", 0) :: Stream (Int * Float));
+data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Int * Float));
 
 avgs = iterate ((n,f) in data) {
   state {

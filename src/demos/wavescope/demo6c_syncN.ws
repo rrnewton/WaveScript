@@ -75,8 +75,8 @@ fun syncN (strms, ctrl) {
 //// "requests" are currently fixed to come at the same rate as the
 //// new data.
 
-ch1 = audio(0,128,0);
-ch2 = audio(1,128,0);
+ch1 = audio(0,128,0, 44000);
+ch2 = audio(1,128,0, 44000);
 outwidth = 100;
 
 ctrl = iterate(w in ch1) {

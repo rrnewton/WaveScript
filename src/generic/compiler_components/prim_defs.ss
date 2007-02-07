@@ -278,26 +278,28 @@
 
     (window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
-    ;; Takes channel, window size, overlap:
+    ;; Takes channel, window size, overlap, sampling rate:
+    ;;
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.
-    (audio            (Int Int Int) (Stream (Sigseg Float)))
+    (audio            (Int Int Int Int) (Stream (Sigseg Float)))
 
-    ;; Takes a file to read from, window size, overlap:
+    ;; Takes a file to read from, window size, overlap, sampling rate:
     ;; Reads a stream of Uint16's from the file.
-    (audioFile        (String Int Int)  (Stream (Sigseg Int)))
+    (audioFile        (String Int Int Int)  (Stream (Sigseg Int)))
 
     ;; Generic data-file reader.
-    ;; Usage: datafile(fileName, mode, repeats)
+    ;; Usage: datafile(fileName, mode, rate, repeats)
     ;;  Where mode is "text" "text-comma" or "binary".
-    ;;  "text" has whitespace-separated values.
+    ;;    "text" has whitespace-separated values.
     ;;  Repeats is an integer representing the number of times to
-    ;;  repeat the files data.  -1 encodes "indefinitely"
+    ;;    repeat the files data.  -1 encodes "indefinitely"
+    ;;  Rate is simulated samples/second to read the file's tuples.
     ;; 
     ;; dataFile must occur directly within a ( :: T) construct.
-    (dataFile (String String Int) (Stream 'a))
+    (dataFile (String String Int Int) (Stream 'a))
     ;; Internal compiler construct:
-    (__dataFile (String String Int (List Symbol)) (Stream 'a))
+    (__dataFile (String String Int Int (List Symbol)) (Stream 'a))
 
     ;; This internal version works only in the emulator.
     ;(__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))

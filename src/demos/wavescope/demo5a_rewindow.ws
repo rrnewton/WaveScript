@@ -2,7 +2,7 @@
 // This does a rewindow manually.  That is, without defining a
 // separate function and using the inliner.
 
-s1 = audioFile("./countup.raw", 4096, 0);
+s1 = audioFile("./countup.raw", 4096, 0, 44000);
 
 newwidth = 1024;
 step = 512;

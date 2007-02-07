@@ -195,7 +195,9 @@
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Stream (Struct ,structname))
 		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
-				  ,[myExpr -> repeats] ;,[myExpr -> types]
+				  ,[myExpr -> rate]
+				  ,[myExpr -> repeats] 
+				  ;,[myExpr -> types]
 				  ,_ignored
 				  ))
 	 (let* ([classname (symbol->string (unique-name 'WSDataFileSource))]

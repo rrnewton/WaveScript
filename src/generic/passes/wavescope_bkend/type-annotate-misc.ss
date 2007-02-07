@@ -48,10 +48,10 @@
 	  )]
 
 	;; This needs an explicit annotation to run with wsint.
-	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[r]))
+	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rep] ,[rate]))
 	 (match t
-	   [#(,t* ...)  `(assert-type (Stream ,t) (__dataFile ,f ,m ,r ',t*))]
-	   [,t   	`(assert-type (Stream ,t) (__dataFile ,f ,m ,r ',(list t)))])]
+	   [#(,t* ...)  `(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',t*))]
+	   [,t   	`(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',(list t)))])]
 
 	;; Anything already in assert form is covered.
 	;; [2007.01.24] Commenting:

@@ -2,7 +2,7 @@
 // This file is meant to demonstrate how the compiler can merge iterates.
 // Run the compiler/emulator with -verbose watch the intermediate code.
 
-s1 = audioFile("./countup.raw", 10, 0);
+s1 = audioFile("./countup.raw", 10, 0, 44000);
 
 s2 = iterate (sigseg in s1) { emit sigseg[[0]]; }
 

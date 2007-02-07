@@ -5,7 +5,7 @@
 // Was that with a quadruple FFT?
 
 s1 :: Stream (Sigseg Float);
-s1 = audio(0, 1024, 0);
+s1 = audio(0, 1024, 0, 44000);
 
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {

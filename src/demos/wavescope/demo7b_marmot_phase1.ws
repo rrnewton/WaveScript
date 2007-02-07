@@ -303,10 +303,10 @@ fun stream_filter(f,s) {
 //========================================
 // Main query:
 
-ch1 = audio(0, 4096, 0);
-ch2 = audio(1, 4096, 0);
-ch3 = audio(2, 4096, 0);
-ch4 = audio(3, 4096, 0);
+ch1 = audio(0, 4096, 0, 44000);
+ch2 = audio(1, 4096, 0, 44000);
+ch3 = audio(2, 4096, 0, 44000);
+ch4 = audio(3, 4096, 0, 44000);
 
 outwidth=100;
 dummydetections = iterate(w in ch1) {

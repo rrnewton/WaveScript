@@ -2,10 +2,10 @@
 
 // This does a simple marmot detection with no inlining.
 
-ch1 = audio(0, 4096, 0);
-ch2 = audio(1, 4096, 0);
-ch3 = audio(2, 4096, 0);
-ch4 = audio(3, 4096, 0);
+ch1 = audio(0, 4096, 0, 44000);
+ch2 = audio(1, 4096, 0, 44000);
+ch3 = audio(2, 4096, 0, 44000);
+ch4 = audio(3, 4096, 0, 44000);
 
 /* ch1 = audioFile("./countup.raw", 4096, 0); */
 /* ch2 = ch1; */
