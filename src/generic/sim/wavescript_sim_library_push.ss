@@ -113,16 +113,28 @@
      (begin (define orig-length length)
 	    (require (prefix s: mzscheme))))
 
-  
+
+  ;; ================================================================================
+  ;; TYPES USED 
+
+  ;; Sources :: 'peek -> time | 'pop -> Elem
+  ;; Sink    ::  Elem -> ()
+  ;; Stream  ::  Sink -> ()
+
+  ;; Streams take sinks and register them.
+  ;; Sources allow either "peeking" the time of their next element, or
+  ;; popping off thatelement.
+
   ;; Contains a start and end SEQUENCE NUMBER as well as a vector.
   (reg:define-struct (sigseg start end vec timebase))
-  (reg:define-struct (wsbox outports))
 
+  ;(reg:define-struct (wsbox outports))
   ;(reg:define-struct (wsevent time source))
-
   ;; This structure represents a simulation.
   ;(reg:define-struct (wssim current-vtime data-sources))
-    
+
+
+  ;; ================================================================================    
 
   ;; Global queue of input events in virtual time.
   ;; Currently pairs of (time . source)
@@ -141,6 +153,7 @@
 
   (define output-sink (lambda (x) (set! output-queue (cons x output-queue))))
 
+  ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
     (prog output-sink) ;; Register data sources, connect to output sink.
     
@@ -236,16 +249,21 @@
     (lambda (sink)
       (set! our-sinks (cons sink our-sinks))))
 
-     ;; This is the functional version of iterate.
-     (define (integrate f zero s)
-       (stream-map (let ([state zero])
-		     (lambda (x)
-		       (let ([vec (f x state)])
-			 ;; Mutate state:
-			 (set! state (vector-ref vec 1))
-			 ;; Return value.
-			 (vector-ref vec 0))))
-		   s))
+  ;; This is the functional version of iterate.
+  ;; Untested
+  (define (integrate fun zero src)
+    (define our-sinks '())
+    (define state zero)
+    (define wsbox
+      (lambda (msg)
+	(let ([vec (reverse! (unbox (fun msg state)))])
+	  (set! state (vector-ref vec 1))
+	  (for-each (lambda (f) (f (vector-ref vec 0)))
+	    our-sinks))))
+    ;; Register ourselves with our source:
+    (src wsbox)
+    (lambda (sink)
+      (set! our-sinks (cons sink our-sinks))))
 
      ;; Very simple queue:
      ;; TODO: Could copy sigsegs on output here and see what the impact is.
@@ -415,7 +433,7 @@
 	   ))
        (read-file-stream (default-marmotfile) 8 read-sample len overlap))
 
-     ;; Internal helper.
+     ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
      (define (read-file-stream file wordsize sample-extractor len overlap)
        (define chunksize 32768) ;; How much to read from file at a time.
        (define infile (open-input-file file))
@@ -449,7 +467,8 @@
 	     (warning 'read-window 
 		      "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
 		      count1 winsize)
-	     ;(warning 'read-window "this version depends on block-read always getting all the chars, got ~a, wanted ~a"	count1 winsize)
+	     ;(warning 'read-window "this version depends on block-read always 
+	     ; getting all the chars, got ~a, wanted ~a"	count1 winsize)
 	     ;(printf "Better get eof next... THE PROBLEM OF LEFTOVERS!\n")
 	     (ASSERT (eof-object? (block-read infile buffer1 winsize)))
 	     #f]
@@ -461,22 +480,42 @@
 		  )
 	     win)]))
 
-       ;; This returns the stream representing the audio channel (read in from disk):
-       ;; TODO: HANDLE OVERLAP:
-       (unless (zero? overlap)
-	 (error 'read-file-stream "currently does not support overlaps, use rewindow"))
+       (define _ 
+	 ;; This returns the stream representing the audio channel (read in from disk):
+	 ;; TODO: HANDLE OVERLAP:
+	 (unless (zero? overlap)
+	   (error 'read-file-stream "currently does not support overlaps, use rewindow")))
 
-       (printf "FORMING STREAM\n")
-       (let ([pos 0])
-	 (lambda ()
-	   (let ([win (read-window)])
-	     (if win
-		 (let* ([newpos (+ len pos -1)]
-			[result (make-sigseg pos newpos win nulltimebase)])
-		   (set! pos (+ 1 newpos))
-		   result)
-		 stream-empty-token)))))
+       (define our-sinks '())  
+       (define timestep 500000)
+       (define t 0)
+       (define pos 0)
+       (define (src msg)
+	 (case msg
+	   [(peek) t]
+	   [(pop) 
+	    (set! t (s:+ t timestep))
+	    
+	    (let ([win (read-window)])
+	      (if win
+		  (let* ([newpos (+ len pos -1)]
+			 [result (make-sigseg pos newpos win nulltimebase)])
+		    (set! pos (+ 1 newpos))
+		    (for-each (lambda (f) (f result)) our-sinks)
+		    )
 
+		  (error 'read-file-stream
+			 "don't know how to handle eof right now.")
+		  #;
+		  (set! t #f)))
+	    ]))
+
+       ;; Register data source globally:
+       (set! data-sources (cons src data-sources))
+       (lambda (sink)
+	 ;; Register the sink to receive this output:
+	 (set! our-sinks (cons sink our-sinks))))
+     
 
 #;
      ;; This is just for testing.  IT LEAKS.
