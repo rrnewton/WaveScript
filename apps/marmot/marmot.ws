@@ -417,10 +417,10 @@ emit(nffts);
 //========================================
 // Main query:
 
-ch1 = audio(0, 4096, 0);
-ch2 = audio(1, 4096, 0);
-ch3 = audio(2, 4096, 0);
-ch4 = audio(3, 4096, 0);
+ch1 = audio(0, 4096, 0, 44000);
+ch2 = audio(1, 4096, 0, 44000);
+ch3 = audio(2, 4096, 0, 44000);
+ch4 = audio(3, 4096, 0, 44000);
 
 // 96 samples are ignored between each 32 used:
 rw1 = rewindow(ch1, 32, 96); 
