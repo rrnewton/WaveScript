@@ -13,7 +13,10 @@ iterate (x in S) {
 
 */
 
-
+sync2 :: ((Stream (Bool * Int * Int)), 
+          (Stream (Sigseg Float)), 
+          (Stream (Sigseg Float)))
+     ->   (Stream (Sigseg Float * Sigseg Float));
 fun sync2 (ctrl, s1, s2) {
   // A lame sort of manual union type.  Pad all streams out with all fields:
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
@@ -30,36 +33,43 @@ fun sync2 (ctrl, s1, s2) {
     }
     let (flag, strt, en, seg) = tup;
 
-    // Process the new data:
-    if ind == 0 // It's the ctrl signal.
-    then requests := append(requests, [(flag,strt,en)])
-    else if ind == 1
-    then acc1 := joinsegs(acc1, seg)
-    else acc2 := joinsegs(acc2, seg);
-    
-    if (acc1 != nullseg) then  print("  Acc1: " ++ show(acc1.start) ++ ":" ++ show(acc1.end) ++ "\n");
-    if (acc2 != nullseg) then  print("  Acc2: " ++ show(acc2.start) ++ ":" ++ show(acc2.end) ++ "\n");
-    
-    // Now we see if we can process the next request.     
-    if requests == []
-    then {}
-    else {
-      let (fl, st, en) = requests.head;
-      if (acc1 != nullseg &&  	  acc2 != nullseg &&
-	  acc1.start <= st && 	  acc2.start <= st && 
-	  acc1.end >= en &&	  acc2.end >= en)
-	then {
-	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-	size = en - st + 1; // Start/end is inclusive.
-	emit (subseg(acc1, st, size),
-	      subseg(acc2, st, size));
-	acc1 := subseg(acc1, st + size, acc1.width - size);
-	acc2 := subseg(acc2, st + size, acc2.width - size);
+    requests := [(true,0,1)];
 
-	// The request is serviced.
-	requests := requests.tail;
-      }
-    }
+/*     // Process the new data: */
+/*     if ind == 0 // It's the ctrl signal. */
+/*     then requests := append(requests, [(flag,strt,en)]) */
+/*     else if ind == 1 */
+/*     then acc1 := joinsegs(acc1, seg) */
+/*     else acc2 := joinsegs(acc2, seg); */
+    
+/*     if (acc1 != nullseg) then  print("  Acc1: " ++ show(acc1.start) ++ ":" ++ show(acc1.end) ++ "\n"); */
+/*     if (acc2 != nullseg) then  print("  Acc2: " ++ show(acc2.start) ++ ":" ++ show(acc2.end) ++ "\n"); */
+
+
+    emit(nullseg, nullseg);
+    
+/*     // Now we see if we can process the next request. */
+/*     if requests == [] */
+/*     then {} */
+/*     else { */
+/*       let (fl, st, en) = requests.head; */
+/*       if (acc1 != nullseg &&  	  acc2 != nullseg && */
+/* 	  acc1.start <= st && 	  acc2.start <= st && */
+/* 	  acc1.end >= en &&	  acc2.end >= en) */
+/* 	then { */
+/* 	print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n"); */
+/* 	size = en - st + 1; // Start/end is inclusive. */
+/* 	emit (subseg(acc1, st, size), */
+/* 	      subseg(acc2, st, size)); */
+/* 	acc1 := subseg(acc1, st + size, acc1.width - size); */
+/* 	acc2 := subseg(acc2, st + size, acc2.width - size); */
+
+/* 	// The request is serviced. */
+/* 	requests := requests.tail; */
+/*       } */
+/*     } */
+
+
   }
 }
 

@@ -38,6 +38,8 @@ go "demo3d_tuples_of_tuples.ws"
 
 # go "demo3e_hashtables.ws"
 
+go "demo3f_morelists.ws"
+
 go "demo4_fft.ws"
 
 go "demo5a_rewindow.ws"
