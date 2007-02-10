@@ -280,13 +280,14 @@
 	;; [2006.11.18] This is for readng pipeline data currently.
 	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
 	 ;; CODE DUPLICATION:
-	 `("WSBox* ",name";\n"
-	   "{ size = ",size";\n"
-	   "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	   "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
-	   "  ",name"->connect(tmp); }\n"
-	   )
-	 ]
+	 (values 
+	  `("WSBox* ",name";\n"
+	    "{ size = ",size";\n"
+	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
+	    "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
+	    "  ",name"->connect(tmp); }\n"
+	    )
+	  '())]
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -308,11 +309,12 @@
 				;; This produces a function declaration for iterate:				
 				iterator+vars)))]) 
 	   ;(if (symbol? sig) 
-	       (values ourstmts ourdecls)
+	   (values ourstmts ourdecls)
 	   )]
 
 	
 	;; This is purely hackish... should use the zip library function.	
+#;
 	[(zip2 ,s1 ,s2)
 	 (ASSERT symbol? s1)
 	 (ASSERT symbol? s2)
@@ -330,23 +332,37 @@
 	 ]
 
 
-	;; This WON'T be implemented.  Doesn't really make sense.
-	[(unionList ,structtype ,ls)	 
-	 (error 'emit-C "unionList not implemented yet: ~s" 
-		`(unionList ,structtype ,ls))
-	 ]
-
 	;; UNOPTIMIZED: should combine with the downstream iterate.
 	;; Wire these all to our iterate.
-	[(unionN ,inputs ...)
+	[(assert-type (Stream (Struct ,tupname)) (unionN ,inputs ...))
 	 (ASSERT (not (null? inputs)))
 	 (ASSERT (andmap symbol? inputs))
-	 (let ([ty (recover-type (car inputs) tenv)])	   
-	   `(" WSBuiltins::UnionN<",ty"> ",name" = WSBuiltins::UnionN<",ty">();"
+	 
+	 (let ([ty (Type (match (recover-type (car inputs) tenv)
+			   [(Stream ,t) t]))]
+	       [classname (format "UnionN~a" (unique-name ""))])
+	   (values 
+	    `(" WSBox* ",name" = new ",classname"();"
+	      ;; Order is critical here:
 	     ,(map (lambda (in)
-		     `(" ",name".connect(",(symbol->string in)"); "))
+		     `(" ",name"->connect(",(symbol->string in)"); "))
 		inputs)
-	     ))]	
+	     )
+	    ;; Decls:
+	    `("
+  /* This takes any number of connections, they must be connected in order. */
+  class ",classname" : public WSBox{ 
+   
+    private:
+    WS_DEFINE_OUTPUT_TYPE(",(symbol->string tupname)");
+    
+    bool iterate(uint32_t port, void *item)
+    {
+      emit(",(symbol->string tupname)"((wsint_t)port, *(",ty"*)item));      
+      return true;
+    }
+  };
+")))]
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
@@ -526,7 +542,7 @@
 	[(imagpart ,[v]) `("__imag__ " ,v)]
 
 	[(intToFloat ,[e]) `("(wsfloat_t)",e)]
-
+	[(floatToInt ,[e]) `("(wsint_t)",e)]
 
 	[(show (assert-type ,t ,e))
 	 (EmitShow ((Expr tenv) e) t)]

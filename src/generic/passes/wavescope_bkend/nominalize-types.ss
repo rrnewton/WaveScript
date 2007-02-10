@@ -204,7 +204,8 @@
 	      (let ([type (recover-type `(unionN ,e* ...) tenv)])
 		(mvlet ([(args tydefs) (collect-tupdefs-List e* tenv)])		 
 		  (make-result
-		   `(unionN ,@args)
+		   ;; Assert the type so that it gets converted.
+		   `(assert-type ,type (unionN ,@args))
 		   (append-tydefs (collect-from-type type) tydefs))))]
 
 	     ;; tuprefs are simple:
@@ -285,8 +286,7 @@
 	       (reconstr vars (map (lambda (t) (convert-type t tupdefs)) types) 
 			 (map exprfun exprs)))
 
-;	     (inspect tupdefs)
-
+	     ;; LAME:
 	     (set! bindings-fun do-bindings)
 	     
 	     (match (convert-types `(,lang '(program ,newbod ,type)))

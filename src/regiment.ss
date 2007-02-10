@@ -216,7 +216,7 @@
 
 	  ;; Compile mode:
 	  [(c compile)
-	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (if (null? filenames)
 	       (begin
 		 (printf "No input file.  Type top-level Regiment expression.~n")
@@ -418,7 +418,7 @@
 		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
 	  
 	  [(wscomp)
-	   (define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
 	   (let ()
 	     (define port (match filenames
 			  ;; If there's no file given read from stdout

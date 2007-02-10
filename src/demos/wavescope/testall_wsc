@@ -7,7 +7,7 @@ echo > $COMP
 echo > $RUN
 
 function go () {
-    if ! wsc $1 ; then exit 1; fi
+    if ! wsc $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
 #    ./run_query | head -20 >> $RUN
@@ -43,9 +43,7 @@ go "demo4_fft.ws"
 go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
 
-#go "demo6a_unionList.ws"
-
-
+go "demo6a_unionList.ws"
 
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"
