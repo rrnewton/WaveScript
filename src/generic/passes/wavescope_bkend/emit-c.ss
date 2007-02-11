@@ -625,7 +625,7 @@
 
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[a]) ,[b])
-	 (let ([simple `(,a" == ",b)])
+	 (let ([simple `("wsequal(",a", ",b")")])
 	   (match t
 	     [Int          simple]
 	     [Float        simple]
@@ -664,6 +664,7 @@
 ;; It prints something or other for any type.
 (define (Emit-Print/Show-Helper e typ printf stream)
   (match typ
+    [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
     [Int            (printf "%d" e)]
     [Float          (printf "%f" e)]
     [String         (printf "%s" `(,e".c_str()"))]

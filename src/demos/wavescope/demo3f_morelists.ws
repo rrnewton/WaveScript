@@ -10,15 +10,16 @@ s2 = iterate( w in s1 ) {
 };
 
 s3 = iterate( w in window(s2, 2)) {
-  //emit(append(w[[0]], w[[1]]));
+  emit(append(w[[0]], w[[1]]));
   //emit [10,11,12,13];
-  emit append([10,11], [12,13]);
+  //emit append([10,11], [12,13]);
  }
 
  s4 = iterate( ls in s3) {
    state { myls = [3,4,5,6] }
   myls := ls;
   
+  print("  Test "++ show(ls==ls) ++" "++ show([]==[]) ++"\n");
   print(show(myls.head) ++" "++ 
 	show(myls.tail.head) ++" "++ 
 	show(myls.tail.tail.head) ++" "++ 

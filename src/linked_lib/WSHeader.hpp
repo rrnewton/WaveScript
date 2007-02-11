@@ -127,6 +127,13 @@ cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
     cdr = b;
 }
 
+bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
+bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
+bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
+bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
+bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
+//bool wsequal(int& x, int& y)     { return x==y; }
+
 // Recursive for now... should change.
 template <class T>
 bool wsequal
@@ -146,14 +153,6 @@ bool wsequal
       return wsequal(x->cdr, y->cdr);
     else return FALSE;
 }
-
-bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
-bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
-bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
-bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
-bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
-
-
 
 // Not tail recursive!
 template <class T>
