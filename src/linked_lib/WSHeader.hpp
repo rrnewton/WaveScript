@@ -136,18 +136,22 @@ bool wsequal
   //printf("EQUALITY: \n");
   //printf("   %d %d \n", (x==NULL_LIST), (y==NULL_LIST));
   if (x == NULL_LIST) {
-    if (y == NULL_LIST) 
+    if (y == NULL_LIST)
       return TRUE;
     else return FALSE;
-  } else if (y == NULL_LIST) 
+  } else if (y == NULL_LIST)
     return FALSE;
   else 
-    if (x->car == y->car)
-      return x->cdr == y->cdr;
+    if (wsequal(x->car, y->car))
+      return wsequal(x->cdr, y->cdr);
     else return FALSE;
 }
 
-bool wsequal(int x, int y) { return x==y; }
+bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
+bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
+bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
+bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
+bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
 
 
 
