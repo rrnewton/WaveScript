@@ -402,8 +402,9 @@
 	   (DEBUGASSERT (not (polymorphic-type? ty)))
 	   [#(() (List ,t)) 	   
 	    ;"NULL_LIST"
-	    `("(cons<",(Type t)">::ptr)NULL_LIST")
-	    ;`("(cons<",(Type t)">::null)")
+	    ;`("(cons<",(Type t)">::ptr)NULL_LIST")
+	    ;`("(cons<",(Type t)">::null_ls)")
+	    `("boost::shared_ptr< cons<",(Type t)"> >((cons<",(Type t)">*) 0)")
 	    ]
 	   [#(nullseg ,t) "WSNULLSEG"]
 	   [#(nullarr ,t) "WSNULL"]

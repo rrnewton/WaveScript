@@ -90,7 +90,8 @@ public:
   cons(T a, ptr b);
   T car;
   ptr cdr;
-  static ptr null;
+  //static ptr null_ls;
+  static int testtest;
   static ptr append(const ptr& x, const ptr &y);
 
   //friend int goo<T> (int x) { return x;  }
@@ -114,10 +115,33 @@ public:
 //   return;
 // }
 
+//template class cons <int>;
+template<typename T>
+int cons<T>::testtest = 39;
+
+//template<typename T>
+//const boost::shared_ptr< cons<T> > cons<T>::null_ls;
+
+//template<typename T>
+//boost::shared_ptr< cons<T> > NULL_LIST = boost::shared_ptr< cons<T> >((cons<T>*)0);
+
+// template<typename T>
+// boost::shared_ptr< cons<T> >  MAKE_NULL_LIST() 
+// { 
+//   return boost::shared_ptr< cons<T> >((cons<T>*)0);
+// }
+
+template<typename T>
+bool IS_NULL(boost::shared_ptr< cons<T> > p) 
+{ 
+  return ((cons<T>*)0 == p.get());
+  //return (0 == p.get());
+}
+
 
 
 // We construct a single null object which we cast to what we need.
-cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
+//cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
 //boost::shared_ptr< cons<int> > NULL_LIST = boost::shared_ptr< cons<int> >((cons<int>*)0);
 
 template <class T>
@@ -140,18 +164,29 @@ bool wsequal
         (const boost::shared_ptr< cons<T> > & x, 
 	 const boost::shared_ptr< cons<T> > & y) 
 {
-  //printf("EQUALITY: \n");
-  //printf("   %d %d \n", (x==NULL_LIST), (y==NULL_LIST));
-  if (x == NULL_LIST) {
-    if (y == NULL_LIST)
-      return TRUE;
-    else return FALSE;
-  } else if (y == NULL_LIST)
-    return FALSE;
-  else 
-    if (wsequal(x->car, y->car))
-      return wsequal(x->cdr, y->cdr);
-    else return FALSE;
+  printf("EQUALITY: \n");
+  //printf("   %d %d \n", (x==null_ls), (y==null_ls));
+   if (IS_NULL(x)) {
+     if (IS_NULL(y))
+       return TRUE;
+     else return FALSE;
+   } else if (IS_NULL(y))
+     return FALSE;
+   else 
+     if (wsequal(x->car, y->car))
+       return wsequal(x->cdr, y->cdr);
+     else return FALSE;
+
+//    if (x == cons<T>::null_ls) {
+//      if (y == cons<T>::null_ls)
+//        return TRUE;
+//      else return FALSE;
+//    } else if (y == cons<T>::null_ls)
+//      return FALSE;
+//    else 
+//      if (wsequal(x->car, y->car))
+//        return wsequal(x->cdr, y->cdr);
+//      else return FALSE;
 }
 
 // Not tail recursive!
@@ -162,15 +197,18 @@ boost::shared_ptr< cons<T> > cons<T>::append(
        const boost::shared_ptr< cons<T> > & y) 
 {
   //printf("INAPPEND: %d %d\n", x->car, y->car);
-  //printf("  x REFLEXIVE: %d NULL?: %d \n", wsequal(x, x), wsequal(x, NULL_LIST));
-  if (x == NULL_LIST)   return y;
+  //printf("  x REFLEXIVE: %d NULL?: %d \n", wsequal(x, x), wsequal(x, null_ls));
+
+  //if (x == cons<T>::null_ls)   return y;
+  if (IS_NULL(x))   return y;
   else return ptr(new cons<T>(x->car, append(x->cdr, y)));
-  //else return ptr(new cons<T>(33, append(NULL_LIST, y)));
+
+  //else return ptr(new cons<T>(33, append(null_ls, y)));
   //printf("FIN APPEND: %d %d\n", x->car, y->car);
 }
 
 //   friend ostream& operator<<(ostream& output, const ptr& p) {
-//     while(p != NULL_LIST) {
+//     while(p != null_ls) {
 //     }
 //   }
 
@@ -178,5 +216,8 @@ boost::shared_ptr< cons<T> > cons<T>::append(
 
 // Global setting:
 bool WSOUTPUT_PREFIX = TRUE;
+
+//cons<bool>::ptr NULL_LIST2 = (cons<bool>::ptr)NULL_LIST;
+
 
 
