@@ -726,6 +726,20 @@
 	    "  oss << \")\";\n"
 	    "  return oss.str();"
 	    "}\n\n"
+
+
+            ;; This produces an equality function. 
+	    "bool wsequal(const ",name"& x, const ",name"& y) {\n" 
+	    ,(if (null? fld*)
+		"return TRUE;\n"
+		`(" return "
+		  ,(insert-between " && "
+				   (map (lambda (fld)
+					  `(" wsequal(x.",fld", y.",fld") "))
+				     fld*))
+		  ";\n"))
+	    "}\n\n"
+
             ))]))
 ;; TODO: Add these:
 ; struct hashtest {

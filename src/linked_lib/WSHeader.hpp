@@ -156,7 +156,9 @@ bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
 bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
 bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
 bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
-//bool wsequal(int& x, int& y)     { return x==y; }
+
+bool wsequal(const RawSeg& x, const RawSeg& y)  { return x==y; }
+
 
 // Recursive for now... should change.
 template <class T>
@@ -164,7 +166,7 @@ bool wsequal
         (const boost::shared_ptr< cons<T> > & x, 
 	 const boost::shared_ptr< cons<T> > & y) 
 {
-  printf("EQUALITY: \n");
+  //printf("EQUALITY: \n");
   //printf("   %d %d \n", (x==null_ls), (y==null_ls));
    if (IS_NULL(x)) {
      if (IS_NULL(y))
