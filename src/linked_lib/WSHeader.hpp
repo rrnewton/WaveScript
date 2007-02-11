@@ -15,6 +15,7 @@
 #include <boost/functional/hash.hpp>
 
 #include <stdio.h>
+
 #include <list>
 #include <vector>
 #include <string>
@@ -71,12 +72,16 @@ typedef _Complex float wscomplex_t;
 
 
 
+bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
+bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
+bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
+bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
+bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
+
+bool wsequal(const RawSeg& x, const RawSeg& y)  { return x==y; }
 
 
 /********** LISTS **********/
-//template <class T>
-//int foo();
-
 template <class T> class cons; 
 
 template <class T> 
@@ -90,59 +95,17 @@ public:
   cons(T a, ptr b);
   T car;
   ptr cdr;
-  //static ptr null_ls;
-  static int testtest;
+
   static ptr append(const ptr& x, const ptr &y);
 
-  //friend int goo<T> (int x) { return x;  }
-  //friend int foo();
-
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
-  //friend bool operator ==<T> (const ptr & x, const ptr &y);
-  //static bool operator ==<T> (const ptr & x, const ptr &y);
-  //bool operator == (const ptr &y);
 };
-
-
-// template<class S> g();
-// template<class T> class A {
-//    friend int e();
-//    friend int g<T>();
-// };
-
-// template <class T>
-// friend void goo<T> (int x) {
-//   return;
-// }
-
-//template class cons <int>;
-template<typename T>
-int cons<T>::testtest = 39;
-
-//template<typename T>
-//const boost::shared_ptr< cons<T> > cons<T>::null_ls;
-
-//template<typename T>
-//boost::shared_ptr< cons<T> > NULL_LIST = boost::shared_ptr< cons<T> >((cons<T>*)0);
-
-// template<typename T>
-// boost::shared_ptr< cons<T> >  MAKE_NULL_LIST() 
-// { 
-//   return boost::shared_ptr< cons<T> >((cons<T>*)0);
-// }
 
 template<typename T>
 bool IS_NULL(boost::shared_ptr< cons<T> > p) 
 { 
   return ((cons<T>*)0 == p.get());
-  //return (0 == p.get());
 }
-
-
-
-// We construct a single null object which we cast to what we need.
-//cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
-//boost::shared_ptr< cons<int> > NULL_LIST = boost::shared_ptr< cons<int> >((cons<int>*)0);
 
 template <class T>
 cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
@@ -150,15 +113,6 @@ cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
     car = a;
     cdr = b;
 }
-
-bool wsequal(wsint_t x,     wsint_t y)     { return x==y; }
-bool wsequal(wsbool_t x,    wsbool_t y)    { return x==y; }
-bool wsequal(wsfloat_t x,   wsfloat_t y)   { return x==y; }
-bool wsequal(wscomplex_t x, wscomplex_t y) { return x==y; }
-bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
-
-bool wsequal(const RawSeg& x, const RawSeg& y)  { return x==y; }
-
 
 // Recursive for now... should change.
 template <class T>
@@ -216,10 +170,25 @@ boost::shared_ptr< cons<T> > cons<T>::append(
 
 /******** END LISTS ********/
 
+
+/********** ARRAYS **********/
+template <class T>
+boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
+  vector<T>* vec = new vector<T>((int) count);
+  for(int i=0; i<(int)count; i++) {
+    (*vec)[i] = (T)initelem;
+  }
+  return boost::shared_ptr< vector<T> >( vec );
+}
+
+/******** END ARRAYS ********/
+
+
+
+
+
 // Global setting:
 bool WSOUTPUT_PREFIX = TRUE;
-
-//cons<bool>::ptr NULL_LIST2 = (cons<bool>::ptr)NULL_LIST;
 
 
 

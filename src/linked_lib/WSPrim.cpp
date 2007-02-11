@@ -81,6 +81,7 @@ static ostringstream global_show_stream(ostringstream::out);
      return hash;
    }   
    
+     
    // Optimized version, unfinished.
    /*
    static unsigned long hash(unsigned char* ptr, int size) {

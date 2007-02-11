@@ -82,7 +82,8 @@
     [(Sigseg ,[t]) `("RawSeg")]
     [(Stream ,[t]) `("WSBox*")]
 
-    [(Array ,[t]) `(,t "[]")]
+    ;[(Array ,[t]) `(,t "[]")]
+    [(Array ,[t]) `("boost::shared_ptr< vector< ",t" > >")]
     [(Struct ,name) (symbol->string name)]
     
     ;; HACK HACK FIXME:
@@ -395,7 +396,8 @@
 	  [(eq? datum #t) "TRUE"]
 	  [(eq? datum #f) "FALSE"]       
 	  [(string? datum) (format "string(~s)" datum)]
-	  [(or (integer? datum) (flonum? datum))  (number->string datum)]
+	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
+	  [(integer? datum) (format "(wsint_t)~a" datum)]
 	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
@@ -566,7 +568,10 @@
 	 ;(recover-type )
 	 "newarr_UNFINISHED"]
 	
-	[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	;[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	[(arr-get ,[arr] ,[ind]) `("(*",arr ")[" ,ind "]")]
+	[(makeArray ,[n] ,[x]) `("makeArray(",n", ",x")")]
+	
 	[(length ,arr) "array_length_UNFINISHED"]
 
 	[(arr-set! ,x ...)
@@ -792,6 +797,10 @@
     ;; Currently let's just not let you pass sigsegs in lists!
     [(List ,t)
      `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
+
+    [(Array ,t)
+     `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")
+     ]
 	  
     ;; TODO ARRAYS:    
     [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]
