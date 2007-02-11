@@ -11,7 +11,7 @@
 (define-pass type-annotate-misc
 
     ;(define annotated-prims '(print show cons hashtable seg-get))
-    (define annotate-outside-prims '(hashtable window))
+    (define annotate-outside-prims '(hashtable window append))
 
     (define (process-expr x tenv fallthru)
 ;      (printf "PE: \n")
@@ -29,6 +29,10 @@
 	[(seg-get ,[seg] ,[ind])
 	 `(seg-get (assert-type ,(recover-type seg tenv) ,seg) ,ind)]
 
+	[(append ,[x] ,[y])
+	 `(assert-type ,(recover-type x tenv) (append ,x ,y))]
+
+	;; TODO, FIXME: THIS IS A HACKISH AND BROKEN APPROACH:
 	
        	;; Here we catch these primitives where they're bound and just
 	;; use the pre-computed type.  We wrap that assert-type
@@ -46,6 +50,15 @@
 	     other))
 	  tenv ;(tenv-extend tenv vars types)
 	  )]
+	
+	;; Generically handle all the annotate-outside forms:
+	;; Wouldn't need this if the program were flattened so that
+	;; the above case caught everything.
+#;
+	[(,annprim ,[e*] ...) (guard (memq annprim annotate-outside-prims))
+	 (let ([exp `(,annprim . ,e*)])
+	   (assert-type ,(recover-type exp tenv)
+			,exp))]
 
 	;; This needs an explicit annotation to run with wsint.
 	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rep] ,[rate]))

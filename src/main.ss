@@ -313,6 +313,7 @@
 	[nullseg #t]
 	[nullarr #t]
 	['()     #t]
+	[()     #t]
 	[,else   #f]))
   [Expr (lambda (x fallthru)
 	  (match x

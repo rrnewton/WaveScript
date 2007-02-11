@@ -70,44 +70,139 @@ typedef _Complex float wscomplex_t;
 */
 
 
-/******** LISTS ********/
+
+
+
+/********** LISTS **********/
+//template <class T>
+//int foo();
+
+template <class T> class cons; 
+// forward declaration of function template operator==
+
+template <class T> 
+  bool operator== (const cons<T> & v1, 
+                   const cons<T> & v2);
+
 template <class T>
 class cons {
 public: 
   typedef boost::shared_ptr< cons<T> > ptr;
-
-  cons(T a, ptr b) {
-    car = a;
-    cdr = b;
-  }
+  cons(T a, ptr b);
   T car;
   ptr cdr;
-
-  // Didn't work:
-  //  static ptr null;  //    = ptr((cons<T>*)0);
-  //static ptr null = ptr((cons<T>*)0);
   static ptr null;
+  static ptr append(const ptr& x, const ptr &y);
 
-  // Recursive for now... should change.
-  //bool lsEqual(const ptr &null, const ptr & x, const ptr &y) {
-  friend bool operator ==(const ptr & x, const ptr &y) {
-    if (x == NULL) {
-      if (y == NULL) 
-	return TRUE;
-      else return FALSE;
-    } else if (y == NULL) 
-      return FALSE;
-    else 
-      if (x->car == y->car)
-	return x->cdr == y->cdr;
-      else return FALSE;
-  }
+  //friend int goo<T> (int x) { return x;  }
+  //friend int foo();
 
+  friend bool operator ==<T> (const cons<T> & x, const cons<T> & y);
+  //friend bool operator ==<T> (const ptr & x, const ptr &y);
+  //static bool operator ==<T> (const ptr & x, const ptr &y);
+  //bool operator == (const ptr &y);
 };
+
+
+// template<class S> g();
+// template<class T> class A {
+//    friend int e();
+//    friend int g<T>();
+// };
+
+// template <class T>
+// friend void goo<T> (int x) {
+//   return;
+// }
+
+
 
 // We construct a single null object which we cast to what we need.
 cons<int>::ptr NULL_LIST = cons<int>::ptr((cons<int>*)0);
-//#define NULL_LIST NULL
+//boost::shared_ptr< cons<int> > NULL_LIST = boost::shared_ptr< cons<int> >((cons<int>*)0);
+
+template <class T>
+cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
+{
+    car = a;
+    cdr = b;
+}
+
+// THIS WON'T WORK! Can't access null...
+// Recursive for now... should change.
+// template <class T>
+// operator bool cons<T>::==(const boost::shared_ptr< cons<T> > & y)
+// {
+//   if (self == NULL_LIST) {
+//     if (y == NULL_LIST) 
+//       return TRUE;
+//     else return FALSE;
+//   } else if (y == NULL_LIST) 
+//     return FALSE;
+//   else 
+//     if (car == y->car)
+//       return cdr == y->cdr;
+//     else return FALSE;
+// }
+
+// THIS WON'T WORK! Can't access null...
+// Recursive for now... should change.
+// template <class T>
+// friend operator
+//   bool cons<T>::==<>
+//         (const boost::shared_ptr< cons<T> > & x, 
+// 	 const boost::shared_ptr< cons<T> > & y) 
+// {
+//   if (x == NULL_LIST) {
+//     if (y == NULL_LIST) 
+//       return TRUE;
+//     else return FALSE;
+//   } else if (y == NULL_LIST) 
+//     return FALSE;
+//   else 
+//     if (x->car == y->car)
+//       return x->cdr == y->cdr;
+//     else return FALSE;
+// }
+
+template <class T>
+bool operator== (const cons<T> & x, const cons<T> & y)
+{
+  if (x == NULL_LIST) {
+    if (y == NULL_LIST) 
+      return TRUE;
+    else return FALSE;
+  } else if (y == NULL_LIST) 
+    return FALSE;
+  else 
+    if (x.car == y.car)
+      return x.cdr == y.cdr;
+    else return FALSE;
+}
+
+
+// Not tail recursive!
+template <class T>
+//cons<T>::ptr cons<T>::append(const cons<T>::ptr & x, const cons<T>::ptr & y) {
+boost::shared_ptr< cons<T> > cons<T>::append(
+       const boost::shared_ptr< cons<T> > & x, 
+       const boost::shared_ptr< cons<T> > & y) {
+    if (x == NULL_LIST)
+      return y;
+    else 
+      return ptr(new cons<T>(x->car, 
+			     append(x->cdr, y)));
+}
+
+//   friend ostream& operator<<(ostream& output, const ptr& p) {
+//     while(p != NULL_LIST) {
+//     }
+//   }
+
+/******** END LISTS ********/
 
 // Global setting:
 bool WSOUTPUT_PREFIX = TRUE;
+
+
+bool FOOBAR = NULL_LIST == NULL_LIST;

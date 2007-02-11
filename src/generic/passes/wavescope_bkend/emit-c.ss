@@ -71,6 +71,7 @@
 ;; This should give you an idea of the mapping between types:
 (define (Type t)
   (match t
+    [Bool    "wsbool_t"]
     [Int     "wsint_t"]
     [Float   "wsfloat_t"]
     [Complex "wscomplex_t"]
@@ -398,9 +399,10 @@
 	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
+	   (DEBUGASSERT (not (polymorphic-type? ty)))
 	   [#(() (List ,t)) 	   
-	    "NULL_LIST"
-	    ;`("(cons<",(Type t)">::ptr)NULL_LIST")
+	    ;"NULL_LIST"
+	    `("(cons<",(Type t)">::ptr)NULL_LIST")
 	    ;`("(cons<",(Type t)">::null)")
 	    ]
 	   [#(nullseg ,t) "WSNULLSEG"]
@@ -587,11 +589,14 @@
 	 `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")]
 	[(car ,[ls]) `("(",ls")->car")]
 	[(cdr ,[ls]) `("(",ls")->cdr")]
+
+	[(assert-type (List ,[Type -> ty]) (append ,[ls1] ,[ls2]))
+	 `("cons<",ty">::append(",ls1", ",ls2")")]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-	[(,lp . ,_) (guard (memq lp '(cons car cdr))) ;; Safety net.
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append))) ;; Safety net.
 	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
 	 ]
 
