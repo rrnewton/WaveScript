@@ -78,11 +78,10 @@ typedef _Complex float wscomplex_t;
 //int foo();
 
 template <class T> class cons; 
-// forward declaration of function template operator==
 
 template <class T> 
-  bool operator== (const cons<T> & v1, 
-                   const cons<T> & v2);
+  bool wsequal (const boost::shared_ptr< cons<T> > & v1, 
+		const boost::shared_ptr< cons<T> > & v2);
 
 template <class T>
 class cons {
@@ -97,7 +96,7 @@ public:
   //friend int goo<T> (int x) { return x;  }
   //friend int foo();
 
-  friend bool operator ==<T> (const cons<T> & x, const cons<T> & y);
+  friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
   //friend bool operator ==<T> (const ptr & x, const ptr &y);
   //static bool operator ==<T> (const ptr & x, const ptr &y);
   //bool operator == (const ptr &y);
@@ -147,11 +146,27 @@ cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
 
 // THIS WON'T WORK! Can't access null...
 // Recursive for now... should change.
+template <class T>
+bool wsequal
+        (const boost::shared_ptr< cons<T> > & x, 
+	 const boost::shared_ptr< cons<T> > & y) 
+{
+  //printf("EQUALITY: \n");
+  //printf("   %d %d \n", (x==NULL_LIST), (y==NULL_LIST));
+  if (x == NULL_LIST) {
+    if (y == NULL_LIST) 
+      return TRUE;
+    else return FALSE;
+  } else if (y == NULL_LIST) 
+    return FALSE;
+  else 
+    if (x->car == y->car)
+      return x->cdr == y->cdr;
+    else return FALSE;
+}
+
 // template <class T>
-// friend operator
-//   bool cons<T>::==<>
-//         (const boost::shared_ptr< cons<T> > & x, 
-// 	 const boost::shared_ptr< cons<T> > & y) 
+// bool operator== (const cons<T> & x, const cons<T> & y)
 // {
 //   if (x == NULL_LIST) {
 //     if (y == NULL_LIST) 
@@ -160,25 +175,10 @@ cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
 //   } else if (y == NULL_LIST) 
 //     return FALSE;
 //   else 
-//     if (x->car == y->car)
-//       return x->cdr == y->cdr;
+//     if (x.car == y.car)
+//       return x.cdr == y.cdr;
 //     else return FALSE;
 // }
-
-template <class T>
-bool operator== (const cons<T> & x, const cons<T> & y)
-{
-  if (x == NULL_LIST) {
-    if (y == NULL_LIST) 
-      return TRUE;
-    else return FALSE;
-  } else if (y == NULL_LIST) 
-    return FALSE;
-  else 
-    if (x.car == y.car)
-      return x.cdr == y.cdr;
-    else return FALSE;
-}
 
 
 // Not tail recursive!
@@ -186,12 +186,14 @@ template <class T>
 //cons<T>::ptr cons<T>::append(const cons<T>::ptr & x, const cons<T>::ptr & y) {
 boost::shared_ptr< cons<T> > cons<T>::append(
        const boost::shared_ptr< cons<T> > & x, 
-       const boost::shared_ptr< cons<T> > & y) {
-    if (x == NULL_LIST)
-      return y;
-    else 
-      return ptr(new cons<T>(x->car, 
-			     append(x->cdr, y)));
+       const boost::shared_ptr< cons<T> > & y) 
+{
+  //printf("INAPPEND: %d %d\n", x->car, y->car);
+  //printf("  x REFLEXIVE: %d NULL?: %d \n", wsequal(x, x), wsequal(x, NULL_LIST));
+  if (x == NULL_LIST)   return y;
+  else return ptr(new cons<T>(x->car, append(x->cdr, y)));
+  //else return ptr(new cons<T>(33, append(NULL_LIST, y)));
+  //printf("FIN APPEND: %d %d\n", x->car, y->car);
 }
 
 //   friend ostream& operator<<(ostream& output, const ptr& p) {
@@ -205,4 +207,3 @@ boost::shared_ptr< cons<T> > cons<T>::append(
 bool WSOUTPUT_PREFIX = TRUE;
 
 
-bool FOOBAR = NULL_LIST == NULL_LIST;
