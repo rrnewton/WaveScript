@@ -1,4 +1,8 @@
 
+;; This pass flattens the stream-processing spine of the program.
+
+;; (TODO: Should now be called flatten-stream-spine.)
+
 (module flatten-iterate-spine mzscheme
   (require "../../../plt/common.ss")
   (provide flatten-iterate-spine)
@@ -45,19 +49,20 @@
 		`(lazy-letrec ,binds (zip2 ,s1 ,s2)))
 	    )]
 
-	 [(unionN ,[s1] ,[s2])
-	  (mvlet ([(s1 binds1) (make-simple-shallow s1 tenv)]
-		  [(s2 binds2) (make-simple-shallow s2 tenv)]
-		  )
-	    (define binds (append binds1 binds2))
-	    (ASSERT symbol? s1)
-	    (ASSERT symbol? s2)	    
-	    (if (null? binds)
-		`(unionN ,s1 ,s2)
-		`(lazy-letrec ,binds (unionN ,s1 ,s2)))
-	    )]
+	 [(unionN ,[strms] ...)	 
+	  (match (map (lambda (S) (values->list (make-simple-shallow S tenv))) strms)
+	    [((,arg* ,binds*) ...)
+	     (define binds (apply append binds*))
+	     (DEBUGASSERT (lambda (ls) (andmap symbol? ls)) arg*)
+	     (if (null? binds)
+		 `(unionN . ,arg*)
+		 `(lazy-letrec ,binds (unionN . ,arg*)))
+	     ])]
 
-	 
+	 ;; Safety net:
+	 [(,missed ,_ ...) (guard (memq missed '(iterate zip2 unionN)))
+	  (error 'flatten-iterate-spine "Missed construct; should have caught: ~s" `(,missed . ,_))]
+
 	 [,other (fallthru other tenv)]
 	 ))]
   )

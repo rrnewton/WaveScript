@@ -97,7 +97,11 @@
 	(abs abs) (absI fxabs) (absF flabs) (absC abs)
 	(= =) (< <) (<= <=) (> >) (>= >=)
 	;(gint (lambda (x) x))
+
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
+	;(cons "cons-done-as-special-case")
+	(listLength length)
+
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
 	(map map)
@@ -282,6 +286,12 @@
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
 			   [(assert-type ,t ,[e]) e]
+			   
+			   ;; Streams are values, and they're available:
+			   ;; Should we have to go deeper here to make
+			   ;; sure they're fully available?
+			   [,sv (guard (stream-val? sv)) #t]
+
 			   [,else #f])))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -297,9 +307,23 @@
 				(let ((entry (assq var env)))
 				  (and entry (container-available? (cadr entry))))]
 			  [(assert-type ,t ,[e]) e]
+
+			  [,sv (guard (stream-val? sv)) #t]
+
 			  [,else #f]
 			  )
 		    ))]
+ 
+		 [stream-val? 
+		  (lambda (exp)
+		    (match exp
+		      [(,prim ,args ...)
+		       (guard (regiment-primitive? prim))
+		       (match (caddr (get-primitive-entry prim))
+			 [(Stream ,t) #t]
+			 [,else #f])]
+		      [,else #f])
+		    )]
 
 		 [getval ;; If available, follow aliases until you have a real value expression:
 		  (lambda (x)
@@ -307,10 +331,13 @@
 		      [(quote ,datum) datum]
 		      [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
 		      [(tuple ,args ...) x]
-		      [(cons ,a ,b) x]
+		      [(cons ,a ,b)      x]
+		      
+		      [,sv (guard (stream-val? sv)) x]
+
 		      [,var (guard (symbol? var))
 			    (getval (cadr (assq var env)))]
-		      [(assert-type ,t ,[e]) e]
+		      [(assert-type ,t ,e) (getval e)]
 		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))]
 
 		 [getlist ;; Get values until you have the whole list.
@@ -492,9 +519,20 @@
 		    [(,h . ,[t]) `(cons (app ,f ,h) ,t)])]
 		 [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)])
 	       `(map ,f ,ls))]
+
+	  [(listLength ,[x])
+	   (printf "LISTLENGTH: ~s\n" x)
+	   (if (container-available? x)
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     (inspect/continue `(quote ,(length ls)))
+		     `(listLength ,x)
+		     ))
+	       `(listLength ,x))]
+
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-	   ;(disp "PRIM: " prim (map available? rand*) rand* )
+	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
 	   (if (and (assq prim computable-prims)
 		    (andmap available? rand*))
 	       (do-prim prim (map getval rand*))

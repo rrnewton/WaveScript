@@ -25,18 +25,38 @@
     (define (verify-type t)
       (define (id x) x)
       (match t
-	;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
 	[,s (guard (symbol? s)) #t]
 	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
 	[(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
 	[(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
-	[(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
-	[#(,t* ...) (and (andmap verify-type t*)
-			 (not (polymorphic-type? (list->vector t*)))
-			 )]
+	[(,C ,t* ...) (guard (symbol? C)) 
+	 (or (andmap verify-stream-free t*)
+	     (error 'verify-type
+		    "elaboration didn't succeed in getting this stream type free from other type constructors:\n  ~s"
+		    `(,C . ,t*)))]
+	[#(,t* ...) 
+	 (and (not (polymorphic-type? (list->vector t*)))
+	      (or (andmap verify-stream-free t*)
+		  (error 'verify-type
+			 "elaboration didn't succeed in getting this stream type free from this tuple:\n  ~s"
+			 (list->vector t*))))]
 	[,else #f]))
 
-    [Expr/Types 
+  (define (verify-stream-free t)
+    (match t
+      [(Stream ,t) #f]
+      [,s (guard (symbol? s)) #t]
+      [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
+      [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+      [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+      [(,C ,t* ...) (guard (symbol? C)) (andmap verify-stream-free t*)]
+      [#(,t* ...) (and (andmap verify-stream-free t*)
+		       (not (polymorphic-type? (list->vector t*))))]
+      ;[,else #f]
+      ))
+
+
+  [Expr/Types 
      (lambda (expr tenv fallthrough)
        (match expr
 	 [(app ,[rator] ,[rand*] ...)		     

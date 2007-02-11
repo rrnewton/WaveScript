@@ -8,7 +8,8 @@ fun syncN (strms, ctrl) {
 
   let slist = _ctrl : _strms;
   
-  print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");
+  // Side effect not allowed in iterate:
+  //print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {

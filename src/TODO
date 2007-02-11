@@ -16,6 +16,11 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
  *) Initialize class-typed iterator state properly (not from within
     the {} of the constructor)
 
+ *) How about ditching the current elaborator and putting a
+    straightforward interpreter in its place.  It would evaluate
+    lazily, and treat streams and streams as *values*.  It
+    would make a single pass through the program.
+
 [2007.02.07]
  X) Remove distributed Regiment primitives from wavescope compiles.
  ~~) Add general binary reader!

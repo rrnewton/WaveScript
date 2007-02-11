@@ -91,7 +91,7 @@
    remq-all assq-remove-all list-remove-first list-remove-last! list-remove-after 
    filter list-index snoc rac rdc rdc! rac&rdc! last 
    list-find-position list-remove-before
-   foldl
+   foldl foldl1
    
    vector-for-each vector-map vector-map!
 
@@ -1844,6 +1844,11 @@
        (case-lambda
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
+
+(define (foldl1 f ls)  
+  (if (null? ls)
+      (error 'foldl1 "list must have at least on element.")
+      (foldl f (car ls) (cdr ls))))
 
 ;; Also from PLT's list.ss
 (define foldr
