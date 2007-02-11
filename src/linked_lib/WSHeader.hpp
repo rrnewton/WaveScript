@@ -127,24 +127,6 @@ cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
     cdr = b;
 }
 
-// THIS WON'T WORK! Can't access null...
-// Recursive for now... should change.
-// template <class T>
-// operator bool cons<T>::==(const boost::shared_ptr< cons<T> > & y)
-// {
-//   if (self == NULL_LIST) {
-//     if (y == NULL_LIST) 
-//       return TRUE;
-//     else return FALSE;
-//   } else if (y == NULL_LIST) 
-//     return FALSE;
-//   else 
-//     if (car == y->car)
-//       return cdr == y->cdr;
-//     else return FALSE;
-// }
-
-// THIS WON'T WORK! Can't access null...
 // Recursive for now... should change.
 template <class T>
 bool wsequal
@@ -165,20 +147,8 @@ bool wsequal
     else return FALSE;
 }
 
-// template <class T>
-// bool operator== (const cons<T> & x, const cons<T> & y)
-// {
-//   if (x == NULL_LIST) {
-//     if (y == NULL_LIST) 
-//       return TRUE;
-//     else return FALSE;
-//   } else if (y == NULL_LIST) 
-//     return FALSE;
-//   else 
-//     if (x.car == y.car)
-//       return x.cdr == y.cdr;
-//     else return FALSE;
-// }
+bool wsequal(int x, int y) { return x==y; }
+
 
 
 // Not tail recursive!
