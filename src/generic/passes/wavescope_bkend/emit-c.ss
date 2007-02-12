@@ -674,9 +674,32 @@
     [Int            (printf "%d" e)]
     [Float          (printf "%f" e)]
     [String         (printf "%s" `(,e".c_str()"))]
+    ;[(List ,t)      (stream e)]
+    ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
     [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
     [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
+
+#;
+;; NOTE: duplicated code from the "Type" function.
+(define (cast-type-for-printing ty x)
+  (match ty
+    [(Sigseg ,[Type -> t]) (format "SigSeg<~a>" t)]
+
+    [Bool       x]
+    [Int        x]
+    [Float      x]
+    [String     x]
+    [(Struct ,name) (Type ty)]
+
+    [(Array ,t) `("boost::shared_ptr< vector< ",(cast-type-for-printing t)" > >")]
+    
+    [(List ,t) `("cons< ",(cast-type-for-printing t)" >::ptr")]
+
+    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
+    
+    [,other (error 'cast-type-for-printing "Not handled yet.. ~s" other)]))
+
 
 ;; This emits code for a print.
 (define (EmitPrint e typ)

@@ -80,6 +80,9 @@ bool wsequal(wsstring_t x,  wsstring_t y)  { return x==y; }
 
 bool wsequal(const RawSeg& x, const RawSeg& y)  { return x==y; }
 
+//ostream& operator<< (ostream& os, wsint_t x) { return os << (int)x; }
+//ostream& operator<< (ostream& os, wsfloat_t x) { return os << (float)x; }
+
 
 /********** LISTS **********/
 template <class T> class cons; 
@@ -87,6 +90,9 @@ template <class T> class cons;
 template <class T> 
   bool wsequal (const boost::shared_ptr< cons<T> > & v1, 
 		const boost::shared_ptr< cons<T> > & v2);
+
+template <class T> 
+ostream& operator<< (ostream& output, const boost::shared_ptr< cons<T> > & );
 
 template <class T>
 class cons {
@@ -100,6 +106,7 @@ public:
   static ptr reverse(const ptr & ls);
 
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
+  friend ostream& operator<< <T>(ostream& output, const boost::shared_ptr< cons<T> > & );
 };
 
 template<typename T>
@@ -135,6 +142,25 @@ bool wsequal
      else return FALSE;
 }
 
+
+// Currently unused:
+template <class T>
+ostream& operator<< (ostream& output, const boost::shared_ptr< cons<T> > & ls) 
+{
+  boost::shared_ptr< cons<T> > ptr = ls;
+  output << "[";
+  while(! IS_NULL(ptr)) {
+    // Problem here is that we need to cast RawSeg to SigSeg and can't:
+    //output << (RawSeg)(ptr->car);
+    output << (wsint_t)3;
+    output << ", ";
+    ptr = ptr->cdr;
+  }
+  output << "]";
+  return output;
+}
+
+
 // Not tail recursive!
 template <class T>
 //cons<T>::ptr cons<T>::append(const cons<T>::ptr & x, const cons<T>::ptr & y) {
@@ -160,10 +186,6 @@ boost::shared_ptr< cons<T> > cons<T>::reverse(
   return acc;
 }
 
-//   friend ostream& operator<<(ostream& output, const ptr& p) {
-//     while(p != null_ls) {
-//     }
-//   }
 
 /******** END LISTS ********/
 
