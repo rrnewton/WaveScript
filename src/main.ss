@@ -405,9 +405,9 @@
 ;  (set! p (optional-stop (lift-letrec               p)))
 ;  (set! p (optional-stop (lift-letrec-body          p)))
 
-  (set! p (optional-stop (remove-complex-opera* p)))
+  ;(set! p (optional-stop (remove-complex-opera* p)))
   ;; Replacing remove-complex-opera* with a simpler pass:
-  ;(set! p (optional-stop (flatten-iterate-spine p)))
+  (set! p (optional-stop (flatten-iterate-spine p)))
   
 ;  (inspect p)
   
