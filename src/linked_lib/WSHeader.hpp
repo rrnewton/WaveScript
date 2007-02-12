@@ -97,6 +97,7 @@ public:
   ptr cdr;
 
   static ptr append(const ptr& x, const ptr &y);
+  static ptr reverse(const ptr & ls);
 
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
 };
@@ -132,17 +133,6 @@ bool wsequal
      if (wsequal(x->car, y->car))
        return wsequal(x->cdr, y->cdr);
      else return FALSE;
-
-//    if (x == cons<T>::null_ls) {
-//      if (y == cons<T>::null_ls)
-//        return TRUE;
-//      else return FALSE;
-//    } else if (y == cons<T>::null_ls)
-//      return FALSE;
-//    else 
-//      if (wsequal(x->car, y->car))
-//        return wsequal(x->cdr, y->cdr);
-//      else return FALSE;
 }
 
 // Not tail recursive!
@@ -152,15 +142,22 @@ boost::shared_ptr< cons<T> > cons<T>::append(
        const boost::shared_ptr< cons<T> > & x, 
        const boost::shared_ptr< cons<T> > & y) 
 {
-  //printf("INAPPEND: %d %d\n", x->car, y->car);
-  //printf("  x REFLEXIVE: %d NULL?: %d \n", wsequal(x, x), wsequal(x, null_ls));
-
-  //if (x == cons<T>::null_ls)   return y;
   if (IS_NULL(x))   return y;
   else return ptr(new cons<T>(x->car, append(x->cdr, y)));
+}
 
-  //else return ptr(new cons<T>(33, append(null_ls, y)));
-  //printf("FIN APPEND: %d %d\n", x->car, y->car);
+
+template <class T>
+boost::shared_ptr< cons<T> > cons<T>::reverse(
+       const boost::shared_ptr< cons<T> > & ls)
+{
+  boost::shared_ptr< cons<T> > ptr = ls;
+  boost::shared_ptr< cons<T> > acc( (cons<T>*) 0);
+  while (!IS_NULL(ptr)) {
+    acc = boost::shared_ptr< cons<T> >(new cons<T>(ptr->car, acc));
+    ptr = ptr->cdr;
+  }
+  return acc;
 }
 
 //   friend ostream& operator<<(ostream& output, const ptr& p) {

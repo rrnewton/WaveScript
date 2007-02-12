@@ -169,7 +169,7 @@
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
 		   ,name"->connect(",(symbol->string sig)");\n")
 		 '())]
-
+	
 	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
@@ -179,8 +179,7 @@
 	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
-	  '())
-	 ]
+	  '())]
 
 	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
 	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap] ,[myExpr -> rate])
@@ -311,8 +310,7 @@
 				;; This produces a function declaration for iterate:				
 				iterator+vars)))]) 
 	   ;(if (symbol? sig) 
-	   (values ourstmts ourdecls)
-	   )]
+	   (values ourstmts ourdecls))]
 
 	
 	;; This is purely hackish... should use the zip library function.	
@@ -572,7 +570,7 @@
 	[(arr-get ,[arr] ,[ind]) `("(*",arr ")[" ,ind "]")]
 	[(makeArray ,[n] ,[x]) `("makeArray(",n", ",x")")]
 	
-	[(length ,arr) "array_length_UNFINISHED"]
+	[(length ,[arr]) `("(wsint_t)(",arr"->size())")]
 
 	[(arr-set! ,x ...)
 	 (error 'emitC:Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
@@ -595,6 +593,8 @@
 	 `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")]
 	[(car ,[ls]) `("(",ls")->car")]
 	[(cdr ,[ls]) `("(",ls")->cdr")]
+	[(assert-type (List ,t) (reverse ,[ls]))
+	 `("cons<",(Type t)">::reverse(",ls")")]
 
 	[(assert-type (List ,[Type -> ty]) (append ,[ls1] ,[ls2]))
 	 `("cons<",ty">::append(",ls1", ",ls2")")]

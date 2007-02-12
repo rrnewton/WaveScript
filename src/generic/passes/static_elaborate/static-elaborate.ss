@@ -100,7 +100,7 @@
 
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
-	(listLength length)
+	;(listLength length)
 
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
@@ -521,11 +521,10 @@
 	       `(map ,f ,ls))]
 
 	  [(listLength ,[x])
-	   (printf "LISTLENGTH: ~s\n" x)
 	   (if (container-available? x)
 	       (let ([ls (getlist x)])
 		 (if (list? ls)
-		     (inspect/continue `(quote ,(length ls)))
+		     `(quote ,(length ls))
 		     `(listLength ,x)
 		     ))
 	       `(listLength ,x))]

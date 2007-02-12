@@ -6,7 +6,7 @@
 s1 = audioFile("./countup.raw", 4096, 0, 44000);
 
 s2 = iterate( w in s1 ) {
-  emit [w.start, w.end];
+  emit reverse([w.start, w.end]);
 };
 
 s3 = iterate( w in window(s2, 2)) {

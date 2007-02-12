@@ -29,6 +29,10 @@
 	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #t]
 	[(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
 	[(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
+	
+	;; Areas can contain streams:
+	[(Area ,[t]) t]
+
 	[(,C ,t* ...) (guard (symbol? C)) 
 	 (or (andmap verify-stream-free t*)
 	     (error 'verify-type

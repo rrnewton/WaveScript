@@ -31,6 +31,8 @@
 
 	[(append ,[x] ,[y])
 	 `(assert-type ,(recover-type x tenv) (append ,x ,y))]
+	[(reverse ,[x])
+	 `(assert-type ,(recover-type x tenv) (reverse ,x))]
 
 	;; TODO, FIXME: THIS IS A HACKISH AND BROKEN APPROACH:
 	
