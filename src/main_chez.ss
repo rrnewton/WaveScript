@@ -356,6 +356,7 @@
 (include "generic/passes/normalize_query/lift-letrec.ss")          (import lift-letrec)
 (include "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
 (include "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
+(include "generic/passes/normalize_query/ws-remove-complex-opera.ss") (import ws-remove-complex-opera)
 (include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
 (include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
 

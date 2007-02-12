@@ -1845,11 +1845,6 @@
         [(f init l) (fold-one f init l)]
         [(f init l . ls) (fold-n f init (cons l ls))])))
 
-(define (foldl1 f ls)  
-  (if (null? ls)
-      (error 'foldl1 "list must have at least on element.")
-      (foldl f (car ls) (cdr ls))))
-
 ;; Also from PLT's list.ss
 (define foldr
   (letrec ((fold-one
@@ -2009,6 +2004,12 @@
 	   absolute)))))
 
 	  ) (void))  ;; End IFCHEZ
+
+
+(define (foldl1 f ls)  
+  (if (null? ls)
+      (error 'foldl1 "list must have at least on element.")
+      (foldl f (car ls) (cdr ls))))
 
 )
 

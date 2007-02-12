@@ -4,7 +4,7 @@
 (module wavescript_sim_library_push mzscheme
   (require 
            "../constants.ss"
-           ;"../../plt/iu-match.ss"
+	   "../../plt/iu-match.ss"
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            "../../plt/engine.ss"

@@ -1,13 +1,12 @@
 
 ;===============================================================================
-;;;;                ---- Pass Remove Complex Opera* ---- 
+;;;;      ---- Pass Remove Complex Opera* (WaveScript Version) ---- 
 ;;;;
 ;;;; This pass guarantees that each subexpression of the following
 ;;;; constructs is either a lexical variable or a constant.
 ;;;;
 ;;;;  *) function applications (primitive or otherwise)
-;;;;  *) conditional test expression (and conseq/altern for Regiment but not WS)
-;;;;  *) the right-hand-side expressions of a let/letrec
+;;;;  *) conditional test expression 
 ;;;;
 ;;;; When an expression is complex (neither a lexical variable nor a
 ;;;; constant), this pass replaces it with a new lexical variable and
@@ -19,13 +18,13 @@
 
 ;===============================================================================
 
-(module remove-complex-opera mzscheme
+(module ws-remove-complex-opera mzscheme
   (require "../../../plt/common.ss")
-  (provide remove-complex-opera*
-           test-remove-complex-opera)
+  (provide ws-remove-complex-opera*
+           test-ws-remove-complex-opera)
   (chezimports)
 
-(define remove-complex-opera*
+(define ws-remove-complex-opera*
   (let ()
     
     ;; This is purely for readability, instead of just tmp_99, I try
@@ -135,7 +134,7 @@
 			decl2
 			))
 	      )]
-	   [(iterate . ,_) (error 'remove-complex-opera* "bad iterate: ~s" _)]
+	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to
@@ -178,8 +177,8 @@
 	   [,prim (guard (regiment-primitive? prim))
 		  (vector prim '())]
 
-	   ;[,other (error 'remove-complex-opera* "didn't handle expr: ~s" other)]
-	   [,other (fallthrough other tenv)]
+	   [,other (error 'remove-complex-opera* "didn't handle expr: ~s" other)]
+	   ;[,other (fallthrough other tenv)]
 	   ))
        (lambda (results reconstr)
 	 (match results
@@ -209,7 +208,7 @@
 				    boddecls)
 			    bod)))]
 	  [,else (error
-		  'remove-complex-opera*
+		  'ws-remove-complex-opera*
 		  "lazy-letrec expression is incorrectly formatted:\n~s"
 		  letrec-exp)])))
 
@@ -218,12 +217,12 @@
       (match program
              [(,input-lang '(program ,exp ,type))
 	      (let-match ([#(,newbod ,bnds) (process-expr exp (empty-tenv))])
-		`(remove-complex-opera*-language 
+		`(ws-remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
 				 `(lazy-letrec ,bnds ,newbod)
 				 ) ,type))
 		)]
-             [,else (error 'remove-complex-opera*
+             [,else (error 'ws-remove-complex-opera*
                            "Invalid input: ~a" program)]))
     ))
 ;===============================================================================
@@ -233,24 +232,24 @@
   (map
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	
-       `[(remove-complex-opera* '(some-lang '(program ,prog notype)))
-	 (remove-complex-opera*-language '(program ,res notype))]))
+       `[(ws-remove-complex-opera* '(some-lang '(program ,prog notype)))
+	 (ws-remove-complex-opera*-language '(program ,res notype))]))
    '(
-     [(lazy-letrec ([x (List Int) (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
+     ;[(lazy-letrec ([x (List Int) (cons '3 (cons '4 (cons '5 '())))]) x) unspecified]
      )
    )
   ) 
 
 (define test-this
   (default-unit-tester 
-    "11: Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
+    "11: WS-Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
     these-tests))
   
 
 (define test11 test-this)
 (define tests11 these-tests)
-(define test-remove-complex-opera test-this)
-(define tests-remove-complex-opera these-tests)
+(define test-ws-remove-complex-opera test-this)
+(define tests-ws-remove-complex-opera these-tests)
 
 ;==============================================================================
 
