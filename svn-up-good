@@ -9,8 +9,8 @@ exit 0;
 (unless (= (length (command-line-arguments)) 1)
   (error 'svn-up-good "wrong number of command line arguments"))
 
-(load "xml-parser.ss")
-(load "../src/chez/match.ss")
+(load "depends/xml-parser.ss")
+(load "src/chez/match.ss")
 
 ;; This script updates to the latest svn rev that DOES NOT include "brokenrev" in its message.
 
@@ -60,4 +60,3 @@ exit 0;
   )) 
 
 (printf "Finished.\n")
- 
