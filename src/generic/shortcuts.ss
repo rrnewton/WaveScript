@@ -28,9 +28,9 @@
 
 (define-syntax rc (identifier-syntax run-compiler)) ;; shorthand
 
-(define ct compile-to-tokens) ;; shorthand
+(define-syntax ct (identifier-syntax compile-to-tokens)) ;; shorthand
 
-(define ra run-simulator-alpha) ;; shorthand
+(define-syntax ra (identifier-syntax run-simulator-alpha)) ;; shorthand
 
 ;; Token and later compiler:
 (define (tr x)  ;; shorthand

@@ -22,8 +22,27 @@
 
 ;; [2006.08.28] This is the "#define" for building WAVESCOPE related code.
 ;; When turned off, the system should build Regiment without WaveScope extensions.
-(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) on] [(_ on) on]))  ;; ON
-;(define-syntax IFWAVESCOPE (syntax-rules () [(_ on off) off] [(_ on) (begin)])) ;; OFF
+(define-syntax IFWAVESCOPE
+  (lambda (x)
+    ;===============================;
+    (define DEFAULT_WAVESCOPE-REGIMENT_MODE "WS") ;; <-- CHANGE DEFAULT HERE
+    ;===============================;
+    (define (ws)  (syntax-case x () [(_ ws reg) #'ws]   [(_ ws) #'ws]))
+    (define (reg) (syntax-case x () [(_ ws reg) #'reg]  [(_ ws) #'(begin)]))
+    (define (set m)
+      (cond 
+       [(equal? m "WAVESCRIPT") (ws)]
+       [(equal? m "WAVESCOPE")  (ws)]
+       [(equal? m "WS")         (ws)]
+       [(equal? m "REGIMENT")  (reg)]
+       [(equal? m "REG")       (reg)]
+       [(equal? m "BOTH")     
+	(syntax-case x () [(_ ws reg) #'(begin ws reg)] [(_ ws) #'ws])]
+       [else (error 'IFWAVESCOPE "unknown value for environment var REGIMENT_OR_WAVESCRIPT: ~s" m)]
+       ))
+    (cond
+     [(getenv "REGIMENT_OR_WAVESCRIPT") => (lambda (m) (set m))]
+     [else (set DEFAULT_WAVESCOPE-REGIMENT_MODE)])))
 
 
 ;; [2006.09.11] This configures the scheme compiler when loading regiment.

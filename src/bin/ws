@@ -5,7 +5,7 @@ TMP=/tmp/`whoami`/wavescript_parsed.tmp
 if [ ! -f "$1" ];
 then echo Usage: "ws <file> <options ...>";
      echo   File \"$1\" does not exist.
-     exit;
+     exit 1;
 fi
 
 if [ ! -d /tmp/`whoami` ]; 

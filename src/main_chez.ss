@@ -141,9 +141,15 @@
 
 ;======================================================================
 
-(fprintf stderr "Regiment: Loading compiler in chezscheme~a...\n"
+(fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a...\n"
+	 (let ([ws #f]  [reg #f])
+	   (IFWAVESCOPE (set! ws #t) (set! reg #t))
+	   (cond 
+	    [(and ws reg) "ws+reg"]
+	    [ws   "ws"]
+	    [reg "reg"]))
 	 (if (top-level-bound? 'regiment-origin)
-	     (format " (from ~a)" regiment-origin)
+	     (format " (from ~a)" regiment-origin)    
 	     ""))
 
 ;======================================================================
@@ -211,7 +217,8 @@
 (include "chez/hashtab.ss")      (import hashtab)
 (include "generic/util/helpers.ss") (import (except helpers test-this these-tests))
 (include "generic/util/streams.ss") (import (except streams test-this these-tests))
-(include "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
+;; Not using these currently:
+;(include "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
 
 ;; These provide some more utility code related to threads:
 (IF_THREADS (begin (include "chez/threaded_utils.ss") (import threaded_utils)))
@@ -228,7 +235,8 @@
 (include "generic/util/scheme_fft.ss")
 (include "generic/util/fft.ss") (import fft)
 
-(include "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)
+(IFWAVESCOPE (begin)	     
+  (begin (include "generic/sim/simulator_alpha_datatypes.ss") (import simulator_alpha_datatypes)))
 
 ;; Load this before the simulator.
 (IF_GRAPHICS
@@ -273,18 +281,22 @@
 (define current-time (seconds-since-1970))
 ;======================================================================
 
+;; Don't use these yet from WS:
+(IFWAVESCOPE
+ (begin)
+ (begin 
+   (include "generic/compiler_components/logfiles.ss") (import logfiles)
 
-(include "generic/compiler_components/logfiles.ss") (import logfiles)
+   (include "generic/sim/alpha_lib.ss") 
+   (import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
 
-(include "generic/sim/alpha_lib.ss") 
-(import alpha_lib) ;; [2005.11.03] FIXME Temporary, reactivating this... shouldn't need to be on.
+   (include "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
+					;(include "generic/alpha_lib_scheduler.ss")
 
-(include "generic/sim/alpha_lib_scheduler_simple.ss") ;(import alpha_lib_scheduler_simple)
-;(include "generic/alpha_lib_scheduler.ss")
-
-(include "generic/sim/simulator_alpha.ss") (import simulator_alpha)
-(include "generic/sim/firelightning_sim.ss")
-(include "generic/passes/nesc_bkend/tossim.ss")
+   (include "generic/sim/simulator_alpha.ss") (import simulator_alpha)
+   (include "generic/sim/firelightning_sim.ss")
+   (include "generic/passes/nesc_bkend/tossim.ss")
+   ))
 
 ;(include "../reg_grammar.ss")
 
@@ -294,20 +306,23 @@
 ;(import prim_defs_OLD) ;; TEMP
 
 ;; This is used by the subsequent passes that process TML:
-(include "generic/compiler_components/tml_generic_traverse.ss") (import tml_generic_traverse)
+(IFWAVESCOPE (begin) 
+   (begin (include "generic/compiler_components/tml_generic_traverse.ss")
+	  (import tml_generic_traverse)))
 (include "generic/compiler_components/reg_core_generic_traverse.ss") (import reg_core_generic_traverse)
 (include "generic/passes/pass-mechanism.ss") (import pass-mechanism)
 
 ;; Load this pass early because it's used in a couple places.
-(include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)
+(IFWAVESCOPE (begin)  
+  (begin (include "generic/passes/tokmac_bkend/cleanup-token-machine.ss") (import cleanup-token-machine)))
 
 ;(define prim_random #%random) ;; Lame hack to get around slib's messed up random.
 ;(define (random-real) (#%random 1.0)) ;; Lame hack to get around slib's messed up random.
 (include "generic/langs/language-mechanism.ss")
 
 (include "generic/langs/lang_wavescript.ss")
-(include "generic/sim/wavescript_sim_library.ss")
-(include "generic/sim/wavescript_sim_library_NEW.ss")
+;(include "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
+;(include "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
 (include "generic/sim/wavescript_sim_library_push.ss")
 (include "generic/testing/lang_wavescript_tests.ss")
 
@@ -316,15 +331,17 @@
 (include "generic/langs/lang06_uncover-free.ss")
 (include "generic/langs/lang07_lift-letrec.ss")
 
-(include "generic/langs/lang11_classify-names.ss")
-(include "generic/langs/lang12_heartbeats.ss")
-(include "generic/langs/lang13_control-flow.ss")
-(include "generic/langs/lang14_places.ss")
+(IFWAVESCOPE (begin)
+  (begin 
+    (include "generic/langs/lang11_classify-names.ss")
+    (include "generic/langs/lang12_heartbeats.ss")
+    (include "generic/langs/lang13_control-flow.ss")
+    (include "generic/langs/lang14_places.ss")
 
-(include "generic/langs/lang20_deglobalize.ss") 
+    (include "generic/langs/lang20_deglobalize.ss") 
 
-(include "generic/scrap/lang30_haskellize-tokmac.ss") 
-(include "generic/langs/lang32_emit-nesc.ss")
+    (include "generic/scrap/lang30_haskellize-tokmac.ss") 
+    (include "generic/langs/lang32_emit-nesc.ss")))
 
 (if VERBOSE-LOAD (printf "  Midway through, doing passes...\n"))
 
@@ -360,49 +377,52 @@
 (include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
 (include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)
 
-(include "generic/passes/analyze_query/classify-names.ss")   (import classify-names)
-(include "generic/passes/analyze_query/add-heartbeats.ss")   (import add-heartbeats)
-(include "generic/passes/analyze_query/add-control-flow.ss") (import add-control-flow)
-(include "generic/passes/analyze_query/add-places.ss")       (import add-places)
-(include "generic/passes/analyze_query/analyze-places.ss")   (import analyze-places)
+(IFWAVESCOPE (begin)
+  (begin
+    (include "generic/passes/analyze_query/classify-names.ss")   (import classify-names)
+    (include "generic/passes/analyze_query/add-heartbeats.ss")   (import add-heartbeats)
+    (include "generic/passes/analyze_query/add-control-flow.ss") (import add-control-flow)
+    (include "generic/passes/analyze_query/add-places.ss")       (import add-places)
+    (include "generic/passes/analyze_query/analyze-places.ss")   (import analyze-places)
 
-(include "generic/passes/analyze_query/resolve-fold-trees.ss") (import resolve-fold-trees)
-;(include "generic/pass18_add-routing.ss")
+    (include "generic/passes/analyze_query/resolve-fold-trees.ss") (import resolve-fold-trees)
+					;(include "generic/pass18_add-routing.ss")
 
-(include "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
+    (include "generic/passes/deglobalize/deglobalize.ss") (import deglobalize)
 
-(include "generic/passes/deglobalize/deglobalize2.ss") (import deglobalize2)
-(include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
+    (include "generic/passes/deglobalize/deglobalize2.ss") (import deglobalize2)
+    (include "generic/passes/deglobalize/deglobalize2_tmgen.ss")
 
-;; Uses delazy-bindings:
-(include "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
+    ;; Uses delazy-bindings:
+    (include "generic/passes/analyze_query/add-data-flow.ss")      (import add-data-flow)
 
-;(include "generic/pass22_desugar-soc-return.ss")
-;; TODO: Merge with pass22, besides this isn't really 26 anyway!
-(include "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
-(include "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
-(include "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
-;(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
-;(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
-;(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
+					;(include "generic/pass22_desugar-soc-return.ss")
+    ;; TODO: Merge with pass22, besides this isn't really 26 anyway!
+    (include "generic/passes/tokmac_bkend/desugar-macros.ss")        (import desugar-macros)
+    (include "generic/passes/tokmac_bkend/find-emittoks.ss")         (import find-emittoks)
+    (include "generic/passes/tokmac_bkend/desugar-gradients.ss")     (import desugar-gradients)
+					;(include "generic/passes/tokmac_bkend/desugar-gradients_verbose.ss")
+					;(include "generic/passes/tokmac_bkend/desugar-gradients_simple.ss")
+					;(include "generic/passes/tokmac_bkend/desugar-gradients_ETX.ss")
 
-(include "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
-(include "generic/passes/tokmac_bkend/rename-stored.ss")      (import rename-stored)
+    (include "generic/passes/tokmac_bkend/desugar-let-stored.ss") (import desugar-let-stored)
+    (include "generic/passes/tokmac_bkend/rename-stored.ss")      (import rename-stored)
 
-;(include "generic/pass24_analyze-calls.ss")
-;(include "generic/pass25_inline.ss")
-;(include "generic/pass26_prune-returns.ss")
-(include "generic/passes/tokmac_bkend/cps-tokmac.ss")       (import cps-tokmac) 
-(include "generic/passes/tokmac_bkend/sever-cont-state.ss") (import sever-cont-state)
-;; (include "generic/pass27.2_add-kclosure.ss")
-(include "generic/passes/tokmac_bkend/closure-convert.ss")  (import closure-convert)
-(include "generic/passes/tokmac_bkend/inline-tokens.ss")    (import inline-tokens)
+					;(include "generic/pass24_analyze-calls.ss")
+					;(include "generic/pass25_inline.ss")
+					;(include "generic/pass26_prune-returns.ss")
+    (include "generic/passes/tokmac_bkend/cps-tokmac.ss")       (import cps-tokmac) 
+    (include "generic/passes/tokmac_bkend/sever-cont-state.ss") (import sever-cont-state)
+    ;; (include "generic/pass27.2_add-kclosure.ss")
+    (include "generic/passes/tokmac_bkend/closure-convert.ss")  (import closure-convert)
+    (include "generic/passes/tokmac_bkend/inline-tokens.ss")    (import inline-tokens)
 
-;; This is out of use, but not deleted yet:
-(include "generic/scrap/pass30_haskellize-tokmac.ss")
+    ;; This is out of use, but not deleted yet:
+    (include "generic/scrap/pass30_haskellize-tokmac.ss")
 
-(include "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
-(include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
+    (include "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
+    (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
+    ))
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)
@@ -451,11 +471,14 @@
 (include "generic/testing/tests_noclosure.ss")
 (include "generic/testing/tests.ss")
 
+
+
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.
-(include "generic/scrap/repl.ss")
+(IFWAVESCOPE (begin) (include "generic/scrap/repl.ss"))
 
 (include "generic/shortcuts.ss")
+
 
 ;; DISABLED TEMPORARILY:
 #;
@@ -494,7 +517,7 @@
 
 
 ;; Open this up so we can read the global counters:
-(import simulator_alpha_datatypes)
+(IFWAVESCOPE (begin) (import simulator_alpha_datatypes))
 
 ;; This is an (attempted) hack for maintaining clean seperation between repeated loads.
 ;;

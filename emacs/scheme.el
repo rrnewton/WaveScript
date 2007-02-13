@@ -339,7 +339,7 @@ See `run-hooks'."
 	       "reg:define-struct"  "define-record" "define-struct" "define-structure"
 
 	       ;; Some regiment syntax extensions:
-	       "IFDEBUG" "DEBUGMODE" "DEBUGASSERT" "ASSERT"
+	       "IFDEBUG" "IFWAVESCOPE" "DEBUGMODE" "DEBUGASSERT" "ASSERT"
 	       "IFCHEZ" "IF_GRAPHICS"
 
 	       "begin" "call-with-current-continuation" "call/cc"
@@ -512,6 +512,7 @@ that variable's value is a string."
 ;; RRN:
 (put 'unless 'scheme-indent-function 1)
 (put 'when 'scheme-indent-function 1)
+(put 'IFWAVESCOPE 'scheme-indent-function 1)
 (put 'fluid-let 'scheme-indent-function 1)
 (put 'with-syntax 'scheme-indent-function 1)
 (put 'with-mutex 'scheme-indent-function 1)

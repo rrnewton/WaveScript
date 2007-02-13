@@ -218,9 +218,9 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))
 
 (begin (current-directory (format "~a/lib/" test-root))
-       (define stdlib (system/exit-code (format "echo exit | ws lib/stdlib.ws &> ~a/10_stdlib.log" test-directory)))
+       (define stdlib (system/exit-code (format "echo exit | ws stdlib.ws &> ~a/10_stdlib.log" test-directory)))
        (fpf "ws: Loading stdlib.ws:                        ~a\n" (code->msg! stdlib))
-       (define matrix (system/exit-code (format "echo exit | ws lib/matrix.ws &> ~a/11_matrix.log" test-directory)))
+       (define matrix (system/exit-code (format "echo exit | ws matrix.ws &> ~a/11_matrix.log" test-directory)))
        (fpf "ws: Loading matrix.ws:                        ~a\n" (code->msg! matrix))
        (current-directory test-directory))
 
@@ -317,8 +317,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system (format "~a/depends/petite --version &> temp.log" test-root))
 (fpf (file->string "temp.log"))
 
-(exit)
-
 (close-output-port log)
 (define thesubj 
   (if failed 
@@ -336,8 +334,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (when (directory-exists? "/var/www/regression")  
   (fprintf orig-console "Copying log to website.\n")
   (let* ([d (seconds->date (current-seconds))]
-	 [webfile (format "/var/www/regression/rev~a_~a-~a-~a:~a:~a_~a"
-			  svn-revision
+	 [webfile (format "/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
+			  svn-revision engine-svn-revision
 			  (date-year d) (date-month d) (date-day d)
 			  (date-hour d) (date-minute d)
 			  (if failed "FAILED" "passed"))])

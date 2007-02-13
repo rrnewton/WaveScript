@@ -19,6 +19,7 @@
 
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
+(IFWAVESCOPE (begin)
 (pass-list
   (list
     ;; (1) Type checking comes first, but that happens before these passes
@@ -121,7 +122,7 @@
     ;; Uncomment to make the compiler generate NesC code.
 ;    flatten-tokmac
 ;    emit-nesc
-    ))
+    )))
 
 ; ==================================================================
 ;; Functions for input/output to filesystem and for invoking compiler.

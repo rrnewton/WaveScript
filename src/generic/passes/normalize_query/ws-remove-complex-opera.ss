@@ -30,6 +30,7 @@
     ;; This is purely for readability, instead of just tmp_99, I try
     ;; to give things reasonable names based on what kinds of values
     ;; they carry.
+#;
     (define (meaningful-name exp)
       (match exp
 	     [,prim
@@ -67,7 +68,7 @@
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
 		    [(type) (recover-type x tenv)]
-		    [(name) (unique-name (meaningful-name x))])
+		    [(name) (unique-name 'tmp #;(meaningful-name x))])
 	      (values name
 		      (cons (list name type res) binds))))))
 
@@ -88,7 +89,7 @@
       (core-generic-traverse/types 
        (lambda (expr tenv fallthrough)
 	 (match expr
-;	   [,x (guard (simple-expr? x)) (vector x '())]
+	   [,x (guard (simple-expr? x)) (vector x '())]
 
 	   [(lambda ,formals ,types ,body)
 	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])	      

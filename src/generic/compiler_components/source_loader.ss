@@ -38,10 +38,12 @@
   (chezimports ;constants
                (except helpers           test-this these-tests)
 	       (except regiment_helpers  test-this these-tests)
-	       (except simulator_alpha   test-this these-tests)
+	       
 	       ;; FIXME: Why doesn't this work: [2006.10.18]
 	       (except desugar-pattern-matching test-this these-tests)
 	       )
+
+  (IFCHEZ (IFWAVESCOPE (begin) (import (except simulator_alpha   test-this these-tests))) (begin))
 ; ================================================================================
 
 ;; Read the file from disk, desugar the concrete syntax appropriately.
@@ -121,6 +123,8 @@
 ;
 ;; [2006.11.13] Adding params to compile phase as well.  Compiler
 ;; reads default-slow-pulse, for example.
+(IFWAVESCOPE 
+(define load-regiment 'undefined-in-wavescope)
 (define (load-regiment . args)
   (match args    
     [(,world ,fn . ,opts) (guard (simworld? world) (string? fn))
@@ -178,9 +182,11 @@
 			       )))))
 	     (print-stats)
 	     result)))]
-    [,other (error 'load-regiment "bad arguments: ~s\n" other)]))
+    [,other (error 'load-regiment "bad arguments: ~s\n" other)])))
 
 (define reg:load load-regiment) ;; shorthand
+
+
 
 
 ;----------------------------------------

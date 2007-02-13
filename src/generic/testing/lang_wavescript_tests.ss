@@ -4,7 +4,7 @@
            "../util/helpers.ss"
            (prefix ws: "../sim/wavescript_sim_library.ss"))
   (provide test-ws test-lang_wavescript)
-  (chezimports (add-prefix wavescript_sim_library ws:))
+  (chezimports (add-prefix wavescript_sim_library_push ws:))
  
   (define these-tests
     (let ()      
