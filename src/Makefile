@@ -276,7 +276,7 @@ distclean:
 	$(RM) -f *.log
 
 
-# upload:
+upload:
 	scp build/$(MT)/main_chez.so "newton@faith.ffh.us:/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
 	ssh newton@faith.ffh.us chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
 	ssh newton@faith.ffh.us chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
