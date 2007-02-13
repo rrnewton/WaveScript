@@ -25,35 +25,47 @@
    ;(mail ryan-email "Failure of supertest.ss" msg)
    (exit 1)))
 
-(if (file-exists? inpipefile) (delete-file inpipefile))
-(if (file-exists? outpipefile) (delete-file outpipefile))
 
-(system (format "mkfifo ~a" inpipefile))
-(system (format "mkfifo ~a" outpipefile))
-
-(define inpipe (open-input-file inpipefile))
-(define outpipe (open-output-file outpipefile 'append))
+(define inpipe #f)
+(define outpipe #f)
 
 ;; Now just write it to stdout:
 ;(display (ws-postprocess (reg-parse-file filename)))(newline)
 ;(pretty-print (ws-postprocess (reg-parse-file filename)))
 
 (printf "Starting server loop...\n")
-(let server-loop ([fn (read inpipe)])
-  (printf "Handling request: ~s\n" fn)
+(let server-loop ()
+
+  (define fn #f)
+
+  (if (file-exists? inpipefile) (delete-file inpipefile))
+  (if (file-exists? outpipefile) (delete-file outpipefile))
+
+  (system (format "mkfifo ~a" inpipefile))
+  (system (format "mkfifo ~a" outpipefile))
+
+  (set! inpipe (open-input-file inpipefile))
+  (set! outpipe (open-output-file outpipefile 'append))
+  (set! fn (read inpipe))
+
+  (printf "\nHandling request: ~s\n" fn)
   (cond 
-   [(eof-object? fn) (begin (close-output-port outpipe)
-			    (close-input-port inpipe)
-			    (delete-file inpipefile)
-			    (delete-file outpipefile)
-			    (exit 0))]
+   [(eof-object? fn) 
+    (server-loop)
+    
+#;    
+    (begin (close-output-port outpipe)
+	   (close-input-port inpipe)
+	   (delete-file inpipefile)
+	   (delete-file outpipefile)
+	   (exit 0))]
    [(string? fn) 
     (printf "Responding to request: ~s\n" fn)
-    (write (ws-parse-file fn) outpipe)
-    (flush-output outpipe)]
+    (time (write (ws-parse-file fn) outpipe))
+    (flush-output outpipe)
+    (server-loop)]
    [else (error 'server-loop "received something other than a filename")]
    ))
-
 
 )
 

@@ -28,6 +28,7 @@
    load-regiment reg:load    ;; Read and execute a file using simulator.
 
    expand-include            ;; Expand an include statement into a set of definitions.
+   ws-parse-file
 
    read-wavescript-source-file ;; Read a WS file, invoking "wsparse", also doing post-processing
    ws-postprocess              ;; Take parsed decls and turn into a single top level expression.
@@ -275,20 +276,36 @@
 
 (IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.
- (define (ws-parse-file fn) 
-   ;; HACK: WON'T WORK IN WINDOWS:)
-   (unless (zero? (system "which wsparse")) 
-     (error 'wsint "couldn't find wsparse executable"))
-   (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
-	  [decls (read port)])
-     (close-input-port port)
-     ;; This is very hackish:
-     (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
-	 (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+ (define (ws-parse-file fn)    
+   (time 
+   (if (file-exists? "/tmp/wsparse_server_pipe")
+       ;; TODO: Make sure path is absolute!!
+       (begin
+	 (printf "Using wsparse_server to parse file: ~a\n" fn)
+	  (let ([out (open-output-file "/tmp/wsparse_server_pipe" 'append)]
+	       [in  (open-input-file "/tmp/wsparse_server_response")])
+           (write fn out)
+	   (flush-output-port out)
+	   (let ([result (read in)])	     
+	     (close-output-port out)
+	     (close-input-port in)
+	     result)))
+       (begin 
+	 ;; HACK: WON'T WORK IN WINDOWS:)
+	 (unless (zero? (system "which wsparse")) 
+	   (error 'wsint "couldn't find wsparse executable"))
+	 (printf "Calling wsparse to parse file: ~a\n" fn)
+	 (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
+		[decls (read port)])
+	   (close-input-port port)
+	   ;; This is very hackish:
+	   (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	       (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
 					;(printf "POSTPROCESSING: ~s\n" decls)
 					;(ws-postprocess decls)
-     decls
-     ))
+	   decls
+	   ))))
+   )
  ;; The PLT version is imported above: (from regiment_parser.ss)
  (begin)
  )
