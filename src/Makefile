@@ -58,6 +58,7 @@ old_all: reg
 	(cd haskell; $(MAKE))
 
 MT=`echo '(display (machine-type))' | ../depends/petite -q`
+SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
@@ -264,12 +265,24 @@ clean: cleanchez cleanplt
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
-	$(RM) *.zo *.so _SIM_* *~ *.log
+	$(RM) *.zo *.so _SIM_* *~ 
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)
 	$(RM) bin/wsparse
 	find -name ".__*" | xargs -i $(RM) {}  ## Remove these temp files
 	find -name "__lang_running.tmp.ss" | xargs -i $(RM) {}  ## Remove these temp files
+
+distclean:
+	$(RM) -f *.log
+
+
+upload:
+	cp build/$(MT)/main_chez.so "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_main_chez.so"
+	cp bin/wsparse "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
+	chgrp www-data "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
+	chmod g+r "/var/www/regiment_binaries/"$(SVNREV)"_"$(MT)"_wsparse"
 
 
 #	find -name "*.zo" | xargs rm # This is excessive...

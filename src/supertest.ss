@@ -90,12 +90,18 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (format "~a-~a-~a_~a:~a:~a" 
 	    (date-year d) (date-month d) (date-day d)
 	    (date-hour d) (date-minute d) (date-second d))))
-(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
+;(define logfile (format "~a/supertest_~a.log" (path->string (current-directory)) date))
+(define logfile (format "~a/supertest_~a.log" test-directory date))
 (define log (open-output-file logfile 'replace))
 (define scriptoutput (open-output-file "SUPERTEST_SCRIPT_OUTPUT.log" 'replace))
 (define orig-console (current-output-port))
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
+
+(fprintf orig-console "Openned logfile: ~s\n" logfile)
+;(flush-output log)
+;(close-output-port log)
+;(set! log (open-output-file logfile 'append))
 
 (define svn-revision
   (begin 
@@ -311,6 +317,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (system (format "~a/depends/petite --version &> temp.log" test-root))
 (fpf (file->string "temp.log"))
 
+(exit)
+
 (close-output-port log)
 (define thesubj 
   (if failed 
@@ -328,7 +336,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (when (directory-exists? "/var/www/regression")  
   (fprintf orig-console "Copying log to website.\n")
   (let* ([d (seconds->date (current-seconds))]
-	 [webfile (format "/var/www/regression/~a-~a-~a:~a:~a_~a"
+	 [webfile (format "/var/www/regression/rev~a_~a-~a-~a:~a:~a_~a"
+			  svn-revision
 			  (date-year d) (date-month d) (date-day d)
 			  (date-hour d) (date-minute d)
 			  (if failed "FAILED" "passed"))])

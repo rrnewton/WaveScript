@@ -6,7 +6,10 @@
 which svn > /dev/null
 svn info | grep Revision | sed s/Revision:\ // > svn_rev.txt
 
-REV=`cat svn_rev.txt`
+if [ "" == "$1" ];
+then REV=`cat svn_rev.txt`;
+else REV="$1";
+fi
 
 MACHINE=`uname`
 if [ $MACHINE == "Linux" ];
