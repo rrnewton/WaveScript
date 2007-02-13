@@ -115,6 +115,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define runpetite (system/exit-code (format "echo | ~a/depends/petite" test-root)))
        (fpf "petite: Repository's Petite Chez runs:        ~a\n" (code->msg! runpetite)))
 
+;; Now that we're sure petite runs let's get the machine type:
+(define machine-type 
+  (begin 
+    (ASSERT (eqv? 0 (system/exit-code "echo '(machine-type)' | petite -q > machine_type.txt")))
+    (read (open-input-file "machine_type.txt"))))
 
 (begin (define testpetite
 	 (system/exit-code 
@@ -145,8 +150,20 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
        (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
-;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
-;; FIXME:
+
+       ;; Now copy that .so file to our stored binaries directory.
+       (when (directory-exists? "/var/www/regiment_binaries")
+	 (fprintf orig-console "Copying prebuilt binary to website.\n")
+	 (let* ([webfile (format "/var/www/regiment_binaries/~a_~a_main_chez.so" svn-revision machine-type)]
+		[localfile (format "build/~a/main_chez.so" machine-type)])
+	   (if (file-exists? webfile) (delete-file webfile))
+	   (copy-file localfile webfile)
+	   (ASSERT (system (format "chgrp www-data ~a" webfile)))
+	   (ASSERT (system (format "chmod g+r ~a" webfile)))
+	   ))
+
+       ;; Disabling this temporarily, problem with simalpha-generate-modules (and lang_wavescript):
+       ;; FIXME:
 
 ;       (define runso (system/exit-code "./regiment_script.ss test"))
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
@@ -163,6 +180,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (define wsparse (system/exit-code "make wsparse &> 6_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
+
+       ;; Now copy that executable file to our stored binaries directory.
+       (when (directory-exists? "/var/www/regiment_binaries")
+	 (fprintf orig-console "Copying prebuilt wsparse to website.\n")
+	 (let* ([webfile (format "/var/www/regiment_binaries/~a_~a_wsparse" svn-revision machine-type)])
+	   (if (file-exists? webfile) (delete-file webfile))
+	   (copy-file "bin/wsparse" webfile)
+	   (ASSERT (system (format "chgrp www-data ~a" webfile)))
+	   (ASSERT (system (format "chmod g+r ~a" webfile)))
+	   ))
        )
 
 (begin (define pltbc (system/exit-code "make pltbc &> 7_BUILD_PLT_BYTECODE.log"))

@@ -103,26 +103,15 @@
 	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
 		    '())]
 
-	   ;; Todo: could put all this work in the fuser.
-
-	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
-	   ;; DEPENDS ON LAZINESS/PURITY:
 	   [(if ,a ,b ,c)
-	    (if (memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler))
-		(mvlet ([(test test-decls)     (make-simple a tenv)])
-		  (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
-			      [#(,altern ,altern-decls) (process-expr c tenv)])
-		    (vector `(if ,test 
-				 ,(make-letrec conseq-decls conseq) 
-				 ,(make-letrec altern-decls altern))
-			    test-decls)
-		    ))
-	     (mvlet ([(test test-decls)     (make-simple a tenv)]
-		     [(conseq conseq-decls) (make-simple b tenv)]
-		     [(altern altern-decls) (make-simple c tenv)])
-	       (vector `(if ,test ,conseq ,altern)
-		       (append test-decls conseq-decls altern-decls))
-	       ))]
+	    (mvlet ([(test test-decls)     (make-simple a tenv)])
+	      (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
+			  [#(,altern ,altern-decls) (process-expr c tenv)])
+		(vector `(if ,test 
+			     ,(make-letrec conseq-decls conseq) 
+			     ,(make-letrec altern-decls altern))
+			test-decls)
+		))]
 
 	   ;; For now don't lift out an iterate's lambda!
 	   [(iterate ,[fun] ,source)

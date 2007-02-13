@@ -1,0 +1,38 @@
+#!/bin/bash
+
+## This script downloads a pre-compiled binary for those that don't
+## have access to the Chez Scheme compiler.
+
+which svn > /dev/null
+svn info | grep Revision | sed s/Revision:\ // > svn_rev.txt
+
+REV=`cat svn_rev.txt`
+
+MACHINE=`uname`
+if [ $MACHINE == "Linux" ];
+then MT=i3le;
+elif [ $MACHINE == "Darwin" ];  ## OOPS, INCLUDE INTEL TOO!
+then MT=ppcosx;
+elif [ $MACHINE == "Windows" ];
+then MT=i3nt;
+else echo Unknown platform for scheme system: $MACHINE
+fi
+
+SOFILE=$REV"_"$MT"_main_chez.so"
+WSPARSEFILE=$REV"_"$MT"_wsparse"
+
+echo Downloading precompiled binary for Regiment revision $REV
+#echo Fetching file from: "http://www.regiment.us/regiment_binaries/"$REV"_"$MT"_main_chez.so"
+echo
+echo If this doesn\'t work there might not be a precompiled binary for this SVN revision.
+echo Check what revisions have binaries available at: 
+echo   http://www.regiment.us/regiment_binaries/
+echo
+wget  "http://www.regiment.us/regiment_binaries/"$SOFILE
+wget  "http://www.regiment.us/regiment_binaries/"$WSPARSEFILE
+
+echo Moving to build/$MT/main_chez.so
+mv $SOFILE build/$MT/main_chez.so
+echo Moving to bin/wsparse
+mv $WSPARSEFILE bin/wsparse
+chmod +x bin/wsparse
