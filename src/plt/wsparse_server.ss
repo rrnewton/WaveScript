@@ -13,19 +13,6 @@
 (define inpipefile "/tmp/wsparse_server_pipe")
 (define outpipefile "/tmp/wsparse_server_response")
 
-(current-exception-handler
- (lambda (exn)
-   (define msg
-     (format "\nWSPARSE error:\n   ~a\n\nException: ~s\n" 
-	     (exn-message exn) exn))
-   (if (file-exists? inpipefile) (delete-file inpipefile))
-   (if (file-exists? outpipefile) (delete-file outpipefile))
-   (display msg)
-   (display msg (open-output-file "/tmp/wsparse_server.log" 'append))
-   ;(mail ryan-email "Failure of supertest.ss" msg)
-   (exit 1)))
-
-
 (define inpipe #f)
 (define outpipe #f)
 
@@ -34,18 +21,22 @@
 ;(pretty-print (ws-postprocess (reg-parse-file filename)))
 
 (printf "Starting server loop...\n")
-(let server-loop ()
-
+(define (server-loop)  
   (define fn #f)
-
-  (if (file-exists? inpipefile) (delete-file inpipefile))
+  (printf "  Deleting pipes.\n")
+  
+  (if (file-exists? inpipefile)  (delete-file inpipefile))
   (if (file-exists? outpipefile) (delete-file outpipefile))
+
+  (printf "  Making new pipes.\n")
 
   (system (format "mkfifo ~a" inpipefile))
   (system (format "mkfifo ~a" outpipefile))
 
   (set! inpipe (open-input-file inpipefile))
   (set! outpipe (open-output-file outpipefile 'append))
+
+  (printf "  Waiting on request.\n")
   (set! fn (read inpipe))
 
   (printf "\nHandling request: ~s\n" fn)
@@ -66,6 +57,32 @@
     (server-loop)]
    [else (error 'server-loop "received something other than a filename")]
    ))
+
+(define restart-handler
+  (lambda (exn)
+    (define msg
+      (format "\nWSPARSE error:\n   ~a\n\nException: ~s\n" 
+	      (exn-message exn) exn))
+    
+					;(if (file-exists? inpipefile) (delete-file inpipefile))
+					;(if (file-exists? outpipefile) (delete-file outpipefile))
+    (display msg)
+    (display msg (open-output-file "/tmp/wsparse_server.log" 'append))
+       
+    ;;(mail ryan-email "Failure of supertest.ss" msg)
+					;(exit 1)
+
+    (write #f outpipe)
+    (flush-output outpipe)
+    (printf "Restarting server.\n")
+    (parameterize ([current-exception-handler restart-handler])
+      (server-loop))
+    ))
+
+(current-exception-handler restart-handler)
+
+(server-loop)
+
 
 )
 

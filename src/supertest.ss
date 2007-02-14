@@ -334,10 +334,11 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (when (directory-exists? "/var/www/regression")  
   (fprintf orig-console "Copying log to website.\n")
   (let* ([d (seconds->date (current-seconds))]
-	 [webfile (format "/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
+	 [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
+		          "/var/www/regression/rev~a_eng~a_~a_~a"
 			  svn-revision engine-svn-revision
-			  (date-year d) (date-month d) (date-day d)
-			  (date-hour d) (date-minute d)
+			  ;(date-year d) (date-month d) (date-day d)
+			  ;(date-hour d) (date-minute d)
 			  (if failed "FAILED" "passed"))])
     (if (file-exists? webfile) (delete-file webfile))
     (copy-file logfile webfile)
