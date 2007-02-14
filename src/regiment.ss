@@ -432,10 +432,15 @@
 	     (define port (match filenames
 			  ;; If there's no file given read from stdout
 			  [() (console-input-port)]
-			  [(,fn ,rest ...) (open-input-file fn)]
+			  [(,fn ,rest ...) 
+			   (if (equal? "ws" (extract-file-extension fn))
+			       (or (read-wavescript-source-file fn)
+				   (error 'wsint "couldn't parse file: ~s" fn))
+			       ;; Otherwise let's assume 
+			       (open-input-file fn))]
 			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
 			  ))
-	     (apply wscomp prog opts)
+	     (apply wscomp port opts)
 	   )]
 	  
 	  )))))))

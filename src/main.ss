@@ -533,13 +533,24 @@
   ) ; End wsint
 
 ;; WaveScript Compiler Entrypoint:
-(define (wscomp port . flags)                                 ;; Entrypoint.  
+(define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler]
 		[regiment-primitives
 		 ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
    (define outfile "./query.cpp")
-   (define prog (ws-postprocess (read port)))
+   (define prog
+     (cond  [(input-port? x)
+	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from port: ~s\n" x))
+	     ;; We assume this is parsed but not post-processed:
+	     (ws-postprocess (read x))]
+	    [(string? x) 
+	     (unless (regiment-quiet) (printf "WSCOMP: Loading WS source from file: ~s\n" x))
+	     (read-wavescript-source-file x)]
+	    [(list? x)   
+	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
+	     x]
+	    [else (error 'wsint "bad input: ~s" x)]))
    (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
 
    (ASSERT (andmap symbol? flags))
