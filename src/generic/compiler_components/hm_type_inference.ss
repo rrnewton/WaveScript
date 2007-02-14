@@ -1227,6 +1227,34 @@
    error]
 
 
+  ;; TODO: FIXME: THIS REPRESENTS A BUG:
+  ["BUG in type checking in petite or full chez:"
+   (deep-member? 'NUM
+    (annotate-program 
+    '(foolang '(program
+		   (letrec ([readings (Area (List Int)) 
+				      (rmap
+				       (lambda (n) (Node)
+					       (cons (sense "temp" n)
+						     (cons 1 '())))
+				       world)]
+			    [aggr 't1 (lambda (x y) ('t2 't3)
+					      (cons (g+ (car x) (car y))
+						    (cons (g+ (car (cdr x))
+							      (car (cdr y)))
+							  '())))]
+			    [sums (Stream (List Int)) 
+				  (rfold aggr (cons 0 (cons 0 '()))
+					 readings)]
+			    )
+		     sums)
+		 (Stream Int)))))
+   ;; SHOULD PROBABLY BE #T:
+   ;; HACKING NOW, COME BACK TO THIS:
+   unspecified   
+   ]
+
+
   #;
   ;; Should we type-check with patterns in there?
   [(mvlet ([(p t) (annotate-program '(lambda (#(_ t)) (> t 90)))]) t)

@@ -98,7 +98,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (current-output-port scriptoutput)
 (current-error-port scriptoutput)
 
-(fprintf orig-console "Openned logfile: ~s\n" logfile)
+(fprintf orig-console "Opened logfile: ~s\n" logfile)
 ;(flush-output log)
 ;(close-output-port log)
 ;(set! log (open-output-file logfile 'append))

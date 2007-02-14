@@ -2216,6 +2216,7 @@
      ;; Should have missed a message in one out of the last 3 aggregations:
      ,(lambda (ls) (< (apply + (list-head (reverse ls) 3)) 30))]
 
+
     ["Run an average 'temperature' calculation in regiment." 
      (parameterize ([simalpha-channel-model 'lossless]
 		    [simalpha-failure-model  'none]
@@ -2226,8 +2227,8 @@
 	 '(letrec ([readings (rmap (lambda (n) (cons (sense "temp" n) (cons 1 '())))
 				   world)]
 		   [aggr (lambda (x y)
-			   (cons (+ (car x)
-				    (car y))
+			   (cons (+_ (car x)
+				     (car y))
 				 (cons (+ (car (cdr x))
 					  (car (cdr y)))
 				       '())))]

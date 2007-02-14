@@ -30,6 +30,7 @@
     (define (ws x)  (syntax-case x () [(_ ws reg) #'ws]   [(_ ws) #'ws]))
     (define (reg x) (syntax-case x () [(_ ws reg) #'reg]  [(_ ws) #'(begin)]))
     (define (set m)
+      ;(printf "  ENVVAR: ~s\n" m)
       (cond 
        [(equal? m "WAVESCRIPT") ws]
        [(equal? m "WAVESCOPE")  ws]
