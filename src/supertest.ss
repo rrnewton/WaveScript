@@ -6,9 +6,17 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; This really puts the system through the paces.
 ;; It's a PLT-ONLY script.  (Chez's system call doesn't return the error code.)
 
+;; TODO: Add a timeout!  In case the test gets stuck.
+
 (require (lib "process.ss") (lib "date.ss"))
 
 
+;; Let's clean up some:
+(if (file-exists? "/tmp/wsparse_server_pipe") (delete-file "/tmp/wsparse_server_pipe"))
+(if (file-exists? "/tmp/wsparse_server_response") (delete-file "/tmp/wsparse_server_response"))
+
+;; Should we killall the wsparse_server processes also?
+ 
 ; ----------------------------------------
 
 (define ryan-email "rrnewton@gmail.com")
@@ -108,6 +116,12 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "which svn > /dev/null")))
     (ASSERT (eqv? 0 (system/exit-code "svn info | grep Revision | sed s/Revision:// > svn_rev.txt")))
     (read (open-input-file "svn_rev.txt"))))
+
+
+
+
+
+
 
 ;; Here we begin running tests:
 
