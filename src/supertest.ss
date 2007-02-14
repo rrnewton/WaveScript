@@ -345,7 +345,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 ;; As icing on the cake let's post this on the web too:
 ;; This should run on faith:
-(when (directory-exists? "/var/www/regression")  
+(when (directory-exists? "/var/www/regression")
+  (printf "Going to try publishing to website.\n")
   (let* (;[d (seconds->date (current-seconds))]
 	 [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
 		          "/var/www/regression/rev~a_eng~a_~a_~a"
