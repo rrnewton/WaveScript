@@ -302,7 +302,6 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (current-directory test-directory)
        (fpf "wsc: Running WaveScript Demos with WSC:       ~a\n" (code->msg! wsc-demos)))
 
-
 ;;================================================================================
 
 (fpf "\nTotal time spent testing: ~a minutes\n" 
@@ -349,7 +348,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (printf "Going to try publishing to website.\n")
   (let* (;[d (seconds->date (current-seconds))]
 	 [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
-		          "/var/www/regression/rev~a_eng~a_~a_~a"
+		          "/var/www/regression/rev~a_eng~a_~a"
 			  svn-revision engine-svn-revision
 			  ;(date-year d) (date-month d) (date-day d)
 			  ;(date-hour d) (date-minute d)
