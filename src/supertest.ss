@@ -346,8 +346,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; As icing on the cake let's post this on the web too:
 ;; This should run on faith:
 (when (directory-exists? "/var/www/regression")  
-  (fprintf orig-console "Copying log to website.\n")
-  (let* ([d (seconds->date (current-seconds))]
+  (let* (;[d (seconds->date (current-seconds))]
 	 [webfile (format ;"/var/www/regression/rev~a_eng~a_~a-~a-~a:~a:~a_~a"
 		          "/var/www/regression/rev~a_eng~a_~a_~a"
 			  svn-revision engine-svn-revision
@@ -355,6 +354,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 			  ;(date-hour d) (date-minute d)
 			  (if failed "FAILED" "passed"))])
     (if (file-exists? webfile) (delete-file webfile))
+    (fprintf orig-console "Copying log to website. ~a\n" webfile)
     (copy-file logfile webfile)
     (ASSERT (system (format "chgrp www-data ~a" webfile)))
     (ASSERT (system (format "chmod g+r ~a" webfile)))
