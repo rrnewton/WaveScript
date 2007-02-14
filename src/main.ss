@@ -378,6 +378,7 @@
   (set! p (optional-stop (retypecheck p)))
   (set! p (optional-stop (rename-vars p)))
 
+#;
   (unless (regiment-quiet)
     (printf "Post elaboration types: \n")
     (print-var-types p))
@@ -445,7 +446,7 @@
 		  ;; Remove those regiment-only primitives.
 		  (difference (regiment-primitives) regiment-distributed-primitives)])
     (define prog
-    (cond  [(input-port? x) 
+    (cond  [(input-port? x)
 	    (unless (regiment-quiet) (printf "WSINT: Loading WS source from port: ~s\n" x))
 	     ;; We assume this is parsed but not post-processed:
 	     (ws-postprocess (read x))]

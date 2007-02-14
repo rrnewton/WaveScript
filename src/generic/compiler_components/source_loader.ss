@@ -124,10 +124,11 @@
 ;
 ;; [2006.11.13] Adding params to compile phase as well.  Compiler
 ;; reads default-slow-pulse, for example.
-(IFWAVESCOPE 
-(define load-regiment 'undefined-in-wavescope)
-(define (load-regiment . args)
-  (match args    
+(define load-regiment
+  (IFWAVESCOPE
+      'undefined-in-wavescope
+   (lambda args
+   (match args    
     [(,world ,fn . ,opts) (guard (simworld? world) (string? fn))
      ;; We pass the world by putting it in the global parameter and
      ;; telling the simulator to use the existing "stale" simworld.
@@ -183,7 +184,7 @@
 			       )))))
 	     (print-stats)
 	     result)))]
-    [,other (error 'load-regiment "bad arguments: ~s\n" other)])))
+    [,other (error 'load-regiment "bad arguments: ~s\n" other)]))))
 
 (define reg:load load-regiment) ;; shorthand
 
@@ -277,7 +278,6 @@
 (IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.
  (define (ws-parse-file fn)    
-   (time 
    (if (file-exists? "/tmp/wsparse_server_pipe")
        ;; TODO: Make sure path is absolute!!
        (begin
@@ -304,20 +304,22 @@
 					;(printf "POSTPROCESSING: ~s\n" decls)
 					;(ws-postprocess decls)
 	   decls
-	   ))))
+	   )))
    )
  ;; The PLT version is imported above: (from regiment_parser.ss)
  (begin)
  )
 
+;; Returns #f if parsing/reading fails.
 (define (read-wavescript-source-file fn)
   (ASSERT (string? fn))
   (unless (equal? (extract-file-extension fn) "ws")
     (error 'read-wavescript-source-file 
 	   "should only be used on a .ws file, not: ~s" fn))
-  (ws-postprocess (ws-parse-file fn))
-  ;(ws-parse-file fn)
-  )
+  (let ([parsed (ws-parse-file fn)])
+    (if parsed 
+	(ws-postprocess parsed)
+	#f)))
 
 ) ;; End Module.
 

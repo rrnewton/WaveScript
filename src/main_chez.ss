@@ -100,7 +100,7 @@
 ;;; Setup stuff.
 
 ;; [2006.11.24] This is just a temporary thing so I can watch how fast things load.
-(define VERBOSE-LOAD #t)
+(define VERBOSE-LOAD #f)
 
 ;  (source-directories (list "./"))
 ;(cd (car (source-directories)))

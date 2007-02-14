@@ -1,4 +1,7 @@
-
+#! /bin/sh
+#|
+exec mzscheme -qt "$0" ${1+"$@"}
+|#
 
 ;; This is the poor-man's server.
 

@@ -32,13 +32,15 @@
              (let ([seg (ws:make-sigseg 11 20 (list->vector (iota 10)) ws:nulltimebase)])
                (list (ws:width seg) (ws:start seg) (ws:end seg)))))
          (10 11 20)]
-        
+
+	;; This primitive is discontinued:
+#;        
         ["audioFile"
          (,(lambda ()	
              (let* ([stream (ws:audioFile 
                              (IFCHEZ (string-append (REGIMENTD) "/demos/wavescope/countup.raw")
                                      "../..//demos/wavescope/countup.raw")
-                             1024 0)]
+                             1024 0 44000)]
                     [first (stream-car stream)]
                     [second (stream-car (stream-cdr stream))])
                (list (ws:width first) (ws:start first) (ws:end first)

@@ -43,10 +43,10 @@ all:
 	$(MAKE) wsparse
 	@echo; echo; echo Compiling Regiment Scheme Source
 	@echo "======================================================================"
-	$(MAKE) chez
+	$(MAKE) ws
 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source
 	@echo "======================================================================"
-	$(MAKE) opt
+	$(MAKE) ws.opt
 # 	@echo; echo; echo BUILDING C-code extensions.
 # 	@echo "======================================================================"
 # 	@echo "Don't worry if this step fails, it's optional!"
@@ -103,15 +103,26 @@ chez: chez_native
 chez_native:
 	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | $(CHEZ)
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ))
+
+ws:
+	MT=`echo '(machine-type)' | petite`
+	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=WS; $(CHEZ))
+
 
 ws.opt: opt
 opt:
 	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
-	export REGOPTLVL=3; 
-	export REGDEBUGMODE=OFF;
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | $(CHEZ)
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
+          (export REGOPTLVL=3; \
+           export REGDEBUGMODE=OFF; \
+           export REGIMENT_OR_WAVESCRIPT=WS; \
+           $(CHEZ))
 
 # Saved heap images start up very fast, but don't work right on all platforms.
 # (doesn't work right on Mac OS or fedora core)

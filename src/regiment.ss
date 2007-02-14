@@ -404,12 +404,19 @@
 	  ;; Interpreting (preparsed) wavescript code.
 	  [(wsint)
 	   (let ()
-	   (define port (match filenames
+	   (define prog (match filenames
 			  ;; If there's no file given read from stdin
 			  [() (console-input-port)]
-			  [(,fn ,rest ...) (open-input-file fn)]
+			  [(,fn ,rest ...) 
+			   ;; If it's a ws file we need to parse the file:
+			   (if (equal? "ws" (extract-file-extension fn))
+			       (or (read-wavescript-source-file fn)
+				   (error 'wsint "couldn't parse file: ~s" fn))
+			       ;; Otherwise let's assume 
+			       (open-input-file fn))]
+
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
-	   (let ([return (wsint port)])
+	   (let ([return (wsint prog)])
 	     (import streams)
 	     ;(import imperative_streams)
 	     (if (stream? return)
@@ -426,7 +433,7 @@
 			  [(,fn ,rest ...) (open-input-file fn)]
 			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
 			  ))
-	     (apply wscomp port opts)
+	     (apply wscomp prog opts)
 	   )]
 	  
 	  )))))))

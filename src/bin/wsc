@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TMP=/tmp/`whoami`/wavescript_parsed.tmp
+#TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 if [ ! -f "$1" ];
 then echo Usage: "wsc <file> <options ...>";
@@ -27,15 +27,19 @@ rm -f $WAVESCOPED/WaveScriptQuery.cpp
 rm -f $WAVESCOPED/WaveScriptQuery-*
 
 # Now do the parsing and compilation.
-wsparse $1 > $TMP
-if regiment wscomp $TMP ${1+"$@"} ;
+#wsparse $1 > $TMP
+
+D=`dirname "$1"`
+B=`basename "$1"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+
+if regiment wscomp $abspath ${1+"$@"} ;
 then echo
-else rm -f $TMP; 
+else #rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.
     exit 1;
 fi
-rm -f $TMP
-
+#rm -f $TMP
 
 # If this flag is set, we stop here.
 # HACK: accepts the argument only in this position:
