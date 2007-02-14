@@ -436,6 +436,9 @@
 
   p))
 
+;; We keep the pipe to the parser open.
+;(define parser_inpipe #f)
+;(define parser_outpipe #f)
 
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
@@ -454,7 +457,7 @@
 	     (unless (regiment-quiet) (printf "WSINT: Loading WS source from file: ~s\n" x))
 	     (read-wavescript-source-file x)]
 	    [(list? x)   
-	     (unless (regiment-quiet) (printf "WSINT: Evaluating WS source: \n ~a\n" x))
+	     (unless (regiment-quiet) (printf "WSINT: Evaluating WS source: \n \n"))
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
 

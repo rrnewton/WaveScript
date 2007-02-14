@@ -128,7 +128,7 @@ opt:
 # (doesn't work right on Mac OS or fedora core)
 
 # Run "make chez" before this to compile the code before grabbing a Petite heap:
-heap: builddir chez
+heap: builddir 
 	depends/petite -s0 build/$(MT)/regiment.0.heap --script regiment.ss ./
 #	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
 #	$(RM) -f build/regiment.0.heap 

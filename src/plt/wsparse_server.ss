@@ -28,13 +28,13 @@ exec mzscheme -qt "$0" ${1+"$@"}
   (define fn #f)
   (printf "  Deleting pipes.\n")
   
-  (if (file-exists? inpipefile)  (delete-file inpipefile))
-  (if (file-exists? outpipefile) (delete-file outpipefile))
+;  (if (file-exists? inpipefile)  (delete-file inpipefile))
+;  (if (file-exists? outpipefile) (delete-file outpipefile))
 
   (printf "  Making new pipes.\n")
 
-  (system (format "mkfifo ~a" inpipefile))
-  (system (format "mkfifo ~a" outpipefile))
+  (unless (file-exists? inpipefile) (system (format "mkfifo ~a" inpipefile)))
+  (unless (file-exists? outpipefile) (system (format "mkfifo ~a" outpipefile)))
 
   (set! inpipe (open-input-file inpipefile))
   (set! outpipe (open-output-file outpipefile 'append))
