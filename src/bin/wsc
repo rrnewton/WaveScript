@@ -15,10 +15,10 @@ then mkdir /tmp/`whoami`;
 fi
 
 
-if [ ! `which wsparse` ]
-then echo \"wsparse\" command not found.  Compile it!
-     exit 1;
-fi
+# if [ ! `which wsparse` ]
+# then echo \"wsparse\" command not found.  Compile it!
+#      exit 1;
+# fi
 
 # Make sure we don't get polluted by any out of date files.
 export WAVESCRIPTQUERYFILE=`pwd`/query.cpp

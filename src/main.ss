@@ -44,7 +44,7 @@
     rename-vars ;; We run again after elaborator.
     retypecheck
 
-    verify-elaborated
+;    verify-elaborated
 
     ;; (5) Now we normalize the residual in a number of ways to
     ;; produce the core query language, then we verify that core.

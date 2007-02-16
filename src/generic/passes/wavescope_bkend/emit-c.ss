@@ -107,8 +107,14 @@
 ;; .param mode (Optional) 'static or 'dynamic, indicating whether to
 ;;             produce a main() function, or code for a .so & .wsq.
 ;;             Default is 'static.
+;; .returns text of a .cpp query file (if in static linkage mode)
+;;;.returns OR vector containing text of .cpp file + .wsq query descriptor (dynamic linkage)
 (define wsquery->text
   (lambda (prog . mode)
+
+    ;; I use mutation below to accumulate a list of the connections between boxes, this allows us to produce a WSQ file:
+    (define query-descriptor '())
+    
     (define static-linkage 
       (match mode 
 	[()        #t]	
@@ -122,8 +128,8 @@
     ;; .param name   A string naming the variable that stores the current result.
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
-    ;; .returns A new expression and a set of declarations.
-    (define (Query name typ x tenv)
+    ;; .returns 3 values: A new expression, a set of declarations, wsq declarations
+    (trace-define (Query name typ x tenv)
 	(define myExpr (Expr tenv))
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
@@ -133,42 +139,46 @@
 	[,e (guard (not (distributed-type? typ))) 
 	    (values ""
 		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
-		       " ",name " = " ,(myExpr e) ";\n")))]
+		       " ",name " = " ,(myExpr e) ";\n"))
+                    '())]
 
 	;; An alias:
 	[,e (guard (symbol? e))
 	    ;; UH, not an expression:
-	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n") ())]
+	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n")
+                    ()
+                    ())]
 
 	;; Forbidding recursion for now (even though this says 'letrec').
 	[(,letsym ,binds ,bod) (guard (memq letsym '(let letrec)))
 	 ;(ASSERT (symbol? body))
 	 (ASSERT (no-recursion! binds))
-	 (mvlet ([(stmts decls)
-		  (match binds 
-		    [([,lhs* ,ty* ,rhs*] ...)
-		     (let ([newenv (tenv-extend tenv lhs* ty*)])
-		       (mvlet ([(bodstmts boddecls) (Query name typ bod newenv)])
-		       (let loop ([lhs* (map Var lhs*)] [ty* ty*] [rhs* rhs*]
-				  [stmtacc '()] [declacc '()])
-			 ;; Should really use the Text ADT here:
-			 (if (null? lhs*)
-			     ;; Now we do the body.
-			     (values (list (reverse! stmtacc) bodstmts)
-				     (append (reverse! declacc) boddecls))
-			     (mvlet ([(stmt decl) (Query (car lhs*) (car ty*) (car rhs*) newenv)])
-			       (loop (cdr lhs*) (cdr ty*) (cdr rhs*)
-				     (cons stmt stmtacc) (cons decl declacc)))))))]
-		    [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])])
-
-	   (values stmts decls))]
+         (match binds 
+           [([,lhs* ,ty* ,rhs*] ...)
+            (let ([newenv (tenv-extend tenv lhs* ty*)])
+              (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)])
+                (let loop ([lhs* (map Var lhs*)] [ty* ty*] [rhs* rhs*]
+                                                 [stmtacc '()] 
+                                                 [declacc '()] 
+                                                 [wsqacc '()])
+                  ;; Should really use the Text ADT here:
+                  (if (null? lhs*)
+                      ;; Now we do the body.
+                      (values (list (reverse! stmtacc) bodstmts)
+                              (append (reverse! declacc) boddecls)
+                              (append (reverse! wsqacc) wsqdecls))
+                      (mvlet ([(stmt decl wsq) (Query (car lhs*) (car ty*) (car rhs*) newenv)])
+                             (loop (cdr lhs*) (cdr ty*) (cdr rhs*)
+                                   (cons stmt stmtacc) (cons decl declacc) (cons wsq wsqacc)))))))]
+           [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])]
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
 		      (window ,sig ,[myExpr -> size]))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
 		   ,name"->connect(",(symbol->string sig)");\n")
-		 '())]
+		 '()
+                 '())]
 	
 	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
@@ -179,7 +189,8 @@
 	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
-	  '())]
+	  '()
+          `())]
 
 	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
 	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap] ,[myExpr -> rate])
@@ -192,7 +203,8 @@
 	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
-	  '())]
+	  '()
+          `())]
 
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Stream (Struct ,structname))
@@ -276,7 +288,8 @@
 	    ;; Literal array:
 	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
 	    )
-	  (list maintext)))]
+	  (list maintext)
+          `()))]
 
 	;; [2006.11.18] This is for readng pipeline data currently.
 	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
@@ -288,16 +301,18 @@
 	    "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
-	  '())]
+	  '()
+          `()
+          )]
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
 	 (ASSERT (symbol? sig))	  
-	 (let* ([parent sig] ;(if (symbol? sig) sig (unique-name 'sig))]
+	 (let* ([parent (Var sig)]
 		[class_name `("Iter_" ,name)]
 		;; First we produce a line of text to construct the box:
 		[ourstmts `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
-			      ,name"->connect(" ,(Var parent) ");\n")]
+			      ,name"->connect(" ,parent ");\n")]
 		;; Then we produce the declaration for the box itself:
 		[ourdecls 
 		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
@@ -310,7 +325,10 @@
 				;; This produces a function declaration for iterate:				
 				iterator+vars)))]) 
 	   ;(if (symbol? sig) 
-	   (values ourstmts ourdecls))]
+	   (values ourstmts ourdecls
+                   `(("op ",class_name" query.so\n") 
+                     ("connect " ,parent" ",class_name))
+                   ))]
 
 	
 	;; This is purely hackish... should use the zip library function.	
@@ -362,7 +380,9 @@
       return true;
     }
   };
-")))]
+")
+            ;; wsq decls:
+            `()))]
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
@@ -902,7 +922,7 @@
 		   )
 	       (values `(,decls "\n" ,body) `(,inits ,inits2))))
 	   )]
-	
+
 	[,other (error 'wscode->text "Cannot process: ~s" other)]
 	))
     ))
@@ -913,24 +933,40 @@
       ,(indent body "  ")
       ,(boilerplate_postmain (Var 'toplevel) typ)))
 
+  #;
+  (define (build-wsq name query sofile)
+    (match query
+	[(iterate ,_ ,s) 
+         (let ([boxname (format "Iter_~a" name)])
+           `(("op ",boxname" ",sofile"\n") 
+             ("connect " ,(Var s)" ",boxname)))]
+      	[(assert-type (Stream (Struct ,structname))
+		      (__dataFile ,file ,mode ,rate ,repeat ,types))
+         `(("source "))]
+      	[,oth (error 'wscode->text:build-wsq "Cannot process: ~s" oth)]
+    ))
   ;============================================================
   ;;; Set unit tests
 
   ;============================================================
   ;; Main body:
   ;; Here we stitch together the file out of its composit bits.
-    (mvlet ([(body funs) (Query "toplevel" typ expr (empty-tenv))])
-      `(,(file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
-	,(file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
-	"\n/* These structs represent tuples in the WS program. */\n"
-	,(map StructDef struct-defs)
-	,funs
-	,(make-output-printer typ)
-	
-	,@(if static-linkage
-	      (build-main body)
-	      '())
-	))]
+  (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
+    (define header
+      (list (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
+            (file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
+            "\n/* These structs represent tuples in the WS program. */\n"
+            (map StructDef struct-defs)
+            funs
+            (make-output-printer typ)))           
+    (if static-linkage 
+        (snoc (build-main body) header)
+        (vector header wsq))
+    )
+#;    
+  (if static-linkage querycode
+      (vector querycode (build-wsq "toplevel" expr "query.so")))
+    ]
 
   [,other ;; Otherwise it's an invalid program.
    (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
