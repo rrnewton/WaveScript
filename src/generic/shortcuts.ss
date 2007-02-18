@@ -279,15 +279,5 @@
 
 
 
-#|
-(import reg:module)
-;(include "fft_test.ss")
-(optimize-level 2)
-(load "fft_test.ss")
-(import fft_test)
-;(testfft-bigger)
-(testfft-more)
-|#
-
 
 

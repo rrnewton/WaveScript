@@ -25,16 +25,16 @@
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
   (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
-    (define OPTMODE (equal? (getenv "REGOPTLVL")  "3"))
+    (define UNSAFEOPTMODE (equal? (getenv "REGOPTLVL")  "3"))
 
-    (if (if OPTMODE
+    (if (if UNSAFEOPTMODE
 	    (file-exists? (format "./build/~a/main_chez_OPT.so" (machine-type)))
 	    (file-exists? (format "./build/~a/main_chez.so" (machine-type))))
 	;; If the compiled version is there, use that:
 	(begin 
 	  (set! regiment-origin "compiled .so")
 
-	  (if OPTMODE
+	  (if UNSAFEOPTMODE
 	      (load (format "./build/~a/main_chez_OPT.so" (machine-type)))
 	      (load (format "./build/~a/main_chez.so" (machine-type))))
 	  
@@ -286,7 +286,7 @@
 	   ;; [2006.02.28] We want to reset global bindings before loading any more source:
 	   ;(eval '(import scheme))
 	   ;; Can't trust new code to not mutate primitive names:
-	   (optimize-level 0)
+	   (optimize-level 1)
 
 	   (cond
 	    [(null? filenames) (call-with-values new-cafe (lambda ls (apply exit ls)))]

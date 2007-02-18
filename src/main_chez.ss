@@ -30,7 +30,7 @@
   
   (compile-profile #t)
 
-	   (case-sensitive #t)
+  (case-sensitive #t)
 
 	   ;; For now let's just error if we have no dir:
 ;	   (if (not (getenv "REGIMENTD"))
@@ -67,33 +67,38 @@
            (define current_interpreter 'chezscheme)           
 	   (define-top-level-value 'simulator-batch-mode #f)
 
-	   (case REGOPTLVL
-	     [(0)
-	      ;; Disable source optimization altogether.
-	      (optimize-level 0)
-	      (run-cp0 (lambda (cp0 x) x))]
-	     [(2) (optimize-level 2)]
-	     [(3)
-	      (printf "Configuring compiler for full optimize mode. (UNSAFE)\n")
-	      ;; This configuration is for running extended simulation-experiments only:
-	      ;; REMEMBER to also disable IFDEBUG in constants.ss
-	      (define-top-level-value 'simulator-batch-mode #t)
-	      (optimize-level 3)
-	      (compile-compressed #f)
-	      (generate-inspector-information #f)
-	      ;; Messing with this didn't seem to help performance.
-	      #;
-	      (run-cp0
-	       (lambda (cp0 x)
-		 (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
-				[cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
-				[cp0-outer-unroll-limit 3]) ;; inline recursive?
-		   (let ((x (cp0 x)))
-		     (parameterize (
-				    (cp0-effort-limit 0)
-				    )
-		       (cp0 x))))))]
-	     [else (error 'regiment-compiler "bad setting for REGOPTLVL: ~s" REGOPTLVL)])
+	   (define reg:set_opt_lvl!
+	     (lambda ()
+	       (case (REGOPTLVL)
+	       [(0)
+		;; Disable source optimization altogether.
+		(optimize-level 0)
+		(run-cp0 (lambda (cp0 x) x))]
+	       [(2) (optimize-level 2)]
+	       [(3)
+		(printf "Configuring compiler for full optimize mode. (UNSAFE)\n")
+		;; This configuration is for running extended simulation-experiments only:
+		;; REMEMBER to also disable IFDEBUG in constants.ss
+		(define-top-level-value 'simulator-batch-mode #t)
+		(optimize-level 3)
+		(compile-compressed #f)
+		(generate-inspector-information #f)
+		;; Messing with this didn't seem to help performance.
+		#;
+		(run-cp0
+		 (lambda (cp0 x)
+		   (parameterize ([cp0-effort-limit 50000]  ;; per-call inline effort, 200 default
+				  [cp0-score-limit  500]   ;; per-call expansion allowance, 20 default
+				  [cp0-outer-unroll-limit 3]) ;; inline recursive?
+		     (let ((x (cp0 x)))
+		       (parameterize (
+				      (cp0-effort-limit 0)
+				      )
+			 (cp0 x))))))]
+	       [else (error 'regiment-compiler "bad setting for REGOPTLVL: ~s" REGOPTLVL)])))
+
+	   (reg:set_opt_lvl!) ;; According to $REGOPTLVL
+	   
 	   )
 
 ;======================================================================

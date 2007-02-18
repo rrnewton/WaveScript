@@ -1250,9 +1250,13 @@
 		 )
     (let/cc exitk	
     (parameterize ([escape-alpha-sim exitk])
-  		(printf "Running simulator alpha (~s version) (logfile ~s)" 
+                (printf "Running simulator alpha (~s version) (logfile ~s) (optlvl ~s) (debug ~s)\n" 
   			(if simple-scheduler 'simple 'full)
-  			logfile)
+  			logfile (optimize-level) (eval '(IFDEBUG #t #f)))
+		(fprintf (current-error-port)
+			 "Running simulator alpha (~s version) (logfile ~s) (optlvl ~s) (debug ~s)\n" 
+  			(if simple-scheduler 'simple 'full)
+  			logfile (optimize-level) (eval '(IFDEBUG #t #f)))
   		(DEBUGMODE (display " with Debug-Mode enabled"))
   		(printf ".~n")
   		(printf "<-------------------------------------------------------------------->~n")

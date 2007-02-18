@@ -52,9 +52,10 @@
 ;;   0 -- mode for debugging 
 ;;   2 -- good performance but still safe
 ;;   3 -- unsafe optimizations, used for long running simulations.
-(define REGOPTLVL 
+(define (REGOPTLVL)
   (cond
    [(getenv "REGOPTLVL") => (lambda (str) (read (open-input-string str)))]
    [else 2]  ;; <-- CHANGE DEFAULT HERE
    ))
 ;; Note that this is separate from IFDEBUG above.
+
