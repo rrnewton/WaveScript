@@ -88,6 +88,8 @@
 
      ;; A table binding computable prims to an expression that evals
      ;; to a function which will carry out the primitive.
+     ;; 
+     ;; NOTE: this has some duplicated code with the simulators (in particular, wavescript_sim_library)
     (define computable-prims 
       '((+ +) (- -) (* *) (/ /) (^ expt) 
 	(g+ +) (g- -) (g* *) (g/ /) (g^ expt) 
@@ -101,6 +103,33 @@
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
 	;(listLength length)
+	
+	(stringToInt (lambda (v) 
+		       (let ([x (string->number v)])
+			 (if x 
+			     (ASSERT fixnum? x)
+			     (error 'stringToInt "couldn't convert string: ~s" v)))))
+	(stringToFloat (lambda (v) 
+			 (let ([x (string->number v)])
+			   (if x 
+			       (ASSERT flonum? x)
+			       (error 'stringToFloat "couldn't convert string: ~s" v)))))
+	(stringToComplex (lambda (v) 
+			   (ASSERT string? v)
+			   (let ([x (string->number v)])
+			     (cond
+			      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
+			      [(real? x) (fl-make-rectangular x 0.0)]
+			      [else (ASSERT cflonum? x)]))))
+
+	(intToFloat fixnum->flonum)
+	(intToComplex intToComplex-unimplented)
+
+	(floatToInt flonum->fixnum)
+	(floatToComplex floatToComplex-unimplemented)
+	
+	(complexToInt complexToInt-unimplemented)
+	(complexToFloat complexToFloat-unimplemented)
 
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
@@ -128,6 +157,7 @@
 		`(,prim ,@args)))))
     
     (define (do-constant prim)
+      ;(inspect (compiler-invocation-mode))
       (ASSERT (eq? prim 'IS_SIM))
       (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
 	  ''#t ''#f))

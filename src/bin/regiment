@@ -31,7 +31,12 @@ fi
 # echo RUNNING ON MACHINE TYPE: $MT
 
 # If we can we use the stored heap, otherwise we run it as a script.
-if [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
+if [ "$REGOPTLVL" == "3" ];
+then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
+      then exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.OPT.heap $*;
+      else exec $REGIMENTD/src/regiment_script.ss $*
+      fi);
+elif [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
 then #echo Running regiment from saved heap...;
     exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
 else exec $REGIMENTD/src/regiment_script.ss $*;

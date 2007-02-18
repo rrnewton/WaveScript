@@ -37,7 +37,7 @@ SWL = swl
 DEST = a.out
 
 # This builds the .so.  Run "make heap/fullheap" separately.
-all: 
+basic:
 	@echo; echo BUILDING PARSER
 	@echo "======================================================================"
 	$(MAKE) wsparse
@@ -52,6 +52,8 @@ all:
 # 	@echo "Don't worry if this step fails, it's optional!"
 # 	@echo "======================================================================"
 # 	$(MAKE) c
+
+all: fullheap fullheap.opt
 
 old_all: reg
 	(cd plt; $(MAKE) nc)
@@ -146,6 +148,11 @@ fullheap: builddir
 #	fi
 
 ##	echo '(load "regiment.ss")' | chez -s0 build/$(MT)/regiment.0.heap
+
+fullheap.opt:
+	(export REGOPTLVL=3; \
+         export REGDEBUGMODE=OFF; \
+	$(CHEZ) -s0 build/$(MT)/regiment.0.OPT.heap --script regiment.ss ./; )
 
 builddir:
 	if [ ! -d build/$(MT) ]; then mkdir build/$(MT); fi

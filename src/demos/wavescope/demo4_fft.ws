@@ -4,8 +4,17 @@
 // [2006.07.24] Takes 163 seconds to process the 40,000 windows of data in a 315mb raw file.
 // Was that with a quadruple FFT?
 
+// run ./get_sample_data first
+
 s1 :: Stream (Sigseg Float);
-s1 = audio(0, 1024, 0, 44000);
+s1 = if IS_SIM
+     then audio(0,4096,0,44000)
+     else {chans = (dataFile("sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
+	   window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096) };
+
+//if GETENV("WSARCH") == "ENSBox" 
+
+
 
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {

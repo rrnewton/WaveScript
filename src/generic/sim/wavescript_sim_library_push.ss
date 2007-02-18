@@ -41,6 +41,8 @@
 		 floatToComplex complexToFloat
 		 intToComplex complexToInt
 
+		 stringToInt stringToFloat stringToComplex
+
 		 ;toComplex toFloat  ;; Generic versions
 		 ;toInt ;; Truncate
 		 ;roundToInt
@@ -758,6 +760,28 @@
 	    (s:+ f 0.0+0.0i)))
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToFloat realpart)
+
+  ;; TODO: MERGE THIS WITH DUPLICATED CODE IN STATIC-ELABORATE!!
+
+  (define stringToInt (lambda (v) 
+		 (let ([x (string->number v)])
+		   (if x 
+		       (ASSERT fixnum? x)
+		       (error 'stringToInt "couldn't convert string: ~s" v)))))
+  (define stringToFloat (lambda (v) 
+		   (let ([x (string->number v)])
+		     (if x 
+			 (ASSERT flonum? x)
+			 (error 'stringToFloat "couldn't convert string: ~s" v)))))
+  (define stringToComplex (lambda (v) 
+		   (ASSERT string? v)
+		   (let ([x (string->number v)])
+		     (cond
+		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
+		      [(real? x) 
+		       (IFCHEZ (s:fl-make-rectangular x 0.0)
+			       (s:+ x 0.0+0.0i))]
+		      [else (ASSERT cflonum? x)]))))
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
 

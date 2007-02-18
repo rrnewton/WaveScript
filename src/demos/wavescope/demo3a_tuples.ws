@@ -10,9 +10,6 @@ s2 = iterate( w in s1 ) {
 };
 
 s3 = iterate((x,y) in s2) {
-
-
-
   //emit (y, x, 3.0);
 
   print(y); print(" "); print(x); print(" "++show(3.0)++"\n");   emit ();

@@ -25,7 +25,7 @@ function go () {
 # echo DEMO1: >> $RUN
 # ./run_query | head -20 >> $RUN
 
-go "demo0_audio.ws"
+#go "demo0_audio.ws"
 go "demo1_audiofile.ws"
 # 1b, 1c
 
@@ -36,7 +36,7 @@ go "demo3b_inlining.ws"
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
 
-# go "demo3e_hashtables.ws"
+#TEMP# go "demo3e_hashtables.ws"
 
 go "demo3f_morelists.ws"
 

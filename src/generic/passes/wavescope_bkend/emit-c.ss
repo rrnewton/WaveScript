@@ -174,11 +174,20 @@
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
 		      (window ,sig ,[myExpr -> size]))
+	 (define new-class-name (Var (unique-name 'Window)))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
 		   ,name"->connect(",(symbol->string sig)");\n")
-		 '()
-                 '())]
+		 (if static-linkage
+		     '()
+		     ;; Otherwise we need to make a wrapper that parameterizes this window:
+		     `("class ",new-class-name" : public WSBuiltins::Window {\n"
+		       "  public:\n"
+		       "  ",new-class-name"() : Window(",size", sizeof(",ty")) {}\n"
+		       "}\n\n")
+		     )
+                 `(("op \"",name"\" \"",new-class-name"\" \"query.so\"\n")
+		   ("connect \"",(symbol->string sig)"\" \"",name"\"\n")))]
 	
 	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
@@ -196,15 +205,17 @@
 	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap] ,[myExpr -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
+	 (define new-class-name (Var (unique-name 'AudioFileSource)))
 	 (values 
 	  `("WSBox* ",name";\n"
 	    "{ int size = ",size";\n"
 	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	    "  RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", 0, 4, ",rate" * 50);\n"
+	    "  RawFileSource* tmp = new RawFileSource(",file".c_str(), 0, 4, ",rate" * 50);\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )
+	  ;; TOFINISH: make new class:
 	  '()
-          `())]
+          `(("source \"",name"\" \"",new-class-name"\" \"query.so\" \n")))]
 
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Stream (Struct ,structname))
@@ -326,8 +337,8 @@
 				iterator+vars)))]) 
 	   ;(if (symbol? sig) 
 	   (values ourstmts ourdecls
-                   `(("op ",class_name" query.so\n") 
-                     ("connect " ,parent" ",class_name))
+                   `(("op \"",name"\" \"",class_name"\" \"query.so\"\n") 
+                     ("connect \"" ,parent"\" \"",name"\"\n"))
                    ))]
 
 	
@@ -938,8 +949,8 @@
     (match query
 	[(iterate ,_ ,s) 
          (let ([boxname (format "Iter_~a" name)])
-           `(("op ",boxname" ",sofile"\n") 
-             ("connect " ,(Var s)" ",boxname)))]
+           `(("op \"",boxname"\" \"",sofile"\"\n") 
+             ("connect \"" ,(Var s)"\" \"",boxname"\"\n")))]
       	[(assert-type (Stream (Struct ,structname))
 		      (__dataFile ,file ,mode ,rate ,repeat ,types))
          `(("source "))]
@@ -958,7 +969,12 @@
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
             funs
-            (make-output-printer typ)))           
+            (make-output-printer typ)))
+    
+    (newline)(display (text->string wsq))(newline)(newline)
+    ;(break)
+
+
     (if static-linkage 
         (snoc (build-main body) header)
         (vector header wsq))

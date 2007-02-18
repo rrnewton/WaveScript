@@ -147,6 +147,10 @@
     (complexToInt   (Complex) Int)
     (complexToFloat (Complex) Float)
 
+    (stringToInt     (String)  Int)
+    (stringToFloat   (String)  Float)
+    (stringToComplex (String)  Complex)
+    
     ;; Rounding instead of truncation:    
     (roundF         (Float)   Int)
 

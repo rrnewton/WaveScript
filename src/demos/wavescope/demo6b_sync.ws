@@ -77,8 +77,11 @@ fun sync2 (ctrl, s1, s2) {
 //// "requests" are currently fixed to come at the same rate as the
 //// new data.
 
-ch1 = audio(0,128,0, 44000);
-ch2 = audio(1,128,0, 44000);
+// run ./get_sample_data first
+chans = (dataFile("sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
+ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 128);
+ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 128);
+
 outwidth = 100;
 
 ctrl = iterate(w in ch1) {

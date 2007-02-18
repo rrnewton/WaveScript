@@ -245,7 +245,8 @@
     ;----------------------------------------
     (lambda (fn . flags)      
       (ASSERT (andmap symbol? flags))
-      (ASSERT (= 1 (length (intersection flags compile-target-flags))))
+      (unless (= 1 (length (intersection flags compile-target-flags)))
+	(error 'regiment-compile-file "expects exactly one flag to indicate compilation target"))
       (mvlet ([(comped params) (do-the-compilation fn flags)])
 	(let ([compile-target (car (intersection flags compile-target-flags))]	    )
 	  (if (not (memq 'write-file flags))
@@ -455,7 +456,8 @@
 	     (ws-postprocess (read x))]
 	    [(string? x) 
 	     (unless (regiment-quiet) (printf "WSINT: Loading WS source from file: ~s\n" x))
-	     (read-wavescript-source-file x)]
+	     (or (read-wavescript-source-file x)
+		 (error 'wsint "file did not parse: ~a" x))]
 	    [(list? x)   
 	     (unless (regiment-quiet) (printf "WSINT: Evaluating WS source: \n \n"))
 	     x]
