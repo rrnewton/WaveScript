@@ -210,7 +210,7 @@
 		  (set! edges (+ edges (length (cdr row)))))
 	(simworld-graph world))
       (printf "Total edges: ~a\n" (/ edges 2))
-      (printf "Average degree: ~a\n" (exact->inexact (/ edges (sim-num-nodes))))
+      (printf "Average degree: ~a\n" (exact->inexact (/ edges (length (simworld-graph world)))))
       (let ((avg (exact->inexact (average connects))))
 	(printf "Average connectivity: ~a\n" avg)
 	avg)

@@ -330,12 +330,18 @@
     (sim-num-nodes 30))
 
   ;; Inner/Outer Radius for radios is 300/500 meters:
-  (simalpha-inner-radius 300)
-  (simalpha-outer-radius 500)
+;  (simalpha-inner-radius 300)
+;  (simalpha-outer-radius 500)
 
   (simalpha-channel-model 'linear-disc)
   (simalpha-placement-type 'gridlike)
   (simalpha-failure-model 'none)
+
+;; This should have been parameterized here before:
+  (etx-retry-delay 50)
+  ;; And this is the maximum number of times a retry will be made.
+  (etx-max-retries 3)
+
   )
 
 

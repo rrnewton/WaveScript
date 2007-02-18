@@ -583,8 +583,13 @@
 
 ;; This wipes bindings and reloads.
 (define (reload) 
-  (define main (++ (REGIMENTD) "/src/main_chez.ss"))
-  (wipe) (load main))
+  ;(define main (++ (REGIMENTD) "/src/main_chez.ss"))
+  (cd (REGIMENTD))
+  (cd "src")
+  ;(wipe) 
+  ;(load main)
+  (load "main_chez.ss")
+  )
 
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
 

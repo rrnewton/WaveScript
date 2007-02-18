@@ -327,8 +327,12 @@
 ;; CURRENT value of the global parameter.  This state needs to be
 ;; encapsulated within the frozen world object.  (Along with bindings
 ;; for BASE_ID and other parameters.)
+;;
+;; [2007.02.18] DAMN, the *set* of links (rather than their quality)
+;; is not using the current connectivity function, I'm fixing that
+;; now.  Optionally retaining old behavior.
 (define animate-world!
-  (lambda (world)
+  (lambda (world . options)
     (let ([world (cond
 		  [(simworld? world) world]
 		  [(string? world) (animate-world! (car (file->slist world)))]
@@ -342,6 +346,29 @@
 	    (error 'animate-world! "need to at least have the node-graph to start with!\n")))
 
       (define scheduler-queue '())
+
+      ;; If requested, we redo edge linkage:
+      (unless (memq 'keep-edges options)
+	(let ([nodes (map car graph)]
+	      [connectivity-fun (build-connectivity-fun)])
+	  (set! graph
+		(map (lambda (node)
+		       (cons node 
+			     (filter (lambda (n) 
+				       (and (not (eq? node n))
+					    (let ((connection (connectivity-fun (node-pos node) (node-pos n))))
+					      ;; We establish a connection unless we get zero-reception
+					      (not (eqv? connection 0))
+					      )))
+			       nodes)))
+		  nodes))
+	  (set-simworld-graph! world graph)
+
+	  (fprintf (console-output-port)
+	       "REDID EDGES: NOW HAVE ~s EDGES\n"
+	       (quotient (length (apply append (map cdr graph))) 2))
+	  ))
+     
 
       (DEBUGMODE  (andmap (lambda (row) (andmap node? row)) graph))
       ;; There had better be no duplicate identifiers.  We don't allow this for now.
