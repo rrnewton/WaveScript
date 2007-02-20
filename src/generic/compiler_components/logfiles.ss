@@ -8,7 +8,6 @@
 ;; This reads in a log file.  Either as a stream or all at once.
 
 
-
 (module logfiles mzscheme 
   (require (lib "include.ss")           
            "../../plt/iu-match.ss"
@@ -26,9 +25,10 @@
 
 ; =======================================================================  
 
+;; .returns A stream of log entries.
 ;;
 ;; I manually do the delays rather than using stream-cons/stream-append.
-;; Streams are not currently an ADT, they're representation is transparent.
+;; Streams are not currently an ADT, their representation is transparent.
 ;; (They're simply lists with delayed tails.)
 (define (reg:read-log file . opts)
   (define valid-options '(stream)) ;; A superset of opts.

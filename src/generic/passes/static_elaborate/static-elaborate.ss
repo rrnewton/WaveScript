@@ -371,7 +371,7 @@
 		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))]
 
 		 [getlist ;; Get values until you have the whole list.
-		  (trace-lambda getlist (x)
+		  (lambda (x)
 		    (if (container-available? x)
 			(match (getval x)
 			  [(cons ,a ,b) (cons a (getlist b))]
@@ -592,11 +592,11 @@
         [(,input-language (quote (program ,body ,type)))
 	 (set! mutable-vars (get-mutable body))
 	 ;; Run until we reach a fixed point.
-         (let loop ([oldbody body]
-		    [body (process-expr body '())])
-	   (if (equal? oldbody body)	   
-	       `(static-elaborate-language '(program ,body ,type))
-	       (loop body (process-expr body '()))))]
+	 (let loop ([oldbody body]
+		     [body (process-expr body '())])
+	    (if (equal? oldbody body)	   
+		`(static-elaborate-language '(program ,body ,type))
+		(loop body (process-expr body '()))))]
 	)))))
 
 

@@ -673,9 +673,9 @@
       ;;[Complex ]    
       [,other (error 'type->width "can't support binary reading of ~s yet." other)]
       ))
-  (trace-define (types->width types)
+  (define (types->width types)
     (apply + (map type->width  types)))
-  (trace-define (types->reader types)
+  (define (types->reader types)
      (define (type->reader t)
        (match t
 	 [Int to-uint16]

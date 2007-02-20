@@ -189,7 +189,9 @@
 		  (begin
 		    (printf ";===============================================================================\n")
 		    (printf "~a:\n\n" (regiment-pass->name (car names)))))
-	      (let ((result ((car funs) p)))
+	      (let ((result (if verbose 
+				(time ((car funs) p))
+				((car funs) p))))
 		(when verbose
 		  (pretty-print result) (newline))
 		(loop result (cdr funs) (cdr names))))))))
@@ -346,21 +348,22 @@
 	   x)
 	  x)))
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
+(time 
   (parameterize ()
     
   (optional-stop p)
   
-  (set! p (optional-stop (verify-regiment p)))
-  (set! p (optional-stop (pass_desugar-pattern-matching p)))
+  (time (set! p (optional-stop (verify-regiment p))))
+  (time (set! p (optional-stop (pass_desugar-pattern-matching p))))
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-  (set! p (optional-stop (rename-vars p)))
-  (DEBUGMODE (set! p (optional-stop (retypecheck p))) (void))
-  (set! p (optional-stop (eta-primitives p)))
-  (set! p (optional-stop (desugar-misc p)))
-  (set! p (optional-stop (remove-unquoted-constant p)))
-  (set! p (optional-stop (static-elaborate p)))
-  (set! p (optional-stop (degeneralize-arithmetic p)))
+  (time (set! p (optional-stop (rename-vars p))))
+  (DEBUGMODE (time (set! p (optional-stop (retypecheck p)))) (void))
+  (time (set! p (optional-stop (eta-primitives p))))
+  (time (set! p (optional-stop (desugar-misc p))))
+  (time (set! p (optional-stop (remove-unquoted-constant p))))
+  (time (set! p (optional-stop (static-elaborate p))))
+  (time (set! p (optional-stop (degeneralize-arithmetic p))))
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -376,41 +379,41 @@
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (set! p (optional-stop (retypecheck p)))
-  (set! p (optional-stop (rename-vars p)))
+  (time (set! p (optional-stop (retypecheck p))))
+  (time (set! p (optional-stop (rename-vars p))))
 
 #;
   (unless (regiment-quiet)
     (printf "Post elaboration types: \n")
     (print-var-types p))
 
-  (set! p (optional-stop (verify-elaborated p)))
+  (time (set! p (optional-stop (verify-elaborated p))))
 
   ;; This three-step process is inefficient, but easy:
-  (set! p (optional-stop (lift-polymorphic-constant p)))
-  (set! p (optional-stop (retypecheck p)))
-  (set! p (optional-stop (unlift-polymorphic-constant p)))
+  (time (set! p (optional-stop (lift-polymorphic-constant p))))
+  (time (set! p (optional-stop (retypecheck p))))
+  (time (set! p (optional-stop (unlift-polymorphic-constant p))))
 
-;  (set! p (optional-stop (type-polymorphic-constants p)))
+;  (time (set! p (optional-stop (type-polymorphic-constants p))))
 
-  (set! p (optional-stop (merge-iterates p)))
-  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
+  (time (set! p (optional-stop (merge-iterates p))))
+  (IFDEBUG (time (set! p (optional-stop (retypecheck p)))) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
-  (set! p (optional-stop (reduce-primitives p)))
-  (set! p (optional-stop (remove-complex-constant p)))
-  (IFDEBUG (set! p (optional-stop (retypecheck p))) (void))
+  (time (set! p (optional-stop (reduce-primitives p))))
+  (time (set! p (optional-stop (remove-complex-constant p))))
+  (IFDEBUG (time (set! p (optional-stop (retypecheck p)))) (void))
 
-  (set! p (optional-stop (uncover-free              p)))
+  (time (set! p (optional-stop (uncover-free              p))))
 
-  (set! p (optional-stop (introduce-lazy-letrec     p)))
-;  (set! p (optional-stop (lift-letrec               p)))
-;  (set! p (optional-stop (lift-letrec-body          p)))
+  (time (set! p (optional-stop (introduce-lazy-letrec     p))))
+;  (time (set! p (optional-stop (lift-letrec               p))))
+;  (time (set! p (optional-stop (lift-letrec-body          p))))
 
-  ;(set! p (optional-stop (ws-remove-complex-opera* p)))
+  ;(time (set! p (optional-stop (ws-remove-complex-opera* p))))
   ;; Replacing remove-complex-opera* with a simpler pass:
-  (set! p (optional-stop (flatten-iterate-spine p)))
+  (time (set! p (optional-stop (flatten-iterate-spine p))))
   
 ;  (inspect p)
   
@@ -426,16 +429,16 @@
        (flush-output-port))
      'replace))
 
-  (set! p (optional-stop (remove-lazy-letrec p)))
+  (time (set! p (optional-stop (remove-lazy-letrec p))))
   
-;  (set! p (optional-stop (verify-core p)))
-;  (set! p (optional-stop (retypecheck p)))
+;  (time (set! p (optional-stop (verify-core p))))
+;  (time (set! p (optional-stop (retypecheck p))))
 
-  (set! p (optional-stop (type-annotate-misc p)))
+  (time (set! p (optional-stop (type-annotate-misc p))))
 
-  ;(set! p (optional-stop (nominalize-types p)))
+  ;(time (set! p (optional-stop (nominalize-types p))))
 
-  p))
+  p)))
 
 ;; We keep the pipe to the parser open.
 ;(define parser_inpipe #f)

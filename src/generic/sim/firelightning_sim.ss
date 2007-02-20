@@ -333,6 +333,13 @@
 ;  (simalpha-inner-radius 300)
 ;  (simalpha-outer-radius 500)
 
+#;
+  (simalpha-inner-radius 
+   (begin 
+     (fprintf (console-output-port) "SETTING RADIUS FROM COMM_DIAMETER\n")
+     (string->number (getenv "COMM_DIAMETER"))))
+;  (simalpha-outer-radius (flonum->fixnum (* (/ 5 3.) (simalpha-inner-radius))))
+
   (simalpha-channel-model 'linear-disc)
   (simalpha-placement-type 'gridlike)
   (simalpha-failure-model 'none)
