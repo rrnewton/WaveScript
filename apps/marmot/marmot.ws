@@ -421,7 +421,12 @@ emit(nffts);
 flag = GETENV("WSARCH") == "ENSBox";
 //flag = true;
 //marmotfile = "/archive/4/marmots/brief.raw";
-marmotfile = "/archive/4/marmots/real_100.raw";
+//marmotfile = "/archive/4/marmots/real_100.raw";
+marmotfile = 
+  if FILE_EXISTS("6sec_marmot_sample.raw")
+  then "6sec_marmot_sample.raw"
+  else wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
+
 chans = (dataFile(marmotfile, "binary", 44000, 0)
 	 :: Stream (Int * Int * Int * Int));
 sm = stream_map;

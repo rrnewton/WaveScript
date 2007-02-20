@@ -678,7 +678,7 @@
   (define (types->reader types)
      (define (type->reader t)
        (match t
-	 [Int to-uint16]
+	 [Int to-int16]
 	;[Float ]
 	;[Complex ]
 	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))

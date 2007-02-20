@@ -91,7 +91,7 @@
      ;; 
      ;; NOTE: this has some duplicated code with the simulators (in particular, wavescript_sim_library)
     (define computable-prims 
-      '((+ +) (- -) (* *) (/ /) (^ expt) 
+      `((+ +) (- -) (* *) (/ /) (^ expt) 
 	(g+ +) (g- -) (g* *) (g/ /) (g^ expt) 
 	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
@@ -141,6 +141,11 @@
 			(if x x ""))
 		      (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
+	(FILE_EXISTS (lambda (v)
+		       (if (string? v)
+			   (file-exists? v)
+			   (error 'static-elaborate:FILE_EXISTS "bad input: ~s" v)
+			   )))
 	))
 
     (define computable-constants '(IS_SIM))
