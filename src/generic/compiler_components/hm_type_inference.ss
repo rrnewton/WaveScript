@@ -175,6 +175,14 @@
 ; ----------------------------------------
 ;;; Type Environment ADT
 
+;;; [2007.02.21] Changing the tenv representation.  Now we wish to
+;;; ultimately use the least-upper-bound of all the reference-sites as
+;;; the type of a let-bound variable.  I'm internally changing the
+;;; "flag" field to store #f for non-let-bound variables, and to be a
+;;; type for let-bound variables.  That type will be a backup copy of
+;;; the most general type.  The normal type field will contain the LUB
+;;; of the reference-sites.
+
 ;; Constructs an empty type environment.
 (define empty-tenv 
   ;; Uses a unique identifier.
@@ -184,12 +192,13 @@
 ;; Predicate testing for type environments.
 (define (tenv? x)
   (match x
-    ;; Format: VAR, TYPE, Is-Let-Bound? FLAG
+    ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
     [(,tenvsym [,v* ,t* ,flag*] ...)
      (and (eq? tenvsym (car (empty-tenv)))
 	  (andmap symbol? v*)
 	  (andmap type? t*)
-	  (andmap boolean? flag*))]
+	  (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
+	  )]
     [,else #f]))
 ;; Retrieves a type if a binding exists for sym, otherwise #f.
 (define (tenv-lookup tenv sym)
@@ -214,7 +223,7 @@
   (DEBUGASSERT (andmap type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
     (cons (car tenv)
-	  (append (map (lambda (a b) (list a b flag)) syms types)
+	  (append (map (lambda (v t) (list v t (instantiate-type t))) syms types)
 		  (cdr tenv))
 	  )))
 (define (tenv-append . tenvs)
@@ -237,7 +246,7 @@
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
 ;; The "nongeneric" vars are ones that do not receive new mutable cells.
-
+;; 
 ;; This is because, when instantiating a rator for application
 ;; let-bound type variables are reinstantiated, whereas lambda-bound ones are not.
 (define instantiate-type 
@@ -1251,7 +1260,7 @@
 		 (Stream Int)))))
    ;; SHOULD PROBABLY BE #T:
    ;; HACKING NOW, COME BACK TO THIS:
-   unspecified   
+   #f
    ]
 
 

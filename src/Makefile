@@ -107,8 +107,11 @@ chez: chez_native
 chez_native:
 	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ))
+	if [ $(REGDEBUGMODE) == "ON" ]; \
+        then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
+        else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+             (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
 ws:
 	MT=`echo '(machine-type)' | petite`

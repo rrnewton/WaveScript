@@ -193,7 +193,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;       (fpf "chez: Unit tests, loaded from .so file:       ~a\n" (code->msg! runso))
        )
 
-(begin (define c-build (system/exit-code "make c &> 4_BUILD_C_EXTENSIONS.log"))
+(begin (define c-build (system/exit-code "make c &> 5_BUILD_C_EXTENSIONS.log"))
        (fpf "chez: Build C extensions:                     ~a\n" (code->msg! c-build)))
 
 ;; Now clean again:
