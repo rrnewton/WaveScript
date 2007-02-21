@@ -350,7 +350,7 @@
   (define-syntax run-pass
     (syntax-rules ()
       [(_ v pass)
-       (time (set! p (optional-stop (verify-regiment p))))
+       (time (set! v (optional-stop (verify-regiment v))))
        ;(set! p (optional-stop (verify-regiment p)))
        ]))
 
