@@ -360,17 +360,17 @@
     
   (optional-stop p)
   
-  (time (set! p (optional-stop (verify-regiment p))))
-  (time (set! p (optional-stop (pass_desugar-pattern-matching p))))
+  (run-pass p verify-regiment)
+  (run-pass p pass_desugar-pattern-matching)
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-  (time (set! p (optional-stop (rename-vars p))))
-  (DEBUGMODE (time (set! p (optional-stop (retypecheck p)))) (void))
-  (time (set! p (optional-stop (eta-primitives p))))
-  (time (set! p (optional-stop (desugar-misc p))))
-  (time (set! p (optional-stop (remove-unquoted-constant p))))
-  (time (set! p (optional-stop (static-elaborate p))))
-  (time (set! p (optional-stop (degeneralize-arithmetic p))))
+  (run-pass p rename-vars)
+  (DEBUGMODE (run-pass p retypecheck) (void))
+  (run-pass p eta-primitives)
+  (run-pass p desugar-misc)
+  (run-pass p remove-unquoted-constant)
+  (run-pass p static-elaborate)
+  (run-pass p degeneralize-arithmetic)
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -386,41 +386,41 @@
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (time (set! p (optional-stop (retypecheck p))))
-  (time (set! p (optional-stop (rename-vars p))))
+  (run-pass p retypecheck)
+  (run-pass p rename-vars)
 
 #;
   (unless (regiment-quiet)
     (printf "Post elaboration types: \n")
     (print-var-types p))
 
-  (time (set! p (optional-stop (verify-elaborated p))))
+  (run-pass p verify-elaborated)
 
   ;; This three-step process is inefficient, but easy:
-  (time (set! p (optional-stop (lift-polymorphic-constant p))))
-  (time (set! p (optional-stop (retypecheck p))))
-  (time (set! p (optional-stop (unlift-polymorphic-constant p))))
+  (run-pass p lift-polymorphic-constant)
+  (run-pass p retypecheck)
+  (run-pass p unlift-polymorphic-constant)
 
-;  (time (set! p (optional-stop (type-polymorphic-constants p))))
+;  (run-pass p type-polymorphic-constants)
 
-  (time (set! p (optional-stop (merge-iterates p))))
-  (IFDEBUG (time (set! p (optional-stop (retypecheck p)))) (void))
+  (run-pass p merge-iterates)
+  (IFDEBUG (run-pass p retypecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
-  (time (set! p (optional-stop (reduce-primitives p))))
-  (time (set! p (optional-stop (remove-complex-constant p))))
-  (IFDEBUG (time (set! p (optional-stop (retypecheck p)))) (void))
+  (run-pass p reduce-primitives)
+  (run-pass p remove-complex-constant)
+  (IFDEBUG (run-pass p retypecheck) (void))
 
-  (time (set! p (optional-stop (uncover-free              p))))
+  (run-pass p uncover-free)
 
-  (time (set! p (optional-stop (introduce-lazy-letrec     p))))
-;  (time (set! p (optional-stop (lift-letrec               p))))
-;  (time (set! p (optional-stop (lift-letrec-body          p))))
+  (run-pass p introduce-lazy-letrec)
+;  (run-pass p lift-letrec)
+;  (run-pass p lift-letrec-body)
 
-  ;(time (set! p (optional-stop (ws-remove-complex-opera* p))))
+  ;(run-pass p ws-remove-complex-opera*)
   ;; Replacing remove-complex-opera* with a simpler pass:
-  (time (set! p (optional-stop (flatten-iterate-spine p))))
+  (run-pass p flatten-iterate-spine)
   
 ;  (inspect p)
   
@@ -436,14 +436,14 @@
        (flush-output-port))
      'replace))
 
-  (time (set! p (optional-stop (remove-lazy-letrec p))))
+  (run-pass p remove-lazy-letrec)
   
-;  (time (set! p (optional-stop (verify-core p))))
-;  (time (set! p (optional-stop (retypecheck p))))
+;  (run-pass p verify-core)
+;  (run-pass p retypecheck)
 
-  (time (set! p (optional-stop (type-annotate-misc p))))
+  (run-pass p type-annotate-misc)
 
-  ;(time (set! p (optional-stop (nominalize-types p))))
+  ;(run-pass p nominalize-types)
 
   p)))
 

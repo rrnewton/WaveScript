@@ -1,0 +1,3 @@
+#!/bin/sh
+
+wget www.regiment.us/marmotdata/3min_marmot_sample.raw
