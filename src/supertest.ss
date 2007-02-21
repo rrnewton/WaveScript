@@ -168,12 +168,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (newline)
        (printf "Second: building Chez shared object\n")
        (printf "============================================================\n")
+       (ASSERT (putenv "REGDEBUGMODE" "OFF"))
        (define buildso (system/exit-code "make chez &> 3_BUILD_SO.log"))
        (fpf "chez: Build .so file:                         ~a\n" (code->msg! buildso))
 
        (ASSERT (system "./regiment_script.ss 2> 4_LOAD_FROM_SO.log"))
        (define loadedso (system/exit-code "grep 'compiled .so' 4_LOAD_FROM_SO.log"))
        (fpf "chez: System loads from .so file:             ~a\n" (code->msg! loadedso))
+       (ASSERT (putenv "REGDEBUGMODE" "ON"))
 
        ;; Now copy that .so file to our stored binaries directory.
        (when (directory-exists? "/var/www/regiment_binaries")
