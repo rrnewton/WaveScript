@@ -60,6 +60,7 @@
   
   ;; Syntax:
   values->list
+  first-value second-value
  
    ;; Values:
   
@@ -226,6 +227,10 @@
 (define-syntax values->list 
   (syntax-rules ()
     [(_ e) (call-with-values (lambda () e) list)]))
+(define-syntax first-value
+  (syntax-rules () [(_ e) (car (values->list e))]))
+(define-syntax second-value
+  (syntax-rules () [(_ e) (cadr (values->list e))]))
 
 ;==============================================================================;
 
