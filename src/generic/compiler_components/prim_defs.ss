@@ -29,6 +29,7 @@
            regiment-type-aliases
 	   regiment-basic-primitives
 	   local-node-primitives
+	   meta-only-primitives
 	   regiment-constants
 	   regiment-distributed-primitives
 	   regiment-primitives
@@ -235,10 +236,14 @@
     (even? (Int) Bool)
     (odd?  (Int) Bool)
 
+    ))
+
+;; Only for the meta-language, shouldn't exist after static-elaborate.
+(define meta-only-primitives
+  '(
     (GETENV (String) String) ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
     ))
-
 
 ;; These count as primitives also.
 ;; All regiment constants are presumed to be "slow prims" for
@@ -534,6 +539,7 @@
    (append regiment-basic-primitives
 	   regiment-distributed-primitives
 	   wavescript-primitives
+	   meta-only-primitives
 	   regiment-constants)))
 
 ;======================================================================
