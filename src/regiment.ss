@@ -26,17 +26,20 @@
 (eval-when (eval) ; but not load/compile!
   (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
     (define UNSAFEOPTMODE (equal? (getenv "REGOPTLVL")  "3"))
+    (define DEBUGINVOCATION (equal? (getenv "REGDEBUGMODE")  "ON"))
 
-    (if (if UNSAFEOPTMODE
-	    (file-exists? (format "./build/~a/main_chez_OPT.so" (machine-type)))
-	    (file-exists? (format "./build/~a/main_chez.so" (machine-type))))
+    (define sofile
+      (cond
+       [UNSAFEOPTMODE (format "./build/~a/main_chez_OPT.so" (machine-type))]
+       [DEBUGINVOCATION (format "./build/~a/main_chez_DBG.so" (machine-type))]
+       [else (format "./build/~a/main_chez.so" (machine-type))]))
+
+    (if (file-exists? sofile)
+	
 	;; If the compiled version is there, use that:
 	(begin 
 	  (set! regiment-origin "compiled .so")
-
-	  (if UNSAFEOPTMODE
-	      (load (format "./build/~a/main_chez_OPT.so" (machine-type)))
-	      (load (format "./build/~a/main_chez.so" (machine-type))))
+	  (load sofile)
 	  
 	  ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
 	  ;; (But currently I can't get the system to work when loaded from .so)

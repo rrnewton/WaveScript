@@ -1,0 +1,3 @@
+#!/bin/sh
+
+(export REGOPTLVL=2; export REGDEBUGMODE=ON; ws $*)

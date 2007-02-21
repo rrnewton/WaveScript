@@ -79,6 +79,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (current-directory test-directory)
 
 (ASSERT (putenv "REGIMENTD" test-root))
+
+;; We use debugmode for all the tests below:
+(ASSERT (putenv "REGDEBUGMODE" "ON"))
+
 ;(ASSERT (putenv "PATH" (format "~a/bin:~a" test-root (getenv "PATH"))))
 ;(ASSERT (putenv "PATH" (format "~a/depends:~a" test-root (getenv "PATH"))))
 

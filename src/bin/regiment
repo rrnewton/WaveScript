@@ -36,6 +36,11 @@ then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
       then exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.OPT.heap $*;
       else exec $REGIMENTD/src/regiment_script.ss $*
       fi);
+
+# Not currently using heaps for debug mode:
+elif [ "$REGDEBUGMODE" == "ON" ];
+then exec $REGIMENTD/src/regiment_script.ss $* ;
+
 elif [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
 then #echo Running regiment from saved heap...;
     exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;

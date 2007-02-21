@@ -53,7 +53,9 @@ basic:
 # 	@echo "======================================================================"
 # 	$(MAKE) c
 
-all: fullheap fullheap.opt
+all: basic ws.debug
+
+allheap: fullheap fullheap.opt
 
 old_all: reg
 	(cd plt; $(MAKE) nc)
@@ -113,8 +115,20 @@ ws:
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-             (export REGIMENT_OR_WAVESCRIPT=WS; $(CHEZ))
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=OFF; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(CHEZ))
 
+ws.debug:
+	MT=`echo '(machine-type)' | petite`
+	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=ON; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(CHEZ))
 
 ws.opt: opt
 opt:
