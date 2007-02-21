@@ -232,7 +232,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (printf "============================================================\n")
        (current-directory (format "~a/demos/wavescope" test-directory))
        (define getdata (system/exit-code "./download_sample_marmot_data"))
-       (fpf "\nws: Downloading sample marmot data:           ~a\n" (code->msg! wsdemos))
+       (fpf "\nws: Downloading sample marmot data:           ~a\n" (code->msg! getdata))
        (define wsdemos (system/exit-code (format "./testall_demos.ss &> ~a/9_WS_DEMOS.log" test-directory)))
        (current-directory test-directory)
        (fpf "\nws: Running WaveScript Demos:                 ~a\n" (code->msg! wsdemos)))

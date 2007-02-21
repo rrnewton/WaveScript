@@ -842,8 +842,8 @@
 ;     (types-equal! x1 y1 exp)
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) xargs yargs)]
 
-;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] ;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
-
+;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
+;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
     ;; Working around this in a lame way:
     [[,x  (,yargs ... -> ,y)] 
      (match x 
