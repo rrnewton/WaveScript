@@ -495,7 +495,7 @@
 		    ;; TEMP: HACK:
 		    ;; Until we fix lazy-letrec to work for the now-strict language...
 		    ;; We can only polymorphically instantiate arrow types!!
-			 (arrow-type? entry)
+			 ;(arrow-type? entry)
 			 )
 		    (begin 
 		      ;(printf "Let-bound var! ~s with (arrow ~s) type ~a\n" v (arrow-type? entry) entry)
