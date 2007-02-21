@@ -350,8 +350,8 @@
   (define-syntax run-pass
     (syntax-rules ()
       [(_ v pass)
-       (time (set! v (optional-stop (verify-regiment v))))
-       ;(set! p (optional-stop (verify-regiment p)))
+       (time (set! p (optional-stop (pass p))))
+       ;(set! p (optional-stop (pass p)))
        ]))
 
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
