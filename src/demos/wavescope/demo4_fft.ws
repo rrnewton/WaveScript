@@ -7,10 +7,10 @@
 // run ./get_sample_data first
 
 s1 :: Stream (Sigseg Float);
-s1 = if IS_SIM
-     then audio(0,4096,0,44000)
-     else {chans = (dataFile("sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
-	   window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096) };
+s1 = if GETENV("WSARCH") != "ENSBox" 
+     then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
+	   window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096) }
+     else ENSBoxAudio(0,4096,0,24000);
 
 //if GETENV("WSARCH") == "ENSBox" 
 

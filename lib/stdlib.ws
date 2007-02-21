@@ -26,6 +26,11 @@ fun println(s) {
 //======================================================================
 // "Library" stream constructors:
 
+// This doesn't do any extra buffering at all!  Might want to change that.
+//zip2 :: (Stream a,  Stream b) -> Stream (a * b);
+//zip2 = fun (s1,s2) {  
+//}
+
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
 syncN = 

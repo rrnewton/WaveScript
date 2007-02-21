@@ -11,7 +11,7 @@
 
 (module lang_wavescript mzscheme
   (require "../../plt/common.ss")
-  (provide default-marmotfile )
+  (provide   )
   (chezimports )
   
   ;; Provide for PLT only, in Chez it goes to top-level.
@@ -20,19 +20,6 @@
 ;;======================================================================
 
 ;; Testing file IO on marmot audio traces:
-
-;; This just checks some hard coded locations for the marmot file.
-(define (default-marmotfile)
-  (let ([file (cond
-	       [(file-exists? "/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-		"/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-	       [(file-exists? "~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw")
-		"~/archive/4/marmots/meadow1vxp.all_8_100_973449798.903759_0.raw"]
-	       [(file-exists? "/tmp/100.raw")
-		"/tmp/100.raw"]
-	       [else (error 'default-marmotfile "couldn't find marmot data")])])
-    (printf "Reading marmot datafile: ~s\n" file)
-    file))
 
 ;;; Some TESTS of the reader:	
 ;;; Commenting out because the PLT-reader can't handle the hash syntax:

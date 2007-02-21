@@ -76,7 +76,7 @@ fun syncN (strms, ctrl) {
 //// "requests" are currently fixed to come at the same rate as the
 //// new data.
 
-chans = (dataFile("sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
+chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
 ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 128);
 ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 128);
 

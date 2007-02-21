@@ -412,29 +412,28 @@ emit(nffts);
 */
 }
 
-
+sm = stream_map;
 
 //========================================
 // Main query:
-
 
 flag = GETENV("WSARCH") == "ENSBox";
 //flag = true;
 //marmotfile = "/archive/4/marmots/brief.raw";
 //marmotfile = "/archive/4/marmots/real_100.raw";
 marmotfile = 
-  if FILE_EXISTS("6sec_marmot_sample.raw")
-  then "6sec_marmot_sample.raw"
-  else wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
+  if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
+  if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
+  if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else
+  wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
-chans = (dataFile(marmotfile, "binary", 44000, 0)
+chans = (dataFile(marmotfile, "binary", 24000, 0)
 	 :: Stream (Int * Int * Int * Int));
-sm = stream_map;
 
-ch1 = if flag then audio(0,4096,0,44000) else window(sm(fun((a,_,_,_)) intToFloat(a), chans), 4096);
-ch2 = if flag then audio(1,4096,0,44000) else window(sm(fun((_,b,_,_)) intToFloat(b), chans), 4096);
-ch3 = if flag then audio(2,4096,0,44000) else window(sm(fun((_,_,c,_)) intToFloat(c), chans), 4096);
-ch4 = if flag then audio(3,4096,0,44000) else window(sm(fun((_,_,_,d)) intToFloat(d), chans), 4096);
+ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) intToFloat(a), chans), 4096);
+ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) intToFloat(b), chans), 4096);
+ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) intToFloat(c), chans), 4096);
+ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) intToFloat(d), chans), 4096);
 
 // 96 samples are ignored between each 32 used:
 rw1 = rewindow(ch1, 32, 96); 
@@ -464,3 +463,5 @@ sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
 doas = FarFieldDOA(synced, sensors);
 
 BASE <- doas;
+//BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
+//		   audio(0,1,0,44000)]);

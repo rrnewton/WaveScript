@@ -23,7 +23,8 @@
 		 __dataFile ;__syncN
 
 		 ;dump-binfile 
-		 audio audioFile timer 
+		 ;audio 
+		 audioFile timer 
 		 show
 		 window
 
@@ -93,7 +94,8 @@
 		 constants
 		 helpers
 		 (except streams test-this)
-		 (only lang_wavescript default-marmotfile))
+		 (only lang_wavescript 
+		       ))
 
 
     
@@ -401,9 +403,11 @@
        ;; Strip that sigseg:
        (lambda (x vq) (emit vq (seg-get x 0)) vq)
        (read-binary-file-stream file 
-				(types->width types) ;; Read just 2 bytes at a time.
+				(types->width types) ;; Read N bytes at a time.
 				(types->reader types)
-				1 0 rate)))
+				1 ;; Length of "window"
+				0 ;; Overlap
+				rate)))
     (define thestream
       (cond 
        [(equal? mode "text") (textsource)]
@@ -436,6 +440,9 @@
 	      (set! buf (cdr buf))
 	      x)]))
 	loop))
+
+    (printf "Reading stream datafile ~s\n" file)
+
     ;; __dataFile body:
     (case repeat
       [(0) thestream]
@@ -446,7 +453,7 @@
 
     ) ; End __dataFile
 
-
+#;
   ;; This is a hack to load specific audio files:
   ;; It simulates the four channels of marmot data.
   (define (audio chan len overlap rate)
@@ -668,7 +675,7 @@
 
   (define (type->width t)
     (match t
-      [Int 16] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+      [Int 2] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
       ;;[Float 32]
       ;;[Complex ]    
       [,other (error 'type->width "can't support binary reading of ~s yet." other)]
@@ -685,13 +692,17 @@
      (define readers (list->vector (map type->reader types)))
      (define widths (list->vector (map type->width types)))
      (define len (s:length types))
-     (lambda (str ind)
-       (let ([vec (make-vector len)])
-	 (do ([i 0 (fx+ 1 i)])
-	     ((= i len) vec)
-	   (vector-set! vec i ((vector-ref readers i) str ind))
-	   (set! ind (fx+ ind (vector-ref widths i)))
-	   ))))
+     (cond 
+      [(= 0 len) (error 'types->reader "can't read unit type (zero-length tuple) from a file!")]
+      [(= 1 len) (type->reader (car types))]
+      [else (lambda (str ind)
+	      (let ([vec (make-vector len)])
+		(let unmarshallloop ([i 0] [pos ind])
+		  (if (= i len)
+		      vec
+		      (begin (vector-set! vec i ((vector-ref readers i) str pos))
+			     (unmarshallloop (fx+ 1 i) (fx+ pos (vector-ref widths i)))))
+		  )))]))
 
   ;; Currently unused.
   (define (uint16->string n)
