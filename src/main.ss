@@ -30,6 +30,8 @@
     
     ;; (3) Then we do a little massaging/normalization.
     pass_desugar-pattern-matching
+    retypecheck ;; This is actually the first typecheck.
+
     eta-primitives
     desugar-misc
     rename-vars
@@ -362,6 +364,8 @@
   
   (run-pass p verify-regiment)
   (run-pass p pass_desugar-pattern-matching)
+  (run-pass p retypecheck) ;; This is the initial typecheck.
+
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
   (run-pass p rename-vars)

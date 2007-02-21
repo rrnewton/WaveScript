@@ -711,6 +711,9 @@
   
 ;; This annotates the program, and then exports all the types to their
 ;; external form (stripped of mutable cells on the tvars).
+;; .param a program with or without boilerplate.
+;; .returns 1 or 2 values: new program and toplevel type
+;;                         If input is with-boilerplate, output is one value.
 (define (annotate-program p)
   (let ([Expr 
 	 (lambda (p)
@@ -746,8 +749,6 @@
 		[(,prim ,[rand*] ...)
 		 (guard (regiment-primitive? prim))
 		 `(,prim ,rand* ...)]
-		
-		
 
 		;; HACK HACK HACK: Fix this:
 		;; We cheat for nums, vars, prims: 

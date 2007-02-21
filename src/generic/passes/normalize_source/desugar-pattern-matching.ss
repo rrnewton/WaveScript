@@ -121,11 +121,8 @@
   [Program (lambda (prog Expr)	  
 	  (match prog
 	    [(,inputlang '(program ,bod ,type))
-;	     (inspect (Expr bod))
-	     ;; NOTE: Doesn't use top level type:
-	     (mvlet ([(p t) (annotate-program (Expr bod))])
-	       `(desugar-pattern-matching-language 
-		 '(program ,p ,t)))]))]
+	     `(desugar-pattern-matching-language 
+	       '(program ,(Expr bod) ,type))]))]
 )
 
 ; ================================================================================
@@ -152,7 +149,7 @@
 
     [(,pass_desugar-pattern-matching '(foo '(program (match 3 [x x]) Int)))
      (desugar-pattern-matching-language
-      '(program (letrec ([x Int 3]) x) Int))]
+      '(program (letrec ([x unspecified 3]) x) unspecified))]
 #;
     ;; [2007.01.30] BUG: Different behavior in petite and chez.
     [(cadr (deep-assq 'aggr
