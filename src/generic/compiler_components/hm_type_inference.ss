@@ -107,6 +107,12 @@
 			; Int8 Int16 Int64 Double Complex64
 			))
 
+  
+  
+  
+  
+  
+  
 ; ======================================================================
 ;;; Helpers
 
@@ -172,6 +178,7 @@
     [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
+  
 ; ----------------------------------------
 ;;; Type Environment ADT
 
@@ -223,7 +230,10 @@
   (DEBUGASSERT (andmap type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
     (cons (car tenv)
-	  (append (map (lambda (v t) (list v t (instantiate-type t))) syms types)
+	  (append (map (lambda (v t) (list v t 
+                                           ;(if flag (instantiate-type t) #f)
+                                           flag
+                                           )) syms types)
 		  (cdr tenv))
 	  )))
 (define (tenv-append . tenvs)
@@ -389,6 +399,11 @@
     [(,t1 ... -> ,t2) #t]
     [,else #f]))
 
+  
+  
+  
+  
+  
 ; ======================================================================
 
 ;;; The main type checker.
@@ -499,17 +514,21 @@
       [,v (guard (symbol? v))
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
-		;; Let-bound polymorphism:
-		(if (and (tenv-is-let-bound? tenv v)
-		    ;; TEMP: HACK:
-		    ;; Until we fix lazy-letrec to work for the now-strict language...
-		    ;; We can only polymorphically instantiate arrow types!!
-			 ;(arrow-type? entry)
-			 )
-		    (begin 
-		      ;(printf "Let-bound var! ~s with (arrow ~s) type ~a\n" v (arrow-type? entry) entry)
-		      (values v (instantiate-type entry nongeneric)))
-		    (values v entry))
+                (cond
+                  ;; Let-bound polymorphism:
+                  [(tenv-is-let-bound? tenv v)
+                   (values v (instantiate-type entry nongeneric))
+                   ;=> 
+                   #;(lambda (most-general-type) 
+                        (define lub-type entry)
+                        (define this-type (instantiate-type entry nongeneric))
+                        (define new-lub (LUB this-type lub-type))
+                        ;(tenv-update! tenv v new-lub)
+                        (printf "Let-bound var! ~s with general type ~a, lub at this site ~a\n" 
+                                v most-general-type lub-type)
+                       (values v this-type))]
+                  [else                   
+                   (values v entry)])
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te) ;; This returns the error message with the annotated expression, oh well.
@@ -1260,7 +1279,7 @@
 		 (Stream Int)))))
    ;; SHOULD PROBABLY BE #T:
    ;; HACKING NOW, COME BACK TO THIS:
-   #f
+   #t
    ]
 
 
