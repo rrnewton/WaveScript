@@ -1481,6 +1481,14 @@
 		 (empty-tenv)))
    error]
 
+  ["Nor should this (same thing with let)" 
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (let ([f g])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   error]
+
 
   [(values->list (annotate-program
 		  '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5)))))
