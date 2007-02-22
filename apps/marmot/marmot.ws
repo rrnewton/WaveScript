@@ -425,6 +425,7 @@ marmotfile =
   if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
   if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
   if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else
+  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 chans = (dataFile(marmotfile, "binary", 24000, 0)
