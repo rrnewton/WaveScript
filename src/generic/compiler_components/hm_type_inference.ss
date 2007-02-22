@@ -234,12 +234,12 @@
 	  (append (map (lambda (v t) 
 			 (if flag
 			     (match t
-			       [(quote ,pr) (guard (pair? pr))
-				(let ([most-general (cdr pr)])
-				  (printf "Extending TENV with let-bound: most-general type: ~s\n" most-general)
-				  (list v `(quote ,pr) (make-tcell most-general)))]
-			       [,oth (error 'tenv-extend "all let-bound tenv entries should be mutable tcells: ~s" oth)]
-			       )
+			       [(quote ,pr)
+				(ASSERT pair? pr)
+				(set-cdr! pr `(LATEUNIFY #f ,(make-tcell (cdr pr))))
+				(list v `(quote ,pr) #t)
+				])
+			     
 			     (list v t #f)))
 		    syms types)
 		  (cdr tenv))
@@ -298,7 +298,7 @@
 
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
-	     [#(,[t*] ...) (apply vector t*)]
+	     [#(,[t*] ...) (apply vector t*)]	     
 	     [(,constructor ,[args] ...)
 	      (guard (symbol? constructor))
 	      `(,constructor ,args ...)]
@@ -317,10 +317,14 @@
     [',n `(quote ,n)]
     [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
     [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
-    ;; These two are internal-only mechanisms used for our particular brand of let-bound polymorphism:
+#;
     [(LATEUNIFY ,a ,b)
      (error 'export-type "shouldn't be any LATEUNIFY's left at this point: ~s" `(LATEUNIFY ,a ,b))
      `(LATEUNIFY ,a ,b)]
+
+    [(LATEUNIFY ,[a] ,[b])
+     `(LATEUNIFY ,a ,b)]
+
     [(,[arg*] ... -> ,[res])
      `(,arg* ... -> ,res)]
     [(,s ,[t] ...) (guard (symbol? s))
@@ -356,6 +360,8 @@
 	  (types-equal! (instantiate-type lub '()) tc "unknown location")
 	  (set-cdr! pr tc))]
        [(,v . ,oth) (if oth (do-late-unify! oth) (void))])]
+    [(LATEUNIFY ,a ,b)
+     (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
     ;[',n `(quote ,n)]
     [(NUM ,v) (guard (symbol? v))            (void)]
     [(NUM (,v . ,t)) (if t (do-late-unify! t) (void))]
@@ -396,6 +402,8 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
+    [(LATEUNIFY #f ,[t]) t]
+    [(LATEUNIFY [t1] ,[t2]) (and t1 t2)]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]   
     [,else #f]))
@@ -461,7 +469,7 @@
 
 (define (type-expression expr tenv)
   (mvlet ([(e typ) (annotate-expression expr tenv '())])        
-    (do-all-late-unifies! e)
+    (do-all-late-unifies! e)    
     typ))
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
@@ -569,25 +577,24 @@
                 (cond
                   ;; Let-bound polymorphism:
                   [(tenv-is-let-bound? tenv v)
-                   ;(values v (instantiate-type entry nongeneric))
-                   => (lambda (most-general-type)
-                        (define this-type (instantiate-type most-general-type nongeneric))
-                        ;; Copy the type, but bind it to this site with a LUB:
-                        ;(LUB! this-type most-general-type)
-			;(types-equal! entry `(LUB ,this-type ,entry) v)
-									
-			(unless (null? nongeneric)
-			  (printf "  NONGENERIC: ~s\n"  nongeneric))
+		   (let ()
+		     (printf "LETBOUND: ~s\n" v)
+		     (unless (null? nongeneric)
+		       (printf "  NONGENERIC: ~s\n"  nongeneric))
 
-			(match entry
-			  [(quote (,v . (LATEUNIFY . ,lub-and-general)))
-			   (set-car! lub-and-general  `(LUB ,(car lub-and-general) ,this-type))]
-			  [(quote ,pr) (guard (pair? pr))
-			   (set-cdr! pr `(LATEUNIFY ,this-type ,(cdr pr)))]
-			  [,oth (error 'annotate-expression "let-bound var should have type-var around its type: ~s" oth)])
-                        (printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" 
-                                v most-general-type this-type)
-                        (values v this-type))]
+		     (match entry
+		       [(quote (,tv . (LATEUNIFY ,lubs ,general)))
+			(let ([this-site (instantiate-type general nongeneric)])
+			  (printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" 
+				  tv general this-site)
+			  (set-car! (cddadr entry)  
+				    (if lubs
+					`(LUB ,lubs ,this-site)
+					this-site))
+			  (values v this-site)
+			  )]
+		       [,oth (error 'annotate-expression "let-bound var should be bound to LATEUNIFY: ~s" oth)])		   
+		     )]
                   [else                   
                    (values v entry)])
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
@@ -952,6 +959,9 @@
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch x y exp)]
+
+    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp)]
+    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp)]
 
     [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
@@ -1330,20 +1340,7 @@
 		       (anchor-at 50 10)
 		       (anchor-at 30 40))) (empty-tenv)))
    (Stream #(Node Node))]
-  ["This should not be allowed by the type system:" 
-   (export-type (,type-expression 
-		 '(lambda (g)
-		    (letrec ([f g])
-		      (tuple (app f 3) (app f #t))))
-		 (empty-tenv)))
-   error]
-  ["Whereas this is ok."
-   (export-type (,type-expression 
-		 '(lambda (g)
-		    (letrec ([f (lambda (x) x)])
-		      (tuple (app f 3) (app f #t))))
-		 (empty-tenv)))
-   unspecified]
+
 
   ["A letrec-bound identity function never applied"
    (mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
@@ -1467,6 +1464,23 @@
    ;; HACKING NOW, COME BACK TO THIS:
    #t
    ]
+
+
+  ["This is an ok use of polymorphism"
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f (lambda (x) x)])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   unspecified]
+  ["This should not be allowed by the type system:" 
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f g])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   error]
+
 
   [(values->list (annotate-program
 		  '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5)))))
