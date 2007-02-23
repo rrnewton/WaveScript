@@ -15,6 +15,8 @@ fun matrix(rows, cols, init) {
   arr
 }
 
+fun m_zeroes(r,c) { matrix(r,c,gint(0)) }
+fun m_ones(r,c) { matrix(r,c,gint(1)) }
 
 fun m_rows(m) {
   m.length
@@ -51,7 +53,7 @@ fun list_to_matrix(list) {
     for j = 0 to cols-1 {
       m_set(arr,i,j,listRef(row, j));
     }
-  }
+  };
   arr
 }
 
@@ -61,7 +63,7 @@ fun list_of_segs_to_matrix(ls) {
   arr = makeArray(len, nullarr);
   for i = 0 to len-1 {
     arr[i] := to_array(listRef(ls, i))
-  }
+  };
   arr
 }
 
@@ -69,18 +71,26 @@ fun m_row(m,i) {
   m[i]
 }
 
+fun m_col(m,i) {
+  arr = makeArray(m.length, gint(0));
+  for j = 0 to m.length-1 {
+    arr[j] := m_get(m,j,i);
+  };
+  arr
+}
+
 fun m_map(f, m) {
   newm = makeArray(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := amap(f, m[i])
-  }
+  };
   newm
 }
 
 fun m_map_inplace(f, m) {
   for i = 0 to m_rows(m) {
     amap_inplace(f, m[i])
-  }
+  };
   m
 }
 
@@ -88,7 +98,7 @@ fun m_rowmap(f, m) {
   newm = makeArray(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
-  }
+  };
   newm
 }
 
@@ -97,7 +107,7 @@ fun m_rowmap_scalar(f, m) {
   newm = makeArray(m_rows(m), gint(0));
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
-  }
+  };
   newm
 }
 
@@ -106,7 +116,7 @@ fun m_rowmap_index(f, m) {
   newm = makeArray(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i],i)
-  }
+  };
   newm
 }
 
@@ -116,7 +126,7 @@ fun m_pairmult(m1,m2) {
     for j = 0 to m_cols(m1) - 1 {
       m_set(nm,i,j,m_get(m1,i,j)*m_get(m2,i,j))
     }
-  }
+  };
   nm
 }
 
@@ -157,6 +167,10 @@ fun m_trans(m) {
   };
   m2
 }
+
+
+// placeholder for matrix inverse
+fun m_inv(arr) { arr }
 
 /* (define (matrix:cofactor matrix i j) */
 /*   (define mat (matrix->lists matrix)) */

@@ -9,7 +9,8 @@
 // Constant:
 PI   = 3.141592653589793;
 PIO2 = PI/2.0;
- 
+E    = 2.718281828459045;
+
 //======================================================================
 // Library POD (plain old data) functions:
 
@@ -372,6 +373,32 @@ fun apairmult(arr1,arr2) {
     narr[i] := arr1[i] * arr2[i];
   };
   narr
+}
+
+fun a_max(arr) {
+  val = arr[0];
+  ind = 0;
+  for i = 1 to arr.length-1 {
+    if (arr[i] > val) then {
+      val := arr[i];
+      ind := i;
+    }
+  };
+  [val,ind]
+}
+
+fun a_zeroes(len) { makeArray(len, gint(0)) }
+fun a_ones(len) { makeArray(len, gint(1)) }
+
+// insertion sort 
+fun sort(swap,cmp,len) {
+  for j = 0 to len-1 {
+    for i = 0 to len-2 {
+      if (cmp(i,i+1) > 0) then {
+        swap(i,i+1);
+      }
+    }
+  }
 }
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
