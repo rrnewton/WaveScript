@@ -142,6 +142,7 @@ fun fftArray(arr) {
 }
 
 
+/**** what if the input is not a power of 2.... fft?  ***/
 FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
 fun FarFieldDOA(synced, sensors)
 {	
@@ -176,6 +177,9 @@ fun FarFieldDOA(synced, sensors)
 
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
+    // length of the fft
+    Ndat = (m_in[0]).length;  
+
     // This will be the output DOA likelihoods
     Jmet = matrix(NSrc,Ngrd,0.0);
 
@@ -183,20 +187,24 @@ fun FarFieldDOA(synced, sensors)
     ffts = m_rowmap(fftArray, m_in);
 
     // compute psds
-    psds = m_map(absC, ffts);
+    fun norm2(x) { sqr(absC(x)) };
+    psds = m_map(norm2, ffts);
 
-    // compute norms
-    norms = m_rowmap_scalar(asum, psds);
+    // compute norms: sqrt(sum(psds))
+    // BTW, using psds is hand-optimized form of computing norms
+    fun tmp(row) { sqrtF(asum(row)) };
+    norms = m_rowmap_scalar(tmp, psds);
 
     // normalize
     fun normalize(row,i) { amult_scalar(row,gint(1)/floatToComplex(norms[i])) };
     nffts = m_rowmap_index(normalize, ffts);
 
+
     // sum powers values across channels 
-    power = makeArray((m_in[0]).length, gint(0));
-    for i = 0 to m_in.length-1 {
-      for j = 0 to (m_in[i]).length-1 {
-        power[j] := power[j] + m_get(m_in,i,j);
+    power = makeArray(Ndat, 0.0);
+    for i = 0 to psds.length-1 {
+      for j = 0 to Ndat-1 {
+        power[j] := power[j] + m_get(psds,i,j);
       }
     };
 
@@ -211,13 +219,10 @@ fun FarFieldDOA(synced, sensors)
       power_index[j] := tmp1; 
       tmp2 = power[i]; 
       power[i] := power[j];
-      power[j] := tmp1; 
+      power[j] := tmp2; 
     };
     fun cmp(i,j) { (power[i] - power[j]) };
     sort(swap,cmp,power.length);
-
-    // length of the fft
-    Ndat = power.length;  
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
@@ -228,7 +233,7 @@ fun FarFieldDOA(synced, sensors)
     delay = matrix(Nsens, NSrc, 0.0);
 
     // steering matrix
-    D = matrix(NSrc, Nsens, 0.0);
+    D = matrix(NSrc, Nsens, 0.0+0.0i);
 
     fun doDelay(P, grid) {
       0.0 - r[P] * cos(gridmap[grid] - theta[P])
@@ -262,7 +267,7 @@ fun FarFieldDOA(synced, sensors)
 	    // calculate the steering matrix
 	    for L = 0 to NSrc-1 {
 	      if (iter > 1 || L <= Q) then {
-		m_set(D,0,L,1.0);
+		m_set(D,0,L,1.0+0.0i);
 		for P = 1 to Nsens-1 {
 		  m_set(D,P,L, floatToComplex(E)^
                    (0.0+1.0i * floatToComplex(-2.0 * PI *
@@ -271,17 +276,17 @@ fun FarFieldDOA(synced, sensors)
 	      }
 	    };
 
-	    // get col vector from matrix, except its an array of sigseg :(
-	    X = m_col(nffts,power_index[K]);
+	    // get col vector from matrix
+	    X = m_colm(nffts,power_index[K]);
 
 	    Post = m_mult(D, m_inv(D));
-	    J[I] := J[I] + realpart(m_mult(m_trans(X), m_mult(Post, X)));
+	    J[I] := J[I] + realpart(m_get(m_mult(m_trans(X), m_mult(Post, X)),0,0));
 	  }
 	};
 
 	let (maxJ, maxJind) = a_max(J);
 	T[Q] := maxJind;
-        Trad[Q] := (T[Q]-1.0)*2.0*PI/gint(Ngrd);
+        Trad[Q] := gint(T[Q]-1)*2.0*PI/gint(Ngrd);
         
 	for K = 0 to m_cols(Jmet) {
           m_set(Jmet,Q,K,(J[K] / maxJ));
