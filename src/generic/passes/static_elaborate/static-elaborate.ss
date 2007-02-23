@@ -126,7 +126,7 @@
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
-	(floatToComplex floatToComplex-unimplemented)
+	(floatToComplex (lambda (f) (+ f 0.0+0.0i)))
 	
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)

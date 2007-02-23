@@ -9,7 +9,7 @@
 (define-syntax IFDEBUG 
   (lambda (x)
     ;===============================;
-    (define DEFAULT_IS_DEBUG_MODE #t) ;; <-- CHANGE DEFAULT HERE
+    (define DEFAULT_IS_DEBUG_MODE #f) ;; <-- CHANGE DEFAULT HERE
     ;===============================;
     (define (on)  (syntax-case x () [(_ debon deboff) #'debon]))
     (define (off) (syntax-case x () [(_ debon deboff) #'deboff]))
