@@ -1093,7 +1093,7 @@ int main(int argc, char ** argv)
 					       (begin
 						 (emit
 						  ___VIRTQUEUE___
-						  (fft (fft (to_array
+						  (fft (fft (toArray
 							     w))))
 						 ___VIRTQUEUE___))
                                              s1)]

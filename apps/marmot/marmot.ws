@@ -138,7 +138,7 @@ fun detect(scorestrm) {
 
 fftArray :: Array Float -> Array Complex;
 fun fftArray(arr) {
-  to_array(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
+  toArray(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
 }
 
 

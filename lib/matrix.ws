@@ -62,7 +62,7 @@ fun list_of_segs_to_matrix(ls) {
   len = listLength(ls);
   arr = makeArray(len, nullarr);
   for i = 0 to len-1 {
-    arr[i] := to_array(listRef(ls, i))
+    arr[i] := toArray(listRef(ls, i))
   };
   arr
 }

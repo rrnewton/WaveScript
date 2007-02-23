@@ -400,9 +400,10 @@
 
     (print            ('a) #())
     (show             ('a) String)
+    (gnuplot_array    ((Array 'a)) #())
     (string-append    (String String) String)
 
-    (to_array         ((Sigseg 'a))  (Array 'a))
+    (toArray         ((Sigseg 'a))  (Array 'a))
     ;; TODO: This needs to take Int64's....
     (toSigseg        ((Array 'a) Int Int Timebase)  (Sigseg 'a))
 

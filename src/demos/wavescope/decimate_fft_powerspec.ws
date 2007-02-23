@@ -16,7 +16,7 @@ s2 = iterate (w in s1) {
 // Finally, take the power spectrum.
 //s3 : Stream float;
 s3 = iterate (w in s2) {
-  arr = to_array w;
+  arr = toArray w;
 
   if arr[100].realpart > 224192.0
   then { emit 0.0; emit arr[100].imagpart; }

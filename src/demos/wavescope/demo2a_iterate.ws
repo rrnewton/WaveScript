@@ -15,8 +15,11 @@ s1 = audioFile("./countup.raw", 40, 0, 44000);
 
 // Identity iterate.
 s2 = iterate( w in s1 ) {
-  //print("TEST: "++ show(w) ++"\n");
-  emit w;
+  //print("TEST: "++ show(toArray(w)) ++"\n");
+
+  gnuplot_array(toArray(w));
+  
+  emit toArray(w);
 };
 
 

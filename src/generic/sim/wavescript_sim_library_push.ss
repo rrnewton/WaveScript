@@ -25,7 +25,8 @@
 		 ;dump-binfile 
 		 ;audio 
 		 audioFile timer 
-		 show
+		 show 
+		 gnuplot_array
 		 window
 
 		 to-uint16 to-int16 uint16->string
@@ -61,7 +62,7 @@
 		 fold alist_lookup alist_update
 
 		 joinsegs subseg seg-get width start end timebase
-		 to_array toSigseg 
+		 toArray toSigseg 
 
 		 assert-type
 		 
@@ -927,9 +928,8 @@
 
      (define (show x) (format "~s" x))
 
-
-
-
+     (define (gnuplot_array arr)
+       (gnuplot (vector->list arr)))
 
      ;;================================================================================
 
@@ -1036,7 +1036,7 @@
        ;; Well, the main thing we need nullseg for, as I see it, is initializing accumulators.
        (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
-     (define (to_array w) (if (eq? w nullseg) #() (sigseg-vec w)))
+     (define (toArray w) (if (eq? w nullseg) #() (sigseg-vec w)))
      (define (toSigseg ar st en tb)
        (DEBUGASSERT (or (eq? ar nullarr) (vector? ar)))
        (DEBUGASSERT integer? st)
