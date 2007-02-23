@@ -21,6 +21,7 @@
 
 ;;  validate-types [2006.10.12] TODO: check the existing types, should be less expensive
 
+;; [2007.02.21] Adding LUBs to the internal type grammar.
 
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
 ;; type aliases.  This will remove most of the need for types-compat?
@@ -61,7 +62,7 @@
 	   tenv-map
 	   
            instantiate-type
-	   export-type
+	   export-type do-late-unify! 
 	   prim->type
 	   type?
 	   distributed-type?
@@ -78,7 +79,7 @@
            
 	   annotate-expression
 	   annotate-program
-	   strip-types
+	   strip-types do-all-late-unifies!
 	   
 	   print-var-types
 
@@ -107,6 +108,12 @@
 			; Int8 Int16 Int64 Double Complex64
 			))
 
+  
+  
+  
+  
+  
+  
 ; ======================================================================
 ;;; Helpers
 
@@ -172,8 +179,17 @@
     [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
 
+  
 ; ----------------------------------------
 ;;; Type Environment ADT
+
+;;; [2007.02.21] Changing the tenv representation.  Now we wish to
+;;; ultimately use the least-upper-bound of all the reference-sites as
+;;; the type of a let-bound variable.  I'm internally changing the
+;;; "flag" field to store #f for non-let-bound variables, and to be a
+;;; type for let-bound variables.  That type will be a backup copy of
+;;; the most general type.  The normal type field will contain the LUB
+;;; of the reference-sites.
 
 ;; Constructs an empty type environment.
 (define empty-tenv 
@@ -184,12 +200,13 @@
 ;; Predicate testing for type environments.
 (define (tenv? x)
   (match x
-    ;; Format: VAR, TYPE, Is-Let-Bound? FLAG
+    ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
     [(,tenvsym [,v* ,t* ,flag*] ...)
      (and (eq? tenvsym (car (empty-tenv)))
 	  (andmap symbol? v*)
 	  (andmap type? t*)
-	  (andmap boolean? flag*))]
+	  (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
+	  )]
     [,else #f]))
 ;; Retrieves a type if a binding exists for sym, otherwise #f.
 (define (tenv-lookup tenv sym)
@@ -214,7 +231,17 @@
   (DEBUGASSERT (andmap type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
     (cons (car tenv)
-	  (append (map (lambda (a b) (list a b flag)) syms types)
+	  (append (map (lambda (v t) 
+			 (if flag
+			     (match t
+			       [(quote ,pr)
+				(ASSERT pair? pr)
+				(set-cdr! pr `(LATEUNIFY #f ,(make-tcell (cdr pr))))
+				(list v `(quote ,pr) #t)
+				])
+			     
+			     (list v t #f)))
+		    syms types)
 		  (cdr tenv))
 	  )))
 (define (tenv-append . tenvs)
@@ -237,7 +264,7 @@
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
 ;; The "nongeneric" vars are ones that do not receive new mutable cells.
-
+;; 
 ;; This is because, when instantiating a rator for application
 ;; let-bound type variables are reinstantiated, whereas lambda-bound ones are not.
 (define instantiate-type 
@@ -271,7 +298,7 @@
 
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
-	     [#(,[t*] ...) (apply vector t*)]
+	     [#(,[t*] ...) (apply vector t*)]	     
 	     [(,constructor ,[args] ...)
 	      (guard (symbol? constructor))
 	      `(,constructor ,args ...)]
@@ -282,19 +309,66 @@
 
 ;; This takes away the mutable cells, thereby converting to the
 ;; external representation.
+;; It also takes away LUB types.
 (define (export-type t)
   (match t
     [,s (guard (symbol? s)) s]
     ['(,n . ,v) (if v (export-type v) `(quote ,n))]
-    [',n `(quote ,n)]    
+    [',n `(quote ,n)]
     [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
     [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
+#;
+    [(LATEUNIFY ,a ,b)
+     (error 'export-type "shouldn't be any LATEUNIFY's left at this point: ~s" `(LATEUNIFY ,a ,b))
+     `(LATEUNIFY ,a ,b)]
+
+    [(LATEUNIFY ,[a] ,[b])
+     `(LATEUNIFY ,a ,b)]
+
     [(,[arg*] ... -> ,[res])
      `(,arg* ... -> ,res)]
     [(,s ,[t] ...) (guard (symbol? s))
      `(,s ,t ...)]
     [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
+
+;; [2007.02.21]
+;; HACK: including this unifier and unifying each of these again:
+;; Shouldn't have to do this, but there's a problem with the design.
+(trace-define (do-lub!!! t UNIFIER)
+  (let ([rands 
+	 (match t
+	   [(LUB ,[a] ,[b]) (append a b)]
+	   [,oth            (list oth)])])
+    (for-each (lambda (t) (types-equal! t (instantiate-type UNIFIER '())
+					"unknown code location"))
+      rands)
+    (let ([exported (map export-type rands)])
+      (printf "  FINAL LUBS: ~s\n" exported)
+      (foldl1 LUB exported))
+    ))
+
+;; This traverses the type and does any LATEUNIFY's
+(trace-define (do-late-unify! t)
+  (match t
+    [,s (guard (symbol? s))                  (void)]
+    [(quote ,pr)
+     (match pr
+       [(,v . (LATEUNIFY ,a ,b))
+	(let* ([lub (do-lub!!! a b)]
+	       [tc (make-tcell b)])
+	  (types-equal! (instantiate-type lub '()) tc "unknown location")
+	  (set-cdr! pr tc))]
+       [(,v . ,oth) (if oth (do-late-unify! oth) (void))])]
+    [(LATEUNIFY ,a ,b)
+     (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
+    ;[',n `(quote ,n)]
+    [(NUM ,v) (guard (symbol? v))            (void)]
+    [(NUM (,v . ,t)) (if t (do-late-unify! t) (void))]
+    [(,[arg*] ... -> ,[res])                 (void)]
+    [(,s ,[t] ...) (guard (symbol? s))       (void)]
+    [#(,[t*] ...)                            (void)]
+    [,other (error 'do-late-unify! "bad type: ~s" other)]))
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
 (define (prim->type p)
@@ -328,6 +402,8 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
+    [(LATEUNIFY #f ,[t]) t]
+    [(LATEUNIFY [t1] ,[t2]) (and t1 t2)]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]   
     [,else #f]))
@@ -349,6 +425,7 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
+    [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [#(,[t] ...) (ormap id t)]
     [,else #f]))
@@ -367,6 +444,7 @@
 
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
+    [(LUB ,a ,b) (error 'polymorphic-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [#(,[t] ...) (ormap id t)]
     [,else #f]))
@@ -378,14 +456,20 @@
     [(quote (,v . ,[rhs])) rhs]
     [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
+    [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [,else #f]))
 
+  
+  
+  
+  
 ; ======================================================================
 
 ;;; The main type checker.
 
 (define (type-expression expr tenv)
-  (mvlet ([(_ typ) (annotate-expression expr tenv '())])
+  (mvlet ([(e typ) (annotate-expression expr tenv '())])        
+    (do-all-late-unifies! e)    
     typ))
 
 ;; Used for recovering types for particular expressions within an already type-annotated program.
@@ -448,7 +532,7 @@
 
 
 ;; Assign a type to a procedure application expression.
-(define (type-app rator rattyp rands exp tenv non-generic-tvars)
+(trace-define (type-app rator rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
   (let ([result (make-tcell)])
     (types-equal! rattyp `(,@rands -> ,result) exp)
@@ -490,17 +574,29 @@
       [,v (guard (symbol? v))
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
-		;; Let-bound polymorphism:
-		(if (and (tenv-is-let-bound? tenv v)
-		    ;; TEMP: HACK:
-		    ;; Until we fix lazy-letrec to work for the now-strict language...
-		    ;; We can only polymorphically instantiate arrow types!!
-			 ;(arrow-type? entry)
-			 )
-		    (begin 
-		      ;(printf "Let-bound var! ~s with (arrow ~s) type ~a\n" v (arrow-type? entry) entry)
-		      (values v (instantiate-type entry nongeneric)))
-		    (values v entry))
+                (cond
+                  ;; Let-bound polymorphism:
+                  [(tenv-is-let-bound? tenv v)
+		   (let ()
+		     (printf "LETBOUND: ~s\n" v)
+		     (unless (null? nongeneric)
+		       (printf "  NONGENERIC: ~s\n"  nongeneric))
+
+		     (match entry
+		       [(quote (,tv . (LATEUNIFY ,lubs ,general)))
+			(let ([this-site (instantiate-type general nongeneric)])
+			  (printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" 
+				  tv general this-site)
+			  (set-car! (cddadr entry)  
+				    (if lubs
+					`(LUB ,lubs ,this-site)
+					this-site))
+			  (values v this-site)
+			  )]
+		       [,oth (error 'annotate-expression "let-bound var should be bound to LATEUNIFY: ~s" oth)])		   
+		     )]
+                  [else                   
+                   (values v entry)])
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
        (types-equal! tt 'Bool te) ;; This returns the error message with the annotated expression, oh well.
@@ -518,7 +614,7 @@
       ;; Incorporate type assertions.
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
-	 (types-equal! (instantiate-type ty) et newexp)
+	 (types-equal! (instantiate-type ty '()) et newexp)
 	 (values `(assert-type ,ty ,e)
 		 et))
        ]
@@ -594,8 +690,15 @@
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
+
     ;; Initiate main loop:
-    (l exp)))
+    #;(let ([result (l exp)])
+      ;; On the way out we do late unifications:
+      (do-all-late-unifies! result)
+      result
+      )
+  (l exp)
+  ))
 
 ;; Internal helper.
 (define (valid-user-type! t)
@@ -617,7 +720,7 @@
            [newnongen (map (lambda (x) (match x ['(,n . ,_) n])) argtypes)])
       ;; Now unify the new type vars with the existing annotations.
       (map (lambda (new old)
-	     (if old (types-equal! new (instantiate-type old) 
+	     (if old (types-equal! new (instantiate-type old '())
 			   `(lambda ,ids ,inittypes ,body))))
 	argtypes inittypes)
 
@@ -636,9 +739,10 @@
       [(,[f -> newrhs* rhsty*] ...)
        ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
        (let* ([newtypes (map (lambda (new old) 
-			       (if old (types-equal! new (instantiate-type old) 
-					    `(let ([,id* ,inittypes ,rhs*] ...) ,bod)))
-			      new)
+			       (if old (types-equal! new (instantiate-type old '())
+						     `(let ([,id* ,inittypes ,rhs*] ...) ,bod)))
+			       (make-tcell new)
+			       )
 			  rhsty* inittypes)]
 	      [tenv (tenv-extend tenv id* newtypes #t)])
 	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
@@ -667,73 +771,78 @@
 	     ;; Unify rhs-types with pre-existing types.
 	     [_ (map (lambda (new old) 
 		       (if old 
-			   (types-equal! new (instantiate-type old) 
+			   (types-equal! new (instantiate-type old '())
 					 `(letrec (,'... [,new ,old] ,'...) ,'...))))
 		  rhs-types existing-types)]
              [tenv (tenv-extend tenv id* rhs-types #t)])
         ;; Unify all these new type variables with the rhs expressions
         (let ([newrhs* 
                (map-ordered2 (lambda (type rhs)
-                               (mvlet ([(newrhs t) (annotate-expression rhs tenv nongeneric)])
-                                 (types-equal! type t rhs)
-                                 newrhs))
+			       (match type
+				 [(quote (,v . ,_))
+				  ;; For our own RHS we are "nongeneric".
+				  (mvlet ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
+				    (types-equal! type t rhs)
+                                    ;(inspect `(GOTNEWRHSTYPE ,t ,type))
+				    newrhs)
+				  ]))
                              rhs-types rhs*)])
           (mvlet ([(bode bodt) (annotate-expression bod tenv nongeneric)])
             (values `(,letrecconstruct ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
-  
-;; This annotates the program, and then exports all the types to their
-;; external form (stripped of mutable cells on the tvars).
-(define (annotate-program p)
-  (let ([Expr 
-	 (lambda (p)
-	   (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
-	     ;; Now strip mutable cells from annotated expression.
-	     (values 
-	      (match e ;; match-expr
-		[,c (guard (constant? c)) c]
-		[,v (guard (symbol? v)) v]
-		[(quote ,c)       `(quote ,c)]
-		[,prim (guard (symbol? prim) (regiment-primitive? prim))
-		       prim]
 
-		[(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
-		[(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-		[(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
-		[(tuple ,[e*] ...) `(tuple ,e* ...)]
-		[(tupref ,n ,[e]) `(tupref ,n ,e)]
-		[(unionN ,[e*] ...) `(unionN ,e* ...)]
 
-		[(set! ,v ,[e]) `(set! ,v ,e)]
-		[(begin ,[e] ...) `(begin ,e ...)]
-		[(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+;; This lifts export-type over expressions.
+(define (export-expression e)
+  (match e ;; match-expr
+    [,c (guard (constant? c)) c]
+    [,v (guard (symbol? v)) v]
+    [(quote ,c)       `(quote ,c)]
+    [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
+    [(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
+    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+    [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
+    [(tuple ,[e*] ...) `(tuple ,e* ...)]
+    [(tupref ,n ,[e]) `(tupref ,n ,e)]
+    [(unionN ,[e*] ...) `(unionN ,e* ...)]
+    [(set! ,v ,[e]) `(set! ,v ,e)]
+    [(begin ,[e] ...) `(begin ,e ...)]
+    [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+    [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
+     `(let ([,id* ,t* ,rhs*] ...) ,bod)]
+    [(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
+     (guard (memq letrec '(letrec lazy-letrec)))
+     `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
+    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
+    [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
+     `(,prim ,rand* ...)]
+    ;; HACK HACK HACK: Fix this:
+    ;; We cheat for nums, vars, prims: 
+    ;;[,other other]; don't need to do anything here...
+    ;;       [,other (error 'annotate-program "bad expression: ~a" other)]
+    ))
 
-		[(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
-		 `(let ([,id* ,t* ,rhs*] ...) ,bod)]
-
-		[(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
-		 (guard (memq letrec '(letrec lazy-letrec)))
-		 `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
-		[(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
-
-		[(,prim ,[rand*] ...)
-		 (guard (regiment-primitive? prim))
-		 `(,prim ,rand* ...)]
-		
-		
-
-		;; HACK HACK HACK: Fix this:
-		;; We cheat for nums, vars, prims: 
-		;[,other other]; don't need to do anything here...
-					;       [,other (error 'annotate-program "bad expression: ~a" other)]
-		)
-	      (export-type t)))
-	   )])
-    ;; Accepts either with-boilerplate or without.
-    (match p
-      [(,lang '(program ,[Expr -> e t] ,type))
-       (ASSERT (type? type))
-       `(,lang '(program ,e ,t))]
-      [,other (Expr other)])))
+;; This traverses the expression and does any LATEUNIFY's
+(define (do-all-late-unifies! e)
+  (match e ;; match-expr
+    [,c (guard (constant? c))                                 (void)]
+    [,v (guard (symbol? v))                                   (void)]
+    [(quote ,c)                                               (void)]
+    [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
+    [(assert-type ,[do-late-unify! -> t] ,[e])                 (void)]
+    [(if ,[t] ,[c] ,[a])                                      (void)]
+    [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])         (void)]
+    [(tuple ,[e*] ...)                                        (void)]
+    [(tupref ,n ,[e])                                         (void)]
+    [(unionN ,[e*] ...)                                       (void)]
+    [(set! ,v ,[e])                                           (void)]
+    [(begin ,[e] ...)                                         (void)]
+    [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
+    [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
+    [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
+     (guard (memq letrec '(letrec lazy-letrec)))              (void)]
+    [(app ,[rat] ,[rand*] ...)                                (void)]
+    [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
+    ))
 
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
@@ -775,6 +884,44 @@
     [,expr (process-expression expr)]
     ;[,other (error 'strip-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
     ))
+  
+
+
+
+;; This annotates the program, and then exports all the types to their
+;; external form (stripped of mutable cells on the tvars).
+;; .param a program with or without boilerplate.
+;; .returns 1 or 2 values: new program and toplevel type
+;;                         If input is with-boilerplate, output is one value.
+;; 
+;; NOTE!  We have to run the type checking TWICE to make everything settle down.
+;; This is a result of our strategy of recording LUB types for lets.
+(define (annotate-program p)
+  (match p
+    [(,lang '(program ,e ,t))
+     (annotate-program-once (annotate-program-once p))]
+    [,oth
+     (let-values ([(e t) (annotate-program-once oth)])
+       (annotate-program-once e))]))
+
+;; This is the real thing:
+(define (annotate-program-once p)
+  (let ([Expr 
+	 (lambda (p)
+	   (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
+	     (do-all-late-unifies! e)
+	     ;; Now strip mutable cells from annotated expression.
+	     (values (export-expression e)
+		     (export-type t)))
+	   )])
+    ;; Accepts either with-boilerplate or without.
+    (match p
+      [(,lang '(program ,[Expr -> e t] ,type))
+       (ASSERT (type? type))
+       `(,lang '(program ,e ,t))]
+      [,other (Expr other)])))
+
+
       
 ; ======================================================================
 
@@ -803,7 +950,7 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
-(define (types-equal! t1 t2 exp)
+(trace-define (types-equal! t1 t2 exp)
   (DEBUGASSERT (and (type? t1) (type? t2)))
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
@@ -812,6 +959,9 @@
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch x y exp)]
+
+    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp)]
+    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp)]
 
     [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
@@ -854,13 +1004,13 @@
 	  xargs yargs)
 	(types-equal! x y exp)]
        [,other (type-error 'types-equal!
-		      "procedure type ~aDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
+		      "procedure type ~a\nDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
 		      (export-type `(,@yargs -> ,y))
 		      (export-type other)
 		      `(,@yargs -> ,y)
 		      other)])]
     [,otherwise (raise-type-mismatch t1 t2 exp)]))
-		   
+ 
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp)
   (DEBUGASSERT (type? ty))
@@ -875,6 +1025,81 @@
 	 (begin (no-occurrence! (tcell->name tvar) ty exp)
 		(set-cdr! pr ty)))]))
 
+;; This returns the least-upper bound of two types.  That is, the
+;; least-general type that is a superset of both input types.
+(trace-define (LUB t1 t2)
+;  `(LUB ,t1 ,t2)
+  ;; UNFINISHED:
+
+  (match (list t1 t2)
+    [[,x ,y] (guard (eqv? t1 t2)) t1]
+    ;[[',tv1 ',tv2] (guard (eqv? tv1 tv2)) ] ;; alpha = alpha
+
+    [[,x ,y] (guard (memq x num-types) (memq y num-types))
+     `(NUM ,(make-tvar))]
+
+    [[,x ,y] (guard (symbol? x) (symbol? y))
+     (printf "Mismatched basic types: ~s ~s\n" x y)
+     ;; Return top:
+     `(quote ,(make-tvar))]
+
+    [[',tv ',ty] (ASSERT symbol? tv) (ASSERT symbol? ty)
+     `(quote ,(if (eqv? tv ty) tv (make-tvar )))]
+    [[',tv ,ty]  (ASSERT symbol? tv)
+     `(quote ,tv)]
+    [[,ty ',tv] (ASSERT symbol? tv)
+     `(quote ,tv)]
+
+#|
+
+    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
+    [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
+     (tvar-equal-type! t1 numty exp)]
+    [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
+     (tvar-equal-type! t2 numty exp)]
+
+    ;; If one of them is a symbol, it might be a type alias.
+    [[,x ,y] (guard (or (symbol? x) (symbol? y)))
+     (let ([sym    (if (symbol? x) x y)]
+	   [nonsym (if (symbol? x) y x)])
+       (let ([entry (assq sym regiment-type-aliases)])
+	 (if entry 
+	     ;; Instantiate the alias and unify.
+	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp)
+	     (raise-type-mismatch x y exp))))]
+
+    [[#(,x* ...) #(,y* ...)]
+     (guard (= (length x*) (length y*)))
+     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) x* y*)]
+    [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
+     (guard (symbol? x1) (symbol? y1)
+	    (not (memq '-> xargs))
+	    (not (memq '-> yargs))
+	    (= (length xargs) (length yargs)))
+     (if (not (eq? x1 y1))
+	 (type-error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp))
+;     (types-equal! x1 y1 exp)
+     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) xargs yargs)]
+
+|#
+
+;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
+;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
+    ;; Working around this in a lame way:
+    [[,x  (,yargs ... -> ,y)] 
+     (match x 
+       [(,xargs ... -> ,x)
+	(if (not (= (length xargs) (length yargs)))
+	    `(quote ,(make-tvar)) ;; Return top
+	    
+	    (let ([args (map LUB xargs yargs)])
+	      `(,@args -> ,(LUB x y)))
+	    )]
+       [,other `(quote ,(make-tvar))])]
+
+    [,otherwise (raise-type-mismatch t1 t2 exp)]))
+  
+  
 ;; This makes sure there are no cycles in a tvar's mutable cell.
 ;; .returns #t if there are no loops, or throws an error otherwise.
 (define (no-occurrence! tvar ty exp)
@@ -1026,7 +1251,6 @@
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
     [(mvlet ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
      ((NUM unspecified) -> (NUM unspecified))]
-
     
     [(export-type ''(f . Int)) Int]
     [(export-type (,type-expression '(+_ 1 1) (empty-tenv))) Int]
@@ -1061,7 +1285,7 @@
 	  [,else #f]))]
 
     [(export-type (,type-expression '((lambda (v) v) 3) (empty-tenv))) Int]
-     
+
     [(export-type (,type-expression '(lambda (y) (letrec ([x y]) (+_ x 4))) (empty-tenv)))
      (Int -> Int)]
 
@@ -1098,7 +1322,7 @@
   [(types-compat? '(NUM g) 'Float) Float]
 
   ["Lambda bound arrow types are not polymorphic."
-     (export-type (,type-expression '(lambda (f) (tuple (f 3) f)) (empty-tenv)))
+     (export-type (,type-expression '(lambda (f) (tuple (app f 3) f)) (empty-tenv)))
      ,(lambda (x) 
 	(match x
 	  [((Int -> ,v1) -> #(,v2 (Int -> ,v3)))
@@ -1106,7 +1330,7 @@
 	   #t]
 	  [,else #f]))]
   ["Non polymorphic funs cannot be applied differently."
-   (export-type (,type-expression '(lambda (f) (tuple (f 3) (f "foo") f)) (empty-tenv)))
+   (export-type (,type-expression '(lambda (f) (tuple (app f 3) (app f "foo") f)) (empty-tenv)))
    error]
   
   [(export-type (,type-expression 
@@ -1116,20 +1340,7 @@
 		       (anchor-at 50 10)
 		       (anchor-at 30 40))) (empty-tenv)))
    (Stream #(Node Node))]
-  ["This should not be allowed by the type system:" 
-   (export-type (,type-expression 
-		 '(lambda (g)
-		    (letrec ([f g])
-		      (tuple (f 3) (f #t))))
-		 (empty-tenv)))
-   error]
-  ["Whereas this is ok."
-   (export-type (,type-expression 
-		 '(lambda (g)
-		    (letrec ([f (lambda (x) x)])
-		      (tuple (f 3) (f #t))))
-		 (empty-tenv)))
-   unspecified]
+
 
   ["A letrec-bound identity function never applied"
    (mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
@@ -1251,9 +1462,42 @@
 		 (Stream Int)))))
    ;; SHOULD PROBABLY BE #T:
    ;; HACKING NOW, COME BACK TO THIS:
-   unspecified   
+   #t
    ]
 
+
+  ["This is an ok use of polymorphism"
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f (lambda (x) x)])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   unspecified]
+  ["This should not be allowed by the type system:" 
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (letrec ([f g])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   error]
+
+  ["Nor should this (same thing with let)" 
+   (export-type (,type-expression 
+		 '(lambda (g)
+		    (let ([f g])
+		      (tuple (app f 3) (app f #t))))
+		 (empty-tenv)))
+   error]
+
+
+  [(values->list (annotate-program
+		  '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5)))))
+   ,(lambda (x)
+      (match x
+	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (unspecified) x)])
+	    (tuple (app f '3) (app f '4.5)))
+	  #(Int Float))
+	 (eq? v1 v2)]))]
 
   #;
   ;; Should we type-check with patterns in there?
