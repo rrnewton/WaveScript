@@ -142,7 +142,7 @@ fun fftArray(arr) {
 }
 
 
-//FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array t)); 
+FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
 fun FarFieldDOA(synced, sensors)
 {	
   // parameters:
@@ -204,8 +204,6 @@ fun FarFieldDOA(synced, sensors)
     power_index = makeArray((m_in[0]).length, 0);
     for i = 0 to power_index.length-1 { power_index[i] := i; };
 
-/*
-
     // sort index vector and power vector
     fun swap(i,j) { 
       tmp1 = power_index[i]; 
@@ -219,12 +217,12 @@ fun FarFieldDOA(synced, sensors)
     sort(swap,cmp,power.length);
 
     // length of the fft
-    Ndat = power.width;  
+    Ndat = power.length;  
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
     Tbefore = a_zeroes(NSrc);
-    Trad = gint(0);
+    Trad = makeArray(NSrc, gint(0));
 
     // phase delays for each source
     delay = matrix(Nsens, NSrc, 0.0);
@@ -305,7 +303,7 @@ fun FarFieldDOA(synced, sensors)
 	Tbefore[i] := gridmap[T[i]] 
       }
     };
-*/ 
+
     emit(Jmet);
 
   };
