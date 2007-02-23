@@ -168,7 +168,7 @@ fun FarFieldDOA(synced, sensors)
   // gridmap maps polar grid entry to radians
   gridmap = makeArray(Ngrd, gint(0));
   for i = 0 to Ngrd-1 {
-    gridmap[i] := (i * 360.0 / Ngrd) * PI / 180.0; 
+    gridmap[i] := (gint(i) * 360.0 / gint(Ngrd)) * PI / 180.0; 
   };
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
@@ -176,6 +176,9 @@ fun FarFieldDOA(synced, sensors)
 
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
+    // This will be the output DOA likelihoods
+    Jmet = matrix(NSrc,Ngrd,0.0);
+
     //fft the sync'd data 
     ffts = m_rowmap(fftArray, m_in);
 
@@ -186,11 +189,11 @@ fun FarFieldDOA(synced, sensors)
     norms = m_rowmap_scalar(asum, psds);
 
     // normalize
-    fun normalize(row,i) { amult_scalar(row,gint(0)/floatToComplex(norms[i])) };
+    fun normalize(row,i) { amult_scalar(row,gint(1)/floatToComplex(norms[i])) };
     nffts = m_rowmap_index(normalize, ffts);
 
     // sum powers values across channels 
-    power = makeArray((m_in[0]).length(), gint(0));
+    power = makeArray((m_in[0]).length, gint(0));
     for i = 0 to m_in.length-1 {
       for j = 0 to (m_in[i]).length-1 {
         power[j] := power[j] + m_get(m_in,i,j);
@@ -200,6 +203,8 @@ fun FarFieldDOA(synced, sensors)
     // create index vector
     power_index = makeArray((m_in[0]).length, 0);
     for i = 0 to power_index.length-1 { power_index[i] := i; };
+
+/*
 
     // sort index vector and power vector
     fun swap(i,j) { 
@@ -215,9 +220,6 @@ fun FarFieldDOA(synced, sensors)
 
     // length of the fft
     Ndat = power.width;  
-
-    // This will be the output DOA likelihoods
-    Jmet = matrix(NSrc,Ngrd,0.0);
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
@@ -303,7 +305,7 @@ fun FarFieldDOA(synced, sensors)
 	Tbefore[i] := gridmap[T[i]] 
       }
     };
- 
+*/ 
     emit(Jmet);
 
   };
