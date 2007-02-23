@@ -67,14 +67,26 @@ fun list_of_segs_to_matrix(ls) {
   arr
 }
 
-fun m_row(m,i) {
+fun m_rowv_shared(m,i) {
   m[i]
 }
 
-fun m_col(m,i) {
+fun m_rowm_shared(m,i) {
+  makeArray(1,m[i]);
+}
+
+fun m_colv(m,i) {
   arr = makeArray(m.length, gint(0));
   for j = 0 to m.length-1 {
     arr[j] := m_get(m,j,i);
+  };
+  arr
+}
+
+fun m_colm(m,i) {
+  arr = makeArray(m.length, nullarr);
+  for j = 0 to m.length-1 {
+    arr[j] := makeArray(1,m_get(m,j,i));
   };
   arr
 }

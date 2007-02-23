@@ -384,7 +384,7 @@ fun a_max(arr) {
       ind := i;
     }
   };
-  [val,ind]
+  (val,ind)
 }
 
 fun a_zeroes(len) { makeArray(len, gint(0)) }
@@ -394,7 +394,7 @@ fun a_ones(len) { makeArray(len, gint(1)) }
 fun sort(swap,cmp,len) {
   for j = 0 to len-1 {
     for i = 0 to len-2 {
-      if (cmp(i,i+1) > 0) then {
+      if (cmp(i,i+1) > gint(0)) then {
         swap(i,i+1);
       }
     }
