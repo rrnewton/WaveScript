@@ -226,7 +226,7 @@ fun FarFieldDOA(synced, sensors)
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
-    Tbefore = a_zeroes(NSrc);
+    Tbefore = makeArray(NSrc, gint(0));
     Trad = makeArray(NSrc, gint(0));
 
     // phase delays for each source
@@ -295,7 +295,7 @@ fun FarFieldDOA(synced, sensors)
 
       // stopping condition, break out of loop?
       diffs = makeArray(Trad.length, gint(0));
-      for K = 0 to Trad.length { diffs[K] := absF(Tbefore[K]-Trad[K]) };
+      for K = 0 to Trad.length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
       let (max_change,_) = a_max(diffs);
 
       //or, in matlab... that would just be 'max(abs(Tbefore-Trad))'!!!
