@@ -495,7 +495,7 @@
 		    ;; TEMP: HACK:
 		    ;; Until we fix lazy-letrec to work for the now-strict language...
 		    ;; We can only polymorphically instantiate arrow types!!
-			 ;(arrow-type? entry)
+			 (arrow-type? entry)
 			 )
 		    (begin 
 		      ;(printf "Let-bound var! ~s with (arrow ~s) type ~a\n" v (arrow-type? entry) entry)
@@ -842,8 +842,8 @@
 ;     (types-equal! x1 y1 exp)
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) xargs yargs)]
 
-;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
-;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
+;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] ;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
+
     ;; Working around this in a lame way:
     [[,x  (,yargs ... -> ,y)] 
      (match x 
