@@ -123,6 +123,8 @@ ws:
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
 
+dbg:
+debug:
 ws.debug:
 	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi

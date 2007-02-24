@@ -346,7 +346,7 @@
 		    (newline)
 		    (pretty-print x))
 		  (printf "================================================================================\n\n")
-		  (read-line)
+		  ;(read-line)
 		  x)
 	   x)
 	  x)))
@@ -398,10 +398,11 @@
   (run-pass p retypecheck)
   (run-pass p rename-vars)
 
-#;
-  (unless (regiment-quiet)
-    (printf "Post elaboration types: \n")
-    (print-var-types p))
+  (IFDEBUG 
+   (unless (regiment-quiet)
+     (printf "Post elaboration types: \n")
+     (print-var-types p)) 
+   (void))
 
   (run-pass p verify-elaborated)
 

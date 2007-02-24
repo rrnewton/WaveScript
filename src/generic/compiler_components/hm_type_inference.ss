@@ -81,6 +81,7 @@
 	   strip-types
 	   
 	   print-var-types
+	   print-type
 
 	   types-compat?
            
@@ -946,13 +947,12 @@
 	[(,[tc] ,[arg*] ...)
 					;	 (++ tc "(" (apply string-append (insert-between ", " arg*)) ")")]
 	 (++ "(" tc " " (apply string-append (insert-between " " arg*)) ")")]
-	[,sym (guard (symbol? sym))
-	      (symbol->string sym)]
+	[,sym (guard (symbol? sym)) (symbol->string sym)]
 	[,other (error 'print-type "bad type: ~s" other)]))
     (display 
      ;; Prettification: we drop the outer parens:
      (match t 
-       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc))
+       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc) (not (eq? tc 'quote)))
 	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
        [,t (loop t)])
      port)))

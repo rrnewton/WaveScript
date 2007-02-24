@@ -45,9 +45,14 @@
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
-		       [,else (error 'degeneralize-arithmetic
-				    "gint did not have expected type/form post-elaboration: ~s"
-				    (cons 'gint args))])
+		       [,else 
+			(if (memq t '(Int Float Complex))
+			    (error 'degeneralize-arithmetic
+				   "gint should only be used on numeric constants, not: ~s" 
+				   (cons 'gint args))
+			    (error 'degeneralize-arithmetic
+				   "unhandled output type demanded of gint, ~s, expression: ~s"
+				   t (cons 'gint args)) )])
 ;; NOTE: THIS WON'T WORK FOR ABS YET...
 ;; IT WORKS BASED ON THE RETURN TYPE, WHICH IS AMBIGUOUS FOR ABS.
 
