@@ -69,7 +69,7 @@
    ;with-evaled-params
    
    ;; Other values 
-   id gnuplot histogram ; date
+   id gnuplot gnuplot_pipe histogram ; date
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
@@ -1442,8 +1442,8 @@
 	[fn2 "_temp_gnuplot.dat"])
   (let ([scrip (open-output-file fn1 'replace)]
 	[dat   (open-output-file fn2 'replace)]
-	[command (format "gnuplot ~a -" fn1)]
 	[setstmnts '()]
+	[opts ""]
 	[withclause "with linespoints"])
 
     (define (plot-one i d)
@@ -1457,10 +1457,13 @@
     ;; Process flags:
     (for-each 
 	(lambda (flag)
-	  (case flag
-	    [(lines) (set! withclause "with linespoints")]
-	    [(boxes) (set! withclause "with boxes")
-	     (set! setstmnts (cons "set style fill solid 1.000000 border -1;\n" setstmnts))]))
+	  (match flag
+	    [lines (set! withclause "with linespoints")]
+	    [boxes (set! withclause "with boxes")
+	     (set! setstmnts (cons "set style fill solid 1.000000 border -1;\n" setstmnts))]
+	    ;[(opts ,str) (set! opts str)]
+	    [,other (error 'gnuplot "unknown additional argument to gnuplot wrapper: ~s" other)]
+	    ))
       flags)
 
     (if (null? data)
@@ -1499,13 +1502,116 @@
     ;; Done.  Now close files and call it.
     (close-output-port scrip)
     (close-output-port dat)
-    (printf "Calling gnuplot with command ~s.\n" command)
-    (system command)
-
+    (let ([command (format "gnuplot -persist ~a" fn1)])
+      (printf "Calling gnuplot with command ~s.\n" command)
+      (system command))
+    
 ;    (delete-file fn1)
 ;    (delete-file fn2)
   
   )))))
+
+;; gnuplot_stream
+;; .returns A function that takes new data and updates the graph.
+;;  The function closes the process when it receives the input 'exit.
+(define (gnuplot_pipe . flags)
+  (let (;[fn1 "_temp_gnuplot.script"]
+	[fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" (random 100000))])
+    (if (file-exists? fn2) (delete-file fn2))
+    (system (format "mkfifo ~s" fn2))
+  (let ([scrip (open-output-string)]
+	[dat   #f]
+	[first-time #t]
+	[setstmnts '()]
+	[opts ""]
+	[withclause "with linespoints"])
+
+    (define (plot-one i d)
+      (if (number? d)
+	  (fprintf dat "~s ~s\n" i d)
+	  (begin (for-each (lambda (n)
+			     (fprintf dat "~s " n))
+			   d)
+		 (fprintf dat "\n"))))
+
+    ;; Process flags:
+    (for-each 
+	(lambda (flag)
+	  (match flag
+	    [lines (set! withclause "with linespoints")]
+	    [boxes (set! withclause "with boxes")
+	     (set! setstmnts (cons "set style fill solid 1.000000 border -1;\n" setstmnts))]
+	    ;[(opts ,str) (set! opts str)]
+	    [,other (error 'gnuplot "unknown additional argument to gnuplot wrapper: ~s" other)]
+	    ))
+      flags)
+    
+    ;; Write script file:
+    (fprintf scrip "set autoscale;\n")
+    (for-each (lambda (setline)
+		(fprintf scrip setline))
+      setstmnts)
+    (fprintf scrip "plot ~s using 1:2 ~a" fn2 withclause)
+    (fprintf scrip ";\n")
+    ;(fprintf scrip "exit;\n")
+    ;(close-output-port scrip)
+    (set! scrip (get-output-string scrip))
+
+    ;; Open the process and set the pipes.
+    (let-match ([(,inp ,outp ,pid) (process (format "gnuplot -"))])
+      (printf "gnuplot process running...\n")
+
+    (lambda msg
+      (cond
+       [(null? msg) ;; This just does a replot.
+	(ASSERT (not first-time))
+	(begin (display "replot\n" outp)
+	       (flush-output-port outp))
+	]
+       [(eq? (car msg) 'exit)
+	;; Done.  Now close files and call it.
+	    (when dat (close-output-port dat))
+	    (close-output-port outp)
+	    (close-input-port inp)
+	    ;;(delete-file fn1)
+	    ;;(delete-file fn2)
+	    ]
+       [else 
+	(ASSERT list? (car msg))
+
+	;; Send replot message
+	(if first-time
+	    (begin (display scrip outp)
+		   (flush-output-port outp)
+		   (set! first-time #f))
+	    (begin (display "replot\n" outp)
+		   (flush-output-port outp)))
+
+	(printf "Replot message sent.\n")
+
+	(printf "Writing new dataset to pipe ~s\n" fn2)
+
+	;; Open a session on the pipe
+	(set! dat (open-output-file fn2 'append))
+	
+	(printf "Opened pipe.\n")
+	
+	;; Write dataset to pipe:
+	#;
+	(if (not (or (andmap number? data) 
+		     (andmap (lambda (l) (and (list? l) (andmap number? l)))
+			     data)))
+	    (error 'gnuplot "did not call gnuplot, invalid data set: ~s" data))
+	(for-eachi plot-one (car msg))
+
+	;; Close pipe to end session.
+	(close-output-port dat)
+	(set! dat #f)
+	
+	(printf "Data written to pipe.\n")])
+      )))))
+
+
 ;; Example:
 #;
 (let* ([ind (map (\\ x (* (- x 150) 0.1)) (iota 300))] [ys (map sin ind)]) (gnuplot (map list ind ys)))

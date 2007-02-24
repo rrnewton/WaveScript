@@ -361,3 +361,11 @@ faster than any other computer that I use.
 
 [2006.04.05]
 
+[2007.02.24]
+Does chez not have a TCP library except in SWL?  SWL's a bit
+heavyweight and it would be annoying to have to use it for all
+command-line invocations.
+
+(What did TOSSIM use?  Or am I thinking of something I saw at MSR?)
+
+xgraph 
