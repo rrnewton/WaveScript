@@ -363,6 +363,10 @@
     (arr-set!         ((Array 'a) Int 'a) #())
     (length           ((Array 'a)) Int)
 
+    ;; Temporary:
+    ;; Oops, need to be sure this doesn't change the numeric type in the output:
+    (m_invert   ((Array (Array (NUM a))))  (Array (Array (NUM a))))
+   
 
     (hashtable (Int) (HashTable 'key 'val))
     ;;(hash ('a) Int) ; With our data-model, we can do this.

@@ -8,6 +8,7 @@
            "../util/fft.ss"
            "../langs/lang_wavescript.ss"
            "../../plt/engine.ss"
+	   "../../../depends/matpak.ss"
            (prefix slib: "../util/slib_hashtab.ss")
 	   (all-except "../util/imperative_streams.ss" test-this )
 	   (all-except "../util/helpers.ss" test-this these-tests for inspect break)	   
@@ -77,7 +78,7 @@
 		 fft 
 		 
 		 ;; Misc, ad-hoc, and Temporary
-		 ;m_invert ;; A matrix inversion:
+		 m_invert ;; A matrix inversion.
 		 )
     (chezprovide (for for-loop-stack)
 		 letrec length print
@@ -180,7 +181,7 @@
     ;;     10^4 -> .9  sec
     ;;     10^5 -> .9  sec
     ;(define time-slice 100000)
-    (define time-slice (IFDEBUG 100 500))
+    (define time-slice (IFDEBUG 200 700))
     
     (prog output-sink) ;; Register data sources, connect to output sink.
     
@@ -957,6 +958,8 @@
 
      (define gnuplot_array_stream  (gnuplot-helper (lambda (arr) (vector->list arr))))
      (define gnuplot_sigseg_stream (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
+
+     (define m_invert ws-invert-matrix)
 
      ;;================================================================================
 

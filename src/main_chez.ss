@@ -326,6 +326,7 @@
 (include "generic/langs/language-mechanism.ss")
 
 (include "generic/langs/lang_wavescript.ss")
+(include "../depends/matpak.ss") (import matpak)
 ;(include "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
 ;(include "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
 (include "generic/sim/wavescript_sim_library_push.ss")

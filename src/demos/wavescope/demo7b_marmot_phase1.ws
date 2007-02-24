@@ -305,12 +305,12 @@ fun stream_filter(f,s) {
 
 chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
 _ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096);
-ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 4096);
+_ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 4096);
 ch3 = window(iterate((_,_,c,_) in chans){ emit intToFloat(c) }, 4096);
 ch4 = window(iterate((_,_,_,d) in chans){ emit intToFloat(d) }, 4096);
 
-ch1 = _ch1;
-//ch1 = gnuplot_sigseg_stream(_ch1);
+ch1 = _ch1; ch2 = _ch2;
+//ch1 = gnuplot_sigseg_stream(_ch1);  ch2 = gnuplot_sigseg_stream(_ch2);
 
 outwidth=100;
 dummydetections = iterate(w in ch1) {
@@ -345,6 +345,8 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
-BASE <- positives;
+//BASE <- positives;
 //BASE <- detections;
 //BASE <- synced;
+
+BASE <- unionList([ch1,ch2]);
