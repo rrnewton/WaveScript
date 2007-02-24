@@ -337,7 +337,7 @@
 	   ;; LAME: We require let only when you're going to use a pattern.
            [(let pattern = exp SEMI stmts) `((letrec ([,$2 ,$4]) ,(make-begin $6)))]
            [(VAR = exp SEMI stmts) `((letrec ([,$1 ,$3]) ,(make-begin $5)))]
-           [(VAR : type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
+           [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
 	   
            [(fundef morestmts)
             (match $1

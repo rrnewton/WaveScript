@@ -99,7 +99,7 @@ fun detect(scorestrm) {
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = intToFloat(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
+      let thresh = i2f(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
@@ -169,7 +169,7 @@ fun FarFieldDOA(synced, sensors)
   // gridmap maps polar grid entry to radians
   gridmap = makeArray(Ngrd, gint(0));
   for i = 0 to Ngrd-1 {
-    gridmap[i] := (gint(i) * 360.0 / gint(Ngrd)) * PI / 180.0; 
+    gridmap[i] := (i2f(i) * 360.0 / gint(Ngrd)) * const_PI / 180.0; 
   };
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
@@ -196,7 +196,7 @@ fun FarFieldDOA(synced, sensors)
     norms = m_rowmap_scalar(tmp, psds);
 
     // normalize
-    fun normalize(row,i) { amult_scalar(row,gint(1)/floatToComplex(norms[i])) };
+    fun normalize(row,i) { amult_scalar(row,gint(1)/f2c(norms[i])) };
     nffts = m_rowmap_index(normalize, ffts);
 
 
@@ -225,9 +225,9 @@ fun FarFieldDOA(synced, sensors)
     sort(swap,cmp,power.length);
 
     // T is the maximum direction grid value
-    T = a_ones(NSrc);
-    Tbefore = makeArray(NSrc, gint(0));
-    Trad = makeArray(NSrc, gint(0));
+    T       :: Array Int   = a_ones(NSrc);
+    Tbefore :: Array Float = makeArray(NSrc, gint(0));
+    Trad    :: Array Float = makeArray(NSrc, gint(0));
 
     // phase delays for each source
     delay = matrix(Nsens, NSrc, 0.0);
@@ -267,11 +267,14 @@ fun FarFieldDOA(synced, sensors)
 	    // calculate the steering matrix
 	    for L = 0 to NSrc-1 {
 	      if (iter > 1 || L <= Q) then {
-		m_set(D,0,L,1.0+0.0i);
+		m_set(D,0,L, 1.0+0.0i);
 		for P = 1 to Nsens-1 {
-		  m_set(D,P,L, floatToComplex(E)^
-                   (0.0+1.0i * floatToComplex(-2.0 * PI *
-		   gint(power_index[K]+1) * m_get(delay,P,L) / gint(Ndat))));
+		  m_set(D,P,L, 
+                        expC(0.0+1.0i * 
+                             f2c(-2.0 * const_PI
+		                 * i2f(power_index[K]+1)
+                                 * m_get(delay,P,L) 
+                                 / i2f(Ndat))));
 		}
 	      }
 	    };
@@ -286,7 +289,7 @@ fun FarFieldDOA(synced, sensors)
 
 	let (maxJ, maxJind) = a_max(J);
 	T[Q] := maxJind;
-        Trad[Q] := gint(T[Q]-1)*2.0*PI/gint(Ngrd);
+        Trad[Q] := i2f(T[Q]-1) * 2.0 * const_PI / i2f(Ngrd);
         
 	for K = 0 to m_cols(Jmet) {
           m_set(Jmet,Q,K,(J[K] / maxJ));
@@ -335,10 +338,10 @@ marmotfile =
 chans = (dataFile(marmotfile, "binary", 24000, 0)
 	 :: Stream (Int * Int * Int * Int));
 
-ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) intToFloat(a), chans), 4096);
-ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) intToFloat(b), chans), 4096);
-ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) intToFloat(c), chans), 4096);
-ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) intToFloat(d), chans), 4096);
+ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) i2f(a), chans), 4096);
+ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) i2f(b), chans), 4096);
+ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) i2f(c), chans), 4096);
+ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) i2f(d), chans), 4096);
 
 // 96 samples are ignored between each 32 used:
 rw1 = rewindow(ch1, 32, 96); 

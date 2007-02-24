@@ -7,9 +7,9 @@
 // qsort, Complexl, expc, atan2, MInv...
 
 // Constant:
-PI   = 3.141592653589793;
-PIO2 = PI/2.0;
-E    = 2.718281828459045;
+const_PI   = 3.141592653589793;
+const_PIO2 = const_PI/2.0;
+const_E    = 2.718281828459045;
 
 //======================================================================
 // Library POD (plain old data) functions:
@@ -18,6 +18,9 @@ fun println(s) {
   print(s);
   print("\n");
 };
+
+fun expF(f) { const_E ^. f }
+fun expC(c) { floatToComplex(const_E) ^: c }
 
 // For completeness we include these restrictions of their generic counterparts:
 //fun intToFloat     (i::Int)   toFloat(i) 
@@ -182,7 +185,7 @@ fun myhanning (strm) {
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
 	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
-	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. PI *. intToFloat(i) /. intToFloat(_lastLen-1)));
+	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. const_PI *. intToFloat(i) /. intToFloat(_lastLen-1)));
 	// RRN: This would fix the zeroed fenceposts:
 	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. intToFloat(i+1) /. intToFloat(_lastLen+1)));
       }
@@ -305,14 +308,14 @@ fun sqr(x) { x*x }
 
 fun atan2(arg1,arg2) {
   if (arg1+arg2) == arg1 then {
-    if arg1 >= 0.0 then PIO2
-    else -1.0*PIO2
+    if arg1 >= 0.0 then const_PIO2
+    else -1.0 * const_PIO2
   }
   else {
     tmp = atan(arg1/arg2);
     if arg2 < 0.0 then {
-      if tmp <= 0.0 then (tmp + PI)
-      else (tmp - PI)
+      if tmp <= 0.0 then (tmp + const_PI)
+      else (tmp - const_PI)
     }
     else tmp
   }
