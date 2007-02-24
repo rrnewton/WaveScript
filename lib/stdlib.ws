@@ -30,9 +30,9 @@ fun expC(c) { floatToComplex(const_E) ^: c }
 //======================================================================
 // "Library" stream constructors:
 
-fun snoop(strm) {
+fun snoop(str, strm) {
   iterate (x in strm) {
-    println( show(x) );
+    println( str ++ show(x) );
     emit x;
   }
 }
