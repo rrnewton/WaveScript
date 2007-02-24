@@ -400,7 +400,10 @@
 
     (print            ('a) #())
     (show             ('a) String)
-    (gnuplot_array    ((Array 'a)) #())
+    (gnuplot_array    ((Array (NUM a))) #())
+    (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
+    (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM a)))) (Stream (Sigseg (NUM a))))
+
     (string-append    (String String) String)
 
     (toArray         ((Sigseg 'a))  (Array 'a))

@@ -1579,6 +1579,11 @@
        [else 
 	(ASSERT list? (car msg))
 
+	;; Having weird problems with it drawing two graphs on top of eachother.
+	;; What if we totally kill the pipe between communications?
+	(if (file-exists? fn2) (delete-file fn2))
+	(system (format "mkfifo ~s" fn2))
+
 	;; Send replot message
 	(if first-time
 	    (begin (display scrip outp)

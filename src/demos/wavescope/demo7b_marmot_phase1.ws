@@ -304,10 +304,13 @@ fun stream_filter(f,s) {
 // Main query:
 
 chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
-ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096);
+_ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096);
 ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 4096);
 ch3 = window(iterate((_,_,c,_) in chans){ emit intToFloat(c) }, 4096);
 ch4 = window(iterate((_,_,_,d) in chans){ emit intToFloat(d) }, 4096);
+
+ch1 = _ch1;
+//ch1 = gnuplot_sigseg_stream(_ch1);
 
 outwidth=100;
 dummydetections = iterate(w in ch1) {

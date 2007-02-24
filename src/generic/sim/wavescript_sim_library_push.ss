@@ -26,7 +26,7 @@
 		 ;audio 
 		 audioFile timer 
 		 show 
-		 gnuplot_array
+		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
 		 window
 
 		 to-uint16 to-int16 uint16->string
@@ -170,6 +170,18 @@
   
   ;; run-stream-query :: prog -> Stream('a)
   (define (run-stream-query prog)     
+
+    ;; Note on time-slice granularity:
+    ;;   I experimented with this using demo7b.
+    ;;     10^0 -> 27 sec
+    ;;     10^1 -> 3.8 sec
+    ;;     10^2 -> 1.3 sec
+    ;;     10^3 -> .95 sec
+    ;;     10^4 -> .9  sec
+    ;;     10^5 -> .9  sec
+    ;(define time-slice 100000)
+    (define time-slice (IFDEBUG 100 500))
+    
     (prog output-sink) ;; Register data sources, connect to output sink.
     
     (set! global-eng 
@@ -207,7 +219,7 @@
 	(if (null? output-queue)
 	    ;; Run the query some more.
 	    (if global-eng
-		(begin (turn-crank! 100000)
+		(begin (turn-crank! time-slice)
 		       (loop))
 		;; Otherwise, all done:
 		'())
@@ -928,8 +940,23 @@
 
      (define (show x) (format "~s" x))
 
-     (define (gnuplot_array arr)
-       (gnuplot (vector->list arr)))
+     (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
+
+     (define gnuplot-helper
+       (lambda (extract)
+	 (lambda (src) 
+	   (define our-sinks '())
+	   (define plotter (gnuplot_pipe))
+	   (define wsbox
+	     (lambda (msg)
+	       (plotter (extract msg))
+	       (fire! msg our-sinks)))
+	   ;; Register ourselves with our source:
+	   (src wsbox)
+	   (lambda (sink) (set! our-sinks (cons sink our-sinks))))))
+
+     (define gnuplot_array_stream  (gnuplot-helper (lambda (arr) (vector->list arr))))
+     (define gnuplot_sigseg_stream (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
 
      ;;================================================================================
 

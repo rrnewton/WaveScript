@@ -23,10 +23,5 @@ s2 = iterate( w in s1 ) {
 };
 
 
+//BASE <- gnuplot_sigseg_stream(s2);
 BASE <- s2;
-
-
-
-
-
-
