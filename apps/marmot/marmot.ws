@@ -169,7 +169,7 @@ fun FarFieldDOA(synced, sensors)
   // gridmap maps polar grid entry to radians
   gridmap = makeArray(Ngrd, gint(0));
   for i = 0 to Ngrd-1 {
-    gridmap[i] := (i2f(i) * 360.0 / gint(Ngrd)) * const_PI / 180.0; 
+    gridmap[i] := (gint(i) * 360.0 / gint(Ngrd)) * const_PI / 180.0; 
   };
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
@@ -272,9 +272,9 @@ fun FarFieldDOA(synced, sensors)
 		  m_set(D,P,L, 
                         expC(0.0+1.0i * 
                              f2c(-2.0 * const_PI
-		                 * i2f(power_index[K]+1)
+		                 * gint(power_index[K]+1)
                                  * m_get(delay,P,L) 
-                                 / i2f(Ndat))));
+                                 / gint(Ndat))));
 		}
 	      }
 	    };
@@ -289,7 +289,7 @@ fun FarFieldDOA(synced, sensors)
 
 	let (maxJ, maxJind) = a_max(J);
 	T[Q] := maxJind;
-        Trad[Q] := i2f(T[Q]-1) * 2.0 * const_PI / i2f(Ngrd);
+        Trad[Q] := gint(T[Q]-1) * 2.0 * const_PI / gint(Ngrd);
         
 	for K = 0 to m_cols(Jmet) {
           m_set(Jmet,Q,K,(J[K] / maxJ));

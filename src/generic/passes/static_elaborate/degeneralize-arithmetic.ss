@@ -45,6 +45,9 @@
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
+		       [(Int     ,e)  e]
+		       [(Float   ,e)  `(intToFloat ,e)]
+		       [(Complex ,e)  `(intToComplex ,e)]
 		       [,else 
 			(if (memq t '(Int Float Complex))
 			    (error 'degeneralize-arithmetic
