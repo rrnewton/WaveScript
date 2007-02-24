@@ -23,7 +23,7 @@ s2 = iterate (w in s1) {
 
 s3 :: Stream Float;
 s3 = iterate (win in s2) {
-  x : Int = 3;  // Explicit type annotation on local var.
+  x :: Int = 3;  // Explicit type annotation on local var.
   y = (4 == 4);
 
   if win[[100]].realpart > 224.0

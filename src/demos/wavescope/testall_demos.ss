@@ -99,6 +99,18 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo6b_sync.ws"             ,(lambda (a b) #t)]
     ["demo6c_syncN.ws"            ,(lambda (a b) #t)]
 
+    ["demo6e_stdlib_sync.ws"      ,(lambda (a b) 
+				     (import wavescript_sim_library_push)
+				     (ASSERT (= 100   (start (list-ref a 0))))
+				     (ASSERT (= 199   (end   (list-ref a 0))))
+				     (ASSERT (= 100   (start (list-ref a 1))))
+				     (ASSERT (= 199   (end   (list-ref a 1))))
+				     (ASSERT (= 300   (start (list-ref b 0))))
+				     (ASSERT (= 399   (end   (list-ref b 0))))
+				     (ASSERT (= 300   (start (list-ref b 1))))
+				     (ASSERT (= 399   (end   (list-ref b 1))))
+				     )]
+
     ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
     ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
 

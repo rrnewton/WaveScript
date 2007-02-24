@@ -214,7 +214,9 @@
   (let ([ws (apply append 
               (map (lambda (form)
 		   (match form
-		     [(include ,file) (expand-include file)]
+		     [(include ,file) 
+		      (or (expand-include file)
+			  (error 'ws-postprocess "could not retrieve contents of include: ~s" file))]
 		     [,other (list other)]))
 	      ws))])
   (define (f1 x) (eq? (car x) '::))
@@ -263,6 +265,7 @@
 ;; Expand an include statement into a set of definitions.
 ;; Optionally takes the absolute path of the file in which the
 ;; (include _) statement is located.
+;; .returns The same output as ws-parse-file, might be #f.
 (define expand-include
   (case-lambda
     [(fn) (expand-include fn #f)]
@@ -276,36 +279,42 @@
      (ws-parse-file inclfile)]))
 
 (IFCHEZ
+
  ;; Chez can't run the parser right now, so we call a separate executable.
+ ;; .returns A parsed file, or #f for failure.
  (define (ws-parse-file fn)    
-   (if (file-exists? "/tmp/wsparse_server_pipe")
-       ;; TODO: Make sure path is absolute!!
-       (begin
-	 (printf "Using wsparse_server to parse file: ~a\n" fn)
-	  (let ([out (open-output-file "/tmp/wsparse_server_pipe" 'append)]
-	       [in  (open-input-file "/tmp/wsparse_server_response")])
-           (write fn out)
-	   (flush-output-port out)
-	   (let ([result (read in)])	     
-	     (close-output-port out)
-	     (close-input-port in)
-	     result)))
-       (begin 
-	 ;; HACK: WON'T WORK IN WINDOWS:)
-	 (unless (zero? (system "which wsparse")) 
-	   (error 'wsint "couldn't find wsparse executable"))
-	 (printf "Calling wsparse to parse file: ~a\n" fn)
-	 (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
-		[decls (read port)])
-	   (close-input-port port)
-	   ;; This is very hackish:
-	   (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
-	       (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+   (define (try-server)
+     (printf "Using wsparse_server to parse file: ~a\n" fn)
+     (let ([out (open-output-file "/tmp/wsparse_server_pipe" 'append)]
+	   [in  (open-input-file "/tmp/wsparse_server_response")])
+       (write fn out)
+       (flush-output-port out)
+       (let ([result (read in)])	     
+	 (close-output-port out)
+	 (close-input-port in)
+	 result)))
+   (define (try-command)
+     ;; HACK: WON'T WORK IN WINDOWS:)
+     (unless (zero? (system "which wsparse")) 
+       (error 'wsint "couldn't find wsparse executable"))
+     (printf "Calling wsparse to parse file: ~a\n" fn)
+     (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
+	    [decls (read port)])
+       (close-input-port port)
+       ;; This is very hackish:
+       (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	   (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
 					;(printf "POSTPROCESSING: ~s\n" decls)
 					;(ws-postprocess decls)
-	   decls
-	   )))
-   )
+       decls))
+   
+   (if (file-exists? "/tmp/wsparse_server_pipe")
+       ;; TODO: Make sure path is absolute!!
+       (or (try-server) 
+	   (begin (printf "Server failed, trying command.\n") #f)
+	   (try-command))
+       (try-command)))
+
  ;; The PLT version is imported above: (from regiment_parser.ss)
  (begin)
  )

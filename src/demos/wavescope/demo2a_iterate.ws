@@ -17,9 +17,9 @@ s1 = audioFile("./countup.raw", 40, 0, 44000);
 s2 = iterate( w in s1 ) {
   //print("TEST: "++ show(toArray(w)) ++"\n");
 
-  gnuplot_array(toArray(w));
+  //gnuplot_array(toArray(w));
   
-  emit toArray(w);
+  emit w;
 };
 
 

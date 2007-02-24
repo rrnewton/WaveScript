@@ -40,14 +40,15 @@ go "demo3d_tuples_of_tuples.ws"
 
 go "demo3f_morelists.ws"
 
-go "demo4_fft.ws"
+# Disabled waiting for binary dataFile reading.
+#TEMP# go "demo4_fft.ws"
 
 go "demo5a_rewindow.ws"
 go "demo5b_rewindow_inlined.ws"
 
 go "demo6a_unionList.ws"
-go "demo6b_sync.ws"
-go "demo6c_syncN.ws"
+#go "demo6b_sync.ws"
+#go "demo6c_syncN.ws"
 
 # ;    "demo5b_better.ws"
 #     "demo6_sync.ws"

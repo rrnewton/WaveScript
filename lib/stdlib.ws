@@ -30,6 +30,13 @@ fun expC(c) { floatToComplex(const_E) ^: c }
 //======================================================================
 // "Library" stream constructors:
 
+fun snoop(strm) {
+  iterate (x in strm) {
+    println( show(x) );
+    emit x;
+  }
+}
+
 // This doesn't do any extra buffering at all!  Might want to change that.
 //zip2 :: (Stream a,  Stream b) -> Stream (a * b);
 //zip2 = fun (s1,s2) {  
