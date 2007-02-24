@@ -335,7 +335,7 @@
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
-(define (run-ws-compiler p)                                   ;; Entrypoint.
+(define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
   (define optional-stop 
     (lambda (x)
       (if (regiment-verbose)
@@ -356,6 +356,8 @@
        ;(time (set! p (optional-stop (pass p))))
        (set! p (optional-stop (pass p)))
        ]))
+  
+  (set! already-typed (if (null? already-typed) #f (car already-typed)))
 
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
 (time 
@@ -363,9 +365,11 @@
     
   (optional-stop p)
   
-  (run-pass p verify-regiment)
-  (run-pass p pass_desugar-pattern-matching)
-  (run-pass p retypecheck) ;; This is the initial typecheck.
+  (unless already-typed
+    (run-pass p verify-regiment)
+    (run-pass p pass_desugar-pattern-matching)
+    (run-pass p retypecheck) ;; This is the initial typecheck.
+    )
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
@@ -501,7 +505,7 @@
 		       (flush-output-port))
 		     'replace))))
 
-  (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
+  (define typed (retypecheck (pass_desugar-pattern-matching (verify-regiment prog))))
 
   (define __ 
     (begin 
@@ -515,7 +519,7 @@
 	(lambda () (print-var-types typed)(flush-output-port))
 	'replace))))
 
-  (define compiled (let ([x (run-ws-compiler prog)])
+  (define compiled (let ([x (run-ws-compiler typed #t)])
 		     (parameterize-IFCHEZ ([pretty-line-length 150]
 					   [pretty-one-line-limit 100]
 					   [print-level #f]
@@ -568,7 +572,7 @@
 	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
-   (define typed (pass_desugar-pattern-matching (verify-regiment prog)))
+   (define typed (retypecheck (pass_desugar-pattern-matching (verify-regiment prog))))
 
    (ASSERT (andmap symbol? flags))
 
@@ -578,7 +582,7 @@
    (printf "\nTypecheck complete, program types:\n\n")
    (print-var-types typed)(flush-output-port)
    
-   (set! prog (run-ws-compiler prog))
+   (set! prog (run-ws-compiler typed #t))
    (REGIMENT_DEBUG 
     (printf "================================================================================\n")
     (printf "\nNow nominalizing types.\n"))
