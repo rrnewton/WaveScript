@@ -22,5 +22,5 @@ ctrl = iterate(w in ch1) {
   flag := if flag then false else true;
 };
 
-BASE <- syncN(ctrl, [ch1, ch2]);
+BASE <- syncN(snoop("  CTRL", ctrl), [ch1, ch2]);
 

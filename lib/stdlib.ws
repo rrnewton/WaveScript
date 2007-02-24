@@ -30,6 +30,7 @@ fun expC(c) { floatToComplex(const_E) ^: c }
 //======================================================================
 // "Library" stream constructors:
 
+// This lets you eavesdrop on a stream while passing all data through.
 fun snoop(str, strm) {
   iterate (x in strm) {
     println( str ++ show(x) );
