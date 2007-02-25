@@ -225,7 +225,8 @@
 				  ;,[myExpr -> types]
 				  ,_ignored
 				  ))
-	 (let* ([classname (symbol->string (unique-name 'WSDataFileSource))]
+	 (let* (
+		[classname (symbol->string (unique-name 'WSDataFileSource))]
 		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
 		[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 		[maintext 
@@ -233,16 +234,18 @@
 		  (block (list "class " classname " : public WSSource")
 		 (list "public:\n"
 	       (block (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
-		 `("_f = fopen(path.c_str(), \"r\");\n"
+		 `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
+		   "binarymode = (mode == string(\"binary\"));\n"
 		   "if (_f == NULL) {\n"
 		   "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
 		   "  abort();\n"
 		   "}\n"
 		   "Launch();\n")
-		)
+		 )
 	       "\n  DEFINE_SOURCE_TYPE(struct "(symbol->string structname)");\n"
 	       "\nprivate:\n"
 	       "  FILE* _f;\n"
+	       "  bool binarymode;\n"
  	       (block "void *run_thread()"
 	       (list		
 		(block "while (!Shutdown())"
@@ -250,30 +253,34 @@
 		    "// Cap of a 100 on length of read strings:\n"
 		    ,(map (lambda (i) (format "char str~a[100];\n" i))
 		          (iota 1 numstrings))
-		    "int status = fscanf(_f, \""
-		    ,(insert-between " "
-		      (map (lambda (ty)
-			     (match ty
-                               [Float  "%f"] ;; Single precision floats
-                               [Int    "%d"]
-                               [String "%s"]
-			      ))
-			types))
-		    "\", "
-		    ,(insert-between ", "
-		      (let loop ([n 1]
-				 [flds (map symbol->string
-					 (list-head standard-struct-field-names (length types)))]
-				 [types types])
-			(if (null? types) '()
-			    (match (car types)
-			      [Float  (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-			      [Int    (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-			      [String (cons (format "str~a" n)        (loop (add1 n) (cdr flds) (cdr types)))]
-			      )
-			    )
-			))
-		    ");\n"
+		    "int status;\n"
+		    ,(block "if (!binarymode)"
+			   `("status = fscanf(_f, \""
+			     ,(insert-between " "
+				 (map (lambda (ty)
+					(match ty
+					  [Float  "%f"] ;; Single precision floats
+					  [Int    "%d"]
+					  [String "%s"]
+					  ))
+				   types))
+			     "\", "
+			     ,(insert-between ", "
+				(let loop ([n 1]
+					   [flds (map symbol->string
+						   (list-head standard-struct-field-names (length types)))]
+					   [types types])
+				  (if (null? types) '()
+				      (match (car types)
+					[Float  (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+					[Int    (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+					[String (cons (format "str~a" n)        (loop (add1 n) (cdr flds) (cdr types)))]
+					))))
+			     ");\n"))
+		    ,(block "else"
+			    ;; The binary format of tuples matches that in the file:
+			    `("status = fread(&tup,sizeof(",(symbol->string structname)"),1,_f);\n"))
+
 		    ;; Now with that nasty scanf finished we still
 		    ;; have to put the strings into the right fields:
 		    ,(map (lambda (n fld ty)
@@ -284,8 +291,8 @@
 		       (list-head standard-struct-field-names (length types))
 		       types)
 
-		    ,(block `("if (status != ",(number->string (length types))")")
-		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (status=%d).\", status);\n"
+		    ,(block `("if (status != (binarymode ? 1 : ",(number->string (length types))"))")
+		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (%d).\", status);\n"
 			"WSSched::stop();\n"
 			"return NULL;\n"))
 		    ;"t.time = (uint64_t)(time*1000000);\n"
@@ -294,6 +301,7 @@
 		"return NULL;")
 	       ))) ";")])
 	   (DEBUGASSERT text? maintext)
+	 ;; This is the code that actually builds a dataFile reader object:
 	 (values 
 	  `("WSSource* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
 	    ;; Literal array:
