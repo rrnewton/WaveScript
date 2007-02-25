@@ -46,6 +46,9 @@
 		 floatToComplex complexToFloat
 		 intToComplex complexToInt
 
+		 intToInt16
+		 int16ToInt int16ToFloat int16ToComplex
+
 		 stringToInt stringToFloat stringToComplex
 
 		 ;toComplex toFloat  ;; Generic versions
@@ -789,6 +792,11 @@
 	    (s:+ f 0.0+0.0i)))
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToFloat realpart)
+
+  (define intToInt16 (lambda (x) x))
+  (define int16ToInt (lambda (x) x))
+  (define int16ToFloat   intToFloat)
+  (define int16ToComplex intToComplex)
 
   ;; TODO: MERGE THIS WITH DUPLICATED CODE IN STATIC-ELABORATE!!
 
