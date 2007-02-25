@@ -97,6 +97,7 @@
 ;	   raise-occurrence-check
 ;	   raise-wrong-number-of-arguments
 
+	   constant-typeable-as?
 	   )
 
   (chezimports constants)
@@ -104,8 +105,9 @@
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
-			;; Eventually:
-			; Int8 Int16 Int64 Double Complex64
+		    Int16
+		    ;; Eventually:
+		    ;; Int8 Int16 Int64 Double Complex64
 			))
 
 ; ======================================================================
@@ -457,6 +459,19 @@
 
 ; ======================================================================
 
+(define constant-typeable-as? 
+  (lambda (c ty)
+    (cond 
+     [(integer? c)
+      (case ty
+	[Int16 (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+	[Int   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+	[else #f]
+	)]
+     [(flonum? c) (eq? ty 'Float)]
+     [else #f])
+    ))
+
 ;;; Annotate expressions/programs with types.
   
 ;; This is an alternative version of type-expression above which
@@ -517,6 +532,12 @@
 	 (values newexp #()))]
 
       ;; Incorporate type assertions.
+      ;; This is a special case for constants.
+      [(assert-type ,ty (quote ,n))
+       (if (constant-typeable-as? n ty)
+	   (values `(assert-type ,ty (quote ,n))  ty)
+	   (error 'hm_type_inference "constant ~s was labeled with type ~s which doesn't match"
+		  `(quote ,n) ty))]
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
 	 (types-equal! (instantiate-type ty) et newexp)

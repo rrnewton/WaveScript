@@ -37,6 +37,9 @@ using namespace __gnu_cxx;
 #define WSNULL 0
 #define WSNULLSEG (RawSeg::NullRef)
 
+typedef int16_t wsint16_t;
+typedef uint16_t wsuint16_t;
+
 typedef int wsint_t;
 //typedef double wsfloat_t;
 typedef float wsfloat_t; 

@@ -37,7 +37,9 @@
 		 +_ -_ *_ /_ ^_
 		 +. -. *. /. ^.
 		 +: -: *: /: ^:
+		 +I16 -I16 *I16 /I16 ^I16
 		 sqrtF sqrtC sqrtI
+		 absI absF absC absI16
 		 roundF		 
 
 		 intToFloat floatToInt
@@ -51,8 +53,6 @@
 		 ;roundToInt
 
 		 realpart imagpart 
-		 ;cnorm
-		 absI absF absC
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
@@ -689,7 +689,8 @@
 
   (define (type->width t)
     (match t
-      [Int 2] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+      [Int16 2]
+      [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
       ;;[Float 32]
       ;;[Complex ]    
       [,other (error 'type->width "can't support binary reading of ~s yet." other)]
@@ -699,7 +700,8 @@
   (define (types->reader types)
      (define (type->reader t)
        (match t
-	 [Int to-int16]
+	 [Int16 to-int16]
+	 [Int to-int32]
 	;[Float ]
 	;[Complex ]
 	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))
@@ -742,15 +744,16 @@
 
   (define g+ s:+) (define g- s:-) (define g* s:*) (define g/ s:/)
 
-  (define ws+ fx+) (define ws- fx-) (define ws* fx*) (define ws/ fx/)
-  (define +_ fx+) (define -_ fx-) (define *_ fx*) (define /_ fx/)
-
+  (define ws+ fx+)   (define ws- fx-)   (define ws* fx*)   (define ws/ fx/)
+  (define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
+  (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)
 
   (define ws^ expt)
   (define g^ expt)
   (define ^_ expt)
+  (define ^I16 expt)
   (define ^. expt)
   (define ^: expt)
 
@@ -772,6 +775,7 @@
    (begin (define realpart real-part)
 	  (define imagpart imag-part)))
   
+  (define absI16 fxabs)
   (define absI fxabs)
   (define absF flabs)
   (define absC s:abs)

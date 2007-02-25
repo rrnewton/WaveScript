@@ -136,9 +136,14 @@
     ,@generic-arith-primitives
     
     ;; These should be defined in the standard library.
+    (intToInt16     (Int)   Int16)
     (intToFloat     (Int)   Float)
     (intToComplex   (Int)   Complex)
-    (floatToComplex (Float) Complex)    
+    (floatToComplex (Float) Complex)
+
+    (int16ToInt     (Int16)   Int)
+    (int16ToFloat   (Int16)   Float)
+    (int16ToComplex (Int16)   Complex)
 
     ;(int16ToFloat   (Int16)   Float)
 
@@ -161,6 +166,12 @@
     (/_ (Int Int) Int) 
     (^_ (Int Int) Int) ;; exponentiation
 
+    (+I16 (Int16 Int16) Int16)
+    (-I16 (Int16 Int16) Int16) 
+    (*I16 (Int16 Int16) Int16) 
+    (/I16 (Int16 Int16) Int16) 
+    (^I16 (Int16 Int16) Int16) ;; exponentiation
+
     (+. (Float Float) Float)
     (-. (Float Float) Float)
     (*. (Float Float) Float)
@@ -180,6 +191,7 @@
     (sqrtF (Float)   Float)
     (sqrtC (Complex) Complex)    
     
+    (absI16 (Int16) Int16)
     (absI (Int) Int)
     (absF (Float) Float)
     (absC (Complex) Float)

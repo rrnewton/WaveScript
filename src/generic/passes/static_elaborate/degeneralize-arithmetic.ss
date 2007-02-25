@@ -9,7 +9,7 @@
   (chezprovide (degeneralize-arithmetic
 		degeneralize
 		lift-generics))
-  (chezimports)
+  (chezimports )
   (IFCHEZ (begin) (provide degeneralize-arithmetic))
 
   (define genops '(g+ g- g* g/ g^ gint))
@@ -25,9 +25,11 @@
 		      ,tmp))]
 		[,other (fallthru other)]))])
 
-  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g/ '/_] [g^ '^_] [abs 'absI]))
-  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g/ '/.] [g^ '^.] [abs 'absF]))
-  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g/ '/:] [g^ '^:] [abs 'absC]))
+  (define (int x)     (match x [g+ '+_] [g- '-_] [g* '*_] [g/ '/_] [g^ '^_] [abs 'absI]))
+  (define (float x)   (match x [g+ '+.] [g- '-.] [g* '*.] [g/ '/.] [g^ '^.] [abs 'absF]))
+  (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
+
+  (define (int16 x)   (match x [g+ '+I16] [g- 'I-16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
 
 ;; Should remove the generic ops from the grammar.
 #;  
@@ -42,10 +44,19 @@
 		 (guard (eq? v v2) (memq genop genops))		 
 		 (if (eq? genop 'gint)		     
 		     (match (list t (car args))
+		       [(Int16   (quote ,n))  
+			(ASSERT (constant-typeable-as? n 'Int16))
+			`(assert-type Int16 (quote ,n))
+			;(quote Int16 ,n)
+			]
 		       [(Int     (quote ,n))  `(quote ,n)]
 		       [(Float   (quote ,n))  `(quote ,(+ n 0.0))]
 		       [(Complex (quote ,n))  `(quote ,(+ n 0.0+0.0i))]
 		       [(Int     ,e)  e]
+		       [(Int16   ,e)  
+			(error 'degeneralize-arithmetic
+			       "cannot currently use gint with an arbitrary expression and output type Int16: ~s"
+			       `(gint ,k))]
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
 		       [,else 
@@ -61,6 +72,7 @@
 
 		     (case t
 		       [(Int)     `(,(int     genop) . ,args)]
+		       [(Int16)   `(,(int16   genop) . ,args)]
 		       [(Float)   `(,(float   genop) . ,args)]
 		       [(Complex) `(,(complex genop) . ,args)]
 		       [else (error 'degeneralize-arithmetic

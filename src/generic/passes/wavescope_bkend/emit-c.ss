@@ -73,6 +73,7 @@
   (match t
     [Bool    "wsbool_t"]
     [Int     "wsint_t"]
+    [Int16   "wsint16_t"]
     [Float   "wsfloat_t"]
     [Complex "wscomplex_t"]
 
@@ -261,6 +262,7 @@
 					(match ty
 					  [Float  "%f"] ;; Single precision floats
 					  [Int    "%d"]
+					  [Int16  "%hd"]
 					  [String "%s"]
 					  ))
 				   types))
@@ -272,9 +274,9 @@
 					   [types types])
 				  (if (null? types) '()
 				      (match (car types)
-					[Float  (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-					[Int    (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-					[String (cons (format "str~a" n)        (loop (add1 n) (cdr flds) (cdr types)))]
+					[,s (guard '(memq s '(Int Int16 Float)))
+					 (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+					[String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
 					))))
 			     ");\n"))
 		    ,(block "else"
@@ -558,12 +560,13 @@
 	; ============================================================
 	;; Here we handle "open coded" primitives:
 
-	;; TODO: tupref
+	;; TODO: tupref, exponentiation 
 	[(,infix_prim ,[left] ,[right])
 	 (guard (memq infix_prim '(;+ - * /
 				   +. -. *. /. 
 				   +_ *_ -_ /_
 				   +: *: -: /:
+				   +I16 *I16 -I16 /I16
 				   < > <= >= =
 				   )))
 	 (let ([cname (case infix_prim
@@ -574,6 +577,8 @@
 			  +_ *_ -_ /_
 			  +: *: -: /:
 			  ) ;; Chop off the period:
+			 (substring (symbol->string infix_prim) 0 1)]
+			[(+I16 -I16 *I16 /I16)
 			 (substring (symbol->string infix_prim) 0 1)]
 			)])
 	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
@@ -711,6 +716,7 @@
   (match typ
     [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
     [Int            (printf "%d" e)]
+    [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
     [String         (printf "%s" `(,e".c_str()"))]
     ;[(List ,t)      (stream e)]
