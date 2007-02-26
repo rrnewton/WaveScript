@@ -6,9 +6,9 @@ include "stdlib.ws";
 
 // This should output every other 100 samples from both channels.
 
-chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
-ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 100);
-ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 100);
+chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16 * Int16 * Int16 * Int16));
+ch1 = window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 100);
+ch2 = window(iterate((_,b,_,_) in chans){ emit int16ToFloat(b) }, 100);
 
 outwidth = 100;
 

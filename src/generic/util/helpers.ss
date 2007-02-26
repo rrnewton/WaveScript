@@ -873,7 +873,7 @@
 (define iota
   (case-lambda
     [(n) (iota 0 n)]
-    [(i n)
+    [(i n) (ASSERT integer? i) (ASSERT integer? n)
      (if (= n 0)
          '()
          (cons i (iota (+ i 1) (- n 1))))]))
@@ -1428,7 +1428,6 @@
     (for i = 1 to 100 
 	 (for i = 1 to 100000)
 	 (f)))
-
 ;; [2005.10.16] Making a simple interface to gnuplot for graphing results
 ;; of queries.
 ;;
@@ -1510,6 +1509,7 @@
 ;    (delete-file fn2)
   
   )))))
+
 
 ;; gnuplot_stream
 ;; .returns A function that takes new data and updates the graph.

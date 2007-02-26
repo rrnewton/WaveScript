@@ -2,11 +2,11 @@
 
 // This is the skeleton for a simple marmot detection with no inlining.
 
-chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int * Int * Int * Int));
-ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 4096);
-ch2 = window(iterate((_,b,_,_) in chans){ emit intToFloat(b) }, 4096);
-ch3 = window(iterate((_,_,c,_) in chans){ emit intToFloat(c) }, 4096);
-ch4 = window(iterate((_,_,_,d) in chans){ emit intToFloat(d) }, 4096);
+chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16 * Int16 * Int16 * Int16));
+ch1 = window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096);
+ch2 = window(iterate((_,b,_,_) in chans){ emit int16ToFloat(b) }, 4096);
+ch3 = window(iterate((_,_,c,_) in chans){ emit int16ToFloat(c) }, 4096);
+ch4 = window(iterate((_,_,_,d) in chans){ emit int16ToFloat(d) }, 4096);
 
 /* ch1 = ENSBoxAudio(0, 4096, 0, 44000); */
 /* ch2 = ENSBoxAudio(1, 4096, 0, 44000); */

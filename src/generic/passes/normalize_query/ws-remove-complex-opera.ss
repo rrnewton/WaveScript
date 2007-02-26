@@ -96,10 +96,10 @@
 	      ;; Decls don't get lifted up past the lambda:
 	      (vector `(lambda ,formals ,types 
 			     ,(if (not (null? decls))
-				  (make-letrec decls body)
+				  (make-lets decls body)
 				  body))
 		    '()))]
-	   ;; Also bindings are not listed past a letrec... that's odd.
+	   ;; Also bindings are not lifted past a letrec... that's odd.
 	   [(lazy-letrec . ,rest)
 	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
 		    '())]
@@ -122,8 +122,7 @@
 		(vector `(iterate ,(make-letrec decl1 f) ,s)
 			;(append decl1 decl2)
 			decl2
-			))
-	      )]
+			))	      )]
 	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the

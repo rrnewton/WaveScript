@@ -84,7 +84,7 @@
     [(Stream ,[t]) `("WSBox*")]
 
     ;[(Array ,[t]) `(,t "[]")]
-    [(Array ,[t]) `("boost::shared_ptr< vector< ",t" > >")]
+    [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
     [(Struct ,name) (symbol->string name)]
     
     ;; HACK HACK FIXME:

@@ -187,7 +187,7 @@ test:
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 	(cd demos/wavescope; ./testall_demos.ss)
 	echo exit | ws lib/stdlib.ws;
-	echo exit | ws lib/matrix.ws;
+	echo exit | ws lib/matrix_test.ws;
 	$(MAKE) chez
 	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test

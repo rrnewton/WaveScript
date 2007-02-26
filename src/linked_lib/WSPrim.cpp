@@ -57,6 +57,12 @@ static ostringstream global_show_stream(ostringstream::out);
      return (wsint_t)w.end();
    }
 
+   /*
+   static RawSeg toSigseg(const Vector<>& w) {
+     return (wsint_t)w.end();
+   }
+   */
+
    static RawSeg joinsegs(const RawSeg& a, const RawSeg& b) {
      return RawSeg::append(a,b);
    }
@@ -194,7 +200,5 @@ public:
       return true;
     }
   };
-
-
   
 };

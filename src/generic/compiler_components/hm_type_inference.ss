@@ -459,17 +459,21 @@
 
 ; ======================================================================
 
-(define constant-typeable-as? 
+(trace-define constant-typeable-as? 
   (lambda (c ty)
     (cond 
-     [(integer? c)
-      (case ty
-	[Int16 (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-	[Int   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-	[else #f]
-	)]
-     [(flonum? c) (eq? ty 'Float)]
+     [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+     [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+     [(and (flonum? c))                 (eq? ty 'Float)]
      [else #f])
+
+    (match ty
+      [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+      [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+      [Float (flonum? c)]
+      [Bool  (boolean? c)]
+      [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
+      [else #f])
     ))
 
 ;;; Annotate expressions/programs with types.

@@ -28,7 +28,7 @@
 		 audioFile timer 
 		 show 
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
-		 window
+		 prim_window
 
 		 to-uint16 to-int16 uint16->string
 
@@ -305,7 +305,7 @@
      ;;(emission (cons v (emission))))
      (define (virtqueue) (box '()))
 
-     (define (window src winsize)
+     (define (prim_window src winsize)
        (let ([start 0]
 	     [samp  0]
 	     [i     0]
@@ -1079,7 +1079,8 @@
        (if (eq? w nullseg) (error 'end "cannot get timebase from nullseg!"))
        (sigseg-timebase w))
      (define (toArray w) (if (eq? w nullseg) #() (sigseg-vec w)))
-     (define (toSigseg ar st en tb)
+     (define (toSigseg ar st tb)
+       (define en (fx+ st (s:vector-length ar) -1))
        (DEBUGASSERT (or (eq? ar nullarr) (vector? ar)))
        (DEBUGASSERT integer? st)
        (DEBUGASSERT integer? en)

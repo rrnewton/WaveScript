@@ -300,7 +300,7 @@
     ;; This doesn't carry a time value, it just "fires" every so often.
     (timer            (Int) (Stream #()))
 
-    (window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
+    (prim_window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
     ;; Takes channel, window size, overlap, sampling rate:
     ;;
@@ -424,7 +424,8 @@
 
     (toArray         ((Sigseg 'a))  (Array 'a))
     ;; TODO: This needs to take Int64's....
-    (toSigseg        ((Array 'a) Int Int Timebase)  (Sigseg 'a))
+    ;; Takes array, start-sample-number, timebase.
+    (toSigseg        ((Array 'a) Int Timebase)  (Sigseg 'a))
 
     ;; Can only append two subrefs that are part of the same physical timeseries.
     (joinsegs       ((Sigseg 'a) (Sigseg 'a)) (Sigseg 'a))

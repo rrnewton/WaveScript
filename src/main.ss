@@ -291,6 +291,35 @@
     (apply run-compiler p args)
     ))
 
+;; Purify-letrec: makes sure letrec's only bind functions.
+#;
+(define-pass purify-letrec
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])	       
+	       (cond
+		[(lambda? e) ]
+		[(no-lambda? e) ]
+		
+		)]
+
+	      [(free ,_ ,[e]) e]
+	      [,other 
+	       (match (fallthru other)
+		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
+		 [,other other]) ]))])
+
+(define-pass remove-letrec 
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(letrec ([,v* ,ty* ,e*] ...) ,bod)
+	       (ASSERT null? (intersection v* (map core-free-vars e*)))
+	       `(let ([,v* ,ty* ,e*] ...) ,bod)
+	       ]
+	      [,oth (fallthru oth)])
+	    )])
+
+;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec
     [Expr (lambda (x fallthru)
 	    (match x
@@ -423,6 +452,17 @@
   (IFDEBUG (run-pass p retypecheck) (void))
 
   (run-pass p uncover-free)
+
+  ;(run-pass p purify-letrec)
+  ;; This is what we need to do.
+
+  ;; Now that we're done with elaboration we should take the stream
+  ;; processing spine, convert it to let.
+
+  ;; For the time-being we don't even need letrec in the object code
+  ;; because functions have all been inlined.
+
+  ;(run-pass p remove-letrec)
 
   (run-pass p introduce-lazy-letrec)
 ;  (run-pass p lift-letrec)
