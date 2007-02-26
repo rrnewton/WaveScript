@@ -319,6 +319,16 @@
 	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
 	      [,oth (fallthru oth)])
 	    )])
+(define-pass standardize-iterate
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(iterate (let (,first ,rest ...) ))
+	       (ASSERT null? (intersection v* (map core-free-vars e*)))
+	       `(let ([,v* ,ty* ,e*] ...) ,bod)
+	       ]
+	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
+	      [,oth (fallthru oth)])
+	    )])
 
 ;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec
@@ -464,12 +474,13 @@
   ;; because functions have all been inlined.
 
   (run-pass p remove-letrec)
+  (run-pass p standardize-iterate)
 
 ;  (run-pass p introduce-lazy-letrec)
 ;  (run-pass p lift-letrec)
 ;  (run-pass p lift-letrec-body)
 
-  ;(run-pass p ws-remove-complex-opera*)
+  (run-pass p ws-remove-complex-opera*)
   ;; Replacing remove-complex-opera* with a simpler pass:
   (run-pass p flatten-iterate-spine)
   

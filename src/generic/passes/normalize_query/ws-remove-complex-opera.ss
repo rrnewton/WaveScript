@@ -55,7 +55,7 @@
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp]))
 
-    (define  (make-letrec decls body)
+    (define  (make-lets decls body)
       (if (null? decls) body
 	  `(lazy-letrec ,decls ,body)
 	  ))
@@ -68,7 +68,9 @@
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
 		    [(type) (recover-type x tenv)]
-		    [(name) (unique-name 'tmp #;(meaningful-name x))])
+		    [(name) (unique-name 'tmp 
+					 #;(meaningful-name x)
+					 )])
 	      (values name
 		      (cons (list name type res) binds))))))
 
@@ -85,7 +87,7 @@
 
     ;; .returns A vector containing an expression and a list of new decls.
     ;; The returned expression should be simple.
-    (define (process-expr expr tenv)
+    (trace-define (process-expr expr tenv)
       (core-generic-traverse/types 
        (lambda (expr tenv fallthrough)
 	 (match expr
@@ -99,27 +101,43 @@
 				  (make-lets decls body)
 				  body))
 		    '()))]
-	   ;; Also bindings are not lifted past a letrec... that's odd.
-	   [(lazy-letrec . ,rest)
-	    (vector (process-letrec `(lazy-letrec . ,rest) tenv)
-		    '())]
+
+	   [(assert-type ,ty ,[e])
+	    (let-match ([#(,e ,decls) e])
+	      (vector `(assert-type ,ty  ,e)
+		      decls))]
+
+	   [(let () ,[body]) body]
+	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
+	    (printf "LET ~a \n" v)
+	    (let-values ([(rhs rdecls) (make-simple e tenv)])
+	    (let-match  ([#(,bod ,bdecls) (process-expr bod 
+				            (tenv-extend tenv 
+						(list v) (list ty)))])
+	      (printf "SIMPLE ~s\n" rhs)
+	      (printf "BOD ~s\n" bod)
+	      (vector bod
+		      (append rdecls 
+			      `([,v ,ty ,rhs])
+			      bdecls))
+	      ))]
 
 	   [(if ,a ,b ,c)
 	    (mvlet ([(test test-decls)     (make-simple a tenv)])
 	      (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
 			  [#(,altern ,altern-decls) (process-expr c tenv)])
 		(vector `(if ,test 
-			     ,(make-letrec conseq-decls conseq) 
-			     ,(make-letrec altern-decls altern))
+			     ,(make-lets conseq-decls conseq) 
+			     ,(make-lets altern-decls altern))
 			test-decls)
 		))]
 
-	   ;; For now don't lift out an iterate's lambda!
+	   ;; For now don't lift out an iterate's lambda!	   
 	   [(iterate ,[fun] ,source)
 	    (let-match ([#(,f ,decl1) fun])
 	      (mvlet ([(s decl2) (make-simple source tenv)])
 		(display-constrained "simple iterate source: " `[,s 100] "\n")
-		(vector `(iterate ,(make-letrec decl1 f) ,s)
+		(vector `(iterate ,(make-lets decl1 f) ,s)
 			;(append decl1 decl2)
 			decl2
 			))	      )]
@@ -130,7 +148,7 @@
 	   ;; reorder side effects.
 	   [(begin ,[e*] ...)
 	    (vector `(begin ,@(map (match-lambda (#(,e ,decls)) 
-				     (make-letrec decls e))
+				     (make-lets decls e))
 				e*))
 		    '())]
 
@@ -146,9 +164,9 @@
 	      (let ([newenv (tenv-extend tenv (list i) '(Int))])
 		(let-match ([#(,body ,decls) (process-expr bod newenv)])
 		  (vector `(for (,i ,st ,en)
-			       ,(make-letrec decls body))
+			       ,(make-lets decls body))
 			  (append stdecls endecls))
-		  )))]   	   
+		  )))]
 
 	   [(tupref ,n ,m ,x)
 	    (mvlet ([(res binds) (make-simple x tenv)])
@@ -166,7 +184,7 @@
 	   [,prim (guard (regiment-primitive? prim))
 		  (vector prim '())]
 
-	   [,other (error 'remove-complex-opera* "didn't handle expr: ~s" other)]
+	   [,other (error 'ws-remove-complex-opera* "didn't handle expr: ~s" other)]
 	   ;[,other (fallthrough other tenv)]
 	   ))
        (lambda (results reconstr)
@@ -176,31 +194,6 @@
 		    (apply append decls))]))
        expr tenv))
     
-    ;===========================================================================
-    ;; LetrecExpr -> LetrecExpr
-    (define process-letrec
-      (lambda (letrec-exp tenv)
-	(DEBUGASSERT (tenv? tenv))
-        (match letrec-exp
-	  [(lazy-letrec ((,lhs* ,type* ,rhs*) ...) ,origbod)
-	   (let ((newenv (tenv-extend tenv lhs* type*)))	     
-	     (mvlet ([(bod boddecls) (make-simple origbod newenv)]
-		     [(rhs* rhs-decls*) ; This is an awkward way to loop across rhs*:
-		      (let loop ((ls rhs*) (acc ()) (declacc ()))			
-			(if (null? ls) (values (reverse! acc) (reverse! declacc))
-;			(if (null? ls) (values acc declacc)
-			    (let-match ([#(,r ,rd) (process-expr (car ls) newenv)])
-			      ;(display-constrained "Looping.. " `[,(car ls) 50] "\n")
-			      (loop (cdr ls) (cons r acc) (cons rd declacc)))))])
-	       (make-letrec (append (map list lhs* type* rhs*)
-				    (apply append rhs-decls*)
-				    boddecls)
-			    bod)))]
-	  [,else (error
-		  'ws-remove-complex-opera*
-		  "lazy-letrec expression is incorrectly formatted:\n~s"
-		  letrec-exp)])))
-
     ;===========================================================================
     (lambda (program)
       (match program
