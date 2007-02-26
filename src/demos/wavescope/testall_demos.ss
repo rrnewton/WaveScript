@@ -1,5 +1,6 @@
 #!/bin/sh 
 #|
+export REGIMENT_OR_WAVESCRIPT=WS
 exec regiment i --script "$0" ${1+"$@"};
 |#
 

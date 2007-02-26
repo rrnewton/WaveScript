@@ -84,7 +84,8 @@
 		 m_invert ;; A matrix inversion.
 		 )
     (chezprovide (for for-loop-stack)
-		 letrec length print
+;		 letrec 
+		 length print
 		 ;+ - * / ^
                                  
                  ;parmap
@@ -647,6 +648,7 @@
       [(_ t e) e]))
 
   ;; For these programs, need letrec*.
+#;
   (define-syntax ws-letrec
     (syntax-rules ()
       ;; We assume type info has already been stripped.
@@ -1099,13 +1101,13 @@
 		    (define / ws/)
 		    (define ^ ws^) 
 		    ;(define-syntax letrec (identifier-syntax ws-letrec))
-		    (define-id-syntax letrec  ws-letrec)
+;		    (define-id-syntax letrec  ws-letrec)
 		    (define length ws-length)
 		    ;(define-id-syntax print ws-print)
 		    (define print ws-print)
 		    )
 	     (provide (rename ws+ +) (rename ws- -) (rename ws* *) (rename ws/ /) (rename ws^ ^)
-		      (rename ws-letrec letrec)
+;		      (rename ws-letrec letrec)
 		      (rename ws-length length)
 		      (rename ws-print print)                      
                       for ;for-loop-stack

@@ -312,10 +312,11 @@
 (define-pass remove-letrec 
     [Expr (lambda (x fallthru)
 	    (match x
-	      [(letrec ([,v* ,ty* ,e*] ...) ,bod)
+	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
 	       (ASSERT null? (intersection v* (map core-free-vars e*)))
 	       `(let ([,v* ,ty* ,e*] ...) ,bod)
 	       ]
+	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
 	      [,oth (fallthru oth)])
 	    )])
 
@@ -451,7 +452,7 @@
   (run-pass p remove-complex-constant)
   (IFDEBUG (run-pass p retypecheck) (void))
 
-  (run-pass p uncover-free)
+;  (run-pass p uncover-free)
 
   ;(run-pass p purify-letrec)
   ;; This is what we need to do.
@@ -462,9 +463,9 @@
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
 
-  ;(run-pass p remove-letrec)
+  (run-pass p remove-letrec)
 
-  (run-pass p introduce-lazy-letrec)
+;  (run-pass p introduce-lazy-letrec)
 ;  (run-pass p lift-letrec)
 ;  (run-pass p lift-letrec-body)
 

@@ -231,7 +231,7 @@ fun myhanning (strm) {
     //print("\nHAN: "++ show(_hanning)++"\n");
     //print("\nBUF: "++ show(buf)++"\n");
 
-    emit toSigseg(buf, win.start, win.end, win.timebase);
+    emit toSigseg(buf, win.start, win.timebase);
   }
 }
 
@@ -264,7 +264,7 @@ fun deep_stream_map(f,sss) {
     for i = 1 to ss.width - 1 {
       output[i] := f(ss[[i]]);
     }
-    emit toSigseg(output, ss.start, ss.end, ss.timebase);
+    emit toSigseg(output, ss.start, ss.timebase);
   }
 }
 

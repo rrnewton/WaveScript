@@ -49,4 +49,4 @@ s3 = iterate (win in s2) {
   else { }
 };
 
-BASE <- s1;
+BASE <- s3;

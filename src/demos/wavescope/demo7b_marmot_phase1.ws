@@ -9,6 +9,26 @@ DEBUGSYNC = DEBUG
 //======================================================================
 // "Library" routines:
 
+fun window(S, len) 
+  iterate(x in S) {
+    state{ 
+      arr = nullarr;
+      ind = 0; 
+      startsamp = 0;
+    }
+    if ind == 0 then arr := makeArray(len, x);
+    arr[ind] := x;
+    ind := ind + 1;
+    if ind == len
+    then {
+      emit toSigseg(arr, startsamp, nulltimebase);
+      ind := 0;
+      arr := makeArray(len, x); 
+      startsamp := startsamp + len;
+    }
+  };
+
+
 // Constant:
 M_PI = 3.141592653589793;
 
@@ -153,7 +173,7 @@ fun myhanning (strm) {
     //print("\nHAN: "++ show(_hanning)++"\n");
     //print("\nBUF: "++ show(buf)++"\n");
 
-    emit toSigseg(buf, win.start, win.end, win.timebase);
+    emit toSigseg(buf, win.start, win.timebase);
   }
 }
 
