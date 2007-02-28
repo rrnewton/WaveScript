@@ -57,13 +57,18 @@
 
     (define  (make-lets decls body)
       (if (null? decls) body
-	  `(lazy-letrec ,decls ,body)
+	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
 	  ))
 
     ;; Coerces an expression to be simple, producing new bindings.
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
       (if (simple-expr? x)
+	  (values x '())
+	  (make-var x tenv)))
+
+    (define (make-var x tenv)
+      (if (symbol? x)
 	  (values x '())
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
@@ -72,29 +77,33 @@
 					 #;(meaningful-name x)
 					 )])
 	      (values name
-		      (cons (list name type res) binds))))))
+		      (snoc (list name type res) binds))))))
 
     ;; Same thing but for a list of expressions.
     ;; Returns a list of *all* the bindings appended together.
     (define (make-simples ls tenv)
-      (let ((intermediate
-	     (map (lambda (rand) 
-		    (mvlet ([(res binds) (make-simple rand tenv)])
-		      (cons res binds)))
-	       ls)))
-	(values (map car intermediate)
-		(apply append (map cdr intermediate)))))
+      (if (null? ls) (values '() '())
+	  (mvlet ([(first binds1) (make-simple (car ls) tenv)]
+		  [(rest binds2) (make-simples (cdr ls) tenv)])
+	    (values (cons first rest)
+		    (append binds1 binds2)))))
+    (define (make-vars ls tenv)
+      (if (null? ls) (values '() '())
+	  (mvlet ([(first binds1) (make-var (car ls) tenv)]
+		  [(rest binds2) (make-vars (cdr ls) tenv)])
+	    (values (cons first rest)
+		    (append binds1 binds2)))))
 
     ;; .returns A vector containing an expression and a list of new decls.
     ;; The returned expression should be simple.
-    (trace-define (process-expr expr tenv)
+    (define (process-expr expr tenv)
       (core-generic-traverse/types 
        (lambda (expr tenv fallthrough)
 	 (match expr
 	   [,x (guard (simple-expr? x)) (vector x '())]
 
 	   [(lambda ,formals ,types ,body)
-	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])	      
+	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])
 	      ;; Decls don't get lifted up past the lambda:
 	      (vector `(lambda ,formals ,types 
 			     ,(if (not (null? decls))
@@ -109,17 +118,15 @@
 
 	   [(let () ,[body]) body]
 	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
-	    (printf "LET ~a \n" v)
 	    (let-values ([(rhs rdecls) (make-simple e tenv)])
-	    (let-match  ([#(,bod ,bdecls) (process-expr bod 
+	    (let-match  ([#(,rst ,decls) (process-expr 
+					  `(let ,rest ,bod)
 				            (tenv-extend tenv 
 						(list v) (list ty)))])
-	      (printf "SIMPLE ~s\n" rhs)
-	      (printf "BOD ~s\n" bod)
-	      (vector bod
+	      (vector rst
 		      (append rdecls 
 			      `([,v ,ty ,rhs])
-			      bdecls))
+			      decls))
 	      ))]
 
 	   [(if ,a ,b ,c)
@@ -133,6 +140,29 @@
 		))]
 
 	   ;; For now don't lift out an iterate's lambda!	   
+	   [(iterate (let ([,v* ,ty* ,[rhs*]] ...) ,fun) ,source)
+	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))]
+                        ;[#(,s ,sdecl) source]
+			[(#(,rhs* ,rdecl*) ...) rhs*]
+			)
+	      (ASSERT null? fdecl)
+	      (mvlet ([(src sdecl) (make-var source tenv)])
+		;(ASSERT null? sdecl)
+		(display-constrained "simple iterate source: " `[,src 100] "\n")
+		(vector `(iterate (let ,(map list
+					  v* ty*
+					  (map make-lets rdecl* rhs*))
+				    ,f)
+				  ,src)
+                        sdecl
+			)))]
+
+	   [(unionN ,strms ...)
+	    (let-values ([(v* decls) (make-vars strms tenv)])
+	      (vector `(unionN ,@v*)
+		      decls))]
+
+#;
 	   [(iterate ,[fun] ,source)
 	    (let-match ([#(,f ,decl1) fun])
 	      (mvlet ([(s decl2) (make-simple source tenv)])
@@ -141,6 +171,7 @@
 			;(append decl1 decl2)
 			decl2
 			))	      )]
+
 	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the

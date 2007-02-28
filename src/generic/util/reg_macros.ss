@@ -154,7 +154,7 @@
        #'(match Exp
 	   [Pat (let-match (Rest ...) Body ...)]
 	   [,other (error 'let-match "unmatched object.\n  Datum: ~s\n  Syntax-location ~s\n" 
-			  other #'lm)]
+			  other #'Exp)]
 	   )])))
 ;(expand '(let-match () 3))
 ;(expand '(let-match ([,x 3]) x))

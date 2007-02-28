@@ -48,7 +48,7 @@
 ; 	 seconds-since-1970 ignore grep-oblist comma-number runN
 ; 	 gobj? vector-for-each vector-map vector-map! crit-printf
 ; 	 port->slist read-line median stddev stream-drop
-; 	 stream-append-list test-this these-tests)
+; 	 stream-append-list test-this these-tests) 
 
   ;; Most of those are in chez_compat, remaining:
   ;; No not MOST, that seems to leave:
@@ -69,7 +69,7 @@
    ;with-evaled-params
    
    ;; Other values 
-   id gnuplot gnuplot_pipe histogram ; date
+   id gnuplot histogram ; date
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
@@ -127,6 +127,7 @@
      read-line median stddev 
      test-this these-tests
 
+     gnuplot_pipe
 ;      foldr let/ec call/ec define-values make-n-list
 ;      current-error-port with-evaled-params add-parameter-hook
 ;      chomp shell-expand-string seconds-since-1970 ignore
@@ -1510,7 +1511,8 @@
   
   )))))
 
-
+(IFCHEZ
+ 
 ;; gnuplot_stream
 ;; .returns A function that takes new data and updates the graph.
 ;;  The function closes the process when it receives the input 'exit.
@@ -1615,6 +1617,8 @@
 	
 	(printf "Data written to pipe.\n")])
       )))))
+(begin) ) ; End IFCHEZ
+  
 
 
 ;; Example:

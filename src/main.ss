@@ -310,6 +310,12 @@
 		 [,other other]) ]))])
 
 (define-pass remove-letrec 
+    [OutputGrammar 
+     (filter (lambda (prod)
+	       (match prod
+		 [(Expr ('letrec ,_ ,__)) #f]
+		 [,_ #t]))
+       reduce-primitives-grammar)]
     [Expr (lambda (x fallthru)
 	    (match x
 	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
@@ -319,14 +325,16 @@
 	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
 	      [,oth (fallthru oth)])
 	    )])
+
 (define-pass standardize-iterate
     [Expr (lambda (x fallthru)
 	    (match x
-	      [(iterate (let (,first ,rest ...) ))
-	       (ASSERT null? (intersection v* (map core-free-vars e*)))
-	       `(let ([,v* ,ty* ,e*] ...) ,bod)
-	       ]
-	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
+	      [(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,[strm])
+	       `(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	      [(iterate (lambda (,x ,y) (,tyx ,tyy) ,bod) ,[strm])
+	       `(iterate (let () (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	      [(iterate ,_ ...)
+	       (error 'standardize-iterate "shouldn't have missed this iterate: ~s" `(iterate ,_ ...))]
 	      [,oth (fallthru oth)])
 	    )])
 
@@ -453,12 +461,12 @@
 
 ;  (run-pass p type-polymorphic-constants)
 
-  (run-pass p merge-iterates)
+;  (run-pass p merge-iterates)
   (IFDEBUG (run-pass p retypecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
-  (run-pass p reduce-primitives)
+  (run-pass p reduce-primitives) ; w/g 
   (run-pass p remove-complex-constant)
   (IFDEBUG (run-pass p retypecheck) (void))
 

@@ -3,8 +3,6 @@
 ;;; This pass simplifies the progam, basically it reduces
 ;;; rewrites primitive expressions into other primitive exprssions.
 
-;;; PRIMITIVES ELIMINATED:
-;;;   circle-at
 
 (module reduce-primitives mzscheme
   (require "../../../plt/common.ss"
@@ -12,10 +10,19 @@
   (provide reduce-primitives reduce-primitives-grammar)
   (chezimports)
 
+  ;;; PRIMITIVES ELIMINATED:
+  (define eliminated-prims '(circle-at khood-at anchor-at head tail))
+
   ;; TODO: FILL THIS IN:
-  (define reduce-primitives-grammar static-elaborate-grammar)
+  (define reduce-primitives-grammar 
+    (filter (lambda (prod)
+	      (match prod
+		[(Prim ',sym) (guard (memq sym eliminated-prims)) #f]
+		[,_ #t]))
+      static-elaborate-grammar))
 
 (define-pass reduce-primitives
+  [OutputGrammar reduce-primitives-grammar]
   [Expr (lambda (x fallthrough)	 
 	  (match x
 	    [(,prim ,[rand*] ...)

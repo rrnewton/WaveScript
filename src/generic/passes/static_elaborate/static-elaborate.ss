@@ -68,10 +68,12 @@
   (cons 
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
-   ;; And we should not have unionList.
    (filter (lambda (prod)
 	     (match prod
+	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
+	       ;; nor should we have user-level applications:
+	       [(Expr ('app Expr ...)) #f]
 	       [,_ #t]))
      remove-unquoted-constant-grammar)
    ))

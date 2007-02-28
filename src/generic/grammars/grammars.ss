@@ -19,6 +19,7 @@
 	     (char-lower-case? (string-ref str 0)))))
     `(
       [Type 'Int]
+      [Type 'Int16]
       [Type 'Float]
       [Type 'Complex]
       [Type 'Bool]

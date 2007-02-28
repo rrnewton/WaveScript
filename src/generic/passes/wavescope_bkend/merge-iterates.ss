@@ -2,6 +2,9 @@
 ;;;; .author RRN & MIC
 ;;;; 
 
+;;;; rrn: NOTE, this introduces (app ...).  Originally, user applications
+;;;; of functions were gone by this juncture.
+
 (module merge-iterates mzscheme
   (require 
           "../../../plt/common.ss"
