@@ -69,7 +69,7 @@
    ;with-evaled-params
    
    ;; Other values 
-   id gnuplot histogram ; date
+   id gnuplot gnuplot_pipe histogram ; date
    display-progress-meter progress-dots count-nodes
    string-split periodic-display all-equal?   
 	  
@@ -96,7 +96,7 @@
    
    vector-for-each vector-map vector-map!
 
-   insert-between iota compose compose/values disp
+   insert-between iota compose compose/values disp pp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
@@ -127,7 +127,6 @@
      read-line median stddev 
      test-this these-tests
 
-     gnuplot_pipe
 ;      foldr let/ec call/ec define-values make-n-list
 ;      current-error-port with-evaled-params add-parameter-hook
 ;      chomp shell-expand-string seconds-since-1970 ignore
@@ -934,6 +933,12 @@
           (begin (display (car args))(display " ")
                  (loop (cdr args)))))))
 
+(define (pp . args)
+  (parameterize ([pretty-line-length 130]
+		 [print-level 40]
+		 [print-length 100])
+    (apply pretty-print args)))
+
 (define (list-remove-last! ls)
   (if (null? ls)
       (error 'list-remove-last "cannot remove last of the null list!"))
@@ -1617,7 +1622,7 @@
 	
 	(printf "Data written to pipe.\n")])
       )))))
-(begin) ) ; End IFCHEZ
+(define gnuplot_pipe 'gnuplot_pipe_unimplemented_in_plt)) ; End IFCHEZ
   
 
 

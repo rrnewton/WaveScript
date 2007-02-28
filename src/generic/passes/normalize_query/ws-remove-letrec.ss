@@ -1,6 +1,6 @@
 
 
-(module ws-remove-complex-opera mzscheme
+(module ws-remove-letrec mzscheme
   (require "../../../plt/common.ss"
 	   "reduce-primitives.ss")
   (provide remove-letrec

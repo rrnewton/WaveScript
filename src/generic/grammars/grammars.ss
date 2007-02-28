@@ -24,6 +24,8 @@
       [Type 'Complex]
       [Type 'Bool]
       [Type 'String]
+
+      [Type 'Timebase]
       
       [Type 'Node]
       [Type 'Anchor]
@@ -36,6 +38,7 @@
       [Type ('Array Type)]
       [Type ('VQueue Type)]
       [Type ('Sigseg Type)]
+
       
       [Type ('HashTable Type)]
       [Type ('List Type)]

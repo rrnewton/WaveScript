@@ -20,15 +20,50 @@
 
 (module ws-remove-complex-opera mzscheme
   (require "../../../plt/common.ss"
-	   "remove-complex-constant.ss")
+	   "ws-remove-letrec.ss")
   (provide ws-remove-complex-opera*
 	   ws-remove-complex-opera*-grammar
            test-ws-remove-complex-opera)
   (chezimports)
 
-(define ws-remove-complex-opera*-grammar
-  
-  remove-letrec-grammar)
+;; All expressions are re-written to reflect simplicity constraints:
+  (define ws-remove-complex-opera*-grammar
+    (append
+     '(
+       ;; (Expr ('app Expr ...))  
+       (Expr Var) 
+       (Expr Const)
+       (Expr ('unionN Simple ...))
+       (Expr ('tuple Simple ...))
+       (Expr ('tupref Int Int Simple))
+       (Expr (Prim Simple ...)) 
+       (Expr ('set! Var Simple))
+
+       ;; Could require that these Expr positions be Lets:
+       (Expr ('if Simple Expr Expr))
+       (Expr ('begin Expr ...))
+       (Expr ('for (Var Simple Simple) Expr))
+       (Expr ('lambda (LHS ...) (Type ...) Expr))
+       (Expr ('assert-type Type Expr))
+
+       ;(Expr ('let ((LHS Type Expr) ...) Expr))
+
+       ;; Now iterate is syntax:
+       (Expr ('iterate ('let ((LHS Type Expr) ...)
+			 ('lambda (Var Var) (Type Type) Expr)) Simple))
+
+       (Expr LetOrSimple)
+       (LetOrSimple Simple)
+       (LetOrSimple ('let ((LHS Type Expr) ...) LetOrSimple))
+      
+       (Simple Var)   
+       (Simple Const))
+     (filter (lambda (x) (match x 
+			   [(Expr . ,_) #f]
+			   [(Prim 'iterate) #f]
+			   [,else #t]))
+       remove-letrec-grammar
+       )))
 
 (define-pass ws-remove-complex-opera*
 
@@ -59,9 +94,13 @@
 	     [(lambda ,form ,bod) 'tmp-func]
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp]))
-
-    (define  (make-lets decls body)
-      (if (null? decls) body
+  
+    (define (make-lets decls body)
+      (if (null? decls) 
+	  (begin (ASSERT (lambda (x) (or (simple-expr? x) 
+					 (and (list? x) (eq? (car x) 'let)))) 
+			 body)
+		 body)
 	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
 	  ))
 
@@ -69,11 +108,6 @@
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
       (if (simple-expr? x)
-	  (values x '())
-	  (make-var x tenv)))
-
-    (define (make-var x tenv)
-      (if (symbol? x)
 	  (values x '())
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
@@ -83,7 +117,6 @@
 					 )])
 	      (values name
 		      (snoc (list name type res) binds))))))
-
     ;; Same thing but for a list of expressions.
     ;; Returns a list of *all* the bindings appended together.
     (define (make-simples ls tenv)
@@ -92,23 +125,15 @@
 		  [(rest binds2) (make-simples (cdr ls) tenv)])
 	    (values (cons first rest)
 		    (append binds1 binds2)))))
-    (define (make-vars ls tenv)
-      (if (null? ls) (values '() '())
-	  (mvlet ([(first binds1) (make-var (car ls) tenv)]
-		  [(rest binds2) (make-vars (cdr ls) tenv)])
-	    (values (cons first rest)
-		    (append binds1 binds2)))))
 
     ;; .returns A vector containing an expression and a list of new decls.
     ;; The returned expression should be simple.
     (define (process-expr expr tenv)
-      (core-generic-traverse/types 
-       (lambda (expr tenv fallthrough)
-	 (match expr
+      (match expr
 	   [,x (guard (simple-expr? x)) (vector x '())]
 
 	   [(lambda ,formals ,types ,body)
-	    (let-match ([#(,body ,decls) (process-expr body (tenv-extend tenv formals types))])
+	    (let-values ([(body decls) (make-simple body (tenv-extend tenv formals types))])
 	      ;; Decls don't get lifted up past the lambda:
 	      (vector `(lambda ,formals ,types 
 			     ,(if (not (null? decls))
@@ -121,7 +146,10 @@
 	      (vector `(assert-type ,ty  ,e)
 		      decls))]
 
-	   [(let () ,[body]) body]
+	   [(let () ,body)	
+	    (let-values ([(body bdecls) (make-simple body tenv)])
+	      (vector (make-lets bdecls body) '()))]
+
 	   [(let ([,v ,ty ,e] ,rest ...) ,bod)
 	    (let-values ([(rhs rdecls) (make-simple e tenv)])
 	    (let-match  ([#(,rst ,decls) (process-expr 
@@ -136,8 +164,8 @@
 
 	   [(if ,a ,b ,c)
 	    (mvlet ([(test test-decls)     (make-simple a tenv)])
-	      (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
-			  [#(,altern ,altern-decls) (process-expr c tenv)])
+	      (let-values ([(conseq conseq-decls) (make-simple b tenv)]
+			   [(altern altern-decls) (make-simple c tenv)])
 		(vector `(if ,test 
 			     ,(make-lets conseq-decls conseq) 
 			     ,(make-lets altern-decls altern))
@@ -145,47 +173,31 @@
 		))]
 
 	   ;; For now don't lift out an iterate's lambda!	   
-	   [(iterate (let ([,v* ,ty* ,[rhs*]] ...) ,fun) ,source)
-	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))]
-                        ;[#(,s ,sdecl) source]
-			[(#(,rhs* ,rdecl*) ...) rhs*]
-			)
+	   [(iterate (let ([,v* ,ty* ,[(lambda (x) (make-simple x tenv)) -> rhs* rdecls*]] ...) ,fun) ,source)
+	    (let-match ([#(,f ,fdecl) (process-expr fun (tenv-extend tenv v* ty*))])
 	      (ASSERT null? fdecl)
-	      (mvlet ([(src sdecl) (make-var source tenv)])
+	      (mvlet ([(src sdecl) (make-simple source tenv)])
 		;(ASSERT null? sdecl)
 		(display-constrained "simple iterate source: " `[,src 100] "\n")
 		(vector `(iterate (let ,(map list
 					  v* ty*
-					  (map make-lets rdecl* rhs*))
+					  (map make-lets rdecls* rhs*))
 				    ,f)
 				  ,src)
                         sdecl
 			)))]
+	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
 	   [(unionN ,strms ...)
-	    (let-values ([(v* decls) (make-vars strms tenv)])
+	    (let-values ([(v* decls) (make-simples strms tenv)])
 	      (vector `(unionN ,@v*)
 		      decls))]
-
-#;
-	   [(iterate ,[fun] ,source)
-	    (let-match ([#(,f ,decl1) fun])
-	      (mvlet ([(s decl2) (make-simple source tenv)])
-		(display-constrained "simple iterate source: " `[,s 100] "\n")
-		(vector `(iterate ,(make-lets decl1 f) ,s)
-			;(append decl1 decl2)
-			decl2
-			))	      )]
-
-	   [(iterate . ,_) (error 'ws-remove-complex-opera* "bad iterate: ~s" _)]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to
 	   ;; reorder side effects.
-	   [(begin ,[e*] ...)
-	    (vector `(begin ,@(map (match-lambda (#(,e ,decls)) 
-				     (make-lets decls e))
-				e*))
+	   [(begin ,[(lambda (x) (make-simple x tenv)) -> e* edecls*] ...)
+	    (vector `(begin ,@(map make-lets edecls* e*))
 		    '())]
 
 	   ;; Make set!'s rhs simple:
@@ -198,7 +210,7 @@
 	    (mvlet ([(st stdecls) (make-simple st tenv)]
 		    [(en endecls) (make-simple en tenv)])
 	      (let ([newenv (tenv-extend tenv (list i) '(Int))])
-		(let-match ([#(,body ,decls) (process-expr bod newenv)])
+		(let-values ([(body decls) (make-simple bod newenv)])
 		  (vector `(for (,i ,st ,en)
 			       ,(make-lets decls body))
 			  (append stdecls endecls))
@@ -223,12 +235,6 @@
 	   [,other (error 'ws-remove-complex-opera* "didn't handle expr: ~s" other)]
 	   ;[,other (fallthrough other tenv)]
 	   ))
-       (lambda (results reconstr)
-	 (match results
-	   [(#(,exps ,decls) ...)
-	    (vector (apply reconstr exps) 
-		    (apply append decls))]))
-       expr tenv))
     
     ;===========================================================================
     [OutputGrammar ws-remove-complex-opera*-grammar]
@@ -236,14 +242,14 @@
      (lambda (prog _)
       (match prog
              [(,input-lang '(program ,exp ,type))
-	      (let-match ([#(,newbod ,bnds) (process-expr exp (empty-tenv))])
+	      (let-values ([(newbod bnds) (make-simple exp (empty-tenv))])
 		`(ws-remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
 				 (make-lets bnds newbod)
 				 ) ,type))
 		)]
              [,else (error 'ws-remove-complex-opera*
-                           "Invalid input: ~a" program)]))])
+                           "Invalid input: ~a" prog)]))])
 ;===============================================================================
 
 

@@ -56,7 +56,7 @@
 		       [(Int16   ,e)  
 			(error 'degeneralize-arithmetic
 			       "cannot currently use gint with an arbitrary expression and output type Int16: ~s"
-			       `(gint ,k))]
+			       `(gint ,e))]
 		       [(Float   ,e)  `(intToFloat ,e)]
 		       [(Complex ,e)  `(intToComplex ,e)]
 		       [,else 

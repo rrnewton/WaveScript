@@ -606,6 +606,8 @@
 (define (simple-expr? x)
   (match x
     [(quote ,imm) #t]
+    ;; Void value:
+    ;[(tuple) #t]
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
     [,otherwise #f]))
 

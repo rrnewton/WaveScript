@@ -459,7 +459,7 @@
 
 ; ======================================================================
 
-(trace-define constant-typeable-as? 
+(define constant-typeable-as? 
   (lambda (c ty)
     (cond 
      [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]

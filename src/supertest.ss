@@ -221,13 +221,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 (begin (define pltbc (system/exit-code "make pltbc &> 7_BUILD_PLT_BYTECODE.log"))
        (fpf "plt: Building WScript as bytecode in PLT:     ~a\n" (code->msg! pltbc)))
 
+
+;; [2007.02.28] This has been broken for a while, and the error code isn't working right.
+#;
 (begin (newline)
        (printf "Fourth: Running tests in PLT\n")
        (printf "============================================================\n")
-       (define plttests (system/exit-code 
-			 (format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log"
+        (define plttests (system/exit-code 
+ 			 (format "echo '(test-units)' | mzscheme -f ~a/main_plt.ss &> 8_PLT_UNIT_TESTS.log"
 				 test-directory)))
-       (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
+        (fpf "plt: Running tests in PLT:                    ~a\n" (code->msg! plttests)))
 
 (begin (newline)
        (printf "Fifth: Running WaveScript Demos\n")

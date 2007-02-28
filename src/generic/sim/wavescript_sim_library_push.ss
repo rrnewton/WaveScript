@@ -691,6 +691,8 @@
 	  (begin 
 					;(inspect unsigned)
 	    (fx- unsigned 65536)))))
+  
+  (define to-int32 'to-int32_unimplemented!)  
 
   (define (type->width t)
     (match t
@@ -973,6 +975,7 @@
      (define gnuplot_array_stream  (gnuplot-helper (lambda (arr) (vector->list arr))))
      (define gnuplot_sigseg_stream (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
 
+  
      (define m_invert ws-invert-matrix)
 
      ;;================================================================================
