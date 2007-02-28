@@ -82,7 +82,7 @@ syncN =
 
     //if DEBUGSYNC then { print("SyncN  Current ACCS: "); printaccs(); print("\n") };
     //if DEBUGSYNC then { print("SyncN  ACC widths: "); printwidths(); print("\n") };
-    if DEBUGSYNC then { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("\n") };
+    if DEBUGSYNC then { print("SyncN ACCS: "); printaccs(); print("    "); printwidths(); print("  tag value "++show(ind)); print("\n") };
 
     let (flag, strt, en, seg) = tup;
     // Process the new data:
@@ -217,7 +217,7 @@ fun myhanning (strm) {
 	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
 	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. const_PI *. intToFloat(i) /. intToFloat(_lastLen-1)));
 	// RRN: This would fix the zeroed fenceposts:
-	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. intToFloat(i+1) /. intToFloat(_lastLen+1)));
+	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. const_PI *. intToFloat(i+1) /. intToFloat(_lastLen+1)));
       }
     };
 
@@ -433,6 +433,9 @@ fun sort(swap,cmp,len) {
     }
   }
 }
+
+fun deg2rad(deg) { deg * const_PI / 180.0 }
+fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */

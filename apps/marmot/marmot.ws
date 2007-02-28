@@ -125,7 +125,7 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, win.end - samples_padding));
+      emit (false, 0, max(0, win.start - samples_padding - 1));
       if DEBUG then 
       print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
 	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
@@ -138,7 +138,7 @@ fun detect(scorestrm) {
 
 fftArray :: Array Float -> Array Complex;
 fun fftArray(arr) {
-  toArray(fft(toSigseg(arr, 0, arr.length, nulltimebase)))
+  toArray(fft(toSigseg(arr, 0, nulltimebase)))
 }
 
 
@@ -169,7 +169,7 @@ fun FarFieldDOA(synced, sensors)
   // gridmap maps polar grid entry to radians
   gridmap = makeArray(Ngrd, gint(0));
   for i = 0 to Ngrd-1 {
-    gridmap[i] := (gint(i) * 360.0 / gint(Ngrd)) * const_PI / 180.0; 
+    gridmap[i] := deg2rad(intToFloat(i) * 360.0 / gint(Ngrd));
   };
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
@@ -182,6 +182,8 @@ fun FarFieldDOA(synced, sensors)
 
     // This will be the output DOA likelihoods
     Jmet = matrix(NSrc,Ngrd,0.0);
+
+    gnuplot_array(m_rowv_shared(m_in,0));
 
     //fft the sync'd data 
     ffts = m_rowmap(fftArray, m_in);
@@ -225,9 +227,9 @@ fun FarFieldDOA(synced, sensors)
     sort(swap,cmp,power.length);
 
     // T is the maximum direction grid value
-    T       :: Array Int   = a_ones(NSrc);
-    Tbefore :: Array Float = makeArray(NSrc, gint(0));
-    Trad    :: Array Float = makeArray(NSrc, gint(0));
+    T = a_ones(NSrc);
+    Tbefore = makeArray(NSrc, 0.0); 
+    Trad = makeArray(NSrc, 0.0);
 
     // phase delays for each source
     delay = matrix(Nsens, NSrc, 0.0);
@@ -297,7 +299,7 @@ fun FarFieldDOA(synced, sensors)
       };
 
       // stopping condition, break out of loop?
-      diffs = makeArray(Trad.length, gint(0));
+      diffs = makeArray(Trad.length, 0.0); //gint(0));
       for K = 0 to Trad.length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
       let (max_change,_) = a_max(diffs);
 
