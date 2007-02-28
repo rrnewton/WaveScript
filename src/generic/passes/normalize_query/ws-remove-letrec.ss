@@ -28,6 +28,6 @@
 	      [,oth (fallthru oth)])
 	    )])
 
-(ASSERT (= (length remove-letrec-grammar) (sub1 reduce-primitives-grammar)))
+(ASSERT (= (length remove-letrec-grammar) (sub1 (length reduce-primitives-grammar))))
 
 ) ;; End module
