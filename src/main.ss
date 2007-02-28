@@ -521,6 +521,9 @@
 
   ;(run-pass p nominalize-types)
 
+;   (set! prog (ws-add-return-statements prog))
+  (run-pass p ws-add-return-statements)
+
   p)))
 
 ;; We keep the pipe to the parser open.
@@ -651,8 +654,6 @@
    (print-var-types typed)(flush-output-port)
    
    (set! prog (run-ws-compiler typed #t))
-
-   (set! prog (ws-add-return-statements prog))
 
    (REGIMENT_DEBUG 
     (printf "================================================================================\n")
