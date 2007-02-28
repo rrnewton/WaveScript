@@ -198,6 +198,10 @@
 			   (append-tydefs (collect-from-type t)
 					  (result-tydefs e)))]
 
+	     [(return ,[e])
+	      (make-result `(return ,(result-expr e))
+			   (result-tydefs e))]
+
 	     ;; TODO: THIS SHOULD JUST USE collect-from-type:
 	     ;; This produces new tuples.
 	     [(unionN ,e* ...)

@@ -321,6 +321,28 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+
+(define-pass ws-add-return-statements
+    (define (doit fallthru)
+      (lambda (x)	
+	(match x 
+	  [,x (guard (simple-expr? x)) `(return ,x)]
+	  ;[(assert-type ,t ,e)	   ]
+	  [(if ,a ,[b] ,[c])      `(if ,a ,b ,c)]
+	  [(begin ,e ... ,[last]) `(begin ,@e ,last)]
+	  [(let ,binds ,[body])   `(let ,binds ,body)]
+	  [(for ,decl ,[body])    `(for ,decl ,body)]
+
+	  [,oth `(return ,(fallthru other))]
+	  )))  
+  [Expr (lambda (x fallthru)
+	    (match x
+	      [(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,[(doit fallthru) -> bod])) ,strm)
+	       `(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	      [,oth (fallthru oth)])
+	    )])
+
+
 ;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec
     [Expr (lambda (x fallthru)
@@ -472,6 +494,7 @@
 ;  (run-pass p lift-letrec-body)
 
   (run-pass p ws-remove-complex-opera*)
+
   ;; Replacing remove-complex-opera* with a simpler pass:
   (run-pass p flatten-iterate-spine)
   
@@ -628,6 +651,9 @@
    (print-var-types typed)(flush-output-port)
    
    (set! prog (run-ws-compiler typed #t))
+
+   (set! prog (ws-add-return-statements prog))
+
    (REGIMENT_DEBUG 
     (printf "================================================================================\n")
     (printf "\nNow nominalizing types.\n"))
