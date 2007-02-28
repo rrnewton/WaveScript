@@ -19,14 +19,19 @@
 ;===============================================================================
 
 (module ws-remove-complex-opera mzscheme
-  (require "../../../plt/common.ss")
+  (require "../../../plt/common.ss"
+	   "remove-complex-constant.ss")
   (provide ws-remove-complex-opera*
+	   ws-remove-complex-opera*-grammar
            test-ws-remove-complex-opera)
   (chezimports)
 
-(define ws-remove-complex-opera*
-  (let ()
-    
+(define ws-remove-complex-opera*-grammar
+  
+  remove-letrec-grammar)
+
+(define-pass ws-remove-complex-opera*
+
     ;; This is purely for readability, instead of just tmp_99, I try
     ;; to give things reasonable names based on what kinds of values
     ;; they carry.
@@ -226,18 +231,19 @@
        expr tenv))
     
     ;===========================================================================
-    (lambda (program)
-      (match program
+    [OutputGrammar ws-remove-complex-opera*-grammar]
+    [Program
+     (lambda (prog _)
+      (match prog
              [(,input-lang '(program ,exp ,type))
 	      (let-match ([#(,newbod ,bnds) (process-expr exp (empty-tenv))])
 		`(ws-remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
-				 `(lazy-letrec ,bnds ,newbod)
+				 (make-lets bnds newbod)
 				 ) ,type))
 		)]
              [,else (error 'ws-remove-complex-opera*
-                           "Invalid input: ~a" program)]))
-    ))
+                           "Invalid input: ~a" program)]))])
 ;===============================================================================
 
 

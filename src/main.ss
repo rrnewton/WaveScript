@@ -309,23 +309,6 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-(define-pass remove-letrec 
-    [OutputGrammar 
-     (filter (lambda (prod)
-	       (match prod
-		 [(Expr ('letrec ,_ ,__)) #f]
-		 [,_ #t]))
-       reduce-primitives-grammar)]
-    [Expr (lambda (x fallthru)
-	    (match x
-	      [(letrec ([,v* ,ty* ,[e*]] ...) ,[bod])
-	       (ASSERT null? (intersection v* (map core-free-vars e*)))
-	       `(let ([,v* ,ty* ,e*] ...) ,bod)
-	       ]
-	      [(letrec ,_ ...) (error 'remove-letrec "missed letrec: ~s" `(letrec ,_ ...))]
-	      [,oth (fallthru oth)])
-	    )])
-
 (define-pass standardize-iterate
     [Expr (lambda (x fallthru)
 	    (match x
