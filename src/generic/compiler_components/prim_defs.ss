@@ -368,6 +368,8 @@
 
     ;; I just use a virtual "Queue" to make the type-checking work for emits:
     (emit           ((VQueue 'a) 'a) #())
+    ;; We just pretend this is a primitive.  It does nothing.
+    (return           ('a) 'a)
 
     ;; Array handling:
     (makeArray        (Int 'a) (Array 'a))

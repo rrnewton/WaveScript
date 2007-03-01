@@ -291,6 +291,49 @@
     (apply run-compiler p args)
     ))
 
+;; Simply transforms letrec into lazy-letrec.
+(define-pass introduce-lazy-letrec
+    [Expr (lambda (x fallthru)
+	    (match x
+	      [(free ,_ ,[e]) e]
+	      [,other 
+	       (match (fallthru other)
+		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
+		 [,other other]) ]))])
+
+
+(define-pass lift-polymorphic-constant
+    [Expr (lambda (x fallthru)
+	    (define (f x) 
+	      (let ([tmp (unique-name 'tmp)]
+		    [t   (unique-name 'alpha)])
+		`(let ([,tmp (quote ,t) ,x]) ,tmp)))
+	    (match x
+	      [nullseg (f x)]
+	      [nullarr (f x)]
+	      ['()     (f x)]
+	      [,other (fallthru other)]))])
+
+(define-pass unlift-polymorphic-constant
+    (define (pconst? x) 
+      (match x
+	[nullseg #t]
+	[nullarr #t]
+	['()     #t]
+	[()     #t]
+	[,else   #f]))
+  [Expr (lambda (x fallthru)
+	  (match x
+	    [(let ([,v1 ,t ,c]) ,v2)
+	       (guard (eq? v1 v2) (pconst? c))
+	       (ASSERT (not (polymorphic-type? t)))
+	       `(assert-type ,t ,c)]
+	    [,c (guard (pconst? c)) 
+		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
+	    [,other (fallthru other)]))])
+
+
+
 ;; Purify-letrec: makes sure letrec's only bind functions.
 #;
 (define-pass purify-letrec
@@ -346,47 +389,40 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+;; This doesn't allow let's in RHS position.  It lifts them out.  This
+;; expands the scope of the lifted bindings, and thus depends on
+;; unique variable names. 
+(define-pass ws-lift-let
+    (define process-expr
+      (lambda (x fallthru)
+	(match x
 
-;; Simply transforms letrec into lazy-letrec.
-(define-pass introduce-lazy-letrec
-    [Expr (lambda (x fallthru)
-	    (match x
-	      [(free ,_ ,[e]) e]
-	      [,other 
-	       (match (fallthru other)
-		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
-		 [,other other]) ]))])
+	  ;; Do lifts:
+	  [(let ([,v ,ty (let ([,v2 ,ty2 ,e2]) ,rhs)]) ,bod)
+	   (process-expr 
+	    `(let ([,v2 ,ty2 ,e2]) (let ([,v ,ty ,rhs]) ,bod))
+	    fallthru)]
+	  ;; Lifting out begins too.
+	  [(let ([,v ,ty (begin ,e1 ,e2 ,rest ...)]) ,bod)
+	   (process-expr 
+	    `(begin ,e1 (let ([,v ,ty (begin ,e2 . ,rest)]) ,bod))
+	    fallthru)]
 
+	  [(let ([,v ,ty ,[rhs]]) ,[bod])
+	   `(let ([,v ,ty ,rhs]) ,bod)]
 
-(define-pass lift-polymorphic-constant
-    [Expr (lambda (x fallthru)
-	    (define (f x) 
-	      (let ([tmp (unique-name 'tmp)]
-		    [t   (unique-name 'alpha)])
-		`(let ([,tmp (quote ,t) ,x]) ,tmp)))
-	    (match x
-	      [nullseg (f x)]
-	      [nullarr (f x)]
-	      ['()     (f x)]
-	      [,other (fallthru other)]))])
+	  [(begin ,[e])  e]
 
-(define-pass unlift-polymorphic-constant
-    (define (pconst? x) 
-      (match x
-	[nullseg #t]
-	[nullarr #t]
-	['()     #t]
-	[()     #t]
-	[,else   #f]))
-  [Expr (lambda (x fallthru)
-	  (match x
-	    [(let ([,v1 ,t ,c]) ,v2)
-	       (guard (eq? v1 v2) (pconst? c))
-	       (ASSERT (not (polymorphic-type? t)))
-	       `(assert-type ,t ,c)]
-	    [,c (guard (pconst? c)) 
-		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
-	    [,other (fallthru other)]))])
+	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
+	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+
+	  [(let . ,_) (error 'ws-lift-let "unhandled let: ~s" `(let . ,_))]
+	  [,oth (fallthru oth)])))
+
+    ;; Assumes lets only bind one variable (except for iterates)
+    [Expr process-expr]
+    ;[OutputGrammar ]
+    )
 
 
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
@@ -498,6 +534,7 @@
 ;  (run-pass p lift-letrec-body)
 
   (run-pass p ws-remove-complex-opera*)
+  (run-pass p ws-lift-let)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
   ;(run-pass p flatten-iterate-spine)

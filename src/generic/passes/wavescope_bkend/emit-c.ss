@@ -79,6 +79,8 @@
 
     [String "wsstring_t"] ;; Not boosted.
 
+    [(VQueue ,_) `("void")]
+
     ;; Went back and forth on whether this should be a pointer:
     [(Sigseg ,[t]) `("RawSeg")]
     [(Stream ,[t]) `("WSBox*")]

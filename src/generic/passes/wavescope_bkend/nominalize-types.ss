@@ -200,16 +200,16 @@
 
 	     ;; Going to go ahead and add any types that are found in let bindings.
 	     [(let ([,v* ,ty* ,[e*]] ...) ,body)
-	      (printf "NOMINALIZE: doing let...\n")
 	      (let ([body (collect-tupdefs body (tenv-extend tenv v* ty*))]
 		    [defs1* (map collect-from-type ty*)]
-		    [e* (map result-expr e*)]
-		    [defs2* (map result-tydefs e*)])
-		(make-result `(let ([,v* ,ty* e*] ...) ,(result-expr body))
+		    [defs2* (map result-tydefs e*)]
+		    [e* (map result-expr e*)])
+		(make-result `(let ([,v* ,ty* ,e*] ...) ,(result-expr body))
 			     (foldl1 append-tydefs 
 				     (append defs1* defs2* (list (result-tydefs body)))))
 		)]
 
+	     #;
 	     [(return ,[e])
 	      (make-result `(return ,(result-expr e))
 			   (result-tydefs e))]
@@ -245,6 +245,7 @@
 	(core-generic-traverse
 	 (lambda (x fallthru)
 	   (match x
+	     ;[(return ,[e]) `(return ,e)]
 	     [(assert-type ,t ,[e])
 	      `(assert-type ,(convert-type t tupdefs) ,e)
 	      ]
