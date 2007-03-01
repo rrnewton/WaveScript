@@ -71,7 +71,7 @@
 		 assert-type
 		 
 		 wserror inspect
-		 emit 
+		 emit return
 		 ;smap sfilter
 		 iterate break ;deep-iterate
 		 ;; TODO: nix unionList.
@@ -305,6 +305,7 @@
      (define (emit vq x) (set-box! vq (cons x (unbox vq))))
      ;;(emission (cons v (emission))))
      (define (virtqueue) (box '()))
+     (define (return x) x)
 
      (define (prim_window src winsize)
        (let ([start 0]

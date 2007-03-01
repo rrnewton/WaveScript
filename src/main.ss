@@ -335,6 +335,10 @@
 
 	  [,oth `(return ,(fallthru other))]
 	  )))  
+  [OutputGrammar 
+   (cons '(LetOrSimple ('return Simple))
+	 ws-remove-complex-opera*-grammar)
+   ]
   [Expr (lambda (x fallthru)
 	    (match x
 	      [(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,[(doit fallthru) -> bod])) ,strm)
@@ -496,10 +500,8 @@
   (run-pass p ws-remove-complex-opera*)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
-  (run-pass p flatten-iterate-spine)
-  
-;  (inspect p)
-  
+  ;(run-pass p flatten-iterate-spine)
+   
   (DEBUGMODE
    (with-output-to-file ".__nocomplexopera.ss"
      (lambda () 
@@ -512,10 +514,10 @@
        (flush-output-port))
      'replace))
 
-  (run-pass p remove-lazy-letrec)
+;  (run-pass p remove-lazy-letrec)
   
-;  (run-pass p verify-core)
-;  (run-pass p retypecheck)
+;;  (run-pass p verify-core)
+;;  (run-pass p retypecheck)
 
   (run-pass p type-annotate-misc)
 

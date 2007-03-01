@@ -774,6 +774,7 @@
    
     [,c (guard (constant? c)) c]
     [(quote ,c)       `(quote ,c)]
+    [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     

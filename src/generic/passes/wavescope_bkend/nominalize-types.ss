@@ -199,8 +199,10 @@
 					  (result-tydefs e)))]
 
 	     ;; Going to go ahead and add any types that are found in let bindings.
-	     [(let ([,v* ,ty* ,[e*]] ...) ,[body])
-	      (let ([defs1* (map collect-from-type ty*)]
+	     [(let ([,v* ,ty* ,[e*]] ...) ,body)
+	      (printf "NOMINALIZE: doing let...\n")
+	      (let ([body (collect-tupdefs body (tenv-extend tenv v* ty*))]
+		    [defs1* (map collect-from-type ty*)]
 		    [e* (map result-expr e*)]
 		    [defs2* (map result-tydefs e*)])
 		(make-result `(let ([,v* ,ty* e*] ...) ,(result-expr body))

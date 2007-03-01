@@ -4,11 +4,17 @@
 
 (module type-annotate-misc mzscheme 
   (require  "../../../plt/common.ss" )
-  (provide type-annotate-misc)
+  (provide type-annotate-misc
+	   ;type-annotate-misc-grammar
+	   )
   (chezimports)
 
 ;; Adds types to various primitives for code generation.
 (define-pass type-annotate-misc
+    
+    ;; UNFINISHED
+    ;(define type-annotate-misc-grammar)
+
 
     ;(define annotated-prims '(print show cons hashtable seg-get))
     (define annotate-outside-prims '(hashtable window append))

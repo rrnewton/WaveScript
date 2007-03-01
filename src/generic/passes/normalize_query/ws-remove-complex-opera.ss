@@ -56,6 +56,7 @@
        (LetOrSimple Simple)
        (LetOrSimple ('let ((LHS Type Expr) ...) LetOrSimple))
       
+       (Simple ('assert-type Type Simple))
        (Simple Var)   
        (Simple Const))
      (filter (lambda (x) (match x 
