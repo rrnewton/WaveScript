@@ -338,12 +338,12 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 chans = (dataFile(marmotfile, "binary", 24000, 0)
-	 :: Stream (Int * Int * Int * Int));
+	 :: Stream (Int16 * Int16 * Int16 * Int16));
 
-ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) i2f(a), chans), 4096);
-ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) i2f(b), chans), 4096);
-ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) i2f(c), chans), 4096);
-ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) i2f(d), chans), 4096);
+ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096);
+ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096);
+ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096);
+ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096);
 
 // 96 samples are ignored between each 32 used:
 rw1 = rewindow(ch1, 32, 96); 
