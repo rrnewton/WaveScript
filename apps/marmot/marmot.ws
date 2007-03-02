@@ -87,9 +87,18 @@ fun detect(scorestrm) {
       }	else {
 	/* untriggering! */
 	trigger := false;
-	emit (true,                       // yes, snapshot
-	      _start - samples_padding,     // start sample
-	      win.end + samples_padding); // end sample
+	
+	/* emit power of 2 */
+	p = win.end + samples_padding - _start;
+	p2 = 1;
+	for i = 0 to 24 {
+	  if (p2 >= p) then break;
+	  p2 := p2 * 2;
+	}
+
+	emit (true,                               // yes, snapshot
+	      _start - samples_padding,           // start sample
+	      _start - samples_padding + p2 - 1); // end sample
 	if DEBUG then
 	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
 	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
