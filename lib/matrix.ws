@@ -181,9 +181,6 @@ fun m_trans(m) {
 }
 
 
-// placeholder for matrix inverse
-fun m_inv(arr) { arr }
-
 /* (define (matrix:cofactor matrix i j) */
 /*   (define mat (matrix->lists matrix)) */
 /*   (define (butnth n lst) */

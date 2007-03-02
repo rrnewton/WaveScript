@@ -284,7 +284,7 @@ fun FarFieldDOA(synced, sensors)
 	    // get col vector from matrix
 	    X = m_colm(nffts,power_index[K]);
 
-	    Post = m_mult(D, m_inv(D));
+	    Post = m_mult(D, m_invert(D));
 	    J[I] := J[I] + realpart(m_get(m_mult(m_trans(X), m_mult(Post, X)),0,0));
 	  }
 	};
