@@ -34,6 +34,7 @@
 	   regiment-distributed-primitives
 	   regiment-primitives
 	   wavescript-primitives
+	   wavescript-effectful-primitives
 	   generic-arith-primitives
 	   token-machine-primitives
 
@@ -292,9 +293,24 @@
      )))
 
 (IFWAVESCOPE
+ ;; All side-effecting primitives must go here and must return UNIT:
+ (define wavescript-effectful-primitives 
+   '(
+     (arr-set!         ((Array 'a) Int 'a) #())
+     ;; [2006.11.28] Giving these void types.
+     (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
+     (hashrem_BANG ((HashTable 'key 'val) 'key) #())
+     (print            ('a) #())
+
+     ;; I just use a virtual "Queue" to make the type-checking work for emits:
+     (emit           ((VQueue 'a) 'a) #())
+     (gnuplot_array    ((Array (NUM a))) #())
+     )))
+
+(IFWAVESCOPE
 ;; Adding Wavescope-related primitives:   
 (define wavescript-primitives
-  '( 
+  `( 
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.
@@ -366,15 +382,12 @@
     (wserror         (String) 'a)
     (inspect         ('a) 'a)
 
-    ;; I just use a virtual "Queue" to make the type-checking work for emits:
-    (emit           ((VQueue 'a) 'a) #())
     ;; We just pretend this is a primitive.  It does nothing.
-    (return           ('a) 'a)
+    ;(return           ('a) 'a) ;; Don't need this yet.
 
     ;; Array handling:
     (makeArray        (Int 'a) (Array 'a))
     (arr-get          ((Array 'a) Int) 'a)
-    (arr-set!         ((Array 'a) Int 'a) #())
     (length           ((Array 'a)) Int)
 
     ;; Temporary:
@@ -391,11 +404,7 @@
     ;(hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
     (hashset ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
     (hashrem ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
-
-    ;; [2006.11.28] Giving these void types.
-    (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
-    (hashrem_BANG ((HashTable 'key 'val) 'key) #())
-
+   
     ;----------------------------------------------------------------------
 
     ;; I'm moving some of these higher order ops to "stdlib.ws" for now:
@@ -416,9 +425,8 @@
     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
     (break            () 'a)
 
-    (print            ('a) #())
     (show             ('a) String)
-    (gnuplot_array    ((Array (NUM a))) #())
+
     (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
     (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM a)))) (Stream (Sigseg (NUM a))))
 
@@ -449,7 +457,9 @@
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
 
+    ,@wavescript-effectful-primitives
 )))
+
 
 ;; These are the distributed primitives.  The real Regiment combinators.
 (define regiment-distributed-primitives 

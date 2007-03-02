@@ -61,7 +61,8 @@
   ;; Syntax:
   values->list
   first-value second-value
- 
+  curry
+  
    ;; Values:
   
    ;; Meet in the middle with chez:
@@ -231,6 +232,9 @@
   (syntax-rules () [(_ e) (car (values->list e))]))
 (define-syntax second-value
   (syntax-rules () [(_ e) (cadr (values->list e))]))
+
+(define-syntax curry
+  (syntax-rules () [(_ f x ...) (lambda (y) (f x ... y))]))
 
 ;==============================================================================;
 

@@ -394,6 +394,11 @@
 	    (match x	      
 	      [(set! ,v ,[e]) `(begin (set! ,v ,e) (tuple))]
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
+	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
+	       ;; Assert that the return value is void:
+	       (ASSERT (curry equal? #()) 
+		       (caddr (assq prim wavescript-effectful-primitives)))
+	       `(begin (,prim . ,simple) (tuple))]
 	      [,oth (fallthru oth)]))])
 
 ;; This is a bit complex because it programmatically splits out the stream-primitives.
@@ -408,11 +413,12 @@
 	      (Query ('let ((LHS Type Query) ...) Query))
 	      (Query ('iterate ('let ((LHS Type Block) ...)
 				 ('lambda (Var Var) (Type Type) Block)) Simple))
-	      (Query (StreamOp Simple ...))
 	      (Query ('unionN Simple ...))
+	      (Query (StreamOp Simple ...))
 	      
 	      (Simple Var)
 	      (Simple Const)
+	      (Simple ('tuple))
 	      
 	      (Value Var) 
 	      (Value Const)
@@ -427,6 +433,8 @@
 	      (Block ('for (Var Simple Simple) Block))
 	      (Block ('set! Var Simple))
 	      (Block ('if Simple Block Block))
+	      (Block ('break))
+	      (Block (EffectPrim Simple ...))
 
 	      (Simple ('assert-type Type Simple))
 	      (Value ('assert-type Type Value))
@@ -437,6 +445,7 @@
 	    (map (lambda (x)
 		   (match x 
 		     [(Prim ',name) (guard (memq name streamprims)) `(StreamOp ',name)]
+		     [(Prim ',name) (guard (assq name wavescript-effectful-primitives)) `(EffectPrim ',name)]
 		     [,oth oth]))
 	      (filter (lambda (x) (not (memq (car x) '(Expr Program LetOrSimple))))
 		ws-remove-complex-opera*-grammar))
@@ -613,7 +622,7 @@
   ;(run-pass p nominalize-types)
 
 ;   (set! prog (ws-add-return-statements prog))
-  (run-pass p ws-add-return-statements)
+  ;(run-pass p ws-add-return-statements)
 
   p)))
 
@@ -746,12 +755,12 @@
    
    (set! prog (run-ws-compiler typed #t))
 
-   (REGIMENT_DEBUG 
+   (when (regiment-verbose)
     (printf "================================================================================\n")
     (printf "\nNow nominalizing types.\n"))
    (set! prog (nominalize-types prog))
-   (REGIMENT_DEBUG (pretty-print prog))
-   (REGIMENT_DEBUG 
+   (when (regiment-verbose)
+    (pretty-print prog)
     ;;   (printf "================================================================================\n")
     (printf "\nNow emitting C code:\n"))
 

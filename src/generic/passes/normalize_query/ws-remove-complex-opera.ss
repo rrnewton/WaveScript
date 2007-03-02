@@ -101,9 +101,12 @@
   
     (define (make-lets decls body)
       (if (null? decls) 
-	  (begin (ASSERT (lambda (x) (or (simple-expr? x) 
-					 (and (list? x) (eq? (car x) 'let)))) 
-			 body)
+	  (begin 
+	    ;; Can be any 'Block', not just simple expression:
+	    #;
+	    (ASSERT (lambda (x) (or (simple-expr? x)
+				    (and (list? x) (eq? (car x) 'let))))
+		    body)
 		 body)
 	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
 	  ))
@@ -197,14 +200,20 @@
 	      (vector `(unionN ,@v*)
 		      decls))]
 
-	   [(begin ,[e]) e]
-
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to
 	   ;; reorder side effects.
-	   [(begin ,[(lambda (x) (make-simple x tenv)) -> e* edecls*] ...)
-	    (vector `(begin ,@(map make-lets edecls* e*))
+	   [(begin ,[e*] ...)   
+	    (vector `(begin . ,(map (match-lambda (#(,e ,decls)) 
+				      (if (null? decls) e
+					  (make-lets decls e)))
+				 e*))
 		    '())]
+
+; 	   [(begin ,[e]) e]
+; 	   [(begin ,[(lambda (x) (make-simple x tenv)) -> e* edecls*] ...)
+; 	    (vector `(begin ,@(map make-lets edecls* e*))
+; 		    '())]
 
 	   ;; Make set!'s rhs simple:
 	   [(set! ,v ,e)

@@ -79,7 +79,7 @@
 
     [String "wsstring_t"] ;; Not boosted.
 
-    [(VQueue ,_) `("void")]
+    [(VQueue ,_) "void*"]
 
     ;; Went back and forth on whether this should be a pointer:
     [(Sigseg ,[t]) `("RawSeg")]
@@ -88,6 +88,8 @@
     ;[(Array ,[t]) `(,t "[]")]
     [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
     [(Struct ,name) (symbol->string name)]
+
+    [#() "bool"]
     
     ;; HACK HACK FIXME:
     ;; This is for null lists.
@@ -133,16 +135,16 @@
     ;; .param x      The query construct to process.
     ;; .returns 3 values: A new expression, a set of declarations, wsq declarations
     (define (Query name typ x tenv)
-	(define myExpr (Expr tenv))
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
       (match x
 
 	;; A constant, make global:
-	[,e (guard (not (distributed-type? typ))) 
+	[,e (guard (not (distributed-type? typ)))
 	    (values ""
-		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
-		       " ",name " = " ,(myExpr e) ";\n"))
+		    ((Value tenv) name (Type typ) e)
+;		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
+;		       " ",name " = " ,((Value tenv) e) ";\n"))
                     '())]
 
 	;; An alias:
@@ -210,7 +212,7 @@
 
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
-		      (window ,sig ,[myExpr -> size]))
+		      (window ,sig ,[Simple -> size]))
 	 (define new-class-name (Var (unique-name 'Window)))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
@@ -226,7 +228,7 @@
                  `(("op \"",name"\" \"",new-class-name"\" \"query.so\"\n")
 		   ("connect \"",(symbol->string sig)"\" \"",name"\"\n")))]
 	
-	[(audio ,[myExpr -> channel] ,[myExpr -> size] ,[myExpr -> skip] ,[myExpr -> rate])
+	[(audio ,[Simple -> channel] ,[Simple -> size] ,[Simple -> skip] ,[Simple -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (values 
@@ -239,7 +241,7 @@
           `())]
 
 	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
-	[(audioFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap] ,[myExpr -> rate])
+	[(audioFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap] ,[Simple -> rate])
 	 ;; HMM, size seems to be FIXED:  FIXME	  
 	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
 	 (define new-class-name (Var (unique-name 'AudioFileSource)))
@@ -256,9 +258,9 @@
 
 	;; Produces an instance of a generic dataFile reader.
 	[(assert-type (Stream (Struct ,structname))
-		      (__dataFile ,[myExpr -> file] ,[myExpr -> mode]
-				  ,[myExpr -> rate]
-				  ,[myExpr -> repeats] 
+		      (__dataFile ,[Simple -> file] ,[Simple -> mode]
+				  ,[Simple -> rate]
+				  ,[Simple -> repeats] 
 				  ;,[myExpr -> types]
 				  ,_ignored
 				  ))
@@ -349,7 +351,7 @@
           `()))]
 
 	;; [2006.11.18] This is for readng pipeline data currently.
-	[(doubleFile ,[myExpr -> file] ,[myExpr -> size] ,[myExpr -> overlap])
+	[(doubleFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap])
 	 ;; CODE DUPLICATION:
 	 (values 
 	  `("WSBox* ",name";\n"
@@ -448,7 +450,7 @@
 	  [(string? datum) (format "string(~s)" datum)]
 	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
 	  [(integer? datum) (format "(wsint_t)~a" datum)]
-	  [else (error 'emitC:Expr "not a C-compatible literal: ~s" datum)])]
+	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
 	   (DEBUGASSERT (not (polymorphic-type? ty)))
@@ -462,141 +464,76 @@
 	   [#(nullarr ,t) "WSNULL"]
 	   )]))
 
+    (define Simple
+      (lambda (x)
+	(match x 
+	  [(quote ,c) (Const c)]
+	  [,v (guard (symbol? v)) (Var v)]
+	  [,else (error 'Simple "not simple expression: ~s" x)])))
+
 ; ======================================================================
 ;; Statements.
 
 (define (Block tenv)
   (lambda (b)
     (match b 
+      [,v (guard (symbol? v)) ""]
+
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
-	((Effect tenv) (symbol->string v) (Type ty) rhs)
+	((Value tenv) (symbol->string v) (Type ty) rhs)
 	((Block (tenv-extend tenv (list v) (list ty))) bod))]
       [(begin ,e1 . ,e*)
        (list
-	((Effect tenv) #f #f e1)
-	((Block tenv) `(begin . ,e*)))
-       ]
+	((Block tenv) e1)
+	((Block tenv) `(begin . ,e*)))]
       [(begin) ""]
+
+      [(return ,[Simple -> e])
+       `("return ",e";\n")]
+
+      [(set! ,[Var -> v] ,[Simple -> e])
+       `(,v " = " ,e ";\n")]
+      
+      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod)
+       (let ([istr (Var i)])	   
+	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+		((Block (tenv-extend tenv (list i) '(Int))) bod)))]
+      [(break) "break;\n"]
+      [(tuple) ""]
+
+      ;; Must distinguish expression from statement context.
+      [(if ,[Simple -> test] ,[conseq] ,[altern])
+       `(;,type" ",name";\n"
+	 "if (" ,test ") {\n"
+	 ,(indent conseq "  ")
+	 "} else {\n"
+	 ,(indent altern "  ")
+	 "}\n")]
+      
+      ;; HACK: cast to output type. FIXME FIXME
+      [(emit ,vqueue ,[Simple -> val])
+       (match (recover-type vqueue tenv)
+	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
+
+      ;; Print is required to be pre-annotated with a type.
+      ;; (We can no longer do recover-type.)
+      [(print (assert-type ,t ,[Simple -> e]))
+       (EmitPrint e t)]
+      [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
+
+      [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
+       (guard (memq containerset! '(arr-set! hashset_BANG)))
+       `("(*",container ")[" ,ind "] = " ,val ";\n")]
+
       [,oth (error 'Block "unhandled: ~s" oth)]
-      )    
-    )
-  )
-
-
-;; .param Name -- Text representing the name, or #f
-;; .param Type -- Text representing the type, or #f
-(define (Effect tenv)
-  (lambda (st)
-    ;(define myValue (Value tenv))
-    (define (wrap x) (if name 
-			 (list (format "~a ~a = " type name) x ";\n")
-			 (list x ";\n")))
-    (define result 
-      (match st
-
-	;; These immediates generate no code in Stmt position.
-	;[,v (guard (symbol? v)) (wrap (symbol->string v))]
-	;[(quote ,[Const -> c]) (wrap c)]
-	
-	[,v (guard (symbol? v)) ""]
-	[(quote ,c) ""]
-
-	[(return ,[Simple -> e])
-	 (ASSERT not name)
-	 `("return ",e";\n")]
-
-	;; Must distinguish expression from statement context.
-	[(if ,[Simple -> test] ,conseq ,altern)
-	 `(;,type" ",name";\n"
-	   "if (" ,test ") {\n"
-	   ,(indent ((Effect tenv) ;name "" 
-		     conseq) "  ")
- 
-	   "} else {\n"
-	   ,(indent ((Effect tenv) ;name "" 
-		     altern) "  ")
-	   "}\n")]
-
-	;; Not allowed in expression position currently:
-#;
-	[(let ([,[Var -> v] ,[Type -> t] ,rhs]) ,[body])
-	 ;[myValue -> rhs]
-	 (myValue v t rhs)
-	 ;`(,t " " ,v " = " ,rhs ";\n" ,body)
-	 ]
-
-#;
-	;; TEMP:
-	[(,letsym () ,body)  (guard (memq letsym '(let letrec)))
-;	 (inspect `(HMM ,body))
-;	 `("toplevel = " ,(Var body))]
-	 ((Stmt tenv) name body)]
-#;
-	;; No recursion!
-	[(letrec ,binds ,body)
-	 (ASSERT (no-recursion! binds))
-	 ((Stmt tenv) `(let (,(car binds))
-			 (letrec ,(cdr binds) ,body)))]
-#;
-	[(let ,binds ,body)
-	 ((Stmt tenv) `(let (,(car binds))
-			 (let ,(cdr binds) ,body)))]
-	
-;	[(emit ,vqueue (assert-type ,ty ,[myValue -> val]))
-;	 `("emit((",(Type ty)")" ,val ");\n")]
-
-	;; HACK: cast to output type. FIXME FIXME
-	[(emit ,vqueue ,[Simple -> val])
-	 ;(ASSERT not name)
-	 (match (recover-type vqueue tenv)
-	   [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
-
-	;; Print is required to be pre-annotated with a type.
-	;; (We can no longer do recover-type.)
-	[(print (assert-type ,t ,[Simple -> e]))
-	 ;(ASSERT not name)
-	 (EmitPrint e t)]
-	[(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
-
-	[(begin ,[stmts] ...) (ASSERT not name) stmts]
-
-	[(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
-	 (guard (memq containerset! '(arr-set! hashset_BANG)))
-	 ;(ASSERT not name)
-	 `("(*",container ")[" ,ind "] = " ,val ";\n")]
-
-	[(set! ,[Var -> v] ,[Simple -> e])
-	 ;(ASSERT not name)
-	 `(,v " = " ,e ";\n")]
-
-	[(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod)
-	 (let ([istr (Var i)])	   
-	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		  ((Effect (tenv-extend tenv (list i) '(Int))) bod)))]
-	[(break) "break;\n"]
-
-;	[___VIRTQUEUE___ ""] ;; [2006.11.24] Should this still be here?
-
-	;; Otherwise it's just an expression.
-	;; TEMP: HACK: Need to normalize contexts.
-	;; TODO: Not all expressions make valid statements.
-#;
-	[,[myValue -> exp] 
-	 (ASSERT (compose not procedure?) exp)
-	 `(,exp ";\n")]
-
-	[,unmatched (error 'emitC:Effect "unhandled form ~s" unmatched)]
-	))
-	(DEBUGASSERT text? result)
-	result
-	))
+      )))
 
 ; ======================================================================
 ;; Expressions.
 	
     (define (Value tenv)
-      (lambda (name type exp)
+      (trace-lambda V (name type exp)
 	(define (wrap x) (if name 
 			     (list (format "~a ~a = " type name) x ";\n")
 			     (list x ";\n")))
@@ -626,7 +563,7 @@
 	;; Here we handle "open coded" primitives:
 
 	;; TODO: tupref, exponentiation 
-	[(,infix_prim ,[left] ,[right])
+	[(,infix_prim ,[Simple -> left] ,[Simple -> right])
 	 (guard (memq infix_prim '(;+ - * /
 				   +. -. *. /. 
 				   +_ *_ -_ /_
@@ -650,11 +587,11 @@
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(realpart ,[v])   (wrap `("__real__ " ,v))]
-	[(imagpart ,[v])   (wrap `("__imag__ " ,v))]
+	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
 
-	[(intToFloat ,[e]) (wrap `("(wsfloat_t)",e))]
-	[(floatToInt ,[e]) (wrap `("(wsint_t)",e))]
+	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
 
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
@@ -687,6 +624,8 @@
 
 	;; Later we'll clean it up so contexts are normalized:
 	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+
+	[(tuple) (wrap "((bool)0)")]
 
 	;; Forming tuples.
 	[(make-struct ,name ,[Simple -> arg*] ...)
@@ -739,7 +678,7 @@
 
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
-	 (let ([simple `("wsequal(",a", ",b")")])
+	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
 	   (match t
 	     [Int          simple]
 	     [Float        simple]
@@ -763,10 +702,12 @@
 	
 	; ============================================================
 	;; Other prims fall through:
-	[(,prim ,[rand*] ...)
+	[(,prim ,[Simple -> rand*] ...)
 	 (guard (regiment-primitive? prim))
-	 `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")")]
-	[(app ,rator ,[rand*] ...)
+	 (wrap `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")"))]
+
+	#;
+	[(app ,rator ,[Simple -> rand*] ...)
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
@@ -985,6 +926,8 @@
 			   ;"void *input = inputQueue->dequeue();\n"
 			   ;,typ " " ,(Var input) " = *((",typ"*)input);\n"
 			   ,(naturalize "datum" (Var input) T)
+			   ;; Declare the VQueue... this is basically dead code:
+			   ,(Type vqT)" ",(Var vq)";\n"
 			   
 			   ,@body
 			   
@@ -1002,12 +945,13 @@
 	 (let* ([newenv (tenv-extend tenv lhs* ty*)]
 		[myValue (Value newenv)]
 		[lhs* (map Var lhs*)]
-		[rhs* (map myValue rhs*)])
+		[newty* (map Type ty*)]
+		[inits2 (map myValue lhs* (map (lambda _ "") newty*) rhs*)])
 	   ;; KNow do the body with the new tenv:
 	   (mvlet ([(body inits) (wscode->text bod name newenv)])
 	     (let ([decls (map (lambda (l t orig) `(,t " " ,l ,(format "; // WS type: ~s\n" orig)))
-			    lhs* (map Type ty*) ty*)]
-		   [inits2 (map (lambda (l r) `(,l " = " ,r ";\n")) lhs* rhs*)]
+			    lhs* newty* ty*)]
+		   ;[inits2 (map (lambda (l r) `(,l " = " ,r ";\n")) lhs* rhs*)]
 		   )
 	       (values `(,decls "\n" ,body) `(,inits ,inits2))))
 	   )]

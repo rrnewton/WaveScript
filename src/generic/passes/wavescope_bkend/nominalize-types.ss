@@ -89,6 +89,7 @@
 
 	  [(,C ,[t] ...) (guard (symbol? C)) `(,C ,@t)]
 
+	  [#() #()]
 	  [#(,t* ...)
 	   ;; Do the lookup on the *pre*converted type:
 	   ;; It's ok if there are duplicates in the tupdefs, this will get the first.
@@ -109,6 +110,7 @@
 		  "should not have polymorphic type: ~s" ty)]
 	  [(,[arg*] ... -> ,[ret]) (apply append ret arg*)]
 	  [(,C ,[t*] ...) (guard (symbol? C)) (apply append t*)]
+	  [#() '()]
 	  [#(,t* ...)
 	   (cons (make-new-typedef t*)
 		 (apply append (map collect-from-type t*)))]
@@ -135,6 +137,8 @@
 	    ))
 
       (define (make-new-typedef argtypes)
+	(if  (null? argtypes) (error 'nominalize-types:make-new-typedefs 
+				     "no typedefs allowed for unit type."))
 	(unless (andmap known-size? argtypes)
 	  (error 'nominalize-types
 		 "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
@@ -162,6 +166,8 @@
 	   ;; Everything returned must be an intermediate result.
 	   (ASSERT result?
 	    (match expr
+             [(tuple) (make-result '(tuple) '())]
+              
 	     [(tuple ,arg* ...)
 	      (let ([type (recover-type `(tuple . ,arg*) tenv)])
 		(match type
