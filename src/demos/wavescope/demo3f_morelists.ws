@@ -9,7 +9,7 @@ s2 = iterate( w in s1 ) {
   emit reverse([w.start, w.end]);
 };
 
-s3 = iterate( w in window(s2, 2)) {
+s3 = iterate( w in prim_window(s2, 2)) {
   emit(append(w[[0]], w[[1]]));
   //emit [10,11,12,13];
   //emit append([10,11], [12,13]);

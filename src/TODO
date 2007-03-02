@@ -12,6 +12,10 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.02]
+ *) uniform value printing
+ *) remove dependence on $WAVESCOPED/Makefile in wsc process.
+
 [2007.02.11]
  *) Initialize class-typed iterator state properly (not from within
     the {} of the constructor)

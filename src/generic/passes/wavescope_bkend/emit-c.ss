@@ -533,9 +533,9 @@
 ;; Expressions.
 	
     (define (Value tenv)
-      (trace-lambda V (name type exp)
+      (lambda (name type exp)
 	(define (wrap x) (if name 
-			     (list (format "~a ~a = " type name) x ";\n")
+			     (list type " " name " = " x ";\n")
 			     (list x ";\n")))
 	(match exp
 
