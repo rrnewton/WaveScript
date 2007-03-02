@@ -132,7 +132,7 @@
     ;; .param type   Type of current result.
     ;; .param x      The query construct to process.
     ;; .returns 3 values: A new expression, a set of declarations, wsq declarations
-    (trace-define (Query name typ x tenv)
+    (define (Query name typ x tenv)
 	(define myExpr (Expr tenv))
       ;; Coercion:
       (if (symbol? name) (set! name (symbol->string name)))
@@ -152,10 +152,10 @@
                     ()
                     ())]
 
-	;; Forbidding recursion for now (even though this says 'letrec').
-	[(,letsym ,binds ,bod) (guard (memq letsym '(let letrec)))
+	;; Only do let for now.
+#;	[(,letsym ,binds ,bod) (guard (memq letsym '(let )))
 	 ;(ASSERT (symbol? body))
-	 (ASSERT (no-recursion! binds))
+	 ;(ASSERT (no-recursion! binds))
          (match binds 
            [([,lhs* ,ty* ,rhs*] ...)
             (let ([newenv (tenv-extend tenv lhs* ty*)])
@@ -174,6 +174,40 @@
                              (loop (cdr lhs*) (cdr ty*) (cdr rhs*)
                                    (cons stmt stmtacc) (cons decl declacc) (cons wsq wsqacc)))))))]
            [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])]
+
+	[(let ([,lhs ,ty ,rhs]) ,bod)
+	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
+              (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)]
+			   [(stmt decl wsq) (Query lhs ty rhs tenv)])
+		(values (append stmt bodstmts)
+			(append decl boddecls)
+			(append wsq wsqdecls))))]
+
+	[(iterate ,let-or-lambda ,sig)
+	 ;; Program better have been flattened!!:
+	 (ASSERT (symbol? sig))	  
+	 (let* ([parent (Var sig)]
+		[class_name `("Iter_" ,name)]
+		;; First we produce a line of text to construct the box:
+		[ourstmts `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
+			      ,name"->connect(" ,parent ");\n")]
+		;; Then we produce the declaration for the box itself:
+		[ourdecls 
+		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
+		   (list (WSBox class_name 
+				(match typ
+				  [(Stream ,t) (Type t)]
+				  [,other (error 'emitC:Query "expected iterate to have signal output type! ~s" other)])
+				;; Constructor:
+				(block `(,class_name "()")  stateinit)
+				;; This produces a function declaration for iterate:				
+				iterator+vars)))]) 
+	   ;(if (symbol? sig) 
+	   (values ourstmts ourdecls
+                   `(("op \"",name"\" \"",class_name"\" \"query.so\"\n") 
+                     ("connect \"" ,parent"\" \"",name"\"\n"))
+                   ))]
+
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
 		      (window ,sig ,[myExpr -> size]))
@@ -328,31 +362,6 @@
           `()
           )]
 
-	[(iterate ,let-or-lambda ,sig)
-	 ;; Program better have been flattened!!:
-	 (ASSERT (symbol? sig))	  
-	 (let* ([parent (Var sig)]
-		[class_name `("Iter_" ,name)]
-		;; First we produce a line of text to construct the box:
-		[ourstmts `(  "WSBox* ",name" = new ",class_name "(" ");\n" 
-			      ,name"->connect(" ,parent ");\n")]
-		;; Then we produce the declaration for the box itself:
-		[ourdecls 
-		 (mvlet ([(iterator+vars stateinit) (wscode->text let-or-lambda name tenv)])
-		   (list (WSBox class_name 
-				(match typ
-				  [(Stream ,t) (Type t)]
-				  [,other (error 'emitC:Query "expected iterate to have signal output type! ~s" other)])
-				;; Constructor:
-				(block `(,class_name "()")  stateinit)
-				;; This produces a function declaration for iterate:				
-				iterator+vars)))]) 
-	   ;(if (symbol? sig) 
-	   (values ourstmts ourdecls
-                   `(("op \"",name"\" \"",class_name"\" \"query.so\"\n") 
-                     ("connect \"" ,parent"\" \"",name"\"\n"))
-                   ))]
-
 	
 	;; This is purely hackish... should use the zip library function.	
 #;
@@ -456,74 +465,115 @@
 ; ======================================================================
 ;; Statements.
 
-    (define (Stmt tenv)
-      (lambda (st)
-	(define myExpr (Expr tenv))
-	(define result 
-	  (match st
+(define (Block tenv)
+  (lambda (b)
+    (match b 
+      [(let ([,v ,ty ,rhs]) ,bod)
+       (list
+	((Effect tenv) (symbol->string v) (Type ty) rhs)
+	((Block (tenv-extend tenv (list v) (list ty))) bod))]
+      [(begin ,e1 . ,e*)
+       (list
+	((Effect tenv) #f #f e1)
+	((Block tenv) `(begin . ,e*)))
+       ]
+      [(begin) ""]
+      [,oth (error 'Block "unhandled: ~s" oth)]
+      )    
+    )
+  )
+
+
+;; .param Name -- Text representing the name, or #f
+;; .param Type -- Text representing the type, or #f
+(define (Effect tenv)
+  (lambda (st)
+    ;(define myValue (Value tenv))
+    (define (wrap x) (if name 
+			 (list (format "~a ~a = " type name) x ";\n")
+			 (list x ";\n")))
+    (define result 
+      (match st
 
 	;; These immediates generate no code in Stmt position.
+	;[,v (guard (symbol? v)) (wrap (symbol->string v))]
+	;[(quote ,[Const -> c]) (wrap c)]
+	
 	[,v (guard (symbol? v)) ""]
 	[(quote ,c) ""]
 
+	[(return ,[Simple -> e])
+	 (ASSERT not name)
+	 `("return ",e";\n")]
 
 	;; Must distinguish expression from statement context.
-	[(if ,[myExpr -> test] ,[conseq] ,[altern])
-	 `("if (" ,test ") {\n"
-	   ,(indent conseq "  ")
+	[(if ,[Simple -> test] ,conseq ,altern)
+	 `(;,type" ",name";\n"
+	   "if (" ,test ") {\n"
+	   ,(indent ((Effect tenv) ;name "" 
+		     conseq) "  ")
+ 
 	   "} else {\n"
-	   ,(indent altern "  ")
+	   ,(indent ((Effect tenv) ;name "" 
+		     altern) "  ")
 	   "}\n")]
 
 	;; Not allowed in expression position currently:
-	[(let ([,[Var -> v] ,[Type -> t] ,[myExpr -> rhs]]) ,[body])
-	 `(,t " " ,v " = " ,rhs ";\n" ,body)]
+#;
+	[(let ([,[Var -> v] ,[Type -> t] ,rhs]) ,[body])
+	 ;[myValue -> rhs]
+	 (myValue v t rhs)
+	 ;`(,t " " ,v " = " ,rhs ";\n" ,body)
+	 ]
 
+#;
 	;; TEMP:
 	[(,letsym () ,body)  (guard (memq letsym '(let letrec)))
 ;	 (inspect `(HMM ,body))
 ;	 `("toplevel = " ,(Var body))]
-	 ((Stmt tenv) body)]
-
+	 ((Stmt tenv) name body)]
+#;
 	;; No recursion!
 	[(letrec ,binds ,body)
 	 (ASSERT (no-recursion! binds))
 	 ((Stmt tenv) `(let (,(car binds))
 			 (letrec ,(cdr binds) ,body)))]
+#;
 	[(let ,binds ,body)
 	 ((Stmt tenv) `(let (,(car binds))
 			 (let ,(cdr binds) ,body)))]
 	
-;	[(emit ,vqueue (assert-type ,ty ,[myExpr -> val]))
+;	[(emit ,vqueue (assert-type ,ty ,[myValue -> val]))
 ;	 `("emit((",(Type ty)")" ,val ");\n")]
 
 	;; HACK: cast to output type. FIXME FIXME
-	[(emit ,vqueue ,[myExpr -> val])
+	[(emit ,vqueue ,[Simple -> val])
+	 ;(ASSERT not name)
 	 (match (recover-type vqueue tenv)
-	   [(VQueue ,ty)
-	    `("emit((",(Type ty)")" ,val ");\n")
-	    ])]
+	   [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
 
 	;; Print is required to be pre-annotated with a type.
 	;; (We can no longer do recover-type.)
-	[(print (assert-type ,t ,e))
-	 (EmitPrint (myExpr e) t)]
-	[(print ,_) (error 'emit-c:Stmt "print should have a type-assertion around its argument: ~s" _)]
+	[(print (assert-type ,t ,[Simple -> e]))
+	 ;(ASSERT not name)
+	 (EmitPrint e t)]
+	[(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
-	;; This begin is already *in* Stmt context, don't switch back to Expr for its last:
-	[(begin ,[stmts] ...) stmts]
+	[(begin ,[stmts] ...) (ASSERT not name) stmts]
 
-	[(,containerset! ,[myExpr -> container] ,[myExpr -> ind] ,[myExpr -> val])
+	[(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
 	 (guard (memq containerset! '(arr-set! hashset_BANG)))
+	 ;(ASSERT not name)
 	 `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
-	[(set! ,[Var -> v] ,[myExpr -> e])
-	 `(,v " = " ,e ";\n")]       
+	[(set! ,[Var -> v] ,[Simple -> e])
+	 ;(ASSERT not name)
+	 `(,v " = " ,e ";\n")]
 
-	[(for (,i ,[myExpr -> st] ,[myExpr -> en]) ,bod)
+	[(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod)
 	 (let ([istr (Var i)])	   
 	   (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		  ((Stmt (tenv-extend tenv (list i) '(Int))) bod)))]
+		  ((Effect (tenv-extend tenv (list i) '(Int))) bod)))]
 	[(break) "break;\n"]
 
 ;	[___VIRTQUEUE___ ""] ;; [2006.11.24] Should this still be here?
@@ -531,10 +581,12 @@
 	;; Otherwise it's just an expression.
 	;; TEMP: HACK: Need to normalize contexts.
 	;; TODO: Not all expressions make valid statements.
-	[,[myExpr -> exp] 
+#;
+	[,[myValue -> exp] 
 	 (ASSERT (compose not procedure?) exp)
 	 `(,exp ";\n")]
-	[,unmatched (error 'emitC:Stmt "unhandled form ~s" unmatched)]
+
+	[,unmatched (error 'emitC:Effect "unhandled form ~s" unmatched)]
 	))
 	(DEBUGASSERT text? result)
 	result
@@ -543,21 +595,32 @@
 ; ======================================================================
 ;; Expressions.
 	
-    (define (Expr tenv)
-      (lambda (exp)
+    (define (Value tenv)
+      (lambda (name type exp)
+	(define (wrap x) (if name 
+			     (list (format "~a ~a = " type name) x ";\n")
+			     (list x ";\n")))
 	(match exp
 
 	  ;; Special Constants:
-	  [(assert-type ,t nullseg) (Const 'nullseg t)]
-	  [(assert-type ,t nullarr) (Const 'nullarr t)]
-	  [(assert-type ,t '())     (Const '() t)]
+	  [(assert-type ,t nullseg) (wrap (Const 'nullseg t))]
+	  [(assert-type ,t nullarr) (wrap (Const 'nullarr t))]
+	  [(assert-type ,t '())     (wrap (Const '() t))]
 	  ;[,c (guard (constant? c)) (Const c)]
-	  [(quote ,datum) (Const datum)]
+	  [(quote ,datum)           (wrap (Const datum))]
 
-	  [,v (guard (symbol? v)) (Var v)]	
+	  [,v (guard (symbol? v))   (wrap (Var v))]
 
-	  [(if ,[test] ,[conseq] ,[altern])
-	   `("(",test " ? " ,conseq " : " ,altern")")]
+	  ;[(if ,[Simple -> test] ,conseq ,altern)
+	   ;`("(",test " ? " ,conseq " : " ,altern")") 	   ]
+
+	  [(if ,[Simple -> test] ,conseq ,altern)
+	   `(,type" ",name";\n"
+	     "if (" ,test ") {\n"
+	     ,(indent ((Value tenv) name "" conseq) "  ")
+	     "} else {\n"
+	     ,(indent ((Value tenv) name "" altern) "  ")
+	     "}\n")]
 	  
 	; ============================================================
 	;; Here we handle "open coded" primitives:
@@ -583,73 +646,72 @@
 			[(+I16 -I16 *I16 /I16)
 			 (substring (symbol->string infix_prim) 0 1)]
 			)])
-	   `("(" ,left ,(format " ~a " cname) ,right ")"))]
+	   (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(realpart ,[v]) `("__real__ " ,v)]
-	[(imagpart ,[v]) `("__imag__ " ,v)]
+	[(realpart ,[v])   (wrap `("__real__ " ,v))]
+	[(imagpart ,[v])   (wrap `("__imag__ " ,v))]
 
-	[(intToFloat ,[e]) `("(wsfloat_t)",e)]
-	[(floatToInt ,[e]) `("(wsint_t)",e)]
+	[(intToFloat ,[e]) (wrap `("(wsfloat_t)",e))]
+	[(floatToInt ,[e]) (wrap `("(wsint_t)",e))]
 
-	[(show (assert-type ,t ,e))
-	 (EmitShow ((Expr tenv) e) t)]
-	[(show ,_) (error 'emit-c:Stmt "show should have a type-assertion around its argument: ~s" _)]
+	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
+	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[seg]) ,[ind])
+	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
 	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
-	 `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))")]
+	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
 	[(seg-get ,foo ...)
-	 (error 'emit-c "seg-get without type annotation: ~s" 
+	 (error 'emit-c:Value "seg-get without type annotation: ~s" 
 		`(seg-get ,@foo))]
 	
 	;; Need to use type environment to find out what alpha is.
 	;; We store the length in the first element.
-	[(newarr ,[int] ,alpha)
+	[(newarr ,[Simple -> int] ,alpha)
 	 ;(recover-type )
 	 "newarr_UNFINISHED"]
 	
 	;[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(arr-get ,[arr] ,[ind]) `("(*",arr ")[" ,ind "]")]
-	[(makeArray ,[n] ,[x]) `("makeArray(",n", ",x")")]
+	[(arr-get ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
+	[(makeArray ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	
-	[(length ,[arr]) `("(wsint_t)(",arr"->size())")]
+	[(length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
 	[(arr-set! ,x ...)
-	 (error 'emitC:Expr "arr-set! in expression context: ~s" `(arr-set! ,x ...))]
+	 (error 'emitC:Value "arr-set! in Value context: ~s" `(arr-set! ,x ...))]
 	[(begin ,stmts ...)
-	 (error 'emitC:Expr "begin in expression context: ~s" `(begin ,stmts ...))]
+	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
 
 	;; Later we'll clean it up so contexts are normalized:
-	;[(set! ,[Var -> v] ,[(Expr tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
 
 	;; Forming tuples.
-	[(make-struct ,name ,[arg*] ...)
-	 `(,(symbol->string name)"(",(insert-between ", " arg*)")")]
+	[(make-struct ,name ,[Simple -> arg*] ...)
+	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
 	;; Referencing tuples.
-	[(struct-ref ,[x] ,fld)
-	 `("(",x "." ,(symbol->string fld)")")]
+	[(struct-ref ,[Simple -> x] ,fld)
+	 (wrap `("(",x "." ,(symbol->string fld)")"))]
        
 	;; ----------------------------------------
 	;; Lists:
-	[(assert-type (List ,[Type -> ty]) (cons ,[a] ,[b]))
-	 `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")]
-	[(car ,[ls]) `("(",ls")->car")]
-	[(cdr ,[ls]) `("(",ls")->cdr")]
-	[(assert-type (List ,t) (reverse ,[ls]))
-	 `("cons<",(Type t)">::reverse(",ls")")]
+	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
+	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
+	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
+	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
+	[(assert-type (List ,t) (reverse ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
 
-	[(assert-type (List ,[Type -> ty]) (append ,[ls1] ,[ls2]))
-	 `("cons<",ty">::append(",ls1", ",ls2")")]
+	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
+	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
 	[(,lp . ,_) (guard (memq lp '(cons car cdr append))) ;; Safety net.
-	 (error 'emit-C:Expr "bad list prim: ~s" `(,lp . ,_))
+	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
 
 	;; ----------------------------------------
@@ -657,26 +719,26 @@
 
 	;; We should have the proper type assertion on there after flattening the program.
 	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (hashtable ,[n]))
+	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
 	 (let ([hashtype (HashType k v)]
 	       ;[eqfun ]
 	       [k (Type k)]
 	       [v (Type v)])
-	   `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))"))]
-	[(hashtable ,_) (error 'emitC:Expr "hashtable not wrapped in proper assert-type: ~s"
+	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
+	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
 			       `(hashtable ,_))]
-	[(hashget ,[ht] ,[key]) `("(*",ht ")[",key"]")]
+	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
 	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(hashcontains ,[ht] ,[key]) `("(*",ht ")[",key"]")]
+	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
 
-	[(tupref . ,_) (error 'emit-c:Expr "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
-	[(tuple . ,_) (error 'emit-c:Expr "tuple should have been eliminated: ~s" `(tuple . ,_))]
+	[(tupref . ,_) (error 'emit-c:Value "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
+	[(tuple . ,_) (error 'emit-c:Value "tuple should have been eliminated: ~s" `(tuple . ,_))]
 
 	;; TODO: Could make this into a cast statement for a sanity check??
 	[(assert-type ,t ,[e]) e]
 
 	;; Generate equality comparison:
-	[(equal? (assert-type ,t ,[a]) ,[b])
+	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
 	 (let ([simple `("wsequal(",a", ",b")")])
 	   (match t
 	     [Int          simple]
@@ -707,7 +769,7 @@
 	[(app ,rator ,[rand*] ...)
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
-	[,unmatched (error 'emitC:Expr "unhandled form ~s" unmatched)])
+	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 
 
@@ -913,7 +975,7 @@
       (lambda (exp name tenv)
 	(match exp 
 	  [(lambda (,input ,vq) (,T ,vqT) ,bod)
-	   (let ([body ((Stmt (tenv-extend tenv `(,input ,vq) `(,T ,vqT))) bod)]
+	   (let ([body ((Block (tenv-extend tenv `(,input ,vq) `(,T ,vqT))) bod)]
 		 [typ (Type T)])
 	     (values `(,(format "/* WaveScript input type: ~s */\n" T)
 		       ,(block 
@@ -938,9 +1000,9 @@
 	;; Iterator state:
 	[(,letsym ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letsym '(let letrec)))
 	 (let* ([newenv (tenv-extend tenv lhs* ty*)]
-		[myExpr (Expr newenv)]
+		[myValue (Value newenv)]
 		[lhs* (map Var lhs*)]
-		[rhs* (map myExpr rhs*)])
+		[rhs* (map myValue rhs*)])
 	   ;; KNow do the body with the new tenv:
 	   (mvlet ([(body inits) (wscode->text bod name newenv)])
 	     (let ([decls (map (lambda (l t orig) `(,t " " ,l ,(format "; // WS type: ~s\n" orig)))

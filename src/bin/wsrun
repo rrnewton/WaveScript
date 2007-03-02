@@ -1,6 +1,10 @@
 #!/bin/sh
 
-echo CURRENTLY UNIMPLEMENTED:
+#echo CURRENTLY UNIMPLEMENTED:
 
-echo This script should take a query.cpp file, copy it to the right place, build WaveScope, and run it!
+#echo This script should take a query.cpp file, copy it to the right place, build WaveScope, and run it!
+
+cp $1 $WAVESCOPED/WaveScriptQuery.cpp
+(cd $WAVESCOPED; make WaveScriptQueryGO)
+
 

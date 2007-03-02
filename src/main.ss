@@ -4,7 +4,6 @@
 ;;;; Loaded by both the Chez and PLT versions.
 ;;;; (Expects to be loaded from the directory that contains it.)
 
-
 ;======================================  
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
@@ -379,8 +378,9 @@
 	  [,oth `(return ,(fallthru other))]
 	  )))  
   [OutputGrammar 
-   (cons '(LetOrSimple ('return Simple))
-	 ws-remove-complex-opera*-grammar)
+   (cons ;'(LetOrSimple ('return Simple))
+    '(Expr ('return Simple))
+    ws-remove-complex-opera*-grammar)
    ]
   [Expr (lambda (x fallthru)
 	    (match x
@@ -389,14 +389,72 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+(define-pass ws-normalize-context
+    [Expr (lambda (x fallthru)
+	    (match x	      
+	      [(set! ,v ,[e]) `(begin (set! ,v ,e) (tuple))]
+	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
+	      [,oth (fallthru oth)]))])
+
+;; This is a bit complex because it programmatically splits out the stream-primitives.
+(define ws-lift-let-grammar
+  (let ([streamprims 
+	 (map car 
+	   (filter (lambda (x) (deep-assq 'Stream x))
+	     (difference (regiment-primitives) regiment-distributed-primitives)))])
+    (append '((Program ((quote program) Query Type))
+
+	      (Query Var)
+	      (Query ('let ((LHS Type Query) ...) Query))
+	      (Query ('iterate ('let ((LHS Type Block) ...)
+				 ('lambda (Var Var) (Type Type) Block)) Simple))
+	      (Query (StreamOp Simple ...))
+	      (Query ('unionN Simple ...))
+	      
+	      (Simple Var)
+	      (Simple Const)
+	      
+	      (Value Var) 
+	      (Value Const)
+	      (Value ('tuple Simple ...))
+	      (Value ('tupref Int Int Simple))
+	      (Value (Prim Simple ...))
+	      (Value ('if Simple Block Block))
+
+	      (Block Simple)
+	      (Block ('let ((LHS Type Value) ...) Block))
+	      (Block ('begin Block ...))
+	      (Block ('for (Var Simple Simple) Block))
+	      (Block ('set! Var Simple))
+	      (Block ('if Simple Block Block))
+
+	      (Simple ('assert-type Type Simple))
+	      (Value ('assert-type Type Value))
+	      (Query ('assert-type Type Query))
+	      (Block ('assert-type Type Block))
+	       
+	       )
+	    (map (lambda (x)
+		   (match x 
+		     [(Prim ',name) (guard (memq name streamprims)) `(StreamOp ',name)]
+		     [,oth oth]))
+	      (filter (lambda (x) (not (memq (car x) '(Expr Program LetOrSimple))))
+		ws-remove-complex-opera*-grammar))
+	     )))
+
 ;; This doesn't allow let's in RHS position.  It lifts them out.  This
 ;; expands the scope of the lifted bindings, and thus depends on
 ;; unique variable names. 
 (define-pass ws-lift-let
+    (define (make-begin . expr*)
+      (match (match `(begin ,@expr*)
+	       [(begin ,[expr*] ...) (apply append expr*)]
+	       [,expr (list expr)])
+	[(,x) x]
+	[(,x ,x* ...) `(begin ,x ,x* ...)]))
     (define process-expr
       (lambda (x fallthru)
 	(match x
-
 	  ;; Do lifts:
 	  [(let ([,v ,ty (let ([,v2 ,ty2 ,e2]) ,rhs)]) ,bod)
 	   (process-expr 
@@ -405,24 +463,17 @@
 	  ;; Lifting out begins too.
 	  [(let ([,v ,ty (begin ,e1 ,e2 ,rest ...)]) ,bod)
 	   (process-expr 
-	    `(begin ,e1 (let ([,v ,ty (begin ,e2 . ,rest)]) ,bod))
+	    (make-begin e1 `(let ([,v ,ty ,(apply make-begin (cons e2 rest))]) ,bod))
 	    fallthru)]
-
-	  [(let ([,v ,ty ,[rhs]]) ,[bod])
-	   `(let ([,v ,ty ,rhs]) ,bod)]
-
+	  [(let ([,v ,ty ,[rhs]]) ,[bod])   `(let ([,v ,ty ,rhs]) ,bod)]
+	  [(let . ,_) (error 'ws-lift-let "unhandled let: ~s" `(let . ,_))]
 	  [(begin ,[e])  e]
-
 	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
 	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
-
-	  [(let . ,_) (error 'ws-lift-let "unhandled let: ~s" `(let . ,_))]
 	  [,oth (fallthru oth)])))
-
     ;; Assumes lets only bind one variable (except for iterates)
     [Expr process-expr]
-    ;[OutputGrammar ]
-    )
+    [OutputGrammar ws-lift-let-grammar])
 
 
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.
@@ -433,9 +484,9 @@
     (lambda (x)
       (if (regiment-verbose)
 	  (if #t ;IFDEBUG
-	      (begin (parameterize ([pretty-line-length 150]
-				 [print-length 30]
-				 [print-level 30])
+	      (begin (parameterize ([pretty-line-length 160]
+				    [print-length #f]
+				    [print-level #f])
 		    (newline)
 		    (pretty-print x))
 		  (printf "================================================================================\n\n")
@@ -534,6 +585,7 @@
 ;  (run-pass p lift-letrec-body)
 
   (run-pass p ws-remove-complex-opera*)
+  (run-pass p ws-normalize-context)
   (run-pass p ws-lift-let)
 
   ;; Replacing remove-complex-opera* with a simpler pass:

@@ -41,10 +41,10 @@
 
        ;; Could require that these Expr positions be Lets:
        (Expr ('if Simple Expr Expr))
-       (Expr ('begin Expr ...))
        (Expr ('for (Var Simple Simple) Expr))
        (Expr ('lambda (LHS ...) (Type ...) Expr))
        (Expr ('assert-type Type Expr))
+       (Expr ('begin Expr ...))      
 
        ;(Expr ('let ((LHS Type Expr) ...) Expr))
 
@@ -52,10 +52,13 @@
        (Expr ('iterate ('let ((LHS Type Expr) ...)
 			 ('lambda (Var Var) (Type Type) Expr)) Simple))
 
-       (Expr LetOrSimple)
-       (LetOrSimple Simple)
-       (LetOrSimple ('let ((LHS Type Expr) ...) LetOrSimple))
-      
+       ;(Expr LetOrSimple)
+       ;(LetOrSimple Simple)
+       ;(LetOrSimple ('let ((LHS Type Expr) ...) LetOrSimple))
+       ;(LetOrSimple ('begin LetOrSimple ...))
+
+       (Expr ('let ((LHS Type Expr) ...) Expr))
+
        (Simple ('assert-type Type Simple))
        (Simple Var)   
        (Simple Const))
@@ -193,6 +196,8 @@
 	    (let-values ([(v* decls) (make-simples strms tenv)])
 	      (vector `(unionN ,@v*)
 		      decls))]
+
+	   [(begin ,[e]) e]
 
 	   ;; SIGH, side effects...  Here we lift bindings up to the
 	   ;; top of each subexpression but no further.  Don't want to

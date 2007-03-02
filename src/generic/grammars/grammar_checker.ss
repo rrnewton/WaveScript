@@ -297,7 +297,11 @@
 (define (check-grammar origexpr grammar . initialprod)
   ;; expr is an sexpression
   ;; grammar is just a list of productions
-  (define allvariants (list->set (map car grammar)))
+  (define allvariants 
+    (begin 
+      (ASSERT (andmap pair? grammar))
+      (list->set (map car grammar))
+      ))
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
 
   (define (fail x p k)

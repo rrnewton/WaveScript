@@ -55,8 +55,7 @@ syncN =
   _strms = map(f, strms);  
   slist = _ctrl : _strms;  
 
-  if DEBUGSYNC 
-    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
+   //  if DEBUGSYNC then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
