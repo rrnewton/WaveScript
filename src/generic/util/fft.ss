@@ -11,8 +11,8 @@
 ;; including plan-creation.)
 
 (module fft mzscheme
-  (require "../constants.ss"
-	   "scheme_fft.ss"
+
+  (require "../generic/scheme_fft.ss"
 	   "helpers.ss")
   (provide ;make-dft-plan 
            dft)
@@ -21,7 +21,10 @@
   ;; Set to the basic scheme version:
   (define basic-dft 
     (lambda (x)
-      (cond [(vector? x) (list->vector (dft-list (vector->list x)))]
+      (cond [(vector? x) 
+	     (unless (integer? (/ (log (vector-length x)) (log 2)))
+	       (error 'basic-dft "can't do fft on window of length that's not power of two: ~s" (vector-length x)))
+	     (list->vector (dft-list (vector->list x)))]
 	    [(list? x) (dft-list x)]
 	    [else (error 'dft "didn't receive list or vector: ~a\n" x)])))
 ;  (define make-dft-plan (lambda (n) 'dummy-plan))
