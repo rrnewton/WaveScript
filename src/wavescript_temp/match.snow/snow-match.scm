@@ -29,17 +29,20 @@
 
 ;(define thecode (read (open-input-file "match.r5rs")))
 
+;------------------------------------------------------------
 ;; Switch into r5rs mode.
 (cond-expand
+ ;; Already there:
+ ((or chez petite mzscheme) (begin))
  (scm  (require 'r5rs))
  (guile (use-syntax (ice-9 syncase)))
  (gambit
-  ;; gambit -- ok, load "syntax-case.scm"  
+  ;; gambit -- ok, load "syntax-case.scm", but how can we reliably find that file?
   (void)
   )
- (else (begin)))
+ (else (snow-error "Cannot currently support R5RS macros under this implementation.")))
 
-
+;------------------------------------------------------------
 ;; Now load the syntax-transformers into the top level.
 (cond-expand
 ; (chez     (include "match.chez"))
@@ -50,9 +53,11 @@
   (load "match.r5rs")
   )
  (else 
-  (error 'match "pattern matching package doesn't support this scheme platform")
+  (snow-error "pattern matching package doesn't support this scheme platform")
   ))
 
+
+;------------------------------------------------------------
 (define (add1 x) (+ x 1))
 (define* (test-match)
   (for-each 
@@ -100,10 +105,9 @@
 ; 	 (,n (add1 n)))
 ;        )
 
-
       )))
 
 
-(display "TESTING: ") (newline) (test-match)
+;(display "TESTING: ") (newline) (test-match)
 ;(display thecode)
 ;(eval thecode (interaction-environment))

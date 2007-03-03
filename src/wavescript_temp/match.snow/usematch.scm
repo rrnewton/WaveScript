@@ -6,6 +6,8 @@
 
 ;;;============================================================================
 
+(test-match)
+
 (newline)(display "RUNNING: ")
 ;(printf "RUNNING ~s ~s \n" oblist (snow-fxand 4 88))
 
