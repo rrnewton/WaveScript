@@ -1,18 +1,28 @@
 ":";exec snowrun -- "$0" "$@"
 
-;; This passes tests under scm, chez, mzscheme, guile
+;;;; This is a reimplementation of a subset of the functionality
+;;;; provided by the IU pattern matching facility (match.ss)
+;;;;  -Ryan Newton [2006/2007]
 
+;; [2007.03.03] The module passes its simple tests under scm, chez, mzscheme, guile
 ;; bigloo -- Loads, passes some tests.  Gets some kind of call-with-values 
 ;;           error on the multiple value test
 ;; larceny -- Gets a wrong number of arguments error on the same test as bigloo.
 
-(package* snow-match v0.0.1
+(package* iu-match v0.0.1
  (provide:
   (define* (test-match))
   ;; Can we make a dummy export?  Not currently.
   ;(define-macro* (match e . clauses) 'matcher-undefined)
   )
  ;(require: _syntax-rules)
+
+; (maintainer: "Ryan Newton <newton at alum.mit.edu>")
+; (author: "Ryan Newton <newton at alum.mit.edu>")
+; (homepage: "http://snow.iro.umontreal.ca")
+; (description: "Pattern matching against lists and vectors.")
+; (keywords: pattern-matching data)
+; (license: lgpl/v2.1)
  )
 
 (display "Loading pattern matcher in scheme system \"")

@@ -1,7 +1,7 @@
 ":";exec snowrun -- "$0" "$@"
 
-(package* usematch v1.0.0
-  (require: snow-match)
+(package* testmatch
+	  (require: iu-match/v0)
  )
 
 ;;;============================================================================
