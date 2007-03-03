@@ -1,5 +1,10 @@
 ;;; match.ss
 
+;;;; Ryan Newton: I'm trying to hack the syntax-case based version to work in larceny.
+;;;; 
+
+
+
 ;;; Time-stamp: Sun Jan 14 09:04:21 EST 2001 rkd
 
 ;; [14 Jan 2001]
