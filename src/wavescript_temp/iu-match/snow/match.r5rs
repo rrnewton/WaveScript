@@ -21,16 +21,15 @@
 
 (begin
 
-
-(define-syntax PATMATCH_ASSERT
-  (syntax-rules ()
-    ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
-
 (define-syntax match
   (syntax-rules ()
     ((_ Exp Clause ...)
      (let f ((x Exp))
        (PATMATCH_match-help _ f x Clause ...)))))
+
+(define-syntax PATMATCH_ASSERT
+  (syntax-rules ()
+    ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
 
 (define-syntax PATMATCH_match-help
   (syntax-rules (guard)
