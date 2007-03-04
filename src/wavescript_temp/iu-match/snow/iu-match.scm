@@ -1,4 +1,4 @@
-":";exec snowrun -- "$0" "$@"
+":";exec snow -- "$0" "$@"
 
 ;;;; This is a reimplementation of a subset of the functionality
 ;;;; provided by the IU pattern matching facility (match.ss)
@@ -9,7 +9,7 @@
 ;;           error on the multiple value test
 ;; larceny -- Gets a wrong number of arguments error on the same test as bigloo.
 
-(package* iu-match v0.0.1
+(package* iu-match/v0.0.0
  (provide:
   (define* (test-match))
   ;; Can we make a dummy export?  Not currently.
@@ -17,12 +17,12 @@
   )
  ;(require: _syntax-rules)
 
-; (maintainer: "Ryan Newton <newton at alum.mit.edu>")
-; (author: "Ryan Newton <newton at alum.mit.edu>")
-; (homepage: "http://snow.iro.umontreal.ca")
-; (description: "Pattern matching against lists and vectors.")
-; (keywords: pattern-matching data)
-; (license: lgpl/v2.1)
+ (maintainer: "Ryan Newton <ryan.newton at alum.mit.edu>")
+ (author:     "Ryan Newton <ryan.newton at alum.mit.edu>")
+ (homepage:   "http://snow.iro.umontreal.ca")
+ (description: "Pattern matching against lists and vectors.")
+ (keywords: pattern-matching data)
+ (license: lgpl/v2.1)
  )
 
 (display "Loading pattern matcher in scheme system \"")
@@ -40,10 +40,10 @@
 ;(define thecode (read (open-input-file "match.r5rs")))
 
 ;------------------------------------------------------------
-;; Switch into r5rs mode.
+;; Switch into r5rs mode to get define-syntax.
 (cond-expand
  ;; Already there:
- ((or chez petite mzscheme) (begin))
+ ((or chez petite mzscheme bigloo) (begin))
  (scm  (require 'r5rs))
  (guile (use-syntax (ice-9 syncase)))
  (gambit
@@ -68,46 +68,47 @@
 
 
 ;------------------------------------------------------------
-(define (add1 x) (+ x 1))
-(define* (test-match)
-  (for-each 
-      (lambda (pr)
-	(display "   Test: ") (write (car pr)) (newline)
-	(if (equal? (eval (car pr) (interaction-environment)) ;(scheme-report-environment 5)
-		    (cadr pr))
-	    (begin (display "-- Passed." ) (newline))
-	    (begin (display "-- FAILED." ) (newline))
-	    ))
-    '(   
-      ((match 3 (,x x)) 3)
 
-      ((match '(1 2) ((,x ,y) (+ x y))) 3)
-      
-      ((match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y))) 200)
-      
-      ((match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v)) (1 2))
+;(display "TESTING: ") (newline) (test-match)
+;(display thecode)
+;(eval thecode (interaction-environment))
 
-      ((match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y))) 200)
+;; Hmm, test* doesn't seem to work for me in snow v1.0.0
 
-      ((match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4)) (3 4))
+(test* 
+ (define (add1 x) (+ x 1))
 
-      ((match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
-       (3 4 5 6))
-
-      ((match '(1 . 2) ((,x . ,y) y)) 2)
-
-      ((match '(1 2 3) ((1 ,x* ....) x*)) (2 3))
-      ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*))) #((a b c) (1 2 3)))
-      ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay)) yay)
-
-      ;; Redirect:
-      ((match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y))) (3 4))
-
-      ;; Basic guard:
-      ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
-
-      ;; Redirect and ellipses.
-;      ((match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4))
+ (expect* (equal? 3   
+		  (match 3 (,x x))))
+ (expect* (equal? 3   
+		  (match '(1 2) ((,x ,y) (+ x y)))))
+ (expect* (equal? 200 
+		  (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))))
+ (expect* (equal? '(1 2) 
+		  (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))))
+ (expect* (equal? 200
+		  (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))))
+ (expect* (equal? '(3 4)
+		  (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))))
+ (expect* (equal? '(3 4 5 6) 
+		  (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))))
+ (expect* (equal? 2
+		  (match '(1 . 2) ((,x . ,y) y))))
+ (expect* (equal? '(2 3) 
+		  (match '(1 2 3) ((1 ,x* ....) x*))))
+ (expect* (equal? #((a b c) (1 2 3)) 
+		  (match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*)))))
+ (expect* (equal? 'yay 
+		  (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay))))
+ ;; Redirect:
+ (expect* (equal? '(3 4) 
+		  (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))))
+ ;; Basic guard:
+ (expect* (equal? 33 
+		  (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))))
+ 
+ ;; Redirect and ellipses.
+;      (expect* (equal? (match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4)))
 
 ;       ;; Make sure we keep those bindings straight.
 ;       ((match '((a 2 9) (b 2 99) (c 2 999))
@@ -115,9 +116,5 @@
 ; 	 (,n (add1 n)))
 ;        )
 
-      )))
 
-
-;(display "TESTING: ") (newline) (test-match)
-;(display thecode)
-;(eval thecode (interaction-environment))
+ )
