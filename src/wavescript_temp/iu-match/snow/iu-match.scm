@@ -11,7 +11,7 @@
 ;; mitscheme -- Runs into some unknown problem with trying to apply 3.
 ;; chicken -- supports define-syntax, but can't handle the macros in match.r5rs
 
-(package* iu-match/v0.0.1
+(package* iu-match/v0.0.4
  (provide:
 ;  (define* (test-match))
   ;; Should use define-syntax* export here when it's available.
@@ -21,40 +21,39 @@
  (author:     "Ryan Newton <ryan.newton at alum.mit.edu>")
  (homepage:   "http://snow.iro.umontreal.ca")
  (description: "Pattern matching against lists and vectors."
-"This package implements a syntactic sugar (match) for deconstructing
- lists and vectors.  For example:
-
-  (match 3 (,x x)) ==> 3
-  (match '(1 2) ((,x ,y) (+ x y))) ==> 3
-  (match '#(1 2) 
-    ((,x ,y ,z)  'err) 
-    (#(,x ,y)   (* 100 y))) ==> 200
-
-Thus, (match expression clause*)
-Where clause := (pat expr ...) | (pat (guard pred ...) expr ...)
-
-The predicates within the guard may refer to pattern variables so long
-as they are not the result of a recursive match (see below).
-
-The grammar for patterns is:
-
-    ,patvar                      ;; matches anything, and binds patvar 
-  | literal                      ;; symbol, number, etc, matches with equal? 
-  | (pat1 ... patN)              ;; list of n elements 
-  | (pat1 ... patN . patN+1)     ;; list of n or more 
-  | (pat1 ... patN _...)         ;; patN matches against any number of elements
-                                 ;;   all patvars within patN are bound to lists
-  | #(pat1 ... patN)             ;; vector of n elements 
-  | #(pat1 ... patN _...)        ;; vector of n or more, patN matches remainder
-  | ,(patvar)                    ;; recursively match this position, 
-                                 ;;   bind result to patvar
-  | ,(f -> patvar)               ;; apply function f to this position, 
-                                 ;;   bind result to patvar
-
-This pattern grammar uses '_...' for ellipses because syntax-rules on
-most scheme implementations will not allow '...' in the literals list.
-
-")
+"This package implements a syntactic sugar (match) for deconstructing"
+"lists and vectors.  For example:"
+""
+"  (match 3 (,x x)) ==> 3"
+"  (match '(1 2) ((,x ,y) (+ x y))) ==> 3"
+"  (match '#(1 2) "
+"    ((,x ,y ,z)  'err) "
+"    (#(,x ,y)   (* 100 y))) ==> 200"
+""
+"Thus, (match expression clause*)"
+"Where clause := (pat expr ...) | (pat (guard pred ...) expr ...)"
+""
+"The predicates within the guard may refer to pattern variables so long"
+"as they are not the result of a recursive match (see below)."
+""
+"The grammar for patterns is:"
+""
+"    ,patvar                      ;; matches anything, and binds patvar "
+"  | literal                      ;; symbol, number, etc, matches with equal? "
+"  | (pat1 ... patN)              ;; list of n elements "
+"  | (pat1 ... patN . patN+1)     ;; list of n or more "
+"  | (pat1 ... patN _...)         ;; patN matches against any number of elements"
+"                                 ;;   all patvars within patN are bound to lists"
+"  | #(pat1 ... patN)             ;; vector of n elements "
+"  | #(pat1 ... patN _...)        ;; vector of n or more, patN matches remainder"
+"  | ,(patvar)                    ;; recursively match this position, "
+"                                 ;;   bind result to patvar"
+"  | ,(f -> patvar)               ;; apply function f to this position, "
+"                                 ;;   bind result to patvar"
+""
+"This pattern grammar uses '_...' for ellipses because syntax-rules on"
+"most scheme implementations will not allow '...' in the literals list."
+"")
 
  (keywords: pattern-matching data)
  (license: lgpl/v2.1)
