@@ -11,7 +11,7 @@
 ;; mitscheme -- Runs into some unknown problem with trying to apply 3.
 ;; chicken -- supports define-syntax, but can't handle the macros in match.r5rs
 
-(package* iu-match/v0.0.4
+(package* iu-match/v0.0.5
  (provide:
 ;  (define* (test-match))
   ;; Should use define-syntax* export here when it's available.
@@ -46,10 +46,10 @@
 "                                 ;;   all patvars within patN are bound to lists"
 "  | #(pat1 ... patN)             ;; vector of n elements "
 "  | #(pat1 ... patN _...)        ;; vector of n or more, patN matches remainder"
-"  | ,(patvar)                    ;; recursively match this position, "
-"                                 ;;   bind result to patvar"
-"  | ,(f -> patvar)               ;; apply function f to this position, "
-"                                 ;;   bind result to patvar"
+"  | ,(patvar ...)                ;; recursively match this position,  bind resulting"
+"                                 ;;   values (possibly multiple) to patvars"
+"  | ,(f -> patvar ...)           ;; apply function f to this position, "
+"                                 ;;   bind resulting values to patvars"
 ""
 "This pattern grammar uses '_...' for ellipses because syntax-rules on"
 "most scheme implementations will not allow '...' in the literals list."
