@@ -503,9 +503,9 @@
     (define (wrap x) (if name 
 			 (list type " " name " = " x ";\n")
 			 (list x ";\n")))
-    (ASSERT not name)
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
+      [(quote ,c)             (if name (wrap (Const c)) "")]
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
