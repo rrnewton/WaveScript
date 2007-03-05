@@ -15,13 +15,13 @@
 #include <boost/functional/hash.hpp>
 
 #include <stdio.h>
+#include <math.h>
 
 #include <list>
 #include <vector>
 #include <string>
 #include <iostream>
 #include <ext/hash_map>
-
 
 #include <fftw3.h>
 #include <complex>

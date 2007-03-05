@@ -365,8 +365,8 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
-//BASE <- positives;
+BASE <- positives;
 //BASE <- detections;
 //BASE <- synced;
 
-BASE <- unionList([ch1,ch2]);
+//BASE <- unionList([ch1,ch2]);

@@ -55,7 +55,7 @@ go "demo6b_sync.ws"
 go "demo6c_syncN.ws"
 
 go "demo7a_marmot_noinline.ws"
-go "demo7b_marmot_phase1.ws"
+#go "demo7b_marmot_phase1.ws"
 
 
 # ;    "demo5b_better.ws"

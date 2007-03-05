@@ -441,13 +441,7 @@
       (ASSERT (symbol? var))
       ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
       (symbol->string var))
-    (define (PrimName var)
-      ;; Handle special cases here.
-      (define (special v)
-	(case v
-	  [(not) 'wsnot] ; The name "not" makes g++ unhappy.
-	  [else v]))
-      (format "WSPrim::~a" (mangle-name (symbol->string (special var)))))
+
       ;(symbol->string var))
     (define (FunName var)
       (format "WSFunLib::~a" var))
@@ -603,31 +597,84 @@
 	    ((Value tenv) (symbol->string v) (Type ty) rhs)
 	    ((Value (tenv-extend tenv (list v) (list ty))) name type bod))]
 
-	; ============================================================
-	;; Here we handle "open coded" primitives:
+	[(tuple) (wrap "((wsunit_t)0)")]
+	;; Forming tuples.
+	[(make-struct ,name ,[Simple -> arg*] ...)
+	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
+	;; Referencing tuples.
+	[(struct-ref ,[Simple -> x] ,fld)
+	 (wrap `("(",x "." ,(symbol->string fld)")"))]
 
-	;; TODO: tupref, exponentiation 
-	[(,infix_prim ,[Simple -> left] ,[Simple -> right])
-	 (guard (memq infix_prim '(;+ - * /
-				   +. -. *. /. 
-				   +_ *_ -_ /_
-				   +: *: -: /:
-				   +I16 *I16 -I16 /I16
-				   < > <= >= =
-				   )))
-	 (let ([cname (case infix_prim
-			[(=) "=="]
-			[(;+ * - / 
-			  < > <= >=) infix_prim]
-			[(+. *. -. /.
-			  +_ *_ -_ /_
-			  +: *: -: /:
-			  ) ;; Chop off the period:
-			 (substring (symbol->string infix_prim) 0 1)]
-			[(+I16 -I16 *I16 /I16)
-			 (substring (symbol->string infix_prim) 0 1)]
-			)])
-	   (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
+	; ============================================================
+	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	 (Prim (cons prim rand*) name type)]
+	[(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+	 (Prim `(assert-type ,t (,prim . ,rand*)) name type)]
+
+	; ============================================================
+
+	[(tupref . ,_) (error 'emit-c:Value "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
+	[(tuple . ,_) (error 'emit-c:Value "tuple should have been eliminated: ~s" `(tuple . ,_))]
+
+	;; TODO: Could make this into a cast statement for a sanity check??
+	[(assert-type ,t ,[e]) e]
+
+	#;
+	[(app ,rator ,[Simple -> rand*] ...)
+	 (ASSERT (symbol? rator))				       
+	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
+	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
+	))
+
+
+
+;================================================================================
+;; Primitive calls:
+
+(define (Prim expr name type)
+  (define (wrap x) (list type " " name " = " x ";\n"))
+  ;; This is for primitives that correspond exactly to exactly one C call.
+  (define (SimplePrim var)
+    (define (fromlib v) (format "WSPrim::~a" v))
+    (define (mangle v) (mangle-name (symbol->string v)))
+    ;; Handle special cases here.
+    (case var
+      [(not)         
+       "!" ;(mangle 'wsnot)
+       ] ; The name "not" makes g++ unhappy.
+      ;; These are the same as their C++ names:
+      [(cos sin tan)     (symbol->string var)]
+      [(absF absI absI16)       "abs"]
+      [(absC)                   "cabs"]
+      [(sqrtI sqrtF sqrtC)      "sqrt"]
+      [(max)                    "max"]
+      [else (fromlib (mangle var))]))
+
+  (match expr
+    ;; First we handle "open coded" primitives:
+    
+    ;; TODO: tupref, exponentiation 
+    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
+     (guard (memq infix_prim '(;+ - * /
+			       +. -. *. /. 
+				  +_ *_ -_ /_
+				  +: *: -: /:
+				  +I16 *I16 -I16 /I16
+				  < > <= >= =
+				  )))
+     (let ([cname (case infix_prim
+		    [(=) "=="]
+		    [(;+ * - / 
+		      < > <= >=) infix_prim]
+		    [(+. *. -. /.
+			 +_ *_ -_ /_
+			 +: *: -: /:
+			 ) ;; Chop off the period:
+		     (substring (symbol->string infix_prim) 0 1)]
+		    [(+I16 -I16 *I16 /I16)
+		     (substring (symbol->string infix_prim) 0 1)]
+		    )])
+       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
@@ -651,6 +698,7 @@
 	[(seg-get ,foo ...)
 	 (error 'emit-c:Value "seg-get without type annotation: ~s" 
 		`(seg-get ,@foo))]
+	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
 	
 	;; Need to use type environment to find out what alpha is.
 	;; We store the length in the first element.
@@ -672,16 +720,7 @@
 	;; Later we'll clean it up so contexts are normalized:
 	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
 
-	[(tuple) (wrap "((wsunit_t)0)")]
-
-	;; Forming tuples.
-	[(make-struct ,name ,[Simple -> arg*] ...)
-	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
-	;; Referencing tuples.
-	[(struct-ref ,[Simple -> x] ,fld)
-	 (wrap `("(",x "." ,(symbol->string fld)")"))]
-       
-	;; ----------------------------------------
+       	;; ----------------------------------------
 	;; Lists:
 	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
 	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
@@ -717,12 +756,6 @@
 	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
 	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
 
-	[(tupref . ,_) (error 'emit-c:Value "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
-	[(tuple . ,_) (error 'emit-c:Value "tuple should have been eliminated: ~s" `(tuple . ,_))]
-
-	;; TODO: Could make this into a cast statement for a sanity check??
-	[(assert-type ,t ,[e]) e]
-
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
 	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
@@ -746,21 +779,15 @@
 	   )
 	 
 	 ]
-	
-	; ============================================================
-	;; Other prims fall through:
-	[(,prim ,[Simple -> rand*] ...)
-	 (guard (regiment-primitive? prim))
-	 (wrap `(,(PrimName prim) "(" ,(insert-between ", " rand*) ")"))]
 
-	#;
-	[(app ,rator ,[Simple -> rand*] ...)
-	 (ASSERT (symbol? rator))				       
-	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
-	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
-	))
+	;; Other prims fall through to here:
+	[(,other ,[Simple -> rand*] ...)
+	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
+	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
+	 ])
+  )
 
-
+;================================================================================
 
 ;; This implements our polymorphic print/show functions.
 ;; It prints something or other for any type.
