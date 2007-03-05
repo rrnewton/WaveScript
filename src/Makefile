@@ -181,6 +181,8 @@ builddir:
 # exhaustive as possible.
 t: test
 test: 
+	rm -rf /tmp/wsparse_server_*
+	killall mzscheme
 	$(MAKE) clean 
 	$(MAKE) wsparse
 	regiment test
@@ -188,7 +190,7 @@ test:
 	(cd demos/wavescope; ./testall_demos.ss)
 	echo exit | ws lib/stdlib.ws;
 	echo exit | ws lib/matrix_test.ws;
-	$(MAKE) chez
+	$(MAKE) ws
 	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 

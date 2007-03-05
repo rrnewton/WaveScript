@@ -169,6 +169,7 @@
     (syntax-rules ()
       ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
 
+  ;; Converts hertz to microseconds:
   (define (rate->timestep freq)
     (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
     (flonum->fixnum (s:* 1000000 (s:/ 1.0 freq))))

@@ -23,7 +23,7 @@ fun zip(s1, s2) {
   }
 };
 
-countup = iterate(_ in timer(3000)) {
+countup = iterate(_ in timer(0.33333)) {
   state{ cnt = 0 }
   cnt := cnt+1;
   emit cnt;

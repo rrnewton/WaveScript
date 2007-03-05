@@ -208,5 +208,30 @@ public:
       return true;
     }
   };
+
+
+
+  /* This takes Signal(T) to Signal(SigSeg(T)) */
+  class Timer : public WSSource{
+   
+    public:
+    Timer(wsfloat_t freq) : WSSource("Timer") {
+      period = (int)(1000000.0 * (1.0 / freq));
+      Launch();
+    }
+
+    DEFINE_SOURCE_TYPE(wsunit_t);
+
+    private:
+    int period; 
+
+    void *run_thread() {
+      while (!Shutdown()) {
+	source_emit(0);
+	usleep(period);
+      }
+      return NULL;
+    }
+  };
   
 };

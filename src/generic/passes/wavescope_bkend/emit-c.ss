@@ -89,7 +89,7 @@
     [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
     [(Struct ,name) (symbol->string name)]
 
-    [#() "bool"]
+    [#() "wsunit_t"]
     
     [Timebase  "int"]
 
@@ -419,8 +419,19 @@
 ")
             ;; wsq decls:
             `()))]
+
+
+	;; UNOPTIMIZED: should combine with the downstream iterate.
+	;; Wire these all to our iterate.
+	[(timer ,[Simple -> period])
+	 (values 
+	  `(" WSSource* ",name" = new WSBuiltins::Timer(",period");\n"  )
+	  '()
+	  '() ;;TODO, FIXME: wsq decls
+	  )]
+
 	
-	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
+	  [,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
 
 ; ======================================================================
@@ -478,56 +489,75 @@
 ; ======================================================================
 ;; Statements.
 
+
+;; Blocks can be either in effect position (body of an iterate) or in
+;; value position (the arms of an if).  Only in value position will
+;; there be a name/type provided to store the resulting value.
+;;
+;; .param name : #f or Text representing the name of the variable in which 
+;;               to store the resulting value
+;; .param type : #f or Text representing the type to go with the name
+;; .param b : the block of code in sexp form
 (define (Block tenv)
-  (lambda (b)
+  (lambda (name type b)
+    (define (wrap x) (if name 
+			 (list type " " name " = " x ";\n")
+			 (list x ";\n")))
+    (ASSERT not name)
     (match b 
-      [,v (guard (symbol? v)) ""]
+      [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
 	((Value tenv) (symbol->string v) (Type ty) rhs)
-	((Block (tenv-extend tenv (list v) (list ty))) bod))]
+	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
       [(begin ,e1 . ,e*)
        (list
-	((Block tenv) e1)
-	((Block tenv) `(begin . ,e*)))]
+	((Block tenv) #f #f e1)
+	((Block tenv) name type `(begin . ,e*)))]
+      ;; Both void value:
       [(begin) ""]
-
-      [(return ,[Simple -> e])
-       `("return ",e";\n")]
-
-      [(set! ,[Var -> v] ,[Simple -> e])
-       `(,v " = " ,e ";\n")]
-      
-      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod)
-       (let ([istr (Var i)])	   
-	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		((Block (tenv-extend tenv (list i) '(Int))) bod)))]
-      [(break) "break;\n"]
       [(tuple) ""]
 
+      ;; Not using return statements right now:
+#;
+      [(return ,[Simple -> e]) (ASSERT not name)
+       `("return ",e";\n")]
+
+      [(set! ,[Var -> v] ,[Simple -> e]) (ASSERT not name)
+       `(,v " = " ,e ";\n")]
+      
+      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
+       (let ([istr (Var i)])	   
+	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
+      [(break) (ASSERT not name) "break;\n"]
+
       ;; Must distinguish expression from statement context.
-      [(if ,[Simple -> test] ,[conseq] ,[altern])
-       `(;,type" ",name";\n"
+      [(if ,[Simple -> test] ,conseq ,altern)
+       `(,(if name `(,type" ",name";\n") "")
 	 "if (" ,test ") {\n"
-	 ,(indent conseq "  ")
+	 ,(indent ((Block tenv) name "" conseq) "  ")
 	 "} else {\n"
-	 ,(indent altern "  ")
+	 ,(indent ((Block tenv) name "" altern) "  ")
 	 "}\n")]
       
       ;; HACK: cast to output type. FIXME FIXME
       [(emit ,vqueue ,[Simple -> val])
+       (ASSERT not name)
        (match (recover-type vqueue tenv)
 	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
 
       ;; Print is required to be pre-annotated with a type.
       ;; (We can no longer do recover-type.)
       [(print (assert-type ,t ,[Simple -> e]))
+       (ASSERT not name)
        (EmitPrint e t)]
       [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
       [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
        (guard (memq containerset! '(arr-set! hashset_BANG)))
+       (ASSERT not name)
        `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
       [,oth (error 'Block "unhandled: ~s" oth)]
@@ -538,9 +568,8 @@
 	
     (define (Value tenv)
       (lambda (name type exp)
-	(define (wrap x) (if name 
-			     (list type " " name " = " x ";\n")
-			     (list x ";\n")))
+	(define (wrap x) (list type " " name " = " x ";\n"))
+	(ASSERT name)
 	(match exp
 
 	  ;; Special Constants:
@@ -563,9 +592,9 @@
 	  [(if ,[Simple -> test] ,conseq ,altern)
 	   `(,type" ",name";\n"
 	     "if (" ,test ") {\n"
-	     ,(indent ((Value tenv) name "" conseq) "  ")
+	     ,(indent ((Block tenv) name "" conseq) "  ")
 	     "} else {\n"
-	     ,(indent ((Value tenv) name "" altern) "  ")
+	     ,(indent ((Block tenv) name "" altern) "  ")
 	     "}\n")]
 	  
 	  ;; This is needed just for the RHS's of iterator state variables.
@@ -643,7 +672,7 @@
 	;; Later we'll clean it up so contexts are normalized:
 	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
 
-	[(tuple) (wrap "((bool)0)")]
+	[(tuple) (wrap "((wsunit_t)0)")]
 
 	;; Forming tuples.
 	[(make-struct ,name ,[Simple -> arg*] ...)
@@ -882,7 +911,7 @@
      `("/* Sigseg input.  This is a bit of a trick, uses ref rather than value: */\n"
        ,tstr "& " ,outname " = *(",tstr"*) ",inname";\n")]
     ;; Immediates are passed by value.
-    [,imm (guard (immediate-type? imm))
+    [,imm (guard (or (immediate-type? imm) (equal? imm '#())))
 	  `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")]
     
     ;; Currently let's just not let you pass sigsegs in lists!
@@ -891,7 +920,7 @@
 
     [(Array ,t)
      `(,tstr " " ,outname " = *((",tstr"*) ",inname");\n")
-     ]
+     ]    
 	  
     ;; TODO ARRAYS:    
     [,other (error 'naturalize "Can't naturalize as box input type: ~s" other)]
@@ -934,7 +963,7 @@
       (lambda (exp name tenv)
 	(match exp 
 	  [(lambda (,input ,vq) (,T ,vqT) ,bod)
-	   (let ([body ((Block (tenv-extend tenv `(,input ,vq) `(,T ,vqT))) bod)]
+	   (let ([body ((Block (tenv-extend tenv `(,input ,vq) `(,T ,vqT))) #f #f bod)]
 		 [typ (Type T)])
 	     (values `(,(format "/* WaveScript input type: ~s */\n" T)
 		       ,(block 

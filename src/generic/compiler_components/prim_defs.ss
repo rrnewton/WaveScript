@@ -302,9 +302,13 @@
      (hashrem_BANG ((HashTable 'key 'val) 'key) #())
      (print            ('a) #())
 
+     (gnuplot_array    ((Array (NUM a))) #())
+
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
      (emit           ((VQueue 'a) 'a) #())
-     (gnuplot_array    ((Array (NUM a))) #())
+
+     ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
+     (break            () #())
      )))
 
 (IFWAVESCOPE
@@ -314,7 +318,8 @@
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.
-    (timer            (Int) (Stream #()))
+    ;; Takes as input a frequency in hertz.
+    (timer            (Float) (Stream #()))
 
     (prim_window           ((Stream 'a) Int) (Stream (Sigseg 'a)))
 
@@ -421,9 +426,6 @@
     ;(sigseg_foreach (('a -> 'b) (Sigseg 'a)) #())
 
     ;----------------------------------------------------------------------
-
-    ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-    (break            () 'a)
 
     (show             ('a) String)
 

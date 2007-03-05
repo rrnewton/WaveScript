@@ -391,8 +391,11 @@
 
 (define-pass ws-normalize-context
     [Expr (lambda (x fallthru)
-	    (match x	      
-	      [(set! ,v ,[e]) `(begin (set! ,v ,e) (tuple))]
+	    (match x  
+	      ;; This catches all effectful prims/constructs and puts them in effect context.
+	      ;[(break)           `(begin (break)       (tuple))]
+	      ;[(emit ,[vq] ,[e]) `(begin (emit ,vq ,e) (tuple))]
+	      [(set! ,v ,[e])    `(begin (set! ,v ,e)  (tuple))]
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
 	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
 	       ;; Assert that the return value is void:
