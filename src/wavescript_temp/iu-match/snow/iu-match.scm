@@ -20,7 +20,16 @@
  (maintainer: "Ryan Newton <ryan.newton at alum.mit.edu>")
  (author:     "Ryan Newton <ryan.newton at alum.mit.edu>")
  (homepage:   "http://snow.iro.umontreal.ca")
- (description: "Pattern matching against lists and vectors.")
+ (description: "Pattern matching against lists and vectors."
+	      
+ "This implements a syntactic sugar (match) for deconstructing"
+ "lists and vectors.  For example:"
+ ""
+ "(match 3 (,x x)) ==> 3"
+ "(match '(1 2) ((,x ,y) (+ x y))) ==> 3"
+ "(match '#(1 2) ((,x ,y ,z) 'err) (#(,x ,y) (* 100 y))) ==> 200"
+ )
+
  (keywords: pattern-matching data)
  (license: lgpl/v2.1)
  )
