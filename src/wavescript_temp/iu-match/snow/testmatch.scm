@@ -1,12 +1,15 @@
 ":";exec snow -- "$0" "$@"
 
-(package* testmatch/v0.0.0
+;;;; This is a very simple script to make sure we can import the
+;;;; iu-match package and run it.
+
+(package* testmatch/v0
 	  (require: iu-match/v0)
  )
 
 ;;;============================================================================
 
-(define (add1 x) (+ x 1))
+(define* (add1 x) (+ x 1))
 (define* (test-match)
   (for-each 
       (lambda (pr)
@@ -34,9 +37,9 @@
 
       ((match '(1 . 2) ((,x . ,y) y)) 2)
 
-      ((match '(1 2 3) ((1 ,x* ....) x*)) (2 3))
-      ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) ....) (vector x* y*))) #((a b c) (1 2 3)))
-      ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ....) (vector x* y*)) (,_ 'yay)) yay)
+      ((match '(1 2 3) ((1 ,x* _...) x*)) (2 3))
+      ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) _...) (vector x* y*))) #((a b c) (1 2 3)))
+      ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) _...) (vector x* y*)) (,_ 'yay)) yay)
 
       ;; Redirect:
       ((match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y))) (3 4))
@@ -45,20 +48,50 @@
       ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
 
       ;; Redirect and ellipses.
-;      ((match '(1 2 3) ((1 ,(add1 -> x*) ....) x*)) (3 4))
+     ((match '(1 2 3) ((1 ,(add1 -> x*) _...) x*)) (3 4))
 
-;       ;; Make sure we keep those bindings straight.
-;       ((match '((a 2 9) (b 2 99) (c 2 999))
-; 	 (((,x 2 ,(y)) ....) (vector x y))
-; 	 (,n (add1 n)))
-;        )
+      ;; Make sure we keep those bindings straight.
+      ((match '((a 2 9) (b 2 99) (c 2 999))
+	 (((,x 2 ,(y)) _...) (vector x y))
+	 (,n (add1 n)))
+       )
 
       )))
 
+;(test-match)
+;(newline)(display "Also running not with eval, should get 'first': ")
+;(display (match 3 (5 "zeroth")(3 "first") (4 "second")))
+;(newline)
 
-(test-match)
+(display "Remember to 'export SNOW_TEST=testmatch' when running this file.")(newline)
+(test* 
+ (expect* (equal?         3   (match 3 (,x x))))
+ (expect* (equal?         3   (match '(1 2) ((,x ,y) (+ x y)))))
+ (expect* (equal?       200   (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))))
+ (expect* (equal?     '(1 2)  (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))))
+ (expect* (equal?       200   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))))
+ (expect* (equal?     '(3 4)  (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))))
 
-(newline)(display "Also running not with eval: ")
+ (expect* (equal?         2   (match '(1 . 2) ((,x . ,y) y))))
+ (expect* (equal?     '(2 3)  (match '(1 2 3) ((1 ,x* _...) x*))))
+ (expect* (equal? '#((a b c) (1 2 3))  
+                              (match '((a 1) (b 2) (c 3)) (((,x* ,y*) _...) (vector x* y*)))))
+ (expect* (equal?      'yay   (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) _...) (vector x* y*)) (,_ 'yay))))
+ ;; Redirect:
+ (expect* (equal?     '(3 4)  (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))))
+ ;; Basic guard:
+ (expect* (equal?        33   (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))))
 
-(display (match 3 (5 "zeroth")(3 "first") (4 "second")))
-(newline)
+ ;; This is the test that kills bigloo, scheme48, stklos, gauche
+ ;; I think we just can't support multiple value returns:
+; (expect* (equal? '(3 4 5 6)  (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))))
+ 
+ ;; Redirect and ellipses.
+;      (expect* (equal? (match '(1 2 3) ((1 ,(add1 -> x*) _...) x*)) (3 4)))
+
+;       ;; Make sure we keep those bindings straight.
+;       ((match '((a 2 9) (b 2 99) (c 2 999))
+; 	 (((,x 2 ,(y)) _...) (vector x y))
+; 	 (,n (add1 n)))
+;        )
+ )
