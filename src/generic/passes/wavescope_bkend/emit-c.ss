@@ -212,7 +212,7 @@
 
 		       
 	[(assert-type (Stream (Sigseg ,[Type -> ty])) 
-		      (window ,sig ,[Simple -> size]))
+		      (prim_window ,sig ,[Simple -> size]))
 	 (define new-class-name (Var (unique-name 'Window)))
 	 (ASSERT symbol? sig)
 	 (values `("WSBox* ",name" = new WSBuiltins::Window(",size", sizeof(",ty"));\n"
@@ -559,6 +559,12 @@
 	     ,(indent ((Value tenv) name "" altern) "  ")
 	     "}\n")]
 	  
+	  ;; This is needed just for the RHS's of iterator state variables.
+	  [(let ([,v ,ty ,rhs]) ,bod)
+	   (list
+	    ((Value tenv) (symbol->string v) (Type ty) rhs)
+	    ((Value (tenv-extend tenv (list v) (list ty))) name type bod))]
+
 	; ============================================================
 	;; Here we handle "open coded" primitives:
 
