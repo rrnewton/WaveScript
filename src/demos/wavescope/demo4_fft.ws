@@ -6,11 +6,11 @@
 
 // run ./get_sample_data first
 
-fun mywindow(S, len) 
+fun mywindow(S, len)
   iterate(x in S) {
-    state{ 
+    state{
       arr = nullarr;
-      ind = 0; 
+      ind = 0;
       startsamp = 0;
     }
     if ind == 0 then arr := makeArray(len, x);
@@ -20,7 +20,7 @@ fun mywindow(S, len)
     then {
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
-      arr := makeArray(len, x); 
+      arr := makeArray(len, x);
       startsamp := startsamp + len;
     }
   };
@@ -36,6 +36,9 @@ s1 = if GETENV("WSARCH") != "ENSBox"
 
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
+  //state{ foo = (nullarr :: Array Int);   }
+  //print(foo);  print("\n");
+
   emit fft(w);
 };
 

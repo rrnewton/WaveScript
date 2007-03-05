@@ -27,6 +27,8 @@ static ostringstream global_show_stream(ostringstream::out);
       fftwf_plan plan = fftwf_plan_dft_r2c_1d(len, in_buf, (fftwf_complex*)out_buf, FFTW_ESTIMATE);      
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
+      rs.releaseAll();
+      input.release(temp);
       return rs;
    }
   
@@ -57,11 +59,17 @@ static ostringstream global_show_stream(ostringstream::out);
      return (wsint_t)w.end();
    }
 
-   /*
-   static RawSeg toSigseg(const Vector<>& w) {
-     return (wsint_t)w.end();
+   template <class T>
+   static RawSeg toSigseg(const boost::shared_ptr< vector< T > >& arr, 
+			  wsint_t startsamp, int timebase) {
+     int len = (*arr).size();
+     RawSeg rs((SeqNo)startsamp,len, DataSeg,0,sizeof(T),Unitless,true);     
+     Byte* direct;
+     rs.getDirect(0, len, direct);
+     for(int i=0; i<len; i++) ((T*)direct)[i] = (*arr)[i];
+     rs.releaseAll();
+     return rs;
    }
-   */
 
    static RawSeg joinsegs(const RawSeg& a, const RawSeg& b) {
      return RawSeg::append(a,b);

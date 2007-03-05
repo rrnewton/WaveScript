@@ -36,6 +36,7 @@ using namespace __gnu_cxx;
 
 #define WSNULL 0
 #define WSNULLSEG (RawSeg::NullRef)
+#define WSNULLTIMEBASE 0
 
 typedef int16_t wsint16_t;
 typedef uint16_t wsuint16_t;
@@ -193,6 +194,9 @@ boost::shared_ptr< cons<T> > cons<T>::reverse(
 /******** END LISTS ********/
 
 
+
+
+
 /********** ARRAYS **********/
 template <class T>
 boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
@@ -202,6 +206,11 @@ boost::shared_ptr< vector<T> > makeArray(wsint_t count, T initelem) {
   }
   return boost::shared_ptr< vector<T> >( vec );
 }
+
+//boost::shared_array<int> foo(new int[34]);
+
+// TODO: wsequal
+
 
 /******** END ARRAYS ********/
 

@@ -12,6 +12,9 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.04]
+ *) use boost shared_array rather than a shared_ptr to a Vector
+
 [2007.03.02]
  *) uniform value printing
  *) remove dependence on $WAVESCOPED/Makefile in wsc process.

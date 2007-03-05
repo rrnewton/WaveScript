@@ -91,6 +91,8 @@
 
     [#() "bool"]
     
+    [Timebase  "int"]
+
     ;; HACK HACK FIXME:
     ;; This is for null lists.
     [(List ',_) `("cons<int>::ptr")]
@@ -450,6 +452,7 @@
 	  [(string? datum) (format "string(~s)" datum)]
 	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
 	  [(integer? datum) (format "(wsint_t)~a" datum)]
+	  [(eq? datum 'nulltimebase)  "WSNULLTIMEBASE"]
 	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
@@ -458,10 +461,11 @@
 	    ;"NULL_LIST"
 	    ;`("(cons<",(Type t)">::ptr)NULL_LIST")
 	    ;`("(cons<",(Type t)">::null_ls)")
-	    `("boost::shared_ptr< cons<",(Type t)"> >((cons<",(Type t)">*) 0)")
+	    `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
 	    ]
 	   [#(nullseg ,t) "WSNULLSEG"]
-	   [#(nullarr ,t) "WSNULL"]
+	   ;[#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
+	   [#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
 	   )]))
 
     (define Simple
@@ -543,10 +547,15 @@
 	  [(assert-type ,t nullseg) (wrap (Const 'nullseg t))]
 	  [(assert-type ,t nullarr) (wrap (Const 'nullarr t))]
 	  [(assert-type ,t '())     (wrap (Const '() t))]
+
+	  [nulltimebase             (wrap (Const 'nulltimebase))]
+
 	  ;[,c (guard (constant? c)) (Const c)]
 	  [(quote ,datum)           (wrap (Const datum))]
 
-	  [,v (guard (symbol? v))   (wrap (Var v))]
+	  [,v (guard (symbol? v))
+	      (ASSERT (not (regiment-primitive? v)))
+	      (wrap (Var v))]
 
 	  ;[(if ,[Simple -> test] ,conseq ,altern)
 	   ;`("(",test " ? " ,conseq " : " ,altern")") 	   ]
@@ -595,9 +604,12 @@
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
 	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
 	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
-
+	
 	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
 	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+
+	[(int16ToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	[(int16ToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
 
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
