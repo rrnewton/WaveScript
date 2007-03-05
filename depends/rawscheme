@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MACHINE=`uname`
-VER=7.1
+VER=7.3
 
 if [ "$MACHINE" == "Linux" ];
 then DIR=i3le;
@@ -12,4 +12,4 @@ then DIR=i3nt;
 else echo rawscheme script: Unknown platform: "$MACHINE"
 fi
 
-$REGIMENTD/depends/petite_chez_scheme7.1/bin/$DIR/scheme $*
+$REGIMENTD/depends/petite_chez_scheme$VER/bin/$DIR/scheme $*
