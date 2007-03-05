@@ -48,13 +48,13 @@
       ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
 
       ;; Redirect and ellipses.
-     ((match '(1 2 3) ((1 ,(add1 -> x*) _...) x*)) (3 4))
+;     ((match '(1 2 3) ((1 ,(add1 -> x*) _...) x*)) (3 4))
 
-      ;; Make sure we keep those bindings straight.
-      ((match '((a 2 9) (b 2 99) (c 2 999))
-	 (((,x 2 ,(y)) _...) (vector x y))
-	 (,n (add1 n)))
-       )
+;       ;; Make sure we keep those bindings straight.
+;       ((match '((a 2 9) (b 2 99) (c 2 999))
+; 	 (((,x 2 ,(y)) _...) (vector x y))
+; 	 (,n (add1 n)))
+;        )
 
       )))
 
@@ -84,7 +84,7 @@
 
  ;; This is the test that kills bigloo, scheme48, stklos, gauche
  ;; I think we just can't support multiple value returns:
-; (expect* (equal? '(3 4 5 6)  (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))))
+ (expect* (equal? '(3 4 5 6)  (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))))
  
  ;; Redirect and ellipses.
 ;      (expect* (equal? (match '(1 2 3) ((1 ,(add1 -> x*) _...) x*)) (3 4)))

@@ -29,6 +29,20 @@
      (let f ((x Exp))
        (PATMATCH_match-help _ f x Clause ...)))))
 
+;; Certain implementations have difficulty with delaying multple values.
+;; (including gauche, stklos, bigloo, scheme48, larceny)
+(define-syntax delay-values
+  (syntax-rules ()
+    ((_ e)
+     (let ((vals #f))
+       (lambda ()
+	 (if vals (apply values vals)
+	     (call-with-values (lambda () e)
+	       (lambda args (set! vals args) (apply values args))))
+	 )))))
+; (define-syntax force-values
+;   (syntax-rules () ((_ e) (e))))
+
 (define-syntax PATMATCH_ASSERT
   (syntax-rules ()
     ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
@@ -93,7 +107,7 @@
     ((_ Bod Promise Args ())  Bod)
     ((_ Bod Promise Args (V0 . V*))
      (let ((V0 (lambda ()
-		 (call-with-values (lambda () (force Promise))
+		 (call-with-values Promise ;(lambda () (force-values Promise))
 		   (lambda Args V0)))))
        (PATMATCH_bind-cata Bod Promise Args V*)))))
 
@@ -148,7 +162,7 @@
       
       ;; Cata redirect: 
       ((_ ((Obj (unquote (f -> V0 V* ...))) . Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
-       (let ((promise (delay (f Obj))))
+       (let ((promise (delay-values (f Obj))))
 	 ;(inspect f)
 	 (PATMATCH_bind-cata 
 	  (PATMATCH_convert-pat Stack Exec Bod Guard Cata
@@ -158,7 +172,7 @@
       
       ;; Unquote Pattern, Cata: recursively match
       ((_ ((Obj (unquote (V0 V* ...))) . Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
-       (let ((promise (delay (Cata Obj))))
+       (let ((promise (delay-values (Cata Obj))))
 	 (PATMATCH_bind-cata 
 	  (PATMATCH_convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))

@@ -5,11 +5,10 @@
 ;;;;  -Ryan Newton [2006/2007]
 
 ;; [2007.03.04] 
-;; This package passes its simple tests under:         scm, chez, mzscheme, guile
-;; It passes all but the multiple-values test under:   gauche, stklos, bigloo, scheme48, larceny
-;; 
-;; larceny -- Gets a wrong number of arguments error on the same test as bigloo.
+;; This package passes its simple tests under:         
+;;   scm, chez, mzscheme, guile, gauche, stklos, bigloo, scheme48, larceny
 
+;; mitscheme -- Runs into some unknown problem with trying to apply 3.
 ;; chicken -- supports define-syntax, but can't handle the macros in match.r5rs
 
 (package* iu-match/v0.0.1
