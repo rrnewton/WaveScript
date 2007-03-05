@@ -4,7 +4,7 @@
 // 1000 says to set sample rate at 1Khz -- not important for this app:
 data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Int * Float));
 
-wins = window(data, 10);
+wins = prim_window(data, 10);
 
 avgs = iterate (w in wins) {
   sum = 0.0; 

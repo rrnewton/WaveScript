@@ -233,7 +233,7 @@
       (unless (= 1 (length routes))
         (if (zero? (length routes))
 	    (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- timer(1)\"")		   
-		   (set! routes `((BASE (timer '1)))))
+		   (set! routes `((BASE (timer '1.0)))))
 	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
       (unless (eq? 'BASE (caar routes))
         (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))

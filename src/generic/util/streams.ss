@@ -260,19 +260,22 @@
 		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
 		 (let ([go
 			(lambda ()
+			  ;; Cannot do progress-dots now because we cannot nest engines.
+			  (let loop ()
+			    (if (stream-empty? stream)
+				(unless (regiment-quiet)
+				  (printf "Finished, dumped ~a stream elements.\n" pos))
+				(let ([elem (stream-car stream)])
+				  (unless (equal? elem #())
+				    (write elem port)(newline port))
+				  (set! pos (add1 pos))
+				  (set! stream (stream-cdr stream))
+				  (loop)
+				  )))
+			  #;
 			  (progress-dots
 			   (lambda ()
-			     (let loop ()
-			       (if (stream-empty? stream)
-				   (unless (regiment-quiet)
-				     (printf "Finished, dumped ~a stream elements.\n" pos))
-				   (let ([elem (stream-car stream)])
-				     (unless (equal? elem #())
-				       (write elem port)(newline port))
-				     (set! pos (add1 pos))
-				     (set! stream (stream-cdr stream))
-				     (loop)
-				     ))))
+			     ...)
 			   50000000 
 			   (lambda ()
 			     (unless (regiment-quiet)

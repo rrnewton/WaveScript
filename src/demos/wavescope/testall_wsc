@@ -7,6 +7,9 @@ echo > $COMP
 echo > $RUN
 
 function go () {
+    echo 
+    echo "testall_wsc: Running $1"
+    echo "============================================================"
     if ! wsc $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN

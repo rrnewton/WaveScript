@@ -188,8 +188,11 @@ test:
 	regiment test
 	(cd ../apps/pipeline-web/; $(MAKE) test)
 	(cd demos/wavescope; ./testall_demos.ss)
-	echo exit | ws lib/stdlib.ws;
-	echo exit | ws lib/matrix_test.ws;
+	@echo
+	@echo "Now test libraries (stdlib.ws, matrix.ws)"
+	@echo "============================================================"
+	echo exit | ws ../lib/stdlib.ws -exit-error;
+	echo exit | ws ../lib/matrix_test.ws -exit-error;
 	$(MAKE) ws
 	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
