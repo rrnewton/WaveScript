@@ -55,6 +55,9 @@
 			tenv
 			fallthrough)]
 
+	  [(show-and-string-append ,[a] ,[b])
+	   `(string-append (show ,a) (show ,b))]
+
 	  ;; For now we just expand this into the forloop.
 	  ;; Might want to do something else later.
 	  [(sigseg_foreach ,[f] ,[s])

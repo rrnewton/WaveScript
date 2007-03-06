@@ -478,7 +478,7 @@
          [(exp AND exp) `(and ,$1 ,$3)]
          [(exp OR exp) `(or ,$1 ,$3)]
 
-         [(exp ++ exp) `(string-append ,$1 ,$3)]
+         [(exp ++ exp) `(show-and-string-append ,$1 ,$3)]
          [(exp : exp) `(cons ,$1 ,$3)]
 
 	 ;; Currently these parse as integer ops:
@@ -561,7 +561,7 @@
            [(^:) '^:]
 
 	   [(:) 'cons]
-	   [(++) 'string-append]
+	   [(++) 'show-and-string-append]
            
            [(<) '<]
            [(>) '>]

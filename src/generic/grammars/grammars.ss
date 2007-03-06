@@ -129,6 +129,8 @@
        [Expr ('or Expr ...)]
        [Expr ('and Expr ...)]
 
+       [Expr ('show-and-string-append Expr ...)]
+
        ;; This includes these basic arith prims, which are just sugar for the generic ops:
        [Prim '+]
        [Prim '-]

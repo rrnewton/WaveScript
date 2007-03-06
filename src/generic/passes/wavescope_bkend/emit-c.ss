@@ -799,6 +799,7 @@
     [Int            (printf "%d" e)]
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
+    [Complex        (stream `("complex<float>(",e")"))]
     [String         (printf "%s" `(,e".c_str()"))]
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]

@@ -9,7 +9,6 @@
 // In "ws" it produces this:
 //   
 
-
 DEBUG = false
 DEBUGSYNC = DEBUG 
 
@@ -45,8 +44,8 @@ fun syncN (ctrl, strms) {
   _strms = map(f, strms);  
   slist = _ctrl : _strms;  
 
-  if DEBUGSYNC 
-    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
+  //  if DEBUGSYNC 
+  //    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
@@ -323,6 +322,7 @@ stream_filter :: (t -> Bool, Stream t) -> Stream t;
 fun stream_filter(f,s) {
   iterate (x in s) {
     if f(x) then emit x
+    //   else print("Discarded: "++ x ++"\n")
   }
 }
 
@@ -356,24 +356,37 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = iterate(x in hn) { emit fft(x) };
+freq = iterate(x in hn) { emit (fft(x),x) };
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate (w in freq) { emit (marmotscore(w), w); }
+wscores = iterate ((w,orig) in freq) { emit (marmotscore(w), orig); }
 
 detections = detect(wscores);
 
 
 positives = stream_filter(fun((b,_,_)) b, detections)
 		   
-
-//synced = syncN(detections, [ch1, ch2, ch3, ch4]);
+     //synced = syncN(detections, [ch1, ch2, ch3, ch4]);
 //synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
 
 // [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
 // If you try to do the real syncN, it will process the whole without outputing anything.
-BASE <- positives;
-//BASE <- detections;
-//BASE <- synced;
+BASE <- 
+//synced
+positives
+//detections
+//unionList([ch1,ch2])
 
-//BASE <- unionList([ch1,ch2]);
+//iterate(w in rw1){emit w[[0]]}
+
+// iterate(w in hn){emit w[[16]]}
+
+//iterate(w in freq){emit w[[15]]}
+
+//freq
+//iterate(w in freq){emit (w.start, w.end)}
+
+//wscores
+//iterate((sc,w) in wscores) {emit sc}
+
+;

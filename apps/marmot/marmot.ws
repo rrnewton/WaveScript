@@ -360,8 +360,7 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = stream_map(fft, hn);
-wscores = iterate (w in freq) { emit(marmotscore2(w), w); }
+wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x), hn);
 
 detections = detect(wscores);
 

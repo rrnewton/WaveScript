@@ -226,6 +226,7 @@
     (not (Bool) Bool)
     (or  (Bool Bool) Bool)
     (and (Bool Bool) Bool)
+    (show-and-string-append ('a 'b) String)
     
     ;; These are in here so that various passes can treat them as
     ;; primitives rather than special forms.  (Just for the purpose of

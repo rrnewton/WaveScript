@@ -840,13 +840,15 @@
 	     (not (integer? (log2 (vector-length (sigseg-vec ss))))))
 	 (error 'fft "only window sizes that are powers of two are supported: length ~s" 
 		(vector-length (sigseg-vec ss)))))
-    (make-sigseg (sigseg-start ss)
-		 (sigseg-end ss)
-		 (dft (sigseg-vec ss))
-		 (sigseg-timebase ss)))
+    (let* ([double (dft (sigseg-vec ss))]
+	   [halflen (add1 (quotient (vector-length double) 2))]
+	   [half (make-vector halflen)])
+      (vector-blit! double half 0 0 halflen)
+      (make-sigseg 0 (sub1 halflen) half (sigseg-timebase ss))
+      ))
 
 
-     (define (wserror str) (error 'wserror str))
+  (define (wserror str) (error 'wserror str))
      (IFCHEZ (define inspect inspect/continue)
              ;; Don't know of an interactive object inspector in PLT:
              (define (inspect x) x))             
@@ -957,7 +959,8 @@
 	     (display x)
 	     (display-constrained (list x 300)))))
 
-     (define (show x) (format "~s" x))
+     ;; Show is like display, should have something else like write:
+     (define (show x) (format "~a" x))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
 
