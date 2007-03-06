@@ -645,7 +645,7 @@
       ;; These are the same as their C++ names:
       [(cos sin tan)     (symbol->string var)]
       [(absF absI absI16)       "abs"]
-      [(absC)                   "cabs"]
+;      [(absC)                   "cabs"]
       [(sqrtI sqrtF sqrtC)      "sqrt"]
       [(max)                    "max"]
       [else (fromlib (mangle var))]))
@@ -680,6 +680,8 @@
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
 	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
 	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
+
+	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
 	
 	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
 	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]

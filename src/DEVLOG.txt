@@ -380,4 +380,5 @@ Adding Int16... these are the things that had to change:
  *) Add to emit-c for printing, reading, and arithmetic 
  
 
- 
+[2007.03.05]
+Just got a segfault on demo3f which I can't now reproduce... strange.

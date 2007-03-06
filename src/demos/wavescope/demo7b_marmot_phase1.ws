@@ -3,6 +3,13 @@
 // The marmot app proper is separate from this and is going in the apps/ 
 // folder.
 
+// [2007.03.05]
+// Darn, runs in wsc but produces this as its first output:
+//   WSOUT: (true, -2400, 2416)
+// In "ws" it produces this:
+//   
+
+
 DEBUG = false
 DEBUGSYNC = DEBUG 
 
