@@ -31,7 +31,7 @@ fun detect(scorestrm) {
   max_run_length = 48000;
   samples_padding = 2400;
 
-  iterate((score,win) in scorestrm) {
+  iterate((score,st,en) in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
@@ -69,7 +69,7 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if win.end - _start > max_run_length then {
+      if en - _start > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
 	      ++", re-estimating noise");
 	
@@ -89,7 +89,7 @@ fun detect(scorestrm) {
 	trigger := false;
 	
 	/* emit power of 2 */
-	p = win.end + samples_padding - _start;
+	p = en + samples_padding - _start;
 	p2 = 1;
 	for i = 0 to 24 {
 	  if (p2 >= p) then break;
@@ -100,8 +100,8 @@ fun detect(scorestrm) {
 	      _start - samples_padding,           // start sample
 	      _start - samples_padding + p2 - 1); // end sample
 	if DEBUG then
-	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
-	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
+	      " just processed window "++show(st)++":"++show(en)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
@@ -119,7 +119,7 @@ fun detect(scorestrm) {
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
-	_start := win.start;
+	_start := st;
 	trigger_value := score;
       }	else {
 	/* otherwise, update the smoothing filters */
@@ -134,10 +134,10 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, win.start - samples_padding - 1));
+      emit (false, 0, max(0, st - samples_padding - 1));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
-	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+      print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
+	    " just processed window "++show(st)++":"++show(en)++"\n");
       
     }
   }
@@ -360,7 +360,8 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x), hn);
+wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end), 
+		     hn);
 
 detections = detect(wscores);
 
