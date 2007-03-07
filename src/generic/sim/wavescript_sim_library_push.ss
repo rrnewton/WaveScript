@@ -119,7 +119,8 @@
        (import (add-prefix scheme s:))
        )
      (begin (define orig-length length)
-	    (require (prefix s: mzscheme))))
+	    (require (prefix s: mzscheme))
+	    (require (prefix s: "../../plt/chez_compat.ss"))))
 
 
   ;; ================================================================================
@@ -777,12 +778,9 @@
 ; 	[(flonum? n) n]
 ; 	[else (error 'toFloat "may only be used for upcast, given: ~s" n)]))
 ;      (define (toComplex n) (s:+ n 0.0+0.0i))
-     
-  (IFCHEZ
-   (begin (define realpart cfl-real-part)
-	  (define imagpart cfl-imag-part))
-   (begin (define realpart real-part)
-	  (define imagpart imag-part)))
+
+  (define realpart cfl-real-part)
+  (define imagpart cfl-imag-part)
   
   (define absI16 fxabs)
   (define absI fxabs)
@@ -793,9 +791,7 @@
   (define floatToInt flonum->fixnum)
 
   (define (intToComplex n) (s:+ n 0.0+0.0i))
-  (define (floatToComplex f) 
-    (IFCHEZ (s:fl-make-rectangular f 0.0)
-	    (s:+ f 0.0+0.0i)))
+  (define (floatToComplex f) (s:fl-make-rectangular f 0.0))
   (define (complexToInt c) (flonum->fixnum (realpart c)))
   (define complexToFloat realpart)
 
@@ -821,9 +817,7 @@
 		   (let ([x (string->number v)])
 		     (cond
 		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
-		      [(real? x) 
-		       (IFCHEZ (s:fl-make-rectangular x 0.0)
-			       (s:+ x 0.0+0.0i))]
+		      [(real? x) (s:fl-make-rectangular x 0.0)]
 		      [else (ASSERT cflonum? x)]))))
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))

@@ -102,6 +102,11 @@
   (define-syntax fl>= (identifier-syntax >=))
   (define-syntax flabs (identifier-syntax abs))
 
+  (define (fl-make-rectangular x y) (+ x (* y 0+1i)))
+
+  (define-syntax cfl-imag-part (identifier-syntax imag-part))
+  (define-syntax cfl-real-part (identifier-syntax real-part))
+
   (define-syntax cfl+ (identifier-syntax +))
   (define-syntax cfl- (identifier-syntax -))
   (define-syntax cfl* (identifier-syntax *))

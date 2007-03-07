@@ -583,7 +583,7 @@
 	  [(quote ,vec) (guard (vector? vec))
 	   (let ([contenttype (if (zero? (vector-length vec))
 				  ;; Throw in a default:
-				  Int
+				  'Int
 				  (type-const (vector-ref vec 0)))])	    
 	     `(,type" ",name"(new vector< ",(Type contenttype)" >(",
 		    (number->string (vector-length vec))"));\n" ;; MakeArray.
