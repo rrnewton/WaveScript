@@ -110,7 +110,6 @@
 
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
-	;(listLength length)
 	
 	(stringToInt ,(lambda (v) 
 			`(quote
@@ -165,7 +164,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      ;(when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
+      (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -177,28 +176,13 @@
 		`(,prim ,@args)))))
     
     (define (do-constant prim)
-      ;(inspect (compiler-invocation-mode))
       (ASSERT (eq? prim 'IS_SIM))
       (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
 	  ''#t ''#f))
-#;
-    (define interpret-closed-lambda
-      (lambda (lam env)
-	(match lam
-	  [(lambda (,formals ...) ,ty ,bod)
-	   (let ([len (length formals)])
-	     (lambda args
-	       (let ([newenv (append (map (lambda (v c) `(,v (quote ,c) -1)) formals args)
-				     env)])
-		 (inspect newenv)
-		 (match (process-expr bod newenv)
-		   [(quote ,c) c])
-		 )))
-	   ])))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      ;(when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
+      (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
       (match rator
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
@@ -234,6 +218,7 @@
 
 	  [(tupref ,n ,m ,[x]) x]
 	  [(tuple ,[args] ...) (apply + args)]
+	  [(vector ,[args] ...) (apply + args)]
 	  [(unionN ,[args] ...) (apply + args)]
           
 	  [(,prim ,[rands] ...)
@@ -369,6 +354,7 @@
 			  [(quote ,datum) #t]
 			  [(cons ,x ,y) #t]
 			  [(tuple ,args ...) #t]
+			  [(vector ,args ...) #t]
 			  [,var (guard (symbol? var)
 				       (not (memq var mutable-vars)))
 				(let ((entry (assq var env)))
@@ -398,6 +384,7 @@
 		      [(quote ,datum) datum]
 		      [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
 		      [(tuple ,args ...) x]
+		      [(vector ,args ...) x]
 		      [(cons ,a ,b)      x]
 		      
 		      [,sv (guard (stream-val? sv)) x]
@@ -531,15 +518,20 @@
 		 `(if ,newtest ,conseq ,altern))
 	     )]
 
+#;
+	  [(buildArray ,[n] ,[f])
+	   (inspect `(tryingbuildarr!! ,(available? n) ,(available? f) ,env))
+	   ]
+
 
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
-
 	  [(vector ,[x*] ...)
 	   (if (andmap available? x*)
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
 	       `(quote ,(list->vector (map getval x*)))
 	       `(vector . ,x*))]
+	  ;; TODO: vector-ref.
 
 	  ;; First we handle primitives that work on container types: 
 	  [(tupref ,ind ,len ,[tup])
@@ -566,6 +558,24 @@
 		 [,ls (guard (list? ls)) `(quote ,(cdr ls))]
 		 [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
 	       `(cdr ,x))]
+	  [(listLength ,[x])
+;	   (inspect `(LEN ,x ,env))
+	   (if (container-available? x)
+	       (let ([ls (getlist x)])
+;		 (inspect `(lenavail ,ls ,env))
+		 (if (list? ls)
+		     `(quote ,(length ls))
+		     `(listLength ,x)
+		     ))
+	       `(listLength ,x))]
+	  [(listRef ,[x] ,[i])
+	   (if (and (available? i) (container-available? x))
+	       (let ([ls (getlist x)])
+		 (if (list? ls)
+		     (match i [(quote ,i) (list-ref ls i)])
+		     `(listRef ,x ,i)
+		     ))
+	       `(listRef ,x ,i))]
 
 	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
 	  [(unionList ,[x])
@@ -593,15 +603,6 @@
 		    [(,h . ,[t]) `(cons (app ,f ,h) ,t)])]
 		 [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)])
 	       `(map ,f ,ls))]
-
-	  [(listLength ,[x])
-	   (if (container-available? x)
-	       (let ([ls (getlist x)])
-		 (if (list? ls)
-		     `(quote ,(length ls))
-		     `(listLength ,x)
-		     ))
-	       `(listLength ,x))]
 
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))

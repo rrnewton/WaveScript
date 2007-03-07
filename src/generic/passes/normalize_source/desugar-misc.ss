@@ -22,7 +22,10 @@
     ;(myremove '(Prim 'dataFile)
     (myremove '(Prim 'and) 
     (myremove '(Prim 'or) 
-	      eta-primitives-grammar)))
+    (myremove '(Prim 'head) 
+    (myremove '(Prim 'tail) 
+    (myremove '(Prim 'show-and-string-append)
+	      eta-primitives-grammar))))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
@@ -54,6 +57,9 @@
 			   [(,a . ,[b]) `(if ,a ,b '#f)])
 			tenv
 			fallthrough)]
+
+	  [(head ,[x]) `(car ,x)]
+	  [(tail ,[x]) `(cdr ,x)]
 
 	  [(show-and-string-append ,[a] ,[b])
 	   `(string-append (show ,a) (show ,b))]

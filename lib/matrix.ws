@@ -38,29 +38,40 @@ fun m_set(mat, row, col, val) {
 }
 
 
-// again need the init value for type check... 
-fun list_to_matrix(list) {
-
-  rows = listLength(list);
-  cols = listLength(list.head);
-  init = list.head.head;
-
-  arr = makeArray(rows, nullarr);
-
-  for i = 0 to rows-1 {
-    row = listRef(list, i);
-    arr[i] := makeArray(cols, init);
-    for j = 0 to cols-1 {
-      m_set(arr,i,j,listRef(row, j));
-    }
-  };
-  arr
-}
 
 fun build_matrix(n,m,f) {
   buildArray(n, 
     fun(i) buildArray(m, 
       fun(j) f(i,j)))
+}
+
+
+// again need the init value for type check... 
+/* fun list_to_matrix(list) { */
+
+/*   rows = listLength(list); */
+/*   cols = listLength(list.head); */
+/*   init = list.head.head; */
+
+/*   arr = makeArray(rows, nullarr); */
+
+/*   for i = 0 to rows-1 { */
+/*     row = listRef(list, i); */
+/*     arr[i] := makeArray(cols, init); */
+/*     for j = 0 to cols-1 { */
+/*       m_set(arr,i,j,listRef(row, j)); */
+/*     } */
+/*   }; */
+/*   arr */
+/* } */
+
+// rrn: Pure version:
+list_to_matrix :: List (List t) -> Array (Array t);
+fun list_to_matrix(list) {
+  len2 = list.head.listLength;
+  buildArray(list.listLength,
+    fun(i) buildArray(len2,
+      fun(j) listRef(listRef(list,i), j)))
 }
 
 list_of_segs_to_matrix :: List (Sigseg t) -> Array (Array t);
