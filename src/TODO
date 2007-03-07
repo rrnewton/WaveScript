@@ -12,6 +12,10 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.07]
+ *) What happened to my work on that little syntax to bind projectors
+    for a tuple-stream?
+
 [2007.03.05]
  *) allow type assertions on state var declarations
  *) add += *=... couldn't hurt.

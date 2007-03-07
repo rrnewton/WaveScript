@@ -40,7 +40,7 @@
 ;;   [Fuser <fun: [intermediate ...], <fun: [intermediate ...] -> expr> -> intermediate>]
 ;;      This form takes a result-fusing procedure in the style of core-generic-traverse.
 ;;
-;;   [Bindings <fun: vars types exprs reconstr exprfun fallthroughfun -> intermediate>]
+;;   [Bindings <fun: vars types exprs reconstr exprfun -> intermediate>]
 ;;      UNFINISHED:
 ;;
 ;;      This has a complex interface, but allows abstraction over
@@ -60,7 +60,6 @@
 ;;         exprs: The expressions within the scope.
 ;;         reconstr:       Function to reconstruct a binding expression from vars, types, exprs.
 ;;         exprfun:        Entrypoint to the complete expression-handling procedure.  (For use on subexpressions.)
-;;         fallthroughfun: Function to continue processing the expression in question with the auto-traverser.
 ;;
 (define-syntax define-pass
   (lambda (x)

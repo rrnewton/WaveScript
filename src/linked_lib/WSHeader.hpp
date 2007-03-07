@@ -111,92 +111,12 @@ public:
   static ptr append(const ptr& x, const ptr &y);
   static ptr reverse(const ptr & ls);
 
+  static T listRef(const ptr & ls, wsint_t ind);
+
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
   friend ostream& operator<< <T>(ostream& output, const boost::shared_ptr< cons<T> > & );
 };
-
-template<typename T>
-bool IS_NULL(boost::shared_ptr< cons<T> > p) 
-{ 
-  return ((cons<T>*)0 == p.get());
-}
-
-template <class T>
-cons<T>::cons(T a, boost::shared_ptr< cons<T> > b)
-{
-    car = a;
-    cdr = b;
-}
-
-// Recursive for now... should change.
-template <class T>
-bool wsequal
-        (const boost::shared_ptr< cons<T> > & x, 
-	 const boost::shared_ptr< cons<T> > & y) 
-{
-  //printf("EQUALITY: \n");
-  //printf("   %d %d \n", (x==null_ls), (y==null_ls));
-   if (IS_NULL(x)) {
-     if (IS_NULL(y))
-       return TRUE;
-     else return FALSE;
-   } else if (IS_NULL(y))
-     return FALSE;
-   else 
-     if (wsequal(x->car, y->car))
-       return wsequal(x->cdr, y->cdr);
-     else return FALSE;
-}
-
-
-// Currently unused:
-template <class T>
-ostream& operator<< (ostream& output, const boost::shared_ptr< cons<T> > & ls) 
-{
-  boost::shared_ptr< cons<T> > ptr = ls;
-  output << "[";
-  while(! IS_NULL(ptr)) {
-    // Problem here is that we need to cast RawSeg to SigSeg and can't:
-    //output << (RawSeg)(ptr->car);
-    output << (wsint_t)3;
-    output << ", ";
-    ptr = ptr->cdr;
-  }
-  output << "]";
-  return output;
-}
-
-
-// Not tail recursive!
-template <class T>
-//cons<T>::ptr cons<T>::append(const cons<T>::ptr & x, const cons<T>::ptr & y) {
-boost::shared_ptr< cons<T> > cons<T>::append(
-       const boost::shared_ptr< cons<T> > & x, 
-       const boost::shared_ptr< cons<T> > & y) 
-{
-  if (IS_NULL(x))   return y;
-  else return ptr(new cons<T>(x->car, append(x->cdr, y)));
-}
-
-
-template <class T>
-boost::shared_ptr< cons<T> > cons<T>::reverse(
-       const boost::shared_ptr< cons<T> > & ls)
-{
-  boost::shared_ptr< cons<T> > ptr = ls;
-  boost::shared_ptr< cons<T> > acc( (cons<T>*) 0);
-  while (!IS_NULL(ptr)) {
-    acc = boost::shared_ptr< cons<T> >(new cons<T>(ptr->car, acc));
-    ptr = ptr->cdr;
-  }
-  return acc;
-}
-
-
 /******** END LISTS ********/
-
-
-
 
 
 /********** ARRAYS **********/

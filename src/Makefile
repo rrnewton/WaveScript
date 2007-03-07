@@ -282,7 +282,7 @@ cleanheap:
 # Clean the compiler stuff but not wsparse.
 cleanchez: cleancomp
 cleancomp:
-	$(RM) build/i3nt/* build/i3le/* build/ppcosx/*
+	$(RM) build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/*
 
 
 cleanplt:

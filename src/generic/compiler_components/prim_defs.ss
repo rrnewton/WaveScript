@@ -114,7 +114,6 @@
     (head ((List 'a)) 'a)
     (tail ((List 'a)) (List 'a))
     (listRef ((List 'a) Int) 'a)
-
     (append     ((List 'a) (List 'a)) (List 'a))
     (makeList   (Int 'a) (List 'a))
     (listLength ((List 'a)) Int)

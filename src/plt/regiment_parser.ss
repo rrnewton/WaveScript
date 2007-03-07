@@ -357,13 +357,16 @@
 
     ;; Kinda redundant, used only for state {} blocks.
     (binds [() ()]
-           [(VAR = exp) (list (list $1 $3))]
+           [(bind) (list $1)]
 	   ;; Special stream-binding syntax:
 ;           [(VAR < formals+ > = exp) (list 
 ;				      (list $1 $3)
 ;				      )]
 
            [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
+    (bind [(VAR = exp)         (list $1 $3)]
+	  [(VAR :: type = exp) (list $1 `(assert-type ,$3 ,$5))])
+
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
     
@@ -403,15 +406,23 @@
          [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
 ;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
 
+	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
+	 [(exp DOT VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
 	 ;; Basic dot syntax:
-         [(exp DOT exp) `(app ,$3 ,$1)]
+	 ;; Can only use this to call named functions, that is symbols:
+         [(exp DOT VAR) `(app ,$3 ,$1)]
+	 ;y . (foo(x)) . if then else . 
+	 ;((if then else) ((foo(x)) (y)))
+
 	 ;; Special stream-projection dot syntax.
 	 [(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]
 
+	 ;; Operators that are simple ar straightforward.
          [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]
+	 ;; Other operators must be wrapped in parens:
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 
 	 ;; Array references/assignments:

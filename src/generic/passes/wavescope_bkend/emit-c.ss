@@ -458,6 +458,9 @@
 	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
 	  [(integer? datum) (format "(wsint_t)~a" datum)]
 	  [(eq? datum 'nulltimebase)  "WSNULLTIMEBASE"]
+	  [(cflonum? datum) (format "(wscomplex_t)complex<float>(~a, ~a)" 
+				    (cfl-real-part datum)
+				    (cfl-imag-part datum))]
 	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
@@ -549,6 +552,8 @@
        (EmitPrint e t)]
       [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
+      [(gnuplot_array ,a) ""]
+
       [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
        (guard (memq containerset! '(arr-set! hashset_BANG)))
        (ASSERT not name)
@@ -572,6 +577,16 @@
 	  [(assert-type ,t '())     (wrap (Const '() t))]
 
 	  [nulltimebase             (wrap (Const 'nulltimebase))]
+
+	  [(quote ,vec) (guard (vector? vec))
+	   (let ([contenttype (if (zero? (vector-length vec))
+				  ;; Throw in a default:
+				  Int
+				  (type-const (vector-ref vec 0)))])	    
+	     `(,type" ",name"(new vector< ",(Type contenttype)" >(",
+		    (number->string (vector-length vec))"));\n" ;; MakeArray.
+		    ,(mapi (lambda (i x) `("(*",name")[",(number->string i)"] = ",(Const x)";\n"))
+			   (vector->list vec))))]
 
 	  ;[,c (guard (constant? c)) (Const c)]
 	  [(quote ,datum)           (wrap (Const datum))]
@@ -648,7 +663,15 @@
 ;      [(absC)                   "cabs"]
       [(sqrtI sqrtF sqrtC)      "sqrt"]
       [(max)                    "max"]
-      [else (fromlib (mangle var))]))
+      ;; This is the "default"; find it in WSPrim:: class
+      [(m_invert string-append 
+	width start end joinsegs toSigseg
+	wserror ;generic_hash 
+	fft
+	)
+       (fromlib (mangle var))]
+      [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
+      ))
 
   (match expr
     ;; First we handle "open coded" primitives:
@@ -661,6 +684,7 @@
 				  +: *: -: /:
 				  +I16 *I16 -I16 /I16
 				  < > <= >= =
+				  ^_ ^. ^: ^I16
 				  )))
      (let ([cname (case infix_prim
 		    [(=) "=="]
@@ -669,9 +693,10 @@
 		    [(+. *. -. /.
 			 +_ *_ -_ /_
 			 +: *: -: /:
-			 ) ;; Chop off the period:
+			 ^_ ^. ^: 
+			 ) ;; Chop off the extra character.
 		     (substring (symbol->string infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16)
+		    [(+I16 -I16 *I16 /I16 ^I16)
 		     (substring (symbol->string infix_prim) 0 1)]
 		    )])
        (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
@@ -724,13 +749,18 @@
 
        	;; ----------------------------------------
 	;; Lists:
+	;; These primitives are tricky because of the template magic:
+
 	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
 	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
 	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
 	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
 	[(assert-type (List ,t) (reverse ,[Simple -> ls]))
 	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
-
+	[(listRef (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
+	 (wrap `("cons<",(Type t)">::listRef(",ls", ",ind")"))]
+	[(listLength (assert-type (List ,t) ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::listLength(",ls", ",ind")"))]
 	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
 	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
@@ -778,8 +808,11 @@
 	     ;; UNFINISHED:
 	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
-	   )
-	 
+	   )	 
+	 ]
+
+	[(wserror ,[Simple -> str])
+	 (error 'wserror "unimplemented currently, bug ryan")
 	 ]
 
 	;; Other prims fall through to here:

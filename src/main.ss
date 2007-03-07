@@ -363,6 +363,21 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+(define-pass kill-polymorphic-types
+    (define (Type t)
+      (match t
+	;; Here we turn any remaining type vars into unit:
+	[',n  '#()]
+	;; Any remaining numeric type vars become Int:
+	[(NUM ,v) (guard (symbol? v)) 'Int]
+
+	[,s    (guard (symbol? s))           s]
+	[(,[arg*] ... -> ,[res])           `(,arg* ... -> ,res)]
+	[(,s ,[t] ...) (guard (symbol? s)) `(,s ,t ...)]
+	[#(,[t*] ...)                       (apply vector t*)]
+	[,other (error 'kill-polymorphic-types "bad type: ~s" other)]))
+  [Bindings (lambda (var* ty* expr* reconstr Expr)
+	      (reconstr var* (map Type ty*) (map Expr expr*)))])
 
 (define-pass ws-add-return-statements
     (define (doit fallthru)
@@ -479,6 +494,12 @@
      (printf "Post elaboration types: \n")
      (print-var-types p)) 
    (void))
+  
+  ;; This just fills polymorphic types with unit.  These should be
+  ;; things that don't matter.  We typecheck afterwards to make sure
+  ;; things still make sense.
+  (run-pass p kill-polymorphic-types)
+  (run-pass p retypecheck)
 
   (run-pass p verify-elaborated)
 

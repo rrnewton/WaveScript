@@ -3,7 +3,8 @@ chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16
 //ch1 = window(iterate((a,_,_,_) in chans){ emit intToFloat(a) }, 100);
 
 BASE <- iterate(w in chans) {
-  print("woot " ++ 3 ++ " \n")
+  emit (w.width(x,y,z));
+  //print("woot " ++ 3 ++ " \n")
 }
 
 /* BASE <- iterate(w in ch1) { */
