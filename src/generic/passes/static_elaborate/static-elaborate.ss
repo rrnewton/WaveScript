@@ -96,6 +96,8 @@
      ;; to a function which will carry out the primitive.
      ;; 
      ;; NOTE: this has some duplicated code with the simulators (in particular, wavescript_sim_library)
+     ;;
+     ;; CONVENTION: if the right hand side is a closure, it takes an env argument also.
     (define computable-prims 
       `((+ +) (- -) (* *) (/ /) (^ expt) 
 	(g+ +) (g- -) (g* *) (g/ /) (g^ expt) 
@@ -110,26 +112,32 @@
 	;(cons "cons-done-as-special-case")
 	;(listLength length)
 	
-	(stringToInt ,(lambda (v) 
-		       (let ([x (string->number v)])
-			 (if x 
-			     (ASSERT fixnum? x)
-			     (error 'stringToInt "couldn't convert string: ~s" v)))))
-	(stringToFloat ,(lambda (v) 
-			 (let ([x (string->number v)])
-			   (if x 
-			       (ASSERT flonum? x)
-			       (error 'stringToFloat "couldn't convert string: ~s" v)))))
-	(stringToComplex ,(lambda (v) 
-			   (ASSERT string? v)
-			   (let ([x (string->number v)])
-			     (cond
-			      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
-			      [(real? x) (fl-make-rectangular x 0.0)]
-			      [else (ASSERT cflonum? x)]))))
+	(stringToInt ,(lambda (v env) 
+			`(quote
+			  ,(let ([x (string->number v)])
+			     (if x 
+				 (ASSERT fixnum? x)
+				 (error 'stringToInt "couldn't convert string: ~s" v))))))
+	(stringToFloat ,(lambda (v env)
+			 `(quote 
+			   ,(let ([x (string->number v)])
+			      (if x 
+				  (ASSERT flonum? x)
+				  (error 'stringToFloat "couldn't convert string: ~s" v))))))
+	(stringToComplex ,(lambda (v env) 
+			    (ASSERT string? v)
+			    `(quote 
+			      ,(let ([x (string->number v)])
+				 (cond
+				  [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
+				  [(real? x) (fl-make-rectangular x 0.0)]
+				  [else (ASSERT cflonum? x)])))))
 
-	(buildArray ,(lambda (n f)
-		      (let ([realf (interpret-closed-lambda f)]
+	(buildArray ,(lambda (n f env)
+		       `(vector . ,(map (lambda (i) `(app ,f (quote ,i))) (iota n)))
+
+		       #;
+		      (let ([realf (interpret-closed-lambda f env)]
 			    [value (make-vector n)])			
 			(do ([i 0 (fx+ 1 i)])
 			    ((fx= i n) value)
@@ -139,7 +147,7 @@
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
-	(floatToComplex ,(lambda (f) (+ f 0.0+0.0i)))
+	(floatToComplex ,(lambda (f env) `(quote ,(+ f 0.0+0.0i))))
 	
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
@@ -148,29 +156,30 @@
 	(even? even?) (odd? odd?) (not not)
 	(map map)
 	(filter filter)
-	(GETENV ,(lambda (v)
-		  (if (string? v)
-		      (let ([x (getenv v)])
-			(if x x ""))
-		      (error 'static-elaborate:GETENV "bad input: ~s" v)
+	(GETENV ,(lambda (v env)
+		   (if (string? v)
+		       (let ([x (getenv v)])
+			 `(quote ,(if x x "")))
+		       (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
-	(FILE_EXISTS ,(lambda (v)
+	(FILE_EXISTS ,(lambda (v env)
 		       (if (string? v)
-			   (file-exists? v)
+			   `(quote ,(file-exists? v))
 			   (error 'static-elaborate:FILE_EXISTS "bad input: ~s" v)
 			   )))
 	))
 
     (define computable-constants '(IS_SIM))
 
-    (define (do-prim prim args)
-      (when (regiment-verbose)
-	(display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
+    (define (do-prim prim args env)
+      ;(when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
 	(if entry
-	 `(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args))))
+	    (if (procedure? (cadr entry))
+		(apply (cadr entry) (snoc env args))
+		`(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args)))))
 	 (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
 		`(,prim ,@args)))))
     
@@ -179,23 +188,24 @@
       (ASSERT (eq? prim 'IS_SIM))
       (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
 	  ''#t ''#f))
-
+#;
     (define interpret-closed-lambda
-      (lambda (lam)
+      (lambda (lam env)
 	(match lam
 	  [(lambda (,formals ...) ,ty ,bod)
 	   (let ([len (length formals)])
 	     (lambda args
-	       (let ([env (map (lambda (v c) `(,v (quote ,c) -1)) formals args)])
-		 (match (process-expr bod env)
+	       (let ([newenv (append (map (lambda (v c) `(,v (quote ,c) -1)) formals args)
+				     env)])
+		 (inspect newenv)
+		 (match (process-expr bod newenv)
 		   [(quote ,c) c])
 		 )))
 	   ])))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (when (regiment-verbose)
-	(display-constrained "INLINING " `[,rator 40] "\n"))
+      ;(when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
       (match rator
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
@@ -246,6 +256,7 @@
        (lambda (x fallthru)
 	 (match x
 	   [(set! ,v ,[e]) (cons v e)]
+	   [(vector ,[x*] ...) (apply append x*)]
 	   [,other (fallthru other)]))
        (lambda (ls k) (apply append ls))))
 
@@ -300,6 +311,7 @@
 
 	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
+	  [(vector ,[args] ...) `(vector ,args ...)]
 
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
@@ -446,6 +458,7 @@
 		;; This appears to disable the system here:
 		;(if (available? var) (getval var) var)
 		]
+
           [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
@@ -529,6 +542,12 @@
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
 
+	  [(vector ,[x*] ...)
+	   (if (andmap available? x*)
+	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
+	       `(quote ,(list->vector (map getval x*)))
+	       `(vector . ,x*))]
+
 	  ;; First we handle primitives that work on container types: 
 	  [(tupref ,ind ,len ,[tup])
 	   (if (container-available? tup)
@@ -596,7 +615,7 @@
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
 	   (if (and (assq prim computable-prims)
 		    (andmap available? rand*))
-	       (do-prim prim (map getval rand*))
+	       (do-prim prim (map getval rand*) env)
 	       `(,prim ,rand* ...))]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we

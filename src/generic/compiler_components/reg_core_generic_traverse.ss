@@ -208,8 +208,9 @@
 	   ;(inspect `(tupref ,n ,m ,exp))
 	   (fuse (list exp) (lambda (exp) `(tupref ,n ,m ,exp)))]
 
+	  ;; Being VERY lenient.  Vector is here just because it's used in static-elaborate. [2007.03.06]
 	  [(,varargkeyword ,[loop -> args] ...)
-	   (guard (memq varargkeyword '(unionN tuple)))
+	   (guard (memq varargkeyword '(unionN tuple vector)))
 	   (fuse args (lambda args `(,varargkeyword ,args ...)))]
 
 	  ;; Adding this special syntax as well (output of nominalize-types)

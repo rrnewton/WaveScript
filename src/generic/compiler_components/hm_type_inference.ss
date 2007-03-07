@@ -431,7 +431,7 @@
        (export-type (type-expression other (tenv-map instantiate-type tenv)))   ])))
 
 ;; Assign a basic type to a constant.
-(trace-define (type-const c)
+(define (type-const c)
   (cond
    [(flonum? c) 'Float]
    [(cflonum? c) 'Complex]
