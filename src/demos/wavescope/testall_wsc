@@ -14,7 +14,7 @@ function go () {
     echo >> $RUN
     echo $1 : >> $RUN
 #    ./run_query | head -20 >> $RUN
-    if ! ./run_query >> $RUN;
+    if ! ./query.exe >> $RUN;
     then exit 1; fi
 }
 
@@ -56,6 +56,8 @@ go "demo6c_syncN.ws"
 
 go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"
+
+go "demo11_simple_merge.ws"
 
 
 # ;    "demo5b_better.ws"
