@@ -481,6 +481,7 @@
 	(match x 
 	  [(quote ,c) (Const c)]
 	  [,v (guard (symbol? v)) (Var v)]
+	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
 ; ======================================================================
@@ -552,6 +553,7 @@
        (EmitPrint e t)]
       [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
+      ;; This just does nothing in the c++ backend:
       [(gnuplot_array ,a) ""]
 
       [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
@@ -666,7 +668,7 @@
       ;; This is the "default"; find it in WSPrim:: class
       [(m_invert string-append 
 	width start end joinsegs toSigseg
-	wserror ;generic_hash 
+	;wserror ;generic_hash 
 	fft
 	)
        (fromlib (mangle var))]
@@ -717,6 +719,11 @@
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
 
+	[(wserror ,[Simple -> str])
+	 ;; Don't do anything with the return value.
+	 `(,(if name `(,type" ",name";\n") "")
+	   "WSPrim::wserror(",str");\n")]
+
 	;; This is inefficient.  Only want to call getDirect once!
 	;; Can't trust the C-compiler to know it's effect free and do CSE.
 	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
@@ -757,17 +764,19 @@
 	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
 	[(assert-type (List ,t) (reverse ,[Simple -> ls]))
 	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
+	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
+	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
 	[(listRef (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
 	 (wrap `("cons<",(Type t)">::listRef(",ls", ",ind")"))]
 	[(listLength (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::listLength(",ls", ",ind")"))]
-	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
-	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
+	 (wrap `("cons<",(Type t)">::listLength(",ls")"))]
+	[(makeList ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
+	 (wrap `("cons<",(Type t)">::makeList(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append))) ;; Safety net.
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse listRef listLength makeList))) ;; Safety net.
 	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
 
@@ -810,11 +819,7 @@
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
 	   )	 
 	 ]
-
-	[(wserror ,[Simple -> str])
-	 (error 'wserror "unimplemented currently, bug ryan")
-	 ]
-
+	
 	;; Other prims fall through to here:
 	[(,other ,[Simple -> rand*] ...)
 	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))

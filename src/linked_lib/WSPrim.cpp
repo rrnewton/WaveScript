@@ -212,15 +212,31 @@ T cons<T>::listRef(const boost::shared_ptr< cons<T> > & ls,
   return ptr->car;
 }
 
-
 template <class T>
 wsint_t cons<T>::listLength(const boost::shared_ptr< cons<T> > & ls)
 {  
+  boost::shared_ptr< cons<T> > ptr = ls;
   int count = 0;
-  while (! IS_NULL(ptr)) 
-    count++;
+  while (!(IS_NULL(ptr))) { 
+    ptr = ptr->cdr;
+    count++; 
+  }
   return (wsint_t)count;
 }
+
+template <class T>
+boost::shared_ptr< cons<T> > cons<T>::makeList(wsint_t n, T init)
+{
+  int count = n;
+  // Start out null.
+  boost::shared_ptr< cons<T> > p((cons<T>*)0);
+  while (count > 0) {
+    p = boost::shared_ptr< cons<T> >(new cons<T>(init, p));
+    count--;
+  }  
+  return p;
+}
+
 
 
 

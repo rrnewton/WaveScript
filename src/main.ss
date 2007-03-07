@@ -498,8 +498,8 @@
   ;; This just fills polymorphic types with unit.  These should be
   ;; things that don't matter.  We typecheck afterwards to make sure
   ;; things still make sense.
-  (run-pass p kill-polymorphic-types)
-  (run-pass p retypecheck)
+  ;(run-pass p kill-polymorphic-types)
+  ;(run-pass p retypecheck)
 
   (run-pass p verify-elaborated)
 
@@ -540,6 +540,10 @@
   (run-pass p ws-remove-complex-opera*)
   (run-pass p ws-normalize-context)
   (run-pass p ws-lift-let)
+
+  ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
+  ;; types that might have snuck in from lifting.
+  (run-pass p retypecheck)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
   ;(run-pass p flatten-iterate-spine)

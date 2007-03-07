@@ -48,8 +48,8 @@ s5 = iterate(ls in s4) {
   assert(ls.listLength == 4);
   print("  Second element: "++ ls.listRef(1) ++"\n");
   assert(ls.listRef(1) == ls.tail.head);
-
-  print("  makeList: "++ makeList(3, 0.0) ++"\n");
+  ml = makeList(3, 0.0);
+  print("  makeList: "++ ml ++ " Length: "++ ml.listLength ++"\n");
   emit ();
 }
 
