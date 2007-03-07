@@ -667,7 +667,7 @@
       [(max)                    "max"]
       ;; This is the "default"; find it in WSPrim:: class
       [(m_invert string-append 
-	width start end joinsegs toSigseg
+	width start end joinsegs subseg toSigseg
 	;wserror ;generic_hash 
 	fft
 	)
