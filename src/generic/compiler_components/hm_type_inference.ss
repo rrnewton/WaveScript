@@ -431,13 +431,18 @@
        (export-type (type-expression other (tenv-map instantiate-type tenv)))   ])))
 
 ;; Assign a basic type to a constant.
-(define (type-const c)
+(trace-define (type-const c)
   (cond
    [(flonum? c) 'Float]
    [(cflonum? c) 'Complex]
    [(integer? c) 'Int]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
+   
+   [(vector? c) `(Array ,(if (zero? (vector-length c))
+			     ''anytype
+			     (type-const (vector-ref c 0))))]
+
    ;; Temp, not sure if we're going to support symbols or not in the final language:
    [(symbol? c) 'Symbol]
    [(null? c) `(List ,(make-tcell))]

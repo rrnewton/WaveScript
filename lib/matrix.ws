@@ -57,6 +57,12 @@ fun list_to_matrix(list) {
   arr
 }
 
+fun build_matrix(n,m,f) {
+  buildArray(n, 
+    fun(i) buildArray(m, 
+      fun(j) f(i,j)))
+}
+
 list_of_segs_to_matrix :: List (Sigseg t) -> Array (Array t);
 fun list_of_segs_to_matrix(ls) {
   len = listLength(ls);

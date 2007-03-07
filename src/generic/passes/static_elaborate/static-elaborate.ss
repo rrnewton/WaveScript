@@ -72,6 +72,10 @@
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
+	       ;; buildArray is also only for the meta language currently.
+	       ;; (It's higher order.)
+	       [(Prim 'buildArray) #f]
+
 	       ;; nor should we have user-level applications:
 	       [(Expr ('app Expr ...)) #f]
 	       [,_ #t]))
@@ -106,17 +110,17 @@
 	;(cons "cons-done-as-special-case")
 	;(listLength length)
 	
-	(stringToInt (lambda (v) 
+	(stringToInt ,(lambda (v) 
 		       (let ([x (string->number v)])
 			 (if x 
 			     (ASSERT fixnum? x)
 			     (error 'stringToInt "couldn't convert string: ~s" v)))))
-	(stringToFloat (lambda (v) 
+	(stringToFloat ,(lambda (v) 
 			 (let ([x (string->number v)])
 			   (if x 
 			       (ASSERT flonum? x)
 			       (error 'stringToFloat "couldn't convert string: ~s" v)))))
-	(stringToComplex (lambda (v) 
+	(stringToComplex ,(lambda (v) 
 			   (ASSERT string? v)
 			   (let ([x (string->number v)])
 			     (cond
@@ -124,11 +128,18 @@
 			      [(real? x) (fl-make-rectangular x 0.0)]
 			      [else (ASSERT cflonum? x)]))))
 
+	(buildArray ,(lambda (n f)
+		      (let ([realf (interpret-closed-lambda f)]
+			    [value (make-vector n)])			
+			(do ([i 0 (fx+ 1 i)])
+			    ((fx= i n) value)
+			  (vector-set! value i (realf i))))))
+
 	(intToFloat fixnum->flonum)
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
-	(floatToComplex (lambda (f) (+ f 0.0+0.0i)))
+	(floatToComplex ,(lambda (f) (+ f 0.0+0.0i)))
 	
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
@@ -137,13 +148,13 @@
 	(even? even?) (odd? odd?) (not not)
 	(map map)
 	(filter filter)
-	(GETENV (lambda (v)
+	(GETENV ,(lambda (v)
 		  (if (string? v)
 		      (let ([x (getenv v)])
 			(if x x ""))
 		      (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
-	(FILE_EXISTS (lambda (v)
+	(FILE_EXISTS ,(lambda (v)
 		       (if (string? v)
 			   (file-exists? v)
 			   (error 'static-elaborate:FILE_EXISTS "bad input: ~s" v)
@@ -168,6 +179,18 @@
       (ASSERT (eq? prim 'IS_SIM))
       (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
 	  ''#t ''#f))
+
+    (define interpret-closed-lambda
+      (lambda (lam)
+	(match lam
+	  [(lambda (,formals ...) ,ty ,bod)
+	   (let ([len (length formals)])
+	     (lambda args
+	       (let ([env (map (lambda (v c) `(,v (quote ,c) -1)) formals args)])
+		 (match (process-expr bod env)
+		   [(quote ,c) c])
+		 )))
+	   ])))
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
@@ -305,7 +328,9 @@
     ;;----------------------------------------
 
     ;;   The "env" argument binds names to *code*.  Or if the code is
-    ;; unavailable, to not-available.
+    ;; unavailable, to the special value 'not-available'.
+    ;;
+    ;; There's a third slot in each env entry that was used for reference counting... unused currently
     (define process-expr           
       (lambda (expr env)
 	;(printf "ENV: ~a\n" (map car env))

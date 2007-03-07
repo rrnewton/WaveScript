@@ -396,6 +396,9 @@
     (arr-get          ((Array 'a) Int) 'a)
     (length           ((Array 'a)) Int)
 
+    ;; This uses an initialization function to fill in an array:
+    (buildArray       (Int (Int -> 'a)) (Array 'a))
+
     ;; Temporary:
     ;; Oops, need to be sure this doesn't change the numeric type in the output:
     (m_invert   ((Array (Array (NUM a))))  (Array (Array (NUM a))))
