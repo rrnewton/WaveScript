@@ -426,7 +426,8 @@
     (syntax-rules ()
       [(_ v pass)
        ;(time (set! p (optional-stop (pass p))))
-       (set! p (optional-stop (pass p)))
+       (parameterize ([regiment-current-pass 'pass])
+	 (set! p (optional-stop (pass p))))
        ]))
   
   (set! already-typed (if (null? already-typed) #f (car already-typed)))
@@ -450,8 +451,9 @@
   (run-pass p eta-primitives)
   (run-pass p desugar-misc)
   (run-pass p remove-unquoted-constant)
+  ;; Run this twice!!!
+  ;(run-pass p degeneralize-arithmetic)
   (run-pass p static-elaborate)
-  (run-pass p degeneralize-arithmetic)
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -464,6 +466,8 @@
 	 (pretty-print p))
        (flush-output-port))
      'replace))
+
+  (run-pass p degeneralize-arithmetic)
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)

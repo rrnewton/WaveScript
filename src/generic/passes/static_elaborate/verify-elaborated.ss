@@ -74,6 +74,9 @@
 		    type rator))
 	    `(app ,rator ,rand* ...))]
 
+	 [(buildArray ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. bbuildArray is not allowed after elaboration.")]
+	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
+
 	 ;; Run verification on the types:
 	 [,form (guard (binding-form? form))
 		(for-each (lambda (t)

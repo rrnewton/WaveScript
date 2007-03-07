@@ -62,6 +62,7 @@
 
 	 compiler-invocation-mode 
 	 regiment-verbose regiment-quiet
+	 regiment-current-pass
 
 	 simulation-logger 
 	 simulation-logger-count
@@ -266,6 +267,9 @@
 
 ;; This is the opposite, it is used to suppress ALL banners and nonessential output for batch execution.
 (define-regiment-parameter regiment-quiet #f)
+
+;; It's useful to have this info globally for debugging/error messages.
+(define regiment-current-pass (make-parameter #f))
 
 ;; Is this run of the compiler a WS run?
 ;; Should be set to:

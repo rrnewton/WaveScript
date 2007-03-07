@@ -100,13 +100,16 @@
      ;; CONVENTION: if the right hand side is a closure, it takes an env argument also.
     (define computable-prims 
       `((+ +) (- -) (* *) (/ /) (^ expt) 
-	(g+ +) (g- -) (g* *) (g/ /) (g^ expt) 
+	(g+ +) (g- -) (g* *) (g/ /) (g^ expt)
 	(+_ +) (-_ -) (*_ *) (/_ /) (^_ expt) 
 	(+. +) (-. -) (*. *) (/. /) (^. expt) 
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
-	(abs abs) (absI fxabs) (absF flabs) (absC abs)
-	(= =) (< <) (<= <=) (> >) (>= >=)
+
+	;; This doesn't give it the right representation:
+	;(gint ,(lambda (x) `(quote ,x)))
 	;(gint (lambda (x) x))
+
+	(= =) (< <) (<= <=) (> >) (>= >=)
 
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
@@ -134,6 +137,25 @@
 
 	(buildArray ,(lambda (n f)
 		       `(vector . ,(map (lambda (i) `(app ,f (quote ,i))) (iota n)))))
+	(length vector-length)
+	(arr-get vector-ref)	
+	
+	(sqrtI ,(lambda (n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
+
+	(absI16 fxabs) (absI fxabs) (absF flabs) (absC abs)
+
+	(cos cos) (sin sin) (tan tan)
+	(acos acos) (asin asin)	(atan atan)
+
+#;#;
+	(letrec ([tmp_142 Float (atan '-1.0)])
+	  (if (<= tmp_142 '0.0)
+	      (g+ tmp_142 '3.141592653589793)
+	      (g- tmp_142 '3.141592653589793)))
+	(letrec ([tmp_142 Float (atan '-0.0)])
+	  (if (<= tmp_142 '0.0)
+	      (g+ tmp_142 '3.141592653589793)
+	      (g- tmp_142 '3.141592653589793)))
 
 	(intToFloat fixnum->flonum)
 	(intToComplex intToComplex-unimplented)
@@ -522,7 +544,7 @@
 	  [(buildArray ,[n] ,[f])
 	   (inspect `(tryingbuildarr!! ,(available? n) ,(available? f) ,env))
 	   ]
-
+	  
 
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
@@ -531,6 +553,14 @@
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
 	       `(quote ,(list->vector (map getval x*)))
 	       `(vector . ,x*))]
+	  #;
+	  [(length ,[vec])
+	   ;(inspect (cons (available? vec) vec))
+	   (if (available? vec)
+	       `(quote ,(match vec [(quote ,v) (vector-length v)]))
+	       `(length ,vec)
+	       )]
+	  
 	  ;; TODO: vector-ref.
 
 	  ;; First we handle primitives that work on container types: 
