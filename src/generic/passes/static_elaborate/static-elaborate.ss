@@ -112,19 +112,19 @@
 	;(cons "cons-done-as-special-case")
 	;(listLength length)
 	
-	(stringToInt ,(lambda (v env) 
+	(stringToInt ,(lambda (v) 
 			`(quote
 			  ,(let ([x (string->number v)])
 			     (if x 
 				 (ASSERT fixnum? x)
 				 (error 'stringToInt "couldn't convert string: ~s" v))))))
-	(stringToFloat ,(lambda (v env)
+	(stringToFloat ,(lambda (v)
 			 `(quote 
 			   ,(let ([x (string->number v)])
 			      (if x 
 				  (ASSERT flonum? x)
 				  (error 'stringToFloat "couldn't convert string: ~s" v))))))
-	(stringToComplex ,(lambda (v env) 
+	(stringToComplex ,(lambda (v)
 			    (ASSERT string? v)
 			    `(quote 
 			      ,(let ([x (string->number v)])
@@ -133,21 +133,14 @@
 				  [(real? x) (fl-make-rectangular x 0.0)]
 				  [else (ASSERT cflonum? x)])))))
 
-	(buildArray ,(lambda (n f env)
-		       `(vector . ,(map (lambda (i) `(app ,f (quote ,i))) (iota n)))
-
-		       #;
-		      (let ([realf (interpret-closed-lambda f env)]
-			    [value (make-vector n)])			
-			(do ([i 0 (fx+ 1 i)])
-			    ((fx= i n) value)
-			  (vector-set! value i (realf i))))))
+	(buildArray ,(lambda (n f)
+		       `(vector . ,(map (lambda (i) `(app ,f (quote ,i))) (iota n)))))
 
 	(intToFloat fixnum->flonum)
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
-	(floatToComplex ,(lambda (f env) `(quote ,(+ f 0.0+0.0i))))
+	(floatToComplex ,(lambda (f) `(quote ,(+ f 0.0+0.0i))))
 	
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
@@ -156,13 +149,13 @@
 	(even? even?) (odd? odd?) (not not)
 	(map map)
 	(filter filter)
-	(GETENV ,(lambda (v env)
+	(GETENV ,(lambda (v)
 		   (if (string? v)
 		       (let ([x (getenv v)])
 			 `(quote ,(if x x "")))
 		       (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
-	(FILE_EXISTS ,(lambda (v env)
+	(FILE_EXISTS ,(lambda (v)
 		       (if (string? v)
 			   `(quote ,(file-exists? v))
 			   (error 'static-elaborate:FILE_EXISTS "bad input: ~s" v)
@@ -178,7 +171,7 @@
       (let ([entry (assq prim computable-prims)])
 	(if entry
 	    (if (procedure? (cadr entry))
-		(apply (cadr entry) (snoc env args))
+		(apply (cadr entry) args)
 		`(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args)))))
 	 (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
 		`(,prim ,@args)))))
