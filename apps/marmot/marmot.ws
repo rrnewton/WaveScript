@@ -159,27 +159,22 @@ fun FarFieldDOA(synced, sensors)
   Ngrd = 360;           // Ngrd is the number of grid points to compute DOA for.
   NSrc = 5;             // maximum number of sources to consider
   Nsel = 30;            // number of frequency bins to consider
-  MaxIter = 5;          // maximum number of ot
-  if (NSrc == 1) then { MaxIter := 1; };
+  MaxIter = if NSrc == 1 then 1 else 5; // maximum number of ot
 
   Nsens = m_rows(sensors);
-  r = makeArray(Nsens, 0.0);
-  theta = makeArray(Nsens, 0.0);
   
   /* compute r and theta for each sensor relative to sensor 0 as origin */
-  for i = 1 to Nsens-1 {
-    r[i] := sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
-		  sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
-		  sqr(m_get(sensors,i,2) - m_get(sensors,0,2)));
-    theta[i] := atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
-		      m_get(sensors,i,0) - m_get(sensors,0,0));
-  };
-
+  r = buildArray(Nsens, 
+		 fun(i) sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
+			      sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
+			      sqr(m_get(sensors,i,2) - m_get(sensors,0,2))));
+  theta = buildArray(Nsens,
+		     fun(i) atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
+				  m_get(sensors,i,0) - m_get(sensors,0,0)));
+		     
   // gridmap maps polar grid entry to radians
-  gridmap = makeArray(Ngrd, gint(0));
-  for i = 0 to Ngrd-1 {
-    gridmap[i] := deg2rad(intToFloat(i) * 360.0 / gint(Ngrd));
-  };
+  gridmap = buildArray(Ngrd, 
+                       fun(i) deg2rad(intToFloat(i) * 360.0 / i2f(Ngrd)));
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
   matrix_in = stream_map(list_of_segs_to_matrix, synced);
@@ -382,5 +377,6 @@ sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
 doas = FarFieldDOA(synced, sensors);
 
 BASE <- doas;
+
 //BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
 //		   audio(0,1,0,44000)]);
