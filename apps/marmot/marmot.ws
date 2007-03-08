@@ -376,7 +376,10 @@ sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
 
 doas = FarFieldDOA(synced, sensors);
 
-BASE <- doas;
+BASE <- 
+  doas
+// synced
+;
 
 //BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
 //		   audio(0,1,0,44000)]);

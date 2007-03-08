@@ -74,6 +74,7 @@ static ostringstream global_show_stream(ostringstream::out);
      rs.releaseAll();
      return rs;
    }
+
    static RawSeg joinsegs(const RawSeg& a, const RawSeg& b) {
      return RawSeg::append(a,b);
    }
@@ -97,6 +98,13 @@ static ostringstream global_show_stream(ostringstream::out);
    static void wserror(wsstring_t str) {
      printf("wserror: %s\n", str.c_str());
      exit(1);
+   }
+
+   template <class T>
+   static boost::shared_ptr<vector< boost::shared_ptr< vector<T> > > >
+       m_invert(boost::shared_ptr<vector< boost::shared_ptr< vector<T> > > > mat)
+   {
+     return mat;
    }
 
    // Optimized version, unfinished.

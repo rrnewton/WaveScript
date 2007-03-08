@@ -456,11 +456,11 @@
 	  [(eq? datum #f) "FALSE"]       
 	  [(string? datum) (format "string(~s)" datum)]
 	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
-	  [(integer? datum) (format "(wsint_t)~a" datum)]
-	  [(eq? datum 'nulltimebase)  "WSNULLTIMEBASE"]
-	  [(cflonum? datum) (format "(wscomplex_t)complex<float>(~a, ~a)" 
+	  [(cflonum? datum) (format "(wscomplex_t)(~a + ~afi)" 
 				    (cfl-real-part datum)
 				    (cfl-imag-part datum))]
+	  [(eq? datum 'nulltimebase)  "WSNULLTIMEBASE"]
+	  [(integer? datum) (format "(wsint_t)~a" datum)]
 	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])]
 	[(datum ty)
 	 (match (vector datum ty)
@@ -663,7 +663,8 @@
       [(cos sin tan)     (symbol->string var)]
       [(absF absI absI16)       "abs"]
 ;      [(absC)                   "cabs"]
-      [(sqrtI sqrtF sqrtC)      "sqrt"]
+      [(sqrtI sqrtF)            "sqrt"]
+      [(sqrtC)                  "csqrt"]
       [(max)                    "max"]
       ;; This is the "default"; find it in WSPrim:: class
       [(m_invert string-append 
@@ -677,6 +678,16 @@
 
   (match expr
     ;; First we handle "open coded" primitives:
+
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
+    ;; INEFFICIENT:
+    [(^: ,[Simple -> x] ,[Simple -> y]) 
+     (let ([tmp (Var (unique-name 'tmp))])
+       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
+       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
+       ))]
     
     ;; TODO: tupref, exponentiation 
     [(,infix_prim ,[Simple -> left] ,[Simple -> right])
@@ -695,7 +706,7 @@
 		    [(+. *. -. /.
 			 +_ *_ -_ /_
 			 +: *: -: /:
-			 ^_ ^. ^: 
+			 ^_ ^. 
 			 ) ;; Chop off the extra character.
 		     (substring (symbol->string infix_prim) 0 1)]
 		    [(+I16 -I16 *I16 /I16 ^I16)
@@ -709,15 +720,33 @@
 	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
 
 	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
+	;[(absC ,[Simple -> c]) (wrap `("cabs(",c")"))]
 	
 	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
 	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	;[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)complex<float>(",e", 0.0))"))]
+	[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
 
 	[(int16ToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
 	[(int16ToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
 
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
+
+	[(toArray (assert-type (Sigseg ,t) ,sigseg))
+	 (let ([tmp (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))]
+	       [len (Var (unique-name 'len))]
+	       [ss (Simple sigseg)]
+	       [tt (Type t)])
+	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
+	     "int len = ",ss".length();\n"
+	     "for(int i=0; i<len; i++) {\n"
+	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
+	     "  (*",tmp")[i] = ",tmp2";\n"
+	     "}\n"
+	     ,(wrap tmp)
+	     ))]
 
 	[(wserror ,[Simple -> str])
 	 ;; Don't do anything with the return value.
@@ -730,7 +759,7 @@
 	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
 	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
 	[(seg-get ,foo ...)
-	 (error 'emit-c:Value "seg-get without type annotation: ~s" 
+	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
 		`(seg-get ,@foo))]
 	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
 	
@@ -776,7 +805,10 @@
 
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse listRef listLength makeList))) ;; Safety net.
+
+	;; Safety net:
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
+					   listRef listLength makeList ))) 
 	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
 
@@ -837,7 +869,8 @@
     [Int            (printf "%d" e)]
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
-    [Complex        (stream `("complex<float>(",e")"))]
+    ;[Complex        (stream `("complex<float>(",e")"))]
+    [Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
     [String         (printf "%s" `(,e".c_str()"))]
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]

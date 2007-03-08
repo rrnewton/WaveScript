@@ -34,6 +34,7 @@
 	 `(equal? (assert-type ,(recover-type a tenv) ,a) ,b)]
 	[(seg-get ,[seg] ,[ind])
 	 `(seg-get (assert-type ,(recover-type seg tenv) ,seg) ,ind)]
+	[(toArray ,[ss]) `(toArray (assert-type ,(recover-type ss tenv) ,ss))]
 
 	[(append ,[x] ,[y])
 	 `(assert-type ,(recover-type x tenv) (append ,x ,y))]
@@ -45,6 +46,7 @@
 	 `(listRef (assert-type ,(recover-type x tenv) ,x) ,i)]
 	[(makeList ,[n] ,[init])
 	 `(makeList ,n (assert-type ,(recover-type init tenv) ,init))]
+
 
 	;; TODO, FIXME: THIS IS A HACKISH AND BROKEN APPROACH:
 	
