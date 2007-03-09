@@ -1,10 +1,18 @@
 
 %\documentstyle[refman.sty]{article}
 \documentstyle{report}
+%\usepackage{color}
 
 % page size commands
 
 \title{WaveScript 0.1 Users Manual}
+
+%\newcommand{\rednote}[1]{{\textcolor{red}{}}}
+\newcommand{\rednote}[1]{{\em \bf{}}}
+
+
+
+
 
 \begin{document}
 
@@ -18,7 +26,10 @@
 
 \chapter{Introduction}
 
-\~/wavescript
+WaveScript is a functional metaprogramming language for writing highly abstract
+programs that generate efficient dataflow graphs.  These graphs are
+executable in an emulator (ws) or by compiling te C++ (wsc) and linking them
+to the {\em XStream} engine.
 
 \section{Using WaveScript}
 
@@ -68,15 +79,47 @@ checks necessary to maintaining type safety.  Thus the process can
 crash if there's an error, or memory can become corrupted (just like
 C/C++).  Therefore, debug your code using {\tt ws} first.
 
+\subsubsection*{Run {\tt \bf ws.debug} occasionally for sanity-checking}
+
+While it's too slow for the normal development cycle, it is important
+to occasionally compile your program with ws.debug.  Mainly this is
+important for building confidence that the compiler is behaving
+properly on your program (not having exposing a bug).  If the compiler
+were a mature system not under active development, this would not be
+as important.  When you run {\bf ws.debug} the compiler runs extensive
+invariant checks on the data structures it uses, in particular it
+checks the intermediate forms between compiler passes for
+conformance to explicit grammars.  Further it inserts extra
+type-checks to make sure that the intermediate programs are well-formed.
+
 \subsection{The WaveScript Compiler: {\tt \bf wsc}}
 
+The WaveScript emulator provides a reference implementation suitable
+to prototyping and debugging applications.  The eventual target is to
+generate an efficient C++ program from the WaveScript source.  This is
+accomplished with the {\bf wsc} compiler.  In practice, during
+development the {\bf wsc} compiler often lags behind the {\bf ws}
+emulator in terms of features and functionality.  Again, develop
+incrementally, refer to wavescript/demos/wavescope for programs that
+should work with {\bf wsc}.
 
-\section{Syntax}
+Refer to the XStream documentation\footnote{Currently nonexistent
+[2007.03.09]} for information on how to configure the XStream engine
+(number of threads, scheduling policy, etc).
 
-Please make liberal use of ~/wavescript/demos/wavescope
+\rednote{[2007.03.09] Ideally the output from the XStream-executed
+query would be the same as the emulator output.  Currently, there are
+some basic disparities in how objects are printed.  Hopefully, these
+are straightforward to work around, and should go away shortly.}
+
+%================================================================================
+\section{Language Syntax}
+
+Please make liberal use of ~/wavescript/demos/wavescope as a reference
+when developing WaveScript programs.  These demos cover most of the
+basic functionality in the language.
 
 \section{Naming conventions}
-
 
 \chapter{Basics}
 
@@ -95,6 +138,59 @@ Please make liberal use of ~/wavescript/demos/wavescope
 \section{Sigsegs}
 
 \section{Functions}
+
+\begin{code}
+fun f(x,y) {
+  z = x+y;
+  sqrt(z)
+}
+\end{code}
+
+\begin{code}
+stream_map(fun(x) x+3, S)
+\end{code}
+
+\section{Type Annotations}
+
+\begin{code}
+f :: Type;
+fun f(x,y) { ...
+\end{code}
+
+\begin{code}
+(expression :: Type)
+\end{code}
+
+\begin{code}
+var :: Type = 
+\end{code}
+
+
+
+
+
+% smap$((+3))
+% smap(f$(x), S)
+%%  ls.List:ref(i)
+%%  ls.list:ref(i)
+
+%% list:ref 
+%% List:ref 
+
+%% list|ref 
+
+%% ls.List|ref(i)
+
+
+%% namespace Matrix {
+  
+%% }
+
+%% Matrix:make
+%% Array:make
+
+%% using Matrix;
+
 
 \section{Patterns}
 
@@ -136,9 +232,11 @@ a function that takes a 2-tuple as its second argument:
 
 \section{Fourier Transforms}
 
+WaveScript uses fftw.
+
 \section{Matrix Operations}
 
-
+WaveScript uses the Gnu Scientific Library to support matrix operations.
 
 \chapter{WaveScript Evaluation Model}
 
