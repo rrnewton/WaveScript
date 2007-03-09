@@ -424,8 +424,8 @@ The primary means of operating on the data inside streams is the {\tt
 \begin{verbatim}
         S2 = iterate( x in S1 ) {
           state{ counter = 0 }
-	  counter := counter + 1;
-	  emit counter + x;
+          counter := counter + 1;
+          emit counter + x;
         }
 \end{verbatim}
 
