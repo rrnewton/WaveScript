@@ -448,38 +448,53 @@
       ;(symbol->string var))
 
     (define Const
-      (case-lambda
-	[(datum) 
+      (lambda (name type datum)
+         (define (wrap x) (if name 
+                              (list type " " name " = " x ";\n")
+                              x))
 	 ;; Should also make sure it's 32 bit or whatnot:
 	 (cond
-	  [(eq? datum #t) "TRUE"]
-	  [(eq? datum #f) "FALSE"]       
-	  [(string? datum) (format "string(~s)" datum)]
-	  [(flonum? datum)  (format "(wsfloat_t)~a" datum)]
-	  [(cflonum? datum) (format "(wscomplex_t)(~a + ~afi)" 
+	  [(eq? datum #t) (wrap "TRUE")]
+	  [(eq? datum #f) (wrap "FALSE")]       
+	  [(string? datum) (wrap (format "string(~s)" datum))]
+	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
+	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
 				    (cfl-real-part datum)
-				    (cfl-imag-part datum))]
-	  [(eq? datum 'nulltimebase)  "WSNULLTIMEBASE"]
-	  [(integer? datum) (format "(wsint_t)~a" datum)]
-	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])]
-	[(datum ty)
-	 (match (vector datum ty)
-	   (DEBUGASSERT (not (polymorphic-type? ty)))
-	   [#(() (List ,t)) 	   
-	    ;"NULL_LIST"
-	    ;`("(cons<",(Type t)">::ptr)NULL_LIST")
-	    ;`("(cons<",(Type t)">::null_ls)")
-	    `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
-	    ]
-	   [#(nullseg ,t) "WSNULLSEG"]
-	   ;[#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	   [#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
-	   )]))
+				    (cfl-imag-part datum)))]
+	  [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
+	  [(integer? datum) (wrap (format "(wsint_t)~a" datum))]
+	  [(vector? datum)
+           (ASSERT name)
+	   (let ([contenttype (if (zero? (vector-length datum))
+				  ;; Throw in a default:
+				  'Int
+				  (type-const (vector-ref datum 0)))])	    
+	     `(,type" ",name"(new vector< ",(Type contenttype)" >(",
+		    (number->string (vector-length datum))"));\n" ;; MakeArray.
+		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)) "" x))			   
+			   (vector->list datum))))]
+
+	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))
+
+    (define PolyConst 
+      (lambda (datum ty)
+	(match (vector datum ty)
+	  (DEBUGASSERT (not (polymorphic-type? ty)))
+	  [#(() (List ,t)) 	   
+					;"NULL_LIST"
+					;`("(cons<",(Type t)">::ptr)NULL_LIST")
+					;`("(cons<",(Type t)">::null_ls)")
+	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
+	   ]
+	  [#(nullseg ,t) "WSNULLSEG"]
+					;[#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
+	  [#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
+	  )))
 
     (define Simple
       (lambda (x)
 	(match x 
-	  [(quote ,c) (Const c)]
+	  [(quote ,c) (Const #f #f c)]
 	  [,v (guard (symbol? v)) (Var v)]
 	  [(assert-type ,_ ,[x]) x]
 	  [,else (error 'Simple "not simple expression: ~s" x)])))
@@ -503,7 +518,7 @@
 			 (list x ";\n")))
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
-      [(quote ,c)             (if name (wrap (Const c)) "")]
+      [(quote ,c)             (if name (Const name type c) "")]
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
@@ -574,24 +589,14 @@
 	(match exp
 
 	  ;; Special Constants:
-	  [(assert-type ,t nullseg) (wrap (Const 'nullseg t))]
-	  [(assert-type ,t nullarr) (wrap (Const 'nullarr t))]
-	  [(assert-type ,t '())     (wrap (Const '() t))]
+	  [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
+	  [(assert-type ,t nullarr) (wrap (PolyConst 'nullarr t))]
+	  [(assert-type ,t '())     (wrap (PolyConst '() t))]
 
-	  [nulltimebase             (wrap (Const 'nulltimebase))]
-
-	  [(quote ,vec) (guard (vector? vec))
-	   (let ([contenttype (if (zero? (vector-length vec))
-				  ;; Throw in a default:
-				  'Int
-				  (type-const (vector-ref vec 0)))])	    
-	     `(,type" ",name"(new vector< ",(Type contenttype)" >(",
-		    (number->string (vector-length vec))"));\n" ;; MakeArray.
-		    ,(mapi (lambda (i x) `("(*",name")[",(number->string i)"] = ",(Const x)";\n"))
-			   (vector->list vec))))]
+	  [nulltimebase             (Const name type 'nulltimebase)]
 
 	  ;[,c (guard (constant? c)) (Const c)]
-	  [(quote ,datum)           (wrap (Const datum))]
+	  [(quote ,datum)           (Const name type datum)]
 
 	  [,v (guard (symbol? v))
 	      (ASSERT (not (regiment-primitive? v)))

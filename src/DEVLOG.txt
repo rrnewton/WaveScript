@@ -382,3 +382,27 @@ Adding Int16... these are the things that had to change:
 
 [2007.03.05]
 Just got a segfault on demo3f which I can't now reproduce... strange.
+
+[2007.03.08]
+Eventually I would like a foreign function entry to look something
+like this:
+
+foo :: (Matrix Complex, Array Int, Matrix Complex) -> Int;
+foo = foreign("gsl_linalg_complex_LU_invert", 
+              [GSLComplexMatrixType, GSLPermType, GSLComplexMatrixType], IntType, 
+              [Include "gsl/gsl_matrix.h", Include "gsl/gsl_linalg.h",
+               Link "gsl.so", Link "gslcblas.so"]);
+
+f = fun(x) 
+    numtypecase(x) {
+      Int: ...
+      Float: ...
+    }
+
+case(x){
+  Foo(a,b): ...;
+  Bar(a,b): ...;
+  Baz(head:::tail): ...;
+}
+
+

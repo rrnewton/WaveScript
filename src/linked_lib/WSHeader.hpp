@@ -28,6 +28,9 @@
 #include <complex>
 //#include <time.h>
 
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_matrix.h>
+
 using boost::enable_shared_from_this;
 using namespace std;
 using namespace __gnu_cxx;

@@ -10,8 +10,9 @@
 
 ;; mitscheme -- Runs into some unknown problem with trying to apply 3.
 ;; chicken -- supports define-syntax, but can't handle the macros in match.r5rs
+;; gambit -- the iu-match package loads, but trying to require it from another package causes an error.
 
-(package* iu-match/v0.0.5
+(package* iu-match/v0.0.6
  (provide:
 ;  (define* (test-match))
   ;; Should use define-syntax* export here when it's available.
