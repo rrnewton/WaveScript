@@ -1,7 +1,8 @@
 
 
 all: pdf html
-
+	cp -a manual/* /var/www/wsmanual/
+	(cd /var/www; ./setperms)
 
 pdf:
 	pdflatex manual

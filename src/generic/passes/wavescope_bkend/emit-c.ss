@@ -469,9 +469,11 @@
 				  ;; Throw in a default:
 				  'Int
 				  (type-const (vector-ref datum 0)))])	    
-	     `(,type" ",name"(new vector< ",(Type contenttype)" >(",
+	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
+		    " > >(new vector< ",(Type contenttype)" >(",
 		    (number->string (vector-length datum))"));\n" ;; MakeArray.
-		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)) "" x))			   
+		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
+						"" x))			   
 			   (vector->list datum))))]
 
 	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))

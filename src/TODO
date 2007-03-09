@@ -12,6 +12,19 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.09]
+  *) It would be nice to make a manual "fuse-passes" function that
+     fuses two passes defined with "define-pass".  This would be
+     tricky and will probably just work for passes that return a single
+     expression value as their intermediate form from the Expr function.
+
+[2007.03.09] {Optimization todo-list}
+These are the order that optimizations need to be implemented: 
+  *) Copy-propogation
+  *) De-boosting, manually managed memory for arrays especially
+  *) (Non-optimization) replace stl vectors with plain C-arrays
+
+
 [2007.03.08]
   *) I think I can make a good foreign interface that would allow
      pulling in all the GSL functions easily.

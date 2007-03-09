@@ -63,7 +63,7 @@ fi
 #chmod +x run_query
 
 echo Compiling query file.
-if g++ -Wall -Werror -I$WAVESCOPED/include -g -fPIC -Wno-unused-variable -DSegList -DuseArray -lfftw3f -lpthread ./query.cpp $WAVESCOPED/libws-SMSegList.so -o query.exe;
+if g++ -Wall -Werror -I$WAVESCOPED/include -g -fPIC -Wno-unused-variable -DSegList -DuseArray -lfftw3f -lm -lgsl -lgslcblas -lpthread ./query.cpp $WAVESCOPED/libws-SMSegList.so -o query.exe;
 then echo
 else
     echo

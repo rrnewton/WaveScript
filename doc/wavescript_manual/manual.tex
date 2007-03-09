@@ -1,18 +1,39 @@
 
 %\documentstyle[refman.sty]{article}
-\documentstyle{report}
-%\usepackage{color}
+%\documentstyle[twocolumn]{report}
+\documentclass[twocolumn]{report}
+\usepackage{color}
+%\usepackage{code}
+
+
+\setlength{\textheight}{9.25in}
+\setlength{\columnsep}{0.25in} %RRN changed: {0.33in}
+\setlength{\textwidth}{7.4in}
+\setlength{\footskip}{0.0in}
+\setlength{\topmargin}{-0.25in}
+\setlength{\headheight}{0.0in}
+\setlength{\headsep}{0.0in}
+\setlength{\oddsidemargin}{-.45in}
+\setlength{\parindent}{1pc}
+
 
 % page size commands
 
 \title{WaveScript 0.1 Users Manual}
 
-%\newcommand{\rednote}[1]{{\textcolor{red}{}}}
-\newcommand{\rednote}[1]{{\em \bf{}}}
+\newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
+%\newcommand{\rednote}[1]{{\em \bf{}}}
+
+\newcommand{\evalsto}[2]{\[ \begin{array}{rcl}
+$\tt #1 $&$ \arr $&$ #2 $
+\end{array} \]}
+
+\newcommand{\arr}{\ensuremath{\rightarrow}}
+
+\newcommand{\cd}{\tt}
 
 
-
-
+\newenvironment{wscode}{\begin{center}\tt}{\end{center}}
 
 \begin{document}
 
@@ -33,9 +54,14 @@ to the {\em XStream} engine.
 
 \section{Using WaveScript}
 
-See the README for install instructions.  Once the system is installed
-you should be able to execute {\tt ws} or {\tt wsc} on any WaveScript
-source files ({\tt .ws}).
+See the README for install instructions.  The bottom line is that you
+will need mzscheme and Petite Chez Scheme to run the WaveScript
+emulator.  (Petite for linux is included in the repository.)  You will
+need Boost, the Gnu Scientific Library (GSL), FFTW, and their
+respective headers to run {\bf wsc}-compiled code.
+
+Once the system is installed you should be able to execute {\tt ws} or
+{\tt wsc} on any WaveScript source files ({\tt .ws} files).
 
 \subsection*{Develop Incrementally}
 
@@ -100,32 +126,145 @@ generate an efficient C++ program from the WaveScript source.  This is
 accomplished with the {\bf wsc} compiler.  In practice, during
 development the {\bf wsc} compiler often lags behind the {\bf ws}
 emulator in terms of features and functionality.  Again, develop
-incrementally, refer to wavescript/demos/wavescope for programs that
+incrementally, refer to {\tt wavescript/demos/wavescope} for programs that
 should work with {\bf wsc}.
 
-Refer to the XStream documentation\footnote{Currently nonexistent
-[2007.03.09]} for information on how to configure the XStream engine
-(number of threads, scheduling policy, etc).
+Refer to the XStream documentation\footnote{\rednote{[2007.03.09] Currently nonexistent}} 
+for information on how to configure the XStream engine
+(number of threads, scheduling policy, etc)).
 
 \rednote{[2007.03.09] Ideally the output from the XStream-executed
 query would be the same as the emulator output.  Currently, there are
-some basic disparities in how objects are printed.  Hopefully, these
+some basic disparities in how objects are printed to text form.  Hopefully, these
 are straightforward to work around, and should go away shortly.}
 
+
+
+
+
+
+
+
 %================================================================================
-\section{Language Syntax}
+\chapter{Language Basics}
 
-Please make liberal use of ~/wavescript/demos/wavescope as a reference
-when developing WaveScript programs.  These demos cover most of the
-basic functionality in the language.
+Please make liberal use of {\tt wavescript/demos/wavescope} as a reference
+when learning WaveScript.  These demos cover most of the basic
+functionality in the language.
 
-\section{Naming conventions}
+%\section{Naming conventions}
+%\chapter{Basics}
 
-\chapter{Basics}
+WaveScript is a functional language with many similarities to ML or
+Haskell.  Functions are values, it is strongly typed but uses a
+type-inference algorithm to infer types from variable usages.
+It provides the usual basic datatypes, including various
+numeric types, strings, lists, arrays, hash tables as well as the more
+WaveScript-specific Streams and Sigsegs.  Valid {\em expressions} in
+WaveScript are written much as in C.
+\[
+\begin{array}{rcl}
+arithmetic       & : & $\tt 3 + 4 * 10 $  \\
+function\; calls & : & $\tt f(x, y)$  \\
+blocks           & : & $\tt \{ e$_1$; e$_2$; \ldots$\:$ e$_n$ \}$  \\
+\end{array}
+\]
 
-\section{Tuples}
+But there are also many syntactic differences from C.  For example,
+WaveScript doesn't has a sharp division between commands and
+expressions.  Conditionals use a different syntax and are valid in any
+expression position.
+%
+\evalsto{3 + (if true then 1 else 2)} {4}
+%
+Moreover, what {\em blocks} in WaveScript---delimited by curly
+braces---are just expressions!
 
-\section{Numbers}
+\evalsto{3 + \{1; 2; 3\}} {6}
+%
+This is similar to the {\tt begin}/{\tt end} blocks found in other
+functional languages, or the ``comma operator'' sequencing construct
+in C++.  Only the value of the last expression within the block is
+returned, the other statements/expressions only bind variables or
+perform side effects.
+
+Note that this different convention makes semi-colon usage in
+WaveScript somewhat un-intuitive.  Within blocks, semi-colons are only
+required as {\em separators}; they are permitted, but not required
+after the last expression in the block.  Also, since curly-brace
+delimited blocks are merely expressions, they sometimes must be
+followed with a semi-colon, as below:\footnote{As a special case, when
+a function body consists of curly braces, it needn't be followed by a semi-colon.}
+%
+\vspace{-5mm}
+\begin{verbatim}
+        {
+          foo;
+          if b then {
+            bar();
+          } else {
+            baz();
+          };  <-- SEMICOLON REQUIRED
+          done();
+        }
+\end{verbatim}
+
+\rednote{[2007.03.09] Be wary that with the current parser, a
+  semi-colon error may appear as a strange parse error in the next
+  or previous line.}
+
+\subsection{Constructing complete programs}
+
+A complete program file contains a list of function and variable
+declarations and a single {\em stream wiring statement} of the form:
+\begin{wscode}
+BASE <- expression;
+\end{wscode}
+This wiring statement determines what stream of values is returned as
+a result of running the program.
+
+
+
+%================================================================================
+\section{Datatypes}
+
+This section goes over basic syntax and primitives for manipulating
+build-in data structures.
+
+\subsection{Tuples}
+
+Tuples, or {\em product types}, are ordered sets of elements which can
+each be of different types. 
+\evalsto{(1,\"hello\")}{A tuple of type {\tt (Int * String)}}
+%\begin{wscode}
+Tuples are accessed by a pattern-matching against them and binding
+variable names to their constituent components.  This process is
+described in section \ref{s:patterns}.
+
+\subsection{Numbers}
+
+WaveScript supports several different types of numbers.  \rednote{Currently,
+this set includes Int, Int16, Float, Complex, but it will be extended
+to include 8-bit integers, unsigned integers, doubles, and complex-doubles.}
+WaveScript includes generic numeric arithmetic operations ($+$, $-$,
+$*$, $/$) that work for any numeric types, but must be used on two
+numbers of the same type.  There are also type-specific numeric
+operations that are not used frequently:
+
+\[
+\begin{array}{rcl}
+%generic          & : & +,\; -,\; $*$,\; /,\; ^{\wedge}   \\
+generic          & : & $\tt + - * / \^{}$   \\
+Int              & : & $\tt +. -. *. /. \^{}. $ \\
+Float            & : & $\tt +. -. *. /. \^{}. $ \\
+Complex          & : & $\tt +: -: *: /: \^{}: $ \\
+Int16            & : & $\tt +I16 -I16 *I16 /I16 \^{}I16 $   \\
+\end{array}
+\]
+
+Other numeric operations, such as {\tt abs} or {\tt sqrt}, follow the
+naming convention {\tt absI} for integers, {\tt absF} for floats, {\tt
+absC} for complex, and {\tt absI16} for 16-bit integers.
 
 % int, uint16, uint8, float, double, complex 
 
@@ -133,41 +272,186 @@ basic functionality in the language.
 % Then type check again AFTER elaboration.
 % (It would be really nice to keep source info....)
 
-\section{Streams}
+\subsection{Lists}
 
-\section{Sigsegs}
+Lists can be written as constants and support the usual primitive
+operations.  
+\begin{verbatim}
+      ls = [1, 2, 3];
+      ls2 = head(ls,0):::ls;
+      print(List:length(ls2)); // Prints '4'
+      print(ls == []);         // Prints 'false'
+\end{verbatim}
 
-\section{Functions}
+The {\tt :::} operator adds an element to the front of a list.  Also
+use {\tt head}, {\tt tail}, {\tt reverse}, {\tt append} to operate on
+lists. 
 
-\begin{code}
-fun f(x,y) {
-  z = x+y;
-  sqrt(z)
-}
-\end{code}
+\subsection{Arrays}
 
-\begin{code}
-stream_map(fun(x) x+3, S)
-\end{code}
+Arrays are mutable and cannot currently be written as constants.  Use
+{\tt arr[i]} to access arrays, {\tt arr[i] = x;} to modify them, and
+{\em makeArray} to produce them.
 
+\subsection{Additional primitive functions}
+
+Please refer to the file 
+\vspace{-2mm}
+\begin{center}
+{\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
+\end{center}
+%
+for type-signatures (and some documentation) for all built-in
+wavescript primitives, many of which are not covered in this manual.
+
+Please also examine the library files found in the {\tt wavescript/lib}
+directory.  These files, for example {\tt ``stdlib.ws''} and {\tt
+  ``matrix.ws''}, include library routines written in WaveScript.  As
+a general design principle, it is best to implement as much as
+possible in the language, while keeping the set of built-in primitives
+relatively small.
+
+
+%================================================================================
+\section{User defined functions}
+
+Named functions can be defined at the top-level, or within a {\tt
+  \{\ldots\}} statement block as follows:
+
+\begin{verbatim}
+       fun f(x,y) {
+         z = x+y;
+         sqrt(z)
+       }
+\end{verbatim}
+
+The function body, following the argument list can be any expression.
+Above it just happens to be a statement block.  
+
+Unnamed, or anonymous, functions can occur anywhere that an expression
+might occur. In the following we pass the anonymous ``plus three''
+function as th efirst input to {\tt stream\_map}.  Note that the body
+of the function is a single expression, not a statement block, and is
+not delimited by curly braces.
+
+\begin{wscode}
+stream\_map(fun(x) x+3, S)
+\end{wscode}
+
+
+
+
+%================================================================================
 \section{Type Annotations}
 
-\begin{code}
-f :: Type;
-fun f(x,y) { ...
-\end{code}
+We have already seen several types in textual form within this manual:
+{\tt Float}, {\tt (Int * String)} These are valid WaveScript types.
+WaveScript also has compound types such as {\tt Sigseg (Array Int)}.
 
-\begin{code}
+Similar to Haskell or ML, the user is permitted, but with few
+exceptions, not required to add explicit type annotations in the
+program.  For example, we may annotate a function {$\tt f$}
+with its type by writing the following.
+%
+\begin{verbatim}
+        f :: (Type, Type) -> Type;
+        fun f(x,y) { ... }
+\end{verbatim}
+
+Indeed, a type annotation may be attached to any expression with
+the following syntax:
+\begin{wscode}
 (expression :: Type)
-\end{code}
+\end{wscode}
 
-\begin{code}
-var :: Type = 
-\end{code}
+Further, type annotations may be added to variable declarations with:
+\begin{verbatim}
+ var :: Type = expression;
+\end{verbatim}
+
+In general, compound types may be built from other types in several
+ways.  Note that parentheses must be used when nesting type
+constructors as in {\tt List (List T)}.
+\[
+\begin{array}{rcl}
+tuples           & : & $\tt (T1 * T2 * T3) $   \\
+lists            & : & $\tt List T1 $ \\
+arrays           & : & $\tt Array T1 $ \\
+hashtables       & : & $\tt HashTable (T1,T2) $ \\
+functions        & : & $\tt (T1, T2, T3) -> T4 $ \\
+\end{array}
+\]
+
+\rednote{[2007.03.09] In the future, the user will be able to create
+  their own type definitions and type constructors, including
+  tagged-union or {\em sum} types.}
+
+
+\subsection{Reading data with dataFile}
+
+The one place where type annotations {\em are} currently mandatory is
+when importing data from a file.  This is done with the primitive {\tt
+datafile}.
+%
+\begin{verbatim}
+BASE <- 
+  (dataFile("./countup.txt", "text", 44000, 0) 
+   :: Stream (Int16 * Float))
+\end{verbatim}
+
+The above complete program reads space-separated values from a text
+file, one-tuple-per-line, and reads them at a virtual ``rate'' of
+44Khz (this is important for the relative timing of different
+streams).  Finally, the last number is a replay argument.  If it's greater
+than zero, {\tt dataFile} will replay the data that many times after
+reading the file.  If the replay value is $-1$, then the data will be
+replayed indefinitely.
 
 
 
 
+
+%================================================================================
+\section{Streams}
+
+WaveScript is for stream-processing and it would be useless without
+Streams.  
+Streams in WaveScript are like any other values: bound to variables,
+passed and returned from functions.
+The primary means of operating on the data inside streams is the {\tt
+  iterate} syntactic construct.
+
+\begin{verbatim}
+        S2 = iterate( x in S1 ) {
+          state{ counter = 0 }
+	  counter := counter + 1;
+	  emit counter + x;
+        }
+\end{verbatim}
+
+The {\tt iterate} construct can be placed in any {\em expression}
+position.  It produces a new stream by applying the supplied code to
+every element of its input stream.  The above example executes the
+body of the iterate every time data is received on the stream {\tt
+  S1}; it adds an increasing quantity to each element of {\tt S1}; the
+resulting stream is bound to the variable {\tt S2}.
+
+In addition to {\tt iterate} several library procedures (such as {\tt
+stream\_map}) and many primitives (such as {\tt unionList}) operate on
+{\tt Stream} values.
+
+
+
+
+
+%================================================================================
+\section{Sigsegs}
+
+Sigsegs are a flexible ADT for representing windows of samples on a stream.
+Please refer to the CIDR'07 publication by the title 
+``The Case for a Signal-Oriented Data Stream Management System'' for
+details.  Also check {\tt prim\_defs.ss} for the specific names and
+type signatures of the Sigseg primitives.
 
 % smap$((+3))
 % smap(f$(x), S)
@@ -192,12 +476,41 @@ var :: Type =
 %% using Matrix;
 
 
+
+
+%================================================================================
+\section{Namespaces}
+
+WaveScript, while not having a sophisticated module system, does
+include a simple system for managing namespaces.
+
+\begin{center}
+\begin{verbatim}
+      namespace Foo {
+        x = ...;
+        y = ...;
+      }
+      var = Foo:x + Foo:y;
+      fun f() {
+        using Foo;
+        var = x + y;
+      }
+\end{verbatim}
+\end{center}
+
+\rednote{[2007.03.09] The Namespace implementation is not finished.}
+
+
+
+
+%================================================================================
 \section{Patterns}
+\label{s:patterns}
 
 In any variable-binding position it is valid to use a pattern rather
 than a variable name.  This includes the arguments to a function, a
 local variable binding, or the variable binding within an {\tt
-  iterate} construct.  Currently, patterns are just used to bind names
+ iterate} construct.  Currently, patterns are just used to bind names
 to the interior parts of tuples.  In the future, we will support list
 patterns, array patterns, and tagged union patterns.  
 
@@ -206,7 +519,7 @@ We saw above how to bind variables in WaveScript:
 \begin{center}
 {\tt \bf{z} = (1,2);}
 \end{center}
-This binds {\tt t} to a tuple containing two elements.  
+This binds {\tt z} to a tuple containing two elements.  
 Now I will share with you that this is actually a shorthand for the
 more verbose syntax:
 \begin{center}
@@ -227,6 +540,53 @@ a function that takes a 2-tuple as its second argument:
 {\tt {\bf fun} foo (x,\bf{(y,z)}) \{ \dots \}}
 \end{center}
 
+\section{Syntactic Sugar}
+
+Syntactic sugars are convenient shorthands that are implemented by the
+parser and make programming in WaveScript more convenient (at the risk
+of making reading code more difficult for the uninitiated).
+
+%\noindent {\bf Dot syntax:}
+\subsection{Dot syntax}
+  For convenience, functions can be applied using an
+alternative dot syntax.  For example rather than taking the first
+element of a list with {\cd head(ls)}, we can write {\cd ls.head}.
+This generalizes to functions of more than one argument; only the
+first argument is moved before the dot.  For example, 
+\vspace{-2mm}
+\begin{wscode}
+List:ref(ls,i)
+\end{wscode}
+\vspace{-2mm}
+ may be written as 
+\vspace{-2mm}
+\begin{wscode}
+ls.List:ref(i)
+\end{wscode}
+\vspace{-2mm}
+This is useful because many functions on data structures take the
+data structure itself as their first argument.
+
+\subsection{Stream Projectors}
+
+WaveScript also includes a syntax for binding variables to
+Stream-of-Tuple values that also binds projector functions for each of
+the tuples' fields.  For example:
+
+\begin{wscode}
+S as (a,b) = someStream;
+\end{wscode}
+
+Subsequently, ``{\tt S.a}'' or ``{\tt a(S)}'' can be used to project-out a
+new stream consisting of only the first elements of each tuple in {S}.  If used in
+conjunction with the type-annotation syntax, the ``{\tt as}'' clause
+must go first:
+
+\begin{wscode}
+S as (a,b) :: Stream(Int * Float) = someStream;
+\end{wscode}
+
+\rednote{[2007.03.09] The Stream Projectors implementation is unfinished.}
 
 \chapter{Signal Processing Libraries}
 
@@ -238,9 +598,11 @@ WaveScript uses fftw.
 
 WaveScript uses the Gnu Scientific Library to support matrix operations.
 
+\rednote{[2007.03.09] Currently, GSL is only used for a builtin matrix
+  inversion, {\tt m\_invert}}, 
+
 \chapter{WaveScript Evaluation Model}
 
-
-
+\rednote{\em \bf Keep the metaprogram pure! (free of side-effects)}
 
 \end{document}
