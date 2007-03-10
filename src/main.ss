@@ -623,7 +623,9 @@
 		       (flush-output-port))
 		     'replace))))
 
-  (define typed (retypecheck (pass_desugar-pattern-matching (verify-regiment prog))))
+  (define typed (retypecheck 
+		 (pass_desugar-pattern-matching 
+		  (verify-regiment prog))))
 
   (define __ 
     (begin 

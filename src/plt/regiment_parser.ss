@@ -27,6 +27,8 @@
     LeftBrace RightBrace
     LeftAngleBrk RightAngleBrk 
     LeftSqrBrk RightSqrBrk
+
+    AS
    
     : := -> = == != >= <= < > <-
     + - * / ^ 
@@ -66,7 +68,10 @@
    ["//" (begin (read-line input-port) (return-without-pos (ws-lex input-port)))]
    ["/*" (begin (read-balanced "/*" "*/" input-port 1) (return-without-pos (ws-lex input-port)))]
 ;   ["(*" (begin (read-balanced "(*" "*)" input-port 1) (return-without-pos (ws-lex input-port)))]
+
    
+   ["as" 'AS]
+
    ;; Since (token-=) returns '=, just return the symbol directly
    [(:or "::" "++" 
 	 "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
@@ -102,12 +107,13 @@
    ;; Variables:
    [variable (token-VAR (string->symbol lexeme))]
 
+   ;; Dot/stream-projection
+   [".(" 'DOTSTREAM]
+
    ;; Dot-syntax:
 ;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
    ["." 'DOT]
-   ;; Dot/stream-projection
-   [".<" 'DOTSTREAM]
-   
+
    [(:seq ;(:or "-" "")
 	  (:+ digit)) (token-NUM (string->number lexeme))]
    [(:seq ;(:or "-" "") 
@@ -337,6 +343,10 @@
 	   ;; LAME: We require let only when you're going to use a pattern.
            [(let pattern = exp SEMI stmts) `((letrec ([,$2 ,$4]) ,(make-begin $6)))]
            [(VAR = exp SEMI stmts) `((letrec ([,$1 ,$3]) ,(make-begin $5)))]
+
+           [(let VAR AS pattern = exp SEMI stmts) `((let-as (,$2 ,(vector->list $4) ,$6) ,(make-begin $8)))]
+           [(VAR AS pattern = exp SEMI stmts) `((let-as (,$1 ,(vector->list $3) ,$5) ,(make-begin $7)))]
+
            [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
 	   
            [(fundef morestmts)
@@ -415,7 +425,8 @@
 	 ;((if then else) ((foo(x)) (y)))
 
 	 ;; Special stream-projection dot syntax.
-	 [(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
+	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
+	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,$3 ,$1)]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]

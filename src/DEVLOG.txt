@@ -406,3 +406,58 @@ case(x){
 }
 
 
+[2007.03.10]
+
+  Thinking about different syntax here...
+  let s2 as (x,y) = ...
+  s2 as (x,y) = ...
+ 
+  s2.x   s2.(x,x,y)
+  s2@x   s2@(x,x,y)
+  s2:x   s2:(x,x,y)
+  s2|x   s2|(x,x,y)
+
+  s2.(x)   s2.(x,x,y)
+  s2.<x>   s2.<x,x,y>
+ 
+  x@s2,  (x,x,y)@s2
+ 
+  x from s2,  (x,x,y) from s2
+  
+  case (x) {
+    First z  | z + 3;
+    Second z | z + 4;
+  }
+
+  case (x) {
+    First z  -> z + 3;
+    Second z -> z + 4;
+  }
+
+  case (x) {
+    First z  > z + 3;
+    Second z > z + 4;
+  }
+ 
+  switch (x) {
+    |  First z -> z + 3
+    | Second z -> z + 4
+  }
+
+  match (x) {
+       First z -> z + 3
+    | Second z -> z + 4
+  }
+
+  match (x) {
+    |  First z | z + 3
+    | Second z | z + 4
+  }
+ 
+  switch (x) {
+    case First z -> z + 3
+    case Second z -> z + 4
+  }
+  
+  iterate( (x,y) in s2 ) { emit (x,x,y) }
+  ls.head 

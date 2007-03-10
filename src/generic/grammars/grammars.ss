@@ -126,6 +126,10 @@
 (define sugared_regiment_grammar
   `(,@ initial_regiment_grammar
        [Expr ('let* ([Var Type Expr] ...) Expr)]
+
+       [Expr ('let-as (Var (Var ...) Expr) Expr)]
+       [Expr ('dot-project (Var ...) Expr)]
+
        [Expr ('or Expr ...)]
        [Expr ('and Expr ...)]
 

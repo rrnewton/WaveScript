@@ -137,6 +137,21 @@
 	    `(let ([,lhs* ,types ,rhs*] ...) 
 	       ,(process-expr body (union lhs* env))))]
 
+	 ;; This is temporary until it's desugared:
+	 [(let-as (,lhs ,pat ,[rhs]) ,body)
+	  (guard (not (memq 'let-as env)))
+	  (ASSERT symbol? lhs)
+	  ;; "pat" is really just a list of symbols for now.
+	  (ASSERT (curry andmap symbol?) pat)
+	  (ASSERT (set? pat))
+	  `(let-as (,lhs ,pat ,rhs)
+		   ,(process-expr body (union (cons lhs pat) env)))]
+
+	 ;; Another sugar:
+	 [(dot-project (,proj* ...) ,[src])
+	  (ASSERT (curry andmap symbol?) proj*)
+	  `(dot-project (,proj* ...) ,src)]
+
 	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
 	  [(begin ,[e] ...) `(begin ,e ...)]
 	  [(set! ,v ,[e]) (guard (symbol? v)) 

@@ -80,7 +80,7 @@
 	;; This isn't "pattern-matching" but we desugar it here so
 	;; that the type checker doesn't need to deal with it.	 
 	[(let* ,binds ,bod) (process-expr (make-let* binds bod) fallthrough)]
-
+       
 	;; Only handles one-armed matches right now:
 	;;    [(match ,[x] [ ,[break-pattern -> var* binds*]  ,[rhs*] ] ...)
 	[(match ,[x] (,[break-pattern -> var binds type-assertion] ,[rhs]))
@@ -90,23 +90,43 @@
 	    ,rhs)]
 
 	;; [2006.11.15] Going to add special stream-of-tuples field-naming syntax.
-	[(let-as ,v (,fldname* ...) ,[rhs] ,[body])
+	;; TODO: make it work for general patterns, not just for flat tuples!
+	[(let-as (,v (,fldname* ...) ,[rhs]) ,[body])
 	 (guard (symbol? v) (andmap symbol? fldname*))
 	 (let ([len (length fldname*)])
 	 ;; Each field-name gets bound to a projection function.
-	 `(let ([,v ,rhs])
-	    (let ([,fldname* 
-                    ,(map (lambda (i) `(lambda (x) (tupref ,i ,len ,v)))
-                          (iota len))])
+	 `(letrec ([,v ,rhs])
+	    (letrec ([,fldname* 
+                    ,(map (lambda (i) 
+			    #;
+			    `(lambda (s) (iterate (lambda (x vq) 
+						    (begin (emit vq (tupref ,i ,len x)) vq))
+						  s))
+			    ;; Simple tuple projector:
+			    `(lambda (x) (tupref ,i ,len x))
+			    )
+                          (iota len))]
+		  ...)
 	      ,body))
 	    )]
+
 	;; This is let-as's counterpart for projecting out stream values.
-	[(dot-project ,[v] (,[flds] ...))
-	 ;(guard (symbol? v) (andmap symbol? flds))
-	 (let ([tmp (unique-name 'tmp)])
-           `(smap (lambda (,tmp) 
-		  (tuple ,@(map (lambda (fld) `(app ,fld ,tmp)) flds)))
-		,v))]
+	;;
+	;; For NOW this only works with variables as the projections.
+	;; This is because of name mangling... can't put general
+	;; expressions here.
+	[(dot-project (,projector* ...) ,[src])
+	 (guard (andmap symbol? projector*)) ;(symbol? src)
+	 ;; THIS DOES NOT GUARANTEE HYGIENE:
+	 (let ([tmp (unique-name '___tmp___)]
+	       [vq (unique-name '___vq___)]
+	       [make-tuple (lambda (args) (if (= 1 (length args)) 
+					      (car args) (cons 'tuple args)))])
+	   
+           `(iterate (lambda (,tmp ,vq) 
+		       (begin (emit ,vq ,(make-tuple (map (lambda (proj) `(app ,proj ,tmp)) projector*)))
+			      ,vq))
+		     ,src))]
 	
 	[,other (fallthrough other)])))
 
