@@ -42,7 +42,7 @@ fun syncN (ctrl, strms) {
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   _strms = map(f, strms);  
-  slist = _ctrl : _strms;  
+  slist = _ctrl ::: _strms;  
 
   //  if DEBUGSYNC 
   //    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
@@ -87,7 +87,7 @@ fun syncN (ctrl, strms) {
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
 	  for i = 0 to accs.length - 1 {
-	    output := subseg(accs[i], st, size) : output;
+	    output := subseg(accs[i], st, size) ::: output;
 	  }
 	  emit(reverse(output));
 	} else if DEBUGSYNC then

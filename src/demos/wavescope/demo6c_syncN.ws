@@ -68,7 +68,7 @@ fun syncN (strms, ctrl) {
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
 	  for i = 0 to accs.length - 1 {
-	    output := subseg(accs[i], st, size) : output;
+	    output := subseg(accs[i], st, size) ::: output;
 	  }
 	  emit(reverse(output));
 	} else 
