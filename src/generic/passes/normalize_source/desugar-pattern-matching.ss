@@ -44,6 +44,9 @@
     `(,@(map (lambda (t) (or t `(quote ,(unique-name 'alpha)))) t*)
       -> ',(unique-name 'beta)))
 
+  (define (mangle-projector var fld)
+    (string->symbol (format ":~a:~a" var fld)))
+
   (define process-expr
     (lambda (expr fallthrough)
       (match expr 
@@ -96,8 +99,8 @@
 	 (let ([len (length fldname*)])
 	 ;; Each field-name gets bound to a projection function.
 	 `(letrec ([,v ,rhs])
-	    (letrec ([,fldname* 
-                    ,(map (lambda (i) 
+	    (letrec ([,(map (curry mangle-projector v) fldname*)
+		      ,(map (lambda (i) 
 			    #;
 			    `(lambda (s) (iterate (lambda (x vq) 
 						    (begin (emit vq (tupref ,i ,len x)) vq))
@@ -109,22 +112,26 @@
 		  ...)
 	      ,body))
 	    )]
-
+	
 	;; This is let-as's counterpart for projecting out stream values.
 	;;
 	;; For NOW this only works with variables as the projections.
 	;; This is because of name mangling... can't put general
 	;; expressions here.
 	[(dot-project (,projector* ...) ,[src])
-	 (guard (andmap symbol? projector*)) ;(symbol? src)
+	 (ASSERT (curry andmap symbol?) projector*)
+	 ;; For the time being, we only use this syntax on the original variable:
+	 (ASSERT symbol? src)
 	 ;; THIS DOES NOT GUARANTEE HYGIENE:
 	 (let ([tmp (unique-name '___tmp___)]
 	       [vq (unique-name '___vq___)]
 	       [make-tuple (lambda (args) (if (= 1 (length args)) 
 					      (car args) (cons 'tuple args)))])
-	   
            `(iterate (lambda (,tmp ,vq) 
-		       (begin (emit ,vq ,(make-tuple (map (lambda (proj) `(app ,proj ,tmp)) projector*)))
+		       (begin (emit ,vq ,(make-tuple 
+					  (map (lambda (proj) 
+						 `(app ,(mangle-projector src proj) ,tmp)) 
+					    projector*)))
 			      ,vq))
 		     ,src))]
 	
