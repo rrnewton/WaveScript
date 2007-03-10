@@ -24,7 +24,7 @@ fun syncN (strms, ctrl) {
   let f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
   let _strms = map(f, strms);
 
-  let slist = _ctrl : _strms;
+  let slist = _ctrl ::: _strms;
   
   // Side effect not allowed in iterate:
   //print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");

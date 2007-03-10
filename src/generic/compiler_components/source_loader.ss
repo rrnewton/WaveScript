@@ -209,15 +209,27 @@
 ;================================================================================
 
 ;; Do all the post-processing to turn a set of bindings into a single valid expression.
-(define (ws-postprocess ws)
+(trace-define (ws-postprocess ws)
   ;; First we expand includes:
   (let ([ws (apply append 
               (map (lambda (form)
-		   (match form
-		     [(include ,file) 
-		      (or (expand-include file)
-			  (error 'ws-postprocess "could not retrieve contents of include: ~s" file))]
-		     [,other (list other)]))
+		     (match form
+		       [(include ,file) 
+			(or (expand-include file)
+			    (error 'ws-postprocess 
+				   "could not retrieve contents of include: ~s" file))]
+		       ;; This just renames all defs within a namespace.
+		       [(namespace ,Space ,[defs] ...)
+			(map (lambda (def)
+			       (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+			       (match def
+				 [(define ,v ,e) `(define ,(mangle v) ,e)]
+				 [(:: ,v ,t)     `(:: ,(mangle v) ,t)]
+				 [(<- ,sink ,e)  `(<- ,sink ,e)]
+				 ))
+			  (apply append defs))]
+		       
+		       [,other (list other)]))
 	      ws))])
   (define (f1 x) (eq? (car x) '::))
   (define (f2 x) (eq? (car x) 'define))

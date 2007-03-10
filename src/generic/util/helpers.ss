@@ -1191,6 +1191,7 @@
     (reverse! ls)))
 
 ;; [2006.08.16] More efficient:
+;; Splits up a string by a separator character:
 (define (string-split str char)
   (let loop ([start 0] [i 0] [acc '()])
     (cond

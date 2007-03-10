@@ -28,9 +28,8 @@
     LeftAngleBrk RightAngleBrk 
     LeftSqrBrk RightSqrBrk
 
-    AS
-   
-    : := -> = == != >= <= < > <-
+    ::: 
+    := -> = == != >= <= < > <-
     + - * / ^ 
     g+ g- g* g/ g^ 
     +_ -_ *_ /_ ^_ 
@@ -39,7 +38,10 @@
     :: ++ 
     AND OR NEG HASH 
     APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
-    fun for to emit include deep_iterate iterate state in if then else true false break let ; Keywords 
+    ; Keywords :
+    fun for to emit include deep_iterate iterate state in if then else true false break let 
+    namespace using AS
+
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
     ;SLASHSLASH NEWLINE 
@@ -51,7 +53,12 @@
   ;; (:/ 0 9) would not work because the lexer does not understand numbers.  (:/ #\0 #\9) is ok too.
                     (digit (:/ "0" "9"))
                     (variable (:seq (:or lower-letter upper-letter "_")
-                                    (:* (:or lower-letter upper-letter "_" digit)))))
+                                    (:* (:or lower-letter upper-letter "_" digit
+					     ;; Can have a single semi-colon inbetween the reasonable characters:
+					     (:seq (:or lower-letter upper-letter "_" digit)
+						   ":"
+						   (:or lower-letter upper-letter "_" digit))
+					     )))))
 
 (define (unescape-chars str)
   (read (open-input-string (string-append "\"" str "\""))))
@@ -68,13 +75,10 @@
    ["//" (begin (read-line input-port) (return-without-pos (ws-lex input-port)))]
    ["/*" (begin (read-balanced "/*" "*/" input-port 1) (return-without-pos (ws-lex input-port)))]
 ;   ["(*" (begin (read-balanced "(*" "*)" input-port 1) (return-without-pos (ws-lex input-port)))]
-
-   
-   ["as" 'AS]
-
+  
    ;; Since (token-=) returns '=, just return the symbol directly
    [(:or "::" "++" 
-	 "->" "<-" ":" ":=" "<=" "<" ">" ">=" "==" "!="
+	 "->" "<-" ":::" ":=" "<=" "<" ">" ">=" "==" "!="
 	 "=" "+" "-" "*" "/" "^" 
 	 "g=" "g+" "g-" "g*" "g/" "g^" 
          "+_" "-_" "*_" "/_" "^_"
@@ -83,8 +87,11 @@
 	 )
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "break" "to" "emit" "include" "deep_iterate" "iterate" "state"  "in" "if" "then" "else" "true" "false" "let")
+   [(:or "fun" "for" "break" "to" "emit" "include" "deep_iterate" "iterate" 
+	 "state"  "in" "if" "then" "else" "true" "false" "let"
+	 "namespace" "using")
     (string->symbol lexeme)]
+   ["as" 'AS]
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
@@ -210,7 +217,7 @@
 	  ;;(nonassoc ONEARMEDIF)
 	  (nonassoc EXPIF if STMTIF)
 
-	  (right ++ :)
+	  (right ++ :::)
           (left < > <= >= == !=)
           (left - + g- g+ -_ +_ +. -.  +: -:)
           (left * / g* g/ *_ /_ *. /.  *: /:)
@@ -282,6 +289,8 @@
 	   [(include exp SEMI maybedecls) 
 	    `((include ,$2) ,@$4)]
 
+	   [(namespace VAR LeftBrace maybedecls RightBrace optionalsemi maybedecls) `((namespace ,$2 ,@$4) ,@$7)]
+
            ;; Returning streams to the base station or other "ports"
            [(VAR <- exp optionalsemi maybedecls) `((<- ,$1 ,$3) ,@$5)]
            
@@ -348,6 +357,8 @@
            [(VAR AS pattern = exp SEMI stmts) `((let-as (,$1 ,(vector->list $3) ,$5) ,(make-begin $7)))]
 
            [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
+
+	   [(using VAR SEMI stmts) `((using ,$2 ,(make-begin $4)))]
 	   
            [(fundef morestmts)
             (match $1
@@ -501,7 +512,7 @@
          [(exp OR exp) `(or ,$1 ,$3)]
 
          [(exp ++ exp) `(show-and-string-append ,$1 ,$3)]
-         [(exp : exp) `(cons ,$1 ,$3)]
+         [(exp ::: exp) `(cons ,$1 ,$3)]
 
 	 ;; Currently these parse as integer ops:
          [(exp + exp) `(app + ,$1 ,$3)]
@@ -582,7 +593,7 @@
            [(/:) '/:]
            [(^:) '^:]
 
-	   [(:) 'cons]
+	   [(:::) 'cons]
 	   [(++) 'show-and-string-append]
            
            [(<) '<]

@@ -117,6 +117,9 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
     ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
 
+    ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
+    ["demo8b_sugars.ws"           ,(lambda (a b) (equal? a b #(1 1 2)))]
+
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 
 				     (ASSERT (= 514 a))

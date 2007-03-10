@@ -1,7 +1,16 @@
 
-//namespace Foo {
-s1 = timer(3.0);
-//}
+namespace Foo {
+  s0 = timer(3.0);
+}
+
+namespace Bar {
+  namespace Baz {
+    s1 = { using Foo; s0 };
+  }
+}
+
+s2 = Bar:Baz:s1;
+
 
 fun f(s) {
   s2 as (x,y) = s;
@@ -9,8 +18,5 @@ fun f(s) {
   s2.(x,x,y);
 }
 
-// s2 = { using Foo; iterate... }
-//using Foo;
-// Foo:f
 
-BASE <- f(iterate(() in s1){ emit (1,2) });
+BASE <- f(iterate(() in s2){ emit (1,2) });
