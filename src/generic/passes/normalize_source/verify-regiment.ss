@@ -9,7 +9,7 @@
 ;;;; ambiguity in lambda/let/letrec/etc.
 
 ;;;; Really this is pretty unnecessary now because the type checker
-;;;; should catch most of these problems.
+;;;; should catch most of the problems that verify-regiment does.
 
 (module verify-regiment  mzscheme  
   (require "../../../plt/common.ss")  
@@ -60,12 +60,16 @@
      ;; with unbound variables.)
      (define process-expr
        (lambda (expr env)
-(match expr
+	 (match expr
 	   [,const (guard (constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
 	    `(quote ,datum)]
 	   [,var (guard (symbol? var))
+		 ;; [2007.03.11] Don't currently enforce
+		 ;; bound-variables here, it's done in resolve-varref:
+		 var
+		 #;
 		 (if (and (not (memq var env))
 			  (not (regiment-primitive? var)))
 		     (error 'verify-regiment (format "unbound variable: ~a~n" var))
@@ -152,6 +156,9 @@
 	  (ASSERT (curry andmap symbol?) proj*)
 	  `(dot-project (,proj* ...) ,src)]
 
+	 ;; verify-regiment can't track the bindings that should be introduced here:
+	 [(using ,M ,[e])  (ASSERT symbol? M)  `(using ,M ,e)]
+
 	  ;; [2006.07.25] Adding effectful constructs for WaveScope:
 	  [(begin ,[e] ...) `(begin ,e ...)]
 	  [(set! ,v ,[e]) (guard (symbol? v)) 
@@ -201,8 +208,9 @@
 			  (regiment-primitives))])
            (match prog
 	     ;; The input is already wrapped with the metadata:
-	     [(,input-language (quote (program ,body)))
-	      `(verify-regiment-language '(program ,(process-expr body '()) 'toptype))]
+	     [(,input-language (quote (program ,body ,?type ...)))
+	      `(verify-regiment-language '(program ,(process-expr body '()) 
+					    ,(if (null? ?type) ''toptype (car ?type))))]
 	     ;; Nope?  Well wrap that metadata:
 	     [,body (process-program `(base-language '(program ,body)))]
 	     )

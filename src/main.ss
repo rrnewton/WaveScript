@@ -419,11 +419,7 @@
 	       `(begin (,prim . ,simple) (tuple))]
 	      [,oth (fallthru oth)]))])
 
-;; [2006.08.27] This version executes the WaveScript version of the compiler.
-;; It takes it from (parsed) source down as far as WaveScript 
-;; can go right now.  But it does not invoke the simulator or the c_generator.
-(define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
-  (define optional-stop 
+  (define ws-pass-optional-stop 
     (lambda (x)
       (if (regiment-verbose)
 	  (if #t ;IFDEBUG
@@ -437,13 +433,18 @@
 		  x)
 	   x)
 	  x)))
-  (define-syntax run-pass
+  (define-syntax ws-run-pass
     (syntax-rules ()
       [(_ v pass)
        ;(time (set! p (optional-stop (pass p))))
        (parameterize ([regiment-current-pass 'pass])
-	 (set! p (optional-stop (pass p))))
+	 (set! v (ws-pass-optional-stop (pass v))))
        ]))
+
+;; [2006.08.27] This version executes the WaveScript version of the compiler.
+;; It takes it from (parsed) source down as far as WaveScript 
+;; can go right now.  But it does not invoke the simulator or the c_generator.
+(define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
   
   (set! already-typed (if (null? already-typed) #f (car already-typed)))
 
@@ -451,24 +452,25 @@
 (time 
   (parameterize ()
     
-  (optional-stop p)
+  (ws-pass-optional-stop p)
   
   (unless already-typed
-    (run-pass p verify-regiment)
-    (run-pass p pass_desugar-pattern-matching)
-    (run-pass p retypecheck) ;; This is the initial typecheck.
+    (ws-run-pass p verify-regiment)
+    (ws-run-pass p pass_desugar-pattern-matching)
+    (ws-run-pass p resolve-varrefs)
+    (ws-run-pass p retypecheck) ;; This is the initial typecheck.
     )
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-  (run-pass p rename-vars)
-  (DEBUGMODE (run-pass p retypecheck) (void))
-  (run-pass p eta-primitives)
-  (run-pass p desugar-misc)
-  (run-pass p remove-unquoted-constant)
+;  (ws-run-pass p rename-vars)
+  (DEBUGMODE (ws-run-pass p retypecheck) (void))
+  (ws-run-pass p eta-primitives)
+  (ws-run-pass p desugar-misc)
+  (ws-run-pass p remove-unquoted-constant)
   ;; Run this twice!!!
-  ;(run-pass p degeneralize-arithmetic)
-  (run-pass p static-elaborate)
+  ;(ws-run-pass p degeneralize-arithmetic)
+  (ws-run-pass p static-elaborate)
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -482,12 +484,12 @@
        (flush-output-port))
      'replace))
 
-  (run-pass p degeneralize-arithmetic)
+  (ws-run-pass p degeneralize-arithmetic)
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (run-pass p retypecheck)
-  (run-pass p rename-vars)
+  (ws-run-pass p retypecheck)
+  (ws-run-pass p rename-vars)
 
   (IFDEBUG 
    (unless (regiment-quiet)
@@ -498,30 +500,30 @@
   ;; This just fills polymorphic types with unit.  These should be
   ;; things that don't matter.  We typecheck afterwards to make sure
   ;; things still make sense.
-  ;(run-pass p kill-polymorphic-types)
-  ;(run-pass p retypecheck)
+  ;(ws-run-pass p kill-polymorphic-types)
+  ;(ws-run-pass p retypecheck)
 
-  (run-pass p verify-elaborated)
+  (ws-run-pass p verify-elaborated)
 
   ;; This three-step process is inefficient, but easy:
-  (run-pass p lift-polymorphic-constant)
-  (run-pass p retypecheck)
-  (run-pass p unlift-polymorphic-constant)
+  (ws-run-pass p lift-polymorphic-constant)
+  (ws-run-pass p retypecheck)
+  (ws-run-pass p unlift-polymorphic-constant)
 
-;  (run-pass p type-polymorphic-constants)
+;  (ws-run-pass p type-polymorphic-constants)
 
-;  (run-pass p merge-iterates)
-  (IFDEBUG (run-pass p retypecheck) (void))
+;  (ws-run-pass p merge-iterates)
+  (IFDEBUG (ws-run-pass p retypecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
-  (run-pass p reduce-primitives) ; w/g 
-  (run-pass p remove-complex-constant)
-  (IFDEBUG (run-pass p retypecheck) (void))
+  (ws-run-pass p reduce-primitives) ; w/g 
+  (ws-run-pass p remove-complex-constant)
+  (IFDEBUG (ws-run-pass p retypecheck) (void))
 
-;  (run-pass p uncover-free)
+;  (ws-run-pass p uncover-free)
 
-  ;(run-pass p purify-letrec)
+  ;(ws-run-pass p purify-letrec)
   ;; This is what we need to do.
 
   ;; Now that we're done with elaboration we should take the stream
@@ -530,23 +532,23 @@
   ;; For the time-being we don't even need letrec in the object code
   ;; because functions have all been inlined.
 
-  (run-pass p remove-letrec)
-  (run-pass p standardize-iterate)
+  (ws-run-pass p remove-letrec)
+  (ws-run-pass p standardize-iterate)
 
-;  (run-pass p introduce-lazy-letrec)
-;  (run-pass p lift-letrec)
-;  (run-pass p lift-letrec-body)
+;  (ws-run-pass p introduce-lazy-letrec)
+;  (ws-run-pass p lift-letrec)
+;  (ws-run-pass p lift-letrec-body)
 
-  (run-pass p ws-remove-complex-opera*)
-  (run-pass p ws-normalize-context)
-  (run-pass p ws-lift-let)
+  (ws-run-pass p ws-remove-complex-opera*)
+  (ws-run-pass p ws-normalize-context)
+  (ws-run-pass p ws-lift-let)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
-  (run-pass p retypecheck)
+  (ws-run-pass p retypecheck)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
-  ;(run-pass p flatten-iterate-spine)
+  ;(ws-run-pass p flatten-iterate-spine)
    
   (DEBUGMODE
    (with-output-to-file ".__nocomplexopera.ss"
@@ -560,17 +562,17 @@
        (flush-output-port))
      'replace))
 
-;  (run-pass p remove-lazy-letrec)
+;  (ws-run-pass p remove-lazy-letrec)
   
-;;  (run-pass p verify-core)
-;;  (run-pass p retypecheck)
+;;  (ws-run-pass p verify-core)
+;;  (ws-run-pass p retypecheck)
 
-  (run-pass p type-annotate-misc)
+  (ws-run-pass p type-annotate-misc)
 
-  ;(run-pass p nominalize-types)
+  ;(ws-run-pass p nominalize-types)
 
 ;   (set! prog (ws-add-return-statements prog))
-  ;(run-pass p ws-add-return-statements)
+  ;(ws-run-pass p ws-add-return-statements)
 
   p)))
 
@@ -623,9 +625,13 @@
 		       (flush-output-port))
 		     'replace))))
 
-  (define typed (retypecheck 
-		 (pass_desugar-pattern-matching 
-		  (verify-regiment prog))))
+  (define typed 
+    (let ([p prog])
+      (ws-run-pass p verify-regiment)
+      (ws-run-pass p pass_desugar-pattern-matching)
+      (ws-run-pass p resolve-varrefs)
+      (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
+      p))
 
   (define __ 
     (begin 

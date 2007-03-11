@@ -46,18 +46,19 @@
 	 IFCHEZ IF_GRAPHICS IF_THREADS
 ;	 reg:include	 
 
-
+	 
          ;; Syntax:
 	 IFDEBUG
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
          REGIMENT_DEBUG HACK 
 	 IFWAVESCOPE ;; Load WS extensions or no?
-         ;chezprovide chezimports ;; To make the common module facility work.
-         
+         ;chezprovide chezimports ;; To make the common module facility work.         
+
          REGIMENTD
          SCHEDULE_DELAY         
          RADIO_DELAY ;PROCESSING_TIME ;; Not used yet
          
+	 define-testing
 	 define-regiment-parameter regiment-parameters
 
 	 compiler-invocation-mode 

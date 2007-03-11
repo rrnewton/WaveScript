@@ -62,7 +62,7 @@ fi
 #echo '$WAVESCOPED/run_WaveScriptQuery $*' >> run_query
 #chmod +x run_query
 
-echo Compiling query file.
+echo Compiling .cpp file using g++.
 if g++ -Wall -Werror -I$WAVESCOPED/include -g -fPIC -Wno-unused-variable -DSegList -DuseArray -lfftw3f -lm -lgsl -lgslcblas -lpthread ./query.cpp $WAVESCOPED/libws-SMSegList.so -o query.exe;
 then echo
 else

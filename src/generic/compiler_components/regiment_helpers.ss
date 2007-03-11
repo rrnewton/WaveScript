@@ -860,9 +860,12 @@
         (define strip-illegal
           (lambda (str)
             (list->string
-              (filter (lambda (c) (or (char-alphabetic? c)
-                                      (char-numeric? c)))
-                      (string->list str)))))
+	     ;; [2007.03.10] Changing it to insert underscores rather than just removing the character:
+	     (map (lambda (c) (if (or (char-alphabetic? c)
+				      (char-numeric? c))
+				  c
+				  #\_))
+	       (string->list str)))))
 #;
 	(define illegal-chars
             '(#\! #\@ #\# #\$ #\% #\^ #\& #\* #\. #\-))

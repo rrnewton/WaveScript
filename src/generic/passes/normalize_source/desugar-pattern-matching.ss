@@ -47,23 +47,19 @@
   (define (mangle-projector var fld)
     (string->symbol (format ":~a:~a" var fld)))
 
+  (define (notype) `',(unique-name 'notypeyet))
+
   (define process-expr
     (lambda (expr fallthrough)
       (match expr 
 
+	;; Unadorned arithmetic symbols match onto their generic counterparts:
  	[+ 'g+] [- 'g-] [* 'g*] [/ 'g/] [^ 'g^]	
  	[(+ ,[a] ,[b]) `(g+ ,a ,b)]
  	[(- ,[a] ,[b]) `(g- ,a ,b)]
  	[(* ,[a] ,[b]) `(g* ,a ,b)]
  	[(/ ,[a] ,[b]) `(g/ ,a ,b)]
  	[(^ ,[a] ,[b]) `(g^ ,a ,b)]
-
-; 	[+ '+_] [- '-_] [* '*_] [/ '/_] [^ '^_]	
-; 	[(+ ,[a] ,[b]) `(+_ ,a ,b)]
-; 	[(- ,[a] ,[b]) `(-_ ,a ,b)]
-; 	[(* ,[a] ,[b]) `(*_ ,a ,b)]
-; 	[(/ ,[a] ,[b]) `(/_ ,a ,b)]
-; 	[(^ ,[a] ,[b]) `(^_ ,a ,b)]
 	
 	[(lambda (,[break-pattern -> formal* binds* type-assertion*] ...) ,types ,[bod])
 	 (let ([lam (if (null? binds*)
@@ -89,7 +85,7 @@
 	[(match ,[x] (,[break-pattern -> var binds type-assertion] ,[rhs]))
 	 ;; Shouldn't have assertions on the variable names here for now:
 	 (ASSERT (not type-assertion))
-	 `(letrec ([,var 'notypeyet ,x] ,binds ...)
+	 `(letrec ([,var ',(notype) ,x] ,binds ...)
 	    ,rhs)]
 
 	;; [2006.11.15] Going to add special stream-of-tuples field-naming syntax.
@@ -98,15 +94,16 @@
 	 (guard (symbol? v) (andmap symbol? fldname*))
 	 (let ([len (length fldname*)])
 	 ;; Each field-name gets bound to a projection function.
-	 `(letrec ([,v ,rhs])
+	 `(letrec ([,v ,(notype) ,rhs])
 	    (letrec ([,(map (curry mangle-projector v) fldname*)
+		      ,(map (lambda (_) (notype)) fldname*)
 		      ,(map (lambda (i) 
 			    #;
 			    `(lambda (s) (iterate (lambda (x vq) 
 						    (begin (emit vq (tupref ,i ,len x)) vq))
 						  s))
 			    ;; Simple tuple projector:
-			    `(lambda (x) (tupref ,i ,len x))
+			    `(lambda (x) (,(notype)) (tupref ,i ,len x))
 			    )
                           (iota len))]
 		  ...)
@@ -127,13 +124,16 @@
 	       [vq (unique-name '___vq___)]
 	       [make-tuple (lambda (args) (if (= 1 (length args)) 
 					      (car args) (cons 'tuple args)))])
-           `(iterate (lambda (,tmp ,vq) 
+           `(iterate (lambda (,tmp ,vq) (,(notype) ,(notype))
 		       (begin (emit ,vq ,(make-tuple 
 					  (map (lambda (proj) 
 						 `(app ,(mangle-projector src proj) ,tmp)) 
 					    projector*)))
 			      ,vq))
 		     ,src))]
+
+	;; We don't desugar this here, it lives for one more pass:
+	[(using ,M ,[e]) `(using ,M ,e)]
 	
 	[,other (fallthrough other)])))
 
@@ -146,11 +146,11 @@
   
   ;; After desugaring pattern matching, then we can typecheck the prog for the first time:
   [Program (lambda (prog Expr)	  
-	  (match prog
-	    [(,inputlang '(program ,bod ,type))
-	     `(desugar-pattern-matching-language 
-	       '(program ,(Expr bod) ,type))]))]
-)
+	     (match prog
+	       [(,inputlang '(program ,bod ,type))
+		`(desugar-pattern-matching-language 
+		  '(program ,(Expr bod) ,type))]))]
+  )
 
 ; ================================================================================
 

@@ -516,8 +516,8 @@
 		      (stored)
 		      (kcall k_58 (+ x '1000)))))))))))))
        ,(lambda (x)
-	  (match (filter (lambda (x) (memq x '(kcounter kcapturedHOLE))) (map deunique-name x))
-		 [(kcounter kcounter kcapturedHOLE) #t]
+	  (match (filter (lambda (x) (memq x '(kcounter kcaptured_HOLE))) (map deunique-name x))
+		 [(kcounter kcounter kcaptured_HOLE) #t]
 		 [,else #f]))]
 		 
 

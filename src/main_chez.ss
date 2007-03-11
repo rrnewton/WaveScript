@@ -13,9 +13,11 @@
 
 ;; Wipe *all* previous bindings before coming RELOADING the system.
 ;; [2006.02.28] Without this we get killed by the fact that we redefine "module".
+;; This is *only* relevant if repeatedly loading regiment into a single REPL.
 (when (top-level-bound? 'REGIMENTD) 
   (printf "WIPING previous bindings before reloading Regiment system.\n")
   (eval '(import scheme)))
+
 
 ;;; Compile-time configuration.
 ;;;
@@ -26,6 +28,8 @@
 ;;; (But hopefully it should work either way, as long as its consistent.
 (eval-when (compile load eval)
 
+  ;; We load this at compile time to figure out some of our
+  ;; compilation options:
   (include "config.ss")
   
   (compile-profile #t)

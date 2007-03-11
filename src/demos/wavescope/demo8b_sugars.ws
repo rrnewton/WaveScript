@@ -18,5 +18,6 @@ fun f(s) {
   s2.(x,x,y);
 }
 
+fun id(x) x;
 
 BASE <- f(iterate(() in s2){ emit (1,2) });

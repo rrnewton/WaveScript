@@ -762,7 +762,7 @@
     ;; Accepts either with-boilerplate or without.
     (match p
       [(,lang '(program ,[Expr -> e t] ,type))
-       (ASSERT (type? type))
+       (ASSERT type? type)
        `(,lang '(program ,e ,t))]
       [,other (Expr other)])))
 
