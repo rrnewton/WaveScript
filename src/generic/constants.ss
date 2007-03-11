@@ -195,11 +195,21 @@
 (define-regiment-parameter REGIMENTD "./")
 
 
+;; [2007.03.11] This isn't used yet much yet, but it may be used in
+;; the future to disinclude the unit tests at compile time and
+;; therefore speed up load time.  
+;; 
+;; Unfortunately, it just didn't speed things up much at all.
+(define-syntax define-testing
+  (syntax-rules ()
+    [(_ x e) (define x e)]
+    ;[(_ x e) (define x '())]
+    ))
+
 ;=======================================================================;;
 ;; [2006.09.11] Factored some config parameters that the user will want to change.
 (include "../config.ss")
 ;=======================================================================;;
-
 
 
 ;=======================================================================;;

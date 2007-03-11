@@ -59,19 +59,3 @@
    ))
 ;; Note that this is separate from IFDEBUG above.
 
-
-;; [2007.03.11] This isn't used yet, but it may be used in the future
-;; to disinclude the unit tests at compile time and therefore speed up
-;; load time.
-(define-syntax define-testing
-  (syntax-rules ()
-    ;[(_ x e) (define x e)]
-    [(_ x e) (define x '())]
-    ))
-
-#;
-(define-syntax IFTESTING
-  (syntax-rules (define)
-    ;[(_ x e) (define x e)]
-    [(_ (define x e)) (define x '())]
-    ))
