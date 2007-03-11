@@ -309,7 +309,7 @@ fun stream_iterate(f,z,s) {
     sigma := sig2;
     // list_foreach(fun(t) emit t, ls);
     for i = 0 to ls.listLength-1 {
-      emit listRef(ls,i);
+      emit List:ref(ls,i);
     }
   }
 }

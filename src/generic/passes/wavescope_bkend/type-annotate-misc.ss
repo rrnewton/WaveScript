@@ -42,8 +42,8 @@
 	 `(assert-type ,(recover-type x tenv) (reverse ,x))]
 	[(listLength ,[x])
 	 `(listLength (assert-type ,(recover-type x tenv) ,x))]
-	[(listRef ,[x] ,[i])
-	 `(listRef (assert-type ,(recover-type x tenv) ,x) ,i)]
+	[(List:ref ,[x] ,[i])
+	 `(List:ref (assert-type ,(recover-type x tenv) ,x) ,i)]
 	[(makeList ,[n] ,[init])
 	 `(makeList ,n (assert-type ,(recover-type init tenv) ,init))]
 

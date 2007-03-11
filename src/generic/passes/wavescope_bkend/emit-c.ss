@@ -802,8 +802,8 @@
 	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
 	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
 	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
-	[(listRef (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::listRef(",ls", ",ind")"))]
+	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
+	 (wrap `("cons<",(Type t)">::List:ref(",ls", ",ind")"))]
 	[(listLength (assert-type (List ,t) ,[Simple -> ls]))
 	 (wrap `("cons<",(Type t)">::listLength(",ls")"))]
 	[(makeList ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
@@ -815,7 +815,7 @@
 
 	;; Safety net:
 	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
-					   listRef listLength makeList ))) 
+					   List:ref listLength makeList ))) 
 	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
 

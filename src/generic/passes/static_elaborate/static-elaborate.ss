@@ -598,14 +598,14 @@
 		     `(listLength ,x)
 		     ))
 	       `(listLength ,x))]
-	  [(listRef ,[x] ,[i])
+	  [(List:ref ,[x] ,[i])
 	   (if (and (available? i) (container-available? x))
 	       (let ([ls (getlist x)])
 		 (if (list? ls)
 		     (match i [(quote ,i) (list-ref ls i)])
-		     `(listRef ,x ,i)
+		     `(List:ref ,x ,i)
 		     ))
-	       `(listRef ,x ,i))]
+	       `(List:ref ,x ,i))]
 
 	  ;; Here unionList must be eliminated, replaced by a hardwired unionN.
 	  [(unionList ,[x])

@@ -42,12 +42,12 @@ s4 = iterate( ls in s3) {
   emit ls;
 }
 
-// Test listRef, listLength, makeList.
+// Test List:ref, listLength, makeList.
 s5 = iterate(ls in s4) {
   print("  Length: " ++ ls.listLength ++"\n");
   assert(ls.listLength == 4);
-  print("  Second element: "++ ls.listRef(1) ++"\n");
-  assert(ls.listRef(1) == ls.tail.head);
+  print("  Second element: "++ ls.List:ref(1) ++"\n");
+  assert(ls.List:ref(1) == ls.tail.head);
   ml = makeList(3, 0.0);
   print("  makeList: "++ ml ++ " Length: "++ ml.listLength ++"\n");
   emit ();

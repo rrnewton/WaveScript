@@ -113,7 +113,9 @@
     ;; Should remove car/cdr at some point.
     (head ((List 'a)) 'a)
     (tail ((List 'a)) (List 'a))
-    (listRef ((List 'a) Int) 'a)
+
+    (List:ref   ((List 'a) Int) 'a)
+
     (append     ((List 'a) (List 'a)) (List 'a))
     (makeList   (Int 'a) (List 'a))
     (listLength ((List 'a)) Int)

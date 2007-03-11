@@ -62,7 +62,7 @@
 		 makeArray arr-get arr-set! 
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
-		 listRef listLength makeList head tail
+		 List:ref listLength makeList head tail
 		 fold alist_lookup alist_update
 
 		 joinsegs subseg seg-get width start end timebase
@@ -853,7 +853,7 @@
        (vector-ref v ind))
 
      (define listLength orig-length)
-     (define listRef list-ref)
+     (define List:ref list-ref)
 
      (define makeList make-list)
      (define head car)
