@@ -426,7 +426,7 @@
 	     (reg:struct? z)))]
     ))
 
-(define test-this 
+(define-testing test-this 
   (default-unit-tester "Alpha Lib. run time library supporting simulator alpha."
     these-tests))
 (define test-alphalib test-this)

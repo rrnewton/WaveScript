@@ -207,7 +207,7 @@
 ))
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "23: Desugar-Gradient: convert gradient commands to plain token machine code." 
 		    these-tests))
 

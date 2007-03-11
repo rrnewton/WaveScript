@@ -246,11 +246,11 @@
    test-programs))
      
 
-(define test-this (default-unit-tester 
+(define-testing test-this (default-unit-tester 
 		    "Verify-Stage2: Pass to verify valid stage2 program (unfinished)"
 		    these-tests))
 
-#;(define test-this
+#;(define-testing test-this
   (let ((these-tests these-tests))
     (lambda args 
       (let ((verbose (memq 'verbose args)))

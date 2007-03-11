@@ -430,7 +430,7 @@
 	     v)
 	    (Area Int))))
 
-(define test-this
+(define-testing test-this
   (default-unit-tester 
     "Pass 17: Add data flow"
     (if (null? these-tests) '()

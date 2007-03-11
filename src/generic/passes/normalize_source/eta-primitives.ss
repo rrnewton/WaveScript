@@ -74,7 +74,7 @@
 	     (Stream Int)))]
 	))
 
-  (define test-this 
+  (define-testing test-this 
     (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
       these-tests))
 

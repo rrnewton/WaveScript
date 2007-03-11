@@ -123,7 +123,7 @@
        
        )))
 
-(define test-this
+(define-testing test-this
   (default-unit-tester 
     " 2: Rename-Vars: Pass to rename variabless."
     these-tests))

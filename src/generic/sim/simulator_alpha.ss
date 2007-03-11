@@ -1357,7 +1357,7 @@
 
 ;; Use the default unit tester from helpers.ss:
 ;; But this also makes sure the world is initialized before doing unit tests:
-(define test-this
+(define-testing test-this
   (let ((tester (default-unit-tester 
 		  "simulator_alpha.ss: event-queue simulator for nodal language"
 		  ;; Make sure that the world is clean before each test.

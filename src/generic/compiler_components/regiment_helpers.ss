@@ -1129,7 +1129,7 @@
 
     ))
 
-(define test-this (default-unit-tester "regiment_helpers.ss: Regiment-specific utils." these-tests))
+(define-testing test-this (default-unit-tester "regiment_helpers.ss: Regiment-specific utils." these-tests))
 (define test-regiment_helpers test-this)
 
 ) ; End Module.

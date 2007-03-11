@@ -1935,7 +1935,7 @@
 
     ))
 
-(define test-this (default-unit-tester "helpers.ss: my messy utils file." these-tests))
+(define-testing test-this (default-unit-tester "helpers.ss: my messy utils file." these-tests))
 (define testhelpers test-this)
 (define testshelpers these-tests)
 

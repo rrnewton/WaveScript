@@ -72,7 +72,7 @@
   
   (define-testing these-tests  (include (build-path up "generic" "testing" "flat_threads.tests")))
   
-  (define test-this (rn:default-unit-tester 
+  (define-testing test-this (rn:default-unit-tester 
                      "flat_threads.ss: simple parallel computation system for PLT"
                      these-tests))
   

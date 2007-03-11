@@ -84,7 +84,7 @@
 
 	)))
   
-  (define test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
+  (define-testing test-this (default-unit-tester "Wavescript emulation language bindings" these-tests))
   (define test-ws test-this)
   (define test-lang_wavescript test-this)
   

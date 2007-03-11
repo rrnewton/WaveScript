@@ -82,7 +82,7 @@
 				    ,(process-expr letexpr)
 				    ,type)))])))
 
-(define test-this
+(define-testing test-this
   (default-unit-tester 
     "Pass 17: Resolve Fold Trees"
     `(

@@ -553,7 +553,7 @@ enum {
 ))
 
 
-(define test-this (default-unit-tester "Pass32: Emit NesC code." these-tests))
+(define-testing test-this (default-unit-tester "Pass32: Emit NesC code." these-tests))
 (define test32 test-this)
 (define test-emit-nesc test-this)
 

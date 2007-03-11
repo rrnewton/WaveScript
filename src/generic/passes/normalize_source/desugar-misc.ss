@@ -86,9 +86,11 @@
 	  ))])
      processExpr)])
 
-(define test-desugar-misc
+(define-testing test-this
   (default-unit-tester " 1: Desugar-misc: remove miscellaneous syntactic sugar"
     `(
       )))
+
+(define test-desugar-misc test-this)
 
 ) ; End module

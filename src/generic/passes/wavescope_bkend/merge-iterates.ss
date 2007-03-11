@@ -82,11 +82,10 @@
      1]
     ))
 
-(define test-merge-iterates 
+(define-testing test-this  
   (default-unit-tester "Merge-Iterates: collapse adjacent iterates"  these-tests))
 
-
-
+(define test-merge-iterates test-this)
 
 
 

@@ -104,7 +104,7 @@
   )
   )
 
-(define test-this (default-unit-tester "Topological Sort" these-tests))
+(define-testing test-this (default-unit-tester "Topological Sort" these-tests))
 (define test-tsort test-this)
 
 ) ; End module

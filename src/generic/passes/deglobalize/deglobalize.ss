@@ -1308,7 +1308,7 @@
   ))
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "20: Deglobalize: to convert global to local program."
 		    these-tests))
 

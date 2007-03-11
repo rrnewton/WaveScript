@@ -206,7 +206,7 @@
 	  ,test))
 
 ;; This makes sure the world is initialized before doing unit tests:
-(define test-this
+(define-testing test-this
   (let ((tester (default-unit-tester 
 		  this-unit-description 
 		  (map (lambda (test)

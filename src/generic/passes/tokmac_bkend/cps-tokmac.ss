@@ -860,7 +860,7 @@
    )))))
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "27: CPS-Tokmac: use CPS on blocking calls."
 		    these-tests))
 

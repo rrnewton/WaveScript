@@ -148,7 +148,9 @@
 	    '((call (tok a 0)) (call (tok a 0)))))]
       ))
   
-  (define test29 (default-unit-tester "Pass29: Inline token handlers" these-tests))
+  (define-testing test-this (default-unit-tester "Pass29: Inline token handlers" these-tests))
+
+  (define test29 test-this)
   (define test-inline test29)
 
 ) ;; End module.

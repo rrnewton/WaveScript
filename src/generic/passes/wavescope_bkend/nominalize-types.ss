@@ -375,7 +375,7 @@
       
 
       ))
-  (define test-this (default-unit-tester "" these-tests))
+  (define-testing test-this (default-unit-tester "" these-tests))
   (define test-nominalize-types test-this)
 
 ) ;; End module.

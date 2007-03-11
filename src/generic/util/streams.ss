@@ -378,7 +378,10 @@
 
     ))
 
-(define test-streams (default-unit-tester "streams.ss: Implementation of streams as lazy lists." these-tests))
+(define-testing test-this 
+  (default-unit-tester "streams.ss: Implementation of streams as lazy lists." these-tests))
+
+(define test-streams test-this)
 
 
 ) ; End module

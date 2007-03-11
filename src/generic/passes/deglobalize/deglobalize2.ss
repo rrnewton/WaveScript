@@ -412,7 +412,7 @@
       
       ))
 
-  (define test-this (default-unit-tester 
+  (define-testing test-this (default-unit-tester 
 		      "Deglobalize2: transform Regiment into node-level stream-processing and communication constructs."
 		      these-tests
 		      ))

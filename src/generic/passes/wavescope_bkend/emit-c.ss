@@ -1322,7 +1322,7 @@ int main(int argc, char ** argv)
 	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
       ))
 
-(define test-this (default-unit-tester "wavescript_emit-c.ss: generating WaveScript C code." these-tests))
+(define-testing test-this (default-unit-tester "wavescript_emit-c.ss: generating WaveScript C code." these-tests))
 (define test-wavescript_emit-c test-this)
 
 ) ;; End Module

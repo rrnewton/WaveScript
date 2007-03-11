@@ -149,7 +149,7 @@
 
   ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "17: Analyze-places: to infer place relationships"
 		    these-tests))
 

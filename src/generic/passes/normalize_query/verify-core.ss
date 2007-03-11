@@ -159,10 +159,10 @@
        (some-lang '(program ,prog notype))])
    test-programs))
 
-(define test-this (default-unit-tester 
+(define-testing test-this (default-unit-tester 
 		    "12: Verify-Core: Pass to verify the simplifed core language."
 		    these-tests))
-#;(define test-this
+#;(define-testing test-this
   (let ((these-tests these-tests))
     (lambda args 
       (let ((verbose (memq 'verbose args)))	

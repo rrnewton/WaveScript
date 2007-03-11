@@ -535,7 +535,7 @@
 
     ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "grammar_checker: this is my by-hand grammar checker for pass input/output"
 		    these-tests))
 

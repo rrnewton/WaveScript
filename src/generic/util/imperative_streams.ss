@@ -283,7 +283,7 @@
 
     ))
 
-(define test-this
+(define-testing test-this
   (default-unit-tester "imperative_streams.ss: Implementation of streams as thunks" these-tests))
 
 (define test-imperative_streams test-this)

@@ -564,7 +564,7 @@
 
 	       
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "28: Closure-convert: explicitely construct continuation closures."
 		    these-tests))
 

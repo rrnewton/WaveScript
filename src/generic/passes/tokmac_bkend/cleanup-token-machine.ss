@@ -777,7 +777,7 @@
 
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "21: Cleanup-Token-Machine: regularize syntax of token machine"
 		    these-tests))
 

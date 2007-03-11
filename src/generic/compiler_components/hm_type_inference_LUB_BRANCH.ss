@@ -1507,7 +1507,7 @@
 
   ))
 
-(define test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
+(define-testing test-this (default-unit-tester "Hindley Milner Type Inferencer" these-tests))
 ;; Unit tester.
 (define test-inferencer test-this)
 

@@ -58,7 +58,7 @@
 
 (define-testing these-tests (include "generic/testing/flat_threads.tests"))
 
-(define test-this (default-unit-tester 
+(define-testing test-this (default-unit-tester 
 		    "swl_flat_threads.ss: simple interface for parallel computations"
 		    these-tests))
 (define testswlflatthreads test-this)

@@ -158,7 +158,7 @@
 
       )))
 
-(define test-this (default-unit-tester this-unit-description these-tests))
+(define-testing test-this (default-unit-tester this-unit-description these-tests))
 (define testflatthreads test-this)
 ;) ;; End module
 

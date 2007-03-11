@@ -299,7 +299,7 @@
 
     ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "22: Desugar-Macros: expand various macros"
 		    these-tests))
 

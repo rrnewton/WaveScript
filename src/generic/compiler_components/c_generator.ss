@@ -206,7 +206,7 @@
     [(,text->string '("foo" "bar")) "foobar"]
     
     ))
-(define test-this (default-unit-tester "c_generator.ss: generating C code." these-tests))
+(define-testing test-this (default-unit-tester "c_generator.ss: generating C code." these-tests))
 (define test-cgenerator test-this)
 
 ) ;; End module

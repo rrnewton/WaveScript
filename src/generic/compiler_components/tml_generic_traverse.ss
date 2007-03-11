@@ -425,7 +425,7 @@
 
     ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "TML Generic-Traverse: abstracts tree-walks over TML code."
 		    these-tests))
 

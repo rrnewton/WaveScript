@@ -162,7 +162,7 @@
     ))
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "30: Haskellize-Tokmac: to convert token machine to haskell-style external representation."
 		    these-tests))
 

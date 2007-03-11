@@ -741,7 +741,7 @@
 	 (static-elaborate-language '(program ,prog (Stream Int)))])
     ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    " 4: Static-Elaborate: to evaluate the first stage of computation"
 		    these-tests))
 

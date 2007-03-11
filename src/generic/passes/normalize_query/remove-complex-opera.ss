@@ -241,7 +241,7 @@
    )
   ) 
 
-(define test-this
+(define-testing test-this
   (default-unit-tester 
     "11: Remove-Complex-Opera: Pass to flatten expressions by simplifying arguments."
     these-tests))

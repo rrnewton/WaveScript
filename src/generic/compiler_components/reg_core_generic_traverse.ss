@@ -416,7 +416,7 @@
 
     ))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "Regiment Core Generic-Traverse: abstracts tree-walks over intermediate code."
 		    these-tests))
 

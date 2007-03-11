@@ -222,6 +222,6 @@
 
     ))
 
-(define test-this (default-unit-tester "desugar-pattern-matching.ss: For reading regiment source files." these-tests))
+(define-testing test-this (default-unit-tester "desugar-pattern-matching.ss: For reading regiment source files." these-tests))
 (define test_desugar-patterns test-this)
 )

@@ -41,7 +41,7 @@
 ;       [
 
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "Analysis Pass: determine continuity"
 		    these-tests))
 

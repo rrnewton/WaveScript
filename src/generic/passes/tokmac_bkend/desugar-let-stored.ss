@@ -198,7 +198,7 @@
 
 )))
 
-(define test-this (default-unit-tester
+(define-testing test-this (default-unit-tester
 		    "24: Desugar-Let-Stored: convert let-stored to plain stored variables."
 		    these-tests))
 

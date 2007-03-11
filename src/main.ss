@@ -843,7 +843,7 @@
     (include "generic/testing/system_tests.ss")
 ))
 
-(define test-this (default-unit-tester "Main compiler units + system tests." these-tests))
+(define-testing test-this (default-unit-tester "Main compiler units + system tests." these-tests))
 (define maintests these-tests)
 (define maintest test-this)
 
