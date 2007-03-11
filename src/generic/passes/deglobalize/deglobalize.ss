@@ -1209,7 +1209,7 @@
 ; ==============================================================================
 ;;; Unit tests.
 
-(define these-tests 
+(define-testing these-tests 
   `(
 ;    [(lazy-letrec () '3) unspecified]
 

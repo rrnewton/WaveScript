@@ -65,4 +65,13 @@
 ;; load time.
 (define-syntax define-testing
   (syntax-rules ()
-    [(_ x e) (define x e)]))
+    ;[(_ x e) (define x e)]
+    [(_ x e) (define x '())]
+    ))
+
+#;
+(define-syntax IFTESTING
+  (syntax-rules (define)
+    ;[(_ x e) (define x e)]
+    [(_ (define x e)) (define x '())]
+    ))

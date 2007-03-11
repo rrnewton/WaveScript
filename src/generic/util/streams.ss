@@ -334,7 +334,7 @@
       )))
 
 
-(define these-tests
+(define-testing these-tests
   `(
         [(mvlet ([(x _) (stream-take 5 iota-stream)]) x)
      (0 1 2 3 4)]

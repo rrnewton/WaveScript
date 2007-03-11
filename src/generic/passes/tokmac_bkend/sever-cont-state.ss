@@ -52,7 +52,7 @@
 
 
 ;; Unfinished:
-(define these-tests
+(define-testing these-tests
   `(
 
     ["Make sure it severs the state references for a simple example."

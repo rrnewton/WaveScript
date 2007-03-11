@@ -83,7 +83,7 @@
 	    #f
 	    cycles)))))
 
-(define these-tests  
+(define-testing these-tests  
   `([(,tsort '((shirt tie belt)
 	     (tie jacket)
 	     (belt jacket)

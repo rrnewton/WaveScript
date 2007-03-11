@@ -1302,7 +1302,7 @@ int main(int argc, char ** argv)
   )
 
 ;; Disabled because this code can't get to wscode->text right now.
-  (define these-tests
+  (define-testing these-tests
     `(
 #;
       [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (begin '35)) "noname" (empty-tenv))])

@@ -224,7 +224,7 @@
 ;==============================================================================
      
 
-(define these-tests
+(define-testing these-tests
   '( [(verify-regiment '(some-lang '(program 3)))
       (verify-regiment-language (quote (program 3 'toptype)))]
       

@@ -264,7 +264,7 @@
 ;(stream-take 10 (stream-map add1 (stream-filter odd? (iota-stream))))
 ;(2 4 6 8 10 12 14 16 18 20)
 
-(define these-tests
+(define-testing these-tests
   `(
     [(,stream-take! 5 (,iota-stream))
      (0 1 2 3 4)]

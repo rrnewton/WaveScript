@@ -133,7 +133,7 @@
 
 
 
-(define these-tests 
+(define-testing these-tests 
   `(
 
     [(analyze-places '(add-places-language

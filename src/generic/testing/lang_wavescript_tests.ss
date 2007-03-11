@@ -6,7 +6,7 @@
   (provide test-ws test-lang_wavescript)
   (chezimports (add-prefix wavescript_sim_library_push ws:))
  
-  (define these-tests
+  (define-testing these-tests
     (let ()      
       `(
         ["Joinsegs" 

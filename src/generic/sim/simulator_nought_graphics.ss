@@ -99,7 +99,7 @@
 ;(load "simulator_nought.examples.ss")
 ;(include "simulator_nought.examples.ss")
 
-(define these-tests
+(define-testing these-tests
   `( 
     ;; 0
     [ "First test display by bringing it up and then closing it down." 

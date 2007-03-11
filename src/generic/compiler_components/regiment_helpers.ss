@@ -1098,7 +1098,7 @@
 
 ; ======================================================================
 
-(define these-tests
+(define-testing these-tests
   `( 
     ["Reunique names" 
      (reunique-names '(foo_3 foo_43 foo_3 foo))

@@ -410,7 +410,7 @@
 
 ;======================================================================
 
-(define these-tests
+(define-testing these-tests
   `(
 
     ["Test adding and retrieving tokens to the store."

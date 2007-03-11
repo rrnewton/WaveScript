@@ -132,7 +132,7 @@
 ;; Here I've decided to start breaking my rules about unit tests requiring
 ;; only the content of that file.
 ;; This requires a number of other passes as well as the simulator.
-(define these-tests
+(define-testing these-tests
   (let () 
 
     (define sim-to-string

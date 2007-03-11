@@ -81,7 +81,9 @@
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
-(define these-tests '())
+;;
+;; HACK: there's a reason this is non-null:
+(define-testing these-tests '([1 1]))
 
 (define cps-tokmac
   (let ()
@@ -445,7 +447,8 @@
 
  
     ;; Now add unit tests of the above internal helper functions:
-    (set! these-tests
+    (unless (null? these-tests)
+     (set! these-tests
           (append 
 	   `(
 	     ["Testing free-vars" 
@@ -538,7 +541,7 @@
 
 
 	      
-	     ) these-tests))
+	     ) these-tests)))
 
 
     ;; Main body of cps-tokmac
@@ -638,7 +641,8 @@
 (define _
 
 ;; Finally we add some tests for the whole module -- for the externally visible parts of the module.
-(set! these-tests
+(unless (null? these-tests)
+ (set! these-tests
   (append these-tests
    `(
     
@@ -853,7 +857,7 @@
 
     
          
-   ))))
+   )))))
 
 
 (define test-this (default-unit-tester

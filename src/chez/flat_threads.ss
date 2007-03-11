@@ -133,7 +133,7 @@
 					acc)))))
 		   (get-output-string s))))
 
-(define these-tests 
+(define-testing these-tests 
   (append (include "generic/testing/flat_threads.tests")
 
     ;; This one depends on particular ordering/timing, only valid for

@@ -701,7 +701,7 @@
 ;			      (startup ,starttoks ...))))
 	   
 
-(define these-tests
+(define-testing these-tests
   `(
     
     ["Put an empty test through." 

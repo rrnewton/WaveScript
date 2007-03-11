@@ -1589,7 +1589,7 @@
 		  ,@testcase)))))))
 
 
-(define these-tests
+(define-testing these-tests
   `(
     ;; First we test some of the smaller procedures before running the simulator:
     ;; I make the assumption here that the function process-statement-nought

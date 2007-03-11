@@ -170,7 +170,7 @@
           (cadr entry))))
    
   
-  (define these-tests
+  (define-testing these-tests
     `(["You should see a circle"
        (begin (require "basic_graphics.ss")
               (init-graphics)

@@ -157,7 +157,7 @@
 		 (hlist (map process-tokbind other-toks))))))]))))
   
 
-(define these-tests
+(define-testing these-tests
   `(
     ))
 

@@ -675,7 +675,7 @@
 	)))))
 
 
-(define these-tests 
+(define-testing these-tests 
   `( 
 
     ["Make sure it folds some simple constants." 

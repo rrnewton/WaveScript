@@ -272,7 +272,7 @@
 
 ;;; Unit tests.
 
-(define these-tests
+(define-testing these-tests
   `(
     ,@(let ((randomprog
 	     '(desugar-macros-lang

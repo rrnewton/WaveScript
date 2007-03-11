@@ -357,7 +357,7 @@
 
   ;;======================================================================
   
-  (define these-tests 
+  (define-testing these-tests 
     `(
       [(,transform-type 'Anchor) (Stream #())]
 

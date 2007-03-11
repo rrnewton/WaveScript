@@ -177,7 +177,7 @@
   '("foo();\n"
     "bar();\n"))
 
-(define these-tests
+(define-testing these-tests
   `(
     [(,wrap "foo")   ("foo")]
     [(,wrap '("foo" "bar")) ("foo" "bar")]

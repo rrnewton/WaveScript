@@ -152,7 +152,7 @@
 
 ;========================================
 
-(define these-tests
+(define-testing these-tests
   (map
    (lambda (prog)
      `[(verify-core '(some-lang '(program ,prog notype)))

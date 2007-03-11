@@ -102,7 +102,7 @@
 				  ))))))])))
     ))
   
-  (define these-tests
+  (define-testing these-tests
     `( 
       ["Does it do the basic eta transform?"
        (,deep-assq 'tokens 

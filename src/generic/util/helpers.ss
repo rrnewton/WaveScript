@@ -1825,7 +1825,7 @@
 ;=======================================================================
 ;; And here are the unit tests for this file... Don't have many of these yet.
 
-(define these-tests
+(define-testing these-tests
   `(
 
     [(deep-all-matches null? '(1 (3) (4 . 5)))

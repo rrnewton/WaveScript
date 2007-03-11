@@ -56,9 +56,8 @@
        processExpr)])
 
 
-  (define test-this 
-    (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
-      `(
+  (define-testing these-tests
+     `(
 	["Simple test of eta-primitives"
 	 (eta-primitives '(base-language
 			   '(program
@@ -73,7 +72,11 @@
 		 (lambda (a) (Node) (nodeid a))
 		 (khood (anchor-at 50 10) 2)))
 	     (Stream Int)))]
-	)))
+	))
+
+  (define test-this 
+    (default-unit-tester " 1: Eta-Primitives: remove non-operator usages of primitive names."
+      these-tests))
 
   (define test-eta-primitives test-this)
 

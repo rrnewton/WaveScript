@@ -1300,7 +1300,7 @@
 ; =======================================================================
 
 
-(define these-tests
+(define-testing these-tests
   (map (lambda (test)
 	 (match test
 	   [(,prog ,res) `(,prog ,res)] ;`((begin (cleanse-world) ,prog) ,res)]

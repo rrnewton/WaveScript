@@ -78,7 +78,7 @@
 	  [preprocessor (lambda (x) x)]
 	  [retry-failures #f]
 	  [enabled #t])
-    ;; Go through tester-construction time additional arguments: 
+    ;; Go through tester construction-time additional arguments: 
     (let arg-loop ([ls extras] [procsseen 0])
       (cond
        [(null? ls) (void)]

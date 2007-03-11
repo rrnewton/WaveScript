@@ -268,7 +268,7 @@
 ;===============================================================================
 
 
-(define these-tests
+(define-testing these-tests
   (map
    (lambda (x)
      (let ((prog (car x)) (res (cadr x)))	

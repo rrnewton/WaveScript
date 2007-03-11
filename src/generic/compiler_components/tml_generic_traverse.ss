@@ -372,7 +372,7 @@
 
 ; ================================================================================
 
-(define these-tests
+(define-testing these-tests
   `(	     
     ["Do a little verification of generic-traverse, check datatypes"
      (call/cc (lambda (esc)

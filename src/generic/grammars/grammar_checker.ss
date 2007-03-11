@@ -465,7 +465,7 @@
 ;;; Unit tests.
 
 ;; Unit tests.
-(define these-tests
+(define-testing these-tests
   `([(check-grammar/backtrack '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
     [(check-grammar/backtrack '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
     [(check-grammar/backtrack '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr)   ,list?]

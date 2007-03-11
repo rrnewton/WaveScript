@@ -268,7 +268,7 @@
      (IFCHEZ (parameterize ([lhs rhs] ...) bod ...)
 	     (let () bod ...))]))
 
-;(define these-tests 
+;(define-testing these-tests 
 ;  `(
 ;    
 ;;     reg-include

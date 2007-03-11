@@ -328,7 +328,7 @@
 	   ))
 
 
-(define these-tests 
+(define-testing these-tests 
   `(
 
 

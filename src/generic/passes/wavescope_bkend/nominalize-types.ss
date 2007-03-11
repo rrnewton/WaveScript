@@ -328,7 +328,7 @@
 		     ,(convert-type type tupdefs)))])
 	     )]))))
 
-  (define these-tests  
+  (define-testing these-tests  
     `(
       ["remove all those tuprefs"
        (deep-assq 'tupref

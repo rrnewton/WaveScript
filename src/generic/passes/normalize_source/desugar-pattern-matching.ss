@@ -154,7 +154,7 @@
 
 ; ================================================================================
 
-(define these-tests
+(define-testing these-tests
   `(["Run a basic test of the pattern match expander."
      (cadr (cadadr
 	    (reunique-names 

@@ -52,7 +52,9 @@
 ;; I accumulate tests through mutation throughout this file.
 ;; This method allows me to test internal functions whose definitions
 ;; are not exposed at the top level.
-(define these-tests '())
+;;
+;; HACK: this is non-null for a reason:
+(define-testing these-tests '([1 1]))
 
 (define closure-convert
   (build-compiler-pass
@@ -368,7 +370,8 @@
 	     newtokbinds)))))
     
       ;; Add some unit tests that use local bindings:
-      (set! these-tests
+      (unless (null? these-tests)
+       (set! these-tests
 	    (append these-tests
 	      `(
 		
@@ -430,7 +433,7 @@
 		
 
 
-	      )))      
+	      ))))      
 
       (lambda (prog)
 	(match prog
@@ -469,7 +472,8 @@
 ;; Now test the whole module:
 ;; BETTER HAVE LETREC* SEMANTICS for these module-internal defines:
 (define _ 
-(set! these-tests
+(unless (null? these-tests)
+ (set! these-tests
   (append these-tests
     `(
       ["Closure convert a program with one continuation.  Make sure we get the right token bindings."
@@ -556,7 +560,7 @@
        ,(lambda (x) #t)]
       
 
-      ))))
+      )))))
 
 	       
 

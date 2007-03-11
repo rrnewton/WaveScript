@@ -1046,7 +1046,7 @@
 ;;; Unit tests.
 
 ;; Unit tests.
-(define these-tests
+(define-testing these-tests
   `([(begin (reset-tvar-generator) (let ((x (prim->type 'car))) (set-cdr! (car (cdaddr x)) 99) x))
      ((List '(a . 99)) -> '(a . 99))]
 

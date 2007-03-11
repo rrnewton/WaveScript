@@ -379,7 +379,7 @@
 
 ; ================================================================================
 
-(define these-tests
+(define-testing these-tests
   `(	     
     ["Simple generic traversal with type environment"
      (core-generic-traverse/types 

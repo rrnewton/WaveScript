@@ -238,7 +238,7 @@
   '( 
      ))
 
-(define these-tests
+(define-testing these-tests
   (map
    (lambda (prog)
      `[(verify-regiment '(some-lang '(program ,prog)))

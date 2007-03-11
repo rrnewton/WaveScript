@@ -15,7 +15,8 @@
 
 ; --------------------------------------------------------------------------------
 
-(define these-tests '())
+;; HACK: this is non-null for a reason
+(define-testing these-tests '([1 1]))
 
 (define emit-nesc-modname "TestMachine")
 
@@ -509,7 +510,8 @@ enum {
 		       (nodepgm (tokens ,hand1 ,hand2 
 					(SOC-start _ () (stored) (let* () (begin (void)))))))))
 
-(set! these-tests
+(unless (null? these-tests)
+ (set! these-tests
       (append `(
     [(,Basic ''1) "1"]
     [(,Basic 'v) "v"]
@@ -541,7 +543,7 @@ enum {
     [(emit-nesc ',prog) unspecified]
 
     ) 
-	      these-tests))
+	      these-tests)))
 
 ;; --------------------------------------------------
 ;; Main body of emit-nesc:

@@ -86,7 +86,8 @@
 
 ;======================================================================
 
-(define these-tests '())
+;; Hack, this is non-null for a reason:
+(define-testing these-tests '([1 1]))
 
 (define add-data-flow
   (build-compiler-pass ;; This wraps the main function with extra debugging machinery
@@ -332,7 +333,8 @@
 
     ;; Doing some internal testing here:
     ;--------------------------------------------------------
-    (set! these-tests
+    (unless (null? these-tests)
+      (set! these-tests
 	  (append `(["Just a letrec"
 		     (map car (,process-expr 
 		      '(lazy-letrec
@@ -370,7 +372,7 @@
 		     #t]
 
 		    )
-		  these-tests))
+		  these-tests)))
     ;--------------------------------------------------------
     
     (lambda (expr)
@@ -431,6 +433,7 @@
 (define test-this
   (default-unit-tester 
     "Pass 17: Add data flow"
+    (if (null? these-tests) '()
     (append these-tests
     `(
       ["Does it produce the right bindings on a simple example?"
@@ -480,7 +483,7 @@
 		     '(r2 nd res_r1 r1 a kh n w h getid h2 v)
 		     ))]
 
-      ))))
+      )))))
 
 
 (define test17b test-this)

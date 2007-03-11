@@ -62,7 +62,7 @@
 (define-pass merge-iterates [Expr do-expr])
 
 
-(define these-tests 
+(define-testing these-tests 
   `(
     ["Peform basic iterate merging."
      (length (deep-assq-all 'iterate
