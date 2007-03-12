@@ -62,8 +62,9 @@
 		 makeArray arr-get arr-set! 
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
-		 List:ref listLength makeList head tail
-		 fold alist_lookup alist_update
+		 List:ref List:append List:reverse List:map List:fold List:length List:make 
+		 List:head List:tail
+		 List:assoc List:assoc_update
 
 		 joinsegs subseg seg-get width start end timebase
 		 toArray toSigseg 
@@ -373,7 +374,7 @@
     ;; This is one playback of the file:
     (define (textsource)
       ;; TODO: In debug mode this should check the types of what it gets.       
-      (define len (listLength types))
+      (define len (List:length types))
       (define inp (open-input-file file))
       (define tyvec (list->vector types))
       (define (parse-line str)
@@ -852,27 +853,31 @@
        (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
 
-     (define listLength orig-length)
+     (define List:length orig-length)
      (define List:ref list-ref)
 
-     (define makeList make-list)
-     (define head car)
-     (define tail cdr)
+     (define List:make make-list)
+     (define List:head car)
+     (define List:tail cdr)
+
+     (define List:reverse reverse)
+     (define List:append append)
+     (define List:map map)
 
      ;; These should really be defined in the language.  They aren't
      ;; currently [2006.10.26] because the elaborator isn't ready to
      ;; *not* inline their recursive definitions.
-     (define (fold f zero ls)
+     (define (List:fold f zero ls)
        (let loop ([acc zero] [ls ls])
 	 (if (null? ls) acc
 	     (loop (f acc (car ls)) (cdr ls)))))
-     (define (alist_lookup ls x)
+     (define (List:assoc ls x)
        (let loop ([ls ls])
 	 (cond
 	  [(null? ls) '()]
 	  [(equal? (vector-ref (car ls) 0) x) ls]
 	  [else (loop (cdr ls))])))
-     (define (alist_update origls x y)
+     (define (List:assoc_update origls x y)
        (let loop ([ls origls] [acc '()])
 	 (cond
 	  [(null? ls) (cons (vector x y) origls)]

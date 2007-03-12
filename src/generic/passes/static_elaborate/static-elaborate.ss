@@ -87,9 +87,9 @@
 (define static-elaborate
   (build-compiler-pass 'static-elaborate
    `(input )
-;   `(output (grammar ,static-elaborate-grammar PassInput))
+   `(output (grammar ,static-elaborate-grammar PassInput))
 ;   `(output (grammar ,remove-unquoted-constant-grammar PassInput))
-   '(output)
+;   '(output)
    (let ()
 
      ;; A table binding computable prims to an expression that evals
@@ -136,9 +136,14 @@
 				  [else (ASSERT cflonum? x)])))))
 
 	(buildArray ,(lambda (n f)
-		       `(vector . ,(map (lambda (i) `(app ,f (quote ,i))) (iota n)))))
+		       `(vector . ,(map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
 	(length vector-length)
 	(arr-get vector-ref)	
+	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
+	(List:make make-list)
+
+	;; Need to put in a real "show" at some point:
+	;(show ,(lambda (x) `',(format "~a" x)))
 	
 	(sqrtI ,(lambda (n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
 
@@ -168,8 +173,7 @@
 
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
-	(map map)
-	(filter filter)
+
 	(GETENV ,(lambda (v)
 		   (if (string? v)
 		       (let ([x (getenv v)])
@@ -194,7 +198,7 @@
 	    (if (procedure? (cadr entry))
 		(apply (cadr entry) args)
 		`(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args)))))
-	 (begin (warning 'do-prim "cannot statically compute primitive! ~a" prim)
+	 (begin (error 'do-prim "cannot (currently) statically compute primitive! ~a" prim)
 		`(,prim ,@args)))))
     
     (define (do-constant prim)
@@ -291,6 +295,7 @@
           [,var (guard (symbol? var)) 
 		(let ((entry (assq var mapping)))
 		  (if entry (cadr entry) var))]
+	  [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(substitute
@@ -329,6 +334,10 @@
 
 
     (define not-available (unique-name "NotAvailable"))
+    ;; This is a simple struct used by *getval* to indicate that the
+    ;; value is code, rather than a value-proper.
+    (reg:define-struct (code expr))
+    ;; Might consider adding "value" too, for safety.
 
     ;; [2006.03.30] Looks like this is no longer true:
     ;;----------------------------------------
@@ -345,12 +354,13 @@
     ;; There's a third slot in each env entry that was used for reference counting... unused currently
     (define process-expr           
       (lambda (expr env)
-	;(printf "ENV: ~a\n" (map car env))
-	(letrec ([available? ;; Is this value available at compile time.
+	;(printf "ENV: ~a\n" env)
+	(let ([PE-result
+	 (letrec ([available? ;; Is this value available at compile time.
 		  (lambda (x)
 		    (if (eq? x not-available) #f
 			(match x
-			   [(quote ,datum) #t]
+			   [(quote ,datum)         #t]
 			   [(lambda ,vs ,tys ,bod) #t]
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
 			   ;; A tuple is available even if all its components aren't.
@@ -363,7 +373,7 @@
 			   
 			   ;; Streams are values, and they're available:
 			   ;; Should we have to go deeper here to make
-			   ;; sure they're fully available?
+			   ;; sure they're fully available???
 			   [,sv (guard (stream-val? sv)) #t]
 
 			   [,else #f])))]
@@ -397,6 +407,7 @@
 		       (match (caddr (get-primitive-entry prim))
 			 [(Stream ,t) #t]
 			 [,else #f])]
+		      [(assert-type ,t ,[e]) e]
 		      [,else #f])
 		    )]
 
@@ -404,10 +415,12 @@
 		  (lambda (x)
 		    (match x
 		      [(quote ,datum) datum]
-		      [(lambda ,vs ,tys ,bod) `(lambda ,vs ,tys ,bod)]
-		      [(tuple ,args ...) x]
-		      [(vector ,args ...) x]
-		      [(cons ,a ,b)      x]
+		      [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
+		      
+		      ; For these three cases, if the args are available we can make a value-proper.
+		      [(tuple ,args ...)  (make-code x)]
+		      [(vector ,args ...) (make-code x)]
+		      [(cons ,a ,b)       (make-code x)]
 		      
 		      [,sv (guard (stream-val? sv)) x]
 
@@ -418,11 +431,18 @@
 
 		 [getlist ;; Get values until you have the whole list.
 		  (lambda (x)
-		    (if (container-available? x)
-			(match (getval x)
-			  [(cons ,a ,b) (cons a (getlist b))]
-			  [() '()]
-			  [,other (error 'getlist "not a list-constructor: ~s" other)])
+		    (if (container-available? x)			
+			(let ([val (getval x)])
+			  (if (code? val)
+			      (match (code-expr val)
+				[(cons ,a ,b) (cons a (getlist b))]
+				;;[(assert-type ,t ,[e]) e]
+				)
+			      (match val
+				[(,x* ...) `(',x* ...)]
+				;;[(,x* ...) `(',x* ...)]
+				;;[,other (error 'getlist "not a list-constructor: ~s" other)])
+				)))
 			#f))]
 		 )
 	  
@@ -551,7 +571,12 @@
 	  [(vector ,[x*] ...)
 	   (if (andmap available? x*)
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
-	       `(quote ,(list->vector (map getval x*)))
+	       (let ([vals (map getval x*)])
+		 (if (ormap code? vals)
+		     ;; Can't stick code within a constant:
+		     `(vector . ,x*)
+		     `(quote ,(list->vector vals))
+		     ))
 	       `(vector . ,x*))]
 	  #;
 	  [(length ,[vec])
@@ -564,9 +589,12 @@
 	  ;; TODO: vector-ref.
 
 	  ;; First we handle primitives that work on container types: 
+	  ;; NOTE: these could throw away side effects when operating on object code!!!
+	  ;; DANGER! FIXME FIXME 
+	  ;; ================================================================================
 	  [(tupref ,ind ,len ,[tup])
 	   (if (container-available? tup)
-	       (match (getval tup)
+	       (match (code-expr (getval tup))
 		 [(tuple ,args ...)
 		  (unless (eq? (length args) len)
 		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
@@ -576,28 +604,34 @@
 	       `(tupref ,ind ,len ,tup))]
 	  [(car ,[x]) 
 	   (if (container-available? x)
-	       (match (getval x)
-		 [(cons ,a ,b) a]
-		 [,ls (guard (list? ls)) `(quote ,(car ls))]
-		 [,x (error 'static-elaborate:process-expr "implementation error, car case: ~s" x)])
+	       (let ([val (getval x)])
+		 (if (code? val)
+		     (match (code-expr val)
+		       [(cons ,a ,b) a]
+		       [,x (error 'static-elaborate:process-expr "implementation error, car case: ~s" x)])
+		     `(quote ,(car val))))
 	       `(car ,x))]
 	  [(cdr ,[x]) 
 	   (if (container-available? x)
-	       (match (getval x)
-		 [(cons ,a ,b) b]
-		 [,ls (guard (list? ls)) `(quote ,(cdr ls))]
-		 [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
+	       (let ([val (getval x)])
+		 (if (code? val)		     
+		     (match val
+		       [(cons ,a ,b) b]		       
+		       [,x (error 'static-elaborate:process-expr "implementation error, cdr case: ~s" x)])
+		     `(quote ,(cdr val))))
 	       `(cdr ,x))]
-	  [(listLength ,[x])
+	  [(List:length ,[x])
 ;	   (inspect `(LEN ,x ,env))
 	   (if (container-available? x)
 	       (let ([ls (getlist x)])
 ;		 (inspect `(lenavail ,ls ,env))
 		 (if (list? ls)
 		     `(quote ,(length ls))
-		     `(listLength ,x)
+		     `(List:length ,x)
 		     ))
-	       `(listLength ,x))]
+	       `(List:length ,x))]
+	  
+	  ;; TODO: This is too strict, we can get out elements even if the tail of the list is unknown.
 	  [(List:ref ,[x] ,[i])
 	   (if (and (available? i) (container-available? x))
 	       (let ([ls (getlist x)])
@@ -623,22 +657,40 @@
 		      `(unionList ,x))
 			       )]
 
-	  [(map ,[f] ,[ls])
+	  [(List:map ,[f] ,[ls])
 	   (if (container-available? ls)
-	       (match (getval ls) 
-		 [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(map ,f ,b) env))]		 
-		 [,ls (guard (list? ls))
-		  (match ls
-		    [() ''()]
-		    [(,h . ,[t]) `(cons (app ,f ,h) ,t)])]
-		 [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)])
-	       `(map ,f ,ls))]
+	       (let ([val (getlist ls)])		 
+		 (if (code? val)
+		     (match (code-expr val)
+		       [(cons ,a ,b) `(cons (app ,f ,a) ,(process-expr `(List:map ,f ,b) env))]
+		       [,x (error 'static-elaborate:process-expr "implementation error, map case: ~s" x)]) 
+		     (match val
+		       [() ''()]
+		       [(,h . ,[t]) `(cons (app ,f ,h) ,t)]))
+		 )
+	       `(List:map ,f ,ls))]
+
+	  ;; Special case, show is identity on strings:
+	  [(show ',str) (guard (string? str)) `',str]
+
+	  ;; ================================================================================
 
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
-	   (if (and (assq prim computable-prims)
-		    (andmap available? rand*))
+	   (if (and 		
+		(andmap available? rand*)
+	       ;(assq prim computable-prims)
+		;; Exceptions:
+		(not (assq prim wavescript-effectful-primitives))
+		(not (assq prim wavescript-stream-primitives))
+		(not (assq prim regiment-distributed-primitives))
+		;; Special exceptions:
+		;; We don't want to makeArray in the object code!
+		;; (Kind of inconsistent that we *do* currently do List:make.)
+		(not (memq prim '(show cons gint makeArray
+				       m_invert)))
+		)
 	       (do-prim prim (map getval rand*) env)
 	       `(,prim ,rand* ...))]
 
@@ -649,7 +701,7 @@
 	  [(app ,[rator] ,[rands] ...)
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
-	       (let ([code (getval rator)])
+	       (let ([code (code-expr (getval rator))])
 		 (if (not (null? (intersection mutable-vars (core-free-vars rator))))
 		     (error 'static-elaborate 
 			    "can't currently inline rator with free mutable vars!: ~s"
@@ -660,7 +712,12 @@
 		 `(app ,rator ,rands ...)))]
 
           [,unmatched
-            (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))))
+            (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
+
+	  (DEBUGASSERT (compose not code?) PE-result)
+	  PE-result
+	  )
+	))
     
     (lambda (expr)
       (match expr	    

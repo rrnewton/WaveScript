@@ -49,8 +49,8 @@ fun build_matrix(n,m,f) {
 // again need the init value for type check... 
 /* fun list_to_matrix(list) { */
 
-/*   rows = listLength(list); */
-/*   cols = listLength(list.head); */
+/*   rows = List:length(list); */
+/*   cols = List:length(list.head); */
 /*   init = list.head.head; */
 
 /*   arr = makeArray(rows, nullarr); */
@@ -68,18 +68,18 @@ fun build_matrix(n,m,f) {
 // rrn: Pure version:
 list_to_matrix :: List (List t) -> Array (Array t);
 fun list_to_matrix(list) {
-  len2 = list.head.listLength;
-  buildArray(list.listLength,
+  len2 = list.head.List:length;
+  buildArray(list.List:length,
     fun(i) buildArray(len2,
-      fun(j) listRef(listRef(list,i), j)))
+      fun(j) List:ref(List:ref(list,i), j)))
 }
 
 list_of_segs_to_matrix :: List (Sigseg t) -> Array (Array t);
 fun list_of_segs_to_matrix(ls) {
-  len = listLength(ls);
+  len = List:length(ls);
   arr = makeArray(len, nullarr);
   for i = 0 to len-1 {
-    arr[i] := toArray(listRef(ls, i))
+    arr[i] := toArray(List:ref(ls, i))
   };
   arr
 }

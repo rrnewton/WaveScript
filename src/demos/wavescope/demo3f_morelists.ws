@@ -10,7 +10,7 @@ s1 = audioFile("./countup.raw", 4096, 0, 44000);
 
 // Test reverse:
 s2 = iterate( w in s1 ) {
-  emit reverse([w.start, w.end]);
+  emit List:reverse([w.start, w.end]);
 };
 
 // Test append:
@@ -42,14 +42,14 @@ s4 = iterate( ls in s3) {
   emit ls;
 }
 
-// Test List:ref, listLength, makeList.
+// Test List:ref, List:length, List:make.
 s5 = iterate(ls in s4) {
-  print("  Length: " ++ ls.listLength ++"\n");
-  assert(ls.listLength == 4);
+  print("  Length: " ++ ls.List:length ++"\n");
+  assert(ls.List:length == 4);
   print("  Second element: "++ ls.List:ref(1) ++"\n");
   assert(ls.List:ref(1) == ls.tail.head);
-  ml = makeList(3, 0.0);
-  print("  makeList: "++ ml ++ " Length: "++ ml.listLength ++"\n");
+  ml = List:make(3, 0.0);
+  print("  makeList: "++ ml ++ " Length: "++ ml.List:length ++"\n");
   emit ();
 }
 

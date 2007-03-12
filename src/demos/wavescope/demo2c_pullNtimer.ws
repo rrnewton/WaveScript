@@ -5,7 +5,7 @@ fun pullN(N, S) {
     state { count=0; }
     print("Fired " ++ show(count) ++" of " ++ show(N) ++ ".\n");
     if count < N
-    then emit x;
+    then emit x
     else (); // Here we would like an *exit* primitive.
     count := count + 1;
   }

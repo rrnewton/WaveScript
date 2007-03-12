@@ -75,6 +75,10 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3c_lists.ws"            ,(lambda (a b) #t)]
     ["demo3d_tuples_of_tuples.ws" ,(lambda (a b) #t)]
 
+;; Disabled temporarily:
+;    ["demo3e_hashtables.ws"       ,(lambda (a b) #t)]
+    ["demo3f_morelists.ws"        ,(lambda (a b) #t)]
+
     ["demo4_fft.ws"               ,(lambda (a b) 
 				     (ASSERT (= 0.0 a))
 				     ;(ASSERT (= 840.0 (round b))) ;839.8869476698192

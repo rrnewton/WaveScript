@@ -20,18 +20,19 @@ fun window(S, len)
 //======================================================================
 
 fun syncN (strms, ctrl) {
-  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
-  let f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
+  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, (nullseg :: Sigseg Float)); };
+  let f = fun(s) { iterate(win :: Sigseg Float in s) { 
+                   emit (false,0,0, (win :: Sigseg Float)); }; };
   let _strms = map(f, strms);
 
   let slist = _ctrl ::: _strms;
   
   // Side effect not allowed in iterate:
-  //print("Syncing N streams: " ++ show(slist.listLength) ++ "\n");
+  //print("Syncing N streams: " ++ show(slist.List:length) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.listLength - 1, nullseg);
+      accs = makeArray(slist.List:length - 1, nullseg);
       requests = [];
     }
     print("  Current ACCS: ");
@@ -70,7 +71,7 @@ fun syncN (strms, ctrl) {
 	  for i = 0 to accs.length - 1 {
 	    output := subseg(accs[i], st, size) ::: output;
 	  }
-	  emit(reverse(output));
+	  emit(List:reverse(output));
 	} else 
 	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 

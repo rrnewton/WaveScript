@@ -16,8 +16,8 @@ BASE <- iterate (x in audioFile("./countup.raw", 1000, 0)) {
 
     alst = [("foo",33), ("a", 1)];
 
-    print("alistLookup: "++ show(alist_lookup(alst, "a")) ++"\n");
-    print("alistLookup: "++ show(alist_lookup(alst, "b")) ++"\n");
+    print("alistLookup: "++ show(List:assoc(alst, "a")) ++"\n");
+    print("alistLookup: "++ show(List:assoc(alst, "b")) ++"\n");
     print("alistUpdate: "++ show(alist_update(alst, "a", 99)) ++"\n");
 
     print("realpart: "++ show(realpart(3.0+4.0i)) ++"\n");

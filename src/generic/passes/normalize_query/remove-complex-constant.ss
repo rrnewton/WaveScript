@@ -7,6 +7,9 @@
 ;;; '(1 2 3) and '#(1 (2 3) 4), are created using explicit list- and
 ;;; vector-creation operators.
 
+;;; NOTE: [2007.03.11] currently, array constants are not reduced.
+
+
 ;;; remove-complex-constant arranges for complex constant values to
 ;;; be built only once, when the program begins, by wrapping each
 ;;; program that contains complex constants in a let expression

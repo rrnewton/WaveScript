@@ -35,8 +35,9 @@
 
 	[(,C ,t* ...) (guard (symbol? C)) 
 	 (or (andmap verify-stream-free t*)
+	     ;(inspect t*)
 	     (error 'verify-type
-		    "elaboration didn't succeed in getting this stream type free from other type constructors:\n  ~s"
+		    "elaboration didn't succeed in getting all (potential) stream types free from other type constructors:\n  ~s"
 		    `(,C . ,t*)))]
 	[#(,t* ...) 
 	 (and (not (polymorphic-type? (list->vector t*)))

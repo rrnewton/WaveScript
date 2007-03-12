@@ -12,6 +12,9 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.11]
+  *) Revisit type aliases at some point.
+
 [2007.03.09]
   *) It would be nice to make a manual "fuse-passes" function that
      fuses two passes defined with "define-pass".  This would be

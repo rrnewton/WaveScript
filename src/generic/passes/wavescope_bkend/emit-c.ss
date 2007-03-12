@@ -578,7 +578,11 @@
        (ASSERT not name)
        `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
-      [,oth (error 'Block "unhandled: ~s" oth)]
+      ;; Can't normalize-context this because of it's forall a.a return type:
+      [(wserror ,str)
+       (list (Prim `(wserror ,str) #f #f) ";\n")]
+
+      [,oth (error 'emitC:Block "unhandled: ~s" oth)]
       )))
 
 ; ======================================================================
@@ -804,8 +808,8 @@
 	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
 	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
 	 (wrap `("cons<",(Type t)">::List:ref(",ls", ",ind")"))]
-	[(listLength (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::listLength(",ls")"))]
+	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::List:length(",ls")"))]
 	[(makeList ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
 	 (wrap `("cons<",(Type t)">::makeList(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
@@ -815,7 +819,7 @@
 
 	;; Safety net:
 	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
-					   List:ref listLength makeList ))) 
+					   List:ref List:length makeList ))) 
 	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
 	 ]
 

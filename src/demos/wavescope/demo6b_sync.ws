@@ -40,6 +40,7 @@ sync2 :: ((Stream (Bool * Int * Int)),
      ->   (Stream (Sigseg Float * Sigseg Float));
 fun sync2 (ctrl, s1, s2) {
   // A lame sort of manual union type.  Pad all streams out with all fields:
+
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   _s1   = iterate(win in s1) { emit (false,0,0, win); };
   _s2   = iterate(win in s2) { emit (false,0,0, win); };  

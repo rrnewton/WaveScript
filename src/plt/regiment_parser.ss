@@ -284,6 +284,7 @@
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
+           [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) ,@$8)]
 	   
 	   ;; b
 	   [(include exp SEMI maybedecls) 
@@ -356,6 +357,7 @@
            [(let VAR AS pattern = exp SEMI stmts) `((let-as (,$2 ,(vector->list $4) ,$6) ,(make-begin $8)))]
            [(VAR AS pattern = exp SEMI stmts) `((let-as (,$1 ,(vector->list $3) ,$5) ,(make-begin $7)))]
 
+           [(let pattern :: type = exp SEMI stmts) `((letrec ([,$2 (assert-type ,$4 ,$6)]) ,(make-begin $8)))]
            [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
 
 	   [(using VAR SEMI stmts) `((using ,$2 ,(make-begin $4)))]
@@ -465,6 +467,15 @@
               `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE)))) ,$5)]
          [(iter LeftParen pattern in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
           `(,$1 (letrec ,$10 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $12 (list VIRTQUEUE))))) ,$5)]
+
+	 ;; Now with type annotation:
+         [(iter LeftParen pattern :: type in exp RightParen LeftBrace stmts RightBrace) 
+              `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $10 (list VIRTQUEUE)))) 
+		    (assert-type (Stream ,$5) ,$7))]
+         [(iter LeftParen pattern :: type in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
+          `(,$1 (letrec ,$12 (lambda (,$3 ,VIRTQUEUE)
+			       ,(make-begin (append $14 (list VIRTQUEUE)))))
+		(assert-type (Stream ,$5) ,$7))]
          
 	 ;; Expression conditional:
 ;	 [(if exp then exp else exp) (prec EXPIF) `(if ,$2 ,$4 ,$6)]

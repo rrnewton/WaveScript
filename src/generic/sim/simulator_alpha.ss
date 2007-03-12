@@ -262,7 +262,7 @@
       [int->float fixnum->flonum]
       [float->int flonum->fixnum]
       [random reg:random-int]
-      [listLength length]
+      [List:length length]
       [length vector-length]
       [fold foldl]
 
@@ -399,6 +399,7 @@
 			;(inspect (cons 'fold rnd))
 			(foldl f zer rnd)))]
 
+		  [(List:append ,[a] ,[b]) `(append ,a ,b)]
 		  
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,[rator] ,[rand*] ...)
@@ -660,8 +661,7 @@
 		 `(,lettype ((,lhs ,rhs)  ...) ,bods ...)]
 		;; We're letting them get away with other primitives because
 		;; we're being lenient, as mentioned above.
-		[(app ,[rator] ,[rand*] ...)
-		 `(,rator ,rand* ...)]
+		[(app ,[rator] ,[rand*] ...) `(,rator ,rand* ...)]
 		
 		;; Supporting the output of cps-tokmac also:
 		[(kcall ,[rator]  ,[rand*] ...)

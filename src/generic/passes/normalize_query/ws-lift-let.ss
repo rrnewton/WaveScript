@@ -16,10 +16,7 @@
 
 ;; This is a bit complex because it programmatically splits out the stream-primitives.
 (define ws-lift-let-grammar
-  (let ([streamprims 
-	 (map car 
-	   (filter (lambda (x) (deep-assq 'Stream x))
-	     (difference (regiment-primitives) regiment-distributed-primitives)))])
+  (let ([streamprims (map car wavescript-stream-primitives)])
     (append '((Program ((quote program) Query Type))
 
 	      (Query Var)

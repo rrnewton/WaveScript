@@ -45,11 +45,11 @@ fun syncN (ctrl, strms) {
   slist = _ctrl ::: _strms;  
 
   //  if DEBUGSYNC 
-  //    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
+  //    then print("Syncing N streams (including ctrl stream): " ++ show(slist.List:length) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.listLength - 1, nullseg);
+      accs = makeArray(slist.List:length - 1, nullseg);
       requests = [];
     }
 
@@ -89,7 +89,7 @@ fun syncN (ctrl, strms) {
 	  for i = 0 to accs.length - 1 {
 	    output := subseg(accs[i], st, size) ::: output;
 	  }
-	  emit(reverse(output));
+	  emit(List:reverse(output));
 	} else if DEBUGSYNC then
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 

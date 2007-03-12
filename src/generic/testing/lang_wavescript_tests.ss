@@ -77,6 +77,9 @@
 	     (append '(eq? locdiff nodeid sense even? odd? tuple tupref dataFile
 			   or and show-and-string-append buildArray
 			   ENSBoxAudio
+
+			   ;; These were resolved into the w/namespace versions:
+			   head tail map append fold
 			   )
 		     generic-arith-primitives
 		     meta-only-primitives)

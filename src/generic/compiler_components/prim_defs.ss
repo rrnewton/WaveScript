@@ -35,6 +35,8 @@
 	   regiment-primitives
 	   wavescript-primitives
 	   wavescript-effectful-primitives
+	   wavescript-stream-primitives
+
 	   generic-arith-primitives
 	   token-machine-primitives
 
@@ -110,24 +112,30 @@
     (car ((List 'a)) 'a)
     (cdr ((List 'a)) (List 'a))
     
-    ;; Should remove car/cdr at some point.
-    (head ((List 'a)) 'a)
-    (tail ((List 'a)) (List 'a))
-
-    (List:ref   ((List 'a) Int) 'a)
-
-    (append     ((List 'a) (List 'a)) (List 'a))
-    (makeList   (Int 'a) (List 'a))
-    (listLength ((List 'a)) Int)
-    (reverse    ((List 'a)) (List 'a))
-    ;(reverse_BANG ((List 'a)) (List 'a))
+    ;; Some list primitives are exposed in the "Prelude".  These are just aliases:
+    (head   ((List 'a)) 'a)      ;; Should remove car/cdr at some point.
+    (tail   ((List 'a)) (List 'a))
+    (append ((List 'a) (List 'a)) (List 'a))
     (map (('a -> 'b) (List 'a)) (List 'b))
+    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+
+    ;; The List namespace:
+    (List:head ((List 'a)) 'a)
+    (List:tail ((List 'a)) (List 'a))
+    (List:ref  ((List 'a) Int) 'a)
+    (List:append ((List 'a) (List 'a)) (List 'a))
+    (List:make   (Int 'a) (List 'a))
+    (List:length ((List 'a)) Int)
+    (List:reverse ((List 'a)) (List 'a))
+    ;(reverse_BANG ((List 'a)) (List 'a))
+    (List:map (('a -> 'b) (List 'a)) (List 'b))
+    ;(List:filter (('a -> Bool) (List 'a)) (List 'a))
     
     ;; These should be defined IN the language, but they're not right now:
-    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
-    (alist_lookup ((List #('a 'b)) 'a) (List #('a 'b)))
-    (alist_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))
+    (List:assoc        ((List #('a 'b)) 'a) (List #('a 'b)))
+    (List:assoc_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))
 
 ;    (list ('a ...) (List 'a))
 ;    (cons (Object List) List) 
@@ -310,7 +318,12 @@
      (emit           ((VQueue 'a) 'a) #())
 
      ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-     (break            () #())
+     (break            () 'a)
+
+    ;; Signals an error, has any return type:
+    (wserror         (String) 'a)
+    (inspect         ('a) 'a)
+
      )))
 
 (IFWAVESCOPE
@@ -384,10 +397,6 @@
 
     ;; This synchronously joins two signals.
     ;(zip2           ((Stream 'a) (Stream 'b)) (Stream #('a 'b)))
-
-    ;; Signals an error, has any return type:
-    (wserror         (String) 'a)
-    (inspect         ('a) 'a)
 
     ;; We just pretend this is a primitive.  It does nothing.
     ;(return           ('a) 'a) ;; Don't need this yet.
@@ -587,6 +596,13 @@
 	   meta-only-primitives
 	   regiment-constants)))
 
+;; These are the ones that take or return Stream values:
+;; Be wary that this is only computed once while "regiment-primitives" might change.
+(define wavescript-stream-primitives
+  (filter (lambda (x) (deep-assq 'Stream x))
+    (difference (regiment-primitives) 
+		regiment-distributed-primitives)))
+
 ;======================================================================
 ;;; Primitive type definitions, TML/Node-local.
 
@@ -737,7 +753,7 @@
      (cadr (List) Object)
      (null? (List) Bool)
      (list Object List)
-     (listLength (List) Int)
+     (List:length (List) Int)
      (append List List)
      (reverse (List) List)
      (map (Function List) List)

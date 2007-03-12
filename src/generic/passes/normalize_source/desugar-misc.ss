@@ -22,10 +22,19 @@
     ;(myremove '(Prim 'dataFile)
     (myremove '(Prim 'and) 
     (myremove '(Prim 'or) 
+
+    ;; Aliases:
     (myremove '(Prim 'head) 
     (myremove '(Prim 'tail) 
+    (myremove '(Prim 'append)
+    (myremove '(Prim 'map)
+    (myremove '(Prim 'fold)
+
+    (myremove '(Prim 'List:head) 
+    (myremove '(Prim 'List:tail) 
+
     (myremove '(Prim 'show-and-string-append)
-	      eta-primitives-grammar))))))
+	      eta-primitives-grammar)))))))))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
@@ -60,6 +69,12 @@
 
 	  [(head ,[x]) `(car ,x)]
 	  [(tail ,[x]) `(cdr ,x)]
+	  [(List:head ,[x]) `(car ,x)]
+	  [(List:tail ,[x]) `(cdr ,x)]
+
+	  [(append ,[x] ,[y]) `(List:append ,x ,y)]
+	  [(fold ,[x] ,[y])   `(List:fold ,x ,y)]
+	  [(map ,[x] ,[y])    `(List:map ,x ,y)]
 
 	  [(show-and-string-append ,[a] ,[b])
 	   `(string-append (show ,a) (show ,b))]

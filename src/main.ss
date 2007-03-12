@@ -414,7 +414,12 @@
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
 	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
 	       ;; Assert that the return value is void:
-	       (ASSERT (curry equal? #()) 
+	       ;; Or that it is forall a.a
+	       (ASSERT (lambda (x) 
+			 (match x
+			   [(quote ,v) (symbol? v)]
+			   [#() #t]
+			   [,else #f]))
 		       (caddr (assq prim wavescript-effectful-primitives)))
 	       `(begin (,prim . ,simple) (tuple))]
 	      [,oth (fallthru oth)]))])

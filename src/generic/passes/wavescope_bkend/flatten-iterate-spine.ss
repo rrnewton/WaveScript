@@ -112,8 +112,8 @@
 		    (if (equal? i_62 '1)
 			(set! buf2_59 (cons x_63 '()))
 			(wserror '"implementation error")))
-		(if (and (equal? (listLength buf1_60) '1)
-			 (equal? (listLength buf2_59) '1))
+		(if (and (equal? (List:length buf1_60) '1)
+			 (equal? (List:length buf2_59) '1))
 		    (begin
 
 		      (emit
