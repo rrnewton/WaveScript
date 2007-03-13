@@ -49,14 +49,14 @@ $\tt #1 $&$ \arr $&$ #2 $
 
 WaveScript is a functional metaprogramming language for writing highly abstract
 programs that generate efficient dataflow graphs.  These graphs are
-executable in an emulator (ws) or by compiling te C++ (wsc) and linking them
+executable in an emulator (ws) or by compiling to C++ (wsc) and linking them
 to the {\em XStream} engine.
 
 \section{Using WaveScript}
 
 See the README for install instructions.  The bottom line is that you
-will need mzscheme and Petite Chez Scheme to run the WaveScript
-emulator.  (Petite for linux is included in the repository.)  You will
+will need Mzscheme and Petite Chez Scheme to run the WaveScript
+emulator.  (Petite for Linux is included in the repository.)  You will
 need Boost, the Gnu Scientific Library (GSL), FFTW, and their
 respective headers to run {\bf wsc}-compiled code.
 
@@ -66,26 +66,27 @@ Once the system is installed you should be able to execute {\tt ws} or
 \subsection*{Develop Incrementally}
 
 WaveScript is still very much a prototype.  It doesn't offer the same
-level of support that you can expect from production-quality
+level of support that you expect from production-quality
 compilers.  For example, the compiler doesn't track code locations.
 It will often print the surrounding context of an error (in abstract
 syntax), but nothing more.
 
-Thus it helps to build your program bit by bit.  Compile often to make
+Therefore it helps to build your program bit by bit.  Compile often to make
 sure that the pieces of your program parse and type-check.
 
 {\tt \bf wsparse:}
 If you want the full error message for a stubborn parser error, run
 {\tt wsparse} directly on the ws file.  It will either print the AST
 (abstract syntax tree) for the file, or will give you an error message
-that includes line and character numbers.
+that does include line and character numbers.
 
 \subsection{The WaveScript Emulator: {\tt \bf ws} }
 
 Running {\tt ws} on a WaveScript file will simulate the functionality
 of the query without actually compiling the query to C++ code.  The
 query is converted to a Scheme program which is compiled to native
-code and executed on the fly.  
+code and executed on the fly.  Hardware sensors cannot be accessed,
+and so data must be read from trace files.
 
 \subsubsection*{Consider {\tt \bf ws.opt} for high-performance emulation}
 
@@ -94,7 +95,7 @@ sure that you have the full version of Chez Scheme.  This version
 includes the incremental native code compiler.  If you are using the
 free, Petite Chez Scheme interpreter, your {\tt .ws} query files will
 be converted to {\em interpreted} Scheme code, which runs considerably
-slower.  The executable, {\tt chez}, should be in your path.
+slower.  The executable {\tt chez} should be in your path.
 
 To go further, you might consider runnig {\tt ws.opt} in place of {\tt
 ws}.  First, {\tt ws.opt} has debugging assertions disabled. 
@@ -107,24 +108,25 @@ C/C++).  Therefore, debug your code using {\tt ws} first.
 
 \subsubsection*{Run {\tt \bf ws.debug} occasionally for sanity-checking}
 
-While it's too slow for the normal development cycle, it is important
-to occasionally compile your program with ws.debug.  Mainly this is
-important for building confidence that the compiler is behaving
-properly on your program (not having exposing a bug).  If the compiler
-were a mature system not under active development, this would not be
-as important.  When you run {\bf ws.debug} the compiler runs extensive
-invariant checks on the data structures it uses, in particular it
-checks the intermediate forms between compiler passes for
-conformance to explicit grammars.  Further it inserts extra
-type-checks to make sure that the intermediate programs are well-formed.
+Ws.debug is too slow for the normal development cycle, but t is
+important to occasionally compile your program with ws.debug.  Mainly
+this is important for building confidence that the compiler is
+behaving properly on your program.  If the
+compiler were a mature system not under active development, this would
+not be as important.  When you run {\bf ws.debug} the compiler runs
+extensive invariant checks on the data structures it uses, in
+particular it checks the intermediate forms between compiler passes
+for conformance to explicit grammars.  Further it inserts extra
+type-checks to make sure that the intermediate programs are
+well-formed.
 
 \subsection{The WaveScript Compiler: {\tt \bf wsc}}
 
 The WaveScript emulator provides a reference implementation suitable
 to prototyping and debugging applications.  The eventual target is to
 generate an efficient C++ program from the WaveScript source.  This is
-accomplished with the {\bf wsc} compiler.  In practice, during
-development the {\bf wsc} compiler often lags behind the {\bf ws}
+accomplished with the {\bf wsc} compiler.  In practice, as WaveScript
+undergoes development, the {\bf wsc} compiler often lags behind the {\bf ws}
 emulator in terms of features and functionality.  Again, develop
 incrementally, refer to {\tt wavescript/demos/wavescope} for programs that
 should work with {\bf wsc}.
@@ -134,7 +136,7 @@ for information on how to configure the XStream engine
 (number of threads, scheduling policy, etc)).
 
 \rednote{[2007.03.09] Ideally the output from the XStream-executed
-query would be the same as the emulator output.  Currently, there are
+query would be the same as the emulator output.  Currently, however, there are
 some basic disparities in how objects are printed to text form.  Hopefully, these
 are straightforward to work around, and should go away shortly.}
 
@@ -148,7 +150,7 @@ are straightforward to work around, and should go away shortly.}
 %================================================================================
 \chapter{Language Basics}
 
-Please make liberal use of {\tt wavescript/demos/wavescope} as a reference
+Please make liberal use of {\tt wavescript/demos/wavescope/*.ws} as a reference
 when learning WaveScript.  These demos cover most of the basic
 functionality in the language.
 
@@ -156,7 +158,7 @@ functionality in the language.
 %\chapter{Basics}
 
 WaveScript is a functional language with many similarities to ML or
-Haskell.  Functions are values, it is strongly typed but uses a
+Haskell.  Functions are values.  The language is strongly typed and uses a
 type-inference algorithm to infer types from variable usages.
 It provides the usual basic datatypes, including various
 numeric types, strings, lists, arrays, hash tables as well as the more
@@ -171,13 +173,14 @@ blocks           & : & $\tt \{ e$_1$; e$_2$; \ldots$\:$ e$_n$ \}$  \\
 \]
 
 But there are also many syntactic differences from C.  For example,
-WaveScript doesn't has a sharp division between commands and
-expressions.  Conditionals use a different syntax and are valid in any
+WaveScript doesn't have a sharp division between commands and
+expressions.  Conditionals use a different syntax and are valid in
+{\em any}
 expression position.
 %
 \evalsto{3 + (if true then 1 else 2)} {4}
 %
-Moreover, what {\em blocks} in WaveScript---delimited by curly
+Moreover, {\em blocks} in WaveScript---delimited by curly
 braces---are just expressions!
 
 \evalsto{3 + \{1; 2; 3\}} {6}
@@ -195,8 +198,8 @@ after the last expression in the block.  Also, since curly-brace
 delimited blocks are merely expressions, they sometimes must be
 followed with a semi-colon, as below:\footnote{As a special case, when
 a function body consists of curly braces, it needn't be followed by a semi-colon.}
-%
-\vspace{-5mm}
+
+%\vspace{-5mm}
 \begin{verbatim}
         {
           foo;
@@ -215,12 +218,12 @@ a function body consists of curly braces, it needn't be followed by a semi-colon
 
 \subsection{Constructing complete programs}
 
-A complete program file contains a list of function and variable
-declarations and a single {\em stream wiring statement} of the form:
+A complete program file contains function and variable
+declarations as well as a single {\em stream wiring statement} of the form:
 \begin{wscode}
 BASE <- expression;
 \end{wscode}
-This wiring statement determines what stream of values is returned as
+This wiring statement determines the stream of values returned as
 a result of running the program.
 
 
@@ -228,14 +231,14 @@ a result of running the program.
 %================================================================================
 \section{Datatypes}
 
-This section goes over basic syntax and primitives for manipulating
-build-in data structures.
+This section goes over syntax and primitives for manipulating
+built-in data structures.
 
 \subsection{Tuples}
 
 Tuples, or {\em product types}, are ordered sets of elements which can
 each be of different types. 
-\evalsto{(1,\"hello\")}{A tuple of type {\tt (Int * String)}}
+\evalsto{(1,``hello'')}{A tuple of type {\tt (Int * String)}}
 %\begin{wscode}
 Tuples are accessed by a pattern-matching against them and binding
 variable names to their constituent components.  This process is
@@ -278,7 +281,7 @@ Lists can be written as constants and support the usual primitive
 operations.  
 \begin{verbatim}
       ls = [1, 2, 3];
-      ls2 = head(ls,0):::ls;
+      ls2 = head(ls):::ls;
       print(List:length(ls2)); // Prints '4'
       print(ls == []);         // Prints 'false'
 \end{verbatim}
@@ -290,8 +293,10 @@ lists.
 \subsection{Arrays}
 
 Arrays are mutable and cannot currently be written as constants.  Use
-{\tt arr[i]} to access arrays, {\tt arr[i] = x;} to modify them, and
-{\em makeArray} to produce them.
+{\em makeArray} to produce arrays, {\tt arr[i]} to access arrays, and
+{\tt arr[i] = x;} to modify them.
+
+%Refer to {\tt prim_defs.ss} for more array operations.
 
 \subsection{Additional primitive functions}
 
@@ -301,7 +306,7 @@ Please refer to the file
 {\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
 \end{center}
 %
-for type-signatures (and some documentation) for all built-in
+for type-signatures (and minimal documentation) for all built-in
 wavescript primitives, many of which are not covered in this manual.
 
 Please also examine the library files found in the {\tt wavescript/lib}
@@ -316,7 +321,7 @@ relatively small.
 \section{User defined functions}
 
 Named functions can be defined at the top-level, or within a {\tt
-  \{\ldots\}} statement block as follows:
+  \{\ldots\}} block as follows:
 
 \begin{verbatim}
        fun f(x,y) {
@@ -326,7 +331,8 @@ Named functions can be defined at the top-level, or within a {\tt
 \end{verbatim}
 
 The function body, following the argument list can be any expression.
-Above it just happens to be a statement block.  
+Above it just happens to be a statement block that returns the
+square-root of {\tt z}.
 
 Unnamed, or anonymous, functions can occur anywhere that an expression
 might occur. In the following we pass the anonymous ``plus three''
@@ -348,10 +354,10 @@ We have already seen several types in textual form within this manual:
 {\tt Float}, {\tt (Int * String)} These are valid WaveScript types.
 WaveScript also has compound types such as {\tt Sigseg (Array Int)}.
 
-Similar to Haskell or ML, the user is permitted, but with few
-exceptions, not required to add explicit type annotations in the
-program.  For example, we may annotate a function {$\tt f$}
-with its type by writing the following.
+Similar to Haskell or ML, the user is permitted, but not generally
+required to add explicit type annotations in the program.  For
+example, we may annotate a function {$\tt f$} with its type by writing
+the following.
 %
 \begin{verbatim}
         f :: (Type, Type) -> Type;
@@ -365,13 +371,12 @@ the following syntax:
 \end{wscode}
 
 Further, type annotations may be added to variable declarations with:
-\begin{verbatim}
+\begin{wscode}
  var :: Type = expression;
-\end{verbatim}
+\end{wscode}
 
 In general, compound types may be built from other types in several
-ways.  Note that parentheses must be used when nesting type
-constructors as in {\tt List (List T)}.
+ways.  
 \[
 \begin{array}{rcl}
 tuples           & : & $\tt (T1 * T2 * T3) $   \\
@@ -381,6 +386,8 @@ hashtables       & : & $\tt HashTable (T1,T2) $ \\
 functions        & : & $\tt (T1, T2, T3) -> T4 $ \\
 \end{array}
 \]
+Note that parentheses must be used when nesting type
+constructors as in {\tt List (List T)}.
 
 \rednote{[2007.03.09] In the future, the user will be able to create
   their own type definitions and type constructors, including
@@ -389,7 +396,7 @@ functions        & : & $\tt (T1, T2, T3) -> T4 $ \\
 
 \subsection{Reading data with dataFile}
 
-The one place where type annotations {\em are} currently mandatory is
+The one place where type annotations {\em are} currently mandated is
 when importing data from a file.  This is done with the primitive {\tt
 datafile}.
 %
@@ -402,7 +409,7 @@ BASE <-
 The above complete program reads space-separated values from a text
 file, one-tuple-per-line, and reads them at a virtual ``rate'' of
 44Khz (this is important for the relative timing of different
-streams).  Finally, the last number is a replay argument.  If it's greater
+streams).  Finally, the last number is the replay argument.  If it's greater
 than zero, {\tt dataFile} will replay the data that many times after
 reading the file.  If the replay value is $-1$, then the data will be
 replayed indefinitely.
@@ -433,7 +440,7 @@ The {\tt iterate} construct can be placed in any {\em expression}
 position.  It produces a new stream by applying the supplied code to
 every element of its input stream.  The above example executes the
 body of the iterate every time data is received on the stream {\tt
-  S1}; it adds an increasing quantity to each element of {\tt S1}; the
+  S1}, it adds an increasing quantity to each element of {\tt S1}, and the
 resulting stream is bound to the variable {\tt S2}.
 
 In addition to {\tt iterate} several library procedures (such as {\tt
@@ -498,8 +505,6 @@ include a simple system for managing namespaces.
 \end{verbatim}
 \end{center}
 
-\rednote{[2007.03.09] The Namespace implementation is not finished.}
-
 
 
 
@@ -507,39 +512,42 @@ include a simple system for managing namespaces.
 \section{Patterns}
 \label{s:patterns}
 
+WaveScript allows pattern matching in addition to plain variable-
 In any variable-binding position it is valid to use a pattern rather
-than a variable name.  This includes the arguments to a function, a
+than a variable name---this includes the arguments to a function, a
 local variable binding, or the variable binding within an {\tt
- iterate} construct.  Currently, patterns are just used to bind names
+ iterate} construct.  Currently, patterns are used to bind names
 to the interior parts of tuples.  In the future, we will support list
-patterns, array patterns, and tagged union patterns.  
+patterns, and tagged union patterns.  
 
 Let's look at an example.
-We saw above how to bind variables in WaveScript:
+We saw how to bind variables in WaveScript:
 \begin{center}
 {\tt \bf{z} = (1,2);}
 \end{center}
 This binds {\tt z} to a tuple containing two elements.  
-Now I will share with you that this is actually a shorthand for the
-more verbose syntax:
+This is actually a shorthand for the more verbose syntax:
 \begin{center}
 {\tt let \bf{z} = (1,2);}
 \end{center}
-Now we are ready to bind the individual components of the tuple by using
-a pattern in place of the variable {\tt 'z'}:
+
+An unfortunate limitation of the parser is that {\tt 'let'} cannot be
+omitted if we a pattern is used in place of a simple identifier.  The
+following binds the individual components of the tuple by using a
+pattern in place of the variable {\tt 'z'}:
 \begin{center}
 {\tt let \bf{(x,y)} = (1,2);}
 \end{center}
-Note: an unfortunate limitation of the parser is that {\tt 'let'} cannot be
-omitted if we a pattern is used in place of a simple identifier.
 
-Similarly, we may use patterns within a function's arguments.  Here's
+Similarly, we may use patterns within a function's argument list.  Here's
 a function that takes a 2-tuple as its second argument:
 
 \begin{center}
 {\tt {\bf fun} foo (x,\bf{(y,z)}) \{ \dots \}}
 \end{center}
 
+
+%================================================================================
 \section{Syntactic Sugar}
 
 Syntactic sugars are convenient shorthands that are implemented by the
@@ -549,8 +557,8 @@ of making reading code more difficult for the uninitiated).
 %\noindent {\bf Dot syntax:}
 \subsection{Dot syntax}
   For convenience, functions can be applied using an
-alternative dot syntax.  For example rather than taking the first
-element of a list with {\cd head(ls)}, we can write {\cd ls.head}.
+alternative ``dot syntax''.  For example rather than taking the first
+element of a list with ``{\cd head(ls)}'', we can write ``{\cd ls.head}''.
 This generalizes to functions of more than one argument; only the
 first argument is moved before the dot.  For example, 
 \vspace{-2mm}
@@ -565,28 +573,35 @@ ls.List:ref(i)
 \end{wscode}
 \vspace{-2mm}
 This is useful because many functions on data structures take the
-data structure itself as their first argument.
+data structure itself as their first argument.  Thus it is concise to
+write the following:
+\vspace{-2mm}
+\begin{wscode}
+ls.tail.tail.head
+\end{wscode}
+\vspace{-2mm}
 
 \subsection{Stream Projectors}
 
 WaveScript also includes a syntax for binding variables to
-Stream-of-Tuple values that also binds projector functions for each of
+Stream-of-tuple values that binds projector functions for each of
 the tuples' fields.  For example:
 
 \begin{wscode}
 S as (a,b) = someStream;
 \end{wscode}
 
-Subsequently, ``{\tt S.a}'' or ``{\tt a(S)}'' can be used to project-out a
-new stream consisting of only the first elements of each tuple in {S}.  If used in
-conjunction with the type-annotation syntax, the ``{\tt as}'' clause
-must go first:
+Subsequently, ``{\tt S.(a)}'' or ``{\tt S.(a,b,a)}'' can be used to
+project-out a new stream where each tuple represents an arrangement of
+the fields within each tuple in {S}.  If used in conjunction with the
+type-annotation syntax, note that the ``{\tt as}'' clause must go first:
 
 \begin{wscode}
 S as (a,b) :: Stream(Int * Float) = someStream;
 \end{wscode}
 
-\rednote{[2007.03.09] The Stream Projectors implementation is unfinished.}
+
+
 
 \chapter{Signal Processing Libraries}
 
