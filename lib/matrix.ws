@@ -41,8 +41,8 @@ fun m_set(mat, row, col, val) {
 
 
 fun build_matrix(n,m,f) {
-  buildArray(n, 
-    fun(i) buildArray(m, 
+  Array:build(n, 
+    fun(i) Array:build(m, 
       fun(j) f(i,j)))
 }
 
@@ -70,8 +70,8 @@ fun build_matrix(n,m,f) {
 list_to_matrix :: List (List t) -> Array (Array t);
 fun list_to_matrix(list) {
   len2 = list.head.List:length;
-  buildArray(list.List:length,
-    fun(i) buildArray(len2,
+  Array:build(list.List:length,
+    fun(i) Array:build(len2,
       fun(j) List:ref(List:ref(list,i), j)))
 }
 

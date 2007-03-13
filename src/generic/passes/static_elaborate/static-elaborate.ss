@@ -73,9 +73,9 @@
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
-	       ;; buildArray is also only for the meta language currently.
+	       ;; Array:build is also only for the meta language currently.
 	       ;; (It's higher order.)
-	       [(Prim 'buildArray) #f]
+	       [(Prim 'Array:build) #f]
 
 	       ;; nor should we have user-level applications:
 	       [(Expr ('app Expr ...)) #f]
@@ -136,7 +136,7 @@
 				  [(real? x) (fl-make-rectangular x 0.0)]
 				  [else (ASSERT cflonum? x)])))))
 
-	(buildArray ,(lambda (n f)
+	(Array:build ,(lambda (n f)
 		       `(vector . ,(map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
 	(length vector-length)
 	(Array:ref vector-ref)	
@@ -562,7 +562,7 @@
 	     )]
 
 #;
-	  [(buildArray ,[n] ,[f])
+	  [(Array:build ,[n] ,[f])
 	   (inspect `(tryingbuildarr!! ,(available? n) ,(available? f) ,env))
 	   ]
 	  

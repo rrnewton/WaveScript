@@ -75,7 +75,7 @@
 	     ;; Make some exceptions for things that are in Regiment but not WaveScript.
 	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	     (append '(eq? locdiff nodeid sense even? odd? tuple tupref dataFile
-			   or and show-and-string-append buildArray
+			   or and show-and-string-append Array:build
 			   ENSBoxAudio
 
 			   ;; These were resolved into the w/namespace versions:

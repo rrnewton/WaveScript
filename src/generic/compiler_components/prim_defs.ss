@@ -409,7 +409,7 @@
     ;Array:build, make, ref, set, length, append? reverse?
 
     ;; This uses an initialization function to fill in an array:
-    (buildArray       (Int (Int -> 'a)) (Array 'a))
+    (Array:build       (Int (Int -> 'a)) (Array 'a))
 
     ;; Temporary:
     ;; Oops, need to be sure this doesn't change the numeric type in the output:
