@@ -13,6 +13,9 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 ================================================================================
 
 [2007.03.13]
+  *) Make dependencies on GSL and fftw non-static.
+
+[2007.03.13]
   *) Check the prims handled by emit-c against the prim_defs list.
 
 [2007.03.11]

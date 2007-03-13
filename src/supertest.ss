@@ -19,8 +19,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
  
 ; ----------------------------------------
 
-(define ryan-email "rrnewton@gmail.com")
-;(define ryan-email "ryan.newton@alum.mit.edu")
+;(define ryan-email "rrnewton@gmail.com")
+(define ryan-email "ryan.newton@alum.mit.edu")
 (define start-time (current-inexact-milliseconds))
 (define last-test-timer start-time)
 (define failed #f)
