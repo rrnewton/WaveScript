@@ -34,7 +34,11 @@ echo Start at $STARTREV and end at $ENDREV
 echo ================================================================================
 echo
 
-for REV in `seq $STARTREV $ENDREV`; do 
+REV=$STARTREV
+
+#for REV in `seq $STARTREV $ENDREV`; 
+until [ "$REV" -gt "$ENDREV" ]
+do 
     SOFILE=$REV"_"$MT"_main_chez.so"
     WSPARSEFILE=$REV"_"$MT"_wsparse"
 
@@ -66,4 +70,6 @@ for REV in `seq $STARTREV $ENDREV`; do
 	scp build/$MT/main_chez.so newton@faith.csail.mit.edu:$REMOTE;
 	scp bin/wsparse newton@faith.csail.mit.edu:/var/www/regiment_binaries/$MT/$REV"_"$MT"_wsparse";
     fi
+
+    REV=$(($REV+1))
 done
