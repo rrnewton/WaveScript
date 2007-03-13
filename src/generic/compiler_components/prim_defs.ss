@@ -403,7 +403,7 @@
 
     ;; Array handling:
     (Array:make        (Int 'a) (Array 'a))
-    (arr-get          ((Array 'a) Int) 'a)
+    (Array:ref         ((Array 'a) Int) 'a)
     (length           ((Array 'a)) Int)
 
     ;Array:build, make, ref, set, length, append? reverse?

@@ -59,7 +59,7 @@
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
-		 Array:make arr-get arr-set! 
+		 Array:make Array:ref arr-set! 
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -886,7 +886,7 @@
 	  [else (loop (cdr ls) (cons (car ls) acc))])))
 
      (define Array:make make-vector)
-     (define arr-get  vector-ref)
+     (define Array:ref  vector-ref)
      (define arr-set! vector-set!)
      (define ws-length   vector-length)
 

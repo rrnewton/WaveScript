@@ -139,7 +139,7 @@
 	(buildArray ,(lambda (n f)
 		       `(vector . ,(map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
 	(length vector-length)
-	(arr-get vector-ref)	
+	(Array:ref vector-ref)	
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
 

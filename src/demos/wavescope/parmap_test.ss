@@ -11,12 +11,12 @@
 		 (begin
                      (letrec ([x 3])
                        (letrec ([arr (fft (fft arr0))])
-                         (if (> (realpart (arr-get arr 100)) 224192.0)
+                         (if (> (realpart (Array:ref arr 100)) 224192.0)
                              (begin
                                (emit ___VIRTQUEUE___ 0.0)
                                (emit
                                  ___VIRTQUEUE___
-                                 (imagpart (arr-get arr 100))))
+                                 (imagpart (Array:ref arr 100))))
                              (tuple))))
                      ___VIRTQUEUE___))
                s2)])

@@ -784,8 +784,8 @@
 	 ;(recover-type )
 	 "newarr_UNFINISHED"]
 	
-	;[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(arr-get ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
+	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	
 	[(length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
@@ -1291,7 +1291,7 @@ int main(int argc, char ** argv)
                                          (letrec ([x Int 3])
                                            (letrec ([arr (Array Complex) (fft (fft arr0))])
                                              (if (> (realpart
-                                                      (arr-get arr 100))
+                                                      (Array:ref arr 100))
                                                     224192.0)
                                                  (begin
                                                    (emit
@@ -1300,7 +1300,7 @@ int main(int argc, char ** argv)
                                                    (emit
                                                      ___VIRTQUEUE___
                                                      (imagpart
-                                                       (arr-get arr 100))))
+                                                       (Array:ref arr 100))))
                                                  (tuple))))
                                          ___VIRTQUEUE___))
                                    s2)])
