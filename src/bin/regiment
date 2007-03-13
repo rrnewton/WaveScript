@@ -18,16 +18,8 @@ if ! [ $REGIMENTD ]; then
 fi
 
 #MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
-MACHINE=`uname`
-if [ $MACHINE == "Linux" ];
-then MT=i3le;
-elif [ $MACHINE == "Darwin" ];
-#then (if [ `uname -p` == "i386" ]; then MT=i3osx; else MT=ppcosx; fi);
-then MT=i3osx;
-elif [ $MACHINE == "Windows" ];
-then MT=i3nt;
-else echo Unknown platform for scheme system: $MACHINE
-fi
+
+MT=`$REGIMENTD/depends/get_machine_type`
 
 #echo RUNNING ON MACHINE TYPE: "<"$MT">"
 

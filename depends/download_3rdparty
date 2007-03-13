@@ -1,12 +1,15 @@
 #!/bin/bash
 
-if test `uname` == "Darwin" ;
+MT=./get_machine_type
+
+if test "$MT" == "ppcosx" ;
 then wget http://www.scheme.com/csv7.0/pcsv7.0-1.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/swl0.9z-1.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/tcl8.4.4.pkg.tar.gz;
      wget http://www.scheme.com/csv7.0/tk8.4.4.pkg.tar.gz;
      ls *.tar.gz | xargs -n1 tar xzvf;
-elif test `uname` == "CYGWIN_NT-5.1" ;
+#elif test `uname` == "CYGWIN_NT-5.1" ;
+elif test "$MT" == "i3nt" ;
 then wget http://www.scheme.com/csv7.0/pcsv70.exe;
 else 
     echo Nothing to download for platform `uname`.

@@ -7,17 +7,7 @@
 STARTREV=1850
 WORKINGDIR=~/WS_test_copy
 
-MACHINE=`uname`
-if [ $MACHINE == "Linux" ];
-then MT=i3le;
-elif [ $MACHINE == "Darwin" && `uname -p` == "powerpc" ];
-then MT=ppcosx;
-elif [ $MACHINE == "Darwin" && `uname -p` == "i386" ];
-then MT=i3osx;
-elif [ $MACHINE == "Windows" ];
-then MT=i3nt;
-else echo Unknown platform for scheme system: $MACHINE
-fi
+MT=`../depends/get_machine_type`
 
 echo MACHINE TYPE: $MT
 

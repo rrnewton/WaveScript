@@ -3,19 +3,23 @@
 MACHINE=`uname`
 VER=7.3
 
-if [ $MACHINE == "Linux" ];
-then DIR=i3le;
-     SCHEME=scheme;
-elif test $MACHINE == "Darwin" && test `uname -p` == "i386" ;
-then DIR=i3osx;
-     SCHEME=scheme;
-elif [ $MACHINE == "Darwin" ];
-then DIR=ppcosx;
-     SCHEME=scheme;
-elif [ $MACHINE == "CYGWIN_NT-5.1" ];
-then DIR=i3nt;
-     SCHEME=petite.exe;
-else echo Unknown platform: $MACHINE
-fi
+# if [ $MACHINE == "Linux" ];
+# then DIR=i3le;
+#      SCHEME=scheme;
+# elif test $MACHINE == "Darwin" && test `uname -p` == "i386" ;
+# then DIR=i3osx;
+#      SCHEME=scheme;
+# elif [ $MACHINE == "Darwin" ];
+# then DIR=ppcosx;
+#      SCHEME=scheme;
+# elif [ $MACHINE == "CYGWIN_NT-5.1" ];
+# then DIR=i3nt;
+#      SCHEME=petite.exe;
+# else echo Unknown platform: $MACHINE
+# fi
+
+DIR=`$REGIMENTD/depends/get_machine_type`
+SCHEME=scheme
+if [ "$DIR" == "i3nt" ]; then SCHEME=petite.exe; fi
 
 ($REGIMENTD/depends/petite_chez_scheme$VER/bin/$DIR/$SCHEME -b $REGIMENTD/depends/petite_chez_scheme$VER/boot/$DIR/petite.boot $*)
