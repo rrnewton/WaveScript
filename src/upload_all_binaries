@@ -19,6 +19,7 @@ svn co https://macroprogramming.ffh.us/repos/branches/wavescope $WORKINGDIR
 
 # Switch to it
 cd $WORKINGDIR
+source install_environment_vars
 
 # The latest rev is as far as we go:
 which svn > /dev/null
