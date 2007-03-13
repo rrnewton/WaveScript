@@ -406,6 +406,8 @@
     (arr-get          ((Array 'a) Int) 'a)
     (length           ((Array 'a)) Int)
 
+    ;Array:build, make, ref, set, length, append? reverse?
+
     ;; This uses an initialization function to fill in an array:
     (buildArray       (Int (Int -> 'a)) (Array 'a))
 

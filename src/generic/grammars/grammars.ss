@@ -130,6 +130,9 @@
        [Expr ('let-as (Var (Var ...) Expr) Expr)]
        [Expr ('dot-project (Var ...) Expr)]
 
+       [Expr ('namespace Var Expr)]
+       [Expr ('using Var Expr)]
+
        [Expr ('or Expr ...)]
        [Expr ('and Expr ...)]
 
