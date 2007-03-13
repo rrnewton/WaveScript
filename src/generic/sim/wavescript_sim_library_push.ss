@@ -57,7 +57,7 @@
 
 		 realpart imagpart 
 
-		 nullseg nullarr nulltimebase
+		 nullseg Array:null nulltimebase
 		 tuple tupref
 		 Array:make Array:ref Array:set 
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
@@ -744,10 +744,10 @@
   ;; ================================================================================
 
 ;      (define nullseg (gensym "nullseg"))
-;      (define nullarr (gensym "nullarr"))
+;      (define Array:null (gensym "Array:null"))
 ;      (define nulltimebase (gensym "nulltimebase"))
   (define nullseg 'nullseg)
-  (define nullarr #())
+  (define Array:null #())
   (define nulltimebase 'nulltimebase)
 
   (define (gint x) x)
@@ -1089,7 +1089,7 @@
      (define (toArray w) (if (eq? w nullseg) #() (sigseg-vec w)))
      (define (toSigseg ar st tb)
        (define en (fx+ st (s:vector-length ar) -1))
-       (DEBUGASSERT (or (eq? ar nullarr) (vector? ar)))
+       (DEBUGASSERT (or (eq? ar Array:null) (vector? ar)))
        (DEBUGASSERT integer? st)
        (DEBUGASSERT integer? en)
        (DEBUGASSERT valid-timebase? tb)

@@ -9,7 +9,7 @@
 
 matrix :: (Int, Int, t) -> Array (Array t);
 fun matrix(rows, cols, init) {
-  arr = Array:make(rows, nullarr);
+  arr = Array:make(rows, Array:null);
   for i = 0 to rows-1 {
     arr[i] := Array:make(cols, init);
   };
@@ -54,7 +54,7 @@ fun build_matrix(n,m,f) {
 /*   cols = List:length(list.head); */
 /*   init = list.head.head; */
 
-/*   arr = Array:make(rows, nullarr); */
+/*   arr = Array:make(rows, Array:null); */
 
 /*   for i = 0 to rows-1 { */
 /*     row = listRef(list, i); */
@@ -78,7 +78,7 @@ fun list_to_matrix(list) {
 list_of_segs_to_matrix :: List (Sigseg t) -> Array (Array t);
 fun list_of_segs_to_matrix(ls) {
   len = List:length(ls);
-  arr = Array:make(len, nullarr);
+  arr = Array:make(len, Array:null);
   for i = 0 to len-1 {
     arr[i] := toArray(List:ref(ls, i))
   };
@@ -102,7 +102,7 @@ fun m_colv(m,i) {
 }
 
 fun m_colm(m,i) {
-  arr = Array:make(m.Array:length, nullarr);
+  arr = Array:make(m.Array:length, Array:null);
   for j = 0 to m.Array:length-1 {
     arr[j] := Array:make(1,m_get(m,j,i));
   };
@@ -110,7 +110,7 @@ fun m_colm(m,i) {
 }
 
 fun m_map(f, m) {
-  newm = Array:make(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), Array:null);
   for i = 0 to m_rows(m) {
     newm[i] := amap(f, m[i])
   };
@@ -125,7 +125,7 @@ fun m_map_inplace(f, m) {
 }
 
 fun m_rowmap(f, m) {
-  newm = Array:make(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), Array:null);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
   };
@@ -143,7 +143,7 @@ fun m_rowmap_scalar(f, m) {
 
 /* rowmap that takes a function of row and index */
 fun m_rowmap_index(f, m) {
-  newm = Array:make(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), Array:null);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i],i)
   };
@@ -172,7 +172,7 @@ fun m_mult_scalar_inplace(m,s) {
 
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
-  // TODO: could be more defensive here, check for nullarr:
+  // TODO: could be more defensive here, check for Array:null:
   m3 = matrix(m1.Array:length, m2[0].Array:length, m_get(m1,0,0));
   for i = 0 to m1.Array:length-1 {
     for j = 0 to m2[0].Array:length-1 {

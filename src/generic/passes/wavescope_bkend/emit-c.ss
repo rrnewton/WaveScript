@@ -490,8 +490,8 @@
 	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
 	   ]
 	  [#(nullseg ,t) "WSNULLSEG"]
-					;[#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	  [#(nullarr (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
+					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
+	  [#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
 	  )))
 
     (define Simple
@@ -599,7 +599,7 @@
 
 	  ;; Special Constants:
 	  [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
-	  [(assert-type ,t nullarr) (wrap (PolyConst 'nullarr t))]
+	  [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
 	  [(assert-type ,t '())     (wrap (PolyConst '() t))]
 ;	  ['()                      (wrap (PolyConst '() t))]
 

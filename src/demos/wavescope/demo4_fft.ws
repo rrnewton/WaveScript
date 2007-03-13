@@ -9,7 +9,7 @@
 fun mywindow(S, len)
   iterate(x in S) {
     state{
-      arr = nullarr;
+      arr = Array:null;
       ind = 0;
       startsamp = 0;
     }
@@ -36,7 +36,7 @@ s1 = if GETENV("WSARCH") != "ENSBox"
 
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
-  //state{ foo = (nullarr :: Array Int);   }
+  //state{ foo = (Array:null :: Array Int);   }
   //print(foo);  print("\n");
 
   emit fft(w);

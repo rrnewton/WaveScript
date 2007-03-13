@@ -18,7 +18,7 @@ DEBUGSYNC = DEBUG
 fun window(S, len) 
   iterate(x in S) {
     state{ 
-      arr = nullarr;
+      arr = Array:null;
       ind = 0; 
       startsamp = 0;
     }
@@ -154,7 +154,7 @@ fun myhanning (strm) {
   iterate(win in strm) {
     state{ 
       _lastLen = 0;
-      _hanning = nullarr;
+      _hanning = Array:null;
     }
 
     if _lastLen != win.width then {

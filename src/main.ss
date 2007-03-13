@@ -309,7 +309,7 @@
 		`(let ([,tmp (quote ,t) ,x]) ,tmp)))
 	    (match x
 	      [nullseg (f x)]
-	      [nullarr (f x)]
+	      [Array:null (f x)]
 	      ['()     (printf "Lifting null!\n") (f x)]
 	      [,other (fallthru other)]))])
 
@@ -317,7 +317,7 @@
     (define (pconst? x) 
       (match x
 	[nullseg #t]
-	[nullarr #t]
+	[Array:null #t]
 	['()     #t]
 	[()     #t]
 	[,else   #f]))

@@ -17,7 +17,7 @@ fun gen_mult(f) {
       if w1.width != w2.width
       then error("mult: mismatching lengths")
       else if w1.width == 0
-      then nullarr
+      then Array:null
       else {
 	// RRN: Doing a window_integrate over two vars is a little confusing...
 	// (i.e. it looks like it mean the cartesian product)

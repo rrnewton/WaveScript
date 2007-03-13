@@ -1,7 +1,7 @@
 fun window(S, len) 
   iterate(x in S) {
     state{ 
-      arr = nullarr;
+      arr = Array:null;
       ind = 0; 
       startsamp = 0;
     }
