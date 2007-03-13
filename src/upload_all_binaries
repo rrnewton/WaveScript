@@ -66,6 +66,11 @@ do
 	cd $WORKINGDIR/src/;
 	# Run make clean just to be sure.
 #	make clean;
+	# Somehow the makefile is deficient for this in some revisions:
+	if [ ! -d $WORKINGDIR/src/build/i3le ]; then mkdir $WORKINGDIR/src/build/i3le; fi
+	if [ ! -d $WORKINGDIR/src/build/i3osx ]; then mkdir $WORKINGDIR/src/build/i3osx; fi
+	if [ ! -d $WORKINGDIR/src/build/ppcosx ]; then mkdir $WORKINGDIR/src/build/ppcosx; fi
+	if [ ! -d $WORKINGDIR/src/build/i3nt ]; then mkdir $WORKINGDIR/src/build/i3nt; fi
 	make ws; 
 	make wsparse;
 	scp build/$MT/main_chez.so newton@faith.csail.mit.edu:$REMOTE;
