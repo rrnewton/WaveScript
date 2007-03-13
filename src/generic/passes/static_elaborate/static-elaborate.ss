@@ -782,7 +782,7 @@
      (static-elaborate-language '(program (cons (quote 7) world)
 		 notype))]
 
-    [(error 'foo "bar") 9]
+;    [(error 'foo "bar") 9]
 
 
     ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) notype))])
