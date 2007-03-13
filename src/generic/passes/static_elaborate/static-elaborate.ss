@@ -40,6 +40,7 @@
    static-elaborate
    static-elaborate-grammar
    test-this these-tests
+   test-static-elaborate
    )
 
   (chezimports )
@@ -780,6 +781,9 @@
      (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) notype)))
      (static-elaborate-language '(program (cons (quote 7) world)
 		 notype))]
+
+    [(error 'foo "bar") 9]
+
 
     ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) notype))])
        `["Now run with a regiment-prim that we shouldn't be able to elaborate" 

@@ -239,10 +239,17 @@
 			  (printf "(diff unit-test-expected unit-test-received)\n")
 			  (printf "If test output was suppressed, you may wish to inspect it: ")
 			  (printf "(display default-unit-tester-output)\n")
-			  ;; I decided to make this crash after all:
-;			  (return (void))
+
+			  ;; Regiment specific.  If we're in batch mode print the error output.
+                          (when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
+                                     (top-level-value 'REGIMENT-BATCH-MODE))
+                            (printf "\nBecause we're in batch mode, printing unit test output here:\n")
+                            (printf "======================================================================\n")
+                            (eval '(display default-unit-tester-output))
+                            )
+                          
+                          ;; Use the continuation to escape:
 			  (return #f)
-;			  (error 'default-unit-tester "failed test")
 			  ))))))]))]) ;; end execute-one-test
 
 	   ;; Main body of tester:
