@@ -8,9 +8,9 @@
 
 matrix :: (Int, Int, t) -> Array (Array t);
 fun matrix(rows, cols, init) {
-  arr = makeArray(rows, nullarr);
+  arr = Array:make(rows, nullarr);
   for i = 0 to rows-1 {
-    arr[i] := makeArray(cols, init);
+    arr[i] := Array:make(cols, init);
   };
   arr
 }
@@ -53,11 +53,11 @@ fun build_matrix(n,m,f) {
 /*   cols = List:length(list.head); */
 /*   init = list.head.head; */
 
-/*   arr = makeArray(rows, nullarr); */
+/*   arr = Array:make(rows, nullarr); */
 
 /*   for i = 0 to rows-1 { */
 /*     row = listRef(list, i); */
-/*     arr[i] := makeArray(cols, init); */
+/*     arr[i] := Array:make(cols, init); */
 /*     for j = 0 to cols-1 { */
 /*       m_set(arr,i,j,listRef(row, j)); */
 /*     } */
@@ -77,7 +77,7 @@ fun list_to_matrix(list) {
 list_of_segs_to_matrix :: List (Sigseg t) -> Array (Array t);
 fun list_of_segs_to_matrix(ls) {
   len = List:length(ls);
-  arr = makeArray(len, nullarr);
+  arr = Array:make(len, nullarr);
   for i = 0 to len-1 {
     arr[i] := toArray(List:ref(ls, i))
   };
@@ -89,11 +89,11 @@ fun m_rowv_shared(m,i) {
 }
 
 fun m_rowm_shared(m,i) {
-  makeArray(1,m[i]);
+  Array:make(1,m[i]);
 }
 
 fun m_colv(m,i) {
-  arr = makeArray(m.length, gint(0));
+  arr = Array:make(m.length, gint(0));
   for j = 0 to m.length-1 {
     arr[j] := m_get(m,j,i);
   };
@@ -101,15 +101,15 @@ fun m_colv(m,i) {
 }
 
 fun m_colm(m,i) {
-  arr = makeArray(m.length, nullarr);
+  arr = Array:make(m.length, nullarr);
   for j = 0 to m.length-1 {
-    arr[j] := makeArray(1,m_get(m,j,i));
+    arr[j] := Array:make(1,m_get(m,j,i));
   };
   arr
 }
 
 fun m_map(f, m) {
-  newm = makeArray(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := amap(f, m[i])
   };
@@ -124,7 +124,7 @@ fun m_map_inplace(f, m) {
 }
 
 fun m_rowmap(f, m) {
-  newm = makeArray(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
   };
@@ -133,7 +133,7 @@ fun m_rowmap(f, m) {
 
 /* a very special rowmap that returns a vector */
 fun m_rowmap_scalar(f, m) {
-  newm = makeArray(m_rows(m), gint(0));
+  newm = Array:make(m_rows(m), gint(0));
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i])
   };
@@ -142,7 +142,7 @@ fun m_rowmap_scalar(f, m) {
 
 /* rowmap that takes a function of row and index */
 fun m_rowmap_index(f, m) {
-  newm = makeArray(m_rows(m), nullarr);
+  newm = Array:make(m_rows(m), nullarr);
   for i = 0 to m_rows(m) {
     newm[i] := f(m[i],i)
   };

@@ -14,8 +14,7 @@ function go () {
     echo >> $RUN
     echo $1 : >> $RUN
 #    ./run_query | head -20 >> $RUN
-    if ! ./query.exe >> $RUN;
-    then exit 1; fi
+#    if ! ./query.exe >> $RUN; then exit 1; fi
 }
 
 # wsc demo0_audio.ws 

@@ -207,7 +207,7 @@ fun FarFieldDOA(synced, sensors)
 
 
     // sum powers values across channels 
-    power = makeArray(Ndat, 0.0);
+    power = Array:make(Ndat, 0.0);
     for i = 0 to psds.length-1 {
       for j = 0 to Ndat-1 {
         power[j] := power[j] + m_get(psds,i,j);
@@ -215,7 +215,7 @@ fun FarFieldDOA(synced, sensors)
     };
 
     // create index vector
-    power_index = makeArray((m_in[0]).length, 0);
+    power_index = Array:make((m_in[0]).length, 0);
     for i = 0 to power_index.length-1 { power_index[i] := i; };
 
     // sort index vector and power vector
@@ -232,8 +232,8 @@ fun FarFieldDOA(synced, sensors)
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
-    Tbefore = makeArray(NSrc, 0.0); 
-    Trad = makeArray(NSrc, 0.0);
+    Tbefore = Array:make(NSrc, 0.0); 
+    Trad = Array:make(NSrc, 0.0);
 
     // phase delays for each source
     delay = matrix(Nsens, NSrc, 0.0);
@@ -249,7 +249,7 @@ fun FarFieldDOA(synced, sensors)
     for iter = 1 to MaxIter {
       for Q = 0 to NSrc-1 {
 	
-	J = makeArray(Ngrd, 0.0);
+	J = Array:make(Ngrd, 0.0);
 	
 	// compute delay for other sources
 	for L = 0 to NSrc-1 {
@@ -303,7 +303,7 @@ fun FarFieldDOA(synced, sensors)
       };
 
       // stopping condition, break out of loop?
-      diffs = makeArray(Trad.length, 0.0); //gint(0));
+      diffs = Array:make(Trad.length, 0.0); //gint(0));
       for K = 0 to Trad.length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
       let (max_change,_) = a_max(diffs);
 

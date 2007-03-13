@@ -12,7 +12,7 @@ s1 = audioFile("./countup.raw", 4096, 0, 44000);
 
 s2 = iterate( w in s1 ) {
   print("Building Array\n");
-  emit makeArray(3, 0.0);
+  emit Array:make(3, 0.0);
 };
 
 s3 = iterate( arr in s2) {

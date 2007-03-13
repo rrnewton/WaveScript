@@ -59,7 +59,7 @@ syncN =
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.List:length - 1, nullseg);
+      accs = Array:make(slist.List:length - 1, nullseg);
       requests = [];
     }
     
@@ -142,14 +142,14 @@ fun window(S, len)
       ind = 0; 
       startsamp = 0;
     }
-    if ind == 0 then arr := makeArray(len, x);
+    if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
     ind := ind + 1;
     if ind == len
     then {
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
-      arr := makeArray(len, x); 
+      arr := Array:make(len, x); 
       startsamp := startsamp + len;
     }
   };
@@ -210,7 +210,7 @@ fun myhanning (strm) {
 
     if _lastLen != win.width then {
       _lastLen := win.width;
-      _hanning := makeArray(_lastLen, 0.0);
+      _hanning := Array:make(_lastLen, 0.0);
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
 	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
@@ -221,7 +221,7 @@ fun myhanning (strm) {
     };
 
     /* alloc buffer */
-    buf = makeArray(_lastLen, 0.0);
+    buf = Array:make(_lastLen, 0.0);
     for i = 0 to _lastLen - 1 {
       buf[i] := _hanning[i] *. win[[i]];
     }
@@ -259,7 +259,7 @@ deep_stream_map :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
 fun deep_stream_map(f,sss) {
   iterate(ss in sss) {    
     first = f(ss[[0]]);
-    output = makeArray(ss.width, first);
+    output = Array:make(ss.width, first);
     for i = 1 to ss.width - 1 {
       output[i] := f(ss[[i]]);
     }
@@ -277,7 +277,7 @@ fun deep_stream_map2(f,sss) {
       lastout = nullseg;
     }
     first = f(ss[[0]]);
-    output = makeArray(ss.width, first);
+    output = Array:make(ss.width, first);
     if pos > ss.start then
       for i = 0 to pos - ss.start - 1 {
 	// Copy old result:
@@ -362,7 +362,7 @@ fun amap_inplace(f, arr) {
 
 amap :: (a -> b, Array a) -> Array b;
 fun amap(f, arr) {
-  narr = makeArray(arr.length, f(arr[0]));
+  narr = Array:make(arr.length, f(arr[0]));
   for i = 1 to arr.length - 1 {
     narr[i] := f(arr[i]);
   };
@@ -400,7 +400,7 @@ fun adot(arr1,arr2) {
 }
 
 fun apairmult(arr1,arr2) {
-  narr = makeArray(arr1.length, arr1[0]);
+  narr = Array:make(arr1.length, arr1[0]);
   for i = 0 to arr1.length - 1 {
     narr[i] := arr1[i] * arr2[i];
   };
@@ -419,8 +419,8 @@ fun a_max(arr) {
   (val,ind)
 }
 
-fun a_zeroes(len) { makeArray(len, gint(0)) }
-fun a_ones(len) { makeArray(len, gint(1)) }
+fun a_zeroes(len) { Array:make(len, gint(0)) }
+fun a_ones(len) { Array:make(len, gint(1)) }
 
 // insertion sort 
 fun sort(swap,cmp,len) {

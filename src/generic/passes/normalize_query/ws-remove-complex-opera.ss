@@ -152,7 +152,7 @@
       (match expr
 	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
 	   
-	   ['() (vector ''() '())]
+	   [(quote ,comple-const) (vector `',comple-const '())]
 
 
 	   [(lambda ,formals ,types ,body)

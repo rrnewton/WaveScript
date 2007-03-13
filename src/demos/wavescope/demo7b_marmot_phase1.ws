@@ -22,14 +22,14 @@ fun window(S, len)
       ind = 0; 
       startsamp = 0;
     }
-    if ind == 0 then arr := makeArray(len, x);
+    if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
     ind := ind + 1;
     if ind == len
     then {
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
-      arr := makeArray(len, x); 
+      arr := Array:make(len, x); 
       startsamp := startsamp + len;
     }
   };
@@ -49,7 +49,7 @@ fun syncN (ctrl, strms) {
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.List:length - 1, nullseg);
+      accs = Array:make(slist.List:length - 1, nullseg);
       requests = [];
     }
 
@@ -159,7 +159,7 @@ fun myhanning (strm) {
 
     if _lastLen != win.width then {
       _lastLen := win.width;
-      _hanning := makeArray(_lastLen, 0.0);
+      _hanning := Array:make(_lastLen, 0.0);
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
 	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
@@ -170,7 +170,7 @@ fun myhanning (strm) {
     };
 
     /* alloc buffer */
-    buf = makeArray(_lastLen, 0.0);
+    buf = Array:make(_lastLen, 0.0);
     for i = 0 to _lastLen - 1 {
       buf[i] := _hanning[i] *. win[[i]];
     }

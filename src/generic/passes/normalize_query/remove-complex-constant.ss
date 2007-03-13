@@ -83,9 +83,9 @@
        [(,input-language (quote (program ,body ,type)))
 	(let-match ([#(,body ,body-b*) (process-expr body)])
 	  (if (null? body-b*)
-	      `(,input-language ;remove-complex-constant-language
+	      `(remove-complex-constant-language
 		'(program ,body ,type))
-	      `(,input-language ;remove-complex-constant-language
+	      `(remove-complex-constant-language
 		'(program 
 		     (letrec ,body-b* ,body)
 		   ,type))))]))]
@@ -101,9 +101,7 @@
       (lambda (x)
 	;(DEBUGASSERT pair? x)
 	;; Null tenv is ok, it's just a constant:
-	(let ([type (if (pair? x) 
-			`(List ,(recover-type `',(car x) (empty-tenv)))
-			#f)])
+	(let ([type (recover-type `',x (empty-tenv))])
 	  (values 
 	   (let loop ([x x])
 	     (cond		     

@@ -402,7 +402,7 @@
     ;(return           ('a) 'a) ;; Don't need this yet.
 
     ;; Array handling:
-    (makeArray        (Int 'a) (Array 'a))
+    (Array:make        (Int 'a) (Array 'a))
     (arr-get          ((Array 'a) Int) 'a)
     (length           ((Array 'a)) Int)
 

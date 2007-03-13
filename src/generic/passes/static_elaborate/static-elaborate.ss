@@ -686,9 +686,9 @@
 		(not (assq prim wavescript-stream-primitives))
 		(not (assq prim regiment-distributed-primitives))
 		;; Special exceptions:
-		;; We don't want to makeArray in the object code!
+		;; We don't want to Array:make in the object code!
 		;; (Kind of inconsistent that we *do* currently do List:make.)
-		(not (memq prim '(show cons gint makeArray
+		(not (memq prim '(show cons gint Array:make
 				       m_invert)))
 		)
 	       (do-prim prim (map getval rand*) env)

@@ -5,14 +5,14 @@ fun window(S, len)
       ind = 0; 
       startsamp = 0;
     }
-    if ind == 0 then arr := makeArray(len, x);
+    if ind == 0 then arr := Array:make(len, x);
     arr[ind] := x;
     ind := ind + 1;
     if ind == len
     then {
       emit toSigseg(arr, startsamp, nulltimebase);
       ind := 0;
-      arr := makeArray(len, x); 
+      arr := Array:make(len, x); 
       startsamp := startsamp + len;
     }
   };
@@ -32,7 +32,7 @@ fun syncN (strms, ctrl) {
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = makeArray(slist.List:length - 1, nullseg);
+      accs = Array:make(slist.List:length - 1, nullseg);
       requests = [];
     }
     print("  Current ACCS: ");

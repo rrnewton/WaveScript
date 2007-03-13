@@ -6,7 +6,7 @@ data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Int * Float));
 avgs = iterate ((n,f) in data) {
   state {
     ind = 0;
-    buffer = makeArray(10, 0);
+    buffer = Array:make(10, 0);
     sum = 0.0;
   }
   buffer[ind] := n;

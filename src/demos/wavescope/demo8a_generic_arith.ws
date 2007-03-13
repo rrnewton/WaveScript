@@ -24,7 +24,7 @@ s2 = iterate (w in s1) {
   //print("Test3: "++ show(toFloat(3.4)) ++" "++ show(toFloat(3))  ++"\n");
   //print(toFloat(3.5+3.5i));  // <- Error
 
-  arr = makeArray(10, gint(3));
+  arr = Array:make(10, gint(3));
   print("Test4: " ++ show(arr[3] + 4.0) ++"\n");
 
   // print(gint(3)); // <- Error

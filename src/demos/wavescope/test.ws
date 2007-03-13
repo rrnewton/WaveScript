@@ -9,7 +9,7 @@ BASE <- iterate(w in chans) {
 
 /* BASE <- iterate(w in ch1) { */
 /*   arr = toArray(w); */
-/*   new = makeArray(w.width, nullarr); */
+/*   new = Array:make(w.width, nullarr); */
 /*   for i = 0 to w.width-1 { */
 /*     new[i] := arr; */
 /*   } */

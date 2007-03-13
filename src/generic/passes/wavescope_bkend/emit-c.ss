@@ -786,7 +786,7 @@
 	
 	;[(arr-get ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
 	[(arr-get ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
-	[(makeArray ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
+	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	
 	[(length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
