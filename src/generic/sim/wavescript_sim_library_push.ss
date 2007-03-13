@@ -59,7 +59,7 @@
 
 		 nullseg nullarr nulltimebase
 		 tuple tupref
-		 Array:make Array:ref arr-set! 
+		 Array:make Array:ref Array:set 
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -886,7 +886,7 @@
 
      (define Array:make make-vector)
      (define Array:ref  vector-ref)
-     (define arr-set! vector-set!)
+     (define Array:set vector-set!)
      (define Array:length   vector-length)
 
      ;; EQ? based hash tables:

@@ -577,7 +577,7 @@
       [(gnuplot_array ,a) ""]
 
       [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
-       (guard (memq containerset! '(arr-set! hashset_BANG)))
+       (guard (memq containerset! '(Array:set hashset_BANG)))
        (ASSERT not name)
        `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
@@ -790,8 +790,8 @@
 	
 	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
-	[(arr-set! ,x ...)
-	 (error 'emitC:Value "arr-set! in Value context: ~s" `(arr-set! ,x ...))]
+	[(Array:set ,x ...)
+	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
 	[(begin ,stmts ...)
 	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
 

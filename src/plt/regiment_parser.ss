@@ -442,7 +442,7 @@
 	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,$3 ,$1)]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
-         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(arr-set! ,$1 ,$3 ,$6)]
+         [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,$1 ,$3 ,$6)]
 
 	 ;; Operators that are simple ar straightforward.
          [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]

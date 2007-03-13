@@ -306,7 +306,7 @@
  ;; All side-effecting primitives must go here and must return UNIT:
  (define wavescript-effectful-primitives 
    '(
-     (arr-set!         ((Array 'a) Int 'a) #())
+     (Array:set         ((Array 'a) Int 'a) #())
      ;; [2006.11.28] Giving these void types.
      (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
      (hashrem_BANG ((HashTable 'key 'val) 'key) #())
