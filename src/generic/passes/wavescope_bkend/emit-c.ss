@@ -496,6 +496,8 @@
     (define Simple
       (lambda (x)
 	(match x 
+	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
+	  ['() (error 'Simple "null list without type annotation")]
 	  [(quote ,c) (Const #f #f c)]
 	  [,v (guard (symbol? v)) (Var v)]
 	  [(assert-type ,_ ,[x]) x]

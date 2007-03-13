@@ -307,18 +307,31 @@
 	 result)))
    (define (try-command)
      ;; HACK: WON'T WORK IN WINDOWS:)
-     (unless (zero? (system "which wsparse")) 
-       (error 'wsint "couldn't find wsparse executable"))
-     (printf "Calling wsparse to parse file: ~a\n" fn)
-     (let* ([port (car (process (++ "wsparse " fn " --nopretty")))]
-	    [decls (read port)])
-       (close-input-port port)
-       ;; This is very hackish:
-       (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
-	   (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
-					;(printf "POSTPROCESSING: ~s\n" decls)
-					;(ws-postprocess decls)
-       decls))
+     (begin 
+       (let* ([port
+	       (if (zero? (system "which wsparse")) 
+		   ;; Use pre-compiled executable:
+		   (begin 
+		     (printf "Calling wsparse to parse file: ~a\n" fn)
+		     (car (process (++ "wsparse " fn " --nopretty"))))
+		   (let ([tmpfile (format "/tmp/~a.tmp" (random 1000000))])
+		     (warning 'wsint 
+			      (++ "couldn't find wsparse executable.\n"
+				  "Running wsparse.ss from source, but you probably"
+				  " want to do 'make wsparse' for speed."))
+		     ;; We want only the stdout not the stderr:
+		     (system (format "mzscheme --require-script ~a/src/plt/wsparse.ss ~a --nopretty > ~a" 
+				     (REGIMENTD) fn tmpfile))
+		     (open-input-file tmpfile)
+		     ))]
+	      [decls (read port)])
+	 (close-input-port port)
+	 ;; This is very hackish:
+	 (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
+	     (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))
+	 ;;(printf "POSTPROCESSING: ~s\n" decls)
+	 ;;(ws-postprocess decls)
+	 decls)))
    
    (if (file-exists? "/tmp/wsparse_server_pipe")
        ;; TODO: Make sure path is absolute!!

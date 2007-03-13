@@ -17,7 +17,7 @@
 ;; This is a bit complex because it programmatically splits out the stream-primitives.
 (define ws-lift-let-grammar
   (let ([streamprims (map car wavescript-stream-primitives)])
-    (append '((Program ((quote program) Query Type))
+    (append `((Program ((quote program) Query Type))
 
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))
@@ -29,7 +29,17 @@
 	      (Simple Var)
 	      (Simple Const)
 	      (Simple ('tuple))
+
+	      (Const ('quote Datum))
+	      (Datum ,atom?)
 	      
+	      (ComplexConst ('quote ComplexDatum))
+	      (ComplexDatum ,atom?)
+	      (ComplexDatum (ComplexDatum ...))
+
+	      (Query ComplexConst)
+	      (Value ComplexConst)
+
 	      (Value Var) 
 	      (Value Const)
 	      (Value ('tuple Simple ...))
@@ -57,7 +67,7 @@
 		     [(Prim ',name) (guard (memq name streamprims)) `(StreamOp ',name)]
 		     [(Prim ',name) (guard (assq name wavescript-effectful-primitives)) `(EffectPrim ',name)]
 		     [,oth oth]))
-	      (filter (lambda (x) (not (memq (car x) '(Expr Program LetOrSimple))))
+	      (filter (lambda (x) (not (memq (car x) '(Expr Program LetOrSimple Datum Const))))
 		ws-remove-complex-opera*-grammar))
 	     )))
 

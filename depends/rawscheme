@@ -6,7 +6,8 @@ VER=7.3
 if [ "$MACHINE" == "Linux" ];
 then DIR=i3le;
 elif [ "$MACHINE" == "Darwin" ];
-then DIR=ppcosx;
+#then DIR=ppcosx;
+then DIR=i3osx;
 elif [ "$MACHINE" == "Windows" ];
 then DIR=i3nt;
 else echo rawscheme script: Unknown platform: "$MACHINE"

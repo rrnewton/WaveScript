@@ -605,7 +605,8 @@
 
 (define (simple-expr? x)
   (match x
-    [(quote ,imm) #t]
+    ;; [2007.03.11] Making complex constants *NON* simple
+    [(quote ,imm) (guard (not (pair? imm)) (not (vector? imm))) #t]
     ;; Void value:
     ;[(tuple) #t]
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]

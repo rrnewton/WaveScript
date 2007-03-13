@@ -805,8 +805,13 @@
 ;; These are some of our system tests.  They test the compiler and the simulator as a whole.
 ;; The rest of the system tests are in the files named tests_*.ss
 ;; But some of the below tests may also be miscellaneous unit tests that require more than one module.
-(define-testing these-tests 
-  (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
+;;
+;; NOTE: in WaveScript only mode these are mostly invalid, disabling them:
+(IFWAVESCOPE 
+(begin)
+(begin 
+  (define-testing these-tests 
+   (let ([tm-to-list ;; This is boilerplate, many of these tests just run the following:
 	 (lambda (tm . extraparams)
 	   `(parameterize ([unique-name-counter 0]
 			   [simalpha-dbg-on #f]
@@ -845,14 +850,11 @@
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:
-    (include "generic/testing/system_tests.ss")
-))
-
-(define-testing test-this (default-unit-tester "Main compiler units + system tests." these-tests))
-(define maintests these-tests)
-(define maintest test-this)
-
-
+    (include "generic/testing/system_tests.ss")  
+    ))
+  (define-testing test-this (default-unit-tester "Main compiler units + system tests." these-tests))
+  (define maintests these-tests)
+  (define maintest test-this)))
 
 
 (define bugprog
