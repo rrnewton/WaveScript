@@ -181,7 +181,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
        ;; But we only do this on faith, so first test if the dir is there:
 
 ;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
-
+#;
        (when (directory-exists? "/var/www/regiment_binaries")
 	 (fprintf orig-console "Copying prebuilt binary to website.\n")
 	 (let* ([webfile (format "/var/www/regiment_binaries/~a/~a_~a_main_chez.so" 
@@ -214,7 +214,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 
 
 ;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
-
+#;
        ;; Now copy that executable file to our stored binaries directory.
        (when (directory-exists? "/var/www/regiment_binaries")
 	 (fprintf orig-console "Copying prebuilt wsparse to website.\n")

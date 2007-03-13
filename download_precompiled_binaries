@@ -33,6 +33,8 @@ then curl "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE -o $SOFILE;
 else echo NEITHER CURL NOR WGET AVAILABLE!!; exit 1
 fi 
 
+if [ ! -d ./src/build/$MT ]; then mkdir ./src/build/$MT; fi
+
 echo Moving to build/$MT/main_chez.so
 mv $SOFILE build/$MT/main_chez.so
 echo Moving to bin/wsparse

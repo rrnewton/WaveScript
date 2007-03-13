@@ -80,3 +80,6 @@ do
 
     REV=$(($REV+1))
 done
+
+# Set permissions on those web files.
+ssh newton@faith.csail.mit.edu "(cd /var/www/; ./setperms)"
