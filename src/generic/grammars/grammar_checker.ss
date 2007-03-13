@@ -294,12 +294,19 @@
 
 
 ;; Trying again: no backtrack
-(define (check-grammar origexpr grammar . initialprod)
+;; .param context - this is usually the name of the pass for which check-grammar is called
+(define (check-grammar context origexpr grammar . initialprod)
   ;; expr is an sexpression
   ;; grammar is just a list of productions
   (define allvariants 
     (begin 
-      (ASSERT (andmap pair? grammar))
+      ;; Some defense:
+      (ASSERT list? grammar)
+      (DEBUGASSERT (curry andmap pair?) grammar)
+      ;(printf "GRAMMAR ~s\n" grammar)
+      (ASSERT (or (null? initialprod) 
+		  (and (list? initialprod) (symbol? (car initialprod)) 
+		       (null? (cdr initialprod)))))
       (list->set (map car grammar))
       ))
   (define (cut-grammar p) (filter (lambda (prod) (eq? (car prod) p)) grammar))
@@ -308,10 +315,16 @@
     (set-top-level-value! 'grammar-context (k 'FAIL))
     (set-top-level-value! 'grammar-original origexpr)
     (warning 'check-grammar
-	   (++ "could not parse expr ~s with production/pattern ~s\n  "
+	   (++ (format "in ~a: " context)
+	       "could not parse expr ~s with production/pattern ~s\n  "
 	       "Context stored in 'grammar-context', look at the location of FAIL, original expression in 'grammar-original'")
 	   x p)
-    (IFCHEZ (new-cafe) (void))
+    (IFCHEZ 
+     ;; In batch mode don't go into REPL:
+     (unless (and (top-level-bound? 'REGIMENT-BATCH-MODE)
+		  (top-level-value 'REGIMENT-BATCH-MODE))       
+       (new-cafe)) 
+     (void))
     (error 'check-grammar "")
     )
   
@@ -501,27 +514,27 @@
 
 
     ;; [2006.05.03] Duplicate the same tests for check-grammar:
-    [(check-grammar '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
-    [(check-grammar '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
-    [(check-grammar '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr)   ,list?]
-    [(check-grammar '(nodepgm (tokens)) basic_tml_grammar 'NodePgm) ,list?]
-    [(car (check-grammar '(tok1 subind () (stored) 333) basic_tml_grammar 'TokBinding)) TokBinding]
-    [(check-grammar '(lang '(program (bindings) (nodepgm (tokens)))) basic_tml_grammar 'PassInput) ,list?]
+    [(check-grammar "" '(set! foo 3) basic_tml_grammar 'Expr) ,list?]
+    [(check-grammar "" '(ext-set! (tok foo 3) storedvar 4) basic_tml_grammar 'Expr) ,list?]
+    [(check-grammar "" '(let ((x 4)) (let ((y 5)) 3)) basic_tml_grammar 'Expr)   ,list?]
+    [(check-grammar "" '(nodepgm (tokens)) basic_tml_grammar 'NodePgm) ,list?]
+    [(car (check-grammar "" '(tok1 subind () (stored) 333) basic_tml_grammar 'TokBinding)) TokBinding]
+    [(check-grammar "" '(lang '(program (bindings) (nodepgm (tokens)))) basic_tml_grammar 'PassInput) ,list?]
 
-    [(check-grammar '(lang '(program (bindings (x '3)) (nodepgm (tokens)))) 
+    [(check-grammar "" '(lang '(program (bindings (x '3)) (nodepgm (tokens)))) 
 		     basic_tml_grammar 'PassInput) ,list?]
-    [(check-grammar '(lang '(program (bindings) (nodepgm (tokens (tok1 subind () (stored) 333)))))
+    [(check-grammar "" '(lang '(program (bindings) (nodepgm (tokens (tok1 subind () (stored) 333)))))
 		     basic_tml_grammar 'PassInput)
      ,list?]
 
     ["Testing elipses followed by something"
-     (check-grammar '(testfoo a b c 3) 
+     (check-grammar "" '(testfoo a b c 3) 
 		    `([Test ('testfoo Var ... Num)]
 		      [Num ,integer?]
 		      [Var ,symbol?]) 'Test)
      ,list?]
     ["Run check on example output of cleanup-token-machine: "
-     (check-grammar '(lang '(program
+     (check-grammar "" '(lang '(program
 		      (bindings)
 		      (nodepgm
 		       (tokens

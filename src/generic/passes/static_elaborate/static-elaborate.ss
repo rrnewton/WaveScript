@@ -737,55 +737,55 @@
   `( 
 
     ["Make sure it folds some simple constants." 
-     (static-elaborate '(foo '(program (+_ '3 '4) notype)))
-     (static-elaborate-language '(program '7 notype))]
+     (static-elaborate '(foo '(program (+_ '3 '4) 'notype)))
+     (static-elaborate-language '(program '7 'notype))]
 
     [(static-elaborate
       '(foo '(program
 	      (letrec ([f _ (lambda (x) (_) '#t)])
-		(app f '3939)) notype)))
-     (static-elaborate-language '(program '#t notype))]
+		(app f '3939)) 'notype)))
+     (static-elaborate-language '(program '#t 'notype))]
    
     ["Reduce away fact of 6." 
      (static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
 			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6))
-      notype)))
-     (static-elaborate-language '(program '720 notype))]
+      'notype)))
+     (static-elaborate-language '(program '720 'notype))]
     
     ["Reduce a tuple reference."
-     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+_ '100 (tupref 0 2 x))) notype)))
-     (static-elaborate-language '(program '103 notype))]
+     (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+_ '100 (tupref 0 2 x))) 'notype)))
+     (static-elaborate-language '(program '103 'notype))]
 
     ["Reduce a primop underneath a lambda."
-     (static-elaborate '(foolang '(program (lambda (x) (_) (cons (+_ '3 '4) x)) notype)))
-     (static-elaborate-language '(program (lambda (x) (_) (cons '7 x)) notype))]
+     (static-elaborate '(foolang '(program (lambda (x) ('t) (cons (+_ '3 '4) x)) 'notype)))
+     (static-elaborate-language '(program (lambda (x) ('t) (cons '7 x)) 'notype))]
 
     [(static-elaborate '(foo '(program 
-			       (letrec ([f _ (lambda (x) (_) '#t)])
-				 (letrec ([loop _ (lambda (n) (_)
+			       (letrec ([f 't (lambda (x) ('t) '#t)])
+				 (letrec ([loop 't (lambda (n) ('t)
 							  (if (= '0 n)
 							      world
 							      (rfilter f (app loop (-_ n '1)))))])
 				   (app loop '5)))
-			       notype)))
+			       'notype)))
      (static-elaborate-language '(program
-	    (letrec ([f _ (lambda (x) (_) '#t)])
+	    (letrec ([f 't (lambda (x) ('t) '#t)])
 	      (rfilter
 	       f
 	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))
-	    notype))]
+	    'notype))]
 
     ["Simple test to make sure we keep the quotes on:" 
-     (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) notype)))
+     (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) 'notype)))
      (static-elaborate-language '(program (cons (quote 7) world)
-		 notype))]
+		 'notype))]
 
 ;    [(error 'foo "bar") 9]
 
 
-    ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) notype))])
+    ,(let ([prog '(static-elaborate-language '(program (cons (khood-at '30 '40 '50) world) 'notype))])
        `["Now run with a regiment-prim that we shouldn't be able to elaborate" 
 	 (static-elaborate ',prog)
 	 ,prog])

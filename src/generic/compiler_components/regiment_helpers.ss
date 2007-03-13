@@ -363,7 +363,7 @@
 			   (match inspec
 			     ;; The optional initial production may or may not be supplied:
 			     [(grammar ,g ,initialprod ...)
-			      (unless (apply check-grammar prog g initialprod)
+			      (unless (apply check-grammar name prog g initialprod)
 				(error 'build-compiler-pass "Bad input to pass: \n ~s" prog))]
 			     [(assert ,f)
 			      (unless (f prog)
@@ -382,7 +382,8 @@
 			       [(grammar ,gram ,optional_initialprod ...)
 				(if (regiment-verbose) 
 				    (printf "~a: Got result, checking output grammar...\n" name))
-				(or (apply check-grammar result gram optional_initialprod)
+				(or (apply check-grammar `(,name ,result ,gram ,@optional_initialprod))
+				    ;(inspect (apply list 'FOOFOO name result gram optional_initialprod))
 				    (begin (pretty-print result) #f)
 				    (error 'build-compiler-pass 
 					   "Bad pass output from ~a, failed grammar try (analyze-grammar-failure failure-stack): \n ~s" 

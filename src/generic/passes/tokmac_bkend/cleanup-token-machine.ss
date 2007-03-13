@@ -312,7 +312,7 @@
 	     [(or ,[a]) a]
 	     [(or ,[a] ,b ...)
 	      `(if ,a '#t
-		   ,(loop `(or ,b ...)))]
+		   ,(loop `(or ,b ...)))]	     
 
 	     [(if ,[test] ,[conseq] ,[altern])
 	      `(if ,test ,conseq ,altern)]
@@ -493,6 +493,9 @@
 			     '(aggr #f))))]
 
 	     [(leds ,what ,which) `(leds ,what ,which)]
+
+	     ;; This just maps onto plain append:
+	     [(List:append ,[a] ,[b]) `(append ,a ,b)]
 
 	     [(,prim ,[rands] ...)
 	      (guard (or (token-machine-primitive? prim)
