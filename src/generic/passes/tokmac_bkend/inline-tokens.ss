@@ -17,6 +17,7 @@
   (require (only "../../constants.ss" chezimports ASSERT)
            "../../../plt/iu-match.ss"
 	   "../../compiler_components/prim_defs.ss"
+	   "../../constants.ss"
            (all-except "../../compiler_components/tml_generic_traverse.ss" test-this these-tests)
            (all-except "../../compiler_components/regiment_helpers.ss" test-this these-tests)
            (all-except "../../util/helpers.ss" test-this these-tests)

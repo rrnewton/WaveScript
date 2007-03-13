@@ -245,7 +245,7 @@
 
 
 
-#!eof
+#|
 
 (resolve-varrefs 
  `(lang 
@@ -365,3 +365,4 @@
                         ___VIRTQUEUE____15))
                     s2_5))))))
      toptype))
+|#

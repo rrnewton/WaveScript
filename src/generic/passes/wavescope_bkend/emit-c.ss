@@ -601,7 +601,7 @@
 	  [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
 	  [(assert-type ,t nullarr) (wrap (PolyConst 'nullarr t))]
 	  [(assert-type ,t '())     (wrap (PolyConst '() t))]
-	  ['()                      (wrap (PolyConst '() t))]
+;	  ['()                      (wrap (PolyConst '() t))]
 
 	  [nulltimebase             (Const name type 'nulltimebase)]
 

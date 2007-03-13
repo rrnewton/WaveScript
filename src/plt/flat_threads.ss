@@ -1,6 +1,7 @@
 
 (module flat_threads mzscheme
   (require (lib "include.ss")
+	   "../generic/constants.ss"
            (prefix rn: "../generic/util/helpers.ss"))
   (provide run-flat-threads yield-thread
            test-this these-tests)
