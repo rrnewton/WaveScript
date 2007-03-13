@@ -14,8 +14,10 @@ fi
 MACHINE=`uname`
 if [ $MACHINE == "Linux" ];
 then MT=i3le;
-elif [ $MACHINE == "Darwin" ];  ## OOPS, INCLUDE INTEL TOO!
+elif [ $MACHINE == "Darwin" && `uname -p` == "powerpc" ];
 then MT=ppcosx;
+elif [ $MACHINE == "Darwin" && `uname -p` == "i386" ];
+then MT=i3osx;
 elif [ $MACHINE == "Windows" ];
 then MT=i3nt;
 else echo Unknown platform for scheme system: $MACHINE
