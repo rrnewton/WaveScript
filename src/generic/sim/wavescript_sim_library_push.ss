@@ -86,7 +86,7 @@
 		 )
     (chezprovide (for for-loop-stack)
 ;		 letrec 
-		 length print
+		 Array:length print
 		 ;+ - * / ^
                                  
                  ;parmap
@@ -116,10 +116,9 @@
        ;; (alias lambda lambda)  
        (alias let let) ;; We assume type info has been stripped.
 
-       (define orig-length #%length)
        (import (add-prefix scheme s:))
        )
-     (begin (define orig-length length)
+     (begin 
 	    (require (prefix s: mzscheme))
 	    (require (prefix s: "../../plt/chez_compat.ss"))))
 
@@ -853,7 +852,7 @@
        (DEBUGMODE (unless (vector? v) (error 'tupref "this is not a tuple: ~s" v)))
        (vector-ref v ind))
 
-     (define List:length orig-length)
+     (define List:length s:length)
      (define List:ref list-ref)
 
      (define List:make make-list)
@@ -888,7 +887,7 @@
      (define Array:make make-vector)
      (define Array:ref  vector-ref)
      (define arr-set! vector-set!)
-     (define ws-length   vector-length)
+     (define Array:length   vector-length)
 
      ;; EQ? based hash tables:
 #;
@@ -1109,13 +1108,11 @@
 		    (define ^ ws^) 
 		    ;(define-syntax letrec (identifier-syntax ws-letrec))
 ;		    (define-id-syntax letrec  ws-letrec)
-		    (define length ws-length)
 		    ;(define-id-syntax print ws-print)
 		    (define print ws-print)
 		    )
 	     (provide (rename ws+ +) (rename ws- -) (rename ws* *) (rename ws/ /) (rename ws^ ^)
 ;		      (rename ws-letrec letrec)
-		      (rename ws-length length)
 		      (rename ws-print print)                      
                       for ;for-loop-stack
                       ))

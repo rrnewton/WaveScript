@@ -36,7 +36,7 @@ fun syncN (strms, ctrl) {
       requests = [];
     }
     print("  Current ACCS: ");
-    for ii = 0 to accs.length - 1 {
+    for ii = 0 to accs.Array:length - 1 {
       if accs[ii] == nullseg
       then print("null  ")
       else print(show(accs[ii].start) ++ ":" ++ show(accs[ii].end) ++ "  ");
@@ -56,7 +56,7 @@ fun syncN (strms, ctrl) {
     else {
       let (fl, st, en) = requests.head;
       let allready = true;
-      for i = 0 to accs.length - 1 {
+      for i = 0 to accs.Array:length - 1 {
 	if (accs[i] == nullseg ||
 	    accs[i].start > st ||
 	    accs[i].end < en)
@@ -68,7 +68,7 @@ fun syncN (strms, ctrl) {
 	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
-	  for i = 0 to accs.length - 1 {
+	  for i = 0 to accs.Array:length - 1 {
 	    output := subseg(accs[i], st, size) ::: output;
 	  }
 	  emit(List:reverse(output));
@@ -76,7 +76,7 @@ fun syncN (strms, ctrl) {
 	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 
 	// Destroy the discarded portions and remove the serviced request:
-	for j = 0 to accs.length - 1 {
+	for j = 0 to accs.Array:length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
 	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
 	};

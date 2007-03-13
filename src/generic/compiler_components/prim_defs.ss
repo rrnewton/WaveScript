@@ -404,7 +404,7 @@
     ;; Array handling:
     (Array:make        (Int 'a) (Array 'a))
     (Array:ref         ((Array 'a) Int) 'a)
-    (length           ((Array 'a)) Int)
+    (Array:length           ((Array 'a)) Int)
 
     ;Array:build, make, ref, set, length, append? reverse?
 

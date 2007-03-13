@@ -788,7 +788,7 @@
 	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
 	
-	[(length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
+	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
 	[(arr-set! ,x ...)
 	 (error 'emitC:Value "arr-set! in Value context: ~s" `(arr-set! ,x ...))]

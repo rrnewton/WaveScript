@@ -65,14 +65,14 @@ syncN =
     
     // Debugging helper functions:
     fun printaccs() {
-      for i = 0 to accs.length - 1 {
+      for i = 0 to accs.Array:length - 1 {
 	if accs[i] == nullseg
 	then print("null  ")
 	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
       }
     };
     fun printwidths(){
-      for i = 0 to accs.length - 1 {
+      for i = 0 to accs.Array:length - 1 {
 	if accs[i] == nullseg
 	then print("0   ")
 	else print(show(accs[i].width) ++ " ");
@@ -94,7 +94,7 @@ syncN =
     else {
       let (fl, st, en) = requests.head;
       allready = true;
-      for i = 0 to accs.length - 1 {
+      for i = 0 to accs.Array:length - 1 {
 	if (accs[i] == nullseg ||
 	    (fl && accs[i].start > st) || // This only matters if we're retaining it.
 	    accs[i].end < en)
@@ -114,7 +114,7 @@ syncN =
 	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
-	  for i = 0 to accs.length - 1 {
+	  for i = 0 to accs.Array:length - 1 {
 	    output := subseg(accs[i], st, size) ::: output;
 	  }
 	  emit(List:reverse(output));
@@ -123,7 +123,7 @@ syncN =
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	};
 	// In either case, destroy the finished portions and remove the serviced request:
-	for j = 0 to accs.length - 1 {
+	for j = 0 to accs.Array:length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
 	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
 	};
@@ -354,7 +354,7 @@ fun atan2(arg1,arg2) {
 
 amap_inplace :: (a -> b, Array a) -> Array b;
 fun amap_inplace(f, arr) {
-  for i = 0 to arr.length - 1 {
+  for i = 0 to arr.Array:length - 1 {
     arr[i] := f(arr[i]);
   }
   arr
@@ -362,8 +362,8 @@ fun amap_inplace(f, arr) {
 
 amap :: (a -> b, Array a) -> Array b;
 fun amap(f, arr) {
-  narr = Array:make(arr.length, f(arr[0]));
-  for i = 1 to arr.length - 1 {
+  narr = Array:make(arr.Array:length, f(arr[0]));
+  for i = 1 to arr.Array:length - 1 {
     narr[i] := f(arr[i]);
   };
   narr
@@ -371,7 +371,7 @@ fun amap(f, arr) {
 
 fun afold(f, zero, arr) {
   lhs = zero;
-  for i = 0 to arr.length-1 {
+  for i = 0 to arr.Array:length-1 {
     lhs := f(lhs, arr[i])
   }
   lhs
@@ -393,15 +393,15 @@ fun amult_scalar_inplace(arr,s) {
 
 fun adot(arr1,arr2) {
   lhs = gint(0);
-  for i = 0 to arr1.length-1 {
+  for i = 0 to arr1.Array:length-1 {
     lhs := lhs + arr1[i]*arr2[i];
   }
   lhs
 }
 
 fun apairmult(arr1,arr2) {
-  narr = Array:make(arr1.length, arr1[0]);
-  for i = 0 to arr1.length - 1 {
+  narr = Array:make(arr1.Array:length, arr1[0]);
+  for i = 0 to arr1.Array:length - 1 {
     narr[i] := arr1[i] * arr2[i];
   };
   narr
@@ -410,7 +410,7 @@ fun apairmult(arr1,arr2) {
 fun a_max(arr) {
   val = arr[0];
   ind = 0;
-  for i = 1 to arr.length-1 {
+  for i = 1 to arr.Array:length-1 {
     if (arr[i] > val) then {
       val := arr[i];
       ind := i;
