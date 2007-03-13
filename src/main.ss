@@ -310,7 +310,7 @@
 	    (match x
 	      [nullseg (f x)]
 	      [nullarr (f x)]
-	      ['()     (f x)]
+	      ['()     (printf "Lifting null!\n") (f x)]
 	      [,other (fallthru other)]))])
 
 (define-pass unlift-polymorphic-constant
@@ -327,7 +327,7 @@
 	       (guard (eq? v1 v2) (pconst? c))
 	       (ASSERT (not (polymorphic-type? t)))
 	       `(assert-type ,t ,c)]
-	    [,c (guard (pconst? c)) 
+	    [,c (guard (pconst? c))
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
 	    [,other (fallthru other)]))])
 
@@ -704,7 +704,13 @@
 	     (unless (regiment-quiet) (printf "WSCOMP: Evaluating WS source: \n \n"))
 	     x]
 	    [else (error 'wsint "bad input: ~s" x)]))
-   (define typed (retypecheck (pass_desugar-pattern-matching (verify-regiment prog))))
+   (define typed 
+    (let ([p prog])
+      (ws-run-pass p verify-regiment)
+      (ws-run-pass p pass_desugar-pattern-matching)
+      (ws-run-pass p resolve-varrefs)
+      (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
+      p))
 
    (ASSERT (andmap symbol? flags))
 

@@ -115,9 +115,9 @@ public:
   static ptr append(const ptr& x, const ptr &y);
   static ptr reverse(const ptr & ls);
 
-  static T listRef(const ptr & ls, wsint_t ind);
-  static wsint_t listLength(const ptr & ls);
-  static ptr makeList(wsint_t len, T init);
+  static T ref(const ptr & ls, wsint_t ind);
+  static wsint_t length(const ptr & ls);
+  static ptr make(wsint_t len, T init);
 
   friend bool wsequal<T> (const boost::shared_ptr< cons<T> > & x, const boost::shared_ptr< cons<T> > & y);
   friend ostream& operator<< <T>(ostream& output, const boost::shared_ptr< cons<T> > & );

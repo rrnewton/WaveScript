@@ -430,6 +430,7 @@
 	  '() ;;TODO, FIXME: wsq decls
 	  )]
 
+	[(assert-type ,t ,[q1 q2 q3]) (values q1 q2 q3)]
 	
 	  [,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
@@ -600,6 +601,7 @@
 	  [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
 	  [(assert-type ,t nullarr) (wrap (PolyConst 'nullarr t))]
 	  [(assert-type ,t '())     (wrap (PolyConst '() t))]
+	  ['()                      (wrap (PolyConst '() t))]
 
 	  [nulltimebase             (Const name type 'nulltimebase)]
 
@@ -804,16 +806,16 @@
 	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
 	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
 	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
-	[(assert-type (List ,t) (reverse ,[Simple -> ls]))
+	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
 	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
-	[(assert-type (List ,[Type -> ty]) (append ,[Simple -> ls1] ,[Simple -> ls2]))
+	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
 	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
 	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::List:ref(",ls", ",ind")"))]
+	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
 	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::List:length(",ls")"))]
-	[(makeList ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::makeList(",n", ",init")"))]
+	 (wrap `("cons<",(Type t)">::length(",ls")"))]
+	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
+	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
 ;; Don't have types for nulls yet:
@@ -882,8 +884,10 @@
     [Int            (printf "%d" e)]
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
-    ;[Complex        (stream `("complex<float>(",e")"))]
-    [Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
+    ;;[Complex        (stream `("complex<float>(",e")"))]
+    ;[Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
+    ;[Complex        (stream "\"<Cannot currently print complex>\"" )]
+    [Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
     [String         (printf "%s" `(,e".c_str()"))]
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]

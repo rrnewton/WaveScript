@@ -249,7 +249,7 @@ boost::shared_ptr< cons<T> > cons<T>::reverse(
 }
 
 template <class T>
-T cons<T>::listRef(const boost::shared_ptr< cons<T> > & ls,
+T cons<T>::ref(const boost::shared_ptr< cons<T> > & ls,
 		   wsint_t ind)
 {  
   boost::shared_ptr< cons<T> > ptr = ls;
@@ -262,7 +262,7 @@ T cons<T>::listRef(const boost::shared_ptr< cons<T> > & ls,
 }
 
 template <class T>
-wsint_t cons<T>::listLength(const boost::shared_ptr< cons<T> > & ls)
+wsint_t cons<T>::length(const boost::shared_ptr< cons<T> > & ls)
 {  
   boost::shared_ptr< cons<T> > ptr = ls;
   int count = 0;
@@ -274,7 +274,7 @@ wsint_t cons<T>::listLength(const boost::shared_ptr< cons<T> > & ls)
 }
 
 template <class T>
-boost::shared_ptr< cons<T> > cons<T>::makeList(wsint_t n, T init)
+boost::shared_ptr< cons<T> > cons<T>::make(wsint_t n, T init)
 {
   int count = n;
   // Start out null.

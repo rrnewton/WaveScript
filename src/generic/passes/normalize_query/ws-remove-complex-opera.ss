@@ -14,6 +14,9 @@
 ;;;; expression. When more than one subexpression is complex, the new
 ;;;; variables are bound in parallel by a single let expression.
 ;;;;
+;;;; NOTE: polymorphic constants (e.g. null list) are *not* considered
+;;;; simple for the purposes of this pass.
+;;;; 
 ;;;; .author Ryan Newton
 
 ;===============================================================================
@@ -110,15 +113,25 @@
 		 body)
 	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
 	  ))
+        
+    (define ws-rem-complex:simple? simple-expr?)
+    
+    #;
+    (define ws-rem-complex:simple?
+      (lambda (x)
+	(and (simple-expr? x)
+	     (not (null? x))
+	     )))
+
 
     ;; Coerces an expression to be simple, producing new bindings.
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
-      (if (simple-expr? x)
+      (if (ws-rem-complex:simple? x)
 	  (values x '())
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
-		    [(type) (recover-type x tenv)]
+		    [(type) (begin  (recover-type x tenv))]
 		    [(name) (unique-name 'tmp 
 					 #;(meaningful-name x)
 					 )])
@@ -137,7 +150,10 @@
     ;; The returned expression should be simple.
     (define (process-expr expr tenv)
       (match expr
-	   [,x (guard (simple-expr? x)) (vector x '())]
+	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
+	   
+	   ['() (vector ''() '())]
+
 
 	   [(lambda ,formals ,types ,body)
 	    (let-values ([(body decls) (make-simple body (tenv-extend tenv formals types))])

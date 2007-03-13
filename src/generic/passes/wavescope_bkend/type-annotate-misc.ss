@@ -36,17 +36,16 @@
 	 `(seg-get (assert-type ,(recover-type seg tenv) ,seg) ,ind)]
 	[(toArray ,[ss]) `(toArray (assert-type ,(recover-type ss tenv) ,ss))]
 
-	[(append ,[x] ,[y])
-	 `(assert-type ,(recover-type x tenv) (append ,x ,y))]
-	[(reverse ,[x])
-	 `(assert-type ,(recover-type x tenv) (reverse ,x))]
+	[(List:append ,[x] ,[y])
+	 `(assert-type ,(recover-type x tenv) (List:append ,x ,y))]
+	[(List:reverse ,[x])
+	 `(assert-type ,(recover-type x tenv) (List:reverse ,x))]
 	[(List:length ,[x])
 	 `(List:length (assert-type ,(recover-type x tenv) ,x))]
 	[(List:ref ,[x] ,[i])
 	 `(List:ref (assert-type ,(recover-type x tenv) ,x) ,i)]
-	[(makeList ,[n] ,[init])
-	 `(makeList ,n (assert-type ,(recover-type init tenv) ,init))]
-
+	[(List:make ,[n] ,[init])
+	 `(List:make ,n (assert-type ,(recover-type init tenv) ,init))]
 
 	;; TODO, FIXME: THIS IS A HACKISH AND BROKEN APPROACH:
 	

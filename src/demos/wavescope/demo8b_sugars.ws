@@ -1,6 +1,6 @@
 
 namespace Foo {
-  s0 = timer(3.0);
+  s0 = timer(300.0);
 }
 
 namespace Bar {

@@ -57,7 +57,11 @@ go "demo6c_syncN.ws"
 go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"
 
+go "demo8a_generic_arith.ws" 
+#go "demo8b_sugars.ws"
+
 go "demo11_simple_merge.ws"
+
 
 
 # ;    "demo5b_better.ws"

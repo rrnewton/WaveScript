@@ -59,12 +59,9 @@
            (guard (symbol? datum))
            (vector `(quote ,datum) '())]
           [(quote ,datum)
-           (let* ([tmp (unique-name 'tmp)]
-		  [exp (datum->code datum)]
-		  ;; Null tenv is ok, it's just a constant:
-		  [type (recover-type exp (empty-tenv))]
-		  )
-             (vector tmp `((,tmp ,type ,exp))))]
+           (let* ([tmp (unique-name 'tmp)])
+	     (let-values ([(exp type) (datum->code datum)])	       
+	       (vector tmp `((,tmp ,type ,exp)))))]
           [(lambda ,formals ,types ,[result])
 	   (match result
 	     [#(,body ,body-b*) 
@@ -93,6 +90,7 @@
 		     (letrec ,body-b* ,body)
 		   ,type))))]))]
 
+  ;; Works just for lists right now.
   (define datum->code
     (let* ([pow32 (expt 2 32)]
 	   [pow31 (expt 2 31)]
@@ -101,11 +99,24 @@
 	      (if (< n pow31) n
 		  (- (- pow32 n))))])
       (lambda (x)
-	(cond		     
-	 [(pair? x)
-	  `(cons ,(datum->code (car x))
-		 ,(datum->code (cdr x)))]
-	 [else `(quote ,x)]))))
+	;(DEBUGASSERT pair? x)
+	;; Null tenv is ok, it's just a constant:
+	(let ([type (if (pair? x) 
+			`(List ,(recover-type `',(car x) (empty-tenv)))
+			#f)])
+	  (values 
+	   (let loop ([x x])
+	     (cond		     
+	      [(pair? x)	       
+	       `(cons ,(first-value (datum->code (car x)))
+		      ,(loop (cdr x)))]
+	      ;; Respect the invariant that nulls have type assertions:
+	      [(null? x) (ASSERT type)	       
+	       `(assert-type ,type (quote ,x))]
+	      [else `(quote ,x)]
+	      ;;[else (error 'datum->code "unhandled complex constant: ~s" x)]
+	      ))
+	   type)))))
 #;
   (define negate-datum
     (lambda (datum)
