@@ -178,9 +178,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (ASSERT (putenv "REGDEBUGMODE" "ON"))
 
        ;; Now copy that .so file to our stored binaries directory.
+       ;; But we only do this on faith, so first test if the dir is there:
+
+;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
+
        (when (directory-exists? "/var/www/regiment_binaries")
 	 (fprintf orig-console "Copying prebuilt binary to website.\n")
-	 (let* ([webfile (format "/var/www/regiment_binaries/~a_~a_main_chez.so" svn-revision machine-type)]
+	 (let* ([webfile (format "/var/www/regiment_binaries/~a/~a_~a_main_chez.so" 
+				 machine-type svn-revision machine-type)]
 		[localfile (format "build/~a/main_chez.so" machine-type)])
 	   (if (file-exists? webfile) (delete-file webfile))
 	   (copy-file localfile webfile)
@@ -207,10 +212,14 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (define wsparse (system/exit-code "make wsparse &> 6_BUILD_WSPARSE.log"))
        (fpf "plt: Building wsparse executable:             ~a\n" (code->msg! wsparse))
 
+
+;; [2007.03.13] Might this out because we have a seperate, more thorough script that does it:
+
        ;; Now copy that executable file to our stored binaries directory.
        (when (directory-exists? "/var/www/regiment_binaries")
 	 (fprintf orig-console "Copying prebuilt wsparse to website.\n")
-	 (let* ([webfile (format "/var/www/regiment_binaries/~a_~a_wsparse" svn-revision machine-type)])
+	 (let* ([webfile (format "/var/www/regiment_binaries/~a/~a_~a_wsparse" 
+				 machine-type svn-revision machine-type)])
 	   (if (file-exists? webfile) (delete-file webfile))
 	   (copy-file "bin/wsparse" webfile)
 	   (ASSERT (system (format "chgrp www-data ~a" webfile)))

@@ -31,8 +31,15 @@ echo If this doesn\'t work there might not be a precompiled binary for this SVN 
 echo Check what revisions have binaries available at: 
 echo   http://www.regiment.us/regiment_binaries/
 echo
-wget  "http://www.regiment.us/regiment_binaries/"$SOFILE
-wget  "http://www.regiment.us/regiment_binaries/"$WSPARSEFILE
+
+if [ `which wget` ];
+then wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE;
+     wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE;
+elif [ `which curl` ];
+then curl "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE -o $SOFILE;
+     curl  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE -o $WSPARSEFILE;
+else echo NEITHER CURL NOR WGET AVAILABLE!!; exit 1
+fi 
 
 echo Moving to build/$MT/main_chez.so
 mv $SOFILE build/$MT/main_chez.so
