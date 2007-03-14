@@ -4,9 +4,8 @@
 <INSTALLATION>
 ======================================================================
 
-
-Quick Start (Interpreted):
-
+ --- Quick Start (Interpreted): ---
+    
 After the code is checked out into a directory (let's say
 ~/wavescript) simply run this script from a Bash prompt:
    cd ~/wavescript
@@ -18,7 +17,7 @@ the help info, then you're good to go.  For parsing ".ws" files you'll
 need "mzscheme" to be in your path.
 
 
-Slightly less Quick Start:
+ --- Slightly less Quick Start: ---
 
 If you want to manually (and more permanently) set up the necessary
 environment variables, all you need to do is the following.  Basically, 
@@ -58,6 +57,28 @@ Step 7: Unless you have access to the commercial Chez Scheme compiler,
 	  http://regiment.us/regiment_binaries/
 
 
+ --- Installing under Windows ---
+
+[Note: this doesn't work yet - 2007.03.13]
+
+Step 1: Install cygwin, include the following packages (under Development):
+        make, 
+Step 2: Install Petite Chez Scheme, say in c:\csv7.3.  Then add
+        c:\csv7.3\bin\i3nt\ to your path so that "petite.exe" is visible.
+Step 3: Install PLT Scheme and add the install directory to your path
+        so that MzScheme.exe and Mzc.exe are visible.
+
+Step 4: After checking out the WaveScript repository, manually bind
+        REGIMENTD to the *windows* path where this repository resides
+        (i.e. with backslashes and drive letter).  The
+        install_environment_vars will not work because it will use the
+        Cygwin (unix) directory format.  Also add REGIMENTD/bin to
+        your PATH.
+
+Step 5: Now try "regiment test".
+Step 6: Next, switch to src/ and run "make wsparse".  That's the
+        parser, to get the prebuilt binaries for the compiler
+        ./download_precompiled_binaries from the REGIMENTD directory.
 
 
 <Running Regiment>
