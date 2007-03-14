@@ -17,25 +17,45 @@ if ! [ $REGIMENTD ]; then
     fi;
 fi
 
+#echo CURRENTDIR "$REGIMENTD"
 #MT=`echo '(display (machine-type))' | $REGIMENTD/depends/petite -q`
 
 MT=`$REGIMENTD/depends/get_machine_type`
 
+ARGS=${1+"$@"}
+
 #echo RUNNING ON MACHINE TYPE: "<"$MT">"
+
+script() {
+#    exec "$REGIMENTD/src/regiment_script.ss" $*
+
+    INVOKEDIR=`pwd`
+    SCRIPT="$REGIMENTD/src/regiment_script.ss"
+    ENTRY="$REGIMENTD/src/regiment.ss"
+    #echo ARGS: "<"$ARGS">"
+    if (which chez > /dev/null); 
+	then SCHEME=chez;
+    elif (which petite > /dev/null); 
+	then SCHEME=petite
+    elif [ -f $REGIMENTD/depends/petite ]; 
+	then SCHEME="$REGIMENTD/depends/petite"
+    else echo CHEZ SCHEME not found.; exit -1 
+    fi 
+    (cd "$REGIMENTD/src"; exec $SCHEME --script "regiment.ss" "$INVOKEDIR" $ARGS)
+}
+
 
 # If we can we use the stored heap, otherwise we run it as a script.
 if [ "$REGOPTLVL" == "3" ];
 then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
       then exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.OPT.heap $*;
-      else exec $REGIMENTD/src/regiment_script.ss $*
+      else script;
       fi);
-
 # Not currently using heaps for debug mode:
 elif [ "$REGDEBUGMODE" == "ON" ];
-then exec $REGIMENTD/src/regiment_script.ss $* ;
-
-elif [ -f $REGIMENTD/src/build/$MT/regiment.0.heap ];
+then script;
+elif [ -f "$REGIMENTD/src/build/$MT/regiment.0.heap" ];
 then #echo Running regiment from saved heap...;
     exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
-else exec $REGIMENTD/src/regiment_script.ss $*;
+else script;
 fi
