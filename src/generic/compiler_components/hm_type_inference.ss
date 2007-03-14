@@ -25,6 +25,7 @@
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
 ;; type aliases.  This will remove most of the need for types-compat?
 
+
 (module hm_type_inference mzscheme
   (require ;`"../../plt/common.ss"
            "prim_defs.ss"
