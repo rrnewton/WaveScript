@@ -38,5 +38,8 @@ if [ ! -d ./src/build/$MT ]; then mkdir ./src/build/$MT; fi
 echo Moving to build/$MT/main_chez.so
 mv $SOFILE build/$MT/main_chez.so
 echo Moving to bin/wsparse
-mv $WSPARSEFILE bin/wsparse
+if [ "$MT" == "i3nt" ];
+then mv $WSPARSEFILE bin/wsparse.exe;
+else mv $WSPARSEFILE bin/wsparse;
+fi
 chmod +x bin/wsparse
