@@ -53,6 +53,7 @@
 ;				(string-append (default-regimentd) "/src/chez")
 ;				(string-append (default-regimentd) "/src/generic")
 				(string-append (default-regimentd) "/src")
+				;"."
 				))
 	   
 	   ;(optimize-level 0) ;0/1/2/3)
@@ -118,7 +119,6 @@
 ;(include "./config.ss") ;; Need to do this for windows... haven't got a good system yet.
 (include "config.ss")
 
-
 ;; Set some Chez scheme parameters.
 (print-graph #t )
 (print-gensym #f)
@@ -168,6 +168,7 @@
 (eval-when (compile load eval) 
   (cd (string-append (default-regimentd) "/src/chez")))
 
+
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
 
 ;; After this point, everything must use chez:module for native chez modules.
@@ -176,7 +177,7 @@
   (include "chez/regmodule.ss")  ;; Common module syntax.
   (import reg:module)  
   )
-
+ 
  ;; Load this first.  Widely visible constants/parameters.
 (include "chez/chez_constants.ss")
 
@@ -267,6 +268,7 @@
 	   ;(define-syntax  make-rgb (syntax-rules () [(_ x ...) (begin x ... 'nogui-stub)]))
 	   ))
 
+
 ;======================================================================
 ;; [2005.11.16] This is a nasty dependency, but I had to write the "sleep" function in C:
 ;; This tries to dynamically load the shared object the first time the function is called:
@@ -286,9 +288,15 @@
 	   ;; If that build failed and we still don't have it we have to throw an error:
 	   (define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
      (sleep t))))
+
+;#!eof (inspect (source-directories)) ;; Working on window version
+
 ;; Only make a system call once to sync us with the outside world.
 (define current-time (seconds-since-1970))
 ;======================================================================
+
+
+
 
 ;; Don't use these yet from WS:
 (IFWAVESCOPE
