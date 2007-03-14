@@ -1,4 +1,5 @@
 
+
 ;;;; .title A simple consensus interface to discrete 1d complex FFTs.
 ;;;; .author Ryan Newton
 
@@ -36,6 +37,9 @@
     ;; If we're using chez and have FFTW available, use that instead:
     (IFCHEZ 
      (let ([fftw-file (format "~a/src/build/~a/fftw.so" (REGIMENTD) (machine-type))])
+	(inspect fftw-file)
+	(inspect (file-exists? fftw-file))
+
        (when (file-exists? fftw-file)
 	 (printf "Loading FFTW extension.\n")
 	 (load fftw-file)

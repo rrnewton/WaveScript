@@ -101,19 +101,17 @@
 
   (chezimports constants)
 
+;; If this is enabled, the type assigned to a let-bound variable is
+;; lowered to the LUB of its call-site requirements, rather than the
+;; most general type.
+(define ENABLELUB #t)  
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
 		    Int16
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
-			))
-
-  
-  
-  
-  
-  
+			))  
   
 ; ======================================================================
 ;;; Helpers
@@ -235,12 +233,13 @@
 	  (append (map (lambda (v t) 
 			 (if flag
 			     (match t
-			       [(quote ,pr)
-				(ASSERT pair? pr)
+			       ;; Expects the type to be a type var:
+			       [(quote ,pr) (ASSERT pair? pr)
+				;; CONSTRUCT A DELAYED UNIFY:
+				;; This is the scratch-pad on which we'll record the info from the call-sites.		
 				(set-cdr! pr `(LATEUNIFY #f ,(make-tcell (cdr pr))))
 				(list v `(quote ,pr) #t)
 				])
-			     
 			     (list v t #f)))
 		    syms types)
 		  (cdr tenv))
@@ -337,7 +336,7 @@
 ;; [2007.02.21]
 ;; HACK: including this unifier and unifying each of these again:
 ;; Shouldn't have to do this, but there's a problem with the design.
-(trace-define (do-lub!!! t UNIFIER)
+(define (do-lub!!! t UNIFIER)
   (let ([rands 
 	 (match t
 	   [(LUB ,[a] ,[b]) (append a b)]
@@ -351,21 +350,26 @@
     ))
 
 ;; This traverses the type and does any LATEUNIFY's
-(trace-define (do-late-unify! t)
+(define (do-late-unify! t)
   (match t
     [,s (guard (symbol? s))                  (void)]
     [(quote ,pr)
      (match pr
-       ;; No call sites to unify:
        [(,v . (LATEUNIFY #f ,b))
+	;; No call sites to unify.
 	(set-cdr! pr b)
 	(do-late-unify! b)]
        [(,v . (LATEUNIFY ,a ,b))
-        (printf "LATEUNIFY ~s ~sn" a b)
-	(let* ([lub (do-lub!!! a b)]
-	       [tc (make-tcell b)])
-	  (types-equal! (instantiate-type lub '()) tc "unknown location")
-	  (set-cdr! pr tc))]
+        (printf "LATEUNIFY ~s ~s\n" a b)
+	(if ENABLELUB
+	    ;; Comupute the LUB and then unify that with the most general
+	    ;; type.  That's our answer.
+	    (let* ([lub (do-lub!!! a b)]
+		   [tc (make-tcell b)])
+	      (types-equal! (instantiate-type lub '()) tc "unknown location")
+	      (set-cdr! pr tc))
+	    ;; Otherwise just the most general type.
+	    (set-cdr! pr b))]
        [(,v . ,oth) (if oth (do-late-unify! oth) (void))])]
     [(LATEUNIFY ,a ,b)
      (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
@@ -544,7 +548,7 @@
 
 
 ;; Assign a type to a procedure application expression.
-(trace-define (type-app rator rattyp rands exp tenv non-generic-tvars)
+(define (type-app rator rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
   (let ([result (make-tcell)])
     (types-equal! rattyp `(,@rands -> ,result) exp)
@@ -600,6 +604,8 @@
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       [,prim (guard (symbol? prim) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
+
+      ;; Here's the magic:
       [,v (guard (symbol? v))
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
@@ -611,6 +617,7 @@
 		     (printf "LETBOUND: ~s\n" v)
 		     (unless (null? nongeneric)
 		       (printf "  NONGENERIC: ~s\n"  nongeneric))
+		     ;(inspect entry)
 
 		     (match entry
 		       [(quote (,tv . (LATEUNIFY ,lubs ,general)))
@@ -623,6 +630,7 @@
 				    (if lubs
 					`(LUB ,lubs ,this-site)
 					this-site))
+			  ;; We return the type for *this* varref.
 			  (values v this-site)
 			  )]
 		       [,oth (error 'annotate-expression "let-bound var should be bound to LATEUNIFY: ~s" oth)])		   
@@ -938,10 +946,14 @@
 (define (annotate-program p)
   (match p
     [(,lang '(program ,e ,t))
-     (annotate-program-once (annotate-program-once p))]
+     ;(annotate-program-once (annotate-program-once p))
+     (annotate-program-once p)
+     ]
     [,oth
      (let-values ([(e t) (annotate-program-once oth)])
-       (annotate-program-once e))]))
+       (values e t)
+       ;(annotate-program-once e)
+       )]))
 
 ;; This is the real thing:
 (define (annotate-program-once p)
@@ -989,19 +1001,20 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
-(trace-define (types-equal! t1 t2 exp)
+(define (types-equal! t1 t2 exp)
   (DEBUGASSERT (and (type? t1) (type? t2)))
   (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
+
+    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp)]
+    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp)]
+
     [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
     [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch x y exp)]
-
-    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp)]
-    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp)]
 
     [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
@@ -1067,7 +1080,7 @@
 
 ;; This returns the least-upper bound of two types.  That is, the
 ;; least-general type that is a superset of both input types.
-(trace-define (LUB t1 t2)
+(define (LUB t1 t2)
 ;  `(LUB ,t1 ,t2)
   ;; UNFINISHED:
 
@@ -1075,9 +1088,10 @@
     [[,x ,y] (guard (eqv? t1 t2)) t1]
     ;[[',tv1 ',tv2] (guard (eqv? tv1 tv2)) ] ;; alpha = alpha
 
+    ;; Two num-types join at NUM:
     [[,x ,y] (guard (memq x num-types) (memq y num-types))
      `(NUM ,(make-tvar))]
-
+    
     [[,x ,y] (guard (symbol? x) (symbol? y))
      (printf "Mismatched basic types: ~s ~s\n" x y)
      ;; Return top:
@@ -1090,13 +1104,17 @@
     [[,ty ',tv] (ASSERT symbol? tv)
      `(quote ,tv)]
 
+    [[(NUM ,tv) (NUM ,ty)] (DEBUGASSERT symbol? tv) (DEBUGASSERT symbol? ty)
+     `(NUM ,(if (eqv? tv ty) tv (make-tvar)))]
+    [[(NUM ,tv) ,ty] (guard (symbol? ty) (memq ty num-types))
+     (DEBUGASSERT symbol? tv)
+     `(NUM ,tv)]
+    [[,ty (NUM ,tv)]  (guard (symbol? ty) (memq ty num-types))
+     (DEBUGASSERT symbol? tv)
+     `(NUM ,tv)]
+
 #|
 
-    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
-    [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
-     (tvar-equal-type! t1 numty exp)]
-    [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
-     (tvar-equal-type! t2 numty exp)]
 
     ;; If one of them is a symbol, it might be a type alias.
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
@@ -1138,7 +1156,7 @@
        [,other `(quote ,(make-tvar))])]
 
     
-    [,otherwise (error 'LUB "this function is probably not finished, types unmatch: ~s ~s" t1 t2)]
+    [,otherwise (error 'LUB "this function is probably not finished, types unmatch: ~s and ~s" t1 t2)]
     [,otherwise (raise-type-mismatch t1 t2 "unknown expression (LUB)")]
     ))
   
@@ -1482,7 +1500,7 @@
 
 
   ;; TODO: FIXME: THIS REPRESENTS A BUG:
-  ["BUG in type checking in petite or full chez:"
+  ["LUB: Here we should infer the less general type: plain Int:"
    (deep-member? 'NUM
     (annotate-program 
     '(foolang '(program
@@ -1503,11 +1521,7 @@
 			    )
 		     sums)
 		 (Stream Int)))))
-   ;; SHOULD PROBABLY BE #T:
-   ;; HACKING NOW, COME BACK TO THIS:
-   #t
-   ]
-
+   #f]
 
   ["This is an ok use of polymorphism"
    (export-type (,type-expression 
@@ -1533,14 +1547,16 @@
    error]
 
 
-  [(values->list (annotate-program
+  ["This is an identity function with LUB type Num a -> Num a"
+   (values->list (annotate-program
 		  '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5)))))
    ,(lambda (x)
       (match x
-	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (unspecified) x)])
+       	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (,unspecified) x)])
 	    (tuple (app f '3) (app f '4.5)))
 	  #(Int Float))
-	 (eq? v1 v2)]))]
+	 (eq? v1 v2)]
+	[,else #f]))]
 
   #;
   ;; Should we type-check with patterns in there?
@@ -1573,3 +1589,43 @@
 ) ; End module. 
 
 ;(require hm_type_inference) (test-inferencer)
+
+
+#|
+
+(lambda (g)
+  ('(j quote
+       (q quote
+          (p LATEUNIFY
+             (LUB '(o Bool -> '(n . #f)) '(m Int -> '(l . #f)))
+             '(k .
+                 #0=(LATEUNIFY
+                      (LUB '(af quote
+                                (ae LATEUNIFY
+                                    (LUB '(ad Bool -> '(ac . #f))
+                                         '(ab Int -> '(aa . #f)))
+                                    '(z Bool -> '(ag . #f))))
+                           '(an quote
+                                (am LATEUNIFY
+                                    (LUB '(al Bool -> '(ak . #f))
+                                         '(aj Int -> '(ai . #f)))
+                                    '(ah Int -> '(ao . #f)))))
+                      '(y quote
+                          (x LATEUNIFY
+                             (LUB '(w Bool -> '(v . #f))
+                                  '(u Int -> '(t . #f)))
+                             '(s . #f)))))))))
+  (letrec ([f '(r . #0#) g]) (tuple (app f 3) (app f #t))))
+((LATEUNIFY
+   (LUB (Bool -> 'n) (Int -> 'l))
+   (LATEUNIFY
+     (LUB (LATEUNIFY
+            (LUB (Bool -> 'ac) (Int -> 'aa))
+            (Bool -> 'ag))
+          (LATEUNIFY (LUB (Bool -> 'ak) (Int -> 'ai)) (Int -> 'ao)))
+     (LATEUNIFY (LUB (Bool -> 'v) (Int -> 't)) 's)))
+  ->
+  #('ao 'ag))
+
+|#
+
