@@ -209,7 +209,7 @@
 ;================================================================================
 
 ;; Do all the post-processing to turn a set of bindings into a single valid expression.
-(define (ws-postprocess ws)
+(trace-define (ws-postprocess ws)
   ;; First we expand includes:
   (let ([ws (apply append 
               (map (lambda (form)
@@ -290,8 +290,18 @@
       [else (error 'parser "Included file not found: ~s\n" inclfile)])
      (ws-parse-file inclfile)]))
 
-(IFCHEZ
+(define (de-cygwin-path fn)
+  (if (< (string-length fn) 13)
+      ;(error 'de-cygwin-path "this can't be a cygwin path: ~s" fn)
+      fn
+      (if (equal? (substring fn 0 10) "/cygdrive/")
+	  (string-append 
+	   (substring fn 10 11)  ":"
+	   (substring fn 11 (string-length fn)))
+	  fn)
+      ))
 
+(IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.
  ;; .returns A parsed file, or #f for failure.
  (define (ws-parse-file fn)    
@@ -333,6 +343,9 @@
 	 ;;(ws-postprocess decls)
 	 decls)))
    
+   (if (eq? 'i3nt (machine-type))
+       (set! fn (de-cygwin-path fn)))
+
    (if (file-exists? "/tmp/wsparse_server_pipe")
        ;; TODO: Make sure path is absolute!!
        (or (try-server) 

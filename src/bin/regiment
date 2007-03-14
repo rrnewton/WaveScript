@@ -41,7 +41,8 @@ script() {
 	then SCHEME="$REGIMENTD/depends/petite"
     else echo CHEZ SCHEME not found.; exit -1 
     fi 
-    (cd "$REGIMENTD/src"; exec $SCHEME --script "regiment.ss" "$INVOKEDIR" $ARGS)
+    #(cd "$REGIMENTD/src"; exec $SCHEME --script "regiment.ss" "$INVOKEDIR" $ARGS)
+    exec $SCHEME --script "$ENTRY" "$INVOKEDIR" $ARGS
 }
 
 

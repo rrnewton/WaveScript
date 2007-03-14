@@ -166,7 +166,7 @@
 
 ;(define start-dir (eval-when (compile load eval) (cd)))
 (eval-when (compile load eval) 
-  (cd (string-append (default-regimentd) "/src/chez")))
+  (current-directory (string-append (default-regimentd) "/src/chez")))
 
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
@@ -599,8 +599,8 @@
 ;; This wipes bindings and reloads.
 (define (reload) 
   ;(define main (++ (REGIMENTD) "/src/main_chez.ss"))
-  (cd (REGIMENTD))
-  (cd "src")
+  (current-directory (REGIMENTD))
+  (current-directory "src")
   ;(wipe) 
   ;(load main)
   (load "main_chez.ss")
