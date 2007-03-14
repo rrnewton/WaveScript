@@ -6,6 +6,7 @@
 
 // run ./get_sample_data first
 
+
 fun mywindow(S, len)
   iterate(x in S) {
     state{
@@ -29,7 +30,7 @@ s1 :: Stream (Sigseg Float);
 s1 = if GETENV("WSARCH") != "ENSBox" 
      then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
-	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
+	   prim_window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ENSBoxAudio(0,4096,0,24000);
 
 //if GETENV("WSARCH") == "ENSBox" 

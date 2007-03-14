@@ -1092,7 +1092,9 @@
 			   ;,typ " " ,(Var input) " = *((",typ"*)input);\n"
 			   ,(naturalize "datum" (Var input) T)
 			   ;; Declare the VQueue... this is basically dead code:
-			   ,(Type vqT)" ",(Var vq)";\n"
+			   ;,(Type vqT)" ",(Var vq)" = 0;\n"
+			   ;; Hardcoding this as void*:
+			   "void* ",(Var vq)" = (void*)0;\n"
 			   
 			   ,@body
 			   

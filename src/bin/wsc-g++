@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# In the future, consider these optimize flags:
+# -falign-functions=n  -falign-jumps=n -falign-labels=n  -falign-loops=n -fbranch-probabilities  -fcaller-saves
+# -fcprop-registers -fcse-follow-jumps  -fcse-skip-blocks  -fdata-sections -fdelayed-branch  -fdelete-null-pointer-checks
+# -fexpensive-optimizations  -ffast-math  -ffloat-store -fforce-addr  -fforce-mem  -ffunction-sections -fgcse  -fgcse-lm
+# -fgcse-sm  -floop-optimize  -fcrossjumping -fif-conversion  -fif-conversion2 -finline-functions  -finline-limit=n
+# -fkeep-inline-functions -fkeep-static-consts  -fmerge-constants  -fmerge-all-constants -fmove-all-movables  -fnew-ra
+# -fno-branch-count-reg -fno-default-inline  -fno-defer-pop -fno-function-cse  -fno-guess-branch-probability -fno-inline
+# -fno-math-errno  -fno-peephole  -fno-peephole2 -funsafe-math-optimizations  -ffinite-math-only -fno-trapping-math
+# -fno-zero-initialized-in-bss -fomit-frame-pointer  -foptimize-register-move -foptimize-sibling-calls
+# -fprefetch-loop-arrays -freduce-all-givs  -fregmove  -frename-registers -freorder-blocks  -freorder-functions -fre-
+# run-cse-after-loop  -frerun-loop-opt -fschedule-insns  -fschedule-insns2 -fno-sched-interblock  -fno-sched-spec
+# -fsched-spec-load -fsched-spec-load-dangerous  -fsignaling-nans -fsingle-precision-constant  -fssa  -fssa-ccp
+# -fssa-dce -fstrength-reduce  -fstrict-aliasing  -ftracer  -fthread-jumps -funroll-all-loops  -funroll-loops --param
+
+# -fPIC | -ON | -g
+#WS_FLAGS="-fPIC -O0"
+#WS_FLAGS="-g -fPIC -O0"
+#WS_FLAGS="-O3"
+WS_FLAGS="-g"
+
+WS_WARNINGS="-Wall -Werror -Wno-unused-variable "
+WS_INCLUDES="-I$WAVESCOPED/include "
+WS_MACROS="-DSegList -DuseArray "
+WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread $WAVESCOPED/libws-SMSegList.so"
+
+WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS $WS_LINK "
+echo Compiling .cpp file using g++.
+if g++ $WS_ALLARGS "$1.cpp" -o "$1.exe";
+then echo
+else
+    echo
+    echo g++ had errors, aborting.
+    exit 1;
+fi;

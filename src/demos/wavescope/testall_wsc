@@ -13,7 +13,7 @@ function go () {
     if ! wsc $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
-#    ./run_query | head -20 >> $RUN
+##    ./run_query | head -20 >> $RUN
 #    if ! ./query.exe >> $RUN; then exit 1; fi
 }
 
@@ -43,7 +43,11 @@ go "demo3d_tuples_of_tuples.ws"
 go "demo3f_morelists.ws"
 go "demo3g_arrays.ws"
 
-# Disabled waiting for binary dataFile reading.
+
+# [2007.03.14] This is where the segfaulting starts:
+# But 5a,5B don't segfault..
+# 6a,6b do segfault.
+
 go "demo4_fft.ws"
 
 go "demo5a_rewindow.ws"
@@ -57,14 +61,7 @@ go "demo7a_marmot_noinline.ws"
 go "demo7b_marmot_phase1.ws"
 
 go "demo8a_generic_arith.ws" 
-#go "demo8b_sugars.ws"
+go "demo8b_sugars.ws"
 
 go "demo11_simple_merge.ws"
 
-
-
-# ;    "demo5b_better.ws"
-#     "demo6_sync.ws"
-#     "demo7_syncN.ws"
-#     "demo8_marmot_noinline.ws"
-#     "demo9_marmot.ws"
