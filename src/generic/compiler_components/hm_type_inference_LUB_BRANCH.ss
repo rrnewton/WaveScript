@@ -322,7 +322,8 @@
     [(LATEUNIFY ,a ,b)
      (error 'export-type "shouldn't be any LATEUNIFY's left at this point: ~s" `(LATEUNIFY ,a ,b))
      `(LATEUNIFY ,a ,b)]
-
+    
+    [(LATEUNIFY #f ,[b]) `(LATEUNIFY #f ,b)]
     [(LATEUNIFY ,[a] ,[b])
      `(LATEUNIFY ,a ,b)]
 
@@ -355,7 +356,12 @@
     [,s (guard (symbol? s))                  (void)]
     [(quote ,pr)
      (match pr
+       ;; No call sites to unify:
+       [(,v . (LATEUNIFY #f ,b))
+	(set-cdr! pr b)
+	(do-late-unify! b)]
        [(,v . (LATEUNIFY ,a ,b))
+        (printf "LATEUNIFY ~s ~sn" a b)
 	(let* ([lub (do-lub!!! a b)]
 	       [tc (make-tcell b)])
 	  (types-equal! (instantiate-type lub '()) tc "unknown location")
@@ -404,7 +410,7 @@
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(LATEUNIFY #f ,[t]) t]
-    [(LATEUNIFY [t1] ,[t2]) (and t1 t2)]
+    [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]   
     [,else #f]))
@@ -598,8 +604,9 @@
 	  (let ((entry (tenv-lookup tenv v)))
 	    (if entry 
                 (cond
-                  ;; Let-bound polymorphism:
-                  [(tenv-is-let-bound? tenv v)
+                  ;; Let-bound polymorphism: 
+		 [(tenv-is-let-bound? tenv v)
+		   ;; Here's another call site which affects the LUB type assigned to the let-bound var.
 		   (let ()
 		     (printf "LETBOUND: ~s\n" v)
 		     (unless (null? nongeneric)
@@ -610,6 +617,8 @@
 			(let ([this-site (instantiate-type general nongeneric)])
 			  (printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" 
 				  tv general this-site)
+			  ;; CAREFUL!  Here we mutate the lubs on that LATEUNIFY.
+			  (DEBUGASSERT (curry eq? 'LATEUNIFY) (cadadr entry))
 			  (set-car! (cddadr entry)  
 				    (if lubs
 					`(LUB ,lubs ,this-site)
@@ -982,6 +991,7 @@
 ;; to reflect this constraint.
 (trace-define (types-equal! t1 t2 exp)
   (DEBUGASSERT (and (type? t1) (type? t2)))
+  (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
     [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
@@ -1127,7 +1137,10 @@
 	    )]
        [,other `(quote ,(make-tvar))])]
 
-    [,otherwise (raise-type-mismatch t1 t2 exp)]))
+    
+    [,otherwise (error 'LUB "this function is probably not finished, types unmatch: ~s ~s" t1 t2)]
+    [,otherwise (raise-type-mismatch t1 t2 "unknown expression (LUB)")]
+    ))
   
   
 ;; This makes sure there are no cycles in a tvar's mutable cell.
