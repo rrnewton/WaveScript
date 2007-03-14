@@ -1,6 +1,7 @@
 
 namespace Foo {
-  s0 = timer(300.0);
+  //s0 = timer(300.0);
+  s0 = audioFile("./countup.raw", 4096, 0, 44000);
 }
 
 namespace Bar {

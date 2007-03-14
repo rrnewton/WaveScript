@@ -104,8 +104,9 @@
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
-			;; Eventually:
-			; Int8 Int16 Int64 Double Complex64
+		    Int16
+		    ;; Eventually:
+		    ;; Int8 Int16 Int64 Double Complex64
 			))
 
   
@@ -519,6 +520,11 @@
    [(integer? c) 'Int]
    [(string? c) 'String] 
    [(boolean? c) 'Bool]
+   
+   [(vector? c) `(Array ,(if (zero? (vector-length c))
+			     ''anytype
+			     (type-const (vector-ref c 0))))]
+
    ;; Temp, not sure if we're going to support symbols or not in the final language:
    [(symbol? c) 'Symbol]
    [(null? c) `(List ,(make-tcell))]
@@ -539,6 +545,23 @@
     result))
 
 ; ======================================================================
+
+(define constant-typeable-as? 
+  (lambda (c ty)
+    (cond 
+     [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+     [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+     [(and (flonum? c))                 (eq? ty 'Float)]
+     [else #f])
+
+    (match ty
+      [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+      [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+      [Float (flonum? c)]
+      [Bool  (boolean? c)]
+      [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
+      [else #f])
+    ))
 
 ;;; Annotate expressions/programs with types.
   
@@ -612,6 +635,12 @@
 	 (values newexp #()))]
 
       ;; Incorporate type assertions.
+      ;; This is a special case for constants.
+      [(assert-type ,ty (quote ,n))
+       (if (constant-typeable-as? n ty)
+	   (values `(assert-type ,ty (quote ,n))  ty)
+	   (error 'hm_type_inference "constant ~s was labeled with type ~s which doesn't match"
+		  `(quote ,n) ty))]
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
 	 (types-equal! (instantiate-type ty '()) et newexp)
@@ -857,6 +886,7 @@
    
     [,c (guard (constant? c)) c]
     [(quote ,c)       `(quote ,c)]
+    [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     
@@ -1177,7 +1207,7 @@
     (display 
      ;; Prettification: we drop the outer parens:
      (match t 
-       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc))
+       [(,tc ,[loop -> arg*] ...) (guard (symbol? tc) (not (eq? tc 'quote)))
 	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
        [,t (loop t)])
      port)))

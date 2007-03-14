@@ -209,7 +209,7 @@
 ;================================================================================
 
 ;; Do all the post-processing to turn a set of bindings into a single valid expression.
-(trace-define (ws-postprocess ws)
+(define (ws-postprocess ws)
   ;; First we expand includes:
   (let ([ws (apply append 
               (map (lambda (form)
