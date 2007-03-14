@@ -2538,7 +2538,7 @@
 
 ["Demos: smap2_two_anchors.rs"
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (++ (REGIMENTD) "/demos/regiment/smap2_two_anchors.rs")))
+   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/smap2_two_anchors.rs")))
  ,(lambda (x) 
     (match (map cadr x)
       ;; Receive one or the other first:
@@ -2548,7 +2548,7 @@
 
 ["Demos: simple/events.rs" retry
  (parameterize ([deglobalize-markup-returns #t])
-   (load-regiment (++ (REGIMENTD) "/demos/regiment/simple/events.rs")))
+   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/simple/events.rs")))
  ,(lambda (ls)
     (andmap (lambda (x) (> (vector-ref x 1) 90)) (map cadr ls)))]
 
@@ -2566,7 +2566,7 @@
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
    (sort < (list->set 
-	    (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions.rs")))
+	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions.rs")))
 	 ))
  ,(lambda (set1)
     (let ([sim (simalpha-current-simworld)])
@@ -2596,10 +2596,10 @@
 		[simalpha-failure-model 'none]
 		[desugar-gradients-mode 'etx]
 		[simalpha-channel-model 'lossless])
-   (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions_folded.rs"))
+   (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs"))
 #;
    (sort < (list->set 
-	    (load-regiment (++ (REGIMENTD) "/demos/regiment/nested_regions_folded.rs")))
+	    (load-regiment (++ (REGIMENTD) "/src/demos/regiment/nested_regions_folded.rs")))
 	 ))
 
  unspecified]
@@ -2620,7 +2620,7 @@
 
 #;
 ["Demos: "
- (load-regiment (++ (REGIMENTD) "/demos/regiment/"))
+ (load-regiment (++ (REGIMENTD) "/src/demos/regiment/"))
  3]
 
 ;; TODO: simple/events

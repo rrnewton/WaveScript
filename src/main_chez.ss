@@ -289,12 +289,10 @@
 	   (define-top-level-value 'sleep (lambda args (error 'sleep "function not loaded from C shared object file.")))))
      (sleep t))))
 
-;#!eof (inspect (source-directories)) ;; Working on window version
-
+;; [2007.03.13] Haven't been using this recently, disabling it due to Windows incompatibility:
 ;; Only make a system call once to sync us with the outside world.
-(define current-time (seconds-since-1970))
+;(define current-time (seconds-since-1970))
 ;======================================================================
-
 
 
 
@@ -338,7 +336,7 @@
 (include "generic/langs/language-mechanism.ss")
 
 (include "generic/langs/lang_wavescript.ss")
-(include "../depends/matpak.ss") (import matpak)
+(include "../../depends/matpak.ss") (import matpak)
 ;(include "generic/sim/wavescript_sim_library.ss")      ;; TODO: remove
 ;(include "generic/sim/wavescript_sim_library_NEW.ss")  ;; TODO: remove
 (include "generic/sim/wavescript_sim_library_push.ss")
@@ -444,6 +442,7 @@
     (include "generic/passes/nesc_bkend/flatten-tokmac.ss")     (import flatten-tokmac)
     (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
     ))
+
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)

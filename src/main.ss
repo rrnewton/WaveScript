@@ -1,3 +1,4 @@
+
 ;;;; .title Compiler Core (main.ss)
 
 ;;;; This contains the core compiler entry points. 
@@ -11,10 +12,12 @@
 (define-regiment-parameter regiment-version "0.87.2")
 
 (define-regiment-parameter svn-revision
-  (and (zero? (system "which svn > /dev/null"))
+  (if (eq? (machine-type) 'i3nt)
+      -9999
+      (and (zero? (system "which svn > /dev/null"))
        (parameterize ([current-directory (REGIMENTD)])
 	 (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
-	 )))
+	 ))))
 
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
@@ -856,7 +859,7 @@
 	)
 
     ;; I put them in another file because they were simply taking up too many LOC:
-    (include "generic/testing/system_tests.ss")  
+     (include "generic/testing/system_tests.ss")  
     ))
   (define-testing test-this (default-unit-tester "Main compiler units + system tests." these-tests))
   (define maintests these-tests)
