@@ -469,8 +469,55 @@ Extensible records should just desugar into plain tuples because of
 our meta-programming approach.
 
 { x | a=3, b=4 }
+{ a=3, b=4; }   !!ACK need more delimiters!!
 
-{ a=3, b=4; } !!ACK need more delimiters!!
-( x | a=3 )  Can comma differentiate?
-
+( x | a=3 )     
 ( ( a=3, b=4) | c=5 )
+
+< x | c=3 >
+<a=3, b=4>
+
+If we do get records, then we'll probably need to push the modified
+application syntax to a different character.
+
+ls.tail.tail.head
+
+ls#tail#tail#head
+
+ls # tail # tail # head
+
+ls$ tail$ tail$ head
+
+ls$tail$tail$head
+
+ls%tail%tail%head
+
+ls@tail@tail@head
+ls|tail|tail|head
+
+ls.ref(n)
+
+ls|ref(n)
+
+ls\ref(n)
+
+ls\tail\tail\head -- That's not bad!
+
+ls \ tail \ tail \ head  
+
+Kinda denotes going "backwards" which is what the function application
+is doing...
+
+ls \tail \tail \head
+
+ls\ tail\ tail\ head
+
+head( tail( tail(ls)))
+
+x\f 
+x\f(y)
+f(x,y)
+
+w\length
+w|length
+w%length

@@ -37,7 +37,7 @@
     +: -: *: /: ^: 
     :: ++ 
     AND OR NEG HASH 
-    APP SEMI COMMA DOT DOTBRK DOTSTREAM BAR BANG
+    APP SEMI COMMA DOT BACKSLASH DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for to emit include deep_iterate iterate state in if then else true false break let 
     namespace using AS
@@ -120,6 +120,7 @@
    ;; Dot-syntax:
 ;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
    ["." 'DOT]
+   ["\\" 'BACKSLASH] 
 
    [(:seq ;(:or "-" "")
 	  (:+ digit)) (token-NUM (string->number lexeme))]
@@ -225,7 +226,7 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
-          (left NEG APP DOT COMMA)
+          (left NEG APP DOT BACKSLASH COMMA)
           (right ^ g^ ^_ ^. ^:)
 
 	  )
@@ -395,7 +396,15 @@
     
     (tuple 
      [(LeftParen RightParen)  `(tuple)]
-     [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)])
+     [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)]
+     
+     ;; Records:
+     [(LeftParen recordbinds+ RightParen) `(record ,@$2)]
+     [(LeftParen exp BAR recordbinds+ RightParen) `(record-update ,$2 ,@$4)]
+     )
+    (recordbinds+ [(VAR = exp) (list (list $1 $3))]
+		  [(VAR = exp COMMA recordbinds+) (cons (list $1 $3) $5)])
+
 
     ;; Hack to enable my syntax for sigseg refs!!
     (exp 
@@ -429,11 +438,17 @@
          [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
 ;         [(VAR BAR exp BAR)  `(seg-get ,$1 ,$3)]
 
+	 ;; Alternate syntax for "dot syntax".  Might switch to this
+	 ;; to free up period for future record syntax.
+	 [(exp BACKSLASH VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
+         [(exp BACKSLASH VAR) `(app ,$3 ,$1)]
+
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
 	 [(exp DOT VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
 	 ;; Basic dot syntax:
 	 ;; Can only use this to call named functions, that is symbols:
          [(exp DOT VAR) `(app ,$3 ,$1)]
+
 	 ;y . (foo(x)) . if then else . 
 	 ;((if then else) ((foo(x)) (y)))
 

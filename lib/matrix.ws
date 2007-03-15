@@ -20,11 +20,11 @@ fun m_zeroes(r,c) { matrix(r,c,gint(0)) }
 fun m_ones(r,c) { matrix(r,c,gint(1)) }
 
 fun m_rows(m) {
-  m.Array:length
+  m\Array:length
 }
 
 fun m_cols(m) {
-  m[0].Array:length
+  m[0]\Array:length
 }
 
 
@@ -51,8 +51,8 @@ fun build_matrix(n,m,f) {
 /* fun list_to_matrix(list) { */
 
 /*   rows = List:length(list); */
-/*   cols = List:length(list.head); */
-/*   init = list.head.head; */
+/*   cols = List:length(list\head); */
+/*   init = list\head\head; */
 
 /*   arr = Array:make(rows, Array:null); */
 
@@ -69,8 +69,8 @@ fun build_matrix(n,m,f) {
 // rrn: Pure version:
 list_to_matrix :: List (List t) -> Array (Array t);
 fun list_to_matrix(list) {
-  len2 = list.head.List:length;
-  Array:build(list.List:length,
+  len2 = list\head\List:length;
+  Array:build(list\List:length,
     fun(i) Array:build(len2,
       fun(j) List:ref(List:ref(list,i), j)))
 }
@@ -94,16 +94,16 @@ fun m_rowm_shared(m,i) {
 }
 
 fun m_colv(m,i) {
-  arr = Array:make(m.Array:length, gint(0));
-  for j = 0 to m.Array:length-1 {
+  arr = Array:make(m\Array:length, gint(0));
+  for j = 0 to m\Array:length-1 {
     arr[j] := m_get(m,j,i);
   };
   arr
 }
 
 fun m_colm(m,i) {
-  arr = Array:make(m.Array:length, Array:null);
-  for j = 0 to m.Array:length-1 {
+  arr = Array:make(m\Array:length, Array:null);
+  for j = 0 to m\Array:length-1 {
     arr[j] := Array:make(1,m_get(m,j,i));
   };
   arr
@@ -173,12 +173,12 @@ fun m_mult_scalar_inplace(m,s) {
 m_mult :: (Array (Array #num), Array (Array #num)) -> Array (Array #num);
 fun m_mult(m1,m2) {
   // TODO: could be more defensive here, check for Array:null:
-  m3 = matrix(m1.Array:length, m2[0].Array:length, m_get(m1,0,0));
-  for i = 0 to m1.Array:length-1 {
-    for j = 0 to m2[0].Array:length-1 {
+  m3 = matrix(m1\Array:length, m2[0]\Array:length, m_get(m1,0,0));
+  for i = 0 to m1\Array:length-1 {
+    for j = 0 to m2[0]\Array:length-1 {
       // need to know type :( .. what if not float?
       sum = gint(0);
-      for k = 0 to m2.Array:length-1 {
+      for k = 0 to m2\Array:length-1 {
 	sum := sum + (m_get(m1,i,k) * m_get(m2,k,j));
       };
       m_set(m3,i,j,sum)
@@ -189,9 +189,9 @@ fun m_mult(m1,m2) {
 
 m_trans :: Array (Array t) -> Array (Array t);
 fun m_trans(m) {
-  m2 = matrix(m[0].Array:length, m.Array:length, m_get(m,0,0));
-  for i = 0 to m.Array:length-1 {
-    for j = 0 to m[0].Array:length-1 {
+  m2 = matrix(m[0]\Array:length, m\Array:length, m_get(m,0,0));
+  for i = 0 to m\Array:length-1 {
+    for j = 0 to m[0]\Array:length-1 {
       m_set(m2, j, i, m_get(m,i,j))
     }
   };
@@ -223,7 +223,7 @@ fun m_trans(m) {
 /* } */
 /* fun m_invert(m) { */
 /*   det = m_determ(m); */
-/*   rank = m.Array:length; */
+/*   rank = m\Array:length; */
 /*   if det == 0 */
 /*   then matrix(0,0, (m[0])[0]) // Should return an option type. */
 /*   else  */

@@ -55,27 +55,27 @@ syncN =
   _strms = map(f, strms);  
   slist = _ctrl ::: _strms;  
 
-   //  if DEBUGSYNC then print("Syncing N streams (including ctrl stream): " ++ show(slist.List:length) ++ "\n");
+   //  if DEBUGSYNC then print("Syncing N streams (including ctrl stream): " ++ show(slist\List:length) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
-      accs = Array:make(slist.List:length - 1, nullseg);
+      accs = Array:make(slist\List:length - 1, nullseg);
       requests = [];
     }
     
     // Debugging helper functions:
     fun printaccs() {
-      for i = 0 to accs.Array:length - 1 {
+      for i = 0 to accs\Array:length - 1 {
 	if accs[i] == nullseg
 	then print("null  ")
-	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
+	else print(show(accs[i] \start) ++ ":" ++ show(accs[i] \end) ++ "  ");
       }
     };
     fun printwidths(){
-      for i = 0 to accs.Array:length - 1 {
+      for i = 0 to accs\Array:length - 1 {
 	if accs[i] == nullseg
 	then print("0   ")
-	else print(show(accs[i].width) ++ " ");
+	else print(show(accs[i]\width) ++ " ");
       }
     };
 
@@ -92,19 +92,19 @@ syncN =
     if requests == []
     then {} // Can't do anything yet...
     else {
-      let (fl, st, en) = requests.head;
+      let (fl, st, en) = requests\head;
       allready = true;
-      for i = 0 to accs.Array:length - 1 {
+      for i = 0 to accs\Array:length - 1 {
 	if (accs[i] == nullseg ||
-	    (fl && accs[i].start > st) || // This only matters if we're retaining it.
-	    accs[i].end < en)
+	    (fl && accs[i]\start > st) || // This only matters if we're retaining it.
+	    accs[i]\end < en)
 	then { 
 	  allready := false;
 	  if DEBUGSYNC 
 	  then print("  Not all ready: "
 		     ++ show(accs[i] == nullseg) ++ " "
-		     ++ show(fl && accs[i].start > st) ++ " "
-		     ++ show(accs[i].end < en) ++ "\n");
+		     ++ show(fl && accs[i]\start > st) ++ " "
+		     ++ show(accs[i]\end < en) ++ "\n");
 	}
       }
       // The data is ready on all buffers, now it's time to either discard or output it.
@@ -114,7 +114,7 @@ syncN =
 	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
 	  output = [];
-	  for i = 0 to accs.Array:length - 1 {
+	  for i = 0 to accs\Array:length - 1 {
 	    output := subseg(accs[i], st, size) ::: output;
 	  }
 	  emit(List:reverse(output));
@@ -123,11 +123,11 @@ syncN =
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	};
 	// In either case, destroy the finished portions and remove the serviced request:
-	for j = 0 to accs.Array:length - 1 {
+	for j = 0 to accs\Array:length - 1 {
 	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
+	  accs[j] := subseg(accs[j], en + 1, accs[j]\end - en);
 	};
-	requests := requests.tail;
+	requests := requests\tail;
       }
     }
   }
@@ -175,22 +175,22 @@ fun rewindow(sig, newwidth, gap) {
     }
 
     acc := joinsegs(acc, win);
-    //print("Acc "++show(acc.start)++":"++show(acc.end)++" need_feed "++show(need_feed)++"\n");
+    //print("Acc "++show(acc\start)++":"++show(acc\end)++" need_feed "++show(need_feed)++"\n");
 
-    for i = 1 to win.width {
+    for i = 1 to win\width {
       if need_feed then {
-	if acc.width > gap // here we discard a segment:
-	then {acc := subseg(acc, acc.start + gap, acc.width - gap);
+	if acc\width > gap // here we discard a segment:
+	then {acc := subseg(acc, acc\start + gap, acc\width - gap);
 	      need_feed := false; }
 	else break;
       } else {
-	if acc.width > newwidth
-	then {emit subseg(acc, acc.start, newwidth);
+	if acc\width > newwidth
+	then {emit subseg(acc, acc\start, newwidth);
 	      if gap > 0 
 	      then { 
-		acc := subseg(acc, acc.start + newwidth, acc.width - newwidth);
+		acc := subseg(acc, acc\start + newwidth, acc\width - newwidth);
 		need_feed := true; 
-	      } else acc := subseg(acc, acc.start + feed, acc.width - feed);
+	      } else acc := subseg(acc, acc\start + feed, acc\width - feed);
 	} else break;	
       }
     }
@@ -208,8 +208,8 @@ fun myhanning (strm) {
       _hanning = Array:null;
     }
 
-    if _lastLen != win.width then {
-      _lastLen := win.width;
+    if _lastLen != win\width then {
+      _lastLen := win\width;
       _hanning := Array:make(_lastLen, 0.0);
       // Refil the hanning window:
       for i = 0 to _lastLen - 1 {
@@ -230,7 +230,7 @@ fun myhanning (strm) {
     //print("\nHAN: "++ show(_hanning)++"\n");
     //print("\nBUF: "++ show(buf)++"\n");
 
-    emit toSigseg(buf, win.start, win.timebase);
+    emit toSigseg(buf, win\start, win\timebase);
   }
 }
 
@@ -259,11 +259,11 @@ deep_stream_map :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
 fun deep_stream_map(f,sss) {
   iterate(ss in sss) {    
     first = f(ss[[0]]);
-    output = Array:make(ss.width, first);
-    for i = 1 to ss.width - 1 {
+    output = Array:make(ss\width, first);
+    for i = 1 to ss\width - 1 {
       output[i] := f(ss[[i]]);
     }
-    emit toSigseg(output, ss.start, ss.timebase);
+    emit toSigseg(output, ss\start, ss\timebase);
   }
 }
 
@@ -277,11 +277,11 @@ fun deep_stream_map2(f,sss) {
       lastout = nullseg;
     }
     first = f(ss[[0]]);
-    output = Array:make(ss.width, first);
-    if pos > ss.start then
-      for i = 0 to pos - ss.start - 1 {
+    output = Array:make(ss\width, first);
+    if pos > ss\start then
+      for i = 0 to pos - ss\start - 1 {
 	// Copy old result:
-	output[i] := lastout[[i + (ss.start - lastout.start)]];
+	output[i] := lastout[[i + (ss\start - lastout\start)]];
       }	     
   };
   strm = rewindow(sss,100,0);
@@ -308,7 +308,7 @@ fun stream_iterate(f,z,s) {
     let (ls,sig2) = f(x,sigma);
     sigma := sig2;
     // list_foreach(fun(t) emit t, ls);
-    for i = 0 to ls.List:length-1 {
+    for i = 0 to ls\List:length-1 {
       emit List:ref(ls,i);
     }
   }
@@ -354,7 +354,7 @@ fun atan2(arg1,arg2) {
 
 amap_inplace :: (a -> b, Array a) -> Array b;
 fun amap_inplace(f, arr) {
-  for i = 0 to arr.Array:length - 1 {
+  for i = 0 to arr\Array:length - 1 {
     arr[i] := f(arr[i]);
   }
   arr
@@ -362,8 +362,8 @@ fun amap_inplace(f, arr) {
 
 amap :: (a -> b, Array a) -> Array b;
 fun amap(f, arr) {
-  narr = Array:make(arr.Array:length, f(arr[0]));
-  for i = 1 to arr.Array:length - 1 {
+  narr = Array:make(arr\Array:length, f(arr[0]));
+  for i = 1 to arr\Array:length - 1 {
     narr[i] := f(arr[i]);
   };
   narr
@@ -371,7 +371,7 @@ fun amap(f, arr) {
 
 fun afold(f, zero, arr) {
   lhs = zero;
-  for i = 0 to arr.Array:length-1 {
+  for i = 0 to arr\Array:length-1 {
     lhs := f(lhs, arr[i])
   }
   lhs
@@ -393,15 +393,15 @@ fun amult_scalar_inplace(arr,s) {
 
 fun adot(arr1,arr2) {
   lhs = gint(0);
-  for i = 0 to arr1.Array:length-1 {
+  for i = 0 to arr1\Array:length-1 {
     lhs := lhs + arr1[i]*arr2[i];
   }
   lhs
 }
 
 fun apairmult(arr1,arr2) {
-  narr = Array:make(arr1.Array:length, arr1[0]);
-  for i = 0 to arr1.Array:length - 1 {
+  narr = Array:make(arr1\Array:length, arr1[0]);
+  for i = 0 to arr1\Array:length - 1 {
     narr[i] := arr1[i] * arr2[i];
   };
   narr
@@ -410,7 +410,7 @@ fun apairmult(arr1,arr2) {
 fun a_max(arr) {
   val = arr[0];
   ind = 0;
-  for i = 1 to arr.Array:length-1 {
+  for i = 1 to arr\Array:length-1 {
     if (arr[i] > val) then {
       val := arr[i];
       ind := i;
