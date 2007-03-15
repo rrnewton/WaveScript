@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT BACKSLASH DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS
+    namespace using AS typedef
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -88,10 +88,11 @@
     (string->symbol lexeme)]
    ;; Keywords: 
    [(:or "fun" "for" "break" "to" "emit" "include" "deep_iterate" "iterate" 
-	 "state"  "in" "if" "then" "else" "true" "false" "let"
+	 "state"  "in" "if" "then" "else" "true" "false" "let" 
 	 "namespace" "using")
     (string->symbol lexeme)]
    ["as" 'AS]
+   ["type" 'typedef]
    
    [(:seq "'" lower-letter "'") (token-CHAR (string-ref lexeme 1))]
    [(:seq "'" (:+ lower-letter)) (token-TYPEVAR (string->symbol (substring lexeme 1 (string-length lexeme))))]
@@ -282,6 +283,9 @@
               )
 
     (decls ;; Top level variable binding
+
+           [(typedef VAR = type SEMI maybedecls) `((typedef ,$2 ,$4) ,@$6)]
+
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
