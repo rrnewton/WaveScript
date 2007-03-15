@@ -11,9 +11,11 @@
 
 //merged = stockStream();
 
-//merged = dataFile("ticks_splits.input","text",True);
-//merged = (dataFile("ticks_splits.input", "text", 250) :: Signal (String,Float,Int,Float))
-merged = (dataFile("ticks_splits.input", "text", -1) :: Signal (String,Float,Int,Float))
+//merged = dataFile("ticks_splits.input","text",True); merged =
+//(dataFile("ticks_splits.input", "text", 250) :: Signal
+//(String,Float,Int,Float))
+merged = (dataFile("ticks_splits.input", "text", -1, 44000) 
+	  :: Stream (String * Float * Int * Float))
 
 
 s = iterate ((sym,t,vol,price) in merged) {

@@ -689,7 +689,8 @@
 		;; Special exceptions:
 		;; We don't want to Array:make in the object code!
 		;; (Kind of inconsistent that we *do* currently do List:make.)
-		(not (memq prim '(show cons gint Array:make
+		(not (memq prim '(show cons gint 
+				       Array:make hashtable
 				       m_invert)))
 		)
 	       (do-prim prim (map getval rand*) env)

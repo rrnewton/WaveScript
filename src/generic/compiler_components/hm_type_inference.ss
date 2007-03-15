@@ -346,58 +346,6 @@
     [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
 
-;; [2007.03.14]
-;; This desugars all types within the program by applying all type aliases.
-;;
-;; ERK, having problems with define-pass in this file.
-;;
-;(define-pass resolve-type-aliases [Expr 3])
-#;
-(define resolve-type-aliases
-  (let ()
-    ;(define-pass resolve-all [Expr 3])
-    93
-    ))
-
-#;
-(define resolve-type-aliases
-  (lambda (expr aliases)    
-    (define (Type t) 
-      (match t
-	[,s (guard (symbol? s))                   
-	    (let ([entry (or (assq s aliases)
-			     (assq s regiment-type-aliases))])
-	      (if entry (cadr entry) s))]
-	[',n                                     `(quote ,n)]
-	;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
-	[(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
-	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
-	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
-	[(,s ,[t] ...) (guard (symbol? s))       `(,s ,t ...)]
-	[#(,[t*] ...)                            (apply vector t*)]
-	[,other (error 'resolve-type-aliases "bad type: ~s" other)]))
-    (match expr
-      [,c (guard (constant? c))                                 c]
-      [,v (guard (symbol? v))                                   v]
-      [(quote ,c)                                               `',c]
-      [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
-      [(assert-type ,[Type -> t] ,[e])                          `(assert-type ,t ,e)]
-      [(if ,[t] ,[c] ,[a])                                      `(if ,t ,c ,a)]
-      [(lambda ,v* (,[Type -> t*] ...) ,[bod])                  `(lambda ,v* ,t* ,bod)]
-      [(tuple ,[e*] ...)                                        `(tuple . ,e*)]
-      [(tupref ,n ,[e])                                         `(tupref ,n ,e)]
-      [(unionN ,[e*] ...)                                       `(unionN . ,e*)]
-      [(set! ,v ,[e])                                           `(set! ,v ,e)]
-      [(begin ,[e*] ...)                                        `(begin . ,e*)]
-      [(for (,i ,[s] ,[e]) ,[bod])                              `(for (,i ,s ,e) ,bod)]
-      [(let ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])          `(let ([,id* ,t* ,rhs*] ...) ,bod)]
-      [(,letrec ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])
-       (guard (memq letrec '(letrec lazy-letrec)))              `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
-      [(app ,[rat] ,[rand*] ...)                                `(app ,rat . ,rand*)]
-      [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  `(,prim . ,rand*)]
-      )
-    ))
-
 ;; [2007.02.21]
 ;; HACK: including this unifier and unifying each of these again:
 ;; Shouldn't have to do this, but there's a problem with the design.
@@ -1084,6 +1032,8 @@
     [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
      (tvar-equal-type! t2 numty exp)]
 
+;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
+#;
     ;; If one of them is a symbol, it might be a type alias.
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
      (let ([sym    (if (symbol? x) x y)]
@@ -1147,12 +1097,15 @@
   ;; UNFINISHED:
 
   (match (list t1 t2)
-    [[,x ,y] (guard (eqv? t1 t2)) t1]
+    [[,x ,y] (guard (eqv? x y)) x]
     ;[[',tv1 ',tv2] (guard (eqv? tv1 tv2)) ] ;; alpha = alpha
 
     ;; Two num-types join at NUM:
     [[,x ,y] (guard (memq x num-types) (memq y num-types))
      `(NUM ,(make-tvar))]
+
+    ;; This is a mismatch of basic types:
+    [[,x ,y] (guard (symbol? x) (symbol? y)) `(quote ,(make-tvar))]
 
     [[',tv ',ty] (ASSERT symbol? tv) (ASSERT symbol? ty)
      `(quote ,(if (eqv? tv ty) tv (make-tvar )))]
@@ -1170,6 +1123,8 @@
      (DEBUGASSERT symbol? tv)
      `(NUM ,tv)]
 
+;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
+#;
     ;; If one or both of them is a symbol, it might be a type alias.
     [[,x ,y] (guard (or (symbol? x) (symbol? y)))
      (let* ([success #f]
@@ -1430,14 +1385,14 @@
   
 
   ["Types-compat?"
-   (types-compat? 'Anchor '(Stream 'a) )
+   (types-compat? '(Stream Node) '(Stream 'a) )
    (Stream Node)]
-  [(types-compat? 'Anchor '(Stream Node)) (Stream Node)]
+  [(types-compat? '(Stream Node) '(Stream Node)) (Stream Node)]
   ;; This is kind of lame:
-  [(types-compat? '(Stream Node) 'Anchor) Anchor]
-  [(types-compat? 'Anchor 'Anchor) Anchor]
-  [(types-compat? 'Anchor '(Area Int)) #f]
-  [(types-compat? 'Region '(Area 'a)) (Area Node)]  
+;  [(types-compat? '(Stream Node) 'Anchor) Anchor]
+;  [(types-compat? 'Anchor 'Anchor) Anchor]
+;  [(types-compat? 'Anchor '(Area Int)) #f]
+;  [(types-compat? 'Region '(Area 'a)) (Area Node)]  
   [(types-compat? '(NUM g) 'Float) Float]
 
   ["Lambda bound arrow types are not polymorphic."

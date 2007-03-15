@@ -278,7 +278,7 @@
 			 ;; This code only works for Region types,
 			 ;; that's the only place where an rmap can
 			 ;; drive itself with no outside input.
-			 (ASSERT (types-compat? (recover-type region_tok tenv) 'Region))
+			 (ASSERT (types-compat? (recover-type region_tok tenv) '(Area Node)))
 			 
 			 `([,parent (v t) 
 ;				    (if (not (equal? v ,THISOB))
@@ -462,7 +462,7 @@
 		 ;; Self driving should only be allowed for (Area Node) aka Region
 		 (unless push? 
 		   (let ([type (recover-type region_tok tenv)])
-		     (ASSERT (eq? 'Region type))))
+		     (ASSERT (equal? '(Area Node) type))))
 		 
 		 `(
 
@@ -1240,8 +1240,8 @@
 			   (lazy-letrec
 			    ((b (List Int) ([heartbeat #f] [formplace _] [membplace _]) (cons '2 '()))
 			     (a (List Int) ([heartbeat #f] [formplace _] [membplace _]) (cons '1 b))
-			     (anch Anchor ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
-			     (circ Region ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
+			     (anch (Stream Node) ([heartbeat 0.5] [formplace _] [membplace _]) (anchor-at a))
+			     (circ (Area Node) ([heartbeat 1.0] [formplace _] [membplace _]) (circle anch '50)))
 			    circ)
 			   notype)))
      unspecified]
@@ -1288,10 +1288,10 @@
      '(lambda (n_354)
 	(Node)
 	(lazy-letrec
-	 ((resultofonehop_356           Region
+	 ((resultofonehop_356           (Area Node)
            ((heartbeat 1000))
            (khood tmpnodeanchor_361 '1))
-	  (tmpnodeanchor_361	   Anchor
+	  (tmpnodeanchor_361	   (Stream Node)
 	   ((heartbeat 1000))
 	   (node->anchor n_354)))
 	 resultofonehop_356))))

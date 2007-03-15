@@ -359,15 +359,15 @@
   
   (define-testing these-tests 
     `(
-      [(,transform-type 'Anchor) (Stream #())]
+      [(,transform-type '(Stream Node)) (Stream #())]
 
       ["A rfold a single anchor."
        (process-letrec 
-	`(lazy-letrec (;[a Anchor () (anchor-at '30 '40)]
-		       [theworld Region ([heartbeat 300000]) world]
+	`(lazy-letrec (;[a (Stream Node) () (anchor-at '30 '40)]
+		       [theworld (Area Node) ([heartbeat 300000]) world]
 		       [nid (Node -> Int) () (lambda (n) (Node) (lazy-letrec ([res0 Int () (nodeid n)]) res0))]
-		       [ank Anchor ([heartbeat 10000]) (anchor-maximizing nid theworld)]
-		       [tmp Region () (khood ank '2)]
+		       [ank (Stream Node) ([heartbeat 10000]) (anchor-maximizing nid theworld)]
+		       [tmp (Area Node) () (khood ank '2)]
 		       [read (Node -> Int) ()
 			     (lambda (n) (Node) 
 				    (lazy-letrec ([res1 Int () (sense 'temp n)]) res1))]
@@ -388,20 +388,20 @@
        (process-letrec 
 	`(lazy-letrec (
 		       [nid (Node -> Int) () (lambda (nod) (Node) (lazy-letrec ([x0 Int () (nodeid nod)]) x0))]
-		       [promote (Node -> Anchor) () (lambda (nod2) (Node) (lazy-letrec ([x1 Anchor () (node->anchor nod2)]) x1))]
-		       [nbrhood (Anchor -> Region) ()
-				(lambda (anc) (Anchor) (lazy-letrec ([thehood Region () (khood anc '2)]) thehood))]
+		       [promote (Node -> (Stream Node)) () (lambda (nod2) (Node) (lazy-letrec ([x1 (Stream Node) () (node->anchor nod2)]) x1))]
+		       [nbrhood ((Stream Node) -> (Area Node)) ()
+				(lambda (anc) ((Stream Node)) (lazy-letrec ([thehood (Area Node) () (khood anc '2)]) thehood))]
 		       [plus (Int Int -> Int) () 
 			     (lambda (a b) (Int Int) (lazy-letrec ([x2 Int () (+_ a b)]) x2))]
 
-		       [mapnid (Region -> (Area Int)) () 
-			       (lambda (r) (Region) (lazy-letrec ([x3 (Area Int) () (rmap nid r)]) x3))]
+		       [mapnid ((Area Node) -> (Area Int)) () 
+			       (lambda (r) ((Area Node)) (lazy-letrec ([x3 (Area Int) () (rmap nid r)]) x3))]
 		       [foldplus ((Area Int) -> (Stream Int)) () 
 				 (lambda (r) (Area Int) (lazy-letrec ([thefold (Stream Int) () (rfold plus '0 r)]) 
 									 thefold))]
 
-		       [theworld Region ([heartbeat 300000]) world]
-		       [clusters (Area Region) () (rmap nbrhood theworld)]
+		       [theworld (Area Node) ([heartbeat 300000]) world]
+		       [clusters (Area (Area Node)) () (rmap nbrhood theworld)]
 		       [ids (Area (Area Int)) () (rmap mapnid clusters)]
 		       [sums (Area Int) () (rmap foldplus ids)]
 		       [result (Stream Int) ([tree thehood]) (rdump sums)]
@@ -424,7 +424,7 @@
 
 #;
 (process-letrec 
- `(lazy-letrec ([tmp Region () world]
+ `(lazy-letrec ([tmp (Area Node) () world]
 		[read (Node -> Int) () 
 		      (lambda (n) (Node) (sense 'temp n))]
 		[f (Int Int -> Int) ()
@@ -464,7 +464,7 @@
              (lazy-letrec
                ((resultofanonlambda_8 Int (sense 'temp n_5)))
                resultofanonlambda_8)))
-         (tmpworld_11 Region world))
+         (tmpworld_11 (Area Node) world))
        resultoftoplevel_10)
      (Stream Int)))
 
@@ -512,7 +512,7 @@
 		    [(rmap ,fun ,reg)
 		     (ASSERT (symbol? fun))
 		     (let ([newty (match ty
-				    [Region (Stream #())] ; Sig Unit
+				    [(Area Node) (Stream #())] ; Sig Unit
 				    [(Area ,alpha) `(Stream ,alpha)] ; Areas become local signals.
 				    [,other (error 'get-segment "bad type for rmap output: ~s" other)])])
 		       (append  `([,lhs ,ty (smap ,fun ,(process-varref reg))]) 

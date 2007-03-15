@@ -407,6 +407,8 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+;; [2007.03.14]
+;; This desugars all types within the program by applying all type aliases.
 (define-pass resolve-type-aliases
     (define aliases '())
     (define (Type t)
@@ -436,36 +438,6 @@
 		  (fluid-let ([aliases alias*])		    
 		    `(resolve-type-aliases-language
 		      '(program ,(Expr bod) ,type)))]))])
-
-;; [2007.03.14]
-;; This desugars all types within the program by applying all type aliases.
-;;
-#;
-(define resolve-type-aliases
-  (lambda (expr aliases)    
-    (define (Type t) 
-      ...)
-    (match expr
-      [,c (guard (constant? c))                                 c]
-      [,v (guard (symbol? v))                                   v]
-      [(quote ,c)                                               `',c]
-      [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
-      [(assert-type ,[Type -> t] ,[e])                          `(assert-type ,t ,e)]
-      [(if ,[t] ,[c] ,[a])                                      `(if ,t ,c ,a)]
-      [(lambda ,v* (,[Type -> t*] ...) ,[bod])                  `(lambda ,v* ,t* ,bod)]
-      [(tuple ,[e*] ...)                                        `(tuple . ,e*)]
-      [(tupref ,n ,[e])                                         `(tupref ,n ,e)]
-      [(unionN ,[e*] ...)                                       `(unionN . ,e*)]
-      [(set! ,v ,[e])                                           `(set! ,v ,e)]
-      [(begin ,[e*] ...)                                        `(begin . ,e*)]
-      [(for (,i ,[s] ,[e]) ,[bod])                              `(for (,i ,s ,e) ,bod)]
-      [(let ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])          `(let ([,id* ,t* ,rhs*] ...) ,bod)]
-      [(,letrec ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])
-       (guard (memq letrec '(letrec lazy-letrec)))              `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
-      [(app ,[rat] ,[rand*] ...)                                `(app ,rat . ,rand*)]
-      [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  `(,prim . ,rand*)]
-      )
-    ))
 
 
 (define-pass ws-normalize-context

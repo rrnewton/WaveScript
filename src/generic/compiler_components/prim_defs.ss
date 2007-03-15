@@ -273,8 +273,8 @@
 ;; now. (see add-heartbeats)
 (define regiment-constants
   '(
-    (world          Region)
-    (anchor         Anchor)
+    (world          (Area Node))
+    (anchor         (Stream Node))
 
     (pi             Float)
 
@@ -504,24 +504,24 @@
     ;; [2006.04.04] This is a similar thing for signals.
     (slight-up ((Stream 'a)) (Stream 'a))
 
-    (anchor-at      (Int Int) Anchor)
-    (anchor-dist    (Anchor Anchor) Float)
+    (anchor-at      (Int Int) (Stream Node))
+    (anchor-dist    ((Stream Node) (Stream Node)) Float)
 
-    ;(anchor-optimizing ((Node -> Int) Region) Anchor)
+    ;(anchor-optimizing ((Node -> Int) Region) (Stream Node))
 
     ;; Takes a function to optimize, and an Area within which to 
-    (anchor-maximizing ((Node -> Int) (Area 'a)) Anchor)
+    (anchor-maximizing ((Node -> Int) (Area 'a)) (Stream Node))
 
-    (circle         (Anchor Float)   Region)
-    (circle-at      (Int Int Float) Region)
-    (k-neighborhood (Anchor Int) Region)
+    (circle         ((Stream Node) Float)   (Area Node))
+    (circle-at      (Int Int Float)  (Area Node))
+    (k-neighborhood ((Stream Node) Int)     (Area Node))
     ;; Shorthand: 
-    (khood          (Anchor Int) Region)
-    (khood-at       (Float Float Int) Region)
+    (khood          ((Stream Node) Int)      (Area Node))
+    (khood-at       (Float Float Int) (Area Node))
 
     ;; This lifts a node value into the Stream monad:
-    (node->anchor   (Node) Anchor)
-    (node_to_anchor (Node) Anchor) ;; Wavescript syntax.
+    (node->anchor   (Node) (Stream Node))
+    (node_to_anchor (Node) (Stream Node)) ;; Wavescript syntax.
 
     ;; This eliminates duplicate Stream types, by lifting out the inner one and canceling:
     ;; Has no operational meaning.

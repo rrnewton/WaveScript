@@ -368,7 +368,7 @@
 		    ["Data flow graph?"
 		     (,dfg? '((x ,worldsym)
 			      (f (f ('a -> 'a) () (lambda (x) ('b) x)))
-			      (v (v Region () (rmap f world)))))
+			      (v (v (Area Node) () (rmap f world)))))
 		     #t]
 
 		    )
@@ -408,17 +408,17 @@
   `(lang '(program (props )
 	    (control-flow )	   
 	    (lazy-letrec
-	     ([w Region () world]
-	      [h (Area Region) ()
+	     ([w (Area Node) () world]
+	      [h (Area (Area Node)) ()
 		 (rmap (lambda (n) (Node) 
-			       (lazy-letrec ([a Anchor () (node->anchor n)]
-					     [kh Region () (khood a '2)])
+			       (lazy-letrec ([a (Stream Node) () (node->anchor n)]
+					     [kh (Area Node) () (khood a '2)])
 					    kh))
 		       w)]
 	      [getid (Node -> Int) ()
 		     (lambda (nd) (Node) (nodeid nd))]
 	      [h2 (Area (Area Int)) ()
-		  (rmap (lambda (r1) (Region) 
+		  (rmap (lambda (r1) ((Area Node)) 
 				(lazy-letrec ([res_r1 (Area Int) ()
 						      (rmap getid r1)])
 					     res_r1))
@@ -443,9 +443,9 @@
 		   (control-flow )
 		   (lazy-letrec
 		    ([f ('a -> 'a) () (lambda (x) ('b) x)]
-		     [v Region () (rmap f world)])
+		     [v (Area Node) () (rmap f world)])
 		    v)
-		   Region))))
+		   (Area Node)))))
        ,(lambda (x) 
 	  (and (pair? x) (not (null? x))
 	       (set-equal? 
@@ -462,7 +462,7 @@
 		(cdr x)
 		`((x ,worldsym)
 		  (f (f ('a -> 'a) () (lambda (x) ('b) x)))
-		  (v (v Region () (rmap f world))))
+		  (v (v (Area Node) () (rmap f world))))
 		)))]
 
       ["Now let's look at nested regions."

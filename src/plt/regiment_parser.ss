@@ -257,11 +257,7 @@
           ;; A type constructor, make it right-associative.
           [(VAR type) (prec APP) (list $1 $2)]
 
-	  ;; Hmm: can't make up my mind whether we should single-quote typevars:
-          [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
-          [(TYPEVAR) `(quote ,$1)]
-          ;[(HASH TYPEVAR) `(NUM ,$2)]
-	  [(NUMVAR) `(NUM ,$1)]
+	  [(typevar) $1]
 
           ;; Tuple types:
 	  [(LeftParen RightParen) (vector)]
@@ -276,15 +272,30 @@
 	  ;[(typetuple) (list->vector $1)]
           )
 
+    (typevar 
+	  ;; Hmm: can't make up my mind whether we should single-quote typevars:
+          [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
+          [(TYPEVAR) `(quote ,$1)]
+          ;[(HASH TYPEVAR) `(NUM ,$2)]
+	  [(NUMVAR) `(NUM ,$1)])
+
     (typetuple [(type) (list $1)]
 	       [(type * typetuple) (cons $1 $3)])
     (typeargs [(type) (list $1)]
               [(type COMMA typeargs) (prec COMMA) (cons $1 $3)]
               )
-
+;     (typevar [(VAR) (if (lower-case? $1) `(quote ,$1) $1)]
+; 	     [(TYPEVAR) `(quote ,$1)]
+; 	     [(NUMVAR) `(NUM ,$1)])
+;     (typevars+ [(typevar) (list $1)]
+; 	       [(typevar COMMA typevars+) (prec COMMA) (cons $1 $3)]
+; 	       )
+    
     (decls ;; Top level variable binding
 
-           [(typedef VAR = type SEMI maybedecls) `((typedef ,$2 ,$4) ,@$6)]
+           [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
+           [(typedef VAR typevar = type SEMI maybedecls) `((typedef (,$2 ,$3) ,$5) ,@$7)]
+           [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef (,$2 ,@$4) ,$7) ,@$9)]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
