@@ -430,7 +430,7 @@
 	 (let ([entry (or (assq s aliases)
 			  (assq s regiment-type-aliases))])
 	   (match entry
-	     [#f `(,s ,t ...)]
+	     [#f `(,s ,t* ...)]
 	     [(,v ,rhs) (error 'resolve-type-aliases 
 			       "alias ~s should not be instantiated with arguments!: ~s" 
 			       s (cons s t*))]

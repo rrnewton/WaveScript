@@ -186,14 +186,15 @@ test:
 	$(MAKE) clean 
 	$(MAKE) wsparse
 	regiment test
+	$(MAKE) ws  # Now build it to speed up these subsequent tests:
 	(cd ../apps/pipeline-web/; $(MAKE) test)
+	(cd ../apps/stockticks/; $(MAKE) test)
 	(cd demos/wavescope; ./testall_demos.ss)
 	@echo
 	@echo "Now test libraries (stdlib.ws, matrix.ws)"
 	@echo "============================================================"
 	echo exit | ws ../lib/stdlib.ws -exit-error;
 	echo exit | ws ../lib/matrix_test.ws -exit-error;
-	$(MAKE) ws
 	(cd demos/wavescope; ./testall_wsc)
 #	./regiment_script.ss test
 

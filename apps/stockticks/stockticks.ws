@@ -9,14 +9,10 @@
 // just have it "emit 3" it still takes 1.5 sec to do 500K.
 // That's the overhead of these lazy, thunk-heavy streams.
 
-//merged = stockStream();
 
-//merged = dataFile("ticks_splits.input","text",True); merged =
-//(dataFile("ticks_splits.input", "text", 250) :: Signal
-//(String,Float,Int,Float))
-merged = (dataFile("ticks_splits.input", "text", -1, 44000) 
-	  :: Stream (String * Float * Int * Float))
-
+merged = (dataFile("ticks_splits.input", "text", 44000, 0)     :: Stream (String * Float * Int * Float))
+//merged = (dataFile("ticks_splits.input", "text", 44000, 250) :: Stream (String * Float * Int * Float))
+//merged = (dataFile("ticks_splits.input", "text", 44000, -1)  :: Stream (String * Float * Int * Float))
 
 s = iterate ((sym,t,vol,price) in merged) {
   state {
