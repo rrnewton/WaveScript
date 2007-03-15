@@ -402,7 +402,7 @@
 ;				      (list $1 $3)
 ;				      )]
 
-           [(VAR = exp SEMI binds) (cons (list $1 $3) $5)])
+           [(bind SEMI binds) (cons $1 $3)])
     (bind [(VAR = exp)         (list $1 $3)]
 	  [(VAR :: type = exp) (list $1 `(assert-type ,$3 ,$5))])
 

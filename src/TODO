@@ -19,7 +19,7 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
   *) Check the prims handled by emit-c against the prim_defs list.
 
 [2007.03.11]
-  *) Revisit type aliases at some point.
+  X) Revisit type aliases at some point.
 
 [2007.03.09]
   *) It would be nice to make a manual "fuse-passes" function that
@@ -39,11 +39,11 @@ These are the order that optimizations need to be implemented:
      pulling in all the GSL functions easily.
 
 [2007.03.07]
- *) What happened to my work on that little syntax to bind projectors
+ X) What happened to my work on that little syntax to bind projectors
     for a tuple-stream?
 
 [2007.03.05]
- *) allow type assertions on state var declarations
+ X) allow type assertions on state var declarations
  *) add += *=... couldn't hurt.
 
 [2007.03.04]

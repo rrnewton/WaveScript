@@ -21,7 +21,7 @@
   (provide ;WSBox wscode->text
 	   wsquery->text
 	   
-	   testme	   testme2	   testme0
+	   ;testme	   testme2	   testme0
 	   test-this  test-wavescript_emit-c)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests)
@@ -157,7 +157,8 @@
                     ())]
 
 	;; Only do let for now.
-#;	[(,letsym ,binds ,bod) (guard (memq letsym '(let )))
+#;
+	[(,letsym ,binds ,bod) (guard (memq letsym '(let )))
 	 ;(ASSERT (symbol? body))
 	 ;(ASSERT (no-recursion! binds))
          (match binds 
@@ -435,74 +436,6 @@
 	  [,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
 	)) ;; End Query
 
-; ======================================================================
-;;; Helper functions for handling different program contexts:
-        
-    (define (Var var)
-      (ASSERT (symbol? var))
-      ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
-      (symbol->string var))
-
-      ;(symbol->string var))
-    (define (FunName var)
-      (format "WSFunLib::~a" var))
-      ;(symbol->string var))
-
-    (define Const
-      (lambda (name type datum)
-         (define (wrap x) (if name 
-                              (list type " " name " = " x ";\n")
-                              x))
-	 ;; Should also make sure it's 32 bit or whatnot:
-	 (cond
-	  [(eq? datum #t) (wrap "TRUE")]
-	  [(eq? datum #f) (wrap "FALSE")]       
-	  [(string? datum) (wrap (format "string(~s)" datum))]
-	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
-	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
-				    (cfl-real-part datum)
-				    (cfl-imag-part datum)))]
-	  [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
-	  [(integer? datum) (wrap (format "(wsint_t)~a" datum))]
-	  [(vector? datum)
-           (ASSERT name)
-	   (let ([contenttype (if (zero? (vector-length datum))
-				  ;; Throw in a default:
-				  'Int
-				  (type-const (vector-ref datum 0)))])	    
-	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
-		    " > >(new vector< ",(Type contenttype)" >(",
-		    (number->string (vector-length datum))"));\n" ;; MakeArray.
-		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
-						"" x))			   
-			   (vector->list datum))))]
-
-	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))
-
-    (define PolyConst 
-      (lambda (datum ty)
-	(match (vector datum ty)
-	  (DEBUGASSERT (not (polymorphic-type? ty)))
-	  [#(() (List ,t)) 	   
-					;"NULL_LIST"
-					;`("(cons<",(Type t)">::ptr)NULL_LIST")
-					;`("(cons<",(Type t)">::null_ls)")
-	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
-	   ]
-	  [#(nullseg ,t) "WSNULLSEG"]
-					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	  [#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
-	  )))
-
-    (define Simple
-      (lambda (x)
-	(match x 
-	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
-	  ['() (error 'Simple "null list without type annotation")]
-	  [(quote ,c) (Const #f #f c)]
-	  [,v (guard (symbol? v)) (Var v)]
-	  [(assert-type ,_ ,[x]) x]
-	  [,else (error 'Simple "not simple expression: ~s" x)])))
 
 ; ======================================================================
 ;; Statements.
@@ -658,277 +591,7 @@
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 
-
-
 ;================================================================================
-;; Primitive calls:
-
-(define (Prim expr name type)
-  (define (wrap x) (list type " " name " = " x ";\n"))
-  ;; This is for primitives that correspond exactly to exactly one C call.
-  (define (SimplePrim var)
-    (define (fromlib v) (format "WSPrim::~a" v))
-    (define (mangle v) (mangle-name (symbol->string v)))
-    ;; Handle special cases here.
-    (case var
-      [(not)         
-       "!" ;(mangle 'wsnot)
-       ] ; The name "not" makes g++ unhappy.
-      ;; These are the same as their C++ names:
-      [(cos sin tan)     (symbol->string var)]
-      [(absF absI absI16)       "abs"]
-;      [(absC)                   "cabs"]
-      [(sqrtI sqrtF)            "sqrt"]
-      [(sqrtC)                  "csqrt"]
-      [(max)                    "max"]
-      ;; This is the "default"; find it in WSPrim:: class
-      [(m_invert string-append 
-	width start end joinsegs subseg toSigseg
-	;wserror ;generic_hash 
-	fft
-	)
-       (fromlib (mangle var))]
-      [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
-      ))
-
-  (match expr
-    ;; First we handle "open coded" primitives:
-
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
-    ;; INEFFICIENT:
-    [(^: ,[Simple -> x] ,[Simple -> y]) 
-     (let ([tmp (Var (unique-name 'tmp))])
-       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
-       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
-       ))]
-    
-    ;; TODO: tupref, exponentiation 
-    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
-     (guard (memq infix_prim '(;+ - * /
-			       +. -. *. /. 
-				  +_ *_ -_ /_
-				  +: *: -: /:
-				  +I16 *I16 -I16 /I16
-				  < > <= >= =
-				  ^_ ^. ^: ^I16
-				  )))
-     (let ([cname (case infix_prim
-		    [(=) "=="]
-		    [(;+ * - / 
-		      < > <= >=) infix_prim]
-		    [(+. *. -. /.
-			 +_ *_ -_ /_
-			 +: *: -: /:
-			 ^_ ^. 
-			 ) ;; Chop off the extra character.
-		     (substring (symbol->string infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16 ^I16)
-		     (substring (symbol->string infix_prim) 0 1)]
-		    )])
-       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
-
-	;[(realpart ,[v]) `("(" ,v ".real)")]
-	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
-
-	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
-	;[(absC ,[Simple -> c]) (wrap `("cabs(",c")"))]
-	
-	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	;[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)complex<float>(",e", 0.0))"))]
-	[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
-
-	[(int16ToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	[(int16ToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-
-	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
-	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
-
-	[(toArray (assert-type (Sigseg ,t) ,sigseg))
-	 (let ([tmp (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))]
-	       [len (Var (unique-name 'len))]
-	       [ss (Simple sigseg)]
-	       [tt (Type t)])
-	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
-	     "int len = ",ss".length();\n"
-	     "for(int i=0; i<len; i++) {\n"
-	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
-	     "  (*",tmp")[i] = ",tmp2";\n"
-	     "}\n"
-	     ,(wrap tmp)
-	     ))]
-
-	[(wserror ,[Simple -> str])
-	 ;; Don't do anything with the return value.
-	 `(,(if name `(,type" ",name";\n") "")
-	   "WSPrim::wserror(",str");\n")]
-
-	;; This is inefficient.  Only want to call getDirect once!
-	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
-	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
-	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
-	[(seg-get ,foo ...)
-	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
-		`(seg-get ,@foo))]
-	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
-	
-	;; Need to use type environment to find out what alpha is.
-	;; We store the length in the first element.
-	[(newarr ,[Simple -> int] ,alpha)
-	 ;(recover-type )
-	 "newarr_UNFINISHED"]
-	
-	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
-	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
-	
-	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
-
-	[(Array:set ,x ...)
-	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
-	[(begin ,stmts ...)
-	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
-
-	;; Later we'll clean it up so contexts are normalized:
-	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
-
-       	;; ----------------------------------------
-	;; Lists:
-	;; These primitives are tricky because of the template magic:
-
-	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
-	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
-	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
-	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
-	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
-	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
-	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
-	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
-	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::length(",ls")"))]
-	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
-	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
-
-;; Don't have types for nulls yet:
-;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-
-	;; Safety net:
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
-					   List:ref List:length makeList ))) 
-	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
-	 ]
-
-	;; ----------------------------------------
-	;; Hash tables:
-
-	;; We should have the proper type assertion on there after flattening the program.
-	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
-	 (let ([hashtype (HashType k v)]
-	       ;[eqfun ]
-	       [k (Type k)]
-	       [v (Type v)])
-	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
-	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
-			       `(hashtable ,_))]
-	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
-	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
-
-	;; Generate equality comparison:
-	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
-	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
-	   (match t
-	     [Int          simple]
-	     [Float        simple]
-	     [String       simple]
-	     ;; This is effectively physical equality:
-	     ;; Requires that they have the same parents.
-	     ;; Won't read the contents of two different Sigsegs...
-	     ;; FIXME: Should consider fixing this.
-	     [(Sigseg ,t)  simple]
-	     
-	     [(List ,t)    simple]
-	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
-	     
-	     ;; We have generated a comparison op for each struct.
-	     ;; UNFINISHED:
-	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
-	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
-	   )	 
-	 ]
-	
-	;; Other prims fall through to here:
-	[(,other ,[Simple -> rand*] ...)
-	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
-	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
-	 ])
-  )
-
-;================================================================================
-
-;; This implements our polymorphic print/show functions.
-;; It prints something or other for any type.
-(define (Emit-Print/Show-Helper e typ printf stream)
-  (match typ
-    [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
-    [Int            (printf "%d" e)]
-    [Int16          (printf "%hd" e)]
-    [Float          (printf "%f" e)]
-    ;;[Complex        (stream `("complex<float>(",e")"))]
-    ;[Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
-    ;[Complex        (stream "\"<Cannot currently print complex>\"" )]
-    [Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
-    [String         (printf "%s" `(,e".c_str()"))]
-    ;[(List ,t)      (stream e)]
-    ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
-    [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
-    [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
-    [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
-
-#;
-;; NOTE: duplicated code from the "Type" function.
-(define (cast-type-for-printing ty x)
-  (match ty
-    [(Sigseg ,[Type -> t]) (format "SigSeg<~a>" t)]
-
-    [Bool       x]
-    [Int        x]
-    [Float      x]
-    [String     x]
-    [(Struct ,name) (Type ty)]
-
-    [(Array ,t) `("boost::shared_ptr< vector< ",(cast-type-for-printing t)" > >")]
-    
-    [(List ,t) `("cons< ",(cast-type-for-printing t)" >::ptr")]
-
-    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
-    
-    [,other (error 'cast-type-for-printing "Not handled yet.. ~s" other)]))
-
-
-;; This emits code for a print.
-(define (EmitPrint e typ)
-  (Emit-Print/Show-Helper 
-   e typ
-   (lambda (s e) `("printf(\"",s"\", ",e");\n"))
-   (lambda (e)   `("cout << " ,e ";\n"))))
-                         
-;; This emits code for a show.
-(define (EmitShow e typ)
-  (Emit-Print/Show-Helper 
-   e typ
-   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e"))"))
-   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e ")"))))
 
 ;; This produces a struct definition as well as a printer function for the struct.
 (define (StructDef entry)
@@ -1177,7 +840,352 @@
    (warning 'wsquery->text "ERROR: bad top-level WS program: ~s" other)
    (inspect other)
    (error 'wsquery->text "")]))
+
+
+
 ) ; End wsquery->text
+
+
+; ======================================================================
+;;; Helper functions for handling different program contexts:
+        
+    (define (Var var)
+      (ASSERT (symbol? var))
+      ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
+      (symbol->string var))
+
+      ;(symbol->string var))
+    (define (FunName var)
+      (format "WSFunLib::~a" var))
+      ;(symbol->string var))
+
+
+    (define Const
+      (lambda (name type datum)
+         (define (wrap x) (if name 
+                              (list type " " name " = " x ";\n")
+                              x))
+	 ;; Should also make sure it's 32 bit or whatnot:
+	 (cond
+	  [(eq? datum #t) (wrap "TRUE")]
+	  [(eq? datum #f) (wrap "FALSE")]       
+	  [(string? datum) (wrap (format "string(~s)" datum))]
+	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
+	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
+				    (cfl-real-part datum)
+				    (cfl-imag-part datum)))]
+	  [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
+	  [(integer? datum) (wrap (format "(wsint_t)~a" datum))]
+	  [(vector? datum)
+           (ASSERT name)
+	   (let ([contenttype (if (zero? (vector-length datum))
+				  ;; Throw in a default:
+				  'Int
+				  (type-const (vector-ref datum 0)))])	    
+	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
+		    " > >(new vector< ",(Type contenttype)" >(",
+		    (number->string (vector-length datum))"));\n" ;; MakeArray.
+		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
+						"" x))			   
+			   (vector->list datum))))]
+
+	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))
+
+    (define PolyConst 
+      (lambda (datum ty)
+	(match (vector datum ty)
+	  (DEBUGASSERT (not (polymorphic-type? ty)))
+	  [#(() (List ,t)) 	   
+					;"NULL_LIST"
+					;`("(cons<",(Type t)">::ptr)NULL_LIST")
+					;`("(cons<",(Type t)">::null_ls)")
+	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
+	   ]
+	  [#(nullseg ,t) "WSNULLSEG"]
+					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
+	  [#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
+	  )))
+
+    (define Simple
+      (lambda (x)
+	(match x 
+	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
+	  ['() (error 'Simple "null list without type annotation")]
+	  [(quote ,c) (Const #f #f c)]
+	  [,v (guard (symbol? v)) (Var v)]
+	  [(assert-type ,_ ,[x]) x]
+	  [,else (error 'Simple "not simple expression: ~s" x)])))
+
+
+;================================================================================
+;; Primitive calls:
+
+(define (Prim expr name type)
+  (define (wrap x) (list type " " name " = " x ";\n"))
+  ;; This is for primitives that correspond exactly to exactly one C call.
+  (define (SimplePrim var)
+    (define (fromlib v) (format "WSPrim::~a" v))
+    (define (mangle v) (mangle-name (symbol->string v)))
+    ;; Handle special cases here.
+    (case var
+      [(not)         
+       "!" ;(mangle 'wsnot)
+       ] ; The name "not" makes g++ unhappy.
+      ;; These are the same as their C++ names:
+      [(cos sin tan)     (symbol->string var)]
+      [(absF absI absI16)       "abs"]
+;      [(absC)                   "cabs"]
+      [(sqrtI sqrtF)            "sqrt"]
+      [(sqrtC)                  "csqrt"]
+      [(max)                    "max"]
+      ;; This is the "default"; find it in WSPrim:: class
+      [(m_invert string-append 
+	width start end joinsegs subseg toSigseg
+	;wserror ;generic_hash 
+	fft
+	)
+       (fromlib (mangle var))]
+      [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
+      ))
+
+  (match expr
+    ;; First we handle "open coded" primitives:
+
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
+    ;; INEFFICIENT:
+    [(^: ,[Simple -> x] ,[Simple -> y]) 
+     (let ([tmp (Var (unique-name 'tmp))])
+       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
+       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
+       ))]
+    
+    ;; TODO: tupref, exponentiation 
+    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
+     (guard (memq infix_prim '(;+ - * /
+			       +. -. *. /. 
+				  +_ *_ -_ /_
+				  +: *: -: /:
+				  +I16 *I16 -I16 /I16
+				  < > <= >= =
+				  ^_ ^. ^: ^I16
+				  )))
+     (let ([cname (case infix_prim
+		    [(=) "=="]
+		    [(;+ * - / 
+		      < > <= >=) infix_prim]
+		    [(+. *. -. /.
+			 +_ *_ -_ /_
+			 +: *: -: /:
+			 ^_ ^. 
+			 ) ;; Chop off the extra character.
+		     (substring (symbol->string infix_prim) 0 1)]
+		    [(+I16 -I16 *I16 /I16 ^I16)
+		     (substring (symbol->string infix_prim) 0 1)]
+		    )])
+       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
+
+	;[(realpart ,[v]) `("(" ,v ".real)")]
+	;[(imagpart ,[v]) `("(" ,v ".imag)")]
+	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
+
+	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
+	;[(absC ,[Simple -> c]) (wrap `("cabs(",c")"))]
+	
+	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	;[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)complex<float>(",e", 0.0))"))]
+	[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
+
+	[(int16ToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	[(int16ToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+
+	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
+	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
+
+	[(toArray (assert-type (Sigseg ,t) ,sigseg))
+	 (let ([tmp (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))]
+	       [len (Var (unique-name 'len))]
+	       [ss (Simple sigseg)]
+	       [tt (Type t)])
+	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
+	     "int len = ",ss".length();\n"
+	     "for(int i=0; i<len; i++) {\n"
+	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
+	     "  (*",tmp")[i] = ",tmp2";\n"
+	     "}\n"
+	     ,(wrap tmp)
+	     ))]
+
+	[(wserror ,[Simple -> str])
+	 ;; Don't do anything with the return value.
+	 `(,(if name `(,type" ",name";\n") "")
+	   "WSPrim::wserror(",str");\n")]
+
+	;; This is inefficient.  Only want to call getDirect once!
+	;; Can't trust the C-compiler to know it's effect free and do CSE.
+	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
+	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
+	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
+	[(seg-get ,foo ...)
+	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
+		`(seg-get ,@foo))]
+	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
+	
+	;; Need to use type environment to find out what alpha is.
+	;; We store the length in the first element.
+	[(newarr ,[Simple -> int] ,alpha)
+	 ;(recover-type )
+	 "newarr_UNFINISHED"]
+	
+	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
+	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
+	
+	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
+
+	[(Array:set ,x ...)
+	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
+	[(begin ,stmts ...)
+	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
+
+	;; Later we'll clean it up so contexts are normalized:
+	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+
+       	;; ----------------------------------------
+	;; Lists:
+	;; These primitives are tricky because of the template magic:
+
+	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
+	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
+	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
+	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
+	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
+	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
+	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
+	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
+	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
+	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::length(",ls")"))]
+	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
+	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
+	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
+
+;; Don't have types for nulls yet:
+;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
+
+	;; Safety net:
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
+					   List:ref List:length makeList ))) 
+	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
+	 ]
+
+	;; ----------------------------------------
+	;; Hash tables:
+
+	;; We should have the proper type assertion on there after flattening the program.
+	;; (Remove-complex-opera*)
+	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
+	 (let ([hashtype (HashType k v)]
+	       ;[eqfun ]
+	       [k (Type k)]
+	       [v (Type v)])
+	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
+	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
+			       `(hashtable ,_))]
+	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
+	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
+	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
+
+	;; Generate equality comparison:
+	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
+	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
+	   (match t
+	     [Int          simple]
+	     [Float        simple]
+	     [String       simple]
+	     ;; This is effectively physical equality:
+	     ;; Requires that they have the same parents.
+	     ;; Won't read the contents of two different Sigsegs...
+	     ;; FIXME: Should consider fixing this.
+	     [(Sigseg ,t)  simple]
+	     
+	     [(List ,t)    simple]
+	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
+	     
+	     ;; We have generated a comparison op for each struct.
+	     ;; UNFINISHED:
+	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
+	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
+	   )	 
+	 ]
+	
+	;; Other prims fall through to here:
+	[(,other ,[Simple -> rand*] ...)
+	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
+	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
+	 ])
+  )
+
+
+
+;; This implements our polymorphic print/show functions.
+;; It prints something or other for any type.
+(define (Emit-Print/Show-Helper e typ printf stream)
+  (match typ
+    [Bool           (printf "%s" (format "(~a ? \"true\" : \"false\")" e))]
+    [Int            (printf "%d" e)]
+    [Int16          (printf "%hd" e)]
+    [Float          (printf "%f" e)]
+    ;;[Complex        (stream `("complex<float>(",e")"))]
+    ;[Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
+    ;[Complex        (stream "\"<Cannot currently print complex>\"" )]
+    [Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
+    [String         (printf "%s" `(,e".c_str()"))]
+    ;[(List ,t)      (stream e)]
+    ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
+    [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
+    [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
+    [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
+
+#;
+;; NOTE: duplicated code from the "Type" function.
+(define (cast-type-for-printing ty x)
+  (match ty
+    [(Sigseg ,[Type -> t]) (format "SigSeg<~a>" t)]
+
+    [Bool       x]
+    [Int        x]
+    [Float      x]
+    [String     x]
+    [(Struct ,name) (Type ty)]
+
+    [(Array ,t) `("boost::shared_ptr< vector< ",(cast-type-for-printing t)" > >")]
+    
+    [(List ,t) `("cons< ",(cast-type-for-printing t)" >::ptr")]
+
+    ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
+    
+    [,other (error 'cast-type-for-printing "Not handled yet.. ~s" other)]))
+
+
+;; This emits code for a print.
+(define (EmitPrint e typ)
+  (Emit-Print/Show-Helper 
+   e typ
+   (lambda (s e) `("printf(\"",s"\", ",e");\n"))
+   (lambda (e)   `("cout << " ,e ";\n"))))
+                         
+;; This emits code for a show.
+(define (EmitShow e typ)
+  (Emit-Print/Show-Helper 
+   e typ
+   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e"))"))
+   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e ")"))))
 
 
 
@@ -1229,8 +1237,78 @@ int main(int argc, char ** argv)
 	      ,body)) ";\n"))
 
 
+;;================================================================================
+
+;; Disabled because this code can't get to wscode->text right now.
+  (define-testing these-tests
+    `(
+      [3 3]
+
+#;
+      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (begin '35)) "noname" (empty-tenv))])
+	 (,text->string txt))
+       
+       ;; Requires helpers.ss
+       ;; Not very tight:
+       ;; Doesn't generate any code for this now.
+       ,(lambda (s) (not (substring? "35" s)))]
+					;     ,(lambda (s) (substring? "35" s))]
+
+#;      
+      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname" (empty-tenv))])
+	 (,text->string txt))
+					;"TRUE ? 35 : 36"]
+       ,(let ([substring? substring?])
+	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
+
+      ;; This makes sure we can generate *something* 
+#;
+      ,@(map
+	 (match-lambda ([,prim ,argtypes ,rettype])
+	   `[(,Prim '(,prim ,@(map (lambda (_) (unique-name 'x)) argtypes)) "foo" "") unspecified]
+	   )
+	 ;; Quadratic:
+	 (let ([exceptions 
+		(append 
+		 '(;; These are obsolete:
+		   eq? locdiff nodeid sense even? odd? 
+		   ;; These weren't really primitives:    
+		   tuple tupref
+		   ;; These were desugared or reduced to other primitives:
+		   or and dataFile show-and-string-append Array:build
+		   ;; These were resolved into the w/namespace versions:
+		   head tail map append fold
+
+		   ;; These have a special syntax, requiring an assert-type or whatnot:
+		   cons car cdr
+
+		   ;; TODO, FIXME: These I just haven't gotten to yet:
+		   ENSBoxAudio
+		       
+		   
+		   )
+		 (map car generic-arith-primitives)
+		 (map car meta-only-primitives))])
+	   ;; Make some exceptions for things that are in Regiment but not WaveScript.
+	   ;; Also exceptions for geneeric prims and other prims that have been desugared.
+	   (filter (lambda (e) (not (memq (car e) exceptions)))
+	     (append regiment-basic-primitives
+		     wavescript-primitives))))
+      ))
+
+(define-testing test-this (default-unit-tester "wavescript_emit-c.ss: generating WaveScript C code." these-tests))
+(define test-wavescript_emit-c test-this)
+
+) ;; End Module
+
 
 ;;================================================================================
+
+
+
+
+#|
+
 
 (define (testme)
   (define str 
@@ -1313,29 +1391,4 @@ int main(int argc, char ** argv)
   (string->file str (string-append (getenv "HOME") "/WaveScope/code/v1/Ryan2.cpp"))
   )
 
-;; Disabled because this code can't get to wscode->text right now.
-  (define-testing these-tests
-    `(
-#;
-      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (begin '35)) "noname" (empty-tenv))])
-	 (,text->string txt))
-       
-       ;; Requires helpers.ss
-       ;; Not very tight:
-       ;; Doesn't generate any code for this now.
-       ,(lambda (s) (not (substring? "35" s)))]
-					;     ,(lambda (s) (substring? "35" s))]
-
-#;      
-      [(mvlet ([(txt _) (,wscode->text '(lambda (x) (Int) (+ '1 (if '#t '35 '36))) "noname" (empty-tenv))])
-	 (,text->string txt))
-					;"TRUE ? 35 : 36"]
-       ,(let ([substring? substring?])
-	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
-      ))
-
-(define-testing test-this (default-unit-tester "wavescript_emit-c.ss: generating WaveScript C code." these-tests))
-(define test-wavescript_emit-c test-this)
-
-) ;; End Module
-
+|#
