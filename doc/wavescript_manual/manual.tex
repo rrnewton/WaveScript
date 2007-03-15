@@ -401,9 +401,9 @@ when importing data from a file.  This is done with the primitive {\tt
 datafile}.
 %
 \begin{verbatim}
-BASE <- 
-  (dataFile("./countup.txt", "text", 44000, 0) 
-   :: Stream (Int16 * Float))
+       BASE <- 
+         (dataFile("./countup.txt", "text", 44000, 0) 
+          :: Stream (Int16 * Float))
 \end{verbatim}
 
 The above complete program reads space-separated values from a text
@@ -415,7 +415,26 @@ reading the file.  If the replay value is $-1$, then the data will be
 replayed indefinitely.
 
 
+%================================================================================
+\subsection{Type Aliases}
 
+Because types can grow large and complex, it is often helpful to
+define aliases, or shorthands, similar to C/C++'s {\tt typedef}s.
+
+\begin{center}
+\begin{verbatim}
+       type MyType        = List Int;
+       type MyType2  t    = Stream (List t);
+       type MyType3 (x)   = List (x);
+       type MyType4 (x,y) = List (x * y);
+
+       x :: MyType;
+       x = [3];
+
+       s1 :: MyType2 Int;
+       ...
+\end{verbatim}
+\end{center}
 
 
 %================================================================================
@@ -504,8 +523,6 @@ include a simple system for managing namespaces.
       }
 \end{verbatim}
 \end{center}
-
-
 
 
 %================================================================================
