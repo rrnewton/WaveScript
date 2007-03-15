@@ -294,8 +294,8 @@
     (decls ;; Top level variable binding
 
            [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
-           [(typedef VAR typevar = type SEMI maybedecls) `((typedef (,$2 ,$3) ,$5) ,@$7)]
-           [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef (,$2 ,@$4) ,$7) ,@$9)]
+           [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
+           [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]

@@ -269,6 +269,11 @@
 	;;`(let* ,binds ,body)
 	;;`(letrec ,binds ,body)
 
+	(unless (set? (map car typealiases))
+	  (error 'ws-postprocess 
+		 "Got two type aliases with the same name!\nAll aliases: ~s"
+		 typealiases))
+
 	`(ws-postprocess-language
 	  '(program 
 	       ,(let loop ([binds binds])
