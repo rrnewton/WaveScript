@@ -461,3 +461,16 @@ case(x){
   
   iterate( (x,y) in s2 ) { emit (x,x,y) }
   ls.head 
+
+
+[2007.03.14]
+
+Extensible records should just desugar into plain tuples because of
+our meta-programming approach.
+
+{ x | a=3, b=4 }
+
+{ a=3, b=4; } !!ACK need more delimiters!!
+( x | a=3 )  Can comma differentiate?
+
+( ( a=3, b=4) | c=5 )

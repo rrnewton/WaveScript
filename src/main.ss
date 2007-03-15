@@ -515,7 +515,8 @@
 
   ;; This three-step process is inefficient, but easy:
   (ws-run-pass p lift-polymorphic-constant)
-  (ws-run-pass p retypecheck)
+  (parameterize ([inferencer-let-bound-poly #f])
+    (ws-run-pass p retypecheck))
   (ws-run-pass p unlift-polymorphic-constant)
 
 ;  (ws-run-pass p type-polymorphic-constants)

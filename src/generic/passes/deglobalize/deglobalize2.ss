@@ -129,11 +129,11 @@
 			 anchor-maximizing-within))
     
     (match expr
-      [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
-
-       (let ([tenv (tenv-extend tenv lhs* type* #t)]
-	     ;; Put it back together:
-	     [binds (map list lhs* type* annots* rhs*)])
+      [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)    
+       (let* ([type* (map make-tcell type*)]
+	      [tenv (tenv-extend tenv lhs* type* #t)]
+	      ;; Put it back together:
+	      [binds (map list lhs* type* annots* rhs*)])
 	 
 
 	 ;; This is a table of all signals/regions that are the result of comm-prims. 

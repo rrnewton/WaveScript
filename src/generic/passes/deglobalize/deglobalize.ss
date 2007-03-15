@@ -757,7 +757,8 @@
       (lambda (expr tenv dfg)
         (match expr
 	       [(lazy-letrec ([,lhs* ,type* ,annots* ,rhs*] ...) ,body)
-		(let ([tenv (tenv-extend tenv lhs* type* #t)])
+		(let* ([type* (map make-tcell type*)]
+		       [tenv (tenv-extend tenv lhs* type* #t)])
 		  (if (symbol? body)
 		    (let loop ((lhs* lhs*) (annots* annots*) (rhs* rhs*)
 			       (cacc '()) (tacc '()))

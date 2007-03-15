@@ -125,7 +125,7 @@
 
 	[(lambda ,v* ,ty* ,[bod]) (tenv-extend bod v* ty*)]
 	[(lazy-letrec ([,v* ,ty* ,annots* ,[rhs*]] ...) ,[bod])
-	 (apply tenv-append (tenv-extend bod v* ty* #t) rhs*)]
+	 (apply tenv-append (tenv-extend bod v* (map make-tcell ty*) #t) rhs*)]
 	
 	[(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	 (apply tenv-append rand*)]
