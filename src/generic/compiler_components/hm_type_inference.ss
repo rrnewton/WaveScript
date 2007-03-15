@@ -10,8 +10,14 @@
 ; type := '(a . type)      ; a type variable with binding
 ; type := '(a . #f)        ; a type variable with no info
 
+; And for our particular brand of let-bound polymorphism:
+; A place to record type constraints and LUB/unify later:
+; type := (LATEUNIFY lub type) 
+; lub  := #f
+; lub  := type
+; lub  := (LUB type type)
 
-;; See the primitive type definitions in prim_defs.ss
+;; Also see the primitive type definitions in prim_defs.ss
 
 ;; Primary ENTRY POINTS are:
 ;;  type-expression (obsolete)
@@ -63,6 +69,8 @@
 	   tenv-append
 	   tenv-map
 	   
+;	   resolve-type-aliases
+
            instantiate-type
 	   export-type do-late-unify! 
 	   prim->type
@@ -103,13 +111,13 @@
 
   (chezimports constants)
 
+;; This controls whether let-bound-polymorphism is allowed.
+(define inferencer-let-bound-poly (make-parameter #t))
+
 ;; If this is enabled, the type assigned to a let-bound variable is
 ;; lowered to the LUB of its call-site requirements, rather than the
 ;; most general type.
 (define ENABLELUB #t)  
-
-;; This controls whether let-bound-polymorphism is allowed.
-(define inferencer-let-bound-poly (make-parameter #t))
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
@@ -338,6 +346,58 @@
     [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
 
+;; [2007.03.14]
+;; This desugars all types within the program by applying all type aliases.
+;;
+;; ERK, having problems with define-pass in this file.
+;;
+;(define-pass resolve-type-aliases [Expr 3])
+#;
+(define resolve-type-aliases
+  (let ()
+    ;(define-pass resolve-all [Expr 3])
+    93
+    ))
+
+#;
+(define resolve-type-aliases
+  (lambda (expr aliases)    
+    (define (Type t) 
+      (match t
+	[,s (guard (symbol? s))                   
+	    (let ([entry (or (assq s aliases)
+			     (assq s regiment-type-aliases))])
+	      (if entry (cadr entry) s))]
+	[',n                                     `(quote ,n)]
+	;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
+	[(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
+	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
+	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
+	[(,s ,[t] ...) (guard (symbol? s))       `(,s ,t ...)]
+	[#(,[t*] ...)                            (apply vector t*)]
+	[,other (error 'resolve-type-aliases "bad type: ~s" other)]))
+    (match expr
+      [,c (guard (constant? c))                                 c]
+      [,v (guard (symbol? v))                                   v]
+      [(quote ,c)                                               `',c]
+      [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
+      [(assert-type ,[Type -> t] ,[e])                          `(assert-type ,t ,e)]
+      [(if ,[t] ,[c] ,[a])                                      `(if ,t ,c ,a)]
+      [(lambda ,v* (,[Type -> t*] ...) ,[bod])                  `(lambda ,v* ,t* ,bod)]
+      [(tuple ,[e*] ...)                                        `(tuple . ,e*)]
+      [(tupref ,n ,[e])                                         `(tupref ,n ,e)]
+      [(unionN ,[e*] ...)                                       `(unionN . ,e*)]
+      [(set! ,v ,[e])                                           `(set! ,v ,e)]
+      [(begin ,[e*] ...)                                        `(begin . ,e*)]
+      [(for (,i ,[s] ,[e]) ,[bod])                              `(for (,i ,s ,e) ,bod)]
+      [(let ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])          `(let ([,id* ,t* ,rhs*] ...) ,bod)]
+      [(,letrec ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])
+       (guard (memq letrec '(letrec lazy-letrec)))              `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
+      [(app ,[rat] ,[rand*] ...)                                `(app ,rat . ,rand*)]
+      [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  `(,prim . ,rand*)]
+      )
+    ))
+
 ;; [2007.02.21]
 ;; HACK: including this unifier and unifying each of these again:
 ;; Shouldn't have to do this, but there's a problem with the design.
@@ -550,7 +610,6 @@
 	  (cdr types))
 	`(List ,t1)))]
    [else (error 'type-const "could not type: ~a" c)]))
-
 
 ;; Assign a type to a procedure application expression.
 (define (type-app rator rattyp rands exp tenv non-generic-tvars)

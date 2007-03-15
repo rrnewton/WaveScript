@@ -208,9 +208,11 @@
 			  (regiment-primitives))])
            (match prog
 	     ;; The input is already wrapped with the metadata:
-	     [(,input-language (quote (program ,body ,?type ...)))
-	      `(verify-regiment-language '(program ,(process-expr body '()) 
-					    ,(if (null? ?type) ''toptype (car ?type))))]
+	     [(,input-language (quote (program ,body ,?type ...)))	      
+	      `(verify-regiment-language 
+		'(program ,(process-expr body '())
+		   ,@(if (null? ?type) '('toptype)
+			 ?type)))]
 	     ;; Nope?  Well wrap that metadata:
 	     [,body (process-program `(base-language '(program ,body)))]
 	     )

@@ -147,9 +147,9 @@
   ;; After desugaring pattern matching, then we can typecheck the prog for the first time:
   [Program (lambda (prog Expr)	  
 	     (match prog
-	       [(,inputlang '(program ,bod ,type))
+	       [(,inputlang '(program ,bod ,other ... ,type))
 		`(desugar-pattern-matching-language 
-		  '(program ,(Expr bod) ,type))]))]
+		  '(program ,(Expr bod) ,other ... ,type))]))]
   )
 
 ; ================================================================================

@@ -407,6 +407,67 @@
 	      [,oth (fallthru oth)])
 	    )])
 
+(define-pass resolve-type-aliases
+    (define aliases '())
+    (define (Type t)
+      (match t
+	[,s (guard (symbol? s))                   
+	    (let ([entry (or (assq s aliases)
+			     (assq s regiment-type-aliases))])
+	      (if entry (cadr entry) s))]
+	[',n                                     `(quote ,n)]
+	;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
+	[(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
+	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
+	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
+	[(,s ,[t] ...) (guard (symbol? s))       `(,s ,t ...)]
+	[#(,[t*] ...)                            (apply vector t*)]
+	[,other (error 'resolve-type-aliases "bad type: ~s" other)])
+      )
+    [Bindings (lambda (v* t* e* reconst Expr)
+		(reconst v* (map Type t*) (map Expr e*)))]
+    [Expr (lambda (x fallthru)
+	    (match x [(assert-type ,[Type -> t] ,[e]) `(assert-type ,t ,e)]
+		   [,oth (fallthru oth)]))]
+    [Program (lambda(prog Expr)	  
+	       (match prog
+		 [(,inputlang '(program ,bod ,type)) prog]
+		 [(,inputlang '(program ,bod (type-aliases ,alias* ...) ,type))
+		  (fluid-let ([aliases alias*])		    
+		    `(resolve-type-aliases-language
+		      '(program ,(Expr bod) ,type)))]))])
+
+;; [2007.03.14]
+;; This desugars all types within the program by applying all type aliases.
+;;
+#;
+(define resolve-type-aliases
+  (lambda (expr aliases)    
+    (define (Type t) 
+      ...)
+    (match expr
+      [,c (guard (constant? c))                                 c]
+      [,v (guard (symbol? v))                                   v]
+      [(quote ,c)                                               `',c]
+      [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
+      [(assert-type ,[Type -> t] ,[e])                          `(assert-type ,t ,e)]
+      [(if ,[t] ,[c] ,[a])                                      `(if ,t ,c ,a)]
+      [(lambda ,v* (,[Type -> t*] ...) ,[bod])                  `(lambda ,v* ,t* ,bod)]
+      [(tuple ,[e*] ...)                                        `(tuple . ,e*)]
+      [(tupref ,n ,[e])                                         `(tupref ,n ,e)]
+      [(unionN ,[e*] ...)                                       `(unionN . ,e*)]
+      [(set! ,v ,[e])                                           `(set! ,v ,e)]
+      [(begin ,[e*] ...)                                        `(begin . ,e*)]
+      [(for (,i ,[s] ,[e]) ,[bod])                              `(for (,i ,s ,e) ,bod)]
+      [(let ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])          `(let ([,id* ,t* ,rhs*] ...) ,bod)]
+      [(,letrec ([,id* ,[Type -> t*] ,[rhs*]] ...) ,[bod])
+       (guard (memq letrec '(letrec lazy-letrec)))              `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
+      [(app ,[rat] ,[rand*] ...)                                `(app ,rat . ,rand*)]
+      [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  `(,prim . ,rand*)]
+      )
+    ))
+
+
 (define-pass ws-normalize-context
     [Expr (lambda (x fallthru)
 	    (match x  
@@ -466,6 +527,7 @@
     (ws-run-pass p verify-regiment)
     (ws-run-pass p pass_desugar-pattern-matching)
     (ws-run-pass p resolve-varrefs)
+    (ws-run-pass p resolve-type-aliases)
     (ws-run-pass p retypecheck) ;; This is the initial typecheck.
     )
 
@@ -639,6 +701,7 @@
       (ws-run-pass p verify-regiment)
       (ws-run-pass p pass_desugar-pattern-matching)
       (ws-run-pass p resolve-varrefs)
+      (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
       p))
 
@@ -713,6 +776,7 @@
       (ws-run-pass p verify-regiment)
       (ws-run-pass p pass_desugar-pattern-matching)
       (ws-run-pass p resolve-varrefs)
+      (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
       p))
 

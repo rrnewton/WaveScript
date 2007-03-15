@@ -58,8 +58,15 @@
   `(
     [PassInput (Lang ('quote Program))]
     [Lang ,symbol?]
+
     ;; The bindings must be "constant" in the sense that their expressions are statically evaluatable:
-    [Program ('program Expr Type)]
+    [Program ('program Expr Datum ...)]
+
+    ;[Program ('program Expr Tail)]
+    ;[Tail (Type)]
+    ;[Tail (Datum ... Type)]
+    ;; Can have some annotations as well:
+    ;[Program ('program Expr ('type-aliases [Var Type] ...) Type)]
 
     [Expr Var]
 

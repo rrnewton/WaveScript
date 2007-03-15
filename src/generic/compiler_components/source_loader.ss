@@ -234,10 +234,12 @@
   (define (f1 x) (eq? (car x) '::))
   (define (f2 x) (eq? (car x) 'define))
   (define (f3 x) (eq? (car x) '<-))
+  (define (f4 x) (eq? (car x) 'typedef))
   (let ([types (map cdr (filter f1 ws))]
         [defs (map cdr (filter f2 ws))]
-        [routes (map cdr (filter f3 ws))])
-    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)))) ws))
+        [routes (map cdr (filter f3 ws))]
+	[typealiases (map cdr (filter f4 ws))])
+    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)))) ws))
     (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
     (let ([typevs (map car types)]
           [defvs (map car defs)])
@@ -266,12 +268,16 @@
 
 	;;`(let* ,binds ,body)
 	;;`(letrec ,binds ,body)
-	(let loop ([binds binds])
-	  (if (null? binds) body
-	      `(letrec (,(car binds))
-		 ,(loop (cdr binds))
-		 )))
-	
+
+	`(ws-postprocess-language
+	  '(program 
+	       ,(let loop ([binds binds])
+		  (if (null? binds) body
+		      `(letrec (,(car binds))
+			 ,(loop (cdr binds))
+			 )))
+	     (type-aliases . ,typealiases)
+	     'notype))
 	)))))
 
 ;; Expand an include statement into a set of definitions.
