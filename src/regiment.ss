@@ -55,8 +55,9 @@
 ; =======================================================================
 
 (define (print-help)
-  (printf "Regiment system, version ~s (loaded from ~a)\n" (regiment-version) 
-	  ;(svn-revision) 
+  (printf "Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
+	  (regiment-version) 
+	  svn-revision ;(svn-revision)
 	  regiment-origin)
   (printf "Usage: regiment command [options] ~n")
   (printf "~n")

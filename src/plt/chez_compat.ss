@@ -316,10 +316,7 @@
   (define (block-write outp str count)
     (write-bytes str outp 0 count))
   (define collect collect-garbage)
-  
-  (define (system-to-string cmd)
-    (eval 'TODO-IMPLEMENTM))
-            
+              
            
 
 ;; HERE: Include base helpers file...

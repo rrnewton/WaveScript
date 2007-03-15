@@ -106,6 +106,95 @@
 	   
 	   )
 
+;; Trying to set the svn rev when the code is *compiled*:
+(define-syntax bind-svn-revision
+  (lambda (x)
+    (syntax-case x ()
+      [(_)
+       (let ()
+	 (define (system-to-str str)
+	   (let* ([pr (process str)]
+		  [in (car pr)]
+		  [out (cadr pr)]
+		  [id  (caddr pr)])
+	     (let ((p (open-output-string)))
+	       (let loop ((c (read-char in)))
+		 (if (eof-object? c)	  
+		     (begin 
+		       (close-input-port in)
+		       (close-output-port out)
+		       (get-output-string p))
+		     (begin (display c p)
+			    (loop (read-char in))))))))
+	 (if (eq? (machine-type) 'i3nt)
+	     -9999
+	     (and (zero? (system "which svn > /dev/null"))
+		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
+		    (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
+		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
+		      (with-syntax ([revis (datum->syntax-object #'_ rev)])
+			#'(define-top-level-value 'svn-revision revis))
+		      )
+		    ))))])))
+
+(bind-svn-revision)
+
+#;
+(eval-when (compile eval)
+  (define-syntax svn-revision
+    (syntax-case ()
+      [(_)
+       (let ()
+	 (define (system-to-str str)
+	   (let* ([pr (process str)]
+		  [in (car pr)]
+		  [out (cadr pr)]
+		  [id  (caddr pr)])
+	     (let ((p (open-output-string)))
+	       (let loop ((c (read-char in)))
+		 (if (eof-object? c)	  
+		     (begin 
+		       (close-input-port in)
+		       (close-output-port out)
+		       (get-output-string p))
+		     (begin (display c p)
+			    (loop (read-char in))))))))
+	 (inspect 'woot)
+	 (if (eq? (machine-type) 'i3nt)
+	     -9999
+	     (and (zero? (system "which svn > /dev/null"))
+		  (parameterize ([current-directory (default-regimentd)])
+		    (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
+		    (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
+		    ))))])))
+
+
+#;
+(eval-when (compile eval)
+  (define svn-revision
+    (let ()
+      (define (system-to-str str)
+	(let* ([pr (process str)]
+	       [in (car pr)]
+	       [out (cadr pr)]
+	       [id  (caddr pr)])
+	  (let ((p (open-output-string)))
+	    (let loop ((c (read-char in)))
+	      (if (eof-object? c)	  
+		  (begin 
+		    (close-input-port in)
+		    (close-output-port out)
+		    (get-output-string p))
+		  (begin (display c p)
+			 (loop (read-char in))))))))
+      (if (eq? (machine-type) 'i3nt)
+	  -9999
+	  (and (zero? (system "which svn > /dev/null"))
+	       (parameterize ([current-directory (default-regimentd)])
+		 (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
+		 (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
+		 ))))))
+
 ;======================================================================
 ;;; Setup stuff.
 

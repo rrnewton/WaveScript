@@ -9,15 +9,8 @@
 ;(display "Loading main compiler module.  RegionStreams Demo.")
 ;(newline)
 
-(define-regiment-parameter regiment-version "0.87.2")
+(define-regiment-parameter regiment-version "0.9")
 
-(define-regiment-parameter svn-revision
-  (if (eq? (machine-type) 'i3nt)
-      -9999
-      (and (zero? (system "which svn > /dev/null"))
-       (parameterize ([current-directory (REGIMENTD)])
-	 (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))
-	 ))))
 
 ;; This is the global parameter that determines which transformations
 ;; (passes) the compiler applies and in what order.  We set it here.
