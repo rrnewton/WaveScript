@@ -519,7 +519,7 @@
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
-;  (ws-run-pass p rename-vars)
+  (ws-run-pass p rename-vars)
   (DEBUGMODE (ws-run-pass p retypecheck) (void))
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)

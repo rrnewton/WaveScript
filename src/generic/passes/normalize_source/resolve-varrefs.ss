@@ -79,7 +79,10 @@
     [Expr driver]
     [Bindings 
      (lambda (vars types exprs reconstr exprfun)
-       (define newvars (map unique-name vars))
+       ;(define newvars (map unique-name vars))
+       ;; Disabling renaming here and doing that as a separate pass.
+       ;; This is so that we can print the types with the original names.
+       (define newvars vars)
        ;(inspect (vector 'newvars newvars))
        (reconstr newvars types		 
            (fluid-let ([var-table (append (map list vars newvars)
@@ -105,14 +108,6 @@
   
 ;; Some of these tests are ripped from rename-var:
 (define-testing these-tests
-  (append (map
-	      (lambda (x)
-		(let ((prog (car x)) (res (cadr x)))
-		  `[(,resolve-varrefs '(some-lang '(program ,prog Int)))
-		    (resolve-varrefs-language '(program ,res Int))]))
-	    `([3 3]    
-	      [(letrec ((x Int 1)) x) (letrec ([x_1 Int 1]) x_1)]          
-	      ))
      `(
 
        [(,resolve-varrefs '(some-lang '(program (letrec ((x Int 1)) 
@@ -135,7 +130,7 @@
            (match v
              ((resolve-varrefs-language '(program (lambda (,F1 ,W1) ((Int -> Int) Int)
 					       (for (,I 1 (app ,F2 ,W2)) 0)) Int))
-              (and (not (eqv? I 'i))
+              (and ;(not (eqv? I 'i))
                    (eqv? F1 F2)
                    (eqv? W1 W2)))
              (,else #f)))]
@@ -143,17 +138,17 @@
 	(,resolve-varrefs '(some-lang '(program (letrec ([v Int 3]) 
 					    (set! v 39)) Int)))
 	(resolve-varrefs-language
-	 '(program (letrec ([v_1 Int 3]) (set! v_1 39)) Int))]
+	 '(program (letrec ([unspecified Int 3]) (set! unspecified 39)) Int))]
        
        ["Basic using declaration"
 	(reunique-names 
 	 (resolve-varrefs '(lang '(program (letrec ([M:x 't '3]) (using M x)) Int))))
 	(resolve-varrefs-language
 	 '(program
-	    (letrec ([M_x 't '3]) (letrec ([x 'type M_x]) x))
+	    (letrec ([unspecified 't '3]) (letrec ([x 'type unspecified]) x))
 	    Int))]
               
-       )))
+       ))
 
 (define-testing test-this
   (default-unit-tester 

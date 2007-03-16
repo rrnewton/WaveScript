@@ -209,81 +209,89 @@
 ;================================================================================
 
 ;; Do all the post-processing to turn a set of bindings into a single valid expression.
-(define (ws-postprocess ws)
-  ;; First we expand includes:
-  (let ([ws (apply append 
-              (map (lambda (form)
-		     (match form
-		       [(include ,file) 
-			(or (expand-include file)
-			    (error 'ws-postprocess 
-				   "could not retrieve contents of include: ~s" file))]
-		       ;; This just renames all defs within a namespace.
-		       [(namespace ,Space ,[defs] ...)
-			(map (lambda (def)
-			       (define (mangle v) (string->symbol (format "~a:~a" Space v)))
-			       (match def
-				 [(define ,v ,e) `(define ,(mangle v) ,e)]
-				 [(:: ,v ,t)     `(:: ,(mangle v) ,t)]
-				 [(<- ,sink ,e)  `(<- ,sink ,e)]
-				 ))
-			  (apply append defs))]
-		       
-		       [,other (list other)]))
-	      ws))])
+(define (ws-postprocess origws)
+  ;; First we expand includes:  
+  (define (process form)
+    (match form
+      [(include ,file) 
+       (apply append
+	 (map process 
+	   (or (expand-include file)
+	       (error 'ws-postprocess 
+		      "could not retrieve contents of include: ~s" file))))]
+      ;; This just renames all defs within a namespace.
+      [(namespace ,Space ,[defs] ...)
+       (map (lambda (def)
+	      (define (mangle v) (string->symbol (format "~a:~a" Space v)))
+	      ;; We also inject a bunch of 'using' constructs so that
+	      ;; we can use the namespace's bindings from *within* the namespace:
+	      (match def
+		[(define ,v ,e) `(define ,(mangle v) (using ,Space ,e))]
+		[(:: ,v ,t)     `(:: ,(mangle v) ,t)]
+		[(<- ,sink ,e)  `(<- ,sink (using ,Space ,e))]
+		))
+	 (apply append defs))]
+      [(namespace . ,other)
+       (error 'ws-postprocess "bad namespace form: ~s" (cons 'namespace other))]
+      
+      [,other (list other)]))
+
+  (define  ws (apply append (map process origws)))
   (define (f1 x) (eq? (car x) '::))
   (define (f2 x) (eq? (car x) 'define))
   (define (f3 x) (eq? (car x) '<-))
   (define (f4 x) (eq? (car x) 'typedef))
-  (let ([types (map cdr (filter f1 ws))]
-        [defs (map cdr (filter f2 ws))]
-        [routes (map cdr (filter f3 ws))]
-	[typealiases (map cdr (filter f4 ws))])
-    (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)))) ws))
-    (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
-    (let ([typevs (map car types)]
-          [defvs (map car defs)])
-      ;(pretty-print ws)
-      (unless (= 1 (length routes))
-        (if (zero? (length routes))
-	    (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- timer(1)\"")		   
-		   (set! routes `((BASE (timer '1.0)))))
-	    (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
-      (unless (eq? 'BASE (caar routes))
-        (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
-      (unless (subset? typevs defvs)
-        (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-      (let ([binds (map (lambda (def)
-		     (match def
-		       [(,v ,e) (if (memq v typevs)
-				    `[,v ,(cadr (assq v types)) ,e]
-				    `[,v ,e])]))
-		defs)]
-	    [body (cadar routes)])
-	;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
 
-	;; [2006.11.16] Ok, well now we need recursion.  Going back to
-	;; letrec.  Problem was (I think) that we didn't have
-	;; letrec*... I'm just making nested letrecs for now.
+  (define types (map cdr (filter f1 ws)))
+  (define defs (map cdr (filter f2 ws)))
+  (define routes (map cdr (filter f3 ws)))
+  (define typealiases (map cdr (filter f4 ws)))
+  (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)))) ws))
 
-	;;`(let* ,binds ,body)
-	;;`(letrec ,binds ,body)
+  (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
+  (let ([typevs (map car types)]
+	[defvs (map car defs)])
+					;(pretty-print ws)
+    (unless (= 1 (length routes))
+      (if (zero? (length routes))
+	  (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- timer(1)\"")		   
+		 (set! routes `((BASE (timer '1.0)))))
+	  (error 'ws-postprocess "Must have exactly one stream-wiring (<-) expression! ~a" routes)))
+    (unless (eq? 'BASE (caar routes))
+      (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
+    (unless (subset? typevs defvs)
+      (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
+    (let ([binds (map (lambda (def)
+			(match def
+			  [(,v ,e) (if (memq v typevs)
+				       `[,v ,(cadr (assq v types)) ,e]
+				       `[,v ,e])]))
+		   defs)]
+	  [body (cadar routes)])
+      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
 
-	(unless (set? (map car typealiases))
-	  (error 'ws-postprocess 
-		 "Got two type aliases with the same name!\nAll aliases: ~s"
-		 typealiases))
+      ;; [2006.11.16] Ok, well now we need recursion.  Going back to
+      ;; letrec.  Problem was (I think) that we didn't have
+      ;; letrec*... I'm just making nested letrecs for now.
 
-	`(ws-postprocess-language
-	  '(program 
-	       ,(let loop ([binds binds])
-		  (if (null? binds) body
-		      `(letrec (,(car binds))
-			 ,(loop (cdr binds))
-			 )))
-	     (type-aliases . ,typealiases)
-	     'notype))
-	)))))
+      ;;`(let* ,binds ,body)
+      ;;`(letrec ,binds ,body)
+
+      (unless (set? (map car typealiases))
+	(error 'ws-postprocess 
+	       "Got two type aliases with the same name!\nAll aliases: ~s"
+	       typealiases))
+
+      `(ws-postprocess-language
+	'(program 
+	     ,(let loop ([binds binds])
+		(if (null? binds) body
+		    `(letrec (,(car binds))
+		       ,(loop (cdr binds))
+		       )))
+	   (type-aliases . ,typealiases)
+	   'notype))
+      )))
 
 ;; Expand an include statement into a set of definitions.
 ;; Optionally takes the absolute path of the file in which the
