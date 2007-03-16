@@ -130,7 +130,7 @@
 	     -9999
 	     (and (zero? (system "which svn > /dev/null"))
 		  (parameterize ([current-directory (string-append (default-regimentd) "/src")])
-		    (printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
+		    ;(printf"<<<<<<<<<<<READING SVN REV>>>>>>>>>>>>\n")
 		    (let ([rev (read (open-input-string (system-to-str "svn info | grep Revision | sed s/Revision://")))])
 		      (with-syntax ([revis (datum->syntax-object #'_ rev)])
 			#'(define-top-level-value 'svn-revision revis))

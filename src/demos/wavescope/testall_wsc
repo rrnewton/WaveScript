@@ -43,6 +43,7 @@ go "demo3f_morelists.ws"
 go "demo3g_arrays.ws"
 go "demo3h_advancedlists.ws"
 go "demo3i_conversion_prims.ws"
+go "demo3j_numbers.ws"
 
 # [2007.03.14] This is where the segfaulting starts:
 # But 5a,5B don't segfault..

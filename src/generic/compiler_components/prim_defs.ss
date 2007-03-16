@@ -162,7 +162,7 @@
     (stringToComplex (String)  Complex)
     
     ;; Rounding instead of truncation:    
-    (roundF         (Float)   Int)
+    (roundF         (Float)   Float)
 
     (+_ (Int Int) Int)
     (-_ (Int Int) Int) 

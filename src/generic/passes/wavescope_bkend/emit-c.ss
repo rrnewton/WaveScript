@@ -930,12 +930,12 @@
        "!" ;(mangle 'wsnot)
        ] ; The name "not" makes g++ unhappy.
       ;; These are the same as their C++ names:
-      [(cos sin tan)     (symbol->string var)]
+      [(cos sin tan acos asin atan max min) 
+       (symbol->string var)]
       [(absF absI absI16)       "abs"]
-;      [(absC)                   "cabs"]
+      [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  "csqrt"]
-      [(max)                    "max"]
       ;; This is the "default"; find it in WSPrim:: class
       [(m_invert string-append 
 	width start end joinsegs subseg toSigseg
@@ -993,7 +993,6 @@
 	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
 
 	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
-	;[(absC ,[Simple -> c]) (wrap `("cabs(",c")"))]
 
 	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
 	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
@@ -1310,7 +1309,6 @@ int main(int argc, char ** argv)
 	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
 
       ;; This makes sure we can generate *something* for all the primitives.
-#;
       ,@(map
 	 (match-lambda ([,prim ,argtypes ,rettype])
 	   `[(,Prim '(,prim ,@(map (lambda (_) (unique-name 'x)) argtypes)) "foo" "") unspecified]
@@ -1329,7 +1327,7 @@ int main(int argc, char ** argv)
 		   List:head List:tail 
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
-		   cons car cdr  hashtable prim_window 
+		   cons car cdr null? hashtable prim_window 
 		   List:ref List:append List:reverse List:length List:make 
 		   
 		   equal? print show seg-get toArray
@@ -1337,10 +1335,13 @@ int main(int argc, char ** argv)
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ENSBoxAudio
 		   List:assoc List:assoc_update
-		   
+		   hashrem hashset ;; pure versions
 		   )
 		 (map car generic-arith-primitives)
-		 (map car meta-only-primitives))])
+		 (map car meta-only-primitives)
+		 (map car wavescript-effectful-primitives) ;; These are handled by Block
+		 (map car wavescript-stream-primitives)
+		 )])
 	   ;; Make some exceptions for things that are in Regiment but not WaveScript.
 	   ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	   (filter (lambda (e) (not (memq (car e) exceptions)))

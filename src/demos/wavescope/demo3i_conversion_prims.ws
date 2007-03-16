@@ -40,25 +40,6 @@ BASE <- iterate(w in s0) {
   println( c \ show \ stringToComplex );
 
   print("\n");
-  
-  //  println( c \ complexToInt16 );
-  //  println( c \ complexToFloat );
 
-
- 
-  /*
-  println( c );
-  println(  );
-  println(  );
-  println(  );
-  println(  );
-  println(  );
-  println(  );
-
-  println( intToFloat(1) );
-  println( intToFloat);
-  println( );
-  println( );
-  */
   emit ();
 }
