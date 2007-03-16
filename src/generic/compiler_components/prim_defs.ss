@@ -128,11 +128,7 @@
     (List:length ((List 'a)) Int)
     (List:reverse ((List 'a)) (List 'a))
     ;(reverse_BANG ((List 'a)) (List 'a))
-    (List:map (('a -> 'b) (List 'a)) (List 'b))
-    ;(List:filter (('a -> Bool) (List 'a)) (List 'a))
-    
-    ;; These should be defined IN the language, but they're not right now:
-    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+
     ;; Should be maybe type!  For now returns list with match at head. Null otherwise.
     (List:assoc        ((List #('a 'b)) 'a) (List #('a 'b)))
     (List:assoc_update ((List #('a 'b)) 'a 'b) (List #('a 'b)))
@@ -145,21 +141,19 @@
 
     ,@generic-arith-primitives
     
-    ;; These should be defined in the standard library.
-    (intToInt16     (Int)   Int16)
-    (intToFloat     (Int)   Float)
-    (intToComplex   (Int)   Complex)
-    (floatToComplex (Float) Complex)
-
     (int16ToInt     (Int16)   Int)
     (int16ToFloat   (Int16)   Float)
     (int16ToComplex (Int16)   Complex)
 
-    ;(int16ToFloat   (Int16)   Float)
+    (intToInt16     (Int)   Int16)
+    (intToFloat     (Int)   Float)
+    (intToComplex   (Int)   Complex)
 
-    ; Downcasts must be explicit??
-    ; Thus you know exactly what you're throwing away.
+    (floatToInt16   (Float)   Int16)
     (floatToInt     (Float)   Int)
+    (floatToComplex (Float) Complex)
+
+    (complexToInt16 (Complex) Int16)
     (complexToInt   (Complex) Int)
     (complexToFloat (Complex) Float)
 
@@ -265,6 +259,17 @@
   '(
     (GETENV (String) String) ; Returns "" if the env var is unbound.
     (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
+
+    ;; These are restricted to meta-only because they are higher
+    ;; order.  I could implement them (in a limited fashion) in the
+    ;; object language, but haven't yet:
+
+    ;; These should be defined IN the language, but they're not right now:
+    (List:map (('a -> 'b) (List 'a)) (List 'b))
+    (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+    ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
+        
+    
     ))
 
 ;; These count as primitives also.

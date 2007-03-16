@@ -808,8 +808,6 @@
          `(("source "))]
       	[,oth (error 'wscode->text:build-wsq "Cannot process: ~s" oth)]
     ))
-  ;============================================================
-  ;;; Set unit tests
 
   ;============================================================
   ;; Main body:
@@ -988,19 +986,67 @@
 
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(realpart ,[Simple -> v])   (wrap `("__real__ " ,v))]
 	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
+	[(realpart       ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(complexToFloat ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
+	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
 
 	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
 	;[(absC ,[Simple -> c]) (wrap `("cabs(",c")"))]
-	
-	[(intToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-	[(floatToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	;[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)complex<float>(",e", 0.0))"))]
-	[(floatToComplex ,[Simple -> e]) (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
 
-	[(int16ToInt ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	[(int16ToFloat ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
+	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
+
+	[(floatToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	[(int16ToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	
+	[(intToFloat     ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(int16ToFloat   ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+
+	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
+	;[(complexToInt ,e)     (wrap `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
+	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
+	[(,ToComplex ,[Simple -> e])
+	 (guard (memq ToComplex 
+		      '(int16ToComplex intToComplex floatToComplex)))
+    	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
+
+	[(stringToInt ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   `("wsint_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
+	     ,(wrap tmp)))]
+	[(stringToFloat ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   `("wsfloat_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%f\", &",tmp");\n"
+	     ,(wrap tmp)))]
+	[(stringToComplex ,[Simple -> e]) 
+	 (let ([tmp1 (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))])
+	   `("wsfloat_t ",tmp1";\n"
+	     "wsfloat_t ",tmp2";\n"
+	     ;"printf(\"STRING %s\\n\", ",e".c_str());\n"
+	     "sscanf(",e".c_str(), \"%f+%fi\", &",tmp1", &",tmp2");\n"
+	     ,(wrap `(,tmp1"+(",tmp2"*1.0fi)"))))]
+
+
+#;
+	[(,stringTo ,[Simple -> e]) 
+	 (guard (memq stringTo '(stringToInt stringToFloat stringToComplex)))	
+	 (let ([tmp (Var (unique-name 'tmp))]
+	       [printfflag (case stringTo
+			     [(stringToInt)     "%d"]
+			     [(stringToFloat)   "%f"]
+			     [(stringToComplex) "%f+%fi"])]
+	       [type (case stringTo
+		       [(stringToInt)     "wsint_t"]
+		       [(stringToFloat)   "wsfloat_t"]
+		       [(stringToComplex) "wscomplex_t"])])
+	   `("wsint_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
+	     ,(wrap tmp)))]
 
 	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
 	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
@@ -1142,10 +1188,12 @@
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
     ;;[Complex        (stream `("complex<float>(",e")"))]
-    ;[Complex        (printf "%f+%f" (list "__real__ " e) (list "__imag__ " e))]
+    [Complex        (printf "%f+%fi" `("__real__ " ,e ", __imag__ ",e))]
     ;[Complex        (stream "\"<Cannot currently print complex>\"" )]
-    [Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
-    [String         (printf "%s" `(,e".c_str()"))]
+    ;[Complex        (stream `("complex<float>(__real__ ",e", __imag__ ",e")"))]
+
+    ;[String         (printf "%s" `(,e".c_str()"))]
+    [String         (stream e)]
     ;[(List ,t)      (stream e)]
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
@@ -1261,7 +1309,7 @@ int main(int argc, char ** argv)
        ,(let ([substring? substring?])
 	  (lambda (s) (substring? "1 + (TRUE ? 35 : 36)" s)))]
 
-      ;; This makes sure we can generate *something* 
+      ;; This makes sure we can generate *something* for all the primitives.
 #;
       ,@(map
 	 (match-lambda ([,prim ,argtypes ,rettype])
@@ -1275,16 +1323,20 @@ int main(int argc, char ** argv)
 		   ;; These weren't really primitives:    
 		   tuple tupref
 		   ;; These were desugared or reduced to other primitives:
-		   or and dataFile show-and-string-append Array:build
+		   or and dataFile show-and-string-append Array:build 
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
-
+		   List:head List:tail 
+		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
-		   cons car cdr
+		   cons car cdr  hashtable prim_window 
+		   List:ref List:append List:reverse List:length List:make 
+		   
+		   equal? print show seg-get toArray
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ENSBoxAudio
-		       
+		   List:assoc List:assoc_update
 		   
 		   )
 		 (map car generic-arith-primitives)

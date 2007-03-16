@@ -33,16 +33,16 @@ go "demo1_audiofile.ws"
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"
+
 go "demo3a_tuples.ws"
 go "demo3b_inlining.ws"
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
-
 #TEMP# go "demo3e_hashtables.ws"
-
 go "demo3f_morelists.ws"
 go "demo3g_arrays.ws"
-
+go "demo3h_advancedlists.ws"
+go "demo3i_conversion_prims.ws"
 
 # [2007.03.14] This is where the segfaulting starts:
 # But 5a,5B don't segfault..

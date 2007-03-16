@@ -42,13 +42,12 @@
 		 absI absF absC absI16
 		 roundF		 
 
-		 intToFloat floatToInt
-		 floatToComplex complexToFloat
-		 intToComplex complexToInt
 
-		 intToInt16
-		 int16ToInt int16ToFloat int16ToComplex
-
+		 int16ToInt     int16ToFloat int16ToComplex
+		 intToInt16     intToFloat   intToComplex 
+		 floatToInt16   floatToInt   floatToComplex 		 		 
+		 complexToInt16 complexToInt complexToFloat
+		 
 		 stringToInt stringToFloat stringToComplex
 
 		 ;toComplex toFloat  ;; Generic versions
@@ -787,18 +786,22 @@
   (define absF flabs)
   (define absC s:abs)
 
-  (define intToFloat fixnum->flonum)
-  (define floatToInt flonum->fixnum)
-
-  (define (intToComplex n) (s:+ n 0.0+0.0i))
-  (define (floatToComplex f) (s:fl-make-rectangular f 0.0))
-  (define (complexToInt c) (flonum->fixnum (realpart c)))
-  (define complexToFloat realpart)
+  (define int16ToInt    (lambda (x) x))
+  (define int16ToFloat   fixnum->flonum)
+  (define (int16ToComplex n) (s:+ n 0.0+0.0i))
 
   (define intToInt16 (lambda (x) x))
-  (define int16ToInt (lambda (x) x))
-  (define int16ToFloat   intToFloat)
-  (define int16ToComplex intToComplex)
+  (define intToFloat fixnum->flonum)
+  (define intToComplex int16ToComplex)
+
+  ;; Should do a range check here:
+  (define floatToInt16 flonum->fixnum)
+  (define floatToInt   flonum->fixnum)
+  (define (floatToComplex f) (s:fl-make-rectangular f 0.0))
+
+  (define (complexToInt16 c) (flonum->fixnum (realpart c)))
+  (define complexToInt complexToInt16)
+  (define complexToFloat realpart)
 
   ;; TODO: MERGE THIS WITH DUPLICATED CODE IN STATIC-ELABORATE!!
 
@@ -817,7 +820,7 @@
 		   (let ([x (string->number v)])
 		     (cond
 		      [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
-		      [(real? x) (s:fl-make-rectangular x 0.0)]
+		      [(flonum? x) (s:fl-make-rectangular x 0.0)]
 		      [else (ASSERT cflonum? x)]))))
   
   (define (roundF f) (flonum->fixnum ((IFCHEZ flround round) f)))
