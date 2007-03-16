@@ -44,9 +44,24 @@
   ;; This is not reentrant for two reasons: the var/exploded-table
   ;; state, and the fact that it uses the unique name counter.
   (define-pass resolve-varrefs
-      (define var-table '())
-      (define exploded-table '())
+      (define relevant-prims 
+	(filter id
+	   (map (lambda (prm) 
+		  ;; Err... these really might should have different names:
+		  (if (memq (car prm) '(+: *: -: /: ^:))
+		      #f
+		      (let ([boom (explode-id (car prm))])
+			(if (not (null? (cdr boom)))
+			    (cons (car prm) boom)
+			    #f))))
+	     (regiment-primitives))))
+      (define exploded-table (map cdr relevant-prims))
+      ;; Don't rename prims:
+      (define var-table (map (lambda (p) (list (car p) (car p))) relevant-prims))
+      ;(define exploded-table '())
+      ;(define var-table '())
       (define (driver x fallthru)
+	;(inspect exploded-table)
 	(match x
 	  [,var (guard (symbol? var))
 		(cond
