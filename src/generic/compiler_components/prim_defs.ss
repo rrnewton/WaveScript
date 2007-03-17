@@ -317,6 +317,8 @@
      (print            ('a) #())
 
      (gnuplot_array    ((Array (NUM a))) #())
+     ;; Takes an (X,Y) pair.
+     (gnuplot_array2d  ((Array #((NUM a) (NUM b)))) #())  
 
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
      (emit           ((VQueue 'a) 'a) #())
@@ -449,8 +451,13 @@
 
     (show             ('a) String)
 
+    ;; Shouldn't need both of these, one should be defined in wavescript:
     (gnuplot_array_stream   ((Stream (Array (NUM a)))) (Stream (Array (NUM a))))
     (gnuplot_sigseg_stream  ((Stream (Sigseg (NUM a)))) (Stream (Sigseg (NUM a))))
+
+    ;; These take (X,Y) pairs.
+    (gnuplot_array_stream2d  ((Stream (Array #((NUM a) (NUM b))))) (Stream (Array #((NUM a) (NUM b)))))
+    (gnuplot_sigseg_stream2d ((Stream (Sigseg #((NUM a) (NUM b))))) (Stream (Sigseg #((NUM a) (NUM b)))))
 
     (string-append    (String String) String)
 

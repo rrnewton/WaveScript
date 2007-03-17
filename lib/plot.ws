@@ -1,13 +1,25 @@
 
 
-// NOTE: this should return the original stream:
+
+
+type Plotter t = Stream t -> Stream t;
+
+type ArrayPlotter t = Stream (Array t) -> Stream (Array t);
+type SigsegPlotter t = Stream (Sigseg t) -> Stream (Sigseg t);
 
 // Takes a windowed stream.  Remembers the history and redraws the
 // whole graph every time it gets a new window of data on the stream.
-livePlot :: Stream (Sigseg t) -> Stream (Array t);
-fun livePlot (S) {
-  gnuplot_array_stream(
-   iterate( win in S ) {
+//
+// NOTE: this should return the original stream:
+//livePlot :: ArrayPlotter t -> SigsegPlotter t;
+
+//livePlot :: ArrayPlotter t -> Stream (Sigseg t) -> Stream (Array t);
+//livePlot :: ArrayPlotter t -> 'foo;
+//livePlot :: SigsegPlotter t -> 'foo;
+//livePlot :: Plotter t -> Plotter t;
+fun livePlot (plotter) fun (S) {
+
+  let cumulative = iterate( win in S ) {
     state { 
       arr = Array:null;
       ind = 0;
@@ -40,5 +52,11 @@ fun livePlot (S) {
     ind += win.width;
 
     emit arr;
-  })
+  };
+
+  //gnuplot_array_stream(cumulative)
+  plotter(cumulative)
 }
+
+live1d = livePlot(gnuplot_array_stream);
+live2d = livePlot(gnuplot_array_stream2d);

@@ -205,6 +205,30 @@
     [,_  (error 'source_loader:desugar-define
 		"invalid define expression: ~a" `(define ,lhs ,rhs))]))
 
+;; Would like to do a bit better job of this:
+(IFCHEZ
+ (define (relative-path? p)
+  (case (machine-type)
+    [(i3nt) 
+     (if (> (string-length p) 2)
+	 ;; A drive letter:
+	 (eqv? ":" (string-ref p 1))
+	 #t)]
+    [else (ASSERT (not (zero? (string-length p))))
+	  (not (eqv? #\/ (string-ref p 0)))
+     ]))
+ (define (relative-path? p)
+   (error 'relative-path? "not implemented in PLT yet")))
+
+(define (resolve-lib-path file)
+  (cond 
+   [(not (relative-path? file)) file]
+   ;; Safety: Can't use ".." wrt to lib directory:
+   [(and (not (substring? ".." file)) 
+	 (file-exists? (++ (REGIMENTD) "/lib/" file)))
+    (++ (REGIMENTD) "/lib/" file)]
+   [else (++ (current-directory) "/" file)]
+   ))
 
 ;================================================================================
 
@@ -214,9 +238,10 @@
   (define (process form)
     (match form
       [(include ,file) 
+       ;; This is usually a relative file path!
        (apply append
 	 (map process 
-	   (or (expand-include file)
+	   (or (expand-include (resolve-lib-path file))
 	       (error 'ws-postprocess 
 		      "could not retrieve contents of include: ~s" file))))]
       ;; This just renames all defs within a namespace.

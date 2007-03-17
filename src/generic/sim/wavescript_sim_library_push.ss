@@ -28,6 +28,7 @@
 		 audioFile timer 
 		 show 
 		 gnuplot_array gnuplot_array_stream gnuplot_sigseg_stream
+		 gnuplot_array2d gnuplot_array_stream2d gnuplot_sigseg_stream2d
 		 prim_window
 
 		 to-uint16 to-int16 uint16->string
@@ -964,6 +965,7 @@
      (define (show x) (format "~a" x))
 
      (define (gnuplot_array arr)   (gnuplot (vector->list arr)))
+     (define (gnuplot_array2d arr) (gnuplot (map vector->list (vector->list arr))))
 
      (define gnuplot-helper
        (lambda (extract)
@@ -981,6 +983,8 @@
      (define gnuplot_array_stream  (gnuplot-helper (lambda (arr) (vector->list arr))))
      (define gnuplot_sigseg_stream (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
 
+     (define gnuplot_array_stream2d  (gnuplot-helper (lambda (arr) (vector->list arr))))
+     (define gnuplot_sigseg_stream2d (gnuplot-helper (lambda (ss) (vector->list (sigseg-vec ss)))))
   
      (define m_invert ws-invert-matrix)
 

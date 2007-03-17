@@ -347,6 +347,7 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
+;; This little pass 
 (define-pass standardize-iterate
     [Expr (lambda (x fallthru)
 	    (match x
@@ -479,8 +480,8 @@
       (if (regiment-verbose)
 	  (if #t ;IFDEBUG
 	      (begin (parameterize ([pretty-line-length 160]
-				    [print-length #f]
-				    [print-level #f])
+				    [print-length 300]
+				    [print-level 30])
 		    (newline)
 		    (pretty-print x))
 		  (printf "================================================================================\n\n")
@@ -513,6 +514,7 @@
     (ws-run-pass p verify-regiment)
     (ws-run-pass p pass_desugar-pattern-matching)
     (ws-run-pass p resolve-varrefs)
+    ;(ws-run-pass p label-mutable)
     (ws-run-pass p resolve-type-aliases)
     (ws-run-pass p retypecheck) ;; This is the initial typecheck.
     )
@@ -687,6 +689,7 @@
       (ws-run-pass p verify-regiment)
       (ws-run-pass p pass_desugar-pattern-matching)
       (ws-run-pass p resolve-varrefs)
+      ;(ws-run-pass p label-mutable)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
       p))
@@ -762,6 +765,7 @@
       (ws-run-pass p verify-regiment)
       (ws-run-pass p pass_desugar-pattern-matching)
       (ws-run-pass p resolve-varrefs)
+      ;(ws-run-pass p label-mutable)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
       p))

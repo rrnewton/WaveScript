@@ -12,6 +12,9 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.17]
+  *) Add REF types!!!
+
 [2007.03.13]
   *) Make dependencies on GSL and fftw non-static.
 

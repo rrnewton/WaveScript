@@ -9,7 +9,9 @@ s0 = (dataFile("regiment_traffic.txt", "text", 10000, 0)
 
 lines = iterate( (_, _,_,_, ln) in s0 ) { emit ln };
 
-cum = iterate( ln in lines ) {
+filtered = stream_filter(fun(x) x<500, lines)
+
+cum = iterate( ln in filtered ) {
   state { sum=0 }
   sum += ln;
   emit sum;

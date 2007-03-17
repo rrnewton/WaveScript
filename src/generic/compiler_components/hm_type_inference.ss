@@ -117,7 +117,8 @@
 ;; If this is enabled, the type assigned to a let-bound variable is
 ;; lowered to the LUB of its call-site requirements, rather than the
 ;; most general type.
-(define ENABLELUB #t)  
+;;   This is only turned off for debugging purposes...
+(define ENABLELUB #t)
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
@@ -1123,6 +1124,10 @@
      (DEBUGASSERT symbol? tv)
      `(NUM ,tv)]
 
+    ;; A NUM and anything else is just TOP:
+    [[,ty (NUM ,tv)] (DEBUGASSERT symbol? tv) `(quote ,(make-tvar))]
+    [[(NUM ,tv) ,ty] (DEBUGASSERT symbol? tv) `(quote ,(make-tvar))]
+
 ;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
 #;
     ;; If one or both of them is a symbol, it might be a type alias.
@@ -1236,7 +1241,11 @@
 	[(quote ,[var]) (++ "'" var)]
 	[(NUM ,[var]) (++ "#" var)]
 	[(-> ,[b]) (++ "() -> " b)]
-	[(,[left] -> ,[right]) (++ left " -> " right)]
+	;[(,[left] -> ,[right]) (++ "(" left ") -> " right)]
+	[(,left -> ,[right]) 
+	 (if (arrow-type? left)
+	     (++ "(" (loop left) ") -> " right)
+	     (++ (loop left) " -> " right))]
 	[(,[arg*] ... -> ,[b]) (++ "(" (apply string-append (insert-between ", " arg*)) ")"
 				   " -> "b)]
 	[#(,[x*] ...)

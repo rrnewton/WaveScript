@@ -890,7 +890,46 @@
          (cons i (iota (+ i 1) (- n 1))))]))
 
 ;; For one-argument functions:
-(define (compose f g) (lambda (x) (f (g x))))
+(define compose
+  (case-lambda
+    [(f) f]
+    [(f g) (lambda (x) (f (g x)))]
+    [args
+     (let ([funs (reverse args)])
+       (lambda (x) 
+	 (let loop ([x x] [ls funs])
+	   (if (null? ls) x
+	       (loop ((car ls) x) (cdr ls))))))]) )
+;; 1000 of the same function:
+;;   10,000 invocations: 100ms
+;; 1000 different functions:
+;;   10,000 invocations: 130ms
+;;
+;; 5 of the same function:
+;;   10^7 invocations: 720ms
+;; 5 different functions:
+;;   10^7 invocations: 910ms
+
+;; This behaves much worse on both large and small numbers of functions:
+#;
+(define compose
+  (case-lambda
+    [(f) f]
+    [(f g) (lambda (x) (f (g x)))]
+    [(f . rest)
+     (lambda (x)
+       (f ((apply compose rest) x)))]))
+;; 1000 of the same function:
+;;   10 invocations: 420ms
+;; 1000 different functions:
+;;   10 invocations: 360ms 
+;;
+;; 5 of the same function:
+;;   10^7 invocations: 2940ms
+;; 5 different functions:
+;;   10^7 invocations: 3100ms
+
+
 
 ;; Works for multiple arguments/return values:
 (define compose/values
@@ -1531,8 +1570,11 @@
 (IFCHEZ
  
 ;; gnuplot_stream
+;; .param flags 
 ;; .returns A function that takes new data and updates the graph.
 ;;  The function closes the process when it receives the input 'exit.
+;;  The new data must consist of a list of numbers or of (X,Y) pairs.
+;;  
 (define (gnuplot_pipe . flags)
   (let (;[fn1 "_temp_gnuplot.script"]
 	[fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" (random 100000))])
@@ -1546,12 +1588,13 @@
 	[withclause "with linespoints"])
 
     (define (plot-one i d)
-      (if (number? d)
-	  (fprintf dat "~s ~s\n" i d)
-	  (begin (for-each (lambda (n)
-			     (fprintf dat "~s " n))
-			   d)
-		 (fprintf dat "\n"))))
+      (cond
+       [(number? d) (fprintf dat "~s ~s\n" i d)]
+       [(or (vector? d) (list? d))
+	((if (vector? d) vector-for-each for-each) 
+	 (lambda (n) (fprintf dat "~s " n)) d)
+	(fprintf dat "\n")]
+       [else 'gnuplot_pipe:plot-one "invalid datapoint.  Cannot plot ~s" d]))
 
     ;; Process flags:
     (for-each 
@@ -1611,15 +1654,13 @@
 	    (begin (display "replot\n" outp)
 		   (flush-output-port outp)))
 
-	(printf "Replot message sent.\n")
-
-	(printf "Writing new dataset to pipe ~s\n" fn2)
+	;;(printf "Replot message sent.\n")
+	;;(printf "Writing new dataset to pipe ~s\n" fn2)
 
 	;; Open a session on the pipe
 	(set! dat (open-output-file fn2 'append))
 	
-	(printf "Opened pipe.\n")
-	
+	;;(printf "Opened pipe.\n")
 	;; Write dataset to pipe:
 	#;
 	(if (not (or (andmap number? data) 
@@ -1631,8 +1672,8 @@
 	;; Close pipe to end session.
 	(close-output-port dat)
 	(set! dat #f)
-	
-	(printf "Data written to pipe.\n")])
+	;;(printf "Data written to pipe.\n")
+	])
       )))))
 (define gnuplot_pipe 'gnuplot_pipe_unimplemented_in_plt)) ; End IFCHEZ
   

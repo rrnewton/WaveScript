@@ -472,10 +472,14 @@
 ;		   (guard (null? (intersection (core-free-vars bod) mutable-vars)))
 ;		   `(lambda ,vars ,types bod)]
 
-		  ;; FIXME: BUG: SHOULD THIS HAVE A COMMA?:
-		  [(,_ ,not-available ,__) var]
+		  ;; This symbol is special:
+		  [(,_ ,NA ,__) (guard (eq? NA not-available)) var]
+
 		  ;; Resolve aliases:
-		  [(,_ ,v ,__) (guard (symbol? v)) (process-expr v env)]
+		  [(,_ ,v ,__) (guard (symbol? v))
+		   (printf "ALIAS? ~s ~s\n" var v)
+		   (process-expr v env)]
+
 		  ;; Otherwise, nothing we can do with it.
 		  [,else   var])
 		;; This appears to disable the system here:
@@ -508,7 +512,7 @@
 	  
 	  ;; Don't go inside for loops for now:
 	  [(for (,i ,[st] ,[en]) ,bod)
-	   (let ([newenv (cons `(,i not-available 99999) env)])	     
+	   (let ([newenv (cons `(,i ,not-available 99999) env)])	     
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
 	  
           [(begin ,[args] ...) `(begin ,args ...)]

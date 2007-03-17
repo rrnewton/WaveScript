@@ -1,26 +1,20 @@
 
 
 namespace Date {
-
+  //let months = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // Statically summing these to get cumulative numbers:
+  monthTable = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365]; 
 
   // Convert 'Y-M-D' date to total number of days.
+  // Doesn't take leap years into account!!!
   toDays :: (Int * Int * Int) -> Int;
-  toDays = { 
-    //using List;
-    //let months = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    // Statically summing these to get cumulative numbers:
-    let months = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365]; 
-    // Here's the function proper:
-    // Doesn't take leap years into account!!!
-    fun ( (y,m,d) ) {
-      365*y + 
-      months\List:ref(m-1) +
-      d-1
-    }
-  };
+  fun toDays( (y,m,d) ) {
+    365*y + 
+    monthTable\List:ref(m-1) +
+    d-1
+  }
 
 
-  foobar = toDays;
 }
 
 
