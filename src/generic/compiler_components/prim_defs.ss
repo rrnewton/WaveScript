@@ -116,8 +116,6 @@
     (head   ((List 'a)) 'a)      ;; Should remove car/cdr at some point.
     (tail   ((List 'a)) (List 'a))
     (append ((List 'a) (List 'a)) (List 'a))
-    (map (('a -> 'b) (List 'a)) (List 'b))
-    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
 
     ;; The List namespace:
     (List:head ((List 'a)) 'a)
@@ -268,8 +266,10 @@
     (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
-        
-    
+
+    (map (('a -> 'b) (List 'a)) (List 'b))
+    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
+            
     ))
 
 ;; These count as primitives also.
@@ -336,6 +336,10 @@
 ;; Adding Wavescope-related primitives:   
 (define wavescript-primitives
   `( 
+    ;; These are for second-class references (iterator state variables)
+    (ref     ('a)         (Ref 'a))
+    (deref   ((Ref 'a))   'a)
+
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.
@@ -416,6 +420,9 @@
 
     ;; This uses an initialization function to fill in an array:
     (Array:build       (Int (Int -> 'a)) (Array 'a))
+
+    (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
+    (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
 
     ;; Temporary:
     ;; Oops, need to be sure this doesn't change the numeric type in the output:

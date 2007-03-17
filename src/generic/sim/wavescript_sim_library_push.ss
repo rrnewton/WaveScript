@@ -17,7 +17,7 @@
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app let 
+		 app let ref deref
 
 		 run-stream-query reset-state!
 
@@ -59,7 +59,7 @@
 
 		 nullseg Array:null nulltimebase
 		 tuple tupref
-		 Array:make Array:ref Array:set 
+		 Array:make Array:ref Array:set Array:map Array:fold
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -169,6 +169,10 @@
   (define-syntax fire!
     (syntax-rules ()
       ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
+
+  ;; These do nothing.  Scheme's bindings are mutable to start.
+  (define-syntax ref (syntax-rules () [(_ x) x]))
+  (define-syntax deref (syntax-rules () [(_ x) x]))
 
   ;; Converts hertz to microseconds:
   (define (rate->timestep freq)
@@ -892,6 +896,8 @@
      (define Array:ref  vector-ref)
      (define Array:set vector-set!)
      (define Array:length   vector-length)
+     (define Array:map vector-map)
+     (define Array:fold vector-fold)
 
      ;; EQ? based hash tables:
 #;

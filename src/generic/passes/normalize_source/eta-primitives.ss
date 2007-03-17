@@ -8,15 +8,16 @@
 
 (module eta-primitives mzscheme
   (require "../../../plt/common.ss"
-           ;"desugar-misc.ss"
+           "rename-vars.ss"
 	   )
   (provide eta-primitives eta-primitives-grammar test-eta-primitives)
   (chezimports)
 
   ;; In the output grammar varrefs are no longer allowed to refer to primitives.
   (define eta-primitives-grammar
-    (let* ([varclause (assq 'Var initial_regiment_grammar)]
-	   [newgram (remq varclause initial_regiment_grammar)]
+    (let* ([base-grammar rename-vars-grammar]
+	   [varclause (assq 'Var base-grammar)]
+	   [newgram (remq varclause base-grammar)]
 	   [new_is-var? 
 	    (lambda (x)
 	      (and (symbol? x)

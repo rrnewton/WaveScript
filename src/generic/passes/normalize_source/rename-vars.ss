@@ -12,7 +12,7 @@
 
 (module rename-vars mzscheme
   (require "../../../plt/common.ss")
-  (provide rename-vars 
+  (provide rename-vars rename-vars-grammar
            test-this these-tests test01 tests01
            test-rename-vars)
   (chezimports)
@@ -24,7 +24,7 @@
      ;; This is really compiler-internal.  Introduced after static-elaborate.
      ;; Including here only because rename-vars is used in multiple places.
      '[Expr ('unionN Expr ...)]
-     initial_regiment_grammar))
+     ws-label-mutable-grammar))
 
   ;; [2006.10.07] Rewrote to use generic-traverse.
   (define rename-vars

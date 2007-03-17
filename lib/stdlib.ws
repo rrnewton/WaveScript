@@ -43,6 +43,7 @@ fun snoop(str, strm) {
 //zip2 = fun (s1,s2) {  
 //}
 
+/*
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
 syncN = 
@@ -132,7 +133,7 @@ syncN =
     }
   }
 }
-
+*/
 
 // This takes an unwindowed stream and produces a stream of sigsegs.
 fun window(S, len) 
@@ -360,6 +361,7 @@ fun amap_inplace(f, arr) {
   arr
 }
 
+/*
 amap :: (a -> b, Array a) -> Array b;
 fun amap(f, arr) {
   narr = Array:make(arr\Array:length, f(arr[0]));
@@ -377,9 +379,7 @@ fun afold(f, zero, arr) {
   lhs
 }
 
-fun asum(arr) {
-  afold((+), gint(0), arr)
-}
+fun asum(arr) { afold((+), gint(0), arr) }
 
 fun amult_scalar(arr,s) {
   fun ms(a) { a*s };
@@ -398,6 +398,7 @@ fun adot(arr1,arr2) {
   }
   lhs
 }
+*/
 
 fun apairmult(arr1,arr2) {
   narr = Array:make(arr1\Array:length, arr1[0]);
@@ -407,6 +408,10 @@ fun apairmult(arr1,arr2) {
   narr
 }
 
+
+// [2007.03.17] RRN: We can't mutate variables that aren't iterator state.
+// This should be done with an array fold, which I need to add.
+/*
 fun a_max(arr) {
   val = arr[0];
   ind = 0;
@@ -418,6 +423,8 @@ fun a_max(arr) {
   };
   (val,ind)
 }
+*/
+
 
 fun a_zeroes(len) { Array:make(len, gint(0)) }
 fun a_ones(len) { Array:make(len, gint(1)) }

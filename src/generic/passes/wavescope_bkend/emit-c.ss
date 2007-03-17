@@ -1319,7 +1319,7 @@ int main(int argc, char ** argv)
 		 '(;; These are obsolete:
 		   eq? locdiff nodeid sense even? odd? 
 		   ;; These weren't really primitives:    
-		   tuple tupref
+		   tuple tupref ref deref
 		   ;; These were desugared or reduced to other primitives:
 		   or and dataFile show-and-string-append Array:build 
 		   ;; These were resolved into the w/namespace versions:
@@ -1336,6 +1336,7 @@ int main(int argc, char ** argv)
 		   ENSBoxAudio
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
+		   Array:map Array:fold
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)

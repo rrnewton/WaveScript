@@ -476,8 +476,10 @@
 		  [(,_ ,NA ,__) (guard (eq? NA not-available)) var]
 
 		  ;; Resolve aliases:
+		  ;; FIXME: SHOULD MAKE SURE IT'S NOT MUTABLE?
 		  [(,_ ,v ,__) (guard (symbol? v))
-		   (printf "ALIAS? ~s ~s\n" var v)
+		   (ASSERT (not (memq v mutable-vars)))
+		   ;(printf "ALIAS? ~s ~s\n" var v)
 		   (process-expr v env)]
 
 		  ;; Otherwise, nothing we can do with it.
@@ -695,7 +697,9 @@
 		;; (Kind of inconsistent that we *do* currently do List:make.)
 		(not (memq prim '(show cons gint 
 				       Array:make hashtable
-				       m_invert)))
+				       m_invert
+				       ref deref
+				       )))
 		)
 	       (do-prim prim (map getval rand*) env)
 	       `(,prim ,rand* ...))]

@@ -95,7 +95,7 @@
    list-find-position list-remove-before
    foldl foldl1
    
-   vector-for-each vector-map vector-map!
+   vector-for-each vector-map vector-map! vector-fold
    vector-blit!
 
    insert-between iota compose compose/values disp pp
@@ -481,6 +481,13 @@
       (do ([i (sub1 (vector-length v)) (sub1 i)])
           ((= -1 i) newv)
           (vector-set! newv i (f (vector-ref v i)))))))
+(define vector-fold
+  (lambda (f z v)
+    (define len (vector-length v))
+    (let loop ([i 0] [x z])
+      (if (fx= i len) x
+	  (loop (fx+ 1 i) 
+		(f x (vector-ref v i)))))))
 (define vector-blit!
   (lambda (src dest ind1 ind2 len)
     (let loop ([i 0])
@@ -1069,15 +1076,25 @@
 		 (outer (cdr struct)))))))
 
 
-;; [2004.06.11] This one doesn't do vectors:
+;; [2007.03.17] This one will go inside vectors, but the search item
+;; must be found as the car of a pair.  The search item in the
+;; beginning (or middle) of a vector won't count as a match.
 (define (deep-assq ob struct)
   (let outer ([struct struct])
-    (if (pair? struct)
-	(if (eq? ob (car struct))
-	    struct
-	    (or (outer (car struct))
-		(outer (cdr struct))))
-	#f)))
+    (cond 
+     [(pair? struct)
+      (if (eq? ob (car struct))
+	  struct
+	  (or (outer (car struct))
+	      (outer (cdr struct))))]
+     [(vector? struct) 
+      (let ([len (vector-length struct)])
+	(let vloop ([i 0])
+	  (cond
+	   [(fx= i len) #f]
+	   [(deep-assq ob (vector-ref struct i)) => id]
+	   [else (vloop (fx+ 1 i))])))]
+     [else #f])))
 
 (define (deep-assq-all ob struct)
   (deep-all-matches (lambda (x) (and (pair? x) (eq? ob (car x))))

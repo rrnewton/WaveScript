@@ -292,6 +292,23 @@
 	     [#f #f]
 	     [,s (guard (symbol? s)) s]
 
+	     ;; A mutable cell, we can't reinstantiate this:
+	     [(Ref ,t) 
+	      ;; But we have an issue, it *does* need to be instantiated the first time.
+	      (match (or (deep-assq 'quote t) (deep-assq 'NUM t))
+		[#f 
+		; (inspect (list "ref type with no mutable cell: " t))
+		 ;; It shouldn't matter whether we recur here:
+		 `(Ref ,t)]
+		[(,qt (,v . ,_)) (guard (memq qt '(quote NUM)))
+		 ;(inspect (list "mutable cell within ref type" (cons v _) " in " t))
+		 `(Ref ,t)]
+		[(,qt ,v)  (guard (memq qt '(quote NUM)))
+		 (DEBUGASSERT symbol? v)
+		 ;(inspect (list "non-cell within ref type, instantiating once!" v " in " t))
+		 `(Ref ,(loop t))]
+		)]
+
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
 	      (guard (memq qt '(quote NUM)) (pair? cell) (memq (car cell) nongeneric))
@@ -331,17 +348,12 @@
     [',n `(quote ,n)]
     [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
     [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
-#;
-    [(LATEUNIFY ,a ,b)
-     (error 'export-type "shouldn't be any LATEUNIFY's left at this point: ~s" `(LATEUNIFY ,a ,b))
-     `(LATEUNIFY ,a ,b)]
-    
     [(LATEUNIFY #f ,[b]) `(LATEUNIFY #f ,b)]
     [(LATEUNIFY ,[a] ,[b])
      `(LATEUNIFY ,a ,b)]
-
     [(,[arg*] ... -> ,[res])
      `(,arg* ... -> ,res)]
+    ;; Including Ref:
     [(,s ,[t] ...) (guard (symbol? s))
      `(,s ,t ...)]
     [#(,[t*] ...) (apply vector t*)]
@@ -391,6 +403,7 @@
     [(NUM ,v) (guard (symbol? v))            (void)]
     [(NUM (,v . ,t)) (if t (do-late-unify! t) (void))]
     [(,[arg*] ... -> ,[res])                 (void)]
+    ;; Including Ref:
     [(,s ,[t] ...) (guard (symbol? s))       (void)]
     [#(,[t*] ...)                            (void)]
     [,other (error 'do-late-unify! "bad type: ~s" other)]))
@@ -429,6 +442,7 @@
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(LATEUNIFY #f ,[t]) t]
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
+    ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
     [#(,[t] ...) (andmap id t)]   
     [,else #f]))
@@ -449,6 +463,8 @@
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
+    ;; This really should not be:
+    [(Ref ,[t]) (ASSERT not t) #f]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
@@ -466,10 +482,10 @@
      (warning 'polymorphic-type? "got type var with no info: ~s" v)
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
-
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'polymorphic-type? "don't know how to answer this for LUB yet.")]
+    ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
     [#(,[t] ...) (ormap id t)]
     [,else #f]))
@@ -482,6 +498,8 @@
     [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
+    ;; This should not be either!
+    [(Ref ,t) (ASSERT not t) #f]
     [,else #f]))
 
   
@@ -657,8 +675,10 @@
       ;; Wavescope: this could be a set! to a state{} bound variable:
       [(set! ,v ,[l -> e et])  
        (let ([newexp `(set! ,v ,e)])
+	 ;; The mutable var must be a Ref!
 	 (types-equal! (ASSERT (tenv-lookup tenv v))
-		       et newexp)
+		       `(Ref ,et)
+		       newexp)
 	 ;; returns unit type:
 	 (values newexp #()))]
 
@@ -1048,6 +1068,8 @@
     [[#(,x* ...) #(,y* ...)]
      (guard (= (length x*) (length y*)))
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) x* y*)]
+
+    ;; Ref will fall under this category:
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
      (guard (symbol? x1) (symbol? y1)
 	    (not (memq '-> xargs))
@@ -1154,7 +1176,7 @@
 	 `(quote ,(make-tvar))
 	 )]
 
-    ;; Two type constructors:
+    ;; Two type constructors (Ref falls under this umbrella)
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
      (guard (symbol? x1) (symbol? y1)
 	    (not (memq '-> xargs))

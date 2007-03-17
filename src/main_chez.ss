@@ -457,11 +457,13 @@
 ;;  For loading regiment source.  Depends on desugar-pattern-matching:
 (include "generic/compiler_components/source_loader.ss") (import source_loader) 
 
+(include "generic/passes/normalize_source/resolve-varrefs.ss") (import resolve-varrefs)
+(include "generic/passes/normalize_source/ws-label-mutable.ss") (import ws-label-mutable)
+(include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/eta-primitives.ss") (import eta-primitives)
 (include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
-(include "generic/passes/normalize_source/resolve-varrefs.ss") (import resolve-varrefs)
-(include "generic/passes/normalize_source/rename-vars.ss") (import rename-vars)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
+
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
@@ -532,6 +534,9 @@
     (include "generic/passes/nesc_bkend/emit-nesc.ss")          (import emit-nesc)
     ))
 
+
+;; These are miscellaneous small passes used by wavescript:
+(include "generic/passes/small-ws-passes.ss")             (import small-ws-passes)
 
 ;; [2006.08.27] Now for the passes in the WaveScript branch:
 (include "generic/passes/wavescope_bkend/type-annotate-misc.ss") (import type-annotate-misc)

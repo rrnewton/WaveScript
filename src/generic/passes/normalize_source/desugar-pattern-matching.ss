@@ -141,6 +141,11 @@
 ;; TODO: This should really not go in the source_loader.
 (define-pass pass_desugar-pattern-matching     
 
+  ;; We're not quite ready to leave the "sugared" grammar yet.  The
+  ;; next pass removes the 'using' construct.
+  [OutputGrammar  sugared_regiment_grammar]
+  ;[OutputGrammar  initial_regiment_grammar]
+
 ;; TODO: When it works, could redo this with Expr/ExtraArg
   [Expr process-expr]
   

@@ -10,7 +10,9 @@
 
   ;; This is a bit of a hack... really should split resolve-varrefs into
   ;; two separate passes for the two places it's used.
-  (define resolve-varrefs-grammar   initial_regiment_grammar)
+  (define resolve-varrefs-grammar 
+    ;; Kill the using construct, wait it's only in the sugared grammar:
+    initial_regiment_grammar)
 
   (define (explode-id id) 
     (map string->symbol
