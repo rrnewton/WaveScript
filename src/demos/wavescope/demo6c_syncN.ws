@@ -55,23 +55,22 @@ fun syncN (strms, ctrl) {
     then {} // Can't do anything yet...
     else {
       let (fl, st, en) = requests.head;
-      let allready = true;
-      for i = 0 to accs.Array:length - 1 {
-	if (accs[i] == nullseg ||
-	    accs[i].start > st ||
-	    accs[i].end < en)
-	then allready := false;
-      };
+      let allready = 
+	// This should be andmap, not fold:
+	Array:fold(fun (bool, seg)
+		   (bool               &&
+		    not(seg == nullseg) &&
+		    not(seg.start > st) &&
+		    not(seg.end < en)),
+		   true, accs);
      	
       if allready then {
 	if fl then {
 	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
-	  output = [];
-	  for i = 0 to accs.Array:length - 1 {
-	    output := subseg(accs[i], st, size) ::: output;
-	  }
-	  emit(List:reverse(output));
+
+  	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
+
 	} else 
 	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 

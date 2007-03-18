@@ -409,6 +409,9 @@
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 
+;  (ws-run-pass p anihilate-higher-order)
+;  (ws-run-pass p retypecheck)  ;; Fill in some types that were left blank in the above.
+
   (ws-run-pass p ws-remove-complex-opera*)
   (ws-run-pass p ws-normalize-context)
   (ws-run-pass p ws-lift-let)

@@ -38,60 +38,61 @@ fun window(S, len)
 // Constant:
 M_PI = 3.141592653589793;
 
-fun syncN (ctrl, strms) {
-  _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
-  f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
-  _strms = map(f, strms);  
-  slist = _ctrl ::: _strms;  
 
-  //  if DEBUGSYNC 
-  //    then print("Syncing N streams (including ctrl stream): " ++ show(slist.List:length) ++ "\n");
+fun syncN (strms, ctrl) {
+  let _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, (nullseg :: Sigseg Float)); };
+  let f = fun(s) { iterate(win :: Sigseg Float in s) { 
+                   emit (false,0,0, (win :: Sigseg Float)); }; };
+  let _strms = map(f, strms);
+
+  let slist = _ctrl ::: _strms;
+  
+  // Side effect not allowed in iterate:
+  //print("Syncing N streams: " ++ show(slist.List:length) ++ "\n");
 
   iterate((ind, tup) in unionList(slist)) {
     state {
       accs = Array:make(slist.List:length - 1, nullseg);
       requests = [];
     }
-
-    if DEBUGSYNC then {
-      print("SyncN  Current ACCS: ");
-      for i = 0 to accs.Array:length - 1 {
-	if accs[i] == nullseg
-	then print("null  ")
-	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
-      };
-      print("\n");
+    print("  Current ACCS: ");
+    for ii = 0 to accs.Array:length - 1 {
+      if accs[ii] == nullseg
+      then print("null  ")
+      else print(show(accs[ii].start) ++ ":" ++ show(accs[ii].end) ++ "  ");
     };
+    print("\n");
 
     let (flag, strt, en, seg) = tup;
+
     // Process the new data:
     if ind == 0 // It's the ctrl signal.
     then requests := append(requests, [(flag,strt,en)])
-    else accs[ind-1] := joinsegs(accs[ind-1], seg);        
+    else accs[ind-1] := joinsegs(accs[ind-1], seg);
+        
     // Now we see if we can process the next request.
     if requests == []
     then {} // Can't do anything yet...
     else {
       let (fl, st, en) = requests.head;
-      allready = true;
-      for i = 0 to accs.Array:length - 1 {
-	if (accs[i] == nullseg ||
-	    accs[i].start > st ||
-	    accs[i].end < en)
-	then allready := false;
-      }
+      let allready = 
+	// This should be andmap, not fold:
+	Array:fold(fun (bool, seg)
+		   (bool               &&
+		    not(seg == nullseg) &&
+		    not(seg.start > st) &&
+		    not(seg.end < en)),
+		   true, accs);
+     	
       if allready then {
 	if fl then {
-	  if DEBUGSYNC 
-	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+	  print("  Spit out segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
-	  output = [];
-	  for i = 0 to accs.Array:length - 1 {
-	    output := subseg(accs[i], st, size) ::: output;
-	  }
-	  emit(List:reverse(output));
-	} else if DEBUGSYNC then
-	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
+
+  	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
+
+	} else 
+	  print(" Discarding segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 
 	// Destroy the discarded portions and remove the serviced request:
 	for j = 0 to accs.Array:length - 1 {

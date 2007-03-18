@@ -474,6 +474,8 @@
 (include "generic/passes/wavescope_bkend/purify-iterate.ss") (import purify-iterate)
 (include "generic/passes/wavescope_bkend/flatten-iterate-spine.ss") (import flatten-iterate-spine)
 
+(include "generic/passes/wavescope_bkend/anihilate-higher-order.ss") (import anihilate-higher-order)
+
 (include "generic/passes/normalize_query/remove-complex-constant.ss") (import remove-complex-constant)
 ; pass07_verify-stage2.ss
 (include "generic/passes/normalize_query/uncover-free.ss") (import uncover-free)

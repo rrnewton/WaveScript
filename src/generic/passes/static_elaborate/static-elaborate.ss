@@ -77,6 +77,8 @@
 	       ;; (It's higher order.)
 	       [(Prim 'Array:build) #f]
 
+	       [(Prim ',p) (guard (assq p meta-only-primitives)) #f]
+
 	       ;; nor should we have user-level applications:
 	       [(Expr ('app Expr ...)) #f]
 	       [,_ #t]))

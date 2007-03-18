@@ -59,7 +59,7 @@
 
 		 nullseg Array:null nulltimebase
 		 tuple tupref
-		 Array:make Array:ref Array:set Array:map Array:fold
+		 Array:make Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -898,6 +898,8 @@
      (define Array:length   vector-length)
      (define Array:map vector-map)
      (define Array:fold vector-fold)
+     (define Array:toList vector->list)
+     (define Array:andmap (lambda (f v) (andmap f (vector->list v))))
 
      ;; EQ? based hash tables:
 #;

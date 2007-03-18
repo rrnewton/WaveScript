@@ -43,7 +43,7 @@ fun snoop(str, strm) {
 //zip2 = fun (s1,s2) {  
 //}
 
-/*
+
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
          -> Stream (List (Sigseg t));
 syncN = 
@@ -94,31 +94,30 @@ syncN =
     then {} // Can't do anything yet...
     else {
       let (fl, st, en) = requests\head;
-      allready = true;
-      for i = 0 to accs\Array:length - 1 {
-	if (accs[i] == nullseg ||
-	    (fl && accs[i]\start > st) || // This only matters if we're retaining it.
-	    accs[i]\end < en)
-	then { 
-	  allready := false;
-	  if DEBUGSYNC 
-	  then print("  Not all ready: "
-		     ++ show(accs[i] == nullseg) ++ " "
-		     ++ show(fl && accs[i]\start > st) ++ " "
-		     ++ show(accs[i]\end < en) ++ "\n");
-	}
-      }
+
+      allready =
+	Array:andmap(
+	 fun (seg)
+	   if (seg == nullseg ||
+	       (fl && seg\start > st) || // This only matters if we're retaining it.
+	       seg\end < en)
+	   then { 		       
+	     if DEBUGSYNC 
+	     then print("  Not all ready: "
+			  ++ show(seg == nullseg) ++ " "
+			  ++ show(fl && seg\start > st) ++ " "
+			  ++ show(seg\end < en) ++ "\n");
+	     false }
+  	   else true,
+	 accs);
+
       // The data is ready on all buffers, now it's time to either discard or output it.
       if allready then {
 	if fl then {
 	  if DEBUGSYNC 
 	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	  size = en - st + 1; // Start,end are inclusive.
-	  output = [];
-	  for i = 0 to accs\Array:length - 1 {
-	    output := subseg(accs[i], st, size) ::: output;
-	  }
-	  emit(List:reverse(output));
+  	  emit List:map(fun (seg) subseg(seg,st,size), Array:toList(accs))
 	} else {
 	  if DEBUGSYNC then
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
@@ -133,7 +132,7 @@ syncN =
     }
   }
 }
-*/
+
 
 // This takes an unwindowed stream and produces a stream of sigsegs.
 fun window(S, len) 

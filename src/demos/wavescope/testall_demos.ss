@@ -124,7 +124,7 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
 
     ["demo7a_marmot_noinline.ws"  ,(lambda (a b) #t)]
-   ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
+    ["demo7b_marmot_phase1.ws"    ,(lambda (a b) #t)]
 
     ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
     ["demo8b_sugars.ws"           ,(lambda (a b) 

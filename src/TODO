@@ -13,7 +13,8 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 ================================================================================
 
 [2007.03.17]
-  *) Add REF types!!!
+  X) Add REF types!!!
+  *) Wouldn't hurt to have haskell-style "sections"
 
 [2007.03.13]
   *) Make dependencies on GSL and fftw non-static.

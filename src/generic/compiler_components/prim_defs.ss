@@ -30,6 +30,7 @@
 	   regiment-basic-primitives
 	   local-node-primitives
 	   meta-only-primitives
+	   higher-order-primitives
 	   regiment-constants
 	   regiment-distributed-primitives
 	   regiment-primitives
@@ -252,24 +253,39 @@
 
     ))
 
-;; Only for the meta-language, shouldn't exist after static-elaborate.
-(define meta-only-primitives
-  '(
-    (GETENV (String) String) ; Returns "" if the env var is unbound.
-    (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
 
-    ;; These are restricted to meta-only because they are higher
-    ;; order.  I could implement them (in a limited fashion) in the
-    ;; object language, but haven't yet:
+;; These are (or will be) allowed in both the meta and the object
+;; language.  They're higher order, but in the object language the
+;; lambda expression parameterizing each of these primitives must be
+;; *known* so that first-order code may be generated.
+(define higher-order-primitives
+  '(
+    (map (('a -> 'b) (List 'a)) (List 'b))
+    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
 
     ;; These should be defined IN the language, but they're not right now:
     (List:map (('a -> 'b) (List 'a)) (List 'b))
     (List:fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
     ;;(List:filter (('a -> Bool) (List 'a)) (List 'a))
 
-    (map (('a -> 'b) (List 'a)) (List 'b))
-    (fold (('acc 'b -> 'acc) 'acc (List 'b)) 'acc)
-            
+    ;; A lot of these can be defined in the language once we figure
+    ;; out a story for "library" (non-inlined) procedures and
+    ;; second-class references.
+    (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
+    (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
+    (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
+    ;; This uses an initialization function to fill in an array:
+    (Array:build       (Int (Int -> 'a)) (Array 'a))
+    ))
+
+
+;; Only for the meta-language, shouldn't exist after static-elaborate.
+;; TODO: FIXME: Don't think I enforce this right now!!
+(define meta-only-primitives
+  `(
+    (GETENV (String) String) ; Returns "" if the env var is unbound.
+    (FILE_EXISTS (String) Bool) ; Returns "" if the env var is unbound.
+   
     ))
 
 ;; These count as primitives also.
@@ -415,14 +431,7 @@
     (Array:make        (Int 'a) (Array 'a))
     (Array:ref         ((Array 'a) Int) 'a)
     (Array:length           ((Array 'a)) Int)
-
-    ;Array:build, make, ref, set, length, append? reverse?
-
-    ;; This uses an initialization function to fill in an array:
-    (Array:build       (Int (Int -> 'a)) (Array 'a))
-
-    (Array:map         (('a -> 'b) (Array 'a))              (Array 'b))
-    (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
+    (Array:toList      ((Array 'a))                         (List 'a))
 
     ;; Temporary:
     ;; Oops, need to be sure this doesn't change the numeric type in the output:
@@ -614,6 +623,7 @@
 	   regiment-distributed-primitives
 	   wavescript-primitives
 	   meta-only-primitives
+	   higher-order-primitives
 	   regiment-constants)))
 
 ;; These are the ones that take or return Stream values:
