@@ -1,15 +1,22 @@
 #!/bin/bash
 
-MT=./get_machine_type
+MT=`./get_machine_type`
 
-if test "$MT" == "ppcosx" ;
-then wget http://www.scheme.com/csv7.0/pcsv7.0-1.pkg.tar.gz;
-     wget http://www.scheme.com/csv7.0/swl0.9z-1.pkg.tar.gz;
-     wget http://www.scheme.com/csv7.0/tcl8.4.4.pkg.tar.gz;
-     wget http://www.scheme.com/csv7.0/tk8.4.4.pkg.tar.gz;
-     ls *.tar.gz | xargs -n1 tar xzvf;
+if [ "$MT" == "ppcosx" ];
+then 
+     wget http://scheme.com/csv7.3/pcsv7.3-ppcosx.tar.gz
+#     wget http://www.scheme.com/csv7.0/swl0.9z-1.pkg.tar.gz;
+#     wget http://www.scheme.com/csv7.0/tcl8.4.4.pkg.tar.gz;
+#     wget http://www.scheme.com/csv7.0/tk8.4.4.pkg.tar.gz;
+#     ls *.tar.gz | xargs -n1 tar xzvf;
+     tar xzvf pcsv7.3-ppcosx.tar.gz;
+     rm -rf petite_chez_scheme7.3/bin/ppcosx
+     rm -rf petite_chez_scheme7.3/boot/ppcosx
+     mv csv7.3/bin/ppcosx/  petite_chez_scheme7.3/bin/
+     mv csv7.3/boot/ppcosx/  petite_chez_scheme7.3/boot/
+     rm -rf csv7.3/
 #elif test `uname` == "CYGWIN_NT-5.1" ;
-elif test "$MT" == "i3nt" ;
+elif [ "$MT" == "i3nt" ];
 then wget http://www.scheme.com/csv7.0/pcsv70.exe;
 else 
     echo Nothing to download for platform `uname`.
