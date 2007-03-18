@@ -87,26 +87,29 @@
 	(match x
 	  ;; Do lifts:
 	  [(let ([,v ,ty (let ([,v2 ,ty2 ,e2]) ,rhs)]) ,bod)
-;(if (or (eq? v2 'tmp_33) (eq? v 'tmp_33)) (inspect (cons 1 v)))
 	   (process-expr 
 	    `(let ([,v2 ,ty2 ,e2]) (let ([,v ,ty ,rhs]) ,bod))
 	    fallthru)]
+	  ;; This is annoying, but it's the same thing:
+	  ;; (By the way, this is one reason it would be nice to have
+	  ;; the ascription as an implicit expression *TAG* rather
+	  ;; than as its on expression variant.)
+	  [(let ([,v ,ty (assert-type ,ty3 (let ([,v2 ,ty2 ,e2]) ,rhs))]) ,bod)
+	   (process-expr 
+	    `(let ([,v2 ,ty2 ,e2]) (let ([,v ,ty (assert-type ,ty3 ,rhs)]) ,bod))
+	    fallthru)]
 	  ;; Lifting out begins too.
 	  [(let ([,v ,ty (begin ,e1 ,e2 ,rest ...)]) ,bod)
-;(if (eq? v 'tmp_33) (inspect (cons 2 v)))
 	   (process-expr 
 	    (make-begin e1 `(let ([,v ,ty ,(apply make-begin (cons e2 rest))]) ,bod))
 	    fallthru)]
-	  [(let ([,v ,ty ,[rhs]]) ,[bod])   
-;(if (eq? v 'tmp_33) (inspect (cons 3 v)))
-
-	   `(let ([,v ,ty ,rhs]) ,bod)]
+	  ;; Otherwise can't lift here:
+	  [(let ([,v ,ty ,[rhs]]) ,[bod]) `(let ([,v ,ty ,rhs]) ,bod)]
 	  [(let . ,_) (error 'ws-lift-let "unhandled let: ~s" `(let . ,_))]
+
+
 	  [(begin ,[e])  e]
 	  [(iterate (let ([,v* ,ty* ,[rhs*]] ...) (lambda (,x ,y) (,tyx ,tyy) ,[bod])) ,[strm])
-;(when (deep-assq 'tmp_33 bod) (display bod) (newline))
-
-
 	   `(iterate (let ([,v* ,ty* ,rhs*] ...) (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
 	  [,oth (fallthru oth)])))
     ;; Assumes lets only bind one variable (except for iterates)

@@ -33,7 +33,7 @@
 		 [(letrec ,rest ...) `(lazy-letrec ,rest ...)]
 		 [,other other]) ]))])
 
-
+;; [2007.03.17] Including Array:makeUNSAFE here even though it's not "constant"
 (define-pass lift-polymorphic-constant
     [Expr (lambda (x fallthru)
 	    (define (f x) 
@@ -44,6 +44,7 @@
 	      [nullseg (f x)]
 	      [Array:null (f x)]
 	      ['()     (printf "Lifting null!\n") (f x)]
+	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
 	      [,other (fallthru other)]))])
 
 (define-pass unlift-polymorphic-constant
@@ -53,6 +54,7 @@
 	[Array:null #t]
 	['()     #t]
 	[()     #t]
+	[(Array:makeUNSAFE ,n) #t]
 	[,else   #f]))
   [Expr (lambda (x fallthru)
 	  (match x

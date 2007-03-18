@@ -78,7 +78,8 @@
     [Complex "wscomplex_t"]
 
     [String "wsstring_t"] ;; Not boosted.
-
+    
+    [(Ref ,[t]) t]  ;; These disappar.
     [(VQueue ,_) "void*"]
 
     ;; Went back and forth on whether this should be a pointer:
@@ -879,7 +880,7 @@
 	   (let ([contenttype (if (zero? (vector-length datum))
 				  ;; Throw in a default:
 				  'Int
-				  (type-const (vector-ref datum 0)))])	    
+				  (type-const (vector-ref datum 0)))])
 	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
 		    " > >(new vector< ",(Type contenttype)" >(",
 		    (number->string (vector-length datum))"));\n" ;; MakeArray.
@@ -947,7 +948,10 @@
       ))
 
   (match expr
-    ;; First we handle "open coded" primitives:
+    ;; First we handle "open coded" primitives and special cases:
+
+    [(ref ,[Simple -> x]) (wrap x)]
+    [(deref ,[Simple -> x]) (wrap x)]
 
     ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
     ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
@@ -1089,7 +1093,11 @@
 	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
 	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
 	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
-	
+	;; This version just doesn't initialize:
+	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
+	 (wrap `("boost::shared_ptr< vector< ",ty
+		 " > >(new vector< ",ty" >(",n "))"))]
+
 	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
 
 	[(Array:set ,x ...)
@@ -1321,7 +1329,7 @@ int main(int argc, char ** argv)
 		   ;; These weren't really primitives:    
 		   tuple tupref ref deref
 		   ;; These were desugared or reduced to other primitives:
-		   or and dataFile show-and-string-append Array:build 
+		   or and dataFile show-and-string-append Array:toList
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
 		   List:head List:tail 
@@ -1329,6 +1337,7 @@ int main(int argc, char ** argv)
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
 		   cons car cdr null? hashtable prim_window 
 		   List:ref List:append List:reverse List:length List:make 
+		   Array:makeUNSAFE
 		   
 		   equal? print show seg-get toArray
 
@@ -1340,6 +1349,7 @@ int main(int argc, char ** argv)
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)
+		 (map car higher-order-primitives) ;; These were eliminated.
 		 (map car wavescript-effectful-primitives) ;; These are handled by Block
 		 (map car wavescript-stream-primitives)
 		 )])

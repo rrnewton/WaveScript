@@ -5,12 +5,13 @@
 (module degeneralize-arithmetic mzscheme
   (require "../../../plt/common.ss"
            "../normalize_source/typecheck.ss")
-  (provide)
-  (chezprovide (degeneralize-arithmetic
-		degeneralize
-		lift-generics))
+  (provide degeneralize-arithmetic
+	   degeneralize-arithmetic-grammar
+	   degeneralize
+	   lift-generics)
+  (chezprovide ) ;; Wait, why was this stuff provided through here, was that for hiding?
   (chezimports )
-  (IFCHEZ (begin) (provide degeneralize-arithmetic))
+  ;(IFCHEZ (begin) (provide degeneralize-arithmetic))
 
   (define genops '(g+ g- g* g/ g^ gint))
 
@@ -30,12 +31,13 @@
   (define (complex x) (match x [g+ '+:] [g- '-:] [g* '*:] [g/ '/:] [g^ '^:] [abs 'absC]))
 
   (define (int16 x)   (match x [g+ '+I16] [g- 'I-16] [g* '*I16] [g/ '/I16] [g^ '^I16] [abs 'abs16]))
-
-;; Should remove the generic ops from the grammar.
-#;  
-  (define degeneralize-grammar
-    ...
-    static-elaborate-grammar)
+  
+  (define degeneralize-arithmetic-grammar
+    (filter (lambda (x)
+	      (match x
+		[(Prim ',p) (not (assq p generic-arith-primitives))]
+		[,else #t]))
+	static-elaborate-grammar))
 
   (define-pass degeneralize
       [Expr (lambda (x fallthru)

@@ -8,13 +8,15 @@
   (require "../../../plt/common.ss"
 	   "../normalize_source/remove-unquoted-constant.ss"
 	   )
-  (provide verify-elaborated)
+  (provide verify-elaborated verify-elaborated-grammar)
   (chezimports )
+
+  (define verify-elaborated-grammar degeneralize-arithmetic-grammar)
 
 ;; Verifies that there are no polymorphic types left on the programs variable bindings.
 ;; Also verifies that there are no disallowed applications.
 (define-pass verify-elaborated
-;    [OutputGrammar annotate-app-types-grammar]
+    [OutputGrammar verify-elaborated-grammar]
 
     ;; [2007.01.25] Changing this to be stricter: no remaining
     ;; polymorphism in these types:
@@ -75,7 +77,7 @@
 		    type rator))
 	    `(app ,rator ,rand* ...))]
 
-	 [(Array:build ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. bArray:build is not allowed after elaboration.")]
+	 ;[(Array:build ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. Array:build is not allowed after elaboration.")]
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
 
 	 ;; Run verification on the types:

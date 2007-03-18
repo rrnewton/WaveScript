@@ -59,7 +59,8 @@
 
 		 nullseg Array:null nulltimebase
 		 tuple tupref
-		 Array:make Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
+		 Array:make Array:makeUNSAFE
+		 Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -893,6 +894,7 @@
 	  [else (loop (cdr ls) (cons (car ls) acc))])))
 
      (define Array:make make-vector)
+     (define (Array:makeUNSAFE len) (make-vector len 'uninitialized!))
      (define Array:ref  vector-ref)
      (define Array:set vector-set!)
      (define Array:length   vector-length)

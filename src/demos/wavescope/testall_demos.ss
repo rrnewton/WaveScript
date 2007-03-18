@@ -82,7 +82,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3h_advancedlists.ws"    ,(lambda (a b) #t)]
     ["demo3i_conversion_prims.ws" ,(lambda (a b) #t)]
     ["demo3j_numbers.ws"          ,(lambda (a b) #t)]
-
+    ["demo3k_higher_order.ws"     ,(lambda (a b) #t)]
 
     ["demo4_fft.ws"               ,(lambda (a b) 
 				     (ASSERT (= 0.0 a))

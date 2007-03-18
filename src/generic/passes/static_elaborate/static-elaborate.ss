@@ -73,9 +73,6 @@
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
-	       ;; Array:build is also only for the meta language currently.
-	       ;; (It's higher order.)
-	       [(Prim 'Array:build) #f]
 
 	       [(Prim ',p) (guard (assq p meta-only-primitives)) #f]
 

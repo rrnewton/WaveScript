@@ -429,6 +429,7 @@
 
     ;; Array handling:
     (Array:make        (Int 'a) (Array 'a))
+    (Array:makeUNSAFE  (Int)    (Array 'a))
     (Array:ref         ((Array 'a) Int) 'a)
     (Array:length           ((Array 'a)) Int)
     (Array:toList      ((Array 'a))                         (List 'a))

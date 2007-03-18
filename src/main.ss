@@ -374,15 +374,17 @@
 
   (ws-run-pass p verify-elaborated)
 
+  (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
+  (ws-run-pass p retypecheck)  ;; Fill in some types that were left blank in the above.
+
   ;; This three-step process is inefficient, but easy:
-  (ws-run-pass p lift-polymorphic-constant)
+  ;; This is a hack, but a pretty cool hack.
+  (ws-run-pass p lift-polymorphic-constant)  
   (parameterize ([inferencer-let-bound-poly #f])
     (ws-run-pass p retypecheck))
   (ws-run-pass p unlift-polymorphic-constant)
 
-;  (ws-run-pass p type-polymorphic-constants)
-
-;  (ws-run-pass p merge-iterates)
+;  (ws-run-pass p merge-iterates) ;; <Optimization>
   (IFDEBUG (ws-run-pass p retypecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
@@ -408,9 +410,6 @@
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
-
-;  (ws-run-pass p anihilate-higher-order)
-;  (ws-run-pass p retypecheck)  ;; Fill in some types that were left blank in the above.
 
   (ws-run-pass p ws-remove-complex-opera*)
   (ws-run-pass p ws-normalize-context)
