@@ -11,7 +11,9 @@ wins = window(data, 10);
 wins2 = rewindow(wins, 100, -50);
 
 avgs = iterate (w in wins2) {
-  sum = 0.0; 
+  state { sum = 0.0 } // Degenerate state variable.
+  // We cannot mutate normal variables, only state variables:
+  sum := 0.0;
   for i = 0 to w.width-1  {
     let (n,f) = w[[i]];
     sum := sum +. intToFloat(n);

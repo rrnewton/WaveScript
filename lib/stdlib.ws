@@ -352,6 +352,8 @@ fun atan2(arg1,arg2) {
 
 /* array operations */
 
+// RRN: NOTE: These should be added to namespace Array:
+
 amap_inplace :: (a -> b, Array a) -> Array b;
 fun amap_inplace(f, arr) {
   for i = 0 to arr\Array:length - 1 {
@@ -360,44 +362,16 @@ fun amap_inplace(f, arr) {
   arr
 }
 
-/*
-amap :: (a -> b, Array a) -> Array b;
-fun amap(f, arr) {
-  narr = Array:make(arr\Array:length, f(arr[0]));
-  for i = 1 to arr\Array:length - 1 {
-    narr[i] := f(arr[i]);
-  };
-  narr
-}
-
-fun afold(f, zero, arr) {
-  lhs = zero;
-  for i = 0 to arr\Array:length-1 {
-    lhs := f(lhs, arr[i])
-  }
-  lhs
-}
+// TEMP:
+amap = Array:map;
+afold = Array:fold;
 
 fun asum(arr) { afold((+), gint(0), arr) }
-
-fun amult_scalar(arr,s) {
-  fun ms(a) { a*s };
-  amap(ms, arr)
-}
-
+fun amult_scalar(arr,s) { amap(fun (x) x*s, arr) }
 fun amult_scalar_inplace(arr,s) {
   fun ms(a) { a*s };
   amap_inplace(ms, arr)
 }
-
-fun adot(arr1,arr2) {
-  lhs = gint(0);
-  for i = 0 to arr1\Array:length-1 {
-    lhs := lhs + arr1[i]*arr2[i];
-  }
-  lhs
-}
-*/
 
 fun apairmult(arr1,arr2) {
   narr = Array:make(arr1\Array:length, arr1[0]);
@@ -407,23 +381,20 @@ fun apairmult(arr1,arr2) {
   narr
 }
 
-
-// [2007.03.17] RRN: We can't mutate variables that aren't iterator state.
-// This should be done with an array fold, which I need to add.
-/*
-fun a_max(arr) {
-  val = arr[0];
-  ind = 0;
-  for i = 1 to arr\Array:length-1 {
-    if (arr[i] > val) then {
-      val := arr[i];
-      ind := i;
-    }
-  };
-  (val,ind)
+fun adot(arr1,arr2) {
+  // rrn: This is pretty unnatural:
+  Array:fold(fun ((i,acc), x) (i+1, acc + (x * arr2[i])),
+	     (0,gint(0)), arr1)
 }
-*/
 
+fun a_max(arr) {
+  // TODO: Check for null array!
+  Array:fold( fun ((i,mx,mxi), n)
+ 	        if n > mx 
+   	        then (i+1, n,i)
+	        else (i+1, mx,mxi),
+	      (0,arr[0],0), arr)
+}
 
 fun a_zeroes(len) { Array:make(len, gint(0)) }
 fun a_ones(len) { Array:make(len, gint(1)) }

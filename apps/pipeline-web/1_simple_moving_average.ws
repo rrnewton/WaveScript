@@ -7,11 +7,10 @@ data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Int * Float));
 wins = prim_window(data, 10);
 
 avgs = iterate (w in wins) {
-  sum = 0.0; 
-  for i = 0 to w.width-1  {
-    let (n,f) = w[[i]];
-    sum := sum +. intToFloat(n);
-  };
+  // This is a purely functional way to iterate over the array:
+  sum = Array:fold(fun (acc, (n,_)) acc + n.intToFloat,
+		   0.0,
+		   w.toArray);
   emit sum /. intToFloat(w.width);
 };
 
