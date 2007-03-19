@@ -13,7 +13,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; Right now I'm trying to solve a problem which I know I encountered
 ;; before.  Unit tests fail during supertest, but pass if I do
 ;; "../depends/petite main_chez.ss".  Grr, I'm typing in the same command line!
-
+;; Actually, in this case I found the bug (an actual bug), but it's
+;; still a mystery as to why it only popped up during supertest.  
+;;
+;; OH RIGHT.  DEBUGMODE.  Gotta be careful about that.
 
 
 ;; TODO: Add a timeout!  In case the test gets stuck.
