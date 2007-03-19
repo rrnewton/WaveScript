@@ -8,10 +8,12 @@
 # It's a little tricky to do using uname...
 MACHINE=`uname -s -m`
 if   [ "$MACHINE" == "Linux i686" ];             then MT=i3le;
+if   [ "$MACHINE" == "Linux x86_64" ];             then MT=i3le;
 elif [ "$MACHINE" == "Darwin Power Macintosh" ]; then MT=ppcosx;
 elif [ "$MACHINE" == "Darwin i386" ];            then MT=i3osx;
 elif [ "$MACHINE" == "CYGWIN_NT-5.1 i686" ];     then MT=i3nt;
-else echo Unknown platform for scheme system: $MACHINE
+else echo Unknown platform for scheme system: $MACHINE;
+     exit -1;
 fi
 
 echo $MT
