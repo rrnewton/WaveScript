@@ -6,6 +6,16 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;; This really puts the system through the paces.
 ;; It's a PLT-ONLY script.  (Chez's system call doesn't return the error code.)
 
+;; [2007.03.19] This system is unfortunately quite fragile.  I've had
+;; several problems over the last two months.  Often it's difficult to
+;; reproduce manually the behavior seen when "supertest" is run.
+;;
+;; Right now I'm trying to solve a problem which I know I encountered
+;; before.  Unit tests fail during supertest, but pass if I do
+;; "../depends/petite main_chez.ss" .
+
+
+
 ;; TODO: Add a timeout!  In case the test gets stuck.
 
 (require (lib "process.ss") (lib "date.ss"))
