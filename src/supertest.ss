@@ -12,7 +12,7 @@ exec mzscheme -qr "$0" ${1+"$@"}
 ;;
 ;; Right now I'm trying to solve a problem which I know I encountered
 ;; before.  Unit tests fail during supertest, but pass if I do
-;; "../depends/petite main_chez.ss" .
+;; "../depends/petite main_chez.ss".  Grr, I'm typing in the same command line!
 
 
 
@@ -155,7 +155,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
     (ASSERT (eqv? 0 (system/exit-code "echo '(machine-type)' | petite -q > machine_type.txt")))
     (read (open-input-file "machine_type.txt"))))
 
-(begin (define testpetite
+(begin (current-directory test-directory)
+       (define testpetite
 	 (system/exit-code 
 	  "echo \"(define-top-level-value 'REGIMENT-BATCH-MODE #t) (test-units)\" | ../depends/petite main_chez.ss &> 0_PETITE_UNIT_TESTS.log"))
        (fpf "petite: Load & run unit tests:                ~a\n" (code->msg! testpetite)))

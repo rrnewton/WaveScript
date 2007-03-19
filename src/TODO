@@ -12,6 +12,9 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.19]
+  *) Oops, Array and Hashtable need to be treated like Ref too.
+
 [2007.03.17]
   X) Add REF types!!!
   *) Wouldn't hurt to have haskell-style "sections"
