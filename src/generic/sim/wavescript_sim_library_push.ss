@@ -17,7 +17,7 @@
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app let ref deref
+		 app let Mutable:ref deref
 
 		 run-stream-query reset-state!
 
@@ -172,7 +172,7 @@
       ((_ elem sinks) (for-each (lambda (f) (f elem)) sinks))))
 
   ;; These do nothing.  Scheme's bindings are mutable to start.
-  (define-syntax ref (syntax-rules () [(_ x) x]))
+  (define-syntax Mutable:ref (syntax-rules () [(_ x) x]))
   (define-syntax deref (syntax-rules () [(_ x) x]))
 
   ;; Converts hertz to microseconds:

@@ -610,7 +610,7 @@
     [(quote ,imm) (guard ;(not (null? imm)) 
 			 (not (pair? imm)) (not (vector? imm))) #t]
     ;; Void value:
-    ;[(tuple) #t]
+    ;[(tuple) #t] ;; [2007.03.19] Why had I commented this before?
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
     [,otherwise #f]))
 
@@ -631,6 +631,9 @@
         (boolean? x)
         (char? x)
         (string? x) 
+
+	(eq? x 'BOTTOM)
+	(eq? x 'UNIT)
 	
         )))
 
@@ -649,22 +652,6 @@
      i]
     [else (error 'qinteger->integer "this is not a qinteger: ~a" n)]))
   
-#; ; Not used:
-(define constant->type
-  (lambda (imm)
-    (cond
-      [(fx-integer? imm) 'Int32]
-      [(flonum? imm) 'Float64]
-      [(bg-integer? imm) 'Number]
-      [(ratnum? imm) 'Number]
-      [(boolean? imm) 'Bool]
-      [(char? imm) 'Char]
-      [(string? imm) 'String]
-      [(null? imm) 'List]
-;      [(symbol? imm) 'Symbol]
-      [else (error 'constant->type
-                   "unknown constant: ~s" imm)])))
-
 
 ;; Datums include structured constants as well as atoms.
 (define datum?

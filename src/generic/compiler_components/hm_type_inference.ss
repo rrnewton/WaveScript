@@ -567,6 +567,9 @@
 			     ''anytype
 			     (type-const (vector-ref c 0))))]
 
+   [(eq? c 'BOTTOM) (make-tcell)]
+   [(eq? c 'UNIT)   #()]
+   
    ;; Temp, not sure if we're going to support symbols or not in the final language:
    [(symbol? c) 'Symbol]
    [(null? c) `(List ,(make-tcell))]
@@ -589,19 +592,23 @@
 
 (define constant-typeable-as? 
   (lambda (c ty)
+
+#;
     (cond 
      [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
      [(and (fixnum? c) (eq? ty 'Int16)) (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
      [(and (flonum? c))                 (eq? ty 'Float)]
      [else #f])
 
-    (match ty
-      [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
-      [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-      [Float (flonum? c)]
-      [Bool  (boolean? c)]
-      [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
-      [else #f])
+    (if (eq? c 'BOTTOM) #t
+	(match ty
+	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
+	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
+	  [Float (flonum? c)]
+	  [Bool  (boolean? c)]
+	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
+	  [#()   (eq? c 'UNIT)]
+	  [else #f]))
     ))
 
 ;;; Annotate expressions/programs with types.
@@ -633,7 +640,8 @@
     (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
-      [,prim (guard (symbol? prim) (regiment-primitive? prim))
+      ;; Make sure it's not bound:
+      [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
 	     (values prim (prim->type prim))]
 
       ;; Here's the magic:
@@ -1000,7 +1008,7 @@
     (match p
       [(,lang '(program ,[Expr -> e t] ,type))
        (ASSERT (type? type))
-       `(,lang '(program ,e ,t))]
+       `(typechecked-lang '(program ,e ,t))]
       [,other (Expr other)])))
 
 
@@ -1187,6 +1195,10 @@
 	 (cons x1 (map (lambda (t1 t2) (LUB t1 t2)) xargs yargs))
 	 )]
 
+    ;; Just one type constructor gives us TOP:
+    [[,x ,y] (guard (list? x) (not (list? y)))  `(quote ,(make-tvar))]
+    [[,x ,y] (guard (list? y) (not (list? x)))  `(quote ,(make-tvar))]
+
     [[,x  (,yargs ... -> ,y)]
      (match x 
        [(,xargs ... -> ,x)
@@ -1288,7 +1300,7 @@
      port)))
 
 ;; Expects a fully typed expression
-(define (print-var-types exp . p)
+(define (print-var-types exp max-depth . p)
   (let ([port (if (null? p) (current-output-port) (car p))])
     
     (define (get-var-types exp)
@@ -1326,18 +1338,19 @@
 
    
     ;(inspect (get-var-types exp))
-    (let loop ([x (get-var-types exp)] [indent " "])
-      (match x
-	[() (void)]
-	[(type ,v ,t ,subvars)
-	 (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
-	   (fprintf port "~a~a :: " indent v)
-	   (print-type t port) (newline port))
-	 (loop subvars (++ indent "  "))]
-	[,ls (guard (list? ls))
-	     (for-each (lambda (x) (loop x indent))
-	       ls)]
-	[,other (error 'print-var-types "bad result from get-var-types: ~a" other)]))
+    (let loop ([x (get-var-types exp)] [depth 0] [indent " "])
+      (if (= depth max-depth) (void)
+	  (match x
+	    [() (void)]
+	    [(type ,v ,t ,subvars)
+	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
+	       (fprintf port "~a~a :: " indent v)
+	       (print-type t port) (newline port))
+	     (loop subvars (fx+ 1 depth) (++ indent "  "))]
+	    [,ls (guard (list? ls))
+		 (for-each (lambda (x) (loop x depth indent))
+		   ls)]
+	    [,other (error 'print-var-types "bad result from get-var-types: ~a" other)])))
       ))
 
 

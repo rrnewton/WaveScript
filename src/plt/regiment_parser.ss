@@ -37,7 +37,7 @@
     +: -: *: /: ^: 
     :: ++ 
     AND OR NEG HASH 
-    APP SEMI COMMA DOT BACKSLASH DOTBRK DOTSTREAM BAR BANG
+    APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for to emit include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef
@@ -123,7 +123,7 @@
    ;; Dot-syntax:
 ;   [(:seq (:+ (:seq variable ".")) variable)  (token-DOTVARS (map string->symbol (string-split lexeme #\.)))]
    ["." 'DOT]
-   ["\\" 'BACKSLASH] 
+   ["`" 'MAGICAPPLYSEP] 
 
    [(:seq ;(:or "-" "")
 	  (:+ digit)) (token-NUM (string->number lexeme))]
@@ -229,7 +229,7 @@
 ;          (left LeftSqrBrk)
 ;          (left DOTBRK) 
 ;	  (right BAR)
-          (left NEG APP DOT BACKSLASH COMMA)
+          (left NEG APP DOT MAGICAPPLYSEP COMMA)
           (right ^ g^ ^_ ^. ^:)
 
 	  )
@@ -457,8 +457,8 @@
 
 	 ;; Alternate syntax for "dot syntax".  Might switch to this
 	 ;; to free up period for future record syntax.
-	 [(exp BACKSLASH VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
-         [(exp BACKSLASH VAR) `(app ,$3 ,$1)]
+	 [(exp MAGICAPPLYSEP VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
+         [(exp MAGICAPPLYSEP VAR) `(app ,$3 ,$1)]
 
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
 	 [(exp DOT VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]

@@ -314,10 +314,13 @@
   (define (fail x p k)
     (set-top-level-value! 'grammar-context (k 'FAIL))
     (set-top-level-value! 'grammar-original origexpr)
+    (set-top-level-value! 'grammar-failed x)
     (warning 'check-grammar
 	   (++ (format "in ~a: " context)
 	       "could not parse expr ~s with production/pattern ~s\n  "
-	       "Context stored in 'grammar-context', look at the location of FAIL, original expression in 'grammar-original'")
+	       "Context stored in 'grammar-context', look at the location of FAIL.\n"
+	       "Original expression in 'grammar-original'.\n" 
+	       "Failed subexpression in 'grammar-failed'.\n")
 	   x p)
     (IFCHEZ 
      ;; In batch mode don't go into REPL:

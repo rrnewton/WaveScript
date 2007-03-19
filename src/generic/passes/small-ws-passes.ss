@@ -204,15 +204,10 @@
 	      [(set! ,v ,[e])    `(begin (set! ,v ,e)  (tuple))]
 	      [(for (,i ,[st] ,[en]) ,[bod]) `(begin (for (,i ,st ,en) ,bod) (tuple))]
 	      [(,prim ,[simple] ...) (guard (assq prim wavescript-effectful-primitives))
-	       ;; Assert that the return value is void:
-	       ;; Or that it is forall a.a
-	       (ASSERT (lambda (x) 
-			 (match x
-			   [(quote ,v) (symbol? v)]
-			   [#() #t]
-			   [,else #f]))
-		       (caddr (assq prim wavescript-effectful-primitives)))
-	       `(begin (,prim . ,simple) (tuple))]
+	       (let ([entry (assq prim wavescript-effectful-primitives)])
+		 (match (caddr entry)
+		   [(quote ,v) `(begin (,prim . ,simple) 'BOTTOM)]
+		   [#()        `(begin (,prim . ,simple) 'UNIT)]))]
 	      [,oth (fallthru oth)]))])
 
   

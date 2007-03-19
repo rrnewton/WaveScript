@@ -291,8 +291,8 @@
     (if (regiment-verbose)
 	(if #t ;IFDEBUG
 	    (begin (parameterize ([pretty-line-length 160]
-				    [print-length 300]
-				    [print-level 30])
+				  [print-length 300]
+				  [print-level 60])
 		    (newline)
 		    (pretty-print x))
 		  (printf "================================================================================\n\n")
@@ -363,7 +363,7 @@
   (IFDEBUG 
    (unless (regiment-quiet)
      (printf "Post elaboration types: \n")
-     (print-var-types p)) 
+     (print-var-types p +inf.0)) 
    (void))
   
   ;; This just fills polymorphic types with unit.  These should be
@@ -512,11 +512,13 @@
       (unless (regiment-quiet)
 	(printf "Program verified, type-checked. (Also dumped to \".__parsed.ss\".)")
 	(printf "\nProgram types: (also dumped to \".__types.txt\")\n\n")
-	(print-var-types typed)
+	(if (regiment-verbose)
+	    (print-var-types typed +inf.0)
+	    (print-var-types typed 1))
 	(flush-output-port))
       (DEBUGMODE
        (with-output-to-file ".__types.txt"
-	(lambda () (print-var-types typed)(flush-output-port))
+	(lambda () (print-var-types typed +inf.0)(flush-output-port))
 	'replace))))
 
   (define compiled (let ([x (run-ws-compiler typed #t)])
@@ -589,7 +591,10 @@
    ;;(pretty-print prog)
    
    (printf "\nTypecheck complete, program types:\n\n")
-   (print-var-types typed)(flush-output-port)
+   (if (regiment-verbose) 
+       (print-var-types typed +inf.0)
+       (print-var-types typed 1))
+   (flush-output-port)
    
    (set! prog (run-ws-compiler typed #t))
 

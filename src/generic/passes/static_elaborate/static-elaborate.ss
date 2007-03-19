@@ -571,7 +571,8 @@
 	   (inspect `(tryingbuildarr!! ,(available? n) ,(available? f) ,env))
 	   ]
 	  
-
+	  ;; This becomes a quoted constant:
+	  [(tuple) ''UNIT]
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(unionN ,[args] ...) `(unionN ,args ...)]
 	  [(vector ,[x*] ...)
@@ -654,8 +655,9 @@
 		 (if (list? ls)
 		     `(unionN ,@ls)
 		     (begin 
-		       (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s"
-				ls)
+		       (if (regiment-verbose) 
+			   (warning 'static-elaborate "couldn't elaborate unionList, only got: ~s"
+				    ls))
 		       `(unionList ,x))
 		     ))
 	       (begin (error 'static-elaborate "couldn't elaborate unionList, value unavailable:~s"
@@ -691,13 +693,18 @@
 		(not (assq prim wavescript-effectful-primitives))
 		(not (assq prim wavescript-stream-primitives))
 		(not (assq prim regiment-distributed-primitives))
+
+		;; TEMP!
+		(not (assq prim higher-order-primitives))
+
 		;; Special exceptions:
 		;; We don't want to Array:make in the object code!
 		;; (Kind of inconsistent that we *do* currently do List:make.)
 		(not (memq prim '(show cons gint 
-				       Array:make hashtable
+				       Array:make Array:fold Array:map
+				       hashtable
 				       m_invert
-				       ref deref
+				       Mutable:ref deref
 				       )))
 		)
 	       (do-prim prim (map getval rand*) env)
@@ -717,7 +724,8 @@
 			    code)
 		     (inline code rands)))
 	       (begin 
-		 (printf "  Can't inline rator: ~s\n" rator)
+		 (if (regiment-verbose)
+		     (printf "  Can't inline rator this round: ~s\n" rator))
 		 `(app ,rator ,rands ...)))]
 
           [,unmatched

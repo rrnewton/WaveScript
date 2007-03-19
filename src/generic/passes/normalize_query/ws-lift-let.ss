@@ -47,6 +47,8 @@
 	      (Value (Prim Simple ...))
 	      (Value ('if Simple Block Block))
 
+	      (Value 'BOTTOM)
+
 	      (Block Simple)
 	      (Block ('let ((LHS Type Value) ...) Block))
 	      (Block ('begin Block ...))

@@ -39,8 +39,31 @@
 	     [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,lamb) ,[src])
 	      (printf "MUTABLE!! ~s\n" lhs*)
 	      (fluid-let ([mutable (append lhs* mutable)])
-		`(iterate (letrec ([,lhs* (Ref ,ty*) (ref ,rhs*)] ...)
+		`(iterate (letrec ([,lhs* (Ref ,ty*) (Mutable:ref ,rhs*)] ...)
 			    ,(Expr lamb fallthru)) ,src))]
+	     
+	     ;; [2007.03.18] Ok, for now we're going to allow the user
+	     ;; to introduce Refs too... The deref's are inserted
+	     ;; automatically.  I haven't figured out exactly what
+	     ;; story I want for side-effects yet.
+	     [(,letform ([,lhs* ,ty* ,[rhs*]] ...) ,bod)
+	      (guard (memq letform '(let letrec)))
+	      (let ([mutable-lhs*
+		     (filter id
+		       (map (lambda (lhs rhs)
+			      ;; The ref cannot be contained within
+			      ;; any other expression because refs are
+			      ;; second class!  It must be bound directly to a var.
+			      (match rhs
+				[(app Mutable:ref ,e) lhs]
+				[(Mutable:ref ,e) lhs]
+				[,else #f]))
+			 lhs* rhs*))])
+		;(unless (null? mutable-lhs*) (inspect mutable-lhs*))
+		(fluid-let ([mutable (append mutable-lhs* mutable)])
+		  `(,letform ([,lhs* ,ty* ,rhs*] ...)
+			     ,(Expr bod fallthru))))]
+
 	     [,oth (fallthru oth)])))
     [Expr Expr]
     [OutputGrammar ws-label-mutable-grammar])

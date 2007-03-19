@@ -8,15 +8,15 @@ fun println(s) {
 };
 
 BASE <- iterate(w in s0) {  
-  n = w\width;
-  i = n\intToInt16;
-  f = n\intToFloat;
-  c = n\intToComplex;
+  n = w`width;
+  i = n`intToInt16;
+  f = n`intToFloat;
+  c = n`intToComplex;
 
   println("roundF: " ++ roundF(f + 0.6));
 
-  println("trig: "++ f\sin ++" "++ f\cos ++" "++ f\tan);
-  println("reverse trig: "++ f\asin ++" "++ f\acos ++" "++ f\atan);
+  println("trig: "++ f`sin ++" "++ f`cos ++" "++ f`tan);
+  println("reverse trig: "++ f`asin ++" "++ f`acos ++" "++ f`atan);
 
   emit ();
 }

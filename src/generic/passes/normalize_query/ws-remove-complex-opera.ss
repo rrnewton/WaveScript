@@ -64,7 +64,9 @@
 
        (Simple ('assert-type Type Simple))
        (Simple Var)   
-       (Simple Const))
+       (Simple Const)
+       ;; Could simplify things by making this a quoted constant:
+       (Simple ('tuple)))
      (filter (lambda (x) (match x 
 			   [(Expr . ,_) #f]
 			   [(Prim 'iterate) #f]
@@ -101,19 +103,8 @@
 	     [(lambda ,form ,bod) 'tmp-func]
 	     ;; Will this happen??!: [2004.06.28]
 	     [,otherwise 'tmp]))
-  
-    (define (make-lets decls body)
-      (if (null? decls) 
-	  (begin 
-	    ;; Can be any 'Block', not just simple expression:
-	    #;
-	    (ASSERT (lambda (x) (or (simple-expr? x)
-				    (and (list? x) (eq? (car x) 'let))))
-		    body)
-		 body)
-	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
-	  ))
-        
+          
+  ;; This is the standard one from regiment_helpers.ss
     (define ws-rem-complex:simple? simple-expr?)
     
     #;
@@ -123,6 +114,18 @@
 	     (not (null? x))
 	     )))
 
+
+    (define (make-lets decls body)
+      (if (null? decls) 
+	  (begin 
+	    ;; Can be any 'Block', not just simple expression:
+	    #;
+	    (ASSERT (lambda (x) (or (ws-rem-complex:simple? x)
+				    (and (list? x) (eq? (car x) 'let))))
+		    body)
+		 body)
+	  `(let (,(car decls)) ,(make-lets (cdr decls) body))
+	  ))
 
     ;; Coerces an expression to be simple, producing new bindings.
     ;; .returns A simple expression and a list of new decls.
@@ -201,7 +204,7 @@
 	      (ASSERT null? fdecl)
 	      (mvlet ([(src sdecl) (make-simple source tenv)])
 		;(ASSERT null? sdecl)
-		(display-constrained "simple iterate source: " `[,src 100] "\n")
+		;(display-constrained "simple iterate source: " `[,src 100] "\n")
 		(vector `(iterate (let ,(map list
 					  v* ty*
 					  (map make-lets rdecls* rhs*))

@@ -458,6 +458,7 @@
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
       [(quote ,c)             (if name (Const name type c) "")]
+      [(tuple)                (if name (Const name type '(tuple)) "")]
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
@@ -469,7 +470,6 @@
 	((Block tenv) name type `(begin . ,e*)))]
       ;; Both void value:
       [(begin) ""]
-      [(tuple) ""]
 
       ;; Not using return statements right now:
 #;
@@ -541,6 +541,7 @@
 
 	  ;[,c (guard (constant? c)) (Const c)]
 	  [(quote ,datum)           (Const name type datum)]
+	  [(tuple)                  (wrap (Simple '(tuple)))]
 
 	  [,v (guard (symbol? v))
 	      (ASSERT (not (regiment-primitive? v)))
@@ -563,7 +564,6 @@
 	    ((Value tenv) (symbol->string v) (Type ty) rhs)
 	    ((Value (tenv-extend tenv (list v) (list ty))) name type bod))]
 
-	[(tuple) (wrap "((wsunit_t)0)")]
 	;; Forming tuples.
 	[(make-struct ,name ,[Simple -> arg*] ...)
 	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
@@ -866,6 +866,8 @@
                               x))
 	 ;; Should also make sure it's 32 bit or whatnot:
 	 (cond
+          [(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+          [(eq? datum 'UNIT) (wrap (Simple '(tuple)))]
 	  [(eq? datum #t) (wrap "TRUE")]
 	  [(eq? datum #f) (wrap "FALSE")]       
 	  [(string? datum) (wrap (format "string(~s)" datum))]
@@ -908,6 +910,7 @@
     (define Simple
       (lambda (x)
 	(match x 
+          [(tuple) "((wsunit_t)0)"]
 	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
 	  ['() (error 'Simple "null list without type annotation")]
 	  [(quote ,c) (Const #f #f c)]
@@ -950,7 +953,7 @@
   (match expr
     ;; First we handle "open coded" primitives and special cases:
 
-    [(ref ,[Simple -> x]) (wrap x)]
+    [(Mutable:ref ,[Simple -> x]) (wrap x)]
     [(deref ,[Simple -> x]) (wrap x)]
 
     ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]

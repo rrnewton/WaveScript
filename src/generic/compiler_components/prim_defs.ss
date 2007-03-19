@@ -275,6 +275,7 @@
     (Array:fold        (('acc 'b -> 'acc) 'acc (Array 'b))  'acc)
     (Array:andmap      (('a -> Bool) (Array 'a))            Bool)
     ;; This uses an initialization function to fill in an array:
+    ;; It's zero-based!
     (Array:build       (Int (Int -> 'a)) (Array 'a))
     ))
 
@@ -305,6 +306,10 @@
     (Array:null        (Array 'a))  ;; This is weird... ML doesn't have it.
 
     (nulltimebase  Timebase)    
+
+    ;; Adding this for uniformity of normal forms in later passes:
+    ;(BOTTOM        'a)
+    
     ))
 
 ;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
@@ -326,25 +331,25 @@
  ;; All side-effecting primitives must go here and must return UNIT:
  (define wavescript-effectful-primitives 
    '(
-     (Array:set         ((Array 'a) Int 'a) #())
+     (Array:set         ((Array 'a) Int 'a)          #())
      ;; [2006.11.28] Giving these void types.
      (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
-     (hashrem_BANG ((HashTable 'key 'val) 'key) #())
+     (hashrem_BANG ((HashTable 'key 'val) 'key)      #())
      (print            ('a) #())
 
      (gnuplot_array    ((Array (NUM a))) #())
      ;; Takes an (X,Y) pair.
-     (gnuplot_array2d  ((Array #((NUM a) (NUM b)))) #())  
+     (gnuplot_array2d  ((Array #((NUM a) (NUM b))))  #())  
 
      ;; I just use a virtual "Queue" to make the type-checking work for emits:
-     (emit           ((VQueue 'a) 'a) #())
+     (emit           ((VQueue 'a) 'a)                #())
 
      ;; This isn't a primitive, but it's nice to pretend it is so not all passes have to treat it.
-     (break            () 'a)
+     (break            ()                      'a)
 
-    ;; Signals an error, has any return type:
-    (wserror         (String) 'a)
-    (inspect         ('a) 'a)
+     ;; Signals an error, has any return type:
+     (wserror         (String)                  'a)
+     (inspect         ('a)                      'a)
 
      )))
 
@@ -353,8 +358,9 @@
 (define wavescript-primitives
   `( 
     ;; These are for second-class references (iterator state variables)
-    (ref     ('a)         (Ref 'a))
-    (deref   ((Ref 'a))   'a)
+    (Mutable:ref     ('a)         (Ref 'a))
+    (ref             ('a)         (Ref 'a))
+    (deref            ((Ref 'a))   'a)
 
     ;; Stream Sources:
 
@@ -888,5 +894,15 @@
 (define (token-machine-primitive? x)
   (if (assq x token-machine-primitives) #t #f))
 
+
+
+;; Assert that the return value is void, or that it is forall a.a for
+;; all effectful prims:
+(for-each (lambda (x)	    
+	    (DEBUGASSERT (match (last x)
+			   [(quote ,v) (symbol? v)]
+			   [#() #t]
+			   [,else #f])))
+  wavescript-effectful-primitives)
 
 ) ;; end module

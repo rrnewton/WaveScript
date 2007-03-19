@@ -82,7 +82,7 @@
 			   head tail map append fold
 
 			   ;; These are defined as syntaxes:
-			   ref deref
+			   Mutable:ref ref deref
 			   )
 		     generic-arith-primitives
 		     meta-only-primitives)

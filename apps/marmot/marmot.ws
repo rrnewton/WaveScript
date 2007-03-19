@@ -90,7 +90,7 @@ fun detect(scorestrm) {
 	
 	/* emit power of 2 */
 	p = en + samples_padding - _start;
-	p2 = 1;
+	p2 = Mutable:ref(1);
 	for i = 0 to 24 {
 	  if (p2 >= p) then break;
 	  p2 := p2 * 2;
@@ -164,16 +164,16 @@ fun FarFieldDOA(synced, sensors)
   Nsens = m_rows(sensors);
   
   /* compute r and theta for each sensor relative to sensor 0 as origin */
-  r = buildArray(Nsens, 
+  r = Array:build(Nsens, 
 		 fun(i) sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
 			      sqr(m_get(sensors,i,0) - m_get(sensors,0,1)) +
 			      sqr(m_get(sensors,i,2) - m_get(sensors,0,2))));
-  theta = buildArray(Nsens,
+  theta = Array:build(Nsens,
 		     fun(i) atan2(m_get(sensors,i,1) - m_get(sensors,0,1), 
 				  m_get(sensors,i,0) - m_get(sensors,0,0)));
 		     
   // gridmap maps polar grid entry to radians
-  gridmap = buildArray(Ngrd, 
+  gridmap = Array:build(Ngrd, 
                        fun(i) deg2rad(intToFloat(i) * 360.0 / i2f(Ngrd)));
 
   // convert the output of sync to a matrix.. yes this kind of sucks 
@@ -182,7 +182,7 @@ fun FarFieldDOA(synced, sensors)
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
     // length of the fft
-    Ndat = (m_in[0]).length;  
+    Ndat = (m_in[0]).Array:length;  
 
     // This will be the output DOA likelihoods
     Jmet = matrix(NSrc,Ngrd,0.0);
@@ -208,15 +208,15 @@ fun FarFieldDOA(synced, sensors)
 
     // sum powers values across channels 
     power = Array:make(Ndat, 0.0);
-    for i = 0 to psds.length-1 {
+    for i = 0 to psds.Array:length-1 {
       for j = 0 to Ndat-1 {
         power[j] := power[j] + m_get(psds,i,j);
       }
     };
 
     // create index vector
-    power_index = Array:make((m_in[0]).length, 0);
-    for i = 0 to power_index.length-1 { power_index[i] := i; };
+    power_index = Array:make((m_in[0]).Array:length, 0);
+    for i = 0 to power_index.Array:length-1 { power_index[i] := i; };
 
     // sort index vector and power vector
     fun swap(i,j) { 
@@ -228,7 +228,7 @@ fun FarFieldDOA(synced, sensors)
       power[j] := tmp2; 
     };
     fun cmp(i,j) { (power[i] - power[j]) };
-    sort(swap,cmp,power.length);
+    sort(swap,cmp,power.Array:length);
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
@@ -303,8 +303,8 @@ fun FarFieldDOA(synced, sensors)
       };
 
       // stopping condition, break out of loop?
-      diffs = Array:make(Trad.length, 0.0); //gint(0));
-      for K = 0 to Trad.length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
+      diffs = Array:make(Trad.Array:length, 0.0); //gint(0));
+      for K = 0 to Trad.Array:length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
       let (max_change,_) = a_max(diffs);
 
       //or, in matlab... that would just be 'max(abs(Tbefore-Trad))'!!!
@@ -313,7 +313,7 @@ fun FarFieldDOA(synced, sensors)
         break;
       };
 
-      for i = 0 to Tbefore.length - 1 {
+      for i = 0 to Tbefore.Array:length - 1 {
 	Tbefore[i] := gridmap[T[i]] 
       }
     };
@@ -325,61 +325,67 @@ fun FarFieldDOA(synced, sensors)
 
 }
 
-sm = stream_map;
+/* sm = stream_map; */
 
-//========================================
-// Main query:
+/* //======================================== */
+/* // Main query: */
 
-flag = GETENV("WSARCH") == "ENSBox";
-//flag = true;
-//marmotfile = "/archive/4/marmots/brief.raw";
-//marmotfile = "/archive/4/marmots/real_100.raw";
-marmotfile = 
-  if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
-  if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
-  if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else
-  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
-  wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
+/* flag = GETENV("WSARCH") == "ENSBox"; */
+/* //flag = true; */
+/* //marmotfile = "/archive/4/marmots/brief.raw"; */
+/* //marmotfile = "/archive/4/marmots/real_100.raw"; */
+/* marmotfile =  */
+/*   if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else */
+/*   if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else */
+/*   if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else */
+/*   if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else */
+/*   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n"); */
 
-chans = (dataFile(marmotfile, "binary", 24000, 0)
-	 :: Stream (Int16 * Int16 * Int16 * Int16));
+/* chans = (dataFile(marmotfile, "binary", 24000, 0) */
+/* 	 :: Stream (Int16 * Int16 * Int16 * Int16)); */
 
-ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096);
-ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096);
-ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096);
-ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096);
+/* ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096); */
+/* ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096); */
+/* ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096); */
+/* ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096); */
 
-// 96 samples are ignored between each 32 used:
-rw1 = rewindow(ch1, 32, 96); 
+/* // 96 samples are ignored between each 32 used: */
+/* rw1 = rewindow(ch1, 32, 96);  */
 
-//hn = smap(hanning, rw1);
-hn = myhanning(rw1);
+/* //hn = smap(hanning, rw1); */
+/* hn = myhanning(rw1); */
 
-wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end), 
-		     hn);
+/* wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end),  */
+/* 		     hn); */
 
-detections = detect(wscores);
+/* detections = detect(wscores); */
 
-d2 = iterate (d in detections) { 
-  let (flag,_,_) = d;
-  if flag then print("detected at "++show(d)++"\n"); 
-  emit d; 
-};
+/* d2 = iterate (d in detections) {  */
+/*   let (flag,_,_) = d; */
+/*   if flag then print("detected at "++show(d)++"\n");  */
+/*   emit d;  */
+/* }; */
 
-synced = syncN(d2, [ch1, ch2, ch3, ch4]);
+/* synced = syncN(d2, [ch1, ch2, ch3, ch4]); */
 
-/* define array geometry */
-sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
-			  [ 0.4, 0.4, 0.4],
-			  [-0.4, 0.4,-0.4],
-			  [-0.4,-0.4, 0.4]]);
+/* /\* define array geometry *\/ */
+/* sensors = list_to_matrix([[ 0.4,-0.4,-0.4], */
+/* 			  [ 0.4, 0.4, 0.4], */
+/* 			  [-0.4, 0.4,-0.4], */
+/* 			  [-0.4,-0.4, 0.4]]); */
 
-doas = FarFieldDOA(synced, sensors);
+/* doas = FarFieldDOA(synced, sensors); */
 
-BASE <- 
-  doas
-// synced
-;
+/* BASE <-  */
+/*   doas */
+/* // synced */
+/* ; */
 
-//BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
-//		   audio(0,1,0,44000)]);
+/* //BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1), */
+/* //		   audio(0,1,0,44000)]); */
+
+
+
+
+
+BASE <- timer(3.0);

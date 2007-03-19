@@ -1,4 +1,6 @@
-
+;;;; Note: as an additional little hack, we use this opportunity to
+;;;; expand "ref" to "Mutable:ref".  But we do it hygenically,
+;;;; avoiding capture.
 
 (module resolve-varrefs mzscheme
   (require "../../../plt/common.ss")
@@ -72,6 +74,11 @@
 		 [else (error 'resolve-varrefs 
 			      "variable was not bound!: ~a\n environment: ~s"
 			      var var-table)])]
+
+	  ;; Expand this into the more verbose form:
+	  [(ref ,[x]) (guard (not (assq 'ref var-table)))
+	   `(Mutable:ref ,x)]
+
 	  ;; The automatic traversal won't do the variable (it's not an expression):
 	  [(set! ,[v] ,[rhs]) `(set! ,v ,rhs)]
 	  [(using ,M ,e)
