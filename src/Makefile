@@ -363,7 +363,17 @@ wc:        wordcount
 count:     wordcount
 linecount: wordcount
 wordcount:
-	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs demos/token_machs/*.tm demos/regiment/*.rs| grep -v "^_" | xargs wc
+	find -name "*.ss" | grep -v "/parser/" | grep -v "wavescript_temp" | xargs wc 
+	@echo;echo
+	find -name "*.rs" | xargs wc 
+	@echo;echo
+	find -name "*.tm" | xargs wc 
+	@echo;echo
+#	cd ../;
+	find ../ -name "*.ws" | xargs wc 
+
+#	ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs demos/token_machs/*.tm demos/regiment/*.rs| grep -v "^_" | xargs wc
+
 
 wcnb:
 	sh -c "ls *.ss generic/*.ss chez/*.ss plt/*.ss generic/*.tests haskell/*.hs | grep -v '^_' | xargs cat | grep -v '^[ ]*$'"
