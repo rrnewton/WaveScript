@@ -17,12 +17,12 @@ SOFILE=$REV"_"$MT"_main_chez.so"
 WSPARSEFILE=$REV"_"$MT"_wsparse"
 
 echo Downloading precompiled binary for Regiment revision $REV
-#echo Fetching file from: "http://www.regiment.us/regiment_binaries/"$REV"_"$MT"_main_chez.so"
-echo
-echo If this doesn\'t work there might not be a precompiled binary for this SVN revision.
-echo Check what revisions have binaries available at: 
-echo   http://www.regiment.us/regiment_binaries/
-echo
+echo Fetching file from: "http://www.regiment.us/regiment_binaries/"$REV"_"$MT"_main_chez.so"
+# echo
+# echo If this doesn\'t work there might not be a precompiled binary for this SVN revision.
+# echo Check what revisions have binaries available at: 
+# echo   http://www.regiment.us/regiment_binaries/
+# echo
 
 if [ `which wget` ];
 then wget  "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE;
@@ -32,6 +32,42 @@ then curl "http://www.regiment.us/regiment_binaries/"$MT"/"$SOFILE -o $SOFILE;
      curl  "http://www.regiment.us/regiment_binaries/"$MT"/"$WSPARSEFILE -o $WSPARSEFILE;
 else echo NEITHER CURL NOR WGET AVAILABLE!!; exit 1
 fi 
+
+
+if [ ! "$?" == "0" ];
+then echo 
+     echo "   =============================================================";
+     echo "   !!!!    Could not download binaries for revision $REV    !!!!";
+     echo 
+     echo Below are the most recent revisions available for platform "$MT":
+     if (which links > /dev/null) ;
+	 then WEB='links -no-numbering -no-references -dump'
+     elif (which elinks > /dev/null);
+	 then WEB='elinks -no-numbering -no-references -dump'
+     elif (which lynx > /dev/null) ;
+	 then WEB='lynx -dump'
+     else echo "(Could not list, no lynx/links/elinks.)";
+	  exit -1
+     fi
+     echo 
+     $WEB http://regiment.us/regiment_binaries/$MT/ | grep main_chez | tail -n 10
+     echo 
+     echo "(The number at the beginning of the filename, preceding underscore, is the revision.)"
+     echo 
+     echo And these are the most recent revisions that pass all system tests:
+     echo 
+     $WEB http://regiment.us/regression | grep passed | tail -n 10
+     echo 
+     echo 
+     echo You can run update to the appropriate revision and rerun this script.
+     echo Or you can run it with an explicit revision argument, such as:
+     echo "  ./download_precompiled_binaries 1935"
+     echo
+     echo Please see this URL for full listings of available binaries:
+     echo "  http://www.regiment.us/regiment_binaries/"
+     exit -1
+fi
+
 
 if [ ! -d ./src/build/$MT ]; then mkdir ./src/build/$MT; fi
 
@@ -43,3 +79,7 @@ then mv $WSPARSEFILE bin/wsparse.exe;
 else mv $WSPARSEFILE bin/wsparse;
 fi
 chmod +x bin/wsparse
+
+echo
+echo "Now when you type 'regiment' at the prompt, it should indicate that it's loading from .so"
+echo "For example: 'Loading ws compiler in chezscheme (from compiled .so)...'"
