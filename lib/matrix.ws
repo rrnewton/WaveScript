@@ -1,11 +1,12 @@
 
-
-
 // A library of matrix routines.
 // Author:  Lewis Girod & Ryan Newton 
 
+// NOTE: rrn: I'm going to rewrite this at some point to use a single
+// array (packed rows) representation for interoperability with GSL/Blas.
+
 // NOTE: In the future we will have type aliases (shorthands) like this:
-// type Matrix t = Array (Array t);
+type Matrix t = Array (Array t);
 
 matrix :: (Int, Int, t) -> Array (Array t);
 fun matrix(rows, cols, init) {

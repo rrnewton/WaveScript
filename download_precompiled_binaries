@@ -82,4 +82,4 @@ chmod +x bin/wsparse
 
 echo
 echo "Now when you type 'regiment' at the prompt, it should indicate that it's loading from .so"
-echo "For example: 'Loading ws compiler in chezscheme (from compiled .so)...'"
+echo "  For example: 'Loading ws compiler in chezscheme (from compiled .so)...'"
