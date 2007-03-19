@@ -8,7 +8,34 @@
 // NOTE: In the future we will have type aliases (shorthands) like this:
 type Matrix t = Array (Array t);
 
-matrix :: (Int, Int, t) -> Array (Array t);
+// [2007.03.19] rrn: I'm going to clean things up gradually and move them into this namespace:
+
+namespace Matrix {
+
+// Interface:
+get :: (Matrix t, Int, Int) -> t;
+set :: (Matrix t, Int, Int, t) -> ();
+
+ fun get(mat, row, col) (mat[row])[col];
+ 
+ fun set(mat, row, col, val) {
+   r = mat[row];
+   r[col] := val;
+   () // mutators should return nothing!
+ };
+ 
+  
+};
+
+// For now we just import immediately:
+using Matrix;
+
+// "Legacy" bindings:
+m_get = Matrix:get;
+m_set = Matrix:set;
+
+// make:
+matrix :: (Int, Int, t) -> Matrix t;
 fun matrix(rows, cols, init) {
   arr = Array:make(rows, Array:null);
   for i = 0 to rows-1 {
@@ -16,6 +43,9 @@ fun matrix(rows, cols, init) {
   };
   arr
 }
+
+// build:
+
 
 fun m_zeroes(r,c) { matrix(r,c,gint(0)) }
 fun m_ones(r,c) { matrix(r,c,gint(1)) }
@@ -26,17 +56,6 @@ fun m_rows(m) {
 
 fun m_cols(m) {
   m[0]`Array:length
-}
-
-
-m_get :: (Array (Array t), Int, Int) -> t;
-fun m_get(mat, row, col) (mat[row])[col]
-
-m_set :: (Array (Array t), Int, Int, t) -> ();
-fun m_set(mat, row, col, val) {
-  r = mat[row];
-  r[col] := val;
-  {}; // mutators should return nothing!
 }
 
 fun build_matrix(n,m,f) {

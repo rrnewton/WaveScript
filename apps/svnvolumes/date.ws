@@ -10,7 +10,7 @@ namespace Date {
   toDays :: (Int * Int * Int) -> Int;
   fun toDays( (y,m,d) ) {
     365*y + 
-    monthTable\List:ref(m-1) +
+    monthTable`List:ref(m-1) +
     d-1
   }
 

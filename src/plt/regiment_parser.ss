@@ -304,9 +304,9 @@
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
            [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) ,@$8)]
 	   
-	   ;; b
-	   [(include exp SEMI maybedecls) 
-	    `((include ,$2) ,@$4)]
+	   [(include exp SEMI maybedecls)  `((include ,$2) . ,$4)]
+	   ;; [2007.03.19] Now including this at the decl level also:
+	   [(using VAR SEMI maybedecls)   `((using ,$2) . ,$4)]
 
 	   [(namespace VAR LeftBrace maybedecls RightBrace optionalsemi maybedecls) `((namespace ,$2 ,@$4) ,@$7)]
 

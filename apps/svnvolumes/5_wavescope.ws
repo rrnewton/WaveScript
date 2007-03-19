@@ -8,7 +8,7 @@ sfilter = stream_filter;
 BASE <- {
   // Consists of Rev, Y/M/D, Lines 
   s0 as (r, y,m,d, l) = 
-    (dataFile("regiment_traffic.txt", "text", 10000, 0) 
+    (dataFile("wavescope_traffic.txt", "text", 10000, 0) 
      :: Stream (Int * Int * Int * Int * Int));
 
   asdays = smap(fun((y,m,d, lns)) (Date:toDays((y,m,d)), lns),  

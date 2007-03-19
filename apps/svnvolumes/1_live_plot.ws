@@ -9,4 +9,4 @@ s0 = (dataFile("regiment_traffic.txt", "text", 10000, 0)
 
 lines = iterate( (_, _,_,_, ln) in s0 ) { emit ln };
 
-BASE <- livePlot(window(lines, 10))
+BASE <- Plot:live1d(window(lines, 10))

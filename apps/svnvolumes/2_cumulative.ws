@@ -15,4 +15,4 @@ cum = iterate( ln in lines ) {
   emit sum;
 }
 
-BASE <- livePlot(window(cum, 10))
+BASE <- Plot:live1d(window(cum, 10))

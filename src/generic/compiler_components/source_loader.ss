@@ -173,8 +173,6 @@
 	   ;; [2005.12.02] Changing this so the params stick after the run.  Better for re-running.
 	   (HACK (for-each eval params))
 	   ;;; [2006.11.11] HACK HACK -- loading params twice for now!!!
-;	   (inspect compiled)
-;	   (inspect params)
 	   
 	   (let ((result 
 		  (with-evaled-params params
@@ -234,6 +232,9 @@
 ;================================================================================
 
 ;; Do all the post-processing to turn a set of bindings into a single valid expression.
+;;
+;; [2007.03.19] Note: top level type declarations don't have to occur
+;; in any particular position in the file.
 (define (ws-postprocess origws)
   ;; First we expand includes:  
   (define (process form)
@@ -245,6 +246,7 @@
 	   (or (expand-include (resolve-lib-path file))
 	       (error 'ws-postprocess 
 		      "could not retrieve contents of include: ~s" file))))]
+      [(using ,M) `((using ,M))]
       ;; This just renames all defs within a namespace.
       [(namespace ,Space ,[defs] ...)
        (map (lambda (def)
@@ -264,7 +266,8 @@
 
   (define  ws (apply append (map process origws)))
   (define (f1 x) (eq? (car x) '::))
-  (define (f2 x) (eq? (car x) 'define))
+  ;; We're lumping 'using' declarations with defines.  Order must be maintained.
+  (define (f2 x) (or (eq? (car x) 'define) (eq? (car x) 'using)))
   (define (f3 x) (eq? (car x) '<-))
   (define (f4 x) (eq? (car x) 'typedef))
 
@@ -277,7 +280,8 @@
   (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
   (let ([typevs (map car types)]
 	[defvs (map car defs)])
-					;(pretty-print ws)
+
+    ;; DEFENSE:
     (unless (= 1 (length routes))
       (if (zero? (length routes))
 	  (begin (warning 'ws-postprocess "No stream-wiring expression, defaulting \"BASE <- timer(1)\"")		   
@@ -287,34 +291,31 @@
       (error 'ws-postprocess "BASE is the only allowed destination for (<-) currently!  Not: ~s" (car routes)))
     (unless (subset? typevs defvs)
       (error 'ws-postprocess "type declarations for unbound variables! ~a" (difference typevs defvs)))
-    (let ([binds (map (lambda (def)
-			(match def
-			  [(,v ,e) (if (memq v typevs)
-				       `[,v ,(cadr (assq v types)) ,e]
-				       `[,v ,e])]))
-		   defs)]
-	  [body (cadar routes)])
-      ;; [2006.09.19] Using let* rather than letrec for now.  Type checker isn't ready for letrec.
+    (unless (set? (map car typealiases))
+      (error 'ws-postprocess 
+	     "Got two type aliases with the same name!\nAll aliases: ~s"
+	     typealiases))
 
-      ;; [2006.11.16] Ok, well now we need recursion.  Going back to
-      ;; letrec.  Problem was (I think) that we didn't have
-      ;; letrec*... I'm just making nested letrecs for now.
-
-      ;;`(let* ,binds ,body)
-      ;;`(letrec ,binds ,body)
-
-      (unless (set? (map car typealiases))
-	(error 'ws-postprocess 
-	       "Got two type aliases with the same name!\nAll aliases: ~s"
-	       typealiases))
-
+    ;; Now let's build that expression:
+    (let ()
+      ;; Pull out the "BASE <-" returned expression:
+      (define body (cadar routes))
+      (define final-expression
+	(match defs
+	  [() body]
+	  ;; A 'using' statement:
+	  [((,M) . ,[rest]) `(using ,M ,rest)]
+	  ;; A define statement:
+	  [((,v ,e) . ,[rest])
+	   ;; If there's a type decl for this binding, use it:
+	   `(letrec (,(if (memq v typevs)
+			  `[,v ,(cadr (assq v types)) ,e]
+			  `[,v ,e]))
+	      ,rest)]))
+;      (inspect final-expression)
+      
       `(ws-postprocess-language
-	'(program 
-	     ,(let loop ([binds binds])
-		(if (null? binds) body
-		    `(letrec (,(car binds))
-		       ,(loop (cdr binds))
-		       )))
+	'(program ,final-expression
 	   (type-aliases . ,typealiases)
 	   'notype))
       )))

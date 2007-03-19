@@ -8,7 +8,7 @@
 #REPOS='https://macroprogramming.ffh.us/repos/'
 
 OUTFILE=wavescope_traffic.txt
-REPOS='svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/trunk/code/v1'
+REPOS='svn+ssh://newton@nms.csail.mit.edu/export/home2/svn/WaveScope/'
 
 
 if [ -f "$OUTFILE" ];
