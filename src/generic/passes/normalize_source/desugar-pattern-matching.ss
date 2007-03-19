@@ -85,7 +85,7 @@
 	[(match ,[x] (,[break-pattern -> var binds type-assertion] ,[rhs]))
 	 ;; Shouldn't have assertions on the variable names here for now:
 	 (ASSERT (not type-assertion))
-	 `(letrec ([,var ',(notype) ,x] ,binds ...)
+	 `(letrec ([,var ,(notype) ,x] ,binds ...)
 	    ,rhs)]
 
 	;; [2006.11.15] Going to add special stream-of-tuples field-naming syntax.
