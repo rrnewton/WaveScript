@@ -4,7 +4,9 @@
 
 (module degeneralize-arithmetic mzscheme
   (require "../../../plt/common.ss"
-           "../normalize_source/typecheck.ss")
+           "../normalize_source/typecheck.ss"
+	   "../static_elaborate/static-elaborate.ss"
+	   )
   (provide degeneralize-arithmetic
 	   degeneralize-arithmetic-grammar
 	   degeneralize

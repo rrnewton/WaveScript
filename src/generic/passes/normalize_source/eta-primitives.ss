@@ -8,7 +8,7 @@
 
 (module eta-primitives mzscheme
   (require "../../../plt/common.ss"
-           "rename-vars.ss"
+           (all-except "rename-vars.ss"  these-tests test-this)
 	   )
   (provide eta-primitives eta-primitives-grammar test-eta-primitives)
   (chezimports)

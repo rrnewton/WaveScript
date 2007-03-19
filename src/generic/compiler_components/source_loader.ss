@@ -207,7 +207,7 @@
 
 ;; Would like to do a bit better job of this:
 (IFCHEZ
- (define (relative-path? p)
+ (define (ws-relative-path p)
   (case (machine-type)
     [(i3nt) 
      (if (> (string-length p) 2)
@@ -217,12 +217,13 @@
     [else (ASSERT (not (zero? (string-length p))))
 	  (not (eqv? #\/ (string-ref p 0)))
      ]))
- (define (relative-path? p)
-   (error 'relative-path? "not implemented in PLT yet")))
+ (define (ws-relative-path p)
+   ;; Actually this is built-in... should use it:
+   (error 'ws-relative-path "not implemented in PLT yet")))
 
 (define (resolve-lib-path file)
   (cond 
-   [(not (relative-path? file)) file]
+   [(not (ws-relative-path file)) file]
    ;; Safety: Can't use ".." wrt to lib directory:
    [(and (not (substring? ".." file)) 
 	 (file-exists? (++ (REGIMENTD) "/lib/" file)))

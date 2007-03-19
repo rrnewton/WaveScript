@@ -11,7 +11,8 @@
 
 
 (module rename-vars mzscheme
-  (require "../../../plt/common.ss")
+  (require "../../../plt/common.ss"
+	   "ws-label-mutable.ss")
   (provide rename-vars rename-vars-grammar
            test-this these-tests test01 tests01
            test-rename-vars)

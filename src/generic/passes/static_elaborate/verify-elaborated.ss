@@ -7,6 +7,7 @@
 (module verify-elaborated mzscheme
   (require "../../../plt/common.ss"
 	   "../normalize_source/remove-unquoted-constant.ss"
+	   "../static_elaborate/degeneralize-arithmetic.ss"
 	   )
   (provide verify-elaborated verify-elaborated-grammar)
   (chezimports )
