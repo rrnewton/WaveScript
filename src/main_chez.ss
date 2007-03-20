@@ -545,6 +545,11 @@
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
+(include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
+
+
+;(inspect (emit-caml-wsquery caml-example))
+
 ;(load "../depends/slib/chez.init")
 ;(require 'tsort) ;; for the simulator: 
 
@@ -704,3 +709,30 @@
 
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
 
+
+
+
+
+
+
+
+
+(define caml-example 
+'(type-annotate-misc-language
+  '(program
+       (let ([tmp_1 (Stream Int)
+		    (dataFile '"fake.txt" '"text" '44000 '0)])
+	 tmp_1)
+     (Stream Int))))
+
+(define caml-example2
+  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
+    (run-ws-compiler 
+     (ws-postprocess
+      '((define s1 (app audioFile "./countup.raw" 40 0 44000))
+	(define s2
+	  (iterate
+	   (lambda (w ___VIRTQUEUE___)
+	     (begin (emit ___VIRTQUEUE___ w) ___VIRTQUEUE___))
+	   s1))
+	(<- BASE s2))))))

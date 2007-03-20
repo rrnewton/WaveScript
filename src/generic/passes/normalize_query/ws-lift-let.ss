@@ -87,11 +87,18 @@
     (define process-expr
       (lambda (x fallthru)
 	(match x
+
+	  ;; Ascriptions are redundant right within the RHS:
+	  [(let ([,v ,ty (assert-type ,ty3 ,rhs)]) ,bod)
+	   (process-expr `(let ([,v ,ty ,rhs]) ,bod)  fallthru)]
+
 	  ;; Do lifts:
 	  [(let ([,v ,ty (let ([,v2 ,ty2 ,e2]) ,rhs)]) ,bod)
 	   (process-expr 
 	    `(let ([,v2 ,ty2 ,e2]) (let ([,v ,ty ,rhs]) ,bod))
 	    fallthru)]
+
+#;
 	  ;; This is annoying, but it's the same thing:
 	  ;; (By the way, this is one reason it would be nice to have
 	  ;; the ascription as an implicit expression *TAG* rather
