@@ -88,7 +88,21 @@
       (lambda (x fallthru)
 	(match x
 
+
 	  ;; Ascriptions are redundant right within the RHS:
+	  ;; But we leave them for primitives:
+	  [(let ([,v ,ty (assert-type ,ty3 (,prim ,[rand*] ...))]) ,[bod])
+	   (guard (regiment-primitive? prim))
+	   `(let ([,v ,ty (assert-type ,ty3 (,prim . ,rand*))]) ,bod)]
+	  ;; A 'constant' primitive:
+	  [(let ([,v ,ty (assert-type ,ty3 ,prim)]) ,[bod])
+	   (guard (regiment-primitive? prim))
+	   `(let ([,v ,ty (assert-type ,ty3 ,prim)]) ,bod)]
+	  ;; And for quoted constants:
+	  [(let ([,v ,ty (assert-type ,ty3 (quote ,c))]) ,[bod])
+	   `(let ([,v ,ty (assert-type ,ty3 (quote ,c))]) ,bod)]
+
+	  ;; For any other RHS we remove because the ascription might obscure let-lifting:
 	  [(let ([,v ,ty (assert-type ,ty3 ,rhs)]) ,bod)
 	   (process-expr `(let ([,v ,ty ,rhs]) ,bod)  fallthru)]
 

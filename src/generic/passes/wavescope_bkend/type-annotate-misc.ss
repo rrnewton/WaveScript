@@ -3,19 +3,25 @@
 ;; (After nominalize-types we can no longer use recover-type.)
 
 (module type-annotate-misc mzscheme 
-  (require  "../../../plt/common.ss" )
+  (require  "../../../plt/common.ss" 
+	    "ws-lift-let.ss")
   (provide type-annotate-misc
-	   ;type-annotate-misc-grammar
+	   type-annotate-misc-grammar
 	   )
   (chezimports)
+
+;; UNFINISHED, should reflect constraints on annotated prims:
+  (define type-annotate-misc-grammar
+    ;; Add symbols to the literal grammar (for dataFile)
+    ;; Remove 'Const' and make everything 'ComplexConst' (again)
+    (append `((Datum ,symbol?)
+	      (Const ComplexConst))
+	  (filter (lambda (x) (not (eq? (car x) 'Const)))
+	    ws-lift-let-grammar)))
 
 ;; Adds types to various primitives for code generation.
 (define-pass type-annotate-misc
     
-    ;; UNFINISHED
-    ;(define type-annotate-misc-grammar)
-
-
     ;(define annotated-prims '(print show cons hashtable seg-get))
     (define annotate-outside-prims '(hashtable prim_window List:append))
 
@@ -81,6 +87,7 @@
 	   [#(,t* ...)  `(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',t*))]
 	   [,t   	`(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',(list t)))])]
 
+	[(dataFile ,_ ...) (error 'type-annotate-misc "uncaught 'dataFile' call: ~s" `(dataFile ,_ ...))]
 	;; Anything already in assert form is covered.
 	;; [2007.01.24] Commenting:
 	;[(assert-type ,t ,e) `(assert-type ,t ,(fallthru e tenv))]
@@ -95,7 +102,8 @@
 	[,other (fallthru other tenv)]))
 
 
-  [Expr/Types process-expr])
+  [Expr/Types process-expr]
+  [OutputGrammar type-annotate-misc-grammar])
 
 
 ) ; End module

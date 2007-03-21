@@ -145,6 +145,10 @@
 
        [Expr ('show-and-string-append Expr ...)]
 
+       ;; We allow arbitrary type constructors because of user aliases:
+       ;; [2007.03.21] Currently they only are permitted to have one type argument:
+       [Type (,symbol? Type)]
+
        ;; This includes these basic arith prims, which are just sugar for the generic ops:
        [Prim '+]
        [Prim '-]

@@ -606,9 +606,11 @@
 	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
 	  [Float (flonum? c)]
 	  [Bool  (boolean? c)]
+	  [String (string? c)]
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
 	  [#()   (eq? c 'UNIT)]
-	  [else #f]))
+	  ;[else #f]
+	  ))
     ))
 
 ;;; Annotate expressions/programs with types.

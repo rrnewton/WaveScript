@@ -192,7 +192,9 @@
 		 [(,inputlang '(program ,bod (type-aliases ,alias* ...) ,type))
 		  (fluid-let ([aliases alias*])		    
 		    `(resolve-type-aliases-language
-		      '(program ,(Expr bod) ,type)))]))])
+		      '(program ,(Expr bod) ,type)))]))]
+    ;; Now we're free of sugars and can use the initial grammar.
+    [OutputGrammar initial_regiment_grammar])
 
 
 (define-pass ws-normalize-context

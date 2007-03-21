@@ -19,6 +19,9 @@ D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
+# Clean first:
+rm -rf ./query.cpp
+
 export REGIMENT_OR_WAVESCRIPT=WS
 if regiment wscomp $abspath ${1+"$@"} ;
 then echo

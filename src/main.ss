@@ -286,6 +286,13 @@
     (apply run-compiler p args)
     ))
 
+
+
+
+
+;; ====================================================================================================
+;; WaveScope Compiler:
+
 (define ws-pass-optional-stop 
   (lambda (x)
     (if (regiment-verbose)
@@ -413,6 +420,7 @@
 
   (ws-run-pass p ws-remove-complex-opera*)
   (ws-run-pass p ws-normalize-context)
+
   (ws-run-pass p ws-lift-let)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
@@ -434,12 +442,13 @@
        (flush-output-port))
      'replace))
 
+  (ws-run-pass p type-annotate-misc) 
+
+
 ;  (ws-run-pass p remove-lazy-letrec)
   
 ;;  (ws-run-pass p verify-core)
 ;;  (ws-run-pass p retypecheck)
-
-  (ws-run-pass p type-annotate-misc)
 
   ;(ws-run-pass p nominalize-types)
 
@@ -448,10 +457,12 @@
 
   p)))
 
-;; We keep the pipe to the parser open.
-;(define parser_inpipe #f)
-;(define parser_outpipe #f)
 
+
+
+
+
+;; ================================================================================
 ;; The WaveScript "interpreter".  (Really a wavescript embedding.)
 ;; It loads, compiles, and evaluates a wavescript query.
 ;; .param x - can be an input port, a filename, or a wavescript AST (list)
@@ -556,6 +567,10 @@
   stream)
   ) ; End wsint
 
+
+
+
+;; ================================================================================
 ;; WaveScript Compiler Entrypoint:
 (define (wscomp x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler]
@@ -629,7 +644,13 @@
  ) ; End wscomp
 
 
-;; This is an entrypoint for the wavescript compiler that uses the OCaml backend.
+
+
+
+
+;; ================================================================================
+;; WaveScript OCAML Compiler Entrypoint:
+
 (define (wscaml x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler]
 		[regiment-primitives ;; Remove those regiment-only primitives.
@@ -638,12 +659,15 @@
    (define prog (begin (ASSERT list? x) x))
 
    (ASSERT (andmap symbol? flags))
-   (ASSERT null? flags) ;; TEMP
    (set! prog (run-ws-compiler prog))
    (set! prog (explicit-stream-wiring prog))
          
    (string->file (text->string (emit-caml-wsquery prog)) outfile)
    (printf "\nGenerated OCaml output to ~s.\n" outfile)))
+
+
+
+
 
 
 

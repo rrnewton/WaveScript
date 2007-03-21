@@ -261,17 +261,24 @@
           `(("source \"",name"\" \"",new-class-name"\" \"query.so\" \n")))]
 
 	;; Produces an instance of a generic dataFile reader.
-	[(assert-type (Stream (Struct ,structname))
-		      (__dataFile ,[Simple -> file] ,[Simple -> mode]
+	[(__dataFile ,[Simple -> file] ,[Simple -> mode]
 				  ,[Simple -> rate]
 				  ,[Simple -> repeats] 
 				  ;,[myExpr -> types]
 				  ,_ignored
-				  ))
-	 (let* (
-		[classname (symbol->string (unique-name 'WSDataFileSource))]
-		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
-		[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
+				  )
+	 (let-match ([(Stream ,thetype) typ])
+	   (let* (
+		  [structoutput? (match thetype [(Struct ,name) name] [,else #f])]
+		  [tuptype (match thetype
+			     [(Struct ,structname) `("struct ",(symbol->string structname))]
+			     [,other (ASSERT (not (eq? other 'String)))(Type other)])]
+		  [classname (symbol->string (unique-name 'WSDataFileSource))]
+		  [types (if structoutput?
+			     (map cadr (cdr (ASSERT (assq structoutput? struct-defs))))
+			     (list thetype))]
+		  [numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
+		  
 		[maintext 
 		 (list
 		  (block (list "class " classname " : public WSSource")
@@ -285,14 +292,14 @@
 		   "}\n"
 		   "Launch();\n")
 		 )
-	       "\n  DEFINE_SOURCE_TYPE(struct "(symbol->string structname)");\n"
+	       "\n  DEFINE_SOURCE_TYPE("tuptype");\n"
 	       "\nprivate:\n"
 	       "  FILE* _f;\n"
 	       "  bool binarymode;\n"
  	       (block "void *run_thread()"
 	       (list		
 		(block "while (!Shutdown())"
-		  `("struct ",(symbol->string structname)" tup;\n"
+		  `(,tuptype" tup;\n"
 		    "// Cap of a 100 on length of read strings:\n"
 		    ,(map (lambda (i) (format "char str~a[100];\n" i))
 		          (iota 1 numstrings))
@@ -309,22 +316,26 @@
 					  ))
 				   types))
 			     "\", "
-			     ,(insert-between ", "
-				(let loop ([n 1]
-					   [flds (map symbol->string
-						   (list-head standard-struct-field-names (length types)))]
-					   [types types])
-				  (if (null? types) '()
-				      (match (car types)
-					[,s (guard '(memq s '(Int Int16 Float)))
-					 (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-					[String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
-					))))
+			     ,(if structoutput?
+				  (insert-between ", "
+				    (let loop ([n 1]
+					       [flds (map symbol->string
+						       (list-head standard-struct-field-names (length types)))]
+					       [types types])
+				      (if (null? types) '()
+					  (match (car types)
+					    [,s (guard '(memq s '(Int Int16 Float)))
+						(cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
+					    [String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
+					    ))))
+				  ;; Otherwise the output is just a single value:
+				  "&tup"
+				  )
 			     ");\n"))
 		    ,(block "else"
 			    ;; The binary format of tuples matches that in the file:
-			    `("status = fread(&tup,sizeof(",(symbol->string structname)"),1,_f);\n"))
-
+			    `("status = fread(&tup,sizeof(",tuptype"),1,_f);\n"))
+		    
 		    ;; Now with that nasty scanf finished we still
 		    ;; have to put the strings into the right fields:
 		    ,(map (lambda (n fld ty)
@@ -352,7 +363,7 @@
 	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
 	    )
 	  (list maintext)
-          `()))]
+          `())))]
 
 	;; [2006.11.18] This is for readng pipeline data currently.
 	[(doubleFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap])
@@ -457,8 +468,8 @@
 			 (list x ";\n")))
     (match b 
       [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
-      [(quote ,c)             (if name (Const name type c) "")]
-      [(tuple)                (if name (Const name type '(tuple)) "")]
+      [(quote ,c)             (if name ((Value tenv) name type `',c) "")]
+      [(tuple)                (if name ((Value tenv) name type '(tuple)) "")]
 
       [(let ([,v ,ty ,rhs]) ,bod)
        (list
@@ -469,7 +480,7 @@
 	((Block tenv) #f #f e1)
 	((Block tenv) name type `(begin . ,e*)))]
       ;; Both void value:
-      [(begin) ""]
+      [(begin) (if name (wrap "0") "")]
 
       ;; Not using return statements right now:
 #;
@@ -508,7 +519,7 @@
       [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
       ;; This just does nothing in the c++ backend:
-      [(gnuplot_array ,a) ""]
+      ;[(gnuplot_array ,a) ""]
 
       [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
        (guard (memq containerset! '(Array:set hashset_BANG)))
@@ -538,13 +549,16 @@
 ;	  ['()                      (wrap (PolyConst '() t))]
 
 	  [nulltimebase             (Const name type 'nulltimebase)]
+	  
+	  [,missed (guard (member missed '(nullseg Array:null '())))
+		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
 
 	  ;[,c (guard (constant? c)) (Const c)]
 	  [(quote ,datum)           (Const name type datum)]
 	  [(tuple)                  (wrap (Simple '(tuple)))]
 
 	  [,v (guard (symbol? v))
-	      (ASSERT (not (regiment-primitive? v)))
+	      (ASSERT (compose not regiment-primitive?) v)
 	      (wrap (Var v))]
 
 	  ;[(if ,[Simple -> test] ,conseq ,altern)
@@ -1115,6 +1129,8 @@
 	;; Lists:
 	;; These primitives are tricky because of the template magic:
 
+
+
 	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
 	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
 	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
@@ -1130,6 +1146,29 @@
 	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
 	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
+
+
+#|
+	[(cons ,[Simple -> a] ,[Simple -> b])
+	 (let-match ([(List ,[Type -> ty]) type])	   
+	   (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")))]
+	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
+	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
+	[(List:reverse ,[Simple -> ls])
+	 (let-match ([(List ,t) type])	   
+	   (wrap `("cons<",(Type t)">::reverse(",ls")")))]
+	[(List:append ,[Simple -> ls1] ,[Simple -> ls2])
+	 (let-match ([(List ,[Type -> ty]) type])	   
+	   (wrap `("cons<",ty">::append(",ls1", ",ls2")")))]
+	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
+	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
+	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::length(",ls")"))]
+	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
+	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
+	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
+|#
+
 
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]

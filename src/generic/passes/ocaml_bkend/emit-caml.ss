@@ -67,6 +67,7 @@
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
     (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
+    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
 
     (match prog
       [(,lang '(graph (const . ,c*)
@@ -74,7 +75,7 @@
 		      (iterates ,[Iterate -> iter*] ...)
 		      (sink ,base)))
        ;; Just append this text together.
-       (let ([result (list header1 header2 "\n" 
+       (let ([result (list header1 header2 header3 "\n" 
 			   "let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
 			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
@@ -192,12 +193,24 @@
        [(audioFile ,fn ,win ,rate)
 	000000000000]
 
-       [(dataFile )
-	000000000000000]
-
-       [,other "UNKNOWNSRC\n"]
+       [(__dataFile ,[file] ,[mode] ',rate ,[repeats] ,types)	
+	(values (list 
+		 " "v" = let reader = "(build-reader types)" in \n"
+		 "  dataFile "file" "mode" "(number->string (rate->timestep rate))
+		 "  "repeats" reader\n")
+		`("schedule := SE(0,",v") :: !schedule;;\n"))]
+       
+       [,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
        )]))
+
+(define (build-reader types)
+  (match types
+    [(Int)
+     ;; BROKEN BROKEN!!
+     "fun str ind -> (Marshall.from_string str ind :: int)"
+     ]))
+
 
 ; ======================================================================
 ;; Expressions.

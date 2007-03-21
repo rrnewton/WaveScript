@@ -5,6 +5,7 @@
 (module resolve-varrefs mzscheme
   (require "../../../plt/common.ss")
   (provide resolve-varrefs 
+	   resolve-varrefs-grammar
            ;test-this these-tests test01 tests01
            test-resolve-varrefs
 	   )
@@ -14,7 +15,10 @@
   ;; two separate passes for the two places it's used.
   (define resolve-varrefs-grammar 
     ;; Kill the using construct, wait it's only in the sugared grammar:
-    initial_regiment_grammar)
+    ;; Wait, we still need user type constructors:
+    (cons `[Type (,(lambda (x) (and (symbol? x) (not (memq x '(NUM quote)))))
+		  Type)]
+	  initial_regiment_grammar))
 
   (define (explode-id id) 
     (map string->symbol
