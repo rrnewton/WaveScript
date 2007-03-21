@@ -1147,29 +1147,6 @@
 	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
 	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
 
-
-#|
-	[(cons ,[Simple -> a] ,[Simple -> b])
-	 (let-match ([(List ,[Type -> ty]) type])	   
-	   (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))")))]
-	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
-	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
-	[(List:reverse ,[Simple -> ls])
-	 (let-match ([(List ,t) type])	   
-	   (wrap `("cons<",(Type t)">::reverse(",ls")")))]
-	[(List:append ,[Simple -> ls1] ,[Simple -> ls2])
-	 (let-match ([(List ,[Type -> ty]) type])	   
-	   (wrap `("cons<",ty">::append(",ls1", ",ls2")")))]
-	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
-	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::length(",ls")"))]
-	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
-	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
-|#
-
-
 ;; Don't have types for nulls yet:
 ;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
 

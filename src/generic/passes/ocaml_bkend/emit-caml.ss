@@ -21,6 +21,10 @@
   (provide emit-caml-wsquery)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
+
+;;CHEZ ONLY
+(define type->width (let () (import wavescript_sim_library_push) type->width))
+(define types->width (let () (import wavescript_sim_library_push) types->width))
   
 ;======================================================================
 ;;                    <WaveScript CAML generation>
@@ -62,7 +66,7 @@
 ;;
 ;; .param prog  The wsquery to process.
 (define emit-caml-wsquery
-  (trace-lambda ECW (prog)
+  (lambda (prog)
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
     (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
@@ -72,12 +76,13 @@
       [(,lang '(graph (const . ,c*)
 		      (sources ,[Source -> src* init1] ...)
 		      (iterates ,[Iterate -> iter*] ...)
-		      (sink ,base)))
+		      (sink ,base ,basetype)))
        ;; Just append this text together.
        (let ([result (list header1 header2 header3 "\n" 
 			   "let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
 			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
+			   " and "(build-BASE basetype)
 			   ";; \n\n"
 			   init1 "\n"
 			   "runScheduler();;\n"
@@ -85,8 +90,7 @@
 			   )])
 	 (string->file (text->string result) 
 		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
-	 result	
-	 )]
+	 result	)]
       [,other ;; Otherwise it's an invalid program.
        (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))
 
@@ -101,7 +105,8 @@
 	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
 	 ,up (,down* ...))
      (let* ([emitter (Emit down*)])
-       `(" ",(Var name)" = \n"
+       `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
+	 " ",(Var name)" = \n"
 	 "  let ",(Var vq)" = () in\n"
 	 ,@(map (lambda (lhs ty rhs)
 		  `("  let ",(Var lhs)" = ",(Expr rhs emitter)" in\n"))
@@ -128,10 +133,10 @@
   ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
   (symbol->string var))
 
-(define Const
+(trace-define Const
   (lambda (datum)
     (cond
-     ;[(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+     [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
      [(eq? datum 'UNIT) "()"]
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
@@ -142,6 +147,10 @@
 				     (cfl-real-part datum)
 				     (cfl-imag-part datum)))]
      [(integer? datum) (number->string datum)]
+
+     [(eq? datum 'Array:null) "[||]"]
+     [(eq? datum 'nullseg) "nullseg"]
+     [(eq? datum 'nulltimebase) "99999999"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
 #;
@@ -161,6 +170,14 @@
      [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
 
 
+#|
+      ;; Special Constants:
+      [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
+      [(assert-type ,t '())     (wrap (PolyConst '() t))]
+      [nulltimebase             (Const name type 'nulltimebase)]      
+|#
+
+
 
 
 ;; ================================================================================
@@ -171,7 +188,8 @@
   (flonum->fixnum (* 1000000 (/ 1.0 freq))))
 
 ;; Returns: a binding snippet (incomplete), and initialization code.
-(trace-define (Source src)
+(define (Source src)
+    (define (E x) (Expr x 'noemits!))
   (match src
     [(,[Var -> v] ,ty ,app (,downstrm ...)) 
      (match app
@@ -192,32 +210,83 @@
        [(audioFile ,fn ,win ,rate)
 	000000000000]
 
-       [(__dataFile ,[file] ,[mode] ',rate ,[repeats] ,types)	
-	(inspect 'woot)
-	(values (list 
-		 " "v" = let reader = "(build-reader types)" in \n"
-		 "  dataFile "file" "mode" "(number->string (rate->timestep rate))
-		 "  "repeats" reader\n")
-		`("schedule := SE(0,",v") :: !schedule;;\n"))]
+       [(__dataFile ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ',types)
+	(let ([size (number->string (types->width types))])
+	  (values (list 
+		   " "v" = fun () -> \n"
+		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
+		   "  and textreader = 33333 in \n"
+		   "    dataFile "file" "mode" "(number->string (rate->timestep rate))
+		   "      "repeats" \n"
+		   "      (textreader, binreader, "size") \n"
+		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+		   "\n")
+		  `("schedule := ",v"() :: !schedule;;\n")))]
        
-       [,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
+       ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
        )]))
 
-(define (build-reader types)
-  (match types
-    [(Int)
+(define (build-BASE type)  
+  `(" baseSink x = print_endline (",(build-show type)" x); flush stdout \n"))
+
+
+(define (type->reader t) 
+  (match t
+    [Int16
      ;; BROKEN BROKEN!!
-     "fun str ind -> (Marshall.from_string str ind :: int)"
+     "(fun str ind -> read_uint16 str ind)"
      ]))
 
+(define (build-binary-reader types)
+  (define widths (map type->width types))
+  (list 
+   "fun str ind -> \n"
+   ;"  let pos = ref ind in \n"
+   "("
+   (insert-between ", "
+     (mapi (lambda (i t)
+	     (list (type->reader t)" str (ind + "
+		   (number->string (apply + (list-head widths i)))")")
+	     )
+	   types))
+   ")\n"))
+
+(define (build-text-reader types)
+  (match types
+    [(Int)
+     "8888888"
+     ]))
+
+(define (build-show t)
+  (match t
+    [String "fun x -> x"]
+    [Int   "string_of_int"]
+    [Int16 "string_of_int"] ;; These are just represented as ints.
+    [Float "string_of_float"]
+    [Bool "string_of_bool"]
+    [#(,[t*] ...)
+     (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
+       (list 
+	"(fun ("(insert-between ", " flds)") ->\n"
+	(indent 
+	 (list "\"(\"^ "
+	  (insert-between " ^ \", \" ^ \n"
+	    (map (lambda (printer fld)
+		   `("((",printer") ",fld") ")) 
+	      t* flds)) 
+	  " ^\")\"")
+	 "  ")")"))]
+    ))
 
 ; ======================================================================
 ;; Expressions.
 	
 (define Expr ;(Expr tenv)
   (lambda (exp emitter)
+    ;(if (deep-member? 'Array:null exp) "EXPR OF ARR:NULL...\n")
     (match exp
+      [,v (guard (symbol? v) (regiment-constant? v)) (Const v)]
       [,v (guard (symbol? v)) (Var v)]
       [',c (Const c)]
 
@@ -237,6 +306,18 @@
       [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
       [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
 
+      [(for (,i ,[st] ,[en]) ,[bod])
+       ;`("(for ",i" = ",st" to ",en" do\n ",bod"\n done)")
+       `("(let broke = ref false \n"
+	 " and i = ref 0\n"
+	 " and en = ",en" in \n"
+	 " while not !broke && !i <= en do \n"	 
+	 "   incr i;\n"	 
+	 "   let ",(Var i)" = !i in\n"
+	 "   ",bod";\n"
+	 " done)")]
+      [(break) "(broke := true)"]
+
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (Prim (cons prim rand*) emitter)]
       [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
@@ -245,44 +326,15 @@
       [(assert-type ,t ,[x]) x]
       [,unmatched (error 'emit-caml:Expr "unhandled form ~s" unmatched)]
 
-;;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#|
-      ;; Special Constants:
-      [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
-      [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
-      [(assert-type ,t '())     (wrap (PolyConst '() t))]
-      [nulltimebase             (Const name type 'nulltimebase)]
-      
-
-
-
-|#
-
-
 )))
 
 
 ;;================================================================================
 
-(define (buildShow t)
-  (match t
-    [String "fun x -> x"]
-    [Int   "string_of_int"]
-    [Float "string_of_float"]
-    [#(,[t*] ...)
-     (let ([flds (map Var (map unique-name (make-list 'fld)))])
-       (list 
-	"fun ("(insert-between ", " flds)") ->\n"
-	(indent (map (lambda (printer fld) 
-		       `("((",printer") ",fld") ^ \n")) 
-		  flds)
-		"  ")))]
-    ))
-
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
-    '(nullseg joinsegs subseg width start end toSigseg	      
+    '(nullseg joinsegs subseg width toSigseg	      
       cos sin tan acos asin atan max min
       not 
       
@@ -298,19 +350,36 @@
       [-. "(-.)"] 
       [*. "(*.)"] 
       [/. "(/.)"]
-     ;[+_ +] [-_ -] [*_ *] [/_ /]
+      [+: "Complex.add"]
+      [-: "Complex.sub"] 
+      [*: "Complex.mul"] 
+      [/: "Complex.div"]
+      [+I16 "(+)"]
+      [-I16 "(-)"] 
+      [*I16 "(*)"] 
+      [/I16 "(/)"]
       [< "(<)"]
       [<= "(<=)"]
       [> "(>)"]
       [>= "(>=)"]
-      [wsequal "(==)"]
+      [equal? "(==)"] ;; NOTE! FIXME! should be =???
       [string-append "(^)"]      
       [Mutable:ref "ref"]
       [deref "!"]
       [absI abs]
       [absF abs_float]
       [sqrtF sqrt]
+      [start ss_start]
+      [end ss_end]
 
+      [Array:make Array.make]
+      [Array:set  Array.set]
+      [Array:ref  Array.get]
+
+      [intToFloat   float_of_int]
+      [int16ToFloat float_of_int]
+
+      
       ))
   (match expr
 
@@ -320,7 +389,7 @@
      `("(print_string ",(Prim `(show (assert-type ,t ,e)) emitter)")")]
     [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
     [(show (assert-type ,t ,[myExpr -> e]))
-     `("((",(buildShow t)") ",e")")]
+     `("((",(build-show t)") ",e")")]
     [(,prim ,[myExpr -> rands] ...)
      (list "("(cond
 	       [(memq prim sametable) (Var prim)]
@@ -328,7 +397,42 @@
 	       [else (error 'emit-caml:Prim "currently unhandled: ~s" prim)])
 	   " "
 	   (insert-between " " rands) ")\n")]
-  ;; TODO
+))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ;; PRIMS TODO
 #|
       [(roundF)                 "round"]
 
@@ -545,10 +649,6 @@
 	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
 	 ]
 |#
-
-	)
-  )
-
 
 
 

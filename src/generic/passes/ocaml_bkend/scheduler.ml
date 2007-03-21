@@ -12,7 +12,8 @@ type scheduleEntry = SE of (timestamp * (unit -> scheduleEntry))
 
 let schedule : scheduleEntry list ref = ref []
 
-let baseSink = 
+(*
+let default_baseSink = 
   let counter = ref 0 in 
     fun x -> 
       incr counter;
@@ -20,7 +21,7 @@ let baseSink =
       then (counter := 0; 
 	    print_string "Got element !\n";
 	    flush stdout);;
-
+*)
 
 let rec insert (SE(t1,f)) ls =
   match ls with 

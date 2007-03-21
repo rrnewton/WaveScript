@@ -29,6 +29,11 @@
 	[(let ([,v (Stream ,ty) (,prim ,rands* ...)]) ,[bod])
 	 (guard (assq prim wavescript-stream-primitives))
 	 (cons `[-> ,v (Stream ,ty) (,prim . ,rands*)] bod)]
+	;; Sources: (Annoying)
+	[(let ([,v (Stream ,ty) (assert-type ,t (,prim ,rands* ...))]) ,[bod])
+	 (guard (assq prim wavescript-stream-primitives))
+	 (cons `[-> ,v (Stream ,ty) (,prim . ,rands*)] bod)]
+
 	;; Alias:
 	[(let ([,v1 (Stream ,ty) ,v2]) ,bod) (guard symbol? v2)
 	 (Expr bod (cons (list v1 v2) aliases))]
@@ -64,7 +69,7 @@
   [Program 
    (lambda (p _)
      (match p
-       [(,lang '(program ,e ,t))
+       [(,lang '(program ,e (Stream ,t)))
 	(let ([decls (Expr e '())])
 	  (define c*
 	    (map cdr(filter (lambda (x) (eq? (car x) 'CONST)) decls)))
@@ -89,7 +94,7 @@
 	    '(graph (const . ,c*)
 		    (sources . ,src*)
 		    (iterates . ,iter*)
-		    (sink ,base))))]))]
+		    (sink ,base ,t))))]))]
   )
 
 

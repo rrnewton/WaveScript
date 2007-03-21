@@ -32,8 +32,9 @@ fi
 #
 
 # Inline factor should be, say, 3:
-if ocamlopt.opt -unsafe -ffast-math -inline 100 query.ml -o query.exe
+#if ocamlopt.opt -unsafe -ffast-math -inline 100 query.ml -o query.exe
+if ocamlopt.opt query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi
-#ocamlopt.opt query.ml -o query.exe
+
 

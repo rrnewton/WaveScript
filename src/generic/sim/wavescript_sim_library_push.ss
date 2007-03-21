@@ -84,6 +84,13 @@
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion.
+
+
+
+
+		 ;; [2007.03.21] These are used elsewhere, should probably factor them into another file:
+		 type->width types->width
+
 		 )
     (chezprovide (for for-loop-stack)
 ;		 letrec 

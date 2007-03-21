@@ -2,6 +2,18 @@
 
 
 
+let read_uint16 str i : int = 
+  256 * (Char.code str.[i+1]) + (Char.code str.[i])
+
+(*
+read_int16 : string -> int -> int
+let read_int16 str i =
+  let unsigned = read_int16 str i in
+    if 0 == (fxlogand unsigned 32768)
+    then unsigned  
+    else unsigned - 65536
+
+*)
 
 
 let wserror str = raise (Failure str)
@@ -37,5 +49,4 @@ let dataFile file mode period repeats (textreader,binreader,bytesize) outchan =
 	      SE (!timestamp, f)
 	  in SE (0, f)
       | _ -> wserror ("unknown mode: "^mode)
-
 
