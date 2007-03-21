@@ -287,6 +287,7 @@
 ;;   'wavescript-simulator
 ;;   'wavescript-compiler
 ;;   'regiment-simulator
+;; [2007.03.20] This is now deprecated!!
 (define-regiment-parameter compiler-invocation-mode #f)
 
 ;; When 

@@ -27,7 +27,7 @@ then DYNAMICLINK=0; shift;
 fi 
 
 # -fPIC | -ON | -g
-WS_FLAGS="-g -O0"
+WS_FLAGS="-O3"
 
 WS_WARNINGS="-Wall -Werror -Wno-unused-variable "
 WS_INCLUDES="-I$WAVESCOPED/include "

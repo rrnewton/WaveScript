@@ -109,7 +109,8 @@
 	   ;; THIS SHOULDN'T BE RIGHT FOR WAVESCRIPT:
 	   ;; DEPENDS ON LAZINESS/PURITY:
 	   [(if ,a ,b ,c)
-	    (if (memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler))
+	    ;; [2007.03.20] Eliminating this:  This pass is no longer used for WS:
+	    (if #f ;(memq (compiler-invocation-mode) '(wavescript-simulator wavescript-compiler))
 		(mvlet ([(test test-decls)     (make-simple a tenv)])
 		  (let-match ([#(,conseq ,conseq-decls) (process-expr b tenv)]
 			      [#(,altern ,altern-decls) (process-expr c tenv)])
@@ -118,6 +119,7 @@
 				 ,(make-letrec altern-decls altern))
 			    test-decls)
 		    ))
+		;; Otherwise it's plain regiment.
 	     (mvlet ([(test test-decls)     (make-simple a tenv)]
 		     [(conseq conseq-decls) (make-simple b tenv)]
 		     [(altern altern-decls) (make-simple c tenv)])

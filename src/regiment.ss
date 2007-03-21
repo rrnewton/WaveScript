@@ -70,6 +70,7 @@
   (printf "  log      (l)  simulator trace manipulation mode~n")
   (printf "  wsint    (wsint)  WaveScript evaluator mode~n")
   (printf "  wscomp   (wscomp) WaveScript compiler mode~n")
+  (printf "  wscaml   (wscaml) WaveScript compiler Caml backend~n")
   (printf "~n")
   (printf "General Options:  ~n")
   (printf "  -v   verbose compilation/simulation, includes warnings~n")
@@ -446,6 +447,24 @@
 			  ))
 	     (apply wscomp port opts)
 	   )]
+
+	  [(wscaml)
+	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
+	   (let ()
+	     (define exp (match filenames
+			  ;; If there's no file given read from stdout
+			  [() (console-input-port)]
+			  [(,fn ,rest ...) 
+			   (if (equal? "ws" (extract-file-extension fn))
+			       (or (read-wavescript-source-file fn)
+				   (error 'wsint "couldn't parse file: ~s" fn))
+			       ;; Otherwise let's assume 
+			       (open-input-file fn))]
+			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
+			  ))
+	     (apply wscaml exp opts)
+	   )]
+
 	  
 	  )))))))
   

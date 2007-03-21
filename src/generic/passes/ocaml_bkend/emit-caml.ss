@@ -6,6 +6,14 @@
 ;;;; provides procedures for producing a OCaML-file following WaveScript
 ;;;; conventions.
 
+;; [2007.03.20] The first query I ran (one iterate over timer, emits
+;; constant) does 23 million samples a second.  That's not that
+;; encouraging.
+;;
+;;   Well, then again... on "Passchain" (with 10 ops), my scheme
+;; emulator gets ~200K a second.  In the paper we report Coral8 at
+;; ~200K/sec, XStream at ~100K/sec.  "wscaml" currently gets 14
+;; million/sec, or 140 times more than XStream!?
 
 (module emit-caml mzscheme 
   (require  "../../../plt/common.ss"
@@ -55,41 +63,590 @@
 ;;
 ;; .param prog  The wsquery to process.
 (define emit-caml-wsquery
-  (lambda (prog)
-    (match prog
-      ;[(,lang (quote (program ,expr ,typ))) (Query "top" typ expr (empty-tenv))]
+  (trace-lambda ECW (prog)
+    ;; Lame, requires REGIMENTD:
+    (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
+    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
 
+    (match prog
       [(,lang '(graph (const . ,c*)
-		      (sources ,[Source -> src*] ...)
+		      (sources ,[Source -> src* init1] ...)
 		      (iterates ,[Iterate -> iter*] ...)
 		      (sink ,base)))
-       (inspect (vector iter* src*))
-       
-       ]
-      
+       ;; Just append this text together.
+       (let ([result (list header1 header2 "\n" 
+			   "let rec ignored = () \n" ;; Start off the let block.
+			   ;; These return incomplete bindings that are stitched with "and":
+			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
+			   ";; \n"
+			   init1 "\n"
+			   "runScheduler();;\n"
+			   "\nPrintf.printf \"Query completed.\\n\";;\n"
+			   )])
+	 (string->file (text->string result) 
+		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
+	 result	
+	 )]
       [,other ;; Otherwise it's an invalid program.
        (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))
 
 
-(define (Source src) 'foo)
+
+; ======================================================================
+;;; Helper functions for handling different program contexts:
+
 (define (Iterate iter)
   (match iter
-    [(,v ,ty (let ([,lhs* ,ty* ,rhs*] ...)
+    [(,name ,ty (let ([,lhs* ,ty* ,rhs*] ...)
 	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
-	 ,up ,down)
-     `("let ",name" = \n"
-       ,@(map (lambda (lhs ty rhs)
-		`("  let ",(Var lhs)" = ,(E rhs tenv) in\n"))
-	   lhs* ty* rhs*)
-       "  fun ",x" -> "
-       "    (E bod newtenv)\n"
-       ";;\n")
-     ]))
+	 ,up (,down* ...))
+     (let* ([emitter (Emit down*)])
+       `(" ",(Var name)" = \n"
+	 "  let ",(Var vq)" = () in\n"
+	 ,@(map (lambda (lhs ty rhs)
+		  `("  let ",(Var lhs)" = ",(Expr rhs emitter)" in\n"))
+	     lhs* ty* rhs*)
+	 "  fun ",(Var x)" -> \n"
+	 ,(indent (Expr bod emitter) "    ")
+	 "\n")       
+       )]))
 
-;(emit-caml-wsquery (explicit-stream-wiring caml-example2))
+(define (Emit down*)
+  (lambda (expr)
+    ;; Just call each of the sites with the argument.
+    `("(let emitted = ",expr" in\n"
+      ,@(map (lambda (down) 
+	       (if (eq? down 'BASE)
+		   `("baseSink emitted;\n")
+		   `(,(Var down)" emitted;\n")))
+	  down*)
+      "  ())")))
+
+        
+(define (Var var)
+  (ASSERT (symbol? var))
+  ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
+  (symbol->string var))
+
+(define Const
+  (lambda (datum)
+    (cond
+     ;[(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
+     [(eq? datum 'UNIT) "()"]
+     [(eq? datum #t) "true"]
+     [(eq? datum #f) "false"]
+     [(string? datum) (format "~s" datum)]
+     [(flonum? datum)  (number->string datum)]
+     #;
+     [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
+				     (cfl-real-part datum)
+				     (cfl-imag-part datum)))]
+     [(integer? datum) (number->string datum)]
+
+     ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
+#;
+     [(vector? datum)
+      (ASSERT name)
+      (let ([contenttype (if (zero? (vector-length datum))
+			     ;; Throw in a default:
+			     'Int
+			     (type-const (vector-ref datum 0)))])
+	`(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
+	       " > >(new vector< ",(Type contenttype)" >(",
+	       (number->string (vector-length datum))"));\n" ;; MakeArray.
+	       ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
+					   "" x))			   
+		      (vector->list datum))))]
+
+     [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
+
+
 
 
 ;; ================================================================================
+
+;; Converts hertz to microseconds:
+(define (rate->timestep freq)
+  (when (zero? freq) (error 'rate->timestep "sampling rate of zero is not permitted"))
+  (flonum->fixnum (* 1000000 (/ 1.0 freq))))
+
+;; Returns: a binding snippet (incomplete), and initialization code.
+(define (Source src)
+  (match src
+    [(,[Var -> v] ,ty ,app (,downstrm ...)) 
+     (match app
+       [(timer ',rate)
+	(let ([r ;(Expr rate 'noemitsallowed!)
+	       (number->string (rate->timestep rate))
+	       ])
+	  (values 	
+	   `(" ",v" = let t=ref 0 in \n"
+	     "  fun () -> \n"
+	     "    t:=!t+",r";\n"
+	     ,(indent ((Emit downstrm) "()") "    ")";\n"
+	     "    SE (!t,",v")\n" )
+	   `("(* Seed the schedule with timer datasource: *)\n"
+	     "schedule := SE(0,",v") :: !schedule;;\n"))
+	  )]
+
+       [(audioFile ,fn ,win ,rate)
+	000000000000]
+
+       [(dataFile )
+	000000000000000]
+
+       [,other "UNKNOWNSRC\n"]
+       
+       )]))
+
+; ======================================================================
+;; Expressions.
+	
+(define Expr ;(Expr tenv)
+  (lambda (exp emitter)
+    (match exp
+      [,v (guard (symbol? v)) (Var v)]
+      [',c (Const c)]
+
+      [(tuple ,[rands] ...)
+       (list "(" (insert-between ", " rands) ")")]
+      [(tupref ,i ,len ,[v])
+       (let ([pat 
+	      (insert-between ", "
+		(append (make-list i "_") '("x")			
+			(make-list (- len i 1) "_")))])
+	 `("(let (",pat") = ",v" in x)\n"))]
+      
+      [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
+       `("(let ",v" = ",rhs" in\n ",bod")")]
+      [(begin ,[e*] ...)  `("begin\n" ,@(indent (insert-between ";\n" e*) "  ") "\nend")]
+      [(emit ,vq ,[x]) (emitter x)]
+
+      [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+       (Prim (cons prim rand*) emitter)]
+      [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+       (Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
+
+;;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#|
+      ;; Special Constants:
+      [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
+      [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
+      [(assert-type ,t '())     (wrap (PolyConst '() t))]
+      [nulltimebase             (Const name type 'nulltimebase)]
+      
+      [(if ,[Simple -> test] ,conseq ,altern)	]
+	  
+      ;; This is needed just for the RHS's of iterator state variables.
+      [(let ([,v ,ty ,rhs]) ,bod)       ]
+
+|#
+
+
+      [,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)]
+)))
+
+
+
+(define (Prim expr emitter)
+  (define (myExpr x) (Expr x emitter))
+  (define sametable 
+    '(nullseg joinsegs subseg width start end toSigseg	      
+      cos sin tan acos asin atan max min
+      not
+
+      fft m_invert 
+      ;;wserror ;generic_hash 
+      ))
+  (define aliastable
+    '([+_ "(+)"]  
+      [-_ "(-)"] 
+      [*_ "(*)"]
+      [/_ "(/)"]
+      [+. "(+.)"]
+      [-. "(-.)"] 
+      [*. "(*.)"] 
+      [/. "(/.)"]
+     ;[+_ +] [-_ -] [*_ *] [/_ /]
+      [absI abs]
+      [absF abs_float]
+      [sqrtF sqrt]
+      [string-append "(^)"]      
+      ))
+  (match expr
+    [(,prim ,[myExpr -> rands] ...)
+     (list "("(cond
+	       [(memq prim sametable) (Var prim)]
+	       [(assq prim aliastable) => (lambda (x) (format "~a" (cadr x)))]
+	       [else (error 'emit-caml:Prim "currently unhandled: ~s" prim)])
+	   " "
+	   (insert-between " " rands) ")\n")]
+  ;; TODO
+#|
+      [(roundF)                 "round"]
+
+    [(Mutable:ref ,[Simple -> x]) (wrap x)]
+    [(deref ,[Simple -> x]) (wrap x)]
+
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
+    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
+    ;; INEFFICIENT:
+    [(^: ,[Simple -> x] ,[Simple -> y]) 
+     (let ([tmp (Var (unique-name 'tmp))])
+       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
+       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
+       ))]
+    
+    ;; TODO: tupref, exponentiation 
+    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
+     (guard (memq infix_prim '(;+ - * /
+			       +. -. *. /. 
+				  +_ *_ -_ /_
+				  +: *: -: /:
+				  +I16 *I16 -I16 /I16
+				  < > <= >= =
+				  ^_ ^. ^: ^I16
+				  )))
+     (let ([cname (case infix_prim
+		    [(=) "=="]
+		    [(;+ * - / 
+		      < > <= >=) infix_prim]
+		    [(+. *. -. /.
+			 +_ *_ -_ /_
+			 +: *: -: /:
+			 ^_ ^. 
+			 ) ;; Chop off the extra character.
+		     (substring (symbol->string infix_prim) 0 1)]
+		    [(+I16 -I16 *I16 /I16 ^I16)
+		     (substring (symbol->string infix_prim) 0 1)]
+		    )])
+       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
+
+	;[(realpart ,[v]) `("(" ,v ".real)")]
+	;[(imagpart ,[v]) `("(" ,v ".imag)")]
+	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
+	[(realpart       ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(complexToFloat ,[Simple -> v])   (wrap `("__real__ " ,v))]
+	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
+	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
+
+	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
+
+	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
+	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
+
+	[(floatToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	[(int16ToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	
+	[(intToFloat     ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(int16ToFloat   ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+
+	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
+	;[(complexToInt ,e)     (wrap `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
+	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
+	[(,ToComplex ,[Simple -> e])
+	 (guard (memq ToComplex 
+		      '(int16ToComplex intToComplex floatToComplex)))
+    	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
+
+	[(stringToInt ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   `("wsint_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
+	     ,(wrap tmp)))]
+	[(stringToFloat ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   `("wsfloat_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%f\", &",tmp");\n"
+	     ,(wrap tmp)))]
+	[(stringToComplex ,[Simple -> e]) 
+	 (let ([tmp1 (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))])
+	   `("wsfloat_t ",tmp1";\n"
+	     "wsfloat_t ",tmp2";\n"
+	     ;"printf(\"STRING %s\\n\", ",e".c_str());\n"
+	     "sscanf(",e".c_str(), \"%f+%fi\", &",tmp1", &",tmp2");\n"
+	     ,(wrap `(,tmp1"+(",tmp2"*1.0fi)"))))]
+
+	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
+	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
+
+	[(toArray (assert-type (Sigseg ,t) ,sigseg))
+	 (let ([tmp (Var (unique-name 'tmp))]
+	       [tmp2 (Var (unique-name 'tmp))]
+	       [len (Var (unique-name 'len))]
+	       [ss (Simple sigseg)]
+	       [tt (Type t)])
+	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
+	     "int len = ",ss".length();\n"
+	     "for(int i=0; i<len; i++) {\n"
+	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
+	     "  (*",tmp")[i] = ",tmp2";\n"
+	     "}\n"
+	     ,(wrap tmp)
+	     ))]
+
+	[(wserror ,[Simple -> str])
+	 ;; Don't do anything with the return value.
+	 `(,(if name `(,type" ",name";\n") "")
+	   "WSPrim::wserror(",str");\n")]
+
+	;; This is inefficient.  Only want to call getDirect once!
+	;; Can't trust the C-compiler to know it's effect free and do CSE.
+	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
+	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
+	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
+	[(seg-get ,foo ...)
+	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
+		`(seg-get ,@foo))]
+	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
+	
+	;; Need to use type environment to find out what alpha is.
+	;; We store the length in the first element.
+	[(newarr ,[Simple -> int] ,alpha)
+	 ;(recover-type )
+	 "newarr_UNFINISHED"]
+	
+	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
+	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
+	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
+	;; This version just doesn't initialize:
+	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
+	 (wrap `("boost::shared_ptr< vector< ",ty
+		 " > >(new vector< ",ty" >(",n "))"))]
+
+	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
+
+	[(Array:set ,x ...)
+	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
+	[(begin ,stmts ...)
+	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
+
+	;; Later we'll clean it up so contexts are normalized:
+	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
+
+       	;; ----------------------------------------
+	;; Lists:
+	;; These primitives are tricky because of the template magic:
+
+	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
+	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
+	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
+	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
+	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
+	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
+	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
+	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
+	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
+	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
+	 (wrap `("cons<",(Type t)">::length(",ls")"))]
+	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
+	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
+	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
+
+;; Don't have types for nulls yet:
+;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
+
+	;; Safety net:
+	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
+					   List:ref List:length makeList ))) 
+	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
+	 ]
+
+	;; ----------------------------------------
+	;; Hash tables:
+
+	;; We should have the proper type assertion on there after flattening the program.
+	;; (Remove-complex-opera*)
+	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
+	 (let ([hashtype (HashType k v)]
+	       ;[eqfun ]
+	       [k (Type k)]
+	       [v (Type v)])
+	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
+	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
+			       `(hashtable ,_))]
+	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
+	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
+	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
+
+	;; Generate equality comparison:
+	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
+	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
+	   (match t
+	     [Int          simple]
+	     [Float        simple]
+	     [String       simple]
+	     ;; This is effectively physical equality:
+	     ;; Requires that they have the same parents.
+	     ;; Won't read the contents of two different Sigsegs...
+	     ;; FIXME: Should consider fixing this.
+	     [(Sigseg ,t)  simple]
+	     
+	     [(List ,t)    simple]
+	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
+	     
+	     ;; We have generated a comparison op for each struct.
+	     ;; UNFINISHED:
+	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
+	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
+	   )	 
+	 ]
+	
+	;; Other prims fall through to here:
+	[(,other ,[Simple -> rand*] ...)
+	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
+	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
+	 ]
+|#
+
+	)
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; ======================================================================
+;; Statements.
+
+#;
+
+;; Blocks can be either in effect position (body of an iterate) or in
+;; value position (the arms of an if).  Only in value position will
+;; there be a name/type provided to store the resulting value.
+;;
+;; .param name : #f or Text representing the name of the variable in which 
+;;               to store the resulting value
+;; .param type : #f or Text representing the type to go with the name
+;; .param b : the block of code in sexp form
+(define (Block tenv)
+  (lambda (name type b)
+    (define (wrap x) (if name 
+			 (list type " " name " = " x ";\n")
+			 (list x ";\n")))
+    (match b 
+      [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
+      [(quote ,c)             (if name (Const name type c) "")]
+      [(tuple)                (if name (Const name type '(tuple)) "")]
+
+      [(let ([,v ,ty ,rhs]) ,bod)
+       (list
+	((Value tenv) (symbol->string v) (Type ty) rhs)
+	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
+      [(begin ,e1 . ,e*)
+       (list
+	((Block tenv) #f #f e1)
+	((Block tenv) name type `(begin . ,e*)))]
+      ;; Both void value:
+      [(begin) ""]
+
+      ;; Not using return statements right now:
+#;
+      [(return ,[Simple -> e]) (ASSERT not name)
+       `("return ",e";\n")]
+
+      [(set! ,[Var -> v] ,[Simple -> e]) (ASSERT not name)
+       `(,v " = " ,e ";\n")]
+      
+      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
+       (let ([istr (Var i)])	   
+	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
+		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
+      [(break) (ASSERT not name) "break;\n"]
+
+      ;; Must distinguish expression from statement context.
+      [(if ,[Simple -> test] ,conseq ,altern)
+       `(,(if name `(,type" ",name";\n") "")
+	 "if (" ,test ") {\n"
+	 ,(indent ((Block tenv) name "" conseq) "  ")
+	 "} else {\n"
+	 ,(indent ((Block tenv) name "" altern) "  ")
+	 "}\n")]
+      
+      ;; HACK: cast to output type. FIXME FIXME
+      [(emit ,vqueue ,[Simple -> val])
+       (ASSERT not name)
+       (match (recover-type vqueue tenv)
+	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
+
+      ;; Print is required to be pre-annotated with a type.
+      ;; (We can no longer do recover-type.)
+      [(print (assert-type ,t ,[Simple -> e]))
+       (ASSERT not name)
+       (EmitPrint e t)]
+      [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
+
+      ;; This just does nothing in the c++ backend:
+      [(gnuplot_array ,a) ""]
+
+      [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
+       (guard (memq containerset! '(Array:set hashset_BANG)))
+       (ASSERT not name)
+       `("(*",container ")[" ,ind "] = " ,val ";\n")]
+
+      ;; Can't normalize-context this because of it's forall a.a return type:
+      [(wserror ,str)
+       (list (Prim `(wserror ,str) #f #f) ";\n")]
+
+      [,oth (error 'emitC:Block "unhandled: ~s" oth)]
+      )))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#;
 
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.
@@ -101,33 +658,6 @@
     (if (symbol? name) (set! name (symbol->string name)))
   (trace-match Q x
     
-    [(iterate (let ([,lhs* ,ty* ,rhs*] ...) (lambda (,v ,vq) (,tyv ,tyvq) ,bod)) ,sig)
-     (ASSERT (symbol? sig))	  ;; Program better have been flattened!!
-     (let* ([E (Expr tenv)]
-	    ;; Produce the function definition for this iterate.
-	    ;; It's parameterized by the downstream operators to which its connected.
-	    [fundef 
-	     (lambda (downstreams)
-	      ;; Connectiions:
-	         `("let ",name" = \n"
-		   ,@(map (lambda (lhs ty rhs)
-			    `("  let ",(Var lhs)" = ,(E rhs tenv) in\n"))
-		       lhs* ty* rhs*)
-		   "  fun ",x" -> "
-		   "    (E bod newtenv)\n"
-		   ";;\n")
-	      ;(Expr )
-	      )])    
-       ;; Return a list of "subscriber" binding
-       (list (list sig fundef))
-       )]
-
-    [(let ([,lhs ,ty ,rhs]) ,bod)
-     (printf "LET\n")
-     (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
-       (append (Query name typ bod newenv)
-	       (Query lhs ty rhs tenv)))]
-
 ;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #|
 	;; A constant, make global:
@@ -302,164 +832,20 @@
 |#
 	
 	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
-	)) ;; End Query
-
-
-; ======================================================================
-;; Expressions.
-	
-(define (Expr tenv)
-  (lambda (exp)
-    (match exp
-
-;;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-      ;; Special Constants:
-      [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
-      [(assert-type ,t Array:null) (wrap (PolyConst 'Array:null t))]
-      [(assert-type ,t '())     (wrap (PolyConst '() t))]
-      [nulltimebase             (Const name type 'nulltimebase)]
-      
-
-	  ;[,c (guard (constant? c)) (Const c)]
-	  [(quote ,datum)           (Const name type datum)]
-	  [(tuple)                  (wrap (Simple '(tuple)))]
-
-	  [,v (guard (symbol? v))
-	      (ASSERT (not (regiment-primitive? v)))
-	      (wrap (Var v))]
-
-	  ;[(if ,[Simple -> test] ,conseq ,altern)
-	   ;`("(",test " ? " ,conseq " : " ,altern")") 	   ]
-
-	  [(if ,[Simple -> test] ,conseq ,altern)
-	   `(,type" ",name";\n"
-	     "if (" ,test ") {\n"
-	     ,(indent ((Block tenv) name "" conseq) "  ")
-	     "} else {\n"
-	     ,(indent ((Block tenv) name "" altern) "  ")
-	     "}\n")]
-	  
-	  ;; This is needed just for the RHS's of iterator state variables.
-	  [(let ([,v ,ty ,rhs]) ,bod)
-	   (list
-	    ((Value tenv) (symbol->string v) (Type ty) rhs)
-	    ((Value (tenv-extend tenv (list v) (list ty))) name type bod))]
-
-	;; Forming tuples.
-	[(make-struct ,name ,[Simple -> arg*] ...)
-	 (wrap `(,(symbol->string name)"(",(insert-between ", " arg*)")"))]
-	;; Referencing tuples.
-	[(struct-ref ,[Simple -> x] ,fld)
-	 (wrap `("(",x "." ,(symbol->string fld)")"))]
-
-	; ============================================================
-	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
-	 (Prim (cons prim rand*) name type)]
-	[(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
-	 (Prim `(assert-type ,t (,prim . ,rand*)) name type)]
-
-	; ============================================================
-
-	[(tupref . ,_) (error 'emit-c:Value "tuprefs should have been eliminated: ~s" `(tupref . ,_))]
-	[(tuple . ,_) (error 'emit-c:Value "tuple should have been eliminated: ~s" `(tuple . ,_))]
-
-	;; TODO: Could make this into a cast statement for a sanity check??
-	[(assert-type ,t ,[e]) e]
-
-	#;
-	[(app ,rator ,[Simple -> rand*] ...)
-	 (ASSERT (symbol? rator))				       
-	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
-	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 
 
 
-; ======================================================================
-;; Statements.
 
-#;
 
-;; Blocks can be either in effect position (body of an iterate) or in
-;; value position (the arms of an if).  Only in value position will
-;; there be a name/type provided to store the resulting value.
-;;
-;; .param name : #f or Text representing the name of the variable in which 
-;;               to store the resulting value
-;; .param type : #f or Text representing the type to go with the name
-;; .param b : the block of code in sexp form
-(define (Block tenv)
-  (lambda (name type b)
-    (define (wrap x) (if name 
-			 (list type " " name " = " x ";\n")
-			 (list x ";\n")))
-    (match b 
-      [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
-      [(quote ,c)             (if name (Const name type c) "")]
-      [(tuple)                (if name (Const name type '(tuple)) "")]
 
-      [(let ([,v ,ty ,rhs]) ,bod)
-       (list
-	((Value tenv) (symbol->string v) (Type ty) rhs)
-	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
-      [(begin ,e1 . ,e*)
-       (list
-	((Block tenv) #f #f e1)
-	((Block tenv) name type `(begin . ,e*)))]
-      ;; Both void value:
-      [(begin) ""]
 
-      ;; Not using return statements right now:
-#;
-      [(return ,[Simple -> e]) (ASSERT not name)
-       `("return ",e";\n")]
 
-      [(set! ,[Var -> v] ,[Simple -> e]) (ASSERT not name)
-       `(,v " = " ,e ";\n")]
-      
-      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
-       (let ([istr (Var i)])	   
-	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
-      [(break) (ASSERT not name) "break;\n"]
 
-      ;; Must distinguish expression from statement context.
-      [(if ,[Simple -> test] ,conseq ,altern)
-       `(,(if name `(,type" ",name";\n") "")
-	 "if (" ,test ") {\n"
-	 ,(indent ((Block tenv) name "" conseq) "  ")
-	 "} else {\n"
-	 ,(indent ((Block tenv) name "" altern) "  ")
-	 "}\n")]
-      
-      ;; HACK: cast to output type. FIXME FIXME
-      [(emit ,vqueue ,[Simple -> val])
-       (ASSERT not name)
-       (match (recover-type vqueue tenv)
-	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
 
-      ;; Print is required to be pre-annotated with a type.
-      ;; (We can no longer do recover-type.)
-      [(print (assert-type ,t ,[Simple -> e]))
-       (ASSERT not name)
-       (EmitPrint e t)]
-      [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
-      ;; This just does nothing in the c++ backend:
-      [(gnuplot_array ,a) ""]
 
-      [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
-       (guard (memq containerset! '(Array:set hashset_BANG)))
-       (ASSERT not name)
-       `("(*",container ")[" ,ind "] = " ,val ";\n")]
 
-      ;; Can't normalize-context this because of it's forall a.a return type:
-      [(wserror ,str)
-       (list (Prim `(wserror ,str) #f #f) ";\n")]
-
-      [,oth (error 'emitC:Block "unhandled: ~s" oth)]
-      )))
 
 
 ;================================================================================
@@ -509,45 +895,8 @@
 			))))
 	 ";\n\n"))]))
 
-; ======================================================================
-;;; Helper functions for handling different program contexts:
-        
-    (define (Var var)
-      (ASSERT (symbol? var))
-      ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
-      (symbol->string var))
-#;
-    (define Const
-      (lambda (name type datum)
-         (define (wrap x) (if name 
-                              (list type " " name " = " x ";\n")
-                              x))
-	 ;; Should also make sure it's 32 bit or whatnot:
-	 (cond
-          [(eq? datum 'BOTTOM) (wrap "0")] ;; Should probably generate an error.
-          [(eq? datum 'UNIT) (wrap (Simple '(tuple)))]
-	  [(eq? datum #t) (wrap "TRUE")]
-	  [(eq? datum #f) (wrap "FALSE")]       
-	  [(string? datum) (wrap (format "string(~s)" datum))]
-	  [(flonum? datum)  (wrap (format "(wsfloat_t)~a" datum))]
-	  [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
-				    (cfl-real-part datum)
-				    (cfl-imag-part datum)))]
-	  [(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]
-	  [(integer? datum) (wrap (format "(wsint_t)~a" datum))]
-	  [(vector? datum)
-           (ASSERT name)
-	   (let ([contenttype (if (zero? (vector-length datum))
-				  ;; Throw in a default:
-				  'Int
-				  (type-const (vector-ref datum 0)))])
-	     `(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
-		    " > >(new vector< ",(Type contenttype)" >(",
-		    (number->string (vector-length datum))"));\n" ;; MakeArray.
-		    ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
-						"" x))			   
-			   (vector->list datum))))]
-	  [else (error 'emitC:Const "not a C-compatible literal: ~s" datum)])))
+
+
 #;
     (define PolyConst 
       (lambda (datum ty)
@@ -829,22 +1178,6 @@
   )
 
 
-#;
-;; This emits code for a print.
-(define (EmitPrint e typ)
-  (Emit-Print/Show-Helper 
-   e typ
-   (lambda (s e) `("printf(\"",s"\", ",e");\n"))
-   (lambda (e)   `("cout << " ,e ";\n"))))
-
-#;                         
-;; This emits code for a show.
-(define (EmitShow e typ)
-  (Emit-Print/Show-Helper 
-   e typ
-   (lambda (s e) `("WSPrim::show_helper(sprintf(global_show_buffer, \"",s"\", ",e"))"))
-   (lambda (e)   `("WSPrim::show_helper2(global_show_stream << " ,e ")"))))
-
 
 
 ;======================================================================
@@ -939,7 +1272,7 @@
 	;; Constants:
 	[(let ([,v ,ty ,rhs]) ,[bod])
 	 (ASSERT (lambda (t) (not (deep-assq 'Stream t))) ty)
-	 (cons `[CONST ,v ,ty ,rhs])]
+	 (cons `[CONST ,v ,ty ,rhs] bod)]
 	;; Sink:
 	[,v (guard (symbol? v)) `([BASE ,(dealias v)])]
 	[,oth (error 'explicit-stream-wiring "unmatched query construct: ~s" oth)]
@@ -963,6 +1296,7 @@
       [((,src -> ,dest . ,_) . ,[rest]) 
        (guard (eq? v src))
        (cons dest rest)]
+      [((BASE ,src) . ,[rest]) (guard (eq? v src))  (cons 'BASE rest)]
       [(,_ . ,[rest]) rest]))
   [Program 
    (lambda (p _)
@@ -1000,3 +1334,4 @@
 
 
 ;;================================================================================
+

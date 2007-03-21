@@ -716,7 +716,7 @@
 
 
 
-
+#|
 (define caml-example 
 '(type-annotate-misc-language
   '(program
@@ -736,3 +736,18 @@
 	     (begin (emit ___VIRTQUEUE___ w) ___VIRTQUEUE___))
 	   s1))
 	(<- BASE s2))))))
+
+(define caml-example3
+  (parameterize ([compiler-invocation-mode 'wavescript-simulator])
+    (run-ws-compiler 
+     (ws-postprocess
+      '((<-
+	 BASE
+	 (iterate
+	  (lambda (#0() ___VIRTQUEUE___)
+	    (begin (emit ___VIRTQUEUE___ 39) ___VIRTQUEUE___))
+	  (app timer 30.0))))
+      ))))
+
+(newline)(display (text->string (emit-caml-wsquery (explicit-stream-wiring caml-example3))))(newline)
+|#

@@ -203,6 +203,10 @@
     
     (define (do-constant prim)
       (ASSERT (eq? prim 'IS_SIM))
+      
+      ;; This is deprecated now.  Use GETENV and the env variable WSARCH
+      (ASSERT #f)
+      
       (if (eq? (compiler-invocation-mode) 'wavescript-simulator)
 	  ''#t ''#f))
 

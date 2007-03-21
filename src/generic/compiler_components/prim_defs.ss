@@ -382,10 +382,6 @@
 
     ;(audio      (Int Int Int Int) (Stream (Sigseg Float)))
 
-    ;; Takes a file to read from, window size, overlap, sampling rate:
-    ;; Reads a stream of Uint16's from the file.
-    (audioFile        (String Int Int Int)  (Stream (Sigseg Int)))
-
     ;; Generic data-file reader.
     ;; Usage: datafile(fileName, mode, rate, repeats)
     ;;  Where mode is "text" "text-comma" or "binary".
@@ -398,6 +394,24 @@
     (dataFile (String String Int Int) (Stream 'a))
     ;; Internal compiler construct:
     (__dataFile (String String Int Int (List Symbol)) (Stream 'a))
+
+    ;; This version reads blocks of tuples at a time:
+    ;(blockDataFile (String String Int Int Int) (Stream (Sigseg 'a)))
+    
+    ;; These are simpler interface that desugar into dataFile:
+    ;; They use defaults rather than exposing as many parameters.
+    ;;
+    ;; The reason they're not defined in a .ws file is that the
+    ;; enclosing 'assert-type' must be handled properly.
+    ;;
+    ;(textFile (String) (Stream 'a))
+    ;(binFile  (String) (Stream 'a))
+    
+
+    ;; Takes a file to read from, window size, overlap, sampling rate:
+    ;; Reads a stream of Uint16's from the file.
+    (audioFile        (String Int Int Int)  (Stream (Sigseg Int)))
+
 
     ;; This internal version works only in the emulator.
     ;(__syncN ((Stream #(Bool Int Int)) (List (Stream (Sigseg 't)))) (Stream (List (Sigseg 't))))

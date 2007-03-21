@@ -629,6 +629,24 @@
  ) ; End wscomp
 
 
+;; This is an entrypoint for the wavescript compiler that uses the OCaml backend.
+(define (wscaml x . flags)                                 ;; Entrypoint.  
+ (parameterize ([compiler-invocation-mode 'wavescript-compiler]
+		[regiment-primitives ;; Remove those regiment-only primitives.
+		 (difference (regiment-primitives) regiment-distributed-primitives)])
+   (define outfile "./query.ml")
+   (define prog (begin (ASSERT list? x) x))
+
+   (ASSERT (andmap symbol? flags))
+   (ASSERT null? flags) ;; TEMP
+   (set! prog (run-ws-compiler prog))
+   (set! prog (explicit-stream-wiring prog))
+         
+   (string->file (text->string (emit-caml-wsquery prog)) outfile)
+   (printf "\nGenerated OCaml output to ~s.\n" outfile)))
+
+
+
 ;; This one just stops after deglobalize:
 (define (compile-to-tokens p . args)                          ;; Entrypoint.
   (apply run-compiler p 'barely-tokens args))

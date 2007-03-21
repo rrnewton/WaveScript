@@ -15,20 +15,6 @@ then mkdir /tmp/`whoami`;
 fi
 
 
-# if [ ! `which wsparse` ]
-# then echo \"wsparse\" command not found.  Compile it!
-#      exit 1;
-# fi
-
-# Make sure we don't get polluted by any out of date files.
-export WAVESCRIPTQUERYFILE=`pwd`/query.cpp
-rm -f $WAVESCRIPTQUERYFILE
-rm -f $WAVESCOPED/WaveScriptQuery.cpp
-rm -f $WAVESCOPED/WaveScriptQuery-*
-
-# Now do the parsing and compilation.
-#wsparse $1 > $TMP
-
 D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
