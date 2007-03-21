@@ -545,6 +545,7 @@
 (include "generic/passes/wavescope_bkend/nominalize-types.ss") (import nominalize-types)
 (include "generic/passes/wavescope_bkend/emit-c.ss")           (import emit-c)
 
+(include "generic/passes/wavescope_bkend/explicit-stream-wiring.ss") (import explicit-stream-wiring)
 (include "generic/passes/ocaml_bkend/emit-caml.ss")           (import emit-caml)
 
 
