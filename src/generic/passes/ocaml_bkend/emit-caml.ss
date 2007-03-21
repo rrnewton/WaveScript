@@ -78,7 +78,7 @@
 			   "let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
 			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
-			   ";; \n"
+			   ";; \n\n"
 			   init1 "\n"
 			   "runScheduler();;\n"
 			   "\nPrintf.printf \"Query completed.\\n\";;\n"
@@ -221,11 +221,16 @@
        `("(let ",v" = ",rhs" in\n ",bod")")]
       [(begin ,[e*] ...)  `("begin\n" ,@(indent (insert-between ";\n" e*) "  ") "\nend")]
       [(emit ,vq ,[x]) (emitter x)]
+      [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
+      [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
 
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (Prim (cons prim rand*) emitter)]
       [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
        (Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
+
+      [(assert-type ,t ,[x]) x]
+      [,unmatched (error 'emit-caml:Expr "unhandled form ~s" unmatched)]
 
 ;;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #|
@@ -235,26 +240,39 @@
       [(assert-type ,t '())     (wrap (PolyConst '() t))]
       [nulltimebase             (Const name type 'nulltimebase)]
       
-      [(if ,[Simple -> test] ,conseq ,altern)	]
-	  
-      ;; This is needed just for the RHS's of iterator state variables.
-      [(let ([,v ,ty ,rhs]) ,bod)       ]
+
+
 
 |#
 
 
-      [,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)]
 )))
 
 
+;;================================================================================
+
+(define (buildShow t)
+  (match t
+    [String "fun x -> x"]
+    [Int   "string_of_int"]
+    [Float "string_of_float"]
+    [#(,[t*] ...)
+     (let ([flds (map Var (map unique-name (make-list 'fld)))])
+       (list 
+	"fun ("(insert-between ", " flds)") ->\n"
+	(indent (map (lambda (printer fld) 
+		       `("((",printer") ",fld") ^ \n")) 
+		  flds)
+		"  ")))]
+    ))
 
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
     '(nullseg joinsegs subseg width start end toSigseg	      
       cos sin tan acos asin atan max min
-      not
-
+      not 
+      
       fft m_invert 
       ;;wserror ;generic_hash 
       ))
@@ -268,12 +286,28 @@
       [*. "(*.)"] 
       [/. "(/.)"]
      ;[+_ +] [-_ -] [*_ *] [/_ /]
+      [< "(<)"]
+      [<= "(<=)"]
+      [> "(>)"]
+      [>= "(>=)"]
+      [wsequal "(==)"]
+      [string-append "(^)"]      
+      [Mutable:ref "ref"]
+      [deref "!"]
       [absI abs]
       [absF abs_float]
       [sqrtF sqrt]
-      [string-append "(^)"]      
+
       ))
   (match expr
+
+    ;; Print is required to be pre-annotated with a type.
+    ;; (We can no longer do recover-type.)
+    [(print (assert-type ,t ,e))    
+     `("(print_string ",(Prim `(show (assert-type ,t ,e)) emitter)")")]
+    [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
+    [(show (assert-type ,t ,[myExpr -> e]))
+     `("((",(buildShow t)") ",e")")]
     [(,prim ,[myExpr -> rands] ...)
      (list "("(cond
 	       [(memq prim sametable) (Var prim)]
@@ -284,9 +318,6 @@
   ;; TODO
 #|
       [(roundF)                 "round"]
-
-    [(Mutable:ref ,[Simple -> x]) (wrap x)]
-    [(deref ,[Simple -> x]) (wrap x)]
 
     ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
     ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
@@ -562,28 +593,7 @@
 			 (list type " " name " = " x ";\n")
 			 (list x ";\n")))
     (match b 
-      [,v (guard (symbol? v)) (if name (wrap (Var v)) "")]
-      [(quote ,c)             (if name (Const name type c) "")]
-      [(tuple)                (if name (Const name type '(tuple)) "")]
 
-      [(let ([,v ,ty ,rhs]) ,bod)
-       (list
-	((Value tenv) (symbol->string v) (Type ty) rhs)
-	((Block (tenv-extend tenv (list v) (list ty))) name type bod))]
-      [(begin ,e1 . ,e*)
-       (list
-	((Block tenv) #f #f e1)
-	((Block tenv) name type `(begin . ,e*)))]
-      ;; Both void value:
-      [(begin) ""]
-
-      ;; Not using return statements right now:
-#;
-      [(return ,[Simple -> e]) (ASSERT not name)
-       `("return ",e";\n")]
-
-      [(set! ,[Var -> v] ,[Simple -> e]) (ASSERT not name)
-       `(,v " = " ,e ";\n")]
       
       [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
        (let ([istr (Var i)])	   
@@ -605,13 +615,6 @@
        (ASSERT not name)
        (match (recover-type vqueue tenv)
 	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
-
-      ;; Print is required to be pre-annotated with a type.
-      ;; (We can no longer do recover-type.)
-      [(print (assert-type ,t ,[Simple -> e]))
-       (ASSERT not name)
-       (EmitPrint e t)]
-      [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
 
       ;; This just does nothing in the c++ backend:
       [(gnuplot_array ,a) ""]
@@ -863,38 +866,6 @@
 
       [,_ #f]
       ))
-
-
-#;
-(define (make-output-printer typ)
-  (match typ
-    [(Stream ,typ)
-     (let ([T (Type typ)])
-       `("\n\n"
-	 ,(block "class PrintQueryOutput : public WSBox"
-	 `("public:\n"
-	   "PrintQueryOutput(const char *name) : WSBox(\"PrintQueryOutput\") {}\n\n"
-	   "private:\n"
-	   "DEFINE_NO_OUTPUT_TYPE;\n\n"
-	   ,(block "bool iterate(uint32_t port, void *input)"
-		   `(,T " *element = (",T" *)input;\n"
-
-			,(match typ
-			   [(Struct ,name)
-			    (guard (null? (cdr (ASSERT (assq name struct-defs)))))
-			    ;; If it's a unit return type, we don't print anything:
-			    '()]
-			   [,else 
-			    `("if(WSOUTPUT_PREFIX) printf(\"WSOUT: \");\n"
-			      ,(EmitPrint "(*element)" typ) ";\n"
-			      "printf(\"\\n\");\n")])
-
-; [2007.01.22] Don't need to do this, it happens automatically:
-;			"delete element;\n"  
-			"return false;\n"
-			))))
-	 ";\n\n"))]))
-
 
 
 #;
