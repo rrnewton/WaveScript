@@ -39,7 +39,7 @@
     AND OR NEG HASH 
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
-    fun for to emit include deep_iterate iterate state in if then else true false break let 
+    fun for while to emit include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef
 
     ;; Fake tokens:
@@ -89,7 +89,7 @@
 	 )
     (string->symbol lexeme)]
    ;; Keywords: 
-   [(:or "fun" "for" "break" "to" "emit" "include" "deep_iterate" "iterate" 
+   [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
 	 "namespace" "using")
     (string->symbol lexeme)]
@@ -394,6 +394,7 @@
    ;; These have a syntax that allows us to know where they terminate and optionally omit SEMI:
    (selfterminated 
     [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
+    [(while exp LeftBrace stmts RightBrace) `(while ,$2 ,(make-begin $4))]
     )
 
     ;; Kinda redundant, used only for state {} blocks.

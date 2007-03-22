@@ -85,14 +85,14 @@
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion.
 
-
+		 while
 
 
 		 ;; [2007.03.21] These are used elsewhere, should probably factor them into another file:
 		 type->width types->width
 
 		 )
-    (chezprovide (for for-loop-stack)
+    (chezprovide (for for-loop-stack )
 ;		 letrec 
 		 Array:length print
 		 ;+ - * / ^
@@ -683,6 +683,11 @@
 			     (let ()
 			       bod ...
 			       (loop (add1 i)))))))))]))
+
+  (define-syntax while
+    (syntax-rules ()
+      [(_ tst bod) (let while-loop () (if tst (begin bod (while-loop))))]))
+
 
   ;; We just call the continuation, the fluid-let worries about popping the stack.
   (define (break) ((car (for-loop-stack)) (void)))

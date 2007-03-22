@@ -171,6 +171,7 @@
 	   (assert-valid-name! v)
 	   `(for (,v ,e1 ,e2) 
 		,(process-expr e3 (cons v env)))]
+	  [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
 	  ;; ========================================
 
 	  [(assert-type (Stream ,t) (dataFile ,[file] ,[mode] ,[repeats]))

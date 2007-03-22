@@ -18,12 +18,12 @@ let read_int16 str i =
 
 let wserror str = raise (Failure str)
 
-let dataFile file mode period repeats (textreader,binreader,bytesize) outchan =
+let dataFile (file, mode, period, repeats) (textreader,binreader,bytesize) outchan =
     match mode with 
       | "text" -> wserror "doesn't support text mode yet";
       | "binary" ->
 	  (* Produce a scheduler function *)
-	  let chunk = 1024 in
+	  let chunk = max 1024 bytesize in
 	  let buf = String.make chunk '_' 
 	  and hndl = open_in_bin file 
 	  and timestamp = ref 0
@@ -50,3 +50,14 @@ let dataFile file mode period repeats (textreader,binreader,bytesize) outchan =
 	  in SE (0, f)
       | _ -> wserror ("unknown mode: "^mode)
 
+
+let dataFileWindowed config (tread, bread, size) outchan winsize = 
+  let sampnum = ref 0 in
+  let block_bread str i = 
+    (* Array.init might not be the most efficient: *)
+    let arr = Array.init winsize (fun i -> bread str (i*size)) in      
+    let result = SS(arr, !sampnum, winsize) in
+      sampnum := !sampnum + winsize;
+      result
+  in
+    dataFile config (38383, block_bread, size * winsize) outchan

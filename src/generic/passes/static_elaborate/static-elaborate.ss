@@ -236,6 +236,7 @@
 	  [(assert-type ,t ,[e]) e]
           [(begin ,(stmt) ...) (apply + stmt)]
           [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
+          [(while ,[tst] ,(bod)) (+ tst bod)]
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
           [(set! ,lhs ,(rhs))
            (if (eq? v lhs) 
@@ -312,6 +313,7 @@
 		,(substitute
 		  (filter (lambda (x) (not (eq? (car x) i))) mapping)
 		  bod))]
+	  [(while ,[e1] ,[e2]) `(while ,e1 ,e2)]
 	  [(begin ,[arg] ...) `(begin ,arg ...)]
 	  [(set! ,v ,[rhs])
 	   (if (memq v (map car mapping))
@@ -519,6 +521,7 @@
 	  [(for (,i ,[st] ,[en]) ,bod)
 	   (let ([newenv (cons `(,i ,not-available 99999) env)])	     
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
+	  [(while ,[tst]  ,[bod]) `(while ,tst ,bod)]
 	  
           [(begin ,[args] ...) `(begin ,args ...)]
           [(set! ,v ,[rhs]) `(set! ,v ,rhs)]

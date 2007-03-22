@@ -70,7 +70,8 @@
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
     (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
-    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
+    (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/prims.ml")))
+    (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
 
     (match prog
       [(,lang '(graph (const . ,c*)
@@ -78,7 +79,7 @@
 		      (iterates ,[Iterate -> iter*] ...)
 		      (sink ,base ,basetype)))
        ;; Just append this text together.
-       (let ([result (list header1 header2 header3 "\n" 
+       (let ([result (list header1 header2 header3 header4 "\n" 
 			   "let rec ignored = () \n" ;; Start off the let block.
 			   ;; These return incomplete bindings that are stitched with "and":
 			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
@@ -216,8 +217,7 @@
 		   " "v" = fun () -> \n"
 		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
 		   "  and textreader = 33333 in \n"
-		   "    dataFile "file" "mode" "(number->string (rate->timestep rate))
-		   "      "repeats" \n"
+		   "    dataFile ("file", "mode", "(number->string (rate->timestep rate))", "repeats") \n"
 		   "      (textreader, binreader, "size") \n"
 		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
 		   "\n")
@@ -306,6 +306,7 @@
       [(set! ,[Var -> v] ,[e])  `("(",v " := " ,e")")]
       [(if ,[t] ,[c] ,[a])   `("(if ",t"\nthen ",c"\nelse ",a")\n")]
 
+      ;; This is a really lame hack for now... emulating "break":
       [(for (,i ,[st] ,[en]) ,[bod])
        ;`("(for ",i" = ",st" to ",en" do\n ",bod"\n done)")
        `("(let broke = ref false \n"
@@ -313,7 +314,7 @@
 	 " and en = ",en" in \n"
 	 " while not !broke && !i <= en do \n"	 
 	 "   incr i;\n"	 
-	 "   let ",(Var i)" = !i in\n"
+	 "   let ",(Var i)" = !i - 1 in\n"
 	 "   ",bod";\n"
 	 " done)")]
       [(break) "(broke := true)"]

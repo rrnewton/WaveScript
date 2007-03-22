@@ -268,6 +268,9 @@
 	  [(for (,i ,[loop -> start] ,[loop -> end]) ,[loop -> body])
 	   (fuse (list start end body)
 		 (lambda (st en bod) `(for (,i ,st ,en) ,bod)))]
+	  [(while ,[loop -> test] ,[loop -> body])
+	   (fuse (list test body)
+		 (lambda (tst bod) `(while ,tst ,bod)))]
 
 	  ; ========================================
 

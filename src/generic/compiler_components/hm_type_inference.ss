@@ -706,10 +706,17 @@
 		 et))
        ]
 
+#;
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
 	 (unless (types-compat? st et) (raise-type-mismatch start end expr))
 	 (values expr #()))]
+
+      [(while ,[l -> tst tt] ,[l -> bod bt])
+       (let ([expr `(while ,tst ,bod)])
+	 (unless (types-compat? 'Bool tt) (raise-type-mismatch start end expr))
+	 (values expr #()))]
+
 
       [(unionN ,[l -> e* t*] ...)
        (ASSERT (not (null? t*)))
@@ -734,6 +741,7 @@
       
       [(begin ,[l -> exp* ty*] ...)
        (values `(begin ,@exp*) (last ty*))]
+
       [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
        ;; For now assume i is an integer...
        (types-equal! ty1 'Int exp)
@@ -741,7 +749,6 @@
        (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
 	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
 	   (values `(for (,i ,start ,end) ,bod) ty)))]
-
 
       
       [(lambda (,v* ...) ,bod) (annotate-lambda v* bod 
@@ -894,6 +901,7 @@
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
     [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
      `(let ([,id* ,t* ,rhs*] ...) ,bod)]
     [(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
@@ -924,6 +932,7 @@
     [(set! ,v ,[e])                                           (void)]
     [(begin ,[e] ...)                                         (void)]
     [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
+    [(while ,[tst] ,[bod])                                    (void)]
     [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
     [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
@@ -951,6 +960,7 @@
     [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
     [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
 
     [(unionN ,[args] ...) `(unionN ,args ...)]
@@ -1317,7 +1327,8 @@
        [(assert-type ,t ,[e]) e]
        [(set! ,v ,[e]) e]
        [(begin ,[e*] ...) (apply append e*)]
-       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] bodls)]
+       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] (append s e bodls))]
+       [(while ,[tstls] ,[bodls]) (append tstls bodls)]
 
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(tuple ,[args] ...) (apply append args)]

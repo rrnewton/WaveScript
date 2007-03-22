@@ -45,6 +45,7 @@
        ;; Could require that these Expr positions be Lets:
        (Expr ('if Simple Expr Expr))
        (Expr ('for (Var Simple Simple) Expr))
+       (Expr ('while Expr Expr))
        (Expr ('lambda (LHS ...) (Type ...) Expr))
        (Expr ('assert-type Type Expr))
        (Expr ('begin Expr ...))      
@@ -249,6 +250,14 @@
 			       ,(make-lets decls body))
 			  (append stdecls endecls))
 		  )))]
+
+	   ;; Make test simple:
+	   [(while ,tst ,bod)
+	    (mvlet ([(tst tstdecls) (make-simple tst tenv)])
+	      (let-values ([(body decls) (make-simple bod tenv)])
+		(vector `(while ,(make-lets tstdecls tst) 
+				,(make-lets decls body))
+			())))]
 
 	   [(tupref ,n ,m ,x)
 	    (mvlet ([(res binds) (make-simple x tenv)])

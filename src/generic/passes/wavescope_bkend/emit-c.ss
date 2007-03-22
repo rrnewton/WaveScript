@@ -494,6 +494,20 @@
        (let ([istr (Var i)])	   
 	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
 		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
+#;      
+      [(while ,tst ,[bod]) (ASSERT not name)
+       (let ([tst ((Value tenv) #f "" tst)])
+	 (block `("while (",tst")") bod))]
+
+      [(while ,tst ,[bod]) (ASSERT not name)
+       (block `("while (1)") 
+	      (list 
+	       ((Block tenv) "grosshack" "wsbool_t" tst)
+	       "if (grosshack) {\n"
+	       (indent bod "  ")
+	       "} else break; \n"
+	       ))]
+
       [(break) (ASSERT not name) "break;\n"]
 
       ;; Must distinguish expression from statement context.
