@@ -334,7 +334,7 @@
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
-    '(nullseg joinsegs subseg width toSigseg	      
+    '(nullseg joinsegs subseg width toSigseg timebase
       cos sin tan acos asin atan max min
       not 
       
@@ -344,11 +344,11 @@
   (define aliastable
     '([+_ "(+)"]  
       [-_ "(-)"] 
-      [*_ "(*)"]
+      [*_ "( *)"]
       [/_ "(/)"]
       [+. "(+.)"]
       [-. "(-.)"] 
-      [*. "(*.)"] 
+      [*. "( *.)"] 
       [/. "(/.)"]
       [+: "Complex.add"]
       [-: "Complex.sub"] 
@@ -368,9 +368,11 @@
       [deref "!"]
       [absI abs]
       [absF abs_float]
+      [absC Complex.norm]
       [sqrtF sqrt]
       [start ss_start]
       [end ss_end]
+      [seg-get ss_get]
 
       [Array:make Array.make]
       [Array:set  Array.set]
