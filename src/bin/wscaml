@@ -33,8 +33,9 @@ fi
 
 # Inline factor should be, say, 3:
 #if ocamlopt.opt -unsafe -ffast-math -inline 100 query.ml -o query.exe
-if ocamlopt.opt query.ml -o query.exe
+#if ocamlopt.opt query.ml -o query.exe
+
+echo ocamlopt.opt -I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2 bigarray.cmxa fftw2.cmxa query.ml -o query.exe
+if ocamlopt.opt -I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2 bigarray.cmxa fftw2.cmxa query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi
-
-

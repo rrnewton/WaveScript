@@ -33,6 +33,7 @@ let dataFile (file, mode, period, repeats) (textreader,binreader,bytesize) outch
 	    (* Read by block, don't read more than we have space for *)
 	    let read = input hndl buf !en (chunk - !en) in
 	      (* TODO: Check for end of file!!! *)
+	      if read == 0 then (print_endline "dataFile out of data"; exit 0);
 	      en := !en + read;
 	      while !en - !st > bytesize do
 		outchan (binreader buf !st);

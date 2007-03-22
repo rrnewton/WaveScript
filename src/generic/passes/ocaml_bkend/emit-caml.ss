@@ -265,6 +265,7 @@
     [Int16 "string_of_int"] ;; These are just represented as ints.
     [Float "string_of_float"]
     [Bool "string_of_bool"]
+    [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
@@ -308,7 +309,8 @@
 
       ;; This is a really lame hack for now... emulating "break":
       [(for (,i ,[st] ,[en]) ,[bod])
-       ;`("(for ",i" = ",st" to ",en" do\n ",bod"\n done)")
+       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")
+#;
        `("(let broke = ref false \n"
 	 " and i = ref 0\n"
 	 " and en = ",en" in \n"
@@ -316,8 +318,10 @@
 	 "   incr i;\n"	 
 	 "   let ",(Var i)" = !i - 1 in\n"
 	 "   ",bod";\n"
-	 " done)")]
-      [(break) "(broke := true)"]
+	 " done)")]      
+      ;[(break) "(broke := true)"]
+      [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
+
 
       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
        (Prim (cons prim rand*) emitter)]
