@@ -71,6 +71,10 @@ SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
 c: 
 	(cd C; $(MAKE))
 
+caml: ocaml
+ocaml:
+	(cd generic/passes/ocaml_bkend/; $(MAKE))
+
 # Two scheme back-ends, PLT or Chez.
 
 # PLT: 
