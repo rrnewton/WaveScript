@@ -1,0 +1,6 @@
+version = "0.2"
+description="Fastest Fourier Transform in the West, version 2"
+requires="bigarray"
+archive(byte)="fftw2.cma"
+archive(native)="fftw2.cmxa"
+linkopts = ""

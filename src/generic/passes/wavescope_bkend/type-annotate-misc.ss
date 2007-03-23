@@ -31,36 +31,7 @@
       (match x
 
 	;; These primitives need their assert-types on the INSIDE:
-#;
-	[(print ,[e])
-	 `(print (assert-type ,(recover-type e tenv) ,e))]
-#;
-	[(show ,[e]) 
-	 `(show (assert-type ,(recover-type e tenv)  ,e))]
-#;
-	[(cons ,[a] ,[b])
-	 `(assert-type (List ,(recover-type a tenv)) (cons ,a ,b))]
-#;
-	[(equal? ,[a] ,[b])
-	 `(equal? (assert-type ,(recover-type a tenv) ,a) ,b)]
-#;
-	[(seg-get ,[seg] ,[ind])
-	 `(seg-get (assert-type ,(recover-type seg tenv) ,seg) ,ind)]
-#;
-	[(toArray ,[ss]) `(toArray (assert-type ,(recover-type ss tenv) ,ss))]
 
-#;
-	[(List:append ,[x] ,[y])
-	 `(assert-type ,(recover-type x tenv) (List:append ,x ,y))]
-#;
-	[(List:reverse ,[x])
-	 `(assert-type ,(recover-type x tenv) (List:reverse ,x))]
-#;
-	[(List:length ,[x])
-	 `(List:length (assert-type ,(recover-type x tenv) ,x))]
-#;
-	[(List:ref ,[x] ,[i])
-	 `(List:ref (assert-type ,(recover-type x tenv) ,x) ,i)]
 	[(List:make ,[n] ,[init])
 	 `(List:make ,n (assert-type ,(recover-type init tenv) ,init))]
 
@@ -79,10 +50,6 @@
 	  (mvlet ([(vars types rhs* other k) (binding-form-visit-knowncode frm)])	    
 	    (k vars types 
 	      (map (lambda (type rhs) ;rhs may be #f for 'unavailable'
-#;
-		     (printf "BINDING: ~s ~s to ~s\n" 
-			     (and (pair? rhs) (memq (car rhs) annotate-outside-prims))
-			     type rhs)
 		    (if (and (pair? rhs) (memq (car rhs) annotate-outside-prims))		       
 			`(assert-type ,type ,rhs)
 			rhs))
