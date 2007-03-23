@@ -2,23 +2,21 @@
 
 
 
-
-
 type sample = int  (* Should be int64 *)
 (* Doesn't have timebase *)
-type 'a sigseg = SS of ('a array * sample * int )  
+type 'a sigseg = SS of ('a array * sample )  
 
 open Array
-let joinsegs (SS(a,t1,w1)) (SS(b,t2,w2)) = 
-  assert (t2 == t1+w1);
-  SS(append a b, t1, w1+w2)
-let subseg (SS(a,st,w)) pos len = 
-  SS(sub a (pos - st) len, pos, len)
-let nullseg = SS([||],0,0)
-let timebase ss = 0
-let toSigseg arr st tb = SS(arr, st, length arr)
-let width (SS(_,_,w)) = w
-let ss_start (SS(_,s,_)) = s
-let ss_end (SS(_,s,_)) = s
-let ss_get (SS(a,_,_)) i = a.(i)
+let joinsegs (SS(a,t1)) (SS(b,t2)) = 
+  assert (t2 == t1 + length a);
+  SS(append a b, t1)
+let subseg (SS(a,st)) pos len = SS(sub a (pos - st) len, pos)
+let nullseg                   = SS([||],0)
+let timebase ss               = 0
+let toSigseg arr st tb        = SS(arr, st)
+let toArray (SS(a,_))         = a
+let width (SS(a,_))           = length a
+let ss_start (SS(_,s))        = s
+let ss_end (SS(a,s))          = s + length a - 1
+let ss_get (SS(a,_)) i        = a.(i)
 

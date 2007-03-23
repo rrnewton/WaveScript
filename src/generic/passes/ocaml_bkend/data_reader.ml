@@ -5,16 +5,13 @@
 let read_uint16 str i : int = 
   256 * (Char.code str.[i+1]) + (Char.code str.[i])
 
-(*
-read_int16 : string -> int -> int
+
+(* read_int16 : string -> int -> int *)
 let read_int16 str i =
-  let unsigned = read_int16 str i in
-    if 0 == (fxlogand unsigned 32768)
+  let unsigned = read_uint16 str i in
+    if 0 == (unsigned land 32768)
     then unsigned  
     else unsigned - 65536
-
-*)
-
 
 let wserror str = raise (Failure str)
 
@@ -51,14 +48,14 @@ let dataFile (file, mode, period, repeats) (textreader,binreader,bytesize) outch
 	  in SE (0, f)
       | _ -> wserror ("unknown mode: "^mode)
 
-
 let dataFileWindowed config (tread, bread, size) outchan winsize = 
   let sampnum = ref 0 in
   let block_bread str i = 
     (* Array.init might not be the most efficient: *)
     let arr = Array.init winsize (fun i -> bread str (i*size)) in      
-    let result = SS(arr, !sampnum, winsize) in
+    let result = toSigseg arr !sampnum 3339 in
       sampnum := !sampnum + winsize;
       result
   in
     dataFile config (38383, block_bread, size * winsize) outchan
+

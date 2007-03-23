@@ -2,17 +2,6 @@
 
 
 
-
-(*
-(* Does nothing currently *)
-let fft (SS(flarr, st, w)) = 
-  let complexarr = make (length flarr / 2 + 1) Complex.zero in
-  for i = 0 to length flarr do
-    (*complexarr.(i) <- { Complex.re= flarr.(i); Complex.im = 0.0 };*)
-    ()
-  done;
-  (SS(complexarr, st, w))
-    *)
     
 open Bigarray;;
 
@@ -28,16 +17,20 @@ let autofft =
 ;;	      
 
 (* Need to halve the size of the output!! *)
-let fft (SS(flarr, st, w)) = 
+let fft (sigseg : float sigseg) : Complex.t sigseg  = 
+  let flarr = toArray sigseg in
+  let newsize = (length flarr / 2) + 1 in 
   let bigarr = Array1.create complex64 c_layout (length flarr) in
-  for i = 0 to length flarr do
-    Array1.set bigarr i { Complex.re= flarr.(i); Complex.im = 0.0 }
+  for i = 0 to length flarr - 1 do
+    Array1.set bigarr i { Complex.re= flarr.(i); Complex.im = 0.0 };
   done;
     let result = autofft bigarr in
     (* Terrible conversions! *)
     (*let complexarr = make (length flarr / 2 + 1) Complex.zero in*)
-    let complexarr = make (length flarr) Complex.zero in
-      for i = 0 to length flarr do
+    let complexarr = make newsize Complex.zero in
+      for i = 0 to newsize-1 do
 	complexarr.(i) <- Array1.get result i;
+
       done;
-      (SS(complexarr, st, w))
+      (* Start is zero for this frequency domain array: *)
+      toSigseg complexarr 0 3333

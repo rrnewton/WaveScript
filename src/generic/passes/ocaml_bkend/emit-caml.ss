@@ -69,7 +69,8 @@
   (lambda (prog)
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
-    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
+    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
+    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg_seglist.ml")))
     (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/prims.ml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
 
@@ -233,10 +234,8 @@
 
 (define (type->reader t) 
   (match t
-    [Int16
-     ;; BROKEN BROKEN!!
-     "(fun str ind -> read_uint16 str ind)"
-     ]))
+    [Int16  "(fun str ind -> read_int16 str ind)"]
+    ))
 
 (define (build-binary-reader types)
   (define widths (map type->width types))
@@ -375,6 +374,10 @@
       [absF abs_float]
       [absC Complex.norm]
       [sqrtF sqrt]
+
+      [realpart "(fun x -> x.Complex.re)"]
+      [imagpart "(fun x -> x.Complex.im)"]
+
       [start ss_start]
       [end ss_end]
       [seg-get ss_get]

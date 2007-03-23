@@ -9,6 +9,10 @@
 // In "ws" it produces this:
 //   
 
+// [2007.03.22] Runs in wscaml, 100ms to process 1.2 mb file (6 sec).
+// (600ms for ws.opt, 
+/// 2700ms for wsc, 1200ms w/ -j 1, 253ms with constraining to one processor)
+
 DEBUG = false
 DEBUGSYNC = DEBUG 
 

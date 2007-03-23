@@ -6,6 +6,20 @@
 
 // run ./get_sample_data first
 
+// [2007.03.22] Wow, just for reading streams of data a tuple at a
+// time... there's a lot of scheduler overhead.
+//
+// For example, just returning "s1" from this program on a 1.2 mb file:
+//   ws     : 364 ms (from saved heap, using scheme fft)
+//   wsc    : 1300-2900 ms (high variance)
+//   wscaml : 13 ms
+
+// Then returning 's2' which includes fft:
+//   ws     : 772 ms (from saved heap, using scheme fft - 460 minus startup and w/ fftw)
+//   wsc    : 2000 ms (high variance)
+//   wscaml : 31 ms
+// (Total process times.)
+
 
 fun mywindow(S, len)
   iterate(x in S) {
@@ -30,7 +44,7 @@ s1 :: Stream (Sigseg Float);
 s1 = if GETENV("WSARCH") != "ENSBox" 
      then {chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) 
                     :: Stream (Int16 * Int16 * Int16 * Int16));
-	   prim_window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
+	   mywindow(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096) }
      else ENSBoxAudio(0,4096,0,24000);
 
 //if GETENV("WSARCH") == "ENSBox" 
@@ -53,4 +67,7 @@ s3 = iterate (win in s2) {
   else { }
 };
 
-BASE <- s3;
+BASE <- 
+//s1
+//iterate(x in s2) { emit x[[30]] };
+iterate(x in s1) { emit x`width };
