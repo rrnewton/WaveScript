@@ -34,3 +34,10 @@ let fft (sigseg : float sigseg) : Complex.t sigseg  =
       done;
       (* Start is zero for this frequency domain array: *)
       toSigseg complexarr 0 3333
+
+
+(* If our arrays were already bigarrays... well the we'd still need to
+   copy to get the half of the output that we want. 
+   Wouldn't have to copy on input...*)
+
+

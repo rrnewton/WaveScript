@@ -396,7 +396,7 @@
     (__dataFile (String String Int Int (List Symbol)) (Stream 'a))
 
     ;; This version reads blocks of tuples at a time:
-    ;(blockDataFile (String String Int Int Int) (Stream (Sigseg 'a)))
+;    (dataFileWindowed (String String Int Int Int) (Stream (Sigseg 'a)))
     
     ;; These are simpler interface that desugar into dataFile:
     ;; They use defaults rather than exposing as many parameters.

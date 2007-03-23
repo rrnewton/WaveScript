@@ -53,7 +53,7 @@
 	      (Block ('let ((LHS Type Value) ...) Block))
 	      (Block ('begin Block ...))
 	      (Block ('for (Var Simple Simple) Block))
-	      (Block ('while Value Block))
+	      (Block ('while Block Block))
 	      (Block ('set! Var Simple))
 	      (Block ('if Simple Block Block))
 	      (Block ('break))

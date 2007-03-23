@@ -68,6 +68,7 @@ s3 = iterate (win in s2) {
 };
 
 BASE <- 
+s3
 //s1
 //iterate(x in s2) { emit x[[30]] };
-iterate(x in s1) { emit x`width };
+//iterate(x in s1) { emit x`width };
