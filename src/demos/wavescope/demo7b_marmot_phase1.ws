@@ -13,6 +13,12 @@
 // (600ms for ws.opt, 
 /// 2700ms for wsc, 1200ms w/ -j 1, 253ms with constraining to one processor)
 
+
+// [2007.03.23]
+// Outfitted the caml version with bigarrays.  Tested on 3.6mb file (3x 6sec).
+//   wscaml: 120ms
+//   wsc   : 750ms    (with --at_once -j 1, and loading down the other cpu.)
+
 DEBUG = false
 DEBUGSYNC = DEBUG 
 

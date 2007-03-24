@@ -482,11 +482,6 @@
       ;; Both void value:
       [(begin) (if name (wrap "0") "")]
 
-      ;; Not using return statements right now:
-#;
-      [(return ,[Simple -> e]) (ASSERT not name)
-       `("return ",e";\n")]
-
       [(set! ,[Var -> v] ,[Simple -> e]) (ASSERT not name)
        `(,v " = " ,e ";\n")]
       
@@ -494,11 +489,6 @@
        (let ([istr (Var i)])	   
 	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
 		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
-#;      
-      [(while ,tst ,[bod]) (ASSERT not name)
-       (let ([tst ((Value tenv) #f "" tst)])
-	 (block `("while (",tst")") bod))]
-
       [(while ,tst ,[bod]) (ASSERT not name)
        (block `("while (1)") 
 	      (list 
@@ -508,6 +498,7 @@
 	       "} else break; \n"
 	       ))]
 
+      ;; Deprecated:
       [(break) (ASSERT not name) "break;\n"]
 
       ;; Must distinguish expression from statement context.
@@ -603,6 +594,7 @@
 	[(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	 (Prim (cons prim rand*) name type)]
 	[(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
+	 (printf "\nANNOTATED PRIM: ~s\n" prim)
 	 (Prim `(assert-type ,t (,prim . ,rand*)) name type)]
 
 	; ============================================================
@@ -1209,7 +1201,10 @@
 	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
 	   )	 
 	 ]
-	
+
+	;; If we have an extra assert-type... just ignore it.
+	[(assert-type ,t ,[e]) e]
+
 	;; Other prims fall through to here:
 	[(,other ,[Simple -> rand*] ...)
 	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))

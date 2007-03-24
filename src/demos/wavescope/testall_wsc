@@ -30,6 +30,8 @@ function go () {
 #go "demo0_audio.ws"
 go "demo1_audiofile.ws"
 # 1b, 1c
+go "demo1d_dataFile_binary.ws"
+
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"

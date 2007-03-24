@@ -23,8 +23,15 @@
 (define-pass type-annotate-misc
     
     ;(define annotated-prims '(print show cons hashtable seg-get))
-    (define annotate-outside-prims '(hashtable prim_window List:append List:reverse cons))
-    (define annotate-first-arg '(List:append List:length List:ref print show equal? seg-get toArray))
+    (define annotate-outside-prims 
+      '(hashtable prim_window List:append List:reverse cons
+		  Array:make 
+		  ))
+
+    (define annotate-first-arg 
+      '(List:append List:length List:ref print show equal? seg-get toArray
+		    ;Array:get Array:set
+		    ))
 
     (define (process-expr x tenv fallthru)
 ;      (printf "PE: \n")

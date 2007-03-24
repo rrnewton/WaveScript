@@ -49,3 +49,49 @@ let runScheduler () =
       (* schedule := List.merge compare [next] (List.tl !schedule); *)
   done;;
 
+
+
+
+(********************************************************************************)
+
+
+(* Should do this with functors, but not entirely sure about modules and inlining. *)
+
+(* VER1: Normal arrays: *)
+(*
+type ('t,'ign) wsarray = 't array
+let wslen       = Array.length
+let wsget       = Array.get
+let wsset       = Array.set
+let wssub       = Array.sub
+let wsnull t    = [||]
+let wsmakearr t = Array.make
+let wsappend    = Array.append
+  *)
+
+(* VER2: Bigarray library *)
+
+type ('a,'b) wsarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
+let wslen       = Bigarray.Array1.dim
+let wsget       = Bigarray.Array1.get
+let wsset       = Bigarray.Array1.set
+let wssub       = Bigarray.Array1.sub
+let wsnull t    = Bigarray.Array1.create t Bigarray.c_layout 0
+let wsmakearr t n x  = 
+  let arr = Bigarray.Array1.create t Bigarray.c_layout n in
+    Bigarray.Array1.fill arr x;
+    arr  
+let wsappend a b = 
+  let len1 = Bigarray.Array1.dim a
+  and len2 = Bigarray.Array1.dim b in
+  let newarr = Bigarray.Array1.create 
+    (Bigarray.Array1.kind a) (Bigarray.Array1.layout a) (len1 + len2)
+  in 
+    for i = 0 to len1 -1 do
+      Bigarray.Array1.set newarr i (Bigarray.Array1.get a i);
+    done;
+    for i = len1  to len1 + len2 - 1 do
+      Bigarray.Array1.set newarr i (Bigarray.Array1.get b (i-len1));
+    done;
+    newarr   
+

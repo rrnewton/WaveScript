@@ -48,6 +48,7 @@ let dataFile (file, mode, period, repeats) (textreader,binreader,bytesize) outch
 	  in SE (0, f)
       | _ -> wserror ("unknown mode: "^mode)
 
+(*
 let dataFileWindowed config (tread, bread, size) outchan winsize = 
   let sampnum = ref 0 in
   let block_bread str i = 
@@ -58,4 +59,4 @@ let dataFileWindowed config (tread, bread, size) outchan winsize =
       result
   in
     dataFile config (38383, block_bread, size * winsize) outchan
-
+*)

@@ -36,12 +36,11 @@ step = 32;
 rw1 = iterate (w in ch1) {
   state { acc = nullseg; }
   acc := joinsegs(acc, w);
-  for i = 1 to w.width {
-    if acc.width > newwidth
-    then {emit subseg(acc, acc.start, newwidth);
-	  acc := subseg(acc, acc.start + step, acc.width - step)}
-    else break;
-  }};
+  while acc.width > newwidth {
+    emit subseg(acc, acc.start, newwidth);
+    acc := subseg(acc, acc.start + step, acc.width - step);
+  }
+};
 
 // TODO: Insert hanning code here:
 //hn = hanning(rw1);

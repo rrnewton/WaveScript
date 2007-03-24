@@ -69,8 +69,8 @@
   (lambda (prog)
     ;; Lame, requires REGIMENTD:
     (define header1 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/scheduler.ml")))
-    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
-    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg_seglist.ml")))
+    (define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg.ml")))
+    ;(define header2 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/sigseg_seglist.ml")))
     (define header3 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/prims.ml")))
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
 
@@ -150,8 +150,9 @@
 				     (cfl-imag-part datum)))]
      [(integer? datum) (number->string datum)]
 
-     [(eq? datum 'Array:null) "[||]"]
-     [(eq? datum 'nullseg) "nullseg"]
+     ;[(eq? datum 'Array:null) "[||]"]
+
+;     [(eq? datum 'nullseg) "nullseg"]
      [(eq? datum 'nulltimebase) "99999999"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
@@ -174,7 +175,6 @@
 
 #|
       ;; Special Constants:
-      [(assert-type ,t nullseg) (wrap (PolyConst 'nullseg t))]
       [(assert-type ,t '())     (wrap (PolyConst '() t))]
       [nulltimebase             (Const name type 'nulltimebase)]      
 |#
@@ -279,16 +279,40 @@
 	 "  ")")"))]
     ))
 
+;; These are the names of the Bigarray types.
+(define (ArrType t)
+  (match t
+    [Int     "int"]
+    [Int16   "int16_signed"]
+    [Float   "float64"]
+    [Complex "complex64"]
+    [,oth (error 'emit-caml:ArrType "can't make a Bigarray of this type: ~s" t)]
+    ))
+
 ; ======================================================================
 ;; Expressions.
 	
 (define Expr ;(Expr tenv)
   (lambda (exp emitter)
-    ;(if (deep-member? 'Array:null exp) "EXPR OF ARR:NULL...\n")
     (match exp
       [,v (guard (symbol? v) (regiment-constant? v)) (Const v)]
       [,v (guard (symbol? v)) (Var v)]
       [',c (Const c)]
+
+      [(assert-type (Sigseg ,[ArrType -> t]) nullseg) `("(nullseg ",t")")]
+
+      ;[(assert-type (Array ,t) Array:null) "[||]"]
+      [(assert-type (Array ,[ArrType -> t]) Array:null) 
+       ;`("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
+       `("(wsnull Bigarray.",t" )")
+       ]
+      [(assert-type (Array ,[ArrType -> t]) (Array:make ,[n] ,[init]))
+       `("(wsmakearr Bigarray.",t" ",n" ",init")")
+#;
+       `("(let a = Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout ",n" \n"
+	 " and x = ",init" in\n"
+	 "   Bigarray.Array1.fill a x;\n"
+	 "   a)\n")]
 
       [(tuple ,[rands] ...)
        (list "(" (insert-between ", " rands) ")")]
@@ -338,7 +362,7 @@
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
-    '(nullseg joinsegs subseg width toSigseg timebase
+    '(joinsegs subseg width toSigseg timebase
       cos sin tan acos asin atan max min
       not 
       
@@ -382,9 +406,15 @@
       [end ss_end]
       [seg-get ss_get]
 
-      [Array:make Array.make]
+;      [Array:make Array.make]
       [Array:set  Array.set]
       [Array:ref  Array.get]
+
+;      [Array:set  Bigarray.Array1.set]
+;      [Array:ref  Bigarray.Array1.get]
+
+;      [Array:set  wsset]
+;      [Array:ref  wsget]
 
       [intToFloat   float_of_int]
       [int16ToFloat float_of_int]
