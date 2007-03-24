@@ -40,15 +40,18 @@
   (match t
     [Bool    "bool"]
     [Int     "int"]
-    ;[Int16   "wsint16_t"]
+    [Int16   "int"]
     [Float    "float"]
     [Complex  "Complex.t"]
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
     [(VQueue ,_) "unit"]
     [#() "unit "]
+
+    [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
+
     ;; Went back and forth on whether this should be a pointer:
-    [(Sigseg ,[t]) `("(",t") sigseg")]
+    [(Sigseg ,t) `("(",(Type t)", Bigarray.",(ArrType t)"_elt) sigseg")]
     ;[(Stream ,[t]) `("WSBox*")]
     ;[(Array ,[t]) `(,t "[]")]
     [(Array ,[t])  `("(",t") array")]
@@ -113,7 +116,7 @@
 	 ,@(map (lambda (lhs ty rhs)
 		  `("  let ",(Var lhs)" = ",(Expr rhs emitter)" in\n"))
 	     lhs* ty* rhs*)
-	 "  fun ",(Var x)" -> \n"
+	 "  fun (",(Var x)" : ",(Type ty1)") -> \n"
 	 ,(indent (Expr bod emitter) "    ")
 	 "\n")       
        )]))
@@ -407,14 +410,14 @@
       [seg-get ss_get]
 
 ;      [Array:make Array.make]
-      [Array:set  Array.set]
-      [Array:ref  Array.get]
+;      [Array:set  Array.set]
+;      [Array:ref  Array.get]
 
 ;      [Array:set  Bigarray.Array1.set]
 ;      [Array:ref  Bigarray.Array1.get]
 
-;      [Array:set  wsset]
-;      [Array:ref  wsget]
+      [Array:set  wsset]
+      [Array:ref  wsget]
 
       [intToFloat   float_of_int]
       [int16ToFloat float_of_int]

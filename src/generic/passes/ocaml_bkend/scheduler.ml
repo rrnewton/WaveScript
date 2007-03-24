@@ -67,7 +67,7 @@ let wssub       = Array.sub
 let wsnull t    = [||]
 let wsmakearr t = Array.make
 let wsappend    = Array.append
-  *)
+*)
 
 (* VER2: Bigarray library *)
 
