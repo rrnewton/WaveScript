@@ -19,17 +19,16 @@ let autofft =
 (* Need to halve the size of the output!! *)
 let fft (sigseg : (float, Bigarray.float64_elt) sigseg) : (Complex.t, Bigarray.complex64_elt) sigseg = 
   let flarr = toArray sigseg in
-  let newsize = (wslen flarr / 2) + 1 in 
-  let bigarr = Array1.create complex64 c_layout (wslen flarr) in
-  for i = 0 to wslen flarr - 1 do
-    Array1.set bigarr i { Complex.re= wsget flarr i; Complex.im = 0.0 };
+  let newsize = (Array1.dim flarr / 2) + 1 in 
+  let bigarr = Array1.create complex64 c_layout (Bigarray.Array1.dim flarr) in
+  for i = 0 to Bigarray.Array1.dim flarr - 1 do
+    Array1.set bigarr i { Complex.re= Array1.get flarr i; Complex.im = 0.0 };
   done;
     let result = autofft bigarr in
-    (* Terrible conversions! *)
-    let complexarr = wsmakearr complex64  newsize Complex.zero in
+    (* Really lame to still need to copy out only the bottom half.*)
+    let complexarr = Array1.create complex64 c_layout newsize in
       for i = 0 to newsize-1 do
-	wsset complexarr i  (Array1.get result i);
-
+	Array1.set complexarr i  (Array1.get result i);
       done;
       (* Start is zero for this frequency domain array: *)
       toSigseg complexarr 0 3333

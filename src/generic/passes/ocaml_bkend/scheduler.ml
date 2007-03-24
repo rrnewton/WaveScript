@@ -70,7 +70,7 @@ let wsappend    = Array.append
 *)
 
 (* VER2: Bigarray library *)
-
+(*
 type ('a,'b) wsarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
 let wslen       = Bigarray.Array1.dim
 let wsget       = Bigarray.Array1.get
@@ -81,6 +81,8 @@ let wsmakearr t n x  =
   let arr = Bigarray.Array1.create t Bigarray.c_layout n in
     Bigarray.Array1.fill arr x;
     arr  
+    *)
+
 let wsappend a b = 
   let len1 = Bigarray.Array1.dim a
   and len2 = Bigarray.Array1.dim b in

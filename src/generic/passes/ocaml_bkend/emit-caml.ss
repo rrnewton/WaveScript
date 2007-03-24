@@ -306,12 +306,11 @@
 
       ;[(assert-type (Array ,t) Array:null) "[||]"]
       [(assert-type (Array ,[ArrType -> t]) Array:null) 
-       ;`("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
-       `("(wsnull Bigarray.",t" )")
+       `("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
+       ;`("(wsnull Bigarray.",t" )")
        ]
       [(assert-type (Array ,[ArrType -> t]) (Array:make ,[n] ,[init]))
-       `("(wsmakearr Bigarray.",t" ",n" ",init")")
-#;
+       ;`("(wsmakearr Bigarray.",t" ",n" ",init")")
        `("(let a = Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout ",n" \n"
 	 " and x = ",init" in\n"
 	 "   Bigarray.Array1.fill a x;\n"
@@ -413,11 +412,11 @@
 ;      [Array:set  Array.set]
 ;      [Array:ref  Array.get]
 
-;      [Array:set  Bigarray.Array1.set]
-;      [Array:ref  Bigarray.Array1.get]
+      [Array:set  Bigarray.Array1.set]
+      [Array:ref  Bigarray.Array1.get]
 
-      [Array:set  wsset]
-      [Array:ref  wsget]
+;      [Array:set  wsset]
+;      [Array:ref  wsget]
 
       [intToFloat   float_of_int]
       [int16ToFloat float_of_int]
