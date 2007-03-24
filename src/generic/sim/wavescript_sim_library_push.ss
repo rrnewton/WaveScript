@@ -21,7 +21,7 @@
 
 		 run-stream-query reset-state!
 
-		 __dataFile ;__syncN
+		 __readFile ;__syncN
 
 		 ;dump-binfile 
 		 ;audio 
@@ -61,6 +61,7 @@
 		 tuple tupref
 		 Array:make Array:makeUNSAFE
 		 Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
+		 internString uninternString
 		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
@@ -370,14 +371,16 @@
     (read-binary-file-stream file 
 		      2 ;; Read just 2 bytes at a time.
 		      to-uint16
-		      len overlap rate))
+		      len overlap rate 0))
 
   ;; We read in "blocks" to reduce the overhead of all those thunks!
   ;; (Actually, this didn't speed things up much, just a little.)
   (define DATAFILE_BATCH_SIZE 500)
 
   ;; Should have batched data file...
-  (define (__dataFile file mode rate repeat types)
+  (define (__readFile file mode repeat rate skipbytes offset winsize types)
+    ;; TODO: implement skipbytes and winsize!!!
+
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -406,7 +409,6 @@
 	  (if (or (not x) (fxzero? batch))
 	      (reverse! acc)
 	      (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
-
        (define our-sinks '())  
        (define timestep (rate->timestep rate))
        (define t 0)
@@ -429,18 +431,22 @@
        (lambda (sink)
 	 ;; Register the sink to receive this output:
 	 (set! our-sinks (cons sink our-sinks))))
-    
+
     ;; Read a binary stream with a particular tuple format.
     (define (binsource)
-      (iterate 
-       ;; Strip that sigseg:
-       (lambda (x vq) (emit vq (seg-get x 0)) vq)
-       (read-binary-file-stream file 
+      (define source (read-binary-file-stream file 
 				(types->width types) ;; Read N bytes at a time.
 				(types->reader types)
-				1 ;; Length of "window"
+				(if (> winsize 0) winsize 1) ;; Length of "window"				
 				0 ;; Overlap
-				rate)))
+				rate
+				skipbytes
+				offset))
+      ;; winsize 0 or -1 indicates non windowed stream, thus strip that sigseg:
+      (if (<= winsize 0)
+	  (iterate  (lambda (x vq) (emit vq (seg-get x 0)) vq)  source)
+	  source))
+
     (define thestream
       (cond 
        [(equal? mode "text") (textsource)]
@@ -504,16 +510,16 @@
 		   (to-int16 s (fx+ 4 ind))
 		   (to-int16 s (fx+ 6 ind)))
 	   ))
-       (read-binary-file-stream (default-marmotfile) 8 read-sample len overlap rate))
+       (read-binary-file-stream (default-marmotfile) 8 read-sample len overlap rate 0))
 
   ;; Internal helper.  Returns a Stream, which is a registrar for Sinks.
-  (define (read-binary-file-stream file wordsize sample-extractor len overlap rate)
+  (define (read-binary-file-stream file wordsize sample-extractor len overlap rate skipbytes offset)
     (define chunksize 32768) ;; How much to read from file at a time.
     (define infile (open-input-file file))
     (define buffer1 (make-string chunksize #\_))
     (define count1 0)
     (define ind1 0)
-    (define winsize (* wordsize len))
+    (define winsize (* len (+ wordsize skipbytes)))
     (define remainder #f) ;; The unprocessed left-over from a batch.
 
     (define counter 0)
@@ -551,10 +557,12 @@
 	     #f]
 	  [else
 	   (let ([win (make-vector len)])
-	     (for (i 0 (fx- len 1))
-		  (vector-set! win i (sample-extractor buffer1 (fx* i wordsize)))
-		  (void)
-		  )
+	     (let readloop ([i 0] [pos offset])
+	       ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
+	       (unless (= i len)
+		 (vector-set! win i (sample-extractor buffer1 pos))
+		 (readloop (fx+ i 1) (fx+ pos wordsize skipbytes))
+		 ))
 	     win)]))
 
        (define _ 
@@ -718,6 +726,9 @@
     (match t
       [Int16 2]
       [Int 4] ;; INTS ARE 16 BIT FOR NOW!!! FIXME FIXME
+      ;; HACK:
+      [(Sigseg #(,t* ...)) (types->width t*)]
+      [(Sigseg ,t)         (type->width t)]
       ;;[Float 32]
       ;;[Complex ]    
       [,other (error 'type->width "can't support binary reading of ~s yet." other)]
@@ -728,7 +739,10 @@
      (define (type->reader t)
        (match t
 	 [Int16 to-int16]
-	 [Int to-int32]
+	 [Int   to-int32]
+	 ;; HACK, the reader is the same:
+	 [(Sigseg #(,t* ...)) (types->reader t*)]
+	 [(Sigseg ,t)         (type->reader t)]
 	;[Float ]
 	;[Complex ]
 	 [,other (error 'type->reader "can't support binary reading of ~s yet." other)]))
@@ -914,6 +928,9 @@
      (define Array:fold vector-fold)
      (define Array:toList vector->list)
      (define Array:andmap (lambda (f v) (andmap f (vector->list v))))
+
+     (define internString string->symbol)
+     (define uninternString symbol->string)
 
      ;; EQ? based hash tables:
 #;

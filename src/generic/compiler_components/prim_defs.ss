@@ -393,10 +393,23 @@
     ;; dataFile must occur directly within a ( :: T) construct.
     (dataFile (String String Int Int) (Stream 'a))
     ;; Internal compiler construct:
-    (__dataFile (String String Int Int (List Symbol)) (Stream 'a))
+    ;(__dataFile (String String Int Int (List Symbol)) (Stream 'a))
 
     ;; This version reads blocks of tuples at a time:
 ;    (dataFileWindowed (String String Int Int Int) (Stream (Sigseg 'a)))
+
+    ;; TODO: The number of options this should take is way too large.
+    ;; Let's make it a list of optional arguments:
+    ;;(dataFile (String (List #(String String))) (Stream 'a))
+    ;dataFile("foo.txt", [("mode","text"), ("repeats","-1"), ("rate","44000"), ("advance", "8")]);
+    ;dataFile("foo.txt", "mode: text  repeats: -1  rate: 44000  advance: 8");
+    ;dataFile("foo.raw", "mode= binary  repeats= -1");
+
+    ; file, fileStream, streamFile, fileSource, readFile, openFile???
+    ;; Maybe we could even use the same prim for windowed or unwindowed... it just depends on the type ascription.
+    (readFile (String String) (Stream 'a))
+    (__readFile (String String Int Int (List Symbol)) (Stream 'a))
+
     
     ;; These are simpler interface that desugar into dataFile:
     ;; They use defaults rather than exposing as many parameters.
@@ -457,10 +470,12 @@
     ;; Temporary:
     ;; Oops, need to be sure this doesn't change the numeric type in the output:
     (m_invert   ((Array (Array (NUM a))))  (Array (Array (NUM a))))
-   
+
+    ;; These can be useful for working with hash-tables indexed by strings.
+    (internString (String) Symbol)
+    (uninternString (Symbol) String)
 
     (hashtable (Int) (HashTable 'key 'val))
-    ;;(hash ('a) Int) ; With our data-model, we can do this.
     (hashcontains ((HashTable 'key 'val) 'key) Bool)
     (hashget ((HashTable 'key 'val) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the

@@ -49,14 +49,18 @@ let dataFile (file, mode, period, repeats) (textreader,binreader,bytesize) outch
       | _ -> wserror ("unknown mode: "^mode)
 
 (*
-let dataFileWindowed config (tread, bread, size) outchan winsize = 
+let dataFileWindowed config (tread, bread, size) outchan winsize bigarrformat = 
   let sampnum = ref 0 in
   let block_bread str i = 
     (* Array.init might not be the most efficient: *)
-    let arr = Array.init winsize (fun i -> bread str (i*size)) in      
-    let result = toSigseg arr !sampnum 3339 in
-      sampnum := !sampnum + winsize;
-      result
+(*    let arr = Array.init winsize (fun i -> bread str (i*size)) in      *)
+    let arr = Array1.create bigarrformat c_layout winsize in
+      for i = 0 to winsize - 1 do 
+	Array1.set arr i (bread str (i*size));
+      done;
+      let result = toSigseg arr !sampnum 3339 in
+	sampnum := !sampnum + winsize;
+	result
   in
     dataFile config (38383, block_bread, size * winsize) outchan
 *)

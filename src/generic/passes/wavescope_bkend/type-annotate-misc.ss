@@ -79,9 +79,51 @@
 
 	;; This needs to explicitly pass the types as argument to run with wsint.
 	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rep] ,[rate]))
-	 (match t
-	   [#(,t* ...)  `(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',t*))]
-	   [,t   	`(assert-type (Stream ,t) (__dataFile ,f ,m ,rep ,rate ',(list t)))])]
+	 (let ([types (match t [#(,t* ...)  t*]  [,t   	(list t)])])
+	   `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ,types)
+	   )]
+		
+	;; Move this to another file:
+	[(assert-type (Stream ,t) (readFile ,[fn] ',str))
+	 (ASSERT string? str)
+	 ;; Defaults:
+	 (let* ([mode "text"]
+		[repeats 0]
+		[rate 1000] ;; A khz... this is arbitrary.
+		[winsize 1] ;; Another meaningless default.
+		[skipbytes 0]
+		[offset 0]
+		[p (open-input-string str)]
+		[params (let loop ([x (read p)])
+			  (if (eof-object? x) '()
+			      (cons x (loop (read p)))))]		
+		[pairs (match params
+			 [() '()]
+			 [(,a ,b . ,[tl]) (cons (list a b) tl)]
+			 [,oth (error 'readFile "invalid parameter string to readFile primitive: ~s" str)])]
+		[num (lambda (n) 
+		       (if (integer? n) n			   
+			   (error 'readFile "expected numeric parameter, got: ~s" n)))]
+		[types (match t
+			 [#(,t* ...)  t*]
+			 [,t   	(list t)])])
+	   (for-each (match-lambda ((,flag ,val))
+		       (case flag
+			 [(mode:) (set! mode (case val 
+					       [(text) "text"]
+					       [(binary) "binary"]
+					       [else (error 'readFile "unsupported mode: ~s" val)]))]
+			 [(repeats:)   (set! repeats (num val))]
+			 [(rate:)      (set! rate (num val))]
+			 [(skipbytes:) (set! skipbytes (num val))]
+			 [(offset:)    (set! offset  (num val))]
+			 [(window:)    (set! winsize (num val))]
+			 [else (error 'readFile "unknown option flag \"~s\"\n Valid flags are: ~s\n" 
+				      flag 
+				      '(mode: repeats: rate: skipbytes: offset: window:))])
+		       ) pairs)
+	   `(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
+	   )]
 
 	;; Anything already in assert form is covered.
 	;; [2007.01.24] Commenting:

@@ -14,10 +14,13 @@ merged = (dataFile("ticks_splits.input", "text", 44000, 0)     :: Stream (String
 //merged = (dataFile("ticks_splits.input", "text", 44000, 250) :: Stream (String * Float * Int * Float))
 //merged = (dataFile("ticks_splits.input", "text", 44000, -1)  :: Stream (String * Float * Int * Float))
 
-s = iterate ((sym,t,vol,price) in merged) {
+s = iterate ((sym1,t,vol,price) in merged) {
   state {
      ht = hashtable(300);
   }
+
+  //sym = internString(sym1);
+  sym = sym1;
 
   if not(hashcontains(ht, sym))
   then hashset_BANG(ht, sym, 1.0);

@@ -226,9 +226,71 @@
 		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
 		   "\n")
 		  `("schedule := ",v"() :: !schedule;;\n")))]
+
+;; UNFINISHED: CAN'T PUT TUPLES IN BIGARRAYS! CAN SUPPORT AS MULTIPLE BIGARRAYS!
+       ;; Copy/paste from above:
+#;
+       [(__dataFileWindowed ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ,[E -> winsize] ',types)
+	(let ([size (number->string (types->width types))])
+	  (values (list 
+		   " "v" = fun () -> \n"
+		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
+		   "  and textreader = 33333 in \n"
+		   "    dataFileWindowed ("file", "mode", "(number->string (rate->timestep rate))", "repeats", "winsize") \n"
+		   "      (textreader, binreader, "size") \n"
+		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+		   "\n")
+		  `("schedule := ",v"() :: !schedule;;\n")))]
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
+
+;; UNFINESHED: THIS WOULD NECESSITATE CHANGING ARRAY:SET/REF
+       [(__dataFileWindowed ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ,[E -> winsize] ',types)
+
+`("
+let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesize,winsize,types) outchan =
+
+ ",v" = fun () -> 
+
+    READER1 = 
+    ...
+    READERN = 
+
+    match mode with 
+      | \"text\" -> wserror \"doesn't support text mode yet\";
+      | \"binary\" ->
+	  (* Produce a scheduler function *)
+	  let chunk = max 1024 bytesize in
+	  let buf = String.make chunk '_' 
+	  and hndl = open_in_bin file 
+	  and timestamp = ref 0
+	  and st = ref 0 
+	  and en = ref 0 in 
+
+	  let rec f() =
+	    (* Read by block, don't read more than we have space for *)
+	    let read = input hndl buf !en (chunk - !en) in
+	      (* TODO: Check for end of file!!! *)
+	      if read == 0 then (print_endline \"dataFile out of data\"; exit 0);
+	      en := !en + read;
+	      while !en - !st > bytesize do
+		outchan (binreader buf !st);
+		st := !st + bytesize;
+	      done;
+	      (* If we're too near the end of the buffer, bring us back to the start: *)
+	      if !en + bytesize >= chunk 
+	      then begin 
+		String.blit buf !st buf 0 (!en - !st);
+		en := !en - !st;
+		st := 0;
+	      end;
+	      timestamp := !timestamp + period;
+	      SE (!timestamp, f)
+	  in SE (0, f)
+      | _ -> wserror (\"unknown mode: \"^mode)
+")]
+
        )]))
 
 (define (build-BASE type)  
