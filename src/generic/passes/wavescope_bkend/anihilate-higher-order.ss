@@ -118,15 +118,20 @@
 	[(Array:andmap (lambda (,v) (,ty) ,[e1]) ,[e2])
 	 (let ([tmp (unique-name 'tmp)]
 	       [x (unique-name 'flag)]
-	       [i (unique-name 'i)])
+	       [i (unique-name 'i)]
+	       [len (unique-name 'len)])
 	   `(let ([,tmp (Array ,ty) ,e2]
-		  [,x (Ref Bool) (Mutable:ref '#t)])
-	      (begin 
-		(for (,i '0 (-_ (Array:length ,tmp) '1))
-		    (if (let ([,v ,ty (Array:ref ,tmp ,i)]) ,e1)
-			(tuple)
-			(begin (set! ,x '#f) (break))))
-		(deref ,x))))]
+		  [,x (Ref Bool) (Mutable:ref '#t)]
+		  [,i (Ref Int) (Mutable:ref '0)])
+	      (let ([,len (Array:length ,tmp)])
+		(begin 
+		  (while (if (deref ,x) (< (deref ,i) ,len) '#f)
+			 (begin (if (let ([,v ,ty (Array:ref ,tmp (deref ,i))]) ,e1)
+				    (tuple)
+				    (set! ,x '#f))
+				(set! ,i (+_ (deref ,i) '1))))
+		  (deref ,x)))
+	      ))]
 
 	[(Array:build ,[n] (lambda (,v) (Int) ,[e1]))
 	 (let ([notype (unique-name 'notype)]

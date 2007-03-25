@@ -340,15 +340,35 @@ fun stream_filter(f,s) {
   }
 }
 
+// This doesn't create a shared structure:
+fun deep_smap(f,S) {
+  iterate (w in S) {
+    output = Array:build(w`width, fun (i) f(w[[i]]));
+    emit toSigseg(output, w`start, w`timebase);
+  }
+}
 
 //========================================
 // Main query:
 
+/*
 chans = (dataFile("6sec_marmot_sample.raw", "binary", 44000, 0) :: Stream (Int16 * Int16 * Int16 * Int16));
 _ch1 = window(iterate((a,_,_,_) in chans){ emit int16ToFloat(a) }, 4096);
 _ch2 = window(iterate((_,b,_,_) in chans){ emit int16ToFloat(b) }, 4096);
 ch3 = window(iterate((_,_,c,_) in chans){ emit int16ToFloat(c) }, 4096);
 ch4 = window(iterate((_,_,_,d) in chans){ emit int16ToFloat(d) }, 4096);
+*/
+
+
+// [2007.03.24] Using the new "readFile" we can read sigsegs directly:
+fun toFl(S) { deep_smap(int16ToFloat, S) }
+fn = "6sec_marmot_sample.raw";
+config = "mode: binary  rate: 24000  window: 4096  skipbytes: 6 ";
+_ch1 = toFl((readFile(fn, config)                :: Stream (Sigseg Int16)));
+_ch2 = toFl((readFile(fn, config ++ "offset: 2") :: Stream (Sigseg Int16)));
+ch3  = toFl((readFile(fn, config ++ "offset: 4") :: Stream (Sigseg Int16)));
+ch4  = toFl((readFile(fn, config ++ "offset: 6") :: Stream (Sigseg Int16)));
+
 
 ch1 = _ch1; ch2 = _ch2;
 //ch1 = gnuplot_sigseg_stream(_ch1);  ch2 = gnuplot_sigseg_stream(_ch2);
@@ -387,11 +407,11 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 // If you try to do the real syncN, it will process the whole without outputing anything.
 BASE <- 
 //synced
-positives
+//positives
 //detections
 //unionList([ch1,ch2])
 
-//iterate(w in rw1){emit w[[0]]}
+iterate(w in rw1){emit w[[0]]}
 
 // iterate(w in hn){emit w[[16]]}
 

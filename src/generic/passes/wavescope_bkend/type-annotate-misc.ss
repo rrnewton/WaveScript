@@ -25,7 +25,7 @@
     ;(define annotated-prims '(print show cons hashtable seg-get))
     (define annotate-outside-prims 
       '(hashtable prim_window List:append List:reverse cons
-		  Array:make 
+		  Array:make Array:makeUNSAFE
 		  ))
 
     (define annotate-first-arg 
@@ -78,9 +78,9 @@
 			,exp))]
 
 	;; This needs to explicitly pass the types as argument to run with wsint.
-	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rep] ,[rate]))
+	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rate] ,[rep]))
 	 (let ([types (match t [#(,t* ...)  t*]  [,t   	(list t)])])
-	   `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ,types)
+	   `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ',types)
 	   )]
 		
 	;; Move this to another file:
@@ -106,6 +106,7 @@
 			   (error 'readFile "expected numeric parameter, got: ~s" n)))]
 		[types (match t
 			 [#(,t* ...)  t*]
+			 [(Sigseg ,[t]) t]
 			 [,t   	(list t)])])
 	   (for-each (match-lambda ((,flag ,val))
 		       (case flag
@@ -122,6 +123,10 @@
 				      flag 
 				      '(mode: repeats: rate: skipbytes: offset: window:))])
 		       ) pairs)
+	   ;; If we're not producing a sigseg, we must set the winsize to zero:
+	   (match t
+	     [(Sigseg ,t) (void)]
+	     [,else (set! winsize 0)])
 	   `(__readFile ,fn ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
 	   )]
 

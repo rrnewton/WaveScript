@@ -371,7 +371,7 @@
     (read-binary-file-stream file 
 		      2 ;; Read just 2 bytes at a time.
 		      to-uint16
-		      len overlap rate 0))
+		      len overlap rate 0 0))
 
   ;; We read in "blocks" to reduce the overhead of all those thunks!
   ;; (Actually, this didn't speed things up much, just a little.)
@@ -380,7 +380,7 @@
   ;; Should have batched data file...
   (define (__readFile file mode repeat rate skipbytes offset winsize types)
     ;; TODO: implement skipbytes and winsize!!!
-
+    
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -557,7 +557,7 @@
 	     #f]
 	  [else
 	   (let ([win (make-vector len)])
-	     (let readloop ([i 0] [pos offset])
+	     (let readloop ([i 0] [pos 0])
 	       ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
 	       (unless (= i len)
 		 (vector-set! win i (sample-extractor buffer1 pos))
@@ -604,6 +604,14 @@
 			   "don't know how to handle eof right now.")
 		    (set! t #f))))
 	    ]))
+
+       ;; Scan ahead in the file to the offset:
+       (let scan ([offset offset])
+	 ;; Would be nice if we had a seek command instead of having
+	 ;; to read this out by blocks:
+	 (unless (zero? offset)
+	   ;; Don't read more than we have room for.
+	   (scan (- offset (block-read infile buffer1 (min offset chunksize))))))
 
        ;; Register data source globally:
        (set! data-sources (cons src data-sources))
@@ -707,20 +715,27 @@
 
   ;; Read two bytes from a string and build a uint16.
   (define (to-uint16 str ind)  ;; Internal helper function.
-    (fx+ (fx* (char->integer (string-ref str (fx+ 1 ind))) 256)
-	 (char->integer (string-ref str (fx+ 0 ind)))
+    (fx+ (fxsll (char->integer (string-ref str (fx+ 1 ind))) 8)
+	        (char->integer (string-ref str (fx+ 0 ind)))
 	 ))
-
   ;; The signed version
   (define (to-int16 str ind) 
     (let ([unsigned (to-uint16 str ind)])
-      (if (fxzero? (fxlogand unsigned 32768))
-	  unsigned
-	  (begin 
-					;(inspect unsigned)
-	    (fx- unsigned 65536)))))
+      (if (fxlogbit? 15 unsigned)	  
+	  (fxlogbit1 15 unsigned)
+	  unsigned)))
   
-  (define to-int32 'to-int32_unimplemented!)  
+  ;; Might not be a fixnum:
+  (define (to-uint32 str ind)  ;; Internal helper function.
+    (s:+ (s:* (char->integer (string-ref str (fx+ 3 ind))) (* 256 256 256))
+       (fxsll (char->integer (string-ref str (fx+ 2 ind))) 16)
+       (fxsll (char->integer (string-ref str (fx+ 1 ind))) 8)
+              (char->integer (string-ref str (fx+ 0 ind)))))
+  (define (to-int32 str ind) 
+    (let ([unsigned (to-uint32 str ind)])
+      (if (logbit? 31 unsigned)	 
+	  (logbit1 31 unsigned)
+	  unsigned)))
 
   (define (type->width t)
     (match t
@@ -786,7 +801,11 @@
   (define g+ s:+) (define g- s:-) (define g* s:*) (define g/ s:/)
 
   (define ws+ fx+)   (define ws- fx-)   (define ws* fx*)   (define ws/ fx/)
-  (define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
+
+  ;; Ok, ints are 32 bit so fx+ can't be used from now on:
+  (define +_ s:+)    (define -_ s:-)    (define *_ s:*)  (define (/_ x y) (floor (s:/ x y)))
+
+  ;(define +_ fx+)    (define -_ fx-)    (define *_ fx*)    (define /_ fx/)
   (define +I16 fx+)  (define -I16 fx-)  (define *I16 fx*)  (define /I16 fx/)
   (define +. fl+)    (define -. fl-)    (define *. fl*)    (define /. fl/)
   (define +: cfl+)   (define -: cfl-)   (define *: cfl*)   (define /: cfl/)

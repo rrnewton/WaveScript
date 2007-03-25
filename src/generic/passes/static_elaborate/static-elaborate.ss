@@ -113,6 +113,8 @@
 
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
+
+	(string-append string-append)
 	
 	(stringToInt ,(lambda (v) 
 			`(quote

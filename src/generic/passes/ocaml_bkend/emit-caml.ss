@@ -138,11 +138,12 @@
   ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
   (symbol->string var))
 
-(trace-define Const
+(define Const
   (lambda (datum)
     (cond
      [(eq? datum 'BOTTOM) (wrap "wserror \"BOTTOM\"")] ;; Should probably generate an error.
      [(eq? datum 'UNIT) "()"]
+     [(null? datum) "[]"]
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
      [(string? datum) (format "~s" datum)]
@@ -215,30 +216,33 @@
        [(audioFile ,fn ,win ,rate)
 	000000000000]
 
-       [(__dataFile ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ',types)
-	(let ([size (number->string (types->width types))])
-	  (values (list 
-		   " "v" = fun () -> \n"
-		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
-		   "  and textreader = 33333 in \n"
-		   "    dataFile ("file", "mode", "(number->string (rate->timestep rate))", "repeats") \n"
-		   "      (textreader, binreader, "size") \n"
-		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
-		   "\n")
-		  `("schedule := ",v"() :: !schedule;;\n")))]
+;(__readFile file mode repeat rate skipbytes offset winsize types)
 
-;; UNFINISHED: CAN'T PUT TUPLES IN BIGARRAYS! CAN SUPPORT AS MULTIPLE BIGARRAYS!
-       ;; Copy/paste from above:
-#;
-       [(__dataFileWindowed ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ,[E -> winsize] ',types)
-	(let ([size (number->string (types->width types))])
+       [(__readFile ,[E -> file] ,[E -> mode] ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
+	(let ()
 	  (values (list 
 		   " "v" = fun () -> \n"
 		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
 		   "  and textreader = 33333 in \n"
-		   "    dataFileWindowed ("file", "mode", "(number->string (rate->timestep rate))", "repeats", "winsize") \n"
-		   "      (textreader, binreader, "size") \n"
+		   "    "
+		   (if (> winsize 0) "dataFileWindowed" "dataFile")
+		   " ("file", "mode
+		   ", "(number->string repeats)
+		   ", "(number->string (rate->timestep rate))
+		   ") \n"
+		   "      (textreader, binreader"
+		   ", "(number->string (types->width types))
+		   ", "(number->string skipbytes)
+		   ", "(number->string offset)
+		   ") \n"
 		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+		   (if (> winsize 0)
+		       (begin 
+			 ;; This is necessary for now:
+			 (ASSERT (= (length types) 1))
+			 (list " "(number->string winsize)" "
+			       (ArrType (car types))))
+		       "")
 		   "\n")
 		  `("schedule := ",v"() :: !schedule;;\n")))]
        
@@ -300,6 +304,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 (define (type->reader t) 
   (match t
     [Int16  "(fun str ind -> read_int16 str ind)"]
+    ;[Int  "(fun str ind -> read_int32 str ind)"]
     ))
 
 (define (build-binary-reader types)
@@ -330,17 +335,25 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
     [Float "string_of_float"]
     [Bool "string_of_bool"]
     [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
+
+    [(List ,[t]) (list "(fun ls -> \"[\" ^ String.concat \", \" (List.map "t" ls) ^ \"]\")")]
+    [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
+
+    ;; Just print range:
+    [(Sigseg ,t) "(fun ss -> \"[\"^ string_of_int (ss_start ss) ^\", \"^ string_of_int (ss_end ss + 1) ^ \")\")"]
+
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
 	"(fun ("(insert-between ", " flds)") ->\n"
 	(indent 
-	 (list "\"(\"^ "
-	  (insert-between " ^ \", \" ^ \n"
-	    (map (lambda (printer fld)
-		   `("((",printer") ",fld") ")) 
-	      t* flds)) 
-	  " ^\")\"")
+	 (list "\"(\" ^"
+	       (insert-between " \", \" ^"
+			       (map (lambda (printer fld)
+				      `("((",printer") ",fld") ^ \n")) 
+				 t* flds)
+			       )
+	       " \")\"")
 	 "  ")")"))]
     ))
 
@@ -353,6 +366,16 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
     [Complex "complex64"]
     [,oth (error 'emit-caml:ArrType "can't make a Bigarray of this type: ~s" t)]
     ))
+
+(define make-caml-zero-for-type 
+  (lambda (t)
+    (match t
+      [Int   ''0]
+      [Int16 ''0]
+      [Float ''0.0]
+      [Complex ''0.0+0.0i]
+      [#(,[t*] ...) `(tuple ,t* ...)]
+      [,oth (error 'make-caml-zero-for-type "unhandled type: ~s" oth)])))
 
 ; ======================================================================
 ;; Expressions.
@@ -377,6 +400,8 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 	 " and x = ",init" in\n"
 	 "   Bigarray.Array1.fill a x;\n"
 	 "   a)\n")]
+      [(assert-type (Array ,t) (Array:makeUNSAFE ,n))
+       (Expr `(assert-type (Array ,t) (Array:make ,n ,(make-caml-zero-for-type t))) emitter)]
 
       [(tuple ,[rands] ...)
        (list "(" (insert-between ", " rands) ")")]
@@ -396,16 +421,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 
       ;; This is a really lame hack for now... emulating "break":
       [(for (,i ,[st] ,[en]) ,[bod])
-       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")
-#;
-       `("(let broke = ref false \n"
-	 " and i = ref 0\n"
-	 " and en = ",en" in \n"
-	 " while not !broke && !i <= en do \n"	 
-	 "   incr i;\n"	 
-	 "   let ",(Var i)" = !i - 1 in\n"
-	 "   ",bod";\n"
-	 " done)")]      
+       `("(for ",(Var i)" = ",st" to ",en" do\n ",bod"\n done)")]
       ;[(break) "(broke := true)"]
       [(while ,[tst] ,[bod]) `("(while ",tst" do\n ",bod"\ndone)")]
 
@@ -415,7 +431,9 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
       [(assert-type ,t (,prim ,rand* ...)) (guard (regiment-primitive? prim))
        (Prim `(assert-type ,t (,prim . ,rand*)) emitter)]
 
-      [(assert-type ,t ,[x]) x]
+      [(assert-type ,t ,[x]) 
+       ;(printf "MISC ASCRIPTION: ~s on ~s\n" t x)
+       x]
       [,unmatched (error 'emit-caml:Expr "unhandled form ~s" unmatched)]
 
 )))
@@ -426,7 +444,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
-    '(joinsegs subseg width toSigseg timebase
+    '(joinsegs subseg width toSigseg toArray timebase
       cos sin tan acos asin atan max min
       not 
       
@@ -436,7 +454,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
   (define aliastable
     '([+_ "(+)"]  
       [-_ "(-)"] 
-      [*_ "( *)"]
+      [*_ "( * )"]
       [/_ "(/)"]
       [+. "(+.)"]
       [-. "(-.)"] 
@@ -466,6 +484,13 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
       [realpart "(fun x -> x.Complex.re)"]
       [imagpart "(fun x -> x.Complex.im)"]
 
+      [cons "(fun x y -> x::y)"]
+      [car List.hd]
+      [cdr List.tl]
+      [List:length List.length]
+      [List:reverse List.rev]
+      [List:ref List.nth]
+
       [start ss_start]
       [end ss_end]
       [seg-get ss_get]
@@ -476,6 +501,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 
       [Array:set  Bigarray.Array1.set]
       [Array:ref  Bigarray.Array1.get]
+      [Array:length  Bigarray.Array1.dim]
 
 ;      [Array:set  wsset]
 ;      [Array:ref  wsget]
@@ -494,7 +520,8 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
     [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
     [(show (assert-type ,t ,[myExpr -> e]))
      `("((",(build-show t)") ",e")")]
-    [(,prim ,[myExpr -> rands] ...)
+    [(assert-type ,t ,[primapp]) primapp]
+    [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
      (list "("(cond
 	       [(memq prim sametable) (Var prim)]
 	       [(assq prim aliastable) => (lambda (x) (format "~a" (cadr x)))]
@@ -518,852 +545,6 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  ;; PRIMS TODO
-#|
-      [(roundF)                 "round"]
-
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
-    ;; INEFFICIENT:
-    [(^: ,[Simple -> x] ,[Simple -> y]) 
-     (let ([tmp (Var (unique-name 'tmp))])
-       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
-       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
-       ))]
-    
-    ;; TODO: tupref, exponentiation 
-    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
-     (guard (memq infix_prim '(;+ - * /
-			       +. -. *. /. 
-				  +_ *_ -_ /_
-				  +: *: -: /:
-				  +I16 *I16 -I16 /I16
-				  < > <= >= =
-				  ^_ ^. ^: ^I16
-				  )))
-     (let ([cname (case infix_prim
-		    [(=) "=="]
-		    [(;+ * - / 
-		      < > <= >=) infix_prim]
-		    [(+. *. -. /.
-			 +_ *_ -_ /_
-			 +: *: -: /:
-			 ^_ ^. 
-			 ) ;; Chop off the extra character.
-		     (substring (symbol->string infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16 ^I16)
-		     (substring (symbol->string infix_prim) 0 1)]
-		    )])
-       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
-
-	;[(realpart ,[v]) `("(" ,v ".real)")]
-	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
-	[(realpart       ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(complexToFloat ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
-	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
-
-	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
-
-	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
-	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
-
-	[(floatToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	[(int16ToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	
-	[(intToFloat     ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-	[(int16ToFloat   ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-
-	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
-	;[(complexToInt ,e)     (wrap `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
-	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
-	[(,ToComplex ,[Simple -> e])
-	 (guard (memq ToComplex 
-		      '(int16ToComplex intToComplex floatToComplex)))
-    	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
-
-	[(stringToInt ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
-	   `("wsint_t ",tmp";\n"
-	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
-	     ,(wrap tmp)))]
-	[(stringToFloat ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
-	   `("wsfloat_t ",tmp";\n"
-	     "sscanf(",e".c_str(), \"%f\", &",tmp");\n"
-	     ,(wrap tmp)))]
-	[(stringToComplex ,[Simple -> e]) 
-	 (let ([tmp1 (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))])
-	   `("wsfloat_t ",tmp1";\n"
-	     "wsfloat_t ",tmp2";\n"
-	     ;"printf(\"STRING %s\\n\", ",e".c_str());\n"
-	     "sscanf(",e".c_str(), \"%f+%fi\", &",tmp1", &",tmp2");\n"
-	     ,(wrap `(,tmp1"+(",tmp2"*1.0fi)"))))]
-
-	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
-	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
-
-	[(toArray (assert-type (Sigseg ,t) ,sigseg))
-	 (let ([tmp (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))]
-	       [len (Var (unique-name 'len))]
-	       [ss (Simple sigseg)]
-	       [tt (Type t)])
-	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
-	     "int len = ",ss".length();\n"
-	     "for(int i=0; i<len; i++) {\n"
-	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
-	     "  (*",tmp")[i] = ",tmp2";\n"
-	     "}\n"
-	     ,(wrap tmp)
-	     ))]
-
-	[(wserror ,[Simple -> str])
-	 ;; Don't do anything with the return value.
-	 `(,(if name `(,type" ",name";\n") "")
-	   "WSPrim::wserror(",str");\n")]
-
-	;; This is inefficient.  Only want to call getDirect once!
-	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
-	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
-	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
-	[(seg-get ,foo ...)
-	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
-		`(seg-get ,@foo))]
-	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
-	
-	;; Need to use type environment to find out what alpha is.
-	;; We store the length in the first element.
-	[(newarr ,[Simple -> int] ,alpha)
-	 ;(recover-type )
-	 "newarr_UNFINISHED"]
-	
-	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
-	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
-	;; This version just doesn't initialize:
-	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
-	 (wrap `("boost::shared_ptr< vector< ",ty
-		 " > >(new vector< ",ty" >(",n "))"))]
-
-	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
-
-	[(Array:set ,x ...)
-	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
-	[(begin ,stmts ...)
-	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
-
-	;; Later we'll clean it up so contexts are normalized:
-	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
-
-       	;; ----------------------------------------
-	;; Lists:
-	;; These primitives are tricky because of the template magic:
-
-	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
-	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
-	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
-	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
-	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
-	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
-	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
-	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
-	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::length(",ls")"))]
-	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
-	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
-
-;; Don't have types for nulls yet:
-;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-
-	;; Safety net:
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
-					   List:ref List:length makeList ))) 
-	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
-	 ]
-
-	;; ----------------------------------------
-	;; Hash tables:
-
-	;; We should have the proper type assertion on there after flattening the program.
-	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
-	 (let ([hashtype (HashType k v)]
-	       ;[eqfun ]
-	       [k (Type k)]
-	       [v (Type v)])
-	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
-	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
-			       `(hashtable ,_))]
-	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
-	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
-
-	;; Generate equality comparison:
-	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
-	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
-	   (match t
-	     [Int          simple]
-	     [Float        simple]
-	     [String       simple]
-	     ;; This is effectively physical equality:
-	     ;; Requires that they have the same parents.
-	     ;; Won't read the contents of two different Sigsegs...
-	     ;; FIXME: Should consider fixing this.
-	     [(Sigseg ,t)  simple]
-	     
-	     [(List ,t)    simple]
-	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
-	     
-	     ;; We have generated a comparison op for each struct.
-	     ;; UNFINISHED:
-	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
-	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
-	   )	 
-	 ]
-	
-	;; Other prims fall through to here:
-	[(,other ,[Simple -> rand*] ...)
-	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
-	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
-	 ]
-|#
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-; ======================================================================
-;; Statements.
-
-#;
-
-;; Blocks can be either in effect position (body of an iterate) or in
-;; value position (the arms of an if).  Only in value position will
-;; there be a name/type provided to store the resulting value.
-;;
-;; .param name : #f or Text representing the name of the variable in which 
-;;               to store the resulting value
-;; .param type : #f or Text representing the type to go with the name
-;; .param b : the block of code in sexp form
-(define (Block tenv)
-  (lambda (name type b)
-    (define (wrap x) (if name 
-			 (list type " " name " = " x ";\n")
-			 (list x ";\n")))
-    (match b 
-
-      
-      [(for (,i ,[Simple -> st] ,[Simple -> en]) ,bod) (ASSERT not name)
-       (let ([istr (Var i)])	   
-	 (block `("for (int ",istr" = ",st"; ",istr" <= ",en"; ",istr"++)")
-		((Block (tenv-extend tenv (list i) '(Int))) #f #f bod)))]
-      [(break) (ASSERT not name) "break;\n"]
-
-      ;; Must distinguish expression from statement context.
-      [(if ,[Simple -> test] ,conseq ,altern)
-       `(,(if name `(,type" ",name";\n") "")
-	 "if (" ,test ") {\n"
-	 ,(indent ((Block tenv) name "" conseq) "  ")
-	 "} else {\n"
-	 ,(indent ((Block tenv) name "" altern) "  ")
-	 "}\n")]
-      
-      ;; HACK: cast to output type. FIXME FIXME
-      [(emit ,vqueue ,[Simple -> val])
-       (ASSERT not name)
-       (match (recover-type vqueue tenv)
-	 [(VQueue ,ty)  `("emit((",(Type ty)")" ,val ");\n")])]
-
-      ;; This just does nothing in the c++ backend:
-      [(gnuplot_array ,a) ""]
-
-      [(,containerset! ,[Simple -> container] ,[Simple -> ind] ,[Simple -> val])
-       (guard (memq containerset! '(Array:set hashset_BANG)))
-       (ASSERT not name)
-       `("(*",container ")[" ,ind "] = " ,val ";\n")]
-
-      ;; Can't normalize-context this because of it's forall a.a return type:
-      [(wserror ,str)
-       (list (Prim `(wserror ,str) #f #f) ";\n")]
-
-      [,oth (error 'emitC:Block "unhandled: ~s" oth)]
-      )))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#;
-
-    ;; This processes an expression along the stream-processing "spine".
-    ;; .param name   A string naming the variable that stores the current result.
-    ;; .param type   Type of current result.
-    ;; .param x      The query construct to process.
-    ;; .returns 3 values: A new expression, a set of declarations, wsq declarations
-(trace-define (Query name type x tenv)
-    ;; Coercion:
-    (if (symbol? name) (set! name (symbol->string name)))
-  (trace-match Q x
-    
-;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#|
-	;; A constant, make global:
-	[,e (guard (not (distributed-type? typ)))
-	    (values ""
-		    ((Value tenv) name (Type typ) e)
-;		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
-;		       " ",name " = " ,((Value tenv) e) ";\n"))
-                    '())]
-	;; An alias:
-	[,e (guard (symbol? e))
-	    ;; UH, not an expression:
-	    (values `(,(Type typ)" " ,name " = " ,(symbol->string e) ";\n")
-                    ()
-                    ())]
-	
-	[(audio ,[Simple -> channel] ,[Simple -> size] ,[Simple -> skip] ,[Simple -> rate])
-	 ;; HMM, size seems to be FIXED:  FIXME	  
-	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
-	 (values 
-	  ;; Rate was hardcoded at 24000*100
-	  `("WSBox* ",name" =  new Rewindow<float>(",size", ",size");\n" 
-	    "{ RawFileSource* tmp = new RawFileSource(\"/tmp/100.raw\", " ,channel ", 4, ",rate" * 50);\n"
-	    "  ",name"->connect(tmp); }\n"
-	    )
-	  '()
-          `())]
-
-	;; TEMP: HACK!  Currently it just treats it as a marmot file.  THIS IS NOT RIGHT.
-	[(audioFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap] ,[Simple -> rate])
-	 ;; HMM, size seems to be FIXED:  FIXME	  
-	 ;; (const char *path, int offset, int skip, double sample_rate, uint64_t cpuspeed)
-	 (define new-class-name (Var (unique-name 'AudioFileSource)))
-	 (values 
-	  `("WSBox* ",name";\n"
-	    "{ int size = ",size";\n"
-	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	    "  RawFileSource* tmp = new RawFileSource(",file".c_str(), 0, 4, ",rate" * 50);\n"
-	    "  ",name"->connect(tmp); }\n"
-	    )
-	  ;; TOFINISH: make new class:
-	  '()
-          `(("source \"",name"\" \"",new-class-name"\" \"query.so\" \n")))]
-
-	;; Produces an instance of a generic dataFile reader.
-	[(assert-type (Stream (Struct ,structname))
-		      (__dataFile ,[Simple -> file] ,[Simple -> mode]
-				  ,[Simple -> rate]
-				  ,[Simple -> repeats] 
-				  ;,[myExpr -> types]
-				  ,_ignored
-				  ))
-	 (let* (
-		[classname (symbol->string (unique-name 'WSDataFileSource))]
-		[types (map cadr (cdr (ASSERT (assq structname struct-defs))))]
-		[numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
-		[maintext 
-		 (list
-		  (block (list "class " classname " : public WSSource")
-		 (list "public:\n"
-	       (block (list classname "(wsstring_t path, wsstring_t mode, wsint_t repeats)")
-		 `("_f = fopen(path.c_str(), binarymode ? \"rb\" : \"r\");\n"
-		   "binarymode = (mode == string(\"binary\"));\n"
-		   "if (_f == NULL) {\n"
-		   "  chatter(LOG_CRIT, \"Unable to open data file %s: %m\", path.c_str());\n"
-		   "  abort();\n"
-		   "}\n"
-		   "Launch();\n")
-		 )
-	       "\n  DEFINE_SOURCE_TYPE(struct "(symbol->string structname)");\n"
-	       "\nprivate:\n"
-	       "  FILE* _f;\n"
-	       "  bool binarymode;\n"
- 	       (block "void *run_thread()"
-	       (list		
-		(block "while (!Shutdown())"
-		  `("struct ",(symbol->string structname)" tup;\n"
-		    "// Cap of a 100 on length of read strings:\n"
-		    ,(map (lambda (i) (format "char str~a[100];\n" i))
-		          (iota 1 numstrings))
-		    "int status;\n"
-		    ,(block "if (!binarymode)"
-			   `("status = fscanf(_f, \""
-			     ,(insert-between " "
-				 (map (lambda (ty)
-					(match ty
-					  [Float  "%f"] ;; Single precision floats
-					  [Int    "%d"]
-					  [Int16  "%hd"]
-					  [String "%s"]
-					  ))
-				   types))
-			     "\", "
-			     ,(insert-between ", "
-				(let loop ([n 1]
-					   [flds (map symbol->string
-						   (list-head standard-struct-field-names (length types)))]
-					   [types types])
-				  (if (null? types) '()
-				      (match (car types)
-					[,s (guard '(memq s '(Int Int16 Float)))
-					 (cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
-					[String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
-					))))
-			     ");\n"))
-		    ,(block "else"
-			    ;; The binary format of tuples matches that in the file:
-			    `("status = fread(&tup,sizeof(",(symbol->string structname)"),1,_f);\n"))
-
-		    ;; Now with that nasty scanf finished we still
-		    ;; have to put the strings into the right fields:
-		    ,(map (lambda (n fld ty)
-			    (if (eq? ty 'String)
-				(format "tup.~a = str~a;\n" fld n)
-				'()))
-		       (iota 1 (length types))
-		       (list-head standard-struct-field-names (length types))
-		       types)
-
-		    ,(block `("if (status != (binarymode ? 1 : ",(number->string (length types))"))")
-		      '("chatter(LOG_WARNING, \"dataFile EOF encountered (%d).\", status);\n"
-			"WSSched::stop();\n"
-			"return NULL;\n"))
-		    ;"t.time = (uint64_t)(time*1000000);\n"
-		    "source_emit(tup);\n"
-		    ))
-		"return NULL;")
-	       ))) ";")])
-	   (DEBUGASSERT text? maintext)
-	 ;; This is the code that actually builds a dataFile reader object:
-	 (values 
-	  `("WSSource* ",name" = new ",classname"(",file", ",mode", ",repeats");\n"
-	    ;; Literal array:
-	    ;;"{ ",(insert-between ", " (map symbol->string types)) " });\n"
-	    )
-	  (list maintext)
-          `()))]
-
-	;; [2006.11.18] This is for readng pipeline data currently.
-	[(doubleFile ,[Simple -> file] ,[Simple -> size] ,[Simple -> overlap])
-	 ;; CODE DUPLICATION:
-	 (values 
-	  `("WSBox* ",name";\n"
-	    "{ size = ",size";\n"
-	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
-	    "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
-	    "  ",name"->connect(tmp); }\n"
-	    )
-	  '()
-          `()
-          )]
-
-	
-	;; UNOPTIMIZED: should combine with the downstream iterate.
-	;; Wire these all to our iterate.
-	[(assert-type (Stream (Struct ,tupname)) (unionN ,inputs ...))
-	 (ASSERT (not (null? inputs)))
-	 (ASSERT (andmap symbol? inputs))
-	 ]
-
-	;; UNOPTIMIZED: should combine with the downstream iterate.
-	;; Wire these all to our iterate.
-	[(timer ,[Simple -> period])
-	 (values 
-	  `(" WSSource* ",name" = new WSBuiltins::Timer(",period");\n"  )
-	  '()
-	  '() ;;TODO, FIXME: wsq decls
-	  )]
-
-	[(assert-type ,t ,[q1 q2 q3]) (values q1 q2 q3)]
-
-|#
-	
-	[,other (error 'wsquery->text:Query "unmatched query construct: ~s" other)]
-	))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;================================================================================
-;;; Other helpers:
-
-  ;; Value types.
-  (define (immediate-type? t)
-    (match t
-      [,nt (guard (memq nt num-types)) #t]
-      [Char #t]
-      [(Struct ,name) #t]
-
-      ;; FIXME: Not sure about this:
-      ;[(List ,t) ]
-
-      [,_ #f]
-      ))
-
-
-#;
-    (define PolyConst 
-      (lambda (datum ty)
-	(match (vector datum ty)
-	  (DEBUGASSERT (not (polymorphic-type? ty)))
-	  [#(() (List ,t)) 	   
-					;"NULL_LIST"
-					;`("(cons<",(Type t)">::ptr)NULL_LIST")
-					;`("(cons<",(Type t)">::null_ls)")
-	   `("boost::shared_ptr< cons< ",(Type t)" > >((cons< ",(Type t)" >*) 0)")
-	   ]
-	  [#(nullseg ,t) "WSNULLSEG"]
-					;[#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new ",(Type t)"[0])")]
-	  [#(Array:null (Array ,t)) `("boost::shared_ptr< vector< ",(Type t)" > >(new vector< ",(Type t)" >(0))")]	  
-	  )))
-#;
-    (define Simple
-      (lambda (x)
-	(match x 
-          [(tuple) "((wsunit_t)0)"]
-	  [(assert-type ,t '())  (wrap (PolyConst '() t))]
-	  ['() (error 'Simple "null list without type annotation")]
-	  [(quote ,c) (Const #f #f c)]
-	  [,v (guard (symbol? v)) (Var v)]
-	  [(assert-type ,_ ,[x]) x]
-	  [,else (error 'Simple "not simple expression: ~s" x)])))
-
-
-;================================================================================
-;; Primitive calls:
-
-#;
-(define (Prim expr name type)
-  (define (wrap x) (list type " " name " = " x ";\n"))
-  ;; This is for primitives that correspond exactly to exactly one C call.
-  (define (SimplePrim var)
-    (define (fromlib v) (format "WSPrim::~a" v))
-    (define (mangle v) (mangle-name (symbol->string v)))
-    ;; Handle special cases here.
-    (case var
-      [(not)         
-       "!" ;(mangle 'wsnot)
-       ] ; The name "not" makes g++ unhappy.
-      ;; These are the same as their C++ names:
-      [(cos sin tan acos asin atan max min) 
-       (symbol->string var)]
-      [(absF absI absI16)       "abs"]
-      [(roundF)                 "round"]
-      [(sqrtI sqrtF)            "sqrt"]
-      [(sqrtC)                  "csqrt"]
-      ;; This is the "default"; find it in WSPrim:: class
-      [(m_invert string-append 
-	width start end joinsegs subseg toSigseg
-	;wserror ;generic_hash 
-	fft
-	)
-       (fromlib (mangle var))]
-      [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
-      ))
-
-  (match expr
-    ;; First we handle "open coded" primitives and special cases:
-
-    [(Mutable:ref ,[Simple -> x]) (wrap x)]
-    [(deref ,[Simple -> x]) (wrap x)]
-
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("pow(",x", ",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wscomplex_t)pow((double)",x", (double)",y")"))]
-    ;[(^: ,[Simple -> x] ,[Simple -> y]) (wrap `("(wsfloat_t)pow((double __complex__)",x", (double __complex__)",y")"))]
-    ;; INEFFICIENT:
-    [(^: ,[Simple -> x] ,[Simple -> y]) 
-     (let ([tmp (Var (unique-name 'tmp))])
-       `("complex<float> ",tmp" = pow((complex<float>)",x", (complex<float>)",y");\n"
-       ,(wrap `("real(",tmp") + (imag(",tmp") * 1.0fi)"))
-       ))]
-    
-    ;; TODO: tupref, exponentiation 
-    [(,infix_prim ,[Simple -> left] ,[Simple -> right])
-     (guard (memq infix_prim '(;+ - * /
-			       +. -. *. /. 
-				  +_ *_ -_ /_
-				  +: *: -: /:
-				  +I16 *I16 -I16 /I16
-				  < > <= >= =
-				  ^_ ^. ^: ^I16
-				  )))
-     (let ([cname (case infix_prim
-		    [(=) "=="]
-		    [(;+ * - / 
-		      < > <= >=) infix_prim]
-		    [(+. *. -. /.
-			 +_ *_ -_ /_
-			 +: *: -: /:
-			 ^_ ^. 
-			 ) ;; Chop off the extra character.
-		     (substring (symbol->string infix_prim) 0 1)]
-		    [(+I16 -I16 *I16 /I16 ^I16)
-		     (substring (symbol->string infix_prim) 0 1)]
-		    )])
-       (wrap `("(" ,left ,(format " ~a " cname) ,right ")")))]
-
-	;[(realpart ,[v]) `("(" ,v ".real)")]
-	;[(imagpart ,[v]) `("(" ,v ".imag)")]
-	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
-	[(realpart       ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(complexToFloat ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
-	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
-
-	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
-
-	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
-	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
-
-	[(floatToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	[(int16ToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	
-	[(intToFloat     ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-	[(int16ToFloat   ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-
-	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
-	;[(complexToInt ,e)     (wrap `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
-	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
-	[(,ToComplex ,[Simple -> e])
-	 (guard (memq ToComplex 
-		      '(int16ToComplex intToComplex floatToComplex)))
-    	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
-
-	[(stringToInt ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
-	   `("wsint_t ",tmp";\n"
-	     "sscanf(",e".c_str(), \"%d\", &",tmp");\n"
-	     ,(wrap tmp)))]
-	[(stringToFloat ,[Simple -> e]) 
-	 (let ([tmp (Var (unique-name 'tmp))])
-	   `("wsfloat_t ",tmp";\n"
-	     "sscanf(",e".c_str(), \"%f\", &",tmp");\n"
-	     ,(wrap tmp)))]
-	[(stringToComplex ,[Simple -> e]) 
-	 (let ([tmp1 (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))])
-	   `("wsfloat_t ",tmp1";\n"
-	     "wsfloat_t ",tmp2";\n"
-	     ;"printf(\"STRING %s\\n\", ",e".c_str());\n"
-	     "sscanf(",e".c_str(), \"%f+%fi\", &",tmp1", &",tmp2");\n"
-	     ,(wrap `(,tmp1"+(",tmp2"*1.0fi)"))))]
-
-	[(show (assert-type ,t ,[Simple -> e])) (wrap (EmitShow e t))]
-	[(show ,_) (error 'emit-c:Value "show should have a type-assertion around its argument: ~s" _)]
-
-	[(toArray (assert-type (Sigseg ,t) ,sigseg))
-	 (let ([tmp (Var (unique-name 'tmp))]
-	       [tmp2 (Var (unique-name 'tmp))]
-	       [len (Var (unique-name 'len))]
-	       [ss (Simple sigseg)]
-	       [tt (Type t)])
-	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
-	     "int len = ",ss".length();\n"
-	     "for(int i=0; i<len; i++) {\n"
-	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
-	     "  (*",tmp")[i] = ",tmp2";\n"
-	     "}\n"
-	     ,(wrap tmp)
-	     ))]
-
-	[(wserror ,[Simple -> str])
-	 ;; Don't do anything with the return value.
-	 `(,(if name `(,type" ",name";\n") "")
-	   "WSPrim::wserror(",str");\n")]
-
-	;; This is inefficient.  Only want to call getDirect once!
-	;; Can't trust the C-compiler to know it's effect free and do CSE.
-	[(seg-get (assert-type (Sigseg ,[Type -> ty]) ,[Simple -> seg]) ,[Simple -> ind])
-	 ;`("(" ,seg ".getDirect())[" ,ind  "]")
-	 (wrap `("(*((",ty"*)(*(" ,seg ".index_i(" ,ind  ")))))"))]
-	[(seg-get ,foo ...)
-	 (error 'emit-c:Value "seg-get without or with badtype annotation: ~s" 
-		`(seg-get ,@foo))]
-	[(timebase ,[Simple -> seg]) (wrap `("(" ,seg ".getTimebase())"))]
-	
-	;; Need to use type environment to find out what alpha is.
-	;; We store the length in the first element.
-	[(newarr ,[Simple -> int] ,alpha)
-	 ;(recover-type )
-	 "newarr_UNFINISHED"]
-	
-	;[(Array:ref ,[arr] ,[ind]) `(,arr "[" ,ind "]")]
-	[(Array:ref ,[Simple -> arr] ,[Simple -> ind]) (wrap `("(*",arr ")[" ,ind "]"))]
-	[(Array:make ,[Simple -> n] ,[Simple -> x])   (wrap `("makeArray(",n", ",x")"))]
-	;; This version just doesn't initialize:
-	[(assert-type (Array ,[Type -> ty]) (Array:makeUNSAFE ,[Simple -> n]))
-	 (wrap `("boost::shared_ptr< vector< ",ty
-		 " > >(new vector< ",ty" >(",n "))"))]
-
-	[(Array:length ,[Simple -> arr])                   (wrap `("(wsint_t)(",arr"->size())"))]
-
-	[(Array:set ,x ...)
-	 (error 'emitC:Value "Array:set in Value context: ~s" `(Array:set ,x ...))]
-	[(begin ,stmts ...)
-	 (error 'emitC:Value "begin in Value context: ~s" `(begin ,stmts ...))]
-
-	;; Later we'll clean it up so contexts are normalized:
-	;[(set! ,[Var -> v] ,[(Value tenv) -> rhs]) `(,v " = " ,rhs ";\n")]
-
-       	;; ----------------------------------------
-	;; Lists:
-	;; These primitives are tricky because of the template magic:
-
-	[(assert-type (List ,[Type -> ty]) (cons ,[Simple -> a] ,[Simple -> b]))
-	 (wrap `("cons< ",ty" >::ptr(new cons< ",ty" >(",a", (cons< ",ty" >::ptr)",b"))"))]
-	[(car ,[Simple -> ls]) (wrap `("(",ls")->car"))]
-	[(cdr ,[Simple -> ls]) (wrap `("(",ls")->cdr"))]
-	[(assert-type (List ,t) (List:reverse ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::reverse(",ls")"))]
-	[(assert-type (List ,[Type -> ty]) (List:append ,[Simple -> ls1] ,[Simple -> ls2]))
-	 (wrap `("cons<",ty">::append(",ls1", ",ls2")"))]
-	[(List:ref (assert-type (List ,t) ,[Simple -> ls]) ,[Simple -> ind])
-	 (wrap `("cons<",(Type t)">::ref(",ls", ",ind")"))]
-	[(List:length (assert-type (List ,t) ,[Simple -> ls]))
-	 (wrap `("cons<",(Type t)">::length(",ls")"))]
-	[(List:make ,[Simple -> n] (assert-type ,t ,[Simple -> init]))
-	 (wrap `("cons<",(Type t)">::make(",n", ",init")"))]
-	;; TODO: nulls will be fixed up when remove-complex-opera is working properly.
-
-;; Don't have types for nulls yet:
-;	[(null_list ,[Type -> ty]) `("cons< "ty" >::ptr((cons< "ty" >)0)")]
-
-	;; Safety net:
-	[(,lp . ,_) (guard (memq lp '(cons car cdr append reverse toArray
-					   List:ref List:length makeList ))) 
-	 (error 'emit-C:Value "bad list prim: ~s" `(,lp . ,_))
-	 ]
-
-	;; ----------------------------------------
-	;; Hash tables:
-
-	;; We should have the proper type assertion on there after flattening the program.
-	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
-	 (let ([hashtype (HashType k v)]
-	       ;[eqfun ]
-	       [k (Type k)]
-	       [v (Type v)])
-	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
-	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
-			       `(hashtable ,_))]
-	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
-	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
-
-	;; Generate equality comparison:
-	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
-	 (let ([simple (wrap `("wsequal(",a", ",b")"))])
-	   (match t
-	     [Int          simple]
-	     [Float        simple]
-	     [String       simple]
-	     ;; This is effectively physical equality:
-	     ;; Requires that they have the same parents.
-	     ;; Won't read the contents of two different Sigsegs...
-	     ;; FIXME: Should consider fixing this.
-	     [(Sigseg ,t)  simple]
-	     
-	     [(List ,t)    simple]
-	     ;[(List ,[Type -> t]) `("cons<",t">::lsEqual(NULL_LIST, ",a", ",b")")]
-	     
-	     ;; We have generated a comparison op for each struct.
-	     ;; UNFINISHED:
-	   ;[(Struct ,name) `("eq",name"(",a", ",b")")]
-	   [,_ (error 'emitC "no equality yet for type: ~s" t)])
-	   )	 
-	 ]
-	
-	;; Other prims fall through to here:
-	[(,other ,[Simple -> rand*] ...)
-	 (wrap `(,(SimplePrim other) "(" ,(insert-between ", " rand*) ")"))
-	 ;`(,(SimplePrim prim) "(" ,(insert-between ", " rand*) ")")
-	 ])
-  )
 
 
 

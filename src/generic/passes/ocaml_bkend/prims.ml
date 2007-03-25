@@ -1,9 +1,20 @@
 
 
-
-
     
 open Bigarray;;
+
+
+(*let rec insert_between x ls =
+  match ls with
+    | []   -> []
+    | [h]  -> [h]
+    | h::t -> h:: x:: insert_between x ls*)
+let arrayToList bigarr =
+  let acc = ref [] in
+  for i = 0 to Bigarray.Array1.dim bigarr - 1 do
+    acc := Bigarray.Array1.get bigarr i :: !acc
+  done;
+  List.rev !acc
 
 let autofft = 
   let size = ref 1024 in

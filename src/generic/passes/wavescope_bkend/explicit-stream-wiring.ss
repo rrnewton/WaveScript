@@ -20,7 +20,7 @@
       (define (dealias v)
 	(let ([entry (assq v aliases)])
 	  (if entry (dealias (cadr entry)) v)))
-      (unless (null? aliases) (printf "ALIASES: ~s\n" aliases))
+      ;(unless (null? aliases) (printf "ALIASES: ~s\n" aliases))
       (match x
 	;; Operators:
 	[(let ([,v ,ty (iterate ,f ,[dealias -> sig])]) ,[bod])

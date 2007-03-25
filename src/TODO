@@ -12,6 +12,13 @@ REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER
 
 ================================================================================
 
+[2007.03.24]
+  *) Because all these backends are a mess... it would be nice if the
+     polymorphic printing were implemented in the language (in the
+     compiler, at least).  We could generate abstract syntax for the
+     printer functions in the compiler, then it wouldn't have to be
+     implemented separately for each backend.
+
 [2007.03.19]
   *) Oops, Array and Hashtable need to be treated like Ref too.
 
