@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef
+    namespace using AS typedef static 
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -91,7 +91,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using")
+	 "namespace" "using" "static")
     (string->symbol lexeme)]
    ["as" 'AS]
    ["type" 'typedef]
@@ -320,21 +320,15 @@
 
     (fundef [(fun VAR LeftParen formals RightParen exp) ;LeftBrace stmts RightBrace) 
              `(define ,$2 (lambda ,$4 ,$6))]
-#;
-            [(VAR :: type SEMI fun VAR LeftParen formals RightParen exp)
-             (let ([v1 $1] [v2 $6])
-               (unless (eq? v1 v2) 
-                 (error "Parse Error: top-level type spec must precede function of same name, got ~a ~a, positions ~a ~a\n"
-                        v1 v2 (format-pos $1-start-pos) (format-pos $6-start-pos)))
-               `(define ,$1 ,$3 (lambda ,$8 ,$10)))]
             )
    (formals [() '()]
 	    [(formals+) $1]
 	    )
-   (formals+ [(pattern) (list $1)]
-	     [(pattern :: type) (list `(assert-type ,$3 ,$1))]
+   (formals+ [(pattern_or_ascript) (list $1)]
 	     [(pattern COMMA formals) (cons $1 $3)])
 
+   (pattern_or_ascript [(pattern) $1]
+		       [(pattern :: type) `(assert-type ,$3 ,$1)])
 
    ;; [2006.09.01] For now patterns are just tuples.
    (pattern [(VAR) $1]
@@ -406,12 +400,19 @@
 ;				      )]
 
            [(bind SEMI binds) (cons $1 $3)])
+    ;; Adding 'static' bindings (only allowed on iterator state)
     (bind [(VAR = exp)         (list $1 $3)]
-	  [(VAR :: type = exp) (list $1 `(assert-type ,$3 ,$5))])
+	  [(VAR :: type = exp) (list $1 `(assert-type ,$3 ,$5))]
+	  [(static VAR = exp)         (list $2 `(static ,$4))]
+	  [(static VAR :: type = exp) (list $2 `(static (assert-type ,$4 ,$6)))])
 
     (iter [(iterate) 'iterate]
           [(deep_iterate) 'deep-iterate])
-    
+    ;; [2007.03.25] Making parens optional:
+    (iterbinder 
+     [(pattern_or_ascript in exp)                      (list $1 $3)]
+     [(LeftParen pattern_or_ascript in exp RightParen) (list $2 $4)])
+
     (tuple 
      [(LeftParen RightParen)  `(tuple)]
      [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)]
@@ -499,21 +500,29 @@
 	         
          ;; Anonymous functions:
          [(fun LeftParen formals RightParen exp) (prec else) `(lambda ,$3 ,$5)]
-         
-         [(iter LeftParen pattern in exp RightParen LeftBrace stmts RightBrace) 
-              `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE)))) ,$5)]
-         [(iter LeftParen pattern in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
-          `(,$1 (letrec ,$10 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $12 (list VIRTQUEUE))))) ,$5)]
+
+         ;; Iterators:
+         [(iter iterbinder LeftBrace stmts RightBrace) 
+              `(,$1 (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $4 (list VIRTQUEUE)))) ,(cadr $2))]
+         [(iter iterbinder LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
+          `(,$1 (letrec ,$6 (lambda (,(car $2) ,VIRTQUEUE) ,(make-begin (append $8 (list VIRTQUEUE))))) ,(cadr $2))]
 
 	 ;; Now with type annotation:
+#;
          [(iter LeftParen pattern :: type in exp RightParen LeftBrace stmts RightBrace) 
               `(,$1 (lambda (,$3 ,VIRTQUEUE) ,(make-begin (append $10 (list VIRTQUEUE)))) 
 		    (assert-type (Stream ,$5) ,$7))]
+#;
          [(iter LeftParen pattern :: type in exp RightParen LeftBrace state LeftBrace binds RightBrace stmts RightBrace)
           `(,$1 (letrec ,$12 (lambda (,$3 ,VIRTQUEUE)
 			       ,(make-begin (append $14 (list VIRTQUEUE)))))
 		(assert-type (Stream ,$5) ,$7))]
-         
+#;         
+	 ;; Considering moving to no-parens for iterate (for consistency):
+	 [(iter pattern in exp LeftBrace stmts RightBrace)
+	  `(,$1 (lambda (,$2 ,VIRTQUEUE) ,(make-begin (append $6 (list VIRTQUEUE)))) ,$4)]
+	 
+
 	 ;; Expression conditional:
 ;	 [(if exp then exp else exp) (prec EXPIF) `(if ,$2 ,$4 ,$6)]
 ;	 [(if exp then exp) (prec ONEARMEDIF) `(if ,$2 ,$4)]

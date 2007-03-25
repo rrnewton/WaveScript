@@ -261,12 +261,11 @@
           `(("source \"",name"\" \"",new-class-name"\" \"query.so\" \n")))]
 
 	;; Produces an instance of a generic dataFile reader.
-	[(__dataFile ,[Simple -> file] ,[Simple -> mode]
-				  ,[Simple -> rate]
-				  ,[Simple -> repeats] 
-				  ;,[myExpr -> types]
-				  ,_ignored
-				  )
+	[(__readFile ,[Simple -> file] 
+		     ,[Simple -> mode] 
+		     ,[Simple -> repeats] 
+		     ,[Simple -> rate]
+		     ',skipbytes ',offset ',winsize ',types_ignored)
 	 (let-match ([(Stream ,thetype) typ])
 	   (let* (
 		  [structoutput? (match thetype [(Struct ,name) name] [,else #f])]
