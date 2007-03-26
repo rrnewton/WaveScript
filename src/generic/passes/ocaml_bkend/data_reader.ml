@@ -22,12 +22,14 @@ let dataFile (file, mode, repeats, period)
       | "text" -> wserror "doesn't support text mode yet";
       | "binary" ->
 	  (* Produce a scheduler function *)
-	  let chunk = max 1024 (bytesize + skipbytes) in
+	  (* Feel free to change this constant: *)
+	  let buffer_min_size = 32768 in
+	  let chunk = max buffer_min_size (bytesize + skipbytes) in
 	  let buf = String.make chunk '_' 
 	  and hndl = open_in_bin file 
 	  and timestamp = ref 0
-	  and st = ref 0 
-	  and en = ref 0 in 
+	  and st = ref 0    (* Inclusive *) 
+	  and en = ref 0 in (* Exclusive *)
 	  let rec scan offset =
 	    if offset>0
 	    then (really_input hndl buf 0 (min chunk offset); scan (offset - min chunk offset))
@@ -38,7 +40,7 @@ let dataFile (file, mode, repeats, period)
 	      (* TODO: Check for end of file!!! *)
 	      if read == 0 then (print_endline "dataFile out of data"; exit 0);
 	      en := !en + read;
-	      while !en - !st > bytesize + skipbytes do
+	      while !en - !st >= bytesize + skipbytes do
 		outchan (binreader buf !st);
 		st := !st + bytesize + skipbytes;
 	      done;
