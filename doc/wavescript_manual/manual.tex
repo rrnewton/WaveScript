@@ -394,25 +394,74 @@ constructors as in {\tt List (List T)}.
   tagged-union or {\em sum} types.}
 
 
-\subsection{Reading data with dataFile}
+\subsection{Reading data with readFile}
 
 The one place where type annotations {\em are} currently mandated is
 when importing data from a file.  This is done with the primitive {\tt
-datafile}.
+readFile}.
 %
 \begin{verbatim}
        BASE <- 
-         (dataFile("./countup.txt", "text", 44000, 0) 
+         (readFile("foo.txt", "") 
           :: Stream (Int16 * Float))
 \end{verbatim}
 
 The above complete program reads space-separated values from a text
-file, one-tuple-per-line, and reads them at a virtual ``rate'' of
-44Khz (this is important for the relative timing of different
-streams).  Finally, the last number is the replay argument.  If it's greater
-than zero, {\tt dataFile} will replay the data that many times after
-reading the file.  If the replay value is $-1$, then the data will be
-replayed indefinitely.
+file, one-tuple-per-line.  In this case, each tuple contains two
+values: a 16 bit integer, and a floating point value.
+The {\tt readFile} primitive may also be
+used to read data from a file in blocks (Sigsegs), which is generally
+more efficient.  All that is required is to specify a stream of
+{\tt Sigseg} type, as follows.
+
+\begin{verbatim}
+       BASE <- 
+         (readFile("foo.dat", 
+                   "mode: binary  repeat: 3")
+          :: Stream (Sigseg Int16))
+\end{verbatim}
+
+Also note that the second argument to {\tt readFile} is an option
+string.  This string is parsed at compile time (during meta-program
+evaluation).  The string must contain a (space separated) list of
+alternating option names and option values.  The following are the
+available options, and their default values.
+
+\begin{itemize}
+\item {\bf mode:} one of 'text' or 'binary' (default {\bf 'text'})
+
+\item {\bf repeats:} a number specifying whether to replay the file's
+  contents when the end of file is reached.  Set to a non-negative
+  integer to specify the number of repeats, or to {\bf -1} to repeat
+  indefinitely.  (default {\bf 0})
+
+\item {\bf rate:} the rate (in tuples per second) to play the back the
+  data from the file.  For the emulator, this refers to virtual time,
+  and is used only to maintain relative timing of different data
+  streams.  (default {\bf 1000})
+
+\item {\bf offset:}
+  The offset, in bytes, at which to start reading from the
+  file. (default {\bf 0})
+
+\item {\bf skipbytes:}
+The number of bytes to skip between reading each tuple
+  from the data file. (default {\bf 0})
+
+\item {\bf window:} If the output stream is blocked into Sigsegs
+  (windows), this parameter determines the size of each
+  Sigseg. (default {\bf 1})
+
+\end{itemize}
+
+
+%%  and reads them at a virtual ``rate'' of
+%% 44Khz (this is important for the relative timing of different
+%% streams).  Finally, the last number is the replay argument.  If it's greater
+%% than zero, {\tt dataFile} will replay the data that many times after
+%% reading the file.  If the replay value is $-1$, then the data will be
+%% replayed indefinitely.
+
 
 
 %================================================================================
