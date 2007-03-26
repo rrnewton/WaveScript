@@ -482,8 +482,11 @@
          [(VAR -= exp) `(set! ,$1 (- ,$1 ,$3))]
          [(VAR *= exp) `(set! ,$1 (* ,$1 ,$3))]
 
-	 ;; Operators that are simple ar straightforward.
+	 ;; Operators that are simple are straightforward.
          [(VAR LeftParen expls RightParen) `(app ,$1 ,@$3)]
+	 ;; This is a keyword, but it's also a prim name:
+         [(static LeftParen expls RightParen) `(app static ,@$3)]
+
 	 ;; Other operators must be wrapped in parens:
          [(LeftParen exp RightParen LeftParen expls RightParen) `(app ,$2 ,@$5)]
 

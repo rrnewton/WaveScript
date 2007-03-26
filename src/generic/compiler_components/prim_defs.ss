@@ -363,6 +363,9 @@
     (ref             ('a)         (Ref 'a))
     (deref            ((Ref 'a))   'a)
 
+    (static          ('a)         (Static 'a))
+    (statref         (Static 'a)  ('a))
+
     ;; Stream Sources:
 
     ;; This doesn't carry a time value, it just "fires" every so often.

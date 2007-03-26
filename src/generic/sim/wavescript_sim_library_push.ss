@@ -17,7 +17,7 @@
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app let Mutable:ref deref
+		 app let Mutable:ref deref static statref
 
 		 run-stream-query reset-state!
 
@@ -182,6 +182,8 @@
   ;; These do nothing.  Scheme's bindings are mutable to start.
   (define-syntax Mutable:ref (syntax-rules () [(_ x) x]))
   (define-syntax deref (syntax-rules () [(_ x) x]))
+  (define-syntax static (syntax-rules () [(_ x) x]))
+  (define-syntax statref (syntax-rules () [(_ x) x]))
 
   ;; Converts hertz to microseconds:
   (define (rate->timestep freq)
@@ -722,7 +724,8 @@
   (define (to-int16 str ind) 
     (let ([unsigned (to-uint16 str ind)])
       (if (fxlogbit? 15 unsigned)	  
-	  (fxlogbit1 15 unsigned)
+	  ;(fx- (fxlogbit0 15 unsigned))
+	  (fx- unsigned (expt 2 16))
 	  unsigned)))
   
   ;; Might not be a fixnum:
