@@ -693,6 +693,13 @@
 	 (values newexp #()))]
 
       ;; Incorporate type assertions.
+      ;; ----------------------------------------
+
+      ;; Push ascriptions inside lambdas:
+      ;; This helps make the grammar a little nicer subsequently.
+      ;; UNFINISHED      
+      ;[(assert-type ,ty (lambda () () ,bod)) ......]
+
       ;; This is a special case for constants.
       [(assert-type ,ty (quote ,n))
        (if (constant-typeable-as? n ty)
@@ -704,7 +711,8 @@
 	 (types-equal! (instantiate-type ty '()) et newexp)
 	 (values `(assert-type ,ty ,e)
 		 et))
-       ]
+       ]    
+
 
 #;
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
@@ -923,7 +931,8 @@
     [,v (guard (symbol? v))                                   (void)]
     [(quote ,c)                                               (void)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
-    [(assert-type ,[do-late-unify! -> t] ,[e])                 (void)]
+    ;; The type occurring here isn't instantiated (thus doesn't contain late unifies)
+    [(assert-type ,t ,[e])                                    (void)]
     [(if ,[t] ,[c] ,[a])                                      (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])         (void)]
     [(tuple ,[e*] ...)                                        (void)]

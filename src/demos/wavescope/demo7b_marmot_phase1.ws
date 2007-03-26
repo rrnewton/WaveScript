@@ -407,11 +407,11 @@ positives = stream_filter(fun((b,_,_)) b, detections)
 // If you try to do the real syncN, it will process the whole without outputing anything.
 BASE <- 
 //synced
-//positives
+positives
 //detections
 //unionList([ch1,ch2])
 
-iterate(w in rw1){emit w[[0]]}
+//iterate(w in rw1){emit w[[0]]}
 
 // iterate(w in hn){emit w[[16]]}
 

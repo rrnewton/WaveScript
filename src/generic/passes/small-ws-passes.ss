@@ -88,16 +88,26 @@
 
 ;; This little pass 
 (define-pass standardize-iterate
-    [Expr (lambda (x fallthru)
-	    (match x
-	      [(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,[strm])
-	       `(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
-	      [(iterate (lambda (,x ,y) (,tyx ,tyy) ,bod) ,[strm])
-	       `(iterate (let () (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
-	      [(iterate ,_ ...)
-	       (error 'standardize-iterate "shouldn't have missed this iterate: ~s" `(iterate ,_ ...))]
-	      [,oth (fallthru oth)])
-	    )])
+    (define process-expr
+      (lambda (x fallthru)
+	(match x
+	  [(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,[strm])
+	   `(iterate (let ,binds (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+
+	  ;; [2007.03.25] This is a bit hackish... but at this
+	  ;; late point in the game the program's already been
+	  ;; typechecked several times, so it should be ok to
+	  ;; throw away this ascription:
+	  [(iterate (assert-type ,t ,lam) ,src)
+	   (process-expr `(iterate ,lam ,src) fallthru)]
+
+	  [(iterate (lambda (,x ,y) (,tyx ,tyy) ,bod) ,[strm])
+	   `(iterate (let () (lambda (,x ,y) (,tyx ,tyy) ,bod)) ,strm)]
+	  [(iterate ,_ ...)
+	   (error 'standardize-iterate "shouldn't have missed this iterate: ~s" `(iterate ,_ ...))]
+	  [,oth (fallthru oth)])
+	))
+    [Expr process-expr])
 
 (define-pass kill-polymorphic-types
     (define (Type t)
