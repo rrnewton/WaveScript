@@ -407,6 +407,14 @@ fun apairmult(arr1,arr2) {
   narr
 }
 
+fun apairsum(arr1,arr2) {
+  narr = Array:make(arr1`Array:length, arr1[0]);
+  for i = 0 to arr1`Array:length - 1 {
+    narr[i] := arr1[i] + arr2[i];
+  };
+  narr
+}
+
 fun adot(arr1,arr2) {
   // rrn: This is pretty unnatural:
   Array:fold(fun ((i,acc), x) (i+1, acc + (x * arr2[i])),
