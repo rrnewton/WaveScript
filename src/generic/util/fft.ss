@@ -17,10 +17,14 @@
            "scheme_fft.ss"
 	   "helpers.ss")
   (provide ;make-dft-plan 
-           dft)
-  (chezimports scheme_fft)
+           dft
+	   inverse-dft)
+  (chezimports slib_fft)
+
+  (define inverse-dft slib:fft-1)
   
   ;; Set to the basic scheme version:
+#;
   (define basic-dft 
     (lambda (x)
       (cond [(vector? x) 
@@ -33,7 +37,9 @@
 
   ;; We do late-binding here.  Don't load the extension until we call dft.
   (define (dft vec)
-    (set! dft basic-dft)
+    ;(set! dft basic-dft)
+    (set! dft slib:fft)
+    
     ;; If we're using chez and have FFTW available, use that instead:
     (IFCHEZ 
      (let ([fftw-file (format "~a/src/build/~a/fftw.so" (REGIMENTD) (machine-type))])

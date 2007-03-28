@@ -54,7 +54,8 @@ s2 = iterate (w in s1) {
   //state{ foo = (Array:null :: Array Int);   }
   //print(foo);  print("\n");
 
-  emit fft(w);
+  emit fft(ifft(fft(w)));
+  //emit fft(w);
 };
 
 s3 :: Stream Float;

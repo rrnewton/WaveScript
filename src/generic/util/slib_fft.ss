@@ -1,6 +1,6 @@
 
 ;; This is lifted from SLIB: 
-(module scheme_ifft mzscheme
+(module slib_fft mzscheme
   (require)
   (provide slib:fft slib:fft-1)
   (chezimports)

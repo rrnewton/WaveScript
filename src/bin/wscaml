@@ -31,14 +31,14 @@ else #rm -f $TMP;
 fi
 
 # Inline factor should be, say, 3:
-FLAGS="-unsafe -ffast-math -inline 100 -noassert"
-#FLAGS=""
+#FLAGS="-unsafe -ffast-math -inline 100 -noassert"
+FLAGS=""
 
 INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+echo ocamlopt1 $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi

@@ -446,7 +446,8 @@
 
 
     ;; We need to expose more variants of FFT than this:
-    (fft              ((Sigseg Float))  (Sigseg Complex))
+    (fft              ((Sigseg Float))    (Sigseg Complex))
+    (ifft             ((Sigseg Complex))  (Sigseg Float))
 
     ;(fftarr           ((Array Complex))  (Array Complex))
     ;(fftseg           ((Sigseg Complex)) (Sigseg Complex))

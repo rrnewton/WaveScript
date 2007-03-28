@@ -81,7 +81,7 @@
 		 unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
-		 fft 
+		 fft ifft
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion.
@@ -897,6 +897,31 @@
       (vector-blit! double half 0 0 halflen)
       (make-sigseg 0 (sub1 halflen) half (sigseg-timebase ss))
       ))
+
+  ;; As long as we stick with the power of two constraint, the output
+  ;; of this should be the same size as the original (i.e. we can
+  ;; round-trip without changing length).
+(define (ifft ss)
+    (define (log2 n) (s:/ (log n) (log 2)))
+    (DEBUGASSERT (valid-sigseg? ss))
+    (let* ([vec (sigseg-vec ss)]
+	   [len (vector-length vec)]
+	   [len2 (fx* 2 (fx- len 1))]
+	   [double (make-vector len2 0)])
+      ;; Fill in the spacious one:
+      (vector-blit! vec double 0 0 len)
+
+#;
+      (do ([i 0 (fx+ i 1)]) ((= i len) (void))
+	(vector-set! double i (vector-ref vec i)))
+      ;; Now run the ifft, and convert the numbers to floats:
+      (let* ([result (inverse-dft double)])
+	(do ([i 0 (fx+ i 1)])
+	    ((= i len2) (void))
+	  (let ([x (vector-ref double i)])
+	    (vector-set! double i (if (cflonum? x) (cfl-real-part x) x))))
+	(make-sigseg 0 (sub1 len2) result (sigseg-timebase ss))
+	)))
 
 
   (define (wserror str) (error 'wserror str))
