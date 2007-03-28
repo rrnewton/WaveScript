@@ -10,7 +10,7 @@ scp nms3.csail.mit.edu:~newton/csv7.3-i3le.tar.gz .
 
 echo '#!/bin/bash'         > chez
 echo                      >> chez
-echo "$REGIMENTD/depends/csv7.3/bin/i3le/scheme -b $REGIMENTD/depends/csv7.3/boot/i3le/petite.boot -b $REGIMENTD/depends/csv7.3/boot/i3le/scheme.boot $*" >> chez
+echo '$REGIMENTD/depends/csv7.3/bin/i3le/scheme -b $REGIMENTD/depends/csv7.3/boot/i3le/petite.boot -b $REGIMENTD/depends/csv7.3/boot/i3le/scheme.boot $*' >> chez
 chmod +x chez
 
 tar xzvf csv7.3-i3le.tar.gz
