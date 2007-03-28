@@ -1,10 +1,7 @@
 
-DEBUG = false;
-DEBUGSYNC = DEBUG;
-
 
 include "stdlib.ws";
-include "matrix.ws";
+//include "matrix.ws";
 
 //======================================================================
 
@@ -14,7 +11,7 @@ fun fft_filter(s, low, high, win) {
 
   rw = rewindow(s, 512, 256);
   hn = myhanning(rw);
-  f = fft(hn);
+  f = iterate(h in hn) { emit(fft(h)); };
  
   filt = iterate(freq in f) {
     arr = Array:make(freq.width, 0.0+0.0i);
@@ -26,9 +23,10 @@ fun fft_filter(s, low, high, win) {
     emit(toSigseg(arr, 0, freq.timebase));
   };
 
-  td = zip2segs(ifft(filt), rw);
+  tdwin = iterate(f in filt) { emit(ifft(f)); };
+  td = zip2segs(tdwin, rw);
   
-  combine = iterate((f, orig) in td) {
+  iterate((f, orig) in td) {
     state {
       arr = Array:null;
     }
@@ -46,7 +44,7 @@ fun fft_filter(s, low, high, win) {
     for i = 0 to Array:length(arr) {
       arr[i] := f[[i + Array:length(arr)]];
     }
-  }; 
+  }
 }
 
 
