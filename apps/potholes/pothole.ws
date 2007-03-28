@@ -7,22 +7,16 @@ include "stdlib.ws";
 
 
 
-fun fft_filter(s, low, high, win) {
+fun fft_filter(s, filter) {
 
-  rw = rewindow(s, 512, 256);
+  rw = rewindow(s, Array:length(filter)*2, Array:length(filter));
   hn = myhanning(rw);
-  f = iterate(h in hn) { emit(fft(h)); };
- 
-  filt = iterate(freq in f) {
-    arr = Array:make(freq.width, 0.0+0.0i);
-    for i = 0 to freq.width {
-      if (i < low || i > high) then {
-        arr[i] := freq[[i]];
-      }
-    }
-    emit(toSigseg(arr, 0, freq.timebase));
+  filt = iterate(h in hn) {
+    freq = fft(h);
+    emit(toSigseg(Array:build(Array:length(filter), fun(i) freq[[i]] * filter[i]), 
+                  freq.start, freq.timebase));
   };
-
+ 
   tdwin = iterate(f in filt) { emit(ifft(f)); };
   td = zip2segs(tdwin, rw);
   
@@ -47,7 +41,13 @@ fun fft_filter(s, low, high, win) {
   }
 }
 
-
+fun notch_filter(size, low, high) {
+  arr = Array:make(size, 0.0+0.0i);
+  for i = low to high {
+    arr[i] := gint(1);
+  };
+  arr
+}
 
 // Main query:
 
@@ -62,6 +62,7 @@ z = window(sm(fun((_,a,_)) int16ToFloat(a), chans), 512);
 y = window(sm(fun((_,_,a)) int16ToFloat(a), chans), 512);
 
 z2 = gnuplot_sigseg_stream(z);
-z3 = fft_filter(z2,1,13,512);
+
+z3 = fft_filter(z2,notch_filter(256,1,20));
 
 BASE <- gnuplot_sigseg_stream(z3);
