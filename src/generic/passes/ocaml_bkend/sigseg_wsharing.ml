@@ -8,21 +8,22 @@ open Bigarray
 type sample = int  (* Should be int64 *)
 
 (*   Doesn't have timebase:  *)
-type ('a,'b) sigseg = 
-    SS of (('a, 'b, c_layout) Array1.t list *   (* List of data segments*)
-	     sample *                           (* Start sample number *)
-	     int )                              (* Total width of window *)
+type ('a,'b) sigseg =  {
+  data : ('a, 'b, c_layout) Array1.t list;
+  start : sample;
+  size : int;	     (* Total width of window *)
+}
 (*	     ('a,'b) Bigarray.kind)             (* kind for the bigarray *) *)
 
-let nullseg  t = SS([],0,0)
+let nullseg  t           = { data=[]; start=0; size=0 }
 let timebase ss          = 0
-let width    (SS(_,_,w)) = w
-let ss_start (SS(_,s,_)) = s
-let ss_end   (SS(_,s,w)) = s + w - 1
+let width    ss          = ss.size
+let ss_start ss          = ss.start
+let ss_end   ss          = ss.start + ss.size - 1
 
-let toSigseg arr st tb   = SS([arr], st, Array1.dim arr)
+let toSigseg arr st tb   = { data=[arr]; start=st; size=Array1.dim arr }
 
-let ss_get (SS(ls,_,_)) i = 
+let ss_get ss i = 
   let rec loop ls i =
     match ls with 
       |   [] -> raise (Failure "ss_get out of bounds ref")
@@ -30,7 +31,7 @@ let ss_get (SS(ls,_,_)) i =
 	  if i < Array1.dim h
 	  then   Array1.get h i
 	  else loop t (i - Array1.dim h)
-  in loop ls i
+  in loop ss.data i
 
 
 let concatArray1 ls w kind = 
@@ -50,17 +51,18 @@ let concatArray1 ls w kind =
     loop ls 0
 
 (* Doesn't cache result yet. *)
-let toArray (SS(arr,st,w)) = 
-  match arr with 
+let toArray ss = 
+  match ss.data with 
     | [] -> raise (Failure "can't toArray a null sigseg")
-    | h::t -> concatArray1 (h::t) w (Array1.kind h)
+    | h::t -> concatArray1 (h::t) ss.size (Array1.kind h)
 
-let joinsegs (SS(a,t1,w1)) (SS(b,t2,w2)) = 
-  assert (t2 == t1 + w1);
-  SS(List.append a b, t1, w1+w2)
+let joinsegs a b = 
+  assert (a.start == b.start + a.size);
+  { data= List.append a.data b.data;
+    start = a.start; size= a.size+b.size }
 
-let subseg (SS(ls,st,w)) pos len = 
-  assert (pos - st + len < w);
+let subseg ss pos len = 
+  assert (pos - ss.start + len < ss.size);
   let rec loop ls i =
     match ls with 
       |   [] -> raise (Failure ("subseg out of bounds: pos " ^ string_of_int pos))
@@ -81,7 +83,6 @@ let subseg (SS(ls,st,w)) pos len =
 	  then [Array1.sub h 0 j]
 	  else loop2 t (j - hlen)
   in 
-    SS(loop ls (pos-st), pos, len)
+    { data= loop ss.data (pos - ss.start); 
+      start= pos; size= len }
 
-;;  
-Printf.printf "woot\n";

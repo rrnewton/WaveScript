@@ -27,6 +27,10 @@ let autofft =
 	    !plan arr)
 ;;	      
 
+
+(* let autofft arr = arr *)
+
+
 (* Need to halve the size of the output!! *)
 let fft (sigseg : (float, Bigarray.float64_elt) sigseg) : (Complex.t, Bigarray.complex64_elt) sigseg = 
   let flarr = toArray sigseg in

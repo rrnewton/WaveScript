@@ -43,6 +43,11 @@
 // numbers.  The c++ version is still using single precision.
 // The caml version is also using copy-always... so rewindow is expensive.
 
+// [2007.03.28] Adapted the sigseg_seglist version to bigarray.
+// Improves the performance (blocked reading) to 134 ms.  Presumably
+// because rewindow is more efficent.
+
+
 DEBUG = false
 DEBUGSYNC = DEBUG 
 

@@ -36,8 +36,9 @@ FLAGS="-unsafe -ffast-math -inline 100 -noassert"
 
 INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
+#
 
-echo ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
-if ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi
