@@ -33,18 +33,18 @@ fun fft_filter(s, low, high, win) {
       arr = Array:null;
     }
 
-    if (arr == nullarr) then {
+    if (arr == Array:null) then {
       arr := Array:make(orig.width / 2, 0.0);
     };
 
-    for i = 0 to arr.length {
+    for i = 0 to Array:length(arr) {
       arr[i] := arr[i] + f[[i]];
     };
 
     emit(toSigseg(arr, orig.start, orig.timebase));
 
-    for i = 0 to arr.length {
-      arr[i] := f[[i + arr.length]];
+    for i = 0 to Array:length(arr) {
+      arr[i] := f[[i + Array:length(arr)]];
     }
   }; 
 }
@@ -56,6 +56,8 @@ fun fft_filter(s, low, high, win) {
 
 chans = (readFile("~/potholes/3-27/drive.txt", "window: 512")
           :: Stream (int16 * int16 * int16));
+
+sm = stream_map;
 
 x = window(sm(fun((a,_,_)) int16ToFloat(a), chans), 512);
 z = window(sm(fun((_,a,_)) int16ToFloat(a), chans), 512);
