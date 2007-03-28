@@ -325,6 +325,7 @@
 	  [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 	  [(tuple ,[args] ...) `(tuple ,args ...)]
 	  [(vector ,[args] ...) `(vector ,args ...)]
+	  [(unionN ,[args] ...) `(unionN ,args ...)]
 
           [(if ,[test] ,[conseq] ,[altern])
 	   `(if ,test ,conseq ,altern)]
