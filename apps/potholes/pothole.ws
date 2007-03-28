@@ -26,9 +26,9 @@ fun fft_filter(s, low, high, win) {
     emit(toSigseg(arr, 0, freq.timebase));
   };
 
-  td = zip2(ifft(filt), rw);
+  td = zip2segs(ifft(filt), rw);
   
-  combine = iterate((f,orig) in td) {
+  combine = iterate((f, orig) in td) {
     state {
       arr = Array:null;
     }

@@ -39,9 +39,31 @@ fun snoop(str, strm) {
 }
 
 // This doesn't do any extra buffering at all!  Might want to change that.
-//zip2 :: (Stream a,  Stream b) -> Stream (a * b);
-//zip2 = fun (s1,s2) {  
-//}
+zip2segs :: (Stream a,  Stream b) -> Stream (a * b);
+zip2segs = fun (s1,s2) {
+  _s1 = iterate(seg in s1) { emit (1 * nullseg * seg); };
+  _s2 = iterate(seg in s2) { emit (2 * seg * nullseg); };
+  slist = [_s1,_s2];
+  iterate((ind, seg1, seg2) in unionList(slist)) {
+    state {
+      s1 = [];
+      s2 = [];
+    }
+  
+    if (ind == 1) then {
+      s1 := List:append(s1,[seg1]);
+    };
+    if (ind == 2) then {
+      s2 := List:append(s2,[seg2]);
+    };
+
+    if (s1 != [] && s2 != []) then {
+      emit(List:head(s1) * List:head(s2));
+      s1 := tail(s1);
+      s2 := tail(s2);
+    }
+  }
+}
 
 
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
