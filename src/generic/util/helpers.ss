@@ -1595,7 +1595,7 @@
 (define (gnuplot_pipe . flags)
   (let (;[fn1 "_temp_gnuplot.script"]
 	[fn2 (format "/tmp/_temp_gnuplot.dat.~a.pipe" 
-		     (+ (current-seconds) (random 100000)))])
+		     (+ (real-time) (random 100000)))])
     (if (file-exists? fn2) (delete-file fn2))
     (system (format "mkfifo ~s" fn2))
   (let ([scrip (open-output-string)]
