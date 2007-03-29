@@ -10,7 +10,14 @@ include "stdlib.ws";
 fun fft_filter(s, filter) {
 
   rw = rewindow(s, Array:length(filter)*2, Array:length(filter));
-  hn = myhanning(rw);
+
+  rw2 = iterate (w in rw) {
+    print("item size = " ++ w.width);
+    emit(w);
+  };
+
+  hn = myhanning(rw2);
+
   filt = iterate(h in hn) {
     freq = fft(h);
     emit(toSigseg(Array:build(Array:length(filter), fun(i) freq[[i]] * filter[i]), 
@@ -46,6 +53,7 @@ fun notch_filter(size, low, high) {
   for i = low to high {
     arr[i] := gint(1);
   };
+  print("filter size = " ++ Array:length(arr));
   arr
 }
 
