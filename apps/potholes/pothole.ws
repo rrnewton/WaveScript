@@ -12,7 +12,7 @@ fun fft_filter(s, filter) {
   rw = rewindow(s, Array:length(filter)*2, Array:length(filter));
 
   rw2 = iterate (w in rw) {
-    print("item size = " ++ w.width);
+    print("item size = " ++ w.width ++ "\n");
     emit(w);
   };
 
@@ -22,6 +22,7 @@ fun fft_filter(s, filter) {
     freq = fft(h);
     emit(toSigseg(Array:build(Array:length(filter), fun(i) freq[[i]] * filter[i]), 
                   freq.start, freq.timebase));
+    print("filt size = " ++ Array:length(filter) ++ "\n");
   };
  
   tdwin = iterate(f in filt) { emit(ifft(f)); };
@@ -53,7 +54,7 @@ fun notch_filter(size, low, high) {
   for i = low to high {
     arr[i] := gint(1);
   };
-  print("filter size = " ++ Array:length(arr));
+  print("filter size = " ++ Array:length(arr) ++ "\n");
   arr
 }
 
