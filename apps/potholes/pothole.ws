@@ -8,17 +8,14 @@ include "stdlib.ws";
 
 fun fft_filter(s, filter) {
 
-  rw = rewindow(s, Array:length(filter)*2 - 2, Array:length(filter));
+  rw = rewindow(s, Array:length(filter)*2 - 2, 0-(Array:length(filter)-1));
 
   rw2 = iterate (w in rw) {
     print("item size = " ++ w.width ++ "\n");
     emit(w);
   };
 
-  hn = myhanning(rw2);
-
-
-  filt = iterate(h in hn) {
+  filt = iterate(h in rw2) {
     println("size before fft " ++ h`width);
     freq = fft(h);
     println(" after " ++ freq`width);
@@ -33,22 +30,31 @@ fun fft_filter(s, filter) {
     emit(ifft(f)); 
   };
 
-  td = zip2segs(tdwin, rw);
+  td = zip2segs(gnuplot_sigseg_stream(myhanning(tdwin)), rw);
   
   iterate((f, orig) in td) {
     state { arr = Array:null }
 
     if arr == Array:null 
     then arr := Array:make(orig.width / 2, 0.0);
+
+    print("!! arr 0 == " ++ arr[0] ++ " last arr " ++ arr[Array:length(arr) - 1] ++ "\n");
+    print("!! seg 0 == " ++ f[[0]] ++ "\n");
+
     for i = 0 to Array:length(arr) - 1 {
       arr[i] := arr[i] + f[[i]];
+print("@@@ " ++ i ++ " " ++ arr[i] ++ "\n");
     };
 
+    print("emitting seg start = " ++ orig.start ++ ", arr 0 = " ++ arr[0] ++ ","
+           ++ f[[0]] ++ " last arr " ++ arr[Array:length(arr) - 1] ++ "\n");
     emit(toSigseg(arr, orig.start, orig.timebase));
 
     for i = 0 to Array:length(arr) - 1 {
       arr[i] := f[[i + Array:length(arr)]];
     }
+
+    print("?? arr 0 == " ++ arr[0] ++ " last arr " ++ arr[Array:length(arr) - 1] ++ "\n");
   }
 }
 
@@ -75,14 +81,11 @@ x = window(sm(fun((a,_,_)) int16ToFloat(a), chans), 512);
 z = window(sm(fun((_,a,_)) int16ToFloat(a), chans), 512);
 y = window(sm(fun((_,_,a)) int16ToFloat(a), chans), 512);
 
-//z2 = gnuplot_sigseg_stream(z);
+z2 = gnuplot_sigseg_stream(z);
 
-z3 = fft_filter(z,notch_filter(257,1,20));
+z3 = fft_filter(z2,notch_filter(257,1,5));
 
-//z3 = fft_filter(z,Array:make(257, 0.0+0.0i));
+BASE <- unionList([gnuplot_sigseg_stream(rewindow(z3, 4096, 0)),gnuplot_sigseg_stream(rewindow(z, 4096, 0))]);
 
-//BASE <- gnuplot_sigseg_stream(z3);
-//BASE <- CONST(notch_filter(257,1,20));
-BASE <- z3;
 
 
