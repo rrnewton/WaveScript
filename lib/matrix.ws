@@ -35,7 +35,7 @@ m_get = Matrix:get;
 m_set = Matrix:set;
 
 // make:
-matrix :: (Int, Int, t) -> Matrix t;
+matrix :: (Int, Int, t) -> (Matrix t);
 fun matrix(rows, cols, init) {
   arr = Array:make(rows, Array:null);
   for i = 0 to rows-1 {

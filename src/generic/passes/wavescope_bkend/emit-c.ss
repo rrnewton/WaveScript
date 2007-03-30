@@ -1389,7 +1389,7 @@ int main(int argc, char ** argv)
 		 '(;; These are obsolete:
 		   eq? locdiff nodeid sense even? odd? 
 		   ;; These weren't really primitives:    
-		   tuple tupref ref deref
+		   tuple tupref ref deref static statref
 		   ;; These were desugared or reduced to other primitives:
 		   or and dataFile show-and-string-append Array:toList
 		   ;; These were resolved into the w/namespace versions:
@@ -1401,13 +1401,15 @@ int main(int argc, char ** argv)
 		   List:ref List:append List:reverse List:length List:make 
 		   Array:makeUNSAFE
 		   
-		   equal? print show seg-get toArray
+		   equal? print show seg-get toArray 
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ENSBoxAudio
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
 		   Array:map Array:fold
+		   ifft
+		   internString uninternString
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)

@@ -312,7 +312,9 @@
     [(_ v pass)
      ;;(time (set! p (optional-stop (pass p))))
      (parameterize ([regiment-current-pass 'pass])
-       (set! v (ws-pass-optional-stop (pass v))))
+       (printf "Running Pass: ~s\n" 'pass)(flush-output-port)
+       (id;time 
+	(set! v (ws-pass-optional-stop (pass v)))))
      ]))
 
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.

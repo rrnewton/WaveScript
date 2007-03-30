@@ -382,7 +382,6 @@
   ;; Should have batched data file...
   (define (__readFile file mode repeat rate skipbytes offset winsize types)
     ;; TODO: implement skipbytes and winsize!!!
-    
 
     ;; This implements the text-mode reader.
     ;; This is not a fast implementation.  Uses read.
@@ -428,6 +427,7 @@
                               (fire! elem our-sinks))
 		      batch)))
 	    ]))
+
        ;; Register data source globally:
        (set! data-sources (cons src data-sources))
        (lambda (sink)
@@ -885,6 +885,7 @@
 					;(import scheme) ;; Use normal arithmetic.
     (define (log2 n) (s:/ (log n) (log 2)))
     (DEBUGASSERT (valid-sigseg? ss))
+    (DEBUGASSERT (curry vector-andmap flonum?) (sigseg-vec ss))
     (DEBUGMODE 
      (if (eq? ss nullseg) (error 'fft "cannot take fft of nullseg"))
      (if (or (= 0 (vector-length (sigseg-vec ss)))
@@ -895,6 +896,8 @@
 	   [halflen (add1 (quotient (vector-length double) 2))]
 	   [half (make-vector halflen)])
       (vector-blit! double half 0 0 halflen)
+      ;; Currently the output must be all cflonums.
+      (DEBUGASSERT (curry vector-andmap cflonum?) half)
       (make-sigseg 0 (sub1 halflen) half (sigseg-timebase ss))
       ))
 
@@ -904,6 +907,7 @@
 (define (ifft ss)
     (define (log2 n) (s:/ (log n) (log 2)))
     (DEBUGASSERT (valid-sigseg? ss))
+    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
     (let* ([vec (sigseg-vec ss)]
 	   [len (vector-length vec)]
 	   [len2 (fx* 2 (fx- len 1))]
@@ -920,6 +924,8 @@
 	    ((= i len2) (void))
 	  (let ([x (vector-ref double i)])
 	    (vector-set! double i (if (cflonum? x) (cfl-real-part x) x))))
+	(vector-map! cfl-real-part result)
+	;(ASSERT (curry vector-andmap flonum?) result)
 	(make-sigseg 0 (sub1 len2) result (sigseg-timebase ss))
 	)))
 

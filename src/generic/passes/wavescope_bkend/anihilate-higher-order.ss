@@ -123,7 +123,7 @@
 	   `(let ([,tmp (Array ,ty) ,e2]
 		  [,x (Ref Bool) (Mutable:ref '#t)]
 		  [,i (Ref Int) (Mutable:ref '0)])
-	      (let ([,len (Array:length ,tmp)])
+	      (let ([,len Int (Array:length ,tmp)])
 		(begin 
 		  (while (if (deref ,x) (< (deref ,i) ,len) '#f)
 			 (begin (if (let ([,v ,ty (Array:ref ,tmp (deref ,i))]) ,e1)

@@ -364,7 +364,7 @@
     (deref            ((Ref 'a))   'a)
 
     (static          ('a)         (Static 'a))
-    (statref         (Static 'a)  ('a))
+    (statref         (Static 'a)  'a)
 
     ;; Stream Sources:
 

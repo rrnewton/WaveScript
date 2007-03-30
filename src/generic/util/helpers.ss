@@ -96,7 +96,7 @@
    foldl foldl1
    
    vector-for-each vector-map vector-map! vector-fold
-   vector-blit!
+   vector-blit! vector-andmap
 
    insert-between iota compose compose/values disp pp
    extract-file-extension remove-file-extension 
@@ -481,6 +481,14 @@
       (do ([i (sub1 (vector-length v)) (sub1 i)])
           ((= -1 i) newv)
           (vector-set! newv i (f (vector-ref v i)))))))
+(define vector-andmap
+  (lambda (pred v)
+    (let ([len (vector-length v)])
+      (let loop ([i 0])
+	(cond
+	 [(= i len) #t]
+	 [(pred (vector-ref v i)) (loop (fx+ i 1))]
+	 [else #f])))))
 (define vector-fold
   (lambda (f z v)
     (define len (vector-length v))
@@ -495,6 +503,13 @@
 	  (void)
 	  (begin (vector-set! dest (fx+ ind2 i) (vector-ref src (fx+ ind1 i)))
 		 (loop (fx+ i 1)))))))
+#;
+(define vector-build
+  (lambda (n f)
+    (let ([v (make-vector n)])
+      (do ([i 0 (fx+ i 1)])
+	  )
+      )))
 
 #;
 (define timeeval

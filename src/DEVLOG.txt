@@ -463,6 +463,7 @@ case(x){
   ls.head 
 
 
+================================================================================
 [2007.03.14]
 
 Extensible records should just desugar into plain tuples because of
@@ -521,3 +522,48 @@ f(x,y)
 w\length
 w|length
 w%length
+
+================================================================================
+[2007.03.28] {More Syntax}
+
+If I did implement type classes, what syntax for the types would I use?
+
+x :: a -> String where Num a
+x :: a -> String | Num a
+x :: Num a | a -> String 
+x :: Num a . a -> String
+x :: Num a => a -> String
+
+x :: a -> b  | Num a, Foo b;
+
+{x | a=3 }
+{| a=3 }
+{| }
+
+To implement records on top of type classes, why did it seem to Greg &
+I that you needed multi-parameter type classes?  "Has" doesn't need to
+reify the type as one of its arguments.... it seems like we can just
+generate a "Has_x" class for every label that occurs in the input
+program.  Oh, you need a parameter to represent the output type of the
+field.
+
+
+class Has_x a b where
+  proj_x :: a -> b
+
+How do we translate a record expression? 
+
+{| x=3 }   :: a | Has_x a b, Num b
+{| x='s' } :: a | Has_x a Char
+
+{| x=3, y=4.0 }
+(3,4.0) ::  (Int * Float) | 
+             Has_x (Int * Float) Int, 
+             Has_y (Int * Float) Float
+
+instance Has_x (Int*Float) Int where
+   proj_x (i,_) -> i
+
+e.x ==> proj_x e :: b | Has_x a b 
+Uh, need functional dependencies???
+

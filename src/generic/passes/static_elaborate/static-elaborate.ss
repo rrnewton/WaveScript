@@ -28,6 +28,8 @@
 ;;;  than it needs to be, a bit of control-flow analysis would allow
 ;;;  us to be more permissive.)
 
+;; [2007.03.29] Adding ugly hack to only evaluate Array:build
+;; *outside* of iterates...
 
 ;;;; TODO: MAKE MUTABLE VARS SAFE!
 
@@ -84,6 +86,7 @@
 
 ;=======================================================================
 
+
 (define static-elaborate
   (build-compiler-pass 'static-elaborate
    `(input )
@@ -91,6 +94,32 @@
 ;   `(output (grammar ,remove-unquoted-constant-grammar PassInput))
 ;   '(output)
    (let ()
+
+     (define (outer-getval env)
+       (lambda (x)
+	 (match x
+	   [(quote ,datum) datum]
+	   [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
+	   ;; For these three cases, if the args are available we can make a value-proper.
+	   [(tuple ,args ...)  (make-code x)]
+	   [(vector ,args ...) (make-code x)]
+	   [(cons ,a ,b)       (make-code x)]
+	   [,sv (guard (stream-val? sv)) x]
+	   [,var (guard (symbol? var))
+		 ((outer-getval env) (cadr (assq var env)))]
+	   [(assert-type ,t ,e) ((outer-getval env) e)]
+	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
+     [define stream-val? 
+      (lambda (exp)
+	(match exp
+	  [(,prim ,args ...)
+	   (guard (regiment-primitive? prim))
+	   (match (caddr (get-primitive-entry prim))
+	     [(Stream ,t) #t]
+	     [,else #f])]
+	  [(assert-type ,t ,[e]) e]
+	  [,else #f])
+	)]
 
      ;; A table binding computable prims to an expression that evals
      ;; to a function which will carry out the primitive.
@@ -106,6 +135,7 @@
 	(+: +) (-: -) (*: *) (/: /) (^: expt) 
 
 	;; This doesn't give it the right representation:
+	;; We don't yet know for sure what the type should be.
 	;(gint ,(lambda (x) `(quote ,x)))
 	;(gint (lambda (x) x))
 
@@ -116,19 +146,19 @@
 
 	(string-append string-append)
 	
-	(stringToInt ,(lambda (v) 
+	(stringToInt ,(lambda (env v) 
 			`(quote
 			  ,(let ([x (string->number v)])
 			     (if x 
 				 (ASSERT fixnum? x)
 				 (error 'stringToInt "couldn't convert string: ~s" v))))))
-	(stringToFloat ,(lambda (v)
+	(stringToFloat ,(lambda (env v)
 			 `(quote 
 			   ,(let ([x (string->number v)])
 			      (if x 
 				  (ASSERT flonum? x)
 				  (error 'stringToFloat "couldn't convert string: ~s" v))))))
-	(stringToComplex ,(lambda (v)
+	(stringToComplex ,(lambda (env v)
 			    (ASSERT string? v)
 			    `(quote 
 			      ,(let ([x (string->number v)])
@@ -136,18 +166,38 @@
 				  [(not x) (error 'stringToComplex "couldn't convert string: ~s" v)]
 				  [(real? x) (fl-make-rectangular x 0.0)]
 				  [else (ASSERT cflonum? x)])))))
+	
+	;; This is VERY slow... worse than I thought.  Building a 256
+	;; element filter array statically takes an additional three
+	;; seconds of elaboration time!!!
 
-	(Array:build ,(lambda (n f)
+	(Array:build ,(lambda (env n f)
 		       `(vector . ,(map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
-	(length vector-length)
+#;
+	;; Hacking it thusly:
+	(Array:build 
+	 ,(lambda (env n f)
+	    ;; Jeez, this is inefficient because we've already done this at least once:
+	    (let* ([fv* (core-free-vars (code-expr f))]
+		   [real-code `(let ,(map (lambda (fv) (list fv ((outer-getval env) fv))) fv*)
+				 (import wavescript_sim_library_push)
+				 ,(code-expr f))]
+		   [real-closure (eval real-code)])
+	      (inspect/continue 
+	       (vector-build n (lambda (i) (real-closure i)))))
+	    ))
+
+
+	;(length vector-length)
 	(Array:ref vector-ref)	
+	(Array:length vector-length)	
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
 
 	;; Need to put in a real "show" at some point:
 	;(show ,(lambda (x) `',(format "~a" x)))
 	
-	(sqrtI ,(lambda (n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
+	(sqrtI ,(lambda (env n) (floor (sqrt n)))) (sqrtF sqrt) (sqrtC sqrt)
 
 	(absI16 fxabs) (absI fxabs) (absF flabs) (absC abs)
 
@@ -168,7 +218,7 @@
 	(intToComplex intToComplex-unimplented)
 
 	(floatToInt flonum->fixnum)
-	(floatToComplex ,(lambda (f) `(quote ,(+ f 0.0+0.0i))))
+	(floatToComplex ,(lambda (env f) `(quote ,(+ f 0.0+0.0i))))
 	
 	(complexToInt complexToInt-unimplemented)
 	(complexToFloat complexToFloat-unimplemented)
@@ -176,13 +226,13 @@
 	(equal? equal?) (null? null?) (pair? pair?) ;number? 
 	(even? even?) (odd? odd?) (not not)
 
-	(GETENV ,(lambda (v)
+	(GETENV ,(lambda (env v)
 		   (if (string? v)
 		       (let ([x (getenv v)])
 			 `(quote ,(if x x "")))
 		       (error 'static-elaborate:GETENV "bad input: ~s" v)
 		      )))
-	(FILE_EXISTS ,(lambda (v)
+	(FILE_EXISTS ,(lambda (env v)
 		       (if (string? v)
 			   `(quote ,(file-exists? v))
 			   (error 'static-elaborate:FILE_EXISTS "bad input: ~s" v)
@@ -198,7 +248,7 @@
       (let ([entry (assq prim computable-prims)])
 	(if entry
 	    (if (procedure? (cadr entry))
-		(apply (cadr entry) args)
+		(apply (cadr entry) env args)
 		`(quote ,(eval `(,(cadr entry) ,@(map (lambda (a) `(quote ,a)) args)))))
 	 (begin (error 'do-prim "cannot (currently) statically compute primitive! ~a" prim)
 		`(,prim ,@args)))))
@@ -365,12 +415,24 @@
       (lambda (expr env)
 	;(printf "ENV: ~a\n" env)
 	(let ([PE-result
-	 (letrec ([available? ;; Is this value available at compile time.
+	 (letrec ([fully-available? 
+		   (lambda (x)
+		     (match x
+		       [(lambda ,vs ,tys ,bod)
+			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
+			(let ([fv* (difference (core-free-vars bod) vs)])
+			  (unless (null? fv*) (printf "FV: ~s\n" fv*))
+			  (andmap available? fv*))]
+		       [,else (available? x)]))]
+		  [available? ;; Is this value available at compile time.
 		  (lambda (x)
 		    (if (eq? x not-available) #f
 			(match x
 			   [(quote ,datum)         #t]
+			   
+			   ;; A lambda expression is fully available if all of its free variables are:
 			   [(lambda ,vs ,tys ,bod) #t]
+
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
 			   ;; A tuple is available even if all its components aren't.
 			   ;[(tuple ,[args] ...) (andmap id args)]
@@ -406,37 +468,10 @@
 
 			  [,else #f]
 			  )
-		    ))]
- 
-		 [stream-val? 
-		  (lambda (exp)
-		    (match exp
-		      [(,prim ,args ...)
-		       (guard (regiment-primitive? prim))
-		       (match (caddr (get-primitive-entry prim))
-			 [(Stream ,t) #t]
-			 [,else #f])]
-		      [(assert-type ,t ,[e]) e]
-		      [,else #f])
-		    )]
+		    ))]		 
 
 		 [getval ;; If available, follow aliases until you have a real value expression:
-		  (lambda (x)
-		    (match x
-		      [(quote ,datum) datum]
-		      [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
-		      
-		      ; For these three cases, if the args are available we can make a value-proper.
-		      [(tuple ,args ...)  (make-code x)]
-		      [(vector ,args ...) (make-code x)]
-		      [(cons ,a ,b)       (make-code x)]
-		      
-		      [,sv (guard (stream-val? sv)) x]
-
-		      [,var (guard (symbol? var))
-			    (getval (cadr (assq var env)))]
-		      [(assert-type ,t ,e) (getval e)]
-		      [,else (error 'static-elaborate "getval bad input: ~a" x)]))]
+		  (outer-getval env)]
 
 		 [getlist ;; Get values until you have the whole list.
 		  (lambda (x)
@@ -577,8 +612,11 @@
 	     )]
 
 #;
-	  [(Array:build ,[n] ,[f])
-	   (inspect `(tryingbuildarr!! ,(available? n) ,(available? f) ,env))
+	  [(Array:build ,n ,f)
+	   (guard 
+	    (pretty-print `(tryingbuildarr!! ,n ,f ,(available? n) ,(available? f) ))
+	    #f)
+	   3332444444
 	   ]
 	  
 	  ;; This becomes a quoted constant:
@@ -611,7 +649,7 @@
 	  ;; ================================================================================
 	  [(tupref ,ind ,len ,[tup])
 	   (if (container-available? tup)
-	       (match (code-expr (getval tup))
+	       (match (code-expr (ASSERT code? (getval tup)))
 		 [(tuple ,args ...)
 		  (unless (eq? (length args) len)
 		    (error 'static-elaborate "couldn't perform tupref, expected length ~s, got tuple: ~s"
@@ -705,7 +743,8 @@
 		(not (assq prim regiment-distributed-primitives))
 
 		;; TEMP!
-		(not (assq prim higher-order-primitives))
+		(if (assq prim higher-order-primitives)
+		    (andmap fully-available? rand*) #t)
 
 		;; Special exceptions:
 		;; We don't want to Array:make in the object code!
@@ -727,7 +766,7 @@
 	  [(app ,[rator] ,[rands] ...)
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
-	       (let ([code (code-expr (getval rator))])
+	       (let ([code (code-expr (ASSERT code? (getval rator)))])
 		 (if (not (null? (intersection mutable-vars (core-free-vars rator))))
 		     (error 'static-elaborate 
 			    "can't currently inline rator with free mutable vars!: ~s"

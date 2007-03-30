@@ -123,6 +123,12 @@
 				      flag 
 				      '(mode: repeats: rate: skipbytes: offset: window:))])
 		       ) pairs)
+	   (when (equal? mode "text")
+	     (unless (= offset 0)
+	       (error 'readFile "doesn't support 'offset:' option in conjunction with text mode"))
+	     (unless (= skipbytes 0)
+	       (error 'readFile "doesn't support 'skipbytes:' option in conjunction with text mode")))
+	   
 	   ;; If we're not producing a sigseg, we must set the winsize to zero:
 	   (match t
 	     [(Sigseg ,t) (void)]

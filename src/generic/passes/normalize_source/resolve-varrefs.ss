@@ -15,9 +15,9 @@
   ;; two separate passes for the two places it's used.
   (define resolve-varrefs-grammar 
     ;; Kill the using construct, wait it's only in the sugared grammar:
-    ;; Wait, we still need user type constructors:
-    (cons `[Type (,(lambda (x) (and (symbol? x) (not (memq x '(NUM quote)))))
-		  Type)]
+    ;; Wait, we still need user type constructors, those haven't been desugared:    
+    (snoc `[Type (,(lambda (x) (and (symbol? x) (not (memq x '(NUM quote ->)))))
+		  Type ...)]
 	  initial_regiment_grammar))
 
   (define (explode-id id) 

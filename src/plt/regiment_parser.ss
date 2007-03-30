@@ -416,10 +416,17 @@
     (tuple 
      [(LeftParen RightParen)  `(tuple)]
      [(LeftParen exp COMMA expls+ RightParen) `(tuple ,$2 ,@$4)]
-     
+
      ;; Records:
+     ;; These are not implemented yet, but just wanted to put them in
+     ;; the parser so I know they don't cause future conflicts:
      [(LeftParen recordbinds+ RightParen) `(record ,@$2)]
      [(LeftParen exp BAR recordbinds+ RightParen) `(record-update ,$2 ,@$4)]
+     ;; Alternatively, I kind of like this syntax:
+     [(LeftBrace BAR recordbinds+ RightBrace) `(record ,@$3)]
+     [(LeftBrace exp BAR recordbinds+ RightBrace) `(record-update ,$2 ,@$4)]
+
+     
      )
     (recordbinds+ [(VAR = exp) (list (list $1 $3))]
 		  [(VAR = exp COMMA recordbinds+) (cons (list $1 $3) $5)])

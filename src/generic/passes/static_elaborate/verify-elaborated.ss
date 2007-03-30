@@ -63,9 +63,11 @@
       ;[,else #f]
       ))
 
+  ;; Mutable state:
+  (define inside-iterate #f)
 
-  [Expr/Types 
-     (lambda (expr tenv fallthrough)
+  (define process-expr 
+    (lambda (expr tenv fallthrough)
        (match expr
 	 [(app ,[rator] ,[rand*] ...)		     
 	  (let ([type (recover-type rator tenv)])
@@ -78,8 +80,21 @@
 		    type rator))
 	    `(app ,rator ,rand* ...))]
 
-	 ;[(Array:build ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. Array:build is not allowed after elaboration.")]
+
+	 ;; This is insufficiently precise, because it can allow
+	 ;; naughty things, for example, in the RHS of the state
+	 ;; bindings.
+	 [(iterate ,letorlamb ,[src])
+	  (fluid-let ([inside-iterate #t])
+	    `(iterate ,(process-expr letorlamb tenv fallthrough) ,src))]
+
+	 [(Array:build ,[n] ,[f])
+	  (unless inside-iterate
+	    (error 'verify-elaborated "didn't elaborate far enough. \n~a"
+		   "Array:build is not allowed after elaboration, except inside iterate.\n"))
+	  `(Array:build ,n ,f)]
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
+
 
 	 ;; Run verification on the types:
 	 [,form (guard (binding-form? form))
@@ -88,7 +103,7 @@
 			      (error 'verify-elaborated 
 				     "type is not valid post-elaboration: ~s" t)))
 		  (binding-form->types form))
-		(fallthrough form tenv)]
+		(fallthrough form tenv)]	 
 	 
 	 [(,genop ,args ...)
 	  (guard (memq genop '(g+ g- g* g/ g^ gint)))
@@ -96,7 +111,9 @@
 		 "shouldn't have generic arithmetic after static-elaborate: ~s"
 		 `(,genop . ,args))]
 
-	 [,other (fallthrough other tenv)]))]
+	 [,other (fallthrough other tenv)])))
+
+  [Expr/Types process-expr]
   
   ;; TODO: FIXME VERIFY THAT THERE ARE *NO* POLYMORPHIC TYPES LEFT:
   ;[Bindings ]

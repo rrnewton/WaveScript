@@ -49,7 +49,7 @@
 	  formalexp? cast-formals fit-formals-to-args
 	  simple-expr?
 
-	  regiment-free-vars
+;	  regiment-free-vars
 
 ;	  token-machine-primitives token-machine-primitive? 
 	  token-machine? token-machine->program token-machine-keyword?
@@ -986,6 +986,7 @@
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
        
+#;
 ;; TODO: TEST THIS
 (define (regiment-free-vars expr)
   (list->set 
@@ -1026,7 +1027,7 @@
 
        [(app ,[opera*] ...)
 	(apply append opera*)]
-       [,else (error 'regiment-free-vars "not simple expression: ~s" expr)]))))
+       [,else (error 'regiment-free-vars "unmatched expression: ~s" expr)]))))
 
 
 ;; This returns ALL symbols used by the program.  The result is a list that may contain duplicates.

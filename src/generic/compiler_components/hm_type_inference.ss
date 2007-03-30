@@ -126,7 +126,10 @@
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 			))  
-  
+;(define mutable-constructors '(Ref Array HashTable))
+(define mutable-constructors '(Ref Array ))
+;(define mutable-constructors '(Ref ))
+
 ; ======================================================================
 ;;; Helpers
 
@@ -293,21 +296,24 @@
 	     [,s (guard (symbol? s)) s]
 
 	     ;; A mutable cell, we can't reinstantiate this:
-	     [(Ref ,t) 
+	     [(,Ref ,t) (guard (memq Ref mutable-constructors))
 	      ;; But we have an issue, it *does* need to be instantiated the first time.
 	      (match (or (deep-assq 'quote t) (deep-assq 'NUM t))
 		[#f 
 		; (inspect (list "ref type with no mutable cell: " t))
 		 ;; It shouldn't matter whether we recur here:
-		 `(Ref ,t)]
+		 `(,Ref ,t)]
 		[(,qt (,v . ,_)) (guard (memq qt '(quote NUM)))
 		 ;(inspect (list "mutable cell within ref type" (cons v _) " in " t))
-		 `(Ref ,t)]
+		 `(,Ref ,t)]
 		[(,qt ,v)  (guard (memq qt '(quote NUM)))
 		 (DEBUGASSERT symbol? v)
 		 ;(inspect (list "non-cell within ref type, instantiating once!" v " in " t))
-		 `(Ref ,(loop t))]
+		 `(,Ref ,(loop t))]
 		)]
+
+	     [(,Ref . ,t) (guard (memq Ref mutable-constructors))
+	      (error 'instantiate-type "haven't implemented multi-argument mutable-type constructors")]
 
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
@@ -464,7 +470,7 @@
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     ;; This really should not be:
-    [(Ref ,[t]) (ASSERT not t) #f]
+    [(,Ref ,[t]) (guard (memq Ref mutable-constructors)) (ASSERT not t) #f]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
@@ -499,7 +505,7 @@
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     ;; This should not be either!
-    [(Ref ,t) (ASSERT not t) #f]
+    [(,Ref ,[t]) (guard (memq Ref mutable-constructors)) (ASSERT not t) #f]
     [,else #f]))
 
   
@@ -592,7 +598,6 @@
 
 (define constant-typeable-as? 
   (lambda (c ty)
-
 #;
     (cond 
      [(and (fixnum? c) (eq? ty 'Int))   (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
@@ -605,6 +610,7 @@
 	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
 	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
 	  [Float (flonum? c)]
+	  [Complex (cflonum? c)]
 	  [Bool  (boolean? c)]
 	  [String (string? c)]
 	  [(List ,t) (and (list? c) (andmap (lambda (x) (constant-typeable-as? x t)) c))]
@@ -1660,8 +1666,8 @@
 
 	       [(,p ,t) (guard (symbol? p)) (DEBUGASSERT (type? t))]
 	       [(,p ,args ,ret) (guard (symbol? p))
-		(DEBUGASSERT (type? ret))
-		(DEBUGASSERT (andmap type? args))]
+		(DEBUGASSERT type? ret)
+		(DEBUGASSERT (curry andmap type?) args)]
 	       [,else (error 'hm_type_inferencer "bad entry in primitive table: ~s" else)]))
    (regiment-primitives)))
 

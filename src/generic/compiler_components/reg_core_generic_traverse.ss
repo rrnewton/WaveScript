@@ -359,7 +359,10 @@
   (core-generic-traverse
    (lambda (x fallthru)
      (match x        
-       [,v (guard (symbol? v)) (list v)]
+       [,v (guard (symbol? v)) 
+	   (if (regiment-primitive? v)
+	       '()
+	       (list v))]
        [,form (guard (binding-form? form))
 
 	      (let ([scoped (binding-form->scoped-exprs form)]

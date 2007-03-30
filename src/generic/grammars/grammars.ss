@@ -126,7 +126,7 @@
   `( ,@base_regiment_forms
      ;; These are forms only valid for the meta-language (pre-elaboration)
      [Expr ('lambda (LHS ...) (Type ...) Expr)]
-     [Expr ('app Expr ...)]  ;; Application.  Should make this labeled.     
+     [Expr ('app Expr ...)]  ;; Application.  
     ))
 ;; The rest of the grammars are defined in the individual pass files.
 
