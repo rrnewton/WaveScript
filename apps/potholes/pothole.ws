@@ -19,13 +19,18 @@ fun fft_filter(s, filter) {
   hn = myhanning(rw2);
 
   filt = iterate(h in hn) {
+    print("pre-fft size = " ++ h.width ++ "\n");
     freq = fft(h);
     emit(toSigseg(Array:build(Array:length(filter), fun(i) freq[[i]] * filter[i]), 
                   freq.start, freq.timebase));
     print("filt size = " ++ Array:length(filter) ++ "\n");
   };
  
-  tdwin = iterate(f in filt) { emit(ifft(f)); };
+  tdwin = iterate(f in filt) { 
+    print("pre-ifft size = " ++ f.width ++ "\n");
+    emit(ifft(f)); 
+    print("post-ifft size = " ++ f.width ++ "\n");
+  };
   td = zip2segs(tdwin, rw);
   
   iterate((f, orig) in td) {
