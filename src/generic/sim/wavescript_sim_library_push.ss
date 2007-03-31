@@ -81,7 +81,7 @@
 		 unionN unionList 
 		 ;zip2
 		 ; union2 union3 union4 union5
-		 fft ifft
+		 fftC ifftC fftR2C ifftC2R
 		 
 		 ;; Misc, ad-hoc, and Temporary
 		 m_invert ;; A matrix inversion.
@@ -881,7 +881,7 @@
 
   ;; [2006.08.23] Lifting ffts over sigsegs: 
   ;; Would be nice to use copy-struct for a functional update.
-  (define (fft ss)
+  (define (fftR2C ss)
 					;(import scheme) ;; Use normal arithmetic.
     (define (log2 n) (s:/ (log n) (log 2)))
     (DEBUGASSERT (valid-sigseg? ss))
@@ -904,7 +904,7 @@
   ;; As long as we stick with the power of two constraint, the output
   ;; of this should be the same size as the original (i.e. we can
   ;; round-trip without changing length).
-(define (ifft ss)
+  (define (ifftC2R ss)
     (define (log2 n) (s:/ (log n) (log 2)))
     (DEBUGASSERT (valid-sigseg? ss))
     (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
@@ -929,6 +929,24 @@
 	(make-sigseg 0 (sub1 len2) result (sigseg-timebase ss))
 	)))
 
+  (define (fftC ss)
+    (define (log2 n) (s:/ (log n) (log 2)))  
+    (DEBUGASSERT (valid-sigseg? ss))
+    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
+    (DEBUGMODE 
+     (if (eq? ss nullseg) (error 'fftC "cannot take fft of nullseg"))
+     (if (or (= 0 (vector-length (sigseg-vec ss)))
+	     (not (integer? (log2 (vector-length (sigseg-vec ss))))))
+	 (error 'fft "only window sizes that are powers of two are supported: length ~s" 
+		(vector-length (sigseg-vec ss)))))
+    (make-sigseg 0 (sub1 (width ss)) (dft (sigseg-vec ss)) nulltimebase))
+
+  (define (ifftC ss)
+    (DEBUGASSERT (valid-sigseg? ss))
+    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
+    ;; Start and end samples cannot be restored:
+    (make-sigseg 0 (sub1 (width ss)) (inverse-dft (sigseg-vec ss)) nulltimebase)
+    )
 
   (define (wserror str) (error 'wserror str))
      (IFCHEZ (define inspect inspect/continue)

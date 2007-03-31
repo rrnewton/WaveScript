@@ -297,7 +297,7 @@
     (world          (Area Node))
     (anchor         (Stream Node))
 
-    (pi             Float)
+;    (pi             Float)
 
     (IS_SIM         Bool)
 
@@ -448,6 +448,12 @@
     ;; We need to expose more variants of FFT than this:
     (fft              ((Sigseg Float))    (Sigseg Complex))
     (ifft             ((Sigseg Complex))  (Sigseg Float))
+
+    (fftC              ((Sigseg Complex))  (Sigseg Complex))
+    (ifftC             ((Sigseg Complex))  (Sigseg Complex))
+    (fftR2C            ((Sigseg Float))    (Sigseg Complex))
+    (ifftC2R           ((Sigseg Complex))  (Sigseg Float))
+
 
     ;(fftarr           ((Array Complex))  (Array Complex))
     ;(fftseg           ((Sigseg Complex)) (Sigseg Complex))
