@@ -226,6 +226,7 @@
 	     (set! stream (stream-cdr stream)) (loop (add1 pos))]
 	    [(,n) (guard (integer? n))
 	     (mvlet ([(ls strm) (stream-take n stream)])
+	       (newline)
 	       (for-each (lambda (x)
 			   (printf "     POS#~a = " pos)
 			   (pretty-print x)

@@ -27,6 +27,12 @@ fun expC(c) { floatToComplex(const_E) ^: c }
 //fun intToComplex   (i::Int)   toComplex(i) 
 //fun floatToComplex (f::Float) toComplex(f) 
 
+// Pretend to keep timebase, but this is wrong:
+fun sigseg_fftC   (ss) toSigseg(ss`toArray`fftC,    ss.start, ss.timebase)
+fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
+fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
+fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
+
 //======================================================================
 // "Library" stream constructors:
 
@@ -267,34 +273,46 @@ fun myhanning (strm) {
 //======================================================================
 // Higher order routines which should have built-in support at some point.
 
-
-/*   sigseg_foreach(f,ss)  */
-/*   foreachi ((i,x) in ss) { } */
-
-/* fun sigseg_foreach(f,ss) { */
-/*   for i = 0 to ss.width-1 { */
-/*     f(ss[[i]]); */
-/*   } */
-/* } */
-/* fun sigseg_foreachi(f,ss) { */
-/*   for i = 0 to ss.width-1 { */
-/*     f(i, ss[[i]]); */
-/*   } */
-/* } */
-
-
-// This doesn't create a shared structure:
+stream_map      :: (a -> b, Stream a) -> Stream b;
+stream_filter   :: (t -> Bool, Stream t) -> Stream t;
+stream_iterate  :: ((inp, st) -> (List out * st), st, Stream inp) -> Stream out;
 deep_stream_map :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
-fun deep_stream_map(f,sss) {
-  iterate(ss in sss) {    
-    first = f(ss[[0]]);
-    output = Array:make(ss`width, first);
-    for i = 1 to ss`width - 1 {
-      output[i] := f(ss[[i]]);
-    }
-    emit toSigseg(output, ss`start, ss`timebase);
+sigseg_map      :: ((a -> b), Sigseg a) -> Sigseg b;
+
+
+fun stream_map(f,s) {
+  iterate (x in s) {
+    emit f(x);
   }
 }
+
+fun stream_filter(f,s) {
+  iterate (x in s) {
+    if f(x) then emit x
+  }
+}
+
+fun stream_iterate(f,z,s) {
+  iterate (x in s) {
+    state { sigma = z }
+    let (ls,sig2) = f(x,sigma);
+    sigma := sig2;
+    // list_foreach(fun(t) emit t, ls);
+    for i = 0 to ls`List:length-1 {
+      emit List:ref(ls,i);
+    }
+  }
+}
+
+fun sigseg_map (f, ss) {
+  arr = Array:build(ss.width, fun(i) f(ss[[i]]));
+  toSigseg(arr, ss.start, ss.timebase)
+}
+
+// This doesn't create a shared structure:
+fun deep_stream_map(f,sss)
+  stream_map( fun(ss) sigseg_map(f,ss), sss);
+
 
 // UNFINISHED:
 // Assumes in-order but possibly overlapping
@@ -316,32 +334,6 @@ fun deep_stream_map2(f,sss) {
   strm = rewindow(sss,100,0);
 }
 
-stream_map :: (a -> b, Stream a) -> Stream b;
-fun stream_map(f,s) {
-  iterate (x in s) {
-    emit f(x);
-  }
-}
-
-stream_filter :: (t -> Bool, Stream t) -> Stream t;
-fun stream_filter(f,s) {
-  iterate (x in s) {
-    if f(x) then emit x
-  }
-}
-
-stream_iterate :: ((inp, st) -> (List out * st), st, Stream inp) -> Stream out;
-fun stream_iterate(f,z,s) {
-  iterate (x in s) {
-    state { sigma = z }
-    let (ls,sig2) = f(x,sigma);
-    sigma := sig2;
-    // list_foreach(fun(t) emit t, ls);
-    for i = 0 to ls`List:length-1 {
-      emit List:ref(ls,i);
-    }
-  }
-}
 
 //======================================================================
 // Useful aliases:
@@ -354,7 +346,7 @@ c2i = complexToInt;
 c2f = complexToFloat;
 
 // These are the "advanced" versions.  They're curried.
-smap = fun(f) fun(x) stream_map(f,x);
+smap    = fun(f) fun(x) stream_map(f,x);
 sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
@@ -404,6 +396,8 @@ namespace Array {
     fold(f, zer, build(en - st + 1, fun(x) x+st))
   }
 
+  fun copy(arr) Array:build(arr`length, fun(i) arr[i]);
+  
 }
 
 // RRN: NOTE: These should be added to namespace Array:

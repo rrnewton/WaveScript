@@ -1210,6 +1210,10 @@
 	 ;; Otherwise, the LUB is top:
 	 `(quote ,(make-tvar))
 	 )]
+    ;; Tuple and non-tuple:
+    [[#(,x* ...) ,y]  `(quote ,(make-tvar))]
+    [[,y #(,x* ...)]  `(quote ,(make-tvar))]
+
 
     ;; Two type constructors (Ref falls under this umbrella)
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]

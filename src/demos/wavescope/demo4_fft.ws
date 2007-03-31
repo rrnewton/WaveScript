@@ -20,6 +20,15 @@
 //   wscaml : 31 ms
 // (Total process times.)
 
+fun sigseg_fftC   (ss) toSigseg(ss`toArray`fftC,    ss.start, ss.timebase)
+fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
+fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
+fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
+
+fun sigseg_map (f, ss) {
+  arr = Array:build(ss.width, fun(i) f(ss[[i]]));
+  toSigseg(arr, ss.start, ss.timebase)
+}
 
 fun mywindow(S, len)
   iterate(x in S) {
@@ -49,27 +58,73 @@ s1 = if GETENV("WSARCH") != "ENSBox"
 
 //if GETENV("WSARCH") == "ENSBox" 
 
+/*
+fun copy(arr) Array:build(arr`Array:length, fun(i) arr[i]);
+fun conj(c) c - (gint(2) * (0.0+1.0i * floatToComplex(imagpart(c))));
+fun manual_double(ss) {
+  src = ss `toArray;
+  len1 = ss.width;
+  len2 = 2 * (len1 - 1);
+  arr = Array:build(len2, 
+    fun(i) 
+      if i < len1 
+      then src[i]
+      else conj $ src[len2-i] );
+  toSigseg(arr, ss.start, ss.timebase);
+}
+*/
+
 s2 :: Stream (Sigseg Complex);
 s2 = iterate (w in s1) {
   //state{ foo = (Array:null :: Array Int);   }
   //print(foo);  print("\n");
+  
+  //a = manual_double $ sigseg_fftR2C (w) ;
+  //b = sigseg_fftC   $ sigseg_map(floatToComplex, w);
+  //inspect $ toArray $ a;
+  //inspect $ toArray $ b;
+  //inspect $ toArray(a)==toArray(b);
 
-  emit fft(ifft(fft(w)));
-  //emit fft(w);
+  //  inspect $ toArray $ sigseg_ifftC2R $ sigseg_fftR2C (w) ;
+  //  inspect $ toArray $ sigseg_ifftC   $ sigseg_fftC $ sigseg_map(floatToComplex, w);
+
+  emit sigseg_fftR2C(w);
+  emit sigseg_fftC( sigseg_map(floatToComplex, w));
+  // Now roundtrip with the full complex transform:
+  emit sigseg_fftC( sigseg_ifftC( sigseg_fftC( sigseg_map(floatToComplex, w))));
+  // Now roundtrip with the restricted real transform:
+  emit sigseg_fftR2C( sigseg_ifftC2R( sigseg_fftR2C (w)))
+
+  /*
+  emit sigseg_map(floatToComplex, w);
+  emit sigseg_map(floatToComplex, w);
+  emit sigseg_ifftC( sigseg_fftC( sigseg_map(floatToComplex, w)));
+  fun chopfront(ss) subseg(ss, ss.start, 20);
+  //    emit sigseg_map(floatToComplex, sigseg_ifftC2R( sigseg_fftR2C (w)));
+  print(chopfront( sigseg_ifftC2R( sigseg_fftR2C (w))) ++ "\n");
+  */
+
 };
 
-s3 :: Stream Float;
+//s3 :: Stream Float;
 s3 = iterate (win in s2) {
+  state { pos=0 }
+
   x :: Int = 3;  // Explicit type annotation on local var.
   y = (4 == 4);
 
-  if win[[100]].realpart > 224.0
-  then { emit 0.0; emit win[[100]].imagpart; }
-  else { }
+  ind = 100;
+
+  if win[[ind]].realpart > 224.0
+  then { //emit 0.0; 
+    emit (pos/4, win[[ind]].imagpart)
+  };
+
+  pos += 1;
 };
 
 BASE <- 
-s3
+s3//mywindow(s3, 4)
 //s1
 //iterate(x in s2) { emit x[[30]] };
 //iterate(x in s1) { emit x`width };

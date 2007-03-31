@@ -296,8 +296,8 @@
 (define ws-pass-optional-stop 
   (lambda (x)
     (if (regiment-verbose)
-	(if #t ;IFDEBUG
-	    (begin (parameterize ([pretty-line-length 160]
+	(IFDEBUG
+	 (begin (parameterize ([pretty-line-length 160]
 				  [print-length 300]
 				  [print-level 60])
 		    (newline)
@@ -313,8 +313,9 @@
      ;;(time (set! p (optional-stop (pass p))))
      (parameterize ([regiment-current-pass 'pass])
        (printf "Running Pass: ~s\n" 'pass)(flush-output-port)
-       (id;time 
-	(set! v (ws-pass-optional-stop (pass v)))))
+       (if (regiment-verbose)
+	   (time (set! v (ws-pass-optional-stop (pass v))))
+	   (set! v (ws-pass-optional-stop (pass v)))))
      ]))
 
 ;; [2006.08.27] This version executes the WaveScript version of the compiler.

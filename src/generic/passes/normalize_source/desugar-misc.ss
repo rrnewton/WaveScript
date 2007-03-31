@@ -30,14 +30,11 @@
     (myremove '(Prim 'map)
     (myremove '(Prim 'fold)
 
-    (myremove '(Prim 'fft) 
-    (myremove '(Prim 'ifft) 
-
     (myremove '(Prim 'List:head) 
     (myremove '(Prim 'List:tail) 
 
     (myremove '(Prim 'show-and-string-append)
-	      eta-primitives-grammar)))))))))))))
+	      eta-primitives-grammar)))))))))))
 
   (define-pass desugar-misc
     [OutputGrammar desugar-misc-grammar]
@@ -69,9 +66,6 @@
 			   [(,a . ,[b]) `(if ,a ,b '#f)])
 			tenv
 			fallthrough)]
-
-	  [(fft ,[x]) `(fftR2C ,x)]
-	  [(ifft ,[x]) `(ifftC2R ,x)]
 
 	  [(head ,[x]) `(car ,x)]
 	  [(tail ,[x]) `(cdr ,x)]

@@ -28,7 +28,7 @@
     LeftAngleBrk RightAngleBrk 
     LeftSqrBrk RightSqrBrk
 
-    ::: 
+    ::: $
     += -= *= := -> = == != >= <= < > <-
     + - * / ^ 
     g+ g- g* g/ g^ 
@@ -78,7 +78,7 @@
   
    ;; Since (token-=) returns '=, just return the symbol directly
    [(:or "::" "++" 
-	 "->" "<-" ":::" 
+	 "->" "<-" ":::" "$"
 	 ":=" "+=" "*=" "-="
 	 "<=" "<" ">" ">=" "==" "!="
 	 "=" "+" "-" "*" "/" "^" 
@@ -221,7 +221,7 @@
 	  ;;(nonassoc ONEARMEDIF)
 	  (nonassoc EXPIF if STMTIF)
 
-	  (right ++ :::)
+	  (right ++ ::: $)
           (left < > <= >= == !=)
           (left - + g- g+ -_ +_ +. -.  +: -:)
           (left * / g* g/ *_ /_ *. /.  *: /:)
@@ -298,6 +298,10 @@
            [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
            [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
+
+	   ;; TAGGED UNION:
+	   ;[(typedef union VAR = )]
+	   ;[(typedef union VAR typevar ...= )]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
@@ -468,6 +472,11 @@
 	 ;; to free up period for future record syntax.
 	 [(exp MAGICAPPLYSEP VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]
          [(exp MAGICAPPLYSEP VAR) `(app ,$3 ,$1)]
+
+	 ;; Another application syntax... Haskell's '$' operator.
+	 ;; Don't want to pollute the language too much, but I find
+	 ;; this useful.  I'll avoid using it in the standard library.
+	 [(exp $ exp) `(app ,$1 ,$3)] ;; Note, every binop adds a shift/reduce conflict currently¢
 
 	 ;; Extended dot syntax, adds three more shift-reduce conflicts;
 	 [(exp DOT VAR LeftParen expls RightParen) `(app ,$3 ,$1 . ,$5)]

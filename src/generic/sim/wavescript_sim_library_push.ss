@@ -881,72 +881,60 @@
 
   ;; [2006.08.23] Lifting ffts over sigsegs: 
   ;; Would be nice to use copy-struct for a functional update.
-  (define (fftR2C ss)
-					;(import scheme) ;; Use normal arithmetic.
-    (define (log2 n) (s:/ (log n) (log 2)))
-    (DEBUGASSERT (valid-sigseg? ss))
-    (DEBUGASSERT (curry vector-andmap flonum?) (sigseg-vec ss))
-    (DEBUGMODE 
-     (if (eq? ss nullseg) (error 'fft "cannot take fft of nullseg"))
-     (if (or (= 0 (vector-length (sigseg-vec ss)))
-	     (not (integer? (log2 (vector-length (sigseg-vec ss))))))
-	 (error 'fft "only window sizes that are powers of two are supported: length ~s" 
-		(vector-length (sigseg-vec ss)))))
-    (let* ([double (dft (sigseg-vec ss))]
+  (define (fftR2C arr)
+    (DEBUGASSERT (curry vector-andmap flonum?) arr)
+    (DEBUGMODE (if (equal? arr #()) (error 'fft "cannot take fft of Array:null"))
+	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
+		 (if (or (= 0 (vector-length arr))
+			 (not (integer? (log2 (vector-length arr)))))
+		     (error 'fft "only window sizes that are powers of two are supported: length ~s" 
+			    (vector-length arr)))))
+    (let* ([double (dft arr)]
 	   [halflen (add1 (quotient (vector-length double) 2))]
 	   [half (make-vector halflen)])
       (vector-blit! double half 0 0 halflen)
       ;; Currently the output must be all cflonums.
       (DEBUGASSERT (curry vector-andmap cflonum?) half)
-      (make-sigseg 0 (sub1 halflen) half (sigseg-timebase ss))
-      ))
+      half))
 
   ;; As long as we stick with the power of two constraint, the output
   ;; of this should be the same size as the original (i.e. we can
   ;; round-trip without changing length).
-  (define (ifftC2R ss)
-    (define (log2 n) (s:/ (log n) (log 2)))
-    (DEBUGASSERT (valid-sigseg? ss))
-    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
-    (let* ([vec (sigseg-vec ss)]
-	   [len (vector-length vec)]
+  (define (ifftC2R vec)
+    (DEBUGASSERT (curry vector-andmap cflonum?) vec)
+    (let* ([len (vector-length vec)]
 	   [len2 (fx* 2 (fx- len 1))]
 	   [double (make-vector len2 0)])
-      ;; Fill in the spacious one:
+      ;; Fill in half of the spacious one:
       (vector-blit! vec double 0 0 len)
+      ;; Now fill in the other half, backwards:
+      (do ([i 1 (fx+ i 1)]) ((= i (fx- len 1)) (void))
+	(vector-set! double (fx- len2 i) (cfl-conjugate (vector-ref vec (fx- i 0)))))
 
-#;
-      (do ([i 0 (fx+ i 1)]) ((= i len) (void))
-	(vector-set! double i (vector-ref vec i)))
+;      (inspect double)
+      
       ;; Now run the ifft, and convert the numbers to floats:
       (let* ([result (inverse-dft double)])
-	(do ([i 0 (fx+ i 1)])
-	    ((= i len2) (void))
-	  (let ([x (vector-ref double i)])
-	    (vector-set! double i (if (cflonum? x) (cfl-real-part x) x))))
+	;; Just eyeballing... some of these looked suspiciously
+	;; non-floatlike (nontrivial imaginary components).  Is
+	;; something messed up?
 	(vector-map! cfl-real-part result)
-	;(ASSERT (curry vector-andmap flonum?) result)
-	(make-sigseg 0 (sub1 len2) result (sigseg-timebase ss))
+	result
 	)))
 
-  (define (fftC ss)
-    (define (log2 n) (s:/ (log n) (log 2)))  
-    (DEBUGASSERT (valid-sigseg? ss))
-    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
-    (DEBUGMODE 
-     (if (eq? ss nullseg) (error 'fftC "cannot take fft of nullseg"))
-     (if (or (= 0 (vector-length (sigseg-vec ss)))
-	     (not (integer? (log2 (vector-length (sigseg-vec ss))))))
-	 (error 'fft "only window sizes that are powers of two are supported: length ~s" 
-		(vector-length (sigseg-vec ss)))))
-    (make-sigseg 0 (sub1 (width ss)) (dft (sigseg-vec ss)) nulltimebase))
+  (define (fftC arr)
+    (DEBUGASSERT (curry vector-andmap cflonum?) arr)
+    (DEBUGMODE (if (equal? arr #()) (error 'fftC "cannot take fft of Array:null"))
+	       (let ([log2 (lambda (n) (s:/ (log n) (log 2)))])
+		 (if (or (= 0 (vector-length arr))
+			 (not (integer? (log2 (vector-length arr)))))
+		     (error 'fft "only window sizes that are powers of two are supported: length ~s" 
+			    (vector-length arr)))))
+    (dft arr))
 
-  (define (ifftC ss)
-    (DEBUGASSERT (valid-sigseg? ss))
-    (DEBUGASSERT (curry vector-andmap cflonum?) (sigseg-vec ss))
-    ;; Start and end samples cannot be restored:
-    (make-sigseg 0 (sub1 (width ss)) (inverse-dft (sigseg-vec ss)) nulltimebase)
-    )
+  (define (ifftC arr)
+    (DEBUGASSERT (curry vector-andmap cflonum?) arr)
+    (inverse-dft arr))
 
   (define (wserror str) (error 'wserror str))
      (IFCHEZ (define inspect inspect/continue)

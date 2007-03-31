@@ -445,19 +445,10 @@
     ;(doubleFile        (String Int Int)  (Stream (Sigseg Float)))
 
 
-    ;; We need to expose more variants of FFT than this:
-    (fft              ((Sigseg Float))    (Sigseg Complex))
-    (ifft             ((Sigseg Complex))  (Sigseg Float))
-
-    (fftC              ((Sigseg Complex))  (Sigseg Complex))
-    (ifftC             ((Sigseg Complex))  (Sigseg Complex))
-    (fftR2C            ((Sigseg Float))    (Sigseg Complex))
-    (ifftC2R           ((Sigseg Complex))  (Sigseg Float))
-
-
-    ;(fftarr           ((Array Complex))  (Array Complex))
-    ;(fftseg           ((Sigseg Complex)) (Sigseg Complex))
-
+    (fftC              ((Array Complex))  (Array Complex))
+    (ifftC             ((Array Complex))  (Array Complex))
+    (fftR2C            ((Array Float))    (Array Complex))
+    (ifftC2R           ((Array Complex))  (Array Float))
 
 ;    (hanning          ((Sigseg Float))  (Sigseg Float))
 
