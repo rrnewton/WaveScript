@@ -43,9 +43,9 @@ fun snoop(str, strm) {
   }
 }
 
-// This doesn't do any extra buffering at all!  Might want to change that.
-zip2segs :: (Stream a,  Stream b) -> Stream (a * b);
-zip2segs = fun (s1,s2) {
+// this zips 2 streams of same type only
+zip2_sametype :: (Stream a,  Stream b) -> Stream (a * b);
+zip2_sametype = fun (s1,s2) {
   slist = [s1,s2];
   iterate((ind, seg) in unionList(slist)) {
     state {
@@ -223,8 +223,18 @@ fun rewindow(sig, newwidth, gap) {
   }
 }
 
+
+fun makeHanning(size) {
+  Array:build(size, 
+	      fun (i) 
+	      0.5 * (1.0 - cos(2.0 * const_PI * intToFloat(i) / intToFloat(size-1))))
+
 // RRN: This has the problem that the hanning coefficient is ZERO at
 // the first and last element in the window.  These represent wasted samples.
+// 0.5 * (1.0 - cos(2.0 * const_PI * intToFloat(i+1) / intToFloat(size+1))))
+}
+
+
 // myhanning : Sigseg Float -> Sigseg Float;
 myhanning :: Stream (Sigseg Float) -> Stream (Sigseg Float);
 fun myhanning (strm) {
@@ -236,14 +246,7 @@ fun myhanning (strm) {
 
     if _lastLen != win`width then {
       _lastLen := win`width;
-      _hanning := Array:make(_lastLen, 0.0);
-      // Refil the hanning window:
-      for i = 0 to _lastLen - 1 {
-	//print("LASTLEN: "++show(intToFloat(_lastLen-1))++"\n");
-	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. const_PI *. intToFloat(i) /. intToFloat(_lastLen-1)));
-	// RRN: This would fix the zeroed fenceposts:
-	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. const_PI *. intToFloat(i+1) /. intToFloat(_lastLen+1)));
-      }
+      _hanning := makeHanning(_lastLen);
     };
 
     /* alloc buffer */
@@ -426,19 +429,13 @@ fun amult_scalar_inplace(arr,s) {
 }
 
 fun apairmult(arr1,arr2) {
-  narr = Array:make(arr1`Array:length, arr1[0]);
-  for i = 0 to arr1`Array:length - 1 {
-    narr[i] := arr1[i] * arr2[i];
-  };
-  narr
+  Array:build(arr1`Array:length, 
+	      fun (i) arr1[i] * arr2[i])
 }
 
 fun apairsum(arr1,arr2) {
-  narr = Array:make(arr1`Array:length, arr1[0]);
-  for i = 0 to arr1`Array:length - 1 {
-    narr[i] := arr1[i] + arr2[i];
-  };
-  narr
+  Array:build(arr1`Array:length,
+              fun (i) arr1[i] + arr2[i])
 }
 
 fun adot(arr1,arr2) {
