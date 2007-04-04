@@ -6,8 +6,15 @@
 (chez:module threaded_utils
     (stream-parmap 
      make-bq enqueue! dequeue!   bq-i bq-vec bq-mutex bq-ready bq-room
-     
-     par par-map par-list)
+
+     init-par  ;; Run initialization code (fork threads, etc)
+     par       ;; Evaluate expressions in parallel, return list of values
+     par-list  ;; Evaluate a list of thunks
+     par-map   ;; Apply function to list in parallel
+
+     ;async-par ;; A version of 'par' that returns immediately.
+     ;sync      ;; The corresponding call to wait for an async-par to finish.
+     )
   
   (import chez_constants)
 
@@ -41,32 +48,53 @@
 		    (cons (dequeue! inq) (delay (loop (stream-cdr s))))]))])))
 
 
+
+;(define par-map map)
+;(define (par-list . thunks)  (map (lambda (th) (th)) thunks))
+
+;; ================================================================================
 (define-syntax par
   (syntax-rules ()
     [(par e ...) (par-list (lambda () e) ...)]
     ))
 
 ;; A bit inefficient:
-;(define par-map map)
 (define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
 
-;(define (par-list . thunks)  (map (lambda (th) (th)) thunks))
-
-;; Evaluate a list of thunks:
-
 ;; Inefficient version, forks threads on demand:
-(define (init-par num-cpus) (void))
-(define (par-list . thunks)
-  ;; Could be made slightly more efficient by not using generic queues.
-  (define q* (map (lambda (th) 
-		    (let ([q (make-bq 1)])
-		      ;(enqueue! q (th))
-		      (fork-thread (lambda () (enqueue! q (th))))
-		      q))
-	       thunks))
-  (printf "  Forking ~s threads.\n" (length thunks))
-  (map dequeue! q*))
+(begin 
+  (define (init-par num-cpus) (void))
 
+  (define (par-list . thunks)
+    ;; Could be made slightly more efficient by not using generic queues.
+    (define q* (map (lambda (th) 
+		      (let ([q (make-bq 1)])
+			(fork-thread (lambda () (enqueue! q (th))))
+			q))
+		 thunks))
+    (fprintf (current-error-port) "\n  Forking ~s threads.\n" (length thunks))
+    (map dequeue! q*)))
+
+#;
+;; Better, maintains worker threads and a job queue.
+;; UNFINISHED
+(begin 
+  (define thread-pool '())
+  (define (init-par num-cpus) 
+    (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
+      (set! thread-pool (cons 
+			 (MAKEWORKER )
+			 thread-pool)
+	    )))
+
+  ;(define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
+  (define (par-list . thunks)
+    ;; If no threads are available, compute here.
+    
+    (map dequeue! q*)))
+
+
+;; TODO: What other algorithms might be effective?  Work stealing?
 
 
 

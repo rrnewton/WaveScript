@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#TMP=/tmp/`whoami`/wavescript_parsed.tmp
+
+if [ ! -f "$1" ];
+then echo Usage: "ws <file> <options ...>";
+     echo   File \"$1\" does not exist.
+     exit 1;
+fi
+
+# if [ ! -d /tmp/`whoami` ]; 
+# then mkdir /tmp/`whoami`;
+# fi
+
+
+# if [ ! `which wsparse` ]
+# then echo \"wsparse\" command not found.  Compile it!
+#      exit 1;
+# fi
+
+#wsparse $1 --nopretty > $TMP
+#regiment wsint $TMP ${1+"$@"}; 
+#rm -f $TMP
+
+D=`dirname "$1"`
+B=`basename "$1"`
+abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+
+(export REGIMENT_OR_WAVESCRIPT=WS;
+ regiment.threaded wsint $abspath ${1+"$@"};)

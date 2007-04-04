@@ -322,7 +322,10 @@
 ;; These provide some more utility code related to threads:
 (IF_THREADS 
  (begin (printf "Configuring for multithreaded execution.\n")
-	(include "chez/threaded_utils.ss") (import threaded_utils))
+	(include "chez/threaded_utils.ss") 
+	(import threaded_utils)
+	(init-par 2) ;; TODO: PUT IN CORRECT NUMBER OF CPUS!
+	)
  ;; Otherwise provide a dummy implementation of "par":
  (begin (define par list)
 	(define par-list (lambda (th*) (map (lambda (th) (th)))))

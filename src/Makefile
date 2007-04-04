@@ -63,6 +63,7 @@ old_all: reg
 
 MT=`echo '(display (machine-type))' | ../depends/petite -q`
 SVNREV=`svn info | grep Revision | sed s/Revision:\ //`
+CMT=`echo '(machine-type)' | chez_threaded`
 
 #*---------------------------------------------------------------------*/
 #*   Compiling.                                                        */
@@ -109,7 +110,6 @@ wsparse:
 # This compiles the source into loadable object files
 chez: chez_native
 chez_native:
-	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	if [ $(REGDEBUGMODE) == "ON" ]; \
         then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
@@ -118,7 +118,6 @@ chez_native:
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
 ws:
-	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
@@ -130,7 +129,6 @@ ws:
 dbg:
 debug:
 ws.debug:
-	MT=`echo '(machine-type)' | petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
@@ -138,6 +136,16 @@ ws.debug:
           export REGDEBUGMODE=ON; \
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
+
+threaded:
+ws.threaded:
+#	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=OFF; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          chez_threaded)
 
 ws.opt: opt
 opt:

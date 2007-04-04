@@ -584,6 +584,7 @@
 					      )
 					 lhs*))
 				  env)]
+		  ;; This works in many places, but gives me invalid mem ref elsewhere:
 		  [newall* (par-map (lambda (x) (process-expr x newenv)) (cons expr rhs*))]
 		  [newrhs* (cdr newall*)]
 		  [newbod (car newall*)]
