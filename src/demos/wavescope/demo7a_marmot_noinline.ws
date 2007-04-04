@@ -46,7 +46,8 @@ rw1 = iterate (w in ch1) {
 //hn = hanning(rw1);
 hn = rw1;
 
-freq = iterate(x in hn) { emit fft(x) };
+  fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
+freq = iterate(x in hn) { emit sigseg_fftR2C(x) };
 
 //fun marmotscore(w) { 3.8 }
 

@@ -34,11 +34,20 @@
       [Type ('Area Type)]
       [Type ('Event Type)]
 
-      ;; TODO: NEED TO ALLOW FOR USER DEFINED TYPE CONSTRUCTORS
       [Type ('Array Type)]
       [Type ('VQueue Type)]
       [Type ('Sigseg Type)]
 
+      ;; To lenient, user defined type:
+      [Type ('Sum ,symbol?)]
+      ;[Type ('User ,symbol?)]
+      ;[Type ,symbol?]
+#;      
+[Type ,(lambda (t)
+	       (and (list? t)
+		    (= (length t) 2)
+		    (symbol? (car t))
+		    (not (eq? (car t) 'quote))))]
       
       [Type ('HashTable Type)]
       [Type ('List Type)]
@@ -145,6 +154,8 @@
        [Expr ('and Expr ...)]
 
        [Expr ('show-and-string-append Expr ...)]
+
+       [LHS ('assert-type Type Pattern)]
 
        ;; We allow arbitrary type constructors because of user aliases:
        ;; [2007.03.21] Currently they only are permitted to have one type argument:

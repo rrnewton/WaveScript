@@ -41,6 +41,53 @@
   (chezimports (except hm_type_inference test-this these-tests)
 	       (except tsort test-this these-tests))
 
+  ;; This should be replaced by core-free-vars, but to do that
+  ;; core-free-vars would need to be leniant to extra annotation
+  ;; fields in the let bindings:
+
+;; TODO: TEST THIS
+(define (regiment-free-vars expr)
+  (list->set 
+   (let loop ((env ()) (expr expr))
+     (match expr	 
+       [,var (guard (symbol? var))
+	     (if (or (regiment-constant? var)
+		     (memq var env))
+		 '() (list var))]
+       [(quote ,x) '()]
+       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
+	(let ((frees (map (lambda (x) (loop env x)) rand*)))
+	  (apply append frees))]
+
+       [(lambda ,v* ,expr) (loop (append v* env) expr)]
+       [(lambda ,v* ,ty* ,expr)
+	;;(DEBUGASSERT (andmap type? ty*))
+	(loop (append v* env) expr)]
+       
+       [(,letrec ([,lhs* ,extras ... ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+
+#|
+       [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+       [(,letrec ([,lhs* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
+	(let ([newenv (append lhs* env)])
+	  (apply append (loop newenv expr)
+		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
+       [(,letrec ,junk ...) (memq letrec '(letrec lazy-letrec))
+	(error 'regiment-free-vars "badly formed letrec: ~s" `(,letrec ,junk))]
+|#
+
+
+       [(app ,[opera*] ...)
+	(apply append opera*)]
+       [,else (error 'regiment-free-vars "unmatched expression: ~s" expr)]))))
+
+
   (define new-prims
     `(
       [timer (Int) (Stream #())]

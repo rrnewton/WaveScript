@@ -985,50 +985,10 @@
                  (list (cons 'list (list-tail argexps len)))))]
       [,else (error 'cast-args
                     "invalid formals expression: ~a" formalexp)])))
-       
-#;
-;; TODO: TEST THIS
-(define (regiment-free-vars expr)
-  (list->set 
-   (let loop ((env ()) (expr expr))
-     (match expr	 
-       [,var (guard (symbol? var))
-	     (if (or (regiment-constant? var)
-		     (memq var env))
-		 '() (list var))]
-       [(quote ,x) '()]
-       [(,prim ,rand* ...) (guard (regiment-primitive? prim))
-	(let ((frees (map (lambda (x) (loop env x)) rand*)))
-	  (apply append frees))]
-
-       [(lambda ,v* ,expr) (loop (append v* env) expr)]
-       [(lambda ,v* ,ty* ,expr)
-	;;(DEBUGASSERT (andmap type? ty*))
-	(loop (append v* env) expr)]
-       
-       [(,letrec ([,lhs* ,extras ... ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
-	(let ([newenv (append lhs* env)])
-	  (apply append (loop newenv expr)
-		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
-
-#|
-       [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
-	(let ([newenv (append lhs* env)])
-	  (apply append (loop newenv expr)
-		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
-       [(,letrec ([,lhs* ,rhs*] ...) ,expr) (memq letrec '(letrec lazy-letrec))
-	(let ([newenv (append lhs* env)])
-	  (apply append (loop newenv expr)
-		 (map (lambda (rhs) (loop newenv rhs)) rhs*)))]
-       [(,letrec ,junk ...) (memq letrec '(letrec lazy-letrec))
-	(error 'regiment-free-vars "badly formed letrec: ~s" `(,letrec ,junk))]
-|#
 
 
-       [(app ,[opera*] ...)
-	(apply append opera*)]
-       [,else (error 'regiment-free-vars "unmatched expression: ~s" expr)]))))
-
+;; [2007.04.03] This is currently replaced with core-free-vars.  It should be removed.       
+;; regiment-free-vars
 
 ;; This returns ALL symbols used by the program.  The result is a list that may contain duplicates.
 (define (regiment-all-vars expr)
@@ -1113,10 +1073,6 @@
 	(and (list? x)
 	     (= (length x) 3)
 	     (equal? (car x) "foo")))]
-
-    [(regiment-free-vars '(lambda (x) y)) (y)]
-    [(regiment-free-vars '(lambda (x) x)) ()]
-
 
     ))
 

@@ -73,9 +73,10 @@
 
     (lambda (prog)
       (match prog
-        [(,input-language (quote (program ,[(process-letrec (empty-tenv) 'toplevel) -> body] ,type)))
+        [(,input-language (quote (program ,[(process-letrec (empty-tenv) 'toplevel) -> body] 
+				   ,meta* ... ,type)))
 	 ;; This pass uses the same language as the prior pass, lift-letrec
-	 `(,input-language '(program ,body ,type))]))))
+	 `(,input-language '(program ,body ,meta* ... ,type))]))))
 
 
 ) ; End module

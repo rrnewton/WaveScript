@@ -62,7 +62,8 @@
 		 Array:make Array:makeUNSAFE
 		 Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
 		 internString uninternString
-		 hashtable hashcontains hashget hashset hashset_BANG hashrem hashrem_BANG
+		 
+		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
 
 		 List:ref List:append List:reverse List:map List:fold List:length List:make 
 		 List:head List:tail
@@ -910,8 +911,6 @@
       ;; Now fill in the other half, backwards:
       (do ([i 1 (fx+ i 1)]) ((= i (fx- len 1)) (void))
 	(vector-set! double (fx- len2 i) (cfl-conjugate (vector-ref vec (fx- i 0)))))
-
-;      (inspect double)
       
       ;; Now run the ifft, and convert the numbers to floats:
       (let* ([result (inverse-dft double)])
@@ -1001,55 +1000,55 @@
 	   (hash-table-for-each ht
 	    (lambda (k v) (put-hash-table! newtab k v)))
 	   newtab))
-       (define hashtable #%make-hash-table)
-       (define (hashcontains ht k) (#%get-hash-table ht k #f))
-       (define (hashget ht k) (#%get-hash-table ht k #f))
+       (define HashTable:make #%make-hash-table)
+       (define (HashTable:contains ht k) (#%get-hash-table ht k #f))
+       (define (HashTable:get ht k) (#%get-hash-table ht k #f))
        ;; Pretty useless nondestructive version:
-       (define (hashset ht k v)
+       (define (HashTable:set ht k v)
 	 (define new (copy-hash-table ht))
 	 (put-hash-table! new k v)
 	 new)
-       (define (hashset_BANG ht k v)
+       (define (HashTable:set_BANG ht k v)
 	 (#%put-hash-table! ht k v)
 	 ht)
-       ;(define hashrem )
-       ;(define hashrem_BANG )
+       ;(define HashTable:rem )
+       ;(define HashTable:rem_BANG )
        )
 
      ;; EQUAL? based hash tables:
      (begin
-       (define hashset_BANG (slib:hash-associator equal?))
+       (define HashTable:set_BANG (slib:hash-associator equal?))
        
        (define (copy-hash-table ht)
 	 ;; This is terrible, we don't know how big it is.
 	 (let ([newtab (slib:make-hash-table (vector-length ht))])
 	   (slib:hash-for-each ht
-	    (lambda (k v) (hashset_BANG newtab k v)))
+	    (lambda (k v) (HashTable:set_BANG newtab k v)))
 	   newtab))
 
-       (define hashtable slib:make-hash-table)
-       (define hashcontains 
+       (define HashTable:make slib:make-hash-table)
+       (define HashTable:contains 
 	 (let ([getfun (slib:hash-inquirer equal?)])
 	   (lambda (ht k) (if (getfun ht k) #t #f))))       
-       (define hashget 
+       (define HashTable:get 
 	 (let ([getfun (slib:hash-inquirer equal?)])
 	   (lambda (ht k)
 	     (let ([result (getfun ht k)])
 	       (unless result
-		 (error 'hashget "couldn't find key: ~s" k))
+		 (error 'HashTable:get "couldn't find key: ~s" k))
 	       result
 	       ))))
        ;; Pretty useless nondestructive version:
        ;; If we cared we could use some kind of balanced tree for functional maps.
-       (define (hashset ht k v)
+       (define (HashTable:set ht k v)
 	 (define new (copy-hash-table ht))
-	 (hashset_BANG new k v)
+	 (HashTable:set_BANG new k v)
 	 new)
 
-       (define hashrem_BANG (slib:hash-remover equal?))
-       (define (hashrem ht k) 
+       (define HashTable:rem_BANG (slib:hash-remover equal?))
+       (define (HashTable:rem ht k) 
 	 (define new (copy-hash-table ht))
-	 (hashrem_BANG new ht k)
+	 (HashTable:rem_BANG new ht k)
 	 new)
        )
 

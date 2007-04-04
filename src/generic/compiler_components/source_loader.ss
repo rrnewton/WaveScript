@@ -259,6 +259,9 @@
 		[(<- ,sink ,e)  `(<- ,sink (using ,Space ,e))]
 		))
 	 (apply append defs))]
+
+      [(uniondef ,ty ,def) `((uniondef ,ty ,def))]
+
       [(namespace . ,other)
        (error 'ws-postprocess "bad namespace form: ~s" (cons 'namespace other))]
       
@@ -270,12 +273,14 @@
   (define (f2 x) (or (eq? (car x) 'define) (eq? (car x) 'using)))
   (define (f3 x) (eq? (car x) '<-))
   (define (f4 x) (eq? (car x) 'typedef))
+  (define (f5 x) (eq? (car x) 'uniondef))
 
-  (define types (map cdr (filter f1 ws)))
-  (define defs (map cdr (filter f2 ws)))
-  (define routes (map cdr (filter f3 ws)))
+  (define types       (map cdr (filter f1 ws)))
+  (define defs        (map cdr (filter f2 ws)))
+  (define routes      (map cdr (filter f3 ws)))
   (define typealiases (map cdr (filter f4 ws)))
-  (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)))) ws))
+  (define uniondefs   (map cdr (filter f5 ws)))
+  (define other (filter (lambda (x) (and (not (f1 x)) (not (f2 x)) (not (f3 x)) (not (f4 x)) (not (f5 x)))) ws))
 
   (unless (null? other) (error 'ws-postprocess "unknown forms: ~s" other))
   (let ([typevs (map car types)]
@@ -317,6 +322,7 @@
       `(ws-postprocess-language
 	'(program ,final-expression
 	   (type-aliases . ,typealiases)
+	   (union-types . ,uniondefs)
 	   'notype))
       )))
 

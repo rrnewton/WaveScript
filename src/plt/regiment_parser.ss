@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef static 
+    namespace using AS typedef union static match
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -91,7 +91,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static")
+	 "namespace" "using" "static" "union" "match")
     (string->symbol lexeme)]
    ["as" 'AS]
    ["type" 'typedef]
@@ -292,6 +292,9 @@
 ;     (typevars+ [(typevar) (list $1)]
 ; 	       [(typevar COMMA typevars+) (prec COMMA) (cons $1 $3)]
 ; 	       )
+
+    (unioncases [(VAR type)                `((,$1 ,$2))]
+		[(VAR type BAR unioncases) `((,$1 ,$2) . ,$4)])
     
     (decls ;; Top level variable binding
 
@@ -300,8 +303,13 @@
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
 
 	   ;; TAGGED UNION:
-	   ;[(typedef union VAR = )]
-	   ;[(typedef union VAR typevar ...= )]
+	   ;; Only one typevar for now:
+	   [(typedef union VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
+	   [(typedef union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
+	   [(union typedef VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
+	   [(union typedef VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
+	   [(union VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
+	   [(union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
@@ -336,6 +344,8 @@
 
    ;; [2006.09.01] For now patterns are just tuples.
    (pattern [(VAR) $1]
+	    ;; A type constructor:
+	    ;[(VAR VAR) `(tc ,$1 ,$2)]
 	    [(LeftParen RightParen) #()]
 	    [(LeftParen pattern COMMA pat+ RightParen) `#(,$2 ,@$4)]
 	    )
@@ -448,6 +458,9 @@
 
     ;(innernotlist [(notlist) $1])    
 
+    (matchcases [() '()]
+		[(pattern BAR exp matchcases) 99999])
+
     (notlist
          [(NUM) $1]  
          [(VAR) $1]
@@ -462,7 +475,9 @@
                  (loop (cdr ls)
                        `(app ,(car ls) ,acc))))]
          [(tuple) $1]
-
+	 
+	 ;; Deconstructing sum types with pattern matching:
+	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2)]
          
 ;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]
          [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]
@@ -580,6 +595,9 @@
          
          ;; Using binary prims as values: (without eta-expanding!)
          [(LeftParen binop RightParen) $2]         
+	 ;; Haskell's "sections".
+         [(LeftParen binop exp RightParen) `(lambda (x) (,$2 x ,$3))]
+         [(LeftParen exp binop RightParen) `(lambda (x) (,$3 ,$2 x))]
 
 	 ;; Negative numbers.
 	 [(- NUM) (prec NEG) (- $2)]

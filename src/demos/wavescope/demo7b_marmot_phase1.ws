@@ -420,7 +420,8 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = myhanning(rw1);
 
-freq = iterate(x in hn) { emit (fft(x),x) };
+  fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
+freq = iterate(x in hn) { emit (sigseg_fftR2C(x),x) };
 
 //wscores = smap(fun(w){(marmotscore(w), w)}, freq);
 wscores = iterate ((w,orig) in freq) { emit (marmotscore(w), orig); }

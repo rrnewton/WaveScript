@@ -297,7 +297,7 @@
       ;; Main body:
       (lambda (prog) 
 	(match prog 
-	  [(,lang '(program ,body ,type))
+	  [(,lang '(program ,body ,meta* ... ,type))
 	   (let* ([result (collect-tupdefs body (empty-tenv))]
 		  ;[newbod (result-expr result)]
 		  [tupdefs (remove-redundant (result-tydefs result))]
@@ -312,8 +312,8 @@
 	     ;; LAME:
 	     (set! bindings-fun do-bindings)
 	     
-	     (match (convert-types `(,lang '(program ,newbod ,type)))
-	       [(,lang '(program ,body ,type))
+	     (match (convert-types `(,lang '(program ,newbod ,meta* ... ,type)))
+	       [(,lang '(program ,body ,meta* ... ,type))
 		;; Running the type-checker/inferencer isn't going to work on this output any longer:
 		`(nominalize-types-language
 		  '(program ,body		       
@@ -325,6 +325,7 @@
 					       (map (lambda (t) (convert-type t tupdefs)) 
 						 types))))
 			   tupdefs)))
+		     ,meta* ... ;; The *other* metadata.
 		     ,(convert-type type tupdefs)))])
 	     )]))))
 
@@ -370,12 +371,13 @@
 	   (struct-defs
 	    (tuptyp_1 (fld1 Int) (fld2 Int))
 	    (tuptyp (fld1 Int) (fld2 (Struct tuptyp_1))))
+	   ;(union-types)
 	   (Stream (Struct tuptyp))))
        ]
       
 
       ))
-  (define-testing test-this (default-unit-tester "" these-tests))
+  (define-testing test-this (default-unit-tester "nominalize types pass" these-tests))
   (define test-nominalize-types test-this)
 
 ) ;; End module.

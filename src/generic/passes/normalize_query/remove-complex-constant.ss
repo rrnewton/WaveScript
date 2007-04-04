@@ -80,15 +80,15 @@
   [Program 
    (lambda (prog process-expr)
      (match prog
-       [(,input-language (quote (program ,body ,type)))
+       [(,input-language (quote (program ,body ,meta* ... ,type)))
 	(let-match ([#(,body ,body-b*) (process-expr body)])
 	  (if (null? body-b*)
 	      `(remove-complex-constant-language
-		'(program ,body ,type))
+		'(program ,body ,meta* ... ,type))
 	      `(remove-complex-constant-language
 		'(program 
 		     (letrec ,body-b* ,body)
-		   ,type))))]))]
+		   ,meta* ...  ,type))))]))]
 
   ;; Works just for lists right now.
   (define datum->code

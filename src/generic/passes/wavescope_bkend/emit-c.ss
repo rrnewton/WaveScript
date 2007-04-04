@@ -998,7 +998,7 @@
       [(m_invert string-append 
 	width start end joinsegs subseg toSigseg
 	;wserror ;generic_hash 
-	fft
+	fftR2C
 	)
        (fromlib (mangle var))]
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
@@ -1201,17 +1201,17 @@
 
 	;; We should have the proper type assertion on there after flattening the program.
 	;; (Remove-complex-opera*)
-	[(assert-type (HashTable ,k ,v) (hashtable ,[Simple -> n]))
+	[(assert-type (HashTable ,k ,v) (HashTable:make ,[Simple -> n]))
 	 (let ([hashtype (HashType k v)]
 	       ;[eqfun ]
 	       [k (Type k)]
 	       [v (Type v)])
 	   (wrap `(,(SharedPtrType hashtype)"(new ",hashtype"(",n"))")))]
-	[(hashtable ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
-			       `(hashtable ,_))]
-	[(hashget ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
+	[(HashTable:make ,_) (error 'emitC:Value "hashtable not wrapped in proper assert-type: ~s"
+				    `(HashTable:make ,_))]
+	[(HashTable:get ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
 	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
-	[(hashcontains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
+	[(HashTable:contains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
 
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])
@@ -1397,7 +1397,7 @@ int main(int argc, char ** argv)
 		   List:head List:tail 
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
-		   cons car cdr null? hashtable prim_window 
+		   cons car cdr null? HashTable:make prim_window 
 		   List:ref List:append List:reverse List:length List:make 
 		   Array:makeUNSAFE
 		   
@@ -1406,9 +1406,9 @@ int main(int argc, char ** argv)
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
 		   ENSBoxAudio
 		   List:assoc List:assoc_update
-		   hashrem hashset ;; pure versions
+		   HashTable:rem HashTable:set ;; pure versions
 		   Array:map Array:fold
-		   ifft
+		   ifftC2R fftC ifftC
 		   internString uninternString
 		   )
 		 (map car generic-arith-primitives)

@@ -83,8 +83,11 @@
 		    (if (and expr expr/types)
 			(syntax-error (format "Cannot have both Expr and Expr/Types clause in define-pass:\n ~s" #'_)))
 		    (if expr/types
-			#'core-generic-traverse/types
-			#'core-generic-traverse)))
+			#'(lambda (d f e . tenv) 
+			    (if (null? tenv) 
+				(core-generic-traverse/types d f e)
+				(core-generic-traverse/types d f e (car tenv))))
+			#'(lambda (d f e . _) (core-generic-traverse d f e)))))
 
 		(define dso datum->syntax-object)
 
@@ -95,8 +98,18 @@
 		  (set! prog (with-syntax ([ol output-language])
 			       #'(lambda (pr Expr) 
 				   (match pr
-				     [(,input-language (quote (program ,body ,type)))
-				      `(ol '(program ,(Expr body) ,type))]
+				     [(,input-language (quote (program ,body . ,metadata )))
+				      ;; The last entry in metadata is a type!
+				      ;; Should associate a tag with it so that it can be treated the same.
+				      (let* ([realmeta (rdc metadata)]
+					     [initial-tenv (grab-init-tenv realmeta)]
+					     [uniondefs (or (assq 'union-types realmeta) '(union-types))])
+					;; Ensure that the output has a (union-types) form.
+					`(ol '(program ,(Expr body initial-tenv) 
+						;; This forces that there be a union-types entry in the output:
+						;,uniondefs ,@(remq uniondefs metadata)
+						. ,metadata
+						)))]
 				     [,other (error 'name "\nBad pass input:\n   ~s\n" other)])
 				   ))))
 
@@ -203,7 +216,7 @@
 			extra-defs ...
 			;; Jeez, this is lame but just so the compiler associates the name with the closure:
 			(letrec ([name (lambda (prog) (tmp prog))]
-				  [process-expr (gentrav e f)]
+				  [process-expr (lambda args (apply gentrav e f args))]
 				  [tmp (build-compiler-pass 
 					'name 
 					inspec 

@@ -64,20 +64,26 @@
 			    #f))))
 	     (regiment-primitives))))
       (define exploded-table (map cdr relevant-prims))
-      ;; Don't rename prims:
+      ;; Seed this with prims, but don't rename prims:
       (define var-table (map (lambda (p) (list (car p) (car p))) relevant-prims))
-      ;(define exploded-table '())
-      ;(define var-table '())
+      ;; Mutated below:
+      (define type-constructors '())
+
       (define (driver x fallthru)
 	;(inspect exploded-table)
 	(match x
 	  [,var (guard (symbol? var))
 		(cond
+		 [(memq var type-constructors) 
+		  (error 'resolv-varrefs "type constructor not directly applied: ~s" var)]
 		 [(assq var var-table) => cadr]
 		 [(regiment-primitive? var) var]
 		 [else (error 'resolve-varrefs 
 			      "variable was not bound!: ~a\n environment: ~s"
 			      var var-table)])]
+	  [(app ,tc ,[rand]) (guard (memq tc type-constructors)) 
+	   ;; From here on out we use a special form:
+	   `(construct-data ,tc ,rand)]
 
 	  ;; Expand this into the more verbose form:
 	  [(ref ,[x]) (guard (not (assq 'ref var-table)))
@@ -123,8 +129,12 @@
      (lambda (p doExpr)
        (unique-name-counter 0)
        (match p
-	 [(,input-language (quote (program ,[doExpr -> body] ,other ... ,type)))
-	  `(resolve-varrefs-language '(program ,body ,other ... ,type))]))]
+	 [(,input-language (quote (program ,body ,other ... ,type)))
+	  (fluid-let ([type-constructors 
+		       (match (or (assq 'union-types other ) '(union-types))
+			 [(union-types [,name* [,tycon** ,_] ...] ...)
+			  (apply append tycon**)])])
+	    `(resolve-varrefs-language '(program ,(doExpr body) ,other ... ,type)))]))]
     )
 
 
@@ -139,42 +149,45 @@
      `(
 
        [(,resolve-varrefs '(some-lang '(program (letrec ((x Int 1)) 
-					    (+_ (app (lambda (x) (Int) x) 3) x)) Int)))
+					    (+_ (app (lambda (x) (Int) x) 3) x)) (union-types) Int)))
 	,(lambda (p)
 	   (match p
 	     [(resolve-varrefs-language
 	       '(program
 		    (letrec ([,x_1 Int 1])
 		      (+_ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
-		  Int))
+		  (union-types) Int))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
        
        ;; Might not be portable, assumes particular numbering:
        ["check on for loops"
 	(,resolve-varrefs '(some-lang '(program (lambda (f woot) ((Int -> Int) Int)
-						    (for (i 1 (app f woot)) 0)) Int)))
+						    (for (i 1 (app f woot)) 0)) 
+					 (union-types) Int)))
         ,(lambda (v)
            (match v
              ((resolve-varrefs-language '(program (lambda (,F1 ,W1) ((Int -> Int) Int)
-					       (for (,I 1 (app ,F2 ,W2)) 0)) Int))
+					       (for (,I 1 (app ,F2 ,W2)) 0)) 
+					   (union-types) Int))
               (and ;(not (eqv? I 'i))
                    (eqv? F1 F2)
                    (eqv? W1 W2)))
              (,else #f)))]
        ["check on set!" 
 	(,resolve-varrefs '(some-lang '(program (letrec ([v Int 3]) 
-					    (set! v 39)) Int)))
+					    (set! v 39)) 
+					 (union-types) Int)))
 	(resolve-varrefs-language
-	 '(program (letrec ([unspecified Int 3]) (set! unspecified 39)) Int))]
+	 '(program (letrec ([unspecified Int 3]) (set! unspecified 39)) (union-types) Int))]
        
        ["Basic using declaration"
 	(reunique-names 
-	 (resolve-varrefs '(lang '(program (letrec ([M:x 't '3]) (using M x)) Int))))
+	 (resolve-varrefs '(lang '(program (letrec ([M:x 't '3]) (using M x)) (union-types) Int))))
 	(resolve-varrefs-language
 	 '(program
-	    (letrec ([unspecified 't '3]) (letrec ([x 'type unspecified]) x))
-	    Int))]
+	      (letrec ([unspecified 't '3]) (letrec ([x 'type unspecified]) x))
+	    (union-types) Int))]
               
        ))
 

@@ -73,9 +73,14 @@
        (lambda (expr)
 	 (unique-name-counter 0)
 	 (match expr
-	   [(,input-language (quote (program ,body ,type)))
-	    (let ([body (process-expr body '())])
-	      `(rename-var-language '(program ,body ,type)))])))))
+	   [(,input-language (quote (program ,body ,meta* ... ,type)))
+	    (match (or (assq 'union-types meta*) '(union-types))
+	      [(union-types [,name* (,tycon** ,ty**) ...] ...)
+	       (let ([body (process-expr body 
+					 (map (lambda (x) (cons x x)) 
+					   (apply append tycon**)))])
+		 `(rename-var-language '(program ,body ,meta* ... ,type)))
+	       ])])))))
 
 	
 ;==============================================================================
@@ -84,41 +89,46 @@
   (append (map
 	      (lambda (x)
 		(let ((prog (car x)) (res (cadr x)))
-		  `[(,rename-vars '(some-lang '(program ,prog Int)))
-		    (rename-var-language '(program ,res Int))]))
+		  `[(,rename-vars '(some-lang '(program ,prog (union-types) Int)))
+		    (rename-var-language '(program ,res (union-types) Int))]))
 	    `([3 3]    
 	      [(letrec ((x Int 1)) x) (letrec ([x_1 Int 1]) x_1)]          
 	      ))
      `(
        [(,rename-vars '(some-lang '(program (letrec ((x Int 1)) 
-					    (+_ (app (lambda (x) (Int) x) 3) x)) Int)))
+					    (+_ (app (lambda (x) (Int) x) 3) x)) 
+				     (union-types) Int)))
 	,(lambda (p)
 	   (match p
 	     [(rename-var-language
 	       '(program
 		    (letrec ([,x_1 Int 1])
 		      (+_ (app (lambda (,x_2) (Int) ,x_2b) 3) ,x_1b))
-		  Int))
+		  (union-types) Int))
 	      (and (eq? x_1 x_1b) (eq? x_2 x_2b))]
 	     [,else #f]))]
        
        ;; Might not be portable, assumes particular numbering:
        ["check on for loops"
 	(,rename-vars '(some-lang '(program (lambda (f woot) ((Int -> Int) Int)
-						    (for (i 1 (app f woot)) 0)) Int)))
+						    (for (i 1 (app f woot)) 0)) 
+				     (union-types) Int)))
         ,(lambda (v)
            (match v
              ((rename-var-language '(program (lambda (,F1 ,W1) ((Int -> Int) Int)
-					       (for (,I 1 (app ,F2 ,W2)) 0)) Int))
+					       (for (,I 1 (app ,F2 ,W2)) 0)) 
+				      (union-types) Int))
               (and (not (eqv? I 'i))
                    (eqv? F1 F2)
                    (eqv? W1 W2)))
              (,else #f)))]
        ["check on set!" 
 	(,rename-vars '(some-lang '(program (letrec ([v Int 3]) 
-					    (set! v 39)) Int)))
+					    (set! v 39)) 
+				     (union-types) Int)))
 	(rename-var-language
-	 '(program (letrec ([v_1 Int 3]) (set! v_1 39)) Int))]
+	 '(program (letrec ([v_1 Int 3]) (set! v_1 39)) 
+	    (union-types) Int))]
        
 
        

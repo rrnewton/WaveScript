@@ -334,8 +334,8 @@
      (Array:set         ((Array 'a) Int 'a)          #())
 
      ;; [2006.11.28] Giving these void types.
-     (hashset_BANG ((HashTable 'key 'val) 'key 'val) #())
-     (hashrem_BANG ((HashTable 'key 'val) 'key)      #())
+     (HashTable:set_BANG ((HashTable 'key 'val) 'key 'val) #())
+     (HashTable:rem_BANG ((HashTable 'key 'val) 'key)      #())
      (print            ('a) #())
 
      (gnuplot_array    ((Array (NUM a))) #())
@@ -466,7 +466,7 @@
     (Array:make        (Int 'a) (Array 'a))
     (Array:makeUNSAFE  (Int)    (Array 'a))
     (Array:ref         ((Array 'a) Int) 'a)
-    (Array:length           ((Array 'a)) Int)
+    (Array:length      ((Array 'a)) Int)
     (Array:toList      ((Array 'a))                         (List 'a))
 
     ;; Temporary:
@@ -477,14 +477,14 @@
     (internString (String) Symbol)
     (uninternString (Symbol) String)
 
-    (hashtable (Int) (HashTable 'key 'val))
-    (hashcontains ((HashTable 'key 'val) 'key) Bool)
-    (hashget ((HashTable 'key 'val) 'key) 'val)
+    (HashTable:make (Int) (HashTable 'key 'val))
+    (HashTable:contains  ((HashTable 'key 'val) 'key) Bool)
+    (HashTable:get       ((HashTable 'key 'val) 'key) 'val)
     ;; This is the *pure* version, to be useful at all need to use the
     ;; destructive version.
     ;(hashset ((HashTable #('key 'val)) 'key 'val) (HashTable #('key 'val)))
-    (hashset ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
-    (hashrem ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
+    (HashTable:set       ((HashTable 'key 'val) 'key 'val) (HashTable 'key 'val))
+    (HashTable:rem       ((HashTable 'key 'val) 'key) (HashTable 'key 'val))
    
     ;----------------------------------------------------------------------
 

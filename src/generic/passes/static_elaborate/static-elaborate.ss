@@ -307,7 +307,9 @@
 	  [(,prim ,[rands] ...)
 	   (guard (regiment-primitive? prim))
            (apply fx+ rands)]           
-	  [(app ,[rator] ,[rands] ...) (+ rator (apply + rands))]
+	  [(,app ,[rator] ,[rands] ...) 
+	   (guard (memq app '(app construct-data)))
+	   (+ rator (apply + rands))]
           [,unmatched
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
@@ -387,7 +389,8 @@
 	      ,(substitute newmap expr)))]
 	  [(,prim ,[rands] ...) (guard (regiment-primitive? prim))
 	   `(,prim ,rands ...)]
-	  [(app ,[rator] ,[rands] ...) `(app ,rator ,rands ...)]
+	  [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data))) 
+	   `(,app ,rator ,rands ...)]
           [,unmatched
             (error 'static-elaborate:substitute "invalid syntax ~s" unmatched)])))
 
@@ -500,7 +503,7 @@
           [,var (guard (symbol? var) (memq var mutable-vars)) var]
           [,var (guard (symbol? var))	  
 		(match (assq var env)
-		  [#f (error 'static-elaborate "variable not in scope: ~a" var)]
+		  [#f (error 'static-elaborate "variable not in scope: ~a\n\n  ENV:\n~s" var env)]
 		  ;; Anything let-bound with a reference count of 1 gets inlined:
 ;		  [(,_ ,x 1) 
 ;`		   (printf "REFCOUNT1: ~a\n" var)
@@ -581,9 +584,9 @@
 					      )
 					 lhs*))
 				  env)]
-		  [newrhs* (map (lambda (x) (process-expr x newenv)) rhs*)]
-;		  [_ 	   (break)]
-		  [newbod (process-expr expr newenv)]
+		  [newall* (par-map (lambda (x) (process-expr x newenv)) (cons expr rhs*))]
+		  [newrhs* (cdr newall*)]
+		  [newbod (car newall*)]
 ;		  [__ 	   (break)]
                   ;; How much does each bound variable get referenced:
 		  [occurs (map (lambda (v myrhs) 
@@ -763,7 +766,7 @@
 	  ;; don't get any accidental variable capture:
 ;	  [((lambda ,formals ,expr) ,rands ...)
 ;	   (substitute (map list formals rands) expr)]
-	  [(app ,[rator] ,[rands] ...)
+	  [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data)))
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
@@ -775,7 +778,7 @@
 	       (begin 
 		 (if (regiment-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
-		 `(app ,rator ,rands ...)))]
+		 `(,app ,rator ,rands ...)))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
@@ -787,14 +790,23 @@
     
     (lambda (expr)
       (match expr	    
-        [(,input-language (quote (program ,body ,type)))
+        [(,input-language (quote (program ,body ,meta* ...  ,type)))
 	 (set! mutable-vars (get-mutable body))
-	 ;; Run until we reach a fixed point.
-	 (let loop ([oldbody body]
-		     [body (process-expr body '())])
-	    (if (equal? oldbody body)	   
-		`(static-elaborate-language '(program ,body ,type))
-		(loop body (process-expr body '()))))]
+	 (match (or (assq 'union-types meta*) '(union-types))
+	   [(union-types [,name* [,tycon** ,_] ...] ...)
+	    ;; For now we don't statically evaluate type constructors:
+	    (let ([init-env (map (lambda (tycon) (list tycon not-available 9393939))
+			      (apply append tycon**))])
+	      ;; Run until we reach a fixed point.
+	      (let loop ([oldbody body]
+			 [body (process-expr body init-env)]
+			 [iterations 1])
+		(if (equal? oldbody body)	   
+		    (begin
+		      (when (regiment-verbose) (printf "Static elaboration iterated ~s times\n" iterations))
+		      `(static-elaborate-language '(program ,body ,meta* ... ,type)))
+		    (loop body (process-expr body init-env) (add1 iterations)))))
+	    ])]
 	)))))
 
 
@@ -802,22 +814,22 @@
   `( 
 
     ["Make sure it folds some simple constants." 
-     (static-elaborate '(foo '(program (+_ '3 '4) 'notype)))
-     (static-elaborate-language '(program '7 'notype))]
+     (static-elaborate '(foo '(program (+_ '3 '4) (union-types) 'notype)))
+     (static-elaborate-language '(program '7 (union-types) 'notype))]
 
     [(static-elaborate
       '(foo '(program
 	      (letrec ([f _ (lambda (x) (_) '#t)])
-		(app f '3939)) 'notype)))
-     (static-elaborate-language '(program '#t 'notype))]
+		(app f '3939)) (union-types) 'notype)))
+     (static-elaborate-language '(program '#t (union-types) 'notype))]
    
     ["Reduce away fact of 6." 
      (static-elaborate '(foo '(program 
       (letrec ([fact _ (lambda (n) (_) 
 			       (if (= '0 n) '1 (*_ n (app fact (-_ n '1)))))])
 	(app fact '6))
-      'notype)))
-     (static-elaborate-language '(program '720 'notype))]
+      (union-types) 'notype)))
+     (static-elaborate-language '(program '720 (union-types) 'notype))]
     
     ["Reduce a tuple reference."
      (static-elaborate '(foo '(program (letrec ([x T (tuple '3 '4)]) (+_ '100 (tupref 0 2 x))) 'notype)))

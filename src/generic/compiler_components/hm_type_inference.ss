@@ -107,6 +107,7 @@
 ;	   raise-occurrence-check
 ;	   raise-wrong-number-of-arguments
 
+	   sumdecls->tenv grab-init-tenv
 	   )
 
   (chezimports constants)
@@ -785,10 +786,10 @@
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
-      [(app ,origrat ,[l -> rand* t*] ...)
+      [(,app ,origrat ,[l -> rand* t*] ...) (guard (memq app '(app construct-data)))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
-	 (values `(app ,rator ,rand* ...)
+	 (values `(,app ,rator ,rand* ...)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
 
       ;; Allowing unlabeled applications for now:
@@ -922,6 +923,7 @@
      (guard (memq letrec '(letrec lazy-letrec)))
      `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
+    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
      `(,prim ,rand* ...)]
     ;; HACK HACK HACK: Fix this:
@@ -952,6 +954,7 @@
     [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [(app ,[rat] ,[rand*] ...)                                (void)]
+    [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
     ))
 
@@ -984,6 +987,7 @@
 
     [(assert-type ,t ,[e]) e]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
+    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]
     
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
@@ -1011,7 +1015,7 @@
 ;; This is a result of our strategy of recording LUB types for lets.
 (define (annotate-program p)
   (match p
-    [(,lang '(program ,e ,t))
+    [(,lang '(program ,e ,meta ...))
      ;(annotate-program-once (annotate-program-once p))
      (annotate-program-once p)
      ]
@@ -1024,20 +1028,38 @@
 ;; This is the real thing:
 (define (annotate-program-once p)
   (let ([Expr 
-	 (lambda (p)
-	   (mvlet ([(e t) (annotate-expression p (empty-tenv) '())])
+	 (lambda (p tenv)
+	   (mvlet ([(e t) (annotate-expression p tenv '())])
 	     (do-all-late-unifies! e)
 	     ;; Now strip mutable cells from annotated expression.
 	     (values (export-expression e)
 		     (export-type t)))
 	   )])
+
     ;; Accepts either with-boilerplate or without.
     (match p
-      [(,lang '(program ,[Expr -> e t] ,type))
+      [(,lang '(program ,bod ,metadat* ... ,type))
        (ASSERT (type? type))
-       `(typechecked-lang '(program ,e ,t))]
-      [,other (Expr other)])))
+       (mvlet ([(e t) (Expr bod (sumdecls->tenv
+				 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
+	 `(typechecked-lang '(program ,e ,metadat* ... ,t)))]
+      [,other 
+       (Expr other (empty-tenv))])))
 
+(define (sumdecls->tenv decl*)
+  (define (sumdecl->tbinds decl tenv)
+    (match decl 
+      [((,name) [,tycon* ,ty*] ... ) (guard (symbol? name))
+       (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name))) ty*))
+       ]))
+  (foldl sumdecl->tbinds (empty-tenv) decl*))
+
+;; This is a front-end to the above which takes the list of metadata
+;; associated with a toplevel '(program ...) form and builds the init-tenv.
+(define (grab-init-tenv metadata)
+  (sumdecls->tenv 
+   (cdr (or (assq 'union-types metadata)
+	    '(union-types)))))
 
       
 ; ======================================================================
@@ -1337,7 +1359,7 @@
     (define (get-var-types exp)
       (match exp ;; match-expr
 
-	[(,lang '(program ,[body] ,ty)) 
+	[(,lang '(program ,[body] ,meta ... ,ty))
 	 (append body `((type BASE ,ty ())))]
 
        [,c (guard (constant? c)) '()]
@@ -1362,8 +1384,9 @@
 			 id* t* rhs*))
 		bod)]
        [(lambda ,v* ,t* ,[bodls])   bodls]
-       [(app ,[rat] ,[rand*] ...) (apply append rat rand*)]
-	[(,prim ,[rand*] ...)
+       [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app construct-data)))
+	(apply append rat rand*)]
+       [(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
 	 (apply append rand*)]
 	[,other (error 'print-var-types "bad expression: ~a" other)]))
@@ -1609,6 +1632,7 @@
 					 readings)]
 			    )
 		     sums)
+		 (union-types)
 		 (Stream Int)))))
    #f]
 

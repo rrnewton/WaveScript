@@ -13,7 +13,7 @@ static ostringstream global_show_stream(ostringstream::out);
 
    //  We should keep a hash table of common plans.
    //static int fft(SigSeg<double> input) {
-   static RawSeg fft(RawSeg input) {
+   static RawSeg fftR2C(RawSeg input) {
       int len = input.length();
       int len_out = (len / 2) + 1;
 

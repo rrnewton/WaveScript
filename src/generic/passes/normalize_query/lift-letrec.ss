@@ -98,10 +98,10 @@
 
     (lambda (prog)
       (match prog
-	     [(,input-language (quote (program ,body ,type)))
+	     [(,input-language (quote (program ,body ,meta* ... ,type)))
 	      (mvlet ([(body body-fn) (process-expr body)])
 		     `(lift-letrec-language
-		       '(program (lazy-letrec ,body-fn ,body) ,type)
+		       '(program (lazy-letrec ,body-fn ,body) ,meta* ... ,type)
 		       ))]))
     ))
   

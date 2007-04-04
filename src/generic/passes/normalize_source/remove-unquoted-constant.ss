@@ -32,8 +32,8 @@
   [Program (lambda (prog Expr)
 	     (unique-name-counter 0)
 	     (match prog
-	       [(,input-language (quote (program ,body ,type)))
+	       [(,input-language (quote (program ,body ,meta* ... ,type)))
 		`(remove-unquoted-constant-language 
-		  '(program ,(Expr body) ,type))]))])
+		  '(program ,(Expr body) ,meta* ... ,type))]))])
 
 ) ; End Module

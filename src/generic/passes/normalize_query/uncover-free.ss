@@ -50,12 +50,12 @@
 	     )]))
 (define (uncover-free-Program p Expr)
   (match p 
-    [(,lang '(program ,[Expr -> result] ,type))
+    [(,lang '(program ,[Expr -> result] ,meta* ... ,type))
      (match result 
        [#(,bod ,free)
 	(ASSERT null? free)
 	`(uncover-free-language 
-	  '(program ,bod ,type))])]))
+	  '(program ,bod ,meta* ... ,type))])]))
 
 ;; This first version of uncover free is ran directly after
 ;; remove-complex-constant and before lift-letrec.

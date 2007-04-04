@@ -17,7 +17,9 @@
 ;; This is a bit complex because it programmatically splits out the stream-primitives.
 (define ws-lift-let-grammar
   (let ([streamprims (map car wavescript-stream-primitives)])
-    (append `((Program ((quote program) Query Type))
+    
+    (append `(;; [2007.04.01] Adding union-types to this:
+	      (Program ((quote program) Query ('union-types ((Var ...) [Var Type] ...) ...) Type))
 
 	      (Query Var)
 	      (Query ('let ((LHS Type Query) ...) Query))
@@ -138,7 +140,13 @@
 	  [,oth (fallthru oth)])))
     ;; Assumes lets only bind one variable (except for iterates)
     [Expr process-expr]
-;[Program (lambda args (inspect args))]
+    [Program (lambda (p E)
+	       (match p 
+		 [(,lang '(program ,[E -> bod] ,meta* ... ,ty))
+		  ;; Ensure that there's a 'union-types' entry in the output:
+		  (let ([uniondefs (or (assq 'union-types meta*) '(union-types))])
+		    `(,lang '(program ,bod ,uniondefs ,(remq uniondefs meta*) ... ,ty)))
+		  ]))]
 
     [OutputGrammar ws-lift-let-grammar])
 

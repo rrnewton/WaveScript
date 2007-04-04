@@ -218,12 +218,13 @@
     ;===========================================================================
     (lambda (program)
       (match program
-             [(,input-lang '(program ,exp ,type))
+             [(,input-lang '(program ,exp ,meta* ... ,type))
 	      (let-match ([#(,newbod ,bnds) (process-expr exp (empty-tenv))])
 		`(remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
 				 `(lazy-letrec ,bnds ,newbod)
-				 ) ,type))
+				 ) 
+		     ,meta* ... ,type))
 		)]
              [,else (error 'remove-complex-opera*
                            "Invalid input: ~a" program)]))

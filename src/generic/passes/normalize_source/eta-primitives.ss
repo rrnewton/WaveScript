@@ -63,6 +63,7 @@
 	 (eta-primitives '(base-language
 			   '(program
 				(rfold +_ 0 (rmap nodeid (khood (anchor-at 50 10) 2)))
+			      (union-types) 
 			      (Stream Int))))
 	 (eta-primitives-language
 	  '(program
@@ -72,6 +73,7 @@
 		(rmap
 		 (lambda (a) (Node) (nodeid a))
 		 (khood (anchor-at 50 10) 2)))
+	     (union-types) 
 	     (Stream Int)))]
 	))
 

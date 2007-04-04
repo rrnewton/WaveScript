@@ -405,8 +405,8 @@ case(x){
   Baz(head:::tail): ...;
 }
 
-
-[2007.03.10]
+================================================================================
+[2007.03.10] {Syntax choices}
 
   Thinking about different syntax here...
   let s2 as (x,y) = ...
@@ -444,14 +444,19 @@ case(x){
     | Second z -> z + 4
   }
 
-  match (x) {
+  match x {
        First z -> z + 3
     | Second z -> z + 4
   }
 
-  match (x) {
+  match x {
     |  First z | z + 3
     | Second z | z + 4
+  }
+
+  match x {
+    | First z : z + 3
+    | Second z : z + 4
   }
  
   switch (x) {

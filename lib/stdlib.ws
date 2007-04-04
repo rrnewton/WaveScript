@@ -476,3 +476,18 @@ fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 //BASE <- audio(0,10,0);
 
+
+// Some standard type definitions.
+/*
+union Choose2 a b       = OneOf2 a | TwoOf2 b
+union Choose3 a b c     = OneOf3 a | TwoOf3 b | ThreeOf3 c
+union Choose4 a b c d   = OneOf4 a | TwoOf4 b | ThreeOf4 c | FourOf4 d
+union Choose5 a b c d e = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | FiveOf5 e
+
+union Choose2 (a, b)          = OneOf2 a | TwoOf2 b
+union Choose3 (a, b, c)       = OneOf3 a | TwoOf3 b | ThreeOf3 c
+union Choose4 (a, b, c, d)    = OneOf4 a | TwoOf4 b | ThreeOf4 c | FourOf4 d
+union Choose5 (a, b, c, d, e) = OneOf5 a | TwoOf5 b | ThreeOf5 c | FourOf5 d | FiveOf5 e
+
+
+*/

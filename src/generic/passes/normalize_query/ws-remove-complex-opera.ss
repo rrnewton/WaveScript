@@ -239,6 +239,9 @@
 	   [(set! ,v ,e)
 	    (mvlet ([(e2 decls) (make-simple e tenv)])
 	      (vector `(set! ,v ,e2) decls))]
+	   [(construct-data ,tc ,e)
+	    (mvlet ([(e2 decls) (make-simple e tenv)])
+	      (vector `(construct-data ,tc ,e2) decls))]
 
 	   ;; Make start and end simple.
 	   [(for (,i ,st ,en) ,bod)
@@ -284,12 +287,13 @@
     [Program
      (lambda (prog _)
       (match prog
-             [(,input-lang '(program ,exp ,type))
-	      (let-values ([(newbod bnds) (make-simple exp (empty-tenv))])
+             [(,input-lang '(program ,exp ,meta* ... ,type))
+	      (let-values ([(newbod bnds) (make-simple exp (grab-init-tenv meta*))])
 		`(ws-remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
 				 (make-lets bnds newbod)
-				 ) ,type))
+				 ) 
+		     ,meta* ... ,type))
 		)]
              [,else (error 'ws-remove-complex-opera*
                            "Invalid input: ~a" prog)]))])

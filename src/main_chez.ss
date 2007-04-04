@@ -320,7 +320,14 @@
 ;(include "generic/util/imperative_streams.ss") ;(import (except imperative_streams test-this these-tests))
 
 ;; These provide some more utility code related to threads:
-(IF_THREADS (begin (include "chez/threaded_utils.ss") (import threaded_utils)))
+(IF_THREADS 
+ (begin (include "chez/threaded_utils.ss") (import threaded_utils))
+ ;; Otherwise provide a dummy implementation of "par":
+ (begin (define par list)
+	(define par-list (lambda (th*) (map (lambda (th) (th)))))
+	(define par-map map)
+	)
+ )
 
 ;; Lists all the Regiment primitives and their types:
 (include "generic/compiler_components/prim_defs.ss") (import prim_defs)

@@ -110,7 +110,7 @@
 					;      (display "Running on ") (display expr) (newline)      
       (match expr
 	     ;; Doesn't change the input language... 
-        [(,input-language (quote (program ,body ,type)))
+        [(,input-language (quote (program ,body ,meta* ... ,type)))
 	 (if (process-let body '())
 	     expr
 	     (error 'verify-core 
@@ -156,7 +156,8 @@
   (map
    (lambda (prog)
      `[(verify-core '(some-lang '(program ,prog notype)))
-       (some-lang '(program ,prog notype))])
+       (some-lang '(program ,prog ;(union-types) 
+		     notype))])
    test-programs))
 
 (define-testing test-this (default-unit-tester 

@@ -198,11 +198,14 @@
 		   [,oth (fallthru oth)]))]
     [Program (lambda(prog Expr)	  
 	       (match prog
-		 [(,inputlang '(program ,bod ,type)) prog]
-		 [(,inputlang '(program ,bod (type-aliases ,alias* ...) ,type))
-		  (fluid-let ([aliases alias*])		    
+		 [(,inputlang '(program ,bod 				  
+				 ,meta* ... 
+				 ,type))
+		  (fluid-let ([aliases (cdr (or (assq 'type-aliases meta*) 
+						'(type-aliases)))])
 		    `(resolve-type-aliases-language
-		      '(program ,(Expr bod) ,type)))]))]
+		      '(program ,(Expr bod) ,(remq (assq 'type-aliases meta*) meta*) ... 
+				,type)))]))]
     ;; Now we're free of sugars and can use the initial grammar.
     [OutputGrammar initial_regiment_grammar])
 
