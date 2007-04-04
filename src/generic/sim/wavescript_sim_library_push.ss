@@ -398,7 +398,7 @@
 	(define tup (make-vector len))
 	(let loop ([i 0])
 	  (if (fx= i len)
-	      tup
+	      (if (= 1 len) (vector-ref tup 0) tup)
 	      (begin 
 		;; Note, this doesn't work for spaces, and doesn't expect quotes around strings.
 		(vector-set! tup i 

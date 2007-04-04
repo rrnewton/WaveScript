@@ -126,9 +126,9 @@ ws:
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
 
+ws.debug: dbg
+debug: dbg
 dbg:
-debug:
-ws.debug:
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
@@ -137,8 +137,8 @@ ws.debug:
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
 
+ws.threaded: threaded
 threaded:
-ws.threaded:
 #	if ! [ -d build/$(CMT) ]; then mkdir build/$(CMT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
@@ -295,7 +295,7 @@ cleanheap:
 # Clean the compiler stuff but not wsparse.
 cleanchez: cleancomp
 cleancomp:
-	$(RM) build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/*
+	$(RM) build/i3nt/* build/i3le/* build/ppcosx/* build/i3osx/* build/ti3osx/* build/ti3le/*
 
 
 cleanplt:
