@@ -47,8 +47,8 @@
     ))
 
 ;; A bit inefficient:
-(define par-map map)
-;(define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
+;(define par-map map)
+(define (par-map f ls) (apply par-list (map (lambda (x) (lambda () (f x))) ls)))
 
 ;(define (par-list . thunks)  (map (lambda (th) (th)) thunks))
 
