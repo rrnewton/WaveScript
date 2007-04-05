@@ -22,13 +22,8 @@ fun println(s) {
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
 
-fftArray :: Array Float -> Array Complex;
-fun fftArray(arr) {
-  toArray(fft(toSigseg(arr, 0, nulltimebase)))
-}
-
 fun fftStream(s) {
-  iterate (f in s) { emit(fft(f)); }
+  iterate (f in s) { emit(toSigseg(fftR2C(toArray(f)),0,nulltimebase)); }
 }
 
 fun sqr(x) { x*x }

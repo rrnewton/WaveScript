@@ -7,13 +7,12 @@ fun fft_filter(s, filter) {
   rw = rewindow(s, (Array:length(filter)-1)*2, 0-(Array:length(filter)-1));
 
   filt = iterate(h in rw) {
-    freq = fftR2C(h);
-    emit(toSigseg(Array:build(Array:length(filter), fun(i) freq[[i]] * filter[i]), 
-                  freq.start, freq.timebase));
+    freq = fftR2C(toArray(h));
+    emit(Array:build(Array:length(filter), fun(i) freq[i] * filter[i]));
   };
 
   tdwin = iterate f in filt { 
-    emit(ifftC2R(f)); 
+    emit(toSigseg(ifftC2R(f),0,nulltimebase)); 
   };
 
   td = zip2_sametype(gnuplot_sigseg_stream(myhanning(tdwin)), rw);
