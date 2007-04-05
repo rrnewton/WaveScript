@@ -32,7 +32,7 @@ fun specgram_seglist(ext) {
       s = List:ref(segs,index);
       a = toArray(s.subseg(s.start+i,points));
       win = apairmult(a,hw);
-      f = fftArray(win);
+      f = fftR2C(win);
       for j = 0 to points/2 {
 	println("@@ " ++ x ++ " " ++ j+index*(points/2+1) ++ " " ++ absC(f[j])
 		++ " " ++ s.start+i);
