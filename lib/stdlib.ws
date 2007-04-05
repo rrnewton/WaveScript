@@ -497,6 +497,7 @@ fun amult_scalar_inplace(arr,s) {
   amap_inplace(ms, arr)
 }
 
+apairmult :: (Array #n, Array #n) -> Array #n;
 fun apairmult(arr1,arr2) {
   Array:build(arr1`Array:length, 
 	      fun (i) arr1[i] * arr2[i])
