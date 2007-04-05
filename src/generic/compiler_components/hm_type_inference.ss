@@ -656,7 +656,7 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
-    (trace-match AE exp 
+    (match exp 
       [,c (guard (constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:

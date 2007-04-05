@@ -4,7 +4,8 @@
 
 
 
-xw = iterate win in timer(3.0) { }
+xw :: Stream Int;
+xw = iterate win in timer(3.0) { } 
 BASE <- iterate(_ in unionList([xw])) { emit 3 }
 
 
