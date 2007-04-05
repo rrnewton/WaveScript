@@ -91,7 +91,7 @@ sm = stream_map;
 // ============================================================
 // Main query:
 
-chans = (readFile("/tmp/crap", "")
+chans = (readFile("/tmp/clip", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
 
 x = window(sm(fun((_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
@@ -102,6 +102,10 @@ z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
 // assuming sample rate is 380 hz
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
+fun apairmult2(arr1,arr2) {
+  Array:build(arr1`Array:length, 
+	      fun (i) arr1[i] * arr2[i])
+}
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream Float);
 fun profile(s,profile,skip) {
@@ -110,7 +114,7 @@ fun profile(s,profile,skip) {
   rw = rewindow(s, len, skip - len);
   iterate win in rw {
     arr = toArray(win);
-    arr2 = apairmult(profile,fftR2C(apairmult(arr,window)));
+    arr2 = apairmult2(profile,fftR2C(apairmult(arr,window)));
     let (_,sum) = Array:fold(fun ((i,acc), x) 
 			     (i+1, acc + absC(x)),
 			     (0,gint(0)), arr2);
