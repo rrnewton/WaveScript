@@ -90,6 +90,7 @@ zip2_sametype = fun (s1,s2) {
   }
 }
 
+//zip2_sametype :: (Stream a,  Stream b, Stream c) -> Stream (a * b * c);
 zip3_sametype = fun (s1,s2,s3) {
   slist = [s1,s2,s3];
   iterate((ind, seg) in unionList(slist)) {

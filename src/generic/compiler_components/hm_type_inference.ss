@@ -221,7 +221,7 @@
     [(,tenvsym [,v* ,t* ,flag*] ...)
      (and (eq? tenvsym (car (empty-tenv)))
 	  (andmap symbol? v*)
-	  (andmap type? t*)
+	  (andmap type? t*);(andmap instantiated-type? t*)
 	  (andmap (lambda (x) (or (boolean? x) (type? x))) flag*)
 	  )]
     [,else #f]))
@@ -312,7 +312,7 @@
 		 ;(inspect (list "non-cell within ref type, instantiating once!" v " in " t))
 		 `(,Ref ,(loop t))]
 		)]
-
+	     
 	     [(,Ref . ,t) (guard (memq Ref mutable-constructors))
 	      (error 'instantiate-type "haven't implemented multi-argument mutable-type constructors")]
 
@@ -399,7 +399,9 @@
 	    ;; type.  That's our answer.
 	    (let* ([lub (do-lub!!! a b)]
 		   [tc (make-tcell b)])
-	      (types-equal! (instantiate-type lub '()) tc "unknown location")
+	      (types-equal! (instantiate-type lub '()) 
+			    tc ;(inspect/continue tc)
+			    "unknown location")
 	      (set-cdr! pr tc))
 	    ;; Otherwise just the most general type.
 	    (set-cdr! pr b))]
@@ -429,20 +431,21 @@
       [(,name ,args ,ret)
        (instantiate-type `(,@args -> ,ret) '())])))
 
-;; This isn't a very safe datatype, but this predicate tries to give some assurance.
-(define (type? t)
+
+(define (valid-type-symbol? s)
+  (let ([str (symbol->string s)])
+    (and (> (string-length str) 0)
+	 (char-upper-case? (string-ref str 0)))))
+(define (valid-typevar-symbol? s)
+  (let ([str (symbol->string s)])
+    (and (> (string-length str) 0)
+	 (char-lower-case? (string-ref str 0)))))
+;; Our types aren't a very safe datatype, but this predicate tries to give some assurance.
+(define (instantiated-type? t . extra-pred)
   (define (id x) x)
-  (define (valid-type-symbol? s)
-    (let ([str (symbol->string s)])
-      (and (> (string-length str) 0)
-	   (char-upper-case? (string-ref str 0)))))
-  (define (valid-typevar-symbol? s)
-    (let ([str (symbol->string s)])
-      (and (> (string-length str) 0)
-	   (char-lower-case? (string-ref str 0)))))
   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
-    [(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
+    ;[(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
@@ -450,9 +453,16 @@
     [(LATEUNIFY #f ,[t]) t]
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
     ;; Including Ref:
-    [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
+    [(,C ,[t] ...) (guard (symbol? C) (not (memq C '(quote NUM)))) (andmap id t)]
     [#(,[t] ...) (andmap id t)]   
-    [,else #f]))
+    [,oth (if (null? extra-pred) #f 
+	      ((car extra-pred) oth))]))
+(define (type? t)
+  (instantiated-type? t 
+    (lambda (x) 
+      (match x 
+	[(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
+	[,other #f]))))
 
 ;; Does it contain the monad?
 (define (distributed-type? t)
@@ -646,7 +656,7 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
-    (match exp 
+    (trace-match AE exp 
       [,c (guard (constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
@@ -741,7 +751,7 @@
 	   (car t*) (cdr t*))
 	 (values exp
 		 (match (types-compat? '(Stream 'a) (car t*))
-		   [(Stream ,t) `(Stream #(Int ,t))]))
+		   [(Stream ,t) `(Stream #(Int ,(instantiate-type t nongeneric)))]))
 	 )]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
@@ -889,6 +899,7 @@
                (map-ordered2 (lambda (type rhs)
 			       (match type
 				 [(quote (,v . ,_))
+				  (DEBUGASSERT tenv? tenv)
 				  ;; For our own RHS we are "nongeneric".
 				  (mvlet ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
 				    (types-equal! type t rhs)
@@ -1039,7 +1050,7 @@
     ;; Accepts either with-boilerplate or without.
     (match p
       [(,lang '(program ,bod ,metadat* ... ,type))
-       (ASSERT (type? type))
+       (ASSERT type? type)
        (mvlet ([(e t) (Expr bod (sumdecls->tenv
 				 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
 	 `(typechecked-lang '(program ,e ,metadat* ... ,t)))]

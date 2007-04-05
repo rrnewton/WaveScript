@@ -312,7 +312,7 @@
 		 ;; Here we wrap the autoloop function to be type-aware
 		 (case-lambda 
 		   [(x tenv)
-		    (DEBUGASSERT (tenv? tenv))
+		    (DEBUGASSERT tenv? tenv)
 		    (match x 
 		      ;; We overload the cases that require modifying the tenv.
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
