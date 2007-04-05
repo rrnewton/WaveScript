@@ -554,11 +554,6 @@
       ;; If strip-types worked there shouldn't be any VQueue symbols!
       (DEBUGASSERT (not (deep-assq 'VQueue stripped)))
 
-#;
-      (delay (wavescript-language
-	      (match stripped
-		[(,lang '(program ,body ,_ ...)) body])))
-
       ;; New Streams:
       ;; [2007.02.06] Now we wrap it with a little extra to run the query:
       (wavescript-language
@@ -573,6 +568,15 @@
   ) ; End wsint
 
 
+;; For debugging
+(define run-wavescript-sim 
+  (lambda (p)
+    (wavescript-language
+     (match (strip-types p)
+       [(,lang '(program ,body ,_ ...))
+	`(begin (reset-state!) 
+		(run-stream-query ,body))
+	]))))
 
 
 ;; ================================================================================
@@ -951,273 +955,11 @@
           (app sync2 ctrl ch1 ch2)))))))
 
 
-(define final
-  '(type-annotate-misc-language
-  '(program
-     (let ([ch1_1 (Stream (Sigseg Float)) (audio '0 '128 '0)])
-       (let ([ch2_2 (Stream (Sigseg Float)) (audio '1 '128 '0)])
-         (let ([ctrl_3 (Stream #(Bool Int Int))
-                 (iterate
-                   (let ([pos_4 Int '0])
-                     (lambda (w_6 VIRTQUEUE_5)
-                       ((Sigseg Float) (VQueue #(Bool Int Int)))
-                       (begin
-                         (emit
-                           VIRTQUEUE_5
-                           (tuple '#t pos_4 (- (+ pos_4 '100) '1)))
-                         (set! pos_4 (+ pos_4 '100))
-                         VIRTQUEUE_5)))
-                   ch1_1)])
-           (let ([ctrl_7 (Stream #(Bool Int Int (Sigseg Float)))
-                   (iterate
-                     (lambda (pattmp_9 VIRTQUEUE_8)
-                       (#(Bool Int Int)
-                         (VQueue #(Bool Int Int (Sigseg Float))))
-                       (let ([b_10 Bool (tupref 0 3 pattmp_9)])
-                         (let ([s_11 Int (tupref 1 3 pattmp_9)])
-                           (let ([e_12 Int (tupref 2 3 pattmp_9)])
-                             (begin
-                               (emit
-                                 VIRTQUEUE_8
-                                 (tuple b_10 s_11 e_12 nullseg))
-                               VIRTQUEUE_8)))))
-                     ctrl_3)])
-             (let ([s1_13 (Stream #(Bool Int Int (Sigseg Float)))
-                     (iterate
-                       (lambda (win_15 VIRTQUEUE_14)
-                         ((Sigseg Float)
-                           (VQueue #(Bool Int Int (Sigseg Float))))
-                         (begin
-                           (emit VIRTQUEUE_14 (tuple '#f '0 '0 win_15))
-                           VIRTQUEUE_14))
-                       ch1_1)])
-               (let ([s2_16 (Stream #(Bool Int Int (Sigseg Float)))
-                       (iterate
-                         (lambda (win_18 VIRTQUEUE_17)
-                           ((Sigseg Float)
-                             (VQueue #(Bool Int Int (Sigseg Float))))
-                           (begin
-                             (emit VIRTQUEUE_17 (tuple '#f '0 '0 win_18))
-                             VIRTQUEUE_17))
-                         ch2_2)])
-                 (let ([tmp_35 (Stream
-                                 #(Int #(Bool Int Int (Sigseg Float))))
-                         (unionN ctrl_7 s1_13 s2_16)])
-                   (iterate
-                     (let ([acc1_21 (Sigseg Float) nullseg])
-                       (let ([acc2_20 (Sigseg Float) nullseg])
-                         (let ([requests_19 (List #(Bool Int Int)) '()])
-                           (lambda (pattmp_23 VIRTQUEUE_22)
-                             (#(Int #(Bool Int Int (Sigseg Float)))
-                               (VQueue #((Sigseg Float) (Sigseg Float))))
-                             (let ([ind_24 Int (tupref 0 2 pattmp_23)])
-                               (let ([tup_25 #(Bool Int Int (Sigseg Float))
-                                       (tupref 1 2 pattmp_23)])
-                                 (begin
-                                   (let ([pattmp_26 #(Bool Int Int
-                                                      (Sigseg Float))
-                                           tup_25])
-                                     (let ([flag_27 Bool
-                                             (tupref 0 4 pattmp_26)])
-                                       (let ([strt_28 Int
-                                               (tupref 1 4 pattmp_26)])
-                                         (let ([en_29 Int
-                                                 (tupref 2 4 pattmp_26)])
-                                           (let ([seg_30 (Sigseg Float)
-                                                   (tupref 3 4 pattmp_26)])
-                                             (begin
-                                               (if (equal?
-                                                     (assert-type
-                                                       Int
-                                                       ind_24)
-                                                     '0)
-                                                   (set! requests_19
-                                                     (append
-                                                       requests_19
-                                                       (assert-type
-                                                         (List
-                                                           #(Bool Int Int))
-                                                         (cons
-                                                           (tuple
-                                                             flag_27
-                                                             strt_28
-                                                             en_29)
-                                                           '()))))
-                                                   (if (equal?
-                                                         (assert-type
-                                                           Int
-                                                           ind_24)
-                                                         '1)
-                                                       (set! acc1_21
-                                                         (joinsegs
-                                                           acc1_21
-                                                           seg_30))
-                                                       (set! acc2_20
-                                                         (joinsegs
-                                                           acc2_20
-                                                           seg_30))))
-                                               (if (not (equal?
-                                                          (assert-type
-                                                            (Sigseg Float)
-                                                            acc1_21)
-                                                          nullseg))
-                                                   (print
-                                                     (assert-type
-                                                       String
-                                                       (string-append
-                                                         '"  Acc1: "
-                                                         (string-append
-                                                           (show
-                                                             (assert-type
-                                                               Int
-                                                               (start
-                                                                 acc1_21)))
-                                                           (string-append
-                                                             '":"
-                                                             (string-append
-                                                               (show
-                                                                 (assert-type
-                                                                   Int
-                                                                   (end acc1_21)))
-                                                               '"\n"))))))
-                                                   (tuple))
-                                               (if (not (equal?
-                                                          (assert-type
-                                                            (Sigseg Float)
-                                                            acc2_20)
-                                                          nullseg))
-                                                   (print
-                                                     (assert-type
-                                                       String
-                                                       (string-append
-                                                         '"  Acc2: "
-                                                         (string-append
-                                                           (show
-                                                             (assert-type
-                                                               Int
-                                                               (start
-                                                                 acc2_20)))
-                                                           (string-append
-                                                             '":"
-                                                             (string-append
-                                                               (show
-                                                                 (assert-type
-                                                                   Int
-                                                                   (end acc2_20)))
-                                                               '"\n"))))))
-                                                   (tuple))
-                                               (if (equal?
-                                                     (assert-type
-                                                       (List
-                                                         #(Bool Int Int))
-                                                       requests_19)
-                                                     '())
-                                                   (tuple)
-                                                   (let ([pattmp_31 #(Bool
-                                                                      Int
-                                                                      Int)
-                                                           (car requests_19)])
-                                                     (let ([st_32 Int
-                                                             (tupref
-                                                               1
-                                                               3
-                                                               pattmp_31)])
-                                                       (let ([en_33 Int
-                                                               (tupref
-                                                                 2
-                                                                 3
-                                                                 pattmp_31)])
-                                                         (if (if (not (equal?
-                                                                        (assert-type
-                                                                          (Sigseg
-                                                                            Float)
-                                                                          acc1_21)
-                                                                        nullseg))
-                                                                 (if (if (not (equal?
-                                                                                (assert-type
-                                                                                  (Sigseg
-                                                                                    Float)
-                                                                                  acc2_20)
-                                                                                nullseg))
-                                                                         (if (if (<= (start
-                                                                                       acc1_21)
-                                                                                     st_32)
-                                                                                 (if (if (<= (start
-                                                                                               acc2_20)
-                                                                                             st_32)
-                                                                                         (if (if (>= (end acc1_21)
-                                                                                                     en_33)
-                                                                                                 (if (>= (end acc2_20)
-                                                                                                         en_33)
-                                                                                                     '#t
-                                                                                                     '#f)
-                                                                                                 '#f)
-                                                                                             '#t
-                                                                                             '#f)
-                                                                                         '#f)
-                                                                                     '#t
-                                                                                     '#f)
-                                                                                 '#f)
-                                                                             '#t
-                                                                             '#f)
-                                                                         '#f)
-                                                                     '#t
-                                                                     '#f)
-                                                                 '#f)
-                                                             (begin
-                                                               (print
-                                                                 (assert-type
-                                                                   String
-                                                                   (string-append
-                                                                     '"  Spit out segment!! "
-                                                                     (string-append
-                                                                       (show
-                                                                         (assert-type
-                                                                           Int
-                                                                           st_32))
-                                                                       (string-append
-                                                                         '":"
-                                                                         (string-append
-                                                                           (show
-                                                                             (assert-type
-                                                                               Int
-                                                                               en_33))
-                                                                           '"\n"))))))
-                                                               (let ([size_34 Int
-                                                                       (+ (- en_33
-                                                                             st_32)
-                                                                          '1)])
-                                                                 (begin
-                                                                   (emit
-                                                                     VIRTQUEUE_22
-                                                                     (tuple
-                                                                       (subseg
-                                                                         acc1_21
-                                                                         st_32
-                                                                         size_34)
-                                                                       (subseg
-                                                                         acc2_20
-                                                                         st_32
-                                                                         size_34)))
-                                                                   (set! acc1_21
-                                                                     (subseg
-                                                                       acc1_21
-                                                                       (+ st_32
-                                                                          size_34)
-                                                                       (- (width
-                                                                            acc1_21)
-                                                                          size_34)))
-                                                                   (set! acc2_20
-                                                                     (subseg
-                                                                       acc2_20
-                                                                       (+ st_32
-                                                                          size_34)
-                                                                       (- (width
-                                                                            acc2_20)
-                                                                          size_34)))
-                                                                   (set! requests_19
-                                                                     (cdr requests_19)))))
-                                                             (tuple))))))))))))
-                                   VIRTQUEUE_22)))))))
-                     tmp_35))))))))
-     (Stream #((Sigseg Float) (Sigseg Float))))))
+
+
+
+
+
+
+
+

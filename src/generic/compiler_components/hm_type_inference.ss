@@ -32,6 +32,10 @@
 ;; TODO: [2006.04.28] Add a "normalize" procedure that gets rid of any
 ;; type aliases.  This will remove most of the need for types-compat?
 
+;; [2007.04.05] Previously I had an overly restrictive ban on
+;; instantiation of Ref types.  Now I've implemented the SML style
+;; "value restriction".
+
 (module hm_type_inference mzscheme
   (require ;`"../../plt/common.ss"
            "prim_defs.ss"
@@ -112,7 +116,7 @@
 
   (chezimports constants)
 
-;; This controls whether let-bound-polymorphism is allowed.
+;; This controls whether let-bound-polymorphism is allowed at all.
 (define inferencer-let-bound-poly (make-parameter #t))
 
 ;; If this is enabled, the type assigned to a let-bound variable is
@@ -863,7 +867,15 @@
 			       (make-tcell new)
 			       )
 			  rhsty* inittypes)]
-	      [tenv (tenv-extend tenv id* newtypes (inferencer-let-bound-poly))])
+	      [tenv 
+	       (tenv-extend tenv id* newtypes (inferencer-let-bound-poly))
+	       #;
+	       (if (not (inferencer-let-bound-poly))
+		   (tenv-extend tenv id* newtypes #f)
+		   (foldl (lambda (tenv)
+			    )))
+		
+	       ])
 	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
 	   (values `(let ([,id* ,newtypes ,newrhs*] ...) ,bod) bodty)))])))
 

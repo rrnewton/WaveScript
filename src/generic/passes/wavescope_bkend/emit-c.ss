@@ -130,7 +130,7 @@
 	[(dynamic) #f]
 	[,else (error 'wsquery->text "bad additional arguments: ~s" mode)]))
     (match prog
-      [(,lang (quote (program ,expr (struct-defs . ,struct-defs) ,typ)))
+      [(,lang (quote (program ,expr (struct-defs . ,struct-defs) (union-types ,uniondefs ...) ,typ)))
        
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.
@@ -405,7 +405,7 @@
 	 (values 
 	  `("WSBox* ",name";\n"
 	    "{ size = ",size";\n"
-	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n" 
+	    "  ",name" =  new Rewindow<float>(size, size - ",overlap ");\n"
 	    "  RawFileSource* tmp = new PipeFileSource(\"",file"\", size, WSSched::findcpuspeed());\n"
 	    "  ",name"->connect(tmp); }\n"
 	    )

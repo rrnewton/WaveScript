@@ -107,18 +107,36 @@ fun apairmult2(arr1,arr2) {
 	      fun (i) arr1[i] * arr2[i])
 }
 
+/*
+fun new_apairmult(arr1,arr2) {
+  using Array;
+  newarr = make(arr1`length,arr1[0]);
+  for i = 0 to arr1`length - 1 {
+    
+    Array:build(arr1`Array:length, 
+	      fun (i) arr1[i] * arr2[i])
+}
+*/
+
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream Float);
 fun profile(s,profile,skip) {
   len = 2*(Array:length(profile)-1);
   window = gaussian(intToFloat(skip),len);
   rw = rewindow(s, len, skip - len);
   iterate win in rw {
+    state { dummy = Array:null }
+
     arr = toArray(win);
-    arr2 = apairmult2(profile,fftR2C(apairmult(arr,window)));
+
+    // RRN: Working around the compilers stupidity!:
+    dummy := fftR2C(apairmult(arr,window));
+    arr2 = apairmult2(profile,dummy);
+
     let (_,sum) = Array:fold(fun ((i,acc), x) 
 			     (i+1, acc + absC(x)),
 			     (0,gint(0)), arr2);
     emit(sum);
+
     //    emit(absC(adot(profile,fftR2C(apairmult(arr,window)))));
   }
 }
@@ -135,7 +153,15 @@ totalscore = iterate((x,y,z) in zip3_sametype(xw,yw,zw)) {
 };
 
 
-BASE <- totalscore;
+// For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
+
+BASE <- 
+//xw
+//CONST(notch_filter(129,58,128))
+//yw
+//zip3_sametype(xw,xw,xw)
+//zip3_sametype(xw,yw,zw)
+totalscore;
 
 
 
