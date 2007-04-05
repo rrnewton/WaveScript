@@ -236,16 +236,25 @@
 ;; [2007.03.19] Note: top level type declarations don't have to occur
 ;; in any particular position in the file.
 (define (ws-postprocess origws)
+  (define all-includes! '()) ;; Mutated below:
   ;; First we expand includes:  
   (define (process form)
     (match form
       [(include ,file) 
-       ;; This is usually a relative file path!
-       (apply append
-	 (map process 
-	   (or (expand-include (resolve-lib-path file))
-	       (error 'ws-postprocess 
-		      "could not retrieve contents of include: ~s" file))))]
+       (let ([path (resolve-lib-path file)])
+	 (if (member path all-includes!)
+	     (begin
+	       (warning 'ws-postprocess
+			"Suppressing repeated include of file!: ~s\n" path)
+	       '())
+	     (begin 
+	       (set! all-includes! (cons path all-includes!))
+	       ;; This is usually a relative file path!
+	       (apply append
+		      (map process 
+			(or (expand-include path)
+			    (error 'ws-postprocess 
+				   "could not retrieve contents of include: ~s" file)))))))]
       [(using ,M) `((using ,M))]
       ;; This just renames all defs within a namespace.
       [(namespace ,Space ,[defs] ...)
