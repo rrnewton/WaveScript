@@ -239,11 +239,18 @@
 
 ;(font-lock-add-keywords 'c-mode '(("\\<\\(FIXME\\):" 1 font-lock-warning-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(iterate\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(union\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(match\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(state\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(let\\)" 1 font-lock-keyword-face t)))
-(font-lock-add-keywords 'c-mode '(("\\<\\(smap\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(then\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(emit\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(fun\\)" 1 font-lock-keyword-face t)))
+
+(font-lock-add-keywords 'c-mode '(("\\<\\(smap\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(stream_map\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(stream_filter\\)" 1 font-lock-keyword-face t)))
+
 ;(font-lock-add-keywords 'c-mode '(("\\<\\( = \\)" 1 font-lock-keyword-face t)))
 
 

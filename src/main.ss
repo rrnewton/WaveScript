@@ -335,6 +335,7 @@
     (ws-run-pass p verify-regiment)
     (ws-run-pass p pass_desugar-pattern-matching)
     (ws-run-pass p resolve-varrefs)
+    ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
     (ws-run-pass p resolve-type-aliases)
     (ws-run-pass p ws-label-mutable)
     (ws-run-pass p retypecheck) ;; This is the initial typecheck.

@@ -14,6 +14,7 @@ include "matrix.ws";
 BASE <- iterate (() in timer(30.0)) {
   state { first = true }
 
+
   // Can't yet statically compute this:
   mat0 = [[0.0+0.0i, 2.0+0.0i, 4.0+0.0i, 5.0+0.0i],
 	  [3.0+0.0i, 4.0+0.0i, 5.0+0.0i, 0.0+0.0i - 2.0+0.0i],
@@ -21,8 +22,8 @@ BASE <- iterate (() in timer(30.0)) {
 	  [4.0+0.0i, 6.0+0.0i, 5.0+0.0i, 7.0+0.0i]];
   mat = list_to_matrix(mat0);
 
-  
   if first then {
+  /*  
     m = matrix(3, 4, 5.0);
 
     // These are some unit tests. 
@@ -58,8 +59,9 @@ BASE <- iterate (() in timer(30.0)) {
     println("\n");
 
     //println("Numeric test:  " ++ );
-
+  
     first := false;
-  } else emit matrix(0, 0, 0.0);
+  */
+  } else emit matrix(0, 0, 0.0)  
 }
 

@@ -2,6 +2,7 @@
 include "stdlib.ws";
 
 // Frequency-domain filter operator
+fft_filter :: (Stream (Sigseg Float), Array Complex) -> Stream (Sigseg Float);
 fun fft_filter(s, filter) {
 
   rw = rewindow(s, (Array:length(filter)-1)*2, 0-(Array:length(filter)-1));
@@ -11,7 +12,7 @@ fun fft_filter(s, filter) {
     emit(Array:build(Array:length(filter), fun(i) freq[i] * filter[i]));
   };
 
-  tdwin = iterate f in filt { 
+  tdwin = iterate f in filt {
     emit(toSigseg(ifftC2R(f),0,nulltimebase)); 
   };
 
@@ -47,7 +48,7 @@ fun notch_filter(size, low, high) {
 }
 
 
-
+filter_spikes :: ((Stream (Sigseg t)), Float) -> (Stream (Sigseg t));
 fun filter_spikes(s, thresh) {
   iterate (v in s) {
     state {

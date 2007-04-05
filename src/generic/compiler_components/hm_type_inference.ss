@@ -128,8 +128,8 @@
 		    ;; Int8 Int16 Int64 Double Complex64
 			))  
 ;(define mutable-constructors '(Ref Array HashTable))
-(define mutable-constructors '(Ref Array ))
-;(define mutable-constructors '(Ref ))
+;(define mutable-constructors '(Ref Array ))
+(define mutable-constructors '(Ref ))
 
 ; ======================================================================
 ;;; Helpers

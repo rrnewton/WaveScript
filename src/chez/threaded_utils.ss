@@ -14,7 +14,7 @@
 
      ;async-par ;; A version of 'par' that returns immediately.
      ;sync      ;; The corresponding call to wait for an async-par to finish.
-     WAITING
+     ;WAITING
      tickets
      )
   
@@ -115,19 +115,21 @@
 ;; [2007.04.04] Occasionally deadlocks currently.
 ;; Fixed deadlock, but it has the design flaw that it runs out of
 ;; threads if you do nested pars.
-#;
-(begin 
+;;
+;; Tweaking design: if no tickets are available, we just do it ourselves.
+(begin
   ;; We need to put a request for work in a job queue, but get a ticket
   ;; back that we can use to both (1) wait on the computation's
   ;; completion (2) retrieve the value produced by the computation.
   (define not-finished #t)
-  (define tickets (make-bq 10)) ;; Tickets for work.
+  (define tickets '()) ;; Tickets for work.
+  (define mut (make-mutex)) ;; Global: guards tickets and printing.
   
   ;; DEBUG:
-  (define WAITING '())
+  ;(define WAITING '())
 
   (define not-computed (gensym "not-computed"))
-  (define mut (make-mutex)) ;; Just for printing right now.
+  
   ;(define (print . args) (with-mutex mut (apply printf args) (flush-output-port)))
   ;(define (print . args) (apply printf args))
   (define (print . args) (void))
@@ -158,89 +160,12 @@
 	(define inq (make-bq 1)) ;; Incoming work
 	(define (go) 
 	  ;; Issue a ticket for the next piece of work.
-	  (enqueue! tickets (make-ticket inq))
-	  ;; Someone took the ticket, lets get their work:
-	  (print "  Thread ~s waiting for work... (also waiting: ~s)\n" id WAITING)
-	  (with-mutex mut (set! WAITING (cons id WAITING)))
-	  (let ([j (dequeue! inq)]) 
-	    (with-mutex mut (set! WAITING (remq id WAITING)))
-	    (print "  Thread ~s  got work!! ~s\n" id j)
-	    (when not-finished	      
-	      (let* ([v ((job-work j))]) ;; DOES THE WORK!!!!  MAY CALL PAR AGAIN!
-		;; Inform the client that their job is done.
-		(with-mutex (job-mutex j)
-		  (set-job-val! j v)
-		  (condition-signal (job-ready j)))
-		(go)))))
-	(fork-thread go))))
-  (define (init-par num-cpus) 
-    (do ([i 0 (fx+ i 1)]) ([= i num-cpus] (void))      
-      (make-worker)))
-  (define (shutdown-par) (set! not-finished #f))
-  (define (par-list . thunks)
-    (let ([jobs (map (lambda (th) 		      
-		       (print " SRC: Taking a ticket...\n") 
-		       (let ([tick (dequeue! tickets)]) ; Pull a ticket.			 
-			 (tick th))) ; Fill it out, get a job object back.
-		  thunks)])
-      (print " SRC: Jobs out, now collect results\n")
-      ;; Now get all those results:
-      (map get-job-result jobs)
-      ;jobs
-      ))
-)
-
-
-;; Tweaking design: if no tickets are available, we just do it ourselves.
-(begin
-  ;; We need to put a request for work in a job queue, but get a ticket
-  ;; back that we can use to both (1) wait on the computation's
-  ;; completion (2) retrieve the value produced by the computation.
-  (define not-finished #t)
-  (define tickets '()) ;; Tickets for work.
-  (define mut (make-mutex)) ;; Global: guards tickets and printing.
-  
-  ;; DEBUG:
-  (define WAITING '())
-
-  (define not-computed (gensym "not-computed"))
-
-  (define (print . args) (with-mutex mut (apply printf args) (flush-output-port)))
-  ;(define (print . args) (apply printf args))
-  ;(define (print . args) (void))
-  (define-record job (work)
-    ([mutex (make-mutex)]  ;; TODO: This doesn't really need its own mutex.
-     [ready (make-condition)]
-     [val  not-computed]))
-  (define (get-job-result j)
-    ;; DEBUG!!! BRINGING THIS MUTEX OUT HERE:
-    (with-mutex (job-mutex j)
-      (let ([result (job-val j)])
-	(if (eq? not-computed result)
-	    (begin ;with-mutex (job-mutex j)
-	      (begin ;with-mutex (job-mutex j)
-		(condition-wait (job-ready j) (job-mutex j)))
-	      ;; Now it must be ready.
-	      (job-val j))
-	    result))))
-  (define (make-ticket jobqueue)
-    (lambda (work)
-      (let* ([j (make-job work)])
-	(enqueue! jobqueue j)	
-	j)))
-  (define make-worker
-    (let ([counter 0])
-      (lambda ()
-	(define id (begin (set! counter (add1 counter)) counter))
-	(define inq (make-bq 1)) ;; Incoming work
-	(define (go) 
-	  ;; Issue a ticket for the next piece of work.
 	  (with-mutex mut (set! tickets (cons (make-ticket inq) tickets)))
 	  ;; Someone took the ticket, lets get their work:
-	  (print "  Thread ~s waiting for work... (also waiting: ~s)\n" id WAITING)
-	  (with-mutex mut (set! WAITING (cons id WAITING)))
+	  ;(print "  Thread ~s waiting for work... (also waiting: ~s)\n" id WAITING)
+	  ;(with-mutex mut (set! WAITING (cons id WAITING)))
 	  (let ([j (dequeue! inq)]) 
-	    (with-mutex mut (set! WAITING (remq id WAITING)))
+	    ;(with-mutex mut (set! WAITING (remq id WAITING)))
 	    (print "  Thread ~s  got work!! ~s\n" id j)
 	    (when not-finished	      
 	      (let* ([v ((job-work j))]) ;; DOES THE WORK!!!!  MAY CALL PAR AGAIN!

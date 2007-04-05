@@ -103,10 +103,11 @@ z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
 
-
 fun profile(s,profile,skip) {
-  fw = fftStream(rewindow(s,Array:length(profile)-1,skip-(Array:length(profile)-1)));
-  iterate (win in fw) {
+  len = Array:length(profile);
+  rw = rewindow(s, len-1, skip - (len-1));
+  fw = stream_map( sigseg_fftR2C, rw);
+  iterate win in fw {
     state {
       sum = 0.0+0.0i;
     }

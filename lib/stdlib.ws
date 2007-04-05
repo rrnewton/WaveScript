@@ -23,7 +23,7 @@ fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
 
 fun fftStream(s) {
-  iterate (f in s) { emit(toSigseg(fftR2C(toArray(f)),0,nulltimebase)); }
+  iterate f in s { emit fftR2C(f) }
 }
 
 fun sqr(x) { x*x }
