@@ -22,6 +22,26 @@ fun println(s) {
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
 
+fftArray :: Array Float -> Array Complex;
+fun fftArray(arr) {
+  toArray(fft(toSigseg(arr, 0, nulltimebase)))
+}
+
+fun fftStream(s) {
+  iterate (f in s) { emit(fft(f)); }
+}
+
+fun sqr(x) { x*x }
+
+fun gaussian(sigma,size) {
+  mu = intToFloat(size)/2.0;
+  coeff = 1.0/(sigma*sqrtF(2.0*const_PI));
+  Array:build(size, 
+	      fun (i) 
+	      coeff*expF(0.0-sqr(intToFloat(i)-mu)/(2.0*sqr(sigma))));
+}
+
+
 // For completeness we include these restrictions of their generic counterparts:
 //fun intToFloat     (i::Int)   toFloat(i) 
 //fun intToComplex   (i::Int)   toComplex(i) 
@@ -74,6 +94,37 @@ zip2_sametype = fun (s1,s2) {
     }
   }
 }
+
+zip3_sametype = fun (s1,s2,s3) {
+  slist = [s1,s2,s3];
+  iterate((ind, seg) in unionList(slist)) {
+    state {
+      s1 = [];
+      s2 = [];
+      s3 = [];
+    }
+  
+    if (ind == 0) then {
+      s1 := List:append(s1,[seg]);
+    }
+    else if (ind == 1) then {
+      s2 := List:append(s2,[seg]);
+    }
+    else if (ind == 2) then {
+      s3 := List:append(s3,[seg]);
+    }
+    else wserror("implementation error: got ind "++ show(ind));
+
+    if (s1 != [] && s2 != [] && s3 != []) then {
+      emit(List:head(s1), List:head(s2), List:head(s3));
+      s1 := tail(s1);
+      s2 := tail(s2);
+      s3 := tail(s3);
+    }
+  }
+}
+
+
 
 
 syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
@@ -164,6 +215,34 @@ syncN =
     }
   }
 }
+
+
+fun thresh_extract(search,streamlist,thresh,pad) {
+
+  ctrl = iterate (w in search) {
+    state {
+      skiptill = pad;
+    }
+
+    //println("in thresh, w.start " ++ w.start);
+
+    for i = 0 to w.width-1 {
+      if ((w.start+i) > skiptill && absF(w[[i]]) > thresh) then {
+        //println("about to emit t, " ++ w.start + i - pad ++ " " ++ w.start + i + pad - 1);
+    	emit (true, w.start + i - pad, w.start + i + pad - 1);
+        skiptill := w.start + i + pad;
+      }
+    };
+    
+    if (w.start+w.width-pad-1 > skiptill) then {
+      //println("about to emit f, " ++ w.start + w.width - pad - 1);
+      emit (false, 0, w.start + w.width - pad - 1);
+    }
+  };
+
+  syncN(ctrl,streamlist);
+}
+
 
 
 // This takes an unwindowed stream and produces a stream of sigsegs.

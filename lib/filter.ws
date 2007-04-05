@@ -47,3 +47,24 @@ fun notch_filter(size, low, high) {
     })
 }
 
+
+
+fun filter_spikes(s, thresh) {
+  iterate (v in s) {
+    state {
+      last = 0.0;
+    }  
+
+    arr = Array:build(v.width, fun (i) v[[i]]);
+
+    for i = 0 to v.width-1 {
+      if ((arr[i] > thresh) || (arr[i] < 0.0-thresh)) then {
+        arr[i] := last; 
+      };
+      last := arr[i];
+    }
+
+    emit(toSigseg(arr, v.start, v.timebase));
+  }
+}
+
