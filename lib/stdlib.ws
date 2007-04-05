@@ -432,10 +432,14 @@ fun apairsum(arr1,arr2) {
               fun (i) arr1[i] + arr2[i])
 }
 
+
+adot :: (Array #n, Array #n) -> #n;
 fun adot(arr1,arr2) {
   // rrn: This is pretty unnatural:
-  Array:fold(fun ((i,acc), x) (i+1, acc + (x * arr2[i])),
-	     (0,gint(0)), arr1)
+  let (_,sum) = Array:fold(fun ((i,acc), x) 
+			     (i+1, acc + (x * arr2[i])),
+			   (0,gint(0)), arr1);
+  sum
 }
 
 a_max :: Array #n -> (#n * Int);

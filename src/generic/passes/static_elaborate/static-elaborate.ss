@@ -242,7 +242,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
+      ;(when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -264,7 +264,7 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
+      ;(when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
       (match rator
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
