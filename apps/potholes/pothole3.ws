@@ -102,21 +102,6 @@ z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
 // assuming sample rate is 380 hz
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
-fun apairmult2(arr1,arr2) {
-  Array:build(arr1`Array:length, 
-	      fun (i) arr1[i] * arr2[i])
-}
-
-/*
-fun new_apairmult(arr1,arr2) {
-  using Array;
-  newarr = make(arr1`length,arr1[0]);
-  for i = 0 to arr1`length - 1 {
-    
-    Array:build(arr1`Array:length, 
-	      fun (i) arr1[i] * arr2[i])
-}
-*/
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream Float);
 fun profile(s,profile,skip) {
@@ -124,16 +109,9 @@ fun profile(s,profile,skip) {
   window = gaussian(intToFloat(skip),len);
   rw = rewindow(s, len, skip - len);
   iterate win in rw {
-    //state { dummy = Array:null }
 
     arr = toArray(win);
-
-    // RRN: Working around the compilers stupidity!:
-    //dummy := fftR2C(apairmult(arr,window));
-    //arr2 = apairmult2(profile,dummy);
-
-    // New static-elaborate strategy makes that work-around unnecessary.
-    arr2 = apairmult2(profile,fftR2C(apairmult(arr,window)));
+    arr2 = apairmult(profile,fftR2C(apairmult(arr,window)));
 
     let (_,sum) = Array:fold(fun ((i,acc), x) 
 			     (i+1, acc + absC(x)),
@@ -161,13 +139,7 @@ totalscore = iterate((x,y,z) in zip3_sametype(xw,yw,zw)) {
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
-BASE <- 
-//xw
-//CONST(notch_filter(129,58,128))
-//yw
-//zip3_sametype(xw,xw,xw)
-//zip3_sametype(xw,yw,zw)
-totalscore;
+BASE <- totalscore;
 
 
 
