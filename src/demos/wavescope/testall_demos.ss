@@ -43,24 +43,21 @@ exec regiment i --script "$0" ${1+"$@"};
 				     (ASSERT (= 8191 (end   b)))
 				     )]
 
-    ["demo1_audiofile.ws"         ,(lambda (a b) 
-				     (import wavescript_sim_library_push)
-				     (ASSERT (= 0  (start a)))
-				     (ASSERT (= 9  (end   a)))
-				     (ASSERT (= 10 (start b)))
-				     (ASSERT (= 19 (end   b)))
-				     (and 
-;; FIX THE INT16 READING HERE!!
-#;				      
-				      (equal? a 
-					      [make-sigseg 0 9 #(256 512 768 1024 1280 1536 1792 2048 2304 2560) nulltimebase])
-				      
-					  ))]
-
     ["demo1b_dataFile.ws"         ,(lambda (a b) 
 				     (ASSERT (equal? a #(1 1.0)))
 				     (ASSERT (equal? b #(2 2.0))))]
 
+    ["demo1c_timer.ws"         ,(lambda (a b) 
+				     (ASSERT (equal? a 39))
+				     (ASSERT (equal? b 39)))]
+    ["demo1d_dataFile_binary.ws"  ,(lambda (a b) 
+				     (ASSERT (equal? a 1256))
+				     (ASSERT (equal? b 2024)))]
+    ;; Hmm need to test windowed reading too:
+    ["demo1e_readFile.ws"  ,(lambda (a b) 
+				     (ASSERT (equal? a #(512 1024 1536)))
+				     (ASSERT (equal? b #(2 514 1026))))]
+    
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
 				     (import wavescript_sim_library_push)

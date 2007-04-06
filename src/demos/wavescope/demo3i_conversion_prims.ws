@@ -1,5 +1,5 @@
 
-s0 = audioFile("./countup.raw", 4096, 0, 44000);
+s0 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
 
 fun println(s) {
   print("  ");

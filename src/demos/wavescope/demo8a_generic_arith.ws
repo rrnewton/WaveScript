@@ -13,7 +13,7 @@ fun f(x) { x g+ gint(3) }
 // Now we use normal +, which is an alias for g+.
 fun g(x, y) { x + y }
 
-s1 = audioFile("./countup.raw", 4096, 0, 44000);
+s1 = (readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int));
 
 s2 = iterate (w in s1) {
   emit (f(3), f(4.5));

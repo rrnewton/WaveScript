@@ -3,7 +3,7 @@
 
 // Test various primitives in WS.
 
-BASE <- iterate (x in audioFile("./countup.raw", 1000, 0)) {
+BASE <- iterate (x in (readFile("./countup.raw", "mode: binary  window: 1000") :: Stream (Sigseg Int))) {
   state { run = true }
   if run then {
 

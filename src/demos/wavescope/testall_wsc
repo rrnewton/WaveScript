@@ -7,14 +7,15 @@ echo > $COMP
 echo > $RUN
 
 function go () {
-    echo 
+    echo; echo; echo; echo; echo; echo; echo;  
     echo "testall_wsc: Running $1"
     echo "============================================================"
     if ! wsc $1 -exit-error; then exit 1; fi
     echo >> $RUN
     echo $1 : >> $RUN
 ##    ./run_query | head -20 >> $RUN
-    if ! ./query.exe >> $RUN; then exit 1; fi
+##    if ! ./query.exe >> $RUN; then exit 1; fi
+    if ! ./query.exe | head -100 >> $RUN; then exit 1; fi
 }
 
 # wsc demo0_audio.ws 
@@ -27,11 +28,10 @@ function go () {
 # echo DEMO1: >> $RUN
 # ./run_query | head -20 >> $RUN
 
-#go "demo0_audio.ws"
-go "demo1_audiofile.ws"
-# 1b, 1c
+go "demo1b_dataFile.ws"
+go "demo1c_timer.ws"
 go "demo1d_dataFile_binary.ws"
-
+go "demo1e_readFile.ws"
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"

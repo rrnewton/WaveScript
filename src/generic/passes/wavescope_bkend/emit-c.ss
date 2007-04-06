@@ -998,7 +998,8 @@
       [(m_invert string-append 
 	width start end joinsegs subseg toSigseg
 	;wserror ;generic_hash 
-	fftR2C
+	fftR2C ifftC2R fftC ifftC
+
 	)
        (fromlib (mangle var))]
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
@@ -1118,8 +1119,8 @@
 	       [ss (Simple sigseg)]
 	       [tt (Type t)])
 	   `("boost::shared_ptr< vector<",tt"> >",tmp"(new vector<",tt">(",ss".length()));\n"
-	     "int len = ",ss".length();\n"
-	     "for(int i=0; i<len; i++) {\n"
+	     "int ",len" = ",ss".length();\n"
+	     "for(int i=0; i<",len"; i++) {\n"
 	     "  ",(Prim `(seg-get (assert-type (Sigseg ,t) ,sigseg) i) tmp2 tt)
 	     "  (*",tmp")[i] = ",tmp2";\n"
 	     "}\n"

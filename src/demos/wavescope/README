@@ -1,0 +1,18 @@
+
+There are many demos in this directory.  You'll notice that there are
+several with the same number but different letters.  They're roughly
+grouped like this:
+
+ demo1* : Can we read in data? 
+ demo2* : Can we iterate over a stream?
+ demo3* : Shallow and broad tests of various primitives/datatypes.
+ demo4* : Can we do an FFT? (Will test other signal processing here.)
+ demo5* : Can we handle sigsegs?
+ demo6* : Can we sync streams?
+ demo7* : A more substantial program: Marmot phase 1.
+ demo8* : Fancy language features, syntactic sugars and generic arith.
+
+ ...
+
+  -Ryan
+

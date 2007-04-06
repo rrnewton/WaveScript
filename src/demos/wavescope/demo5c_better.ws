@@ -1,7 +1,7 @@
 
 // UNFINISHED
 
-BASE <- rewindow(audioFile("./countup.raw", 4096, 0), 10, 100);
+BASE <- rewindow((readFile("./countup.raw", "mode: binary  window: 4096") :: Stream (Sigseg Int)), 10, 100);
 
 
 
