@@ -124,14 +124,15 @@ fun profile(s,profile,skip) {
   window = gaussian(intToFloat(skip),len);
   rw = rewindow(s, len, skip - len);
   iterate win in rw {
-    state { dummy = Array:null }
+    //state { dummy = Array:null }
 
     arr = toArray(win);
 
     // RRN: Working around the compilers stupidity!:
     //dummy := fftR2C(apairmult(arr,window));
     //arr2 = apairmult2(profile,dummy);
-    
+
+    // New static-elaborate strategy makes that work-around unnecessary.
     arr2 = apairmult2(profile,fftR2C(apairmult(arr,window)));
 
     let (_,sum) = Array:fold(fun ((i,acc), x) 
@@ -144,9 +145,12 @@ fun profile(s,profile,skip) {
 }
 
 
-xw = profile(x,notch_filter(129,58,128),64);
-yw = profile(y,notch_filter(129,58,128),64);
-zw = profile(z,notch_filter(129,37,65),64);
+notch1 = notch_filter(129,58,128);
+notch2 = notch_filter(129,37,65);
+
+xw = profile(x,notch1,64);
+yw = profile(y,notch1,64);
+zw = profile(z,notch2,64);
 
 
 totalscore = iterate((x,y,z) in zip3_sametype(xw,yw,zw)) {
