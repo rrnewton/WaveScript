@@ -592,7 +592,7 @@
 	  [,missed (guard (member missed '(nullseg Array:null '())))
 		   (error 'emitC:Value "a polymorphic constant didn't have a type ascription: ~s" missed)]
 
-	  ;[,c (guard (constant? c)) (Const c)]
+	  ;[,c (guard (simple-constant? c)) (Const c)]
 	  [(quote ,datum)           (Const name type datum)]
 	  [(tuple)                  (wrap (Simple '(tuple)))]
 

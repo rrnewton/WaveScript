@@ -46,7 +46,7 @@
     ;; Infers cheap and dirty types for some expressions, returns #f otherwise.
     (define (infer-type expr env type-env)
       (match expr
-          [,const (guard (constant? const))
+          [,const (guard (simple-constant? const))
 		  (cond
 		   [(number? const) 'Number]
 		   [(list? const) 'List] 
@@ -155,7 +155,7 @@
 
 					;        (disp "processing expr" expr env)
         (match expr
-          [,const (guard (constant? const)) const]
+          [,const (guard (simple-constant? const)) const]
           [(quote ,datum)
 	   (guard (not (memq 'quote env)) (datum? datum))
 	   `(quote ,datum)]

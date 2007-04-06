@@ -451,7 +451,7 @@
 	   (match expr
 		  ;; This is a little wider than the allowable grammar to allow
 		  ;; me to do test cases:
-		  [,x (guard (or (symbol? x) (constant? x))) x]
+		  [,x (guard (or (symbol? x) (simple-constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 		  ;; NOTE! These rands ARE NOT simple.
 		  [(call ,rator ,[rand*] ...)

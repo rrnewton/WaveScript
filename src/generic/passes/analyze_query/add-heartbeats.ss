@@ -48,7 +48,7 @@
       (match expr
 	[,num (guard (number? num)) #t]
 	[,var (guard (symbol? var) (not (regiment-constant? var))) #t]
-	[(quote ,const) (guard (or (constant? const) (symbol? const))) #t]
+	[(quote ,const) (guard (or (simple-constant? const) (symbol? const))) #t]
 	[,else #f]))
 
     (lambda (expr)

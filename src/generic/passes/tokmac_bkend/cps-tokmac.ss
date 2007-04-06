@@ -331,7 +331,7 @@
       (lambda (t E)
 	;; E is the continuation representing the enclosing expression to the current being processed.
         (match  t
-	  [,c (guard (constant? c)) (E c)]
+	  [,c (guard (simple-constant? c)) (E c)]
           [(quote ,c) (E `(quote ,c))]
 	  [(leds ,what ,which) (E `(leds ,what ,which))]
 

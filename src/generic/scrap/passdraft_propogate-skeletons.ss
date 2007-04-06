@@ -25,7 +25,7 @@
     (define (simple? expr)
       (match expr
 	     [,var (guard (symbol? var)) #t]
-	     [(quote ,const) (guard (or (symbol? const) (constant? const))) #t]
+	     [(quote ,const) (guard (or (symbol? const) (simple-constant? const))) #t]
 	     [,else #f]))
 
     (define (check-prop p s)

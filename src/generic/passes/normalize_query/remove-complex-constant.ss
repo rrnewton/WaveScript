@@ -3,12 +3,10 @@
 ;;; RRN[2004.04.24] This pass has been resurected.  The old
 ;;; functionality described below is largely outdated.
 
-;;; This pass rewrites the code so that complex constants, such as
-;;; '(1 2 3) and '#(1 (2 3) 4), are created using explicit list- and
-;;; vector-creation operators.
-
 ;;; NOTE: [2007.03.11] currently, array constants are not reduced.
 
+;;; FIXME FIXME FIXME FIXME : [2007.04.05] This needs to insure that
+;;; array constants are not mutated before lifting them.
 
 ;;; remove-complex-constant arranges for complex constant values to
 ;;; be built only once, when the program begins, by wrapping each
@@ -18,22 +16,6 @@
 ;;; as references to these temporaries.  For example,
 ;;;
 
-
-;;; The input language is the same as the output language of Pass 5.
-
-;;; Output from this pass is in the same language, except that
-;;; quote expressions now contain only immediates.
-
-;;; <Pgm>  ::= (<language-name> (quote (program <Exp>)))
-;;; <Decl> ::= (<var> <Exp>)
-;;; <Exp>  ::= 
-;;;            (quote <imm>)
-;;;          | <var>
-;;;          | (if <Exp> <Exp> <Exp>)
-;;;          | (lambda <Formalexp> <Exp>)
-;;;          | (letrec (<Decl>*) <Exp>)
-;;;          | (<primitive> <Exp>*)
-;;; <Formalexp> ::= (<var>*)
 
 ;;; The implementation uses multiple return values to return both
 ;;; the rewritten expression and a list of bindings for temporary
@@ -52,7 +34,7 @@
   [Expr (lambda (x fallthrough)
 	  (match x 
           [(quote ,datum)
-           (guard (constant? datum)) ;; Not required to be immediate?
+           (guard (simple-constant? datum)) ;; Not required to be immediate?
            (vector `(quote ,datum) '())]
 	  ;; [2006.10.14] Umm we shouldn't be supporting symbols:
           [(quote ,datum)

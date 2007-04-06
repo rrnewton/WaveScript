@@ -26,7 +26,7 @@
   [OutputGrammar remove-unquoted-constant-grammar]
   [Expr (lambda (x fallthrough)
 	  (match x
-	    [,const (guard (constant? const))
+	    [,const (guard (simple-constant? const))
 		    `(quote ,const)]	      
 	    [,other (fallthrough other)]))]
   [Program (lambda (prog Expr)

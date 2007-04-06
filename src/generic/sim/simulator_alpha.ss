@@ -353,7 +353,7 @@
 			     ,(format "Local Stored Ref of variable: ~s" x)
 			     (,(string->symbol (format "~a-~a" which-tok x)) tokobj)))]
 
-		  [,x (guard (or (symbol? x) (constant? x))) x]
+		  [,x (guard (or (symbol? x) (simple-constant? x))) x]
 		  [(quote ,x) `(quote ,x)]
 
 		  [(begin) '(void)]

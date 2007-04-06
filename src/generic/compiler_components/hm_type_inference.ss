@@ -661,7 +661,7 @@
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
     (match exp 
-      [,c (guard (constant? c)) (values c (type-const c))]
+      [,c (guard (simple-constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
       [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
@@ -926,7 +926,7 @@
 ;; This lifts export-type over expressions.
 (define (export-expression e)
   (match e ;; match-expr
-    [,c (guard (constant? c)) c]
+    [,c (guard (simple-constant? c)) c]
     [,v (guard (symbol? v)) v]
     [(quote ,c)       `(quote ,c)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
@@ -958,7 +958,7 @@
 ;; This traverses the expression and does any LATEUNIFY's
 (define (do-all-late-unifies! e)
   (match e ;; match-expr
-    [,c (guard (constant? c))                                 (void)]
+    [,c (guard (simple-constant? c))                                 (void)]
     [,v (guard (symbol? v))                                   (void)]
     [(quote ,c)                                               (void)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
@@ -992,7 +992,7 @@
      (guard (memq let '(let let* letrec lazy-letrec)))
      `(,let ([,id* ,rhs*] ...) ,bod)]
    
-    [,c (guard (constant? c)) c]
+    [,c (guard (simple-constant? c)) c]
     [(quote ,c)       `(quote ,c)]
     [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
@@ -1385,7 +1385,7 @@
 	[(,lang '(program ,[body] ,meta ... ,ty))
 	 (append body `((type BASE ,ty ())))]
 
-       [,c (guard (constant? c)) '()]
+       [,c (guard (simple-constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
        [(quote ,c)       '()]
        [(assert-type ,t ,[e]) e]

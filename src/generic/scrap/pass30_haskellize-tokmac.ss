@@ -60,7 +60,7 @@
     (define process-expr 
      (lambda (expr)
       (match expr
-	[,c (guard (constant? c)) (process-expr `(quote ,c))]
+	[,c (guard (simple-constant? c)) (process-expr `(quote ,c))]
 	[(quote ,const)
 	 (cond 
 	  [(integer? const) (format "(Econst ~a)" const)]

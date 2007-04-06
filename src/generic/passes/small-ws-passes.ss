@@ -43,7 +43,8 @@
 	    (match x
 	      [nullseg (f x)]
 	      [Array:null (f x)]
-	      ['()     (printf "Lifting null!\n") (f x)]
+	      ['()     ;(printf "Lifting null!\n") 
+	       (f x)]
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
 	      [,other (fallthru other)]))])
 

@@ -61,7 +61,7 @@
      (define process-expr
        (lambda (expr env)
 	 (match expr
-	   [,const (guard (constant? const)) const]
+	   [,const (guard (simple-constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
 	    `(quote ,datum)]

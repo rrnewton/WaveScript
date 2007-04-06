@@ -822,7 +822,7 @@
 					   (if entry
 					       (hashtab-set! hash sym (fx+ 1 entry))
 					       (hashtab-set! hash sym 1)))]
-				   [(quote ,const) (guard (or (constant? const) (symbol? const))) (void)]
+				   [(quote ,const) (guard (or (simple-constant? const) (symbol? const))) (void)]
 				   ;; This is node-local code now, check against TML prims:
 				   [(,prim ,[args] ...)
 				    (guard (or (token-machine-primitive? prim)
@@ -860,7 +860,7 @@
 							   ;; Otherwise it's a free variable!  Nothing to do with that.
 							   sym))
 						     sym)]
-					   [(quote ,c) (guard (or (constant? c) (symbol? c))) `(quote ,c)]
+					   [(quote ,c) (guard (or (simple-constant? c) (symbol? c))) `(quote ,c)]
 					   [(if ,[x] ,[y] ,[z]) `(if ,x ,y ,z)]
 					   [(,prim ,[args] ...) 
 					    (guard (or (token-machine-primitive? prim)
@@ -894,14 +894,14 @@
 			      (error 'deglobalize:delazy-bindings
 				     "IF construct currently cannot have lazy references in conseq/altern: reference to ~s in ~s"
 				     sym rhs))]
-		    [(quote ,const) (guard (or (symbol? const) (constant? const))) (void)]
+		    [(quote ,const) (guard (or (symbol? const) (simple-constant? const))) (void)]
 		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
 						    (basic-primitive? prim))) (void)]
 		    [(if ,[x] ,[y] ,[z]) (void)]))
 		(define (ok rhs)
 		  (match rhs
 		    [,sym (guard (symbol? sym)) (void)]
-		    [(quote ,const) (guard (or (symbol? const) (constant? const))) (void)]
+		    [(quote ,const) (guard (or (symbol? const) (simple-constant? const))) (void)]
 		    [(,prim ,[args] ...) (guard (or (token-machine-primitive? prim)
 						    (basic-primitive? prim))) (void)]
 		    [(if ,[x] ,[nono -> y] ,[nono -> z]) (void)]))

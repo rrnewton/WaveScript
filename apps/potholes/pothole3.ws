@@ -129,8 +129,10 @@ fun profile(s,profile,skip) {
     arr = toArray(win);
 
     // RRN: Working around the compilers stupidity!:
-    dummy := fftR2C(apairmult(arr,window));
-    arr2 = apairmult2(profile,dummy);
+    //dummy := fftR2C(apairmult(arr,window));
+    //arr2 = apairmult2(profile,dummy);
+    
+    arr2 = apairmult2(profile,fftR2C(apairmult(arr,window)));
 
     let (_,sum) = Array:fold(fun ((i,acc), x) 
 			     (i+1, acc + absC(x)),

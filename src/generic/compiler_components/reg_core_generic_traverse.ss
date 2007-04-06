@@ -187,7 +187,7 @@
 	     (match  expression
 ;	  [,x (guard (begin (printf "~nCoreGenTrav looping: ") (display-constrained (list x 50)) (newline) #f)) 3]
 
-	  [,const (guard (constant? const)) (fuse () (lambda () const))]
+	  [,const (guard (simple-constant? const)) (fuse () (lambda () const))]
 	  [,num (guard (number? num)) (error 'core-generic-traverse "unquoted literal: ~s" num)]
 
           ;; This is for debugging, we just don't touch it:

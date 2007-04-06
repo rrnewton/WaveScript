@@ -45,7 +45,7 @@
 
 	  ;; Hmm, not sure what meaning immediate has here...
 	  ;immediate? 
-	  constant? datum? qinteger? qinteger->integer
+	  simple-constant? complex-constant? datum? qinteger? qinteger->integer
 	  formalexp? cast-formals fit-formals-to-args
 	  simple-expr?
 
@@ -614,13 +614,9 @@
     [,var (guard (symbol? var) (not (regiment-constant? var))) #t]
     [,otherwise #f]))
 
-;; Test for constants, which can all occur unquoted. <br>
-;; Note that symbol constants may not occur unquoted.  Otherwise
-;; they'd be variables!  Thus in a lot of places you will see: <br>
-;;   (or (symbol? x) (constant? x))                            <br><br>
-;; Because this describes what can go inside a (quote _) expression
+;; This describes what can go inside a (quote _) expression
 ;; after the complex constants have been removed.
-(define constant?
+(define simple-constant?
   (lambda (x)
     (or ;(fx-integer? x)
         ;(flonum? x)
@@ -636,6 +632,13 @@
 	(eq? x 'UNIT)
 	
         )))
+
+;; Valid complex constants in Regiment.
+(define complex-constant?
+  (lambda (x)
+    (or (pair? x)
+	(vector? x))))
+
 
 ;; A potentially quoted integer.
 (define (qinteger? n)
@@ -656,7 +659,7 @@
 ;; Datums include structured constants as well as atoms.
 (define datum?
   (lambda (x)
-    (or (constant? x)
+    (or (simple-constant? x)
         (null? x)
         (symbol? x)
         ;(string? x)
@@ -786,8 +789,8 @@
       (let loop ((ls expr))
 	(cond
 	 [(null? ls) ()]
-	 [(or (constant? (car ls))
-	      (match (car ls) [(quote ,c) (guard (constant? c)) #t] [,_ #f]))
+	 [(or (simple-constant? (car ls))
+	      (match (car ls) [(quote ,c) (guard (simple-constant? c)) #t] [,_ #f]))
 	  (cons (car ls) (loop (cdr ls)))]
 	 [(symbol? (car ls)) (let ((first (process (car ls))))
 			       (cons first (loop (cdr ls))))]

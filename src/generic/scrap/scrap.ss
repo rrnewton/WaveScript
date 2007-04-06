@@ -4,7 +4,7 @@
   (map-expression e
    (lambda (expr)
      (match expr
-	    [,const (guard (constant? const))
+	    [,const (guard (simple-constant? const))
 		    (box `(quote ,const))]
 	    [,_ #f]))))
 	   
@@ -14,7 +14,7 @@
       (if user
 	  (unbox user)	
     (match e
-	 [,const (guard (constant? const))  `(quote ,const)]
+	 [,const (guard (simple-constant? const))  `(quote ,const)]
 	 [(quote ,const) `(quote ,const)]
 	 [,var (guard (symbol? var)) var]
 	 [(begin ,exp* ...) `(begin ,@(map loop exp*
@@ -156,7 +156,7 @@
 	  (define (kify e) `(call k ,e))
 	  (define (put-k expr)
 	    (match expr
-		   [,const (guard (constant? const)) (kify `(quote ,const))]
+		   [,const (guard (simple-constant? const)) (kify `(quote ,const))]
 		   [(quote ,const) (kify `(quote ,const))]
 		   [,var (guard (symbol? var)) (kify var)]
 		   [(tok ,tok) (kify `(tok ,tok))]

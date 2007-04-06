@@ -85,7 +85,7 @@
     (match x
       [,v (guard (symbol? v)) (symbol->string v)]
       [,n (guard (number? n)) (number->string n)]
-      [(quote ,c) (guard (or (symbol? c) (constant? c)))
+      [(quote ,c) (guard (or (symbol? c) (simple-constant? c)))
        (if (boolean? c)
 	   (if c "1" "0")
 	   (format "~a" c))]
@@ -98,7 +98,7 @@
   (lambda (x)
     (match x
       [,v (guard (symbol? v)) #t]
-      [(quote ,c) (guard (or (constant? c) (symbol? c))) #t]
+      [(quote ,c) (guard (or (simple-constant? c) (symbol? c))) #t]
       [(tok ,t ,id) #t]
       [,else #f])))
 

@@ -253,7 +253,7 @@
 	    ;; [2005.10.29]  This is an absolutely opaque form for debugging.  Use carefully.
 	    [(BLACKBOX ,unknown) `(BLACKBOX ,unknown)]
 	    
-	    [,const (guard (constant? const))
+	    [,const (guard (simple-constant? const))
 		    `(quote ,const)]
 	    [(quote ,const) `(quote ,const)]
 	    

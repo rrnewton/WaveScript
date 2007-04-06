@@ -242,7 +242,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      ;(when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
+      (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -264,12 +264,25 @@
 
     ;; This does the actual beta-reduction
     (define (inline rator rands)
-      ;(when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))
+      (define (make-nested-letrecs binds body)
+	(if (null? binds) body
+	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
+      (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))      
       (match rator
+#;
 	[(lambda ,formals ,type ,body)
 	 (substitute (map list formals rands) body)]
-	[,other (error 'static-elaborate:inline "bad rator: ~a" other)]))
 
+	;; [2007.04.05] Experimenting with this strategy.  Just
+	;; let-bind at the top of the body to avoid code duplication.
+      [(lambda ,formals ,type ,body)
+       (make-nested-letrecs
+	 `([,formals ',(map (lambda _ (unique-name 'newtype)) rands) ,rands] ...)
+	 body)]
+      
+      [,other (error 'static-elaborate:inline "bad rator: ~a" other)]))
+   
+   ;; [2007.04.05] Seems like this should use generic-traverse...
     (define count-refs
       (lambda (v expr)
         (match expr
@@ -501,6 +514,9 @@
 		     (do-constant prim)
 		     prim)]
           [,var (guard (symbol? var) (memq var mutable-vars)) var]
+
+
+	  ;; Here's where a lot of the magic happens:
           [,var (guard (symbol? var))	  
 		(match (assq var env)
 		  [#f (error 'static-elaborate "variable not in scope: ~a\n\n  ENV:\n~s" var env)]
@@ -510,7 +526,7 @@
 ;		   x]
 		  ;; Inline constants:
 		  [(,_ (quote ,d) ,__) 
-		   (guard (atom? d)) ; Don't inline constants requiring allocation.
+		   (guard (simple-constant? d)) ; Don't inline constants requiring allocation.
 		   `(quote ,d)]
 
 		  ;; Inline lambda expressions as long as they don't capture mutables.
@@ -584,10 +600,18 @@
 					      )
 					 lhs*))
 				  env)]
-		  ;; This works in many places, but gives me invalid mem ref elsewhere:
-		  [newall* (par-map (lambda (x) (process-expr x newenv)) (cons expr rhs*))]
-		  [newrhs* (cdr newall*)]
+		  
+		  ;; [2007.04.05] For the time being recursive
+		  ;; definitions are not inlined within their own RHS.
+		  ;; We don't want to needlessly expand every
+		  ;; recursive definition!
+		  [newenv2 (append (map (lambda (lhs) (list lhs not-available 9999889)) lhs*) env)]
+		  
+		  ;; This parallel version works in many places, but gives me invalid mem ref elsewhere:
+		  [newall* (par (process-expr expr newenv)
+				(par-map (lambda (x) (process-expr x newenv2)) rhs*))]
 		  [newbod (car newall*)]
+		  [newrhs* (cadr newall*)]
 ;		  [__ 	   (break)]
                   ;; How much does each bound variable get referenced:
 		  [occurs (map (lambda (v myrhs) 
@@ -763,11 +787,14 @@
 	       (do-prim prim (map getval rand*) env)
 	       `(,prim ,rand* ...))]
 
+	  ;; TODO: Need to be able to evaluate this into a "value".
+	  [(consstruct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
+
 	  ;; Here we convert to a letrec.  Rename-var insures that we
 	  ;; don't get any accidental variable capture:
 ;	  [((lambda ,formals ,expr) ,rands ...)
 ;	   (substitute (map list formals rands) expr)]
-	  [(,app ,[rator] ,[rands] ...) (guard (memq app '(app construct-data)))
+	  [(app ,[rator] ,[rands] ...) 
 ;	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
@@ -779,7 +806,7 @@
 	       (begin 
 		 (if (regiment-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
-		 `(,app ,rator ,rands ...)))]
+		 `(app ,rator ,rands ...)))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
