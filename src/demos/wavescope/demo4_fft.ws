@@ -88,12 +88,12 @@ s2 = iterate (w in s1) {
   //  inspect $ toArray $ sigseg_ifftC2R $ sigseg_fftR2C (w) ;
   //  inspect $ toArray $ sigseg_ifftC   $ sigseg_fftC $ sigseg_map(floatToComplex, w);
 
-  //  emit sigseg_fftR2C(w);
+  emit sigseg_fftR2C(w);
   //  emit sigseg_fftC( sigseg_map(floatToComplex, w));
   // Now roundtrip with the full complex transform:
   //  emit sigseg_fftC( sigseg_ifftC( sigseg_fftC( sigseg_map(floatToComplex, w))));
   // Now roundtrip with the restricted real transform:
-  emit sigseg_fftR2C( sigseg_ifftC2R( sigseg_fftR2C (w)))
+  //emit sigseg_fftR2C( sigseg_ifftC2R( sigseg_fftR2C (w)))
 
 
   /*
