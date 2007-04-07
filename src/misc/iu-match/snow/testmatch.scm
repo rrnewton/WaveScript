@@ -58,10 +58,37 @@
 
       )))
 
-(test-match)
-(newline)(display "Also running not with eval, should get 'first': ")
-(display (match 3 (5 "zeroth")(3 "first") (4 "second")))
-(newline)
+
+;; TESTS TO ADD:
+;; Make sure we only evaluate guards and catas ONCE:
+ '(match '(timer 2 3.0)
+    [(,prim ,rand*  ...)
+     (guard (printf "ACK ~s\n" prim))
+     (printf "HMM: ~s\n" rand*)
+     3993]
+    [,other 'FAILLLLLLLLLED])
+
+'
+(let ([acc '()])
+  (match '(let ([a int 1] [b float 2] [c complex 9]) bod)
+    ((let ((,x* ,y* ,z*) ...) ,bod) 
+     (guard (set! acc (cons (list x* y* z* bod) acc)))
+     (vector x* y* z* bod acc))))
+
+'
+;; This breaks:
+(let ([acc '()])
+  (match '(let ([a int 1] [b float 2] [c complex 9]) bod)
+    ((let ((,x* ,y* ,[z*]) ...) ,bod)
+     (guard (set! acc (cons (list x* y* z* bod) acc)))
+     (vector x* y* z* bod acc))
+    (,oth (add1 oth))))
+
+
+; (test-match)
+; (newline)(display "Also running not with eval, should get 'first': ")
+; (display (match 3 (5 "zeroth")(3 "first") (4 "second")))
+; (newline)
 
 (display "Remember to 'export SNOW_TEST=testmatch' when running this file.")(newline)
 (test* 

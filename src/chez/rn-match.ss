@@ -41,8 +41,8 @@
 (define-syntax match
   (syntax-rules ()
     ((_ Exp Clause ...)
-     (let f ((x Exp))
-       (match-help _ f x Clause ...)))))
+     (let Rematch ((Orig Exp))
+       (match-help _ Rematch Orig Clause ...)))))
 
 ;; Certain implementations have difficulty with delaying multple values.
 ;; (including gauche, stklos, bigloo, scheme48, larceny)
@@ -185,7 +185,7 @@
 (define-syntax wrap-lambda-at-the-end
   (syntax-rules ()
     ((_ (Bod ...) (Vars ...) (CataVars ...))
-     (lambda (CataVars ... Vars ...)
+     (lambda (Vars ... CataVars ...)
        (Bod ... (Vars ...) (CataVars ...))))))
 
 
@@ -270,7 +270,6 @@
       ;; Cata redirect: 
       ((_ ((Obj (unquote (f -> V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
        #'(let ((promise (delay-values (f Obj))))
-	 ;(inspect f)
 	 (bind-cata 
 	  (convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))
@@ -309,12 +308,12 @@
 		    (apply 
 		     ;; First we gather just the variables in this ellipses pattern.
 		     (ellipses-helper () ()
-				      (wrap-lambda-at-the-end ;; We take those in as a list.
-				       ;; If we get past this pattern we're on to the next one.
-				       ;; But P0's variables are already bound.
-				       (ellipses-helper (Vars ...) (CataVars ...)
-							(convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
-				      P0)
+		        (wrap-lambda-at-the-end ;; We take those in as a list.
+			 ;; If we get past this pattern we're on to the next one.
+			 ;; But P0's variables are already bound.
+			 (ellipses-helper (Vars ...) (CataVars ...)
+					  (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
+			P0)
 		     (if (null? Obj)
 			 ;; Build a list of nulls of the right length:
 			 (ellipses-helper () () (build-list-of-nulls) P0)
@@ -327,6 +326,17 @@
 				      (cons (project (car ls)) acc)))))
 		(NextClause))
 	    ))))
+
+#|
+
+(let ([acc '()])
+    (match '(let ([a  1] [b 2] [c  9]) bod)
+      ((let ((,x* ,[z*]) ...) ,bod)       
+       (vector x* z* bod acc))
+      (,oth (add1 oth))))
+
+|#
+
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	((_ ((Obj (P0 . P1)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)

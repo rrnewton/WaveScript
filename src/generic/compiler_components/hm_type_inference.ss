@@ -1378,9 +1378,24 @@
        [,t (loop t)])
      port)))
 
+#|
+
+;; Bad:
+((type () s1 (Stream #(Int16 Int16 Int16)))
+ (type () x Int16)
+ (type BASE (Stream Int16) ()))
+
+;; Correct
+((type s1 (Stream #(Int16 Int16 Int16)) ())
+ (type x Int16 ())
+   (type BASE (Stream Int16) ()))
+
+
+|#
+
 ;; Expects a fully typed expression
 (define (print-var-types exp max-depth . p)
-  (IFCHEZ (import rn-match) (void))
+;  (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
     
     (trace-define (get-var-types exp)
