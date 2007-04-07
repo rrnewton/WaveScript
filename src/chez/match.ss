@@ -48,7 +48,8 @@
 
 ;; YOU'RE NOT ALLOWED TO REFER TO CATA VARS IN GUARDS. (reasonable!)
 
-(module ((match+ match-help match-help1 clause-body let-values**
+(module iu-match 
+       ((match+ match-help match-help1 clause-body let-values**
           guard-body convert-pat mapper my-backquote extend-backquote
           sexp-dispatch)
         (trace-match+ match-help match-help1 clause-body let-values**

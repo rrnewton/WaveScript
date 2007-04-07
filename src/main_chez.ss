@@ -259,6 +259,10 @@
 
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
+(include "chez/rn_match.ss")      ;; My version of the pattern matcher.
+
+;; Import the IU matcher globally:
+(import iu-match)
 
 ;; After this point, everything must use chez:module for native chez modules.
 ;; 'module' will become my chez/plt portable regiment modules.

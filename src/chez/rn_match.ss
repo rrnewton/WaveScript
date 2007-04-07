@@ -1,3 +1,12 @@
+;; [2007.04.06] CODE DUPLICATION:
+;;
+;; This file is the same as "match.r5rs" also in the repository.
+;; EXCEPT, I've hacked this one to use syntax-case for one purpose:
+;; real ellipses.  The syntax-rules version had to settle for "_..."
+
+;; Also I removed the "PATMATCH_" name mangling.
+
+
 
 ;; How far can we get doing match with syntax-rules?
 
@@ -21,13 +30,15 @@
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 ;; gauche -- same wrong number of arguments
 
-(begin
+(module rn_match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
+			 build-list ellipses-helper 
+			 vecref-helper vecref-helper2 convert-pat))
 
 (define-syntax match
   (syntax-rules ()
     ((_ Exp Clause ...)
      (let f ((x Exp))
-       (PATMATCH_match-help _ f x Clause ...)))))
+       (match-help _ f x Clause ...)))))
 
 ;; Certain implementations have difficulty with delaying multple values.
 ;; (including gauche, stklos, bigloo, scheme48, larceny)
@@ -54,30 +65,23 @@
     ((_ e) (lambda () e))))
 
 
-; (define-syntax force-values
-;   (syntax-rules () ((_ e) (e))))
-
-(define-syntax PATMATCH_ASSERT
-  (syntax-rules ()
-    ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
-
 ;; This walks over the clauses and uses dispatches another helper to
 ;; walk over each patern.
-(define-syntax PATMATCH_match-help
+(define-syntax match-help
   (syntax-rules (guard)
     ((_ Template Cata Obj )  (error 'match "no next clause"))
     ;; Guarded pattern:
     ((_ Template Cata Obj (Pat (guard G ...) B0 Bod ...) Rest ...)
-     (let ((next (lambda () (PATMATCH_match-help Template Cata Obj Rest ...))))
-       (PATMATCH_convert-pat ((Obj Pat) ())
-		    PATMATCH_exec-body 	   
+     (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
+       (convert-pat ((Obj Pat) ())
+		    exec-body 	   
 		    (begin B0 Bod ...) (and G ...)
 		    Cata next () ())))
     ;; Unguarded:
     ((_ Template Cata Obj (Pat B0 Bod ...) Rest ...)
-     (let ((next (lambda () (PATMATCH_match-help Template Cata Obj Rest ...))))
-       (PATMATCH_convert-pat ((Obj Pat) ()) 
-		    PATMATCH_exec-body 		   
+     (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
+       (convert-pat ((Obj Pat) ()) 
+		    exec-body 		   
 		    (begin B0 Bod ...) #t
 		    Cata next () ())
        ))))
@@ -86,47 +90,47 @@
 
 
 ;; Results of recursive matches can't be used in guards.
-(define-syntax PATMATCH_bind-dummy-vars
+(define-syntax bind-dummy-vars
   (syntax-rules ()
     ((_ () Bod)  Bod)
     ((_ (V0 . V*) Bod)
      (let ((V0 'match-error-cannot-use-cata-var-in-guard))
-       (PATMATCH_bind-dummy-vars V* Bod)))))
+       (bind-dummy-vars V* Bod)))))
 
 ;; Here we perform the recursive matches.  We use the reuse the variable names.
-(define-syntax PATMATCH_bind-popped-vars
+(define-syntax bind-popped-vars
   (syntax-rules ()
     ((_ () Bod)  Bod)
     ((_ (V0 . V*) Bod)
      (let ((V0 (V0)))
-       (PATMATCH_bind-popped-vars V* Bod)))))
+       (bind-popped-vars V* Bod)))))
 
 
-(define-syntax PATMATCH_exec-body
+(define-syntax exec-body
   (syntax-rules ()
     ((_  Bod Guard NextClause Vars CataVars)
-     (PATMATCH_bind-popped-vars Vars
-         (if (PATMATCH_bind-dummy-vars CataVars Guard)
-	     (PATMATCH_bind-popped-vars CataVars Bod)
+     (bind-popped-vars Vars
+         (if (bind-dummy-vars CataVars Guard)
+	     (bind-popped-vars CataVars Bod)
 	     (NextClause)
 	     )))))
 
-;; Like PATMATCH_exec-body but just builds a list of all the vars.
+;; Like exec-body but just builds a list of all the vars.
 ;; This puts CataVars first in the list.
-(define-syntax PATMATCH_build-list 
+(define-syntax build-list 
   (syntax-rules ()
     ((_ __ #t #f () ())   '())
     ((_ __ #t #f (V . Vars) CataVars)
-     (cons V (PATMATCH_build-list __ #t #f Vars CataVars)))
+     (cons V (build-list __ #t #f Vars CataVars)))
     ((_ __ #t #f () (V . CataVars))
-     (cons V (PATMATCH_build-list __ #t #f () CataVars)))
+     (cons V (build-list __ #t #f () CataVars)))
     ((_ __ Guard NextClause Vars CataVars)
-     (if (PATMATCH_bind-popped-vars Vars
-          (PATMATCH_bind-popped-vars CataVars Guard))
-	 (PATMATCH_build-list __ #t #f Vars CataVars)
+     (if (bind-popped-vars Vars
+          (bind-popped-vars CataVars Guard))
+	 (build-list __ #t #f Vars CataVars)
 	 (NextClause)))))
 
-(define-syntax PATMATCH_bind-cata
+(define-syntax bind-cata
   (syntax-rules ()
     ((_ Bod Promise Args ())  Bod)
 
@@ -140,41 +144,38 @@
 		 (call-with-values Promise ;(lambda () (force-values Promise))
 		   ;; Select out just our variable from the results:
 		   (lambda Args V0)))))
-       (PATMATCH_bind-cata Bod Promise Args V*)))))
+       (bind-cata Bod Promise Args V*)))))
 
 ;; This does the job of "collect-vars", but it also carries a
 ;; continuation (of a sort) with it.
-(define-syntax PATMATCH_ellipses-helper
+(define-syntax ellipses-helper
   (syntax-rules (unquote ->)
     ((_ (Vars ...) (CataVars ...) (Bod ...))
      (lambda (CataVars ... Vars ...)
        (Bod ... (Vars ...) (CataVars ...))))
     
     ((_ Vars (CataVars ...) Bod (unquote (FUN -> V* ...)) . Rest)
-     (PATMATCH_ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
     ((_ Vars (CataVars ...) Bod (unquote (V* ...)) . Rest)
-     (PATMATCH_ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
+     (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
     ((_ Vars CataVars Bod (unquote V) . Rest)
-     (PATMATCH_ellipses-helper (V . Vars) CataVars Bod  . Rest))
+     (ellipses-helper (V . Vars) CataVars Bod  . Rest))
     
     ((_ Vars CataVars Bod () . Rest)
-     (PATMATCH_ellipses-helper Vars CataVars Bod  . Rest))
+     (ellipses-helper Vars CataVars Bod  . Rest))
     
     ((_ Vars CataVars Bod (P0 . P*) . Rest)
-     (PATMATCH_ellipses-helper Vars CataVars Bod P0 P* . Rest))
+     (ellipses-helper Vars CataVars Bod P0 P* . Rest))
     ;; Otherwise just assume its a literal:
     ((_ Vars CataVars Bod LIT . Rest)
-     (PATMATCH_ellipses-helper Vars CataVars Bod . Rest))
+     (ellipses-helper Vars CataVars Bod . Rest))
     ))
 
-;(define-syntax PATMATCH_build-lambda (syntax-rules () ((_) lambda)))
-
-
-(define-syntax PATMATCH_vecref-helper
+(define-syntax vecref-helper
   (syntax-rules ()
-    ((_ vec ind acc (Stack . stuff)) (PATMATCH_vecref-helper2 acc stack stuff))
+    ((_ vec ind acc (Stack . stuff)) (vecref-helper2 acc stack stuff))
     ((_ vec ind acc stuff P0 P* ...)
-     (PATMATCH_vecref-helper vec (fx+ 1 ind) 
+     (vecref-helper vec (fx+ 1 ind) 
 			     (((vector-ref vec ind) P0) . acc)
 			     stuff P* ...))))
 
@@ -182,11 +183,11 @@
 ;; This goal is to get a left-to-right order, which I believe to be
 ;; more efficient for my uses.  (Generally, the first element is a
 ;; symbol that tags the variant represented by the vector.)
-(define-syntax PATMATCH_vecref-helper2
+(define-syntax vecref-helper2
   (syntax-rules ()
-    ((_ () stack stuff) (PATMATCH_convert-pat stack . stuff))
+    ((_ () stack stuff) (convert-pat stack . stuff))
     ((_ (B0 . B*) stack stuff)
-     (PATMATCH_vecref-helper2 B* (B0 stack) stuff))))
+     (vecref-helper2 B* (B0 stack) stuff))))
 
 
 ;; Convert a pattern into a function that will test for a match.
@@ -205,52 +206,59 @@
 ;;
 ;; If match, the body is evaluated, otherwise "nextclause" is called.
 ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
-(define-syntax PATMATCH_convert-pat
-    (syntax-rules (unquote _... ->)
+(define-syntax convert-pat
+  (lambda (x)
+
+    (define ellipsis?
+      (lambda (x)
+        (and (identifier? x) (literal-identifier=? x #'(... ...)))))
+
+    (syntax-case x (unquote ->)
 
       ;; Termination condition:
       ;; Now check the guard and (possibly) execute the body.
       ((_ () Exec Bod Guard Cata NextClause Vars CataVars)
-       (Exec Bod Guard NextClause Vars CataVars))
+       #'(Exec Bod Guard NextClause Vars CataVars))
       
       ;; Cata redirect: 
       ((_ ((Obj (unquote (f -> V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
-       (let ((promise (delay-values (f Obj))))
+       #'(let ((promise (delay-values (f Obj))))
 	 ;(inspect f)
-	 (PATMATCH_bind-cata 
-	  (PATMATCH_convert-pat Stack Exec Bod Guard Cata
+	 (bind-cata 
+	  (convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))
 	  promise
 	  (V0 V* ...) (V0 V* ...))))
       
       ;; Unquote Pattern, Cata: recursively match
       ((_ ((Obj (unquote (V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
-       (let ((promise (delay-values (Cata Obj))))
-	 (PATMATCH_bind-cata 
-	  (PATMATCH_convert-pat Stack Exec Bod Guard Cata
+       #'(let ((promise (delay-values (Cata Obj))))
+	 (bind-cata 
+	  (convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))
 	  promise
 	  (V0 V* ...) (V0 V* ...))))
 	
       ;; Unquote Pattern: bind a pattern variable:
       ((_ ((Obj (unquote V)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
-       (let ((V (lambda () Obj)))
-	 (PATMATCH_convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
+       #'(let ((V (lambda () Obj)))
+	 (convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
 
       ;; Ellipses:
-      ((_ ((Obj (P0 _...)) Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
-       (call-with-current-continuation
+      ((_ ((Obj (P0 Dots)) Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
+       (ellipsis? #'Dots)
+       #'(call-with-current-continuation
 	(lambda (escape)
 	  (let* ((failed (lambda () (escape (NextClause))))
 		 ;; Bind a pattern-matcher for one element of the list.	
 		 (project (lambda (VAL)
-			    (PATMATCH_convert-pat ((VAL P0) ()) PATMATCH_build-list 
+			    (convert-pat ((VAL P0) ()) build-list 
 					 IGNORED Guard Cata failed (Vars ...) (CataVars ...)))))
 	    
 	    ;; TODO, HANDLE NULL CASE:
 ; 	    (if (null? Obj) 
 ; 		(bind-vars-null (collect-vars () P0 ())
-; 				(PATMATCH_bind-cata-null (collect-cata-vars P0)
+; 				(bind-cata-null (collect-cata-vars P0)
 ; 						Bod Guard)))
 
 	    (let loop ((ls Obj) (acc '()))
@@ -258,8 +266,8 @@
 	       ((null? ls)
 		(let* ((rotated (apply map list (reverse acc))))
 		  (apply 
-		   (PATMATCH_ellipses-helper (Vars ...) (CataVars ...)
-				    (PATMATCH_convert-pat Stack PATMATCH_exec-body Bod Guard Cata NextClause)
+		   (ellipses-helper (Vars ...) (CataVars ...)
+				    (convert-pat Stack exec-body Bod Guard Cata NextClause)
 				    P0)
 		   ;; When we pop the cata-var we pop the whole list.
 		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
@@ -270,30 +278,30 @@
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	((_ ((Obj (P0 . P1)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
-	 (if (pair? Obj)
+	 #'(if (pair? Obj)
 	     (let ((head (car Obj))
 		   (tail (cdr Obj)))
-	       (PATMATCH_convert-pat ((head P0) ((tail P1) Stack))
+	       (convert-pat ((head P0) ((tail P1) Stack))
 			    Exec Bod Guard Cata NextClause Vars CataVars))
 	     (NextClause)))
 
 	;; Vector pattern
 	((_ ((Obj #(Pat ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
 	 ;; Hope the compiler manages to evaluate this 'length' call:
-	 (if (and (vector? Obj) (fx= (vector-length Obj) (length '(Pat ...))))
+	 #'(if (and (vector? Obj) (fx= (vector-length Obj) (length '(Pat ...))))
 	     ;; This creates redundant vector 
-	     (PATMATCH_vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) Pat ...)
-	     ;(PATMATCH_convert-pat Stack ___ )
-	     ;(PATMATCH_convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
+	     (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) Pat ...)
+	     ;(convert-pat Stack ___ )
+	     ;(convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
 	     (NextClause)))
 
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
 	((_ ((Obj LIT) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
-	 (begin 
+	 #'(begin 
 	   ;; Hopefully this happens at compile-time:
 
-; 	   (PATMATCH_ASSERT 
+; 	   (ASSERT 
 ; ;	   (DEBUGASSERT
 ; 	           (or (symbol? (quote LIT))
 ; 		       (null? (quote LIT))
@@ -303,32 +311,29 @@
 
 
 	   (if (equal? Obj (quote LIT))
-	       (PATMATCH_convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
+	       (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
 	       (NextClause))))
 
 	;; Otherwise, syntax error.
-	))
+		 
+	)))
 
-) ;; End begin
-
-;; This is just a version that doesn't use eval.
-'(define (test2)
-  (list
-   (match 3 (,x x))
-   (match '(1 2) ((,x ,y) (+ x y)))
-   (match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y)))
-   (match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v))
-   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
-   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))   (match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y)))
-   (match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4))
-   (match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
-   (match '(1 . 2) ((,x . ,y) y))
-   (match '(1 2 3) ((1 ,x* _...) x*))
-   (match '((a 1) (b 2) (c 3)) (((,x* ,y*) _...) (vector x* y*)))
-   (match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) _...) (vector x* y*)) (,_ 'yay))
-   (match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y)))
-   (match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33))
-   ))
+) ;; End module
 
 
+
+
+#!eof
+
+
+
+
+  (collect 4)(define val '(foo 1 2 (bar 3 4 5)))
+  (time (rep 10000000 (match val [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+
+  (collect 4)(define val #(foo 1 2 #(bar 3 4 5)))
+  (time (rep 10000000 (match val [#(foo ,x ,y) 'no]
+     [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
 
