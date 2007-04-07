@@ -295,7 +295,7 @@
 	    (cond 
 	     [(null? Obj)
 	      (ellipses-helper () ()
-	       (bind-nulls (convert-pat Stack exec-body Bod 'UUUUUGH Cata NextClause (Vars ...) (CataVars ...))) P0)]
+	       (bind-nulls (convert-pat Stack exec-body Bod Guard Cata NextClause (Vars ...) (CataVars ...))) P0)]
 	     [(pair? Obj)
 	      (let ellipses-loop ((ls Obj) (acc '()))
 		(cond
