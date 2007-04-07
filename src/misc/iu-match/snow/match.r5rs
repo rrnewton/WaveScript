@@ -43,9 +43,16 @@
 	 )))))
 
 ;; For Chez, etc:
+#;
 (define-syntax delay-values
   (syntax-rules ()
     ((_ e) (delay e))))
+
+;; Do I really need a promise?
+(define-syntax delay-values
+  (syntax-rules ()
+    ((_ e) (lambda () e))))
+
 
 ; (define-syntax force-values
 ;   (syntax-rules () ((_ e) (e))))
@@ -78,6 +85,15 @@
 
 
 
+;; Results of recursive matches can't be used in guards.
+(define-syntax PATMATCH_bind-dummy-vars
+  (syntax-rules ()
+    ((_ () Bod)  Bod)
+    ((_ (V0 . V*) Bod)
+     (let ((V0 'match-error-cannot-use-cata-var-in-guard))
+       (PATMATCH_bind-dummy-vars V* Bod)))))
+
+;; Here we perform the recursive matches.  We use the reuse the variable names.
 (define-syntax PATMATCH_bind-popped-vars
   (syntax-rules ()
     ((_ () Bod)  Bod)
@@ -85,12 +101,6 @@
      (let ((V0 (V0)))
        (PATMATCH_bind-popped-vars V* Bod)))))
 
-(define-syntax PATMATCH_bind-dummy-vars
-  (syntax-rules ()
-    ((_ () Bod)  Bod)
-    ((_ (V0 . V*) Bod)
-     (let ((V0 'match-error-cannot-use-cata-var-in-guard))
-       (PATMATCH_bind-popped-vars V* Bod)))))
 
 (define-syntax PATMATCH_exec-body
   (syntax-rules ()
@@ -119,9 +129,16 @@
 (define-syntax PATMATCH_bind-cata
   (syntax-rules ()
     ((_ Bod Promise Args ())  Bod)
+
+    ;; Optimization, handle one argument, no call-with-values:
+    ((_ Bod Promise (V0) __)
+     (let ([V0 Promise]) Bod))
+
     ((_ Bod Promise Args (V0 . V*))
      (let ((V0 (lambda ()
+		 ;; Maybe Inefficient:
 		 (call-with-values Promise ;(lambda () (force-values Promise))
+		   ;; Select out just our variable from the results:
 		   (lambda Args V0)))))
        (PATMATCH_bind-cata Bod Promise Args V*)))))
 
@@ -213,6 +230,18 @@
 		       NextClause Vars (V0 V* ... CataVars ...))
 	  promise
 	  (V0 V* ...) (V0 V* ...))))
+
+      ;; OPTIMIZATION: HANDLE THE ONE VARIABLE CASE:
+#;
+      ;; Unquote Pattern, Cata: recursively match
+      ((_ ((Obj (unquote (V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
+       (let ((promise (delay-values (Cata Obj))))
+	 (PATMATCH_bind-cata 
+	  (PATMATCH_convert-pat Stack Exec Bod Guard Cata
+		       NextClause Vars (V0 V* ... CataVars ...))
+	  promise
+	  (V0 V* ...) (V0 V* ...))))
+
       
       ;; Unquote Pattern, Cata: recursively match
       ((_ ((Obj (unquote (V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
@@ -332,5 +361,110 @@
            (void)
            (begin exp ...
                   (loop (sub1 n)))))]))
+
+
+
+
+
+#!eof
+
+
+((letrec ([f (lambda (x)
+               ((lambda (next)
+                  (if (if (#3%vector? x)
+                          (#3%fx= (#3%vector-length x) 3)
+                          #f)
+                      (if (#3%equal? (#3%vector-ref x 0) 'foo) 'no (next))
+                      (next)))
+                 (lambda ()
+                   (if (if (#3%vector? x)
+                           (#3%fx= (#3%vector-length x) 4)
+                           #f)
+                       (if (#3%equal? (#3%vector-ref x 0) 'foo)
+                           ((lambda (promise)
+                              ((lambda (promise)
+                                 (f (#3%vector-ref x 2))
+                                 (f (#3%vector-ref x 1))
+                                 ((lambda (z)
+                                    ((lambda (y)
+                                       ((lambda (x) (#3%vector 'foo x y z))
+                                         (f (#3%vector-ref x 1))))
+                                      (f (#3%vector-ref x 2))))
+                                   (f (#3%vector-ref x 3))))
+                                (lambda () (f (#3%vector-ref x 2)))))
+                             (lambda () (f (#3%vector-ref x 1))))
+                           (#3%error 'match "no next clause"))
+                       (#3%error 'match "no next clause")))))])
+   f)
+  '#4(foo 1 2 #4(bar 3 4 5)))
+
+
+
+
+
+
+
+
+(expand/optimize '((letrec ([f (lambda (x)
+               ((lambda (next)
+                  (if (if (#3%vector? x)
+                          (#3%fx=
+                            (#3%vector-length x)
+                            (#3%length '(foo ,(x) ,(y))))
+                          #f)
+                      (if (#3%equal? (#3%vector-ref x 0) 'foo)
+                          ((lambda (promise)
+                             ((lambda (x)
+                                ((lambda (promise)
+                                   ((lambda (y)
+                                      (if ((lambda (y)
+                                             ((lambda (x) #t) (x)))
+                                            'match-error-cannot-use-cata-var-in-guard)
+                                          ((lambda (y)
+                                             ((lambda (x) 'no) (x)))
+                                            (y))
+                                          (next)))
+                                     (lambda ()
+                                       (#3%call-with-values
+                                         promise
+                                         (lambda (y) y)))))
+				 (lambda ()
+                                    (f (#3%vector-ref
+                                         x
+                                         (#3%fx+ 1 (#3%fx+ 1 0)))))))
+                               (lambda ()
+                                 (#3%call-with-values
+                                   promise
+                                   (lambda (x) x)))))
+			   (lambda () (f (#3%vector-ref x (#3%fx+ 1 0)))))
+                          (next))
+                      (next)))
+                 (lambda () (#3%error 'match "no next clause"))))])
+   f)
+  val))
+
+(expand/optimize '((lambda (promise)
+                             ((lambda (x)
+                                ((lambda (promise)
+                                   ((lambda (y)
+                                      (if (begin (x) #t)
+                                          (begin (y) (x) 'no)
+                                          (next)))
+                                     (lambda ()
+                                       (#3%call-with-values
+                                         promise
+                                         (lambda (y) y)))))
+				 (lambda ()
+                                    (f (#3%vector-ref
+                                         x
+                                         (#3%fx+ 1 (#3%fx+ 1 0)))))))
+                               (lambda ()
+                                 (#3%call-with-values
+                                   promise
+                                   (lambda (x) x)))))
+			   (lambda () (f (#3%vector-ref x (#3%fx+ 1 0))))))
+
+
+
 
 

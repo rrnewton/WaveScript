@@ -654,7 +654,7 @@ Let's try my r5rs syntax-rules based match.  SIGH... it beats the
 pants off the other match.ss 
 
   (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
-     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+     [(bar ,[x] ,[y¢] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
 
     24 collections
     84 ms elapsed cpu time, including 4 ms collecting
@@ -690,7 +690,9 @@ does really well!
 
 
 
-OOOPS!
+OOOPS! SHOULDN'T USE A QUOTED CONSTANT DIRECTLY... The optimizer can
+then cheat.  Here, I reran the above, fixing that, and got pretty
+similar results:
 
 
   (collect 4)(define val '(foo 1 2 (bar 3 4 5)))
@@ -701,21 +703,6 @@ OOOPS!
   (collect 4)(define val #(foo 1 2 #(bar 3 4 5)))
   (time (rep 50000 (match val [#(foo ,x ,y) 'no]
      [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
-
-
-(match #(foo 1 2 #(bar 3 4 5))
-       [#(foo ,x ,y) 'no]
-       [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] 
-       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] 
-       [,_ 0])
-
-(expand '(match #(foo 1 2 #(bar 3 4 5))
-       [#(foo ,x ,y) 'no]
-       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
-
-(expand/optimize '(match #(foo 1 2 #(bar 3 4 5))
-       [#(foo ,x ,y) 'no]
-       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
 
 
   (define-record foo (x y z))
@@ -761,16 +748,32 @@ OOOPS!
        [else 0]))))
 
 
-;; INCORRECT:
+;; INCORRECT, but gives us a lower bound:
   (collect 4)
   (define val (list 'foo 1 2 (list 'bar 3 4 5)))
   (time (rep 50000
    (let f ([r val])
      (cond 
-       [(and (pair? r) (= (length r) 3) (equal? 'foo (car r))) 'no]
-
-       [(and (pair? r) (= (length r) 4) (equal? 'bar (car r))) 
+       [(and (pair? r) (equal? 'foo (car r)) (= (length r) 3) ) 'no]
+       [(and (pair? r) (equal? 'bar (car r)) (= (length r) 4) )
          (list 'bar (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
-       [(and (pair? r) (= (length r) 4) (equal? 'foo (car r)))
+       [(and (pair? r) (equal? 'foo (car r)) (= (length r) 4))
          (list 'foo (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
        [else 0]))))
+
+
+
+(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] 
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] 
+       [,_ 0])
+
+(expand '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
+
+(expand/optimize '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
+
