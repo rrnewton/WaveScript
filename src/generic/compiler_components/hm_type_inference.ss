@@ -114,7 +114,10 @@
 	   sumdecls->tenv grab-init-tenv
 	   )
 
-  (chezimports constants)
+  (chezimports constants
+	       ;; Switching for better speed:
+	       ;rn-match
+	       )
 
 ;; This controls whether let-bound-polymorphism is allowed at all.
 (define inferencer-let-bound-poly (make-parameter #t))
@@ -1377,13 +1380,14 @@
 
 ;; Expects a fully typed expression
 (define (print-var-types exp max-depth . p)
+  (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
     
-    (define (get-var-types exp)
+    (trace-define (get-var-types exp)
       (match exp ;; match-expr
 
-	[(,lang '(program ,[body] ,meta ... ,ty))
-	 (append body `((type BASE ,ty ())))]
+       [(,lang '(program ,[body] ,meta ... ))
+	 (append body `((type BASE ,(last meta) ())))]
 
        [,c (guard (simple-constant? c)) '()]
        [,var (guard (symbol? var))  `()]       

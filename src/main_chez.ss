@@ -259,7 +259,7 @@
 
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
-(include "chez/rn_match.ss")      ;; My version of the pattern matcher.
+(include "chez/rn-match.ss")      ;; My version of the pattern matcher.
 
 ;; Import the IU matcher globally:
 (import iu-match)

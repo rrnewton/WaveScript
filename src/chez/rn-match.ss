@@ -30,10 +30,14 @@
 ;; larceny -- gets a wrong number of arguments error on the same test as bigloo
 ;; gauche -- same wrong number of arguments
 
-(module rn_match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
-			 build-list ellipses-helper 
-			 vecref-helper vecref-helper2 convert-pat))
-
+(module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
+			 build-list bind-cata ellipses-helper delay-values 
+			 countup-vars wrap-lambda-at-the-end bind-nulls
+			 vecref-helper vecref-helper2 convert-pat
+			 )
+		  test-match 
+		  tm2)
+  
 (define-syntax match
   (syntax-rules ()
     ((_ Exp Clause ...)
@@ -63,6 +67,10 @@
 (define-syntax delay-values
   (syntax-rules ()
     ((_ e) (lambda () e))))
+
+(define-syntax MATCH_ASSERT
+  (syntax-rules ()
+    ((_ expr) (or expr (error 'ASSERT " failed: ~s" 'expr)))))
 
 
 ;; This walks over the clauses and uses dispatches another helper to
@@ -151,8 +159,7 @@
 (define-syntax ellipses-helper
   (syntax-rules (unquote ->)
     ((_ (Vars ...) (CataVars ...) (Bod ...))
-     (lambda (CataVars ... Vars ...)
-       (Bod ... (Vars ...) (CataVars ...))))
+     (Bod ... (Vars ...) (CataVars ...)))
     
     ((_ Vars (CataVars ...) Bod (unquote (FUN -> V* ...)) . Rest)
      (ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
@@ -166,10 +173,40 @@
     
     ((_ Vars CataVars Bod (P0 . P*) . Rest)
      (ellipses-helper Vars CataVars Bod P0 P* . Rest))
+
+    ((_ Vars CataVars Bod #(P* ...) . Rest)
+     (ellipses-helper Vars CataVars Bod P* ... . Rest))
+
     ;; Otherwise just assume its a literal:
     ((_ Vars CataVars Bod LIT . Rest)
      (ellipses-helper Vars CataVars Bod . Rest))
     ))
+
+(define-syntax wrap-lambda-at-the-end
+  (syntax-rules ()
+    ((_ (Bod ...) (Vars ...) (CataVars ...))
+     (lambda (CataVars ... Vars ...)
+       (Bod ... (Vars ...) (CataVars ...))))))
+
+
+(define-syntax bind-nulls
+  (syntax-rules ()
+    ((_ (Bod ...) () ()) (Bod ...))
+    ((_ Bod () (C CataVars ...))
+     (let ((C '()))
+       (bind-nulls Bod () (CataVars ...))))
+    ((_ Bod (V Vars ...) (CataVars ...))
+     (let ((V '()))
+       (bind-nulls Bod (Vars ...) (CataVars ...))))))
+
+(define-syntax countup-vars
+  (syntax-rules ()
+    ((_ () ()) 0)
+    ((_ () (C CataVars ...))
+     (fx+ 1 (countup-vars () (CataVars ...))))
+    ((_ (V Vars ...) (CataVars ...))
+      (fx+ 1 (countup-vars (Vars ...) (CataVars ...)))
+     )))
 
 (define-syntax vecref-helper
   (syntax-rules ()
@@ -251,30 +288,37 @@
 	(lambda (escape)
 	  (let* ((failed (lambda () (escape (NextClause))))
 		 ;; Bind a pattern-matcher for one element of the list.	
+		 ;; It returns the pattern variables' bindings in a list:
 		 (project (lambda (VAL)
 			    (convert-pat ((VAL P0) ()) build-list 
-					 IGNORED Guard Cata failed (Vars ...) (CataVars ...)))))
-	    
-	    ;; TODO, HANDLE NULL CASE:
-; 	    (if (null? Obj) 
-; 		(bind-vars-null (collect-vars () P0 ())
-; 				(bind-cata-null (collect-cata-vars P0)
-; 						Bod Guard)))
-
-	    (let loop ((ls Obj) (acc '()))
-	      (cond
-	       ((null? ls)
-		(let* ((rotated (apply map list (reverse acc))))
+					 IGNORED #t Cata failed () ()))))
+	    (cond 
+	     [(null? Obj)
+	      (ellipses-helper () ()
+	       (bind-nulls (convert-pat Stack exec-body Bod 'UUUUUGH Cata NextClause (Vars ...) (CataVars ...))) P0)]
+	     [(pair? Obj)
+	      (let ellipses-loop ((ls Obj) (acc '()))
+		(cond
+		 ((null? ls)
 		  (apply 
-		   (ellipses-helper (Vars ...) (CataVars ...)
-				    (convert-pat Stack exec-body Bod Guard Cata NextClause)
+		   ;; First we gather just the variables in this ellipses pattern.
+		   (ellipses-helper () ()
+				    (wrap-lambda-at-the-end ;; We take those in as a list.
+				     ;; If we get past this pattern we're on to the next one.
+				     ;; But P0's variables are already bound.
+				     (ellipses-helper (Vars ...) (CataVars ...)
+						      (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
 				    P0)
+
 		   ;; When we pop the cata-var we pop the whole list.
 		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
-		     rotated)
-		   )))
-	       (else (loop (cdr ls) 
-			   (cons (project (car ls)) acc)))))))))
+		     ;; Rotate:
+		     (apply map list (reverse acc)))
+		   ))
+		 (else (ellipses-loop (cdr ls) 
+			     (cons (project (car ls)) acc)))))]
+	     [else (NextClause)])
+	    ))))
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	((_ ((Obj (P0 . P1)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
@@ -298,25 +342,78 @@
 	;; Literal pattern.
 	;; Since we're using syntax-rules here we can't tell much.
 	((_ ((Obj LIT) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
-	 #'(begin 
-	   ;; Hopefully this happens at compile-time:
-
-; 	   (ASSERT 
-; ;	   (DEBUGASSERT
-; 	           (or (symbol? (quote LIT))
-; 		       (null? (quote LIT))
-; 		       (boolean? (quote LIT))
-; 		       (string? (quote LIT))
-; 		       (number? (quote LIT))))
-
-
-	   (if (equal? Obj (quote LIT))
-	       (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
-	       (NextClause))))
+	 (begin
+	   (MATCH_ASSERT (not (ellipsis? #'LIT)))
+	   (MATCH_ASSERT 
+	    (or (symbol? (syntax-object->datum #'LIT))
+		(null?   (syntax-object->datum #'LIT))
+		(boolean? (syntax-object->datum #'LIT))
+		(string?  (syntax-object->datum #'LIT))
+		(number?  (syntax-object->datum #'LIT))
+		))
+	   #'(begin 
+	       (if (equal? Obj (quote LIT))
+		   (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
+		   (NextClause)))))
 
 	;; Otherwise, syntax error.
 		 
 	)))
+
+(define (test-match)
+  (for-each 
+      (lambda (pr)
+	(display "   Test: ") (write (car pr)) (newline)
+	(if (equal? (eval (car pr) (interaction-environment)) ;(scheme-report-environment 5)
+		    (cadr pr))
+	    (begin (display "-- Passed." ) (newline))
+	    (begin (display "-- FAILED." ) (newline))
+	    ))
+    '(   
+      ((match 3 (,x x)) 3)
+
+      ((match '(1 2) ((,x ,y) (+ x y))) 3)
+      
+      ((match '(1 2) ((,x ,y ,z) (+ x x y)) ((,x ,y) (* 100 y))) 200)
+      
+      ((match '(1 2) ((,x ,y ,z) (+ x x y)) (,v v)) (1 2))
+
+      ((match '(1 2) ((3 ,y) (* 1000 y)) ((1 ,y) (* 100 y))) 200)
+
+      ((match '(1 2) ((,(x) ,(y)) (list x y)) (1 3) (2 4)) (3 4))
+
+      ((match '(1 2) ((,(x y) ,(z w)) (list x y z w)) (1 (values 3 4)) (2 (values 5 6)))
+       (3 4 5 6))
+
+      ((match '(1 . 2) ((,x . ,y) y)) 2)
+
+      ((match '(1 2 3) ((1 ,x* ...) x*)) (2 3))
+      ((match '((a 1) (b 2) (c 3)) (((,x* ,y*) ...) (vector x* y*))) #((a b c) (1 2 3)))
+      ((match '((a 1) (b 2) (c 3 4)) (((,x* ,y*) ...) (vector x* y*)) (,_ 'yay)) yay)
+
+      ;; Redirect:
+      ((match '(1 2 3) ((1 ,(add1 -> x) ,(add1 -> y)) (list x y))) (3 4))
+
+      ;; Basic guard:
+      ((match 3 (,x (guard (even? x)) 44) (,y (guard (< y 40) (odd? y)) 33)) 33)
+
+      ;; Redirect and ellipses.
+;     ((match '(1 2 3) ((1 ,(add1 -> x*) ...) x*)) (3 4))
+
+;       ;; Make sure we keep those bindings straight.
+;       ((match '((a 2 9) (b 2 99) (c 2 999))
+; 	 (((,x 2 ,(y)) _...) (vector x y))
+; 	 (,n (add1 n)))
+;        )
+
+      )))
+
+(define (tm2)
+  (match '(letrec () 'hmm)
+      [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
+       (guard (memq let '(let letrec lazy-letrec)))
+       (vector let id* t* rhs* bod)]
+    [,oth 99]))
 
 ) ;; End module
 
@@ -337,3 +434,75 @@
   (time (rep 10000000 (match val [#(foo ,x ,y) 'no]
      [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
 
+
+
+
+
+
+(match '(timer 3.0)
+  [(,prim ,[rand*] ...)
+   (guard (regiment-primitive? prim))
+   9999]
+  [,oth 78])
+
+
+(define (print-var-types exp max-depth . p)
+  (IFCHEZ (import rn-match) (void))
+  (let ([port (if (null? p) (current-output-port) (car p))])
+    
+    (trace-define (get-var-types exp)
+)
+
+   
+    ;(inspect (get-var-types exp))
+    (let loop ([x (get-var-types exp)] [depth 0] [indent " "])
+      (if (= depth max-depth) (void)
+	  (match x
+	    [() (void)]
+	    [(type ,v ,t ,subvars)
+	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
+	       (fprintf port "~a~a :: " indent v)
+	       (print-type t port) (newline port))
+	     (loop subvars (fx+ 1 depth) (++ indent "  "))]
+	    [,ls (guard (list? ls))
+		 (for-each (lambda (x) (loop x depth indent))
+		   ls)]
+	    [,other (error 'print-var-types "bad result from get-var-types: ~a" other)])))
+      ))
+
+
+
+
+      (match '(timer 3.0)
+
+       [(,lang '(program ,[body] ,meta ... ))
+	 (append body `((type BASE ,(last meta) ())))]
+
+       [,c (guard (simple-constant? c)) '()]
+       [,var (guard (symbol? var))  `()]       
+       [(quote ,c)       '()]
+       [(assert-type ,t ,[e]) e]
+       [(set! ,v ,[e]) e]
+       [(begin ,[e*] ...) (apply append e*)]
+       [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] (append s e bodls))]
+       [(while ,[tstls] ,[bodls]) (append tstls bodls)]
+
+       [(if ,[t] ,[c] ,[a]) (append t c a)]
+       [(tuple ,[args] ...) (apply append args)]
+       [(tupref ,n ,m ,[x]) x]
+       [(unionN ,[args] ...) (apply append args)]
+
+       [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
+	(guard (memq let '(let letrec lazy-letrec)))
+	(append (apply append 
+		       (map (lambda (id t rhsls)
+			      `([type ,id ,t ,rhsls]))
+			 id* t* rhs*))
+		bod)]
+       [(lambda ,v* ,t* ,[bodls])   bodls]
+       [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app construct-data)))
+	(apply append rat rand*)]
+       [(,prim ,[rand*] ...)
+	 (guard (regiment-primitive? prim))
+	 (apply append rand*)]
+	[,other (error 'print-var-types "bad expression: ~a" other)])

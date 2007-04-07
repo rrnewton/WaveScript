@@ -58,10 +58,10 @@
 
       )))
 
-;(test-match)
-;(newline)(display "Also running not with eval, should get 'first': ")
-;(display (match 3 (5 "zeroth")(3 "first") (4 "second")))
-;(newline)
+(test-match)
+(newline)(display "Also running not with eval, should get 'first': ")
+(display (match 3 (5 "zeroth")(3 "first") (4 "second")))
+(newline)
 
 (display "Remember to 'export SNOW_TEST=testmatch' when running this file.")(newline)
 (test* 

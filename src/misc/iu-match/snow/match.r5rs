@@ -147,8 +147,7 @@
 (define-syntax PATMATCH_ellipses-helper
   (syntax-rules (unquote ->)
     ((_ (Vars ...) (CataVars ...) (Bod ...))
-     (lambda (CataVars ... Vars ...)
-       (Bod ... (Vars ...) (CataVars ...))))
+     (Bod ... (Vars ...) (CataVars ...)))
     
     ((_ Vars (CataVars ...) Bod (unquote (FUN -> V* ...)) . Rest)
      (PATMATCH_ellipses-helper Vars (V* ... CataVars ...) Bod  . Rest))
@@ -162,6 +161,10 @@
     
     ((_ Vars CataVars Bod (P0 . P*) . Rest)
      (PATMATCH_ellipses-helper Vars CataVars Bod P0 P* . Rest))
+
+    ((_ Vars CataVars Bod #(P* ...) . Rest)
+     (ellipses-helper Vars CataVars Bod P* ... . Rest))
+
     ;; Otherwise just assume its a literal:
     ((_ Vars CataVars Bod LIT . Rest)
      (PATMATCH_ellipses-helper Vars CataVars Bod . Rest))
@@ -187,6 +190,22 @@
     ((_ () stack stuff) (PATMATCH_convert-pat stack . stuff))
     ((_ (B0 . B*) stack stuff)
      (PATMATCH_vecref-helper2 B* (B0 stack) stuff))))
+
+(define-syntax PATMATCH_wrap-lambda-at-the-end
+  (syntax-rules ()
+    ((_ (Bod ...) (Vars ...) (CataVars ...))
+     (lambda (CataVars ... Vars ...)
+       (Bod ... (Vars ...) (CataVars ...))))))
+
+(define-syntax PATMATCH_bind-nulls
+  (syntax-rules ()
+    ((_ (Bod ...) () ()) (Bod ...))
+    ((_ Bod () (C CataVars ...))
+     (let ((C '()))
+       (PATMATCH_bind-nulls Bod () (CataVars ...))))
+    ((_ Bod (V Vars ...) (CataVars ...))
+     (let ((V '()))
+       (PATMATCH_bind-nulls Bod (Vars ...) (CataVars ...))))))
 
 
 ;; Convert a pattern into a function that will test for a match.
@@ -243,30 +262,44 @@
 	(lambda (escape)
 	  (let* ((failed (lambda () (escape (NextClause))))
 		 ;; Bind a pattern-matcher for one element of the list.	
+		 ;; It returns the pattern variables' bindings in a list:
 		 (project (lambda (VAL)
-			    (PATMATCH_convert-pat ((VAL P0) ()) PATMATCH_build-list 
-					 IGNORED Guard Cata failed (Vars ...) (CataVars ...)))))
-	    
-	    ;; TODO, HANDLE NULL CASE:
-; 	    (if (null? Obj) 
-; 		(bind-vars-null (collect-vars () P0 ())
-; 				(PATMATCH_bind-cata-null (collect-cata-vars P0)
-; 						Bod Guard)))
+			    (convert-pat ((VAL P0) ()) build-list 
+					 IGNORED Guard Cata failed () ()))))
+	    (if (null? Obj)
+		(ellipses-helper () ()
+		 (PATMATCH_bind-nulls 
+		  (convert-pat Stack exec-body Bod Guard Cata NextClause (Vars ...) (CataVars ...))) P0)
 
 	    (let loop ((ls Obj) (acc '()))
 	      (cond
 	       ((null? ls)
-		(let* ((rotated (apply map list (reverse acc))))
-		  (apply 
-		   (PATMATCH_ellipses-helper (Vars ...) (CataVars ...)
-				    (PATMATCH_convert-pat Stack PATMATCH_exec-body Bod Guard Cata NextClause)
-				    P0)
-		   ;; When we pop the cata-var we pop the whole list.
-		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
-		     rotated)
-		   )))
+		(ellipses-helper (Vars ...) (CataVars ...)
+				 (PATMATCH_wrap-lambda-at-the-end 
+				  (convert-pat Stack exec-body Bod Guard Cata NextClause))
+				 P0)
+		(apply 
+		 ;; First we gather just the variables in this ellipses pattern.
+		 (ellipses-helper () ()
+		   (wrap-lambda-at-the-end ;; We take those in as a list.
+		    ;; If we get past this pattern we're on to the next one.
+		    ;; But P0's variables are already bound.
+		    (ellipses-helper (Vars ...) (CataVars ...)
+		       (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
+		   P0)
+
+		 ;; When we pop the cata-var we pop the whole list.
+		 (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
+		   ;; Rotate:
+		   (apply map list (reverse acc)))
+		 ))
 	       (else (loop (cdr ls) 
-			   (cons (project (car ls)) acc)))))))))
+			   (cons (project (car ls)) acc)))))
+		
+	       
+		)
+
+	    ))))
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	((_ ((Obj (P0 . P1)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
