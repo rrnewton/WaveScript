@@ -163,14 +163,21 @@
 
 (define-syntax PATMATCH_vecref-helper
   (syntax-rules ()
-    ((_ vec ind stack stuff ) (PATMATCH_convert-pat stack . stuff))
-    ((_ vec ind stack stuff P0 P* ...)
+    ((_ vec ind acc (Stack . stuff)) (PATMATCH_vecref-helper2 acc stack stuff))
+    ((_ vec ind acc stuff P0 P* ...)
      (PATMATCH_vecref-helper vec (fx+ 1 ind) 
-			     (((vector-ref vec ind) P0) stack) 
-			     stuff P* ...)
+			     (((vector-ref vec ind) P0) . acc)
+			     stuff P* ...))))
 
-     ;((vector-ref vec ind) (PATMATCH_vecref-helper vec (fx+ 1 ind) stack P* ...))
-     )))
+;; This (verbosely) does a reversal of the patterns for the vector.
+;; This goal is to get a left-to-right order, which I believe to be
+;; more efficient for my uses.  (Generally, the first element is a
+;; symbol that tags the variant represented by the vector.)
+(define-syntax PATMATCH_vecref-helper2
+  (syntax-rules ()
+    ((_ () stack stuff) (PATMATCH_convert-pat stack . stuff))
+    ((_ (B0 . B*) stack stuff)
+     (PATMATCH_vecref-helper2 B* (B0 stack) stuff))))
 
 
 ;; Convert a pattern into a function that will test for a match.
@@ -266,7 +273,7 @@
 	 ;; Hope the compiler manages to evaluate this 'length' call:
 	 (if (and (vector? Obj) (fx= (vector-length Obj) (length '(Pat ...))))
 	     ;; This creates redundant vector 
-	     (PATMATCH_VecRef-helper Obj 0 Stack (Exec Bod Guard Cata NextClause Vars CataVars) Pat ...)
+	     (PATMATCH_vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) Pat ...)
 	     ;(PATMATCH_convert-pat Stack ___ )
 	     ;(PATMATCH_convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
 	     (NextClause)))
@@ -326,85 +333,4 @@
            (begin exp ...
                   (loop (sub1 n)))))]))
 
-
-#!eof 
-
-((letrec ([f (lambda (x)
-               ((lambda (next)
-                  (if (vector? x)
-                      (if (equal? (vector-ref x (fx+ 1 0)) 4)
-                          ((lambda (x) ((lambda (x) (if #t x (next))) (x)))
-                            (lambda () (vector-ref x 0)))
-                          (next))
-                      (next)))
-                 (lambda () (error 'match "no next clause"))))])
-   f)
-  '#2(3 4))
-
-
-(if (vector? '#3(foo 3 4))
-    (if (equal? (vector-ref '#3(foo 3 4) (fx+ 1 (fx+ 1 0))) 4)
-        (if (equal? (vector-ref '#3(foo 3 4) 0) 'foo)
-            (vector-ref '#3(foo 3 4) (fx+ 1 0))
-            (error 'match "no next clause"))
-        (error 'match "no next clause"))
-    (error 'match "no next clause"))
-
-
-((letrec ([f (lambda (x)
-               ((lambda (next)
-                  (if (if (vector? x)
-                          (fx= (vector-length x) (length '(foo ,x ,y)))
-                          #f)
-                      (if (equal? (vector-ref x 0) 'foo)
-                          (begin
-                            (vector-ref x (fx+ 1 0))
-                            (vector-ref x (fx+ 1 (fx+ 1 0)))
-                            'no)
-                          (next))
-                      (next)))
-                 (lambda ()
-                   (if (if (vector? x)
-                           (fx= (vector-length x)
-                                (length '(foo ,(x) ,(y) ,(z))))
-                           #f)
-                       ((lambda (promise)
-                          ((lambda (promise)
-                             ((lambda (promise)
-                                (if (equal? (vector-ref x 0) 'foo)
-                                    (begin
-                                      (call-with-values
-                                        promise
-                                        (lambda (y) y))
-                                      (call-with-values
-                                        promise
-                                        (lambda (z) z))
-                                      ((lambda (x)
-                                         ((lambda (y)
-                                            ((lambda (z)
-                                               (#2%vector 'foo x y z))
-                                              (call-with-values
-                                                promise
-                                                (lambda (z) z))))
-                                           (call-with-values
-                                             promise
-                                             (lambda (y) y))))
-                                        (call-with-values
-                                          promise
-                                          (lambda (x) x))))
-                                    (error 'match "no next clause")))
-                               (#2%$make-promise
-                                 (lambda ()
-                                   (f (vector-ref x (fx+ 1 0)))))))
-                            (#2%$make-promise
-                              (lambda ()
-                                (f (vector-ref x (fx+ 1 (fx+ 1 0))))))))
-                         (#2%$make-promise
-                           (lambda ()
-                             (f (vector-ref
-                                  x
-                                  (fx+ 1 (fx+ 1 (fx+ 1 0))))))))
-                       (error 'match "no next clause")))))])
-   f)
-  '#4(foo 1 2 #4(bar 3 4 5)))
 

@@ -703,11 +703,19 @@ OOOPS!
      [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
 
 
-(match val 
+(match #(foo 1 2 #(bar 3 4 5))
        [#(foo ,x ,y) 'no]
        [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] 
        [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] 
        [,_ 0])
+
+(expand '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
+
+(expand/optimize '(match #(foo 1 2 #(bar 3 4 5))
+       [#(foo ,x ,y) 'no]
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
 
 
   (define-record foo (x y z))
@@ -723,3 +731,46 @@ OOOPS!
        [(foo? r) (make-foo (f (foo-x r)) (f (foo-y r)) (f (foo-z r)))]
        [else 0]))))
 
+
+
+
+  (collect 4)
+  (define val (vector 'foo 1 2 (vector 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (vector? r) (= (vector-length r) 3) (equal? 'foo (vector-ref r 0))) 'no]
+
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'bar (vector-ref r 0))) 
+         (vector 'bar (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'foo (vector-ref r 0)))
+         (vector 'foo (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [else 0]))))
+
+
+  (collect 4)
+  (define val (list 'foo 1 2 (list 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (list? r) (= (length r) 3) (equal? 'foo (car r))) 'no]
+       [(and (list? r) (= (length r) 4) (equal? 'bar (car r))) 
+         (list 'bar (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [(and (list? r) (= (length r) 4) (equal? 'foo (car r)))
+         (list 'foo (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [else 0]))))
+
+
+;; INCORRECT:
+  (collect 4)
+  (define val (list 'foo 1 2 (list 'bar 3 4 5)))
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(and (pair? r) (= (length r) 3) (equal? 'foo (car r))) 'no]
+
+       [(and (pair? r) (= (length r) 4) (equal? 'bar (car r))) 
+         (list 'bar (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [(and (pair? r) (= (length r) 4) (equal? 'foo (car r)))
+         (list 'foo (f (cadr r)) (f (caddr r)) (f (cadddr r)))]
+       [else 0]))))
