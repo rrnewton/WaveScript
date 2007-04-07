@@ -187,6 +187,13 @@
    (string-ref 
     (symbol->string s) 0)))
 
+
+(define thefile "FOOBAR")
+
+;; This wraps the source position information in the way the Regiment compiler expects.
+(define (wrap pos x)
+  `(src-pos (,thefile ,(position-line pos) ,(position-col pos)) ,x))
+
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
       (delete-file "_parser.log"))
@@ -463,7 +470,10 @@
 
     (notlist
          [(NUM) $1]  
-         [(VAR) $1]
+         [(VAR) 
+	  ;(wrap $1-start-pos $1)
+	  $1
+	  ]
          [(CHAR) $1]
          [(STRING) $1]
          [(true) ''#t] 

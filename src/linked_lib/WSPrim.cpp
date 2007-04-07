@@ -53,6 +53,7 @@ static ostringstream global_show_stream(ostringstream::out);
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
 
+      //      for(int i=0; i<len_out; i++) (*result)[i] = conj(out_buf[i]);
       for(int i=0; i<len_out; i++) (*result)[i] = out_buf[i];
 
       delete in_buf;
@@ -74,11 +75,12 @@ static ostringstream global_show_stream(ostringstream::out);
       for(int i=0; i<len; i++) in_buf[i] = (*input)[i];
 
       // Complex to real: DESTROYS INPUT ARRAY:
-      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len_out, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
+      fftwf_plan plan = fftwf_plan_dft_c2r_1d(len, (fftwf_complex*)in_buf, out_buf, FFTW_ESTIMATE);      
       fftwf_execute(plan);
       fftwf_destroy_plan(plan);           
 
-      for(int i=0; i<len_out; i++) (*result)[i] = out_buf[i];
+      for(int i=0; i<len_out; i++) 
+	(*result)[i] = out_buf[i];
 
       delete in_buf;
       delete out_buf;

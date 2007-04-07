@@ -572,3 +572,154 @@ instance Has_x (Int*Float) Int where
 e.x ==> proj_x e :: b | Has_x a b 
 Uh, need functional dependencies???
 
+
+[2007.04.06] {Source locations}
+
+I'm thinking of making the relatively wide-reaching change of
+including source-position information.  At least as far as the
+type-checker.
+
+Maybe as I push through this wave of changes I should move over to
+using vectors for ASTs also.  However, first I'm trying to ascertain
+if there's really any performance benefit.  This simple test seems to
+say that there isn't at all!!
+
+  (collect 4)(time (rep 100000 (match '(foo 1 2 3) [(foo ,x ,y) 'no] [(bar ,x ,y ,z) 'no] [(foo ,x ,y ,z) 'yes])))
+  (collect 4)(time (rep 100000 (match #(foo 1 2 3) [#(foo ,x ,y) 'no] [#(bar ,x ,y ,z) 'no] [#(foo ,x ,y ,z) 'yes])))
+
+    32 collections
+    64 ms elapsed cpu time, including 4 ms collecting
+    64 ms elapsed real time, including 5 ms collecting
+    35052176 bytes allocated, including 34308880 bytes reclaimed
+
+    41 collections
+    80 ms elapsed cpu time, including 8 ms collecting
+    79 ms elapsed real time, including 8 ms collecting
+    44654232 bytes allocated, including 44460776 bytes reclaimed
+
+
+Here's a slightly more complex test that rebuilds the data structure as well:
+
+  (collect 4)(time (rep 50000 (match #(foo 1 2 #(bar 3 4 5)) [#(foo ,x ,y) 'no]
+     [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
+  (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+    136 collections
+    316 ms elapsed cpu time, including 136 ms collecting
+    318 ms elapsed real time, including 125 ms collecting
+    147311072 bytes allocated, including 146858896 bytes reclaimed
+
+    123 collections
+    236 ms elapsed cpu time, including 72 ms collecting
+    234 ms elapsed real time, including 74 ms collecting
+    136940584 bytes allocated, including 136467768 bytes reclaimed
+
+  [ Doesn't get much from opt-level 3 ]
+
+Lists win again!!!
+
+Just for reference let's try records.
+Ideally this would look something like the vector case:
+ (match #[foo 1 2 3] [#[foo ,x ,y ,z] ...])
+ (match (make-foo 1 2 3) [[record foo ,x ,y ,z] ...])
+But alas match doesn't handle records.
+
+
+  (define-record foo (x y z))
+  (define-record foo2 (x y))
+  (define-record bar (x y z))
+  (collect 4)
+  (time (rep 50000
+   (let f ([r (make-foo 1 2 (make-bar 3 4 5))])
+     (cond 
+       [(foo2? r) 'no]
+       [(bar? r) (make-bar (f (bar-x r)) (f (bar-y r)) (f (bar-z r)))]
+       [(foo? r) (make-foo (f (foo-x r)) (f (foo-y r)) (f (foo-z r)))]
+       [else 0]))))
+
+    3 collections
+    16 ms elapsed cpu time, including 0 ms collecting
+    19 ms elapsed real time, including 0 ms collecting
+    3200720 bytes allocated, including 3185704 bytes reclaimed
+
+  [ Doesn't get much from opt-level 3 ]
+
+Well, that's not much of a contest, is it?  Surprising that the
+allocation is so much better for the records case, but worse for the
+vector case.  Where's all the allocation for the vectors?  Is it
+closure allocation from the match system?
+
+Let's try my r5rs syntax-rules based match.  SIGH... it beats the
+pants off the other match.ss 
+
+  (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+    24 collections
+    84 ms elapsed cpu time, including 4 ms collecting
+    87 ms elapsed real time, including 1 ms collecting
+    24805568 bytes allocated, including 25449056 bytes reclaimed
+
+(Then on opt-level 3 that drops down to 34 ms.)
+(Took out delay-values and got that down to 77 opt0 and 32 in opt3)
+(Then took out the ASSERT on literals, and that brought it to 69ms/30ms)
+
+
+HMM... My current r5rs matcher doesn't support vector patterns.  But
+here's a simple rewrite of the record example above for vectors.  This
+does really well!
+
+  (collect 4)
+  (time (rep 50000
+   (let f ([r (vector 'foo 1 2 (vector 'bar 3 4 5))])
+     (cond 
+       [(and (vector? r) (= (vector-length r) 3) (equal? 'foo (vector-ref r 0))) 'no]
+
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'bar (vector-ref r 0))) 
+         (vector 'bar (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [(and (vector? r) (= (vector-length r) 4) (equal? 'foo (vector-ref r 0)))
+         (vector 'foo (f (vector-ref r 1)) (f (vector-ref r 2)) (f (vector-ref r 3)))]
+       [else 0]))))
+
+    4 collections
+    8 ms elapsed cpu time, including 0 ms collecting
+    9 ms elapsed real time, including 0 ms collecting
+    4800928 bytes allocated, including 4224800 bytes reclaimed
+
+
+
+
+OOOPS!
+
+
+  (collect 4)(define val '(foo 1 2 (bar 3 4 5)))
+  (time (rep 50000 (match val [(foo ,x ,y) 'no]
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+
+
+  (collect 4)(define val #(foo 1 2 #(bar 3 4 5)))
+  (time (rep 50000 (match val [#(foo ,x ,y) 'no]
+     [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] [,_ 0])))
+
+
+(match val 
+       [#(foo ,x ,y) 'no]
+       [#(bar ,[x] ,[y] ,[z]) `#(bar ,x ,y ,z)] 
+       [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)] 
+       [,_ 0])
+
+
+  (define-record foo (x y z))
+  (define-record foo2 (x y))
+  (define-record bar (x y z))
+  (define val (make-foo 1 2 (make-bar 3 4 5)))
+  (collect 4)
+  (time (rep 50000
+   (let f ([r val])
+     (cond 
+       [(foo2? r) 'no]
+       [(bar? r) (make-bar (f (bar-x r)) (f (bar-y r)) (f (bar-z r)))]
+       [(foo? r) (make-foo (f (foo-x r)) (f (foo-y r)) (f (foo-z r)))]
+       [else 0]))))
+

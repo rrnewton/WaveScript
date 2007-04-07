@@ -185,6 +185,8 @@
 	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
               (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)]
 			   [(stmt decl wsq) (Query lhs ty rhs tenv)])
+		(ASSERT list? stmt)
+		(ASSERT list? bodstmts)
 		(values (append stmt bodstmts)
 			(append decl boddecls)
 			(append wsq wsqdecls))))]
