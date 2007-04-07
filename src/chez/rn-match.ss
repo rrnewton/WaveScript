@@ -32,7 +32,7 @@
 
 (module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
 			 build-list bind-cata ellipses-helper delay-values 
-			 countup-vars wrap-lambda-at-the-end bind-nulls
+			 countup-vars wrap-lambda-at-the-end bind-nulls build-list-of-nulls
 			 vecref-helper vecref-helper2 convert-pat
 			 )
 		  test-match 
@@ -199,6 +199,7 @@
      (let ((V '()))
        (bind-nulls Bod (Vars ...) (CataVars ...))))))
 
+;; Dead code:
 (define-syntax countup-vars
   (syntax-rules ()
     ((_ () ()) 0)
@@ -206,6 +207,15 @@
      (fx+ 1 (countup-vars () (CataVars ...))))
     ((_ (V Vars ...) (CataVars ...))
       (fx+ 1 (countup-vars (Vars ...) (CataVars ...)))
+     )))
+
+(define-syntax build-list-of-nulls
+  (syntax-rules ()
+    ((_ () ())  '())
+    ((_ () (C CataVars ...))
+     (cons '() (build-list-of-nulls () (CataVars ...))))
+    ((_ (V Vars ...) (CataVars ...))
+      (cons '() (build-list-of-nulls (Vars ...) (CataVars ...)))
      )))
 
 (define-syntax vecref-helper
@@ -292,32 +302,30 @@
 		 (project (lambda (VAL)
 			    (convert-pat ((VAL P0) ()) build-list 
 					 IGNORED #t Cata failed () ()))))
-	    (cond 
-	     [(null? Obj)
-	      (ellipses-helper () ()
-	       (bind-nulls (convert-pat Stack exec-body Bod Guard Cata NextClause (Vars ...) (CataVars ...))) P0)]
-	     [(pair? Obj)
-	      (let ellipses-loop ((ls Obj) (acc '()))
-		(cond
-		 ((null? ls)
-		  (apply 
-		   ;; First we gather just the variables in this ellipses pattern.
-		   (ellipses-helper () ()
-				    (wrap-lambda-at-the-end ;; We take those in as a list.
-				     ;; If we get past this pattern we're on to the next one.
-				     ;; But P0's variables are already bound.
-				     (ellipses-helper (Vars ...) (CataVars ...)
-						      (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
-				    P0)
-
-		   ;; When we pop the cata-var we pop the whole list.
-		   (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
-		     ;; Rotate:
-		     (apply map list (reverse acc)))
-		   ))
+	    (if (or (null? Obj) (pair? Obj))
+		(let ellipses-loop ((ls Obj) (acc '()))
+		  (cond
+		   ((null? ls)
+		    (apply 
+		     ;; First we gather just the variables in this ellipses pattern.
+		     (ellipses-helper () ()
+				      (wrap-lambda-at-the-end ;; We take those in as a list.
+				       ;; If we get past this pattern we're on to the next one.
+				       ;; But P0's variables are already bound.
+				       (ellipses-helper (Vars ...) (CataVars ...)
+							(convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
+				      P0)
+		     (if (null? Obj)
+			 ;; Build a list of nulls of the right length:
+			 (ellipses-helper () () (build-list-of-nulls) P0)
+			 ;; When we pop the cata-var we pop the whole list.
+			 (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
+			   ;; Rotate:
+			   (apply map list (reverse acc)))
+			 )))
 		 (else (ellipses-loop (cdr ls) 
-			     (cons (project (car ls)) acc)))))]
-	     [else (NextClause)])
+				      (cons (project (car ls)) acc)))))
+		(NextClause))
 	    ))))
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
