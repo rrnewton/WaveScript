@@ -525,7 +525,7 @@
 	 ;; Special stream-projection dot syntax.
 	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
 	 ;; For now unwrap the src-pos info on these:
-	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,(map unwrap $3) ,$1)]
+	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,(map unwrap $3) ,(unwrap $1))]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,$1 ,$3 ,$6)]	 

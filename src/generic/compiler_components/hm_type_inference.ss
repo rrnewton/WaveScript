@@ -820,6 +820,7 @@
 
       ;; Duplicating this case to give good error messages for badly typed apps:
       ;; DOESN'T SEEM TO WORK!
+#;
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
        (guard (memq app '(app construct-data)))
        (DEBUGASSERT (andmap type? t*))
