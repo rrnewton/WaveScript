@@ -166,12 +166,17 @@
 ;; This is similar to get-location but gets the actual snippet.
 (define (get-snippet x)
   (match x
-    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
-     (++ (format "in file ~s\n   "  fn)
-	 (if (= ln1 ln2)
-	     (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
-	     (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))]
-    [,x x]))
+    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,e)
+     (if (and (file-exists? fn) (= ln1 ln2))
+	 (let ([port (open-input-file fn)])
+	   (let ([line ""])
+	     (rep ln1 (set! line (read-line port)))
+	     (close-input-port port)
+	     (++ (make-string col1 #\space)
+		 (substring line col1 col2))))
+	 (get-snippet e))]
+    [,x 
+     (format "(in abstract syntax)\n   ~s\n" x)]))
 
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-mismatch t1 t2 exp)
@@ -183,8 +188,8 @@
 	 (safe-export-type t1) (safe-export-type t2) 
 	 ;; Approximate location:
 	 (get-location exp)
-	 (format "(in abstract syntax)\n   ~s\n" exp)
-	 ;(get-snippet exp)
+	 ;(format "(in abstract syntax)\n   ~s\n" exp)
+	 (get-snippet exp)
 	 ))
 ;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)
