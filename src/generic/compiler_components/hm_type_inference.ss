@@ -815,7 +815,8 @@
 
       ;; DUPLICATING! these two cases to give good error messages for badly typed apps:
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
-       (guard (regiment-primitive? prim))
+       (guard (regiment-primitive? prim)
+	      (not (memq prim '(tuple unionN))))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
@@ -1477,7 +1478,7 @@
   (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
     
-    (trace-define (get-var-types exp)
+    (define (get-var-types exp)
       (match exp 
 
        [(,lang '(program ,[body] ,meta ... ,ty))
