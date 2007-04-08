@@ -84,6 +84,10 @@
      (vector x* y* z* bod acc))
     (,oth (add1 oth))))
 
+'
+;; Ellipses in vector patterns:
+(match #(1 3 4 5 99) [#(,z ... ,y) (vector z y )])
+
 
 ; (test-match)
 ; (newline)(display "Also running not with eval, should get 'first': ")

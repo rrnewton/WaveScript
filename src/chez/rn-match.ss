@@ -6,8 +6,6 @@
 
 ;; Also I removed the "PATMATCH_" name mangling.
 
-
-
 ;; How far can we get doing match with syntax-rules?
 
 ;; Portability:
@@ -32,9 +30,12 @@
 
 (module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
 			 build-list bind-cata ellipses-helper delay-values 
-			 countup-vars wrap-lambda-at-the-end bind-nulls build-list-of-nulls
+			 countup-vars countup-elements wrap-lambda-at-the-end bind-nulls 
 			 vecref-helper vecref-helper2 convert-pat
+			 extend-backquote my-backquote
 			 )
+		  my-backquote
+		  (extend-backquote my-backquote)
 		  test-match 
 		  tm2)
   
@@ -83,18 +84,18 @@
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
        (convert-pat ((Obj Pat) ())
 		    exec-body 	   
-		    (begin B0 Bod ...) (and G ...)
+		    (extend-backquote Template B0 Bod ...)  ;; Total body.
+		    (extend-backquote Template (and G ...))         ;; Guard expression
 		    Cata next () ())))
     ;; Unguarded:
     ((_ Template Cata Obj (Pat B0 Bod ...) Rest ...)
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
        (convert-pat ((Obj Pat) ()) 
 		    exec-body 		   
-		    (begin B0 Bod ...) #t
+		    (extend-backquote Template B0 Bod ...)  ;; Total body.
+		    #t                                              ;; Guard expression
 		    Cata next () ())
        ))))
-
-
 
 
 ;; Results of recursive matches can't be used in guards.
@@ -199,7 +200,12 @@
      (let ((V '()))
        (bind-nulls Bod (Vars ...) (CataVars ...))))))
 
-;; Dead code:
+(define-syntax countup-elements
+  (syntax-rules ()
+    ((_ ) 0)
+    ((_ X X* ...)
+     (fx+ 1 (countup-elements X* ...)))))
+
 (define-syntax countup-vars
   (syntax-rules ()
     ((_ () ()) 0)
@@ -290,6 +296,29 @@
        #'(let ((V (lambda () Obj)))
 	 (convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
 
+      ;; Ellipses with something following:
+      ((_ ((Obj (P0 Dots P1 P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+       (ellipsis? #'Dots)
+       ;; This case is pretty inefficient right now:
+       #'(if (list? Obj)
+	     (let ([len (length Obj)]
+		   [remains (countup-elements P1 P* ...)])
+	       (if (< len remains)
+		   (NextClause)
+		   (let ([hd (list-head Obj (- len remains))]
+			 [tl (list-tail Obj (- len remains))])
+		     (convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) Exec Bod Guard Cata NextClause Vars CataVars))))
+	     (NextClause)))
+
+      ;; Need to implement full ellipses for vector patterns, for now just doing this limited form:
+      ;; Ellipses necessitate turning it into a list:
+      ((_ ((Obj #(P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+       (ellipsis? #'Dots)
+       #'(if (vector? Obj)
+	     (let ([v2ls (vector->list Obj)])
+	       (convert-pat ((v2ls (P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars))
+	     (NextClause)))
+
       ;; Ellipses:
       ((_ ((Obj (P0 Dots)) Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
        (ellipsis? #'Dots)
@@ -315,8 +344,10 @@
 					  (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
 			P0)
 		     (if (null? Obj)
-			 ;; Build a list of nulls of the right length:
-			 (ellipses-helper () () (build-list-of-nulls) P0)
+			 ;; Build a list of (thunked) nulls of the right length:
+			 (make-list 
+			  (ellipses-helper () () (countup-vars) P0)
+			  (lambda () '()))
 			 ;; When we pop the cata-var we pop the whole list.
 			 (map (lambda (ls) (lambda () (map (lambda (th) (th)) ls)))
 			   ;; Rotate:
@@ -326,17 +357,6 @@
 				      (cons (project (car ls)) acc)))))
 		(NextClause))
 	    ))))
-
-#|
-
-(let ([acc '()])
-    (match '(let ([a  1] [b 2] [c  9]) bod)
-      ((let ((,x* ,[z*]) ...) ,bod)       
-       (vector x* z* bod acc))
-      (,oth (add1 oth))))
-
-|#
-
 	
 	;; Pair pattern:  Do car, push cdr onto stack.
 	((_ ((Obj (P0 . P1)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
@@ -433,6 +453,178 @@
        (vector let id* t* rhs* bod)]
     [,oth 99]))
 
+
+
+;; TEMP: 
+;; Using the quasiquote extension from match.ss
+;; I need to rewrite this in a portable way or remove my dependency on it:
+
+(define-syntax my-backquote
+  (lambda (x)
+    (define ellipsis?
+      (lambda (x)
+        (and (identifier? x) (literal-identifier=? x #'(... ...)))))
+    (define-syntax with-values
+      (syntax-rules ()
+        ((_ P C) (call-with-values (lambda () P) C))))
+    (define-syntax syntax-lambda
+      (lambda (x)
+        (syntax-case x ()
+          ((_ (Pat ...) Body0 Body ...)
+           (with-syntax (((X ...) (generate-temporaries #'(Pat ...))))
+             #'(lambda (X ...)
+                 (with-syntax ((Pat X) ...)
+                   Body0 Body ...)))))))
+    (define-syntax with-temp
+      (syntax-rules ()
+        ((_ V Body0 Body ...)
+         (with-syntax (((V) (generate-temporaries '(x))))
+           Body0 Body ...))))
+    (define-syntax with-temps
+      (syntax-rules ()
+        ((_ (V ...) (Exp ...) Body0 Body ...)
+         (with-syntax (((V ...) (generate-temporaries #'(Exp ...))))
+           Body0 Body ...))))
+    (define destruct
+      (lambda (Orig x depth)
+        (syntax-case x (quasiquote unquote unquote-splicing)
+          ;; inner quasiquote
+          ((quasiquote Exp)
+           (with-values (destruct Orig #'Exp (add1 depth))
+             (syntax-lambda (Builder Vars Exps)
+               (if (null? #'Vars)
+                   (values #''(quasiquote Exp) '() '())
+                   (values #'(list 'quasiquote Builder) #'Vars #'Exps)))))
+          ;; unquote
+          ((unquote Exp)
+           (zero? depth)
+           (with-temp X
+             (values #'X (list #'X) (list #'Exp))))
+          ((unquote Exp)
+           (with-values (destruct Orig #'Exp (sub1 depth))
+             (syntax-lambda (Builder Vars Exps)
+               (if (null? #'Vars)
+                   (values #''(unquote Exp) '() '())
+                   (values #'(list 'unquote Builder) #'Vars #'Exps)))))
+          ;; splicing
+          (((unquote-splicing Exp))
+           (zero? depth)
+           (with-temp X
+             (values #'X (list #'X) (list #'Exp))))
+          (((unquote-splicing Exp ...))
+           (zero? depth)
+           (with-temps (X ...) (Exp ...)
+             (values #'(append X ...) #'(X ...) #'(Exp ...))))
+          (((unquote-splicing Exp ...) . Rest)
+           (zero? depth)
+           (with-values (destruct Orig #'Rest depth)
+             (syntax-lambda (Builder Vars Exps)
+               (with-temps (X ...) (Exp ...)
+                 (if (null? #'Vars)
+                     (values #'(append X ... 'Rest)
+                             #'(X ...) #'(Exp ...))
+                     (values #'(append X ... Builder)
+                             #'(X ... . Vars) #'(Exp ... . Exps)))))))
+          ((unquote-splicing Exp ...)
+           (with-values (destruct Orig #'(Exp ...) (sub1 depth))
+             (syntax-lambda (Builder Vars Exps)
+               (if (null? #'Vars)
+                   (values #''(unquote-splicing Exp ...) '() '())
+                   (values #'(cons 'unquote-splicing Builder)
+                           #'Vars #'Exps)))))
+          ;; dots
+          (((unquote Exp) Dots)
+           (and (zero? depth) (ellipsis? #'Dots))
+           (with-temp X
+             (values #'X (list #'X) (list #'Exp))))
+          (((unquote Exp) Dots . Rest)
+           (and (zero? depth) (ellipsis? #'Dots))
+           (with-values (destruct Orig #'Rest depth)
+             (syntax-lambda (RestBuilder RestVars RestExps)
+               (with-syntax ((TailExp
+                               (if (null? #'RestVars)
+                                   #''Rest
+                                   #'RestBuilder)))
+                 (with-temp X
+                   (values #'(append X TailExp)
+                           (cons #'X #'RestVars)
+                           (cons #'Exp #'RestExps)))))))
+          ((Exp Dots . Rest)
+           (and (zero? depth) (ellipsis? #'Dots))
+           (with-values (destruct Orig #'Exp depth)
+             (syntax-lambda (ExpBuilder (ExpVar ...) (ExpExp ...))
+               (if (null? #'(ExpVar ...))
+                   (syntax-error Orig "Bad ellipsis")
+                   (with-values (destruct Orig #'Rest depth)
+                     (syntax-lambda (RestBuilder RestVars RestExps)
+                       (with-syntax ((TailExp
+                                       (if (null? #'RestVars)
+                                           #''Rest
+                                           #'RestBuilder))
+                                     (Orig Orig))
+                         (values #'(let f ((ExpVar ExpVar) ...)
+                                     (if (and (pair? ExpVar) ...)
+                                         (cons
+                                           (let ((ExpVar (car ExpVar)) ...)
+                                             ExpBuilder)
+                                           (f (cdr ExpVar) ...))
+                                         (if (and (null? ExpVar) ...)
+                                             TailExp
+                                             (error 'unquote
+                                               "Mismatched lists in ~s"
+                                               Orig))))
+                                 (append #'(ExpVar ...) #'RestVars)
+                                 (append #'(ExpExp ...) #'RestExps)))))))))
+	  ;; Vectors
+	  (#(X ...)
+	   (with-values (destruct Orig #'(X ...) depth)
+	     (syntax-lambda (LsBuilder LsVars LsExps)
+	       (values #'(list->vector LsBuilder) #'LsVars #'LsExps))))
+          ;; random stuff
+          ((Hd . Tl)
+           (with-values (destruct Orig #'Hd depth)
+             (syntax-lambda (HdBuilder HdVars HdExps)
+               (with-values (destruct Orig #'Tl depth)
+                 (syntax-lambda (TlBuilder TlVars TlExps)
+                   (with-syntax ((Hd (if (null? #'HdVars)
+                                         #''Hd
+                                         #'HdBuilder))
+                                 (Tl (if (null? #'TlVars)
+                                         #''Tl
+                                         #'TlBuilder)))
+                     (values #'(cons Hd Tl)
+                             (append #'HdVars #'TlVars)
+                             (append #'HdExps #'TlExps))))))))
+          (OtherThing
+            (values #''OtherThing '() '())))))
+    ;; macro begins
+    (syntax-case x ()
+      ((_ Datum)
+       (with-values (destruct #'(quasiquote Datum) #'Datum 0)
+         (syntax-lambda (Builder (Var ...) (Exp ...))
+           (if (null? #'(Var ...))
+               #''Datum
+               #'(let ((Var Exp) ...)
+                   Builder))))))))
+
+(define-syntax extend-backquote
+  (lambda (x)
+    (syntax-case x ()
+      ((_ Template Exp ...)
+       (with-syntax ((quasiquote
+                       (datum->syntax-object #'Template 'FLUB)))
+         #'(let-syntax ((quasiquote
+                          (lambda (x)
+                            (syntax-case x ()
+                              ((_ Foo) #'(my-backquote Foo))))))
+             Exp ...))))))
+
+
+
+
+
+
+
 ) ;; End module
 
 
@@ -472,7 +664,6 @@
 )
 
    
-    ;(inspect (get-var-types exp))
     (let loop ([x (get-var-types exp)] [depth 0] [indent " "])
       (if (= depth max-depth) (void)
 	  (match x
@@ -524,3 +715,25 @@
 	 (guard (regiment-primitive? prim))
 	 (apply append rand*)]
 	[,other (error 'print-var-types "bad expression: ~a" other)])
+
+
+(begin (print-gensym #f)(print-graph #f)(expand '(match 3 [3 4])))
+(begin (optimize-level 2)(print-gensym£h #f)(print-graph #f)(expand/optimize '(match 3 [3 4])))
+
+
+
+
+  (collect 4)
+  (time (rep 50000 ))
+
+(define val '(foo 1 2 (bar 3 4 5)))
+(match val [('foo x y) 'no] 
+       [('bar x y z) `(bar ,(f x) ,(f y) ,(f z))]
+       [('foo x y z) `(foo ,(f x) ,(f y) ,(f z))]
+       [_ 0])
+
+
+
+
+(import rn-match)(match '() [(,z ...) (vector x y z)]))
+

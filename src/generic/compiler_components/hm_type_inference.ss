@@ -199,6 +199,7 @@
     [(x)`(quote (,(make-tvar) . ,x))]))
 
 (define (tcell->name x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,qt (,n . ,t)) (guard (memq qt '(quote NUM))) (DEBUGASSERT (symbol? n))    n]
     [,else (error 'tcell->name "bad tvar cell: ~s" x)]))
@@ -223,6 +224,7 @@
 
 ;; Predicate testing for type environments.
 (define (tenv? x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     ;; Format: [VAR, TYPE, Is-Let-Bound?-FLAG]
     [(,tenvsym [,v* ,t* ,flag*] ...)
@@ -251,6 +253,7 @@
 ;; .param flag Optional flag: #t for let-bound, #f (default) for lambda-bound.
 ;; .returns A new type environment.
 (define (tenv-extend tenv syms types . flag)
+  (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (tenv? tenv))
   (DEBUGASSERT (andmap type? types))
   (let ([flag (if (null? flag) #f (if (car flag) #t #f))])
@@ -274,6 +277,7 @@
 	(apply append (map cdr tenvs))))
 ;; Applies a function to all types in a type enviroment.
 (define (tenv-map f tenv)
+  (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (tenv? tenv))
   (cons (car tenv)
 	(map 
@@ -296,6 +300,7 @@
   (case-lambda 
     [(t) (instantiate-type t '())]
     [(t nongeneric)
+     (IFCHEZ (import rn-match) (void))
      (let* ((tenv (empty-tenv))
 	 (result 
 	  (let loop ((t t))
@@ -346,7 +351,7 @@
 	     [#(,[t*] ...) (apply vector t*)]	     
 	     [(,constructor ,[args] ...)
 	      (guard (symbol? constructor))
-	      `(,constructor ,args ...)]
+	      `(,constructor ,@args)]
 	     [,other (error 'instantiate-type "bad type: ~a" other)]
 	     ))))
        (DEBUGASSERT (type? result))
@@ -366,10 +371,10 @@
     [(LATEUNIFY ,[a] ,[b])
      `(LATEUNIFY ,a ,b)]
     [(,[arg*] ... -> ,[res])
-     `(,arg* ... -> ,res)]
+     `(,@arg* -> ,res)]
     ;; Including Ref:
-    [(,s ,[t] ...) (guard (symbol? s))
-     `(,s ,t ...)]
+    [(,s ,[t*] ...) (guard (symbol? s))
+     `(,s ,@t*)]
     [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
 
@@ -549,7 +554,7 @@
   (let l ((exp exp))
     (match exp 
       [(lambda ,formals ,types ,body)
-       `(,types ... -> ,(recover-type body (tenv-extend tenv formals types)))]
+       `(,@types -> ,(recover-type body (tenv-extend tenv formals types)))]
       ;; Being lenient and accepting potential annotations in the
       ;; letrec binds.  This is necessary for running "recover type"
       ;; on the intermediate forms of the later compiler passes.
@@ -752,7 +757,7 @@
 
       [(unionN ,[l -> e* t*] ...)
        (ASSERT (not (null? t*)))
-       (let ([exp `(unionN ,e* ...)])
+       (let ([exp `(unionN ,@e*)])
 	 ;; Make sure they're all equal:
 	 (foldl (lambda (a b) (types-equal! a b exp) a)
 	   (car t*) (cdr t*))
@@ -761,7 +766,7 @@
 		   [(Stream ,t) `(Stream #(Int ,(instantiate-type t nongeneric)))]))
 	 )]
 
-      [(tuple ,[l -> e* t*] ...)  (values `(tuple ,e* ...) (list->vector t*))]
+      [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
        (unless (and (qinteger? n) (qinteger? len))
 	 (error 'annotate-expression 
@@ -799,20 +804,20 @@
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
-       (values `(,prim ,rand* ...)
+       (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
       [(,app ,origrat ,[l -> rand* t*] ...) (guard (memq app '(app construct-data)))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
-	 (values `(,app ,rator ,rand* ...)
+	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
 
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
-       (l `(app ,rat ,rand* ...))]
+       (l `(app ,rat ,@rand*))]
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
@@ -936,11 +941,11 @@
     [(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
-    [(tuple ,[e*] ...) `(tuple ,e* ...)]
+    [(tuple ,[e*] ...) `(tuple ,@e*)]
     [(tupref ,n ,[e]) `(tupref ,n ,e)]
-    [(unionN ,[e*] ...) `(unionN ,e* ...)]
+    [(unionN ,[e*] ...) `(unionN ,@e*)]
     [(set! ,v ,[e]) `(set! ,v ,e)]
-    [(begin ,[e] ...) `(begin ,e ...)]
+    [(begin ,[e] ...) `(begin ,@e)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
     [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
@@ -1391,18 +1396,24 @@
    (type BASE (Stream Int16) ()))
 
 
+(match '(foo '(program bod meta meta2 Int))
+    [(,lang '(program ,[body] ,meta ...))
+     (inspect (vector meta ty))
+     (append body `((type BASE ,(last meta) ())))]
+    [,oth 9999])
+
 |#
 
 ;; Expects a fully typed expression
 (define (print-var-types exp max-depth . p)
-;  (IFCHEZ (import rn-match) (void))
+  (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
     
     (trace-define (get-var-types exp)
-      (match exp ;; match-expr
+      (match exp 
 
-       [(,lang '(program ,[body] ,meta ... ))
-	 (append body `((type BASE ,(last meta) ())))]
+       [(,lang '(program ,[body] ,meta ... ,ty))
+	 (append body `((type BASE ,ty ())))]
 
        [,c (guard (simple-constant? c)) '()]
        [,var (guard (symbol? var))  `()]       
