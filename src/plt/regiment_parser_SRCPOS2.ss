@@ -187,12 +187,14 @@
    (string-ref 
     (symbol->string s) 0)))
 
-
-(define thefile "FOOBAR")
+;; Put in a list just to get drscheme's print-graph to treat it properly!
+(define thefile (list "FOOBAR"))
 
 ;; This wraps the source position information in the way the Regiment compiler expects.
-(define (wrap pos x)
-  `(src-pos (,thefile ,(position-line pos) ,(position-col pos)) ,x))
+(define (wrap pos end x)
+  `(src-pos #(,thefile ,(position-offset pos) ,(position-line pos) ,(position-col pos)
+		       ,(position-offset end) ,(position-line end) ,(position-col end))
+	    ,x))
 
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
@@ -250,6 +252,10 @@
            ;; and try to start over right after the error
            ;[(error start) $2]
            [(decls) (cons 'program $1)])
+
+    ;; This adds source position information!!
+    (exp [(exp-raw) (wrap $1-start-pos $1-end-pos $1)])
+    (selfterminated [(selfterminated-raw) (wrap $1-start-pos $1-end-pos $1)])
 
     (type 
 	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
@@ -407,7 +413,7 @@
    (optionalsemi [() 'OPTIONALSEMI] [(SEMI) 'OPTIONALSEMI])
    (morestmts [() '()] [(SEMI stmts) $2])
    ;; These have a syntax that allows us to know where they terminate and optionally omit SEMI:
-   (selfterminated 
+   (selfterminated-raw 
     [(for VAR = exp to exp LeftBrace stmts RightBrace) `(for (,$2 ,$4 ,$6) ,(make-begin $8))]
     [(while exp LeftBrace stmts RightBrace) `(while ,$2 ,(make-begin $4))]
     )
@@ -454,7 +460,7 @@
 
 
     ;; Hack to enable my syntax for sigseg refs!!
-    (exp 
+    (exp-raw 
 	  ;; Lists:
 	  [(LeftSqrBrk expls RightSqrBrk) (consify $2)]
 	  [(notlist) $1])
