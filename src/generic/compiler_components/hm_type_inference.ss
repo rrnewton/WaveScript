@@ -146,11 +146,32 @@
 
 (define type-error error)
 
+(define (get-location x)
+  (match x
+    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
+     (format "in file ~s between line/col ~s:~s and ~s:~s "
+	     fn ln1 col1 ln2 col2)
+     ]
+    [,x 
+     ;; SUPER HACKISH:
+     (let ([pos (deep-assq 'src-pos x)])
+       (match pos
+	 [#f "Unknown source location."]
+	 [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
+	  (format "within file ~s\n   in the viscinity of line ~s column ~s"
+		  fn ln1 col1)
+	  ]))]))
+
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-mismatch t1 t2 exp)
   (type-error 'type-checker
-	 "Type mismatch: ~a doesn't match ~a in ~s~%"
-	 (safe-export-type t1) (safe-export-type t2) exp))
+	 (++ "Type mismatch: ~a doesn't match ~a \n"
+	     "\nLocation:\n   ~a\n" ;; Location
+	     "\nExpresion: (in abstract syntax)\n   ~s \n")
+	 (safe-export-type t1) (safe-export-type t2) 
+	 ;; Approximate location:
+	 (get-location exp)
+	 exp))
 ;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)
   (type-error 'type-checker
@@ -678,7 +699,7 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
-    (match exp 
+    (match exp ;; NO DIRECT RECURSION ALLOWED:
       [,c (guard (simple-constant? c)) (values c (type-const c))]
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
@@ -730,28 +751,6 @@
 		       newexp)
 	 ;; returns unit type:
 	 (values newexp #()))]
-
-      ;; Incorporate type assertions.
-      ;; ----------------------------------------
-
-      ;; Push ascriptions inside lambdas:
-      ;; This helps make the grammar a little nicer subsequently.
-      ;; UNFINISHED      
-      ;[(assert-type ,ty (lambda () () ,bod)) ......]
-
-      ;; This is a special case for constants.
-      [(assert-type ,ty (quote ,n))
-       (if (constant-typeable-as? n ty)
-	   (values `(assert-type ,ty (quote ,n))  ty)
-	   (error 'hm_type_inference "constant ~s was labeled with type ~s which doesn't match"
-		  `(quote ,n) ty))]
-      [(assert-type ,ty ,[l -> e et])
-       (let ([newexp `(assert-type ,ty ,e)])	 
-	 (types-equal! (instantiate-type ty '()) et newexp)
-	 (values `(assert-type ,ty ,e)
-		 et))
-       ]    
-
 
 #;
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
@@ -818,11 +817,46 @@
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
-      [(,app ,origrat ,[l -> rand* t*] ...) (guard (memq app '(app construct-data)))
+
+      ;; Duplicating this case to give good error messages for badly typed apps:
+      ;; DOESN'T SEEM TO WORK!
+      [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
+       (guard (memq app '(app construct-data)))
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(src-pos ,p (,app ,rator ,@rand*))
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+
+      [(,app ,origrat ,[l -> rand* t*] ...)
+       (guard (memq app '(app construct-data)))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
+
+
+      ;; Incorporate type assertions.
+      ;; ----------------------------------------
+
+      ;; Push ascriptions inside lambdas:
+      ;; This helps make the grammar a little nicer subsequently.
+      ;; UNFINISHED      
+      ;[(assert-type ,ty (lambda () () ,bod)) ......]
+
+      ;; This is a special case for constants.
+      [(assert-type ,ty (quote ,n))
+       (if (constant-typeable-as? n ty)
+	   (values `(assert-type ,ty (quote ,n))  ty)
+	   (error 'hm_type_inference "constant ~s was labeled with type ~s which doesn't match"
+		  `(quote ,n) ty))]
+      [(assert-type ,ty ,[l -> e et])
+       (let ([newexp `(assert-type ,ty ,e)])	 
+	 (types-equal! (instantiate-type ty '()) et newexp)
+	 (values `(assert-type ,ty ,e)
+		 et))]
+
+      [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
+      ;; ----------------------------------------
 
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
@@ -953,6 +987,7 @@
     [(quote ,c)       `(quote ,c)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
     [(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
+    [(src-pos ,p ,[e]) `(src-pos ,p ,e)]
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
     [(tuple ,[e*] ...) `(tuple ,@e*)]
@@ -987,6 +1022,7 @@
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
     ;; The type occurring here isn't instantiated (thus doesn't contain late unifies)
     [(assert-type ,t ,[e])                                    (void)]
+    [(src-pos ,t ,[e])                                        (void)]
     [(if ,[t] ,[c] ,[a])                                      (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])         (void)]
     [(tuple ,[e*] ...)                                        (void)]
@@ -1033,6 +1069,8 @@
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
 
     [(assert-type ,t ,[e]) e]
+    [(src-pos     ,p ,[e]) e]
+
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]
     
@@ -1442,6 +1480,7 @@
        [,var (guard (symbol? var))  `()]       
        [(quote ,c)       '()]
        [(assert-type ,t ,[e]) e]
+       [(src-pos     ,p ,[e]) e]
        [(set! ,v ,[e]) e]
        [(begin ,[e*] ...) (apply append e*)]
        [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] (append s e bodls))]

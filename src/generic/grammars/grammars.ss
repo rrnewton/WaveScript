@@ -98,6 +98,7 @@
 
     ;; This is a type assertion that constrains the type of an expression:
     [Expr ('assert-type Type Expr)]
+    [Expr ('src-pos ,vector? Expr)]
 
     ;; Adding side-effects for WaveScript.
     [Expr ('begin Expr ...)]

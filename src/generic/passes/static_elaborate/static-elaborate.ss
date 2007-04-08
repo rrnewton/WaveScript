@@ -95,6 +95,8 @@
 ;   '(output)
    (let ()
 
+     (define (annotation? s) (memq s '(assert-type src-pos)))
+
      (define (outer-getval env)
        (lambda (x)
 	 (match x
@@ -107,7 +109,7 @@
 	   [,sv (guard (stream-val? sv)) x]
 	   [,var (guard (symbol? var))
 		 ((outer-getval env) (cadr (assq var env)))]
-	   [(assert-type ,t ,e) ((outer-getval env) e)]
+	   [(,annot ,_ ,e) (guard (annotation? annot)) ((outer-getval env) e)]
 	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
      [define stream-val? 
       (lambda (exp)
@@ -117,7 +119,7 @@
 	   (match (caddr (get-primitive-entry prim))
 	     [(Stream ,t) #t]
 	     [,else #f])]
-	  [(assert-type ,t ,[e]) e]
+	  [(,annot ,_ ,[e]) (guard (annotation? annot)) e]
 	  [,else #f])
 	)]
 
@@ -298,7 +300,7 @@
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
           
-	  [(assert-type ,t ,[e]) e]
+	  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
           [(begin ,(stmt) ...) (apply + stmt)]
           [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
           [(while ,[tst] ,(bod)) (+ tst bod)]
@@ -367,7 +369,7 @@
           [,var (guard (symbol? var)) 
 		(let ((entry (assq var mapping)))
 		  (if entry (cadr entry) var))]
-	  [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
+	  [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,t ,e)]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(substitute
@@ -456,7 +458,7 @@
 					(not (memq var mutable-vars)))
 				 (let ((entry (assq var env)))
 				   (and entry (available? (cadr entry))))]
-			   [(assert-type ,t ,[e]) e]
+			   [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
 			   
 			   ;; Streams are values, and they're available:
 			   ;; Should we have to go deeper here to make
@@ -478,7 +480,7 @@
 				       (not (memq var mutable-vars)))
 				(let ((entry (assq var env)))
 				  (and entry (container-available? (cadr entry))))]
-			  [(assert-type ,t ,[e]) e]
+			  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
 
 			  [,sv (guard (stream-val? sv)) #t]
 
@@ -551,6 +553,10 @@
 		]
 
           [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
+
+	  ;; For the time being, after static elaborate we don't track soure positions:
+	  [(src-pos ,p ,[e]) e]
+
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(process-expr expr 

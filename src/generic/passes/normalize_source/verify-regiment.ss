@@ -64,8 +64,7 @@
 
 	   ;; TODO: should check the types for validity also.
 	   [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
-	   ;[(src-pos ,p ,[e]) `(src-pos ,p ,e)]	   
-	   [(src-pos ,p ,[e]) e]
+	   [(src-pos ,p ,[e]) `(src-pos ,p ,e)]	   
 	   
 	   [,const (guard (simple-constant? const)) const]
 	   [(quote ,datum)
