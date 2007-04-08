@@ -30,9 +30,10 @@
 
 (module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
 			 build-list bind-cata ellipses-helper delay-values 
-			 countup-vars countup-elements wrap-lambda-at-the-end bind-nulls 
+			 countup-vars countup-elements wrap-lambda-at-the-end 
 			 vecref-helper vecref-helper2 convert-pat
 			 extend-backquote my-backquote
+			 pop force-and-select
 			 )
 		  my-backquote
 		  (extend-backquote my-backquote)
@@ -58,16 +59,44 @@
 	       (lambda args (set! vals args) (apply values args))))
 	 )))))
 
+
 ;; For Chez, etc:
-#;
 (define-syntax delay-values
   (syntax-rules ()
     ((_ e) (delay e))))
 
+#;
 ;; Do I really need a promise?
+;; [2007.04.08] ACK! At least for now I still do...
 (define-syntax delay-values
   (syntax-rules ()
     ((_ e) (lambda () e))))
+
+#|
+;; Debugging:
+(define-syntax delay-values
+  (syntax-rules ()
+    ((_ e) (let ([run? #f])
+	     (lambda ()
+	       (if run? (error 'delay-values "tried to pop cata again! ~s" #'e))
+	       (set! run? #t)
+	       e)))))
+(define-syntax force-and-select
+  (syntax-rules ()
+    ((_ Promise Args V0)
+     (pop Promise (lambda Args V0)))))
+|#
+(define (pop promise fun)
+  (printf "Popping! ~s\n" promise)
+  (call-with-values promise fun))
+
+
+(define-syntax force-and-select
+  (syntax-rules ()
+    ((_ Promise Args V0)
+     (call-with-values Promise
+       ;; Select out just our variable from the results:
+       (lambda Args V0)))))
 
 (define-syntax MATCH_ASSERT
   (syntax-rules ()
@@ -84,16 +113,16 @@
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
        (convert-pat ((Obj Pat) ())
 		    exec-body 	   
-		    (extend-backquote Template B0 Bod ...)  ;; Total body.
-		    (extend-backquote Template (and G ...))         ;; Guard expression
+		    (extend-backquote Template B0 Bod ...)    ;; Total body.
+		    (extend-backquote Template (and G ...))   ;; Guard expression
 		    Cata next () ())))
     ;; Unguarded:
     ((_ Template Cata Obj (Pat B0 Bod ...) Rest ...)
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
        (convert-pat ((Obj Pat) ()) 
 		    exec-body 		   
-		    (extend-backquote Template B0 Bod ...)  ;; Total body.
-		    #t                                              ;; Guard expression
+		    (extend-backquote Template B0 Bod ...)    ;; Total body.
+		    #t                                        ;; Guard expression
 		    Cata next () ())
        ))))
 
@@ -136,7 +165,8 @@
     ;; This case executes first:
     ((_ __ Guard NextClause Vars CataVars)
      (if (bind-popped-vars Vars
-          (bind-popped-vars CataVars Guard))
+	  ;; We're still in matching phase, can't really pop the cata's yet:
+          (bind-dummy-vars CataVars Guard))
 	 (build-list __ #t #f Vars CataVars)
 	 (NextClause)))))
 
@@ -145,16 +175,17 @@
     ((_ Bod Promise Args ())  Bod)
 
     ;; Optimization, handle one argument, no call-with-values:
+#;
     ((_ Bod Promise (V0) __)
      (let ([V0 Promise]) Bod))
-
+    
+    ;; This is where we multiply pop a promise just to get at one of the values each time:
     ((_ Bod Promise Args (V0 . V*))
      (let ((V0 (lambda ()
 		 ;; Maybe Inefficient:
-		 (call-with-values Promise ;(lambda () (force-values Promise))
-		   ;; Select out just our variable from the results:
-		   (lambda Args V0)))))
+		 (force-and-select Promise Args V0))))
        (bind-cata Bod Promise Args V*)))))
+
 
 ;; This does the job of "collect-vars", but it also carries a
 ;; continuation (of a sort) with it.
@@ -190,16 +221,6 @@
      (lambda (Vars ... CataVars ...)
        (Bod ... (Vars ...) (CataVars ...))))))
 
-
-(define-syntax bind-nulls
-  (syntax-rules ()
-    ((_ (Bod ...) () ()) (Bod ...))
-    ((_ Bod () (C CataVars ...))
-     (let ((C '()))
-       (bind-nulls Bod () (CataVars ...))))
-    ((_ Bod (V Vars ...) (CataVars ...))
-     (let ((V '()))
-       (bind-nulls Bod (Vars ...) (CataVars ...))))))
 
 (define-syntax countup-elements
   (syntax-rules ()
@@ -267,6 +288,7 @@
        #'(Exec Bod Guard NextClause Vars CataVars))
       
       ;; Cata redirect: 
+      ;; We set up the binding for a Cata, but we shouldn't execute it until weget to the body.
       ((_ ((Obj (unquote (f -> V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
        #'(let ((promise (delay-values (f Obj))))
 	 (bind-cata 
@@ -285,6 +307,8 @@
 	  (V0 V* ...) (V0 V* ...))))
 	
       ;; Unquote Pattern: bind a pattern variable:
+      ;; TEMP: we thunk these pattern variables even though we shouldn't have to.
+      ;; This is for consistency with the Cata vars.
       ((_ ((Obj (unquote V)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
        #'(let ((V (lambda () Obj)))
 	 (convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
@@ -300,7 +324,8 @@
 		   (NextClause)
 		   (let ([hd (list-head Obj (- len remains))]
 			 [tl (list-tail Obj (- len remains))])
-		     (convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) Exec Bod Guard Cata NextClause Vars CataVars))))
+		     (convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) 
+				  Exec Bod Guard Cata NextClause Vars CataVars))))
 	     (NextClause)))
 
       ;; Need to implement full ellipses for vector patterns, for now just doing this limited form:
@@ -311,6 +336,40 @@
 	     (let ([v2ls (vector->list Obj)])
 	       (convert-pat ((v2ls (P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars))
 	     (NextClause)))
+
+#|
+
+
+(begin 
+  (print-graph #f)(optimize-level 2)(print-gensym #f)(import rn-match)(pretty-line-length 170)
+  (define val '(let ([x Int (+. '1 '2)]) bod))
+  (expand '(match val 
+    [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
+     (guard (printf "GUARDING ~s \n" id*) #f)
+     (printf " LET: ~s\n" id*)]
+    [(,prim ,[rand*] ...)
+     (guard (regiment-primitive? prim))
+     (printf "  HMM ~s\n" prim)
+     'prim]
+    [,oth 'fail])))
+
+
+(begin 
+  (print-graph #f)(optimize-level 2)(print-gensym #f)(import rn-match)(pretty-line-length 170)
+  (define val '(let ([x Int (+. '1 '2)]) bod))
+  (eval '(match val 
+    [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 
+     (guard (printf "GUARDING ~s \n" id*) #f)
+     (printf " LET: ~s\n" id*)]
+    [(,prim ,[rand*8] ...)
+     (guard (regiment-primitive? prim))
+     (printf "  HMM ~s\n" prim)
+     'prim]
+    [,oth 'fail])))
+
+
+
+|#
 
       ;; Ellipses:
       ((_ ((Obj (P0 Dots)) Stack) Exec Bod Guard Cata NextClause (Vars ...) (CataVars ...))
@@ -324,6 +383,8 @@
 			    (convert-pat ((VAL P0) ())
 					 build-list ;; Replacement for exec-body
 					 'IGNORED #t Cata failed () ()))))
+	    ;; Here is the code that loops through the list at runtime.
+	    ;; Projecting out a set of variables from each list element.
 	    (if (or (null? Obj) (pair? Obj))
 		(let ellipses-loop ((ls Obj) (acc '()))
 		  (cond
@@ -348,7 +409,7 @@
 			   (apply map list (reverse acc)))
 			 )))
 		 (else (ellipses-loop (cdr ls) 
-				      (cons (project (car ls)) acc)))))
+			 (cons (project (car ls)) acc)))))
 		(NextClause))
 	    ))))
 	

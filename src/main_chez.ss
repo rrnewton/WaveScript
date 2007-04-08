@@ -262,7 +262,7 @@
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
 
 ;; To completely DISABLE my new prototype matcher, do this:
-(alias rn-match iu-match)
+;(alias rn-match iu-match)
 
 ;; Import the IU matcher globally:
 (import iu-match)

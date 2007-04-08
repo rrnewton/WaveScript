@@ -19,6 +19,9 @@
 ;(pretty-print (ws-postprocess (reg-parse-file filename)))
 
 (print-graph #t)
+(when (member "--nopos" (vector->list (current-command-line-arguments)))
+  (source-position-tracking #f))
+
 (if (member "--nopretty" (vector->list (current-command-line-arguments)))
     (write (ws-parse-file filename))
     (pretty-print (ws-parse-file filename)))

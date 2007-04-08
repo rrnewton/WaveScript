@@ -90,6 +90,13 @@
 
 '(match '((a b c) (1 2 3)) [( [,a ... ,c] ...) (vector a c)])
 
+'
+;; Don't pop catas if guard is false:
+(match 3 
+  [,[x] (guard (printf "Guard\n") #f) (print "foo\n")]
+  [,y (printf "done\n") 99])
+
+
 
 ; (test-match)
 ; (newline)(display "Also running not with eval, should get 'first': ")

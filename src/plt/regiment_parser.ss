@@ -190,15 +190,20 @@
 ;; Put in a list just to get drscheme's print-graph to treat it properly!
 (define thefile (list "FILE_NOT_SET!?"))
 
+(define source-position-tracking (make-parameter #t))
+
 ;; This wraps the source position information in the way the Regiment compiler expects.
 (define (wrap pos end x)
-  `(src-pos #(,thefile ,(position-offset pos) ,(position-line pos) ,(position-col pos)
-		       ,(position-offset end) ,(position-line end) ,(position-col end))
-	    ,x))
+  (if (source-position-tracking)
+      `(src-pos #(,thefile ,(position-offset pos) ,(position-line pos) ,(position-col pos)
+			   ,(position-offset end) ,(position-line end) ,(position-col end))
+		,x)
+      x))
 
 (define (unwrap x)
-  (match x
-    [(src-pos ,p ,e) e]))
+  (if (source-position-tracking)
+      (match x [(src-pos ,p ,e) e])
+      x))
 
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
