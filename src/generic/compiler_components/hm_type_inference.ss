@@ -149,9 +149,10 @@
 (define (get-location x)
   (match x
     [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
-     (format "in file ~s between line/col ~s:~s and ~s:~s "
-	     fn ln1 col1 ln2 col2)
-     ]
+     (++ (format "in file ~s\n   "  fn)
+	 (if (= ln1 ln2)
+	     (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
+	     (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))]
     [,x 
      ;; SUPER HACKISH:
      (let ([pos (deep-assq 'src-pos x)])
@@ -165,9 +166,10 @@
 ;; Raises a generic type error at a particular expression.
 (define (raise-type-mismatch t1 t2 exp)
   (type-error 'type-checker
-	 (++ "Type mismatch: ~a doesn't match ~a \n"
+	 (++ "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+	     "Type mismatch: ~a doesn't match ~a \n"
 	     "\nLocation:\n   ~a\n" ;; Location
-	     "\nExpresion: (in abstract syntax)\n   ~s \n")
+	     "\nExpression: (in abstract syntax)\n   ~s \n")
 	 (safe-export-type t1) (safe-export-type t2) 
 	 ;; Approximate location:
 	 (get-location exp)
@@ -809,7 +811,21 @@
       ;; Allowing annotations, but ignoring them.
       [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
        (annotate-letrec id* (extract-optional optional) rhs* bod tenv nongeneric letrec)]
-      
+
+
+      ;; DUPLICATING! these two cases to give good error messages for badly typed apps:
+      [(src-pos ,p (,prim ,[l -> rand* t*] ...))
+       (guard (regiment-primitive? prim))
+       (DEBUGASSERT (andmap type? t*))
+       (values `(,prim ,@rand*)
+	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
+      [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
+       (guard (memq app '(app construct-data)))
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(src-pos ,p (,app ,rator ,@rand*))
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+     
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
@@ -817,16 +833,6 @@
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
 
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
-
-      ;; Duplicating this case to give good error messages for badly typed apps:
-      ;; DOESN'T SEEM TO WORK!
-#;
-      [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
-       (guard (memq app '(app construct-data)))
-       (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
-	 (values `(src-pos ,p (,app ,rator ,@rand*))
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
 
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (memq app '(app construct-data)))
