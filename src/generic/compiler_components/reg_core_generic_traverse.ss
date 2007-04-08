@@ -279,8 +279,14 @@
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
 	  [(construct-data ,tc ,[loop -> rand]) 
 	   (fuse (list rand) (lambda (r) `(construct-data ,tc ,r)))]
-	  [(assert-type ,t ,[loop -> e])
-	   (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
+
+	  [(,annot ,t ,[loop -> e])
+	   (guard (memq annot '(assert-type src-pos)))
+	   (fuse (list e) (lambda (x) `(,annot ,t ,x)))]
+
+	  ;; Annotations:
+	  [(src-pos     ,p ,[loop -> e]) (fuse (list e) (lambda (x) `(src-pos     ,p ,x)))]
+	  [(assert-type ,t ,[loop -> e]) (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
 
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)

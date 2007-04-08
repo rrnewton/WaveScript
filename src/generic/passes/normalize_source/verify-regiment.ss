@@ -61,6 +61,12 @@
      (define process-expr
        (lambda (expr env)
 	 (match expr
+
+	   ;; TODO: should check the types for validity also.
+	   [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
+	   ;[(src-pos ,p ,[e]) `(src-pos ,p ,e)]	   
+	   [(src-pos ,p ,[e]) e]
+	   
 	   [,const (guard (simple-constant? const)) const]
 	   [(quote ,datum)
 	    (guard (not (memq 'quote env)) (datum? datum))
@@ -73,11 +79,8 @@
 		 (if (and (not (memq var env))
 			  (not (regiment-primitive? var)))
 		     (error 'verify-regiment (format "unbound variable: ~a~n" var))
-		     var)]
+		     var)]	   
 	   
-	   ;; TODO: should check the types for validity also.
-	   [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
-
 	  [(tuple ,[e] ...) `(tuple ,e ...)]
 	  [(tupref ,n ,len ,[e])
 	   (unless (qinteger? n) (error 'verify-regiment "bad index to tupref: ~a" n))

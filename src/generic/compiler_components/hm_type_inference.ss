@@ -361,6 +361,7 @@
 ;; external representation.
 ;; It also takes away LUB types.
 (define (export-type t)
+  (IFCHEZ (import rn-match) (void))
   (match t
     [,s (guard (symbol? s)) s]
     ['(,n . ,v) (if v (export-type v) `(quote ,n))]
@@ -382,6 +383,7 @@
 ;; HACK: including this unifier and unifying each of these again:
 ;; Shouldn't have to do this, but there's a problem with the design.
 (define (do-lub!!! t UNIFIER)
+  (IFCHEZ (import rn-match) (void))
   (let ([rands 
 	 (match t
 	   [(LUB ,[a] ,[b]) (append a b)]
@@ -396,6 +398,7 @@
 
 ;; This traverses the type and does any LATEUNIFY's
 (define (do-late-unify! t)
+  (IFCHEZ (import rn-match) (void))
   (match t
     [,s (guard (symbol? s))                  (void)]
     [(quote ,pr)
@@ -455,6 +458,7 @@
 ;; Our types aren't a very safe datatype, but this predicate tries to give some assurance.
 (define (instantiated-type? t . extra-pred)
   (define (id x) x)
+  (IFCHEZ (import rn-match) (void))
   (match t
     [,s (guard (symbol? s)) (valid-type-symbol? s)]
     ;[(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
@@ -470,6 +474,7 @@
     [,oth (if (null? extra-pred) #f 
 	      ((car extra-pred) oth))]))
 (define (type? t)
+  (IFCHEZ (import rn-match) (void))
   (instantiated-type? t 
     (lambda (x) 
       (match x 
@@ -479,6 +484,7 @@
 ;; Does it contain the monad?
 (define (distributed-type? t)
   (define (id x) x)
+  (IFCHEZ (import rn-match) (void))
   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [Region #t]
@@ -503,6 +509,7 @@
 ;; Does it contain any type-vars?
 (define (polymorphic-type? t)
   (define (id x) x)
+  (IFCHEZ (import rn-match) (void))
   (match t
     ;; TODO: FIXME: Use the type alias table, don't check for Region/Anchor directly:
     [,s (guard (symbol? s)) #f]
@@ -521,6 +528,7 @@
 
 ;; This means *is* an arrow type, not *contains* an arrow type.
 (define (arrow-type? t)
+  (IFCHEZ (import rn-match) (void))
   (match t
     [(quote (,v . #f)) #f]
     [(quote (,v . ,[rhs])) rhs]
@@ -550,6 +558,7 @@
 ;; .param exp - Expression
 ;; .param tenv - Type Environment
 (define (recover-type exp tenv)
+;  (IFCHEZ (import rn-match) (void)) ;; Doesn't work yet with nested ellipses...
   (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
     (match exp 
@@ -628,6 +637,7 @@
      [(and (flonum? c))                 (eq? ty 'Float)]
      [else #f])
 
+    (IFCHEZ (import rn-match) (void))
     (if (eq? c 'BOTTOM) #t
 	(match ty
 	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
@@ -843,6 +853,7 @@
 ;; .returns Two values: a new (annotated) expression, and a type.
 (define annotate-lambda
   (lambda (ids body inittypes tenv nongeneric)
+    (IFCHEZ (import rn-match) (void))
     (DEBUGASSERT (= (length ids) (length inittypes)))
     (ASSERT (andmap symbol? ids)) ;; For now, no patterns.
     (for-each valid-user-type! inittypes)
@@ -864,6 +875,7 @@
 (define annotate-let
   (lambda (id* rhs* bod inittypes tenv nongeneric)
     (define (f e) (annotate-expression e tenv nongeneric))
+    (IFCHEZ (import rn-match) (void))
     (ASSERT (andmap symbol? id*)) ;; For now, no patterns.
     (for-each  valid-user-type! inittypes)
     (match rhs*
@@ -871,7 +883,7 @@
        ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
        (let* ([newtypes (map (lambda (new old) 
 			       (if old (types-equal! new (instantiate-type old '())
-						     `(let ([,id* ,inittypes ,rhs*] ...) ,bod)))
+						     `(let ,(map list id* inittypes rhs*) ,bod)))
 			       (make-tcell new)
 			       )
 			  rhsty* inittypes)]
@@ -885,7 +897,7 @@
 		
 	       ])
 	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
-	   (values `(let ([,id* ,newtypes ,newrhs*] ...) ,bod) bodty)))])))
+	   (values `(let ,(map list id* newtypes newrhs*) ,bod) bodty)))])))
 
 ;; Assign a type to a Regiment letrec form.  
 ;; .returns 2 values: annoted expression and type
@@ -917,6 +929,7 @@
         ;; Unify all these new type variables with the rhs expressions
         (let ([newrhs* 
                (map-ordered2 (lambda (type rhs)
+			       (IFCHEZ (import rn-match) (void))
 			       (match type
 				 [(quote (,v . ,_))
 				  (DEBUGASSERT tenv? tenv)
@@ -933,6 +946,7 @@
 
 ;; This lifts export-type over expressions.
 (define (export-expression e)
+  (IFCHEZ (import rn-match) (void))
   (match e ;; match-expr
     [,c (guard (simple-constant? c)) c]
     [,v (guard (symbol? v)) v]
@@ -949,14 +963,14 @@
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
     [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
-     `(let ([,id* ,t* ,rhs*] ...) ,bod)]
+     `(let ,(map list id* t* rhs*) ,bod)]
     [(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
      (guard (memq letrec '(letrec lazy-letrec)))
-     `(,letrec ([,id* ,t* ,rhs*] ...) ,bod)]
-    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
-    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]
+     `(,letrec ,(map list id* t* rhs*) ,bod)]
+    [(app ,[rat] ,[rand*] ...) `(app ,rat ,@rand*)]
+    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-     `(,prim ,rand* ...)]
+     `(,prim ,@rand*)]
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
     ;;[,other other]; don't need to do anything here...
@@ -965,6 +979,7 @@
 
 ;; This traverses the expression and does any LATEUNIFY's
 (define (do-all-late-unifies! e)
+  (IFCHEZ (import rn-match) (void))
   (match e ;; match-expr
     [,c (guard (simple-constant? c))                                 (void)]
     [,v (guard (symbol? v))                                   (void)]
@@ -992,6 +1007,7 @@
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
 (define (strip-types p)
+;  (IFCHEZ (import rn-match) (void))
   (define (process-expression e)
     (match e
     [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
@@ -1045,6 +1061,7 @@
 ;; NOTE!  We have to run the type checking TWICE to make everything settle down.
 ;; This is a result of our strategy of recording LUB types for lets.
 (define (annotate-program p)
+  (IFCHEZ (import rn-match) (void))
   (match p
     [(,lang '(program ,e ,meta ...))
      ;(annotate-program-once (annotate-program-once p))
@@ -1058,6 +1075,7 @@
 
 ;; This is the real thing:
 (define (annotate-program-once p)
+  (IFCHEZ (import rn-match) (void))
   (let ([Expr 
 	 (lambda (p tenv)
 	   (mvlet ([(e t) (annotate-expression p tenv '())])
@@ -1073,11 +1091,12 @@
        (ASSERT type? type)
        (mvlet ([(e t) (Expr bod (sumdecls->tenv
 				 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
-	 `(typechecked-lang '(program ,e ,metadat* ... ,t)))]
+	 `(typechecked-lang '(program ,e ,@metadat* ,t)))]
       [,other 
        (Expr other (empty-tenv))])))
 
 (define (sumdecls->tenv decl*)
+  (IFCHEZ (import rn-match) (void))
   (define (sumdecl->tbinds decl tenv)
     (match decl 
       [((,name) [,tycon* ,ty*] ... ) (guard (symbol? name))
@@ -1121,6 +1140,7 @@
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
 (define (types-equal! t1 t2 exp)
+  (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (and (type? t1) (type? t2)))
   (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
@@ -1189,6 +1209,7 @@
  
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp)
+  (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (type? ty))
   (match tvar ;; Type variable should be a quoted pair.
     [(,qt ,pr) (guard (memq qt '(NUM quote)))
@@ -1204,6 +1225,7 @@
 ;; This returns the least-upper bound of two types.  That is, the
 ;; least-general type that is a superset of both input types.
 (define (LUB t1 t2)
+  (IFCHEZ (import rn-match) (void))
 ;  `(LUB ,t1 ,t2)
   ;; UNFINISHED:
 
@@ -1300,8 +1322,8 @@
 ;; This makes sure there are no cycles in a tvar's mutable cell.
 ;; .returns #t if there are no loops, or throws an error otherwise.
 (define (no-occurrence! tvar ty exp)
+  (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (type? ty))
-
   ;; This is a lame hack to repair certain cycles.
   (if (match ty
 	[(,qt (,tyvar . ,_)) (guard (memq qt '(NUM quote)) (eq? tyvar tvar)) #t]
@@ -1353,6 +1375,7 @@
 
 ;; Prints a type in a WaveScript format way rather than the raw sexp.
 (define (print-type t . p)
+  (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
     (define (loop t) 
       (match t

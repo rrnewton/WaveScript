@@ -133,6 +133,7 @@
      (cons V (build-list __ #t #f Vars CataVars)))
     ((_ __ #t #f () (V . CataVars))
      (cons V (build-list __ #t #f () CataVars)))
+    ;; This case executes first:
     ((_ __ Guard NextClause Vars CataVars)
      (if (bind-popped-vars Vars
           (bind-popped-vars CataVars Guard))
@@ -215,14 +216,6 @@
       (fx+ 1 (countup-vars (Vars ...) (CataVars ...)))
      )))
 
-(define-syntax build-list-of-nulls
-  (syntax-rules ()
-    ((_ () ())  '())
-    ((_ () (C CataVars ...))
-     (cons '() (build-list-of-nulls () (CataVars ...))))
-    ((_ (V Vars ...) (CataVars ...))
-      (cons '() (build-list-of-nulls (Vars ...) (CataVars ...)))
-     )))
 
 (define-syntax vecref-helper
   (syntax-rules ()
@@ -328,8 +321,9 @@
 		 ;; Bind a pattern-matcher for one element of the list.	
 		 ;; It returns the pattern variables' bindings in a list:
 		 (project (lambda (VAL)
-			    (convert-pat ((VAL P0) ()) build-list 
-					 IGNORED #t Cata failed () ()))))
+			    (convert-pat ((VAL P0) ())
+					 build-list ;; Replacement for exec-body
+					 'IGNORED #t Cata failed () ()))))
 	    (if (or (null? Obj) (pair? Obj))
 		(let ellipses-loop ((ls Obj) (acc '()))
 		  (cond
@@ -368,11 +362,11 @@
 	     (NextClause)))
 
 	;; Vector pattern
-	((_ ((Obj #(Pat ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+	((_ ((Obj #(P0 Pat ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
 	 ;; Hope the compiler manages to evaluate this 'length' call:
-	 #'(if (and (vector? Obj) (fx= (vector-length Obj) (length '(Pat ...))))
+	 #'(if (and (vector? Obj) (fx= (vector-length Obj) (length '(P0 Pat ...))))
 	     ;; This creates redundant vector 
-	     (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) Pat ...)
+	     (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) P0 Pat ...)
 	     ;(convert-pat Stack ___ )
 	     ;(convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
 	     (NextClause)))
@@ -388,6 +382,7 @@
 		(boolean? (syntax-object->datum #'LIT))
 		(string?  (syntax-object->datum #'LIT))
 		(number?  (syntax-object->datum #'LIT))
+		(vector?  (syntax-object->datum #'LIT)) ;; Letting empty vector fall through to here.
 		))
 	   #'(begin 
 	       (if (equal? Obj (quote LIT))

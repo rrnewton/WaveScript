@@ -84,9 +84,11 @@
      (vector x* y* z* bod acc))
     (,oth (add1 oth))))
 
-'
+
 ;; Ellipses in vector patterns:
-(match #(1 3 4 5 99) [#(,z ... ,y) (vector z y )])
+'(match #(1 3 4 5 99) [#(,z ... ,y) (vector z y )])
+
+'(match '((a b c) (1 2 3)) [( [,a ... ,c] ...) (vector a c)])
 
 
 ; (test-match)

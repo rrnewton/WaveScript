@@ -261,6 +261,9 @@
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
 
+;; To completely DISABLE my new prototype matcher, do this:
+(alias rn-match iu-match)
+
 ;; Import the IU matcher globally:
 (import iu-match)
 
@@ -332,7 +335,7 @@
 	)
  ;; Otherwise provide a dummy implementation of "par":
  (begin (define par list)
-	(define par-list (lambda (th*) (map (lambda (th) (th)))))
+	(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
 	(define par-map map)
 	)
  )

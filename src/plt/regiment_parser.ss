@@ -188,13 +188,17 @@
     (symbol->string s) 0)))
 
 ;; Put in a list just to get drscheme's print-graph to treat it properly!
-(define thefile (list "FOOBAR"))
+(define thefile (list "FILE_NOT_SET!?"))
 
 ;; This wraps the source position information in the way the Regiment compiler expects.
 (define (wrap pos end x)
   `(src-pos #(,thefile ,(position-offset pos) ,(position-line pos) ,(position-col pos)
 		       ,(position-offset end) ,(position-line end) ,(position-col end))
 	    ,x))
+
+(define (unwrap x)
+  (match x
+    [(src-pos ,p ,e) e]))
 
 (define (ws-parse . args)
   (if (file-exists? "_parser.log")
@@ -329,7 +333,7 @@
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
            [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) ,@$8)]
 	   
-	   [(include exp SEMI maybedecls)  `((include ,$2) . ,$4)]
+	   [(include exp SEMI maybedecls)  `((include ,(unwrap $2)) . ,$4)]
 	   ;; [2007.03.19] Now including this at the decl level also:
 	   [(using VAR SEMI maybedecls)   `((using ,$2) . ,$4)]
 
@@ -520,7 +524,8 @@
 
 	 ;; Special stream-projection dot syntax.
 	 ;[(exp DOTSTREAM expls+ >) `(dot-project ,$1 ,$3)]
-	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,$3 ,$1)]
+	 ;; For now unwrap the src-pos info on these:
+	 [(exp DOTSTREAM expls+ RightParen) `(dot-project ,(map unwrap $3) ,$1)]
                   
          [(VAR := exp) `(set! ,$1 ,$3)]
          [(VAR LeftSqrBrk notlist RightSqrBrk := exp)  `(Array:set ,$1 ,$3 ,$6)]	 
@@ -737,10 +742,11 @@
             x)))
   
 (define (ws-parse-file-raw f) 
-  (let ([p (open-input-file f)])    
-    (let ([res (ws-parse-port p)])
-      (close-input-port p)
-      res)))
+  (fluid-let ([thefile (list f)])    
+    (let ([p (open-input-file f)])    
+      (let ([res (ws-parse-port p)])
+	(close-input-port p)
+	res))))
 
 ;; This parses the file and does post-processing:
 (define (ws-parse-file fn)

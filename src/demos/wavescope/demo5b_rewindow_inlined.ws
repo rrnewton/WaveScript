@@ -18,4 +18,4 @@ fun rewindow(sig, newwidth, step)
 
 
 BASE <- rewindow((readFile("./countup.raw", "mode: binary  window: 4096") 
-		  :: Stream (Sigseg Int)), 
+		  :: Stream (Sigseg Int)), 1024, 512); 
