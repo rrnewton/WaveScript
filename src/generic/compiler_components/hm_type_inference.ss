@@ -167,25 +167,45 @@
 (define (get-snippet x)
   (match x
     [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,e)
-     (if (and (file-exists? fn) (= ln1 ln2))
+     (if (file-exists? fn)
 	 (let ([port (open-input-file fn)])
-	   (let ([line ""])
-	     (rep ln1 (set! line (read-line port)))
-	     (close-input-port port)
-	     (++ (make-string col1 #\space)
-		 (substring line col1 col2))))
+	   (let ([lines '()])
+	     (rep (sub1 ln1) (read-line port)) ;; Ignore leading text
+	     (rep (add1 (- ln2 ln1)) (set! lines (cons (read-line port) lines)))
+	     ;; Cap each line with a newline:
+	     (set! lines (map (lambda (ln) (++ ln "\n")) lines))
+	     (set! lines (reverse lines))
+
+	     ;; Prune the first line:
+	     (set! lines (cons (++ (make-string col1 #\space) 
+				   (substring (car lines) col1 
+					      (string-length (car lines))))
+			       (cdr lines)))
+
+	     ;; Arbitrary limit:
+	     (if (> (length lines) 10)
+		 (begin 
+		   (set! lines (list-head lines 10))
+		   (set! lines (append lines '("\n...\n"))))
+		 ;; Prune the last line:
+		 (set! lines
+		       (append (rdc lines)
+			       (list (substring (rac lines) 0 col2)))))
+	     (close-input-port port)	     	     	    	  
+	     (apply string-append lines)))
 	 (get-snippet e))]
     [,x 
      (format "(in abstract syntax)\n   ~s\n" x)]))
 
 ;; Raises a generic type error at a particular expression.
-(define (raise-type-mismatch t1 t2 exp)
+(define (raise-type-mismatch msg t1 t2 exp)
   (type-error 'type-checker
 	 (++ "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-	     "Type mismatch: ~a doesn't match ~a \n"
+	     "Type mismatch: ~a doesn't match ~a \n~a"
 	     "\nLocation:\n   ~a\n" ;; Location
 	     "\nExpression:\n~a\n")
-	 (safe-export-type t1) (safe-export-type t2) 
+	 (safe-export-type t1) (safe-export-type t2)
+	 msg
 	 ;; Approximate location:
 	 (get-location exp)
 	 ;(format "(in abstract syntax)\n   ~s\n" exp)
@@ -614,7 +634,7 @@
       [(if ,t ,[c] ,[a]) 
        (let ([a (instantiate-type a '())] 
 	     [c (instantiate-type c '())])
-	 (types-equal! c a `(if ,t ??? ???))
+	 (types-equal! c a `(if ,t ??? ???) "(Branches of if must have same type.)\n")
 	 (export-type c))]
 
       [(tuple ,[t*] ...) (list->vector t*)]
@@ -654,7 +674,7 @@
    [(list? c)
     (let ([types (map type-const c)])
       (let ([t1 (car types)])
-	(for-each (lambda (t) (types-equal! t t1 c))
+	(for-each (lambda (t) (types-equal! t t1 c "(Elements of list must have same type.)\n"))
 	  (cdr types))
 	`(List ,t1)))]
    [else (error 'type-const "could not type: ~a" c)]))
@@ -663,7 +683,7 @@
 (define (type-app rator rattyp rands exp tenv non-generic-tvars)
   (DEBUGASSERT (tenv? tenv))
   (let ([result (make-tcell)])
-    (types-equal! rattyp `(,@rands -> ,result) exp)
+    (types-equal! rattyp `(,@rands -> ,result) exp "(Argument to function of wrong type.)\n")
     result))
 
 ; ======================================================================
@@ -757,8 +777,8 @@
                    (values v entry)])
 		(error 'annotate-expression "no binding in type environment for var: ~a" v)))]
       [(if ,[l -> te tt] ,[l -> ce ct] ,[l -> ae at])
-       (types-equal! tt 'Bool te) ;; This returns the error message with the annotated expression, oh well.
-       (types-equal! ct at exp)
+       (types-equal! tt 'Bool te "(Conditional's test expression must have boolean type.)\n") ;; This returns the error message with the annotated expression, oh well.
+       (types-equal! ct at exp "(Branches of conditional must have same type.)\n")
        (values `(if ,te ,ce ,ae) ct)]
       
       ;; Wavescope: this could be a set! to a state{} bound variable:
@@ -767,19 +787,21 @@
 	 ;; The mutable var must be a Ref!
 	 (types-equal! (ASSERT (tenv-lookup tenv v))
 		       `(Ref ,et)
-		       newexp)
+		       newexp "(Cannot assign to incompatible type.)\n")
 	 ;; returns unit type:
 	 (values newexp #()))]
 
 #;
       [(for (,i ,[l -> start st]) ,[l -> end et] ,[bod bt])
        (let ([expr `(for [,i ,start ,end] ,bod)])
-	 (unless (types-compat? st et) (raise-type-mismatch start end expr))
+	 (unless (types-compat? 'Int (types-compat? st et)) 
+	   (raise-type-mismatch "(Start/End of for-loop must be integers.)\n" start end expr))
 	 (values expr #()))]
 
       [(while ,[l -> tst tt] ,[l -> bod bt])
        (let ([expr `(while ,tst ,bod)])
-	 (unless (types-compat? 'Bool tt) (raise-type-mismatch start end expr))
+	 (unless (types-compat? 'Bool tt) 
+	   (raise-type-mismatch "(While loop expects boolean test.)\n" start end expr))
 	 (values expr #()))]
 
 
@@ -787,7 +809,7 @@
        (ASSERT (not (null? t*)))
        (let ([exp `(unionN ,@e*)])
 	 ;; Make sure they're all equal:
-	 (foldl (lambda (a b) (types-equal! a b exp) a)
+	 (foldl (lambda (a b) (types-equal! a b exp "(All streams into unionList or unionN must be same type.)\n"))
 	   (car t*) (cdr t*))
 	 (values exp
 		 (match (types-compat? '(Stream 'a) (car t*))
@@ -801,7 +823,7 @@
 		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
        (values `(tupref ,n ,len ,e)
 	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
-		 (types-equal! t newtypes exp)
+		 (types-equal! t newtypes exp (fomat "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
 		 (vector-ref newtypes (qinteger->integer n))))]
       
       [(begin ,[l -> exp* ty*] ...)
@@ -809,8 +831,8 @@
 
       [(for (,i ,[l -> start ty1] ,[l -> end ty2]) ,bod)
        ;; For now assume i is an integer...
-       (types-equal! ty1 'Int exp)
-       (types-equal! ty2 'Int exp)
+       (types-equal! ty1 'Int exp "(Starting point for range of for-loop must be an integer.)\n")
+       (types-equal! ty2 'Int exp "(Ending point for range of for-loop must be an integer.)\n")
        (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
 	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
 	   (values `(for (,i ,start ,end) ,bod) ty)))]
@@ -876,7 +898,7 @@
 		  `(quote ,n) ty))]
       [(assert-type ,ty ,[l -> e et])
        (let ([newexp `(assert-type ,ty ,e)])	 
-	 (types-equal! (instantiate-type ty '()) et newexp)
+	 (types-equal! (instantiate-type ty '()) et newexp "(Type incompatible with explicit type annotation.)\n")
 	 (values `(assert-type ,ty ,e)
 		 et))]
 
@@ -922,7 +944,8 @@
       ;; Now unify the new type vars with the existing annotations.
       (map (lambda (new old)
 	     (if old (types-equal! new (instantiate-type old '())
-			   `(lambda ,ids ,inittypes ,body))))
+			   `(lambda ,ids ,inittypes ,body)
+			   "(Function's argument type must match the annotation.)\n")))
 	argtypes inittypes)
 
       (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
@@ -942,7 +965,8 @@
        ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
        (let* ([newtypes (map (lambda (new old) 
 			       (if old (types-equal! new (instantiate-type old '())
-						     `(let ,(map list id* inittypes rhs*) ,bod)))
+						     `(let ,(map list id* inittypes rhs*) ,bod)
+						     "(Let's argument type must match the annotation.)\n"))
 			       (make-tcell new)
 			       )
 			  rhsty* inittypes)]
@@ -982,7 +1006,8 @@
 	     [_ (map (lambda (new old) 
 		       (if old 
 			   (types-equal! new (instantiate-type old '())
-					 `(letrec (,'... [,new ,old] ,'...) ,'...))))
+					 `(letrec (,'... [,new ,old] ,'...) ,'...)
+					 "(Recursive Let's argument type must match the annotation.)\n")))
 		  rhs-types existing-types)]
              [tenv (tenv-extend tenv id* rhs-types (inferencer-let-bound-poly))])
         ;; Unify all these new type variables with the rhs expressions
@@ -994,7 +1019,7 @@
 				  (DEBUGASSERT tenv? tenv)
 				  ;; For our own RHS we are "nongeneric".
 				  (mvlet ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
-				    (types-equal! type t rhs)
+				    (types-equal! type t rhs "<<Internal error in typechecking letrec.>>")
                                     ;(inspect `(GOTNEWRHSTYPE ,t ,type))
 				    newrhs)
 				  ]))
@@ -1202,21 +1227,21 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
-(define (types-equal! t1 t2 exp)
+(define (types-equal! t1 t2 exp . msg)
   (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (and (type? t1) (type? t2)))
   (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
 
-    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp)]
-    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp)]
+    [[(LATEUNIFY ,_ ,t1) ,t2]  (apply types-equal! t1 t2 exp msg)]
+    [[,t1 (LATEUNIFY ,_ ,t2)]  (apply types-equal! t1 t2 exp msg)]
 
     [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
     [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
     [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
-     (raise-type-mismatch x y exp)]
+     (raise-type-mismatch (if (null? msg) "" (car msg)) x y exp)]
 
     [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
@@ -1234,11 +1259,11 @@
 	 (if entry 
 	     ;; Instantiate the alias and unify.
 	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp)
-	     (raise-type-mismatch x y exp))))]
+	     (raise-type-mismatch (if (null? msg) "" (car msg)) x y exp))))]
 
     [[#(,x* ...) #(,y* ...)]
      (guard (= (length x*) (length y*)))
-     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) x* y*)]
+     (for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg)) x* y*)]
 
     ;; Ref will fall under this category:
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
@@ -1249,7 +1274,7 @@
      (if (not (eq? x1 y1))
 	 (type-error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp))
 ;     (types-equal! x1 y1 exp)
-     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp)) xargs yargs)]
+     (for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg)) xargs yargs)]
 
 ;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
 ;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
@@ -1259,16 +1284,16 @@
        [(,xargs ... -> ,x)
 	(if (not (= (length xargs) (length yargs)))
 	    (raise-wrong-number-of-arguments t1 t2 exp))
-	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp))
+	(for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg))
 	  xargs yargs)
-	(types-equal! x y exp)]
+	(apply types-equal! x y exp msg)]
        [,other (type-error 'types-equal!
 		      "procedure type ~a\nDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
 		      (export-type `(,@yargs -> ,y))
 		      (export-type other)
 		      `(,@yargs -> ,y)
 		      other)])]
-    [,otherwise (raise-type-mismatch t1 t2 exp)]))
+    [,otherwise (raise-type-mismatch (if (null? msg) "" (car msg)) t1 t2 exp)]))
  
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
 (define (tvar-equal-type! tvar ty exp)
@@ -1378,7 +1403,7 @@
        [,other `(quote ,(make-tvar))])]
     
     [,otherwise (error 'LUB "this function is probably not finished, types unmatch: ~s and ~s" t1 t2)]
-    [,otherwise (raise-type-mismatch t1 t2 "unknown expression (LUB)")]
+    [,otherwise (raise-type-mismatch "" t1 t2 "unknown expression (LUB)")]
     ))
   
   
