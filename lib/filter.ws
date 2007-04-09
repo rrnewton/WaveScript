@@ -4,12 +4,13 @@ include "stdlib.ws";
 // Frequency-domain filter operator
 fft_filter :: (Stream (Sigseg Float), Array Complex) -> Stream (Sigseg Float);
 fun fft_filter(s, filter) {
+  using Array;
 
-  rw = rewindow(s, (Array:length(filter)-1)*2, 0-(Array:length(filter)-1));
+  rw = rewindow(s, (filter`length - 1) * 2, 0 - (filter`length - 1));
 
   filt = iterate(h in rw) {
     freq = fftR2C(toArray(h));
-    emit(Array:build(Array:length(filter), fun(i) freq[i] * filter[i]));
+    emit build(filter`length, fun(i) freq[i] * filter[i]);
   };
 
   tdwin = iterate f in filt {
@@ -19,20 +20,20 @@ fun fft_filter(s, filter) {
   td = zip2_sametype(gnuplot_sigseg_stream(myhanning(tdwin)), rw);
   
   iterate((f, orig) in td) {
-    state { arr = Array:null }
+    state { arr = null }
 
-    if arr == Array:null 
-    then arr := Array:make(orig.width / 2, 0.0);
+    if arr == null 
+    then arr := make(orig.width / 2, 0.0);
 
-    for i = 0 to Array:length(arr) - 1 {
+    for i = 0 to length(arr) - 1 {
       arr[i] := 2.0 * (arr[i] + f[[i]]);
       print("@@@ " ++ i ++ " " ++ arr[i] ++ "\n");
     };
 
     emit(toSigseg(arr, orig.start, orig.timebase));
 
-    for i = 0 to Array:length(arr) - 1 {
-      arr[i] := f[[i + Array:length(arr)]];
+    for i = 0 to length(arr) - 1 {
+      arr[i] := f[[i + length(arr)]];
     }
   }
 }

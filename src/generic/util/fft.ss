@@ -15,6 +15,7 @@
 
   (require "../constants.ss"
            "scheme_fft.ss"
+	   "slib_fft.ss"
 	   "helpers.ss")
   (provide ;make-dft-plan 
            dft

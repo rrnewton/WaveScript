@@ -12,6 +12,7 @@
            (only "../constants.ss" chezimports ASSERT DEBUGASSERT)
            "../compiler_components/regiment_helpers.ss"
            "../compiler_components/reg_core_generic_traverse.ss"
+	   "../compiler_components/hm_type_inference.ss"
            )
 
   (provide define-pass)

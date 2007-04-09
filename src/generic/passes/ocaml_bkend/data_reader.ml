@@ -15,6 +15,7 @@ let read_int16 str i =
 
 let wserror str = raise (Failure str)
 
+(* Binary reading *)
 let dataFile (file, mode, repeats, period) 
              (textreader,binreader, bytesize, skipbytes, offset)
 	     outchan =

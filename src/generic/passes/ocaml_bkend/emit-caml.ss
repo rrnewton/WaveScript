@@ -15,6 +15,7 @@
 ;; ~200K/sec, XStream at ~100K/sec.  "wscaml" currently gets 14
 ;; million/sec, or 140 times more than XStream!?
 
+
 (module emit-caml mzscheme 
   (require  "../../../plt/common.ss"
 	    "../../compiler_components/c_generator.ss" )
@@ -121,6 +122,8 @@
 	 "\n")       
        )]))
 
+;; Generates code for an emit.  (curried)
+;; .param down*   A list of sinks (names of functions) to emit to.
 (define (Emit down*)
   (lambda (expr)
     ;; Just call each of the sites with the argument.
@@ -197,7 +200,7 @@
 (define (Source src)
     (define (E x) (Expr x 'noemits!))
   (match src
-    [(,[Var -> v] ,ty ,app (,downstrm ...)) 
+    [(,[Var -> v] ,ty ,app (,downstrm ...))
      (match app
        [(timer ',rate)
 	(let ([r ;(Expr rate 'noemitsallowed!)
@@ -218,8 +221,20 @@
 
 ;(__readFile file mode repeat rate skipbytes offset winsize types)
 
-       [(__readFile ,[E -> file] ,[E -> mode] ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
-	(let ()
+       [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)       
+	(cond
+	 [(equal? mode "text") 
+	  (values
+	   (list 
+	    " "v" = fun () -> \n"	    
+	    "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
+	    "  and textreader = 33333 in \n"
+	    "  \n"
+	    )
+	   ;; Initialization: schedule this datasource:
+	   `("schedule := ",v"() :: !schedule;;\n"))]
+	 
+	 [(equal? mode "binary")
 	  (values (list 
 		   " "v" = fun () -> \n"
 		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
@@ -244,12 +259,15 @@
 			       (ArrType (car types))))
 		       "")
 		   "\n")
-		  `("schedule := ",v"() :: !schedule;;\n")))]
+		  `("schedule := ",v"() :: !schedule;;\n"))]
+	 [else (error 'readFile "mode not handled yet in Caml backend: ~s" mode)]
+	  )]
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
 
-;; UNFINESHED: THIS WOULD NECESSITATE CHANGING ARRAY:SET/REF
+;; UNFINISHED: THIS WOULD NECESSITATE CHANGING ARRAY:SET/REF
+#;
        [(__dataFileWindowed ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ,[E -> winsize] ',types)
 
 `("
@@ -379,7 +397,9 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 
 ; ======================================================================
 ;; Expressions.
-	
+
+;; .param exp      The expression to process.	
+;; .param emitter  Function that generates the emit code, given an argument.
 (define Expr ;(Expr tenv)
   (lambda (exp emitter)
     (match exp
@@ -448,7 +468,8 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
       cos sin tan acos asin atan max min
       not 
       
-      fft m_invert 
+      fftR2C 
+      m_invert 
       ;;wserror ;generic_hash 
       ))
   (define aliastable
@@ -490,6 +511,7 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
       [List:length List.length]
       [List:reverse List.rev]
       [List:ref List.nth]
+      [List:append List.append]
 
       [start ss_start]
       [end ss_end]
@@ -520,6 +542,10 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
     [(print ,_) (error 'emit-c:Effect "print should have a type-assertion around its argument: ~s" _)]
     [(show (assert-type ,t ,[myExpr -> e]))
      `("((",(build-show t)") ",e")")]
+    [(wserror ,[myExpr -> s])
+     ;; Should declare a special WSException or something:
+     `("(raise (Failure ",s"))")]
+
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
      (list "("(cond

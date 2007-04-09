@@ -23,6 +23,7 @@
 
 (module ws-remove-complex-opera mzscheme
   (require "../../../plt/common.ss"
+	   ;"../../compiler_components/hm_type_inference.ss"
 	   "ws-remove-letrec.ss")
   (provide ws-remove-complex-opera*
 	   ws-remove-complex-opera*-grammar
@@ -288,7 +289,9 @@
      (lambda (prog _)
       (match prog
              [(,input-lang '(program ,exp ,meta* ... ,type))
-	      (let-values ([(newbod bnds) (make-simple exp (grab-init-tenv meta*))])
+	      (let-values ([(newbod bnds) (make-simple exp 
+						       (grab-init-tenv meta*)
+						       )])
 		`(ws-remove-complex-opera*-language 
 		  '(program ,(if (null? bnds) newbod	
 				 (make-lets bnds newbod)

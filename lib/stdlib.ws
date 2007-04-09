@@ -279,17 +279,19 @@ fun rewindow(sig, newwidth, gap) {
       // We have to states, true means we're to "output" a gap next,
       // false means we're to output a sigseg next.
       need_feed = false;
+      go = false; // Temp 
     }
 
     acc := joinsegs(acc, win);
     //print("Acc "++show(acc`start)++":"++show(acc`end)++" need_feed "++show(need_feed)++"\n");
 
-    for i = 1 to win`width {
-      if need_feed then {
-	if acc`width > gap // here we discard a segment:
-	then {acc := subseg(acc, acc`start + gap, acc`width - gap);
-	      need_feed := false; }
-	else break;
+    go := true;
+   while go {
+     if need_feed then {
+       if acc`width > gap // here we discard a segment:
+       then {acc := subseg(acc, acc`start + gap, acc`width - gap);
+	     need_feed := false; }
+       else go := false
       } else {
 	if acc`width > newwidth
 	then {emit subseg(acc, acc`start, newwidth);
@@ -298,9 +300,9 @@ fun rewindow(sig, newwidth, gap) {
 		acc := subseg(acc, acc`start + newwidth, acc`width - newwidth);
 		need_feed := true; 
 	      } else acc := subseg(acc, acc`start + feed, acc`width - feed);
-	} else break;	
+	} else go := false
       }
-    }
+   }
   }
 }
 

@@ -69,7 +69,7 @@
   [Program 
    (lambda (p _)
      (match p
-       [(,lang '(program ,e (Stream ,t)))
+       [(,lang '(program ,e ,meta* ... (Stream ,t)))
 	(let ([decls (Expr e '())])
 	  (define c*
 	    (map cdr(filter (lambda (x) (eq? (car x) 'CONST)) decls)))

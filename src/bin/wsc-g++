@@ -26,8 +26,8 @@ elif [ "$1" == "-static" ];
 then DYNAMICLINK=0; shift;
 fi 
 
-# -fPIC | -ON | -g
-WS_FLAGS="-O3"
+# -fPIC | -O1/2/3 | -g
+WS_FLAGS="-fPIC -g"
 
 WS_WARNINGS="-Wall -Werror -Wno-unused-variable "
 WS_INCLUDES="-I$WAVESCOPED/include "
@@ -44,10 +44,17 @@ WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
 #echo link: $WS_LINK
 
 echo Compiling .cpp file using g++.
+
+start=`date +%s`
 if g++ $WS_ALLARGS -o "$1.exe" "$1.cpp" $WS_LINK;
-then echo
+then 
+    end=`date +%s`
+    echo "Time spent in g++: "$[($end) - ($start)]" seconds"
 else
     echo
     echo g++ had errors, aborting.
     exit 1;
 fi;
+
+#elapsed=$[$start - $end]
+

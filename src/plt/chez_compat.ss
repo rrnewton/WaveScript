@@ -6,6 +6,7 @@
    "cheztrace.ss"
    "identifier-syntax.ss"
    (lib "date.ss")
+   (lib "math.ss")
    (lib "pretty.ss")
    (prefix plt: (lib "list.ss"))
    (prefix plt: (lib "process.ss"))
@@ -75,6 +76,13 @@
   ;; There is also no print-gensym in PLT:
   (define print-gensym (make-parameter #f))
 
+  (define (integer-length integer)
+    (inexact->exact
+     (ceiling (/ (log (if (negative? integer)
+			 (- integer)
+			 (+ 1 integer)))
+		(log 2)))))
+
   ;; We don't have fixnum/flonum arithmetic in PLT:
   ;; Tried to make a generic "alias", but that didn't work, so here are a bunch of defines.
   (define-syntax fxzero? (identifier-syntax zero?))
@@ -103,6 +111,8 @@
   (define-syntax flabs (identifier-syntax abs))
 
   (define (fl-make-rectangular x y) (+ x (* y 0+1i)))
+  ;(define (cfl-conjugate x) (+ x (* 0+i (* -2 (imag-part x)))))
+  (define-syntax cfl-conjugate (identifier-syntax conjugate))
 
   (define-syntax cfl-imag-part (identifier-syntax imag-part))
   (define-syntax cfl-real-part (identifier-syntax real-part))
@@ -145,6 +155,18 @@
 
   (define (fxsrl n bits) (quotient n (expt 2 bits)))
   (define (fxsll n bits) (* n (expt 2 bits)))
+
+  (define-syntax lognot (identifier-syntax bitwise-not))
+  (define-syntax logor  (identifier-syntax bitwise-ior))
+  (define-syntax logand (identifier-syntax bitwise-and))
+  (define-syntax ash (identifier-syntax arithmetic-shift))
+
+  (define (logbit? ind n) (not (fxzero? (logand 1 (ash n (- ind))))))
+
+  (define (logbit1 ind n) 
+    (if (logbit? ind n) n (+ (ash 1 ind) n)))
+
+  (define fxlogbit? logbit?)
   
   (define (cflonum? n) (and (complex? n) (not (rational? n))))
   

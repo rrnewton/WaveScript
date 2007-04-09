@@ -47,6 +47,11 @@
 
   (chezimports )
 
+;; Dummy implementation for PLT:
+ (IFCHEZ (begin)
+	 (begin (define par list)
+		(define par-list (lambda (th*) (map (lambda (th) (th)) th*)))
+		(define par-map map)))
 
 ;; This is the grammar for the output of static-elaborate
 ;; UNFINISHED: FIXME TODO FIXME
@@ -369,7 +374,7 @@
           [,var (guard (symbol? var)) 
 		(let ((entry (assq var mapping)))
 		  (if entry (cadr entry) var))]
-	  [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,t ,e)]
+	  [(,ann ,_ ,[e]) (guard (annotation? ann)) `(,ann ,_ ,e)]
           [(lambda ,formals ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(substitute

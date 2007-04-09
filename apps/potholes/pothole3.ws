@@ -139,7 +139,15 @@ totalscore = iterate((x,y,z) in zip3_sametype(xw,yw,zw)) {
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
-BASE <- totalscore;
+BASE <- 
+//chans
+//x
+//xw
+//CONST(notch_filter(129,58,128))
+//yw
+//zip3_sametype(xw,xw,xw)
+//zip3_sametype(xw,yw,zw)
+totalscore
 
 
-
+// wsc: Worked with rev 1342 of the engine

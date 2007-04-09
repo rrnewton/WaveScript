@@ -111,7 +111,8 @@
 ;	   raise-occurrence-check
 ;	   raise-wrong-number-of-arguments
 
-	   sumdecls->tenv grab-init-tenv
+	   grab-init-tenv
+	   sumdecls->tenv
 	   )
 
   (chezimports constants
@@ -801,7 +802,7 @@
       [(while ,[l -> tst tt] ,[l -> bod bt])
        (let ([expr `(while ,tst ,bod)])
 	 (unless (types-compat? 'Bool tt) 
-	   (raise-type-mismatch "(While loop expects boolean test.)\n" start end expr))
+	   (raise-type-mismatch "(While loop expects boolean test.)\n" 'Bool tt expr))
 	 (values expr #()))]
 
 
@@ -1185,12 +1186,12 @@
        (Expr other (empty-tenv))])))
 
 (define (sumdecls->tenv decl*)
-  (IFCHEZ (import rn-match) (void))
   (define (sumdecl->tbinds decl tenv)
     (match decl 
       [((,name) [,tycon* ,ty*] ... ) (guard (symbol? name))
        (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name))) ty*))
        ]))
+  (IFCHEZ (import rn-match) (void))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 
 ;; This is a front-end to the above which takes the list of metadata

@@ -144,8 +144,9 @@
 
 	;; A constant, make global:
 	[,e (guard (not (distributed-type? typ)))
-	    (values ""
-		    ((Value tenv) name (Type typ) e)
+	    ;; Here we put the binding at the top level but initialize in the MAIN function:
+	    (values ((Value tenv) name "" e) ;; No type passed.  Mutate rather than bind.
+		    (list (Type typ)" "name";\n")
 ;		    `(("\n" ,(Type typ) ;(Type (recover-type e tenv))
 ;		       " ",name " = " ,((Value tenv) e) ";\n"))
                     '())]
@@ -185,11 +186,10 @@
 	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
               (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)]
 			   [(stmt decl wsq) (Query lhs ty rhs tenv)])
-		(ASSERT list? stmt)
 		(ASSERT list? bodstmts)
-		(values (append stmt bodstmts)
-			(append decl boddecls)
-			(append wsq wsqdecls))))]
+		(values (cons stmt bodstmts)
+			(cons decl boddecls)
+			(cons wsq wsqdecls))))]
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -277,7 +277,7 @@
 		  [numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 
 		  [textmodereader
-		   `("// status = fscanf(_f, \""
+		   `("status = fscanf(_f, \""
 			     ,(insert-between " "
 				 (map (lambda (ty)
 					(match ty

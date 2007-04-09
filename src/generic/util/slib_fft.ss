@@ -1,7 +1,8 @@
 
 ;; This is lifted from SLIB: 
 (module slib_fft mzscheme
-  (require)
+  (require "../constants.ss"
+	   "../../plt/chez_compat.ss")
   (provide slib:fft slib:fft-1)
   (chezimports)
 

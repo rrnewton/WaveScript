@@ -44,7 +44,7 @@ static ostringstream global_show_stream(ostringstream::out);
       wscomplex_t* out_buf = new wscomplex_t[len_out];
       vector<wscomplex_t>* result = new vector<wscomplex_t>(len_out);
 
-      printf(" FFT: %d->%d\n", len, len_out);
+      //printf(" FFT: %d->%d\n", len, len_out);
 
       for(int i=0; i<len; i++) in_buf[i] = (*input)[i];
 
@@ -70,7 +70,7 @@ static ostringstream global_show_stream(ostringstream::out);
       wsfloat_t* out_buf = new wsfloat_t[len_out];
       vector<wsfloat_t>* result = new vector<wsfloat_t>(len_out);
 
-      printf("   IFFT: %d->%d\n", len, len_out);
+      //printf("   IFFT: %d->%d\n", len, len_out);
 
       for(int i=0; i<len; i++) in_buf[i] = (*input)[i];
 

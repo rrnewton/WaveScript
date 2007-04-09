@@ -4,7 +4,7 @@
 
 (module type-annotate-misc mzscheme 
   (require  "../../../plt/common.ss" 
-	    "ws-lift-let.ss")
+	    "../normalize_query/ws-lift-let.ss")
   (provide type-annotate-misc
 	   type-annotate-misc-grammar
 	   )

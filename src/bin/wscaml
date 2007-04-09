@@ -42,3 +42,7 @@ echo ocamlopt1 $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi
+
+
+# NOTE, from the shootout:
+# ocamlopt -noassert -unsafe -ccopt -O3 -ccopt -fomit-frame-pointer q.ml -o q.exe
