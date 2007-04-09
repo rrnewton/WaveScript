@@ -249,6 +249,7 @@
           `())]
 
 	;; Produces an instance of a generic dataFile reader.
+	;; TODO: It's not necessary to generate code for both text & binary in the same run:
 	[(__readFile ,[Simple -> file] 
 		     ,[Simple -> mode] 
 		     ,[Simple -> repeats] 
@@ -277,7 +278,8 @@
 		  [numstrings (length (filter (lambda (s) (eq? s 'String)) types))]
 
 		  [textmodereader
-		   `("status = fscanf(_f, \""
+		   `(,(if (> winsize 0) "// ERROR //" "") ;; For now we don't handle windowed reading.
+		     "status = fscanf(_f, \""
 			     ,(insert-between " "
 				 (map (lambda (ty)
 					(match ty

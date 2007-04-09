@@ -1,5 +1,10 @@
 include "stdlib.ws";
 
+// [2007.04.09] Hmm... having a problem with this not elaborating
+// properly if I do a using rather than Array:fold.
+
+// OH! This has to do with the source positions.
+
 BASE <- iterate (() in timer(3.0)) {
   state { first = true }
   
@@ -8,14 +13,14 @@ BASE <- iterate (() in timer(3.0)) {
     {
       using Array;
       arr = build(10, fun(x) x);
-      println("Fold:  " ++ fold((+), gint(0), arr));
-      println("Fold1: " ++ fold1((+), arr) ++ "  (should be same as previous)");
+      println("Fold:  " ++ Array:fold((+), 0, arr));
+      println("Fold1: " ++ Array:fold1((+), arr) ++ "  (should be same as previous)");
 
       //flipped = fun(x,y) (y:::x); 
-      println("FoldCons:  " ++ fold(fun(x,y)(y:::x), [], arr));
+      //      println("FoldCons:  " ++ Array:fold(fun(x,y)(y:::x), [], arr));
 
-      println("FoldRange: " ++ foldRange(3, 4, 0, (+)));
-      println("FoldRange: " ++ foldRange(3, 7, [], fun(x,y)(y:::x)));
+      //      println("FoldRange: " ++ Array:foldRange(3, 4, 0, (+)));
+      //      println("FoldRange: " ++ Array:foldRange(3, 7, [], fun(x,y)(y:::x)));
     };
 
     first := false;
