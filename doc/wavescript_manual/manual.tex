@@ -19,7 +19,7 @@
 
 % page size commands
 
-\title{WaveScript 0.1 Users Manual}
+\title{WaveScript 0.1.2 Users Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -67,9 +67,9 @@ Once the system is installed you should be able to execute {\tt ws} or
 
 WaveScript is still very much a prototype.  It doesn't offer the same
 level of support that you expect from production-quality
-compilers.  For example, the compiler doesn't track code locations.
-It will often print the surrounding context of an error (in abstract
-syntax), but nothing more.
+compilers.  Sometimes the error messages might be difficult to
+interpret.  (However, the type checker messages have been improved
+immensely and do include code locations [04/08/2007].)
 
 Therefore it helps to build your program bit by bit.  Compile often to make
 sure that the pieces of your program parse and type-check.
@@ -97,7 +97,7 @@ free, Petite Chez Scheme interpreter, your {\tt .ws} query files will
 be converted to {\em interpreted} Scheme code, which runs considerably
 slower.  The executable {\tt chez} should be in your path.
 
-To go further, you might consider runnig {\tt ws.opt} in place of {\tt
+To go further, you might consider running {\tt ws.opt} in place of {\tt
 ws}.  First, {\tt ws.opt} has debugging assertions disabled. 
 Second, {\tt ws.opt} is compiled in the highest Chez Scheme optimize
 level, and also compiles your query in this higher optimize level.
@@ -192,7 +192,7 @@ returned, the other statements/expressions only bind variables or
 perform side effects.
 
 Note that this different convention makes semi-colon usage in
-WaveScript somewhat un-intuitive.  Within blocks, semi-colons are only
+WaveScript somewhat unintuitive.  Within blocks, semi-colons are only
 required as {\em separators}; they are permitted, but not required
 after the last expression in the block.  Also, since curly-brace
 delimited blocks are merely expressions, they sometimes must be
@@ -287,7 +287,7 @@ operations.
 \end{verbatim}
 
 The {\tt :::} operator adds an element to the front of a list.  Also
-use {\tt head}, {\tt tail}, {\tt reverse}, {\tt append} to operate on
+use {\tt head}, {\tt tail}, {\tt List:reverse}, {\tt List:append} to operate on
 lists. 
 
 \subsection{Arrays}
@@ -305,7 +305,7 @@ Please refer to the file
 \begin{center}
 {\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
 \end{center}
-%
+
 for type-signatures (and minimal documentation) for all built-in
 wavescript primitives, many of which are not covered in this manual.
 
@@ -319,6 +319,7 @@ relatively small.
 
 %================================================================================
 \section{User defined functions}
+\label{udfs}
 
 Named functions can be defined at the top-level, or within a {\tt
   \{\ldots\}} block as follows:
@@ -331,12 +332,12 @@ Named functions can be defined at the top-level, or within a {\tt
 \end{verbatim}
 
 The function body, following the argument list can be any expression.
-Above it just happens to be a statement block that returns the
+Above it happens to be a statement block that returns the
 square-root of {\tt z}.
 
 Unnamed, or anonymous, functions can occur anywhere that an expression
-might occur. In the following we pass the anonymous ``plus three''
-function as th efirst input to {\tt stream\_map}.  Note that the body
+might occur. In the following we pass an anonymous ``plus three''
+function as the first input to {\tt stream\_map}.  Note that the body
 of the function is a single expression, not a statement block, and is
 not delimited by curly braces.
 
@@ -679,10 +680,41 @@ WaveScript uses fftw.
 
 WaveScript uses the Gnu Scientific Library to support matrix operations.
 
-\rednote{[2007.03.09] Currently, GSL is only used for a builtin matrix
+\rednote{[2007.03.09] Currently, GSL is only used for a built-in matrix
   inversion, {\tt m\_invert}}, 
 
 \chapter{WaveScript Evaluation Model}
+
+WaveScript is a {\em metaprogramming} language.  For further
+explanation, I'll refer you to a quote from the {\em Matrix Reloaded}
+that was brought to my attention by Yannis Smaragdakis.
+
+\begin{center}
+NEO: Programs hacking programs. Why?
+
+ORACLE: They have their reasons, ...
+\end{center}
+
+The {\em reason} in WaveScript, is that we want to write programs of a
+different character than we want to {\em run}.
+We want to {\em write}
+abstract, reusable, polymorphic, higher-order programs, but we want to
+{\em run} fast, monomorphic, first-order, C-programs representing
+parallelizable dataflow graphs.
+In WaveScript your program essentially {\em
+generates} the specialized, high-performance stream-processing
+program that is subsequently compiled and run.  
+
+
+How does this work?  Currently {\em all} user defined functions (as
+described in section \ref{udfs}) will be inlined at metaprogram
+evaluation.  What results is a dataflow graph of {\tt iterate} blocks.
+Thus only bounded-recursions are permitted in user defined functions,
+and excessive code bloat becomes a real possibility.  In the future, we will
+allow a ``noinline'' or ``library function'' annotation that specifies
+that a function is to be compiled as a C-function, rather than
+inlined.  Of course, such a function will not be allowed to take or
+return {\tt Stream} values.
 
 \rednote{\em \bf Keep the metaprogram pure! (free of side-effects)}
 

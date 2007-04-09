@@ -2,6 +2,7 @@
 
 all: pdf html
 	cp -a manual/* /var/www/wsmanual/
+	cp -a manual.pdf /var/www/
 	(cd /var/www; ./setperms)
 
 pdf:
