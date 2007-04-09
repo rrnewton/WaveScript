@@ -807,14 +807,15 @@
 
       [(unionN ,[l -> e* t*] ...)
        (ASSERT (not (null? t*)))
-       (let ([exp `(unionN ,@e*)])
+       (let ([exp `(unionN ,@e*)]
+	     [first (car t*)])
 	 ;; Make sure they're all equal:
-	 (foldl (lambda (a b) (types-equal! a b exp "(All streams into unionList or unionN must be same type.)\n"))
-	   (car t*) (cdr t*))
+	 (for-each (lambda (t2) 
+		     (types-equal! first t2 exp "(All streams into unionList or unionN must be same type.)\n"))
+	   (cdr t*))
 	 (values exp
 		 (match (types-compat? '(Stream 'a) (car t*))
-		   [(Stream ,t) `(Stream #(Int ,(instantiate-type t nongeneric)))]))
-	 )]
+		   [(Stream ,t) `(Stream #(Int ,(instantiate-type t nongeneric)))])))]
 
       [(tuple ,[l -> e* t*] ...)  (values `(tuple ,@e*) (list->vector t*))]
       [(tupref ,n ,len ,[l -> e t])
@@ -823,7 +824,7 @@
 		"invalid tupref syntax, expected constant integer index/len, got: ~a/~a" n len))
        (values `(tupref ,n ,len ,e)
 	       (let ((newtypes (list->vector (map (lambda (_) (make-tcell)) (iota (qinteger->integer len))))))
-		 (types-equal! t newtypes exp (fomat "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
+		 (types-equal! t newtypes exp (format "(Attempt to accesss field ~a of a tuple with the wrong type.)\n" n))
 		 (vector-ref newtypes (qinteger->integer n))))]
       
       [(begin ,[l -> exp* ty*] ...)
@@ -1229,7 +1230,7 @@
 ;; to reflect this constraint.
 (define (types-equal! t1 t2 exp . msg)
   (IFCHEZ (import rn-match) (void))
-  (DEBUGASSERT (and (type? t1) (type? t2)))
+  (DEBUGASSERT type? t1) (DEBUGASSERT type? t2)
   (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
