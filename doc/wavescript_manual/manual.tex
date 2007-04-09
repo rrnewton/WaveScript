@@ -707,8 +707,8 @@ program that is subsequently compiled and run.
 
 
 How does this work?  Currently {\em all} user defined functions (as
-described in section \ref{udfs}) will be inlined at metaprogram
-evaluation.  What results is a dataflow graph of {\tt iterate} blocks.
+described in section \ref{udfs}) {\bf will be inlined at metaprogram
+evaluation}.  What results is a dataflow graph of {\tt iterate} blocks.
 Thus only bounded-recursions are permitted in user defined functions,
 and excessive code bloat becomes a real possibility.  In the future, we will
 allow a ``noinline'' or ``library function'' annotation that specifies

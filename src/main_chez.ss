@@ -263,6 +263,11 @@
 
 ;; To completely DISABLE my new prototype matcher, do this:
 ;(alias rn-match iu-match)
+;;
+;; Currently, just having rn-match in the type-checker bloats the
+;; compiled .so from 2.85 mb to 3.1 mb.  This will only get worse.  
+;; The question is whether we see enough of an improvement in runtime
+;; to justify it.
 
 ;; Import the IU matcher globally:
 (import iu-match)
