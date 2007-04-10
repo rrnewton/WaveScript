@@ -15,13 +15,12 @@ let read_int16 str i =
 
 let wserror str = raise (Failure str)
 
-(* Binary reading *)
+(* Binary reading, produces a scheduler entry, "SE" *)
+(* mode & Textreader parameter are unused  and should be removed *)
 let dataFile (file, mode, repeats, period) 
              (textreader,binreader, bytesize, skipbytes, offset)
-	     outchan =
-    match mode with 
-      | "text" -> wserror "doesn't support text mode yet";
-      | "binary" ->
+	     outchan 
+  =
 	  (* Produce a scheduler function *)
 	  (* Feel free to change this constant: *)
 	  let buffer_min_size = 32768 in
@@ -55,7 +54,7 @@ let dataFile (file, mode, repeats, period)
 	      timestamp := !timestamp + period;
 	      SE (!timestamp, f)
 	  in SE (0, f)
-      | _ -> wserror ("unknown mode: "^mode)
+
 
 
 let dataFileWindowed config (* (file, mode, repeats, period) *)

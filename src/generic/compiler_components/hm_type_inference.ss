@@ -113,6 +113,7 @@
 
 	   grab-init-tenv
 	   sumdecls->tenv
+	   src-pos->string
 	   )
 
   (chezimports constants
@@ -147,13 +148,23 @@
 
 (define type-error error)
 
+;; TODO: Move to another file:
+(define src-pos->string
+  (lambda (pos)
+    (match pos
+      [#f "unknown"]
+      [#((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2)
+       (++ (format "in file ~s\n   "  fn)
+	   (if (= ln1 ln2)
+	       (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
+	       (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))
+       ])))
+
 (define (get-location x)
   (match x
-    [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,_)
-     (++ (format "in file ~s\n   "  fn)
-	 (if (= ln1 ln2)
-	     (format "on line ~s, columns ~s through ~s " ln1 col1 col2)
-	     (format "between line/col ~s:~s and ~s:~s " ln1 col1 ln2 col2)))]
+    [(src-pos ,pos ;#((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) 
+	      ,_)
+     (src-pos->string pos)]
     [,x 
      ;; SUPER HACKISH:
      (let ([pos (deep-assq 'src-pos x)])
@@ -183,8 +194,8 @@
 					      (string-length (car lines))))
 			       (cdr lines)))
 
-	     ;; Arbitrary limit:
-	     (if (> (length lines) 10)
+	     ;; Line cap: Arbitrary limit on length of expression to print:
+	     (if (> (length lines) 1)
 		 (begin 
 		   (set! lines (list-head lines 10))
 		   (set! lines (append lines '("\n...\n"))))

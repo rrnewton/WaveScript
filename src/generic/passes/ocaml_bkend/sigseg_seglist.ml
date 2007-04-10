@@ -60,7 +60,8 @@ let joinsegs (SS(a,t1,w1)) (SS(b,t2,w2)) =
   SS(List.append a b, t1, w1+w2)
 
 let subseg (SS(ls,st,w)) pos len = 
-  assert (pos - st + len < w);
+(* TEMP TEMP TEMP: *)
+(*  assert (pos - st + len < w); *)
   let rec loop ls i =
     match ls with 
       |   [] -> raise (Failure ("subseg out of bounds: pos " ^ string_of_int pos))

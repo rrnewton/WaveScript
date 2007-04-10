@@ -38,7 +38,7 @@ INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-echo ocamlopt1 $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 then echo "Executable output to 'query.exe'.";
 fi

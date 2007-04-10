@@ -15,6 +15,7 @@
 ;; ~200K/sec, XStream at ~100K/sec.  "wscaml" currently gets 14
 ;; million/sec, or 140 times more than XStream!?
 
+;; TODO: I should output explicit type annotations for sanity checking.
 
 (module emit-caml mzscheme 
   (require  "../../../plt/common.ss"
@@ -22,6 +23,9 @@
   (provide emit-caml-wsquery)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
+
+;; MUTABLE
+(define union-edges 'union-edges-uninit)
 
 ;;CHEZ ONLY
 (define type->width (let () (import wavescript_sim_library_push) type->width))
@@ -63,6 +67,7 @@
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-caml:Type "Not handled yet.. ~s" other)]))
 
+
 ;======================================================================
 
 ;; This is the only entry point to the file.  A complete query can
@@ -79,27 +84,38 @@
     (define header4 (file->string (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/data_reader.ml")))
 
     (match prog
-      [(,lang '(graph (const . ,c*)
-		      (sources ,[Source -> src* init1] ...)
-		      (iterates ,[Iterate -> iter*] ...)
+      [(,lang '(graph (const ,[ConstBind -> cb*] ...)
+		      (sources ,src* ...)
+		      (iterates ,iter* ...)
+		      ;(unions ,[Union -> union*] ...)
+		      (unionNs . ,union*)
 		      (sink ,base ,basetype)))
-       ;; Just append this text together.
-       (let ([result (list header1 header2 header3 header4 "\n" 
-			   "let rec ignored = () \n" ;; Start off the let block.
-			   ;; These return incomplete bindings that are stitched with "and":
-			   (map (lambda (x) (list "\nand\n" x)) (append c*  src*  iter*))
-			   " and "(build-BASE basetype)
-			   ";; \n\n"
-			   init1 "\n"
-			   "runScheduler();;\n"
-			   "\nPrintf.printf \"Query completed.\\n\";;\n"
-			   )])
-	 (string->file (text->string result) 
-		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
-	 result	)]
+       ;; We could thread this through... but I'm not currently.
+       (fluid-let ([union-edges union*])
+	 ;; Wait to do these until after we've bound the union edges.
+	 (match (vector src* iter*)
+	   [#((,[Source -> src* init1*] ...) (,[Iterate -> iter*] ...))
+	    
+	    ;; Just append this text together.
+	    (let ([result (list header1 header2 header3 header4 "\n" 
+				;; Block of constants first:
+				(map (lambda (cb) (list "let " cb " ;; \n")) cb*)
+
+				"let rec ignored = () \n" ;; Start off the let block.
+				;; These return incomplete bindings that are stitched with "and":
+				(map (lambda (x) (list "\nand\n" x)) (append  src*  iter*))
+				" and "(build-BASE basetype)
+				";; \n\n"
+				init1* "\n"
+				"runScheduler();;\n"
+				"\nPrintf.printf \"Query completed.\\n\";;\n"
+				)])
+	      (slist->file (list result) "./DAMMIT.ss")
+	      (string->file (text->string result) 
+			    (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
+	      result)]))]
       [,other ;; Otherwise it's an invalid program.
        (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))
-
 
 
 ; ======================================================================
@@ -122,6 +138,38 @@
 	 "\n")       
        )]))
 
+;; This creates a bunch of "edge bindings" which the Emit function
+;; uses to determine whether to tag an index on an emitted value.
+#;
+(define Union
+  (match-lambda ((,name ,ty (,up* ...) (,down* ...)))
+    (mapi (lambda (i up)
+	    (list up i )
+	    ))
+    ))
+
+#;
+(define (Union union)
+  (error 'emit-caml "union not implemented")
+  (match union
+    [(,name ,ty (,up* ...) (,down* ...))
+
+     ;; ERK: no way to know the index for who we get it from at runtime.  
+     ;; Need to do this differently.
+     
+     (let ([emitter (Emit down*)])
+       (list        
+	" ",(Var name)" = \n"
+	"  let ",(Var vq)" = () in\n"
+	(let loop ([ups up*] [ind 0])
+	 (if (null? ups) '()
+	     (list 
+	      
+	      (loop (cdr ups) (fx+ 1 ind)))
+	     ))              
+       ))]))
+
+
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
 (define (Emit down*)
@@ -129,17 +177,35 @@
     ;; Just call each of the sites with the argument.
     `("(let emitted = ",expr" in\n"
       ,@(map (lambda (down) 
-	       (if (eq? down 'BASE)
-		   `("baseSink emitted;\n")
-		   `(,(Var down)" emitted;\n")))
+	       (cond 
+		[(eq? down 'BASE) `("baseSink emitted;\n")]
+		;; If we're emitting *to* a union, we just keep going through it.
+#;
+		[(assq down union-edges)
+		 => (match-lambda ((,name ,ty (,up* ...) (,down* ...)))
+		      (inspect name)
+		      ((Emit down*) `("( "")")))]
+		[else `(,(Var down)" emitted;\n")]))
 	  down*)
       "  ())")))
 
         
 (define (Var var)
-  (ASSERT (symbol? var))
+  (ASSERT symbol? var)
   ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
   (symbol->string var))
+
+(define (ConstBind b)
+  (match b
+    [(,[Var -> v] ,t (quote ,[Const -> rhs]))
+     (list v " = " rhs)]
+
+    [(,[Var -> v] ,t ,rhs)
+     (guard (symbol? rhs))
+     ;; This is messed up:
+     (list v " = " (Var rhs))]
+
+    [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]))
 
 (define Const
   (lambda (datum)
@@ -150,32 +216,37 @@
      [(eq? datum #t) "true"]
      [(eq? datum #f) "false"]
      [(string? datum) (format "~s" datum)]
-     [(flonum? datum)  (number->string datum)]
-     #;
-     [(cflonum? datum) (wrap (format "(wscomplex_t)(~a + ~afi)" 
-				     (cfl-real-part datum)
-				     (cfl-imag-part datum)))]
-     [(integer? datum) (number->string datum)]
+     [(flonum? datum)  (format "(~s)" datum)]
+     [(cflonum? datum) (format "{Complex.re=~a; Complex.im=~a }" 
+			       (cfl-real-part datum)
+			       (cfl-imag-part datum))]
+     [(integer? datum)  (format "(~s)" datum)]
 
      ;[(eq? datum 'Array:null) "[||]"]
-
 ;     [(eq? datum 'nullseg) "nullseg"]
      [(eq? datum 'nulltimebase) "99999999"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
-#;
+     [(list? datum)
+      (list "[" (insert-between "; " (map Const datum)) "]")]
      [(vector? datum)
-      (ASSERT name)
-      (let ([contenttype (if (zero? (vector-length datum))
-			     ;; Throw in a default:
-			     'Int
-			     (type-const (vector-ref datum 0)))])
-	`(,type" ",name" = boost::shared_ptr< vector< ",(Type contenttype)
-	       " > >(new vector< ",(Type contenttype)" >(",
-	       (number->string (vector-length datum))"));\n" ;; MakeArray.
-	       ,(mapi (lambda (i x) (Const `("(*",name")[",(number->string i)"]")
-					   "" x))			   
-		      (vector->list datum))))]
+      ;; UNFINISHED: Make this agnostic to vector representation: should do in another pass...
+      #;
+      (Expr 
+       `(let ([,v 'notyp (Array:make )]))
+       (lambda _ (error 'dummyemitter "should not be called")))
+      
+      (list
+       "  (Bigarray.Array1.of_array "
+       " Bigarray."
+         (if (zero? (vector-length datum))
+	     "int"
+	     (ArrType (type-const (vector-ref datum 0)))) ;; Kind
+       " Bigarray.c_layout \n" 
+       "[|" 
+       (insert-between "; " (map Const (vector->list datum)))
+       "|] \n"
+       ")")]
 
      [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
 
@@ -224,11 +295,37 @@
        [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)       
 	(cond
 	 [(equal? mode "text") 
+	  (if (not (zero? repeats))
+	      (error 'emit-caml "Caml text mode reader doesn't support replaying the datafile yet."))
 	  (values
 	   (list 
+	    ;; Builds a function from unit to an initial scheduler entry "SE" 
 	    " "v" = fun () -> \n"	    
-	    "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
-	    "  and textreader = 33333 in \n"
+	    " let timestamp = ref 0 in \n"
+	    " let hndl = open_in "file" in \n"
+	    " let rec f () = \n"
+	    "  Scanf.fscanf hndl \""
+	    (insert-between " "
+	     ;; CAREFUL: THIS DOESN'T EXPLICITELY LOOK FOR NEWLINES:
+             (map (lambda (ty)
+		    (match ty
+		      [Float  "%f"] ;; Single precision floats
+		      [Int    "%d"]
+		      [Int16  "%d"]
+		      [String "%s"]					  
+		      ))	       
+	       types))
+	    " \" \n"
+	    (let ([names (map (lambda (_) 
+				(symbol->string (unique-name "fld"))) 
+			   types)])
+	      (list 
+	       "  (fun " (insert-between " " names) " -> \n   "
+	         ;; Form a tuple of the results and send it downstream.
+	         ((Emit downstrm) `("(",(insert-between ", " names)")"))"); \n"))
+	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
+	    "   SE (!timestamp, f) in \n"
+	    "  SE (0, f) \n" 
 	    "  \n"
 	    )
 	   ;; Initialization: schedule this datasource:
@@ -236,6 +333,7 @@
 	 
 	 [(equal? mode "binary")
 	  (values (list 
+		   ;; Builds a function from unit to an initial scheduler entry "SE" 
 		   " "v" = fun () -> \n"
 		   "  let binreader = "(indent (build-binary-reader types) "    ")" \n"
 		   "  and textreader = 33333 in \n"

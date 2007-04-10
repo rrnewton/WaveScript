@@ -503,6 +503,7 @@
 	  (void)
 	  (begin (vector-set! dest (fx+ ind2 i) (vector-ref src (fx+ ind1 i)))
 		 (loop (fx+ i 1)))))))
+
 #;
 (define vector-build
   (lambda (n f)

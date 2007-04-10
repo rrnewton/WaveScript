@@ -268,14 +268,19 @@ dets = detect(totalscore);
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
+a = oetuues;
+
 BASE <- 
 //chans
 //x
 //xw
+//unionList([xw,yw,zw])
+//unionList([xw,yw])
 //CONST(notch_filter(129,58,128))
 //yw
 //zip3_sametype(xw,xw,xw)
 //zip3_sametype(xw,yw,zw)
+//totalscore
 dets
 
 

@@ -303,11 +303,11 @@ fullpkg:
 	cp -pr $(REGIMENTD)/install_environment_vars $(PKGDIR)/
 	cp -pr $(REGIMENTD)/src/bin        $(PKGDIR)/
 	cp -pr $(REGIMENTD)/src/build      $(PKGDIR)/
-	cp -pr $(REGIMENTD)/src/wsparse    $(PKGDIR)/
+	cp -pr $(REGIMENTD)/src/wsparse_full    $(PKGDIR)/
 	cp -pr $(REGIMENTD)/depends/chez   $(PKGDIR)/depends/
 	cp -pr $(REGIMENTD)/depends/csv7.3 $(PKGDIR)/depends/
 	rm -rf $(PKGDIR)/bin/wsparse
-	ln -s $(PKGDIR)/wsparse/bin/wsparse $(PKGDIR)/bin/wsparse
+	ln -s $(PKGDIR)/wsparse_full/bin/wsparse $(PKGDIR)/bin/wsparse
 
 
 
