@@ -175,7 +175,6 @@
     ((_ Bod Promise Args ())  Bod)
 
     ;; Optimization, handle one argument, no call-with-values:
-#;
     ((_ Bod Promise (V0) __)
      (let ([V0 Promise]) Bod))
     

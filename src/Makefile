@@ -104,6 +104,12 @@ nc2:
 # only works in PLT right now:
 wsparse: 
 	mzc --exe bin/wsparse plt/wsparse.ss
+# I tried embedding mzscheme to build a stand-alone... but I don't
+# think it was really standalone.
+
+wsparse_full:
+	mzc --exe bin/wsparse plt/wsparse.ss
+	mzc --exe-dir wsparse_full bin/wsparse 
 
 #----------------------------------------
 
@@ -111,14 +117,14 @@ wsparse:
 chez: chez_native
 chez_native:
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
-	if [ $(REGDEBUGMODE) == "ON" ]; \
+	if [ "$(REGDEBUGMODE)" == "ON" ]; \
         then echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); \
         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
 ws:
-	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
+	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
          (export REGOPTLVL=2; \
@@ -252,35 +258,59 @@ runplt:
 #*---------------------------------------------------------------------*/
 
 # This makes three separate tarfile packages that must be unzipped in the same dir.
-PKGDIR=~/build/regiment
-package: clean
+OLDPKGDIR=~/build/regiment
+old_package: clean
 	@echo
-	@echo PACKAGING REGIMENT
+	@echo PACKAGING REGIMENT/WAVESCRIPT
 	@echo =================================================================
-	rm -rf $(PKGDIR)
-	mkdir $(PKGDIR)
-	mkdir $(PKGDIR)/base
-	cp -pr $(REGIMENTD)/* $(PKGDIR)/base/
+	rm -rf $(OLDPKGDIR)
+	mkdir $(OLDPKGDIR)
+	mkdir $(OLDPKGDIR)/base
+	cp -pr $(REGIMENTD)/* $(OLDPKGDIR)/base/
 	$(MAKE) heap
 	$(MAKE) chez
 # Now clean that out a little:
-	rm -f $(PKGDIR)/base/depends
-	rm -rf $(PKGDIR)/base/old_passes
-	rm -rf $(PKGDIR)/base/plots
-	rm -rf $(PKGDIR)/base/haskell/assembler
-	find $(PKGDIR)/base -name "*.svn" | xargs rm -rf 
-	find $(PKGDIR)/base -name "*~" | xargs rm -rf 
-	find $(PKGDIR)/base -name "_*" | xargs rm -rf 
+	rm -f $(OLDPKGDIR)/base/depends
+	rm -rf $(OLDPKGDIR)/base/old_passes
+	rm -rf $(OLDPKGDIR)/base/plots
+	rm -rf $(OLDPKGDIR)/base/haskell/assembler
+	find $(OLDPKGDIR)/base -name "*.svn" | xargs rm -rf 
+	find $(OLDPKGDIR)/base -name "*~" | xargs rm -rf 
+	find $(OLDPKGDIR)/base -name "_*" | xargs rm -rf 
 	@echo
 	@echo BUILDING TARFILES
 	@echo =================================================================
-	(cd $(PKGDIR)/base; tar cjf ../regiment_src.tbz *)
-#	rm $(PKGDIR)/base
-	(cd $(REGIMENTD); tar cvjf $(PKGDIR)/regiment_heap.tbz build/regiment.0.heap)
+	(cd $(OLDPKGDIR)/base; tar cjf ../regiment_src.tbz *)
+#	rm $(OLDPKGDIR)/base
+	(cd $(REGIMENTD); tar cvjf $(OLDPKGDIR)/regiment_heap.tbz build/regiment.0.heap)
+	mkdir $(OLDPKGDIR)/depends
+	(cd $(REGIMENTD)/; cp -pr depends/* $(OLDPKGDIR)/depends/)
+	(cd $(OLDPKGDIR); tar cjf regiment_depends.tbz depends)
+	(cd $(REGIMENTD)/; tar cvjf $(OLDPKGDIR)/regiment_object.tbz main_chez.so)
+
+
+# [2007.04.09] Updating this, it was very old:
+PKGDIR=$(REGIMENTD)/binary_pkg
+#clean ws ws.opt wsparse.full
+fullpackage: pkg
+fullpkg: 
+	@echo
+	@echo PACKAGING REGIMENT/WAVESCRIPT FOR BINARY INSTALLATION
+	@echo =================================================================
+	rm -rf $(PKGDIR)
+	mkdir $(PKGDIR)
 	mkdir $(PKGDIR)/depends
-	(cd $(REGIMENTD)/; cp -pr depends/* $(PKGDIR)/depends/)
-	(cd $(PKGDIR); tar cjf regiment_depends.tbz depends)
-	(cd $(REGIMENTD)/; tar cvjf $(PKGDIR)/regiment_object.tbz main_chez.so)
+	cp -pr $(REGIMENTD)/install_environment_vars $(PKGDIR)/
+	cp -pr $(REGIMENTD)/src/bin        $(PKGDIR)/
+	cp -pr $(REGIMENTD)/src/build      $(PKGDIR)/
+	cp -pr $(REGIMENTD)/src/wsparse    $(PKGDIR)/
+	cp -pr $(REGIMENTD)/depends/chez   $(PKGDIR)/depends/
+	cp -pr $(REGIMENTD)/depends/csv7.3 $(PKGDIR)/depends/
+	rm -rf $(PKGDIR)/bin/wsparse
+	ln -s $(PKGDIR)/wsparse/bin/wsparse $(PKGDIR)/bin/wsparse
+
+
+
 
 
 #/*--------------------------------------------------------------------*/

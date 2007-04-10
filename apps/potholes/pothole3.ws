@@ -3,6 +3,30 @@ include "stdlib.ws";
 include "filter.ws";
 //include "matrix.ws";
 
+
+// Note: rrn: This currently takes 3.7 seconds to compile for me with
+// iu-match everywhere, and 4.0 seconds with rn-match in the type
+// checker!  Arg!  Renabling the non multi-value "optimization"
+// doesn't help that at all.  
+//
+// With ws.opt the numbers are 3.5 and 3.3 seconds,
+// respectively.... so it looks like the optimizer makes rn-match pull
+// ahead.
+
+// [2007.04.09] rrn: Using rn-match in the type checker makes this
+// take 3.7 seconds as opposed to 4.0 seconds to compile.  With ws.opt
+// it 3.3 as opposed to 3.5 seconds.
+//
+// I think the code bloat isn't great, but it still does better on
+// speed.  Actually.. with this evaluation the vast majority of time
+// is spent in the elaborator (3 seconds).  The first typecheck
+// improves from 125 ms to 75ms with rn-match, which is quite
+// substantial (especially since a major piece of the type-checker
+// isn't converted to rn-match yet!)
+// 
+// The next target for rn-match will definitely be the static-elaborator.
+
+
 //======================================================================
 
 fun thresh_extract(search,streamlist,thresh,pad) {
@@ -91,7 +115,13 @@ sm = stream_map;
 // ============================================================
 // Main query:
 
+// This query reads in:
+//   (Timestamp, Lat, Long, X,Y,Z)
+// Where X/Y/Z is accelerometer data.
+//
 chans = (readFile("/tmp/clip", "")
+//chans = (readFile("/dev/stdin", "")
+//chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
 
 x = window(sm(fun((_,_,_,a,_,_)) int16ToFloat(a), chans), 512);

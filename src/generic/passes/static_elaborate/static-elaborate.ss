@@ -249,7 +249,7 @@
     (define computable-constants '(IS_SIM))
 
     (define (do-prim prim args env)
-      (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n"))
+      (IFDEBUG (when (regiment-verbose) (display-constrained "DOING PRIM: " `[,prim 20] " " `[,args 30] "\n")) (begin))
       (if (ormap symbol? args)
 	  (error 'do-prim "args contain unevaluated variable: ~a" args))
       (let ([entry (assq prim computable-prims)])
@@ -274,7 +274,7 @@
       (define (make-nested-letrecs binds body)
 	(if (null? binds) body
 	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
-      (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n"))      
+      (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
