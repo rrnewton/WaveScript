@@ -72,7 +72,23 @@
       (define (driver x fallthru)
 	;(inspect exploded-table)
 	(match x
+	  [(src-pos ,p ,var) (guard (symbol? var))
+		(cond
+		 [(memq var type-constructors) 
+		  (error 'resolv-varrefs "type constructor not directly applied: ~s" var)]
+		 [(assq var var-table) => cadr]
+		 [(regiment-primitive? var) var]
+		 [else (error 'resolve-varrefs 
+			      "variable was not bound!: ~a\n\nEnvironment Context: ~s\n~a"
+			      var (map car var-table)
+			      (if p
+				  (format "\nSource location:\n  ~a\n\n" (src-pos->string p))
+				  ""))])]
+	  ;; DUPLICATED CODE:
 	  [,var (guard (symbol? var))
+		(driver `(src-pos #f ,var) fallthru)
+		;(error 'resolve-varrefs "varref without src-pos, for now an error: ~s" var)
+		#;
 		(cond
 		 [(memq var type-constructors) 
 		  (error 'resolv-varrefs "type constructor not directly applied: ~s" var)]
@@ -81,6 +97,7 @@
 		 [else (error 'resolve-varrefs 
 			      "variable was not bound!: ~a\n environment: ~s"
 			      var var-table)])]
+
 	  [(app ,tc ,[rand]) (guard (memq tc type-constructors)) 
 	   ;; From here on out we use a special form:
 	   `(construct-data ,tc ,rand)]

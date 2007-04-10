@@ -57,6 +57,9 @@
 			      (match rhs
 				[(app Mutable:ref ,e) lhs]
 				[(Mutable:ref ,e) lhs]
+				[(src-pos ,p ,[e]) (and e lhs)]
+				;; Should maybe allow assert-type too:
+				[(assert-type ,p ,[e]) (and e lhs)]
 				[,else #f]))
 			 lhs* rhs*))])
 		;(unless (null? mutable-lhs*) (inspect mutable-lhs*))
