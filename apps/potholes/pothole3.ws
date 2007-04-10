@@ -35,33 +35,34 @@ DEBUG=true;
 
 fun detect(scorestrm) {
   // Constants:
-  alpha = 0.999;
-  hi_thresh = 16;
-  startup_init = 300;
-  refract_interval = 40;
-  max_run_length = 4000;
-  samples_padding = 200;
+  alpha = 0.90;
+  hi_thresh = 15;                   // thresh above ewma
+  startup_init = 75;
+  refract_interval = 0;             // set higher to merge.. e.g. 2 
+  samples_padding = 100;
 
   iterate((score,st,en) in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
       smoothed_mean = 0.0;
-      smoothed_var = 0.0;
       _start = 0; 
       trigger_value = 0.0;
-      startup = 300;
+      startup = startup_init;
       refract = 0;                 
 
       // private
       noise_lock = 0; // stats
+
+      max_peak = 0.0;
+      peak_location = 0;
+      integral = 0.0;
     }
 
     fun reset() {
       thresh_value := 0.0;
       trigger := false;
       smoothed_mean := 0.0;
-      smoothed_var := 0.0;
       _start := 0;
       trigger_value := 0.0;
       startup := startup_init;
@@ -71,21 +72,17 @@ fun detect(scorestrm) {
     if DEBUG then {
       temp = (if trigger then 1 else 0);
       println("@# " ++show(thresh_value)++ " " ++show(temp)++ 
-	  " " ++show(smoothed_mean)++ " " ++show(smoothed_var)++
+	  " " ++show(smoothed_mean)++ 
 	  " " ++show(_start)++ " " ++show(trigger_value));
     };
     
     /* if we are triggering.. */
     if trigger then {      
 
-      /* check for 'noise lock' */
-      if en - _start > max_run_length then {
-	print("Detection length exceeded maximum of " ++ show(max_run_length)
-	      ++", re-estimating noise");
-	
-	noise_lock := noise_lock + 1;
-	reset();
-	//goto done; GOTO GOTO GOTO 
+      integral := integral + score;
+      if (score > max_peak) then {
+        max_peak := score;
+        peak_location := st + en / 2;
       };
 
       /* over thresh.. set refractory */
@@ -97,61 +94,52 @@ fun detect(scorestrm) {
       }	else {
 	/* untriggering! */
 	trigger := false;
-	
-	/* emit power of 2 */
-	p = en + samples_padding - _start;
-	p2 = Mutable:ref(1);
 
-	i = Mutable:ref(0);
-	while p2 < p && i <= 24 {
-	  p2 := p2 * 2;	  
-	  i += 2;
-	};
-
-	emit (true,                               // yes, snapshot
-	      _start - samples_padding,           // start sample
-	      _start - samples_padding + p2 - 1); // end sample
+	emit (true, _start, en, peak_location, max_peak, integral); // end sample
 	if DEBUG then
 	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
 	      " just processed window "++show(st)++":"++show(en)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
+        thresh_value := 0.0;
       }
-    } else { /* if we are not triggering... */      
+    };
+
       /* compute thresh */
-      let thresh = i2f(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
+      let thresh = i2f(hi_thresh) + smoothed_mean;
 
       if DEBUG then 
-        print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
+        print("Thresh to beat: "++show(thresh)++ " " ++ smoothed_mean++ ", Current Score: "++show(score)++
+ " "++refract++ " " ++ startup ++"\n");
 
       /* over thresh and not in startup period (noise est period) */
-      if startup == 0 && score > thresh then {
+      if startup == 0 && refract == 0 && score > thresh then {
 	if DEBUG then print("Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
 	_start := st;
 	trigger_value := score;
-      }	else {
+	max_peak = 0;
+	integral = 0;
+      };
+
 	/* otherwise, update the smoothing filters */
 	smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
-	delt = score -. smoothed_mean;
-	smoothed_var := (delt *. delt) *. (1.0 -. alpha) +. smoothed_var *. alpha;
-      };
-	
+      if (score < smoothed_mean) then smoothed_mean := score;
+
       /* count down the startup phase */
       if startup > 0 then startup := startup - 1;
       
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, st - samples_padding - 1));
+      emit (false, 0, st - 1, 0, 0.0, 0.0);
       if DEBUG then 
       print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
 	    " just processed window "++show(st)++":"++show(en)++"\n");
       
-    }
   }
 }
 
@@ -225,7 +213,9 @@ chans = (readFile("/tmp/clip", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
 
-stamp = window(sm(fun((t,lat,long,_,_,_)) (t,lat,long), chans), 512);
+time = window(sm(fun((t,_,_,_,_,_)) t, chans), 512);
+lat = window(sm(fun((_,lat,_,_,_,_)) lat, chans), 512);
+long = window(sm(fun((_,_,long,_,_,_)) long, chans), 512);
 x = window(sm(fun((_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
 y = window(sm(fun((_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
 z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
@@ -268,6 +258,39 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
 
 dets = detect(totalscore);
 
+tosync = iterate (b,s,e,_,_,_) in dets { 
+  if b
+  then emit(b,max(0,s-100),e+100)
+  else emit(b,0,max(0,e-100-1));
+}
+ 
+//  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
+zipsync1 = iterate (_,_,_,l,p,i) in dets {
+  emit([],l,p,i);
+}
+
+snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
+
+zipsync2 = iterate l in snips {
+  emit(l,0,0.0,0.0);
+}
+
+final = iterate (segs,l,p,i) in zip2_sametype(zipsync1,zipsync2) {
+  time = List:ref(segs,0);
+  lat = List:ref(segs,1);
+  long = List:ref(segs,2);
+  x = List:ref(segs,3);
+  y = List:ref(segs,4);
+  z = List:ref(segs,5);
+  index = l - time.start;
+  println("@@@ "++time[[index]]++" "++lat[[index]]++" "++long[[index]]
+	  ++" "++p++" "++i);
+  for i = 0 to time.width-1 {
+    println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]
+	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
+  }
+}
+
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
 BASE <- 
@@ -281,7 +304,8 @@ BASE <-
 //zip3_sametype(xw,xw,xw)
 //zip3_sametype(xw,yw,zw)
 //totalscore
-dets
+//dets
+final
 
 
 // wsc: Worked with rev 1342 of the engine
