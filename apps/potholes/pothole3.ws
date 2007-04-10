@@ -29,31 +29,7 @@ include "filter.ws";
 
 //======================================================================
 
-fun thresh_extract(search,streamlist,thresh,pad) {
 
-  ctrl = iterate (w in search) {
-    state {
-      skiptill = pad;
-    }
-
-    //println("in thresh, w.start " ++ w.start);
-
-    for i = 0 to w.width-1 {
-      if ((w.start+i) > skiptill && absF(w[[i]]) > thresh) then {
-        //println("about to emit t, " ++ w.start + i - pad ++ " " ++ w.start + i + pad - 1);
-    	emit (true, w.start + i - pad, w.start + i + pad - 1);
-        skiptill := w.start + i + pad;
-      }
-    };
-    
-    if (w.start+w.width-pad-1 > skiptill) then {
-      //println("about to emit f, " ++ w.start + w.width - pad - 1);
-      emit (false, 0, w.start + w.width - pad - 1);
-    }
-  };
-
-  syncN(ctrl,streamlist);
-}
 
 
 fun specgram_seglist(ext) {
@@ -133,7 +109,7 @@ z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
 
-profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream Float);
+profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
 fun profile(s,profile,skip) {
   len = 2*(Array:length(profile)-1);
   window = gaussian(intToFloat(skip),len);
@@ -146,9 +122,7 @@ fun profile(s,profile,skip) {
     let (_,sum) = Array:fold(fun ((i,acc), x) 
 			     (i+1, acc + absC(x)),
 			     (0,gint(0)), arr2);
-    emit(sum);
-
-    //    emit(absC(adot(profile,fftR2C(apairmult(arr,window)))));
+    emit(sum,win);
   }
 }
 
@@ -161,7 +135,7 @@ yw = profile(y,notch1,64);
 zw = profile(z,notch2,64);
 
 
-totalscore = iterate((x,y,z) in zip3_sametype(xw,yw,zw)) {
+totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
   emit(x+y+z);
 };
