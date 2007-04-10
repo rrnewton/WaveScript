@@ -263,6 +263,10 @@ tosync = iterate (b,s,e,_,_,_) in dets {
   then emit(b,max(0,s-100),e+100)
   else emit(b,0,max(0,e-100-1));
 }
+
+
+zipsync1 :: Stream ((List (Sigseg Float)) * Int * Float * Float);
+zipsync2 :: Stream ((List (Sigseg Float)) * Int * Float * Float);
  
 //  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
 zipsync1 = iterate (_,_,_,l,p,i) in dets {
@@ -304,8 +308,8 @@ BASE <-
 //zip3_sametype(xw,xw,xw)
 //zip3_sametype(xw,yw,zw)
 //totalscore
-//dets
-final
+dets
+//final
 
 
 // wsc: Worked with rev 1342 of the engine
