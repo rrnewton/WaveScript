@@ -123,11 +123,9 @@ zip3_sametype = fun (s1,s2,s3) {
 
 
 
-syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
-         -> Stream (List (Sigseg t));
-syncN = 
+syncN_aux = 
  //if IS_SIM then __syncN else
- fun (ctrl, strms) {
+fun (ctrl, strms, del) {
    DEBUGSYNC = false; // Activate to debug the below code:
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
@@ -201,16 +199,28 @@ syncN =
 	  if DEBUGSYNC then
 	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
 	};
-	// In either case, destroy the finished portions and remove the serviced request:
-	for j = 0 to accs`Array:length - 1 {
-	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	  accs[j] := subseg(accs[j], en + 1, accs[j]`end - en);
+
+	if (del || not(fl)) then {
+	  // In either case, destroy the finished portions and remove the serviced request:
+	  for j = 0 to accs`Array:length - 1 {
+	    // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
+	    accs[j] := subseg(accs[j], en + 1, accs[j]`end - en);
+	  };
 	};
 	requests := requests`tail;
       }
     }
   }
 }
+
+
+syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
+         -> Stream (List (Sigseg t));
+syncN = fun (ctrl, strms) { syncN_aux(ctrl, strms, true) }
+
+syncN_no_delete :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
+         -> Stream (List (Sigseg t));
+syncN_no_delete = fun (ctrl, strms) { syncN_aux(ctrl, strms, false) }
 
 
 fun thresh_extract(search,streamlist,thresh,pad) {
