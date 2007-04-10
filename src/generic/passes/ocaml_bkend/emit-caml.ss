@@ -105,6 +105,7 @@
 			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
 			   "\nPrintf.printf \"Query completed.\\n\";;\n"
 			   )])
+	 #;
 	 (string->file (text->string result) 
 		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
 	 result)]
