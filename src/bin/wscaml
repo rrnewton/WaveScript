@@ -2,6 +2,26 @@
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
+
+
+
+# Inline factor should be, say, 3:
+#FLAGS="-unsafe -ffast-math -inline 100 -noassert"
+FLAGS=""
+
+## ADD LOOP
+if [ "$1" == "-O3" ];
+## HUH? On some computers ocaml doesn't recognize "-ffast-math"
+then FLAGS="$FLAGS -unsafe  -inline 100 -noassert"; shift; 
+fi
+
+if [ "$1" == "-O0" ];
+then FLAGS=""; shift;
+fi
+
+
+
+
 if [ ! -f "$1" ];
 then echo Usage: "wsc <file> <options ...>";
 #     echo   (Options: -b  Build cpp file.)
@@ -19,7 +39,7 @@ D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
-# CLean up first:
+# Clean up first:
 rm -f "query.ml"
 
 export REGIMENT_OR_WAVESCRIPT=WS
@@ -30,19 +50,19 @@ else #rm -f $TMP;
     exit 1;
 fi
 
-# Inline factor should be, say, 3:
-#FLAGS="-unsafe -ffast-math -inline 100 -noassert"
-FLAGS=""
 
 INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
-if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
-then echo "Executable output to 'query.exe'.";
+echo ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+start=`date +%s`
+if ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+then end=`date +%s`;
+     echo "  Time spent in ocaml compiler: "$[($end) - ($start)]" second(s)";
+     echo "Executable output to 'query.exe'.";
+else echo "OCaml returned error!!"; exit -1
 fi
-
 
 # NOTE, from the shootout:
 # ocamlopt -noassert -unsafe -ccopt -O3 -ccopt -fomit-frame-pointer q.ml -o q.exe

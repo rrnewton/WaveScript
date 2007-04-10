@@ -77,6 +77,7 @@
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
    (filter (lambda (prod)
+;	     (IFCHEZ (import rn-match) (void))
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
@@ -84,7 +85,7 @@
 	       [(Prim ',p) (guard (assq p meta-only-primitives)) #f]
 
 	       ;; nor should we have user-level applications:
-	       [(Expr ('app Expr ...)) #f]
+	       [(Expr ('app Expr . ,_)) #f]
 	       [,_ #t]))
      remove-unquoted-constant-grammar)
    ))
@@ -842,7 +843,8 @@
 			 [iterations 1])
 		(if (equal? oldbody body)	   
 		    (begin
-		      (when (regiment-verbose) (printf "Static elaboration iterated ~s times\n" iterations))
+		      ;(when (regiment-verbose) )
+		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      `(static-elaborate-language '(program ,body ,meta* ... ,type)))
 		    (loop body (process-expr body init-env) (add1 iterations)))))
 	    ])]

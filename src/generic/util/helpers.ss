@@ -411,6 +411,7 @@
 
 (define list-index
   (lambda (pred ls)
+    (DEBUGASSERT procedure? pred)
     (cond
       ((null? ls) #f)
       ((pred (car ls)) 0)

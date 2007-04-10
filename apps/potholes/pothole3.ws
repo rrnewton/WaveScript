@@ -101,10 +101,12 @@ fun detect(scorestrm) {
 	/* emit power of 2 */
 	p = en + samples_padding - _start;
 	p2 = Mutable:ref(1);
-	for i = 0 to 24 {
-	  if (p2 >= p) then break;
-	  p2 := p2 * 2;
-	}
+
+	i = Mutable:ref(0);
+	while p2 < p && i <= 24 {
+	  p2 := p2 * 2;	  
+	  i += 2;
+	};
 
 	emit (true,                               // yes, snapshot
 	      _start - samples_padding,           // start sample
@@ -267,8 +269,6 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
 dets = detect(totalscore);
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
-
-a = oetuues;
 
 BASE <- 
 //chans

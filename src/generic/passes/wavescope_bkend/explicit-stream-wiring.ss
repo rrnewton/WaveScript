@@ -71,23 +71,21 @@
       (match decls
 	[() ()]
 	[((-> . ,_) . ,[rest])     rest]
-	[((,src ,arr ,dest . ,_) . ,[rest]) 
-	 (guard (memq arr '(-> U->)) (eq? v src))
-	 (cons dest rest)]
+	[((,src -> ,dest . ,_) . ,[rest])   (guard (eq? v src))   (cons dest rest)]
+	[((,src* U-> ,dest . ,_) . ,[rest]) (guard (memq v src*)) (cons dest rest)]
 	[((BASE ,src) . ,[rest]) (guard (eq? v src))  
 	 (cons 'BASE rest)]
 	[(,_ . ,[rest]) rest])))
 
-
   ;; Tag the down edges that go into unionN with their indices.
-  (define (add-indices src down* unionedges)
+  (define (add-indices src down* unionedges)      
     (map (lambda (down)
+	   ;; If one of our out edges goes to a union:
 	   (match (assq down unionedges)
 	     [(,name (,up* ...))
-	      (list (list-index down up*) dest)]
+	      (list (ASSERT (list-find-position src up*)) down)]
 	     [,else down]))
       down*))
-
 
   [Program 
    (lambda (p _)
@@ -106,7 +104,7 @@
 	    (apply append 
 		   (map (lambda (d)
 			  (match d
-			    [(,src* U-> ,v ,ty ,f) `((,v ,src*))]
+			    [(,src* U-> ,v ,ty) `((,v ,src*))]
 			    [,_ ()]))
 		     decls)))
 
@@ -138,6 +136,8 @@
 		     decls)))
 	 
 	  (define base (cadr (assq 'BASE decls)))
+
+;	  (inspect (vector iter* union*))
 
 	  (ASSERT (curry apply =) (list (length decls) 
 					(+ 1 (length iter*) (length src*) (length union*) (length cb*))))

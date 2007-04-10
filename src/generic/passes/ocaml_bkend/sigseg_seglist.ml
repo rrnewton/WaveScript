@@ -85,4 +85,3 @@ let subseg (SS(ls,st,w)) pos len =
     SS(loop ls (pos-st), pos, len)
 
 ;;  
-Printf.printf "woot\n";

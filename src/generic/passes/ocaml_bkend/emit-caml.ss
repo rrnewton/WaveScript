@@ -85,35 +85,29 @@
 
     (match prog
       [(,lang '(graph (const ,[ConstBind -> cb*] ...)
-		      (sources ,src* ...)
-		      (iterates ,iter* ...)
-		      ;(unions ,[Union -> union*] ...)
-		      (unionNs . ,union*)
+		      (sources ,[Source -> src* init1*] ...)
+		      (iterates ,[Iterate -> iter*] ...)
+		      (unionNs ,[Union -> union*] ...)
 		      (sink ,base ,basetype)))
-       ;; We could thread this through... but I'm not currently.
-       (fluid-let ([union-edges union*])
-	 ;; Wait to do these until after we've bound the union edges.
-	 (match (vector src* iter*)
-	   [#((,[Source -> src* init1*] ...) (,[Iterate -> iter*] ...))
-	    
-	    ;; Just append this text together.
-	    (let ([result (list header1 header2 header3 header4 "\n" 
-				;; Block of constants first:
-				(map (lambda (cb) (list "let " cb " ;; \n")) cb*)
+       
+       ;; Just append this text together.
+       (let ([result (list header1 header2 header3 header4 "\n" 
+			   ;; Block of constants first:
+			   (map (lambda (cb) (list "let " cb " ;; \n")) cb*)
 
-				"let rec ignored = () \n" ;; Start off the let block.
-				;; These return incomplete bindings that are stitched with "and":
-				(map (lambda (x) (list "\nand\n" x)) (append  src*  iter*))
-				" and "(build-BASE basetype)
-				";; \n\n"
-				init1* "\n"
-				"runScheduler();;\n"
-				"\nPrintf.printf \"Query completed.\\n\";;\n"
-				)])
-	      (slist->file (list result) "./DAMMIT.ss")
-	      (string->file (text->string result) 
-			    (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
-	      result)]))]
+			   "let rec ignored = () \n" ;; Start off the let block.
+			   ;; These return incomplete bindings that are stitched with "and":
+			   (map (lambda (x) (list "\nand\n" x)) (append  src*  iter* union*))
+			   " and "(build-BASE basetype)
+			   ";; \n\n"
+			   init1* "\n"
+			   "try runScheduler()\n"
+			   "with End_of_file -> Printf.printf \"Reached end of file.\n\";;\n"
+			   "\nPrintf.printf \"Query completed.\\n\";;\n"
+			   )])
+	 (string->file (text->string result) 
+		       (++ (REGIMENTD) "/src/generic/passes/ocaml_bkend/foo.ml"))
+	 result)]
       [,other ;; Otherwise it's an invalid program.
        (error 'emit-caml-wsquery "ERROR: bad top-level WS program: ~s" other)])))
 
@@ -126,6 +120,7 @@
     [(,name ,ty (let ([,lhs* ,ty* ,rhs*] ...)
 	       (lambda (,x ,vq) (,ty1 ,ty2) ,bod))
 	 ,up (,down* ...))
+     ;(if (null? down*) (inspect (vector "huh? why null?" name up down* bod)))
      (let* ([emitter (Emit down*)])
        `(" (* WS type: input:",(format "~a" ty1)" vq:",(format "~a" ty2)" -> ",(format "~a" ty)" *)\n"
 	 " ",(Var name)" = \n"
@@ -138,53 +133,29 @@
 	 "\n")       
        )]))
 
-;; This creates a bunch of "edge bindings" which the Emit function
-;; uses to determine whether to tag an index on an emitted value.
-#;
-(define Union
-  (match-lambda ((,name ,ty (,up* ...) (,down* ...)))
-    (mapi (lambda (i up)
-	    (list up i )
-	    ))
-    ))
-
-#;
+;; The incoming values already have indices on them, this just needs
+;; to pass them through.
 (define (Union union)
-  (error 'emit-caml "union not implemented")
   (match union
-    [(,name ,ty (,up* ...) (,down* ...))
-
-     ;; ERK: no way to know the index for who we get it from at runtime.  
-     ;; Need to do this differently.
-     
+    [(,name ,ty (,up* ...) (,down* ...))       
      (let ([emitter (Emit down*)])
-       (list        
-	" ",(Var name)" = \n"
-	"  let ",(Var vq)" = () in\n"
-	(let loop ([ups up*] [ind 0])
-	 (if (null? ups) '()
-	     (list 
-	      
-	      (loop (cdr ups) (fx+ 1 ind)))
-	     ))              
-       ))]))
-
+       (list " "(Var name)" x = " ((Emit down*) "x") " \n"))]))
 
 ;; Generates code for an emit.  (curried)
 ;; .param down*   A list of sinks (names of functions) to emit to.
 (define (Emit down*)
+  ;(ASSERT (not (null? down*)))
   (lambda (expr)
     ;; Just call each of the sites with the argument.
     `("(let emitted = ",expr" in\n"
       ,@(map (lambda (down) 
 	       (cond 
 		[(eq? down 'BASE) `("baseSink emitted;\n")]
-		;; If we're emitting *to* a union, we just keep going through it.
-#;
-		[(assq down union-edges)
-		 => (match-lambda ((,name ,ty (,up* ...) (,down* ...)))
-		      (inspect name)
-		      ((Emit down*) `("( "")")))]
+		;; If we're emitting *to* a unionN, we include the index tag.
+		[(pair? down)
+		 (ASSERT (fixnum? (car down)))
+		 (list (Var (cadr down))
+		       "("(Const (car down))", emitted );\n")]
 		[else `(,(Var down)" emitted;\n")]))
 	  down*)
       "  ())")))
@@ -315,7 +286,7 @@
 		      [String "%s"]					  
 		      ))	       
 	       types))
-	    " \" \n"
+	    "\" \n"
 	    (let ([names (map (lambda (_) 
 				(symbol->string (unique-name "fld"))) 
 			   types)])
@@ -323,6 +294,8 @@
 	       "  (fun " (insert-between " " names) " -> \n   "
 	         ;; Form a tuple of the results and send it downstream.
 	         ((Emit downstrm) `("(",(insert-between ", " names)")"))"); \n"))
+	    ;; Now discard the rest of the line.
+	    "  let _ = input_line hndl in "
 	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
 	    "   SE (!timestamp, f) in \n"
 	    "  SE (0, f) \n" 
@@ -363,54 +336,6 @@
        
        ;[,other (values "UNKNOWNSRC\n" "UNKNOWNSRC\n")]
        
-
-;; UNFINISHED: THIS WOULD NECESSITATE CHANGING ARRAY:SET/REF
-#;
-       [(__dataFileWindowed ,[E -> file] ,[E -> mode] ',rate ,[E -> repeats] ,[E -> winsize] ',types)
-
-`("
-let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesize,winsize,types) outchan =
-
- ",v" = fun () -> 
-
-    READER1 = 
-    ...
-    READERN = 
-
-    match mode with 
-      | \"text\" -> wserror \"doesn't support text mode yet\";
-      | \"binary\" ->
-	  (* Produce a scheduler function *)
-	  let chunk = max 1024 bytesize in
-	  let buf = String.make chunk '_' 
-	  and hndl = open_in_bin file 
-	  and timestamp = ref 0
-	  and st = ref 0 
-	  and en = ref 0 in 
-
-	  let rec f() =
-	    (* Read by block, don't read more than we have space for *)
-	    let read = input hndl buf !en (chunk - !en) in
-	      (* TODO: Check for end of file!!! *)
-	      if read == 0 then (print_endline \"dataFile out of data\"; exit 0);
-	      en := !en + read;
-	      while !en - !st > bytesize do
-		outchan (binreader buf !st);
-		st := !st + bytesize;
-	      done;
-	      (* If we're too near the end of the buffer, bring us back to the start: *)
-	      if !en + bytesize >= chunk 
-	      then begin 
-		String.blit buf !st buf 0 (!en - !st);
-		en := !en - !st;
-		st := 0;
-	      end;
-	      timestamp := !timestamp + period;
-	      SE (!timestamp, f)
-	  in SE (0, f)
-      | _ -> wserror (\"unknown mode: \"^mode)
-")]
-
        )]))
 
 (define (build-BASE type)  
@@ -626,9 +551,10 @@ let dataFileWindowed (file, mode, period, repeats) (textreader,binreader,bytesiz
 ;      [Array:set  wsset]
 ;      [Array:ref  wsget]
 
-      [intToFloat   float_of_int]
-      [int16ToFloat float_of_int]
-
+      [intToFloat    float_of_int]
+      [int16ToFloat  float_of_int]
+      [floatToInt    int_of_float]
+      [floatToInt16  int_of_float]
       
       ))
   (match expr
