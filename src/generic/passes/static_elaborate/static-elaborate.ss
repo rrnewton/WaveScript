@@ -77,7 +77,7 @@
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
    (filter (lambda (prod)
-;	     (IFCHEZ (import rn-match) (void))
+	     (IFCHEZ (import rn-match) (void))
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
@@ -102,9 +102,9 @@
    (let ()
 
      (define (annotation? s) (memq s '(assert-type src-pos)))
-
      (define (outer-getval env)
        (lambda (x)
+	 (IFCHEZ (import rn-match) (void))
 	 (match x
 	   [(quote ,datum) datum]
 	   [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
@@ -119,6 +119,7 @@
 	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
      [define stream-val? 
       (lambda (exp)
+	;(IFCHEZ (import rn-match) (begin))
 	(match exp
 	  [(,prim ,args ...)
 	   (guard (regiment-primitive? prim))
@@ -194,7 +195,6 @@
 	      (inspect/continue 
 	       (vector-build n (lambda (i) (real-closure i)))))
 	    ))
-
 
 	;(length vector-length)
 	(Array:ref vector-ref)	
@@ -276,6 +276,7 @@
 	(if (null? binds) body
 	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
       (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
+;      (IFCHEZ (import rn-match) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
@@ -293,6 +294,7 @@
    ;; [2007.04.05] Seems like this should use generic-traverse...
     (define count-refs
       (lambda (v expr)
+;	(IFCHEZ (import rn-match) (begin))
         (match expr
           [(quote ,datum) 0]
           [,var (guard (symbol? var))

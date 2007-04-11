@@ -513,7 +513,8 @@
     (gnuplot_array_stream2d  ((Stream (Array #((NUM a) (NUM b))))) (Stream (Array #((NUM a) (NUM b)))))
     (gnuplot_sigseg_stream2d ((Stream (Sigseg #((NUM a) (NUM b))))) (Stream (Sigseg #((NUM a) (NUM b)))))
 
-    (string-append    (String String) String)
+    (string-append    (String String) String) ;; Rename String:append!!
+    ;(String:sub      (String Int Int) String) ;; TOIMPLEMENT
 
     (toArray         ((Sigseg 'a))  (Array 'a))
     ;; TODO: This needs to take Int64's....

@@ -264,6 +264,7 @@
 	      ;; we can use the namespace's bindings from *within* the namespace:
 	      (match def
 		[(define ,v ,e) `(define ,(mangle v) (using ,Space ,e))]
+		[(define-as ,v ,pat ,e) `(define-as ,(mangle v) ,pat (using ,Space ,e))]
 		[(:: ,v ,t)     `(:: ,(mangle v) ,t)]
 		[(<- ,sink ,e)  `(<- ,sink (using ,Space ,e))]
 		))
@@ -279,7 +280,7 @@
   (define  ws (apply append (map process origws)))
   (define (f1 x) (eq? (car x) '::))
   ;; We're lumping 'using' declarations with defines.  Order must be maintained.
-  (define (f2 x) (or (eq? (car x) 'define) (eq? (car x) 'using)))
+  (define (f2 x) (or (memq (car x) '(define using define-as)) ))
   (define (f3 x) (eq? (car x) '<-))
   (define (f4 x) (eq? (car x) 'typedef))
   (define (f5 x) (eq? (car x) 'uniondef))
@@ -325,7 +326,15 @@
 	   `(letrec (,(if (memq v typevs)
 			  `[,v ,(cadr (assq v types)) ,e]
 			  `[,v ,e]))
-	      ,rest)]))
+	      ,rest)]
+
+	  ;; A define-as statement:
+	  [((,v ,pat ,e) . ,[rest])
+	   ;; If there's a type decl for this binding, use it:
+	   `(let-as ,(if (memq v typevs)
+			  `[(assert-type ,(cadr (assq v types)) ,v) ,pat ,e]
+			  `[,v ,pat ,e])
+		    ,rest)]))
 ;      (inspect final-expression)
       
       `(ws-postprocess-language

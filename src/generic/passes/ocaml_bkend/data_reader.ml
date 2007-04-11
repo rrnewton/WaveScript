@@ -59,16 +59,16 @@ let dataFile (file, mode, repeats, period)
 
 let dataFileWindowed config (* (file, mode, repeats, period) *)
     (textreader,binreader, bytesize, skipbytes, offset)
-    outchan winsize bigarrformat =
+    outchan winsize (arrcreate, arrset, tosigseg)  =
   let sampnum = ref 0 in
   let wordsize = bytesize+skipbytes in
   let block_bread str baseind = 
     (* Array.init might not be the most efficient: *)
-    let arr = Array1.create bigarrformat c_layout winsize in
+    let arr = arrcreate winsize in
       for i = 0 to winsize - 1 do 
-	Array1.set arr i (binreader str (baseind + i*wordsize));
+        arrset arr i (binreader str (baseind + i*wordsize));
       done;
-      let result = toSigseg arr !sampnum 3339 in
+      let result = tosigseg arr !sampnum 3339 in
 	sampnum := !sampnum + winsize;
 	result
   in

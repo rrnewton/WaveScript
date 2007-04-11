@@ -195,14 +195,15 @@
 			       (cdr lines)))
 
 	     ;; Line cap: Arbitrary limit on length of expression to print:
-	     (if (> (length lines) 1)
-		 (begin 
-		   (set! lines (list-head lines 10))
-		   (set! lines (append lines '("\n...\n"))))
-		 ;; Prune the last line:
-		 (set! lines
-		       (append (rdc lines)
-			       (list (substring (rac lines) 0 col2)))))
+	     (let ([linecap 10])	       
+	       (if (> (length lines) linecap)
+		   (begin 
+		     (set! lines (list-head lines linecap))
+		     (set! lines (append lines '("... (expression to long to print)\n"))))
+		   ;; Prune the last line:
+		   (set! lines
+			 (append (rdc lines)
+				 (list (substring (rac lines) 0 col2))))))
 	     (close-input-port port)	     	     	    	  
 	     (apply string-append lines)))
 	 (get-snippet e))]
@@ -226,15 +227,16 @@
 ;; Raises an error indicating that we have a loop in our tvar pointers.
 (define (raise-occurrence-check tvnum t2 exp)
   (type-error 'type-checker
-	 "Can't unify: ~s occurs in type ~s in expression ~s~%" 
+	 "Can't unify: ~s occurs in type ~s\n\nSource Location:\n  ~a\n" 
 	 tvnum t2 ;(export-type t2) 
-	 exp))
+	 (get-location exp)))
 ;; Raises a wrong-number-of-arguments error.
 (define (raise-wrong-number-of-arguments t1 t2 exp)
   (type-error 'type-checker
-	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n in ~s\n"
+	 "Different numbers of arguments:\n      ~s: ~s\n  and ~s: ~s\n\nSource Location\n  ~a\n"
 	 (- (length t1) 2) (safe-export-type t1) 
-	 (- (length t2) 2) (safe-export-type t2) exp))
+	 (- (length t2) 2) (safe-export-type t2) 
+	 (get-location exp)))
 
 ; ----------------------------------------
 
@@ -1232,7 +1234,7 @@
 	     [inst2 (make-tcell (instantiate-type (export-type t2) '()))])
 ;	 (printf "Input types: ~s\n" (cons t1 t2) )
 ;	 (printf "Initial instantiations: ~s\n" (cons inst1 inst2) )
-	 (types-equal! inst1 inst2 (void))
+	 (types-equal! inst1 inst2 (void) "<void>")
 ;	 (printf "Final instantiations: ~s\n" (cons inst1 inst2) )
 	 ;;(k (export-type inst1))
 	 (k (export-type inst2))
@@ -1240,27 +1242,29 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
-(define (types-equal! t1 t2 exp . msg)
+(define (types-equal! t1 t2 exp . maybemsg)
+  (define msg (if (null? maybemsg) "" (car maybemsg)))
   (IFCHEZ (import rn-match) (void))
+  (ASSERT (not (null? msg)))
   (DEBUGASSERT type? t1) (DEBUGASSERT type? t2)
   (DEBUGASSERT (compose not procedure?) exp)
   (match (list t1 t2)
     [[,x ,y] (guard (eqv? t1 t2)) (void)]
 
-    [[(LATEUNIFY ,_ ,t1) ,t2]  (apply types-equal! t1 t2 exp msg)]
-    [[,t1 (LATEUNIFY ,_ ,t2)]  (apply types-equal! t1 t2 exp msg)]
+    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp msg)]
+    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp msg)]
 
     [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
-    [[',tv ,ty] (tvar-equal-type! t1 t2 exp)]
-    [[,ty ',tv] (tvar-equal-type! t2 t1 exp)]
+    [[',tv ,ty] (tvar-equal-type! t1 t2 exp msg)]
+    [[,ty ',tv] (tvar-equal-type! t2 t1 exp msg)]
     [[,x ,y] (guard (symbol? x) (symbol? y))
-     (raise-type-mismatch (if (null? msg) "" (car msg)) x y exp)]
+     (raise-type-mismatch msg x y exp)]
 
-    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp)]
+    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp msg)]
     [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
-     (tvar-equal-type! t1 numty exp)]
+     (tvar-equal-type! t1 numty exp msg)]
     [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
-     (tvar-equal-type! t2 numty exp)]
+     (tvar-equal-type! t2 numty exp msg)]
 
 ;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
 #;
@@ -1271,12 +1275,12 @@
        (let ([entry (assq sym regiment-type-aliases)])
 	 (if entry 
 	     ;; Instantiate the alias and unify.
-	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp)
-	     (raise-type-mismatch (if (null? msg) "" (car msg)) x y exp))))]
+	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp msg)
+	     (raise-type-mismatch msg x y exp))))]
 
     [[#(,x* ...) #(,y* ...)]
      (guard (= (length x*) (length y*)))
-     (for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg)) x* y*)]
+     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg)) x* y*)]
 
     ;; Ref will fall under this category:
     [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
@@ -1287,7 +1291,7 @@
      (if (not (eq? x1 y1))
 	 (type-error 'types-equal! "type constructors do not match: ~a and ~a in ~a" x1 y1 exp))
 ;     (types-equal! x1 y1 exp)
-     (for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg)) xargs yargs)]
+     (for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg)) xargs yargs)]
 
 ;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
 ;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
@@ -1297,19 +1301,19 @@
        [(,xargs ... -> ,x)
 	(if (not (= (length xargs) (length yargs)))
 	    (raise-wrong-number-of-arguments t1 t2 exp))
-	(for-each (lambda (t1 t2) (apply types-equal! t1 t2 exp msg))
+	(for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg))
 	  xargs yargs)
-	(apply types-equal! x y exp msg)]
+	(types-equal! x y exp msg)]
        [,other (type-error 'types-equal!
 		      "procedure type ~a\nDoes not match: ~a\n\nUnexported versions: ~a\n  ~a\n"
 		      (export-type `(,@yargs -> ,y))
 		      (export-type other)
 		      `(,@yargs -> ,y)
 		      other)])]
-    [,otherwise (raise-type-mismatch (if (null? msg) "" (car msg)) t1 t2 exp)]))
+    [,otherwise (raise-type-mismatch msg t1 t2 exp)]))
  
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
-(define (tvar-equal-type! tvar ty exp)
+(define (tvar-equal-type! tvar ty exp msg)
   (IFCHEZ (import rn-match) (void))
   (DEBUGASSERT (type? ty))
   (match tvar ;; Type variable should be a quoted pair.
@@ -1318,7 +1322,7 @@
 	 (error 'tvar-equal-type! "bad tvar here, no cell: ~a" tvar))
      (if (cdr pr)
 
-	 (types-equal! (cdr pr) ty exp)
+	 (types-equal! (cdr pr) ty exp msg)
 
 	 (begin (no-occurrence! (tcell->name tvar) ty exp)
 		(set-cdr! pr ty)))]))
@@ -1577,7 +1581,7 @@
 
    
     ;(inspect (get-var-types exp))
-    (let loop (
+    (let pvtloop (
 	       ;[x (begin (time (pretty-print (map cadr (get-var-types exp)))) (exit))] [depth 0] [indent " "]
 	       [x (get-var-types exp)] [depth 0] [indent " "]
 	       )
@@ -1589,9 +1593,9 @@
 	     (unless (eq? v '___VIRTQUEUE___) 	 ;; <-- HACK: 
 	       (fprintf port "~a~a :: " indent v)
 	       (print-type t port) (newline port))
-	     (loop subvars (fx+ 1 depth) (++ indent "  "))]
+	     (pvtloop subvars (fx+ 1 depth) (++ indent "  "))]
 	    [,ls (guard (list? ls))
-		 (for-each (lambda (x) (loop x depth indent))
+		 (for-each (lambda (x) (pvtloop x depth indent))
 		   ls)]
 	    [,other (error 'print-var-types "bad result from get-var-types: ~a" other)])))
       ))

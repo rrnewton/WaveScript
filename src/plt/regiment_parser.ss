@@ -336,7 +336,10 @@
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
-           [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) ,@$8)]
+           [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) . ,$8)]
+
+           [(let VAR AS pattern = exp optionalsemi maybedecls) `((define-as ,$2 ,(vector->list $4) ,$6) . ,$8)]
+           [(VAR AS pattern = exp optionalsemi maybedecls)     `((define-as ,$1 ,(vector->list $3) ,$5) . ,$7)]
 	   
 	   [(include exp SEMI maybedecls)  `((include ,(unwrap $2)) . ,$4)]
 	   ;; [2007.03.19] Now including this at the decl level also:

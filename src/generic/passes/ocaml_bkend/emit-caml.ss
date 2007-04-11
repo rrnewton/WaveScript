@@ -35,6 +35,11 @@
 ;;                    <WaveScript CAML generation>
 ;======================================================================
 
+;;; First some helpers to produce syntax for certain caml constructs:
+(define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
+(define (make-app rator rands) (list "(" rator " "(insert-between " " args) ")"))
+; make-conditional
+
 ;; If the type needs a specialized hashfun, returns its name,
 ;; otherwise returns #f.
 ;(define (HashType k v) )
@@ -56,7 +61,9 @@
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
 
     ;; Went back and forth on whether this should be a pointer:
-    [(Sigseg ,t) `("(",(Type t)", Bigarray.",(ArrType t)"_elt) sigseg")]
+    [(Sigseg ,t) `("(",(Type t)", Bigarray.",(ConvertArrType t)"_elt) sigseg_flat")]
+    [(Sigseg ,t) `(,(Type t) " sigseg")]    
+
     ;[(Stream ,[t]) `("WSBox*")]
     ;[(Array ,[t]) `(,t "[]")]
     [(Array ,[t])  `("(",t") array")]
@@ -213,7 +220,7 @@
        " Bigarray."
          (if (zero? (vector-length datum))
 	     "int"
-	     (ArrType (type-const (vector-ref datum 0)))) ;; Kind
+	     (ConvertArrType (type-const (vector-ref datum 0)))) ;; Kind
        " Bigarray.c_layout \n" 
        "[|" 
        (insert-between "; " (map Const (vector->list datum)))
@@ -264,7 +271,7 @@
 
 ;(__readFile file mode repeat rate skipbytes offset winsize types)
 
-       [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)       
+       [(__readFile ,[E -> file] ',mode ',repeats ',rate ',skipbytes ',offset ',winsize ',types)
 	(cond
 	 [(equal? mode "text") 
 	  (if (not (zero? repeats))
@@ -294,7 +301,7 @@
 	      (list 
 	       "  (fun " (insert-between " " names) " -> \n   "
 	         ;; Form a tuple of the results and send it downstream.
-	         ((Emit downstrm) `("(",(insert-between ", " names)")"))"); \n"))
+	         ((Emit downstrm) (apply make-tuple names))"); \n"))
 	    ;; Now discard the rest of the line.
 	    "  let _ = input_line hndl in "
 	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
@@ -313,22 +320,34 @@
 		   "  and textreader = 33333 in \n"
 		   "    "
 		   (if (> winsize 0) "dataFileWindowed" "dataFile")
-		   " ("file", "mode
-		   ", "(number->string repeats)
-		   ", "(number->string (rate->timestep rate))
-		   ") \n"
-		   "      (textreader, binreader"
-		   ", "(number->string (types->width types))
-		   ", "(number->string skipbytes)
-		   ", "(number->string offset)
-		   ") \n"
+		   (make-tuple file 
+			       (list "\"" mode "\"")
+			       (number->string repeats)
+			       (number->string (rate->timestep rate)))
+		   " \n"
+		   (make-tuple "textreader" "binreader"
+			       (number->string (types->width types))
+			       (number->string skipbytes)
+			       (number->string offset))
+		   " \n"
 		   (indent (list "(fun x -> "((Emit downstrm) "x")")") "      ")
+		   ;; Also an additional arguments for
+		   ;; dataFileWindowed.  One that has the window size.
+		   ;; And one that bundles up array create/set and
+		   ;; toSigseg.
 		   (if (> winsize 0)
 		       (begin 
 			 ;; This is necessary for now:
 			 (ASSERT (= (length types) 1))
-			 (list " "(number->string winsize)" "
-			       (ArrType (car types))))
+			 (list " "(number->string winsize)" "			       
+			       (let ([tuptyp (if (= 1 (length types))
+						 (car types)
+						 (list->vector types ))])
+				 (make-tuple 
+				  (DispatchOnArrayType 'Array:create tuptyp)
+				  (DispatchOnArrayType 'Array:set    tuptyp)
+				  (DispatchOnArrayType 'toSigseg     tuptyp)))
+			       ))
 		       "")
 		   "\n")
 		  `("schedule := ",v"() :: !schedule;;\n"))]
@@ -354,14 +373,13 @@
   (list 
    "fun str ind -> \n"
    ;"  let pos = ref ind in \n"
-   "("
-   (insert-between ", "
+   (apply make-tuple
      (mapi (lambda (i t)
 	     (list (type->reader t)" str (ind + "
 		   (number->string (apply + (list-head widths i)))")")
 	     )
 	   types))
-   ")\n"))
+   "\n"))
 
 (define (build-text-reader types)
   (match types
@@ -387,7 +405,7 @@
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
        (list 
-	"(fun ("(insert-between ", " flds)") ->\n"
+	"(fun "(apply make-tuple flds)" ->\n"
 	(indent 
 	 (list "\"(\" ^"
 	       (insert-between " \", \" ^"
@@ -400,14 +418,25 @@
     ))
 
 ;; These are the names of the Bigarray types.
-(define (ArrType t)
+(define (BigarrayType? t)
   (match t
     [Int     "int"]
     [Int16   "int16_signed"]
     [Float   "float64"]
     [Complex "complex64"]
-    [,oth (error 'emit-caml:ArrType "can't make a Bigarray of this type: ~s" t)]
+    [,oth #f]
     ))
+
+(define (ConvertArrType t) 
+  (or (BigarrayType? t)
+      (error 'emit-caml:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
+
+;; Converts an operator based on the array element type.
+(trace-define (DispatchOnArrayType op t)
+  (let ([flatty (BigarrayType? t)])
+    (if flatty
+	(format "~a_flat" op)
+	(symbol->string op))))
 
 (define make-caml-zero-for-type 
   (lambda (t)
@@ -431,14 +460,14 @@
       [,v (guard (symbol? v)) (Var v)]
       [',c (Const c)]
 
-      [(assert-type (Sigseg ,[ArrType -> t]) nullseg) `("(nullseg ",t")")]
+      [(assert-type (Sigseg ,[ConvertArrType -> t]) nullseg) `("(nullseg ",t")")]
 
       ;[(assert-type (Array ,t) Array:null) "[||]"]
-      [(assert-type (Array ,[ArrType -> t]) Array:null) 
+      [(assert-type (Array ,[ConvertArrType -> t]) Array:null) 
        `("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
        ;`("(wsnull Bigarray.",t" )")
        ]
-      [(assert-type (Array ,[ArrType -> t]) (Array:make ,[n] ,[init]))
+      [(assert-type (Array ,[ConvertArrType -> t]) (Array:make ,[n] ,[init]))
        ;`("(wsmakearr Bigarray.",t" ",n" ",init")")
        `("(let a = Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout ",n" \n"
 	 " and x = ",init" in\n"
@@ -447,14 +476,13 @@
       [(assert-type (Array ,t) (Array:makeUNSAFE ,n))
        (Expr `(assert-type (Array ,t) (Array:make ,n ,(make-caml-zero-for-type t))) emitter)]
 
-      [(tuple ,[rands] ...)
-       (list "(" (insert-between ", " rands) ")")]
+      [(tuple ,[rands] ...)   (apply make-tuple rands)]
       [(tupref ,i ,len ,[v])
        (let ([pat 
-	      (insert-between ", "
-		(append (make-list i "_") '("x")			
-			(make-list (- len i 1) "_")))])
-	 `("(let (",pat") = ",v" in x)\n"))]
+	      (apply make-tuple
+		     (append (make-list i "_") '("x")			
+			     (make-list (- len i 1) "_")))])
+	 `("(let ",pat" = ",v" in x)\n"))]
       
       [(let ([,[Var -> v] ,ty ,[rhs]]) ,[bod])
        `("(let ",v" = ",rhs" in\n ",bod")")]
@@ -488,7 +516,7 @@
 (define (Prim expr emitter)
   (define (myExpr x) (Expr x emitter))
   (define sametable 
-    '(joinsegs subseg width toSigseg toArray timebase
+    '(
       cos sin tan acos asin atan max min
       not 
       
@@ -570,6 +598,48 @@
     [(wserror ,[myExpr -> s])
      ;; Should declare a special WSException or something:
      `("(raise (Failure ",s"))")]
+
+    ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
+
+    [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
+     (guard (memq tc '(Array Sigseg))
+	    (memq prim '(joinsegs subseg width toSigseg toArray timebase)))
+     (make-app (DispatchOnArrayType prim elt)
+	       (map myExpr (cons first rest)))]
+
+#|
+    [(assert-type (Sigseg ,t) (joinsegs ,[myExpr -> a] ,[myExpr -> b]))
+     (if (BigarrayType? t)
+	 `("(joinsegs_flat ",a" ",b")")
+	 `("(joinsegs "     ,a" ",b")"))]
+    [(assert-type (Sigseg ,t) (subseg ,[myExpr -> ss] ,[myExpr -> x] ,[myExpr -> y]))
+     (if (BigarrayType? t)
+	 `("(subseg_flat ",ss" ",x" ",y")")
+	 `("(subseg "     ,ss" ",x" ",y")"))]
+    [(width (assert-type (Sigseg ,t) ,[myExpr -> ss]))
+     (if (BigarrayType? t)
+	 `("(width_flat ",ss" )")
+	 `("(width "     ,ss" )"))]
+    [(timebase (assert-type (Sigseg ,t) ,[myExpr -> ss]))
+     (if (BigarrayType? t)
+	 `("(timebase_flat ",ss" )")
+	 `("(timebase "     ,ss" )"))]
+    [(toSigseg (assert-type (Array ,t) ,[myExpr -> ss]) ,[myExpr -> x] ,[myExpr -> y])
+     (if (BigarrayType? t)
+	 `("(toSigseg_flat ",ss" ",x" ",y")")
+	 `("(toSigseg "     ,ss" ",x" ",y")"))]
+    [(toArray (assert-type (Sigseg ,t) ,[myExpr -> ss]))
+     (if (BigarrayType? t)
+	 `("(toArray_flat ",ss" )")
+	 `("(toArray "     ,ss" )"))]
+
+|#
+
+    ;; Safety net:
+    [(,prim ,_ ...) (guard (memq prim '(joinsegs subseg width toSigseg toArray timebase)))
+     (error 'emit-caml:Prim "missed this sigseg prim: ~s" prim)]
+
+
 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))

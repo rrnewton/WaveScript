@@ -44,7 +44,7 @@
 (defun load-regiment-all-source ()
   "Load all the source code for regiment."
   (interactive)
-  (let ((regd (concat (cap-dir (getenv "REGIMENTD")) "src/")))
+  (let ((regd (concat (cap-dir (getenv "REGIMENTD")) ""))) ;; "/src"
     ;; Sometimes it doesn't work if I don't do this first:
     (cd regd)
     (mapcar (lambda (f)

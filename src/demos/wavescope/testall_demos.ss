@@ -2,7 +2,7 @@
 #|
 export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
-export REGDEBUGMODE=ON
+export REGDEBUGMODE=OFF
 exec regiment i --script "$0" ${1+"$@"};
 |#
 
@@ -126,8 +126,8 @@ exec regiment i --script "$0" ${1+"$@"};
 
     ["demo8a_generic_arith.ws"    ,(lambda (a b) #t)]
     ["demo8b_sugars.ws"           ,(lambda (a b) 
-				     (equal? a #(1 1 2))
-				     (equal? b #(1 1 2)))]
+				     (equal? a #(1 1 2 1 1 2))
+				     (equal? b #(1 1 2 1 1 2)))]
 
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 

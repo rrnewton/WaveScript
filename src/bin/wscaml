@@ -55,9 +55,9 @@ INCLUDES="-I $REGIMENTD/src/generic/passes/ocaml_bkend/fftw2-0.2"
 LIBS="bigarray.cmxa fftw2.cmxa"
 #
 
-echo ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+echo ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 start=`date +%s`
-if ocamlopt.opt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
+if ocamlopt $INCLUDES $LIBS $FLAGS query.ml -o query.exe
 then end=`date +%s`;
      echo "  Time spent in ocaml compiler: "$[($end) - ($start)]" second(s)";
      echo "Executable output to 'query.exe'.";

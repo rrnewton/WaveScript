@@ -12,7 +12,6 @@ namespace Bar {
 
 s2 = Bar:Baz:s1;
 
-
 fun f(s) {
   s2 as (x,y) = s;
   //s2.<x>;
@@ -21,4 +20,8 @@ fun f(s) {
 
 fun id(x) x;
 
-BASE <- f(iterate(() in s2){ emit (1,2) });
+s4 = f(iterate(() in s2){ emit (1,2) });
+
+s5 as (a,b,c) = s4;
+
+BASE <- s5.(a,b,c, a,b,c)

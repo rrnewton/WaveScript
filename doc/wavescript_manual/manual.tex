@@ -113,12 +113,35 @@ important to occasionally compile your program with ws.debug.  Mainly
 this is important for building confidence that the compiler is
 behaving properly on your program.  If the
 compiler were a mature system not under active development, this would
-not be as important.  When you run {\bf ws.debug} the compiler runs
-extensive invariant checks on the data structures it uses, in
-particular it checks the intermediate forms between compiler passes
-for conformance to explicit grammars.  Further it inserts extra
-type-checks to make sure that the intermediate programs are
-well-formed.
+not be as important.  
+
+
+Spcefiically, when you run {\tt ws.debug}:
+
+\begin{enumerate}
+\item It turns on extra ASSERT statements in the code that check data
+structure invariants to help ensure proper operation.
+
+\item It dumps the whole program at several points in the
+  compilation to files such as ``.\_\_elaboratedprog.ss''.  It can be
+  helpful to look at these for debugging.
+
+\item It includes additional type checks of the entire program between
+  passes (regular {\tt ws} type checks several times, but {\tt
+  ws.debug} does more).  This helps expose compiler bugs.
+
+\item Finally, it does ``grammar checks'' on the output of each compiler
+  pass. Each pass includes a BNF grammar that describes its output.
+  {\tt ws.debug} mechanically checks to make sure every intermediate
+  expression conforms to the appropriate grammar.  Again, this helps
+  to expose compiler bugs.
+\end{enumerate}
+
+%When you run {\bf ws.debug} the compiler runs extensive
+%invariant checks on the data structures it uses, in particular it
+%checks the intermediate forms between compiler passes for
+%conformance to explicit grammars.  Further it inserts extra
+%type-checks to make sure that the intermediate programs are well-formed.
 
 \subsection{The WaveScript Compiler: {\tt \bf wsc}}
 
