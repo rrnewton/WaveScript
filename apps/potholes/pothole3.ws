@@ -98,7 +98,7 @@ fun detect(scorestrm) {
 	if DEBUG then
 	println("KEEP message: "++show((_start,st,en,peak_location,max_peak)));
 
-	emit (true, _start, en, peak_location, max_peak, integral); // end sample
+	emit (1, _start, en, peak_location, max_peak, integral); // end sample
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
@@ -122,13 +122,15 @@ fun detect(scorestrm) {
 	_start := st;
 	peak_location := (st+en)/2;
 	trigger_value := score;
-	max_peak = 0;
-	integral = 0;
+	max_peak := 0.0;
+	integral := 0.0;
       };
 
 	/* otherwise, update the smoothing filters */
 	smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
       if (score < smoothed_mean) then smoothed_mean := score;
+
+      emit (2, st, en, 0, smoothed_mean, score);
 
       /* count down the startup phase */
       if startup > 0 then startup := startup - 1;
@@ -137,7 +139,7 @@ fun detect(scorestrm) {
 	/* ok, we can free from sync */
 	/* rrn: here we lamely clear from the beginning of time. */
 	/* but this seems to assume that the sample numbers start at zero?? */
-	emit (false, 0, st - 1, 0, 0.0, 0.0);
+	emit (0, 0, st - 1, 0, 0.0, 0.0);
 	if DEBUG then 
 	  print("DISCARD message: "++show((false, 0, st-1))++
 		" just processed window "++show(st)++":"++show(en)++"\n");
@@ -263,11 +265,11 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
 dets = detect(totalscore);
 
 tosync = iterate (b,s,e,_,_,_) in dets { 
-  if b
+  if b == 1
   then
-    emit(b,max(0,s-100),e+100)
-  else
-    emit(b,0,max(0,e-100-1));
+    emit(true,max(0,s-100),e+100)
+  else if b == 0 then
+    emit(false,0,max(0,e-100-1));
 }
 
 
@@ -278,16 +280,18 @@ zipsync2 :: Stream My4Tup;
  
 //  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
 zipsync1 = iterate (b,_,_,l,p,i) in dets {
-  if b then emit([],l,p,i);
+  if b == 1 then emit([],l,p,i);
 }
 
 snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
+
+
 
 zipsync2 = iterate l in snips {
   emit(l,0,0.0,0.0);
 }
 
-final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
+final1 = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
 
   time = List:ref(segs,0);
   lat = List:ref(segs,1);
@@ -304,7 +308,38 @@ final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
     println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]++" "
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
   }
+  println("@$@");
 }
+
+
+tosync2 = iterate (b,s,e,_,_,_) in dets { 
+  if b == 2
+  then {
+    emit(true,(s+e)/2,(s+e)/2);
+    emit(false,0,(s+e)/2-1);
+  }
+}
+
+smoothedscores = syncN_no_delete(tosync2, [time, lat, long]);
+
+zipsync3 = iterate (b,s,e,_,mean,score) in dets { 
+  if b == 2 
+  then emit([],mean,score)
+}
+
+  smoothedzip = zip2_sametype(zipsync3, iterate l in smoothedscores {emit(l,0.0,0.0)} );
+final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
+  timeseg = List:ref(l,0);
+  latseg = List:ref(l,1);
+  longseg = List:ref(l,2);
+  time = timeseg[[0]];
+  lat = latseg[[0]];
+  long = longseg[[0]];
+  println("@#@ "++time++" "++lat++" "++long++" "++m++" "++s);
+}
+
+
+
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
@@ -320,7 +355,7 @@ BASE <-
 //zip3_sametype(xw,yw,zw)
 //totalscore
 //dets
-final
-
+//final
+unionList([final1,final2])
 
 // wsc: Worked with rev 1342 of the engine
