@@ -2,7 +2,7 @@
 #|
 export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
-export REGDEBUGMODE=OFF
+export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
 |#
 

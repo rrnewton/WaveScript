@@ -56,6 +56,7 @@
            num-types
 	   constant-typeable-as? 
 	   inferencer-let-bound-poly
+	   inferencer-enable-LUB
 
 	   make-tvar-generator
 	   make-tvar
@@ -128,7 +129,7 @@
 ;; lowered to the LUB of its call-site requirements, rather than the
 ;; most general type.
 ;;   This is only turned off for debugging purposes...
-(define ENABLELUB #t)
+(define inferencer-enable-LUB (make-parameter #t))
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
@@ -136,9 +137,6 @@
 		    ;; Eventually:
 		    ;; Int8 Int16 Int64 Double Complex64
 			))  
-;(define mutable-constructors '(Ref Array HashTable))
-;(define mutable-constructors '(Ref Array ))
-(define mutable-constructors '(Ref ))
 
 ; ======================================================================
 ;;; Helpers
@@ -382,26 +380,6 @@
 	     [#f #f]
 	     [,s (guard (symbol? s)) s]
 
-	     ;; A mutable cell, we can't reinstantiate this:
-	     [(,Ref ,t) (guard (memq Ref mutable-constructors))
-	      ;; But we have an issue, it *does* need to be instantiated the first time.
-	      (match (or (deep-assq 'quote t) (deep-assq 'NUM t))
-		[#f 
-		; (inspect (list "ref type with no mutable cell: " t))
-		 ;; It shouldn't matter whether we recur here:
-		 `(,Ref ,t)]
-		[(,qt (,v . ,_)) (guard (memq qt '(quote NUM)))
-		 ;(inspect (list "mutable cell within ref type" (cons v _) " in " t))
-		 `(,Ref ,t)]
-		[(,qt ,v)  (guard (memq qt '(quote NUM)))
-		 (DEBUGASSERT symbol? v)
-		 ;(inspect (list "non-cell within ref type, instantiating once!" v " in " t))
-		 `(,Ref ,(loop t))]
-		)]
-	     
-	     [(,Ref . ,t) (guard (memq Ref mutable-constructors))
-	      (error 'instantiate-type "haven't implemented multi-argument mutable-type constructors")]
-
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
 	      (guard (memq qt '(quote NUM)) (pair? cell) (memq (car cell) nongeneric))
@@ -483,7 +461,8 @@
 	(do-late-unify! b)]
        [(,v . (LATEUNIFY ,a ,b))
         ;(printf "LATEUNIFY ~s ~s\n" a b)
-	(if ENABLELUB
+	;; FIXME FIXME: If this is not enabled... lets never accumulate the LUB
+	(if (inferencer-enable-LUB)
 	    ;; Comupute the LUB and then unify that with the most general
 	    ;; type.  That's our answer.
 	    (let* ([lub (do-lub!!! a b)]
@@ -572,8 +551,6 @@
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
-    ;; This really should not be:
-    [(,Ref ,[t]) (guard (memq Ref mutable-constructors)) (ASSERT not t) #f]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
@@ -609,8 +586,6 @@
     [(NUM ,_) #f] ;; NUM types shouldnt be arrows!
     [(,t1 ... -> ,t2) #t]
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
-    ;; This should not be either!
-    [(,Ref ,[t]) (guard (memq Ref mutable-constructors)) (ASSERT not t) #f]
     [,else #f]))
 
   
@@ -978,24 +953,54 @@
     (match rhs*
       [(,[f -> newrhs* rhsty*] ...)
        ;(printf "ANNLET: ~s   ~s\n" rhsty* inittypes)
-       (let* ([newtypes (map (lambda (new old) 
+       (let* ([newtype* (map (lambda (new old) 
 			       (if old (types-equal! new (instantiate-type old '())
 						     `(let ,(map list id* inittypes rhs*) ,bod)
 						     "(Let's argument type must match the annotation.)\n"))
 			       (make-tcell new)
 			       )
 			  rhsty* inittypes)]
-	      [tenv 
-	       (tenv-extend tenv id* newtypes (inferencer-let-bound-poly))
-	       #;
-	       (if (not (inferencer-let-bound-poly))
-		   (tenv-extend tenv id* newtypes #f)
-		   (foldl (lambda (tenv)
-			    )))
-		
-	       ])
+	      [tenv (extend-with-maybe-poly id* rhs* newtype* tenv)])
 	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
-	   (values `(let ,(map list id* newtypes newrhs*) ,bod) bodty)))])))
+	   (values `(let ,(map list id* newtype* newrhs*) ,bod) bodty)))]
+      )))
+
+(define (extend-with-maybe-poly lhs* rhs* newtype* tenv)
+  ;; Let bound polymorphism.  We use the "value restriction" like ML:
+  ;; I must admit, I think this is quite lame.
+  (let loop ([lhs* lhs*] [rhs* rhs*] 
+	     [newtype* newtype*]
+	     [tenv tenv])
+#;
+    (if (and (not (null? lhs*)) (eq? (car lhs*) 'zip2_sametype))
+	(inspect (vector (value-expression? (car rhs*))			 
+			 (inferencer-let-bound-poly)			 
+			 (car newtype*)
+			 (car rhs*) 
+			 )))
+
+    (if (null? lhs*) tenv
+	(loop (cdr lhs*) (cdr rhs*) (cdr newtype*)
+	      (tenv-extend tenv (list-head lhs* 1) (list-head newtype* 1)
+			   (and (inferencer-let-bound-poly)
+				(value-expression? (car rhs*))))))))
+
+;; Is it an expression directly returning a value rather than
+;; performing arbitrary computation.
+(define (value-expression? x)
+  (IFCHEZ (import rn-match) (void))
+  (match x
+    [,v (guard (symbol? v)) #t]
+    [(quote ,c)      #t]
+    [(lambda . ,_)   #t]
+    ;; Special case:
+    [(gint ,[e])           e]
+    [(src-pos ,_ ,[e])     e]
+    [(assert-type ,_ ,[e]) e]
+    ;; Include other prims??  Arith?
+    
+    [,else #f]
+    ))
 
 ;; Assign a type to a Regiment letrec form.  
 ;; .returns 2 values: annoted expression and type
@@ -1024,7 +1029,7 @@
 					 `(letrec (,'... [,new ,old] ,'...) ,'...)
 					 "(Recursive Let's argument type must match the annotation.)\n")))
 		  rhs-types existing-types)]
-             [tenv (tenv-extend tenv id* rhs-types (inferencer-let-bound-poly))])
+             [tenv (extend-with-maybe-poly id* rhs* rhs-types tenv)])
         ;; Unify all these new type variables with the rhs expressions
         (let ([newrhs* 
                (map-ordered2 (lambda (type rhs)

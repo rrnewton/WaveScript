@@ -291,7 +291,11 @@ zipsync2 = iterate l in snips {
   emit(l,0,0.0,0.0);
 }
 
-final1 = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
+
+tmp = zip2_sametype(zipsync1,zipsync2);
+
+final1 :: Stream ();
+final1 = iterate ((_,l,p,i),(segs,_,_,_)) in tmp {
 
   time = List:ref(segs,0);
   lat = List:ref(segs,1);
@@ -311,7 +315,6 @@ final1 = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
   println("@$@");
 }
 
-
 tosync2 = iterate (b,s,e,_,_,_) in dets { 
   if b == 2
   then {
@@ -327,7 +330,9 @@ zipsync3 = iterate (b,s,e,_,mean,score) in dets {
   then emit([],mean,score)
 }
 
-  smoothedzip = zip2_sametype(zipsync3, iterate l in smoothedscores {emit(l,0.0,0.0)} );
+smoothedzip = zip2_sametype(zipsync3, iterate l in smoothedscores {emit(l,0.0,0.0)} );
+
+final2 :: Stream ();
 final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   timeseg = List:ref(l,0);
   latseg = List:ref(l,1);
@@ -337,9 +342,6 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   long = longseg[[0]];
   println("@#@ "++time++" "++lat++" "++long++" "++m++" "++s);
 }
-
-
-
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
@@ -355,7 +357,8 @@ BASE <-
 //zip3_sametype(xw,yw,zw)
 //totalscore
 //dets
-//final
+//final1
+//final2
 unionList([final1,final2])
 
 // wsc: Worked with rev 1342 of the engine

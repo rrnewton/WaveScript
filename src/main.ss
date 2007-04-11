@@ -338,7 +338,9 @@
     ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
     (ws-run-pass p resolve-type-aliases)
     (ws-run-pass p ws-label-mutable)
-    (ws-run-pass p retypecheck) ;; This is the initial typecheck.
+    (parameterize ([inferencer-enable-LUB #t]
+		   [inferencer-let-bound-poly #t])
+      (ws-run-pass p retypecheck)) ;; This is the initial typecheck. 
     )
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
@@ -520,7 +522,9 @@
       (ws-run-pass p resolve-varrefs)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p ws-label-mutable)
-      (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
+      (parameterize ([inferencer-enable-LUB #t]
+		     [inferencer-let-bound-poly #t])
+	(ws-run-pass p retypecheck)) ;; This is the initial typecheck.
       p))
 
   (define __ 
@@ -606,7 +610,9 @@
       (ws-run-pass p resolve-varrefs)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p ws-label-mutable)
-      (ws-run-pass p retypecheck)  ;; This is the initial typecheck.
+      (parameterize ([inferencer-enable-LUB #t]
+		     [inferencer-let-bound-poly #t])
+	(ws-run-pass p retypecheck)) ;; This is the initial typecheck.
       p))
 
    (ASSERT (andmap symbol? flags))
