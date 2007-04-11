@@ -26,16 +26,13 @@
     (define annotate-outside-prims 
       '(hashtable prim_window List:append List:reverse cons
 		  Array:make Array:makeUNSAFE
-
-		  joinsegs subseg 
-
 		  ))
 
     (define annotate-first-arg 
       '(List:append List:length List:ref print show equal? seg-get toArray
-		    ;Array:get Array:set
+		    Array:ref Array:set Array:length
 
-		    width toSigseg toArray timebase
+		    joinsegs subseg width toSigseg toArray timebase start end seg-get
 		    ))
 
     (define (process-expr x tenv fallthru)

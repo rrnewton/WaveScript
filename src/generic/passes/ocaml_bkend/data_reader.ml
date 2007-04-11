@@ -59,12 +59,12 @@ let dataFile (file, mode, repeats, period)
 
 let dataFileWindowed config (* (file, mode, repeats, period) *)
     (textreader,binreader, bytesize, skipbytes, offset)
-    outchan winsize (arrcreate, arrset, tosigseg)  =
+    outchan winsize (arrcreate_unsafe, arrset, tosigseg)  =
   let sampnum = ref 0 in
   let wordsize = bytesize+skipbytes in
   let block_bread str baseind = 
     (* Array.init might not be the most efficient: *)
-    let arr = arrcreate winsize in
+    let arr = arrcreate_unsafe winsize in
       for i = 0 to winsize - 1 do 
         arrset arr i (binreader str (baseind + i*wordsize));
       done;

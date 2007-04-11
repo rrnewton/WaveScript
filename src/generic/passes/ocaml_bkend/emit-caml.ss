@@ -37,8 +37,24 @@
 
 ;;; First some helpers to produce syntax for certain caml constructs:
 (define (make-tuple . args)  (list "(" (insert-between ", " args) ")"))
-(define (make-app rator rands) (list "(" rator " "(insert-between " " args) ")"))
+(define (make-app rator rands) (list "(" rator " "(insert-between " " rands) ")"))
+(define (make-fun formals body) 
+  (list "(fun " (insert-between " " (map symbol->string formals))
+	" -> " body ")"))
+(trace-define (make-let binds body)
+  (list "(let "
+	(insert-between "\n and "
+	   (map (match-lambda ([,lhs ,rhs])
+		  (list (symbol->string lhs) " = " rhs))
+	     binds))
+	" in \n"
+	(indent body "  ")
+	")"))
+
 ; make-conditional
+(define (ln . args) (list args "\n"))
+(define (lnfst . args) (list "\n" args))
+(define (lnboth . args) (list "\n" args "\n"))
 
 ;; If the type needs a specialized hashfun, returns its name,
 ;; otherwise returns #f.
@@ -344,9 +360,9 @@
 						 (car types)
 						 (list->vector types ))])
 				 (make-tuple 
-				  (DispatchOnArrayType 'Array:create tuptyp)
-				  (DispatchOnArrayType 'Array:set    tuptyp)
-				  (DispatchOnArrayType 'toSigseg     tuptyp)))
+				  (DispatchOnArrayType 'Array:makeUNSAFE tuptyp)
+				  (DispatchOnArrayType 'Array:set        tuptyp)
+				  (DispatchOnArrayType 'toSigseg         tuptyp)))
 			       ))
 		       "")
 		   "\n")
@@ -400,7 +416,7 @@
     [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
 
     ;; Just print range:
-    [(Sigseg ,t) "(fun ss -> \"[\"^ string_of_int (ss_start ss) ^\", \"^ string_of_int (ss_end ss + 1) ^ \")\")"]
+    [(Sigseg ,t) "(fun ss -> \"[\"^ string_of_int (ss_start_flat ss) ^\", \"^ string_of_int (ss_end_flat ss + 1) ^ \")\")"]
 
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
@@ -431,12 +447,50 @@
   (or (BigarrayType? t)
       (error 'emit-caml:ConvertArrType "can't make a Bigarray of this type: ~s" t)))
 
+;; It is error prone to keep writing this:
+(define (sigseg-prim? p)
+  (memq p '(joinsegs subseg width toSigseg toArray timebase start end seg-get)))
+
 ;; Converts an operator based on the array element type.
-(trace-define (DispatchOnArrayType op t)
-  (let ([flatty (BigarrayType? t)])
+(trace-define (DispatchOnArrayType op elt)
+  (let ([flatty (BigarrayType? elt)])
     (if flatty
-	(format "~a_flat" op)
-	(symbol->string op))))
+	(case op
+	  ;[(Array:make) ]
+	  [(Array:set)     "Bigarray.Array1.set"]
+	  [(Array:ref)     "Bigarray.Array1.get"]
+	  [(Array:length)  "Bigarray.Array1.dim"]
+	  ;; Depend on that inliner!
+	  [(Array:make)  
+	   (lnboth (make-fun '(n x) 
+	     (lnfst (make-let `([ar ("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout n)")])
+			   "begin Bigarray.Array1.fill ar x; ar end"))))]
+	  ;(make-begin (make-app 'Bigarray.Array1.fill '(ar x)) 'ar)
+
+	  ;; TODO: This could actually be unsafe in the bigarray
+	  ;; case... but we don't exploit that yet, we just use the safe version
+	  [(Array:makeUNSAFE)
+	   (lnboth (make-fun '(n) 
+	     (make-app (DispatchOnArrayType 'Array:make elt)
+		(list "n" 
+		  (match (make-caml-zero-for-type elt)
+		    [(quote ,c) (Const c)])))))]
+	  
+	  ;; For the sigseg prims we just append "_flat" to the name:
+	  [else 
+	   (if (sigseg-prim? op)
+	       (format "~a_flat" (ASSERT (PrimName op)))
+	       (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))])
+	;; This is the native Caml array case:
+	(case op
+	  [(Array:make) "Array.make"]
+	  [(Array:set)  "Array.set"]
+	  [(Array:ref)  "Array.get"]
+	  ;; We just use the normal name conversion:
+	  [else (if (sigseg-prim? op)
+		    (ASSERT (PrimName op))		    
+		    (error 'DispatchOnArrayType ""))]
+	  ))))
 
 (define make-caml-zero-for-type 
   (lambda (t)
@@ -460,19 +514,25 @@
       [,v (guard (symbol? v)) (Var v)]
       [',c (Const c)]
 
-      [(assert-type (Sigseg ,[ConvertArrType -> t]) nullseg) `("(nullseg ",t")")]
+      [(assert-type (Sigseg ,[ConvertArrType -> t]) nullseg) `("(nullseg_flat ",t")")]
 
       ;[(assert-type (Array ,t) Array:null) "[||]"]
       [(assert-type (Array ,[ConvertArrType -> t]) Array:null) 
        `("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
        ;`("(wsnull Bigarray.",t" )")
        ]
+
+#;
       [(assert-type (Array ,[ConvertArrType -> t]) (Array:make ,[n] ,[init]))
        ;`("(wsmakearr Bigarray.",t" ",n" ",init")")
        `("(let a = Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout ",n" \n"
 	 " and x = ",init" in\n"
 	 "   Bigarray.Array1.fill a x;\n"
 	 "   a)\n")]
+
+#;      
+      ;; TODO: This could actually be unsafe in the bigarray
+      ;; case... but we don't exploit that yet.
       [(assert-type (Array ,t) (Array:makeUNSAFE ,n))
        (Expr `(assert-type (Array ,t) (Array:make ,n ,(make-caml-zero-for-type t))) emitter)]
 
@@ -513,10 +573,12 @@
 
 ;;================================================================================
 
-(define (Prim expr emitter)
-  (define (myExpr x) (Expr x emitter))
-  (define sametable 
+;; This just converts the name of the primitive, for those primitives
+;; that map directly onto OCaml functions:
+(define (PrimName sym)
+  (define sametable ;; Prims with the same name:
     '(
+      joinsegs subseg width toSigseg toArray timebase
       cos sin tan acos asin atan max min
       not 
       
@@ -565,27 +627,22 @@
       [List:ref List.nth]
       [List:append List.append]
 
-      [start ss_start]
-      [end ss_end]
-      [seg-get ss_get]
-
-;      [Array:make Array.make]
-;      [Array:set  Array.set]
-;      [Array:ref  Array.get]
-
-      [Array:set  Bigarray.Array1.set]
-      [Array:ref  Bigarray.Array1.get]
-      [Array:length  Bigarray.Array1.dim]
-
-;      [Array:set  wsset]
-;      [Array:ref  wsget]
-
       [intToFloat    float_of_int]
       [int16ToFloat  float_of_int]
       [floatToInt    int_of_float]
       [floatToInt16  int_of_float]
       
+      [start   ss_start]
+      [end     ss_end]
+      [seg-get ss_get]
       ))
+  (cond 
+   [(memq sym sametable) (Var sym)]
+   [(assq sym aliastable) => (lambda (x) (format "~a" (cadr x)))]
+   [else #f]))
+
+(define (Prim expr emitter)
+  (define (myExpr x) (Expr x emitter))
   (match expr
 
     ;; Print is required to be pre-annotated with a type.
@@ -602,8 +659,7 @@
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
 
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
-     (guard (memq tc '(Array Sigseg))
-	    (memq prim '(joinsegs subseg width toSigseg toArray timebase)))
+     (guard (memq tc '(Array Sigseg)) (sigseg-prim? prim))
      (make-app (DispatchOnArrayType prim elt)
 	       (map myExpr (cons first rest)))]
 
@@ -636,16 +692,28 @@
 |#
 
     ;; Safety net:
-    [(,prim ,_ ...) (guard (memq prim '(joinsegs subseg width toSigseg toArray timebase)))
+    [(,prim ,_ ...) (guard (sigseg-prim? prim))
      (error 'emit-caml:Prim "missed this sigseg prim: ~s" prim)]
 
+    [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
+     (guard (memq prim '(Array:make Array:makeUNSAFE)))
+     (make-app (DispatchOnArrayType prim elt) arg*)]
+
+    [(,prim (assert-type (Array ,elt) ,[myExpr -> first]) ,[myExpr -> rest] ...)
+     (guard (memq prim '(Array:ref Array:set Array:length)))
+     (make-app (DispatchOnArrayType prim elt)
+	       (cons first rest))]
+        
+    ;; Safety net:
+    [(,prim ,_ ...)     
+     (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
+     (error 'emit-caml:Prim "missed this array prim: ~s" prim)]
 
 
     [(assert-type ,t ,[primapp]) primapp]
     [(,prim ,[myExpr -> rands] ...) (guard (regiment-primitive? prim))
      (list "("(cond
-	       [(memq prim sametable) (Var prim)]
-	       [(assq prim aliastable) => (lambda (x) (format "~a" (cadr x)))]
+	       [(PrimName prim) => (lambda (x) x)]
 	       [else (error 'emit-caml:Prim "currently unhandled: ~s" prim)])
 	   " "
 	   (insert-between " " rands) ")\n")]
