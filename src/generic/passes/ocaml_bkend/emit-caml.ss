@@ -217,8 +217,6 @@
 			       (cfl-imag-part datum))]
      [(integer? datum)  (format "(~s)" datum)]
 
-     ;[(eq? datum 'Array:null) "[||]"]
-;     [(eq? datum 'nullseg) "nullseg"]
      [(eq? datum 'nulltimebase) "99999999"]
 
      ;[(eq? datum 'nulltimebase)  (wrap "WSNULLTIMEBASE")]     
@@ -230,18 +228,25 @@
       (Expr 
        `(let ([,v 'notyp (Array:make )]))
        (lambda _ (error 'dummyemitter "should not be called")))
-      
-      (list
-       "  (Bigarray.Array1.of_array "
-       " Bigarray."
-         (if (zero? (vector-length datum))
-	     "int"
-	     (ConvertArrType (type-const (vector-ref datum 0)))) ;; Kind
-       " Bigarray.c_layout \n" 
-       "[|" 
-       (insert-between "; " (map Const (vector->list datum)))
-       "|] \n"
-       ")")]
+
+      ;; Array:null should have been handled elsewhere:
+      (ASSERT (not (zero? (vector-length datum))))
+      (let ([ty (type-const (vector-ref datum 0))]
+	    [constArr 
+	     (list "[|" 
+		   (insert-between "; " (map Const (vector->list datum)))
+		   "|] \n")])
+	(if (BigarrayType? (cadr ty))
+	    (list
+	     "  (Bigarray.Array1.of_array "
+	     " Bigarray."
+	     (if (zero? (vector-length datum))
+		 "int"
+		 (ConvertArrType (type-const (vector-ref datum 0)))) ;; Kind
+	     " Bigarray.c_layout \n" 
+	     CONST ")")
+	    ;; Otherwise this is all we need:
+	    CONST))]
 
      [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
 
@@ -456,7 +461,7 @@
   (let ([flatty (BigarrayType? elt)])
     (if flatty
 	(case op
-	  ;[(Array:make) ]
+	  [(Array:null) `("(Bigarray.Array1.create Bigarray.",flatty" Bigarray.c_layout 0)")]
 	  [(Array:set)     "Bigarray.Array1.set"]
 	  [(Array:ref)     "Bigarray.Array1.get"]
 	  [(Array:length)  "Bigarray.Array1.dim"]
@@ -476,6 +481,8 @@
 		  (match (make-caml-zero-for-type elt)
 		    [(quote ,c) (Const c)])))))]
 	  
+	  ;; This takes an extra arg for bigarrays:
+	  [(nullseg) `("(nullseg_flat ",flatty")")]	  
 	  ;; For the sigseg prims we just append "_flat" to the name:
 	  [else 
 	   (if (sigseg-prim? op)
@@ -483,9 +490,12 @@
 	       (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))])
 	;; This is the native Caml array case:
 	(case op
+	  [(Array:null) "[||]"]
 	  [(Array:make) "Array.make"]
 	  [(Array:set)  "Array.set"]
 	  [(Array:ref)  "Array.get"]
+
+	  [(nullseg) "nullseg_flat"]
 	  ;; We just use the normal name conversion:
 	  [else (if (sigseg-prim? op)
 		    (ASSERT (PrimName op))		    
@@ -514,27 +524,8 @@
       [,v (guard (symbol? v)) (Var v)]
       [',c (Const c)]
 
-      [(assert-type (Sigseg ,[ConvertArrType -> t]) nullseg) `("(nullseg_flat ",t")")]
-
-      ;[(assert-type (Array ,t) Array:null) "[||]"]
-      [(assert-type (Array ,[ConvertArrType -> t]) Array:null) 
-       `("(Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout 0)")
-       ;`("(wsnull Bigarray.",t" )")
-       ]
-
-#;
-      [(assert-type (Array ,[ConvertArrType -> t]) (Array:make ,[n] ,[init]))
-       ;`("(wsmakearr Bigarray.",t" ",n" ",init")")
-       `("(let a = Bigarray.Array1.create Bigarray.",t" Bigarray.c_layout ",n" \n"
-	 " and x = ",init" in\n"
-	 "   Bigarray.Array1.fill a x;\n"
-	 "   a)\n")]
-
-#;      
-      ;; TODO: This could actually be unsafe in the bigarray
-      ;; case... but we don't exploit that yet.
-      [(assert-type (Array ,t) (Array:makeUNSAFE ,n))
-       (Expr `(assert-type (Array ,t) (Array:make ,n ,(make-caml-zero-for-type t))) emitter)]
+      [(assert-type (Sigseg ,elt) nullseg)    (DispatchOnArrayType 'nullseg elt)]
+      [(assert-type (Array ,elt) Array:null)  (DispatchOnArrayType 'Array:null elt)]
 
       [(tuple ,[rands] ...)   (apply make-tuple rands)]
       [(tupref ,i ,len ,[v])
@@ -657,53 +648,22 @@
      `("(raise (Failure ",s"))")]
 
     ;; This is annoying, but we use different sigseg prims based on the type of Array that they use.
-
     [(,prim (assert-type (,tc ,elt) ,first) ,rest ...)
      (guard (memq tc '(Array Sigseg)) (sigseg-prim? prim))
      (make-app (DispatchOnArrayType prim elt)
 	       (map myExpr (cons first rest)))]
-
-#|
-    [(assert-type (Sigseg ,t) (joinsegs ,[myExpr -> a] ,[myExpr -> b]))
-     (if (BigarrayType? t)
-	 `("(joinsegs_flat ",a" ",b")")
-	 `("(joinsegs "     ,a" ",b")"))]
-    [(assert-type (Sigseg ,t) (subseg ,[myExpr -> ss] ,[myExpr -> x] ,[myExpr -> y]))
-     (if (BigarrayType? t)
-	 `("(subseg_flat ",ss" ",x" ",y")")
-	 `("(subseg "     ,ss" ",x" ",y")"))]
-    [(width (assert-type (Sigseg ,t) ,[myExpr -> ss]))
-     (if (BigarrayType? t)
-	 `("(width_flat ",ss" )")
-	 `("(width "     ,ss" )"))]
-    [(timebase (assert-type (Sigseg ,t) ,[myExpr -> ss]))
-     (if (BigarrayType? t)
-	 `("(timebase_flat ",ss" )")
-	 `("(timebase "     ,ss" )"))]
-    [(toSigseg (assert-type (Array ,t) ,[myExpr -> ss]) ,[myExpr -> x] ,[myExpr -> y])
-     (if (BigarrayType? t)
-	 `("(toSigseg_flat ",ss" ",x" ",y")")
-	 `("(toSigseg "     ,ss" ",x" ",y")"))]
-    [(toArray (assert-type (Sigseg ,t) ,[myExpr -> ss]))
-     (if (BigarrayType? t)
-	 `("(toArray_flat ",ss" )")
-	 `("(toArray "     ,ss" )"))]
-
-|#
-
     ;; Safety net:
     [(,prim ,_ ...) (guard (sigseg-prim? prim))
      (error 'emit-caml:Prim "missed this sigseg prim: ~s" prim)]
 
+    ;; Now do array prims in much the same way:
     [(assert-type (Array ,elt) (,prim ,[myExpr -> arg*] ...))
      (guard (memq prim '(Array:make Array:makeUNSAFE)))
      (make-app (DispatchOnArrayType prim elt) arg*)]
-
     [(,prim (assert-type (Array ,elt) ,[myExpr -> first]) ,[myExpr -> rest] ...)
      (guard (memq prim '(Array:ref Array:set Array:length)))
      (make-app (DispatchOnArrayType prim elt)
 	       (cons first rest))]
-        
     ;; Safety net:
     [(,prim ,_ ...)     
      (guard (memq prim '(Array:make Array:makeUNSAFE Array:ref Array:set Array:length)))     
