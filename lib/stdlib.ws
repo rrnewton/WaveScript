@@ -126,7 +126,7 @@ zip3_sametype = fun (s1,s2,s3) {
 syncN_aux = 
  //if IS_SIM then __syncN else
 fun (ctrl, strms, del) {
-   DEBUGSYNC = false; // Activate to debug the below code:
+   DEBUGSYNC = true; // Activate to debug the below code:
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
@@ -175,15 +175,18 @@ fun (ctrl, strms, del) {
       allready =
 	Array:andmap(
 	 fun (seg)
-	   if (seg == nullseg ||
+	 if (seg == nullseg ||
 	       (fl && seg`start > st) || // This only matters if we're retaining it.
 	       seg`end < en)
 	   then { 		       
-	     if DEBUGSYNC 
-	     then print("  Not all ready: "
-			  ++ show(seg == nullseg) ++ " "
+	     if DEBUGSYNC then {
+	       if (seg == nullseg) then
+		 println("  Not all ready: NULL")
+	       else
+		 println("  Not all ready: "
 			  ++ show(fl && seg`start > st) ++ " "
 			  ++ show(seg`end < en) ++ "\n");
+	     };
 	     false }
   	   else true,
 	 accs);
