@@ -32,7 +32,8 @@ include "filter.ws";
 
 
 DEBUG=true;
-
+     
+detect :: Stream (Float * Int * Int) -> Stream (Bool * Int * Int * Int * Float * Float);
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.90;
@@ -199,6 +200,7 @@ fun specgram_seglist(ext) {
 };
 
 
+//sm = fun(f) fun(s) stream_map(f,s);
 sm = stream_map;
 
 // ============================================================
@@ -208,36 +210,34 @@ sm = stream_map;
 //   (Timestamp, Lat, Long, X,Y,Z)
 // Where X/Y/Z is accelerometer data.
 //
-chans = (readFile("/tmp/clip", "")
-//chans = (readFile("/dev/stdin", "")
-//chans = (readFile("./PIPE", "")
-          :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
+chans as (time,lat,long,x,y,z) = 
+ (readFile("/tmp/clip", "")
+ //(readFile("./PIPE", "")
+  :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
 
-time = window(sm(fun((t,_,_,_,_,_)) t, chans), 512);
-lat = window(sm(fun((_,lat,_,_,_,_)) lat, chans), 512);
-long = window(sm(fun((_,_,long,_,_,_)) long, chans), 512);
-x = window(sm(fun((_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-y = window(sm(fun((_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
-z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
-
+time = chans.(time) `window(512);
+lat  = chans.(lat)  `window(512);
+long = chans.(long) `window(512);
+x    = sm(int16ToFloat, chans.(x)) `window(512);
+y    = sm(int16ToFloat, chans.(y)) `window(512);
+z    = sm(int16ToFloat, chans.(z)) `window(512);
 
 // assuming sample rate is 380 hz
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
-fun profile(s,profile,skip) {
-  len = 2*(Array:length(profile)-1);
-  window = gaussian(intToFloat(skip),len);
-  rw = rewindow(s, len, skip - len);
+fun profile(S, profile, skip) {
+  len    = 2*(Array:length(profile)-1);
+  window = gaussian(skip`i2f, len);
+  rw     = rewindow(S, len, skip-len);
   iterate win in rw {
 
     arr = toArray(win);
     arr2 = apairmult(profile,fftR2C(apairmult(arr,window)));
 
-    let (_,sum) = Array:fold(fun ((i,acc), x) 
-			     (i+1, acc + absC(x)),
-			     (0,gint(0)), arr2);
+    let sum = Array:fold(fun (acc, x) acc + absC(x),
+    			 gint(0), arr2);
     emit(sum, win);
   }
 }
@@ -246,9 +246,9 @@ fun profile(s,profile,skip) {
 notch1 = notch_filter(129,58,128);
 notch2 = notch_filter(129,37,65);
 
-xw = profile(x,notch1,64);
-yw = profile(y,notch1,64);
-zw = profile(z,notch2,64);
+xw = profile(x, notch1,64);
+yw = profile(y, notch1,64);
+zw = profile(z, notch2,64);
 
 
 totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
@@ -256,7 +256,13 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   emit(x+y+z,wz.start,wz.end);
 };
 
+
+dets :: Stream (Bool * Int * Int * Int * Float * Float);
 dets = detect(totalscore);
+//dets as (b,st,en, l,p,i) = detect(totalscore);
+
+//========================================
+// Synchronization:
 
 tosync = iterate (b,s,e,_,_,_) in dets { 
   if b
@@ -271,25 +277,26 @@ type My4Tup = ((List (Sigseg Float)) * Int * Float * Float);
 
 zipsync1 :: Stream My4Tup;
 zipsync2 :: Stream My4Tup;
- 
-//  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
+
+//zipsync1 = dets.([], l,p,i);
+
 zipsync1 = iterate (_,_,_,l,p,i) in dets {
   emit([],l,p,i);
 }
 
 snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
-
 zipsync2 = iterate l in snips {
   emit(l,0,0.0,0.0);
 }
 
 final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
-  time = List:ref(segs,0);
-  lat = List:ref(segs,1);
-  long = List:ref(segs,2);
-  x = List:ref(segs,3);
-  y = List:ref(segs,4);
-  z = List:ref(segs,5);
+  using List;
+  time = ref(segs,0);
+  lat  = ref(segs,1);
+  long = ref(segs,2);
+  x    = ref(segs,3);
+  y    = ref(segs,4);
+  z    = ref(segs,5);
   index = l - time.start;
   println("@@@ "++time[[index]]++" "++lat[[index]]++" "++long[[index]]
 	  ++" "++p++" "++i);
