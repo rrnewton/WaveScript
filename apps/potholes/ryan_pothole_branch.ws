@@ -33,7 +33,7 @@ include "filter.ws";
 
 DEBUG=true;
      
-detect :: Stream (Float * Int * Int) -> Stream (Bool * Int * Int * Int * Float * Float);
+detect :: Stream (Float * Sigseg t) -> Stream (Bool * Int * Int * Int * Float * Float * Sigseg t);
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.90;
@@ -42,7 +42,7 @@ fun detect(scorestrm) {
   refract_interval = 0;             // set higher to merge.. e.g. 2 
   samples_padding = 100;
 
-  iterate((score,st,en) in scorestrm) {
+  iterate((score,win) in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
@@ -59,6 +59,9 @@ fun detect(scorestrm) {
       peak_location = 0;
       integral = 0.0;
     }
+
+    st = win`start;
+    en = win`end;   
 
     fun reset() {
       thresh_value := 0.0;
@@ -96,7 +99,7 @@ fun detect(scorestrm) {
 	/* untriggering! */
 	trigger := false;
 
-	emit (true, _start, en, peak_location, max_peak, integral); // end sample
+	emit (true, _start, en, peak_location, max_peak, integral, win); // end sample
 	if DEBUG then
 	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
 	      " just processed window "++show(st)++":"++show(en)++"\n");
@@ -136,7 +139,7 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, st - 1, 0, 0.0, 0.0);
+      emit (false, 0, st - 1, 0, 0.0, 0.0, win);
       if DEBUG then 
       print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
 	    " just processed window "++show(st)++":"++show(en)++"\n");
@@ -215,26 +218,30 @@ chans as (time,lat,long,x,y,z) =
  //(readFile("./PIPE", "")
   :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
 
+  /*
 time = chans.(time) `window(512);
 lat  = chans.(lat)  `window(512);
 long = chans.(long) `window(512);
 x    = sm(int16ToFloat, chans.(x)) `window(512);
 y    = sm(int16ToFloat, chans.(y)) `window(512);
 z    = sm(int16ToFloat, chans.(z)) `window(512);
-
+  */
 // assuming sample rate is 380 hz
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
 
-profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
+//profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
+
+//profile :: (Stream (Sigseg (Int16 * Float * Float * Float)), (Array Complex), Int)
+//        -> (Stream (Float * (Sigseg Float)));
 fun profile(S, profile, skip) {
   len    = 2*(Array:length(profile)-1);
   window = gaussian(skip`i2f, len);
   rw     = rewindow(S, len, skip-len);
   iterate win in rw {
 
-    arr = toArray(win);
-    arr2 = apairmult(profile,fftR2C(apairmult(arr,window)));
+    arr  = toArray $ sigseg_map(fun((accel, t,lat,lon)) accel`int16ToFloat, win);
+    arr2 = apairmult(profile, fftR2C(apairmult(arr,window)));
 
     let sum = Array:fold(fun (acc, x) acc + absC(x),
     			 gint(0), arr2);
@@ -242,57 +249,38 @@ fun profile(S, profile, skip) {
   }
 }
 
-
 notch1 = notch_filter(129,58,128);
 notch2 = notch_filter(129,37,65);
 
-xw = profile(x, notch1,64);
-yw = profile(y, notch1,64);
-zw = profile(z, notch2,64);
-
+xw = profile(chans.(x, time,lat,long) `window(512), notch1,64);
+yw = profile(chans.(y, time,lat,long) `window(512), notch1,64);
+zw = profile(chans.(z, time,lat,long) `window(512), notch2,64);
 
 totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
-  emit(x+y+z,wz.start,wz.end);
+  emit(x+y+z,wz);
 };
 
 
-dets :: Stream (Bool * Int * Int * Int * Float * Float);
+dets :: Stream (Bool * Int * Int * Int * Float * Float * Sigseg t);
 dets = detect(totalscore);
+
 //dets as (b,st,en, l,p,i) = detect(totalscore);
 
 //========================================
 // Synchronization:
 
-tosync = iterate (b,s,e,_,_,_) in dets { 
-  if b
-  then
-    emit(b,max(0,s-100),e+100)
-  else
-    emit(b,0,max(0,e-100-1));
-}
+final :: Stream (Float * Float * Float * Int * Float * Float);
+final = iterate (b,st,en, pk,mx,i, win) in dets {
+  // This gives an out-of-bounds error!:
+  //let (_, time,lat,lon) :: (Int16 * Float * Float * Float) = win[[pk]];
+  // So does this!
+  // let (_, time,lat,lon) :: (Int16 * Float * Float * Float) = win[[pk - win`start]];
+  let (_, time,lat,lon) :: (Int16 * Float * Float * Float) = win[[0]];
+ 
 
-
-type My4Tup = ((List (Sigseg Float)) * Int * Float * Float);
-
-zipsync1 :: Stream My4Tup;
-zipsync2 :: Stream My4Tup;
-
-//zipsync1 = dets.([], l,p,i);
-
-zipsync1 = iterate (_,_,_,l,p,i) in dets {
-  emit([],l,p,i);
-}
-
-snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
-zipsync2 = iterate l in snips {
-  emit(l,0,0.0,0.0);
-}
-
-final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
-  using List;
-  time = ref(segs,0);
-  lat  = ref(segs,1);
+  /*
+    lat  = ref(segs,1);
   long = ref(segs,2);
   x    = ref(segs,3);
   y    = ref(segs,4);
@@ -304,7 +292,12 @@ final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
     println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
   }
+  */
+
+  if b then emit (time,lat,lon, pk,mx,i);
+  //if b then emit (pk,mx,i);
 }
+
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
 
