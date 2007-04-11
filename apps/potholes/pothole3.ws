@@ -30,8 +30,19 @@ include "filter.ws";
 //======================================================================
 
 
+/*
+ *  easily tweakable params:
+ *     refractory:   merge adjacent detections
+ *     thresh:       number units over mean (wish this was based on variance?)
+ *     alpha:        control reaction rate
+ *     data_padding: amount of data reported to either side
+ *
+ *  questions: normalize?  what are the units?
+ */
+
 
 DEBUG=false;
+data_padding = 100;
 
 fun detect(scorestrm) {
   // Constants:
@@ -39,7 +50,6 @@ fun detect(scorestrm) {
   hi_thresh = 15;                   // thresh above ewma
   startup_init = 75;
   refract_interval = 0;             // set higher to merge.. e.g. 2 
-  samples_padding = 100;
 
   iterate((score,st,en) in scorestrm) {
     state {
@@ -55,8 +65,12 @@ fun detect(scorestrm) {
       noise_lock = 0; // stats
 
       max_peak = 0.0;
+      max_over = 0.0;
+      first_over = 0.0;
       peak_location = 0;
       integral = 0.0;
+
+      curr_thresh = 0.0;
     }
 
     fun reset() {
@@ -85,6 +99,10 @@ fun detect(scorestrm) {
         peak_location := (st + en) / 2;
       };
 
+      if ((score-curr_thresh) > max_over) then {
+        max_over := score-smoothed_mean;
+      };
+
       /* over thresh.. set refractory */
       if score > thresh_value then {
 	refract := refract_interval;
@@ -98,7 +116,8 @@ fun detect(scorestrm) {
 	if DEBUG then
 	println("KEEP message: "++show((_start,st,en,peak_location,max_peak)));
 
-	emit (1, _start, en, peak_location, max_peak, integral); // end sample
+	emit (1, _start, en, peak_location, max_peak, integral, first_over, thresh_value);
+	// end sample
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
@@ -106,31 +125,34 @@ fun detect(scorestrm) {
       }
     };
 
-      /* compute thresh */
-      let thresh = i2f(hi_thresh) + smoothed_mean;
 
       if DEBUG then 
-        print("Thresh to beat: "++show(thresh)++ " " ++ smoothed_mean++ ", Current Score: "++show(score)++
+        print("Thresh to beat: "++show(curr_thresh)++ " " ++ smoothed_mean++ ", Current Score: "++show(score)++
  " "++refract++ " " ++ startup ++"\n");
 
       /* over thresh and not in startup period (noise est period) */
-      if startup == 0 && refract == 0 && score > thresh then {
+      if startup == 0 && refract == 0 && score > curr_thresh then {
 	if DEBUG then print("Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
-	thresh_value := thresh;
+	thresh_value := curr_thresh;
 	_start := st;
 	peak_location := (st+en)/2;
 	trigger_value := score;
-	max_peak := 0.0;
-	integral := 0.0;
+	max_peak := score;
+	max_over := score-smoothed_mean;
+	first_over := score-smoothed_mean;
+	integral := score;
       };
 
-	/* otherwise, update the smoothing filters */
-	smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
+      /* otherwise, update the smoothing filters */
+      smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
       if (score < smoothed_mean) then smoothed_mean := score;
 
-      emit (2, st, en, 0, smoothed_mean, score);
+      /* compute thresh */
+      curr_thresh := i2f(hi_thresh) + smoothed_mean;
+
+      emit (2, st, en, 0, smoothed_mean, score, 0.0, 0.0);
 
       /* count down the startup phase */
       if startup > 0 then startup := startup - 1;
@@ -139,7 +161,7 @@ fun detect(scorestrm) {
 	/* ok, we can free from sync */
 	/* rrn: here we lamely clear from the beginning of time. */
 	/* but this seems to assume that the sample numbers start at zero?? */
-	emit (0, 0, st - 1, 0, 0.0, 0.0);
+	emit (0, 0, st - 1, 0, 0.0, 0.0, 0.0, 0.0);
 	if DEBUG then 
 	  print("DISCARD message: "++show((false, 0, st-1))++
 		" just processed window "++show(st)++":"++show(en)++"\n");
@@ -213,8 +235,8 @@ sm = stream_map;
 //   (Timestamp, Lat, Long, X,Y,Z)
 // Where X/Y/Z is accelerometer data.
 //
-//chans = (readFile("/tmp/clip", "")
-chans = (readFile("/tmp/gt.txt", "")
+chans = (readFile("/tmp/clip", "")
+	 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
@@ -264,23 +286,22 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
 
 dets = detect(totalscore);
 
-tosync = iterate (b,s,e,_,_,_) in dets { 
+tosync = iterate (b,s,e,_,_,_,_,_) in dets { 
   if b == 1
   then
-    emit(true,max(0,s-100),e+100)
+    emit(true,max(0,s-data_padding),e+data_padding)
   else if b == 0 then
-    emit(false,0,max(0,e-100-1));
+    emit(false,0,max(0,e-data_padding-1));
 }
 
 
-type My4Tup = ((List (Sigseg Float)) * Int * Float * Float);
+type My4Tup = ((List (Sigseg Float)) * Int * Float * Float * Int * Float * Float);
 
 zipsync1 :: Stream My4Tup;
 zipsync2 :: Stream My4Tup;
  
-//  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
-zipsync1 = iterate (b,_,_,l,p,i) in dets {
-  if b == 1 then emit([],l,p,i);
+zipsync1 = iterate (b,s,e,l,p,i,mo,th) in dets {
+  if b == 1 then emit([],l,p,i,(e-s),mo,th);
 }
 
 snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
@@ -288,14 +309,18 @@ snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
 
 
 zipsync2 = iterate l in snips {
-  emit(l,0,0.0,0.0);
+  emit(l,0,0.0,0.0,0,0.0,0.0);
 }
 
 
 tmp = zip2_sametype(zipsync1,zipsync2);
 
 final1 :: Stream ();
-final1 = iterate ((_,l,p,i),(segs,_,_,_)) in tmp {
+final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
+
+  state {
+    first = true;
+  }
 
   time = List:ref(segs,0);
   lat = List:ref(segs,1);
@@ -305,17 +330,21 @@ final1 = iterate ((_,l,p,i),(segs,_,_,_)) in tmp {
   z = List:ref(segs,5);
   index = l - time.start;
 
+  if (first) then println("");
+  first = false;
+
   println("@@@ "++time[[index]]++" "++lat[[index]]++" "++long[[index]]
-	  ++" "++p++" "++i);
+	  ++" "++p++" "++i++" "++b++" "++mo++" "++th);
 
   for i = 0 to time.width-1 {
     println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]++" "
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
   }
   println("@$@");
+  emit();
 }
 
-tosync2 = iterate (b,s,e,_,_,_) in dets { 
+  tosync2 = iterate (b,s,e,_,_,_,_,_) in dets { 
   if b == 2
   then {
     emit(true,(s+e)/2,(s+e)/2);
@@ -325,12 +354,13 @@ tosync2 = iterate (b,s,e,_,_,_) in dets {
 
 smoothedscores = syncN_no_delete(tosync2, [time, lat, long]);
 
-zipsync3 = iterate (b,s,e,_,mean,score) in dets { 
+zipsync3 = iterate (b,s,e,_,mean,score,_,_) in dets { 
   if b == 2 
   then emit([],mean,score)
 }
 
-smoothedzip = zip2_sametype(zipsync3, iterate l in smoothedscores {emit(l,0.0,0.0)} );
+zipsync4 = iterate l in smoothedscores {emit(l,0.0,0.0)}
+smoothedzip = zip2_sametype(zipsync3, zipsync4);
 
 final2 :: Stream ();
 final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
@@ -341,6 +371,7 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   lat = latseg[[0]];
   long = longseg[[0]];
   println("@#@ "++time++" "++lat++" "++long++" "++m++" "++s);
+  emit();
 }
 
 // For 5 tuples... xw/yw/zw take 350 ms each... But the zip takes 3000 ms!
