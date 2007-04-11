@@ -85,11 +85,10 @@
 
     ;[(Stream ,[t]) `("WSBox*")]
     ;[(Array ,[t]) `(,t "[]")]
-    [(Array ,[t])  `("(",t") array")]
     ;[Timebase  "int"]
-    [(List ',_) `("cons<int>::ptr")]
-    ;; Boosted cons cells:
-    [(List ,[t]) `("cons< ",t" >::ptr")]
+
+    [(Array ,[t])  `("(",t") array")]
+    [(List ,[t]) `("(",t") list")]
     ;[(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
     [,other (error 'emit-caml:Type "Not handled yet.. ~s" other)]))
 
@@ -181,6 +180,7 @@
 		;; If we're emitting *to* a unionN, we include the index tag.
 		[(pair? down)
 		 (ASSERT (fixnum? (car down)))
+		 (ASSERT (= (length down) 2))
 		 (list (Var (cadr down))
 		       "("(Const (car down))", emitted );\n")]
 		[else `(,(Var down)" emitted;\n")]))
@@ -234,12 +234,11 @@
 
       ;; Array:null should have been handled elsewhere:
       (ASSERT (not (zero? (vector-length datum))))
-      (let ([ty (type-const (vector-ref datum 0))]
-	    [constArr 
+      (let ([constArr 
 	     (list "[|" 
 		   (insert-between "; " (map Const (vector->list datum)))
 		   "|] \n")])
-	(if (BigarrayType? (cadr ty))
+	(if (BigarrayType? (type-const (vector-ref datum 0)))
 	    (list
 	     "  (Bigarray.Array1.of_array "
 	     " Bigarray."
@@ -247,9 +246,9 @@
 		 "int"
 		 (ConvertArrType (type-const (vector-ref datum 0)))) ;; Kind
 	     " Bigarray.c_layout \n" 
-	     CONST ")")
+	     constArr ")")
 	    ;; Otherwise this is all we need:
-	    CONST))]
+	    constArr))]
 
      [else (error 'emit-caml:Const "not an OCaml-compatible literal (currently): ~s" datum)])))
 
@@ -413,7 +412,10 @@
 
 (define (build-show t)
   (match t
-    [String "fun x -> x"]
+    ;; ERROR: FIXME:
+    [(quote ,_) "(fun _ -> \"POLYMORPHIC_OBJECT\")"]
+
+    [String "(fun x -> x)"]
     [Int   "string_of_int"]
     [Int16 "string_of_int"] ;; These are just represented as ints.
     [Float "string_of_float"]
@@ -448,7 +450,7 @@
 (define (BigarrayType? t)
   (match t
 
-    [,_ #f] ;; DISABLE!
+;    [,_ #f] ;; DISABLE!
 
     [Int     "int"]
     [Int16   "int16_signed"]
@@ -510,8 +512,9 @@
 		  (match (make-caml-zero-for-type elt)
 		    [(quote ,c) (Const c)])))))]
 
-	  [(Array:set)  "Array.set"]
-	  [(Array:ref)  "Array.get"]
+	  [(Array:length) "Array.length"]
+	  [(Array:set)    "Array.set"]
+	  [(Array:ref)    "Array.get"]
 
 	  [(nullseg) "nullseg_flat"]
 	  ;; We just use the normal name conversion:
