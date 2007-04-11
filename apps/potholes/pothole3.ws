@@ -211,7 +211,8 @@ sm = stream_map;
 //   (Timestamp, Lat, Long, X,Y,Z)
 // Where X/Y/Z is accelerometer data.
 //
-chans = (readFile("/tmp/clip", "")
+//chans = (readFile("/tmp/clip", "")
+chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
@@ -300,7 +301,7 @@ final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
 	  ++" "++p++" "++i);
 
   for i = 0 to time.width-1 {
-    println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]
+    println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]++" "
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
   }
 }
