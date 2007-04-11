@@ -126,7 +126,7 @@ zip3_sametype = fun (s1,s2,s3) {
 syncN_aux = 
  //if IS_SIM then __syncN else
 fun (ctrl, strms, del) {
-   DEBUGSYNC = true; // Activate to debug the below code:
+   DEBUGSYNC = false; // Activate to debug the below code:
 
   _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
   f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
@@ -185,8 +185,18 @@ fun (ctrl, strms, del) {
 	       else
 		 println("  Not all ready: "
 			  ++ show(fl && seg`start > st) ++ " "
-			  ++ show(seg`end < en) ++ "\n");
+			  ++ show(seg`end < en) ++ " " 
+	                  ++ ((st,en,seg`start,seg`end)));
 	     };
+             
+             if (seg != nullseg && fl && seg`start > st) then {
+               println("Sync has a request that can never be filled:");
+	       println("Accumulator has "++seg`start++" to "++
+		       seg`end++", but request is for "++
+		       st++" to "++en++".");
+	       wserror("Impossible sync request");
+	     };
+
 	     false }
   	   else true,
 	 accs);

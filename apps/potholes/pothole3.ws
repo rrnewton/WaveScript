@@ -31,7 +31,7 @@ include "filter.ws";
 
 
 
-DEBUG=true;
+DEBUG=false;
 
 fun detect(scorestrm) {
   // Constants:
@@ -82,7 +82,7 @@ fun detect(scorestrm) {
       integral := integral + score;
       if (score > max_peak) then {
         max_peak := score;
-        peak_location := st + en / 2;
+        peak_location := (st + en) / 2;
       };
 
       /* over thresh.. set refractory */
@@ -95,10 +95,10 @@ fun detect(scorestrm) {
 	/* untriggering! */
 	trigger := false;
 
-	emit (true, _start, en, peak_location, max_peak, integral); // end sample
 	if DEBUG then
-	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
-	      " just processed window "++show(st)++":"++show(en)++"\n");
+	println("KEEP message: "++show((_start,st,en,peak_location,max_peak)));
+
+	emit (true, _start, en, peak_location, max_peak, integral); // end sample
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
@@ -120,6 +120,7 @@ fun detect(scorestrm) {
 	refract := refract_interval;
 	thresh_value := thresh;
 	_start := st;
+	peak_location := (st+en)/2;
 	trigger_value := score;
 	max_peak = 0;
 	integral = 0;
@@ -132,14 +133,15 @@ fun detect(scorestrm) {
       /* count down the startup phase */
       if startup > 0 then startup := startup - 1;
       
-      /* ok, we can free from sync */
-      /* rrn: here we lamely clear from the beginning of time. */
-      /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, st - 1, 0, 0.0, 0.0);
-      if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
-	    " just processed window "++show(st)++":"++show(en)++"\n");
-      
+      if (not(trigger)) then {
+	/* ok, we can free from sync */
+	/* rrn: here we lamely clear from the beginning of time. */
+	/* but this seems to assume that the sample numbers start at zero?? */
+	emit (false, 0, st - 1, 0, 0.0, 0.0);
+	if DEBUG then 
+	  print("DISCARD message: "++show((false, 0, st-1))++
+		" just processed window "++show(st)++":"++show(en)++"\n");
+      }
   }
 }
 
@@ -162,9 +164,10 @@ fun specgram_seglist(ext) {
     
     hw = gaussian(intToFloat(skip),points);
     
-    for j = 0 to points-1 {
-      println("## " ++ j ++ " " ++ hw[j]);
-    };
+    if DEBUG then
+      for j = 0 to points-1 {
+	println("## " ++ j ++ " " ++ hw[j]);
+      };
     
     //specgram the sync'd data 
     
@@ -252,7 +255,7 @@ zw = profile(z,notch2,64);
 
 
 totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
-  println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
+  if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
   emit(x+y+z,wz.start,wz.end);
 };
 
@@ -273,8 +276,8 @@ zipsync1 :: Stream My4Tup;
 zipsync2 :: Stream My4Tup;
  
 //  zipsync1 :: (Stream (List (Sigseg Float) Int Float Float));
-zipsync1 = iterate (_,_,_,l,p,i) in dets {
-  emit([],l,p,i);
+zipsync1 = iterate (b,_,_,l,p,i) in dets {
+  if b then emit([],l,p,i);
 }
 
 snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
@@ -284,6 +287,7 @@ zipsync2 = iterate l in snips {
 }
 
 final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
+
   time = List:ref(segs,0);
   lat = List:ref(segs,1);
   long = List:ref(segs,2);
@@ -291,8 +295,10 @@ final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
   y = List:ref(segs,4);
   z = List:ref(segs,5);
   index = l - time.start;
+
   println("@@@ "++time[[index]]++" "++lat[[index]]++" "++long[[index]]
 	  ++" "++p++" "++i);
+
   for i = 0 to time.width-1 {
     println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
