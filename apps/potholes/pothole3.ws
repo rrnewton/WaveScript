@@ -260,8 +260,10 @@ dets = detect(totalscore);
 
 tosync = iterate (b,s,e,_,_,_) in dets { 
   if b
-  then emit(b,max(0,s-100),e+100)
-  else emit(b,0,max(0,e-100-1));
+  then
+    emit(b,max(0,s-100),e+100)
+  else
+    emit(b,0,max(0,e-100-1));
 }
 
 
@@ -279,7 +281,7 @@ zipsync2 = iterate l in snips {
   emit(l,0,0.0,0.0);
 }
 
-final = iterate (segs,l,p,i) in zip2_sametype(zipsync1,zipsync2) {
+final = iterate ((_,l,p,i),(segs,_,_,_)) in zip2_sametype(zipsync1,zipsync2) {
   time = List:ref(segs,0);
   lat = List:ref(segs,1);
   long = List:ref(segs,2);
@@ -308,8 +310,8 @@ BASE <-
 //zip3_sametype(xw,xw,xw)
 //zip3_sametype(xw,yw,zw)
 //totalscore
-dets
-//final
+//dets
+final
 
 
 // wsc: Worked with rev 1342 of the engine
