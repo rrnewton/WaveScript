@@ -21,7 +21,6 @@ let ss_get_flat (SSF(a,_)) i        = Bigarray.Array1.get a i
 
 (* Annoyingly, we're duplicating everything for the two possible Array repsresentations *)
 
-(*
 type 'a sigseg = SS of ('a array * sample )  
 
 open Array
@@ -37,4 +36,3 @@ let width (SS(a,_))           = length a
 let ss_start (SS(_,s))        = s
 let ss_end (SS(a,s))          = s + length a - 1
 let ss_get (SS(a,_)) i        = a.(i)
-  *)

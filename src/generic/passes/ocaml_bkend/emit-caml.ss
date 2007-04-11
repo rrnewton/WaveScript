@@ -77,8 +77,11 @@
     [#(,[t*] ...) `("(",(insert-between " * " t*)")")]
 
     ;; Went back and forth on whether this should be a pointer:
-    [(Sigseg ,t) `("(",(Type t)", Bigarray.",(ConvertArrType t)"_elt) sigseg_flat")]
-    [(Sigseg ,t) `(,(Type t) " sigseg")]    
+    [(Sigseg ,t) 
+     (let ([flatty (BigarrayType? t)])
+       (if flatty
+	   `("(",(Type t)", Bigarray.",flatty"_elt) sigseg_flat")
+	   `(,(Type t) " sigseg")))]
 
     ;[(Stream ,[t]) `("WSBox*")]
     ;[(Array ,[t]) `(,t "[]")]
@@ -421,7 +424,10 @@
     [(Array ,[t]) (list "(fun a -> \"[\" ^ String.concat \", \" (List.map "t" (arrayToList a)) ^ \"]\")")]
 
     ;; Just print range:
-    [(Sigseg ,t) "(fun ss -> \"[\"^ string_of_int (ss_start_flat ss) ^\", \"^ string_of_int (ss_end_flat ss + 1) ^ \")\")"]
+    [(Sigseg ,t) (list 
+     "(fun ss -> \"[\"^ string_of_int ("  (DispatchOnArrayType 'start t)
+     " ss) ^\", \"^ string_of_int ("      (DispatchOnArrayType 'end t)
+     " ss + 1) ^ \")\")")]
 
     [#(,[t*] ...)
      (let ([flds (map Var (map unique-name (make-list (length t*) 'fld)))])
@@ -441,6 +447,9 @@
 ;; These are the names of the Bigarray types.
 (define (BigarrayType? t)
   (match t
+
+    [,_ #f] ;; DISABLE!
+
     [Int     "int"]
     [Int16   "int16_signed"]
     [Float   "float64"]
@@ -492,6 +501,15 @@
 	(case op
 	  [(Array:null) "[||]"]
 	  [(Array:make) "Array.make"]
+	  ;; Just makes a normal array with zeros:
+	  ;; Cut/paste from above:
+	  [(Array:makeUNSAFE)
+	   (lnboth (make-fun '(n) 
+	     (make-app (DispatchOnArrayType 'Array:make elt)
+		(list "n" 
+		  (match (make-caml-zero-for-type elt)
+		    [(quote ,c) (Const c)])))))]
+
 	  [(Array:set)  "Array.set"]
 	  [(Array:ref)  "Array.get"]
 
@@ -499,7 +517,7 @@
 	  ;; We just use the normal name conversion:
 	  [else (if (sigseg-prim? op)
 		    (ASSERT (PrimName op))		    
-		    (error 'DispatchOnArrayType ""))]
+		    (error 'DispatchOnArrayType "don't know how to dispatch this operator: ~s" op))]
 	  ))))
 
 (define make-caml-zero-for-type 
