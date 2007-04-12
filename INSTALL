@@ -1,0 +1,147 @@
+
+
+
+<INSTALLATION>
+======================================================================
+
+
+ ---- Quick Start (Interpreted): ----
+    
+After the code is checked out into a directory (let's say
+~/wavescript) simply run this script from a Bash prompt:
+   cd ~/wavescript
+   source install_environment_vars
+
+NOW, if you're lucky (and this only currently works out of the box on
+Linux and Intel Mac), try running the command "regiment".  If it loads
+and you get the help info, then you're good to go.  For parsing ".ws"
+files you'll need "mzscheme" to be in your path.
+
+
+
+ ---- Slightly less Quick Start: ----
+
+If you want to manually (and more permanently) set up the necessary
+environment variables, all you need to do is the following.
+Basically, copy the contents of the install_environment_vars script
+into your .bashrc or .bash_profile replacing `pwd` with the
+appropriate directory.  Also you can just have your config file "cd"
+to the appropriate directory and "source install_environment_vars".
+
+Try typing 'regiment' and see if you get the help output.
+
+If it worked, that means the free copy of Petite Chez Scheme was able
+to run and successfully load all of the Regiment source.
+
+At this point you are ready to try executing "regiment test" which
+runs the unit tests.
+
+ GOING FURTHER:
+
+Step 1: INSTALL PLT.
+        Now you need PLT Scheme.  Download it from the PLT website and
+        make sure mzscheme/mzc are in your path.
+
+Step 2: BUILD WSPARSE.
+        To make the system run decently, you want to pre-compile the
+        parser and Regiment sources.  First run "make wsparse" from
+        ~/wavescript/src to build the parser.
+
+Step 3: INSTALL CHEZ.
+        Unless you have access to the commercial Chez Scheme compiler,
+        you can't build a compiled version of the Regiment sources
+        yourself.
+
+     3A: IF you don't have Chez:
+        Switch to ~/wavescript and run ./download_precompiled_binaries
+        If you're lucky, this will download a shared object (.so) file
+        to allow you to run a higher-performance Regiment/Wavescript
+        system.  Note, there might not be a binary available for your
+        specific svn revision.  Check the below URL to see which revs
+        are available, then "svn up" to one of those.
+	  http://regiment.us/regiment_binaries/
+
+     3B: IF you have access to Chez:
+        Make sure it's available via "chez" (not just "scheme").
+
+        If you're at CSAIL you have access to Chez because the
+        department bought it.  If you're in NMS, an easy way to
+        install is to run this script:
+
+          cd ~/wavescript/depends
+	  ./install_chez
+
+        You will be prompted for your NMS password.  
+
+Step 4: BUILD WS & WS.OPT
+        Once "chez" is in your path (test by typing "chez", you shuold
+        get a Scheme prompt), it's time to compile.
+
+          make ws
+          make ws.opt
+
+        Note: Typing "make" in the src/ tree is equivalent to 
+          "make wsparse ws ws.opt" -[2007.04.11] 
+
+        After completing step 4, when you run 'regiment' you should see an
+        indication that it loaded from the compiled sources.  Thus:
+
+          Regiment: Loading ws compiler in chezscheme (from compiled .so)...
+
+        Rather than:
+
+          Regiment: Loading ws+reg compiler in chezscheme (from source)...
+
+
+Step 5: OPTIONAL EXTRAS.
+
+       If you want the C++ backend, look into downloading the XStream engine.
+       If you want to run "wscaml" for the OCaml backend, get fftw2 and try
+
+         make ocaml
+
+       in ~/wavescript/src.  Also in that directory you can try:
+
+         make c
+
+       This will build a couple optional C-extensions to the main
+       system (that runs in Scheme).  For example, this includes an
+       interface to FFTW for faster fourier transforms.
+
+
+
+ ---- Notes for Debian/Ubuntu/Redhat ----
+
+Step 1 above can be accomplished simply with 
+   "apt-get install mzscheme" 
+or 
+   "yum install plt-scheme"
+
+
+ ---- Installing under Windows ----
+
+[Note: this doesn't work yet - 2007.03.13]
+
+Step 1: Install cygwin, including the "make" package under development.
+Step 2: Install Petite Chez Scheme, for example in c:\csv7.3.  Then add
+        c:\csv7.3\bin\i3nt\ to your path so that "petite.exe" is visible.
+Step 3: Install PLT Scheme and add the install directory to your path
+        so that MzScheme.exe and Mzc.exe are visible.
+
+Step 4: After checking out the WaveScript repository, manually bind
+        REGIMENTD to the *windows* path where this repository resides
+        (i.e. with backslashes and drive letter).  The
+        install_environment_vars will not work because it will use the
+        Cygwin (unix) directory format.  Also add REGIMENTD/bin to
+        your PATH.
+
+Step 5: Now try "regiment test".
+Step 6: Next, switch to src/ and run "make wsparse".  That's the
+        parser, to get the prebuilt binaries for the compiler
+        ./download_precompiled_binaries from the REGIMENTD directory.
+
+Note: If you have the full version of Chez Scheme, please make a
+symbolic link or script in your path named "chez" that in turn loads
+"scheme.exe".  This enables the Regiment/WaveScript scripts to find
+Chez Scheme.
+

@@ -388,13 +388,14 @@
    (define (try-command)
      ;; HACK: WON'T WORK IN WINDOWS:)
      (begin 
-       (let* ([port
+       (let* ([tmpfile (format "/tmp/~a.tmp" (random 1000000))]
+	      [port
 	       (if (zero? (system "which wsparse")) 
 		   ;; Use pre-compiled executable:
 		   (begin 
 		     (printf "Calling wsparse to parse file: ~a\n" fn)
 		     (car (process (++ "wsparse " fn " --nopretty"))))
-		   (let ([tmpfile (format "/tmp/~a.tmp" (random 1000000))])
+		   (begin
 		     (warning 'wsint 
 			      (++ "couldn't find wsparse executable.\n"
 				  "Running wsparse.ss from source, but you probably"
@@ -406,6 +407,7 @@
 		     ))]
 	      [decls (read port)])
 	 (close-input-port port)
+	 (delete-file tmpfile)
 	 ;; This is very hackish:
 	 (if (eq? decls 'PARSE) ;; From "PARSE ERROR"
 	     (error 'ws-parse-file "wsparse returned error when parsing ~s" fn))

@@ -498,6 +498,8 @@
 ;; Set the invocation directory to whatever the current directory is:
 (scheme-start (lambda args (set! start-dir (cd)) 
 		      ;(random-seed (current-time))
+		      ;; [2007.04.11] This is unsatisfactory:
+		      (random-seed (* (real-time) (cpu-time)))
 		      ;; We also need to make sure that we reset the REGIMENTD parameter:
 		      ;; It might not be the same on the system loading the heap as the one compiling it!
 		      (REGIMENTD (default-regimentd))
@@ -522,6 +524,8 @@
 		 (load fn) ;; We don't call main, we already know it's interact mode.		 
 		 ))
 
+;; [2007.04.11] This is unsatisfactory:
+(random-seed (* (real-time) (cpu-time)))
 ;(random-seed (current-time))
 
 ;; If we're running from source, we invoke main right here:
