@@ -235,19 +235,20 @@ sm = stream_map;
 //   (Timestamp, Lat, Long, X,Y,Z)
 // Where X/Y/Z is accelerometer data.
 //
-chans = (readFile("/tmp/clip", "")
-	 //chans = (readFile("/tmp/gt.txt", "")
+//chans = (readFile("/tmp/clip", "")
+chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("./PIPE", "")
-          :: Stream (Float * Float * Float * Int16 * Int16 * Int16));
+          :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Float * Float));
 
-time = window(sm(fun((t,_,_,_,_,_)) t, chans), 512);
-lat = window(sm(fun((_,lat,_,_,_,_)) lat, chans), 512);
-long = window(sm(fun((_,_,long,_,_,_)) long, chans), 512);
-x = window(sm(fun((_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-y = window(sm(fun((_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
-z = window(sm(fun((_,_,_,_,_,a)) int16ToFloat(a), chans), 512);
-
+time = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
+lat = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
+long = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
+x = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
+y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
+z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
+dir = window(sm(fun((_,_,_,_,_,_,a,_)) a, chans), 512);
+speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
 
 // assuming sample rate is 380 hz
 //z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
@@ -304,7 +305,7 @@ zipsync1 = iterate (b,s,e,l,p,i,mo,th) in dets {
   if b == 1 then emit([],l,p,i,(e-s),mo,th);
 }
 
-snips = syncN_no_delete(tosync, [time, lat, long, x, y, z]);
+snips = syncN_no_delete(tosync, [time, lat, long, x, y, z, dir, speed]);
 
 
 
@@ -328,16 +329,21 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
   x = List:ref(segs,3);
   y = List:ref(segs,4);
   z = List:ref(segs,5);
+  dir = List:ref(segs,6);
+  speed = List:ref(segs,7);
+
   index = l - time.start;
 
   if (first) then println("");
   first = false;
 
   println("@@@ "++time[[index]]++" "++lat[[index]]++" "++long[[index]]
+	  ++" "++dir[[index]]++" "++speed[[index]]
 	  ++" "++p++" "++i++" "++b++" "++mo++" "++th);
 
   for i = 0 to time.width-1 {
     println("@$@ "++time[[i]]++" "++lat[[i]]++" "++long[[i]]++" "
+	    ++" "++dir[[i]]++" "++speed[[i]]
 	    ++x[[i]]++" "++y[[i]]++" "++z[[i]]);
   }
   println("@$@");
@@ -367,10 +373,14 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   timeseg = List:ref(l,0);
   latseg = List:ref(l,1);
   longseg = List:ref(l,2);
+  dirseg = List:ref(l,6);  
+  speedseg = List:ref(l,7);
   time = timeseg[[0]];
   lat = latseg[[0]];
   long = longseg[[0]];
-  println("@#@ "++time++" "++lat++" "++long++" "++m++" "++s);
+  println("@#@ "++time++" "++lat++" "++long
+	  ++" "++dirseg[[0]]++" "++speedseg[[0]]
+	  ++" "++m++" "++s);
   emit();
 }
 
