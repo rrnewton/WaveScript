@@ -1,5 +1,7 @@
 #! /bin/bash
 
+source `dirname $0`/assert_regimentd
+
 #scheme -h regimentc.1.heap $*
 #chez -h regimentc.1.heap $*
 
