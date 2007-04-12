@@ -2,38 +2,38 @@
 ## The big problem is that schemedoc doesn't work with #;
 
 FILES = \
-  main.ss \
-  regiment.ss \
+   main.ss \
+#   regiment.ss \
 
 
-GENERICFILES = \
-  generic/alpha_lib.ss \
-  generic/alpha_lib_scheduler_simple.ss \
-  generic/constants.ss \
-  generic/grammar_checker.ss \
-  generic/hash.ss \
-  generic/helpers.ss \
-  generic/hm_type_inference.ss \
-  generic/pass00_verify-regiment.ss \
-  generic/pass09_lift-letrec.ss \
-  generic/pass22_desugar-macros.ss \
-  generic/pass23a_find-emittoks.ss \
-  generic/pass23_desugar-gradients.ss \
-  generic/pass23_desugar-gradients_verbose.ss \
-  generic/pass23_desugar-gradients_simple.ss \
-  generic/pass23_desugar-gradients_ETX.ss \
-  generic/prim_defs.ss \
-  generic/regiment_helpers.ss \
-  generic/simulator_alpha_datatypes.ss \
-  generic/simulator_alpha.ss \
-  generic/source_loader.ss \
-  generic/tml_generic_traverse.ss \
+GENERICFILES = 
+#   generic/alpha_lib.ss \
+#   generic/alpha_lib_scheduler_simple.ss \
+#   generic/constants.ss \
+#   generic/grammar_checker.ss \
+#   generic/hash.ss \
+#   generic/helpers.ss \
+#   generic/hm_type_inference.ss \
+#   generic/pass00_verify-regiment.ss \
+#   generic/pass09_lift-letrec.ss \
+#   generic/pass22_desugar-macros.ss \
+#   generic/pass23a_find-emittoks.ss \
+#   generic/pass23_desugar-gradients.ss \
+#   generic/pass23_desugar-gradients_verbose.ss \
+#   generic/pass23_desugar-gradients_simple.ss \
+#   generic/pass23_desugar-gradients_ETX.ss \
+#   generic/prim_defs.ss \
+#   generic/regiment_helpers.ss \
+#   generic/simulator_alpha_datatypes.ss \
+#   generic/simulator_alpha.ss \
+#   generic/source_loader.ss \
+#   generic/tml_generic_traverse.ss \
 
 
-CHEZFILES = \
-  chez/chez_constants.ss \
-  chez/helpers.ss \
-  chez/regmodule.ss \
+CHEZFILES = 
+#   chez/chez_constants.ss \
+#   chez/helpers.ss \
+#   chez/regmodule.ss \
 
 PLTFILES = 
 
@@ -47,14 +47,15 @@ OBJFILES = $(DUPSRC:%=%.html)
 
 # Here's a bit of a trick, we just use regiment for the scheme system,
 # and let it worry about finding the right scheme to call.
-#SCHEME = chez
-#SCHEME = scheme
-SCHEME = regiment i
+SCHEME = chez
+#SCHEME = scheme $(REGIMENTD)/src/chez/match.ss
+#SCHEME = regiment i
+#SCHEME = scheme -b ./match.ss
 PETITE = ../depends/petite
 
-#SCRATCHFILE=.__scratch_makefile_junk
+# #SCRATCHFILE=.__scratch_makefile_junk
 
-all: schemedoc 
+all: schemedoc #match.boot
 #       Here we superimpose our "patches" to the standard schemedoc
 #       tree.  This isn't finished yet.  There are more files than
 #       star_star_chez.scm that are modified in the schemedoc/ tree.
@@ -64,8 +65,6 @@ all: schemedoc
 	if ! [ -d html/generic ]; then mkdir html/generic; fi
 	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
 	if ! [ -d html/plt ];     then mkdir html/plt    ; fi
-#	if ! [ -d html/analysis ];     then mkdir html/analysis ; fi
-#	if ! [ -d html/analysis/gradients ];     then mkdir html/analysis/gradients ; fi
 	@echo
 	@echo First scrub source:
 	@echo -------------------
@@ -74,21 +73,23 @@ all: schemedoc
 	@echo Second build individual manuals:
 	@echo --------------------------------
 	$(MAKE) $(OBJFILES)
-##	echo $(FILES) | xargs -n1 echo | xargs -i "sed 's/#;/\`/' $(REGIMENTD)/{} > ./{}"
-##	echo $(FILES) | xargs -n1 echo | xargs -i ./clean_hashsemi $(REGIMENTD)/src/{} ./html/{}
-#	echo $(FILES) | xargs -n1 echo | xargs -i ./scrub_source.ss $(REGIMENTD)/src/{} ./html/{}
-#	echo $(GENERICFILES) | xargs -n1 echo | xargs -i ./scrub_source.ss $(REGIMENTD)/src/{} ./html/{}
-
-#	echo $(FILES) | xargs -n1 chez --script regiment.laml $(REGIMENTD)/doc/html/
-#	echo $(GENERICFILES) | sed 's/generic\///g' | xargs -n1 chez --script regiment.laml $(REGIMENTD)/doc/html/generic/
 
 	@echo "------------------------------------------------------------------------------"
 	@echo "Done generating Regiment documentation."
 
 ##      Now generate index:
-##	echo $(GENERICFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
-##	echo $(CHEZFILES) | xargs -n1 | xargs -i echo "generic/"{} > $(SCRATCHFILE)
 	$(SCHEME) --script regiment_index.laml $(SRCFILES)
+
+# Here we build our pattern matcher for use in schemedoc and scrub_source
+match.boot: match.so
+	echo '(make-boot-header "match.hdr" "scheme.boot" "petite.boot")' | $(SCHEME)
+	cat match.hdr match.so > match.boot
+
+match.so: 
+	cp "$(REGIMENTD)/src/chez/match.ss" ./match.ss
+	echo '(import iu-match)' >> match.ss 
+	echo '(compile-file "match.ss" "match.so")' | $(SCHEME)
+#	echo '(compile-file (string-append (getenv "REGIMENTD") "/src/chez/match.ss") "match.so")' | $(SCHEME)
 
 schemedoc:
 	tar xjvf schemedoc.tbz; 
@@ -105,7 +106,7 @@ patch:
 
 
 
-# This invokes regiment.laml with the directory and the filename as command line arguments:
+# # This invokes regiment.laml with the directory and the filename as command line arguments:
 $(OBJFILES): html/%.html: html/%
 	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`
@@ -128,4 +129,5 @@ clean:
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk
 #       This is intense, we delete and rebuild this tree every time:
 	$(RM) -rf schemedoc
+	$(RM) -rf _temp* match.so match.boot
 ##	$(RM) *.html *.css *.manlsp *~

@@ -3,6 +3,8 @@
 [2005/2006]
 This directory is used to build the Regiment Documentation.
 
+
+
 There are a few complications.
 
  1) The complex schemedoc tree cannot currently be added to the svn
@@ -44,4 +46,9 @@ comment extraction.
 ;; .param x   This is x.
 ;; .returns   Some other value.
 (define (f x) ...)
+
+[2007.04.11] 
+This has fallen way out of date with the new directory structure.
+Going to try to bring it back a little bit for the most relevent files
+first.
 

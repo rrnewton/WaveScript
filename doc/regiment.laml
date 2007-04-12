@@ -3,6 +3,40 @@
 (if (< (length (command-line-arguments)) 2)
     (error 'regiment.laml "not enough arguments!"))
 
+;; Just load the matcher from source:
+(load (string-append (getenv "REGIMENTD") "/src/chez/match.ss"))(import iu-match)
+(define file->slist
+  (lambda (filename . opts)
+    (let ([p (if (input-port? filename) filename
+		 (apply open-input-file filename opts))])
+      (port->slist p))))
+(define port->slist
+  (lambda (p)
+    (let porttoslistloop ([exp (read p)] [acc '()])
+        (if (eof-object? exp)
+            (begin (close-input-port p)
+                   (reverse! acc))
+            (porttoslistloop (read p) (cons exp acc))))))
+(define slist->file
+  (case-lambda 
+   [(slist fn) (slist->file slist fn 'write)]
+   [(slist fn method)
+    (let ([p (open-output-file fn 'replace)])
+      (parameterize ([print-level #f]
+		     [print-length #f]
+		     [pretty-maximum-lines #f])
+	  (for-each (lambda (x) 
+		      (case method
+			[(write plain) (write x p)(newline p)]
+			[(pretty pretty-print) 
+			 (parameterize ([print-level #f]
+					[print-graph #f])
+			   (pretty-print x p))])
+		      (newline p))
+	    slist))
+      (close-output-port p))]))
+
+
 (load "schemedoc/laml.init")
 (load "schemedoc/laml.scm")
 

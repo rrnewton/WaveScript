@@ -1,5 +1,8 @@
 #!/usr/bin/env petite --script
 
+;; Just load the matcher from source:
+(load (string-append (getenv "REGIMENTD") "/src/chez/match.ss"))(import iu-match)
+
 ; [2006.01.13] Remember to manually strip the ::= character
 ; sequence.  That causes a problem for some reason!!
 
@@ -18,9 +21,6 @@
 ;; [2005.11.19] WHOA!  Just had a problem with semicolon followed by
 ;; double quote for some reason!  That's probably a bug, should report it.
 
-
-;; This script must only be run from the current directory.
-(load "../src/chez/match.ss")
 
 (define in (open-input-file (car (command-line-arguments))))
 (define out (open-output-file (cadr (command-line-arguments)) 'replace))
