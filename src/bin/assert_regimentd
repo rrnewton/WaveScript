@@ -3,3 +3,7 @@
 
 DIR=`dirname $0`
 export REGIMENTD=`$DIR/find_regimentd`
+CUR=`pwd`
+cd "$REGIMENTD"
+source ./install_environment_vars
+cd "$CUR"
