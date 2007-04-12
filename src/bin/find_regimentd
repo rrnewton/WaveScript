@@ -11,24 +11,24 @@
 # heuristically tries to find SOME kind of workable REGIMENTD.
 
 if [ "$REGIMENTD" == "" ]; 
-then echo Env var '$REGIMENTD' is not bound.          > /dev/stderr;
+then echo Env var '$REGIMENTD' is not bound.          >&2;
 
 elif [ -d "$REGIMENTD" ]; 
 then exit 0;
-else echo Directory '$REGIMENTD' does not existing.   > /dev/stderr;
+else echo Directory '$REGIMENTD' does not existing.   >&2;
 fi
 
-echo You should bind it, or source the 'install_environment_vars' > /dev/stderr;
-echo script in your Wavescript/Regiment working copy.             > /dev/stderr;
-echo                                                              > /dev/stderr;
+echo You should bind it, or source the 'install_environment_vars' >&2;
+echo script in your Wavescript/Regiment working copy.             >&2;
+echo                                                              >&2;
 
-echo Searching...        > /dev/stderr;
+echo Searching...                                     >&2;
 
 inner () {
   DIR=$1
   if [ -f "$DIR/bin/regiment" ] && [ -f "$DIR/src/main.ss" ];
-  then echo Found seemingly usable REGIMEND dir: > /dev/stderr;
-       echo "   "$DIR                            > /dev/stderr;
+  then echo Found seemingly usable REGIMEND dir: >&2;
+       echo "   "$DIR                            >&2;
        #export REGIMEND=$1
        echo $DIR;
        exit 0;
