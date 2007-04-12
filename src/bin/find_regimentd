@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# This is a hack.
+
+# But it's a hack with a noble purpose.  We want things to work out of
+# the box no matter what.  Nothing more annoying than getting a "can't
+# find X" error when you just want the thing to work.  
+
+# Thus, even if we haven't bound REGIMENTD, or run
+# install_environment_vars like we should have...  This script
+# heuristically tries to find SOME kind of workable REGIMENTD.
+
+if [ "$REGIMENTD" == "" ]; 
+then echo Env var '$REGIMENTD' is not bound.          > /dev/stderr;
+
+elif [ -d "$REGIMENTD" ]; 
+then exit 0;
+else echo Directory '$REGIMENTD' does not existing.   > /dev/stderr;
+fi
+
+echo You should bind it, or source the 'install_environment_vars' > /dev/stderr;
+echo script in your Wavescript/Regiment working copy.             > /dev/stderr;
+echo                                                              > /dev/stderr;
+
+echo Searching...        > /dev/stderr;
+
+inner () {
+  DIR=$1
+  if [ -f "$DIR/bin/regiment" ] && [ -f "$DIR/src/main.ss" ];
+  then echo Found seemingly usable REGIMEND dir: > /dev/stderr;
+       echo "   "$DIR                            > /dev/stderr;
+       #export REGIMEND=$1
+       echo $DIR;
+       exit 0;
+  fi
+}
+
+outer () {
+  DIR=$1
+  D="$DIR/wavescript"
+  if [ -d "$D" ]; then inner "$D"; fi
+  D="$DIR/WaveScope/code/wavescript"
+  if [ -d "$D" ]; then inner "$D"; fi
+  D="$DIR/Wavescope/code/wavescript"
+  if [ -d "$D" ]; then inner "$D"; fi  
+  D="$DIR/wavescope/code/wavescript"
+  if [ -d "$D" ]; then inner "$D"; fi  
+  D="$DIR/wavescope"
+  if [ -d "$D" ]; then inner "$D"; fi  
+}
+
+outer $HOME
+outer `pwd | sed 's/wavescript.*$//'`
+outer /usr
+outer $HOME/cvs
+outer $HOME/svn
+
+# Could use locate!
