@@ -390,6 +390,6 @@ BASE <-
 //dets
 //final1
 //final2
-unionList([final1,final2])
+iterate _ in unionList([final1,final2]) { emit () }
 
 // wsc: Worked with rev 1342 of the engine

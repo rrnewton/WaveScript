@@ -2,8 +2,7 @@
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
-
-
+source `dirname $0`/assert_regimentd
 
 # Inline factor should be, say, 3:
 #FLAGS="-unsafe -ffast-math -inline 100 -noassert"

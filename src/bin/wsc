@@ -2,6 +2,8 @@
 
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
+source `dirname $0`/assert_regimentd
+
 if [ ! -f "$1" ];
 then echo Usage: "wsc <file> <options ...>";
 #     echo   (Options: -b  Build cpp file.)
