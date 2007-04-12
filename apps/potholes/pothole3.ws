@@ -236,7 +236,8 @@ sm = stream_map;
 // Where X/Y/Z is accelerometer data.
 //
 //chans = (readFile("/tmp/clip", "")
-chans = (readFile("/tmp/gt.txt", "")
+//chans = (readFile("/tmp/gt.txt", "")
+chans = (readFile("/tmp/test", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Float * Float));
@@ -358,7 +359,7 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
   }
 }
 
-smoothedscores = syncN_no_delete(tosync2, [time, lat, long]);
+smoothedscores = syncN_no_delete(tosync2, [time, lat, long, dir, speed]);
 
 zipsync3 = iterate (b,s,e,_,mean,score,_,_) in dets { 
   if b == 2 
@@ -373,8 +374,8 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   timeseg = List:ref(l,0);
   latseg = List:ref(l,1);
   longseg = List:ref(l,2);
-  dirseg = List:ref(l,6);  
-  speedseg = List:ref(l,7);
+  dirseg = List:ref(l,3);  
+  speedseg = List:ref(l,4);
   time = timeseg[[0]];
   lat = latseg[[0]];
   long = longseg[[0]];
