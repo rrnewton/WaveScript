@@ -70,3 +70,33 @@ fun filter_spikes(s, thresh) {
 }
 
 
+fun prestream(s, pre_data) {
+  iterate (v in s) {
+    state {
+      done = false;
+    }
+    if (not(done)) then {
+      for i = 0 to Array:length(pre_data)-1 {
+	emit(pre_data[i]);
+      }
+    };
+    emit(v);
+  }
+}
+
+
+// takes a series of samples
+fun gaussian_smoothing(s, points, sigma) {
+  rw = rewindow
+    (window
+     (prestream(s,Array:make
+		(points/2,0.0)), points), 
+     points, 1-points);
+
+  iterate (w in rw) {
+    state {
+      hw = gaussian(intToFloat(sigma),points);
+    }
+    emit(adot(toArray(w),hw));
+  }
+}
