@@ -306,7 +306,8 @@
 	    " let timestamp = ref 0 in \n"
 	    " let hndl = open_in "file" in \n"
 	    " let rec f () = \n"
-	    "  Scanf.fscanf hndl \""
+	    "  let line = input_line hndl in \n"
+	    "  Scanf.sscanf line \""
 	    (insert-between " "
 	     ;; CAREFUL: THIS DOESN'T EXPLICITELY LOOK FOR NEWLINES:
              (map (lambda (ty)
@@ -326,7 +327,7 @@
 	         ;; Form a tuple of the results and send it downstream.
 	         ((Emit downstrm) (apply make-tuple names))"); \n"))
 	    ;; Now discard the rest of the line.
-	    "  let _ = input_line hndl in "
+;	    "  let _ = input_line hndl in "
 	    "   timestamp := !timestamp + "(number->string (rate->timestep rate))";"
 	    "   SE (!timestamp, f) in \n"
 	    "  SE (0, f) \n" 
