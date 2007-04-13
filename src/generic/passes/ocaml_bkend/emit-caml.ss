@@ -203,6 +203,11 @@
      ;; This is messed up:
      (list v " = " (Var rhs))]
 
+    ;; Could have assert-type:
+    [(,v ,t (,ann ,_ ,rhs))
+     (guard (memq ann '(assert-type )))
+     (ConstBind `(,v ,t ,rhs))]
+
     [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]))
 
 (define Const
