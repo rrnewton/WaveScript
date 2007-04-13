@@ -1,4 +1,3 @@
-
 include "stdlib.ws";
 include "filter.ws";
 //include "matrix.ws";
@@ -29,12 +28,44 @@ include "filter.ws";
 
 //======================================================================
 
+fun prestream(s, pre_data) {
+  iterate (v in s) {
+    state {
+      done = false;
+    }
+    if (not(done)) then {
+      for i = 0 to Array:length(pre_data)-1 {
+	emit(pre_data[i]);
+      };
+      done := true;
+    };
+    emit(v);
+  }
+}
+
+
+// takes a series of samples
+fun gaussian_smoothing(s, points, sigma) {
+  rw = rewindow
+    (window
+     (prestream(s,Array:make
+		(points/2,0.0)), points), 
+     points, 1-points);
+
+  iterate (w in rw) {
+    state {
+      hw = gaussian(intToFloat(sigma),points);
+    }
+    smoothed = adot(toArray(w),hw);
+    emit(smoothed);
+  }
+}
 
 /*
  *  easily tweakable params:
  *     refractory:   merge adjacent detections
  *     thresh:       number units over mean (wish this was based on variance?)
- *     alpha:        control reaction rate
+ *     sigma:        control sigma on gaussian smoothing
  *     data_padding: amount of data reported to either side
  *
  *  questions: normalize?  what are the units?
@@ -46,23 +77,16 @@ data_padding = 100;
 
 fun detect(scorestrm) {
   // Constants:
-  alpha = 0.90;
   hi_thresh = 15;                   // thresh above ewma
-  startup_init = 75;
   refract_interval = 0;             // set higher to merge.. e.g. 2 
 
-  iterate((score,st,en) in scorestrm) {
+  iterate((score,smoothed_mean,st,en) in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
-      smoothed_mean = 0.0;
       _start = 0; 
       trigger_value = 0.0;
-      startup = startup_init;
       refract = 0;                 
-
-      // private
-      noise_lock = 0; // stats
 
       max_peak = 0.0;
       max_over = 0.0;
@@ -76,10 +100,8 @@ fun detect(scorestrm) {
     fun reset() {
       thresh_value := 0.0;
       trigger := false;
-      smoothed_mean := 0.0;
       _start := 0;
       trigger_value := 0.0;
-      startup := startup_init;
       refract := 0;
     };
 
@@ -126,12 +148,12 @@ fun detect(scorestrm) {
     };
 
 
-      if DEBUG then 
-        print("Thresh to beat: "++show(curr_thresh)++ " " ++ smoothed_mean++ ", Current Score: "++show(score)++
- " "++refract++ " " ++ startup ++"\n");
+    if DEBUG then 
+        print("Thresh to beat: "++show(curr_thresh)++ " " ++ smoothed_mean++ 
+	      ", Current Score: "++show(score)++" "++refract++ " " ++"\n");
 
-      /* over thresh and not in startup period (noise est period) */
-      if startup == 0 && refract == 0 && score > curr_thresh then {
+      /* over thresh and not in refractory */
+      if refract == 0 && score > curr_thresh then {
 	if DEBUG then print("Switching trigger to ON state.\n");
 	trigger := true;
 	refract := refract_interval;
@@ -145,18 +167,9 @@ fun detect(scorestrm) {
 	integral := score;
       };
 
-      /* otherwise, update the smoothing filters */
-      smoothed_mean := score *. (1.0 -. alpha) +. smoothed_mean *. alpha;
-      if (score < smoothed_mean) then smoothed_mean := score;
-
       /* compute thresh */
       curr_thresh := i2f(hi_thresh) + smoothed_mean;
 
-      emit (2, st, en, 0, smoothed_mean, score, 0.0, 0.0);
-
-      /* count down the startup phase */
-      if startup > 0 then startup := startup - 1;
-      
       if (not(trigger)) then {
 	/* ok, we can free from sync */
 	/* rrn: here we lamely clear from the beginning of time. */
@@ -238,7 +251,8 @@ sm = stream_map;
 //chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
-chans = (readFile("/dev/stdin", "")
+//chans = (readFile("/dev/stdin", "")
+chans = (readFile("data/jakob_lew.txt", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Float * Float));
 
@@ -250,11 +264,6 @@ y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
 z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
 dir = window(sm(fun((_,_,_,_,_,_,a,_)) a, chans), 512);
 speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
-
-
-
-// assuming sample rate is 380 hz
-//z3 = fft_filter(z,notch_filter(1025,150*2,260*2));
 
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
@@ -288,7 +297,14 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
   emit(x+y+z,wz.start,wz.end);
 };
 
-dets = detect(totalscore);
+smoothed = sm(fun(v)(v,0,0),
+	      gaussian_smoothing
+	      (sm(fun((v,_,_))v,totalscore), 256, 64));
+
+mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
+		 zip2_sametype(totalscore,smoothed));
+
+dets = detect(mergedscore);
 
 tosync = iterate (b,s,e,_,_,_,_,_) in dets { 
   if b == 1
@@ -353,19 +369,17 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
   emit();
 }
 
-  tosync2 = iterate (b,s,e,_,_,_,_,_) in dets { 
-  if b == 2
-  then {
-    emit(true,(s+e)/2,(s+e)/2);
-    emit(false,0,(s+e)/2-1);
-  }
+
+
+tosync2 = iterate (_, _, s, e) in mergedscore { 
+  emit(true,(s+e)/2,(s+e)/2);
+  emit(false,0,(s+e)/2-1);
 }
 
 smoothedscores = syncN_no_delete(tosync2, [time, lat, long, dir, speed]);
 
-zipsync3 = iterate (b,s,e,_,mean,score,_,_) in dets { 
-  if b == 2 
-  then emit([],mean,score)
+zipsync3 = iterate (sc,sm,s,e) in mergedscore {
+  emit([],sm,sc)
 }
 
 zipsync4 = iterate l in smoothedscores {emit(l,0.0,0.0)}
