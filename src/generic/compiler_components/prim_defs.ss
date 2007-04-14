@@ -213,7 +213,9 @@
     (min ('a 'a) 'a)
 
     ; predicates
-    (=  ('a 'a) Bool)
+    ;; Restricted version for numbers:
+    ;(=  ((NUM a) (NUM a)) Bool)
+    (=  ('a 'a) Bool)     ;; <- PHASE OUT
     (<  ('a 'a) Bool)
     (>  ('a 'a) Bool)
     (<=  ('a 'a) Bool)

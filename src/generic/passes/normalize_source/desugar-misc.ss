@@ -72,6 +72,8 @@
 	  [(List:head ,[x]) `(car ,x)]
 	  [(List:tail ,[x]) `(cdr ,x)]
 
+	  ;[(= ,x ,y) `(equal? ,x ,y)]
+
 	  [(append ,[x] ,[y]) `(List:append ,x ,y)]
 	  [(fold ,[x] ,[y])   `(List:fold ,x ,y)]
 	  [(map ,[x] ,[y])    `(List:map ,x ,y)]

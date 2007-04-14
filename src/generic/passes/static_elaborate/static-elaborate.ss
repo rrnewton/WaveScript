@@ -153,6 +153,9 @@
 	(car car) (cdr cdr) ;cons ;; [2006.11.05] removing cons.
 	;(cons "cons-done-as-special-case")
 
+	(realpart cfl-real-part)
+	(imagpart cfl-imag-part)
+
 	(string-append string-append)
 	
 	(stringToInt ,(lambda (env v) 

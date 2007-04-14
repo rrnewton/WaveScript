@@ -18,10 +18,12 @@ BASE <- iterate (x in (readFile("./countup.raw", "mode: binary  window: 1000") :
 
     print("alistLookup: "++ show(List:assoc(alst, "a")) ++"\n");
     print("alistLookup: "++ show(List:assoc(alst, "b")) ++"\n");
-    print("alistUpdate: "++ show(alist_update(alst, "a", 99)) ++"\n");
+    print("alistUpdate: "++ show(List:assoc_update(alst, "a", 99)) ++"\n");
 
     print("realpart: "++ show(realpart(3.0+4.0i)) ++"\n");
     print("imagpart: "++ show(3.0+4.0i . imagpart) ++"\n");
+
+    print("string conversions: " ++ stringToInt("3") ++ stringToFloat("3.0") ++ stringToComplex("3.0+4.0i"));
 
     // atan2
 

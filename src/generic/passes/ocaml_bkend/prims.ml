@@ -73,3 +73,9 @@ let fftR2C flarr =
    Wouldn't have to copy on input...*)
 
 
+let powInt n x = 
+  let rec loop acc i =
+    if i == 0
+    then acc
+    else loop (n * acc) (i - 1)
+  in loop 1 x

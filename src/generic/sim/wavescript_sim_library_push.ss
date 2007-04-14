@@ -404,6 +404,14 @@
 		(vector-set! tup i 
 			     (case (vector-ref tyvec i)
 			       [(String) (symbol->string (read p))]
+			       [(Int Int16) (let ([v (read p)])
+					      (unless (fixnum? v)
+						(error 'readFile "cannot read ~s as integer type" v))
+					      v)]
+			       [(Float)    (let ([v (read p)])
+					      (unless (flonum? v)
+						(error 'readFile "cannot read ~s as float type" v))
+					      v)]
 			       [else (read p)]))
 		(loop (fx+ 1 i))))))
       (define (get-batch)

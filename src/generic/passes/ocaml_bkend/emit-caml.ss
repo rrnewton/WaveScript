@@ -20,7 +20,7 @@
 (module emit-caml mzscheme 
   (require  "../../../plt/common.ss"
 	    "../../compiler_components/c_generator.ss" )
-  (provide emit-caml-wsquery)
+  (provide emit-caml-wsquery test-emit-caml)
   (chezprovide )  
   (chezimports (except helpers test-this these-tests))
 
@@ -619,30 +619,44 @@
       [-_ "(-)"] 
       [*_ "( * )"]
       [/_ "(/)"]
+      [^_ powInt] ;; Defined in prims.ml
+
       [+. "(+.)"]
       [-. "(-.)"] 
       [*. "( *.)"] 
       [/. "(/.)"]
+      [^. "( ** )"]
+
       [+: "Complex.add"]
       [-: "Complex.sub"] 
       [*: "Complex.mul"] 
       [/: "Complex.div"]
+      [^: "Complex.pow"]
+
       [+I16 "(+)"]
       [-I16 "(-)"] 
-      [*I16 "(*)"] 
+      [*I16 "( * )"] 
       [/I16 "(/)"]
-      [< "(<)"]
-      [<= "(<=)"]
-      [> "(>)"]
-      [>= "(>=)"]
-      [equal? "(==)"] ;; NOTE! FIXME! should be =???
+      [^I16 "powInt"]
+
+      [<      "(<)"]
+      [<=     "(<=)"]
+      [>      "(>)"]
+      [>=     "(>=)"]
+      [=      "(==)"] ;; NOTE! FIXME! should be =???
+      [equal?   "(==)"] ;; NOTE! FIXME! should be =???
       [string-append "(^)"]      
       [Mutable:ref "ref"]
       [deref "!"]
-      [absI abs]
-      [absF abs_float]
-      [absC Complex.norm]
+
+      [absI16 abs]
+      [absI   abs]
+      [absF   abs_float]
+      [absC   Complex.norm]
+
+      [sqrtI "(fun x -> (int_of_float (sqrt (float_of_int x))))"]
       [sqrtF sqrt]
+      [sqrtC Complex.sqrt]
 
       [realpart "(fun x -> x.Complex.re)"]
       [imagpart "(fun x -> x.Complex.im)"]
@@ -655,11 +669,28 @@
       [List:ref List.nth]
       [List:append List.append]
 
-      [intToFloat    float_of_int]
+      [int16ToInt    "(fun x -> x)"]
       [int16ToFloat  float_of_int]
+      [int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+
+      [intToInt16    "(fun x -> x)"]
+      [intToFloat    float_of_int]
+      [intToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
+
       [floatToInt    int_of_float]
       [floatToInt16  int_of_float]
-      
+      [floatToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
+
+      [complexToInt16 "(fun c -> int_of_float c.Complex.re)"]
+      [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
+      [complexToFloat "(fun c -> c.Complex.re)"]
+
+      [stringToInt int_of_string]
+      [stringToFloat float_of_string]
+      [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
+
+      [roundF "(fun x -> floor (x + 0.5))"]
+
       [start   ss_start]
       [end     ss_end]
       [seg-get ss_get]
@@ -747,11 +778,11 @@
     `(
       [3 3]
 
-#;
       ;; This makes sure we can generate *something* for all the primitives.
       ,@(map
 	 (match-lambda ([,prim ,argtypes ,rettype])
-	   `[(,Prim '(,prim ,@(map (lambda (_) (unique-name 'x)) argtypes)) "foo" "") unspecified]
+	   `[(,Prim '(,prim ,@(map (lambda (_) (unique-name 'x)) argtypes))
+		    (lambda (_) #f)) unspecified]
 	   )
 	 ;; Quadratic:
 	 (let ([exceptions 
@@ -759,25 +790,34 @@
 		 '(;; These are obsolete:
 		   eq? locdiff nodeid sense even? odd? 
 		   ;; These weren't really primitives:    
-		   tuple tupref ref deref
+		   tuple tupref ref deref static statref
 		   ;; These were desugared or reduced to other primitives:
-		   or and dataFile show-and-string-append Array:toList
+		   or and dataFile show-and-string-append 
 		   ;; These were resolved into the w/namespace versions:
 		   head tail map append fold
 		   List:head List:tail 
+
+		   ;; This are handled specially by DispatchOnArrayType.
+		   ;; This is due to the dual-representation for arrays.
+		   Array:toList Array:make Array:makeUNSAFE Array:get Array:ref Array:length
+		   joinsegs subseg width toSigseg toArray timebase start end seg-get
 		   
 		   ;; These have a special syntax, requiring an assert-type or whatnot:
-		   cons car cdr null? hashtable prim_window 
+		   cons car cdr null? prim_window 
 		   List:ref List:append List:reverse List:length List:make 
-		   Array:makeUNSAFE
-		   
+		   		   
 		   equal? print show seg-get toArray
 
 		   ;; TODO, FIXME: These I just haven't gotten to yet:
+		   fftC ifftC ifftC2R
 		   ENSBoxAudio
 		   List:assoc List:assoc_update
 		   hashrem hashset ;; pure versions
 		   Array:map Array:fold
+		   internString uninternString
+		   
+		   HashTable:contains HashTable:get HashTable:set_BANG HashTable:rem_BANG 
+		   HashTable:make HashTable:rem HashTable:set ;; pure versions
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)
@@ -793,7 +833,7 @@
       ))
 
 (define-testing test-this (default-unit-tester "wavescript_emit-caml.ss: generating WaveScript OCaML code." these-tests))
-(define test-wavescript_emit-caml test-this)
+(define test-emit-caml test-this)
 
 
 ) ;; End Module
