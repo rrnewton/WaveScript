@@ -2,7 +2,7 @@ include "stdlib.ws";
 
 // 0 says not to replay the data-file after it's finished:
 // 1000 says to set sample rate at 1Khz -- not important for this app:
-data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Float));
+data = (dataFile("data2.txt", "text", 1000, 0) :: Stream (Float));
 
 // Note, this error check doesn't work right because of the way static
 // elaboration currently operates:
