@@ -252,7 +252,7 @@ sm = stream_map;
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
 //chans = (readFile("/dev/stdin", "")
-chans = (readFile("data/jakob_lew.txt", "")
+chans = (readFile("data/gt-lock.txt", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Float * Float));
 
@@ -372,8 +372,8 @@ final1 = iterate ((_,l,p,i,b,mo,th),(segs,_,_,_,_,_,_)) in tmp {
 
 
 tosync2 = iterate (_, _, s, e) in mergedscore { 
-  emit(true,(s+e)/2,(s+e)/2);
-  emit(false,0,(s+e)/2-1);
+  emit(true,(s+e)/2-127,(s+e)/2+128);
+  emit(false,0,(s+e)/2-127);
 }
 
 smoothedscores = syncN_no_delete(tosync2, [time, lat, long, dir, speed]);
@@ -392,23 +392,24 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
     roadnoise = 0.0;
     cell_array = Array:null;
     gw = Array:null;
-    last_cell = (0.0,0.0,0.0);
+    last_cell = (0.0,0.0,0.0,0.0);
   }
 
   bound = 0.00005;
   fun cellfloor(x) {
     i2f(f2i(x / bound))*bound;
   };
-  fun pushcell(value,lat,long) {
-    let (x,y,v) = last_cell;
+  fun pushcell(value,frac,lat,long) {
+    let (x,y,v,f) = last_cell;
     x2 = cellfloor(long);
     y2 = cellfloor(lat);
     if (x2 == x && y2 == y) then {
-      last_cell := (x,y,v+value);
+      last_cell := (x,y,v+value,f+frac);
     }
     else {
-      println("@## "++x++" "++y++" "++v);
-      last_cell := (x2,y2,value);
+      if (f > 0.0) then
+        println("@## "++x++" "++y++" "++v/f);
+      last_cell := (x2,y2,value,frac);
     }
   };
 
@@ -440,14 +441,19 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   // add in the scaled gaussian and push new cells
   for i = 0 to timeseg.width - 1 {
     cell_array[i] := cell_array[i] + (m * gw[i]);
-    if (i < skip) then pushcell(cell_array[i],latseg[[i]],longseg[[i]]);
+    if (i < skip) then {
+      frac = sqrtF(sqr(latseg[[i]]-latseg[[i+1]]) +
+		   sqr(longseg[[i]]-longseg[[i+1]])) / bound;
+      if (frac > 0.0) then
+	pushcell(cell_array[i],frac,latseg[[i]],longseg[[i]]);
+    }
   };
 
-  time = timeseg[[0]];
-  lat = latseg[[0]];
-  long = longseg[[0]];
-  dir = dirseg[[0]];
-  speed = speedseg[[0]];
+  time = timeseg[[127]];
+  lat = latseg[[127]];
+  long = longseg[[127]];
+  dir = dirseg[[127]];
+  speed = speedseg[[127]];
 
   if (speed > 5.0) then {
     roadnoise := m / speed;
