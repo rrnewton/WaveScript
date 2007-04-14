@@ -77,7 +77,7 @@ data_padding = 100;
 
 fun detect(scorestrm) {
   // Constants:
-  hi_thresh = 15;                   // thresh above ewma
+  hi_thresh = 1.5;                  // factor above smoothed
   refract_interval = 0;             // set higher to merge.. e.g. 2 
 
   iterate((score,smoothed_mean,st,en) in scorestrm) {
@@ -168,7 +168,7 @@ fun detect(scorestrm) {
       };
 
       /* compute thresh */
-      curr_thresh := i2f(hi_thresh) + smoothed_mean;
+      curr_thresh := hi_thresh * smoothed_mean;
 
       if (not(trigger)) then {
 	/* ok, we can free from sync */
@@ -299,7 +299,7 @@ totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
 
 smoothed = sm(fun(v)(v,0,0),
 	      gaussian_smoothing
-	      (sm(fun((v,_,_))v,totalscore), 256, 64));
+	      (sm(fun((v,_,_))v,totalscore), 64, 8));
 
 mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
 		 zip2_sametype(totalscore,smoothed));
@@ -385,27 +385,76 @@ zipsync3 = iterate (sc,sm,s,e) in mergedscore {
 zipsync4 = iterate l in smoothedscores {emit(l,0.0,0.0)}
 smoothedzip = zip2_sametype(zipsync3, zipsync4);
 
+
 final2 :: Stream ();
 final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   state {
     roadnoise = 0.0;
+    cell_array = Array:null;
+    gw = Array:null;
+    last_cell = (0.0,0.0,0.0);
   }
+
+  bound = 0.00005;
+  fun cellfloor(x) {
+    i2f(f2i(x / bound))*bound;
+  };
+  fun pushcell(value,lat,long) {
+    let (x,y,v) = last_cell;
+    x2 = cellfloor(long);
+    y2 = cellfloor(lat);
+    if (x2 == x && y2 == y) then {
+      last_cell := (x,y,v+value);
+    }
+    else {
+      println("@## "++x++" "++y++" "++v);
+      last_cell := (x2,y2,value);
+    }
+  };
+
   timeseg = List:ref(l,0);
   latseg = List:ref(l,1);
   longseg = List:ref(l,2);
   dirseg = List:ref(l,3);  
   speedseg = List:ref(l,4);
+
+  skip = 64;
+
+  // initialize or adjust array
+  if (gw == Array:null) then {
+    gw := gaussian(i2f(skip),timeseg.width);
+    cell_array := Array:make(timeseg.width,0.0);
+  } 
+  else {
+    edge = timeseg.width - skip;
+    for i = 0 to timeseg.width - 1 {
+      if (i < edge) then {
+	cell_array[i] := cell_array[i+skip];
+      }
+      else {
+	cell_array[i] := 0.0;
+      }
+    }
+  };
+
+  // add in the scaled gaussian and push new cells
+  for i = 0 to timeseg.width - 1 {
+    cell_array[i] := cell_array[i] + (m * gw[i]);
+    if (i < skip) then pushcell(cell_array[i],latseg[[i]],longseg[[i]]);
+  };
+
   time = timeseg[[0]];
   lat = latseg[[0]];
   long = longseg[[0]];
   dir = dirseg[[0]];
   speed = speedseg[[0]];
+
   if (speed > 5.0) then {
     roadnoise := m / speed;
   };
   println("@#@ "++time++" "++lat++" "++long
 	  ++" "++dir++" "++speed
-	  ++" "++m++" "++s++" "++roadnoise);
+	  ++" "++m++" "++s);
   emit();
 }
 
