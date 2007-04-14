@@ -41,7 +41,7 @@
 (define (make-fun formals body) 
   (list "(fun " (insert-between " " (map symbol->string formals))
 	" -> " body ")"))
-(trace-define (make-let binds body)
+(define (make-let binds body)
   (list "(let "
 	(insert-between "\n and "
 	   (map (match-lambda ([,lhs ,rhs])
@@ -193,8 +193,18 @@
   ;; This is the place to do any name mangling.  I'm not currently doing any for WS.
   (symbol->string var))
 
+;; Really the RHS could be any expression, it just does not have a stream type.
 (define (ConstBind b)
   (match b
+
+    [(,v ,t ,rhs)
+     (list (Var v) " = " 
+	   (Expr rhs 
+		 (lambda (_) 
+		   (error 'ConstBind 
+			  "shouldn't have any 'emit's within a constant (non-stream) expression"))))]
+
+#|
     [(,[Var -> v] ,t (quote ,[Const -> rhs]))
      (list v " = " rhs)]
 
@@ -207,7 +217,7 @@
     [(,v ,t (,ann ,_ ,rhs))
      (guard (memq ann '(assert-type )))
      (ConstBind `(,v ,t ,rhs))]
-
+|#
     [,oth (error 'ConstBind "Bad ConstBind, got ~s" oth)]))
 
 (define Const
@@ -474,7 +484,7 @@
   (memq p '(joinsegs subseg width toSigseg toArray timebase start end seg-get)))
 
 ;; Converts an operator based on the array element type.
-(trace-define (DispatchOnArrayType op elt)
+(define (DispatchOnArrayType op elt)
   (let ([flatty (BigarrayType? elt)])
     (if flatty
 	(case op
