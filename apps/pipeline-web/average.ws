@@ -4,9 +4,14 @@ include "stdlib.ws";
 // 1000 says to set sample rate at 1Khz -- not important for this app:
 data = (dataFile("data.txt", "text", 1000, 0) :: Stream (Float));
 
-wins = if GETENV("windowsize") == "true"
-       then window(data, windowsize);
+// Note, this error check doesn't work right because of the way static
+// elaboration currently operates:
+//winsize = GETENV("windowsize");
+//wins = if winsize == "" 
+//       then wserror("Environment variable 'windowsize' must be set!")
+//       else window(data, stringToInt(winsize));
 
+wins = window(data, stringToInt(GETENV("windowsize")));
 
 // BASE <- snoop("hello" , wins);
 
