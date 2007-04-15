@@ -195,6 +195,7 @@
 				 (import wavescript_sim_library_push)
 				 ,(code-expr f))]
 		   [real-closure (eval real-code)])
+	      (inspect real-code)
 	      (inspect/continue 
 	       (vector-build n (lambda (i) (real-closure i)))))
 	    ))

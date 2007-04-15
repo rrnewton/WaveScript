@@ -398,7 +398,11 @@
        )]))
 
 (define (build-BASE type)  
-  `(" baseSink x = print_endline (",(build-show type)" x); flush stdout \n"))
+  (if (equal? type #())      
+      ;`(" baseSink x = print_endline (\"UNIT\"); flush stdout \n")
+      `(" baseSink x = flush stdout \n")
+      `(" baseSink x = print_endline (",(build-show type)" x); flush stdout \n")
+  ))
 
 
 (define (type->reader t) 
@@ -643,8 +647,8 @@
       [<=     "(<=)"]
       [>      "(>)"]
       [>=     "(>=)"]
-      [=      "(==)"] ;; NOTE! FIXME! should be =???
-      [equal?   "(==)"] ;; NOTE! FIXME! should be =???
+      [=        "(=)"] ;; NOTE! FIXME! should be =???
+      [equal?   "(=)"] ;; NOTE! FIXME! should be =???
       [string-append "(^)"]      
       [Mutable:ref "ref"]
       [deref "!"]
