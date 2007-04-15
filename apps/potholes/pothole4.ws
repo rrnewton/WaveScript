@@ -251,8 +251,9 @@ sm = stream_map;
 //chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
-//chans = (readFile("/dev/stdin", "")
-chans = (readFile("data/gt-lock.txt", "")
+chans = (readFile("/dev/stdin", "")
+//chans = (readFile("data/gt-lock.txt", "")
+//chans = (readFile("data/slave18.txt", "")
 //chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Float * Float));
 
@@ -399,7 +400,7 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   fun cellfloor(x) {
     i2f(f2i(x / bound))*bound;
   };
-  fun pushcell(value,frac,lat,long) {
+  fun pushcell(value,frac,lat,long,dir,vel) {
     let (x,y,v,f) = last_cell;
     x2 = cellfloor(long);
     y2 = cellfloor(lat);
@@ -408,7 +409,7 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
     }
     else {
       if (f > 0.0) then
-        println("@## "++x++" "++y++" "++v/f);
+        println("@## "++x++" "++y++" "++v/f++" "++dir++" "++vel);
       last_cell := (x2,y2,value,frac);
     }
   };
@@ -445,7 +446,8 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
       frac = sqrtF(sqr(latseg[[i]]-latseg[[i+1]]) +
 		   sqr(longseg[[i]]-longseg[[i+1]])) / bound;
       if (frac > 0.0) then
-	pushcell(cell_array[i],frac,latseg[[i]],longseg[[i]]);
+	pushcell(cell_array[i],frac,latseg[[i]],longseg[[i]],
+		 dirseg[[i]],speedseg[[i]]);
     }
   };
 
