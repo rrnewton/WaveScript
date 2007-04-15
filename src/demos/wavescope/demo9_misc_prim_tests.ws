@@ -3,8 +3,19 @@
 
 // Test various primitives in WS.
 
+fun assert(str, bool) {
+  if not(bool)
+  then { 
+    wserror("assert FAILED: "++str);
+  }
+}
+
 BASE <- iterate (_ in (readFile("./countup.raw", "mode: binary  window: 1000") :: Stream (Sigseg Int16))) {
-  state { run = true }
+  state { 
+    run = true;
+    arr1 = Array:null;
+    ls1  = [];
+  }
   if run then {
 
     //    x = int16ToInt(_x);
@@ -27,8 +38,20 @@ BASE <- iterate (_ in (readFile("./countup.raw", "mode: binary  window: 1000") :
 
     print("string conversions: " ++ stringToInt("3") ++ stringToFloat("3.0") ++ stringToComplex("3.0+4.0i") ++"\n");
 
-    print("equality, true: " ++ (Array:null == (Array:null :: Array ())) ++ "\n");
+    // ============================================================
+    // Test semantics against constants.  This should test the elaborator.
 
+
+    // ============================================================
+    print("Testing equality.\n");
+    assert("array equality, null==null", arr1 == (Array:null :: Array ()));
+    assert("list equality, []==[]",      ls1  == ([] :: List Int));
+    ls1 := [1,2,3];
+    assert("non-null list equality",     ls1  == [1,2,3]);
+    ls1 := [1,2,3,4];
+    assert("non-null list inequality",   not(ls1 == [1,2,3]));
+    //assert("false",false);
+   
     // atan2
 
     run := false;

@@ -127,17 +127,9 @@ chez_native:
         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
-boot:
-	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
-	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
-         (export REGOPTLVL=2; \
-          export REGDEBUGMODE=OFF; \
-          export REGIMENT_OR_WAVESCRIPT=WS; \
-          $(CHEZ))
+boot: ws
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main.hdr" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
-
 
 ws:
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi

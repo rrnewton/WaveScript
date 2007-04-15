@@ -256,10 +256,9 @@
 ;======================================================================
 ;;; Begin loading files.
 
-;(define start-dir (eval-when (compile load eval) (cd)))
 (eval-when (compile load eval) 
+  (define-top-level-value 'pre-load-directory (current-directory))
   (current-directory (string-append (default-regimentd) "/src/chez")))
-
 
 (include "chez/match.ss")      ;; Pattern matcher, dependency.
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
@@ -736,10 +735,8 @@
   )
 
 (if VERBOSE-LOAD (printf "  Finished loading... \n"))
-
-
-
-
+(eval-when (compile load eval) 
+  (current-directory (top-level-value 'pre-load-directory)))
 
 
 

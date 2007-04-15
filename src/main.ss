@@ -678,7 +678,8 @@
    (set! prog (explicit-stream-wiring prog))
          
    (string->file (text->string (emit-caml-wsquery prog)) outfile)
-   (printf "\nGenerated OCaml output to ~s.\n" outfile)))
+   (printf "\nGenerated OCaml output to ~s.\n" outfile)
+   ))
 
 
 

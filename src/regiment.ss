@@ -24,9 +24,7 @@
 ;; compiled, we take that as an indication that the system will be
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
-  ;; [2007.04.15] If it's already been loaded from a boot file, don't bother with this.
-  (unless (top-level-bound? 'run-ws-compiler)
-    (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
+  (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
     (define UNSAFEOPTMODE (equal? (getenv "REGOPTLVL")  "3"))
     (define DEBUGINVOCATION (equal? (getenv "REGDEBUGMODE")  "ON"))
 
@@ -36,23 +34,32 @@
        [DEBUGINVOCATION (format "./build/~a/main_chez_DBG.so" (machine-type))]
        [else (format "./build/~a/main_chez.so" (machine-type))]))
 
-    (if (file-exists? sofile)
-	
-	;; If the compiled version is there, use that:
-	(begin 
-	  (set! regiment-origin "compiled .so")
-	  (load sofile)
-	  
-	  ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
-	  ;; (But currently I can't get the system to work when loaded from .so)
-	  ;; SHOULD ONLY DO THIS WHEN WE'RE LOADING FROM .SO:
-	  (eval '(import scheme))
-	  (load (string-append (getenv "REGIMENTD") "/src/chez/regmodule.ss"))
-	  (eval '(import reg:module))
+
+    (define (yucky-hack)
+      ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
+      ;; (But currently I can't get the system to work when loaded from .so)
+      ;; SHOULD ONLY DO THIS WHEN WE'RE LOADING FROM .SO:
+      (eval '(import scheme))
+      (load (string-append (getenv "REGIMENTD") "/src/chez/regmodule.ss"))
+      (eval '(import reg:module)))
+
+    (if (top-level-bound? 'run-ws-compiler)
+	;; [2007.04.15] If it's already been loaded from a boot file...
+	(begin
+	  (yucky-hack)
 	  )
-	(begin (fprintf stderr "Loading Regiment from source...\n")
-	       (set! regiment-origin "source")
-	       (load "./main_chez.ss"))))))
+	(if (file-exists? sofile)
+	    
+	    ;; If the compiled version is there, use that:
+	    (begin 
+	      (set! regiment-origin "compiled .so")
+	      (load sofile)
+	      (yucky-hack)
+	      )
+	    (begin (fprintf stderr "Loading Regiment from source...\n")
+		   (set! regiment-origin "source")
+		   (load "./main_chez.ss")))
+	)))
 
 ; =======================================================================
 
