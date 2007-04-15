@@ -34,7 +34,6 @@
        [DEBUGINVOCATION (format "./build/~a/main_chez_DBG.so" (machine-type))]
        [else (format "./build/~a/main_chez.so" (machine-type))]))
 
-
     (define (yucky-hack)
       ;; [2007.01.29] I REALLY SHOULDN'T HAVE TO DO THIS.
       ;; (But currently I can't get the system to work when loaded from .so)
@@ -45,8 +44,11 @@
 
     (if (top-level-bound? 'run-ws-compiler)
 	;; [2007.04.15] If it's already been loaded from a boot file...
+	(yucky-hack)
+	;(void)
+	#;
 	(begin
-	  (yucky-hack)
+	  
 	  )
 	(if (file-exists? sofile)
 	    
@@ -112,8 +114,9 @@
   (printf "  -vw <worldfile>     (not really a log) if gui is loaded, view saved world~n")
   (printf "~n")
   (printf "WSINT options: ~n")
+  (printf "  -dump <file>  don't go into stream browser, dump output stream to file~n")
   (printf "WSCOMP options: ~n")
-  (printf "  -c0   only run the WaveScript compiler, stop at C++~n")
+  (printf "  -c0           only run the WaveScript compiler, stop at C++~n")
   )
 
 (define (print-types-and-exit prog . opts)
@@ -200,6 +203,10 @@
 
 		    [(-quiet ,rest ...)
 		     (regiment-quiet #t)
+		     (loop rest)]
+
+		    [(-dump ,file ,rest ...)
+		     (set! outfile file)
 		     (loop rest)]
 
 		    [(-c0 ,rest ...) (set! opts (cons 'stop-at-c++ opts)) (loop rest)]
@@ -436,8 +443,13 @@
 	     (import streams)
 	     ;(import imperative_streams)
 	     (if (stream? return)
-		 (parameterize ([print-vector-length #t])
-		   (browse-stream return))
+		 (if outfile
+		     (begin
+		       (printf "Dumping output to file: ~s\n" outfile)
+		       (stream-dump return outfile))
+		     ;; Otherwise, browse it interactively:
+		     (parameterize ([print-vector-length #t])
+		       (browse-stream return)))		 
 		 (printf "\nWS query returned a non-stream value:\n  ~s\n" return))))]
 	  
 	  [(wscomp)

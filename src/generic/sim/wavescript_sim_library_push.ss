@@ -114,7 +114,6 @@
 		 (only lang_wavescript 
 		       ))
 
-
     
     (IFCHEZ
      (begin 
@@ -127,6 +126,7 @@
        (alias let let) ;; We assume type info has been stripped.
 
        (import (add-prefix scheme s:))
+       ;(alias begin s:begin)       
        )
      (begin 
 	    (require (prefix s: mzscheme))

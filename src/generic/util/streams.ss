@@ -9,7 +9,7 @@
    stream? live-stream? stream-empty? stream-cons stream-car stream-cdr
    stream-map stream-filter stream-take stream-take-all 
    iota-stream stream-append browse-stream ;random-stream 
-   stream-append-list
+   stream-append-list stream-dump
 
    test-streams
    )
@@ -139,6 +139,47 @@
 	(error 'stream-drop "Stream ran out of elements before the end!")]
        [else (stloop (fx- n 1) (stream-cdr s))]))))
 
+;; Dump an entire stream to a file:
+(define stream-dump
+  (lambda (stream file)
+    (define count 0)
+        (let ([port (open-output-file (format "~a" file) 'replace)])
+	       (parameterize ([print-length #f]
+			      [print-level #f]
+			      [print-graph #f]
+			      [ws-print-output-port port]
+			      )
+		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
+		 (let ([go
+			(lambda ()
+			  ;; Cannot do progress-dots now because we cannot nest engines.
+			  (let loop ()
+			    (if (stream-empty? stream)
+				(unless (regiment-quiet)
+				  (printf "Finished, dumped ~a stream elements.\n" count))
+				(let ([elem (stream-car stream)])
+				  (unless (equal? elem #())
+				    (write elem port)(newline port))
+				  ;(set! pos (add1 pos))
+				  (set! count (add1 count))
+				  (set! stream (stream-cdr stream))
+				  (loop)
+				  )))
+			  #;
+			  (progress-dots
+			   (lambda ()
+			     ...)
+			   50000000 
+			   (lambda ()
+			     (unless (regiment-quiet)
+			       (printf "  POS# ~a dumped...\n" pos))
+			     )))])
+		   (if (regiment-quiet)		       
+		       (go)
+		       (time (go))
+		       ))))
+    ))
+
 ;============================================================
 ;;; Stream transformers.
 
@@ -252,40 +293,7 @@
 	   (error 'browse-stream "limited dump not implemented")]
 
 	  [(,dump ,file) (guard (memq dump '(d du dum dump)))
-	     (let ([port (open-output-file (format "~a" file) 'append)])
-	       (parameterize ([print-length #f]
-			      [print-level #f]
-			      [print-graph #f]
-			      [ws-print-output-port port]
-			      )
-		 ;;(IFCHEZ (optimize-level 3) (run-cp0 (lambda (x cp0) x)))
-		 (let ([go
-			(lambda ()
-			  ;; Cannot do progress-dots now because we cannot nest engines.
-			  (let loop ()
-			    (if (stream-empty? stream)
-				(unless (regiment-quiet)
-				  (printf "Finished, dumped ~a stream elements.\n" pos))
-				(let ([elem (stream-car stream)])
-				  (unless (equal? elem #())
-				    (write elem port)(newline port))
-				  (set! pos (add1 pos))
-				  (set! stream (stream-cdr stream))
-				  (loop)
-				  )))
-			  #;
-			  (progress-dots
-			   (lambda ()
-			     ...)
-			   50000000 
-			   (lambda ()
-			     (unless (regiment-quiet)
-			       (printf "  POS# ~a dumped...\n" pos))
-			     )))])
-		   (if (regiment-quiet)		       
-		       (go)
-		       (time (go))
-		       ))))]
+	   (stream-dump stream file)]
 
 	  [(profile)  
 	   (IFCHEZ
