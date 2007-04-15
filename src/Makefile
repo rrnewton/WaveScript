@@ -47,6 +47,10 @@ basic:
 	@echo; echo; echo [OPT] Compiling Regiment Scheme Source
 	@echo "======================================================================"
 	$(MAKE) ws.opt
+	@echo; echo; echo 'Compiling OCaml FFTW wrapper (only needed for wscaml)'
+	@echo "======================================================================"
+	$(MAKE) ocaml
+
 # 	@echo; echo; echo BUILDING C-code extensions.
 # 	@echo "======================================================================"
 # 	@echo "Don't worry if this step fails, it's optional!"
@@ -123,6 +127,18 @@ chez_native:
         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
+boot:
+	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
+	export REGIMENT_OR_WAVESCRIPT=WS; 
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+         (export REGOPTLVL=2; \
+          export REGDEBUGMODE=OFF; \
+          export REGIMENT_OR_WAVESCRIPT=WS; \
+          $(CHEZ))
+	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main.hdr" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+
+
 ws:
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
@@ -155,7 +171,7 @@ threaded:
 
 ws.opt: opt
 opt:
-	MT=`echo '(machine-type)' | petite`
+	MT=`echo '(machine-type)' | ../depends/petite`
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
           (export REGOPTLVL=3; \
@@ -350,6 +366,7 @@ clean: cleanchez cleanplt
 	(cd C; $(MAKE) clean)
 	(cd demos/token_machs; $(MAKE) clean)
 	(cd demos/regiment; $(MAKE) clean)
+	(cd generic/passes/ocaml_bkend/; $(MAKE) clean)
 	$(RM) *.zo *.so _SIM_* *~ 
 	$(RM) __temp.log _genned_node_code.ss
 	find -name _genned_node_code.ss | xargs $(RM)

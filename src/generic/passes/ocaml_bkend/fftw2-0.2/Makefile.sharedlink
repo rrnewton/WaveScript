@@ -2,11 +2,8 @@
 PKGNAME=fftw2
 PKGVERSION=0.2
 
-## RRN: EXPERIMENTING 
-# Tried adding -static and -ccopt -static to CC_FLAGS and OCAMLOPT_FLAGS resp.
-
 CC=gcc
-CC_FLAGS = -fPIC -static
+CC_FLAGS = -fPIC
 ## Caml C header files location:
 OCAMLH=$(shell ocamlc -where)/caml
 ## Caml binaries:
@@ -16,7 +13,7 @@ OCAMLDEP  = ocamldep
 OCAMLDOC  = ocamldoc
 OCAMLFIND = ocamlfind
 OCAMLC_FLAGS   = -g -dtypes
-OCAMLOPT_FLAGS = -dtypes 
+OCAMLOPT_FLAGS = -dtypes
 
 INCLUDE_FFTW	= /usr/include/fftw/ ## !!!
 LIBFFTW		= -cclib -lfftw -cclib -lrfftw -cclib -lm
@@ -43,7 +40,7 @@ fftw2.cma: fftw2.cmo fftw2.cmi fftw2_stub.o
 fftw2.cmxa: fftw2.cmx fftw2.cmi fftw2_stub.o
 	$(OCAMLOPT) -a -o $@ $(OCAMLOPT_FLAGS) $< $(LIBFFTW) \
 		-ccopt -L$(OCAML_FFTW_PATH) -cclib -lfftw2_stub
-#	$(CC) -shared -o fftw2_stub.so $(CC_FLAGS) fftw2_stub.o -lfftw -lm
+	$(CC) -shared -o fftw2_stub.so $(CC_FLAGS) fftw2_stub.o -lfftw -lm
 	ar rc libfftw2_stub.a fftw2_stub.o
 
 # Deprecated versions:

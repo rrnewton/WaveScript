@@ -28,13 +28,7 @@ ARGS=${1+"$@"}
 
 #echo RUNNING ON MACHINE TYPE: "<"$MT">"
 
-script() {
-#    exec "$REGIMENTD/src/regiment_script.ss" $*
-
-    INVOKEDIR=`pwd`
-    SCRIPT="$REGIMENTD/src/regiment_script.ss"
-    ENTRY="$REGIMENTD/src/regiment.ss"
-    #echo ARGS: "<"$ARGS">"
+setupchez() {
     if (which chez > /dev/null); 
 	then SCHEME=chez;
     elif (which petite > /dev/null); 
@@ -43,17 +37,36 @@ script() {
 	then SCHEME="$REGIMENTD/depends/petite"
     else echo CHEZ SCHEME not found.; exit -1 
     fi 
-    #(cd "$REGIMENTD/src"; exec $SCHEME --script "regiment.ss" "$INVOKEDIR" $ARGS)
-    exec $SCHEME --script "$ENTRY" "$INVOKEDIR" $ARGS
 }
 
+script() {
+#    exec "$REGIMENTD/src/regiment_script.ss" $*
 
-# If we can we use the stored heap, otherwise we run it as a script.
+    INVOKEDIR=`pwd`
+    SCRIPT="$REGIMENTD/src/regiment_script.ss"
+    ENTRY="$REGIMENTD/src/regiment.ss"
+    setupchez;
+    #echo ARGS: "<"$ARGS">"
+    #(cd "$REGIMENTD/src"; exec $SCHEME --script "regiment.ss" "$INVOKEDIR" $ARGS)
+    exec $SCHEME $1 --script "$ENTRY" "$INVOKEDIR" $ARGS
+}
+
+# First we handle the "ws.opt" cases:
 if [ "$REGOPTLVL" == "3" ];
 then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
+      # If we can we use the stored heap, otherwise we run it as a script.
       then exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.OPT.heap $*;
       else script;
       fi);
+
+# [2007.04.15] In progress: going to move over to using boot files.
+# Which means invoking with the boot file explicitly here, rather than
+# letting the scheme source pick out the .so file.
+elif [ -f "$REGIMENTD/build/$MT/main_chez.boot" ]
+then setupchez;
+     #exec $SCHEME -b $REGIMENTD/src/build/$MT/main_chez.boot $*;
+     script "-b $REGIMENTD/src/build/$MT/main_chez.boot ";
+
 # Not currently using heaps for debug mode:
 elif [ "$REGDEBUGMODE" == "ON" ];
 then script;

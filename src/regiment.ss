@@ -24,7 +24,9 @@
 ;; compiled, we take that as an indication that the system will be
 ;; loaded by other means.
 (eval-when (eval) ; but not load/compile!
-  (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
+  ;; [2007.04.15] If it's already been loaded from a boot file, don't bother with this.
+  (unless (top-level-bound? 'run-ws-compiler)
+    (parameterize ([current-directory (string-append (getenv "REGIMENTD") "/src/")])
     (define UNSAFEOPTMODE (equal? (getenv "REGOPTLVL")  "3"))
     (define DEBUGINVOCATION (equal? (getenv "REGDEBUGMODE")  "ON"))
 
@@ -50,7 +52,7 @@
 	  )
 	(begin (fprintf stderr "Loading Regiment from source...\n")
 	       (set! regiment-origin "source")
-	       (load "./main_chez.ss")))))
+	       (load "./main_chez.ss"))))))
 
 ; =======================================================================
 
