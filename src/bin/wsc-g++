@@ -3,6 +3,8 @@
 
 # Dynamic linking to WaveScope engine by default? -- 1 or 0 
 DYNAMICLINK=0
+CCARGS=""
+FILE=""
 
 
 # In the future, consider these optimize flags:
@@ -20,14 +22,23 @@ DYNAMICLINK=0
 # -fssa-dce -fstrength-reduce  -fstrict-aliasing  -ftracer  -fthread-jumps -funroll-all-loops  -funroll-loops --param
 
 
-if [ "$1" == "-dynamic" ];
-then DYNAMICLINK=1; shift;
-elif [ "$1" == "-static" ];
-then DYNAMICLINK=0; shift;
-fi 
+while [ $# != 0 ];  do 
+  if [ "$1" == "-dynamic" ];
+  then DYNAMICLINK=1; 
+  elif [ "$1" == "-static" ];
+  then DYNAMICLINK=0;
+  elif [ "$1" == "-O2" ] || [ "$1" == "-O3" ];
+  then CCARGS="$CCARGS $1"; 
+#  elif [ `echo $1 | sed` == "-" ]
+#  then echo "Unknown flag: $1"
+  else FILE="$1"; 
+  fi
+  shift;
+done;
+
 
 # -fPIC | -O1/2/3 | -g
-WS_FLAGS="-fPIC -pg"
+WS_FLAGS="-fPIC -pg $CCARGS"
 
 WS_WARNINGS="-Wall -Werror -Wno-unused-variable "
 WS_INCLUDES="-I$WAVESCOPED/include "
@@ -46,7 +57,7 @@ WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
 echo Compiling .cpp file using g++.
 
 start=`date +%s`
-if g++ $WS_ALLARGS -o "$1.exe" "$1.cpp" $WS_LINK;
+if g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
 then 
     end=`date +%s`
     echo "Time spent in g++: "$[($end) - ($start)]" seconds"

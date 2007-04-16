@@ -56,6 +56,10 @@ typedef string wsstring_t;
 //typedef _Complex double wscomplex_t;
 typedef _Complex float wscomplex_t;
 
+// [2007.04.15] I can't remember why I branched this off from the
+// standard DEFINE_OUTPUT_TYPE.  Trying to go back.
+//
+/*
 #define WS_DEFINE_OUTPUT_TYPE(type)                \
   inline void emit(const type &tuple) {         \
     uint i;                                     \
@@ -64,6 +68,7 @@ typedef _Complex float wscomplex_t;
     } \
     totalEmits++; \
   }
+*/
 
 /*
 #define WS_DEFINE_OUTPUT_TYPE(type)                \

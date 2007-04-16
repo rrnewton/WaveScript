@@ -777,3 +777,10 @@ similar results:
        [#(foo ,x ,y) 'no]
        [#(foo ,[x] ,[y] ,[z]) `#(foo ,x ,y ,z)]))
 
+
+[2007.04.16]
+
+Switched the DEFINE_OUTPUT_TYPE macro back to the default one rather
+than my WS_ version.  It seemed to reduce crashing in wsc code, but it
+still gets double-free errors.  (Now it got a floating point exception
+anyway.) 

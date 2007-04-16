@@ -459,7 +459,7 @@
   class ",classname" : public WSBox{ 
    
     private:
-    WS_DEFINE_OUTPUT_TYPE(",(symbol->string tupname)");
+    DEFINE_OUTPUT_TYPE(",(symbol->string tupname)");
     
     bool iterate(uint32_t port, void *item)
     {
@@ -1353,7 +1353,7 @@ int main(int argc, char ** argv)
 (define (WSBox name outtype constructor body)
   `(,(block (wrap `("\nclass " ,name " : public WSBox"))
 	    `("public:\n"
-	      "WS_DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
+	      "DEFINE_OUTPUT_TYPE(" ,outtype ");\n\n"
 	      ,constructor
 	      "\nprivate:\n"
 	      ,body)) ";\n"))
