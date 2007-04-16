@@ -8,7 +8,7 @@ PKGVERSION=0.2
 CC=gcc
 CC_FLAGS = -fPIC -static
 ## Caml C header files location:
-OCAMLH=$(shell ocamlc -where)/caml
+OCAMLH=$(shell ocamlc -where)
 ## Caml binaries:
 OCAMLC	  = ocamlc
 OCAMLOPT  = ocamlopt
@@ -79,11 +79,11 @@ fftw2.mli: fftw64.ml fftw64.mli fftw-float-type
 	fi
 
 fftw2-float-typexb: fftw-float-type.c
-	$(CC) -o $@ $(CC_FLAGS) -I $(OCAMLH) $<
+	$(CC) -o $@ $(CC_FLAGS) -I $(OCAMLH) -I $(OCAMLH)/caml $<
 
 
 fftw2_stub.o: fftw2_stub.c
-	$(CC) -c $(CC_FLAGS) -I $(OCAMLH) \
+	$(CC) -c $(CC_FLAGS) -I $(OCAMLH) -I $(OCAMLH)/caml \
 	  -DCAML_FFTW_VERSION='"$(PKGVERSION)"' $<
 
 
