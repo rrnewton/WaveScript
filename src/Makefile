@@ -127,12 +127,20 @@ chez_native:
         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
-boot: ws
+# This makes a Chez Scheme .boot file instead of a shared object file.
+boot: _temp_temp.so ws 
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+	rm _temp_temp.ss _temp_temp.so
+
+_temp_temp.so:
 	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
 	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
-	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
-	rm _temp_temp.ss
+
+boot.opt: _temp_temp.so ws.opt 
+	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
+	rm _temp_temp.ss _temp_temp.so
 
 ws:
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi

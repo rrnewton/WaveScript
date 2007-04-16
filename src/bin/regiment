@@ -54,8 +54,13 @@ script() {
 # First we handle the "ws.opt" cases:
 if [ "$REGOPTLVL" == "3" ];
 then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
-      # If we can we use the stored heap, otherwise we run it as a script.
+      # If we can we use the stored heap, 
       then exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.OPT.heap $*;
+      # Otherwise check for .boot
+      elif [ -f "$REGIMENTD/build/$MT/main_chez_OPT.boot" ]
+      then setupchez;
+           script "-b $REGIMENTD/src/build/$MT/main_chez_OPT.boot ";
+      # Otherwise fall thruogh to running it as script.
       else script;
       fi);
 
