@@ -352,7 +352,7 @@
   (ws-run-pass p remove-unquoted-constant)
   ;; Run this twice!!!
   ;(ws-run-pass p degeneralize-arithmetic)
-  (ws-run-pass p static-elaborate)
+  (time (ws-run-pass p static-elaborate))
 
   (DEBUGMODE
    (with-output-to-file ".__elaborated.ss"
@@ -385,7 +385,7 @@
   ;; things still make sense.
   ;(ws-run-pass p kill-polymorphic-types)
   ;(ws-run-pass p retypecheck)
-
+ 
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"

@@ -253,20 +253,23 @@ sm = stream_map;
 //chans = (readFile("/tmp/test", "")
 //chans = (readFile("/dev/stdin", "")
 //chans = (readFile("data/gt-lock.txt", "")
-chans = (readFile("/home/girod/data/slave18.txt", "")
+//chans = (readFile("/home/girod/data/slave18.txt", "")
 //chans = (readFile("/tmp/test.txt", "")
 //chans = (readFile("/tmp/PIPE", "")
+chans = (readFile("/tmp/slave18_snip", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
-time = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
-lat = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
-long = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
-x = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
-y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
-z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-dir = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
+time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
+lat   = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
+long  = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
+x     = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
+y     = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
+z     = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
+dir   = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
 speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
 
+// Could add a "window8" here.
+// chans as (...) = window8(readFile(...) :: T)
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
 fun profile(s,profile,skip) {

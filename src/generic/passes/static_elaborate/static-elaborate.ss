@@ -102,6 +102,7 @@
    (let ()
 
      (define (annotation? s) (memq s '(assert-type src-pos)))
+     ;; This expects that you verify available? first.
      (define (outer-getval env)
        (lambda (x)
 	 (IFCHEZ (import rn-match) (void))
@@ -182,10 +183,10 @@
 	;; This is VERY slow... worse than I thought.  Building a 256
 	;; element filter array statically takes an additional three
 	;; seconds of elaboration time!!!
-
+#;
 	(Array:build ,(lambda (env n f)
 		       `(vector . ,(map (lambda (i) `(app ,(code-expr f) (quote ,i))) (iota n)))))
-#;
+
 	;; Hacking it thusly:
 	(Array:build 
 	 ,(lambda (env n f)
@@ -193,11 +194,9 @@
 	    (let* ([fv* (core-free-vars (code-expr f))]
 		   [real-code `(let ,(map (lambda (fv) (list fv ((outer-getval env) fv))) fv*)
 				 (import wavescript_sim_library_push)
-				 ,(code-expr f))]
+				 ,(strip-types (code-expr f)))]
 		   [real-closure (eval real-code)])
-	      (inspect real-code)
-	      (inspect/continue 
-	       (vector-build n (lambda (i) (real-closure i)))))
+	      `',(vector-build n (lambda (i) (real-closure i))))
 	    ))
 
 	;(length vector-length)
@@ -445,7 +444,11 @@
       (lambda (expr env)
 	;(printf "ENV: ~a\n" env)
 	(let ([PE-result
-	 (letrec ([fully-available? 
+	 (letrec (
+		  ;; This tells us that a function value is ready to
+		  ;; be executed -- all the variables in its
+		  ;; environment are available.
+		  [fully-available? 
 		   (lambda (x)
 		     (match x
 		       [(lambda ,vs ,tys ,bod)
@@ -788,7 +791,7 @@
 		(not (assq prim wavescript-stream-primitives))
 		(not (assq prim regiment-distributed-primitives))
 
-		;; TEMP!
+		;; TEMP! -- execute higher order prims if their functions are ready:
 		(if (assq prim higher-order-primitives)
 		    (andmap fully-available? rand*) #t)
 

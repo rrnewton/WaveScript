@@ -35,9 +35,12 @@ go "demo1e_readFile.ws"
 
 go "demo2a_iterate.ws"
 go "demo2b_iterateState.ws"
+go "demo2c_inlining.ws"
+#go "demo2d_pullNtimer.ws" # goes forever
+#go "demo2e_passchain.ws"
 
 go "demo3a_tuples.ws"
-go "demo3b_inlining.ws"
+
 go "demo3c_lists.ws"
 go "demo3d_tuples_of_tuples.ws"
 #TEMP# go "demo3e_hashtables.ws"
@@ -46,7 +49,6 @@ go "demo3g_arrays.ws"
 go "demo3h_advancedlists.ws"
 go "demo3i_conversion_prims.ws"
 go "demo3j_numbers.ws"
-go "demo3k_higher_order.ws"
 
 # [2007.03.14] This is where the segfaulting starts:
 # But 5a,5B don't segfault..
@@ -66,6 +68,9 @@ go "demo7b_marmot_phase1.ws"
 
 go "demo8a_generic_arith.ws" 
 go "demo8b_sugars.ws"
+
+#go "demo9_misc_prim_tests.ws"
+go "demo9b_higher_order_prims.ws"
 
 go "demo11_simple_merge.ws"
 

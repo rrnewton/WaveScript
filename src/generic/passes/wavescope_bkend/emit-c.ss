@@ -1316,6 +1316,8 @@
 
 ;(define boilerplate_headers "")
 
+; char *numberelements = misc_parse_out_option(&argc, argv, "n", 0);
+
 (define boilerplate_premain "
 
 int main(int argc, char ** argv)

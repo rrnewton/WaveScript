@@ -123,6 +123,12 @@
 	[(,s ,[t] ...) (guard (symbol? s)) `(,s ,t ...)]
 	[#(,[t*] ...)                       (apply vector t*)]
 	[,other (error 'kill-polymorphic-types "bad type: ~s" other)]))
+  #;
+  [Expr (lambda (x fallthru)
+	  (match x 
+	    [(assert-type ,[Type -> t] ,[e])
+	     `(assert-type ,t ,e)]
+	    [,oth (fallthru oth)]))]
   [Bindings (lambda (var* ty* expr* reconstr Expr)
 	      (reconstr var* (map Type ty*) (map Expr expr*)))])
 

@@ -65,11 +65,14 @@ exec regiment i --script "$0" ${1+"$@"};
 				     (ASSERT (= 39   (end   a)))
 				     (ASSERT (= 40   (start b)))
 				     (ASSERT (= 79   (end   b)))
-				     )]
+				     )]    
     ["demo2b_iterateState.ws"     ,(lambda (a b) #t)]
+    ["demo2c_inlining.ws"         ,(lambda (a b) #t)]
+    ["demo2d_pullNtimer.ws"         ,(lambda (a b) #t)]
+;    ["demo2e_passchain.ws"         ,(lambda (a b) #t)]    
 
     ["demo3a_tuples.ws"           ,(lambda (a b) #t)]
-    ["demo3b_inlining.ws"         ,(lambda (a b) #t)]
+
     ["demo3c_lists.ws"            ,(lambda (a b) #t)]
     ["demo3d_tuples_of_tuples.ws" ,(lambda (a b) #t)]
 
@@ -80,7 +83,6 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo3h_advancedlists.ws"    ,(lambda (a b) #t)]
     ["demo3i_conversion_prims.ws" ,(lambda (a b) #t)]
     ["demo3j_numbers.ws"          ,(lambda (a b) #t)]
-    ["demo3k_higher_order.ws"     ,(lambda (a b) #t)]
 
     ["demo4_fft.ws"               ,(lambda (a b) (void)
 				     ;(ASSERT (= 0.0 a))
@@ -128,6 +130,10 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo8b_sugars.ws"           ,(lambda (a b) 
 				     (equal? a #(1 1 2 1 1 2))
 				     (equal? b #(1 1 2 1 1 2)))]
+
+    ["demo9_misc_prim_tests.ws"      ,(lambda (a b) #t)]
+    ["demo9b_higher_order_prims.ws"  ,(lambda (a b) #t)]
+
 
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 

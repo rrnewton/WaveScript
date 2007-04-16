@@ -96,7 +96,7 @@
    foldl foldl1
    
    vector-for-each vector-map vector-map! vector-fold
-   vector-blit! vector-andmap
+   vector-build vector-blit! vector-andmap
 
    insert-between iota compose compose/values disp pp
    extract-file-extension remove-file-extension 
@@ -505,13 +505,13 @@
 	  (begin (vector-set! dest (fx+ ind2 i) (vector-ref src (fx+ ind1 i)))
 		 (loop (fx+ i 1)))))))
 
-#;
 (define vector-build
   (lambda (n f)
     (let ([v (make-vector n)])
       (do ([i 0 (fx+ i 1)])
-	  )
-      )))
+	  ((= i n) v)
+	(vector-set! v i (f i))
+	))))
 
 #;
 (define timeeval

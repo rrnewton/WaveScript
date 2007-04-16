@@ -40,36 +40,42 @@
        dir
      (concat dir "/")))
 
+(defun load-all-files-of-interest-from (dir)
+  ;; Sometimes it doesn't work if I don't do this first:
+  (progn
+    (cd dir)
+    (mapcar (lambda (f)
+	      (if (> (length f) 3)
+		  (if (and (not (string= (substring f 0 1) "_"))
+			   (not (string= (substring f 0 3) ".__"))
+			   (not (string= (substring f 0 2) ".#")))
+		      (if (or (string= (substring f -3) ".ss")
+			      (string= (substring f -3) ".rs") ;; Regiment source (sexp)
+			      (string= (substring f -3) ".tm")
+			      (string= (substring f -3) ".ws") ;; Wavescript source
+			      (string= (substring f -3) ".cpp")
+			      (string= (substring f -3) ".h")
+			      (and (> (length f) 6)
+				   (string= (substring f -3) ".tests")))
+					;(insert (concat dir f "\n"))
+			  (progn
+			    (print (concat "Loading " f))
+			    (find-file-noselect f))
+			))))
+	    (all-contained-files dir))))
+
 ;; rrn: this is convenient for me because I use the moccur package and the mtorus package.
 (defun load-regiment-all-source ()
   "Load all the source code for regiment."
   (interactive)
-  (let ((regd (concat (cap-dir (getenv "REGIMENTD")) ""))) ;; "/src"
-    ;; Sometimes it doesn't work if I don't do this first:
-    (cd regd)
-    (mapcar (lambda (f)
-			(if (> (length f) 3)
-			  (if (and (not (string= (substring f 0 1) "_"))
-				   (not (string= (substring f 0 3) ".__"))
-				   (not (string= (substring f 0 2) ".#")))
-			      (if (or (string= (substring f -3) ".ss")
-				      (string= (substring f -3) ".rs") ;; Regiment source (sexp)
-				      (string= (substring f -3) ".tm")
-				      (string= (substring f -3) ".ws") ;; Wavescript source
-				      (string= (substring f -3) ".cpp")
-				      (string= (substring f -3) ".h")
-				      (and (> (length f) 6)
-					   (string= (substring f -3) ".tests")))
-					;(insert (concat dir f "\n"))
-				  (progn
-				    (print (concat "Loading " f))
-				    (find-file-noselect f))
-				))))
-	      (all-contained-files regd))
-	  ;'("~/cur/generic/"))
-  ;(setq find-file-wildcards t)
-  ;(find-file "~/cur/*.ss")
-  ))
+  (let ((regd (cap-dir (getenv "REGIMENTD"))))
+    (load-all-files-of-interest-from (concat regd "src"))
+    (load-all-files-of-interest-from (concat regd "lib"))
+    (load-all-files-of-interest-from (concat regd "apps"))
+					;'("~/cur/generic/"))
+					;(setq find-file-wildcards t)
+					;(find-file "~/cur/*.ss")
+    ))
 
       
 ;;       (mapcar (lambda (dir)
