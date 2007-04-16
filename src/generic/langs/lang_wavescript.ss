@@ -98,22 +98,32 @@
    `(begin
 
       ;; [2007.01.29] ACK, this is another thing that's mysteriously broken when loading from .so:
-      ,(if (or (not (top-level-bound? 'regiment-origin))
-	       (not (equal? regiment-origin "compiled .so")))
-	   '(begin 
-	     ;; We only import these basic bindings to keep us honest.
-	     (import-only wavescript_sim_library_push)
-	     ;; Then we import some "sub-modules" exported by the language-module.
-	     ;; This is everything but the overriden bindings from default scheme language:
-	     (import (except mod_scheme break length + - * / ^ inspect letrec import let))
-	     (import mod_constants)
-	     (import mod_helpers))
+      ,(if (and (top-level-bound? 'regiment-origin)
+		(or (equal? regiment-origin "compiled .so")
+		    (equal? regiment-origin "compiled .boot"))
+	       )
+	   ;; For some reason we have to handle this differently when working from compiled .so.
 	   '(begin
-	     (import wavescript_sim_library_push))
+	     (import wavescript_sim_library_push)
 	     ;;(import (except scheme break length + - * / ^ inspect letrec import let))
 	     ;;(import constants) 
    	     ;;(import helpers)
-	   )
+	     )
+	   (begin 
+	     (unless (and (top-level-bound? 'regiment-origin)
+			  (or (equal? regiment-origin "source")
+			      (equal? regiment-origin "saved heap")))
+	       (warning 'wavescript-language
+			"Regiment loaded from unknown origin.  Might have problems will delicate module issues."))
+	     '(begin 
+		;; We only import these basic bindings to keep us honest.
+		(import-only wavescript_sim_library_push)
+		
+		;; Then we import some "sub-modules" exported by the language-module.
+		;; This is everything but the overriden bindings from default scheme language:
+		(import (except mod_scheme break length + - * / ^ inspect letrec import let))
+		(import mod_constants)
+		(import mod_helpers))))
  
      ;(eval-when (compile eval load) (printf "TRYING..\n"))
 ;     (printf "TRYING..\n")
@@ -135,6 +145,7 @@
      ))
 
 ;; PLT Version:
+;; This is also insanely slow.
 (define (wavescript-language expr)
   (eval `(begin 
 	   (current-directory (REGIMENTD))

@@ -248,9 +248,7 @@
 	    [reg "reg"]))
 	 (if (top-level-bound? 'regiment-origin)
 	     (format " (from ~a)" regiment-origin)    
-	     ;; [2007.04.15]:
-	     ;; HACK, unknown origin must be boot file.
-	     " (from .boot file)"
+	     "(LOADED VIA UNKNOWN METHOD!?)"
 	     ))
 
 ;======================================================================

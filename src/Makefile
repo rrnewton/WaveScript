@@ -129,7 +129,10 @@ chez_native:
 
 boot: ws
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main.hdr" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
+	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
+	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+	rm _temp_temp.ss
 
 ws:
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi

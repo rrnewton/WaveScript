@@ -5,13 +5,25 @@
 ;;;; This file is a script that drives the regiment compiler/simulator.
 ;;;; It loads the Regiment system from source or from a compiled .so file.
 
+;;;; A lot of this setup and config stuff is unpleasantly hackish.
+;;;; Some of it is designed to work around quirkiness with using Chez
+;;;; from source, compiled source, or saved heap.
+
 (define start-dir (current-directory))
 
 ;; Capture these because they are overwritten.
 (define orig-scheme-start (scheme-start))
 (define orig-scheme-script (scheme-script))
 
-(define regiment-origin "unknown") ;; This tracks how the system was loaded.
+(unless (top-level-bound? 'regiment-origin)
+  (define-top-level-value 'regiment-origin "unknown")) ;; This tracks how the system was loaded.
+;; This should be one of:
+;;  "unknown"
+;;  "source"
+;;  "compiled .so"
+;;  "compiled .boot"
+;;  "saved heap"
+
 
 (define stderr
   (let ((buffer-size 1))
@@ -42,10 +54,14 @@
       (load (string-append (getenv "REGIMENTD") "/src/chez/regmodule.ss"))
       (eval '(import reg:module)))
 
-    (if (top-level-bound? 'run-ws-compiler)
+    ;; HACK HACK HACK: DEPENDS ON THIS SPECIFIC SYMBOL NAME:
+    (if (top-level-bound? 'default-unit-tester)
 	;; [2007.04.15] If it's already been loaded from a boot file...
-	(yucky-hack)
-	;(void)
+	(begin 
+	  (yucky-hack)
+	  ;; This is kind of a hack too:
+	  ;(set! regiment-origin "compiled .boot")
+	  )
 	#;
 	(begin
 	  
