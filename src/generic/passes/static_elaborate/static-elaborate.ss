@@ -63,6 +63,7 @@
        [Expr ('lambda . ValidLambda)]
        ;; Lambda's are no longer allowed to have free-vars.
        [ValidLambda ,(lambda (ls)
+		       (IFCHEZ (import rn-match) (void))
 		       (match ls
 			 [((,v* ...) (,t* ...) ,e)
 			  (and (subcheck e 'Expr)
@@ -120,7 +121,7 @@
 	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
      [define stream-val? 
       (lambda (exp)
-	;(IFCHEZ (import rn-match) (begin))
+	(IFCHEZ (import rn-match) (begin))
 	(match exp
 	  [(,prim ,args ...)
 	   (guard (regiment-primitive? prim))
@@ -279,7 +280,7 @@
 	(if (null? binds) body
 	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
       (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
-;      (IFCHEZ (import rn-match) (begin))
+      (IFCHEZ (import rn-match) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)
@@ -289,15 +290,17 @@
 	;; let-bind at the top of the body to avoid code duplication.
       [(lambda ,formals ,type ,body)
        (make-nested-letrecs
-	 `([,formals ',(map (lambda _ (unique-name 'newtype)) rands) ,rands] ...)
-	 body)]
+	(map list formals (map (lambda _ `',(unique-name 'newtype)) rands) rands)
+	body)]
       
       [,other (error 'static-elaborate:inline "bad rator: ~a" other)]))
    
    ;; [2007.04.05] Seems like this should use generic-traverse...
+    ;; [2007.04.16] ITS SPENDING A LOT OF TIME IN THIS FUNCTION!
+    ;; FIXME FIXME FIXME! COUNT REFS ONCE!
     (define count-refs
       (lambda (v expr)
-;	(IFCHEZ (import rn-match) (begin))
+	(IFCHEZ (import rn-match) (begin))
         (match expr
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
@@ -343,6 +346,7 @@
     (define get-mutable
       (core-generic-traverse 
        (lambda (x fallthru)
+	 (IFCHEZ (import rn-match) (begin))
 	 (match x
 	   [(set! ,v ,[e]) (cons v e)]
 	   [(vector ,[x*] ...) (apply append x*)]
@@ -373,6 +377,8 @@
           [,unmatched
             (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
+    ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
+    #;
     (define substitute
       (lambda (mapping expr)
         (match expr
@@ -450,6 +456,7 @@
 		  ;; environment are available.
 		  [fully-available? 
 		   (lambda (x)
+		     (IFCHEZ (import rn-match) (begin))
 		     (match x
 		       [(lambda ,vs ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
@@ -459,6 +466,7 @@
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
 		  (lambda (x)
+		    (IFCHEZ (import rn-match) (begin))
 		    (if (eq? x not-available) #f
 			(match x
 			   [(quote ,datum)         #t]
@@ -485,6 +493,7 @@
 		 ;; Is it, not completely available, but a container that's available?
 		 [container-available? 
 		  (lambda (x)
+		    (IFCHEZ (import rn-match) (begin))
 		    (if (eq? x not-available) #f
 			(match x 
 			  [(quote ,datum) #t]
@@ -508,6 +517,7 @@
 
 		 [getlist ;; Get values until you have the whole list.
 		  (lambda (x)
+		    (IFCHEZ (import rn-match) (begin))
 		    (if (container-available? x)			
 			(let ([val (getval x)])
 			  (if (code? val)
@@ -516,13 +526,14 @@
 				;;[(assert-type ,t ,[e]) e]
 				)
 			      (match val
-				[(,x* ...) `(',x* ...)]
+				[(,x* ...) (map (lambda (x) `',x) x*)]
 				;;[(,x* ...) `(',x* ...)]
 				;;[,other (error 'getlist "not a list-constructor: ~s" other)])
 				)))
 			#f))]
 		 )
-	  
+
+        (IFCHEZ (import rn-match) (begin))	  
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
@@ -601,7 +612,7 @@
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
 	  [(while ,[tst]  ,[bod]) `(while ,tst ,bod)]
 	  
-          [(begin ,[args] ...) `(begin ,args ...)]
+          [(begin ,[args] ...) `(begin ,@args)]
           [(set! ,v ,[rhs]) `(set! ,v ,rhs)]
 	  
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
@@ -635,6 +646,7 @@
 		  [newrhs* (cadr newall*)]
 ;		  [__ 	   (break)]
                   ;; How much does each bound variable get referenced:
+		  ;; FIXME FIXME FIXME: SHOULD MAKE ONE PASS TO GET REF COUNTS:a
 		  [occurs (map (lambda (v myrhs) 
 				 (apply + (count-refs v newbod)
 					(map (lambda (x) (count-refs v x)) 
@@ -670,8 +682,8 @@
 	  
 	  ;; This becomes a quoted constant:
 	  [(tuple) ''UNIT]
-	  [(tuple ,[args] ...) `(tuple ,args ...)]
-	  [(unionN ,[args] ...) `(unionN ,args ...)]
+	  [(tuple ,[args] ...) `(tuple ,@args)]
+	  [(unionN ,[args] ...) `(unionN ,@args)]
 	  [(vector ,[x*] ...)
 	   (if (andmap available? x*)
 	       ;(lambda (x) (match (getval x) [(quote ,c) c]))
@@ -806,7 +818,7 @@
 				       )))
 		)
 	       (do-prim prim (map getval rand*) env)
-	       `(,prim ,rand* ...))]
+	       `(,prim ,@rand*))]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
 	  [(consstruct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
@@ -827,7 +839,7 @@
 	       (begin 
 		 (if (regiment-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
-		 `(app ,rator ,rands ...)))]
+		 `(app ,rator ,@rands)))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
@@ -838,6 +850,7 @@
 	))
     
     (lambda (expr)
+      (IFCHEZ (import rn-match) (begin))
       (match expr	    
         [(,input-language (quote (program ,body ,meta* ...  ,type)))
 	 (set! mutable-vars (get-mutable body))
@@ -854,7 +867,7 @@
 		    (begin
 		      ;(when (regiment-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
-		      `(static-elaborate-language '(program ,body ,meta* ... ,type)))
+		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
 		    (loop body (process-expr body init-env) (add1 iterations)))))
 	    ])]
 	)))))
