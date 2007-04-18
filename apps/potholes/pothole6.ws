@@ -429,7 +429,7 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
     }
     else {
       if (d > 0.0) then
-        println("@## "++time++" "++x++" "++y++" "++v/d++" "++dir++" "++vel);
+        println("@## "++time++" "++x++" "++y++" "++bound*v/d++" "++dir++" "++vel);
       last_cell := (x2,y2,value,dist);
     }
   };
