@@ -61,6 +61,24 @@ fun gaussian_smoothing(s, points, sigma) {
   }
 }
 
+// takes a series of samples
+fun median(s, points) {
+  rw = rewindow
+    (window
+     (prestream(s,Array:make
+		(points/2,0.0)), points), 
+     points, 1-points);
+
+  iterate (w in rw) {
+    arr = Array:build(w.width, fun (i) w[[i]]);
+    fun swap(i,j) { tmp = arr[i]; arr[i] := arr[j]; arr[j] := tmp; };
+    fun cmp(i,j) { arr[i] - arr[j] };
+    sort(swap,cmp,Array:length(arr));
+    emit(arr[Array:length(arr)/2]);
+//for i = 0 to Array:length(arr) -1 { println("****** "++arr[i]); }
+  }
+}
+
 /*
  *  easily tweakable params:
  *     refractory:   merge adjacent detections
@@ -251,25 +269,23 @@ sm = stream_map;
 //chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
-//chans = (readFile("/dev/stdin", "")
+chans = (readFile("/dev/stdin", "")
 //chans = (readFile("data/gt-lock.txt", "")
-//chans = (readFile("/home/girod/data/slave18.txt", "")
+//chans = (readFile("~/data/gt-lock.txt", "")
+//chans = (readFile("data/slave18.txt", "")
 //chans = (readFile("/tmp/test.txt", "")
-//chans = (readFile("/tmp/PIPE", "")
-chans = (readFile("/tmp/slave18_snip", "")
+//chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
-time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
-lat   = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
-long  = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
-x     = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
-y     = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
-z     = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-dir   = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
+time = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
+lat = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
+long = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
+x = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
+y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
+z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
+dir = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
 speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
 
-// Could add a "window8" here.
-// chans as (...) = window8(readFile(...) :: T)
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
 fun profile(s,profile,skip) {
@@ -291,20 +307,20 @@ fun profile(s,profile,skip) {
 
 notch1 = notch_filter(129,58,128);
 notch2 = notch_filter(129,37,65);
+notch3 = notch_filter(129,5,128);
 
-xw = profile(x,notch1,64);
-yw = profile(y,notch1,64);
-zw = profile(z,notch2,64);
+//xw = profile(x,notch1,64);
+//yw = profile(y,notch1,64);
+zw = profile(z,notch3,64);
 
-
-totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
-  if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
-  emit(x+y+z,wz.start,wz.end);
+// z only, no filter
+totalscore = iterate((z,wz) in zw) {
+  emit(z,wz.start,wz.end);
 };
 
 smoothed = sm(fun(v)(v,0,0),
-	      gaussian_smoothing
-	      (sm(fun((v,_,_))v,totalscore), 64, 8));
+	      median
+	      (sm(fun((v,_,_))v,totalscore), 64));
 
 mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
 		 zip2_sametype(totalscore,smoothed));
@@ -404,17 +420,17 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   fun cellfloor(x) {
     i2f(f2i(x / bound))*bound;
   };
-  fun pushcell(value,frac,lat,long,dir,vel,time) {
-    let (x,y,v,f) = last_cell;
+  fun pushcell(value,dist,lat,long,dir,vel,time) {
+    let (x,y,v,d) = last_cell;
     x2 = cellfloor(long);
     y2 = cellfloor(lat);
     if (x2 == x && y2 == y) then {
-      last_cell := (x,y,v+value,f+frac);
+      last_cell := (x,y,v+(value*dist),d+dist);
     }
     else {
-      if (f > 0.0) then
-        println("@## "++time++" "++x++" "++y++" "++v/f++" "++dir++" "++vel);
-      last_cell := (x2,y2,value,frac);
+      if (d > 0.0) then
+        println("@## "++time++" "++x++" "++y++" "++v/d++" "++dir++" "++vel);
+      last_cell := (x2,y2,value,dist);
     }
   };
 
@@ -447,10 +463,10 @@ final2 = iterate ((_,m,s),(l,_,_)) in smoothedzip {
   for i = 0 to timeseg.width - 1 {
     cell_array[i] := cell_array[i] + (m * gw[i]);
     if (i < skip) then {
-      frac = sqrtF(sqr(latseg[[i]]-latseg[[i+1]]) +
-		   sqr(longseg[[i]]-longseg[[i+1]])) / bound;
-      if (frac > 0.0) then
-	pushcell(cell_array[i],frac,latseg[[i]],longseg[[i]],
+      dist = sqrtF(sqr(latseg[[i]]-latseg[[i+1]]) +
+		   sqr(longseg[[i]]-longseg[[i+1]]));
+      if (dist > 0.0) then
+	pushcell(cell_array[i],dist,latseg[[i]],longseg[[i]],
 		 dirseg[[i]],speedseg[[i]],timeseg[[i]]);
     }
   };

@@ -61,6 +61,24 @@ fun gaussian_smoothing(s, points, sigma) {
   }
 }
 
+// takes a series of samples
+fun median(s, points) {
+  rw = rewindow
+    (window
+     (prestream(s,Array:make
+		(points/2,0.0)), points), 
+     points, 1-points);
+
+  iterate (w in rw) {
+    arr = Array:build(w.width, fun (i) w[[i]]);
+    fun swap(i,j) { tmp = arr[i]; arr[i] := arr[j]; arr[j] := tmp; };
+    fun cmp(i,j) { arr[i] - arr[j] };
+    sort(swap,cmp,Array:length(arr));
+    emit(arr[Array:length(arr)/2]);
+//for i = 0 to Array:length(arr) -1 { println("****** "++arr[i]); }
+  }
+}
+
 /*
  *  easily tweakable params:
  *     refractory:   merge adjacent detections
@@ -251,25 +269,27 @@ sm = stream_map;
 //chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
-//chans = (readFile("/dev/stdin", "")
+chans = (readFile("/dev/stdin", "")
 //chans = (readFile("data/gt-lock.txt", "")
-//chans = (readFile("/home/girod/data/slave18.txt", "")
+//chans = (readFile("~/data/gt-lock.txt", "")
+//chans = (readFile("data/slave18.txt", "")
 //chans = (readFile("/tmp/test.txt", "")
-//chans = (readFile("/tmp/PIPE", "")
-chans = (readFile("/tmp/slave18_snip", "")
+//chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
-time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
-lat   = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
-long  = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
-x     = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
-y     = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
-z     = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-dir   = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
+time = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
+lat = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
+long = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
+x = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
+y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
+z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
+dir = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
 speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
 
-// Could add a "window8" here.
-// chans as (...) = window8(readFile(...) :: T)
+xyz = window(sm(fun((_,_,_,x,y,z,_,_)) 
+	(int16ToFloat(x),int16ToFloat(y),int16ToFloat(z)),
+	chans), 512);
+
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
 fun profile(s,profile,skip) {
@@ -289,22 +309,53 @@ fun profile(s,profile,skip) {
 }
 
 
+//correlstream :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
+fun correlstream(s,win,skip) {
+  len = 2*win;
+  window = gaussian(intToFloat(skip),len);
+  rw = rewindow(s, len, skip - len);
+  iterate {(x,y,z) in rw {
+
+    // kill dc component, mult window
+    xa = apairmult(td_kill_dc(toArray(x)),window);
+    ya = apairmult(td_kill_dc(toArray(y)),window);
+    za = apairmult(td_kill_dc(toArray(z)),window);
+
+    max_correl(xa,za);
+
+    arr2 = apairmult(profile,fftR2C(apairmult(arr,window)));
+
+    let (_,sum) = Array:fold(fun ((i,acc), x) 
+			     (i+1, acc + absC(x)),
+			     (0,gint(0)), arr2);
+    emit(sum, win);
+  }
+}
+
 notch1 = notch_filter(129,58,128);
 notch2 = notch_filter(129,37,65);
-
-xw = profile(x,notch1,64);
-yw = profile(y,notch1,64);
-zw = profile(z,notch2,64);
+notch3 = notch_filter(129,5,128);
 
 
-totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
-  if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
-  emit(x+y+z,wz.start,wz.end);
+pz = iterate ((_,_,_,x,y,z,_,_) in chans) {
+  state { historyarr = Array:build(Array:length(t),
+	fun (i) {
+	}
+
+.....
+	  
+};
+
+zw = profile(pz,notch3,64);
+
+// z only, no filter
+totalscore = iterate((z,wz) in zw) {
+  emit(z,wz.start,wz.end);
 };
 
 smoothed = sm(fun(v)(v,0,0),
-	      gaussian_smoothing
-	      (sm(fun((v,_,_))v,totalscore), 64, 8));
+	      median
+	      (sm(fun((v,_,_))v,totalscore), 64));
 
 mergedscore = sm(fun(((v,s,e),(sm,_,_)))(v,sm,s,e),
 		 zip2_sametype(totalscore,smoothed));

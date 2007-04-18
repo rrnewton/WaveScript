@@ -251,25 +251,22 @@ sm = stream_map;
 //chans = (readFile("/tmp/clip", "")
 //chans = (readFile("/tmp/gt.txt", "")
 //chans = (readFile("/tmp/test", "")
-//chans = (readFile("/dev/stdin", "")
+chans = (readFile("/dev/stdin", "")
 //chans = (readFile("data/gt-lock.txt", "")
-//chans = (readFile("/home/girod/data/slave18.txt", "")
+//chans = (readFile("data/slave18.txt", "")
 //chans = (readFile("/tmp/test.txt", "")
-//chans = (readFile("/tmp/PIPE", "")
-chans = (readFile("/tmp/slave18_snip", "")
+//chans = (readFile("./PIPE", "")
           :: Stream (Float * Float * Float * Int16 * Int16 * Int16 * Int16 * Float));
 
-time  = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
-lat   = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
-long  = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
-x     = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
-y     = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
-z     = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
-dir   = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
+time = window(sm(fun((t,_,_,_,_,_,_,_)) t, chans), 512);
+lat = window(sm(fun((_,lat,_,_,_,_,_,_)) lat, chans), 512);
+long = window(sm(fun((_,_,long,_,_,_,_,_)) long, chans), 512);
+x = window(sm(fun((_,_,_,a,_,_,_,_)) int16ToFloat(a), chans), 512);
+y = window(sm(fun((_,_,_,_,a,_,_,_)) int16ToFloat(a), chans), 512);
+z = window(sm(fun((_,_,_,_,_,a,_,_)) int16ToFloat(a), chans), 512);
+dir = window(sm(fun((_,_,_,_,_,_,a,_)) int16ToFloat(a), chans), 512);
 speed = window(sm(fun((_,_,_,_,_,_,_,a)) a, chans), 512);
 
-// Could add a "window8" here.
-// chans as (...) = window8(readFile(...) :: T)
 
 profile :: ((Stream (Sigseg Float)), (Array Complex), Int) -> (Stream (Float * (Sigseg Float)));
 fun profile(s,profile,skip) {
@@ -291,15 +288,15 @@ fun profile(s,profile,skip) {
 
 notch1 = notch_filter(129,58,128);
 notch2 = notch_filter(129,37,65);
+notch3 = notch_filter(129,5,128);
 
-xw = profile(x,notch1,64);
-yw = profile(y,notch1,64);
-zw = profile(z,notch2,64);
+//xw = profile(x,notch1,64);
+//yw = profile(y,notch1,64);
+zw = profile(z,notch3,64);
 
-
-totalscore = iterate(((x,wx),(y,wy),(z,wz)) in zip3_sametype(xw,yw,zw)) {
-  if DEBUG then println("@@ " ++ x ++ " " ++ y ++ " " ++ z ++ " " ++ x+y+z);
-  emit(x+y+z,wz.start,wz.end);
+// z only, no filter
+totalscore = iterate((z,wz) in zw) {
+  emit(z,wz.start,wz.end);
 };
 
 smoothed = sm(fun(v)(v,0,0),
