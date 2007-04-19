@@ -425,7 +425,7 @@
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 
-  (ws-run-pass p ws-remove-complex-opera*)
+  (time (ws-run-pass p ws-remove-complex-opera*))
   (ws-run-pass p ws-normalize-context)
 
   (ws-run-pass p ws-lift-let)

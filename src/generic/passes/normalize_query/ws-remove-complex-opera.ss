@@ -136,6 +136,7 @@
 	  (values x '())
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
 	    (mvlet (
+		    ;; Maybe some of my inefficiency is coming from here:
 		    [(type) (begin  (recover-type x tenv))]
 		    [(name) (unique-name 'tmp 
 					 #;(meaningful-name x)

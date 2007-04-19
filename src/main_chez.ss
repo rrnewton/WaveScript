@@ -31,8 +31,9 @@
   ;; We load this at compile time to figure out some of our
   ;; compilation options:
   (include "config.ss")
-  
-  (compile-profile #t)
+
+;;; TEMP TEMP TEMP 
+;  (compile-profile #t)
 
   (case-sensitive #t)
 
