@@ -279,8 +279,8 @@
        result)]))
 ;; This discharges the saved runs and reports their total time:
 (define (time-accum-report)
-  (printf "\nTime-Accum: total cpu-time ~s over ~s runs: ~s\n" 
-	  (apply + time-accum-buf) (length time-accum-buf) time-accum-buf)
+  (printf "Time-Accum: total cpu-time ~s over ~s runs: ~s\n" 
+	  (apply + time-accum-buf) (length time-accum-buf) (reverse time-accum-buf))
   (set! time-accum-buf '()))
 
 ;; This is sometimes useful.  It's awkward to do manually.

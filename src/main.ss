@@ -327,10 +327,10 @@
   (define (do-typecheck lub poly)
     (parameterize ([inferencer-enable-LUB      lub]
 		   [inferencer-let-bound-poly poly])
-      (time (ws-run-pass p retypecheck))))
+      (time-accum (ws-run-pass p retypecheck))))
   ;; There are currently two different typecheck configs that we use.
   ;; One for the meta language, one for the object.
-  (define (do-early-typecheck) (do-typecheck #t #t))
+  (define (do-early-typecheck) (do-typecheck #f #t))
   (define (do-late-typecheck)  (do-typecheck #t #f))
 
   (set! already-typed (if (null? already-typed) #f (car already-typed)))
@@ -476,7 +476,11 @@
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
 
-  p)))
+  (printf "Total typechecker time used:\n")
+  (time-accum-report)(newline)
+
+  p))
+)
 
 
 
@@ -536,9 +540,9 @@
       (ws-run-pass p resolve-varrefs)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p ws-label-mutable)
-      (parameterize ([inferencer-enable-LUB #t]
+      (parameterize ([inferencer-enable-LUB #f]
 		     [inferencer-let-bound-poly #t])
-	(time (ws-run-pass p retypecheck))) ;; This is the initial typecheck.
+	(time-accum (ws-run-pass p retypecheck))) ;; This is the initial typecheck.
       p))
 
   (define __ 
@@ -624,7 +628,7 @@
       (ws-run-pass p resolve-varrefs)
       (ws-run-pass p resolve-type-aliases)
       (ws-run-pass p ws-label-mutable)
-      (parameterize ([inferencer-enable-LUB #t]
+      (parameterize ([inferencer-enable-LUB #f]
 		     [inferencer-let-bound-poly #t])
 	(ws-run-pass p retypecheck)) ;; This is the initial typecheck.
       p))
