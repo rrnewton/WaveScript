@@ -337,8 +337,12 @@
 			       ;; Expects the type to be a type var:
 			       [(quote ,pr) (ASSERT pair? pr)
 				;; CONSTRUCT A DELAYED UNIFY:
-				;; This is the scratch-pad on which we'll record the info from the call-sites.		
-				(set-cdr! pr `(LATEUNIFY #f ,(make-tcell (cdr pr))))
+				;; This is the scratch-pad on which we'll record the info from the call-sites. 
+
+				(let ([cell (make-tcell (cdr pr))])
+				  (set-cdr! pr 
+				    (if (inferencer-enable-LUB) `(LATEUNIFY #f ,cell) cell)))
+				
 				(list v `(quote ,pr) #t)
 				])
 			     (list v t #f)))
@@ -742,14 +746,15 @@
                 (cond
                   ;; Let-bound polymorphism: 
 		 [(tenv-is-let-bound? tenv v)
-		   ;; Here's another call site which affects the LUB type assigned to the let-bound var.
 		   (let ()
 		     ;(printf "LETBOUND: ~s\n" v)
 		     ;(unless (null? nongeneric) (printf "  NONGENERIC: ~s\n"  nongeneric))
 		     ;(inspect entry)
 
 		     (match entry
+		       ;; Here's another call site which affects the LUB type assigned to the let-bound var.
 		       [(quote (,tv . (LATEUNIFY ,lubs ,general)))
+			(DEBUGASSERT (inferencer-enable-LUB))
 			(let ([this-site (instantiate-type general nongeneric)])
 			  ;(printf "Let-bound var! ~s with general type:  ~a\nlub at this site:\n  ~a\n" tv general this-site)
 			  ;; CAREFUL!  Here we mutate the lubs on that LATEUNIFY.
@@ -759,9 +764,12 @@
 					`(LUB ,lubs ,this-site)
 					this-site))
 			  ;; We return the type for *this* varref.
-			  (values v this-site)
-			  )]
-		       [,oth (error 'annotate-expression "let-bound var should be bound to LATEUNIFY: ~s" oth)])		   
+			  (values v this-site))]
+
+		       [(quote (,tv . ,general))
+			(DEBUGASSERT (not (inferencer-enable-LUB)))
+			(values v (instantiate-type general nongeneric))
+			])
 		     )]
                   [else                   
                    (values v entry)])

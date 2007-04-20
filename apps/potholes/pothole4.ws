@@ -29,8 +29,11 @@ include "filter.ws";
 // [2007.04.20] Continuing to use this file as a benchmark for the
 //   compiler to try to optimize it some.
 // Cpu times on justice:
-//   Best compile time with ws    : 2604
-//   Best compile time with ws.opt: 1948
+//   ws    : 2604
+//   ws.opt: 1948
+// After optimizing LUB further:
+//   ws    : 2508 (484 on typecheck)
+//   ws.opt: 1924
 
 
 //======================================================================
