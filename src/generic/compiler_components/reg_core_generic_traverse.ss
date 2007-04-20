@@ -137,7 +137,8 @@
      (values lhs* ty* rhs* (list bod)
 	     (lambda (lhs* ty* rhs* other) 
 	       (DEBUGASSERT (and (list? other) (fx= 1 (length other))))
-	       `(,lett ([,lhs* ,ty* ,rhs*] ...) ,(car other))))]
+	       `(,lett ,(map list lhs* ty* rhs*)
+		       ,(car other))))]
     [(lambda (,vars ...) (,types ...) ,bod) 
      (values vars types (make-list (length types) #f) (list bod)
 	     (lambda (lhs* ty* rhs* other)
@@ -211,7 +212,7 @@
 	  ;; Being VERY lenient.  Vector is here just because it's used in static-elaborate. [2007.03.06]
 	  [(,varargkeyword ,[loop -> args] ...)
 	   (guard (memq varargkeyword '(unionN tuple vector)))
-	   (fuse args (lambda args `(,varargkeyword ,args ...)))]
+	   (fuse args (lambda args `(,varargkeyword ,@args)))]
 
 	  ;; Adding this special syntax as well (output of nominalize-types)
 	  [(make-struct ,name  ,[loop -> args] ...)
@@ -227,32 +228,32 @@
 	   (guard (memq letrec '(letrec lazy-letrec let)))
 	   ;; By convention, you get the body first:
 	   (fuse (cons bod rhs*)
-		 (lambda (x . y*) `(,letrec ([,lhs* ,typ* ,y*] ...) ,x)))]
+		 (lambda (x . y*) `(,letrec ,(map list lhs* typ* y*) ,x)))]
 
 	  ;; Letrec's are big and hairy enough that we try to give slightly better error messages.
 	  [(letrec ([,lhs* ,rhs*] ...) ,bod)
 	   (warning 'core-generic-traverse "letrec does not have types:\n ~s\n\n" 
 		  `(letrec ([,lhs* ,rhs*] ...) ,bod))
-	   (inspect `(letrec ([,lhs* ,rhs*] ...) ,bod))
+	   (inspect `(letrec ,(map list lhs* rhs*) ,bod))
 	   (error 'core-generic-traverse "")]
 	  [(letrec ,other ...)
 	   (warning 'core-generic-traverse "letrec is badly formed:\n  ~s\n\n" 
-		    `(letrec  ,other ...))
-	   (inspect `(letrec ,other ...))
+		    `(letrec ,@other))
+	   (inspect `(letrec ,@other))
 	   (error 'core-generic-traverse "")]
 
 	  ;; Again, no looping on types.  This is an expression traversal only.
 	  [(lambda (,v* ...) (,t* ...) ,[loop -> e])
-	   (fuse (list e) (lambda (x) `(lambda (,v* ...) (,t* ...) ,x)))]
+	   (fuse (list e) (lambda (x) `(lambda ,v* ,t* ,x)))]
 	  [(lambda (,v* ...) ,e)
 	   (warning 'core-generic-traverse "lambda does not have types:\n ~s\n\n" 
-		    `(lambda (,v* ...) ,e))
-	   (inspect `(lambda (,v* ...) ,e))
+		    `(lambda ,v* ,e))
+	   (inspect `(lambda ,v* ,e))
 	   (error 'core-generic-traverse "")]
 	  [(lambda ,other ...)
 	   (warning 'core-generic-traverse "lambda is badly formed:\n  ~s\n\n" 
-		    `(lambda  ,other ...))
-	   (inspect `(lambda ,other ...))
+		    `(lambda ,@other))
+	   (inspect `(lambda ,@other))
 	   (error 'core-generic-traverse "")]
 	  
 	  ; WAVESCRIPT
@@ -264,7 +265,8 @@
 	  [(set! ,v ,[loop -> e])        (fuse (list e)    (lambda (x) `(set! ,v ,x)))]
 
 	  ;; Always run make-begin, hope this is safe:
-	  [(begin ,[loop -> xs] ...)     (fuse xs       (lambda ls (make-begin `(begin ,ls ...))))]
+	  [(begin ,[loop -> xs] ...)     
+	   (fuse xs       (lambda ls (make-begin `(begin ,@ls))))]
 	  [(for (,i ,[loop -> start] ,[loop -> end]) ,[loop -> body])
 	   (fuse (list start end body)
 		 (lambda (st en bod) `(for (,i ,st ,en) ,bod)))]
@@ -276,7 +278,7 @@
 
 	  ;; Applications must be tagged explicitely.
 	  [(app ,[loop -> rator] ,[loop -> rands] ...)
-	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,ls ...)))]
+	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,@ls)))]
 	  [(construct-data ,tc ,[loop -> rand]) 
 	   (fuse (list rand) (lambda (r) `(construct-data ,tc ,r)))]
 
@@ -323,13 +325,13 @@
 		      ;; We overload the cases that require modifying the tenv.
 		      [(lambda (,v* ...) (,ty* ...) ,bod)
 		       (fuse (list ((loop (tenv-extend tenv v* ty*)) bod))
-			     (lambda (x) `(lambda (,v* ...) (,ty* ...) ,x)))]
+			     (lambda (x) `(lambda ,v* ,ty* ,x)))]
 		      [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod)
 		       (guard (memq letrec '(letrec lazy-letrec)))
 		       (let* ([newtenv (tenv-extend tenv lhs* ty*)]
 			      [f (loop newtenv)])
 			 (fuse (cons (f bod) (map f rhs*))
-			       (lambda (x . y*) `(,letrec ([,lhs* ,ty* ,y*] ...) ,x))))]
+			       (lambda (x . y*) `(,letrec ,(map list lhs* ty* y*) ,x))))]
 
 		      [(for (,i ,[(loop tenv) -> st] ,[(loop tenv) -> en]) ,bod)
 		       (let ([newtenv (tenv-extend tenv (list i) '(Int))])
@@ -340,7 +342,7 @@
 		      [(let ([,lhs* ,ty* ,[(loop tenv) -> rhs*]] ...) ,bod)
 		       (let ([newtenv (tenv-extend tenv lhs* ty*)])
 			 (fuse (cons ((loop newtenv) bod) rhs*)
-			       (lambda (bod . rhs*) `(let ([,lhs* ,ty* ,rhs*] ...) ,bod))))
+			       (lambda (bod . rhs*) `(let ,(map list lhs* ty* rhs*) ,bod))))
 		       ]
 
 		      ;; If it's not one of these we use the old generic-traverse autoloop.
