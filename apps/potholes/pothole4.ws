@@ -33,7 +33,7 @@ include "filter.ws";
 //   ws.opt: 1948
 // After optimizing LUB further:
 //   ws    : 2508 (484 on typecheck)
-//   ws.opt: 1924
+//   ws.opt: 1924 (376 typecheck)
 
 
 //======================================================================

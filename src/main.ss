@@ -439,21 +439,21 @@
 
 ;  (inspect (count-nodes p))
 ;  (profile-clear)
-  (ws-run-pass p ws-remove-complex-opera*)
-  (do-late-typecheck)
+  (ws-run-pass p ws-remove-complex-opera*)  
+  ;; Don't do this yet!!  (At least make it debug only.)
+  ;; Remove-complex-opera* added new type variables, but delay a
+  ;; couple more passses before type checking.
+  (IFDEBUG (do-late-typecheck) (void))
 ;  (inspect (count-nodes p))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
   (ws-run-pass p ws-normalize-context)
-
-
   (ws-run-pass p ws-lift-let)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
-
-  ;; NOTE: MIGHT combine this with the previous typecheck!!
+  ;(do-typecheck #f #f)
   (do-late-typecheck)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
