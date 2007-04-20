@@ -729,7 +729,7 @@
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
     (match exp ;; NO DIRECT RECURSION ALLOWED:
-      [,c (guard (simple-constant? c)) (values c (type-const c))]
+
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
       [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
@@ -900,6 +900,9 @@
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,@rand*))]
+
+      ;; [2007.04.20] Keeping this, but dropping it to the end as an optimization.
+      [,c (guard (simple-constant? c)) (values c (type-const c))]
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    

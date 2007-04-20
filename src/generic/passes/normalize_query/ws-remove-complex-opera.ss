@@ -105,18 +105,22 @@
     ;; Coerces an expression to be simple, producing new bindings.
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
-      (IFCHEZ (import rn-match) (begin))
-      (if (ws-rem-complex:simple? x)
-	  (values x '())
-	  (let-match ([#(,res ,binds) (process-expr x tenv)])
-	    (mvlet (
-		    ;; Maybe some of my inefficiency is coming from here:
-		    [(type) (begin  (recover-type x tenv))]
-		    [(name) (unique-name 'tmp 
-					 #;(meaningful-name x)
-					 )])
-	      (values name
-		      (snoc (list name type res) binds))))))
+	(let ()
+	  (IFCHEZ (import rn-match) (begin))
+	  (if (ws-rem-complex:simple? x)
+	      (values x '())
+	      (let-match ([#(,res ,binds) (process-expr x tenv)])
+		(mvlet (
+			;; Maybe some of my inefficiency is coming from here:
+			[(type) 
+			 `',(unique-name "unknown-type")
+			 ;(begin  (recover-type x tenv))
+			 ]
+			[(name) (unique-name 'tmp 
+					     #;(meaningful-name x)
+					     )])
+		  (values name
+			  (snoc (list name type res) binds)))))))
     ;; Same thing but for a list of expressions.
     ;; Returns a list of *all* the bindings appended together.
     (define (make-simples ls tenv)
@@ -134,7 +138,6 @@
 	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
 	   
 	   [(quote ,comple-const) (vector `',comple-const '())]
-
 
 	   [(lambda ,formals ,types ,body)
 	    (let-values ([(body decls) (make-simple body (tenv-extend tenv formals types))])
@@ -201,11 +204,12 @@
 	   ;; top of each subexpression but no further.  Don't want to
 	   ;; reorder side effects.
 	   [(begin ,[e*] ...)   
-	    (vector `(begin . ,(map (match-lambda (#(,e ,decls)) 
-				      (if (null? decls) e
-					  (make-lets decls e)))
-				 e*))
-		    '())]
+	    (let ()
+	      (vector `(begin . ,(map (match-lambda (#(,e ,decls))
+					(if (null? decls) e
+					    (make-lets decls e)))
+				   e*))
+		      '()))]
 
 ; 	   [(begin ,[e]) e]
 ; 	   [(begin ,[(lambda (x) (make-simple x tenv)) -> e* edecls*] ...)
@@ -273,7 +277,7 @@
 		  '(program ,(if (null? bnds) newbod	
 				 (make-lets bnds newbod)
 				 ) 
-		     ,meta* ... ,type))
+		     ,@meta* ,type))
 		)]
              [,else (error 'ws-remove-complex-opera*
                            "Invalid input: ~a" prog)]))])

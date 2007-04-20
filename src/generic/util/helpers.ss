@@ -960,11 +960,12 @@
 ;;RRN [01.09.17] :
 (define make-code
   (lambda (expr*)
+    (IFCHEZ (import rn-match) (begin))
     (match (match `(code ,@expr*)
              [(code ,[expr*] ...) (apply append expr*)]
              [,expr (list expr)])
       [(,x) x]
-      [(,x ,x* ...) `(code ,x ,x* ...)])))
+      [(,x ,x* ...) `(code ,x ,@x*)])))
 
 ; [2005.09.27] Why redefine this prim?
 #;

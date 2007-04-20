@@ -38,9 +38,9 @@
 		  ;; TEMP:
 		  rn-convert-pat
 
-		  (rn-let-match match)
+		  (let-match match)
+		  (match-lambda match match-lambda-helper)
 		  
-
 		  my-backquote
 		  (extend-backquote my-backquote)
 		  test-match 
@@ -52,7 +52,7 @@
      (let Rematch ((Orig Exp))
        (match-help _ Rematch Orig Clause ...)))))
 
-(define-syntax rn-let-match
+(define-syntax let-match
   (lambda (x)
     ;; [2007.04.20] Does this work??
     ;(IFCHEZ (import rn-match) (begin))
@@ -65,6 +65,32 @@
 	   [,other (error 'let-match "unmatched object.\n  Datum: ~s\n  Syntax-location ~s\n" 
 			  other #'Exp)]
 	   )])))
+
+
+;; [2005.10.23] Should have used these more before
+;; Only works for one argument functions currently:
+;; Need to use syntax-case I believe.
+(define-syntax match-lambda-helper
+  (lambda (x) 
+    (syntax-case x (unquote)
+      ; When we've no patterns to match, produce a real lambda:		 
+      [(_ () (V ...) E ...) #'(lambda (V ...) E ...)]
+      [(_ (P1 P ...) (V ...) E ...)
+       #'(match-lambda-helper (P ...) (V ... tmp)
+	   (match tmp
+             [P1 (begin E ...)]
+	     [,other (error 'match-lambda "unmatched object ~s for pattern ~s" other #'P1)]))])))
+(define-syntax match-lambda 
+  (lambda (x)
+    (syntax-case x (unquote)
+      [(_ (Pat ...) Expr ...)
+       ;(printf "Woot: ~a\n" #'(Pat ...))
+       #'(match-lambda-helper (Pat ...) () Expr ...)
+       ])))
+;(expand '((match-lambda (x y) #t) 'x 'y))
+;(expand '(match-lambda (,x ,y) #t))
+;((match-lambda ((,x ,y) #(,z) ,w) (list x z w)) `(a b) #(3) 4)
+
 
 ;; Certain implementations have difficulty with delaying multple values.
 ;; (including gauche, stklos, bigloo, scheme48, larceny)

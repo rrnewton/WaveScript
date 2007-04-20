@@ -426,15 +426,12 @@
 ;  (ws-run-pass p lift-letrec-body)
 
 ;  (inspect (count-nodes p))
-  (profile-clear)
+;  (profile-clear)
   (time (ws-run-pass p ws-remove-complex-opera*))
+  (time (ws-run-pass p retypecheck))
 ;  (inspect (count-nodes p))
-
-  (parameterize ([print-gensym #t])
-    (with-output-to-file "./pdump_new"  (lambda () (write (profile-dump)))  'replace))
-
-  (new-cafe)
-  
+;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
+;  (exit)
 
   (time (ws-run-pass p ws-normalize-context))
 

@@ -279,8 +279,8 @@
       (define (make-nested-letrecs binds body)
 	(if (null? binds) body
 	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
-      (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (IFCHEZ (import rn-match) (begin))
+      (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
 	[(lambda ,formals ,type ,body)

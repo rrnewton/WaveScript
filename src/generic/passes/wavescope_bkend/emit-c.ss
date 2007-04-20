@@ -130,7 +130,7 @@
 	[(dynamic) #f]
 	[,else (error 'wsquery->text "bad additional arguments: ~s" mode)]))
     (match prog
-      [(,lang (quote (program ,expr (struct-defs . ,struct-defs) (union-types ,uniondefs ...) ,typ)))
+      [(,lang (quote (program ,expr (struct-defs . ,struct-defs) (union-types ,@uniondefs) ,typ)))
        
     ;; This processes an expression along the stream-processing "spine".
     ;; .param name   A string naming the variable that stores the current result.

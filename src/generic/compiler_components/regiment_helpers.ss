@@ -499,6 +499,7 @@
 
 ;; [2004.06.13] Tokens will be more complex later.
 (define (token-name? t) 
+  (IFCHEZ (import rn-match) (begin))
   ;(or (symbol? t)
   ;(and (pair? t) (symbol? (car t)) (integer? (cdr t))))
   (match t
@@ -508,6 +509,7 @@
     [else #f]))
 
 (define (token->name t)
+  (IFCHEZ (import rn-match) (begin))
   (match t
 	 [(tok ,name) name]
 	 [(tok ,name ,num) name]
@@ -515,6 +517,7 @@
 	 [,name (guard (symbol? name)) name]
 	 [,other (error 'token->name "bad token: ~a" other)]))
 (define (token->subtok t)
+  (IFCHEZ (import rn-match) (begin))
   (match t
 	 [(tok ,name) 0]
 	 [(tok ,name ,num) num]
@@ -605,6 +608,7 @@
     (and (memq x '(quote set! if begin letrec lambda)) #t)))
 
 (define (simple-expr? x)
+  (IFCHEZ (import rn-match) (begin))
   (match x
     ;; [2007.03.11] Making complex constants *NON* simple
     [(quote ,imm) (guard ;(not (null? imm)) 
@@ -642,12 +646,14 @@
 
 ;; A potentially quoted integer.
 (define (qinteger? n)
+  (IFCHEZ (import rn-match) (begin))
   (match n
     [,i (guard (integer? i)) #t]
     [',i (guard (integer? i)) #t]
     [,else #f]))
 ;; Get the value of a potentially quoted integer.
 (define (qinteger->integer n)
+  (IFCHEZ (import rn-match) (begin))
   (match n
     [,i (guard (integer? i)) i]
     [(quote ,i) 
@@ -673,6 +679,7 @@
 ;; 
 (define make-begin
   (lambda  (expr*)
+    (IFCHEZ (import rn-match) (begin))
     (let ([initlst (match expr*
 			  [(begin ,x* ...) x*]
 			  [,ls ls])])
@@ -681,7 +688,7 @@
 		    [,other (list other)])
       [() (void)]
       [(,x) x]
-      [(,x ,x* ...) `(begin ,x ,x* ...)]))))
+      [(,x ,x* ...) `(begin ,x ,@x*)]))))
 
 
 ;; [2006.03.01] 
