@@ -328,17 +328,11 @@
 	  (char? lsvec)
 	  (procedure? lsvec))
       1]
-;      [(list? lsvec) (+ (length lsvec)
-;                        (apply + (map count-nodes lsvec)))]
-
       [(pair? lsvec) (+ 1 (count-nodes (car lsvec))
 			  (count-nodes (cdr lsvec)))]
-;                        (apply + (map count-nodes lsvec)))]
-
-      [(vector? lsvec) (+ (vector-length lsvec)
+      [(vector? lsvec) (+ (vector-length lsvec)			  
                           (let loop ((i (sub1 (vector-length lsvec))))
-                            (if (zero? i)
-                                (count-nodes (vector-ref lsvec 0))
+                            (if (fx< i 0) 0                                
                                 (+ (count-nodes (vector-ref lsvec i))
                                    (loop (sub1 i))))))]
       [else (error 'count-nodes

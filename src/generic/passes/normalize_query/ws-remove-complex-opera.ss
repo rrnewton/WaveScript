@@ -78,36 +78,9 @@
 
 (define-pass ws-remove-complex-opera*
 
-    ;; This is purely for readability, instead of just tmp_99, I try
-    ;; to give things reasonable names based on what kinds of values
-    ;; they carry.
-#;
-    (define (meaningful-name exp)
-      (match exp
-	     [,prim
-	      (guard (regiment-primitive? prim))
-	      (symbol-append 'tmp_ prim)]
-	     [(,prim ,args ...)
-	      (guard (regiment-primitive? prim))
-	       (if (basic-primitive? prim)
-		   'tmp_basic
-		   (symbol-append 'tmp_ prim))
-		   #;
-	           (case prim
-		     [(circle circle-at) 'tmp-circ]
-		     [(khood khood-at) 'tmp-khood]
-		     [(anchor anchor-at) 'tmp-anch]
-		     [(rmap) 'tmp-rmap]
-		     [(smap) 'tmp-smap]
-		     [(rfold) 'tmp-rfold]
-		     [else 'tmp_unknpr])
-		   ]
-	     [(lambda ,form ,bod) 'tmp-func]
-	     ;; Will this happen??!: [2004.06.28]
-	     [,otherwise 'tmp]))
-          
-  ;; This is the standard one from regiment_helpers.ss
+    ;; This is the standard one from regiment_helpers.ss
     (define ws-rem-complex:simple? simple-expr?)
+
     
     #;
     (define ws-rem-complex:simple?
@@ -132,6 +105,7 @@
     ;; Coerces an expression to be simple, producing new bindings.
     ;; .returns A simple expression and a list of new decls.
     (define (make-simple x tenv)
+      (IFCHEZ (import rn-match) (begin))
       (if (ws-rem-complex:simple? x)
 	  (values x '())
 	  (let-match ([#(,res ,binds) (process-expr x tenv)])
@@ -155,6 +129,7 @@
     ;; .returns A vector containing an expression and a list of new decls.
     ;; The returned expression should be simple.
     (define (process-expr expr tenv)
+      (IFCHEZ (import rn-match) (begin))
       (match expr
 	   [,x (guard (ws-rem-complex:simple? x)) (vector x '())]
 	   
@@ -270,11 +245,11 @@
 	      )]
 	   [(tuple ,args ...)
 	    (mvlet ([(args binds) (make-simples args tenv)])
-	      (vector `(tuple ,args ...) binds))]
+	      (vector `(tuple ,@args) binds))]
 
 	   [(,prim ,rand* ...) (guard (regiment-primitive? prim))
 	    (mvlet ([(args binds) (make-simples rand* tenv)])
-	      (vector `(,prim ,args ...) binds))]
+	      (vector `(,prim ,@args) binds))]
 
 	   ;; Constants:
 	   [,prim (guard (regiment-primitive? prim))
@@ -288,6 +263,7 @@
     [OutputGrammar ws-remove-complex-opera*-grammar]
     [Program
      (lambda (prog _)
+      (IFCHEZ (import rn-match) (begin))
       (match prog
              [(,input-lang '(program ,exp ,meta* ... ,type))
 	      (let-values ([(newbod bnds) (make-simple exp 

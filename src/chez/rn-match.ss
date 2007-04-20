@@ -31,10 +31,16 @@
 (module rn-match ((match match-help bind-dummy-vars bind-popped-vars exec-body 
 			 build-list bind-cata ellipses-helper delay-values 
 			 countup-vars countup-elements wrap-lambda-at-the-end 
-			 vecref-helper vecref-helper2 convert-pat
+			 vecref-helper vecref-helper2 rn-convert-pat
 			 extend-backquote my-backquote
 			 pop force-and-select
 			 )
+		  ;; TEMP:
+		  rn-convert-pat
+
+		  (rn-let-match match)
+		  
+
 		  my-backquote
 		  (extend-backquote my-backquote)
 		  test-match 
@@ -45,6 +51,20 @@
     ((_ Exp Clause ...)
      (let Rematch ((Orig Exp))
        (match-help _ Rematch Orig Clause ...)))))
+
+(define-syntax rn-let-match
+  (lambda (x)
+    ;; [2007.04.20] Does this work??
+    ;(IFCHEZ (import rn-match) (begin))
+    (syntax-case x (unquote)
+      [(_ () Body ...)
+       #'(begin Body ...)]
+      [(lm ([Pat Exp] Rest ...) Body ...)
+       #'(match Exp
+	   [Pat (let-match (Rest ...) Body ...)]
+	   [,other (error 'let-match "unmatched object.\n  Datum: ~s\n  Syntax-location ~s\n" 
+			  other #'Exp)]
+	   )])))
 
 ;; Certain implementations have difficulty with delaying multple values.
 ;; (including gauche, stklos, bigloo, scheme48, larceny)
@@ -111,7 +131,7 @@
     ;; Guarded pattern:
     ((_ Template Cata Obj (Pat (guard G ...) B0 Bod ...) Rest ...)
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
-       (convert-pat ((Obj Pat) ())
+       (rn-convert-pat ((Obj Pat) ())
 		    exec-body 	   
 		    (extend-backquote Template B0 Bod ...)    ;; Total body.
 		    (extend-backquote Template (and G ...))   ;; Guard expression
@@ -119,7 +139,7 @@
     ;; Unguarded:
     ((_ Template Cata Obj (Pat B0 Bod ...) Rest ...)
      (let ((next (lambda () (match-help Template Cata Obj Rest ...))))
-       (convert-pat ((Obj Pat) ()) 
+       (rn-convert-pat ((Obj Pat) ()) 
 		    exec-body 		   
 		    (extend-backquote Template B0 Bod ...)    ;; Total body.
 		    #t                                        ;; Guard expression
@@ -237,13 +257,15 @@
      )))
 
 
+
+; (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) P0 Pat ...)
 (define-syntax vecref-helper
   (syntax-rules ()
-    ((_ vec ind acc (Stack . stuff)) (vecref-helper2 acc stack stuff))
+    ((_ vec ind acc (Stack . stuff)) (vecref-helper2 acc Stack stuff))
     ((_ vec ind acc stuff P0 P* ...)
      (vecref-helper vec (fx+ 1 ind) 
-			     (((vector-ref vec ind) P0) . acc)
-			     stuff P* ...))))
+		    (((vector-ref vec ind) P0) . acc)
+		    stuff P* ...))))
 
 ;; This (verbosely) does a reversal of the patterns for the vector.
 ;; This goal is to get a left-to-right order, which I believe to be
@@ -251,7 +273,7 @@
 ;; symbol that tags the variant represented by the vector.)
 (define-syntax vecref-helper2
   (syntax-rules ()
-    ((_ () stack stuff) (convert-pat stack . stuff))
+    ((_ () stack stuff) (rn-convert-pat stack . stuff))
     ((_ (B0 . B*) stack stuff)
      (vecref-helper2 B* (B0 stack) stuff))))
 
@@ -272,7 +294,7 @@
 ;;
 ;; If match, the body is evaluated, otherwise "nextclause" is called.
 ;; All pattern variables are lazy "thunked" so as to defer any Cata's.
-(define-syntax convert-pat
+(define-syntax rn-convert-pat
   (lambda (x)
 
     (define ellipsis?
@@ -291,7 +313,7 @@
       ((_ ((Obj (unquote (f -> V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
        #'(let ((promise (delay-values (f Obj))))
 	 (bind-cata 
-	  (convert-pat Stack Exec Bod Guard Cata
+	  (rn-convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))
 	  promise
 	  (V0 V* ...) (V0 V* ...))))
@@ -300,7 +322,7 @@
       ((_ ((Obj (unquote (V0 V* ...))) Stack) Exec Bod Guard Cata NextClause Vars (CataVars ...))
        #'(let ((promise (delay-values (Cata Obj))))
 	 (bind-cata 
-	  (convert-pat Stack Exec Bod Guard Cata
+	  (rn-convert-pat Stack Exec Bod Guard Cata
 		       NextClause Vars (V0 V* ... CataVars ...))
 	  promise
 	  (V0 V* ...) (V0 V* ...))))
@@ -310,7 +332,7 @@
       ;; This is for consistency with the Cata vars.
       ((_ ((Obj (unquote V)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
        #'(let ((V (lambda () Obj)))
-	 (convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
+	 (rn-convert-pat Stack Exec Bod Guard Cata NextClause (V . Vars) CataVars)))
 
       ;; Ellipses with something following:
       ((_ ((Obj (P0 Dots P1 P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
@@ -323,17 +345,27 @@
 		   (NextClause)
 		   (let ([hd (list-head Obj (- len remains))]
 			 [tl (list-tail Obj (- len remains))])
-		     (convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) 
+		     (rn-convert-pat ((hd (P0 Dots)) ((tl (P1 P* ...)) Stack)) 
 				  Exec Bod Guard Cata NextClause Vars CataVars))))
 	     (NextClause)))
 
       ;; Need to implement full ellipses for vector patterns, for now just doing this limited form:
-      ;; Ellipses necessitate turning it into a list:
+      ;; Full ellipses would necessitate *always* turning it into a list:
       ((_ ((Obj #(P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
        (ellipsis? #'Dots)
        #'(if (vector? Obj)
 	     (let ([v2ls (vector->list Obj)])
-	       (convert-pat ((v2ls (P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars))
+	       (rn-convert-pat ((v2ls (P0 Dots P* ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars))
+	     (NextClause)))
+
+      ;; Vector pattern
+      ((_ ((Obj #(P0 Pat ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
+       ;; Hope the compiler manages to evaluate this 'length' call:
+	 #'(if (and (vector? Obj) (fx= (vector-length Obj) (length '(P0 Pat ...))))
+	     ;; This creates redundant vector 
+	     (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) P0 Pat ...)
+	     ;(rn-convert-pat Stack ___ )
+	     ;(rn-convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
 	     (NextClause)))
 
 #|
@@ -379,7 +411,7 @@
 		 ;; Bind a pattern-matcher for one element of the list.	
 		 ;; It returns the pattern variables' bindings in a list:
 		 (project (lambda (VAL)
-			    (convert-pat ((VAL P0) ())
+			    (rn-convert-pat ((VAL P0) ())
 					 build-list ;; Replacement for exec-body
 					 'IGNORED #t Cata failed () ()))))
 	    ;; Here is the code that loops through the list at runtime.
@@ -395,7 +427,7 @@
 			 ;; If we get past this pattern we're on to the next one.
 			 ;; But P0's variables are already bound.
 			 (ellipses-helper (Vars ...) (CataVars ...)
-					  (convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
+					  (rn-convert-pat Stack exec-body Bod Guard Cata NextClause) P0))
 			P0)
 		     (if (null? Obj)
 			 ;; Build a list of (thunked) nulls of the right length:
@@ -417,18 +449,8 @@
 	 #'(if (pair? Obj)
 	     (let ((head (car Obj))
 		   (tail (cdr Obj)))
-	       (convert-pat ((head P0) ((tail P1) Stack))
+	       (rn-convert-pat ((head P0) ((tail P1) Stack))
 			    Exec Bod Guard Cata NextClause Vars CataVars))
-	     (NextClause)))
-
-	;; Vector pattern
-	((_ ((Obj #(P0 Pat ...)) Stack) Exec Bod Guard Cata NextClause Vars CataVars)
-	 ;; Hope the compiler manages to evaluate this 'length' call:
-	 #'(if (and (vector? Obj) (fx= (vector-length Obj) (length '(P0 Pat ...))))
-	     ;; This creates redundant vector 
-	     (vecref-helper Obj 0 () (Stack Exec Bod Guard Cata NextClause Vars CataVars) P0 Pat ...)
-	     ;(convert-pat Stack ___ )
-	     ;(convert-pat Stack ___ Exec Bod Guard Cata NextClause Vars CataVars)
 	     (NextClause)))
 
 	;; Literal pattern.
@@ -446,7 +468,7 @@
 		))
 	   #'(begin 
 	       (if (equal? Obj (quote LIT))
-		   (convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
+		   (rn-convert-pat Stack Exec Bod Guard Cata NextClause Vars CataVars)
 		   (NextClause)))))
 
 	;; Otherwise, syntax error.

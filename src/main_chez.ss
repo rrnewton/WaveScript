@@ -33,7 +33,9 @@
   (include "config.ss")
 
 ;;; TEMP TEMP TEMP 
-;  (compile-profile #t)
+  (compile-profile #t)
+  ;; Note: this also really bloats the code size. (Like by up to a
+  ;; factor of four!)
 
   (case-sensitive #t)
 
@@ -263,12 +265,11 @@
 (include "chez/rn-match.ss")      ;; My version of the pattern matcher.
 
 ;; To completely DISABLE my new prototype matcher, do this:
-;(alias rn-match iu-match)
+(alias rn-match2 rn-match)
+(alias rn-match iu-match)
 ;;
-;; Currently, just having rn-match in the type-checker bloats the
-;; compiled .so from 2.85 mb to 3.1 mb.  This will only get worse.  
-;; The question is whether we see enough of an improvement in runtime
-;; to justify it.
+;; [2007.04.19] Currently, just having rn-match in the type-checker
+;; plus the static elaborator bloats the code size a noticable amount.
 
 ;; Import the IU matcher globally:
 (import iu-match)
@@ -509,7 +510,12 @@
 (include "generic/passes/normalize_query/lift-letrec-body.ss")     (import lift-letrec-body)
 (include "generic/passes/normalize_query/remove-complex-opera.ss") (import remove-complex-opera)
 (include "generic/passes/normalize_query/ws-remove-letrec.ss") (import ws-remove-letrec)
+
+
+;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/normalize_query/ws-remove-complex-opera.ss") (import ws-remove-complex-opera)
+;(eval-when (compile eval load) (compile-profile #f))
+
 (include "generic/passes/normalize_query/ws-lift-let.ss") (import ws-lift-let)
 (include "generic/passes/normalize_query/remove-lazy-letrec.ss")   (import remove-lazy-letrec)
 (include "generic/passes/normalize_query/verify-core.ss")          (import verify-core)

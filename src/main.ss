@@ -419,14 +419,25 @@
   ;; because functions have all been inlined.
 
   (ws-run-pass p remove-letrec)
-  (ws-run-pass p standardize-iterate)
+  (time (ws-run-pass p standardize-iterate))
 
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
 ;  (ws-run-pass p lift-letrec-body)
 
+;  (inspect (count-nodes p))
+  (profile-clear)
   (time (ws-run-pass p ws-remove-complex-opera*))
-  (ws-run-pass p ws-normalize-context)
+;  (inspect (count-nodes p))
+
+  (parameterize ([print-gensym #t])
+    (with-output-to-file "./pdump_new"  (lambda () (write (profile-dump)))  'replace))
+
+  (new-cafe)
+  
+
+  (time (ws-run-pass p ws-normalize-context))
+
 
   (ws-run-pass p ws-lift-let)
 

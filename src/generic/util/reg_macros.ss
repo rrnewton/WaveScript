@@ -147,6 +147,8 @@
 ;; This allows pattern matching in the LHSs of let's.
 (define-syntax let-match
   (lambda (x)
+    ;; [2007.04.20] Does this work??
+    ;(IFCHEZ (import rn-match) (begin))
     (syntax-case x (unquote)
       [(_ () Body ...)
        #'(begin Body ...)]

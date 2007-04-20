@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# TODO: ACCEPTING -o ARGUMENT BUT IT'S NOT USED CURRENTLY.
+
 #TMP=/tmp/`whoami`/wavescript_parsed.tmp
 
 TMP=`dirname $0`
@@ -9,15 +11,22 @@ then source "$TMP/assert_regimentd"; fi
 CCPASSTHRU=""
 REGPASSTHRU=""
 FILE=""
+OUTFILE=query.cpp
+NOGCC=0
 
 while [ $# != 0 ];  do 
-  if [ "$1" == "-exit-error" ]
-  then REGPASSTHRU="$PASSTHRU $1"; 
+  if [ "$1" == "-no-gcc" ]
+  then NOGCC=1;
+  elif [ "$1" == "-o" ]
+  then shift;
+       OUTFILE="$1"; 
+  elif [ "$1" == "-exit-error" ]
+  then REGPASSTHRU="$REGPASSTHRU $1"; 
   elif [ "$1" == "-O0" ] || 
        [ "$1" == "-O1" ] || 
        [ "$1" == "-O2" ] || 
        [ "$1" == "-O3" ];
-  then CCPASSTHRU="$PASSTHRU $1"; 
+  then CCPASSTHRU="$CCPASSTHRU $1"; 
 #  elif [ `echo $1 | sed` == "-" ]
 #  then echo "Unknown flag: $1"
   else FILE="$1"; 
@@ -43,7 +52,7 @@ B=`basename "$FILE"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 
 # Clean first:
-rm -f ./query.cpp
+rm -f "$OUTFILE"
 
 export REGIMENT_OR_WAVESCRIPT=WS
 if regiment wscomp $abspath $REGPASSTHRU ;
@@ -74,9 +83,8 @@ fi
 #echo '$WAVESCOPED/run_WaveScriptQuery $*' >> run_query
 #chmod +x run_query
 
-if wsc-g++ $PASSTHRU ./query
+if [ "$NOGCC" == "0" ] &&  wsc-g++ $CCPASSTHRU ./query 
 then echo
+     echo "Executable output to 'query.exe'."
 else exit 1;
 fi;
-
-echo "Executable output to 'query.exe'."

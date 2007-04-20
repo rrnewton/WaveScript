@@ -260,6 +260,32 @@
 			    ))))
        ])))
 
+;; [2007.04.19] UNFINISHED:
+#;
+(define (fuse-passes P1 P2)
+  (let-match ([#(,E1) (P1 'get)]
+	      [#(,E2) (P2 'get)])
+    ;; FINISH:
+    (fuse-segments E1 E2)    
+    ;; Handle other fields.....
+
+    (make-pass )
+    ))
+
+(define (fuse-segments A B )
+  (define fused
+    (lambda (x fallthru)
+      (A x (lambda (y)
+       (B y (lambda (z)
+	      (if (eq? y z)
+		  (fallthru z)
+		  ;; This indicates a match-recursion has occured.
+		  ;; We need to start back at the top.
+		  (fused z fallthru))))))))
+  fused)
+
+
+
 
 ) ;; End module.
 
