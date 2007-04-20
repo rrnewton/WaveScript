@@ -322,7 +322,17 @@
 ;; It takes it from (parsed) source down as far as WaveScript 
 ;; can go right now.  But it does not invoke the simulator or the c_generator.
 (define (run-ws-compiler p . already-typed)                                   ;; Entrypoint.
-  
+
+
+  (define (do-typecheck lub poly)
+    (parameterize ([inferencer-enable-LUB      lub]
+		   [inferencer-let-bound-poly poly])
+      (time (ws-run-pass p retypecheck))))
+  ;; There are currently two different typecheck configs that we use.
+  ;; One for the meta language, one for the object.
+  (define (do-early-typecheck) (do-typecheck #t #t))
+  (define (do-late-typecheck)  (do-typecheck #t #f))
+
   (set! already-typed (if (null? already-typed) #f (car already-typed)))
 
   (ASSERT (memq (compiler-invocation-mode)  '(wavescript-simulator wavescript-compiler)))
@@ -338,15 +348,15 @@
     ;; TODO: Insert optional PRUNE-UNUSED pass to quickly prune unused code.
     (ws-run-pass p resolve-type-aliases)
     (ws-run-pass p ws-label-mutable)
-    (parameterize ([inferencer-enable-LUB #t]
-		   [inferencer-let-bound-poly #t])
-      (ws-run-pass p retypecheck)) ;; This is the initial typecheck. 
+
+    ;; This is the initial typecheck. 
+    (do-early-typecheck)
     )
 
   (unless (regiment-quiet) (printf "Program verified.\n"))
 
   (ws-run-pass p rename-vars)
-  (DEBUGMODE (ws-run-pass p retypecheck) (void))
+  (DEBUGMODE (do-early-typecheck) (void))
   (ws-run-pass p eta-primitives)
   (ws-run-pass p desugar-misc)
   (ws-run-pass p remove-unquoted-constant)
@@ -371,7 +381,7 @@
 
   ;; We MUST typecheck before verify-elaborated.
   ;; This might kill lingering polymorphic types ;)
-  (ws-run-pass p retypecheck)
+  (do-late-typecheck)
   (ws-run-pass p rename-vars)
 
   (IFDEBUG 
@@ -389,23 +399,25 @@
   (ws-run-pass p verify-elaborated)
 
   (ws-run-pass p anihilate-higher-order)  ;; Of a kind with "reduce-primitives"
-  (ws-run-pass p retypecheck)  ;; Fill in some types that were left blank in the above.
+
+  ;; Now fill in some types that were left blank in the above:
+  ;; Shouldn't need to redo LUB because the types are already restrictive???
+  (do-late-typecheck)
 
   ;; This three-step process is inefficient, but easy:
   ;; This is a hack, but a pretty cool hack.
-  (ws-run-pass p lift-polymorphic-constant)  
-  (parameterize ([inferencer-let-bound-poly #f])
-    (ws-run-pass p retypecheck))
+  (ws-run-pass p lift-polymorphic-constant)
+  (do-late-typecheck)
   (ws-run-pass p unlift-polymorphic-constant)
 
 ;  (ws-run-pass p merge-iterates) ;; <Optimization>
-  (IFDEBUG (ws-run-pass p retypecheck) (void))
+  (IFDEBUG (do-late-typecheck) (void))
 
   ;; (5) Now we normalize the residual in a number of ways to
   ;; produce the core query language, then we verify that core.
   (ws-run-pass p reduce-primitives) ; w/g 
   (ws-run-pass p remove-complex-constant)
-  (IFDEBUG (ws-run-pass p retypecheck) (void))
+  (IFDEBUG (do-late-typecheck) (void))
 
 ;  (ws-run-pass p uncover-free)
 
@@ -419,7 +431,7 @@
   ;; because functions have all been inlined.
 
   (ws-run-pass p remove-letrec)
-  (time (ws-run-pass p standardize-iterate))
+  (ws-run-pass p standardize-iterate)
 
 ;  (ws-run-pass p introduce-lazy-letrec)
 ;  (ws-run-pass p lift-letrec)
@@ -427,20 +439,22 @@
 
 ;  (inspect (count-nodes p))
 ;  (profile-clear)
-  (time (ws-run-pass p ws-remove-complex-opera*))
-  (time (ws-run-pass p retypecheck))
+  (ws-run-pass p ws-remove-complex-opera*)
+  (do-late-typecheck)
 ;  (inspect (count-nodes p))
 ;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
 ;  (exit)
 
-  (time (ws-run-pass p ws-normalize-context))
+  (ws-run-pass p ws-normalize-context)
 
 
   (ws-run-pass p ws-lift-let)
 
   ;; Mandatory re-typecheck.  Needed to clear out some polymorphic
   ;; types that might have snuck in from lifting.
-  (ws-run-pass p retypecheck)
+
+  ;; NOTE: MIGHT combine this with the previous typecheck!!
+  (do-late-typecheck)
 
   ;; Replacing remove-complex-opera* with a simpler pass:
   ;(ws-run-pass p flatten-iterate-spine)
@@ -458,14 +472,6 @@
      'replace))
 
   (ws-run-pass p type-annotate-misc) 
-
-
-;  (ws-run-pass p remove-lazy-letrec)
-  
-;;  (ws-run-pass p verify-core)
-;;  (ws-run-pass p retypecheck)
-
-  ;(ws-run-pass p nominalize-types)
 
 ;   (set! prog (ws-add-return-statements prog))
   ;(ws-run-pass p ws-add-return-statements)
@@ -532,7 +538,7 @@
       (ws-run-pass p ws-label-mutable)
       (parameterize ([inferencer-enable-LUB #t]
 		     [inferencer-let-bound-poly #t])
-	(ws-run-pass p retypecheck)) ;; This is the initial typecheck.
+	(time (ws-run-pass p retypecheck))) ;; This is the initial typecheck.
       p))
 
   (define __ 

@@ -15,13 +15,11 @@
   (chezimports )
   ;(IFCHEZ (begin) (provide degeneralize-arithmetic))
 
-  (define genops '(g+ g- g* g/ g^ gint))
-
   (define-pass lift-generics
       [Expr (lambda (x fallthru)
 	      (match x 
 		[(,genop ,[args] ...)
-		 (guard (memq genop genops))
+		 (guard (assq genop generic-arith-primitives))
 		 (let ([tmp (unique-name 'tmp)]
 		       [alpha (unique-name 'alpha)])
 		   `(let ([,tmp (,genop . ,args)])
@@ -45,7 +43,7 @@
       [Expr (lambda (x fallthru)
 	      (match x
 		[(let ([,v ,t (,genop ,[args] ...)]) ,v2)
-		 (guard (eq? v v2) (memq genop genops))		 
+		 (guard (eq? v v2) (assq genop generic-arith-primitives))		 
 		 (if (eq? genop 'gint)		     
 		     (match (list t (car args))
 		       [(Int16   (quote ,n))  
@@ -87,7 +85,9 @@
 
   (define (degeneralize-arithmetic p)
     (degeneralize 
-     (retypecheck
-      (lift-generics p))))
-)
-
+     ;; Let bound poly should be off, then we get the right types for the generics.
+     (parameterize ([inferencer-enable-LUB #f]
+		    [inferencer-let-bound-poly #f])
+       (retypecheck
+	(lift-generics p)))))
+  )

@@ -129,7 +129,7 @@
 ;; lowered to the LUB of its call-site requirements, rather than the
 ;; most general type.
 ;;   This is only turned off for debugging purposes...
-(define inferencer-enable-LUB (make-parameter #t))
+(define inferencer-enable-LUB (make-parameter #f))
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Complex 
@@ -1815,26 +1815,27 @@
   ;; TODO: FIXME: THIS REPRESENTS A BUG:
   ["LUB: Here we should infer the less general type: plain Int:"
    (deep-member? 'NUM
-    (annotate-program 
-    '(foolang '(program
-		   (letrec ([readings (Area (List Int)) 
-				      (rmap
-				       (lambda (n) (Node)
-					       (cons (sense "temp" n)
-						     (cons 1 '())))
-				       world)]
-			    [aggr 't1 (lambda (x y) ('t2 't3)
-					      (cons (g+ (car x) (car y))
-						    (cons (g+ (car (cdr x))
-							      (car (cdr y)))
-							  '())))]
-			    [sums (Stream (List Int)) 
-				  (rfold aggr (cons 0 (cons 0 '()))
-					 readings)]
-			    )
-		     sums)
-		 (union-types)
-		 (Stream Int)))))
+    (parameterize ([inferencer-enable-LUB #t])
+      (annotate-program 
+       '(foolang '(program
+		      (letrec ([readings (Area (List Int)) 
+					 (rmap
+					  (lambda (n) (Node)
+						  (cons (sense "temp" n)
+							(cons 1 '())))
+					  world)]
+			       [aggr 't1 (lambda (x y) ('t2 't3)
+						 (cons (g+ (car x) (car y))
+						       (cons (g+ (car (cdr x))
+								 (car (cdr y)))
+							     '())))]
+			       [sums (Stream (List Int)) 
+				     (rfold aggr (cons 0 (cons 0 '()))
+					    readings)]
+			       )
+			sums)
+		    (union-types)
+		    (Stream Int))))))
    #f]
 
   ["This is an ok use of polymorphism"
@@ -1862,8 +1863,10 @@
 
 
   ["This is an identity function with LUB type Num a -> Num a"
-   (values->list (annotate-program
-		  '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5)))))
+   (values->list 
+    (parameterize ([inferencer-enable-LUB #t])
+      (annotate-program
+       '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5))))))
    ,(lambda (x)
       (match x
        	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (,unspecified) x)])

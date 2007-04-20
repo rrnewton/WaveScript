@@ -34,8 +34,7 @@
 
 ;;; TEMP TEMP TEMP 
 ;  (compile-profile #t)
-  ;; Note: this also really bloats the code size. (Like by up to a
-  ;; factor of four!)
+  ;; Note: this also bloats the code size. 
 
   (case-sensitive #t)
 

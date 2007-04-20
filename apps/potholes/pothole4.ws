@@ -26,6 +26,13 @@ include "filter.ws";
 // The next target for rn-match will definitely be the static-elaborator.
 
 
+// [2007.04.20] Continuing to use this file as a benchmark for the
+//   compiler to try to optimize it some.
+// Cpu times on justice:
+//   Best compile time with ws    : 2604
+//   Best compile time with ws.opt: 1948
+
+
 //======================================================================
 
 fun prestream(s, pre_data) {
