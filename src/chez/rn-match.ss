@@ -433,7 +433,11 @@
        (ellipsis? #'Dots)
        #'(call-with-current-continuation
 	(lambda (escape)
-	  (let* ((failed (lambda () (escape (NextClause))))
+	  ;; Might have multiple values returned from theuser code:
+	  (let* ((failed (lambda () 
+			   ;(escape (NextClause))
+			   (call-with-values NextClause escape)
+			   ))
 		 ;; Bind a pattern-matcher for one element of the list.	
 		 ;; It returns the pattern variables' bindings in a list:
 		 (project (lambda (VAL)

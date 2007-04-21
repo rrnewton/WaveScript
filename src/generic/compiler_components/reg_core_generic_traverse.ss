@@ -49,6 +49,9 @@
 	       ;regiment_helpers
 	       )
 
+  ;; Switching this much-used module over to my faster match:
+  ;(IFCHEZ (import rn-match) (void))
+
 ;;============================================================
 ;; Here is a simple procedural interface.
 
@@ -69,6 +72,7 @@
        ))
 ;; Returns in-scope expressions froma a binding form.
 (define (binding-form->scoped-exprs x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
      (cons bod rhs*)]
@@ -80,6 +84,7 @@
     ))
 ;; Returns not-in-scope expressions from a binding form.
 (define (binding-form->unscoped-exprs x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,letrec . ,_) (guard (memq letrec '(letrec lazy-letrec))) '()]
     [(lambda . ,_) '()]
@@ -90,6 +95,7 @@
     ))
 ;; Returns bound-vars from a binding form.
 (define (binding-form->vars x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec))) 
      lhs*]
@@ -101,6 +107,7 @@
     ))
 ;; Returns types from a binding form.
 (define (binding-form->types x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(,letrec ([,lhs* ,ty* ,rhs*] ...) ,bod) (guard (memq letrec '(letrec lazy-letrec)))
      ty*]
@@ -131,6 +138,7 @@
 ;;   ORTHOGONAL to ->scoped vs. ->unscoped above.
 ;; .returns 5 values: vars types knownrhs otherexpr reconstructor
 (define (binding-form-visit-knowncode x)
+  ;(IFCHEZ (import rn-match) (void))
   (match x
     [(,lett ([,lhs* ,ty* ,rhs*] ...) ,bod) 
      (guard (memq lett '(letrec lazy-letrec let let*)))

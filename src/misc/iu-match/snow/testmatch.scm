@@ -98,6 +98,16 @@
   [,y (printf "done\n") 99])
 
 
+;; Returning multiple vars:
+'
+(match '(1 3) [(,x ...) (values x x )])
+
+;; This breaks currently [2007.04.20]
+'
+(match '(lambda (v))
+    [(lambda (3 ...))  99]
+    [(lambda ,vars) (values 1 2 3)])
+
 
 ; (test-match)
 ; (newline)(display "Also running not with eval, should get 'first': ")
