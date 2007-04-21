@@ -429,7 +429,9 @@
 ;(include "../reg_grammar.ss")
 
 ;; Type inference is used by verify-regiment, below.
+;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
+;(eval-when (compile eval load) (compile-profile #f))
 ;(include "generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 

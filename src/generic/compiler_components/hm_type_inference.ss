@@ -367,6 +367,12 @@
 
 ; ----------------------------------------
 
+(define-syntax eq-any?
+  (syntax-rules ()
+    [(_ x arg* ...)
+     (let ([y x]) (or (eq? y arg*) ...)
+	  )]))
+
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
 ;; The "nongeneric" vars are ones that do not receive new mutable cells.
@@ -383,15 +389,13 @@
 	  (let loop ((t t))
 	   (match t
 	     [#f #f]
-	     [,s (guard (symbol? s)) s]
-
              ;; This type variable is non-generic, we do not copy it.
 	     [(,qt ,cell) 
-	      (guard (memq qt '(quote NUM)) (pair? cell) (memq (car cell) nongeneric))
+	      (guard (eq-any? qt 'quote 'NUM) (pair? cell) (memq (car cell) nongeneric))
               `(,qt ,cell)] ;; Don't reallocate the cell (or touch its RHS)
 	     ;; Otherwise make/lookup the new cell and attach it.
 	     [(,qt ,x) 
-	      (guard (memq qt '(quote NUM))
+	      (guard (eq-any? qt 'quote 'NUM)
 		     (or (symbol? x) (pair? x)))
 	      (let* ([var (if (symbol? x) x (car x))]
 		     [entry (tenv-lookup tenv var)])
@@ -402,6 +406,8 @@
 		      (DEBUGASSERT (not (tenv-lookup tenv var)))
 		      (set! tenv (tenv-extend tenv (list var) (list newtype)))
 		      newtype)))]
+	     [,s (guard (symbol? s)) s]
+
 	     [#(,[t*] ...) (apply vector t*)] 
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
@@ -419,9 +425,9 @@
 (define (export-type t)
   (IFCHEZ (import rn-match) (void))
   (match t
-    [,s (guard (symbol? s)) s]
     ['(,n . ,v) (if v (export-type v) `(quote ,n))]
     [',n `(quote ,n)]
+    [,s (guard (symbol? s)) s]
     [(NUM ,v) (guard (symbol? v)) `(NUM ,v)]
     [(NUM (,v . ,t)) (if t (export-type t) `(NUM ,v))]
     [(LATEUNIFY #f ,[b]) `(LATEUNIFY #f ,b)]
@@ -456,7 +462,6 @@
 (define (do-late-unify! t)
   (IFCHEZ (import rn-match) (void))
   (match t
-    [,s (guard (symbol? s))                  (void)]
     [(quote ,pr)
      (match pr
        [(,v . (LATEUNIFY #f ,b))
@@ -478,6 +483,7 @@
 	    ;; Otherwise just the most general type.
 	    (set-cdr! pr b))]
        [(,v . ,oth) (if oth (do-late-unify! oth) (void))])]
+    [,s (guard (symbol? s))                  (void)]
     [#(,[t*] ...)                            (void)]
     [(LATEUNIFY ,a ,b)
      (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
@@ -737,7 +743,7 @@
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
-      [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
+      [,prim (guard (symbol? prim) (regiment-primitive? prim) (not (tenv-lookup tenv prim)))
 	     (values prim (prim->type prim))]
 
       ;; Here's the magic:
@@ -1258,34 +1264,34 @@
 
 ;; This asserts that two types are equal.  Mutates the type variables
 ;; to reflect this constraint.
-(define (types-equal! t1 t2 exp . maybemsg)
-  (define msg (if (null? maybemsg) "" (car maybemsg)))
+(define (types-equal! t1 t2 exp msg) ; maybemsg
+;  (define msg (if (null? maybemsg) "" (car maybemsg)))
   (IFCHEZ (import rn-match) (void))
-  (ASSERT (not (null? msg)))
+;  (ASSERT (not (null? msg)))
   (DEBUGASSERT type? t1) (DEBUGASSERT type? t2)
   (DEBUGASSERT (compose not procedure?) exp)
-  (match (list t1 t2)
-    [[,x ,y] (guard (eqv? t1 t2)) (void)]
+  (match (cons t1 t2)
+    [[,x . ,y] (guard (eqv? t1 t2)) (void)]
 
-    [[(LATEUNIFY ,_ ,t1) ,t2]  (types-equal! t1 t2 exp msg)]
-    [[,t1 (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp msg)]
+    [[(LATEUNIFY ,_ ,t1) . ,t2]  (types-equal! t1 t2 exp msg)]
+    [[,t1 . (LATEUNIFY ,_ ,t2)]  (types-equal! t1 t2 exp msg)]
 
-    [[',tv1 ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
-    [[',tv ,ty] (tvar-equal-type! t1 t2 exp msg)]
-    [[,ty ',tv] (tvar-equal-type! t2 t1 exp msg)]
-    [[,x ,y] (guard (symbol? x) (symbol? y))
+    [[',tv1 . ',tv2] (guard (eqv? tv1 tv2)) (void)] ;; alpha = alpha
+    [[',tv . ,ty] (tvar-equal-type! t1 t2 exp msg)]
+    [[,ty . ',tv] (tvar-equal-type! t2 t1 exp msg)]
+    [[,x . ,y] (guard (symbol? x) (symbol? y))
      (raise-type-mismatch msg x y exp)]
 
-    [[(NUM ,tv1) (NUM ,tv2)] (tvar-equal-type! t1 t2 exp msg)]
-    [[(NUM ,x) ,numty]   (guard (symbol? numty) (memq numty num-types))
+    [[(NUM ,tv1) . (NUM ,tv2)] (tvar-equal-type! t1 t2 exp msg)]
+    [[(NUM ,x) . ,numty]   (guard (symbol? numty) (memq numty num-types))
      (tvar-equal-type! t1 numty exp msg)]
-    [[,numty   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
+    [[,numty .   (NUM ,x)] (guard (symbol? numty) (memq numty num-types))
      (tvar-equal-type! t2 numty exp msg)]
 
 ;; [2007.03.15] Type aliases already resolved by resolve-type-aliases:
 #;
     ;; If one of them is a symbol, it might be a type alias.
-    [[,x ,y] (guard (or (symbol? x) (symbol? y)))
+    [[,x . ,y] (guard (or (symbol? x) (symbol? y)))
      (let ([sym    (if (symbol? x) x y)]
 	   [nonsym (if (symbol? x) y x)])
        (let ([entry (assq sym regiment-type-aliases)])
@@ -1294,12 +1300,12 @@
 	     (types-equal! (instantiate-type (cadr entry) '()) nonsym exp msg)
 	     (raise-type-mismatch msg x y exp))))]
 
-    [[#(,x* ...) #(,y* ...)]
+    [[#(,x* ...) . #(,y* ...)]
      (guard (= (length x*) (length y*)))
      (for-each (lambda (t1 t2) (types-equal! t1 t2 exp msg)) x* y*)]
 
     ;; Ref will fall under this category:
-    [[(,x1 ,xargs ...) (,y1 ,yargs ...)]
+    [[(,x1 ,xargs ...) . (,y1 ,yargs ...)]
      (guard (symbol? x1) (symbol? y1)
 	    (not (memq '-> xargs))
 	    (not (memq '-> yargs))
@@ -1312,7 +1318,7 @@
 ;; [2005.12.07] Just got a "wrong number of arguments" error that might be a match bug.
 ;;    [[(,xargs ... -> ,x) (,yargs ... -> ,y)] 
     ;; Working around this in a lame way:
-    [[,x  (,yargs ... -> ,y)] 
+    [[,x .  (,yargs ... -> ,y)] 
      (match x 
        [(,xargs ... -> ,x)
 	(if (not (= (length xargs) (length yargs)))

@@ -31,6 +31,7 @@ include "filter.ws";
 // Cpu times on justice:
 //   ws    : 2604
 //   ws.opt: 1948
+
 // After optimizing LUB further:
 //   ws    : 2508 (484 on typecheck)
 //   ws.opt: 1924 (376 typecheck)
@@ -42,9 +43,14 @@ include "filter.ws";
 //   ws    : 2208/2240
 //   ws.opt: 1708/1740 (1088 in static elab) (1604 from .boot)
 
-// After making a hash for primitive table!
+// After making a hash for primitive table!  
+//   (What other large assoc lists are there?)
 //   ws    : 1736
 //   ws.opt: 1260
+
+// After working on make-tvar and reordering cases in type checker.
+//   ws    : 1748
+//   ws.opt: 1228
 
 
 
