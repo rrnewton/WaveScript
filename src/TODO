@@ -6,8 +6,11 @@ Things I'm working on now --Ryan:
 REACTIVATE THAT TEST WITHIN DESUGAR-PATTERN-MATCHING... AND FIX THE TYPE CHECKER!
 
 
-================================================================================
 
+================================================================================
+TOOPTIMIZE:
+
+*) Look at all uses of recover-type... this is a great source of inefficiency.
 
 
 ================================================================================

@@ -35,8 +35,13 @@ include "filter.ws";
 //   ws    : 2508 (484 on typecheck)
 //   ws.opt: 1924 (376 typecheck)
 
-//   ws    : 
-//   ws.opt: 
+// (Note, this does run faster with boot files... saves significant
+//  time on collecting. 400 ms on ws 100 on ws.opt.  *)
+
+// After pushing rn-match into generic traverse.
+//   ws    : 2208/2240
+//   ws.opt: 1708/1740 (1088 in static elab) (1604 from .boot)
+
 
 
 //======================================================================
