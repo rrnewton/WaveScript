@@ -478,8 +478,8 @@
 
   (printf "Total typechecker time used:\n")
   (time-accum-report)(newline)
-  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
-  (exit)
+;  (with-output-to-file "./pdump_new"  (lambda () (fasl-write (profile-dump)))  'replace)
+;  (exit)
 
   p))
 )

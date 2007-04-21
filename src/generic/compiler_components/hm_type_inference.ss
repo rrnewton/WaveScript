@@ -367,6 +367,8 @@
 
 ; ----------------------------------------
 
+;; [2007.04.20] This hack doesn't seem to yield any benefit vs. doing
+;; a (memq)... Chez must be doing the right thing for the memq in a constant list.
 (define-syntax eq-any?
   (syntax-rules ()
     [(_ x arg* ...)

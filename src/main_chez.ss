@@ -429,9 +429,7 @@
 ;(include "../reg_grammar.ss")
 
 ;; Type inference is used by verify-regiment, below.
-;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/compiler_components/hm_type_inference.ss") (import hm_type_inference)
-;(eval-when (compile eval load) (compile-profile #f))
 ;(include "generic/prim_defs_OLD.ss")
 ;(import prim_defs_OLD) ;; TEMP
 
@@ -490,7 +488,10 @@
 (include "generic/passes/normalize_source/desugar-misc.ss") (import desugar-misc)
 (include "generic/passes/normalize_source/remove-unquoted-constant.ss") (import remove-unquoted-constant)
 
+;(eval-when (compile eval load) (compile-profile #t))
 (include "generic/passes/static_elaborate/static-elaborate.ss")  (import static-elaborate)
+;(eval-when (compile eval load) (compile-profile #f))
+
 (include "generic/passes/static_elaborate/degeneralize-arithmetic.ss")  (import degeneralize-arithmetic)
 (include "generic/passes/static_elaborate/verify-elaborated.ss") (import verify-elaborated)
 

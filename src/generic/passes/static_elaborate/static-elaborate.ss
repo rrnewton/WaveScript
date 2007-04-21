@@ -117,6 +117,9 @@
 	   [,var (guard (symbol? var))
 		 ((outer-getval env) (cadr (assq var env)))]
 	   [(,annot ,_ ,e) (guard (annotation? annot)) ((outer-getval env) e)]
+	   ;[(src-pos ,_ ,e) ((outer-getval env) e)]
+	   ;[(assert-type ,_ ,e) ((outer-getval env) e)]
+
 	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
      [define stream-val? 
       (lambda (exp)
@@ -301,20 +304,29 @@
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
 		(if (eq? var v) 1 0)]
-          [(lambda ,formals ,types ,expr)
-	   (if (memq v formals) 0 (count-refs v expr))]
           [(if ,[test] ,[conseq] ,[altern])
 	   (+ test conseq altern)]
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
+          [(lambda ,formals ,types ,expr)
+	   (if (memq v formals) 0 (count-refs v expr))]
           
-	  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
+;	  [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
+	  [(src-pos ,_ ,[e]) e]
+
+	  [(tupref ,n ,m ,[x]) x]
+	  [(tuple ,[args] ...) (apply + args)]
+	  [(,prim ,[rands] ...)
+	   (guard (regiment-primitive? prim))
+           (apply fx+ rands)]
           [(begin ,(stmt) ...) (apply + stmt)]
-          [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
-          [(while ,[tst] ,(bod)) (+ tst bod)]
-          [(iterate ,(fun) ,(bod)) (+ fun bod)]
+
+	  [(unionN ,[args] ...) (apply + args)]
+	  [(vector ,[args] ...) (apply + args)]
+
+	  [(assert-type ,_ ,[e]) e]
           [(set! ,lhs ,(rhs))
            (if (eq? v lhs) 
 	       9988
@@ -323,15 +335,10 @@
 		      "Hmm... shouldn't be counting references to mutable-var: ~s" v)
 	       rhs
 	       )]
+          [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
+          [(while ,[tst] ,(bod)) (+ tst bod)]
+          [(iterate ,(fun) ,(bod)) (+ fun bod)]
 
-	  [(tupref ,n ,m ,[x]) x]
-	  [(tuple ,[args] ...) (apply + args)]
-	  [(vector ,[args] ...) (apply + args)]
-	  [(unionN ,[args] ...) (apply + args)]
-          
-	  [(,prim ,[rands] ...)
-	   (guard (regiment-primitive? prim))
-           (apply fx+ rands)]           
 	  [(,app ,[rator] ,[rands] ...) 
 	   (guard (memq app '(app construct-data)))
 	   (+ rator (apply + rands))]
