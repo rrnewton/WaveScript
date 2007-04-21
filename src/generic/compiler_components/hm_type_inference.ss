@@ -58,7 +58,7 @@
 	   inferencer-let-bound-poly
 	   inferencer-enable-LUB
 
-	   make-tvar-generator
+;	   make-tvar-generator
 	   make-tvar
 	   reset-tvar-generator
 
@@ -241,28 +241,26 @@
 
 ; ----------------------------------------
 
-;; TODO: optimize this some don't need to stay in symbols and then go to strings repeatedly!
-(define make-tvar-generator
-  (lambda ()
-    (let* ([vars (list->vector (map symbol->string 
-		   '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))]
-	   [len (vector-length vars)]
-	   [count 0]
-	   )
-      (lambda ()
-	(let loop ([ind count] [acc '()])
-	  (cond
-	   [(< ind len)  
-	    (set! count (add1 count))
-	    (string->symbol (apply string-append (cons (vector-ref vars ind) acc)))]
-	   [else (loop (fx- (fxquotient ind len) 1)
-		       (cons (vector-ref vars (fxremainder ind len)) acc))]))
-	))))
 
+(define tvar-generator-count 0)
 ;; Makes a unique type variable.
-(define make-tvar (make-tvar-generator))
+(define make-tvar
+  (let* ([vars (list->vector (map symbol->string 
+			       '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))]
+	 [len (vector-length vars)]
+	 )
+    (lambda ()
+      (let loop ([ind tvar-generator-count] [acc '()])
+	(cond
+	 [(< ind len)  
+	  (set! tvar-generator-count (fx+ 1 tvar-generator-count))
+	  (string->symbol (apply string-append (cons (vector-ref vars ind) acc)))]
+	 [else (loop (fx- (fxquotient ind len) 1)
+		     (cons (vector-ref vars (fxremainder ind len)) acc))]))
+      )))
+
 ;; Resets the unique name counter.
-(define (reset-tvar-generator) (set! make-tvar (make-tvar-generator)))
+(define (reset-tvar-generator) (set! tvar-generator-count 0))
 
 ;; A tcell is like a tvar (quoted, representing a variable).  Except
 ;; instead of just containing a symbolic name, it is a cons cell also
