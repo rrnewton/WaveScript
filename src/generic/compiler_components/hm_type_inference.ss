@@ -244,10 +244,9 @@
 ;; TODO: optimize this some don't need to stay in symbols and then go to strings repeatedly!
 (define make-tvar-generator
   (lambda ()
-    (let* ([vars '(a b c d e f g h i j k l m n o p q r s t u v w x y z 
-		     ;;alpha beta gamma
-		     )]
-	   [len (length vars)]
+    (let* ([vars (list->vector (map symbol->string 
+		   '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))]
+	   [len (vector-length vars)]
 	   [count 0]
 	   )
       (lambda ()
@@ -255,9 +254,9 @@
 	  (cond
 	   [(< ind len)  
 	    (set! count (add1 count))
-	    (apply symbol-append (cons (list-ref vars ind) acc))]
-	   [else (loop (sub1 (quotient ind len))
-		       (cons (list-ref vars (remainder ind len)) acc))]))
+	    (string->symbol (apply string-append (cons (vector-ref vars ind) acc)))]
+	   [else (loop (fx- (fxquotient ind len) 1)
+		       (cons (vector-ref vars (fxremainder ind len)) acc))]))
 	))))
 
 ;; Makes a unique type variable.
