@@ -36,6 +36,9 @@ exec mzscheme -qt "$0" ${1+"$@"}
   (unless (file-exists? inpipefile) (system (format "mkfifo ~a" inpipefile)))
   (unless (file-exists? outpipefile) (system (format "mkfifo ~a" outpipefile)))
 
+  (when inpipe (close-input-port inpipe))
+  (when outpipe (close-output-port outpipe))
+
   (set! inpipe (open-input-file inpipefile))
   (set! outpipe (open-output-file outpipefile 'append))
 

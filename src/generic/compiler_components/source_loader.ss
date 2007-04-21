@@ -29,6 +29,7 @@
 
    expand-include            ;; Expand an include statement into a set of definitions.
    ws-parse-file
+   ws-relative-path?
 
    read-wavescript-source-file ;; Read a WS file, invoking "wsparse", also doing post-processing
    ws-postprocess              ;; Take parsed decls and turn into a single top level expression.
@@ -205,23 +206,23 @@
 
 ;; Would like to do a bit better job of this:
 (IFCHEZ
- (define (ws-relative-path p)
+ (define (ws-relative-path? p)
   (case (machine-type)
     [(i3nt) 
      (if (> (string-length p) 2)
 	 ;; A drive letter:
 	 (eqv? ":" (string-ref p 1))
-	 #t)]
+	 #f)]
     [else (ASSERT (not (zero? (string-length p))))
 	  (not (eqv? #\/ (string-ref p 0)))
      ]))
- (define (ws-relative-path p)
+ (define (ws-relative-path? p)
    ;; Actually this is built-in... should use it:
-   (error 'ws-relative-path "not implemented in PLT yet")))
+   (error 'ws-relative-path? "not implemented in PLT yet")))
 
 (define (resolve-lib-path file)
   (cond 
-   [(not (ws-relative-path file)) file]
+   [(not (ws-relative-path? file)) file]
    ;; Safety: Can't use ".." wrt to lib directory:
    [(and (not (substring? ".." file)) 
 	 (file-exists? (++ (REGIMENTD) "/lib/" file)))
@@ -374,6 +375,7 @@
 (IFCHEZ
  ;; Chez can't run the parser right now, so we call a separate executable.
  ;; .returns A parsed file, or #f for failure.
+ ;; Expects absolute path!!
  (define (ws-parse-file fn)    
    (define (try-server)
      (printf "Using wsparse_server to parse file: ~a\n" fn)
@@ -430,6 +432,7 @@
  )
 
 ;; Returns #f if parsing/reading fails.
+;; Expects absolute path!!
 (define (read-wavescript-source-file fn)
   (ASSERT (string? fn))
   (unless (equal? (extract-file-extension fn) "ws")
