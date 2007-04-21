@@ -42,6 +42,10 @@ include "filter.ws";
 //   ws    : 2208/2240
 //   ws.opt: 1708/1740 (1088 in static elab) (1604 from .boot)
 
+// After making a hash for primitive table!
+//   ws    : 1736
+//   ws.opt: 1260
+
 
 
 //======================================================================

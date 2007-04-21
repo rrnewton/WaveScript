@@ -122,6 +122,9 @@
 	       ;rn-match
 	       )
 
+;; [2007.04.20] This doesn't work yet.
+;(IFCHEZ (import rn-match) (void))
+
 ;; This controls whether let-bound-polymorphism is allowed at all.
 (define inferencer-let-bound-poly (make-parameter #t))
 
@@ -495,13 +498,15 @@
   (let ((entry (or ;(assq p regiment-basic-primitives)
 		   ;(assq p regiment-constants)
 		   ;(assq p regiment-distributed-primitives)
-		   (assq p (regiment-primitives))
+		   ;(assq p (regiment-primitives))
+		   (regiment-primitive? p)
+		   ;(get-primitive-entry p)
 		   )))
     (unless entry
       (error 'prim->type "primitive was not found: ~a" p))
     (match entry
-      [(,name ,type) (instantiate-type type '())]
-      [(,name ,args ,ret)
+      [(,type) (instantiate-type type '())]
+      [(,args ,ret)
        (instantiate-type `(,@args -> ,ret) '())])))
 
 

@@ -655,7 +655,10 @@
 ;    time-of
 ;    (time (Node) Time)
      ))
-  
+
+;; This private state keeps a hash-table of all regiment primitives for fast lookup:
+(define primitives-hash 'primitives-hash-uninitialized)  
+
 ; [2004.03.31]
 ;; [2007.01.30] Upgrading this to a parameter. (A box might have better performance.)
 (define regiment-primitives
@@ -665,7 +668,14 @@
 	   wavescript-primitives
 	   meta-only-primitives
 	   higher-order-primitives
-	   regiment-constants)))
+	   regiment-constants)
+   ;; Update the hash table when we change this parameter:
+   (lambda (ls)
+     (set! primitives-hash (make-hash-table))
+     (for-each (lambda (entry)
+		 (put-hash-table! primitives-hash (car entry) (cdr entry)))
+       ls)
+     ls)))
 
 ;; These are the ones that take or return Stream values:
 ;; Be wary that this is only computed once while "regiment-primitives" might change.
@@ -875,7 +885,8 @@
 ;; [2004.06.24]<br> This is for the regiment primitives:
 (define get-primitive-entry
   (lambda (prim)
-    (or (assq prim (regiment-primitives))
+    (or (let ([entry (get-hash-table primitives-hash prim #f)])
+	  (if entry (cons prim entry) #f))
 	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
                "no entry for this primitive: ~a" prim))))
@@ -908,7 +919,7 @@
 
 ;; Is it a regiment primitive?
 (define (regiment-primitive? x)
-  (if (assq x (regiment-primitives)) #t #f))
+  (get-hash-table primitives-hash x #f))
 
 ;; Is it a regiment constant?
 (define (regiment-constant? x)
