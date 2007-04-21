@@ -453,7 +453,7 @@
 	   [(LUB ,[a] ,[b]) (append a b)]
 	   [,oth            (list oth)])])
     (for-each (lambda (t) (types-equal! t (instantiate-type UNIFIER '())
-					"unknown code location"))
+					"unknown code location" ""))
       rands)
     (let ([exported (map export-type rands)])
       ;(printf "  FINAL LUBS: ~s\n" exported)
@@ -1654,7 +1654,7 @@
      (Int -> Int)]
     
     ["types-equal!: make sure that (by convention) the first argument is mutated"
-     (let ([x ''(a . #f)] [y ''(b . #f)]) (types-equal! x y (empty-tenv)) x)
+     (let ([x ''(a . #f)] [y ''(b . #f)]) (types-equal! x y (empty-tenv) "") x)
      '(a . '(b . #f))]
    
     ["Invalid explicitly annotated type"

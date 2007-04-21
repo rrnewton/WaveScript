@@ -396,7 +396,10 @@
 		   ;; Use pre-compiled executable:
 		   (begin 
 		     (printf "Calling wsparse to parse file: ~a\n" fn)
-		     (car (process (++ "wsparse " fn " --nopretty"))))
+		     (car (process (++ "wsparse " fn 
+				       (string-append " --nopretty"
+					 ;; We don't even track source locations in ws.opt
+        			         (if (= 3 (REGOPTLVL)) " --nopos" ""))))))
 		   (begin
 		     (warning 'wsint 
 			      (++ "couldn't find wsparse executable.\n"
