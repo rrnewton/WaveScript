@@ -405,10 +405,9 @@
 		      (DEBUGASSERT (not (tenv-lookup tenv var)))
 		      (set! tenv (tenv-extend tenv (list var) (list newtype)))
 		      newtype)))]
-
+	     [#(,[t*] ...) (apply vector t*)] 
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
-	     [#(,[t*] ...) (apply vector t*)]	     
 	     [(,constructor ,[args] ...)
 	      (guard (symbol? constructor))
 	      `(,constructor ,@args)]
@@ -431,12 +430,12 @@
     [(LATEUNIFY #f ,[b]) `(LATEUNIFY #f ,b)]
     [(LATEUNIFY ,[a] ,[b])
      `(LATEUNIFY ,a ,b)]
+    [#(,[t*] ...) (apply vector t*)]
     [(,[arg*] ... -> ,[res])
      `(,@arg* -> ,res)]
     ;; Including Ref:
     [(,s ,[t*] ...) (guard (symbol? s))
      `(,s ,@t*)]
-    [#(,[t*] ...) (apply vector t*)]
     [,other (error 'export-type "bad type: ~s" other)]))
 
 ;; [2007.02.21]
@@ -482,6 +481,7 @@
 	    ;; Otherwise just the most general type.
 	    (set-cdr! pr b))]
        [(,v . ,oth) (if oth (do-late-unify! oth) (void))])]
+    [#(,[t*] ...)                            (void)]
     [(LATEUNIFY ,a ,b)
      (error 'do-late-unify! "found LATEUNIFY not in mutable cell: ~s" `(LATEUNIFY ,a ,b))]
     ;[',n `(quote ,n)]
@@ -490,7 +490,6 @@
     [(,[arg*] ... -> ,[res])                 (void)]
     ;; Including Ref:
     [(,s ,[t] ...) (guard (symbol? s))       (void)]
-    [#(,[t*] ...)                            (void)]
     [,other (error 'do-late-unify! "bad type: ~s" other)]))
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
@@ -527,13 +526,13 @@
     ;[(,qt ,v)          (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . #f))   (guard (memq qt '(quote NUM)) (symbol? v)) (valid-typevar-symbol? v)]
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) (and t (valid-typevar-symbol? v))]
+    [#(,[t] ...) (andmap id t)] 
     [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
     [(Struct ,name) (symbol? name)] ;; Adding struct types for output of nominalize-types.
     [(LATEUNIFY #f ,[t]) t]
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C) (not (memq C '(quote NUM)))) (andmap id t)]
-    [#(,[t] ...) (andmap id t)]   
     [,oth (if (null? extra-pred) #f 
 	      ((car extra-pred) oth))]))
 (define (type? t)
@@ -555,6 +554,7 @@
     [(Area ,_) #t]
     [(Stream ,_) #t]    
     [,s (guard (symbol? s)) #f]
+    [#(,[t] ...) (ormap id t)]
     [(,qt ,v) (guard (memq qt '(quote NUM)) (symbol? v)) #f]
     [(,qt (,v . #f))  (guard (memq qt '(quote NUM)) (symbol? v)) 
      (warning 'distributed-type? "got type var with no info: ~s" v)
@@ -564,7 +564,6 @@
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'arrow-type? "don't know how to answer this for LUB yet.")]
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
-    [#(,[t] ...) (ormap id t)]
     [,else #f]))
 
 ;; Does it contain any type-vars?
@@ -579,12 +578,12 @@
      (warning 'polymorphic-type? "got type var with no info: ~s" v)
      #t] ;; This COULD be.
     [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
+    [#(,[t] ...) (ormap id t)]
     [(,[arg] ... -> ,[ret]) (or ret (ormap id  arg))]
     [(Struct ,name) #f] ;; Adding struct types for output of nominalize-types.
     [(LUB ,a ,b) (error 'polymorphic-type? "don't know how to answer this for LUB yet.")]
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C)) (ormap id t)]
-    [#(,[t] ...) (ormap id t)]
     [,else #f]))
 
 ;; This means *is* an arrow type, not *contains* an arrow type.
@@ -739,6 +738,8 @@
   (letrec ([l (lambda (exp)
     (match exp ;; NO DIRECT RECURSION ALLOWED:
 
+      ;; [2007.04.20] Keeping this, but dropping it to the end as an optimization.
+      [,c (guard (simple-constant? c)) (values c (type-const c))]      
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
       [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
@@ -913,9 +914,6 @@
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,@rand*))]
-
-      ;; [2007.04.20] Keeping this, but dropping it to the end as an optimization.
-      [,c (guard (simple-constant? c)) (values c (type-const c))]
 
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
@@ -1489,9 +1487,9 @@
     [(,qt (,tyvar . ,[tyt])) (guard (memq qt '(NUM quote)))
      (if (equal? tyvar tvar)
 	 (raise-occurrence-check tvar ty exp))]
+    [#(,[t*] ...) #t]
     [(,[arg*] ... -> ,[res]) res]
     [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor
-    [#(,[t*] ...) #t]
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
     )))
