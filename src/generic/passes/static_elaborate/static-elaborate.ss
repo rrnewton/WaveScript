@@ -47,6 +47,8 @@
 
   (chezimports )
 
+  (IFCHEZ (import rn-match) (void))
+
 ;; Dummy implementation for PLT:
  (IFCHEZ (begin)
 	 (begin (define par list)
@@ -63,7 +65,6 @@
        [Expr ('lambda . ValidLambda)]
        ;; Lambda's are no longer allowed to have free-vars.
        [ValidLambda ,(lambda (ls)
-		       (IFCHEZ (import rn-match) (void))
 		       (match ls
 			 [((,v* ...) (,t* ...) ,e)
 			  (and (subcheck e 'Expr)
@@ -78,7 +79,6 @@
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
    (filter (lambda (prod)
-	     (IFCHEZ (import rn-match) (void))
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
@@ -106,7 +106,6 @@
      ;; This expects that you verify available? first.
      (define (outer-getval env)
        (lambda (x)
-	 (IFCHEZ (import rn-match) (void))
 	 (match x
 	   [(quote ,datum) datum]
 	   [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
@@ -121,7 +120,6 @@
 	   [,else (error 'static-elaborate "getval bad input: ~a" x)])))
      [define stream-val? 
       (lambda (exp)
-	(IFCHEZ (import rn-match) (begin))
 	(match exp
 	  [(,prim ,args ...)
 	   (guard (regiment-primitive? prim))
@@ -279,7 +277,6 @@
       (define (make-nested-letrecs binds body)
 	(if (null? binds) body
 	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
-      (IFCHEZ (import rn-match) (begin))
       (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
@@ -300,7 +297,6 @@
     ;; FIXME FIXME FIXME! COUNT REFS ONCE!
     (define count-refs
       (lambda (v expr)
-	(IFCHEZ (import rn-match) (begin))
         (match expr
           [(quote ,datum) 0]
           [,var (guard (symbol? var))
@@ -346,7 +342,6 @@
     (define get-mutable
       (core-generic-traverse 
        (lambda (x fallthru)
-	 (IFCHEZ (import rn-match) (begin))
 	 (match x
 	   [(set! ,v ,[e]) (cons v e)]
 	   [(vector ,[x*] ...) (apply append x*)]
@@ -456,7 +451,6 @@
 		  ;; environment are available.
 		  [fully-available? 
 		   (lambda (x)
-		     (IFCHEZ (import rn-match) (begin))
 		     (match x
 		       [(lambda ,vs ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
@@ -466,7 +460,6 @@
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
 		  (lambda (x)
-		    (IFCHEZ (import rn-match) (begin))
 		    (if (eq? x not-available) #f
 			(match x
 			   [(quote ,datum)         #t]
@@ -493,7 +486,6 @@
 		 ;; Is it, not completely available, but a container that's available?
 		 [container-available? 
 		  (lambda (x)
-		    (IFCHEZ (import rn-match) (begin))
 		    (if (eq? x not-available) #f
 			(match x 
 			  [(quote ,datum) #t]
@@ -517,7 +509,6 @@
 
 		 [getlist ;; Get values until you have the whole list.
 		  (lambda (x)
-		    (IFCHEZ (import rn-match) (begin))
 		    (if (container-available? x)			
 			(let ([val (getval x)])
 			  (if (code? val)
@@ -533,7 +524,6 @@
 			#f))]
 		 )
 
-        (IFCHEZ (import rn-match) (begin))	  
         (match expr
           [(quote ,datum) `(quote ,datum)]
 	  ;; This does constant inlining:
@@ -850,7 +840,6 @@
 	))
     
     (lambda (expr)
-      (IFCHEZ (import rn-match) (begin))
       (match expr	    
         [(,input-language (quote (program ,body ,meta* ...  ,type)))
 	 (set! mutable-vars (get-mutable body))
