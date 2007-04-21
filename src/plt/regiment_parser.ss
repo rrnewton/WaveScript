@@ -487,7 +487,7 @@
 		[(pattern BAR exp matchcases) 99999])
 
     (notlist
-         [(NUM) $1]  
+         [(NUM) `',$1]
          [(VAR) 
 	  ;(wrap $1-start-pos $1)
 	  $1

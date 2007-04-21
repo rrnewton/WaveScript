@@ -738,8 +738,6 @@
   (letrec ([l (lambda (exp)
     (match exp ;; NO DIRECT RECURSION ALLOWED:
 
-      ;; [2007.04.20] Keeping this, but dropping it to the end as an optimization.
-      [,c (guard (simple-constant? c)) (values c (type-const c))]      
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
       [,prim (guard (symbol? prim) (not (tenv-lookup tenv prim)) (regiment-primitive? prim))
@@ -915,6 +913,7 @@
        (warning 'annotate-expression "allowing arbitrary rator: ~a\n" rat)
        (l `(app ,rat ,@rand*))]
 
+      [,c (guard (simple-constant? c)) (values c (type-const c))]            
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
 
@@ -1067,7 +1066,6 @@
 (define (export-expression e)
   (IFCHEZ (import rn-match) (void))
   (match e ;; match-expr
-    [,c (guard (simple-constant? c)) c]
     [,v (guard (symbol? v)) v]
     [(quote ,c)       `(quote ,c)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
@@ -1091,6 +1089,7 @@
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
      `(,prim ,@rand*)]
+    [,c (guard (simple-constant? c)) c]
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
     ;;[,other other]; don't need to do anything here...
@@ -1101,7 +1100,6 @@
 (define (do-all-late-unifies! e)
   (IFCHEZ (import rn-match) (void))
   (match e ;; match-expr
-    [,c (guard (simple-constant? c))                                 (void)]
     [,v (guard (symbol? v))                                   (void)]
     [(quote ,c)                                               (void)]
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  (void)]
@@ -1123,6 +1121,7 @@
     [(app ,[rat] ,[rand*] ...)                                (void)]
     [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
+    [,c (guard (simple-constant? c))                                 (void)]
     ))
 
 ;; This simply removes all the type annotations from an expression.
@@ -1137,7 +1136,6 @@
      (guard (memq let '(let let* letrec lazy-letrec)))
      `(,let ([,id* ,rhs*] ...) ,bod)]
    
-    [,c (guard (simple-constant? c)) c]
     [(quote ,c)       `(quote ,c)]
     [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
@@ -1163,6 +1161,7 @@
      (guard (regiment-primitive? prim))
      `(,prim ,rand* ...)]
     
+    [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-types "bad expression: ~a" other)]
     ))
   (match p 
