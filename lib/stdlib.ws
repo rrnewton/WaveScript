@@ -1,11 +1,96 @@
 
-// Defines: 
-//   M_PI
-//   syncN, rewindow, myhanning
+// Exports: 
 
-// NEED:
+const_PI   :: Float;
+const_PIO2 :: Float;
+const_E    :: Float;
+
+println    :: String -> ();
+expF       :: Float -> Float;
+expC       :: Complex -> Complex;
+fftStream  :: Stream (Array Float) -> Stream (Array Complex);
+sqr        :: #n -> #n;
+gaussian   :: (Float, Int) -> Array Float;
+
+sigseg_fftC    :: Sigseg Complex -> Sigseg Complex;
+sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
+sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
+sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
+
+
+type CtrlStrm = Stream (Bool * Int * Int);
+type SegStream t = Stream (Sigseg t);
+
+type S t   = Stream t;
+type SS t  = Stream (Sigseg t);
+type LSS t = List   (Stream (Sigseg t));
+type SLS t = Stream (List   (Sigseg t));
+
+CONST           :: t -> S t;
+snoop           :: (a, S b) -> S b;
+zip2_sametype   :: (S t, S t)      -> S (t * t);
+zip3_sametype   :: (S t, S t, S t) -> S (t * t * t);
+// private: syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
+syncN           :: (CtrlStrm, LSS t)       -> SLS t;
+syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
+thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
+window          :: (S t, Int) -> SS t;
+
+rewindow        :: (SS t, Int, Int) -> SS t;
+makeHanning     :: Int      -> Array Float;
+hanning         :: SS Float -> SS Float;
+
+stream_map       :: (a -> b, S a) -> S b;
+stream_filter    :: (t -> Bool, S t) -> S t;
+stream_iterate   :: ((a, st) -> (List b * st), st, S a) -> S b;
+sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
+deep_stream_map  :: (a -> b, SS a) -> SS b;
+//deep_stream_map2 :: (a -> b, SS b) -> ()
+
+
+i2f :: Int -> Float;
+i2c :: Int -> Complex;
+f2i :: Float -> Int;
+f2c :: Float -> Complex;
+c2i :: Complex -> Int;
+c2f :: Complex -> Float;
+
+smap    :: (a -> b)    -> S a -> S b;
+sfilter :: (t -> Bool) -> S t -> S t;
+
+sqr     :: #n -> #n;
+atan2   :: (Float, Float) -> Float;
+
+Array:fold1     :: ((t, t) -> t, Array t) -> t;
+Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
+Array:copy      :: Array t -> Array t;
+
+// These aren't at their final names.  They'll be moved into the Array
+// namespace or discarded.
+amap_inplace    :: (t -> t, Array t) -> Array t;
+amap            :: (a -> b, Array a) -> Array b;
+afold           :: ((b, a) -> b,  b,  Array a) -> b;
+asum            :: Array #n -> #n;
+amult_scalar    :: (Array #n, #n) -> Array #n;
+amult_scalar_inplace :: (Array #n, #n) -> Array #n;
+apairmult       :: (Array #n, Array #n) -> Array #n;
+apairsum        :: (Array #n, Array #n) -> Array #n;
+adot            :: (Array #n, Array #n) -> #n;
+a_max           :: Array #n -> (#n * Int);
+a_zeroes        :: Int -> Array #n;
+a_ones          :: Int -> Array #n;
+sort            :: ((Int, Int) -> (), 
+                    (Int, Int) -> Int, 
+                    Int) -> ();
+
+deg2rad :: Float -> Float;
+rad2deg :: Float -> Float;
+
+
+// NEED TO ADD:
 // qsort, Complexl, expc, atan2, MInv...
 
+//======================================================================
 // Constant:
 const_PI   = 3.141592653589793;
 const_PIO2 = const_PI/2.0;
@@ -65,7 +150,6 @@ fun snoop(str, strm) {
 }
 
 // this zips 2 streams of same type only
-zip2_sametype :: (Stream a,  Stream b) -> Stream (a * b);
 zip2_sametype = fun (s1,s2) {
   slist = [s1,s2];
   iterate((ind, seg) in unionList(slist)) {
@@ -90,7 +174,6 @@ zip2_sametype = fun (s1,s2) {
   }
 }
 
-zip3_sametype :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
 zip3_sametype = fun (s1,s2,s3) {
   slist = [s1,s2,s3];
   iterate((ind, seg) in unionList(slist)) {
@@ -226,13 +309,8 @@ fun (ctrl, strms, del) {
   }
 }
 
-
-syncN :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
-         -> Stream (List (Sigseg t));
 syncN = fun (ctrl, strms) { syncN_aux(ctrl, strms, true) }
 
-syncN_no_delete :: (Stream (Bool * Int * Int),  List (Stream (Sigseg t))) 
-         -> Stream (List (Sigseg t));
 syncN_no_delete = fun (ctrl, strms) { syncN_aux(ctrl, strms, false) }
 
 
@@ -287,7 +365,6 @@ fun window(S, len)
 
 // This version is enhanced to allow large steps that result in gaps in the output streams.
 //   GAP is the space *between* sampled strips, negative for overlap!
-rewindow :: (Stream(Sigseg t), Int, Int) -> Stream(Sigseg t);
 fun rewindow(sig, newwidth, gap) {
   feed = newwidth + gap;
 
@@ -340,10 +417,7 @@ fun makeHanning(size) {
 // 0.5 * (1.0 - cos(2.0 * const_PI * intToFloat(i+1) / intToFloat(size+1))))
 }
 
-
-// myhanning : Sigseg Float -> Sigseg Float;
-myhanning :: Stream (Sigseg Float) -> Stream (Sigseg Float);
-fun myhanning (strm) {
+fun hanning (strm) {
   iterate(win in strm) {
     state{ 
       _lastLen = 0;
@@ -372,13 +446,6 @@ fun myhanning (strm) {
 
 //======================================================================
 // Higher order routines which should have built-in support at some point.
-
-stream_map      :: (a -> b, Stream a) -> Stream b;
-stream_filter   :: (t -> Bool, Stream t) -> Stream t;
-stream_iterate  :: ((inp, st) -> (List out * st), st, Stream inp) -> Stream out;
-deep_stream_map :: ((a -> b), Stream (Sigseg a)) -> Stream (Sigseg b);
-sigseg_map      :: ((a -> b), Sigseg a) -> Sigseg b;
-
 
 fun stream_map(f,s) {
   iterate (x in s) {
@@ -471,6 +538,10 @@ fun atan2(arg1,arg2) {
   }
 }
 
+fun deg2rad(deg) { deg * const_PI / 180.0 }
+fun rad2deg(rad) { rad * 180.0 / const_PI }
+
+//======================================================================
 /* array operations */
 
 /* We use this to post-facto add things into the built-in array namespace. */
@@ -503,7 +574,6 @@ namespace Array {
 // RRN: NOTE: These should be added to namespace Array:
 
 // Shall we call side effecting versions amapIO ?
-amap_inplace :: (a -> b, Array a) -> Array b;
 fun amap_inplace(f, arr) {
   for i = 0 to arr`Array:length - 1 {
     arr[i] := f(arr[i]);
@@ -522,7 +592,6 @@ fun amult_scalar_inplace(arr,s) {
   amap_inplace(ms, arr)
 }
 
-apairmult :: (Array #n, Array #n) -> Array #n;
 fun apairmult(arr1,arr2) {
   Array:build(arr1`Array:length, 
 	      fun (i) arr1[i] * arr2[i])
@@ -534,7 +603,6 @@ fun apairsum(arr1,arr2) {
 }
 
 
-adot :: (Array #n, Array #n) -> #n;
 fun adot(arr1,arr2) {
   // rrn: This is pretty unnatural:
   let (_,sum) = Array:fold(fun ((i,acc), x) 
@@ -543,7 +611,6 @@ fun adot(arr1,arr2) {
   sum
 }
 
-a_max :: Array #n -> (#n * Int);
 fun a_max(arr) {
   // TODO: Check for null array!
   let (i,mx,mxi) = 
@@ -559,18 +626,16 @@ fun a_zeroes(len) { Array:make(len, gint(0)) }
 fun a_ones(len) { Array:make(len, gint(1)) }
 
 // insertion sort 
-fun sort(swap,cmp,len) {
+fun sort(swap, cmp, len) {
   for j = 0 to len-1 {
     for i = 0 to len-2 {
-      if (cmp(i,i+1) > gint(0)) then {
+      if (cmp(i,i+1) > 0) then {
         swap(i,i+1);
       }
     }
   }
 }
 
-fun deg2rad(deg) { deg * const_PI / 180.0 }
-fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 /* test1 = stream_map(fun(w) w[[0]], audio(0,1024,0)); */
 /* test2 = stream_filter(fun (n) n > 300.0, test1); */

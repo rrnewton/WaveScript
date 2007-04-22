@@ -175,7 +175,8 @@
 	;;['(,n . ,v)                               (if v (Type v) `(quote ,n))]
 	[(NUM ,v) (guard (symbol? v))            `(NUM ,v)]
 	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
-
+	[#(,[t*] ...)                            (apply vector t*)]
+	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
 	;; This is simple substitition of the type arguments:
 	[(,s ,[t*] ...) (guard (symbol? s))
 	 (let ([entry (or (assq s aliases)
@@ -187,15 +188,13 @@
 			       s (cons s t*))]
 	     [(,v (,a* ...) ,rhs)
 	      ;; We're lazy, so let's use the existing machinery
-	      ;; to do the substition.  So what if it's a little inefficient.
+	      ;; to do the substition.  So what if it's a little inefficient?
 	      (match (instantiate-type `(Magic #(,a* ...) ,rhs))
 		[(Magic #(,cells ...) ,rhs)
 		 ;; Now use the unifier to set all those mutable cellS:
 		 (for-each (lambda (x y) (types-equal! x y "<resolve-type-aliases>" ""))
 		   cells t*)
 		 (export-type rhs)])]))]
-	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
-	[#(,[t*] ...)                            (apply vector t*)]
 	[,other (error 'resolve-type-aliases "bad type: ~s" other)])
       )
     [Bindings (lambda (v* t* e* reconst Expr)

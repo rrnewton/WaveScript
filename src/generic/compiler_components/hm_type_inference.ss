@@ -1503,37 +1503,47 @@
 ;; Printing the type-signatures inside a large expressions:
 
 ;; Prints a type in a WaveScript format way rather than the raw sexp.
+;; Added a hack to omit parens around the outermost type constructor.
 (define (print-type t . p)
   (IFCHEZ (import rn-match) (void))
   (let ([port (if (null? p) (current-output-port) (car p))])
-    (define (loop t) 
-      (match t
-	[(quote ,[var]) (++ "'" var)]
-	[(NUM ,[var]) (++ "#" var)]
-	[(-> ,[b]) (++ "() -> " b)]
-	;[(,[left] -> ,[right]) (++ "(" left ") -> " right)]
-	[(,left -> ,[right]) 
-	 (if (arrow-type? left)
-	     (++ "(" (loop left) ") -> " right)
-	     (++ (loop left) " -> " right))]
-	[(,[arg*] ... -> ,[b]) (++ "(" (apply string-append (insert-between ", " arg*)) ")"
-				   " -> "b)]
-	[#(,[x*] ...)
-	 (++ "(" (apply string-append (insert-between " * " x*)) ")")]
-	;; [2006.12.01] Removing assumption that TC's have only one arg:
-	[(,[tc] ,[arg*] ...)
-					;	 (++ tc "(" (apply string-append (insert-between ", " arg*)) ")")]
-	 (++ "(" tc " " (apply string-append (insert-between " " arg*)) ")")]
-	[,sym (guard (symbol? sym))
-	      (symbol->string sym)]
-	[,other (error 'print-type "bad type: ~s" other)]))
+    (define (loop outer?) 
+      (lambda (t)
+	(match t
+	  [(quote ,[var]) (++ "'" var)]
+	  [(NUM ,[var]) (++ "#" var)]
+	  [(-> ,b) (++ "() -> " ((loop #t) b))]
+
+	  ;; One arg functions:
+	  [(, left -> ,[(loop #t) -> right])
+	   (if (arrow-type? left)
+	       (++ "(" ((loop #t) left) ") -> " right)
+	       (++     ((loop #t) left)  " -> " right))]
+	  [(,[(loop #t) -> arg*] ... -> ,[(loop #t) -> b])
+	   (++ "(" (apply string-append (insert-between ", " arg*)) ")"
+	       " -> "b)]
+
+	  [#(,[(loop #t) -> x*] ...)
+	   (++ "(" (apply string-append (insert-between " * " x*)) ")")]
+
+	  ;; [2006.12.01] Removing assumption that TC's have only one arg:
+	  [(,[tc] ,arg* ...)
+	   (let ([inside (apply string-append (insert-between " " (map (loop #f) arg*)))])
+	     (if outer?		 
+		 (++     tc " " inside )
+		 (++ "(" tc " " inside ")")))]
+	  [,sym (guard (symbol? sym))
+		(symbol->string sym)]
+	  [,other (error 'print-type "bad type: ~s" other)])))
     (display 
-     ;; Prettification: we drop the outer parens:
+     ((loop #t) t)
+     ;; Prettification: we drop the loop parens:
+     port)))
+#;
      (match t 
        [(,tc ,[loop -> arg*] ...) (guard (symbol? tc) (not (eq? tc 'quote)))
 	(++ (symbol->string tc) " " (apply string-append (insert-between " " arg*)))]
        [,t (loop t)])
-     port)))
 
 #|
 

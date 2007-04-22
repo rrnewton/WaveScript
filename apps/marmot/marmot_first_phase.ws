@@ -1,196 +1,40 @@
 
-// This is a hacked up version of the first phase of the marmot app.
-// The marmot app proper is separate from this and is going in the apps/ 
-// folder.
+DEBUG = false;
+DEBUGSYNC = DEBUG;
 
-DEBUG = false
-DEBUGSYNC = DEBUG
-
-//======================================================================
-// "Library" routines:
-
-// Constant:
-M_PI = 3.141592653589793;
-
-fun syncN (ctrl, strms) {
-  _ctrl = iterate((b,s,e) in ctrl) { emit (b,s,e, nullseg); };
-  f = fun(s) { iterate(win in s) { emit (false,0,0, win); }; };
-  _strms = map(f, strms);
-  slist = _ctrl : _strms;
-
-  if DEBUGSYNC 
-    then print("Syncing N streams (including ctrl stream): " ++ show(slist.listLength) ++ "\n");
-
-  iterate((ind, tup) in unionList(slist)) {
-    state {
-      accs = makeArray(slist.listLength - 1, nullseg);
-      requests = [];
-    }
-
-    if DEBUGSYNC then {
-      print("SyncN  Current ACCS: ");
-      for i = 0 to accs.length - 1 {
-	if accs[i] == nullseg
-	then print("null  ")
-	else print(show(accs[i].start) ++ ":" ++ show(accs[i].end) ++ "  ");
-      };
-      print("\n");
-    };
-
-    let (flag, strt, en, seg) = tup;
-    // Process the new data:
-    if ind == 0 // It's the ctrl signal.
-    then requests := append(requests, [(flag,strt,en)])
-    else accs[ind-1] := joinsegs(accs[ind-1], seg);        
-    // Now we see if we can process the next request.
-    if requests == []
-    then {} // Can't do anything yet...
-    else {
-      let (fl, st, en) = requests.head;
-      allready = true;
-      for i = 0 to accs.length - 1 {
-	if (accs[i] == nullseg ||
-	    accs[i].start > st ||
-	    accs[i].end < en)
-	then allready := false;
-      }
-      if allready then {
-	if fl then {
-	  if DEBUGSYNC 
-	  then print("SyncN: Output segment!! " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-	  size = en - st + 1; // Start,end are inclusive.
-	  output = [];
-	  for i = 0 to accs.length - 1 {
-	    output := subseg(accs[i], st, size) : output;
-	  }
-	  emit(reverse(output));
-	} else if DEBUGSYNC then
-	  print("SyncN: Discarding segment: " ++ show(st) ++ ":" ++ show(en) ++  "\n");
-
-	// Destroy the discarded portions and remove the serviced request:
-	for j = 0 to accs.length - 1 {
-	  // We don't check "st".  We allow "destroy messages" to kill already killed time segments.
-	  accs[j] := subseg(accs[j], en + 1, accs[j].end - en);
-	};
-	requests := requests.tail;
-      }
-    }
-  }
-}
-
-// This version is enhanced to allow large steps that result in gaps in the output streams.
-//   GAP is the space *between* sampled strips, negative for overlap!
-fun rewindow(sig, newwidth, gap) {
-  feed = newwidth + gap;
-
-  if (gap <= (0 - newwidth))
-    then wserror("rewindow cannot step backwards: width "++ show(newwidth) ++" gap "++show(gap))
-    else 
-     
-   iterate (win in sig) {
-    state { 
-      acc = nullseg; 
-      // This bool helps to handle an output streams with gaps.
-      // We have to states, true means we're to "output" a gap next,
-      // false means we're to output a sigseg next.
-      need_feed = false;
-    }
-
-    acc := joinsegs(acc, win);
-    //print("Acc "++show(acc.start)++":"++show(acc.end)++" need_feed "++show(need_feed)++"\n");
-
-    for i = 1 to win.width {
-      if need_feed then {
-	if acc.width > gap // here we discard a segment:
-	then {acc := subseg(acc, acc.start + gap, acc.width - gap);
-	      need_feed := false; }
-	else break;
-      } else {
-	if acc.width > newwidth
-	then {emit subseg(acc, acc.start, newwidth);
-	      if gap > 0 
-	      then { 
-		acc := subseg(acc, acc.start + newwidth, acc.width - newwidth);
-		need_feed := true; 
-	      } else acc := subseg(acc, acc.start + feed, acc.width - feed);
-	} else break;	
-      }
-    }
-  }
-}
-
-
-// RRN: This has the problem that the hanning coefficient is ZERO at
-// the first and last element in the window.  These represent wasted samples.
-// myhanning : Sigseg Float -> Sigseg Float;
-fun myhanning (strm) {
-  iterate(win in strm) {
-    state{ 
-      _lastLen = 0;
-      _hanning = nullarr;
-    }
-
-    if _lastLen != win.width then {
-      _lastLen := win.width;
-      _hanning := makeArray(_lastLen, 0.0);
-      // Refil the hanning window:
-      for i = 0 to _lastLen - 1 {
-	//print("LASTLEN: "++show(int_to_float(_lastLen-1))++"\n");
-	_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i) /. int_to_float(_lastLen-1)));
-	// RRN: This would fix the zeroed fenceposts:
-	//_hanning[i] := 0.5 *. (1.0 -. cos(2.0 *. M_PI *. int_to_float(i+1) /. int_to_float(_lastLen+1)));
-      }
-    };
-
-    /* alloc buffer */
-    buf = makeArray(_lastLen, 0.0);
-    for i = 0 to _lastLen - 1 {
-      buf[i] := _hanning[i] *. win[[i]];
-    }
-    
-    //print("\nWIN: "++ show(win)++"\n");
-    //print("\nHAN: "++ show(_hanning)++"\n");
-    //print("\nBUF: "++ show(buf)++"\n");
-
-    emit to_sigseg(buf, win.start, win.end, win.timebase);
-  }
-}
-
-//======================================================================
+include "stdlib.ws";
+include "matrix.ws";
 
 // Takes Sigseg Complex
-fun marmotscore(freqs) { 
+fun marmotscore2(freqs) { 
   result = 
-    cnorm(freqs[[4]] +: 
-	  freqs[[5]] +:
-	  freqs[[6]] +:
-	  freqs[[7]]);
+    absC(freqs[[3]] +: 
+	 freqs[[4]]);
   if DEBUG then 
    print("\nMarmot Score: "++show(result)++", \nBased on values "
-	++ show(freqs[[4]]) ++ " "
-	++ show(freqs[[5]]) ++ " "
-	++ show(freqs[[6]]) ++ " "
-	++ show(freqs[[7]]) ++ " \n");
+	++ show(freqs[[3]]) ++ " "
+	++ show(freqs[[4]]) ++ " \n");
   result
 }
+
 
 /* expects Zip2<SigSeg<float>,float>::Output */
 fun detect(scorestrm) {
   // Constants:
   alpha = 0.999;
-  hi_thresh = 8;
+  hi_thresh = 16;
   startup_init = 300;
   refract_interval = 40;
   max_run_length = 48000;
   samples_padding = 2400;
-
-  iterate((score,win) in scorestrm) {
+  
+  iterate((score,st,en) in scorestrm) {
     state {
       thresh_value = 0.0;
       trigger = false;
       smoothed_mean = 0.0;
       smoothed_var = 0.0;
-      _start = 0; //start = ??? // SeqNo
+      _start = 0; 
       trigger_value = 0.0;
       startup = 300;
       refract = 0;                 
@@ -202,7 +46,7 @@ fun detect(scorestrm) {
     fun reset() {
       thresh_value := 0.0;
       trigger := false;
-      smoothed_mean := 0.0; // 0; // TYPE INFERENC ERROR -- CHECK SET! CASE FIXME!!!!
+      smoothed_mean := 0.0;
       smoothed_var := 0.0;
       _start := 0;
       trigger_value := 0.0;
@@ -222,9 +66,9 @@ fun detect(scorestrm) {
     if trigger then {      
 
       /* check for 'noise lock' */
-      if win.end - _start > max_run_length then {
+      if en - _start > max_run_length then {
 	print("Detection length exceeded maximum of " ++ show(max_run_length)
-	      ++", re-estimating noise\n");
+	      ++", re-estimating noise");
 	
 	noise_lock := noise_lock + 1;
 	reset();
@@ -240,19 +84,28 @@ fun detect(scorestrm) {
       }	else {
 	/* untriggering! */
 	trigger := false;
-	emit (true,                       // yes, snapshot
-	      _start - samples_padding,     // start sample
-	      win.end + samples_padding); // end sample
+	
+	/* emit power of 2 */
+	p = en + samples_padding - _start;
+	p2 = Mutable:ref(1);
+	for i = 0 to 24 {
+	  if (p2 >= p) then break;
+	  p2 := p2 * 2;
+	}
+
+	emit (true,                               // yes, snapshot
+	      _start - samples_padding,           // start sample
+	      _start - samples_padding + p2 - 1); // end sample
 	if DEBUG then
-	print("KEEP message: "++show((true, _start - samples_padding, win.end + samples_padding))++
-	      " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+	print("KEEP message: "++show((true, _start - samples_padding, en + samples_padding))++
+	      " just processed window "++show(st)++":"++show(en)++"\n");
 
 	// ADD TIME! // Time(casted->_first.getTimebase()
 	_start := 0;
       }
     } else { /* if we are not triggering... */      
       /* compute thresh */
-      let thresh = int_to_float(hi_thresh) *. sqrtf(smoothed_var) +. smoothed_mean;
+      let thresh = i2f(hi_thresh) *. sqrtF(smoothed_var) +. smoothed_mean;
 
       if DEBUG then 
         print("Thresh to beat: "++show(thresh)++ ", Current Score: "++show(score)++"\n");
@@ -263,7 +116,7 @@ fun detect(scorestrm) {
 	trigger := true;
 	refract := refract_interval;
 	thresh_value := thresh;
-	_start := win.start;
+	_start := st;
 	trigger_value := score;
       }	else {
 	/* otherwise, update the smoothing filters */
@@ -278,55 +131,86 @@ fun detect(scorestrm) {
       /* ok, we can free from sync */
       /* rrn: here we lamely clear from the beginning of time. */
       /* but this seems to assume that the sample numbers start at zero?? */
-      emit (false, 0, max(0, win.end - samples_padding));
+      emit (false, 0, max(0, st - samples_padding - 1));
       if DEBUG then 
-      print("DISCARD message: "++show((false, 0, max(0, win.end - samples_padding)))++
-	    " just processed window "++show(win.start)++":"++show(win.end)++"\n");
+      print("DISCARD message: "++show((false, 0, max(0, en - samples_padding)))++
+	    " just processed window "++show(st)++":"++show(en)++"\n");
       
     }
   }
 }
 
-//========================================
-// Main query:
 
-ch1 = audio(0, 4096, 0);
-ch2 = audio(1, 4096, 0);
-ch3 = audio(2, 4096, 0);
-ch4 = audio(3, 4096, 0);
+// ================================================================================
 
-outwidth=100;
-dummydetections = iterate(w in ch1) {
-  state { 
-    pos = 0; 
-    flag = false; 
-  }
-  emit(flag, pos, pos + outwidth - 1);
-  pos := pos + outwidth;
-  flag := if flag then false else true;
-};
+flag = GETENV("WSARCH") == "ENSBox";
+//flag = true;
+//marmotfile = "/archive/4/marmots/brief.raw";
+//marmotfile = "/archive/4/marmots/real_100.raw";
+marmotfile =
+  if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
+  if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
+  if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else
+  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
+  wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
+
+fun readone(mode) 
+  (dataFile(marmotfile, "binary windowsize: 4096 "++ mode, 24000, 0) :: Stream Sigseg (Int16))
+
+_ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else readone("offset: 0");
+_ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else readone("offset: 2");
+_ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else readone("offset: 4");
+_ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else readone("offset: 6");
+
+ch1 = deep_stream_map(int16ToFloat, _ch1)
+ch2 = deep_stream_map(int16ToFloat, _ch2)
+ch3 = deep_stream_map(int16ToFloat, _ch3)
+ch4 = deep_stream_map(int16ToFloat, _ch4)
+
+/* chans = (dataFile(marmotfile, "binary", 24000, 0) :: Stream (Int16 * Int16 * Int16 * Int16)); */
+/* _ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096); */
+/* _ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096); */
+/* _ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096); */
+/* _ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096); */
+
 
 // 96 samples are ignored between each 32 used:
-rw1 = rewindow(ch1, 32, 96); 
+rw1 = rewindow(ch1, 32, 96);
 
 //hn = smap(hanning, rw1);
-hn = myhanning(rw1);
+hn = hanning(rw1);
 
-freq = smap(fft, hn);
-
-//wscores = smap(fun(w){(marmotscore(w), w)}, freq);
-wscores = iterate (w in freq) { emit (marmotscore(w), w); }
+wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end),
+		     hn);
 
 detections = detect(wscores);
 
-positives = sfilter(fun((b,_,_)) b, detections)
-		   
-synced = syncN(detections, [ch1, ch2, ch3, ch4]);
-//synced = syncN(dummydetections, [ch1, ch2, ch3, ch4]);
+d2 = iterate (d in detections) {
+  let (flag,_,_) = d;
+  if flag then print("detected at "++show(d)++"\n");
+  emit d;
+};
 
-// [2006.09.04] RRN: Currently it doesn't ever detect a marmot.
-// If you try to do the real syncN, it will process the whole without outputing anything.
+synced = syncN(d2, [ch1, ch2, ch3, ch4]);
 
-//BASE <- positives;
-//BASE <- detections;
-BASE <- synced;
+/* define array geometry */
+sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
+			  [ 0.4, 0.4, 0.4],
+			  [-0.4, 0.4,-0.4],
+			  [-0.4,-0.4, 0.4]]);
+
+doas = FarFieldDOA(synced, sensors);
+
+BASE <-
+  doas
+// synced
+;
+
+//BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
+//		   audio(0,1,0,44000)]);
+
+
+
+
+
+
