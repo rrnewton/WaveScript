@@ -43,6 +43,8 @@
    static-elaborate-grammar
    test-this these-tests
    test-static-elaborate
+
+   BUG
    )
 
   (chezimports )
@@ -93,6 +95,8 @@
 
 ;=======================================================================
 
+(define BUG)
+
 
 (define static-elaborate
   (build-compiler-pass 'static-elaborate
@@ -108,7 +112,10 @@
        (lambda (x)
 	 (match x
 	   [(quote ,datum) datum]
+
+	   ;[(counted-lambda ,vs ,cnts ,tys ,bod) (make-code `(counted-lambda ,vs ,cnts ,tys ,bod))]
 	   [(lambda ,vs ,tys ,bod) (make-code `(lambda ,vs ,tys ,bod))]
+
 	   ;; For these three cases, if the args are available we can make a value-proper.
 	   [(tuple ,args ...)  (make-code x)]
 	   [(vector ,args ...) (make-code x)]
@@ -279,7 +286,7 @@
     (define (inline rator rands)
       (define (make-nested-letrecs binds body)
 	(if (null? binds) body
-	    `(letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
+	    `(counted-letrec (,(car binds)) ,(make-nested-letrecs (cdr binds) body))))
       (IFDEBUG (when (regiment-verbose)(display-constrained "INLINING " `[,rator 40] "\n")) (begin))
       (match rator
 #;
@@ -288,9 +295,13 @@
 
 	;; [2007.04.05] Experimenting with this strategy.  Just
 	;; let-bind at the top of the body to avoid code duplication.
-      [(lambda ,formals ,type ,body)
+      [(counted-lambda ,formals ,counts ,types ,body)
+       (printf "INLINing... ~s ~s\n" formals rands)
        (make-nested-letrecs
-	(map list formals (map (lambda _ `',(unique-name 'newtype)) rands) rands)
+	(map list formals counts
+	     types ;; <- WHY NOT JUST THIS!?
+	     ;(map (lambda (_) `',(unique-name 'newtype)) rands)
+	     rands)
 	body)]
       
       [,other (error 'static-elaborate:inline "bad rator: ~a" other)]))
@@ -306,10 +317,12 @@
 		(if (eq? var v) 1 0)]
           [(if ,[test] ,[conseq] ,[altern])
 	   (+ test conseq altern)]
+
 	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
 	   (if (memq v lhs*) 0
 	       (+ (count-refs v expr)
 		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
+
           [(lambda ,formals ,types ,expr)
 	   (if (memq v formals) 0 (count-refs v expr))]
           
@@ -335,7 +348,7 @@
 		      "Hmm... shouldn't be counting references to mutable-var: ~s" v)
 	       rhs
 	       )]
-          [(for (,i ,(st) ,(end)) ,(bod)) (+ st end bod)]
+          [(for (,i ,(st) ,(end)) ,bod) (if (eq? v i) 0 (+ st end (count-refs v bod)))]
           [(while ,[tst] ,(bod)) (+ tst bod)]
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
 
@@ -345,6 +358,33 @@
           [,unmatched
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
+
+    ;; INEFFICIENT: REWRITE:
+    (define annotate-refcounts
+      (core-generic-traverse 
+       (lambda (x fallthru)
+	 (match x
+	   ;; Optimization, can we omit handling counted-letrec?
+	   ;; If this is still here it should mean that the counts are the same.
+	   ;[(counted-letrec ([]) ,bod)]
+
+	   [(lambda ,v* ,ty* ,bod)
+	    `(counted-lambda ,v* ,(map (lambda (v) (count-refs v bod)) v*) ,ty*
+			     ,(annotate-refcounts bod))]
+	   [(letrec ([,lhs* ,type* ,rhs*] ...) ,bod)
+	    (let ([occurs 
+		   (map (lambda (v myrhs)
+			  (apply + (count-refs v bod)
+				 (map (lambda (x) (count-refs v x)) 
+				   (remq myrhs rhs*))))
+		     lhs* rhs*)])
+	      `(counted-letrec ,(map list lhs* occurs  
+				     type* (map annotate-refcounts rhs*))
+		 ,(annotate-refcounts bod)))]
+	   ;; This letrec gets out of it:
+	   [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[fun]) ,[src])
+	    `(iterate (letrec ,(map list lhs* ty* rhs*) ,fun) ,src)]
+	   [,other (fallthru other)]))))
     
     (define get-mutable
       (core-generic-traverse 
@@ -356,28 +396,8 @@
        (lambda (ls k) (apply append ls))))
 
     ;; TEMP: (ironic) HACK:
-    (define mutable-vars 'uninit)
+    (define mutable-vars 'mutable-vars-uninit)
 
-    ;; TODO FINISH:
-    #;
-    (define count-app-refs
-      (lambda (v expr)
-        (match expr
-          [(quote ,datum) 0]
-          [,var (guard (symbol? var))
-		(if (eq? var v) 1 0)]
-          [(lambda ,formals ,types ,expr)
-	   (if (memq v formals) 0 (count-refs v expr))]
-          [(if ,[test] ,[conseq] ,[altern])
-	   (+ test conseq altern)]
-	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-	   (if (memq v lhs*) 0
-	       (+ (count-refs v expr)
-		  (apply + (map (lambda (x) (count-refs v x)) rhs*))))]
-;	  [(,prim ,[rands] ...)	   
-	  [(,[rator] ,[rands] ...) (+ rator (apply + rands))]
-          [,unmatched
-            (error 'static-elaborate:count-refs "invalid syntax ~s" unmatched)])))
 
     ;; [2007.04.16] NOT USED RIGHT NOW, DISABLING    
     #;
@@ -450,7 +470,7 @@
     ;; There's a third slot in each env entry that was used for reference counting... unused currently
     (define process-expr           
       (lambda (expr env)
-	;(printf "ENV: ~a\n" env)
+;	(printf "ENV: ~a\n" (map car env))
 	(let ([PE-result
 	 (letrec (
 		  ;; This tells us that a function value is ready to
@@ -459,7 +479,7 @@
 		  [fully-available? 
 		   (lambda (x)
 		     (match x
-		       [(lambda ,vs ,tys ,bod)
+		       [(counted-lambda ,vs ,cnts ,tys ,bod)
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
 			  ;(when (regiment-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
@@ -472,6 +492,9 @@
 			   [(quote ,datum)         #t]
 			   
 			   ;; A lambda expression is fully available if all of its free variables are:
+			   [(counted-lambda ,vs ,cnts ,tys ,bod) 
+			    (ASSERT #f)
+			    #t]
 			   [(lambda ,vs ,tys ,bod) #t]
 
 			   ;[(tuple ,args ...) (guard (andmap available? args)) #t]
@@ -552,6 +575,7 @@
 		  ;; Inline constants:
 		  [(,_ (quote ,d) ,__) 
 		   (guard (simple-constant? d)) ; Don't inline constants requiring allocation.
+		   (printf "CONSTANT INLINE: ~s ~s\n" var d)
 		   `(quote ,d)]
 
 		  ;; Inline lambda expressions as long as they don't capture mutables.
@@ -566,7 +590,7 @@
 		  ;; FIXME: SHOULD MAKE SURE IT'S NOT MUTABLE?
 		  [(,_ ,v ,__) (guard (symbol? v))
 		   (ASSERT (not (memq v mutable-vars)))
-		   ;(printf "ALIAS? ~s ~s\n" var v)
+		   (printf "ALIAS? ~s ~s\n" var v)
 		   (process-expr v env)]
 
 		  ;; Otherwise, nothing we can do with it.
@@ -577,10 +601,10 @@
 
           [(assert-type ,t ,[e]) `(assert-type ,t ,e)]
 
-	  ;; For the time being, after static elaborate we don't track soure positions:
+	  ;; For the time being, after static elaborate we don't track source positions:
 	  [(src-pos ,p ,[e]) e]
-
-          [(lambda ,formals ,types ,expr)
+	  
+          [(counted-lambda ,formals ,counts ,types ,expr)
 	   `(lambda ,formals ,types
 	      ,(process-expr expr 
 			     (append (map list formals 
@@ -598,30 +622,42 @@
 ;	  [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,bod) ,[strm])
 ;	   (let ([newenv (append (map (lambda (v rhs) (list v rhs 99999)) lhs* rhs*) env)])
 ;	     `(iterate (letrec ([,lhs* ,ty* ,rhs*] ...) ,(process-expr bod newenv)) ,strm))]
+
+	  ;; We treat the 'letrec's around iterates differently.  They aren't really letrecs.
+          [(iterate (letrec ([,lhs* ,ty* ,[rhs*]] ...) ,[fun]) ,[strm])
+	   `(iterate (letrec ,(map list lhs* ty* rhs*) ,fun) ,strm)]
           [(iterate ,[fun] ,[strm])  `(iterate ,fun ,strm)]
 	  ;; This is altogether a hack, we need to purify these iterates.
 
 ;          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
 	  
 	  ;; Don't go inside for loops for now:
-	  [(for (,i ,[st] ,[en]) ,bod)
+	  ;; [2007.04.21] CHANGING!  Going inside for loops.
+	  [(for (,i ,[st] ,[en]) ,[bod])
 	   (let ([newenv (cons `(,i ,not-available 99999) env)])	     
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
-	  [(while ,[tst]  ,[bod]) `(while ,tst ,bod)]
+	  [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
 	  
           [(begin ,[args] ...) `(begin ,@args)]
           [(set! ,v ,[rhs]) `(set! ,v ,rhs)]
 	  
 	  ;; TODO: This doesn't handle mutually recursive functions yet!!
 	  ;; Need to do a sort of intelligent "garbage collection".
-	  [(letrec ([,lhs* ,type* ,rhs*] ...) ,expr)
-	   ;(printf "BINDING: ~s\n" lhs*)
+	  [(counted-letrec ([,lhs* ,count* ,type* ,rhs*] ...) ,expr)	   
 	   (if (null? lhs*)
 	       (process-expr expr env)
 	       ;; TODO: FIXME: NASTY COMPLEXITY:
 	       ;; This has complexity number vars * program size.
 	       ;; Inefficient ref-counting.
-	   (let* ([newenv (append (map list lhs* rhs* 
+	   (let* (
+		  ;; [2007.04.05] For the time being recursive
+		  ;; definitions are not inlined within their own RHS.
+		  ;; We don't want to needlessly expand every
+		  ;; recursive definition!
+		  [dummyenv (append (map (lambda (lhs) (list lhs not-available 9999889)) lhs*) env)]
+
+		  [newrhs* (par-map (lambda (x) (process-expr x dummyenv)) rhs*)]
+		  [newenv (append (map list lhs* newrhs* 
 				       (map (lambda (lhs)
 					      ;; TEMP [2006.02.18]: Disabling ref-counting here:
 					      9999
@@ -630,44 +666,32 @@
 					 lhs*))
 				  env)]
 		  
-		  ;; [2007.04.05] For the time being recursive
-		  ;; definitions are not inlined within their own RHS.
-		  ;; We don't want to needlessly expand every
-		  ;; recursive definition!
-		  [newenv2 (append (map (lambda (lhs) (list lhs not-available 9999889)) lhs*) env)]
+		  ;; This parallel version works in many places, but gives me invalid mem ref elsewhere:		  
+		  [newbod (process-expr expr newenv)]
 		  
-		  ;; This parallel version works in many places, but gives me invalid mem ref elsewhere:
-		  [newall* (par (process-expr expr newenv)
-				(par-map (lambda (x) (process-expr x newenv2)) rhs*))]
-		  [newbod (car newall*)]
-		  [newrhs* (cadr newall*)]
-;		  [__ 	   (break)]
-                  ;; How much does each bound variable get referenced:
-		  ;; FIXME FIXME FIXME: SHOULD MAKE ONE PASS TO GET REF COUNTS:a
-		  [occurs (map (lambda (v myrhs) 
-				 (apply + (count-refs v newbod)
-					(map (lambda (x) (count-refs v x)) 
-					     (remq myrhs newrhs*))))
-			       lhs* newrhs*)]
 		  [newbinds (filter id
 				    (map 
 				     (lambda (lhs type rhs refs)
 				       ;; Here we eliminate dead code:
-				       (and (> refs 0)
-					    `(,lhs ,type ,rhs)))
-				     lhs* type* newrhs* occurs))])
+				       (if (> refs 0)
+					   `(,lhs ,type ,rhs)
+					   (begin 
+;					     (printf "KILLING DEAD: ~s\n" lhs)
+					     #f)))
+				     lhs* type* newrhs* count*))])
 	     ;(disp "OCCURS: " lhs* occurs)
-	     `(letrec ,newbinds ,newbod)))]
+	     (printf "MAKING NEWBINDS: ~a\n" newbinds)
+	     `(letrec ,newbinds ,newbod)
+	     ))]
          
-	  ;; Here we do computation if the arguments are available:
-          [(if ,test ,[conseq] ,[altern])
-	   ;(disp "CONDITIONAL: " test)
-	   (let ([newtest (process-expr test env)])
-	     (if (available? newtest)  
-		 (begin 
-		   (if (getval newtest) conseq  altern))		 
-		 `(if ,newtest ,conseq ,altern))
-	     )]
+          [(if ,[newtest] ,conseq ,altern)
+;	   (disp "CONDITIONAL: " newtest)
+	   (if (available? newtest)
+	       (begin 
+		 (if (getval newtest) 
+		     (process-expr conseq env)
+		     (process-expr altern env)))
+	       `(if ,newtest ,(process-expr conseq env) ,(process-expr altern env)))]
 
 #;
 	  [(Array:build ,n ,f)
@@ -818,25 +842,27 @@
 	       `(,prim ,@rand*))]
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
-	  [(consstruct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
+	  [(construct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we
 	  ;; don't get any accidental variable capture:
 ;	  [((lambda ,formals ,expr) ,rands ...)
 ;	   (substitute (map list formals rands) expr)]
-	  [(app ,[rator] ,[rands] ...) 
-;	   (disp "APP" rator (available? rator) env)
+	  [(app ,[rator] ,rands ...)
+	   (disp "APP" rator (available? rator) env)
 	   (if (available? rator)
 	       (let ([code (code-expr (ASSERT code? (getval rator)))])
 		 (if (not (null? (intersection mutable-vars (core-free-vars rator))))
 		     (error 'static-elaborate 
 			    "can't currently inline rator with free mutable vars!: ~s"
 			    code)
-		     (inline code rands)))
+		     (process-expr (inline (annotate-refcounts code) rands) env)
+		     ;(inspect/continue (inline (annotate-refcounts code) rands))
+		     ))
 	       (begin 
 		 (if (regiment-verbose)
 		     (printf "  Can't inline rator this round: ~s\n" rator))
-		 `(app ,rator ,@rands)))]
+		 `(app ,rator ,@(map (lambda (x) (process-expr x env)) rands))))]
 
           [,unmatched
             (error 'static-elaborate:process-expr "invalid syntax ~s" unmatched)]))])
@@ -845,6 +871,8 @@
 	  PE-result
 	  )
 	))
+
+    (set! BUG process-expr)
     
     (lambda (expr)
       (match expr	    
@@ -856,15 +884,25 @@
 	    (let ([init-env (map (lambda (tycon) (list tycon not-available 9393939))
 			      (apply append tycon**))])
 	      ;; Run until we reach a fixed point.
+
+
 	      (let loop ([oldbody body]
-			 [body (process-expr body init-env)]
+			 [body (process-expr (annotate-refcounts body) init-env)]
 			 [iterations 1])
+
+;		(printf "NEWBOD \n")
+;		(pretty-print body)
+
+		(ASSERT not (deep-assq 'counted-letrec body))
+		(ASSERT not (deep-assq 'counted-lambda body))
+
+		;; The comparison is not so efficient either!
 		(if (equal? oldbody body)	   
 		    (begin
 		      ;(when (regiment-verbose) )
 		      (printf "Static elaboration iterated ~s times\n" iterations)
 		      `(static-elaborate-language '(program ,body ,@meta* ,type)))
-		    (loop body (process-expr body init-env) (add1 iterations)))))
+		    (loop body (process-expr (annotate-refcounts body) init-env) (add1 iterations)))))
 	    ])]
 	)))))
 

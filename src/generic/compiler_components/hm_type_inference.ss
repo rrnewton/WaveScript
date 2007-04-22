@@ -480,7 +480,7 @@
 		   [tc (make-tcell b)])
 	      (types-equal! (instantiate-type lub '()) 
 			    tc ;(inspect/continue tc)
-			    "unknown location")
+			    "unknown location" "")
 	      (set-cdr! pr tc))
 	    ;; Otherwise just the most general type.
 	    (set-cdr! pr b))]
