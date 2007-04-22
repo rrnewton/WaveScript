@@ -1,17 +1,27 @@
+/***********************************************/
+/*   The WaveScript Standard Library.          */
+/*                                             */
+/* - Ryan Newton & Lewis Girod                 */
+/***********************************************/
 
-// Exports: 
+// This file exports the following bindings:
 
 const_PI   :: Float;
 const_PIO2 :: Float;
 const_E    :: Float;
 
 println    :: String -> ();
+
+sqr        :: #n -> #n;
+atan2      :: (Float, Float) -> Float;
+deg2rad    :: Float -> Float;
+rad2deg    :: Float -> Float;
 expF       :: Float -> Float;
 expC       :: Complex -> Complex;
-fftStream  :: Stream (Array Float) -> Stream (Array Complex);
-sqr        :: #n -> #n;
 gaussian   :: (Float, Int) -> Array Float;
 
+// Should be "stream_fft" for consistency?
+fftStream  :: Stream (Array Float) -> Stream (Array Complex);
 sigseg_fftC    :: Sigseg Complex -> Sigseg Complex;
 sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
 sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
@@ -31,7 +41,9 @@ snoop           :: (a, S b) -> S b;
 zip2_sametype   :: (S t, S t)      -> S (t * t);
 zip3_sametype   :: (S t, S t, S t) -> S (t * t * t);
 // private: syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
+
 syncN           :: (CtrlStrm, LSS t)       -> SLS t;
+/*
 syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
 thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
 window          :: (S t, Int) -> SS t;
@@ -58,9 +70,6 @@ c2f :: Complex -> Float;
 smap    :: (a -> b)    -> S a -> S b;
 sfilter :: (t -> Bool) -> S t -> S t;
 
-sqr     :: #n -> #n;
-atan2   :: (Float, Float) -> Float;
-
 Array:fold1     :: ((t, t) -> t, Array t) -> t;
 Array:foldRange :: (Int, Int, t, (t, Int) -> t) -> t;
 Array:copy      :: Array t -> Array t;
@@ -82,11 +91,8 @@ a_ones          :: Int -> Array #n;
 sort            :: ((Int, Int) -> (), 
                     (Int, Int) -> Int, 
                     Int) -> ();
-
-deg2rad :: Float -> Float;
-rad2deg :: Float -> Float;
-
-
+*/
+		    
 // NEED TO ADD:
 // qsort, Complexl, expc, atan2, MInv...
 
@@ -104,14 +110,35 @@ fun println(s) {
   print("\n");
 };
 
+
+/* Some additional math functions */
+
+fun sqr(x) { x*x }
+
+fun atan2(arg1,arg2) {
+  if (arg1+arg2) == arg1 then {
+    if arg1 >= 0.0 then const_PIO2
+    else -1.0 * const_PIO2
+  }
+  else {
+    tmp = atan(arg1/arg2);
+    if arg2 < 0.0 then {
+      if tmp <= 0.0 then (tmp + const_PI)
+      else (tmp - const_PI)
+    }
+    else tmp
+  }
+}
+
+fun deg2rad(deg) { deg * const_PI / 180.0 }
+fun rad2deg(rad) { rad * 180.0 / const_PI }
+
 fun expF(f) { const_E ^. f }
 fun expC(c) { floatToComplex(const_E) ^: c }
 
 fun fftStream(s) {
   iterate f in s { emit fftR2C(f) }
 }
-
-fun sqr(x) { x*x }
 
 fun gaussian(sigma,size) {
   mu = intToFloat(size)/2.0;
@@ -120,7 +147,6 @@ fun gaussian(sigma,size) {
 	      fun (i) 
 	      coeff*expF(0.0-sqr(intToFloat(i)-mu)/(2.0*sqr(sigma))));
 }
-
 
 // For completeness we include these restrictions of their generic counterparts:
 //fun intToFloat     (i::Int)   toFloat(i) 
@@ -517,29 +543,6 @@ smap    = fun(f) fun(x) stream_map(f,x);
 sfilter = fun(f) fun(x) stream_filter(f,x);
 //amap = 
 
-
-//======================================================================
-/* Some additional math functions */
-
-fun sqr(x) { x*x }
-
-fun atan2(arg1,arg2) {
-  if (arg1+arg2) == arg1 then {
-    if arg1 >= 0.0 then const_PIO2
-    else -1.0 * const_PIO2
-  }
-  else {
-    tmp = atan(arg1/arg2);
-    if arg2 < 0.0 then {
-      if tmp <= 0.0 then (tmp + const_PI)
-      else (tmp - const_PI)
-    }
-    else tmp
-  }
-}
-
-fun deg2rad(deg) { deg * const_PI / 180.0 }
-fun rad2deg(rad) { rad * 180.0 / const_PI }
 
 //======================================================================
 /* array operations */

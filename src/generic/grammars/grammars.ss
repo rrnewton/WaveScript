@@ -161,6 +161,9 @@
        ;; We allow arbitrary type constructors because of user aliases:
        ;; [2007.03.21] Currently they only are permitted to have one type argument:
        [Type (,symbol? Type)]
+       ;; Worse, yet, we allow arbitrary symbols (alias might not take args:)
+       ;[Type ,(lambda (x) (and (symbol? x) (not (eq? x 'quote))))]
+       ;; Having problems with this.
 
        ;; This includes these basic arith prims, which are just sugar for the generic ops:
        [Prim '+]

@@ -381,7 +381,7 @@
     ;;
     ;; This reads a hard-wired file of marmot-data.
     ;; The format is four interleaved channels of 16-bit signed ints.
-    (ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Float)))
+    (ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
     ;; Could think about a generic (HardwareSource "ENSBoxAudio(4096,)")
     ;; that provides a hack into the C++ generation.  Nasty and
     ;; backend-dependent, but really, how are hardware data sources

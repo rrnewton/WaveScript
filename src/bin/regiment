@@ -64,6 +64,10 @@ then (if [ -f $REGIMENTD/src/build/$MT/regiment.0.OPT.heap ];
       else script;
       fi);
 
+# Not currently using heaps for debug mode:
+elif [ "$REGDEBUGMODE" == "ON" ];
+then script;
+
 # [2007.04.15] In progress: going to move over to using boot files.
 # Which means invoking with the boot file explicitly here, rather than
 # letting the scheme source pick out the .so file.
@@ -72,9 +76,6 @@ then setupchez;
      #exec $SCHEME -b $REGIMENTD/src/build/$MT/main_chez.boot $*;
      script "-b $REGIMENTD/src/build/$MT/main_chez.boot ";
 
-# Not currently using heaps for debug mode:
-elif [ "$REGDEBUGMODE" == "ON" ];
-then script;
 elif [ -f "$REGIMENTD/src/build/$MT/regiment.0.heap" ];
 then #echo Running regiment from saved heap...;
     exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;

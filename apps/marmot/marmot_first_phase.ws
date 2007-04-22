@@ -155,7 +155,8 @@ marmotfile =
   wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
 
 fun readone(mode) 
-  (dataFile(marmotfile, "binary windowsize: 4096 "++ mode, 24000, 0) :: Stream Sigseg (Int16))
+  (readFile(marmotfile, "mode: binary window: 4096 rate: 24000 "++ mode) 
+   :: Stream Sigseg (Int16))
 
 _ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else readone("offset: 0");
 _ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else readone("offset: 2");
@@ -180,7 +181,7 @@ rw1 = rewindow(ch1, 32, 96);
 //hn = smap(hanning, rw1);
 hn = hanning(rw1);
 
-wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end),
+wscores = stream_map(fun(x) (marmotscore2( sigseg_fftR2C(x) ), x.start, x.end),
 		     hn);
 
 detections = detect(wscores);
@@ -192,23 +193,6 @@ d2 = iterate (d in detections) {
 };
 
 synced = syncN(d2, [ch1, ch2, ch3, ch4]);
-
-/* define array geometry */
-sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
-			  [ 0.4, 0.4, 0.4],
-			  [-0.4, 0.4,-0.4],
-			  [-0.4,-0.4, 0.4]]);
-
-doas = FarFieldDOA(synced, sensors);
-
-BASE <-
-  doas
-// synced
-;
-
-//BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
-//		   audio(0,1,0,44000)]);
-
 
 
 

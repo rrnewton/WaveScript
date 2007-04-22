@@ -185,48 +185,8 @@ fun FarFieldDOA(synced, sensors)
 
 }
 
-sm = stream_map;
-
 //========================================
 // Main query:
-
-flag = GETENV("WSARCH") == "ENSBox";
-//flag = true;
-//marmotfile = "/archive/4/marmots/brief.raw";
-//marmotfile = "/archive/4/marmots/real_100.raw";
-marmotfile =
-  if FILE_EXISTS("15min_marmot_sample.raw") then "15min_marmot_sample.raw" else
-  if FILE_EXISTS("3min_marmot_sample.raw") then "3min_marmot_sample.raw" else
-  if FILE_EXISTS("6sec_marmot_sample.raw") then "6sec_marmot_sample.raw" else
-  if FILE_EXISTS("~/archive/4/marmots/brief.raw") then "~/archive/4/marmots/brief.raw" else
-  wserror("Couldn't find sample marmot data, run the download scripts to get some.\n");
-
-chans = (dataFile(marmotfile, "binary", 24000, 0)
-	 :: Stream (Int16 * Int16 * Int16 * Int16));
-
-ch1 = if flag then ENSBoxAudio(0,4096,0,24000) else window(sm(fun((a,_,_,_)) int16ToFloat(a), chans), 4096);
-ch2 = if flag then ENSBoxAudio(1,4096,0,24000) else window(sm(fun((_,b,_,_)) int16ToFloat(b), chans), 4096);
-ch3 = if flag then ENSBoxAudio(2,4096,0,24000) else window(sm(fun((_,_,c,_)) int16ToFloat(c), chans), 4096);
-ch4 = if flag then ENSBoxAudio(3,4096,0,24000) else window(sm(fun((_,_,_,d)) int16ToFloat(d), chans), 4096);
-
-// 96 samples are ignored between each 32 used:
-rw1 = rewindow(ch1, 32, 96);
-
-//hn = smap(hanning, rw1);
-hn = myhanning(rw1);
-
-wscores = stream_map(fun(x) (marmotscore2( fft(x) ), x.start, x.end),
-		     hn);
-
-detections = detect(wscores);
-
-d2 = iterate (d in detections) {
-  let (flag,_,_) = d;
-  if flag then print("detected at "++show(d)++"\n");
-  emit d;
-};
-
-synced = syncN(d2, [ch1, ch2, ch3, ch4]);
 
 /* define array geometry */
 sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
@@ -234,17 +194,8 @@ sensors = list_to_matrix([[ 0.4,-0.4,-0.4],
 			  [-0.4, 0.4,-0.4],
 			  [-0.4,-0.4, 0.4]]);
 
+// 'synced' is defined in marmot_first_phase.ws
 doas = FarFieldDOA(synced, sensors);
 
-BASE <-
-  doas
-// synced
-;
-
-//BASE <- unionList([window(sm(fun((a,_,_,_)) intToFloat(a), chans), 1),
-//		   audio(0,1,0,44000)]);
-
-
-
-
+BASE <- doas
 
