@@ -127,22 +127,33 @@ chez_native:
         else echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
              (export REGIMENT_OR_WAVESCRIPT=BOTH; $(CHEZ)); fi
 
+# [2007.04.22] Switching the default to .boot files:
+
+ws:       boot
+ws.opt:   boot.opt
+opt:      boot.opt
+ws.debug: so.debug
+debug:    so.debug
+dbg:      so.debug
+
 # This makes a Chez Scheme .boot file instead of a shared object file.
-boot: _temp_temp.so ws 
+boot: _temp_temp.so shared
 	echo '(make-boot-header (format "build/~a/main.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
 	cat "build/$(MT)/main.hdr" "_temp_temp.so" "build/$(MT)/main_chez.so" > "build/$(MT)/main_chez.boot" 
+	rm _temp_temp.ss _temp_temp.so
+
+boot.opt: _temp_temp.so shared.opt 
+	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
+	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
 	rm _temp_temp.ss _temp_temp.so
 
 _temp_temp.so:
 	echo '(define regiment-origin "compiled .boot")' > _temp_temp.ss
 	echo '(compile-file "_temp_temp.ss" "_temp_temp.so")' | $(CHEZ)
 
-boot.opt: _temp_temp.so ws.opt 
-	echo '(make-boot-header (format "build/~a/main_opt.hdr" (machine-type)) "scheme.boot" "petite.boot")' | $(CHEZ)
-	cat "build/$(MT)/main_opt.hdr" "_temp_temp.so" "build/$(MT)/main_chez_OPT.so" > "build/$(MT)/main_chez_OPT.boot" 
-	rm _temp_temp.ss _temp_temp.so
 
-ws:
+so: shared
+shared: 
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
@@ -151,9 +162,8 @@ ws:
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
 
-ws.debug: dbg
-debug: dbg
-dbg:
+so.debug: shared.debug
+shared.debug:
 	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
 	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_DBG.so" (machine-type)))' | \
@@ -161,6 +171,17 @@ dbg:
           export REGDEBUGMODE=ON; \
           export REGIMENT_OR_WAVESCRIPT=WS; \
           $(CHEZ))
+
+so.opt: shared.opt
+shared.opt:
+	MT=`echo '(machine-type)' | ../depends/petite`
+	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
+	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
+          (export REGOPTLVL=3; \
+           export REGDEBUGMODE=OFF; \
+           export REGIMENT_OR_WAVESCRIPT=WS; \
+           $(CHEZ))
+
 
 ws.threaded: threaded
 threaded:
@@ -171,16 +192,6 @@ threaded:
           export REGDEBUGMODE=OFF; \
           export REGIMENT_OR_WAVESCRIPT=WS; \
           chez_threaded)
-
-ws.opt: opt
-opt:
-	MT=`echo '(machine-type)' | ../depends/petite`
-	if ! [ -d build/$(MT) ]; then mkdir build/$(MT); fi	
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez_OPT.so" (machine-type)))' | \
-          (export REGOPTLVL=3; \
-           export REGDEBUGMODE=OFF; \
-           export REGIMENT_OR_WAVESCRIPT=WS; \
-           $(CHEZ))
 
 # Saved heap images start up very fast, but don't work right on all platforms.
 # (doesn't work right on Mac OS or fedora core)

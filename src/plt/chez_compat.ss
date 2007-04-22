@@ -130,6 +130,8 @@
   (define-syntax fxlogand (identifier-syntax bitwise-and))
   (define-syntax fxlogor (identifier-syntax bitwise-or))
   (define-syntax fxmodulo (identifier-syntax modulo))
+  (define-syntax fxquotient (identifier-syntax quotient))
+  (define-syntax fxremainder (identifier-syntax remainder))
 
 ;   (define-syntax fxzero? (syntax-rules () [(_ e ...) (zero? e ...)]))
 ;   (define-syntax fx+ (syntax-rules () [(_ e ...) (+ e ...)]))

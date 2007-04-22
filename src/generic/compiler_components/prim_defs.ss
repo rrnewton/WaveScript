@@ -22,6 +22,7 @@
 (module prim_defs mzscheme
   (require (lib "include.ss")
            "../../plt/iu-match.ss"
+           "../../plt/hashtab.ss"
            "../constants.ss"
            "../util/helpers.ss"
            )
@@ -671,9 +672,9 @@
 	   regiment-constants)
    ;; Update the hash table when we change this parameter:
    (lambda (ls)
-     (set! primitives-hash (make-hash-table))
+     (set! primitives-hash (make-default-hash-table))
      (for-each (lambda (entry)
-		 (put-hash-table! primitives-hash (car entry) (cdr entry)))
+		 (hashtab-set! primitives-hash (car entry) (cdr entry)))
        ls)
      ls)))
 
@@ -885,7 +886,7 @@
 ;; [2004.06.24]<br> This is for the regiment primitives:
 (define get-primitive-entry
   (lambda (prim)
-    (or (let ([entry (get-hash-table primitives-hash prim #f)])
+    (or (let ([entry (hashtab-get primitives-hash prim)])
 	  (if entry (cons prim entry) #f))
 	(assq prim token-machine-primitives)
         (error 'get-primitive-entry
@@ -919,7 +920,7 @@
 
 ;; Is it a regiment primitive?
 (define (regiment-primitive? x)
-  (get-hash-table primitives-hash x #f))
+  (hashtab-get primitives-hash x))
 
 ;; Is it a regiment constant?
 (define (regiment-constant? x)
