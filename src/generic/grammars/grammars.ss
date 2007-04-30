@@ -140,9 +140,14 @@
     ))
 ;; The rest of the grammars are defined in the individual pass files.
 
+(define (possible-alias? x) (and (symbol? x) (not (eq? x 'quote))))
+
 ;; This is the grammar consumed by verify-regiment
 (define sugared_regiment_grammar
-  `(,@ initial_regiment_grammar
+  `(
+       ,@ (filter (lambda (x) (not (eq? 'Type (car x))))
+	    initial_regiment_grammar)
+
        [Expr ('let* ([Var Type Expr] ...) Expr)]
 
        [Expr ('let-as (Var (Var ...) Expr) Expr)]
@@ -160,10 +165,18 @@
 
        ;; We allow arbitrary type constructors because of user aliases:
        ;; [2007.03.21] Currently they only are permitted to have one type argument:
-       [Type (,symbol? Type)]
+       ;[NotArrow ,(lambda (x) (and (not (eq? x '->)) (type? x)))]
+       ;[Type (,possible-alias? Type ...)]
+       ;[Type (,possible-alias? Type)]
+       ;[Type (,possible-alias? NotArrow)]
+
+       ;; Go easy on types for now... we still have type aliases...
+       [Type ,type?]
+       ;[Type ,(lambda (_) #t)]
+
        ;; Worse, yet, we allow arbitrary symbols (alias might not take args:)
-       ;[Type ,(lambda (x) (and (symbol? x) (not (eq? x 'quote))))]
-       ;; Having problems with this.
+       ;[Type ,possible-alias?]
+       ;; Having problems with this.... need to debug it
 
        ;; This includes these basic arith prims, which are just sugar for the generic ops:
        [Prim '+]
@@ -171,6 +184,8 @@
        [Prim '*]
        [Prim '/]
        [Prim '^]
+
+
        ))
 		  
 ; =======================================================================

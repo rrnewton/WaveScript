@@ -7,6 +7,7 @@
 (module small-ws-passes mzscheme
   (require "../../plt/common.ss"
 	   "normalize_query/ws-remove-complex-opera.ss"
+	   "../compiler_components/type_environments.ss"
 	   )
   (provide 
            introduce-lazy-letrec

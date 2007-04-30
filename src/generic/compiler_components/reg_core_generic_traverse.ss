@@ -30,7 +30,7 @@
 	   ;(lib "compat.ss")
            (all-except "../util/helpers.ss" filter)
            (all-except "../compiler_components/regiment_helpers.ss" filter)
-           "../compiler_components/hm_type_inference.ss"
+           "../compiler_components/type_environments.ss"
            )
   
   ;; Insure provision of verify-regiment:

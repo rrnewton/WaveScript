@@ -1,5 +1,5 @@
 
-;;;; .title Constants.ss -- A collection of global constants, flags, and datatype defs
+;;;; .title Constants.ss -- A collection of global constants, flags, parameters, and datatype defs
 ;;;; .author Ryan Newton
 
 ;;;; A collection of global constants, flags, and datatype defs.<br><br>
@@ -61,6 +61,9 @@
 	 define-testing
 	 define-regiment-parameter regiment-parameters
 
+         inferencer-let-bound-poly
+         inferencer-enable-LUB
+         
 	 compiler-invocation-mode 
 	 regiment-verbose regiment-quiet
 	 regiment-current-pass
@@ -384,6 +387,20 @@
 ;;                         Per-module constants                         ;;
 ;=======================================================================;;
 
+
+;;; Used primarily by hm_type_inference.ss (and type_environments.ss)
+;====================================================
+  
+;; This controls whether let-bound-polymorphism is allowed at all.
+(define inferencer-let-bound-poly (make-parameter #t))
+
+;; If this is enabled, the type assigned to a let-bound variable is
+;; lowered to the LUB of its call-site requirements, rather than the
+;; most general type.
+;;   This is only turned off for debugging purposes...
+(define inferencer-enable-LUB (make-parameter #f))
+  
+  
 ;;; Used primarily by nominalize-types:
 ;====================================================
 

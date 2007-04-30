@@ -12,6 +12,7 @@
 	  "../generic/util/helpers.ss"
           "../generic/compiler_components/prim_defs.ss"
           "../generic/compiler_components/regiment_helpers.ss"
+          "../generic/compiler_components/type_environments.ss"
           "../generic/compiler_components/hm_type_inference.ss"
           "../generic/compiler_components/reg_core_generic_traverse.ss"
 	  "../generic/grammars/grammar_checker.ss"
@@ -26,6 +27,7 @@
            (all-from "../generic/util/helpers.ss")
            (all-from "../generic/compiler_components/prim_defs.ss")
            (all-from "../generic/compiler_components/regiment_helpers.ss")
+	   (all-from "../generic/compiler_components/type_environments.ss")
            (all-from "../generic/compiler_components/hm_type_inference.ss")
            (all-from-except "../generic/compiler_components/reg_core_generic_traverse.ss" test-this)
            (all-from "../generic/grammars/grammar_checker.ss")

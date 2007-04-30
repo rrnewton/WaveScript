@@ -17,6 +17,7 @@
 	   "../../plt/iu-match.ss"
 	   "../constants.ss" ;; For DEBUGMODE
            "../compiler_components/prim_defs.ss"
+           "../compiler_components/type_environments.ss"
            "../../plt/chez_compat.ss"
 	   (all-except "../util/helpers.ss" test-this these-tests)
            )

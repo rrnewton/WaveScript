@@ -12,7 +12,7 @@
 ;;;; should catch most of the problems that verify-regiment does.
 
 (module verify-regiment  mzscheme  
-  (require "../../../plt/common.ss")  
+  (require "../../../plt/common.ss")
   (provide verify-regiment 
 	   these-tests test-this test00 tests00)  
   (chezimports)

@@ -24,6 +24,7 @@
 (module ws-remove-complex-opera mzscheme
   (require "../../../plt/common.ss"
 	   ;"../../compiler_components/hm_type_inference.ss"
+	   "../../compiler_components/type_environments.ss"
 	   "ws-remove-letrec.ss")
   (provide ws-remove-complex-opera*
 	   ws-remove-complex-opera*-grammar
