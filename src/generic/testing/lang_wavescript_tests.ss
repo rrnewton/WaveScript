@@ -76,7 +76,7 @@
 	     ;; Also exceptions for geneeric prims and other prims that have been desugared.
 	     (append '(eq? locdiff nodeid sense even? odd? tuple tupref dataFile readFile
 			   or and show-and-string-append 
-			   ENSBoxAudio
+			   ENSBoxAudio ENSBoxAudioF
 
 			   ;; These were resolved into the w/namespace versions:
 			   head tail map append fold

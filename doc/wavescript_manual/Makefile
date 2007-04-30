@@ -1,6 +1,8 @@
 
 
 all: pdf html
+
+install:
 	cp -a manual/* /var/www/wsmanual/
 	cp -a manual.pdf /var/www/
 	(cd /var/www; ./setperms)

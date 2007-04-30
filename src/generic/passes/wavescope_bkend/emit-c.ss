@@ -248,6 +248,14 @@
 	  '()
           `())]
 
+	 ;(ENSBoxAudio      (Int Int Int Int) (Stream (Sigseg Int16)))
+	[(ENSBoxAudioF ',[number->string -> ch] ',win ',overlap ',rate)
+	 (ASSERT zero? overlap)
+	 (values `("ENSBoxSource<float> ",name" = ENSBoxSource<wsfloat_t>(",ch");") () ())]
+	[(ENSBoxAudio ',[number->string -> ch] ',win ',overlap ',rate)
+	 (ASSERT zero? overlap)
+	 (values `("ENSBoxSource<float> ",name" = ENSBoxSource<wsint16_t>(",ch");") () ())]
+
 	;; Produces an instance of a generic dataFile reader.
 	;; TODO: It's not necessary to generate code for both text & binary in the same run:
 	[(__readFile ,[Simple -> file] 

@@ -108,7 +108,7 @@ C/C++).  Therefore, debug your code using {\tt ws} first.
 
 \subsubsection*{Run {\tt \bf ws.debug} occasionally for sanity-checking}
 
-Ws.debug is too slow for the normal development cycle, but t is
+Ws.debug is too slow for the normal development cycle, but it is
 important to occasionally compile your program with ws.debug.  Mainly
 this is important for building confidence that the compiler is
 behaving properly on your program.  If the
@@ -116,7 +116,7 @@ compiler were a mature system not under active development, this would
 not be as important.  
 
 
-Spcefiically, when you run {\tt ws.debug}:
+Specifically, when you run {\tt ws.debug}:
 
 \begin{enumerate}
 \item It turns on extra ASSERT statements in the code that check data
@@ -281,7 +281,7 @@ operations that are not used frequently:
 \begin{array}{rcl}
 %generic          & : & +,\; -,\; $*$,\; /,\; ^{\wedge}   \\
 generic          & : & $\tt + - * / \^{}$   \\
-Int              & : & $\tt +. -. *. /. \^{}. $ \\
+Int              & : & $\tt +\_ -\_ *\_ /\_ \^{}\_ $ \\
 Float            & : & $\tt +. -. *. /. \^{}. $ \\
 Complex          & : & $\tt +: -: *: /: \^{}: $ \\
 Int16            & : & $\tt +I16 -I16 *I16 /I16 \^{}I16 $   \\
