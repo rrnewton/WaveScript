@@ -950,7 +950,7 @@
 	      [(assert-type ,_ ,[e]) e]
 	      [(using ,M ,[e]) `(using ,M ,e)]
 	      [,other (fallthru other)]))])
-  (trace-define strip-annotations
+  (define strip-annotations
   (let ()
     (define (Expr x fallthru)
       (match x

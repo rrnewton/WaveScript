@@ -301,9 +301,8 @@
 				  [print-length 300]
 				  [print-level 60])
 		    (newline)
-		    (pretty-print x))
+		    (pretty-print (strip-annotations x)))
 		  (printf "================================================================================\n\n")
-		  ;(read-line)
 		  x)
 	   x)
 	x)))

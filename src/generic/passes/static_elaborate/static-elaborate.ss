@@ -569,6 +569,12 @@
 		   ;(printf "ALIAS? ~s ~s\n" var v)
 		   (process-expr v env)]
 
+		  ;; [2007.04.30] Inline first-class references to closures:
+		  [(,_ (lambda . ,rest) ,__)
+		   (let ([new `(lambda ,@rest)])
+		     (if (null? (intersection (core-free-vars new) mutable-vars))
+			 new var))]
+
 		  ;; Otherwise, nothing we can do with it.
 		  [,else   var])
 		;; This appears to disable the system here:
@@ -603,9 +609,8 @@
 
 ;          [(iterate ,fun ,[strm])  `(iterate ,fun ,strm)]
 	  
-	  ;; Don't go inside for loops for now:
 	  [(for (,i ,[st] ,[en]) ,bod)
-	   (let ([newenv (cons `(,i ,not-available 99999) env)])	     
+	   (let ([newenv (cons `(,i ,not-available 99999) env)])	    
 	     `(for (,i ,st ,en) ,(process-expr bod newenv)))]
 	  [(while ,[tst]  ,[bod]) `(while ,tst ,bod)]
 	  
@@ -898,7 +903,8 @@
      (static-elaborate '(foolang '(program (lambda (x) ('t) (cons (+_ '3 '4) x)) 'notype)))
      (static-elaborate-language '(program (lambda (x) ('t) (cons '7 x)) 'notype))]
 
-    [(static-elaborate '(foo '(program 
+    ["Use a loop to apply a chain of rfilters"
+     (static-elaborate '(foo '(program 
 			       (letrec ([f 't (lambda (x) ('t) '#t)])
 				 (letrec ([loop 't (lambda (n) ('t)
 							  (if (= '0 n)
@@ -906,12 +912,20 @@
 							      (rfilter f (app loop (-_ n '1)))))])
 				   (app loop '5)))
 			       'notype)))
+
+     ,(let ([f '(lambda (x) ('t) '#t)])
+	`(static-elaborate-language
+	  '(program
+	       (rfilter ,f (rfilter ,f (rfilter ,f (rfilter ,f (rfilter ,f world)))))
+	     'notype)))
+#;
      (static-elaborate-language '(program
 	    (letrec ([f 't (lambda (x) ('t) '#t)])
 	      (rfilter
 	       f
 	       (rfilter f (rfilter f (rfilter f (rfilter f world))))))
-	    'notype))]
+	    'notype))
+     ]
 
     ["Simple test to make sure we keep the quotes on:" 
      (static-elaborate '(foolang '(program (cons (+_ '3 '4) world) 'notype)))

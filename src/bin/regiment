@@ -79,5 +79,6 @@ then setupchez;
 elif [ -f "$REGIMENTD/src/build/$MT/regiment.0.heap" ];
 then #echo Running regiment from saved heap...;
     exec $REGIMENTD/depends/rawscheme -h $REGIMENTD/src/build/$MT/regiment.0.heap $*;
-else script;
+else 
+     script;
 fi

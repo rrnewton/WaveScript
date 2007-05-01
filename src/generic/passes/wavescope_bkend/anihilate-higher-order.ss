@@ -35,10 +35,11 @@
 
 	[(List:map (lambda (,v) (,ty) ,[e1]) ,[e2])
 	 (let ([out (unique-name 'outls)]
+	       [newty (unique-name 'notyy)]
 	       [ptr (unique-name 'ptr)]
 	       [i (unique-name 'i)])		
 	   `(let ([,ptr (Ref (List ,ty)) (Mutable:ref ,e2)]
-		  [,out (Ref (List ,ty)) (Mutable:ref '())])
+		  [,out (Ref (List ',newty)) (Mutable:ref '())])
 	      (begin 
 		;; Inefficient!  Tests list length here.  Use while loop!
 		;; (Or could have primitive to reverse AND return length...)
@@ -88,14 +89,17 @@
 	[(Array:map (lambda (,v) (,ty) ,[e1]) ,[e2])
 	 (let ([tmp (unique-name 'tmp)]
 	       [out (unique-name 'outls)]
+	       [newty (unique-name 'noty)]
 	       [i (unique-name 'i)])		
 	   ;; Need Array:makeZeroed or Array:makeUNSAFE !!
 	   `(let ([,tmp (Array ,ty) ,e2])
 	      (if (equal? ,tmp Array:null)
 		  Array:null
-		  (let ([,out (Array ,ty) 
-			      (Array:make (Array:length ,tmp) 
-					  (Array:ref ,tmp '0))])
+		  (let ([,out (Array ',newty)
+			      ;(Array ,ty)
+			      (Array:makeUNSAFE (Array:length ,tmp) 
+					  ;(Array:ref ,tmp '0)
+					  )])
 		    (begin 
 		      (for (,i '0 (-_ (Array:length ,tmp) '1))
 			  (Array:set ,out ,i

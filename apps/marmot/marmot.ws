@@ -12,7 +12,7 @@ fun fftArray(arr) {
 
 
 /**** what if the input is not a power of 2.... fft?  ***/
-FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
+//FarFieldDOA :: (Stream (List (Sigseg t)), Array (Array Float)) -> Stream (Array (Array Float)); 
 fun FarFieldDOA(synced, sensors)
 {	
   // parameters:
@@ -41,8 +41,9 @@ fun FarFieldDOA(synced, sensors)
 
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
+
     // length of the fft
-    Ndat = (m_in[0]).Array:length;  
+    Ndat = (m_in[0])`Array:length;  
 
     // This will be the output DOA likelihoods
     Jmet = matrix(NSrc,Ngrd,0.0);
@@ -50,7 +51,7 @@ fun FarFieldDOA(synced, sensors)
     gnuplot_array(m_rowv_shared(m_in,0));
 
     //fft the sync'd data 
-    ffts = m_rowmap(fftC2R, m_in);
+    ffts = m_rowmap(fftR2C, m_in);
 
     // compute psds
     fun norm2(x) { sqr(absC(x)) };
@@ -68,6 +69,11 @@ fun FarFieldDOA(synced, sensors)
 
     // sum powers values across channels 
     power = Array:make(Ndat, 0.0);
+
+    psds;
+
+  /*
+
     for i = 0 to psds.Array:length-1 {
       for j = 0 to Ndat-1 {
         power[j] := power[j] + m_get(psds,i,j);
@@ -88,7 +94,8 @@ fun FarFieldDOA(synced, sensors)
       power[j] := tmp2; 
     };
     fun cmp(i,j) { (power[i] - power[j]) };
-    sort(swap,cmp,power.Array:length);
+
+    //    sort(swap, cmp, power`Array:length);
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
@@ -180,9 +187,11 @@ fun FarFieldDOA(synced, sensors)
 
     emit(Jmet);
 
+  */
+    emit 99;
+
   };
   result
-
 }
 
 //========================================

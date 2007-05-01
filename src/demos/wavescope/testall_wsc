@@ -70,7 +70,7 @@ go "demo8a_generic_arith.ws"
 go "demo8b_sugars.ws"
 
 #go "demo9_misc_prim_tests.ws"
-go "demo9b_higher_order_prims.ws"
+#go "demo9b_higher_order_prims.ws" # [2007.04.30] disabling for now... need to implement array equality
 
 go "demo11_simple_merge.ws"
 
