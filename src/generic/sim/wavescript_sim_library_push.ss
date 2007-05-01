@@ -60,7 +60,7 @@
 		 nullseg Array:null nulltimebase
 		 tuple tupref
 		 Array:make Array:makeUNSAFE
-		 Array:ref Array:set Array:map Array:fold Array:toList Array:andmap
+		 Array:ref Array:set Array:map Array:build Array:fold Array:toList Array:andmap
 		 internString uninternString
 		 
 		 HashTable:make HashTable:contains HashTable:get HashTable:set HashTable:set_BANG HashTable:rem HashTable:rem_BANG
@@ -994,6 +994,7 @@
      (define Array:fold vector-fold)
      (define Array:toList vector->list)
      (define Array:andmap (lambda (f v) (andmap f (vector->list v))))
+     (define Array:build vector-build)
 
      (define internString string->symbol)
      (define uninternString symbol->string)

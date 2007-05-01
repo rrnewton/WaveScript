@@ -113,7 +113,8 @@
 	   [(tuple ,args ...)  (make-code x)]
 	   [(vector ,args ...) (make-code x)]
 	   [(cons ,a ,b)       (make-code x)]
-	   [,sv (guard (stream-val? sv)) x]
+	   ;; This is "available" but it's still code:
+	   [,sv (guard (stream-val? sv)) (make-code x)]
 	   [,var (guard (symbol? var))
 		 ((outer-getval env) (cadr (assq var env)))]
 	   [(,annot ,_ ,e) (guard (annotation? annot)) ((outer-getval env) e)]
@@ -193,12 +194,16 @@
 	(Array:build 
 	 ,(lambda (env n f)
 	    ;; Jeez, this is inefficient because we've already done this at least once:
-	    (let* ([fv* (core-free-vars (code-expr f))]
-		   [real-code `(let ,(map (lambda (fv) (list fv ((outer-getval env) fv))) fv*)
+	    (let* ([fv* (list->set (core-free-vars (code-expr f)))]
+		   [real-code `(let ,(map (lambda (fv) 
+					    (let ([val ((outer-getval env) fv)])
+					      (ASSERT (not (code? val)))
+					      (list fv `',val)))
+				       fv*)
 				 (import wavescript_sim_library_push)
-				 ,(strip-types (code-expr f)))]
-		   [real-closure (eval real-code)])
-	      `',(vector-build n (lambda (i) (real-closure i))))
+				 ,(strip-types (code-expr f)))])
+	      (let ([real-closure (eval real-code)])		
+		`',(vector-build n (lambda (i) (real-closure i)))))
 	    ))
 
 	;(length vector-length)
@@ -463,6 +468,7 @@
 			;; FIXME: INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT INEFFICIENT 
 			(let ([fv* (difference (core-free-vars bod) vs)])
 			  ;(when (regiment-verbose) (unless (null? fv*) (printf "  FV: ~s\n" fv*)))
+			  ;(inspect (map available? fv*))
 			  (andmap available? fv*))]
 		       [,else (available? x)]))]
 		  [available? ;; Is this value available at compile time.
@@ -515,7 +521,7 @@
 		  (outer-getval env)]
 
 		 [getlist ;; Get values until you have the whole list.
-		  (lambda (x)
+		  (trace-lambda GETLIST (x)
 		    (if (container-available? x)			
 			(let ([val (getval x)])
 			  (if (code? val)
@@ -674,13 +680,6 @@
 		 `(if ,newtest ,conseq ,altern))
 	     )]
 
-#;
-	  [(Array:build ,n ,f)
-	   (guard 
-	    (pretty-print `(tryingbuildarr!! ,n ,f ,(available? n) ,(available? f) ))
-	    #f)
-	   3332444444
-	   ]
 	  
 	  ;; This becomes a quoted constant:
 	  [(tuple) ''UNIT]
@@ -696,13 +695,16 @@
 		     `(quote ,(list->vector vals))
 		     ))
 	       `(vector . ,x*))]
-	  #;
-	  [(length ,[vec])
-	   ;(inspect (cons (available? vec) vec))
-	   (if (available? vec)
-	       `(quote ,(match vec [(quote ,v) (vector-length v)]))
-	       `(length ,vec)
-	       )]
+
+	  [(cons ,[a] ,[b])
+	   (if (and (available? a) (available? b))
+	       (let ([vala (getval a)]
+		     [valb (getval b)])
+		 ;; Can't stick code within a constant currently:
+		 (if (or (code? vala) (code? valb))
+		     `(cons ,a ,b)
+		     `(quote (,vala . ,valb))))
+	       `(cons ,a ,b))]
 	  
 	  ;; TODO: vector-ref.
 

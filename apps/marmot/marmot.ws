@@ -22,7 +22,8 @@ fun FarFieldDOA(synced, sensors)
   MaxIter = if NSrc == 1 then 1 else 5; // maximum number of ot
 
   Nsens = m_rows(sensors);
-  
+
+
   /* compute r and theta for each sensor relative to sensor 0 as origin */
   r = Array:build(Nsens, 
 		 fun(i) sqrtF(sqr(m_get(sensors,i,0) - m_get(sensors,0,0)) +
@@ -41,7 +42,6 @@ fun FarFieldDOA(synced, sensors)
 
   // ok, i guess we do one big iterate.. 
   result = iterate (m_in in matrix_in) {
-
     // length of the fft
     Ndat = (m_in[0])`Array:length;  
 
@@ -69,11 +69,6 @@ fun FarFieldDOA(synced, sensors)
 
     // sum powers values across channels 
     power = Array:make(Ndat, 0.0);
-
-    psds;
-
-  /*
-
     for i = 0 to psds.Array:length-1 {
       for j = 0 to Ndat-1 {
         power[j] := power[j] + m_get(psds,i,j);
@@ -93,9 +88,8 @@ fun FarFieldDOA(synced, sensors)
       power[i] := power[j];
       power[j] := tmp2; 
     };
-    fun cmp(i,j) { (power[i] - power[j]) };
-
-    //    sort(swap, cmp, power`Array:length);
+    fun cmp(i,j) { floatToInt (power[i] - power[j]) };
+    sort(swap, cmp, power`Array:length);
 
     // T is the maximum direction grid value
     T = a_ones(NSrc);
@@ -117,12 +111,12 @@ fun FarFieldDOA(synced, sensors)
       for Q = 0 to NSrc-1 {
 	
 	J = Array:make(Ngrd, 0.0);
-	
+
 	// compute delay for other sources
 	for L = 0 to NSrc-1 {
 	  if L != Q then {
-	    for P = 1 to Nsens-1 {
-	      m_set(delay,P,L,doDelay(P, T[L]));
+	     for P = 1 to Nsens-1 {
+	       m_set(delay,P,L,doDelay(P, T[L]));
 	    }
 	  }
 	};
@@ -160,6 +154,7 @@ fun FarFieldDOA(synced, sensors)
 	  }
 	};
 
+
 	let (maxJ, maxJind) = a_max(J);
 	T[Q] := maxJind;
         Trad[Q] := gint(T[Q]-1) * 2.0 * const_PI / gint(Ngrd);
@@ -169,6 +164,7 @@ fun FarFieldDOA(synced, sensors)
 	}
       };
 
+   /*
       // stopping condition, break out of loop?
       diffs = Array:make(Trad.Array:length, 0.0); //gint(0));
       for K = 0 to Trad.Array:length-1 { diffs[K] := absF(Tbefore[K]-Trad[K]) };
@@ -183,14 +179,14 @@ fun FarFieldDOA(synced, sensors)
       for i = 0 to Tbefore.Array:length - 1 {
 	Tbefore[i] := gridmap[T[i]] 
       }
+
+  */
     };
 
     emit(Jmet);
 
-  */
-    emit 99;
-
   };
+
   result
 }
 

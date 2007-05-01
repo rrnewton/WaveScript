@@ -530,7 +530,8 @@
 				      [print-level #f]
 				      [print-length #f]
 				      [print-graph #f])
-			 (pretty-print prog))
+			 (pretty-print ;(strip-annotations prog)
+			  prog))
 		       (flush-output-port))
 		     'replace))))
 

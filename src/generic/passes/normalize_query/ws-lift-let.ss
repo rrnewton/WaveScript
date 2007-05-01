@@ -36,6 +36,10 @@
 	      (Datum ,atom?)
 	      
 	      (ComplexConst ('quote ComplexDatum))
+	      ;; This is kind of lame:
+	      (ComplexConst ('cons ComplexConst ComplexConst))
+	      (ComplexConst Var)
+
 	      (ComplexDatum ,atom?)
 	      (ComplexDatum (ComplexDatum ...))
 
