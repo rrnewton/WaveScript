@@ -92,7 +92,10 @@
 		      ,(loop (cdr x)))]
 	      ;; Respect the invariant that nulls have type assertions:
 	      [(null? x) (ASSERT type)	       
-	       `(assert-type ,type (quote ,x))]
+	       ;; [2007.05.01] UPDATE: This is only used for the *Regiment* backend, so we don't need this:
+	       ;`(assert-type ,type (quote ,x))
+	       `(quote ,x)
+	       ]
 	      [else `(quote ,x)]
 	      ;;[else (error 'datum->code "unhandled complex constant: ~s" x)]
 	      ))
