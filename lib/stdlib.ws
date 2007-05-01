@@ -4,14 +4,20 @@
 /* - Ryan Newton & Lewis Girod                 */
 /***********************************************/
 
-// This file exports the following bindings:
+// This file exports the following bindings.
+// Here are their types and some brief documentation.
+
+/// Constants:
 
 const_PI   :: Float;
 const_PIO2 :: Float;
 const_E    :: Float;
 
+///  Library POD (plain old data) functions: 
+
 println    :: String -> ();
 
+  // Some additional math functions 
 sqr        :: #n -> #n;
 atan2      :: (Float, Float) -> Float;
 deg2rad    :: Float -> Float;
@@ -20,13 +26,14 @@ expF       :: Float -> Float;
 expC       :: Complex -> Complex;
 gaussian   :: (Float, Int) -> Array Float;
 
-// Should be "stream_fft" for consistency?
+/// Library stream constructors:
+
+   // Should be "stream_fft" for consistency?
 fftStream  :: Stream (Array Float) -> Stream (Array Complex);
 sigseg_fftC    :: Sigseg Complex -> Sigseg Complex;
 sigseg_ifftC   :: Sigseg Complex -> Sigseg Complex;
 sigseg_fftR2C  :: Sigseg Float   -> Sigseg Complex;
 sigseg_ifftC2R :: Sigseg Complex -> Sigseg Float;
-
 
 type CtrlStrm = Stream (Bool * Int * Int);
 type SegStream t = Stream (Sigseg t);
@@ -37,24 +44,29 @@ type LSS t = List   (Stream (Sigseg t));
 type SLS t = Stream (List   (Sigseg t));
 
 CONST           :: t -> S t;
-snoop           :: (a, S b) -> S b;
-zip2_sametype   :: (S t, S t)      -> S (t * t);
-zip3_sametype   :: (S t, S t, S t) -> S (t * t * t);
-// private: syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
+  // This lets you eavesdrop on a stream while passing all data through:
+snoop           :: (a, Stream b) -> Stream b;
+
+zip2_sametype   :: (Stream t, Stream t)           -> Stream (t * t);
+zip3_sametype   :: (Stream t, Stream t, Stream t) -> Stream (t * t * t);
 
 syncN           :: (CtrlStrm, LSS t)       -> SLS t;
-/*
 syncN_no_delete :: (CtrlStrm, LSS t)       -> SLS t;
 thresh_extract  :: (SS  Float, LSS t, Float, Int) -> SLS t;
-window          :: (S t, Int) -> SS t;
 
+  // This takes an unwindowed stream and produces a stream of sigsegs:
+window          :: (Stream t, Int) -> SS t;
+
+  // Don't change the data, but redo the windowing:
 rewindow        :: (SS t, Int, Int) -> SS t;
 makeHanning     :: Int      -> Array Float;
+  // Taper the edges of the (probably overlapping) windows.
 hanning         :: SS Float -> SS Float;
 
-stream_map       :: (a -> b, S a) -> S b;
-stream_filter    :: (t -> Bool, S t) -> S t;
-stream_iterate   :: ((a, st) -> (List b * st), st, S a) -> S b;
+stream_map       :: (a -> b,    Stream a) -> Stream b;
+stream_filter    :: (t -> Bool, Stream t) -> Stream t;
+stream_iterate   :: ((a, st) -> (List b * st), st, Stream a) -> Stream b;
+
 sigseg_map       :: (a -> b, Sigseg a) -> Sigseg b;
 deep_stream_map  :: (a -> b, SS a) -> SS b;
 //deep_stream_map2 :: (a -> b, SS b) -> ()
@@ -88,13 +100,25 @@ adot            :: (Array #n, Array #n) -> #n;
 a_max           :: Array #n -> (#n * Int);
 a_zeroes        :: Int -> Array #n;
 a_ones          :: Int -> Array #n;
+
+  // Side-effecting insertion sort:
 sort            :: ((Int, Int) -> (), 
                     (Int, Int) -> Int, 
                     Int) -> ();
-*/
+
+// These bindings are PRIVATE.  They are exported (just because we
+// don't have a proper module system), but DON'T USE THEM!
+   syncN_aux       :: (CtrlStrm, LSS t, Bool) -> SLS t;
 		    
 // NEED TO ADD:
 // qsort, Complexl, expc, atan2, MInv...
+
+
+
+
+
+
+/// Here's the IMPLEMENTATIONS:
 
 //======================================================================
 // Constant:
@@ -110,8 +134,6 @@ fun println(s) {
   print("\n");
 };
 
-
-/* Some additional math functions */
 
 fun sqr(x) { x*x }
 
@@ -159,6 +181,7 @@ fun sigseg_ifftC  (ss) toSigseg(ss`toArray`ifftC,   ss.start, ss.timebase)
 fun sigseg_fftR2C (ss) toSigseg(ss`toArray`fftR2C,  ss.start, ss.timebase)
 fun sigseg_ifftC2R(ss) toSigseg(ss`toArray`ifftC2R, ss.start, ss.timebase)
 
+
 //======================================================================
 // "Library" stream constructors:
 
@@ -167,7 +190,6 @@ fun CONST(x)
     emit x
   }
 
-// This lets you eavesdrop on a stream while passing all data through.
 fun snoop(str, strm) {
   iterate (x in strm) {
     println( str ++ show(x) );
@@ -175,7 +197,6 @@ fun snoop(str, strm) {
   }
 }
 
-// this zips 2 streams of same type only
 zip2_sametype = fun (s1,s2) {
   slist = [s1,s2];
   iterate((ind, seg) in unionList(slist)) {
@@ -367,8 +388,6 @@ fun thresh_extract(search,streamlist,thresh,pad) {
 }
 
 
-
-// This takes an unwindowed stream and produces a stream of sigsegs.
 fun window(S, len) 
   iterate(x in S) {
     state{ 
@@ -628,7 +647,6 @@ fun a_max(arr) {
 fun a_zeroes(len) { Array:make(len, gint(0)) }
 fun a_ones(len) { Array:make(len, gint(1)) }
 
-// insertion sort 
 fun sort(swap, cmp, len) {
   for j = 0 to len-1 {
     for i = 0 to len-2 {
