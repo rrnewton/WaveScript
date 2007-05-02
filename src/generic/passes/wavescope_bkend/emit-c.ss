@@ -1404,7 +1404,7 @@ int main(int argc, char ** argv)
 		 '(;; These are obsolete:
 		   eq? locdiff nodeid sense even? odd? 
 		   ;; These weren't really primitives:    
-		   tuple tupref ref deref static statref
+		   tuple tupref ref deref static statref __foreign foreign foreign_box foreign_source
 		   ;; These were desugared or reduced to other primitives:
 		   or and dataFile show-and-string-append Array:toList
 		   ;; These were resolved into the w/namespace versions:

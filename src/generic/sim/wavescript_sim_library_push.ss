@@ -17,11 +17,12 @@
   (provide
                  make-sigseg sigseg-start sigseg-end sigseg-vec sigseg-timebase
 		 valid-sigseg?
-		 app let Mutable:ref deref static statref
+		 app foreign-app let Mutable:ref deref static statref
 
 		 run-stream-query reset-state!
 
 		 __readFile ;__syncN
+		 __foreign
 
 		 ;dump-binfile 
 		 ;audio 
@@ -685,6 +686,10 @@
   (define-syntax app
     (syntax-rules ()
       [(_ f args ...) (f args ...)]))
+  (define-syntax foreign-app
+    (syntax-rules ()
+      [(_ f args ...) (f args ...)]))
+
   (define-syntax assert-type
     (syntax-rules ()
       [(_ t e) e]))
@@ -1229,6 +1234,34 @@
 		      (rename ws-print print)                      
                       for ;for-loop-stack
                       ))
+
+;; This provides access to C-functions:
+(IFCHEZ
+ (define __foreign
+  (let ()
+    (define (Convert T)
+      (case T
+	[(Int)     'fixnum]
+	[(Float)   'single-float]
+	[(Boolean) 'boolean]
+	;[(Char) char]
+	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
+    (lambda (name file type)
+      (let ([ext (extract-file-extension file)])
+	(ASSERT (curry equal? "so") ext)
+
+	;(system "cc -fPIC -shared -o evenodd.so even.c odd.c")
+	;(system "cc  -o evenodd.so even.c odd.c")
+
+	;; Load the file containing the C code.
+	(load-shared-object file)
+	;; After it's loaded there'd better be access:
+	(ASSERT foreign-entry? name)
+	(match type
+	  [(,[Convert -> args] ... -> ,[Convert -> ret])
+	   (eval `(foreign-procedure ,name ,args ,ret))])
+	))))
+ (define foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
 
 

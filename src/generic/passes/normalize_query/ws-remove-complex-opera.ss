@@ -52,6 +52,8 @@
        (Expr ('assert-type Type Expr))
        (Expr ('begin Expr ...))      
 
+       (Expr ('foreign-app Var Expr ...))
+
        ;(Expr ('let ((LHS Type Expr) ...) Expr))
 
        ;; Now iterate is syntax:
@@ -224,6 +226,10 @@
 	   [(construct-data ,tc ,e)
 	    (mvlet ([(e2 decls) (make-simple e tenv)])
 	      (vector `(construct-data ,tc ,e2) decls))]
+	   [(foreign-app ,rator ,e* ...)
+	    (ASSERT (symbol? rator))
+	    (mvlet ([(args binds) (make-simples e* tenv)])
+	      (vector `(foreign-app ,rator ,@args) binds))]
 
 	   ;; Make start and end simple.
 	   [(for (,i ,st ,en) ,bod)

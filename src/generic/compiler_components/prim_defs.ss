@@ -241,6 +241,12 @@
     (tuple Object Tuple)
     (tupref (Tuple Int Int) Object)
 
+    ;; Here we pretend similarly:
+    (foreign        (String String) 'any)
+    (foreign_box    (String String) 'any)
+    (foreign_source (String String) 'any)
+    (__foreign      (String String (List Symbol)) 'any)
+
     (locdiff (Location Location) Float)
 
     ;; Shouldn't this be local??

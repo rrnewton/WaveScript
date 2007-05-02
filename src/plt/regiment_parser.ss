@@ -40,7 +40,7 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union static match
+    namespace using AS typedef union static match foreign foreign_box foreign_source
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -91,7 +91,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "match")
+	 "namespace" "using" "static" "union" "match" "foreign" "foreign_box" "foreign_source")
     (string->symbol lexeme)]
    ["as" 'AS]
    ["type" 'typedef]
@@ -319,12 +319,14 @@
 		[(VAR type BAR unioncases) `((,$1 ,$2) . ,$4)])
     
     (decls ;; Top level variable binding
+           ;; It's unfortunate that this duplicates much within the "stmt" production.
 
            [(typedef VAR = type SEMI maybedecls)     `((typedef ,$2 ,$4) ,@$6)]
            [(typedef VAR typevar = type SEMI maybedecls) `((typedef ,$2 (,$3) ,$5) ,@$7)]
            [(typedef VAR LeftParen typeargs RightParen = type SEMI maybedecls) `((typedef ,$2 ,$4 ,$7) ,@$9)]
 
 	   ;; TAGGED UNION:
+	   ;; Haven't decided whether one or both of these terms is required:
 	   ;; Only one typevar for now:
 	   [(typedef union VAR = unioncases SEMI maybedecls)         `((uniondef (,$3)     . ,$5) . ,$7)]
 	   [(typedef union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
@@ -333,7 +335,14 @@
 	   [(union VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
 	   [(union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
 
+	   ;; Foreign function interface:
+;           [(foreign VAR        :: type = STRING in STRING SEMI maybedecls)  `((foreign ,$2 ,$4 ,$6 ,$8) ,@$10)]
+;           [(foreign_box VAR    :: type = STRING in STRING SEMI maybedecls)  `((foreign_box ,$2 ,$4 ,$6 ,$8) ,@$10)]
+;           [(foreign_source VAR :: type = STRING in STRING SEMI maybedecls)  `((foreign_source ,$2 ,$4 ,$6 ,$8) ,@$10)]
+
+
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]
+           [(VAR :: type = exp optionalsemi maybedecls) `((define ,$1 (assert-type ,$3 ,$5)) ,@$7)]
            [(VAR = exp optionalsemi maybedecls) `((define ,$1 ,$3) ,@$5)]
            [(let pattern = exp optionalsemi maybedecls) `((define ,$2 ,$4) ,@$6)]
            [(let pattern :: type = exp optionalsemi maybedecls) `((define ,$2 (assert-type ,$4 ,$6)) . ,$8)]
@@ -408,8 +417,8 @@
            [(let VAR AS pattern = exp SEMI stmts) `((let-as (,$2 ,(vector->list $4) ,$6) ,(make-begin $8)))]
            [(VAR AS pattern = exp SEMI stmts) `((let-as (,$1 ,(vector->list $3) ,$5) ,(make-begin $7)))]
 
+           [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 (assert-type ,$3 ,$5)]) ,(make-begin $7)))]
            [(let pattern :: type = exp SEMI stmts) `((letrec ([,$2 (assert-type ,$4 ,$6)]) ,(make-begin $8)))]
-           [(VAR :: type = exp SEMI stmts) `((letrec ([,$1 ,$3 ,$5]) ,(make-begin $7)))]
 
 	   [(using VAR SEMI stmts) `((using ,$2 ,(make-begin $4)))]
 	   
@@ -488,10 +497,7 @@
 
     (notlist
          [(NUM) `',$1]
-         [(VAR) 
-	  ;(wrap $1-start-pos $1)
-	  $1
-	  ]
+         [(VAR)  $1]
          [(CHAR) $1]
          [(STRING) $1]
          [(true) ''#t] 
@@ -506,6 +512,10 @@
 	 
 	 ;; Deconstructing sum types with pattern matching:
 	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2)]
+
+	 ;; Importing foreign functions (better be in assert-type)
+	 [(foreign STRING in STRING)  `(foreign ,$2 ,$4)]	 
+
          
 ;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]
          [(VAR LeftSqrBrk LeftSqrBrk exp RightSqrBrk RightSqrBrk) `(seg-get ,$1 ,$4)]

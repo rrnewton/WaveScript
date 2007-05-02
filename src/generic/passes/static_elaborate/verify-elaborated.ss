@@ -96,6 +96,13 @@
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
 
 
+	 [(,foreign ',name ',file)
+	  (guard (memq foreign '(foreign foreign_box foreign_source)))
+	  (unless (and (string? name) (string? file))
+	    (error 'verify-regiment "\"~s\" construct can only be used with strings, not: ~s and ~s" 
+		   foreign name file))
+	  `(,foreign ',name ',file)]
+
 	 ;; Run verification on the types:
 	 [,form (guard (binding-form? form))
 		(for-each (lambda (t)

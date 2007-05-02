@@ -21,10 +21,11 @@
   ;; This is a bit of a hack... really should split rename-var into
   ;; two separate passes for the two places it's used.
   (define rename-vars-grammar
-    (cons 
+    (list*
      ;; This is really compiler-internal.  Introduced after static-elaborate.
      ;; Including here only because rename-vars is used in multiple places.
      '[Expr ('unionN Expr ...)]
+     '[Expr ('foreign-app Var Expr ...)]
      ws-label-mutable-grammar))
 
   ;; [2006.10.07] Rewrote to use generic-traverse.

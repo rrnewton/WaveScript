@@ -75,9 +75,10 @@
        )))
 ;; TEMPORARY:
 (define static-elaborate-grammar
-  (cons 
+  (list* 
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
+   '[Expr ('foreign-app Var Expr ...)]
    (filter (lambda (prod)
 	     (match prod
 	       ;; And we should not have unionList.
@@ -345,8 +346,9 @@
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
 
 	  [(,app ,[rator] ,[rands] ...) 
-	   (guard (memq app '(app construct-data)))
+	   (guard (memq app '(app construct-data foreign-app)))
 	   (+ rator (apply + rands))]
+
           [,unmatched
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
 
@@ -493,8 +495,18 @@
 			   ;; Should we have to go deeper here to make
 			   ;; sure they're fully available???
 			   [,sv (guard (stream-val? sv)) #t]
-
+			   
 			   [,else #f])))]
+
+		  [foreign-fun? 
+		   (lambda (x)
+		     (match x 
+		       [,var (guard (symbol? var) (not (memq var mutable-vars)))
+			     (let ((entry (assq var env)))
+			       (and entry (foreign-fun? (cadr entry))))]
+		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
+		       [(foreign ,name ,file) #t]
+		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
 		 [container-available? 
@@ -819,6 +831,8 @@
 				       hashtable
 				       m_invert
 				       Mutable:ref deref
+
+				       foreign foreign_box foreign_source
 				       )))
 		)
 	       (do-prim prim (map getval rand*) env)
@@ -826,6 +840,14 @@
 
 	  ;; TODO: Need to be able to evaluate this into a "value".
 	  [(consstruct-data ,tc ,[rand]) `(construct-data ,tc ,rand)]
+
+	  ;; Foreign function application:
+	  [(app ,rator ,[rands] ...)
+	   (guard (foreign-fun? rator))
+	   `(foreign-app ,rator ,@rands)]
+	  ;; If you dish it out, you have to take it:
+	  [(foreign-app ,rator ,[rands] ...)
+	   `(foreign-app ,rator ,@rands)]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we
 	  ;; don't get any accidental variable capture:

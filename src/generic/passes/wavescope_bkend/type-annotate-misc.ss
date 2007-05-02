@@ -15,8 +15,9 @@
     ;; Add symbols to the literal grammar (for dataFile)
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
-	      (Const ComplexConst))
-	  (filter (lambda (x) (not (eq? (car x) 'Const)))
+	      (Const ComplexConst)
+	      (ComplexConst ('__foreign Const Const ComplexDatum)))
+	  (filter (lambda (x) (not (memq (car x) '(Const))))
 	    ws-lift-let-grammar)))
 
 ;; Adds types to various primitives for code generation.
@@ -78,12 +79,16 @@
 	 (let ([exp `(,annprim . ,e*)])
 	   (assert-type ,(recover-type exp tenv)
 			,exp))]
-
+	
 	;; This needs to explicitly pass the types as argument to run with wsint.
 	[(assert-type (Stream ,t) (dataFile ,[f] ,[m] ,[rate] ,[rep]))
 	 (let ([types (match t [#(,t* ...)  t*]  [,t   	(list t)])])
 	   `(__readFile ,f ,m ,rep ,rate '0 '0 '0 ',types)
 	   )]
+
+	;; This needs the type tagged on also:
+	[(assert-type ,T (foreign ,[name] ,[file]))
+	 `(assert-type ,T (__foreign ,name ,file ',T))]
 		
 	;; Move this to another file:
 	[(assert-type (Stream ,t) (readFile ,[fn] ',str))

@@ -241,9 +241,11 @@
 
         ;; I keep disjoint options for the modes so I use the same option-processor for all modes (loop)
 	(let ([symargs (map string->symbol args)])
+
 	  ;; [2007.01.29] Killing this:
 	  ;(unless (null? (cdr symargs)) (printf "Processing options: ~s\n" (cdr symargs)))
 	  (let ([mode (car symargs)] [filenames (loop (cdr symargs))])
+
 	;; AFTER, those options are processed we switch on the mode flag.
 	(case mode
 	  ;; Unit Test mode:
@@ -447,6 +449,8 @@
 			  ;; If there's no file given read from stdin
 			  [() (console-input-port)]
 			  [(,fn ,rest ...) 
+			   (unless (null? rest)
+			     (error 'wsint "bad filename(s) or flag(s): ~s" rest))
 			   ;; If it's a ws file we need to parse the file:
 			   (if (equal? "ws" (extract-file-extension fn))
 			       (or (read-wavescript-source-file fn)

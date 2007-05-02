@@ -632,7 +632,7 @@
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
-       (guard (memq app '(app construct-data)))
+       (guard (memq app '(app foreign-app construct-data)))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (,app ,rator ,@rand*))
@@ -647,7 +647,7 @@
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
 
       [(,app ,origrat ,[l -> rand* t*] ...)
-       (guard (memq app '(app construct-data)))
+       (guard (memq app '(app foreign-app construct-data)))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
@@ -855,6 +855,7 @@
      (guard (memq letrec '(letrec lazy-letrec)))
      `(,letrec ,(map list id* t* rhs*) ,bod)]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,@rand*)]
+    [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,@rand*)]
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
      `(,prim ,@rand*)]
@@ -888,6 +889,7 @@
     [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
      (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [(app ,[rat] ,[rand*] ...)                                (void)]
+    [(foreign-app ,[rat] ,[rand*] ...)                        (void)]
     [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
     [,c (guard (simple-constant? c))                                 (void)]
@@ -924,7 +926,8 @@
     [(src-pos     ,p ,[e]) e]
 
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
-    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]
+    [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,rand* ...)]
+    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]    
     
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
@@ -1380,7 +1383,7 @@
        [(unionN ,[args] ...) (apply append args)]
 
        [(lambda ,v* ,t* ,[bodls])   bodls]
-       [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app construct-data)))
+       [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
 	(apply append rat rand*)]
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 	

@@ -186,6 +186,7 @@
 		   [#(,t* ...) (for-each Type t*)]
 		   [,t (Type t)])
 		 `(assert-type (Stream ,t)  `(dataFile ,file ,mode ,repeats)))]
+	  
 	  	 
           [(,prim ,[rand*] ...)
            (guard (not (memq prim env))

@@ -38,22 +38,24 @@
 	      (ComplexConst ('quote ComplexDatum))
 	      ;; This is kind of lame:
 	      (ComplexConst ('cons ComplexConst ComplexConst))
+	      (ComplexConst ('foreign Const Const))
 	      (ComplexConst Var)
 
 	      (ComplexDatum ,atom?)
 	      (ComplexDatum (ComplexDatum ...))
 
 	      (Query ComplexConst)
-	      (Value ComplexConst)
 
 	      (Value Var) 
 	      (Value Const)
 	      (Value ('tuple Simple ...))
 	      (Value ('tupref Int Int Simple))
-	      (Value (Prim Simple ...))
 	      (Value ('if Simple Block Block))
+	      (Value (Prim Simple ...))
+	      (Value ('foreign-app Var Simple ...))
 
 	      (Value 'BOTTOM)
+	      (Value ComplexConst)
 
 	      (Block Simple)
 	      (Block ('let ((LHS Type Value) ...) Block))

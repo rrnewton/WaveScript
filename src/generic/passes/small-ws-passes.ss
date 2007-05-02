@@ -23,6 +23,8 @@
   (chezimports)
   (require-for-syntax "../../plt/common.ss")
 
+;; [2007.05.01] This pulls complex constants up to the top of the program.
+;(define-pass lift-complex-constants)
 
 ;; Simply transforms letrec into lazy-letrec.
 (define-pass introduce-lazy-letrec
