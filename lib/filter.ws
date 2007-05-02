@@ -17,7 +17,7 @@ fun fft_filter(s, filter) {
     emit(toSigseg(ifftC2R(f),0,nulltimebase)); 
   };
 
-  td = zip2_sametype(gnuplot_sigseg_stream(myhanning(tdwin)), rw);
+  td = zip2_sametype(gnuplot_sigseg_stream(hanning(tdwin)), rw);
   
   iterate((f, orig) in td) {
     state { arr = null }
