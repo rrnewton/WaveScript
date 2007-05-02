@@ -624,7 +624,7 @@
        (annotate-letrec id* (extract-optional optional) rhs* bod tenv nongeneric letrec)]
 
 
-      ;; DUPLICATING! these two cases to give good error messages for badly typed apps:
+      ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
        (guard (regiment-primitive? prim)
 	      (not (memq prim '(tuple unionN))))
@@ -637,6 +637,13 @@
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (,app ,rator ,@rand*))
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
+#;
+      [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+      ;; END DUPLICATING!!!
      
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
@@ -652,6 +659,13 @@
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
+#;
+      [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+
 
 
       ;; Incorporate type assertions.
@@ -840,25 +854,37 @@
     [,prim (guard (symbol? prim) (regiment-primitive? prim))  prim]
     [(assert-type ,[export-type -> t] ,[e]) `(assert-type ,t ,e)]
     [(src-pos ,p ,[e]) `(src-pos ,p ,e)]
-    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
+
+
+#;
+    ;; All these simple cases just recur on all arguments:
+    [(,simplekwd ,[args] ...)
+     (guard (or (memq simplekwd '(if tuple unionN begin while app foreign-app construct-data))
+		(regiment-primitive? simplekwd)))
+     `(,simplekwd ,@[args])]
+
+    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(tuple ,[e*] ...) `(tuple ,@e*)]
-    [(tupref ,n ,[e]) `(tupref ,n ,e)]
     [(unionN ,[e*] ...) `(unionN ,@e*)]
-    [(set! ,v ,[e]) `(set! ,v ,e)]
     [(begin ,[e] ...) `(begin ,@e)]
-    [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
     [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
-    [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
-     `(let ,(map list id* t* rhs*) ,bod)]
-    [(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
-     (guard (memq letrec '(letrec lazy-letrec)))
-     `(,letrec ,(map list id* t* rhs*) ,bod)]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,@rand*)]
     [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,@rand*)]
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
      `(,prim ,@rand*)]
+
+
+    [(tupref ,n ,[e]) `(tupref ,n ,e)]
+    [(set! ,v ,[e]) `(set! ,v ,e)]
+    [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
+    [(let ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
+     `(let ,(map list id* t* rhs*) ,bod)]
+    [(,letrec ([,id* ,[export-type -> t*] ,[rhs*]] ...) ,[bod])
+     (guard (memq letrec '(letrec lazy-letrec)))
+     `(,letrec ,(map list id* t* rhs*) ,bod)]
+
     [,c (guard (simple-constant? c)) c]
     ;; HACK HACK HACK: Fix this:
     ;; We cheat for nums, vars, prims: 
@@ -876,22 +902,32 @@
     ;; The type occurring here isn't instantiated (thus doesn't contain late unifies)
     [(assert-type ,t ,[e])                                    (void)]
     [(src-pos ,t ,[e])                                        (void)]
-    [(if ,[t] ,[c] ,[a])                                      (void)]
     [(lambda ,v* (,[do-late-unify! -> t*] ...) ,[bod])         (void)]
-    [(tuple ,[e*] ...)                                        (void)]
     [(tupref ,n ,[e])                                         (void)]
-    [(unionN ,[e*] ...)                                       (void)]
     [(set! ,v ,[e])                                           (void)]
+
+    ;; All these simple cases just recur on all arguments:
+#;
+    [(,simplekwd ,[args] ...)
+     (guard (or (memq simplekwd '(if tuple unionN begin while app foreign-app construct-data))
+		(regiment-primitive? simplekwd)))
+     (void)]
+
+
+    [(if ,[t] ,[c] ,[a])                                      (void)]
+    [(tuple ,[e*] ...)                                        (void)]
+    [(unionN ,[e*] ...)                                       (void)]
     [(begin ,[e] ...)                                         (void)]
-    [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
     [(while ,[tst] ,[bod])                                    (void)]
-    [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
-    [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
-     (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [(app ,[rat] ,[rand*] ...)                                (void)]
     [(foreign-app ,[rat] ,[rand*] ...)                        (void)]
     [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
+
+    [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
+    [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
+    [(,letrec ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod])
+     (guard (memq letrec '(letrec lazy-letrec)))              (void)]
     [,c (guard (simple-constant? c))                                 (void)]
     ))
 
@@ -1373,18 +1409,23 @@
        [(assert-type ,t ,[e]) e]
        [(src-pos     ,p ,[e]) e]
        [(set! ,v ,[e]) e]
-       [(begin ,[e*] ...) (apply append e*)]
        [(for (,i ,[s] ,[e]) ,[bodls]) (cons `[type ,i Int ()] (append s e bodls))]
-       [(while ,[tstls] ,[bodls]) (append tstls bodls)]
+       [(tupref ,n ,m ,[x]) x]
+       [(lambda ,v* ,t* ,[bodls])   bodls]
 
+
+       [(begin ,[e*] ...) (apply append e*)]
+       [(while ,[tstls] ,[bodls]) (append tstls bodls)]
        [(if ,[t] ,[c] ,[a]) (append t c a)]
        [(tuple ,[args] ...) (apply append args)]
-       [(tupref ,n ,m ,[x]) x]
        [(unionN ,[args] ...) (apply append args)]
-
-       [(lambda ,v* ,t* ,[bodls])   bodls]
        [(,app ,[rat] ,[rand*] ...) (guard (memq app '(app foreign-app construct-data)))
 	(apply append rat rand*)]
+       ;; This one case brings us from 0 to 30 ms:
+       [(,prim ,[rand*] ...)
+	 (guard (regiment-primitive? prim))
+	 (apply append rand*)]
+
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 	
 	(guard (memq let '(let letrec lazy-letrec)))
@@ -1393,12 +1434,6 @@
 			      `([type ,id ,t ,rhsls]))
 			 id* t* rhs*))
 		bod)]
-
-       ;; This one case brings us from 0 to 30 ms:
-       [(,prim ,[rand*] ...)
-	 (guard (regiment-primitive? prim))
-	 (apply append rand*)]
-       
        [,other (error 'print-var-types "bad expression: ~a" other)]))
 
    

@@ -89,6 +89,11 @@
 	;; This needs the type tagged on also:
 	[(assert-type ,T (foreign ,[name] ,[file]))
 	 `(assert-type ,T (__foreign ,name ,file ',T))]
+	;; Tag the applications too:
+	[(foreign-app ,rator ,[arg*] ...)
+	 (ASSERT symbol? rator)
+	 `(foreign-app (assert-type ,(recover-type rator tenv) ,rator)
+		       ,@arg*)]
 		
 	;; Move this to another file:
 	[(assert-type (Stream ,t) (readFile ,[fn] ',str))

@@ -54,8 +54,10 @@ abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 # Clean first:
 rm -f "$OUTFILE"
 
+if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
+
 export REGIMENT_OR_WAVESCRIPT=WS
-if regiment wscomp $abspath $REGPASSTHRU ;
+if "$REGIMENTEXEC" wscomp $abspath $REGPASSTHRU ;
 then echo
 else #rm -f $TMP; 
     echo Compilation aborted: \"regiment wscomp\" exited with error code.

@@ -562,7 +562,7 @@
 	'replace))))
 
   (define compiled (let ([x (run-ws-compiler typed #t)])
-		     (unless (regiment-quiet) (printf "Compilation completed.\n"))
+		     (unless (regiment-quiet) (printf "WaveScript compilation completed.\n"))
 		     (parameterize-IFCHEZ ([pretty-line-length 150]
 					   [pretty-one-line-limit 100]
 					   [print-level #f]

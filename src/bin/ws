@@ -24,10 +24,12 @@ fi
 #regiment wsint $TMP ${1+"$@"}; 
 #rm -f $TMP
 
+if [ "$REGIMENTEXEC" == "" ]; then REGIMENTEXEC=regiment; fi
+
 D=`dirname "$1"`
 B=`basename "$1"`
 abspath="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
 shift
 
 (export REGIMENT_OR_WAVESCRIPT=WS;
- regiment wsint $abspath ${1+"$@"};)
+ "$REGIMENTEXEC" wsint $abspath ${1+"$@"};)

@@ -107,6 +107,16 @@
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
+(trace-define (ForeignTypeConvert ty txt)
+  (match ty
+    ;; For these types we just put in a cast:
+    [,t (guard (memq t '(Int Float))) 
+	`("((",(Type t)")" ,txt ")")]
+    [,oth (error 'emit-c:ForeignTypeConvert 
+		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
+    )
+  )
+
 ;======================================================================
 
 ;; This is the only entry point to the file.  A complete query can
@@ -655,6 +665,16 @@
 	[(app ,rator ,[Simple -> rand*] ...)
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
+
+	[(foreign-app (assert-type ,type ,rator) ,[Simple -> rand*] ...)
+	 (ASSERT (symbol? rator))
+	 (match type
+	   [(,argty* ... -> ,result)
+(inspect 	    (ForeignTypeConvert result 
+	      `(,(Var rator) "(" ,@(insert-between ", " 
+                  (map ForeignTypeConvert argty* rand*)) ")")))
+	    ])]
+
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
 

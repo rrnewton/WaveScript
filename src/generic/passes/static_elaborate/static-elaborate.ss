@@ -844,10 +844,13 @@
 	  ;; Foreign function application:
 	  [(app ,rator ,[rands] ...)
 	   (guard (foreign-fun? rator))
-	   `(foreign-app ,rator ,@rands)]
+	   (mvlet ([(name file) (get-foreign-fun rator)])	     
+	     `(foreign-app ',name ,rator ,@rands))]
 	  ;; If you dish it out, you have to take it:
-	  [(foreign-app ,rator ,[rands] ...)
-	   `(foreign-app ,rator ,@rands)]
+	  [(foreign-app ',realname ,rator ,[rands] ...)
+	   (ASSERT string? realname)
+	   (ASSERT symbol? rator)
+	   `(foreign-app ',realname ,rator ,@rands)]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we
 	  ;; don't get any accidental variable capture:

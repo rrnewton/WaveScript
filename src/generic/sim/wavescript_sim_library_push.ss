@@ -1237,6 +1237,7 @@
 
 ;; This provides access to C-functions:
 (IFCHEZ
+ ;; NOTE: This isn't working on 64-bit justice.
  (define __foreign
   ;; TODO: KEEP TABLE OF LOADED FILES!!!
   (let ()
@@ -1259,10 +1260,15 @@
 	  ;; This is really stretching it.  Attempt to compile the file.
 	  (when (file-exists? (string-append file ".so"))
 	    (delete-file (string-append file ".so")))
-	  (case (machine-type)
-	    [(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
-	    [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
-	    [else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
+	  (printf "Attempting to compile ~s." file)
+	  (let ([code (case (machine-type)
+			[(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
+			[(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
+			[else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
+			)])
+	    ;; This is actually not guaranteed to work by the chez spec:
+	    (unless (zero? code)
+	      (error 'foreign "C compiler returned error code ~s." code))
 	    )
 	  (set! sharedobject (string-append file ".so"))
 	  ]
@@ -1276,7 +1282,7 @@
 	  [(,[Convert -> args] ... -> ,[Convert -> ret])
 	   (eval `(foreign-procedure ,name ,args ,ret))])
 	))))
- (define foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
+ (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
 
 
