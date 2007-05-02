@@ -31,6 +31,20 @@
 ;;                       <WaveScript C generation>
 ;======================================================================
 
+;; MUTABLE BINDINGS:
+;; Typical problem -- I don't want to thread these through all relevant functions.
+;; These are mutated during the compilation of the program.
+
+(define include-files 'include-files-uninit)
+(define link-files 'link-files-uninit)
+
+(define (add-include! fn)
+  (unless (member fn include-files)
+    (set! include-files (cons fn include-files))))
+(define (add-link! fn)
+  (unless (member fn link-files)
+    (set! link-files (cons fn link-files))))
+
 ;; Should I use this sort of name mangling?  The numbers from unique
 ;; names will keep things unique...  Currently no, we just enforce
 ;; C-names from the start for WaveScript.
@@ -110,7 +124,7 @@
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
-(trace-define (ForeignTypeConvert ty txt)
+(define (ForeignTypeConvert ty txt)
   (match ty
     ;; For these types we just put in a cast:
     [,t (guard (memq t '(Int Float))) 
@@ -159,11 +173,10 @@
 	[(__foreign ',cname ',file ',ty)
 	 (match ty
 	   [(,argty* ... -> ,retty)	
+	    ;; Add to global list of includes if it's not already there.
+	    (add-include! file)
 	    (let ([ty (Type ty)])
-	      (values `(,ty " ",name" = (",ty")0;\n") 
-		      (list (list "#include \"" file "\"\n"))
-		      ()))])
-	 ]
+	      (values `(,ty " ",name" = (",ty")0;\n") ()()))])]
 	[(__foreign . ,_)
 	 (error 'emit-c:Query "unhandled form: ~s" `(__foreign ,@_))]
 
@@ -916,9 +929,15 @@
   ;============================================================
   ;; Main body:
   ;; Here we stitch together the file out of its composit bits.
-  (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
+  (fluid-let ([include-files ()]
+	      [link-files    ()])
+    (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
     (define header
       (list (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
+	    "\n\n"
+	    (map (lambda (fn) `("#include \"",fn"\"")) include-files)
+	    "\n\n"
+	    (file->string (++ (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
             (file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
@@ -928,11 +947,10 @@
     (newline)(display (text->string wsq))(newline)(newline)
     ;(break)
 
-
     (if static-linkage 
         (snoc (build-main body) header)
         (vector header wsq))
-    )
+    ))
 #;    
   (if static-linkage querycode
       (vector querycode (build-wsq "toplevel" expr "query.so")))

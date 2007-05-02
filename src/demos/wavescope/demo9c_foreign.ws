@@ -1,21 +1,14 @@
 
 
 
-//foreign foo :: int -> int = "foo" in "foo.a";
-
-//foreign foo :: int -> int = "foo" in "foo.a";
-//foo :: Int -> Int = foreign "foo" in "foo.so"
-foo :: Int -> Int = foreign "foo" in "foo.c"
-
-//foo :: (int -> int) = bar;
-//foo :: Int = 3
-//bar :: Int = 4
+foo1 :: Int -> Int = foreign "foo" in "foo.c"
+foo2 :: Int -> Int = foreign "foo" in "foo.c"
 
 
-//foreign_box far :: (int -> int) = "far_box" in "foo.c";
-//foreign_source bar :: (int -> int) = "bar_src" in "foo.c";
+//box = (foreign_box    "bar_box" in "foo.c" :: Stream Int -> Stream Int);
+//src = (foreign_source "bar_src" in "foo.c" :: Stream Int);
 
 
-BASE <- iterate _ in timer(30.0) { emit foo(3) }
 
+BASE <- iterate _ in timer(30.0) { emit foo2( foo1(3)) }
 

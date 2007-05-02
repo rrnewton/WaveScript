@@ -252,6 +252,9 @@
 (font-lock-add-keywords 'c-mode '(("\\<\\(then\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(emit\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(fun\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(foreign\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(foreign_box\\)" 1 font-lock-keyword-face t)))
+(font-lock-add-keywords 'c-mode '(("\\<\\(foreign_source\\)" 1 font-lock-keyword-face t)))
 
 (font-lock-add-keywords 'c-mode '(("\\<\\(smap\\)" 1 font-lock-keyword-face t)))
 (font-lock-add-keywords 'c-mode '(("\\<\\(stream_map\\)" 1 font-lock-keyword-face t)))
