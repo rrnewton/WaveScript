@@ -666,7 +666,7 @@
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
 
-	[(foreign-app (assert-type ,type ,rator) ,[Simple -> rand*] ...)
+	[(foreign-app ',realname (assert-type ,type ,rator) ,[Simple -> rand*] ...)
 	 (ASSERT (symbol? rator))
 	 (match type
 	   [(,argty* ... -> ,result)

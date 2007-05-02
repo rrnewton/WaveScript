@@ -52,7 +52,7 @@
 	      (Value ('tupref Int Int Simple))
 	      (Value ('if Simple Block Block))
 	      (Value (Prim Simple ...))
-	      (Value ('foreign-app Var Simple ...))
+	      (Value ('foreign-app Const Var Simple ...))
 
 	      (Value 'BOTTOM)
 	      (Value ComplexConst)

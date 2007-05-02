@@ -688,7 +688,7 @@
       [(_ f args ...) (f args ...)]))
   (define-syntax foreign-app
     (syntax-rules ()
-      [(_ f args ...) (f args ...)]))
+      [(_ realname f args ...) (f args ...)]))
 
   (define-syntax assert-type
     (syntax-rules ()

@@ -25,7 +25,7 @@
      ;; This is really compiler-internal.  Introduced after static-elaborate.
      ;; Including here only because rename-vars is used in multiple places.
      '[Expr ('unionN Expr ...)]
-     '[Expr ('foreign-app Var Expr ...)]
+     '[Expr ('foreign-app Const Var Expr ...)]
      ws-label-mutable-grammar))
 
   ;; [2006.10.07] Rewrote to use generic-traverse.

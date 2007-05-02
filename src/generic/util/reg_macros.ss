@@ -101,7 +101,7 @@
   (syntax-rules ()
     [(_ x arg* ...)  (let ([y x]) (or (eq? y arg*) ...))]))
 ;; Turn this one (memq version) on to compare:
-;(define-syntax eq-any? (syntax-rules () [(_ x arg* ...) (memq x '(arg* ...))]))
+;(define-syntax eq-any? (syntax-rules () [(_ x arg* ...) (memq x (list arg* ...))]))
 
 ;; Repeatedly execute an expression some number of times:
 (define-syntax rep

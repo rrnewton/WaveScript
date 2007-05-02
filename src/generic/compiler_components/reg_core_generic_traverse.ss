@@ -284,8 +284,8 @@
 	   (fuse (cons rator rands) (lambda (x . ls)`(app ,x ,@ls)))]
 	  [(construct-data ,tc ,[loop -> rand]) 
 	   (fuse (list rand) (lambda (r) `(construct-data ,tc ,r)))]
-	  [(foreign-app ,[loop -> rator] ,[loop -> rands] ...)
-	   (fuse (cons rator rands) (lambda (x . ls) `(foreign-app ,x ,@ls)))]
+	  [(foreign-app ',realname ,[loop -> rator] ,[loop -> rands] ...)
+	   (fuse (cons rator rands) (lambda (x . ls) `(foreign-app ',realname ,x ,@ls)))]
 
 	  [(,annot ,t ,[loop -> e])
 	   (guard (memq annot '(assert-type src-pos)))

@@ -615,7 +615,6 @@
       [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
        (annotate-letrec id* (extract-optional optional) rhs* bod tenv nongeneric letrec)]
 
-
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
        (guard (regiment-primitive? prim)
@@ -624,42 +623,26 @@
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
-       (guard (memq app '(app foreign-app construct-data)))
+       (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (,app ,rator ,@rand*))
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
-#;
-      [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
-       (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
-	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
 
-
+      ;; These cases are still around in case there's no source-info.
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
-     
-      ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
-
-      ;; These cases are still around in case there's no source-info.
       [(,app ,origrat ,[l -> rand* t*] ...)
-       (guard (memq app '(app foreign-app construct-data)))
+       (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
-#;
-      [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
-       (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
-	 (values `(foreign-app ',realname ,rator ,@rand*)
-		 (type-app origrat t1 t* exp tenv nongeneric)))]
-
+     
       ;; Incorporate type assertions.
       ;; ----------------------------------------
 
@@ -680,8 +663,22 @@
 	 (values `(assert-type ,ty ,e)
 		 et))]
 
-      [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
       ;; ----------------------------------------
+
+      ;; Foreign applications.  Same problem with code duplication:
+#;
+      [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+      [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
+       (DEBUGASSERT (andmap type? t*))
+       (mvlet ([(rator t1) (l origrat)])
+	 (values `(foreign-app ',realname ,rator ,@rand*)
+		 (type-app origrat t1 t* exp tenv nongeneric)))]
+
+      [(src-pos ,p ,[l -> e et]) (values `(src-pos ,p ,e) et)]
 
       ;; Allowing unlabeled applications for now:
       [(,rat ,rand* ...) (guard (not (regiment-keyword? rat)))
@@ -689,6 +686,7 @@
        (l `(app ,rat ,@rand*))]
 
       [,c (guard (simple-constant? c)) (values c (type-const c))]            
+
       [,other (error 'annotate-expression "could not type, unrecognized expression: ~s" other)]
       ))]) ;; End main-loop "l"    
 
@@ -848,24 +846,11 @@
     [(src-pos ,p ,[e]) `(src-pos ,p ,e)]
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
 
-
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
-#|
-    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-    [(tuple ,[e*] ...) `(tuple ,@e*)]
-    [(unionN ,[e*] ...) `(unionN ,@e*)]
-    [(begin ,[e] ...) `(begin ,@e)]
-    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
-    [(app ,[rat] ,[rand*] ...) `(app ,rat ,@rand*)]
-    [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,@rand*)]
-    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
-    [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
-     `(,prim ,@rand*)]
-|#
 
     [(tupref ,n ,[e]) `(tupref ,n ,e)]
     [(set! ,v ,[e]) `(set! ,v ,e)]
@@ -903,17 +888,6 @@
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      (void)]
-#|
-    [(if ,[t] ,[c] ,[a])                                      (void)]
-    [(tuple ,[e*] ...)                                        (void)]
-    [(unionN ,[e*] ...)                                       (void)]
-    [(begin ,[e] ...)                                         (void)]
-    [(while ,[tst] ,[bod])                                    (void)]
-    [(app ,[rat] ,[rand*] ...)                                (void)]
-    [(foreign-app ,[rat] ,[rand*] ...)                        (void)]
-    [(construct-data ,[rat] ,[rand*] ...)                     (void)]
-    [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
-|#
 
     [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
     [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
@@ -950,19 +924,7 @@
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
-#|
-    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
-    [(begin ,[e] ...) `(begin ,e ...)]
-    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
-    [(unionN ,[args] ...) `(unionN ,args ...)]
-    [(tuple ,[args] ...) `(tuple ,args ...)]
-    [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
-    [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,rand* ...)]
-    [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]    
-    [(,prim ,[rand*] ...)
-     (guard (regiment-primitive? prim))
-     `(,prim ,rand* ...)]
-|#    
+
     [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-types "bad expression: ~a" other)]
     ))

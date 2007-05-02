@@ -78,7 +78,7 @@
   (list* 
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
-   '[Expr ('foreign-app Var Expr ...)]
+   '[Expr ('foreign-app Const Var Expr ...)]
    (filter (lambda (prod)
 	     (match prod
 	       ;; And we should not have unionList.
@@ -346,8 +346,9 @@
           [(iterate ,(fun) ,(bod)) (+ fun bod)]
 
 	  [(,app ,[rator] ,[rands] ...) 
-	   (guard (memq app '(app construct-data foreign-app)))
+	   (guard (eq-any? app 'app 'construct-data))
 	   (+ rator (apply + rands))]
+	  [(foreign-app ',realname ,[arg*] ...)	 (apply + arg*)]
 
           [,unmatched
             (error 'static-elaborate:count-refs "unhandled syntax ~s" unmatched)])))
@@ -505,7 +506,7 @@
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-		       [(foreign ,name ,file)  name]
+		       [(foreign ',name ',file)  name]
 		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -753,10 +754,8 @@
 		     `(quote ,(cdr val))))
 	       `(cdr ,x))]
 	  [(List:length ,[x])
-;	   (inspect `(LEN ,x ,env))
 	   (if (container-available? x)
 	       (let ([ls (getlist x)])
-;		 (inspect `(lenavail ,ls ,env))
 		 (if (list? ls)
 		     `(quote ,(length ls))
 		     `(List:length ,x)

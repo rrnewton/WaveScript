@@ -2,8 +2,6 @@
 ;; This adds some extra type annotations that we will need when generating code.
 ;; (After nominalize-types we can no longer use recover-type.)
 
-;; NOTE: This is now [2007.05.02] doing some double duty.  We also maintain.
-
 (module type-annotate-misc mzscheme 
   (require  "../../../plt/common.ss" 
 	    "../normalize_query/ws-lift-let.ss")
@@ -18,8 +16,14 @@
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
-	      (ComplexConst ('__foreign Const Const ComplexDatum)))
-	  (filter (lambda (x) (not (memq (car x) '(Const))))
+	      (ComplexConst ('__foreign Const Const ComplexDatum))
+	      (Value ('foreign-app Const ('assert-type Type Var) Simple ...))
+	      )
+	  (filter (lambda (x) 
+		    (match x
+		      [(Const . ,_) #f]
+		      [(,prod ('foreign-app . ,_)) #f]
+		      [,else #t]))
 	    ws-lift-let-grammar)))
 
 ;; Adds types to various primitives for code generation.
@@ -92,9 +96,10 @@
 	[(assert-type ,T (foreign ,[name] ,[file]))
 	 `(assert-type ,T (__foreign ,name ,file ',T))]
 	;; Tag the applications too:
-	[(foreign-app ,rator ,[arg*] ...)
+	[(foreign-app ',realname ,rator ,[arg*] ...)
 	 (ASSERT symbol? rator)
-	 `(foreign-app (assert-type ,(recover-type rator tenv) ,rator)
+	 `(foreign-app ',realname
+		       (assert-type ,(recover-type rator tenv) ,rator)
 		       ,@arg*)]
 		
 	;; Move this to another file:
