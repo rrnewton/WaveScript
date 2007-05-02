@@ -1407,11 +1407,14 @@
        [(tupref ,n ,m ,[x]) x]
        [(lambda ,v* ,t* ,[bodls])   bodls]
 
+;;; WEIRD: this specific case seems to slow things down!
+;;; But WHY?  print-var-types is run once!
+#;
        [(,simplekwd ,[args] ...)
 	(guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		   (regiment-primitive? simplekwd)))
 	(apply append args)]
-#|
+
        [(begin ,[e*] ...) (apply append e*)]
        [(while ,[tstls] ,[bodls]) (append tstls bodls)]
        [(if ,[t] ,[c] ,[a]) (append t c a)]
@@ -1423,7 +1426,7 @@
        [(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
 	 (apply append rand*)]
-|#
+
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 	
 	(guard (memq let '(let letrec lazy-letrec)))
