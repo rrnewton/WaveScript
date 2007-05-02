@@ -934,9 +934,21 @@
   (fluid-let ([include-files ()]
 	      [link-files    ()])
     (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
+    (define (extract-lib-name fn)
+      (let ([ext (extract-file-extension fn)]
+	    [base (remove-file-extension fn)])
+	(and (equal? ext "so")
+	     (> (string-length base) 3)
+	     (equal? "lib" (substring base 0 3))
+	     (substring base 3 (string-length base))
+	     )))
     (define header
-      
-      (list "//WSLIBDEPS: \n"
+      (list "//WSLIBDEPS: "
+	    (map (lambda (fn) 
+		   (let ([lib (extract-lib-name fn)])
+		     (if lib (list " -l" lib) fn)))
+	      link-files)
+	    "\n"
             (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
 	    (file->string (++ (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
 	    
@@ -1077,6 +1089,9 @@
        ;; Alternatively, we could inline the whole file right here.
        (add-include! (list "\"" (REGIMENTD)
 		     "/src/linked_lib/GSL_wrappers.cpp\""))
+       (add-link! "libm.so")
+       (add-link! "libgsl.so")
+       (add-link! "libgslcblas.so")
        (mangle var)]
 
       ;; These use FFTW
@@ -1084,6 +1099,7 @@
        (add-include! "<fftw3.h>")
        (add-include! (list "\"" (REGIMENTD) 
 			   "/src/linked_lib/FFTW_wrappers.cpp\""))
+       (add-link! "libfftw3f.so")
        (mangle var)]
 
       ;; This is the "default"; find it in WSPrim:: class

@@ -37,13 +37,29 @@ while [ $# != 0 ];  do
 done;
 
 
+# Now pull extra libraries to link from the first line of the file:
+FIRST=`head -n1 "$FILE.cpp"`
+
+MATCH=`echo $FIRST | grep "^//WSLIBDEPS:"`
+
 # -fPIC | -O1/2/3 | -g
 WS_FLAGS="-fPIC -pg $CCARGS"
 
 WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function"
 WS_INCLUDES="-I$WAVESCOPED/include "
 WS_MACROS="-DSegList -DuseArray "
-WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
+#WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
+WS_LINK=" -lpthread "
+
+
+if [ "$MATCH" != "" ];
+then 
+   EXTRALIBS=`echo $FIRST | sed "s/\/\/WSLIBDEPS://"`
+   WS_LINK="$WS_LINK $EXTRALIBS"
+   echo Linking extra libraries requested by query file: $EXTRALIBS
+fi
+
+
 
 if [ $DYNAMICLINK == "1" ];
 then WS_LINK="$WS_LINK $WAVESCOPED/libws-SMSegList.so";
