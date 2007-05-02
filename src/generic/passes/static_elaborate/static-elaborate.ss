@@ -505,7 +505,7 @@
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-		       [(foreign ,name ,file) #t]
+		       [(foreign ,name ,file)  name]
 		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -533,7 +533,7 @@
 		  (outer-getval env)]
 
 		 [getlist ;; Get values until you have the whole list.
-		  (trace-lambda GETLIST (x)
+		  (lambda GETLIST (x)
 		    (if (container-available? x)			
 			(let ([val (getval x)])
 			  (if (code? val)
@@ -844,7 +844,7 @@
 	  ;; Foreign function application:
 	  [(app ,rator ,[rands] ...)
 	   (guard (foreign-fun? rator))
-	   (mvlet ([(name file) (get-foreign-fun rator)])	     
+	   (let ([name (foreign-fun? rator)])
 	     `(foreign-app ',name ,rator ,@rands))]
 	  ;; If you dish it out, you have to take it:
 	  [(foreign-app ',realname ,rator ,[rands] ...)

@@ -213,14 +213,6 @@
 
 ; ----------------------------------------
 
-;; [2007.04.20] This hack doesn't seem to yield any benefit vs. doing
-;; a (memq)... Chez must be doing the right thing for the memq in a constant list.
-(define-syntax eq-any?
-  (syntax-rules ()
-    [(_ x arg* ...)
-     (let ([y x]) (or (eq? y arg*) ...)
-	  )]))
-
 ;; This associates new mutable cells with all tvars.
 ;; It also renames all the tvars to assure uniqueness.
 ;; The "nongeneric" vars are ones that do not receive new mutable cells.
@@ -505,7 +497,7 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
-    (match exp ;; NO DIRECT RECURSION ALLOWED:
+    (match exp ;; NO DIRECT RECURSION ALLOWED!!! GO THROUGH "l" LOOP ABOVE!!!
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
       ;; Make sure it's not bound:
@@ -645,14 +637,15 @@
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
      
+
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
-
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
 
+      ;; These cases are still around in case there's no source-info.
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (memq app '(app foreign-app construct-data)))
        (DEBUGASSERT (andmap type? t*))
@@ -660,13 +653,11 @@
 	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
 #;
-      [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
+      [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
        (DEBUGASSERT (andmap type? t*))
        (mvlet ([(rator t1) (l origrat)])
-	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
+	 (values `(foreign-app ',realname ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
-
-
 
       ;; Incorporate type assertions.
       ;; ----------------------------------------
@@ -860,9 +851,9 @@
 #;
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
-     (guard (or (memq simplekwd '(if tuple unionN begin while app foreign-app construct-data))
+     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
-     `(,simplekwd ,@[args])]
+     `(,simplekwd ,@args)]
 
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(tuple ,[e*] ...) `(tuple ,@e*)]
@@ -909,7 +900,7 @@
     ;; All these simple cases just recur on all arguments:
 #;
     [(,simplekwd ,[args] ...)
-     (guard (or (memq simplekwd '(if tuple unionN begin while app foreign-app construct-data))
+     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      (void)]
 
@@ -923,6 +914,7 @@
     [(foreign-app ,[rat] ,[rand*] ...)                        (void)]
     [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
+
 
     [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
     [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
@@ -944,27 +936,31 @@
      `(,let ([,id* ,rhs*] ...) ,bod)]
    
     [(quote ,c)       `(quote ,c)]
-    [(return ,[e]) `(return ,e)]
+;    [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
-    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     
     [(set! ,v ,[e]) `(set! ,v ,e)]
-    [(begin ,[e] ...) `(begin ,e ...)]
     [(for (,i ,[s] ,[e]) ,[bod]) `(for (,i ,s ,e) ,bod)]
-    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
     [(iterate ,[f] ,[s]) `(iterate ,f ,s)]
-
-    [(unionN ,[args] ...) `(unionN ,args ...)]
-    [(tuple ,[args] ...) `(tuple ,args ...)]
     [(tupref ,n ,m ,[x]) `(tupref ,n ,m ,x)]
-
     [(assert-type ,t ,[e]) e]
     [(src-pos     ,p ,[e]) e]
 
+#;
+    ;; All these simple cases just recur on all arguments:
+    [(,simplekwd ,[args] ...)
+     (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+		(regiment-primitive? simplekwd)))
+     `(,simplekwd ,@args)]
+
+    [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
+    [(begin ,[e] ...) `(begin ,e ...)]
+    [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
+    [(unionN ,[args] ...) `(unionN ,args ...)]
+    [(tuple ,[args] ...) `(tuple ,args ...)]
     [(app ,[rat] ,[rand*] ...) `(app ,rat ,rand* ...)]
     [(foreign-app ,[rat] ,[rand*] ...) `(foreign-app ,rat ,rand* ...)]
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,rand* ...)]    
-    
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
      `(,prim ,rand* ...)]

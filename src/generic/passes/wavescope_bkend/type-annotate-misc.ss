@@ -2,6 +2,8 @@
 ;; This adds some extra type annotations that we will need when generating code.
 ;; (After nominalize-types we can no longer use recover-type.)
 
+;; NOTE: This is now [2007.05.02] doing some double duty.  We also maintain.
+
 (module type-annotate-misc mzscheme 
   (require  "../../../plt/common.ss" 
 	    "../normalize_query/ws-lift-let.ss")

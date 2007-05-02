@@ -27,7 +27,8 @@
 
   (provide
       reg-include
-   
+
+      eq-any?
       for grep rep
       let-match 
       mvlet
@@ -93,6 +94,14 @@
     (syntax-rules ()
       ((_ x e) (letrec ((x e)) x))))
 
+
+;; [2007.04.20] This hack doesn't seem to yield any benefit vs. doing
+;; a (memq)... Chez must be doing the right thing for the memq in a constant list.
+(define-syntax eq-any?
+  (syntax-rules ()
+    [(_ x arg* ...)  (let ([y x]) (or (eq? y arg*) ...))]))
+;; Turn this one (memq version) on to compare:
+;(define-syntax eq-any? (syntax-rules () [(_ x arg* ...) (memq x '(arg* ...))]))
 
 ;; Repeatedly execute an expression some number of times:
 (define-syntax rep
