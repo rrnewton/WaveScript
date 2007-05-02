@@ -636,13 +636,14 @@
 	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
-     
+
 
       [(,prim ,[l -> rand* t*] ...)
        (guard (regiment-primitive? prim))
        (DEBUGASSERT (andmap type? t*))
        (values `(,prim ,@rand*)
 	       (type-app prim (prim->type prim) t* exp tenv nongeneric))]
+     
       ;[(app ,rat ,rands* ...)  (l `(,rat ,rands* ...))]
 
       ;; These cases are still around in case there's no source-info.
@@ -848,13 +849,12 @@
     [(lambda ,v* (,[export-type -> t*] ...) ,[bod]) `(lambda ,v* ,t* ,bod)]
 
 
-#;
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
-
+#|
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(tuple ,[e*] ...) `(tuple ,@e*)]
     [(unionN ,[e*] ...) `(unionN ,@e*)]
@@ -865,7 +865,7 @@
     [(construct-data ,[rat] ,[rand*] ...) `(construct-data ,rat ,@rand*)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
      `(,prim ,@rand*)]
-
+|#
 
     [(tupref ,n ,[e]) `(tupref ,n ,e)]
     [(set! ,v ,[e]) `(set! ,v ,e)]
@@ -898,13 +898,12 @@
     [(set! ,v ,[e])                                           (void)]
 
     ;; All these simple cases just recur on all arguments:
-#;
+
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      (void)]
-
-
+#|
     [(if ,[t] ,[c] ,[a])                                      (void)]
     [(tuple ,[e*] ...)                                        (void)]
     [(unionN ,[e*] ...)                                       (void)]
@@ -914,7 +913,7 @@
     [(foreign-app ,[rat] ,[rand*] ...)                        (void)]
     [(construct-data ,[rat] ,[rand*] ...)                     (void)]
     [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))  (void)]
-
+|#
 
     [(for (,i ,[s] ,[e]) ,[bod])                              (void)]
     [(let ([,id* ,[do-late-unify! -> t*] ,[rhs*]] ...) ,[bod]) (void)]
@@ -946,13 +945,12 @@
     [(assert-type ,t ,[e]) e]
     [(src-pos     ,p ,[e]) e]
 
-#;
     ;; All these simple cases just recur on all arguments:
     [(,simplekwd ,[args] ...)
      (guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
 		(regiment-primitive? simplekwd)))
      `(,simplekwd ,@args)]
-
+#|
     [(if ,[t] ,[c] ,[a]) `(if ,t ,c ,a)]
     [(begin ,[e] ...) `(begin ,e ...)]
     [(while ,[tst] ,[bod]) `(while ,tst ,bod)]
@@ -964,7 +962,7 @@
     [(,prim ,[rand*] ...)
      (guard (regiment-primitive? prim))
      `(,prim ,rand* ...)]
-    
+|#    
     [,c (guard (simple-constant? c)) c]
     [,other (error 'strip-types "bad expression: ~a" other)]
     ))
@@ -1409,7 +1407,11 @@
        [(tupref ,n ,m ,[x]) x]
        [(lambda ,v* ,t* ,[bodls])   bodls]
 
-
+       [(,simplekwd ,[args] ...)
+	(guard (or (eq-any? simplekwd 'if 'tuple 'unionN 'begin 'while 'app 'foreign-app 'construct-data)
+		   (regiment-primitive? simplekwd)))
+	(apply append args)]
+#|
        [(begin ,[e*] ...) (apply append e*)]
        [(while ,[tstls] ,[bodls]) (append tstls bodls)]
        [(if ,[t] ,[c] ,[a]) (append t c a)]
@@ -1421,7 +1423,7 @@
        [(,prim ,[rand*] ...)
 	 (guard (regiment-primitive? prim))
 	 (apply append rand*)]
-
+|#
 
        [(,let ([,id* ,t* ,[rhs*]] ...) ,[bod]) 	
 	(guard (memq let '(let letrec lazy-letrec)))
