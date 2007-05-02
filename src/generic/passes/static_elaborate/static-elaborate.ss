@@ -533,7 +533,7 @@
 		  (outer-getval env)]
 
 		 [getlist ;; Get values until you have the whole list.
-		  (lambda GETLIST (x)
+		  (lambda (x)
 		    (if (container-available? x)			
 			(let ([val (getval x)])
 			  (if (code? val)
