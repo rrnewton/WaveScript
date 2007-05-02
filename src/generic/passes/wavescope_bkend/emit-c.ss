@@ -104,6 +104,9 @@
     [(Hashset ,_ ',__) (error 'emitC "hash table with typevar" )]
 					;[(HashTable ,[kt] ,[vt]) `("boost::shared_ptr< hash_map< ",kt", ",vt" > >")]
     [(HashTable ,kt ,vt) (SharedPtrType (HashType kt vt))]
+
+    ;; Variables of this type might occur (for foreign entries) but they'd better not be referenced!
+    [(,arg* ... -> ,result) "void*"]
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
@@ -152,7 +155,19 @@
       (if (symbol? name) (set! name (symbol->string name)))
       (match x
 
-	;; A constant, make global:
+	;; We force this to occur out here, in the "Query", not in any position in the program.
+	[(__foreign ',cname ',file ',ty)
+	 (match ty
+	   [(,argty* ... -> ,retty)	
+	    (let ([ty (Type ty)])
+	      (values `(,ty " ",name" = (",ty")0;\n") 
+		      (list (list "#include \"" file "\"\n"))
+		      ()))])
+	 ]
+	[(__foreign . ,_)
+	 (error 'emit-c:Query "unhandled form: ~s" `(__foreign ,@_))]
+
+	;; Anything else that's not of stream type, make global:
 	[,e (guard (not (distributed-type? typ)))
 	    ;; Here we put the binding at the top level but initialize in the MAIN function:
 	    (values ((Value tenv) name "" e) ;; No type passed.  Mutate rather than bind.
@@ -192,14 +207,15 @@
                                    (cons stmt stmtacc) (cons decl declacc) (cons wsq wsqacc)))))))]
            [,other (error 'wsquery->text "Bad letrec binds: ~s" other)])]
 
+
 	[(let ([,lhs ,ty ,rhs]) ,bod)
 	   (let ([newenv (tenv-extend tenv (list lhs) (list ty))])
-              (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)]
-			   [(stmt decl wsq) (Query lhs ty rhs tenv)])
-		(ASSERT list? bodstmts)
-		(values (cons stmt bodstmts)
-			(cons decl boddecls)
-			(cons wsq wsqdecls))))]
+              (let-values ([(stmt decl wsq)              (Query lhs ty rhs tenv)])	
+	      (let-values ([(bodstmts boddecls wsqdecls) (Query name typ bod newenv)])
+		  (ASSERT list? bodstmts)
+		  (values (cons stmt bodstmts)
+			  (cons decl boddecls)
+			  (cons wsq wsqdecls)))))]
 
 	[(iterate ,let-or-lambda ,sig)
 	 ;; Program better have been flattened!!:
@@ -670,8 +686,9 @@
 	 (ASSERT (symbol? rator))
 	 (match type
 	   [(,argty* ... -> ,result)
-(inspect 	    (ForeignTypeConvert result 
-	      `(,(Var rator) "(" ,@(insert-between ", " 
+	    (wrap 
+	     (ForeignTypeConvert result 
+	      `(,realname "(" ,@(insert-between ", " 
                   (map ForeignTypeConvert argty* rand*)) ")")))
 	    ])]
 
@@ -1245,6 +1262,10 @@
 	[(HashTable:get ,[Simple -> ht] ,[Simple -> key])      (wrap `("(*",ht ")[",key"]"))]
 	;; TEMP, HACK: NEED TO FIGURE OUT HOW TO CHECK FOR MEMBERSHIP OF A KEY!
 	[(HashTable:contains ,[Simple -> ht] ,[Simple -> key]) (wrap `("(*",ht ")[",key"]"))]
+
+
+	[(__foreign . ,_)
+	 (error 'emit-c:Prim "shouldn't get a __foreign here: ~s" `(__foreign ,@_))]
 
 	;; Generate equality comparison:
 	[(equal? (assert-type ,t ,[Simple -> a]) ,[Simple -> b])

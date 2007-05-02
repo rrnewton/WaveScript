@@ -16,6 +16,6 @@ foo :: Int -> Int = foreign "foo" in "foo.c"
 //foreign_source bar :: (int -> int) = "bar_src" in "foo.c";
 
 
-BASE <- iterate _ in timer(3.0) { emit foo(3) }
+BASE <- iterate _ in timer(30.0) { emit foo(3) }
 
 

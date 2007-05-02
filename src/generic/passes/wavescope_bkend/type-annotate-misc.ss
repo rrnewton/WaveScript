@@ -94,7 +94,7 @@
 
 	;; This needs the type tagged on also:
 	[(assert-type ,T (foreign ,[name] ,[file]))
-	 `(assert-type ,T (__foreign ,name ,file ',T))]
+	 `(__foreign ,name ,file ',T)]
 	;; Tag the applications too:
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 	 (ASSERT symbol? rator)
