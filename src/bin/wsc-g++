@@ -40,7 +40,7 @@ done;
 # -fPIC | -O1/2/3 | -g
 WS_FLAGS="-fPIC -pg $CCARGS"
 
-WS_WARNINGS="-Wall -Werror -Wno-unused-variable "
+WS_WARNINGS="-Wall -Werror -Wno-unused-variable -Wno-unused-function"
 WS_INCLUDES="-I$WAVESCOPED/include "
 WS_MACROS="-DSegList -DuseArray "
 WS_LINK="-lfftw3f -lm -lgsl -lgslcblas -lpthread "
@@ -55,6 +55,8 @@ WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
 #echo link: $WS_LINK
 
 echo Compiling .cpp file using g++.
+
+#echo g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
 
 start=`date +%s`
 if g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;

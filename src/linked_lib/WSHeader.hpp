@@ -23,11 +23,11 @@
 #include <iostream>
 #include <ext/hash_map>
 
-#include <fftw3.h>
+//#include <fftw3.h>
 //#include <complex.h>
 #include <complex>
 //#include <time.h>
 
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_matrix.h>
+//#include <gsl/gsl_linalg.h>
+//#include <gsl/gsl_matrix.h>
 

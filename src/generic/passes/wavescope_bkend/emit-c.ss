@@ -35,8 +35,10 @@
 ;; Typical problem -- I don't want to thread these through all relevant functions.
 ;; These are mutated during the compilation of the program.
 
-(define include-files 'include-files-uninit)
-(define link-files 'link-files-uninit)
+;(define include-files 'include-files-uninit)
+;(define link-files 'link-files-uninit)
+(define include-files ())
+(define link-files    ())
 
 (define (add-include! fn)
   (unless (member fn include-files)
@@ -174,7 +176,7 @@
 	 (match ty
 	   [(,argty* ... -> ,retty)	
 	    ;; Add to global list of includes if it's not already there.
-	    (add-include! file)
+	    (add-include! (list "\"" file "\""))
 	    (let ([ty (Type ty)])
 	      (values `(,ty " ",name" = (",ty")0;\n") ()()))])]
 	[(__foreign . ,_)
@@ -933,11 +935,15 @@
 	      [link-files    ()])
     (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
     (define header
-      (list (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
-	    "\n\n"
-	    (map (lambda (fn) `("#include \"",fn"\"")) include-files)
-	    "\n\n"
+      
+      (list "//WSLIBDEPS: \n"
+            (file->string (++ (REGIMENTD) "/src/linked_lib/WSHeader.hpp"))
 	    (file->string (++ (REGIMENTD) "/src/linked_lib/WSTypedefs.hpp"))
+	    
+	    ;; After the types are declared we can bring in the user includes:
+	    "\n\n" (map (lambda (fn) `("#include ",fn "\n")) 
+		     (reverse include-files)) "\n\n"
+
             (file->string (++ (REGIMENTD) "/src/linked_lib/WSPrim.cpp"))
             "\n/* These structs represent tuples in the WS program. */\n"
             (map StructDef struct-defs)
@@ -1061,12 +1067,29 @@
       [(roundF)                 "round"]
       [(sqrtI sqrtF)            "sqrt"]
       [(sqrtC)                  "csqrt"]
-      ;; This is the "default"; find it in WSPrim:: class
-      [(m_invert string-append 
-	width start end joinsegs subseg toSigseg
-	;wserror ;generic_hash 
-	fftR2C ifftC2R fftC ifftC
 
+      ;; These use GSL and require appropriate includes.
+      [(m_invert)
+       (add-include! "<gsl/gsl_linalg.h>")
+       (add-include! "<gsl/gsl_matrix.h>")
+       ;; This is a bit inflexible.
+       ;; Now the C++ query MUST be compiled on the same system that it's generated.  
+       ;; Alternatively, we could inline the whole file right here.
+       (add-include! (list "\"" (REGIMENTD)
+		     "/src/linked_lib/GSL_wrappers.cpp\""))
+       (mangle var)]
+
+      ;; These use FFTW
+      [(fftR2C ifftC2R fftC ifftC)
+       (add-include! "<fftw3.h>")
+       (add-include! (list "\"" (REGIMENTD) 
+			   "/src/linked_lib/FFTW_wrappers.cpp\""))
+       (mangle var)]
+
+      ;; This is the "default"; find it in WSPrim:: class
+      [(string-append 
+	width start end joinsegs subseg toSigseg
+	;wserror ;generic_hash        
 	)
        (fromlib (mangle var))]
       [else (error 'emitC:Prim "primitive not specifically handled: ~s" var)]
