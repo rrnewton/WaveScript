@@ -67,7 +67,7 @@
   (lexer-src-pos
    [(eof) 'EOF]
    ;; Ignore all whitespace:
-   [(:or #\tab #\space #\newline) (return-without-pos (ws-lex input-port))]
+   [(:or #\tab #\space #\newline #\return) (return-without-pos (ws-lex input-port))]
    ;; Throw out the rest of the line:
    ;["//" 'SLASHSLASH]
    
