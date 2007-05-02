@@ -1238,6 +1238,7 @@
 ;; This provides access to C-functions:
 (IFCHEZ
  (define __foreign
+  ;; TODO: KEEP TABLE OF LOADED FILES!!!
   (let ()
     (define (Convert T)
       (case T
@@ -1247,14 +1248,28 @@
 	;[(Char) char]
 	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
     (lambda (name file type)
-      (let ([ext (extract-file-extension file)])
-	(ASSERT (curry equal? "so") ext)
+      (printf "Dynamically loading foreign entry ~s from file ~s.\n" name file)
+      (let ([ext (extract-file-extension file)]
+	    [sharedobject file])
 
-	;(system "cc -fPIC -shared -o evenodd.so even.c odd.c")
-	;(system "cc  -o evenodd.so even.c odd.c")
+	;(ASSERT (curry equal? "so") ext)
+	(cond
+	 [(member ext '("so")) (void)]
+	 [(member ext '("c" "cpp"))
+	  ;; This is really stretching it.  Attempt to compile the file.
+	  (when (file-exists? (string-append file ".so"))
+	    (delete-file (string-append file ".so")))
+	  (case (machine-type)
+	    [(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
+	    [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
+	    [else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
+	    )
+	  (set! sharedobject (string-append file ".so"))
+	  ]
+	 [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
 	;; Load the file containing the C code.
-	(load-shared-object file)
+	(load-shared-object sharedobject)
 	;; After it's loaded there'd better be access:
 	(ASSERT foreign-entry? name)
 	(match type

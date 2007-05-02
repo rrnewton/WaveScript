@@ -4,7 +4,8 @@
 //foreign foo :: int -> int = "foo" in "foo.a";
 
 //foreign foo :: int -> int = "foo" in "foo.a";
-foo :: Int -> Int = foreign "foo" in "foo.so"
+//foo :: Int -> Int = foreign "foo" in "foo.so"
+foo :: Int -> Int = foreign "foo" in "foo.c"
 
 //foo :: (int -> int) = bar;
 //foo :: Int = 3
