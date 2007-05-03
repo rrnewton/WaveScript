@@ -717,6 +717,9 @@ are two-fold.
 
 The WaveScript construct used to accomplish this is:
   ``{\tt foreign {\em <function-name>} in {\em <files>}}''.
+The {\tt foreign} syntax can be used anywhere within a WaveScript
+program.  It returns a WaveScript function representing the
+corresponding C function.
 For example, the following would import a function ``foo'' from ``foo.c''.
 
 \begin{wscode}

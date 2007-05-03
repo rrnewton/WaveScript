@@ -27,7 +27,7 @@
 				 ('lambda (Var Var) (Type Type) Block)) Simple))
 	      (Query ('unionN Simple ...))
 	      (Query (StreamOp Simple ...))
-	      
+
 	      (Simple Var)
 	      (Simple Const)
 	      (Simple ('tuple))
@@ -39,6 +39,8 @@
 	      ;; This is kind of lame:
 	      (ComplexConst ('cons ComplexConst ComplexConst))
 	      (ComplexConst ('foreign Const ComplexConst))
+	      ;; This is constant for the duration of the stream query
+	      (ComplexConst ForeignApp)
 	      (ComplexConst Var)
 
 	      (ComplexDatum ,atom?)
@@ -52,7 +54,9 @@
 	      (Value ('tupref Int Int Simple))
 	      (Value ('if Simple Block Block))
 	      (Value (Prim Simple ...))
-	      (Value ('foreign-app Const Var Simple ...))
+	      (Value ForeignApp)
+
+	      (ForeignApp ('foreign-app Const Var Simple ...))
 
 	      (Value 'BOTTOM)
 	      (Value ComplexConst)

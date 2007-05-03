@@ -52,7 +52,7 @@
        (Expr ('assert-type Type Expr))
        (Expr ('begin Expr ...))      
 
-       (Expr ('foreign-app Const Var Expr ...))
+       (Expr ('foreign-app Const Simple Simple ...))
 
        ;(Expr ('let ((LHS Type Expr) ...) Expr))
 
@@ -226,10 +226,10 @@
 	   [(construct-data ,tc ,e)
 	    (mvlet ([(e2 decls) (make-simple e tenv)])
 	      (vector `(construct-data ,tc ,e2) decls))]
-	   [(foreign-app ',realname ,rator ,e* ...)
-	    (ASSERT (symbol? rator))
+	   [(foreign-app ',realname ,e* ...)
+	    ;(ASSERT (symbol? rator))
 	    (mvlet ([(args binds) (make-simples e* tenv)])
-	      (vector `(foreign-app ',realname ,rator ,@args) binds))]
+	      (vector `(foreign-app ',realname ,@args) binds))]
 
 	   ;; Don't lift anything out of this special syntax:
 	   [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]

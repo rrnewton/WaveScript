@@ -25,6 +25,7 @@
       [Type 'Bool]
       [Type 'String]
 
+      [Type 'Pointer] ;; An opaque type.
       [Type 'Timebase]
       
       [Type 'Node]

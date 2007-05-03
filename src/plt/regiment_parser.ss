@@ -270,6 +270,9 @@
     (type 
 	  ;[(LeftParen type COMMA typeargs -> type RightParen) `(,$2 ,@$4 -> ,$6)]
           [(LeftParen type COMMA typeargs RightParen -> type) `(,$2 ,@$4 -> ,$7)]
+	  ;; This is a special case: zero argument function:
+	  [(LeftParen RightParen -> type) `( -> ,$4)]
+
 	  [(type -> type) `(,$1 -> ,$3)]
      
           ;[(typeargs -> type) `(,@$1 -> ,$3)]

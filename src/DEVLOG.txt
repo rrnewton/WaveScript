@@ -784,3 +784,9 @@ Switched the DEFINE_OUTPUT_TYPE macro back to the default one rather
 than my WS_ version.  It seemed to reduce crashing in wsc code, but it
 still gets double-free errors.  (Now it got a floating point exception
 anyway.) 
+
+
+[2007.05.03] {Linking GSL}
+When loading libraries into Scheme, it seems that they can't see
+*eachother*.  That is, I need to link together all co-dependent .so
+files and then load the final product into Chez.

@@ -8,14 +8,19 @@ Specifically, a "Pointer" type.
 */
 
 
+//gsl_includes = ["<gsl/gsl_linalg.h>", "<gsl/gsl_matrix.h>", 
+//                "libm.so", "libgslcblas.so", "libgsl.so"]
 
-gsl_includes = ["<gsl/gsl_linalg.h>", "<gsl/gsl_matrix.h>", 
-                "libm.so", "libgsl.so", "libgslcblas.so"]
+// I have to pre-link them because of messed up undefined symbol errors:
+gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", GETENV("REGIMENTD")++ "/lib/ws_gslpak.so"]
 
 //type GslPerm = (Int, Array Int);
 type GslPerm = Pointer;
 
-nullperm = (foreign "makeNullPerm" in "GSL_extras.c" :: () -> Pointer)();
+nullperm :: Int -> Pointer
+  = foreign "makeNullPerm" 
+    in gsl_includes
+//    in List:append(gsl_includes, [GETENV("REGIMENTD") ++ "/lib/GSL_extras.c"])
 
 /*==============================================================================*/
 /*                             Matrix functions:                                */
@@ -26,6 +31,7 @@ gsl_linalg_complex_LU_invert :: (Array Complex, GslPerm, Array Complex) -> Int
   = foreign "gsl_linalg_complex_LU_invert" in gsl_includes
 
 
+/*==============================================================================*/
+/*==============================================================================*/
 
-/*==============================================================================*/
-/*==============================================================================*/
+BASE <- iterate _ in timer(3.0) { emit nullperm(30) }

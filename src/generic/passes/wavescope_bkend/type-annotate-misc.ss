@@ -16,13 +16,13 @@
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
-	      (ComplexConst ('__foreign Const Const ComplexDatum))
-	      (Value ('foreign-app Const ('assert-type Type Var) Simple ...))
+	      (ComplexConst ('__foreign Const Const ComplexDatum))					
+	      (ForeignApp ('foreign-app Const ('assert-type Type Var) Simple ...))	      
 	      )
 	  (filter (lambda (x) 
 		    (match x
 		      [(Const . ,_) #f]
-		      [(,prod ('foreign-app . ,_)) #f]
+		      [(ForeignApp . ,_) #f]
 		      [,else #t]))
 	    ws-lift-let-grammar)))
 

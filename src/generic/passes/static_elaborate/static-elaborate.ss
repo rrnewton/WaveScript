@@ -78,7 +78,7 @@
   (list* 
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
-   '[Expr ('foreign-app Const Var Expr ...)]
+   '[Expr ('foreign-app Const Expr Expr ...)]
    '[Expr ('foreign Const Const)]
    (filter (lambda (prod)
 	     (match prod
@@ -214,6 +214,7 @@
 	(Array:length vector-length)	
 	;(List:make ,(trace-lambda List:make (n x) `',(make-list n x)))
 	(List:make make-list)
+	(List:append append)
 
 	;; Need to put in a real "show" at some point:
 	;(show ,(lambda (x) `',(format "~a" x)))
@@ -502,13 +503,13 @@
 			   [,else #f])))]
 
 		  [foreign-fun? 
-		   (lambda (x)
+		   (trace-lambda foreignfun? (x)
 		     (match x 
 		       [,var (guard (symbol? var) (not (memq var mutable-vars)))
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-		       [(foreign ',name ',files)  name]
+		       [(foreign ',name ,files)  name]
 		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?
@@ -850,7 +851,7 @@
 	  ;; If you dish it out, you have to take it:
 	  [(foreign-app ',realname ,rator ,[rands] ...)
 	   (ASSERT string? realname)
-	   (ASSERT symbol? rator)
+	   ;(ASSERT symbol? rator) ;; It could be the (foreign ) construct itself.
 	   `(foreign-app ',realname ,rator ,@rands)]
 
 	  ;; Here we convert to a letrec.  Rename-var insures that we

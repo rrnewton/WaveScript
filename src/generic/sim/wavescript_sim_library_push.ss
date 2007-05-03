@@ -1249,8 +1249,10 @@
 	[(Boolean) 'boolean]
 	[(Char)    'char]
 	[(String)  'string]
+	;[(Pointer) '(void *)]
+	[(Pointer) 'uptr]
 	;[(Char) char]
-	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
+	[else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
 
     (define (DynamicLink out files)
       (when (file-exists? out) (delete-file out))
@@ -1299,7 +1301,7 @@
 	   [(member ext '("c" "cpp"))
 	    ;; This is really stretching it.  Attempt to compile the file.
 	    (let ([target  (remove-file-extension file)])	      
-	      (printf "  Attempting to compile ~s to ~s.\n" file target)
+	      (printf "  Attempting to compile ~s to ~s.so\n" file target)
 	      (set! sharedobject (DynamicLink target (list file))))]
 	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
