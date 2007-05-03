@@ -9,8 +9,8 @@ foo2 :: Int -> Int = foreign "foo" in ["foo.c"]
 
 // I thought I could get away without the header for .o files.  
 // And you can in C, but not in C++...
-//bar :: Int -> Int = foreign "bar" in ["bar.h", "bar.o"]
-bar :: Int -> Int = foreign "bar" in ["bar.h", "bar.a"]
+bar :: Int -> Int = foreign "bar" in ["bar.h", "bar.o"]
+//bar :: Int -> Int = foreign "bar" in ["bar.h", "bar.a"]
 
 
 //box = (foreign_box    "bar_box" in "foo.c" :: Stream Int -> Stream Int);

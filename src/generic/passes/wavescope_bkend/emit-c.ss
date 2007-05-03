@@ -126,15 +126,27 @@
     
     [,other (error 'emit-c:Type "Not handled yet.. ~s" other)]))
 
-(define (ForeignTypeConvert ty txt)
+(define (ToForeignType ty txt)
   (match ty
     ;; For these types we just put in a cast:
     [,t (guard (memq t '(Int Float))) 
 	`("((",(Type t)")" ,txt ")")]
+    [String `("(",txt".c_str())")]
     [,oth (error 'emit-c:ForeignTypeConvert 
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     )
   )
+
+(define (FromForeignType ty txt)
+  (match ty
+    ;; For these types we just put in a cast:
+    [,t (guard (memq t '(Int Float))) 
+	`("((",(Type t)")" ,txt ")")]
+    [String `("string(",txt")")]
+    [,oth (error 'emit-c:ForeignTypeConvert 
+		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
+    ))
+
 
 ;======================================================================
 
@@ -713,9 +725,9 @@
 	 (match type
 	   [(,argty* ... -> ,result)
 	    (wrap 
-	     (ForeignTypeConvert result 
+	     (FromForeignType result 
 	      `(,realname "(" ,@(insert-between ", " 
-                  (map ForeignTypeConvert argty* rand*)) ")")))
+                  (map ToForeignType argty* rand*)) ")")))
 	    ])]
 
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])

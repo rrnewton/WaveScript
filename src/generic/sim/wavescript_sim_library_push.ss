@@ -1247,6 +1247,8 @@
 	[(Int)     'fixnum]
 	[(Float)   'single-float]
 	[(Boolean) 'boolean]
+	[(Char)    'char]
+	[(String)  'string]
 	;[(Char) char]
 	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
 

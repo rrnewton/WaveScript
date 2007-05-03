@@ -19,7 +19,7 @@
 
 % page size commands
 
-\title{WaveScript 0.1.2 Users Manual}
+\title{WaveScript 0.1.3 Users Manual}
 
 \newcommand{\rednote}[1]{{\textcolor{blue}{#1}}}
 %\newcommand{\rednote}[1]{{\em \bf{}}}
@@ -744,7 +744,7 @@ the same basename (e.g. ``bar.o'' and ``bar.so'') the behavior is
 currently undefined.
 
 The foreign-function facility works under the {\bf Scheme} and {\bf
- C++}/XStream backends ({\tt ws} and {\tt wsc}).  The behavior differs
+ C++/XStream} backends ({\tt ws} and {\tt wsc}).  The behavior differs
  slightly in that the Scheme system can only load shared-object files,
  thus when passed {\tt .o} or {\tt .a} files, it simply invokes a
  shell command to convert them to shared-object files before loading
@@ -773,27 +773,48 @@ for Mac OS but is mostly subsection.}
 An important feature of the foreign interface is that it defines a set
 of mappings between WaveScript types and native C types.  The compiler
 then automatically converts object representations where necessary.
-This allows many C functions to be used without modification.
+This allows many C functions to be used without modification.  Figure
+\ref{f:types} shows the mapping between C types and WaveScript types.
 
+\begin{figure}
 \begin{center}
 \begin{tabular}{|r|r|l|}
 \hline
 $WaveScript$ & $C$ & $explanation$\\
 \hline
-Int   & int   & 
+{\tt Int}   & {\tt int}   & 
   \parbox[t]{2.2in}{native ints have a system-dependent 
 length, note that in the emulator WaveScript {\tt Int}s may 
 have less precision than C {\tt int}s} \\
 
-Float & float & 
+{\tt Float} & {\tt float} & 
 \parbox[t]{2.2in}{WaveScript floats are single-precision}\\
 
-Bool & bool & \\
+{\tt Bool} & {\tt bool} & \\
+
+{\tt String} & {\tt char*} & pointer to null-terminated string \\
+
 %()   & 
+
+{\tt Char} & {\tt char} & (not implemented yet) \\
+
+{\tt Array T} & {\tt $T$*} & \parbox[t]{2.2in}{
+(not implemented yet) 
+pointer to C representation of type {\tt T} 
+}\\
+
+{\tt Pointer} & {\tt void*} &  \parbox[t]{2.2in}{
+(not implemented yet) Type for handling C-pointers.  Only good for
+  passing back to C.
+}\\
 
 \hline
 \end{tabular}
 \end{center}
+\caption{Mapping between WaveScript and C types.  Conversions
+  performed automatically.}
+\label{f:types}
+\end{figure}
 
 \rednote{[2007.05.03] The system will very soon support conversion of
   Complex, Int16, and Array types.  Further, it will provide a
