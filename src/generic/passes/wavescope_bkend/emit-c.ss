@@ -187,6 +187,8 @@
 			 ;; No, do this explicitly:
 			 ;(add-include! (list "\"" (remove-file-extension file) ".h\""))
 			 (add-link! file)]
+
+			[(equal? ext "o") (add-link! file)]
 			[else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
 		     )])
 	      (for-each add-file! files)

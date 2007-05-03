@@ -1256,6 +1256,13 @@
 	   ;; This is a bit sketchy... because of course the user *COULD* put function definitions in headers.
 	   ;; The assumption for now is that headers can be ignored.
 	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
+	   
+	   [(equal? ext "o")
+	    (printf "Attempting to convert object .o to shared .so: ~s\n" file)
+	    (system (format "cc ~s -shared -o ~s.so" file (remove-file-extension file)))
+	    (set! sharedobject (string-append (remove-file-extension file) ".so"))
+	    ]
+
 	   [(member ext '("c" "cpp"))
 	    ;; This is really stretching it.  Attempt to compile the file.
 	    (when (file-exists? (string-append file ".so"))
@@ -1285,6 +1292,14 @@
 	[(,[Convert -> args] ... -> ,[Convert -> ret])
 	 (eval `(foreign-procedure ,name ,args ,ret))]))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
+
+
+;; Can convert static to dynamic library:
+;  #! /usr/bin/ksh -p
+;  # Makes a shared library from a static one
+;  #
+;  static_library=$1; shared_library=$2
+;  /usr/bin/ld -O3 -x -no_excpt -expect_unresolved '*' -rpath /freeware/gcc/alpha/lib -shared -o ${shared_library:-${static_library%%a}so} -all $1
 
 
 

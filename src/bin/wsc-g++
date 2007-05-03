@@ -72,7 +72,7 @@ WS_ALLARGS=" $WS_FLAGS $WS_WARNINGS $WS_INCLUDES $WS_MACROS "
 
 echo Compiling .cpp file using g++.
 
-#echo g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
+echo g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
 
 start=`date +%s`
 if g++ $WS_ALLARGS -o "$FILE.exe" "$FILE.cpp" $WS_LINK;
