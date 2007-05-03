@@ -79,12 +79,14 @@
    ;; After elaboration we have unionN:
    '[Expr ('unionN Expr ...)]  
    '[Expr ('foreign-app Const Var Expr ...)]
+   '[Expr ('foreign Const Const)]
    (filter (lambda (prod)
 	     (match prod
 	       ;; And we should not have unionList.
 	       [(Prim 'unionList) #f]
 
 	       [(Prim ',p) (guard (assq p meta-only-primitives)) #f]
+	       [(Expr ('foreign . ,_)) #f]
 
 	       ;; nor should we have user-level applications:
 	       [(Expr ('app Expr . ,_)) #f]
@@ -506,7 +508,7 @@
 			     (let ((entry (assq var env)))
 			       (and entry (foreign-fun? (cadr entry))))]
 		       [(,ann ,_ ,[e]) (guard (annotation? ann)) e]
-		       [(foreign ',name ',file)  name]
+		       [(foreign ',name ',files)  name]
 		       [,else #f]))]
 		 
 		 ;; Is it, not completely available, but a container that's available?

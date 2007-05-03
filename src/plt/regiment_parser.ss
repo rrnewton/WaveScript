@@ -250,6 +250,7 @@
           (left NEG APP DOT MAGICAPPLYSEP COMMA)
           (right ^ g^ ^_ ^. ^:)
 
+    	  (nonassoc in)
 	  )
 
 
@@ -514,7 +515,9 @@
 	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2)]
 
 	 ;; Importing foreign functions (better be in assert-type)
-	 [(foreign STRING in STRING)  `(foreign ,$2 ,$4)]	 
+	 ;[(foreign STRING in STRING)  `(foreign ,$2 ,$4)]	 
+	 ;; One extra shift/reduce
+	 [(foreign exp in exp)  `(foreign ,$2 ,$4)]
 
          
 ;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]

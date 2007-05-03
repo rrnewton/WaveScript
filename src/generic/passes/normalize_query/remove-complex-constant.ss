@@ -31,6 +31,7 @@
 (define remove-complex-constant-grammar reduce-primitives-grammar)
 
 (define-pass remove-complex-constant
+  ;; Returns vector of two things: new expr and list of const binds
   [Expr (lambda (x fallthrough)
 	  (match x 
           [(quote ,datum)
@@ -44,6 +45,10 @@
            (let* ([tmp (unique-name 'tmp)])
 	     (let-values ([(exp type) (datum->code datum)])	       
 	       (vector tmp `((,tmp ,type ,exp)))))]
+	  
+	  ;; Don't lift out these complex constants!
+	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+
           [(lambda ,formals ,types ,[result])
 	   (match result
 	     [#(,body ,body-b*) 

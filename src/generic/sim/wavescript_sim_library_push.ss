@@ -1248,40 +1248,42 @@
 	[(Boolean) 'boolean]
 	;[(Char) char]
 	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
-    (lambda (name file type)
-      (printf "Dynamically loading foreign entry ~s from file ~s.\n" name file)
-      (let ([ext (extract-file-extension file)]
-	    [sharedobject file])
+    (trace-define (LoadFile! file)
+	(let ([ext (extract-file-extension file)]
+	      [sharedobject file])
+	  (cond
+	   [(member ext '("so")) (void)]
+	   ;; This is a bit sketchy... because of course the user *COULD* put function definitions in headers.
+	   ;; The assumption for now is that headers can be ignored.
+	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
+	   [(member ext '("c" "cpp"))
+	    ;; This is really stretching it.  Attempt to compile the file.
+	    (when (file-exists? (string-append file ".so"))
+	      (delete-file (string-append file ".so")))
+	    (printf "Attempting to compile ~s.\n" file)
+	    (let ([code (case (machine-type)
+			  [(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
+			  [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
+			  [else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
+			  )])
+	      ;; This is actually not guaranteed to work by the chez spec:
+	      (unless (zero? code)
+		(error 'foreign "C compiler returned error code ~s." code))
+	      )
+	    (set! sharedobject (string-append file ".so"))]
+	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
-	;(ASSERT (curry equal? "so") ext)
-	(cond
-	 [(member ext '("so")) (void)]
-	 [(member ext '("c" "cpp"))
-	  ;; This is really stretching it.  Attempt to compile the file.
-	  (when (file-exists? (string-append file ".so"))
-	    (delete-file (string-append file ".so")))
-	  (printf "Attempting to compile ~s." file)
-	  (let ([code (case (machine-type)
-			[(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
-			[(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
-			[else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
-			)])
-	    ;; This is actually not guaranteed to work by the chez spec:
-	    (unless (zero? code)
-	      (error 'foreign "C compiler returned error code ~s." code))
-	    )
-	  (set! sharedobject (string-append file ".so"))
-	  ]
-	 [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
-
-	;; Load the file containing the C code.
-	(load-shared-object sharedobject)
-	;; After it's loaded there'd better be access:
-	(ASSERT foreign-entry? name)
-	(match type
-	  [(,[Convert -> args] ... -> ,[Convert -> ret])
-	   (eval `(foreign-procedure ,name ,args ,ret))])
-	))))
+	  ;; Load the file containing the C code.
+	  (when sharedobject (load-shared-object sharedobject))	  
+	  ))
+    (lambda (name files type)
+      (printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)
+      (for-each LoadFile! files)
+      ;; After it's loaded there'd better be access:
+      (ASSERT foreign-entry? name)
+      (match type
+	[(,[Convert -> args] ... -> ,[Convert -> ret])
+	 (eval `(foreign-procedure ,name ,args ,ret))]))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
 

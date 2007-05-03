@@ -231,6 +231,9 @@
 	    (mvlet ([(args binds) (make-simples e* tenv)])
 	      (vector `(foreign-app ',realname ,rator ,@args) binds))]
 
+	   ;; Don't lift anything out of this special syntax:
+	   [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+
 	   ;; Make start and end simple.
 	   [(for (,i ,st ,en) ,bod)
 	    (mvlet ([(st stdecls) (make-simple st tenv)]

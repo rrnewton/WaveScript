@@ -172,13 +172,26 @@
       (match x
 
 	;; We force this to occur out here, in the "Query", not in any position in the program.
-	[(__foreign ',cname ',file ',ty)
+	[(__foreign ',cname ',files ',ty)
 	 (match ty
 	   [(,argty* ... -> ,retty)	
-	    ;; Add to global list of includes if it's not already there.
-	    (add-include! (list "\"" file "\""))
-	    (let ([ty (Type ty)])
-	      (values `(,ty " ",name" = (",ty")0;\n") ()()))])]
+	    (let ([add-file!
+		   (lambda (file)
+		     ;; Add to global list of includes if it's not already there.
+		     (let ([ext (extract-file-extension file)])
+		       (cond
+			[(member ext '("c" "cpp" "h" "hpp"))
+			 (add-include! (list "\"" file "\""))]
+			[(equal? ext "so")
+			 ;; If you try to load a shared object, you must also provide a header:
+			 ;; No, do this explicitly:
+			 ;(add-include! (list "\"" (remove-file-extension file) ".h\""))
+			 (add-link! file)]
+			[else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
+		     )])
+	      (for-each add-file! files)
+	      (let ([ty (Type ty)])
+		(values `(,ty " ",name" = (",ty")0;\n") ()())))])]
 	[(__foreign . ,_)
 	 (error 'emit-c:Query "unhandled form: ~s" `(__foreign ,@_))]
 
