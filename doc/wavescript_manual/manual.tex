@@ -85,7 +85,8 @@ that does include line and character numbers.
 Running {\tt ws} on a WaveScript file will simulate the functionality
 of the query without actually compiling the query to C++ code.  The
 query is converted to a Scheme program which is compiled to native
-code and executed on the fly.  Hardware sensors cannot be accessed,
+code and executed on the fly.  Hardware sensors cannot be accessed
+from the emulator (except through the foreign interface \ref{s:foreign}), 
 and so data must be read from trace files.
 
 \subsubsection*{Consider {\tt \bf ws.opt} for high-performance emulation}
@@ -671,6 +672,7 @@ ls.tail.tail.head
 \end{wscode}
 \vspace{-2mm}
 
+
 \subsection{Stream Projectors}
 
 WaveScript also includes a syntax for binding variables to
@@ -693,11 +695,116 @@ S as (a,b) :: Stream(Int * Float) = someStream;
 
 
 
+
+\chapter{Foreign (C/C++) Interface}
+
+The WaveScript compiler provides a facility for calling external
+(foreign) functions written in C or C++.  The primary reasons for this
+are two-fold.
+
+\begin{enumerate}
+\item We wish to reuse existing libraries without modification (e.g. Gnu
+  Scientific Library, FFTW, etc).
+\item We wish to add new stream sinks --- for network communication, disk access and so
+  on --- without modifying the WaveScript compiler itself.  Also, we
+  frequently want to add support for new hardware data-sources
+  (sensors)\footnote{New data {\em souces} are not always convenient
+  or possible to implement
+  with the current foreign function interface.  In the future we will
+  have a {\tt foreign\_box} syntax similar to {\tt foreign}, but
+  allowing the user to write a WSSource class usable by the WaveScope engine.}.
+\end{enumerate}
+
+The WaveScript construct used to accomplish this is:
+  ``{\tt foreign {\em <function-name>} in {\em <files>}}''.
+For example, the following would import a function ``foo'' from ``foo.c''.
+
+\begin{wscode}
+c\_foo :: Int -> Int = foreign "foo" in ["foo.c"]
+\end{wscode}
+
+Note that, as when reading data from a file, the compiler has no way
+to know the type of the external function, so an explicit type
+annotation is required.
+
+Currently C-code can be loaded from source files ({\tt .c}, {\tt
+  .cpp}) or object files ({\tt .o}, {\tt .a}, {\tt .so}).  When
+  loading from object files, it's necessary to also include a header
+  ({\tt .h}, {\tt .hpp}).  For example:
+
+\begin{wscode}
+c\_bar :: Int -> Int = foreign "bar" in ["bar.h", "bar.a"]
+\end{wscode}
+
+Of course, you may want to import many functions from the same file or
+library.  WaveScript uses a very simple rule.  If a file has already
+been imported once, repeated imports are suppressed.  (This goes for
+source and object files.)  Also, if you try to import multiple files with
+the same basename (e.g. ``bar.o'' and ``bar.so'') the behavior is
+currently undefined.
+
+The foreign-function facility works under the {\bf Scheme} and {\bf
+ C++}/XStream backends ({\tt ws} and {\tt wsc}).  The behavior differs
+ slightly in that the Scheme system can only load shared-object files,
+ thus when passed {\tt .o} or {\tt .a} files, it simply invokes a
+ shell command to convert them to shared-object files before loading
+ them.
+
+Including source files also has a slightly different meaning between
+the two backends.  Scheme will ignore header files (it doesn't need
+them).  C source files ({\tt .c} or {\tt .cpp}) are compiled by
+invoking the system's C compiler.  On the other hand, in the XStream backend, C source
+files are simply {\tt \#include}d into the output C++ query file.  In
+the former case, the source is compiled with no special link options
+or compiler flags, and in the latter it is compiled under the same
+environment as the C++ query file itself.
+
+Thus, if the imported foreign functions require any customization of
+the build environment whatsoever, it is recommended to compile them
+yourself and import the object files into WaveScript, rather than
+importing the C source files.
+
+\rednote{[2007.05.03] Note: Currently the foreign function interface is only
+supported on Linux platforms.  It also has very preliminary support
+for Mac OS but is mostly subsection.}
+
+\subsection{Converting WaveScript and C types}
+
+An important feature of the foreign interface is that it defines a set
+of mappings between WaveScript types and native C types.  The compiler
+then automatically converts object representations where necessary.
+This allows many C functions to be used without modification.
+
+\begin{center}
+\begin{tabular}{|r|r|l|}
+\hline
+$WaveScript$ & $C$ & $explanation$\\
+\hline
+Int   & int   & 
+  \parbox[t]{2.2in}{native ints have a system-dependent 
+length, note that in the emulator WaveScript {\tt Int}s may 
+have less precision than C {\tt int}s} \\
+
+Float & float & 
+\parbox[t]{2.2in}{WaveScript floats are single-precision}\\
+
+Bool & bool & \\
+%()   & 
+
+\hline
+\end{tabular}
+\end{center}
+
+\rednote{[2007.05.03] The system will very soon support conversion of
+  Complex, Int16, and Array types.  Further, it will provide a
+  C-library for manipulating the representations of other WaveScript types.}
+
 \chapter{Signal Processing Libraries}
 
 \section{Fourier Transforms}
 
-WaveScript uses fftw.
+WaveScript uses fftw.  See prim\_defs.ss for a list of the different
+fft interfaces provided.
 
 \section{Matrix Operations}
 

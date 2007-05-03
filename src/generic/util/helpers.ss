@@ -72,7 +72,7 @@
    ;; Other values 
    id gnuplot gnuplot_pipe histogram ; date
    display-progress-meter progress-dots count-nodes
-   string-split periodic-display all-equal?   
+   periodic-display all-equal?   
 	  
    set->hashtab hashtab->list
    
@@ -101,6 +101,9 @@
    insert-between iota compose compose/values disp pp
    extract-file-extension remove-file-extension 
    file->string string->file file->slist slist->file file->linelists
+   file->lines string->lines
+   string-split
+
    pad-width round-to uppercase lowercase symbol-uppercase symbol-lowercase
    graph-map graph-get-connected-component graph-neighbors graph-label-dists 
    graph:simple->vertical graph:vertical->simple
@@ -697,6 +700,13 @@
 				  '()
 				  (cons x (munch-line))))))
 			acc)))))))]))
+
+;; This one just reads the file as a list of lines.
+(define (file->lines fn) (string->lines (file->string fn)))
+
+;; This assumes newlines for now... the more robust version would
+;; accept all the different line-ending variants.
+(define (string->lines str) (string-split str #\newline))
 
 ;; This uses read to get an sexp from a string:
 ;(define string->sexp
@@ -2182,20 +2192,19 @@
       (letrec ([loop
                  (lambda (c)
                    (cond
-                     [(or (eof-object? c)
-                          (eq? c #\newline)) '()]
-                     [(or (eq? c #\linefeed)
-                          (eq? c #\return))
-                      (when (and (char-ready? port)
-                                 (eq? (peek-char port) #\newline))
-                            (read-char) '())]
-                     [else (cons c (loop (read-char port)))]))])
+		    [(or (eof-object? c)     (eq? c #\newline))     '()]
+		    [(or (eq? c #\linefeed)  (eq? c #\return))
+		     (when (and (char-ready? port)
+				(eq? (peek-char port) #\newline))
+		       (read-char port))
+		     '()]
+		    [else (cons c (loop (read-char port)))]))])
         (let ([c (read-char port)])
           (if (eof-object? c) #f
-              
-              ((lambda (x) x)
-               (list->string (loop c)))
+              ;(let ([x (loop c)])(inspect x)(list->string x))
+	      (list->string (loop c))
               ))))))
+
 ;; TODO: write a more efficient version with block-read!!! [2006.02.22]
 
 ;; Used for expanding strings with environment variables in them.

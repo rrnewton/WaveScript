@@ -1241,6 +1241,7 @@
  (define __foreign
   ;; TODO: KEEP TABLE OF LOADED FILES!!!
   (let ()
+    ;(define already-loaded ()) ;; When do we reset this?
     (define (Convert T)
       (case T
 	[(Int)     'fixnum]
@@ -1248,7 +1249,26 @@
 	[(Boolean) 'boolean]
 	;[(Char) char]
 	[else (error '__foreign:Convert "this type is not supported by the foreign interface")]))
-    (trace-define (LoadFile! file)
+
+    (define (DynamicLink out files)
+      (when (file-exists? out) (delete-file out))
+      (let* ([files (apply string-append (map (curry format " ~s") files))]
+	     [code (case (machine-type)
+		     [(i3le ti3le)  		      
+		      ;(printf "EXEC: ~a\n" (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))
+		      (system (format "cc -fPIC -shared -o \"~a.so\" ~a" out files))]
+		     [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o \"~a.so\" ~a" out files))]
+		     [else (error 'foreign "don't know how to compile files ~s on machine type ~s: ~s\n" files (machine-type))]
+		    )])
+	;; This is actually not guaranteed to work by the chez spec:
+	(unless (zero? code)
+	  (error 'foreign "C compiler returned error code ~s." code))
+	;; Returns the name of the output file:
+	;; Should use a dylib extension for mac os X:
+	(string-append out ".so")
+	))
+    
+    (define (LoadFile! file)
 	(let ([ext (extract-file-extension file)]
 	      [sharedobject file])
 	  (cond
@@ -1258,30 +1278,32 @@
 	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
 	   
 	   [(equal? ext "o")
-	    (printf "Attempting to convert object .o to shared .so: ~s\n" file)
-	    (system (format "cc ~s -shared -o ~s.so" file (remove-file-extension file)))
-	    (set! sharedobject (string-append (remove-file-extension file) ".so"))
-	    ]
+	    (printf "  Attempting to convert object (.o) to shared object (.so:) ~s\n" file)
+	    (let ([target (remove-file-extension file)])	      
+	      (set! sharedobject (DynamicLink target (list file))))]
+
+	   [(equal? ext "a")
+	    (printf "  Attempting to convert static library (.a) to shared .so: ~s\n" file)
+	    (let ([target  (remove-file-extension file)]
+		  [tempfile (format ".__tempfile_~a.txt" (random 1000000))])
+	      ;; This assumes bash!!
+	      (system-to-str (format "ar xv \"~a\" | awk '{ print $3 }' > ~a " file tempfile))
+	      (let ([objfiles (filter (lambda (s) (not (equal? s "")))
+				(file->lines tempfile))])
+		;; Now relink the .o files into a shared object:
+		(set! sharedobject (DynamicLink target objfiles))
+		))]
 
 	   [(member ext '("c" "cpp"))
 	    ;; This is really stretching it.  Attempt to compile the file.
-	    (when (file-exists? (string-append file ".so"))
-	      (delete-file (string-append file ".so")))
-	    (printf "Attempting to compile ~s.\n" file)
-	    (let ([code (case (machine-type)
-			  [(i3le ti3le)   (system (format "cc -fPIC -shared -o ~a.so ~a" file file))]
-			  [(i3osx ti3osx) (system (format "cc -fPIC -dynamiclib -o ~a.so ~a" file file))]
-			  [else (error 'foreign "don't know how to compile file ~s on machine type ~s: ~s\n" file (machine-type))]
-			  )])
-	      ;; This is actually not guaranteed to work by the chez spec:
-	      (unless (zero? code)
-		(error 'foreign "C compiler returned error code ~s." code))
-	      )
-	    (set! sharedobject (string-append file ".so"))]
+	    (let ([target  (remove-file-extension file)])	      
+	      (printf "  Attempting to compile ~s to ~s.\n" file target)
+	      (set! sharedobject (DynamicLink target (list file))))]
 	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
 	  ;; Load the file containing the C code.
-	  (when sharedobject (load-shared-object sharedobject))	  
+	  (when sharedobject (load-shared-object sharedobject)
+		(printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
     (lambda (name files type)
       (printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)

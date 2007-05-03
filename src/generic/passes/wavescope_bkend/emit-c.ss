@@ -182,13 +182,9 @@
 		       (cond
 			[(member ext '("c" "cpp" "h" "hpp"))
 			 (add-include! (list "\"" file "\""))]
-			[(equal? ext "so")
-			 ;; If you try to load a shared object, you must also provide a header:
-			 ;; No, do this explicitly:
-			 ;(add-include! (list "\"" (remove-file-extension file) ".h\""))
+			[(member ext '("so" "a" "o"))
+			 ;; Note: If you try to load a pre-compiled object, you must also provide a header!
 			 (add-link! file)]
-
-			[(equal? ext "o") (add-link! file)]
 			[else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
 		     )])
 	      (for-each add-file! files)
