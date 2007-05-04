@@ -1,0 +1,3 @@
+
+
+void* makeNullPerm(int);

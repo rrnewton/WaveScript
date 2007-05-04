@@ -109,6 +109,8 @@
     [#() "wsunit_t"]
     
     [Timebase  "int"]
+    ;[Pointer   "void*"]
+    [Pointer   "size_t"]
 
     ;; HACK HACK FIXME:
     ;; This is for null lists.
@@ -132,7 +134,9 @@
     [,t (guard (memq t '(Int Float))) 
 	`("((",(Type t)")" ,txt ")")]
     [String `("(",txt".c_str())")]
-    [,oth (error 'emit-c:ForeignTypeConvert 
+    ;[Pointer txt]
+    [Pointer `("(void*)(",txt")")]
+    [,oth (error 'emit-c:ToForeignType
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     )
   )
@@ -143,7 +147,9 @@
     [,t (guard (memq t '(Int Float))) 
 	`("((",(Type t)")" ,txt ")")]
     [String `("string(",txt")")]
-    [,oth (error 'emit-c:ForeignTypeConvert 
+    ;[Pointer txt]
+    [Pointer `("(size_t)(",txt")")]    
+    [,oth (error 'emit-c:FromForeignTypeConvert 
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     ))
 
@@ -1401,6 +1407,8 @@
     ;[(List ,t)      (stream (cast-type-for-printing `(List ,t) e))]
     [(Sigseg ,t)    (stream `("SigSeg<",(Type t)">(",e")"))]
     [(Struct ,name) (printf "%s" `("show_",(symbol->string name)"(",e").c_str()"))]
+
+    [Pointer (printf "%p" `("(void*)",e))]
     [,other (printf "<object of type %s>" (format "\"~a\"" typ))]))
 
 #;

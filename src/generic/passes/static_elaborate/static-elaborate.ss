@@ -810,6 +810,12 @@
 
 	  ;; ================================================================================
 
+	  ;; We inline the arguments.  After this pass this is a special construct.
+	  ;; This over-rules our general behavior of not inlining complex constants.
+	  [(foreign ,name ,files)
+	   `(foreign ,(if (available? name) `',(getval name) name)
+		     ,(if (available? files) `',(getval files) files))]
+
 	  ;; All other computable prims:
           [(,prim ,[rand*] ...) (guard (regiment-primitive? prim))
 	   ;(disp "PRIM: " prim (map available? rand*) rand* )	  
