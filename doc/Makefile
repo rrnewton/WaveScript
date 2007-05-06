@@ -1,12 +1,14 @@
 
 ## The big problem is that schemedoc doesn't work with #;
 
-FILES = \
-   main.ss \
+FILES = 
+#   main.ss \
+#   main.ss \
 #   regiment.ss \
 
 
-GENERICFILES = 
+GENERICFILES = \
+   generic/compiler_components/prim_defs.ss 
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
 #   generic/constants.ss \
@@ -22,7 +24,6 @@ GENERICFILES =
 #   generic/pass23_desugar-gradients_verbose.ss \
 #   generic/pass23_desugar-gradients_simple.ss \
 #   generic/pass23_desugar-gradients_ETX.ss \
-#   generic/prim_defs.ss \
 #   generic/regiment_helpers.ss \
 #   generic/simulator_alpha_datatypes.ss \
 #   generic/simulator_alpha.ss \
@@ -61,10 +62,11 @@ all: schemedoc #match.boot
 #       star_star_chez.scm that are modified in the schemedoc/ tree.
 #       Right now this is just a lame way for me to avoid actually
 #       changing the tbz and wasting space in the repository.
-	if ! [ -d html ];         then mkdir html        ; fi
-	if ! [ -d html/generic ]; then mkdir html/generic; fi
-	if ! [ -d html/chez ];    then mkdir html/chez   ; fi
-	if ! [ -d html/plt ];     then mkdir html/plt    ; fi
+#	if ! [ -d html ];                             then mkdir html        ; fi
+#	if ! [ -d html/generic ];                     then mkdir html/generic; fi
+	if ! [ -d html/generic/compiler_components ]; then mkdir -p html/generic/compiler_components; fi
+	if ! [ -d html/chez ];                        then mkdir html/chez   ; fi
+	if ! [ -d html/plt ];                         then mkdir html/plt    ; fi
 	@echo
 	@echo First scrub source:
 	@echo -------------------
@@ -113,7 +115,8 @@ $(OBJFILES): html/%.html: html/%
 #$(<:html/%=%)
 
 $(DUPSRC): html/%.ss: ../src/%.ss
-	$(PETITE) --script scrub_source.ss $< $@	
+	$(SCHEME) --script scrub_source.ss $< $@	
+#	$(PETITE) --script scrub_source.ss $< $@	
 
 
 install: installreadme

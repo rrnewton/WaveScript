@@ -1,8 +1,9 @@
 
 ;; language definition mechanism:
 ;; Binds a top-level procedure to either eval, print, return, or use the mini lanugage bindings.
+;; [2007.05.06] Adding optional expression to put *after* the main program.
 (define define-language
-  (lambda (name def)
+  (lambda (name def . postdef)
     ;; [2006.08.30] Changing things so that we load from file in debug mode.  
     ;; Gives us source locations.
     (define (runprog p)
@@ -30,9 +31,8 @@
            [print (pretty-print def)]
            [return def]
            ;; Ignores any amount of inserted stuff:
-           [(program ,stuff ... ,body)
-            (runprog `(let () ,def ,body))]
-           [,body (runprog `(let () ,def ,body))])]))))
+           [(program ,stuff ... ,[body]) body]
+           [,body (runprog `(let () ,def (let ([finalval ,body]) ,@postdef finalval)))])]))))
 
 (define subtract-bindings
   (lambda (names bindings)

@@ -90,10 +90,11 @@
 
 		 while
 
-
 		 ;; [2007.03.21] These are used elsewhere, should probably factor them into another file:
 		 type->width types->width
 
+		 ;; A foreign procedure for freeing external memory:
+		 C-free
 		 )
     (chezprovide (for for-loop-stack )
 ;		 letrec 
@@ -1243,16 +1244,18 @@
   (let ()
     ;(define already-loaded ()) ;; When do we reset this?
     (define (Convert T)
-      (case T
-	[(Int)     'fixnum]
-	[(Float)   'single-float]
-	[(Boolean) 'boolean]
-	[(Char)    'char]
-	[(String)  'string]
+      (match T
+	[Int     'fixnum]
+	[Float   'single-float]
+	[Boolean 'boolean]
+	[Char    'char]
+	[String  'string]
 	;[(Pointer) '(void *)]
-	[(Pointer) 'uptr]
+	[Pointer 'uptr]
+	[ExclusivePointer 'uptr]
+	[#()     'void]
 	;[(Char) char]
-	[else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
+	[,else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
 
     (define (DynamicLink out files)
       (when (file-exists? out) (delete-file out))
@@ -1315,9 +1318,19 @@
       ;; After it's loaded there'd better be access:
       (ASSERT foreign-entry? name)
       (match type
-	[(,[Convert -> args] ... -> ,[Convert -> ret])
-	 (eval `(foreign-procedure ,name ,args ,ret))]))))
+	[(,[Convert -> args] ... -> ,ret)
+	 (eval `(foreign-procedure ,name ,args ,(Convert ret)))]))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
+
+;; A foreign procedure for freeing foreign storage:
+(define C-free 
+  (IFCHEZ 
+   (lambda (ptr)
+     (fprintf stderr "C-free: Loading free function from system's libc.\n")
+     (load-shared-object "libc.so.6")
+     (set! C-free (foreign-procedure "free" (uptr) void))
+     (C-free ptr))
+   (lambda _ (error 'C-free "not implemented in PLT"))))
 
 
 ;; Can convert static to dynamic library:

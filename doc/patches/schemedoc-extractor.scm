@@ -194,7 +194,7 @@
   (match x
     ;; Comments in the end of lists cause problems!
     [(,[other] ... (comment!!! ,stuff ...))
-     (printf "Fixing comment at end of list a bad comment: ~a\n" stuff)
+     (printf "Fixing comment at end of list: ~a\n" stuff)
      `(,other ... (comment!!! ,stuff ...) 'RRN:MORE-LAME-LAML-FIXES!)]
     ;; Ok I have too many problems with ellipses and unquote, just killing matches.
     [(match ,x ...)

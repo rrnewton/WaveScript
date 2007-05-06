@@ -96,7 +96,7 @@
  (define-language
    'wavescript-language
    `(begin
-
+      ;; First we have to import the language bindings.
       ;; [2007.01.29] ACK, this is another thing that's mysteriously broken when loading from .so:
       ,(if (and (top-level-bound? 'regiment-origin)
 		(or (equal? regiment-origin "compiled .so")
@@ -141,8 +141,23 @@
 			       (rawconstructor start end vec timebase)))
 	   ))
        '())
-     
-     ))
+
+     ;; Finally, we set up a deallocation mechanism for foreign storage:
+     (define old-crh (collect-request-handler))
+     (define foreign-guardian (make-guardian))
+     (collect-request-handler 
+      (lambda () (collect)
+	      (let f ([x (foreign-guardian)])
+		(when x (C-free x) (f (foreign-guardian))))
+	      ))
+     ) ;; End header:
+   ;; Now the footer:
+   `(begin 
+      ;; Free any remaining foreign objects:
+      (collect)
+      (collect-request-handler old-crh)
+      )
+   )
 
 ;; PLT Version:
 ;; This is also insanely slow.

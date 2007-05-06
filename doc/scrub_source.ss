@@ -1,4 +1,5 @@
-#!/usr/bin/env petite --script
+
+; #!/usr/bin/env petite --script
 
 ;; Just load the matcher from source:
 (load (string-append (getenv "REGIMENTD") "/src/chez/match.ss"))(import iu-match)

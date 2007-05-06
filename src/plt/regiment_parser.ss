@@ -35,12 +35,12 @@
     +_ -_ *_ /_ ^_ 
     +. -. *. /. ^. 
     +: -: *: /: ^: 
-    :: ++ 
+    :: ++  COLON
     AND OR NEG HASH 
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union static match foreign foreign_box foreign_source
+    namespace using AS typedef union static match foreign foreign_box foreign_source typecase returncase
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -52,6 +52,9 @@
                     (upper-letter (:/ #\A #\Z))
   ;; (:/ 0 9) would not work because the lexer does not understand numbers.  (:/ #\0 #\9) is ok too.
                     (digit (:/ "0" "9"))
+		    
+		    ;; This can include colons for namespace specifiers.
+		    ;; Currently namespaces must be more than one letter!!
                     (variable (:seq (:or lower-letter upper-letter "_")
                                     (:* (:or lower-letter upper-letter "_" digit
 					     ;; Can have a single semi-colon inbetween the reasonable characters:
@@ -91,7 +94,7 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "match" "foreign" "foreign_box" "foreign_source")
+	 "namespace" "using" "static" "union" "match" "typecase" "returncase" "foreign" "foreign_box" "foreign_source")
     (string->symbol lexeme)]
    ["as" 'AS]
    ["type" 'typedef]
@@ -108,6 +111,7 @@
    ;; Delimiters:
    [";" 'SEMI]  ["," 'COMMA] ;["'" 'QUOTE]
    ["|" 'BAR] ["!" 'BANG]
+   [":" 'COLON] ;; A single colon.
    ["(" 'LeftParen]  [")" 'RightParen]
    ["{" 'LeftBrace]  ["}" 'RightBrace]
    ["[" 'LeftSqrBrk] ["]" 'RightSqrBrk]
@@ -496,8 +500,8 @@
 
     ;(innernotlist [(notlist) $1])    
 
-    (matchcases [() '()]
-		[(pattern BAR exp matchcases) 99999])
+    (matchcases [() '()] [(pattern COLON exp matchcases) (cons (list $1 $3) $4)])
+    (typecases  [() '()] [(type    COLON exp typecases)     (cons (list $1 $3) $4)])
 
     (notlist
          [(NUM) `',$1]
@@ -515,7 +519,12 @@
          [(tuple) $1]
 	 
 	 ;; Deconstructing sum types with pattern matching:
-	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2)]
+	 [(match exp LeftBrace matchcases RightBrace) `(match ,$2 ,$4)]
+
+	 [(typecase exp LeftBrace typecases RightBrace) `(typecase ,$2 ,$4)]
+	 ;; Haven't decided how to do this yet.  Can typecase on the *return* type:
+	 [(returncase LeftBrace typecases RightBrace) `(returncase ,$3)]
+
 
 	 ;; Importing foreign functions (better be in assert-type)
 	 ;[(foreign STRING in STRING)  `(foreign ,$2 ,$4)]	 
