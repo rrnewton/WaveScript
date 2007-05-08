@@ -247,6 +247,9 @@
     (foreign_source (String (List String)) 'any)
     (__foreign      (String String (List Symbol)) 'any)
 
+    (exclusivePtr   (Pointer) ExclusivePointer)
+    (getPtr         (ExclusivePointer) Pointer)
+
     (locdiff (Location Location) Float)
 
     ;; Shouldn't this be local??

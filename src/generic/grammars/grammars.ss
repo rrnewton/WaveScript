@@ -25,7 +25,8 @@
       [Type 'Bool]
       [Type 'String]
 
-      [Type 'Pointer] ;; An opaque type.
+      [Type 'Pointer]          ;; An opaque type.
+      [Type 'ExclusivePointer] ;; A (garbage-collected) opaque type.
       [Type 'Timebase]
       
       [Type 'Node]

@@ -144,18 +144,32 @@
 
      ;; Finally, we set up a deallocation mechanism for foreign storage:
      (define old-crh (collect-request-handler))
-     (define foreign-guardian (make-guardian))
+     ;; Lame, but gotta put it at top-level for the wavescript_sim_library module to get it.
+     (foreign-guardian (make-guardian))
      (collect-request-handler 
       (lambda () (collect)
-	      (let f ([x (foreign-guardian)])
-		(when x (C-free x) (f (foreign-guardian))))
+	      ;; TODO: maybe we should just set the foreign-guardian back to #f when we're done with a stream.
+	      ;; (But what if other streams are open!!)
+	      ;; Sigh, really this guardian should be stored with the stream object.
+	      ;;
+	      ;; We can do that.... we can bind it *locally* (here)
+	      ;; and then while we *are* in this dynamic scope, we can
+	      ;; capture & save it as we construct the stream graph...
+	      (let f ([x ((foreign-guardian))] [n 0])
+		(when x 
+;		  (inspect `(FREEING ,x))
+		  (pretty-print `(FREEING ,x ,n))
+		  (C-free (unbox x)) (f ((foreign-guardian)) (fx+ n 1))))
 	      ))
      ) ;; End header:
    ;; Now the footer:
    `(begin 
       ;; Free any remaining foreign objects:
-      (collect)
-      (collect-request-handler old-crh)
+;      (collect)
+;      (collect-request-handler old-crh)
+      ;; [2007.05.07] DONT KNOW HOW I SHOULD DO THIS!
+      ;; THE PROGRAM RETURNS A *STREAM*.
+      ;; THE EVALUATION OF THE STREAM IS NOT WITHIN THIS DYNAMIC SCOPE...
       )
    )
 

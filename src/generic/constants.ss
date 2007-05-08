@@ -137,6 +137,8 @@
 	 varied-param
 	 dummy-param
 
+	 foreign-guardian
+
          make-rgb rgb?   rgb-red    rgb-green  rgb-blue
 
 	 Default-Drawing-Color
@@ -320,6 +322,7 @@
     [(_ expr) #'expr]))
 
 
+
 ;; This one toggles logging.  
 ;; It can be set to : 
 ;;   #t -- Turn logging on, use default log files.
@@ -387,6 +390,11 @@
 ;;                         Per-module constants                         ;;
 ;=======================================================================;;
 
+
+;;; Used primarily by wavescript_sim_library
+;====================================================
+
+(define foreign-guardian (make-parameter #f))
 
 ;;; Used primarily by hm_type_inference.ss (and type_environments.ss)
 ;====================================================

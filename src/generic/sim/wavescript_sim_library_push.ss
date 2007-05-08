@@ -95,6 +95,8 @@
 
 		 ;; A foreign procedure for freeing external memory:
 		 C-free
+		 exclusivePtr
+		 getPtr
 		 )
     (chezprovide (for for-loop-stack )
 ;		 letrec 
@@ -1319,10 +1321,23 @@
       (ASSERT foreign-entry? name)
       (match type
 	[(,[Convert -> args] ... -> ,ret)
-	 (eval `(foreign-procedure ,name ,args ,(Convert ret)))]))))
+	 (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
+	   foreignfun
+#;	   
+	   (if (eq? ret 'ExclusivePointer)
+	       (lambda args
+		 (let ([ret (apply foreignfun args)])
+		   ;; Now we add the pointer we get back to our guardian:
+		   (fprintf stderr " !!ADDING TO GUARDIAN!! ~s\n" ret)
+		   ((foreign-guardian) (box ret))
+		   ret
+		   ))
+	       foreignfun))
+	 ]))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
-;; A foreign procedure for freeing foreign storage:
+;; A foreign procedure for freeing foreign storage.
+;; We do late-binding here:
 (define C-free 
   (IFCHEZ 
    (lambda (ptr)
@@ -1331,6 +1346,16 @@
      (set! C-free (foreign-procedure "free" (uptr) void))
      (C-free ptr))
    (lambda _ (error 'C-free "not implemented in PLT"))))
+
+;    (exclusivePtr   (Pointer) ExclusivePointer)
+(define (exclusivePtr p)
+  (let ([x (box p)])
+;    (fprintf stderr " !!ADDING TO GUARDIAN!! ~s\n" x)
+    ((foreign-guardian) x)
+    x))
+(define getPtr unbox)
+
+;    (getPtr         (ExclusivePointer) Pointer)
 
 
 ;; Can convert static to dynamic library:

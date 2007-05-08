@@ -156,7 +156,7 @@ so: shared
 shared: 
 	if ! [ -d "build/$(MT)" ]; then mkdir build/$(MT); fi
 	export REGIMENT_OR_WAVESCRIPT=WS; 
-	echo '(compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
+	echo '(generate-inspector-information #f) (compile-file "main_chez.ss" (format "build/~a/main_chez.so" (machine-type)))' | \
          (export REGOPTLVL=2; \
           export REGDEBUGMODE=OFF; \
           export REGIMENT_OR_WAVESCRIPT=WS; \

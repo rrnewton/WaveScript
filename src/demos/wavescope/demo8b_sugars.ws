@@ -11,6 +11,8 @@ namespace Bar {
 }
 
 s2 = Bar:Baz:s1;
+//s3 = { using Bar:Baz; s1} // BREAKS CURRENTLY!!!
+s4 = { using Bar; using Baz; s1}
 
 fun f(s) {
   s2 as (x,y) = s;

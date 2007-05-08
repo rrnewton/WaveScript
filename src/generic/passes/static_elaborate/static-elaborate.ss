@@ -503,7 +503,7 @@
 			   [,else #f])))]
 
 		  [foreign-fun? 
-		   (trace-lambda foreignfun? (x)
+		   (lambda  (x)
 		     (match x 
 		       [,var (guard (symbol? var) (not (memq var mutable-vars)))
 			     (let ((entry (assq var env)))
@@ -812,7 +812,7 @@
 
 	  ;; We inline the arguments.  After this pass this is a special construct.
 	  ;; This over-rules our general behavior of not inlining complex constants.
-	  [(foreign ,name ,files)
+	  [(foreign ,[name] ,[files])
 	   `(foreign ,(if (available? name) `',(getval name) name)
 		     ,(if (available? files) `',(getval files) files))]
 

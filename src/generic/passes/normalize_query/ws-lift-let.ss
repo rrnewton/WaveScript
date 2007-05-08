@@ -61,6 +61,7 @@
 	      (Value 'BOTTOM)
 	      (Value ComplexConst)
 
+	      ;; Some frustrating duplication here:
 	      (Block Simple)
 	      (Block ('let ((LHS Type Value) ...) Block))
 	      (Block ('begin Block ...))
@@ -70,6 +71,8 @@
 	      (Block ('if Simple Block Block))
 	      (Block ('break))
 	      (Block (EffectPrim Simple ...))
+	      (Block ForeignApp)
+
 
 	      (Simple ('assert-type Type Simple))
 	      (Value ('assert-type Type Value))

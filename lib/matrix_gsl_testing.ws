@@ -39,7 +39,6 @@ namespace Matrix {
    Array Float   |
  }
 
-
  */
 
 
@@ -51,3 +50,4 @@ namespace Matrix {
  */ 
 
 }
+

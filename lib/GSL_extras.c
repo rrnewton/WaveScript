@@ -28,3 +28,14 @@ void* makeMatrixWrapper(int x, int y, void* data) {
 }
 
 // We need typecase functionality to implement polymorphic matrices properly.
+
+
+void* gsl_matrix_data        (gsl_matrix* mat)       { return mat->data; }
+void* gsl_matrix_float_data  (gsl_matrix_float* mat) { return mat->data; }
+
+size_t gsl_matrix_size1      (gsl_matrix* mat)       { return mat->size1; }
+size_t gsl_matrix_size2      (gsl_matrix* mat)       { return mat->size2; }
+size_t gsl_matrix_float_size1(gsl_matrix_float* mat) { return mat->size1; }
+size_t gsl_matrix_float_size2(gsl_matrix_float* mat) { return mat->size2; }
+size_t gsl_matrix_complex_size1(gsl_matrix_complex* mat) { return mat->size1; }
+size_t gsl_matrix_complex_size2(gsl_matrix_complex* mat) { return mat->size2; }
