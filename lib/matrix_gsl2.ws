@@ -1,6 +1,8 @@
 
 // In this version, we're exploring the concept of an "ExclusivePointer" type.
 
+// Should use C++ preprocessor to generate all the variants.
+
 include "gsl.ws";
 
 // A pair containing the struct pointer and the array pointer.
@@ -42,12 +44,20 @@ namespace Matrix {
     }
 
   }
-    
-  namespace ComplexDouble {
-    /*
+
+
+  // We don't support complex numbers in the FFI yet! 
+  namespace Complex {
+    fun create(n,m) {  
+      p   = exclusivePtr $ gsl_matrix_complex_float_alloc(n,m);
+      arr = exclusivePtr $ gsl_matrix_complex_float_data(getPtr(p));
+      gsl_matrix_complex_float_set_zero(p`getPtr);
+      (p, arr)
+    }
+
     fun dims((mat,_)) {
-      let x = gsl_matrix_complex_size1(mat`getPtr);
-      let y = gsl_matrix_complex_size2(mat`getPtr);
+      let x = gsl_matrix_complex_float_size1(mat`getPtr);
+      let y = gsl_matrix_complex_float_size2(mat`getPtr);
        (x,y)
     }
 
@@ -56,14 +66,11 @@ namespace Matrix {
       let (m2,d2) = create(x,y);
       let perm = nullperm(x);
         // Do the work:
-        gsl_linalg_complex_LU_invert(m1`getPtr, perm, m2`getPtr);
+        gsl_linalg_complex_float_LU_invert(m1`getPtr, perm, m2`getPtr);
 	Cfree(perm);
       (m2,d2)
     }
-    */
   }
-
-
   
 }
 

@@ -29,8 +29,11 @@ nullperm :: Int -> Pointer = foreign "makeNullPerm" in gsl_includes
 makeMatrixWrapper :: Array #n -> Pointer = foreign "makeNullPerm" in gsl_includes
 
 // These return the array contained within the matrix struct:
+// Actually, it's kind of silly for these to be different... they
+// access the same memory location within the struct.  Only the data payload is different.
 gsl_matrix_data       :: Pointer -> Pointer = foreign "gsl_matrix_data"        in gsl_includes
 gsl_matrix_float_data :: Pointer -> Pointer = foreign "gsl_matrix_float_data"  in gsl_includes
+gsl_matrix_complex_float_data :: Pointer -> Pointer = foreign "gsl_matrix_complex_float_data"  in gsl_includes
 
 gsl_matrix_size1         :: Pointer -> Int    = foreign "gsl_matrix_size1"        in gsl_includes
 gsl_matrix_size2         :: Pointer -> Int    = foreign "gsl_matrix_size2"        in gsl_includes
@@ -38,6 +41,8 @@ gsl_matrix_float_size1   :: Pointer -> Int    = foreign "gsl_matrix_float_size1"
 gsl_matrix_float_size2   :: Pointer -> Int    = foreign "gsl_matrix_float_size2"  in gsl_includes
 gsl_matrix_complex_size1 :: Pointer -> Int    = foreign "gsl_matrix_complex_size1"  in gsl_includes
 gsl_matrix_complex_size2 :: Pointer -> Int    = foreign "gsl_matrix_complex_size2"  in gsl_includes
+gsl_matrix_complex_float_size1 :: Pointer -> Int    = foreign "gsl_matrix_complex_float_size1"  in gsl_includes
+gsl_matrix_complex_float_size2 :: Pointer -> Int    = foreign "gsl_matrix_complex_float_size2"  in gsl_includes
 
 
 /*====================================================================================================*/
@@ -46,6 +51,7 @@ gsl_matrix_complex_size2 :: Pointer -> Int    = foreign "gsl_matrix_complex_size
 
 gsl_matrix_alloc       :: (Int,Int) -> Pointer = foreign "gsl_matrix_alloc"       in gsl_includes
 gsl_matrix_float_alloc :: (Int,Int) -> Pointer = foreign "gsl_matrix_float_alloc" in gsl_includes
+gsl_matrix_complex_float_alloc :: (Int,Int) -> Pointer = foreign "gsl_matrix_complex_float_alloc" in gsl_includes
 
 gsl_matrix_free       :: Pointer -> () = foreign "gsl_matrix_free"       in gsl_includes
 gsl_matrix_float_free :: Pointer -> () = foreign "gsl_matrix_float_free" in gsl_includes
@@ -69,6 +75,7 @@ gsl_matrix_float_set  :: (Pointer, Int, Int, Float) -> () = foreign "gsl_matrix_
 
 gsl_matrix_float_set_all  :: (Pointer, Float) -> () = foreign "gsl_matrix_float_set_all"  in gsl_includes
 gsl_matrix_float_set_zero :: Pointer -> ()          = foreign "gsl_matrix_float_set_zero" in gsl_includes
+gsl_matrix_complex_float_set_zero :: Pointer -> ()          = foreign "gsl_matrix_complex_float_set_zero" in gsl_includes
 
 //gsl_matrix_set_all  :: Pointer, Double -> ()      = foreign "gsl_matrix_set_all"  in gsl_includes
 gsl_matrix_set_zero :: Pointer -> ()                = foreign "gsl_matrix_set_zero" in gsl_includes
