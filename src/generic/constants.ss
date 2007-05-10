@@ -63,6 +63,7 @@
 
          inferencer-let-bound-poly
          inferencer-enable-LUB
+	 included-var-bindings
          
 	 compiler-invocation-mode 
 	 regiment-verbose regiment-quiet
@@ -407,7 +408,10 @@
 ;; most general type.
 ;;   This is only turned off for debugging purposes...
 (define inferencer-enable-LUB (make-parameter #f))
-  
+
+;; This is optional -- helps with printing the types.  We may want to
+;; suppress printing the types for bindings imported via include.
+(define included-var-bindings (make-parameter '()))
   
 ;;; Used primarily by nominalize-types:
 ;====================================================

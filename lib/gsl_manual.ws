@@ -31,8 +31,8 @@ makeMatrixWrapper :: Array #n -> Pointer = foreign "makeNullPerm" in gsl_include
 // These return the array contained within the matrix struct:
 // Actually, it's kind of silly for these to be different... they
 // access the same memory location within the struct.  Only the data payload is different.
-gsl_matrix_data       :: Pointer -> Pointer = foreign "gsl_matrix_data"        in gsl_includes
-gsl_matrix_float_data :: Pointer -> Pointer = foreign "gsl_matrix_float_data"  in gsl_includes
+gsl_matrix_data       :: Pointer -> Pointer = foreign "gsl_matrix_data"        in gsl_includes pointerargs ["gsl_matrix*"]
+gsl_matrix_float_data :: Pointer -> Pointer = foreign "gsl_matrix_float_data"  in gsl_includes pointerargs ["gsl_matrix_float*"]
 gsl_matrix_complex_float_data :: Pointer -> Pointer = foreign "gsl_matrix_complex_float_data"  in gsl_includes
 
 gsl_matrix_size1         :: Pointer -> Int    = foreign "gsl_matrix_size1"        in gsl_includes
@@ -43,6 +43,10 @@ gsl_matrix_complex_size1 :: Pointer -> Int    = foreign "gsl_matrix_complex_size
 gsl_matrix_complex_size2 :: Pointer -> Int    = foreign "gsl_matrix_complex_size2"  in gsl_includes
 gsl_matrix_complex_float_size1 :: Pointer -> Int    = foreign "gsl_matrix_complex_float_size1"  in gsl_includes
 gsl_matrix_complex_float_size2 :: Pointer -> Int    = foreign "gsl_matrix_complex_float_size2"  in gsl_includes
+
+// Or we could just make foreign a function...
+
+//foreign("foo", ["foo.so"], ["ptr*"]);
 
 
 /*====================================================================================================*/

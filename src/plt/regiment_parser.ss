@@ -40,7 +40,9 @@
     APP SEMI COMMA DOT MAGICAPPLYSEP DOTBRK DOTSTREAM BAR BANG
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
-    namespace using AS typedef union static match foreign foreign_box foreign_source typecase returncase
+    namespace using AS typedef union static match 
+    foreign foreign_box foreign_source 
+    typecase returncase
 
     ;; Fake tokens:
     EXPIF STMTIF ONEARMEDIF
@@ -94,7 +96,9 @@
    ;; Keywords: 
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
-	 "namespace" "using" "static" "union" "match" "typecase" "returncase" "foreign" "foreign_box" "foreign_source")
+	 "namespace" "using" "static" "union" "match" "typecase" "returncase" 
+	 "foreign" "foreign_box" "foreign_source"
+	 )
     (string->symbol lexeme)]
    ["as" 'AS]
    ["type" 'typedef]
@@ -342,11 +346,6 @@
 	   [(union typedef VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$3 ,$4) . ,$6) . ,$8)]
 	   [(union VAR = unioncases SEMI maybedecls)         `((uniondef (,$2) . ,$4) . ,$6)]
 	   [(union VAR typevar = unioncases SEMI maybedecls) `((uniondef (,$2 ,$3) . ,$5) . ,$7)]
-
-	   ;; Foreign function interface:
-;           [(foreign VAR        :: type = STRING in STRING SEMI maybedecls)  `((foreign ,$2 ,$4 ,$6 ,$8) ,@$10)]
-;           [(foreign_box VAR    :: type = STRING in STRING SEMI maybedecls)  `((foreign_box ,$2 ,$4 ,$6 ,$8) ,@$10)]
-;           [(foreign_source VAR :: type = STRING in STRING SEMI maybedecls)  `((foreign_source ,$2 ,$4 ,$6 ,$8) ,@$10)]
 
 
            [(VAR :: type SEMI maybedecls) `((:: ,$1 ,$3) ,@$5)]

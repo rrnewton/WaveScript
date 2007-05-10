@@ -292,8 +292,8 @@
 	   (fuse (list e) (lambda (x) `(,annot ,t ,x)))]
 
 	  ;; Annotations:
-	  [(src-pos     ,p ,[loop -> e]) (fuse (list e) (lambda (x) `(src-pos     ,p ,x)))]
-	  [(assert-type ,t ,[loop -> e]) (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
+;	  [(src-pos     ,p ,[loop -> e]) (fuse (list e) (lambda (x) `(src-pos     ,p ,x)))]
+;	  [(assert-type ,t ,[loop -> e]) (fuse (list e) (lambda (x) `(assert-type ,t ,x)))]
 
 	  [(,prim ,[loop -> rands] ...)
 	   (guard (or (regiment-primitive? prim)

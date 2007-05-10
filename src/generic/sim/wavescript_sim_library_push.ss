@@ -140,8 +140,8 @@
   ;; ================================================================================
   ;; TYPES USED 
 
-  ;; Sources :: 'peek -> time | 'pop -> Elem
-  ;; Sink    ::  Elem -> ()
+  ;; Sources :: 'peek -> time | 'pop -> DataElement
+  ;; Sink    ::  DataElement -> ()
   ;; Stream  ::  Sink -> ()
 
   ;; Streams take sinks and register them.
@@ -1238,13 +1238,13 @@
                       for ;for-loop-stack
                       ))
 
+(define already-loaded-object-files (box ())) ;; When do we reset this?
+
 ;; This provides access to C-functions:
 (IFCHEZ
  ;; NOTE: This isn't working on 64-bit justice.
  (define __foreign
-  ;; TODO: KEEP TABLE OF LOADED FILES!!!
   (let ()
-    ;(define already-loaded ()) ;; When do we reset this?
     (define (Convert T)
       (match T
 	[Int     'fixnum]
@@ -1311,8 +1311,9 @@
 	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
 	  ;; Load the file containing the C code.
-	  (when sharedobject (load-shared-object sharedobject)
-		(printf "  Shared object file (~a) loaded.\n" sharedobject))
+	  (when sharedobject
+	    (load-shared-object sharedobject)
+	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
     (lambda (name files type)
       (printf "Dynamically loading foreign entry ~s from files ~s.\n" name files)

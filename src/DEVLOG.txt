@@ -790,3 +790,21 @@ anyway.)
 When loading libraries into Scheme, it seems that they can't see
 *eachother*.  That is, I need to link together all co-dependent .so
 files and then load the final product into Chez.
+
+[2007.05.10] {Should we use dlopen?}
+.
+Otherwise where do we get the "Pointer" types from for generating the
+right calls to foreign procedures?  We could somehow require them in
+the "foreign" entry... but that's rather cumbersome.  I'd wanted them
+all to be (void*), but that results in the C compiler throwing type
+errors unless there are casts.  There's something nice about requiring
+that the foreign code be compiled and only supporting it through
+dlopen... 
+.
+OR could have another keyword...
+.
+  foreign "foo" in ["foo.so"] pointerargs ["foobar_t *"]
+.
+This would let us typecheck the code properly.
+
+

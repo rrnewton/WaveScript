@@ -1554,6 +1554,8 @@ int main(int argc, char ** argv)
 		   Array:map Array:fold
 		   ifftC2R fftC ifftC
 		   internString uninternString
+
+		   exclusivePtr getPtr
 		   )
 		 (map car generic-arith-primitives)
 		 (map car meta-only-primitives)
