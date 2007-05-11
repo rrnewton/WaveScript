@@ -41,7 +41,7 @@
     ; Keywords :
     fun for while to emit include deep_iterate iterate state in if then else true false break let 
     namespace using AS typedef union static match 
-    foreign foreign_box foreign_source 
+;    foreign foreign_box foreign_source 
     typecase returncase
 
     ;; Fake tokens:
@@ -97,7 +97,7 @@
    [(:or "fun" "for" "while" "break" "to" "emit" "include" "deep_iterate" "iterate" 
 	 "state"  "in" "if" "then" "else" "true" "false" "let" 
 	 "namespace" "using" "static" "union" "match" "typecase" "returncase" 
-	 "foreign" "foreign_box" "foreign_source"
+;	 "foreign" "foreign_box" "foreign_source"
 	 )
     (string->symbol lexeme)]
    ["as" 'AS]
@@ -528,7 +528,7 @@
 	 ;; Importing foreign functions (better be in assert-type)
 	 ;[(foreign STRING in STRING)  `(foreign ,$2 ,$4)]	 
 	 ;; One extra shift/reduce
-	 [(foreign exp in exp)  `(foreign ,$2 ,$4)]
+;	 [(foreign exp in exp)  `(foreign ,$2 ,$4)]
 
          
 ;         [(VAR DOT DOT LeftSqrBrk NUM RightSqrBrk) (prec DOTBRK) `(seg-get ,$4 ,$1)]

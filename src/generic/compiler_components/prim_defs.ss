@@ -59,9 +59,9 @@
 ;=============================================================
 
 
-;;; The lists of primitives here have entries of the form:
-;;;   [PrimName Type]                   -- For constants
-;;;   [PrimName ArgTypess ReturnType]   -- For functions
+;;; The lists of primitives here have entries of the form: \\
+;;;   [PrimName Type]                   -- For constants \\
+;;;   [PrimName ArgTypess ReturnType]   -- For functions \\
 
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
@@ -72,6 +72,7 @@
     [NetDist   Float] ;; Network distance.  Depends on gradient implementation.
     ; [(Area 'a) (Stream (Space 'a))]
     ))
+
 
 
 ;; Hierarchy:
@@ -106,6 +107,10 @@
 
     ;(sqrt ((NUM a)) (NUM a)) 
 ))
+
+
+#|
+
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
 (define regiment-basic-primitives 
@@ -264,6 +269,7 @@
     (odd?  (Int) Bool)
 
     ))
+
 
 
 ;; These are (or will be) allowed in both the meta and the object
@@ -960,5 +966,7 @@
 			   [#() #t]
 			   [,else #f])))
   wavescript-effectful-primitives)
+
+|#
 
 ) ;; end module
