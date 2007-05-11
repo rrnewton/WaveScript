@@ -1,0 +1,10 @@
+; This file is made during the LAML configuration process - DO NOT EDIT!
+
+; A file which is loaded at LAML startup.
+; Sets the laml-dir variable
+; Only used with MzScheme.
+
+; (define laml-dir "/user/normark/scheme/")
+;(define laml-dir "/home/newton/wavescript/plt_schemedoc/")
+(define laml-dir (string-append (getenv "REGIMENTD") "/doc/plt_schemedoc/"))
+

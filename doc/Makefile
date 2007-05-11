@@ -9,6 +9,7 @@ FILES =
 
 GENERICFILES = \
    generic/compiler_components/prim_defs.ss 
+#   generic/compiler_components/prim_defs.tmp.ss 
 #   generic/alpha_lib.ss \
 #   generic/alpha_lib_scheduler_simple.ss \
 #   generic/constants.ss \
@@ -80,7 +81,7 @@ all: schemedoc #match.boot
 	@echo "Done generating Regiment documentation."
 
 ##      Now generate index:
-	$(SCHEME) --script regiment_index.laml $(SRCFILES)
+#TMP#	$(SCHEME) --script regiment_index.laml $(SRCFILES)
 
 # Here we build our pattern matcher for use in schemedoc and scrub_source
 match.boot: match.so
@@ -107,6 +108,8 @@ patch:
 	cp patches_new/time.scm schemedoc/lib/; 
 	cp patches_new/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
 #	cp patches_new/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
+# And a single patch here too:
+	cp patches_new/schemedoc-extractor.scm plt_schemedoc/tools/schemedoc-extractor/; 
 
 
 # Incorporated these patches into a new tarball, but there might be more in the future:
@@ -119,7 +122,10 @@ patch:
 
 # # This invokes regiment.laml with the directory and the filename as command line arguments:
 $(OBJFILES): html/%.html: html/%
-	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+	mzscheme -r regiment_plt.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+#	$(SCHEME) --script regiment.laml $(REGIMENTD)/doc/`dirname $@`/  `echo $< | sed 's/.*\///'`
+
+
 #`echo $(<:html/%.ss=%.ss) | sed 's/generic\///'`
 #$(<:html/%=%)
 

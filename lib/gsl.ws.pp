@@ -16,7 +16,7 @@ gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h",
                 GETENV("REGIMENTD")++ "/lib/ws_gslpak.so"]
 
 #define wrap(x) #x
-#define entry(NAME,TYPE) NAME :: TYPE = foreign wrap(NAME) in gsl_includes;
+#define entry(NAME,TYPE) NAME :: TYPE = foreign(wrap(NAME), gsl_includes);
 
 #define ALL(OP) OP() OP(_float) OP(_complex_float) OP(_complex)
 //#define ALL(OP) OP(_float) 
@@ -28,10 +28,10 @@ gsl_includes = ["gsl/gsl_linalg.h", "gsl/gsl_matrix.h", "GSL_extras.h",
 /*                                       RRN's Extra functions:                                       */
 /*====================================================================================================*/
 
-nullperm :: Int -> Pointer = foreign "makeNullPerm" in gsl_includes
+nullperm :: Int -> Pointer = foreign("makeNullPerm", gsl_includes)
 //    in List:append(gsl_includes, [GETENV("REGIMENTD") ++ "/lib/GSL_extras.c"])
 
-makeMatrixWrapper :: Array #n -> Pointer = foreign "makeNullPerm" in gsl_includes
+makeMatrixWrapper :: Array #n -> Pointer = foreign("makeNullPerm", gsl_includes)
 
 // These return the array contained within the matrix struct:
 // Actually, it's kind of silly for these to be different... they
@@ -83,7 +83,7 @@ invert(_complex_float)
 /*====================================================================================================*/
 
 // This only works for linux:
-Cfree :: Pointer -> () = foreign "free" in ["libc.so.6"]
+Cfree :: Pointer -> () = foreign("free", ["libc.so.6"])
 
 /*====================================================================================================*/
 

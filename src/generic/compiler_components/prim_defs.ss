@@ -18,7 +18,6 @@
 ;;; Then some types that are used only in the local language are:
 ;;;   Token NodeID
 
-
 (module prim_defs mzscheme
   (require (lib "include.ss")
            "../../plt/iu-match.ss"
@@ -58,10 +57,10 @@
 
 ;=============================================================
 
-
-;;; The lists of primitives here have entries of the form: \\
-;;;   [PrimName Type]                   -- For constants \\
-;;;   [PrimName ArgTypess ReturnType]   -- For functions \\
+;;; The lists of primitives here have entries of the form: 
+;;;
+;;;   [PrimName Type]                   -- For constants   <br>
+;;;   [PrimName ArgTypess ReturnType]   -- For functions   <br>
 
 ;; These are type aliases that are defined by default.
 (define regiment-type-aliases
@@ -72,7 +71,6 @@
     [NetDist   Float] ;; Network distance.  Depends on gradient implementation.
     ; [(Area 'a) (Stream (Space 'a))]
     ))
-
 
 
 ;; Hierarchy:
@@ -108,8 +106,6 @@
     ;(sqrt ((NUM a)) (NUM a)) 
 ))
 
-
-#|
 
 
 ;; These are the basic (non-distributed) primitives supported by the Regiment language.
@@ -330,6 +326,8 @@
     
     ))
 
+
+
 ;; TODO: NOT IMPLEMENTED YET: [2006.09.01]
 ;; 
 ;; This list of primitives determines which library routines are
@@ -341,12 +339,11 @@
 (IFWAVESCOPE 
  (define wavescript-native-primitives
    '(
-     ;sync4
-     
      )))
+  ;sync4?
 
 (IFWAVESCOPE
- ;; All side-effecting primitives must go here and must return UNIT:
+ ;; All side-effecting primitives MUST go here and must return UNIT:
  (define wavescript-effectful-primitives 
    '(
      (Array:set         ((Array 'a) Int 'a)          #())
@@ -372,17 +369,21 @@
 
      )))
 
+
+
 (IFWAVESCOPE
 ;; Adding Wavescope-related primitives:   
 (define wavescript-primitives
   `( 
+
+
+    (static          ('a)         (Static 'a))
+    (statref         (Static 'a)  'a)
+
     ;; These are for second-class references (iterator state variables)
     (Mutable:ref     ('a)         (Ref 'a))
     (ref             ('a)         (Ref 'a))
     (deref            ((Ref 'a))   'a)
-
-    (static          ('a)         (Static 'a))
-    (statref         (Static 'a)  'a)
 
     ;; Stream Sources:
 
@@ -560,8 +561,14 @@
     ;; This is for testing only... it's a multithreaded version:
     ;(parmap         (('in -> 'out) (Stream 'in))           (Stream 'out))
 
+
     ,@wavescript-effectful-primitives
+
 )))
+
+
+
+
 
 
 ;; These are the distributed primitives.  The real Regiment combinators.
@@ -694,6 +701,7 @@
        ls)
      ls)))
 
+
 ;; These are the ones that take or return Stream values:
 ;; Be wary that this is only computed once while "regiment-primitives" might change.
 (define wavescript-stream-primitives
@@ -703,6 +711,7 @@
 
 ;======================================================================
 ;;; Primitive type definitions, TML/Node-local.
+
 
 ;; These are pretty much compiler-internal primitives which can
 ;; operate on the local node.
@@ -736,8 +745,8 @@
 (define token-machine-primitives
     ; Arithmetic prims:
   '(
-    ;; Phase these out:
-    (+ (Int Int) Int) 
+
+    (+ (Int Int) Int)  ;; TODO: Phase these out:
     (- (Int Int) Int) 
     (* (Int Int) Int) 
     (/ (Int Int) Int) 
@@ -886,6 +895,7 @@
      (rgb (Int Int Int) Object)
      ))
 
+
 ;======================================================================
 
 ;;; Various small, related functions.
@@ -894,6 +904,7 @@
 (define token-machine-keyword?
   (lambda (x)
     (and (memq x '(quote set! if begin let let-stored)) #t)))
+
 
 (define regiment-keyword?
   (lambda (x)
@@ -967,6 +978,4 @@
 			   [,else #f])))
   wavescript-effectful-primitives)
 
-|#
-
-) ;; end module
+) ;; End module

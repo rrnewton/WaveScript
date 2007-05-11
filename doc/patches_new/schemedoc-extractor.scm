@@ -164,7 +164,7 @@
 
      ;; RRN: Injecting a post-processing phase here.  This assumes my utilities are loaded.
 ;;;     (slist->file (file->slist scheme-output-file) scheme-output-file 'write)
-     (rrn-nasty-fixes scheme-output-file)
+;     (rrn-nasty-fixes scheme-output-file)
      ))
 
 ;; RRN: This post-processing step removes modules.
@@ -699,7 +699,7 @@
 ; In case a level 2 comment is read (at top level) it is stored in the global variabel previous-level-2-comment. In this case, this function returns #f.
 (define (extract-next-documentation port)
   (if (not (eof-object? (peek-char port)))
-      (let ((form-1 (read port)))
+      (let RRNLOOP ((form-1 (read port)))
         (cond 
           ((comment-level? 4 form-1) 
                      (append-manual-abstract (contents-of-comment form-1)) 
@@ -713,6 +713,13 @@
           ((comment-level? 2 form-1) 
                      (set! previous-level-2-comment (contents-of-comment form-1))
                      #f)
+
+	  ;; RRN: de-module here, also eliminate macros
+	  [(and (pair? form-1) (memq (car form-1) '(module IFWAVESCOPE)))
+           (set! previous-level-2-comment "")
+	   (let ([vals (filter (lambda (x) x) (map RRNLOOP (cdr form-1)))])
+	     (if (null? vals) #f (reverse (apply append vals))))
+	   ]
 
           ((define-form-scheme-doc? form-1) 
                      (let* ((signature (signature-of-define-form form-1))

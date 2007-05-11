@@ -79,11 +79,11 @@ BASE <- iterate _ in timer(30.0)
 { 
   using Matrix; using Float;
   m = create(2,3);
-  //  print("Ref: "++ get(m,0,0)  ++"\n");
-  //  print("Ref: "++ get(m,1,1)  ++"\n");
+  print("Ref: "++ get(m,0,0)  ++"\n");
+  print("Ref: "++ get(m,1,1)  ++"\n");
   set(m, 1,1, 3.0);
-  //  print("  Set... \n");
-  //  print("  Ref: "++ get(m,1,1)  ++"\n\n");
-  //  emit m;
+  print("  Set... \n");
+  print("  Ref: "++ get(m,1,1)  ++"\n\n");
+  emit m;
   //  emit m ` invert;
 }

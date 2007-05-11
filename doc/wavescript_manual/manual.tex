@@ -5,7 +5,8 @@
 \usepackage{color}
 %\usepackage{code}
 
-\usepackage{hyperref}
+%\usepackage{hyperref}
+\usepackage{html}
 
 
 \setlength{\textheight}{9.25in}
@@ -326,25 +327,36 @@ Arrays are mutable and cannot currently be written as constants.  Use
 
 \subsection{Additional primitive functions}
 
-Please refer to the file 
+Please refer to this file within your working copy:
 \vspace{-2mm}
 \begin{center}
 {\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}
-
-% \htmladdnormallink{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}{ERRRRERR}
-
-%\htmladdnormallink{TEST}{SOMEURL}
-
-%\hyperref{FOOBAR}{BAZZZZ}
-
-\hyperref{FOOBAR}{BAZZZZ}{}{}
-
-\url{http://regiment.us/codedoc/html/generic/compiler_components/prim_defs.ss}
-
 \end{center}
 
-for type-signatures (and minimal documentation) for all built-in
+You can find the online documentation at:
+\vspace{-2mm}
+\begin{center}
+\url{http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html}
+\end{center}
+
+%\htmladdnormallink {my Web page} {http://www.astro.ku.dk/\~{}milvang/}
+
+%\htmladdnormallink{\tt{wavescript/src/generic/\\compiler\_components/prim\_defs.ss}}{http://regiment.us/codedoc/html/generic/compiler_components/prim_defs.ss}
+
+%\htmladdnormallink{wavescript/src/generic/compiler\_components/prim\_defs.ss}{http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html}
+
+This file contains type-signatures (and minimal documentation) for all built-in
 wavescript primitives, many of which are not covered in this manual.
+Within the online documentation linked above you should look at 
+\htmladdnormallink{regiment-primitives}{http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#regiment-primitives}
+which is defined in terms of 
+\htmladdnormallink{regiment-basic-primitives}      {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#regiment-basic-primitives},
+\htmladdnormallink{regiment-distributed-primitives}{http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#regiment-distributed-primitives},
+\htmladdnormallink{wavescript-primitives}          {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#wavescript-primitives},
+\htmladdnormallink{meta-only-primitives}           {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#meta-only-primitives},
+\htmladdnormallink{higher-order-primitives}        {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#higher-order-primitives},
+and
+\htmladdnormallink{regiment-constants}             {http://regiment.us/codedoc/html/generic/compiler\_components/prim\_defs.ss.html\#regiment-constants}~.
 
 Please also examine the library files found in the {\tt wavescript/lib}
 directory.  These files, for example {\tt ``stdlib.ws''} and {\tt

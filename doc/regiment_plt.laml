@@ -1,14 +1,26 @@
 ;; This script loads and invokes the schemedoc system to convert a
 ;; source file into web-based documentation.
 
-(printf "Loading LAML in Chez to elucidate file.\n")(flush-output-port)
+(printf "Loading LAML in PLT to elucidate file.\n")(flush-output)
 
 ;; The command-line-arguments should consist of the the directory and the filename.
-(if (< (length (command-line-arguments)) 2)
+(if (< (length (vector->list (current-command-line-arguments))) 2)
     (error 'regiment.laml "not enough arguments!"))
 
 ;; Just load the matcher from source:
-(load (string-append (getenv "REGIMENTD") "/src/chez/match.ss"))(import iu-match)
+; ;(load (string-append (getenv "REGIMENTD") "/src/plt/iu-match.ss"))
+; (define origdir (current-directory))
+; (current-directory (getenv "REGIMENTD"))
+; (current-directory "src/plt/")
+; (write (current-directory))(newline)
+; (load "./iu-match.ss")
+; (require iu-match)
+; ;(current-directory origdir)
+
+(require "../src/plt/iu-match.ss")
+(require "../src/plt/chez_compat.ss")
+(require (lib "process.ss"))
+
 (define file->slist
   (lambda (filename . opts)
     (let ([p (if (input-port? filename) filename
@@ -41,9 +53,8 @@
       (close-output-port p))]))
 
 
-(load "schemedoc/laml.init")
-(load "schemedoc/laml.scm")
-
+(load "plt_schemedoc/laml.init")
+(load "plt_schemedoc/laml.scm")
 
 ;; I thought I could run one script that would process multiple files.  
 ;; But it looks like that won't work.  LAML causes problems.
@@ -63,10 +74,13 @@
     ))
 |#
 
+
+
+
 ;(fake-startup-parameters "NOTSETYET" DIR)
-(fake-startup-parameters (cadr (command-line-arguments)) (car (command-line-arguments)))
+(fake-startup-parameters (cadr (vector->list (current-command-line-arguments))) (car (vector->list (current-command-line-arguments))))
 (laml-style "xml-in-laml/schemedoc-2/schemedoc")
-(define FILE (cadr (command-line-arguments)))
+(define FILE (cadr (vector->list (current-command-line-arguments))))
 
 ;; Now actually generate pages:
 ;(for-each 
@@ -93,7 +107,6 @@
 ;	'scheme-report "include"
 
 ;	(manual-title "Regiment Compiler Manual")
-	;(manual-author "Ryan Newton" "newton@ai.mit.edu" )
 	(manual-author "Ryan Newton" "" )
 	(manual-affiliation "Computer Science and Artificial Intelligence Laboratory" "MIT" "")
 
@@ -145,3 +158,21 @@
   (manual-from-scheme-file 'src RRNFILE)
 )
 |#
+
+;; REDEFINE THIS NEEDS THE RIGHT EVAL ORDER:
+#;
+(define map 
+  (case-lambda 
+    [(f ls)
+     (let loop ((ls ls))
+       (if (null? ls) '()
+	   (let ((v (f (car ls))))
+	     (cons v (loop (cdr ls))))))]
+    [(f . lsts)
+     (let loop ([lsts lsts])
+       (cond 
+	[(#%andmap null? lsts) '()]
+	[(#%ormap null? lsts) 
+	 (error 'map "ran out of items in some list args but not others: ~a" lsts)]
+	[else (let ((v (apply f (#%map car lsts))))
+		(cons v (loop (#%map cdr lsts))))]))]))
