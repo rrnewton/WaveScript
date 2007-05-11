@@ -745,9 +745,8 @@
 (define token-machine-primitives
     ; Arithmetic prims:
   '(
-
     
-    (+ (Int Int) Int)  ;; TODO: Phase these out:
+    (+ (Int Int) Int) ;; TODO: Phase these out:
     (- (Int Int) Int) 
     (* (Int Int) Int) 
     (/ (Int Int) Int) 

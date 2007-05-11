@@ -199,8 +199,6 @@
 ;; RRN: This is terrible, but it barfs if it gets a comment as the last thing in a list!!
 (define (even-more-nasty-fixes x)
   (match x
-;; Trying to disable this stuff for version 31 of laml.
-#|
     ;; Comments in the end of lists cause problems!
     [(,[other] ... (comment!!! ,stuff ...))
      (printf "Fixing comment at end of list: ~a\n" stuff)
@@ -213,7 +211,6 @@
      ''RRN:LAME-HACK-DISCARDING-MATCH]
 
     [(,[x*] ...) x*]
-|#
     [,x x]
   ))
 
@@ -693,13 +690,41 @@
 
 ; ---------------------------------------------------------------------------------------------------
 
+;; RRN: starting again on this:
+;; Doesn't work because it runs too late
+(define (new-nasty-fixes list)
+  list
+#;  (match list
+#;
+    [(,[other] ... (comment!!! ,stuff ...))
+     (printf "Fixing comment at end of list: ~a\n" stuff)
+     `(,other ... (comment!!! ,stuff ...) 'RRN:MORE-LAME-LAML-FIXES!)
+     ;`(,other ... )
+     ]
+
+;    [(quote ,x) (printf "CONST ~s\n" x) x]
+
+    [(quote ((comment!!! ,stuff ...) ,[other] ...))
+     (printf "Fixing comment at beginning of quoted list: ~a\n" stuff)
+     `'(RRN:MORE-LAME-LAML-FIXES! (comment!!! ,stuff ...) ,other ...)
+     ;`(,other ... )
+     ]
+
+    ;; Go down lists:
+    [(,[x*] ...)      
+     x*]
+    [,x x]
+    )
+  )
+
+
 ; Return the contribution to the manual in terms of a list of manual entries (a list of list structure).
 ; return #f in case there is no contribution.
 ; This function reads exactly one form.
 ; In case a level 2 comment is read (at top level) it is stored in the global variabel previous-level-2-comment. In this case, this function returns #f.
 (define (extract-next-documentation port)
   (if (not (eof-object? (peek-char port)))
-      (let RRNLOOP ((form-1 (read port)))
+      (let RRNLOOP ((form-1 (new-nasty-fixes (read port))))
         (cond 
           ((comment-level? 4 form-1) 
                      (append-manual-abstract (contents-of-comment form-1)) 
