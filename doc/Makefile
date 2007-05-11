@@ -57,7 +57,7 @@ PETITE = ../depends/petite
 
 # #SCRATCHFILE=.__scratch_makefile_junk
 
-all: schemedoc #match.boot
+all: schemedoc plt_schemedoc #match.boot
 #       Here we superimpose our "patches" to the standard schemedoc
 #       tree.  This isn't finished yet.  There are more files than
 #       star_star_chez.scm that are modified in the schemedoc/ tree.
@@ -98,9 +98,8 @@ schemedoc:
 	tar xjvf schemedoc.tbz; 
 	$(MAKE) patch
 
-#patch:
-#	cp patches/schemedoc-extractor.scm ./schemedoc/tools/schemedoc-extractor/
 
+# Should switch this over to actually using *patch*
 patch:
 	cp patches_new/laml.scm schemedoc/;
 	cp patches_new/laml.init schemedoc/;
@@ -108,16 +107,12 @@ patch:
 	cp patches_new/time.scm schemedoc/lib/; 
 	cp patches_new/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
 #	cp patches_new/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
+
 # And a single patch here too:
+patch_plt:
 	cp patches_new/schemedoc-extractor.scm plt_schemedoc/tools/schemedoc-extractor/; 
-
-
-# Incorporated these patches into a new tarball, but there might be more in the future:
-#	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
-#	cp patches/time.scm schemedoc/lib/; 
-#	cp patches/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
-#	cp patches/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
-
+	cp patches_new/laml.init_plt plt_schemedoc/laml.init
+	cp patches_new/laml.scm_plt plt_schemedoc/laml.scm
 
 
 # # This invokes regiment.laml with the directory and the filename as command line arguments:
