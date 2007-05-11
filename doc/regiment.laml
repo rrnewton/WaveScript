@@ -1,3 +1,7 @@
+;; This script loads and invokes the schemedoc system to convert a
+;; source file into web-based documentation.
+
+(printf "Loading LAML in Chez to elucidate file.\n")(flush-output-port)
 
 ;; The command-line-arguments should consist of the the directory and the filename.
 (if (< (length (command-line-arguments)) 2)

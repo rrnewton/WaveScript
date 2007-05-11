@@ -161,49 +161,62 @@
                              scheme-documentation-commenting-style)))
      (close-input-port ip)
      (close-output-port op)
+
      ;; RRN: Injecting a post-processing phase here.  This assumes my utilities are loaded.
-;     (slist->file (file->slist scheme-output-file) scheme-output-file 'write)
-     (slist->file
-      (map even-more-nasty-fixes
-	(match (file->slist scheme-output-file)
-	[() ()]
-	[((module ,name ,parent (require ,r ...) (provide ,p ...) (chezimports ,i ...)	,e* ...) . ,[rest])
-	 (guard (symbol? name) (symbol? parent))
-	 (printf "RRN: demodulizing source file: regiment module found ~a\n" name)	
-	 (append e* rest)]
-	[((,module ,name ,e* ...) . ,[rest])
-	 (guard (memq module '(module chez:module)))	 
-	 (printf "RRN: demodulizing source file: module found ~a\n" (if (symbol? name) name ""))
-	 ;; Take away the module declaration.
-	 ;; [2006.08.04] !!! Dammit, just ignoring everything that looks like it might be part of the module spec:
-	 (append (filter (lambda (x)
-			   (or (eq? module 'chez:module)
-			       (not (pair? x))
-			       (not (memq (car x) '(require provide chezimports chezprovide)))
-			       (begin (printf "Ignoring suspected module spec component: ~a\n" (car x)) #f)
-			       ))
-		   e*)
-		 rest)]
-	[(,fst . ,[rest]) (cons fst rest)]))
-      scheme-output-file 'write)
-;     (inspect scheme-output-file)
+;;;     (slist->file (file->slist scheme-output-file) scheme-output-file 'write)
+     (rrn-nasty-fixes scheme-output-file)
      ))
+
+;; RRN: This post-processing step removes modules.
+;; Unfortunately it also destroys formatting.
+(define (rrn-nasty-fixes scheme-output-file)
+  (slist->file
+   (map even-more-nasty-fixes
+     (match (file->slist scheme-output-file)
+       [() ()]
+       [((module ,name ,parent (require ,r ...) (provide ,p ...) (chezimports ,i ...)	,e* ...) . ,[rest])
+	(guard (symbol? name) (symbol? parent))
+	(printf "RRN: demodulizing source file: regiment module found ~a\n" name)	
+	(append e* rest)]
+       [((,module ,name ,e* ...) . ,[rest])
+	(guard (memq module '(module chez:module)))	 
+	(printf "RRN: demodulizing source file: module found ~a\n" (if (symbol? name) name ""))
+	;; Take away the module declaration.
+	;; [2006.08.04] !!! Dammit, just ignoring everything that looks like it might be part of the module spec:
+	(append (filter (lambda (x)
+			  (or (eq? module 'chez:module)
+			      (not (pair? x))
+			      (not (memq (car x) '(require provide chezimports chezprovide)))
+			      (begin (printf "Ignoring suspected module spec component: ~a\n" (car x)) #f)
+			      ))
+		  e*)
+		rest)]
+       [(,fst . ,[rest]) (cons fst rest)]))
+   scheme-output-file 
+   'pretty ;'write
+   ))
 
 ;; RRN: This is terrible, but it barfs if it gets a comment as the last thing in a list!!
 (define (even-more-nasty-fixes x)
   (match x
+;; Trying to disable this stuff for version 31 of laml.
+#|
     ;; Comments in the end of lists cause problems!
     [(,[other] ... (comment!!! ,stuff ...))
      (printf "Fixing comment at end of list: ~a\n" stuff)
-     `(,other ... (comment!!! ,stuff ...) 'RRN:MORE-LAME-LAML-FIXES!)]
+     `(,other ... (comment!!! ,stuff ...) 'RRN:MORE-LAME-LAML-FIXES!)
+     ;`(,other ... )
+     ]
     ;; Ok I have too many problems with ellipses and unquote, just killing matches.
     [(match ,x ...)
      (printf "Removing Match. ~a\n" (car x))
      ''RRN:LAME-HACK-DISCARDING-MATCH]
 
     [(,[x*] ...) x*]
+|#
     [,x x]
   ))
+
 
 ;; The name of the file where the function lexical-to-syntactical-comments! places it's output
 (define temp-output-file "schemesource.tmp")
@@ -1096,31 +1109,40 @@
 ;; always allowed to be duplicated.
 (define allowed-duplicates-elements (list 'example))
 
-; group the elements in itag-a-list into parameters, cross-references, and the others.
+; group the elements in itag-a-list into parameters, attributes, cross-references, examples, and the others.
 ; Return an alist with parameters and cross-references clauses, in which parameter, reference, and internal-references 
 ; are embedded.
 (define (group-internal-tags itag-a-list)
-   (group-internal-tags-1 itag-a-list '() '() '() '()))
+   (group-internal-tags-1 itag-a-list '() '() '() '() '()))
 
-(define (group-internal-tags-1 itag-a-list pars attrs refs others)
+(define (group-internal-tags-1 itag-a-list pars attrs refs examples others)
  (cond ((null? itag-a-list) 
           (append 
              (if (not (null? pars)) (list (cons 'parameters (reverse pars))) '())
              (if (not (null? attrs)) (list (cons 'xml-in-laml-attributes (reverse attrs))) '())
+             (if (not (null? examples)) (list (cons 'examples (reverse examples))) '())
              (if (not (null? refs)) (list (cons 'cross-references (reverse refs))) '())
              (reverse others)))
        (else
          (let ((itag (car itag-a-list)))
            (cond ((eq? 'parameter (car itag))
-                    (group-internal-tags-1 (cdr itag-a-list) (cons (itag-parse-parameter (cadr itag)) pars) attrs refs others))
+                    (group-internal-tags-1 (cdr itag-a-list) (cons (itag-parse-parameter (cadr itag)) pars) attrs refs examples others))
                  ((eq? 'attribute (car itag))
-                    (group-internal-tags-1 (cdr itag-a-list) pars (cons (itag-parse-attr (cadr itag)) attrs) refs others))
+                    (group-internal-tags-1 (cdr itag-a-list) pars (cons (itag-parse-attr (cadr itag)) attrs) refs examples others))
                  ((eq? 'reference  (car itag))
-                    (group-internal-tags-1 (cdr itag-a-list) pars attrs (cons (itag-parse-reference (cadr itag)) refs) others))
+                    (group-internal-tags-1 (cdr itag-a-list) pars attrs (cons (itag-parse-reference (cadr itag)) refs) examples others))
+                 ((eq? 'example  (car itag))
+                    (group-internal-tags-1 (cdr itag-a-list) pars attrs refs (cons (itag-parse-example (cadr itag)) examples) others))
                  ((eq? 'internal-references  (car itag))
-                    (group-internal-tags-1 (cdr itag-a-list) pars attrs (cons (itag-parse-internal-references (cadr itag)) refs) others))
-                 (else (group-internal-tags-1 (cdr itag-a-list) pars attrs refs (cons itag others)))))
+                    (group-internal-tags-1 (cdr itag-a-list) pars attrs (cons (itag-parse-internal-references (cadr itag)) refs) examples others))
+                 (else (group-internal-tags-1 (cdr itag-a-list) pars attrs refs examples (cons itag others)))))
        )))
+
+
+; Return a parsed parameter clause, in which parameter name and explanation are sorted out.
+; Trivial, because there is actually no additional destructuring.
+(define (itag-parse-example example-desc-string)
+    (list 'example example-desc-string))
 
 ; Return a parsed parameter clause, in which parameter name and explanation are sorted out.
 (define (itag-parse-parameter par-desc-string)
@@ -1136,7 +1158,7 @@
         )
     (list 'parameter (substring par-desc-string start-pos pos) (substring par-desc-string start-1-pos lgt))))
 
-; Return a parsed parameter clause, in which parameter name and explanation are sorted out.
+; Return a parsed attribute clause, in which parameter name and explanation are sorted out.
 (define (itag-parse-attr attr-desc-string)
   (let* ((lgt (string-length attr-desc-string))
          (start-pos (skip-chars-in-string attr-desc-string white-space-char-list 0))

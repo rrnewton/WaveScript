@@ -97,8 +97,17 @@ schemedoc:
 	tar xjvf schemedoc.tbz; 
 	$(MAKE) patch
 
+#patch:
+#	cp patches/schemedoc-extractor.scm ./schemedoc/tools/schemedoc-extractor/
+
 patch:
-	cp patches/schemedoc-extractor.scm ./schemedoc/tools/schemedoc-extractor/
+	cp patches_new/laml.scm schemedoc/;
+	cp patches_new/laml.init schemedoc/;
+	cp patches_new/star_star_chez.scm schemedoc/lib/compatibility/; 
+	cp patches_new/time.scm schemedoc/lib/; 
+	cp patches_new/schemedoc-extractor.scm schemedoc/tools/schemedoc-extractor/; 
+#	cp patches_new/elucidator.scm schemedoc/styles/xml-in-laml/elucidator-2/; 
+
 
 # Incorporated these patches into a new tarball, but there might be more in the future:
 #	cp patches/star_star_chez.scm schemedoc/lib/compatibility/; 
@@ -120,17 +129,19 @@ $(DUPSRC): html/%.ss: ../src/%.ss
 
 
 install: installreadme
-	cp -vpr html /var/www/regimentman/
-	chgrp www-data -R /var/www/regimentman/
-	chmod g+rX -R /var/www/regimentman/*
+	cp -vpr html /var/www/codedoc/
+	chgrp www-data -R /var/www/codedoc/
+	chmod g+rX -R /var/www/codedoc/*
 
 installreadme:
-	cp ../src/README /var/www/regimentman/
-	cp ../src/README.html /var/www/regimentman/
+	cp ../README /var/www/regimentman/
+	cp ../README.html /var/www/regimentman/
 
 clean: 
 	$(RM) -rf html schemesource.tmp *~ .__scratch_makefile_junk
 #       This is intense, we delete and rebuild this tree every time:
-	$(RM) -rf schemedoc
 	$(RM) -rf _temp* match.so match.boot
 ##	$(RM) *.html *.css *.manlsp *~
+
+distclean: clean
+	$(RM) -rf schemedoc

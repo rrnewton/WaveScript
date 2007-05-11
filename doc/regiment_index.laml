@@ -1,4 +1,6 @@
 
+(printf "Loading LAML in Chez to generate index for the documentation.\n")(flush-output-port)
+
 (load "schemedoc/laml.init")
 (load "schemedoc/laml.scm")
 (laml-style "xml-in-laml/schemedoc-index/schemedoc-index")
