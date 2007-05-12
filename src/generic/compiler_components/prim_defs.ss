@@ -144,22 +144,32 @@
     
     (int16ToInt     (Int16)   Int)
     (int16ToFloat   (Int16)   Float)
+    (int16ToDouble  (Int16)   Double)
     (int16ToComplex (Int16)   Complex)
 
     (intToInt16     (Int)   Int16)
     (intToFloat     (Int)   Float)
+    (intToDouble    (Int)   Double)
     (intToComplex   (Int)   Complex)
 
     (floatToInt16   (Float)   Int16)
     (floatToInt     (Float)   Int)
+    (floatToDouble (Float) Double)
     (floatToComplex (Float) Complex)
 
-    (complexToInt16 (Complex) Int16)
-    (complexToInt   (Complex) Int)
-    (complexToFloat (Complex) Float)
+    (doubleToInt16   (Double)  Int16)
+    (doubleToInt     (Double)  Int)
+    (doubleToFloat   (Double)  Float)
+    (doubleToComplex (Double)  Complex)
+
+    (complexToInt16  (Complex) Int16)
+    (complexToInt    (Complex) Int)
+    (complexToDouble (Complex) Double)
+    (complexToFloat  (Complex) Float)
 
     (stringToInt     (String)  Int)
     (stringToFloat   (String)  Float)
+    (stringToDouble  (String)  Float)
     (stringToComplex (String)  Complex)
     
     ;; Rounding instead of truncation:    

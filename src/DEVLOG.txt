@@ -370,10 +370,10 @@ command-line invocations.
 
 xgraph 
 
-[2007.02.24]
+[2007.02.24] {Adding a new numeric datatype}
 
 Adding Int16... these are the things that had to change:
- *) Add conversion procedures to prim_defs.ss and wavescript_sim_library
+ *) Add conversion procedures to prim_defs.ss, wavescript_sim_library, static-elaborate
  *) Added to list of num types in hm_type_inference
  *) Changed the type checker to allow int16 constants, the convention
     is that they be always wrapped in (assert-type ...) forms

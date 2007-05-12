@@ -17,8 +17,9 @@ typedef uint16_t wsuint16_t;
 
 typedef int wsint_t;
 //typedef double wsfloat_t;
-typedef float wsfloat_t; 
-typedef bool wsbool_t;
+typedef float  wsfloat_t; 
+typedef double wsdouble_t; 
+typedef bool   wsbool_t;
 typedef string wsstring_t;
 //typedef fftw_complex wscomplex_t;
 //typedef _Complex double wscomplex_t;

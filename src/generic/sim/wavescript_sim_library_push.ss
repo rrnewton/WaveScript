@@ -44,13 +44,13 @@
 		 absI absF absC absI16
 		 roundF		 
 
-
-		 int16ToInt     int16ToFloat int16ToComplex
-		 intToInt16     intToFloat   intToComplex 
-		 floatToInt16   floatToInt   floatToComplex 		 		 
-		 complexToInt16 complexToInt complexToFloat
+		 int16ToInt     int16ToFloat int16ToDouble int16ToComplex
+		 intToInt16     intToFloat   intToDouble   intToComplex 
+		 floatToInt16   floatToInt   floatToDouble floatToComplex 
+		 doubleToInt16   doubleToInt   doubleToFloat doubleToComplex 
+		 complexToInt16 complexToInt complexToDouble complexToFloat
 		 
-		 stringToInt stringToFloat stringToComplex
+		 stringToInt stringToFloat stringToDouble stringToComplex
 
 		 ;toComplex toFloat  ;; Generic versions
 		 ;toInt ;; Truncate
@@ -859,19 +859,28 @@
 
   (define int16ToInt    (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)
+  (define int16ToDouble   fixnum->flonum)
   (define (int16ToComplex n) (s:+ n 0.0+0.0i))
 
   (define intToInt16 (lambda (x) x))
   (define intToFloat fixnum->flonum)
+  (define intToDouble fixnum->flonum)
   (define intToComplex int16ToComplex)
 
   ;; Should do a range check here:
   (define floatToInt16 flonum->fixnum)
   (define floatToInt   flonum->fixnum)
+  (define (floatToDouble x) x)
   (define (floatToComplex f) (s:fl-make-rectangular f 0.0))
+
+  (define doubleToInt16 floatToInt16)
+  (define doubleToInt    floatToInt)
+  (define (doubleToFloat x) x)
+  (define doubleToComplex floatToComplex)
 
   (define (complexToInt16 c) (flonum->fixnum (realpart c)))
   (define complexToInt complexToInt16)
+  (define complexToDouble realpart)
   (define complexToFloat realpart)
 
   ;; TODO: MERGE THIS WITH DUPLICATED CODE IN STATIC-ELABORATE!!
@@ -886,6 +895,7 @@
 		     (if x 
 			 (ASSERT flonum? x)
 			 (error 'stringToFloat "couldn't convert string: ~s" v)))))
+  (define stringToDouble stringToFloat)
   (define stringToComplex (lambda (v) 
 		   (ASSERT string? v)
 		   (let ([x (string->number v)])

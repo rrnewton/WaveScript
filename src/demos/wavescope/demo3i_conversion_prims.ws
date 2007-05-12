@@ -11,32 +11,38 @@ BASE <- iterate(w in s0) {
   n = w`width;
   i = n`intToInt16;
   f = n`intToFloat;
+  d = n`intToDouble;
   c = n`intToComplex;
 
   print("\nFrom int16:\n");
   println( i`int16ToInt );
   println( i`int16ToFloat );
+  println( i`int16ToDouble );
   println( i`int16ToComplex );
 
   print("\nFrom int:\n");
   println( i );
   println( f );
+  println( d );
   println( c );
 
   print("\nFrom float:\n");
   println( f`floatToInt16 );
   println( f`floatToInt );
+  println( f`floatToDouble );
   println( f`floatToComplex );
 
   print("\nFrom complex:\n");
   println( c`complexToInt );
   println( c`complexToInt16 );
+  println( c`complexToDouble );
   println( c`complexToFloat );
 
   print("\nFrom string:\n");
   //println( i ` show ` stringToInt16 );
   println( n ` show ` stringToInt );
   println( f ` show ` stringToFloat );
+  println( f ` show ` stringToDouble );
   println( c ` show ` stringToComplex );
 
   print("\n");

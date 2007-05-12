@@ -90,6 +90,7 @@
     [Bool    "wsbool_t"]
     [Int     "wsint_t"]
     [Int16   "wsint16_t"]
+    [Double  "wsdouble_t"]
     [Float   "wsfloat_t"]
     [Complex "wscomplex_t"]
 
@@ -362,6 +363,7 @@
 				 (map (lambda (ty)
 					(match ty
 					  [Float  "%f"] ;; Single precision floats
+					  [Double "%f"] ;; Double precision floats
 					  [Int    "%d"]
 					  [Int16  "%hd"]
 					  [String "%s"]					  
@@ -376,7 +378,7 @@
 					       [types types])
 				      (if (null? types) '()
 					  (match (car types)
-					    [,s (guard '(memq s '(Int Int16 Float)))
+					    [,s (guard '(memq s '(Int Int16 Float Double)))
 						(cons `("&(tup.",(car flds)")") (loop n (cdr flds) (cdr types)))]
 					    [String (cons (format "str~a" n) (loop (add1 n) (cdr flds) (cdr types)))]
 					    ))))
@@ -1184,28 +1186,37 @@
 	;[(realpart ,[v]) `("(" ,v ".real)")]
 	;[(imagpart ,[v]) `("(" ,v ".imag)")]
 	[(imagpart ,[Simple -> v])   (wrap `("__imag__ " ,v))]
-	[(realpart       ,[Simple -> v])   (wrap `("__real__ " ,v))]
-	[(complexToFloat ,[Simple -> v])   (wrap `("__real__ " ,v))]
+
+	;; Wait... do we need to cast to double here?
+	[(,extractreal ,[Simple -> v]) 
+	 (guard (memq extractreal '(realpart complexToFloat complexToDouble)))
+	 (wrap `("__real__ " ,v))]
 	[(complexToInt   ,[Simple -> v])   (wrap `("(wsint_t) __real__ " ,v))]
 	[(complexToInt16 ,[Simple -> v])   (wrap `("(wsint16_t) __real__ " ,v))]
 
 	[(absC ,[Simple -> c]) (wrap `("abs((complex<float>)",c")"))]
 
-	[(intToInt16     ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
-	[(floatToInt16   ,[Simple -> e]) (wrap `("(wsint16_t)",e))]
+	[(,toint16     ,[Simple -> e]) 
+	 (guard (memq toint16 '(intToInt16 floatToInt16 doubleToInt16)))
+	 (wrap `("(wsint16_t)",e))]
 
-	[(floatToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
-	[(int16ToInt   ,[Simple -> e]) (wrap `("(wsint_t)",e))]
+	[(,toint     ,[Simple -> e]) 
+	 (guard (memq toint '(int16ToInt floatToInt doubleToInt)))
+	 (wrap `("(wsint_t)",e))]
 	
-	[(intToFloat     ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
-	[(int16ToFloat   ,[Simple -> e]) (wrap `("(wsfloat_t)",e))]
+	[(,tofloat  ,[Simple -> e]) 
+	 (guard (memq tofloat '(intToFloat int16ToFloat doubleToFloat)))
+	 (wrap `("(wsfloat_t)",e))]
+	[(,todouble  ,[Simple -> e]) 
+	 (guard (memq todouble '(intToDouble int16ToDouble floatToDouble)))
+	 (wrap `("(wsdouble_t)",e))]
 
 	;[(complexToInt16 ,e)   (wrap `("(wsint16_t)",(Prim `(complexToFloat ,e) #f "")))]
 	;[(complexToInt ,e)     (wrap `("(wsint_t)"  ,(Prim `(complexToFloat ,e) #f "")))]
 	;[(complexToFloat ,e)   (Prim `(realpart ,e) name type)]
 	[(,ToComplex ,[Simple -> e])
 	 (guard (memq ToComplex 
-		      '(int16ToComplex intToComplex floatToComplex)))
+		      '(int16ToComplex intToComplex floatToComplex doubleToComplex)))
     	 (wrap `("((wscomplex_t)(",e" + 0.0fi))"))]
 
 	[(stringToInt ,[Simple -> e]) 
@@ -1218,6 +1229,12 @@
 	   `("wsfloat_t ",tmp";\n"
 	     "sscanf(",e".c_str(), \"%f\", &",tmp");\n"
 	     ,(wrap tmp)))]
+	[(stringToDouble ,[Simple -> e]) 
+	 (let ([tmp (Var (unique-name 'tmp))])
+	   `("wsdouble_t ",tmp";\n"
+	     "sscanf(",e".c_str(), \"%lf\", &",tmp");\n"
+	     ,(wrap tmp)))]
+
 	[(stringToComplex ,[Simple -> e]) 
 	 (let ([tmp1 (Var (unique-name 'tmp))]
 	       [tmp2 (Var (unique-name 'tmp))])
@@ -1396,6 +1413,7 @@
     [Int            (printf "%d" e)]
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
+    [Double         (printf "%lf" e)]
     ;;[Complex        (stream `("complex<float>(",e")"))]
     [Complex        (printf "%f+%fi" `("__real__ " ,e ", __imag__ ",e))]
     ;[Complex        (stream "\"<Cannot currently print complex>\"" )]

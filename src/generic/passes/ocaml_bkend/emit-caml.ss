@@ -68,6 +68,7 @@
     [Int     "int"]
     [Int16   "int"]
     [Float    "float"]
+    [Double    "float"]
     [Complex  "Complex.t"]
     [String   "string"]
     [(Ref ,[t]) `("(",t ") ref")]
@@ -327,7 +328,8 @@
 	     ;; CAREFUL: THIS DOESN'T EXPLICITELY LOOK FOR NEWLINES:
              (map (lambda (ty)
 		    (match ty
-		      [Float  "%f"] ;; Single precision floats
+		      [Float  "%f"] 
+		      [Double "%f"] 
 		      [Int    "%d"]
 		      [Int16  "%d"]
 		      [String "%s"]					  
@@ -439,6 +441,7 @@
     [Int   "string_of_int"]
     [Int16 "string_of_int"] ;; These are just represented as ints.
     [Float "string_of_float"]
+    [Double "string_of_float"]
     [Bool "string_of_bool"]
     [Complex "(fun c -> string_of_float c.Complex.re ^ \"+\" ^ string_of_float c.Complex.im ^ \"i\")"]
 
@@ -475,6 +478,7 @@
     [Int     "int"]
     [Int16   "int16_signed"]
     [Float   "float64"]
+    [Double  "float64"]
     [Complex "complex64"]
     [,oth #f]
     ))
@@ -549,6 +553,7 @@
       [Int   ''0]
       [Int16 ''0]
       [Float ''0.0]
+      [Double ''0.0]
       [Complex ''0.0+0.0i]
       [#(,[t*] ...) `(tuple ,t* ...)]
       [,oth (error 'make-caml-zero-for-type "unhandled type: ~s" oth)])))
@@ -675,22 +680,32 @@
 
       [int16ToInt    "(fun x -> x)"]
       [int16ToFloat  float_of_int]
+      [int16ToDouble  float_of_int]
       [int16ToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
 
       [intToInt16    "(fun x -> x)"]
       [intToFloat    float_of_int]
+      [intToDouble   float_of_int]
       [intToComplex  "(fun n -> {Complex.re= float_of_int n; Complex.im= 0.})"]
 
       [floatToInt    int_of_float]
       [floatToInt16  int_of_float]
+      [floatToDouble  "(fun x -> x)"]
       [floatToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
+
+      [doubleToInt    int_of_float]
+      [doubleToInt16  int_of_float]
+      [doubleToFloat  "(fun x -> x)"]
+      [doubleToComplex "(fun f -> {Complex.re= f; Complex.im= 0.})"]
 
       [complexToInt16 "(fun c -> int_of_float c.Complex.re)"]
       [complexToInt   "(fun c -> int_of_float c.Complex.re)"]
       [complexToFloat "(fun c -> c.Complex.re)"]
+      [complexToDouble "(fun c -> c.Complex.re)"]
 
       [stringToInt int_of_string]
       [stringToFloat float_of_string]
+      [stringToDouble float_of_string]
       [stringToComplex "(fun s -> Scanf.sscanf \"%f+%fi\" (fun r i -> {Complex.re=r; Complex.im=i}))"]
 
       [roundF "(fun x -> floor (x + 0.5))"]
