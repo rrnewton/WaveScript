@@ -21,6 +21,7 @@
       [Type 'Int]
       [Type 'Int16]
       [Type 'Float]
+      [Type 'Double]
       [Type 'Complex]
       [Type 'Bool]
       [Type 'String]
@@ -85,6 +86,7 @@
 
     [Const Int]
     [Const Float]
+    [Const Double]
     [Const Complex]
     [Const String]
     [Const ('quote Datum)]
@@ -115,6 +117,7 @@
 
     [Int ,integer?]
     [Float ,flonum?]
+    [Double ,flonum?]
     [Complex ,cflonum?]
 
     [String ,string?]
