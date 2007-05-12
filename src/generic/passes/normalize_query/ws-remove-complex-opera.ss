@@ -232,7 +232,7 @@
 	      (vector `(foreign-app ',realname ,@args) binds))]
 
 	   ;; Don't lift anything out of this special syntax:
-	   [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+	   [(foreign ',name ',files ',pointertypes) (vector `(foreign ',name ',files ',pointertypes) ())]
 
 	   ;; Make start and end simple.
 	   [(for (,i ,st ,en) ,bod)

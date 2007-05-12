@@ -96,12 +96,12 @@
 	 [(vector ,_ ...) (error 'verify-elaborated "didn't elaborate far enough. vector is not allowed after elaboration.")]
 
 
-	 [(,foreign ',name ',files)
+	 [(,foreign ',name ',files ',pointertypes)
 	  (guard (memq foreign '(foreign foreign_box foreign_source)))
-	  (unless (and (string? name) (andmap string? files))
+	  (unless (and (string? name) (andmap string? files) (andmap string? pointertypes))
 	    (error 'verify-regiment "\"~s\" construct can only be used with strings, not: ~s and ~s" 
 		   foreign name files))
-	  `(,foreign ',name ',files)]
+	  `(,foreign ',name ',files ',pointertypes)]
 
 	 ;; Run verification on the types:
 	 [,form (guard (binding-form? form))

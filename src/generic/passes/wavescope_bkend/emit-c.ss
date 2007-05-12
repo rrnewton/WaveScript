@@ -105,6 +105,7 @@
 
     ;[(Array ,[t]) `(,t "[]")]
     [(Array ,[t])  `("boost::shared_ptr< vector< ",t" > >")]
+    ;[(Array ,[t])  `("boost::shared_array< ",t" >")]
     [(Struct ,name) (symbol->string name)]
 
     [#() "wsunit_t"]

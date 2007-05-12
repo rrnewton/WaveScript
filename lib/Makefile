@@ -5,7 +5,7 @@ all: gsl.ws matrix_gsl.ws ws_gslpak.so
 gsl.ws: gsl.ws.pp
 	cpp -P gsl.ws.pp gsl.ws 
 
-matrix_gsl.ws: matrix_gsl.ws.pp
+matrix_gsl.ws: matrix_gsl.ws.pp gsl.ws
 	cpp -P matrix_gsl.ws.pp matrix_gsl.ws 
 
 

@@ -47,7 +47,7 @@
 	       (vector tmp `((,tmp ,type ,exp)))))]
 	  
 	  ;; Don't lift out these complex constants!
-	  [(foreign ',name ',files) (vector `(foreign ',name ',files) ())]
+	  [(foreign ',name ',files ',pointertypes) (vector `(foreign ',name ',files ',pointertypes) ())]
 
           [(lambda ,formals ,types ,[result])
 	   (match result

@@ -16,7 +16,7 @@
     ;; Remove 'Const' and make everything 'ComplexConst' (again)
     (append `((Datum ,symbol?)
 	      (Const ComplexConst)
-	      (ComplexConst ('__foreign Const Const ComplexDatum))					
+	      (ComplexConst ('__foreign Const Const Const ComplexDatum))					
 	      (ForeignApp ('foreign-app Const ('assert-type Type Var) Simple ...))	      
 	      )
 	  (filter (lambda (x) 
@@ -93,8 +93,8 @@
 	   )]
 
 	;; This needs the type tagged on also:
-	[(assert-type ,T (foreign ,[name] ,[files]))
-	 `(__foreign ,name ,files ',T)]
+	[(assert-type ,T (foreign ,[name] ,[files] ,[pointertypes]))
+	 `(__foreign ,name ,files ,pointertypes ',T)]
 	;; Tag the applications too:
 	[(foreign-app ',realname ,rator ,[arg*] ...)
 	 (ASSERT symbol? rator)

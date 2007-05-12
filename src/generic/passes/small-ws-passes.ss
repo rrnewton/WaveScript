@@ -46,9 +46,10 @@
 	    (match x
 	      [nullseg (f x)]
 	      [Array:null (f x)]
-	      ['()     ;(printf "Lifting null!\n") 
-	       (f x)]
+	      ['()  (f x)]
 	      [(Array:makeUNSAFE ,[n]) (f `(Array:makeUNSAFE ,n))]
+	      ;; Don't touch these:
+	      [(foreign ,x ,y ,z) `(foreign ,x ,y ,z)]
 	      [,other (fallthru other)]))])
 
 (define-pass unlift-polymorphic-constant
@@ -68,6 +69,9 @@
 	       `(assert-type ,t ,c)]
 	    [,c (guard (pconst? c))
 		(error 'unlift-polymorphic-constant "missed polymorphic const: ~s" c)]
+
+	    ;; Don't touch these:
+	    [(foreign ,x ,y ,z) `(foreign ,x ,y ,z)]
 	    [,other (fallthru other)]))])
 
 

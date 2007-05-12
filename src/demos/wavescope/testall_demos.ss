@@ -16,6 +16,9 @@ exec regiment i --script "$0" ${1+"$@"};
 (print-level 3)
 (print-graph #t)
 
+;; Produce bar.o for demo9c
+(system "gcc -c bar.c")
+
 (define (go i x)
   (import streams)
   (match x 
@@ -136,7 +139,7 @@ exec regiment i --script "$0" ${1+"$@"};
 
     ["demo9_misc_prim_tests.ws"      ,(lambda (a b) #t)]
     ["demo9b_higher_order_prims.ws"  ,(lambda (a b) #t)]
-
+    ["demo9c_foreign.ws"  ,(lambda (a b) #t)]
 
     ;; TODO: FIX THESE NUMBERS!
     ["demo11_simple_merge.ws"     ,(lambda (a b) 
