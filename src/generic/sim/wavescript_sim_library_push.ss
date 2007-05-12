@@ -1321,8 +1321,9 @@
 	   [else (error 'foreign "this type of foreign file not supported in scheme backend: ~s" file)])
 
 	  ;; Load the file containing the C code.
-	  (when sharedobject
+	  (when (and sharedobject (not (member sharedobject (unbox already-loaded-object-files))))
 	    (load-shared-object sharedobject)
+	    (set-box! already-loaded-object-files (cons sharedobject (unbox already-loaded-object-files)))
 	    (printf "  Shared object file (~a) loaded.\n" sharedobject))
 	  ))
     (lambda (name files type)
