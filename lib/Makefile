@@ -10,7 +10,10 @@ matrix_gsl.ws: matrix_gsl.ws.pp gsl.ws
 
 
 ws_gslpak.so: GSL_extras.c GSL_extras.h
-	gcc  -lm -lgslcblas -lgsl -shared GSL_extras.c -o ws_gslpak.so
+	if [ `uname` == "Darwin" ]; \
+	then export LIBRARY_PATH=$LIBRARY_PATH:/sw/lib ; \
+	     gcc -dynamiclib -lm -lgslcblas -lgsl GSL_extras.c -o ws_gslpak.so; \
+	else gcc  -lm -lgslcblas -lgsl -shared GSL_extras.c -o ws_gslpak.so; fi
 
 old:
 	gcc GSL_extras.c -shared -o GSL_extras.so
@@ -23,4 +26,4 @@ erk:
 	g++  -lm -lgslcblas -lgsl GSL_extras.o -shared -o ws_gslpak.so
 
 clean:
-	$(RM) -f ws_gslpak.so gsl.ws 
+	$(RM) -f ws_gslpak.so gsl.ws matrix_gsl.ws

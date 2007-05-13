@@ -58,6 +58,7 @@
       [(,qt (,v . ,[t])) (guard (memq qt '(quote NUM)) (symbol? v)) t]
       [(,[arg] ... -> ,[ret]) (and ret (andmap id  arg))]
       [(,C ,t* ...) (guard (symbol? C)) (andmap verify-stream-free t*)]
+      [,s (guard (string? s)) #t]
       [#(,t* ...) (and (andmap verify-stream-free t*)
 		       (not (polymorphic-type? (list->vector t*))))]
       ;[,else #f]

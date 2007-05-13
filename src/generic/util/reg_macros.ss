@@ -30,7 +30,7 @@
 
       eq-any?
       for grep rep
-      let-match 
+      let-match match?
       mvlet
       match-lambda
       ++ ^ ;; Exponentiation
@@ -175,6 +175,9 @@
 ;(expand '(let-match ([,x 3]) x))
 ;(let-match ([(,x ,y ...) (list 3 4 5 6)] [,z 99]) (list y z))
 
+(define-syntax match?
+  (syntax-rules ()
+    [(_ x pat) (match x [pat #t] [,else #f])]))
 
 ;;<br> [2005.10.05]
 ;;<br>  Evaluate expression and mask output by search string.  

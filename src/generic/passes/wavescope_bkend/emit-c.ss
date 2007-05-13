@@ -112,7 +112,7 @@
     
     [Timebase  "int"]
     ;[Pointer   "void*"]
-    [Pointer   "size_t"]
+    [(Pointer ,cty)   cty]
 
     ;; HACK HACK FIXME:
     ;; This is for null lists.
@@ -137,7 +137,7 @@
 	`("((",(Type t)")" ,txt ")")]
     [String `("(",txt".c_str())")]
     ;[Pointer txt]
-    [Pointer `("(void*)(",txt")")]
+    [(Pointer ,cty) `("(",cty")(",txt")")]
     [,oth (error 'emit-c:ToForeignType
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     )
@@ -148,9 +148,11 @@
     ;; For these types we just put in a cast:
     [,t (guard (memq t '(Int Float))) 
 	`("((",(Type t)")" ,txt ")")]
+    [#() txt]
     [String `("string(",txt")")]
     ;[Pointer txt]
-    [Pointer `("(size_t)(",txt")")]    
+    ;[(Pointer ,_) `("(size_t)(",txt")")]
+    [(Pointer ,_) `("(void*)(",txt")")]
     [,oth (error 'emit-c:FromForeignTypeConvert 
 		 "cannot currently map this type onto equivalent C-type: ~s" oth)]
     ))
@@ -192,7 +194,7 @@
       (match x
 
 	;; We force this to occur out here, in the "Query", not in any position in the program.
-	[(__foreign ',cname ',files ',ty)
+	[(__foreign ',cname ',files ,_ ',ty)
 	 (match ty
 	   [(,argty* ... -> ,retty)	
 	    (let ([add-file!
@@ -202,7 +204,9 @@
 		       (cond
 			[(member ext '("c" "cpp" "h" "hpp"))
 			 (add-include! (list "\"" file "\""))]
-			[(member ext '("so" "a" "o"))
+			[(or (member ext '("so" "a" "o"))
+			     ;; A hack:
+			     (substring? ".so." file))
 			 ;; Note: If you try to load a pre-compiled object, you must also provide a header!
 			 (add-link! file)]
 			[else (error 'emit-c:foreign "cannot load C extension from this type of file: ~s" file)]))
@@ -653,7 +657,7 @@
       ;; Can't normalize-context this because of it's forall a.a return type:
       [(wserror ,str)
        (list (Prim `(wserror ,str) #f #f) ";\n")]
-
+      [(foreign-app . ,x) (wrap (ForeignApp x))]
       [,oth (error 'emitC:Block "unhandled: ~s" oth)]
       )))
 
@@ -729,18 +733,21 @@
 	 (ASSERT (symbol? rator))				       
 	 `(,(FunName rator) "(" ,@(insert-between ", " rand*) ")")]
 
-	[(foreign-app ',realname (assert-type ,type ,rator) ,[Simple -> rand*] ...)
-	 (ASSERT (symbol? rator))
-	 (match type
-	   [(,argty* ... -> ,result)
-	    (wrap 
-	     (FromForeignType result 
-	      `(,realname "(" ,@(insert-between ", " 
-                  (map ToForeignType argty* rand*)) ")")))
-	    ])]
-
+	[(foreign-app . ,x) (wrap (ForeignApp x))]
 	[,unmatched (error 'emitC:Value "unhandled form ~s" unmatched)])
 	))
+
+(trace-define ForeignApp
+  (lambda (ls)
+    (match ls 
+      [(',realname (assert-type ,type ,rator) ,[Simple -> rand*] ...)
+       (ASSERT (symbol? rator))
+       (match type
+	 [(,argty* ... -> ,result)
+	  (FromForeignType result 
+			   `(,realname "(" ,@(insert-between ", " 
+							     (map ToForeignType argty* rand*)) ")"))
+	  ])])))
 
 ;================================================================================
 
@@ -966,14 +973,18 @@
   (fluid-let ([include-files ()]
 	      [link-files    ()])
     (let-values ([(body funs wsq) (Query "toplevel" typ expr (empty-tenv))])
-    (define (extract-lib-name fn)
+    ;; This is a lame hack to distinguish system libraries.
+    (trace-define (extract-lib-name fn)
       (let ([ext (extract-file-extension fn)]
-	    [base (remove-file-extension fn)])
-	(and (equal? ext "so")
-	     (> (string-length base) 3)
-	     (equal? "lib" (substring base 0 3))
-	     (substring base 3 (string-length base))
-	     )))
+	    ;[base (remove-file-extension fn)]	    
+	    )
+	(let-values ([(base _) (split-before (curry string=? "so") (string-split fn #\.))])	  
+	  (let ([base (apply string-append (insert-between "." base))])
+	    (and (or (equal? ext "so") (substring? ".so." fn))
+		 (> (string-length base) 3)
+		 (equal? "lib" (substring base 0 3))
+		 (substring base 3 (string-length base))
+		 )))))
     (define header
       (list "//WSLIBDEPS: "
 	    (map (lambda (fn) 
@@ -1415,6 +1426,9 @@
     [Int16          (printf "%hd" e)]
     [Float          (printf "%f" e)]
     [Double         (printf "%lf" e)]
+
+    [(Pointer ,_)   (printf "%p" e)]
+
     ;;[Complex        (stream `("complex<float>(",e")"))]
     [Complex        (printf "%f+%fi" `("__real__ " ,e ", __imag__ ",e))]
     ;[Complex        (stream "\"<Cannot currently print complex>\"" )]

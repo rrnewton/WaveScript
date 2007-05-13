@@ -184,6 +184,9 @@
 	[(NUM (,v . ,t))                          (if t (Type t) `(NUM ,v))]
 	[#(,[t*] ...)                            (apply vector t*)]
 	[(,[arg*] ... -> ,[res])                 `(,arg* ... -> ,res)]
+
+	[(Pointer ,name)          `(Pointer ,name)]
+	[(ExclusivePointer ,name) `(ExclusivePointer ,name)]
 	;; This is simple substitition of the type arguments:
 	[(,s ,[t*] ...) (guard (symbol? s))
 	 (let ([entry (or (assq s aliases)

@@ -69,6 +69,8 @@
     [(LATEUNIFY ,[t1] ,[t2]) (and t1 t2)]
     ;; Including Ref:
     [(,C ,[t] ...) (guard (symbol? C) (not (memq C '(quote NUM)))) (andmap id t)]
+    [,s (guard (string? s)) #t] ;; Allowing strings for uninterpreted C types.
+    ;[(,ptr ,[name]) (guard (eq-any? ptr 'Pointer 'ExclusivePointer)) name]
     [,oth (if (null? extra-pred) #f 
 	      ((car extra-pred) oth))]))
 (define (type? t)

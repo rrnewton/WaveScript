@@ -1262,9 +1262,8 @@
 	[Boolean 'boolean]
 	[Char    'char]
 	[String  'string]
-	;[(Pointer) '(void *)]
-	[Pointer 'uptr]
-	[ExclusivePointer 'uptr]
+	[(Pointer ,_) 'uptr]
+;	[(ExclusivePointer ,_) 'uptr]
 	[#()     'void]
 	;[(Char) char]
 	[,else (error '__foreign:Convert "this type is not supported by the foreign interface: ~s" T)]))
@@ -1291,7 +1290,9 @@
 	(let ([ext (extract-file-extension file)]
 	      [sharedobject file])
 	  (cond
-	   [(member ext '("so")) (void)]
+	   ;; This is a hack to handle files like libc.so.6
+	   [(or (string=? ext "so") (substring? ".so." file))
+	    (void)]
 	   ;; This is a bit sketchy... because of course the user *COULD* put function definitions in headers.
 	   ;; The assumption for now is that headers can be ignored.
 	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
@@ -1336,7 +1337,7 @@
 	 (let ([foreignfun (eval `(foreign-procedure ,name ,args ,(Convert ret)))])
 	   foreignfun
 #;	   
-	   (if (eq? ret 'ExclusivePointer)
+	   (if (match? ret (ExclusivePointer ,_))
 	       (lambda args
 		 (let ([ret (apply foreignfun args)])
 		   ;; Now we add the pointer we get back to our guardian:
@@ -1355,7 +1356,8 @@
    (lambda (ptr)
      (fprintf stderr "C-free: Loading free function from system's libc.\n")
      (load-shared-object "libc.so.6")
-     (set! C-free (foreign-procedure "free" (uptr) void))
+     ;; This throws an error in Petite if not wrapped in an eval:
+     (set! C-free (eval '(foreign-procedure "free" (uptr) void)))
      (C-free ptr))
    (lambda _ (error 'C-free "not implemented in PLT"))))
 

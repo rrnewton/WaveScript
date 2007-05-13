@@ -266,9 +266,8 @@
     ;; This won't work in the schem backend...
     ;(foreign_source (String (List String)) 'any)
 
-
-    (exclusivePtr   (Pointer) ExclusivePointer)
-    (getPtr         (ExclusivePointer) Pointer)
+    (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
+    (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
 
     (locdiff (Location Location) Float)
 

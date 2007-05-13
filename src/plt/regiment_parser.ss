@@ -290,6 +290,9 @@
 	  ;[(type -> type)  `(,$1 -> ,$3)]
 	  ; Ambiguous: a, b -> c, d -> e
 
+	  ;; Strings can be types... kinda... this only works for "Pointer" types.
+	  [(STRING) $1]
+
           ;; A type constructor, make it right-associative.
           [(VAR type) (prec APP) (list $1 $2)]
 

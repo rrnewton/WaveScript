@@ -1,29 +1,34 @@
 ;;;; .title The Regiment Type Inferencer.
 
-; type := T                ; symbol - an atomic type
-; type := 'a               ; quoted symbol - a type variable
-; type := (T type ...)     ; a type constructor
-; type := (type -> type)   ; a function type
-; type := #(type ...)      ; a tuple type
+;;;; Below is the representation for types used by the type checker.
+;;;; Note: this may get out of date.  A better thing to check is the
+;;;; machine-checked grammar for types listed in grammars.ss
+;;;;
+;;;; type := T                ; symbol - an atomic type           
+;;;; type := 'a               ; quoted symbol - a type variable
+;;;; type := (T type ...)     ; a type constructor
+;;;; type := (type -> type)   ; a function type
+;;;; type := #(type ...)      ; a tuple type
+;;;; type := (Pointer string) ; a special case
+;;;;
+;;;; And internally, the algorithm uses these constructions:
+;;;; type := '(a . type)      ; a type variable with binding
+;;;; type := '(a . #f)        ; a type variable with no info
+;;;;
+;;;; And for our particular brand of let-bound polymorphism:
+;;;; A place to record type constraints and LUB/unify later:
+;;;; type := (LATEUNIFY lub type) 
+;;;; lub  := #f
+;;;; lub  := type
+;;;; lub  := (LUB type type)
 
-; And internally, the algorithm uses these constructions:
-; type := '(a . type)      ; a type variable with binding
-; type := '(a . #f)        ; a type variable with no info
+;;;; Also see the primitive type definitions in prim_defs.ss
 
-; And for our particular brand of let-bound polymorphism:
-; A place to record type constraints and LUB/unify later:
-; type := (LATEUNIFY lub type) 
-; lub  := #f
-; lub  := type
-; lub  := (LUB type type)
-
-;; Also see the primitive type definitions in prim_defs.ss
-
-;; Primary ENTRY POINTS are:
-;;  type-expression (obsolete)
-;;  annotate-expression
-;;  annotate-program
-;;  types-compat?
+;;;; Primary ENTRY POINTS are:
+;;;;  type-expression (obsolete)
+;;;;  annotate-expression
+;;;;  annotate-program
+;;;;  types-compat?
 
 ;;  validate-types [2006.10.12] TODO: check the existing types, should be less expensive
 
@@ -187,7 +192,7 @@
 (define (raise-type-mismatch msg t1 t2 exp)
   (type-error 'type-checker
 	 (++ "\n";"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-	     "Type mismatch: ~a doesn't match ~a \n~a"
+	     "Type mismatch: ~s doesn't match ~s \n~a"
 	     "\nLocation:\n   ~a\n" ;; Location
 	     "\nExpression:\n~a\n")
 	 (safe-export-type t1) (safe-export-type t2)
@@ -251,9 +256,12 @@
 	     [#(,[t*] ...) (apply vector t*)] 
 	     [(,[arg*] ... -> ,[res]) ; Ok to loop on ellipses.
 	      `(,@arg* -> ,res)]
+
 	     [(,constructor ,[args] ...)
 	      (guard (symbol? constructor))
 	      `(,constructor ,@args)]
+
+	     [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
 	     [,other (error 'instantiate-type "bad type: ~a" other)]
 	     ))))
        (DEBUGASSERT (type? result))
@@ -277,8 +285,8 @@
     [(,[arg*] ... -> ,[res])
      `(,@arg* -> ,res)]
     ;; Including Ref:
-    [(,s ,[t*] ...) (guard (symbol? s))
-     `(,s ,@t*)]
+    [(,s ,[t*] ...) (guard (symbol? s)) `(,s ,@t*)]
+    [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [,other (error 'export-type "bad type: ~s" other)]))
 
 ;; [2007.02.21]
@@ -333,6 +341,7 @@
     [(,[arg*] ... -> ,[res])                 (void)]
     ;; Including Ref:
     [(,s ,[t] ...) (guard (symbol? s))       (void)]
+    [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [,other (error 'do-late-unify! "bad type: ~s" other)]))
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
@@ -1115,6 +1124,12 @@
 		      (export-type other)
 		      `(,@yargs -> ,y)
 		      other)])]
+    
+    ;; Strings are the only thing that the eqv? above won't work for:
+    ;[[,x . ,y] (guard (string? t1) (string? t2) (string=? t1 t2)) (void)]
+    ;; Actually for now these are all the "same" type:
+    [[,x . ,y] (guard (string? t1) (string? t2)) (void)]
+
     [,otherwise (raise-type-mismatch msg t1 t2 exp)]))
  
 ;; This helper mutates a tvar cell while protecting against cyclic structures.
@@ -1273,7 +1288,8 @@
      (if (equal? tyvar tvar)
 	 (raise-occurrence-check tvar ty exp))]
     [#(,[t*] ...) #t]
-    [(,[arg*] ... -> ,[res]) res]
+    [(,[arg*] ... -> ,[res]) res]    
+    [,s (guard (string? s)) s] ;; Allowing strings for uninterpreted C types.
     [(,C ,[t*] ...) (guard (symbol? C)) #t] ; Type constructor
 ;    [,other (inspect (vector other tvar))]
     [,other (error 'no-occurrence! "malformed type: ~a" ty)]
@@ -1315,6 +1331,7 @@
 		 (++ "(" tc " " inside ")")))]
 	  [,sym (guard (symbol? sym))
 		(symbol->string sym)]
+	  [,s (guard (string? s)) (format "~s" s)] ;; Allowing strings for uninterpreted C types.
 	  [,other (error 'print-type "bad type: ~s" other)])))
     (display 
      ((loop #t) t)

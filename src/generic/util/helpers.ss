@@ -1462,7 +1462,7 @@
 ; =======================================================================
 
 
-
+;; Split a list before the first element that satisfies predicate.
 (define (split-before f origls)
   (let loop ([acc '()] [ls origls])
    (cond

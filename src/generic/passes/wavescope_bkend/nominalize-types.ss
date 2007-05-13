@@ -60,6 +60,8 @@
       [(Sigseg ,_)            #t]
       [(Array  ,_)            #t]
       [(List   ,_)            #t]
+      [(Pointer   ,_)         #t]
+      [(ExclusivePointer  ,_) #t]
       [(,C ,[t] ...) (guard (symbol? C)) (andmap id t)]
       [#(,[t] ...) (andmap id t)]
       [,else #f]))
@@ -97,6 +99,7 @@
 	     [#f (error 'nominalize-types:convert-type
 			"cannot find tuple type ~s in tuple defs:\n ~s" (list->vector t*) tupdefs)]
 	     [(,types ,flds ,structname) `(Struct ,structname)])]
+	  [,s (guard (string? s)) s]
 	  [,else (error 'nominalize-types:convert-type "unmatched type: ~s" else)]))
 
       ;; Collect from type all its contained tuples:
@@ -114,6 +117,7 @@
 	  [#(,t* ...)
 	   (cons (make-new-typedef t*)
 		 (apply append (map collect-from-type t*)))]
+	  [,s (guard (string? s)) '()]
 	  [,else (error 'nominalize-types:collect-from-type "unmatched type: ~s" else)]))
 
       ;; Keep them sets rather than converting them to sets at the
@@ -141,7 +145,7 @@
 				     "no typedefs allowed for unit type."))
 	(unless (andmap known-size? argtypes)
 	  (error 'nominalize-types
-		 "there should not remain polymorphic tuples of this sort after static-elab: ~s" 
+		 "there should not remain tuples of unknown size (probably polymorphic) after static-elab: ~s" 
 		 argtypes))
 	(DEBUGASSERT (andmap (lambda (t) (not (polymorphic-type? t))) argtypes))
 	
@@ -280,6 +284,7 @@
 	  [(,C ,[ls*] ...) (guard (symbol? C)) (apply append ls*)]
 	  [#(,ls* ...) (error 'type->structs "shouldn't be any tuple types left! ~s" 
 			      (list->vector ls*))]
+	  [,s (guard (string? s)) '()]
 	  [,oth (error 'type->structs "unrecognized type: ~s" oth)]))
       
       ;; Topological sort on struct-defs

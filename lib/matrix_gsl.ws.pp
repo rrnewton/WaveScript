@@ -6,7 +6,7 @@
 include "gsl.ws";
 
 // A pair containing the struct pointer and the array pointer.
-type Matrix #n = (ExclusivePointer * ExclusivePointer);
+type Matrix #n = (ExclusivePointer "void*" * ExclusivePointer "void*");
 
 #define BASIC(CTY, WSTY)         \
     /* Hmm... initialize how? */ \
