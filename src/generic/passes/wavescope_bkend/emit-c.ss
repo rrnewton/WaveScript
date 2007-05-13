@@ -976,11 +976,13 @@
     ;; This is a lame hack to distinguish system libraries.
     (trace-define (extract-lib-name fn)
       (let ([ext (extract-file-extension fn)]
-	    ;[base (remove-file-extension fn)]	    
-	    )
-	(let-values ([(base _) (split-before (curry string=? "so") (string-split fn #\.))])	  
+	    [sansext (remove-file-extension fn)])
+	(let-values ([(base _) (split-before (curry string=? "so") (string-split fn #\.))])
 	  (let ([base (apply string-append (insert-between "." base))])
-	    (and (or (equal? ext "so") (substring? ".so." fn))
+	    ;; Take the shorter one:
+	    (set! base (if (< (string-length base) (string-length sansext)) base sansext))
+	    (and (or (equal? ext "so") (equal? ext "dylib")
+		     (substring? ".so." fn))
 		 (> (string-length base) 3)
 		 (equal? "lib" (substring base 0 3))
 		 (substring base 3 (string-length base))

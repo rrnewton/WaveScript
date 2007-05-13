@@ -1,8 +1,15 @@
 
 fun assert(b) if not(b) then wserror("Assert failed.");
 
-malloc :: Int -> Pointer "void*" = foreign("malloc", ["libc.so.6"], [])
-free   :: Pointer "void*" -> () = foreign("free",   ["libc.so.6"], [])
+plat = GETENV("OSTYPE")
+libc = if plat == "Linux" 
+       then "libc.so.6" 
+       else if plat == "Darwin"
+       then "libc.dylib" 
+       else wserror("Don't know how to find libc on platform: "++ plat)
+
+malloc :: Int -> Pointer "void*" = foreign("malloc", [libc], [])
+free   :: Pointer "void*" -> ()  = foreign("free",   [libc], [])
 
 BASE <- iterate _ in timer(30.0) { 
   p1 = malloc(300);

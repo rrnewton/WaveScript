@@ -1290,9 +1290,10 @@
 	(let ([ext (extract-file-extension file)]
 	      [sharedobject file])
 	  (cond
-	   ;; This is a hack to handle files like libc.so.6
-	   [(or (string=? ext "so") (substring? ".so." file))
-	    (void)]
+	   [(or (string=? ext "so") 
+		(string=? ext "dylib")
+		(substring? ".so." file) ;; This is a hack to handle files like libc.so.6
+		) (void)]
 	   ;; This is a bit sketchy... because of course the user *COULD* put function definitions in headers.
 	   ;; The assumption for now is that headers can be ignored.
 	   [(member ext '("h" "hpp")) (set! sharedobject #f)]
