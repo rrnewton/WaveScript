@@ -704,7 +704,7 @@
 ; [2004.03.31]
 ;; [2007.01.30] Upgrading this to a parameter. (A box might have better performance.)
 (define regiment-primitives
-  (make-parameter   
+  (reg:make-parameter   
    (append regiment-basic-primitives
 	   regiment-distributed-primitives
 	   wavescript-primitives

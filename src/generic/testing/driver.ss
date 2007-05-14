@@ -127,7 +127,7 @@
 (define test-ordinal #f)
 
 (define game-eval
-  (make-parameter eval ;interpret
+  (reg:make-parameter eval ;interpret
                   (lambda (x)
                     (unless (procedure? x)
                       (error 'game-eval "~s is not a procedure" x))
@@ -135,7 +135,7 @@
 
 ;; Used to control the host evaluator (the host scheme system that is).
 (define host-eval
-  (make-parameter eval ;interpret
+  (reg:make-parameter eval ;interpret
                   (lambda (x)
                     (unless (procedure? x)
                       (error 'host-eval "~s is not a procedure" x))
@@ -201,7 +201,7 @@
     [(expr emit? verbose?) ($test-one expr emit? verbose? #t)]
     ))
 
-(define remaining-pass-list (make-parameter '()))
+(define remaining-pass-list (reg:make-parameter '()))
 
 (define $test-one
   (lambda (original-input-expr emit? verbose? ordinal)

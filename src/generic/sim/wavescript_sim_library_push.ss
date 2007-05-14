@@ -704,8 +704,8 @@
       ;; We assume type info has already been stripped.
       [(_ x ...) (letrec* x ...)]))
 
-  ;(define-for-syntax for-loop-stack (make-parameter '()))
-  (define for-loop-stack (make-parameter '()))
+  ;(define-for-syntax for-loop-stack (reg:make-parameter '()))
+  (define for-loop-stack (reg:make-parameter '()))
   
   (define-syntax for
        (syntax-rules ()

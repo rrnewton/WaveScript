@@ -38,6 +38,9 @@
 
 (require 
 
+;; Adding this as top-level require to initialize hash table:
+(all-except "generic/compiler_components/prim_defs.ss" these-tests test-this)
+
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
 ;(all-except "plt/desugar-pattern-matching.ss" these-tests test-this)
@@ -52,6 +55,7 @@
 
 (all-except "generic/passes/static_elaborate/static-elaborate.ss" these-tests test-this)
 (all-except "generic/passes/static_elaborate/verify-elaborated.ss" these-tests test-this)
+(all-except "generic/passes/static_elaborate/degeneralize-arithmetic.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/reduce-primitives.ss" these-tests test-this)
 

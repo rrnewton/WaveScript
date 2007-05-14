@@ -59,7 +59,7 @@
          RADIO_DELAY ;PROCESSING_TIME ;; Not used yet
          
 	 define-testing
-	 define-regiment-parameter regiment-parameters
+	 define-regiment-parameter regiment-parameters reg:make-parameter
 
          inferencer-let-bound-poly
          inferencer-enable-LUB
@@ -183,18 +183,28 @@
 
 ;;; Regiment parameters.
 
+;; First we define a common make-parameter abstraction for Chez and PLT:
+(define-syntax reg:make-parameter
+  (IFCHEZ (identifier-syntax #%make-parameter)
+    ;; The make-parameter function should call the guard even the first time.
+    ;; This is not default PLT behavior:
+    (syntax-rules ()
+      [(x) (make-parameter x)]
+      [(x g) (let ([val x] [guard g])
+	       (make-parameter (guard val) guard))])))
+
 ;; In the following manner we distinguish regiment parameters from normal
 ;; parameters.  We keep a list of all the existing regiment
 ;; parameters.  And it also makes it more acceptable for us to scatter
 ;; around the parameter definitions, because you can grep for
 ;; define-regiment-parameter.
-(define regiment-parameters (make-parameter '()))
+(define regiment-parameters (reg:make-parameter '()))
 (define-syntax define-regiment-parameter
   (syntax-rules () 
     [(_ name args ...)
      (define name 
        (begin (regiment-parameters (cons (quote name) (regiment-parameters)))
-	      (make-parameter args ...)))]))
+	      (reg:make-parameter args ...)))]))
 
 ;; Parameter determining the location of the Regiment tree. <br>
 ;; This is set when the system loads.
@@ -286,7 +296,7 @@
 (define-regiment-parameter regiment-quiet #f)
 
 ;; It's useful to have this info globally for debugging/error messages.
-(define regiment-current-pass (make-parameter #f))
+(define regiment-current-pass (reg:make-parameter #f))
 
 ;; Is this run of the compiler a WS run?
 ;; Should be set to:
@@ -361,7 +371,7 @@
 ;; Just a counter for the simulation logger messages.  
 ;; If it's #f that means it's not set, but it can be 
 ;; set to zero at the start of a simulation.
-(define simulation-logger-count (make-parameter #f))
+(define simulation-logger-count (reg:make-parameter #f))
 
 
 ;; [2006.02.22] <br>
@@ -380,12 +390,12 @@
 (define-regiment-parameter pass-list '())
 
 ;; This parameter accumulates all the unit tests from the system as they are defined.
-(define reg:all-unit-tests (make-parameter '()))
+(define reg:all-unit-tests (reg:make-parameter '()))
 
 ;; This is kind of silly, but this is a paramter whose value is never
 ;; read.  It's used to give .rs/.tm files an excuse to execute
 ;; arbitrary code in the RHSs of their parameter statements.
-(define dummy-param (make-parameter #f))
+(define dummy-param (reg:make-parameter #f))
 
 ;=======================================================================;;
 ;;                         Per-module constants                         ;;
@@ -395,23 +405,23 @@
 ;;; Used primarily by wavescript_sim_library
 ;====================================================
 
-(define foreign-guardian (make-parameter #f))
+(define foreign-guardian (reg:make-parameter #f))
 
 ;;; Used primarily by hm_type_inference.ss (and type_environments.ss)
 ;====================================================
   
 ;; This controls whether let-bound-polymorphism is allowed at all.
-(define inferencer-let-bound-poly (make-parameter #t))
+(define inferencer-let-bound-poly (reg:make-parameter #t))
 
 ;; If this is enabled, the type assigned to a let-bound variable is
 ;; lowered to the LUB of its call-site requirements, rather than the
 ;; most general type.
 ;;   This is only turned off for debugging purposes...
-(define inferencer-enable-LUB (make-parameter #f))
+(define inferencer-enable-LUB (reg:make-parameter #f))
 
 ;; This is optional -- helps with printing the types.  We may want to
 ;; suppress printing the types for bindings imported via include.
-(define included-var-bindings (make-parameter '()))
+(define included-var-bindings (reg:make-parameter '()))
   
 ;;; Used primarily by nominalize-types:
 ;====================================================
@@ -597,7 +607,7 @@
 
 ;; Just a global pointer to whatever the currently running simworld is.
 (define simalpha-current-simworld 
-  (make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) ;; Can't check this simworld? not defined yet.
+  (reg:make-parameter #f (lambda (x) (if #t ;(or (not x) (simworld? x)) ;; Can't check this simworld? not defined yet.
 				  x
 				  (error 'simalpha-current-simworld 
 					 "invalid val for param: ~a" x)))))
@@ -702,7 +712,7 @@
 (define-regiment-parameter simalpha-label-sensorvals #f)
 
 ;; If this parameter is set, it must be set to a thunk which will somehow pause the scheduler main loop.
-(define simalpha-pause-hook (make-parameter #f))
+(define simalpha-pause-hook (reg:make-parameter #f))
 
 
 ;; This parameter is used to instantiate new instances of the sensed-world. <br> <br>
@@ -714,7 +724,7 @@
 ;; Shouldn't be modified directly.
 ;; Should have type:  () -> VTime -> SensorTypeString, NodeID, Xcoord, Ycoord -> SensedValue
 (define-regiment-parameter simalpha-sense-function #f)
-;(define simalpha-sense-function (make-parameter #f (lambda (x) 
+;(define simalpha-sense-function (reg:make-parameter #f (lambda (x) 
 ;						     (inspect `(sensor! . ,x))
 ;						     x)))
 

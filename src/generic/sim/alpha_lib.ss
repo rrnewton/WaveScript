@@ -72,7 +72,7 @@
 ;; global parameter correctly, so that the current simobject may be
 ;; accessed by the below library code. -[2005.10.16]
 ;; NOTE: this is not a "regiment-parameter" because it should not be user-adjustable.
-(define current-simobject (make-parameter 'current-simobject_uninitialized!))
+(define current-simobject (reg:make-parameter 'current-simobject_uninitialized!))
 
 ; =======================================================================
 ;;; Helpers for accessing global simulation data structures.

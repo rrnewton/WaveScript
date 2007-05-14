@@ -365,9 +365,9 @@
 ;;
 ;; [2005.11.26] This information is now in the individual simobjects,
 ;; replacing these with functions that sum up the simobject values.
-;(define simalpha-total-messages (make-parameter 0 (lambda (x) x)))
+;(define simalpha-total-messages (reg:make-parameter 0 (lambda (x) x)))
 ;; This one counts total token handlers fired.
-;(define simalpha-total-tokens (make-parameter 0 (lambda (x) x)))
+;(define simalpha-total-tokens (reg:make-parameter 0 (lambda (x) x)))
 
 ;; Safer version:
 (define (safe-construct-msg-object token timestamp parent args)
@@ -421,16 +421,16 @@
    [else (<= at bt)]))
 
 
-(define global-graph (make-parameter #f (lambda (x) x)))
+(define global-graph (reg:make-parameter #f (lambda (x) x)))
 
 ;; Global parameter to hold globally returned values:
 (define soc-return-buffer
-  (make-parameter '()
+  (reg:make-parameter '()
 		  (lambda (ls) ls)))
 
 ;; Global parameter contains continuation for exiting the alpha-sim.  Invoked by soc-finished.
 (define escape-alpha-sim
-  (make-parameter (lambda (x) (error 'escape-alpha-sim "parameter holds no continuation"))
+  (reg:make-parameter (lambda (x) (error 'escape-alpha-sim "parameter holds no continuation"))
 		  (lambda (k) (if (procedure? k) k
 				  (error 'escape-alpha-sim "bad continuation: ~a" k)))))
 

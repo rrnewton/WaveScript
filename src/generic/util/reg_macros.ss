@@ -45,6 +45,7 @@
       time-accum
       time-accum-report
       time-accum-buf
+
    )
   
   ;; These provide extra information for Chez:
@@ -280,20 +281,20 @@
 
 ;; [2007.04.20] This is used to time a piece of code thats run from
 ;; separate places, and to add the cost of those executions together.
-(define time-accum-buf '())
+(define time-accum-buf (box '()))
 (define-syntax time-accum
   (syntax-rules ()
     [(_ e ...) 
      (let* ([start (cpu-time)]
 	    [result (begin e ...)]
 	    [end (cpu-time)])
-       (set! time-accum-buf (cons (- end start) time-accum-buf))
+       (set-box! time-accum-buf (cons (- end start) (unbox time-accum-buf)))
        result)]))
 ;; This discharges the saved runs and reports their total time:
 (define (time-accum-report)
   (printf "Time-Accum: total cpu-time ~s over ~s runs: ~s\n" 
-	  (apply + time-accum-buf) (length time-accum-buf) (reverse time-accum-buf))
-  (set! time-accum-buf '()))
+	  (apply + (unbox time-accum-buf)) (length (unbox time-accum-buf)) (reverse (unbox time-accum-buf)))
+  (set-box! time-accum-buf '()))
 
 ;; This is sometimes useful.  It's awkward to do manually.
 (define-syntax parameterize-IFCHEZ
@@ -302,6 +303,7 @@
      ;; Don't worry about code duplication, only one branch will survive.
      (IFCHEZ (parameterize ([lhs rhs] ...) bod ...)
 	     (let () bod ...))]))
+
 
 ;(define-testing these-tests 
 ;  `(

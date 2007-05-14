@@ -977,7 +977,7 @@
 ;;; Invoking the simulator.
 
 ;; This is a module-local parameter to the currently running sim program. -[2005.11.25]
-(define simalpha-current-nodeprog (make-parameter #f (lambda (x) x)))
+(define simalpha-current-nodeprog (reg:make-parameter #f (lambda (x) x)))
 
 ;; This simply runs the simulator again on whatever the last simulation was.
 ;; .param args Can optionally contain 'use-stale-world

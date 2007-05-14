@@ -210,7 +210,7 @@
 	 (> (vector-length (vector-ref x 1)) 1)
 	 (eq? 'class (vector-ref (vector-ref x 1) 0)))))
 
-(define current-error-port (make-parameter stderr))
+(define current-error-port (reg:make-parameter stderr))
 
 ) (void)) ; End IFCHEZ
 
