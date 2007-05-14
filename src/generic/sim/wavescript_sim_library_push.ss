@@ -1350,6 +1350,15 @@
 	 ]))))
  (define __foreign (lambda _ (error 'foreign "C procedures not accessible from PLT"))))
 
+;; This tries to match the binary format used in the C backend.
+#;
+(define (__marshal val ty)
+  (let ([port (open-string-port)])
+    (match ty
+      [(Int) ]
+      [#()])
+    ))
+
 ;; A foreign procedure for freeing foreign storage.
 ;; We do late-binding here:
 (define C-free 

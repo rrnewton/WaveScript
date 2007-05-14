@@ -186,7 +186,7 @@
   (define fixnum?
     (let ((x (expt 2 30)))
       (lambda (n) (and (integer? n) (< n x)))))
-  (define (flonum? x) (inexact? x))
+  (define (flonum? x) (and (number? x) (inexact? x)))
   (define (flonum->fixnum x) (inexact->exact (floor x)))
   (define (fixnum->flonum x) (exact->inexact x))
     

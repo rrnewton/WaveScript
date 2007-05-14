@@ -184,14 +184,17 @@
 ;;; Regiment parameters.
 
 ;; First we define a common make-parameter abstraction for Chez and PLT:
-(define-syntax reg:make-parameter
-  (IFCHEZ (identifier-syntax #%make-parameter)
-    ;; The make-parameter function should call the guard even the first time.
-    ;; This is not default PLT behavior:
-    (syntax-rules ()
-      [(x) (make-parameter x)]
-      [(x g) (let ([val x] [guard g])
-	       (make-parameter (guard val) guard))])))
+(IFCHEZ 
+ (define-syntax reg:make-parameter (identifier-syntax #%make-parameter))
+ ;; The make-parameter function should call the guard even the first time.
+ ;; This is not default PLT behavior:
+ (define-syntax reg:make-parameter 
+   (syntax-rules ()
+     [(_ x) (make-parameter x)]
+     [(_ x g) (let ([val x] [guard g])
+	      (make-parameter (guard val) guard))])))
+
+
 
 ;; In the following manner we distinguish regiment parameters from normal
 ;; parameters.  We keep a list of all the existing regiment

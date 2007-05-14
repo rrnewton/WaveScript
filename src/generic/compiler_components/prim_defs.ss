@@ -262,12 +262,21 @@
     ;; (Internal) This is the same but has the type tagged on the end:
     (__foreign      (String (List String) (List String) (List Symbol)) 'any)
 
+    (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
+    (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
+
+    ;; Not implemented yet:
+    ;(marshal        ('a) String)
+    ;(unmarshal        (String) 'a)
+    ;; Null characters make things difficult, this should probably use Arrays:
+    ;(marshal        ('a) (Array Byte))
+    ;(unmarshal      ((Array Byte)) 'a)
+    
+    ;; Not implemented yet:
     ;(foreign_box    (String (List String)) 'any)
     ;; This won't work in the schem backend...
     ;(foreign_source (String (List String)) 'any)
 
-    (exclusivePtr   ((Pointer 'name)) (ExclusivePointer 'name))
-    (getPtr         ((ExclusivePointer 'name)) (Pointer 'name))
 
     (locdiff (Location Location) Float)
 

@@ -60,6 +60,7 @@
            )
 
   (provide 
+  
            num-types
 	   constant-typeable-as? 
 	   
@@ -105,6 +106,8 @@
 
   (chezimports constants)
 
+  (IFCHEZ (begin) (provide (all-from "type_environments.ss")))
+  
 ;; [2007.04.20] This doesn't work yet.
 ;(IFCHEZ (import rn-match) (void))
 
@@ -376,7 +379,7 @@
 ;;; The main type checker.
 
 (define (type-expression expr tenv)
-  (mvlet ([(e typ) (annotate-expression expr tenv '())])        
+  (let-values ([(e typ) (annotate-expression expr tenv '())])        
     (do-all-late-unifies! e)    
     typ))
 
@@ -608,7 +611,7 @@
        (types-equal! ty1 'Int exp "(Starting point for range of for-loop must be an integer.)\n")
        (types-equal! ty2 'Int exp "(Ending point for range of for-loop must be an integer.)\n")
        (let ([tenv (tenv-extend tenv (list i) '(Int) #f)])
-	 (mvlet ([(bod ty) (annotate-expression bod tenv nongeneric)])
+	 (let-values ([(bod ty) (annotate-expression bod tenv nongeneric)])
 	   (values `(for (,i ,start ,end) ,bod) ty)))]
 
       
@@ -635,7 +638,7 @@
       [(src-pos ,p (,app ,origrat ,[l -> rand* t*] ...))
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
+       (let-values ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (,app ,rator ,@rand*))
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       ;; END DUPLICATING!!!
@@ -649,7 +652,7 @@
       [(,app ,origrat ,[l -> rand* t*] ...)
        (guard (eq-any? app 'app 'construct-data))
        (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
+       (let-values ([(rator t1) (l origrat)])
 	 (values `(,app ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
      
@@ -679,12 +682,12 @@
 #;
       [(src-pos ,p (foreign-app ',realname ,origrat ,[l -> rand* t*] ...))
        (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
+       (let-values ([(rator t1) (l origrat)])
 	 (values `(src-pos ,p (foreign-app ',realname ,rator ,@rand*))
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
       [(foreign-app ',realname ,origrat ,[l -> rand* t*] ...)
        (DEBUGASSERT (andmap type? t*))
-       (mvlet ([(rator t1) (l origrat)])
+       (let-values ([(rator t1) (l origrat)])
 	 (values `(foreign-app ',realname ,rator ,@rand*)
 		 (type-app origrat t1 t* exp tenv nongeneric)))]
 
@@ -735,7 +738,7 @@
 			   "(Function's argument type must match the annotation.)\n")))
 	argtypes inittypes)
 
-      (mvlet ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
+      (let-values ([(newbod bodtype) (annotate-expression body (tenv-extend tenv ids argtypes)
                                                      (append newnongen nongeneric))])
         (values `(lambda ,ids ,argtypes ,newbod)
                 `(,@argtypes -> ,bodtype))))))
@@ -758,7 +761,7 @@
 			       )
 			  rhsty* inittypes)]
 	      [tenv (extend-with-maybe-poly id* rhs* newtype* tenv)])
-	 (mvlet ([(bod bodty) (annotate-expression bod tenv nongeneric)])
+	 (let-values ([(bod bodty) (annotate-expression bod tenv nongeneric)])
 	   (values `(let ,(map list id* newtype* newrhs*) ,bod) bodty)))]
       )))
 
@@ -835,13 +838,13 @@
 				 [(quote (,v . ,_))
 				  (DEBUGASSERT tenv? tenv)
 				  ;; For our own RHS we are "nongeneric".
-				  (mvlet ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
+				  (let-values ([(newrhs t) (annotate-expression rhs tenv (cons v nongeneric))])
 				    (types-equal! type t rhs "<<Internal error in typechecking letrec.>>")
                                     ;(inspect `(GOTNEWRHSTYPE ,t ,type))
 				    newrhs)
 				  ]))
                              rhs-types rhs*)])
-          (mvlet ([(bode bodt) (annotate-expression bod tenv nongeneric)])
+          (let-values ([(bode bodt) (annotate-expression bod tenv nongeneric)])
             (values `(,letrecconstruct ,(map list id* rhs-types newrhs*) ,bode) bodt)))))))
 
 
@@ -995,7 +998,7 @@
   (IFCHEZ (import rn-match) (void))
   (let ([Expr 
 	 (lambda (p tenv)
-	   (mvlet ([(e t) (annotate-expression p tenv '())])
+	   (let-values ([(e t) (annotate-expression p tenv '())])
 	     (do-all-late-unifies! e)
 	     ;; Now strip mutable cells from annotated expression.
 	     (values (export-expression e)
@@ -1006,7 +1009,7 @@
     (match p
       [(,lang '(program ,bod ,metadat* ... ,type))
        (ASSERT type? type)
-       (mvlet ([(e t) (Expr bod (sumdecls->tenv
+       (let-values ([(e t) (Expr bod (sumdecls->tenv
 				 (cdr (or (assq 'union-types metadat*) '(union-types)))))])
 	 `(typechecked-lang '(program ,e ,@metadat* ,t)))]
       [,other 
@@ -1452,7 +1455,7 @@
     [(type? '(Int -> (NUM a))) #t]
 
     [(,type-expression '(if #t 1. 2.) (empty-tenv))         Float]
-    [(mvlet ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
+    [(let-values ([(p t ) (annotate-program '(lambda (x) (g+ x (gint 3))))]) t)
      ((NUM unspecified) -> (NUM unspecified))]
     
     [(export-type ''(f . Int)) Int]
@@ -1461,9 +1464,9 @@
     [(export-type (,type-expression '(cons 1 '(2 3 4)) (empty-tenv))) (List Int)]
     [(export-type (,type-expression '(cons 1 '(2 3 4.)) (empty-tenv))) error]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(Int) (empty-tenv) '())]) t))
+    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(Int) (empty-tenv) '())]) t))
      (Int -> Int)]
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '('alpha) (empty-tenv) '())]) t))
+    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '('alpha) (empty-tenv) '())]) t))
      ;((NUM unspecified) -> (NUM unspecified))
      (Int -> Int)]
     
@@ -1472,16 +1475,16 @@
      '(a . '(b . #f))]
    
     ["Invalid explicitly annotated type"
-     (export-type (mvlet ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(String) (empty-tenv) '())]) t))
+     (export-type (let-values ([(_ t) (,annotate-lambda '(v) '(+_ v v) '(String) (empty-tenv) '())]) t))
      error]
 
     ["Explicitly typed let narrowing identity function's signature"
-     (mvlet ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) f))]) t)
+     (let-values ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) f))]) t)
      (Int -> Int)]
-    [(mvlet ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) (app f "h")))]) t)
+    [(let-values ([(_ t) (annotate-program '(let ([f (Int -> Int) (lambda (x) x)]) (app f "h")))]) t)
      error]
 
-    [(export-type (mvlet ([(_ t) (,annotate-lambda '(v) 'v '('alpha) (empty-tenv) '())]) t))
+    [(export-type (let-values ([(_ t) (,annotate-lambda '(v) 'v '('alpha) (empty-tenv) '())]) t))
      ,(lambda (x)
 	(match x
 	  [(',a -> ',b) (eq? a b)]
@@ -1546,7 +1549,7 @@
 
 
   ["A letrec-bound identity function never applied"
-   (mvlet ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
+   (let-values ([(p t) (annotate-program '(letrec ([f (lambda (x) x)]) 3))]) p)
    ,(lambda (x)
       (match x
 	[(letrec ([f (,v1 -> ,v2) (lambda (x) (,v3) x)]) 3)
@@ -1554,7 +1557,7 @@
 	[,else #f]))]
 
   ["A free non-generic variable in a lambda abstraction"
-   (mvlet ([(p t) (annotate-program '(lambda (x)
+   (let-values ([(p t) (annotate-program '(lambda (x)
 				       (letrec ([f (lambda (y) x)])
 					 f)))])
      t)
@@ -1574,11 +1577,11 @@
   
   ;; Now let's see about partially annotated programs.
   ["Partially (erroneously) annotated letrec"
-   (mvlet ([(p t) (annotate-program '(letrec ([i String 3]) (+_ i 59)))]) p)
+   (let-values ([(p t) (annotate-program '(letrec ([i String 3]) (+_ i 59)))]) p)
    error]
 
   ["An example function from nested_regions_folded.ss"
-   (mvlet ([(p t) (annotate-program '(letrec ([sumhood (lambda (reg) 
+   (let-values ([(p t) (annotate-program '(letrec ([sumhood (lambda (reg) 
 					  (letrec ([thevals (rmap (lambda (n) (cons (nodeid n) '()))
 								  reg)])
 					    (rfold append '() thevals)))])
@@ -1587,7 +1590,7 @@
    ((Area Node) -> (Stream (List Int)))]
 
   ["Here's the captured bug, letrec problem."
-   (mvlet ([(p t) (annotate-program '(lambda (n_7)  (Node)
+   (let-values ([(p t) (annotate-program '(lambda (n_7)  (Node)
 					     (letrec ([resultofthevals_1 (List 'aay) 
 									 (cons tmpbasic_12 '())]
 						      [tmpbasic_12 Int (nodeid n_7)])
@@ -1596,7 +1599,7 @@
    (Node -> (List Int))]
 
   ["This compiled version of the same fun gets too general a type"
-   (mvlet ([(p t) (annotate-program ' (lambda (reg_5)
+   (let-values ([(p t) (annotate-program ' (lambda (reg_5)
 			 ((Area Node))
                     (letrec
                       ((thevals_6
@@ -1629,13 +1632,13 @@
 
 
   ["Now let's test the NUM subkind."
-   (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
+   (let-values ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
 				       (tuple (app f 3) (app f 4.0) f)))])
      t)
    #(Int Float ((NUM unspecified) -> (NUM unspecified)))]
 
   ["Now let's test something outside the bounds of the NUM subkind" 
-   (mvlet ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
+   (let-values ([(p t) (annotate-program '(let ([f ((NUM a) -> (NUM a)) (lambda (x) x)])
 				       (tuple (app f 3) (app f 4.0) (app f "et") f)))])
      t)
    error]
@@ -1643,8 +1646,8 @@
 
   ;; TODO: FIXME: THIS REPRESENTS A BUG:
   ["LUB: Here we should infer the less general type: plain Int:"
-   (deep-member? 'NUM
-    (parameterize ([inferencer-enable-LUB #t])
+   (,deep-member? 'NUM
+    (parameterize ([,inferencer-enable-LUB #t])
       (annotate-program 
        '(foolang '(program
 		      (letrec ([readings (Area (List Int)) 
@@ -1692,10 +1695,11 @@
 
 
   ["This is an identity function with LUB type Num a -> Num a"
-   (values->list 
-    (parameterize ([inferencer-enable-LUB #t])
+   (call-with-values
+    (lambda () (parameterize ([,inferencer-enable-LUB #t])
       (annotate-program
        '(let ([f 'a (lambda (x) x)]) (tuple (app f '3) (app f '4.5))))))
+    list)
    ,(lambda (x)
       (match x
        	[((let ([f ((NUM ,v1) -> (NUM ,v2)) (lambda (x) (,unspecified) x)])
@@ -1706,7 +1710,7 @@
 
   #;
   ;; Should we type-check with patterns in there?
-  [(mvlet ([(p t) (annotate-program '(lambda (#(_ t)) (> t 90)))]) t)
+  [(let-values ([(p t) (annotate-program '(lambda (#(_ t)) (> t 90)))]) t)
    ??
    ]
 

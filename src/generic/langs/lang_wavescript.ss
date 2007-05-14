@@ -181,7 +181,7 @@
 	   (current-directory "src/")
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
-           (require "generic/sim/wavescript_sim_library_NEW.ss")
+           (require "generic/sim/wavescript_sim_library_push.ss")
            (define THISWSVAL ,expr)
            (require mzscheme)
            THISWSVAL

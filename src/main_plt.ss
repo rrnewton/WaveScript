@@ -38,8 +38,11 @@
 
 (require 
 
-;; Adding this as top-level require to initialize hash table:
+
+;; Include these at top-level for the system tests:
+(all-except "generic/util/streams.ss" these-tests test-this)
 (all-except "generic/compiler_components/prim_defs.ss" these-tests test-this)
+
 
 (all-except "generic/compiler_components/hm_type_inference.ss" these-tests test-this)
 
@@ -47,6 +50,8 @@
 (all-except "generic/passes/normalize_source/desugar-pattern-matching.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_source/verify-regiment.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/resolve-varrefs.ss" these-tests test-this)
+(all-except "generic/passes/normalize_source/ws-label-mutable.ss")
 (all-except "generic/passes/normalize_source/typecheck.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/desugar-misc.ss" these-tests test-this)
 (all-except "generic/passes/normalize_source/eta-primitives.ss" these-tests test-this)
@@ -65,14 +70,25 @@
 (all-except "generic/passes/wavescope_bkend/type-annotate-misc.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" these-tests test-this)
 
+(all-except "generic/passes/wavescope_bkend/anihilate-higher-order.ss") 
+
+;; These are miscellaneous small passes used by wavescript:
+(all-except "generic/passes/small-ws-passes.ss")
+
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
 (all-except "generic/passes/normalize_query/uncover-free.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/lift-letrec.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/lift-letrec-body.ss" these-tests test-this)
 (all-except "generic/passes/normalize_query/remove-complex-opera.ss" these-tests test-this)
+(all-except "generic/passes/normalize_query/ws-remove-letrec.ss") 
 (all-except "generic/passes/normalize_query/remove-lazy-letrec.ss" these-tests test-this) 
 (all-except "generic/passes/normalize_query/verify-core.ss" these-tests test-this)
+
+(all-except "generic/passes/normalize_query/ws-remove-letrec.ss") 
+(all-except "generic/passes/normalize_query/ws-remove-complex-opera.ss") 
+(all-except "generic/passes/normalize_query/ws-lift-let.ss") 
+
 
 (all-except "generic/passes/analyze_query/classify-names.ss" these-tests test-this)
 (all-except "generic/passes/analyze_query/add-heartbeats.ss" these-tests test-this)
@@ -119,7 +135,7 @@
 (require "generic/sim/alpha_lib.ss")
 (require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
 
-;(require (all-except "generic/sim/wavescript_sim_library.ss" these-tests test-this))
+;(require (all-except "generic/sim/wavescript_sim_library_push.ss" these-tests test-this))
 (require (all-except "generic/langs/lang_wavescript.ss" these-tests test-this))
 
 (require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
