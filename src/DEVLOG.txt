@@ -807,4 +807,12 @@ OR could have another keyword...
 .
 This would let us typecheck the code properly.
 
-
+[2007.05.14] {Trying to optimize PLT version a little bit.}
+.
+Performing a test on demo3a_tuples.ws.  (Takes 12ms to compile in chez
+with the normal "ws" command.)
+.
+Baseline, from source: 4361 ms (1680 typechecking)
+Compiled .zo's    :    5652     2330
+With --prim       :    5572     2284
+With all --unsafe :    4920     4938

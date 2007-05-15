@@ -109,7 +109,7 @@
   (IFCHEZ (begin) (provide (all-from "type_environments.ss")))
   
 ;; [2007.04.20] This doesn't work yet.
-;(IFCHEZ (import rn-match) (void))
+(IFCHEZ (import rn-match) (void))
 
 ;; Added a subkind for numbers, here are the types in that subkind.
 (define num-types '(Int Float Double Complex 
@@ -129,6 +129,7 @@
 ;; TODO: Move to another file:
 (define src-pos->string
   (lambda (pos)
+    (IFCHEZ (import rn-match) (void))
     (match pos
       [#f "unknown"]
       [#((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2)
@@ -139,6 +140,7 @@
        ])))
 
 (define (get-location x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(src-pos ,pos ;#((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) 
 	      ,_)
@@ -155,6 +157,7 @@
 
 ;; This is similar to get-location but gets the actual snippet.
 (define (get-snippet x)
+  (IFCHEZ (import rn-match) (void))
   (match x
     [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,e)
      (if (file-exists? fn)
@@ -349,6 +352,7 @@
 
 ;; Looks up a primitive and produces an instantiated version of its arrow-type.
 (define (prim->type p)
+  (IFCHEZ (import rn-match) (void))2
   (let ((entry (or ;(assq p regiment-basic-primitives)
 		   ;(assq p regiment-constants)
 		   ;(assq p regiment-distributed-primitives)
@@ -389,7 +393,11 @@
 ;; .param exp - Expression
 ;; .param tenv - Type Environment
 (define (recover-type exp tenv)
-;;;;;;  (IFCHEZ (import rn-match) (void)) ;; Doesn't work yet with nested ellipses...
+  (IFCHEZ (import rn-match) (void)) ;; Doesn't work yet with nested ellipses...
+  ;; [2007.05.14] WEIRD... now if I try this, I seem to get system test 114 nondeterministically failing.
+  ;; Actually, this seems to expose an existing error.  I can get it to come out through repeated testing.
+  ;; Hmm.. we should run the unit tests multiple times in random order..
+
   (DEBUGASSERT (tenv? tenv))
   (let l ((exp exp))
     (match exp 
@@ -398,9 +406,10 @@
       ;; Being lenient and accepting potential annotations in the
       ;; letrec binds.  This is necessary for running "recover type"
       ;; on the intermediate forms of the later compiler passes.
-      [(,letrec ([,lhs* ,type* ,optional_annots ... ,rhs*] ...) ,body)
+      [(,letrec ([,lhs* ,type* . tail*] ...) ,body)
        (guard (memq letrec '(letrec lazy-letrec)))
-       (recover-type body (tenv-extend tenv lhs* type*))]
+       (let ([rhs* (map last tail*)])	 
+	 (recover-type body (tenv-extend tenv lhs* type*)))]
 
       [(if ,t ,[c] ,[a]) 
        (let ([a (instantiate-type a '())] 
@@ -510,6 +519,7 @@
       optional))
   ;; Here's the main loop:
   (letrec ([l (lambda (exp)
+    (IFCHEZ (import rn-match) (void))
     (match exp ;; NO DIRECT RECURSION ALLOWED!!! GO THROUGH "l" LOOP ABOVE!!!
 
       [(quote ,c)               (values `(quote ,c) (type-const c))]
@@ -620,13 +630,20 @@
 						tenv nongeneric)]
       [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
 
-      [(let ([,id* ,optional ... ,rhs*] ...) ,bod)
-       (annotate-let id* rhs* bod (extract-optional optional) tenv nongeneric)]
+
+      [(let ([,id* . ,tail*] ...) ,bod)
+       (let ([ty*  (extract-optional (map rdc tail*))]
+	     [rhs* (map last tail*)])
+	 (DEBUGASSERT (curry andmap type?) ty*)
+	 (annotate-let id* rhs* bod ty* tenv nongeneric))]
 
       ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
       ;; Allowing annotations, but ignoring them.
-      [(,letrec ([,id* ,optional ... ,rhs*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
-       (annotate-letrec id* (extract-optional optional) rhs* bod tenv nongeneric letrec)]
+      [(,letrec ([,id* . ,tail*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
+       (let ([ty*  (extract-optional (map rdc tail*))]
+	     [rhs* (map last tail*)])
+	 (DEBUGASSERT (curry andmap type?) ty*)
+	 (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
 
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:
       [(src-pos ,p (,prim ,[l -> rand* t*] ...))
@@ -912,15 +929,15 @@
 ;; This simply removes all the type annotations from an expression.
 ;; This would  be a great candidate for a generic traversal:
 (define (strip-types p)
-;;;;;;  (IFCHEZ (import rn-match) (void)) ;; No nested ellipses yet
+  (IFCHEZ (import rn-match) (void)) ;; No nested ellipses yet
   (define (process-expression e)
     (match e
     [(lambda ,v* ,optionaltypes ,[bod]) `(lambda ,v* ,bod)]
     [(lambda ,v* ,[bod])                `(lambda ,v* ,bod)]
-    [(,let ([,id* ,optionaltype ... ,[rhs*]] ...) ,[bod])    
-     (guard (memq let '(let let* letrec lazy-letrec)))
-     `(,let ([,id* ,rhs*] ...) ,bod)]
-   
+    [(,lett ([,id* . ,tail*] ...) ,[bod])
+     (guard (memq lett '(let let* letrec lazy-letrec)))
+     (let ([rhs* (map process-expression (map last tail*))])     
+       `(,lett ,(map list id* rhs*) ,bod))]
     [(quote ,c)       `(quote ,c)]
 ;    [(return ,[e]) `(return ,e)]
     [,var (guard (symbol? var)) var]
@@ -943,7 +960,7 @@
     ))
   (match p 
     [(,lang '(program ,expr ,_ ...)) 
-     `(,lang '(program ,(process-expression expr) ,_ ...))]
+     `(,lang '(program ,(process-expression expr) . ,_))]
     [,expr (process-expression expr)]
     ;[,other (error 'strip-types "Bad program, maybe missing boilerplate: \n~s\n" other)]
     ))
@@ -958,8 +975,10 @@
 	      [(assert-type ,_ ,[e]) e]
 	      [(using ,M ,[e]) `(using ,M ,e)]
 	      [,other (fallthru other)]))])
-  (define strip-annotations
+
+(define strip-annotations
   (let ()
+    (IFCHEZ (import rn-match) (void))
     (define (Expr x fallthru)
       (match x
 	[(src-pos ,_ ,[e]) e]
@@ -1016,12 +1035,12 @@
        (Expr other (empty-tenv))])))
 
 (define (sumdecls->tenv decl*)
+  (IFCHEZ (import rn-match) (void))
   (define (sumdecl->tbinds decl tenv)
     (match decl 
       [((,name) [,tycon* ,ty*] ... ) (guard (symbol? name))
        (tenv-extend (empty-tenv) tycon* (map (lambda (ty) `(,ty -> (Sum ,name))) ty*))
        ]))
-  (IFCHEZ (import rn-match) (void))
   (foldl sumdecl->tbinds (empty-tenv) decl*))
 
 ;; This is a front-end to the above which takes the list of metadata

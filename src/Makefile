@@ -26,6 +26,9 @@ PLT_MAIN_FILE = main_plt.ss
 #*    Commands                                                         */
 #*---------------------------------------------------------------------*/
 MZC = mzc
+# Trying to do some optimization: 
+#   
+MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
 MZSCHEME = mzscheme
 
 CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
@@ -91,19 +94,19 @@ mzc: mzscheme
 mzscheme: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-zos .)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
 
 nc: pltnc
 pltnc:  mzscheme_native
 native: mzscheme_native
 mzscheme_native: 
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
-	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc --collection-extension .)
+	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-extension .)
 
 # building to native code with a collection isn't working:
 nc2:
 	export PLTCOLLECTS=`pwd`:$(PLTLIB)
-	cat .temp_plt-source-files  | xargs -n1 mzc --auto-dir
+	cat .temp_plt-source-files  | xargs -n1 mzc $(MZCFLAGS) --auto-dir
 
 # only works in PLT right now:
 wsparse: 
@@ -112,8 +115,8 @@ wsparse:
 # think it was really standalone.
 
 wsparse_full:
-	mzc --exe bin/wsparse plt/wsparse.ss
-	mzc --exe-dir wsparse_full bin/wsparse 
+	mzc $(MZCFLAGS) --exe bin/wsparse plt/wsparse.ss
+	mzc $(MZCFLAGS) --exe-dir wsparse_full bin/wsparse 
 
 #----------------------------------------
 
@@ -421,7 +424,7 @@ upload:
 #*    .ss.so                                                             */
 #*---------------------------------------------------------------------*/
 .ss.so:
-	mzc --extension --destination compiled/native/ppc-darwin  $*.ss
+	mzc $(MZCFLAGS) --extension --destination compiled/native/ppc-darwin  $*.ss
 
 #	$(MZC) $*.ss
 

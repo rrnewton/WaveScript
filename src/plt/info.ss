@@ -4,9 +4,7 @@
 ;  (define mred-launcher-libraries (list))
 ;  (define mred-launcher-names (list))
 
-  ;; These are all the files that SHOULD NOT be compiled as part of the package.
-  (define compile-omit-files 
-    (list "pass_check_simple.ss"
+  (define omits     (list "pass_check_simple.ss"
 	  "demo_display.ss"
 	  "define-structure.ss"
 	  "copy-struct.ss" ;; [2005.11.04] Don't need this any more.
@@ -21,6 +19,8 @@
 	  "testfoo.ss"
 	  "driver.ss"
 	  "engines2.ss"
+
+;	  "rn-match.ss"
 
 	  "aggregation_experiments.ss"
 
@@ -46,8 +46,14 @@
 
 	  "pass15_add-routing.ss"	  
 	  "passXX_separate-graph.ss"))
+
+  ;; These are all the files that SHOULD NOT be compiled as part of the package.
+  (define compile-omit-files  omits)
   (define compile-zo-omit-files (list))
-  (define compile-extension-omit-files (list))
+  (define compile-extension-omit-files 
+    ;; Giving some problem at the moment:
+    (list "regiment_parser.ss"
+	  "constants.ss"))
   (define compile-subcollections (list))
   )
 
