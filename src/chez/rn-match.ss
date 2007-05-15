@@ -34,6 +34,7 @@
 			 vecref-helper vecref-helper2 rn-convert-pat
 			 extend-backquote my-backquote
 			 pop force-and-select
+			 myforce
 			 ;ellipsis?
 			 )
 		  ;; TEMP:
@@ -51,6 +52,12 @@
   (meta define ellipsis?
     (lambda (x)
       (and (identifier? x) (literal-identifier=? x #'(... ...)))))
+
+;; For Chez, etc, we don't need to do anything special to delay with values.
+ (define-syntax delay-values
+  (syntax-rules ()
+    ((_ e) (delay e))))
+
 #;
   (define-syntax ellipsis?
     (syntax-rules ()

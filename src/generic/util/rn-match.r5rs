@@ -60,11 +60,12 @@
 	 )))))
 
 
-;; For Chez, etc:
-(define-syntax delay-values
-  (syntax-rules ()
-    ((_ e) (delay e))))
-
+;; Currently unused:
+(define-syntax myforce
+   (syntax-rules ()
+     ;((_ e) (force e))
+     ((_ e) (e))
+     ))
 #;
 ;; Do I really need a promise?
 ;; [2007.04.08] ACK! At least for now I still do...
@@ -140,6 +141,7 @@
   (syntax-rules ()
     ((_ () Bod)  Bod)
     ((_ (V0 . V*) Bod)
+;     (let ((V0 (myforce V0)))
      (let ((V0 (V0)))
        (bind-popped-vars V* Bod)))))
 

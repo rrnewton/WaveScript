@@ -218,7 +218,12 @@
      ]))
  (define (ws-relative-path? p)
    ;; Actually this is built-in... should use it:
-   (error 'ws-relative-path? "not implemented in PLT yet")))
+   ;(error 'ws-relative-path? "not implemented in PLT yet")
+   (let ([v (relative-path? (build-path p))])
+     ;(if v (path->string v) #f)
+     v
+     )
+   ))
 
 (define (resolve-lib-path file)
   (cond 

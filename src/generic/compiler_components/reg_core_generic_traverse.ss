@@ -25,7 +25,8 @@
 (module reg_core_generic_traverse  mzscheme
   (require (lib "include.ss")  
            "../constants.ss"
-           "../../plt/iu-match.ss"
+           ;"../../plt/iu-match.ss"
+	   (all-except "../../plt/rn-match.ss" match-lambda let-match)
 	   "prim_defs.ss"
 	   ;(lib "compat.ss")
            (all-except "../util/helpers.ss" filter)
@@ -47,10 +48,9 @@
   (chezimports prim_defs
 	       (except helpers test-this these-tests)
 	       ;regiment_helpers
+	       ;; Switching this much-used module over to my faster match:
+	       rn-match
 	       )
-
-  ;; Switching this much-used module over to my faster match:
-  (IFCHEZ (import rn-match) (void))
 
 ;;============================================================
 ;; Here is a simple procedural interface.

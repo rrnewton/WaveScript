@@ -34,7 +34,8 @@
 ;;;; TODO: MAKE MUTABLE VARS SAFE!
 
 (module static-elaborate mzscheme
-  (require "../../../plt/common.ss"
+  (require (all-except "../../../plt/common.ss" match let-match match-lambda)
+	   (all-except "../../../plt/rn-match.ss" )
 	   "../normalize_source/remove-unquoted-constant.ss"
 	   )
   (provide 

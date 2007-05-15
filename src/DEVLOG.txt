@@ -654,7 +654,7 @@ Let's try my r5rs syntax-rules based match.  SIGH... it beats the
 pants off the other match.ss 
 
   (collect 4)(time (rep 50000 (match '(foo 1 2 (bar 3 4 5)) [(foo ,x ,y) 'no]
-     [(bar ,[x] ,[y¢] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
+     [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)] [,_ 0])))
 
     24 collections
     84 ms elapsed cpu time, including 4 ms collecting
@@ -816,3 +816,38 @@ Baseline, from source: 4361 ms (1680 typechecking)
 Compiled .zo's    :    5652     2330
 With --prim       :    5572     2284
 With all --unsafe :    4920     4938
+
+AHA!  This turns out to be a profoundly broken iu-match package.
+
+By switching over to rn-match for the typechecker and static
+elaborator, this dropped a lot (2 secs were spend in type checker, 1
+in elaborator -- this was almost entirely eliminated).  That got us
+down to ~2 secs..  Applying rn-match to generic-traversal got us down
+to 600ms.  Still much worse than 12ms but an improvement!
+
+
+ (time (let f ([n 50000]) 
+         (unless (= 0 n) 
+           (let l ([v '(foo 1 2 (bar 3 4 5))])
+             (match  v
+             [('foo x y) 'no]
+             [('bar x y z) `(bar ,(l x) ,(l y) ,(l z))] 
+             [('foo x y z) `(foo ,(l x) ,(l y) ,(l z))]
+             [_ 0]))
+           (f (- n 1)))))
+
+
+(define top '(foo 1 2 (bar 3 4 5)))
+ (time (let f ([n 50000]) 
+         (unless (= 0 n) 
+           (let l ([v top])
+             (match  v
+             [(foo ,x ,y) 'no]
+             [(bar ,x ,y ,z) `(bar ,(l x) ,(l y) ,(l z))] 
+             [(foo ,x ,y ,z) `(foo ,(l x) ,(l y) ,(l z))]
+             [,_ 0]))
+           (f (- n 1)))))
+
+
+
+
