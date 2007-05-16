@@ -25,8 +25,8 @@
 (module reg_core_generic_traverse  mzscheme
   (require (lib "include.ss")  
            "../constants.ss"
-           ;"../../plt/iu-match.ss"
-	   (all-except "../../plt/rn-match.ss" match-lambda let-match)
+	   "../../plt/iu-match.ss"
+;	   (all-except "../../plt/rn-match.ss" match-lambda let-match)
 	   "prim_defs.ss"
 	   ;(lib "compat.ss")
            (all-except "../util/helpers.ss" filter)

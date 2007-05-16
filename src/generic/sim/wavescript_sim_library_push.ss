@@ -855,7 +855,11 @@
   (define absI16 fxabs)
   (define absI fxabs)
   (define absF flabs)
-  (define absC s:abs)
+  (define absC (IFCHEZ s:abs 
+		       (lambda (c) 
+			 (let ([x (cfl-real-part c)] 
+			       [y (cfl-imag-part c)])					   
+			   (sqrt (+ (* x x) (* y y)))))))
 
   (define int16ToInt    (lambda (x) x))
   (define int16ToFloat   fixnum->flonum)

@@ -25,11 +25,12 @@ PLT_MAIN_FILE = main_plt.ss
 #*---------------------------------------------------------------------*/
 #*    Commands                                                         */
 #*---------------------------------------------------------------------*/
+MZSCHEME = mzscheme
 MZC = mzc
 # Trying to do some optimization: 
 #   
-MZCFLAGS = 
-MZSCHEME = mzscheme --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
+MZCFLAGS = --prim --unsafe-skip-tests  --unsafe-fixnum-arithmetic --unsafe-disable-interrupts 
+
 
 CHEZ = `if (which chez > /dev/null); then echo chez; else echo ../depends/chez; fi`
 

@@ -44,8 +44,9 @@
 (module hm_type_inference mzscheme
   (require ;`"../../plt/common.ss"
            "prim_defs.ss"
-;           "../../plt/iu-match.ss"
-           (all-except "../../plt/rn-match.ss" let-match match-lambda)
+;; Wow, and for this pass too... after the call/cc fix rn-match is slower:
+           "../../plt/iu-match.ss"
+;           (all-except "../../plt/rn-match.ss" let-match match-lambda)
 ;           "../../plt/chez_compat.ss"
            "../constants.ss"
            "../util/helpers.ss"

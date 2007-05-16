@@ -317,7 +317,7 @@
 	(if (> (string-length str) (bytes-length bytes))
 	    (set! bytes (make-bytes (string-length str))))
 	(let ([rd (read-bytes-avail! bytes inp 0 count)])
-	  (printf "LENGTH: str:~a bytes:~a rd:~a\n" (string-length str) (bytes-length bytes) rd)
+;	  (printf "LENGTH: str:~a bytes:~a rd:~a\n" (string-length str) (bytes-length bytes) rd)
 	  (cond
 	   [(and (number? rd) (> rd (string-length str)))
 	    (error 'block-read "buffer not big enough")]

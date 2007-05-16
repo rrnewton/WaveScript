@@ -35,7 +35,9 @@
 
 (module static-elaborate mzscheme
   (require (all-except "../../../plt/common.ss" match let-match match-lambda)
-	   (all-except "../../../plt/rn-match.ss" )
+;; WEIRD: rn-match is SLOWER for plt on this pass:	   
+;	   (all-except "../../../plt/rn-match.ss" )
+	   (all-except "../../../plt/iu-match.ss" )
 	   "../normalize_source/remove-unquoted-constant.ss"
 	   )
   (provide 

@@ -49,7 +49,8 @@
    )
   
   ;; These provide extra information for Chez:
-  (chezprovide (match-lambda match-lambda-helper))
+  (chezprovide (match-lambda match-lambda-helper)
+	       let/cc)
   
   (chezimports )
 
@@ -95,6 +96,10 @@
     (syntax-rules ()
       ((_ x e) (letrec ((x e)) x))))
 
+(IFCHEZ (define-syntax let/cc
+	  (syntax-rules ()
+	    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
+	(begin))
 
 ;; [2007.04.20] This hack doesn't seem to yield any benefit vs. doing
 ;; a (memq)... Chez must be doing the right thing for the memq in a constant list.

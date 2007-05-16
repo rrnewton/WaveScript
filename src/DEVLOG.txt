@@ -838,7 +838,7 @@ to 600ms.  Still much worse than 12ms but an improvement!
 
 
 (define top '(foo 1 2 (bar 3 4 5)))
- (time (let f ([n 50000]) 
+(time (let f ([n 50000]) 
          (unless (= 0 n) 
            (let l ([v top])
              (match  v
@@ -848,6 +848,16 @@ to 600ms.  Still much worse than 12ms but an improvement!
              [,_ 0]))
            (f (- n 1)))))
 
+
+(define top '(foo 1 2 (bar 3 4 5)))
+(time (let f ([n 50000]) 
+         (unless (= 0 n) 
+            (match  v
+             [(foo ,x ,y) 'no]
+             [(bar ,[x] ,[y] ,[z]) `(bar ,x ,y ,z)] 
+             [(foo ,[x] ,[y] ,[z]) `(foo ,x ,y ,z)]
+             [,_ 0])
+           (f (- n 1)))))
 
 
 

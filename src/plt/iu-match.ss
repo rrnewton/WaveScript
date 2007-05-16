@@ -458,7 +458,7 @@
 
   (define-syntax letcc
     (syntax-rules ()
-      ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
+      ((_ V B0 B ...) (call/ec (lambda (V) B0 B ...)))))
 
   (define classify-list
     (lambda (ls)

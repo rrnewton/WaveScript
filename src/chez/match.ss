@@ -64,8 +64,7 @@
 	;; RRN: Adding these [2005.10.24]
 ;	(let-match match)
 ;	(match-lambda match)
-	;; RRN: exposing these
-	letcc let/cc)
+	)
 
 (import scheme)
 
@@ -485,10 +484,7 @@
 
 (define-syntax letcc
   (syntax-rules ()
-    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
-(define-syntax let/cc
-  (syntax-rules ()
-    ((_ V B0 B ...) (call/cc (lambda (V) B0 B ...)))))
+    ((_ V B0 B ...) (call/1cc (lambda (V) B0 B ...)))))
 
 (define classify-list
   (lambda (ls)
