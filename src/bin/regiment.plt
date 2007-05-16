@@ -2,8 +2,8 @@
 
 source `dirname $0`/assert_regimentd
 
-SCRIPT=$REGIMENTD/src/regiment_pltscript.ss
 EXE=$REGIMENTD/src/regiment_pltscript.exe
+SCRIPT=$REGIMENTD/src/regiment_pltscript.ss
 
 if [ -f "$EXE" ];
 then exec $EXE    $0 $*

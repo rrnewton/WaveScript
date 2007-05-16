@@ -179,7 +179,7 @@
 ;; This is also insanely slow.
 (define (wavescript-language expr)
   (eval `(begin 
-	   (current-directory (REGIMENTD))
+	   (current-directory ,(REGIMENTD))
 	   (current-directory "src/")
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           

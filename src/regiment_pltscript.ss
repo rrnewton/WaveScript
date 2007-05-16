@@ -1,10 +1,9 @@
 #! /bin/sh
 #|
-exec mzscheme -qr "$0" ${1+"$@"}
+exec mzscheme -qu "$0" ${1+"$@"}
 |#
 
 (module regiment_pltscript mzscheme  
-;  (printf "Loading under PLT.\n")
 
   (eval '(define start-dir (current-directory)))
   
@@ -12,6 +11,10 @@ exec mzscheme -qr "$0" ${1+"$@"}
   
   (eval '(define regiment-origin "PLT"))
   (eval '(define svn-revision 'unknown-svn-rev))
+
+  ;; Bring this out to top level:
+;  (eval `(define REGIMEND ,REGIMENTD))
+
   (apply main (cdr (vector->list (current-command-line-arguments)))) 
-  )
+  (provide (all-defined)(all-from  "main_plt.ss")))
 
