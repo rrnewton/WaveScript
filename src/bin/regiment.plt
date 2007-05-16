@@ -1,3 +1,5 @@
 #!/bin/bash 
 
-$HOME/cur/regiment_pltscript.ss $*
+source `dirname $0`/assert_regimentd
+
+$REGIMENTD/src/regiment_pltscript.ss $0 $*

@@ -151,7 +151,15 @@
 (require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
 
+#;
+(module main mzscheme
+  (require (lib "include.ss"))
+  (provide (all-defined))
+  (include "main.ss"))
+;(require main)
+
 (include "main.ss")
+
 ;============================================================
 
 (define error-handler error-display-handler)
@@ -173,9 +181,7 @@
 
 
 
-
-
-
+;) ; End module
 
 
 

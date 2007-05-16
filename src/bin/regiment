@@ -1,5 +1,8 @@
 #! /bin/bash
 
+#if [ "$REGIMENTHOST" == "plt" ]
+#then export REGIMENTEXEC=regiment.plt
+
 source `dirname $0`/assert_regimentd
 
 #scheme -h regimentc.1.heap $*
