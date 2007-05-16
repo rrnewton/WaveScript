@@ -12,6 +12,7 @@
 
 (define-id-syntax rl (reload)) ;; shorthand
 
+#;
 (define r  ;; shorthand 
   (letrec ((loop
 	    (case-lambda 
@@ -33,6 +34,7 @@
 (define-syntax ra (identifier-syntax run-simulator-alpha)) ;; shorthand
 
 ;; Token and later compiler:
+#;
 (define (tr x)  ;; shorthand
   (let ((prog  x))
     (parameterize (;(tracer #t)
@@ -41,9 +43,9 @@
       (parameterize ((pass-list (cdr (list-remove-before 'deglobalize (pass-list)))))
 	(test-one prog)))))
 
+
 ; temp:
-(define (rr) (r '(circle 50 (anchor-at '(30 40))))) ;; shorthand
-; temp:
+#;
 (define (doit x) ;; shorthand
   (cleanse-world)
   (run-simulation (build-simulation (compile-simulate-nought x))		  
@@ -51,6 +53,7 @@
 
 
 ;; These are some temporary diagnostic functions:
+#|
 (define (all-incoming) ;; shorthand
   (filter (lambda (ls) (not (null? ls)))
           (map simobject-incoming all-objs)))
@@ -61,7 +64,7 @@
 (define (sim) (build-simulation  ;; shorthand
 	     (compile-simulate-nought 
 	      (cadadr (run-compiler '(anchor-at '(30 40)))))))
-
+|#
 
 
 ;; Define a bunch of useful shorthands for interacting with the graphical simulator.
@@ -204,8 +207,7 @@
 	    ))))
 
 
-(define (test)
-  (eval (caddr (list-ref (maintest 'get-tests) 55))))
+;(define (test) (eval (caddr (list-ref (maintest 'get-tests) 55))))
 
 
 

@@ -167,8 +167,11 @@
                   [(eq? arg 'barely-tokens)
                    (set! passes (list-remove-first cleanup-token-machine
 				  (list-remove-after cleanup-token-machine (pass-list))))]
+		  ;; Out dated... don't haskellize any more:
+#;
                   [(eq? arg 'full-tokens)
-                   (set! passes (remq haskellize-tokmac (pass-list)))]
+                   (set! passes (remq haskellize-tokmac (pass-list)))
+		   ]
                   ;[(eq? arg 'haskell-tokens) (void)]
 		  ;; Otherwise... do nothing.
 		  [else (warning 'run-compiler "ignored flag: ~s" arg)]
@@ -214,9 +217,12 @@
       (let ([type (extract-file-extension fn)])
 	;; Do a little sanity checking between our options and our input file:
 	(cond
-	 [(equal? type "tm") (if (or (memq '-l0 symargs) (memq '-l1 symargs))
-				 (error 'regiment_command_line_compiler
-					"Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
+	 ;; [2007.05.16] symargs is unbound... clean this junk up at some point.
+#;
+	 [(equal? type "tm") 
+	  (if (or (memq '-l0 symargs) (memq '-l1 symargs))
+	      (error 'regiment_command_line_compiler
+		     "Cannot use -l0/-l1 with an input that's already a TM!: ~s" fn))]
 	 [(equal? type "rs") (void)]
 	 [(equal? type "ws") (void)]
 	 [else (error 'regiment_command_line_compiler "invalid input file extension: ~s" fn)])
@@ -232,7 +238,7 @@
 			 )])
 
 	  (mvlet ([(prog params) 
-		   (parameterize ([current-directory start-dir])
+		   (parameterize ([current-directory (top-level-value 'start-dir)])
 		     (read-regiment-source-file fn))])
 	    (let ((comped 
 		   (if (memq 'to-simcode flags)
@@ -689,7 +695,8 @@
 ;; ================================================================================
 ;; WaveScript OCAML Compiler Entrypoint:
 
-(define (wscaml x . flags)                                 ;; Entrypoint.  
+(IFCHEZ
+ (define (wscaml x . flags)                                 ;; Entrypoint.  
  (parameterize ([compiler-invocation-mode 'wavescript-compiler]
 		[regiment-primitives ;; Remove those regiment-only primitives.
 		 (difference (regiment-primitives) regiment-distributed-primitives)])
@@ -703,9 +710,7 @@
    (string->file (text->string (emit-caml-wsquery prog)) outfile)
    (printf "\nGenerated OCaml output to ~s.\n" outfile)
    ))
-
-
-
+ (void))
 
 
 
@@ -746,8 +751,8 @@
 (define (print-help)
   (printf "Regiment system, version ~s (rev ~s) (loaded from ~a)\n" 
 	  (regiment-version) 
-	  svn-revision
-	  regiment-origin)
+	  (top-level-value 'svn-revision)
+	  (top-level-value 'regiment-origin))
   (printf "Usage: regiment command [options] ~n")
   (printf "~n")
   (printf "Commands: ~n")
@@ -817,6 +822,20 @@
      (printf "  : ~a\n" t)
      (exit 0)]
     [,other (error 'print-types-and-exit "bad output from verify-regiment: ~s" other)])))
+
+(define (regiment-exit code)
+  ;; In case we're building a heap, we set this before we exit.
+  ;(disp "SETTING HEAP: " regiment-origin (top-level-value 'regiment-origin))
+  (set-top-level-value! 'regiment-origin "saved heap")
+  ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
+  (exit code))
+
+(define (reg:printlog file)
+  (let ((stream (reg:read-log file 'stream)))
+    (let loop ((s (reg:read-log file 'stream)))
+      (unless (null? s)
+	(display (log-line->human-readable 0 (stream-car s) ()))
+	(loop (stream-cdr s))))))
 
 (define main 
   (lambda args    
@@ -969,14 +988,14 @@
 		   ;; Print simalpha stats:
 		   (print-stats)
 		   (if plot (gnuplot result))
-		   (if simrepl (new-cafe))
+		   (if simrepl (IFCHEZ (new-cafe) (read-eval-print-loop)))
 		   result)))
 
 	     (IF_GRAPHICS 
 	      ;; This starts swl then evals the expression.
 	      (bounce-to-swl '(go-sim))	      
 	      (begin (printf "WOOT\n")
-		     (go-sim)
+		     ((top-level-value 'go-sim))
 		     ))
 	     ))]
 
@@ -993,6 +1012,7 @@
 	    [(null? filenames) 
 	     (IFCHEZ (call-with-values new-cafe (lambda ls (apply exit ls)))
 		     (read-eval-print-loop))]
+	    ;; To run a script through "regiment"
 	    ;; --script must be the first argument after "regiment i"
 	    ;;
 	    ;; This won't occur, chez grabs the --script parameter
@@ -1005,11 +1025,15 @@
 	     ;(error 'regiment.ss "this shouldn't happen.")
 
 	     ;; --script implies --exit-error:
-	     (loop '(-exit-error))
-	     (apply orig-scheme-script (cddr args))]
+	     (IFCHEZ (begin (loop '(-exit-error))
+			    (apply orig-scheme-script (cddr args)))
+		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme"))]
 	    [else 
 	     ;(inspect (list->vector args))
-	     (apply orig-scheme-start (cdr args))])]
+	     (IFCHEZ (apply orig-scheme-start (cdr args))
+		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
+		     )
+	     ])]
 
 	  ;; Printing SExp log files.
 	  [(l log)
@@ -1124,7 +1148,7 @@
 
 			  [,else (error 'regiment:wsint "should take one file name as input, given: ~a" else)]))
 	   (let ([return (wsint prog)])
-	     (import streams)
+	     (IFCHEZ (import streams) (void))
 	     ;(import imperative_streams)
 	     (if (stream? return)
 		 (if outfile
@@ -1155,7 +1179,8 @@
 
 	  [(wscaml)
 	   ;(define-top-level-value 'REGIMENT-BATCH-MODE #t)
-	   (let ()
+	   (IFCHEZ
+	    (let ()
 	     (define exp (match filenames
 			  ;; If there's no file given read from stdout
 			  [() (console-input-port)]
@@ -1168,7 +1193,8 @@
 			  ;[,else (error 'regiment:wscomp "should take one file name as input, given: ~a" else)]
 			  ))
 	     (apply wscaml exp opts)
-	   )]
+	   )
+	    (error 'wavescript-compiler "OCaml output not currently available when running through PLT Scheme."))]
 
 	  
 	  )))))))

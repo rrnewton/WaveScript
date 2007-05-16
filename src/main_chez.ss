@@ -619,14 +619,18 @@
 ;; TODO: Fold it into the unit tests.
 ;;
 ;; Driver depends on 'pass-list being defined.
-(include "generic/testing/driver.ss")
-;  (game-eval (lambda args 'unspecified))
-  (game-eval eval)
-  (host-eval (lambda args 'unspecified))
-(include "generic/testing/tests_noclosure.ss")
+
+;; Let's not waste load time on this... it's not used currently.
+(IFWAVESCOPE
+    (begin)
+  (begin 
+    (include "generic/testing/driver.ss")
+    (game-eval eval)
+    (host-eval (lambda args 'unspecified))
+    (include "generic/testing/tests_noclosure.ss")
+    ))
+
 (include "generic/testing/tests.ss")
-
-
 
 ;; [2006.04.18] This is pretty out of date as well:
 ;; Load the repl which depends on the whole compiler and simulator.

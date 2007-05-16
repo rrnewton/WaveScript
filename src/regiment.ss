@@ -83,13 +83,6 @@
 ; =======================================================================
 
   
-(define (reg:printlog file)
-  (let ((stream (reg:read-log file 'stream)))
-    (let loop ((s (reg:read-log file 'stream)))
-      (unless (null? s)
-	(display (log-line->human-readable 0 (stream-car s) ()))
-	(loop (stream-cdr s))))))
-
 (IF_GRAPHICS
  ;; This starts swl and evaluates the expression afterwards.
  (define (bounce-to-swl exp)
@@ -99,13 +92,6 @@
    (printf "Temporary file written to contain post-swl-load instructions.\n")
    (orig-scheme-start "/tmp/swl_tmp_loading.ss")
    ))
-
-(define (regiment-exit code)
-  ;; In case we're building a heap, we set this before we exit.
-  ;(disp "SETTING HEAP: " regiment-origin (top-level-value 'regiment-origin))
-  (set! regiment-origin "saved heap")
-  ;(disp "HEAP SET: " regiment-origin (top-level-value 'regiment-origin))
-  (exit code))
 
 ; =======================================================================
 (suppress-greeting #t)

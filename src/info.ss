@@ -12,6 +12,7 @@
 			       "match_larceny.ss"
 			       "regiment.ss"
 			       "regiment_script.ss"
+			       "regiment_pltscript.ss"
 			       "regiment_script.threaded.ss"
 			       "reg_grammar.ss"
 			       "scrap.ss"

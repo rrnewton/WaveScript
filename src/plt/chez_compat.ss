@@ -65,6 +65,7 @@
   ;(define flush-output-port flush-output)
   ;; [2005.11.05] HACK: This gets set to the normal console output, and stays that way:
   (define console-output-port (make-parameter (current-output-port)))
+  (define console-input-port  (make-parameter (current-input-port)))
   ;(define pp pretty-print)
   (define cpu-time current-process-milliseconds)   ;; Same param, diff name
   (define print-level pretty-print-depth)          ;; Same param, diff name

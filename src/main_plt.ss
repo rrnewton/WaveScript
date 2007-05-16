@@ -10,7 +10,7 @@
 (define current_interpreter 'mzscheme)
 (define simulator-batch-mode #f)
 
-;(module main_plt mzscheme
+;(module main_plt mzscheme (provide (all-defined)  REGIMENTD)
  
 (require (lib "include.ss")
          (all-except "generic/util/helpers.ss" id rec)
@@ -70,10 +70,13 @@
 (all-except "generic/passes/wavescope_bkend/type-annotate-misc.ss" these-tests test-this)
 (all-except "generic/passes/wavescope_bkend/flatten-iterate-spine.ss" these-tests test-this)
 
-(all-except "generic/passes/wavescope_bkend/anihilate-higher-order.ss") 
+(all-except "generic/passes/wavescope_bkend/anihilate-higher-order.ss" these-tests test-this)
 
 ;; These are miscellaneous small passes used by wavescript:
-(all-except "generic/passes/small-ws-passes.ss")
+(all-except "generic/passes/small-ws-passes.ss" these-tests test-this)
+(all-except "generic/passes/wavescope_bkend/explicit-stream-wiring.ss" these-tests test-this)
+(all-except "generic/passes/wavescope_bkend/emit-c.ss" these-tests test-this)
+;(all-except "generic/passes/ocaml_bkend/emit-caml.ss" these-tests test-this)
 
 (all-except "generic/passes/normalize_query/remove-complex-constant.ss" these-tests test-this)
 ; pass07_verify-stage2.ss
@@ -121,6 +124,7 @@
 
 (all-except "generic/passes/nesc_bkend/flatten-tokmac.ss" these-tests test-this)
 (all-except "generic/passes/nesc_bkend/emit-nesc.ss" these-tests test-this)         
+
 )
 
 
@@ -141,7 +145,6 @@
 (require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
 
-(include "generic/testing/tests_noclosure.ss")
 (include "generic/testing/tests.ss")
 
 ;============================================================
@@ -151,19 +154,12 @@
 (require (all-except "generic/passes/pass-mechanism.ss" these-tests test-this))
 (require (all-except "generic/compiler_components/reg_core_generic_traverse.ss" these-tests test-this) )
 
-#;
-(module main mzscheme
-  (require (lib "include.ss"))
-  (provide (all-defined))
-  (include "main.ss"))
-;(require main)
-
+(require "generic/compiler_components/c_generator.ss")
 (include "main.ss")
 
 ;============================================================
 
 (define error-handler error-display-handler)
-(load/use-compiled "generic/testing/driver.ss")
 
 ;; Bring these into the top-level for our REPL convenience.
 (include "generic/shortcuts.ss")
@@ -181,10 +177,7 @@
 
 
 
-;) ; End module
-
-
-
+;)(require main_plt) ; End module
 
 
 

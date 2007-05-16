@@ -48,9 +48,9 @@
 
 	 
          ;; Syntax:
-	 IFDEBUG
+	 IFDEBUG 
          DEBUGMODE UBERDEBUGMODE  DEBUGASSERT ASSERT
-         REGIMENT_DEBUG HACK 
+         REGIMENT_DEBUG HACK regiment-emit-debug
 	 IFWAVESCOPE ;; Load WS extensions or no?
          ;chezprovide chezimports ;; To make the common module facility work.         
 
@@ -164,10 +164,7 @@
 	 nodeid?
 
          )
-	
-	;; Some bindings need to be explicitely exposed to syntax transformers:
-	(chezprovide (REGIMENT_DEBUG regiment-emit-debug))
-	
+		
 	;; Import the platform specific constants.
 	(chezimports chez_constants)
 
