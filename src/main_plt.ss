@@ -10,12 +10,13 @@
 (define current_interpreter 'mzscheme)
 (define simulator-batch-mode #f)
 
-;(module main_plt mzscheme (provide (all-defined)  REGIMENTD)
+(module main_plt mzscheme 
  
 (require (lib "include.ss")
          (all-except "generic/util/helpers.ss" id rec)
          (all-except "generic/compiler_components/regiment_helpers.ss")         
 	 "plt/hashtab.ss"
+	 "plt/chez_compat.ss"
 	 "generic/util/hash.ss"
          (all-except "generic/grammars/grammar_checker.ss" these-tests test-this))
 
@@ -176,8 +177,10 @@
 
 
 
-
-;)(require main_plt) ; End module
+(provide (all-defined) 
+	 (all-from "plt/chez_compat.ss")
+	 REGIMENTD)
+)(require main_plt) ; End module
 
 
 
