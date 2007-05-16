@@ -4,6 +4,7 @@ export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
 export REGDEBUGMODE=ON
 exec regiment i --script "$0" ${1+"$@"};
+#exec regiment.plt i --script "$0" ${1+"$@"};
 |#
 
 
@@ -11,16 +12,22 @@ exec regiment i --script "$0" ${1+"$@"};
 ;; This runs all the demo files and (for some tests) checks their
 ;; output for correctness.
 
-
-(print-length 10)
-(print-level 3)
-(print-graph #t)
+(IFCHEZ 
+ (begin (print-length 10)
+	(print-level 3)
+	(print-graph #t))
+ (void))
 
 ;; Produce bar.o for demo9c
 (system "gcc -c bar.c")
 
+(define-syntax import-it
+  (syntax-rules ()
+    [(_) (IFCHEZ (import wavescript_sim_library_push)
+		 (require wavescript_sim_library_push))]))
+
 (define (go i x)
-  (import streams)
+  (IFCHEZ (import streams) (void))
   (match x 
     [(,fn ,oracle)
      (printf "\n\nDemo: ~a \n"  fn)
@@ -42,7 +49,7 @@ exec regiment i --script "$0" ${1+"$@"};
   `(
 #;
     ["demo0_audio.ws"             ,(lambda (a b) 
-				     (import wavescript_sim_library_push)
+				     (import-it)
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 4095 (end   a)))
 				     (ASSERT (= 4096 (start b)))
@@ -66,7 +73,7 @@ exec regiment i --script "$0" ${1+"$@"};
     
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
-				     (import wavescript_sim_library_push)
+				     (import-it)
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 39   (end   a)))
 				     (ASSERT (= 40   (start b)))
@@ -98,13 +105,13 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
 
     ["demo5a_rewindow.ws"         ,(lambda (a b) 
-				     (import wavescript_sim_library_push)
+				     (import-it)
 				     (ASSERT (= 0     (start a)))
 				     (ASSERT (= 1023  (end   a)))
 				     (ASSERT (= 512   (start b)))
 				     (ASSERT (= 1535  (end   b))))]
     ["demo5b_rewindow_inlined.ws" ,(lambda (a b) 
-				      (import wavescript_sim_library_push)
+				      (import-it)
 				      (ASSERT (= 0     (start a)))
 				      (ASSERT (= 1023  (end   a)))
 				      (ASSERT (= 512   (start b)))
@@ -118,7 +125,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo6c_syncN.ws"            ,(lambda (a b) #t)]
 
     ["demo6e_stdlib_sync.ws"      ,(lambda (a b) 
-				     (import wavescript_sim_library_push)
+				     (import-it)
 				     (ASSERT (= 100   (start (list-ref a 0))))
 				     (ASSERT (= 199   (end   (list-ref a 0))))
 				     (ASSERT (= 100   (start (list-ref a 1))))

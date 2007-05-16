@@ -1,9 +1,10 @@
 #! /bin/sh
 #|
-exec mzscheme -qu "$0" ${1+"$@"}
+# -u -t -r
+exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
-(module regiment_pltscript mzscheme  
+;(module regiment_pltscript mzscheme  
 
   (eval '(define start-dir (current-directory)))
   
@@ -16,5 +17,6 @@ exec mzscheme -qu "$0" ${1+"$@"}
 ;  (eval `(define REGIMEND ,REGIMENTD))
 
   (apply main (cdr (vector->list (current-command-line-arguments)))) 
-  (provide (all-defined)(all-from  "main_plt.ss")))
+
+;  (provide (all-defined)(all-from  "main_plt.ss")))
 

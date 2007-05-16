@@ -11,6 +11,18 @@
 (define current_interpreter 'mzscheme)
 (define simulator-batch-mode #f)
 
+#;
+(fprintf stderr "Regiment: Loading ~a compiler in chezscheme~a...\n"
+	 (let ([ws #f]  [reg #f])
+	   (IFWAVESCOPE (set! ws #t) (set! reg #t))
+	   (cond 
+	    [(and ws reg) "ws+reg"]
+	    [ws   "ws"]
+	    [reg "reg"]))
+	 (if (top-level-bound? 'regiment-origin)
+	     (format " (from ~a)" regiment-origin)    
+	     "(LOADED VIA UNKNOWN METHOD!?)"
+	     ))
 
  
 (require (lib "include.ss")
@@ -94,7 +106,9 @@
 (all-except "generic/passes/normalize_query/ws-remove-complex-opera.ss") 
 (all-except "generic/passes/normalize_query/ws-lift-let.ss") 
 
+) 
 
+(IFWAVESCOPE (begin) (require
 (all-except "generic/passes/analyze_query/classify-names.ss" these-tests test-this)
 (all-except "generic/passes/analyze_query/add-heartbeats.ss" these-tests test-this)
 (all-except "generic/passes/analyze_query/add-control-flow.ss" these-tests test-this)
@@ -126,8 +140,8 @@
 
 (all-except "generic/passes/nesc_bkend/flatten-tokmac.ss" these-tests test-this)
 (all-except "generic/passes/nesc_bkend/emit-nesc.ss" these-tests test-this)         
+))
 
-)
 
 
 (IF_GRAPHICS
@@ -137,15 +151,18 @@
   (all-except "plt/graphics_stub.ss" these-test test-this)))
 
 ;; Import these for the benefit of the unit tests below:
-(require "generic/sim/simulator_alpha_datatypes.ss")
-(require "generic/sim/alpha_lib.ss")
-(require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
+(IFWAVESCOPE (begin)  
+  (require "generic/sim/simulator_alpha_datatypes.ss"))
 
 ;(require (all-except "generic/sim/wavescript_sim_library_push.ss" these-tests test-this))
 (require (all-except "generic/langs/lang_wavescript.ss" these-tests test-this))
-
 (require (all-except "generic/compiler_components/source_loader.ss" these-tests test-this))
-(require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
+
+(IFWAVESCOPE (begin) (begin
+  (require (all-except "generic/compiler_components/logfiles.ss" these-tests test-this))
+  (require "generic/sim/alpha_lib.ss")
+  (require (all-except "generic/sim/simulator_alpha.ss" these-tests test-this))
+))
 
 (include "generic/testing/tests.ss")
 
@@ -177,10 +194,15 @@
 
 
 
-
+;; This could get verbose... ideally we'd like to export all of it:
 (provide (all-defined) 
 	 (all-from "plt/chez_compat.ss")
-	 REGIMENTD)
+	 (all-from "generic/constants.ss")
+	 (all-from "plt/iu-match.ss")
+	 (all-from "generic/util/helpers.ss")
+;	 (all-from )
+	 ;REGIMENTD
+	 )
 ) ; End module
 
 

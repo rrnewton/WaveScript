@@ -96,7 +96,12 @@ mzscheme:
 	find -name ".__*.ss" | xargs -i rm {}  ## So they don't break our compilation.
 	find -name "_*.ss" | xargs -i rm {}  ## So they don't break our compilation.	
 	(export PLTCOLLECTS=`pwd`:$(PLTLIB); mzc $(MZCFLAGS) --collection-zos .)
+# Disabling this by default because I'm getting a 'collection not found: "mzlib"' error.
+#	$(MAKE) pltexe
+
+pltexe:
 	mzc --exe regiment_pltscript.exe regiment_pltscript.ss
+	mzc --exe-dir regiment_pltscript regiment_pltscript.exe 
 
 nc: pltnc
 pltnc:  mzscheme_native

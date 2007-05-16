@@ -1010,6 +1010,11 @@
 
 	   (cond
 	    [(null? filenames) 
+
+	     (printf "GOING INTO REPL ~s\n" main)
+	     ;(eval '(require main_plt))
+	     ;(eval '(require regiment_pltscript))
+	     (printf "GOT MODULE INTO TOP LEVEL ~s\n" (eval 'main))
 	     (IFCHEZ (call-with-values new-cafe (lambda ls (apply exit ls)))
 		     (read-eval-print-loop))]
 	    ;; To run a script through "regiment"
@@ -1024,10 +1029,13 @@
 	     ;(printf "Using Regiment to invoke script: ~a\n" args)
 	     ;(error 'regiment.ss "this shouldn't happen.")
 
-	     ;; --script implies --exit-error:
-	     (IFCHEZ (begin (loop '(-exit-error))
-			    (apply orig-scheme-script (cddr args)))
-		     (error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme"))]
+	     ;; --script implies --exit-error: add that setting:
+	     (loop '(-exit-error))
+	     (IFCHEZ (apply orig-scheme-script (cddr args))
+		     ;(error 'interact-mode "cannot currently run scripts through regiment in PLT Scheme")
+		     (parameterize ([current-command-line-arguments (list->vector (cdddr args))])
+		       (load (caddr args)))
+		     )]
 	    [else 
 	     ;(inspect (list->vector args))
 	     (IFCHEZ (apply orig-scheme-start (cdr args))

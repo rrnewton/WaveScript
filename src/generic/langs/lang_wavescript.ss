@@ -183,6 +183,10 @@
 	   (current-directory "src/")
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
+	   
+	   ;; Trying to fix a problem I'm having with 'collection not found: "mzlib"'
+           ;(require mzscheme)
+	   ;(find-library-collection-paths (cons ... (find-library-collection-paths)))	    )
            (require "generic/sim/wavescript_sim_library_push.ss")
 	   (current-directory (eval 'start-dir))
            (define THISWSVAL ,expr)
