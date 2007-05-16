@@ -620,19 +620,16 @@
 						tenv nongeneric)]
       [(lambda (,v* ...) ,types ,bod) (annotate-lambda v* bod types tenv nongeneric)]
 
-
       [(let ([,id* . ,tail*] ...) ,bod)
        (let ([ty*  (extract-optional (map rdc tail*))]
 	     [rhs* (map last tail*)])
-	 (DEBUGASSERT (curry andmap type?) ty*)
+	 (DEBUGASSERT (curry andmap type?) (filter id ty*))
 	 (annotate-let id* rhs* bod ty* tenv nongeneric))]
 
-      ;; TODO: Doesn't actually take optional types into account. FIXME FIXME
-      ;; Allowing annotations, but ignoring them.
       [(,letrec ([,id* . ,tail*] ...) ,bod)  (guard (memq letrec '(letrec lazy-letrec)))
        (let ([ty*  (extract-optional (map rdc tail*))]
 	     [rhs* (map last tail*)])
-	 (DEBUGASSERT (curry andmap type?) ty*)
+	 (DEBUGASSERT (curry andmap type?) (filter id ty*))
 	 (annotate-letrec id* ty* rhs* bod tenv nongeneric letrec))]
 
       ;; BEGIN DUPLICATING! these cases to give good error messages for badly typed apps:

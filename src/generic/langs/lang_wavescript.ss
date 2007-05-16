@@ -179,16 +179,22 @@
 ;; This is also insanely slow.
 (define (wavescript-language expr)
   (eval `(begin 
-	   (current-directory ,(REGIMENTD))
-	   (current-directory "src/")
+	   (current-load-relative-directory (string-append ,(REGIMENTD) "/src/"))
+;	   (current-directory (string-append ,(REGIMENTD) "/src/"))
+	   (printf "SWITCHED TO LOAD DIR ~s\n" (current-load-relative-directory))
            ;; Fighing with PLT's module system.  I don't know how to over-write mzscheme 
            ;; bindings (like letrec) except at top-level.  Here we mangle the top-level then try to un-mangle it.           
 	   
 	   ;; Trying to fix a problem I'm having with 'collection not found: "mzlib"'
            ;(require mzscheme)
 	   ;(find-library-collection-paths (cons ... (find-library-collection-paths)))	    )
-           (require "generic/sim/wavescript_sim_library_push.ss")
-	   (current-directory (eval 'start-dir))
+	   (printf "CURRENT DIR ~s\n" (current-directory))
+           (require "./generic/util/streams.ss")
+           (require "./generic/sim/wavescript_sim_library_push.ss")
+	   (printf "GOT LIBRARY LOADED\n")
+	   (printf "Here's binding: ~s\n" __readFile)
+;	   (printf "Here's binding from stream: ~s\n" stream-car)
+	   (if (top-level-bound? 'start-dir) (current-directory (eval 'start-dir)))
            (define THISWSVAL ,expr)
            (require mzscheme)
            THISWSVAL

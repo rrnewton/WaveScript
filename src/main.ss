@@ -238,7 +238,9 @@
 			 )])
 
 	  (mvlet ([(prog params) 
-		   (parameterize ([current-directory (top-level-value 'start-dir)])
+		   (parameterize ([current-directory (if (top-level-bound? 'start-dir)
+							 (top-level-value 'start-dir)
+							 (current-directory))])
 		     (read-regiment-source-file fn))])
 	    (let ((comped 
 		   (if (memq 'to-simcode flags)

@@ -200,6 +200,10 @@
 	 (all-from "generic/constants.ss")
 	 (all-from "plt/iu-match.ss")
 	 (all-from "generic/util/helpers.ss")
+	 (all-from "generic/compiler_components/source_loader.ss")
+	 (all-from  "generic/util/streams.ss")
+;	 (all-from )
+;	 (all-from )
 ;	 (all-from )
 	 ;REGIMENTD
 	 )
@@ -404,4 +408,8 @@
 
 ;(test-units)
 |#
+
+
+;(require main_plt)(current-directory "demos/wavescope")
+;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
 

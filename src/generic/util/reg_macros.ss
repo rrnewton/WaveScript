@@ -40,6 +40,8 @@
       apply-ordered
 
       parameterize-IFCHEZ      
+      map-inlined map-tail-inlined
+
     ;  test-reg_macros
 
       time-accum
@@ -309,6 +311,21 @@
      (IFCHEZ (parameterize ([lhs rhs] ...) bod ...)
 	     (let () bod ...))]))
 
+
+;; [2007.05.16] Experimenting with this as an optimization.
+;; Should move define-inlined here too...
+(define-syntax map-inlined
+  (syntax-rules ()
+    [(_ f e)
+     (let map-inlined-loop ([ls e])
+       (if (null? ls) '()
+	   (cons (f (car ls)) (map-inlined-loop (cdr ls)))))]))
+(define-syntax map-tail-inlined
+  (syntax-rules ()
+    [(_ f e)
+     (let map-inlined-loop ([ls e] [acc '()])
+       (if (null? ls) (reverse! acc)
+	   (map-inlined-loop (cdr ls) (cons (f (car ls)) acc))))]))
 
 ;(define-testing these-tests 
 ;  `(

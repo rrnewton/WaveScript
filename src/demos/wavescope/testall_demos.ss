@@ -3,8 +3,8 @@
 export REGIMENT_OR_WAVESCRIPT=WS
 export REGOPTLVL=2
 export REGDEBUGMODE=ON
-exec regiment i --script "$0" ${1+"$@"};
-#exec regiment.plt i --script "$0" ${1+"$@"};
+#exec regiment i --script "$0" ${1+"$@"};
+exec regiment.plt i --script "$0" ${1+"$@"};
 |#
 
 
@@ -21,11 +21,6 @@ exec regiment i --script "$0" ${1+"$@"};
 ;; Produce bar.o for demo9c
 (system "gcc -c bar.c")
 
-(define-syntax import-it
-  (syntax-rules ()
-    [(_) (IFCHEZ (import wavescript_sim_library_push)
-		 (require wavescript_sim_library_push))]))
-
 (define (go i x)
   (IFCHEZ (import streams) (void))
   (match x 
@@ -33,7 +28,9 @@ exec regiment i --script "$0" ${1+"$@"};
      (printf "\n\nDemo: ~a \n"  fn)
      (printf "======================================================================\n")     
      (let ([absolute (if (ws-relative-path? fn)
-			 (string-append (current-directory) "/" fn)
+			 (string-append (IFCHEZ (current-directory)
+						(path->string (current-directory))) 
+					"/" fn)
 			 fn)])
        (let ([strm (wsint absolute)] [first #f] [second #f])
 	 (set! first (stream-car strm))
@@ -42,14 +39,19 @@ exec regiment i --script "$0" ${1+"$@"};
 	 (set! second (stream-car (stream-cdr strm)))
 					;(set! second (strm))
 	 (printf "Second element: ~s\n" second)
-	 (ASSERT (oracle first second))))
+
+	 ;; Don't use the ORACLES in PLT for now..
+	 ;; Besides.. .we want to move over to having asserts INSIDE the WS code.
+	 (IFCHEZ (ASSERT (oracle first second))
+		 (void))
+	 ))
      ]))
 
-(for-eachi go 
-  `(
+(define demo-list
+    `(
 #;
     ["demo0_audio.ws"             ,(lambda (a b) 
-				     (import-it)
+				     (IFCHEZ (import wavescript_sim_library_push) (void))
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 4095 (end   a)))
 				     (ASSERT (= 4096 (start b)))
@@ -73,7 +75,7 @@ exec regiment i --script "$0" ${1+"$@"};
     
 
     ["demo2a_iterate.ws"          ,(lambda (a b) 
-				     (import-it)
+				     (IFCHEZ (import wavescript_sim_library_push) (void))
 				     (ASSERT (= 0    (start a)))
 				     (ASSERT (= 39   (end   a)))
 				     (ASSERT (= 40   (start b)))
@@ -105,13 +107,13 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
 
     ["demo5a_rewindow.ws"         ,(lambda (a b) 
-				     (import-it)
+				     (IFCHEZ (import wavescript_sim_library_push) (void))
 				     (ASSERT (= 0     (start a)))
 				     (ASSERT (= 1023  (end   a)))
 				     (ASSERT (= 512   (start b)))
 				     (ASSERT (= 1535  (end   b))))]
     ["demo5b_rewindow_inlined.ws" ,(lambda (a b) 
-				      (import-it)
+				      (IFCHEZ (import wavescript_sim_library_push) (void))
 				      (ASSERT (= 0     (start a)))
 				      (ASSERT (= 1023  (end   a)))
 				      (ASSERT (= 512   (start b)))
@@ -125,7 +127,7 @@ exec regiment i --script "$0" ${1+"$@"};
     ["demo6c_syncN.ws"            ,(lambda (a b) #t)]
 
     ["demo6e_stdlib_sync.ws"      ,(lambda (a b) 
-				     (import-it)
+				     (IFCHEZ (import wavescript_sim_library_push) (void))
 				     (ASSERT (= 100   (start (list-ref a 0))))
 				     (ASSERT (= 199   (end   (list-ref a 0))))
 				     (ASSERT (= 100   (start (list-ref a 1))))
@@ -157,3 +159,5 @@ exec regiment i --script "$0" ${1+"$@"};
 				     )]
     
     ))
+
+(for-eachi go demo-list)

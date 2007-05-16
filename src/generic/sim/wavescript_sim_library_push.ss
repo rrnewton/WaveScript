@@ -134,7 +134,9 @@
        )
      (begin 
 	    (require (prefix s: mzscheme))
-	    (require (prefix s: "../../plt/chez_compat.ss"))))
+	    (require (prefix s: "../../plt/chez_compat.ss"))
+;	    (provide (all-from "../util/imperative_streams.ss"))
+	    ))
 
 
   ;; ================================================================================
@@ -420,7 +422,7 @@
 		(loop (fx+ 1 i))))))
       (define (get-batch)
 	(let loop ([x (read-line inp)] [batch DATAFILE_BATCH_SIZE] [acc '()])
-	  (if (or (not x) (fxzero? batch))
+	  (if (or (not x) (eof-object? x) (fxzero? batch))
 	      (reverse! acc)
 	      (loop (read-line inp) (fx- batch 1) (cons (parse-line x) acc)))))
        (define our-sinks '())  
@@ -557,28 +559,37 @@
        ;; NOTE: Performance got vastly better when I only did one
        ;; channel at a time instead of every sample being a 4-vector.
        (define (read-window)
-	 (set! count1 (block-read infile buffer1 winsize))
-	 (cond
-	  [(eof-object? count1)     #f]
-	  ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
-	  [(fx< count1  winsize)
-	     (warning 'read-window 
-		      "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
-		      count1 winsize)
-	     ;(warning 'read-window "this version depends on block-read always 
-	     ; getting all the chars, got ~a, wanted ~a"	count1 winsize)
-	     ;(printf "Better get eof next... THE PROBLEM OF LEFTOVERS!\n")
-	     (ASSERT (eof-object? (block-read infile buffer1 winsize)))
-	     #f]
-	  [else
+	 (define (return-it string)
 	   (let ([win (make-vector len)])
 	     (let readloop ([i 0] [pos 0])
 	       ;;(printf "READING UNTIL ~s word ~s skip ~s\n" winsize wordsize skipbytes)
 	       (unless (= i len)
-		 (vector-set! win i (sample-extractor buffer1 pos))
+		 (vector-set! win i (sample-extractor string pos))
 		 (readloop (fx+ i 1) (fx+ pos wordsize skipbytes))
-		 ))
-	     win)]))
+		 ))  
+	     win))
+	 (set! count1 (block-read infile buffer1 winsize))
+	 (cond
+	  [(eof-object? count1)  #f]
+	  ;[(fx> count1 winsize) (error 'read-window "got too much at once, should never happen.")]
+	  [(fx< count1  winsize)
+	   ;; If we got an incomplete window we just keep reading:
+	   ;; Generally speaking this only happens in PLT.  My block-read is working very poorly.
+	   (let loop ([count count1]
+		      [acc (list (substring buffer1 0 count1))])
+	     ;(printf "read-window: retrying read to get whole window (~s only got ~s).\n" winsize count)
+	     (let ([newcount (block-read infile buffer1 (- winsize count))])
+	       (if (eof-object? newcount) 
+		   (begin (warning 'read-window 
+			    "discarding incomplete window of data, probably end of stream.  Got ~a, wanted ~a" 
+			    count1 winsize) 
+			  #f)
+		   (let ([total (+ count newcount)]
+			 [newacc (cons (substring buffer1 0 newcount) acc)])
+		     (if (fx= total winsize)
+			 (return-it (apply string-append (reverse! newacc)))
+			 (loop total newacc))))))] 
+	  [else (return-it buffer1)]))
 
        (define _ 
 	 ;; This returns the stream representing the audio channel (read in from disk):
