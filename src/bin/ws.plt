@@ -1,3 +1,3 @@
 #!/bin/sh
 
-(export REGIMENTEXEC=regiment.plt; ws $*)
+(export REGIMENTEXEC=regiment.plt; exec ws $*)

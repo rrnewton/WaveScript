@@ -6,11 +6,12 @@
 
 #cs ;; Case Sensitivity
 
+(module main_plt mzscheme 
 ;; [2004.06.16] This should have been done already, but just for good measure...
 (define current_interpreter 'mzscheme)
 (define simulator-batch-mode #f)
 
-(module main_plt mzscheme 
+
  
 (require (lib "include.ss")
          (all-except "generic/util/helpers.ss" id rec)
@@ -180,7 +181,15 @@
 (provide (all-defined) 
 	 (all-from "plt/chez_compat.ss")
 	 REGIMENTD)
-)(require main_plt) ; End module
+) ; End module
+
+
+
+
+
+
+
+
 
 
 

@@ -3,27 +3,15 @@
 exec mzscheme -qr "$0" ${1+"$@"}
 |#
 
-(printf "Loading under PLT.\n")
-(define start-dir (current-directory))
+(module regiment_pltscript mzscheme  
+;  (printf "Loading under PLT.\n")
 
-(load/use-compiled "main_plt.ss")
-
-(define regiment-origin "PLT")
-(define svn-revision 'unknown-svn-rev)
-(apply main (cdr (vector->list (current-command-line-arguments))))
-
-
-
-
-
-
-
-
-
-#;
-(module regiment_pltscript mzscheme
-  (load/use-compiled "main_plt.ss")
-  (apply main
-   (cdr (vector->list (current-command-line-arguments))))
+  (eval '(define start-dir (current-directory)))
+  
+  (require "main_plt.ss")
+  
+  (eval '(define regiment-origin "PLT"))
+  (eval '(define svn-revision 'unknown-svn-rev))
+  (apply main (cdr (vector->list (current-command-line-arguments)))) 
   )
 
