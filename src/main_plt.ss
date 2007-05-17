@@ -202,6 +202,7 @@
 	 (all-from "generic/util/helpers.ss")
 	 (all-from "generic/compiler_components/source_loader.ss")
 	 (all-from  "generic/util/streams.ss")
+	 (all-from "generic/passes/normalize_source/typecheck.ss")
 ;	 (all-from )
 ;	 (all-from )
 ;	 (all-from )

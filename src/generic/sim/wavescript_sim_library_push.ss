@@ -60,7 +60,7 @@
 
 		 nullseg Array:null nulltimebase
 		 tuple tupref
-		 Array:make Array:makeUNSAFE
+		 Array:length Array:make Array:makeUNSAFE
 		 Array:ref Array:set Array:map Array:build Array:fold Array:toList Array:andmap
 		 internString uninternString
 		 
@@ -100,7 +100,7 @@
 		 )
     (chezprovide (for for-loop-stack )
 ;		 letrec 
-		 Array:length print
+		 print
 		 ;+ - * / ^
                                  
                  ;parmap

@@ -157,6 +157,7 @@
 ;; This is similar to get-location but gets the actual snippet.
 (define (get-snippet x)
   (match x
+#;
     [(src-pos #((,fn) ,off1 ,ln1 ,col1 ,off2 ,ln2 ,col2) ,e)
      (if (file-exists? fn)
 	 (let ([port (open-input-file fn)])

@@ -9,6 +9,8 @@ exec mzscheme -qr "$0" ${1+"$@"}
   (eval '(define start-dir (current-directory)))
   
   (require "main_plt.ss")
+
+  (DEBUGMODE (printf "Running in DEBUG mode.\n"))
   
   (eval '(define regiment-origin "PLT"))
   (eval '(define svn-revision 'unknown-svn-rev))
