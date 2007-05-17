@@ -279,6 +279,13 @@ exec mzscheme -qr "$0" ${1+"$@"}
        (fpf "ws: Running pipeline-web app:                 ~a\n" (code->msg! pipeline-web))
        (current-directory test-directory))
 
+(begin (current-directory (format "~a/demos/wavescope" test-directory))
+       (putenv "REGIMENTHOST" "plt")
+       (define pltdemos (system/exit-code 
+			 (format "./testall_demos.ss &> ~a/9B_WS_DEMOS_PLT.log" test-directory)))
+       (putenv "REGIMENTHOST" "")
+       (fpf "plt: Running demos in PLT:                    ~a\n" (code->msg! pltdemos)))
+
 ;;================================================================================
 ;; WAVESCOPE ENGINE:
 
