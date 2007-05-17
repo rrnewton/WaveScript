@@ -205,13 +205,24 @@
 	 ,(lambda (env n f)
 	    ;; Jeez, this is inefficient because we've already done this at least once:
 	    (let* ([fv* (list->set (core-free-vars (code-expr f)))]
-		   [real-code `(let ,(map (lambda (fv) 
-					    (let ([val ((outer-getval env) fv)])
-					      (ASSERT (not (code? val)))
-					      (list fv `',val)))
-				       fv*)
-				 (import wavescript_sim_library_push)
-				 ,(strip-types (code-expr f)))])
+		   [real-code 
+
+		    `(wavescript-language
+		      '(let ,(map (lambda (fv)
+				    (let ([val ((outer-getval env) fv)])
+				      (ASSERT (not (code? val)))
+				      (list fv `',val)))
+			       fv*)
+			 ,(strip-types (code-expr f))))
+#;
+		    `(let ,(map (lambda (fv) 
+				  (let ([val ((outer-getval env) fv)])
+				    (ASSERT (not (code? val)))
+				    (list fv `',val)))
+			     fv*)
+		       (import wavescript_sim_library_push)
+		       ,(strip-types (code-expr f)))
+		    ])
 	      (let ([real-closure (eval real-code)])		
 		`',(vector-build n (lambda (i) (real-closure i)))))
 	    ))

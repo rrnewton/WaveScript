@@ -474,8 +474,8 @@
 	(match ty
 	  [Int   (guard (fixnum? c))  (and (< c (expt 2 31)) (> c (- (expt 2 31))))]
 	  [Int16 (guard (fixnum? c))  (and (< c (expt 2 15)) (> c (- (expt 2 15))))]
-	  [Float (flonum? c)]
-	  [Double (flonum? c)]
+	  [Float   (flonum? c)]
+	  [Double  (flonum? c)]
 	  [Complex (cflonum? c)]
 	  [Bool  (boolean? c)]
 	  [String (string? c)]

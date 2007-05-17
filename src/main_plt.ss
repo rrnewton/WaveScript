@@ -186,13 +186,14 @@
 
 
 
-;; [2007.01.23] For now we exit on error:
-(current-exception-handler
- (lambda (exn)
-   (printf "ERROR:\n   ~a\n\nException: ~s\n" (exn-message exn) exn)
-   (exit 1)))
-
-
+;; [2007.01.23] For now we exit on error unconditionally.
+;; [2007.05.17] Making this optional again.  The command line interface should turn it
+(when (and (top-level-bound? 'REGIMENT-BATCH-MODE)
+	   (top-level-value 'REGIMENT-BATCH-MODE))
+  (current-exception-handler
+   (lambda (exn)
+     (printf "ERROR:\n   ~a\n\nException: ~s\n" (exn-message exn) exn)
+     (exit 1))))
 
 ;; This could get verbose... ideally we'd like to export all of it:
 ;; THIS IS REALLY REDUNDANT... I WISH THERE WERE SOME WAY AROUND THIS:
@@ -210,6 +211,7 @@
 	 (all-from "generic/compiler_components/reg_core_generic_traverse.ss")
 	 (all-from "plt/hashtab.ss")	 	 
 	 (all-from "generic/util/hash.ss")
+	 (all-from "generic/langs/lang_wavescript.ss")
 
 	 (all-from "generic/compiler_components/prim_defs.ss" )
 	 (all-from "generic/compiler_components/hm_type_inference.ss" )
@@ -496,5 +498,6 @@
 
 
 ;(require main_plt)(current-directory "demos/wavescope")
+;(browse-stream (wsint "demo9b_higher_order_prims.ws"))
 ;(browse-stream (wsint "demo1d_dataFile_binary.ws"))
 
