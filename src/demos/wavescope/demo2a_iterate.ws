@@ -9,7 +9,6 @@
 
 
 
-
 // Audio channel 1 with no overlap.
 s1 = (readFile("./countup.raw", "mode: binary  window: 40") :: Stream (Sigseg Int16));
 
@@ -24,6 +23,8 @@ s2 = iterate w in s1 {
   
   //gnuplot_array(toArray(w));
   
+  //  wserror("testing...");  
+
   emit w;
 };
 

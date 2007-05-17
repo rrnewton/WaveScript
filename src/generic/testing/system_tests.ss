@@ -2,6 +2,8 @@
 ;; TODO FIXME:  Expand some of these tests to use more passes.
 
 `( 
+;    ["foobar" #t #f]
+
     ;; Urg, this is wrong:
     ;    [(deep-assq 'startup (run-compiler '(circle-at '(30 40) 50))) (startup)]
     
